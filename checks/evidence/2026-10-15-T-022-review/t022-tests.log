@@ -1,0 +1,176 @@
+=== RUN   TestQuantile7
+--- PASS: TestQuantile7 (0.00s)
+=== RUN   TestStudentTTable
+--- PASS: TestStudentTTable (0.00s)
+=== RUN   TestCI95
+--- PASS: TestCI95 (0.00s)
+=== RUN   TestGoldenResultMetrics
+--- PASS: TestGoldenResultMetrics (0.05s)
+=== RUN   TestCongestedMetrics
+--- PASS: TestCongestedMetrics (0.00s)
+=== RUN   TestMeasurementWindow
+--- PASS: TestMeasurementWindow (0.00s)
+=== RUN   TestPartialIntervals
+--- PASS: TestPartialIntervals (0.00s)
+=== RUN   TestNothingCompleted
+--- PASS: TestNothingCompleted (0.00s)
+=== RUN   TestReplicationStatistics
+--- PASS: TestReplicationStatistics (0.00s)
+=== RUN   TestOutcomesAndCounts
+--- PASS: TestOutcomesAndCounts (0.00s)
+=== RUN   TestExplicitQueueOwnsMetrics
+--- PASS: TestExplicitQueueOwnsMetrics (0.01s)
+=== RUN   TestBuildRejects
+--- PASS: TestBuildRejects (0.00s)
+=== RUN   TestFinishReleasesEntityState
+--- PASS: TestFinishReleasesEntityState (0.00s)
+=== RUN   TestOracleAgreement
+=== RUN   TestOracleAgreement/default-delivery
+=== RUN   TestOracleAgreement/default-delivery-w0
+=== RUN   TestOracleAgreement/congested-W45-H204
+=== RUN   TestOracleAgreement/congested-unavailable-queue
+=== RUN   TestOracleAgreement/deterministic-W12
+=== RUN   TestOracleAgreement/multi-0
+=== RUN   TestOracleAgreement/multi-1
+=== RUN   TestOracleAgreement/multi-2
+=== RUN   TestOracleAgreement/multi-3
+=== RUN   TestOracleAgreement/multi-4
+=== RUN   TestOracleAgreement/multi-5
+=== RUN   TestOracleAgreement/multi-6
+=== RUN   TestOracleAgreement/multi-7
+=== RUN   TestOracleAgreement/multi-8
+=== RUN   TestOracleAgreement/multi-9
+=== RUN   TestOracleAgreement/multi-10
+=== RUN   TestOracleAgreement/multi-11
+--- PASS: TestOracleAgreement (0.14s)
+    --- PASS: TestOracleAgreement/default-delivery (0.01s)
+    --- PASS: TestOracleAgreement/default-delivery-w0 (0.00s)
+    --- PASS: TestOracleAgreement/congested-W45-H204 (0.00s)
+    --- PASS: TestOracleAgreement/congested-unavailable-queue (0.00s)
+    --- PASS: TestOracleAgreement/deterministic-W12 (0.00s)
+    --- PASS: TestOracleAgreement/multi-0 (0.01s)
+    --- PASS: TestOracleAgreement/multi-1 (0.01s)
+    --- PASS: TestOracleAgreement/multi-2 (0.00s)
+    --- PASS: TestOracleAgreement/multi-3 (0.01s)
+    --- PASS: TestOracleAgreement/multi-4 (0.01s)
+    --- PASS: TestOracleAgreement/multi-5 (0.01s)
+    --- PASS: TestOracleAgreement/multi-6 (0.01s)
+    --- PASS: TestOracleAgreement/multi-7 (0.02s)
+    --- PASS: TestOracleAgreement/multi-8 (0.01s)
+    --- PASS: TestOracleAgreement/multi-9 (0.02s)
+    --- PASS: TestOracleAgreement/multi-10 (0.01s)
+    --- PASS: TestOracleAgreement/multi-11 (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.219s
+=== RUN   TestSelectedMatchesReference
+--- PASS: TestSelectedMatchesReference (0.00s)
+=== RUN   TestTrajectories
+--- PASS: TestTrajectories (0.05s)
+=== RUN   TestCap
+--- PASS: TestCap (0.01s)
+=== RUN   TestEmpty
+--- PASS: TestEmpty (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.074s
+=== RUN   TestGoldenOneResult
+--- PASS: TestGoldenOneResult (0.06s)
+=== RUN   TestGoldenOneTrace
+--- PASS: TestGoldenOneTrace (0.01s)
+=== RUN   TestDeterminism
+--- PASS: TestDeterminism (0.08s)
+=== RUN   TestTraceDoesNotChangeMetrics
+--- PASS: TestTraceDoesNotChangeMetrics (0.02s)
+=== RUN   TestRunFailures
+=== RUN   TestRunFailures/no_model_hash
+=== RUN   TestRunFailures/stale_effective_hash
+=== RUN   TestRunFailures/wall_timeout
+=== RUN   TestRunFailures/event_budget
+=== RUN   TestRunFailures/active_entities
+=== RUN   TestRunFailures/invalid_model
+--- PASS: TestRunFailures (0.01s)
+    --- PASS: TestRunFailures/no_model_hash (0.00s)
+    --- PASS: TestRunFailures/stale_effective_hash (0.00s)
+    --- PASS: TestRunFailures/wall_timeout (0.00s)
+    --- PASS: TestRunFailures/event_budget (0.00s)
+    --- PASS: TestRunFailures/active_entities (0.00s)
+    --- PASS: TestRunFailures/invalid_model (0.00s)
+=== RUN   TestWallTimeoutDuringRun
+--- PASS: TestWallTimeoutDuringRun (0.02s)
+=== RUN   TestCancelDuringRun
+--- PASS: TestCancelDuringRun (0.03s)
+=== RUN   TestProgress
+--- PASS: TestProgress (0.01s)
+=== RUN   TestResultsValidate
+=== RUN   TestResultsValidate/deterministic-queue.json
+=== RUN   TestResultsValidate/congested-queue.json
+=== RUN   TestResultsValidate/default-delivery.json
+=== RUN   TestResultsValidate/report-example.json
+--- PASS: TestResultsValidate (0.02s)
+    --- PASS: TestResultsValidate/deterministic-queue.json (0.00s)
+    --- PASS: TestResultsValidate/congested-queue.json (0.00s)
+    --- PASS: TestResultsValidate/default-delivery.json (0.01s)
+    --- PASS: TestResultsValidate/report-example.json (0.01s)
+=== RUN   TestDependencies
+--- PASS: TestDependencies (0.11s)
+=== RUN   TestGoldenDigests
+--- PASS: TestGoldenDigests (0.00s)
+=== RUN   TestSampledButEmptyTrace
+--- PASS: TestSampledButEmptyTrace (0.00s)
+=== RUN   TestDeploymentVersion
+--- PASS: TestDeploymentVersion (0.00s)
+=== RUN   TestSharedBudget
+--- PASS: TestSharedBudget (0.00s)
+=== RUN   TestTraceIsReplicationZero
+--- PASS: TestTraceIsReplicationZero (0.01s)
+=== RUN   TestCompletionDecides
+--- PASS: TestCompletionDecides (0.00s)
+=== RUN   TestSlowProgressSinkChangesNothing
+--- PASS: TestSlowProgressSinkChangesNothing (0.62s)
+=== RUN   TestUnavailableQueue
+--- PASS: TestUnavailableQueue (0.00s)
+=== RUN   TestReplicationPanicIsAnError
+--- PASS: TestReplicationPanicIsAnError (0.00s)
+=== RUN   TestTraceNamesTheEnteredNode
+--- PASS: TestTraceNamesTheEnteredNode (0.00s)
+=== RUN   TestEffectiveHashMatchesStoredBytes
+--- PASS: TestEffectiveHashMatchesStoredBytes (0.00s)
+=== RUN   FuzzRun
+=== RUN   FuzzRun/seed#0
+=== RUN   FuzzRun/seed#1
+=== RUN   FuzzRun/seed#2
+--- PASS: FuzzRun (0.01s)
+    --- PASS: FuzzRun/seed#0 (0.00s)
+    --- PASS: FuzzRun/seed#1 (0.00s)
+    --- PASS: FuzzRun/seed#2 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	1.059s
+=== RUN   TestDORAThroughTheEngine
+--- PASS: TestDORAThroughTheEngine (0.07s)
+=== RUN   TestCatalogs
+--- PASS: TestCatalogs (0.00s)
+=== RUN   TestTemplateMatchesGoldenFixture
+--- PASS: TestTemplateMatchesGoldenFixture (0.00s)
+=== RUN   TestTemplate
+--- PASS: TestTemplate (0.00s)
+=== RUN   TestValidateRejectsOtherDomains
+--- PASS: TestValidateRejectsOtherDomains (0.00s)
+=== RUN   TestDORAUnavailable
+--- PASS: TestDORAUnavailable (0.00s)
+=== RUN   TestInferenceIsUnavailable
+--- PASS: TestInferenceIsUnavailable (0.00s)
+=== RUN   TestDefaultViewsAndPrompt
+--- PASS: TestDefaultViewsAndPrompt (0.00s)
+=== RUN   TestResourceCatalogMatchesSpec
+--- PASS: TestResourceCatalogMatchesSpec (0.00s)
+=== RUN   TestCatalogCopies
+--- PASS: TestCatalogCopies (0.00s)
+=== RUN   TestDORAUnavailableWithFailuresObserved
+--- PASS: TestDORAUnavailableWithFailuresObserved (0.00s)
+=== RUN   TestTemplateErrors
+--- PASS: TestTemplateErrors (0.00s)
+=== RUN   TestTemplateMetadataForUserModels
+--- PASS: TestTemplateMetadataForUserModels (0.01s)
+=== RUN   TestValidateUnvalidatedInput
+--- PASS: TestValidateUnvalidatedInput (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.102s

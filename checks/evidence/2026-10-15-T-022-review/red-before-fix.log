@@ -1,0 +1,20 @@
+--- PASS: TestSharedBudget (0.03s)
+--- PASS: TestTraceIsReplicationZero (0.02s)
+--- PASS: TestCompletionDecides (0.00s)
+    des_test.go:607: the run waited for its sink: 2.450091467s
+--- FAIL: TestSlowProgressSinkChangesNothing (2.47s)
+--- PASS: TestUnavailableQueue (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	2.530s
+FAIL
+== without recover
+panic: injected [recovered, repanicked]
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.041s
+FAIL
+== Finish as a no-op
+--- FAIL: TestFinishReleasesEntityState (0.03s)
+    metrics_test.go:470: Finish kept the entity maps
+FAIL
+--- FAIL: TestTraceNamesTheEnteredNode (0.03s)
+    des_test.go:676: r0/arrival/8 queued at inbox, entered service
+    des_test.go:676: r0/arrival/9 queued at inbox, entered service

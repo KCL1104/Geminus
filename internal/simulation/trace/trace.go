@@ -73,7 +73,10 @@ func (r *Recorder) Observe(o engine.Observation) {
 	typ, node := kinds[o.Kind], r.p.NodeID(o.Node)
 	switch o.Kind {
 	case engine.ObsQueueEnter:
-		node = r.p.QueueLabel(o.Node) // where the entity waits: its explicit queue, if any
+		// The node actually entered: the explicit queue, or the process for
+		// an entity routed straight into its buffer (T-022 review), so a
+		// playback never shows an entity at a node it did not visit.
+		node = r.p.NodeID(o.At)
 	case engine.ObsComplete:
 		typ = simulation.TraceComplete
 		if o.Value != 1 {

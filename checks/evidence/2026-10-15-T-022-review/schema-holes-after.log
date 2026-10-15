@@ -1,0 +1,3 @@
+queue unavailable with wait 0 and reason null: invalid
+resource utilization null with reason null: invalid
+queue available with null waits and sample_count 0: invalid

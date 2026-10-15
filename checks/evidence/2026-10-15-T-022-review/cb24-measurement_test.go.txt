@@ -1,0 +1,50 @@
+package des
+
+import (
+	"slices"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/simulation"
+)
+
+func val(p *float64) any {
+	if p == nil {
+		return "null"
+	}
+	return *p
+}
+
+func TestCB24Measurement(t *testing.T) {
+	ir := golden(t, "default-delivery.json")
+	for _, days := range []float64{7, 30, 90} {
+		out := run(t, &Engine{}, input(t, ir, days*1440, 0, 5, simulation.TraceNone))
+		m := out.Result.Metrics
+		t.Logf("horizon %v days: throughput mean %v (status %s, n=%d)", days, val(m.Throughput.Mean), m.Throughput.Status, m.Throughput.SampleCount)
+		t.Logf("  lead time (pooled entity): status %s mean %v p50 %v p95 %v samples %d reason %v", m.LeadTimeMinutes.Status, val(m.LeadTimeMinutes.Mean), val(m.LeadTimeMinutes.P50), val(m.LeadTimeMinutes.P95), m.LeadTimeMinutes.SampleCount, m.LeadTimeMinutes.Reason)
+		for _, q := range slices.Sorted(func(yield func(string) bool) {
+			for k := range m.Queues {
+				if !yield(k) {
+					return
+				}
+			}
+		}) {
+			s := m.Queues[q]
+			t.Logf("  queue %s: length mean %.2f wait mean %v samples %d", q, s.QueueLengthMean, val(s.WaitMeanMinutes), s.SampleCount)
+		}
+		for _, r := range slices.Sorted(func(yield func(string) bool) {
+			for k := range m.Resources {
+				if !yield(k) {
+					return
+				}
+			}
+		}) {
+			s := m.Resources[r]
+			t.Logf("  resource %s: utilization %v cap %d", r, val(s.UtilizationMean), s.Capacity)
+		}
+		var censored []int64
+		for _, rs := range out.Result.ReplicationSummaries {
+			censored = append(censored, rs.CensoredEntities)
+		}
+		t.Logf("  censored per replication %v", censored)
+	}
+}

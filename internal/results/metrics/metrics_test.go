@@ -35,6 +35,16 @@ func runInput(ir model.ModelIR, horizon, warmup float64, replications int) simul
 // collect compiles in and runs every replication with its own collector.
 func collect(t *testing.T, in simulation.RunInput) (*engine.Program, []Replication) {
 	t.Helper()
+	p, reps := collectUnfinished(t, in)
+	for _, r := range reps {
+		r.Collector.Finish()
+	}
+	return p, reps
+}
+
+// collectUnfinished is collect without Finish.
+func collectUnfinished(t *testing.T, in simulation.RunInput) (*engine.Program, []Replication) {
+	t.Helper()
 	p, err := engine.Compile(in)
 	if err != nil {
 		var ie *engine.InputError
@@ -426,8 +436,9 @@ func TestExplicitQueueOwnsMetrics(t *testing.T) {
 	ir.Flows[0].To = "inbox"
 	ir.Flows = append(ir.Flows, model.Flow{ID: "inbox_service", From: "inbox", To: "service", Routing: model.Routing{Type: model.RoutingProbability, Probability: 1}})
 	m, _, _ := build(t, runInput(ir, 1010, 0, 1))
-	if _, ok := m.Queues["inbox"]; !ok || len(m.Queues) != 1 {
-		t.Errorf("queues %v", m.Queues)
+	direct, _, _ := build(t, runInput(golden(t, "deterministic-queue.json"), 1010, 0, 1))
+	if q, ok := m.Queues["inbox"]; !ok || len(m.Queues) != 1 || !jsonEqual(q, direct.Queues["service"]) {
+		t.Errorf("queues %v; the same waits keyed by the process: %v", m.Queues, direct.Queues)
 	}
 }
 
@@ -445,5 +456,34 @@ func TestBuildRejects(t *testing.T) {
 		if _, _, _, err := Build(p, rs); !errors.Is(err, ErrInconsistent) {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+}
+
+// Finish drops the per-entity maps (T-022 review: a run kept every
+// replication's maps until Build); Build refuses unfinished collectors, so
+// a caller cannot forget it.
+func TestFinishReleasesEntityState(t *testing.T) {
+	in := runInput(golden(t, "congested-queue.json"), 100, 10, 2) // 11 still in the system at H
+	p, reps := collectUnfinished(t, in)
+	held := 0
+	for _, r := range reps {
+		held += len(r.Collector.arrived) + len(r.Collector.entered)
+	}
+	if held == 0 {
+		t.Fatal("no entity in the system at the horizon: the test would be vacuous")
+	}
+	if _, _, _, err := Build(p, reps); !errors.Is(err, ErrInconsistent) {
+		t.Errorf("Build accepted unfinished collectors: %v", err)
+	}
+	for _, r := range reps {
+		r.Collector.Finish()
+		if r.Collector.arrived != nil || r.Collector.entered != nil {
+			t.Fatal("Finish kept the entity maps")
+		}
+	}
+	got, _, _, err := Build(p, reps)
+	want, _, _ := build(t, in)
+	if err != nil || !jsonEqual(got, want) {
+		t.Errorf("metrics after Finish: %v", err)
 	}
 }

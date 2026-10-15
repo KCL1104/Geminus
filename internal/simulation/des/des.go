@@ -49,7 +49,9 @@ type Engine struct {
 	// result before the digest is taken (DomainPack.ComputeMetrics).
 	DomainMetrics func(*simulation.Result) map[string]simulation.MetricSummary
 
-	timeout func(simulation.ExecutionLimits) time.Duration // tests only
+	timeout       func(simulation.ExecutionLimits) time.Duration // tests only
+	afterPool     func()                                         // tests only: runs once every worker has stopped
+	onReplication func(index int)                                // tests only: runs as a worker starts a replication
 }
 
 var _ simulation.Engine = (*Engine)(nil)
@@ -68,7 +70,9 @@ func (e *Engine) version() string {
 	return Version
 }
 
-// Validate reports the IR's issues as Compile would see them.
+// Validate reports the IR's schema and semantic issues, with paths relative
+// to the IR (Compile reports the same issues under /model). Dataset bindings,
+// the manifest, the config and the limits are checked by Run.
 func (e *Engine) Validate(ctx context.Context, ir model.ModelIR) ([]model.ValidationIssue, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -132,6 +136,8 @@ func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progr
 	if workers <= 0 {
 		workers = runtime.GOMAXPROCS(0)
 	}
+	report, stopReports := deliver(progress)
+	defer stopReports()
 	var (
 		next     atomic.Int64
 		mu       sync.Mutex
@@ -140,10 +146,19 @@ func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progr
 	)
 	for range min(workers, n) {
 		wg.Go(func() {
+			// A panic is an engine bug; it fails the run, not the process.
+			defer func() {
+				if v := recover(); v != nil {
+					stop(fmt.Errorf("%w: panic in a replication: %v", engine.ErrInternal, v))
+				}
+			}()
 			for {
 				i := int(next.Add(1) - 1)
 				if i >= n || poolCtx.Err() != nil {
 					return
+				}
+				if e.onReplication != nil {
+					e.onReplication(i)
 				}
 				c := metrics.NewCollector(p)
 				var obs engine.Observer = c
@@ -155,17 +170,19 @@ func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progr
 					stop(err)
 					return
 				}
+				c.Finish()
 				reps[i] = metrics.Replication{Collector: c, Outcome: out}
 				mu.Lock()
 				finished++
-				if progress != nil {
-					progress.Report(simulation.Progress{CompletedReplications: finished, TotalReplications: n, EventsProcessed: budget.Used()})
-				}
+				report(simulation.Progress{CompletedReplications: finished, TotalReplications: n, EventsProcessed: budget.Used()})
 				mu.Unlock()
 			}
 		})
 	}
 	wg.Wait()
+	if e.afterPool != nil {
+		e.afterPool()
+	}
 	// Completion decides: a run whose every replication finished is
 	// complete even if the deadline or a cancellation lands just after.
 	if finished != n {
@@ -202,6 +219,40 @@ func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progr
 	}
 	res.Reproducibility.ResultDigest = digest
 	return out, nil
+}
+
+// deliver returns a report function that never blocks and a stop function.
+// Reports go to sink from one goroutine, never concurrently; when the sink is
+// slower than the run, only the latest undelivered snapshot is kept, so
+// snapshots can be skipped but never reordered (report is called under the
+// pool's lock). The run never waits for the sink: progress is not a
+// correctness input (SIMULATION_SPEC §8). stop closes the channel once the
+// pool has stopped; the reporter drains it, so the last snapshot is always
+// delivered, possibly just after the run returns.
+func deliver(sink simulation.ProgressSink) (func(simulation.Progress), func()) {
+	if sink == nil {
+		return func(simulation.Progress) {}, func() {}
+	}
+	latest := make(chan simulation.Progress, 1)
+	go func() {
+		for pr := range latest {
+			sink.Report(pr)
+		}
+	}()
+	report := func(pr simulation.Progress) {
+		for {
+			select {
+			case latest <- pr:
+				return
+			default:
+			}
+			select { // replace the undelivered, older snapshot
+			case <-latest:
+			default:
+			}
+		}
+	}
+	return report, func() { close(latest) }
 }
 
 // tee sends each observation to the metrics collector and the trace recorder.

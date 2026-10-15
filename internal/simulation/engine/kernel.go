@@ -49,6 +49,10 @@ type Observation struct {
 	Node     int
 	Resource int
 	Value    int64
+	// At is, for ObsQueueEnter, the node the entity entered: an explicit
+	// queue, or the process itself when routed straight into it (Node is
+	// always the process whose buffer it waits in). Unused otherwise.
+	At int
 }
 
 // Observer receives every observation of one replication. It must not
@@ -271,7 +275,7 @@ func (k *kernel) route(e uint64, from int) error {
 		}
 		switch node.typ {
 		case model.NodeQueue, model.NodeProcess:
-			return k.enqueue(e, node.buffer)
+			return k.enqueue(e, node.buffer, n)
 		case model.NodeDelay:
 			k.observe(Observation{Kind: ObsDelayStart, Entity: e, Node: n})
 			return k.r.schedule(node.delay.draw(k.r.stream(n, PurposeDelay)), PriorityImmediate, EventDelayComplete, n, e)
@@ -297,7 +301,7 @@ func (k *kernel) route(e uint64, from int) error {
 	}
 }
 
-func (k *kernel) enqueue(e uint64, process int) error {
+func (k *kernel) enqueue(e uint64, process, at int) error {
 	if process < 0 || k.r.p.nodes[process].typ != model.NodeProcess {
 		return fmt.Errorf("%w: buffer %d is not a process", ErrInternal, process)
 	}
@@ -312,7 +316,7 @@ func (k *kernel) enqueue(e uint64, process int) error {
 	if req.heads == len(reqs) {
 		heap.Push(&k.cands, req)
 	}
-	k.observe(Observation{Kind: ObsQueueEnter, Entity: e, Node: process})
+	k.observe(Observation{Kind: ObsQueueEnter, Entity: e, Node: process, At: at})
 	return k.needDispatch()
 }
 

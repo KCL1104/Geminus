@@ -1,0 +1,37 @@
+CB-24 measurement (T-022): des.Engine on testdata/golden-models/default-delivery.json, 5 replications, seed 7, warmup 0, trace none, horizon 7 / 30 / 90 days.
+Produced by cb24-measurement_test.go.txt (kept here as evidence, not in the package; run with go test -overlay as internal/simulation/des/zz_cb24_test.go) calling des.Engine.RunWithTrace with the des test helpers' input(); queues and resources printed in sorted order.
+Re-run after the T-022 review: the first log printed the lead-time summary pointer instead of its value; every other number is unchanged.
+
+    zz_cb24_test.go:22: horizon 7 days: throughput mean 82 (status available, n=5)
+    zz_cb24_test.go:23:   lead time (pooled entity): status available mean 3279.337177235771 p50 3248.6545333333333 p95 5951.601172499999 samples 410 reason <nil>
+    zz_cb24_test.go:32:   queue ci: length mean 0.00 wait mean 0 samples 507
+    zz_cb24_test.go:32:   queue code_review: length mean 65.06 wait mean 3074.1669566666665 samples 420
+    zz_cb24_test.go:32:   queue deploy: length mean 0.00 wait mean 0 samples 410
+    zz_cb24_test.go:32:   queue test: length mean 0.01 wait mean 0.8871431300813015 samples 410
+    zz_cb24_test.go:42:   resource ci_runner: utilization 0.060357142857142866 cap 3
+    zz_cb24_test.go:42:   resource deployment_slot: utilization 0.040674603174603176 cap 1
+    zz_cb24_test.go:42:   resource reviewer: utilization 0.9945727280092592 cap 2
+    zz_cb24_test.go:42:   resource test_environment: utilization 0.08134920634920635 cap 1
+    zz_cb24_test.go:48:   censored per replication [125 135 141 119 122]
+    zz_cb24_test.go:22: horizon 30 days: throughput mean 358 (status available, n=5)
+    zz_cb24_test.go:23:   lead time (pooled entity): status available mean 13203.123841526969 p50 13162.150275 p95 24837.1525725 samples 1790 reason <nil>
+    zz_cb24_test.go:32:   queue ci: length mean 0.00 wait mean 0 samples 2272
+    zz_cb24_test.go:32:   queue code_review: length mean 281.10 wait mean 12996.547735509239 samples 1800
+    zz_cb24_test.go:32:   queue deploy: length mean 0.00 wait mean 0 samples 1790
+    zz_cb24_test.go:32:   queue test: length mean 0.01 wait mean 0.7938502513966468 samples 1790
+    zz_cb24_test.go:42:   resource ci_runner: utilization 0.0631111111111111 cap 3
+    zz_cb24_test.go:42:   resource deployment_slot: utilization 0.041435185185185186 cap 1
+    zz_cb24_test.go:42:   resource reviewer: utilization 0.9987336365354939 cap 2
+    zz_cb24_test.go:42:   resource test_environment: utilization 0.08287037037037037 cap 1
+    zz_cb24_test.go:48:   censored per replication [562 570 587 566 529]
+    zz_cb24_test.go:22: horizon 90 days: throughput mean 1078 (status available, n=5)
+    zz_cb24_test.go:23:   lead time (pooled entity): status available mean 39662.72870442192 p50 39887.84111666666 p95 75279.13413666667 samples 5390 reason <nil>
+    zz_cb24_test.go:32:   queue ci: length mean 0.00 wait mean 0 samples 6778
+    zz_cb24_test.go:32:   queue code_review: length mean 841.84 wait mean 39457.462465716155 samples 5400
+    zz_cb24_test.go:32:   queue deploy: length mean 0.00 wait mean 0 samples 5390
+    zz_cb24_test.go:32:   queue test: length mean 0.01 wait mean 0.7916126808905457 samples 5390
+    zz_cb24_test.go:42:   resource ci_runner: utilization 0.06275925925925926 cap 3
+    zz_cb24_test.go:42:   resource deployment_slot: utilization 0.041589506172839505 cap 1
+    zz_cb24_test.go:42:   resource reviewer: utilization 0.9995778788451645 cap 2
+    zz_cb24_test.go:42:   resource test_environment: utilization 0.08317901234567901 cap 1
+    zz_cb24_test.go:48:   censored per replication [1698 1687 1713 1719 1586]

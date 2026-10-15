@@ -577,7 +577,26 @@
                   "capacity",
                   "reason"
                 ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "$comment": "T-022 review (CB-23): a null utilization carries a reason.",
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "utilization_mean": {
+                          "type": "null"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                ]
               }
             },
             "queues": {
@@ -660,7 +679,60 @@
                   "sample_count",
                   "reason"
                 ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "$comment": "T-022 review (CB-23): an unavailable queue has null waits and a reason; an available one has waits and at least one sample.",
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "status": {
+                          "const": "unavailable"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "wait_mean_minutes": {
+                          "type": "null"
+                        },
+                        "wait_p50_minutes": {
+                          "type": "null"
+                        },
+                        "wait_p95_minutes": {
+                          "type": "null"
+                        },
+                        "reason": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "status": {
+                          "const": "available"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "wait_mean_minutes": {
+                          "type": "number"
+                        },
+                        "wait_p50_minutes": {
+                          "type": "number"
+                        },
+                        "wait_p95_minutes": {
+                          "type": "number"
+                        },
+                        "sample_count": {
+                          "minimum": 1
+                        }
+                      }
+                    }
+                  }
+                ]
               }
             },
             "failure_count": {

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/simulation"
 	"github.com/kcl1104/geminus/internal/simulation/engine"
+	"github.com/kcl1104/geminus/internal/simulation/trace"
 )
 
 var limits = simulation.ExecutionLimits{WallTimeoutSeconds: 300, MaxEvents: 10_000_000, MaxActiveEntities: 100_000, MaxEntityVisits: 10_000, MaxTraceEvents: 100_000}
@@ -322,6 +324,17 @@ type progressLog struct {
 	onReport func(simulation.Progress)
 }
 
+// waitFor waits up to a second for a report with completed replications.
+func (p *progressLog) waitFor(completed int) bool {
+	for range 100 {
+		if all := p.reports(); len(all) > 0 && all[len(all)-1].CompletedReplications == completed {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
+}
+
 func (p *progressLog) Report(pr simulation.Progress) {
 	p.mu.Lock()
 	p.all = append(p.all, pr)
@@ -337,8 +350,9 @@ func (p *progressLog) reports() []simulation.Progress {
 	return append([]simulation.Progress(nil), p.all...)
 }
 
-// Progress counts finished replications, never goes back and is not a
-// correctness input.
+// Progress counts finished replications and never goes back; a slow sink
+// may skip snapshots, but the last one (all replications) is delivered; it
+// is not a correctness input.
 func TestProgress(t *testing.T) {
 	p := &progressLog{}
 	in := input(t, golden(t, "default-delivery.json"), 3*24*60, 0, 10, simulation.TraceNone)
@@ -346,12 +360,15 @@ func TestProgress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !p.waitFor(10) {
+		t.Fatalf("the final snapshot never arrived: %+v", p.reports())
+	}
 	all := p.reports()
-	if len(all) != 10 {
+	if len(all) == 0 || len(all) > 10 {
 		t.Fatalf("%d reports", len(all))
 	}
 	for i, r := range all {
-		if r.CompletedReplications != i+1 || r.TotalReplications != 10 || (i > 0 && r.EventsProcessed < all[i-1].EventsProcessed) || r.EventsProcessed > limits.MaxEvents {
+		if r.TotalReplications != 10 || r.CompletedReplications < 1 || (i > 0 && (r.CompletedReplications <= all[i-1].CompletedReplications || r.EventsProcessed < all[i-1].EventsProcessed)) || r.EventsProcessed > limits.MaxEvents {
 			t.Fatalf("report %d: %+v", i, r)
 		}
 	}
@@ -505,4 +522,207 @@ func FuzzRun(f *testing.F) {
 			schemaValid(t, out.Trace, "simulation.schema.json#/$defs/TraceArtifact")
 		}
 	})
+}
+
+// The event budget is shared by all replications (SIMULATION_SPEC §8):
+// three replications that each fit fail together.
+func TestSharedBudget(t *testing.T) {
+	one := input(t, golden(t, "congested-queue.json"), 205, 0, 1, simulation.TraceNone)
+	p, err := engine.Compile(one)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := engine.RunReplication(context.Background(), p, 0, engine.NewBudget(1<<40), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	three := input(t, golden(t, "congested-queue.json"), 205, 0, 3, simulation.TraceNone)
+	three.Limits.MaxEvents = out.Events*2 + out.Events/2
+	if _, err := (&Engine{Workers: 1}).RunWithTrace(context.Background(), three, nil); !errors.Is(err, engine.ErrEventBudget) {
+		t.Errorf("%d events per replication, budget %d for three: %v", out.Events, three.Limits.MaxEvents, err)
+	}
+	three.Limits.MaxEvents = out.Events * 3
+	run(t, &Engine{Workers: 1}, three)
+}
+
+// The trace is replication 0's whatever the worker count: equal to a
+// recorder on replication 0 alone, and not replication 1's.
+func TestTraceIsReplicationZero(t *testing.T) {
+	in := input(t, golden(t, "default-delivery.json"), 7*24*60, 0, 5, simulation.TraceSampled)
+	p, err := engine.Compile(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record := func(index uint32) *simulation.TraceArtifact {
+		rec := trace.NewRecorder(p, index, in.Limits.MaxTraceEvents)
+		if _, err := engine.RunReplication(context.Background(), p, index, engine.NewBudget(1<<40), rec); err != nil {
+			t.Fatal(err)
+		}
+		return rec.Artifact(Version)
+	}
+	zero, one := record(0), record(1)
+	if reflect.DeepEqual(zero.Events, one.Events) {
+		t.Fatal("replications 0 and 1 trace the same: the test would be vacuous")
+	}
+	for _, w := range []int{1, 2, 5} {
+		if out := run(t, &Engine{Workers: w}, in); !reflect.DeepEqual(out.Trace, zero) {
+			t.Errorf("workers %d: the trace is not replication 0's", w)
+		}
+	}
+}
+
+// Completion decides: a cancellation that lands after every replication has
+// finished does not fail the run.
+func TestCompletionDecides(t *testing.T) {
+	in := input(t, golden(t, "congested-queue.json"), 205, 0, 4, simulation.TraceNone)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	e := &Engine{Workers: 2, afterPool: cancel}
+	out, err := e.RunWithTrace(ctx, in, nil)
+	if err != nil || out == nil || ctx.Err() == nil {
+		t.Errorf("cancel after the pool: %v (context %v)", err, ctx.Err())
+	}
+}
+
+type slowSink struct {
+	d      time.Duration
+	inside atomic.Int32
+	calls  atomic.Int32
+	last   atomic.Int64 // completed replications in the latest report
+	t      *testing.T
+}
+
+func (s *slowSink) Report(p simulation.Progress) {
+	if s.inside.Add(1) > 1 {
+		s.t.Error("Report called concurrently")
+	}
+	s.calls.Add(1)
+	time.Sleep(s.d)
+	s.last.Store(int64(p.CompletedReplications))
+	s.inside.Add(-1)
+}
+
+// Progress is never a correctness input (SIMULATION_SPEC §8, T-022 review):
+// a sink that blocks for seconds does not hold the run past its deadline,
+// and does not change whether, or how, a run completes.
+func TestSlowProgressSinkChangesNothing(t *testing.T) {
+	in := input(t, golden(t, "congested-queue.json"), 205, 0, 4, simulation.TraceNone)
+	e := &Engine{Workers: 4, timeout: func(simulation.ExecutionLimits) time.Duration { return 0 }}
+	start := time.Now()
+	if _, err := e.RunWithTrace(context.Background(), in, &slowSink{d: 1500 * time.Millisecond, t: t}); !errors.Is(err, ErrWallTimeout) || time.Since(start) > time.Second {
+		t.Errorf("expired deadline with a blocking sink: %v after %v", err, time.Since(start))
+	}
+	in = input(t, golden(t, "default-delivery.json"), 30*24*60, 0, 8, simulation.TraceNone)
+	quiet := run(t, &Engine{Workers: 4}, in)
+	sink := &slowSink{d: 300 * time.Millisecond, t: t}
+	start = time.Now()
+	noisy, err := (&Engine{Workers: 4}).Run(context.Background(), in, sink)
+	if err != nil || !reflect.DeepEqual(noisy, quiet.Result) {
+		t.Fatalf("a slow sink changed the run: %v", err)
+	}
+	if took := time.Since(start); took > 250*time.Millisecond {
+		t.Errorf("the run waited for its sink: %v", took)
+	}
+	// The sink is still behind when Run returns; the last snapshot (all 8
+	// replications) still arrives.
+	for i := 0; i < 300 && sink.last.Load() != 8; i++ {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if sink.last.Load() != 8 || sink.calls.Load() >= 8 {
+		t.Errorf("latest report %d after %d calls; want 8, with snapshots skipped", sink.last.Load(), sink.calls.Load())
+	}
+}
+
+// A queue with no visit in the window is unavailable with a reason and null
+// waits, and the Result stays schema-valid (GOLDEN-002, window [150, 151]:
+// the last arrival queues at 100).
+func TestUnavailableQueue(t *testing.T) {
+	out := run(t, &Engine{DomainMetrics: dora}, input(t, golden(t, "congested-queue.json"), 151, 150, 2, simulation.TraceNone))
+	q := out.Result.Metrics.Queues["service"]
+	if q.Status != simulation.Unavailable || q.Reason == nil || q.WaitMeanMinutes != nil || q.WaitP50Minutes != nil || q.WaitP95Minutes != nil || q.SampleCount != 0 || q.QueueLengthMean <= 0 {
+		t.Errorf("queue %+v", q)
+	}
+	validResult(t, out.Result)
+}
+
+// A panic inside a replication (an engine bug) fails the run with
+// ErrInternal instead of killing the worker process (T-022 review).
+func TestReplicationPanicIsAnError(t *testing.T) {
+	in := input(t, golden(t, "congested-queue.json"), 205, 0, 4, simulation.TraceNone)
+	e := &Engine{Workers: 2, onReplication: func(i int) {
+		if i == 2 {
+			panic("injected")
+		}
+	}}
+	out, err := e.RunWithTrace(context.Background(), in, nil)
+	if !errors.Is(err, engine.ErrInternal) || out != nil || !strings.Contains(err.Error(), "injected") {
+		t.Errorf("err %v, out %v", err, out)
+	}
+}
+
+// queue_enter names the node the entity actually entered (T-022 review): an
+// entity routed straight into a process that also has an explicit queue
+// upstream is traced at the process, one that came through the queue at the
+// queue; the queue metrics still belong to the explicit queue.
+func TestTraceNamesTheEnteredNode(t *testing.T) {
+	ir := golden(t, "deterministic-queue.json")
+	ir.Nodes = append(ir.Nodes, model.Node{ID: "inbox", Type: model.NodeQueue},
+		model.Node{ID: "other", Type: model.NodeSource, EntityType: ir.Nodes[0].EntityType, Arrival: &model.Arrival{Distribution: ir.Nodes[0].Arrival.Distribution, MaxEntities: 100}})
+	ir.Flows = append(ir.Flows,
+		model.Flow{ID: "inbox_service", From: "inbox", To: "service", Routing: model.Routing{Type: model.RoutingProbability, Probability: 1}},
+		model.Flow{ID: "other_inbox", From: "other", To: "inbox", Routing: model.Routing{Type: model.RoutingProbability, Probability: 1}})
+	out := run(t, &Engine{}, input(t, ir, 1010, 0, 1, simulation.TraceSampled))
+	seen := map[string]bool{}
+	for _, ev := range out.Trace.Events {
+		if ev.Type != simulation.TraceQueueEnter {
+			continue
+		}
+		source, _, _ := strings.Cut(strings.TrimPrefix(ev.EntityID, "r0/"), "/")
+		want := map[string]string{"arrival": "service", "other": "inbox"}[source]
+		if ev.NodeID != want {
+			t.Errorf("%s queued at %s, entered %s", ev.EntityID, ev.NodeID, want)
+		}
+		seen[source] = true
+	}
+	if !seen["arrival"] || !seen["other"] {
+		t.Fatalf("no sampled entity of both sources: %v", seen)
+	}
+	if _, ok := out.Result.Metrics.Queues["inbox"]; !ok || len(out.Result.Metrics.Queues) != 1 {
+		t.Errorf("queues %v", out.Result.Metrics.Queues)
+	}
+}
+
+// The engine recomputes effective_model_hash as hashing.Model over
+// model.Encode of the decoded IR; the run API hashes the stored IR bytes.
+// They must agree for every valid IR, or valid runs would be refused
+// (T-022 review): checked on every golden model and valid IR fixture.
+func TestEffectiveHashMatchesStoredBytes(t *testing.T) {
+	root := contracttest.Root(t)
+	var paths []string
+	for _, dir := range []string{"testdata/golden-models/*.json", "testdata/contracts/valid-*ir.json"} {
+		m, err := filepath.Glob(filepath.Join(root, dir))
+		if err != nil {
+			t.Fatal(err)
+		}
+		paths = append(paths, m...)
+	}
+	if len(paths) < 8 {
+		t.Fatalf("only %d IR files", len(paths))
+	}
+	for _, path := range paths {
+		raw := contracttest.ReadFile(t, path)
+		var ir model.ModelIR
+		if err := model.Decode(raw, &ir); err != nil {
+			t.Fatalf("%s: %v", filepath.Base(path), err)
+		}
+		data, err := model.Encode(&ir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		stored, err1 := hashing.Model(raw)
+		engineSide, err2 := hashing.Model(data)
+		if err1 != nil || err2 != nil || stored != engineSide {
+			t.Errorf("%s: stored bytes %s, engine %s (%v %v)", filepath.Base(path), stored, engineSide, err1, err2)
+		}
+	}
 }

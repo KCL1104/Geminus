@@ -647,6 +647,46 @@
       "expected_error_paths": [
         "/events/0/entity_id"
       ]
+    },
+    {
+      "id": "invalid-queue-unavailable-zero-wait",
+      "instance": "testdata/contracts/invalid-queue-unavailable-zero-wait.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/queues/service/wait_mean_minutes"
+      ]
+    },
+    {
+      "id": "invalid-queue-unavailable-without-reason",
+      "instance": "testdata/contracts/invalid-queue-unavailable-without-reason.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/queues/service/reason"
+      ]
+    },
+    {
+      "id": "invalid-queue-available-without-samples",
+      "instance": "testdata/contracts/invalid-queue-available-without-samples.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/queues/service/sample_count"
+      ]
+    },
+    {
+      "id": "invalid-resource-null-without-reason",
+      "instance": "testdata/contracts/invalid-resource-null-without-reason.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/resources/server/reason"
+      ]
     }
   ]
 }

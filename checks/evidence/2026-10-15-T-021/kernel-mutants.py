@@ -46,7 +46,7 @@ MUT = [
     ("decision-last-route", K, "\t\tif u < rt.cumulative {\n\t\t\treturn rt.to, nil\n\t\t}", "\t\tif u < rt.cumulative && false {\n\t\t\treturn rt.to, nil\n\t\t}"),
     ("decision-u-ge", K, "\t\tif u < rt.cumulative {", "\t\tif u >= 1-rt.cumulative {"),
     ("decision-no-fallback", K, "\treturn node.routes[len(node.routes)-1].to, nil\n}", "\treturn 0, fmt.Errorf(\"%w: no route for U\", ErrInternal)\n}"),
-    ("queue-enqueues-at-queue", K, "\t\t\treturn k.enqueue(e, node.buffer)", "\t\t\treturn k.enqueue(e, n)"),
+    ("queue-enqueues-at-queue", K, "\t\t\treturn k.enqueue(e, node.buffer, n)", "\t\t\treturn k.enqueue(e, n, n)"),
     ("service-stream-arrival", K, "service.draw(k.r.stream(req.process, PurposeService))", "service.draw(k.r.stream(req.process, PurposeArrival))"),
     ("delay-stream-service", K, "node.delay.draw(k.r.stream(n, PurposeDelay))", "node.delay.draw(k.r.stream(n, PurposeService))"),
     ("routing-stream-delay", K, "u := k.r.stream(n, PurposeRouting).Uniform()", "u := k.r.stream(n, PurposeDelay).Uniform()"),

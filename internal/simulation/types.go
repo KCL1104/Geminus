@@ -50,6 +50,9 @@ type ResolvedDataset struct {
 
 // ProgressSink receives best-effort progress; it is never a correctness input
 // (docs/SIMULATION_SPEC.md §8). The worker adds run identity, status and revision.
+// Engines call Report from one goroutine, never concurrently, and never wait
+// for it: a slow sink sees only the latest snapshot (counts never go back),
+// and a call may still be running just after Run returns.
 type ProgressSink interface {
 	Report(Progress)
 }

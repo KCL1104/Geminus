@@ -1,0 +1,11 @@
+trace-every-replication (results-mutants.py): the full mutation run is killed by 'fatal error: concurrent map read and map write' in the shared Recorder, which is not an assertion.
+Re-run alone, GOMAXPROCS=1: go test -overlay <mutant> -run TestTraceIsReplicationZero ./internal/simulation/des/
+
+=== RUN   TestTraceIsReplicationZero
+    des_test.go:569: workers 1: the trace is not replication 0's
+    des_test.go:569: workers 2: the trace is not replication 0's
+    des_test.go:569: workers 5: the trace is not replication 0's
+--- FAIL: TestTraceIsReplicationZero (0.06s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.073s
+FAIL

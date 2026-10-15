@@ -77,6 +77,7 @@ type Collector struct {
 	queueLen  []int64     // per process node: requests waiting
 	queue     []integral  // per process node: queue length
 	busy      []integral  // per resource: units in use
+	finished  bool
 }
 
 // NewCollector starts the collector of one replication of p.
@@ -91,6 +92,13 @@ func NewCollector(p *engine.Program) *Collector {
 }
 
 func (c *Collector) inWindow(t int64) bool { return c.w <= t && t <= c.h }
+
+// Finish marks the replication as ended and releases the per-entity state
+// (Build reads only totals, samples and integrals), so a run of many
+// replications does not keep every replication's entity maps until Build
+// (T-022 review). Build accepts only finished collectors; a collector
+// observes nothing after Finish.
+func (c *Collector) Finish() { c.arrived, c.entered, c.finished = nil, nil, true }
 
 // Observe implements engine.Observer.
 func (c *Collector) Observe(o engine.Observation) {
@@ -152,6 +160,9 @@ func Build(p *engine.Program, reps []Replication) (simulation.Metrics, []simulat
 	for i, r := range reps {
 		if r.Collector == nil || r.Collector.p != p || int(r.Outcome.Index) != i {
 			return simulation.Metrics{}, nil, simulation.MeasurementWindow{}, fmt.Errorf("%w: entry %d is not replication %d of this program", ErrInconsistent, i, i)
+		}
+		if !r.Collector.finished {
+			return simulation.Metrics{}, nil, simulation.MeasurementWindow{}, fmt.Errorf("%w: replication %d was not finished", ErrInconsistent, i)
 		}
 	}
 	w, h := p.WarmupTicks(), p.HorizonTicks()

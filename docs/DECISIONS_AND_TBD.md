@@ -196,7 +196,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | ID | 來源 | 主題 | 提案 |
 |---|---|---|---|
 | D-038 | T-020 實作與獨立 review | DES engine 實作語意與 numerical profile | exponential ≥1 tick；>365 天樣本以 365 天＋1 tick 表示；triangular 分支規則並 clamp 回 [min,max]；decision 只含 p>0 flow 並依 flow ID 排序；ARRIVAL 順序為建立→排下一個→路由，同 tick 同 priority 依排程順序；entity ID `r<rep>/<source>/<n>`；ln 為固定演算法（不使用平台 `math.Log`、不融合 FMA）；Compile 自行核對 manifest；sink 未寫 outcome 視為 completed（CB-22，T-021）；零時間 service 完成後同 tick 再 dispatch（dispatch 不一定是該 tick 最後一個事件）；授予依 request 順序並逐筆回報 in-use；經過顯式 queue 時 queue 與 process 各算一次 visit；被 FIFO 擋住的 request 擋住其整個 bundle。詳見 SIMULATION_SPEC.md §2–§4。**gate：T-023 對外提供 run 結果前；agent 不自行批准。** |
-| D-039 | T-022 實作 | 結果彙整與 sampled trace 的實作語意 | replication-mean lead time 只要有一個 replication 沒有完整 cohort 即 unavailable；available summary 的 reason 為 null、n<2 時 CI 為 null；暫定 reason codes（NO_COMPLETED_ENTITY_IN_WINDOW、REPLICATION_WITHOUT_COMPLETED_COHORT、NO_COMPLETED_QUEUE_VISIT_IN_WINDOW）；trace 只記 replication 0、rate 1/8、SHA-256(entity ID) 選取、到 max_trace_events 截斷並標 truncated、無事件時不產生 artifact；engine_version `des-go-0.1.0`。詳見 SIMULATION_SPEC.md §5、§9。**gate：T-023 對外提供 run 結果前；agent 不自行批准。** |
+| D-039 | T-022 實作 | 結果彙整與 sampled trace 的實作語意 | replication-mean lead time 只要有一個 replication 沒有完整 cohort 即 unavailable；available summary 的 reason 為 null、n<2 時 CI 為 null；暫定 reason codes（NO_COMPLETED_ENTITY_IN_WINDOW、REPLICATION_WITHOUT_COMPLETED_COHORT、NO_COMPLETED_QUEUE_VISIT_IN_WINDOW）；trace 只記 replication 0、rate 1/8、SHA-256(entity ID) 選取、到 max_trace_events 截斷並標 truncated、無事件時不產生 artifact、queue_enter 記實際進入的 node；progress 非同步且不影響 run；queue／resource stats 的 unavailable 必帶 reason；engine_version `des-go-0.1.0`。詳見 SIMULATION_SPEC.md §5、§9。**gate：T-023 對外提供 run 結果前；agent 不自行批准。** |
 
 ## 人類決策紀錄
 

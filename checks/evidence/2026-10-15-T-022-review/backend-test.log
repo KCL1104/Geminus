@@ -1,0 +1,22 @@
+go vet ./cmd/... ./internal/... ./schemas/...
+go test ./cmd/... ./internal/... ./schemas/...
+ok  	github.com/kcl1104/geminus/cmd/api	(cached)
+ok  	github.com/kcl1104/geminus/cmd/worker	(cached)
+ok  	github.com/kcl1104/geminus/internal/config	(cached)
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.139s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.096s
+ok  	github.com/kcl1104/geminus/internal/model	0.344s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.204s
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.139s
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.255s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	0.096s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.283s
+ok  	github.com/kcl1104/geminus/internal/simulation	0.204s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	1.161s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	2.118s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.061s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	0.344s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	(cached)
+ok  	github.com/kcl1104/geminus/internal/tenant	(cached)
+?   	github.com/kcl1104/geminus/schemas	[no test files]
