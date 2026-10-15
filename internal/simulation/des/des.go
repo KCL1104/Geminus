@@ -209,7 +209,11 @@ func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progr
 		}
 	}
 	if e.DomainMetrics != nil {
-		if dm := e.DomainMetrics(res); dm != nil {
+		dm, err := domainMetrics(e.DomainMetrics, res)
+		if err != nil {
+			return nil, err
+		}
+		if dm != nil {
 			res.Metrics.DORA = dm
 		}
 	}
@@ -221,6 +225,17 @@ func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progr
 	return out, nil
 }
 
+// domainMetrics runs the injected pack function; a panic is a pack bug that
+// fails the run with ErrInternal rather than the worker process.
+func domainMetrics(f func(*simulation.Result) map[string]simulation.MetricSummary, res *simulation.Result) (dm map[string]simulation.MetricSummary, err error) {
+	defer func() {
+		if v := recover(); v != nil {
+			dm, err = nil, fmt.Errorf("%w: panic in DomainMetrics: %v", engine.ErrInternal, v)
+		}
+	}()
+	return f(res), nil
+}
+
 // deliver returns a report function that never blocks and a stop function.
 // Reports go to sink from one goroutine, never concurrently; when the sink is
 // slower than the run, only the latest undelivered snapshot is kept, so
@@ -228,13 +243,17 @@ func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progr
 // pool's lock). The run never waits for the sink: progress is not a
 // correctness input (SIMULATION_SPEC §8). stop closes the channel once the
 // pool has stopped; the reporter drains it, so the last snapshot is always
-// delivered, possibly just after the run returns.
+// delivered, possibly just after the run returns, and then exits.
 func deliver(sink simulation.ProgressSink) (func(simulation.Progress), func()) {
 	if sink == nil {
 		return func(simulation.Progress) {}, func() {}
 	}
 	latest := make(chan simulation.Progress, 1)
 	go func() {
+		// A sink that panics stops receiving reports; the run, which may
+		// already have returned, is unaffected (T-022 re-review). report
+		// never needs a reader: it replaces the unread snapshot itself.
+		defer func() { _ = recover() }()
 		for pr := range latest {
 			sink.Report(pr)
 		}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -584,52 +585,134 @@ func TestCompletionDecides(t *testing.T) {
 	}
 }
 
-type slowSink struct {
-	d      time.Duration
-	inside atomic.Int32
-	calls  atomic.Int32
-	last   atomic.Int64 // completed replications in the latest report
-	t      *testing.T
+// gatedSink holds its first Report until release is closed; later reports
+// return at once. It records concurrent calls and the latest snapshot.
+type gatedSink struct {
+	release chan struct{}
+	held    chan struct{} // closed once the first call is blocked
+	once    sync.Once
+	inside  atomic.Int32
+	calls   atomic.Int32
+	last    atomic.Int64 // completed replications in the latest report
+	t       *testing.T
 }
 
-func (s *slowSink) Report(p simulation.Progress) {
+func newGatedSink(t *testing.T) *gatedSink {
+	return &gatedSink{release: make(chan struct{}), held: make(chan struct{}), t: t}
+}
+
+func (s *gatedSink) Report(p simulation.Progress) {
 	if s.inside.Add(1) > 1 {
 		s.t.Error("Report called concurrently")
 	}
-	s.calls.Add(1)
-	time.Sleep(s.d)
+	if s.calls.Add(1) == 1 {
+		s.once.Do(func() { close(s.held) })
+		<-s.release
+	}
 	s.last.Store(int64(p.CompletedReplications))
 	s.inside.Add(-1)
 }
 
+// within fails the test if f does not return in d: a run that waits for a
+// sink held until after Run would never return.
+func within[T any](t *testing.T, d time.Duration, f func() T) T {
+	t.Helper()
+	done := make(chan T, 1)
+	go func() { done <- f() }()
+	select {
+	case v := <-done:
+		return v
+	case <-time.After(d):
+		t.Fatalf("no return within %v: the run waits for its progress sink", d)
+		panic("unreachable")
+	}
+}
+
+// waitUntil polls cond for up to d.
+func waitUntil(d time.Duration, cond func() bool) bool {
+	for end := time.Now().Add(d); time.Now().Before(end); time.Sleep(5 * time.Millisecond) {
+		if cond() {
+			return true
+		}
+	}
+	return cond()
+}
+
+type result struct {
+	res *simulation.Result
+	err error
+}
+
 // Progress is never a correctness input (SIMULATION_SPEC §8, T-022 review):
-// a sink that blocks for seconds does not hold the run past its deadline,
-// and does not change whether, or how, a run completes.
+// a sink held for as long as the test likes neither keeps a run past its
+// deadline nor changes whether, or how, the run completes; the latest
+// snapshot still arrives afterwards, and the reporter goroutine then exits.
+// Deterministic: the sink is released only after Run has returned.
 func TestSlowProgressSinkChangesNothing(t *testing.T) {
 	in := input(t, golden(t, "congested-queue.json"), 205, 0, 4, simulation.TraceNone)
-	e := &Engine{Workers: 4, timeout: func(simulation.ExecutionLimits) time.Duration { return 0 }}
-	start := time.Now()
-	if _, err := e.RunWithTrace(context.Background(), in, &slowSink{d: 1500 * time.Millisecond, t: t}); !errors.Is(err, ErrWallTimeout) || time.Since(start) > time.Second {
-		t.Errorf("expired deadline with a blocking sink: %v after %v", err, time.Since(start))
+	expired := &Engine{Workers: 4, timeout: func(simulation.ExecutionLimits) time.Duration { return 0 }}
+	sink := newGatedSink(t)
+	r := within(t, 30*time.Second, func() result {
+		res, err := expired.Run(context.Background(), in, sink)
+		return result{res, err}
+	})
+	close(sink.release)
+	if !errors.Is(r.err, ErrWallTimeout) || r.res != nil {
+		t.Errorf("expired deadline with a held sink: %v", r.err)
 	}
+
 	in = input(t, golden(t, "default-delivery.json"), 30*24*60, 0, 8, simulation.TraceNone)
 	quiet := run(t, &Engine{Workers: 4}, in)
-	sink := &slowSink{d: 300 * time.Millisecond, t: t}
-	start = time.Now()
-	noisy, err := (&Engine{Workers: 4}).Run(context.Background(), in, sink)
-	if err != nil || !reflect.DeepEqual(noisy, quiet.Result) {
-		t.Fatalf("a slow sink changed the run: %v", err)
+	before := runtime.NumGoroutine()
+	sink = newGatedSink(t)
+	r = within(t, 30*time.Second, func() result {
+		res, err := (&Engine{Workers: 4}).Run(context.Background(), in, sink)
+		return result{res, err}
+	})
+	if r.err != nil || !reflect.DeepEqual(r.res, quiet.Result) {
+		t.Fatalf("a held sink changed the run: %v", r.err)
 	}
-	if took := time.Since(start); took > 250*time.Millisecond {
-		t.Errorf("the run waited for its sink: %v", took)
+	<-sink.held
+	if n := sink.calls.Load(); n != 1 {
+		t.Fatalf("%d reports reached a sink that was still held", n)
 	}
-	// The sink is still behind when Run returns; the last snapshot (all 8
-	// replications) still arrives.
-	for i := 0; i < 300 && sink.last.Load() != 8; i++ {
-		time.Sleep(10 * time.Millisecond)
+	close(sink.release)
+	// Every report made while the sink was held collapses into the latest
+	// one: at most one more call (none if the held call already carried the
+	// final snapshot), and it has all 8 replications.
+	if !waitUntil(10*time.Second, func() bool { return sink.last.Load() == 8 }) || sink.calls.Load() > 2 {
+		t.Errorf("latest report %d after %d calls; want 8 after at most 2", sink.last.Load(), sink.calls.Load())
 	}
-	if sink.last.Load() != 8 || sink.calls.Load() >= 8 {
-		t.Errorf("latest report %d after %d calls; want 8, with snapshots skipped", sink.last.Load(), sink.calls.Load())
+	if !waitUntil(10*time.Second, func() bool { return runtime.NumGoroutine() <= before }) {
+		t.Errorf("goroutines %d after the run, %d before: the reporter did not exit", runtime.NumGoroutine(), before)
+	}
+}
+
+type panickingSink struct{ calls atomic.Int32 }
+
+func (s *panickingSink) Report(simulation.Progress) {
+	s.calls.Add(1)
+	panic("sink bug")
+}
+
+// A sink that panics stops receiving reports; the run and the process are
+// unaffected (T-022 re-review). A DomainMetrics panic fails the run with
+// ErrInternal instead of killing the worker.
+func TestPanicsOutsideTheReplications(t *testing.T) {
+	in := input(t, golden(t, "congested-queue.json"), 205, 0, 6, simulation.TraceNone)
+	quiet := run(t, &Engine{Workers: 2}, in)
+	before := runtime.NumGoroutine()
+	sink := &panickingSink{}
+	res, err := (&Engine{Workers: 2}).Run(context.Background(), in, sink)
+	if err != nil || !reflect.DeepEqual(res, quiet.Result) {
+		t.Fatalf("a panicking sink changed the run: %v", err)
+	}
+	if !waitUntil(10*time.Second, func() bool { return runtime.NumGoroutine() <= before }) || sink.calls.Load() != 1 {
+		t.Errorf("after a sink panic: %d calls, goroutines %d (before %d)", sink.calls.Load(), runtime.NumGoroutine(), before)
+	}
+	bad := &Engine{DomainMetrics: func(*simulation.Result) map[string]simulation.MetricSummary { panic("pack bug") }}
+	if res, err := bad.Run(context.Background(), in, nil); !errors.Is(err, engine.ErrInternal) || res != nil {
+		t.Errorf("DomainMetrics panic: %v", err)
 	}
 }
 

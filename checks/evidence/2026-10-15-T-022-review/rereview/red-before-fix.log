@@ -1,0 +1,9 @@
+== red (4370ab5 code, new tests)
+panic: sink bug
+
+goroutine 19 [running]:
+github.com/kcl1104/geminus/internal/simulation/des.(*panickingSink).Report(0x24b1287fc80?, {0x24b1287fc88?, 0x24b1287fc90?, 0x24b12a0cf28?})
+github.com/kcl1104/geminus/internal/simulation/des.deliver.func3()
+created by github.com/kcl1104/geminus/internal/simulation/des.deliver in goroutine 37
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.075s
+FAIL

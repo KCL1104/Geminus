@@ -1,8 +1,8 @@
 # T-022 驗證報告：Metric aggregation、result digest、sampled trace、engine Run
 
-**日期：2026-10-15｜狀態：`review`（首輪獨立 review 為 CHANGES REQUESTED，已修正，等待同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-011、REQ-013、REQ-015、REQ-017｜Gate：D-006、D-010（皆已批准）；新增的實作語意登記為 D-039（PROPOSED，gate 在 T-023）**
+**日期：2026-10-15｜狀態：`done`（獨立 review 要求修改→修正→同一 reviewer 複核 ACCEPT，後續項目已修正；依 H-003 由 agent review 驗收，owner 可隨時重開）｜需求：REQ-011、REQ-013、REQ-015、REQ-017｜Gate：D-006、D-010（皆已批准）；新增的實作語意登記為 D-039（PROPOSED，gate 在 T-023）**
 
-首版的逐條輸出在 `checks/evidence/2026-10-15-T-022/`，review 修正後的輸出在 `checks/evidence/2026-10-15-T-022-review/`。
+首版的逐條輸出在 `checks/evidence/2026-10-15-T-022/`，review 修正後的輸出在 `checks/evidence/2026-10-15-T-022-review/`，複核後續項目的輸出在其 `rereview/`。
 
 ## 交付內容
 
@@ -45,6 +45,18 @@ Review 列為 PLAUSIBLE 或需 owner 決定的項目：
 | `TraceArtifact` 沒有 seed、config hash 或 result digest 連到它的 run | 移交 T-023（artifact_id 與 run 的關聯在 persistence 層建立） |
 | D-039 與 §5 原文不同：n<2 時 CI 為 null 但沒有 reason（§5 寫 null + reason）；任一 replication 沒有 cohort 時整個 replication-mean summary unavailable，而不只是 CI | 不自行決定，見下方「需 owner 知悉」 |
 
+## 複核（2026-10-15，同一 reviewer，commit 4370ab5）
+
+結論 **ACCEPT**，沒有阻擋項。reviewer 在 `git archive` 匯出的副本上：以 7 條返回路徑（完成、過期期限、event budget、active entity、panic、預先取消、hash 不一致）× 0／30 ms sink 驗證 `deliver` 不洩漏 goroutine、報告嚴格遞增且不並行、完成的 run 一定收到 N/N；200 次隨機壓力測試中最後一筆都送達（176 次在 Run 返回後才到，符合文件）；recover 不會留下鎖住的 `mu`；400 個隨機模型（容量 1–6、多 unit、rework、failure、一個 tick 的 window、真正的 DORA pack）的 Result 與 trace 全部通過新 schema 規則；30 個隨機模型的 `queue_enter` 位置全部正確；1000 replications／10M events 的 heap 峰值由 490 MiB 降為 15 MiB；本報告的 mutation 數字逐項重現。兩個 Low 項目與一個時間假設已先紅後綠處理：
+
+| # | 發現 | 處理 | 證據 |
+|---|---|---|---|
+| L1 | panic 的 `ProgressSink` 會終止 process（reporter goroutine 沒有 recover，且可能在 Run 返回後發生）；`DomainMetrics` 同樣在呼叫端 goroutine 上無 recover | reporter recover 後不再呼叫 sink（`report` 不需要讀取端，會自行取代未讀的 snapshot）；`DomainMetrics` 包在 recover 內，panic 回 `ErrInternal`、不回結果；`ProgressSink` 文件與 SIMULATION_SPEC Engine 段落同步 | `TestPanicsOutsideTheReplications` 舊版使測試 process panic（`rereview/red-before-fix.log`）；mutant `sink-panic-unrecovered`、`domain-metrics-unrecovered` 被擋 |
+| L2 | 沒有測試檢查 reporter goroutine 會結束（刪掉 `defer stopReports()` 的 mutant 存活） | `TestSlowProgressSinkChangesNothing` 在最後一筆送達後檢查 goroutine 數回到 run 之前 | mutant `reports-never-stopped` 被擋 |
+| P1 | `TestSlowProgressSinkChangesNothing` 斷言 run 在 250 ms 內結束，`-race -cpu=1` 加背景負載下實測可達 404 ms | 改為決定性：sink 的第一次呼叫被擋住，直到 Run 返回後才放行；Run 若等待 sink 就永遠不會返回（30 s 視為失敗）。放行後最多再一次呼叫且為 8/8 | `-count=20 -cpu 1,4` 與 `-race -count=10 -cpu 1,4` 全部通過 |
+
+另：reviewer 的 `report-outside-lock` mutant（在鎖外呼叫 report）會破壞順序保證但取決於排程，測試無法穩定抓到，維持以程式碼結構保證（report 只在 `mu` 內呼叫）；`defer mu.Unlock()` 的建議目前沒有可觸發的路徑，未修改。T-023 須知：progress 寫入要以 run status／lease fence，worker 不能等待或 flush sink。
+
 ### 首版說法更正
 
 | 首版 | 更正 |
@@ -71,7 +83,11 @@ Review 列為 PLAUSIBLE 或需 owner 決定的項目：
 | T-021 kernel／T-020 engine mutation（套用修正後重跑） | 0 / 0 | kernel 46/46＋2 equivalent、engine 51/51＋1 equivalent，與各自驗收時相同（`kernel-mutants.log`、`engine-mutants.log`）；`budget-ignored`／`no-budget` 各需約 5 分鐘（engine package 的測試以 budget 停止無界模型，要等到 `-timeout`），兩者都由 des 的 `TestRunFailures` 以 assertion 擋下 |
 | `make frontend-test` | 0 | lint、typecheck、66 個 unit test |
 | GitHub Actions（首版 0aa9a95） | success | [run 38800354726](https://github.com/KCL1104/Geminus/actions/runs/38800354726)：4/4 |
-| GitHub Actions（review 修正） | 推送後補記 | |
+| GitHub Actions（review 修正 4370ab5） | success | [run 38806843899](https://github.com/KCL1104/Geminus/actions/runs/38806843899)：4/4 |
+| 複核後續（`rereview/`）：`make backend-test`／`backend-race`／`REQUIRE_GOAMD64_V3=1 backend-numeric`／`spec-check` | 0 / 0 / 0 / 0 | |
+| 複核後續：`go test -count=1 -v`（metrics、trace、des、softwaredelivery） | 0 | 85 個 RUN 全 PASS（新增 `TestPanicsOutsideTheReplications`） |
+| 複核後續：mutation（`results-mutants.py`） | 0 | **71/71 被擋，1 個 equivalent**（新增 `reports-never-stopped`、`sink-panic-unrecovered`、`domain-metrics-unrecovered`） |
+| GitHub Actions（複核後續） | 推送後補記 | |
 
 ## 驗收對照
 
@@ -117,4 +133,3 @@ Review 列為 PLAUSIBLE 或需 owner 決定的項目：
 | baseline／scenario comparison | T-029 |
 | SimPy differential、效能 benchmark | T-037 |
 | 實體非 amd64 機器上的測試 | 本環境只有 amd64；以組語檢查與 GOAMD64=v3 替代 |
-| GitHub Actions（review 修正） | 推送後補記 |

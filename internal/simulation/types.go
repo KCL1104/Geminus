@@ -52,7 +52,9 @@ type ResolvedDataset struct {
 // (docs/SIMULATION_SPEC.md §8). The worker adds run identity, status and revision.
 // Engines call Report from one goroutine, never concurrently, and never wait
 // for it: a slow sink sees only the latest snapshot (counts never go back),
-// and a call may still be running just after Run returns.
+// and a call may still be running just after Run returns, so a worker fences
+// its progress writes by run status. A sink that panics receives no further
+// reports; the run is unaffected.
 type ProgressSink interface {
 	Report(Progress)
 }

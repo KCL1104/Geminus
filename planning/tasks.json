@@ -1255,7 +1255,9 @@
           "reviewer": "agent independent review at owner's request (H-003); owner did not review line by line",
           "review": "independent reviewer agent (H-003), 7f1db4a: CHANGES REQUESTED — 3 medium (progress sink under the pool lock; CB-23 holes in queue/resource stats; 16 surviving mutants) + 2 low (TEST-023 untraced; collector maps retained) CONFIRMED, all fixed red-first; PLAUSIBLE: bypass trace label, Validate doc, recover, effective-hash contract test fixed; timeout scope and stub golden lock documented; TraceArtifact linkage to T-023; D-039 vs §5 left to the owner; report claims corrected. Results mutation 68/68＋1 equivalent, 84 RUN, FuzzRun 747,947 execs",
           "review_evidence": "checks/evidence/2026-10-15-T-022-review/",
-          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38800354726 (0aa9a95: 4/4 success)"
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38800354726 (0aa9a95: 4/4 success)",
+          "re_review": "same reviewer, 4370ab5: ACCEPT, no blocking defect; L1 (a panicking ProgressSink or DomainMetrics kills the process), L2 (reporter exit untested) and P1 (250 ms timing assertion) fixed red-first; results mutation 71/71＋1 equivalent",
+          "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/38806843899 (4370ab5: 4/4 success)"
         }
       ]
     },

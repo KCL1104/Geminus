@@ -103,6 +103,10 @@ MUT = [
     ("collector-kept", D, "\t\t\t\tc.Finish()\n", ""),
     ("finish-keeps-maps", A, "func (c *Collector) Finish() { c.arrived, c.entered, c.finished = nil, nil, true }", "func (c *Collector) Finish() { c.finished = true }"),
     ("trace-at-explicit-queue", T, "\t\tnode = r.p.NodeID(o.At)", "\t\tnode = r.p.QueueLabel(o.Node)"),
+    # T-022 re-review follow-ups.
+    ("reports-never-stopped", D, "\treport, stopReports := deliver(progress)\n\tdefer stopReports()\n", "\treport, stopReports := deliver(progress)\n\t_ = stopReports\n"),
+    ("sink-panic-unrecovered", D, "\t\tdefer func() { _ = recover() }()\n", ""),
+    ("domain-metrics-unrecovered", D, "\t\tif v := recover(); v != nil {\n\t\t\tdm, err = nil,", "\t\tif v := recover(); false && v != nil {\n\t\t\tdm, err = nil,"),
     ("entered-node-is-buffer", K, "\t\t\treturn k.enqueue(e, node.buffer, n)", "\t\t\treturn k.enqueue(e, node.buffer, node.buffer)"),
 ]
 
