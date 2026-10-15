@@ -509,7 +509,11 @@ func TestUnsafeRuntimeLogins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u.RawQuery += "&options=-c%20role%3Dtwin_api" // url.Values would encode the space as "+"
+	// Appended by hand: url.Values would encode the space as "+".
+	if u.RawQuery != "" {
+		u.RawQuery += "&"
+	}
+	u.RawQuery += "options=-c%20role%3Dtwin_api"
 	for _, c := range []struct {
 		pool      *pgxpool.Pool
 		want, why string

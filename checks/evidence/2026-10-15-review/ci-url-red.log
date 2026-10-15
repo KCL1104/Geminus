@@ -1,0 +1,3 @@
+--- FAIL: TestUnsafeRuntimeLogins (0.02s)
+    tenant_test.go:517: invalid database URL
+FAIL
