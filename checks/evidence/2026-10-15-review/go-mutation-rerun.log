@@ -1,0 +1,7 @@
+raw-container-size	KILLED	--- FAIL: TestContainerLimitIgnoresWhitespace (0.00s)
+d022-readd-allowed	KILLED	--- FAIL: TestAIKeepsPositionOfReaddedNode (0.00s)
+d021-new-binding-allowed	KILLED	--- FAIL: TestScenarioCannotCreateDatasetBinding (0.00s)
+goexit-no-rollback	KILLED	panic: test timed out after 2m0s
+commit-unknown-as-known	KILLED	--- FAIL: TestCommitOutcome (0.00s)
+guard-no-session-sets	KILLED	--- FAIL: TestGuardDiscardsSessionState (0.07s)
+6/6 killed

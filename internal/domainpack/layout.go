@@ -1,6 +1,10 @@
 package domainpack
 
-import "github.com/kcl1104/geminus/internal/model"
+import (
+	"math"
+
+	"github.com/kcl1104/geminus/internal/model"
+)
 
 // Layout spacing in canvas units for LayeredLayout.
 const (
@@ -10,10 +14,15 @@ const (
 
 // LayeredLayout returns a position for every node of ir. Existing positions
 // are kept; a node without one is placed by its breadth-first distance from
-// the sources (x) and its order within that layer (y). Nodes no source
-// reaches go one layer past the last. Iteration follows node and flow order
-// in the document, so the layout is deterministic (no map order).
+// the sources (x) and the first row of that layer no other node occupies
+// (y). Nodes no source reaches go one layer past the last. Iteration follows
+// node and flow order in the document, so the layout is deterministic (no
+// map order). A duplicated node ID (an invalid IR) is placed once, by its
+// first occurrence; flows to unknown nodes are ignored.
 func LayeredLayout(ir *model.ModelIR) ViewDefinitions {
+	if ir == nil {
+		return ViewDefinitions{Positions: map[string]model.Position{}}
+	}
 	index := make(map[string]int, len(ir.Nodes))
 	for i, n := range ir.Nodes {
 		if _, dup := index[n.ID]; !dup {
@@ -51,20 +60,37 @@ func LayeredLayout(ir *model.ModelIR) ViewDefinitions {
 			}
 		}
 	}
-	rows := map[int]int{}
+	// A grid cell is taken by any kept position that rounds to it, so a new
+	// node never lands on top of an existing one.
+	type cell struct{ layer, row int64 }
+	cellOf := func(p model.Position) cell {
+		return cell{int64(math.Round(p.X / LayerSpacing)), int64(math.Round(p.Y / RowSpacing))}
+	}
 	positions := make(map[string]model.Position, len(ir.Nodes))
+	taken := map[cell]bool{}
 	existing := ir.Views.TwoD.Positions
 	for i, n := range ir.Nodes {
-		if p, ok := existing[n.ID]; ok {
+		if p, ok := existing[n.ID]; ok && index[n.ID] == i {
 			positions[n.ID] = p
+			if !math.IsNaN(p.X) && !math.IsNaN(p.Y) && !math.IsInf(p.X, 0) && !math.IsInf(p.Y, 0) {
+				taken[cellOf(p)] = true
+			}
+		}
+	}
+	for i, n := range ir.Nodes {
+		if _, placed := positions[n.ID]; placed || index[n.ID] != i {
 			continue
 		}
 		l := layer[i]
 		if l < 0 {
 			l = deepest + 1
 		}
-		positions[n.ID] = model.Position{X: float64(l) * LayerSpacing, Y: float64(rows[l]) * RowSpacing}
-		rows[l]++
+		row := int64(0)
+		for taken[cell{int64(l), row}] {
+			row++
+		}
+		taken[cell{int64(l), row}] = true
+		positions[n.ID] = model.Position{X: float64(l) * LayerSpacing, Y: float64(row) * RowSpacing}
 	}
 	return ViewDefinitions{Positions: positions}
 }

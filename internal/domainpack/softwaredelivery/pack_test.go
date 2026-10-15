@@ -5,7 +5,9 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"maps"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -115,12 +117,12 @@ func TestTemplate(t *testing.T) {
 			t.Errorf("no path %s -> %s", order[i-1], order[i])
 		}
 	}
+	// Synthetic labelling (details in TestTemplateMetadataForUserModels).
 	var meta struct {
-		Fixture     bool     `json:"fixture"`
 		Origin      string   `json:"origin"`
 		Assumptions []string `json:"assumptions"`
 	}
-	if err := json.Unmarshal(ir.Metadata, &meta); err != nil || !meta.Fixture || !strings.Contains(meta.Origin, "NOT customer data") || len(meta.Assumptions) < 3 {
+	if err := json.Unmarshal(ir.Metadata, &meta); err != nil || !strings.Contains(meta.Origin, "not customer data") || len(meta.Assumptions) < 3 {
 		t.Errorf("synthetic labelling missing: %+v %v", meta, err)
 	}
 
@@ -164,7 +166,7 @@ func TestDORAUnavailable(t *testing.T) {
 		if m.Status != simulation.Unavailable || m.Mean != nil || m.P50 != nil || m.P95 != nil || m.SampleCount != 0 || m.ConfidenceIntervalMean != nil {
 			t.Errorf("%s carries a value: %+v", k, m)
 		}
-		if m.Reason == nil || !strings.Contains(*m.Reason, "D-010") || !strings.Contains(*m.Reason, "not DORA") {
+		if m.Reason == nil || *m.Reason != softwaredelivery.ReasonMissingDORAMapping {
 			t.Errorf("%s reason %v", k, m.Reason)
 		}
 		data, err := json.Marshal(m)
@@ -218,4 +220,144 @@ func decode[T any](t *testing.T, rel string) T {
 		t.Fatal(err)
 	}
 	return v
+}
+
+// Review of T-011: the resource catalog is the one TWIN_IR_SPEC §2 lists,
+// and each kind keeps its resource type.
+func TestResourceCatalogMatchesSpec(t *testing.T) {
+	spec := string(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "docs/TWIN_IR_SPEC.md")))
+	m := regexp.MustCompile(`Software Delivery catalog 包含 ([a-z_、]+)；`).FindStringSubmatch(spec)
+	if m == nil {
+		t.Fatal("TWIN_IR_SPEC no longer lists the Software Delivery catalog")
+	}
+	want := strings.Split(m[1], "、")
+	slices.Sort(want)
+	types := map[string]string{}
+	for _, r := range pack.ResourceCatalog() {
+		types[r.Kind] = r.Type
+	}
+	if got := slices.Sorted(maps.Keys(types)); !slices.Equal(got, want) {
+		t.Errorf("resource kinds %v, spec lists %v", got, want)
+	}
+	for kind, typ := range map[string]string{"developer": "human", "reviewer": "human", "ci_runner": "machine",
+		"test_environment": "machine", "deployment_slot": "machine", "generic_resource": "generic"} {
+		if types[kind] != typ {
+			t.Errorf("%s is %q, want %q", kind, types[kind], typ)
+		}
+	}
+	nodes := map[string]domainpack.NodeDefinition{}
+	for _, n := range pack.NodeCatalog() {
+		nodes[n.Kind] = n
+	}
+	for kind, want := range map[string][]string{"code_review": {"human"}, "ci_pipeline": {"machine"}, "test_stage": {"machine"}, "deploy_stage": {"machine"}} {
+		if n := nodes[kind]; n.Type != model.NodeProcess || !slices.Equal(n.ResourceTypes, want) {
+			t.Errorf("%s: %+v", kind, n)
+		}
+	}
+}
+
+// Every catalog a caller receives is its own copy, PromptContext included.
+func TestCatalogCopies(t *testing.T) {
+	r := pack.ResourceCatalog()
+	r[0].Label = "changed"
+	p := pack.PromptContext()
+	p.Nodes[0].Label = "changed"
+	p.Nodes[2].ResourceTypes[0] = "changed"
+	p.Resources[0].Label = "changed"
+	p.Rules[0] = "changed"
+	again := pack.PromptContext()
+	if pack.ResourceCatalog()[0].Label == "changed" || again.Nodes[0].Label == "changed" || again.Nodes[2].ResourceTypes[0] == "changed" ||
+		again.Resources[0].Label == "changed" || again.Rules[0] == "changed" {
+		t.Error("a catalog is shared with callers")
+	}
+}
+
+// TEST-023 with generic failures and rework observed: DORA stays unavailable,
+// in the contract fixture's form (unit, population, reason code; CB-23).
+func TestDORAUnavailableWithFailuresObserved(t *testing.T) {
+	result := decode[simulation.Result](t, "testdata/contracts/valid-result.json")
+	three, five := 3.0, 5.0
+	result.Metrics.FailureCount = simulation.MetricSummary{Status: simulation.Available, Mean: &three, P50: &three, P95: &three,
+		SampleCount: 1, Population: simulation.PopulationReplication, Unit: "count"}
+	result.Metrics.ReworkCount = simulation.MetricSummary{Status: simulation.Available, Mean: &five, P50: &five, P95: &five,
+		SampleCount: 1, Population: simulation.PopulationReplication, Unit: "count"}
+	got := pack.ComputeMetrics(&result)
+	want := map[string][2]string{
+		"change_lead_time":                {"minute", "entity"},
+		"deployment_frequency":            {"deployment_per_day", "replication"},
+		"change_failure_percentage":       {"percent", "replication"},
+		"failed_deployment_recovery_time": {"minute", "entity"},
+		"deployment_rework_rate":          {"percent", "replication"},
+	}
+	for k, w := range want {
+		m := got[k]
+		if m.Status != simulation.Unavailable || m.Mean != nil || m.Unit != w[0] || string(m.Population) != w[1] ||
+			m.Reason == nil || *m.Reason != softwaredelivery.ReasonMissingDORAMapping {
+			t.Errorf("%s: %+v", k, m)
+		}
+	}
+	fixture := decode[map[string]any](t, "testdata/contracts/valid-result.json")
+	lead := fixture["metrics"].(map[string]any)["dora"].(map[string]any)["change_lead_time"].(map[string]any)
+	if m := got["change_lead_time"]; lead["unit"] != m.Unit || lead["population"] != string(m.Population) || lead["reason"] != *m.Reason {
+		t.Errorf("change_lead_time %+v differs from the contract fixture %v", m, lead)
+	}
+}
+
+// Template errors are typed; the issues carry JSON Pointers; nothing the
+// caller sent is echoed into the error text.
+func TestTemplateErrors(t *testing.T) {
+	if _, err := softwaredelivery.Template("unknown", newModel, "x"); !errors.Is(err, softwaredelivery.ErrUnknownTemplate) {
+		t.Errorf("unknown template: %v", err)
+	}
+	if _, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, "mdl_bad", "x"); !errors.Is(err, softwaredelivery.ErrInvalidModelID) {
+		t.Errorf("bad model ID: %v", err)
+	}
+	long := strings.Repeat("😀", 201)
+	for _, name := range []string{"", long, "bad \xff"} {
+		_, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, name)
+		var te *softwaredelivery.InvalidError
+		if !errors.As(err, &te) || !errors.Is(err, softwaredelivery.ErrInvalidTemplateInput) || len(te.Issues) == 0 {
+			t.Errorf("name %q: %v", name, err)
+			continue
+		}
+		if !slices.ContainsFunc(te.Issues, func(i model.ValidationIssue) bool { return strings.HasPrefix(i.Path, "/name") }) {
+			t.Errorf("name %q: issues %v do not point at /name", name, te.Issues)
+		}
+		if strings.Contains(err.Error(), "😀") || len(err.Error()) > 200 {
+			t.Errorf("error echoes the input: %q", err.Error())
+		}
+	}
+}
+
+// A model created from the template is labelled synthetic but is not a fixture.
+func TestTemplateMetadataForUserModels(t *testing.T) {
+	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var meta map[string]any
+	if err := json.Unmarshal(ir.Metadata, &meta); err != nil {
+		t.Fatal(err)
+	}
+	if _, isFixture := meta["fixture"]; isFixture || meta["template"] != softwaredelivery.DefaultTemplate ||
+		!strings.Contains(meta["origin"].(string), "not customer data") || strings.Contains(meta["origin"].(string), "PROPOSED") {
+		t.Errorf("metadata %v", meta)
+	}
+	if a, _ := meta["assumptions"].([]any); len(a) < 3 {
+		t.Errorf("synthetic assumptions dropped: %v", meta["assumptions"])
+	}
+}
+
+// Defensive inputs: an IR that skipped the generic validator, or none at all.
+func TestValidateUnvalidatedInput(t *testing.T) {
+	got := pack.Validate(&model.ModelIR{Domain: strings.Repeat("x", 3000)})
+	if len(got) != 1 || len([]rune(got[0].Message)) > model.MaxIssueMessage {
+		t.Errorf("long domain: %v", got)
+	}
+	if got := pack.Validate(nil); len(got) != 1 || got[0].Code != softwaredelivery.DomainMismatch {
+		t.Errorf("nil IR: %v", got)
+	}
+	if v := pack.DefaultViews(nil); len(v.Positions) != 0 {
+		t.Errorf("nil IR views: %v", v)
+	}
 }

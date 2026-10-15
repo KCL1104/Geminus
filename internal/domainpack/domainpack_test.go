@@ -106,3 +106,56 @@ func TestCanonicalEventContract(t *testing.T) {
 func TestDependencies(t *testing.T) {
 	contracttest.OnlyDeps(t, "github.com/kcl1104/geminus/internal/model", "github.com/kcl1104/geminus/internal/simulation")
 }
+
+// Review of T-011: nil inputs are errors or empty results, never panics.
+func TestNilInputs(t *testing.T) {
+	if _, err := domainpack.NewRegistry(fakePack{"a"}, nil); err == nil {
+		t.Error("nil pack accepted")
+	}
+	var r *domainpack.Registry
+	if _, err := r.Lookup("a"); !errors.Is(err, domainpack.ErrUnsupportedDomain) {
+		t.Errorf("nil registry: %v", err)
+	}
+	if got := r.Domains(); len(got) != 0 {
+		t.Errorf("nil registry domains %v", got)
+	}
+	if got := domainpack.LayeredLayout(nil).Positions; len(got) != 0 {
+		t.Errorf("nil IR layout %v", got)
+	}
+}
+
+// A node added to a saved layout is never placed on top of a kept node.
+func TestLayoutAvoidsKeptPositions(t *testing.T) {
+	ir := minimal(t)
+	ir.Views.TwoD.Positions = domainpack.LayeredLayout(ir).Positions // start (0,0), work (240,0), end (480,0)
+	ir.Nodes = append(ir.Nodes, model.Node{ID: "review", Type: model.NodeQueue}, model.Node{ID: "audit", Type: model.NodeQueue})
+	ir.Flows[0].To = "review"
+	ir.Flows = append(ir.Flows, model.Flow{ID: "review_work", From: "review", To: "work"}, model.Flow{ID: "start_audit", From: "start", To: "audit"})
+	got := domainpack.LayeredLayout(ir).Positions
+	seen := map[model.Position]string{}
+	for _, n := range ir.Nodes {
+		if other, dup := seen[got[n.ID]]; dup {
+			t.Errorf("%s and %s share %v", n.ID, other, got[n.ID])
+		}
+		seen[got[n.ID]] = n.ID
+	}
+	if got["review"].X != domainpack.LayerSpacing {
+		t.Errorf("review is in layer 1 but at %v", got["review"])
+	}
+}
+
+// Flows to unknown nodes are ignored and a duplicated ID (an invalid IR) is
+// placed once, by its first occurrence.
+func TestLayoutTolerance(t *testing.T) {
+	ir := minimal(t)
+	ir.Flows = append(ir.Flows, model.Flow{ID: "ghost", From: "start", To: "nowhere"}, model.Flow{ID: "ghost2", From: "nowhere", To: "end"})
+	base := domainpack.LayeredLayout(minimal(t)).Positions
+	if got := domainpack.LayeredLayout(ir).Positions; !reflect.DeepEqual(got, base) {
+		t.Errorf("flows to unknown nodes changed the layout: %v", got)
+	}
+	ir = minimal(t)
+	ir.Nodes = append(ir.Nodes, model.Node{ID: "start", Type: model.NodeSink})
+	if got := domainpack.LayeredLayout(ir).Positions; got["start"] != base["start"] || len(got) != 3 {
+		t.Errorf("duplicate ID: %v", got)
+	}
+}

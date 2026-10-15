@@ -1,0 +1,12 @@
+# github.com/kcl1104/geminus/internal/domainpack/softwaredelivery_test [github.com/kcl1104/geminus/internal/domainpack/softwaredelivery.test]
+internal/domainpack/softwaredelivery/pack_test.go:295:53: undefined: softwaredelivery.ReasonMissingDORAMapping
+internal/domainpack/softwaredelivery/pack_test.go:309:101: undefined: softwaredelivery.ErrUnknownTemplate
+internal/domainpack/softwaredelivery/pack_test.go:312:125: undefined: softwaredelivery.ErrInvalidModelID
+internal/domainpack/softwaredelivery/pack_test.go:318:28: undefined: softwaredelivery.InvalidError
+internal/domainpack/softwaredelivery/pack_test.go:319:63: undefined: softwaredelivery.ErrInvalidTemplateInput
+--- FAIL: TestNilInputs (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+panic({0x797300?, 0x7d7390?})
+FAIL	github.com/kcl1104/geminus/internal/domainpack	0.093s
+FAIL	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery [build failed]
+FAIL

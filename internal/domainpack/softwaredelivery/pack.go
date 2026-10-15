@@ -40,11 +40,14 @@ var nodes = []domainpack.NodeDefinition{
 	{Kind: "done_sink", Type: model.NodeSink, Label: "Done", Description: "Changes leaving the pipeline."},
 }
 
+// resources is the catalog TWIN_IR_SPEC §2 lists (a test keeps them equal).
 var resources = []domainpack.ResourceDefinition{
+	{Kind: "developer", Type: "human", Label: "Developers", Description: "People who write and rework changes."},
 	{Kind: "reviewer", Type: "human", Label: "Reviewers", Description: "People who review changes."},
 	{Kind: "ci_runner", Type: "machine", Label: "CI runners", Description: "Build/test executors."},
 	{Kind: "test_environment", Type: "machine", Label: "Test environments", Description: "Environments that run test stages."},
 	{Kind: "deployment_slot", Type: "machine", Label: "Deployment slots", Description: "Concurrent deployments the release process allows."},
+	{Kind: "generic_resource", Type: "generic", Label: "Other resource", Description: "Any other constrained capacity, with no domain meaning."},
 }
 
 // NodeCatalog and ResourceCatalog return copies; callers may not change the pack.
@@ -65,9 +68,12 @@ func (Pack) ResourceCatalog() []domainpack.ResourceDefinition {
 // Structure, references, routing and distributions are the generic
 // validator's job and are not repeated here.
 func (Pack) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir == nil {
+		return []model.ValidationIssue{model.NewIssue(DomainMismatch, "", "no model to validate", model.SeverityError)}
+	}
 	if ir.Domain != ID {
-		return []model.ValidationIssue{{Code: DomainMismatch, Path: "/domain", Severity: model.SeverityError,
-			Message: fmt.Sprintf("domain %q is not %q", ir.Domain, ID)}}
+		return []model.ValidationIssue{model.NewIssue(DomainMismatch, "/domain",
+			fmt.Sprintf("domain %q is not %q", ir.Domain, ID), model.SeverityError)}
 	}
 	return nil
 }
@@ -77,26 +83,37 @@ func (Pack) InferFromEvents(context.Context, domainpack.CanonicalEventDataset) (
 	return nil, fmt.Errorf("%w: event inference for %s arrives with T-027", domainpack.ErrUnavailable, ID)
 }
 
+// ReasonMissingDORAMapping is the reason every DORA metric carries in P0, as
+// in testdata/contracts/valid-result.json. Metric keys, units and reason
+// codes follow that fixture until CB-23 settles them.
+const ReasonMissingDORAMapping = "MISSING_DORA_EVENT_MAPPING"
+
 // dora lists the DORA-oriented metrics and what each would need
-// (docs/SIMULATION_SPEC.md §6).
+// (docs/SIMULATION_SPEC.md §6): change lead time needs a commit-to-production
+// deploy relation; deployment frequency identifiable production deployments
+// and an observation period; change failure percentage a deployment
+// denominator and failure classification; failed deployment recovery time
+// paired failure and recovery events; deployment rework rate identifiable
+// rework deployments. None is available without an approved mapping (D-010).
 var dora = []struct {
-	key, unit, needs string
-	population       simulation.Population
+	key, unit  string
+	population simulation.Population
 }{
-	{"change_lead_time", "minutes", "a commit-to-production-deploy relation and its times", simulation.PopulationEntity},
-	{"deployment_frequency", "deployments_per_day", "identifiable production deployments and an observation period", simulation.PopulationReplication},
-	{"change_failure_percentage", "percent", "a production deployment denominator and failure classification", simulation.PopulationReplication},
-	{"failed_deployment_recovery_time", "minutes", "paired production failure and recovery events", simulation.PopulationEntity},
-	{"deployment_rework_rate", "percent", "identifiable rework deployments and a deployment denominator", simulation.PopulationReplication},
+	{"change_lead_time", "minute", simulation.PopulationEntity},
+	{"deployment_frequency", "deployment_per_day", simulation.PopulationReplication},
+	{"change_failure_percentage", "percent", simulation.PopulationReplication},
+	{"failed_deployment_recovery_time", "minute", simulation.PopulationEntity},
+	{"deployment_rework_rate", "percent", simulation.PopulationReplication},
 }
 
 // ComputeMetrics reports every DORA metric as unavailable: P0 has no approved
 // deployment/failure/recovery mapping (D-010), and the generic failure and
-// rework counts (e.g. a failed CI run) are not deployment failures.
+// rework counts (e.g. a failed CI run) are not deployment failures, so the
+// result is the same whatever the engine observed.
 func (Pack) ComputeMetrics(*simulation.Result) map[string]simulation.MetricSummary {
 	out := make(map[string]simulation.MetricSummary, len(dora))
 	for _, m := range dora {
-		reason := "Unavailable: requires " + m.needs + " from an approved event mapping (D-010); generic failure and rework counts are not DORA."
+		reason := ReasonMissingDORAMapping
 		out[m.key] = simulation.MetricSummary{Status: simulation.Unavailable, Population: m.population, Unit: m.unit, Reason: &reason}
 	}
 	return out

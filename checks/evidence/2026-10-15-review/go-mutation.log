@@ -1,0 +1,32 @@
+compile-unlocked	KILLED	fatal error: concurrent map read and map write
+exp-mean-not-checked	KILLED	--- FAIL: TestExponentialMeanUnderflow (0.00s)
+exp-not-zero-time	KILLED	--- FAIL: TestBindingsUnderflowedExponential (0.00s)
+index-overflow-compare	KILLED	--- FAIL: TestIssueOrder (0.00s)
+leading-zero-is-index	KILLED	--- FAIL: TestSortIsTotal (0.03s)
+no-severity-tiebreak	KILLED	--- FAIL: TestSortIsTotal (0.00s)
+raw-container-size	BUILD-FAILED	
+unknown-mode-accepted	KILLED	--- FAIL: TestUnknownMode (0.00s)
+patch-size-unbounded	KILLED	--- FAIL: TestPatchSizeLimit (0.03s)
+whole-catalog-allowed	KILLED	--- FAIL: TestWholeCatalogReplace (0.00s)
+d022-readd-allowed	BUILD-FAILED	
+d021-new-binding-allowed	BUILD-FAILED	
+issue-message-unclipped	KILLED	--- FAIL: TestNewIssueFitsTheSchema (0.00s)
+issue-utf8-kept	KILLED	--- FAIL: TestNewIssueFitsTheSchema (0.00s)
+snapshot-read-unbounded	KILLED	
+hash-in-message	KILLED	--- FAIL: TestForeignObjectRevealsNoHashOrSize (0.02s)
+close-error-dropped	KILLED	--- FAIL: TestStoreReadErrors (0.00s)
+goexit-no-rollback	BUILD-FAILED	
+chain-dropped	KILLED	--- FAIL: TestClassifyKeepsCallerErrors (0.00s)
+commit-unknown-as-known	BUILD-FAILED	
+guard-two-settings	KILLED	--- FAIL: TestGuardDiscardsSessionState (0.08s)
+guard-no-session-sets	BAD-MUTANT x0	
+guard-no-cursors	KILLED	--- FAIL: TestGuardDiscardsSessionState (0.07s)
+guard-no-temp	KILLED	--- FAIL: TestGuardDiscardsSessionState (0.08s)
+guard-no-advisory	KILLED	--- FAIL: TestGuardDiscardsSessionState (0.09s)
+role-current-user	KILLED	--- FAIL: TestUnsafeRuntimeLogins (0.09s)
+role-replication-ok	KILLED	--- FAIL: TestUnsafeRuntimeLogins (0.09s)
+role-other-members-ok	KILLED	--- FAIL: TestRuntimeRoles (0.08s)
+role-direct-grants-ok	KILLED	--- FAIL: TestUnsafeRuntimeLogins (0.08s)
+role-owns-ok	KILLED	--- FAIL: TestUnsafeRuntimeLogins (0.08s)
+role-create-ok	KILLED	--- FAIL: TestRuntimeLoginCannotCreate (0.18s)
+25/31 killed

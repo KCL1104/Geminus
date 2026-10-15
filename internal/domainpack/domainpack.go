@@ -80,6 +80,9 @@ type ViewDefinitions struct {
 
 // CanonicalEvent is one row of a canonical event dataset
 // (schemas/canonical-event.schema.json). Metadata is untrusted data.
+// Decoding into this type is not validation: empty optional strings and nulls
+// vanish and missing required members become "", so import and inference
+// (T-016, T-027) must validate the raw bytes against the schema first.
 type CanonicalEvent struct {
 	CaseID       string         `json:"case_id"`
 	EventType    string         `json:"event_type"`
@@ -120,10 +123,13 @@ type Registry struct {
 	packs map[string]DomainPack
 }
 
-// NewRegistry registers packs; a duplicate or empty ID is an error.
+// NewRegistry registers packs; a nil pack, or a duplicate or empty ID, is an error.
 func NewRegistry(packs ...DomainPack) (*Registry, error) {
 	r := &Registry{packs: map[string]DomainPack{}}
 	for _, p := range packs {
+		if p == nil {
+			return nil, errors.New("domainpack: a pack is nil")
+		}
 		id := p.ID()
 		if id == "" {
 			return nil, errors.New("domainpack: a pack has an empty ID")
@@ -136,8 +142,12 @@ func NewRegistry(packs ...DomainPack) (*Registry, error) {
 	return r, nil
 }
 
-// Lookup returns the pack for a domain, or ErrUnsupportedDomain.
+// Lookup returns the pack for a domain, or ErrUnsupportedDomain. A nil
+// registry has no packs.
 func (r *Registry) Lookup(domain string) (DomainPack, error) {
+	if r == nil {
+		return nil, fmt.Errorf("%w: %q", ErrUnsupportedDomain, domain)
+	}
 	if p, ok := r.packs[domain]; ok {
 		return p, nil
 	}
@@ -146,6 +156,9 @@ func (r *Registry) Lookup(domain string) (DomainPack, error) {
 
 // Domains lists the registered domain IDs in sorted order.
 func (r *Registry) Domains() []string {
+	if r == nil {
+		return []string{}
+	}
 	ids := make([]string, 0, len(r.packs))
 	for id := range r.packs {
 		ids = append(ids, id)

@@ -1,6 +1,6 @@
 # Twin IR / Model Contract
 
-SOURCE：原報告 pp. 5–6、14–20、24–25、31–35。完整 closed-object schema、hash、dataset binding、patch allowlist 涉及 D-001 / D-005 / D-006 / D-014（已批准）與 D-017（仍 PROPOSED）；D-017 確認前不凍結為 production contract。
+SOURCE：原報告 pp. 5–6、14–20、24–25、31–35。完整 closed-object schema、hash、dataset binding、patch allowlist 涉及 D-001 / D-005 / D-006 / D-014 / D-017（皆已批准）；本文件仍是 P0 草案契約，尚未凍結為 production contract。
 
 ## 1. 唯一 canonical representation
 
