@@ -59,9 +59,10 @@
       "source_pages": "20–22、34、45–46",
       "owner_role": "Simulation",
       "gate": "建立 golden digest 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照 SIMULATION_SPEC 候選語義全部批准（1 ms tick、round-half-up 且 >0 至少 1 tick、horizon 含邊界、censoring、warmup 不重設、Type 7、只有 replication population 附 CI）；資源採 resource-wise FIFO；同 tick 順序見 D-032、零時間見 D-033。"
     },
     {
       "id": "D-006",
@@ -71,9 +72,10 @@
       "source_pages": "15–22、34–35",
       "owner_role": "Simulation / Platform",
       "gate": "版本 hash 上線前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "批准：RFC 8785 JCS + SHA-256；SplitMix64 與 SHA-256 seed derivation；manifest 排序見 D-034；只保證已測平台（目前 linux/amd64），不宣稱跨架構 byte-identical。"
     },
     {
       "id": "D-007",
@@ -155,9 +157,10 @@
       "source_pages": "36–43",
       "owner_role": "Security / Platform",
       "gate": "Migration review 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准；CB-13／CB-14／CB-16 修正見 D-036／D-035／D-037。"
     },
     {
       "id": "D-014",
@@ -415,6 +418,96 @@
       "approved_at": "2026-10-15",
       "resolves": [
         "ADR-011"
+      ]
+    },
+    {
+      "id": "D-032",
+      "title": "同 tick 事件順序：完成後立即路由",
+      "source_gap": "T-001 盤點 CB-20（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "SERVICE_COMPLETE（priority 0）在同一事件內：原子釋放資源→立即路由進下一個 queue／delay／sink→該 tick 的 dispatch 以 priority 20 最後執行；DELAY_COMPLETE 為 priority 10，同樣立即路由；priority 表移除 route。entity 任何時刻恰處於一個狀態。",
+      "source_pages": "N/A（CB-20 決議）",
+      "owner_role": "Simulation",
+      "gate": "T-020 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-20"
+      ]
+    },
+    {
+      "id": "D-033",
+      "title": "零時間與嚴格正值的判定",
+      "source_gap": "T-001 盤點 CB-21（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "以分布可能的最小 tick 判定：constant=0、triangular min=0、empirical 任一 sample=0 視為零時間；exponential 恆 >0。source interarrival 可能為 0 一律拒絕。empirical 部分在 dataset binding 階段檢查，zero-time cycle 亦於該階段再判一次。",
+      "source_pages": "N/A（CB-21 決議）",
+      "owner_role": "Simulation",
+      "gate": "T-004、T-020 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-21"
+      ]
+    },
+    {
+      "id": "D-034",
+      "title": "Dataset manifest 排序與 logical_ref 字元集",
+      "source_gap": "T-001 盤點 CB-15（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "manifest 一律依 UTF-8 bytes 排序；SQL 使用 ORDER BY logical_ref COLLATE \"C\"；logical_ref 限 ASCII：`dataset:` 加 `[a-z0-9_.-]+`。",
+      "source_pages": "N/A（CB-15 決議）",
+      "owner_role": "Simulation / Platform",
+      "gate": "T-005、T-006 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-15"
+      ]
+    },
+    {
+      "id": "D-035",
+      "title": "Object key tenant 前綴檢查",
+      "source_gap": "T-001 盤點 CB-14（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "以 starts_with(key, 'tenant/'||organization_id||'/') 取代 LIKE；所有 object key 拒絕 `..`、`//`、反斜線與控制字元；新增跨 tenant key 的反例測試。",
+      "source_pages": "N/A（CB-14 決議）",
+      "owner_role": "Security / Platform",
+      "gate": "T-006 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-14"
+      ]
+    },
+    {
+      "id": "D-036",
+      "title": "最後一位 owner 的鎖定方式",
+      "source_gap": "T-001 盤點 CB-13（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "成員變更 transaction 依 user_id 順序 SELECT 該 org 全部 owner membership … FOR UPDATE 後再檢查人數；不新增 organizations 的 UPDATE grant；文件同步改寫。",
+      "source_pages": "N/A（CB-13 決議）",
+      "owner_role": "Security / Platform",
+      "gate": "T-007、T-010 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-13"
+      ]
+    },
+    {
+      "id": "D-037",
+      "title": "Worker 對 imports／jobs 的欄位級權限",
+      "source_gap": "T-001 盤點 CB-16（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "worker 只能 UPDATE imports 的 profile／validation／mapping_suggestion／error 類欄位與 jobs 的 lease／status／attempt／error 類欄位；guard trigger 禁止 worker 將 import 設為 COMMITTED 或修改 mapping、mapping_revision、dataset_version_id、proposal_id。",
+      "source_pages": "N/A（CB-16 決議）",
+      "owner_role": "Security / Platform",
+      "gate": "T-007 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-16"
       ]
     }
   ],

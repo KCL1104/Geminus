@@ -50,7 +50,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-005 — DES 的未定義操作語義
 
-**狀態：PROPOSED。負責角色：Simulation。Gate：建立 golden digest 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Simulation。Gate：建立 golden digest 前。**
 
 來源缺口（原報告 pp. 20–22、34、45–46）：報告未固定 tick 精度、同時間事件優先序、warmup cohort、bundle acquire、zero-time cycles、queue node 與 process waiting 的關係。
 
@@ -58,7 +58,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-006 — Hash、dataset freezing 與 RNG
 
-**狀態：PROPOSED。負責角色：Simulation / Platform。Gate：版本 hash 上線前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Simulation / Platform。Gate：版本 hash 上線前。**
 
 來源缺口（原報告 pp. 15–22、34–35）：報告要求 hash、seed、deterministic digest；未固定 canonicalization、PRNG、empirical dataset revision 與 engine numerical profile。
 
@@ -114,7 +114,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-013 — SQL 完整性與生命周期
 
-**狀態：PROPOSED。負責角色：Security / Platform。Gate：Migration review 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Security / Platform。Gate：Migration review 前。**
 
 來源缺口（原報告 pp. 36–43）：報告 ER 圖沒有 complete columns、cross-tenant FK、immutable triggers、dataset revisions、idempotency、analysis/job constraints。
 
@@ -179,6 +179,17 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | D-029 | CB-11 | 數值上限的檢查位置 | validator 將 duration 換算為 ticks，超過 365 天（沿用 horizon 上限）回 LIMIT_EXCEEDED；候選限制：pointer 深度 ≤32、metadata 深度 ≤8 且 ≤16 KB、IR ≤2 MB（屬 D-007 候選，benchmark 後可調）。 |
 | D-030 | CB-12 | 已決定 proposal 的重複批准 | 以不同 Idempotency-Key 再批准已 approved／rejected 的 proposal → 409 PROPOSAL_ALREADY_DECIDED，狀態不變、無第二次效果。 |
 | D-031 | ADR-011 | braces dev-only advisory 風險接受 | 接受 GHSA-vfj7-8cjw-p6xm（braces <=3.0.3，僅 dev lint 鏈）為已知風險；CI 以 `npm audit --omit=dev --audit-level=high` 擋 production 依賴；upstream 有修補即升級。 |
+
+### 第二輪決議（2026-10-15，D-005／D-006／D-013 gate）
+
+| ID | 解決 | 主題 | 決議 |
+|---|---|---|---|
+| D-032 | CB-20 | 同 tick 事件順序：完成後立即路由 | SERVICE_COMPLETE（priority 0）在同一事件內：原子釋放資源→立即路由進下一個 queue／delay／sink→該 tick 的 dispatch 以 priority 20 最後執行；DELAY_COMPLETE 為 priority 10，同樣立即路由；priority 表移除 route。entity 任何時刻恰處於一個狀態。 |
+| D-033 | CB-21 | 零時間與嚴格正值的判定 | 以分布可能的最小 tick 判定：constant=0、triangular min=0、empirical 任一 sample=0 視為零時間；exponential 恆 >0。source interarrival 可能為 0 一律拒絕。empirical 部分在 dataset binding 階段檢查，zero-time cycle 亦於該階段再判一次。 |
+| D-034 | CB-15 | Dataset manifest 排序與 logical_ref 字元集 | manifest 一律依 UTF-8 bytes 排序；SQL 使用 ORDER BY logical_ref COLLATE "C"；logical_ref 限 ASCII：`dataset:` 加 `[a-z0-9_.-]+`。 |
+| D-035 | CB-14 | Object key tenant 前綴檢查 | 以 starts_with(key, 'tenant/'||organization_id||'/') 取代 LIKE；所有 object key 拒絕 `..`、`//`、反斜線與控制字元；新增跨 tenant key 的反例測試。 |
+| D-036 | CB-13 | 最後一位 owner 的鎖定方式 | 成員變更 transaction 依 user_id 順序 SELECT 該 org 全部 owner membership … FOR UPDATE 後再檢查人數；不新增 organizations 的 UPDATE grant；文件同步改寫。 |
+| D-037 | CB-16 | Worker 對 imports／jobs 的欄位級權限 | worker 只能 UPDATE imports 的 profile／validation／mapping_suggestion／error 類欄位與 jobs 的 lease／status／attempt／error 類欄位；guard trigger 禁止 worker 將 import 設為 COMMITTED 或修改 mapping、mapping_revision、dataset_version_id、proposal_id。 |
 
 ## 人類決策紀錄
 

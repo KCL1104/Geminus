@@ -119,7 +119,7 @@
       "id": "T-003",
       "title": "凍結候選契約與 Go/TypeScript domain types",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Platform + Simulation",
       "planning_window": "Week 1–2",
       "depends_on": [
@@ -179,7 +179,10 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-003_VALIDATION.md",
           "summary": "契約依 D-001/D-024–D-028/D-030 修改；Go types（internal/model、internal/simulation）與 schema parity／round-trip contract tests；TS types 由 schemas 產生並有 freshness 檢查；12 個驗證指令 exit 0；mutation 14/14 被擋。TEST-003 原子性與 identity path 屬 T-004（NOT RUN）。",
-          "reviewer": null
+          "reviewer": "KCL1104 (repository owner)",
+          "accepted_at": "2026-10-15",
+          "acceptance": "owner 回覆「好，然後可以接著往下做」，記為驗收通過",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38735650734 (b51cdc1: 4/4 success)"
         }
       ]
     },
@@ -208,7 +211,8 @@
         "D-022",
         "D-023",
         "D-028",
-        "D-029"
+        "D-029",
+        "D-033"
       ],
       "scope": [
         "實作 refs/unique IDs/probability/queue/resource/distribution/cycle validations。",
@@ -257,7 +261,8 @@
       ],
       "decision_gates": [
         "D-006",
-        "D-019"
+        "D-019",
+        "D-034"
       ],
       "scope": [
         "採經核對的 JCS 實作與 test vectors，不自行把 sort_keys 當 JCS。",
@@ -306,7 +311,9 @@
       ],
       "decision_gates": [
         "D-001",
-        "D-013"
+        "D-013",
+        "D-034",
+        "D-035"
       ],
       "scope": [
         "以 disposable PostgreSQL 審查並執行 core migration。",
@@ -355,7 +362,9 @@
       ],
       "decision_gates": [
         "D-008",
-        "D-013"
+        "D-013",
+        "D-036",
+        "D-037"
       ],
       "scope": [
         "安裝 FORCE RLS 與 non-owner runtime roles。",
@@ -504,7 +513,8 @@
       ],
       "decision_gates": [
         "D-008",
-        "D-012"
+        "D-012",
+        "D-036"
       ],
       "scope": [
         "建立 operator-only initial org/owner/user provisioning 流程。",
@@ -997,7 +1007,9 @@
         "D-005",
         "D-006",
         "D-023",
-        "D-029"
+        "D-029",
+        "D-032",
+        "D-033"
       ],
       "scope": [
         "IR compile成immutable runtime structures，無DB/network依賴。",
@@ -1044,7 +1056,8 @@
       "decision_gates": [
         "D-005",
         "D-007",
-        "D-023"
+        "D-023",
+        "D-032"
       ],
       "scope": [
         "atomic bundle/resource-wise FIFO；failure/rework/delay/sink。",

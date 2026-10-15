@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 18,
-    "proposed": 13,
+    "approved": 27,
+    "proposed": 10,
     "rejected": 0,
     "superseded": 0
   },
@@ -12,48 +12,18 @@
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 2,
+    "done": 3,
     "in_progress": 0,
     "not_started": 39,
-    "review": 1
+    "review": 0
   },
-  "ready_tasks": [],
-  "next_after_review": [
-    {
-      "id": "T-004",
-      "awaiting_task_review": [
-        "T-003"
-      ],
-      "awaiting_decisions": [
-        "D-005"
-      ]
-    },
-    {
-      "id": "T-005",
-      "awaiting_task_review": [
-        "T-003"
-      ],
-      "awaiting_decisions": [
-        "D-006"
-      ]
-    },
-    {
-      "id": "T-006",
-      "awaiting_task_review": [
-        "T-003"
-      ],
-      "awaiting_decisions": [
-        "D-013"
-      ]
-    },
-    {
-      "id": "T-014",
-      "awaiting_task_review": [
-        "T-003"
-      ],
-      "awaiting_decisions": []
-    }
+  "ready_tasks": [
+    "T-004",
+    "T-005",
+    "T-006",
+    "T-014"
   ],
+  "next_after_review": [],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -91,7 +61,7 @@
       ]
     },
     "D-005": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "建立 golden digest 前",
       "gates_tasks": [
         "T-004",
@@ -101,7 +71,7 @@
       ]
     },
     "D-006": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "版本 hash 上線前",
       "gates_tasks": [
         "T-005",
@@ -172,7 +142,7 @@
       ]
     },
     "D-013": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Migration review 前",
       "gates_tasks": [
         "T-006",
@@ -329,6 +299,52 @@
       "status": "approved",
       "gate": "即時",
       "gates_tasks": []
+    },
+    "D-032": {
+      "status": "approved",
+      "gate": "T-020 前",
+      "gates_tasks": [
+        "T-020",
+        "T-021"
+      ]
+    },
+    "D-033": {
+      "status": "approved",
+      "gate": "T-004、T-020 前",
+      "gates_tasks": [
+        "T-004",
+        "T-020"
+      ]
+    },
+    "D-034": {
+      "status": "approved",
+      "gate": "T-005、T-006 前",
+      "gates_tasks": [
+        "T-005",
+        "T-006"
+      ]
+    },
+    "D-035": {
+      "status": "approved",
+      "gate": "T-006 前",
+      "gates_tasks": [
+        "T-006"
+      ]
+    },
+    "D-036": {
+      "status": "approved",
+      "gate": "T-007、T-010 前",
+      "gates_tasks": [
+        "T-007",
+        "T-010"
+      ]
+    },
+    "D-037": {
+      "status": "approved",
+      "gate": "T-007 前",
+      "gates_tasks": [
+        "T-007"
+      ]
     }
   },
   "note": "Shape checks only; whether a recorded approval is genuine is for human review."
