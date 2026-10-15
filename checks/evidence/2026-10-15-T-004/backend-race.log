@@ -1,0 +1,10 @@
+go test -race ./cmd/... ./internal/... ./schemas/...
+ok  	github.com/kcl1104/geminus/cmd/api	(cached)
+ok  	github.com/kcl1104/geminus/cmd/worker	(cached)
+ok  	github.com/kcl1104/geminus/internal/config	(cached)
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/model	1.254s
+ok  	github.com/kcl1104/geminus/internal/model/patch	1.334s
+ok  	github.com/kcl1104/geminus/internal/model/validate	1.616s
+ok  	github.com/kcl1104/geminus/internal/simulation	1.174s
+?   	github.com/kcl1104/geminus/schemas	[no test files]

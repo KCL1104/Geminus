@@ -1,0 +1,12 @@
+spec-check	0	make spec-check
+go-test-model	0	go test -count=1 -v ./internal/model/...
+go-race-model	0	go test -race -count=1 ./internal/model/...
+backend-test	0	make backend-test
+backend-race	0	make backend-race
+backend-build	0	make backend-build
+fuzz-ir	0	go test -run ^$ -fuzz FuzzIR -fuzztime 30s -fuzzminimizetime 0 ./internal/model/validate/
+fuzz-patch	0	go test -run ^$ -fuzz FuzzApply -fuzztime 30s -fuzzminimizetime 0 ./internal/model/patch/
+bench-large-ir	0	go test -run ^$ -bench BenchmarkLargeIR -benchtime 20x ./internal/model/validate/
+govulncheck	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/govulncheck ./cmd/... ./internal/... ./schemas/...
+frontend-test	0	make frontend-test
+actionlint	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/actionlint -shellcheck= .github/workflows/ci.yml

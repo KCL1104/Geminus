@@ -190,7 +190,7 @@
       "id": "T-004",
       "title": "IR / patch semantic validator",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Simulation",
       "planning_window": "Week 2–3",
       "depends_on": [
@@ -242,7 +242,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-004_VALIDATION.md",
+          "summary": "IR validator（8 階段、D-023 排序與閘門）與 patch 套用（D-020/D-021/D-022、原子性）；Go 與 Python 對共用 fixtures 結論一致；98 tests PASS、race PASS；fuzz 68 萬＋107 萬次無失敗；mutation 7/7；govulncheck 0。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-005",

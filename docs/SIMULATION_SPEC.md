@@ -12,11 +12,11 @@ worker 在 engine 外負責授權、快照解析、dataset preload、job claim�
 
 internal tick 固定 **1 millisecond**，int64；所有輸入換算成 tick 後做 overflow / safe bound 檢查。單位換算 second=1000、minute=60000、hour=3600000、day=86400000。非負 sample d 先換成 ms，再 round-half-up；sample>0 卻 round 為 0 時 clamp 到 1 tick，sample=0 保持 0。固定 engine numerical profile，不依不同語言的預設 rounding。
 
-heap key = (time_tick,event_priority,monotonic_sequence)。候選 priority：SERVICE_COMPLETE / release phase=0；arrival/route/immediate state transitions=10；internal resource dispatch=20。release 在同 tick 的 dispatch 之前完成；sequence 在 replication 內 strictly increasing。Go map iteration、wall clock、worker scheduling 不得參與 tie-breaking。
+heap key = (time_tick,event_priority,monotonic_sequence)。APPROVED priority（D-005、D-032）：SERVICE_COMPLETE=0，在同一事件內原子釋放資源後立即路由（進下一個 queue／delay／sink）；arrival、DELAY_COMPLETE 與其他 immediate state transitions=10，同樣立即路由；internal resource dispatch=20，為該 tick 最後一步。route 不是獨立事件，entity 任何時刻恰處於一個狀態。release 在同 tick 的 dispatch 之前完成；sequence 在 replication 內 strictly increasing。Go map iteration、wall clock、worker scheduling 不得參與 tie-breaking。
 
 source 第一個 arrival 在從 t=0 抽出的 interarrival 之後，而不是自動 t=0；其後每次 arrival 再排下一個。max_entities 若指定，限制該 source 的產生數；否則直到 horizon。多 source 的初始化按 node ID 排序，entity IDs 由 replication/source/local sequence 派生，不使用隨機 UUID。
 
-所有 `event.time <= horizon` 都處理，包括 horizon 同 tick 產生的後續 immediate events；`>horizon` 不執行。horizon 不會自動 drain remaining work；在 horizon 仍未 completed 的 entity 是 censored，不能拿 horizon-arrival 當完整 lead time。zero-time cycles 在 compile 時拒絕，runtime 同時保留 visit/event caps。
+所有 `event.time <= horizon` 都處理，包括 horizon 同 tick 產生的後續 immediate events；`>horizon` 不執行。horizon 不會自動 drain remaining work；在 horizon 仍未 completed 的 entity 是 censored，不能拿 horizon-arrival 當完整 lead time。zero-time cycles 在 compile 時拒絕（判定方式見 D-033：以分布可能的最小 tick 為準，empirical 於 dataset binding 階段判定），runtime 同時保留 visit/event caps。
 
 ## 3. Queue、resource、routing
 

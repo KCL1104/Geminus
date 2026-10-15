@@ -1,7 +1,7 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 # Explicit package roots: `./...` would also match Go files that npm packages
 # ship under apps/web/node_modules (e.g. flatted/golang).
-GO_PKGS := ./cmd/... ./internal/...
+GO_PKGS := ./cmd/... ./internal/... ./schemas/...
 WEB := apps/web
 export NEXT_TELEMETRY_DISABLED := 1
 .PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts ts-contracts backend-test backend-race backend-build frontend-test frontend-build db-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
@@ -25,7 +25,7 @@ ts-contracts:
 	$(PYTHON) scripts/gen_ts_contracts.py
 backend-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included in this spec pack.' >&2; exit 2; }
-	@unformatted=$$(gofmt -l cmd internal); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
+	@unformatted=$$(gofmt -l cmd internal schemas); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
 	go vet $(GO_PKGS)
 	go test $(GO_PKGS)
 backend-race:

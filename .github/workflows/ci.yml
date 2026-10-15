@@ -47,6 +47,8 @@ jobs:
       - run: make backend-test
       - run: make backend-race
       - run: make backend-build
+      - name: Go vulnerability scan (govulncheck, pinned)
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/...
 
   frontend:
     name: frontend (lint, typecheck, unit, build)

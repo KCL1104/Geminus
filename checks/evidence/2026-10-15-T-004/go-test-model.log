@@ -1,0 +1,202 @@
+=== RUN   TestSchemaParity
+--- PASS: TestSchemaParity (0.00s)
+=== RUN   TestDiscriminatorsMatchSchema
+--- PASS: TestDiscriminatorsMatchSchema (0.00s)
+=== RUN   TestPositiveFixturesRoundTrip
+--- PASS: TestPositiveFixturesRoundTrip (0.00s)
+=== RUN   TestStrictDecodeRejects
+--- PASS: TestStrictDecodeRejects (0.00s)
+=== RUN   TestPatchValueKeepsFalsyJSON
+--- PASS: TestPatchValueKeepsFalsyJSON (0.00s)
+=== RUN   TestMeaningfulZeroValuesSurvive
+--- PASS: TestMeaningfulZeroValuesSurvive (0.00s)
+=== RUN   TestNoForbiddenDependencies
+--- PASS: TestNoForbiddenDependencies (0.11s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model	0.118s
+=== RUN   TestSharedFixtures
+--- PASS: TestSharedFixtures (0.04s)
+=== RUN   TestIdentityIsNeverPatchable
+--- PASS: TestIdentityIsNeverPatchable (0.00s)
+=== RUN   TestAllowlists
+=== RUN   TestAllowlists/scenario_capacity
+=== RUN   TestAllowlists/scenario_distribution_member
+=== RUN   TestAllowlists/scenario_routing_probability
+=== RUN   TestAllowlists/scenario_cannot_rename
+=== RUN   TestAllowlists/scenario_cannot_add_nodes
+=== RUN   TestAllowlists/scenario_cannot_remove_flows
+=== RUN   TestAllowlists/scenario_cannot_touch_views
+=== RUN   TestAllowlists/decoded_~1_is_not_the_capacity_token
+=== RUN   TestAllowlists/decoded_~0_is_not_the_capacity_token
+=== RUN   TestAllowlists/leading-zero_index_is_not_an_index
+=== RUN   TestAllowlists/AI_may_not_edit_views
+=== RUN   TestAllowlists/AI_may_not_edit_metadata
+=== RUN   TestAllowlists/AI_may_not_drop_a_kept_node's_position
+=== RUN   TestAllowlists/manual_may_edit_views
+=== RUN   TestAllowlists/manual_may_edit_metadata
+--- PASS: TestAllowlists (0.01s)
+    --- PASS: TestAllowlists/scenario_capacity (0.00s)
+    --- PASS: TestAllowlists/scenario_distribution_member (0.00s)
+    --- PASS: TestAllowlists/scenario_routing_probability (0.00s)
+    --- PASS: TestAllowlists/scenario_cannot_rename (0.00s)
+    --- PASS: TestAllowlists/scenario_cannot_add_nodes (0.00s)
+    --- PASS: TestAllowlists/scenario_cannot_remove_flows (0.00s)
+    --- PASS: TestAllowlists/scenario_cannot_touch_views (0.00s)
+    --- PASS: TestAllowlists/decoded_~1_is_not_the_capacity_token (0.00s)
+    --- PASS: TestAllowlists/decoded_~0_is_not_the_capacity_token (0.00s)
+    --- PASS: TestAllowlists/leading-zero_index_is_not_an_index (0.00s)
+    --- PASS: TestAllowlists/AI_may_not_edit_views (0.00s)
+    --- PASS: TestAllowlists/AI_may_not_edit_metadata (0.00s)
+    --- PASS: TestAllowlists/AI_may_not_drop_a_kept_node's_position (0.00s)
+    --- PASS: TestAllowlists/manual_may_edit_views (0.00s)
+    --- PASS: TestAllowlists/manual_may_edit_metadata (0.00s)
+=== RUN   TestAIDeletesNodeWithItsPosition
+--- PASS: TestAIDeletesNodeWithItsPosition (0.00s)
+=== RUN   TestTestBeforeModify
+=== RUN   TestTestBeforeModify/no_test
+=== RUN   TestTestBeforeModify/test_of_another_element
+=== RUN   TestTestBeforeModify/index_shift_voids_the_test
+=== RUN   TestTestBeforeModify/remove_needs_a_test
+=== RUN   TestTestBeforeModify/constraints_are_identified_by_node_id
+=== RUN   TestTestBeforeModify/dash_is_only_for_add
+=== RUN   TestTestBeforeModify/non-numeric_index
+=== RUN   TestTestBeforeModify/pointer_too_deep
+--- PASS: TestTestBeforeModify (0.00s)
+    --- PASS: TestTestBeforeModify/no_test (0.00s)
+    --- PASS: TestTestBeforeModify/test_of_another_element (0.00s)
+    --- PASS: TestTestBeforeModify/index_shift_voids_the_test (0.00s)
+    --- PASS: TestTestBeforeModify/remove_needs_a_test (0.00s)
+    --- PASS: TestTestBeforeModify/constraints_are_identified_by_node_id (0.00s)
+    --- PASS: TestTestBeforeModify/dash_is_only_for_add (0.00s)
+    --- PASS: TestTestBeforeModify/non-numeric_index (0.00s)
+    --- PASS: TestTestBeforeModify/pointer_too_deep (0.00s)
+=== RUN   TestAtomic
+=== RUN   TestAtomic/second_op_targets_a_missing_element
+=== RUN   TestAtomic/wrong_identity_test
+=== RUN   TestAtomic/replace_of_a_missing_member
+=== RUN   TestAtomic/test_of_a_whole_array_element
+=== RUN   TestAtomic/index_past_the_end
+--- PASS: TestAtomic (0.00s)
+    --- PASS: TestAtomic/second_op_targets_a_missing_element (0.00s)
+    --- PASS: TestAtomic/wrong_identity_test (0.00s)
+    --- PASS: TestAtomic/replace_of_a_missing_member (0.00s)
+    --- PASS: TestAtomic/test_of_a_whole_array_element (0.00s)
+    --- PASS: TestAtomic/index_past_the_end (0.00s)
+=== RUN   TestArrayEditsKeepOrder
+--- PASS: TestArrayEditsKeepOrder (0.00s)
+=== RUN   TestTestComparesJSONValues
+--- PASS: TestTestComparesJSONValues (0.00s)
+=== RUN   TestParsePointer
+--- PASS: TestParsePointer (0.00s)
+=== RUN   TestConcurrentApply
+--- PASS: TestConcurrentApply (0.01s)
+=== RUN   FuzzApply
+=== RUN   FuzzApply/seed#0
+=== RUN   FuzzApply/seed#1
+=== RUN   FuzzApply/seed#2
+=== RUN   FuzzApply/seed#3
+=== RUN   FuzzApply/seed#4
+--- PASS: FuzzApply (0.00s)
+    --- PASS: FuzzApply/seed#0 (0.00s)
+    --- PASS: FuzzApply/seed#1 (0.00s)
+    --- PASS: FuzzApply/seed#2 (0.00s)
+    --- PASS: FuzzApply/seed#3 (0.00s)
+    --- PASS: FuzzApply/seed#4 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.085s
+=== RUN   TestAgreesWithSharedFixtures
+--- PASS: TestAgreesWithSharedFixtures (0.08s)
+=== RUN   TestRules
+=== RUN   TestRules/duplicate_member
+=== RUN   TestRules/invalid_UTF-8
+=== RUN   TestRules/trailing_document
+=== RUN   TestRules/document_too_large
+=== RUN   TestRules/unknown_member
+=== RUN   TestRules/metadata_too_deep
+=== RUN   TestRules/metadata_too_big
+=== RUN   TestRules/duration_over_365_days
+=== RUN   TestRules/duplicate_node_ID
+=== RUN   TestRules/node_and_resource_share_an_ID
+=== RUN   TestRules/unknown_flow_target
+=== RUN   TestRules/unknown_resource
+=== RUN   TestRules/unknown_metric_sink
+=== RUN   TestRules/view_position_of_a_missing_node
+=== RUN   TestRules/sink_with_an_outgoing_flow
+=== RUN   TestRules/process_with_two_outgoing_flows
+=== RUN   TestRules/single_flow_below_probability_1
+=== RUN   TestRules/decision_probabilities_do_not_sum_to_1
+=== RUN   TestRules/flow_into_a_source
+=== RUN   TestRules/queue_feeding_a_sink
+=== RUN   TestRules/no_source
+=== RUN   TestRules/entities_trapped_in_a_loop
+=== RUN   TestRules/dormant_node_is_only_a_warning
+=== RUN   TestRules/zero-time_cycle
+=== RUN   TestRules/triangular_out_of_order
+=== RUN   TestRules/zero_interarrival
+=== RUN   TestRules/demand_above_capacity
+=== RUN   TestRules/resource_required_twice
+=== RUN   TestRules/constraint_on_a_sink
+--- PASS: TestRules (0.04s)
+    --- PASS: TestRules/duplicate_member (0.00s)
+    --- PASS: TestRules/invalid_UTF-8 (0.00s)
+    --- PASS: TestRules/trailing_document (0.00s)
+    --- PASS: TestRules/document_too_large (0.03s)
+    --- PASS: TestRules/unknown_member (0.00s)
+    --- PASS: TestRules/metadata_too_deep (0.00s)
+    --- PASS: TestRules/metadata_too_big (0.00s)
+    --- PASS: TestRules/duration_over_365_days (0.00s)
+    --- PASS: TestRules/duplicate_node_ID (0.00s)
+    --- PASS: TestRules/node_and_resource_share_an_ID (0.00s)
+    --- PASS: TestRules/unknown_flow_target (0.00s)
+    --- PASS: TestRules/unknown_resource (0.00s)
+    --- PASS: TestRules/unknown_metric_sink (0.00s)
+    --- PASS: TestRules/view_position_of_a_missing_node (0.00s)
+    --- PASS: TestRules/sink_with_an_outgoing_flow (0.00s)
+    --- PASS: TestRules/process_with_two_outgoing_flows (0.00s)
+    --- PASS: TestRules/single_flow_below_probability_1 (0.00s)
+    --- PASS: TestRules/decision_probabilities_do_not_sum_to_1 (0.00s)
+    --- PASS: TestRules/flow_into_a_source (0.00s)
+    --- PASS: TestRules/queue_feeding_a_sink (0.00s)
+    --- PASS: TestRules/no_source (0.00s)
+    --- PASS: TestRules/entities_trapped_in_a_loop (0.00s)
+    --- PASS: TestRules/dormant_node_is_only_a_warning (0.00s)
+    --- PASS: TestRules/zero-time_cycle (0.00s)
+    --- PASS: TestRules/triangular_out_of_order (0.00s)
+    --- PASS: TestRules/zero_interarrival (0.00s)
+    --- PASS: TestRules/demand_above_capacity (0.00s)
+    --- PASS: TestRules/resource_required_twice (0.00s)
+    --- PASS: TestRules/constraint_on_a_sink (0.00s)
+=== RUN   TestNotZeroTimeCycle
+--- PASS: TestNotZeroTimeCycle (0.00s)
+=== RUN   TestStagesStopAtFirstFailingStage
+--- PASS: TestStagesStopAtFirstFailingStage (0.00s)
+=== RUN   TestIssueOrder
+--- PASS: TestIssueOrder (0.00s)
+=== RUN   TestConcurrentValidation
+--- PASS: TestConcurrentValidation (0.02s)
+=== RUN   FuzzIR
+=== RUN   FuzzIR/seed#0
+=== RUN   FuzzIR/seed#1
+=== RUN   FuzzIR/seed#2
+=== RUN   FuzzIR/seed#3
+=== RUN   FuzzIR/seed#4
+=== RUN   FuzzIR/seed#5
+=== RUN   FuzzIR/seed#6
+=== RUN   FuzzIR/seed#7
+=== RUN   FuzzIR/seed#8
+=== RUN   FuzzIR/seed#9
+=== RUN   FuzzIR/seed#10
+--- PASS: FuzzIR (0.02s)
+    --- PASS: FuzzIR/seed#0 (0.00s)
+    --- PASS: FuzzIR/seed#1 (0.00s)
+    --- PASS: FuzzIR/seed#2 (0.00s)
+    --- PASS: FuzzIR/seed#3 (0.01s)
+    --- PASS: FuzzIR/seed#4 (0.00s)
+    --- PASS: FuzzIR/seed#5 (0.00s)
+    --- PASS: FuzzIR/seed#6 (0.00s)
+    --- PASS: FuzzIR/seed#7 (0.00s)
+    --- PASS: FuzzIR/seed#8 (0.00s)
+    --- PASS: FuzzIR/seed#9 (0.00s)
+    --- PASS: FuzzIR/seed#10 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.172s
