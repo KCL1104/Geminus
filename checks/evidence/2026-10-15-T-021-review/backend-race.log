@@ -11,7 +11,7 @@ ok  	github.com/kcl1104/geminus/internal/model/patch	(cached)
 ok  	github.com/kcl1104/geminus/internal/model/validate	(cached)
 ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	(cached)
 ok  	github.com/kcl1104/geminus/internal/simulation	(cached)
-ok  	github.com/kcl1104/geminus/internal/simulation/engine	9.769s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	16.533s
 ok  	github.com/kcl1104/geminus/internal/storage/datasets	(cached)
 ok  	github.com/kcl1104/geminus/internal/storage/postgres	(cached)
 ok  	github.com/kcl1104/geminus/internal/tenant	(cached)

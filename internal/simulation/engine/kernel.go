@@ -70,7 +70,8 @@ type request struct {
 	entity  uint64
 	process int
 	seq     uint64
-	heads   int // how many of its resources' queues it is at the front of
+	heads   int  // how many of its resources' queues it is at the front of
+	held    bool // a candidate whose bundle did not fit; waits for a release
 }
 
 // resourceQueue holds, in FIFO order, the waiting requests that need one
@@ -111,8 +112,9 @@ func (q *resourceQueue) pop() *request {
 // candidates are the waiting requests at the front of every queue they are
 // in: by the resource-wise FIFO rule no other request can be granted. There
 // is at most one per resource, plus resource-free requests (granted at the
-// next dispatch), so a dispatch costs O(resources), not O(waiting requests)
-// (T-021 review). A min-heap by seq.
+// next dispatch), and a held one is decided again only after a release of
+// one of its resources, so a dispatch costs O(candidates touched), not
+// O(waiting requests) (T-021 review). A min-heap by seq.
 type candidates []*request
 
 func (c candidates) Len() int           { return len(c) }
@@ -134,8 +136,7 @@ type kernel struct {
 	obs             Observer
 	inUse           []int
 	queues          []resourceQueue // per resource
-	cands           candidates
-	held            []*request // dispatch scratch: candidates whose bundle does not fit now
+	cands           candidates      // candidates to decide at the next dispatch
 	reqSeq          uint64
 	active          int64
 	peak            int64
@@ -201,6 +202,11 @@ func (k *kernel) handle(r *replication, ev event) error {
 				return fmt.Errorf("%w: resource %s below zero", ErrInternal, r.p.resources[q.resource].id)
 			}
 			k.observe(Observation{Kind: ObsResource, Resource: q.resource, Value: int64(k.inUse[q.resource])})
+			// A held candidate at the front of this queue may fit now.
+			if f := k.queues[q.resource].front(); f != nil && f.held {
+				f.held = false
+				heap.Push(&k.cands, f)
+			}
 		}
 		k.observe(Observation{Kind: ObsServiceEnd, Entity: ev.Entity, Node: ev.Node})
 		if len(r.p.nodes[ev.Node].requires) > 0 {
@@ -328,13 +334,14 @@ func (k *kernel) needDispatch() error {
 // seq order. A grant pops the request from its queues; the requests that
 // move to the front have larger seqs and join the candidates, so the order
 // in which requests are decided is exactly the literal scan's. A candidate
-// whose bundle does not fit stays at the front, holding its resources back,
-// until a later dispatch. Each grant reports its bundle's new levels and
-// starts its service, sampling its process's service stream, in grant order.
+// whose bundle does not fit stays at the front, holding its resources back;
+// only a release of one of its resources can make it fit (grants only take
+// units), so it is set aside as held and decided again after such a
+// release. Each grant reports its bundle's new levels and starts its
+// service, sampling its process's service stream, in grant order.
 func (k *kernel) dispatch() error {
 	k.dispatchPending = false
 	p := k.r.p
-	held := k.held[:0]
 	for k.cands.Len() > 0 {
 		req := heap.Pop(&k.cands).(*request)
 		k.examined++
@@ -347,7 +354,7 @@ func (k *kernel) dispatch() error {
 			}
 		}
 		if !fits {
-			held = append(held, req)
+			req.held = true
 			continue
 		}
 		for _, q := range reqs {
@@ -369,10 +376,5 @@ func (k *kernel) dispatch() error {
 			return err
 		}
 	}
-	for _, req := range held {
-		heap.Push(&k.cands, req)
-	}
-	clear(held)
-	k.held = held[:0]
 	return nil
 }

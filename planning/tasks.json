@@ -1185,11 +1185,12 @@
           "date": "2026-10-15",
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-021_VALIDATION.md",
-          "summary": "RunReplication：candidate-based resource-wise FIFO dispatcher（成本與 resource 數成正比）、all-or-nothing bundle、SERVICE_COMPLETE 釋放後同事件路由、零時間 service 後同 tick 再 dispatch、delay／decision／failure／rework／sink、active entity 與 visit 上限（typed、帶位置）、entity 紀錄到 sink 即釋放；Observation 逐筆回報。GOLDEN-001/002 與手算值相符；observation-only 模型在 300（另以 overlay 3,000）個隨機模型上與規格原文一致；kernel mutation 43/43＋2 equivalent、fuzz 1,062,442 次；指標與 digest 屬 T-022。",
+          "summary": "RunReplication：candidate-based resource-wise FIFO dispatcher（成本與 resource 數成正比）、all-or-nothing bundle、SERVICE_COMPLETE 釋放後同事件路由、零時間 service 後同 tick 再 dispatch、delay／decision／failure／rework／sink、active entity 與 visit 上限（typed、帶位置）、entity 紀錄到 sink 即釋放；Observation 逐筆回報。GOLDEN-001/002 與手算值相符；observation-only 模型在 300（另以 overlay 3,000）個隨機模型上與規格原文一致；kernel mutation 46/46＋2 equivalent、fuzz 1,062,442＋740,198 次；複核以舊逐筆掃描 kernel 做 differential，約 50,000 個模型完全相同；指標與 digest 屬 T-022。",
           "reviewer": null,
           "review": "independent reviewer agent (H-003): CHANGES REQUESTED — 2 medium (dispatch cost, test gaps) + 2 low CONFIRMED, all fixed red-first; 6 PLAUSIBLE handled (queue visits, frozen stochastic digests, error context, EntityID, index check fixed; transitive blocking documented as D-038 (m)); report claims corrected",
           "review_evidence": "checks/evidence/2026-10-15-T-021-review/",
-          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38786963032 (19540b6: 4/4 success)"
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38786963032 (19540b6: 4/4 success)",
+          "re_review": "same reviewer, a42f47c: ACCEPT, no CONFIRMED defect; L1 (queue compaction untested) and L2 (held candidates re-checked every dispatch) fixed red-first"
         }
       ]
     },

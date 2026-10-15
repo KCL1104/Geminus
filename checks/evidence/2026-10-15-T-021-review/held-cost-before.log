@@ -1,0 +1,5 @@
+    rv2_probe_test.go:330: held=1 budget=1000000: err=engine: event budget exhausted events=1000000 peak=4 examined=666664 (0.7/event) cands=2 elapsed=338.464743ms (0.34 µs/event)
+    rv2_probe_test.go:330: held=100 budget=1000000: err=engine: event budget exhausted events=1000000 peak=202 examined=28982653 (29.0/event) cands=87 elapsed=2.430397174s (2.43 µs/event)
+    rv2_probe_test.go:330: held=480 budget=1000000: err=engine: event budget exhausted events=1000000 peak=966 examined=140256434 (140.3/event) cands=421 elapsed=16.755896369s (16.76 µs/event)
+    rv2_probe_test.go:338: held=480 budget=1000000: err=engine: event budget exhausted events=1000000 peak=966 examined=140256434 (140.3/event) cands=421 elapsed=17.186376207s (17.19 µs/event)
+    rv2_probe_test.go:338: held=480 budget=10000000: err=engine: event budget exhausted events=10000000 peak=966 examined=1406256434 (140.6/event) cands=421 elapsed=2m46.282048316s (16.63 µs/event)

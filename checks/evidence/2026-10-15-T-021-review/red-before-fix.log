@@ -13,3 +13,14 @@ panic: runtime error: invalid memory address or nil pointer dereference [recover
 panic({0x9b00a0?, 0xa0eed0?})
 FAIL	github.com/kcl1104/geminus/internal/simulation/engine	1.372s
 FAIL
+--- PASS: TestResourceQueueStaysCompact (0.54s)
+    kernel_test.go:1012: the dispatcher examined 28.9 requests per event
+--- FAIL: TestHeldCandidatesWaitForARelease (0.62s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	1.172s
+FAIL
+--- FAIL: TestResourceQueueStaysCompact (0.56s)
+    kernel_test.go:967: queue: 300 live requests in a backing array of 726016
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.574s
+FAIL

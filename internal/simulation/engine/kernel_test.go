@@ -943,3 +943,72 @@ func TestKernelObservationDigests(t *testing.T) {
 		}
 	}
 }
+
+// A resource queue that never empties stays compact (T-021 re-review L1):
+// 300 requests always wait on R while a request is served every
+// millisecond for 2M events; the queue's backing array must track the
+// waiting requests, not every request ever pushed.
+func TestResourceQueueStaysCompact(t *testing.T) {
+	ir := build(t, []model.Node{
+		{ID: "a", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.001), MaxEntities: 300}},
+		{ID: "b", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.001)}},
+		process("work", 0.001, "R"),
+		{ID: "end", Type: model.NodeSink},
+	}, []model.Flow{flow("fa", "a", "work", 1), flow("fb", "b", "work", 1), flow("fw", "work", "end", 1)}, "R")
+	ir.TimeUnit = model.ModelTimeUnit(model.Second)
+	in := input(ir)
+	in.Config = config(30*86400, model.Second)
+	k, out, err := runKernel(context.Background(), compile(t, in), 0, NewBudget(2_000_000), nil)
+	if !errors.Is(err, ErrEventBudget) || out.PeakActive < 300 {
+		t.Fatalf("%v, %+v", err, out)
+	}
+	q := k.queues[0]
+	if live := len(q.items) - q.head; live < 250 || cap(q.items) > 4096 {
+		t.Errorf("queue: %d live requests in a backing array of %d", live, cap(q.items))
+	}
+}
+
+// A candidate whose bundle does not fit is not looked at again until one of
+// its resources is released (T-021 re-review L2): 100 requests each need
+// both units of their own resource while a long "hog" holds one unit of
+// all of them, and an unrelated stream triggers a dispatch every
+// millisecond. Re-checking every held candidate per dispatch would look at
+// ~100 requests per event.
+func TestHeldCandidatesWaitForARelease(t *testing.T) {
+	const n = 100
+	var res []string
+	for i := range n {
+		res = append(res, fmt.Sprintf("R%03d", i))
+	}
+	nodes := []model.Node{
+		{ID: "a_hog", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.001), MaxEntities: 1}},
+		process("hog", 300_000, res...),
+		{ID: "b_src", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.002), MaxEntities: 2 * n}},
+		{ID: "b_split", Type: model.NodeDecision},
+		{ID: "c_src", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.001)}},
+		process("fast", 0.001),
+		{ID: "end", Type: model.NodeSink},
+	}
+	flows := []model.Flow{flow("f_hog_in", "a_hog", "hog", 1), flow("f_hog_out", "hog", "end", 1), flow("f_b", "b_src", "b_split", 1),
+		flow("f_c", "c_src", "fast", 1), flow("f_fast", "fast", "end", 1)}
+	for i := range n {
+		w := process(fmt.Sprintf("w%03d", i), 1, res[i])
+		w.Requires[0].Units = 2
+		nodes = append(nodes, w)
+		flows = append(flows, flow(fmt.Sprintf("g%03d", i), "b_split", w.ID, 1.0/n), flow("h_"+w.ID, w.ID, "end", 1))
+	}
+	ir := build(t, nodes, flows, res...)
+	for i := range ir.Resources {
+		ir.Resources[i].Capacity = 2
+	}
+	ir.TimeUnit = model.ModelTimeUnit(model.Second)
+	in := input(ir)
+	in.Config = config(30*86400, model.Second)
+	k, out, err := runKernel(context.Background(), compile(t, in), 0, NewBudget(300_000), nil)
+	if !errors.Is(err, ErrEventBudget) {
+		t.Fatalf("%v, %+v", err, out)
+	}
+	if perEvent := float64(k.examined) / float64(out.Events); perEvent > 2 {
+		t.Errorf("the dispatcher examined %.1f requests per event", perEvent)
+	}
+}

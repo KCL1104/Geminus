@@ -16,7 +16,7 @@
 | `testdata/simulation/kernel-observation-digests.json` | 兩個隨機 run 的完整 observation stream SHA-256（kernel 輸出的 regression lock，不是獨立 oracle） |
 | `docs/SIMULATION_SPEC.md` §3 | kernel 的實作段落 |
 
-**Dispatcher**：每個 resource 有一個 FIFO，保存需要它的等待 request。依 resource-wise FIFO 規則，同一 resource 的 request 彼此依序授予，所以只有「在自己每個 resource 的 FIFO 都排第一」的 request（candidate）可能被授予。dispatcher 依 sequence 檢查 candidates，bundle 都夠才授予，否則它留在最前面擋住共用這些 resources 的後來者；授予後新排到最前面、成為 candidate 的 request 加入檢查。決定順序與逐筆掃描完全相同（由 observation-only 模型逐次比對），每次 dispatch 的成本與 resource 數成正比，不隨等待數增加。
+**Dispatcher**：每個 resource 有一個 FIFO，保存需要它的等待 request。依 resource-wise FIFO 規則，同一 resource 的 request 彼此依序授予，所以只有「在自己每個 resource 的 FIFO 都排第一」的 request（candidate）可能被授予。dispatcher 依 sequence 檢查 candidates，bundle 都夠才授予，否則它留在最前面擋住共用這些 resources 的後來者，並標為 held，直到它的某個 resource 被釋放才再檢查（授予只會占用 units，不會讓它變得放得下）；授予後新排到最前面、成為 candidate 的 request 加入檢查。決定順序與逐筆掃描完全相同（由 observation-only 模型逐次比對，複核另以舊版逐筆掃描 kernel 做 differential），每次 dispatch 只處理有變化的 candidates，不隨等待數增加。
 
 ## 獨立 review 結果與處理
 
@@ -35,6 +35,17 @@ Review 由另一個 agent 以對抗方式進行（H-003），未修改 repo。�
 | P5 | `EntityID` 對已離開的 entity 會 nil dereference | 待決 | 回 "" | `TestKernelEdges` 舊版 panic |
 | P6 | RunReplication 不檢查 index < replications | 待決 | 回 `ErrInternal`；測試同步宣告足夠的 replications | `TestKernelEdges` |
 
+## 複核（2026-10-15，同一 reviewer，commit a42f47c）
+
+結論 **ACCEPT**：新程式沒有 CONFIRMED 缺陷，報告正確。reviewer 把 19540b6 的逐筆掃描 kernel 改名放進測試，對新 kernel 做 differential：約 40,000 個隨機模型（含 ≤1000 個 resources、bundle ≤100、多 unit、零時間 service／delay、queue 與直通同一 buffer）的 observation stream（去掉 resource level 後）、每個事件結束時的 level 與 outcome 完全相同；本報告所列數字（120 RUN、3,000 個模型、mutation、red log 內容）逐項重現。兩個不阻擋的後續項目已先紅後綠處理：
+
+| # | 發現 | 處理 | 證據 |
+|---|---|---|---|
+| L1 | resource queue 的 compaction 沒有測試；拿掉它整套測試仍過，永不清空的 queue 會隨推入總數成長 | 補 `TestResourceQueueStaysCompact`（2M events、300 個常駐等待） | 拿掉 compaction 的 mutant：backing array 726,016；正式版 ≤4096；mutant `no-queue-compaction` 被擋 |
+| L2 | 每次 dispatch 都把所有 held candidates 取出再放回；review 的最壞情況（480 個 held）為 140.3 examined／event、16.8 µs／event，10M events 需 2m46s，離 300 s 的 wall timeout 不遠 | held candidate 只在它的某個 resource 被釋放時才放回 candidates | `TestHeldCandidatesWaitForARelease` 舊版 28.9／event 失敗；同一 probe 改為 0.3 examined／event、0.23 µs／event（`held-cost-after.log`）；differential 另跑 10,012 個模型完全相同（`differential.log`） |
+
+另依複核更正措辭：並行決定性只在每第三個隨機模型上檢查。
+
 ## 實際執行結果（review 修正後）
 
 | 指令 | Exit | 說明 |
@@ -42,10 +53,11 @@ Review 由另一個 agent 以對抗方式進行（H-003），未修改 repo。�
 | `make spec-check` | 0 | |
 | `make backend-test` / `backend-race` / `backend-build` | 0 / 0 / 0 | |
 | `REQUIRE_GOAMD64_V3=1 make backend-numeric` | 0 | |
-| `go test -count=1 -v ./internal/simulation/engine/` | 0 | 120 個 RUN（Test、subtest 與 10 個 fuzz seed），全部 PASS（`engine-tests.log`） |
-| `TestRandomModelsAgainstSpec` 以 overlay 放大到 3,000 個模型 | 0 | 2,225 個可編譯；142,249 次授予、133,398 次 dispatch 全部與規格原文一致，最多 206 個同時等待 |
-| Fuzz `FuzzKernel` 60 s | 0 | 1,062,442 次 |
-| Kernel mutation（`checks/evidence/2026-10-15-T-021/kernel-mutants.py`，已更新） | 0 | **43/43 被擋，2 個 equivalent**（`record-invariant-unchecked`、`fifo-pop-unchecked`：不變量檢查，只有另一個 bug 能觸發；腳本中說明） |
+| `go test -count=1 -v ./internal/simulation/engine/` | 0 | 122 個 RUN（Test、subtest 與 10 個 fuzz seed），全部 PASS（`engine-tests.log`） |
+| `TestRandomModelsAgainstSpec` 以 overlay 放大到 3,000 個模型 | 0 | 2,225 個可編譯；142,249 次授予、133,398 次 dispatch 全部與規格原文一致，最多 206 個同時等待（L2 修正前） |
+| Reviewer 的 differential（舊逐筆掃描 kernel 對新 kernel，L2 修正後） | 0 | 三組設定共 10,012 個可編譯模型、7.2M events、1.85M 次授予，observation stream 完全相同 |
+| Fuzz `FuzzKernel` 60 s（L2 後另跑 45 s） | 0 | 1,062,442 次；L2 後 740,198 次 |
+| Kernel mutation（`checks/evidence/2026-10-15-T-021/kernel-mutants.py`，已更新） | 0 | **46/46 被擋，2 個 equivalent**（`record-invariant-unchecked`、`fifo-pop-unchecked`：不變量檢查，只有另一個 bug 能觸發；腳本中說明）；含 L1／L2 的 `no-queue-compaction`、`held-never-woken`、`held-woken-twice`、`held-not-marked` |
 | T-020 engine mutation | 0 | 51/51＋1 equivalent |
 | GitHub Actions | 推送後補記 | 首版 19540b6 的 run 38786963032 為 4/4 成功 |
 
@@ -54,13 +66,13 @@ Review 由另一個 agent 以對抗方式進行（H-003），未修改 repo。�
 | 測試 | 驗證內容 | 對應 |
 |---|---|---|
 | `TestGoldenCases` | GOLDEN-001／002 與 `expected-cases.json` 手算值相差 ≤1e-12（相對） | TEST-015、TEST-016 |
-| `TestRandomModelsAgainstSpec`（observation-only 模型） | 每次 dispatch 授予的恰為規格原文規則的結果、tick 結束時沒有可授予卻在等的 request、回報的 in-use 逐筆與重建一致且在 [0, capacity]、每個事件後 entity 恰處一個狀態、時間不倒退、Created＝Exited＋Censored；同一 replication 並行執行結果相同 | TEST-018、TEST-019（kernel 部分） |
+| `TestRandomModelsAgainstSpec`（observation-only 模型） | 每次 dispatch 授予的恰為規格原文規則的結果、tick 結束時沒有可授予卻在等的 request、回報的 in-use 逐筆與重建一致且在 [0, capacity]、每個事件後 entity 恰處一個狀態、時間不倒退、Created＝Exited＋Censored；每第三個模型另檢查同一 replication 並行執行結果相同 | TEST-018、TEST-019（kernel 部分） |
 | `TestBundleAndResourceWiseFIFO`、`TestMultiUnitFIFO`、`TestGrantsStartInRequestOrder`、`TestGrantObservationsStepwise` | bundle 不部分佔用；多 unit 時 FIFO 擋住後來者；不相干者照常；授予依 request 順序並逐筆回報 | TEST-018 |
 | `TestSameTickReleaseBeforeArrival`、`TestDelayCompletesAfterServiceInATick`、`TestZeroTimeStepsKeepD032Order`、`TestSameTickRedispatch` | D-032：priority 0／10／20 的先後，含零時間步驟；零時間 service 後同 tick 再 dispatch | TEST-018 |
 | `TestRoutingDelayObservations`、`TestRoutingTolerance`、`TestQueueNodeRoutingAndVisits` | 100%／0% routing、固定 seed 分流、delay、failure／rework、abandoned sink、無 resource 的 process、decision 浮點兜底、顯式 queue 進入 process 的 buffer | TEST-016 |
 | `TestCensoring`、`TestHorizonEqualityInKernel` | horizon 時仍在系統內者為 censored；完成恰在 horizon 時計入，少 1 ms 則 censored | TEST-017（kernel 部分；warmup 屬 T-022） |
 | `TestKernelLimits`、`TestKernelLimitsAreExact`、`TestFailureAndReworkAreVisits`、`TestRunReplicationCheckpoints`、`TestKernelEdges` | 上限恰好可過、少 1 失敗並帶位置；RunReplication 內取消回 context 錯誤；小 budget 失敗；Events 等於 budget 使用量；index 超出 program 回錯 | TEST-021（limits、checkpoints 部分） |
-| `TestEntityRecordsAreReleased`、`TestDispatchWorkIsBounded` | 記憶體受 active entity 限制；dispatch 工作量不隨等待數增加 | T-020 review P2、T-021 review D1 |
+| `TestEntityRecordsAreReleased`、`TestResourceQueueStaysCompact`、`TestDispatchWorkIsBounded`、`TestHeldCandidatesWaitForARelease` | 記憶體受 active entity 限制、resource queue 不隨推入總數成長；dispatch 工作量不隨等待數或 held 數增加 | T-020 review P2、T-021 review D1、複核 L1／L2 |
 | `TestKernelDeterminism`、`TestStreamsUsedByPurpose`、`TestKernelObservationDigests` | 決定性、各用途的 stream、完整 observation stream 的 regression lock | TEST-019（kernel 部分） |
 
 recorder（`newRecorder`）只用在有傳入它的測試；`TestKernelLimits*`、`TestEntityRecordsAreReleased` 等以 nil observer 執行，狀態不變量由 `TestRandomModelsAgainstSpec` 的 observation-only 模型涵蓋。

@@ -3,7 +3,7 @@
 === RUN   TestCompileGoldenModels/congested-queue.json
 === RUN   TestCompileGoldenModels/default-delivery.json
 === RUN   TestCompileGoldenModels/report-example.json
---- PASS: TestCompileGoldenModels (0.03s)
+--- PASS: TestCompileGoldenModels (0.04s)
     --- PASS: TestCompileGoldenModels/deterministic-queue.json (0.03s)
     --- PASS: TestCompileGoldenModels/congested-queue.json (0.00s)
     --- PASS: TestCompileGoldenModels/default-delivery.json (0.00s)
@@ -19,19 +19,19 @@
     --- PASS: TestCompileDatasetIssuesSorted/no_datasets (0.00s)
     --- PASS: TestCompileDatasetIssuesSorted/wrong_sample_sets (0.00s)
 === RUN   TestCompileChecksManifest
-=== RUN   TestCompileChecksManifest/out_of_order
 === RUN   TestCompileChecksManifest/no_binding_for_the_model's_dataset
 === RUN   TestCompileChecksManifest/binding_differs_from_the_dataset
 === RUN   TestCompileChecksManifest/dataset_outside_the_manifest
 === RUN   TestCompileChecksManifest/schema-invalid_binding
 === RUN   TestCompileChecksManifest/bound_twice
+=== RUN   TestCompileChecksManifest/out_of_order
 --- PASS: TestCompileChecksManifest (0.01s)
-    --- PASS: TestCompileChecksManifest/out_of_order (0.00s)
     --- PASS: TestCompileChecksManifest/no_binding_for_the_model's_dataset (0.00s)
     --- PASS: TestCompileChecksManifest/binding_differs_from_the_dataset (0.00s)
     --- PASS: TestCompileChecksManifest/dataset_outside_the_manifest (0.00s)
     --- PASS: TestCompileChecksManifest/schema-invalid_binding (0.00s)
     --- PASS: TestCompileChecksManifest/bound_twice (0.00s)
+    --- PASS: TestCompileChecksManifest/out_of_order (0.00s)
 === RUN   TestCompileDatasetUnit
 --- PASS: TestCompileDatasetUnit (0.00s)
 === RUN   TestCompileRequirementsInResourceOrder
@@ -43,40 +43,40 @@
 === RUN   TestCompileRejects/sample_count
 === RUN   TestCompileRejects/sample_over_the_cap
 === RUN   TestCompileRejects/zero_sample_as_interarrival
-=== RUN   TestCompileRejects/unknown_trace_level
+=== RUN   TestCompileRejects/warmup_=_horizon
 === RUN   TestCompileRejects/no_replications
 === RUN   TestCompileRejects/warmup_over_365_d
-=== RUN   TestCompileRejects/negative_seed
-=== RUN   TestCompileRejects/event_cap_over_limit
-=== RUN   TestCompileRejects/no_limits
-=== RUN   TestCompileRejects/warmup_=_horizon
-=== RUN   TestCompileRejects/horizon_over_365_d
 === RUN   TestCompileRejects/NaN_horizon
---- PASS: TestCompileRejects (0.01s)
+=== RUN   TestCompileRejects/negative_seed
+=== RUN   TestCompileRejects/no_limits
+=== RUN   TestCompileRejects/horizon_over_365_d
+=== RUN   TestCompileRejects/unknown_trace_level
+=== RUN   TestCompileRejects/event_cap_over_limit
+--- PASS: TestCompileRejects (0.02s)
     --- PASS: TestCompileRejects/invalid_IR (0.00s)
     --- PASS: TestCompileRejects/missing_dataset (0.00s)
     --- PASS: TestCompileRejects/dataset_for_another_ref (0.00s)
     --- PASS: TestCompileRejects/sample_count (0.00s)
     --- PASS: TestCompileRejects/sample_over_the_cap (0.00s)
     --- PASS: TestCompileRejects/zero_sample_as_interarrival (0.00s)
-    --- PASS: TestCompileRejects/unknown_trace_level (0.00s)
+    --- PASS: TestCompileRejects/warmup_=_horizon (0.00s)
     --- PASS: TestCompileRejects/no_replications (0.00s)
     --- PASS: TestCompileRejects/warmup_over_365_d (0.00s)
-    --- PASS: TestCompileRejects/negative_seed (0.00s)
-    --- PASS: TestCompileRejects/event_cap_over_limit (0.00s)
-    --- PASS: TestCompileRejects/no_limits (0.00s)
-    --- PASS: TestCompileRejects/warmup_=_horizon (0.00s)
-    --- PASS: TestCompileRejects/horizon_over_365_d (0.00s)
     --- PASS: TestCompileRejects/NaN_horizon (0.00s)
+    --- PASS: TestCompileRejects/negative_seed (0.00s)
+    --- PASS: TestCompileRejects/no_limits (0.00s)
+    --- PASS: TestCompileRejects/horizon_over_365_d (0.00s)
+    --- PASS: TestCompileRejects/unknown_trace_level (0.00s)
+    --- PASS: TestCompileRejects/event_cap_over_limit (0.00s)
 === RUN   TestCompileDoesNotAlias
 --- PASS: TestCompileDoesNotAlias (0.00s)
 === RUN   TestEngineDependencies
---- PASS: TestEngineDependencies (0.14s)
+--- PASS: TestEngineDependencies (0.12s)
 === RUN   TestCompileZeroTimeCycleFromDataset
 --- PASS: TestCompileZeroTimeCycleFromDataset (0.00s)
 === RUN   TestRandomModelsAgainstSpec
     kernel_check_test.go:440: 224 of 300 random models compiled; 15203 grants in 14022 dispatches, up to 153 waiting
---- PASS: TestRandomModelsAgainstSpec (0.55s)
+--- PASS: TestRandomModelsAgainstSpec (0.52s)
 === RUN   TestGoldenCases
 === RUN   TestGoldenCases/GOLDEN-001
 === RUN   TestGoldenCases/GOLDEN-002
@@ -88,7 +88,7 @@
 === RUN   TestSameTickReleaseBeforeArrival
 --- PASS: TestSameTickReleaseBeforeArrival (0.00s)
 === RUN   TestRoutingDelayObservations
---- PASS: TestRoutingDelayObservations (0.15s)
+--- PASS: TestRoutingDelayObservations (0.12s)
 === RUN   TestCensoring
 --- PASS: TestCensoring (0.00s)
 === RUN   TestKernelLimits
@@ -102,7 +102,7 @@
 === RUN   TestGrantsStartInRequestOrder
 --- PASS: TestGrantsStartInRequestOrder (0.00s)
 === RUN   TestEntityRecordsAreReleased
---- PASS: TestEntityRecordsAreReleased (0.14s)
+--- PASS: TestEntityRecordsAreReleased (0.13s)
 === RUN   TestRoutingTolerance
 --- PASS: TestRoutingTolerance (0.01s)
 === RUN   TestKernelLimitsAreExact
@@ -129,6 +129,10 @@
 --- PASS: TestKernelEdges (0.00s)
 === RUN   TestKernelObservationDigests
 --- PASS: TestKernelObservationDigests (0.01s)
+=== RUN   TestResourceQueueStaysCompact
+--- PASS: TestResourceQueueStaysCompact (0.50s)
+=== RUN   TestHeldCandidatesWaitForARelease
+--- PASS: TestHeldCandidatesWaitForARelease (0.09s)
 === RUN   TestArrivalVector
 --- PASS: TestArrivalVector (0.00s)
 === RUN   TestDeterministicArrivals
@@ -186,7 +190,7 @@
 === RUN   TestSamplerDigests/empirical
 --- PASS: TestSamplerDigests (0.04s)
     --- PASS: TestSamplerDigests/constant_draws_nothing (0.00s)
-    --- PASS: TestSamplerDigests/exponential_template_interarrival (0.01s)
+    --- PASS: TestSamplerDigests/exponential_template_interarrival (0.00s)
     --- PASS: TestSamplerDigests/exponential_sub-tick_mean_clamps_to_1 (0.00s)
     --- PASS: TestSamplerDigests/exponential_underflow_is_still_1_tick (0.01s)
     --- PASS: TestSamplerDigests/exponential_tail_beyond_the_cap (0.01s)
@@ -196,11 +200,11 @@
     --- PASS: TestSamplerDigests/triangular_degenerate_draws_nothing (0.00s)
     --- PASS: TestSamplerDigests/empirical (0.00s)
 === RUN   TestLogProfile
---- PASS: TestLogProfile (0.03s)
+--- PASS: TestLogProfile (0.04s)
 === RUN   TestLogAccuracy
---- PASS: TestLogAccuracy (0.08s)
+--- PASS: TestLogAccuracy (0.10s)
 === RUN   TestTriangularStaysInRange
---- PASS: TestTriangularStaysInRange (0.05s)
+--- PASS: TestTriangularStaysInRange (0.04s)
 === RUN   TestQuantizeMatchesTicks
 --- PASS: TestQuantizeMatchesTicks (0.02s)
 === RUN   TestSamplerBounds
@@ -234,10 +238,10 @@
 === RUN   FuzzCompileAndArrive/seed#1
 === RUN   FuzzCompileAndArrive/seed#2
 === RUN   FuzzCompileAndArrive/seed#3
---- PASS: FuzzCompileAndArrive (0.01s)
+--- PASS: FuzzCompileAndArrive (0.00s)
     --- PASS: FuzzCompileAndArrive/seed#0 (0.00s)
     --- PASS: FuzzCompileAndArrive/seed#1 (0.00s)
     --- PASS: FuzzCompileAndArrive/seed#2 (0.00s)
     --- PASS: FuzzCompileAndArrive/seed#3 (0.00s)
 PASS
-ok  	github.com/kcl1104/geminus/internal/simulation/engine	1.458s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	1.982s

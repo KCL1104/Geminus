@@ -10,3 +10,5 @@ python3 ../2026-10-15-T-021/kernel-mutants.py	0	mutation.log
 python3 ../2026-10-15-T-020-review/engine-mutants.py	0	engine-mutants-t020.log
 checker on 3000 random models (overlay n=3000)	0	checker-3000-models.log
 dispatch cost probe (overlay)	0	dispatch-cost-after.log
+differential vs the 19540b6 literal-scan kernel (review-t021/r2 overlay)	0	differential-after-L2.log
+held-candidate cost probe before/after L2	0	held-cost-before.log, held-cost-after.log

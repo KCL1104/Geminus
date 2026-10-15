@@ -5,6 +5,6 @@ PASS no fused multiply-add or platform math call: ppc64le
 PASS no fused multiply-add or platform math call: s390x
 PASS no fused multiply-add or platform math call: riscv64
 PASS no fused multiply-add or platform math call: loong64
-ok  	github.com/kcl1104/geminus/internal/simulation	0.106s
-ok  	github.com/kcl1104/geminus/internal/simulation/engine	1.426s
+ok  	github.com/kcl1104/geminus/internal/simulation	0.092s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	2.432s
 PASS numeric tests as a GOAMD64=v3 build

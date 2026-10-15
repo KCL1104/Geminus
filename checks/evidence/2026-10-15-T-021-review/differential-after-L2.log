@@ -1,0 +1,6 @@
+    rv2_probe_test.go:220: models 6000 compiled 4991 compared 4991 (skipped for visit limits 0); 3568299 events, 896963 grants, up to 617 waiting
+--- PASS: TestRV2Differential (24.86s)
+    rv2_probe_test.go:220: models 4000 compiled 3357 compared 3357 (skipped for visit limits 0); 2542147 events, 697985 grants, up to 589 waiting
+--- PASS: TestRV2Differential (15.00s)
+    rv2_probe_test.go:220: models 2000 compiled 1664 compared 1664 (skipped for visit limits 0); 1125372 events, 255300 grants, up to 728 waiting
+--- PASS: TestRV2Differential (11.48s)
