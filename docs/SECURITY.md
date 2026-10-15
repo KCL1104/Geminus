@@ -46,7 +46,7 @@ streaming upload 限 bytes/rows、parser depth、columns、field length、memory
 
 error report 的 spreadsheet 可執行字首（例如 =、+、-、@）需安全輸出，避免下載開啟時執行公式；這是 derived error report，不改原始 immutable data。顯示所有 model labels / CSV cell / LLM text 都做 escaping，render markdown 不准任意 HTML。
 
-object keys 固定 tenant/{organization_id}/imports、simulation-results、assets 前綴；client 用 resource ID 要求下載，不能 supply arbitrary bucket/key/URL。server 授權後產短期 signed URL；URL 不進 audit metadata、telemetry 或 provider context。expiry / encryption key management / retention / backup policy beta 前決定，無 policy 不開放真實客戶資料。
+object keys 固定 tenant/{organization_id}/imports、simulation-results、assets 前綴（DB 以 `starts_with` 檢查並拒 `..`、`//`、反斜線與控制字元，不用 LIKE：organization ID 的 `_` 是 LIKE 萬用字元，D-035）；client 用 resource ID 要求下載，不能 supply arbitrary bucket/key/URL。server 授權後產短期 signed URL；URL 不進 audit metadata、telemetry 或 provider context。expiry / encryption key management / retention / backup policy beta 前決定，無 policy 不開放真實客戶資料。
 
 ## 7. AI data governance
 

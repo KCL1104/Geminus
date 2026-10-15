@@ -4,8 +4,8 @@ PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 GO_PKGS := ./cmd/... ./internal/... ./schemas/...
 WEB := apps/web
 export NEXT_TELEMETRY_DISABLED := 1
-.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes ts-contracts backend-test backend-race backend-build frontend-test frontend-build db-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
-spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes
+.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build frontend-test frontend-build db-test db-go-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
+spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests
 spec-contracts:
 	$(PYTHON) scripts/check_contracts.py
 spec-planning:
@@ -26,6 +26,11 @@ ts-contracts:
 # Independent (Python rfc8785) hashes that internal/model/hashing must match.
 spec-hashes:
 	$(PYTHON) scripts/check_hashes.py
+# db/tests/*.sql are rendered from db/tests/templates; regenerate with `make db-tests-render`.
+spec-db-tests:
+	$(PYTHON) scripts/render_db_tests.py --check
+db-tests-render:
+	$(PYTHON) scripts/render_db_tests.py
 backend-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included in this spec pack.' >&2; exit 2; }
 	@unformatted=$$(gofmt -l cmd internal schemas); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
@@ -47,6 +52,10 @@ frontend-build:
 	npm --prefix $(WEB) run build
 db-test:
 	bash scripts/run_db_tests.sh
+# Go integration tests against the database `make db-test` left migrated; a skip is a failure here.
+db-go-test:
+	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL to the disposable dt_test_* database used by make db-test.' >&2; exit 2; }
+	GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 -race ./internal/storage/postgres/...
 integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

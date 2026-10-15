@@ -315,7 +315,7 @@
       "id": "T-006",
       "title": "Core migration 與 repository foundation",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Platform",
       "planning_window": "Week 1–3",
       "depends_on": [
@@ -362,7 +362,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-006_VALIDATION.md",
+          "summary": "Per-kind ULID ID domains（D-001）、object_key_ok 取代 LIKE（D-035／CB-14）、COLLATE \"C\" manifest 與 logical_ref domain（D-034／CB-15，首次在 ICU en-US 實測重現）、risk = max(server, claim)（D-027）、TRUNCATE guard；先紅（25 FAILED）後綠；db-test 於 C 與 ICU 皆通過；internal/storage/postgres（pgx v5.11.0）Tx／Classify 與整合測試；SQL mutation 18/18、Go mutation 9/9（各 1 個 documented equivalent）；14 個驗證指令 exit 0。Runtime login 與 pool 隔離屬 T-007（NOT RUN）。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-007",

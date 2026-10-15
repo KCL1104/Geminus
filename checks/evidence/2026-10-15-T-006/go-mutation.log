@@ -1,0 +1,11 @@
+commit-on-error	KILLED	--- FAIL: TestTxCommitRollbackPanic (0.02s)
+no-rollback-on-panic	KILLED	
+swallow-panic	KILLED	--- FAIL: TestTxCommitRollbackPanic (0.03s)
+rollback-with-cancelled-ctx(equivalent)	SURVIVED	
+commit-error-unclassified	KILLED	--- FAIL: TestGuardsAreClassified (0.02s)
+detail-in-message	KILLED	--- FAIL: TestClassify (0.00s)
+unclassed-keeps-message	KILLED	--- FAIL: TestClassify (0.00s)
+immutable-as-constraint	KILLED	--- FAIL: TestClassify (0.00s)
+rls-as-reference	KILLED	--- FAIL: TestClassify (0.00s)
+lose-cancellation	KILLED	--- FAIL: TestClassify (0.00s)
+9/9 non-equivalent mutants killed; 1 documented equivalent

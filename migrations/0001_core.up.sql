@@ -1,54 +1,91 @@
--- Candidate migration, not production-approved. Source: report pp.36–37,42–43.
--- PROPOSED D-001,D-003,D-004,D-006,D-008–D-014.
+-- Core schema. Source: report pp.36–37,42–43; D-001, D-013, D-027, D-034, D-035 (approved).
+-- Still a draft until T-006 review: only disposable dt_test_* databases have run it.
+-- From T-006 on, a migration applied to any persistent environment is never edited;
+-- changes go into a new numbered migration.
 -- Prerequisite: db/bootstrap_roles.sql; caller may SET ROLE twin_owner.
 BEGIN;
 CREATE SCHEMA twin AUTHORIZATION twin_owner;
 SET LOCAL ROLE twin_owner;
 REVOKE ALL ON SCHEMA twin FROM PUBLIC;
-CREATE DOMAIN twin.public_id AS text
-  CHECK (VALUE ~ '^[A-Za-z][A-Za-z0-9_.:-]{0,127}$');
+-- D-001: server IDs are <prefix>_<ULID>: 26 Crockford base32 characters, the
+-- first 0-7 (a 128-bit value). One domain per kind, so a column cannot hold an
+-- ID of another kind; public_id accepts any kind (audit targets).
+CREATE DOMAIN twin.org_id AS text CHECK (VALUE ~ '^org_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.usr_id AS text CHECK (VALUE ~ '^usr_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.prj_id AS text CHECK (VALUE ~ '^prj_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.mdl_id AS text CHECK (VALUE ~ '^mdl_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.mv_id AS text CHECK (VALUE ~ '^mv_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.ds_id AS text CHECK (VALUE ~ '^ds_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.dsv_id AS text CHECK (VALUE ~ '^dsv_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.imp_id AS text CHECK (VALUE ~ '^imp_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.aip_id AS text CHECK (VALUE ~ '^aip_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.scn_id AS text CHECK (VALUE ~ '^scn_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.sim_id AS text CHECK (VALUE ~ '^sim_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.ana_id AS text CHECK (VALUE ~ '^ana_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.job_id AS text CHECK (VALUE ~ '^job_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.aud_id AS text CHECK (VALUE ~ '^aud_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.req_id AS text CHECK (VALUE ~ '^req_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.art_id AS text CHECK (VALUE ~ '^art_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+CREATE DOMAIN twin.public_id AS text CHECK (VALUE ~ '^(org|usr|prj|mdl|mv|ds|dsv|imp|aip|scn|sim|ana|job|aud|req|art)_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+-- Audit actors: user actors are usr_ IDs (checked on audit_events); the
+-- worker/system identity format is open until T-035.
+CREATE DOMAIN twin.actor_ref AS text CHECK (VALUE ~ '^[A-Za-z][A-Za-z0-9_.:-]{0,127}$');
 CREATE DOMAIN twin.sha256 AS text
   CHECK (VALUE ~ '^sha256:[0-9a-f]{64}$');
+-- D-035 / CB-14: object keys start with an exact prefix (starts_with; LIKE
+-- would treat the '_' in organization IDs as a wildcard) and contain no
+-- traversal, empty segment, backslash or control character.
+CREATE FUNCTION twin.object_key_ok(object_key text, prefix text) RETURNS boolean
+  LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
+  RETURN starts_with(object_key, prefix) AND length(object_key) > length(prefix)
+    AND length(object_key) <= 1024 AND strpos(object_key, '..') = 0
+    AND strpos(object_key, '//') = 0 AND strpos(object_key, E'\\') = 0
+    AND object_key !~ '[[:cntrl:]]';
+-- D-034: logical refs are ASCII, so byte order and every collation agree on equality.
+CREATE DOMAIN twin.logical_ref AS text
+  CHECK (length(VALUE) <= 256 AND VALUE ~ '^dataset:[a-z0-9_.-]+$');
+CREATE DOMAIN twin.time_unit AS text
+  CHECK (VALUE IN ('millisecond','second','minute','hour','day'));
 
 CREATE TABLE twin.users (
-  id twin.public_id PRIMARY KEY,
+  id twin.usr_id PRIMARY KEY,
   oidc_issuer text NOT NULL,
   oidc_subject text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (oidc_issuer, oidc_subject)
 );
 CREATE TABLE twin.organizations (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL UNIQUE,
+  id twin.org_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL UNIQUE,
   name text NOT NULL CHECK (length(name) BETWEEN 1 AND 200),
   created_at timestamptz NOT NULL DEFAULT now(),
   CHECK (id=organization_id)
 );
 CREATE TABLE twin.memberships (
-  organization_id twin.public_id NOT NULL REFERENCES twin.organizations(id),
-  user_id twin.public_id NOT NULL REFERENCES twin.users(id),
+  organization_id twin.org_id NOT NULL REFERENCES twin.organizations(id),
+  user_id twin.usr_id NOT NULL REFERENCES twin.users(id),
   role text NOT NULL CHECK (role IN ('owner','editor','viewer')),
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (organization_id,user_id)
 );
 CREATE INDEX memberships_user_idx ON twin.memberships(user_id,organization_id);
 CREATE TABLE twin.projects (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL REFERENCES twin.organizations(id),
+  id twin.prj_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL REFERENCES twin.organizations(id),
   name text NOT NULL CHECK (length(name) BETWEEN 1 AND 200),
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id)
 );
 CREATE INDEX projects_org_created_idx ON twin.projects(organization_id,created_at,id);
 CREATE TABLE twin.models (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL REFERENCES twin.organizations(id),
-  project_id twin.public_id NOT NULL,
+  id twin.mdl_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL REFERENCES twin.organizations(id),
+  project_id twin.prj_id NOT NULL,
   name text NOT NULL CHECK (length(name) BETWEEN 1 AND 200),
   domain text NOT NULL,
-  latest_version_id twin.public_id,
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  latest_version_id twin.mv_id,
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id),
@@ -57,17 +94,17 @@ CREATE TABLE twin.models (
 );
 CREATE INDEX models_project_idx ON twin.models(organization_id,project_id,created_at,id);
 CREATE TABLE twin.model_versions (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
-  model_id twin.public_id NOT NULL,
+  id twin.mv_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
+  model_id twin.mdl_id NOT NULL,
   version integer NOT NULL CHECK (version>0),
   schema_version text NOT NULL CHECK (schema_version='0.1'),
-  parent_version_id twin.public_id,
-  source_proposal_id twin.public_id,
+  parent_version_id twin.mv_id,
+  source_proposal_id twin.aip_id,
   ir jsonb NOT NULL CHECK (jsonb_typeof(ir)='object'),
   hash twin.sha256 NOT NULL,
   dataset_bindings jsonb NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(dataset_bindings)='array'),
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id),
   UNIQUE (organization_id,model_id,id),
@@ -85,13 +122,13 @@ ALTER TABLE twin.models ADD CONSTRAINT models_latest_version_fk
   REFERENCES twin.model_versions(organization_id,model_id,id)
   DEFERRABLE INITIALLY DEFERRED;
 CREATE TABLE twin.model_drafts (
-  organization_id twin.public_id NOT NULL,
-  model_id twin.public_id NOT NULL,
-  base_version_id twin.public_id NOT NULL,
+  organization_id twin.org_id NOT NULL,
+  model_id twin.mdl_id NOT NULL,
+  base_version_id twin.mv_id NOT NULL,
   revision bigint NOT NULL CHECK (revision>0),
   ir jsonb NOT NULL CHECK (jsonb_typeof(ir)='object'),
   hash twin.sha256 NOT NULL,
-  updated_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  updated_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (organization_id,model_id),
   FOREIGN KEY (organization_id,model_id) REFERENCES twin.models(organization_id,id),
@@ -100,28 +137,28 @@ CREATE TABLE twin.model_drafts (
   CHECK (coalesce(ir->>'model_id'=model_id::text,false))
 );
 CREATE TABLE twin.datasets (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
-  project_id twin.public_id NOT NULL,
+  id twin.ds_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
+  project_id twin.prj_id NOT NULL,
   kind text NOT NULL CHECK (kind IN ('canonical_events','model_json','empirical_samples')),
   name text NOT NULL,
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id),
   FOREIGN KEY (organization_id,project_id) REFERENCES twin.projects(organization_id,id)
 );
 CREATE TABLE twin.dataset_versions (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
-  dataset_id twin.public_id NOT NULL,
+  id twin.dsv_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
+  dataset_id twin.ds_id NOT NULL,
   version integer NOT NULL CHECK (version>0),
-  parent_dataset_version_id twin.public_id,
+  parent_dataset_version_id twin.dsv_id,
   object_key text NOT NULL,
   content_hash twin.sha256 NOT NULL,
   content_type text NOT NULL,
   row_count bigint NOT NULL CHECK (row_count BETWEEN 0 AND 100000),
-  unit text CHECK (unit IN ('millisecond','second','minute','hour','day')),
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  unit twin.time_unit,
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id),
   UNIQUE (organization_id,id,content_hash),
@@ -129,17 +166,16 @@ CREATE TABLE twin.dataset_versions (
   FOREIGN KEY (organization_id,dataset_id) REFERENCES twin.datasets(organization_id,id),
   FOREIGN KEY (organization_id,parent_dataset_version_id)
     REFERENCES twin.dataset_versions(organization_id,id),
-  CHECK (object_key LIKE 'tenant/'||organization_id::text||'/%'),
-  CHECK (position('..' IN object_key)=0)
+  CHECK (twin.object_key_ok(object_key, 'tenant/'||organization_id||'/'))
 );
 CREATE TABLE twin.model_version_datasets (
-  organization_id twin.public_id NOT NULL,
-  model_id twin.public_id NOT NULL,
-  model_version_id twin.public_id NOT NULL,
-  logical_ref text NOT NULL CHECK (logical_ref LIKE 'dataset:%'),
-  dataset_version_id twin.public_id NOT NULL,
+  organization_id twin.org_id NOT NULL,
+  model_id twin.mdl_id NOT NULL,
+  model_version_id twin.mv_id NOT NULL,
+  logical_ref twin.logical_ref NOT NULL,
+  dataset_version_id twin.dsv_id NOT NULL,
   content_hash twin.sha256 NOT NULL,
-  unit text NOT NULL CHECK (unit IN ('millisecond','second','minute','hour','day')),
+  unit twin.time_unit NOT NULL,
   sample_count integer NOT NULL CHECK (sample_count BETWEEN 1 AND 100000),
   PRIMARY KEY (organization_id,model_version_id,logical_ref),
   FOREIGN KEY (organization_id,model_id,model_version_id)
@@ -148,11 +184,11 @@ CREATE TABLE twin.model_version_datasets (
     REFERENCES twin.dataset_versions(organization_id,id,content_hash)
 );
 CREATE TABLE twin.imports (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
-  project_id twin.public_id NOT NULL,
-  model_id twin.public_id NOT NULL,
-  base_version_id twin.public_id NOT NULL,
+  id twin.imp_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
+  project_id twin.prj_id NOT NULL,
+  model_id twin.mdl_id NOT NULL,
+  base_version_id twin.mv_id NOT NULL,
   kind text NOT NULL CHECK (kind IN ('csv_events','json_events','json_model')),
   filename text NOT NULL,
   upload_object_key text NOT NULL,
@@ -170,9 +206,9 @@ CREATE TABLE twin.imports (
   validation jsonb,
   error jsonb,
   error_report_object_key text,
-  dataset_version_id twin.public_id,
-  proposal_id twin.public_id,
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  dataset_version_id twin.dsv_id,
+  proposal_id twin.aip_id,
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id),
   UNIQUE (organization_id,model_id,id),
@@ -182,17 +218,17 @@ CREATE TABLE twin.imports (
     REFERENCES twin.model_versions(organization_id,model_id,id),
   FOREIGN KEY (organization_id,dataset_version_id)
     REFERENCES twin.dataset_versions(organization_id,id),
-  CHECK (upload_object_key LIKE 'tenant/'||organization_id::text||'/imports/%'),
-  CHECK (error_report_object_key IS NULL OR error_report_object_key LIKE 'tenant/'||organization_id::text||'/imports/%'),
+  CHECK (twin.object_key_ok(upload_object_key, 'tenant/'||organization_id||'/imports/')),
+  CHECK (error_report_object_key IS NULL OR twin.object_key_ok(error_report_object_key, 'tenant/'||organization_id||'/imports/')),
   CHECK (invalid_rows<=total_rows),
   CHECK (status<>'COMMITTED' OR (dataset_version_id IS NOT NULL AND proposal_id IS NOT NULL AND invalid_rows=0))
 );
 CREATE TABLE twin.ai_proposals (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
-  model_id twin.public_id NOT NULL,
-  base_version_id twin.public_id NOT NULL,
-  source_import_id twin.public_id,
+  id twin.aip_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
+  model_id twin.mdl_id NOT NULL,
+  base_version_id twin.mv_id NOT NULL,
+  source_import_id twin.imp_id,
   mode text NOT NULL CHECK (mode IN ('edit','scenario')),
   status text NOT NULL CHECK (status IN ('generating','needs_input','ready','invalid','failed','approved','rejected','conflicted')),
   intent text NOT NULL,
@@ -203,17 +239,21 @@ CREATE TABLE twin.ai_proposals (
   candidate_dataset_bindings jsonb NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(candidate_dataset_bindings)='array'),
   expected_effects jsonb NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(expected_effects)='array'),
   questions jsonb NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(questions)='array'),
+  -- D-027: the provider's risk is an untrusted claim; the effective level is
+  -- max(server, claim), so a model can raise risk but never lower it.
+  server_risk_level text CHECK (server_risk_level IN ('low','medium','high')),
+  provider_risk_claim text CHECK (provider_risk_claim IN ('low','medium','high')),
   risk_level text CHECK (risk_level IN ('low','medium','high')),
   confidence double precision CHECK (confidence>=0 AND confidence<=1),
   requires_confirmation boolean NOT NULL DEFAULT true CHECK (requires_confirmation),
   validation jsonb,
   provider_metadata jsonb NOT NULL DEFAULT '{}',
   error jsonb,
-  new_version_id twin.public_id,
-  scenario_id twin.public_id,
-  decided_by twin.public_id REFERENCES twin.users(id),
+  new_version_id twin.mv_id,
+  scenario_id twin.scn_id,
+  decided_by twin.usr_id REFERENCES twin.users(id),
   decided_at timestamptz,
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id),
   UNIQUE (organization_id,model_id,id),
@@ -230,7 +270,12 @@ CREATE TABLE twin.ai_proposals (
     (decided_by IS NOT NULL AND decided_at IS NOT NULL AND
      ((mode='edit' AND new_version_id IS NOT NULL AND scenario_id IS NULL) OR
       (mode='scenario' AND scenario_id IS NOT NULL AND new_version_id IS NULL)))),
-  CHECK (status='approved' OR (new_version_id IS NULL AND scenario_id IS NULL))
+  CHECK (status='approved' OR (new_version_id IS NULL AND scenario_id IS NULL)),
+  CHECK (risk_level IS NULL OR (server_risk_level IS NOT NULL AND provider_risk_claim IS NOT NULL AND
+    risk_level = CASE WHEN 'high' IN (server_risk_level, provider_risk_claim) THEN 'high'
+                      WHEN 'medium' IN (server_risk_level, provider_risk_claim) THEN 'medium'
+                      ELSE 'low' END)),
+  CHECK (server_risk_level IS NULL OR risk_level IS NOT NULL)
 );
 ALTER TABLE twin.model_versions ADD CONSTRAINT versions_source_proposal_fk
   FOREIGN KEY (organization_id,model_id,source_proposal_id)
@@ -240,15 +285,15 @@ ALTER TABLE twin.imports ADD CONSTRAINT imports_proposal_fk
   REFERENCES twin.ai_proposals(organization_id,model_id,id);
 CREATE INDEX ai_proposals_model_idx ON twin.ai_proposals(organization_id,model_id,created_at,id);
 CREATE TABLE twin.scenarios (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
-  model_id twin.public_id NOT NULL,
-  base_version_id twin.public_id NOT NULL,
+  id twin.scn_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
+  model_id twin.mdl_id NOT NULL,
+  base_version_id twin.mv_id NOT NULL,
   name text NOT NULL,
   patch jsonb NOT NULL CHECK (jsonb_typeof(patch)='array'),
   patch_hash twin.sha256 NOT NULL,
-  source_proposal_id twin.public_id,
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  source_proposal_id twin.aip_id,
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id),
   UNIQUE (organization_id,model_id,id),
@@ -263,11 +308,11 @@ ALTER TABLE twin.ai_proposals ADD CONSTRAINT proposals_scenario_fk
   FOREIGN KEY (organization_id,model_id,base_version_id,scenario_id)
   REFERENCES twin.scenarios(organization_id,model_id,base_version_id,id);
 CREATE TABLE twin.simulation_runs (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
-  model_id twin.public_id NOT NULL,
-  model_version_id twin.public_id NOT NULL,
-  scenario_id twin.public_id,
+  id twin.sim_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
+  model_id twin.mdl_id NOT NULL,
+  model_version_id twin.mv_id NOT NULL,
+  scenario_id twin.scn_id,
   name text NOT NULL,
   scenario_patch jsonb NOT NULL CHECK (jsonb_typeof(scenario_patch)='array'),
   config jsonb NOT NULL CHECK (jsonb_typeof(config)='object'),
@@ -288,7 +333,7 @@ CREATE TABLE twin.simulation_runs (
   progress_revision bigint NOT NULL DEFAULT 0 CHECK (progress_revision>=0),
   cancellation_requested boolean NOT NULL DEFAULT false,
   error jsonb,
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   started_at timestamptz,
   finished_at timestamptz,
@@ -307,43 +352,43 @@ CREATE TABLE twin.simulation_runs (
 );
 CREATE INDEX simulation_runs_model_idx ON twin.simulation_runs(organization_id,model_id,created_at,id);
 CREATE TABLE twin.run_datasets (
-  organization_id twin.public_id NOT NULL,
-  run_id twin.public_id NOT NULL,
-  logical_ref text NOT NULL,
-  dataset_version_id twin.public_id NOT NULL,
+  organization_id twin.org_id NOT NULL,
+  run_id twin.sim_id NOT NULL,
+  logical_ref twin.logical_ref NOT NULL,
+  dataset_version_id twin.dsv_id NOT NULL,
   content_hash twin.sha256 NOT NULL,
-  unit text NOT NULL,
-  sample_count integer NOT NULL CHECK (sample_count>0),
+  unit twin.time_unit NOT NULL,
+  sample_count integer NOT NULL CHECK (sample_count BETWEEN 1 AND 100000),
   PRIMARY KEY (organization_id,run_id,logical_ref),
   FOREIGN KEY (organization_id,run_id) REFERENCES twin.simulation_runs(organization_id,id),
   FOREIGN KEY (organization_id,dataset_version_id,content_hash)
     REFERENCES twin.dataset_versions(organization_id,id,content_hash)
 );
 CREATE TABLE twin.simulation_results (
-  run_id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
+  run_id twin.sim_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
   result jsonb NOT NULL CHECK (jsonb_typeof(result)='object'),
   result_digest twin.sha256 NOT NULL,
-  trace_artifact_id twin.public_id,
+  trace_artifact_id twin.art_id,
   trace_object_key text,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,run_id),
   FOREIGN KEY (organization_id,run_id) REFERENCES twin.simulation_runs(organization_id,id),
   CHECK (coalesce(result->>'run_id'=run_id::text,false)),
   CHECK (coalesce(result->>'status'='completed',false)),
-  CHECK (trace_object_key IS NULL OR trace_object_key LIKE 'tenant/'||organization_id::text||'/simulation-results/%')
+  CHECK (trace_object_key IS NULL OR twin.object_key_ok(trace_object_key, 'tenant/'||organization_id||'/simulation-results/'))
 );
 CREATE TABLE twin.ai_analyses (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL,
-  run_id twin.public_id NOT NULL,
-  baseline_run_id twin.public_id,
+  id twin.ana_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL,
+  run_id twin.sim_id NOT NULL,
+  baseline_run_id twin.sim_id,
   status text NOT NULL CHECK (status IN ('generating','completed','failed')),
   question text,
   analysis jsonb,
   provider_metadata jsonb NOT NULL DEFAULT '{}',
   error jsonb,
-  created_by twin.public_id NOT NULL REFERENCES twin.users(id),
+  created_by twin.usr_id NOT NULL REFERENCES twin.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (organization_id,id),
   FOREIGN KEY (organization_id,run_id) REFERENCES twin.simulation_runs(organization_id,id),
@@ -351,15 +396,15 @@ CREATE TABLE twin.ai_analyses (
   CHECK (status<>'completed' OR analysis IS NOT NULL)
 );
 CREATE TABLE twin.jobs (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL REFERENCES twin.organizations(id),
+  id twin.job_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL REFERENCES twin.organizations(id),
   type text NOT NULL CHECK (type IN ('simulation','model_proposal','import_profile','import_validate','import_mapping','analysis')),
   status text NOT NULL CHECK (status IN ('queued','running','completed','failed','cancelled')),
   payload jsonb NOT NULL CHECK (jsonb_typeof(payload)='object'),
-  simulation_run_id twin.public_id,
-  ai_proposal_id twin.public_id,
-  import_id twin.public_id,
-  ai_analysis_id twin.public_id,
+  simulation_run_id twin.sim_id,
+  ai_proposal_id twin.aip_id,
+  import_id twin.imp_id,
+  ai_analysis_id twin.ana_id,
   priority integer NOT NULL DEFAULT 0,
   attempt integer NOT NULL DEFAULT 0 CHECK (attempt>=0),
   max_attempts integer NOT NULL DEFAULT 3 CHECK (max_attempts BETWEEN 1 AND 10),
@@ -390,8 +435,8 @@ CREATE UNIQUE INDEX jobs_one_simulation ON twin.jobs(organization_id,simulation_
 CREATE UNIQUE INDEX jobs_one_proposal ON twin.jobs(organization_id,ai_proposal_id) WHERE ai_proposal_id IS NOT NULL;
 CREATE UNIQUE INDEX jobs_one_analysis ON twin.jobs(organization_id,ai_analysis_id) WHERE ai_analysis_id IS NOT NULL;
 CREATE TABLE twin.idempotency_keys (
-  organization_id twin.public_id NOT NULL REFERENCES twin.organizations(id),
-  actor_id twin.public_id NOT NULL REFERENCES twin.users(id),
+  organization_id twin.org_id NOT NULL REFERENCES twin.organizations(id),
+  actor_id twin.usr_id NOT NULL REFERENCES twin.users(id),
   operation_scope text NOT NULL,
   key text NOT NULL CHECK (length(key) BETWEEN 8 AND 128),
   request_hash twin.sha256 NOT NULL,
@@ -406,16 +451,17 @@ CREATE TABLE twin.idempotency_keys (
          (completed_at IS NOT NULL AND response_status IS NOT NULL AND response_body IS NOT NULL))
 );
 CREATE TABLE twin.audit_events (
-  id twin.public_id PRIMARY KEY,
-  organization_id twin.public_id NOT NULL REFERENCES twin.organizations(id),
+  id twin.aud_id PRIMARY KEY,
+  organization_id twin.org_id NOT NULL REFERENCES twin.organizations(id),
   actor_type text NOT NULL CHECK (actor_type IN ('user','worker','system')),
-  actor_id twin.public_id NOT NULL,
+  actor_id twin.actor_ref NOT NULL,
   action text NOT NULL,
   target_type text NOT NULL,
   target_id twin.public_id NOT NULL,
-  request_id twin.public_id NOT NULL,
+  request_id twin.req_id NOT NULL,
   metadata jsonb NOT NULL DEFAULT '{}' CHECK (jsonb_typeof(metadata)='object'),
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (actor_type<>'user' OR actor_id ~ '^usr_[0-7][0-9A-HJKMNP-TV-Z]{25}$')
 );
 CREATE INDEX audit_tenant_created_idx ON twin.audit_events(organization_id,created_at DESC,id);
 CREATE INDEX audit_request_idx ON twin.audit_events(organization_id,request_id);
@@ -424,11 +470,17 @@ CREATE FUNCTION twin.reject_mutation() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   RAISE EXCEPTION '% is immutable; create a new record', TG_TABLE_NAME USING ERRCODE='55000';
 END $$;
+-- TRUNCATE skips row triggers and RLS, so it gets its own statement trigger.
+CREATE FUNCTION twin.reject_truncate() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION '% is immutable; TRUNCATE is not allowed', TG_TABLE_NAME USING ERRCODE='55000';
+END $$;
 DO $$
 DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['model_versions','scenarios','dataset_versions','model_version_datasets','run_datasets','simulation_results','audit_events'] LOOP
     EXECUTE format('CREATE TRIGGER immutable_record BEFORE UPDATE OR DELETE ON twin.%I FOR EACH ROW EXECUTE FUNCTION twin.reject_mutation()',t);
+    EXECUTE format('CREATE TRIGGER immutable_table BEFORE TRUNCATE ON twin.%I FOR EACH STATEMENT EXECUTE FUNCTION twin.reject_truncate()',t);
   END LOOP;
 END $$;
 CREATE FUNCTION twin.protect_run_inputs() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -465,9 +517,11 @@ BEGIN
     RAISE EXCEPTION 'proposal identity/base is immutable' USING ERRCODE='55000';
   END IF;
   IF OLD.status<>'generating' AND
-     ROW(NEW.patch,NEW.patch_hash,NEW.assumptions,NEW.summary,NEW.risk_level,NEW.confidence,NEW.candidate_dataset_bindings)
+     ROW(NEW.patch,NEW.patch_hash,NEW.assumptions,NEW.summary,NEW.risk_level,NEW.server_risk_level,
+         NEW.provider_risk_claim,NEW.confidence,NEW.candidate_dataset_bindings)
      IS DISTINCT FROM
-     ROW(OLD.patch,OLD.patch_hash,OLD.assumptions,OLD.summary,OLD.risk_level,OLD.confidence,OLD.candidate_dataset_bindings) THEN
+     ROW(OLD.patch,OLD.patch_hash,OLD.assumptions,OLD.summary,OLD.risk_level,OLD.server_risk_level,
+         OLD.provider_risk_claim,OLD.confidence,OLD.candidate_dataset_bindings) THEN
     RAISE EXCEPTION 'reviewed proposal content is immutable; regenerate proposal' USING ERRCODE='55000';
   END IF;
   IF NEW.status<>OLD.status AND NOT (
@@ -482,7 +536,8 @@ CREATE TRIGGER protect_proposal BEFORE UPDATE ON twin.ai_proposals
   FOR EACH ROW EXECUTE FUNCTION twin.protect_proposal_content();
 -- Whole-manifest immutability: immutable children alone would still allow late INSERTs.
 -- Parent frozen JSON is authoritative; deferred checks require exact relational bindings
--- at COMMIT and reject later additions. Manifests are sorted by logical_ref.
+-- at COMMIT and reject later additions. Manifests are sorted by the bytes of
+-- logical_ref (D-034): COLLATE "C", whatever the database default collation is.
 CREATE FUNCTION twin.verify_version_dataset_manifest() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE oid text; vid text; expected jsonb; actual jsonb;
 BEGIN
@@ -494,7 +549,7 @@ BEGIN
   SELECT coalesce(jsonb_agg(jsonb_build_object(
     'logical_ref',logical_ref,'dataset_version_id',dataset_version_id,
     'content_hash',content_hash,'unit',unit,'sample_count',sample_count
-  ) ORDER BY logical_ref),'[]'::jsonb) INTO actual FROM twin.model_version_datasets
+  ) ORDER BY logical_ref COLLATE "C"),'[]'::jsonb) INTO actual FROM twin.model_version_datasets
     WHERE organization_id::text=oid AND model_version_id::text=vid;
   IF expected IS NULL OR actual IS DISTINCT FROM expected THEN
     RAISE EXCEPTION 'model version dataset manifest mismatch' USING ERRCODE='23514';
@@ -518,7 +573,7 @@ BEGIN
   SELECT coalesce(jsonb_agg(jsonb_build_object(
     'logical_ref',logical_ref,'dataset_version_id',dataset_version_id,
     'content_hash',content_hash,'unit',unit,'sample_count',sample_count
-  ) ORDER BY logical_ref),'[]'::jsonb) INTO actual FROM twin.run_datasets
+  ) ORDER BY logical_ref COLLATE "C"),'[]'::jsonb) INTO actual FROM twin.run_datasets
     WHERE organization_id::text=oid AND run_id::text=rid;
   IF expected IS NULL OR actual IS DISTINCT FROM expected THEN
     RAISE EXCEPTION 'run dataset manifest mismatch' USING ERRCODE='23514';

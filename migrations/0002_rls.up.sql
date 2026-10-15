@@ -1,4 +1,4 @@
--- PROPOSED D-008/D-013. RLS + least-privilege draft.
+-- RLS + least-privilege grants (D-013 approved; tenant selection rules are D-008, still PROPOSED).
 -- Application RBAC, membership authorization and SQL-injection prevention remain required.
 BEGIN;
 SET LOCAL ROLE twin_owner;
@@ -8,8 +8,16 @@ CREATE FUNCTION twin.current_actor_id() RETURNS text
   LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('app.user_id',true),'') $$;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA twin FROM PUBLIC;
 GRANT USAGE ON SCHEMA twin TO twin_api,twin_worker;
-GRANT USAGE ON TYPE twin.public_id,twin.sha256 TO twin_api,twin_worker;
-GRANT EXECUTE ON FUNCTION twin.current_organization_id(),twin.current_actor_id() TO twin_api,twin_worker;
+DO $$
+DECLARE d text;
+BEGIN
+  FOR d IN SELECT t.typname FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
+           WHERE n.nspname='twin' AND t.typtype='d' ORDER BY t.typname LOOP
+    EXECUTE format('GRANT USAGE ON TYPE twin.%I TO twin_api,twin_worker',d);
+  END LOOP;
+END $$;
+GRANT EXECUTE ON FUNCTION twin.current_organization_id(),twin.current_actor_id(),
+  twin.object_key_ok(text,text) TO twin_api,twin_worker;
 DO $$
 DECLARE t text;
 BEGIN
@@ -53,7 +61,8 @@ GRANT SELECT ON twin.projects,twin.models,twin.model_versions,twin.model_version
 GRANT INSERT ON twin.datasets,twin.dataset_versions,twin.simulation_results,twin.audit_events TO twin_worker;
 GRANT UPDATE ON twin.imports,twin.jobs TO twin_worker;
 GRANT UPDATE (status,summary,assumptions,patch,patch_hash,candidate_dataset_bindings,
-  expected_effects,questions,risk_level,confidence,validation,provider_metadata,error)
+  expected_effects,questions,risk_level,server_risk_level,provider_risk_claim,confidence,
+  validation,provider_metadata,error)
   ON twin.ai_proposals TO twin_worker;
 GRANT UPDATE (status,completed_replications,events_processed,progress_revision,
   error,started_at,finished_at,execution_deadline_at,event_budget_reserved) ON twin.simulation_runs TO twin_worker;

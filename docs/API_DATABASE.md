@@ -91,6 +91,8 @@ PROPOSED D-007：logical run 的 wall/event budgets 要包含 retries，而非�
 
 whole-manifest 另外存在 model_versions / simulation_runs 的 frozen dataset_bindings JSON；deferred constraint triggers 要求 relational bindings 在 commit 時完全一致，避免 immutable child 仍可被 late INSERT 改變 manifest。API 回傳 frozen parent manifest，不從可附加的 child collection 推導 authority。event_budget_reserved 與 execution_deadline_at 支援跨 retry budget；deadline/first start 不可重設，reservation 不可倒退。
 
+T-006 起 schema 另強制（`db/tests/constraints.sql` 驗證）：每種 ID 有自己的 domain（`twin.org_id`、`twin.mdl_id`…，`<prefix>_<ULID>`，D-001），欄位不能放別種 ID；object key 以 `twin.object_key_ok` 檢查（`starts_with` 前綴、拒 `..`、`//`、反斜線、控制字元、>1024 字元；D-035／CB-14）；`logical_ref` 為 `twin.logical_ref` domain（`^dataset:[a-z0-9_.-]+$`），manifest 比對用 `ORDER BY logical_ref COLLATE "C"`，與 Go 的 byte 排序一致（D-034／CB-15）；ai_proposals 有 `server_risk_level`、`provider_risk_claim`，`risk_level` 必須等於兩者最大值（D-027）；immutable 表另有 BEFORE TRUNCATE guard（TRUNCATE 不經 row trigger 與 RLS）。
+
 SQL 不宣稱 DB 本身已強制 human approval、last Owner、full graph validity、JCS hash equality、same scenario patch snapshot 或 metric evidence；這些仍是 application transaction / worker tests 的責任。不要把 RLS 當完整 RBAC 或 SQL injection sandbox。
 
 ## 9. RLS / roles / install

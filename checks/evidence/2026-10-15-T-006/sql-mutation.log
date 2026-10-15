@@ -1,0 +1,20 @@
+manifest-default-collation	KILLED
+object-key-like	KILLED
+object-key-allows-empty-segment	KILLED
+object-key-allows-backslash	KILLED
+object-key-allows-control	KILLED
+object-key-allows-bare-prefix	KILLED
+object-key-no-length-cap	KILLED
+risk-not-max	KILLED
+risk-without-server	KILLED
+no-truncate-guard	KILLED
+risk-mutable-after-review	KILLED
+audit-user-any-actor	KILLED
+prj-id-case-insensitive	KILLED
+logical-ref-any-case	KILLED
+run-dataset-unit-text	KILLED
+run-dataset-sample-cap	KILLED
+model-id-generic-domain	KILLED
+worker-cannot-record-risk	KILLED
+no-domain-usage-grant(equivalent)	SURVIVED
+18/18 non-equivalent mutants killed; 1 documented equivalent

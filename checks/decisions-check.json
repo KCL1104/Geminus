@@ -14,14 +14,22 @@
     "blocked": 0,
     "done": 3,
     "in_progress": 0,
-    "not_started": 37,
-    "review": 2
+    "not_started": 36,
+    "review": 3
   },
   "ready_tasks": [
-    "T-006",
     "T-014"
   ],
   "next_after_review": [
+    {
+      "id": "T-007",
+      "awaiting_task_review": [
+        "T-006"
+      ],
+      "awaiting_decisions": [
+        "D-008"
+      ]
+    },
     {
       "id": "T-011",
       "awaiting_task_review": [

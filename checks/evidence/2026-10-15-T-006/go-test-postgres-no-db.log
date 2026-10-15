@@ -1,0 +1,16 @@
+=== RUN   TestClassify
+--- PASS: TestClassify (0.00s)
+=== RUN   TestTxCommitRollbackPanic
+    postgres_test.go:176: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestTxCommitRollbackPanic (0.00s)
+=== RUN   TestScopeIsTransactionLocal
+    postgres_test.go:227: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestScopeIsTransactionLocal (0.00s)
+=== RUN   TestGuardsAreClassified
+    postgres_test.go:268: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestGuardsAreClassified (0.00s)
+=== RUN   TestCancellationReleasesLocks
+    postgres_test.go:326: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestCancellationReleasesLocks (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	0.005s
