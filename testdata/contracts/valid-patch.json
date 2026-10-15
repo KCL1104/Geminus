@@ -1,0 +1,12 @@
+[
+  {
+    "op": "test",
+    "path": "/resources/1/id",
+    "value": "ci_runner"
+  },
+  {
+    "op": "replace",
+    "path": "/resources/1/capacity",
+    "value": 6
+  }
+]

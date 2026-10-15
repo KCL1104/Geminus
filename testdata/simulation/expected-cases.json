@@ -1,0 +1,71 @@
+{
+  "semantics_decisions": [
+    "D-005",
+    "D-006",
+    "D-010"
+  ],
+  "cases": [
+    {
+      "id": "GOLDEN-001",
+      "model": "../golden-models/deterministic-queue.json",
+      "config": {
+        "horizon": {
+          "value": 1010,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "sampled"
+      },
+      "expected": {
+        "completed_count": 100,
+        "first_arrival_minutes": 10,
+        "last_completion_minutes": 1005,
+        "queue_wait_mean_minutes": 0,
+        "queue_wait_p50_minutes": 0,
+        "queue_wait_p95_minutes": 0,
+        "lead_time_mean_minutes": 5,
+        "lead_time_p50_minutes": 5,
+        "lead_time_p95_minutes": 5,
+        "utilization": 0.49504950495049505,
+        "censored_entities": 0
+      },
+      "result_digest": null,
+      "status": "HAND_DERIVED_EXPECTATION_NOT_ENGINE_RUN"
+    },
+    {
+      "id": "GOLDEN-002",
+      "model": "../golden-models/congested-queue.json",
+      "config": {
+        "horizon": {
+          "value": 205,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "sampled"
+      },
+      "expected": {
+        "completed_count": 20,
+        "queue_wait_mean_minutes": 47.5,
+        "queue_wait_p50_minutes": 47.5,
+        "queue_wait_p95_minutes": 90.25,
+        "lead_time_mean_minutes": 57.5,
+        "lead_time_p50_minutes": 57.5,
+        "lead_time_p95_minutes": 100.25,
+        "utilization": 0.975609756097561,
+        "censored_entities": 0
+      },
+      "result_digest": null,
+      "status": "HAND_DERIVED_EXPECTATION_NOT_ENGINE_RUN"
+    }
+  ]
+}

@@ -1,0 +1,2114 @@
+{
+  "plan_version": "0.1.0",
+  "source": "report pp.47–50",
+  "baseline": "4 engineers / 16 weeks; 17–20 buffer",
+  "status": "NOT_IMPLEMENTED",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "來源盤點、決策 review 與實作邊界",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform + Product",
+      "planning_window": "Week 1",
+      "depends_on": [],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-003",
+        "REQ-021"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "盤點既有 repository，避免覆寫 migration/AGENTS。",
+        "重跑規格檢查；逐項列 D-001–017 的影響與所需人類決策。",
+        "記錄 provider/auth/cloud/retention TBD；允許不受阻擋的 bootstrap。"
+      ],
+      "planned_outputs": [
+        "docs/DECISIONS_AND_TBD.md",
+        "planning/decisions.json",
+        "checks/"
+      ],
+      "spec_refs": [
+        "AGENTS.md",
+        "sources/SOURCE_MAP.md",
+        "docs/DECISIONS_AND_TBD.md"
+      ],
+      "acceptance_tests": [
+        "TEST-001"
+      ],
+      "verification_commands": [
+        "make spec-check"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-002",
+      "title": "Repository、toolchain、CI skeleton",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 1–2",
+      "depends_on": [
+        "T-001"
+      ],
+      "requirement_ids": [
+        "REQ-020",
+        "REQ-021"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "建立 Go module、cmd/api、cmd/worker、apps/web workspace。",
+        "鎖受支援工具版本，提供 lint/typecheck/test/build scripts。",
+        "為尚未配置的 provider/DB 明確 fail fast；不提交 secret。"
+      ],
+      "planned_outputs": [
+        "go.mod",
+        "apps/web/package.json",
+        ".github/workflows/ci.yml",
+        "Makefile"
+      ],
+      "spec_refs": [
+        "AGENTS.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_tests": [
+        "TEST-030"
+      ],
+      "verification_commands": [
+        "make spec-check",
+        "make backend-test",
+        "make frontend-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-003",
+      "title": "凍結候選契約與 Go/TypeScript domain types",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform + Simulation",
+      "planning_window": "Week 1–2",
+      "depends_on": [
+        "T-001",
+        "T-002"
+      ],
+      "requirement_ids": [
+        "REQ-003",
+        "REQ-005",
+        "REQ-008",
+        "REQ-011"
+      ],
+      "decision_gates": [
+        "D-001",
+        "D-002",
+        "D-014",
+        "D-015"
+      ],
+      "scope": [
+        "Review schema/OpenAPI normalizations，產生或手寫受 contract tests 約束的 types。",
+        "決定 SimulationEngine/RunInput 的 dataset injection 形式。",
+        "禁止 React Flow/LLM SDK types 滲入 domain。"
+      ],
+      "planned_outputs": [
+        "internal/model/types.go",
+        "internal/simulation/types.go",
+        "apps/web/lib/contracts/"
+      ],
+      "spec_refs": [
+        "docs/TWIN_IR_SPEC.md",
+        "docs/ARCHITECTURE.md",
+        "openapi/openapi.yaml"
+      ],
+      "acceptance_tests": [
+        "TEST-001",
+        "TEST-003"
+      ],
+      "verification_commands": [
+        "make spec-contracts",
+        "go test ./internal/model/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-004",
+      "title": "IR / patch semantic validator",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "Week 2–3",
+      "depends_on": [
+        "T-003"
+      ],
+      "requirement_ids": [
+        "REQ-003",
+        "REQ-004",
+        "REQ-006",
+        "REQ-008",
+        "REQ-011"
+      ],
+      "decision_gates": [
+        "D-005",
+        "D-014"
+      ],
+      "scope": [
+        "實作 refs/unique IDs/probability/queue/resource/distribution/cycle validations。",
+        "實作 decoded JSON Pointer allowlists 與 atomic patch-on-copy。",
+        "對 errors 輸出 deterministic code/path，補 fuzz/adversarial corpus。"
+      ],
+      "planned_outputs": [
+        "internal/model/validate/",
+        "internal/model/patch/"
+      ],
+      "spec_refs": [
+        "docs/TWIN_IR_SPEC.md",
+        "docs/SECURITY.md"
+      ],
+      "acceptance_tests": [
+        "TEST-001",
+        "TEST-002",
+        "TEST-003"
+      ],
+      "verification_commands": [
+        "go test ./internal/model/...",
+        "go test -race ./internal/model/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-005",
+      "title": "JCS/hash、frozen dataset manifest",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform + Simulation",
+      "planning_window": "Week 2–3",
+      "depends_on": [
+        "T-003"
+      ],
+      "requirement_ids": [
+        "REQ-005",
+        "REQ-011",
+        "REQ-013"
+      ],
+      "decision_gates": [
+        "D-006"
+      ],
+      "scope": [
+        "採經核對的 JCS 實作與 test vectors，不自行把 sort_keys 當 JCS。",
+        "定義 model/effective/config/dataset/result hashes。",
+        "實作 immutable dataset binding resolver 與 hash/unit 檢查。"
+      ],
+      "planned_outputs": [
+        "internal/model/hashing/",
+        "internal/storage/datasets/"
+      ],
+      "spec_refs": [
+        "docs/TWIN_IR_SPEC.md",
+        "docs/SIMULATION_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-014",
+        "TEST-019"
+      ],
+      "verification_commands": [
+        "go test ./internal/model/hashing/...",
+        "go test ./internal/storage/datasets/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-006",
+      "title": "Core migration 與 repository foundation",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 1–3",
+      "depends_on": [
+        "T-003"
+      ],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-005",
+        "REQ-018",
+        "REQ-019"
+      ],
+      "decision_gates": [
+        "D-001",
+        "D-013"
+      ],
+      "scope": [
+        "以 disposable PostgreSQL 審查並執行 core migration。",
+        "建立 composite org/project/model FKs、immutable guards、indexes。",
+        "提供 migrations up/down/up 與 repository transaction helpers。"
+      ],
+      "planned_outputs": [
+        "migrations/",
+        "internal/storage/postgres/",
+        "db/tests/"
+      ],
+      "spec_refs": [
+        "docs/API_DATABASE.md",
+        "migrations/0001_core.up.sql"
+      ],
+      "acceptance_tests": [
+        "TEST-004",
+        "TEST-010",
+        "TEST-030"
+      ],
+      "verification_commands": [
+        "make db-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-007",
+      "title": "RLS、runtime roles、pool isolation",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 2–3",
+      "depends_on": [
+        "T-006"
+      ],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-019"
+      ],
+      "decision_gates": [
+        "D-008",
+        "D-013"
+      ],
+      "scope": [
+        "安裝 FORCE RLS 與 non-owner runtime roles。",
+        "做 SET LOCAL scope helper，逐 request transaction 清除上下文。",
+        "覆蓋無scope、wrong org、role inheritance、FK與pool reuse。"
+      ],
+      "planned_outputs": [
+        "internal/tenant/transaction.go",
+        "migrations/0002_rls.up.sql",
+        "db/tests/"
+      ],
+      "spec_refs": [
+        "docs/SECURITY.md",
+        "docs/API_DATABASE.md"
+      ],
+      "acceptance_tests": [
+        "TEST-009",
+        "TEST-010",
+        "TEST-011"
+      ],
+      "verification_commands": [
+        "make db-test",
+        "go test ./internal/tenant/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-008",
+      "title": "OIDC/JWT authentication",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 2–3",
+      "depends_on": [
+        "T-002",
+        "T-007"
+      ],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-019"
+      ],
+      "decision_gates": [
+        "D-008"
+      ],
+      "scope": [
+        "選定 auth provider 或先用可替換 verifier + signed test tokens。",
+        "驗 issuer/audience/expiry/algorithm/JWKS rotation，拒絕任意 JWKS URL。",
+        "以 verified issuer/subject 解析 user，production 禁用 test verifier。"
+      ],
+      "planned_outputs": [
+        "internal/auth/",
+        "cmd/api/"
+      ],
+      "spec_refs": [
+        "docs/SECURITY.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_tests": [
+        "TEST-009",
+        "TEST-011"
+      ],
+      "verification_commands": [
+        "go test ./internal/auth/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-009",
+      "title": "Project service 與 server RBAC",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 3",
+      "depends_on": [
+        "T-008",
+        "T-007",
+        "T-003"
+      ],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-002"
+      ],
+      "decision_gates": [
+        "D-008",
+        "D-012"
+      ],
+      "scope": [
+        "建立 project endpoints 與 scoped listings。",
+        "middleware 每次查 membership /role；object parent一致。",
+        "所有錯誤、cursor、request_id 與 OpenAPI 對齊。"
+      ],
+      "planned_outputs": [
+        "internal/project/",
+        "internal/tenant/policy.go"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "openapi/openapi.yaml"
+      ],
+      "acceptance_tests": [
+        "TEST-009",
+        "TEST-010"
+      ],
+      "verification_commands": [
+        "go test ./internal/project/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-010",
+      "title": "受控 onboarding / membership 管理",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 3–4",
+      "depends_on": [
+        "T-008",
+        "T-009"
+      ],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-019"
+      ],
+      "decision_gates": [
+        "D-008",
+        "D-012"
+      ],
+      "scope": [
+        "建立 operator-only initial org/owner/user provisioning 流程。",
+        "Owner-only list/add/update/remove known user membership。",
+        "鎖 org 保留 last Owner；撤權立即影響 write/stream。"
+      ],
+      "planned_outputs": [
+        "internal/tenant/memberships/",
+        "scripts/provision-tenant/"
+      ],
+      "spec_refs": [
+        "docs/API_DATABASE.md",
+        "docs/SECURITY.md"
+      ],
+      "acceptance_tests": [
+        "TEST-009",
+        "TEST-011",
+        "TEST-026"
+      ],
+      "verification_commands": [
+        "go test ./internal/tenant/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-011",
+      "title": "SoftwareDeliveryDomainPack / full template",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "Week 3–4",
+      "depends_on": [
+        "T-004"
+      ],
+      "requirement_ids": [
+        "REQ-003",
+        "REQ-004",
+        "REQ-015"
+      ],
+      "decision_gates": [
+        "D-017"
+      ],
+      "scope": [
+        "實作 catalog、domain rules、default views 與 source-consistent interface。",
+        "full template 包含 Test/Deploy，新增數值標 synthetic。",
+        "不把 CI failure 自動當 DORA；先輸出明確 unavailable。"
+      ],
+      "planned_outputs": [
+        "internal/domainpack/softwaredelivery/"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/TWIN_IR_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-001",
+        "TEST-002",
+        "TEST-023"
+      ],
+      "verification_commands": [
+        "go test ./internal/domainpack/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-012",
+      "title": "Model / Draft / Version service",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 3–4",
+      "depends_on": [
+        "T-004",
+        "T-005",
+        "T-009",
+        "T-011"
+      ],
+      "requirement_ids": [
+        "REQ-005",
+        "REQ-006",
+        "REQ-009"
+      ],
+      "decision_gates": [
+        "D-003"
+      ],
+      "scope": [
+        "atomic model+draft+v1 creation、draft revision CAS、publish parent/latest。",
+        "實作 immutable version/dataset bindings。",
+        "clean/dirty draft政策、explicit reset、stale rejection。"
+      ],
+      "planned_outputs": [
+        "internal/model/service/",
+        "internal/storage/model_repository.go"
+      ],
+      "spec_refs": [
+        "docs/API_DATABASE.md",
+        "docs/TWIN_IR_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-004",
+        "TEST-005",
+        "TEST-014"
+      ],
+      "verification_commands": [
+        "go test ./internal/model/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-013",
+      "title": "Model HTTP contract / client integration",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 4",
+      "depends_on": [
+        "T-012",
+        "T-003"
+      ],
+      "requirement_ids": [
+        "REQ-004",
+        "REQ-005",
+        "REQ-006"
+      ],
+      "decision_gates": [
+        "D-012",
+        "D-015"
+      ],
+      "scope": [
+        "綁定 create/get/draft/patch/publish/list/version/reset routes。",
+        "If-Match/ETag/media type/error 與 OpenAPI contract tests。",
+        "產生 TS client；禁止重複 IR types。"
+      ],
+      "planned_outputs": [
+        "internal/model/http/",
+        "apps/web/lib/api/"
+      ],
+      "spec_refs": [
+        "openapi/openapi.yaml",
+        "docs/API_DATABASE.md"
+      ],
+      "acceptance_tests": [
+        "TEST-001",
+        "TEST-005",
+        "TEST-009"
+      ],
+      "verification_commands": [
+        "make integration-test",
+        "make spec-contracts"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-014",
+      "title": "Frontend app / server-state boundary",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend",
+      "planning_window": "Week 3–4",
+      "depends_on": [
+        "T-002",
+        "T-003"
+      ],
+      "requirement_ids": [
+        "REQ-004",
+        "REQ-020"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "Next.js shell、auth boundary、project/model navigation。",
+        "區分 remote server state、saved draft 與 unsaved editor state。",
+        "建立 loading/error/permission/409 presentation。"
+      ],
+      "planned_outputs": [
+        "apps/web/app/",
+        "apps/web/lib/"
+      ],
+      "spec_refs": [
+        "docs/ARCHITECTURE.md",
+        "docs/PRD.md"
+      ],
+      "acceptance_tests": [
+        "TEST-009",
+        "TEST-025"
+      ],
+      "verification_commands": [
+        "make frontend-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-015",
+      "title": "React Flow 2D authoring",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend",
+      "planning_window": "Week 3–5",
+      "depends_on": [
+        "T-014",
+        "T-013",
+        "T-011"
+      ],
+      "requirement_ids": [
+        "REQ-004",
+        "REQ-006",
+        "REQ-017"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "IR→React Flow adapter；add/delete/connect/move/properties。",
+        "client validation、save/publish/error positioning、dirty navigation guard。",
+        "selection store 使用 canonical IDs，為3D保留adapter。"
+      ],
+      "planned_outputs": [
+        "apps/web/features/model-editor/"
+      ],
+      "spec_refs": [
+        "docs/TWIN_IR_SPEC.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_tests": [
+        "TEST-001",
+        "TEST-005",
+        "TEST-025"
+      ],
+      "verification_commands": [
+        "make frontend-test",
+        "make e2e-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-016",
+      "title": "CSV/JSON upload、profile、private storage",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Full-stack",
+      "planning_window": "Week 4–5",
+      "depends_on": [
+        "T-009",
+        "T-006",
+        "T-003"
+      ],
+      "requirement_ids": [
+        "REQ-007",
+        "REQ-019"
+      ],
+      "decision_gates": [
+        "D-007",
+        "D-009"
+      ],
+      "scope": [
+        "streaming bounded upload、content hash、private object keys。",
+        "完整 profile + bounded preview；JSON/CSV parse errors。",
+        "error artifact safe export；未commit不改Twin。"
+      ],
+      "planned_outputs": [
+        "internal/import/upload/",
+        "internal/storage/objects/"
+      ],
+      "spec_refs": [
+        "docs/API_DATABASE.md",
+        "docs/SECURITY.md"
+      ],
+      "acceptance_tests": [
+        "TEST-012",
+        "TEST-029"
+      ],
+      "verification_commands": [
+        "go test ./internal/import/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-017",
+      "title": "Canonical mapping / full validation pipeline",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Full-stack",
+      "planning_window": "Week 5–6",
+      "depends_on": [
+        "T-016",
+        "T-004"
+      ],
+      "requirement_ids": [
+        "REQ-007"
+      ],
+      "decision_gates": [
+        "D-009",
+        "D-014"
+      ],
+      "scope": [
+        "canonical-event mapper與有限transform。",
+        "mapping revision CAS、全量rows validation、stale job fence。",
+        "低confidence確認、invalid row reports與重映射。"
+      ],
+      "planned_outputs": [
+        "internal/import/mapping/",
+        "internal/import/validation/"
+      ],
+      "spec_refs": [
+        "schemas/canonical-event.schema.json",
+        "docs/AI_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-012",
+        "TEST-013"
+      ],
+      "verification_commands": [
+        "go test ./internal/import/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-018",
+      "title": "Dataset commit → inference proposal",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Full-stack",
+      "planning_window": "Week 7–8",
+      "depends_on": [
+        "T-017",
+        "T-005",
+        "T-012",
+        "T-019",
+        "T-025",
+        "T-027"
+      ],
+      "requirement_ids": [
+        "REQ-007",
+        "REQ-008",
+        "REQ-009"
+      ],
+      "decision_gates": [
+        "D-009"
+      ],
+      "scope": [
+        "atomic freeze dataset + generating proposal + job + COMMITTED。",
+        "JSON model import做身份綁定與完整diff，不直接publish。",
+        "approval/reject前後dataset與Twin變更分開可驗證。"
+      ],
+      "planned_outputs": [
+        "internal/import/commit/"
+      ],
+      "spec_refs": [
+        "docs/API_DATABASE.md",
+        "docs/AI_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-006",
+        "TEST-013",
+        "TEST-014",
+        "TEST-028"
+      ],
+      "verification_commands": [
+        "go test ./internal/import/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-019",
+      "title": "PostgreSQL job queue / leases",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 5–6",
+      "depends_on": [
+        "T-007",
+        "T-009",
+        "T-003"
+      ],
+      "requirement_ids": [
+        "REQ-012",
+        "REQ-018",
+        "REQ-019"
+      ],
+      "decision_gates": [
+        "D-007",
+        "D-008",
+        "D-011"
+      ],
+      "scope": [
+        "scoped SKIP LOCKED claim、heartbeat、lease_token、bounded retry。",
+        "每 assigned tenant獨立transaction，不做unrestricted cross-tenant SELECT。",
+        "resource+job+audit enqueue transaction；stale finalize拒絕。"
+      ],
+      "planned_outputs": [
+        "internal/storage/jobs/",
+        "cmd/worker/"
+      ],
+      "spec_refs": [
+        "docs/API_DATABASE.md",
+        "db/queries.sql"
+      ],
+      "acceptance_tests": [
+        "TEST-010",
+        "TEST-020",
+        "TEST-021"
+      ],
+      "verification_commands": [
+        "go test ./internal/storage/jobs/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-020",
+      "title": "DES compiler、clock、heap、RNG",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "Week 5–6",
+      "depends_on": [
+        "T-004",
+        "T-005",
+        "T-011"
+      ],
+      "requirement_ids": [
+        "REQ-011"
+      ],
+      "decision_gates": [
+        "D-005",
+        "D-006"
+      ],
+      "scope": [
+        "IR compile成immutable runtime structures，無DB/network依賴。",
+        "ticks、event order、stable entity IDs、seed/substream算法。",
+        "unit/golden vectors、zero-time-cycle與overflow檢查。"
+      ],
+      "planned_outputs": [
+        "internal/simulation/compile/",
+        "internal/simulation/engine/"
+      ],
+      "spec_refs": [
+        "docs/SIMULATION_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-002",
+        "TEST-017",
+        "TEST-019"
+      ],
+      "verification_commands": [
+        "go test ./internal/simulation/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-021",
+      "title": "DES resource/queue/service/routing kernel",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "Week 6–7",
+      "depends_on": [
+        "T-020"
+      ],
+      "requirement_ids": [
+        "REQ-011",
+        "REQ-013"
+      ],
+      "decision_gates": [
+        "D-005",
+        "D-007"
+      ],
+      "scope": [
+        "atomic bundle/resource-wise FIFO；failure/rework/delay/sink。",
+        "context checkpoints、limits、no partial acquire、same-tick policy。",
+        "deterministic no-queue/congestion/routing fixture驗算。"
+      ],
+      "planned_outputs": [
+        "internal/simulation/runtime/"
+      ],
+      "spec_refs": [
+        "docs/SIMULATION_SPEC.md",
+        "testdata/simulation/expected-cases.json"
+      ],
+      "acceptance_tests": [
+        "TEST-015",
+        "TEST-016",
+        "TEST-017",
+        "TEST-018",
+        "TEST-021"
+      ],
+      "verification_commands": [
+        "go test ./internal/simulation/...",
+        "go test -race ./internal/simulation/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-022",
+      "title": "Metric aggregation / result digest / trace",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "Week 6–8",
+      "depends_on": [
+        "T-021"
+      ],
+      "requirement_ids": [
+        "REQ-011",
+        "REQ-013",
+        "REQ-015",
+        "REQ-017"
+      ],
+      "decision_gates": [
+        "D-006",
+        "D-010"
+      ],
+      "scope": [
+        "warmup/censoring/population、Type7、replication means/CI。",
+        "stable aggregation與JCS digest；bounded independent trace sampling。",
+        "DORA data gates，缺值明確 unavailable。"
+      ],
+      "planned_outputs": [
+        "internal/results/metrics/",
+        "internal/simulation/trace/"
+      ],
+      "spec_refs": [
+        "docs/SIMULATION_SPEC.md",
+        "schemas/simulation.schema.json"
+      ],
+      "acceptance_tests": [
+        "TEST-017",
+        "TEST-019",
+        "TEST-022",
+        "TEST-023"
+      ],
+      "verification_commands": [
+        "go test ./internal/results/...",
+        "go test ./internal/simulation/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-023",
+      "title": "Run API / worker / cancellation integration",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform + Simulation",
+      "planning_window": "Week 7–8",
+      "depends_on": [
+        "T-019",
+        "T-021",
+        "T-022",
+        "T-013"
+      ],
+      "requirement_ids": [
+        "REQ-011",
+        "REQ-012",
+        "REQ-019"
+      ],
+      "decision_gates": [
+        "D-007",
+        "D-011"
+      ],
+      "scope": [
+        "freeze version/patch/config/datasets/engine/limits 並202入列。",
+        "checkpoint cancellation、durable logical-run budgets含retries。",
+        "lease-fenced atomic results、progress/SSE與trace authorization。"
+      ],
+      "planned_outputs": [
+        "internal/simulation/service/",
+        "internal/simulation/http/",
+        "cmd/worker/"
+      ],
+      "spec_refs": [
+        "docs/API_DATABASE.md",
+        "docs/SIMULATION_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-014",
+        "TEST-019",
+        "TEST-020",
+        "TEST-021",
+        "TEST-026"
+      ],
+      "verification_commands": [
+        "make integration-test",
+        "go test -race ./internal/simulation/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-024",
+      "title": "Sanitized AI context / provider adapter",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Full-stack",
+      "planning_window": "Week 6–8",
+      "depends_on": [
+        "T-008",
+        "T-003",
+        "T-012"
+      ],
+      "requirement_ids": [
+        "REQ-008",
+        "REQ-016",
+        "REQ-019"
+      ],
+      "decision_gates": [
+        "D-002",
+        "D-016"
+      ],
+      "scope": [
+        "provider interface、explicit fake/disabled/live modes。",
+        "tenant-safe context、redaction、UNTRUSTED_DATA、ID allocation pool。",
+        "token/timeout/retry budgets與provider schema projection。"
+      ],
+      "planned_outputs": [
+        "internal/ai/provider/",
+        "internal/ai/context/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "prompts/modeler/system.md"
+      ],
+      "acceptance_tests": [
+        "TEST-006",
+        "TEST-009",
+        "TEST-024",
+        "TEST-027"
+      ],
+      "verification_commands": [
+        "go test ./internal/ai/...",
+        "make ai-eval"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-025",
+      "title": "Async proposal generation / validation",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Full-stack",
+      "planning_window": "Week 7–9",
+      "depends_on": [
+        "T-024",
+        "T-019",
+        "T-004",
+        "T-005",
+        "T-012"
+      ],
+      "requirement_ids": [
+        "REQ-008",
+        "REQ-009"
+      ],
+      "decision_gates": [
+        "D-002",
+        "D-014",
+        "D-016"
+      ],
+      "scope": [
+        "durable generating job→proposed content→server validator/risk→ready。",
+        "needs_input/invalid/failed 狀態與immutable ready content。",
+        "server-bind all identity/validation/approval fields；無write tools。"
+      ],
+      "planned_outputs": [
+        "internal/ai/proposals/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "schemas/proposal.schema.json"
+      ],
+      "acceptance_tests": [
+        "TEST-003",
+        "TEST-006",
+        "TEST-007"
+      ],
+      "verification_commands": [
+        "go test ./internal/ai/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-026",
+      "title": "Human approve/reject / canonical effect",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform + AI",
+      "planning_window": "Week 8–10",
+      "depends_on": [
+        "T-025",
+        "T-012"
+      ],
+      "requirement_ids": [
+        "REQ-006",
+        "REQ-009"
+      ],
+      "decision_gates": [
+        "D-003",
+        "D-011"
+      ],
+      "scope": [
+        "role/base revalidation、shared model lock、idempotent exactly-one version。",
+        "dirty draft保留、conflicted state、不偷偷rebase。",
+        "reject/no-mutation、changed-role與double-approve races。"
+      ],
+      "planned_outputs": [
+        "internal/model/approval/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "docs/API_DATABASE.md"
+      ],
+      "acceptance_tests": [
+        "TEST-005",
+        "TEST-006",
+        "TEST-007",
+        "TEST-009"
+      ],
+      "verification_commands": [
+        "make integration-test",
+        "go test -race ./internal/model/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-027",
+      "title": "AI mapping suggestion / event inference",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Full-stack",
+      "planning_window": "Week 7–9",
+      "depends_on": [
+        "T-024",
+        "T-017",
+        "T-025"
+      ],
+      "requirement_ids": [
+        "REQ-007",
+        "REQ-008"
+      ],
+      "decision_gates": [
+        "D-009",
+        "D-016"
+      ],
+      "scope": [
+        "read-only mapping suggestion獨立於confirmed mapping。",
+        "domain event inference產生proposal與frozen empirical bindings。",
+        "低confidence/unknown stage/data不足明確needs_input。"
+      ],
+      "planned_outputs": [
+        "internal/ai/importer/",
+        "internal/domainpack/softwaredelivery/inference/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "prompts/importer/system.md"
+      ],
+      "acceptance_tests": [
+        "TEST-006",
+        "TEST-013",
+        "TEST-014"
+      ],
+      "verification_commands": [
+        "go test ./internal/import/...",
+        "make ai-eval"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-028",
+      "title": "Scenario persistence / parameter-only approval",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform + AI",
+      "planning_window": "Week 9–11",
+      "depends_on": [
+        "T-026",
+        "T-005",
+        "T-013"
+      ],
+      "requirement_ids": [
+        "REQ-010"
+      ],
+      "decision_gates": [
+        "D-004",
+        "D-014"
+      ],
+      "scope": [
+        "manual Scenario create/read/list；AI mode=scenario。",
+        "parameter allowlist、immutable base/patch；approved response discriminant。",
+        "assert版本數不變、無autonomous run。"
+      ],
+      "planned_outputs": [
+        "internal/model/scenarios/",
+        "internal/ai/scenario/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "schemas/scenario.schema.json"
+      ],
+      "acceptance_tests": [
+        "TEST-007",
+        "TEST-008"
+      ],
+      "verification_commands": [
+        "make integration-test",
+        "make ai-eval"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-029",
+      "title": "Results / baseline comparison API",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation + Platform",
+      "planning_window": "Week 9–11",
+      "depends_on": [
+        "T-022",
+        "T-023",
+        "T-028"
+      ],
+      "requirement_ids": [
+        "REQ-013",
+        "REQ-014",
+        "REQ-015"
+      ],
+      "decision_gates": [
+        "D-010"
+      ],
+      "scope": [
+        "result/read readiness、same-context comparison。",
+        "absolute/relative delta、baseline-zero、missing/incomparable handling。",
+        "metric evidence paths可供analyst安全引用。"
+      ],
+      "planned_outputs": [
+        "internal/results/http/",
+        "internal/results/compare/"
+      ],
+      "spec_refs": [
+        "docs/SIMULATION_SPEC.md",
+        "openapi/openapi.yaml"
+      ],
+      "acceptance_tests": [
+        "TEST-022",
+        "TEST-023",
+        "TEST-024"
+      ],
+      "verification_commands": [
+        "go test ./internal/results/...",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-030",
+      "title": "Grounded AI simulation analyst",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Full-stack",
+      "planning_window": "Week 9–12",
+      "depends_on": [
+        "T-029",
+        "T-024",
+        "T-019"
+      ],
+      "requirement_ids": [
+        "REQ-016"
+      ],
+      "decision_gates": [
+        "D-010",
+        "D-016"
+      ],
+      "scope": [
+        "從completed suppliedresults/context做async analysis。",
+        "驗metric path/run/availability/delta與prose數字。",
+        "uncertainty與suggested experiments不具write/run權限。"
+      ],
+      "planned_outputs": [
+        "internal/ai/analyst/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "prompts/analyst/system.md"
+      ],
+      "acceptance_tests": [
+        "TEST-024",
+        "TEST-027"
+      ],
+      "verification_commands": [
+        "go test ./internal/ai/...",
+        "make ai-eval",
+        "make integration-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-031",
+      "title": "Import / proposal / review UI",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend",
+      "planning_window": "Week 8–11",
+      "depends_on": [
+        "T-015",
+        "T-018",
+        "T-026",
+        "T-027",
+        "T-028"
+      ],
+      "requirement_ids": [
+        "REQ-007",
+        "REQ-008",
+        "REQ-009",
+        "REQ-010"
+      ],
+      "decision_gates": [
+        "D-003",
+        "D-004"
+      ],
+      "scope": [
+        "upload preview/mapping/error download/commit UI。",
+        "diff/assumptions/risk/base/needs_input/conflict review。",
+        "edit批准與scenario批准清楚分離；409保留local edits。"
+      ],
+      "planned_outputs": [
+        "apps/web/features/import/",
+        "apps/web/features/ai-proposals/"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/AI_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-005",
+        "TEST-006",
+        "TEST-007",
+        "TEST-008",
+        "TEST-013",
+        "TEST-028"
+      ],
+      "verification_commands": [
+        "make frontend-test",
+        "make e2e-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-032",
+      "title": "Simulation / compare / analyst dashboard",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend",
+      "planning_window": "Week 9–12",
+      "depends_on": [
+        "T-031",
+        "T-023",
+        "T-029",
+        "T-030"
+      ],
+      "requirement_ids": [
+        "REQ-012",
+        "REQ-013",
+        "REQ-014",
+        "REQ-015",
+        "REQ-016"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "explicit run config、queued/running/cancelled/progress。",
+        "metrics population/uncertainty/absolute & percent deltas。",
+        "server-grounded analysis、next-experiment human action。"
+      ],
+      "planned_outputs": [
+        "apps/web/features/simulations/",
+        "apps/web/features/results/"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/SIMULATION_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-022",
+        "TEST-024",
+        "TEST-026",
+        "TEST-028"
+      ],
+      "verification_commands": [
+        "make frontend-test",
+        "make e2e-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-033",
+      "title": "PlayCanvas read-only 3D adapter",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend",
+      "planning_window": "Week 10–12",
+      "depends_on": [
+        "T-015",
+        "T-023"
+      ],
+      "requirement_ids": [
+        "REQ-017"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "procedural scene、camera、hover/select、queue/utilization。",
+        "derive topology from IR、same entity IDs、無3D authoring。",
+        "3D failure不阻擋2D/results。"
+      ],
+      "planned_outputs": [
+        "apps/web/features/twin-3d/"
+      ],
+      "spec_refs": [
+        "docs/ARCHITECTURE.md",
+        "docs/PRD.md"
+      ],
+      "acceptance_tests": [
+        "TEST-025"
+      ],
+      "verification_commands": [
+        "make frontend-test",
+        "make e2e-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-034",
+      "title": "3D sampled playback / timeline",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend",
+      "planning_window": "Week 11–12",
+      "depends_on": [
+        "T-033",
+        "T-032"
+      ],
+      "requirement_ids": [
+        "REQ-017"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "authorized trace loader、play/pause/scrub、baseline/scenario switch。",
+        "sampling label、bounded render updates、selection synchronization。",
+        "無trace時不捏造trajectory。"
+      ],
+      "planned_outputs": [
+        "apps/web/features/twin-3d/playback/"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/SIMULATION_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-025",
+        "TEST-026",
+        "TEST-029"
+      ],
+      "verification_commands": [
+        "make frontend-test",
+        "make e2e-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-035",
+      "title": "Audit / OpenTelemetry / structured logs",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Baseline in each write task; integration Week 6–8; harden Week 12–14",
+      "depends_on": [
+        "T-009",
+        "T-019"
+      ],
+      "requirement_ids": [
+        "REQ-018",
+        "REQ-020"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "所有business writes同transaction audit；request/run/provider correlation。",
+        "traces/metrics與structured JSON logging。",
+        "privacy filters、job/simulation/LLM/import operational metrics。"
+      ],
+      "planned_outputs": [
+        "internal/audit/",
+        "internal/observability/"
+      ],
+      "spec_refs": [
+        "docs/SECURITY.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_tests": [
+        "TEST-027"
+      ],
+      "verification_commands": [
+        "make integration-test",
+        "go test ./internal/audit/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-036",
+      "title": "Security hardening / adversarial integration",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform + all",
+      "planning_window": "Week 12–14",
+      "depends_on": [
+        "T-010",
+        "T-018",
+        "T-026",
+        "T-028",
+        "T-030",
+        "T-034",
+        "T-035"
+      ],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-019",
+        "REQ-021"
+      ],
+      "decision_gates": [
+        "D-008",
+        "D-013",
+        "D-016"
+      ],
+      "scope": [
+        "完整route×role×tenant matrix，pool/worker/artifact/SSE leaks。",
+        "approval races、injection、resource exhaustion、CSV export。",
+        "dependency/secret/container scans與attack regression corpus。"
+      ],
+      "planned_outputs": [
+        "internal/securitytest/",
+        "testdata/security/",
+        "checks/security/"
+      ],
+      "spec_refs": [
+        "docs/SECURITY.md",
+        "docs/TEST_PLAN.md"
+      ],
+      "acceptance_tests": [
+        "TEST-003",
+        "TEST-007",
+        "TEST-008",
+        "TEST-009",
+        "TEST-010",
+        "TEST-011",
+        "TEST-012",
+        "TEST-020",
+        "TEST-021",
+        "TEST-024",
+        "TEST-026",
+        "TEST-027",
+        "TEST-029"
+      ],
+      "verification_commands": [
+        "make integration-test",
+        "make e2e-test",
+        "make security-scan"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-037",
+      "title": "Simulation differential / performance acceptance",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation + Frontend",
+      "planning_window": "Week 13–15",
+      "depends_on": [
+        "T-022",
+        "T-023",
+        "T-034"
+      ],
+      "requirement_ids": [
+        "REQ-011",
+        "REQ-013",
+        "REQ-017",
+        "REQ-021"
+      ],
+      "decision_gates": [
+        "D-005",
+        "D-006",
+        "D-007",
+        "D-010"
+      ],
+      "scope": [
+        "實作independent SimPy cases與預先固定stochastic tolerance。",
+        "DES events/time/RSS/cancel benchmarks，固定hardware/image。",
+        "2D/3D graph/render/FPS 與 API/validation load targets；記錄不足而非捏造。"
+      ],
+      "planned_outputs": [
+        "testdata/simulation/",
+        "benchmarks/",
+        "checks/performance/"
+      ],
+      "spec_refs": [
+        "docs/TEST_PLAN.md",
+        "docs/SIMULATION_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-015",
+        "TEST-016",
+        "TEST-017",
+        "TEST-018",
+        "TEST-019",
+        "TEST-021",
+        "TEST-022",
+        "TEST-025"
+      ],
+      "verification_commands": [
+        "make simulation-reference-test",
+        "make benchmark-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-038",
+      "title": "AI corpus / live-provider release eval",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Full-stack",
+      "planning_window": "Week 13–15",
+      "depends_on": [
+        "T-025",
+        "T-026",
+        "T-027",
+        "T-030"
+      ],
+      "requirement_ids": [
+        "REQ-008",
+        "REQ-016",
+        "REQ-021"
+      ],
+      "decision_gates": [
+        "D-002",
+        "D-016"
+      ],
+      "scope": [
+        "執行50 modeling intents與mapper/analyst adversarial suite。",
+        "分開fake/live results；provider/model/prompt/schema版本紀錄。",
+        "zero-tolerance gates不能降門檻；golden≥90%目標由人類評估baseline。"
+      ],
+      "planned_outputs": [
+        "testdata/ai-evals/",
+        "checks/ai-evals/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "docs/TEST_PLAN.md"
+      ],
+      "acceptance_tests": [
+        "TEST-006",
+        "TEST-007",
+        "TEST-008",
+        "TEST-013",
+        "TEST-024"
+      ],
+      "verification_commands": [
+        "make ai-eval",
+        "make ai-eval-live"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-039",
+      "title": "Containers / staging reference deployment",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "Week 12–15",
+      "depends_on": [
+        "T-013",
+        "T-023",
+        "T-024",
+        "T-035",
+        "T-014"
+      ],
+      "requirement_ids": [
+        "REQ-020"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "web/api/worker分開containers，managed DB/object/OTLP adapters。",
+        "non-root/runtime roles、secret injection、readiness、graceful shutdown。",
+        "cloud/provider不進domaincode，production人工gate。"
+      ],
+      "planned_outputs": [
+        "deploy/",
+        "Dockerfile.api",
+        "Dockerfile.worker",
+        "apps/web/Dockerfile"
+      ],
+      "spec_refs": [
+        "docs/ARCHITECTURE.md",
+        "docs/SECURITY.md"
+      ],
+      "acceptance_tests": [
+        "TEST-030"
+      ],
+      "verification_commands": [
+        "make build-containers",
+        "make staging-smoke"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-040",
+      "title": "Product Alpha E2E / pilot hardening",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "All + Product",
+      "planning_window": "Week 15–16",
+      "depends_on": [
+        "T-032",
+        "T-034",
+        "T-036",
+        "T-037",
+        "T-038",
+        "T-039"
+      ],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-003",
+        "REQ-004",
+        "REQ-005",
+        "REQ-006",
+        "REQ-007",
+        "REQ-008",
+        "REQ-009",
+        "REQ-010",
+        "REQ-011",
+        "REQ-012",
+        "REQ-013",
+        "REQ-014",
+        "REQ-015",
+        "REQ-016",
+        "REQ-017",
+        "REQ-018",
+        "REQ-019",
+        "REQ-020",
+        "REQ-021"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "完整CSV/model/proposal/approval/scenario/run/compare/analysis/3D journey。",
+        "failure/cancel/reject/stale/role-revocation路径。",
+        "外部pilot feedback與decision usefulness，未完成項目逐一列出。"
+      ],
+      "planned_outputs": [
+        "checks/e2e/",
+        "checks/pilot/",
+        "docs/RELEASE_NOTES.md"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/TEST_PLAN.md"
+      ],
+      "acceptance_tests": [
+        "TEST-028",
+        "TEST-030"
+      ],
+      "verification_commands": [
+        "make e2e-test",
+        "make staging-smoke"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-041",
+      "title": "Backup/restore、data policy、Private Beta gate",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform + Product",
+      "planning_window": "Week 15–16; buffer 17–20",
+      "depends_on": [
+        "T-040"
+      ],
+      "requirement_ids": [
+        "REQ-019",
+        "REQ-020",
+        "REQ-021"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "retention/residency/provider/auth/limits選型及責任人已確認。",
+        "備份restore演練、migration deployment順序、incident/runbook。",
+        "人工production approval；所有gate具真實證據而非demo成功。"
+      ],
+      "planned_outputs": [
+        "deploy/runbooks/",
+        "checks/release/"
+      ],
+      "spec_refs": [
+        "docs/SECURITY.md",
+        "docs/IMPLEMENTATION_PLAN.md"
+      ],
+      "acceptance_tests": [
+        "TEST-030"
+      ],
+      "verification_commands": [
+        "make db-restore-test",
+        "make staging-smoke"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-042",
+      "title": "Generic kernel / adapter dependency guard",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "Week 6–8",
+      "depends_on": [
+        "T-011",
+        "T-020"
+      ],
+      "requirement_ids": [
+        "REQ-003",
+        "REQ-011"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "建test-only generic queue DomainPack，不交付第二個商業domain。",
+        "靜態檢查generic engine不importDevOps/HTTP/DB/LLM/frontend。",
+        "切renderer/pack不需要另一套IR；保留interface conformance test。"
+      ],
+      "planned_outputs": [
+        "internal/domainpack/conformance/",
+        "scripts/check-architecture/"
+      ],
+      "spec_refs": [
+        "docs/ARCHITECTURE.md",
+        "docs/TWIN_IR_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-001",
+        "TEST-002",
+        "TEST-025"
+      ],
+      "verification_commands": [
+        "go test ./internal/domainpack/...",
+        "make architecture-check"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "status": "PASS_REFERENCE_ARITHMETIC_ONLY",
+  "deterministic_fixture_cases": 2,
+  "expected_value_comparisons": 20,
+  "splitmix64_vectors": 5,
+  "replication_seed_vectors": 3,
+  "go_des_engine": "NOT_RUN",
+  "simpy_differential": "NOT_RUN",
+  "jcs_hash_verification": "NOT_RUN"
+}

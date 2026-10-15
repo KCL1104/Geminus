@@ -1,0 +1,20 @@
+{
+  "mappings": [
+    {
+      "source_column": "pull_request_id",
+      "target_field": "case_id",
+      "confidence": 0.96,
+      "evidence": "Sample values identify the same PR across multiple rows.",
+      "transform": "identity",
+      "requires_confirmation": false
+    },
+    {
+      "source_column": "created_at",
+      "target_field": "timestamp",
+      "confidence": 0.7,
+      "evidence": "Timestamp-looking values need timezone confirmation.",
+      "transform": "rfc3339",
+      "requires_confirmation": false
+    }
+  ]
+}

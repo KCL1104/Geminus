@@ -1,0 +1,23 @@
+{
+  "id": "scn_demo",
+  "organization_id": "org_demo",
+  "model_id": "mdl_checkout",
+  "base_version_id": "mv_demo",
+  "name": "Double CI Capacity",
+  "patch": [
+    {
+      "op": "test",
+      "path": "/resources/1/id",
+      "value": "ci_runner"
+    },
+    {
+      "op": "replace",
+      "path": "/resources/1/capacity",
+      "value": 6
+    }
+  ],
+  "patch_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "source_proposal_id": "aip_scenario",
+  "created_by": "usr_demo",
+  "created_at": "2026-10-15T08:30:00Z"
+}

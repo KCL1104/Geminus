@@ -1,0 +1,18 @@
+{
+  "status": "PASS_FILE_SYNTAX_AND_SOURCE_COPY_CHECKS",
+  "python_version": "3.13.5",
+  "package_versions": {
+    "jsonschema": "4.26.0",
+    "referencing": "0.37.0",
+    "PyYAML": "6.0.3",
+    "fastapi": "0.128.2"
+  },
+  "json_files_parsed": 76,
+  "jsonl_records_parsed": 70,
+  "python_scripts_compile": "PASS",
+  "bash_script_syntax": "PASS",
+  "source_pdf_sha256": "0dd63e4fcddbc3159e001970e9dfb624dfd62839afb5f0ef880bd63f5109be16",
+  "source_pdf_copy_matches": true,
+  "postgresql_execution": "NOT_RUN",
+  "full_openapi_validation": "NOT_RUN"
+}

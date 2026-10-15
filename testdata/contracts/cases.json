@@ -1,0 +1,362 @@
+{
+  "note": "Hash values of all zeros are schema-shape placeholders, NOT valid JCS/content attestations. See VALIDATION_REPORT. Semantic lint is a limited spec-fixture check, not production validation.",
+  "cases": [
+    {
+      "id": "valid-model-ir",
+      "instance": "testdata/contracts/valid-model-ir.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-report-ir",
+      "instance": "testdata/contracts/valid-report-ir.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-deterministic-ir",
+      "instance": "testdata/contracts/valid-deterministic-ir.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-canonical-event",
+      "instance": "testdata/contracts/valid-canonical-event.json",
+      "schema": "schemas/canonical-event.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-patch",
+      "instance": "testdata/contracts/valid-patch.json",
+      "schema": "schemas/json-patch.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-baseline-patch",
+      "instance": "testdata/contracts/valid-baseline-patch.json",
+      "schema": "schemas/json-patch.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-output",
+      "instance": "testdata/contracts/valid-proposal-output.json",
+      "schema": "schemas/proposal-output.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-needs-input",
+      "instance": "testdata/contracts/valid-needs-input.json",
+      "schema": "schemas/proposal-output.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-ready-proposal",
+      "instance": "testdata/contracts/valid-ready-proposal.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-scenario",
+      "instance": "testdata/contracts/valid-scenario.json",
+      "schema": "schemas/scenario.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-simulation-request",
+      "instance": "testdata/contracts/valid-simulation-request.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-saved-scenario-request",
+      "instance": "testdata/contracts/valid-saved-scenario-request.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-scenario-approval",
+      "instance": "testdata/contracts/valid-scenario-approval.json",
+      "schema": "schemas/http.schema.json#/$defs/Approval",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-model-version",
+      "instance": "testdata/contracts/valid-model-version.json",
+      "schema": "schemas/http.schema.json#/$defs/ModelVersion",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-error",
+      "instance": "testdata/contracts/valid-error.json",
+      "schema": "schemas/common.schema.json#/$defs/Error",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-mapping",
+      "instance": "testdata/contracts/valid-mapping.json",
+      "schema": "schemas/ai-mapping.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-dataset-snapshot",
+      "instance": "testdata/contracts/valid-dataset-snapshot.json",
+      "schema": "schemas/dataset-snapshot.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-analysis",
+      "instance": "testdata/contracts/valid-analysis.json",
+      "schema": "schemas/analysis.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-import",
+      "instance": "testdata/contracts/valid-import.json",
+      "schema": "schemas/import.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-result",
+      "instance": "testdata/contracts/valid-result.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-negative-capacity",
+      "instance": "testdata/contracts/invalid-negative-capacity.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-fractional-capacity",
+      "instance": "testdata/contracts/invalid-fractional-capacity.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-schema-version",
+      "instance": "testdata/contracts/invalid-schema-version.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-script-field",
+      "instance": "testdata/contracts/invalid-script-field.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-duplicate-topology",
+      "instance": "testdata/contracts/invalid-duplicate-topology.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-p1-distribution",
+      "instance": "testdata/contracts/invalid-p1-distribution.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-missing-timestamp",
+      "instance": "testdata/contracts/invalid-missing-timestamp.json",
+      "schema": "schemas/canonical-event.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-timestamp-format",
+      "instance": "testdata/contracts/invalid-timestamp-format.json",
+      "schema": "schemas/canonical-event.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-patch-move",
+      "instance": "testdata/contracts/invalid-patch-move.json",
+      "schema": "schemas/json-patch.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-patch-root",
+      "instance": "testdata/contracts/invalid-patch-root.json",
+      "schema": "schemas/json-patch.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-patch-escape",
+      "instance": "testdata/contracts/invalid-patch-escape.json",
+      "schema": "schemas/json-patch.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-no-confirmation",
+      "instance": "testdata/contracts/invalid-no-confirmation.json",
+      "schema": "schemas/proposal-output.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-provider-identity",
+      "instance": "testdata/contracts/invalid-provider-identity.json",
+      "schema": "schemas/proposal-output.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-provider-approval",
+      "instance": "testdata/contracts/invalid-provider-approval.json",
+      "schema": "schemas/proposal-output.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-ready-with-failed-validation",
+      "instance": "testdata/contracts/invalid-ready-with-failed-validation.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-excess-replications",
+      "instance": "testdata/contracts/invalid-excess-replications.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-two-scenario-inputs",
+      "instance": "testdata/contracts/invalid-two-scenario-inputs.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-unsafe-seed",
+      "instance": "testdata/contracts/invalid-unsafe-seed.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-low-confidence-no-confirmation",
+      "instance": "testdata/contracts/invalid-low-confidence-no-confirmation.json",
+      "schema": "schemas/ai-mapping.schema.json",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-unavailable-is-zero",
+      "instance": "testdata/contracts/invalid-unavailable-is-zero.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-scenario-approval-version",
+      "instance": "testdata/contracts/invalid-scenario-approval-version.json",
+      "schema": "schemas/http.schema.json#/$defs/Approval",
+      "valid": false,
+      "layer": "schema"
+    },
+    {
+      "id": "semantic-unknown-node",
+      "instance": "testdata/contracts/semantic-unknown-node.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic_lint",
+      "expected_codes": [
+        "UNKNOWN_REFERENCE"
+      ]
+    },
+    {
+      "id": "semantic-probability-sum",
+      "instance": "testdata/contracts/semantic-probability-sum.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic_lint",
+      "expected_codes": [
+        "ROUTING_INVALID"
+      ]
+    },
+    {
+      "id": "semantic-duplicate-id",
+      "instance": "testdata/contracts/semantic-duplicate-id.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic_lint",
+      "expected_codes": [
+        "DUPLICATE_ID"
+      ]
+    },
+    {
+      "id": "semantic-triangular-order",
+      "instance": "testdata/contracts/semantic-triangular-order.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic_lint",
+      "expected_codes": [
+        "DISTRIBUTION_INVALID"
+      ]
+    },
+    {
+      "id": "semantic-zero-arrival",
+      "instance": "testdata/contracts/semantic-zero-arrival.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic_lint",
+      "expected_codes": [
+        "DISTRIBUTION_INVALID"
+      ]
+    },
+    {
+      "id": "semantic-excess-demand",
+      "instance": "testdata/contracts/semantic-excess-demand.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic_lint",
+      "expected_codes": [
+        "RESOURCE_REQUIREMENT_INVALID"
+      ]
+    },
+    {
+      "id": "semantic-zero-time-cycle",
+      "instance": "testdata/contracts/semantic-zero-time-cycle.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic_lint",
+      "expected_codes": [
+        "ZERO_TIME_CYCLE"
+      ]
+    }
+  ]
+}

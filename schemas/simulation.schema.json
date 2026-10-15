@@ -1,0 +1,891 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/simulation.schema.json",
+  "title": "simulation",
+  "$comment": "SOURCE pp. 21–22,33–35. PROPOSED D-005–D-007,D-010–D-011: frozen execution input, nullable evidence-aware stats, populations and resource limits. Numerical semantics are in SIMULATION_SPEC.md.",
+  "$ref": "#/$defs/RunRequest",
+  "$defs": {
+    "RunConfig": {
+      "type": "object",
+      "properties": {
+        "horizon": {
+          "$ref": "common.schema.json#/$defs/Duration"
+        },
+        "warmup": {
+          "$ref": "common.schema.json#/$defs/Duration"
+        },
+        "replications": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "trace_level": {
+          "type": "string",
+          "enum": [
+            "none",
+            "sampled"
+          ]
+        }
+      },
+      "required": [
+        "horizon",
+        "warmup",
+        "replications",
+        "seed",
+        "trace_level"
+      ],
+      "additionalProperties": false
+    },
+    "RunRequest": {
+      "type": "object",
+      "properties": {
+        "model_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "scenario_patch": {
+          "$ref": "json-patch.schema.json"
+        },
+        "scenario_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "config": {
+          "$ref": "#/$defs/RunConfig"
+        }
+      },
+      "required": [
+        "model_version_id",
+        "name",
+        "config"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "scenario_patch"
+          ],
+          "not": {
+            "required": [
+              "scenario_id"
+            ]
+          }
+        },
+        {
+          "required": [
+            "scenario_id"
+          ],
+          "not": {
+            "required": [
+              "scenario_patch"
+            ]
+          }
+        }
+      ]
+    },
+    "ExecutionLimits": {
+      "type": "object",
+      "properties": {
+        "wall_timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "max_events": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000000
+        },
+        "max_active_entities": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "max_entity_visits": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "max_trace_events": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        }
+      },
+      "required": [
+        "wall_timeout_seconds",
+        "max_events",
+        "max_active_entities",
+        "max_entity_visits",
+        "max_trace_events"
+      ],
+      "additionalProperties": false
+    },
+    "Run": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "organization_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "model_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "model_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "scenario_patch": {
+          "$ref": "json-patch.schema.json"
+        },
+        "scenario_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "config": {
+          "$ref": "#/$defs/RunConfig"
+        },
+        "config_hash": {
+          "type": "string",
+          "minLength": 71,
+          "maxLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "model_hash": {
+          "type": "string",
+          "minLength": 71,
+          "maxLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "effective_model_hash": {
+          "type": "string",
+          "minLength": 71,
+          "maxLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "engine_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "dataset_bindings": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/DatasetBinding"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "execution_limits": {
+          "$ref": "#/$defs/ExecutionLimits"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "progress": {
+          "type": "object",
+          "properties": {
+            "completed_replications": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "total_replications": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "events_processed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "revision": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "completed_replications",
+            "total_replications",
+            "events_processed",
+            "revision"
+          ],
+          "additionalProperties": false
+        },
+        "cancellation_requested": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/Error"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "organization_id",
+        "model_id",
+        "model_version_id",
+        "name",
+        "scenario_patch",
+        "scenario_id",
+        "config",
+        "config_hash",
+        "model_hash",
+        "effective_model_hash",
+        "engine_version",
+        "dataset_bindings",
+        "execution_limits",
+        "status",
+        "progress",
+        "cancellation_requested",
+        "created_at",
+        "started_at",
+        "finished_at",
+        "error"
+      ],
+      "additionalProperties": false
+    },
+    "MetricSummary": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "available",
+            "unavailable"
+          ]
+        },
+        "mean": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -1000000000000000.0,
+              "maximum": 1000000000000000.0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "p50": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -1000000000000000.0,
+              "maximum": 1000000000000000.0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "p95": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -1000000000000000.0,
+              "maximum": 1000000000000000.0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sample_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "population": {
+          "type": "string",
+          "enum": [
+            "replication",
+            "entity",
+            "stage_visit",
+            "time_weighted"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "confidence_interval_mean": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "const": 0.95
+                },
+                "lower": {
+                  "type": "number",
+                  "minimum": -1000000000000000.0,
+                  "maximum": 1000000000000000.0
+                },
+                "upper": {
+                  "type": "number",
+                  "minimum": -1000000000000000.0,
+                  "maximum": 1000000000000000.0
+                },
+                "method": {
+                  "const": "student_t_replication_means"
+                }
+              },
+              "required": [
+                "level",
+                "lower",
+                "upper",
+                "method"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "mean",
+        "p50",
+        "p95",
+        "sample_count",
+        "population",
+        "unit",
+        "confidence_interval_mean",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mean": {
+                "type": "null"
+              },
+              "p50": {
+                "type": "null"
+              },
+              "p95": {
+                "type": "null"
+              },
+              "confidence_interval_mean": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "available"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mean": {
+                "type": "number"
+              },
+              "p50": {
+                "type": "number"
+              },
+              "p95": {
+                "type": "number"
+              },
+              "sample_count": {
+                "minimum": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "status": {
+          "const": "completed"
+        },
+        "engine_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "throughput": {
+              "$ref": "#/$defs/MetricSummary"
+            },
+            "lead_time_minutes": {
+              "$ref": "#/$defs/MetricSummary"
+            },
+            "resources": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "utilization_mean": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "observation_ticks": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "capacity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "utilization_mean",
+                  "observation_ticks",
+                  "capacity",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "queues": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "available",
+                      "unavailable"
+                    ]
+                  },
+                  "wait_mean_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000000000000.0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "wait_p50_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000000000000.0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "wait_p95_minutes": {
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1000000000000.0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "queue_length_mean": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000.0
+                  },
+                  "sample_count": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "status",
+                  "wait_mean_minutes",
+                  "wait_p50_minutes",
+                  "wait_p95_minutes",
+                  "queue_length_mean",
+                  "sample_count",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "failure_count": {
+              "$ref": "#/$defs/MetricSummary"
+            },
+            "rework_count": {
+              "$ref": "#/$defs/MetricSummary"
+            },
+            "dora": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/MetricSummary"
+              }
+            },
+            "additional_metrics": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/MetricSummary"
+              }
+            }
+          },
+          "required": [
+            "throughput",
+            "lead_time_minutes",
+            "resources",
+            "queues",
+            "failure_count",
+            "rework_count",
+            "dora",
+            "additional_metrics"
+          ],
+          "additionalProperties": false
+        },
+        "replication_summaries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "replication_index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 999
+              },
+              "completed_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "mean_lead_time_minutes": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000.0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resource_utilization": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "failures": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "reworks": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "censored_entities": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "replication_index",
+              "completed_count",
+              "mean_lead_time_minutes",
+              "resource_utilization",
+              "failures",
+              "reworks",
+              "censored_entities"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "measurement_window": {
+          "type": "object",
+          "properties": {
+            "tick_unit": {
+              "const": "millisecond"
+            },
+            "warmup_ticks": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "horizon_ticks": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "time_boundary": {
+              "const": "warmup <= t <= horizon"
+            }
+          },
+          "required": [
+            "tick_unit",
+            "warmup_ticks",
+            "horizon_ticks",
+            "time_boundary"
+          ],
+          "additionalProperties": false
+        },
+        "reproducibility": {
+          "type": "object",
+          "properties": {
+            "seed": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "replications": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "model_hash": {
+              "type": "string",
+              "minLength": 71,
+              "maxLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "effective_model_hash": {
+              "type": "string",
+              "minLength": 71,
+              "maxLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "config_hash": {
+              "type": "string",
+              "minLength": 71,
+              "maxLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "dataset_manifest_hash": {
+              "type": "string",
+              "minLength": 71,
+              "maxLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            "result_digest": {
+              "type": "string",
+              "minLength": 71,
+              "maxLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "required": [
+            "seed",
+            "replications",
+            "model_hash",
+            "effective_model_hash",
+            "config_hash",
+            "dataset_manifest_hash",
+            "result_digest"
+          ],
+          "additionalProperties": false
+        },
+        "trace": {
+          "type": "object",
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "sampled_events": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "artifact_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "available",
+            "sampled_events",
+            "artifact_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "run_id",
+        "status",
+        "engine_version",
+        "metrics",
+        "replication_summaries",
+        "measurement_window",
+        "reproducibility",
+        "trace"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

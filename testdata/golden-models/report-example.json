@@ -1,0 +1,180 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_checkout",
+  "domain": "software_delivery",
+  "name": "Checkout Delivery Pipeline",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "change",
+      "name": "Software Change"
+    }
+  ],
+  "resources": [
+    {
+      "id": "reviewer",
+      "type": "human",
+      "name": "Reviewer",
+      "capacity": 2,
+      "queue_discipline": "fifo"
+    },
+    {
+      "id": "ci_runner",
+      "type": "machine",
+      "name": "Ci Runner",
+      "capacity": 3,
+      "queue_discipline": "fifo"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "change_arrival",
+      "type": "source",
+      "entity_type": "change",
+      "arrival": {
+        "distribution": {
+          "type": "exponential",
+          "mean": 16
+        }
+      }
+    },
+    {
+      "id": "code_review",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "empirical",
+          "samples_ref": "dataset:review_duration"
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "reviewer",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "ci",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 18
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "ci_runner",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "ci_result",
+      "type": "decision"
+    },
+    {
+      "id": "deployed",
+      "type": "sink"
+    }
+  ],
+  "flows": [
+    {
+      "id": "f1",
+      "from": "change_arrival",
+      "to": "code_review",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f2",
+      "from": "code_review",
+      "to": "ci",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f3",
+      "from": "ci",
+      "to": "ci_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f_pass",
+      "from": "ci_result",
+      "to": "deployed",
+      "routing": {
+        "type": "probability",
+        "probability": 0.8
+      }
+    },
+    {
+      "id": "f_retry",
+      "from": "ci_result",
+      "to": "ci",
+      "routing": {
+        "type": "probability",
+        "probability": 0.2
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "ci_result",
+      "equals": 1
+    }
+  ],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    },
+    {
+      "id": "ci_utilization",
+      "type": "resource_utilization",
+      "resource_id": "ci_runner"
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "change_arrival": {
+          "x": 0,
+          "y": 100
+        },
+        "code_review": {
+          "x": 200,
+          "y": 100
+        },
+        "ci": {
+          "x": 400,
+          "y": 100
+        },
+        "ci_result": {
+          "x": 600,
+          "y": 100
+        },
+        "deployed": {
+          "x": 800,
+          "y": 100
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  }
+}

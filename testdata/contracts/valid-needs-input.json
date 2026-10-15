@@ -1,0 +1,9 @@
+{
+  "status": "needs_input",
+  "summary": "需要指定要調整的資源與目標值。",
+  "assumptions": [],
+  "questions": [
+    "要調整哪個 resource 的 capacity？"
+  ],
+  "requires_confirmation": true
+}

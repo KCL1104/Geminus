@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/proposal-output.schema.json",
+  "title": "proposal-output",
+  "$comment": "SOURCE pp. 24–25. PROPOSED D-002: LLM output excludes trusted proposal_id/base/mode/validation/approval fields. Server binds them, never mass-assigns output into persisted state.",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "proposed"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "risk_level": {
+          "$ref": "common.schema.json#/$defs/RiskLevel"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "changes": {
+          "allOf": [
+            {
+              "$ref": "json-patch.schema.json"
+            },
+            {
+              "minItems": 1
+            }
+          ]
+        },
+        "expected_effects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "requires_confirmation": {
+          "const": true
+        }
+      },
+      "required": [
+        "status",
+        "summary",
+        "assumptions",
+        "risk_level",
+        "confidence",
+        "changes",
+        "expected_effects",
+        "requires_confirmation"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "needs_input"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "minItems": 1,
+          "maxItems": 50
+        },
+        "requires_confirmation": {
+          "const": true
+        }
+      },
+      "required": [
+        "status",
+        "summary",
+        "assumptions",
+        "questions",
+        "requires_confirmation"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

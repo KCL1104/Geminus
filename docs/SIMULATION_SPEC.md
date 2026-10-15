@@ -1,0 +1,104 @@
+# Native Go DES — Simulation Semantics & Engine Spec
+
+SOURCE：原報告 pp. 19–22、33–35、44–46。**本文件的精確數學／排程細節是 PROPOSED D-005 / D-006 / D-007 / D-010 / D-011，並非原報告已定義。** 確認後才凍結 golden digest。下面定義是一套可測的候選，不允許 agent 各自選擇互不相容的語義。
+
+## 1. Execution model
+
+Simulation 是 immutable ModelVersion + ordered Scenario Patch + frozen empirical manifest + RunConfig 的純執行。P0 engine 為 native Go discrete-event simulation；SimPy 僅 independent reference。每個 replication 單執行緒處理 event heap，replications 可在 bounded pool 平行；不得在同一 replication 用 goroutine scheduling 决定事件順序。
+
+worker 在 engine 外負責授權、快照解析、dataset preload、job claim、timeout/cancellation、progress persistence、result atomic commit。engine 內無 network/DB/LLM、無任意 script。
+
+## 2. Clock、event order、arrival
+
+internal tick 固定 **1 millisecond**，int64；所有輸入換算成 tick 後做 overflow / safe bound 檢查。單位換算 second=1000、minute=60000、hour=3600000、day=86400000。非負 sample d 先換成 ms，再 round-half-up；sample>0 卻 round 為 0 時 clamp 到 1 tick，sample=0 保持 0。固定 engine numerical profile，不依不同語言的預設 rounding。
+
+heap key = (time_tick,event_priority,monotonic_sequence)。候選 priority：SERVICE_COMPLETE / release phase=0；arrival/route/immediate state transitions=10；internal resource dispatch=20。release 在同 tick 的 dispatch 之前完成；sequence 在 replication 內 strictly increasing。Go map iteration、wall clock、worker scheduling 不得參與 tie-breaking。
+
+source 第一個 arrival 在從 t=0 抽出的 interarrival 之後，而不是自動 t=0；其後每次 arrival 再排下一個。max_entities 若指定，限制該 source 的產生數；否則直到 horizon。多 source 的初始化按 node ID 排序，entity IDs 由 replication/source/local sequence 派生，不使用隨機 UUID。
+
+所有 `event.time <= horizon` 都處理，包括 horizon 同 tick 產生的後續 immediate events；`>horizon` 不執行。horizon 不會自動 drain remaining work；在 horizon 仍未 completed 的 entity 是 censored，不能拿 horizon-arrival 當完整 lead time。zero-time cycles 在 compile 時拒絕，runtime 同時保留 visit/event caps。
+
+## 3. Queue、resource、routing
+
+process 可使用零個或多個 resource。requires bundle 採 all-or-nothing acquire；未湊齊不保留任何部分資源。FIFO request order 用 (queue_enter_tick,request_sequence)。dispatcher 按此序掃描：全部資源足夠、且沒有較早未授予且共享任一所需 resource 的 request，才可 grant；不共享 resource 的 request 可繼續進行。這是候選的 resource-wise FIFO，不是會阻塞所有獨立資源的 global head-of-line queue。
+
+acquire→service_start→sample service duration→schedule complete；complete 原子釋放全部 units，再 route、觸發 dispatch。invariant：0≤in_use≤capacity；entity 同時最多在一個 queue/service/delay/sink 狀態；單一 entity 不會同時擁有兩次 service。
+
+顯式 queue node 只把等待位置歸屬到接續 process；真正的 request buffer 不重複建立。沒有 queue node 時，queue 指標歸屬 process ID。顯式 queue 必須一個 outgoing process，process 至多一個顯式 queue upstream；其他 incoming direct route 仍進入相同 buffer，避免同 resource 出現兩份 metrics。
+
+decision 依 flow ID 升序建立 cumulative probabilities，使用自己的 routing RNG。0% flow 永遠不被選；選第一個 U<cumulative 的 flow，最後一個作浮點容差兜底，但前提概率已通過 validator。非 decision 恰一條 p=1 route。failure/rework nodes 只產生對應 observation，再走明確 flow，不隱含 catch-all retry。
+
+## 4. RNG、seed derivation、determinism
+
+候選 RNG = 本段明確定義的 SplitMix64，不使用 Go math/rand 的未固定預設 generator。所有 uint64 运算 mod 2^64：
+
+```text
+state += 0x9e3779b97f4a7c15
+z = state
+z = (z XOR (z >> 30)) * 0xbf58476d1ce4e5b9
+z = (z XOR (z >> 27)) * 0x94d049bb133111eb
+output = z XOR (z >> 31)
+U = ((output >> 12) + 0.5) / 2^52       # strictly 0 < U < 1
+```
+
+replication_seed = first 8 bytes, little-endian, of SHA256(`dt-rep-v1\0` UTF-8 || uint64LE(base_seed) || uint32LE(replication_index))。index 從 0 起。stream seed = first 8 LE bytes of SHA256(`dt-stream-v1\0` || uint64LE(replication_seed) || uint32LE(len(node_id_bytes)) || node_id_bytes || uint32LE(len(purpose_bytes)) || purpose_bytes)。purpose = arrival/service/delay/routing；相互獨立。trace sampling 使用另一 purpose，不消耗以上 streams。
+
+constant 不消耗 random draw。empirical 以 floor(U*N) 等權抽 samples；exponential = -mean*ln(1-U)；triangular 依標準 inverse CDF，min=mode=max 時視 constant；min/max 任一邊退化要避免除 0。所有 sample 再經同一 tick quantizer。算法、log/sqrt numerical profile、build architecture 改變時必須換 engine_version，不把同一 human-readable semver 用於不同數值實作。
+
+SOURCE invariant 仍為同 IR + engine version + run config + seed →同 aggregate digest；本草案另外固定 dataset manifest。engine_version 要能唯一追到 container digest、source commit 與 numerical profile。跨架構的 byte-identical digest 未經測試不得宣稱；可部署同一受測 numerical profile 以維持承諾。
+
+## 5. Warmup、metrics、統計 population
+
+令 W=warmup tick，H=horizon tick，必須 0≤W<H≤365天（horizon cap 也是 D-005 候選）。觀測時間長度 T=H-W；邊界 events W≤t≤H 計入，time integral 取 [W,H]。warmup 前照常執行事件、維護資源與 queue，但 warmup 不重設系統狀態。
+
+| 指標 | 候選定義 |
+|---|---|
+| throughput | 每個 replication 在 [W,H] 進入 completed sink 的 entity count；mean/p50/p95 跨 replications，不是每分鐘速率 |
+| lead_time_minutes | arrival≥W 且 completion≤H 的完整 entity cohort；(completion-arrival)/60000；跨 replications pooled entity quantiles，另保留每 replication mean |
+| queue wait | queue_enter≥W 且 service_start≤H 的完整 visit；包括零等待；重作每次 visit 都算一筆；不把未離隊 entity 當已知等待 |
+| queue_length_mean | ∫queue_length(t)dt / T；從 W 的真實 queue state 積分 |
+| utilization | ∫in_use(t)dt / (capacity*T)；含跨 W/H 的部分 service interval；跨 replications 算 mean |
+| failure_count / rework_count | 在 [W,H] 執行 generic FAILURE/REWORK observation 的次數；不是 DORA failure rate |
+| censored_entities | H 時仍 active 的 entities 數；呈現作截尾風險，不能納入 completed lead sample |
+
+quantile 候選採線性插值 Type 7：排序 x，h=(n-1)*p；interpolate floor(h)/ceil(h)。mean 是該 population 的算術平均。禁止把「各 replication 的 p95 平均」稱為 pooled p95。
+
+95% mean CI 採 independent replication mean 的 Student-t interval；n<2、replication 沒完整 cohort、沒有足夠 independent observations 時回 null + reason。對 lead time，CI 描述「replication mean 的平均」而非 pooled entity mean；UI 標示 estimand，不暗示 interval 對 p95 也有效。若要避免這個不同 estimand 混淆，可先令 pooled lead summary 的 CI=null，另在 additional_metrics 輸出 replication_mean_lead_time。**本草案採後者**：只有 population=replication 的 summary 可附此 CI。
+
+schema 中 `status=unavailable` 時 mean/p50/p95/CI 都是 null，reason 說明缺少什麼。沒有 completed entities 時 throughput=0 仍 available（有 replication count 樣本），lead time unavailable；缺 metric 不能回 0。
+
+## 6. DORA-oriented metrics 的 gating
+
+SOURCE 僅要求資料充足才計算；沒有提供完整 domain event taxonomy。PROPOSED D-010：由 domain pack 保存明確 stage/event-to-milestone mapping 與 data-quality evidence，未提供 mapping 一律 unavailable。一般 source→sink lead time 不能自動當 Change Lead Time。
+
+Change Lead Time 需要 change commit/deployed 關係與時間；Deployment Frequency 需要可辨識 production deployment 及觀測期間；Failed Deployment Recovery Time 需要 failure 與 recovery 配對；Change Failure Percentage 需要 deployment denominator 與 failure classification；Deployment Rework Rate 需要可辨識 rework deployment 與 denominator。公式、dedup/batching、calendar denominator 需在 DomainPack metric definition 明列並經 pilot 資料確認。P0 fixture 的 CI fail/rework 不足以冒稱 deployment failure/recovery。
+
+## 7. Baseline / scenario comparison
+
+比較前要求同 organization、model_version、engine numerical profile、dataset manifest、horizon、warmup、replications、seed；scenario_patch 不同是實驗變因。baseline patch 為 []。若條件不相同，回 comparable=false / reason，不以 inferential comparison 呈現；可保留並排 descriptive values。
+
+absolute_delta=scenario-baseline；relative_delta=absolute_delta/baseline。baseline=0 時 relative_delta=null，reason=BASELINE_ZERO；任何一邊 unavailable 則相關 delta=null。API 提供實際計算值，AI 不重新發明。UI 的百分比為 relative_delta*100，不把 -0.11 當 -0.11%。source 中展示 -11% 等數字是示例，不是本包驗算結果。
+
+matching seed/node streams 可用於 paired experiments，但 scenario topology 變更、不同 replication cohort 或不相容 config 時，不預設 paired CI 有效。P0 先只輸出已定義的 absolute/relative delta；paired difference CI 可在專門測試/評審後新增。
+
+## 8. Execution budgets、progress、cancellation
+
+初始候選：≤1000 replications；≤300s wall timeout/run；≤10M processed events/run（所有 replications 合計）；≤100k active entities/replication；≤10k node visits/entity；sampled trace≤100k events/run。warmup 事件同樣消耗 budget。API 不能接受使用者把上限調高；effective execution limits 在 enqueue 時保存。CPU/memory container limits 與 admission quotas 仍需獨立配置。
+
+context checkpoint 至少每個 heap pop、每個 distribution 批量處理段、每次 replication、每個 artifact/aggregation batch。worker bounded polling 將 cancellation_requested 傳入 context。≤5s 是原報告待 benchmark 的目標，不是已測結果。timeout / event cap / active entity cap / cancellation 分別有 typed error；不要包裝為 completed。
+
+aggregate 依 replication_index 升序彙整；progress 不是 correctness input。所有 replications 完成後才可完成 run。重試使用原 frozen input；lease token 失效的 attempt 必須丟棄 finalize，不可覆蓋後來的成功結果。
+
+## 9. Result digest / sampled trace
+
+result_digest 的候選 payload：engine_version、metrics、replication_summaries、measurement_window、reproducibility（排除 result_digest 本身）；不含 run_id、created_at、wall duration、progress、worker ID、trace object key、LLM output。對此 payload 做 JCS + SHA-256；保留完整 numerical values，不因方便而捏造 round-trip equality。
+
+trace_level 不應改變數值結果；它仍在 config_hash 中，因此改 trace_level 可改 digest，但 metrics 必須相同。sampled trace 以穩定 entity hash 選取，trace caps 不得停 simulation。trace event 至少 time_tick、sequence、type、entity_id、node_id，可有 resource_id；順序依同一 event order。UI 明示 sampling，不能把缺失樣本補成虛構 trajectory。
+
+## 10. 必備正確性案例
+
+`testdata/simulation/` 提供**預期值 fixtures，不是已執行 Go engine 的成果**。首個案例：interarrival=10 min、service=5 min、capacity=1、100 entities、horizon=1010 min，第一個 arrival=10，最後 completion=1005；completed=100、wait=0、lead=5、utilization=500/1010。
+
+congestion：interarrival=5、service=10、capacity=1、20 entities、horizon=205，完成 20、wait_i=5*i（i=0..19），wait mean=47.5、p95=90.25、utilization=200/205。原報告「queue grows」不能理解為每個 event 都單調；服務完成會降低 queue。候選驗收在 arrival 同 tick dispatch 完成後取樣，檢查 source active period 的 queue 趨勢。
+
+還要測 100%/0% routing、same-tick release/arrival、bundle acquire、nonnegative capacity、zero-time cycle reject、empirical binding/hash mismatch、warmup cohort、horizon equality、censoring、worker retry determinism、cancel/finalize race。SimPy stochastic differential 比較 confidence/tolerance，不要求兩套 RNG byte-identical；tolerance 須先固定，不能看失敗結果再調到過。

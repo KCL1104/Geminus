@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/import.schema.json",
+  "title": "import",
+  "$comment": "SOURCE pp. 6–7,30,35–36. PROPOSED D-009: commit freezes dataset and queues inference proposal, never mutates canonical Twin before human approval.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "organization_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "base_version_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "csv_events",
+        "json_events",
+        "json_model"
+      ]
+    },
+    "filename": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "UPLOADED",
+        "PROFILING",
+        "AWAITING_MAPPING",
+        "VALIDATED",
+        "COMMITTED",
+        "FAILED"
+      ]
+    },
+    "mapping_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "total_rows": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "invalid_rows": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100000
+    },
+    "preview": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "maxProperties": 64,
+        "additionalProperties": true,
+        "description": "UNTRUSTED_DATA；server 另外限制深度、字串長度及總 bytes。"
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "mapping": {
+      "anyOf": [
+        {
+          "$ref": "ai-mapping.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "validation": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/Validation"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dataset_version_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "proposal_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/Error"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mapping_suggestion_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "generating",
+        "ready",
+        "failed"
+      ]
+    },
+    "mapping_suggestion": {
+      "anyOf": [
+        {
+          "$ref": "ai-mapping.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "organization_id",
+    "project_id",
+    "model_id",
+    "base_version_id",
+    "kind",
+    "filename",
+    "status",
+    "mapping_revision",
+    "total_rows",
+    "invalid_rows",
+    "preview",
+    "mapping",
+    "validation",
+    "dataset_version_id",
+    "proposal_id",
+    "created_at",
+    "error",
+    "mapping_suggestion_status",
+    "mapping_suggestion"
+  ],
+  "additionalProperties": false
+}

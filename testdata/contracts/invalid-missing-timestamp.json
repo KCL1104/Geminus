@@ -1,0 +1,12 @@
+{
+  "case_id": "PR-1042",
+  "event_type": "review_started",
+  "stage": "code_review",
+  "duration_ms": 7200000,
+  "resource_id": "reviewer-team-a",
+  "outcome": "passed",
+  "is_rework": false,
+  "metadata": {
+    "fixture": true
+  }
+}

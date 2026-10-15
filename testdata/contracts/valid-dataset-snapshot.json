@@ -1,0 +1,12 @@
+{
+  "dataset_version_id": "dsv_review",
+  "organization_id": "org_demo",
+  "logical_ref": "dataset:review_duration",
+  "unit": "minute",
+  "samples": [
+    120,
+    240,
+    360
+  ],
+  "content_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}

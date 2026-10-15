@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""Validate local JSON schemas, fixtures and OpenAPI structure/reference integrity.
+
+No network access is used. This is not a replacement for an independent complete
+OpenAPI validator, a Go semantic validator or API integration tests.
+"""
+from __future__ import annotations
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Any
+from urllib.parse import urldefrag, urlparse
+import yaml
+from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
+from spec_fixture_lint import lint_model
+
+ROOT = Path(__file__).resolve().parents[1]
+DIALECT = 'https://json-schema.org/draft/2020-12/schema'
+
+
+def reject_constant(value: str) -> None:
+    raise ValueError(f'Non-finite JSON value: {value}')
+
+
+def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out = {}
+    for key, value in pairs:
+        if key in out: raise ValueError(f'Duplicate JSON key: {key}')
+        out[key] = value
+    return out
+
+
+def load(path: Path) -> Any:
+    return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=unique_object,
+                      parse_constant=reject_constant)
+
+
+def pointer(value: Any, fragment: str) -> Any:
+    if not fragment: return value
+    if not fragment.startswith('/'): raise ValueError(f'Unsupported anchor #{fragment}')
+    for raw in fragment[1:].split('/'):
+        key = raw.replace('~1','/').replace('~0','~')
+        value = value[int(key)] if isinstance(value,list) else value[key]
+    return value
+
+
+def references(value: Any):
+    if isinstance(value,dict):
+        if '$ref' in value: yield value['$ref']
+        for v in value.values(): yield from references(v)
+    elif isinstance(value,list):
+        for v in value: yield from references(v)
+
+
+def main() -> dict[str, Any]:
+    paths = sorted((ROOT/'schemas').glob('*.schema.json'))
+    docs = {p:load(p) for p in paths}
+    ids = {doc['$id']:p for p,doc in docs.items()}
+    if len(ids) != len(docs): raise AssertionError('Duplicate schema $id')
+    pairs = []
+    for path,doc in docs.items():
+        Draft202012Validator.check_schema(doc)
+        resource = Resource.from_contents(doc)
+        pairs.extend([(doc['$id'],resource),(path.as_uri(),resource)])
+    registry = Registry().with_resources(pairs)
+    oas_path = ROOT/'openapi/openapi.yaml'
+    oas = yaml.safe_load(oas_path.read_text(encoding='utf-8'))
+    docs[oas_path] = oas
+    ref_count = 0
+    for path,doc in list(docs.items()):
+        for value in references(doc):
+            target,frag = urldefrag(value)
+            if not target: target_path = path
+            elif target in ids: target_path = ids[target]
+            elif urlparse(target).scheme:
+                raise AssertionError(f'Unexpected network $ref: {value}')
+            else: target_path = (path.parent/target).resolve()
+            if target_path not in docs:
+                raise AssertionError(f'Broken external $ref in {path.name}: {value}')
+            pointer(docs[target_path],frag)
+            ref_count += 1
+    def validator(spec: str) -> Draft202012Validator:
+        part,frag = urldefrag(spec)
+        schema = load(ROOT/part)
+        uri = schema['$id'] + ('#'+frag if frag else '')
+        return Draft202012Validator({'$schema':DIALECT,'$ref':uri},registry=registry,
+                                    format_checker=FormatChecker())
+    cases = load(ROOT/'testdata/contracts/cases.json')['cases']
+    positive = negative = semantic = 0
+    for case in cases:
+        instance = load(ROOT/case['instance'])
+        errors = list(validator(case['schema']).iter_errors(instance))
+        if case['layer']=='schema':
+            if bool(errors) == case['valid']:
+                detail = '\n'.join(f'{e.json_path}: {e.message}' for e in errors[:3])
+                raise AssertionError(f"Unexpected outcome for {case['id']}\n{detail}")
+            positive += case['valid']; negative += not case['valid']
+        else:
+            if errors: raise AssertionError(f"Semantic fixture must first be schema-valid: {case['id']}")
+            issues = lint_model(instance)
+            if not set(case['expected_codes']).issubset(issues):
+                raise AssertionError(f"{case['id']}: expected {case['expected_codes']}; got {issues}")
+            semantic += 1
+    # Schema-positive complete fixtures should also pass the LIMITED model lint.
+    for name in ['default-delivery.json','report-example.json','deterministic-queue.json','congested-queue.json']:
+        issues=lint_model(load(ROOT/'testdata/golden-models'/name))
+        if issues: raise AssertionError(f'{name}: {issues}')
+    assert oas['openapi']=='3.1.1'
+    assert oas['jsonSchemaDialect']==DIALECT
+    assert oas['security']==[{'bearerAuth':[]}]
+    operations=[]
+    for path,item in oas['paths'].items():
+        for method,operation in item.items():
+            assert method in {'get','post','put','patch','delete','options','head','trace'}
+            operations.append(operation['operationId'])
+            assert operation['x-origin'] in {'SOURCE','PROPOSED'}
+            assert set(operation['x-required-roles']) <= {'owner','editor','viewer'}
+            resolved=[]
+            for p in operation['parameters']:
+                resolved.append(pointer(oas,p['$ref'][1:]) if '$ref' in p else p)
+            path_vars=set(re.findall(r'\{([^}]+)\}',path))
+            assert path_vars=={p['name'] for p in resolved if p['in']=='path'}
+            assert all(p.get('required') for p in resolved if p['in']=='path')
+            assert any(p['name']=='X-Organization-ID' and p['required'] for p in resolved)
+            assert operation['responses']
+    assert len(operations)==len(set(operations))
+    inventory=load(ROOT/'planning/api-operations.json')['operations']
+    assert set(operations)=={x['operation_id'] for x in inventory}
+    assert len(inventory)==len(operations)
+    # Optional installed parser adds a structural model check; not full OAS conformance.
+    fastapi_status='NOT_RUN_NOT_INSTALLED'
+    try:
+        from fastapi.openapi.models import OpenAPI
+    except ImportError:
+        pass
+    else:
+        OpenAPI.model_validate(oas)
+        fastapi_status='PASS_STRUCTURAL_MODEL_ONLY'
+    corpus={}
+    for path in sorted((ROOT/'testdata/ai-evals').glob('*.jsonl')):
+        items=[json.loads(line) for line in path.read_text(encoding='utf-8').splitlines() if line.strip()]
+        assert len(items)==len({i['id'] for i in items}),path.name
+        corpus[path.stem]=len(items)
+    assert corpus['modeler']>=50
+    report={'status':'PASS_LIMITED_SPEC_CHECKS','schema_metaschemas':len(paths),
+            'schema_positive_fixtures':positive,'schema_negative_fixtures':negative,
+            'limited_semantic_negative_fixtures':semantic,'resolved_local_ref_occurrences':ref_count,
+            'openapi_operations':len(operations),'optional_fastapi_openapi_model':fastapi_status,
+            'independent_complete_openapi_validator':'NOT_RUN_UNAVAILABLE',
+            'ai_corpus_records':corpus,'live_ai_eval':'NOT_RUN','go_engine_tests':'NOT_RUN'}
+    (ROOT/'checks/contracts-check.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    print(json.dumps(report,ensure_ascii=False,indent=2))
+    return report
+
+if __name__=='__main__':
+    try: main()
+    except Exception as exc:
+        print(f'CONTRACT CHECK FAILED: {exc}',file=sys.stderr)
+        raise

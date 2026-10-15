@@ -1,0 +1,2279 @@
+# Candidate contract; source and proposed decisions are tracked in docs/DECISIONS_AND_TBD.md
+openapi: 3.1.1
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: AI-native Digital Twin P0 API
+  version: 0.1.0-draft
+  description: 'Report-derived handoff. SOURCE core paths: report pp.29–35. PROPOSED details D-001–D-016 require
+    human review. Contract-only delivery; no running server is asserted.'
+servers:
+- url: /v1
+security:
+- bearerAuth: []
+tags:
+- name: Projects
+- name: Models
+- name: Proposals
+- name: Scenarios
+- name: Imports
+- name: Simulations
+- name: Analyses
+- name: Audit
+- name: Memberships
+paths:
+  /projects:
+    post:
+      operationId: createProject
+      summary: Create project
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Projects
+      x-origin: SOURCE
+      x-required-roles: &id001
+      - owner
+      - editor
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Created.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Project
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/CreateProject
+    get:
+      operationId: listProjects
+      summary: List projects in current organization
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Projects
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Projects
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /projects/{id}:
+    get:
+      operationId: getProject
+      summary: Get project
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Projects
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Project
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /projects/{id}/models:
+    post:
+      operationId: createModel
+      summary: Create model, draft and immutable v1
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Models
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Created.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Model
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/CreateModel
+    get:
+      operationId: listModels
+      summary: List project models
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Models
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Models
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /models/{id}:
+    get:
+      operationId: getModel
+      summary: Get model metadata
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Models
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Model
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /models/{id}/draft:
+    get:
+      operationId: getDraft
+      summary: Read mutable draft
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Models
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+            ETag:
+              $ref: '#/components/headers/DraftETag'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Draft
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+    patch:
+      operationId: patchDraft
+      summary: Apply bounded JSON Patch to draft
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Models
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+            ETag:
+              $ref: '#/components/headers/DraftETag'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Draft
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '428':
+          $ref: '#/components/responses/Error428'
+      requestBody:
+        required: true
+        content:
+          application/json-patch+json:
+            schema:
+              allOf:
+              - $ref: ../schemas/json-patch.schema.json
+              - minItems: 1
+  /models/{id}/draft/reset:
+    post:
+      operationId: resetDraft
+      summary: Explicitly reset draft to latest version
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Models
+      x-origin: PROPOSED
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+            ETag:
+              $ref: '#/components/headers/DraftETag'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Draft
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '428':
+          $ref: '#/components/responses/Error428'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/ResetDraft
+  /models/{id}/versions:
+    post:
+      operationId: publishVersion
+      summary: Publish immutable version from draft
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Models
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201':
+          description: Created.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/ModelVersion
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '428':
+          $ref: '#/components/responses/Error428'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/Publish
+    get:
+      operationId: listVersions
+      summary: List immutable versions
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Models
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Versions
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /model-versions/{id}:
+    get:
+      operationId: getModelVersion
+      summary: Get immutable IR version and dataset bindings
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Models
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/ModelVersion
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /models/{id}/ai-proposals:
+    post:
+      operationId: createProposal
+      summary: Queue edit or scenario proposal generation
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Proposals
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Accepted and durably queued.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/ProposalAccepted
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/ProposalRequest
+    get:
+      operationId: listProposals
+      summary: List model proposals
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Proposals
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Proposals
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /ai-proposals/{id}:
+    get:
+      operationId: getProposal
+      summary: Get proposal and deterministic validation
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Proposals
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/proposal.schema.json
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /ai-proposals/{id}/approve:
+    post:
+      operationId: approveProposal
+      summary: Approve after revalidation; effect depends on mode
+      description: edit -> exactly one new ModelVersion. scenario -> exactly one immutable Scenario and ZERO new
+        ModelVersions. No implicit run. Reject stale latest base with 409; no auto-rebase. D-003/D-004. Audit and
+        idempotency response in same transaction.
+      tags:
+      - Proposals
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Created.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Approval
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/Approve
+  /ai-proposals/{id}/reject:
+    post:
+      operationId: rejectProposal
+      summary: Reject without model mutation
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Proposals
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/proposal.schema.json
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/Reject
+  /model-versions/{id}/scenarios:
+    post:
+      operationId: createManualScenario
+      summary: Create manually confirmed immutable scenario
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Scenarios
+      x-origin: PROPOSED
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Created.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/scenario.schema.json
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/CreateScenario
+    get:
+      operationId: listScenarios
+      summary: List scenarios for immutable version
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Scenarios
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Scenarios
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /scenarios/{id}:
+    get:
+      operationId: getScenario
+      summary: Get immutable scenario
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Scenarios
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/scenario.schema.json
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /imports:
+    post:
+      operationId: uploadImport
+      summary: Upload CSV or JSON for preview
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Imports
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Accepted and durably queued.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/ImportAccepted
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '413':
+          $ref: '#/components/responses/Error413'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  $ref: ../schemas/common.schema.json#/$defs/ID
+                model_id:
+                  $ref: ../schemas/common.schema.json#/$defs/ID
+                base_version_id:
+                  $ref: ../schemas/common.schema.json#/$defs/ID
+                kind:
+                  type: string
+                  enum:
+                  - csv_events
+                  - json_events
+                  - json_model
+                file:
+                  type: string
+                  format: binary
+              required:
+              - project_id
+              - model_id
+              - base_version_id
+              - kind
+              - file
+              additionalProperties: false
+  /imports/{id}:
+    get:
+      operationId: getImport
+      summary: Get preview, validation and lifecycle
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Imports
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/import.schema.json
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /imports/{id}/mapping:
+    post:
+      operationId: saveImportMapping
+      summary: Confirm mapping and queue deterministic validation
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Imports
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '202':
+          description: Accepted and durably queued.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/import.schema.json
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/SaveMapping
+  /imports/{id}/mapping-suggestions:
+    post:
+      operationId: suggestImportMapping
+      summary: Queue read-only AI column mapping suggestion
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Imports
+      x-origin: PROPOSED
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Accepted and durably queued.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  import_id:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                    pattern: ^[A-Za-z][A-Za-z0-9_.:-]{0,127}$
+                  status:
+                    const: generating
+                required:
+                - import_id
+                - status
+                additionalProperties: false
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+              required: []
+              additionalProperties: false
+  /imports/{id}/errors:
+    get:
+      operationId: downloadImportErrors
+      summary: Authorize download of row/schema error report
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Imports
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/SignedDownload
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /imports/{id}/commit:
+    post:
+      operationId: commitImport
+      summary: Freeze validated dataset and queue inference proposal
+      description: 'PROPOSED D-009 resolves report ambiguity: commit persists immutable dataset + generating proposal,
+        NOT canonical Twin mutation. For JSON model imports, base identity is server-bound; a diff is reviewed before
+        approval. All rows must validate; no silent partial import.'
+      tags:
+      - Imports
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Accepted and durably queued.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/ImportCommitted
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/CommitImport
+  /simulations:
+    post:
+      operationId: createSimulation
+      summary: Durably enqueue frozen simulation input
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Simulations
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Accepted and durably queued.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/RunAccepted
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/simulation.schema.json#/$defs/RunRequest
+  /models/{id}/simulations:
+    get:
+      operationId: listSimulations
+      summary: List model runs
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Simulations
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Runs
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /simulations/{id}:
+    get:
+      operationId: getSimulation
+      summary: Read run status and reproducibility snapshot
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Simulations
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/simulation.schema.json#/$defs/Run
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /simulations/{id}/cancel:
+    post:
+      operationId: cancelSimulation
+      summary: Request checkpoint cancellation
+      description: queued -> cancelled atomically. running -> cancellation_requested=true. repeated cancelled ->
+        same cancelled resource. completed/failed ->409; cannot replace final result.
+      tags:
+      - Simulations
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/simulation.schema.json#/$defs/Run
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+              required: []
+              additionalProperties: false
+  /simulations/{id}/results:
+    get:
+      operationId: getSimulationResults
+      summary: Read completed results
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Simulations
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/simulation.schema.json#/$defs/Result
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /simulations/{id}/events:
+    get:
+      operationId: streamSimulationEvents
+      summary: SSE progress snapshots
+      description: 'Authenticated fetch-based SSE (no bearer token in URL). event: progress; data follows http.schema.json/$defs/ProgressSnapshot.
+        id is run-bound revision. Reconnect emits latest snapshot, not guaranteed historical replay. Reauthorize
+        on reconnect and on stream polling; close on membership revocation/expiry.'
+      tags:
+      - Simulations
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - name: Last-Event-ID
+        in: header
+        required: false
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 128
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: 'id: sim_demo:7
+
+                event: progress
+
+                data: {"run_id":"sim_demo","status":"running","revision":7,"completed_replications":3,"total_replications":10,"events_processed":12500,"cancellation_requested":false}
+
+
+                '
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      x-event-schema:
+        $ref: ../schemas/http.schema.json#/$defs/ProgressSnapshot
+  /simulations/{id}/trace:
+    get:
+      operationId: downloadSimulationTrace
+      summary: Authorize sampled playback artifact
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Simulations
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/SignedDownload
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /simulation-comparisons:
+    get:
+      operationId: compareSimulations
+      summary: Compare baseline and scenario aggregates
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Simulations
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: baseline_run_id
+        in: query
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - name: scenario_run_id
+        in: query
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Comparison
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /simulations/{id}/analyses:
+    post:
+      operationId: createAnalysis
+      summary: Queue grounded AI analysis
+      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      tags:
+      - Analyses
+      x-origin: SOURCE
+      x-required-roles: *id001
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: Accepted and durably queued.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/AnalysisAccepted
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/AnalysisRequest
+  /analyses/{id}:
+    get:
+      operationId: getAnalysis
+      summary: Read analysis and evidence
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Analyses
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/AnalysisRecord
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /audit-events:
+    get:
+      operationId: listAuditEvents
+      summary: Read tenant-scoped audit events
+      description: SOURCE audit route; PROPOSED D-012 least-privilege read is Owner-only because audit may include
+        member-level metadata.
+      tags:
+      - Audit
+      x-origin: SOURCE
+      x-required-roles:
+      - owner
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/AuditEvents
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /organizations/{organization_id}/memberships:
+    get:
+      operationId: listMemberships
+      summary: List organization members
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Memberships
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: organization_id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Memberships
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+    post:
+      operationId: createMembership
+      summary: Add known existing user membership
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Memberships
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: organization_id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Created.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Membership
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/MembershipWrite
+  /organizations/{organization_id}/memberships/{user_id}:
+    patch:
+      operationId: updateMembership
+      summary: Update role; preserve at least one Owner
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Memberships
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: organization_id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Membership
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/http.schema.json#/$defs/MembershipUpdate
+    delete:
+      operationId: deleteMembership
+      summary: Remove membership; preserve at least one Owner
+      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table.
+      tags:
+      - Memberships
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: organization_id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ID
+      responses:
+        '204':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: OIDC JWT
+  parameters:
+    OrganizationContext:
+      name: X-Organization-ID
+      in: header
+      required: true
+      description: Tenant selector only. JWT subject + current membership authorize this scope. Never trust a role
+        from this header. PROPOSED D-008.
+      schema:
+        $ref: ../schemas/common.schema.json#/$defs/ID
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Scoped by organization, authenticated actor, HTTP operation and resource. Same key+body replays;
+        different body returns 409. PROPOSED D-011.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Exact strong ETag e.g. "draft-revision-12". Missing=428; stale=409 MODEL_VERSION_CONFLICT as
+        specified by source.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 100
+        pattern: ^"draft-revision-[1-9][0-9]*"$
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 2048
+      description: Opaque tenant/resource-bound pagination cursor.
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+  responses:
+    Error400:
+      description: Malformed JSON, duplicate keys, invalid request encoding or parameter.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error401:
+      description: Missing/invalid/expired JWT.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error403:
+      description: Authenticated member lacks required role.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error404:
+      description: Resource unavailable in authorized tenant/parent scope.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error409:
+      description: Base/revision conflict, invalid lifecycle, idempotency body mismatch or result not ready.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error413:
+      description: Upload/request size limit exceeded.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error422:
+      description: Schema, semantic, dataset or constraint validation failed.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error428:
+      description: Required concurrency precondition missing.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error429:
+      description: Tenant/request/provider quota exceeded.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error500:
+      description: Internal error; no partial canonical commit.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+    Error503:
+      description: Provider or infrastructure unavailable; no fabricated success.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestID'
+      content:
+        application/json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Error
+  headers:
+    RequestID:
+      description: Correlation ID generated or safely accepted by API.
+      schema:
+        $ref: ../schemas/common.schema.json#/$defs/ID
+    DraftETag:
+      description: Strong current draft revision ETag.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 100
+        pattern: ^"draft-revision-[1-9][0-9]*"$
+x-spec-status: PROPOSED_NOT_APPROVED

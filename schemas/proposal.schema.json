@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/proposal.schema.json",
+  "title": "proposal",
+  "$comment": "SOURCE pp. 24–25,32–33. PROPOSED D-001,D-002,D-004 states and mode-dependent effect. This is a server response, not a client write body.",
+  "type": "object",
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "organization_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "base_version_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "edit",
+        "scenario"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "generating",
+        "needs_input",
+        "ready",
+        "invalid",
+        "failed",
+        "approved",
+        "rejected",
+        "conflicted"
+      ]
+    },
+    "created_by": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "requires_confirmation": {
+      "const": true
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "risk_level": {
+      "$ref": "common.schema.json#/$defs/RiskLevel"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "changes": {
+      "$ref": "json-patch.schema.json"
+    },
+    "expected_effects": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      },
+      "minItems": 1,
+      "maxItems": 50
+    },
+    "validation": {
+      "$ref": "common.schema.json#/$defs/Validation"
+    },
+    "new_version_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "scenario_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "patch_hash": {
+      "type": "string",
+      "minLength": 71,
+      "maxLength": 71,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "error": {
+      "$ref": "common.schema.json#/$defs/Error"
+    },
+    "dataset_bindings": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/DatasetBinding"
+      },
+      "maxItems": 1000
+    }
+  },
+  "required": [
+    "proposal_id",
+    "organization_id",
+    "model_id",
+    "base_version_id",
+    "mode",
+    "status",
+    "created_by",
+    "created_at",
+    "requires_confirmation"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "ready",
+              "approved"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "summary",
+          "assumptions",
+          "risk_level",
+          "confidence",
+          "changes",
+          "expected_effects",
+          "validation",
+          "patch_hash"
+        ],
+        "properties": {
+          "changes": {
+            "minItems": 1
+          },
+          "validation": {
+            "properties": {
+              "valid": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "needs_input"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "questions"
+        ],
+        "not": {
+          "required": [
+            "changes"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "approved"
+          },
+          "mode": {
+            "const": "edit"
+          }
+        },
+        "required": [
+          "status",
+          "mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "new_version_id"
+        ],
+        "not": {
+          "required": [
+            "scenario_id"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "approved"
+          },
+          "mode": {
+            "const": "scenario"
+          }
+        },
+        "required": [
+          "status",
+          "mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "scenario_id"
+        ],
+        "not": {
+          "required": [
+            "new_version_id"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+[
+  {
+    "op": "move",
+    "from": "/nodes/0",
+    "path": "/nodes/1"
+  }
+]

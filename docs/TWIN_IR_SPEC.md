@@ -1,0 +1,92 @@
+# Twin IR / Model Contract
+
+SOURCE：原報告 pp. 5–6、14–20、24–25、31–35。完整 closed-object schema、hash、dataset binding、patch allowlist 是 PROPOSED D-001 / D-005 / D-006 / D-014 / D-017，須確認後才凍結為 production contract。
+
+## 1. 唯一 canonical representation
+
+`schemas/model-ir.schema.json` 是 IR v0.1 的 source of truth，採 JSON Schema Draft 2020-12。IR 保留原報告的 arrays：entity_types、nodes、flows、resources、constraints、metrics；不能為了 UI 或 patch 方便而擅自改成 dictionaries。IDs 表示 identity；array index 不是穩定 identity。
+
+schema_version、model_id、domain、name、time_unit 及 views 為根層欄位。metadata 與 domain_attributes 是不可信資料容器，不是程式碼或 expression。closed objects 拒絕未知欄位；metadata 例外，但仍受深度／大小及 redaction 限制。原報告的「最小 IR」有空 nodes/flows，它只是 shape 示意，不是可執行模型；可執行模型須通過下述 semantic validation。
+
+PROPOSED D-001：entity/service IDs 使用 bounded opaque strings；SQL 為 text，保留報告 mdl_/mv_ 等表示法。IR 的 model_id 由 server 指定、不可藉匯入／patch 改變 tenant 或 resource identity。
+
+## 2. Node、flow、resource catalog
+
+| Type | Required configuration | P0 行為 |
+|---|---|---|
+| source | entity_type、arrival.distribution | 從 t=0 起抽第一個 interarrival，之後產生 entity；可選 max_entities 是 D-005 的測試/有限 source 提案 |
+| queue | id/type | 顯式顯示 downstream process 的 FIFO wait；不是額外的第二次服務或重複等待計時 |
+| process | service_time.distribution、requires[] | 一次性 acquire 全部 resource units，完成 service 後全部 release |
+| decision | id/type | outgoing probability routing；沒有 script predicate |
+| delay | delay_time.distribution | 不占 resource 的等待；delay_time 是 D-005 / D-014 補全欄位 |
+| sink | 可選 outcome=completed/abandoned | 結束 entity；abandoned 不計 completed throughput |
+| failure | 可選 reason | 記 generic failure event 後繼續指定 flow；不代表真實部署故障 |
+| rework | id/type | 記 generic rework event 後繼續指定 flow；不隱含跳轉目標 |
+
+所有 flows 都有 id/from/to/routing={type:probability,probability}。decision 可有多個 outgoing flows，概率和=1；其餘非 sink 節點恰有一個 probability=1 的 flow；sink 沒有 outgoing。queue 只接一個 process，是候選 P0 限制，不暗加 calendar/priority/preemption。
+
+resource 的 type 保留 human / machine / generic；capacity 為正整數；queue_discipline=fifo。可選 role 提供 domain catalog 語義。Software Delivery catalog 包含 developer、reviewer、ci_runner、test_environment、deployment_slot、generic_resource；kernel 不依角色字串决定行為。
+
+requires 每項為 {resource_id,units}。同一 process 不可重複列同一 resource；units≤capacity。capacity=0、負值、非整數、unknown resource 一律 invalid，不以無限等待替代 validation。
+
+## 3. Distributions / units
+
+P0 僅 constant(value)、exponential(mean)、triangular(min,mode,max)、empirical(samples_ref)。lognormal、calendar-dependent、mixtures 為 P1。
+
+Schema 驗型別與非負值；semantic validator 另驗 min≤mode≤max、finite numbers、empirical 可解析且非空、unit 可轉換。interarrival 必須嚴格正值；zero service/delay 可以存在，但可達的 zero-time cycle 不能執行。時間換算和 rounding 由 SIMULATION_SPEC 固定。
+
+PROPOSED D-017：day 在 P0 是連續 24 小時。報告 example mean=16 min 在此語義下是 90 arrivals/day，不應當作 30/day 或暗示有 8-hour work calendar。full template fixture 用 synthetic mean=48 min 示範 30/day，其餘新增 Test/Deploy 參數也標 synthetic，不能當客戶事實。
+
+## 4. Semantic validation order
+
+執行與資料修改之前依序驗：JSON parse（拒 duplicate keys / NaN / Infinity）→JSON Schema→limits→ID uniqueness→references→graph rules→distribution/domain semantics→constraint checks→dataset bindings→scenario/patch policy→risk classification。invalid 回 issue code、JSON Pointer path、severity/message。
+
+| Code family | 驗證 |
+|---|---|
+| IR_SCHEMA_INVALID | schema/version/type/unknown field 不符 |
+| DUPLICATE_ID | 同 catalog 重複 ID；候選 profile 要求 nodes/resources 不共用 ID，避免 selectedEntityId 歧義 |
+| UNKNOWN_REFERENCE | flow endpoint、entity_type、resource、metric、constraint、view position 指向不存在的 ID |
+| ROUTING_INVALID | 非 decision 多路、sink 出路、概率負值或總和偏離 1（容差候選 1e-9） |
+| NO_REACHABLE_SINK | source 沿正概率路徑找不到 sink；0% 分支允許存在但不會執行 |
+| ZERO_TIME_CYCLE | 可達的 zero-minimum-time graph 含 cycle；不能靠 event cap 當正常 termination |
+| RESOURCE_REQUIREMENT_INVALID | demand 超 capacity／重複 resource／負數 |
+| DISTRIBUTION_INVALID | triangular ordering、source zero interval、empirical 空值或非 finite |
+| DATASET_BINDING_INVALID | logical ref 沒有 immutable authorized snapshot 或 hash/unit 不一致 |
+| VIEW_REFERENCE_INVALID | view position 不對應 canonical node |
+| CONSTRAINT_FAILED | P0 outgoing_probability_sum 不成立 |
+
+unreachable dormant node 可 warning；無 reachable sink 的活躍路徑是 error。valid graph 仍可能大量 rework，因此 runtime budgets 必須存在。來源未明確要求跨 catalog IDs 全域唯一；上述 node/resource uniqueness 為 D-014 的候選限制。
+
+## 5. Version、hash 與 empirical freezing
+
+SOURCE：Draft mutable；ModelVersion immutable、保存 parent；run 保存 model_version_id、model_hash、patch、engine、seed、replications、config。
+
+PROPOSED D-006：`model_hash = sha256(JCS(IR))`，保留原 array order；JCS 指 RFC 8785，不用 Python sort_keys / Go json.Marshal 的預設結果冒充。拒 duplicate JSON keys、不合法 Unicode 及非 finite number；數字採 interoperable IEEE-754 profile，seed 限 0..2^53-1。model hash 含 views/metadata；它是完整版本內容 hash，不是純 simulation semantic hash。
+
+empirical logical ref（例如 dataset:review_duration）不是可變遠端網址。每個 published version 附 immutable DatasetBinding manifest：logical_ref、dataset_version_id、content_hash、unit、sample_count。版本批准前完整凍結；run 複製同一 manifest，worker 驗實際 object bytes hash 後 preload samples。晚到的新資料只能產生新 dataset version / model version，不能改變已提交 run。
+
+`effective_model_hash = sha256(JCS(apply(base.IR,scenario_patch)))`。dataset_manifest_hash 對按 logical_ref 排序的 manifest 做 JCS/SHA-256。config_hash 對完整公開 config 做 JCS/SHA-256；execution_limits、engine profile 也在 run input 中固定，不讓重試改設定。
+
+JSON Schema 只驗 `sha256:` 的格式，不能驗內容真的相符；hash consistency 是 T-005/T-021 的產品測試，不是本包 schema validation 所保證的事。
+
+## 6. JSON Patch profile / approval scope
+
+SOURCE：RFC 6902、application/json-patch+json、array-index patch examples。PROPOSED D-014：P0 只接受 add/remove/replace/test；move/copy、空字串 root path、不合法 `~` escape、超深 pointer 均拒絕。RFC 6901 pointer 只 decode 一次；authorization 不做字串 startsWith 判斷，必須比較解碼後 tokens。
+
+manual draft patch 可操作 name、nodes、flows、resources、entity_types、constraints、metrics、views、metadata，但不能改 schema_version/model_id/domain/time_unit 或任何 server envelope identity。改 time_unit 需要明確 migration，P0 不隱式 reinterpret 已有 duration。
+
+AI edit allowlist 比 manual 更小：name、nodes、flows、resources、entity_types、constraints、metrics；禁止 views/metadata/identity。AI scenario 僅既有 resources/*/capacity、nodes/*/arrival/distribution、nodes/*/service_time/distribution、nodes/*/delay_time/distribution、flows/*/routing/probability；不能增刪 topology 或創造 dataset binding。物件整段 replace 仍逐欄驗 full candidate IR，不因 parent path 被允許就略過子欄。
+
+所有 patch 都在 copy 上依序 apply，整體成功才提交；任一 op/test 失敗都不產生 partial mutation。array index 只在 pinned immutable base 有意義，diff 顯示 logical entity ID。建議對被修改 array item 先發 `test /resources/1/id=ci_runner`；test 不算 business mutation，也不能取代 expected base。刪除 node/resource 必須同時修復 references，否則 invalid。
+
+## 7. View / canonical event schema
+
+2D positions 放 views.2d.positions[node_id]；3D layout_mode=derived_from_2d。views 不可含另一份 nodes/flows。positions 缺省時 DomainPack.DefaultViews 生成；選取與 playback 使用同一 ID。
+
+canonical-event.schema.json 保留 case_id/event_type/timestamp 必填，stage recommended，其餘 optional。timestamp 是 RFC3339；跨時區先正規化再排序，不能猜無時區時間。duration_ms 與 timestamp-derived duration 不一致時產生 data-quality issue，選用政策要由 domain inference 明列。CSV 的低 confidence mapping 和 dataset 推論永不直接更改 canonical Twin。
+
+## 8. 相容性與擴充
+
+未知 schema_version 拒絕，不默默盡力解析。v0.1 新欄位／新 node 或 constraints 需更新 schema、fixtures、Go/TS contract tests 和 version migration 策略。Future DomainPack 可使用既有 generic primitives 與 domain attributes；新增核心 primitive 應有獨立 ADR，不能以 arbitrary script 绕過 contract。
+
+補充（D-010）：單純回到前一節點的 flow 不自動等於 domain rework。需要可辨識的 rework node 或已批准的 DomainPack mapping 才計數；不能以 f_retry 之類的字串名稱在 generic kernel 硬編語義。

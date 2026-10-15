@@ -1,0 +1,113 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_zero_cycle",
+  "domain": "software_delivery",
+  "name": "Synthetic test model",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "change",
+      "name": "Software Change"
+    }
+  ],
+  "resources": [],
+  "nodes": [
+    {
+      "id": "arrival",
+      "type": "source",
+      "entity_type": "change",
+      "arrival": {
+        "distribution": {
+          "type": "constant",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "a",
+      "type": "decision"
+    },
+    {
+      "id": "b",
+      "type": "decision"
+    },
+    {
+      "id": "done",
+      "type": "sink"
+    }
+  ],
+  "flows": [
+    {
+      "id": "start",
+      "from": "arrival",
+      "to": "a",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "ab",
+      "from": "a",
+      "to": "b",
+      "routing": {
+        "type": "probability",
+        "probability": 0.9
+      }
+    },
+    {
+      "id": "ad",
+      "from": "a",
+      "to": "done",
+      "routing": {
+        "type": "probability",
+        "probability": 0.1
+      }
+    },
+    {
+      "id": "ba",
+      "from": "b",
+      "to": "a",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "arrival": {
+          "x": 0,
+          "y": 100
+        },
+        "a": {
+          "x": 200,
+          "y": 100
+        },
+        "b": {
+          "x": 400,
+          "y": 100
+        },
+        "done": {
+          "x": 600,
+          "y": 100
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  }
+}

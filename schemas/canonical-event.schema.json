@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/canonical-event.schema.json",
+  "title": "canonical-event",
+  "$comment": "SOURCE pp. 5–6. stage recommended but optional; CSV column names are mapped before validation. D-014 bounds are proposed.",
+  "type": "object",
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stage": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "resource_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "outcome": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "deployment_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "is_failure": {
+      "type": "boolean"
+    },
+    "is_rework": {
+      "type": "boolean"
+    },
+    "metadata": {
+      "type": "object",
+      "maxProperties": 64,
+      "additionalProperties": true,
+      "description": "UNTRUSTED_DATA；server 另外限制深度、字串長度及總 bytes。"
+    }
+  },
+  "required": [
+    "case_id",
+    "event_type",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}

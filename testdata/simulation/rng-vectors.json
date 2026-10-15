@@ -1,0 +1,26 @@
+{
+  "status": "REFERENCE_ARITHMETIC_FOR_PROPOSED_D-006_NOT_GO_ENGINE_VERIFICATION",
+  "splitmix64_initial_state_hex": "0000000000000000",
+  "outputs_hex": [
+    "e220a8397b1dcdaf",
+    "6e789e6aa1b965f4",
+    "06c45d188009454f",
+    "f88bb8a8724c81ec",
+    "1b39896a51a8749b"
+  ],
+  "base_seed": 7,
+  "replication_seed_vectors": [
+    {
+      "index": 0,
+      "seed_hex_le_value": "cbf9456722e61fb5"
+    },
+    {
+      "index": 1,
+      "seed_hex_le_value": "c5524c046907b871"
+    },
+    {
+      "index": 2,
+      "seed_hex_le_value": "d6fa53053a803c0c"
+    }
+  ]
+}

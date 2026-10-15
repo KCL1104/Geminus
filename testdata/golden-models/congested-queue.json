@@ -1,0 +1,109 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_congestion",
+  "domain": "software_delivery",
+  "name": "Synthetic test model",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "change",
+      "name": "Software Change"
+    }
+  ],
+  "resources": [
+    {
+      "id": "server",
+      "type": "machine",
+      "name": "Server",
+      "capacity": 1,
+      "queue_discipline": "fifo"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "arrival",
+      "type": "source",
+      "entity_type": "change",
+      "arrival": {
+        "distribution": {
+          "type": "constant",
+          "value": 5
+        },
+        "max_entities": 20
+      }
+    },
+    {
+      "id": "service",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 10
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "server",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "type": "sink",
+      "outcome": "completed"
+    }
+  ],
+  "flows": [
+    {
+      "id": "a_s",
+      "from": "arrival",
+      "to": "service",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "s_d",
+      "from": "service",
+      "to": "done",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "arrival": {
+          "x": 0,
+          "y": 100
+        },
+        "service": {
+          "x": 200,
+          "y": 100
+        },
+        "done": {
+          "x": 400,
+          "y": 100
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  }
+}

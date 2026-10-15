@@ -1,0 +1,4 @@
+# Versions observed in the generation environment; not a claim of latest versions.
+jsonschema==4.26.0
+referencing==0.37.0
+PyYAML==6.0.3

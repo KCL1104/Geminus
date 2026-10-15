@@ -1,0 +1,429 @@
+{
+  "operations": [
+    {
+      "method": "POST",
+      "path": "/v1/projects",
+      "operation_id": "createProject",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects",
+      "operation_id": "listProjects",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects/{id}",
+      "operation_id": "getProject",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/projects/{id}/models",
+      "operation_id": "createModel",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/projects/{id}/models",
+      "operation_id": "listModels",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models/{id}",
+      "operation_id": "getModel",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models/{id}/draft",
+      "operation_id": "getDraft",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/models/{id}/draft",
+      "operation_id": "patchDraft",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/models/{id}/draft/reset",
+      "operation_id": "resetDraft",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/models/{id}/versions",
+      "operation_id": "publishVersion",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models/{id}/versions",
+      "operation_id": "listVersions",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/model-versions/{id}",
+      "operation_id": "getModelVersion",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/models/{id}/ai-proposals",
+      "operation_id": "createProposal",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models/{id}/ai-proposals",
+      "operation_id": "listProposals",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/ai-proposals/{id}",
+      "operation_id": "getProposal",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ai-proposals/{id}/approve",
+      "operation_id": "approveProposal",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/ai-proposals/{id}/reject",
+      "operation_id": "rejectProposal",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/model-versions/{id}/scenarios",
+      "operation_id": "createManualScenario",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/model-versions/{id}/scenarios",
+      "operation_id": "listScenarios",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/scenarios/{id}",
+      "operation_id": "getScenario",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/imports",
+      "operation_id": "uploadImport",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/imports/{id}",
+      "operation_id": "getImport",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/imports/{id}/mapping",
+      "operation_id": "saveImportMapping",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/imports/{id}/mapping-suggestions",
+      "operation_id": "suggestImportMapping",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/imports/{id}/errors",
+      "operation_id": "downloadImportErrors",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/imports/{id}/commit",
+      "operation_id": "commitImport",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/simulations",
+      "operation_id": "createSimulation",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models/{id}/simulations",
+      "operation_id": "listSimulations",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/simulations/{id}",
+      "operation_id": "getSimulation",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/simulations/{id}/cancel",
+      "operation_id": "cancelSimulation",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/simulations/{id}/results",
+      "operation_id": "getSimulationResults",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/simulations/{id}/events",
+      "operation_id": "streamSimulationEvents",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/simulations/{id}/trace",
+      "operation_id": "downloadSimulationTrace",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/simulation-comparisons",
+      "operation_id": "compareSimulations",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/simulations/{id}/analyses",
+      "operation_id": "createAnalysis",
+      "origin": "SOURCE",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/analyses/{id}",
+      "operation_id": "getAnalysis",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/audit-events",
+      "operation_id": "listAuditEvents",
+      "origin": "SOURCE",
+      "roles": [
+        "owner"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/organizations/{organization_id}/memberships",
+      "operation_id": "listMemberships",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/organizations/{organization_id}/memberships",
+      "operation_id": "createMembership",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/organizations/{organization_id}/memberships/{user_id}",
+      "operation_id": "updateMembership",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/organizations/{organization_id}/memberships/{user_id}",
+      "operation_id": "deleteMembership",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/ai-mapping.schema.json",
+  "title": "ai-mapping",
+  "$comment": "SOURCE pp. 6,25. PROPOSED D-009,D-014 bounded transform enum; never arbitrary expressions, scripts or shell.",
+  "type": "object",
+  "properties": {
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_column": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "target_field": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "case_id",
+                  "event_type",
+                  "timestamp",
+                  "stage",
+                  "duration_ms",
+                  "resource_id",
+                  "outcome",
+                  "deployment_id",
+                  "is_failure",
+                  "is_rework",
+                  "metadata"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "transform": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "rfc3339",
+              "integer_ms",
+              "boolean_literal"
+            ]
+          },
+          "requires_confirmation": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source_column",
+          "target_field",
+          "confidence",
+          "evidence",
+          "transform",
+          "requires_confirmation"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "confidence": {
+                  "exclusiveMaximum": 0.8
+                }
+              },
+              "required": [
+                "confidence"
+              ]
+            },
+            "then": {
+              "properties": {
+                "requires_confirmation": {
+                  "const": true
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "target_field": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "target_field"
+              ]
+            },
+            "then": {
+              "properties": {
+                "requires_confirmation": {
+                  "const": true
+                }
+              }
+            }
+          }
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 1000
+    }
+  },
+  "required": [
+    "mappings"
+  ],
+  "additionalProperties": false
+}

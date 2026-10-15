@@ -1,0 +1,18 @@
+{
+  "model_version_id": "mv_demo",
+  "name": "Use approved scenario",
+  "scenario_id": "scn_demo",
+  "config": {
+    "horizon": {
+      "value": 30,
+      "unit": "day"
+    },
+    "warmup": {
+      "value": 2,
+      "unit": "day"
+    },
+    "replications": 100,
+    "seed": 1837462,
+    "trace_level": "sampled"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "proposal_id": "aip_scenario",
+  "status": "approved",
+  "mode": "scenario",
+  "scenario_id": "scn_demo",
+  "patch_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}

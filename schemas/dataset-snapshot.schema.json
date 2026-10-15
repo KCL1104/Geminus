@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/dataset-snapshot.schema.json",
+  "title": "dataset-snapshot",
+  "$comment": "PROPOSED D-006 numeric empirical snapshot transfer fixture. Real object storage is private; no arbitrary external URI. Server verifies content hash and bindings before run.",
+  "type": "object",
+  "properties": {
+    "dataset_version_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "organization_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "logical_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^dataset:.+$"
+    },
+    "unit": {
+      "$ref": "common.schema.json#/$defs/TimeUnit"
+    },
+    "samples": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1000000000000.0
+      },
+      "minItems": 1,
+      "maxItems": 100000
+    },
+    "content_hash": {
+      "type": "string",
+      "minLength": 71,
+      "maxLength": 71,
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "dataset_version_id",
+    "organization_id",
+    "logical_ref",
+    "unit",
+    "samples",
+    "content_hash"
+  ],
+  "additionalProperties": false
+}

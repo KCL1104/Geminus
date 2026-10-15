@@ -1,0 +1,18 @@
+{
+  "status": "PASS_LIMITED_SPEC_CHECKS",
+  "schema_metaschemas": 13,
+  "schema_positive_fixtures": 20,
+  "schema_negative_fixtures": 21,
+  "limited_semantic_negative_fixtures": 7,
+  "resolved_local_ref_occurrences": 663,
+  "openapi_operations": 41,
+  "optional_fastapi_openapi_model": "PASS_STRUCTURAL_MODEL_ONLY",
+  "independent_complete_openapi_validator": "NOT_RUN_UNAVAILABLE",
+  "ai_corpus_records": {
+    "analyst": 10,
+    "import-mapper": 10,
+    "modeler": 50
+  },
+  "live_ai_eval": "NOT_RUN",
+  "go_engine_tests": "NOT_RUN"
+}

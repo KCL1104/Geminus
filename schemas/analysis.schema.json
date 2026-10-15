@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/analysis.schema.json",
+  "title": "analysis",
+  "$comment": "SOURCE pp. 25–26,28. PROPOSED D-010,D-016 strict evidence references and server-recomputed deltas. Existence, numeric equality and data availability need semantic verification; schema alone is insufficient.",
+  "type": "object",
+  "properties": {
+    "baseline": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            }
+          },
+          "required": [
+            "run_id",
+            "summary"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "scenario": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "run_id",
+        "summary"
+      ],
+      "additionalProperties": false
+    },
+    "delta": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "metric_path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048,
+            "pattern": "^/metrics/.*$"
+          },
+          "absolute_delta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": -1000000000000000.0,
+                "maximum": 1000000000000000.0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relative_delta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": -1000000000000000.0,
+                "maximum": 1000000000000000.0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "metric_path",
+          "absolute_delta",
+          "relative_delta",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 1000
+    },
+    "bottleneck": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "observation",
+              "inference"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "run_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+                },
+                "metric_path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "pattern": "^/metrics/.*$"
+                }
+              },
+              "required": [
+                "run_id",
+                "metric_path"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "statement",
+          "kind",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "uncertainty": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      },
+      "minItems": 0,
+      "maxItems": 100
+    },
+    "suggested_next_experiments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "hypothesis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "requires_confirmation": {
+            "const": true
+          }
+        },
+        "required": [
+          "name",
+          "hypothesis",
+          "requires_confirmation"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 0,
+      "maxItems": 20
+    }
+  },
+  "required": [
+    "baseline",
+    "scenario",
+    "delta",
+    "bottleneck",
+    "assumptions",
+    "uncertainty",
+    "suggested_next_experiments"
+  ],
+  "additionalProperties": false
+}

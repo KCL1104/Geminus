@@ -1,0 +1,312 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_checkout",
+  "domain": "software_delivery",
+  "name": "Synthetic Software Delivery Pipeline",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "change",
+      "name": "Software Change"
+    }
+  ],
+  "resources": [
+    {
+      "id": "reviewer",
+      "type": "human",
+      "name": "Reviewer",
+      "capacity": 2,
+      "queue_discipline": "fifo"
+    },
+    {
+      "id": "ci_runner",
+      "type": "machine",
+      "name": "Ci Runner",
+      "capacity": 3,
+      "queue_discipline": "fifo"
+    },
+    {
+      "id": "test_environment",
+      "type": "machine",
+      "name": "Test Environment",
+      "capacity": 1,
+      "queue_discipline": "fifo"
+    },
+    {
+      "id": "deployment_slot",
+      "type": "machine",
+      "name": "Deployment Slot",
+      "capacity": 1,
+      "queue_discipline": "fifo"
+    },
+    {
+      "id": "reviewer",
+      "type": "human",
+      "name": "Reviewer",
+      "capacity": 2,
+      "queue_discipline": "fifo"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "change_arrival",
+      "type": "source",
+      "entity_type": "change",
+      "arrival": {
+        "distribution": {
+          "type": "exponential",
+          "mean": 48
+        }
+      }
+    },
+    {
+      "id": "code_review",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 240
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "reviewer",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "ci",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 18
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "ci_runner",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "ci_result",
+      "type": "decision"
+    },
+    {
+      "id": "ci_failure",
+      "type": "failure",
+      "reason": "Synthetic CI failure; not a production deployment failure"
+    },
+    {
+      "id": "ci_rework",
+      "type": "rework"
+    },
+    {
+      "id": "test",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 10
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "test_environment",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "deploy",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 5
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "deployment_slot",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "deployed",
+      "type": "sink",
+      "outcome": "completed"
+    }
+  ],
+  "flows": [
+    {
+      "id": "f1",
+      "from": "change_arrival",
+      "to": "code_review",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f2",
+      "from": "code_review",
+      "to": "ci",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f3",
+      "from": "ci",
+      "to": "ci_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f_pass",
+      "from": "ci_result",
+      "to": "test",
+      "routing": {
+        "type": "probability",
+        "probability": 0.8
+      }
+    },
+    {
+      "id": "f_retry",
+      "from": "ci_result",
+      "to": "ci_failure",
+      "routing": {
+        "type": "probability",
+        "probability": 0.2
+      }
+    },
+    {
+      "id": "f_fail_rework",
+      "from": "ci_failure",
+      "to": "ci_rework",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f_rework_ci",
+      "from": "ci_rework",
+      "to": "ci",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f_test_deploy",
+      "from": "test",
+      "to": "deploy",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "f_deploy_sink",
+      "from": "deploy",
+      "to": "deployed",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "ci_result",
+      "equals": 1
+    }
+  ],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    },
+    {
+      "id": "ci_utilization",
+      "type": "resource_utilization",
+      "resource_id": "ci_runner"
+    },
+    {
+      "id": "failures",
+      "type": "failure_count"
+    },
+    {
+      "id": "reworks",
+      "type": "rework_count"
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "change_arrival": {
+          "x": 0,
+          "y": 100
+        },
+        "code_review": {
+          "x": 200,
+          "y": 100
+        },
+        "ci": {
+          "x": 400,
+          "y": 100
+        },
+        "ci_result": {
+          "x": 600,
+          "y": 100
+        },
+        "ci_failure": {
+          "x": 800,
+          "y": 100
+        },
+        "ci_rework": {
+          "x": 1000,
+          "y": 100
+        },
+        "test": {
+          "x": 1200,
+          "y": 100
+        },
+        "deploy": {
+          "x": 1400,
+          "y": 100
+        },
+        "deployed": {
+          "x": 1600,
+          "y": 100
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "fixture": true,
+    "origin": "PROPOSED D-017; NOT customer data or measured performance",
+    "assumptions": [
+      "Continuous 24-hour day, no calendar; mean=48min implies 30 expected arrivals/day.",
+      "Review constant 240min, Test 10min, Deploy 5min are synthetic test assumptions.",
+      "CI rework is explicitly instrumented; DORA mapping unavailable."
+    ]
+  }
+}

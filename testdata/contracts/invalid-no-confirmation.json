@@ -1,0 +1,25 @@
+{
+  "status": "proposed",
+  "summary": "將 CI runner capacity 從 3 增至 6，其他參數不變。",
+  "assumptions": [
+    "服務時間分布不變。"
+  ],
+  "risk_level": "low",
+  "confidence": 0.96,
+  "changes": [
+    {
+      "op": "test",
+      "path": "/resources/1/id",
+      "value": "ci_runner"
+    },
+    {
+      "op": "replace",
+      "path": "/resources/1/capacity",
+      "value": 6
+    }
+  ],
+  "expected_effects": [
+    "CI queue waiting 可能下降；仍需模擬。"
+  ],
+  "requires_confirmation": false
+}
