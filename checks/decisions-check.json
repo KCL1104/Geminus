@@ -13,24 +13,17 @@
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 10,
+    "done": 11,
     "in_progress": 0,
     "not_started": 31,
-    "review": 1
+    "review": 0
   },
   "ready_tasks": [
     "T-008",
+    "T-022",
     "T-042"
   ],
-  "next_after_review": [
-    {
-      "id": "T-022",
-      "awaiting_task_review": [
-        "T-021"
-      ],
-      "awaiting_decisions": []
-    }
-  ],
+  "next_after_review": [],
   "gates": {
     "D-001": {
       "status": "approved",

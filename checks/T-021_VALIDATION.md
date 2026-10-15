@@ -1,6 +1,6 @@
 # T-021 驗證報告：DES resource／queue／service／routing kernel
 
-**日期：2026-10-15｜狀態：`review`（review 修正已完成；CI 與 reviewer 複核後依 H-003 驗收）｜需求：REQ-011、REQ-013｜Gate：D-005、D-007、D-023、D-032（皆已批准）；實作解讀併入 D-038（PROPOSED，gate 在 T-023）**
+**日期：2026-10-15｜狀態：`done`（獨立 review 要求修改→修正→複核 ACCEPT；依 H-003 由 agent review 驗收，owner 可隨時重開）｜需求：REQ-011、REQ-013｜Gate：D-005、D-007、D-023、D-032（皆已批准）；實作解讀併入 D-038（PROPOSED，gate 在 T-023）**
 
 首輪輸出在 `checks/evidence/2026-10-15-T-021/`，review 修正後的輸出在 `checks/evidence/2026-10-15-T-021-review/`。
 
@@ -59,7 +59,7 @@ Review 由另一個 agent 以對抗方式進行（H-003），未修改 repo。�
 | Fuzz `FuzzKernel` 60 s（L2 後另跑 45 s） | 0 | 1,062,442 次；L2 後 740,198 次 |
 | Kernel mutation（`checks/evidence/2026-10-15-T-021/kernel-mutants.py`，已更新） | 0 | **46/46 被擋，2 個 equivalent**（`record-invariant-unchecked`、`fifo-pop-unchecked`：不變量檢查，只有另一個 bug 能觸發；腳本中說明）；含 L1／L2 的 `no-queue-compaction`、`held-never-woken`、`held-woken-twice`、`held-not-marked` |
 | T-020 engine mutation | 0 | 51/51＋1 equivalent |
-| GitHub Actions | 推送後補記 | 首版 19540b6 的 run 38786963032 為 4/4 成功 |
+| GitHub Actions | 成功 | 首版 19540b6：run 38786963032（4/4）；review 修正 a42f47c：run 38795519770（4/4）；複核後續 7d6121a 的 run 被 f4dccb9 取代（workflow `cancel-in-progress`）；f4dccb9：[run 38799692561](https://github.com/KCL1104/Geminus/actions/runs/38799692561)（4/4） |
 
 ## 驗收對照
 
@@ -112,4 +112,3 @@ recorder（`newRecorder`）只用在有傳入它的測試；`TestKernelLimits*`�
 | queued 立即取消、cancel-vs-complete 互斥、lease | T-023 |
 | SimPy differential、固定硬體的效能 benchmark | T-037 |
 | 實體非 amd64 機器上的測試 | 本環境只有 amd64；以組語檢查與 GOAMD64=v3 替代 |
-| GitHub Actions | 推送後補記 |
