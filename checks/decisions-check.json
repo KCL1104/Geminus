@@ -15,8 +15,8 @@
     "blocked": 0,
     "done": 3,
     "in_progress": 0,
-    "not_started": 34,
-    "review": 5
+    "not_started": 33,
+    "review": 6
   },
   "ready_tasks": [],
   "next_after_review": [
@@ -28,9 +28,11 @@
       "awaiting_decisions": []
     },
     {
-      "id": "T-011",
+      "id": "T-020",
       "awaiting_task_review": [
-        "T-004"
+        "T-004",
+        "T-005",
+        "T-011"
       ],
       "awaiting_decisions": []
     }

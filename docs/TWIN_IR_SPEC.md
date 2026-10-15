@@ -77,6 +77,7 @@ APPROVED D-017：day 在 P0 是連續 24 小時。報告 example mean=16 min 在
 | JSON_INVALID | 解析失敗：非法 JSON、重複 member、非法 UTF-8、尾隨資料（D-023） |
 | LIMIT_EXCEEDED | D-029 上限：文件 >2 MiB、metadata／domain_attributes 深度 >8 或 >16 KB、分布參數換算超過 365 天、pointer 超過 32 層 |
 | UNREACHABLE_NODE | **warning**：沒有 source 能到達的 dormant node，不阻擋 publish |
+| DOMAIN_MISMATCH | DomainPack 階段：IR 的 `domain` 不是該 pack 的 domain（REQ-003 fail closed；未註冊的 domain 由 `domainpack.Registry` 回 unsupported） |
 
 APPROVED D-023（實作於 `internal/model/validate`，T-004）：同一階段收集全部 issue，該階段有 error 就不進下一階段；issues 依 JSON Pointer 排序（array index 以數值比較）再依 code。T-004 的實作解讀（需 owner 確認時可另立決策）：(1) 任何 source 經 p>0 flow 能到達、卻無法到達 sink 的 node 都回 NO_REACHABLE_SINK，不只檢查 source 本身；(2) 指向 source 的 flow 回 ROUTING_INVALID，因為 source 不接收 entity；(3) metric／constraint 只檢查引用存在，不檢查被引用 node 的類型。D-033：zero-time 以分布可能的最小 tick 判定（constant=0、triangular min=0；exponential 恆 >0；empirical 在 dataset binding 階段判定）。
 

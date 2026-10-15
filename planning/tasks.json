@@ -587,7 +587,7 @@
       "id": "T-011",
       "title": "SoftwareDeliveryDomainPack / full template",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Simulation",
       "planning_window": "Week 3–4",
       "depends_on": [
@@ -627,7 +627,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-011_VALIDATION.md",
+          "summary": "DomainPack 介面與 Registry（未註冊 domain fail closed）、CanonicalEvent 契約型別、決定性 LayeredLayout；SoftwareDeliveryDomainPack：catalog、DOMAIN_MISMATCH、D-017 synthetic full template（完整驗證、與 golden fixture 一致）、五個 DORA 指標 unavailable（TEST-023）、inference 明確 unavailable；11 tests、mutation 10/10。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-012",

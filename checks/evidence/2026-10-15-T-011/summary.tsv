@@ -1,0 +1,6 @@
+spec-check	0	make spec-check
+go-test-domainpack	0	go test -count=1 -v ./internal/domainpack/...
+backend-test	0	make backend-test
+backend-race	0	make backend-race
+mutation	0	python3 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/t011/mut.py
+govulncheck	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/govulncheck ./cmd/... ./internal/... ./schemas/...

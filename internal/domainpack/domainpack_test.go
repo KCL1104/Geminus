@@ -1,0 +1,108 @@
+package domainpack_test
+
+import (
+	"context"
+	"errors"
+	"path/filepath"
+	"reflect"
+	"slices"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/domainpack"
+	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/simulation"
+)
+
+type fakePack struct{ id string }
+
+func (p fakePack) ID() string                                     { return p.id }
+func (fakePack) NodeCatalog() []domainpack.NodeDefinition         { return nil }
+func (fakePack) ResourceCatalog() []domainpack.ResourceDefinition { return nil }
+func (fakePack) Validate(*model.ModelIR) []model.ValidationIssue  { return nil }
+func (fakePack) InferFromEvents(context.Context, domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	return nil, domainpack.ErrUnavailable
+}
+func (fakePack) ComputeMetrics(*simulation.Result) map[string]simulation.MetricSummary { return nil }
+func (fakePack) PromptContext() domainpack.PromptContext                               { return domainpack.PromptContext{} }
+func (fakePack) DefaultViews(*model.ModelIR) domainpack.ViewDefinitions {
+	return domainpack.ViewDefinitions{}
+}
+
+// REQ-003: an unregistered domain fails closed.
+func TestRegistry(t *testing.T) {
+	r, err := domainpack.NewRegistry(fakePack{"b"}, fakePack{"a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := r.Domains(); !slices.Equal(got, []string{"a", "b"}) {
+		t.Errorf("domains %v", got)
+	}
+	if p, err := r.Lookup("a"); err != nil || p.ID() != "a" {
+		t.Errorf("lookup a: %v %v", p, err)
+	}
+	if _, err := r.Lookup("manufacturing"); !errors.Is(err, domainpack.ErrUnsupportedDomain) {
+		t.Errorf("unknown domain: %v", err)
+	}
+	if _, err := domainpack.NewRegistry(fakePack{"a"}, fakePack{"a"}); err == nil {
+		t.Error("duplicate ID accepted")
+	}
+	if _, err := domainpack.NewRegistry(fakePack{""}); err == nil {
+		t.Error("empty ID accepted")
+	}
+}
+
+func minimal(t *testing.T) *model.ModelIR {
+	t.Helper()
+	var ir model.ModelIR
+	if err := model.Decode(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/contracts/valid-minimal-ir.json")), &ir); err != nil {
+		t.Fatal(err)
+	}
+	return &ir
+}
+
+func TestLayeredLayout(t *testing.T) {
+	ir := minimal(t)
+	got := domainpack.LayeredLayout(ir).Positions
+	want := map[string]model.Position{"start": {X: 0, Y: 0}, "work": {X: 240, Y: 0}, "end": {X: 480, Y: 0}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("layout %v, want %v", got, want)
+	}
+
+	// Existing positions stay; an unreachable node goes past the deepest
+	// layer; a rework loop terminates; nothing depends on map order.
+	ir.Views.TwoD.Positions = map[string]model.Position{"work": {X: 7, Y: 9}}
+	ir.Nodes = append(ir.Nodes, model.Node{ID: "orphan", Type: model.NodeSink}, model.Node{ID: "check", Type: model.NodeDecision})
+	ir.Flows = append(ir.Flows, model.Flow{ID: "loop", From: "end", To: "start"}, model.Flow{ID: "wire", From: "work", To: "check"})
+	first := domainpack.LayeredLayout(ir).Positions
+	for range 20 {
+		if again := domainpack.LayeredLayout(ir).Positions; !reflect.DeepEqual(again, first) {
+			t.Fatal("layout is not deterministic")
+		}
+	}
+	if first["work"] != (model.Position{X: 7, Y: 9}) {
+		t.Errorf("existing position replaced: %v", first["work"])
+	}
+	if first["orphan"] != (model.Position{X: 3 * domainpack.LayerSpacing, Y: 0}) {
+		t.Errorf("unreachable node at %v", first["orphan"])
+	}
+	if first["check"] != (model.Position{X: 2 * domainpack.LayerSpacing, Y: domainpack.RowSpacing}) {
+		t.Errorf("second node of layer 2 at %v", first["check"])
+	}
+	if len(first) != len(ir.Nodes) {
+		t.Errorf("%d positions for %d nodes", len(first), len(ir.Nodes))
+	}
+}
+
+// TEST-001: the canonical event type matches its schema and fixture.
+func TestCanonicalEventContract(t *testing.T) {
+	s := contracttest.LoadSchemas(t)
+	s.Parity(t, reflect.TypeFor[domainpack.CanonicalEvent](), "canonical-event.schema.json#")
+	contracttest.RoundTrip[domainpack.CanonicalEvent](t, "valid-canonical-event",
+		contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/contracts/valid-canonical-event.json")))
+}
+
+// The generic boundary knows no domain, HTTP, database or LLM.
+func TestDependencies(t *testing.T) {
+	contracttest.OnlyDeps(t, "github.com/kcl1104/geminus/internal/model", "github.com/kcl1104/geminus/internal/simulation")
+}

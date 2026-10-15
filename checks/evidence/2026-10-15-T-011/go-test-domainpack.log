@@ -1,0 +1,26 @@
+=== RUN   TestRegistry
+--- PASS: TestRegistry (0.00s)
+=== RUN   TestLayeredLayout
+--- PASS: TestLayeredLayout (0.00s)
+=== RUN   TestCanonicalEventContract
+--- PASS: TestCanonicalEventContract (0.00s)
+=== RUN   TestDependencies
+--- PASS: TestDependencies (0.11s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.122s
+=== RUN   TestCatalogs
+--- PASS: TestCatalogs (0.00s)
+=== RUN   TestTemplateMatchesGoldenFixture
+--- PASS: TestTemplateMatchesGoldenFixture (0.00s)
+=== RUN   TestTemplate
+--- PASS: TestTemplate (0.03s)
+=== RUN   TestValidateRejectsOtherDomains
+--- PASS: TestValidateRejectsOtherDomains (0.00s)
+=== RUN   TestDORAUnavailable
+--- PASS: TestDORAUnavailable (0.01s)
+=== RUN   TestInferenceIsUnavailable
+--- PASS: TestInferenceIsUnavailable (0.00s)
+=== RUN   TestDefaultViewsAndPrompt
+--- PASS: TestDefaultViewsAndPrompt (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.047s

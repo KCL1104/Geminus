@@ -1,0 +1,11 @@
+validate-accepts-any-domain	KILLED
+dora-from-failure-count	KILLED
+dora-without-reason	KILLED
+template-keeps-model-id	KILLED
+template-unvalidated	KILLED
+catalog-shared	KILLED
+registry-duplicates	KILLED
+layout-overwrites-existing	KILLED
+layout-orphans-at-origin	KILLED
+inference-fake-success	KILLED
+10/10 killed
