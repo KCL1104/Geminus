@@ -1,0 +1,31 @@
+     × returns a network problem when the body breaks off, never a rejection 32ms
+     × reports an abort during the body as an aborted request 1ms
+     × never sends the token to a host other than the configured one 7ms
+     × keeps only a valid request ID on every path 1ms
+     × refuses an empty patch without sending it (the contract needs at least one op) 2ms
+     × puts in flight exactly the ops that were sent 14ms
+     × treats only MODEL_VERSION_CONFLICT as a draft conflict 2ms
+     × merges a reloaded draft into the open session 2ms
+     × never loses, duplicates or reorders edits (random sequences, independent server) 4ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  tests/review-api.test.ts > body read failures > returns a network problem when the body breaks off, never a rejection
+TypeError: terminated
+     28|     const { fetch } = recorder(() => breaking(new TypeError("terminate…
+ FAIL  tests/review-api.test.ts > body read failures > reports an abort during the body as an aborted request
+AbortError: aborted
+     38|       return breaking(new DOMException("aborted", "AbortError"));
+ FAIL  tests/review-api.test.ts > base URL > never sends the token to a host other than the configured one
+AssertionError: expected [ 'https://api.example.com//v1', …(2) ] to deeply equal [ 'https://api.example.com//v1', …(2) ]
+ FAIL  tests/review-api.test.ts > request IDs and patches > keeps only a valid request ID on every path
+AssertionError: expected 'attacker-chosen <b>id</b>' to be null
+ FAIL  tests/review-api.test.ts > request IDs and patches > refuses an empty patch without sending it (the contract needs at least one op)
+AssertionError: expected [ false, 1 ] to deeply equal [ false, +0 ]
+ FAIL  tests/state.test.ts > draft session > puts in flight exactly the ops that were sent
+AssertionError: expected [ …(2) ] to deeply equal [ [ { op: 'replace', …(2) } ], …(1) ]
+ FAIL  tests/state.test.ts > draft session > treats only MODEL_VERSION_CONFLICT as a draft conflict
+AssertionError: expected [ 'conflict', …(2) ] to deeply equal [ 'error', …(2) ]
+ FAIL  tests/state.test.ts > draft session > merges a reloaded draft into the open session
+AssertionError: expected [] to deeply equal [ { op: 'replace', …(2) } ]
+ FAIL  tests/state.test.ts > draft session > never loses, duplicates or reorders edits (random sequences, independent server)
+AssertionError: expected [] to deeply equal [ 1, 2, 3, 4, 5, 6 ]
+      Tests  9 failed | 10 passed (19)

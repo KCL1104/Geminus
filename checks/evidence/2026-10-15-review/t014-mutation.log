@@ -1,0 +1,24 @@
+body-read-unguarded: KILLED
+abort-message: KILLED
+http-anywhere: KILLED
+credentials-allowed: KILLED
+query-allowed: KILLED
+double-slash-allowed: KILLED
+relative-join: SURVIVED
+success-request-id-raw: KILLED
+empty-patch-sent: KILLED
+start-any-revision: KILLED
+start-not-prefix: KILLED
+start-takes-all: KILLED
+start-empty: KILLED
+any-409-conflict: KILLED
+reload-reopens: KILLED
+reject-unhandled: KILLED
+no-retry-token: KILLED
+no-retry-button: KILLED
+no-more-pages: KILLED
+reload-problem-hidden: KILLED
+404-details-shown: KILLED
+20/21 killed
+# relative-join is equivalent: apiBase rejects "//" in the base path (mutant double-slash-allowed is killed)
+# and request paths are fixed templates with validated IDs, so base.path+req.path never starts with "//".

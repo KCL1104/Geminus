@@ -93,6 +93,17 @@ export function protocolProblem(status: number | null, message: string, requestI
   return problem("protocol", { status, message, requestId });
 }
 
+/** A request the client refuses to send because the contract would reject it. */
+export function invalidRequestProblem(message: string): Problem {
+  return problem("invalid", { message });
+}
+
+/** The X-Request-ID header, only when it is a D-001 request ID. */
+export function requestIdFrom(headers: Headers): string | null {
+  const id = headers.get("X-Request-ID");
+  return id !== null && REQUEST_ID.test(id) ? id : null;
+}
+
 function retryAfter(headers: Headers, kind: ProblemKind): number | null {
   if (kind !== "rate_limited" && kind !== "unavailable") return null;
   const raw = headers.get("Retry-After");
@@ -118,8 +129,7 @@ function isDetail(v: unknown): v is Problem["details"][number] {
  * not act on a code the server did not mean.
  */
 export function problemFromResponse(status: number, headers: Headers, body: unknown): Problem {
-  const headerRequestId = headers.get("X-Request-ID");
-  const fallbackId = headerRequestId !== null && REQUEST_ID.test(headerRequestId) ? headerRequestId : null;
+  const fallbackId = requestIdFrom(headers);
   const err = (body as { error?: Record<string, unknown> } | undefined)?.error;
   if (typeof err !== "object" || err === null) {
     return protocolProblem(status, `HTTP ${status} without an API error body.`, fallbackId);

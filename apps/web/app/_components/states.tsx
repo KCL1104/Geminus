@@ -1,5 +1,6 @@
 "use client";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
+import type { Problem, ProblemKind } from "../../lib/api/problem";
 import { canEdit, type Role, useAuth } from "../../lib/auth/session";
 import { canPublish, type DraftSession, pendingOps } from "../../lib/state/draft";
 import type { Remote } from "../../lib/state/remote";
@@ -26,10 +27,35 @@ export function RequireSession({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export function RemoteView<T>({ remote, what, children }: { remote: Remote<T>; what: string; children: (data: T) => ReactNode }) {
+/** Failures that can go away on their own; the others need a different request or role. */
+const retryable: ReadonlySet<ProblemKind> = new Set(["network", "unavailable", "rate_limited", "internal", "protocol"]);
+
+export function RemoteView<T>({ remote, what, onRetry, children }: {
+  remote: Remote<T>;
+  what: string;
+  onRetry?: () => void;
+  children: (data: T) => ReactNode;
+}) {
   if (remote.state === "loading") return <Loading what={what} />;
-  if (remote.state === "failed") return <ProblemView problem={remote.problem} />;
+  if (remote.state === "failed") {
+    return (
+      <>
+        <ProblemView problem={remote.problem} />
+        {onRetry && retryable.has(remote.problem.kind) && (
+          <button type="button" onClick={onRetry}>
+            Try again
+          </button>
+        )}
+      </>
+    );
+  }
   return <>{children(remote.data)}</>;
+}
+
+/** Says so when a list has more pages than this build shows (no silent truncation). */
+export function MorePages({ cursor, shown, what }: { cursor: string | null; shown: number; what: string }) {
+  if (cursor === null) return null;
+  return <p role="note">Showing the first {shown} {what}. More exist; this build cannot page through them yet.</p>;
 }
 
 export function ReadOnlyNotice({ role }: { role: Role | null }) {
@@ -45,10 +71,19 @@ const statusText: Record<DraftSession["status"], string> = {
   error: "Not saved.",
 };
 
-/** Draft state with the user's choices; a conflict is never resolved without them. */
-export function DraftStatus({ session, onReload, onDiscard }: { session: DraftSession; onReload: () => void; onDiscard: () => void }) {
+/**
+ * Draft state with the user's choices; a conflict is never resolved without
+ * them. onReload answers with the problem when the reload failed.
+ */
+export function DraftStatus({ session, onReload, onDiscard }: {
+  session: DraftSession;
+  onReload: () => Promise<Problem | null>;
+  onDiscard: () => void;
+}) {
   const { role } = useAuth();
+  const [reloadProblem, setReloadProblem] = useState<Problem | null>(null);
   const pending = pendingOps(session).length;
+  const reload = async () => setReloadProblem(await onReload());
   return (
     <section aria-label="Draft status" data-draft-status={session.status}>
       <p role="status">
@@ -57,12 +92,17 @@ export function DraftStatus({ session, onReload, onDiscard }: { session: DraftSe
       </p>
       {session.remote.out_of_date && <p role="note">A newer version was published after this draft was based on it.</p>}
       {session.problem && <ProblemView problem={session.problem} />}
-      {session.status === "conflict" && canEdit(role) && (
+      {reloadProblem && <ProblemView problem={reloadProblem} />}
+      {(session.status === "conflict" || session.status === "error") && canEdit(role) && (
         <p>
-          Your changes are kept in this browser.{" "}
-          <button type="button" onClick={onReload}>
-            Reload the current draft
-          </button>{" "}
+          Your changes are kept on this page until you leave or reload it.{" "}
+          {session.status === "conflict" && (
+            <>
+              <button type="button" onClick={reload}>
+                Reload the current draft
+              </button>{" "}
+            </>
+          )}
           <button type="button" onClick={onDiscard}>
             Discard my changes
           </button>

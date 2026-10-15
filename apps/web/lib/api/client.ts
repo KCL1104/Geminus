@@ -5,11 +5,13 @@ import type { Draft, JsonPatch, Model, Models, OrganizationID, Projects } from "
 import { draftETag, parseDraftETag } from "./etag";
 import { isID } from "./ids";
 import {
+  invalidRequestProblem,
   networkProblem,
   notConfiguredProblem,
   type Problem,
   problemFromResponse,
   protocolProblem,
+  requestIdFrom,
   unauthenticatedProblem,
 } from "./problem";
 
@@ -21,7 +23,10 @@ export type Session = {
 };
 
 export type ClientConfig = {
-  /** Absolute http(s) URL of the API, or null when this deployment has none. */
+  /**
+   * Absolute https URL of the API (plain http only on loopback, for local
+   * development; SECURITY §3), or null when this deployment has none.
+   */
   baseUrl: string | null;
   session: () => Session | null;
   fetch?: typeof fetch;
@@ -43,13 +48,25 @@ type Request = {
 
 export type ApiClient = ReturnType<typeof createApiClient>;
 
-function apiURL(baseUrl: string): URL | null {
+const loopback = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * The API base, or null when it is not one this client will send a token to:
+ * https (http only on loopback), no credentials, query or fragment, and a
+ * path without empty segments ("//" would let a path become another host).
+ */
+function apiBase(baseUrl: string): { origin: string; path: string } | null {
+  let url: URL;
   try {
-    const url = new URL(baseUrl);
-    return url.protocol === "https:" || url.protocol === "http:" ? url : null;
+    url = new URL(baseUrl);
   } catch {
     return null;
   }
+  const secure = url.protocol === "https:" || (url.protocol === "http:" && loopback.has(url.hostname));
+  if (!secure || url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "" || baseUrl.includes("?") || baseUrl.includes("#")) return null;
+  const path = url.pathname.replace(/\/$/, "");
+  if (path.includes("//")) return null;
+  return { origin: url.origin, path };
 }
 
 const notFound = (what: string): Failed => ({
@@ -61,12 +78,14 @@ export function createApiClient(cfg: ClientConfig) {
   const doFetch = cfg.fetch ?? globalThis.fetch.bind(globalThis);
 
   async function call<T>(req: Request): Promise<Result<T>> {
-    const base = cfg.baseUrl === null ? null : apiURL(cfg.baseUrl);
+    const base = cfg.baseUrl === null ? null : apiBase(cfg.baseUrl);
     if (base === null) return { ok: false, problem: notConfiguredProblem("The API") };
     const session = cfg.session();
     if (session === null) return { ok: false, problem: unauthenticatedProblem() };
 
-    const url = new URL(base.pathname.replace(/\/$/, "") + req.path, base);
+    // Joined as a string on the fixed origin: req.path is a fixed template
+    // with validated IDs, so the request can only go to the configured host.
+    const url = new URL(base.origin + base.path + req.path);
     for (const [k, v] of Object.entries(req.query ?? {})) if (v !== undefined) url.searchParams.set(k, v);
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -82,14 +101,19 @@ export function createApiClient(cfg: ClientConfig) {
     } catch {
       return { ok: false, problem: networkProblem(req.signal?.aborted ? "Request aborted." : "The API could not be reached.") };
     }
-    const text = await res.text();
+    let text: string;
+    try {
+      text = await res.text();
+    } catch {
+      return { ok: false, problem: networkProblem(req.signal?.aborted ? "Request aborted." : "The API response was cut off.") };
+    }
     let body: unknown;
     try {
       body = text === "" ? undefined : JSON.parse(text);
     } catch {
       body = undefined;
     }
-    const requestId = res.headers.get("X-Request-ID");
+    const requestId = requestIdFrom(res.headers);
     if (!res.ok) return { ok: false, problem: problemFromResponse(res.status, res.headers, body) };
     if (typeof body !== "object" || body === null) {
       return { ok: false, problem: protocolProblem(res.status, "The API returned a success without a JSON object.", requestId) };
@@ -124,8 +148,9 @@ export function createApiClient(cfg: ClientConfig) {
       return checkDraft(await call<Draft>({ method: "GET", path: `/models/${modelId}/draft`, signal: opts.signal }));
     },
     /** Saves ops on top of `revision`; a stale revision comes back as a 409 conflict, never a silent overwrite. */
-    async patchDraft(modelId: string, revision: number, patch: JsonPatch, opts: { signal?: AbortSignal } = {}) {
+    async patchDraft(modelId: string, revision: number, patch: JsonPatch, opts: { signal?: AbortSignal } = {}): Promise<Result<Draft>> {
       if (!isID("mdl", modelId)) return notFound("The model");
+      if (patch.length === 0) return { ok: false, problem: invalidRequestProblem("A draft change needs at least one operation.") };
       return checkDraft(
         await call<Draft>({
           method: "PATCH",

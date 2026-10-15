@@ -1,0 +1,11 @@
+     × shows a body that breaks off as a failure with a retry, not as loading forever 16ms
+     × shows a load that rejects as a failure 7ms
+     × says when a list has more pages than it shows 14ms
+     × shows a reload that failed instead of swallowing it 15ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected 'ProjectsLoading projects…' not to contain 'Loading projects'
+TypeError: object is not iterable (cannot read property Symbol(Symbol.iterator))
+AssertionError: expected 1 to be 2 // Object.is equality
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+      Tests  4 failed | 1 passed (5)

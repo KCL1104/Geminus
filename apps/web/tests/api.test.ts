@@ -167,7 +167,7 @@ describe("client", () => {
 
   it("reports a stale revision as a conflict", async () => {
     const f = fakeFetch(json(409, errorBody("MODEL_VERSION_CONFLICT")));
-    const r = await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: f.fetch }).patchDraft(MODEL, 3, []);
+    const r = await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: f.fetch }).patchDraft(MODEL, 3, [{ op: "test", path: "/name", value: "x" }]);
     expect(!r.ok && [r.problem.kind, r.problem.code]).toEqual(["conflict", "MODEL_VERSION_CONFLICT"]);
   });
 

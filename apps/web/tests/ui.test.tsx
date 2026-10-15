@@ -1,6 +1,8 @@
-// T-014: what each state looks like, rendered with react-dom/server (no DOM
-// library). Covers the auth boundary (fail closed), the TEST-009 presentation
-// of 403/404, the read-only role, and the conflict choices.
+// T-014: what each state looks like, rendered with react-dom/server. Static
+// rendering never runs effects, so behaviour that depends on them (API calls,
+// loads, retries) is tested in a DOM in dom.test.tsx. Covers the auth
+// boundary markup, the TEST-009 presentation of 403/404, the read-only role,
+// and the conflict choices.
 import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -11,7 +13,6 @@ import { DraftStatus, RemoteView, RequireSession } from "../app/_components/stat
 import { createApiClient } from "../lib/api/client";
 import { draftETag } from "../lib/api/etag";
 import { type Problem, type ProblemKind, problemFromResponse } from "../lib/api/problem";
-import { ApiProvider } from "../lib/api/provider";
 import { type Auth, AuthProvider, canEdit } from "../lib/auth/session";
 import type { Draft, Model } from "../lib/contracts";
 import { loadModelPage } from "../lib/pages";
@@ -38,13 +39,8 @@ describe("auth boundary", () => {
     expect(out).not.toContain("tenant data");
   });
 
-  it("does not call the API from a signed-out page", () => {
-    let calls = 0;
-    const api = createApiClient({ baseUrl: "https://api.test", session: () => null, fetch: (async () => { calls++; return new Response("{}"); }) as typeof fetch });
-    const out = html(<ApiProvider client={api}><ProjectsPage /></ApiProvider>);
-    expect(out).toContain(problemHeadings.unauthenticated);
-    expect(calls).toBe(0);
-  });
+  // Whether a signed-out page calls the API needs effects to run; that is
+  // tested in a DOM in dom.test.tsx (static rendering never runs effects).
 
   it("shows protected content and a loading state with a session", () => {
     const out = html(<RequireSession><ProjectsPage /></RequireSession>, editor);
@@ -68,7 +64,9 @@ describe("problems (TEST-009 presentation)", () => {
   });
 
   it("says the same for a missing resource and another tenant's, without echoing the server", () => {
-    const missing = html(<ProblemView problem={problemFromResponse(404, new Headers(), { error: { code: "NOT_FOUND", message: "model mdl_x of org_y", request_id: REQ } })} />);
+    const missing = html(<ProblemView problem={problemFromResponse(404, new Headers(), {
+      error: { code: "NOT_FOUND", message: "model mdl_x of org_y", request_id: REQ, details: [{ path: "/organizations/org_y", reason: "owned by org_y" }] },
+    })} />);
     expect(missing).toContain(problemHeadings.not_found);
     expect(missing).not.toContain("org_y");
     expect(missing).toContain(REQ);
@@ -93,13 +91,15 @@ describe("problems (TEST-009 presentation)", () => {
 
 describe("draft status", () => {
   const noop = () => {};
+  const reloadOk = async () => null;
+  const edit = { op: "replace", path: "/name", value: "x" } as const;
   const conflicted = reduceDraft(
-    reduceDraft(reduceDraft(openDraft({ ...draft, revision: 3 }), { type: "edit", ops: [{ op: "replace", path: "/name", value: "x" }] }), { type: "saveStarted" }),
+    reduceDraft(reduceDraft(openDraft({ ...draft, revision: 3 }), { type: "edit", ops: [edit] }), { type: "saveStarted", revision: 3, ops: [edit] }),
     { type: "saveFailed", problem: problemOf("conflict", { code: "MODEL_VERSION_CONFLICT" }) },
   );
 
   it("gives an editor both choices on a conflict and keeps the changes", () => {
-    const out = html(<DraftStatus session={conflicted} onReload={noop} onDiscard={noop} />, editor);
+    const out = html(<DraftStatus session={conflicted} onReload={reloadOk} onDiscard={noop} />, editor);
     expect(out).toContain('data-draft-status="conflict"');
     expect(out).toContain("1 change(s) not saved");
     expect(out).toContain("Reload the current draft");
@@ -108,15 +108,15 @@ describe("draft status", () => {
   });
 
   it("gives a viewer no edit actions", () => {
-    const out = html(<DraftStatus session={conflicted} onReload={noop} onDiscard={noop} />, viewer);
+    const out = html(<DraftStatus session={conflicted} onReload={reloadOk} onDiscard={noop} />, viewer);
     expect(out).not.toContain("<button");
     expect(out).toContain("You can view this model but not change it.");
   });
 
   it("explains why a clean draft cannot be published", () => {
     const withErrors = openDraft({ ...draft, issues: [{ code: "NO_REACHABLE_SINK", path: "/nodes/1", message: "x", severity: "error" }] });
-    expect(html(<DraftStatus session={withErrors} onReload={noop} onDiscard={noop} />, editor)).toContain("Publishing is unavailable");
-    expect(html(<DraftStatus session={openDraft({ ...draft, out_of_date: true })} onReload={noop} onDiscard={noop} />, editor)).toContain(
+    expect(html(<DraftStatus session={withErrors} onReload={reloadOk} onDiscard={noop} />, editor)).toContain("Publishing is unavailable");
+    expect(html(<DraftStatus session={openDraft({ ...draft, out_of_date: true })} onReload={reloadOk} onDiscard={noop} />, editor)).toContain(
       "A newer version was published",
     );
   });

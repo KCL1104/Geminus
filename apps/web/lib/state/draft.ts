@@ -3,9 +3,11 @@
 //   remote  — the server's saved draft at some revision (read-only here);
 //   inFlight — ops sent with If-Match that the server has not answered yet;
 //   unsaved — edits made locally since then.
-// Edits are never dropped and never rebased automatically: a 409 or a newer
-// remote revision while edits are pending puts the session in "conflict",
-// keeping every edit until the user explicitly reloads or discards them.
+// Edits are never dropped and never rebased automatically: a stale-revision
+// 409 (MODEL_VERSION_CONFLICT) or a newer remote revision while edits are
+// pending puts the session in "conflict", keeping every edit until the user
+// explicitly discards them. Edits live in page state only: leaving or
+// reloading the page loses unsaved ones.
 import { type Problem, protocolProblem } from "../api/problem";
 import type { Draft, JsonPatch } from "../contracts";
 
@@ -24,7 +26,8 @@ export type DraftSession = {
 
 export type DraftEvent =
   | { type: "edit"; ops: Op[] }
-  | { type: "saveStarted" }
+  /** The caller sent `ops` (from nextSave) with If-Match `revision`. */
+  | { type: "saveStarted"; revision: number; ops: Op[] }
   | { type: "saveSucceeded"; draft: Draft }
   | { type: "saveFailed"; problem: Problem }
   | { type: "remoteLoaded"; draft: Draft }
@@ -33,6 +36,18 @@ export type DraftEvent =
 export function openDraft(remote: Draft): DraftSession {
   return { remote, inFlight: null, unsaved: [], status: "clean", problem: null };
 }
+
+/**
+ * A draft loaded for the page (first load, or a reload such as after a token
+ * refresh). It merges into an open session of the same model like any other
+ * read, so pending edits survive; only a first load or another model opens a
+ * new session.
+ */
+export function loadedDraft(s: DraftSession | null, draft: Draft): DraftSession {
+  return s === null || s.remote.model_id !== draft.model_id ? openDraft(draft) : reduceDraft(s, { type: "remoteLoaded", draft });
+}
+
+const sameOp = (a: Op, b: Op | undefined) => a === b || JSON.stringify(a) === JSON.stringify(b);
 
 /** Everything the user has done locally and the server has not accepted yet, in order. */
 export function pendingOps(s: DraftSession): Op[] {
@@ -67,9 +82,15 @@ export function reduceDraft(s: DraftSession, e: DraftEvent): DraftSession {
         ? { ...s, unsaved: [...s.unsaved, ...e.ops] }
         : settle({ ...s, unsaved: [...s.unsaved, ...e.ops] });
     case "saveStarted": {
+      // Record exactly what was sent: the leading unsaved ops, on the current
+      // revision. Edits reduced after the caller computed the save stay
+      // unsaved. A start that does not match is ignored; its answer then
+      // finds no save in flight, and the ops stay pending (the server rejects
+      // a repeat with a stale If-Match).
       const next = nextSave(s);
-      if (next === null) return s;
-      return { ...s, inFlight: next.ops, unsaved: [], status: "saving", problem: null };
+      const n = e.ops.length;
+      if (next === null || e.revision !== next.revision || n === 0 || !e.ops.every((o, i) => sameOp(o, s.unsaved[i]))) return s;
+      return { ...s, inFlight: s.unsaved.slice(0, n), unsaved: s.unsaved.slice(n), status: "saving", problem: null };
     }
     case "saveSucceeded":
       if (s.inFlight === null) return s;
@@ -90,7 +111,9 @@ export function reduceDraft(s: DraftSession, e: DraftEvent): DraftSession {
         ...s,
         inFlight: null,
         unsaved: pendingOps(s),
-        status: e.problem.kind === "conflict" ? "conflict" : "error",
+        // Only a stale revision is a draft conflict; any other 409 (lifecycle,
+        // idempotency...) is an error that keeps the edits.
+        status: e.problem.code === "MODEL_VERSION_CONFLICT" ? "conflict" : "error",
         problem: e.problem,
       };
     case "remoteLoaded":
