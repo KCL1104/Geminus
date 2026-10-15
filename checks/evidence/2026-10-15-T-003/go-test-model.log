@@ -1,0 +1,16 @@
+=== RUN   TestSchemaParity
+--- PASS: TestSchemaParity (0.00s)
+=== RUN   TestDiscriminatorsMatchSchema
+--- PASS: TestDiscriminatorsMatchSchema (0.00s)
+=== RUN   TestPositiveFixturesRoundTrip
+--- PASS: TestPositiveFixturesRoundTrip (0.00s)
+=== RUN   TestStrictDecodeRejects
+--- PASS: TestStrictDecodeRejects (0.00s)
+=== RUN   TestPatchValueKeepsFalsyJSON
+--- PASS: TestPatchValueKeepsFalsyJSON (0.00s)
+=== RUN   TestMeaningfulZeroValuesSurvive
+--- PASS: TestMeaningfulZeroValuesSurvive (0.00s)
+=== RUN   TestNoForbiddenDependencies
+--- PASS: TestNoForbiddenDependencies (0.09s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model	0.104s

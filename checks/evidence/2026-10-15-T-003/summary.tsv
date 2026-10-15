@@ -1,0 +1,12 @@
+spec-check	0	make spec-check
+spec-contracts	0	make spec-contracts
+go-test-model	0	go test -count=1 -v ./internal/model/...
+go-test-simulation	0	go test -count=1 -v ./internal/simulation/...
+backend-test	0	make backend-test
+backend-race	0	make backend-race
+backend-build	0	make backend-build
+frontend-test	0	make frontend-test
+frontend-build	0	make frontend-build
+npm-audit-prod	0	npm audit --prefix apps/web --omit=dev --audit-level=high
+oas-validator	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/venv-oas/bin/openapi-spec-validator --errors all openapi/openapi.yaml
+actionlint	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/actionlint -shellcheck= .github/workflows/ci.yml

@@ -1,0 +1,10 @@
+=== RUN   TestSchemaParity
+--- PASS: TestSchemaParity (0.00s)
+=== RUN   TestFixturesRoundTrip
+--- PASS: TestFixturesRoundTrip (0.00s)
+=== RUN   TestNullStaysNull
+--- PASS: TestNullStaysNull (0.00s)
+=== RUN   TestNoForbiddenDependencies
+--- PASS: TestNoForbiddenDependencies (0.09s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation	0.102s

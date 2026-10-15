@@ -119,7 +119,7 @@
       "id": "T-003",
       "title": "凍結候選契約與 Go/TypeScript domain types",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Platform + Simulation",
       "planning_window": "Week 1–2",
       "depends_on": [
@@ -173,7 +173,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-003_VALIDATION.md",
+          "summary": "契約依 D-001/D-024–D-028/D-030 修改；Go types（internal/model、internal/simulation）與 schema parity／round-trip contract tests；TS types 由 schemas 產生並有 freshness 檢查；12 個驗證指令 exit 0；mutation 14/14 被擋。TEST-003 原子性與 identity path 屬 T-004（NOT RUN）。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-004",

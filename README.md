@@ -27,6 +27,8 @@ make frontend-test frontend-build
 
 `cmd/api`、`cmd/worker` 目前只驗證設定後以 exit 2 回報 NOT IMPLEMENTED，不是可服務的 application。
 
+TypeScript 契約型別 `apps/web/lib/contracts/` 由 `make ts-contracts` 從 `schemas/` 產生，不可手改；`make spec-check` 會檢查是否過期。Go 型別在 `internal/model`、`internal/simulation`，以 contract tests 對 schema 做欄位與 round-trip 比對。
+
 Go / frontend / DB / live AI 測試要由 coding agent 在對應任務完成後建立並執行；不得把缺少程式碼或未執行測試當作成功。
 
 ## 七組交付

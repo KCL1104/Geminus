@@ -1,0 +1,8 @@
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+ok  	github.com/kcl1104/geminus/cmd/api	(cached)
+ok  	github.com/kcl1104/geminus/cmd/worker	(cached)
+ok  	github.com/kcl1104/geminus/internal/config	(cached)
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/model	0.114s
+ok  	github.com/kcl1104/geminus/internal/simulation	0.109s
