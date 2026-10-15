@@ -51,10 +51,12 @@
 |---|---|---|
 | `make architecture-check`（T-042 前） | 2 | `NOT IMPLEMENTED: architecture-check …`（`before.log`） |
 | `make architecture-check` | 0 | `PASS architecture: 22 packages, 8 rules`（`architecture-check.log`） |
-| `go test -count=1 -v ./internal/domainpack/... ./scripts/...` | 0 | 見 `t042-tests.log` |
+| `go test -count=1 -v ./internal/domainpack/... ./scripts/...` | 0 | 92 個 RUN 全 PASS（`t042-tests.log`） |
 | Mutation（`mutants.py`，已提交） | 0 | **80/80 被擋，3 個 equivalent，2 個 kernel guard**（`mutation.log`）。46 個 finding site 各自變成 no-op；另有 conformance 機制、checker 邏輯、規則表與預設 patterns 的 mutant，以及兩個讓 kernel 讀 domain 的 mutant（validator 對某個 domain 多一個 warning、engine seed 加上 domain 長度）——只在 `./internal/domainpack/...` 跑，由 conformance suite 擋下。equivalent：freeze 對 valid model 不會失敗、第二次 run 與第一次同輸入、改名 domain 不會讓 run 失敗。kernel guard：`validate/generic-ignores-domain` 與 `metrics/engine-ignores-domain` 的主要 site 無法由 pack 觸發，由上述 kernel mutant 證明 |
 | 首輪 mutation | 0 | 74/80：`run-ignores-findings`、`unknown-dep-trusted`、`list-errors-ignored`、`violations-stop-walk-dropped`、`patterns-whole-tree` 存活，`tests-ignored` 未編譯 → 補 `TestRunReportsFindings`（子 process）、synthetic graph 的未知依賴與「違規 package 的依賴只經由它回報一次」、改用 `go list -e` 並補 `TestBrokenBuildIsAnError`、以 overlay 在 `apps/web/node_modules` 放一個 Go package 的 `TestVendoredGoIsNotChecked`（不依賴機器上是否有 node_modules），mutant 改寫為可編譯 |
-| `make backend-test` / `backend-race` / `backend-build` / `REQUIRE_GOAMD64_V3=1 backend-numeric` / `spec-check` / `frontend-test` | 見下 | 合併到分支後重跑，記於 `checks/evidence/2026-10-15-T-042/` |
+| `make spec-check` / `backend-test` / `backend-race` / `backend-build` / `REQUIRE_GOAMD64_V3=1 backend-numeric` / `frontend-test` | 0 / 0 / 0 / 0 / 0 / 0 | 在分支上（含 T-022 複核後續 bc10200）重跑，各自的 log 在 evidence 目錄 |
+| `govulncheck ./cmd/... ./internal/... ./schemas/... ./scripts/...` | 0 | No vulnerabilities found |
+| `actionlint .github/workflows/ci.yml` | 0 | 新增的 CI 步驟 |
 | GitHub Actions | 推送後補記 | |
 
 ## 驗收對照

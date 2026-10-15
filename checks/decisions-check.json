@@ -15,12 +15,11 @@
     "blocked": 0,
     "done": 11,
     "in_progress": 0,
-    "not_started": 30,
-    "review": 1
+    "not_started": 29,
+    "review": 2
   },
   "ready_tasks": [
-    "T-008",
-    "T-042"
+    "T-008"
   ],
   "next_after_review": [],
   "gates": {

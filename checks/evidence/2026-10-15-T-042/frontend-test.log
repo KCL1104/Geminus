@@ -1,0 +1,24 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+
+ Test Files  7 passed (7)
+      Tests  66 passed (66)
+   Start at  21:40:26
+   Duration  2.19s (tests 82%, environment 8%, import 7%, transform 2%, worker 1%)
+

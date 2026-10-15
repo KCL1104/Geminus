@@ -1,0 +1,192 @@
+=== RUN   TestRegistry
+--- PASS: TestRegistry (0.00s)
+=== RUN   TestLayeredLayout
+--- PASS: TestLayeredLayout (0.00s)
+=== RUN   TestCanonicalEventContract
+--- PASS: TestCanonicalEventContract (0.00s)
+=== RUN   TestDependencies
+--- PASS: TestDependencies (0.13s)
+=== RUN   TestNilInputs
+--- PASS: TestNilInputs (0.00s)
+=== RUN   TestLayoutAvoidsKeptPositions
+--- PASS: TestLayoutAvoidsKeptPositions (0.00s)
+=== RUN   TestLayoutTolerance
+--- PASS: TestLayoutTolerance (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.143s
+=== RUN   TestBrokenPacksAreCaught
+=== RUN   TestBrokenPacksAreCaught/badID/identity/id
+=== RUN   TestBrokenPacksAreCaught/otherID/identity/models
+=== RUN   TestBrokenPacksAreCaught/dupKind/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/nonGenericType/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/badRequirement/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/sharedCatalog/catalog/copies
+=== RUN   TestBrokenPacksAreCaught/badResourceType/catalog/resources
+=== RUN   TestBrokenPacksAreCaught/acceptsAnything/validate/fail-closed
+=== RUN   TestBrokenPacksAreCaught/acceptsAnything/validate/nil
+=== RUN   TestBrokenPacksAreCaught/rejectsValid/validate/valid-models
+=== RUN   TestBrokenPacksAreCaught/mutatingValidate/validate/read-only
+=== RUN   TestBrokenPacksAreCaught/flakyValidate/validate/deterministic
+=== RUN   TestBrokenPacksAreCaught/panicsOnNil/validate/nil
+=== RUN   TestBrokenPacksAreCaught/missingNode/views/covers-nodes
+=== RUN   TestBrokenPacksAreCaught/ghostNode/views/same-ids
+=== RUN   TestBrokenPacksAreCaught/movesSaved/views/keeps-saved
+=== RUN   TestBrokenPacksAreCaught/overlapping/views/no-overlap
+=== RUN   TestBrokenPacksAreCaught/mutatingViews/views/read-only
+=== RUN   TestBrokenPacksAreCaught/mutatingMetrics/metrics/read-only
+=== RUN   TestBrokenPacksAreCaught/mutatingMetrics/metrics/generic-unchanged
+=== RUN   TestBrokenPacksAreCaught/invalidMetric/metrics/schema
+=== RUN   TestBrokenPacksAreCaught/emptyKey/metrics/keys
+=== RUN   TestBrokenPacksAreCaught/flakyMetrics/metrics/deterministic
+=== RUN   TestBrokenPacksAreCaught/nilNil/inference/answer
+=== RUN   TestBrokenPacksAreCaught/ignoresCancel/inference/cancel
+=== RUN   TestBrokenPacksAreCaught/proposesForeign/inference/answer
+=== RUN   TestBrokenPacksAreCaught/unavailableWithResult/inference/answer
+=== RUN   TestBrokenPacksAreCaught/proposesInvalid/inference/answer
+=== RUN   TestBrokenPacksAreCaught/promptOtherDomain/prompt/context
+=== RUN   TestBrokenPacksAreCaught/promptDropsNodes/prompt/catalogs
+=== RUN   TestBrokenPacksAreCaught/promptChanges/prompt/static
+=== RUN   TestBrokenPacksAreCaught/panicsEverywhere/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/flakyIDPack/identity/id
+=== RUN   TestBrokenPacksAreCaught/emptyCatalog/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/noLabel/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/dupResource/catalog/resources
+=== RUN   TestBrokenPacksAreCaught/flakyViews/views/deterministic
+=== RUN   TestBrokenPacksAreCaught/unencodableViews/views/valid-ir
+=== RUN   TestBrokenPacksAreCaught/emptySummary/prompt/context
+=== RUN   TestBrokenPacksAreCaught/emptyRule/prompt/context
+--- PASS: TestBrokenPacksAreCaught (0.65s)
+    --- PASS: TestBrokenPacksAreCaught/badID/identity/id (0.09s)
+    --- PASS: TestBrokenPacksAreCaught/otherID/identity/models (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/dupKind/catalog/nodes (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/nonGenericType/catalog/nodes (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/badRequirement/catalog/nodes (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/sharedCatalog/catalog/copies (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/badResourceType/catalog/resources (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/acceptsAnything/validate/fail-closed (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/acceptsAnything/validate/nil (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/rejectsValid/validate/valid-models (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/mutatingValidate/validate/read-only (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/flakyValidate/validate/deterministic (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/panicsOnNil/validate/nil (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/missingNode/views/covers-nodes (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/ghostNode/views/same-ids (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/movesSaved/views/keeps-saved (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/overlapping/views/no-overlap (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/mutatingViews/views/read-only (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/mutatingMetrics/metrics/read-only (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/mutatingMetrics/metrics/generic-unchanged (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/invalidMetric/metrics/schema (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/emptyKey/metrics/keys (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/flakyMetrics/metrics/deterministic (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/nilNil/inference/answer (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/ignoresCancel/inference/cancel (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/proposesForeign/inference/answer (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/unavailableWithResult/inference/answer (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/proposesInvalid/inference/answer (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/promptOtherDomain/prompt/context (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/promptDropsNodes/prompt/catalogs (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/promptChanges/prompt/static (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/panicsEverywhere/catalog/nodes (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/flakyIDPack/identity/id (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/emptyCatalog/catalog/nodes (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/noLabel/catalog/nodes (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/dupResource/catalog/resources (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/flakyViews/views/deterministic (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/unencodableViews/views/valid-ir (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/emptySummary/prompt/context (0.01s)
+    --- PASS: TestBrokenPacksAreCaught/emptyRule/prompt/context (0.01s)
+=== RUN   TestUnrunnableModel
+--- PASS: TestUnrunnableModel (0.01s)
+=== RUN   TestRunReportsFindings
+--- PASS: TestRunReportsFindings (0.06s)
+=== RUN   TestHelperRunBrokenPack
+--- PASS: TestHelperRunBrokenPack (0.00s)
+=== RUN   TestInvalidSuites
+--- PASS: TestInvalidSuites (0.00s)
+=== RUN   TestConcurrentDisagreement
+--- PASS: TestConcurrentDisagreement (0.00s)
+=== RUN   TestGenericQueuePackConforms
+--- PASS: TestGenericQueuePackConforms (0.02s)
+=== RUN   TestGenericQueuePackHasAnAvailableMetric
+--- PASS: TestGenericQueuePackHasAnAvailableMetric (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	0.751s
+=== RUN   TestConformance
+--- PASS: TestConformance (0.17s)
+=== RUN   TestDORAThroughTheEngine
+--- PASS: TestDORAThroughTheEngine (0.01s)
+=== RUN   TestCatalogs
+--- PASS: TestCatalogs (0.00s)
+=== RUN   TestTemplateMatchesGoldenFixture
+--- PASS: TestTemplateMatchesGoldenFixture (0.00s)
+=== RUN   TestTemplate
+--- PASS: TestTemplate (0.01s)
+=== RUN   TestValidateRejectsOtherDomains
+--- PASS: TestValidateRejectsOtherDomains (0.00s)
+=== RUN   TestDORAUnavailable
+--- PASS: TestDORAUnavailable (0.00s)
+=== RUN   TestInferenceIsUnavailable
+--- PASS: TestInferenceIsUnavailable (0.00s)
+=== RUN   TestDefaultViewsAndPrompt
+--- PASS: TestDefaultViewsAndPrompt (0.00s)
+=== RUN   TestResourceCatalogMatchesSpec
+--- PASS: TestResourceCatalogMatchesSpec (0.00s)
+=== RUN   TestCatalogCopies
+--- PASS: TestCatalogCopies (0.00s)
+=== RUN   TestDORAUnavailableWithFailuresObserved
+--- PASS: TestDORAUnavailableWithFailuresObserved (0.00s)
+=== RUN   TestTemplateErrors
+--- PASS: TestTemplateErrors (0.00s)
+=== RUN   TestTemplateMetadataForUserModels
+--- PASS: TestTemplateMetadataForUserModels (0.00s)
+=== RUN   TestValidateUnvalidatedInput
+--- PASS: TestValidateUnvalidatedInput (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.208s
+=== RUN   TestRepositoryConforms
+--- PASS: TestRepositoryConforms (0.26s)
+=== RUN   TestVendoredGoIsNotChecked
+--- PASS: TestVendoredGoIsNotChecked (0.66s)
+=== RUN   TestBrokenBuildIsAnError
+--- PASS: TestBrokenBuildIsAnError (0.16s)
+=== RUN   TestProbesAreCaught
+=== RUN   TestProbesAreCaught/kernel-http
+=== RUN   TestProbesAreCaught/kernel-imports-a-pack
+=== RUN   TestProbesAreCaught/kernel-imports-storage
+=== RUN   TestProbesAreCaught/kernel-imports-pgx
+=== RUN   TestProbesAreCaught/pgx-outside-storage
+=== RUN   TestProbesAreCaught/kernel-unlisted-module
+=== RUN   TestProbesAreCaught/kernel-process-exec
+=== RUN   TestProbesAreCaught/kernel-testing
+=== RUN   TestProbesAreCaught/kernel-test-imports-a-pack
+=== RUN   TestProbesAreCaught/interface-imports-a-pack-in-tests
+=== RUN   TestProbesAreCaught/pack-http
+=== RUN   TestProbesAreCaught/pack-imports-tenant
+=== RUN   TestProbesAreCaught/pack-imports-conformance
+=== RUN   TestProbesAreCaught/conformance-names-a-pack
+=== RUN   TestProbesAreCaught/cmd-links-test-helpers
+=== RUN   TestProbesAreCaught/storage-links-testing
+--- PASS: TestProbesAreCaught (2.65s)
+    --- PASS: TestProbesAreCaught/kernel-http (0.16s)
+    --- PASS: TestProbesAreCaught/kernel-imports-a-pack (0.16s)
+    --- PASS: TestProbesAreCaught/kernel-imports-storage (0.17s)
+    --- PASS: TestProbesAreCaught/kernel-imports-pgx (0.15s)
+    --- PASS: TestProbesAreCaught/pgx-outside-storage (0.15s)
+    --- PASS: TestProbesAreCaught/kernel-unlisted-module (0.16s)
+    --- PASS: TestProbesAreCaught/kernel-process-exec (0.17s)
+    --- PASS: TestProbesAreCaught/kernel-testing (0.17s)
+    --- PASS: TestProbesAreCaught/kernel-test-imports-a-pack (0.19s)
+    --- PASS: TestProbesAreCaught/interface-imports-a-pack-in-tests (0.17s)
+    --- PASS: TestProbesAreCaught/pack-http (0.18s)
+    --- PASS: TestProbesAreCaught/pack-imports-tenant (0.18s)
+    --- PASS: TestProbesAreCaught/pack-imports-conformance (0.17s)
+    --- PASS: TestProbesAreCaught/conformance-names-a-pack (0.15s)
+    --- PASS: TestProbesAreCaught/cmd-links-test-helpers (0.16s)
+    --- PASS: TestProbesAreCaught/storage-links-testing (0.15s)
+=== RUN   TestSyntheticGraph
+--- PASS: TestSyntheticGraph (0.00s)
+=== RUN   TestPatterns
+--- PASS: TestPatterns (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	3.740s

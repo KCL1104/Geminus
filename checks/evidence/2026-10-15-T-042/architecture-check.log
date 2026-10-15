@@ -1,1 +1,2 @@
+go run ./scripts/check-architecture
 PASS architecture: 22 packages, 8 rules
