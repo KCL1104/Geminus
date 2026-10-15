@@ -72,8 +72,8 @@ func Apply(base, patchDoc []byte, mode Mode) (Result, error) {
 	}
 	// A patch never needs to be larger than the document it edits (D-029).
 	if len(patchDoc) > validate.MaxIRBytes {
-		return Result{PatchIssues: []model.ValidationIssue{{Code: validate.LimitExceeded, Severity: model.SeverityError,
-			Message: fmt.Sprintf("the patch is %d bytes; the limit is %d", len(patchDoc), validate.MaxIRBytes)}}}, nil
+		return Result{PatchIssues: []model.ValidationIssue{model.NewIssue(validate.LimitExceeded, "",
+			fmt.Sprintf("the patch is %d bytes; the limit is %d", len(patchDoc), validate.MaxIRBytes), model.SeverityError)}}, nil
 	}
 	ops, issues, err := parse(patchDoc)
 	if err != nil || len(issues) > 0 {
@@ -112,7 +112,7 @@ func Apply(base, patchDoc []byte, mode Mode) (Result, error) {
 func parse(doc []byte) (model.Patch, []model.ValidationIssue, error) {
 	var probe any
 	if err := json.Unmarshal(doc, &probe); err != nil {
-		return nil, []model.ValidationIssue{{Code: validate.JSONInvalid, Message: err.Error(), Severity: model.SeverityError}}, nil
+		return nil, []model.ValidationIssue{model.NewIssue(validate.JSONInvalid, "", err.Error(), model.SeverityError)}, nil
 	}
 	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(doc))
 	if err != nil {
@@ -130,6 +130,5 @@ func parse(doc []byte) (model.Patch, []model.ValidationIssue, error) {
 }
 
 func issue(code string, op int, member, message string) model.ValidationIssue {
-	return model.ValidationIssue{Code: code, Path: validate.Pointer(fmt.Sprint(op), member), Message: message,
-		Severity: model.SeverityError}
+	return model.NewIssue(code, validate.Pointer(fmt.Sprint(op), member), message, model.SeverityError)
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/model"
@@ -307,6 +308,12 @@ func FuzzApply(f *testing.F) {
 		hasError := slices.ContainsFunc(r.PatchIssues, func(i model.ValidationIssue) bool { return i.Severity == "error" })
 		if hasError == r.Applied() {
 			t.Fatalf("applied=%v with patch issues %v", r.Applied(), r.PatchIssues)
+		}
+		for _, i := range append(slices.Clone(r.PatchIssues), r.Validation.Issues...) {
+			if !utf8.ValidString(i.Message) || !utf8.ValidString(i.Path) ||
+				utf8.RuneCountInString(i.Message) > model.MaxIssueMessage || utf8.RuneCountInString(i.Path) > model.MaxIssuePath {
+				t.Fatalf("issue does not fit the ValidationIssue schema: %q", i.Path)
+			}
 		}
 	})
 }

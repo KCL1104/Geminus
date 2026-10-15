@@ -115,7 +115,7 @@ JSON Schema 只驗 `sha256:` 的格式，不能驗內容真的相符；hash cons
 
 `datasets.Resolve` 依序：(1) 每個 binding 過 schema（含 D-034 `^dataset:[a-z0-9_.-]+$`）、logical_ref 不得重複、IR 中每個 empirical `samples_ref` 都要有 binding；(2) 經 tenant-scoped `Store` 取物件，**先比對 content_hash 再 parse**，再驗 organization、dataset_version_id、logical_ref、unit、sample_count 與每個 sample 的 365 天上限；(3) 以實際 sample 重跑 D-033：任一 sample 量化為 0 tick 的 empirical 視為零時間，source interarrival 可能為 0 回 DISTRIBUTION_INVALID，零時間 cycle 回 ZERO_TIME_CYCLE（`validate.Bindings`）。各階段有 error 即停（D-023）。
 
-Issue path 指向 ModelVersion 形狀的文件：IR 為 `/ir/...`，manifest 為 `/dataset_bindings/<呼叫者給的 index>/...`。找不到或屬於其他 organization 的 dataset version 回同一訊息，不洩漏他租戶資料是否存在。Model 未使用的 binding 仍會被驗證並凍結（run 沿用 version manifest，scenario 可能已移除 empirical 分布）。Store 的 I/O 錯誤與 context cancellation 以 error 回傳，不轉成 issue、也不回假成功。Postgres／object storage 的 Store 實作屬 T-006／T-012。
+Issue path 指向 ModelVersion 形狀的文件：IR 為 `/ir/...`，manifest 為 `/dataset_bindings/<呼叫者給的 index>/...`。找不到或屬於其他 organization 的 dataset version 回同一訊息。在物件確認為本 organization 的凍結 snapshot 之前，訊息不含其大小或 hash；`Store.Open` 回 `io.ReadCloser`，Resolve 最多讀 MaxSnapshotBytes+1 bytes。限制：若 Store 實作未正確 scope，知道他租戶 dataset version ULID 的人仍可從「hash 不符」與「找不到」的差異推知該 ID 存在（不含內容或 hash）；Store 的 tenant scope 仍是主要防線。所有 issue 經 `model.NewIssue` 建立，message／path 一律符合 ValidationIssue schema（有效 UTF-8、≤2000／2048 字元）。Model 未使用的 binding 仍會被驗證並凍結（run 沿用 version manifest，scenario 可能已移除 empirical 分布）。Store 的 I/O 錯誤與 context cancellation 以 error 回傳，不轉成 issue、也不回假成功。Postgres／object storage 的 Store 實作屬 T-006／T-012。
 
 ## 6. JSON Patch profile / approval scope
 

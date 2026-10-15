@@ -16,9 +16,11 @@ package datasets
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"io"
 	"slices"
 	"strconv"
 
@@ -37,12 +39,15 @@ const MaxSnapshotBytes = 4 << 20
 // indistinguishable.
 var ErrNotFound = errors.New("datasets: dataset version not found")
 
-// Store reads immutable stored snapshot objects. Implementations scope every
+// Store opens immutable stored snapshot objects. Implementations scope every
 // read to organizationID (application filter + RLS, AGENTS.md §2) and return
-// ErrNotFound rather than another tenant's object. Any other error is
-// infrastructure trouble; Resolve passes it on instead of reporting an issue.
+// ErrNotFound rather than another tenant's object. Any other error, from
+// Open, Read or Close, is infrastructure trouble; Resolve passes it on
+// instead of reporting an issue. Resolve reads at most MaxSnapshotBytes+1
+// bytes and always closes the reader, so memory never depends on what is
+// stored.
 type Store interface {
-	Snapshot(ctx context.Context, organizationID, datasetVersionID string) ([]byte, error)
+	Open(ctx context.Context, organizationID, datasetVersionID string) (io.ReadCloser, error)
 }
 
 // Snapshot is the stored object (schemas/dataset-snapshot.schema.json).
@@ -124,7 +129,7 @@ func Resolve(ctx context.Context, store Store, organizationID string, ir *model.
 }
 
 func issue(code, path, message string) model.ValidationIssue {
-	return model.ValidationIssue{Code: code, Path: path, Message: message, Severity: model.SeverityError}
+	return model.NewIssue(code, path, message, model.SeverityError)
 }
 
 func bindingPath(i int, member string) string {
@@ -143,7 +148,9 @@ func shape(ir *model.ModelIR, manifest []model.DatasetBinding) ([]model.Validati
 	var out []model.ValidationIssue
 	bound := map[string]bool{}
 	for i, b := range manifest {
-		data, err := json.Marshal(b)
+		// Invalid UTF-8 becomes U+FFFD, which the ASCII patterns then reject
+		// as an issue: a bad binding is a data problem, not an internal error.
+		data, err := json.Marshal(b, jsontext.AllowInvalidUTF8(true))
 		if err != nil {
 			return nil, fmt.Errorf("encoding binding %d: %w", i, err)
 		}
@@ -184,18 +191,21 @@ func load(ctx context.Context, store Store, org string, i int, b model.DatasetBi
 	bad := func(member, message string) (*loaded, []model.ValidationIssue, error) {
 		return nil, []model.ValidationIssue{issue(validate.DatasetBindingInvalid, bindingPath(i, member), message)}, nil
 	}
-	raw, err := store.Snapshot(ctx, org, b.DatasetVersionID)
+	raw, err := read(ctx, store, org, b.DatasetVersionID)
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return bad("dataset_version_id", "no immutable snapshot of this dataset version is visible to the organization")
 	case err != nil:
 		return nil, nil, fmt.Errorf("reading dataset version %s: %w", b.DatasetVersionID, err)
 	case len(raw) > MaxSnapshotBytes:
-		return bad("", fmt.Sprintf("stored snapshot is %d bytes; the limit is %d", len(raw), MaxSnapshotBytes))
+		// Neither the size nor the hash of an object is reported before it is
+		// verified as this organization's frozen snapshot: with a Store that
+		// failed to scope the read they would describe another tenant's data.
+		return bad("", fmt.Sprintf("stored snapshot exceeds the limit of %d bytes", MaxSnapshotBytes))
 	}
 	// Hash first: nothing from an object that is not the frozen one is parsed.
-	if got := hashing.ContentHash(raw); got != b.ContentHash {
-		return bad("content_hash", "stored bytes hash to "+got)
+	if hashing.ContentHash(raw) != b.ContentHash {
+		return bad("content_hash", "stored bytes do not match content_hash")
 	}
 	found, err := validate.Document(raw, "dataset-snapshot.schema.json", validate.DatasetBindingInvalid)
 	if err != nil {
@@ -232,4 +242,17 @@ func load(ctx context.Context, store Store, org string, i int, b model.DatasetBi
 		out.zero = out.zero || t == 0
 	}
 	return out, nil, nil
+}
+
+// read returns at most MaxSnapshotBytes+1 bytes of the object.
+func read(ctx context.Context, store Store, org, dsv string) ([]byte, error) {
+	rc, err := store.Open(ctx, org, dsv)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := io.ReadAll(io.LimitReader(rc, MaxSnapshotBytes+1))
+	if cerr := rc.Close(); err == nil {
+		err = cerr
+	}
+	return raw, err
 }

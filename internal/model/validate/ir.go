@@ -73,7 +73,7 @@ func parse(data []byte) (model.ValidationIssue, bool) {
 	if errors.As(err, &se) {
 		path = string(se.JSONPointer)
 	}
-	return model.ValidationIssue{Code: JSONInvalid, Path: path, Message: err.Error(), Severity: model.SeverityError}, false
+	return model.NewIssue(JSONInvalid, path, err.Error(), model.SeverityError), false
 }
 
 // Semantic runs the stages after the schema on a schema-valid IR.

@@ -11,7 +11,10 @@
 // HTTP, provider SDK or UI types. Services live in subpackages (internal/model/service).
 package model
 
-import "encoding/json/jsontext"
+import (
+	"encoding/json/jsontext"
+	"strings"
+)
 
 // SchemaVersion is the only IR schema_version this build accepts.
 const SchemaVersion = "0.1"
@@ -300,6 +303,29 @@ type ValidationIssue struct {
 	Path     string   `json:"path"` // JSON Pointer into the validated document
 	Message  string   `json:"message"`
 	Severity Severity `json:"severity"`
+}
+
+// Limits of common.schema.json ValidationIssue, in characters.
+const (
+	MaxIssueMessage = 2000
+	MaxIssuePath    = 2048
+)
+
+// NewIssue builds an issue that always fits the ValidationIssue schema, even
+// when its text quotes caller input: invalid UTF-8 is replaced, a long
+// message is cut, and a long path is shortened to the deepest ancestor
+// pointer that fits.
+func NewIssue(code, path, message string, severity Severity) ValidationIssue {
+	message = strings.ToValidUTF8(message, "\uFFFD")
+	if r := []rune(message); len(r) > MaxIssueMessage {
+		message = string(r[:MaxIssueMessage-1]) + "…"
+	}
+	path = strings.ToValidUTF8(path, "\uFFFD")
+	if r := []rune(path); len(r) > MaxIssuePath {
+		cut := string(r[:MaxIssuePath+1])
+		path = cut[:strings.LastIndexByte(cut, '/')]
+	}
+	return ValidationIssue{Code: code, Path: path, Message: message, Severity: severity}
 }
 
 type Severity string

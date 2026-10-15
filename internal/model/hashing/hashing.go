@@ -224,7 +224,9 @@ var resultMembers = []string{"engine_version", "metrics", "replication_summaries
 func Result(r simulation.Result) (string, error) {
 	data, err := json.Marshal(r)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrInvalid, err)
+		// The encoder's message quotes the failing member's path, which
+		// includes model IDs; like Canonical, report no input text.
+		return "", fmt.Errorf("%w: the result has a non-finite number or invalid UTF-8", ErrInvalid)
 	}
 	var all map[string]jsontext.Value
 	if err := json.Unmarshal(data, &all); err != nil {

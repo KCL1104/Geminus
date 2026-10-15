@@ -1,0 +1,9 @@
+== internal/model/validate FuzzIR
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/validate	20.249s
+== internal/model/patch FuzzApply
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/patch	20.146s
+== internal/storage/datasets FuzzStoredSnapshot
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	20.224s

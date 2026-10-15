@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/model"
@@ -455,6 +456,12 @@ func FuzzIR(f *testing.F) {
 		}
 		if a.Valid() && a.IR == nil {
 			t.Fatal("valid result without IR")
+		}
+		for _, i := range a.Issues {
+			if !utf8.ValidString(i.Message) || !utf8.ValidString(i.Path) ||
+				utf8.RuneCountInString(i.Message) > model.MaxIssueMessage || utf8.RuneCountInString(i.Path) > model.MaxIssuePath {
+				t.Fatalf("issue does not fit the ValidationIssue schema: %q", i.Path)
+			}
 		}
 		_ = jsontext.Value(data)
 	})

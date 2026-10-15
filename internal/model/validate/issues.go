@@ -23,11 +23,11 @@ func idx(i int) string { return strconv.Itoa(i) }
 type issues []model.ValidationIssue
 
 func (s *issues) add(code, path, message string) {
-	*s = append(*s, model.ValidationIssue{Code: code, Path: path, Message: message, Severity: model.SeverityError})
+	*s = append(*s, model.NewIssue(code, path, message, model.SeverityError))
 }
 
 func (s *issues) warn(code, path, message string) {
-	*s = append(*s, model.ValidationIssue{Code: code, Path: path, Message: message, Severity: model.SeverityWarning})
+	*s = append(*s, model.NewIssue(code, path, message, model.SeverityWarning))
 }
 
 func (s issues) hasError() bool {

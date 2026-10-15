@@ -5,11 +5,14 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
+	"io"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/model"
@@ -35,7 +38,7 @@ type store struct {
 	reads        int
 }
 
-func (s *store) Snapshot(ctx context.Context, organizationID, datasetVersionID string) ([]byte, error) {
+func (s *store) Open(ctx context.Context, organizationID, datasetVersionID string) (io.ReadCloser, error) {
 	s.mu.Lock()
 	s.reads++
 	s.mu.Unlock()
@@ -44,7 +47,7 @@ func (s *store) Snapshot(ctx context.Context, organizationID, datasetVersionID s
 	}
 	for k, v := range s.objects {
 		if k[1] == datasetVersionID && (k[0] == organizationID || s.ignoreTenant) {
-			return v, nil
+			return io.NopCloser(bytes.NewReader(v)), nil
 		}
 	}
 	return nil, datasets.ErrNotFound
@@ -424,6 +427,56 @@ func BenchmarkResolveMaxSnapshot(b *testing.B) {
 		res, err := datasets.Resolve(context.Background(), s, org, r.IR, []model.DatasetBinding{bind})
 		if err != nil || !res.Valid() {
 			b.Fatal(err, res.Issues)
+		}
+	}
+}
+
+// Review of T-005: with a Store that ignores the tenant, a caller who does not
+// know a foreign object's hash must learn neither the hash nor the size from
+// the answer.
+func TestForeignObjectRevealsNoHashOrSize(t *testing.T) {
+	foreign := snapshotBytes(t, func(m map[string]any) { m["organization_id"] = otherOrg })
+	s := &store{objects: map[[2]string][]byte{{otherOrg, dsv}: foreign}, ignoreTenant: true}
+	guess := bindingFor([]byte("not the foreign object"))
+	r := resolve(t, s, reportIR(t), guess)
+	if r.Valid() || len(r.Issues) != 1 {
+		t.Fatalf("issues %v", r.Issues)
+	}
+	if m := r.Issues[0].Message; strings.Contains(m, hashing.ContentHash(foreign)) || strings.Contains(m, strings.TrimPrefix(hashing.ContentHash(foreign), "sha256:")[:16]) {
+		t.Errorf("the message reveals the foreign object's hash: %q", m)
+	}
+	huge := append(slices.Clone(foreign), bytes.Repeat([]byte{' '}, datasets.MaxSnapshotBytes)...)
+	s = &store{objects: map[[2]string][]byte{{otherOrg, dsv}: huge}, ignoreTenant: true}
+	r = resolve(t, s, reportIR(t), guess)
+	if m := r.Issues[0].Message; strings.Contains(m, strconv.Itoa(len(huge))) {
+		t.Errorf("the message reveals the foreign object's size: %q", m)
+	}
+}
+
+// Every issue fits common.schema.json ValidationIssue (message ≤ 2000
+// characters, valid UTF-8), whatever the caller put in the manifest.
+func TestIssuesFitTheSchema(t *testing.T) {
+	long := "dataset:" + strings.Repeat("a", 3000)
+	b := model.DatasetBinding{LogicalRef: long, DatasetVersionID: dsv, ContentHash: hashing.ContentHash(nil), Unit: model.Minute, SampleCount: 1}
+	r := resolve(t, &store{}, reportIR(t), b, b)
+	if r.Valid() {
+		t.Fatal("a duplicated over-long logical_ref resolved")
+	}
+	for _, i := range r.Issues {
+		if n := utf8.RuneCountInString(i.Message); n > model.MaxIssueMessage {
+			t.Errorf("message of %d characters at %s", n, i.Path)
+		}
+	}
+	// Invalid UTF-8 in a binding is a data problem, not an internal error.
+	bad := bindingFor(nil)
+	bad.LogicalRef = "dataset:\xff"
+	r = resolve(t, &store{}, reportIR(t), bad)
+	if r.Valid() || len(r.Issues) == 0 {
+		t.Fatalf("invalid UTF-8 logical_ref: %v", r.Issues)
+	}
+	for _, i := range r.Issues {
+		if !utf8.ValidString(i.Message) {
+			t.Errorf("message is not valid UTF-8: %q", i.Message)
 		}
 	}
 }

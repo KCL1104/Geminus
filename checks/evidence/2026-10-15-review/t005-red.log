@@ -1,0 +1,9 @@
+--- FAIL: TestForeignObjectRevealsNoHashOrSize (0.08s)
+    datasets_test.go:446: the message reveals the foreign object's hash: "stored bytes hash to sha256:9916fab8f6c03c1866667a295065bac015b3499a43b84ab6843fbc1b4e353185"
+    datasets_test.go:452: the message reveals the foreign object's size: "stored snapshot is 4194490 bytes; the limit is 4194304"
+--- FAIL: TestIssuesFitTheSchema (0.00s)
+    datasets_test.go:467: message of 3023 characters at /dataset_bindings/1/logical_ref
+    datasets_test.go:473: Resolve: encoding binding 0: jsontext: invalid UTF-8 within "/logical_ref" after offset 15
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/datasets	0.089s
+FAIL

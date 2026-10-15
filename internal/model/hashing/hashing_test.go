@@ -597,6 +597,12 @@ func TestResultDigest(t *testing.T) {
 	if got, err := hashing.Result(r); !errors.Is(err, hashing.ErrInvalid) {
 		t.Errorf("a NaN metric produced %s, %v; unavailable must be null, never NaN", got, err)
 	}
+	// The error names no member path or model ID (review of T-005).
+	r = clone()
+	r.Metrics.Resources = map[string]simulation.ResourceStats{"secret_resource_id": {UtilizationMean: &nan}}
+	if _, err := hashing.Result(r); err == nil || strings.Contains(err.Error(), "secret_resource_id") {
+		t.Errorf("error quotes the input: %v", err)
+	}
 }
 
 func TestContentHashIsRawBytes(t *testing.T) {
