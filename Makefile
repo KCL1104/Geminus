@@ -1,7 +1,7 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 # Explicit package roots: `./...` would also match Go files that npm packages
 # ship under apps/web/node_modules (e.g. flatted/golang).
-GO_PKGS := ./cmd/... ./internal/... ./schemas/...
+GO_PKGS := ./cmd/... ./internal/... ./schemas/... ./scripts/...
 WEB := apps/web
 export NEXT_TELEMETRY_DISABLED := 1
 .PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
@@ -34,7 +34,7 @@ db-tests-render:
 	$(PYTHON) scripts/render_db_tests.py
 backend-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included in this spec pack.' >&2; exit 2; }
-	@unformatted=$$(gofmt -l cmd internal schemas); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
+	@unformatted=$$(gofmt -l cmd internal schemas scripts); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
 	go vet $(GO_PKGS)
 	go test $(GO_PKGS)
 # No fused multiply-add in engine/statistics code on any GOARCH, and the numeric tests as an FMA-capable build.
@@ -61,6 +61,10 @@ db-test:
 db-go-test:
 	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL to the disposable dt_test_* database used by make db-test.' >&2; exit 2; }
 	GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 -race ./internal/storage/postgres/... ./internal/tenant/...
-integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check:
+# Package dependency rules of docs/ARCHITECTURE.md §2 (T-042), read from the build graph.
+architecture-check:
+	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
+	go run ./scripts/check-architecture
+integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

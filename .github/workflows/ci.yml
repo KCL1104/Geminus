@@ -51,8 +51,10 @@ jobs:
         env:
           REQUIRE_GOAMD64_V3: "1"
       - run: make backend-build
+      - name: Architecture (package dependency rules)
+        run: make architecture-check
       - name: Go vulnerability scan (govulncheck, pinned)
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/...
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/... ./scripts/...
 
   frontend:
     name: frontend (lint, typecheck, unit, build)

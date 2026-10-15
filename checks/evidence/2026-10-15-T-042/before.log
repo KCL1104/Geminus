@@ -1,0 +1,4 @@
+make architecture-check at 4370ab5 (before T-042):
+NOT IMPLEMENTED: architecture-check must be replaced by real product checks in the assigned task; no fake PASS.
+make: *** [Makefile:66: architecture-check] Error 2
+exit 2

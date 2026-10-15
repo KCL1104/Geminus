@@ -82,6 +82,12 @@
 | CB-35 | `go … ./...` 會納入 `apps/web/node_modules/flatted/golang/...`；`check_docs.py` 會掃 `.venv`／`node_modules` 的 Markdown | Makefile 改用 `./cmd/... ./internal/...`；`check_docs.py` 排除 vendored 目錄 | 實測 |
 | CB-36 | H-001 指定 Anthropic 並要求兩個 organization key rotation，原契約只有單一 credential | 登記 D-018（PROPOSED）；config 暫時拒絕 `AI_PROVIDER=anthropic`，直到 T-024 + D-018 + 資料政策 + quota | 已核對 |
 
+## G. T-042 boundary guard 發現
+
+| ID | 問題 | 證據 | 阻擋 | 涵蓋 | 等級 |
+|---|---|---|---|---|---|
+| CB-37 | generic Result 的 domain metrics 欄位叫 `metrics.dora`：任何 DomainPack 的 `ComputeMetrics`（含 T-042 test-only generic queue pack 的 `longest_queue_wait_minutes`）都寫進名為 DORA 的欄位，generic contract 帶了 software-delivery 的名稱 | simulation.schema.json `Result.metrics.dora`；`des.Engine.DomainMetrics`；`internal/domainpack/conformance/queuepack_test.go` | 第二個真正的 domain（P1）；P0 只有 software delivery，不阻擋 | NEW（建議在第二個 pack 前以 schema 版本變更改名為 domain metrics，或依 pack ID 分組；不在 T-042 自行修改 contract） | 實測 |
+
 ## 已核對為一致的項目（摘要）
 
 Golden 算術（GOLDEN-001/002）與 SplitMix64／replication seed vectors 可重算；proposal、import、run、analysis 狀態 enum 在 schema、OpenAPI、SQL CHECK 間一致；composite tenant FK 指向既有 PK/unique；`x-required-roles` 與 SECURITY.md RBAC 及報告 p.40 一致；runtime roles NOSUPERUSER/NOBYPASSRLS、FORCE RLS；0.80 confidence 門檻各處一致；provider output schema 不接受 trusted fields。

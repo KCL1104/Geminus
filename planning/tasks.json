@@ -2263,7 +2263,7 @@
       "id": "T-042",
       "title": "Generic kernel / adapter dependency guard",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Simulation",
       "planning_window": "Week 6–8",
       "depends_on": [
@@ -2303,7 +2303,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-042_VALIDATION.md",
+          "summary": "internal/domainpack/conformance：DomainPack conformance suite（identity、catalog、validate fail closed、views 只用 IR node ID 且無第二份 topology、metrics 經 engine 不改 generic 結果且 schema-valid／可重現、inference、prompt、並行；kernel 對改名 domain 的 validator issues 與 engine 數字不變）；test-only generic queue pack 與 SoftwareDeliveryDomainPack 皆通過；40 個壞 pack 各觸發指定 finding。scripts/check-architecture（make architecture-check，CI backend）：go list -e -deps -test build graph 上 8 條遞移規則，16 個 overlay probe 與 synthetic graph 驗證。mutation 80/80＋3 equivalent＋2 kernel guards。CB-37（metrics.dora 名稱）登記給 owner。",
+          "reviewer": null
+        }
+      ]
     }
   ]
 }

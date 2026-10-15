@@ -1,0 +1,136 @@
+package conformance
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/domainpack"
+	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/simulation"
+	"github.com/kcl1104/geminus/internal/simulation/des"
+)
+
+// queuePack is a test-only generic queue domain (T-042): a service counter
+// built from the same generic primitives as software delivery. It proves
+// that a second domain needs no change to the IR, the validator, the engine
+// or the renderers' data — and it is not a product domain: it exists only in
+// this test file.
+type queuePack struct{}
+
+const queueDomain = "generic_queue"
+
+var _ domainpack.DomainPack = queuePack{}
+
+func (queuePack) ID() string { return queueDomain }
+
+func (queuePack) NodeCatalog() []domainpack.NodeDefinition {
+	return []domainpack.NodeDefinition{
+		{Kind: "arrivals", Type: model.NodeSource, Label: "Arrivals", Description: "Customers arriving."},
+		{Kind: "waiting_line", Type: model.NodeQueue, Label: "Waiting line", Description: "Customers waiting for a counter."},
+		{Kind: "service_counter", Type: model.NodeProcess, Label: "Counter", Description: "Service by a clerk.", ResourceTypes: []string{"generic", "human"}},
+		{Kind: "follow_up", Type: model.NodeDecision, Label: "Follow-up", Description: "Some customers queue again."},
+		{Kind: "exit", Type: model.NodeSink, Label: "Exit", Description: "Customers leaving."},
+	}
+}
+
+func (queuePack) ResourceCatalog() []domainpack.ResourceDefinition {
+	return []domainpack.ResourceDefinition{{Kind: "clerk", Type: "generic", Label: "Clerks", Description: "People at the counters."}}
+}
+
+func (queuePack) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir == nil {
+		return []model.ValidationIssue{model.NewIssue(DomainMismatch, "", "no model", model.SeverityError)}
+	}
+	if ir.Domain != queueDomain {
+		return []model.ValidationIssue{model.NewIssue(DomainMismatch, "/domain", fmt.Sprintf("domain %q is not %q", ir.Domain, queueDomain), model.SeverityError)}
+	}
+	return nil
+}
+
+func (queuePack) InferFromEvents(context.Context, domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	return nil, domainpack.ErrUnavailable
+}
+
+// ComputeMetrics derives one metric from the generic queue statistics (the
+// longest mean wait of any queue) and marks another unavailable, as a real
+// pack must when its data is missing.
+func (queuePack) ComputeMetrics(r *simulation.Result) map[string]simulation.MetricSummary {
+	none := "NO_ABANDON_SINK"
+	out := map[string]simulation.MetricSummary{
+		"abandon_rate": {Status: simulation.Unavailable, Population: simulation.PopulationReplication, Unit: "percent", Reason: &none},
+	}
+	names := make([]string, 0, len(r.Metrics.Queues))
+	for name := range r.Metrics.Queues {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	var best *simulation.QueueStats
+	for _, name := range names {
+		q := r.Metrics.Queues[name]
+		if q.Status == simulation.Available && (best == nil || *q.WaitMeanMinutes > *best.WaitMeanMinutes) {
+			best = &q
+		}
+	}
+	if best == nil {
+		reason := "NO_QUEUE_VISIT"
+		out["longest_queue_wait_minutes"] = simulation.MetricSummary{Status: simulation.Unavailable, Population: simulation.PopulationStageVisit, Unit: "minute", Reason: &reason}
+	} else {
+		out["longest_queue_wait_minutes"] = simulation.MetricSummary{Status: simulation.Available, Mean: best.WaitMeanMinutes, P50: best.WaitP50Minutes,
+			P95: best.WaitP95Minutes, SampleCount: best.SampleCount, Population: simulation.PopulationStageVisit, Unit: "minute"}
+	}
+	return out
+}
+
+func (p queuePack) PromptContext() domainpack.PromptContext {
+	return domainpack.PromptContext{Domain: queueDomain, Summary: "Test-only: customers queue for clerks at a service counter.",
+		Nodes: p.NodeCatalog(), Resources: p.ResourceCatalog(), Rules: []string{"Test-only domain; not a product."}}
+}
+
+func (queuePack) DefaultViews(ir *model.ModelIR) domainpack.ViewDefinitions {
+	return domainpack.LayeredLayout(ir)
+}
+
+func runWithPack(in simulation.RunInput, p domainpack.DomainPack) (*simulation.Result, error) {
+	return (&des.Engine{DomainMetrics: p.ComputeMetrics}).Run(context.Background(), in, nil)
+}
+
+func queueModel(t *testing.T) model.ModelIR {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("testdata", "generic-queue.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ir model.ModelIR
+	if err := model.Decode(data, &ir); err != nil {
+		t.Fatal(err)
+	}
+	return ir
+}
+
+// TEST-001/TEST-002 and the T-042 boundary: a second, test-only domain runs
+// on the one Generic Twin IR, generic validator, engine and view data.
+func TestGenericQueuePackConforms(t *testing.T) {
+	Run(t, Suite{Pack: queuePack{}, Models: []model.ModelIR{queueModel(t)}, Horizon: simulation.Duration{Value: 8, Unit: model.Hour}, Replications: 3})
+}
+
+// The pack's metric is derived from the engine's numbers, so the run above
+// exercised an available domain metric, not only unavailable ones.
+func TestGenericQueuePackHasAnAvailableMetric(t *testing.T) {
+	c := &checker{s: Suite{Pack: queuePack{}, Models: []model.ModelIR{queueModel(t)}}}
+	in, err := c.freeze(queueModel(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := runWithPack(in, queuePack{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := res.Metrics.DORA["longest_queue_wait_minutes"]
+	if m.Status != simulation.Available || m.Mean == nil || *m.Mean <= 0 || m.SampleCount == 0 {
+		t.Fatalf("longest_queue_wait_minutes %+v", m)
+	}
+}

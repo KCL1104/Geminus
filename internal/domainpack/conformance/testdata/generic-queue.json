@@ -1,0 +1,141 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00GENERCQ000000000",
+  "domain": "generic_queue",
+  "name": "Test-only service counter",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "customer",
+      "name": "Customer"
+    }
+  ],
+  "resources": [
+    {
+      "id": "clerk",
+      "type": "generic",
+      "name": "Clerk",
+      "capacity": 2,
+      "queue_discipline": "fifo"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "arrivals",
+      "type": "source",
+      "entity_type": "customer",
+      "arrival": {
+        "distribution": {
+          "type": "exponential",
+          "mean": 4
+        }
+      }
+    },
+    {
+      "id": "line",
+      "type": "queue"
+    },
+    {
+      "id": "counter",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 3,
+          "mode": 6,
+          "max": 12
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "clerk",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "follow_up",
+      "type": "decision"
+    },
+    {
+      "id": "leave",
+      "type": "sink",
+      "outcome": "completed"
+    }
+  ],
+  "flows": [
+    {
+      "id": "arrive",
+      "from": "arrivals",
+      "to": "line",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "serve",
+      "from": "line",
+      "to": "counter",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "check",
+      "from": "counter",
+      "to": "follow_up",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "again",
+      "from": "follow_up",
+      "to": "line",
+      "routing": {
+        "type": "probability",
+        "probability": 0.1
+      }
+    },
+    {
+      "id": "done",
+      "from": "follow_up",
+      "to": "leave",
+      "routing": {
+        "type": "probability",
+        "probability": 0.9
+      }
+    }
+  ],
+  "constraints": [],
+  "metrics": [
+    {
+      "id": "time_in_system",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "served",
+      "type": "sink_throughput"
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "arrivals": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "fixture": true,
+    "origin": "T-042 test-only generic queue domain; not a product domain, customer data or a measurement"
+  }
+}
