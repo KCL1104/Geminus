@@ -35,9 +35,10 @@
       "source_pages": "18–19、27、31–33",
       "owner_role": "Platform / Product",
       "gate": "Version service 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-004",
@@ -47,9 +48,10 @@
       "source_pages": "19、23、33–35、51",
       "owner_role": "AI / Simulation",
       "gate": "Scenario 開發前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-005",
@@ -85,9 +87,10 @@
       "source_pages": "7–8、37、50",
       "owner_role": "Platform / Simulation",
       "gate": "Alpha / Beta 設定凍結前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准為初始預設；數值不是量測結果，T-037 benchmark 後可另立決策調整。"
     },
     {
       "id": "D-008",
@@ -97,9 +100,10 @@
       "source_pages": "29、36–41",
       "owner_role": "Security / Platform",
       "gate": "任何共享 DB 服務啟動前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-009",
@@ -109,9 +113,10 @@
       "source_pages": "6–7、30、35–36、48、51",
       "owner_role": "Import / Product",
       "gate": "Import commit 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-010",
@@ -121,9 +126,10 @@
       "source_pages": "2、4、7、26、34–35、44–46",
       "owner_role": "Simulation / Domain / Product",
       "gate": "Results contract 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-011",
@@ -133,9 +139,10 @@
       "source_pages": "7、27–28、32–37",
       "owner_role": "Platform",
       "gate": "Worker queue 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-012",
@@ -145,9 +152,10 @@
       "source_pages": "29–35、40",
       "owner_role": "Platform / Frontend",
       "gate": "HTTP codegen 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-013",
@@ -196,9 +204,10 @@
       "source_pages": "24–26、41–43、46",
       "owner_role": "AI / Security",
       "gate": "AI approval 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-017",
@@ -208,9 +217,10 @@
       "source_pages": "3、6、15–18",
       "owner_role": "Domain / Product",
       "gate": "Default template 發布前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准（owner 回覆「批准全部」）。"
     },
     {
       "id": "D-018",
@@ -515,7 +525,7 @@
     {
       "id": "H-001",
       "subject": "LLM provider（原報告 TBD：OpenAI adapter first + provider interface）",
-      "decision": "LLM 改接 Anthropic Claude API（Claude Console API key）；保留 provider interface。兩個 key 分屬獨立 organization，需支援 rotation 以使用兩邊 credits（選用策略見 D-018，尚未批准）。",
+      "decision": "LLM 改接 Anthropic Claude API（Claude Console API key）；保留 provider interface。兩個 key 分屬獨立 organization，需支援 rotation 以使用兩邊 credits（選用策略見 D-018：owner 選 failover，已批准）。",
       "decided_by": "repository owner (GitHub: KCL1104)",
       "decided_at": "2026-10-15",
       "source": "Claude Code session 指示，由 agent 記錄；owner 於 PR review 確認措辭",
@@ -532,6 +542,16 @@
       "decided_by": "repository owner (GitHub: KCL1104)",
       "decided_at": "2026-10-15",
       "source": "Claude Code session 指示，由 agent 記錄；owner 於 PR review 確認措辭",
+      "still_open": []
+    },
+    {
+      "id": "H-003",
+      "subject": "任務驗收方式",
+      "decision": "Owner 要求 agent 自行 review 與驗收已交付任務（T-004、T-005、T-006、T-007、T-014 起）。驗收紀錄標明為 agent review，非 owner 逐行審查；owner 可隨時重開任務。",
+      "quote": "你自己進行 review 驗收吧",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-15",
+      "source": "Claude Code session 指示，由 agent 記錄",
       "still_open": []
     }
   ]

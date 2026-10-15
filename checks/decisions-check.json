@@ -1,14 +1,15 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 27,
-    "proposed": 10,
+    "approved": 37,
+    "proposed": 0,
     "rejected": 0,
     "superseded": 0
   },
   "human_decisions_recorded": [
     "H-001",
-    "H-002"
+    "H-002",
+    "H-003"
   ],
   "tasks_by_status": {
     "blocked": 0,
@@ -24,18 +25,14 @@
       "awaiting_task_review": [
         "T-007"
       ],
-      "awaiting_decisions": [
-        "D-008"
-      ]
+      "awaiting_decisions": []
     },
     {
       "id": "T-011",
       "awaiting_task_review": [
         "T-004"
       ],
-      "awaiting_decisions": [
-        "D-017"
-      ]
+      "awaiting_decisions": []
     }
   ],
   "gates": {
@@ -58,7 +55,7 @@
       ]
     },
     "D-003": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Version service 前",
       "gates_tasks": [
         "T-012",
@@ -67,7 +64,7 @@
       ]
     },
     "D-004": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Scenario 開發前",
       "gates_tasks": [
         "T-028",
@@ -95,7 +92,7 @@
       ]
     },
     "D-007": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Alpha / Beta 設定凍結前",
       "gates_tasks": [
         "T-016",
@@ -106,7 +103,7 @@
       ]
     },
     "D-008": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "任何共享 DB 服務啟動前",
       "gates_tasks": [
         "T-007",
@@ -118,7 +115,7 @@
       ]
     },
     "D-009": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Import commit 前",
       "gates_tasks": [
         "T-016",
@@ -128,7 +125,7 @@
       ]
     },
     "D-010": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Results contract 前",
       "gates_tasks": [
         "T-022",
@@ -138,7 +135,7 @@
       ]
     },
     "D-011": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Worker queue 前",
       "gates_tasks": [
         "T-019",
@@ -147,7 +144,7 @@
       ]
     },
     "D-012": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "HTTP codegen 前",
       "gates_tasks": [
         "T-009",
@@ -184,7 +181,7 @@
       ]
     },
     "D-016": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "AI approval 前",
       "gates_tasks": [
         "T-024",
@@ -196,7 +193,7 @@
       ]
     },
     "D-017": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Default template 發布前",
       "gates_tasks": [
         "T-011"

@@ -1,10 +1,10 @@
 # API / Database Contract
 
-SOURCE：原報告 pp. 29–37、40–43。OpenAPI / SQL 完整化是 PROPOSED D-001–D-004、D-006、D-008–D-015。**Migration 是需審查的草案，不是已在 PostgreSQL 執行過的結果。**
+SOURCE：原報告 pp. 29–37、40–43。OpenAPI / SQL 完整化是 APPROVED D-001–D-004、D-006、D-008–D-015。**Migration 是需審查的草案，不是已在 PostgreSQL 執行過的結果。**
 
 ## 1. Contract files 與命名
 
-`openapi/openapi.yaml`：OpenAPI 3.1.1，base `/v1`，使用 local external `$ref` 指向 `schemas/`，不重複定義 Model IR。`planning/api-operations.json` 列所有 operations 與 SOURCE/PROPOSED origin。新增的 listing/scenario/membership/download/reset/analysis-read endpoints 都有 x-origin=PROPOSED。
+`openapi/openapi.yaml`：OpenAPI 3.1.1，base `/v1`，使用 local external `$ref` 指向 `schemas/`，不重複定義 Model IR。`planning/api-operations.json` 列所有 operations 與 SOURCE/PROPOSED origin。新增的 listing/scenario/membership/download/reset/analysis-read endpoints 都有 x-origin=PROPOSED，標示它們不在原報告的 endpoint 清單內（來源標記，不是批准狀態；D-012 已批准）。
 
 schemas/model-ir、proposal-output、proposal、scenario、simulation、analysis、canonical-event、ai-mapping、import、dataset-snapshot、http、common、json-patch 各有明确責任。stored `ai_proposals.patch` 對應 HTTP `changes`；model_versions.hash 對應 API `hash` / run.model_hash，序列化層顯式映射。public IDs 用 text；原 ER 圖 UUID 與 API 前綴的衝突見 D-001。base_version_id 統一命名，不另外接受含糊別名。
 
@@ -12,7 +12,7 @@ schemas/model-ir、proposal-output、proposal、scenario、simulation、analysis
 
 所有 `/v1` request：Authorization: Bearer OIDC JWT + X-Organization-ID。驗簽、issuer、audience、expiry 等完成後，才使用 issuer/subject 載入既有 user identity、membership。header 只選 tenant，不是授權。路徑中的 organization_id 若存在，必須等於已驗證 header scope。
 
-PROPOSED D-008：org/initial owner/user provisioning 是受控 bootstrap，不暴露 unauthenticated public provisioning endpoint；provider 與 onboarding automation 仍需 T-008/T-010 完成。Owner 可管理已知既有 user ID 的 membership；不提供全站 user enumeration。改／刪最後一位 Owner 時，依 D-036 在同一 transaction 先以 user_id 順序 `SELECT … FROM twin.memberships WHERE organization_id=$1 AND role='owner' ORDER BY user_id FOR UPDATE` 鎖住全部 owner membership，再檢查人數後拒絕；API 沒有 organizations 的 UPDATE grant，所以不鎖 organization row（CB-13）。
+APPROVED D-008：org/initial owner/user provisioning 是受控 bootstrap，不暴露 unauthenticated public provisioning endpoint；provider 與 onboarding automation 仍需 T-008/T-010 完成。Owner 可管理已知既有 user ID 的 membership；不提供全站 user enumeration。改／刪最後一位 Owner 時，依 D-036 在同一 transaction 先以 user_id 順序 `SELECT … FROM twin.memberships WHERE organization_id=$1 AND role='owner' ORDER BY user_id FOR UPDATE` 鎖住全部 owner membership，再檢查人數後拒絕；API 沒有 organizations 的 UPDATE grant，所以不鎖 organization row（CB-13）。
 
 ## 3. HTTP 規則與錯誤
 
@@ -49,7 +49,7 @@ POST imports 是 bounded multipart（kind、project_id、model_id、base_version
 
 mapper suggestions 是 async read-only suggestion；不覆寫已確認 mapping。POST mapping 帶 expected_mapping_revision、confirmed=true，增加 revision 並排 validation，回 202；同 revision 的 worker 才能發布 validation。VALIDATED 意味所有 rows 合法；invalid rows 回 AWAITING_MAPPING + error report；fatal parse/storage 才 FAILED。JSON model 無欄位 mapping 時 revision=0 仍需 validation。
 
-PROPOSED D-009 commit：驗 state/revision/base/current permission/valid rows→freeze dataset version→create generating proposal + inference job→標 COMMITTED→audit→202。report 中「import into model」在此解讀為交付審核 pipeline，不是直接 mutation。source JSON model identity/name/graph 差異都要展示；拒絕 proposal 後 dataset 已 commit 但 Twin hash 不變。
+APPROVED D-009 commit：驗 state/revision/base/current permission/valid rows→freeze dataset version→create generating proposal + inference job→標 COMMITTED→audit→202。report 中「import into model」在此解讀為交付審核 pipeline，不是直接 mutation。source JSON model identity/name/graph 差異都要展示；拒絕 proposal 後 dataset 已 commit 但 Twin hash 不變。
 
 dataset model inference 可產生每 stage 的 empirical numeric snapshots，保留 parent_dataset_version_id 作 lineage。ready proposal 保存 candidate_dataset_bindings；批准時不得重新指向「最新 dataset」。原始 upload、error artifact 與推導樣本都為 tenant-private；retention TBD 不等於永久保留已獲同意。
 
@@ -73,7 +73,7 @@ claim 用 organization filter + SKIP LOCKED + priority DESC/created_at/id。atte
 
 result finalize transaction 鎖 job，再鎖 run，核實有效 lease +無 cancel flag；insert unique result、run completed、job completed、audit 同時 commit。lease expired 的舊 worker 永遠不能覆寫新結果。reaper 逐 tenant 處理 expired lease，先核實 retry budget；run frozen input 不變。non-transient validation/budget failure 不 retry；有限 exponential backoff 的參數仍需配置。
 
-PROPOSED D-007：logical run 的 wall/event budgets 要包含 retries，而非每次重試重設。worker 使用 durable budget reservations、有限批次 credit 與外部 cancellation governor；engine 只讀授予的 budget/context，不直接讀 DB。實作時要測 crash 前已保留但未用完的 credit 可被保守消耗，不能超額。這一部分為 T-021/T-023 的必測項，不在本包聲稱已完成。
+APPROVED D-007：logical run 的 wall/event budgets 要包含 retries，而非每次重試重設。worker 使用 durable budget reservations、有限批次 credit 與外部 cancellation governor；engine 只讀授予的 budget/context，不直接讀 DB。實作時要測 crash 前已保留但未用完的 credit 可被保守消耗，不能超額。這一部分為 T-021/T-023 的必測項，不在本包聲稱已完成。
 
 ## 8. Relational model / constraints
 

@@ -1,6 +1,6 @@
 # ADR-016 — Frontend server-state boundary without a state library (T-014)
 
-狀態：PROPOSED（T-014 agent 選定，待人類 review）。日期：2026-10-15。原報告把 TanStack Query、Zustand、Tailwind/shadcn 列為 TBD（DECISIONS_AND_TBD.md「Frontend state / UI libraries」）。
+狀態：ACCEPTED（T-014 agent 選定；owner KCL1104 於 2026-10-15 同意）。日期：2026-10-15。原報告把 TanStack Query、Zustand、Tailwind/shadcn 列為 TBD（DECISIONS_AND_TBD.md「Frontend state / UI libraries」）。
 
 ## Decision
 

@@ -1,6 +1,6 @@
 # Decisions & TBD Register
 
-版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。**本檔不代表人類已批准新增決策。**
+版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；2026-10-15 起所有 D-entry 皆已由 owner 批准。
 
 ## 狀態與採用方法
 
@@ -34,7 +34,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-003 — 發布、審核與未發布 Draft 的交互作用
 
-**狀態：PROPOSED。負責角色：Platform / Product。Gate：Version service 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Platform / Product。Gate：Version service 前。**
 
 來源缺口（原報告 pp. 18–19、27、31–33）：報告要求 immutable versions、optimistic concurrency、不得偷偷 rebase，但未說明 AI approval 遇到 dirty draft 的行為。
 
@@ -42,7 +42,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-004 — Scenario Proposal 的批准結果
 
-**狀態：PROPOSED。負責角色：AI / Simulation。Gate：Scenario 開發前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：AI / Simulation。Gate：Scenario 開發前。**
 
 來源缺口（原報告 pp. 19、23、33–35、51）：報告說 Scenario 是 immutable version 上的 patch，不建立 canonical ModelVersion；Scenario Designer 沒有獨立 API/持久化合約。
 
@@ -66,7 +66,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-007 — 初始工程限制與預設
 
-**狀態：PROPOSED。負責角色：Platform / Simulation。Gate：Alpha / Beta 設定凍結前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Platform / Simulation。Gate：Alpha / Beta 設定凍結前。**
 
 來源缺口（原報告 pp. 7–8、37、50）：報告提供帶 TBD 的 graph/upload/replication/timeout 目標，未定義 event cap、trace cap、lease、idempotency TTL。
 
@@ -74,7 +74,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-008 — Tenant context、onboarding 與 worker scope
 
-**狀態：PROPOSED。負責角色：Security / Platform。Gate：任何共享 DB 服務啟動前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Security / Platform。Gate：任何共享 DB 服務啟動前。**
 
 來源缺口（原報告 pp. 29、36–41）：報告有 membership/RLS/queue，但沒有 HTTP tenant selection、membership endpoints、bootstrap、RLS 下的跨 tenant worker claim 規格。
 
@@ -82,7 +82,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-009 — Import commit 的邊界
 
-**狀態：PROPOSED。負責角色：Import / Product。Gate：Import commit 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Import / Product。Gate：Import commit 前。**
 
 來源缺口（原報告 pp. 6–7、30、35–36、48、51）：報告把 import commit 寫成 import into model，但最後閉環要求 inferred model 先 proposal/approval；未明確區分 dataset commit 與 Twin mutation。
 
@@ -90,7 +90,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-010 — 結果、缺值、DORA 與比較
 
-**狀態：PROPOSED。負責角色：Simulation / Domain / Product。Gate：Results contract 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Simulation / Domain / Product。Gate：Results contract 前。**
 
 來源缺口（原報告 pp. 2、4、7、26、34–35、44–46）：報告示例沒有 metric population、warmup/censoring、confidence method、baseline=0、DORA required events 的完整規格。
 
@@ -98,7 +98,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-011 — Async、重試、取消與冪等
 
-**狀態：PROPOSED。負責角色：Platform。Gate：Worker queue 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Platform。Gate：Worker queue 前。**
 
 來源缺口（原報告 pp. 7、27–28、32–37）：報告提供 202/SSE/cancellation/SKIP LOCKED/Idempotency-Key，但未指定 transition、lease recovery、duplicate response、completion fencing。
 
@@ -106,7 +106,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-012 — HTTP 合約補全
 
-**狀態：PROPOSED。負責角色：Platform / Frontend。Gate：HTTP codegen 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Platform / Frontend。Gate：HTTP codegen 前。**
 
 來源缺口（原報告 pp. 29–35、40）：報告只列核心 endpoint，未列 collection list、scenario、mapping suggestion、import error report、playback、analysis read、draft reset、membership 管理。
 
@@ -138,7 +138,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-016 — AI 風險及有限工具
 
-**狀態：PROPOSED。負責角色：AI / Security。Gate：AI approval 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：AI / Security。Gate：AI approval 前。**
 
 來源缺口（原報告 pp. 24–26、41–43、46）：報告要求 path/operation allowlists、risk classification，未提供完整規則。
 
@@ -146,7 +146,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-017 — 範例、時間尺度與模板
 
-**狀態：PROPOSED。負責角色：Domain / Product。Gate：Default template 發布前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Domain / Product。Gate：Default template 發布前。**
 
 來源缺口（原報告 pp. 3、6、15–18）：報告完整 JSON 實為 Source→Review→CI→Decision→Sink；P0 story 則要求包含 Test/Deploy。mean=16 minutes 不等於連續 24 小時每天 30 件。
 
@@ -199,6 +199,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 |---|---|---|---|
 | H-001 | 2026-10-15 | LLM provider 改為 Anthropic Claude API（Claude Console API key），保留 provider interface；兩個 key 分屬獨立 organization，需 rotation 使用兩邊 credits | LLM model（eval 後）、retention／資料政策、token quota |
 | H-002 | 2026-10-15 | 確認 Go backend；與 ADR-001 一致（`net/http`，不引入重型 framework），無變更 | — |
+| H-003 | 2026-10-15 | 任務驗收由 agent 自行 review（owner 指示「你自己進行 review 驗收吧」）；驗收紀錄標明為 agent review，owner 可隨時重開任務 | — |
 
 ## 原報告保留的 TBD
 

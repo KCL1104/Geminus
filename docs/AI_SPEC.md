@@ -1,6 +1,6 @@
 # AI Modeling / Scenario / Analyst Spec
 
-SOURCE：原報告 pp. 23–28、32–33、41–46。PROPOSED：D-002 / D-004 / D-009 / D-010 / D-011 / D-014 / D-016 補足 server envelope、狀態、scenario persistence、可執行安全規則。Provider/model/residency/retention 仍 TBD。
+SOURCE：原報告 pp. 23–28、32–33、41–46。工程補充（皆已批准）：D-002 / D-004 / D-009 / D-010 / D-011 / D-014 / D-016 補足 server envelope、狀態、scenario persistence、可執行安全規則。Provider 已定為 Anthropic Claude API（H-001、D-018）；model／residency／retention 仍 TBD。
 
 ## 1. Authority boundary
 
@@ -30,7 +30,7 @@ ProposalContext 的 mode 由 server 固定為 edit/scenario；可以用同一 pr
 
 所有 CSV cells、JSON metadata、model labels、user intent 文字都標示 UNTRUSTED_DATA，不能被解釋為 system/developer instruction。raw credentials、tenant secrets、無关 raw rows、其他 tenant、任意 URL、private infrastructure secrets default deny。大型 imports 只發摘要與 bounded sample，不送整份 CSV。context omission 必須可見，不能在 slice 中看不到某 reference 就假裝它不存在。
 
-PROPOSED D-016：新增 node/resource 的 ID 必須來自 server 提供的 allocation pool，且在同一 patch 中明確建立；不准編造外部 dataset 或引用未建立／未授權 resource。若 pool/schema/intent 不足，needs_input。server 做完整 candidate IR referential validation，不只驗 slice。
+APPROVED D-016：新增 node/resource 的 ID 必須來自 server 提供的 allocation pool，且在同一 patch 中明確建立；不准編造外部 dataset 或引用未建立／未授權 resource。若 pool/schema/intent 不足，needs_input。server 做完整 candidate IR referential validation，不只驗 slice。
 
 ## 4. Provider output / proposal 狀態機
 
@@ -70,7 +70,7 @@ AI analyst 建議「下一個 experiment」也只是文字 hypothesis；使用�
 
 mapper 僅依 COLUMN_NAMES、SAMPLE_ROWS、CANONICAL_SCHEMA 提案，每項 source_column、target_field、confidence、evidence、transform、requires_confirmation。confidence<0.80 或 target_field=null 必须確認；沒有語義證據時 null，不因名稱相似就猜 timestamp 等。
 
-PROPOSED D-009：transforms 只允許 identity/rfc3339/integer_ms/boolean_literal。沒有 eval、SQL、JS/Python 或自由文字 expression。mapping suggestion 與已確認 mapping 分開保存；保存 mapping 增 revision、排 validation；stale validation job 不得把舊 revision 標 validated。
+APPROVED D-009：transforms 只允許 identity/rfc3339/integer_ms/boolean_literal。沒有 eval、SQL、JS/Python 或自由文字 expression。mapping suggestion 與已確認 mapping 分開保存；保存 mapping 增 revision、排 validation；stale validation job 不得把舊 revision 標 validated。
 
 commit 凍結 dataset，inference 從資料提出 model proposal（含 assumptions/data quality），不能直接 publish。JSON model import 同樣 server-bind identity + validate + diff + review。invalid rows 不 silent drop；原報告沒有授權「只匯入合法部分」，候選 P0 採 all-or-nothing。
 

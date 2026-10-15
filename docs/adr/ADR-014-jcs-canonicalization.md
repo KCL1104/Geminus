@@ -1,6 +1,6 @@
 # ADR-014 — RFC 8785 canonicalization library and hash verification
 
-狀態：PROPOSED（T-005 agent 選定，待人類 review）。日期：2026-10-15。前提：D-006、D-019、D-034（皆已批准）。
+狀態：ACCEPTED（T-005 agent 選定；owner KCL1104 於 2026-10-15 同意）。日期：2026-10-15。前提：D-006、D-019、D-034（皆已批准）。
 
 ## Decision
 

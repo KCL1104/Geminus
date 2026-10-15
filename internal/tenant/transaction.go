@@ -8,7 +8,7 @@
 // which membership to use, and Run checks that membership before fn runs.
 // RLS is defence in depth; the application filters by organization as well.
 //
-// Status: implements D-008 as proposed; the decision is not yet approved.
+// Implements D-008 (approved 2026-10-15).
 package tenant
 
 import (

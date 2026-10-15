@@ -1,6 +1,6 @@
 # Native Go DES — Simulation Semantics & Engine Spec
 
-SOURCE：原報告 pp. 19–22、33–35、44–46。**本文件的精確數學／排程細節是 PROPOSED D-005 / D-006 / D-007 / D-010 / D-011，並非原報告已定義。** 確認後才凍結 golden digest。下面定義是一套可測的候選，不允許 agent 各自選擇互不相容的語義。
+SOURCE：原報告 pp. 19–22、33–35、44–46。**本文件的精確數學／排程細節來自 D-005 / D-006 / D-007 / D-010 / D-011（皆已批准；D-007 的數值為初始預設，待 T-037 benchmark），並非原報告已定義。** golden digest 由 engine 實作（T-020 起）產生後凍結。下面定義是一套可測的候選，不允許 agent 各自選擇互不相容的語義。
 
 ## 1. Execution model
 
@@ -69,7 +69,7 @@ schema 中 `status=unavailable` 時 mean/p50/p95/CI 都是 null，reason 說明�
 
 ## 6. DORA-oriented metrics 的 gating
 
-SOURCE 僅要求資料充足才計算；沒有提供完整 domain event taxonomy。PROPOSED D-010：由 domain pack 保存明確 stage/event-to-milestone mapping 與 data-quality evidence，未提供 mapping 一律 unavailable。一般 source→sink lead time 不能自動當 Change Lead Time。
+SOURCE 僅要求資料充足才計算；沒有提供完整 domain event taxonomy。APPROVED D-010：由 domain pack 保存明確 stage/event-to-milestone mapping 與 data-quality evidence，未提供 mapping 一律 unavailable。一般 source→sink lead time 不能自動當 Change Lead Time。
 
 Change Lead Time 需要 change commit/deployed 關係與時間；Deployment Frequency 需要可辨識 production deployment 及觀測期間；Failed Deployment Recovery Time 需要 failure 與 recovery 配對；Change Failure Percentage 需要 deployment denominator 與 failure classification；Deployment Rework Rate 需要可辨識 rework deployment 與 denominator。公式、dedup/batching、calendar denominator 需在 DomainPack metric definition 明列並經 pilot 資料確認。P0 fixture 的 CI fail/rework 不足以冒稱 deployment failure/recovery。
 

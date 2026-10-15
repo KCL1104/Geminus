@@ -1,6 +1,6 @@
 # Security Requirements / Threat Model
 
-SOURCE：原報告 pp. 36–43、46；補充 attack cases 與 runtime policies 為 PROPOSED D-003、D-006–D-016。此為工程安全規格，不是 penetration test 或 compliance certification。
+SOURCE：原報告 pp. 36–43、46；補充 attack cases 與 runtime policies 為 APPROVED D-003、D-006–D-016。此為工程安全規格，不是 penetration test 或 compliance certification。
 
 ## 1. 信任邊界
 

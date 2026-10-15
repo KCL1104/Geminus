@@ -42,7 +42,7 @@ SOURCE 的三個驗證假設：AI 降低建模門檻；simulation 提供使用�
 | REQ-020 | Observability / deployment | structured logs + traces/metrics；containerized web/api/worker、staging 與受控 production approval；no customer content in product telemetry |
 | REQ-021 | Quality gates | 六層測試、50 curated modeling intents 初始目標、invalid mutation=0、AI leakage=0、mandatory adversarial invented metrics=0 |
 
-PROPOSED：REQ-002 的 org bootstrap / membership HTTP 範圍見 D-008 / D-012；REQ-007 commit 與 proposal 邊界見 D-009；REQ-010 scenario approval 結果見 D-004；其餘缺值、clock 與一致性細節依專門 Spec。
+工程補充（已批准）：REQ-002 的 org bootstrap / membership HTTP 範圍見 D-008 / D-012；REQ-007 commit 與 proposal 邊界見 D-009；REQ-010 scenario approval 結果見 D-004；其餘缺值、clock 與一致性細節依專門 Spec。
 
 ## 4. UI 與主要旅程
 
@@ -52,7 +52,7 @@ PROPOSED：REQ-002 的 org bootstrap / membership HTTP 範圍見 D-008 / D-012�
 
 ### 匯入與 AI 建模
 
-Upload CSV/JSON → preview 與 row errors → mapping 建議（低於 0.80 需確認）→人類確認 mapping → deterministic validation → commit dataset →生成 inference/model proposal → review diff/assumptions/data quality →approve 或 reject。PROPOSED D-009：commit 不等於 publish；reject 後 frozen dataset 可保留，但 canonical Twin 完全不變。
+Upload CSV/JSON → preview 與 row errors → mapping 建議（低於 0.80 需確認）→人類確認 mapping → deterministic validation → commit dataset →生成 inference/model proposal → review diff/assumptions/data quality →approve 或 reject。APPROVED D-009：commit 不等於 publish；reject 後 frozen dataset 可保留，但 canonical Twin 完全不變。
 
 ### Scenario 與決策
 

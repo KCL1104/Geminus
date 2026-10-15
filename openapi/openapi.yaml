@@ -74,7 +74,7 @@ paths:
     get:
       operationId: listProjects
       summary: List projects in current organization
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Projects
@@ -218,7 +218,7 @@ paths:
     get:
       operationId: listModels
       summary: List project models
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Models
@@ -422,7 +422,7 @@ paths:
     post:
       operationId: resetDraft
       summary: Explicitly reset draft to latest version
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Models
@@ -683,7 +683,7 @@ paths:
     get:
       operationId: listProposals
       summary: List model proposals
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Proposals
@@ -889,7 +889,7 @@ paths:
     post:
       operationId: createManualScenario
       summary: Create manually confirmed immutable scenario
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Scenarios
@@ -942,7 +942,7 @@ paths:
     get:
       operationId: listScenarios
       summary: List scenarios for immutable version
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Scenarios
@@ -992,7 +992,7 @@ paths:
     get:
       operationId: getScenario
       summary: Get immutable scenario
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Scenarios
@@ -1212,7 +1212,7 @@ paths:
     post:
       operationId: suggestImportMapping
       summary: Queue read-only AI column mapping suggestion
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Imports
@@ -1281,7 +1281,7 @@ paths:
     get:
       operationId: downloadImportErrors
       summary: Authorize download of row/schema error report
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Imports
@@ -1329,7 +1329,7 @@ paths:
     post:
       operationId: commitImport
       summary: Freeze validated dataset and queue inference proposal
-      description: 'PROPOSED D-009 resolves report ambiguity: commit persists immutable dataset + generating proposal,
+      description: 'D-009 resolves report ambiguity: commit persists immutable dataset + generating proposal,
         NOT canonical Twin mutation. For JSON model imports, base identity is server-bound; a diff is reviewed before
         approval. All rows must validate; no silent partial import.'
       tags:
@@ -1432,7 +1432,7 @@ paths:
     get:
       operationId: listSimulations
       summary: List model runs
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Simulations
@@ -1699,7 +1699,7 @@ paths:
     get:
       operationId: downloadSimulationTrace
       summary: Authorize sampled playback artifact
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Simulations
@@ -1747,7 +1747,7 @@ paths:
     get:
       operationId: compareSimulations
       summary: Compare baseline and scenario aggregates
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Simulations
@@ -1853,7 +1853,7 @@ paths:
     get:
       operationId: getAnalysis
       summary: Read analysis and evidence
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Analyses
@@ -1901,7 +1901,7 @@ paths:
     get:
       operationId: listAuditEvents
       summary: Read tenant-scoped audit events
-      description: SOURCE audit route; PROPOSED D-012 least-privilege read is Owner-only because audit may include
+      description: SOURCE audit route; D-012 least-privilege read is Owner-only because audit may include
         member-level metadata.
       tags:
       - Audit
@@ -1944,7 +1944,7 @@ paths:
     get:
       operationId: listMemberships
       summary: List organization members
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Memberships
@@ -1991,7 +1991,7 @@ paths:
     post:
       operationId: createMembership
       summary: Add known existing user membership
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Memberships
@@ -2046,7 +2046,7 @@ paths:
     patch:
       operationId: updateMembership
       summary: Update role; preserve at least one Owner
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Memberships
@@ -2104,7 +2104,7 @@ paths:
     delete:
       operationId: deleteMembership
       summary: Remove membership; preserve at least one Owner
-      description: PROPOSED D-012 P0 workflow completion endpoint; not explicitly listed in original core endpoint
+      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table.
       tags:
       - Memberships
@@ -2159,7 +2159,7 @@ components:
       in: header
       required: true
       description: Tenant selector only. JWT subject + current membership authorize this scope. Never trust a role
-        from this header. PROPOSED D-008.
+        from this header. D-008.
       schema:
         $ref: ../schemas/common.schema.json#/$defs/OrganizationID
     IdempotencyKey:
@@ -2167,7 +2167,7 @@ components:
       in: header
       required: true
       description: Scoped by organization, authenticated actor, HTTP operation and resource. Same key+body replays;
-        different body returns 409. PROPOSED D-011.
+        different body returns 409. D-011.
       schema:
         type: string
         minLength: 8
@@ -2322,4 +2322,4 @@ components:
         minLength: 1
         maxLength: 100
         pattern: ^"draft-revision-[1-9][0-9]*"$
-x-spec-status: PROPOSED_NOT_APPROVED
+x-spec-status: DRAFT_DECISIONS_APPROVED

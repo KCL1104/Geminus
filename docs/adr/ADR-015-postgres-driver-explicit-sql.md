@@ -1,6 +1,6 @@
 # ADR-015 — PostgreSQL driver and explicit SQL
 
-狀態：PROPOSED（T-006 agent 選定，待人類 review）。日期：2026-10-15。原報告把「SQL generation：explicit SQL / sqlc」列為 TBD（DECISIONS_AND_TBD.md）。
+狀態：ACCEPTED（T-006 agent 選定；owner KCL1104 於 2026-10-15 同意）。日期：2026-10-15。原報告把「SQL generation：explicit SQL / sqlc」列為 TBD（DECISIONS_AND_TBD.md）。
 
 ## Decision
 
