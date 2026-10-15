@@ -37,6 +37,7 @@
 | `govulncheck v1.9.0` | 0 | 加入 pgx 後 No vulnerabilities found |
 | `make frontend-test` | 0 | 未改前端，確認無回歸 |
 | `actionlint v1.7.12` | 0 | |
+| GitHub Actions [run 38751843764](https://github.com/KCL1104/Geminus/actions/runs/38751843764)（`afc38ee`） | success | 4 個 job 全部 success；db job 的 PostgreSQL 以 `en_US.utf8` 初始化（log 可見），server log 有 Go 整合測試刻意觸發的 commit 時 manifest mismatch 與 `pg_sleep` 取消，證明整合測試實際執行而非 skip |
 
 ## 驗收測試對照
 
@@ -76,4 +77,3 @@
 |---|---|
 | Runtime login、tenant scope helper、並行 pool 隔離 | T-007（gate D-008 仍為 PROPOSED） |
 | Staging smoke、backup／restore、production gate（TEST-030 其餘部分） | 部署任務；需要 owner 授權的環境 |
-| GitHub Actions | 推送後補記 |
