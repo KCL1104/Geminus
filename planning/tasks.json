@@ -1070,7 +1070,7 @@
       "id": "T-020",
       "title": "DES compiler、clock、heap、RNG",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Simulation",
       "planning_window": "Week 5–6",
       "depends_on": [
@@ -1115,7 +1115,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-020_VALIDATION.md",
+          "summary": "Compile(RunInput) 重新驗證 IR／datasets／config／limits 後產生 immutable Program（ID 排序、decision routes 依 flow ID）；四種 sampler、(tick, priority, seq) 事件 heap、replication clock、source arrival 與 entity ID；與獨立 Python 參考 engine-vectors.json 逐 tick 相同；61 tests、mutation 30/30、fuzz 851,555 次；kernel 屬 T-021（NOT RUN）。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-021",

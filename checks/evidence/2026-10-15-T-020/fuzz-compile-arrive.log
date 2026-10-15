@@ -1,0 +1,3 @@
+fuzz: elapsed: 30s, execs: 851555 (0/sec), new interesting: 541 (total: 545)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	30.131s

@@ -1,0 +1,406 @@
+{
+  "status": "INDEPENDENT_PYTHON_REFERENCE (scripts/engine_reference.py); the Go engine must match exactly",
+  "replication_seed": {
+    "base_seed": 20260415,
+    "index": 3
+  },
+  "beyond_cap_ticks": 31536000001,
+  "sampler_vectors": [
+    {
+      "name": "constant draws nothing",
+      "unit": "minute",
+      "distribution": {
+        "type": "constant",
+        "value": 5
+      },
+      "node_id": "node_0",
+      "purpose": "service",
+      "expected_ticks": [
+        300000,
+        300000,
+        300000,
+        300000,
+        300000,
+        300000,
+        300000,
+        300000,
+        300000,
+        300000,
+        300000,
+        300000
+      ],
+      "state_after": "d814bba7af5263a8"
+    },
+    {
+      "name": "exponential template interarrival",
+      "unit": "minute",
+      "distribution": {
+        "type": "exponential",
+        "mean": 48
+      },
+      "node_id": "node_1",
+      "purpose": "service",
+      "expected_ticks": [
+        6091888,
+        1541806,
+        5089,
+        1900376,
+        2341106,
+        3648335,
+        186202,
+        118847,
+        1077923,
+        2021301,
+        7815918,
+        400863
+      ],
+      "state_after": "01f092937cb353f9"
+    },
+    {
+      "name": "exponential sub-tick mean clamps to 1",
+      "unit": "millisecond",
+      "distribution": {
+        "type": "exponential",
+        "mean": 0.0004
+      },
+      "node_id": "node_2",
+      "purpose": "service",
+      "expected_ticks": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "state_after": "d3f346b37bc9067e"
+    },
+    {
+      "name": "exponential underflow is still 1 tick",
+      "unit": "millisecond",
+      "distribution": {
+        "type": "exponential",
+        "mean": 5e-324
+      },
+      "node_id": "node_3",
+      "purpose": "service",
+      "expected_ticks": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "state_after": "0d334d8a898a1f7b"
+    },
+    {
+      "name": "exponential tail beyond the cap",
+      "unit": "day",
+      "distribution": {
+        "type": "exponential",
+        "mean": 300
+      },
+      "node_id": "node_4",
+      "purpose": "service",
+      "expected_ticks": [
+        31536000001,
+        11352848140,
+        3616230424,
+        31536000001,
+        12504687248,
+        331647134,
+        16173700497,
+        22838188509,
+        7000225835,
+        31536000001,
+        31536000001,
+        21082453718
+      ],
+      "state_after": "a68a1bdf15e02cd0"
+    },
+    {
+      "name": "triangular",
+      "unit": "hour",
+      "distribution": {
+        "type": "triangular",
+        "min": 1,
+        "mode": 2,
+        "max": 4
+      },
+      "node_id": "node_5",
+      "purpose": "service",
+      "expected_ticks": [
+        10586333,
+        12140436,
+        11361761,
+        10895217,
+        8121716,
+        9401777,
+        10674387,
+        5497325,
+        5854481,
+        7374319,
+        6413145,
+        6224939
+      ],
+      "state_after": "17d51ccd5a9d6b50"
+    },
+    {
+      "name": "triangular min=mode=0",
+      "unit": "minute",
+      "distribution": {
+        "type": "triangular",
+        "min": 0,
+        "mode": 0,
+        "max": 10
+      },
+      "node_id": "node_6",
+      "purpose": "service",
+      "expected_ticks": [
+        491462,
+        254037,
+        91918,
+        225850,
+        343871,
+        366074,
+        327548,
+        24025,
+        69144,
+        23361,
+        175633,
+        52331
+      ],
+      "state_after": "dcf859745e26dbb4"
+    },
+    {
+      "name": "triangular mode=max",
+      "unit": "second",
+      "distribution": {
+        "type": "triangular",
+        "min": 2,
+        "mode": 7,
+        "max": 7
+      },
+      "node_id": "node_7",
+      "purpose": "service",
+      "expected_ticks": [
+        6372,
+        5861,
+        4411,
+        5315,
+        6983,
+        6771,
+        5321,
+        6987,
+        6800,
+        6112,
+        2957,
+        5900
+      ],
+      "state_after": "e1d84fe586f9cea8"
+    },
+    {
+      "name": "triangular degenerate draws nothing",
+      "unit": "minute",
+      "distribution": {
+        "type": "triangular",
+        "min": 3,
+        "mode": 3,
+        "max": 3
+      },
+      "node_id": "node_8",
+      "purpose": "service",
+      "expected_ticks": [
+        180000,
+        180000,
+        180000,
+        180000,
+        180000,
+        180000,
+        180000,
+        180000,
+        180000,
+        180000,
+        180000,
+        180000
+      ],
+      "state_after": "a26bd3c566813bf1"
+    },
+    {
+      "name": "empirical",
+      "unit": "minute",
+      "distribution": {
+        "type": "empirical",
+        "samples_ref": "dataset:review_duration"
+      },
+      "samples": [
+        0,
+        240,
+        360.5
+      ],
+      "samples_unit": "minute",
+      "node_id": "node_9",
+      "purpose": "service",
+      "expected_ticks": [
+        0,
+        21630000,
+        21630000,
+        21630000,
+        21630000,
+        14400000,
+        0,
+        14400000,
+        21630000,
+        14400000,
+        0,
+        14400000
+      ],
+      "state_after": "ac27f5496ad8c8ef"
+    }
+  ],
+  "event_order": {
+    "pushes": [
+      {
+        "tick": 5,
+        "priority": 10
+      },
+      {
+        "tick": 5,
+        "priority": 20
+      },
+      {
+        "tick": 3,
+        "priority": 10
+      },
+      {
+        "tick": 5,
+        "priority": 0
+      },
+      {
+        "tick": 5,
+        "priority": 10
+      },
+      {
+        "tick": 3,
+        "priority": 20
+      },
+      {
+        "tick": 0,
+        "priority": 10
+      },
+      {
+        "tick": 5,
+        "priority": 0
+      },
+      {
+        "tick": 3,
+        "priority": 0
+      },
+      {
+        "tick": 5,
+        "priority": 20
+      }
+    ],
+    "pop_sequence": [
+      7,
+      9,
+      3,
+      6,
+      4,
+      8,
+      1,
+      5,
+      2,
+      10
+    ]
+  },
+  "arrivals": {
+    "run": {
+      "base_seed": 7,
+      "replication_index": 1,
+      "unit": "minute",
+      "horizon": {
+        "value": 180,
+        "unit": "minute"
+      }
+    },
+    "sources": [
+      {
+        "id": "b_src",
+        "distribution": {
+          "type": "exponential",
+          "mean": 30
+        },
+        "max_entities": 6
+      },
+      {
+        "id": "a_src",
+        "distribution": {
+          "type": "constant",
+          "value": 45
+        }
+      },
+      {
+        "id": "c_src",
+        "distribution": {
+          "type": "triangular",
+          "min": 10,
+          "mode": 20,
+          "max": 90
+        },
+        "max_entities": 3
+      }
+    ],
+    "expected": [
+      [
+        1761556,
+        "r1/c_src/1"
+      ],
+      [
+        2700000,
+        "r1/a_src/1"
+      ],
+      [
+        3318087,
+        "r1/c_src/2"
+      ],
+      [
+        5400000,
+        "r1/a_src/2"
+      ],
+      [
+        6059136,
+        "r1/c_src/3"
+      ],
+      [
+        8100000,
+        "r1/a_src/3"
+      ],
+      [
+        9161260,
+        "r1/b_src/1"
+      ],
+      [
+        9933135,
+        "r1/b_src/2"
+      ],
+      [
+        10800000,
+        "r1/a_src/4"
+      ]
+    ]
+  }
+}

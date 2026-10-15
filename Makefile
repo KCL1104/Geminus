@@ -16,6 +16,7 @@ spec-sql-inventory:
 	$(PYTHON) scripts/check_sql_inventory.py
 spec-reference-math:
 	$(PYTHON) scripts/check_reference_math.py
+	$(PYTHON) scripts/engine_reference.py
 spec-decisions:
 	$(PYTHON) scripts/check_decisions.py
 # TypeScript contract types are generated from schemas/; regenerate with `make ts-contracts`.

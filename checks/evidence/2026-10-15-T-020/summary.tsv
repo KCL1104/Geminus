@@ -1,0 +1,8 @@
+command	exit
+make spec-check	0
+go test -count=1 -v ./internal/simulation/...	0
+make backend-test	0
+make backend-race	0
+make backend-build	0
+python3 scripts/engine_reference.py	0
+govulncheck v1.9.0 ./...	0

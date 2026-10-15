@@ -14,7 +14,7 @@ internal tick 固定 **1 millisecond**，int64；所有輸入換算成 tick 後�
 
 heap key = (time_tick,event_priority,monotonic_sequence)。APPROVED priority（D-005、D-032）：SERVICE_COMPLETE=0，在同一事件內原子釋放資源後立即路由（進下一個 queue／delay／sink）；arrival、DELAY_COMPLETE 與其他 immediate state transitions=10，同樣立即路由；internal resource dispatch=20，為該 tick 最後一步。route 不是獨立事件，entity 任何時刻恰處於一個狀態。release 在同 tick 的 dispatch 之前完成；sequence 在 replication 內 strictly increasing。Go map iteration、wall clock、worker scheduling 不得參與 tie-breaking。
 
-source 第一個 arrival 在從 t=0 抽出的 interarrival 之後，而不是自動 t=0；其後每次 arrival 再排下一個。max_entities 若指定，限制該 source 的產生數；否則直到 horizon。多 source 的初始化按 node ID 排序，entity IDs 由 replication/source/local sequence 派生，不使用隨機 UUID。
+source 第一個 arrival 在從 t=0 抽出的 interarrival 之後，而不是自動 t=0；其後每次 arrival 再排下一個。max_entities 若指定，限制該 source 的產生數；否則直到 horizon。多 source 的初始化按 node ID 排序，entity IDs 由 replication/source/local sequence 派生，不使用隨機 UUID。實作（`internal/simulation/engine`，T-020）：node、resource、flow 一律以 ID 的 bytes 排序後編號；ARRIVAL 事件依序 (1) 建立 entity、(2) 為同一 source 抽下一個 interarrival 並排程、(3) 交給 kernel 路由（T-021），此順序決定 sequence，因此決定同 tick 的先後；entity ID 為 `r<replication index>/<source node ID>/<n>`（n 從 1 起；node ID 不含 `/`）；tick 晚於 horizon 的事件不排程（抽樣仍已消耗）；stream 依 (node, purpose) 首次使用時建立，彼此獨立，新增一個 source 不改變其他 source 的 arrival。
 
 所有 `event.time <= horizon` 都處理，包括 horizon 同 tick 產生的後續 immediate events；`>horizon` 不執行。horizon 不會自動 drain remaining work；在 horizon 仍未 completed 的 entity 是 censored，不能拿 horizon-arrival 當完整 lead time。zero-time cycles 在 compile 時拒絕（判定方式見 D-033：以分布可能的最小 tick 為準，empirical 於 dataset binding 階段判定），runtime 同時保留 visit/event caps。
 
@@ -43,7 +43,7 @@ U = ((output >> 12) + 0.5) / 2^52       # strictly 0 < U < 1
 
 replication_seed = first 8 bytes, little-endian, of SHA256(`dt-rep-v1\0` UTF-8 || uint64LE(base_seed) || uint32LE(replication_index))。index 從 0 起。stream seed = first 8 LE bytes of SHA256(`dt-stream-v1\0` || uint64LE(replication_seed) || uint32LE(len(node_id_bytes)) || node_id_bytes || uint32LE(len(purpose_bytes)) || purpose_bytes)。purpose = arrival/service/delay/routing；相互獨立。trace sampling 使用另一 purpose，不消耗以上 streams。
 
-constant 不消耗 random draw。empirical 以 floor(U*N) 等權抽 samples；exponential = -mean*ln(1-U)；triangular 依標準 inverse CDF，min=mode=max 時視 constant；min/max 任一邊退化要避免除 0。所有 sample 再經同一 tick quantizer。算法、log/sqrt numerical profile、build architecture 改變時必須換 engine_version，不把同一 human-readable semver 用於不同數值實作。
+constant 不消耗 random draw。empirical 以 floor(U*N) 等權抽 samples；exponential = -mean*ln(1-U)；triangular 依標準 inverse CDF，min=mode=max 時視 constant；min/max 任一邊退化要避免除 0。所有 sample 再經同一 tick quantizer。T-020 補充：(a) exponential 樣本至少 1 tick（即使 mean 極小、乘積下溢為 0；D-033 視 exponential 恆 >0）；(b) 抽樣結果超過 365 天（只有 exponential 尾端可能）以 365 天＋1 tick 表示，必晚於任何 horizon，事件永不處理，tick 運算不會溢位；(c) triangular 用 `U < (mode-min)/(max-min)` 選分支；(d) decision 的 routes 只含 p>0 的 flow，依 flow ID 排序累加，浮點兜底因此不可能選到 0% flow。獨立的 Python 參考實作 `scripts/engine_reference.py` 產生 `testdata/simulation/engine-vectors.json`（sampler、事件順序、arrival），Go 必須逐 tick 相同（`make spec-reference-math` 檢查參考本身）。算法、log/sqrt numerical profile、build architecture 改變時必須換 engine_version，不把同一 human-readable semver 用於不同數值實作。
 
 SOURCE invariant 仍為同 IR + engine version + run config + seed →同 aggregate digest；本草案另外固定 dataset manifest。engine_version 要能唯一追到 container digest、source commit 與 numerical profile。跨架構的 byte-identical digest 未經測試不得宣稱；可部署同一受測 numerical profile 以維持承諾。
 
@@ -85,7 +85,7 @@ matching seed/node streams 可用於 paired experiments，但 scenario topology 
 
 初始候選：≤1000 replications；≤300s wall timeout/run；≤10M processed events/run（所有 replications 合計）；≤100k active entities/replication；≤10k node visits/entity；sampled trace≤100k events/run。warmup 事件同樣消耗 budget。API 不能接受使用者把上限調高；effective execution limits 在 enqueue 時保存。CPU/memory container limits 與 admission quotas 仍需獨立配置。
 
-context checkpoint 至少每個 heap pop、每個 distribution 批量處理段、每次 replication、每個 artifact/aggregation batch。worker bounded polling 將 cancellation_requested 傳入 context。≤5s 是原報告待 benchmark 的目標，不是已測結果。timeout / event cap / active entity cap / cancellation 分別有 typed error；不要包裝為 completed。
+context checkpoint 至少每個 heap pop、每個 distribution 批量處理段、每次 replication、每個 artifact/aggregation batch。T-020 實作：每次 pop 先檢查 cancellation，再從整個 run 共用的 event budget 扣 1（含 warmup；平行 replications 以 atomic 計數，超過即 `ErrEventBudget`，run 失敗、不產生結果）；不變量被破壞回 `ErrInternal`，不會靜默略過。worker bounded polling 將 cancellation_requested 傳入 context。≤5s 是原報告待 benchmark 的目標，不是已測結果。timeout / event cap / active entity cap / cancellation 分別有 typed error；不要包裝為 completed。
 
 aggregate 依 replication_index 升序彙整；progress 不是 correctness input。所有 replications 完成後才可完成 run。重試使用原 frozen input；lease token 失效的 attempt 必須丟棄 finalize，不可覆蓋後來的成功結果。
 

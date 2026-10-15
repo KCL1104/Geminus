@@ -1,0 +1,296 @@
+package engine
+
+import (
+	"cmp"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"slices"
+
+	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/simulation"
+)
+
+// ErrInvalidInput: the run input is not one this engine will execute. An
+// *InputError carries the validation issues.
+var ErrInvalidInput = errors.New("engine: invalid run input")
+
+// InputError lists why Compile refused a run input; paths point into the IR
+// (/nodes/...), the config (/config/...), the limits (/limits/...) or the
+// datasets (/datasets/<logical_ref>).
+type InputError struct{ Issues []model.ValidationIssue }
+
+func (e *InputError) Error() string {
+	return fmt.Sprintf("%v (%d issue(s))", ErrInvalidInput, len(e.Issues))
+}
+func (e *InputError) Unwrap() error { return ErrInvalidInput }
+
+// Program is a compiled run input: index-based, immutable after Compile and
+// safe to share between concurrently running replications. Nodes and
+// resources are ordered by the bytes of their IDs, so every index, and every
+// iteration over them, is the same on every run.
+type Program struct {
+	unit         model.TimeUnit
+	nodes        []cnode
+	index        map[string]int // read-only after Compile
+	resources    []cresource
+	sources      []int // node indices of the sources, in ID order
+	horizon      int64 // ticks; events at tick <= horizon are processed
+	warmup       int64
+	replications int
+	seed         uint64
+	traceLevel   simulation.TraceLevel
+	limits       simulation.ExecutionLimits
+}
+
+type cnode struct {
+	id          string
+	typ         model.NodeType
+	arrival     *sampler // source
+	maxEntities int      // source; 0 = until the horizon
+	service     *sampler // process
+	delay       *sampler // delay
+	requires    []requirement
+	routes      []route // decision: p > 0 flows by flow ID with cumulative probabilities; others: the single p = 1 flow
+	buffer      int     // queue: the process whose request buffer it names; process: itself; otherwise -1
+	outcome     model.SinkOutcome
+}
+
+type requirement struct {
+	resource int
+	units    int
+}
+
+type route struct {
+	flow       string
+	to         int
+	cumulative float64
+}
+
+type cresource struct {
+	id       string
+	capacity int
+}
+
+// Compile checks a run input and builds its Program. The IR is validated
+// again in full (schema, semantics and, with the actual dataset samples, the
+// D-033 binding rules): the engine never relies on a caller having done it.
+// Compile does no I/O.
+func Compile(in simulation.RunInput) (*Program, error) {
+	data, err := model.Encode(&in.Model)
+	if err != nil {
+		return nil, fmt.Errorf("engine: encoding the model: %w", err)
+	}
+	res, err := validate.IR(data)
+	if err != nil {
+		return nil, fmt.Errorf("engine: validating the model: %w", err)
+	}
+	if !res.Valid() {
+		return nil, &InputError{Issues: prefix("/model", res.Issues)}
+	}
+	ir := res.IR // a fresh copy: nothing the caller holds aliases the program
+
+	empirical, zeroRefs, issues := resolveDatasets(ir, in.Datasets)
+	if len(issues) > 0 {
+		return nil, &InputError{Issues: issues}
+	}
+	if issues := validate.Bindings(ir, zeroRefs); hasError(issues) {
+		return nil, &InputError{Issues: prefix("/model", issues)}
+	}
+	p := &Program{unit: model.TimeUnit(ir.TimeUnit), traceLevel: in.Config.TraceLevel, limits: in.Limits, replications: in.Config.Replications}
+	if issues := p.setConfig(in.Config, in.Limits); len(issues) > 0 {
+		return nil, &InputError{Issues: issues}
+	}
+	if err := p.build(ir, empirical); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func prefix(root string, issues []model.ValidationIssue) []model.ValidationIssue {
+	out := make([]model.ValidationIssue, len(issues))
+	for i, is := range issues {
+		out[i] = model.NewIssue(is.Code, root+is.Path, is.Message, is.Severity)
+	}
+	return out
+}
+
+func hasError(issues []model.ValidationIssue) bool {
+	return slices.ContainsFunc(issues, func(i model.ValidationIssue) bool { return i.Severity == model.SeverityError })
+}
+
+func invalid(path, message string) model.ValidationIssue {
+	return model.NewIssue(validate.DatasetBindingInvalid, path, message, model.SeverityError)
+}
+
+// resolveDatasets quantizes every empirical distribution's samples and
+// reports which datasets have a 0-tick sample (D-033).
+func resolveDatasets(ir *model.ModelIR, datasets map[string]simulation.ResolvedDataset) (map[string][]int64, map[string]bool, []model.ValidationIssue) {
+	out, zero, seen := map[string][]int64{}, map[string]bool{}, map[string]bool{}
+	var issues []model.ValidationIssue
+	for i := range ir.Nodes {
+		for _, d := range ir.Nodes[i].Distributions() {
+			ref := d.Distribution.SamplesRef
+			if d.Distribution.Type != model.DistEmpirical || seen[ref] {
+				continue
+			}
+			seen[ref] = true
+			path := "/datasets/" + ref
+			ds, ok := datasets[ref]
+			switch {
+			case !ok:
+				issues = append(issues, invalid(path, "no resolved dataset for "+ref))
+				continue
+			case ds.Binding.LogicalRef != ref:
+				issues = append(issues, invalid(path, "the resolved dataset is bound to another logical_ref"))
+				continue
+			case len(ds.Samples) == 0 || len(ds.Samples) != ds.Binding.SampleCount:
+				issues = append(issues, invalid(path, fmt.Sprintf("%d samples, the binding says %d", len(ds.Samples), ds.Binding.SampleCount)))
+				continue
+			}
+			ticks := make([]int64, len(ds.Samples))
+			ok = true
+			for k, s := range ds.Samples {
+				t, err := model.Ticks(s, ds.Binding.Unit)
+				if err != nil {
+					issues = append(issues, invalid(path, fmt.Sprintf("sample %d: %v", k, err)))
+					ok = false
+					break
+				}
+				ticks[k] = t
+				zero[ref] = zero[ref] || t == 0
+			}
+			if ok {
+				out[ref] = ticks
+			}
+		}
+	}
+	return out, zero, issues
+}
+
+// setConfig checks the run config and limits against their schemas and the
+// window rule 0 <= warmup < horizon, and quantizes them with model.Ticks
+// (the same function config_hash uses).
+func (p *Program) setConfig(cfg simulation.RunConfig, limits simulation.ExecutionLimits) []model.ValidationIssue {
+	var issues []model.ValidationIssue
+	for _, c := range []struct {
+		root, ref string
+		v         any
+	}{
+		{"/config", "simulation.schema.json#/$defs/RunConfig", cfg},
+		{"/limits", "simulation.schema.json#/$defs/ExecutionLimits", limits},
+	} {
+		data, err := json.Marshal(c.v)
+		if err != nil {
+			return []model.ValidationIssue{model.NewIssue(validate.IRSchemaInvalid, c.root, "not encodable", model.SeverityError)}
+		}
+		found, err := validate.Document(data, c.ref, validate.IRSchemaInvalid)
+		if err != nil {
+			return []model.ValidationIssue{model.NewIssue(validate.IRSchemaInvalid, c.root, "cannot be validated", model.SeverityError)}
+		}
+		issues = append(issues, prefix(c.root, found)...)
+	}
+	if len(issues) > 0 {
+		return issues
+	}
+	norm, err := hashing.NormalizeConfig(cfg)
+	if err != nil {
+		return []model.ValidationIssue{model.NewIssue(validate.LimitExceeded, "/config", "durations or seed out of range", model.SeverityError)}
+	}
+	if !(norm.WarmupTicks < norm.HorizonTicks) {
+		return []model.ValidationIssue{model.NewIssue(validate.LimitExceeded, "/config/warmup", "warmup must be shorter than the horizon", model.SeverityError)}
+	}
+	p.horizon, p.warmup, p.seed = norm.HorizonTicks, norm.WarmupTicks, uint64(norm.Seed)
+	return nil
+}
+
+func byID[T any](id func(T) string) func(a, b T) int {
+	return func(a, b T) int { return cmp.Compare(id(a), id(b)) } // Go strings compare by bytes
+}
+
+// build turns a validated IR into index-based nodes, routes and samplers.
+func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
+	nodes := slices.Clone(ir.Nodes)
+	slices.SortFunc(nodes, byID(func(n model.Node) string { return n.ID }))
+	resources := slices.Clone(ir.Resources)
+	slices.SortFunc(resources, byID(func(r model.Resource) string { return r.ID }))
+
+	p.index = make(map[string]int, len(nodes))
+	for i, n := range nodes {
+		p.index[n.ID] = i
+	}
+	resIndex := make(map[string]int, len(resources))
+	for i, r := range resources {
+		resIndex[r.ID] = i
+		p.resources = append(p.resources, cresource{id: r.ID, capacity: r.Capacity})
+	}
+	flows := slices.Clone(ir.Flows)
+	slices.SortFunc(flows, byID(func(f model.Flow) string { return f.ID }))
+
+	p.nodes = make([]cnode, len(nodes))
+	for i, n := range nodes {
+		c := cnode{id: n.ID, typ: n.Type, buffer: -1, outcome: n.Outcome}
+		var err error
+		sample := func(d *model.Distribution) *sampler {
+			if err != nil {
+				return nil
+			}
+			var s *sampler
+			s, err = newSampler(*d, model.TimeUnit(ir.TimeUnit), empirical[d.SamplesRef])
+			return s
+		}
+		switch n.Type {
+		case model.NodeSource:
+			c.arrival = sample(&n.Arrival.Distribution)
+			c.maxEntities = n.Arrival.MaxEntities
+			p.sources = append(p.sources, i)
+		case model.NodeProcess:
+			c.service = sample(&n.ServiceTime.Distribution)
+			c.buffer = i
+			for _, r := range n.Requires {
+				c.requires = append(c.requires, requirement{resource: resIndex[r.ResourceID], units: r.Units})
+			}
+			slices.SortFunc(c.requires, func(a, b requirement) int { return cmp.Compare(a.resource, b.resource) })
+		case model.NodeDelay:
+			c.delay = sample(&n.DelayTime.Distribution)
+		}
+		if err != nil {
+			return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.DistributionInvalid, "/model/nodes", n.ID+": "+err.Error(), model.SeverityError)}}
+		}
+		cumulative := 0.0
+		for _, f := range flows {
+			if f.From != n.ID || f.Routing.Probability <= 0 {
+				continue // a 0% flow is never taken, so it is not a route
+			}
+			cumulative += f.Routing.Probability
+			c.routes = append(c.routes, route{flow: f.ID, to: p.index[f.To], cumulative: cumulative})
+		}
+		p.nodes[i] = c
+	}
+	// An explicit queue names the request buffer of the process it feeds
+	// (SIMULATION_SPEC §3); the validator guarantees that single process.
+	for i := range p.nodes {
+		if p.nodes[i].typ == model.NodeQueue && len(p.nodes[i].routes) == 1 {
+			p.nodes[i].buffer = p.nodes[i].routes[0].to
+		}
+	}
+	return nil
+}
+
+// HorizonTicks and WarmupTicks are the measurement window in ticks.
+func (p *Program) HorizonTicks() int64 { return p.horizon }
+func (p *Program) WarmupTicks() int64  { return p.warmup }
+
+// Replications is the number of replications to run.
+func (p *Program) Replications() int { return p.replications }
+
+// NodeIDs lists the nodes in program (byte) order.
+func (p *Program) NodeIDs() []string {
+	out := make([]string, len(p.nodes))
+	for i, n := range p.nodes {
+		out[i] = n.id
+	}
+	return out
+}
