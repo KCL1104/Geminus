@@ -51,7 +51,10 @@ func compile(t *testing.T, in simulation.RunInput) *Program {
 	if err != nil {
 		var ie *InputError
 		errors.As(err, &ie)
-		t.Fatalf("Compile: %v %v", err, ie)
+		if ie != nil {
+			t.Fatalf("Compile: %v %v", err, ie.Issues)
+		}
+		t.Fatalf("Compile: %v", err)
 	}
 	return p
 }

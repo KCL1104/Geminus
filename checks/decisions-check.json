@@ -15,15 +15,22 @@
     "blocked": 0,
     "done": 10,
     "in_progress": 0,
-    "not_started": 32,
-    "review": 0
+    "not_started": 31,
+    "review": 1
   },
   "ready_tasks": [
     "T-008",
-    "T-021",
     "T-042"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-022",
+      "awaiting_task_review": [
+        "T-021"
+      ],
+      "awaiting_decisions": []
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",

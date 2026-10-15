@@ -1135,7 +1135,7 @@
       "id": "T-021",
       "title": "DES resource/queue/service/routing kernel",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Simulation",
       "planning_window": "Week 6–7",
       "depends_on": [
@@ -1180,7 +1180,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-021_VALIDATION.md",
+          "summary": "RunReplication：resource-wise FIFO all-or-nothing dispatcher、SERVICE_COMPLETE 釋放後同事件路由、delay／decision／failure／rework／sink、active entity 與 visit 上限（typed errors）、entity 紀錄到 sink 即釋放；Observation 回報事實。GOLDEN-001/002 與手算值相符；98 tests、kernel mutation 28/28＋1 equivalent、fuzz 1,136,930 次；指標與 digest 屬 T-022。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-022",

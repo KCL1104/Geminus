@@ -1,0 +1,198 @@
+=== RUN   TestCompileGoldenModels
+=== RUN   TestCompileGoldenModels/deterministic-queue.json
+=== RUN   TestCompileGoldenModels/congested-queue.json
+=== RUN   TestCompileGoldenModels/default-delivery.json
+=== RUN   TestCompileGoldenModels/report-example.json
+--- PASS: TestCompileGoldenModels (0.04s)
+    --- PASS: TestCompileGoldenModels/deterministic-queue.json (0.03s)
+    --- PASS: TestCompileGoldenModels/congested-queue.json (0.00s)
+    --- PASS: TestCompileGoldenModels/default-delivery.json (0.00s)
+    --- PASS: TestCompileGoldenModels/report-example.json (0.00s)
+=== RUN   TestCompileStructure
+--- PASS: TestCompileStructure (0.01s)
+=== RUN   TestDecisionRoutesInFlowIDOrder
+--- PASS: TestDecisionRoutesInFlowIDOrder (0.00s)
+=== RUN   TestCompileDatasetIssuesSorted
+=== RUN   TestCompileDatasetIssuesSorted/no_datasets
+=== RUN   TestCompileDatasetIssuesSorted/wrong_sample_sets
+--- PASS: TestCompileDatasetIssuesSorted (0.00s)
+    --- PASS: TestCompileDatasetIssuesSorted/no_datasets (0.00s)
+    --- PASS: TestCompileDatasetIssuesSorted/wrong_sample_sets (0.00s)
+=== RUN   TestCompileChecksManifest
+=== RUN   TestCompileChecksManifest/no_binding_for_the_model's_dataset
+=== RUN   TestCompileChecksManifest/binding_differs_from_the_dataset
+=== RUN   TestCompileChecksManifest/dataset_outside_the_manifest
+=== RUN   TestCompileChecksManifest/schema-invalid_binding
+=== RUN   TestCompileChecksManifest/bound_twice
+=== RUN   TestCompileChecksManifest/out_of_order
+--- PASS: TestCompileChecksManifest (0.01s)
+    --- PASS: TestCompileChecksManifest/no_binding_for_the_model's_dataset (0.00s)
+    --- PASS: TestCompileChecksManifest/binding_differs_from_the_dataset (0.00s)
+    --- PASS: TestCompileChecksManifest/dataset_outside_the_manifest (0.00s)
+    --- PASS: TestCompileChecksManifest/schema-invalid_binding (0.00s)
+    --- PASS: TestCompileChecksManifest/bound_twice (0.00s)
+    --- PASS: TestCompileChecksManifest/out_of_order (0.00s)
+=== RUN   TestCompileDatasetUnit
+--- PASS: TestCompileDatasetUnit (0.00s)
+=== RUN   TestCompileRequirementsInResourceOrder
+--- PASS: TestCompileRequirementsInResourceOrder (0.00s)
+=== RUN   TestCompileRejects
+=== RUN   TestCompileRejects/invalid_IR
+=== RUN   TestCompileRejects/missing_dataset
+=== RUN   TestCompileRejects/dataset_for_another_ref
+=== RUN   TestCompileRejects/sample_count
+=== RUN   TestCompileRejects/sample_over_the_cap
+=== RUN   TestCompileRejects/zero_sample_as_interarrival
+=== RUN   TestCompileRejects/warmup_=_horizon
+=== RUN   TestCompileRejects/warmup_over_365_d
+=== RUN   TestCompileRejects/negative_seed
+=== RUN   TestCompileRejects/unknown_trace_level
+=== RUN   TestCompileRejects/no_replications
+=== RUN   TestCompileRejects/horizon_over_365_d
+=== RUN   TestCompileRejects/NaN_horizon
+=== RUN   TestCompileRejects/event_cap_over_limit
+=== RUN   TestCompileRejects/no_limits
+--- PASS: TestCompileRejects (0.01s)
+    --- PASS: TestCompileRejects/invalid_IR (0.00s)
+    --- PASS: TestCompileRejects/missing_dataset (0.00s)
+    --- PASS: TestCompileRejects/dataset_for_another_ref (0.00s)
+    --- PASS: TestCompileRejects/sample_count (0.00s)
+    --- PASS: TestCompileRejects/sample_over_the_cap (0.00s)
+    --- PASS: TestCompileRejects/zero_sample_as_interarrival (0.00s)
+    --- PASS: TestCompileRejects/warmup_=_horizon (0.00s)
+    --- PASS: TestCompileRejects/warmup_over_365_d (0.00s)
+    --- PASS: TestCompileRejects/negative_seed (0.00s)
+    --- PASS: TestCompileRejects/unknown_trace_level (0.00s)
+    --- PASS: TestCompileRejects/no_replications (0.00s)
+    --- PASS: TestCompileRejects/horizon_over_365_d (0.00s)
+    --- PASS: TestCompileRejects/NaN_horizon (0.00s)
+    --- PASS: TestCompileRejects/event_cap_over_limit (0.00s)
+    --- PASS: TestCompileRejects/no_limits (0.00s)
+=== RUN   TestCompileDoesNotAlias
+--- PASS: TestCompileDoesNotAlias (0.00s)
+=== RUN   TestEngineDependencies
+--- PASS: TestEngineDependencies (0.12s)
+=== RUN   TestCompileZeroTimeCycleFromDataset
+--- PASS: TestCompileZeroTimeCycleFromDataset (0.00s)
+=== RUN   TestGoldenCases
+=== RUN   TestGoldenCases/GOLDEN-001
+=== RUN   TestGoldenCases/GOLDEN-002
+--- PASS: TestGoldenCases (0.00s)
+    --- PASS: TestGoldenCases/GOLDEN-001 (0.00s)
+    --- PASS: TestGoldenCases/GOLDEN-002 (0.00s)
+=== RUN   TestBundleAndResourceWiseFIFO
+--- PASS: TestBundleAndResourceWiseFIFO (0.00s)
+=== RUN   TestSameTickReleaseBeforeArrival
+--- PASS: TestSameTickReleaseBeforeArrival (0.00s)
+=== RUN   TestRoutingDelayObservations
+--- PASS: TestRoutingDelayObservations (0.18s)
+=== RUN   TestCensoring
+--- PASS: TestCensoring (0.00s)
+=== RUN   TestKernelLimits
+--- PASS: TestKernelLimits (0.00s)
+=== RUN   TestKernelDeterminism
+--- PASS: TestKernelDeterminism (0.02s)
+=== RUN   TestDelayCompletesAfterServiceInATick
+--- PASS: TestDelayCompletesAfterServiceInATick (0.00s)
+=== RUN   TestStreamsUsedByPurpose
+--- PASS: TestStreamsUsedByPurpose (0.02s)
+=== RUN   TestGrantsStartInRequestOrder
+--- PASS: TestGrantsStartInRequestOrder (0.00s)
+=== RUN   TestEntityRecordsAreReleased
+--- PASS: TestEntityRecordsAreReleased (0.15s)
+=== RUN   TestRoutingTolerance
+--- PASS: TestRoutingTolerance (0.01s)
+=== RUN   TestKernelLimitsAreExact
+--- PASS: TestKernelLimitsAreExact (0.00s)
+=== RUN   TestArrivalVector
+--- PASS: TestArrivalVector (0.00s)
+=== RUN   TestDeterministicArrivals
+--- PASS: TestDeterministicArrivals (0.00s)
+=== RUN   TestHorizonIsInclusive
+--- PASS: TestHorizonIsInclusive (0.00s)
+=== RUN   TestEventBudget
+--- PASS: TestEventBudget (0.00s)
+=== RUN   TestEventBudgetIsExact
+--- PASS: TestEventBudgetIsExact (0.00s)
+=== RUN   TestArrivalSchedulesNextBeforeRouting
+--- PASS: TestArrivalSchedulesNextBeforeRouting (0.00s)
+=== RUN   TestCancellation
+--- PASS: TestCancellation (0.00s)
+=== RUN   TestArrivalDeterminism
+--- PASS: TestArrivalDeterminism (0.00s)
+=== RUN   TestSameTickSourcesInIDOrder
+--- PASS: TestSameTickSourcesInIDOrder (0.00s)
+=== RUN   TestStreamsPerNodeAndPurpose
+--- PASS: TestStreamsPerNodeAndPurpose (0.00s)
+=== RUN   TestScheduleBounds
+--- PASS: TestScheduleBounds (0.00s)
+=== RUN   TestSamplerVectors
+=== RUN   TestSamplerVectors/constant_draws_nothing
+=== RUN   TestSamplerVectors/exponential_template_interarrival
+=== RUN   TestSamplerVectors/exponential_sub-tick_mean_clamps_to_1
+=== RUN   TestSamplerVectors/exponential_underflow_is_still_1_tick
+=== RUN   TestSamplerVectors/exponential_tail_beyond_the_cap
+=== RUN   TestSamplerVectors/triangular
+=== RUN   TestSamplerVectors/triangular_min=mode=0
+=== RUN   TestSamplerVectors/triangular_mode=max
+=== RUN   TestSamplerVectors/triangular_degenerate_draws_nothing
+=== RUN   TestSamplerVectors/empirical
+--- PASS: TestSamplerVectors (0.00s)
+    --- PASS: TestSamplerVectors/constant_draws_nothing (0.00s)
+    --- PASS: TestSamplerVectors/exponential_template_interarrival (0.00s)
+    --- PASS: TestSamplerVectors/exponential_sub-tick_mean_clamps_to_1 (0.00s)
+    --- PASS: TestSamplerVectors/exponential_underflow_is_still_1_tick (0.00s)
+    --- PASS: TestSamplerVectors/exponential_tail_beyond_the_cap (0.00s)
+    --- PASS: TestSamplerVectors/triangular (0.00s)
+    --- PASS: TestSamplerVectors/triangular_min=mode=0 (0.00s)
+    --- PASS: TestSamplerVectors/triangular_mode=max (0.00s)
+    --- PASS: TestSamplerVectors/triangular_degenerate_draws_nothing (0.00s)
+    --- PASS: TestSamplerVectors/empirical (0.00s)
+=== RUN   TestSamplerDigests
+=== RUN   TestSamplerDigests/constant_draws_nothing
+=== RUN   TestSamplerDigests/exponential_template_interarrival
+=== RUN   TestSamplerDigests/exponential_sub-tick_mean_clamps_to_1
+=== RUN   TestSamplerDigests/exponential_underflow_is_still_1_tick
+=== RUN   TestSamplerDigests/exponential_tail_beyond_the_cap
+=== RUN   TestSamplerDigests/triangular
+=== RUN   TestSamplerDigests/triangular_min=mode=0
+=== RUN   TestSamplerDigests/triangular_mode=max
+=== RUN   TestSamplerDigests/triangular_degenerate_draws_nothing
+=== RUN   TestSamplerDigests/empirical
+--- PASS: TestSamplerDigests (0.06s)
+    --- PASS: TestSamplerDigests/constant_draws_nothing (0.00s)
+    --- PASS: TestSamplerDigests/exponential_template_interarrival (0.01s)
+    --- PASS: TestSamplerDigests/exponential_sub-tick_mean_clamps_to_1 (0.01s)
+    --- PASS: TestSamplerDigests/exponential_underflow_is_still_1_tick (0.02s)
+    --- PASS: TestSamplerDigests/exponential_tail_beyond_the_cap (0.01s)
+    --- PASS: TestSamplerDigests/triangular (0.01s)
+    --- PASS: TestSamplerDigests/triangular_min=mode=0 (0.00s)
+    --- PASS: TestSamplerDigests/triangular_mode=max (0.00s)
+    --- PASS: TestSamplerDigests/triangular_degenerate_draws_nothing (0.00s)
+    --- PASS: TestSamplerDigests/empirical (0.00s)
+=== RUN   TestLogProfile
+--- PASS: TestLogProfile (0.04s)
+=== RUN   TestLogAccuracy
+--- PASS: TestLogAccuracy (0.10s)
+=== RUN   TestTriangularStaysInRange
+--- PASS: TestTriangularStaysInRange (0.04s)
+=== RUN   TestQuantizeMatchesTicks
+--- PASS: TestQuantizeMatchesTicks (0.02s)
+=== RUN   TestSamplerBounds
+--- PASS: TestSamplerBounds (0.02s)
+=== RUN   TestSamplerRejects
+--- PASS: TestSamplerRejects (0.00s)
+=== RUN   TestEventOrderVector
+--- PASS: TestEventOrderVector (0.00s)
+=== RUN   TestEventQueueOrder
+--- PASS: TestEventQueueOrder (0.03s)
+=== RUN   TestNoPlatformTranscendentals
+--- PASS: TestNoPlatformTranscendentals (0.00s)
+=== RUN   TestRNGVectors
+--- PASS: TestRNGVectors (0.00s)
+=== RUN   TestUniformBounds
+--- PASS: TestUniformBounds (0.00s)
+=== RUN   TestStreamsAreIndependentAndLengthPrefixed
+--- PASS: TestStreamsAreIndependentAndLengthPrefixed (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.923s

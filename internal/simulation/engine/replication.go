@@ -41,11 +41,13 @@ func (b *Budget) spend() error {
 	return nil
 }
 
-// entity is one work item. Entity indices start at 1, so 0 means "none".
+// entity is one active work item. Handles start at 1 (0 means "none") and
+// are never reused.
 type entity struct {
 	source  int    // node index of the source that created it
 	n       uint64 // 1-based arrival number within that source
 	created int64  // tick
+	visits  int    // nodes entered, the source included (T-021)
 }
 
 type streamKey struct {
@@ -57,20 +59,28 @@ type streamKey struct {
 // one event queue (docs/SIMULATION_SPEC.md §1–§2). The kernel (T-021) adds
 // queues, resources and routing through the two hooks.
 type replication struct {
-	p        *Program
-	index    uint32
-	seed     uint64
-	now      int64
-	q        eventQueue
-	streams  map[streamKey]*SplitMix64 // looked up, never iterated
-	arrived  []uint64                  // per node: entities its source created
-	entities []entity
+	p       *Program
+	index   uint32
+	seed    uint64
+	now     int64
+	q       eventQueue
+	streams map[streamKey]*SplitMix64 // looked up, never iterated
+	arrived []uint64                  // per node: entities its source created
+	// entities holds only active entities: the kernel releases one when it
+	// reaches a sink, so memory is bounded by max_active_entities, not by
+	// every entity a long run creates (T-020 review). Looked up, never iterated.
+	entities map[uint64]*entity
+	created  uint64 // the last entity handle
 
 	// onArrival receives each new entity after its source has scheduled the
 	// next arrival.
 	onArrival func(r *replication, entity uint64) error
 	// onEvent handles every event that is not an arrival.
 	onEvent func(r *replication, e event) error
+	// onProcessed, if set, is called once per processed event.
+	onProcessed func()
+	// cur is the event being processed.
+	cur event
 }
 
 func newReplication(p *Program, index uint32) *replication {
@@ -80,7 +90,7 @@ func newReplication(p *Program, index uint32) *replication {
 		seed:     ReplicationSeed(p.seed, index),
 		streams:  map[streamKey]*SplitMix64{},
 		arrived:  make([]uint64, len(p.nodes)),
-		entities: []entity{{}},
+		entities: map[uint64]*entity{},
 	}
 }
 
@@ -96,12 +106,21 @@ func (r *replication) stream(node int, purpose string) *SplitMix64 {
 	return s
 }
 
-// EntityID is an entity's stable, human-readable ID:
+// EntityID is an active entity's stable, human-readable ID:
 // r<replication index>/<source node ID>/<n>. Node IDs cannot contain "/".
 func (r *replication) EntityID(e uint64) string {
 	en := r.entities[e]
-	return "r" + strconv.FormatUint(uint64(r.index), 10) + "/" + r.p.nodes[en.source].id + "/" + strconv.FormatUint(en.n, 10)
+	return FormatEntityID(r.index, r.p.nodes[en.source].id, en.n)
 }
+
+// FormatEntityID builds the entity ID r<replication>/<source>/<n>, for
+// observers that only see the arrival's source node and number.
+func FormatEntityID(replication uint32, source string, n uint64) string {
+	return "r" + strconv.FormatUint(uint64(replication), 10) + "/" + source + "/" + strconv.FormatUint(n, 10)
+}
+
+// release forgets an entity that left the system.
+func (r *replication) release(e uint64) { delete(r.entities, e) }
 
 // schedule adds an event at now+delay. Delays are at most beyondCap, so the
 // tick cannot overflow; an event after the horizon is never processed and is
@@ -152,9 +171,12 @@ func (r *replication) run(ctx context.Context, b *Budget) error {
 		if e.Tick < r.now || e.Tick > r.p.horizon {
 			return fmt.Errorf("%w: event at tick %d (now %d, horizon %d)", ErrInternal, e.Tick, r.now, r.p.horizon)
 		}
-		r.now = e.Tick
+		r.now, r.cur = e.Tick, e
 		if err := b.spend(); err != nil {
 			return err
+		}
+		if r.onProcessed != nil {
+			r.onProcessed()
 		}
 		if err := r.handle(e); err != nil {
 			return err
@@ -171,8 +193,9 @@ func (r *replication) handle(e event) error {
 	}
 	src := e.Node
 	r.arrived[src]++
-	r.entities = append(r.entities, entity{source: src, n: r.arrived[src], created: r.now})
-	id := uint64(len(r.entities) - 1)
+	r.created++
+	id := r.created
+	r.entities[id] = &entity{source: src, n: r.arrived[src], created: r.now}
 	// The next arrival is scheduled before the new entity moves on; the order
 	// fixes sequence numbers and therefore same-tick ties.
 	if err := r.scheduleArrival(src); err != nil {

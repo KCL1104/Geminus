@@ -28,6 +28,8 @@ acquire→service_start→sample service duration→schedule complete；complete
 
 decision 依 flow ID 升序建立 cumulative probabilities，使用自己的 routing RNG。0% flow 永遠不被選；選第一個 U<cumulative 的 flow，最後一個作浮點容差兜底，但前提概率已通過 validator。非 decision 恰一條 p=1 route。failure/rework nodes 只產生對應 observation，再走明確 flow，不隱含 catch-all retry。
 
+實作（`internal/simulation/engine/kernel.go`，T-021）：所有 buffer 的等待 request 組成一個依 (queue_enter_tick, request_sequence) 排序的清單；dispatcher 依序掃描，一個 request 只有在 bundle 每個 resource 都有足夠 units、且沒有被較早未授予的 request 擋住時才授予，未授予者把自己需要的 resources 標為擋住（不共享者可繼續）；同一次 dispatch 授予的 requests 依 request 順序開始服務，各自從該 process 的 service stream 抽樣。不需 resource 的 process 在該 tick 的 dispatch 開始服務。SERVICE_COMPLETE 先原子釋放全部 units，再在同一事件內路由；只要釋放了 resource 或有 request 進入 buffer，就確保該 tick 末有一次 dispatch（若該 tick 的 dispatch 已執行過，會再排一次，仍在 priority 20）。visit 計數：source 為第 1 次，之後每進入一個 node 加 1，超過 max_entity_visits 回 `ErrEntityVisits`；系統內 entity 超過 max_active_entities 回 `ErrActiveEntities`；兩者都讓 run 失敗。sink 的 outcome=abandoned 記為未完成，但同樣離開系統；sink 未寫 outcome 時視為 completed（CB-22 的 sink 預設值；併入 D-038 PROPOSED）；entity 到達 sink 即釋放其紀錄，記憶體受 max_active_entities 限制而非受建立總數（T-020 review）；horizon 時仍在系統內的 entity 為 censored。kernel 以 `Observation`（arrival、queue enter、service start／end、resource in-use、delay start／end、failure、rework、complete）回報事實，指標彙整屬 T-022。
+
 ## 4. RNG、seed derivation、determinism
 
 候選 RNG = 本段明確定義的 SplitMix64，不使用 Go math/rand 的未固定預設 generator。所有 uint64 运算 mod 2^64：
