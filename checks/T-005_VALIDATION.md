@@ -39,6 +39,7 @@
 | `govulncheck v1.9.0` | 0 | No vulnerabilities found |
 | `make frontend-test` | 0 | TS contracts 變更後 lint／typecheck／unit 通過 |
 | `actionlint v1.7.12` | 0 | CI 新增 V8 向量檢查步驟 |
+| GitHub Actions [run 38747741826](https://github.com/KCL1104/Geminus/actions/runs/38747741826)（`9be701a`） | success | spec-check（含 spec-hashes）、backend（含 govulncheck）、frontend（含 V8 向量重新產生）、db migration smoke 四個 job 全部 success |
 
 ## 驗收測試對照
 
@@ -83,4 +84,3 @@ TWIN_IR_SPEC §5.1／§5.2 已記錄，若不同意可另立決策：
 | SQL `ORDER BY logical_ref COLLATE "C"`（D-034 的 SQL 部分） | T-006 scope |
 | 端到端「已提交 run 不受新資料影響」、worker 並行下 digest 一致 | 需要 engine／run API（T-011、T-020、T-021） |
 | `make db-test`（本機） | 本次未改 SQL；CI db-smoke job 仍會執行 |
-| GitHub Actions | 推送後補記 |

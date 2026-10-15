@@ -306,7 +306,8 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-005_VALIDATION.md",
           "summary": "JCS（gowebpki/jcs，ADR-014）＋SHA-256 的 model/effective/patch/config/manifest/result/content hash；model.Ticks quantizer；datasets.Resolve binding 階段（hash→schema→tenant/identity/unit/count/365 天→D-033）。RFC 8785 原文向量、V8（6,000 入庫＋1,000,000 擴充）、Python rfc8785（27 個 hash＋400 入庫＋100,000 擴充文件）全數一致；fuzz 抓到並修正一個非冪等缺陷；mutation 37/37（1 個 documented equivalent）；21 個驗證指令 exit 0。",
-          "reviewer": null
+          "reviewer": null,
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38747741826 (9be701a: 4/4 success)"
         }
       ]
     },
