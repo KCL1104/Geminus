@@ -2,6 +2,8 @@
 
 **交付版本：handoff-0.1.0｜檢查日期：2026-10-15｜結論：規格包的有限靜態檢查通過；產品尚未實作與驗收。**
 
+> 2026-10-15 repository 內的重跑結果（含原狀 `make spec-check` 在乾淨環境失敗的修正）見 [BOOTSTRAP_VALIDATION.md](BOOTSTRAP_VALIDATION.md)；本檔保留交付時的紀錄。
+
 本報告只記錄本次實際執行的檢查。不把 schema-valid 等同於 semantic-valid、authorized 或 production-ready，也不把參考算術當成 Go DES engine 的測試結果。
 
 ## 實際已執行

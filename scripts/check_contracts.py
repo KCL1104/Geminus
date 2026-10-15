@@ -54,11 +54,25 @@ def references(value: Any):
         for v in value: yield from references(v)
 
 
+def formats(value: Any):
+    if isinstance(value,dict):
+        if isinstance(value.get('format'),str): yield value['format']
+        for v in value.values(): yield from formats(v)
+    elif isinstance(value,list):
+        for v in value: yield from formats(v)
+
+
 def main() -> dict[str, Any]:
     paths = sorted((ROOT/'schemas').glob('*.schema.json'))
     docs = {p:load(p) for p in paths}
     ids = {doc['$id']:p for p,doc in docs.items()}
     if len(ids) != len(docs): raise AssertionError('Duplicate schema $id')
+    # jsonschema silently skips formats whose optional checker package is missing.
+    used_formats = {f for doc in docs.values() for f in formats(doc)}
+    unchecked = used_formats - set(FormatChecker().checkers)
+    if unchecked:
+        raise AssertionError(f'No format checker installed for {sorted(unchecked)}; '
+                             'install requirements-spec.txt')
     pairs = []
     for path,doc in docs.items():
         Draft202012Validator.check_schema(doc)

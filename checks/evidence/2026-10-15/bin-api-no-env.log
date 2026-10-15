@@ -1,0 +1,1 @@
+{"time":"2026-10-15T10:29:00.994454815Z","level":"ERROR","msg":"invalid configuration","component":"api","error":"DATABASE_URL (required): a PostgreSQL connection URL is required"}

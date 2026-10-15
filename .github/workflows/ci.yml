@@ -1,0 +1,93 @@
+# T-002 CI skeleton. Runs only checks that exist and really execute; product
+# gates that are not built yet stay as failing `make` targets and are not
+# listed here. Tool versions: docs/adr/ADR-011-toolchain-bootstrap.md.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  spec:
+    name: spec-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -r requirements-spec.txt
+      - run: make spec-check PYTHON=python
+      - name: Committed check reports match a fresh run
+        run: git diff --exit-code -- checks/
+
+  backend:
+    name: backend (go vet, test, race, build)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: go version
+      - run: make backend-test
+      - run: make backend-race
+      - run: make backend-build
+
+  frontend:
+    name: frontend (lint, typecheck, unit, build)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: apps/web/.nvmrc
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci --prefix apps/web --no-audit
+      - run: make frontend-test
+      - run: make frontend-build
+
+  db-smoke:
+    # Disposable service container only. Applies the DRAFT migrations
+    # up/down/up and runs db/tests/invariants.sql; this is not D-013 migration
+    # review, real runtime-login, pool or concurrency evidence (db/README.md).
+    name: db migration smoke (draft SQL, PostgreSQL 16)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_USER: dt_admin
+          POSTGRES_DB: dt_test_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dt_admin -d dt_test_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: psql --version
+      - run: make db-test
+        env:
+          DT_ALLOW_DB_TESTS: "yes"
+          DATABASE_URL: postgresql://dt_admin@localhost:5432/dt_test_ci

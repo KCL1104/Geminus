@@ -1,0 +1,1 @@
+{"time":"2026-10-15T10:29:00.997754758Z","level":"ERROR","msg":"invalid configuration","component":"api","error":"AI_PROVIDER (not_implemented): anthropic adapter is delivered by T-024; live AI also needs D-018, an approved data policy and token quotas"}

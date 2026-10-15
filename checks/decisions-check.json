@@ -1,0 +1,209 @@
+{
+  "status": "PASS_REGISTER_SHAPE_ONLY",
+  "decisions_by_status": {
+    "approved": 0,
+    "proposed": 18,
+    "rejected": 0,
+    "superseded": 0
+  },
+  "human_decisions_recorded": [
+    "H-001",
+    "H-002"
+  ],
+  "tasks_by_status": {
+    "blocked": 0,
+    "done": 0,
+    "in_progress": 0,
+    "not_started": 40,
+    "review": 2
+  },
+  "ready_tasks": [],
+  "next_after_review": [
+    {
+      "id": "T-003",
+      "awaiting_task_review": [
+        "T-001",
+        "T-002"
+      ],
+      "awaiting_decisions": [
+        "D-001",
+        "D-002",
+        "D-014",
+        "D-015"
+      ]
+    }
+  ],
+  "gates": {
+    "D-001": {
+      "status": "proposed",
+      "gate": "開始產生 SDK 或執行 migration 前",
+      "gates_tasks": [
+        "T-003",
+        "T-006"
+      ]
+    },
+    "D-002": {
+      "status": "proposed",
+      "gate": "AI persistence 前",
+      "gates_tasks": [
+        "T-003",
+        "T-024",
+        "T-025",
+        "T-038"
+      ]
+    },
+    "D-003": {
+      "status": "proposed",
+      "gate": "Version service 前",
+      "gates_tasks": [
+        "T-012",
+        "T-026",
+        "T-031"
+      ]
+    },
+    "D-004": {
+      "status": "proposed",
+      "gate": "Scenario 開發前",
+      "gates_tasks": [
+        "T-028",
+        "T-031"
+      ]
+    },
+    "D-005": {
+      "status": "proposed",
+      "gate": "建立 golden digest 前",
+      "gates_tasks": [
+        "T-004",
+        "T-020",
+        "T-021",
+        "T-037"
+      ]
+    },
+    "D-006": {
+      "status": "proposed",
+      "gate": "版本 hash 上線前",
+      "gates_tasks": [
+        "T-005",
+        "T-020",
+        "T-022",
+        "T-037"
+      ]
+    },
+    "D-007": {
+      "status": "proposed",
+      "gate": "Alpha / Beta 設定凍結前",
+      "gates_tasks": [
+        "T-016",
+        "T-019",
+        "T-021",
+        "T-023",
+        "T-037"
+      ]
+    },
+    "D-008": {
+      "status": "proposed",
+      "gate": "任何共享 DB 服務啟動前",
+      "gates_tasks": [
+        "T-007",
+        "T-008",
+        "T-009",
+        "T-010",
+        "T-019",
+        "T-036"
+      ]
+    },
+    "D-009": {
+      "status": "proposed",
+      "gate": "Import commit 前",
+      "gates_tasks": [
+        "T-016",
+        "T-017",
+        "T-018",
+        "T-027"
+      ]
+    },
+    "D-010": {
+      "status": "proposed",
+      "gate": "Results contract 前",
+      "gates_tasks": [
+        "T-022",
+        "T-029",
+        "T-030",
+        "T-037"
+      ]
+    },
+    "D-011": {
+      "status": "proposed",
+      "gate": "Worker queue 前",
+      "gates_tasks": [
+        "T-019",
+        "T-023",
+        "T-026"
+      ]
+    },
+    "D-012": {
+      "status": "proposed",
+      "gate": "HTTP codegen 前",
+      "gates_tasks": [
+        "T-009",
+        "T-010",
+        "T-013"
+      ]
+    },
+    "D-013": {
+      "status": "proposed",
+      "gate": "Migration review 前",
+      "gates_tasks": [
+        "T-006",
+        "T-007",
+        "T-036"
+      ]
+    },
+    "D-014": {
+      "status": "proposed",
+      "gate": "Parser / validator 前",
+      "gates_tasks": [
+        "T-003",
+        "T-004",
+        "T-017",
+        "T-025",
+        "T-028"
+      ]
+    },
+    "D-015": {
+      "status": "proposed",
+      "gate": "SDK generator 選型前",
+      "gates_tasks": [
+        "T-003",
+        "T-013"
+      ]
+    },
+    "D-016": {
+      "status": "proposed",
+      "gate": "AI approval 前",
+      "gates_tasks": [
+        "T-024",
+        "T-025",
+        "T-027",
+        "T-030",
+        "T-036",
+        "T-038"
+      ]
+    },
+    "D-017": {
+      "status": "proposed",
+      "gate": "Default template 發布前",
+      "gates_tasks": [
+        "T-011"
+      ]
+    },
+    "D-018": {
+      "status": "proposed",
+      "gate": "T-024 provider adapter 實作前；任何 live AI 呼叫前",
+      "gates_tasks": [
+        "T-024"
+      ]
+    }
+  },
+  "note": "Shape checks only; whether a recorded approval is genuine is for human review."
+}

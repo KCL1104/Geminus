@@ -1,0 +1,3 @@
+bash scripts/run_db_tests.sh
+Refusing DB writes. Set DT_ALLOW_DB_TESTS=yes only for a disposable test cluster/database.
+make: *** [Makefile:41: db-test] Error 2

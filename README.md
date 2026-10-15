@@ -15,7 +15,19 @@ python -m pip install -r requirements-spec.txt
 make spec-check
 ```
 
-以上只檢查規格包。Go / frontend / DB / live AI 測試要由 coding agent 在對應任務完成後建立並執行；不得把缺少程式碼或未執行測試當作成功。
+以上只檢查規格包。
+
+Bootstrap（T-002）後的 toolchain 版本見 [ADR-011](docs/adr/ADR-011-toolchain-bootstrap.md)；實際執行結果見 [BOOTSTRAP_VALIDATION.md](checks/BOOTSTRAP_VALIDATION.md)：
+
+```sh
+make backend-test backend-race backend-build   # Go 1.27.2 (go.mod toolchain)
+npm ci --prefix apps/web                       # Node 24.21.0 (apps/web/.nvmrc)
+make frontend-test frontend-build
+```
+
+`cmd/api`、`cmd/worker` 目前只驗證設定後以 exit 2 回報 NOT IMPLEMENTED，不是可服務的 application。
+
+Go / frontend / DB / live AI 測試要由 coding agent 在對應任務完成後建立並執行；不得把缺少程式碼或未執行測試當作成功。
 
 ## 七組交付
 

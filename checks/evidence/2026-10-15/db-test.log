@@ -1,0 +1,314 @@
+bash scripts/run_db_tests.sh
+DO
+DO
+BEGIN
+CREATE SCHEMA
+SET
+REVOKE
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE FUNCTION
+DO
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+COMMIT
+BEGIN
+SET
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+GRANT
+GRANT
+DO
+ALTER TABLE
+ALTER TABLE
+CREATE POLICY
+REVOKE
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+ALTER DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES
+COMMIT
+BEGIN
+SET
+      set_config      | set_config | set_config | set_config 
+----------------------+------------+------------+------------
+ https://test.invalid | subject_a  | org_test_a | usr_test_a
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ set_config | set_config | set_config 
+------------+------------+------------
+ subject_b  | org_test_b | usr_test_b
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET
+ set_config | set_config | set_config 
+------------+------------+------------
+ subject_a  | org_test_a | usr_test_a
+(1 row)
+
+DO
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+DO
+SET
+DO
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+DO
+ROLLBACK
+BEGIN
+SET
+REVOKE
+REVOKE
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "tenant_isolation" for relation "twin.users" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.organizations" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.model_drafts" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.ai_proposals" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.idempotency_keys" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.memberships" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.projects" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.models" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.model_versions" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.model_version_datasets" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.scenarios" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.simulation_runs" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.run_datasets" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.ai_analyses" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.datasets" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.dataset_versions" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.simulation_results" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.audit_events" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.imports" does not exist, skipping
+psql:migrations/0002_rls.down.sql:16: NOTICE:  policy "identity_self" for relation "twin.jobs" does not exist, skipping
+DO
+DROP FUNCTION
+DROP FUNCTION
+COMMIT
+BEGIN
+SET
+psql:migrations/0001_core.down.sql:5: NOTICE:  drop cascades to 27 other objects
+DETAIL:  drop cascades to type twin.public_id
+drop cascades to type twin.sha256
+drop cascades to table twin.users
+drop cascades to table twin.organizations
+drop cascades to table twin.memberships
+drop cascades to table twin.projects
+drop cascades to table twin.models
+drop cascades to table twin.model_versions
+drop cascades to table twin.model_drafts
+drop cascades to table twin.datasets
+drop cascades to table twin.dataset_versions
+drop cascades to table twin.model_version_datasets
+drop cascades to table twin.imports
+drop cascades to table twin.ai_proposals
+drop cascades to table twin.scenarios
+drop cascades to table twin.simulation_runs
+drop cascades to table twin.run_datasets
+drop cascades to table twin.simulation_results
+drop cascades to table twin.ai_analyses
+drop cascades to table twin.jobs
+drop cascades to table twin.idempotency_keys
+drop cascades to table twin.audit_events
+drop cascades to function twin.reject_mutation()
+drop cascades to function twin.protect_run_inputs()
+drop cascades to function twin.protect_proposal_content()
+drop cascades to function twin.verify_version_dataset_manifest()
+drop cascades to function twin.verify_run_dataset_manifest()
+DROP SCHEMA
+COMMIT
+BEGIN
+CREATE SCHEMA
+SET
+REVOKE
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE FUNCTION
+DO
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+COMMIT
+BEGIN
+SET
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+GRANT
+GRANT
+DO
+ALTER TABLE
+ALTER TABLE
+CREATE POLICY
+REVOKE
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+ALTER DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES
+COMMIT
+BEGIN
+SET
+      set_config      | set_config | set_config | set_config 
+----------------------+------------+------------+------------
+ https://test.invalid | subject_a  | org_test_a | usr_test_a
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ set_config | set_config | set_config 
+------------+------------+------------
+ subject_b  | org_test_b | usr_test_b
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET
+ set_config | set_config | set_config 
+------------+------------+------------
+ subject_a  | org_test_a | usr_test_a
+(1 row)
+
+DO
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+DO
+SET
+DO
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+DO
+ROLLBACK
+DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.

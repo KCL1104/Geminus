@@ -1,0 +1,20 @@
+npm-ci	0	npm ci --prefix apps/web --no-audit
+spec-check	0	make spec-check (rerun after BOOTSTRAP_VALIDATION.md exists; first run exit 2: broken README link)
+backend-test	0	make backend-test
+backend-race	0	make backend-race
+backend-build	0	make backend-build
+frontend-test	0	make frontend-test
+frontend-build	0	make frontend-build
+db-test	0	make db-test
+db-test-refuses-unguarded	2	make db-test
+not-implemented-integration-test	2	make integration-test
+not-implemented-e2e-test	2	make e2e-test
+not-implemented-ai-eval	2	make ai-eval
+not-implemented-ai-eval-live	2	make ai-eval-live
+not-implemented-security-scan	2	make security-scan
+bin-api-no-env	1	env -i ./bin/api
+bin-api-anthropic	1	env -i DATABASE_URL=postgresql://u@h/twin AI_PROVIDER=anthropic ./bin/api
+bin-api-valid	2	env -i DATABASE_URL=postgresql://u:pw-not-logged@h/twin ./bin/api
+bin-worker-valid	2	env -i DATABASE_URL=postgresql://u@h/twin ./bin/worker
+npm-audit	1	npm audit --prefix apps/web
+npm-audit-prod	0	npm audit --prefix apps/web --omit=dev

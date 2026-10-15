@@ -1,0 +1,4 @@
+go test -race ./cmd/... ./internal/...
+ok  	github.com/kcl1104/geminus/cmd/api	1.017s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.013s
+ok  	github.com/kcl1104/geminus/internal/config	1.017s

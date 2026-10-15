@@ -1,0 +1,2 @@
+NOT IMPLEMENTED: ai-eval-live must be replaced by real product checks in the assigned task; no fake PASS.
+make: *** [Makefile:44: ai-eval-live] Error 2

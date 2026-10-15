@@ -6,7 +6,7 @@
   "limited_semantic_negative_fixtures": 7,
   "resolved_local_ref_occurrences": 663,
   "openapi_operations": 41,
-  "optional_fastapi_openapi_model": "PASS_STRUCTURAL_MODEL_ONLY",
+  "optional_fastapi_openapi_model": "NOT_RUN_NOT_INSTALLED",
   "independent_complete_openapi_validator": "NOT_RUN_UNAVAILABLE",
   "ai_corpus_records": {
     "analyst": 10,

@@ -6,7 +6,9 @@ from urllib.parse import unquote
 ROOT=Path(__file__).resolve().parents[1]
 
 def main():
-    count=0;files=sorted(ROOT.rglob('*.md'))
+    # Only repository docs; vendored/installed trees carry their own Markdown.
+    skip={'.git','.venv','node_modules','.next'}
+    count=0;files=sorted(p for p in ROOT.rglob('*.md') if not skip & set(p.relative_to(ROOT).parts))
     for path in files:
         text=path.read_text(encoding='utf-8')
         assert sum(1 for l in text.splitlines() if l.lstrip().startswith('```'))%2==0,path

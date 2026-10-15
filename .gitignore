@@ -8,3 +8,6 @@ coverage/
 .env.local
 .env.production
 !/.env.example
+
+# Go build output
+/bin/
