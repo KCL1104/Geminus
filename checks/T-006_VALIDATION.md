@@ -1,6 +1,6 @@
 # T-006 驗證報告：Core migration 與 repository foundation
 
-**日期：2026-10-15｜狀態：`review`（待 owner 驗收）｜需求：REQ-001、REQ-005、REQ-018、REQ-019｜Gate：D-001、D-013、D-034、D-035（皆已批准）；另落實 D-027 的 SQL 部分**
+**日期：2026-10-15｜狀態：`done`（H-003 agent 驗收）｜需求：REQ-001、REQ-005、REQ-018、REQ-019｜Gate：D-001、D-013、D-034、D-035（皆已批准）；另落實 D-027 的 SQL 部分**
 
 逐條輸出在 `checks/evidence/2026-10-15-T-006/`（`summary.tsv` 為 exit code 總表；`red-before-fix.log` 是修改前的失敗紀錄）。
 
@@ -77,3 +77,11 @@
 |---|---|
 | Runtime login、tenant scope helper、並行 pool 隔離 | T-007（gate D-008 仍為 PROPOSED） |
 | Staging smoke、backup／restore、production gate（TEST-030 其餘部分） | 部署任務；需要 owner 授權的環境 |
+
+## 2026-10-15 獨立 review 與驗收
+
+**驗收：`done`（2026-10-15）——依 owner 指示由 agent 獨立 review 驗收（H-003），owner 沒有逐行審查。** 審查發現、修正與證據見 [REVIEW_2026-10-15.md](REVIEW_2026-10-15.md)。
+
+修正（commit f3f6089、e324bac）：`Tx` 在 Goexit 時 rollback、保留呼叫端錯誤鏈、COMMIT 結果不明回 `ErrOutcomeUnknown`；proposal 決策紀錄與 review payload 凍結；object key 只允許 ASCII 段；audit user actor 綁定 `app.user_id`；0002 down 撤回 USAGE。
+
+**更正：** 「Tx 在 error／panic／cancel 時 rollback」原本漏了 Goexit；「拒 traversal／empty segment」原本只擋字面 `..` 與內部 `//`；兩者現在皆成立。同一 organization 內跨 project 引用與 twin_owner 的 DISABLE TRIGGER 屬設計限制（見 review 文件）。

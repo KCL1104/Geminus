@@ -396,3 +396,13 @@ func TestScenarioCannotCreateDatasetBinding(t *testing.T) {
 		{"op":"replace","path":"/nodes/1/service_time/distribution/samples_ref","value":"dataset:other_new"}]`
 	wantIssue(t, mustApply(t, bound.Candidate, pointer, Scenario), PathForbidden, "/2/value")
 }
+
+// TEST-003: copy, like move, is outside the P0 profile in every mode.
+func TestCopyIsRejected(t *testing.T) {
+	for _, mode := range []Mode{ManualDraft, AIEdit, Scenario} {
+		r := mustApply(t, base(t), `[{"op":"copy","from":"/name","path":"/metadata"}]`, mode)
+		if r.Applied() || len(r.PatchIssues) == 0 || r.PatchIssues[0].Code != SchemaInvalid {
+			t.Errorf("%v: %v", mode, r.PatchIssues)
+		}
+	}
+}

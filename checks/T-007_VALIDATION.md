@@ -1,6 +1,6 @@
 # T-007 驗證報告：RLS、runtime roles、pool isolation
 
-**日期：2026-10-15｜狀態：`review`｜需求：REQ-001、REQ-019｜Gate：D-013、D-036、D-037 已批准；**D-008 仍為 PROPOSED**（本任務依其提案實作，D-008 批准前不能標為 done）**
+**日期：2026-10-15｜狀態：`done`（H-003 agent 驗收）｜需求：REQ-001、REQ-019｜Gate：D-008、D-013、D-036、D-037（皆已批准；D-008 於 2026-10-15 批准）**
 
 逐條輸出在 `checks/evidence/2026-10-15-T-007/`（`summary.tsv` 為 exit code 總表；`red-before-fix.log` 是修改 grant 前的失敗紀錄）。
 
@@ -67,3 +67,13 @@
 | HTTP 層 tenant／role 矩陣（TEST-009） | T-009、T-013 |
 | JWT 驗證與 user 解析 | T-008 |
 | 並行 approval／lease／last-owner race | T-010、T-013、T-019 |
+
+## 2026-10-15 獨立 review 與驗收
+
+**驗收：`done`（2026-10-15）——依 owner 指示由 agent 獨立 review 驗收（H-003），owner 沒有逐行審查。** 審查發現、修正與證據見 [REVIEW_2026-10-15.md](REVIEW_2026-10-15.md)。
+
+修正（commit f3f6089、e324bac、611fb0d）：`CheckRuntimeRole` 改以 `session_user` 檢查，並拒絕 REPLICATION、任何其他角色成員（含只能 SET ROLE 者與 predefined roles）、直接授權、擁有任何物件、可建立物件的 login；`Guard` 檢查所有 `app.*` 設定、session-level SET、cursor、temp table、advisory lock、LISTEN；worker 不能改已 COMMITTED 的 import、不能處理等待人類的 proposal、不能偽造 user audit；所有 twin function 固定 search_path。
+
+**更正：** 本報告與 API_DATABASE §9 原稱 `CheckRuntimeRole` 拒絕 superuser／BYPASSRLS／owner，但對 SET-only 角色、predefined roles 與 startup role 不成立；`Guard`「丟棄任何仍帶 scope 的連線」原本只檢查兩個設定。現在兩者皆成立。
+
+**移交：** `cmd/` 尚未呼叫 Guard 與 CheckRuntimeRole；T-013（API）與 T-019／T-023（worker）必須在啟動時呼叫。

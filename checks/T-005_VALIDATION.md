@@ -1,6 +1,6 @@
 # T-005 驗證報告：JCS/hash 與 frozen dataset manifest
 
-**日期：2026-10-15｜狀態：`review`（待 owner 驗收）｜需求：REQ-005、REQ-011、REQ-013｜Gate：D-006、D-019、D-034（皆已批准）；另用 D-029、D-033**
+**日期：2026-10-15｜狀態：`done`（H-003 agent 驗收）｜需求：REQ-005、REQ-011、REQ-013｜Gate：D-006、D-019、D-034（皆已批准）；另用 D-029、D-033**
 
 逐條輸出在 `checks/evidence/2026-10-15-T-005/`（`summary.tsv` 為 exit code 總表，`mutants.py` 為 mutation 清單）。
 
@@ -84,3 +84,11 @@ TWIN_IR_SPEC §5.1／§5.2 已記錄，若不同意可另立決策：
 | SQL `ORDER BY logical_ref COLLATE "C"`（D-034 的 SQL 部分） | T-006 scope |
 | 端到端「已提交 run 不受新資料影響」、worker 並行下 digest 一致 | 需要 engine／run API（T-011、T-020、T-021） |
 | `make db-test`（本機） | 本次未改 SQL；CI db-smoke job 仍會執行 |
+
+## 2026-10-15 獨立 review 與驗收
+
+**驗收：`done`（2026-10-15）——依 owner 指示由 agent 獨立 review 驗收（H-003），owner 沒有逐行審查。** 審查發現、修正與證據見 [REVIEW_2026-10-15.md](REVIEW_2026-10-15.md)。
+
+修正（commit cdfb4ff）：exponential underflow、Store scope 失效時不再洩漏他租戶物件的 hash／大小、所有 issue 經 `model.NewIssue` 符合 schema、非法 UTF-8 回 issue、`Store.Open` 有界讀取、`hashing.Result` 錯誤不引用 path。
+
+**更正：** 本報告提到 ADR-014 為 PROPOSED，實際已 ACCEPTED；「他租戶與不存在回同一訊息」只在物件確認屬本 organization 之後成立（限制已寫入 TWIN_IR_SPEC §5.2）。exponential 樣本至少 1 tick 由 T-020 實作。

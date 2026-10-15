@@ -1,0 +1,9 @@
+command	exit
+make spec-check	0
+make backend-test	0
+make backend-race	0
+make backend-build	0
+make frontend-test	0
+make frontend-build	0
+scripts/run_db_tests.sh	0
+make db-go-test	0

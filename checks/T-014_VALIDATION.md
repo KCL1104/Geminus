@@ -1,6 +1,6 @@
 # T-014 驗證報告：Frontend app／server-state boundary
 
-**日期：2026-10-15｜狀態：`review`（待 owner 驗收）｜需求：REQ-004、REQ-020｜Gate：無**
+**日期：2026-10-15｜狀態：`done`（H-003 agent 驗收）｜需求：REQ-004、REQ-020｜Gate：無**
 
 逐條輸出在 `checks/evidence/2026-10-15-T-014/`（`summary.tsv` 為 exit code 總表）。本任務只建立邊界與狀態呈現，沒有視覺設計（「不得先做漂亮 UI」）。
 
@@ -64,3 +64,13 @@ Browser smoke 用 scratch 安裝的 `playwright-core` 1.63.0 與預裝 Chromium�
 | 對真實 API 的頁面流程、權限矩陣 | API 尚未實作（T-013） |
 | 2D／3D adapter 與互選 | T-015／T-017 |
 | E2E closed loop | T-040 |
+
+## 2026-10-15 獨立 review 與驗收
+
+**驗收：`done`（2026-10-15）——依 owner 指示由 agent 獨立 review 驗收（H-003），owner 沒有逐行審查。** 審查發現、修正與證據見 [REVIEW_2026-10-15.md](REVIEW_2026-10-15.md)。
+
+修正（commit 305322f）：body 讀取失敗與 load reject 都會顯示錯誤，不會停在 Loading；base URL 只允許 https（loopback 可用 http），不得有 `//`，token 不會送到其他 host；成功回應也驗證 request ID；拒絕空 patch；`saveStarted` 記錄實際送出的內容；只有 MODEL_VERSION_CONFLICT 算 draft conflict；重新載入不再丟掉編輯；提供重試、更多頁提示、reload 失敗提示；404 不顯示 details。
+
+**更正：** 原報告的「未登入不呼叫 API」測試不可能失敗（`renderToStaticMarkup` 不執行 effects），已改為 DOM 測試；「save 永遠以目前 remote revision」的性質測試是循環論證，已改用獨立 server 模型；瀏覽器 smoke 的「0 個站外 request」是在沒有 session、沒有 API URL 的情況下量的，證明力有限。
+
+**移交：** CSP 歸 T-036；衝突時把編輯套到新 revision 的 UX 歸 T-015。
