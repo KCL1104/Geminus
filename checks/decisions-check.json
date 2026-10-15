@@ -13,10 +13,10 @@
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 11,
+    "done": 12,
     "in_progress": 0,
     "not_started": 29,
-    "review": 2
+    "review": 1
   },
   "ready_tasks": [
     "T-008"

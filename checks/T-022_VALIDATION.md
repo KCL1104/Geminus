@@ -87,7 +87,7 @@ Review 列為 PLAUSIBLE 或需 owner 決定的項目：
 | 複核後續（`rereview/`）：`make backend-test`／`backend-race`／`REQUIRE_GOAMD64_V3=1 backend-numeric`／`spec-check` | 0 / 0 / 0 / 0 | |
 | 複核後續：`go test -count=1 -v`（metrics、trace、des、softwaredelivery） | 0 | 85 個 RUN 全 PASS（新增 `TestPanicsOutsideTheReplications`） |
 | 複核後續：mutation（`results-mutants.py`） | 0 | **71/71 被擋，1 個 equivalent**（新增 `reports-never-stopped`、`sink-panic-unrecovered`、`domain-metrics-unrecovered`） |
-| GitHub Actions（複核後續） | 推送後補記 | |
+| GitHub Actions（複核後續 bc10200，與 T-042 一起） | success | [run 38811720980](https://github.com/KCL1104/Geminus/actions/runs/38811720980)：4/4（head 4866e37） |
 
 ## 驗收對照
 

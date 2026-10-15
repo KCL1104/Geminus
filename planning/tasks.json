@@ -1201,7 +1201,7 @@
       "id": "T-022",
       "title": "Metric aggregation / result digest / trace",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Simulation",
       "planning_window": "Week 6–8",
       "depends_on": [
@@ -1257,7 +1257,10 @@
           "review_evidence": "checks/evidence/2026-10-15-T-022-review/",
           "ci": "https://github.com/KCL1104/Geminus/actions/runs/38800354726 (0aa9a95: 4/4 success)",
           "re_review": "same reviewer, 4370ab5: ACCEPT, no blocking defect; L1 (a panicking ProgressSink or DomainMetrics kills the process), L2 (reporter exit untested) and P1 (250 ms timing assertion) fixed red-first; results mutation 71/71＋1 equivalent",
-          "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/38806843899 (4370ab5: 4/4 success)"
+          "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/38806843899 (4370ab5: 4/4 success)",
+          "ci_after_re_review": "https://github.com/KCL1104/Geminus/actions/runs/38811720980 (4866e37, includes bc10200: 4/4 success)",
+          "accepted_at": "2026-10-15",
+          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；首輪 CHANGES REQUESTED 的發現皆已先紅後綠修正（4370ab5），同一 reviewer 複核 ACCEPT，三個後續項目已修正（bc10200）；D-039 仍為 PROPOSED，gate 在 T-023"
         }
       ]
     },
