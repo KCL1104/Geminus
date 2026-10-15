@@ -29,6 +29,7 @@
 | Browser smoke（Chromium，production build） | 0 | 5 個路徑皆顯示「Sign in required」；**0 個離開本站的 request**；0 個 console error／4xx |
 | `make backend-test` | 0 | 未改 Go，確認無回歸 |
 | `actionlint v1.7.12` | 0 | |
+| GitHub Actions [run 38754405090](https://github.com/KCL1104/Geminus/actions/runs/38754405090)（`beb8447`） | success | 4 個 job 全部 success |
 
 Browser smoke 用 scratch 安裝的 `playwright-core` 1.63.0 與預裝 Chromium，不是 repo 依賴；腳本保存在 evidence 目錄。第一次執行發現 `/favicon.ico` 404 的 console error，補上 `app/icon.svg` 後重跑為 0。
 
@@ -63,4 +64,3 @@ Browser smoke 用 scratch 安裝的 `playwright-core` 1.63.0 與預裝 Chromium�
 | 對真實 API 的頁面流程、權限矩陣 | API 尚未實作（T-013） |
 | 2D／3D adapter 與互選 | T-015／T-017 |
 | E2E closed loop | T-040 |
-| GitHub Actions | 推送後補記 |
