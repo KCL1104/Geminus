@@ -213,9 +213,10 @@
       "source_pages": "N/A（H-001，2026-10-15 人類指示）；docs/AI_SPEC.md、docs/ARCHITECTURE.md §8",
       "owner_role": "AI / Security",
       "gate": "T-024 provider adapter 實作前；任何 live AI 呼叫前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session instruction)",
+      "approved_at": "2026-10-15",
+      "approval_note": "Owner 選擇 failover（不採 round-robin）。"
     }
   ],
   "human_decisions": [
@@ -228,7 +229,6 @@
       "source": "Claude Code session 指示，由 agent 記錄；owner 於 PR review 確認措辭",
       "still_open": [
         "LLM model（eval 後決定）",
-        "D-018 credential pool 策略",
         "retention／residency 與資料政策",
         "AI token／tenant quota"
       ]

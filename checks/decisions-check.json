@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 0,
-    "proposed": 18,
+    "approved": 1,
+    "proposed": 17,
     "rejected": 0,
     "superseded": 0
   },
@@ -12,19 +12,16 @@
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 0,
+    "done": 2,
     "in_progress": 0,
     "not_started": 40,
-    "review": 2
+    "review": 0
   },
   "ready_tasks": [],
   "next_after_review": [
     {
       "id": "T-003",
-      "awaiting_task_review": [
-        "T-001",
-        "T-002"
-      ],
+      "awaiting_task_review": [],
       "awaiting_decisions": [
         "D-001",
         "D-002",
@@ -198,7 +195,7 @@
       ]
     },
     "D-018": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-024 provider adapter 實作前；任何 live AI 呼叫前",
       "gates_tasks": [
         "T-024"

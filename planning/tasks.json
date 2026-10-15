@@ -8,7 +8,7 @@
       "id": "T-001",
       "title": "來源盤點、決策 review 與實作邊界",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Platform + Product",
       "planning_window": "Week 1",
       "depends_on": [],
@@ -51,7 +51,10 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/BOOTSTRAP_VALIDATION.md",
           "summary": "make spec-check 實跑：初次 exit 2（缺 format checker 依賴），修正 requirements-spec.txt 後 exit 0；契約阻擋項盤點見 docs/CONTRACT_BLOCKERS.md；決策 gate 由 scripts/check_decisions.py 產生 checks/decisions-check.json；未批准任何 PROPOSED 決策。",
-          "reviewer": null
+          "reviewer": "KCL1104 (repository owner)",
+          "accepted_at": "2026-10-15",
+          "acceptance": "owner 回覆「開始吧」，記為驗收通過",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38720779374 (4973718: 4/4 success); b78ffad: success"
         }
       ]
     },
@@ -59,7 +62,7 @@
       "id": "T-002",
       "title": "Repository、toolchain、CI skeleton",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Platform",
       "planning_window": "Week 1–2",
       "depends_on": [
@@ -105,7 +108,10 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/BOOTSTRAP_VALIDATION.md",
           "summary": "make spec-check / backend-test / backend-race / backend-build / frontend-test / frontend-build 本地實跑 exit 0；db-test 對一次性 PostgreSQL 16.15 實跑 exit 0；CI 結果見 BOOTSTRAP_VALIDATION.md。integration/e2e/ai-eval 等仍為 NOT IMPLEMENTED（exit 2）。",
-          "reviewer": null
+          "reviewer": "KCL1104 (repository owner)",
+          "accepted_at": "2026-10-15",
+          "acceptance": "owner 回覆「開始吧」，記為驗收通過",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38720779374 (4973718: 4/4 success); b78ffad: success"
         }
       ]
     },

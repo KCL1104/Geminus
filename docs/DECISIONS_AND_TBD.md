@@ -154,7 +154,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-018 — LLM credential pool（兩個獨立 Anthropic organization）
 
-**狀態：PROPOSED。負責角色：AI / Security。Gate：T-024 provider adapter 實作前；任何 live AI 呼叫前。**
+**狀態：APPROVED（2026-10-15，KCL1104：選擇 failover）。負責角色：AI / Security。Gate：T-024 provider adapter 實作前；任何 live AI 呼叫前。**
 
 來源缺口：H-001 指定 Anthropic Claude API，並提供兩個分屬獨立 organization 的 API key，要求 rotation 以使用兩邊 credits。原報告與 AI_SPEC 只假設單一 provider credential，未定義多帳號選用、失效切換、資料政策一致性與 audit。
 
@@ -166,7 +166,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 | ID | 日期 | 決定 | 仍未決 |
 |---|---|---|---|
-| H-001 | 2026-10-15 | LLM provider 改為 Anthropic Claude API（Claude Console API key），保留 provider interface；兩個 key 分屬獨立 organization，需 rotation 使用兩邊 credits | LLM model（eval 後）、D-018、retention／資料政策、token quota |
+| H-001 | 2026-10-15 | LLM provider 改為 Anthropic Claude API（Claude Console API key），保留 provider interface；兩個 key 分屬獨立 organization，需 rotation 使用兩邊 credits | LLM model（eval 後）、retention／資料政策、token quota |
 | H-002 | 2026-10-15 | 確認 Go backend；與 ADR-001 一致（`net/http`，不引入重型 framework），無變更 | — |
 
 ## 原報告保留的 TBD
