@@ -1,0 +1,4 @@
+date: 2026-10-15T14:43:11Z
+v24.21.0
+Chromium 141.0.7390.37 
+playwright-core 1.63.0 (scratch only, not a repo dependency)

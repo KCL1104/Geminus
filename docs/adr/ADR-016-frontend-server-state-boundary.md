@@ -1,0 +1,21 @@
+# ADR-016 — Frontend server-state boundary without a state library (T-014)
+
+狀態：PROPOSED（T-014 agent 選定，待人類 review）。日期：2026-10-15。原報告把 TanStack Query、Zustand、Tailwind/shadcn 列為 TBD（DECISIONS_AND_TBD.md「Frontend state / UI libraries」）。
+
+## Decision
+
+T-014 不引入 state 或 UI library，只用 React 19 與自寫的小型模組，因為邊界本身才是本任務要固定的東西：
+
+| 模組 | 責任 |
+|---|---|
+| `lib/api/client.ts` | 唯一的 HTTP 出口：沒有 API URL 或 session 時不送 request；帶 `Authorization` 與 `X-Organization-ID`（只是 selector，D-008），不送 cookie；route 參數先過 D-001 ID 檢查；draft 回應必須有與 body revision 相符的 ETag |
+| `lib/api/problem.ts` | 所有失敗收斂為 `Problem`；狀態碼對應與 schema `x-http-status` 由測試鎖定；錯誤碼與狀態不符、未知碼、非 API 錯誤 body 一律 `protocol`，不猜 |
+| `lib/state/draft.ts` | remote（server 已存）／inFlight（已送出）／unsaved（本機）三者分開；409 或遠端較新 revision 進入 `conflict`，保留全部本機編輯，不自動 rebase；只有使用者明確 reload／discard 才離開 |
+| `lib/state/selection.ts` | 2D／3D 共用的 `selectedEntityId`，只接受目前 IR 的 node／resource／flow ID（TEST-025 的前置） |
+| `lib/auth/session.tsx` | 未掛上 provider 時一律未登入；沒有 demo／開發用 session。未知角色視為唯讀，但授權仍以 API 為準 |
+
+## Consequences
+
+- T-015（2D editor）若需要 query cache、背景重新整理或 optimistic update，再評估 TanStack Query 等；採用時仍須經由 `lib/api/client.ts` 與 `lib/state/draft.ts` 的規則（不得繞過 If-Match、不得自動 rebase）。
+- `useRemote` 只做「一次載入、捨棄過期回應」；沒有 cache、重試或 polling。
+- 真實登入（OIDC）與 membership 角色來源屬 T-008／T-010（D-008、CB-17）。在那之前所有頁面都顯示「需要登入」，這是預期行為而不是缺陷。

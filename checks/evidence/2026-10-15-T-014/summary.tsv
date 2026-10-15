@@ -1,0 +1,9 @@
+spec-check	0	make spec-check
+frontend-test	0	make frontend-test
+vitest-verbose	0	npm --prefix apps/web exec -- vitest run --reporter=verbose
+frontend-build	0	make frontend-build
+npm-audit-prod	0	npm audit --prefix apps/web --omit=dev --audit-level=high
+frontend-mutation	0	python3 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/webmut.py /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/webmut
+backend-test	0	make backend-test
+actionlint	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/actionlint -shellcheck= .github/workflows/ci.yml
+browser-smoke	0	sh -c cd /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/pwsmoke && node smoke.mjs http://127.0.0.1:3930

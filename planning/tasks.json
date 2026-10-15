@@ -727,7 +727,7 @@
       "id": "T-014",
       "title": "Frontend app / server-state boundary",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Frontend",
       "planning_window": "Week 3–4",
       "depends_on": [
@@ -765,7 +765,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-014_VALIDATION.md",
+          "summary": "Fail-closed typed API client（無 URL／session 不送 request、D-001 route ID、ETag 與 revision 相符）、Problem union（狀態碼對應鎖定 schema x-http-status）、remote／in-flight／unsaved 分離的 draft 狀態機（409 保留編輯、不自動 rebase，2,000 組隨機序列性質測試）、共用 selection store、route shell 與 loading／error／permission／409 呈現；53 tests PASS、production build、0 production 漏洞；frontend mutation 19/19；Chromium smoke：未登入、0 個站外 request、0 console error。API 流程與 2D/3D 屬 T-013／T-015／T-017（NOT RUN）。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-015",

@@ -1,0 +1,65 @@
+
+ RUN  v5.0.4 /home/user/Geminus
+
+ ✓ apps/web/tests/api.test.ts > error catalogue > matches the schema's x-http-status exactly 3ms
+ ✓ apps/web/tests/api.test.ts > error catalogue > maps each status of the contract to its kind 45ms
+ ✓ apps/web/tests/api.test.ts > error catalogue > refuses to act on codes the server did not mean 1ms
+ ✓ apps/web/tests/api.test.ts > error catalogue > never invents a request ID or details 1ms
+ ✓ apps/web/tests/api.test.ts > error catalogue > keeps validation details for the editor and Retry-After only where it applies 1ms
+ ✓ apps/web/tests/api.test.ts > ids and ETags > accepts only D-001 IDs of the right kind 1ms
+ ✓ apps/web/tests/api.test.ts > ids and ETags > round-trips draft revisions and rejects weak or foreign ETags 1ms
+ ✓ apps/web/tests/api.test.ts > client > sends nothing without an API URL or a session 2ms
+ ✓ apps/web/tests/api.test.ts > client > sends the bearer token and tenant selector, never cookies 7ms
+ ✓ apps/web/tests/api.test.ts > client > rejects malformed route IDs locally as not found 1ms
+ ✓ apps/web/tests/api.test.ts > client > saves a draft with If-Match and the JSON Patch media type 2ms
+ ✓ apps/web/tests/api.test.ts > client > reports a stale revision as a conflict 1ms
+ ✓ apps/web/tests/api.test.ts > client > treats a draft without a matching ETag as a protocol error 5ms
+ ✓ apps/web/tests/api.test.ts > client > maps transport failures and non-JSON successes 2ms
+ ✓ apps/web/tests/api.test.ts > client > reads the session per request, so a sign-out takes effect immediately 1ms
+ ✓ apps/web/tests/api.test.ts > client > keeps a valid project ID path intact 1ms
+ ✓ apps/web/tests/ui.test.tsx > auth boundary > renders signed out without a provider, and never the protected content 11ms
+ ✓ apps/web/tests/ui.test.tsx > auth boundary > does not call the API from a signed-out page 2ms
+ ✓ apps/web/tests/ui.test.tsx > auth boundary > shows protected content and a loading state with a session 4ms
+ ✓ apps/web/tests/ui.test.tsx > auth boundary > offers editing only to owners and editors; an unknown role is read-only 1ms
+ ✓ apps/web/tests/ui.test.tsx > problems (TEST-009 presentation) > renders every kind as an alert with its heading 8ms
+ ✓ apps/web/tests/ui.test.tsx > problems (TEST-009 presentation) > says the same for a missing resource and another tenant's, without echoing the server 33ms
+ ✓ apps/web/tests/ui.test.tsx > problems (TEST-009 presentation) > explains a 403 and shows validation details and Retry-After 2ms
+ ✓ apps/web/tests/ui.test.tsx > problems (TEST-009 presentation) > RemoteView shows loading, the problem or the data 1ms
+ ✓ apps/web/tests/ui.test.tsx > draft status > gives an editor both choices on a conflict and keeps the changes 3ms
+ ✓ apps/web/tests/ui.test.tsx > draft status > gives a viewer no edit actions 1ms
+ ✓ apps/web/tests/ui.test.tsx > draft status > explains why a clean draft cannot be published 1ms
+ ✓ apps/web/tests/ui.test.tsx > model page loader > loads model and draft together 7ms
+ ✓ apps/web/tests/ui.test.tsx > model page loader > shows nothing half-loaded: any failure fails the page 2ms
+ ✓ apps/web/tests/contracts.test.ts > generated contract types match the shared fixtures > valid-minimal-ir.json 3ms
+ ✓ apps/web/tests/contracts.test.ts > generated contract types match the shared fixtures > valid-patch.json 1ms
+ ✓ apps/web/tests/contracts.test.ts > generated contract types match the shared fixtures > valid-error.json 2ms
+ ✓ apps/web/tests/state.test.ts > draft session > saves with the remote revision and becomes clean on success 3ms
+ ✓ apps/web/tests/state.test.ts > draft session > keeps edits made while saving for the next save 0ms
+ ✓ apps/web/tests/state.test.ts > draft session > turns a 409 into a conflict that keeps every edit in order 0ms
+ ✓ apps/web/tests/state.test.ts > draft session > never rebases local edits onto a newer remote revision 0ms
+ ✓ apps/web/tests/state.test.ts > draft session > ignores stale or foreign reads and refreshes when there are no edits 0ms
+ ✓ apps/web/tests/state.test.ts > draft session > lets the save response, not a refresh, decide an in-flight save 0ms
+ ✓ apps/web/tests/state.test.ts > draft session > allows publishing only a clean, current draft without errors 0ms
+ ✓ apps/web/tests/state.test.ts > draft session > never loses, duplicates or reorders edits (random sequences) 806ms
+ ✓ apps/web/tests/state.test.ts > selection > selects only entities of the current model and notifies once per change 1ms
+ ✓ apps/web/tests/state.test.ts > selection > drops a selection whose entity disappears and keeps one that survives 1ms
+stderr | apps/web/tests/lint-guards.test.ts > forbidden imports > rejects import Anthropic from "@anthropic-ai/sdk";
+Warning: React version was set to "detect" in eslint-plugin-react settings, but the "react" package is not installed. Assuming latest React version for linting.
+
+ ✓ apps/web/tests/lint-guards.test.ts > forbidden imports > rejects import Anthropic from "@anthropic-ai/sdk"; 1540ms
+ ✓ apps/web/tests/lint-guards.test.ts > forbidden imports > rejects import OpenAI from "openai"; 10ms
+ ✓ apps/web/tests/lint-guards.test.ts > forbidden imports > rejects import { anthropic } from "@ai-sdk/anthropic"; 10ms
+ ✓ apps/web/tests/lint-guards.test.ts > forbidden imports > rejects import { Pool } from "pg"; 14ms
+ ✓ apps/web/tests/lint-guards.test.ts > forbidden imports > rejects import { drizzle } from "drizzle-orm/node-postgres"; 10ms
+ ✓ apps/web/tests/lint-guards.test.ts > forbidden imports > allows ordinary UI imports 9ms
+ ✓ apps/web/tests/lint-guards.test.ts > eslint-config-next plugins run under the pinned ESLint > jsx-a11y/alt-text fires 205ms
+ ✓ apps/web/tests/lint-guards.test.ts > eslint-config-next plugins run under the pinned ESLint > react/jsx-key fires 30ms
+ ✓ apps/web/tests/lint-guards.test.ts > eslint-config-next plugins run under the pinned ESLint > import/no-anonymous-default-export fires 6ms
+ ✓ apps/web/tests/lint-guards.test.ts > eslint-config-next plugins run under the pinned ESLint > react-hooks/rules-of-hooks fires 10ms
+ ✓ apps/web/tests/lint-guards.test.ts > eslint-config-next plugins run under the pinned ESLint > @next/next/no-html-link-for-pages fires 12ms
+
+ Test Files  5 passed (5)
+      Tests  53 passed (53)
+   Start at  14:43:22
+   Duration  2.63s (tests 77%, transform 14%, import 8%, worker 1%)
+

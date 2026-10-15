@@ -1,0 +1,38 @@
+{
+ "out": {
+  "/": {
+   "h": [
+    "Geminus"
+   ],
+   "alert": 1
+  },
+  "/projects": {
+   "h": [
+    "Projects",
+    "Sign in required"
+   ],
+   "alert": 2
+  },
+  "/projects/prj_01M4YDQK00TA00000000000001": {
+   "h": [
+    "Models",
+    "Sign in required"
+   ],
+   "alert": 2
+  },
+  "/models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N": {
+   "h": [
+    "Sign in required"
+   ],
+   "alert": 2
+  },
+  "/models/not-an-id": {
+   "h": [
+    "Sign in required"
+   ],
+   "alert": 2
+  }
+ },
+ "external": [],
+ "errors": []
+}
