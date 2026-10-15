@@ -75,12 +75,29 @@ def main() -> None:
         payload = b"dt-rep-v1\0" + vectors["base_seed"].to_bytes(8, "little") + vector["index"].to_bytes(4, "little")
         seed = int.from_bytes(hashlib.sha256(payload).digest()[:8], "little")
         assert f"{seed:016x}" == vector["seed_hex_le_value"]
+    replication_seed = int(vectors["stream_replication_seed"], 16)
+    assert replication_seed == int(next(v for v in vectors["replication_seed_vectors"] if v["index"] == 0)["seed_hex_le_value"], 16)
+    for vector in vectors["stream_seed_vectors"]:
+        node, purpose = vector["node_id"].encode(), vector["purpose"].encode()
+        payload = (b"dt-stream-v1\0" + replication_seed.to_bytes(8, "little") + len(node).to_bytes(4, "little") + node
+                   + len(purpose).to_bytes(4, "little") + purpose)
+        seed = int.from_bytes(hashlib.sha256(payload).digest()[:8], "little")
+        assert f"{seed:016x}" == vector["seed_hex"], vector
+        state = seed
+        for expected in vector["first_uniforms"]:
+            state = (state + 0x9e3779b97f4a7c15) & mask
+            z = state
+            z = ((z ^ (z >> 30)) * 0xbf58476d1ce4e5b9) & mask
+            z = ((z ^ (z >> 27)) * 0x94d049bb133111eb) & mask
+            u = (((z ^ (z >> 31)) >> 12) + 0.5) / 2**52
+            assert u == expected and 0 < u < 1, vector
     report = {
         "status": "PASS_REFERENCE_ARITHMETIC_ONLY",
         "deterministic_fixture_cases": len(cases),
         "expected_value_comparisons": assertions,
         "splitmix64_vectors": len(vectors["outputs_hex"]),
         "replication_seed_vectors": len(vectors["replication_seed_vectors"]),
+        "stream_seed_vectors": len(vectors["stream_seed_vectors"]),
         "go_des_engine": "NOT_RUN",
         "simpy_differential": "NOT_RUN",
         "jcs_hash_verification": "NOT_RUN",

@@ -633,7 +633,8 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-011_VALIDATION.md",
           "summary": "DomainPack 介面與 Registry（未註冊 domain fail closed）、CanonicalEvent 契約型別、決定性 LayeredLayout；SoftwareDeliveryDomainPack：catalog、DOMAIN_MISMATCH、D-017 synthetic full template（完整驗證、與 golden fixture 一致）、五個 DORA 指標 unavailable（TEST-023）、inference 明確 unavailable；11 tests、mutation 10/10。",
-          "reviewer": null
+          "reviewer": null,
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38763694574 (991005a: 4/4 success)"
         }
       ]
     },

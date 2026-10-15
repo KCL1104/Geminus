@@ -21,6 +21,7 @@
 | `make backend-test` / `backend-race` | 0 / 0 | |
 | Mutation（`go test -overlay`） | 0 | 10/10 被擋 |
 | `govulncheck v1.9.0` | 0 | No vulnerabilities found |
+| GitHub Actions run [38763694574](https://github.com/KCL1104/Geminus/actions/runs/38763694574)（991005a） | success | spec-check、frontend、backend、db 4/4 |
 
 ## 驗收測試對照
 
@@ -42,4 +43,3 @@
 | Event inference | T-027 |
 | 有 mapping 時的 DORA 計算 | 需要 pilot 資料與 mapping 定義（D-010），P0 不提供 |
 | Generic test-only pack 與 architecture check | T-042 |
-| GitHub Actions | 推送後補記 |

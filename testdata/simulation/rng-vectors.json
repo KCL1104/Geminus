@@ -1,5 +1,5 @@
 {
-  "status": "REFERENCE_ARITHMETIC_FOR_PROPOSED_D-006_NOT_GO_ENGINE_VERIFICATION",
+  "status": "REFERENCE_ARITHMETIC_FOR_D-006 (approved); computed by scripts/check_reference_math.py logic, independent of the Go engine",
   "splitmix64_initial_state_hex": "0000000000000000",
   "outputs_hex": [
     "e220a8397b1dcdaf",
@@ -21,6 +21,79 @@
     {
       "index": 2,
       "seed_hex_le_value": "d6fa53053a803c0c"
+    }
+  ],
+  "stream_replication_seed": "cbf9456722e61fb5",
+  "stream_seed_vectors": [
+    {
+      "node_id": "change_arrival",
+      "purpose": "arrival",
+      "seed_hex": "34445f45bc3e989e",
+      "first_uniforms": [
+        0.6825390044903584,
+        0.12565435572646966,
+        0.5365092793394856
+      ]
+    },
+    {
+      "node_id": "code_review",
+      "purpose": "service",
+      "seed_hex": "e9bac7c9474103d5",
+      "first_uniforms": [
+        0.8782219380400528,
+        0.18879793757390406,
+        0.26826772626078965
+      ]
+    },
+    {
+      "node_id": "ci_result",
+      "purpose": "routing",
+      "seed_hex": "c3edd372634e0607",
+      "first_uniforms": [
+        0.04572123165530606,
+        0.5702677707788774,
+        0.5530030374376192
+      ]
+    },
+    {
+      "node_id": "ab",
+      "purpose": "c",
+      "seed_hex": "fca7d35dc72e302d",
+      "first_uniforms": [
+        0.5660709731574877,
+        0.8710008668106916,
+        0.6484866629503448
+      ]
+    },
+    {
+      "node_id": "a",
+      "purpose": "bc",
+      "seed_hex": "182db6948aa324b7",
+      "first_uniforms": [
+        0.08782529039701148,
+        0.01602115146013372,
+        0.6321908127510897
+      ]
+    },
+    {
+      "node_id": "審查",
+      "purpose": "service",
+      "seed_hex": "719d939a6193915c",
+      "first_uniforms": [
+        0.005992799104803104,
+        0.5146314636526405,
+        0.7264013588033224
+      ]
+    },
+    {
+      "node_id": "",
+      "purpose": "delay",
+      "seed_hex": "02553fe41275871e",
+      "first_uniforms": [
+        0.4209950297981503,
+        0.3511199428499069,
+        0.8368456385211694
+      ]
     }
   ]
 }
