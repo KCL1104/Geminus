@@ -1,0 +1,5 @@
+=== RUN   TestNumbersMatchV8
+    hashing_test.go:169: 1000000 V8 vectors match
+--- PASS: TestNumbersMatchV8 (3.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/hashing	3.055s

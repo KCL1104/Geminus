@@ -1,0 +1,48 @@
+=== RUN   TestRFC8785Examples
+--- PASS: TestRFC8785Examples (0.00s)
+=== RUN   TestNumbersMatchV8
+    hashing_test.go:169: 6000 V8 vectors match
+--- PASS: TestNumbersMatchV8 (0.02s)
+=== RUN   TestDocumentsMatchPython
+    hashing_test.go:204: 400 documents match
+--- PASS: TestDocumentsMatchPython (0.00s)
+=== RUN   TestCanonicalRejects
+--- PASS: TestCanonicalRejects (0.00s)
+=== RUN   TestErrorsDoNotQuoteInput
+--- PASS: TestErrorsDoNotQuoteInput (0.00s)
+=== RUN   TestAgreesWithIndependentImplementation
+--- PASS: TestAgreesWithIndependentImplementation (0.03s)
+=== RUN   TestFixtureHashMembers
+--- PASS: TestFixtureHashMembers (0.00s)
+=== RUN   TestBaselineEffectiveHashEqualsModelHash
+--- PASS: TestBaselineEffectiveHashEqualsModelHash (0.00s)
+=== RUN   TestEffectiveHashOfRemarshaledNumbers
+--- PASS: TestEffectiveHashOfRemarshaledNumbers (0.00s)
+=== RUN   TestModelHashIsContentHash
+--- PASS: TestModelHashIsContentHash (0.00s)
+=== RUN   TestPatchHash
+--- PASS: TestPatchHash (0.00s)
+=== RUN   TestManifest
+--- PASS: TestManifest (0.00s)
+=== RUN   TestConfigHash
+--- PASS: TestConfigHash (0.00s)
+=== RUN   TestResultDigest
+--- PASS: TestResultDigest (0.00s)
+=== RUN   TestContentHashIsRawBytes
+--- PASS: TestContentHashIsRawBytes (0.00s)
+=== RUN   TestConcurrentHashing
+--- PASS: TestConcurrentHashing (0.03s)
+=== RUN   FuzzCanonical
+=== RUN   FuzzCanonical/seed#0
+=== RUN   FuzzCanonical/seed#1
+=== RUN   FuzzCanonical/seed#2
+=== RUN   FuzzCanonical/seed#3
+=== RUN   FuzzCanonical/97537447d449a8c7
+--- PASS: FuzzCanonical (0.00s)
+    --- PASS: FuzzCanonical/seed#0 (0.00s)
+    --- PASS: FuzzCanonical/seed#1 (0.00s)
+    --- PASS: FuzzCanonical/seed#2 (0.00s)
+    --- PASS: FuzzCanonical/seed#3 (0.00s)
+    --- PASS: FuzzCanonical/97537447d449a8c7 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.103s

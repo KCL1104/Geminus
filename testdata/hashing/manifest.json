@@ -1,0 +1,55 @@
+{
+  "comment": "Unsorted manifest for dataset_manifest_hash (D-034): byte order puts '-' < '.' < digits < '_' < letters.",
+  "expected_order": [
+    "dataset:a-b",
+    "dataset:a.b",
+    "dataset:a9",
+    "dataset:a_b",
+    "dataset:ab",
+    "dataset:review_duration"
+  ],
+  "bindings": [
+    {
+      "logical_ref": "dataset:review_duration",
+      "dataset_version_id": "dsv_01M4YDQK00NMKD3J34KSJZVY40",
+      "content_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "unit": "minute",
+      "sample_count": 3
+    },
+    {
+      "logical_ref": "dataset:a_b",
+      "dataset_version_id": "dsv_01M4YDQK00C1WZ5JZ1K8M4Q2RG",
+      "content_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "unit": "hour",
+      "sample_count": 10
+    },
+    {
+      "logical_ref": "dataset:a-b",
+      "dataset_version_id": "dsv_01M4YDQK00D7X3T8V9W0Y1Z2AB",
+      "content_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "unit": "second",
+      "sample_count": 5
+    },
+    {
+      "logical_ref": "dataset:a.b",
+      "dataset_version_id": "dsv_01M4YDQK00E4F5G6H7J8K9M0NP",
+      "content_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "unit": "day",
+      "sample_count": 7
+    },
+    {
+      "logical_ref": "dataset:a9",
+      "dataset_version_id": "dsv_01M4YDQK00F1G2H3J4K5M6N7PQ",
+      "content_hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "unit": "millisecond",
+      "sample_count": 1
+    },
+    {
+      "logical_ref": "dataset:ab",
+      "dataset_version_id": "dsv_01M4YDQK00G8H9J0K1M2N3P4QR",
+      "content_hash": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "unit": "minute",
+      "sample_count": 2
+    }
+  ]
+}

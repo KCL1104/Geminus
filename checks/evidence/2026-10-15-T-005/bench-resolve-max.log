@@ -1,0 +1,7 @@
+goos: linux
+goarch: amd64
+pkg: github.com/kcl1104/geminus/internal/storage/datasets
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkResolveMaxSnapshot-4   	      10	 207930032 ns/op	   3.31 MB/s
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	2.137s

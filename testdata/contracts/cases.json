@@ -570,6 +570,36 @@
       "expected_error_paths": [
         "/resources/0/capacity"
       ]
+    },
+    {
+      "id": "invalid-dataset-snapshot-self-hash",
+      "instance": "testdata/contracts/invalid-dataset-snapshot-self-hash.json",
+      "schema": "schemas/dataset-snapshot.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-dataset-ref-charset",
+      "instance": "testdata/contracts/invalid-dataset-ref-charset.json",
+      "schema": "schemas/dataset-snapshot.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/logical_ref"
+      ]
+    },
+    {
+      "id": "invalid-ir-samples-ref-charset",
+      "instance": "testdata/contracts/invalid-ir-samples-ref-charset.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/1/service_time/distribution/samples_ref"
+      ]
     }
   ]
 }

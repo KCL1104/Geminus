@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/dataset-snapshot.schema.json",
   "title": "dataset-snapshot",
-  "$comment": "PROPOSED D-006 numeric empirical snapshot transfer fixture. Real object storage is private; no arbitrary external URI. Server verifies content hash and bindings before run.",
+  "$comment": "D-006/D-019 numeric empirical snapshot: the bytes stored in private object storage. It does not carry its own hash: DatasetBinding.content_hash is SHA-256 of these exact stored bytes, verified before parsing. No arbitrary external URI.",
   "type": "object",
   "properties": {
     "dataset_version_id": {
@@ -15,7 +15,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "pattern": "^dataset:.+$"
+      "pattern": "^dataset:[a-z0-9_.-]+$"
     },
     "unit": {
       "$ref": "common.schema.json#/$defs/TimeUnit"
@@ -29,12 +29,6 @@
       },
       "minItems": 1,
       "maxItems": 100000
-    },
-    "content_hash": {
-      "type": "string",
-      "minLength": 71,
-      "maxLength": 71,
-      "pattern": "^sha256:[0-9a-f]{64}$"
     }
   },
   "required": [
@@ -42,8 +36,7 @@
     "organization_id",
     "logical_ref",
     "unit",
-    "samples",
-    "content_hash"
+    "samples"
   ],
   "additionalProperties": false
 }

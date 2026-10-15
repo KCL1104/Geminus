@@ -14,11 +14,10 @@
     "blocked": 0,
     "done": 3,
     "in_progress": 0,
-    "not_started": 38,
-    "review": 1
+    "not_started": 37,
+    "review": 2
   },
   "ready_tasks": [
-    "T-005",
     "T-006",
     "T-014"
   ],

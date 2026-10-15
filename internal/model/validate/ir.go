@@ -33,16 +33,9 @@ func IR(data []byte) (Result, error) {
 		out.add(LimitExceeded, "", fmt.Sprintf("document is %d bytes; the limit is %d", len(data), MaxIRBytes))
 		return Result{Issues: out}, nil
 	}
-	if issue, ok := parse(data); !ok {
-		return Result{Issues: []model.ValidationIssue{issue}}, nil
-	}
-	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	if err != nil {
-		return Result{}, fmt.Errorf("re-reading a parsed document: %w", err)
-	}
-	schemaIssues, err := Schema("model-ir.schema.json", IRSchemaInvalid, inst)
-	if err != nil || len(schemaIssues) > 0 {
-		return Result{Issues: schemaIssues}, err
+	shape, err := Document(data, "model-ir.schema.json", IRSchemaInvalid)
+	if err != nil || len(shape) > 0 {
+		return Result{Issues: shape}, err
 	}
 	var ir model.ModelIR
 	if err := model.Decode(data, &ir); err != nil {
@@ -51,6 +44,19 @@ func IR(data []byte) (Result, error) {
 		return Result{}, fmt.Errorf("schema-valid IR does not decode: %w", err)
 	}
 	return Result{IR: &ir, Issues: Semantic(&ir)}, nil
+}
+
+// Document runs the parse and schema stages for any embedded schema ref:
+// malformed JSON is one JSON_INVALID issue, schema failures carry code.
+func Document(data []byte, ref, code string) ([]model.ValidationIssue, error) {
+	if issue, ok := parse(data); !ok {
+		return []model.ValidationIssue{issue}, nil
+	}
+	inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("re-reading a parsed document: %w", err)
+	}
+	return Schema(ref, code, inst)
 }
 
 // parse rejects malformed JSON, duplicate member names, invalid UTF-8 and
@@ -107,10 +113,6 @@ func newGraph(ir *model.ModelIR) *graph {
 	return g
 }
 
-var unitTicks = map[model.ModelTimeUnit]float64{
-	model.ModelSecond: 1000, model.ModelMinute: 60_000, model.ModelHour: 3_600_000, model.ModelDay: 86_400_000,
-}
-
 func limits(ir *model.ModelIR, _ *graph) issues {
 	var out issues
 	container := func(v jsontext.Value, path string) {
@@ -125,7 +127,7 @@ func limits(ir *model.ModelIR, _ *graph) issues {
 		}
 	}
 	container(ir.Metadata, "/metadata")
-	scale := unitTicks[ir.TimeUnit]
+	unit := model.TimeUnit(ir.TimeUnit)
 	for i, n := range ir.Nodes {
 		base := Pointer("nodes", idx(i))
 		container(n.DomainAttributes, base+"/domain_attributes")
@@ -134,9 +136,13 @@ func limits(ir *model.ModelIR, _ *graph) issues {
 				name string
 				v    *float64
 			}{{"value", d.Value}, {"mean", d.Mean}, {"min", d.Min}, {"mode", d.Mode}, {"max", d.Max}} {
-				if p.v != nil && *p.v*scale > MaxDurationTicks {
-					out.add(LimitExceeded, base+"/"+member+"/distribution/"+p.name,
-						fmt.Sprintf("%g %s exceeds the 365 day duration limit", *p.v, ir.TimeUnit))
+				if p.v == nil {
+					continue
+				}
+				// The schema already guarantees a finite, non-negative value, so
+				// the only error left is the D-029 duration cap.
+				if _, err := model.Ticks(*p.v, unit); err != nil {
+					out.add(LimitExceeded, base+"/"+member+"/distribution/"+p.name, err.Error())
 				}
 			}
 		})
@@ -171,14 +177,8 @@ func maxInt(a, b int) int {
 
 // forEachDistribution visits the arrival, service and delay distributions of n.
 func forEachDistribution(n model.Node, visit func(member string, d *model.Distribution)) {
-	if n.Arrival != nil {
-		visit("arrival", &n.Arrival.Distribution)
-	}
-	if n.ServiceTime != nil {
-		visit("service_time", &n.ServiceTime.Distribution)
-	}
-	if n.DelayTime != nil {
-		visit("delay_time", &n.DelayTime.Distribution)
+	for _, d := range n.Distributions() {
+		visit(d.Member, d.Distribution)
 	}
 }
 
@@ -323,37 +323,14 @@ func probabilitySum(ir *model.ModelIR, flows []int) float64 {
 // reachable cycles that take zero time (D-033).
 func reachability(ir *model.ModelIR, g *graph) issues {
 	var out issues
-	next := func(i int) []int {
-		var to []int
-		for _, f := range g.out[i] {
-			if ir.Flows[f].Routing.Probability > 0 {
-				to = append(to, g.node[ir.Flows[f].To])
-			}
-		}
-		return to
-	}
-	reached := make([]bool, len(ir.Nodes))
-	var sources []int
-	for i, n := range ir.Nodes {
-		if n.Type == model.NodeSource {
-			sources = append(sources, i)
-		}
-	}
-	if len(sources) == 0 {
+	next := g.next(ir)
+	reached, ok := g.reached(ir, next)
+	if !ok {
 		out.add(NoReachableSink, "/nodes", "the model has no source")
 		return out
 	}
-	stack := slices.Clone(sources)
-	for len(stack) > 0 {
-		i := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if reached[i] {
-			continue
-		}
-		reached[i] = true
-		stack = append(stack, next(i)...)
-	}
 	// Reverse search from sinks over the same p>0 edges.
+	var stack []int
 	reachesSink := make([]bool, len(ir.Nodes))
 	prev := make([][]int, len(ir.Nodes))
 	for i := range ir.Nodes {
@@ -383,7 +360,50 @@ func reachability(ir *model.ModelIR, g *graph) issues {
 			out.warn(UnreachableNode, Pointer("nodes", idx(i)), "no source reaches this node")
 		}
 	}
-	zero := func(i int) bool { return reached[i] && zeroTime(ir.Nodes[i]) }
+	return append(out, zeroTimeCycles(ir, reached, next, nil)...)
+}
+
+// next returns the successors of a node index over p>0 flows, in flow order.
+func (g *graph) next(ir *model.ModelIR) func(int) []int {
+	return func(i int) []int {
+		var to []int
+		for _, f := range g.out[i] {
+			if ir.Flows[f].Routing.Probability > 0 {
+				to = append(to, g.node[ir.Flows[f].To])
+			}
+		}
+		return to
+	}
+}
+
+// reached marks the nodes some source reaches; ok is false without a source.
+func (g *graph) reached(ir *model.ModelIR, next func(int) []int) (reached []bool, ok bool) {
+	reached = make([]bool, len(ir.Nodes))
+	var stack []int
+	for i, n := range ir.Nodes {
+		if n.Type == model.NodeSource {
+			stack = append(stack, i)
+		}
+	}
+	ok = len(stack) > 0
+	for len(stack) > 0 {
+		i := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if reached[i] {
+			continue
+		}
+		reached[i] = true
+		stack = append(stack, next(i)...)
+	}
+	return reached, ok
+}
+
+// zeroTimeCycles rejects reachable cycles of zero-time nodes. zeroRefs holds
+// the empirical logical_refs known to contain a 0-tick sample (nil before the
+// binding stage).
+func zeroTimeCycles(ir *model.ModelIR, reached []bool, next func(int) []int, zeroRefs map[string]bool) issues {
+	var out issues
+	zero := func(i int) bool { return reached[i] && zeroTime(ir.Nodes[i], zeroRefs) }
 	for _, scc := range components(len(ir.Nodes), func(i int) []int {
 		if !zero(i) {
 			return nil
@@ -398,9 +418,31 @@ func reachability(ir *model.ModelIR, g *graph) issues {
 	return out
 }
 
+// Bindings is the dataset binding stage (D-033). zeroRefs holds every
+// logical_ref whose resolved snapshot has a sample that quantizes to 0 ticks.
+// The stage rejects an empirical interarrival that can be 0 and reruns the
+// zero-time cycle check with those empirical distributions counted as
+// zero-time. ir must already have passed Semantic without errors; snapshot
+// hash, tenant and unit checks are the caller's (internal/storage/datasets).
+func Bindings(ir *model.ModelIR, zeroRefs map[string]bool) []model.ValidationIssue {
+	var out issues
+	for i, n := range ir.Nodes {
+		if n.Arrival != nil && n.Arrival.Distribution.Type == model.DistEmpirical && zeroRefs[n.Arrival.Distribution.SamplesRef] {
+			out.add(DistributionInvalid, Pointer("nodes", idx(i), "arrival", "distribution"),
+				n.Arrival.Distribution.SamplesRef+" has a 0 sample; interarrival times must be strictly positive")
+		}
+	}
+	g := newGraph(ir)
+	next := g.next(ir)
+	reached, _ := g.reached(ir, next)
+	out = append(out, zeroTimeCycles(ir, reached, next, zeroRefs)...)
+	return Sort(out)
+}
+
 // zeroTime reports whether an entity can pass n in zero ticks (D-033). Only an
-// exact 0 quantizes to 0 ticks; empirical samples are checked at binding time.
-func zeroTime(n model.Node) bool {
+// exact 0 quantizes to 0 ticks (model.Ticks); an empirical distribution is
+// zero-time when zeroRefs says its snapshot has a 0 sample.
+func zeroTime(n model.Node, zeroRefs map[string]bool) bool {
 	var d *model.Distribution
 	switch n.Type {
 	case model.NodeProcess:
@@ -417,6 +459,8 @@ func zeroTime(n model.Node) bool {
 		return *d.Value == 0
 	case model.DistTriangular:
 		return *d.Min == 0
+	case model.DistEmpirical:
+		return zeroRefs[d.SamplesRef]
 	}
 	return false
 }

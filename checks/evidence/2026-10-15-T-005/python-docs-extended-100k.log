@@ -1,0 +1,5 @@
+=== RUN   TestDocumentsMatchPython
+    hashing_test.go:204: 100000 documents match
+--- PASS: TestDocumentsMatchPython (1.06s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/hashing	1.070s

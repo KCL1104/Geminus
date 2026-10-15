@@ -28,6 +28,7 @@
 | `BenchmarkLargeIR`（500 nodes、約 750 flows） | 0 | 約 69 ms／次；**只是資料點，不是 T-037 效能驗收** |
 | `govulncheck v1.9.0` | 0 | No vulnerabilities found（升級 x/text 後） |
 | `actionlint v1.7.12` | 0 | |
+| GitHub Actions [run 38742272267](https://github.com/KCL1104/Geminus/actions/runs/38742272267)（`682ec3a`） | success | spec-check、backend（含 govulncheck）、frontend、db migration smoke 四個 job 全部 success |
 
 Fuzz 以 `-fuzzminimizetime 0` 執行：預設的 interesting-input 最小化期間 execs 不累計，會被誤看成卡住；已以有／無最小化兩次比較確認不是 validator 卡住。
 

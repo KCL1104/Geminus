@@ -1,0 +1,7 @@
+goos: linux
+goarch: amd64
+pkg: github.com/kcl1104/geminus/internal/model/validate
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkLargeIR-4   	      20	  67635347 ns/op
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/validate	1.455s

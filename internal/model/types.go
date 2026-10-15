@@ -135,6 +135,28 @@ type TimedDistribution struct {
 	Distribution Distribution `json:"distribution"`
 }
 
+// NodeDistribution is one distribution of a node and the member holding it.
+type NodeDistribution struct {
+	Member       string // "arrival", "service_time" or "delay_time"
+	Distribution *Distribution
+}
+
+// Distributions returns n's arrival, service and delay distributions that are
+// set, in that order. The pointers alias n.
+func (n *Node) Distributions() []NodeDistribution {
+	var out []NodeDistribution
+	if n.Arrival != nil {
+		out = append(out, NodeDistribution{"arrival", &n.Arrival.Distribution})
+	}
+	if n.ServiceTime != nil {
+		out = append(out, NodeDistribution{"service_time", &n.ServiceTime.Distribution})
+	}
+	if n.DelayTime != nil {
+		out = append(out, NodeDistribution{"delay_time", &n.DelayTime.Distribution})
+	}
+	return out
+}
+
 // ResourceRequirement is one entry of a process's atomic resource bundle.
 type ResourceRequirement struct {
 	ResourceID string `json:"resource_id"`

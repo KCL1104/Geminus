@@ -10,7 +10,7 @@ worker 在 engine 外負責授權、快照解析、dataset preload、job claim�
 
 ## 2. Clock、event order、arrival
 
-internal tick 固定 **1 millisecond**，int64；所有輸入換算成 tick 後做 overflow / safe bound 檢查。單位換算 second=1000、minute=60000、hour=3600000、day=86400000。非負 sample d 先換成 ms，再 round-half-up；sample>0 卻 round 為 0 時 clamp 到 1 tick，sample=0 保持 0。固定 engine numerical profile，不依不同語言的預設 rounding。
+internal tick 固定 **1 millisecond**，int64；所有輸入換算成 tick 後做 overflow / safe bound 檢查。單位換算 second=1000、minute=60000、hour=3600000、day=86400000。非負 sample d 先換成 ms，再 round-half-up；sample>0 卻 round 為 0 時 clamp 到 1 tick，sample=0 保持 0。固定 engine numerical profile，不依不同語言的預設 rounding。實作為 `model.Ticks`（T-005）：一次 binary64 乘法後 `math.Round`（對非負值即 half up，且不像 `floor(x+0.5)` 有 0.49999999999999994 的進位誤差），超過 365 天回錯；config_hash、dataset binding 與 engine 共用此函式，修改即須換 engine_version。
 
 heap key = (time_tick,event_priority,monotonic_sequence)。APPROVED priority（D-005、D-032）：SERVICE_COMPLETE=0，在同一事件內原子釋放資源後立即路由（進下一個 queue／delay／sink）；arrival、DELAY_COMPLETE 與其他 immediate state transitions=10，同樣立即路由；internal resource dispatch=20，為該 tick 最後一步。route 不是獨立事件，entity 任何時刻恰處於一個狀態。release 在同 tick 的 dispatch 之前完成；sequence 在 replication 內 strictly increasing。Go map iteration、wall clock、worker scheduling 不得參與 tie-breaking。
 
@@ -91,7 +91,7 @@ aggregate 依 replication_index 升序彙整；progress 不是 correctness input
 
 ## 9. Result digest / sampled trace
 
-result_digest 的候選 payload：engine_version、metrics、replication_summaries、measurement_window、reproducibility（排除 result_digest 本身）；不含 run_id、created_at、wall duration、progress、worker ID、trace object key、LLM output。對此 payload 做 JCS + SHA-256；保留完整 numerical values，不因方便而捏造 round-trip equality。
+result_digest 的 payload（D-006 已批准，實作為 `hashing.Result`，T-005）：engine_version、metrics、replication_summaries、measurement_window、reproducibility（排除 result_digest 本身）；不含 run_id、status、created_at、wall duration、progress、worker ID、trace（含 object key）、LLM output。對此 payload 做 JCS + SHA-256；保留完整 numerical values，不因方便而捏造 round-trip equality；NaN／Infinity 無法序列化，回錯而非產生 digest。
 
 trace_level 不應改變數值結果；它仍在 config_hash 中，因此改 trace_level 可改 digest，但 metrics 必須相同。sampled trace 以穩定 entity hash 選取，trace caps 不得停 simulation。trace event 至少 time_tick、sequence、type、entity_id、node_id，可有 resource_id；順序依同一 event order。UI 明示 sampling，不能把缺失樣本補成虛構 trajectory。
 

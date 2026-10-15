@@ -6,3 +6,6 @@ PyYAML==6.0.3
 # optional packages are importable; without them invalid timestamps pass silently.
 rfc3339-validator==0.1.4
 rfc3986-validator==0.1.1
+# Independent RFC 8785 (JCS) implementation (Trail of Bits, Apache-2.0) used by
+# scripts/check_hashes.py to cross-check internal/model/hashing.
+rfc8785==0.1.4

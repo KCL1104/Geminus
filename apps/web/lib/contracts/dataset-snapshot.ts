@@ -9,5 +9,4 @@ export type DatasetSnapshot = {
   logical_ref: string;
   unit: TimeUnit;
   samples: number[];
-  content_hash: string;
 };

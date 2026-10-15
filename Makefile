@@ -4,8 +4,8 @@ PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 GO_PKGS := ./cmd/... ./internal/... ./schemas/...
 WEB := apps/web
 export NEXT_TELEMETRY_DISABLED := 1
-.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts ts-contracts backend-test backend-race backend-build frontend-test frontend-build db-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
-spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts
+.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes ts-contracts backend-test backend-race backend-build frontend-test frontend-build db-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
+spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes
 spec-contracts:
 	$(PYTHON) scripts/check_contracts.py
 spec-planning:
@@ -23,6 +23,9 @@ spec-ts-contracts:
 	$(PYTHON) scripts/gen_ts_contracts.py --check
 ts-contracts:
 	$(PYTHON) scripts/gen_ts_contracts.py
+# Independent (Python rfc8785) hashes that internal/model/hashing must match.
+spec-hashes:
+	$(PYTHON) scripts/check_hashes.py
 backend-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included in this spec pack.' >&2; exit 2; }
 	@unformatted=$$(gofmt -l cmd internal schemas); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }

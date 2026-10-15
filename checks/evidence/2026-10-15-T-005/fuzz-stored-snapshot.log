@@ -1,0 +1,15 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/484 completed
+fuzz: elapsed: 1s, gathering baseline coverage: 484/484 completed, now fuzzing with 4 workers
+fuzz: elapsed: 3s, execs: 43726 (14571/sec), new interesting: 13 (total: 497)
+fuzz: elapsed: 6s, execs: 107856 (21376/sec), new interesting: 23 (total: 507)
+fuzz: elapsed: 9s, execs: 172367 (21508/sec), new interesting: 35 (total: 519)
+fuzz: elapsed: 12s, execs: 240096 (22577/sec), new interesting: 42 (total: 526)
+fuzz: elapsed: 15s, execs: 299696 (19867/sec), new interesting: 81 (total: 565)
+fuzz: elapsed: 18s, execs: 361352 (20553/sec), new interesting: 83 (total: 567)
+fuzz: elapsed: 21s, execs: 416988 (18544/sec), new interesting: 86 (total: 570)
+fuzz: elapsed: 24s, execs: 478674 (20557/sec), new interesting: 92 (total: 576)
+fuzz: elapsed: 27s, execs: 538323 (19886/sec), new interesting: 96 (total: 580)
+fuzz: elapsed: 30s, execs: 591089 (17586/sec), new interesting: 134 (total: 618)
+fuzz: elapsed: 30s, execs: 591089 (0/sec), new interesting: 134 (total: 618)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	30.166s

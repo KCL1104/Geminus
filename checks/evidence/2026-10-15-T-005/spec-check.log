@@ -1,0 +1,146 @@
+.venv/bin/python scripts/check_contracts.py
+{
+  "status": "PASS_LIMITED_SPEC_CHECKS",
+  "schema_metaschemas": 13,
+  "schema_positive_fixtures": 25,
+  "schema_negative_fixtures": 37,
+  "negative_fixtures_with_exact_error_path": 32,
+  "limited_semantic_negative_fixtures": 7,
+  "resolved_local_ref_occurrences": 768,
+  "openapi_operations": 41,
+  "optional_fastapi_openapi_model": "NOT_RUN_NOT_INSTALLED",
+  "independent_complete_openapi_validator": "NOT_RUN_UNAVAILABLE",
+  "ai_corpus_records": {
+    "analyst": 10,
+    "import-mapper": 10,
+    "modeler": 50
+  },
+  "live_ai_eval": "NOT_RUN",
+  "go_engine_tests": "NOT_RUN"
+}
+.venv/bin/python scripts/check_planning.py
+{
+  "status": "PASS",
+  "tasks": 42,
+  "dependency_graph": "ACYCLIC",
+  "topological_order": [
+    "T-001",
+    "T-002",
+    "T-003",
+    "T-004",
+    "T-005",
+    "T-006",
+    "T-007",
+    "T-008",
+    "T-009",
+    "T-010",
+    "T-011",
+    "T-012",
+    "T-013",
+    "T-014",
+    "T-015",
+    "T-016",
+    "T-017",
+    "T-019",
+    "T-024",
+    "T-025",
+    "T-027",
+    "T-018",
+    "T-020",
+    "T-021",
+    "T-022",
+    "T-023",
+    "T-026",
+    "T-028",
+    "T-029",
+    "T-030",
+    "T-031",
+    "T-032",
+    "T-033",
+    "T-034",
+    "T-035",
+    "T-036",
+    "T-037",
+    "T-038",
+    "T-039",
+    "T-040",
+    "T-041",
+    "T-042"
+  ],
+  "requirements_with_traceability": 21,
+  "proposed_decisions": 10,
+  "completed_tasks": 3
+}
+.venv/bin/python scripts/check_docs.py
+{
+  "status": "PASS",
+  "markdown_files": 43,
+  "relative_links_checked": 27
+}
+.venv/bin/python scripts/check_sql_inventory.py
+{
+  "status": "PASS_STATIC_INVENTORY_ONLY",
+  "tables": 20,
+  "tenant_owned_tables": 19,
+  "postgresql_parse": "NOT_RUN_NO_PARSER",
+  "postgresql_migration_execution": "NOT_RUN_NO_SERVER_CLIENT",
+  "rls_runtime_tests": "NOT_RUN",
+  "note": "Keyword/inventory checks do not prove SQL syntax, policies, privileges or execution correctness."
+}
+.venv/bin/python scripts/check_reference_math.py
+{
+  "status": "PASS_REFERENCE_ARITHMETIC_ONLY",
+  "deterministic_fixture_cases": 2,
+  "expected_value_comparisons": 20,
+  "splitmix64_vectors": 5,
+  "replication_seed_vectors": 3,
+  "go_des_engine": "NOT_RUN",
+  "simpy_differential": "NOT_RUN",
+  "jcs_hash_verification": "NOT_RUN"
+}
+.venv/bin/python scripts/check_decisions.py
+{
+  "status": "PASS_REGISTER_SHAPE_ONLY",
+  "decisions_by_status": {
+    "approved": 27,
+    "proposed": 10,
+    "rejected": 0,
+    "superseded": 0
+  },
+  "human_decisions_recorded": [
+    "H-001",
+    "H-002"
+  ],
+  "tasks_by_status": {
+    "blocked": 0,
+    "done": 3,
+    "in_progress": 0,
+    "not_started": 38,
+    "review": 1
+  },
+  "ready_tasks": [
+    "T-005",
+    "T-006",
+    "T-014"
+  ],
+  "next_after_review": [
+    {
+      "id": "T-011",
+      "awaiting_task_review": [
+        "T-004"
+      ],
+      "awaiting_decisions": [
+        "D-017"
+      ]
+    }
+  ],
+  "note": "Shape checks only; whether a recorded approval is genuine is for human review."
+}
+.venv/bin/python scripts/gen_ts_contracts.py --check
+{"status": "PASS_TS_CONTRACTS_FRESH", "files": 14, "types": 84}
+.venv/bin/python scripts/check_hashes.py
+{
+  "status": "PASS_INDEPENDENT_HASHES",
+  "hashes": 27,
+  "errors": []
+}

@@ -1,6 +1,6 @@
 # Twin IR / Model Contract
 
-SOURCE：原報告 pp. 5–6、14–20、24–25、31–35。完整 closed-object schema、hash、dataset binding、patch allowlist 是 PROPOSED D-001 / D-005 / D-006 / D-014 / D-017，須確認後才凍結為 production contract。
+SOURCE：原報告 pp. 5–6、14–20、24–25、31–35。完整 closed-object schema、hash、dataset binding、patch allowlist 涉及 D-001 / D-005 / D-006 / D-014（已批准）與 D-017（仍 PROPOSED）；D-017 確認前不凍結為 production contract。
 
 ## 1. 唯一 canonical representation
 
@@ -71,7 +71,7 @@ PROPOSED D-017：day 在 P0 是連續 24 小時。報告 example mean=16 min 在
 | ZERO_TIME_CYCLE | 可達的 zero-minimum-time graph 含 cycle；不能靠 event cap 當正常 termination |
 | RESOURCE_REQUIREMENT_INVALID | demand 超 capacity／重複 resource／負數 |
 | DISTRIBUTION_INVALID | triangular ordering、source zero interval、empirical 空值或非 finite |
-| DATASET_BINDING_INVALID | logical ref 沒有 immutable authorized snapshot 或 hash/unit 不一致 |
+| DATASET_BINDING_INVALID | logical ref 沒有 immutable authorized snapshot、binding 不符 schema（含 D-034 字元集）或重複，或 hash／organization／version／logical_ref／unit／sample_count 不一致（§5.2） |
 | VIEW_REFERENCE_INVALID | view position 不對應 canonical node |
 | CONSTRAINT_FAILED | P0 outgoing_probability_sum 不成立 |
 | JSON_INVALID | 解析失敗：非法 JSON、重複 member、非法 UTF-8、尾隨資料（D-023） |
@@ -86,13 +86,35 @@ unreachable dormant node 可 warning；無 reachable sink 的活躍路徑是 err
 
 SOURCE：Draft mutable；ModelVersion immutable、保存 parent；run 保存 model_version_id、model_hash、patch、engine、seed、replications、config。
 
-PROPOSED D-006：`model_hash = sha256(JCS(IR))`，保留原 array order；JCS 指 RFC 8785，不用 Python sort_keys / Go json.Marshal 的預設結果冒充。拒 duplicate JSON keys、不合法 Unicode 及非 finite number；數字採 interoperable IEEE-754 profile，seed 限 0..2^53-1。model hash 含 views/metadata；它是完整版本內容 hash，不是純 simulation semantic hash。
+APPROVED D-006：`model_hash = sha256(JCS(IR))`，保留原 array order；JCS 指 RFC 8785，不用 Python sort_keys / Go json.Marshal 的預設結果冒充。拒 duplicate JSON keys、不合法 Unicode 及非 finite number；數字採 interoperable IEEE-754 profile，seed 限 0..2^53-1。model hash 含 views/metadata；它是完整版本內容 hash，不是純 simulation semantic hash。
 
 empirical logical ref（例如 dataset:review_duration）不是可變遠端網址。每個 published version 附 immutable DatasetBinding manifest：logical_ref、dataset_version_id、content_hash、unit、sample_count。版本批准前完整凍結；run 複製同一 manifest，worker 驗實際 object bytes hash 後 preload samples。晚到的新資料只能產生新 dataset version / model version，不能改變已提交 run。
 
 `effective_model_hash = sha256(JCS(apply(base.IR,scenario_patch)))`。dataset_manifest_hash 對按 logical_ref 排序的 manifest 做 JCS/SHA-256。config_hash 對完整公開 config 做 JCS/SHA-256；execution_limits、engine profile 也在 run input 中固定，不讓重試改設定。
 
 JSON Schema 只驗 `sha256:` 的格式，不能驗內容真的相符；hash consistency 是 T-005/T-021 的產品測試，不是本包 schema validation 所保證的事。
+
+### 5.1 Hash 定義（D-006、D-019、D-034；實作於 `internal/model/hashing`，T-005）
+
+所有 hash 寫作 `sha256:` + 64 個小寫 hex。除 content_hash 外，都是 SHA-256(JCS(payload))。JCS 使用 `github.com/gowebpki/jcs`（ADR-014）；另以 RFC 8785 原文範例、V8 `JSON.stringify` 數字向量與 Python `rfc8785` 獨立實作交叉驗證（`testdata/hashing/`、`make spec-hashes`）。
+
+| Hash | Payload |
+|---|---|
+| model_hash | 完整 IR 文件 |
+| effective_model_hash | `internal/model/patch.Apply` 的 candidate（base IR 套 scenario patch）；baseline `[]` 時等於 model_hash |
+| patch_hash | JSON Patch 陣列；`[]` 亦有 hash（= SHA-256 of `[]`）；非陣列拒絕 |
+| config_hash | `{horizon_ticks, warmup_ticks, replications, seed, trace_level}`；duration 先以 `model.Ticks` 量化，故 `120 hour` 與 `5 day` 同 hash |
+| dataset_manifest_hash | DatasetBinding 陣列依 logical_ref 的 UTF-8 bytes 排序（SQL：`COLLATE "C"`）；同一 logical_ref 綁兩次拒絕；無 empirical 時為 `[]` 的 hash |
+| result_digest | Result 的 engine_version、metrics、replication_summaries、measurement_window、reproducibility（去掉 result_digest）；不含 run_id、status、trace |
+| content_hash | 儲存物件**原始 bytes** 的 SHA-256，不 parse、不 canonicalize；snapshot 不內含自身 hash |
+
+輸入規則：拒 duplicate member（含 escape 後相同者）、不合法 UTF-8、lone surrogate、超出 binary64 的數字（如 `1e400`）與多個 top-level value；另以 `encoding/json/jsontext` 獨立再 parse 一次，不只倚賴 jcs 的 parser。數字依 RFC 8785 以 binary64 值比較：只在 binary64 精度之外不同的文件（`9007199254740993` 與 `9007199254740992`、`0.30000000000000001` 與 `0.3`）同 hash，需要精確整數的欄位（seed、計數）由 schema 限制在 2^53−1 內。T-005 曾額外拒絕超過 2^53−1 的整數 literal，fuzz 發現這使 Canonical 拒絕自己的輸出（`1e17` 輸出為 `100000000000000000`，Go 重新 marshal 的 patch candidate 也是如此），已移除。錯誤訊息只帶 byte offset，不引用輸入內容（metadata 的 member name 可能是客戶資料）。
+
+### 5.2 Dataset binding 階段（實作於 `internal/storage/datasets`，T-005）
+
+`datasets.Resolve` 依序：(1) 每個 binding 過 schema（含 D-034 `^dataset:[a-z0-9_.-]+$`）、logical_ref 不得重複、IR 中每個 empirical `samples_ref` 都要有 binding；(2) 經 tenant-scoped `Store` 取物件，**先比對 content_hash 再 parse**，再驗 organization、dataset_version_id、logical_ref、unit、sample_count 與每個 sample 的 365 天上限；(3) 以實際 sample 重跑 D-033：任一 sample 量化為 0 tick 的 empirical 視為零時間，source interarrival 可能為 0 回 DISTRIBUTION_INVALID，零時間 cycle 回 ZERO_TIME_CYCLE（`validate.Bindings`）。各階段有 error 即停（D-023）。
+
+Issue path 指向 ModelVersion 形狀的文件：IR 為 `/ir/...`，manifest 為 `/dataset_bindings/<呼叫者給的 index>/...`。找不到或屬於其他 organization 的 dataset version 回同一訊息，不洩漏他租戶資料是否存在。Model 未使用的 binding 仍會被驗證並凍結（run 沿用 version manifest，scenario 可能已移除 empirical 分布）。Store 的 I/O 錯誤與 context cancellation 以 error 回傳，不轉成 issue、也不回假成功。Postgres／object storage 的 Store 實作屬 T-006／T-012。
 
 ## 6. JSON Patch profile / approval scope
 

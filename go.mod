@@ -6,6 +6,7 @@ go 1.27.0
 toolchain go1.27.2
 
 require (
+	github.com/gowebpki/jcs v1.0.2
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 	golang.org/x/text v0.42.0
 )

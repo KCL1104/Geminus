@@ -1,0 +1,11 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/1026 completed
+fuzz: elapsed: 2s, gathering baseline coverage: 1026/1026 completed, now fuzzing with 4 workers
+fuzz: elapsed: 3s, execs: 21480 (7158/sec), new interesting: 14 (total: 1040)
+fuzz: elapsed: 6s, execs: 90643 (23057/sec), new interesting: 32 (total: 1058)
+fuzz: elapsed: 9s, execs: 178589 (29317/sec), new interesting: 38 (total: 1064)
+fuzz: elapsed: 12s, execs: 270389 (30598/sec), new interesting: 42 (total: 1068)
+fuzz: elapsed: 15s, execs: 351254 (26958/sec), new interesting: 48 (total: 1074)
+fuzz: elapsed: 18s, execs: 432352 (27027/sec), new interesting: 52 (total: 1078)
+fuzz: elapsed: 20s, execs: 494041 (29522/sec), new interesting: 53 (total: 1079)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/validate	20.229s

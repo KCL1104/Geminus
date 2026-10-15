@@ -1,0 +1,167 @@
+{
+  "comment": "RunConfig inputs for config_hash (D-019). Expected hashes are in expected-hashes.json, computed by scripts/check_hashes.py with an independent quantizer; same_as entries must hash equal.",
+  "configs": [
+    {
+      "name": "reference: 5 days, 1 day warmup",
+      "config": {
+        "horizon": {
+          "value": 5,
+          "unit": "day"
+        },
+        "warmup": {
+          "value": 1,
+          "unit": "day"
+        },
+        "replications": 30,
+        "seed": 42,
+        "trace_level": "none"
+      }
+    },
+    {
+      "name": "same config in hours and minutes",
+      "config": {
+        "horizon": {
+          "value": 120,
+          "unit": "hour"
+        },
+        "warmup": {
+          "value": 1440,
+          "unit": "minute"
+        },
+        "replications": 30,
+        "seed": 42,
+        "trace_level": "none"
+      },
+      "same_as": "reference: 5 days, 1 day warmup"
+    },
+    {
+      "name": "same config in milliseconds",
+      "config": {
+        "horizon": {
+          "value": 432000000,
+          "unit": "millisecond"
+        },
+        "warmup": {
+          "value": 86400000,
+          "unit": "millisecond"
+        },
+        "replications": 30,
+        "seed": 42,
+        "trace_level": "none"
+      },
+      "same_as": "reference: 5 days, 1 day warmup"
+    },
+    {
+      "name": "trace level changes the hash",
+      "config": {
+        "horizon": {
+          "value": 5,
+          "unit": "day"
+        },
+        "warmup": {
+          "value": 1,
+          "unit": "day"
+        },
+        "replications": 30,
+        "seed": 42,
+        "trace_level": "sampled"
+      }
+    },
+    {
+      "name": "seed changes the hash",
+      "config": {
+        "horizon": {
+          "value": 5,
+          "unit": "day"
+        },
+        "warmup": {
+          "value": 1,
+          "unit": "day"
+        },
+        "replications": 30,
+        "seed": 43,
+        "trace_level": "none"
+      }
+    },
+    {
+      "name": "max safe seed",
+      "config": {
+        "horizon": {
+          "value": 5,
+          "unit": "day"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "second"
+        },
+        "replications": 30,
+        "seed": 9007199254740991,
+        "trace_level": "none"
+      }
+    },
+    {
+      "name": "fractional minutes: 0.1 minute is 6000 ms after rounding",
+      "config": {
+        "horizon": {
+          "value": 0.1,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 0,
+        "trace_level": "none"
+      }
+    },
+    {
+      "name": "half tick rounds up, not to even: 2.5 ms",
+      "config": {
+        "horizon": {
+          "value": 0.0025,
+          "unit": "second"
+        },
+        "warmup": {
+          "value": 0.0005,
+          "unit": "second"
+        },
+        "replications": 1,
+        "seed": 0,
+        "trace_level": "none"
+      }
+    },
+    {
+      "name": "positive sub-tick clamps to 1 tick",
+      "config": {
+        "horizon": {
+          "value": 1,
+          "unit": "hour"
+        },
+        "warmup": {
+          "value": 0.0001,
+          "unit": "second"
+        },
+        "replications": 1,
+        "seed": 0,
+        "trace_level": "none"
+      }
+    },
+    {
+      "name": "365 day cap",
+      "config": {
+        "horizon": {
+          "value": 365,
+          "unit": "day"
+        },
+        "warmup": {
+          "value": 364.5,
+          "unit": "day"
+        },
+        "replications": 1000,
+        "seed": 7,
+        "trace_level": "none"
+      }
+    }
+  ]
+}

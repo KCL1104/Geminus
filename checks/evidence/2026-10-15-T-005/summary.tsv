@@ -1,0 +1,21 @@
+spec-check	0	make spec-check
+go-test-hashing	0	go test -count=1 -v ./internal/model/hashing/...
+go-test-datasets	0	go test -count=1 -v ./internal/storage/datasets/...
+go-test-model	0	go test -count=1 -v ./internal/model/...
+go-race-t005	0	go test -race -count=1 ./internal/model/... ./internal/storage/...
+backend-test	0	make backend-test
+backend-race	0	make backend-race
+backend-build	0	make backend-build
+v8-vectors-regenerate	0	sh -c node scripts/gen_number_vectors.mjs | diff - testdata/hashing/v8-number-vectors.txt
+v8-extended-1m	0	env HASHING_V8_VECTORS=/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/v8-1m.txt go test -count=1 -run TestNumbersMatchV8 -v ./internal/model/hashing/
+python-docs-extended-100k	0	env HASHING_PY_DOCUMENTS=/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/py-docs-100k.jsonl go test -count=1 -run TestDocumentsMatchPython -v ./internal/model/hashing/
+fuzz-canonical	0	go test -run ^$ -fuzz FuzzCanonical -fuzztime 60s -fuzzminimizetime 0 ./internal/model/hashing/
+fuzz-stored-snapshot	0	go test -run ^$ -fuzz FuzzStoredSnapshot -fuzztime 30s -fuzzminimizetime 0 ./internal/storage/datasets/
+fuzz-ir	0	go test -run ^$ -fuzz FuzzIR -fuzztime 20s -fuzzminimizetime 0 ./internal/model/validate/
+fuzz-patch	0	go test -run ^$ -fuzz FuzzApply -fuzztime 20s -fuzzminimizetime 0 ./internal/model/patch/
+bench-resolve-max	0	go test -run ^$ -bench BenchmarkResolveMaxSnapshot -benchtime 10x ./internal/storage/datasets/
+bench-large-ir	0	go test -run ^$ -bench BenchmarkLargeIR -benchtime 20x ./internal/model/validate/
+mutation	0	python3 scratchpad/mut-t005/run.py
+govulncheck	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/govulncheck ./cmd/... ./internal/... ./schemas/...
+frontend-test	0	make frontend-test
+actionlint	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/actionlint -shellcheck= .github/workflows/ci.yml
