@@ -1,0 +1,15 @@
+--- FAIL: TestRandomModelsAgainstSpec (0.10s)
+    kernel_check_test.go:413: seed 50: 20 problems, first: [tick 240000: grant of 5 reported resource 0 at 3, reconstructed resource 0 at 1 tick 1208075: grant of 13 reported resource 0 at 3, reconstructed resource 0 at 2 tick 1654475: grant of 22 re
+--- FAIL: TestGrantObservationsStepwise (0.00s)
+    kernel_test.go:691: observations [10:R=3 10:start 10:R=3 10:start 10:R=3 10:start 14:R=2 14:R=1 14:R=0], want [10:R=1 10:start 10:R=2 10:start 10:R=3 10:start 14:R=2 14:R=1 14:R=0]
+--- FAIL: TestQueueNodeRoutingAndVisits (0.00s)
+    kernel_test.go:771: queue true, max_entity_visits 3: <nil>, want engine: entity visit limit reached
+--- FAIL: TestRunReplicationCheckpoints (0.00s)
+    kernel_test.go:815: full run: <nil>, 84 events, used 84
+--- FAIL: TestDispatchWorkIsBounded (0.77s)
+    kernel_test.go:862: the dispatcher examined 103501501 requests in 110999 events (limit 443996)
+--- FAIL: TestKernelEdges (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+panic({0x9b00a0?, 0xa0eed0?})
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	1.372s
+FAIL

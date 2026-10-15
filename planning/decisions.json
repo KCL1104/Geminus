@@ -524,7 +524,7 @@
       "id": "D-038",
       "title": "DES engine 實作語意與 numerical profile（T-020）",
       "source_gap": "T-020 實作補充與 T-020 獨立 review（checks/T-020_VALIDATION.md）；D-005／D-033 未明定的細節",
-      "proposal": "(a) exponential 樣本至少 1 tick；(b) 超過 365 天的樣本以 365 天＋1 tick 表示，事件永不處理；(c) triangular 以 U<(mode-min)/(max-min) 選分支，值在量化前 clamp 回 [min,max]；(d) decision routes 只含 p>0 flow，依 flow ID 排序；(e) ARRIVAL 依序建立 entity→排下一個 arrival→路由；同 tick 同 priority 依排程順序；(f) entity ID 為 r<replication>/<source>/<n>；(g) ln 為固定演算法（Go math.log 的 pure-Go 版本、每個乘積明確捨入、不使用 FMA），engine 與結果統計不得呼叫平台 transcendental；(h) Compile 自行檢查 manifest 與 resolved datasets 一致；(i) sink 未寫 outcome 時視為 completed（CB-22 的 sink 預設值，T-021）。",
+      "proposal": "(a) exponential 樣本至少 1 tick；(b) 超過 365 天的樣本以 365 天＋1 tick 表示，事件永不處理；(c) triangular 以 U<(mode-min)/(max-min) 選分支，值在量化前 clamp 回 [min,max]；(d) decision routes 只含 p>0 flow，依 flow ID 排序；(e) ARRIVAL 依序建立 entity→排下一個 arrival→路由；同 tick 同 priority 依排程順序；(f) entity ID 為 r<replication>/<source>/<n>；(g) ln 為固定演算法（Go math.log 的 pure-Go 版本、每個乘積明確捨入、不使用 FMA），engine 與結果統計不得呼叫平台 transcendental；(h) Compile 自行檢查 manifest 與 resolved datasets 一致；(i) sink 未寫 outcome 時視為 completed（CB-22 的 sink 預設值，T-021）；(j) 只要有 resource 被釋放或有 request 進入 buffer，該 tick 末就有一次 dispatch；零時間 service 在 dispatch 之後同 tick 完成時再排一次 dispatch（priority 20），因此 dispatch 不一定是該 tick 的最後一個事件；(k) 同一次 dispatch 依 request 順序授予，每次授予先回報 bundle 新的 in-use 再開始 service 並抽樣；(l) visit 計數經過顯式 queue 時 queue 與其 process 各算一次；(m) 依 FIFO 被擋住的 request 擋住其 bundle 內所有 resources（已批准規則的直接結果，可能使部分 resource 閒置）。",
       "source_pages": "N/A（實作語意；SIMULATION_SPEC.md §2、§4）",
       "owner_role": "Simulation",
       "gate": "T-023 對外提供 run 結果前",

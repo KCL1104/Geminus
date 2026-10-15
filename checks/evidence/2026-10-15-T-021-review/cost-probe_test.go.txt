@@ -1,0 +1,35 @@
+package engine
+
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/kcl1104/geminus/internal/model"
+)
+
+// The review's dispatch-cost scenario (scripts in review-t021/probe_test.go), re-run on the fixed kernel.
+func TestCostProbe(t *testing.T) {
+	for _, c := range []struct{ blocked, bundle int }{{1000, 1}, {20000, 1}, {90000, 1}, {20000, 100}} {
+		var res []string
+		for i := 0; i < c.bundle; i++ {
+			res = append(res, fmt.Sprintf("R%03d", i))
+		}
+		ir := build(t, []model.Node{
+			{ID: "a", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.001), MaxEntities: c.blocked}},
+			process("long", 300_000, res...),
+			{ID: "b", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.001)}},
+			process("fast", 0.001),
+			{ID: "end", Type: model.NodeSink},
+		}, []model.Flow{flow("fa", "a", "long", 1), flow("fl", "long", "end", 1), flow("fb", "b", "fast", 1), flow("ff", "fast", "end", 1)}, res...)
+		ir.TimeUnit = model.ModelTimeUnit(model.Second)
+		in := input(ir)
+		in.Config = config(30*86400, model.Second)
+		p := compile(t, in)
+		start := time.Now()
+		k, out, err := runKernel(context.Background(), p, 0, NewBudget(1_000_000), nil)
+		el := time.Since(start)
+		t.Logf("blocked=%d bundle=%d: err=%v events=%d peak=%d examined=%d elapsed=%v (%.2f µs/event)", c.blocked, c.bundle, err, out.Events, out.PeakActive, k.examined, el, float64(el.Microseconds())/float64(max(out.Events, 1)))
+	}
+}

@@ -1,0 +1,5 @@
+    cost_probe_test.go:33: blocked=1000 bundle=1: err=engine: event budget exhausted events=1000000 peak=1001 examined=666000 elapsed=256.664001ms (0.26 µs/event)
+    cost_probe_test.go:33: blocked=20000 bundle=1: err=engine: event budget exhausted events=1000000 peak=20001 examined=653334 elapsed=270.052192ms (0.27 µs/event)
+    cost_probe_test.go:33: blocked=90000 bundle=1: err=engine: event budget exhausted events=1000000 peak=90001 examined=606666 elapsed=298.852501ms (0.30 µs/event)
+    cost_probe_test.go:33: blocked=20000 bundle=100: err=engine: event budget exhausted events=1000000 peak=20001 examined=653334 elapsed=351.967585ms (0.35 µs/event)
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	1.224s

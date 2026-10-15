@@ -74,8 +74,8 @@ Review 由另一個 agent 以對抗方式進行（H-003），它沒有修改 rep
 
 ## 追溯
 
-- TEST-017（決定性）：本任務涵蓋 seed、stream 與 arrival 的決定性；digest 層面在 T-022。
-- TEST-019（warmup／censoring）：只涵蓋 horizon 邊界；warmup 與 censoring 在 T-021／T-022。
+- TEST-019（RNG／aggregate order）：本任務涵蓋 seed、stream 與 arrival 的決定性；digest 層面在 T-022。
+- TEST-017（clock／warmup／censoring）：只涵蓋 horizon 邊界；warmup 與 censoring 在 T-021／T-022。（2026-10-15 更正：首版把這兩個 ID 對調，T-021 review 指出。）
 - 規劃輸出 `internal/simulation/compile/` 未建立：compile 放在 `internal/simulation/engine/`，因為 `Program` 的未匯出欄位由 replication 直接讀取，拆成兩個 package 需要匯出內部結構。
 
 ## 需 owner 知悉的實作解讀（D-038，PROPOSED）

@@ -1,0 +1,3 @@
+    kernel_check_test.go:440: 2225 of 3000 random models compiled; 142249 grants in 133398 dispatches, up to 206 waiting
+--- PASS: TestRandomModelsAgainstSpec (5.17s)
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	5.185s

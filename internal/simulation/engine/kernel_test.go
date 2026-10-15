@@ -2,11 +2,16 @@ package engine
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -17,7 +22,8 @@ import (
 
 // recorder keeps every observation and checks the kernel's invariants as
 // they happen: an entity is in exactly one state, resources stay within
-// [0, capacity], time and (tick, seq) never go back, and a service starts
+// [0, capacity], time never goes back (seq can, across priorities in a
+// tick), and a service starts
 // only after its entity queued.
 type recorder struct {
 	t      *testing.T
@@ -386,6 +392,7 @@ func TestKernelLimits(t *testing.T) {
 func TestKernelDeterminism(t *testing.T) {
 	in := input(golden(t, "default-delivery.json"))
 	in.Config = config(14, model.Day)
+	in.Config.Replications = 3
 	first, out := run(t, in, 2)
 	if out.Created < 300 || out.Exited == 0 {
 		t.Fatalf("template run: %+v", out)
@@ -426,6 +433,7 @@ func FuzzKernel(f *testing.F) {
 		}
 		in := input(ir)
 		in.Limits.MaxActiveEntities = 2000
+		in.Config.Replications = 1000
 		p, err := Compile(in)
 		if err != nil {
 			return
@@ -485,6 +493,7 @@ func TestStreamsUsedByPurpose(t *testing.T) {
 	}, []model.Flow{flow("f1", "src", "work", 1), flow("f2", "work", "d", 1), flow("f3", "d", "wait", 0.4), flow("f4", "d", "done", 0.6), flow("f5", "wait", "done", 1)}, "R")
 	in := input(ir)
 	in.Config = config(365, model.Day)
+	in.Config.Replications = 6
 	rec, _ := run(t, in, 5)
 	p := rec.p
 	rep := ReplicationSeed(p.seed, 5)
@@ -637,6 +646,300 @@ func TestKernelLimitsAreExact(t *testing.T) {
 		out, err := RunReplication(context.Background(), compile(t, in), 0, NewBudget(1_000), nil)
 		if !errors.Is(err, want) || (want == nil && out.PeakActive != 5) {
 			t.Errorf("max_active_entities %d: %v (peak %d), want %v", limit, err, out.PeakActive, want)
+		}
+	}
+}
+
+// Multi-unit resource-wise FIFO (T-021 review): A holds 1 of R's 2 units;
+// B needs both and waits; C needs 1 and queued after B, so it waits behind B
+// even though a unit is free: A 1-11, B 11-16, C 16.
+func TestMultiUnitFIFO(t *testing.T) {
+	two := process("B", 5, "R")
+	two.Requires[0].Units = 2
+	ir := build(t, []model.Node{
+		source("sa", 1, 1), process("A", 10, "R"),
+		source("sb", 2, 1), two,
+		source("sc", 3, 1), process("C", 5, "R"),
+		{ID: "done", Type: model.NodeSink},
+	}, []model.Flow{flow("f1", "sa", "A", 1), flow("f2", "A", "done", 1), flow("f3", "sb", "B", 1), flow("f4", "B", "done", 1), flow("f5", "sc", "C", 1), flow("f6", "C", "done", 1)}, "R")
+	ir.Resources[0].Capacity = 2
+	rec, _ := run(t, input(ir), 0)
+	if got, want := starts(rec), map[string]int64{"A": 1, "B": 11, "C": 16}; !mapsEqual(got, want) {
+		t.Fatalf("starts %v, want %v", got, want)
+	}
+	peak := int64(0)
+	for _, o := range rec.at(ObsResource, "") {
+		peak = max(peak, o.Value)
+	}
+	if peak != 2 {
+		t.Errorf("R peaked at %d of 2", peak)
+	}
+}
+
+// Every grant reports the bundle's new in-use level before its service
+// start, step by step (T-021 review D3): three grants of a capacity-3
+// resource at t=10 report 1, 2, 3; the releases at 14 report 2, 1, 0.
+func TestGrantObservationsStepwise(t *testing.T) {
+	ir := build(t, []model.Node{source("a", 10, 1), source("b", 10, 1), source("c", 10, 1), process("work", 4, "R"), {ID: "done", Type: model.NodeSink}},
+		[]model.Flow{flow("f1", "a", "work", 1), flow("f2", "b", "work", 1), flow("f3", "c", "work", 1), flow("f4", "work", "done", 1)}, "R")
+	ir.Resources[0].Capacity = 3
+	rec, _ := run(t, input(ir), 0)
+	var got []string
+	for _, o := range rec.all {
+		switch o.Kind {
+		case ObsResource:
+			got = append(got, fmt.Sprintf("%d:R=%d", o.Tick/60_000, o.Value))
+		case ObsServiceStart:
+			got = append(got, fmt.Sprintf("%d:start", o.Tick/60_000))
+		}
+	}
+	want := []string{"10:R=1", "10:start", "10:R=2", "10:start", "10:R=3", "10:start", "14:R=2", "14:R=1", "14:R=0"}
+	if !slices.Equal(got, want) {
+		t.Errorf("observations %v, want %v", got, want)
+	}
+}
+
+// D-032 with zero-time steps (T-021 review): a and b arrive at t=10. b's
+// zero delay completes (priority 10) before the tick's dispatch (priority
+// 20), so b queues at P1 first; a's zero-time P0 service is granted at that
+// dispatch and a reaches P1 only after it. P1 serves b, then a.
+func TestZeroTimeStepsKeepD032Order(t *testing.T) {
+	ir := build(t, []model.Node{
+		source("a", 10, 1), source("b", 10, 1),
+		process("P0", 0, "R0"), process("P1", 5, "R"),
+		{ID: "D", Type: model.NodeDelay, DelayTime: &model.TimedDistribution{Distribution: constant(0)}},
+		{ID: "end", Type: model.NodeSink},
+	}, []model.Flow{flow("fa", "a", "P0", 1), flow("fb", "b", "D", 1), flow("f0", "P0", "P1", 1), flow("fd", "D", "P1", 1), flow("f1", "P1", "end", 1)}, "R", "R0")
+	rec, _ := run(t, input(ir), 0)
+	var order []string
+	for _, o := range rec.at(ObsServiceStart, "P1") {
+		order = append(order, rec.r(o.Entity))
+	}
+	if !slices.Equal(order, []string{"b", "a"}) {
+		t.Fatalf("P1 served %v, want [b a]", order)
+	}
+}
+
+// A zero-time service granted at a dispatch completes in the same tick,
+// after that dispatch; its release schedules another dispatch in the tick,
+// so the next waiting request is not stranded: both start at t=10.
+func TestSameTickRedispatch(t *testing.T) {
+	ir := build(t, []model.Node{source("a", 10, 1), source("b", 10, 1), process("Z", 0, "R"), {ID: "end", Type: model.NodeSink}},
+		[]model.Flow{flow("fa", "a", "Z", 1), flow("fb", "b", "Z", 1), flow("fz", "Z", "end", 1)}, "R")
+	p := compile(t, input(ir))
+	c := newChecker(t, p)
+	rec := newRecorder(t, p)
+	if _, err := RunReplication(context.Background(), p, 0, NewBudget(1000), multi{c, rec}); err != nil {
+		t.Fatal(err)
+	}
+	c.finish()
+	if got := starts(rec); len(got) != 1 || got["Z"] != 10 || len(rec.at(ObsServiceStart, "Z")) != 2 || len(c.errs) > 0 {
+		t.Errorf("starts %v (%d), problems %v", got, len(rec.at(ObsServiceStart, "Z")), c.errs)
+	}
+	for _, o := range rec.at(ObsServiceStart, "Z") {
+		if o.Tick != 10*60_000 {
+			t.Errorf("a Z service started at %d", o.Tick/60_000)
+		}
+	}
+}
+
+type multi []Observer
+
+func (m multi) Observe(o Observation) {
+	for _, x := range m {
+		x.Observe(o)
+	}
+}
+
+// An explicit queue routes into its process's buffer (the queue-enter
+// observation names the process), and both nodes count as visits:
+// src -> q -> work -> end is 4 visits, the direct src -> work -> end is 3.
+func TestQueueNodeRoutingAndVisits(t *testing.T) {
+	mk := func(withQueue bool) model.ModelIR {
+		nodes := []model.Node{source("src", 1, 3), process("work", 2, "R"), {ID: "end", Type: model.NodeSink}}
+		flows := []model.Flow{flow("f2", "work", "end", 1)}
+		if withQueue {
+			nodes = append(nodes, model.Node{ID: "q", Type: model.NodeQueue})
+			flows = append(flows, flow("f0", "src", "q", 1), flow("f1", "q", "work", 1))
+		} else {
+			flows = append(flows, flow("f1", "src", "work", 1))
+		}
+		return build(t, nodes, flows, "R")
+	}
+	for _, c := range []struct {
+		queue bool
+		limit int
+		want  error
+	}{{false, 3, nil}, {false, 2, ErrEntityVisits}, {true, 4, nil}, {true, 3, ErrEntityVisits}} {
+		in := input(mk(c.queue))
+		in.Limits.MaxEntityVisits = c.limit
+		_, err := RunReplication(context.Background(), compile(t, in), 0, NewBudget(10_000), nil)
+		if !errors.Is(err, c.want) {
+			t.Errorf("queue %v, max_entity_visits %d: %v, want %v", c.queue, c.limit, err, c.want)
+		}
+	}
+	rec, out := run(t, input(mk(true)), 0)
+	if out.Exited != 3 || len(rec.at(ObsQueueEnter, "work")) != 3 || len(rec.at(ObsServiceStart, "work")) != 3 {
+		t.Errorf("exited %d, queued %d", out.Exited, len(rec.at(ObsQueueEnter, "work")))
+	}
+}
+
+// Failure and rework nodes count as visits like any other node.
+func TestFailureAndReworkAreVisits(t *testing.T) {
+	ir := build(t, []model.Node{source("src", 1, 1), {ID: "fail", Type: model.NodeFailure}, {ID: "redo", Type: model.NodeRework}, {ID: "end", Type: model.NodeSink}},
+		[]model.Flow{flow("f1", "src", "fail", 1), flow("f2", "fail", "redo", 1), flow("f3", "redo", "end", 1)})
+	for limit, want := range map[int]error{4: nil, 3: ErrEntityVisits} {
+		in := input(ir)
+		in.Limits.MaxEntityVisits = limit
+		if _, err := RunReplication(context.Background(), compile(t, in), 0, NewBudget(100), nil); !errors.Is(err, want) {
+			t.Errorf("max_entity_visits %d: %v, want %v", limit, err, want)
+		}
+	}
+}
+
+// RunReplication honours its context and the shared budget at every event
+// (TEST-021): a cancel from inside the run stops it with the context's
+// error; a small budget fails it; Events counts what was processed.
+func TestRunReplicationCheckpoints(t *testing.T) {
+	p := compile(t, input(golden(t, "default-delivery.json")))
+	ctx, cancel := context.WithCancel(context.Background())
+	seen := 0
+	stopper := observerFunc(func(Observation) {
+		if seen++; seen == 50 {
+			cancel()
+		}
+	})
+	out, err := RunReplication(ctx, p, 0, NewBudget(10_000_000), stopper)
+	if !errors.Is(err, context.Canceled) || out.Events == 0 || out.Events > 50 {
+		t.Errorf("cancelled run: %v after %d events", err, out.Events)
+	}
+	b := NewBudget(25)
+	if out, err := RunReplication(context.Background(), p, 0, b, nil); !errors.Is(err, ErrEventBudget) || out.Events != 25 || b.Used() != 25 {
+		t.Errorf("budget: %v, %d events, used %d", err, out.Events, b.Used())
+	}
+	b = NewBudget(10_000_000)
+	if out, err := RunReplication(context.Background(), p, 0, b, nil); err != nil || out.Events != b.Used() || out.Events <= 25 {
+		t.Errorf("full run: %v, %d events, used %d", err, out.Events, b.Used())
+	}
+}
+
+type observerFunc func(Observation)
+
+func (f observerFunc) Observe(o Observation) { f(o) }
+
+// Kernel-level horizon equality (TEST-017): GOLDEN-001's last completion is
+// at 1005; a horizon of exactly 1005 processes it, one millisecond less
+// leaves that entity censored.
+func TestHorizonEqualityInKernel(t *testing.T) {
+	for _, c := range []struct {
+		horizon          float64
+		exited, censored int64
+	}{{1005, 100, 0}, {1005 - 1.0/60_000, 99, 1}} {
+		in := input(golden(t, "deterministic-queue.json"))
+		in.Config = config(c.horizon, model.Minute)
+		_, out := run(t, in, 0)
+		if out.Exited != c.exited || out.Censored != c.censored {
+			t.Errorf("horizon %v: exited %d censored %d", c.horizon, out.Exited, out.Censored)
+		}
+	}
+}
+
+// The dispatcher's work is bounded by the resources, not by how many
+// requests wait (T-021 review D1): 3,000 requests wait on a 3-resource
+// bundle while 30,000 unrelated arrivals each trigger a dispatch. Scanning
+// every waiting request per dispatch would look at ~10^8 of them.
+func TestDispatchWorkIsBounded(t *testing.T) {
+	res := []string{"R0", "R1", "R2"}
+	long := process("long", 300_000, res...)
+	ir := build(t, []model.Node{
+		{ID: "a", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.001), MaxEntities: 3_000}},
+		long,
+		{ID: "b", Type: model.NodeSource, EntityType: "change", Arrival: &model.Arrival{Distribution: constant(0.001)}},
+		process("fast", 0.001),
+		{ID: "end", Type: model.NodeSink},
+	}, []model.Flow{flow("fa", "a", "long", 1), flow("fl", "long", "end", 1), flow("fb", "b", "fast", 1), flow("ff", "fast", "end", 1)}, res...)
+	ir.TimeUnit = model.ModelTimeUnit(model.Second)
+	in := input(ir)
+	in.Config = config(36, model.Second)
+	k, out, err := runKernel(context.Background(), compile(t, in), 0, NewBudget(10_000_000), nil)
+	if err != nil || out.Created < 30_000 {
+		t.Fatalf("%v, %+v", err, out)
+	}
+	if limit := 4 * out.Events; k.examined > limit {
+		t.Errorf("the dispatcher examined %d requests in %d events (limit %d)", k.examined, out.Events, limit)
+	}
+}
+
+// EntityID of an entity that already left is "", not a panic (review P5);
+// a replication index outside the program is an internal error (P6); limit
+// errors say where they happened (P4).
+func TestKernelEdges(t *testing.T) {
+	p := compile(t, input(golden(t, "deterministic-queue.json")))
+	r := newReplication(p, 0)
+	if id := r.EntityID(42); id != "" {
+		t.Errorf("unknown entity ID %q", id)
+	}
+	if _, err := RunReplication(context.Background(), p, 1, NewBudget(100), nil); !errors.Is(err, ErrInternal) {
+		t.Errorf("index 1 of a 1-replication program: %v", err)
+	}
+	in := input(golden(t, "congested-queue.json"))
+	in.Limits.MaxActiveEntities = 3
+	if _, err := RunReplication(context.Background(), compile(t, in), 0, NewBudget(1000), nil); !errors.Is(err, ErrActiveEntities) || !strings.Contains(err.Error(), "r0/arrival/") {
+		t.Errorf("active limit: %v", err)
+	}
+	in = input(golden(t, "deterministic-queue.json"))
+	in.Limits.MaxEntityVisits = 2
+	if _, err := RunReplication(context.Background(), compile(t, in), 0, NewBudget(1000), nil); !errors.Is(err, ErrEntityVisits) || !strings.Contains(err.Error(), "r0/arrival/1") || !strings.Contains(err.Error(), "done") {
+		t.Errorf("visit limit: %v", err)
+	}
+}
+
+// observationDigest hashes an observation stream: per observation, kind,
+// tick, seq, entity, node, resource and value as little-endian 64-bit words.
+func observationDigest(all []Observation) string {
+	h := sha256.New()
+	var buf [56]byte
+	for _, o := range all {
+		for i, v := range []uint64{uint64(o.Kind), uint64(o.Tick), o.Seq, o.Entity, uint64(int64(o.Node)), uint64(int64(o.Resource)), uint64(o.Value)} {
+			binary.LittleEndian.PutUint64(buf[8*i:], v)
+		}
+		h.Write(buf[:])
+	}
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// A stochastic run's full observation stream is pinned (review P3):
+// testdata/simulation/kernel-observation-digests.json is a regression lock
+// taken from this kernel, not an independent oracle; the semantics are
+// checked by the observation-only model and the hand-derived goldens. Any
+// change to event order, tie-breaks or sampling shows up here.
+func TestKernelObservationDigests(t *testing.T) {
+	var lock struct {
+		Cases []struct {
+			Model        string  `json:"model"`
+			HorizonDays  float64 `json:"horizon_days"`
+			Replications int     `json:"replications"`
+			Index        uint32  `json:"replication_index"`
+			Observations int     `json:"observations"`
+			Digest       string  `json:"sha256"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/kernel-observation-digests.json")), &lock); err != nil {
+		t.Fatal(err)
+	}
+	if len(lock.Cases) == 0 {
+		t.Fatal("no locked cases")
+	}
+	for _, c := range lock.Cases {
+		in := input(golden(t, c.Model))
+		in.Config = config(c.HorizonDays, model.Day)
+		in.Config.Replications = c.Replications
+		col := &collect{}
+		if _, err := RunReplication(context.Background(), compile(t, in), c.Index, NewBudget(10_000_000), col); err != nil {
+			t.Fatal(err)
+		}
+		if got := observationDigest(col.all); len(col.all) != c.Observations || got != c.Digest {
+			t.Errorf("%s r%d: %d observations, digest %s; locked %d, %s", c.Model, c.Index, len(col.all), got, c.Observations, c.Digest)
 		}
 	}
 }

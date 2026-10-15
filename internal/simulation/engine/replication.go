@@ -108,8 +108,12 @@ func (r *replication) stream(node int, purpose string) *SplitMix64 {
 
 // EntityID is an active entity's stable, human-readable ID:
 // r<replication index>/<source node ID>/<n>. Node IDs cannot contain "/".
+// It is "" for an entity that is not in the system.
 func (r *replication) EntityID(e uint64) string {
-	en := r.entities[e]
+	en, ok := r.entities[e]
+	if !ok {
+		return ""
+	}
 	return FormatEntityID(r.index, r.p.nodes[en.source].id, en.n)
 }
 

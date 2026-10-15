@@ -1,0 +1,23 @@
+{
+  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (internal/simulation/engine, T-021); NOT an independent oracle. Semantics are checked by the observation-only model (kernel_check_test.go) and the hand-derived goldens; these digests make any later change to event order, tie-breaks or sampling visible.",
+  "encoding": "SHA-256 over each observation's kind, tick, seq, entity, node, resource, value as little-endian 64-bit words, in observation order",
+  "cases": [
+    {
+      "model": "default-delivery.json",
+      "horizon_days": 14,
+      "replications": 3,
+      "replication_index": 2,
+      "observations": 4495,
+      "sha256": "40f8c7bb93e898bb706b36a5cbd5fc3fd5c5f1289e5284f234557021fd3a612f"
+    },
+    {
+      "model": "report-example.json",
+      "horizon_days": 30,
+      "replications": 1,
+      "replication_index": 0,
+      "observations": 9516,
+      "sha256": "ae53978b9b55f00d50289030e170ed52b7093e85e80341f2f956cb4b71303aaa",
+      "dataset": "dataset:review_duration = 120, 240, 360 minutes (the engine tests' fixture)"
+    }
+  ]
+}
