@@ -36,9 +36,11 @@ const (
 	ObsComplete                                // Entity reached sink Node; Value 1 completed, 0 abandoned
 )
 
-// Observation is one fact the kernel reports, in processing order. Seq is
-// the sequence of the event during which it happened, so (Tick, Seq) and
-// the call order reproduce the engine's event order for traces.
+// Observation is one fact the kernel reports, in processing order: by tick,
+// then event priority, then sequence. Seq is the sequence of the event
+// during which it happened; several observations share one, and within a
+// tick Seq can go back when a higher-priority event was scheduled later, so
+// the call order, not (Tick, Seq), is the engine's order.
 type Observation struct {
 	Kind     ObservationKind
 	Tick     int64

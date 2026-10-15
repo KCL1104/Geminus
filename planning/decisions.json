@@ -532,6 +532,19 @@
       "approved_by": null,
       "approved_at": null,
       "resolves": []
+    },
+    {
+      "id": "D-039",
+      "title": "結果彙整與 sampled trace 的實作語意（T-022）",
+      "source_gap": "SIMULATION_SPEC §5／§9 未定的細節；CB-23 reason codes",
+      "proposal": "(a) additional_metrics.replication_mean_lead_time_minutes 只要有一個 replication 沒有完整 cohort 即 unavailable；(b) available summary 的 reason 一律 null，n<2 時 CI 為 null；(c) 暫定 reason codes：NO_COMPLETED_ENTITY_IN_WINDOW、REPLICATION_WITHOUT_COMPLETED_COHORT、NO_COMPLETED_QUEUE_VISIT_IN_WINDOW；(d) trace 只記 replication 0；entity 以 SHA-256('dt-trace-v1\\0'||entity ID) 前 8 bytes LE < 2^64/8 選取；到 max_trace_events 截斷並標 truncated；沒有事件時不產生 artifact、Result.trace.available=false；artifact 格式 geminus.trace.v1；(e) engine_version 為 des-go-0.1.0，部署可附加 build identity。",
+      "source_pages": "N/A（實作語意；SIMULATION_SPEC.md §5、§9）",
+      "owner_role": "Simulation",
+      "gate": "T-023 對外提供 run 結果前",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null,
+      "resolves": []
     }
   ],
   "human_decisions": [

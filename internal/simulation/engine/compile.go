@@ -59,6 +59,7 @@ type cnode struct {
 	requires    []requirement
 	routes      []route // decision: p > 0 flows by flow ID with cumulative probabilities; others: the single p = 1 flow
 	buffer      int     // queue: the process whose request buffer it names; process: itself; otherwise -1
+	label       string  // process: the queue-metric key (its explicit queue's ID, else its own)
 	outcome     model.SinkOutcome
 }
 
@@ -353,8 +354,15 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 	// An explicit queue names the request buffer of the process it feeds
 	// (SIMULATION_SPEC §3); the validator guarantees that single process.
 	for i := range p.nodes {
+		if p.nodes[i].typ == model.NodeProcess {
+			p.nodes[i].label = p.nodes[i].id
+		}
+	}
+	for i := range p.nodes {
 		if p.nodes[i].typ == model.NodeQueue && len(p.nodes[i].routes) == 1 {
 			p.nodes[i].buffer = p.nodes[i].routes[0].to
+			// Queue metrics of a process belong to its explicit queue (SIMULATION_SPEC §3).
+			p.nodes[p.nodes[i].buffer].label = p.nodes[i].id
 		}
 	}
 	return nil
@@ -375,3 +383,26 @@ func (p *Program) NodeIDs() []string {
 	}
 	return out
 }
+
+// Read-only views for result aggregation (internal/results).
+
+// NodeCount is the number of nodes; indices are 0..NodeCount-1 in ID order.
+func (p *Program) NodeCount() int { return len(p.nodes) }
+
+// NodeID and NodeType describe node i.
+func (p *Program) NodeID(i int) string           { return p.nodes[i].id }
+func (p *Program) NodeType(i int) model.NodeType { return p.nodes[i].typ }
+
+// QueueLabel is the queue-metric key of process i: the ID of the explicit
+// queue that names its buffer, or the process's own ID; "" for other nodes.
+func (p *Program) QueueLabel(i int) string { return p.nodes[i].label }
+
+// ResourceCount, ResourceID and ResourceCapacity describe resources in ID order.
+func (p *Program) ResourceCount() int         { return len(p.resources) }
+func (p *Program) ResourceID(i int) string    { return p.resources[i].id }
+func (p *Program) ResourceCapacity(i int) int { return p.resources[i].capacity }
+
+// Seed is the run's base seed; TraceLevel and Limits are the frozen config.
+func (p *Program) Seed() uint64                       { return p.seed }
+func (p *Program) TraceLevel() simulation.TraceLevel  { return p.traceLevel }
+func (p *Program) Limits() simulation.ExecutionLimits { return p.limits }

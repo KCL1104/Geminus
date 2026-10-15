@@ -131,3 +131,24 @@ export type Result = {
     artifact_id: ArtifactID | null;
   };
 };
+
+export type TraceEvent = {
+  time_tick: number;
+  sequence: number;
+  type: "arrival" | "queue_enter" | "service_start" | "service_end" | "delay_start" | "delay_end" | "failure" | "rework" | "complete" | "abandon";
+  entity_id: string;
+  node_id: string;
+};
+
+export type TraceArtifact = {
+  format: "geminus.trace.v1";
+  engine_version: string;
+  replication_index: number;
+  sampling: {
+    method: "entity_id_sha256";
+    rate: number;
+    max_events: number;
+  };
+  truncated: boolean;
+  events: TraceEvent[];
+};

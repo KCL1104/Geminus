@@ -600,6 +600,53 @@
       "expected_error_paths": [
         "/nodes/1/service_time/distribution/samples_ref"
       ]
+    },
+    {
+      "id": "invalid-unavailable-without-reason",
+      "instance": "testdata/contracts/invalid-unavailable-without-reason.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/dora/change_lead_time/reason"
+      ]
+    },
+    {
+      "id": "invalid-entity-population-ci",
+      "instance": "testdata/contracts/invalid-entity-population-ci.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/lead_time_minutes/confidence_interval_mean"
+      ]
+    },
+    {
+      "id": "valid-trace-artifact",
+      "instance": "testdata/contracts/valid-trace-artifact.json",
+      "schema": "schemas/simulation.schema.json#/$defs/TraceArtifact",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-trace-event-type",
+      "instance": "testdata/contracts/invalid-trace-event-type.json",
+      "schema": "schemas/simulation.schema.json#/$defs/TraceArtifact",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/events/2/type"
+      ]
+    },
+    {
+      "id": "invalid-trace-entity-id",
+      "instance": "testdata/contracts/invalid-trace-entity-id.json",
+      "schema": "schemas/simulation.schema.json#/$defs/TraceArtifact",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/events/0/entity_id"
+      ]
     }
   ]
 }

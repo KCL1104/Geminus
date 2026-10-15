@@ -453,6 +453,9 @@
               },
               "confidence_interval_mean": {
                 "type": "null"
+              },
+              "reason": {
+                "type": "string"
               }
             }
           }
@@ -481,8 +484,29 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "population": {
+                "enum": [
+                  "entity",
+                  "stage_visit",
+                  "time_weighted"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "confidence_interval_mean": {
+                "type": "null"
+              }
+            }
+          }
         }
-      ]
+      ],
+      "$comment": "T-022/CB-23: an unavailable summary carries a reason; only population=replication may carry a CI (SIMULATION_SPEC §5)."
     },
     "Result": {
       "type": "object",
@@ -857,6 +881,120 @@
         "measurement_window",
         "reproducibility",
         "trace"
+      ],
+      "additionalProperties": false
+    },
+    "TraceEvent": {
+      "type": "object",
+      "$comment": "T-022: one fact about a sampled entity, in engine event order (SIMULATION_SPEC §9). sequence is the engine event during which it happened; several trace events can share one.",
+      "properties": {
+        "time_tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 31536000000
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "arrival",
+            "queue_enter",
+            "service_start",
+            "service_end",
+            "delay_start",
+            "delay_end",
+            "failure",
+            "rework",
+            "complete",
+            "abandon"
+          ]
+        },
+        "entity_id": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 150,
+          "pattern": "^r(0|[1-9][0-9]{0,2})/[A-Za-z][A-Za-z0-9_.:-]{0,127}/[1-9][0-9]{0,15}$"
+        },
+        "node_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        }
+      },
+      "required": [
+        "time_tick",
+        "sequence",
+        "type",
+        "entity_id",
+        "node_id"
+      ],
+      "additionalProperties": false
+    },
+    "TraceArtifact": {
+      "type": "object",
+      "$comment": "T-022 (D-039 PROPOSED): the sampled playback trace of one run, stored as a private object (Result.trace.artifact_id). It is not part of result_digest and never changes metrics.",
+      "properties": {
+        "format": {
+          "const": "geminus.trace.v1"
+        },
+        "engine_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "replication_index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999
+        },
+        "sampling": {
+          "type": "object",
+          "properties": {
+            "method": {
+              "const": "entity_id_sha256"
+            },
+            "rate": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "max_events": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000
+            }
+          },
+          "required": [
+            "method",
+            "rate",
+            "max_events"
+          ],
+          "additionalProperties": false
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "events": {
+          "type": "array",
+          "maxItems": 100000,
+          "items": {
+            "$ref": "#/$defs/TraceEvent"
+          },
+          "$comment": "Engine processing order: by time_tick, then event priority, then sequence. sequence alone is not monotonic within a tick; consumers keep the array order."
+        }
+      },
+      "required": [
+        "format",
+        "engine_version",
+        "replication_index",
+        "sampling",
+        "truncated",
+        "events"
       ],
       "additionalProperties": false
     }

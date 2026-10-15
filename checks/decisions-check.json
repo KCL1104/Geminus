@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 37,
-    "proposed": 1,
+    "proposed": 2,
     "rejected": 0,
     "superseded": 0
   },
@@ -15,12 +15,11 @@
     "blocked": 0,
     "done": 11,
     "in_progress": 0,
-    "not_started": 31,
-    "review": 0
+    "not_started": 30,
+    "review": 1
   },
   "ready_tasks": [
     "T-008",
-    "T-022",
     "T-042"
   ],
   "next_after_review": [],
@@ -347,6 +346,13 @@
       ]
     },
     "D-038": {
+      "status": "proposed",
+      "gate": "T-023 對外提供 run 結果前",
+      "gates_tasks": [
+        "T-023"
+      ]
+    },
+    "D-039": {
       "status": "proposed",
       "gate": "T-023 對外提供 run 結果前",
       "gates_tasks": [

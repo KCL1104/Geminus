@@ -1201,7 +1201,7 @@
       "id": "T-022",
       "title": "Metric aggregation / result digest / trace",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Simulation",
       "planning_window": "Week 6–8",
       "depends_on": [
@@ -1246,7 +1246,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-022_VALIDATION.md",
+          "summary": "metrics.Collector/Build：[W,H] window、cohort、censoring、Type 7、replication-mean CI（Student-t 常數表，以獨立不完全 beta 驗證）、pooled queue wait、時間積分 utilization／queue length；trace.Recorder（replication 0、SHA-256 選取 1/8、截斷）；des.Engine（bounded pool、共用 budget、wall timeout、completion 決定、typed errors、hash 重算、DomainMetrics 注入、result digest）；schema 加入 CB-23 規則與 TraceArtifact。GOLDEN-001 的 metrics 與 valid-result.json 完全相同、trace 與手算相同；mutation 43/43＋1 equivalent；FuzzRun 通過。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-023",
@@ -1269,7 +1277,8 @@
       "decision_gates": [
         "D-007",
         "D-011",
-        "D-038"
+        "D-038",
+        "D-039"
       ],
       "scope": [
         "freeze version/patch/config/datasets/engine/limits 並202入列。",

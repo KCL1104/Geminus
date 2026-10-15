@@ -313,6 +313,27 @@ def arrivals() -> list[list]:
     return out, {s["id"]: f"{rngs[s['id']].state:016x}" for s in sources}
 
 
+TRACE_PREFIX = b"dt-trace-v1\0"
+TRACE_RATE = 0.125  # an entity is sampled when its hash < 2^64 / 8
+
+
+def trace_selected(entity_id: str) -> bool:
+    """Trace sampling (SIMULATION_SPEC §9, D-039 PROPOSED): SHA-256 of the
+    prefix and the entity ID's UTF-8 bytes; the first 8 bytes, little-endian,
+    below 2^64 * rate. No RNG stream is consumed."""
+    h = hashlib.sha256(TRACE_PREFIX + entity_id.encode()).digest()
+    return int.from_bytes(h[:8], "little") < (1 << 64) // 8
+
+
+TRACE_IDS = [("r0/arrival/", 100), ("r12/a_src.x/", 40)]
+
+
+def trace_selection() -> dict:
+    return {"prefix": "dt-trace-v1\\0", "rate": TRACE_RATE,
+            "cases": [{"prefix": prefix, "count": n, "selected": [k for k in range(1, n + 1) if trace_selected(f"{prefix}{k}")]}
+                      for prefix, n in TRACE_IDS]}
+
+
 def build() -> dict:
     expected, states = arrivals()
     return {
@@ -321,6 +342,7 @@ def build() -> dict:
         "beyond_cap_ticks": BEYOND_CAP,
         "sampler_vectors": sampler_vectors(),
         "log_profile": log_profile(),
+        "trace_selection": trace_selection(),
         "event_order": {"pushes": [{"tick": t, "priority": PRIORITY[p]} for t, p in EVENT_PUSHES], "pop_sequence": event_order()},
         "arrivals": {"run": ARRIVAL_RUN, "sources": ARRIVAL_SOURCES, "expected": expected, "stream_states_after": states},
     }

@@ -1,0 +1,16 @@
+{
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.1.0) on the cases of expected-cases.json; NOT an independent oracle. Their metrics are checked against the hand-derived values in expected-cases.json and valid-result.json; these digests only make any later numerical change visible, which then needs a new engine_version (SIMULATION_SPEC §4).",
+  "engine_version": "des-go-0.1.0",
+  "inputs": {
+    "cases": "expected-cases.json (model, config incl. trace_level sampled)",
+    "model_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "effective_model_hash": "hashing.Model(model.Encode(model))",
+    "limits": {"wall_timeout_seconds": 300, "max_events": 10000000, "max_active_entities": 100000, "max_entity_visits": 10000, "max_trace_events": 100000},
+    "dataset_manifest": [],
+    "dora": "every metric unavailable: change_lead_time, entity, minute, MISSING_DORA_EVENT_MAPPING"
+  },
+  "digests": {
+    "GOLDEN-001": "sha256:962d86ce9438a72134f4dc8333ff84e7d41d014504284deab9cfa4d693520e73",
+    "GOLDEN-002": "sha256:6c1034a31dec7e2ac379e4180745a9571cd6a2926580616d9ed0ed1f1b860426"
+  }
+}

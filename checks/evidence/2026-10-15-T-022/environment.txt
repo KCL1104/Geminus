@@ -1,0 +1,5 @@
+go version go1.27.2 linux/amd64
+amd64
+v1
+model name	: Intel(R) Xeon(R) Processor @ 2.10GHz
+Linux 6.18.44-fc-v114

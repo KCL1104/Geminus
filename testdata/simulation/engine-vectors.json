@@ -376,6 +376,44 @@
       }
     ]
   },
+  "trace_selection": {
+    "prefix": "dt-trace-v1\\0",
+    "rate": 0.125,
+    "cases": [
+      {
+        "prefix": "r0/arrival/",
+        "count": 100,
+        "selected": [
+          8,
+          9,
+          12,
+          17,
+          21,
+          23,
+          24,
+          26,
+          30,
+          36,
+          41,
+          45,
+          62,
+          76
+        ]
+      },
+      {
+        "prefix": "r12/a_src.x/",
+        "count": 40,
+        "selected": [
+          6,
+          23,
+          26,
+          27,
+          28,
+          37
+        ]
+      }
+    ]
+  },
   "event_order": {
     "pushes": [
       {

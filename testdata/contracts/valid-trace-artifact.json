@@ -1,0 +1,48 @@
+{
+  "format": "geminus.trace.v1",
+  "engine_version": "des-go-0.1.0",
+  "replication_index": 0,
+  "sampling": {
+    "method": "entity_id_sha256",
+    "rate": 0.125,
+    "max_events": 100000
+  },
+  "truncated": false,
+  "events": [
+    {
+      "time_tick": 600000,
+      "sequence": 1,
+      "type": "arrival",
+      "entity_id": "r0/arrival/1",
+      "node_id": "arrival"
+    },
+    {
+      "time_tick": 600000,
+      "sequence": 1,
+      "type": "queue_enter",
+      "entity_id": "r0/arrival/1",
+      "node_id": "service"
+    },
+    {
+      "time_tick": 600000,
+      "sequence": 3,
+      "type": "service_start",
+      "entity_id": "r0/arrival/1",
+      "node_id": "service"
+    },
+    {
+      "time_tick": 900000,
+      "sequence": 4,
+      "type": "service_end",
+      "entity_id": "r0/arrival/1",
+      "node_id": "service"
+    },
+    {
+      "time_tick": 900000,
+      "sequence": 4,
+      "type": "complete",
+      "entity_id": "r0/arrival/1",
+      "node_id": "done"
+    }
+  ]
+}

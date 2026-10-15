@@ -1,0 +1,13 @@
+command	exit	log
+make spec-check	0	spec-check.log
+make backend-test	0	backend-test.log
+make backend-race	0	backend-race.log
+REQUIRE_GOAMD64_V3=1 make backend-numeric	0	backend-numeric.log
+make backend-build	0	backend-build.log
+make frontend-test	0	frontend-test.log
+go test -v (metrics, trace, des)	0	t022-tests.log
+govulncheck	0	govulncheck.log
+go test -fuzz FuzzRun -fuzztime 60s	0	fuzz-run.log
+python3 results-mutants.py	0	mutation.log
+python3 ../2026-10-15-T-021/kernel-mutants.py	0	kernel-mutants-after-t022.log
+python3 ../2026-10-15-T-020-review/engine-mutants.py	0	engine-mutants-after-t022.log

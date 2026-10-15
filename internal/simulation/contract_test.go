@@ -18,6 +18,7 @@ func TestSchemaParity(t *testing.T) {
 		reflect.TypeFor[simulation.ExecutionLimits](): "simulation.schema.json#/$defs/ExecutionLimits",
 		reflect.TypeFor[simulation.MetricSummary]():   "simulation.schema.json#/$defs/MetricSummary",
 		reflect.TypeFor[simulation.Result]():          "simulation.schema.json#/$defs/Result",
+		reflect.TypeFor[simulation.TraceArtifact]():   "simulation.schema.json#/$defs/TraceArtifact",
 		reflect.TypeFor[simulation.Duration]():        "common.schema.json#/$defs/Duration",
 	} {
 		s.Parity(t, typ, ref)
@@ -35,6 +36,8 @@ func TestFixturesRoundTrip(t *testing.T) {
 		switch c.Schema {
 		case "schemas/simulation.schema.json#/$defs/Result":
 			contracttest.RoundTrip[simulation.Result](t, c.ID, data)
+		case "schemas/simulation.schema.json#/$defs/TraceArtifact":
+			contracttest.RoundTrip[simulation.TraceArtifact](t, c.ID, data)
 		case "schemas/simulation.schema.json": // a RunRequest; its config is a RunConfig
 			var req struct {
 				Config jsontext.Value `json:"config"`
@@ -48,7 +51,7 @@ func TestFixturesRoundTrip(t *testing.T) {
 		}
 		n++
 	}
-	if n < 3 {
+	if n < 4 {
 		t.Fatalf("only %d fixtures exercised", n)
 	}
 }

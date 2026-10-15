@@ -26,7 +26,12 @@ type Engine interface {
 // RunInput is the complete, immutable input of one logical run.
 type RunInput struct {
 	// Model is the effective IR: the pinned version with the scenario patch applied.
-	Model              model.ModelIR
+	Model model.ModelIR
+	// ModelHash is the pinned ModelVersion's model_hash (before the patch). It
+	// cannot be recomputed from Model, so it is recorded as given.
+	ModelHash string
+	// EffectiveModelHash is hashing.Model over model.Encode(Model); the engine
+	// recomputes it and refuses a run whose value differs.
 	EffectiveModelHash string
 	Config             RunConfig
 	Limits             ExecutionLimits
@@ -196,3 +201,52 @@ type Trace struct {
 	SampledEvents int     `json:"sampled_events"`
 	ArtifactID    *string `json:"artifact_id"` // D-001 "art_" + ULID, or null
 }
+
+// TraceArtifact is the sampled playback trace of a run (#/$defs/TraceArtifact,
+// SIMULATION_SPEC §9, D-039 PROPOSED). It is stored as a private object that
+// Result.Trace.ArtifactID names; it is not part of result_digest.
+type TraceArtifact struct {
+	Format           string        `json:"format"` // TraceFormat
+	EngineVersion    string        `json:"engine_version"`
+	ReplicationIndex int           `json:"replication_index"`
+	Sampling         TraceSampling `json:"sampling"`
+	// Truncated reports that recording stopped at Sampling.MaxEvents; the
+	// simulation itself ran to the horizon.
+	Truncated bool         `json:"truncated"`
+	Events    []TraceEvent `json:"events"`
+}
+
+// TraceFormat is TraceArtifact.Format.
+const TraceFormat = "geminus.trace.v1"
+
+// TraceSampling says how entities were chosen: those whose entity-ID hash
+// falls below Rate, recording at most MaxEvents events.
+type TraceSampling struct {
+	Method    string  `json:"method"` // "entity_id_sha256"
+	Rate      float64 `json:"rate"`
+	MaxEvents int     `json:"max_events"`
+}
+
+// TraceEvent is one fact about a sampled entity, in engine event order.
+type TraceEvent struct {
+	TimeTick int64          `json:"time_tick"`
+	Sequence uint64         `json:"sequence"`
+	Type     TraceEventType `json:"type"`
+	EntityID string         `json:"entity_id"`
+	NodeID   string         `json:"node_id"`
+}
+
+type TraceEventType string
+
+const (
+	TraceArrival      TraceEventType = "arrival"
+	TraceQueueEnter   TraceEventType = "queue_enter"
+	TraceServiceStart TraceEventType = "service_start"
+	TraceServiceEnd   TraceEventType = "service_end"
+	TraceDelayStart   TraceEventType = "delay_start"
+	TraceDelayEnd     TraceEventType = "delay_end"
+	TraceFailure      TraceEventType = "failure"
+	TraceRework       TraceEventType = "rework"
+	TraceComplete     TraceEventType = "complete"
+	TraceAbandon      TraceEventType = "abandon"
+)
