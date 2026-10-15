@@ -45,10 +45,7 @@
       "type": "object",
       "properties": {
         "model_version_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/ModelVersionID"
         },
         "name": {
           "type": "string",
@@ -59,10 +56,7 @@
           "$ref": "json-patch.schema.json"
         },
         "scenario_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/ScenarioID"
         },
         "config": {
           "$ref": "#/$defs/RunConfig"
@@ -139,28 +133,16 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/RunID"
         },
         "organization_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/OrganizationID"
         },
         "model_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/ModelID"
         },
         "model_version_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/ModelVersionID"
         },
         "name": {
           "type": "string",
@@ -173,10 +155,7 @@
         "scenario_id": {
           "anyOf": [
             {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              "$ref": "common.schema.json#/$defs/ScenarioID"
             },
             {
               "type": "null"
@@ -509,10 +488,7 @@
       "type": "object",
       "properties": {
         "run_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/RunID"
         },
         "status": {
           "const": "completed"
@@ -856,10 +832,7 @@
             "artifact_id": {
               "anyOf": [
                 {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128,
-                  "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+                  "$ref": "common.schema.json#/$defs/ArtifactID"
                 },
                 {
                   "type": "null"

@@ -1,0 +1,13 @@
+{
+  "error": {
+    "code": "SOMETHING_WENT_WRONG",
+    "message": "Unknown reference",
+    "details": [
+      {
+        "path": "/flows/0/to",
+        "reason": "Unknown node"
+      }
+    ],
+    "request_id": "req_01M4YDQK00V6H8S0ST4F7510KR"
+  }
+}

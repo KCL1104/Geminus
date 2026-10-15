@@ -6,28 +6,16 @@
   "type": "object",
   "properties": {
     "id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ScenarioID"
     },
     "organization_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/OrganizationID"
     },
     "model_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ModelID"
     },
     "base_version_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ModelVersionID"
     },
     "name": {
       "type": "string",
@@ -46,10 +34,7 @@
     "source_proposal_id": {
       "anyOf": [
         {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/ProposalID"
         },
         {
           "type": "null"
@@ -57,10 +42,7 @@
       ]
     },
     "created_by": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/UserID"
     },
     "created_at": {
       "type": "string",

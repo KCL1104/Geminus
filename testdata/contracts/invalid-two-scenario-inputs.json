@@ -1,5 +1,5 @@
 {
-  "model_version_id": "mv_demo",
+  "model_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
   "name": "Double CI Capacity",
   "scenario_patch": [
     {
@@ -26,5 +26,5 @@
     "seed": 1837462,
     "trace_level": "sampled"
   },
-  "scenario_id": "scn_demo"
+  "scenario_id": "scn_01M4YDQK00J4MJS82YRG0PCEC0"
 }

@@ -1,0 +1,33 @@
+{
+  "baseline": null,
+  "scenario": {
+    "summary": "僅提供單次 run，沒有 baseline comparison。",
+    "run_id": "sim_01M4YDQK00HCPPG1TPHJ3YXDQH"
+  },
+  "delta": [],
+  "bottleneck": [
+    {
+      "statement": "供應的 queue 指標顯示 review 等待值得進一步檢視。",
+      "kind": "inference",
+      "evidence": [
+        {
+          "run": "scenario",
+          "metric_path": "/metrics/queues/code_review/wait_p95_minutes"
+        }
+      ]
+    }
+  ],
+  "assumptions": [
+    "Synthetic fixture only."
+  ],
+  "uncertainty": [
+    "沒有 baseline；本例不是實際 AI 分析結果。"
+  ],
+  "suggested_next_experiments": [
+    {
+      "name": "Reviewer capacity experiment",
+      "hypothesis": "增加 reviewer capacity 是否減少 review waiting。",
+      "requires_confirmation": true
+    }
+  ]
+}

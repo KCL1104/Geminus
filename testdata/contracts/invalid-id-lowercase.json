@@ -1,0 +1,29 @@
+{
+  "model_version_id": "mv_01m4ydqk00frywv7gs7x1qcxzr",
+  "name": "Double CI Capacity",
+  "scenario_patch": [
+    {
+      "op": "test",
+      "path": "/resources/1/id",
+      "value": "ci_runner"
+    },
+    {
+      "op": "replace",
+      "path": "/resources/1/capacity",
+      "value": 6
+    }
+  ],
+  "config": {
+    "horizon": {
+      "value": 30,
+      "unit": "day"
+    },
+    "warmup": {
+      "value": 2,
+      "unit": "day"
+    },
+    "replications": 100,
+    "seed": 1837462,
+    "trace_level": "sampled"
+  }
+}

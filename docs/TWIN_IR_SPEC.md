@@ -8,7 +8,27 @@ SOURCE：原報告 pp. 5–6、14–20、24–25、31–35。完整 closed-objec
 
 schema_version、model_id、domain、name、time_unit 及 views 為根層欄位。metadata 與 domain_attributes 是不可信資料容器，不是程式碼或 expression。closed objects 拒絕未知欄位；metadata 例外，但仍受深度／大小及 redaction 限制。原報告的「最小 IR」有空 nodes/flows，它只是 shape 示意，不是可執行模型；可執行模型須通過下述 semantic validation。
 
-PROPOSED D-001：entity/service IDs 使用 bounded opaque strings；SQL 為 text，保留報告 mdl_/mv_ 等表示法。IR 的 model_id 由 server 指定、不可藉匯入／patch 改變 tenant 或 resource identity。
+APPROVED D-001（2026-10-15）：伺服器產生的資源 ID 為 `<prefix>_<ULID>`，ULID 為 26 字元大寫 Crockford base32（首字 0–7），schema 以 `common.schema.json#/$defs/<Type>ID` 強制；SQL 為 text。使用者定義的 IR entity ID（node／resource／flow／entity_type 等）不受此限，仍用 `$defs/ID`。IR 的 model_id 由 server 指定、不可藉匯入／patch 改變 tenant 或 resource identity。
+
+| 資源 | prefix | schema def |
+|---|---|---|
+| organization | `org` | OrganizationID |
+| user | `usr` | UserID |
+| project | `prj` | ProjectID |
+| model | `mdl` | ModelID |
+| model version | `mv` | ModelVersionID |
+| dataset／dataset version | `ds`／`dsv` | DatasetID／DatasetVersionID |
+| import | `imp` | ImportID |
+| AI proposal | `aip` | ProposalID |
+| scenario | `scn` | ScenarioID |
+| simulation run | `sim` | RunID |
+| AI analysis | `ana` | AnalysisID |
+| job | `job` | JobID |
+| audit event | `aud` | AuditEventID |
+| request（X-Request-ID、error.request_id） | `req` | RequestID |
+| trace artifact | `art` | ArtifactID |
+
+`target_id` 可為任一上列資源（ResourceID）。`actor_id` 暫維持通用格式，因 actor_type 可為 worker／system，留待 T-035 定義。
 
 ## 2. Node、flow、resource catalog
 

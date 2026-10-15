@@ -1,7 +1,7 @@
 {
-  "model_version_id": "mv_demo",
+  "model_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
   "name": "Use approved scenario",
-  "scenario_id": "scn_demo",
+  "scenario_id": "scn_01M4YDQK00J4MJS82YRG0PCEC0",
   "config": {
     "horizon": {
       "value": 30,

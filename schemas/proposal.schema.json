@@ -2,32 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/proposal.schema.json",
   "title": "proposal",
-  "$comment": "SOURCE pp. 24–25,32–33. PROPOSED D-001,D-002,D-004 states and mode-dependent effect. This is a server response, not a client write body.",
+  "$comment": "SOURCE pp. 24–25,32–33. PROPOSED D-001,D-002,D-004 states and mode-dependent effect. This is a server response, not a client write body. D-027: risk_level = max(server_risk_level, provider_risk_claim).",
   "type": "object",
   "properties": {
     "proposal_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ProposalID"
     },
     "organization_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/OrganizationID"
     },
     "model_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ModelID"
     },
     "base_version_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ModelVersionID"
     },
     "mode": {
       "type": "string",
@@ -50,10 +38,7 @@
       ]
     },
     "created_by": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/UserID"
     },
     "created_at": {
       "type": "string",
@@ -78,7 +63,8 @@
       "maxItems": 100
     },
     "risk_level": {
-      "$ref": "common.schema.json#/$defs/RiskLevel"
+      "$ref": "common.schema.json#/$defs/RiskLevel",
+      "description": "Effective risk = max(server_risk_level, provider_risk_claim) (D-027)."
     },
     "confidence": {
       "type": "number",
@@ -112,16 +98,10 @@
       "$ref": "common.schema.json#/$defs/Validation"
     },
     "new_version_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ModelVersionID"
     },
     "scenario_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ScenarioID"
     },
     "patch_hash": {
       "type": "string",
@@ -138,6 +118,14 @@
         "$ref": "common.schema.json#/$defs/DatasetBinding"
       },
       "maxItems": 1000
+    },
+    "server_risk_level": {
+      "$ref": "common.schema.json#/$defs/RiskLevel",
+      "description": "Risk computed by the server policy (D-016)."
+    },
+    "provider_risk_claim": {
+      "$ref": "common.schema.json#/$defs/RiskLevel",
+      "description": "The provider output's risk_level, kept as an untrusted claim."
     }
   },
   "required": [
@@ -172,6 +160,8 @@
           "summary",
           "assumptions",
           "risk_level",
+          "provider_risk_claim",
+          "server_risk_level",
           "confidence",
           "changes",
           "expected_effects",
@@ -263,6 +253,192 @@
           "required": [
             "new_version_id"
           ]
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "required": [
+              "server_risk_level",
+              "provider_risk_claim",
+              "risk_level"
+            ]
+          },
+          {
+            "anyOf": [
+              {
+                "properties": {
+                  "server_risk_level": {
+                    "const": "high"
+                  }
+                },
+                "required": [
+                  "server_risk_level"
+                ]
+              },
+              {
+                "properties": {
+                  "provider_risk_claim": {
+                    "const": "high"
+                  }
+                },
+                "required": [
+                  "provider_risk_claim"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "risk_level": {
+            "const": "high"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "required": [
+              "server_risk_level",
+              "provider_risk_claim",
+              "risk_level"
+            ]
+          },
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "server_risk_level": {
+                      "const": "high"
+                    }
+                  },
+                  "required": [
+                    "server_risk_level"
+                  ]
+                },
+                {
+                  "properties": {
+                    "provider_risk_claim": {
+                      "const": "high"
+                    }
+                  },
+                  "required": [
+                    "provider_risk_claim"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "anyOf": [
+              {
+                "properties": {
+                  "server_risk_level": {
+                    "const": "medium"
+                  }
+                },
+                "required": [
+                  "server_risk_level"
+                ]
+              },
+              {
+                "properties": {
+                  "provider_risk_claim": {
+                    "const": "medium"
+                  }
+                },
+                "required": [
+                  "provider_risk_claim"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "risk_level": {
+            "const": "medium"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "required": [
+              "server_risk_level",
+              "provider_risk_claim",
+              "risk_level"
+            ]
+          },
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "server_risk_level": {
+                      "const": "high"
+                    }
+                  },
+                  "required": [
+                    "server_risk_level"
+                  ]
+                },
+                {
+                  "properties": {
+                    "provider_risk_claim": {
+                      "const": "high"
+                    }
+                  },
+                  "required": [
+                    "provider_risk_claim"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "server_risk_level": {
+                      "const": "medium"
+                    }
+                  },
+                  "required": [
+                    "server_risk_level"
+                  ]
+                },
+                {
+                  "properties": {
+                    "provider_risk_claim": {
+                      "const": "medium"
+                    }
+                  },
+                  "required": [
+                    "provider_risk_claim"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "then": {
+        "properties": {
+          "risk_level": {
+            "const": "low"
+          }
         }
       }
     }

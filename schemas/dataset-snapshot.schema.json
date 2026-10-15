@@ -6,16 +6,10 @@
   "type": "object",
   "properties": {
     "dataset_version_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/DatasetVersionID"
     },
     "organization_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/OrganizationID"
     },
     "logical_ref": {
       "type": "string",

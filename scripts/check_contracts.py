@@ -54,6 +54,16 @@ def references(value: Any):
         for v in value: yield from references(v)
 
 
+def error_pointers(errors) -> set[str]:
+    """JSON Pointers of every error, including nested anyOf/oneOf context."""
+    out, stack = set(), list(errors)
+    while stack:
+        e = stack.pop()
+        out.add(''.join('/' + str(p).replace('~', '~0').replace('/', '~1') for p in e.absolute_path))
+        stack.extend(e.context or [])
+    return out
+
+
 def formats(value: Any):
     if isinstance(value,dict):
         if isinstance(value.get('format'),str): yield value['format']
@@ -102,7 +112,7 @@ def main() -> dict[str, Any]:
         return Draft202012Validator({'$schema':DIALECT,'$ref':uri},registry=registry,
                                     format_checker=FormatChecker())
     cases = load(ROOT/'testdata/contracts/cases.json')['cases']
-    positive = negative = semantic = 0
+    positive = negative = semantic = exact_paths = 0
     for case in cases:
         instance = load(ROOT/case['instance'])
         errors = list(validator(case['schema']).iter_errors(instance))
@@ -110,7 +120,13 @@ def main() -> dict[str, Any]:
             if bool(errors) == case['valid']:
                 detail = '\n'.join(f'{e.json_path}: {e.message}' for e in errors[:3])
                 raise AssertionError(f"Unexpected outcome for {case['id']}\n{detail}")
+            # TEST-001: a negative must fail at the field it was written for.
+            missing = set(case.get('expected_error_paths', [])) - error_pointers(errors)
+            if missing:
+                raise AssertionError(f"{case['id']}: no error at {sorted(missing)}; "
+                                     f"got {sorted(error_pointers(errors))}")
             positive += case['valid']; negative += not case['valid']
+            exact_paths += bool(case.get('expected_error_paths'))
         else:
             if errors: raise AssertionError(f"Semantic fixture must first be schema-valid: {case['id']}")
             issues = lint_model(instance)
@@ -118,8 +134,8 @@ def main() -> dict[str, Any]:
                 raise AssertionError(f"{case['id']}: expected {case['expected_codes']}; got {issues}")
             semantic += 1
     # Schema-positive complete fixtures should also pass the LIMITED model lint.
-    for name in ['default-delivery.json','report-example.json','deterministic-queue.json','congested-queue.json']:
-        issues=lint_model(load(ROOT/'testdata/golden-models'/name))
+    for path in [ROOT/'testdata/golden-models'/n for n in ['default-delivery.json','report-example.json','deterministic-queue.json','congested-queue.json']]+[ROOT/'testdata/contracts/valid-minimal-ir.json']:
+        name=path.name; issues=lint_model(load(path))
         if issues: raise AssertionError(f'{name}: {issues}')
     assert oas['openapi']=='3.1.1'
     assert oas['jsonSchemaDialect']==DIALECT
@@ -140,6 +156,21 @@ def main() -> dict[str, Any]:
             assert any(p['name']=='X-Organization-ID' and p['required'] for p in resolved)
             assert operation['responses']
     assert len(operations)==len(set(operations))
+    # D-025: every error code maps to exactly one documented error response,
+    # each response lists exactly its codes, and every request body may be 415.
+    status_of=docs[ROOT/'schemas/common.schema.json']['$defs']['ErrorCode']['x-http-status']
+    assert set(status_of)==set(docs[ROOT/'schemas/common.schema.json']['$defs']['ErrorCode']['enum'])
+    error_responses={int(k[5:]):v for k,v in oas['components']['responses'].items() if re.fullmatch(r'Error\d{3}',k)}
+    assert set(status_of.values())==set(error_responses),(sorted(set(status_of.values())),sorted(error_responses))
+    for status,resp in error_responses.items():
+        listed=re.search(r'Codes: (.*)\.$',resp['description']).group(1).split(', ')
+        assert sorted(listed)==sorted(c for c,s in status_of.items() if s==status),status
+    for path,item in oas['paths'].items():
+        for method,operation in item.items():
+            if 'requestBody' in operation:
+                assert '415' in operation['responses'],(method,path)
+            for code in operation['responses']:
+                if code[0] in '45': assert int(code) in error_responses,(method,path,code)
     inventory=load(ROOT/'planning/api-operations.json')['operations']
     assert set(operations)=={x['operation_id'] for x in inventory}
     assert len(inventory)==len(operations)
@@ -160,6 +191,7 @@ def main() -> dict[str, Any]:
     assert corpus['modeler']>=50
     report={'status':'PASS_LIMITED_SPEC_CHECKS','schema_metaschemas':len(paths),
             'schema_positive_fixtures':positive,'schema_negative_fixtures':negative,
+            'negative_fixtures_with_exact_error_path':exact_paths,
             'limited_semantic_negative_fixtures':semantic,'resolved_local_ref_occurrences':ref_count,
             'openapi_operations':len(operations),'optional_fastapi_openapi_model':fastapi_status,
             'independent_complete_openapi_validator':'NOT_RUN_UNAVAILABLE',

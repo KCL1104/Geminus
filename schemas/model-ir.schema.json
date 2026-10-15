@@ -9,10 +9,7 @@
       "const": "0.1"
     },
     "model_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ModelID"
     },
     "domain": {
       "type": "string",

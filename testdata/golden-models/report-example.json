@@ -1,6 +1,6 @@
 {
   "schema_version": "0.1",
-  "model_id": "mdl_checkout",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
   "domain": "software_delivery",
   "name": "Checkout Delivery Pipeline",
   "time_unit": "minute",

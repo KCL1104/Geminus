@@ -76,9 +76,9 @@ commit 凍結 dataset，inference 從資料提出 model proposal（含 assumptio
 
 ## 9. Analyst evidence /數字校驗
 
-只在 completed run 上分析；若有 baseline，先由 server 建可比性與 delta。輸出保留原報告 baseline、scenario、delta、bottleneck、assumptions、uncertainty、suggested_next_experiments。major conclusions 的 evidence={run_id,metric_path} 必須落在供應的 `/metrics/...`，指向 available metric；不能只檢查名稱存在。
+只在 completed run 上分析；若有 baseline，先由 server 建可比性與 delta。輸出保留原報告 baseline、scenario、delta、bottleneck、assumptions、uncertainty、suggested_next_experiments。major conclusions 的 evidence={run,metric_path}（D-026：provider 輸出 `analysis-output.schema.json` 不含 run ID，run 以 baseline／scenario 角色引用，server 在 AnalysisRecord 綁定 run_id／baseline_run_id）必須落在供應的 `/metrics/...`，指向 available metric；不能只檢查名稱存在。
 
-server 驗：run ID 屬當前 context、metric path 存在且不跨 tenant、值可用、所有數值 delta 与已計算 comparison 相等、baseline=0 的 relative_delta 必須 null。不存在的 metric、錯值或錯 run 使 analysis failed，不儲存為 completed。不把合法 JSON 當 grounded answer。缺 baseline 時 baseline=null、delta=[]，不創造比較。
+server 驗：evidence 的 run 角色有對應 run（baseline=null 時不得引用 baseline）、metric path 存在且不跨 tenant、值可用、所有數值 delta 与已計算 comparison 相等、baseline=0 的 relative_delta 必須 null。不存在的 metric、錯值或錯 run 使 analysis failed，不儲存為 completed。不把合法 JSON 當 grounded answer。缺 baseline 時 baseline=null、delta=[]，不創造比較。
 
 observation/inference 分開。文字中的重大数值也要能對 supplied values 核對；不能只驗 structured delta 而放過 prose 中的虚構數字。uncertainty 需反映 low replications、missing data、censoring、assumptions；不得把模擬結果稱為必然未來。P0 無足夠自動 verifier 時，禁止無 evidence 的 numeric prose，改以 server-rendered metric blocks + qualitative explanation。
 

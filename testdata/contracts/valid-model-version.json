@@ -1,13 +1,13 @@
 {
-  "id": "mv_demo",
-  "organization_id": "org_demo",
-  "model_id": "mdl_checkout",
+  "id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
   "version": 1,
   "schema_version": "0.1",
   "parent_version_id": null,
   "ir": {
     "schema_version": "0.1",
-    "model_id": "mdl_checkout",
+    "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
     "domain": "software_delivery",
     "name": "Synthetic Software Delivery Pipeline",
     "time_unit": "minute",
@@ -312,6 +312,6 @@
   },
   "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
   "dataset_bindings": [],
-  "created_by": "usr_demo",
+  "created_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
   "created_at": "2026-10-15T08:30:00Z"
 }

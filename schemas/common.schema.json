@@ -109,9 +109,7 @@
           "type": "object",
           "properties": {
             "code": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 100
+              "$ref": "#/$defs/ErrorCode"
             },
             "message": {
               "type": "string",
@@ -132,6 +130,18 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 2000
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "error",
+                      "warning"
+                    ]
                   }
                 },
                 "required": [
@@ -144,10 +154,7 @@
               "maxItems": 1000
             },
             "request_id": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              "$ref": "#/$defs/RequestID"
             }
           },
           "required": [
@@ -173,10 +180,7 @@
           "pattern": "^dataset:.+$"
         },
         "dataset_version_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "#/$defs/DatasetVersionID"
         },
         "content_hash": {
           "type": "string",
@@ -219,6 +223,173 @@
         "unit"
       ],
       "additionalProperties": false
+    },
+    "OrganizationID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^org_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"org_\" + canonical (uppercase) ULID."
+    },
+    "UserID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^usr_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"usr_\" + canonical (uppercase) ULID."
+    },
+    "ProjectID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^prj_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"prj_\" + canonical (uppercase) ULID."
+    },
+    "ModelID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^mdl_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"mdl_\" + canonical (uppercase) ULID."
+    },
+    "ModelVersionID": {
+      "type": "string",
+      "minLength": 29,
+      "maxLength": 29,
+      "pattern": "^mv_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"mv_\" + canonical (uppercase) ULID."
+    },
+    "DatasetID": {
+      "type": "string",
+      "minLength": 29,
+      "maxLength": 29,
+      "pattern": "^ds_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"ds_\" + canonical (uppercase) ULID."
+    },
+    "DatasetVersionID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^dsv_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"dsv_\" + canonical (uppercase) ULID."
+    },
+    "ImportID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^imp_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"imp_\" + canonical (uppercase) ULID."
+    },
+    "ProposalID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^aip_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"aip_\" + canonical (uppercase) ULID."
+    },
+    "ScenarioID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^scn_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"scn_\" + canonical (uppercase) ULID."
+    },
+    "RunID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^sim_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"sim_\" + canonical (uppercase) ULID."
+    },
+    "AnalysisID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^ana_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"ana_\" + canonical (uppercase) ULID."
+    },
+    "JobID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^job_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"job_\" + canonical (uppercase) ULID."
+    },
+    "AuditEventID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^aud_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"aud_\" + canonical (uppercase) ULID."
+    },
+    "RequestID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^req_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"req_\" + canonical (uppercase) ULID."
+    },
+    "ArtifactID": {
+      "type": "string",
+      "minLength": 30,
+      "maxLength": 30,
+      "pattern": "^art_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "D-001 server-issued ID: \"art_\" + canonical (uppercase) ULID."
+    },
+    "ResourceID": {
+      "type": "string",
+      "minLength": 29,
+      "maxLength": 30,
+      "pattern": "^(aip|ana|art|aud|ds|dsv|imp|job|mdl|mv|org|prj|req|scn|sim|usr)_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "Any D-001 server-issued resource ID."
+    },
+    "ErrorCode": {
+      "type": "string",
+      "enum": [
+        "INVALID_REQUEST",
+        "IDEMPOTENCY_KEY_REQUIRED",
+        "UNAUTHENTICATED",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "MODEL_VERSION_CONFLICT",
+        "IDEMPOTENCY_KEY_CONFLICT",
+        "LIFECYCLE_CONFLICT",
+        "RESULT_NOT_READY",
+        "PROPOSAL_ALREADY_DECIDED",
+        "PAYLOAD_TOO_LARGE",
+        "UNSUPPORTED_MEDIA_TYPE",
+        "MODEL_VALIDATION_FAILED",
+        "REQUEST_VALIDATION_FAILED",
+        "PRECONDITION_REQUIRED",
+        "RATE_LIMITED",
+        "INTERNAL_ERROR",
+        "SERVICE_UNAVAILABLE",
+        "AI_PROVIDER_NOT_CONFIGURED",
+        "AI_POLICY_NOT_APPROVED"
+      ],
+      "description": "D-025 closed HTTP error-code catalogue. x-http-status maps each code to its only status.",
+      "x-http-status": {
+        "INVALID_REQUEST": 400,
+        "IDEMPOTENCY_KEY_REQUIRED": 400,
+        "UNAUTHENTICATED": 401,
+        "FORBIDDEN": 403,
+        "NOT_FOUND": 404,
+        "MODEL_VERSION_CONFLICT": 409,
+        "IDEMPOTENCY_KEY_CONFLICT": 409,
+        "LIFECYCLE_CONFLICT": 409,
+        "RESULT_NOT_READY": 409,
+        "PROPOSAL_ALREADY_DECIDED": 409,
+        "PAYLOAD_TOO_LARGE": 413,
+        "UNSUPPORTED_MEDIA_TYPE": 415,
+        "MODEL_VALIDATION_FAILED": 422,
+        "REQUEST_VALIDATION_FAILED": 422,
+        "PRECONDITION_REQUIRED": 428,
+        "RATE_LIMITED": 429,
+        "INTERNAL_ERROR": 500,
+        "SERVICE_UNAVAILABLE": 503,
+        "AI_PROVIDER_NOT_CONFIGURED": 503,
+        "AI_POLICY_NOT_APPROVED": 503
+      }
     }
   }
 }

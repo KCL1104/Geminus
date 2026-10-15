@@ -21,17 +21,19 @@
     "CI queue waiting 可能下降；仍需模擬。"
   ],
   "requires_confirmation": true,
-  "proposal_id": "aip_demo",
-  "organization_id": "org_demo",
-  "model_id": "mdl_checkout",
-  "base_version_id": "mv_demo",
+  "proposal_id": "aip_01M4YDQK00ADN261CME3WV5HZ6",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
   "mode": "edit",
   "status": "ready",
-  "created_by": "usr_demo",
+  "created_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
   "created_at": "2026-10-15T08:30:00Z",
   "validation": {
     "valid": true,
     "issues": []
   },
-  "patch_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  "patch_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "server_risk_level": "low",
+  "provider_risk_claim": "low"
 }

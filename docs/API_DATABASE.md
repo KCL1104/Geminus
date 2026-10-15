@@ -16,7 +16,7 @@ PROPOSED D-008：org/initial owner/user provisioning 是受控 bootstrap，不�
 
 ## 3. HTTP 規則與錯誤
 
-response 使用 application/json，error 保留原報告格式：error.code/message/details[{path,reason}]/request_id。所有錯誤避免 stack trace、SQL、其他 tenant 名稱、provider credentials；JSON Pointer 顯示 exact field。正常 request 帶 X-Request-ID correlation。
+response 使用 application/json，error 保留原報告格式：error.code/message/details[{path,reason}]/request_id；details 另可帶選填 code/severity（D-024）。`error.code` 是封閉清單 `common.schema.json#/$defs/ErrorCode`，`x-http-status` 指定每個 code 唯一對應的 status（D-025）。伺服器產生的資源 ID 為 `<prefix>_<ULID>`（D-001，見 TWIN_IR_SPEC §1）。所有錯誤避免 stack trace、SQL、其他 tenant 名稱、provider credentials；JSON Pointer 顯示 exact field。正常 request 帶 X-Request-ID correlation。
 
 | HTTP | 語義 |
 |---|---|
@@ -25,9 +25,10 @@ response 使用 application/json，error 保留原報告格式：error.code/mess
 | 400 | malformed JSON、duplicate keys、錯誤參數 |
 | 401 / 403 | authentication 失敗／已認證但 role 不足 |
 | 404 | 不存在或不在 authorized tenant/parent；不揭露跨 tenant 存在性 |
-| 409 | MODEL_VERSION_CONFLICT、IDEMPOTENCY_KEY_CONFLICT、lifecycle conflict、RESULT_NOT_READY |
+| 409 | MODEL_VERSION_CONFLICT、IDEMPOTENCY_KEY_CONFLICT、LIFECYCLE_CONFLICT、RESULT_NOT_READY、PROPOSAL_ALREADY_DECIDED（D-030） |
 | 413 / 422 | 大小超限／schema、semantic、dataset 或 constraint 無效 |
-| 428 | 缺 If-Match 等 concurrency precondition |
+| 415 | Content-Type 不符（UNSUPPORTED_MEDIA_TYPE） |
+| 428 | 缺 If-Match（PRECONDITION_REQUIRED）；缺 Idempotency-Key 為 400 IDEMPOTENCY_KEY_REQUIRED |
 | 429 / 503 | quota exceeded／provider or infrastructure unavailable |
 
 Draft ETag 固定候選格式 `"draft-revision-N"`。PATCH draft 使用 application/json-patch+json + If-Match；publish/reset 也帶 If-Match。原報告明確 stale 回 409，本草案保留，沒有換成一般 HTTP 常見的其他 status。

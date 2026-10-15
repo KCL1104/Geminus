@@ -303,7 +303,8 @@
       "scope": [
         "以 disposable PostgreSQL 審查並執行 core migration。",
         "建立 composite org/project/model FKs、immutable guards、indexes。",
-        "提供 migrations up/down/up 與 repository transaction helpers。"
+        "提供 migrations up/down/up 與 repository transaction helpers。",
+        "對齊 T-003 契約（D-001／D-027）：ai_proposals 新增 server_risk_level、provider_risk_claim 與 risk_level=max 檢查；twin.public_id 依 prefix+ULID 收緊或加 per-table CHECK；db/tests 改用 ULID 測試 ID。"
       ],
       "planned_outputs": [
         "migrations/",

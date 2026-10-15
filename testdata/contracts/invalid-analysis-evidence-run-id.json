@@ -1,7 +1,6 @@
 {
   "baseline": null,
   "scenario": {
-    "run_id": "sim_demo",
     "summary": "僅提供單次 run，沒有 baseline comparison。"
   },
   "delta": [],
@@ -11,7 +10,7 @@
       "kind": "inference",
       "evidence": [
         {
-          "run_id": "sim_demo",
+          "run_id": "sim_01M4YDQK00HCPPG1TPHJ3YXDQH",
           "metric_path": "/metrics/queues/code_review/wait_p95_minutes"
         }
       ]

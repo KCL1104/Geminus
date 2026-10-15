@@ -6,34 +6,19 @@
   "type": "object",
   "properties": {
     "id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ImportID"
     },
     "organization_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/OrganizationID"
     },
     "project_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ProjectID"
     },
     "model_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ModelID"
     },
     "base_version_id": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+      "$ref": "common.schema.json#/$defs/ModelVersionID"
     },
     "kind": {
       "type": "string",
@@ -108,10 +93,7 @@
     "dataset_version_id": {
       "anyOf": [
         {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/DatasetVersionID"
         },
         {
           "type": "null"
@@ -121,10 +103,7 @@
     "proposal_id": {
       "anyOf": [
         {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          "$ref": "common.schema.json#/$defs/ProposalID"
         },
         {
           "type": "null"

@@ -121,9 +121,9 @@
       "layer": "schema"
     },
     {
-      "id": "valid-analysis",
-      "instance": "testdata/contracts/valid-analysis.json",
-      "schema": "schemas/analysis.schema.json",
+      "id": "valid-analysis-output",
+      "instance": "testdata/contracts/valid-analysis-output.json",
+      "schema": "schemas/analysis-output.schema.json",
       "valid": true,
       "layer": "schema"
     },
@@ -146,77 +146,110 @@
       "instance": "testdata/contracts/invalid-negative-capacity.json",
       "schema": "schemas/model-ir.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/resources/0/capacity"
+      ]
     },
     {
       "id": "invalid-fractional-capacity",
       "instance": "testdata/contracts/invalid-fractional-capacity.json",
       "schema": "schemas/model-ir.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/resources/0/capacity"
+      ]
     },
     {
       "id": "invalid-schema-version",
       "instance": "testdata/contracts/invalid-schema-version.json",
       "schema": "schemas/model-ir.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/schema_version"
+      ]
     },
     {
       "id": "invalid-script-field",
       "instance": "testdata/contracts/invalid-script-field.json",
       "schema": "schemas/model-ir.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/1"
+      ]
     },
     {
       "id": "invalid-duplicate-topology",
       "instance": "testdata/contracts/invalid-duplicate-topology.json",
       "schema": "schemas/model-ir.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/views/3d"
+      ]
     },
     {
       "id": "invalid-p1-distribution",
       "instance": "testdata/contracts/invalid-p1-distribution.json",
       "schema": "schemas/model-ir.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/1/service_time/distribution/type"
+      ]
     },
     {
       "id": "invalid-missing-timestamp",
       "instance": "testdata/contracts/invalid-missing-timestamp.json",
       "schema": "schemas/canonical-event.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
     },
     {
       "id": "invalid-timestamp-format",
       "instance": "testdata/contracts/invalid-timestamp-format.json",
       "schema": "schemas/canonical-event.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/timestamp"
+      ]
     },
     {
       "id": "invalid-patch-move",
       "instance": "testdata/contracts/invalid-patch-move.json",
       "schema": "schemas/json-patch.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/0/op"
+      ]
     },
     {
       "id": "invalid-patch-root",
       "instance": "testdata/contracts/invalid-patch-root.json",
       "schema": "schemas/json-patch.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/0/path"
+      ]
     },
     {
       "id": "invalid-patch-escape",
       "instance": "testdata/contracts/invalid-patch-escape.json",
       "schema": "schemas/json-patch.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/0/path"
+      ]
     },
     {
       "id": "invalid-no-confirmation",
@@ -244,14 +277,20 @@
       "instance": "testdata/contracts/invalid-ready-with-failed-validation.json",
       "schema": "schemas/proposal.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/validation/valid"
+      ]
     },
     {
       "id": "invalid-excess-replications",
       "instance": "testdata/contracts/invalid-excess-replications.json",
       "schema": "schemas/simulation.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/config/replications"
+      ]
     },
     {
       "id": "invalid-two-scenario-inputs",
@@ -265,21 +304,30 @@
       "instance": "testdata/contracts/invalid-unsafe-seed.json",
       "schema": "schemas/simulation.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/config/seed"
+      ]
     },
     {
       "id": "invalid-low-confidence-no-confirmation",
       "instance": "testdata/contracts/invalid-low-confidence-no-confirmation.json",
       "schema": "schemas/ai-mapping.schema.json",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mappings/1/requires_confirmation"
+      ]
     },
     {
       "id": "invalid-unavailable-is-zero",
       "instance": "testdata/contracts/invalid-unavailable-is-zero.json",
       "schema": "schemas/simulation.schema.json#/$defs/Result",
       "valid": false,
-      "layer": "schema"
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/dora/change_lead_time/mean"
+      ]
     },
     {
       "id": "invalid-scenario-approval-version",
@@ -356,6 +404,171 @@
       "layer": "semantic_lint",
       "expected_codes": [
         "ZERO_TIME_CYCLE"
+      ]
+    },
+    {
+      "id": "invalid-analysis-provider-run-id",
+      "instance": "testdata/contracts/invalid-analysis-provider-run-id.json",
+      "schema": "schemas/analysis-output.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/scenario"
+      ]
+    },
+    {
+      "id": "invalid-analysis-evidence-run-id",
+      "instance": "testdata/contracts/invalid-analysis-evidence-run-id.json",
+      "schema": "schemas/analysis-output.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/bottleneck/0/evidence/0"
+      ]
+    },
+    {
+      "id": "valid-proposal-risk-raised-by-claim",
+      "instance": "testdata/contracts/valid-proposal-risk-raised-by-claim.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-risk-below-server",
+      "instance": "testdata/contracts/invalid-proposal-risk-below-server.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/risk_level"
+      ]
+    },
+    {
+      "id": "invalid-proposal-risk-below-claim",
+      "instance": "testdata/contracts/invalid-proposal-risk-below-claim.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/risk_level"
+      ]
+    },
+    {
+      "id": "invalid-proposal-missing-server-risk",
+      "instance": "testdata/contracts/invalid-proposal-missing-server-risk.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-error-with-issue-code",
+      "instance": "testdata/contracts/valid-error-with-issue-code.json",
+      "schema": "schemas/common.schema.json#/$defs/Error",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-error-unknown-code",
+      "instance": "testdata/contracts/invalid-error-unknown-code.json",
+      "schema": "schemas/common.schema.json#/$defs/Error",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/error/code"
+      ]
+    },
+    {
+      "id": "invalid-error-detail-severity",
+      "instance": "testdata/contracts/invalid-error-detail-severity.json",
+      "schema": "schemas/common.schema.json#/$defs/Error",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/error/details/0/severity"
+      ]
+    },
+    {
+      "id": "valid-error-proposal-already-decided",
+      "instance": "testdata/contracts/valid-error-proposal-already-decided.json",
+      "schema": "schemas/common.schema.json#/$defs/Error",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-id-slug",
+      "instance": "testdata/contracts/invalid-id-slug.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/model_version_id"
+      ]
+    },
+    {
+      "id": "invalid-id-wrong-prefix",
+      "instance": "testdata/contracts/invalid-id-wrong-prefix.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/model_version_id"
+      ]
+    },
+    {
+      "id": "invalid-id-lowercase",
+      "instance": "testdata/contracts/invalid-id-lowercase.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/model_version_id"
+      ]
+    },
+    {
+      "id": "invalid-id-ulid-overflow",
+      "instance": "testdata/contracts/invalid-id-ulid-overflow.json",
+      "schema": "schemas/simulation.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/model_version_id"
+      ]
+    },
+    {
+      "id": "valid-minimal-ir",
+      "instance": "testdata/contracts/valid-minimal-ir.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-draft-with-issues",
+      "instance": "testdata/contracts/valid-draft-with-issues.json",
+      "schema": "schemas/http.schema.json#/$defs/Draft",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-draft-missing-issues",
+      "instance": "testdata/contracts/invalid-draft-missing-issues.json",
+      "schema": "schemas/http.schema.json#/$defs/Draft",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-type-mismatch-capacity",
+      "instance": "testdata/contracts/invalid-type-mismatch-capacity.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/resources/0/capacity"
       ]
     }
   ]

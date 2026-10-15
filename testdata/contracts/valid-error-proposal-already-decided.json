@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "PROPOSAL_ALREADY_DECIDED",
+    "message": "Proposal is already approved.",
+    "details": [],
+    "request_id": "req_01M4YDQK00V6H8S0ST4F7510KR"
+  }
+}

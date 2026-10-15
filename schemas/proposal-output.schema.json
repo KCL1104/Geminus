@@ -26,7 +26,8 @@
           "maxItems": 100
         },
         "risk_level": {
-          "$ref": "common.schema.json#/$defs/RiskLevel"
+          "$ref": "common.schema.json#/$defs/RiskLevel",
+          "description": "The model's own estimate; stored only as provider_risk_claim and never lowers server risk (D-027)."
         },
         "confidence": {
           "type": "number",

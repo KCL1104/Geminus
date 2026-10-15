@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://twin.example/spec/0.1/analysis.schema.json",
-  "title": "analysis",
-  "$comment": "SOURCE pp. 25–26,28. PROPOSED D-010,D-016 strict evidence references and server-recomputed deltas. Existence, numeric equality and data availability need semantic verification; schema alone is insufficient.",
+  "$id": "https://twin.example/spec/0.1/analysis-output.schema.json",
+  "title": "analysis-output",
+  "$comment": "SOURCE pp. 25–26,28. PROPOSED D-010,D-016; D-026: provider output only. The server binds run_id/baseline_run_id on AnalysisRecord; evidence references runs by role. Existence, numeric equality and data availability still need semantic verification.",
   "type": "object",
   "properties": {
     "baseline": {
@@ -10,12 +10,6 @@
         {
           "type": "object",
           "properties": {
-            "run_id": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128,
-              "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
-            },
             "summary": {
               "type": "string",
               "minLength": 1,
@@ -23,7 +17,6 @@
             }
           },
           "required": [
-            "run_id",
             "summary"
           ],
           "additionalProperties": false
@@ -36,12 +29,6 @@
     "scenario": {
       "type": "object",
       "properties": {
-        "run_id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128,
-          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
-        },
         "summary": {
           "type": "string",
           "minLength": 1,
@@ -49,7 +36,6 @@
         }
       },
       "required": [
-        "run_id",
         "summary"
       ],
       "additionalProperties": false
@@ -135,11 +121,12 @@
             "items": {
               "type": "object",
               "properties": {
-                "run_id": {
+                "run": {
                   "type": "string",
-                  "minLength": 1,
-                  "maxLength": 128,
-                  "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+                  "enum": [
+                    "baseline",
+                    "scenario"
+                  ]
                 },
                 "metric_path": {
                   "type": "string",
@@ -149,7 +136,7 @@
                 }
               },
               "required": [
-                "run_id",
+                "run",
                 "metric_path"
               ],
               "additionalProperties": false

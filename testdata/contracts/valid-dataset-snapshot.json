@@ -1,6 +1,6 @@
 {
-  "dataset_version_id": "dsv_review",
-  "organization_id": "org_demo",
+  "dataset_version_id": "dsv_01M4YDQK00NMKD3J34KSJZVY40",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
   "logical_ref": "dataset:review_duration",
   "unit": "minute",
   "samples": [
