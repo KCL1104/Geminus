@@ -653,7 +653,7 @@
           "accepted_at": "2026-10-15",
           "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；獨立 reviewer agent 的 CONFIRMED 發現皆已先紅後綠修正（218b609），見 checks/REVIEW_2026-10-15.md",
           "review": "checks/REVIEW_2026-10-15.md",
-          "ci_after_review": "PENDING: recorded after the push that carries 218b609"
+          "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/38773239681 (09c07e0, includes 218b609: 4/4 success)"
         }
       ]
     },
