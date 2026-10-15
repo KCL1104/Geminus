@@ -54,29 +54,44 @@ func OpenPool(pool *pgxpool.Pool) *DB { return &DB{pool: pool} }
 func (db *DB) Close() { db.pool.Close() }
 
 // Tx runs fn in one transaction. It commits when fn returns nil and rolls back
-// when fn returns an error, when ctx is cancelled, or when fn panics (the
-// panic is re-raised after the rollback). Errors pass through Classify.
+// when fn returns an error, when ctx is cancelled, or when fn does not return
+// at all (a panic, which keeps propagating, or runtime.Goexit). Errors pass
+// through Classify; a commit whose outcome is unknown is ErrOutcomeUnknown.
 func (db *DB) Tx(ctx context.Context, opts pgx.TxOptions, fn func(ctx context.Context, tx pgx.Tx) error) (err error) {
 	tx, err := db.pool.BeginTx(ctx, opts)
 	if err != nil {
 		return Classify(fmt.Errorf("postgres: begin: %w", err))
 	}
+	returned := false
 	defer func() {
-		if p := recover(); p != nil {
+		if !returned {
 			rollback(ctx, tx)
-			panic(p)
 		}
 	}()
-	if err := fn(ctx, tx); err != nil {
+	err = fn(ctx, tx)
+	returned = true
+	if err != nil {
 		rollback(ctx, tx)
 		return Classify(err)
 	}
 	if err := tx.Commit(ctx); err != nil {
 		rollback(ctx, tx)
 		// Deferred constraints (manifest checks, latest_version_id) fail here.
-		return Classify(fmt.Errorf("postgres: commit: %w", err))
+		return commitError(err)
 	}
 	return nil
+}
+
+// commitError classifies a failed COMMIT. A server answer (SQLSTATE) or an
+// error that guarantees nothing was sent means the transaction did not
+// commit; anything else (connection lost, cancelled in flight) may have
+// committed on the server.
+func commitError(err error) error {
+	var pg *pgconn.PgError
+	if errors.As(err, &pg) || pgconn.SafeToRetry(err) {
+		return Classify(fmt.Errorf("postgres: commit: %w", err))
+	}
+	return fmt.Errorf("postgres: commit: %w: %w", ErrOutcomeUnknown, err)
 }
 
 func rollback(ctx context.Context, tx pgx.Tx) {
@@ -95,6 +110,9 @@ var (
 	ErrPermission = errors.New("permission denied")                 // 42501: privileges or RLS WITH CHECK
 	ErrRetryable  = errors.New("serialization failure or deadlock") // 40001, 40P01
 	ErrUnclassed  = errors.New("database error")                    // any other SQLSTATE
+	// ErrOutcomeUnknown: COMMIT was sent but no answer came back, so the
+	// transaction may or may not have committed. Retry only idempotent work.
+	ErrOutcomeUnknown = errors.New("commit outcome unknown")
 )
 
 // Error is a classified database error. Its message names the SQLSTATE and
@@ -124,7 +142,10 @@ func (e *Error) Error() string {
 // Is makes errors.Is(err, ErrConflict) and friends work.
 func (e *Error) Is(target error) bool { return target == e.Kind }
 
-// Unwrap exposes context errors (cancellation) behind the database error.
+// Unwrap exposes the classified error's chain, so errors.Is finds the
+// caller's own sentinels (e.g. a stale revision) and context errors. Error()
+// never includes the chain's text; code that unwraps to the *pgconn.PgError
+// itself must not show its message or detail to users.
 func (e *Error) Unwrap() error { return e.cause }
 
 var kinds = map[string]error{
@@ -133,33 +154,21 @@ var kinds = map[string]error{
 }
 
 // Classify turns a *pgconn.PgError anywhere in err's chain into an *Error.
-// Errors without a SQLSTATE (cancellation, I/O) are returned unchanged.
+// Errors without a SQLSTATE (cancellation, I/O) and errors already
+// classified are returned unchanged.
 func Classify(err error) error {
 	var pg *pgconn.PgError
-	if err == nil || !errors.As(err, &pg) {
+	var classified *Error
+	if err == nil || !errors.As(err, &pg) || errors.As(err, &classified) {
 		return err
 	}
 	kind, ok := kinds[pg.Code]
 	if !ok {
 		kind = ErrUnclassed
 	}
-	var cause error
-	if ctxErr := contextErr(err); ctxErr != nil {
-		cause = ctxErr
-	}
 	msg := pg.Message
 	if !ok {
 		msg = ""
 	}
-	return &Error{Kind: kind, SQLState: pg.Code, Constraint: pg.ConstraintName, Message: msg, cause: cause}
-}
-
-func contextErr(err error) error {
-	switch {
-	case errors.Is(err, context.Canceled):
-		return context.Canceled
-	case errors.Is(err, context.DeadlineExceeded):
-		return context.DeadlineExceeded
-	}
-	return nil
+	return &Error{Kind: kind, SQLState: pg.Code, Constraint: pg.ConstraintName, Message: msg, cause: err}
 }

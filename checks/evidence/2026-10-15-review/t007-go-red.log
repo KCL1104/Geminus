@@ -1,0 +1,22 @@
+--- FAIL: TestGuardDiscardsSessionState (0.02s)
+    tenant_test.go:445: session-level app.oidc_subject: the connection was reused (subject="leaked-subject" cursors=0, new connections 1 -> 1)
+    tenant_test.go:445: session-level app.oidc_issuer: the connection was reused (subject="leaked-subject" cursors=0, new connections 1 -> 1)
+    tenant_test.go:445: session-level search_path: the connection was reused (subject="leaked-subject" cursors=0, new connections 1 -> 1)
+    tenant_test.go:445: a cursor WITH HOLD over tenant rows: the connection was reused (subject="leaked-subject" cursors=1, new connections 1 -> 1)
+    tenant_test.go:445: a temporary table: the connection was reused (subject="leaked-subject" cursors=1, new connections 1 -> 1)
+    tenant_test.go:445: a session advisory lock: the connection was reused (subject="leaked-subject" cursors=1, new connections 1 -> 1)
+    tenant_test.go:445: a LISTEN channel: the connection was reused (subject="leaked-subject" cursors=1, new connections 1 -> 1)
+--- FAIL: TestGuardCoversEverySetting (0.00s)
+    tenant_test.go:469: Guard checks [app.organization_id app.user_id]; the migrations read [app.oidc_issuer app.oidc_subject app.organization_id app.user_id]
+--- FAIL: TestUnsafeRuntimeLogins (0.05s)
+    tenant_test.go:527: want ErrUnsafeRole (is a superuser), got <nil>
+    tenant_test.go:527: want ErrUnsafeRole (dt_test_unsafe_super_role), got <nil>
+    tenant_test.go:527: want ErrUnsafeRole (dt_test_unsafe_bypass_role), got <nil>
+    tenant_test.go:527: want ErrUnsafeRole (has REPLICATION), got <nil>
+    tenant_test.go:527: want ErrUnsafeRole (pg_write_all_data), got <nil>
+    tenant_test.go:527: want ErrUnsafeRole (pg_execute_server_program), got <nil>
+    tenant_test.go:527: want ErrUnsafeRole (owns database objects), got <nil>
+    tenant_test.go:527: want ErrUnsafeRole (has privileges granted directly), got <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/tenant	0.087s
+FAIL

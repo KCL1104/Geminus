@@ -1,0 +1,9 @@
+--- PASS: TestCommitOutcome (0.00s)
+--- PASS: TestClassify (0.00s)
+--- PASS: TestTxCommitRollbackPanic (0.03s)
+--- PASS: TestScopeIsTransactionLocal (0.02s)
+--- PASS: TestGuardsAreClassified (0.03s)
+--- PASS: TestCancellationReleasesLocks (0.32s)
+--- PASS: TestClassifyKeepsCallerErrors (0.00s)
+--- PASS: TestTxGoexit (0.02s)
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.437s

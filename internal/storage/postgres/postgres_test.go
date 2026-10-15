@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -352,5 +353,56 @@ func TestCancellationReleasesLocks(t *testing.T) {
 		return err
 	}); err != nil {
 		t.Errorf("the cancelled transaction still holds its lock: %v", err)
+	}
+}
+
+// Review of T-006: a repository's own typed error (e.g. a stale revision) must
+// survive Classify even when it wraps a database error, while the message
+// still carries no server text.
+func TestClassifyKeepsCallerErrors(t *testing.T) {
+	errStale := errors.New("stale revision")
+	secret := "SECRET-ROW-VALUE"
+	pg := &pgconn.PgError{Code: "22012", Message: "division by zero " + secret}
+	err := postgres.Classify(fmt.Errorf("%w: %w", errStale, pg))
+	if !errors.Is(err, errStale) || !errors.Is(err, postgres.ErrUnclassed) {
+		t.Errorf("caller sentinel or kind lost: %v", err)
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Errorf("message quotes the server: %v", err)
+	}
+	// Classifying twice (a helper inside fn already classified) keeps the first result.
+	if again := postgres.Classify(fmt.Errorf("outer: %w", err)); !errors.Is(again, errStale) || strings.Contains(again.Error(), secret) {
+		t.Errorf("reclassified: %v", again)
+	}
+}
+
+// fn ending its goroutine with runtime.Goexit (t.FailNow inside fn) must
+// still roll back and release the connection.
+func TestTxGoexit(t *testing.T) {
+	single := postgres.OpenPool(pool(t, 1))
+	tn := newTenant(t, postgres.OpenPool(pool(t, 1)))
+	left := newID(t, "prj")
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_ = single.Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+			if err := insertProject(tn, left)(ctx, tx); err != nil {
+				return err
+			}
+			runtime.Goexit()
+			return nil
+		})
+	}()
+	<-done
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	var n int
+	if err := single.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		if err := tn.scope(ctx, tx, "twin_api"); err != nil {
+			return err
+		}
+		return tx.QueryRow(ctx, `SELECT count(*) FROM twin.projects WHERE id=$1`, left).Scan(&n)
+	}); err != nil || n != 0 {
+		t.Errorf("after Goexit: %v, %d rows; the connection must be released and nothing committed", err, n)
 	}
 }

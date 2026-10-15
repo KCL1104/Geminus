@@ -1,0 +1,9 @@
+=== RUN   TestClassifyKeepsCallerErrors
+    postgres_test.go:368: caller sentinel or kind lost: postgres: database error (SQLSTATE 22012)
+    postgres_test.go:375: reclassified: outer: postgres: database error (SQLSTATE 22012)
+--- FAIL: TestClassifyKeepsCallerErrors (0.00s)
+=== RUN   TestTxGoexit
+    postgres_test.go:406: after Goexit: postgres: begin: context deadline exceeded, 0 rows; the connection must be released and nothing committed
+panic: test timed out after 30s
+FAIL	github.com/kcl1104/geminus/internal/storage/postgres	30.035s
+FAIL

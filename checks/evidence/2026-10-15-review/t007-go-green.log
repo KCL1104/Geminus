@@ -1,0 +1,9 @@
+--- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+--- PASS: TestRuntimeRoles (0.06s)
+--- PASS: TestRunScopes (0.04s)
+--- PASS: TestPoolReuseLeavesNoScope (0.27s)
+--- PASS: TestWorkerAssignment (0.02s)
+--- PASS: TestGuardDiscardsSessionState (0.08s)
+--- PASS: TestGuardCoversEverySetting (0.00s)
+--- PASS: TestUnsafeRuntimeLogins (0.07s)
+ok  	github.com/kcl1104/geminus/internal/tenant	1.571s

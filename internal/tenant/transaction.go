@@ -69,18 +69,38 @@ type DB struct{ db *postgres.DB }
 // back with any scope left on it is discarded.
 func New(pool *pgxpool.Pool) *DB { return &DB{db: postgres.OpenPool(pool)} }
 
+// ScopeSettings are the custom settings RLS policies read. Placeholder
+// settings are not listed in pg_settings, so Guard checks each by name; a
+// test keeps this list equal to what the migrations read.
+var ScopeSettings = []string{"app.oidc_issuer", "app.oidc_subject", "app.organization_id", "app.user_id"}
+
+// guardSQL is true only for a connection with no state that could carry one
+// request's data or privileges into the next checkout: no scope setting, no
+// role switch, no other session-level SET (e.g. search_path), no cursor
+// WITH HOLD, temporary table, session advisory lock or LISTEN channel.
+var guardSQL = func() string {
+	q := "SELECT current_user = session_user"
+	for _, s := range ScopeSettings {
+		q += " AND coalesce(current_setting('" + s + "', true), '') = ''"
+	}
+	return q + ` AND NOT EXISTS (SELECT 1 FROM pg_settings WHERE source = 'session')
+		AND NOT EXISTS (SELECT 1 FROM pg_cursors WHERE is_holdable)
+		AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relnamespace = pg_my_temp_schema())
+		AND NOT EXISTS (SELECT 1 FROM pg_locks WHERE pid = pg_backend_pid() AND locktype = 'advisory')
+		AND NOT EXISTS (SELECT 1 FROM pg_listening_channels())`
+}()
+
 // Guard is a pgxpool AfterRelease hook. Scope is transaction-local, so a
-// released connection must carry none; one that does (a bug that used a
-// session-level SET) is destroyed instead of reused. It costs one round trip
-// per release.
+// released connection must carry no session state; one that does (a bug that
+// used a session-level SET, a held cursor, a temp table...) is destroyed
+// instead of reused. It is a safety net that costs one round trip per
+// release; correct code never trips it.
 func Guard(conn *pgx.Conn) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), postgres.RollbackTimeout)
 	defer cancel()
-	var org, user string
-	var sameRole bool
-	err := conn.QueryRow(ctx, `SELECT coalesce(current_setting('app.organization_id', true), ''),
-		coalesce(current_setting('app.user_id', true), ''), current_user = session_user`).Scan(&org, &user, &sameRole)
-	return err == nil && org == "" && user == "" && sameRole
+	var clean bool
+	err := conn.QueryRow(ctx, guardSQL).Scan(&clean)
+	return err == nil && clean
 }
 
 func setScope(ctx context.Context, tx pgx.Tx, org, user string) error {

@@ -4,9 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"maps"
 	"math/big"
 	"net/url"
 	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/storage/postgres"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -193,7 +198,7 @@ func TestRuntimeRoles(t *testing.T) {
 		why  string
 	}{
 		{as(t, apiLogin, 1, false), tenant.WorkerRole, "does not inherit twin_worker"},
-		{as(t, ownerLogin, 1, false), tenant.APIRole, "is a member of twin_owner"},
+		{as(t, ownerLogin, 1, false), tenant.APIRole, "is also a member of twin_owner"},
 		{as(t, bothLogin, 1, false), tenant.APIRole, "is also a member of twin_worker"},
 		{adm, tenant.APIRole, "is a superuser"},
 	} {
@@ -375,5 +380,151 @@ func TestWorkerAssignment(t *testing.T) {
 		return err
 	}); !errors.Is(err, postgres.ErrPermission) {
 		t.Errorf("the worker reads memberships: %v", err)
+	}
+}
+
+// Review of T-007: any session state that could carry one request's data or
+// privileges into the next checkout makes Guard discard the connection.
+func TestGuardDiscardsSessionState(t *testing.T) {
+	adm := admin(t)
+	a := newOrg(t, adm)
+	pool := as(t, apiLogin, 1, true)
+	d := tenant.New(pool)
+	ctx := context.Background()
+	s := tenant.Scope{OrganizationID: a.id, UserID: a.user}
+	// Warm the single connection so NewConnsCount only moves when Guard discards one.
+	if _, err := pool.Exec(ctx, `SELECT 1`); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		name string
+		leak func() error
+	}{
+		{"session-level app.oidc_subject", func() error {
+			_, err := pool.Exec(ctx, `SELECT set_config('app.oidc_subject', 'leaked-subject', false)`)
+			return err
+		}},
+		{"session-level app.oidc_issuer", func() error {
+			_, err := pool.Exec(ctx, `SELECT set_config('app.oidc_issuer', 'https://leak.invalid', false)`)
+			return err
+		}},
+		{"session-level search_path", func() error {
+			_, err := pool.Exec(ctx, `SET search_path = public, pg_catalog`)
+			return err
+		}},
+		{"a cursor WITH HOLD over tenant rows", func() error {
+			return d.Run(ctx, s, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx, _ tenant.Membership) error {
+				_, err := tx.Exec(ctx, `DECLARE leak CURSOR WITH HOLD FOR SELECT id FROM twin.projects`)
+				return err
+			})
+		}},
+		{"a temporary table", func() error {
+			_, err := pool.Exec(ctx, `CREATE TEMP TABLE leak AS SELECT 1 AS x`)
+			return err
+		}},
+		{"a session advisory lock", func() error {
+			_, err := pool.Exec(ctx, `SELECT pg_advisory_lock(42)`)
+			return err
+		}},
+		{"a LISTEN channel", func() error {
+			_, err := pool.Exec(ctx, `LISTEN leak`)
+			return err
+		}},
+	} {
+		before := pool.Stat().NewConnsCount()
+		if err := c.leak(); err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		var subject string
+		var cursors int
+		if err := pool.QueryRow(ctx, `SELECT coalesce(current_setting('app.oidc_subject', true), ''),
+			(SELECT count(*) FROM pg_cursors WHERE is_holdable)`).Scan(&subject, &cursors); err != nil {
+			t.Fatal(err)
+		}
+		if subject != "" || cursors != 0 || pool.Stat().NewConnsCount() != before+1 {
+			t.Errorf("%s: the connection was reused (subject=%q cursors=%d, new connections %d -> %d)",
+				c.name, subject, cursors, before, pool.Stat().NewConnsCount())
+		}
+	}
+}
+
+// Guard checks every app.* setting the migrations read.
+func TestGuardCoversEverySetting(t *testing.T) {
+	re := regexp.MustCompile(`current_setting\('(app\.[a-z_]+)'`)
+	used := map[string]bool{}
+	files, _ := filepath.Glob(filepath.Join(contracttest.Root(t), "migrations", "*.up.sql"))
+	if len(files) == 0 {
+		t.Fatal("no migrations found")
+	}
+	for _, f := range files {
+		for _, m := range re.FindAllStringSubmatch(string(contracttest.ReadFile(t, f)), -1) {
+			used[m[1]] = true
+		}
+	}
+	got := map[string]bool{}
+	for _, s := range tenant.ScopeSettings {
+		got[s] = true
+	}
+	if !maps.Equal(used, got) {
+		t.Errorf("Guard checks %v; the migrations read %v", tenant.ScopeSettings, slices.Sorted(maps.Keys(used)))
+	}
+}
+
+// Review of T-007: logins that pass a current_user-only check but can still
+// escape RLS or the grant model are refused.
+func TestUnsafeRuntimeLogins(t *testing.T) {
+	adm := admin(t)
+	ctx := context.Background()
+	setup := []string{
+		`DO $$ BEGIN
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_super_role') THEN CREATE ROLE dt_test_unsafe_super_role NOLOGIN SUPERUSER; END IF;
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_bypass_role') THEN CREATE ROLE dt_test_unsafe_bypass_role NOLOGIN BYPASSRLS; END IF;
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_setsuper_login') THEN
+		    CREATE ROLE dt_test_unsafe_setsuper_login LOGIN IN ROLE twin_api;
+		    GRANT dt_test_unsafe_super_role TO dt_test_unsafe_setsuper_login WITH INHERIT FALSE, SET TRUE; END IF;
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_bypass_login') THEN
+		    CREATE ROLE dt_test_unsafe_bypass_login LOGIN IN ROLE twin_api, dt_test_unsafe_bypass_role; END IF;
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_repl_login') THEN
+		    CREATE ROLE dt_test_unsafe_repl_login LOGIN REPLICATION IN ROLE twin_api; END IF;
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_write_login') THEN
+		    CREATE ROLE dt_test_unsafe_write_login LOGIN IN ROLE twin_worker, pg_write_all_data; END IF;
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_program_login') THEN
+		    CREATE ROLE dt_test_unsafe_program_login LOGIN IN ROLE twin_worker, pg_execute_server_program; END IF;
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_fnowner_login') THEN
+		    CREATE ROLE dt_test_unsafe_fnowner_login LOGIN IN ROLE twin_worker; END IF;
+		  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='dt_test_unsafe_grant_login') THEN
+		    CREATE ROLE dt_test_unsafe_grant_login LOGIN IN ROLE twin_worker; END IF;
+		END $$`,
+		`CREATE OR REPLACE FUNCTION public.dt_test_owned_fn() RETURNS int LANGUAGE sql AS 'SELECT 1'`,
+		`ALTER FUNCTION public.dt_test_owned_fn() OWNER TO dt_test_unsafe_fnowner_login`,
+		`GRANT UPDATE ON twin.imports TO dt_test_unsafe_grant_login`,
+	}
+	for _, q := range setup {
+		if _, err := adm.Exec(ctx, q); err != nil {
+			t.Fatalf("setup: %v", err)
+		}
+	}
+	// A superuser that starts its session as twin_api via the startup options.
+	u, err := url.Parse(adminURL(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	u.RawQuery += "&options=-c%20role%3Dtwin_api" // url.Values would encode the space as "+"
+	for _, c := range []struct {
+		pool      *pgxpool.Pool
+		want, why string
+	}{
+		{open(t, u.String(), 1, false), tenant.APIRole, "is a superuser"},
+		{as(t, "dt_test_unsafe_setsuper_login", 1, false), tenant.APIRole, "dt_test_unsafe_super_role"},
+		{as(t, "dt_test_unsafe_bypass_login", 1, false), tenant.APIRole, "dt_test_unsafe_bypass_role"},
+		{as(t, "dt_test_unsafe_repl_login", 1, false), tenant.APIRole, "has REPLICATION"},
+		{as(t, "dt_test_unsafe_write_login", 1, false), tenant.WorkerRole, "pg_write_all_data"},
+		{as(t, "dt_test_unsafe_program_login", 1, false), tenant.WorkerRole, "pg_execute_server_program"},
+		{as(t, "dt_test_unsafe_fnowner_login", 1, false), tenant.WorkerRole, "owns database objects"},
+		{as(t, "dt_test_unsafe_grant_login", 1, false), tenant.WorkerRole, "has privileges granted directly"},
+	} {
+		if err := tenant.CheckRuntimeRole(ctx, c.pool, c.want); !errors.Is(err, tenant.ErrUnsafeRole) || !strings.Contains(err.Error(), c.why) {
+			t.Errorf("want ErrUnsafeRole (%s), got %v", c.why, err)
+		}
 	}
 }
