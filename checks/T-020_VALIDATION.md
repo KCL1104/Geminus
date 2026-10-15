@@ -1,6 +1,6 @@
 # T-020 驗證報告：DES compiler、clock、heap、RNG
 
-**日期：2026-10-15｜狀態：`review`（review 修正已完成，CI 通過後依 H-003 驗收）｜需求：REQ-011｜Gate：D-005、D-006、D-023、D-029、D-032、D-033（皆已批准）；本任務的實作語意另登記為 D-038（PROPOSED，gate 在 T-023）**
+**日期：2026-10-15｜狀態：`done`（依 H-003 由 agent review 驗收；owner 可隨時重開）｜需求：REQ-011｜Gate：D-005、D-006、D-023、D-029、D-032、D-033（皆已批准）；本任務的實作語意另登記為 D-038（PROPOSED，gate 在 T-023）**
 
 首輪輸出在 `checks/evidence/2026-10-15-T-020/`，review 修正後的輸出在 `checks/evidence/2026-10-15-T-020-review/`。
 
@@ -47,7 +47,7 @@ Review 由另一個 agent 以對抗方式進行（H-003），它沒有修改 rep
 | Fuzz `FuzzCompileAndArrive` 60 s | 0 | 1,289,879 次 |
 | Mutation（`checks/evidence/2026-10-15-T-020-review/engine-mutants.py`） | 0 | **51/51 被擋，1 個 equivalent**：首輪 30 個（依現行程式碼改寫）＋ review 的存活 mutant（8 個；拆開 sqrt 的兩個分支各算一個）＋ 14 個針對修正的 mutant；`other-ref-ok` 在 manifest 核對後已無輸入可達，列為 equivalent 並在腳本中說明。腳本與 log 已提交 |
 | `actionlint` | 0 | |
-| GitHub Actions | 推送後補記 | |
+| GitHub Actions | 成功 | [run 38784747338](https://github.com/KCL1104/Geminus/actions/runs/38784747338)（5b625bb）：4/4 job 成功；backend job 的 `make backend-numeric` 在 `REQUIRE_GOAMD64_V3=1` 下實際跑了 GOAMD64=v3 測試（log：「PASS numeric tests as a GOAMD64=v3 build」）。首版 b8e19ad 的 run 38779234290 亦 4/4 成功 |
 
 ## 驗收對照
 
@@ -96,4 +96,3 @@ Review 由另一個 agent 以對抗方式進行（H-003），它沒有修改 rep
 | queue／resource／service／routing kernel、GOLDEN-001/002 的完整結果 | T-021 |
 | 指標、warmup cohort、result digest、trace | T-022 |
 | SimPy differential | T-037 |
-| GitHub Actions | 推送後補記 |

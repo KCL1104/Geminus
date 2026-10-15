@@ -1070,7 +1070,7 @@
       "id": "T-020",
       "title": "DES compiler、clock、heap、RNG",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Simulation",
       "planning_window": "Week 5–6",
       "depends_on": [
@@ -1121,9 +1121,13 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-020_VALIDATION.md",
           "summary": "Compile(RunInput) 重新驗證 IR／manifest／datasets／config／limits 後產生 immutable Program（ID 排序、decision routes 依 flow ID）；四種 sampler（固定的 ln、triangular clamp）、(tick, priority, seq) 事件 heap、replication clock、source arrival 與 entity ID；與 Python 參考在 10^6 個 ln 輸入與每個 sampler 10^5 次 draw 上逐 bit 相同；無 FMA／平台 math 的組語檢查（六個 target）與 GOAMD64=v3 測試；mutation 51/51＋1 equivalent、fuzz 1,289,879 次；kernel 屬 T-021。",
-          "reviewer": null,
+          "reviewer": "agent independent review at owner's request (H-003); owner did not review line by line",
           "review": "independent reviewer agent (H-003): 1 medium + 3 low CONFIRMED, all fixed red-first; 4 PLAUSIBLE handled (manifest check adopted, entity memory and route tolerance to T-021, semantics registered as D-038 PROPOSED); report claims corrected in checks/T-020_VALIDATION.md",
-          "review_evidence": "checks/evidence/2026-10-15-T-020-review/"
+          "review_evidence": "checks/evidence/2026-10-15-T-020-review/",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38779234290 (b8e19ad: 4/4 success)",
+          "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/38784747338 (5b625bb: 4/4 success, backend-numeric GOAMD64=v3 ran)",
+          "accepted_at": "2026-10-15",
+          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；獨立 reviewer agent 的 CONFIRMED 發現皆已先紅後綠修正（5b625bb），見 checks/T-020_VALIDATION.md"
         }
       ]
     },
