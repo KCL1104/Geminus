@@ -1,0 +1,7 @@
+== go test (GOAMD64 v1) and GOAMD64=v3 after the fix
+== GOAMD64=v1 pinned ln
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.204s
+== GOAMD64=v3 pinned ln
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.176s
+== compile tests after the fix
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.514s

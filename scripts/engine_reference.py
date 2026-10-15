@@ -7,6 +7,13 @@ source-arrival process (docs/SIMULATION_SPEC.md §2 and §4), and writes or
 checks testdata/simulation/engine-vectors.json. The Go tests must reproduce
 every vector exactly. This is NOT a DES engine or a SimPy differential test.
 
+It shares one thing with the engine by design: the numerical profile. The
+natural logarithm is the pinned algorithm below, not the platform's log, so
+equality is bit-exact on every input rather than on the few draws stored; the
+large-sample digests check that over 10^6 log inputs and 10^5 draws per
+sampler. Agreement shows both implement the same profile; it is not evidence
+that the profile is statistically right (that is the SimPy differential's job).
+
     python scripts/engine_reference.py          # check the stored vectors
     python scripts/engine_reference.py --write  # regenerate them
 """
@@ -14,6 +21,7 @@ import hashlib
 import heapq
 import json
 import math
+import struct
 import sys
 from pathlib import Path
 
@@ -53,6 +61,59 @@ def stream(rep_seed: int, node: str, purpose: str) -> SplitMix64:
     return SplitMix64(int.from_bytes(hashlib.sha256(payload).digest()[:8], "little"))
 
 
+def bits(x: float) -> int:
+    return struct.unpack("<Q", struct.pack("<d", x))[0]
+
+
+def from_bits(b: int) -> float:
+    return struct.unpack("<d", struct.pack("<Q", b))[0]
+
+
+# pinned_log is Go's pure-Go math.log (src/math/log.go, BSD-3-Clause, see
+# docs/THIRD_PARTY_NOTICES.md,
+# Copyright 2009 The Go Authors), itself a simpler version of FreeBSD's
+# /usr/src/lib/msun/src/e_log.c, which came with this notice:
+#
+# ====================================================
+# Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+#
+# Developed at SunPro, a Sun Microsystems, Inc. business.
+# Permission to use, copy, modify, and distribute this
+# software is freely granted, provided that this notice
+# is preserved.
+# ====================================================
+#
+# CPython float operations round every step to binary64 and never fuse, which
+# is the profile the Go engine enforces with explicit conversions.
+LN2_HI, LN2_LO = from_bits(0x3FE62E42FEE00000), from_bits(0x3DEA39EF35793C76)
+L1, L2, L3, L4 = (from_bits(b) for b in (0x3FE5555555555593, 0x3FD999999997FA04, 0x3FD2492494229359, 0x3FCC71C51D8E78AF))
+L5, L6, L7 = (from_bits(b) for b in (0x3FC7466496CB03DE, 0x3FC39A09D078C69F, 0x3FC2F112DF3E5244))
+SQRT_HALF = from_bits(0x3FE6A09E667F3BCD)
+
+
+def pinned_log(x: float) -> float:
+    if math.isnan(x) or x == math.inf:
+        return x
+    if x < 0:
+        return math.nan
+    if x == 0:
+        return -math.inf
+    f1, ki = math.frexp(x)
+    if f1 < SQRT_HALF:
+        f1 *= 2
+        ki -= 1
+    f = f1 - 1
+    k = float(ki)
+    s = f / (2 + f)
+    s2 = s * s
+    s4 = s2 * s2
+    t1 = s2 * (L1 + s4 * (L3 + s4 * (L5 + s4 * L7)))
+    t2 = s4 * (L2 + s4 * (L4 + s4 * L6))
+    r = t1 + t2
+    hfsq = 0.5 * f * f
+    return k * LN2_HI - ((hfsq - (s * (hfsq + r) + k * LN2_LO)) - f)
+
+
 def round_half_up(x: float) -> int:
     # Exact for x >= 0 at these magnitudes: x - floor(x) has no rounding error.
     f = math.floor(x)
@@ -74,31 +135,51 @@ def quantize(d: float, unit: str) -> int:
     return 1 if t == 0 and d > 0 else t
 
 
-def sampler(dist: dict, unit: str, empirical_unit: str | None = None):
-    kind = dist["type"]
-    if kind == "constant":
-        v = ticks(dist["value"], unit)
-        return lambda rng: v
-    if kind == "exponential":
-        mean = dist["mean"]
-        return lambda rng: max(quantize(-mean * math.log(1 - rng.uniform()), unit), 1)
-    if kind == "triangular":
-        lo, mode, hi = dist["min"], dist["mode"], dist["max"]
-        if lo == hi:
-            v = ticks(lo, unit)
-            return lambda rng: v
-        width = hi - lo
+class Sampler:
+    """One distribution: draw(rng) returns ticks. A continuous sampler also
+    has value(u), the duration in the model unit before quantization."""
 
-        def tri(rng):
-            u = rng.uniform()
-            if u < (mode - lo) / width:
-                return quantize(lo + math.sqrt(u * width * (mode - lo)), unit)
-            return quantize(hi - math.sqrt((1 - u) * width * (hi - mode)), unit)
-        return tri
-    if kind == "empirical":
-        values = [ticks(s, empirical_unit) for s in dist["samples"]]
-        return lambda rng: values[min(int(rng.uniform() * len(values)), len(values) - 1)]
-    raise ValueError(kind)
+    def __init__(self, dist: dict, unit: str, empirical_unit: str | None = None) -> None:
+        self.kind, self.unit, self.fixed, self.value = dist["type"], unit, None, None
+        if self.kind == "constant":
+            self.fixed = ticks(dist["value"], unit)
+        elif self.kind == "exponential":
+            mean = dist["mean"]
+            self.value = lambda u: -mean * pinned_log(1 - u)
+        elif self.kind == "triangular":
+            lo, mode, hi = dist["min"], dist["mode"], dist["max"]
+            if lo == hi:
+                self.fixed = ticks(lo, unit)
+            else:
+                width = hi - lo
+
+                def tri(u: float) -> float:
+                    if u < (mode - lo) / width:
+                        v = lo + math.sqrt(u * width * (mode - lo))
+                    else:
+                        v = hi - math.sqrt((1 - u) * width * (hi - mode))
+                    return min(max(v, lo), hi)  # rounding can step outside [min, max]
+                self.value = tri
+        elif self.kind == "empirical":
+            self.values = [ticks(s, empirical_unit) for s in dist["samples"]]
+        else:
+            raise ValueError(self.kind)
+
+    def ticks_of(self, v: float) -> int:
+        t = quantize(v, self.unit)
+        return max(t, 1) if self.kind == "exponential" else t
+
+    def draw(self, rng: SplitMix64) -> int:
+        if self.fixed is not None:
+            return self.fixed
+        u = rng.uniform()
+        if self.kind == "empirical":
+            return self.values[min(int(u * len(self.values)), len(self.values) - 1)]
+        return self.ticks_of(self.value(u))
+
+
+def sampler(dist: dict, unit: str, empirical_unit: str | None = None):
+    return Sampler(dist, unit, empirical_unit).draw
 
 
 SAMPLER_CASES = [
@@ -115,6 +196,9 @@ SAMPLER_CASES = [
      "samples": [0, 240, 360.5], "samples_unit": "minute"},
 ]
 DRAWS = 12
+DIGEST_DRAWS = 100_000
+LOG_INPUTS = 1_000_000
+LOG_SEED = 0x20261015
 REP_SEED_INDEX = (20260415, 3)
 
 
@@ -129,8 +213,48 @@ def sampler_vectors() -> list[dict]:
         draw = sampler(dist, case["unit"], case.get("samples_unit"))
         values = [draw(rng) for _ in range(DRAWS)]
         out.append({**case, "node_id": f"node_{i}", "purpose": "service", "expected_ticks": values,
-                    "state_after": f"{rng.state:016x}"})
+                    "state_after": f"{rng.state:016x}", **sampler_digest(dist, case, rep, i)})
     return out
+
+
+def sampler_digest(dist: dict, case: dict, rep: int, i: int) -> dict:
+    """SHA-256 over DIGEST_DRAWS draws on a fresh stream: per draw the tick
+    count (int64 LE) and, for continuous samplers, the unquantized value's
+    binary64 bits (LE). Any change to a formula, operation order or the log
+    changes it, even when no tick changes."""
+    s = Sampler(dist, case["unit"], case.get("samples_unit"))
+    rng = stream(rep, f"node_{i}", "service")
+    h = hashlib.sha256()
+    for _ in range(DIGEST_DRAWS):
+        if s.value is None:
+            t = s.draw(rng)
+            h.update(t.to_bytes(8, "little", signed=True))
+            continue
+        v = s.value(rng.uniform())
+        h.update(s.ticks_of(v).to_bytes(8, "little", signed=True) + bits(v).to_bytes(8, "little"))
+    return {"digest_draws": DIGEST_DRAWS, "digest": h.hexdigest(), "digest_state_after": f"{rng.state:016x}"}
+
+
+# Edge inputs of the logarithm: the ends of 1-U, both sides of the sqrt(1/2)
+# reduction boundary, and exact powers of two. sqrt(1/2)*2^32 is the one
+# x = sqrt(1/2)*2^k whose result changes if the boundary test becomes <=.
+LOG_EDGES = [2.0**-53, 1 - 2.0**-53, 0.5, 0.25, 1.0, SQRT_HALF, from_bits(bits(SQRT_HALF) - 1),
+             from_bits(bits(SQRT_HALF) + 1), from_bits(bits(1.0) - 1), 0.1, 0.9, 1e-10, 2.0**-1022,
+             math.ldexp(SQRT_HALF, 32)]
+LOG_CONSTANTS = {"ln2_hi": LN2_HI, "ln2_lo": LN2_LO, "l1": L1, "l2": L2, "l3": L3, "l4": L4, "l5": L5, "l6": L6,
+                 "l7": L7, "sqrt_half": SQRT_HALF}
+
+
+def log_profile() -> dict:
+    """pinned_log on LOG_INPUTS values 1-U from SplitMix64(LOG_SEED), hashed
+    as binary64 bits (LE), plus exact edge vectors."""
+    rng = SplitMix64(LOG_SEED)
+    h = hashlib.sha256()
+    for _ in range(LOG_INPUTS):
+        h.update(bits(pinned_log(1 - rng.uniform())).to_bytes(8, "little"))
+    return {"seed": f"{LOG_SEED:016x}", "inputs": LOG_INPUTS, "digest": h.hexdigest(),
+            "constants": {k: f"{bits(v):016x}" for k, v in LOG_CONSTANTS.items()},
+            "edges": [{"x": f"{bits(x):016x}", "log": f"{bits(pinned_log(x)):016x}"} for x in LOG_EDGES]}
 
 
 EVENT_PUSHES = [
@@ -184,17 +308,21 @@ def arrivals() -> list[list]:
         count[src] += 1
         out.append([at, f"r{rep_index}/{src}/{count[src]}"])
         schedule_next(src, at)
-    return out
+    # A source that reached max_entities, or whose next arrival fell after the
+    # horizon, has drawn exactly as often as these states say.
+    return out, {s["id"]: f"{rngs[s['id']].state:016x}" for s in sources}
 
 
 def build() -> dict:
+    expected, states = arrivals()
     return {
         "status": "INDEPENDENT_PYTHON_REFERENCE (scripts/engine_reference.py); the Go engine must match exactly",
         "replication_seed": {"base_seed": REP_SEED_INDEX[0], "index": REP_SEED_INDEX[1]},
         "beyond_cap_ticks": BEYOND_CAP,
         "sampler_vectors": sampler_vectors(),
+        "log_profile": log_profile(),
         "event_order": {"pushes": [{"tick": t, "priority": PRIORITY[p]} for t, p in EVENT_PUSHES], "pop_sequence": event_order()},
-        "arrivals": {"run": ARRIVAL_RUN, "sources": ARRIVAL_SOURCES, "expected": arrivals()},
+        "arrivals": {"run": ARRIVAL_RUN, "sources": ARRIVAL_SOURCES, "expected": expected, "stream_states_after": states},
     }
 
 
@@ -209,7 +337,8 @@ def main() -> int:
         print(json.dumps({"status": "FAIL", "reason": f"{VECTORS.relative_to(ROOT)} differs from the reference; rerun with --write and review"}))
         return 1
     print(json.dumps({"status": "PASS_ENGINE_REFERENCE_VECTORS", "sampler_cases": len(data["sampler_vectors"]),
-                      "event_pushes": len(EVENT_PUSHES), "arrivals": len(data["arrivals"]["expected"])}))
+                      "event_pushes": len(EVENT_PUSHES), "arrivals": len(data["arrivals"]["expected"]),
+                      "log_inputs": LOG_INPUTS, "digest_draws_per_sampler": DIGEST_DRAWS}))
     return 0
 
 

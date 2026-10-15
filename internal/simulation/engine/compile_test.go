@@ -2,6 +2,8 @@ package engine
 
 import (
 	"errors"
+	"maps"
+	"math"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -35,9 +37,12 @@ var reviewDuration = simulation.ResolvedDataset{
 	Samples: []float64{120, 240, 360},
 }
 
+// input runs ir with the review_duration dataset frozen into the manifest
+// (an unused binding is allowed, as in datasets.Resolve).
 func input(ir model.ModelIR) simulation.RunInput {
 	return simulation.RunInput{Model: ir, Config: config(1000, model.Minute), Limits: limits,
-		Datasets: map[string]simulation.ResolvedDataset{"dataset:review_duration": reviewDuration}}
+		Datasets: map[string]simulation.ResolvedDataset{"dataset:review_duration": reviewDuration},
+		Manifest: []model.DatasetBinding{reviewDuration.Binding}}
 }
 
 func compile(t *testing.T, in simulation.RunInput) *Program {
@@ -204,6 +209,133 @@ func issueAt(t *testing.T, err error, path, code string) {
 	}
 }
 
+// issueExactly is issueAt with an exact path and code.
+func issueExactly(t *testing.T, err error, path, code string) {
+	t.Helper()
+	var ie *InputError
+	if !errors.As(err, &ie) {
+		t.Fatalf("want an InputError, got %v", err)
+	}
+	if !slices.ContainsFunc(ie.Issues, func(i model.ValidationIssue) bool { return i.Path == path && i.Code == code }) {
+		t.Fatalf("no %s issue at exactly %s: %v", code, path, ie.Issues)
+	}
+}
+
+// binding is a valid manifest binding of ref with the given samples.
+func dataset(ref string, unit model.TimeUnit, samples ...float64) simulation.ResolvedDataset {
+	ds := reviewDuration
+	ds.Binding.LogicalRef, ds.Binding.Unit, ds.Binding.SampleCount, ds.Samples = ref, unit, len(samples), samples
+	return ds
+}
+
+// Two empirical distributions, the process before the source in the IR:
+// dataset issues still come back in (path, code) order (D-023).
+func TestCompileDatasetIssuesSorted(t *testing.T) {
+	ir := minimal(t)
+	ir.Nodes[0].Arrival.Distribution = model.Distribution{Type: model.DistEmpirical, SamplesRef: "dataset:alpha"}
+	ir.Nodes[1].ServiceTime.Distribution = model.Distribution{Type: model.DistEmpirical, SamplesRef: "dataset:zeta"}
+	ir.Nodes[0], ir.Nodes[1] = ir.Nodes[1], ir.Nodes[0]
+	alpha, zeta := dataset("dataset:alpha", model.Minute, 5), dataset("dataset:zeta", model.Minute, 5)
+	for name, in := range map[string]simulation.RunInput{
+		"no datasets":       {Model: ir, Config: config(1000, model.Minute), Limits: limits, Manifest: []model.DatasetBinding{alpha.Binding, zeta.Binding}},
+		"wrong sample sets": {Model: ir, Config: config(1000, model.Minute), Limits: limits, Manifest: []model.DatasetBinding{alpha.Binding, zeta.Binding}, Datasets: map[string]simulation.ResolvedDataset{"dataset:alpha": {Binding: alpha.Binding, Samples: []float64{1, 2}}, "dataset:zeta": {Binding: zeta.Binding, Samples: []float64{1, 2}}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := Compile(in)
+			var ie *InputError
+			if !errors.As(err, &ie) || len(ie.Issues) != 2 {
+				t.Fatalf("want two issues, got %v", err)
+			}
+			if !slices.Equal(ie.Issues, validate.Sort(slices.Clone(ie.Issues))) || ie.Issues[0].Path != "/datasets/dataset:alpha" {
+				t.Errorf("issues not in (path, code) order: %v", ie.Issues)
+			}
+		})
+	}
+}
+
+// The manifest is checked, not trusted: it must be schema-valid, in
+// logical_ref order without repeats, cover every empirical distribution and
+// agree exactly with the resolved datasets (review of T-020). A binding the
+// model does not use is allowed, as in datasets.Resolve.
+func TestCompileChecksManifest(t *testing.T) {
+	empirical := func() simulation.RunInput { return input(golden(t, "report-example.json")) }
+	other := dataset("dataset:other", model.Hour, 1)
+	for name, c := range map[string]struct {
+		edit       func(*simulation.RunInput)
+		path, code string
+	}{
+		"no binding for the model's dataset": {func(in *simulation.RunInput) { in.Manifest = nil }, "", validate.DatasetBindingInvalid},
+		"binding differs from the dataset": {func(in *simulation.RunInput) {
+			in.Manifest[0].ContentHash = "sha256:" + strings.Repeat("1", 64)
+		}, "/datasets/dataset:review_duration", validate.DatasetBindingInvalid},
+		"dataset outside the manifest": {func(in *simulation.RunInput) { in.Datasets["dataset:other"] = other }, "/datasets/dataset:other", validate.DatasetBindingInvalid},
+		"schema-invalid binding": {func(in *simulation.RunInput) {
+			b := &in.Manifest[0]
+			b.DatasetVersionID, b.ContentHash, b.SampleCount = "not-an-id", "md5:abc", 200_000
+			in.Datasets["dataset:review_duration"] = simulation.ResolvedDataset{Binding: *b, Samples: reviewDuration.Samples}
+		}, "/manifest/0/content_hash", validate.DatasetBindingInvalid},
+		"bound twice": {func(in *simulation.RunInput) { in.Manifest = append(in.Manifest, in.Manifest[0]) }, "/manifest/1/logical_ref", validate.DatasetBindingInvalid},
+		"out of order": {func(in *simulation.RunInput) {
+			in.Manifest = []model.DatasetBinding{reviewDuration.Binding, other.Binding}
+			in.Datasets["dataset:other"] = other
+		}, "/manifest/1/logical_ref", validate.DatasetBindingInvalid},
+	} {
+		t.Run(name, func(t *testing.T) {
+			in := empirical()
+			in.Datasets = maps.Clone(in.Datasets)
+			in.Manifest = slices.Clone(in.Manifest)
+			c.edit(&in)
+			_, err := Compile(in)
+			if c.path == "" {
+				issueAt(t, err, "/model/nodes/", c.code)
+				return
+			}
+			issueExactly(t, err, c.path, c.code)
+		})
+	}
+	// An unused binding compiles.
+	in := input(golden(t, "deterministic-queue.json"))
+	in.Manifest = []model.DatasetBinding{other.Binding, reviewDuration.Binding}
+	in.Datasets = map[string]simulation.ResolvedDataset{"dataset:other": other, "dataset:review_duration": reviewDuration}
+	compile(t, in)
+}
+
+// Samples are quantized in their dataset's unit, not the model's: 2 h and
+// 0.5 h in a minute model are 7,200,000 and 1,800,000 ticks.
+func TestCompileDatasetUnit(t *testing.T) {
+	in := input(golden(t, "report-example.json"))
+	hours := dataset("dataset:review_duration", model.Hour, 2, 0.5)
+	in.Datasets = map[string]simulation.ResolvedDataset{"dataset:review_duration": hours}
+	in.Manifest = []model.DatasetBinding{hours.Binding}
+	p := compile(t, in)
+	found := false
+	for _, n := range p.nodes {
+		if n.service != nil && n.service.kind == model.DistEmpirical {
+			found = true
+			if !slices.Equal(n.service.values, []int64{7_200_000, 1_800_000}) {
+				t.Errorf("%s samples %v", n.id, n.service.values)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("no empirical service")
+	}
+}
+
+// A process's bundle is in resource-ID order whatever the IR order, so
+// releases and grants report resources in a fixed order.
+func TestCompileRequirementsInResourceOrder(t *testing.T) {
+	ir := minimal(t)
+	ir.Resources = append(ir.Resources, model.Resource{ID: "alpha", Type: model.ResourceMachine, Name: "Alpha", Capacity: 2, QueueDiscipline: model.FIFO})
+	ir.Nodes[1].Requires = []model.ResourceRequirement{{ResourceID: "worker", Units: 1}, {ResourceID: "alpha", Units: 2}}
+	p := compile(t, input(ir))
+	got := p.nodes[p.index["work"]].requires
+	want := []requirement{{resource: 0, units: 2}, {resource: 1, units: 1}} // alpha, worker
+	if !slices.Equal(got, want) || p.resources[0].id != "alpha" {
+		t.Errorf("requirements %v, want %v", got, want)
+	}
+}
+
 // Compile refuses what it cannot run, with typed issues, and never panics.
 func TestCompileRejects(t *testing.T) {
 	t.Run("invalid IR", func(t *testing.T) {
@@ -256,9 +388,13 @@ func TestCompileRejects(t *testing.T) {
 		edit       func(*simulation.RunInput)
 		path, code string
 	}{
-		"warmup = horizon":     {func(in *simulation.RunInput) { in.Config.Warmup = in.Config.Horizon }, "/config/warmup", validate.LimitExceeded},
-		"no replications":      {func(in *simulation.RunInput) { in.Config.Replications = 0 }, "/config/replications", validate.IRSchemaInvalid},
-		"horizon over 365 d":   {func(in *simulation.RunInput) { in.Config.Horizon = simulation.Duration{Value: 366, Unit: model.Day} }, "/config", ""},
+		"warmup = horizon":   {func(in *simulation.RunInput) { in.Config.Warmup = in.Config.Horizon }, "/config/warmup", validate.LimitExceeded},
+		"no replications":    {func(in *simulation.RunInput) { in.Config.Replications = 0 }, "/config/replications", validate.IRSchemaInvalid},
+		"horizon over 365 d": {func(in *simulation.RunInput) { in.Config.Horizon = simulation.Duration{Value: 366, Unit: model.Day} }, "/config/horizon", validate.LimitExceeded},
+		"warmup over 365 d": {func(in *simulation.RunInput) {
+			in.Config.Horizon, in.Config.Warmup = simulation.Duration{Value: 365, Unit: model.Day}, simulation.Duration{Value: 366, Unit: model.Day}
+		}, "/config/warmup", validate.LimitExceeded},
+		"NaN horizon":          {func(in *simulation.RunInput) { in.Config.Horizon.Value = math.NaN() }, "/config/horizon/value", validate.IRSchemaInvalid},
 		"negative seed":        {func(in *simulation.RunInput) { in.Config.Seed = -1 }, "/config/seed", validate.IRSchemaInvalid},
 		"unknown trace level":  {func(in *simulation.RunInput) { in.Config.TraceLevel = "full" }, "/config/trace_level", validate.IRSchemaInvalid},
 		"event cap over limit": {func(in *simulation.RunInput) { in.Limits.MaxEvents = 10_000_001 }, "/limits/max_events", validate.IRSchemaInvalid},
@@ -268,7 +404,11 @@ func TestCompileRejects(t *testing.T) {
 			in := input(golden(t, "deterministic-queue.json"))
 			c.edit(&in)
 			_, err := Compile(in)
-			issueAt(t, err, c.path, c.code)
+			if name == "no limits" {
+				issueAt(t, err, c.path, c.code) // one issue per member
+				return
+			}
+			issueExactly(t, err, c.path, c.code)
 		})
 	}
 }

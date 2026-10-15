@@ -1,11 +1,17 @@
 package engine
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json/v2"
 	"fmt"
 	"math"
 	"math/rand/v2"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
@@ -28,7 +34,20 @@ type engineVectors struct {
 		Purpose      string             `json:"purpose"`
 		Expected     []int64            `json:"expected_ticks"`
 		StateAfter   string             `json:"state_after"`
+		DigestDraws  int                `json:"digest_draws"`
+		Digest       string             `json:"digest"`
+		DigestState  string             `json:"digest_state_after"`
 	} `json:"sampler_vectors"`
+	LogProfile struct {
+		Seed      string            `json:"seed"`
+		Inputs    int               `json:"inputs"`
+		Digest    string            `json:"digest"`
+		Constants map[string]string `json:"constants"`
+		Edges     []struct {
+			X   string `json:"x"`
+			Log string `json:"log"`
+		} `json:"edges"`
+	} `json:"log_profile"`
 	EventOrder struct {
 		Pushes []struct {
 			Tick     int64 `json:"tick"`
@@ -51,7 +70,8 @@ type engineVectors struct {
 			Distribution model.Distribution `json:"distribution"`
 			MaxEntities  int                `json:"max_entities"`
 		} `json:"sources"`
-		Expected [][2]any `json:"expected"`
+		Expected     [][2]any          `json:"expected"`
+		StreamStates map[string]string `json:"stream_states_after"`
 	} `json:"arrivals"`
 }
 
@@ -100,6 +120,159 @@ func TestSamplerVectors(t *testing.T) {
 				t.Errorf("stream state %s, reference %s (wrong number of draws)", got, c.StateAfter)
 			}
 		})
+	}
+}
+
+// samplerOf compiles a vector case's sampler.
+func samplerOf(t *testing.T, d model.Distribution, unit model.TimeUnit, samples []float64, samplesUnit model.TimeUnit) *sampler {
+	t.Helper()
+	var empirical []int64
+	for _, s := range samples {
+		tk, err := model.Ticks(s, samplesUnit)
+		if err != nil {
+			t.Fatal(err)
+		}
+		empirical = append(empirical, tk)
+	}
+	s, err := newSampler(d, unit, empirical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+// Over 10^5 draws per case the samplers agree with the reference bit for
+// bit: the hash covers every tick count and, for continuous samplers, the
+// binary64 value before quantization, so a different formula, operation
+// order or logarithm fails here even when no tick changes (review of T-020).
+func TestSamplerDigests(t *testing.T) {
+	v := loadVectors(t)
+	rep := ReplicationSeed(v.ReplicationSeed.BaseSeed, v.ReplicationSeed.Index)
+	for _, c := range v.Samplers {
+		t.Run(c.Name, func(t *testing.T) {
+			if c.DigestDraws < 100_000 {
+				t.Fatalf("digest over %d draws", c.DigestDraws)
+			}
+			s := samplerOf(t, c.Distribution, c.Unit, c.Samples, c.SamplesUnit)
+			r := Stream(rep, c.NodeID, c.Purpose)
+			h := sha256.New()
+			var buf [16]byte
+			for range c.DigestDraws {
+				if !s.continuous() {
+					binary.LittleEndian.PutUint64(buf[:8], uint64(s.draw(r)))
+					h.Write(buf[:8])
+					continue
+				}
+				x := s.value(r.Uniform())
+				binary.LittleEndian.PutUint64(buf[:8], uint64(s.ticksOf(x)))
+				binary.LittleEndian.PutUint64(buf[8:], math.Float64bits(x))
+				h.Write(buf[:])
+			}
+			if got := hex.EncodeToString(h.Sum(nil)); got != c.Digest {
+				t.Errorf("digest %s, reference %s", got, c.Digest)
+			}
+			if got := fmt.Sprintf("%016x", r.state); got != c.DigestState {
+				t.Errorf("stream state %s, reference %s", got, c.DigestState)
+			}
+		})
+	}
+}
+
+// ln is the pinned logarithm: bit-identical to the reference's port on its
+// edge inputs and on 10^6 inputs 1-U, whatever GOARCH's math.Log does.
+func TestLogProfile(t *testing.T) {
+	lp := loadVectors(t).LogProfile
+	if lp.Inputs < 1_000_000 || len(lp.Edges) == 0 {
+		t.Fatalf("log profile with %d inputs, %d edges", lp.Inputs, len(lp.Edges))
+	}
+	// The coefficients by bit pattern: a 1-ulp typo would almost never change
+	// a result bit, so the digest alone cannot catch it.
+	constants := map[string]float64{"ln2_hi": ln2Hi, "ln2_lo": ln2Lo, "l1": lnL1, "l2": lnL2, "l3": lnL3, "l4": lnL4,
+		"l5": lnL5, "l6": lnL6, "l7": lnL7, "sqrt_half": sqrtHalf}
+	if len(lp.Constants) != len(constants) {
+		t.Fatalf("%d reference constants, %d in ln", len(lp.Constants), len(constants))
+	}
+	for name, v := range constants {
+		if got := fmt.Sprintf("%016x", math.Float64bits(v)); got != lp.Constants[name] {
+			t.Errorf("constant %s = %s, reference %s", name, got, lp.Constants[name])
+		}
+	}
+	for _, e := range lp.Edges {
+		xb, err1 := strconv.ParseUint(e.X, 16, 64)
+		lb, err2 := strconv.ParseUint(e.Log, 16, 64)
+		if err1 != nil || err2 != nil {
+			t.Fatal(err1, err2)
+		}
+		if got := math.Float64bits(ln(math.Float64frombits(xb))); got != lb {
+			t.Errorf("ln(%v) bits %016x, reference %016x", math.Float64frombits(xb), got, lb)
+		}
+	}
+	seed, err := strconv.ParseUint(lp.Seed, 16, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := NewSplitMix64(seed)
+	h := sha256.New()
+	var buf [8]byte
+	for range lp.Inputs {
+		binary.LittleEndian.PutUint64(buf[:], math.Float64bits(ln(1-r.Uniform())))
+		h.Write(buf[:])
+	}
+	if got := hex.EncodeToString(h.Sum(nil)); got != lp.Digest {
+		t.Errorf("log digest %s, reference %s", got, lp.Digest)
+	}
+}
+
+// The pinned logarithm is a correct logarithm: within one ulp of math.Log on
+// the whole domain 1-U can take, and exact where the result is exact.
+func TestLogAccuracy(t *testing.T) {
+	ulp := func(x float64) float64 { return math.Nextafter(x, math.Inf(1)) - x }
+	r, q := NewSplitMix64(99), rand.New(rand.NewPCG(7, 8))
+	for i := range 2_000_000 {
+		x := 1 - r.Uniform()
+		if i%2 == 1 {
+			x = math.Ldexp(x, -q.IntN(1000)) // also tiny inputs, far below 2^-53
+		}
+		got, want := ln(x), math.Log(x)
+		if math.Abs(got-want) > ulp(math.Abs(want)) {
+			t.Fatalf("ln(%v) = %v, math.Log %v", x, got, want)
+		}
+	}
+	if ln(1) != 0 || ln(0.5) != -math.Ln2 || !math.IsInf(ln(0), -1) || !math.IsNaN(ln(-1)) || !math.IsNaN(ln(math.NaN())) || !math.IsInf(ln(math.Inf(1)), 1) {
+		t.Error("special values")
+	}
+}
+
+// A triangular sample stays inside [min, max] even when rounding would step
+// outside: with min = mode = 1e-300 s and the smallest uniform 2^-53,
+// max - sqrt(...) rounds to exactly 0, which would be a zero interarrival
+// that D-033 forbids (review of T-020).
+func TestTriangularStaysInRange(t *testing.T) {
+	lo, hi := 1e-300, 10.0
+	s, err := newSampler(model.Distribution{Type: model.DistTriangular, Min: &lo, Mode: &lo, Max: &hi}, model.Second, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := &SplitMix64{state: 0x61c8864680b583eb} // 2^64 - golden gamma: next output 0, U = 2^-53
+	if got := s.draw(r); got < 1 {
+		t.Errorf("draw %d ticks at U=2^-53; min %g s is positive", got, lo)
+	}
+	q := rand.New(rand.NewPCG(5, 6))
+	for range 200_000 {
+		a, b, c := q.Float64()*10, q.Float64()*10, q.Float64()*10
+		lo, mode, hi := min(a, b, c), a+b+c-min(a, b, c)-max(a, b, c), max(a, b, c)
+		if lo == hi {
+			continue
+		}
+		s, err := newSampler(model.Distribution{Type: model.DistTriangular, Min: &lo, Mode: &mode, Max: &hi}, model.Minute, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, u := range []float64{0x1p-53, 1 - 0x1p-53, q.Float64()} {
+			if x := s.value(u); x < lo || x > hi {
+				t.Fatalf("triangular(%v, %v, %v) at U=%v gave %v", lo, mode, hi, u, x)
+			}
+		}
 	}
 }
 
@@ -248,6 +421,29 @@ func TestEventQueueOrder(t *testing.T) {
 		}
 		if len(shadow) != 0 {
 			t.Fatalf("trial %d: %d events lost", trial, len(shadow))
+		}
+	}
+}
+
+// The numerical profile allows only correctly rounded or exact math
+// functions in engine code (sqrt, round, floor, frexp, ...). Platform
+// transcendentals such as math.Log differ between GOARCHs (amd64 and s390x
+// use assembly), and on amd64 a swap to math.Log would pass every other test,
+// so the sources are scanned for them.
+func TestNoPlatformTranscendentals(t *testing.T) {
+	banned := regexp.MustCompile(`\bmath\.(Log|Log1p|Log2|Log10|Exp|Exp2|Expm1|Pow|Pow10|Sin|Cos|Tan|Asin|Acos|Atan|Atan2|Sinh|Cosh|Tanh|Gamma|Lgamma|Erf|Erfc|Erfinv|Cbrt|Hypot|FMA)\b`)
+	files, err := filepath.Glob(filepath.Join(contracttest.Root(t), "internal/simulation/engine/*.go"))
+	if err != nil || len(files) == 0 {
+		t.Fatal(err, files)
+	}
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		for i, line := range strings.Split(string(contracttest.ReadFile(t, f)), "\n") {
+			if code, _, _ := strings.Cut(line, "//"); banned.MatchString(code) {
+				t.Errorf("%s:%d uses a platform-dependent math function: %s", filepath.Base(f), i+1, strings.TrimSpace(line))
+			}
 		}
 	}
 }

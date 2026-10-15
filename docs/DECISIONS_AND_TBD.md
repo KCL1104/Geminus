@@ -191,6 +191,12 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | D-036 | CB-13 | 最後一位 owner 的鎖定方式 | 成員變更 transaction 依 user_id 順序 SELECT 該 org 全部 owner membership … FOR UPDATE 後再檢查人數；不新增 organizations 的 UPDATE grant；文件同步改寫。 |
 | D-037 | CB-16 | Worker 對 imports／jobs 的欄位級權限 | worker 只能 UPDATE imports 的 profile／validation／mapping_suggestion／error 類欄位與 jobs 的 lease／status／attempt／error 類欄位；guard trigger 禁止 worker 將 import 設為 COMMITTED 或修改 mapping、mapping_revision、dataset_version_id、proposal_id。 |
 
+### 待確認的實作語意（PROPOSED）
+
+| ID | 來源 | 主題 | 提案 |
+|---|---|---|---|
+| D-038 | T-020 實作與獨立 review | DES engine 實作語意與 numerical profile | exponential ≥1 tick；>365 天樣本以 365 天＋1 tick 表示；triangular 分支規則並 clamp 回 [min,max]；decision 只含 p>0 flow 並依 flow ID 排序；ARRIVAL 順序為建立→排下一個→路由，同 tick 同 priority 依排程順序；entity ID `r<rep>/<source>/<n>`；ln 為固定演算法（不使用平台 `math.Log`、不融合 FMA）；Compile 自行核對 manifest。詳見 SIMULATION_SPEC.md §2、§4。**gate：T-023 對外提供 run 結果前；agent 不自行批准。** |
+
 ## 人類決策紀錄
 
 由 agent 依 repository owner 的明確指示記錄，措辭待 owner 於 PR review 確認；機器可讀版本在 `planning/decisions.json` 的 `human_decisions`。

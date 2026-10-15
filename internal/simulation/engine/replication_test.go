@@ -24,6 +24,13 @@ type arrival struct {
 // entity's onward route is T-021) and returns what arrived, in order.
 func arrivals(t *testing.T, p *Program, index uint32, b *Budget) ([]arrival, error) {
 	t.Helper()
+	out, _, err := runArrivals(t, p, index, b)
+	return out, err
+}
+
+// runArrivals is arrivals that also returns the finished replication.
+func runArrivals(t *testing.T, p *Program, index uint32, b *Budget) ([]arrival, *replication, error) {
+	t.Helper()
 	r := newReplication(p, index)
 	var out []arrival
 	r.onArrival = func(r *replication, e uint64) error {
@@ -33,7 +40,7 @@ func arrivals(t *testing.T, p *Program, index uint32, b *Budget) ([]arrival, err
 	if b == nil {
 		b = NewBudget(10_000_000)
 	}
-	return out, r.run(context.Background(), b)
+	return out, r, r.run(context.Background(), b)
 }
 
 // sourcesModel is a valid IR with the given sources, each flowing to one sink.
@@ -54,6 +61,9 @@ func sourcesModel(t *testing.T, sources []model.Node) model.ModelIR {
 // The arrival process reproduces the independent reference: three sources
 // listed out of ID order, exponential/constant/triangular interarrivals,
 // max_entities, the first arrival one interarrival after 0, and entity IDs.
+// Each source's arrival stream ends in the reference's state, so a source
+// draws exactly once per scheduled arrival: none after max_entities, and
+// one (discarded) for the arrival that falls after the horizon.
 func TestArrivalVector(t *testing.T) {
 	v := loadVectors(t).Arrivals
 	var sources []model.Node
@@ -67,9 +77,21 @@ func TestArrivalVector(t *testing.T) {
 		Warmup: simulation.Duration{Value: 0, Unit: v.Run.Horizon.Unit}, Replications: int(v.Run.ReplicationIndex) + 1,
 		Seed: int64(v.Run.BaseSeed), TraceLevel: simulation.TraceNone}
 	p := compile(t, in)
-	got, err := arrivals(t, p, v.Run.ReplicationIndex, nil)
+	got, r, err := runArrivals(t, p, v.Run.ReplicationIndex, nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(v.StreamStates) != len(v.Sources) {
+		t.Fatalf("%d stream states for %d sources", len(v.StreamStates), len(v.Sources))
+	}
+	for id, want := range v.StreamStates {
+		s, ok := r.streams[streamKey{p.index[id], PurposeArrival}]
+		if !ok {
+			t.Fatalf("source %s never drew", id)
+		}
+		if got := fmt.Sprintf("%016x", s.state); got != want {
+			t.Errorf("source %s: arrival stream state %s, reference %s (wrong number of draws)", id, got, want)
+		}
 	}
 	var want []arrival
 	for _, e := range v.Expected {
@@ -130,6 +152,52 @@ func TestEventBudget(t *testing.T) {
 	}
 	if b.Used() != 150 {
 		t.Errorf("used %d", b.Used())
+	}
+}
+
+// The budget allows exactly max events: a replication of 100 events runs on
+// a budget of 100 and fails on 99, having used all 99.
+func TestEventBudgetIsExact(t *testing.T) {
+	in := input(golden(t, "deterministic-queue.json"))
+	in.Config = config(1010, model.Minute)
+	p := compile(t, in)
+	if _, err := arrivals(t, p, 0, NewBudget(100)); err != nil {
+		t.Errorf("budget 100 for 100 events: %v", err)
+	}
+	b := NewBudget(99)
+	if _, err := arrivals(t, p, 0, b); !errors.Is(err, ErrEventBudget) || b.Used() != 99 {
+		t.Errorf("budget 99: %v, used %d", err, b.Used())
+	}
+}
+
+// ARRIVAL creates the entity, then schedules the next arrival, then routes
+// the entity (SIMULATION_SPEC §2). The order fixes sequence numbers: when
+// routing schedules an event for the same tick and priority as the next
+// arrival, the arrival comes first.
+func TestArrivalSchedulesNextBeforeRouting(t *testing.T) {
+	in := input(golden(t, "deterministic-queue.json"))
+	in.Config = config(1010, model.Minute)
+	p := compile(t, in)
+	r := newReplication(p, 0)
+	var order []string
+	r.onArrival = func(r *replication, e uint64) error {
+		order = append(order, fmt.Sprintf("%d arrive %s", r.now/60_000, r.EntityID(e)))
+		if e > 2 {
+			return nil
+		}
+		// The onward route: a 10 minute delay, the same as the interarrival.
+		return r.schedule(600_000, PriorityImmediate, EventDelayComplete, 0, e)
+	}
+	r.onEvent = func(r *replication, ev event) error {
+		order = append(order, fmt.Sprintf("%d leave %s", r.now/60_000, r.EntityID(ev.Entity)))
+		return nil
+	}
+	if err := r.run(context.Background(), NewBudget(1000)); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"10 arrive r0/arrival/1", "20 arrive r0/arrival/2", "20 leave r0/arrival/1", "30 arrive r0/arrival/3", "30 leave r0/arrival/2"}
+	if !slices.Equal(order[:5], want) {
+		t.Errorf("order %v, want %v", order[:5], want)
 	}
 }
 
@@ -201,9 +269,12 @@ func TestArrivalDeterminism(t *testing.T) {
 
 func ptr[T any](v T) *T { return &v }
 
-// Same-tick arrivals of different sources run in source-ID order, whatever
-// the IR order: sources are initialized by ID and each schedules its next
-// arrival when it fires, so sequence numbers keep that order.
+// Same-tick arrivals run in the order they were scheduled (event sequence).
+// Sources are initialized in ID order, so first arrivals at the same tick
+// run by source ID whatever the IR order; later ones follow when each was
+// scheduled, which is not ID order in general: with a every 10 and b every
+// 20, b's first arrival (scheduled at 0) runs before a's second (scheduled
+// at 10) at t=20.
 func TestSameTickSourcesInIDOrder(t *testing.T) {
 	ten := 10.0
 	sources := []model.Node{
@@ -219,6 +290,20 @@ func TestSameTickSourcesInIDOrder(t *testing.T) {
 		ids = append(ids, a.id)
 	}
 	want := []string{"r0/a_src/1", "r0/b_src/1", "r0/a_src/2", "r0/b_src/2", "r0/a_src/3", "r0/b_src/3"}
+	if !slices.Equal(ids, want) {
+		t.Errorf("order %v, want %v", ids, want)
+	}
+	twenty := 20.0
+	sources[0].Arrival.Distribution.Value = &twenty // b every 20, a every 10
+	got, err = arrivals(t, compile(t, input(sourcesModel(t, sources))), 0, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = []string{"10 r0/a_src/1", "20 r0/b_src/1", "20 r0/a_src/2", "30 r0/a_src/3", "40 r0/b_src/2", "60 r0/b_src/3"}
+	ids = ids[:0]
+	for _, a := range got {
+		ids = append(ids, fmt.Sprintf("%d %s", a.tick/60_000, a.id))
+	}
 	if !slices.Equal(ids, want) {
 		t.Errorf("order %v, want %v", ids, want)
 	}

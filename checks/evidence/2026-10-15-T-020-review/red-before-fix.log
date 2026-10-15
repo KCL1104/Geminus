@@ -1,0 +1,52 @@
+--- FAIL: TestTriangularStaysInRange (0.04s)
+    sample_test.go:243: draw 0 ticks at U=2^-53; min 1e-300 s is positive
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.188s
+FAIL
+== GOAMD64=v1 naive ln
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.154s
+== GOAMD64=v3 naive ln
+--- FAIL: TestSamplerDigests (0.05s)
+    --- FAIL: TestSamplerDigests/exponential_template_interarrival (0.01s)
+        sample_test.go:169: digest 218f3de698bf26d96924a39746430a694d3070ca59fbb7ef5b01742f24a1e4a8, reference 9557bf503f5fcee9b793700ffbde8986ac3ee4f6bb7f1939ea9c40bbbed5d4e7
+    --- FAIL: TestSamplerDigests/exponential_sub-tick_mean_clamps_to_1 (0.01s)
+        sample_test.go:169: digest 68d685e9dc25f67f908272196b0fe3a7dccc699ab64a3cca054d9646299712da, reference e4d92c491800931f826f24c58bd5f2191b7add2eec8c98df14b9e3a1ee852c35
+    --- FAIL: TestSamplerDigests/exponential_tail_beyond_the_cap (0.01s)
+        sample_test.go:169: digest e72b29eb4a676d32d0e020ba3f8d4d9279926784d1ae6c6d4f4177955c01013c, reference d89a53fb9d85d0b34100d02885c334ee957f8a76b798030e173f1f817a9653a9
+--- FAIL: TestLogProfile (0.03s)
+    sample_test.go:207: log digest 6c8ee3038acb0c8d82ec2e73098caf4eff473a0f948d67cbd681ce410184f4b5, reference 8af8c1aa6dd2c7abcb6e0bb59ea9f29dbd1e481b66912226f09bb89e4db79ab1
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.174s
+FAIL
+== GOAMD64=v1 pinned ln
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.204s
+== GOAMD64=v3 pinned ln
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.176s
+--- FAIL: TestCompileDatasetIssuesSorted (0.00s)
+    --- FAIL: TestCompileDatasetIssuesSorted/no_datasets (0.00s)
+        compile_test.go:250: issues not in (path, code) order: [{DATASET_BINDING_INVALID /datasets/dataset:zeta no resolved dataset for dataset:zeta error} {DATASET_BINDING_INVALID /datasets/dataset:alpha no resolved dataset for dataset:alpha error}]
+    --- FAIL: TestCompileDatasetIssuesSorted/wrong_sample_sets (0.00s)
+        compile_test.go:250: issues not in (path, code) order: [{DATASET_BINDING_INVALID /datasets/dataset:zeta 2 samples, the binding says 1 error} {DATASET_BINDING_INVALID /datasets/dataset:alpha 2 samples, the binding says 1 error}]
+--- FAIL: TestCompileChecksManifest (0.01s)
+    --- FAIL: TestCompileChecksManifest/binding_differs_from_the_dataset (0.00s)
+        compile_test.go:293: want an InputError, got <nil>
+    --- FAIL: TestCompileChecksManifest/dataset_outside_the_manifest (0.00s)
+        compile_test.go:293: want an InputError, got <nil>
+    --- FAIL: TestCompileChecksManifest/schema-invalid_binding (0.00s)
+        compile_test.go:293: no DATASET_BINDING_INVALID issue at exactly /manifest/0/content_hash: [{DATASET_BINDING_INVALID /datasets/dataset:review_duration 3 samples, the binding says 200000 error}]
+    --- FAIL: TestCompileChecksManifest/bound_twice (0.00s)
+        compile_test.go:293: want an InputError, got <nil>
+    --- FAIL: TestCompileChecksManifest/out_of_order (0.00s)
+        compile_test.go:293: want an InputError, got <nil>
+    --- FAIL: TestCompileChecksManifest/no_binding_for_the_model's_dataset (0.00s)
+        compile_test.go:290: want an InputError, got <nil>
+--- FAIL: TestCompileRejects (0.01s)
+    --- FAIL: TestCompileRejects/horizon_over_365_d (0.00s)
+        compile_test.go:411: no LIMIT_EXCEEDED issue at exactly /config/horizon: [{LIMIT_EXCEEDED /config durations or seed out of range error}]
+    --- FAIL: TestCompileRejects/warmup_over_365_d (0.00s)
+        compile_test.go:411: no LIMIT_EXCEEDED issue at exactly /config/warmup: [{LIMIT_EXCEEDED /config durations or seed out of range error}]
+    --- FAIL: TestCompileRejects/NaN_horizon (0.00s)
+        compile_test.go:411: no IR_SCHEMA_INVALID issue at exactly /config/horizon/value: [{IR_SCHEMA_INVALID /config not encodable error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.071s
+FAIL

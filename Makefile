@@ -4,7 +4,7 @@ PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 GO_PKGS := ./cmd/... ./internal/... ./schemas/...
 WEB := apps/web
 export NEXT_TELEMETRY_DISABLED := 1
-.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build frontend-test frontend-build db-test db-go-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
+.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
 spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests
 spec-contracts:
 	$(PYTHON) scripts/check_contracts.py
@@ -37,6 +37,10 @@ backend-test:
 	@unformatted=$$(gofmt -l cmd internal schemas); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
 	go vet $(GO_PKGS)
 	go test $(GO_PKGS)
+# No fused multiply-add in engine/statistics code on any GOARCH, and the numeric tests as an FMA-capable build.
+backend-numeric:
+	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
+	bash scripts/check_no_fma.sh
 backend-race:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go test -race $(GO_PKGS)

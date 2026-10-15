@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 37,
-    "proposed": 0,
+    "proposed": 1,
     "rejected": 0,
     "superseded": 0
   },
@@ -357,6 +357,13 @@
       "gate": "T-007 前",
       "gates_tasks": [
         "T-007"
+      ]
+    },
+    "D-038": {
+      "status": "proposed",
+      "gate": "T-023 對外提供 run 結果前",
+      "gates_tasks": [
+        "T-023"
       ]
     }
   },

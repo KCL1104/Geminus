@@ -1120,8 +1120,10 @@
           "date": "2026-10-15",
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-020_VALIDATION.md",
-          "summary": "Compile(RunInput) 重新驗證 IR／datasets／config／limits 後產生 immutable Program（ID 排序、decision routes 依 flow ID）；四種 sampler、(tick, priority, seq) 事件 heap、replication clock、source arrival 與 entity ID；與獨立 Python 參考 engine-vectors.json 逐 tick 相同；61 tests、mutation 30/30、fuzz 851,555 次；kernel 屬 T-021（NOT RUN）。",
-          "reviewer": null
+          "summary": "Compile(RunInput) 重新驗證 IR／manifest／datasets／config／limits 後產生 immutable Program（ID 排序、decision routes 依 flow ID）；四種 sampler（固定的 ln、triangular clamp）、(tick, priority, seq) 事件 heap、replication clock、source arrival 與 entity ID；與 Python 參考在 10^6 個 ln 輸入與每個 sampler 10^5 次 draw 上逐 bit 相同；無 FMA／平台 math 的組語檢查（六個 target）與 GOAMD64=v3 測試；mutation 51/51＋1 equivalent、fuzz 1,289,879 次；kernel 屬 T-021。",
+          "reviewer": null,
+          "review": "independent reviewer agent (H-003): 1 medium + 3 low CONFIRMED, all fixed red-first; 4 PLAUSIBLE handled (manifest check adopted, entity memory and route tolerance to T-021, semantics registered as D-038 PROPOSED); report claims corrected in checks/T-020_VALIDATION.md",
+          "review_evidence": "checks/evidence/2026-10-15-T-020-review/"
         }
       ]
     },
@@ -1247,7 +1249,8 @@
       ],
       "decision_gates": [
         "D-007",
-        "D-011"
+        "D-011",
+        "D-038"
       ],
       "scope": [
         "freeze version/patch/config/datasets/engine/limits 並202入列。",

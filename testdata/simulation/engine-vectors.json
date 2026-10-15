@@ -29,7 +29,10 @@
         300000,
         300000
       ],
-      "state_after": "d814bba7af5263a8"
+      "state_after": "d814bba7af5263a8",
+      "digest_draws": 100000,
+      "digest": "c228ef620b32c6ab2e451f056ab7c9dc4f3cce901c780c3e877fb6de39ea8ece",
+      "digest_state_after": "d814bba7af5263a8"
     },
     {
       "name": "exponential template interarrival",
@@ -54,7 +57,10 @@
         7815918,
         400863
       ],
-      "state_after": "01f092937cb353f9"
+      "state_after": "01f092937cb353f9",
+      "digest_draws": 100000,
+      "digest": "9557bf503f5fcee9b793700ffbde8986ac3ee4f6bb7f1939ea9c40bbbed5d4e7",
+      "digest_state_after": "fd7389bc8ccb0e1d"
     },
     {
       "name": "exponential sub-tick mean clamps to 1",
@@ -79,7 +85,10 @@
         1,
         1
       ],
-      "state_after": "d3f346b37bc9067e"
+      "state_after": "d3f346b37bc9067e",
+      "digest_draws": 100000,
+      "digest": "e4d92c491800931f826f24c58bd5f2191b7add2eec8c98df14b9e3a1ee852c35",
+      "digest_state_after": "cf763ddc8be0c0a2"
     },
     {
       "name": "exponential underflow is still 1 tick",
@@ -104,7 +113,10 @@
         1,
         1
       ],
-      "state_after": "0d334d8a898a1f7b"
+      "state_after": "0d334d8a898a1f7b",
+      "digest_draws": 100000,
+      "digest": "89be7d97e903d4ad8a6f8e7a79376357d18561bc1e624ce3b1c5f733dacfeab1",
+      "digest_state_after": "08b644b399a1d99f"
     },
     {
       "name": "exponential tail beyond the cap",
@@ -129,7 +141,10 @@
         31536000001,
         21082453718
       ],
-      "state_after": "a68a1bdf15e02cd0"
+      "state_after": "a68a1bdf15e02cd0",
+      "digest_draws": 100000,
+      "digest": "d89a53fb9d85d0b34100d02885c334ee957f8a76b798030e173f1f817a9653a9",
+      "digest_state_after": "a20d130825f7e6f4"
     },
     {
       "name": "triangular",
@@ -156,7 +171,10 @@
         6413145,
         6224939
       ],
-      "state_after": "17d51ccd5a9d6b50"
+      "state_after": "17d51ccd5a9d6b50",
+      "digest_draws": 100000,
+      "digest": "ffdc79aedc7cd646a10e19736f420f111916d434d17afe4f6c5a74070ce1098d",
+      "digest_state_after": "135813f66ab52574"
     },
     {
       "name": "triangular min=mode=0",
@@ -183,7 +201,10 @@
         175633,
         52331
       ],
-      "state_after": "dcf859745e26dbb4"
+      "state_after": "dcf859745e26dbb4",
+      "digest_draws": 100000,
+      "digest": "2e88464872de3d679666789537786c3dbce991116bbf588bd100e1e07d859489",
+      "digest_state_after": "d87b509d6e3e95d8"
     },
     {
       "name": "triangular mode=max",
@@ -210,7 +231,10 @@
         2957,
         5900
       ],
-      "state_after": "e1d84fe586f9cea8"
+      "state_after": "e1d84fe586f9cea8",
+      "digest_draws": 100000,
+      "digest": "d5c38bc39e370e17c7c91ab5bfcebcff8bd15089ae8cf6e420ae46e826ca33a6",
+      "digest_state_after": "dd5b470e971188cc"
     },
     {
       "name": "triangular degenerate draws nothing",
@@ -237,7 +261,10 @@
         180000,
         180000
       ],
-      "state_after": "a26bd3c566813bf1"
+      "state_after": "a26bd3c566813bf1",
+      "digest_draws": 100000,
+      "digest": "7c0f20dd516b2fdf57b3fac55024ca03613822622934796a9c13adbe9a41971c",
+      "digest_state_after": "a26bd3c566813bf1"
     },
     {
       "name": "empirical",
@@ -268,9 +295,87 @@
         0,
         14400000
       ],
-      "state_after": "ac27f5496ad8c8ef"
+      "state_after": "ac27f5496ad8c8ef",
+      "digest_draws": 100000,
+      "digest": "9dad8c3b97eb4ef82692860f3c064319a863638adada216f7cd1e585829e2aa4",
+      "digest_state_after": "a7aaec727af08313"
     }
   ],
+  "log_profile": {
+    "seed": "0000000020261015",
+    "inputs": 1000000,
+    "digest": "8af8c1aa6dd2c7abcb6e0bb59ea9f29dbd1e481b66912226f09bb89e4db79ab1",
+    "constants": {
+      "ln2_hi": "3fe62e42fee00000",
+      "ln2_lo": "3dea39ef35793c76",
+      "l1": "3fe5555555555593",
+      "l2": "3fd999999997fa04",
+      "l3": "3fd2492494229359",
+      "l4": "3fcc71c51d8e78af",
+      "l5": "3fc7466496cb03de",
+      "l6": "3fc39a09d078c69f",
+      "l7": "3fc2f112df3e5244",
+      "sqrt_half": "3fe6a09e667f3bcd"
+    },
+    "edges": [
+      {
+        "x": "3ca0000000000000",
+        "log": "c0425e4f7b2737fa"
+      },
+      {
+        "x": "3fefffffffffffff",
+        "log": "bca0000000000000"
+      },
+      {
+        "x": "3fe0000000000000",
+        "log": "bfe62e42fefa39ef"
+      },
+      {
+        "x": "3fd0000000000000",
+        "log": "bff62e42fefa39ef"
+      },
+      {
+        "x": "3ff0000000000000",
+        "log": "0000000000000000"
+      },
+      {
+        "x": "3fe6a09e667f3bcd",
+        "log": "bfd62e42fefa39ee"
+      },
+      {
+        "x": "3fe6a09e667f3bcc",
+        "log": "bfd62e42fefa39f1"
+      },
+      {
+        "x": "3fe6a09e667f3bce",
+        "log": "bfd62e42fefa39eb"
+      },
+      {
+        "x": "3fefffffffffffff",
+        "log": "bca0000000000000"
+      },
+      {
+        "x": "3fb999999999999a",
+        "log": "c0026bb1bbb55515"
+      },
+      {
+        "x": "3feccccccccccccd",
+        "log": "bfbaf8e8210a415c"
+      },
+      {
+        "x": "3ddb7cdfd9d7bdbb",
+        "log": "c037069e2aa2aa5b"
+      },
+      {
+        "x": "0010000000000000",
+        "log": "c086232bdd7abcd2"
+      },
+      {
+        "x": "41e6a09e667f3bcd",
+        "log": "4035d589f2fe5107"
+      }
+    ]
+  },
   "event_order": {
     "pushes": [
       {
@@ -401,6 +506,11 @@
         10800000,
         "r1/a_src/4"
       ]
-    ]
+    ],
+    "stream_states_after": {
+      "a_src": "23efe899362714c3",
+      "b_src": "00b5746b53a72d07",
+      "c_src": "dd38597080017f16"
+    }
   }
 }

@@ -113,23 +113,110 @@ func (s *sampler) draw(r *SplitMix64) int64 {
 		return s.ticks
 	}
 	u := r.Uniform() // strictly inside (0, 1)
-	switch s.kind {
-	case model.DistExponential:
-		// -mean*ln(1-U). An exponential is never zero-time (D-033): a sample
-		// that underflows to 0 still takes one tick.
-		return max(quantize(-s.mean*math.Log(1-u), s.unitMs), 1)
-	case model.DistTriangular:
-		// Standard inverse CDF; min < max here, so nothing divides by zero.
-		width := s.max - s.min
-		if u < (s.mode-s.min)/width {
-			return quantize(s.min+math.Sqrt(u*width*(s.mode-s.min)), s.unitMs)
-		}
-		return quantize(s.max-math.Sqrt((1-u)*width*(s.max-s.mode)), s.unitMs)
-	default: // empirical: equal weights, floor(U*N)
+	if s.kind == model.DistEmpirical {
+		// Equal weights, floor(U*N).
 		i := int(u * float64(len(s.values)))
 		if i >= len(s.values) { // U < 1 makes this unreachable; kept as a guard
 			i = len(s.values) - 1
 		}
 		return s.values[i]
 	}
+	return s.ticksOf(s.value(u))
 }
+
+// continuous reports whether the sampler draws through value.
+func (s *sampler) continuous() bool { return !s.fixed && s.kind != model.DistEmpirical }
+
+// value is a continuous sampler's duration for uniform u, in the model unit,
+// before quantization.
+func (s *sampler) value(u float64) float64 {
+	if s.kind == model.DistExponential {
+		return -s.mean * ln(1-u) // -mean*ln(1-U)
+	}
+	// Triangular: the standard inverse CDF; min < max here, so nothing
+	// divides by zero. Rounding can step just outside [min, max] (with
+	// min = mode = 1e-300 and U = 2^-53, max - sqrt(...) is exactly 0, a zero
+	// interarrival that D-033 forbids), so the value is clamped.
+	width := s.max - s.min
+	var v float64
+	if u < (s.mode-s.min)/width {
+		v = s.min + math.Sqrt(u*width*(s.mode-s.min))
+	} else {
+		v = s.max - math.Sqrt((1-u)*width*(s.max-s.mode))
+	}
+	return min(max(v, s.min), s.max)
+}
+
+// ticksOf quantizes a continuous sample. An exponential is never zero-time
+// (D-033): a sample that underflows to 0 still takes one tick.
+func (s *sampler) ticksOf(v float64) int64 {
+	t := quantize(v, s.unitMs)
+	if s.kind == model.DistExponential {
+		return max(t, 1)
+	}
+	return t
+}
+
+// ln is the natural logarithm of the numerical profile, pinned so a sample
+// does not depend on GOARCH: Go's math.Log is assembly on amd64 and s390x
+// and pure Go elsewhere, where the compiler may fuse a*b+c into one FMA and
+// change the last bit (found by the T-020 review). This is the pure-Go
+// algorithm of Go's math.log with every product rounded by an explicit
+// float64 conversion, which the Go spec says prevents fusion, so each
+// operation is one IEEE-754 binary64 rounding on every platform.
+// scripts/engine_reference.py ports it operation for operation, and
+// TestLogProfile checks the two bit for bit.
+//
+// The algorithm and constants are from Go's src/math/log.go (Copyright 2009
+// The Go Authors; BSD-3-Clause, see docs/THIRD_PARTY_NOTICES.md), which took
+// them from FreeBSD's /usr/src/lib/msun/src/e_log.c with this notice:
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+func ln(x float64) float64 {
+	switch {
+	case math.IsNaN(x) || math.IsInf(x, 1):
+		return x
+	case x < 0:
+		return math.NaN()
+	case x == 0:
+		return math.Inf(-1)
+	}
+	// Reduce: x = 2^k * (1+f) with sqrt(2)/2 <= 1+f < sqrt(2). Frexp is exact.
+	f1, ki := math.Frexp(x)
+	if f1 < sqrtHalf {
+		f1 *= 2
+		ki--
+	}
+	f := f1 - 1
+	k := float64(ki)
+	// Compute log(1+f) = f - hfsq + s*(hfsq+R), s = f/(2+f).
+	s := f / (2 + f)
+	s2 := float64(s * s)
+	s4 := float64(s2 * s2)
+	t1 := float64(s2 * (lnL1 + float64(s4*(lnL3+float64(s4*(lnL5+float64(s4*lnL7)))))))
+	t2 := float64(s4 * (lnL2 + float64(s4*(lnL4+float64(s4*lnL6)))))
+	r := t1 + t2
+	hfsq := float64(float64(0.5*f) * f)
+	return float64(k*ln2Hi) - ((hfsq - (float64(s*(hfsq+r)) + float64(k*ln2Lo))) - f)
+}
+
+// The constants of ln, by bit pattern (the hex values in Go's comments).
+var (
+	ln2Hi    = math.Float64frombits(0x3fe62e42fee00000)
+	ln2Lo    = math.Float64frombits(0x3dea39ef35793c76)
+	lnL1     = math.Float64frombits(0x3fe5555555555593)
+	lnL2     = math.Float64frombits(0x3fd999999997fa04)
+	lnL3     = math.Float64frombits(0x3fd2492494229359)
+	lnL4     = math.Float64frombits(0x3fcc71c51d8e78af)
+	lnL5     = math.Float64frombits(0x3fc7466496cb03de)
+	lnL6     = math.Float64frombits(0x3fc39a09d078c69f)
+	lnL7     = math.Float64frombits(0x3fc2f112df3e5244)
+	sqrtHalf = math.Float64frombits(0x3fe6a09e667f3bcd) // sqrt(2)/2 rounded
+)

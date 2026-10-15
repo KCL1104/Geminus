@@ -2,10 +2,13 @@ package engine
 
 import (
 	"cmp"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
+	"strconv"
 
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
@@ -18,8 +21,9 @@ import (
 var ErrInvalidInput = errors.New("engine: invalid run input")
 
 // InputError lists why Compile refused a run input; paths point into the IR
-// (/nodes/...), the config (/config/...), the limits (/limits/...) or the
-// datasets (/datasets/<logical_ref>).
+// (/model/...), the config (/config/...), the limits (/limits/...), the
+// manifest (/manifest/<i>/...) or the datasets (/datasets/<logical_ref>).
+// Issues are in (path, code) order (D-023).
 type InputError struct{ Issues []model.ValidationIssue }
 
 func (e *InputError) Error() string {
@@ -92,9 +96,15 @@ func Compile(in simulation.RunInput) (*Program, error) {
 	}
 	ir := res.IR // a fresh copy: nothing the caller holds aliases the program
 
+	if issues, err := checkManifest(ir, in.Manifest, in.Datasets); err != nil || len(issues) > 0 {
+		if err != nil {
+			return nil, err
+		}
+		return nil, &InputError{Issues: validate.Sort(issues)}
+	}
 	empirical, zeroRefs, issues := resolveDatasets(ir, in.Datasets)
 	if len(issues) > 0 {
-		return nil, &InputError{Issues: issues}
+		return nil, &InputError{Issues: validate.Sort(issues)}
 	}
 	if issues := validate.Bindings(ir, zeroRefs); hasError(issues) {
 		return nil, &InputError{Issues: prefix("/model", issues)}
@@ -123,6 +133,53 @@ func hasError(issues []model.ValidationIssue) bool {
 
 func invalid(path, message string) model.ValidationIssue {
 	return model.NewIssue(validate.DatasetBindingInvalid, path, message, model.SeverityError)
+}
+
+// checkManifest checks the frozen manifest instead of trusting the caller:
+// every binding schema-valid, in logical_ref byte order without repeats
+// (ADR-012, D-034), every empirical distribution bound, and Datasets holding
+// exactly the manifest's bindings. A binding the model does not use is
+// allowed, as in datasets.Resolve.
+func checkManifest(ir *model.ModelIR, manifest []model.DatasetBinding, datasets map[string]simulation.ResolvedDataset) ([]model.ValidationIssue, error) {
+	var issues []model.ValidationIssue
+	bound := make(map[string]bool, len(manifest))
+	for i, b := range manifest {
+		at := "/manifest/" + strconv.Itoa(i)
+		// Invalid UTF-8 becomes U+FFFD, which the ASCII patterns reject.
+		data, err := json.Marshal(b, jsontext.AllowInvalidUTF8(true))
+		if err != nil {
+			return nil, fmt.Errorf("engine: encoding manifest binding %d: %w", i, err)
+		}
+		found, err := validate.Document(data, "common.schema.json#/$defs/DatasetBinding", validate.DatasetBindingInvalid)
+		if err != nil {
+			return nil, fmt.Errorf("engine: validating manifest binding %d: %w", i, err)
+		}
+		issues = append(issues, prefix(at, found)...)
+		if i > 0 && b.LogicalRef <= manifest[i-1].LogicalRef {
+			issues = append(issues, invalid(at+"/logical_ref", "the manifest must be in logical_ref order and bind each reference once"))
+		}
+		bound[b.LogicalRef] = true
+		switch ds, ok := datasets[b.LogicalRef]; {
+		case !ok:
+			issues = append(issues, invalid("/datasets/"+b.LogicalRef, "no resolved dataset for "+b.LogicalRef))
+		case ds.Binding != b:
+			issues = append(issues, invalid("/datasets/"+b.LogicalRef, "the resolved dataset's binding differs from the manifest"))
+		}
+	}
+	for ref := range datasets {
+		if !bound[ref] {
+			issues = append(issues, invalid("/datasets/"+ref, "a resolved dataset that is not in the manifest"))
+		}
+	}
+	for i := range ir.Nodes {
+		for _, d := range ir.Nodes[i].Distributions() {
+			if d.Distribution.Type == model.DistEmpirical && !bound[d.Distribution.SamplesRef] {
+				issues = append(issues, invalid(validate.Pointer("model", "nodes", strconv.Itoa(i), d.Member, "distribution", "samples_ref"),
+					d.Distribution.SamplesRef+" has no binding in the manifest"))
+			}
+		}
+	}
+	return issues, nil
 }
 
 // resolveDatasets quantizes every empirical distribution's samples and
@@ -175,6 +232,18 @@ func resolveDatasets(ir *model.ModelIR, datasets map[string]simulation.ResolvedD
 // (the same function config_hash uses).
 func (p *Program) setConfig(cfg simulation.RunConfig, limits simulation.ExecutionLimits) []model.ValidationIssue {
 	var issues []model.ValidationIssue
+	// NaN and infinities cannot be encoded for the schema check; name the member.
+	for _, d := range []struct {
+		path  string
+		value float64
+	}{{"/config/horizon/value", cfg.Horizon.Value}, {"/config/warmup/value", cfg.Warmup.Value}} {
+		if math.IsNaN(d.value) || math.IsInf(d.value, 0) {
+			issues = append(issues, model.NewIssue(validate.IRSchemaInvalid, d.path, "not a finite number", model.SeverityError))
+		}
+	}
+	if len(issues) > 0 {
+		return issues
+	}
 	for _, c := range []struct {
 		root, ref string
 		v         any
@@ -191,6 +260,18 @@ func (p *Program) setConfig(cfg simulation.RunConfig, limits simulation.Executio
 			return []model.ValidationIssue{model.NewIssue(validate.IRSchemaInvalid, c.root, "cannot be validated", model.SeverityError)}
 		}
 		issues = append(issues, prefix(c.root, found)...)
+	}
+	if len(issues) > 0 {
+		return issues
+	}
+	// The schema bounds the seed; the 365 day cap is in ticks (D-005).
+	for _, d := range []struct {
+		path string
+		v    simulation.Duration
+	}{{"/config/horizon", cfg.Horizon}, {"/config/warmup", cfg.Warmup}} {
+		if _, err := model.Ticks(d.v.Value, d.v.Unit); err != nil {
+			issues = append(issues, model.NewIssue(validate.LimitExceeded, d.path, err.Error(), model.SeverityError))
+		}
 	}
 	if len(issues) > 0 {
 		return issues
