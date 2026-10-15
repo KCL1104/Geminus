@@ -14,15 +14,15 @@
     "blocked": 0,
     "done": 3,
     "in_progress": 0,
-    "not_started": 35,
-    "review": 4
+    "not_started": 34,
+    "review": 5
   },
   "ready_tasks": [],
   "next_after_review": [
     {
-      "id": "T-007",
+      "id": "T-008",
       "awaiting_task_review": [
-        "T-006"
+        "T-007"
       ],
       "awaiting_decisions": [
         "D-008"

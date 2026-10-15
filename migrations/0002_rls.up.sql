@@ -59,7 +59,15 @@ GRANT SELECT ON twin.projects,twin.models,twin.model_versions,twin.model_version
   twin.datasets,twin.dataset_versions,twin.imports,twin.ai_proposals,twin.scenarios,
   twin.simulation_runs,twin.run_datasets,twin.simulation_results,twin.ai_analyses,twin.jobs TO twin_worker;
 GRANT INSERT ON twin.datasets,twin.dataset_versions,twin.simulation_results,twin.audit_events TO twin_worker;
-GRANT UPDATE ON twin.imports,twin.jobs TO twin_worker;
+-- D-037 / CB-16: column-level UPDATE only. The worker records profiling,
+-- validation, mapping suggestions and errors on imports, and lease state on
+-- jobs; mapping, mapping_revision, dataset_version_id and proposal_id belong
+-- to the human-confirmed API path, and committing an import is never a worker
+-- action (guard trigger below).
+GRANT UPDATE (status,total_rows,invalid_rows,preview,validation,mapping_suggestion_status,
+  mapping_suggestion,error,error_report_object_key) ON twin.imports TO twin_worker;
+GRANT UPDATE (status,attempt,available_at,locked_at,locked_by,lease_token,lease_expires_at,
+  heartbeat_at,error) ON twin.jobs TO twin_worker;
 GRANT UPDATE (status,summary,assumptions,patch,patch_hash,candidate_dataset_bindings,
   expected_effects,questions,risk_level,server_risk_level,provider_risk_claim,confidence,
   validation,provider_metadata,error)
@@ -67,6 +75,19 @@ GRANT UPDATE (status,summary,assumptions,patch,patch_hash,candidate_dataset_bind
 GRANT UPDATE (status,completed_replications,events_processed,progress_revision,
   error,started_at,finished_at,execution_deadline_at,event_budget_reserved) ON twin.simulation_runs TO twin_worker;
 GRANT UPDATE (status,analysis,provider_metadata,error) ON twin.ai_analyses TO twin_worker;
+CREATE FUNCTION twin.guard_worker_import() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  -- Members of twin_owner (and superusers, who are members of every role) are
+  -- not runtime workers; every other role with twin_worker's privileges is.
+  IF NEW.status='COMMITTED' AND OLD.status IS DISTINCT FROM 'COMMITTED'
+     AND pg_has_role(current_user,'twin_worker','USAGE') AND NOT pg_has_role(current_user,'twin_owner','USAGE') THEN
+    RAISE EXCEPTION 'only the API may commit an import' USING ERRCODE='42501';
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION twin.guard_worker_import() FROM PUBLIC; -- runs as a trigger, never called directly
+CREATE TRIGGER guard_worker_import BEFORE UPDATE ON twin.imports
+  FOR EACH ROW EXECUTE FUNCTION twin.guard_worker_import();
 -- No runtime UPDATE/DELETE/TRUNCATE on immutable versions/results/audit.
 -- No worker idempotency/member/auth access. No PUBLIC EXECUTE on authority functions.
 ALTER DEFAULT PRIVILEGES FOR ROLE twin_owner IN SCHEMA twin REVOKE ALL ON TABLES FROM PUBLIC;

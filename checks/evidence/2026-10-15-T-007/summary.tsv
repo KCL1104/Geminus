@@ -1,0 +1,13 @@
+spec-check	0	make spec-check
+db-test-c	0	env DT_ALLOW_DB_TESTS=yes DATABASE_URL=postgresql://dt_admin@/dt_test_t007_c?host=/var/lib/postgresql/dt_probe&port=55432 make db-test
+db-test-icu	0	env DT_ALLOW_DB_TESTS=yes DATABASE_URL=postgresql://dt_admin@/dt_test_t007_icu?host=/var/lib/postgresql/dt_probe&port=55432 make db-test
+db-go-test-c	0	env GEMINUS_TEST_DATABASE_URL=postgresql://dt_admin@/dt_test_t007_c?host=/var/lib/postgresql/dt_probe&port=55432 make db-go-test
+go-test-tenant-icu-verbose	0	env GEMINUS_REQUIRE_DB_TESTS=1 GEMINUS_TEST_DATABASE_URL=postgresql://dt_admin@/dt_test_t007_icu?host=/var/lib/postgresql/dt_probe&port=55432 go test -count=1 -race -v ./internal/tenant/...
+go-test-tenant-no-db	0	go test -count=1 -v ./internal/tenant/...
+backend-test	0	make backend-test
+backend-race	0	make backend-race
+backend-build	0	make backend-build
+mutation	0	python3 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/t007/mut.py
+t006-sql-mutation	0	python3 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/t006/sqlmut.py
+govulncheck	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/govulncheck ./cmd/... ./internal/... ./schemas/...
+actionlint	0	/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/tools/actionlint -shellcheck= .github/workflows/ci.yml

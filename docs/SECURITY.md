@@ -18,7 +18,7 @@ Browser、CSV/JSON uploads、user model labels、LLM output、client IDs、queue
 | 管理 membership | 否 | 否 | 是 |
 | 讀 tenant audit feed | 否 | 否 | 是（D-012 候選最小權限） |
 
-role 從 DB membership 取得，不從 request body、header、provider 或前端狀態取得。所有 object read 也要驗 org/parent。跨 tenant ID 回404；本 tenant role 不足回403。Owner 不是跨 tenant 超級管理員。last-owner 更新鎖 organization row，以 transaction 保留至少一位 Owner。
+role 從 DB membership 取得，不從 request body、header、provider 或前端狀態取得。所有 object read 也要驗 org/parent。跨 tenant ID 回404；本 tenant role 不足回403。Owner 不是跨 tenant 超級管理員。last-owner 更新依 D-036 以 user_id 順序鎖住該 organization 全部 owner membership（`FOR UPDATE`）後再檢查人數，以 transaction 保留至少一位 Owner；不鎖 organization row，API 也沒有它的 UPDATE grant（CB-13）。
 
 ## 3. Authentication / browser
 

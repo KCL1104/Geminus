@@ -1,0 +1,99 @@
+# Before the T-007 grant changes: db/tests/roles.sql (collect mode) on a fresh ICU en-US database with migrations at 8c17ee0.
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+ set_config 
+------------
+ subject_a2
+(1 row)
+
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: UPDATE twin.imports SET mapping='{"a":1}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: UPDATE twin.imports SET mapping_revision=mapping_revision+1 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: UPDATE twin.imports SET dataset_version_id=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: UPDATE twin.imports SET proposal_id=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: UPDATE twin.imports SET base_version_id='mv_01M4YDQK00TA00000000000001' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but got 23514 (new row for relation "imports" violates check constraint "imports_check3") for: UPDATE twin.imports SET status='COMMITTED' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: UPDATE twin.jobs SET payload='{"x":1}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: UPDATE twin.jobs SET priority=99 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: UPDATE twin.jobs SET max_attempts=10 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000001'
+psql:db/tests/roles.sql:75: WARNING:  FAILED: expected SQLSTATE 42501 but got 23514 (new row for relation "jobs" violates check constraint "jobs_check1") for: UPDATE twin.jobs SET import_id=NULL, ai_proposal_id='aip_01M4YDQK00TA00000000000009' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000001'
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(10 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+(4 rows)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(16 rows)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+(6 rows)
+
+exit=0

@@ -1,0 +1,16 @@
+=== RUN   TestScopeIsValidatedBeforeTheDatabase
+--- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+=== RUN   TestRuntimeRoles
+    tenant_test.go:182: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestRuntimeRoles (0.00s)
+=== RUN   TestRunScopes
+    tenant_test.go:221: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestRunScopes (0.00s)
+=== RUN   TestPoolReuseLeavesNoScope
+    tenant_test.go:293: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestPoolReuseLeavesNoScope (0.00s)
+=== RUN   TestWorkerAssignment
+    tenant_test.go:356: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestWorkerAssignment (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant	0.006s

@@ -377,7 +377,7 @@
       "id": "T-007",
       "title": "RLS、runtime roles、pool isolation",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Platform",
       "planning_window": "Week 2–3",
       "depends_on": [
@@ -422,7 +422,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-15",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-007_VALIDATION.md",
+          "summary": "D-037 worker 欄位級 UPDATE 與 import commit guard（先紅：10 FAILED，實測重現 CB-16）；roles.sql 驗 D-036 鎖定、FORCE RLS、role 分離；internal/tenant：membership-checked Run、worker allowlist、Guard、CheckRuntimeRole，以真實 runtime login 測 TEST-010／TEST-011；mutation 15/15；13 個驗證指令 exit 0。D-008 仍為 PROPOSED，批准前不能 done。",
+          "reviewer": null,
+          "blocked_on_decision": "D-008"
+        }
+      ]
     },
     {
       "id": "T-008",

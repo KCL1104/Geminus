@@ -39,7 +39,8 @@ IDS = {
     "MV_A1": ("mv", "A", 1), "MV_A2": ("mv", "A", 2), "MV_X": ("mv", "A", 21), "MV_A21": ("mv", "A", 22),
     "MV_B1": ("mv", "B", 1), "DS_A": ("ds", "A", 1), "DSV_A1": ("dsv", "A", 1), "DSV_A2": ("dsv", "A", 2),
     "AIP_A1": ("aip", "A", 1), "AIP_A2": ("aip", "A", 2), "IMP_A1": ("imp", "A", 1), "SIM_A1": ("sim", "A", 1),
-    "AUD_A1": ("aud", "A", 1), "REQ_A1": ("req", "A", 1),
+    "AUD_A1": ("aud", "A", 1), "REQ_A1": ("req", "A", 1), "USR_A2": ("usr", "A", 2), "JOB_A1": ("job", "A", 1),
+    "AIP_A9": ("aip", "A", 9),
 }
 
 

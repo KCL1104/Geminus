@@ -1,0 +1,16 @@
+no-membership-check	KILLED
+session-level-scope	KILLED
+guard-always-reuses	KILLED
+guard-ignores-role	KILLED
+worker-ignores-assignment	KILLED
+no-id-validation	KILLED
+role-check-ignores-owner	KILLED
+role-check-ignores-other	KILLED
+role-check-ignores-superuser	KILLED
+worker-updates-all-imports	KILLED
+worker-updates-all-jobs	KILLED
+no-commit-guard	KILLED
+guard-public-execute	KILLED
+api-may-lock-organizations	KILLED
+no-force-rls-on-jobs	KILLED
+15/15 killed

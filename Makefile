@@ -55,7 +55,7 @@ db-test:
 # Go integration tests against the database `make db-test` left migrated; a skip is a failure here.
 db-go-test:
 	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL to the disposable dt_test_* database used by make db-test.' >&2; exit 2; }
-	GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 -race ./internal/storage/postgres/...
+	GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 -race ./internal/storage/postgres/... ./internal/tenant/...
 integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

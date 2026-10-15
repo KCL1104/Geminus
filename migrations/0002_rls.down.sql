@@ -14,6 +14,8 @@ BEGIN
     EXECUTE format('ALTER TABLE twin.%I DISABLE ROW LEVEL SECURITY',t);
   END LOOP;
 END $$;
+DROP TRIGGER IF EXISTS guard_worker_import ON twin.imports;
+DROP FUNCTION IF EXISTS twin.guard_worker_import();
 DROP FUNCTION twin.current_actor_id();
 DROP FUNCTION twin.current_organization_id();
 COMMIT;

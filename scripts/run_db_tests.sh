@@ -17,10 +17,12 @@ run migrations/0001_core.up.sql
 run migrations/0002_rls.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
+run db/tests/roles.sql
 run migrations/0002_rls.down.sql
 run migrations/0001_core.down.sql
 run migrations/0001_core.up.sql
 run migrations/0002_rls.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
+run db/tests/roles.sql
 echo 'DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.'

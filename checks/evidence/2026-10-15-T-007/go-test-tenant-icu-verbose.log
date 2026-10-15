@@ -1,0 +1,12 @@
+=== RUN   TestScopeIsValidatedBeforeTheDatabase
+--- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+=== RUN   TestRuntimeRoles
+--- PASS: TestRuntimeRoles (0.05s)
+=== RUN   TestRunScopes
+--- PASS: TestRunScopes (0.03s)
+=== RUN   TestPoolReuseLeavesNoScope
+--- PASS: TestPoolReuseLeavesNoScope (0.25s)
+=== RUN   TestWorkerAssignment
+--- PASS: TestWorkerAssignment (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant	1.376s

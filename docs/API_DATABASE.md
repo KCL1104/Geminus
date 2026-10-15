@@ -12,7 +12,7 @@ schemas/model-ir、proposal-output、proposal、scenario、simulation、analysis
 
 所有 `/v1` request：Authorization: Bearer OIDC JWT + X-Organization-ID。驗簽、issuer、audience、expiry 等完成後，才使用 issuer/subject 載入既有 user identity、membership。header 只選 tenant，不是授權。路徑中的 organization_id 若存在，必須等於已驗證 header scope。
 
-PROPOSED D-008：org/initial owner/user provisioning 是受控 bootstrap，不暴露 unauthenticated public provisioning endpoint；provider 與 onboarding automation 仍需 T-008/T-010 完成。Owner 可管理已知既有 user ID 的 membership；不提供全站 user enumeration。改／刪最後一位 Owner 需在鎖 organization row 的 transaction 中拒絕。
+PROPOSED D-008：org/initial owner/user provisioning 是受控 bootstrap，不暴露 unauthenticated public provisioning endpoint；provider 與 onboarding automation 仍需 T-008/T-010 完成。Owner 可管理已知既有 user ID 的 membership；不提供全站 user enumeration。改／刪最後一位 Owner 時，依 D-036 在同一 transaction 先以 user_id 順序 `SELECT … FROM twin.memberships WHERE organization_id=$1 AND role='owner' ORDER BY user_id FOR UPDATE` 鎖住全部 owner membership，再檢查人數後拒絕；API 沒有 organizations 的 UPDATE grant，所以不鎖 organization row（CB-13）。
 
 ## 3. HTTP 規則與錯誤
 
@@ -99,7 +99,7 @@ SQL 不宣稱 DB 本身已強制 human approval、last Owner、full graph validi
 
 先以受控 administrator 執行 db/bootstrap_roles.sql；migration login 可 SET ROLE twin_owner，API/worker logins只能繼承對應 runtime role。依序 0001_core.up.sql、0002_rls.up.sql。runtime roles 無 SUPERUSER / BYPASSRLS，不能 owner/inherit owner；表強制 RLS。未設 app.organization_id 時可見 rows=0，wrong-tenant INSERT/UPDATE 失敗。
 
-每個 checked-out pool connection 都用 explicit transaction + SELECT set_config(...,true)，transaction 結束 scope 清空；避免 session-level SET。users 以 verified issuer/subject policy 做 self identity lookup，再設 app.user_id 查 membership。API 應在每個 transaction 檢查 membership，不能靠長期 cache 授權。
+每個 checked-out pool connection 都用 explicit transaction + SELECT set_config(...,true)，transaction 結束 scope 清空；避免 session-level SET。實作為 `internal/tenant`（T-007）：`Run` 先驗 membership 再執行、`Worker` 只服務 deployment 指派的 organization、`Guard`（pgxpool AfterRelease）丟棄任何歸還時仍帶 scope 或 role 的連線、`CheckRuntimeRole` 在啟動時拒絕 superuser／BYPASSRLS／CREATEROLE／CREATEDB／owner 成員／同時屬於兩個 runtime role 的 login。worker 對 imports／jobs 只有欄位級 UPDATE，且 trigger 禁止 worker commit import（D-037）。users 以 verified issuer/subject policy 做 self identity lookup，再設 app.user_id 查 membership。API 應在每個 transaction 檢查 membership，不能靠長期 cache 授權。
 
 P0 worker 只 poll deployment assigned organization IDs，逐 scope claim；db/queries.sql 提供參數化候選。SQL template 不是可直接貼到 client 任意執行的 endpoint。
 
