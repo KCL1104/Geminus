@@ -1,0 +1,9 @@
+--- FAIL: TestBindingsUnderflowedExponential (0.02s)
+    bindings_test.go:86: mean 0 in a loop: [], want ZERO_TIME_CYCLE
+--- FAIL: TestExponentialMeanUnderflow (0.00s)
+    ir_test.go:318: underflowing interarrival mean: []
+    ir_test.go:325: underflowing service mean: []
+    ir_test.go:336: underflowing service mean in a loop: []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.035s
+FAIL

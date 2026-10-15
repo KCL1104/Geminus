@@ -1,0 +1,9 @@
+== internal/model/hashing FuzzCanonical
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/hashing	20.196s
+== internal/model/validate FuzzIR
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/validate	20.327s
+== internal/model/patch FuzzApply
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/patch	20.467s

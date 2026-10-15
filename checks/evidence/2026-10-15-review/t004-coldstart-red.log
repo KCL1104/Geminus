@@ -1,0 +1,5 @@
+fatal error: concurrent map writes
+fatal error: concurrent map read and map write
+fatal error: concurrent map read and map write
+fatal error: concurrent map read and map write
+fatal error: concurrent map writes

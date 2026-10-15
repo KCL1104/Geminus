@@ -1,6 +1,7 @@
 package validate_test
 
 import (
+	"bytes"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"path/filepath"
@@ -294,6 +295,83 @@ func TestNotZeroTimeCycle(t *testing.T) {
 		if r := run(t, doc); !r.Valid() {
 			t.Errorf("%s: %v", name, r.Issues)
 		}
+	}
+}
+
+// The schema checks "mean > 0" on the exact decimal, but a mean such as
+// 1e-400 decodes to binary64 0: it must not pass as a zero interarrival or
+// hide a zero-time cycle (review of T-004/T-005, D-033).
+func TestExponentialMeanUnderflow(t *testing.T) {
+	const marker = 7777.25
+	underflow := func(doc []byte) []byte {
+		out := bytes.ReplaceAll(doc, []byte("7777.25"), []byte("1e-400"))
+		if bytes.Equal(out, doc) {
+			t.Fatal("marker not found")
+		}
+		return out
+	}
+	arrival := underflow(edit(t, func(ir map[string]any) {
+		obj(obj(nodes(ir)[0])["arrival"])["distribution"] = map[string]any{"type": "exponential", "mean": marker}
+	}))
+	r := run(t, arrival)
+	if r.Valid() || !slices.Contains(codesAt(r)["/nodes/0/arrival/distribution"], validate.DistributionInvalid) {
+		t.Errorf("underflowing interarrival mean: %v", r.Issues)
+	}
+	service := underflow(edit(t, func(ir map[string]any) {
+		obj(obj(nodes(ir)[1])["service_time"])["distribution"] = map[string]any{"type": "exponential", "mean": marker}
+	}))
+	r = run(t, service)
+	if r.Valid() || !slices.Contains(codesAt(r)["/nodes/1/service_time/distribution"], validate.DistributionInvalid) {
+		t.Errorf("underflowing service mean: %v", r.Issues)
+	}
+	// In a rework loop the earlier cycle stage already reports it (D-023).
+	loop := underflow(edit(t, func(ir map[string]any) {
+		obj(obj(nodes(ir)[1])["service_time"])["distribution"] = map[string]any{"type": "exponential", "mean": marker}
+		ir["nodes"] = append(nodes(ir), map[string]any{"id": "d", "type": "decision"})
+		obj(flows(ir)[1])["to"] = "d"
+		ir["flows"] = append(flows(ir), flow("d_work", "d", "work", 0.5), flow("d_end", "d", "end", 0.5))
+	}))
+	r = run(t, loop)
+	if r.Valid() || !slices.Contains(codesAt(r)["/nodes/1"], validate.ZeroTimeCycle) {
+		t.Errorf("underflowing service mean in a loop: %v", r.Issues)
+	}
+	// The smallest positive binary64 is still positive and stays valid here;
+	// the engine guarantees an exponential sample is at least one tick.
+	tiny := bytes.ReplaceAll(edit(t, func(ir map[string]any) {
+		obj(obj(nodes(ir)[0])["arrival"])["distribution"] = map[string]any{"type": "exponential", "mean": marker}
+	}), []byte("7777.25"), []byte("5e-324"))
+	if r := run(t, tiny); !r.Valid() {
+		t.Errorf("subnormal mean: %v", r.Issues)
+	}
+}
+
+// The metadata size limit applies to the canonical (RFC 8785) form, so
+// whitespace never decides validity and two documents with the same model
+// hash always get the same answer (review of T-004).
+func TestContainerLimitIgnoresWhitespace(t *testing.T) {
+	entries := map[string]any{}
+	for i := range 60 { // the schema allows 64 members
+		entries[strconv.Itoa(i)] = strings.Repeat("x", 256) // ≈ 15.9 KB compact
+	}
+	compact := edit(t, func(ir map[string]any) { ir["metadata"] = entries })
+	if r := run(t, compact); !r.Valid() {
+		t.Fatalf("compact metadata under the limit: %v", r.Issues)
+	}
+	var indented bytes.Buffer
+	v := jsontext.Value(slices.Clone(compact))
+	if err := v.Indent(jsontext.WithIndent("        ")); err != nil {
+		t.Fatal(err)
+	}
+	indented.Write(v)
+	var members map[string]jsontext.Value
+	if err := json.Unmarshal(indented.Bytes(), &members); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(members["metadata"]); n <= validate.MaxContainerBytes {
+		t.Fatalf("indentation did not push the raw metadata over the limit (%d bytes)", n)
+	}
+	if r := run(t, indented.Bytes()); !r.Valid() {
+		t.Errorf("the same metadata, indented: %v", r.Issues)
 	}
 }
 

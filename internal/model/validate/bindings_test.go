@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
@@ -71,5 +72,17 @@ func TestBindingsZeroArrival(t *testing.T) {
 	}
 	if want := []string{"/nodes/0/arrival/distribution DISTRIBUTION_INVALID", "/nodes/1 ZERO_TIME_CYCLE"}; !slices.Equal(paths, want) {
 		t.Errorf("issues %v, want %v", paths, want)
+	}
+}
+
+// Bindings may see a decoded IR whose exponential mean underflowed to 0; it
+// treats it as zero-time like an exact 0 constant (D-033).
+func TestBindingsUnderflowedExponential(t *testing.T) {
+	r := loop(t, map[string]any{"type": "constant", "value": 1}, nil)
+	zero := 0.0
+	r.IR.Nodes[1].ServiceTime.Distribution = model.Distribution{Type: model.DistExponential, Mean: &zero}
+	got := validate.Bindings(r.IR, nil)
+	if len(got) != 1 || got[0].Code != validate.ZeroTimeCycle {
+		t.Errorf("mean 0 in a loop: %v, want ZERO_TIME_CYCLE", got)
 	}
 }

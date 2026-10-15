@@ -1,0 +1,5 @@
+--- FAIL: TestContainerLimitIgnoresWhitespace (0.02s)
+    ir_test.go:374: the same metadata, indented: [{LIMIT_EXCEEDED /metadata 16920 bytes; the limit is 16384 error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.029s
+FAIL

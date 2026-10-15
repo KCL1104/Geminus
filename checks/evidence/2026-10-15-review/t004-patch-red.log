@@ -1,0 +1,24 @@
+--- FAIL: TestUnknownMode (0.01s)
+panic: runtime error: index out of range [3] with length 3 [recovered, repanicked]
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.021s
+FAIL
+--- FAIL: TestPatchSizeLimit (0.08s)
+    patch_test.go:331: want one LIMIT_EXCEEDED at the document root, got []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.090s
+FAIL
+--- FAIL: TestWholeCatalogReplace (0.03s)
+    patch_test.go:346: want PATCH_TEST_REQUIRED at "/0/path", got []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.038s
+FAIL
+--- FAIL: TestAIKeepsPositionOfReaddedNode (0.03s)
+    patch_test.go:369: want PATCH_PATH_FORBIDDEN at "/3/path", got []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.035s
+FAIL
+--- FAIL: TestScenarioCannotCreateDatasetBinding (0.02s)
+    patch_test.go:378: want PATCH_PATH_FORBIDDEN at "/1/value", got []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.030s
+FAIL

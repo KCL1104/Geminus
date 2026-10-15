@@ -1,0 +1,3 @@
+     20 ok  	github.com/kcl1104/geminus/internal/model/validate/cold
+race:
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	1.245s

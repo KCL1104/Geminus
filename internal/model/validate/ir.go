@@ -12,6 +12,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
 )
 
 // Result is the outcome of validating one IR document.
@@ -119,8 +120,14 @@ func limits(ir *model.ModelIR, _ *graph) issues {
 		if len(v) == 0 {
 			return
 		}
-		if len(v) > MaxContainerBytes {
-			out.add(LimitExceeded, path, fmt.Sprintf("%d bytes; the limit is %d", len(v), MaxContainerBytes))
+		// Measure the canonical form: whitespace must not decide validity,
+		// and the model hash is computed over that form too.
+		size := len(v)
+		if c, err := hashing.Canonical(v); err == nil {
+			size = len(c)
+		}
+		if size > MaxContainerBytes {
+			out.add(LimitExceeded, path, fmt.Sprintf("%d canonical bytes; the limit is %d", size, MaxContainerBytes))
 		}
 		if d := depth(v); d > MaxContainerDepth {
 			out.add(LimitExceeded, path, fmt.Sprintf("nesting depth %d; the limit is %d", d, MaxContainerDepth))
@@ -441,7 +448,9 @@ func Bindings(ir *model.ModelIR, zeroRefs map[string]bool) []model.ValidationIss
 
 // zeroTime reports whether an entity can pass n in zero ticks (D-033). Only an
 // exact 0 quantizes to 0 ticks (model.Ticks); an empirical distribution is
-// zero-time when zeroRefs says its snapshot has a 0 sample.
+// zero-time when zeroRefs says its snapshot has a 0 sample. An exponential
+// mean is positive unless its decimal underflowed to 0 when decoded, which
+// distributions also rejects.
 func zeroTime(n model.Node, zeroRefs map[string]bool) bool {
 	var d *model.Distribution
 	switch n.Type {
@@ -459,6 +468,8 @@ func zeroTime(n model.Node, zeroRefs map[string]bool) bool {
 		return *d.Value == 0
 	case model.DistTriangular:
 		return *d.Min == 0
+	case model.DistExponential:
+		return *d.Mean <= 0
 	case model.DistEmpirical:
 		return zeroRefs[d.SamplesRef]
 	}
@@ -525,6 +536,12 @@ func distributions(ir *model.ModelIR, _ *graph) issues {
 			path := base + "/" + member + "/distribution"
 			if d.Type == model.DistTriangular && !(*d.Min <= *d.Mode && *d.Mode <= *d.Max) {
 				out.add(DistributionInvalid, path, fmt.Sprintf("triangular needs min ≤ mode ≤ max, got %g, %g, %g", *d.Min, *d.Mode, *d.Max))
+				return
+			}
+			// The schema checks mean > 0 on the exact decimal; a mean such as
+			// 1e-400 still decodes to binary64 0.
+			if d.Type == model.DistExponential && *d.Mean <= 0 {
+				out.add(DistributionInvalid, path, "exponential mean must be a positive binary64 number; it underflows to 0")
 				return
 			}
 			if member == "arrival" && ((d.Type == model.DistConstant && *d.Value <= 0) ||

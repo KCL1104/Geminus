@@ -1,0 +1,6 @@
+ok  	github.com/kcl1104/geminus/internal/model	0.306s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.245s
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.116s
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.168s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	0.078s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	0.247s

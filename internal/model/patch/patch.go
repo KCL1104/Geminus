@@ -38,7 +38,12 @@ const (
 	Scenario                // any scenario patch, human or AI (D-021)
 )
 
+func (m Mode) valid() bool { return m >= ManualDraft && m <= Scenario }
+
 func (m Mode) String() string {
+	if !m.valid() {
+		return fmt.Sprintf("mode(%d)", int(m))
+	}
 	return [...]string{"manual draft", "AI edit", "scenario"}[m]
 }
 
@@ -62,6 +67,14 @@ func (r Result) Valid() bool { return r.Applied() && r.Validation.Valid() }
 // Apply applies patchDoc to base under mode. The error is reserved for
 // internal failures; problems with the patch are issues.
 func Apply(base, patchDoc []byte, mode Mode) (Result, error) {
+	if !mode.valid() {
+		return Result{}, fmt.Errorf("patch: unknown mode %d", int(mode))
+	}
+	// A patch never needs to be larger than the document it edits (D-029).
+	if len(patchDoc) > validate.MaxIRBytes {
+		return Result{PatchIssues: []model.ValidationIssue{{Code: validate.LimitExceeded, Severity: model.SeverityError,
+			Message: fmt.Sprintf("the patch is %d bytes; the limit is %d", len(patchDoc), validate.MaxIRBytes)}}}, nil
+	}
 	ops, issues, err := parse(patchDoc)
 	if err != nil || len(issues) > 0 {
 		return Result{PatchIssues: issues}, err
@@ -73,10 +86,17 @@ func Apply(base, patchDoc []byte, mode Mode) (Result, error) {
 	if err := json.Unmarshal(base, &tree); err != nil {
 		return Result{}, fmt.Errorf("base document: %w", err)
 	}
+	baseRefs := samplesRefs(tree)
 	for i, op := range ops {
+		if issue := wholeCatalog(tree, op, i); issue != nil {
+			return Result{PatchIssues: []model.ValidationIssue{*issue}}, nil
+		}
 		if issue := apply(&tree, op, i); issue != nil {
 			return Result{PatchIssues: []model.ValidationIssue{*issue}}, nil
 		}
+	}
+	if issues := afterApply(tree, baseRefs, ops, mode); len(issues) > 0 {
+		return Result{PatchIssues: validate.Sort(issues)}, nil
 	}
 	candidate, err := json.Marshal(tree, json.Deterministic(true))
 	if err != nil {

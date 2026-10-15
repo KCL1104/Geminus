@@ -2,6 +2,7 @@ package patch
 
 import (
 	"encoding/json/v2"
+	"maps"
 	"slices"
 
 	"github.com/kcl1104/geminus/internal/model"
@@ -149,4 +150,120 @@ func removedIDs(ops model.Patch, paths [][]string, catalog string) []string {
 		}
 	}
 	return out
+}
+
+// wholeCatalog refuses an op on a whole identity catalog (e.g. "replace
+// /resources") while that array still has elements: it would change every
+// existing element without the id tests D-020 requires. Creating a catalog
+// that is absent or empty is allowed. It runs against the document as
+// patched so far.
+func wholeCatalog(tree any, op model.PatchOp, i int) *model.ValidationIssue {
+	tokens, _ := parsePointer(op.Path)
+	if op.Op == model.PatchTest || len(tokens) != 1 {
+		return nil
+	}
+	if _, ok := identity[tokens[0]]; !ok {
+		return nil
+	}
+	root, _ := tree.(map[string]any)
+	if current, _ := root[tokens[0]].([]any); len(current) > 0 {
+		is := issue(TestRequired, i, "path", "change the elements of "+op.Path+
+			" one by one, each after a test of its "+identity[tokens[0]]+" (D-020)")
+		return &is
+	}
+	return nil
+}
+
+// afterApply checks the rules that depend on the patched document:
+//   - D-022: an AI edit may drop the position of a node only if no node with
+//     that id exists afterwards (a removed and re-added id keeps its position);
+//   - D-021: a scenario may not bind a dataset the base model does not
+//     already bind (TWIN_IR_SPEC §6).
+func afterApply(tree any, baseRefs map[string]bool, ops model.Patch, mode Mode) []model.ValidationIssue {
+	var out []model.ValidationIssue
+	switch mode {
+	case AIEdit:
+		ids := nodeIDs(tree)
+		for i, op := range ops {
+			t, _ := parsePointer(op.Path)
+			if op.Op == model.PatchRemove && len(t) == 4 && t[0] == "views" && ids[t[3]] {
+				out = append(out, issue(PathForbidden, i, "path",
+					"node "+t[3]+" still exists after this patch, so its position stays (D-022)"))
+			}
+		}
+	case Scenario:
+		after := samplesRefs(tree)
+		for i, op := range ops {
+			for _, ref := range opRefs(op) {
+				if after[ref] && !baseRefs[ref] {
+					out = append(out, issue(PathForbidden, i, "value",
+						"a scenario cannot bind a dataset the model does not bind (D-021)"))
+					break
+				}
+			}
+		}
+	}
+	return out
+}
+
+func nodeIDs(tree any) map[string]bool {
+	out := map[string]bool{}
+	root, _ := tree.(map[string]any)
+	nodes, _ := root["nodes"].([]any)
+	for _, n := range nodes {
+		if m, ok := n.(map[string]any); ok {
+			if id, ok := m["id"].(string); ok {
+				out[id] = true
+			}
+		}
+	}
+	return out
+}
+
+// samplesRefs returns every empirical samples_ref the nodes of tree use.
+func samplesRefs(tree any) map[string]bool {
+	out := map[string]bool{}
+	root, _ := tree.(map[string]any)
+	nodes, _ := root["nodes"].([]any)
+	for _, n := range nodes {
+		collectRefs(n, out)
+	}
+	return out
+}
+
+func collectRefs(v any, out map[string]bool) {
+	switch v := v.(type) {
+	case map[string]any:
+		for k, c := range v {
+			if s, ok := c.(string); ok && k == "samples_ref" {
+				out[s] = true
+			}
+			collectRefs(c, out)
+		}
+	case []any:
+		for _, c := range v {
+			collectRefs(c, out)
+		}
+	}
+}
+
+// opRefs returns the samples_refs an op writes: its value when the path ends
+// at samples_ref, otherwise any samples_ref members inside its value.
+func opRefs(op model.PatchOp) []string {
+	if op.Op != model.PatchAdd && op.Op != model.PatchReplace {
+		return nil
+	}
+	var value any
+	if json.Unmarshal(op.Value, &value) != nil {
+		return nil
+	}
+	if t, _ := parsePointer(op.Path); len(t) > 0 && t[len(t)-1] == "samples_ref" {
+		if s, ok := value.(string); ok {
+			return []string{s}
+		}
+		return nil
+	}
+	refs := map[string]bool{}
+	collectRefs(value, refs)
+	return slices.Sorted(maps.Keys(refs))
 }

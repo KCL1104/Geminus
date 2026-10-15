@@ -310,3 +310,82 @@ func FuzzApply(f *testing.F) {
 		}
 	})
 }
+
+// Review of T-004 / T-005: a Mode outside the three defined modes is a
+// programming error, reported as an error rather than a panic.
+func TestUnknownMode(t *testing.T) {
+	_, err := Apply(base(t), []byte(`[{"op":"replace","path":"/name","value":"x"}]`), Mode(3))
+	if err == nil {
+		t.Fatal("unknown mode accepted")
+	}
+	if got := Mode(7).String(); got != "mode(7)" {
+		t.Errorf("String() = %q", got)
+	}
+}
+
+// The patch document is bounded before it is parsed (D-029 limits).
+func TestPatchSizeLimit(t *testing.T) {
+	big := `[{"op":"add","path":"/metadata","value":{"k":"` + strings.Repeat("x", validate.MaxIRBytes) + `"}}]`
+	r := mustApply(t, base(t), big, ManualDraft)
+	if len(r.PatchIssues) != 1 || r.PatchIssues[0].Code != validate.LimitExceeded || r.PatchIssues[0].Path != "" {
+		t.Fatalf("want one LIMIT_EXCEEDED at the document root, got %v", r.PatchIssues)
+	}
+}
+
+// D-020: replacing or removing a whole non-empty catalog array changes its
+// existing elements without their id tests, so it is refused in every mode;
+// creating a catalog that is absent or empty is allowed.
+func TestWholeCatalogReplace(t *testing.T) {
+	for _, mode := range []Mode{ManualDraft, AIEdit} {
+		for _, p := range []string{
+			`[{"op":"replace","path":"/resources","value":[{"id":"worker","name":"W","type":"human","capacity":9}]}]`,
+			`[{"op":"add","path":"/resources","value":[{"id":"worker","name":"W","type":"human","capacity":9}]}]`,
+			`[{"op":"remove","path":"/entity_types"}]`,
+		} {
+			r := mustApply(t, base(t), p, mode)
+			wantIssue(t, r, TestRequired, "/0/path")
+		}
+	}
+	// constraints is [] in the base, metrics is absent: both may be created whole.
+	for _, p := range []string{
+		`[{"op":"replace","path":"/constraints","value":[{"type":"outgoing_probability_sum","node_id":"work","equals":1}]}]`,
+		`[{"op":"add","path":"/metrics","value":[]}]`,
+	} {
+		if r := mustApply(t, base(t), p, ManualDraft); !r.Applied() {
+			t.Errorf("%s: %v", p, r.PatchIssues)
+		}
+	}
+}
+
+// D-022: the position may only be dropped for a node that is gone after the
+// patch; removing and re-adding the same id keeps the node, so its position
+// must stay.
+func TestAIKeepsPositionOfReaddedNode(t *testing.T) {
+	doc := bytes.Replace(base(t), []byte(`"2d": {}`), []byte(`"2d": {"positions": {"start": {"x": 0, "y": 0},
+		"work": {"x": 1, "y": 0}, "end": {"x": 2, "y": 0}}}`), 1)
+	p := `[{"op":"test","path":"/nodes/2/id","value":"end"},{"op":"remove","path":"/nodes/2"},
+		{"op":"add","path":"/nodes/-","value":{"id":"end","type":"sink"}},
+		{"op":"remove","path":"/views/2d/positions/end"}]`
+	wantIssue(t, mustApply(t, doc, p, AIEdit), PathForbidden, "/3/path")
+}
+
+// D-021 / TWIN_IR_SPEC §6: a scenario may change distribution parameters but
+// may not create a dataset binding; moving an existing one is allowed.
+func TestScenarioCannotCreateDatasetBinding(t *testing.T) {
+	doc := base(t)
+	testWork := `{"op":"test","path":"/nodes/1/id","value":"work"},`
+	newRef := `[` + testWork + `{"op":"replace","path":"/nodes/1/service_time/distribution","value":{"type":"empirical","samples_ref":"dataset:anything_new"}}]`
+	wantIssue(t, mustApply(t, doc, newRef, Scenario), PathForbidden, "/1/value")
+	member := `[` + testWork + `{"op":"replace","path":"/nodes/1/service_time/distribution","value":{"type":"empirical","samples_ref":"dataset:review_duration"}}]`
+	// A base that already binds dataset:review_duration on another node.
+	bound := mustApply(t, doc, `[{"op":"test","path":"/nodes/0/id","value":"start"},{"op":"replace","path":"/nodes/0/arrival/distribution","value":{"type":"empirical","samples_ref":"dataset:review_duration"}}]`, ManualDraft)
+	if !bound.Applied() {
+		t.Fatalf("setup: %v", bound.PatchIssues)
+	}
+	if r := mustApply(t, bound.Candidate, member, Scenario); !r.Applied() {
+		t.Errorf("reusing a bound dataset: %v", r.PatchIssues)
+	}
+	pointer := `[` + testWork + `{"op":"replace","path":"/nodes/1/service_time/distribution","value":{"type":"empirical","samples_ref":"dataset:review_duration"}},
+		{"op":"replace","path":"/nodes/1/service_time/distribution/samples_ref","value":"dataset:other_new"}]`
+	wantIssue(t, mustApply(t, bound.Candidate, pointer, Scenario), PathForbidden, "/2/value")
+}

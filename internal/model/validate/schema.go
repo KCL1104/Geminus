@@ -52,10 +52,18 @@ var compiled = sync.OnceValues(func() (*jsonschema.Compiler, error) {
 	return c, nil
 })
 
-var schemaCache sync.Map // ref -> *jsonschema.Schema
+var (
+	schemaCache sync.Map   // ref -> *jsonschema.Schema; compiled schemas are read-only
+	compileMu   sync.Mutex // jsonschema.Compiler is not safe for concurrent use
+)
 
 // schemaFor compiles "model-ir.schema.json" or "simulation.schema.json#/$defs/RunConfig".
 func schemaFor(ref string) (*jsonschema.Schema, error) {
+	if s, ok := schemaCache.Load(ref); ok {
+		return s.(*jsonschema.Schema), nil
+	}
+	compileMu.Lock()
+	defer compileMu.Unlock()
 	if s, ok := schemaCache.Load(ref); ok {
 		return s.(*jsonschema.Schema), nil
 	}

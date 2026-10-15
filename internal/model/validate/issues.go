@@ -35,18 +35,22 @@ func (s issues) hasError() bool {
 }
 
 // Sort orders issues by JSON Pointer, comparing tokens left to right with
-// array indices numerically, then by code and message (D-023), and drops
-// exact duplicates.
+// array indices numerically, then by code, message and severity (D-023), and
+// drops exact duplicates. The order is total, so it never depends on the
+// order issues were found in.
 func Sort(in []model.ValidationIssue) []model.ValidationIssue {
 	out := slices.Clone(in)
-	slices.SortStableFunc(out, func(a, b model.ValidationIssue) int {
+	slices.SortFunc(out, func(a, b model.ValidationIssue) int {
 		if c := comparePointers(a.Path, b.Path); c != 0 {
 			return c
 		}
 		if c := strings.Compare(a.Code, b.Code); c != 0 {
 			return c
 		}
-		return strings.Compare(a.Message, b.Message)
+		if c := strings.Compare(a.Message, b.Message); c != 0 {
+			return c
+		}
+		return strings.Compare(string(a.Severity), string(b.Severity))
 	})
 	return slices.Compact(out)
 }
@@ -61,16 +65,32 @@ func comparePointers(a, b string) int {
 	return len(ta) - len(tb)
 }
 
+// compareToken puts array indices (RFC 6901: "0" or a digit string without a
+// leading zero) first, in numeric order of any length, and every other token
+// after them in byte order.
 func compareToken(a, b string) int {
-	na, ea := strconv.Atoi(a)
-	nb, eb := strconv.Atoi(b)
+	ia, ib := isIndex(a), isIndex(b)
 	switch {
-	case ea == nil && eb == nil:
-		return na - nb
-	case ea == nil:
+	case ia && ib:
+		if c := len(a) - len(b); c != 0 {
+			return c
+		}
+	case ia:
 		return -1
-	case eb == nil:
+	case ib:
 		return 1
 	}
 	return strings.Compare(a, b)
+}
+
+func isIndex(t string) bool {
+	if t == "" || (t[0] == '0' && len(t) > 1) {
+		return false
+	}
+	for i := 0; i < len(t); i++ {
+		if t[i] < '0' || t[i] > '9' {
+			return false
+		}
+	}
+	return true
 }

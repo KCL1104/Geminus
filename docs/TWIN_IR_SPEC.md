@@ -70,16 +70,16 @@ APPROVED D-017：day 在 P0 是連續 24 小時。報告 example mean=16 min 在
 | NO_REACHABLE_SINK | source 沿正概率路徑找不到 sink；0% 分支允許存在但不會執行 |
 | ZERO_TIME_CYCLE | 可達的 zero-minimum-time graph 含 cycle；不能靠 event cap 當正常 termination |
 | RESOURCE_REQUIREMENT_INVALID | demand 超 capacity／重複 resource／負數 |
-| DISTRIBUTION_INVALID | triangular ordering、source zero interval、empirical 空值或非 finite |
+| DISTRIBUTION_INVALID | triangular ordering、source zero interval、empirical 空值或非 finite、exponential mean 的十進位值解碼成 binary64 後下溢為 0（如 `1e-400`） |
 | DATASET_BINDING_INVALID | logical ref 沒有 immutable authorized snapshot、binding 不符 schema（含 D-034 字元集）或重複，或 hash／organization／version／logical_ref／unit／sample_count 不一致（§5.2） |
 | VIEW_REFERENCE_INVALID | view position 不對應 canonical node |
 | CONSTRAINT_FAILED | P0 outgoing_probability_sum 不成立 |
 | JSON_INVALID | 解析失敗：非法 JSON、重複 member、非法 UTF-8、尾隨資料（D-023） |
-| LIMIT_EXCEEDED | D-029 上限：文件 >2 MiB、metadata／domain_attributes 深度 >8 或 >16 KB、分布參數換算超過 365 天、pointer 超過 32 層 |
+| LIMIT_EXCEEDED | D-029 上限：文件 >2 MiB、metadata／domain_attributes 深度 >8 或 canonical（RFC 8785）形式 >16 KiB（不受空白影響）、分布參數換算超過 365 天、pointer 超過 32 層 |
 | UNREACHABLE_NODE | **warning**：沒有 source 能到達的 dormant node，不阻擋 publish |
 | DOMAIN_MISMATCH | DomainPack 階段：IR 的 `domain` 不是該 pack 的 domain（REQ-003 fail closed；未註冊的 domain 由 `domainpack.Registry` 回 unsupported） |
 
-APPROVED D-023（實作於 `internal/model/validate`，T-004）：同一階段收集全部 issue，該階段有 error 就不進下一階段；issues 依 JSON Pointer 排序（array index 以數值比較）再依 code。T-004 的實作解讀（需 owner 確認時可另立決策）：(1) 任何 source 經 p>0 flow 能到達、卻無法到達 sink 的 node 都回 NO_REACHABLE_SINK，不只檢查 source 本身；(2) 指向 source 的 flow 回 ROUTING_INVALID，因為 source 不接收 entity；(3) metric／constraint 只檢查引用存在，不檢查被引用 node 的類型。D-033：zero-time 以分布可能的最小 tick 判定（constant=0、triangular min=0；exponential 恆 >0；empirical 在 dataset binding 階段判定）。
+APPROVED D-023（實作於 `internal/model/validate`，T-004）：同一階段收集全部 issue，該階段有 error 就不進下一階段；issues 依 JSON Pointer 排序再依 code、message、severity；token 中只有 RFC 6901 array index 形式（`0` 或不以 0 開頭的數字串）以數值比較（任意長度、不溢位）並排在其他 token 之前，其餘逐 byte 比較，因此順序是全序、與發現順序無關。T-004 的實作解讀（需 owner 確認時可另立決策）：(1) 任何 source 經 p>0 flow 能到達、卻無法到達 sink 的 node 都回 NO_REACHABLE_SINK，不只檢查 source 本身；(2) 指向 source 的 flow 回 ROUTING_INVALID，因為 source 不接收 entity；(3) metric／constraint 只檢查引用存在，不檢查被引用 node 的類型。D-033：zero-time 以分布可能的最小 tick 判定（constant=0、triangular min=0；exponential 的 mean 解碼後 >0 才合法，engine 對 exponential 樣本至少給 1 tick；empirical 在 dataset binding 階段判定）。
 
 unreachable dormant node 可 warning；無 reachable sink 的活躍路徑是 error。valid graph 仍可能大量 rework，因此 runtime budgets 必須存在。來源未明確要求跨 catalog IDs 全域唯一；上述 node/resource uniqueness 為 D-014 的候選限制。
 
@@ -125,7 +125,7 @@ manual draft patch 可操作 name、nodes、flows、resources、entity_types、c
 
 AI edit allowlist 比 manual 更小：name、nodes、flows、resources、entity_types、constraints、metrics；禁止 views/metadata/identity。AI scenario 僅既有 resources/*/capacity、nodes/*/arrival/distribution、nodes/*/service_time/distribution、nodes/*/delay_time/distribution、flows/*/routing/probability；不能增刪 topology 或創造 dataset binding。物件整段 replace 仍逐欄驗 full candidate IR，不因 parent path 被允許就略過子欄。
 
-所有 patch 都在 copy 上依序 apply，整體成功才提交；任一 op/test 失敗都不產生 partial mutation。array index 只在 pinned immutable base 有意義，diff 顯示 logical entity ID。APPROVED D-020（實作於 `internal/model/patch`）：修改、取代或刪除 nodes／flows／resources／entity_types／metrics／constraints 的既有元素前，同一 patch 必須先 `test` 該元素的識別欄位（constraints 沒有 id，以 `node_id` 識別，為 T-004 解讀）；中間若有插入、刪除或整個陣列取代，先前的 test 失效。append（`/-`）與插入新元素不需 test。test 不受 allowlist 限制、不算 business mutation，也不能取代 expected base。allowlist 以解碼後 token 做前綴比對；scenario 模式（D-021，人工與 AI 相同）只允許上列五種參數路徑；AI edit 另允許刪除同一 patch 刪掉之 node 的 `/views/2d/positions/{id}`（D-022）。patch 錯誤碼：PATCH_SCHEMA_INVALID、PATCH_PATH_INVALID、PATCH_PATH_FORBIDDEN、PATCH_TEST_REQUIRED、PATCH_TARGET_MISSING、PATCH_TEST_FAILED，路徑指向 patch 文件（如 `/3/path`）。刪除 node/resource 必須同時修復 references，否則 invalid。
+所有 patch 都在 copy 上依序 apply，整體成功才提交；任一 op/test 失敗都不產生 partial mutation。array index 只在 pinned immutable base 有意義，diff 顯示 logical entity ID。APPROVED D-020（實作於 `internal/model/patch`）：修改、取代或刪除 nodes／flows／resources／entity_types／metrics／constraints 的既有元素前，同一 patch 必須先 `test` 該元素的識別欄位（constraints 沒有 id，以 `node_id` 識別，為 T-004 解讀）；中間若有插入或刪除，先前的 test 失效。整個 catalog 陣列（如 `replace /resources`、`remove /entity_types`，或對已存在成員的 `add`）在仍有元素時一律拒絕（PATCH_TEST_REQUIRED），因為它不經 id test 就改掉所有既有元素；只能建立不存在或空的 catalog（2026-10-15 review 後的 fail-closed 解讀）。append（`/-`）與插入新元素不需 test。test 不受 allowlist 限制、不算 business mutation，也不能取代 expected base。allowlist 以解碼後 token 做前綴比對；scenario 模式（D-021，人工與 AI 相同）只允許上列五種參數路徑；AI edit 另允許刪除同一 patch 刪掉之 node 的 `/views/2d/positions/{id}`（D-022），且 patch 套用後不得仍有同 id 的 node（刪掉又加回同 id 時座標必須保留）。Scenario patch 不得引入 base model 沒有綁定的 `samples_ref`（「不能創造 dataset binding」；把既有 ref 改用在另一個分布可以）。Patch 文件本身超過 2 MiB 時在 parse 前回 LIMIT_EXCEEDED。patch 錯誤碼：PATCH_SCHEMA_INVALID、PATCH_PATH_INVALID、PATCH_PATH_FORBIDDEN、PATCH_TEST_REQUIRED、PATCH_TARGET_MISSING、PATCH_TEST_FAILED，路徑指向 patch 文件（如 `/3/path`）。刪除 node/resource 必須同時修復 references，否則 invalid。
 
 ## 7. View / canonical event schema
 
