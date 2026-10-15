@@ -18,7 +18,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-001 — 識別碼與欄位命名
 
-**狀態：PROPOSED。負責角色：Contracts / Platform。Gate：開始產生 SDK 或執行 migration 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Contracts / Platform。Gate：開始產生 SDK 或執行 migration 前。**
 
 來源缺口（原報告 pp. 14–19、24、29–36）：報告 API/IR 使用 mdl_/mv_/org_ 前綴，ER 圖則寫 UUID；Proposal 同時出現 base_model_version_id 與 base_version_id。
 
@@ -26,7 +26,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-002 — Proposal 的狀態與信任邊界
 
-**狀態：PROPOSED。負責角色：AI / Platform。Gate：AI persistence 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：AI / Platform。Gate：AI persistence 前。**
 
 來源缺口（原報告 pp. 23–26、32–33）：報告列出 generating、ready、approved、rejected；prompt 要求 needs_input，但範例 Schema 沒有完整定義。
 
@@ -122,7 +122,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-014 — Schema profile 與校驗層
 
-**狀態：PROPOSED。負責角色：Contracts / Security。Gate：Parser / validator 前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Contracts / Security。Gate：Parser / validator 前。**
 
 來源缺口（原報告 pp. 14–18、24–26、42）：報告給出 IR 範例，未提供完整 schema，也未區分 schema-valid 與 semantically valid。
 
@@ -130,7 +130,7 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 
 ### D-015 — OpenAPI dialect
 
-**狀態：PROPOSED。負責角色：Contracts。Gate：SDK generator 選型前。**
+**狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Contracts。Gate：SDK generator 選型前。**
 
 來源缺口（原報告 pp. 29）：報告要求 OpenAPI，未固定 OpenAPI 小版本。
 
@@ -159,6 +159,26 @@ Go modular monolith + separate worker；Next.js / React / TypeScript；React Flo
 來源缺口：H-001 指定 Anthropic Claude API，並提供兩個分屬獨立 organization 的 API key，要求 rotation 以使用兩邊 credits。原報告與 AI_SPEC 只假設單一 provider credential，未定義多帳號選用、失效切換、資料政策一致性與 audit。
 
 候選決策：有序 primary→secondary failover。只有 402 `billing_error`（credits 用完）或 401/403（key 無效／撤銷）才把該 credential 標為不可用並切換；429/529/5xx 只在同一 credential 依 SDK backoff 重試，不跨 organization，以免實質合併兩個 organization 的 rate limit（是否符合 Anthropic 條款需人類確認）。Key 只以 label 出現在 proposal／analysis／audit；adapter 明確注入 key，不依賴 `ANTHROPIC_API_KEY`；兩個 organization 的 retention／ZDR 設定須一致並寫入資料政策；key 只存 secret manager。
+
+## T-001 阻擋項決議（2026-10-15，KCL1104 逐項選擇）
+
+D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09）。以下為新登記且已批准的決議；CB-13 以後的項目會在各自任務開工前再逐項詢問。
+
+| ID | 解決 | 主題 | 決議 |
+|---|---|---|---|
+| D-019 | CB-01 | Hash 輸入定義 | patch_hash = SHA-256(JCS(patch 陣列))，baseline `[]` 亦有值；dataset content_hash = 儲存物件原始 bytes 的 SHA-256，snapshot JSON 不內含自身 hash；config_hash 先把 duration 正規化為 ticks 再算。以 D-006 的 JCS+SHA-256 為前提；D-006 若改 canonicalization 須重議。 |
+| D-020 | CB-02 | JSON Patch test op 與 allowlist 比對 | test 可指向任何既有路徑，不算 business mutation、不受 path allowlist 限制；server 強制「修改 array 元素前必須先 test 該元素 id」；allowlist 以解碼後 token 做前綴比對。 |
+| D-021 | CB-02 | 人工 scenario 的修改範圍 | 人工 scenario 與 AI scenario 使用同一 allowlist：只能改既有 capacity、分布參數、routing 機率，不能增刪拓樸；結構變更走 draft→publish。 |
+| D-022 | CB-03 | AI 刪除 node 時的 view 座標 | AI edit allowlist 只額外允許 `remove /views/2d/positions/{id}`，且 id 必須是同一 patch 中被刪除的 node；審核 patch 與 hash 不另加 server 衍生 op。 |
+| D-023 | CB-04 | Validator 輸出決定性 | 同一階段收集全部 issue，該階段有 error 即不進下一階段；issues 依 (path, code) 排序；重疊時 VIEW_REFERENCE_INVALID 優先於 UNKNOWN_REFERENCE、ROUTING_INVALID 優先於 CONSTRAINT_FAILED；補 patch／run config／tick overflow／runtime limit 的 code。 |
+| D-024 | CB-05 | HTTP Error.details 承載 issue code／severity | Error.details[] 增加選填 code、severity；保留報告 p.29 錯誤外形。 |
+| D-025 | CB-06 | HTTP error code 封閉清單 | T-003 建立 error code enum；缺 Idempotency-Key → 400 IDEMPOTENCY_KEY_REQUIRED；缺 If-Match → 428；Content-Type 錯誤 → 415。 |
+| D-026 | CB-07 | Analyst provider output 與 server 紀錄分離 | 新增不含 run ID 的 analysis-output schema；server 注入 run_id／baseline_run_id；evidence 以角色（baseline／scenario）引用。 |
+| D-027 | CB-08 | Proposal risk：provider claim 與 server risk 分離 | provider 值另存為 provider_risk_claim；最終 risk_level = max(server 計算, provider claim)，模型只能調高。 |
+| D-028 | CB-10 | Draft 驗證時機與 minimal IR | PATCH draft 只要求 schema-valid；語意 issues 放在 Draft.issues[]，publish／run 時強制；新增 source→process→sink 的 minimal 正例；報告 p.14 空圖維持示意。 |
+| D-029 | CB-11 | 數值上限的檢查位置 | validator 將 duration 換算為 ticks，超過 365 天（沿用 horizon 上限）回 LIMIT_EXCEEDED；候選限制：pointer 深度 ≤32、metadata 深度 ≤8 且 ≤16 KB、IR ≤2 MB（屬 D-007 候選，benchmark 後可調）。 |
+| D-030 | CB-12 | 已決定 proposal 的重複批准 | 以不同 Idempotency-Key 再批准已 approved／rejected 的 proposal → 409 PROPOSAL_ALREADY_DECIDED，狀態不變、無第二次效果。 |
+| D-031 | ADR-011 | braces dev-only advisory 風險接受 | 接受 GHSA-vfj7-8cjw-p6xm（braces <=3.0.3，僅 dev lint 鏈）為已知風險；CI 以 `npm audit --omit=dev --audit-level=high` 擋 production 依賴；upstream 有修補即升級。 |
 
 ## 人類決策紀錄
 

@@ -9,9 +9,10 @@
       "source_pages": "14–19、24、29–36",
       "owner_role": "Contracts / Platform",
       "gate": "開始產生 SDK 或執行 migration 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "選「前綴+ULID」：伺服器產生的資源 ID = <prefix>_<26 字元 Crockford base32 ULID>；SQL text；統一 base_version_id；prefix 清單由 T-003 補齊（併解 CB-09）。"
     },
     {
       "id": "D-002",
@@ -21,9 +22,10 @@
       "source_pages": "23–26、32–33",
       "owner_role": "AI / Platform",
       "gate": "AI persistence 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准。"
     },
     {
       "id": "D-003",
@@ -165,9 +167,10 @@
       "source_pages": "14–18、24–26、42",
       "owner_role": "Contracts / Security",
       "gate": "Parser / validator 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准。"
     },
     {
       "id": "D-015",
@@ -177,9 +180,10 @@
       "source_pages": "29",
       "owner_role": "Contracts",
       "gate": "SDK generator 選型前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "approval_note": "照提案批准：OpenAPI 3.1.1。"
     },
     {
       "id": "D-016",
@@ -217,6 +221,201 @@
       "approved_by": "KCL1104 (repository owner; session instruction)",
       "approved_at": "2026-10-15",
       "approval_note": "Owner 選擇 failover（不採 round-robin）。"
+    },
+    {
+      "id": "D-019",
+      "title": "Hash 輸入定義",
+      "source_gap": "T-001 盤點 CB-01（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "patch_hash = SHA-256(JCS(patch 陣列))，baseline `[]` 亦有值；dataset content_hash = 儲存物件原始 bytes 的 SHA-256，snapshot JSON 不內含自身 hash；config_hash 先把 duration 正規化為 ticks 再算。以 D-006 的 JCS+SHA-256 為前提；D-006 若改 canonicalization 須重議。",
+      "source_pages": "N/A（CB-01 決議）",
+      "owner_role": "Simulation / Platform",
+      "gate": "T-005 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-01"
+      ]
+    },
+    {
+      "id": "D-020",
+      "title": "JSON Patch test op 與 allowlist 比對",
+      "source_gap": "T-001 盤點 CB-02（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "test 可指向任何既有路徑，不算 business mutation、不受 path allowlist 限制；server 強制「修改 array 元素前必須先 test 該元素 id」；allowlist 以解碼後 token 做前綴比對。",
+      "source_pages": "N/A（CB-02 決議）",
+      "owner_role": "Contracts / Security",
+      "gate": "T-004 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-02"
+      ]
+    },
+    {
+      "id": "D-021",
+      "title": "人工 scenario 的修改範圍",
+      "source_gap": "T-001 盤點 CB-02（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "人工 scenario 與 AI scenario 使用同一 allowlist：只能改既有 capacity、分布參數、routing 機率，不能增刪拓樸；結構變更走 draft→publish。",
+      "source_pages": "N/A（CB-02 決議）",
+      "owner_role": "AI / Simulation",
+      "gate": "T-004、T-028 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-02"
+      ]
+    },
+    {
+      "id": "D-022",
+      "title": "AI 刪除 node 時的 view 座標",
+      "source_gap": "T-001 盤點 CB-03（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "AI edit allowlist 只額外允許 `remove /views/2d/positions/{id}`，且 id 必須是同一 patch 中被刪除的 node；審核 patch 與 hash 不另加 server 衍生 op。",
+      "source_pages": "N/A（CB-03 決議）",
+      "owner_role": "AI / Contracts",
+      "gate": "T-004、T-025 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-03"
+      ]
+    },
+    {
+      "id": "D-023",
+      "title": "Validator 輸出決定性",
+      "source_gap": "T-001 盤點 CB-04（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "同一階段收集全部 issue，該階段有 error 即不進下一階段；issues 依 (path, code) 排序；重疊時 VIEW_REFERENCE_INVALID 優先於 UNKNOWN_REFERENCE、ROUTING_INVALID 優先於 CONSTRAINT_FAILED；補 patch／run config／tick overflow／runtime limit 的 code。",
+      "source_pages": "N/A（CB-04 決議）",
+      "owner_role": "Simulation / Contracts",
+      "gate": "T-004 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-04"
+      ]
+    },
+    {
+      "id": "D-024",
+      "title": "HTTP Error.details 承載 issue code／severity",
+      "source_gap": "T-001 盤點 CB-05（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "Error.details[] 增加選填 code、severity；保留報告 p.29 錯誤外形。",
+      "source_pages": "N/A（CB-05 決議）",
+      "owner_role": "Contracts / Platform",
+      "gate": "T-003",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-05"
+      ]
+    },
+    {
+      "id": "D-025",
+      "title": "HTTP error code 封閉清單",
+      "source_gap": "T-001 盤點 CB-06（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "T-003 建立 error code enum；缺 Idempotency-Key → 400 IDEMPOTENCY_KEY_REQUIRED；缺 If-Match → 428；Content-Type 錯誤 → 415。",
+      "source_pages": "N/A（CB-06 決議）",
+      "owner_role": "Contracts / Platform",
+      "gate": "T-003",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-06"
+      ]
+    },
+    {
+      "id": "D-026",
+      "title": "Analyst provider output 與 server 紀錄分離",
+      "source_gap": "T-001 盤點 CB-07（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "新增不含 run ID 的 analysis-output schema；server 注入 run_id／baseline_run_id；evidence 以角色（baseline／scenario）引用。",
+      "source_pages": "N/A（CB-07 決議）",
+      "owner_role": "AI / Contracts",
+      "gate": "T-003",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-07"
+      ]
+    },
+    {
+      "id": "D-027",
+      "title": "Proposal risk：provider claim 與 server risk 分離",
+      "source_gap": "T-001 盤點 CB-08（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "provider 值另存為 provider_risk_claim；最終 risk_level = max(server 計算, provider claim)，模型只能調高。",
+      "source_pages": "N/A（CB-08 決議）",
+      "owner_role": "AI / Security",
+      "gate": "T-003、T-025 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-08"
+      ]
+    },
+    {
+      "id": "D-028",
+      "title": "Draft 驗證時機與 minimal IR",
+      "source_gap": "T-001 盤點 CB-10（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "PATCH draft 只要求 schema-valid；語意 issues 放在 Draft.issues[]，publish／run 時強制；新增 source→process→sink 的 minimal 正例；報告 p.14 空圖維持示意。",
+      "source_pages": "N/A（CB-10 決議）",
+      "owner_role": "Platform / Contracts",
+      "gate": "T-003",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-10"
+      ]
+    },
+    {
+      "id": "D-029",
+      "title": "數值上限的檢查位置",
+      "source_gap": "T-001 盤點 CB-11（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "validator 將 duration 換算為 ticks，超過 365 天（沿用 horizon 上限）回 LIMIT_EXCEEDED；候選限制：pointer 深度 ≤32、metadata 深度 ≤8 且 ≤16 KB、IR ≤2 MB（屬 D-007 候選，benchmark 後可調）。",
+      "source_pages": "N/A（CB-11 決議）",
+      "owner_role": "Simulation / Platform",
+      "gate": "T-004 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-11"
+      ]
+    },
+    {
+      "id": "D-030",
+      "title": "已決定 proposal 的重複批准",
+      "source_gap": "T-001 盤點 CB-12（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "以不同 Idempotency-Key 再批准已 approved／rejected 的 proposal → 409 PROPOSAL_ALREADY_DECIDED，狀態不變、無第二次效果。",
+      "source_pages": "N/A（CB-12 決議）",
+      "owner_role": "Platform / AI",
+      "gate": "T-003、T-026 前",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "CB-12"
+      ]
+    },
+    {
+      "id": "D-031",
+      "title": "braces dev-only advisory 風險接受",
+      "source_gap": "T-001 盤點 ADR-011（docs/CONTRACT_BLOCKERS.md）",
+      "proposal": "接受 GHSA-vfj7-8cjw-p6xm（braces <=3.0.3，僅 dev lint 鏈）為已知風險；CI 以 `npm audit --omit=dev --audit-level=high` 擋 production 依賴；upstream 有修補即升級。",
+      "source_pages": "N/A（ADR-011 決議）",
+      "owner_role": "Platform / Security",
+      "gate": "即時",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-15",
+      "resolves": [
+        "ADR-011"
+      ]
     }
   ],
   "human_decisions": [

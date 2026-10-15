@@ -14,6 +14,8 @@
 
 ## A. 阻擋 T-003 / T-004 / T-005（契約凍結、validator、hash）
 
+**2026-10-15 已決議**：CB-01–CB-12 由 owner 逐項選擇，登記為 D-019–D-030（CB-09 併入 D-001），見 [DECISIONS_AND_TBD.md](DECISIONS_AND_TBD.md)。
+
 | ID | 問題 | 證據 | 阻擋 | 涵蓋 | 等級 |
 |---|---|---|---|---|---|
 | CB-01 | `patch_hash` 與 dataset `content_hash` 的雜湊輸入未定義；snapshot 內含 `content_hash` 可能自我引用；`config_hash` 未正規化 duration | scenario.schema.json:40-45、0001_core.up.sql:249 有欄位；docs 無 `patch_hash` 定義（grep 為空）；TWIN_IR_SPEC.md:64-70；dataset-snapshot.schema.json:29-44 | T-005、T-003 | D-006（未涵蓋輸入） | 已核對（`patch_hash` 部分）；其餘審查回報 |

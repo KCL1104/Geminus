@@ -24,5 +24,5 @@ HTTP 層依 ADR-001 使用 `net/http`，不引入 web framework。SQL generation
 
 - `make backend-*` 只涵蓋 `./cmd/... ./internal/...`，避免 npm 套件內附的 Go 檔被當成本 module。新增 Go 頂層目錄時需更新 `GO_PKGS`。
 - `next build` 會改寫 `tsconfig.json`（加入 `esModuleInterop`、`.next/dev/types`）；已提交改寫後內容，避免 build 弄髒工作樹。
-- `npm audit`（含 dev）有 5 high，皆為 dev-only lint 鏈上的 `braces` GHSA-vfj7-8cjw-p6xm，目前無修補版本；production dependencies 為 0。此風險**尚未被接受**，待人類決定是否接受或改用其他 lint 方案。
+- `npm audit`（含 dev）有 5 high，皆為 dev-only lint 鏈上的 `braces` GHSA-vfj7-8cjw-p6xm，目前無修補版本；production dependencies 為 0。2026-10-15 owner 接受此 dev-only 風險（D-031）；CI frontend job 以 `npm audit --omit=dev --audit-level=high` 阻擋 production 依賴的 high/critical advisory，upstream 有修補即升級。
 - 版本升級必須更新本 ADR、lockfile 並重跑 `make spec-check backend-test backend-race frontend-test frontend-build`。

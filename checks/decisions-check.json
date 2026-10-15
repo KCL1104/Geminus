@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 1,
-    "proposed": 17,
+    "approved": 18,
+    "proposed": 13,
     "rejected": 0,
     "superseded": 0
   },
@@ -17,22 +17,13 @@
     "not_started": 40,
     "review": 0
   },
-  "ready_tasks": [],
-  "next_after_review": [
-    {
-      "id": "T-003",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-001",
-        "D-002",
-        "D-014",
-        "D-015"
-      ]
-    }
+  "ready_tasks": [
+    "T-003"
   ],
+  "next_after_review": [],
   "gates": {
     "D-001": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "開始產生 SDK 或執行 migration 前",
       "gates_tasks": [
         "T-003",
@@ -40,7 +31,7 @@
       ]
     },
     "D-002": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "AI persistence 前",
       "gates_tasks": [
         "T-003",
@@ -157,7 +148,7 @@
       ]
     },
     "D-014": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "Parser / validator 前",
       "gates_tasks": [
         "T-003",
@@ -168,7 +159,7 @@
       ]
     },
     "D-015": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "SDK generator 選型前",
       "gates_tasks": [
         "T-003",
@@ -200,6 +191,111 @@
       "gates_tasks": [
         "T-024"
       ]
+    },
+    "D-019": {
+      "status": "approved",
+      "gate": "T-005 前",
+      "gates_tasks": [
+        "T-005"
+      ]
+    },
+    "D-020": {
+      "status": "approved",
+      "gate": "T-004 前",
+      "gates_tasks": [
+        "T-004",
+        "T-025",
+        "T-028"
+      ]
+    },
+    "D-021": {
+      "status": "approved",
+      "gate": "T-004、T-028 前",
+      "gates_tasks": [
+        "T-004",
+        "T-028"
+      ]
+    },
+    "D-022": {
+      "status": "approved",
+      "gate": "T-004、T-025 前",
+      "gates_tasks": [
+        "T-004",
+        "T-025"
+      ]
+    },
+    "D-023": {
+      "status": "approved",
+      "gate": "T-004 前",
+      "gates_tasks": [
+        "T-004",
+        "T-020",
+        "T-021"
+      ]
+    },
+    "D-024": {
+      "status": "approved",
+      "gate": "T-003",
+      "gates_tasks": [
+        "T-003",
+        "T-013"
+      ]
+    },
+    "D-025": {
+      "status": "approved",
+      "gate": "T-003",
+      "gates_tasks": [
+        "T-003",
+        "T-009",
+        "T-013"
+      ]
+    },
+    "D-026": {
+      "status": "approved",
+      "gate": "T-003",
+      "gates_tasks": [
+        "T-003",
+        "T-030"
+      ]
+    },
+    "D-027": {
+      "status": "approved",
+      "gate": "T-003、T-025 前",
+      "gates_tasks": [
+        "T-003",
+        "T-025",
+        "T-026"
+      ]
+    },
+    "D-028": {
+      "status": "approved",
+      "gate": "T-003",
+      "gates_tasks": [
+        "T-003",
+        "T-004",
+        "T-012"
+      ]
+    },
+    "D-029": {
+      "status": "approved",
+      "gate": "T-004 前",
+      "gates_tasks": [
+        "T-004",
+        "T-020"
+      ]
+    },
+    "D-030": {
+      "status": "approved",
+      "gate": "T-003、T-026 前",
+      "gates_tasks": [
+        "T-003",
+        "T-026"
+      ]
+    },
+    "D-031": {
+      "status": "approved",
+      "gate": "即時",
+      "gates_tasks": []
     }
   },
   "note": "Shape checks only; whether a recorded approval is genuine is for human review."

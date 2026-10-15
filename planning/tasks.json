@@ -136,7 +136,13 @@
         "D-001",
         "D-002",
         "D-014",
-        "D-015"
+        "D-015",
+        "D-024",
+        "D-025",
+        "D-026",
+        "D-027",
+        "D-028",
+        "D-030"
       ],
       "scope": [
         "Review schema/OpenAPI normalizations，產生或手寫受 contract tests 約束的 types。",
@@ -188,7 +194,13 @@
       ],
       "decision_gates": [
         "D-005",
-        "D-014"
+        "D-014",
+        "D-020",
+        "D-021",
+        "D-022",
+        "D-023",
+        "D-028",
+        "D-029"
       ],
       "scope": [
         "實作 refs/unique IDs/probability/queue/resource/distribution/cycle validations。",
@@ -236,7 +248,8 @@
         "REQ-013"
       ],
       "decision_gates": [
-        "D-006"
+        "D-006",
+        "D-019"
       ],
       "scope": [
         "採經核對的 JCS 實作與 test vectors，不自行把 sort_keys 當 JCS。",
@@ -432,7 +445,8 @@
       ],
       "decision_gates": [
         "D-008",
-        "D-012"
+        "D-012",
+        "D-025"
       ],
       "scope": [
         "建立 project endpoints 與 scoped listings。",
@@ -578,7 +592,8 @@
         "REQ-009"
       ],
       "decision_gates": [
-        "D-003"
+        "D-003",
+        "D-028"
       ],
       "scope": [
         "atomic model+draft+v1 creation、draft revision CAS、publish parent/latest。",
@@ -628,7 +643,9 @@
       ],
       "decision_gates": [
         "D-012",
-        "D-015"
+        "D-015",
+        "D-024",
+        "D-025"
       ],
       "scope": [
         "綁定 create/get/draft/patch/publish/list/version/reset routes。",
@@ -969,7 +986,9 @@
       ],
       "decision_gates": [
         "D-005",
-        "D-006"
+        "D-006",
+        "D-023",
+        "D-029"
       ],
       "scope": [
         "IR compile成immutable runtime structures，無DB/network依賴。",
@@ -1015,7 +1034,8 @@
       ],
       "decision_gates": [
         "D-005",
-        "D-007"
+        "D-007",
+        "D-023"
       ],
       "scope": [
         "atomic bundle/resource-wise FIFO；failure/rework/delay/sink。",
@@ -1228,7 +1248,10 @@
       "decision_gates": [
         "D-002",
         "D-014",
-        "D-016"
+        "D-016",
+        "D-020",
+        "D-022",
+        "D-027"
       ],
       "scope": [
         "durable generating job→proposed content→server validator/risk→ready。",
@@ -1276,7 +1299,9 @@
       ],
       "decision_gates": [
         "D-003",
-        "D-011"
+        "D-011",
+        "D-027",
+        "D-030"
       ],
       "scope": [
         "role/base revalidation、shared model lock、idempotent exactly-one version。",
@@ -1375,7 +1400,9 @@
       ],
       "decision_gates": [
         "D-004",
-        "D-014"
+        "D-014",
+        "D-020",
+        "D-021"
       ],
       "scope": [
         "manual Scenario create/read/list；AI mode=scenario。",
@@ -1473,7 +1500,8 @@
       ],
       "decision_gates": [
         "D-010",
-        "D-016"
+        "D-016",
+        "D-026"
       ],
       "scope": [
         "從completed suppliedresults/context做async analysis。",
