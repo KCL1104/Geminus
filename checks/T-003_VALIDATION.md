@@ -28,6 +28,7 @@
 | `npm audit --omit=dev --audit-level=high` | 0 | D-031 production gate |
 | `openapi-spec-validator 0.7.2` | 0 | 修改後的 openapi.yaml |
 | `actionlint v1.7.12` | 0 | |
+| GitHub Actions [run 38735650734](https://github.com/KCL1104/Geminus/actions/runs/38735650734)（`b51cdc1`） | success | spec-check、backend、frontend、db migration smoke 四個 job 全部 success |
 
 ## 證明測試會失敗（mutation）
 
