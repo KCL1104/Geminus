@@ -31,6 +31,7 @@
 | T-006 SQL mutation（回歸） | 0 | 18/18 被擋，1 個 documented equivalent |
 | `govulncheck v1.9.0` | 0 | No vulnerabilities found |
 | `actionlint v1.7.12` | 0 | |
+| GitHub Actions [run 38755752833](https://github.com/KCL1104/Geminus/actions/runs/38755752833)（`4d326cb`） | success | 4 個 job 全部 success；db job 執行 `make db-go-test`（含 `internal/tenant`，skip 視為失敗） |
 
 ## 驗收測試對照
 
@@ -66,4 +67,3 @@
 | HTTP 層 tenant／role 矩陣（TEST-009） | T-009、T-013 |
 | JWT 驗證與 user 解析 | T-008 |
 | 並行 approval／lease／last-owner race | T-010、T-013、T-019 |
-| GitHub Actions | 推送後補記 |

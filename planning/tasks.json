@@ -429,7 +429,8 @@
           "report": "checks/T-007_VALIDATION.md",
           "summary": "D-037 worker 欄位級 UPDATE 與 import commit guard（先紅：10 FAILED，實測重現 CB-16）；roles.sql 驗 D-036 鎖定、FORCE RLS、role 分離；internal/tenant：membership-checked Run、worker allowlist、Guard、CheckRuntimeRole，以真實 runtime login 測 TEST-010／TEST-011；mutation 15/15；13 個驗證指令 exit 0。D-008 仍為 PROPOSED，批准前不能 done。",
           "reviewer": null,
-          "blocked_on_decision": "D-008"
+          "blocked_on_decision": "D-008",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/38755752833 (4d326cb: 4/4 success)"
         }
       ]
     },
