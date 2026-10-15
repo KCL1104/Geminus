@@ -1,4 +1,4 @@
--- PROPOSED D-008/D-013. Run only using a trusted provisioning administrator.
+-- D-008/D-013 (approved). Run only using a trusted provisioning administrator.
 -- NO passwords or application login users are created here.
 -- Production credentials, membership grants and TLS are deployment decisions.
 DO $$

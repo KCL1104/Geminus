@@ -1,0 +1,20 @@
+object-key-any-suffix: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:118: ERROR:  FA
+object-key-dot-segment: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:118: ERROR:  F
+object-key-trailing-slash: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:118: ERROR:
+object-key-percent: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:118: ERROR:  FAILE
+rejected-without-decider: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:229: ERROR: 
+decided-proposal-mutable: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:239: ERROR: 
+validation-mutable-after-review: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:227: 
+effects-mutable-after-review: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:227: ERR
+decider-any-user: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:228: ERROR:  FAILED:
+decided-at-from-client: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:234: ERROR:  F
+approval-any-version: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:230: ERROR:  FAI
+decision-record-anytime: KILLED db/tests/constraints.sql: psql:/home/user/Geminus/db/tests/constraints.sql:227: ERROR:  
+worker-changes-committed-import: KILLED db/tests/roles.sql: psql:/home/user/Geminus/db/tests/roles.sql:120: ERROR:  FAIL
+worker-changes-mapping: KILLED db/tests/roles.sql: psql:/home/user/Geminus/db/tests/roles.sql:146: ERROR:  FAILED: expec
+worker-decides-proposal: KILLED db/tests/roles.sql: psql:/home/user/Geminus/db/tests/roles.sql:112: ERROR:  FAILED: expe
+audit-any-user: KILLED db/tests/roles.sql: psql:/home/user/Geminus/db/tests/roles.sql:124: ERROR:  FAILED: expected SQLS
+audit-worker-as-user: KILLED db/tests/roles.sql: psql:/home/user/Geminus/db/tests/roles.sql:124: ERROR:  FAILED: expecte
+no-search-path-0002: KILLED db/tests/roles.sql: psql:/home/user/Geminus/db/tests/roles.sql:168: ERROR:  FAILED: twin fun
+no-search-path-0001: KILLED db/tests/roles.sql: psql:/home/user/Geminus/db/tests/roles.sql:168: ERROR:  FAILED: twin fun
+19/19 killed

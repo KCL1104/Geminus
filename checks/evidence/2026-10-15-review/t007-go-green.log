@@ -1,9 +1,19 @@
 --- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
 --- PASS: TestRuntimeRoles (0.06s)
 --- PASS: TestRunScopes (0.04s)
---- PASS: TestPoolReuseLeavesNoScope (0.27s)
+--- PASS: TestPoolReuseLeavesNoScope (0.26s)
 --- PASS: TestWorkerAssignment (0.02s)
 --- PASS: TestGuardDiscardsSessionState (0.08s)
 --- PASS: TestGuardCoversEverySetting (0.00s)
---- PASS: TestUnsafeRuntimeLogins (0.07s)
-ok  	github.com/kcl1104/geminus/internal/tenant	1.571s
+--- PASS: TestUnsafeRuntimeLogins (0.08s)
+--- PASS: TestRuntimeLoginCannotCreate (0.02s)
+ok  	github.com/kcl1104/geminus/internal/tenant	1.574s
+--- PASS: TestCommitOutcome (0.00s)
+--- PASS: TestClassify (0.00s)
+--- PASS: TestTxCommitRollbackPanic (0.02s)
+--- PASS: TestScopeIsTransactionLocal (0.02s)
+--- PASS: TestGuardsAreClassified (0.03s)
+--- PASS: TestCancellationReleasesLocks (0.32s)
+--- PASS: TestClassifyKeepsCallerErrors (0.00s)
+--- PASS: TestTxGoexit (0.02s)
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.429s

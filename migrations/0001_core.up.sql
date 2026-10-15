@@ -37,10 +37,11 @@ CREATE DOMAIN twin.sha256 AS text
 -- traversal, empty segment, backslash or control character.
 CREATE FUNCTION twin.object_key_ok(object_key text, prefix text) RETURNS boolean
   LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE
-  RETURN starts_with(object_key, prefix) AND length(object_key) > length(prefix)
-    AND length(object_key) <= 1024 AND strpos(object_key, '..') = 0
-    AND strpos(object_key, '//') = 0 AND strpos(object_key, E'\\') = 0
-    AND object_key !~ '[[:cntrl:]]';
+  -- After the tenant prefix only server-generated ASCII segments follow: no
+  -- empty, "." or ".." segment and nothing a storage adapter could decode
+  -- (%), normalize (Unicode look-alikes) or treat as a separator (\).
+  RETURN starts_with(object_key, prefix) AND length(object_key) <= 1024 AND strpos(object_key, '..') = 0
+    AND substr(object_key, length(prefix) + 1) ~ '^[0-9A-Za-z_-][0-9A-Za-z._-]*(/[0-9A-Za-z_-][0-9A-Za-z._-]*)*$';
 -- D-034: logical refs are ASCII, so byte order and every collation agree on equality.
 CREATE DOMAIN twin.logical_ref AS text
   CHECK (length(VALUE) <= 256 AND VALUE ~ '^dataset:[a-z0-9_.-]+$');
@@ -271,6 +272,7 @@ CREATE TABLE twin.ai_proposals (
      ((mode='edit' AND new_version_id IS NOT NULL AND scenario_id IS NULL) OR
       (mode='scenario' AND scenario_id IS NOT NULL AND new_version_id IS NULL)))),
   CHECK (status='approved' OR (new_version_id IS NULL AND scenario_id IS NULL)),
+  CHECK (status<>'rejected' OR (decided_by IS NOT NULL AND decided_at IS NOT NULL)),
   CHECK (risk_level IS NULL OR (server_risk_level IS NOT NULL AND provider_risk_claim IS NOT NULL AND
     risk_level = CASE WHEN 'high' IN (server_risk_level, provider_risk_claim) THEN 'high'
                       WHEN 'medium' IN (server_risk_level, provider_risk_claim) THEN 'medium'
@@ -516,12 +518,19 @@ BEGIN
      IS DISTINCT FROM ROW(OLD.organization_id,OLD.model_id,OLD.base_version_id,OLD.mode,OLD.source_import_id,OLD.intent) THEN
     RAISE EXCEPTION 'proposal identity/base is immutable' USING ERRCODE='55000';
   END IF;
+  -- A decided or finished proposal never changes (API_DATABASE §8).
+  IF OLD.status IN ('approved','rejected','conflicted','invalid','failed') AND NEW IS DISTINCT FROM OLD THEN
+    RAISE EXCEPTION 'a % proposal is immutable', OLD.status USING ERRCODE='55000';
+  END IF;
+  -- Once generated, the review payload is exactly what the reviewer saw.
   IF OLD.status<>'generating' AND
      ROW(NEW.patch,NEW.patch_hash,NEW.assumptions,NEW.summary,NEW.risk_level,NEW.server_risk_level,
-         NEW.provider_risk_claim,NEW.confidence,NEW.candidate_dataset_bindings)
+         NEW.provider_risk_claim,NEW.confidence,NEW.candidate_dataset_bindings,NEW.validation,
+         NEW.expected_effects,NEW.questions,NEW.provider_metadata)
      IS DISTINCT FROM
      ROW(OLD.patch,OLD.patch_hash,OLD.assumptions,OLD.summary,OLD.risk_level,OLD.server_risk_level,
-         OLD.provider_risk_claim,OLD.confidence,OLD.candidate_dataset_bindings) THEN
+         OLD.provider_risk_claim,OLD.confidence,OLD.candidate_dataset_bindings,OLD.validation,
+         OLD.expected_effects,OLD.questions,OLD.provider_metadata) THEN
     RAISE EXCEPTION 'reviewed proposal content is immutable; regenerate proposal' USING ERRCODE='55000';
   END IF;
   IF NEW.status<>OLD.status AND NOT (
@@ -529,6 +538,25 @@ BEGIN
        (OLD.status='ready' AND NEW.status IN ('approved','rejected','conflicted')) OR
        (OLD.status='needs_input' AND NEW.status='rejected')) THEN
     RAISE EXCEPTION 'invalid proposal transition % -> %',OLD.status,NEW.status USING ERRCODE='55000';
+  END IF;
+  -- The decision record is written by the decision itself, for the scoped
+  -- user, at the database's time; an approval names the effect created from
+  -- this very proposal.
+  IF NEW.status IN ('approved','rejected','conflicted') AND NEW.status<>OLD.status THEN
+    IF NEW.decided_by IS NOT NULL AND NEW.decided_by::text IS DISTINCT FROM nullif(current_setting('app.user_id',true),'') THEN
+      RAISE EXCEPTION 'a decision is recorded for the user who makes it' USING ERRCODE='42501';
+    END IF;
+    NEW.decided_at := now();
+    IF NEW.status='approved' AND NOT (
+         (NEW.mode='edit' AND EXISTS (SELECT 1 FROM twin.model_versions v
+            WHERE v.organization_id=NEW.organization_id AND v.id=NEW.new_version_id AND v.source_proposal_id=NEW.id)) OR
+         (NEW.mode='scenario' AND EXISTS (SELECT 1 FROM twin.scenarios s
+            WHERE s.organization_id=NEW.organization_id AND s.id=NEW.scenario_id AND s.source_proposal_id=NEW.id))) THEN
+      RAISE EXCEPTION 'an approval names the version or scenario created from this proposal' USING ERRCODE='23514';
+    END IF;
+  ELSIF ROW(NEW.decided_by,NEW.decided_at,NEW.new_version_id,NEW.scenario_id)
+        IS DISTINCT FROM ROW(OLD.decided_by,OLD.decided_at,OLD.new_version_id,OLD.scenario_id) THEN
+    RAISE EXCEPTION 'the decision record is written only by the decision' USING ERRCODE='55000';
   END IF;
   RETURN NEW;
 END $$;
@@ -587,4 +615,14 @@ CREATE CONSTRAINT TRIGGER run_dataset_binding_at_commit
   AFTER INSERT ON twin.run_datasets DEFERRABLE INITIALLY DEFERRED
   FOR EACH ROW EXECUTE FUNCTION twin.verify_run_dataset_manifest();
 
+-- Every function resolves names in pg_catalog only (pg_temp last), so an
+-- object created in another schema can never shadow what it calls; twin
+-- objects are always schema-qualified.
+DO $$
+DECLARE f regprocedure;
+BEGIN
+  FOR f IN SELECT p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='twin' LOOP
+    EXECUTE format('ALTER FUNCTION %s SET search_path = pg_catalog, pg_temp', f);
+  END LOOP;
+END $$;
 COMMIT;

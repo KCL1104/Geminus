@@ -28,7 +28,9 @@ var ErrUnsafeRole = errors.New("tenant: unsafe runtime database role")
 //   - is a member of want, with its privileges inherited, and of no other
 //     role in any way: no other runtime role, no twin_owner, no predefined
 //     role such as pg_write_all_data, and no role it could only SET ROLE to;
-//   - has no privileges granted to it directly and owns nothing.
+//   - has no privileges granted to it directly, owns nothing and can create
+//     nothing (no CREATE on any schema, e.g. public on clusters upgraded
+//     from PG14, nor on the database).
 //
 // want itself must not be privileged and must own nothing.
 func CheckRuntimeRole(ctx context.Context, pool *pgxpool.Pool, want string) error {
@@ -39,7 +41,8 @@ func CheckRuntimeRole(ctx context.Context, pool *pgxpool.Pool, want string) erro
 		login                                             string
 		sameRole, super, bypass, createRole, createDB     bool
 		replication, wantOK, inherits, direct, owns, wOwn bool
-		others                                            []string
+		createDBObj                                       bool
+		others, createIn                                  []string
 	)
 	err := pool.QueryRow(ctx, `
 		WITH l AS (SELECT * FROM pg_roles WHERE rolname = session_user),
@@ -55,9 +58,12 @@ func CheckRuntimeRole(ctx context.Context, pool *pgxpool.Pool, want string) erro
 		             ORDER BY r.rolname),
 		       EXISTS (SELECT 1 FROM deps d, db WHERE d.refobjid = l.oid AND d.dbid = db.oid AND d.deptype <> 'o'),
 		       EXISTS (SELECT 1 FROM deps d, db WHERE d.refobjid = l.oid AND d.deptype = 'o' AND d.dbid IN (0, db.oid)),
-		       EXISTS (SELECT 1 FROM deps d, db WHERE d.refobjid = w.oid AND d.deptype = 'o' AND d.dbid IN (0, db.oid))
+		       EXISTS (SELECT 1 FROM deps d, db WHERE d.refobjid = w.oid AND d.deptype = 'o' AND d.dbid IN (0, db.oid)),
+		       ARRAY(SELECT n.nspname::text FROM pg_namespace n WHERE has_schema_privilege(l.oid, n.oid, 'CREATE') ORDER BY n.nspname),
+		       has_database_privilege(l.oid, current_database(), 'CREATE')
 		FROM l LEFT JOIN w ON true`, want).
-		Scan(&login, &sameRole, &super, &bypass, &createRole, &createDB, &replication, &wantOK, &inherits, &others, &direct, &owns, &wOwn)
+		Scan(&login, &sameRole, &super, &bypass, &createRole, &createDB, &replication, &wantOK, &inherits, &others, &direct, &owns, &wOwn,
+			&createIn, &createDBObj)
 	if err != nil {
 		return fmt.Errorf("tenant: reading the runtime role: %w", err)
 	}
@@ -72,6 +78,8 @@ func CheckRuntimeRole(ctx context.Context, pool *pgxpool.Pool, want string) erro
 		{!wantOK, want + " is missing or privileged"}, {!inherits, "does not inherit " + want},
 		{len(others) > 0, "is also a member of " + strings.Join(others, ", ")},
 		{direct, "has privileges granted directly"}, {owns, "owns database objects"},
+		{len(createIn) > 0, "can create objects in schema " + strings.Join(createIn, ", ")},
+		{createDBObj, "can create schemas in the database"},
 		{wOwn, want + " owns database objects"},
 	} {
 		if p.bad {

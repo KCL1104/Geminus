@@ -1,0 +1,6 @@
+== c
+exit=0
+DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.
+== icu
+exit=0
+DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.

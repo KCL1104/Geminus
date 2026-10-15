@@ -528,3 +528,32 @@ func TestUnsafeRuntimeLogins(t *testing.T) {
 		}
 	}
 }
+
+// A cluster upgraded from PG14 or earlier still grants CREATE on schema
+// public to PUBLIC. That grant is not recorded per role, so it is checked
+// separately: a runtime login that can create objects anywhere is refused.
+func TestRuntimeLoginCannotCreate(t *testing.T) {
+	adm := admin(t)
+	ctx := context.Background()
+	if _, err := adm.Exec(ctx, `GRANT CREATE ON SCHEMA public TO PUBLIC`); err != nil {
+		t.Fatal(err)
+	}
+	revoked := false
+	revoke := func() {
+		if !revoked {
+			if _, err := adm.Exec(ctx, `REVOKE CREATE ON SCHEMA public FROM PUBLIC`); err != nil {
+				t.Fatal(err)
+			}
+			revoked = true
+		}
+	}
+	t.Cleanup(revoke)
+	err := tenant.CheckRuntimeRole(ctx, as(t, apiLogin, 1, false), tenant.APIRole)
+	if !errors.Is(err, tenant.ErrUnsafeRole) || !strings.Contains(err.Error(), "can create objects in schema public") {
+		t.Errorf("PUBLIC CREATE on schema public: %v", err)
+	}
+	revoke()
+	if err := tenant.CheckRuntimeRole(ctx, as(t, apiLogin, 1, false), tenant.APIRole); err != nil {
+		t.Errorf("after the revoke: %v", err)
+	}
+}

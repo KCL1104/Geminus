@@ -78,7 +78,10 @@ SELECT pg_temp.must_fail($q$INSERT INTO twin.projects(id,organization_id,name,cr
 SELECT pg_temp.must_fail($q$INSERT INTO twin.projects(id,organization_id,name,created_by) VALUES ('prj_01M4YDQK00TI00000000000009','org_01M4YDQK00TA00000000000000','x','usr_01M4YDQK00TA00000000000001')$q$,'23514');
 SELECT pg_temp.must_fail($q$INSERT INTO twin.projects(id,organization_id,name,created_by) VALUES ('prj_01M4YDQK00TA0000000000009','org_01M4YDQK00TA00000000000000','x','usr_01M4YDQK00TA00000000000001')$q$,'23514');
 SELECT pg_temp.must_fail($q$INSERT INTO twin.models(id,organization_id,project_id,name,domain,created_by) VALUES ('mdl_01M4YDQK00TA00000000000009','org_01M4YDQK00TA00000000000000','mdl_01M4YDQK00TA00000000000002','x','software_delivery','usr_01M4YDQK00TA00000000000001')$q$,'23514');
+-- As the owner, so the CHECK (not the runtime audit guard in 0002) answers.
+SET LOCAL ROLE twin_owner;
 SELECT pg_temp.must_fail($q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('aud_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','user','worker_1','x','model','mdl_01M4YDQK00TA00000000000001','req_01M4YDQK00TA00000000000001')$q$,'23514');
+SET LOCAL ROLE twin_api;
 SELECT pg_temp.must_fail($q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('aud_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','user','usr_01M4YDQK00TA00000000000001','x','model','model_a','req_01M4YDQK00TA00000000000001')$q$,'23514');
 SELECT pg_temp.must_fail($q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('aud_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','user','usr_01M4YDQK00TA00000000000001','x','model','mdl_01M4YDQK00TA00000000000001','request-1')$q$,'23514');
 INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id)
@@ -98,6 +101,19 @@ SELECT pg_temp.must_fail(format($q$INSERT INTO twin.dataset_versions(id,organiza
     'tenant/org_01M4YDQK00TA00000000000000/datasets/x' || chr(127),
     'tenant/org_01M4YDQK00TA00000000000000/',
     'tenant/org_01M4YDQK00TA00000000000000/datasets/' || repeat('a', 1100),
+    -- Review of T-006: only server-generated ASCII segments; nothing a storage
+    -- adapter could decode or normalize into another path.
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/x.json/',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/./x.json',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/.hidden',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/%2e%2e/x.json',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/x%2Fy.json',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/' || chr(65294) || chr(65294) || '/x.json',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/x' || chr(8725) || 'y.json',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/x' || chr(8238) || '.json',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/x' || chr(8203) || '.json',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/x y.json',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/' || repeat(chr(233), 600),
     'TENANT/org_01M4YDQK00TA00000000000000/datasets/x.json'
   ]) AS k;
 INSERT INTO twin.dataset_versions(id,organization_id,dataset_id,version,object_key,content_hash,content_type,row_count,unit,created_by)
@@ -190,9 +206,49 @@ UPDATE twin.ai_proposals SET status='ready', patch='[{"op":"test","path":"/name"
     validation='{"valid":true,"issues":[]}', confidence=0.9
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001';
 SELECT pg_temp.must_fail($q$UPDATE twin.ai_proposals SET status='ready', patch='[{"op":"test","path":"/name","value":"x"}]', patch_hash='sha256:1111111111111111111111111111111111111111111111111111111111111111', validation='{"valid":true,"issues":[]}', confidence=0.9 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000002'$q$,'23514');
+UPDATE twin.ai_proposals SET status='ready', patch='[{"op":"test","path":"/name","value":"Model A v2"}]', patch_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222',
+    validation='{"valid":true,"issues":[]}', confidence=0.8
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000003';
+SET LOCAL ROLE twin_api;
+-- Reviewed risk is frozen for everyone (the worker is refused even earlier, roles.sql).
 SELECT pg_temp.must_fail($q$UPDATE twin.ai_proposals SET server_risk_level='high', risk_level='high' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,'55000');
 SELECT pg_temp.must_fail($q$UPDATE twin.ai_proposals SET provider_risk_claim='low', risk_level='low', server_risk_level='low' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,'55000');
-SET LOCAL ROLE twin_api;
+
+-- Review of T-006 (API_DATABASE §8): once generated, the review payload is
+-- frozen; the decision record is written only by the decision transition,
+-- for the scoped user, with a database timestamp; an approval must point at
+-- the effect created from this proposal; a decided proposal never changes.
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  $q$UPDATE twin.ai_proposals SET validation='{"valid":true,"issues":[],"note":"edited"}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET expected_effects='[{"metric":"throughput"}]' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET questions='["why?"]' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET provider_metadata='{"model":"other"}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET decided_by='usr_01M4YDQK00TA00000000000001', decided_at=now() WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$
+]) AS s;
+SELECT pg_temp.must_fail($q$UPDATE twin.ai_proposals SET status='rejected', decided_by='usr_01M4YDQK00TB00000000000001' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,'42501');
+SELECT pg_temp.must_fail($q$UPDATE twin.ai_proposals SET status='rejected' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,'23514');
+SELECT pg_temp.must_fail($q$UPDATE twin.ai_proposals SET status='approved', decided_by='usr_01M4YDQK00TA00000000000001', new_version_id='mv_01M4YDQK00TA00000000000002' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,'23514');
+UPDATE twin.ai_proposals SET status='rejected', decided_by='usr_01M4YDQK00TA00000000000001', decided_at='2000-01-01'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001';
+SELECT pg_temp.check(decided_at = now(), 'decided_at is the database time of the decision')
+  FROM twin.ai_proposals WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001';
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  $q$UPDATE twin.ai_proposals SET decided_at=now()-interval '1 day' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET decided_by=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET error='{"code":"x"}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$
+]) AS s;
+-- Approval: the version created from the proposal in the same transaction.
+INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,ir,hash,source_proposal_id,created_by)
+  VALUES ('mv_01M4YDQK00TA00000000000031','org_01M4YDQK00TA00000000000000','mdl_01M4YDQK00TA00000000000001',3,'0.1','mv_01M4YDQK00TA00000000000002','{"schema_version":"0.1","model_id":"mdl_01M4YDQK00TA00000000000001","domain":"software_delivery","name":"Model A v2","time_unit":"minute","entity_types":[{"id":"change","name":"Change"}],"resources":[{"id":"worker","type":"human","name":"Worker","capacity":1,"queue_discipline":"fifo"}],"nodes":[{"id":"start","type":"source","entity_type":"change","arrival":{"distribution":{"type":"constant","value":10},"max_entities":1}},{"id":"work","type":"process","service_time":{"distribution":{"type":"constant","value":1}},"requires":[{"resource_id":"worker","units":1}]},{"id":"end","type":"sink"}],"flows":[{"id":"start_work","from":"start","to":"work","routing":{"type":"probability","probability":1}},{"id":"work_end","from":"work","to":"end","routing":{"type":"probability","probability":1}}],"constraints":[],"metrics":[],"views":{"2d":{},"3d":{}}}','sha256:a4164e5a65a773e40db3631bf0f48b31516a242f8c98786af099ce81dbec2107','aip_01M4YDQK00TA00000000000003','usr_01M4YDQK00TA00000000000001');
+UPDATE twin.ai_proposals SET status='approved', decided_by='usr_01M4YDQK00TA00000000000001', new_version_id='mv_01M4YDQK00TA00000000000031'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000003';
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  $q$UPDATE twin.ai_proposals SET new_version_id='mv_01M4YDQK00TA00000000000002' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000003'$q$,
+  $q$UPDATE twin.ai_proposals SET decided_at=now()-interval '1 second' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000003'$q$,
+  $q$UPDATE twin.ai_proposals SET validation='{"valid":true,"issues":[],"x":1}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000003'$q$
+]) AS s;
+SET CONSTRAINTS ALL IMMEDIATE; -- the new version's deferred manifest check passes
+SET CONSTRAINTS ALL DEFERRED;
 
 -- TEST-004: versions and other frozen records cannot change; a parent must
 -- be a version of the same model in the same organization.

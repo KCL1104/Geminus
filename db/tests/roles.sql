@@ -51,6 +51,14 @@ INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,
   VALUES ('imp_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','a.csv','tenant/org_01M4YDQK00TA00000000000000/imports/a.csv','sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001');
 INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id)
   VALUES ('job_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001');
+INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,upload_content_hash,size_bytes,status,created_by)
+  VALUES ('imp_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','b.csv','tenant/org_01M4YDQK00TA00000000000000/imports/b.csv','sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001');
+INSERT INTO twin.datasets(id,organization_id,project_id,kind,name,created_by)
+  VALUES ('ds_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','empirical_samples','Review duration','usr_01M4YDQK00TA00000000000001');
+INSERT INTO twin.dataset_versions(id,organization_id,dataset_id,version,object_key,content_hash,content_type,row_count,unit,created_by)
+  VALUES ('dsv_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','ds_01M4YDQK00TA00000000000001',1,'tenant/org_01M4YDQK00TA00000000000000/datasets/a1.json','sha256:1111111111111111111111111111111111111111111111111111111111111111','application/json',3,'minute','usr_01M4YDQK00TA00000000000001');
+INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,source_import_id,mode,status,intent,created_by)
+  VALUES ('aip_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','imp_01M4YDQK00TA00000000000001','edit','generating','from import','usr_01M4YDQK00TA00000000000001');
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 
@@ -90,6 +98,60 @@ SELECT pg_temp.check((SELECT count(*) FROM (SELECT user_id FROM twin.memberships
 SELECT pg_temp.must_fail($q$SELECT 1 FROM twin.organizations WHERE id='org_01M4YDQK00TA00000000000000' FOR UPDATE$q$, '42501');
 SELECT pg_temp.check(NOT has_table_privilege('twin_api','twin.organizations','UPDATE'), 'no UPDATE grant on organizations');
 
+-- Review of T-007: the worker generates proposals but never acts on one that
+-- is waiting for a person, and never touches an import a person committed.
+SET LOCAL ROLE twin_worker;
+UPDATE twin.ai_proposals SET status='ready', patch='[{"op":"test","path":"/name","value":"Model A v1"}]', patch_hash='sha256:1111111111111111111111111111111111111111111111111111111111111111',
+    validation='{"valid":true,"issues":[]}', confidence=0.9, server_risk_level='low', provider_risk_claim='low', risk_level='low'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001';
+SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
+  $q$UPDATE twin.ai_proposals SET status='rejected' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET validation='{"valid":true,"issues":[],"x":1}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET expected_effects='[{"metric":"x"}]' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.ai_proposals SET error='{"code":"x"}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$
+]) AS s;
+SET LOCAL ROLE twin_api;
+UPDATE twin.imports SET status='COMMITTED', invalid_rows=0, dataset_version_id='dsv_01M4YDQK00TA00000000000001', proposal_id='aip_01M4YDQK00TA00000000000001'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';
+SET LOCAL ROLE twin_worker;
+SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
+  $q$UPDATE twin.imports SET status='FAILED' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.imports SET validation='{"valid":false}', total_rows=99 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'$q$
+]) AS s;
+
+-- Audit: a "user" actor is always the scoped user; the worker writes as a
+-- worker or the system, never as a person.
+SELECT pg_temp.must_fail($q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('aud_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','user','usr_01M4YDQK00TA00000000000001','proposal.approve','ai_proposal','aip_01M4YDQK00TA00000000000001','req_01M4YDQK00TA00000000000001')$q$, '42501');
+INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id)
+  VALUES ('aud_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','worker','worker-1','import.profile','import','imp_01M4YDQK00TA00000000000001','req_01M4YDQK00TA00000000000001');
+SET LOCAL ROLE twin_api;
+SELECT pg_temp.must_fail($q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('aud_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','user','usr_01M4YDQK00TA00000000000002','proposal.approve','ai_proposal','aip_01M4YDQK00TA00000000000001','req_01M4YDQK00TA00000000000001')$q$, '42501');
+INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id)
+  VALUES ('aud_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','user','usr_01M4YDQK00TA00000000000001','import.commit','import','imp_01M4YDQK00TA00000000000001','req_01M4YDQK00TA00000000000001');
+
+-- Defence in depth: the guards hold even with a broader worker grant (e.g.
+-- pg_write_all_data) and a shadowing function earlier on the search_path
+-- (clusters upgraded from PG14 still let PUBLIC create in schema public).
+RESET ROLE;
+GRANT UPDATE ON twin.imports TO twin_worker;
+GRANT CREATE ON SCHEMA public TO twin_worker;
+SET LOCAL ROLE twin_worker;
+CREATE FUNCTION public.pg_has_role(name, text, text) RETURNS boolean LANGUAGE sql AS 'SELECT false';
+SET LOCAL search_path = public, pg_catalog;
+SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
+  $q$UPDATE twin.imports SET status='FAILED' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'$q$,
+  $q$UPDATE twin.imports SET mapping='{"a":1}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.imports SET mapping_revision=7 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.imports SET proposal_id='aip_01M4YDQK00TA00000000000001' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000002'$q$
+]) AS s;
+SET LOCAL search_path TO DEFAULT;
+RESET ROLE;
+REVOKE UPDATE ON twin.imports FROM twin_worker;
+GRANT UPDATE (status,total_rows,invalid_rows,preview,validation,mapping_suggestion_status,
+  mapping_suggestion,error,error_report_object_key) ON twin.imports TO twin_worker;
+REVOKE CREATE ON SCHEMA public FROM twin_worker;
+DROP FUNCTION public.pg_has_role(name, text, text);
+
 -- TEST-011 (structural): FORCE RLS everywhere, runtime roles separate and
 -- owning nothing, worker without identity, membership or idempotency access.
 SET LOCAL ROLE twin_owner;
@@ -97,9 +159,13 @@ SELECT pg_temp.check(count(*)=0, 'tables without FORCE RLS or a policy: ' || coa
   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
   WHERE n.nspname='twin' AND c.relkind='r'
     AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid));
-SELECT pg_temp.check(count(*)=0, 'objects owned by a runtime role: ' || coalesce(string_agg(c.relname, ', '), ''))
-  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-  WHERE n.nspname='twin' AND pg_get_userbyid(c.relowner) IN ('twin_api','twin_worker');
+SELECT pg_temp.check(count(*)=0, 'objects owned by a runtime role: ' || coalesce(string_agg(d.classid::regclass || ' ' || d.objid, ', '), ''))
+  FROM pg_shdepend d
+  WHERE d.deptype='o' AND d.refclassid='pg_authid'::regclass AND pg_get_userbyid(d.refobjid) IN ('twin_api','twin_worker')
+    AND d.dbid IN (0, (SELECT oid FROM pg_database WHERE datname=current_database()));
+SELECT pg_temp.check(count(*)=0, 'twin functions without a fixed search_path: ' || coalesce(string_agg(p.proname, ', '), ''))
+  FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='twin' AND NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c WHERE c LIKE 'search_path=%');
 SELECT pg_temp.check(NOT pg_has_role(a, b, 'MEMBER'), format('%s must not be a member of %s', a, b))
   FROM (VALUES ('twin_api','twin_owner'),('twin_worker','twin_owner'),('twin_api','twin_worker'),('twin_worker','twin_api')) AS t(a, b);
 SELECT pg_temp.check(NOT has_table_privilege('twin_worker', 'twin.' || t, p), format('worker has no %s on %s', p, t))
