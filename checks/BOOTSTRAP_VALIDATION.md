@@ -29,6 +29,7 @@ Go 1.27.2（`go.mod` toolchain；預裝 1.24.7 已 EOL，由 `GOTOOLCHAIN=auto` 
 | `bin/api`、`bin/worker`（有效設定） | 2 | 結構化 log `NOT IMPLEMENTED … (T-013 / T-019)`；log 不含 DB 密碼 |
 | `npm audit --omit=dev` | 0 | production dependencies 0 vulnerabilities |
 | `npm audit`（含 dev） | **1** | 5 high，同一 advisory：`braces` GHSA-vfj7-8cjw-p6xm（巢狀 glob pattern 造成 stack exhaustion DoS），只經 dev-only lint 鏈 `eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch → braces`；`braces *` 無修補版本，`npm audit fix --force` 會降到 eslint-config-next 14。**未接受此風險，待人類決定** |
+| GitHub Actions [run 38720779374](https://github.com/KCL1104/Geminus/actions/runs/38720779374)（commit `4973718`，ubuntu-24.04） | success | spec-check（含 committed reports 與重跑一致）、backend（vet/test/race/build）、frontend（npm ci/lint/typecheck/unit/build）、db migration smoke（`postgres:16.15` service）四個 job 全部 success |
 | `actionlint v1.7.12 .github/workflows/ci.yml` | 0 | workflow 語法與 expression 檢查 |
 | `openapi-spec-validator 0.7.2`（scratch venv，非 repo 依賴） | 0 | `openapi.yaml: OK`；只證明結構，未證明對 `https://twin.example/...` `$id` 的跨檔 `$ref` 深度解析（D-015 SDK 選型仍需驗證） |
 
@@ -47,7 +48,6 @@ Go 1.27.2（`go.mod` toolchain；預裝 1.24.7 已 EOL，由 `GOTOOLCHAIN=auto` 
 
 | 項目 | 原因／下一個 gate |
 |---|---|
-| GitHub Actions CI | 推送後由 GitHub 執行；結果以 PR／commit checks 為準，未在本檔預先宣稱 |
 | `go test -race` 以外的平台（arm64、macOS、Windows） | 本環境只有 linux/amd64 |
 | Live AI、token 成本、provider key 驗證 | AI_PROVIDER 只允許 disabled；未呼叫 Anthropic API，也未以使用者提供的 key 發出任何請求 |
 | Integration / E2E / security scan / performance / backup-restore / staging | 對應 task（T-013、T-019、T-036–T-041）尚未開始 |
