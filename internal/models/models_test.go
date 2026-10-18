@@ -502,8 +502,7 @@ func TestDraftWhenAnotherVersionArrives(t *testing.T) {
 		t.Errorf("publishing an out-of-date draft as if it were current: %v", err)
 	}
 	// Reset needs confirmation, the latest version and the current revision.
-	var invalid *models.InvalidError
-	if _, err := e.svc.ResetDraft(ctx, sc, requestID(), m.ID, kept.Revision, models.ResetRequest{ExpectedLatestVersionID: v3}); !errors.As(err, &invalid) {
+	if _, err := e.svc.ResetDraft(ctx, sc, requestID(), m.ID, kept.Revision, models.ResetRequest{ExpectedLatestVersionID: v3}); !errors.Is(err, models.ErrNotConfirmed) {
 		t.Errorf("unconfirmed reset: %v", err)
 	}
 	if _, err := e.svc.ResetDraft(ctx, sc, requestID(), m.ID, kept.Revision, models.ResetRequest{ExpectedLatestVersionID: v2, ConfirmDiscard: true}); !errors.Is(err, models.ErrConflict) {
@@ -572,8 +571,9 @@ func (s snapshots) Open(_ context.Context, org, dsv string) (io.ReadCloser, erro
 
 // Empirical data (TEST-014): a draft that uses a dataset its base does not
 // bind gets the issue and does not publish; a publish verifies the frozen
-// snapshot (a wrong hash fails); a version freezes what it uses, and newer
-// data for the same dataset changes nothing already published.
+// snapshots (a wrong hash fails); a version keeps every binding of its base,
+// used or not (TWIN_IR_SPEC §5.2; T-012 review M3), and newer data for the
+// same dataset changes nothing already published.
 func TestDatasets(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
@@ -597,8 +597,10 @@ func TestDatasets(t *testing.T) {
 	// A frozen dataset version, and a base version that binds it (as an
 	// approved import would, T-018) along with one it does not use.
 	snap, binding, unused := e.dataset(t, "dataset:review_duration"), model.DatasetBinding{}, model.DatasetBinding{}
-	binding, unused = snap.binding, e.dataset(t, "dataset:unused").binding
-	store := snapshots{e.org.ID + "/" + binding.DatasetVersionID: snap.data}
+	binding = snap.binding
+	unusedSnap := e.dataset(t, "dataset:unused")
+	unused = unusedSnap.binding
+	store := snapshots{e.org.ID + "/" + binding.DatasetVersionID: snap.data, e.org.ID + "/" + unused.DatasetVersionID: unusedSnap.data}
 	v1, err := e.svc.GetVersion(ctx, sc, m.LatestVersion.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -607,21 +609,21 @@ func TestDatasets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The base binds data its IR does not use yet: resetting to it reads no
-	// snapshot. Using the data needs dataset storage to check it.
-	if _, err := e.svc.ResetDraft(ctx, sc, requestID(), m.ID, 2, models.ResetRequest{ExpectedLatestVersionID: base, ConfirmDiscard: true}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 3, empirical); !errors.Is(err, models.ErrDatasetsUnavailable) {
+	// The base binds data its IR does not use yet; its bindings are checked
+	// all the same, so without dataset storage nothing can be checked.
+	if _, err := e.svc.ResetDraft(ctx, sc, requestID(), m.ID, 2, models.ResetRequest{ExpectedLatestVersionID: base, ConfirmDiscard: true}); !errors.Is(err, models.ErrDatasetsUnavailable) {
 		t.Errorf("checking bindings without dataset storage: %v", err)
 	}
 	e.svc.Datasets = store
+	if _, err := e.svc.ResetDraft(ctx, sc, requestID(), m.ID, 2, models.ResetRequest{ExpectedLatestVersionID: base, ConfirmDiscard: true}); err != nil {
+		t.Fatal(err)
+	}
 	d, err = e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 3, empirical)
 	if err != nil || slices.ContainsFunc(d.Issues, func(i model.ValidationIssue) bool { return i.Code == validate.DatasetBindingInvalid }) {
 		t.Fatalf("a bound dataset: %v %v", d.Issues, err)
 	}
 	// A snapshot that is not what the binding froze fails the publish.
-	e.svc.Datasets = snapshots{e.org.ID + "/" + binding.DatasetVersionID: append(slices.Clone(snap.data), ' ')}
+	e.svc.Datasets = snapshots{e.org.ID + "/" + binding.DatasetVersionID: append(slices.Clone(snap.data), ' '), e.org.ID + "/" + unused.DatasetVersionID: unusedSnap.data}
 	if _, _, err := e.publish(sc, m.ID, 4, base, key()); !errors.As(err, &invalid) ||
 		!slices.ContainsFunc(invalid.Issues, func(i model.ValidationIssue) bool { return i.Code == validate.DatasetBindingInvalid }) {
 		t.Errorf("a changed snapshot: %v", err)
@@ -635,8 +637,8 @@ func TestDatasets(t *testing.T) {
 	if err := json.Unmarshal(out, &v); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(v.DatasetBindings, []model.DatasetBinding{binding}) {
-		t.Errorf("the version froze %v, want only what it uses", v.DatasetBindings)
+	if !slices.Equal(v.DatasetBindings, []model.DatasetBinding{binding, unused}) {
+		t.Errorf("the version froze %v, want its base's bindings", v.DatasetBindings)
 	}
 	// Newer data for the same dataset: the published version is unchanged.
 	e.datasetVersion(t, snap.dataset, 2, "dataset:review_duration")

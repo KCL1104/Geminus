@@ -8,6 +8,7 @@
 package models
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json/jsontext"
@@ -49,6 +50,11 @@ var (
 	// ErrDatasetsUnavailable: the version binds datasets and no dataset
 	// store is configured to verify them (503; T-016 provides one).
 	ErrDatasetsUnavailable = errors.New("models: dataset storage is not configured")
+	// ErrInvalidLimit: a page size outside 1–100 (openapi Limit).
+	ErrInvalidLimit = errors.New("models: invalid page size")
+	// ErrNotConfirmed: a reset without confirm_discard. The HTTP contract
+	// requires it (ResetDraft), so a request never gets here without it.
+	ErrNotConfirmed = errors.New("models: a reset must be confirmed")
 )
 
 // InvalidError is a patch or model that is not acceptable (422
@@ -77,6 +83,17 @@ type Service struct {
 var (
 	writeRoles = tenant.Writers
 	readRoles  = tenant.Members
+)
+
+// Reads combine the model, its draft and its latest version, which a
+// publish changes together: one snapshot, so a read never sees half of it.
+var readSnapshot = tenant.ReadSnapshot
+
+// maxLimit is the largest page (openapi Limit); maxIssues the most issues a
+// draft or an error holds (migration 0003, Error.details).
+const (
+	maxLimit  = 100
+	maxIssues = 1000
 )
 
 const (
@@ -210,9 +227,21 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, p
 		if err != nil {
 			return err
 		}
-		issues, err := s.issues(ctx, m.OrganizationID, ir, validate.Semantic(ir), nil)
+		res, err := validate.IR(data)
 		if err != nil {
 			return err
+		}
+		if res.IR == nil {
+			return fmt.Errorf("models: template %s of %s is not schema-valid: %v", req.Template, req.Domain, res.Issues)
+		}
+		issues, err := s.issues(ctx, m.OrganizationID, res.IR, res.Issues, nil)
+		if err != nil {
+			return err
+		}
+		// The pack built it: errors are the pack's, so nothing is created
+		// (API_DATABASE §4); warnings are saved with the draft.
+		if slices.ContainsFunc(issues, isError) {
+			return fmt.Errorf("models: template %s of %s is not valid: %v", req.Template, req.Domain, issues)
 		}
 		mdl, err := store.InsertModel(ctx, tx, store.Model{ID: modelID, OrganizationID: m.OrganizationID, ProjectID: projectID,
 			Name: ir.Name, Domain: ir.Domain, LatestVersionID: versionID, CreatedBy: m.UserID})
@@ -249,7 +278,7 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, p
 // GetModel returns the model id with its draft and latest version summaries.
 func (s *Service) GetModel(ctx context.Context, sc tenant.Scope, id string) (Model, error) {
 	var out Model
-	err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
+	err := s.DB.Run(ctx, sc, readSnapshot, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
 		if err := m.Require(readRoles...); err != nil {
 			return err
 		}
@@ -277,6 +306,9 @@ func (s *Service) summary(ctx context.Context, tx tenant.Tx, mdl store.Model) (M
 
 // ListModels returns one page of the project's models, oldest first.
 func (s *Service) ListModels(ctx context.Context, sc tenant.Scope, projectID, cursor string, limit int) (Models, error) {
+	if limit < 1 || limit > maxLimit {
+		return Models{}, ErrInvalidLimit
+	}
 	var after *store.Position
 	if cursor != "" {
 		c, err := decodeCursor(cursor, sc.OrganizationID, "models", projectID)
@@ -290,7 +322,7 @@ func (s *Service) ListModels(ctx context.Context, sc tenant.Scope, projectID, cu
 		after = &store.Position{CreatedAt: at, ID: c.ID}
 	}
 	page := Models{Items: []Model{}}
-	err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
+	err := s.DB.Run(ctx, sc, readSnapshot, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
 		if err := m.Require(readRoles...); err != nil {
 			return err
 		}
@@ -325,7 +357,7 @@ func (s *Service) ListModels(ctx context.Context, sc tenant.Scope, projectID, cu
 // GetDraft returns the model's draft.
 func (s *Service) GetDraft(ctx context.Context, sc tenant.Scope, modelID string) (Draft, error) {
 	var out Draft
-	err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
+	err := s.DB.Run(ctx, sc, readSnapshot, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
 		if err := m.Require(readRoles...); err != nil {
 			return err
 		}
@@ -363,7 +395,11 @@ func (s *Service) PatchDraft(ctx context.Context, sc tenant.Scope, requestID, mo
 		if d.Revision != expected {
 			return ErrConflict
 		}
-		res, err := patch.Apply(d.IR, patchDoc, patch.ManualDraft)
+		current, err := canonicalIR(d.IR)
+		if err != nil {
+			return err
+		}
+		res, err := patch.Apply(current, patchDoc, patch.ManualDraft)
 		if err != nil {
 			return err
 		}
@@ -372,6 +408,9 @@ func (s *Service) PatchDraft(ctx context.Context, sc tenant.Scope, requestID, mo
 		}
 		if res.Validation.IR == nil { // not schema-valid: nothing is saved (D-028)
 			return &InvalidError{Issues: res.Validation.Issues}
+		}
+		if at, ok := nulAt(res.Candidate); ok {
+			return &InvalidError{Issues: []model.ValidationIssue{model.NewIssue(validate.IRSchemaInvalid, at, "U+0000 cannot be stored", model.SeverityError)}}
 		}
 		base, err := store.GetVersion(ctx, tx, m.OrganizationID, d.BaseVersionID)
 		if err != nil {
@@ -409,8 +448,7 @@ func (s *Service) PatchDraft(ctx context.Context, sc tenant.Scope, requestID, mo
 // latest version (D-003: explicit, never automatic).
 func (s *Service) ResetDraft(ctx context.Context, sc tenant.Scope, requestID, modelID string, expected int64, req ResetRequest) (Draft, error) {
 	if !req.ConfirmDiscard {
-		return Draft{}, &InvalidError{Issues: []model.ValidationIssue{model.NewIssue(validate.IRSchemaInvalid, "/confirm_discard",
-			"a reset discards the draft's changes and must be confirmed", model.SeverityError)}}
+		return Draft{}, ErrNotConfirmed
 	}
 	var out Draft
 	err := s.DB.Run(ctx, sc, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
@@ -491,7 +529,11 @@ func (s *Service) Publish(ctx context.Context, sc tenant.Scope, requestID, key, 
 		if d.Hash == base.Hash {
 			return ErrNoChanges
 		}
-		res, err := validate.IR(d.IR)
+		candidate, err := canonicalIR(d.IR)
+		if err != nil {
+			return err
+		}
+		res, err := validate.IR(candidate)
 		if err != nil {
 			return err
 		}
@@ -503,10 +545,10 @@ func (s *Service) Publish(ctx context.Context, sc tenant.Scope, requestID, key, 
 			return err
 		}
 		if slices.ContainsFunc(issues, isError) {
-			return &InvalidError{Issues: issues}
+			return &InvalidError{Issues: issues} // capped by check
 		}
 		v, err := store.InsertVersion(ctx, tx, store.Version{ID: ids.New("mv"), OrganizationID: m.OrganizationID, ModelID: modelID,
-			Version: base.Version + 1, SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID, IR: d.IR, Hash: d.Hash,
+			Version: base.Version + 1, SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID, IR: candidate, Hash: d.Hash,
 			DatasetBindings: resolution.Manifest, CreatedBy: m.UserID})
 		if err != nil {
 			return err
@@ -547,7 +589,16 @@ func (s *Service) advance(ctx context.Context, tx tenant.Tx, m tenant.Membership
 	if err := store.SetLatest(ctx, tx, m.OrganizationID, mdl.ID, v.ID, name); err != nil {
 		return err
 	}
-	if d.Hash != base.Hash && d.Hash != v.Hash {
+	// Clean is against the draft's own base, which is not base when the
+	// draft is already behind (T-012 review L3).
+	own := base
+	if d.BaseVersionID != base.ID {
+		var err error
+		if own, err = store.GetVersion(ctx, tx, m.OrganizationID, d.BaseVersionID); err != nil {
+			return err
+		}
+	}
+	if d.Hash != own.Hash && d.Hash != v.Hash {
 		return nil // dirty: kept, and out of date from now on
 	}
 	_, err := s.syncDraft(ctx, tx, m, d, v)
@@ -556,7 +607,11 @@ func (s *Service) advance(ctx context.Context, tx tenant.Tx, m tenant.Membership
 
 // syncDraft makes the draft version v's content, one revision later.
 func (s *Service) syncDraft(ctx context.Context, tx tenant.Tx, m tenant.Membership, d store.Draft, v store.Version) (store.Draft, error) {
-	res, err := validate.IR(v.IR)
+	ir, err := canonicalIR(v.IR)
+	if err != nil {
+		return store.Draft{}, err
+	}
+	res, err := validate.IR(ir)
 	if err != nil {
 		return store.Draft{}, err
 	}
@@ -568,7 +623,7 @@ func (s *Service) syncDraft(ctx context.Context, tx tenant.Tx, m tenant.Membersh
 		return store.Draft{}, err
 	}
 	next, err := store.UpdateDraft(ctx, tx, store.Draft{OrganizationID: m.OrganizationID, ModelID: d.ModelID, BaseVersionID: v.ID,
-		Revision: d.Revision + 1, IR: v.IR, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)
+		Revision: d.Revision + 1, IR: ir, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)
 	if errors.Is(err, store.ErrStale) {
 		return store.Draft{}, ErrConflict
 	}
@@ -578,7 +633,7 @@ func (s *Service) syncDraft(ctx context.Context, tx tenant.Tx, m tenant.Membersh
 // GetVersion returns the version id.
 func (s *Service) GetVersion(ctx context.Context, sc tenant.Scope, id string) (Version, error) {
 	var out Version
-	err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
+	err := s.DB.Run(ctx, sc, readSnapshot, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
 		if err := m.Require(readRoles...); err != nil {
 			return err
 		}
@@ -594,6 +649,9 @@ func (s *Service) GetVersion(ctx context.Context, sc tenant.Scope, id string) (V
 
 // ListVersions returns one page of the model's versions, newest first.
 func (s *Service) ListVersions(ctx context.Context, sc tenant.Scope, modelID, cursor string, limit int) (Versions, error) {
+	if limit < 1 || limit > maxLimit {
+		return Versions{}, ErrInvalidLimit
+	}
 	var before *int64
 	if cursor != "" {
 		c, err := decodeCursor(cursor, sc.OrganizationID, "versions", modelID)
@@ -607,7 +665,7 @@ func (s *Service) ListVersions(ctx context.Context, sc tenant.Scope, modelID, cu
 		before = &n
 	}
 	page := Versions{Items: []Version{}}
-	err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
+	err := s.DB.Run(ctx, sc, readSnapshot, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
 		if err := m.Require(readRoles...); err != nil {
 			return err
 		}
@@ -663,19 +721,22 @@ func (s *Service) issues(ctx context.Context, org string, ir *model.ModelIR, sem
 }
 
 // check runs the pack's rules and the dataset binding stage on a
-// schema-valid IR and returns every issue, IR paths relative to the IR.
-// Only the bindings of manifest that ir uses are checked, and the
-// resolution's manifest is those: a version freezes what it needs.
+// schema-valid IR and returns every issue, IR paths relative to the IR and
+// manifest paths into manifest (TWIN_IR_SPEC §5.2). Each stage runs only if
+// the ones before it found no error (D-023). Every binding of manifest is
+// checked and frozen, used or not (§5.2: a run keeps the version's
+// manifest; T-012 review M3), so a manifest needs dataset storage.
 func (s *Service) check(ctx context.Context, org string, ir *model.ModelIR, semantic []model.ValidationIssue, manifest []model.DatasetBinding) (datasets.Resolution, []model.ValidationIssue, error) {
-	manifest = usedBindings(ir, manifest)
 	pack, err := s.Packs.Lookup(ir.Domain)
 	if err != nil {
 		return datasets.Resolution{}, nil, err
 	}
-	issues := slices.Clone(semantic)
-	issues = append(issues, pack.Validate(ir)...)
 	if len(manifest) > 0 && s.Datasets == nil {
 		return datasets.Resolution{}, nil, ErrDatasetsUnavailable
+	}
+	issues := slices.Clone(semantic)
+	if !slices.ContainsFunc(issues, isError) {
+		issues = append(issues, pack.Validate(ir)...)
 	}
 	var res datasets.Resolution
 	if !slices.ContainsFunc(issues, isError) { // binding checks need a semantically valid IR
@@ -690,27 +751,42 @@ func (s *Service) check(ctx context.Context, org string, ir *model.ModelIR, sema
 			issues = append(issues, i)
 		}
 	}
-	return res, validate.Sort(issues), nil
+	return res, capped(validate.Sort(issues)), nil
 }
 
-// usedBindings are the bindings of manifest that ir's empirical
-// distributions use.
-func usedBindings(ir *model.ModelIR, manifest []model.DatasetBinding) []model.DatasetBinding {
-	used := map[string]bool{}
-	for i := range ir.Nodes {
-		for _, d := range ir.Nodes[i].Distributions() {
-			if d.Distribution.Type == model.DistEmpirical {
-				used[d.Distribution.SamplesRef] = true
-			}
+// capped keeps a sorted issue list within maxIssues: the first ones, after
+// a LIMIT_EXCEEDED issue at the root that says how many are left out. It is
+// an error if any left out is, so a capped list blocks a publish exactly
+// when the whole one would.
+func capped(issues []model.ValidationIssue) []model.ValidationIssue {
+	if len(issues) <= maxIssues {
+		return issues
+	}
+	kept, rest := issues[:maxIssues-1], issues[maxIssues-1:]
+	severity := model.SeverityWarning
+	if slices.ContainsFunc(rest, isError) {
+		severity = model.SeverityError
+	}
+	marker := model.NewIssue(validate.LimitExceeded, "", fmt.Sprintf("%d more issues are not listed", len(rest)), severity)
+	return append([]model.ValidationIssue{marker}, kept...)
+}
+
+// nulAt is the JSON Pointer of the first string or member name in doc that
+// holds U+0000, which PostgreSQL text and jsonb cannot store.
+func nulAt(doc []byte) (string, bool) {
+	if !bytes.Contains(doc, []byte(`\u0000`)) {
+		return "", false
+	}
+	dec := jsontext.NewDecoder(bytes.NewReader(doc))
+	for {
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return "", false
+		}
+		if tok.Kind() == '"' && strings.ContainsRune(tok.String(), 0) {
+			return string(dec.StackPointer()), true
 		}
 	}
-	var out []model.DatasetBinding
-	for _, b := range manifest {
-		if used[b.LogicalRef] {
-			out = append(out, b)
-		}
-	}
-	return out
 }
 
 func isError(i model.ValidationIssue) bool { return i.Severity == model.SeverityError }

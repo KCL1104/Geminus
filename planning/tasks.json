@@ -715,8 +715,9 @@
         "clean/dirty draft政策、explicit reset、stale rejection。"
       ],
       "planned_outputs": [
-        "internal/model/service/",
-        "internal/storage/model_repository.go"
+        "internal/models/",
+        "internal/storage/models/",
+        "migrations/0003_draft_issues.up.sql"
       ],
       "spec_refs": [
         "docs/API_DATABASE.md",
@@ -728,7 +729,7 @@
         "TEST-014"
       ],
       "verification_commands": [
-        "go test ./internal/model/...",
+        "go test ./internal/models/... ./internal/storage/models/...",
         "make integration-test"
       ],
       "definition_of_done": [
@@ -773,7 +774,8 @@
       "scope": [
         "綁定 create/get/draft/patch/publish/list/version/reset routes。",
         "If-Match/ETag/media type/error 與 OpenAPI contract tests。",
-        "產生 TS client；禁止重複 IR types。"
+        "產生 TS client；禁止重複 IR types。",
+        "開放 route 之前處理 ADR-022「待 owner 決定」：IR 儲存形式的讀取放大（T-012 review M4，建議 IR 欄位改存 canonical 文字並以 reviewer 的 R11c probe 先紅後綠）與 PublishModel.comment 的保存或移除（L9）。"
       ],
       "planned_outputs": [
         "internal/model/http/",

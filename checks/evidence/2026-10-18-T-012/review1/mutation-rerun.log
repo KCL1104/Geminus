@@ -1,0 +1,16 @@
+patch-base-stored-text	SURVIVED	
+advance-clean-left	KILLED	--- FAIL: TestPublishKeepsUnusedBindings (0.10s)
+sync-issues-kept	KILLED	--- FAIL: TestIssueOrderAndStages (0.13s)
+capped-no-marker	KILLED	--- FAIL: TestMoreIssuesThanADraftHolds (0.34s)
+capped-off-by-one	KILLED	--- FAIL: TestCappedBoundary (0.00s)
+reads-not-one-snapshot	KILLED	--- FAIL: TestReadsSeeOneSnapshot (2.44s)
+create-template-errors-allowed	KILLED	--- FAIL: TestCreateChecksTheTemplate (0.10s)
+create-template-schema-unchecked	KILLED	--- FAIL: TestCreateChecksTheTemplate (0.11s)
+versions-limit-unchecked	KILLED	--- FAIL: TestListLimits (0.07s)
+limit-upper-unchecked	KILLED	--- FAIL: TestListLimits (0.08s)
+sql-model-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.04s)
+sql-lock-no-lock	KILLED	--- FAIL: TestWritesWaitForTheModelRow (0.61s)
+sql-latest-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.05s)
+sql-list-models-after-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.04s)
+sql-list-models-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.05s)
+total=15 killed=14 equivalent=1 unexpected=0

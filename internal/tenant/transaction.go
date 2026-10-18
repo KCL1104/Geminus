@@ -51,10 +51,14 @@ var (
 	ErrOutcomeUnknown = postgres.ErrOutcomeUnknown
 )
 
-// Transaction modes for Run.
+// Transaction modes for Run. ReadSnapshot is read-only at REPEATABLE READ:
+// every statement sees the same snapshot, for reads that combine rows
+// another transaction changes together (T-012 review L1). A read-only
+// transaction there never fails to serialize.
 var (
-	ReadWrite = TxOptions{}
-	ReadOnly  = TxOptions{AccessMode: pgx.ReadOnly}
+	ReadWrite    = TxOptions{}
+	ReadOnly     = TxOptions{AccessMode: pgx.ReadOnly}
+	ReadSnapshot = TxOptions{AccessMode: pgx.ReadOnly, IsoLevel: pgx.RepeatableRead}
 )
 
 // Scope is the verified caller of one API request.

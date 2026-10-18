@@ -1,0 +1,111 @@
+create-no-role	KILLED	--- FAIL: TestRolesAndTenancy (0.23s)
+write-roles-are-members	KILLED	--- FAIL: TestPublishIdempotencyScope (0.17s)
+create-any-project	KILLED	--- FAIL: TestRolesAndTenancy (0.21s)
+list-any-project	KILLED	--- FAIL: TestRolesAndTenancy (0.13s)
+not-found-leaks	KILLED	--- FAIL: TestRolesAndTenancy (0.14s)
+create-no-idempotency	KILLED	--- FAIL: TestCreate (0.27s)
+hash-ignores-path	KILLED	--- FAIL: TestPublishIdempotencyScope (0.21s)
+create-locale-ignored	KILLED	--- FAIL: TestCreate (0.17s)
+create-no-audit	KILLED	--- FAIL: TestCreate (0.13s)
+create-draft-revision-2	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.15s)
+create-response-version-2	KILLED	--- FAIL: TestCreate (0.09s)
+patch-revision-unchecked	KILLED	--- FAIL: TestPatchDraft (0.20s)
+patch-not-applied-saved	KILLED	--- FAIL: TestPatchDraft (0.25s)
+patch-mode-ai	KILLED	--- FAIL: TestNULIsRefused (0.20s)
+patch-nul-allowed	KILLED	--- FAIL: TestNULIsRefused (0.12s)
+nul-fast-path-wrong	KILLED	--- FAIL: TestNULIsRefused (0.13s)
+nul-pointer-lost	KILLED	--- FAIL: TestNULIsRefused (0.13s)
+patch-base-stored-text	SURVIVED	
+patch-issues-dropped	KILLED	--- FAIL: TestMoreIssuesThanADraftHolds (0.20s)
+patch-revision-same	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.29s)
+patch-no-audit	KILLED	--- FAIL: TestPatchDraft (0.17s)
+patch-stale-not-conflict	SURVIVED	
+publish-revision-unchecked	KILLED	--- FAIL: TestPublish (0.17s)
+publish-expected-base-unchecked	KILLED	--- FAIL: TestPublish (0.13s)
+publish-out-of-date-allowed	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.19s)
+publish-clean-allowed	KILLED	--- FAIL: TestPublish (0.12s)
+publish-errors-allowed	KILLED	--- FAIL: TestMoreIssuesThanADraftHolds (0.42s)
+publish-validates-stored-text	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.37s)
+publish-hash-ignores-if-match	KILLED	--- FAIL: TestPublishIdempotencyScope (0.12s)
+publish-version-skips	KILLED	--- FAIL: TestPublish (0.22s)
+publish-no-parent	KILLED	--- FAIL: TestPublish (0.21s)
+publish-manifest-dropped	KILLED	--- FAIL: TestPublishKeepsUnusedBindings (0.14s)
+publish-no-advance	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.57s)
+publish-no-audit	KILLED	--- FAIL: TestPublish (0.15s)
+publish-replay-before-role	KILLED	--- FAIL: TestPublishIdempotencyScope (0.16s)
+publish-no-idempotency	KILLED	--- FAIL: TestPublish (0.24s)
+advance-no-latest	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.78s)
+advance-name-kept	KILLED	--- FAIL: TestPublish (0.18s)
+advance-dirty-overwritten	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.77s)
+advance-clean-left	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.162s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmprdtlh9gg/m39.go:594:2: declared and not used: own 
+advance-publish-not-synced	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.48s)
+advance-own-base-ignored	KILLED	--- FAIL: TestCleanAgainstItsOwnBase (0.12s)
+sync-revision-same	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.45s)
+sync-issues-kept	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.145s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmprdtlh9gg/m43.go:621:2: declared and not used: issues 
+sync-validates-stored-text	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.81s)
+sync-base-kept	KILLED	--- FAIL: TestPublishKeepsUnusedBindings (0.15s)
+reset-unconfirmed	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.20s)
+reset-unconfirmed-other-error	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.14s)
+reset-revision-unchecked	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.19s)
+reset-latest-unchecked	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.26s)
+reset-no-audit	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.20s)
+check-no-pack	KILLED	--- FAIL: TestCreateChecksTheTemplate (0.11s)
+check-pack-after-errors	KILLED	--- FAIL: TestIssueOrderAndStages (0.13s)
+check-manifest-pruned	KILLED	--- FAIL: TestDatasetIssuePaths (0.12s)
+check-unsorted	KILLED	--- FAIL: TestCreateChecksTheTemplate (0.12s)
+check-uncapped	KILLED	--- FAIL: TestMoreIssuesThanADraftHolds (0.27s)
+capped-no-marker	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.236s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmprdtlh9gg/m56.go:765:2: declared and not used: kept 
+capped-marker-warning	KILLED	--- FAIL: TestMoreIssuesThanADraftHolds (0.33s)
+capped-off-by-one	SURVIVED	
+check-no-store-guard	KILLED	--- FAIL: TestDatasets (0.14s)
+check-no-bindings	KILLED	--- FAIL: TestPublishKeepsUnusedBindings (0.25s)
+check-ir-prefix-kept	KILLED	--- FAIL: TestDatasets (0.26s)
+ir-not-canonical	KILLED	--- FAIL: TestStoredTextIsNotWhatIsChecked (0.28s)
+model-never-out-of-date	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.19s)
+draft-never-out-of-date	KILLED	--- FAIL: TestCleanAgainstItsOwnBase (0.11s)
+models-page-short	KILLED	--- FAIL: TestLists (0.17s)
+versions-page-short	KILLED	--- FAIL: TestLists (0.28s)
+cursor-any-parent	KILLED	--- FAIL: TestLists (0.44s)
+cursor-not-canonical	KILLED	--- FAIL: TestLists (0.36s)
+cursor-any-org	KILLED	--- FAIL: TestCursorBindings (0.14s)
+version-cursor-id-allowed	KILLED	--- FAIL: TestReadsSeeOneSnapshot (1.17s)
+reads-not-one-snapshot	BUILD-FAILED	ternal/models	6.321s FAIL	github.com/kcl1104/geminus/internal/storage/models [build failed] FAIL # github.com/kcl1104/geminus/internal/storage/models.test /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device 
+create-template-errors-allowed	BUILD-FAILED	.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device # github.com/kcl1104/geminus/internal/storage/models.test /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device 
+create-template-schema-unchecked	BUILD-FAILED	tput: write $WORK/b263/_pkg_.a: no space left on device github.com/kcl1104/geminus/internal/models: write /tmp/go-build1717708795/b132/vet.cfg: no space left on device github.com/kcl1104/geminus/internal/storage/models.test: write /tmp/go-build1717708795/b266/importcfg.link: no space left on device 
+create-no-semantic-issues	KILLED	--- FAIL: TestReadsSeeOneSnapshot (0.07s)
+models-limit-unchecked	KILLED	--- FAIL: TestListLimits (0.06s)
+versions-limit-unchecked	BUILD-FAILED	.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device # github.com/kcl1104/geminus/internal/storage/models.test /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device 
+limit-upper-unchecked	BUILD-FAILED	] FAIL # github.com/kcl1104/geminus/internal/models_test [github.com/kcl1104/geminus/internal/models.test] compile: writing output: write $WORK/b263/_pkg_.a: no space left on device github.com/kcl1104/geminus/internal/storage/models_test: mkdir /tmp/go-build3167645149/b267/: no space left on device 
+sql-model-any-org	BUILD-FAILED	st.go:94: b's model in a: <nil> FAIL FAIL	github.com/kcl1104/geminus/internal/storage/models	0.564s FAIL # github.com/kcl1104/geminus/internal/models.test /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device 
+sql-lock-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.04s)
+sql-lock-no-lock	BUILD-FAILED	/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: cannot open file /root/.cache/go-build/83/8393d4f96375502beb757b507f41673d637f181f6b67439190c91e77369cfaad-d: open /root/.cache/go-build/83/8393d4f96375502beb757b507f41673d637f181f6b67439190c91e77369cfaad-d: no such file or directory 
+sql-latest-any-org	BUILD-FAILED	/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: cannot open file /root/.cache/go-build/de/deb0e430d201526455220e047fd805cde7a12b837a99406b0f6ebaa19617d9db-d: open /root/.cache/go-build/de/deb0e430d201526455220e047fd805cde7a12b837a99406b0f6ebaa19617d9db-d: no such file or directory 
+sql-list-models-after-any-org	BUILD-FAILED	al/models [build failed] FAIL	github.com/kcl1104/geminus/internal/storage/models [build failed] FAIL # os/user $WORK/b250/_cgo_gotypes.go:11:20: could not import runtime/cgo (open /root/.cache/go-build/b3/b33450724f7e1c2ae0f93b588f0e1af7a034d9579677ea5e7eeb95eb3e23673c-d: no such file or directory) 
+sql-list-versions-before-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.06s)
+sql-list-models-any-org	BUILD-FAILED	st # [github.com/kcl1104/geminus/internal/storage/models_test] vet: in github.com/kcl1104/geminus/internal/storage/models_test, can't import facts for package "path/filepath": open /root/.cache/go-build/94/94570e8afccd6151378c95364329b32c09e595fbfb03323586c3b17c44217f20-d: no such file or directory 
+sql-list-models-unordered-ties	KILLED	--- FAIL: TestLists (0.48s)
+sql-version-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.09s)
+sql-versions-oldest-first	KILLED	--- FAIL: TestPublish (0.19s)
+sql-versions-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.06s)
+sql-no-binding-rows	KILLED	--- FAIL: TestPublishKeepsUnusedBindings (0.13s)
+sql-draft-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.06s)
+sql-update-any-revision	KILLED	--- FAIL: TestUpdateDraftCAS (0.04s)
+sql-update-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.06s)
+sql-issues-not-stored	KILLED	--- FAIL: TestUpdateDraftCAS (0.05s)
+total=94 killed=78 equivalent=1 unexpected=15
+UNEXPECTED	patch-base-stored-text	SURVIVED	
+UNEXPECTED	advance-clean-left	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.162s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmprdtlh9gg/m39.go:594:2: declared and not used: own 
+UNEXPECTED	sync-issues-kept	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.145s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmprdtlh9gg/m43.go:621:2: declared and not used: issues 
+UNEXPECTED	capped-no-marker	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.236s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmprdtlh9gg/m56.go:765:2: declared and not used: kept 
+UNEXPECTED	capped-off-by-one	SURVIVED	
+UNEXPECTED	reads-not-one-snapshot	BUILD-FAILED	ternal/models	6.321s FAIL	github.com/kcl1104/geminus/internal/storage/models [build failed] FAIL # github.com/kcl1104/geminus/internal/storage/models.test /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device 
+UNEXPECTED	create-template-errors-allowed	BUILD-FAILED	.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device # github.com/kcl1104/geminus/internal/storage/models.test /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device 
+UNEXPECTED	create-template-schema-unchecked	BUILD-FAILED	tput: write $WORK/b263/_pkg_.a: no space left on device github.com/kcl1104/geminus/internal/models: write /tmp/go-build1717708795/b132/vet.cfg: no space left on device github.com/kcl1104/geminus/internal/storage/models.test: write /tmp/go-build1717708795/b266/importcfg.link: no space left on device 
+UNEXPECTED	versions-limit-unchecked	BUILD-FAILED	.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device # github.com/kcl1104/geminus/internal/storage/models.test /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device 
+UNEXPECTED	limit-upper-unchecked	BUILD-FAILED	] FAIL # github.com/kcl1104/geminus/internal/models_test [github.com/kcl1104/geminus/internal/models.test] compile: writing output: write $WORK/b263/_pkg_.a: no space left on device github.com/kcl1104/geminus/internal/storage/models_test: mkdir /tmp/go-build3167645149/b267/: no space left on device 
+UNEXPECTED	sql-model-any-org	BUILD-FAILED	st.go:94: b's model in a: <nil> FAIL FAIL	github.com/kcl1104/geminus/internal/storage/models	0.564s FAIL # github.com/kcl1104/geminus/internal/models.test /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device 
+UNEXPECTED	sql-lock-no-lock	BUILD-FAILED	/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: cannot open file /root/.cache/go-build/83/8393d4f96375502beb757b507f41673d637f181f6b67439190c91e77369cfaad-d: open /root/.cache/go-build/83/8393d4f96375502beb757b507f41673d637f181f6b67439190c91e77369cfaad-d: no such file or directory 
+UNEXPECTED	sql-latest-any-org	BUILD-FAILED	/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: cannot open file /root/.cache/go-build/de/deb0e430d201526455220e047fd805cde7a12b837a99406b0f6ebaa19617d9db-d: open /root/.cache/go-build/de/deb0e430d201526455220e047fd805cde7a12b837a99406b0f6ebaa19617d9db-d: no such file or directory 
+UNEXPECTED	sql-list-models-after-any-org	BUILD-FAILED	al/models [build failed] FAIL	github.com/kcl1104/geminus/internal/storage/models [build failed] FAIL # os/user $WORK/b250/_cgo_gotypes.go:11:20: could not import runtime/cgo (open /root/.cache/go-build/b3/b33450724f7e1c2ae0f93b588f0e1af7a034d9579677ea5e7eeb95eb3e23673c-d: no such file or directory) 
+UNEXPECTED	sql-list-models-any-org	BUILD-FAILED	st # [github.com/kcl1104/geminus/internal/storage/models_test] vet: in github.com/kcl1104/geminus/internal/storage/models_test, can't import facts for package "path/filepath": open /root/.cache/go-build/94/94570e8afccd6151378c95364329b32c09e595fbfb03323586c3b17c44217f20-d: no such file or directory 
+exit=1

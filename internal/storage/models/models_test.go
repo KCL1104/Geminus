@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -103,6 +104,15 @@ func TestOrganizationFilter(t *testing.T) {
 		}
 		if list, err := models.ListVersions(ctx, tx, fa.org, fb.model, nil, 10); err != nil || len(list) != 0 {
 			t.Errorf("b's versions listed in a: %v %v", list, err)
+		}
+		// The pages after the first are filtered as well (T-012 review L7).
+		start := models.Position{CreatedAt: time.Unix(0, 0), ID: "mdl_00000000000000000000000000"}
+		if list, err := models.ListModels(ctx, tx, fa.org, fb.project, &start, 10); err != nil || len(list) != 0 {
+			t.Errorf("b's project listed in a after a cursor: %v %v", list, err)
+		}
+		before := int64(1 << 30)
+		if list, err := models.ListVersions(ctx, tx, fa.org, fb.model, &before, 10); err != nil || len(list) != 0 {
+			t.Errorf("b's versions listed in a after a cursor: %v %v", list, err)
 		}
 		return nil
 	})

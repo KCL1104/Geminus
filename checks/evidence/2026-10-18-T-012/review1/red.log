@@ -1,0 +1,55 @@
+--- FAIL: TestStoredTextIsNotWhatIsChecked (0.31s)
+    edges_test.go:92: publishing a 68186-byte draft: models: the stored draft of mdl_01M587D6J5DMBBHTQVERE4CPHK is not schema-valid: [{LIMIT_EXCEEDED  document is 2791748 bytes; the limit is 2097152 error}]
+    edges_test.go:98: models: the draft or model changed
+--- FAIL: TestMoreIssuesThanADraftHolds (0.18s)
+    edges_test.go:140: postgres: check constraint violated (SQLSTATE 23514): constraint model_drafts_issues_array: new row for relation "model_drafts" violates check constraint "model_drafts_issues_array"
+--- FAIL: TestPublishKeepsUnusedBindings (0.18s)
+    edges_test.go:187: the version froze []
+    edges_test.go:191: using the data again: [{DATASET_BINDING_INVALID /nodes/1/service_time/distribution/samples_ref dataset:review_duration has no dataset binding error}] <nil>
+--- FAIL: TestDatasetIssuePaths (0.14s)
+    edges_test.go:219: publish: <nil>
+--- FAIL: TestReadsSeeOneSnapshot (1.38s)
+    edges_test.go:271: 10 reads saw a draft out of date
+--- FAIL: TestCleanAgainstItsOwnBase (0.11s)
+    edges_test.go:302: the clean draft did not follow: {ModelID:mdl_01M587D8NS1M3QDQATS4R4GZCG BaseVersionID:mv_01M587D8NSB8T9938P0EAEEJ9B Revision:3 IR:{"constraints":[{"equals":1,"node_id":"ci_result","type":"outgoing_probability_sum"}],"domain":"software_delivery","entity_types":[{"id":"change","name":"Software Change"}],"flows":[{"from":"change_arrival","id":"f1","routing":{"probability":1,"type":"probability"},"to":"code_review"},{"from":"code_review","id":"f2","routing":{"probability":1,"type":"probability"},"to":"ci"},{"from":"ci","id":"f3","routing":{"probability":1,"type":"probability"},"to":"ci_result"},{"from":"ci_result","id":"f_pass","routing":{"probability":0.8,"type":"probability"},"to":"test"},{"from":"ci_result","id":"f_retry","routing":{"probability":0.2,"type":"probability"},"to":"ci_failure"},{"from":"ci_failure","id":"f_fail_rework","routing":{"probability":1,"type":"probability"},"to":"ci_rework"},{"from":"ci_rework","id":"f_rework_ci","routing":{"probability":1,"type":"probability"},"to":"ci"},{"from":"test","id":"f_test_deploy","routing":{"probability":1,"type":"probability"},"to":"deploy"},{"from":"deploy","id":"f_deploy_sink","routing":{"probability":1,"type":"probability"},"to":"deployed"}],"metadata":{"assumptions":["Continuous 24-hour day, no calendar; mean=48min implies 30 expected arrivals/day.","Review constant 240min, Test 10min, Deploy 5min are synthetic test assumptions.","CI rework is explicitly instrumented; DORA mapping unavailable."],"origin":"Created from the synthetic default template (D-017); not customer data or measured performance.","template":"default_delivery_pipeline"},"metrics":[{"id":"lead_time","type":"entity_cycle_time"},{"id":"throughput","type":"sink_throughput"},{"id":"ci_utilization","resource_id":"ci_runner","type":"resource_utilization"},{"id":"failures","type":"failure_count"},{"id":"reworks","type":"rework_count"}],"model_id":"mdl_01M587D8NS1M3QDQATS4R4GZCG","name":"Pipeline","nodes":[{"arrival":{"distribution":{"mean":48,"type":"exponential"}},"entity_type":"change","id":"change_arrival","type":"source"},{"id":"code_review","requires":[{"resource_id":"reviewer","units":1}],"service_time":{"distribution":{"type":"constant","value":240}},"type":"process"},{"id":"ci","requires":[{"resource_id":"ci_runner","units":1}],"service_time":{"distribution":{"type":"constant","value":18}},"type":"process"},{"id":"ci_result","type":"decision"},{"id":"ci_failure","reason":"Synthetic CI failure; not a production deployment failure","type":"failure"},{"id":"ci_rework","type":"rework"},{"id":"test","requires":[{"resource_id":"test_environment","units":1}],"service_time":{"distribution":{"type":"constant","value":10}},"type":"process"},{"id":"deploy","requires":[{"resource_id":"deployment_slot","units":1}],"service_time":{"distribution":{"type":"constant","value":5}},"type":"process"},{"id":"deployed","outcome":"completed","type":"sink"}],"resources":[{"capacity":2,"id":"reviewer","name":"Reviewer","queue_discipline":"fifo","type":"human"},{"capacity":3,"id":"ci_runner","name":"Ci Runner","queue_discipline":"fifo","type":"machine"},{"capacity":1,"id":"test_environment","name":"Test Environment","queue_discipline":"fifo","type":"machine"},{"capacity":1,"id":"deployment_slot","name":"Deployment Slot","queue_discipline":"fifo","type":"machine"}],"schema_version":"0.1","time_unit":"minute","views":{"2d":{"positions":{"change_arrival":{"x":0,"y":100},"ci":{"x":400,"y":100},"ci_failure":{"x":800,"y":100},"ci_result":{"x":600,"y":100},"ci_rework":{"x":1000,"y":100},"code_review":{"x":200,"y":100},"deploy":{"x":1400,"y":100},"deployed":{"x":1600,"y":100},"test":{"x":1200,"y":100}}},"3d":{"layout_mode":"derived_from_2d"}}} Hash:sha256:990df0945f91d64cb9be5bd066d4a3ecc4b5b94118872b8d526eb0b82ad16756 OutOfDate:true Issues:[]} <nil>
+--- FAIL: TestCreateChecksTheTemplate (0.09s)
+    edges_test.go:372: an invalid template: <nil>
+    edges_test.go:375: models after the refused create: 2 <nil>
+--- FAIL: TestIssueOrderAndStages (0.10s)
+    edges_test.go:405: issues after a generic error: [{UNKNOWN_REFERENCE /flows/9/from no node "nowhere" error} {PACK_NAME_RULE /name this name is not allowed error}]
+--- FAIL: TestNULIsRefused (0.09s)
+    edges_test.go:430: [{"op":"replace","path":"/name","value":"a\u0000b"}]: postgres: database error (SQLSTATE 22P05)
+    edges_test.go:430: [{"op":"add","path":"/metadata/note","value":["ok","x\u0000"]}]: postgres: database error (SQLSTATE 22P05)
+    edges_test.go:430: [{"op":"add","path":"/metadata/n\u0000te","value":1}]: postgres: database error (SQLSTATE 22P05)
+--- FAIL: TestListLimits (0.08s)
+panic: runtime error: index out of range [-1] [recovered, repanicked]
+
+goroutine 1332 [running]:
+testing.tRunner.func1.2({0xecda58, 0xfd2f9996708})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2125 +0x232
+testing.tRunner.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2128 +0x329
+panic({0xecda58?, 0xfd2f9996708?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/runtime/panic.go:859 +0x125
+github.com/kcl1104/geminus/internal/models.(*Service).ListModels.func1({0xef6e88, 0xf8dcc0}, {0xef8e98, 0xfd2f9c3e108}, {{0xfd2f97a7c40, 0x1e}, {0xfd2f9963e80, 0x1e}, {0xfd2f99725c0, 0x6}})
+	/home/user/Geminus/internal/models/models.go:312 +0x96b
+github.com/kcl1104/geminus/internal/tenant.(*DB).Run.func1({0xef6e88, 0xf8dcc0}, {0xef8e98, 0xfd2f9c3e108})
+	/home/user/Geminus/internal/tenant/transaction.go:170 +0x425
+github.com/kcl1104/geminus/internal/storage/postgres.(*DB).Tx(0xfd2f9963e80?, {0xef6e88, 0xf8dcc0}, {{0x0, 0x0}, {0x923824, 0x9}, {0x0, 0x0}, {0x0, ...}, ...}, ...)
+	/home/user/Geminus/internal/storage/postgres/postgres.go:71 +0x1e3
+github.com/kcl1104/geminus/internal/tenant.(*DB).Run(0xfd2f990cab0, {0xef6e88, 0xf8dcc0}, {{0xfd2f97a7c40?, 0x5640c0?}, {0xfd2f9963e80?, 0xfd2f9bebb88?}}, {{0x0, 0x0}, {0x923824, ...}, ...}, ...)
+	/home/user/Geminus/internal/tenant/transaction.go:154 +0x205
+github.com/kcl1104/geminus/internal/models.(*Service).ListModels(0x1e?, {0xef6e88?, 0xf8dcc0?}, {{0xfd2f97a7c40?, 0x11?}, {0xfd2f9963e80?, 0x8?}}, {0xfd2f9a1e040?, 0xfd2f9a1e280?}, {0x0, ...}, ...)
+	/home/user/Geminus/internal/models/models.go:298 +0x365
+github.com/kcl1104/geminus/internal/models_test.TestListLimits(0xfd2f97ca488)
+	/home/user/Geminus/internal/models/edges_test.go:446 +0x21a
+testing.tRunner(0xfd2f97ca488, 0xef9220)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2260 +0x4d4
+FAIL	github.com/kcl1104/geminus/internal/models	2.678s
+--- FAIL: TestOrganizationFilter (0.04s)
+    models_test.go:115: b's versions listed in a after a cursor: [] failed to encode args[2]: unable to encode 4611686018427387904 into binary format for int4 (OID 23): 4611686018427387904 is greater than maximum value for int4
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/models	0.153s
+FAIL

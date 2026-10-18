@@ -45,9 +45,14 @@ MUTANTS = [
     ("create-draft-revision-2", SVC, "\t\t\tRevision: 1, IR: data, Hash: hash, Issues: issues, UpdatedBy: m.UserID})", "\t\t\tRevision: 2, IR: data, Hash: hash, Issues: issues, UpdatedBy: m.UserID})"),
     ("create-response-version-2", SVC, "\t\tresp, err := json.Marshal(publicModel(mdl, d, 1))", "\t\tresp, err := json.Marshal(publicModel(mdl, d, 2))"),
     # patch
-    ("patch-revision-unchecked", SVC, "\t\tif d.Revision != expected {\n\t\t\treturn ErrConflict\n\t\t}\n\t\tres, err := patch.Apply", "\t\tres, err := patch.Apply"),
+    ("patch-revision-unchecked", SVC, "\t\tif d.Revision != expected {\n\t\t\treturn ErrConflict\n\t\t}\n\t\tcurrent, err := canonicalIR(d.IR)", "\t\tcurrent, err := canonicalIR(d.IR)"),
     ("patch-not-applied-saved", SVC, "\t\tif !res.Applied() {\n\t\t\treturn &InvalidError{Issues: res.PatchIssues}\n\t\t}", "\t\tif false && !res.Applied() {\n\t\t\treturn &InvalidError{Issues: res.PatchIssues}\n\t\t}"),
-    ("patch-mode-ai", SVC, "patch.Apply(d.IR, patchDoc, patch.ManualDraft)", "patch.Apply(d.IR, patchDoc, patch.AIEdit)"),
+    ("patch-mode-ai", SVC, "patch.Apply(current, patchDoc, patch.ManualDraft)", "patch.Apply(current, patchDoc, patch.AIEdit)"),
+    # review round 1: L5, M1
+    ("patch-nul-allowed", SVC, "\t\tif at, ok := nulAt(res.Candidate); ok {", "\t\tif at, ok := nulAt(res.Candidate); false && ok {"),
+    ("nul-fast-path-wrong", SVC, "\tif !bytes.Contains(doc, []byte(`\\u0000`)) {", "\tif true || !bytes.Contains(doc, []byte(`\\u0000`)) {"),
+    ("nul-pointer-lost", SVC, "\t\t\treturn string(dec.StackPointer()), true", "\t\t\treturn \"\", true"),
+    ("patch-base-stored-text", SVC, "\t\tres, err := patch.Apply(current, patchDoc", "\t\t_ = current\n\t\tres, err := patch.Apply(d.IR, patchDoc"),
     ("patch-issues-dropped", SVC, "\t\t\tRevision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)", "\t\t\tRevision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues[:0], UpdatedBy: m.UserID}, d.Revision)"),
     ("patch-revision-same", SVC, "\t\t\tRevision: d.Revision + 1, IR: res.Candidate,", "\t\t\tRevision: d.Revision, IR: res.Candidate,"),
     ("patch-no-audit", SVC, "\t\t\tAction: \"model.draft.update\",", "\t\t\tAction: \"model.draft.updated\","),
@@ -57,33 +62,45 @@ MUTANTS = [
     ("publish-expected-base-unchecked", SVC, "\t\tif d.Revision != expected || req.ExpectedBaseVersionID != d.BaseVersionID || d.BaseVersionID != mdl.LatestVersionID {", "\t\tif d.Revision != expected || d.BaseVersionID != mdl.LatestVersionID {"),
     ("publish-out-of-date-allowed", SVC, "\t\tif d.Revision != expected || req.ExpectedBaseVersionID != d.BaseVersionID || d.BaseVersionID != mdl.LatestVersionID {", "\t\tif d.Revision != expected || req.ExpectedBaseVersionID != d.BaseVersionID {"),
     ("publish-clean-allowed", SVC, "\t\tif d.Hash == base.Hash {\n\t\t\treturn ErrNoChanges\n\t\t}", "\t\tif false && d.Hash == base.Hash {\n\t\t\treturn ErrNoChanges\n\t\t}"),
-    ("publish-errors-allowed", SVC, "\t\tif slices.ContainsFunc(issues, isError) {\n\t\t\treturn &InvalidError{Issues: issues}\n\t\t}", "\t\tif false && slices.ContainsFunc(issues, isError) {\n\t\t\treturn &InvalidError{Issues: issues}\n\t\t}"),
+    ("publish-errors-allowed", SVC, "\t\tif slices.ContainsFunc(issues, isError) {\n\t\t\treturn &InvalidError{Issues: issues} // capped", "\t\tif false && slices.ContainsFunc(issues, isError) {\n\t\t\treturn &InvalidError{Issues: issues} // capped"),
+    ("publish-validates-stored-text", SVC, "\t\tres, err := validate.IR(candidate)", "\t\tres, err := validate.IR(d.IR)"),
+    ("publish-hash-ignores-if-match", SVC, 'map[string]any{"model_id": modelID, "if_match_revision": expected}', 'map[string]any{"model_id": modelID}'),
     ("publish-version-skips", SVC, "\t\t\tVersion: base.Version + 1, SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID,", "\t\t\tVersion: base.Version + 2, SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID,"),
     ("publish-no-parent", SVC, "SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID,", "SchemaVersion: res.IR.SchemaVersion, ParentVersionID: nil,"),
-    ("publish-full-manifest", SVC, "\t\t\tDatasetBindings: resolution.Manifest, CreatedBy: m.UserID})", "\t\t\tDatasetBindings: append(base.DatasetBindings, resolution.Manifest[:0]...), CreatedBy: m.UserID})"),
+    ("publish-manifest-dropped", SVC, "\t\t\tDatasetBindings: resolution.Manifest, CreatedBy: m.UserID})", "\t\t\tDatasetBindings: resolution.Manifest[:0], CreatedBy: m.UserID})"),
     ("publish-no-advance", SVC, "\t\tif err := s.advance(ctx, tx, m, mdl, d, base, v, res.IR.Name); err != nil {\n\t\t\treturn err\n\t\t}", "\t\t_ = s.advance"),
     ("publish-no-audit", SVC, "\t\t\tAction: \"model.publish\",", "\t\t\tAction: \"model.published\","),
+    ("publish-replay-before-role", SVC, "\t\tif err := m.Require(writeRoles...); err != nil {\n\t\t\treturn err\n\t\t}\n\t\treplay, err := idempotency.Claim(ctx, tx, k, hash)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif replay != nil {\n\t\t\tstatus = replay.Status\n\t\t\tout, err = hashing.Canonical(replay.Body)\n\t\t\treturn err\n\t\t}\n\t\tmdl, err := store.LockModel", "\t\treplay, err := idempotency.Claim(ctx, tx, k, hash)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif replay != nil {\n\t\t\tstatus = replay.Status\n\t\t\tout, err = hashing.Canonical(replay.Body)\n\t\t\treturn err\n\t\t}\n\t\tif err := m.Require(writeRoles...); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tmdl, err := store.LockModel"),
     ("publish-no-idempotency", SVC, "\t\tif replay != nil {\n\t\t\tstatus = replay.Status\n\t\t\tout, err = hashing.Canonical(replay.Body)\n\t\t\treturn err\n\t\t}\n\t\tmdl, err := store.LockModel", "\t\tif replay != nil && false {\n\t\t\tstatus = replay.Status\n\t\t\tout, err = hashing.Canonical(replay.Body)\n\t\t\treturn err\n\t\t}\n\t\tmdl, err := store.LockModel"),
     # the draft rule of advance (D-003)
     ("advance-no-latest", SVC, "\tif err := store.SetLatest(ctx, tx, m.OrganizationID, mdl.ID, v.ID, name); err != nil {\n\t\treturn err\n\t}", "\t_ = name"),
     ("advance-name-kept", SVC, "store.SetLatest(ctx, tx, m.OrganizationID, mdl.ID, v.ID, name)", "store.SetLatest(ctx, tx, m.OrganizationID, mdl.ID, v.ID, mdl.Name)"),
-    ("advance-dirty-overwritten", SVC, "\tif d.Hash != base.Hash && d.Hash != v.Hash {\n\t\treturn nil // dirty", "\tif false && d.Hash != base.Hash && d.Hash != v.Hash {\n\t\treturn nil // dirty"),
-    ("advance-clean-left", SVC, "\tif d.Hash != base.Hash && d.Hash != v.Hash {\n\t\treturn nil // dirty", "\tif d.Hash != v.Hash {\n\t\treturn nil // dirty"),
-    ("advance-publish-not-synced", SVC, "\tif d.Hash != base.Hash && d.Hash != v.Hash {\n\t\treturn nil // dirty", "\tif d.Hash != base.Hash {\n\t\treturn nil // dirty"),
-    ("sync-revision-same", SVC, "\t\tRevision: d.Revision + 1, IR: v.IR, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)", "\t\tRevision: d.Revision, IR: v.IR, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)"),
+    ("advance-dirty-overwritten", SVC, "\tif d.Hash != own.Hash && d.Hash != v.Hash {\n\t\treturn nil // dirty", "\tif false && d.Hash != own.Hash && d.Hash != v.Hash {\n\t\treturn nil // dirty"),
+    ("advance-clean-left", SVC, "\tif d.Hash != own.Hash && d.Hash != v.Hash {\n\t\treturn nil // dirty", "\tif own.ID != \"\" && d.Hash != v.Hash {\n\t\treturn nil // dirty"),
+    ("advance-publish-not-synced", SVC, "\tif d.Hash != own.Hash && d.Hash != v.Hash {\n\t\treturn nil // dirty", "\tif d.Hash != own.Hash {\n\t\treturn nil // dirty"),
+    ("advance-own-base-ignored", SVC, "\town := base\n\tif d.BaseVersionID != base.ID {", "\town := base\n\tif false && d.BaseVersionID != base.ID {"),
+    ("sync-revision-same", SVC, "\t\tRevision: d.Revision + 1, IR: ir, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)", "\t\tRevision: d.Revision, IR: ir, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)"),
+    ("sync-issues-kept", SVC, "\t\tRevision: d.Revision + 1, IR: ir, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)", "\t\tRevision: d.Revision + 1, IR: ir, Hash: v.Hash, Issues: append(d.Issues, issues[:0]...), UpdatedBy: m.UserID}, d.Revision)"),
+    ("sync-validates-stored-text", SVC, "\tres, err := validate.IR(ir)\n\tif err != nil {\n\t\treturn store.Draft{}, err", "\tres, err := validate.IR(v.IR)\n\tif err != nil {\n\t\treturn store.Draft{}, err"),
     ("sync-base-kept", SVC, "\tnext, err := store.UpdateDraft(ctx, tx, store.Draft{OrganizationID: m.OrganizationID, ModelID: d.ModelID, BaseVersionID: v.ID,", "\tnext, err := store.UpdateDraft(ctx, tx, store.Draft{OrganizationID: m.OrganizationID, ModelID: d.ModelID, BaseVersionID: d.BaseVersionID,"),
     # reset
     ("reset-unconfirmed", SVC, "\tif !req.ConfirmDiscard {", "\tif false && !req.ConfirmDiscard {"),
+    ("reset-unconfirmed-other-error", SVC, "\t\treturn Draft{}, ErrNotConfirmed", "\t\treturn Draft{}, ErrConflict"),
     ("reset-revision-unchecked", SVC, "\t\tif d.Revision != expected || req.ExpectedLatestVersionID != mdl.LatestVersionID {", "\t\tif req.ExpectedLatestVersionID != mdl.LatestVersionID {"),
     ("reset-latest-unchecked", SVC, "\t\tif d.Revision != expected || req.ExpectedLatestVersionID != mdl.LatestVersionID {", "\t\tif d.Revision != expected {"),
     ("reset-no-audit", SVC, "\t\t\tAction: \"model.draft.reset\",", "\t\t\tAction: \"model.draft.reverted\","),
     # issues and datasets
-    ("check-no-pack", SVC, "\tissues = append(issues, pack.Validate(ir)...)", "\t_ = pack"),
-    ("check-full-manifest", SVC, "\tmanifest = usedBindings(ir, manifest)\n", ""),
+    ("check-no-pack", SVC, "\t\tissues = append(issues, pack.Validate(ir)...)", "\t\t_ = pack"),
+    ("check-pack-after-errors", SVC, "\tif !slices.ContainsFunc(issues, isError) {\n\t\tissues = append(issues, pack.Validate(ir)...)", "\tif true {\n\t\tissues = append(issues, pack.Validate(ir)...)"),
+    ("check-manifest-pruned", SVC, "\t\tres, err = datasets.Resolve(ctx, s.Datasets, org, ir, manifest)", "\t\tres, err = datasets.Resolve(ctx, s.Datasets, org, ir, manifest[:min(len(manifest), 1)])"),
+    ("check-unsorted", SVC, "\treturn res, capped(validate.Sort(issues)), nil", "\treturn res, capped(issues), nil"),
+    ("check-uncapped", SVC, "\treturn res, capped(validate.Sort(issues)), nil", "\treturn res, validate.Sort(issues), nil"),
+    ("capped-no-marker", SVC, "\treturn append([]model.ValidationIssue{marker}, kept...)", "\t_ = marker\n\treturn kept"),
+    ("capped-marker-warning", SVC, "\t\tseverity = model.SeverityError\n", "\t\tseverity = model.SeverityWarning\n"),
+    ("capped-off-by-one", SVC, "\tif len(issues) <= maxIssues {", "\tif len(issues) <= maxIssues+1 {"),
     ("check-no-store-guard", SVC, "\tif len(manifest) > 0 && s.Datasets == nil {", "\tif false && len(manifest) > 0 && s.Datasets == nil {"),
     ("check-no-bindings", SVC, "\tif !slices.ContainsFunc(issues, isError) { // binding checks", "\tif false && !slices.ContainsFunc(issues, isError) { // binding checks"),
     ("check-ir-prefix-kept", SVC, "\t\t\tif rest, ok := strings.CutPrefix(i.Path, \"/ir\"); ok && (rest == \"\" || rest[0] == '/') {", "\t\t\tif rest, ok := strings.CutPrefix(i.Path, \"/ir\"); false && ok && (rest == \"\" || rest[0] == '/') {"),
-    ("used-bindings-all", SVC, "\t\tif used[b.LogicalRef] {", "\t\tif true || used[b.LogicalRef] {"),
     # responses and lists
     ("ir-not-canonical", SVC, "\treturn hashing.Canonical(stored)", "\treturn jsontext.Value(stored), nil"),
     ("model-never-out-of-date", SVC, "Draft:         DraftSummary{Revision: d.Revision, BaseVersionID: d.BaseVersionID, OutOfDate: d.BaseVersionID != mdl.LatestVersionID},", "Draft:         DraftSummary{Revision: d.Revision, BaseVersionID: d.BaseVersionID, OutOfDate: false},"),
@@ -92,11 +109,23 @@ MUTANTS = [
     ("versions-page-short", SVC, "\t\trows, err := store.ListVersions(ctx, tx, m.OrganizationID, modelID, before, limit+1)", "\t\trows, err := store.ListVersions(ctx, tx, m.OrganizationID, modelID, before, limit)"),
     ("cursor-any-parent", SVC, "c.List != list || c.Parent != parent ||", "c.List != list ||"),
     ("cursor-not-canonical", SVC, " || encodeCursor(c) != s {", " {"),
+    ("cursor-any-org", SVC, "if c.Version != 1 || c.Org != org ||", "if c.Version != 1 ||"),
+    ("version-cursor-id-allowed", SVC, ' || strconv.FormatInt(n, 10) != c.After || c.ID != "" {', ' || strconv.FormatInt(n, 10) != c.After {'),
+    # review round 1: L1, L4, L6
+    ("reads-not-one-snapshot", SVC, "var readSnapshot = tenant.ReadSnapshot", "var readSnapshot = tenant.ReadOnly"),
+    ("create-template-errors-allowed", SVC, "\t\tif slices.ContainsFunc(issues, isError) {\n\t\t\treturn fmt.Errorf(\"models: template", "\t\tif false && slices.ContainsFunc(issues, isError) {\n\t\t\treturn fmt.Errorf(\"models: template"),
+    ("create-template-schema-unchecked", SVC, "\t\tif res.IR == nil {\n\t\t\treturn fmt.Errorf(\"models: template", "\t\tif false && res.IR == nil {\n\t\t\treturn fmt.Errorf(\"models: template"),
+    ("create-no-semantic-issues", SVC, "\t\tissues, err := s.issues(ctx, m.OrganizationID, res.IR, res.Issues, nil)", "\t\tissues, err := s.issues(ctx, m.OrganizationID, res.IR, nil, nil)"),
+    ("models-limit-unchecked", SVC, "\tif limit < 1 || limit > maxLimit {\n\t\treturn Models{}, ErrInvalidLimit", "\tif false {\n\t\treturn Models{}, ErrInvalidLimit"),
+    ("versions-limit-unchecked", SVC, "\tif limit < 1 || limit > maxLimit {\n\t\treturn Versions{}, ErrInvalidLimit", "\tif false {\n\t\treturn Versions{}, ErrInvalidLimit"),
+    ("limit-upper-unchecked", SVC, "\tmaxLimit  = 100", "\tmaxLimit  = 1000"),
     # SQL
     ("sql-model-any-org", ST, "FROM twin.models WHERE organization_id=$1 AND id=$2`, org, id), org)\n}\n\n// LockModel", "FROM twin.models WHERE $1::text IS NOT NULL AND id=$2`, org, id), org)\n}\n\n// LockModel"),
     ("sql-lock-any-org", ST, "FROM twin.models WHERE organization_id=$1 AND id=$2 FOR UPDATE`", "FROM twin.models WHERE $1::text IS NOT NULL AND id=$2 FOR UPDATE`"),
     ("sql-lock-no-lock", ST, "AND id=$2 FOR UPDATE`", "AND id=$2`"),
     ("sql-latest-any-org", ST, "WHERE organization_id=$1 AND id=$2`,\n\t\torg, id, versionID, name)", "WHERE $1::text IS NOT NULL AND id=$2`,\n\t\torg, id, versionID, name)"),
+    ("sql-list-models-after-any-org", ST, "FROM twin.models WHERE organization_id=$1 AND project_id=$2\n\t\t\tAND (created_at, id) > ($3, $4)", "FROM twin.models WHERE $1::text IS NOT NULL AND project_id=$2\n\t\t\tAND (created_at, id) > ($3, $4)"),
+    ("sql-list-versions-before-any-org", ST, "FROM twin.model_versions WHERE organization_id=$1 AND model_id=$2\n\t\t\tAND version < $3", "FROM twin.model_versions WHERE $1::text IS NOT NULL AND model_id=$2\n\t\t\tAND version < $3"),
     ("sql-list-models-any-org", ST, "FROM twin.models WHERE organization_id=$1 AND project_id=$2\n\t\t\tORDER BY created_at, id LIMIT $3`", "FROM twin.models WHERE $1::text IS NOT NULL AND project_id=$2\n\t\t\tORDER BY created_at, id LIMIT $3`"),
     ("sql-list-models-unordered-ties", ST, "AND (created_at, id) > ($3, $4) ORDER BY created_at, id LIMIT $5`", "AND (created_at, id) >= ($3, $4) ORDER BY created_at, id LIMIT $5`"),
     ("sql-version-any-org", ST, "FROM twin.model_versions WHERE organization_id=$1 AND id=$2`", "FROM twin.model_versions WHERE $1::text IS NOT NULL AND id=$2`"),
@@ -115,6 +144,11 @@ EQUIVALENT: dict[str, str] = {
     # write takes the same lock first, so UpdateDraft's CAS cannot lose and
     # ErrStale is unreachable here (the mapping is a second guard).
     "patch-stale-not-conflict": "unreachable: the model lock and the revision check come first",
+    # patch.Apply decodes the base and re-encodes the candidate it checks;
+    # it does not check the base's bytes or size, so the jsonb text and its
+    # canonical form give the same candidate (the canonical form only saves
+    # parsing a longer text).
+    "patch-base-stored-text": "patch.Apply re-encodes the candidate; the base's text form does not reach any check",
 }
 
 HARNESS_ERRORS = {
