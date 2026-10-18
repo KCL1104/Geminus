@@ -1,6 +1,6 @@
 # T-012 驗證報告：Model／Draft／Version service
 
-**日期：2026-10-18｜狀態：`review`（實作與自我驗證完成，送獨立 review；依 H-003 驗收）｜需求：REQ-005、REQ-006、REQ-009｜Gate：D-003、D-028（皆已批准；另用到已批准的 D-011、D-014、D-020、D-023、D-029）｜實作選擇：ADR-022（PROPOSED）**
+**日期：2026-10-18｜狀態：`review`（首輪獨立 review 為 CHANGES REQUESTED，已先紅後綠修正，等待同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-005、REQ-006、REQ-009｜Gate：D-003、D-028（皆已批准；另用到已批准的 D-011、D-014、D-020、D-023、D-029）｜實作選擇：ADR-022（PROPOSED）**
 
 逐條輸出在 `checks/evidence/2026-10-18-T-012/`。範圍依 tasks.json：
 
@@ -23,7 +23,7 @@ HTTP route 與 TS client 屬 T-013。
 | `Makefile` | `db-go-test`（因此 `integration-test` 與 CI db job）跑 `./internal/models/...` |
 | 文件 | ADR-022（PROPOSED）；ARCHITECTURE.md package 表；API_DATABASE.md §8；db/README.md |
 
-## 實際執行結果
+## 首版的實際執行結果（0748bc0，review 前）
 
 所有指令都在 0748bc0（`commit.txt`）上執行，exit code 見 `exit-codes.txt`。CI：0748bc0 的 run [39155503173](https://github.com/KCL1104/Geminus/actions/runs/39155503173) 4/4 success（含 PostgreSQL 16 的 `make integration-test`）。DB 測試用一次性的 PostgreSQL 16 cluster 與新建的 `dt_test_t012`，不指向任何使用者環境。
 
@@ -68,13 +68,59 @@ HTTP route 與 TS client 屬 T-013。
 | `TestPublishRace` | 6 個並行 publish：恰一個成功，其餘 409，共兩個版本 | TEST-005 |
 | `TestDraftWhenAnotherVersionArrives` | 另一路徑（approval）產生的版本：clean draft 跟上；dirty draft 原樣保留且 out_of_date（draft 與 model 摘要皆是）；publish 拒絕；reset 需確認、latest 與目前 revision | D-003 |
 | `TestVersionsAreImmutable` | API login 不能 UPDATE／DELETE model_versions；parent 不能是別的 model 的版本 | TEST-004 |
-| `TestDatasets` | 未綁的 empirical ref 在 issues 並擋 publish；沒有 dataset store 時有 binding 的檢查回 503；snapshot 與凍結的 hash 不符 422；成功時版本只凍結用到的 binding；同一 dataset 之後的新版本不改已發布版本 | TEST-014 |
+| `TestDatasets` | 未綁的 empirical ref 在 issues 並擋 publish；manifest 非空而沒有 dataset store 時回 503（用不用到都是）；snapshot 與凍結的 hash 不符 422；版本凍結 base 的全部 binding（review M3）；同一 dataset 之後的新版本不改已發布版本 | TEST-014、TWIN_IR_SPEC §5.2 |
 | `TestLists` | model 與 version 分頁不重不漏、version 由新到舊；cursor 只能用於原本的 list 與 parent，竄改、補字或非 canonical 的 cursor 皆拒絕 | API_DATABASE §3 |
 | `TestPackRules` | pack 自己的規則（不只 generic validator）：patch 後 error 存入 issues（code 與 path），publish 回 422 並帶該 issue | D-020、D-028 |
 | `storage/models` 測試 | superuser 下 organization filter 本身成立；CAS；manifest JSON 與 binding rows 不一致時 commit 失敗；keyset 同 created_at 不重不漏 | AGENTS.md、API_DATABASE §8 |
 
+## 獨立 review（2026-10-18，H-003）：CHANGES REQUESTED 與修正
+
+Reviewer 以自己的 `git archive d04cc31` export 與新建的 disposable DB 執行，沒有使用工作樹。Tenancy、role、CAS、parent／latest、immutability、idempotency、audit、D-003 的 dirty draft 規則都經得起它的 probe；integration-test、15 個 DB test 重現。它的 mutation 重跑得到 65 killed、1 equivalent、1 unexpected（`sql-lock-no-lock` 只靠 race 測試的時序，負載下 7 次中 1 次存活），不是報告的 0 unexpected。發現 4 個 medium、9 個 low、9 個 info。
+
+修正前的紅燈在 `checks/evidence/2026-10-18-T-012/review1/red.log`：以舊程式執行新測試，10 個失敗；`TestListLimits` 的 panic 中止了其後的測試。修正後 `green.log`（race、`GEMINUS_REQUIRE_DB_TESTS=1`）：41 個 test 全過、0 SKIP。
+
+| # | 發現 | 修正 |
+|---|---|---|
+| M1 | Publish 與 reset 驗證的是 jsonb 印出的文字（`, `、`: `、數字印成完整十進位）：68 KB 的 draft 讀回 2.8 MB，因 2 MiB 上限無法 publish，回未分類的 500 | Patch、publish、版本推進都先取 canonical 形式再驗證；version 存 canonical 形式。`TestStoredTextIsNotWhatIsChecked`：jsonb 文字超過 2 MiB 的 draft 可 publish，另一路徑的同內容版本可 reset |
+| M2 | 超過 1000 個語意 issue 的 schema-valid patch 撞上 migration 0003 的上限，回未分類的 500，違反 D-028 | 排序後保留前 999 個，最前面加 path `""` 的 `LIMIT_EXCEEDED` 說明省略幾個；被省略的有 error 時它也是 error。`TestMoreIssuesThanADraftHolds`、`TestCappedBoundary`（1000／1001 邊界） |
+| M3 | Version 只凍結用到的 binding，與 TWIN_IR_SPEC §5.2「未使用的 binding 仍會被驗證並凍結」矛盾且未記錄；暫時不用的資料之後無法再用 | 依 §5.2：base 的全部 binding 都驗證並凍結。`TestPublishKeepsUnusedBindings`、`TestDatasets` |
+| M4 | jsonb 讀取放大：1.94 MB canonical 的 draft 是 83.6 MB 文字，GetDraft 3.9 秒 | 需要決定儲存形式：記入 ADR-022「待 owner 決定」（建議 IR 欄位改存 canonical 文字），列為 T-013 開放 route 之前的工作（tasks.json） |
+| L1 | 讀取分成多個 READ COMMITTED statement，只有手動編輯的 draft 被報成 out_of_date（981 次中 9 次） | 讀取改在 REPEATABLE READ 唯讀 transaction（`tenant.ReadSnapshot`）。`TestReadsSeeOneSnapshot` |
+| L2 | Dataset issue 的 path 索引的是篩過的 manifest，不是 base version 的 | 隨 M3 一起修正；ADR-022 說明 path 指向 base version 的 `dataset_bindings`。`TestDatasetIssuePaths` |
+| L3 | `advance` 以 latest 而不是 draft 自己的 base 判斷 clean | 改用 draft 自己的 base。`TestCleanAgainstItsOwnBase` |
+| L4 | Create 不檢查 template 是否有效 | Schema 或語意／pack error 為 internal error，不建立任何東西；warning 隨 draft 保存。`TestCreateChecksTheTemplate` |
+| L5 | Patch 值中的 U+0000 到達資料庫（22P05，500） | 回 422 `IR_SCHEMA_INVALID`，path 指向該字串或 member name。`TestNULIsRefused` |
+| L6 | `ListModels`／`ListVersions` 在 limit 0 時 panic | 1–100 以外回 `ErrInvalidLimit`。`TestListLimits` |
+| L7 | 鎖只靠時序驗證；publish 指紋含 If-Match、replay 前的 role 檢查、cursor 的 organization 與 ID、cursor 分支的 organization filter、reset 重算 issue、排序、Create 的語意 issue 都沒有測試 | `TestWritesWaitForTheModelRow`（持有 model row 時 patch 與 publish 等待）、`TestPublishIdempotencyScope`、`TestCursorBindings`、storage `TestOrganizationFilter` 的 cursor 分支、`TestIssueOrderAndStages`、`TestCreateChecksTheTemplate`；reviewer 的 11 個額外 mutant 併入 harness |
+| L8 | tasks.json 的 verification command 與 planned outputs 仍是舊路徑 | 改為 `./internal/models/...`、`./internal/storage/models/...` |
+| L9 | Publish 的 `comment` 納入 idempotency hash 但不保存 | 記入 ADR-022「待 owner 決定」，T-013 處理 |
+| I1 | Pack 的 `Validate` 在 generic 有 error 時仍執行，違反 D-023 的 stage 停止規則 | 有 error 就不跑 pack。`TestIssueOrderAndStages` |
+| I2 | 未確認的 reset 回 `IR_SCHEMA_INVALID` | 回 `ErrNotConfirmed`（HTTP contract 本身要求 `confirm_discard: true`） |
+| I3–I9 | 規則改變後 issue 過時（publish 會重驗）；Model 列表的 N+1；revision 與 latest 只由 service 保證；key 過期後重建；cached test 結果；ADR 的 503 措辭；AGENTS.md §3 仍寫 `internal/model/` | I4、I5、I6 記入 ADR-022 Consequences；I7 本次執行前清除 test cache；I8 隨 M3 改正；I3 不需要改；I9 為 owner 的檔案，列入需 owner 知悉 |
+
+Mutation（`review1/mutation-full.log`、`mutation-rerun.log`）：harness 增加到 94 個（新程式的規則與 reviewer 的 11 個）。全量執行途中磁碟用盡（三個 T-045 spike 的 node_modules 與 Go build cache），14 個 mutant 成為 BUILD-FAILED（harness 錯誤，不算 kill），清出空間後以 `--only` 重跑這 14 個與新增邊界測試後的 `capped-off-by-one`。合計：94 個，92 killed，2 equivalent，0 unexpected。
+
+- `patch-stale-not-conflict`（同首版）：所有 draft 寫入先鎖 model row，revision 在鎖之後比對，CAS 不會輸；reviewer 以略過鎖的寫入者證實只在那種情況可觸發，保留為第二道防線。
+- `patch-base-stored-text`（新）：`patch.Apply` 會解碼 base 並重新編碼 candidate，base 的文字形式不進入任何檢查。
+- `reads-not-one-snapshot` 由 `TestReadsSeeOneSnapshot` 擋下：讀到不一致是機率事件（修正前 10 次以上），這個 kill 依賴時序。其餘 kill 是確定性的；`sql-lock-no-lock` 現在由 `TestWritesWaitForTheModelRow` 確定性地擋下。
+
+### 修正後（f4fde3a，`review1/`）
+
+在 f4fde3a 的乾淨 worktree（`git worktree`，不含工作樹中其他任務的檔案）上執行，先 `go clean -testcache`，log 中沒有 cached 結果。
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make backend-test`、`backend-race` | 0 | `backend-test.log`、`backend-race.log` |
+| `make architecture-check` | 0 | `PASS architecture: 34 packages, 10 rules, 16 build configurations` |
+| `make spec-check` | 0 | `spec-check.log` |
+| `make integration-test`（新建的 `dt_test_t012`） | 0 | `integration-test.log` |
+| `go test -race -p 1 -v`（models、storage/models、tenant） | 0 | `green.log`：41 個 test，0 SKIP |
+| mutation | 0 | 94 個：92 killed、2 equivalent、0 unexpected |
+
 ## 需 owner 知悉
 
+- ADR-022「待 owner 決定」：IR 儲存形式（review M4，建議改存 canonical 文字）與 publish `comment` 的保存或移除（L9）。兩者在 T-013 開放 route 之前處理。
+- AGENTS.md §3 仍把 `internal/model/` 寫成 commit service 的位置（review I9）；那是 owner 維護的檔案，建議改成 `internal/models/`。
 - ADR-022 為 PROPOSED：
   - service 的位置（`internal/models`，不是規劃的 `internal/model/service/`）；
   - clean／dirty 的定義與 draft 規則；
