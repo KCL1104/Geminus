@@ -121,6 +121,15 @@ COMMIT
 ALTER TABLE
 BEGIN
 SET
+GRANT
+DO
+GRANT
+GRANT
+GRANT
+CREATE FUNCTION
+COMMIT
+BEGIN
+SET
       set_config      | set_config |           set_config           |           set_config           
 ----------------------+------------+--------------------------------+--------------------------------
  https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
@@ -644,6 +653,77 @@ SET
 (1 row)
 
 INSERT 0 1
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+SET
+INSERT 0 1
+SET
+      set_config      | set_config |           set_config           | set_config 
+----------------------+------------+--------------------------------+------------
+ https://test.invalid | subject_p  | org_01M4YDQK00TP00000000000000 | 
+(1 row)
+
+INSERT 0 1
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+           set_config           
+--------------------------------
+ usr_01M4YDQK00TP00000000000001
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ set_config 
+------------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(18 rows)
+
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
 RESET
 GRANT
 GRANT
@@ -686,7 +766,161 @@ SET
  
  
  
-(4 rows)
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(140 rows)
+
+ check 
+-------
+ 
+(1 row)
 
  check 
 -------
@@ -724,6 +958,14 @@ SET
 (6 rows)
 
 ROLLBACK
+BEGIN
+SET
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+REVOKE
+COMMIT
 ALTER TABLE
 BEGIN
 SET
@@ -734,14 +976,13 @@ REVOKE
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "tenant_isolation" for relation "twin.users" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.organizations" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.model_drafts" does not exist, skipping
-psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.imports" does not exist, skipping
-psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.ai_proposals" does not exist, skipping
-psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.idempotency_keys" does not exist, skipping
-psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.memberships" does not exist, skipping
-psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.projects" does not exist, skipping
-psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.models" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.model_versions" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.model_version_datasets" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.idempotency_keys" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.projects" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.models" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.imports" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.ai_proposals" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.scenarios" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.simulation_runs" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.run_datasets" does not exist, skipping
@@ -750,6 +991,7 @@ psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relati
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.datasets" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.dataset_versions" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.simulation_results" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.memberships" does not exist, skipping
 psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.audit_events" does not exist, skipping
 DO
 DROP TRIGGER
@@ -932,6 +1174,15 @@ COMMIT
 ALTER TABLE
 BEGIN
 SET
+GRANT
+DO
+GRANT
+GRANT
+GRANT
+CREATE FUNCTION
+COMMIT
+BEGIN
+SET
       set_config      | set_config |           set_config           |           set_config           
 ----------------------+------------+--------------------------------+--------------------------------
  https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
@@ -1455,6 +1706,77 @@ SET
 (1 row)
 
 INSERT 0 1
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+SET
+INSERT 0 1
+SET
+      set_config      | set_config |           set_config           | set_config 
+----------------------+------------+--------------------------------+------------
+ https://test.invalid | subject_p  | org_01M4YDQK00TP00000000000000 | 
+(1 row)
+
+INSERT 0 1
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+           set_config           
+--------------------------------
+ usr_01M4YDQK00TP00000000000001
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ set_config 
+------------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(18 rows)
+
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
 RESET
 GRANT
 GRANT
@@ -1497,7 +1819,161 @@ SET
  
  
  
-(4 rows)
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(140 rows)
+
+ check 
+-------
+ 
+(1 row)
 
  check 
 -------
@@ -1541,19 +2017,19 @@ make db-go-test
 make[1]: Entering directory '<scratchpad>/wt-final'
 GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/api/... ./cmd/api/... ./cmd/provision-tenant/...
 ?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
-ok  	github.com/kcl1104/geminus/internal/storage/datasets	2.927s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	2.800s
 ?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
 ?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
 ok  	github.com/kcl1104/geminus/internal/storage/memberships	1.081s
-ok  	github.com/kcl1104/geminus/internal/storage/models	1.259s
-ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.502s
-ok  	github.com/kcl1104/geminus/internal/storage/projects	1.076s
-ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.438s
-ok  	github.com/kcl1104/geminus/internal/tenant	2.551s
-ok  	github.com/kcl1104/geminus/internal/tenant/memberships	12.776s
-ok  	github.com/kcl1104/geminus/internal/models	18.087s
-ok  	github.com/kcl1104/geminus/internal/api	6.838s
-ok  	github.com/kcl1104/geminus/cmd/api	1.111s
-ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.132s
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.207s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.472s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	1.082s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.457s
+ok  	github.com/kcl1104/geminus/internal/tenant	2.506s
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	12.802s
+ok  	github.com/kcl1104/geminus/internal/models	16.711s
+ok  	github.com/kcl1104/geminus/internal/api	6.229s
+ok  	github.com/kcl1104/geminus/cmd/api	1.120s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.133s
 make[1]: Leaving directory '<scratchpad>/wt-final'
 integration-test: API and database covered; worker integration is NOT RUN until T-019 adds the job loop.

@@ -71,14 +71,14 @@
     "T-042"
   ],
   "requirements_with_traceability": 23,
-  "proposed_decisions": 2,
+  "proposed_decisions": 0,
   "completed_tasks": 17
 }
 .venv/bin/python scripts/check_docs.py
 {
   "status": "PASS",
   "markdown_files": 73,
-  "relative_links_checked": 41
+  "relative_links_checked": 44
 }
 .venv/bin/python scripts/check_sql_inventory.py
 {
@@ -108,8 +108,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 39,
-    "proposed": 2,
+    "approved": 42,
+    "proposed": 0,
     "rejected": 0,
     "superseded": 0
   },
@@ -121,7 +121,8 @@
     "H-005",
     "H-006",
     "H-007",
-    "H-008"
+    "H-008",
+    "H-009"
   ],
   "tasks_by_status": {
     "blocked": 0,
@@ -131,21 +132,13 @@
     "review": 1
   },
   "ready_tasks": [
+    "T-013",
     "T-016",
     "T-019",
     "T-024",
     "T-043"
   ],
-  "next_after_review": [
-    {
-      "id": "T-013",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-040",
-        "D-041"
-      ]
-    }
-  ],
+  "next_after_review": [],
   "note": "Shape checks only; whether a recorded approval is genuine is for human review."
 }
 .venv/bin/python scripts/gen_ts_contracts.py --check

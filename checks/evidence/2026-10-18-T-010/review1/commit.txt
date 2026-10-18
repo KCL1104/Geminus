@@ -1,1 +1,1 @@
-e34aac6 (clean git worktree, go clean -testcache, fresh dt_test_t010_final; mutation on fresh dt_test_t010_mut)
+e2faab3 (clean git worktree, go clean -testcache, fresh dt_test_t010_final; Go mutation on fresh dt_test_t010_mut, SQL mutation on fresh dt_test_sqlmut per mutant)
