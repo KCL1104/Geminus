@@ -1,20 +1,33 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { I18nProvider } from "../lib/i18n/provider";
+import { requestLocale } from "../lib/i18n/server";
+import { createTranslator } from "../lib/i18n/translate";
+import { LocaleMenu } from "./_components/locale-switcher";
 
-export const metadata = { title: "Geminus" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await requestLocale())("app.name") };
+}
 
 // No AuthProvider is mounted until T-008 supplies a real session, so every
-// route renders signed out (lib/auth/session.tsx).
-export default function RootLayout({ children }: { children: ReactNode }) {
+// route renders signed out (lib/auth/session.tsx). The locale comes from the
+// reader's remembered choice, else English (REQ-022).
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = await requestLocale();
+  const t = createTranslator(locale);
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body>
-        <header>
-          <nav aria-label="Main">
-            <Link href="/projects">Projects</Link>
-          </nav>
-        </header>
-        <main>{children}</main>
+        <I18nProvider locale={locale}>
+          <header>
+            <nav aria-label={t("nav.label")}>
+              <Link href="/projects">{t("nav.projects")}</Link>
+            </nav>
+            <LocaleMenu />
+          </header>
+          <main>{children}</main>
+        </I18nProvider>
       </body>
     </html>
   );

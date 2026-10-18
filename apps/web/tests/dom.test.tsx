@@ -6,7 +6,6 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import ProjectsPage from "../app/projects/page";
-import { problemHeadings } from "../app/_components/problem-view";
 import { DraftStatus, RemoteView } from "../app/_components/states";
 import { useRemote } from "../app/_components/use-remote";
 import { createApiClient } from "../lib/api/client";
@@ -15,6 +14,7 @@ import { ApiProvider } from "../lib/api/provider";
 import { type Auth, AuthProvider } from "../lib/auth/session";
 import type { Draft } from "../lib/contracts";
 import { openDraft, reduceDraft } from "../lib/state/draft";
+import { en } from "../messages/en";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -66,7 +66,7 @@ describe("auth boundary (effects run)", () => {
     const el = await mount(out.node);
     await settle();
     expect(out.calls()).toBe(0);
-    expect(el.textContent).toContain(problemHeadings.unauthenticated);
+    expect(el.textContent).toContain(en["problem.heading.unauthenticated"]);
 
     const inside = projects(signedIn, () => page([{ id: PRJ, name: "Pipeline" }]));
     const el2 = await mount(inside.node);
@@ -86,9 +86,9 @@ describe("loads that fail", () => {
     );
     const el = await mount(out.node);
     await settle();
-    expect(el.textContent).not.toContain("Loading projects");
+    expect(el.textContent).not.toContain(en["loading.projects"]);
     expect(el.querySelector('[role="alert"]')?.getAttribute("data-problem")).toBe("network");
-    const retry = [...el.querySelectorAll("button")].find((b) => b.textContent === "Try again");
+    const retry = [...el.querySelectorAll("button")].find((b) => b.textContent === en.retry);
     expect(retry).toBeDefined();
     await act(async () => retry!.click());
     await settle();
@@ -98,11 +98,11 @@ describe("loads that fail", () => {
   it("shows a load that rejects as a failure", async () => {
     function Rejecting() {
       const [remote] = useRemote<string>(() => Promise.reject(new Error("bug")), "x");
-      return <RemoteView remote={remote} what="thing">{(d) => <p>{d}</p>}</RemoteView>;
+      return <RemoteView remote={remote} what="model">{(d) => <p>{d}</p>}</RemoteView>;
     }
     const el = await mount(<Rejecting />);
     await settle();
-    expect(el.textContent).not.toContain("Loading thing");
+    expect(el.textContent).not.toContain(en["loading.model"]);
     expect(el.querySelector('[role="alert"]')).not.toBeNull();
   });
 
@@ -110,7 +110,7 @@ describe("loads that fail", () => {
     const out = projects(signedIn, () => page([{ id: PRJ, name: "Pipeline" }], "cursor-2"));
     const el = await mount(out.node);
     await settle();
-    expect(el.querySelector('[role="note"]')?.textContent).toContain("More exist");
+    expect(el.querySelector('[role="note"]')?.textContent).toBe("Showing the first project. More exist; this build cannot page through them yet.");
   });
 });
 
@@ -126,10 +126,10 @@ describe("draft conflict", () => {
       </AuthProvider>,
     );
     const before = el.querySelectorAll('[role="alert"]').length;
-    const reload = [...el.querySelectorAll("button")].find((b) => b.textContent === "Reload the current draft")!;
+    const reload = [...el.querySelectorAll("button")].find((b) => b.textContent === en["draft.reload"])!;
     await act(async () => reload.click());
     await settle();
     expect(el.querySelectorAll('[role="alert"]').length).toBe(before + 1);
-    expect(el.textContent).toContain(problemHeadings.network);
+    expect(el.textContent).toContain(en["problem.heading.network"]);
   });
 });

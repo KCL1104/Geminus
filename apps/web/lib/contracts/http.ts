@@ -3,7 +3,7 @@
 // schema and semantic validators, not by these types.
 import type { AiMapping } from "./ai-mapping";
 import type { AnalysisOutput } from "./analysis-output";
-import type { AnalysisID, AuditEventID, DatasetBinding, DatasetVersionID, Error, ImportID, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, RequestID, ResourceID, RunID, ScenarioID, UserID, ValidationIssue } from "./common";
+import type { AnalysisID, AuditEventID, DatasetBinding, DatasetVersionID, Error, ImportID, Locale, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, RequestID, ResourceID, RunID, ScenarioID, UserID, ValidationIssue } from "./common";
 import type { JsonPatch } from "./json-patch";
 import type { ModelIR } from "./model-ir";
 import type { Proposal } from "./proposal";
@@ -76,6 +76,8 @@ export type CreateModel = {
   name: string;
   domain: "software_delivery";
   template: "default_delivery_pipeline";
+  /** Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created. */
+  locale?: Locale;
 };
 
 export type Publish = {

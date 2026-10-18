@@ -2,6 +2,7 @@ package domainpack_test
 
 import (
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"reflect"
@@ -186,5 +187,22 @@ func TestRegistryPackages(t *testing.T) {
 		if err := domainpack.CheckPackPackage(pkg); (err == nil) != ok {
 			t.Errorf("%q: %v", pkg, err)
 		}
+	}
+}
+
+// Locales are the contract's (common.schema.json#/$defs/Locale), default first.
+func TestLocalesMatchContract(t *testing.T) {
+	var doc struct {
+		Defs struct {
+			Locale struct {
+				Enum []domainpack.Locale `json:"enum"`
+			} `json:"Locale"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "schemas/common.schema.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(domainpack.Locales, doc.Defs.Locale.Enum) || domainpack.Locales[0] != domainpack.English {
+		t.Errorf("Locales %v, contract %v", domainpack.Locales, doc.Defs.Locale.Enum)
 	}
 }

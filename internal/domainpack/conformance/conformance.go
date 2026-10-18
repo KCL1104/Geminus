@@ -192,7 +192,7 @@ func Check(ctx context.Context, s Suite) ([]Finding, error) {
 		// Static pack data is read before the pack sees any model, and
 		// compared at the end (prompt/static).
 		{"prompt/context", func() { c.initial = c.staticData() }},
-		{"identity", c.identity}, {"catalog", c.catalogs}, {"validate", c.validate}, {"views", c.views},
+		{"identity", c.identity}, {"catalog", c.catalogs}, {"validate", c.validate}, {"views", c.views}, {"templates", c.templates},
 		{"metrics", func() { c.metrics(ctx) }}, {"inference", func() { c.inference(ctx) }},
 		{"prompt", c.prompt}, {"concurrent", func() { c.concurrent(ctx) }}, {"prompt/static", func() { c.static(ctx) }},
 	} {
@@ -331,6 +331,93 @@ func encoded(v any) string {
 		return "unencodable: " + err.Error()
 	}
 	return string(data)
+}
+
+// templateModelID is the model ID templates are asked for.
+const templateModelID = "mdl_01M4YDQK00TEMP1ATE00000000"
+
+// templates: a pack that offers create-model templates (TemplateProvider)
+// lists at least one; each, in every Locale, is a valid model of the pack's
+// domain with the ID and name asked for; every locale gives the same model
+// apart from its default names (REQ-022); the same call gives the same
+// model; an unknown template or locale is an error.
+func (c *checker) templates() {
+	tp, ok := c.s.Pack.(domainpack.TemplateProvider)
+	if !ok {
+		return
+	}
+	var names []string
+	if !c.call("templates/list", func() { names = tp.Templates() }) {
+		return
+	}
+	if len(names) == 0 || slices.Contains(names, "") || len(slices.Compact(slices.Sorted(slices.Values(names)))) != len(names) {
+		c.fail("templates/list", "Templates() must list at least one template, each once and named: %q", names)
+	}
+	const modelName = "Conformance template"
+	get := func(check, name string, locale domainpack.Locale) (ir *model.ModelIR, err error, ok bool) {
+		ok = c.call(check, func() { ir, err = tp.Template(name, templateModelID, modelName, locale) })
+		return ir, err, ok
+	}
+	for _, name := range names {
+		var first string
+		for _, locale := range domainpack.Locales {
+			ir, err, ok := get("templates/valid", name, locale)
+			if !ok {
+				continue
+			}
+			if err != nil || ir == nil {
+				c.fail("templates/valid", "template %q in %s: no model (%v)", name, locale, err)
+				continue
+			}
+			if ir.Domain != c.s.Pack.ID() || ir.ModelID != templateModelID || ir.Name != modelName {
+				c.fail("templates/valid", "template %q in %s: domain %q, model ID or name not the ones asked for", name, locale, ir.Domain)
+			}
+			if issues := genericIssues(ir); len(issues) > 0 {
+				c.fail("templates/valid", "template %q in %s is not a valid model: %v", name, locale, issues)
+			} else {
+				var domain []model.ValidationIssue
+				cp := clone(ir)
+				if c.call("templates/valid", func() { domain = c.s.Pack.Validate(&cp) }) && slices.ContainsFunc(domain, isError) {
+					c.fail("templates/valid", "template %q in %s fails the pack's rules: %v", name, locale, domain)
+				}
+			}
+			if again, err, ok := get("templates/deterministic", name, locale); ok && (err != nil || again == nil || encoded(again) != encoded(ir)) {
+				c.fail("templates/deterministic", "template %q in %s differs between two calls", name, locale)
+			}
+			if s := withoutNames(ir); first == "" {
+				first = s
+			} else if s != first {
+				c.fail("templates/locales", "template %q in %s differs from %s in more than its names", name, locale, domainpack.Locales[0])
+			}
+		}
+		for _, bad := range []domainpack.Locale{"", "fr", "EN", "zh-hant", "zh-Hans"} {
+			if ir, err, ok := get("templates/unknown-locale", name, bad); ok && (err == nil || ir != nil) {
+				c.fail("templates/unknown-locale", "template %q accepts the locale %q", name, bad)
+			}
+		}
+	}
+	if ir, err, ok := get("templates/unknown-template", "zz_no_such_template", domainpack.Locales[0]); ok && (err == nil || ir != nil) {
+		c.fail("templates/unknown-template", "an unknown template is answered with a model")
+	}
+}
+
+func isError(i model.ValidationIssue) bool { return i.Severity == model.SeverityError }
+
+// withoutNames is ir encoded with its user-visible names removed: what must
+// not differ between locales.
+func withoutNames(ir *model.ModelIR) string {
+	c := clone(ir)
+	c.Name = ""
+	for i := range c.EntityTypes {
+		c.EntityTypes[i].Name = ""
+	}
+	for i := range c.Resources {
+		c.Resources[i].Name = ""
+	}
+	for i := range c.Nodes {
+		c.Nodes[i].Name = ""
+	}
+	return encoded(c)
 }
 
 func (c *checker) identity() {

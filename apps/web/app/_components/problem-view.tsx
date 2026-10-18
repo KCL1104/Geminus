@@ -1,63 +1,66 @@
+"use client";
 // How every API failure is shown (T-014): one alert per Problem, with the
 // server's request ID when it sent one. 404 says the same for "missing" and
 // "another tenant's" so the UI never confirms that a foreign resource exists:
 // neither its message nor its details are shown.
+//
+// What the UI says comes from the catalog by error and validation code
+// (REQ-022). The technical message (the server's, or the client's own
+// diagnostic) and an unknown code's reason are English data: shown as they
+// came and marked lang="en".
 import type { Problem, ProblemKind } from "../../lib/api/problem";
-import type { ErrorCode } from "../../lib/contracts";
+import { useI18n } from "../../lib/i18n/provider";
+import type { MessageKey } from "../../lib/i18n/translate";
+import { en } from "../../messages/en";
 
-export const problemHeadings: Record<ProblemKind, string> = {
-  unauthenticated: "Sign in required",
-  forbidden: "You do not have permission to do this",
-  not_found: "Not found",
-  conflict: "This conflicts with the current state",
-  invalid: "The request was not accepted",
-  precondition: "Reload before changing this",
-  rate_limited: "Too many requests",
-  unavailable: "Service unavailable",
-  internal: "The server failed to handle the request",
-  network: "The API could not be reached",
-  protocol: "Unexpected response from the API",
+const guidance: Partial<Record<ProblemKind, MessageKey>> = {
+  unauthenticated: "problem.guidance.unauthenticated",
+  forbidden: "problem.guidance.forbidden",
+  not_found: "problem.guidance.not_found",
+  precondition: "problem.guidance.precondition",
 };
 
-const guidance: Partial<Record<ProblemKind, string>> = {
-  unauthenticated: "Your session is missing or has expired.",
-  forbidden: "Your role in this organization does not allow this action.",
-  not_found: "It does not exist, or it is not available in this organization.",
-  precondition: "The request did not say which version it changes.",
-};
+// A 409 means different things; the code says which (D-030). Every code
+// has a message, so a known code always explains itself.
+function guidanceFor(p: Problem): MessageKey | undefined {
+  return p.code !== null ? `error.${p.code}` : guidance[p.kind];
+}
 
-// A 409 means different things; say what this one means (D-030).
-const conflictGuidance: Partial<Record<ErrorCode, string>> = {
-  MODEL_VERSION_CONFLICT: "Someone else changed it. Nothing was overwritten; reload to see the current version.",
-  IDEMPOTENCY_KEY_CONFLICT: "This request was already sent with different content.",
-  LIFECYCLE_CONFLICT: "This is not possible in its current state.",
-  RESULT_NOT_READY: "The result is not ready yet.",
-  PROPOSAL_ALREADY_DECIDED: "This proposal has already been decided.",
-};
-
-function guidanceFor(p: Problem): string | undefined {
-  return p.kind === "conflict" && p.code !== null ? conflictGuidance[p.code] : guidance[p.kind];
+/** The catalog key for a validation code, or null for one this build does not know (e.g. a pack's own). */
+export function validationKey(code: string | undefined): MessageKey | null {
+  const key = `validation.${code}`;
+  return code !== undefined && Object.hasOwn(en, key) ? (key as MessageKey) : null;
 }
 
 export function ProblemView({ problem }: { problem: Problem }) {
+  const { t } = useI18n();
+  const advice = guidanceFor(problem);
+  const shown = problem.kind !== "not_found";
   return (
     <section role="alert" data-problem={problem.kind}>
-      <h2>{problemHeadings[problem.kind]}</h2>
-      {guidanceFor(problem) && <p>{guidanceFor(problem)}</p>}
-      {problem.message && problem.kind !== "not_found" && <p>{problem.message}</p>}
-      {problem.details.length > 0 && problem.kind !== "not_found" && (
+      <h2>{t(`problem.heading.${problem.kind}`)}</h2>
+      {advice && <p>{t(advice)}</p>}
+      {problem.message && shown && (
+        <p>
+          {t("problem.technical")} <span lang="en">{problem.message}</span>
+        </p>
+      )}
+      {problem.details.length > 0 && shown && (
         <ul>
-          {problem.details.map((d, i) => (
-            <li key={i}>
-              <code>{d.path || "/"}</code> {d.reason}
-            </li>
-          ))}
+          {problem.details.map((d, i) => {
+            const key = validationKey(d.code);
+            return (
+              <li key={i}>
+                <code>{d.path || "/"}</code> {key ? t(key) : <span lang="en">{d.reason}</span>}
+              </li>
+            );
+          })}
         </ul>
       )}
-      {problem.retryAfterSeconds !== null && <p>Try again in {problem.retryAfterSeconds} s.</p>}
+      {problem.retryAfterSeconds !== null && <p>{t("problem.retryAfter", { count: problem.retryAfterSeconds })}</p>}
       {problem.requestId && (
         <p>
-          Request ID: <code>{problem.requestId}</code>
+          {t("problem.requestId")} <code>{problem.requestId}</code>
         </p>
       )}
     </section>

@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { requestLocale } from "../lib/i18n/server";
+import { createTranslator } from "../lib/i18n/translate";
 
-export default function Home() {
+export default async function Home() {
+  const t = createTranslator(await requestLocale());
   return (
     <>
-      <h1>Geminus</h1>
+      <h1>{t("home.title")}</h1>
       <p>
-        <Link href="/projects">Go to projects</Link>
+        <Link href="/projects">{t("home.toProjects")}</Link>
       </p>
     </>
   );

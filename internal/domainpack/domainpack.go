@@ -49,6 +49,34 @@ type DomainPack interface {
 	DefaultViews(ir *model.ModelIR) ViewDefinitions
 }
 
+// Locale is a language of the UI and of template default names
+// (common.schema.json#/$defs/Locale, REQ-022). IDs, enums and paths never
+// depend on it.
+type Locale string
+
+// The locales, the default first.
+const (
+	English            Locale = "en"
+	TraditionalChinese Locale = "zh-Hant"
+)
+
+// Locales lists every Locale, the default first.
+var Locales = []Locale{English, TraditionalChinese}
+
+// TemplateProvider is implemented by a pack that offers create-model
+// templates (http.schema.json CreateModel.template). A template is the same
+// model in every Locale: only its default names differ, never an ID or the
+// topology, and once created the names are user data (REQ-022). The
+// conformance suite checks each template in each locale. It is a separate
+// interface so DomainPack keeps the report's method set.
+type TemplateProvider interface {
+	Templates() []string
+	// Template returns templateName as a valid IR for a new model with the
+	// given ID and name, its default names in locale. An unknown template
+	// or locale is an error.
+	Template(templateName, modelID, name string, locale Locale) (*model.ModelIR, error)
+}
+
 // NodeDefinition is one palette entry: a domain kind built on a generic node type.
 type NodeDefinition struct {
 	Kind        string         // stable catalog key, e.g. "code_review"

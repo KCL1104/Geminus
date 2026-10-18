@@ -1,23 +1,25 @@
 "use client";
 import Link from "next/link";
 import { useApi } from "../../lib/api/provider";
+import { useI18n } from "../../lib/i18n/provider";
 import { MorePages, RemoteView, RequireSession } from "../_components/states";
 import { useRemote } from "../_components/use-remote";
 
 function Projects() {
   const api = useApi();
+  const { t, dateTime } = useI18n();
   const [remote, retry] = useRemote((signal) => api.listProjects({ signal }), api);
   return (
     <RemoteView remote={remote} what="projects" onRetry={retry}>
       {(page) =>
         page.items.length === 0 ? (
-          <p>No projects yet.</p>
+          <p>{t("projects.empty")}</p>
         ) : (
           <>
             <ul>
               {page.items.map((p) => (
                 <li key={p.id}>
-                  <Link href={`/projects/${p.id}`}>{p.name}</Link>
+                  <Link href={`/projects/${p.id}`}>{p.name}</Link> · {t("projects.created", { date: dateTime(p.created_at) })}
                 </li>
               ))}
             </ul>
@@ -30,9 +32,10 @@ function Projects() {
 }
 
 export default function ProjectsPage() {
+  const { t } = useI18n();
   return (
     <>
-      <h1>Projects</h1>
+      <h1>{t("projects.title")}</h1>
       <RequireSession>
         <Projects />
       </RequireSession>

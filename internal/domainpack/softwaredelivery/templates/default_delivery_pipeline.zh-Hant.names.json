@@ -1,0 +1,12 @@
+{
+  "entity_types": {
+    "change": "軟體變更"
+  },
+  "resources": {
+    "reviewer": "審查者",
+    "ci_runner": "CI 執行器",
+    "test_environment": "測試環境",
+    "deployment_slot": "部署槽位"
+  },
+  "nodes": {}
+}

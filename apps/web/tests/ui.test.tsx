@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import ProjectsPage from "../app/projects/page";
-import { problemHeadings, ProblemView } from "../app/_components/problem-view";
+import { ProblemView } from "../app/_components/problem-view";
 import { DraftStatus, RemoteView, RequireSession } from "../app/_components/states";
 import { createApiClient } from "../lib/api/client";
 import { draftETag } from "../lib/api/etag";
@@ -17,6 +17,7 @@ import { type Auth, AuthProvider, canEdit } from "../lib/auth/session";
 import type { Draft, Model } from "../lib/contracts";
 import { loadModelPage } from "../lib/pages";
 import { openDraft, reduceDraft } from "../lib/state/draft";
+import { en } from "../messages/en";
 
 const fixture = <T,>(name: string): T =>
   JSON.parse(readFileSync(new URL(`../../../testdata/contracts/${name}`, import.meta.url), "utf8")) as T;
@@ -31,11 +32,14 @@ const problemOf = (kind: ProblemKind, extra: Partial<Problem> = {}): Problem => 
   kind, code: null, status: null, message: "", requestId: null, details: [], retryAfterSeconds: null, ...extra,
 });
 const draft = fixture<Draft>("valid-draft-with-issues.json");
+// Rendered without an I18nProvider, so in the default locale, English.
+const heading = (kind: ProblemKind) => en[`problem.heading.${kind}`];
+const kinds = { unauthenticated: 1, forbidden: 1, not_found: 1, conflict: 1, invalid: 1, precondition: 1, rate_limited: 1, unavailable: 1, internal: 1, network: 1, protocol: 1 } satisfies Record<ProblemKind, 1>;
 
 describe("auth boundary", () => {
   it("renders signed out without a provider, and never the protected content", () => {
     const out = html(<RequireSession><p>tenant data</p></RequireSession>);
-    expect(out).toContain(problemHeadings.unauthenticated);
+    expect(out).toContain(heading("unauthenticated"));
     expect(out).not.toContain("tenant data");
   });
 
@@ -45,7 +49,7 @@ describe("auth boundary", () => {
   it("shows protected content and a loading state with a session", () => {
     const out = html(<RequireSession><ProjectsPage /></RequireSession>, editor);
     expect(out).toContain('role="status"');
-    expect(out).toContain("Loading projects");
+    expect(out).toContain(en["loading.projects"]);
   });
 
   it("offers editing only to owners and editors; an unknown role is read-only", () => {
@@ -55,11 +59,11 @@ describe("auth boundary", () => {
 
 describe("problems (TEST-009 presentation)", () => {
   it("renders every kind as an alert with its heading", () => {
-    for (const kind of Object.keys(problemHeadings) as ProblemKind[]) {
+    for (const kind of Object.keys(kinds) as ProblemKind[]) {
       const out = html(<ProblemView problem={problemOf(kind, { message: "server says" })} />);
       expect(out).toContain('role="alert"');
       expect(out).toContain(`data-problem="${kind}"`);
-      expect(out).toContain(problemHeadings[kind]);
+      expect(out).toContain(heading(kind));
     }
   });
 
@@ -67,7 +71,7 @@ describe("problems (TEST-009 presentation)", () => {
     const missing = html(<ProblemView problem={problemFromResponse(404, new Headers(), {
       error: { code: "NOT_FOUND", message: "model mdl_x of org_y", request_id: REQ, details: [{ path: "/organizations/org_y", reason: "owned by org_y" }] },
     })} />);
-    expect(missing).toContain(problemHeadings.not_found);
+    expect(missing).toContain(heading("not_found"));
     expect(missing).not.toContain("org_y");
     expect(missing).toContain(REQ);
   });
@@ -77,14 +81,15 @@ describe("problems (TEST-009 presentation)", () => {
     const invalid = html(<ProblemView problem={problemOf("invalid", { details: [{ path: "/nodes/1", reason: "bad <b>", code: "X" }] })} />);
     expect(invalid).toContain("<code>/nodes/1</code>");
     expect(invalid).toContain("bad &lt;b&gt;"); // server text is escaped, never HTML
-    expect(html(<ProblemView problem={problemOf("rate_limited", { retryAfterSeconds: 9 })} />)).toContain("Try again in 9 s.");
+    expect(html(<ProblemView problem={problemOf("rate_limited", { retryAfterSeconds: 9 })} />)).toContain("Try again in 9 seconds.");
+    expect(html(<ProblemView problem={problemOf("rate_limited", { retryAfterSeconds: 1 })} />)).toContain("Try again in 1 second.");
     expect(html(<ProblemView problem={problemOf("internal")} />)).not.toContain("Request ID");
   });
 
   it("RemoteView shows loading, the problem or the data", () => {
-    const render = (r: Parameters<typeof RemoteView<string>>[0]["remote"]) => html(<RemoteView remote={r} what="x">{(d) => <p>{d}</p>}</RemoteView>);
-    expect(render({ state: "loading" })).toContain("Loading x");
-    expect(render({ state: "failed", problem: problemOf("forbidden") })).toContain(problemHeadings.forbidden);
+    const render = (r: Parameters<typeof RemoteView<string>>[0]["remote"]) => html(<RemoteView remote={r} what="models">{(d) => <p>{d}</p>}</RemoteView>);
+    expect(render({ state: "loading" })).toContain(en["loading.models"]);
+    expect(render({ state: "failed", problem: problemOf("forbidden") })).toContain(heading("forbidden"));
     expect(render({ state: "loaded", data: "hello", requestId: null })).toContain("<p>hello</p>");
   });
 });
@@ -101,10 +106,10 @@ describe("draft status", () => {
   it("gives an editor both choices on a conflict and keeps the changes", () => {
     const out = html(<DraftStatus session={conflicted} onReload={reloadOk} onDiscard={noop} />, editor);
     expect(out).toContain('data-draft-status="conflict"');
-    expect(out).toContain("1 change(s) not saved");
+    expect(out).toContain("Draft revision 3. 1 change not saved.");
     expect(out).toContain("Reload the current draft");
     expect(out).toContain("Discard my changes");
-    expect(out).toContain(problemHeadings.conflict);
+    expect(out).toContain(heading("conflict"));
   });
 
   it("gives a viewer no edit actions", () => {

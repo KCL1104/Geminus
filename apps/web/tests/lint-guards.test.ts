@@ -1,6 +1,9 @@
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// The first lint loads every plugin, which can take longer than the default 5 s.
+vi.setConfig({ testTimeout: 30_000 });
 
 const eslint = new ESLint({ cwd: fileURLToPath(new URL("..", import.meta.url)) });
 
@@ -42,5 +45,42 @@ describe("eslint-config-next plugins run under the pinned ESLint", () => {
     ["@next/next/no-html-link-for-pages", 'export const N = () => <a href="/">home</a>;'],
   ])("%s fires", async (rule, code) => {
     expect(await ruleIds(code)).toContain(rule);
+  });
+});
+
+// REQ-022: user-visible text comes from the message catalog.
+describe("hard-coded UI text", () => {
+  it.each([
+    ["JSX text", "export const P = () => <p>Hello</p>;"],
+    ["a string in JSX", 'export const P = () => <p>{"Hello"}</p>;'],
+    ["a template literal in JSX", "export const P = ({ n }: { n: number }) => <p>{`${n} items`}</p>;"],
+    ["an aria-label", 'export const N = () => <nav aria-label="Main" />;'],
+    ["a title", 'export const S = () => <span title="Help" />;'],
+    ["a placeholder", 'export const I = () => <input placeholder="Name" />;'],
+    ["an alt text", 'export const A = () => <img src="/a.png" alt="Logo" />;'],
+    ["an aria-label expression", 'export const N = () => <nav aria-label={"Main"} />;'],
+    ["a string after &&", 'export const P = ({ a }: { a: boolean }) => <p>{a && " (out of date)"}</p>;'],
+    ["a string in a conditional", 'export const P = ({ a }: { a: boolean }) => <p>{a ? "Yes" : "No"}</p>;'],
+    ["Chinese text", "export const P = () => <p>專案</p>;"],
+    ["a string in a nested conditional", 'export const P = ({ a, b }: { a: boolean; b: boolean }) => <p>{a && (b ? "Yes" : null)}</p>;'],
+    ["a string in a fragment's conditional", 'export const P = ({ a }: { a: boolean }) => <>{a && "Yes"}</>;'],
+    ["Chinese text in a conditional", 'export const P = ({ a }: { a: boolean }) => <p>{a && "專案"}</p>;'],
+  ])("rejects %s", async (_, code) => {
+    const ids = await ruleIds(code);
+    expect(ids.some((id) => id === "react/jsx-no-literals" || id === "no-restricted-syntax"), ids.join(",")).toBe(true);
+  });
+
+  it.each([
+    ["catalog text", 'declare const t: (k: string) => string;\nexport const P = () => <p>{t("x")}</p>;'],
+    ["punctuation", 'declare const a: string;\nexport const P = () => <p>{a}{" "}{a}{"/"}</p>;'],
+    ["non-text attributes", 'export const B = () => <button type="button" className="x" role="status" data-x="y" />;'],
+    ["data", "export const P = ({ name }: { name: string }) => <p>{name}</p>;"],
+    ["a conditional between data", "export const P = ({ a, b }: { a: string; b: string }) => <p>{a || b}{a ? \"/\" : null}</p>;"],
+    ["a catalog key chosen by a condition", 'declare const t: (k: string) => string;\nexport const P = ({ a }: { a: boolean }) => <p>{t(a ? "x.y" : "x.z")}</p>;'],
+    ["a conditional that maps data", 'export const P = ({ a }: { a: boolean }) => <p>{a && [1].map((n) => String(n)).join("x")}</p>;'],
+  ])("allows %s", async (_, code) => {
+    const ids = await ruleIds(code);
+    expect(ids).not.toContain("react/jsx-no-literals");
+    expect(ids).not.toContain("no-restricted-syntax");
   });
 });

@@ -5,7 +5,7 @@
   "schema_negative_fixtures": 45,
   "negative_fixtures_with_exact_error_path": 40,
   "limited_semantic_negative_fixtures": 7,
-  "resolved_local_ref_occurrences": 786,
+  "resolved_local_ref_occurrences": 787,
   "openapi_operations": 41,
   "optional_fastapi_openapi_model": "NOT_RUN_NOT_INSTALLED",
   "independent_complete_openapi_validator": "NOT_RUN_UNAVAILABLE",

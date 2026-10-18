@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -659,6 +660,210 @@ func (p remembersLastNodeIDs) Validate(ir *model.ModelIR) []model.ValidationIssu
 	return out
 }
 
+// templates is a correct TemplateProvider (REQ-022): the queue fixture as
+// its one template, the clerk's default name in each locale.
+type templates struct{ queuePack }
+
+func (templates) Templates() []string { return []string{"queue"} }
+
+func (templates) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	if name != "queue" {
+		return nil, errors.New("unknown template")
+	}
+	return queueTemplate(modelID, modelName, locale)
+}
+
+func queueTemplate(modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	data, err := os.ReadFile(filepath.Join("testdata", "generic-queue.json"))
+	if err != nil {
+		return nil, err
+	}
+	var ir model.ModelIR
+	if err := model.Decode(data, &ir); err != nil {
+		return nil, err
+	}
+	ir.ModelID, ir.Name = modelID, modelName
+	switch locale {
+	case domainpack.English:
+	case domainpack.TraditionalChinese:
+		ir.Resources[0].Name = "櫃台人員"
+	default:
+		return nil, errors.New("unknown locale")
+	}
+	return &ir, nil
+}
+
+// noTemplates implements the interface with nothing to offer.
+type noTemplates struct{ templates }
+
+func (noTemplates) Templates() []string { return nil }
+
+// templateAnyLocale answers an unknown locale with the default one.
+type templateAnyLocale struct{ templates }
+
+func (p templateAnyLocale) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	if !slices.Contains(domainpack.Locales, locale) {
+		locale = domainpack.English
+	}
+	return p.templates.Template(name, modelID, modelName, locale)
+}
+
+// templateAnyName answers an unknown template with its own.
+type templateAnyName struct{ templates }
+
+func (p templateAnyName) Template(_, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	return p.templates.Template("queue", modelID, modelName, locale)
+}
+
+// templateTopologyByLocale changes a resource's capacity, not just a name,
+// in zh-Hant.
+type templateTopologyByLocale struct{ templates }
+
+func (p templateTopologyByLocale) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err == nil && locale == domainpack.TraditionalChinese {
+		ir.Resources[0].Capacity++
+	}
+	return ir, err
+}
+
+// templateInvalid has no sink in zh-Hant.
+type templateInvalid struct{ templates }
+
+func (p templateInvalid) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err == nil && locale == domainpack.TraditionalChinese {
+		ir.Flows = ir.Flows[:len(ir.Flows)-1]
+	}
+	return ir, err
+}
+
+// templateKeepsName ignores the name it is given.
+type templateKeepsName struct{ templates }
+
+func (p templateKeepsName) Template(name, modelID, _ string, locale domainpack.Locale) (*model.ModelIR, error) {
+	return p.templates.Template(name, modelID, "Fixture name", locale)
+}
+
+// templateFlaky gives another capacity on every call.
+type templateFlaky struct {
+	templates
+	n *atomic.Int64
+}
+
+func (p templateFlaky) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err == nil {
+		ir.Resources[0].Capacity += int(p.n.Add(1))
+	}
+	return ir, err
+}
+
+// templateFails cannot build its template in zh-Hant.
+type templateFails struct{ templates }
+
+func (p templateFails) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	if locale == domainpack.TraditionalChinese {
+		return nil, errors.New("no zh-Hant names")
+	}
+	return p.templates.Template(name, modelID, modelName, locale)
+}
+
+// templateBlankName lists a template without a name.
+type templateBlankName struct{ templates }
+
+func (templateBlankName) Templates() []string { return []string{"queue", ""} }
+
+// templateTwice lists its template twice.
+type templateTwice struct{ templates }
+
+func (templateTwice) Templates() []string { return []string{"queue", "queue"} }
+
+// templatesPanic panics when asked what it offers.
+type templatesPanic struct{ templates }
+
+func (templatesPanic) Templates() []string { panic("templates") }
+
+// templatePanics panics building its template in zh-Hant.
+type templatePanics struct{ templates }
+
+func (p templatePanics) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	if locale == domainpack.TraditionalChinese {
+		panic("template")
+	}
+	return p.templates.Template(name, modelID, modelName, locale)
+}
+
+// templateNilModel answers zh-Hant with neither a model nor an error.
+type templateNilModel struct{ templates }
+
+func (p templateNilModel) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	if locale == domainpack.TraditionalChinese {
+		return nil, nil
+	}
+	return p.templates.Template(name, modelID, modelName, locale)
+}
+
+// templateOtherDomain builds its template in another domain.
+type templateOtherDomain struct{ templates }
+
+func (p templateOtherDomain) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err == nil {
+		ir.Domain = "other_domain"
+	}
+	return ir, err
+}
+
+// templateKeepsModelID ignores the model ID it is given.
+type templateKeepsModelID struct{ templates }
+
+func (p templateKeepsModelID) Template(name, _, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	return p.templates.Template(name, "mdl_01M4YDQK00F1XTVRE000000000", modelName, locale)
+}
+
+// templateAgainstOwnRules builds a template its own Validate rejects.
+type templateAgainstOwnRules struct{ templates }
+
+func (templateAgainstOwnRules) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir != nil && ir.ModelID == templateModelID {
+		return []model.ValidationIssue{model.NewIssue("QUEUE_TEMPLATE_RULE", "/resources/0", "a template breaks its own rule", model.SeverityError)}
+	}
+	return queuePack{}.Validate(ir)
+}
+
+// templateWarns is correct: its rules only warn about its template.
+type templateWarns struct{ templates }
+
+func (templateWarns) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir != nil && ir.ModelID == templateModelID {
+		return []model.ValidationIssue{model.NewIssue("QUEUE_TEMPLATE_HINT", "/resources/0", "one clerk only", model.SeverityWarning)}
+	}
+	return queuePack{}.Validate(ir)
+}
+
+// localeErrorWithModel answers an unknown locale with an error and a model.
+type localeErrorWithModel struct{ templates }
+
+func (p localeErrorWithModel) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	if !slices.Contains(domainpack.Locales, locale) {
+		ir, _ := p.templates.Template(name, modelID, modelName, domainpack.English)
+		return ir, errors.New("unknown locale")
+	}
+	return p.templates.Template(name, modelID, modelName, locale)
+}
+
+// templateErrorWithModel answers an unknown template with an error and a model.
+type templateErrorWithModel struct{ templates }
+
+func (p templateErrorWithModel) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	if name != "queue" {
+		ir, _ := p.templates.Template("queue", modelID, modelName, locale)
+		return ir, errors.New("unknown template")
+	}
+	return p.templates.Template(name, modelID, modelName, locale)
+}
+
 // countsIntoIssues adds how often it validated to its issues: its answer
 // for a model depends on earlier calls.
 type countsIntoIssues struct {
@@ -816,6 +1021,24 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 		{leaksEventsIntoPrompt{}, "prompt/static", "carries text"},
 		{remembersLastModel{last: new(atomic.Pointer[string])}, "stateless", "returns text"},
 		{remembersLastNodeIDs{last: new(atomic.Pointer[string])}, "stateless", "returns text"},
+		{noTemplates{}, "templates/list", ""},
+		{templateAnyLocale{}, "templates/unknown-locale", ""},
+		{templateAnyName{}, "templates/unknown-template", ""},
+		{templateTopologyByLocale{}, "templates/locales", ""},
+		{templateInvalid{}, "templates/valid", "zh-Hant"},
+		{templateKeepsName{}, "templates/valid", "not the ones asked for"},
+		{templateBlankName{}, "templates/list", ""},
+		{templateTwice{}, "templates/list", ""},
+		{templatesPanic{}, "templates/list", "panicked"},
+		{templatePanics{}, "templates/valid", "panicked"},
+		{templateNilModel{}, "templates/valid", "no model"},
+		{templateOtherDomain{}, "templates/valid", "not the ones asked for"},
+		{templateKeepsModelID{}, "templates/valid", "not the ones asked for"},
+		{templateAgainstOwnRules{}, "templates/valid", "pack's rules"},
+		{localeErrorWithModel{}, "templates/unknown-locale", ""},
+		{templateErrorWithModel{}, "templates/unknown-template", ""},
+		{templateFlaky{n: new(atomic.Int64)}, "templates/deterministic", ""},
+		{templateFails{}, "templates/valid", "zh-Hant"},
 		{countsIntoIssues{n: new(atomic.Int64)}, "stateless", "answers differently"},
 		{viewsRememberLastModel{last: new(atomic.Pointer[string])}, "stateless", "answers differently"},
 		{countsMetrics{n: new(atomic.Int64)}, "stateless", "answers differently"},
@@ -847,9 +1070,11 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 	lm := clone(&m)
 	lm.Domain = long
 	for name, s := range map[string]Suite{
-		"declines": {Pack: queuePack{}, Models: []model.ModelIR{m}},
-		"answers":  {Pack: answers{m: m}, Models: []model.ModelIR{m}},
-		"long ID":  {Pack: longID{id: long}, Models: []model.ModelIR{lm}},
+		"declines":  {Pack: queuePack{}, Models: []model.ModelIR{m}},
+		"templates": {Pack: templates{}, Models: []model.ModelIR{m}},
+		"warns":     {Pack: templateWarns{}, Models: []model.ModelIR{m}},
+		"answers":   {Pack: answers{m: m}, Models: []model.ModelIR{m}},
+		"long ID":   {Pack: longID{id: long}, Models: []model.ModelIR{lm}},
 		// A pack whose ID is the suite's first renamed domain gets the other.
 		"renamed ID": {Pack: longID{id: renamedDomains[0]}, Models: []model.ModelIR{func() model.ModelIR { r := clone(&m); r.Domain = renamedDomains[0]; return r }()}},
 	} {

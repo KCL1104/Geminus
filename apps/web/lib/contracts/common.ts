@@ -106,3 +106,9 @@ export type ResourceID = string;
 
 /** D-025 closed HTTP error-code catalogue. x-http-status maps each code to its only status. */
 export type ErrorCode = "INVALID_REQUEST" | "IDEMPOTENCY_KEY_REQUIRED" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "MODEL_VERSION_CONFLICT" | "IDEMPOTENCY_KEY_CONFLICT" | "LIFECYCLE_CONFLICT" | "RESULT_NOT_READY" | "PROPOSAL_ALREADY_DECIDED" | "PAYLOAD_TOO_LARGE" | "UNSUPPORTED_MEDIA_TYPE" | "MODEL_VALIDATION_FAILED" | "REQUEST_VALIDATION_FAILED" | "PRECONDITION_REQUIRED" | "RATE_LIMITED" | "INTERNAL_ERROR" | "SERVICE_UNAVAILABLE" | "AI_PROVIDER_NOT_CONFIGURED" | "AI_POLICY_NOT_APPROVED";
+
+/** UI, template and AI prose language (REQ-022, H-005): en is the default; zh-Hant is Traditional Chinese. */
+export type Locale = "en" | "zh-Hant";
+
+/** The issue codes the generic validator (TWIN_IR_SPEC §4, D-023), the patch policy (D-014, D-020) and the P0 domain pack emit; Go tests keep this list equal to their constants. ValidationIssue.code stays open: a later pack may add a code, which the UI shows with a generic text. */
+export type ValidationCode = "JSON_INVALID" | "IR_SCHEMA_INVALID" | "LIMIT_EXCEEDED" | "DUPLICATE_ID" | "UNKNOWN_REFERENCE" | "VIEW_REFERENCE_INVALID" | "ROUTING_INVALID" | "NO_REACHABLE_SINK" | "ZERO_TIME_CYCLE" | "UNREACHABLE_NODE" | "RESOURCE_REQUIREMENT_INVALID" | "DISTRIBUTION_INVALID" | "CONSTRAINT_FAILED" | "DATASET_BINDING_INVALID" | "DOMAIN_MISMATCH" | "PATCH_SCHEMA_INVALID" | "PATCH_PATH_INVALID" | "PATCH_PATH_FORBIDDEN" | "PATCH_TEST_REQUIRED" | "PATCH_TARGET_MISSING" | "PATCH_TEST_FAILED";

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/domainpack/conformance"
 	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
 	"github.com/kcl1104/geminus/internal/model"
@@ -15,7 +16,7 @@ import (
 // The P0 pack passes the DomainPack conformance suite (T-042) on its
 // default template and every software-delivery golden model.
 func TestConformance(t *testing.T) {
-	tmpl, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, "mdl_01M4YDQK00CNF0RMANCE000000", "Conformance")
+	tmpl, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, "mdl_01M4YDQK00CNF0RMANCE000000", "Conformance", domainpack.English)
 	if err != nil {
 		t.Fatal(err)
 	}

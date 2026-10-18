@@ -80,7 +80,7 @@ func TestTemplateMatchesGoldenFixture(t *testing.T) {
 // REQ-004 / TEST-002: the template is a valid full pipeline
 // Source→Review→CI→Test→Deploy→Sink whose numbers are labelled synthetic.
 func TestTemplate(t *testing.T) {
-	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "My pipeline")
+	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "My pipeline", domainpack.English)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,14 +129,14 @@ func TestTemplate(t *testing.T) {
 	for _, c := range []struct{ tmpl, id, name string }{
 		{"unknown", newModel, "x"}, {softwaredelivery.DefaultTemplate, "mdl_bad", "x"}, {softwaredelivery.DefaultTemplate, newModel, ""},
 	} {
-		if _, err := softwaredelivery.Template(c.tmpl, c.id, c.name); err == nil {
+		if _, err := softwaredelivery.Template(c.tmpl, c.id, c.name, domainpack.English); err == nil {
 			t.Errorf("Template(%q, %q, %q) accepted", c.tmpl, c.id, c.name)
 		}
 	}
 }
 
 func TestValidateRejectsOtherDomains(t *testing.T) {
-	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x")
+	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x", domainpack.English)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestInferenceIsUnavailable(t *testing.T) {
 }
 
 func TestDefaultViewsAndPrompt(t *testing.T) {
-	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x")
+	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x", domainpack.English)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,15 +306,15 @@ func TestDORAUnavailableWithFailuresObserved(t *testing.T) {
 // Template errors are typed; the issues carry JSON Pointers; nothing the
 // caller sent is echoed into the error text.
 func TestTemplateErrors(t *testing.T) {
-	if _, err := softwaredelivery.Template("unknown", newModel, "x"); !errors.Is(err, softwaredelivery.ErrUnknownTemplate) {
+	if _, err := softwaredelivery.Template("unknown", newModel, "x", domainpack.English); !errors.Is(err, softwaredelivery.ErrUnknownTemplate) {
 		t.Errorf("unknown template: %v", err)
 	}
-	if _, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, "mdl_bad", "x"); !errors.Is(err, softwaredelivery.ErrInvalidModelID) {
+	if _, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, "mdl_bad", "x", domainpack.English); !errors.Is(err, softwaredelivery.ErrInvalidModelID) {
 		t.Errorf("bad model ID: %v", err)
 	}
 	long := strings.Repeat("😀", 201)
 	for _, name := range []string{"", long, "bad \xff"} {
-		_, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, name)
+		_, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, name, domainpack.English)
 		var te *softwaredelivery.InvalidError
 		if !errors.As(err, &te) || !errors.Is(err, softwaredelivery.ErrInvalidTemplateInput) || len(te.Issues) == 0 {
 			t.Errorf("name %q: %v", name, err)
@@ -331,7 +331,7 @@ func TestTemplateErrors(t *testing.T) {
 
 // A model created from the template is labelled synthetic but is not a fixture.
 func TestTemplateMetadataForUserModels(t *testing.T) {
-	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x")
+	ir, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x", domainpack.English)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,5 +359,162 @@ func TestValidateUnvalidatedInput(t *testing.T) {
 	}
 	if v := pack.DefaultViews(nil); len(v.Positions) != 0 {
 		t.Errorf("nil IR views: %v", v)
+	}
+}
+
+// REQ-022: the template is the same model in every locale; only its default
+// names differ, and the name the user gave is kept as given.
+func TestTemplateLocales(t *testing.T) {
+	en, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "My pipeline", domainpack.English)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zh, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "我的流程", domainpack.TraditionalChinese)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := func(ir *model.ModelIR) map[string]string {
+		out := map[string]string{}
+		for _, e := range ir.EntityTypes {
+			out[e.ID] = e.Name
+		}
+		for _, r := range ir.Resources {
+			out[r.ID] = r.Name
+		}
+		for _, n := range ir.Nodes {
+			if n.Name != "" {
+				out[n.ID] = n.Name
+			}
+		}
+		return out
+	}
+	wantEN := map[string]string{"change": "Software Change", "reviewer": "Reviewer", "ci_runner": "Ci Runner", "test_environment": "Test Environment", "deployment_slot": "Deployment Slot"}
+	wantZH := map[string]string{"change": "軟體變更", "reviewer": "審查者", "ci_runner": "CI 執行器", "test_environment": "測試環境", "deployment_slot": "部署槽位"}
+	if got := names(en); !maps.Equal(got, wantEN) {
+		t.Errorf("en names %v", got)
+	}
+	if got := names(zh); !maps.Equal(got, wantZH) {
+		t.Errorf("zh-Hant names %v", got)
+	}
+	if zh.Name != "我的流程" || en.Name != "My pipeline" {
+		t.Errorf("model names %q %q", en.Name, zh.Name)
+	}
+	if issues := pack.Validate(zh); len(issues) != 0 {
+		t.Errorf("zh-Hant template: domain issues %v", issues)
+	}
+	// Without the names, the two are the same model.
+	strip := func(ir *model.ModelIR) string {
+		c := *ir
+		c.Name = ""
+		c.EntityTypes, c.Resources, c.Nodes = slices.Clone(c.EntityTypes), slices.Clone(c.Resources), slices.Clone(c.Nodes)
+		for i := range c.EntityTypes {
+			c.EntityTypes[i].Name = ""
+		}
+		for i := range c.Resources {
+			c.Resources[i].Name = ""
+		}
+		for i := range c.Nodes {
+			c.Nodes[i].Name = ""
+		}
+		data, err := model.Encode(&c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		v := jsontext.Value(data)
+		if err := v.Canonicalize(); err != nil { // map order is not part of the model
+			t.Fatal(err)
+		}
+		return string(v)
+	}
+	if strip(en) != strip(zh) {
+		t.Error("the zh-Hant template differs from the en one in more than its names")
+	}
+	for _, l := range []domainpack.Locale{"", "fr", "zh-hant", "zh-Hans", "EN", "en-US"} {
+		if _, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x", l); !errors.Is(err, softwaredelivery.ErrUnknownLocale) {
+			t.Errorf("locale %q: %v", l, err)
+		}
+	}
+	var provider domainpack.TemplateProvider = softwaredelivery.Pack{}
+	if got, err := provider.Template(softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese); err != nil || names(got)["change"] != "軟體變更" {
+		t.Errorf("Pack.Template: %v %v", got, err)
+	}
+	if !slices.Equal(provider.Templates(), softwaredelivery.Templates()) {
+		t.Errorf("Pack.Templates %v", provider.Templates())
+	}
+}
+
+// A names file must name exactly the template's named elements, so a
+// locale never shows a mix of languages: a missing, empty or extra name, an
+// unknown member or broken JSON is an error (Template then returns no IR).
+func TestNamesFileStrict(t *testing.T) {
+	en, err := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x", domainpack.English)
+	if err != nil {
+		t.Fatal(err)
+	}
+	complete := map[string]any{
+		"entity_types": map[string]string{"change": "變更"},
+		"resources":    map[string]string{"reviewer": "甲", "ci_runner": "乙", "test_environment": "丙", "deployment_slot": "丁"},
+		"nodes":        map[string]string{},
+	}
+	with := func(section, id string, name any) []byte {
+		doc := map[string]any{}
+		for k, v := range complete {
+			m := maps.Clone(v.(map[string]string))
+			doc[k] = m
+		}
+		m := doc[section].(map[string]string)
+		switch n := name.(type) {
+		case nil:
+			delete(m, id)
+		case string:
+			m[id] = n
+		}
+		data, err := json.Marshal(doc, json.Deterministic(true))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return data
+	}
+	ir := *en
+	ir.EntityTypes, ir.Resources, ir.Nodes = slices.Clone(en.EntityTypes), slices.Clone(en.Resources), slices.Clone(en.Nodes)
+	if err := softwaredelivery.ApplyNames(&ir, softwaredelivery.DefaultTemplate, domainpack.TraditionalChinese, with("nodes", "", false)); err != nil {
+		t.Fatalf("complete names: %v", err)
+	}
+	if ir.EntityTypes[0].Name != "變更" || ir.Resources[0].Name == en.Resources[0].Name {
+		t.Errorf("names not applied: %v %v", ir.EntityTypes, ir.Resources)
+	}
+	for name, raw := range map[string][]byte{
+		"missing entity type": with("entity_types", "change", nil),
+		"missing resource":    with("resources", "ci_runner", nil),
+		"empty resource name": with("resources", "reviewer", ""),
+		"extra entity type":   with("entity_types", "ticket", "工單"),
+		"extra resource":      with("resources", "approver", "核准者"),
+		"extra node":          with("nodes", "review", "審查"),
+		"unknown member":      []byte(`{"entity_types":{"change":"變更"},"resources":{"reviewer":"甲","ci_runner":"乙","test_environment":"丙","deployment_slot":"丁"},"nodes":{},"labels":{}}`),
+		"broken JSON":         []byte(`{"entity_types":`),
+	} {
+		ir := *en
+		ir.EntityTypes, ir.Resources, ir.Nodes = slices.Clone(en.EntityTypes), slices.Clone(en.Resources), slices.Clone(en.Nodes)
+		if err := softwaredelivery.ApplyNames(&ir, softwaredelivery.DefaultTemplate, domainpack.TraditionalChinese, raw); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
+
+// The pack's validation code is in the contract's catalogue
+// (common.schema.json#/$defs/ValidationCode), which the UI localizes.
+func TestValidationCodeInContract(t *testing.T) {
+	var doc struct {
+		Defs struct {
+			ValidationCode struct {
+				Enum []string `json:"enum"`
+			} `json:"ValidationCode"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "schemas/common.schema.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(doc.Defs.ValidationCode.Enum, softwaredelivery.DomainMismatch) {
+		t.Errorf("%s is not in ValidationCode %v", softwaredelivery.DomainMismatch, doc.Defs.ValidationCode.Enum)
 	}
 }

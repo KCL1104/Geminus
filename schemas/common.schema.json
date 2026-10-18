@@ -390,6 +390,41 @@
         "AI_PROVIDER_NOT_CONFIGURED": 503,
         "AI_POLICY_NOT_APPROVED": 503
       }
+    },
+    "Locale": {
+      "type": "string",
+      "enum": [
+        "en",
+        "zh-Hant"
+      ],
+      "description": "UI, template and AI prose language (REQ-022, H-005): en is the default; zh-Hant is Traditional Chinese."
+    },
+    "ValidationCode": {
+      "type": "string",
+      "enum": [
+        "JSON_INVALID",
+        "IR_SCHEMA_INVALID",
+        "LIMIT_EXCEEDED",
+        "DUPLICATE_ID",
+        "UNKNOWN_REFERENCE",
+        "VIEW_REFERENCE_INVALID",
+        "ROUTING_INVALID",
+        "NO_REACHABLE_SINK",
+        "ZERO_TIME_CYCLE",
+        "UNREACHABLE_NODE",
+        "RESOURCE_REQUIREMENT_INVALID",
+        "DISTRIBUTION_INVALID",
+        "CONSTRAINT_FAILED",
+        "DATASET_BINDING_INVALID",
+        "DOMAIN_MISMATCH",
+        "PATCH_SCHEMA_INVALID",
+        "PATCH_PATH_INVALID",
+        "PATCH_PATH_FORBIDDEN",
+        "PATCH_TEST_REQUIRED",
+        "PATCH_TARGET_MISSING",
+        "PATCH_TEST_FAILED"
+      ],
+      "description": "The issue codes the generic validator (TWIN_IR_SPEC §4, D-023), the patch policy (D-014, D-020) and the P0 domain pack emit; Go tests keep this list equal to their constants. ValidationIssue.code stays open: a later pack may add a code, which the UI shows with a generic text."
     }
   }
 }
