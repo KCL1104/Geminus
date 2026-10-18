@@ -1541,19 +1541,19 @@ make db-go-test
 make[1]: Entering directory '<scratchpad>/wt-final'
 GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/api/... ./cmd/api/... ./cmd/provision-tenant/...
 ?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
-ok  	github.com/kcl1104/geminus/internal/storage/datasets	3.216s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	2.927s
 ?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
 ?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
-ok  	github.com/kcl1104/geminus/internal/storage/memberships	1.074s
-ok  	github.com/kcl1104/geminus/internal/storage/models	1.214s
-ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.483s
-ok  	github.com/kcl1104/geminus/internal/storage/projects	1.093s
-ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.421s
-ok  	github.com/kcl1104/geminus/internal/tenant	2.474s
-ok  	github.com/kcl1104/geminus/internal/tenant/memberships	12.863s
-ok  	github.com/kcl1104/geminus/internal/models	17.762s
-ok  	github.com/kcl1104/geminus/internal/api	6.575s
-ok  	github.com/kcl1104/geminus/cmd/api	1.105s
-ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.119s
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	1.081s
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.259s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.502s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	1.076s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.438s
+ok  	github.com/kcl1104/geminus/internal/tenant	2.551s
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	12.776s
+ok  	github.com/kcl1104/geminus/internal/models	18.087s
+ok  	github.com/kcl1104/geminus/internal/api	6.838s
+ok  	github.com/kcl1104/geminus/cmd/api	1.111s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.132s
 make[1]: Leaving directory '<scratchpad>/wt-final'
 integration-test: API and database covered; worker integration is NOT RUN until T-019 adds the job loop.
