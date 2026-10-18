@@ -103,7 +103,7 @@ MUTANTS = [
     ("prov-name-untrimmed", PROV, "strings.TrimSpace(name) == name && ", ""),
     ("prov-name-empty", PROV, " && name != \"\" && ", " && "),
     ("prov-name-long", PROV, "utf8.RuneCountInString(name) <= 200", "utf8.RuneCountInString(name) <= 201"),
-    ("prov-name-controls-only", PROV, "func(r rune) bool { return !unicode.IsPrint(r) }", "func(r rune) bool { return r < 0x20 || r == 0x7f }"),
+    ("prov-name-controls-only", PROV, "func(r rune) bool { return !unicode.IsPrint(r) }", "func(r rune) bool { return unicode.IsControl(r) && r < 0x80 }"),
     ("prov-name-not-utf8", PROV, "\treturn utf8.ValidString(name) && ", "\treturn "),
     ("prov-user-conflict-unhandled", PROV, "\n\t\tON CONFLICT (oidc_issuer, oidc_subject) DO NOTHING`", "`"),
     ("prov-user-always-created", PROV, "\tif tag.RowsAffected() == 1 {", "\tif tag.RowsAffected() >= 0 {"),
