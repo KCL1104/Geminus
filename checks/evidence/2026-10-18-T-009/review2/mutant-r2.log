@@ -1,0 +1,6 @@
+# mutant: the U+0000 detail keeps the uncut pointer (Path: path instead of is.Path)
+    httpapi_test.go:463: path of 3012 characters: "/metadata/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"…
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/httpapi	0.061s
+FAIL
+go test exit=1

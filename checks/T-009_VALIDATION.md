@@ -1,6 +1,6 @@
 # T-009 驗證報告：Project service 與 server RBAC
 
-**日期：2026-10-18｜狀態：`review`（首輪獨立 review 為 CHANGES REQUESTED，已先紅後綠修正，等待同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-001、REQ-002｜Gate：D-008、D-012、D-025（皆已批准；另用到已批准的 D-001、D-011）｜實作選擇：ADR-019（PROPOSED，依 owner 授權先實作）**
+**日期：2026-10-18｜狀態：`done`（首輪獨立 review 為 CHANGES REQUESTED，已先紅後綠修正；同一 reviewer 複核 98f5e9c 為 **ACCEPT**，其 low 發現已處理；依 H-003 驗收，owner 可隨時重開）｜需求：REQ-001、REQ-002｜Gate：D-008、D-012、D-025（皆已批准；另用到已批准的 D-001、D-011）｜實作選擇：ADR-019（ACCEPTED，H-006）**
 
 逐條輸出在 `checks/evidence/2026-10-18-T-009/`。範圍依 tasks.json：project endpoints 與 scoped listing、每個 request 在同一 transaction 查 membership／role、錯誤／cursor／request_id 與 OpenAPI 對齊。本任務也建立了之後每個 route 共用的 HTTP 層（ADR-019）與 `make integration-test`。
 
@@ -48,6 +48,29 @@ Reviewer 以 `git archive fb6e265` 的 export 與自己的 disposable database �
 | L8 | DB 無法連線時 log 為「refusing the database login」，註解說不含 URL 但含 host／user；GET 的 503 訊息叫 client 用同一 Idempotency-Key 重試 | 不安全的 login 與無法連線分開記錄（`refusing the database login`／`database unavailable`），註解改為「不含密碼」；503 訊息改為「重試（write 用同一 Idempotency-Key）」 | `TestRunNeedsTheDatabase`、`TestRunServesAndStops` |
 
 `make integration-test` 在 worker 部分 NOT RUN 時 exit 0，reviewer 列為資訊項：target 明確印出 NOT RUN，本報告亦列出（見下）。
+
+## 獨立複核（2026-10-18，H-003）：ACCEPT
+
+同一 reviewer 以自己的 `git archive 98f5e9c` export 與新的 disposable database（`dt_test_review_2`、`dt_test_review_mut2`）複核，未使用工作樹。結論：
+
+- 首輪全部發現已修，且經得起 probe。
+- 報告數字全部重現：
+  - `make integration-test` exit 0；62 RUN、0 SKIP、0 FAIL；
+  - `backend-test`、`backend-race`、`architecture-check`、`spec-check` 皆 exit 0；
+  - 新測試在負載下重複 5–10 次皆通過；
+  - mutation 191 個：186 killed、5 equivalent、無 survivor、無靠 timeout 的 kill。單次執行在 133／191 被外部中止，其餘 58 個以 `--only` 在同一 tree 補跑，每個 mutant 各跑一次。
+- Path normalisation 的 probe（absolute-form、`%2F`、`%2e%2e`、`%00`、`CONNECT`、`//`、`/./`、結尾斜線、HEAD）都回 envelope，沒有 redirect。
+
+它另提出三個 low 發現，T-009 的 route 都觸發不到，處理如下（證據在 `checks/evidence/2026-10-18-T-009/review2/`）：
+
+| # | 發現 | 處理 | 證明 |
+|---|---|---|---|
+| R1 | 讀寫 `Run` 的 `FOR SHARE` 與 D-036 的 owner 有序 `FOR UPDATE` 鎖會 deadlock：兩個 owner 同時變更成員時，reviewer probe 3／3 次 `40P01`，拿掉 `FOR SHARE` 則 0／3。T-009 沒有變更 membership 的 route | 記入 ADR-019（已知限制）與 T-010 scope：成員變更須用不先取 `FOR SHARE` 的 run 模式（先取 D-036 有序鎖，再重讀 caller role），並以兩個 owner 並行變更的測試證明 | 屬 T-010 實作；本任務不加未使用的模式 |
+| R2 | U+0000 detail 的 JSON Pointer 沒有長度上限，可超過 `common.schema.json` 的 `path` `maxLength` 2048（`CreateProject` 只有 `/name`，觸發不到） | 改經 `model.NewIssue`，與 validator issue 一樣截到放得下的最深 ancestor | `red-r2.log`（3012 字元）→ `green-r2.log`；`mutant-r2.log`（還原為未截斷的 pointer 即失敗） |
+| R3 | ADR-019 說經 `tenant.Tx` 寫的 SQL 仍「在 RLS 與 scope 之下」，不對：(a) `Run` 內可 `set_config` 改 tenant context 讀別的 organization；(b) `tenant.NewWorker` 可被 API 端呼叫，不查 membership 讀任何 organization，architecture-check 看不出來 | 改正 ADR-019；(b) 記入 T-019 scope（worker scope 移到只有 worker 端可 import 的 package＋architecture 規則；目前無 production 呼叫者）；(a) 與「`tenant.Tx` 縮成不含 `Conn()` 的介面」記入 T-036 | 文件 |
+| 資訊 | `GET *`、`POST *` 由 net/http 回純文字 400，不到 handler | ADR-019 補記 | — |
+
+修正後的檢查（`review2/`）：`backend-test`、`architecture-check`、`spec-check` exit 0；`make integration-test` 在新的 `dt_test_fresh4` exit 0（worker 部分 NOT RUN，T-019）。
 
 ## 實際執行結果
 

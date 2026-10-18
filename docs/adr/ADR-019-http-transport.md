@@ -34,7 +34,7 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
 
 - 其他錯誤一律 500 `INTERNAL_ERROR`，訊息固定為 `internal error`，原因只寫 log（帶 request_id）。
 - Panic 轉為 500；`http.ErrAbortHandler` 照原意中止回應。
-- Contract 以外的 request 也回 envelope（T-009 review L2）：非 clean form 的 path（ServeMux 原本會 307 redirect）與 HEAD（ServeMux 原本交給 GET 的 handler）都是 404 `NOT_FOUND`；其他未宣告的 method 亦同。`OPTIONS *` 由 net/http 自己回空的 200，不到 handler。
+- Contract 以外的 request 也回 envelope（T-009 review L2）：非 clean form 的 path（ServeMux 原本會 307 redirect）與 HEAD（ServeMux 原本交給 GET 的 handler）都是 404 `NOT_FOUND`；其他未宣告的 method 亦同。`OPTIONS *` 由 net/http 自己回空的 200，`GET *`、`POST *` 等其他 method 的 `*` 由 net/http 回純文字 400，都不到 handler（不是 envelope）。
 
 ### Request ID
 
@@ -59,6 +59,7 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
   4. 把 scope 交給 handler。
 - Header 只是 selector（D-008）。Membership 與 role 由 handler 在 `tenant.DB.Run` 的同一個 transaction 中檢查：非 member 回 404，role 不足回 403。
 - 讀寫的 run 以 `FOR SHARE` 鎖住它檢查過的 membership row 直到 transaction 結束：同時發生的撤權或 role 變更會等這個 write commit，不會先 commit 而讓 write 繼續（T-009 review L3）。唯讀的 run 不上鎖。
+  - **已知限制（T-009 re-review R1，latent）**：D-036 的成員變更 transaction 依 user_id 順序以 `FOR UPDATE` 鎖該 organization 全部 owner membership。若它跑在 `Run(ReadWrite)` 之上，每個 owner 已先持有自己 row 的 `FOR SHARE`，兩個 owner 同時變更成員會形成 lock cycle（reviewer probe：3／3 次 `40P01`，回 `ErrRetryable`／503）。T-009 沒有變更 membership 的 route。T-010 必須提供不先取 `FOR SHARE` 的 run 模式：先取 D-036 的有序鎖（owner caller 自己的 row 在其中），再重讀 caller 的 role；並加上在 `Run` 之上執行 D-036 的並行測試。
 - Route 的 role 與 `planning/api-operations.json` 的 `x-required-roles` 由 contract test 鎖住；service 要求的是同一組值（`createRoles`、`readRoles`），所以被鎖住的就是實際執行的（T-009 review L5）。
 
 ### 寫入
@@ -87,7 +88,8 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
 
 - `db-only-in-storage` 改為不追進 `internal/storage` 與 `internal/tenant` 內部的依賴（`through`）：其他 package 經由它們存取資料，自己不 import driver。`tenant.Tx`／`tenant.TxOptions` 是 pgx 的 alias，service 持有 transaction 只為交給 storage。
 - 這兩個 gateway 包含 storage 的基礎層 `internal/storage/postgres`，它的 `Open` 接受任何連線字串：經由它，一個 package 可以自己開連線，繞過 `tenant.DB.Run`、`CheckRuntimeRole` 與 `Guard`（T-009 review M2）。新規則 `db-handles-only-in-gateways`：只有 `internal/storage`、`internal/tenant` 與 `cmd` 可以依賴它；httpapi 需要的錯誤由 `tenant` 轉出（`tenant.ErrRetryable`、`ErrOutcomeUnknown`）。
-- Import 規則看不到 SQL 字串：service 透過 `tenant.Tx` 自己寫 SQL（包括經 `tx.Conn()` 取得的連線）這件事只能靠 review 擋下（`internal/project` 沒有 SQL）。這些 SQL 仍在 `tenant.DB.Run` 的 transaction 內，以同一個 API login、在 RLS 與 scope 之下執行。
+- Import 規則看不到 SQL 字串：service 透過 `tenant.Tx` 自己寫 SQL（包括經 `tx.Conn()` 取得的連線）這件事只能靠 review 擋下（`internal/project` 沒有 SQL）。這些 SQL 在 `tenant.DB.Run` 的 transaction 內以同一個 API login 執行，但**不受 scope 約束**：它可以 `set_config('app.organization_id', …)` 改掉 transaction 的 tenant context，讀別的 organization（T-009 re-review R3a）。所以 SQL 只寫在 `internal/storage`，由 review 把關；T-036 評估把 `tenant.Tx` 縮成沒有 `Conn()` 的介面。
+- Worker scope（R3b）：`tenant.NewWorker` 在 `internal/tenant`，API 端程式也能 import，以任何 organization 執行而不查 membership，import 規則看不出來。目前沒有 production 呼叫者。T-019 必須把它移到只有 worker 端可 import 的 package，並加 architecture 規則。
 
 ### Server
 

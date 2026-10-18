@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/kcl1104/geminus/internal/ids"
+	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
@@ -92,10 +93,13 @@ func DecodeJSON(r *http.Request, max int64, ref string, dst any) ([]byte, error)
 		return nil, e
 	}
 	// PostgreSQL text cannot hold U+0000, so a string carrying it is refused
-	// here rather than failing in the database (T-009 review L1).
+	// here rather than failing in the database (T-009 review L1). NewIssue
+	// cuts a long pointer to an ancestor that fits the schema's path limit,
+	// as for a validator issue (re-review R2).
 	if path, ok := nulString(data); ok {
+		is := model.NewIssue(string(RequestValidationFailed), path, "strings may not contain U+0000", model.SeverityError)
 		return nil, &Error{Code: RequestValidationFailed, Message: "the request body does not match the schema",
-			Details: []Detail{{Path: path, Reason: "strings may not contain U+0000", Severity: "error"}}}
+			Details: []Detail{{Path: is.Path, Reason: is.Message, Severity: string(is.Severity)}}}
 	}
 	if err := json.Unmarshal(data, dst); err != nil {
 		return nil, fmt.Errorf("schema-valid body does not decode: %w", err) // schema and type drifted

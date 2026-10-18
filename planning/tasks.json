@@ -516,7 +516,7 @@
       "id": "T-009",
       "title": "Project service 與 server RBAC",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Platform",
       "planning_window": "Week 3",
       "depends_on": [
@@ -565,10 +565,14 @@
           "date": "2026-10-18",
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-009_VALIDATION.md",
-          "summary": "Project routes（POST/GET /v1/projects、GET /v1/projects/{id}）與共用 HTTP 層（ADR-019，PROPOSED）：封閉 error code 與 status 由 contract test 鎖成 schema、server 發的 req_ ULID、strict 且經 schema 驗證的 JSON body（415/413/400/422）、Scoped middleware（token → 單一 X-Organization-ID → ResolveUser），membership 與 role 在同一個 tenant.DB.Run transaction 檢查（非 member 404、role 不足 403）。Create 的效果、audit event 與 idempotency response 同一 transaction（D-011：org/actor/operation scope、JCS hash、byte 相同的重播、409、24 小時）；list 以 (created_at, id) keyset 與綁 organization／list 的 cursor 分頁；storage 皆另帶 organization filter。cmd/api 以 API runtime login 實際服務。make integration-test（db-test＋DB-backed Go tests，-p 1）在新的 PostgreSQL 16 cluster 通過；CI db job 改跑它。Worker 部分 NOT RUN（T-019）。",
-          "reviewer": "pending: independent reviewer agent (H-003)",
+          "summary": "Project routes（POST/GET /v1/projects、GET /v1/projects/{id}）與共用 HTTP 層（ADR-019，ACCEPTED，H-006）：封閉 error code 與 status 由 contract test 鎖成 schema、server 發的 req_ ULID、strict 且經 schema 驗證的 JSON body（415/413/400/422）、Scoped middleware（token → 單一 X-Organization-ID → ResolveUser），membership 與 role 在同一個 tenant.DB.Run transaction 檢查（非 member 404、role 不足 403）。Create 的效果、audit event 與 idempotency response 同一 transaction（D-011：org/actor/operation scope、JCS hash、byte 相同的重播、409、24 小時）；list 以 (created_at, id) keyset 與綁 organization／list 的 cursor 分頁；storage 皆另帶 organization filter。cmd/api 以 API runtime login 實際服務。make integration-test（db-test＋DB-backed Go tests，-p 1）在新的 PostgreSQL 16 cluster 通過；CI db job 改跑它。Worker 部分 NOT RUN（T-019）。",
+          "reviewer": "independent reviewer agent (H-003); owner did not review line by line",
           "ci": "https://github.com/KCL1104/Geminus/actions/runs/39124340510 (fb6e265: 4/4 success)",
-          "review_round_1": "independent reviewer agent (H-003) 2026-10-18 審 fb6e265（git archive export）：CHANGES REQUESTED — runtime 行為成立；M1 mutation 證據分類有誤（select-not-locked、cursor-length-unbounded、guard-not-installed 不是 equivalent）；M2 through gateway 含 storage/postgres，service 可自己開連線繞過 tenant scope；L1 U+0000 → 500；L2 非 clean path 307、HEAD 未宣告；L3 撤權可在 write 進行中先 commit；L4 server 設定無測試；L5 Routes.Roles 未用於授權；L6 格式錯誤的 query 被丟棄；L7 keyset tie-break 測試依賴 plan；L8 訊息。全部先紅後綠修正（red-review1.log）：過期 key 競爭測試、2048/2050 cursor、TestServerSettings、db-handles-only-in-gateways、U+0000 422、非 clean path/HEAD 404 envelope、membership FOR SHARE、roles 共用、httpapi.Query、關閉 index scan 的 tie 測試、DB 訊息分開。mutation 在最終工作樹單次完整執行。等待同一 reviewer 複核。"
+          "review_round_1": "independent reviewer agent (H-003) 2026-10-18 審 fb6e265（git archive export）：CHANGES REQUESTED — runtime 行為成立；M1 mutation 證據分類有誤（select-not-locked、cursor-length-unbounded、guard-not-installed 不是 equivalent）；M2 through gateway 含 storage/postgres，service 可自己開連線繞過 tenant scope；L1 U+0000 → 500；L2 非 clean path 307、HEAD 未宣告；L3 撤權可在 write 進行中先 commit；L4 server 設定無測試；L5 Routes.Roles 未用於授權；L6 格式錯誤的 query 被丟棄；L7 keyset tie-break 測試依賴 plan；L8 訊息。全部先紅後綠修正（red-review1.log）：過期 key 競爭測試、2048/2050 cursor、TestServerSettings、db-handles-only-in-gateways、U+0000 422、非 clean path/HEAD 404 envelope、membership FOR SHARE、roles 共用、httpapi.Query、關閉 index scan 的 tie 測試、DB 訊息分開。mutation 在最終工作樹單次完整執行。等待同一 reviewer 複核。",
+          "review_round_2": "同一 reviewer 複核 98f5e9c（git archive export、新 disposable DB）：ACCEPT。首輪發現全部已修且經得起 probe；62 RUN、integration-test、mutation 186 killed＋5 equivalent 皆重現。3 個 low 發現（T-009 route 觸發不到）：R1 讀寫 Run 的 FOR SHARE 與 D-036 有序鎖 deadlock → 記入 ADR-019 與 T-010；R2 U+0000 detail path 無上限 → 經 model.NewIssue 截斷（先紅後綠＋mutant）；R3 ADR-019 對 tenant.Tx SQL 與 worker scope 的描述過度 → 改正，worker scope 移到 T-019、Tx 介面縮小評估移到 T-036。證據 checks/evidence/2026-10-18-T-009/review2/。",
+          "accepted_at": "2026-10-18",
+          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；首輪 CHANGES REQUESTED 已修正（98f5e9c），同一 reviewer 複核 ACCEPT；複核的 low 發現已處理",
+          "ci_before_acceptance": "https://github.com/KCL1104/Geminus/actions/runs/39139093226 (98f5e9c: 4/4 success)"
         }
       ]
     },
@@ -596,7 +600,8 @@
       "scope": [
         "建立 operator-only initial org/owner/user provisioning 流程。",
         "Owner-only list/add/update/remove known user membership。",
-        "鎖 org 保留 last Owner；撤權立即影響 write/stream。"
+        "鎖 org 保留 last Owner；撤權立即影響 write/stream。",
+        "成員變更不可在 `Run(ReadWrite)` 的 `FOR SHARE` 之上取 D-036 的有序鎖（兩個 owner 同時變更會 deadlock，T-009 re-review R1，見 ADR-019）：提供先取 D-036 有序 `FOR UPDATE`、再重讀 caller role 的 run 模式，並以兩個 owner 並行變更的測試證明無 deadlock。"
       ],
       "planned_outputs": [
         "internal/tenant/memberships/",
@@ -1072,7 +1077,8 @@
       "scope": [
         "scoped SKIP LOCKED claim、heartbeat、lease_token、bounded retry。",
         "每 assigned tenant獨立transaction，不做unrestricted cross-tenant SELECT。",
-        "resource+job+audit enqueue transaction；stale finalize拒絕。"
+        "resource+job+audit enqueue transaction；stale finalize拒絕。",
+        "Worker scope 移到只有 worker 端可 import 的 package（`tenant.NewWorker` 目前 API 端也能呼叫，T-009 re-review R3b，見 ADR-019），並加 architecture 規則：API 端依賴它即違規。"
       ],
       "planned_outputs": [
         "internal/storage/jobs/",
@@ -2002,7 +2008,8 @@
         "approval races、injection、resource exhaustion、CSV export。",
         "dependency/secret/container scans與attack regression corpus。",
         "BFF session：cookie flags、CSRF／Origin、refresh reuse、logout、login／refresh rate limiting（ADR-018）。",
-        "一般 API rate limiting（H-006）：每個 route 的限額（依 user 與 organization 計）、超過時回 429 `RATE_LIMITED` 與 `Retry-After`（D-025）；不因限額洩漏其他 tenant 的存在；限額數值與儲存方式另立 ADR，不引入 P0 停止線外的元件（如 Redis）。"
+        "一般 API rate limiting（H-006）：每個 route 的限額（依 user 與 organization 計）、超過時回 429 `RATE_LIMITED` 與 `Retry-After`（D-025）；不因限額洩漏其他 tenant 的存在；限額數值與儲存方式另立 ADR，不引入 P0 停止線外的元件（如 Redis）。",
+        "評估把 `tenant.Tx` 縮成不含 `Conn()` 的介面，並 review 非 storage package 中的 SQL（含 `set_config` 改 tenant context，T-009 re-review R3a，見 ADR-019）。"
       ],
       "planned_outputs": [
         "internal/securitytest/",

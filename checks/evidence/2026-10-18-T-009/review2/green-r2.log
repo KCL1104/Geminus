@@ -1,0 +1,6 @@
+=== RUN   TestNULStrings
+--- PASS: TestNULStrings (0.00s)
+=== RUN   TestNULPathBounded
+--- PASS: TestNULPathBounded (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/httpapi	0.058s

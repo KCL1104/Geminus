@@ -11,11 +11,13 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/auth"
+	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/schemas"
@@ -429,5 +431,35 @@ func TestNULStrings(t *testing.T) {
 		if got, ok := nulString([]byte(doc)); ok {
 			t.Errorf("%s: U+0000 reported at %q", doc, got)
 		}
+	}
+}
+
+// The U+0000 detail fits common.schema.json's path limit however deep or
+// long the member names are: like a validator issue, the pointer is cut to
+// the deepest ancestor that fits (T-009 re-review R2). The IR's metadata
+// takes any member names, so a schema-valid body can carry such a path.
+func TestNULPathBounded(t *testing.T) {
+	var ir map[string]any
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/golden-models/default-delivery.json")), &ir); err != nil {
+		t.Fatal(err)
+	}
+	a, b, c := strings.Repeat("a", 1000), strings.Repeat("b", 1000), strings.Repeat("c", 1000)
+	ir["metadata"] = map[string]any{a: map[string]any{b: map[string]any{c: "x\x00"}}}
+	body, err := json.Marshal(ir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	full := "/metadata/" + a + "/" + b + "/" + c
+	r := httptest.NewRequest("POST", "/", bytes.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	var dst map[string]any
+	_, err = DecodeJSON(r, MaxBodyBytes, "model-ir.schema.json", &dst)
+	var e *Error
+	if !errors.As(err, &e) || e.Code != RequestValidationFailed || len(e.Details) != 1 {
+		t.Fatalf("%v", err)
+	}
+	p := e.Details[0].Path
+	if len([]rune(p)) > 2048 || p != "/metadata/"+a+"/"+b || !strings.HasPrefix(full, p) {
+		t.Errorf("path of %d characters: %.40q…", len([]rune(p)), p)
 	}
 }

@@ -1,0 +1,5 @@
+--- FAIL: TestNULPathBounded (0.06s)
+    httpapi_test.go:463: path of 3012 characters: "/metadata/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"…
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/httpapi	0.079s
+FAIL
