@@ -1,0 +1,19 @@
+    --- FAIL: TestBrokenPacksAreCaught/noTemplates/templates/list (0.04s)
+        broken_test.go:958: no templates/list finding (""); got []
+    --- FAIL: TestBrokenPacksAreCaught/templateAnyLocale/templates/unknown-locale (0.06s)
+        broken_test.go:958: no templates/unknown-locale finding (""); got []
+    --- FAIL: TestBrokenPacksAreCaught/templateAnyName/templates/unknown-template (0.05s)
+        broken_test.go:958: no templates/unknown-template finding (""); got []
+    --- FAIL: TestBrokenPacksAreCaught/templateTopologyByLocale/templates/locales (0.04s)
+        broken_test.go:958: no templates/locales finding (""); got []
+    --- FAIL: TestBrokenPacksAreCaught/templateInvalid/templates/valid (0.04s)
+        broken_test.go:958: no templates/valid finding ("zh-Hant"); got []
+    --- FAIL: TestBrokenPacksAreCaught/templateKeepsName/templates/valid (0.04s)
+        broken_test.go:958: no templates/valid finding ("name"); got []
+    --- FAIL: TestBrokenPacksAreCaught/templateFlaky/templates/deterministic (0.05s)
+        broken_test.go:958: no templates/deterministic finding (""); got []
+    --- FAIL: TestBrokenPacksAreCaught/templateFails/templates/valid (0.06s)
+        broken_test.go:958: no templates/valid finding ("zh-Hant"); got []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/conformance	4.390s
+FAIL

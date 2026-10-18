@@ -1,0 +1,4 @@
+# github.com/kcl1104/geminus/internal/domainpack/softwaredelivery [github.com/kcl1104/geminus/internal/domainpack/softwaredelivery.test]
+internal/domainpack/softwaredelivery/export_test.go:4:18: undefined: applyNames
+FAIL	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery [build failed]
+FAIL

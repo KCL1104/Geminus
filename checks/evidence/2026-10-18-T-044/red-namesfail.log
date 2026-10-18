@@ -1,0 +1,4 @@
+# github.com/kcl1104/geminus/internal/domainpack/softwaredelivery [github.com/kcl1104/geminus/internal/domainpack/softwaredelivery.test]
+internal/domainpack/softwaredelivery/export_test.go:7:20: undefined: templateFrom
+FAIL	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery [build failed]
+FAIL

@@ -1,0 +1,90 @@
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+ ❯ tests/i18n-dom.test.tsx (0 test)
+ ❯ tests/lint-guards.test.ts (23 tests | 8 failed) 4440ms
+   ❯ hard-coded UI text (12)
+     × rejects JSX text 45ms
+     × rejects a string in JSX 24ms
+     × rejects a template literal in JSX 149ms
+     × rejects an aria-label 70ms
+     × rejects a title 26ms
+     × rejects a placeholder 53ms
+     × rejects an alt text 37ms
+     × rejects an aria-label expression 24ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/i18n-dom.test.tsx [ tests/i18n-dom.test.tsx ]
+Error: Failed to resolve import "../app/_components/locale-switcher" from "tests/i18n-dom.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/user/Geminus/apps/web/tests/i18n-dom.test.tsx:9:31
+  7  |  import { afterEach, describe, expect, it } from "vitest";
+  8  |  import ProjectsPage from "../app/projects/page";
+  9  |  import { LocaleSwitcher } from "../app/_components/locale-switcher";
+     |                                  ^
+  10 |  import { ProblemView } from "../app/_components/problem-view";
+  11 |  import { DraftStatus } from "../app/_components/states";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26632:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26702:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26668:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:20184:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects JSX text
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects a string in JSX
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects a template literal in JSX
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects an aria-label
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects a title
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects a placeholder
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects an aria-label expression
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/lint-guards.test.ts:61:110
+     59|   ])("rejects %s", async (_, code) => {
+     60|     const ids = await ruleIds(code);
+     61|     expect(ids.some((id) => id === "react/jsx-no-literals" || id === "…
+       |                                                                                                              ^
+     62|   });
+     63|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects an alt text
+AssertionError: @next/next/no-img-element: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/lint-guards.test.ts:61:110
+     59|   ])("rejects %s", async (_, code) => {
+     60|     const ids = await ruleIds(code);
+     61|     expect(ids.some((id) => id === "react/jsx-no-literals" || id === "…
+       |                                                                                                              ^
+     62|   });
+     63|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  8 failed | 15 passed (23)
+   Start at  15:26:13
+   Duration  5.12s (tests 76%, environment 19%, import 4%)
+
