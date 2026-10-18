@@ -36,7 +36,10 @@ flowchart LR
 |---|---|---|
 | internal/auth | JWT verification、subject extraction、issuer/audience/expiry（T-008，ADR-017） | 信任 client role／選擇任意 tenant |
 | internal/tenant | membership、organization authorization、transaction context | 以 hidden UI button 代替授權 |
-| internal/project | tenant project lifecycle | 直接處理 IR 或 DES |
+| internal/project | tenant project lifecycle（T-009：create／list／get，idempotent create 與 audit 同一 transaction） | 直接處理 IR 或 DES；自己寫 SQL |
+| internal/httpapi | HTTP transport（ADR-019）：error envelope、request ID、schema 驗證的 JSON body、token→`tenant.Scope` middleware | business rule；從 header 或 body 取得 role |
+| internal/api | 把所有 route 組成 cmd/api 與整合測試共用的 handler | business rule |
+| internal/ids | D-001 ID（`<prefix>_<ULID>`） | — |
 | internal/model | IR validation、draft CAS、versions、canonical commit | provider-specific prompt、renderer layout runtime |
 | internal/domainpack | catalog、domain rules、event inference、domain metrics、prompt context、default views | 修改 generic engine source 才能加 domain |
 | internal/import | file profile、column map、row validation、frozen datasets、inference proposal | 未批准直接 publish Twin |
@@ -44,7 +47,7 @@ flowchart LR
 | internal/simulation | heap、clock、RNG、resource queues、routing、metrics | HTTP/DB/network、tenant discovery、UI |
 | internal/results | aggregation、comparison、evidence catalog、trace artifacts | AI 自己计算未供應的實際數值 |
 | internal/audit | append-only events、request correlation | raw prompts/secrets/chain-of-thought |
-| internal/storage | tenant-aware repos、object adapter、transactions | 將 untrusted organization_id 自動當授權 |
+| internal/storage | tenant-aware repos、object adapter、transactions；`auditlog`（同一 transaction 的 audit append）、`idempotency`（D-011）、`projects` | 將 untrusted organization_id 自動當授權 |
 | cmd/api / cmd/worker | composition root、config、lifecycle | 隱藏 business rule 或不同版本 validator |
 | apps/web/features | editor、import、proposals、simulations、results、3D | 第二套 topology、server authorization |
 

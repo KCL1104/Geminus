@@ -104,7 +104,9 @@ func admin(t *testing.T) *pgxpool.Pool {
 		_, err := p.Exec(context.Background(), `DO $$ BEGIN
 			IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '`+login+`') THEN
 				CREATE ROLE `+login+` LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE `+roles+`;
-			END IF; END $$`)
+			END IF;
+			EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
+			END $$`)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -280,6 +282,27 @@ func TestRunScopes(t *testing.T) {
 		return tx.QueryRow(ctx, `SELECT name FROM twin.projects WHERE id=$1`, b.project).Scan(&name)
 	}); err != nil || name != "Project" {
 		t.Errorf("organization B's project changed: %q %v", name, err)
+	}
+}
+
+// The named transaction modes are what they say: services pass ReadOnly
+// for reads, and the database enforces it.
+func TestRunModes(t *testing.T) {
+	adm := admin(t)
+	a := newOrg(t, adm)
+	d := tenant.New(as(t, apiLogin, 2, true))
+	sc := tenant.Scope{OrganizationID: a.id, UserID: a.user}
+	for name, c := range map[string]struct {
+		opts tenant.TxOptions
+		want string
+	}{"read-only": {tenant.ReadOnly, "on"}, "read-write": {tenant.ReadWrite, "off"}} {
+		var got string
+		err := d.Run(context.Background(), sc, c.opts, func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
+			return tx.QueryRow(ctx, `SHOW transaction_read_only`).Scan(&got)
+		})
+		if err != nil || got != c.want {
+			t.Errorf("%s: transaction_read_only %q, want %q (%v)", name, got, c.want, err)
+		}
 	}
 }
 

@@ -107,3 +107,17 @@ func TestErrorsNeverEchoSecrets(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadServer(t *testing.T) {
+	for addr, want := range map[string]string{"": ":8080", ":9090": ":9090", "127.0.0.1:0": "127.0.0.1:0", "[::1]:443": "[::1]:443", ":65535": ":65535", ":0": ":0"} {
+		s, err := LoadServer(env(map[string]string{"API_LISTEN_ADDR": addr}))
+		if err != nil || s.Addr != want {
+			t.Errorf("%q: %+v %v", addr, s, err)
+		}
+	}
+	for _, addr := range []string{"localhost", ":70000", ":65536", ":-1", ":http", "host:"} {
+		if _, err := LoadServer(env(map[string]string{"API_LISTEN_ADDR": addr})); err == nil || !strings.Contains(err.Error(), "API_LISTEN_ADDR") {
+			t.Errorf("%q accepted: %v", addr, err)
+		}
+	}
+}

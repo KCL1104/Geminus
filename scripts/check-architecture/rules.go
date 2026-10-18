@@ -27,6 +27,8 @@ var appLayers = []string{
 	"./internal/ai/...",
 	"./internal/audit/...",
 	"./internal/config/...",
+	"./internal/httpapi/...", // HTTP transport (T-009, ADR-019)
+	"./internal/api/...",     // route assembly
 }
 
 // Standard-library packages that mean network, database, process or
@@ -84,7 +86,8 @@ var kernelThirdParty = []string{
 var testInfra = []string{
 	"./internal/contracttest/...",
 	"./internal/domainpack/conformance/...",
-	"./internal/auth/authtest/...", // signs tokens: no production binary may contain it (T-008)
+	"./internal/auth/authtest/...",  // signs tokens: no production binary may contain it (T-008)
+	"./internal/storage/dbtest/...", // provisions test tenants on the disposable database (T-009)
 }
 
 type rule struct {
@@ -103,6 +106,9 @@ type rule struct {
 	// contain besides the package's own unit, so no other package of the
 	// module can do for it what it may not do itself (T-042 review N1).
 	moduleOnly []string
+	// through: gateway packages the rule sends other packages through; their
+	// own dependencies are not checked for the packages that use them.
+	through []string
 	// goOnly: the package has Go files only; assembly, C, C++, Fortran,
 	// SWIG and .syso objects can make system calls no import shows (T-042
 	// review N3).
@@ -186,6 +192,7 @@ var rules = []rule{
 		applies: []string{"./..."},
 		except:  []string{"./internal/storage/...", "./internal/tenant/...", "./cmd/..."},
 		forbid:  cat(dbDrivers, []string{"database/sql/..."}),
+		through: []string{"./internal/storage/...", "./internal/tenant/..."},
 	},
 	{
 		name:    "auth-authenticates-only",

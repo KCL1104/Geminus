@@ -35,6 +35,20 @@ const (
 	Viewer Role = "viewer"
 )
 
+// Tx and TxOptions are pgx's, under names services can use without
+// importing the driver: services hold a transaction for the storage
+// packages to use, and never write SQL themselves.
+type (
+	Tx        = pgx.Tx
+	TxOptions = pgx.TxOptions
+)
+
+// Transaction modes for Run.
+var (
+	ReadWrite = TxOptions{}
+	ReadOnly  = TxOptions{AccessMode: pgx.ReadOnly}
+)
+
 // Scope is the verified caller of one API request.
 type Scope struct {
 	OrganizationID string // selected via X-Organization-ID; authorized by membership

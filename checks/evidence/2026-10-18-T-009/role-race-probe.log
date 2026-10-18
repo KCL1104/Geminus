@@ -1,0 +1,8 @@
+== old role creation (IF NOT EXISTS only), 4 packages in parallel, role dropped before each iteration
+failed iterations: 0/10
+== fixed role creation
+failed iterations: 0/10
+== 20 rounds x 8 concurrent sessions, role dropped before each round
+NOTICE:  role "dt_test_race_login" does not exist, skipping
+old block (IF NOT EXISTS only): sessions that failed: 4
+fixed block (EXCEPTION duplicate_object/unique_violation): sessions that failed: 0

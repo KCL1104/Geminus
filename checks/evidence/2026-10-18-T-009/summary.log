@@ -1,0 +1,8 @@
+make backend-test: exit 0 (56 s)
+make backend-race: exit 0 (77 s)
+make backend-numeric: exit 0 (57 s)
+make backend-build: exit 0 (1 s)
+make architecture-check: exit 0 (4 s)
+make spec-check: exit 0 (5 s)
+make frontend-test: exit 0 (18 s)
+make integration-test (fresh cluster, dt_test_fresh2): exit 0 (16 s)

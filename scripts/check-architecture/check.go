@@ -502,8 +502,8 @@ func walk(g *graph, r rule, root string, start []string) []violation {
 			out = append(out, violation{rule: r.name, why: r.why, pkg: root, chain: chain, test: r.tests})
 			continue // what it imports is reported through it
 		}
-		if p == nil {
-			continue
+		if p == nil || (cur != root && matchAny(r.through, cur)) {
+			continue // a gateway's own dependencies are its business
 		}
 		for _, imp := range p.Imports {
 			if _, seen := parent[imp]; !seen {

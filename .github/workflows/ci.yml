@@ -78,10 +78,11 @@ jobs:
 
   db-smoke:
     # Disposable service container only (default libc en_US.utf8 collation, so
-    # the D-034 byte-order manifest test runs under a non-C collation). Applies
-    # the migrations up/down/up, runs db/tests/*.sql, then the Go repository
-    # tests. Not real runtime-login or pool-isolation evidence (T-007, db/README.md).
-    name: db migrations + repository tests (PostgreSQL 16)
+    # the D-034 byte-order manifest test runs under a non-C collation).
+    # `make integration-test` applies the migrations up/down/up, runs
+    # db/tests/*.sql, then the Go DB-backed tests: storage, tenant (runtime
+    # logins, RLS, pool reuse) and the API through its real handler (T-009).
+    name: db migrations + API integration (PostgreSQL 16)
     runs-on: ubuntu-24.04
     services:
       postgres:
@@ -103,11 +104,8 @@ jobs:
         with:
           go-version-file: go.mod
       - run: psql --version
-      - run: make db-test
+      - run: make integration-test
         env:
           DT_ALLOW_DB_TESTS: "yes"
           DATABASE_URL: postgresql://dt_admin@localhost:5432/dt_test_ci
-      - name: Go repository tests against the migrated database (internal/storage/postgres)
-        run: make db-go-test
-        env:
           GEMINUS_TEST_DATABASE_URL: postgresql://dt_admin@localhost:5432/dt_test_ci

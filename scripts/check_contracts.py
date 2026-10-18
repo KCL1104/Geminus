@@ -37,6 +37,22 @@ def load(path: Path) -> Any:
                       parse_constant=reject_constant)
 
 
+class UniqueKeyLoader(yaml.SafeLoader):
+    """safe_load that refuses duplicate mapping keys (PyYAML keeps the last one silently)."""
+
+
+def _unique_mapping(loader: UniqueKeyLoader, node: yaml.MappingNode, deep: bool = False) -> Any:
+    seen = set()
+    for key_node, _ in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in seen: raise ValueError(f'Duplicate YAML key {key!r} at line {key_node.start_mark.line + 1}')
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+UniqueKeyLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _unique_mapping)
+
+
 def pointer(value: Any, fragment: str) -> Any:
     if not fragment: return value
     if not fragment.startswith('/'): raise ValueError(f'Unsupported anchor #{fragment}')
@@ -90,7 +106,7 @@ def main() -> dict[str, Any]:
         pairs.extend([(doc['$id'],resource),(path.as_uri(),resource)])
     registry = Registry().with_resources(pairs)
     oas_path = ROOT/'openapi/openapi.yaml'
-    oas = yaml.safe_load(oas_path.read_text(encoding='utf-8'))
+    oas = yaml.load(oas_path.read_text(encoding='utf-8'), Loader=UniqueKeyLoader)
     docs[oas_path] = oas
     ref_count = 0
     for path,doc in list(docs.items()):
@@ -157,7 +173,8 @@ def main() -> dict[str, Any]:
             assert operation['responses']
     assert len(operations)==len(set(operations))
     # D-025: every error code maps to exactly one documented error response,
-    # each response lists exactly its codes, and every request body may be 415.
+    # each response lists exactly its codes, and every request body may be 413
+    # and 415 (ADR-019: the shared body size and media type rules).
     status_of=docs[ROOT/'schemas/common.schema.json']['$defs']['ErrorCode']['x-http-status']
     assert set(status_of)==set(docs[ROOT/'schemas/common.schema.json']['$defs']['ErrorCode']['enum'])
     error_responses={int(k[5:]):v for k,v in oas['components']['responses'].items() if re.fullmatch(r'Error\d{3}',k)}
@@ -168,7 +185,7 @@ def main() -> dict[str, Any]:
     for path,item in oas['paths'].items():
         for method,operation in item.items():
             if 'requestBody' in operation:
-                assert '415' in operation['responses'],(method,path)
+                assert '413' in operation['responses'] and '415' in operation['responses'],(method,path)
             for code in operation['responses']:
                 if code[0] in '45': assert int(code) in error_responses,(method,path,code)
     inventory=load(ROOT/'planning/api-operations.json')['operations']

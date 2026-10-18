@@ -217,6 +217,12 @@ func TestSyntheticGraph(t *testing.T) {
 	g.pkgs[m("internal/simulation/asm")].SFiles = []string{"sys_amd64.s"}
 	add(m("internal/project"), false, m("internal/domainpack/alpha/rules"))
 	add(m("internal/domainpack/alpha/second"), false, m("internal/domainpack/alpha/rules"), m("internal/domainpack"))
+	// A service reaches the database through the tenant scope (a gateway of
+	// db-only-in-storage), not by importing the driver.
+	add(m("internal/tenant"), false, "github.com/jackc/pgx/v5")
+	add("github.com/jackc/pgx/v5", false)
+	add(m("internal/service"), false, m("internal/tenant"))
+	add(m("internal/rawsql"), false, m("internal/tenant"), "github.com/jackc/pgx/v5")
 	violations, errs := check(g, rules)
 	if len(errs) > 0 {
 		t.Fatal(errs)
@@ -238,6 +244,7 @@ func TestSyntheticGraph(t *testing.T) {
 		"generic-kernel ./internal/simulation/asm ",
 		"pack-layout ./internal/project ",
 		"pack-layout ./internal/domainpack/alpha/second ",
+		"db-only-in-storage ./internal/rawsql ./internal/rawsql>github.com/jackc/pgx/v5",
 	} {
 		if !got[want] {
 			t.Errorf("missing violation %q", want)
@@ -245,6 +252,7 @@ func TestSyntheticGraph(t *testing.T) {
 	}
 	for v := range got {
 		for _, never := range []string{"domain-packs ./internal/domainpack/alpha ", "llm-sdks-only-in-ai ./internal/ai ", "llm-sdks-only-in-ai ./cmd/api ",
+			"db-only-in-storage ./internal/service ",
 			"no-test-infra-in-production ./internal/contracttest ", "db-only-in-storage ./internal/storage/postgres "} {
 			if strings.HasPrefix(v, never) {
 				t.Errorf("unexpected violation %q", v)
@@ -579,7 +587,8 @@ func TestPolicy(t *testing.T) {
 	m := func(p string) string { return module + "/" + p }
 	kernel := []string{m("internal/model"), m("internal/model/validate"), m("internal/simulation/engine"), m("internal/results/metrics"), m("internal/domainpack"), m("schemas")}
 	pack := m("internal/domainpack/softwaredelivery")
-	appLayer := []string{m("cmd/api"), m("internal/auth"), m("internal/tenant"), m("internal/project"), m("internal/storage/postgres"), m("internal/import"), m("internal/ai"), m("internal/audit"), m("internal/config")}
+	appLayer := []string{m("cmd/api"), m("internal/auth"), m("internal/tenant"), m("internal/project"), m("internal/storage/postgres"), m("internal/import"), m("internal/ai"), m("internal/audit"), m("internal/config"),
+		m("internal/httpapi"), m("internal/api")}
 	io := []string{"net", "net/http", "net/http/httptest", "net/rpc", "net/smtp", "net/mail", "database/sql", "database/sql/driver", "os/exec", "plugin", "crypto/tls"}
 	db := []string{"github.com/jackc/pgx/v5", "github.com/lib/pq", "github.com/go-sql-driver/mysql", "gorm.io/gorm", "github.com/jmoiron/sqlx"}
 	llm := []string{"github.com/anthropics/anthropic-sdk-go", "github.com/openai/openai-go", "github.com/sashabaranov/go-openai", "google.golang.org/genai", "github.com/google/generative-ai-go/genai", "cloud.google.com/go/vertexai/genai", "github.com/tmc/langchaingo/llms"}
@@ -589,7 +598,7 @@ func TestPolicy(t *testing.T) {
 		"go/build", "debug/elf", "debug/buildinfo", "log", "log/syslog", "runtime/debug", "runtime/pprof", "net/url", "io/fs"}
 	// module packages outside the kernel and third-party modules
 	outside := []string{m("internal/zzproxy"), m("pkg/zzproc"), m("tools/x"), m("internal/simulation_x"), "github.com/go-jose/go-jose/v4", "example.com/x"}
-	infra := []string{m("internal/contracttest"), m("internal/domainpack/conformance"), m("internal/auth/authtest")}
+	infra := []string{m("internal/contracttest"), m("internal/domainpack/conformance"), m("internal/auth/authtest"), m("internal/storage/dbtest")}
 	type want struct {
 		rule, root string
 		deps       []string

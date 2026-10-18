@@ -55,6 +55,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -199,6 +201,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -398,6 +402,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -458,6 +464,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -514,6 +522,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -664,6 +674,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -816,6 +828,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -869,6 +883,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -923,6 +939,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -1192,6 +1210,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -1258,6 +1278,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -1364,6 +1386,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -1412,6 +1436,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -1563,6 +1589,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -1833,6 +1861,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -2026,6 +2056,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -2085,6 +2117,8 @@ paths:
           $ref: '#/components/responses/Error404'
         '409':
           $ref: '#/components/responses/Error409'
+        '413':
+          $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
@@ -2172,6 +2206,8 @@ components:
         type: string
         minLength: 8
         maxLength: 128
+        pattern: ^[!-~]{8,128}$
+        description: Visible ASCII only (U+0021–U+007E), so a key stores and logs unambiguously (ADR-019).
     IfMatch:
       name: If-Match
       in: header

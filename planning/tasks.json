@@ -516,7 +516,7 @@
       "id": "T-009",
       "title": "Project service 與 server RBAC",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Platform",
       "planning_window": "Week 3",
       "depends_on": [
@@ -560,7 +560,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-18",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-009_VALIDATION.md",
+          "summary": "Project routes（POST/GET /v1/projects、GET /v1/projects/{id}）與共用 HTTP 層（ADR-019，PROPOSED）：封閉 error code 與 status 由 contract test 鎖成 schema、server 發的 req_ ULID、strict 且經 schema 驗證的 JSON body（415/413/400/422）、Scoped middleware（token → 單一 X-Organization-ID → ResolveUser），membership 與 role 在同一個 tenant.DB.Run transaction 檢查（非 member 404、role 不足 403）。Create 的效果、audit event 與 idempotency response 同一 transaction（D-011：org/actor/operation scope、JCS hash、byte 相同的重播、409、24 小時）；list 以 (created_at, id) keyset 與綁 organization／list 的 cursor 分頁；storage 皆另帶 organization filter。cmd/api 以 API runtime login 實際服務。make integration-test（db-test＋DB-backed Go tests，-p 1）在新的 PostgreSQL 16 cluster 通過；CI db job 改跑它。Worker 部分 NOT RUN（T-019）。",
+          "reviewer": "pending: independent reviewer agent (H-003)"
+        }
+      ]
     },
     {
       "id": "T-010",

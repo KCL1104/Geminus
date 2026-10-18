@@ -1,0 +1,7 @@
+== check_contracts.py with a duplicated '415' key in createProject (PyYAML alone keeps the last one silently)
+ValueError: Duplicate YAML key '415' at line 62
+exit 1
+== check_contracts.py with createProject's 413 removed
+AssertionError: ('post', '/projects')
+== check_contracts.py on the committed openapi.yaml
+exit 0
