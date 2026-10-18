@@ -41,6 +41,9 @@ SOURCE 的三個驗證假設：AI 降低建模門檻；simulation 提供使用�
 | REQ-019 | Security | JWT/OIDC、tenant isolation、RBAC、RLS、authorized artifact access、AI authority containment、resource budgets |
 | REQ-020 | Observability / deployment | structured logs + traces/metrics；containerized web/api/worker、staging 與受控 production approval；no customer content in product telemetry |
 | REQ-021 | Quality gates | 六層測試、50 curated modeling intents 初始目標、invalid mutation=0、AI leakage=0、mandatory adversarial invented metrics=0 |
+| REQ-022 | Bilingual UI（owner 新增，H-005） | 英文（`en`）為預設與主要語言，另支援繁體中文（`zh-Hant`）；所有使用者可見字串來自 message catalog，兩語 key 完全一致；使用者可切換並記住語言；日期／數字／期間依語言格式化；API 錯誤由 UI 依 error code 在地化；AI 文字輸出依使用者語言，ID、JSON Pointer、enum 與 metric path 不翻譯 |
+
+REQ-022 不是原報告需求：owner 於 2026-10-18 新增（H-005）；中文定為繁體 `zh-Hant` 是 agent 依 owner 書寫系統的解讀，待 owner 確認。
 
 工程補充（已批准）：REQ-002 的 org bootstrap / membership HTTP 範圍見 D-008 / D-012；REQ-007 commit 與 proposal 邊界見 D-009；REQ-010 scenario approval 結果見 D-004；其餘缺值、clock 與一致性細節依專門 Spec。
 

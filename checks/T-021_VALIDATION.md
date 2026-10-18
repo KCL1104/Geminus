@@ -79,6 +79,8 @@ recorder（`newRecorder`）只用在有傳入它的測試；`TestKernelLimits*`�
 
 ## 需 owner 知悉（D-038，PROPOSED）
 
+> 2026-10-18 補記：owner 已依原文批准（H-004），本節保留為當時紀錄。
+
 1. sink 沒寫 outcome 時視為 completed（CB-22）。
 2. 零時間 service 在 dispatch 後同 tick 完成時再 dispatch 一次，因此 dispatch 不一定是該 tick 最後一個事件（D-032 原文寫「為該 tick 最後一步」）。
 3. 同一次 dispatch 依 request 順序授予，每次授予先回報新的 in-use。

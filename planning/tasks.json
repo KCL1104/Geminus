@@ -500,8 +500,10 @@
           "date": "2026-10-18",
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-008_VALIDATION.md",
-          "summary": "internal/auth.OIDCVerifier（provider-agnostic；go-jose v4.1.5；alg allowlist 只允許非對稱、kid 必填、拒 jku/x5u/jwk/x5c/crit/b64 等 header、iss 完全相同、aud 包含、exp 必填、nbf/iat、30 秒 skew、sub 限制；JWKS 只來自設定的 https URL、不跟隨 redirect、未知 kid 以 1 分鐘間隔 refresh、1 小時更新、24 小時 stale 上限）；Bearer header only、URL token 拒絕；Middleware 以注入的 error writer 回應；tenant.ResolveUser 經 users RLS 解析、不自動建立 user；config AUTH_OIDC_*；authtest 為 test-only provider（architecture check 禁止 production 連結）。53 個攻擊／錯誤 token 案例、DB 測試、mutation 54/54＋2 equivalent。ADR-017 PROPOSED。",
-          "reviewer": null
+          "summary": "internal/auth.OIDCVerifier（provider-agnostic；go-jose v4.1.5；alg allowlist 只允許非對稱、kid 必填、拒 jku/x5u/jwk/x5c/crit/b64 等 header、iss 完全相同、aud 包含、exp 必填、nbf/iat、30 秒 skew、sub 限制；JWKS 只來自設定的 https URL、不跟隨 redirect、未知 kid 以 1 分鐘間隔 refresh、1 小時更新、24 小時 stale 上限）；Bearer header only、URL token 拒絕；Middleware 以注入的 error writer 回應；tenant.ResolveUser 經 users RLS 解析、不自動建立 user；config AUTH_OIDC_*；authtest 為 test-only provider（architecture check 禁止 production 連結）。52 個攻擊／錯誤 token 案例（首版報告誤記 53）、DB 測試、mutation 54/54＋2 equivalent。ADR-017 於 2026-10-18 由 owner 同意（H-004）。",
+          "reviewer": null,
+          "review": "checks/T-008_VALIDATION.md",
+          "review_round_1": "independent reviewer agent (H-003) 2026-10-18: CHANGES REQUESTED — 1 medium（JWKS refresh 持有 mutex 時阻擋所有 request）、2 個證明力不足的安全測試（identity settings、outage 間隔）、10 個 low 與 5 個 PLAUSIBLE；全部先紅後綠修正：stale-while-revalidate＋single-flight、FetchTimeout、錯誤保留原因不含 URL、strict base64、query 掃描、RFC 6750 challenge、RequireAccessTokenType、設定上限、格式字元、ResolveUser 輸入與唯讀檢查、DB 測試改寫；mutation 114/114＋2 equivalent＋addendum 1/1（checks/evidence/2026-10-18-T-008-review/）。等待同一 reviewer 複核。"
         }
       ]
     },
@@ -836,18 +838,21 @@
       "depends_on": [
         "T-014",
         "T-013",
-        "T-011"
+        "T-011",
+        "T-044"
       ],
       "requirement_ids": [
         "REQ-004",
         "REQ-006",
-        "REQ-017"
+        "REQ-017",
+        "REQ-022"
       ],
       "decision_gates": [],
       "scope": [
         "IR→React Flow adapter；add/delete/connect/move/properties。",
         "client validation、save/publish/error positioning、dirty navigation guard。",
-        "selection store 使用 canonical IDs，為3D保留adapter。"
+        "selection store 使用 canonical IDs，為3D保留adapter。",
+        "所有 editor 字串經 T-044 catalog（en／zh-Hant）；IR 中的名稱與 label 是使用者資料，不翻譯。"
       ],
       "planned_outputs": [
         "apps/web/features/model-editor/"
@@ -859,7 +864,8 @@
       "acceptance_tests": [
         "TEST-001",
         "TEST-005",
-        "TEST-025"
+        "TEST-025",
+        "TEST-031"
       ],
       "verification_commands": [
         "make frontend-test",
@@ -896,7 +902,8 @@
       "scope": [
         "streaming bounded upload、content hash、private object keys。",
         "完整 profile + bounded preview；JSON/CSV parse errors。",
-        "error artifact safe export；未commit不改Twin。"
+        "error artifact safe export；未commit不改Twin。",
+        "UTF-8（含／不含 BOM）中文 header 與值可正確 profile／preview；不因非 ASCII 內容誤判 encoding。"
       ],
       "planned_outputs": [
         "internal/import/upload/",
@@ -1344,7 +1351,8 @@
       "requirement_ids": [
         "REQ-008",
         "REQ-016",
-        "REQ-019"
+        "REQ-019",
+        "REQ-022"
       ],
       "decision_gates": [
         "D-002",
@@ -1354,7 +1362,8 @@
       "scope": [
         "provider interface、explicit fake/disabled/live modes。",
         "tenant-safe context、redaction、UNTRUSTED_DATA、ID allocation pool。",
-        "token/timeout/retry budgets與provider schema projection。"
+        "token/timeout/retry budgets與provider schema projection。",
+        "`output_locale`（en 預設／zh-Hant，server 驗證）：只有 prose 依語言輸出，ID／path／code／metric 不翻譯；analyst 數字以阿拉伯數字校驗（AI_SPEC §3、§9）。"
       ],
       "planned_outputs": [
         "internal/ai/provider/",
@@ -1368,7 +1377,8 @@
         "TEST-006",
         "TEST-009",
         "TEST-024",
-        "TEST-027"
+        "TEST-027",
+        "TEST-031"
       ],
       "verification_commands": [
         "go test ./internal/ai/...",
@@ -1651,7 +1661,8 @@
         "T-019"
       ],
       "requirement_ids": [
-        "REQ-016"
+        "REQ-016",
+        "REQ-022"
       ],
       "decision_gates": [
         "D-010",
@@ -1661,7 +1672,8 @@
       "scope": [
         "從completed suppliedresults/context做async analysis。",
         "驗metric path/run/availability/delta與prose數字。",
-        "uncertainty與suggested experiments不具write/run權限。"
+        "uncertainty與suggested experiments不具write/run權限。",
+        "`output_locale`（en 預設／zh-Hant，server 驗證）：只有 prose 依語言輸出，ID／path／code／metric 不翻譯；analyst 數字以阿拉伯數字校驗（AI_SPEC §3、§9）。"
       ],
       "planned_outputs": [
         "internal/ai/analyst/"
@@ -1672,7 +1684,8 @@
       ],
       "acceptance_tests": [
         "TEST-024",
-        "TEST-027"
+        "TEST-027",
+        "TEST-031"
       ],
       "verification_commands": [
         "go test ./internal/ai/...",
@@ -1705,7 +1718,8 @@
         "REQ-007",
         "REQ-008",
         "REQ-009",
-        "REQ-010"
+        "REQ-010",
+        "REQ-022"
       ],
       "decision_gates": [
         "D-003",
@@ -1714,7 +1728,8 @@
       "scope": [
         "upload preview/mapping/error download/commit UI。",
         "diff/assumptions/risk/base/needs_input/conflict review。",
-        "edit批准與scenario批准清楚分離；409保留local edits。"
+        "edit批准與scenario批准清楚分離；409保留local edits。",
+        "所有字串經 T-044 catalog；數字、日期、百分比依語言格式化（T-032 的 delta／CI 不因格式化改變值）。"
       ],
       "planned_outputs": [
         "apps/web/features/import/",
@@ -1730,7 +1745,8 @@
         "TEST-007",
         "TEST-008",
         "TEST-013",
-        "TEST-028"
+        "TEST-028",
+        "TEST-031"
       ],
       "verification_commands": [
         "make frontend-test",
@@ -1762,13 +1778,15 @@
         "REQ-013",
         "REQ-014",
         "REQ-015",
-        "REQ-016"
+        "REQ-016",
+        "REQ-022"
       ],
       "decision_gates": [],
       "scope": [
         "explicit run config、queued/running/cancelled/progress。",
         "metrics population/uncertainty/absolute & percent deltas。",
-        "server-grounded analysis、next-experiment human action。"
+        "server-grounded analysis、next-experiment human action。",
+        "所有字串經 T-044 catalog；數字、日期、百分比依語言格式化（T-032 的 delta／CI 不因格式化改變值）。"
       ],
       "planned_outputs": [
         "apps/web/features/simulations/",
@@ -1782,7 +1800,8 @@
         "TEST-022",
         "TEST-024",
         "TEST-026",
-        "TEST-028"
+        "TEST-028",
+        "TEST-031"
       ],
       "verification_commands": [
         "make frontend-test",
@@ -1940,7 +1959,8 @@
         "T-028",
         "T-030",
         "T-034",
-        "T-035"
+        "T-035",
+        "T-043"
       ],
       "requirement_ids": [
         "REQ-001",
@@ -1956,7 +1976,8 @@
       "scope": [
         "完整route×role×tenant matrix，pool/worker/artifact/SSE leaks。",
         "approval races、injection、resource exhaustion、CSV export。",
-        "dependency/secret/container scans與attack regression corpus。"
+        "dependency/secret/container scans與attack regression corpus。",
+        "BFF session：cookie flags、CSRF／Origin、refresh reuse、logout、login／refresh rate limiting（ADR-018）。"
       ],
       "planned_outputs": [
         "internal/securitytest/",
@@ -1980,7 +2001,8 @@
         "TEST-024",
         "TEST-026",
         "TEST-027",
-        "TEST-029"
+        "TEST-029",
+        "TEST-032"
       ],
       "verification_commands": [
         "make integration-test",
@@ -2121,7 +2143,8 @@
         "T-023",
         "T-024",
         "T-035",
-        "T-014"
+        "T-014",
+        "T-043"
       ],
       "requirement_ids": [
         "REQ-020"
@@ -2130,7 +2153,8 @@
       "scope": [
         "web/api/worker分開containers，managed DB/object/OTLP adapters。",
         "non-root/runtime roles、secret injection、readiness、graceful shutdown。",
-        "cloud/provider不進domaincode，production人工gate。"
+        "cloud/provider不進domaincode，production人工gate。",
+        "web container 為 Node server（BFF，ADR-018），session key 與 OIDC client secret 由 secret store 注入。"
       ],
       "planned_outputs": [
         "deploy/",
@@ -2170,7 +2194,9 @@
         "T-036",
         "T-037",
         "T-038",
-        "T-039"
+        "T-039",
+        "T-043",
+        "T-044"
       ],
       "requirement_ids": [
         "REQ-001",
@@ -2193,13 +2219,15 @@
         "REQ-018",
         "REQ-019",
         "REQ-020",
-        "REQ-021"
+        "REQ-021",
+        "REQ-022"
       ],
       "decision_gates": [],
       "scope": [
         "完整CSV/model/proposal/approval/scenario/run/compare/analysis/3D journey。",
         "failure/cancel/reject/stale/role-revocation路径。",
-        "外部pilot feedback與decision usefulness，未完成項目逐一列出。"
+        "外部pilot feedback與decision usefulness，未完成項目逐一列出。",
+        "主 journey 以 en 與 zh-Hant 各跑一次；登入經 BFF 與 test OIDC provider。"
       ],
       "planned_outputs": [
         "checks/e2e/",
@@ -2212,7 +2240,9 @@
       ],
       "acceptance_tests": [
         "TEST-028",
-        "TEST-030"
+        "TEST-030",
+        "TEST-031",
+        "TEST-032"
       ],
       "verification_commands": [
         "make e2e-test",
@@ -2323,6 +2353,102 @@
           "reviewer": null
         }
       ]
+    },
+    {
+      "id": "T-043",
+      "title": "Browser login session (BFF, ADR-018)",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend / Security",
+      "planning_window": "Week 3–5",
+      "depends_on": [
+        "T-008",
+        "T-014"
+      ],
+      "requirement_ids": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-019"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "Next.js 伺服器端 OIDC confidential client：Authorization Code＋PKCE（S256）、state、nonce；endpoints 只來自 deployment 設定；通用 OIDC library（候選 openid-client），版本釘住並記 license。",
+        "`__Host-` HttpOnly／Secure／SameSite=Lax 加密 session cookie（AES-256-GCM、key 輪替、>3.5 KB 視為錯誤）；瀏覽器 JS 拿不到任何 token；callback 後丟棄 ID token。",
+        "同源 `/api/v1/...` proxy：非 GET 檢查 Origin 與 `X-Geminus-Request`、不開 CORS、伺服器端 refresh、Bearer 轉給 Go API、不轉 cookie；SSE 與 upload 串流；`lib/api/client.ts` 改呼叫 BFF（ADR-016 補記）。",
+        "Logout：清 cookie、撤銷 refresh token、RP-initiated logout；未知 identity 顯示 403（不自動建立 user，D-008）。",
+        "Test-only deterministic OIDC provider（authorize／token／JWKS）供 E2E 使用，絕不連 Auth0；Auth0 tenant 設定步驟寫入 runbook，由 owner 建立帳號。"
+      ],
+      "planned_outputs": [
+        "apps/web/app/auth/",
+        "apps/web/lib/session/",
+        "internal/auth/authtest/",
+        "docs/runbooks/auth0.md"
+      ],
+      "spec_refs": [
+        "docs/adr/ADR-018-browser-session-and-oidc-provider.md",
+        "docs/SECURITY.md"
+      ],
+      "acceptance_tests": [
+        "TEST-009",
+        "TEST-032"
+      ],
+      "verification_commands": [
+        "make frontend-test",
+        "make e2e-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-044",
+      "title": "Bilingual UI foundation (en default, zh-Hant)",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend",
+      "planning_window": "Week 3–4",
+      "depends_on": [
+        "T-014",
+        "T-011"
+      ],
+      "requirement_ids": [
+        "REQ-022",
+        "REQ-004"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "i18n 機制（自寫或 library，另立 ADR、版本釘住）：`en` 預設、`zh-Hant`；catalog key 一致性測試；lint 禁止 UI 硬編使用者可見字串。",
+        "語言切換與保存（cookie，不含敏感資料、不影響授權）；Intl 日期／數字／期間；route 不加語言前綴。",
+        "既有 T-014 shell、loading／error／permission／409 呈現與每個 Problem code 的兩語文案。",
+        "Domain pack template 的兩語預設名稱：DomainPack template API 加 locale（contract 與 conformance suite 先改），SoftwareDelivery template 提供 zh-Hant；ID 不變，建立後名稱是使用者資料、不自動翻譯。"
+      ],
+      "planned_outputs": [
+        "apps/web/lib/i18n/",
+        "apps/web/messages/",
+        "internal/domainpack/"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "acceptance_tests": [
+        "TEST-031"
+      ],
+      "verification_commands": [
+        "make frontend-test",
+        "make backend-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
     }
   ]
 }

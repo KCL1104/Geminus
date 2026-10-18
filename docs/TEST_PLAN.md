@@ -49,6 +49,8 @@ schema / docs / task DAG checks 是第零層 specification hygiene，不等於�
 | TEST-028 | E2E source closed-loop | CSV→proposal→approve→scenario→run→compare→analyst；reject與stale也覆蓋 | 007–018 |
 | TEST-029 | artifact authorization / CSV formula | arbitrary key/other tenant拒絕；signedURL過期；error export formula safe | 007、019 |
 | TEST-030 | deploy / migration / restore | up/down/up、runtime grants、staging smoke、backup restore、人工production gate | 019–020 |
+| TEST-031 | bilingual UI / locale | 預設 en；zh-Hant catalog 與 en key 完全一致且無空值；lint 禁止 UI 中硬編使用者可見字串；切換語言後保留且不需重新登入；每個 Problem／validation code 皆有兩語文案；Intl 日期／數字；AI prose 依 locale，analyst 數字校驗兩語皆有效；E2E 主流程兩語各跑一次 | 016、022 |
+| TEST-032 | browser session / BFF | document.cookie、storage、回應 body 中沒有 token；cookie 為 `__Host-`、HttpOnly、Secure、SameSite=Lax；跨站 POST、缺 `X-Geminus-Request` 或錯 Origin 被拒；PKCE／state／nonce 錯誤被拒；refresh rotation 與 reuse；logout 撤銷 refresh；未知 identity 403；Go API 不讀 cookie | 001、019 |
 
 range 003 等指 REQ-003。planning/traceability.csv 提供完整 ID 對照；test row 是驗收要求，不是聲稱已存在產品測試實作。
 
@@ -74,6 +76,6 @@ Golden digest 改變需附 engine/version/semantic原因與 before/after diff，
 
 ## 6. Release Definition of Done
 
-REQ-001–021 均有對應可執行測試與artifact；所有安全zero-tolerance gates通過；原報告TBD已在相應gate解決；migration/backup/rollback rehearsal完成；immutable/deterministic合同被證明；3D viewer和閉環E2E可用；沒有productionmockfallback；性能達成或有產品负责人明確記錄的門檻調整，不能自行降低。
+REQ-001–022 均有對應可執行測試與artifact；所有安全zero-tolerance gates通過；原報告TBD已在相應gate解決；migration/backup/rollback rehearsal完成；immutable/deterministic合同被證明；3D viewer和閉環E2E可用；沒有productionmockfallback；性能達成或有產品负责人明確記錄的門檻調整，不能自行降低。
 
 report中的16週是規劃基線，不是以工期替代驗收。若某項未完成，列出具體blocked test/requirement與影響，不把全部milestone改為done。

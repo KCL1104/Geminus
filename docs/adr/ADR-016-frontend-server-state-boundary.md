@@ -2,6 +2,8 @@
 
 狀態：ACCEPTED（T-014 agent 選定；owner KCL1104 於 2026-10-15 同意）。日期：2026-10-15。原報告把 TanStack Query、Zustand、Tailwind/shadcn 列為 TBD（DECISIONS_AND_TBD.md「Frontend state / UI libraries」）。
 
+2026-10-18 補記：瀏覽器如何取得 credentials 改由 [ADR-018](ADR-018-browser-session-and-oidc-provider.md)（BFF）決定：T-043 起 `lib/api/client.ts` 改呼叫同源 BFF（`credentials: 'same-origin'`、`X-Geminus-Request`），瀏覽器不持有 token、不再自行設 `Authorization`；下表其餘責任不變。
+
 ## Decision
 
 T-014 不引入 state 或 UI library，只用 React 19 與自寫的小型模組，因為邊界本身才是本任務要固定的東西：

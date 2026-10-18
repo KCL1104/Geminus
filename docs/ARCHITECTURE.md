@@ -108,6 +108,8 @@ PostgreSQL jobs 使用 `FOR UPDATE SKIP LOCKED`，P0 不加入 broker。APPROVED
 
 server state（versions、proposals、jobs）與 unsaved draft/editor state 分開（T-014 實作見 ADR-016：`apps/web/lib/api` 為唯一 HTTP 出口、`lib/state/draft.ts` 分開 remote／in-flight／unsaved，409 保留本機編輯且不自動 rebase）。ViewAdapter 以 IR ID 建立 React Flow nodes/edges；2D positions 是 views 的資料，不是 domain semantics。3D derives topology 與 layout，不可回寫 graph；same selectedEntityId store 支援切換 renderer。Playback loader 與 aggregate results 分離，可按需取 authorized sampled trace。
 
+Browser session 採 BFF（ADR-018）：Next.js 伺服器端持有 OIDC client 與 token，瀏覽器只呼叫同源 `/api/v1/...`，由 BFF 轉成 Bearer 給 Go API；Go API 不讀 cookie。語言（REQ-022，T-044）：UI 字串只來自 `en`（預設）與 `zh-Hant` catalog，語言偏好存在 cookie（不含敏感資料、不影響授權），API 只回語言中立的 error code 與英文開發者訊息，由 UI 依 code 顯示；使用者輸入的名稱、label 與 dataset 內容是資料，不翻譯；template 建立時的預設名稱依建立者的語言（domain pack 提供兩語名稱，ID 不變）。
+
 AI review 必須顯示 base version、candidate effective diff、server-computed risk、assumptions、validation。Scenario approval 與 publish 的 UI copy 不可混淆。所有 pending/needs_input/invalid/conflicted 狀態都有明確下一步，不把 provider timeout 當空 patch success。
 
 ## 8. Deployment / observability / failure modes

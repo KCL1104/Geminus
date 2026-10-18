@@ -1,27 +1,38 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 37,
-    "proposed": 2,
+    "approved": 39,
+    "proposed": 0,
     "rejected": 0,
     "superseded": 0
   },
   "human_decisions_recorded": [
     "H-001",
     "H-002",
-    "H-003"
+    "H-003",
+    "H-004",
+    "H-005"
   ],
   "tasks_by_status": {
     "blocked": 0,
     "done": 12,
     "in_progress": 0,
-    "not_started": 28,
+    "not_started": 30,
     "review": 2
   },
-  "ready_tasks": [],
+  "ready_tasks": [
+    "T-044"
+  ],
   "next_after_review": [
     {
       "id": "T-009",
+      "awaiting_task_review": [
+        "T-008"
+      ],
+      "awaiting_decisions": []
+    },
+    {
+      "id": "T-043",
       "awaiting_task_review": [
         "T-008"
       ],
@@ -351,14 +362,14 @@
       ]
     },
     "D-038": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-023 對外提供 run 結果前",
       "gates_tasks": [
         "T-023"
       ]
     },
     "D-039": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-023 對外提供 run 結果前",
       "gates_tasks": [
         "T-023"

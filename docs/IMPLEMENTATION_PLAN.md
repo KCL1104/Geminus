@@ -14,6 +14,10 @@ SOURCE：原報告 pp.47–50。四位工程師／16週為baseline，17–20週�
 flowchart TD
   C[Contracts / T-001..007] --> V[Auth + Model + Domain / T-008..013]
   V --> E[2D Editor / T-014..015]
+  V --> L[Login BFF / T-043]
+  V --> L10N[Bilingual UI / T-044]
+  L10N --> E
+  L --> UI
   V --> I[Import profile/map / T-016..017]
   V --> S[DES + Metrics / T-020..022]
   C --> J[Queue / T-019]
@@ -36,7 +40,7 @@ flowchart TD
   G --> B[Staging + E2E + Beta / T-039..041]
 ```
 
-T-035 audit/observability 基線應從第一個write/job即接入，Week12–14做完整硬化；不是到第12週才補tenant safety。T-042是test-only generic boundary guard，不是P0增加第二個客戶domain。
+T-035 audit/observability 基線應從第一個write/job即接入，Week12–14做完整硬化；不是到第12週才補tenant safety。T-042是test-only generic boundary guard，不是P0增加第二個客戶domain。T-043（BFF 登入，ADR-018）與 T-044（en 預設＋zh-Hant，REQ-022）為 2026-10-18 依 owner 決定（H-004、H-005）新增；T-044 在 T-015 之前完成，之後的 UI 任務一律經 catalog。
 
 ## 3. 工作分配與週程
 
@@ -117,3 +121,5 @@ IR/Schema晚變更會傳到AI/UI/engine/DB：先批准D-001/D-014與contract tes
 - **T-040 — Product Alpha E2E / pilot hardening**：All + Product；Week 15–16；依賴 T-032, T-034, T-036, T-037, T-038, T-039。具體scope/commands/DoD見tasks.json。
 - **T-041 — Backup/restore、data policy、Private Beta gate**：Platform + Product；Week 15–16; buffer 17–20；依賴 T-040。具體scope/commands/DoD見tasks.json。
 - **T-042 — Generic kernel / adapter dependency guard**：Simulation；Week 6–8；依賴 T-011, T-020。具體scope/commands/DoD見tasks.json。
+- **T-043 — Browser login session (BFF, ADR-018)**：Frontend / Security；Week 3–5；依賴 T-008, T-014。具體scope/commands/DoD見tasks.json。
+- **T-044 — Bilingual UI foundation (en default, zh-Hant)**：Frontend；Week 3–4；依賴 T-014, T-011。具體scope/commands/DoD見tasks.json。

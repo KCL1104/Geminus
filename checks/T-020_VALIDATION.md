@@ -80,6 +80,8 @@ Review 由另一個 agent 以對抗方式進行（H-003），它沒有修改 rep
 
 ## 需 owner 知悉的實作解讀（D-038，PROPOSED）
 
+> 2026-10-18 補記：owner 已依原文批准（H-004），本節保留為當時紀錄。
+
 1. ARRIVAL 事件先排下一個 arrival、再路由新 entity（決定同 tick 的 sequence）。
 2. 晚於 horizon 的事件不放進 heap，但抽樣仍消耗 stream。
 3. exponential 樣本至少 1 tick；超過 365 天的樣本視為「永不在 horizon 內」。

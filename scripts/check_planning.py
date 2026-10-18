@@ -11,8 +11,8 @@ def main():
     assert len(tasks)==len(index),'duplicate task IDs'
     decisions=json.loads((ROOT/'planning/decisions.json').read_text())['decisions']
     dids={d['id'] for d in decisions}
-    reqs={f'REQ-{i:03d}' for i in range(1,22)}
-    tests={f'TEST-{i:03d}' for i in range(1,31)}
+    reqs={f'REQ-{i:03d}' for i in range(1,23)}
+    tests={f'TEST-{i:03d}' for i in range(1,33)}
     for t in tasks:
         assert set(t['depends_on']) <= set(index)
         assert t['id'] not in t['depends_on']

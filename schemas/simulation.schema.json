@@ -1009,7 +1009,7 @@
     },
     "TraceArtifact": {
       "type": "object",
-      "$comment": "T-022 (D-039 PROPOSED): the sampled playback trace of one run, stored as a private object (Result.trace.artifact_id). It is not part of result_digest and never changes metrics.",
+      "$comment": "T-022 (D-039, approved 2026-10-18): the sampled playback trace of one run, stored as a private object (Result.trace.artifact_id). It is not part of result_digest and never changes metrics.",
       "properties": {
         "format": {
           "const": "geminus.trace.v1"

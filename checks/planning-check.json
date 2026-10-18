@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "tasks": 42,
+  "tasks": 44,
   "dependency_graph": "ACYCLIC",
   "topological_order": [
     "T-001",
@@ -17,6 +17,7 @@
     "T-012",
     "T-013",
     "T-014",
+    "T-044",
     "T-015",
     "T-016",
     "T-017",
@@ -38,6 +39,7 @@
     "T-033",
     "T-034",
     "T-035",
+    "T-043",
     "T-036",
     "T-037",
     "T-038",
@@ -46,7 +48,7 @@
     "T-041",
     "T-042"
   ],
-  "requirements_with_traceability": 21,
-  "proposed_decisions": 2,
+  "requirements_with_traceability": 22,
+  "proposed_decisions": 0,
   "completed_tasks": 12
 }

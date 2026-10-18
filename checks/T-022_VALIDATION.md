@@ -110,6 +110,8 @@ Review 列為 PLAUSIBLE 或需 owner 決定的項目：
 
 ## 需 owner 知悉（D-039，PROPOSED）
 
+> 2026-10-18 補記：owner 已依原文批准（H-004），本節保留為當時紀錄。
+
 1. replication-mean lead time 只要有一個 replication 沒有完整 cohort 就整個 unavailable（§5 原文只說 CI 為 null；另一個做法是只用有 cohort 的 replication 並在 sample_count 反映）。
 2. available summary 的 reason 一律 null；n<2 時 CI 為 null，以 sample_count 表達（與 `valid-result.json` 一致）。§5 原文為「null + reason」；schema 並不禁止 available summary 帶 reason，若 owner 要依原文，可改為 n<2 時填一個 reason code。
 3. 暫定 reason codes：`NO_COMPLETED_ENTITY_IN_WINDOW`、`REPLICATION_WITHOUT_COMPLETED_COHORT`、`NO_COMPLETED_QUEUE_VISIT_IN_WINDOW`（CB-23 仍開）。

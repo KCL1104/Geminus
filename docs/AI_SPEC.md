@@ -30,6 +30,8 @@ ProposalContext 的 mode 由 server 固定為 edit/scenario；可以用同一 pr
 
 所有 CSV cells、JSON metadata、model labels、user intent 文字都標示 UNTRUSTED_DATA，不能被解釋為 system/developer instruction。raw credentials、tenant secrets、無关 raw rows、其他 tenant、任意 URL、private infrastructure secrets default deny。大型 imports 只發摘要與 bounded sample，不送整份 CSV。context omission 必須可見，不能在 slice 中看不到某 reference 就假裝它不存在。
 
+輸出語言（REQ-022）：每個 AI request 帶 `output_locale`（`en` 預設，或 `zh-Hant`），取自使用者的 UI 語言，由 server 驗證為允許值後放進 provider instruction；client 的其他文字不能改變它。只有 prose（summary、assumptions、explanation、clarifying question）依該語言輸出；ID、JSON Patch path、JSON Pointer、enum／reason code、metric path、單位一律不翻譯。Analyst prose 中的數字一律以阿拉伯數字與供應值的單位書寫，§9 的數字校驗對兩種語言都適用；無法校驗的中文數字寫法（如「四十七」）視為未校驗數字。Request contract 在 T-024／T-025 依「先改 contract」加入此欄位；eval corpus 含 zh-Hant intents（T-038）。
+
 APPROVED D-016：新增 node/resource 的 ID 必須來自 server 提供的 allocation pool，且在同一 patch 中明確建立；不准編造外部 dataset 或引用未建立／未授權 resource。若 pool/schema/intent 不足，needs_input。server 做完整 candidate IR referential validation，不只驗 slice。
 
 ## 4. Provider output / proposal 狀態機

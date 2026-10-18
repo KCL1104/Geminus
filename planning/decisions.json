@@ -528,9 +528,9 @@
       "source_pages": "N/A（實作語意；SIMULATION_SPEC.md §2、§4）",
       "owner_role": "Simulation",
       "gate": "T-023 對外提供 run 結果前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null,
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-18",
       "resolves": []
     },
     {
@@ -541,9 +541,9 @@
       "source_pages": "N/A（實作語意；SIMULATION_SPEC.md §5、§9）",
       "owner_role": "Simulation",
       "gate": "T-023 對外提供 run 結果前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null,
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision)",
+      "approved_at": "2026-10-18",
       "resolves": []
     }
   ],
@@ -579,6 +579,32 @@
       "decided_at": "2026-10-15",
       "source": "Claude Code session 指示，由 agent 記錄",
       "still_open": []
+    },
+    {
+      "id": "H-004",
+      "subject": "D-038、D-039、ADR-017 批准；auth provider 與 browser token 儲存授權 agent 決定",
+      "decision": "Owner 依原文批准 D-038（DES 實作語意與 numerical profile）與 D-039（結果彙整與 sampled trace 語意），解除 T-023 的 decision gate；同意 ADR-017（provider-agnostic token 驗證，含 2026-10-18 review 修訂）。Auth provider 與 browser token 儲存授權 agent 直接決定：agent 依此寫成 ADR-018（BFF＋HttpOnly 加密 session cookie；Auth0），owner 可重開。",
+      "quote": "1. ... Approve them as written? ok 2. ... ok, you can do it right now",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-18",
+      "source": "Claude Code session 指示，由 agent 記錄；owner 於 PR review 確認措辭",
+      "still_open": [
+        "Auth0 tenant 由 owner 建立、方案與費用由 owner 確認",
+        "tenant region 依 retention／residency（TBD）"
+      ]
+    },
+    {
+      "id": "H-005",
+      "subject": "產品語言",
+      "decision": "App 必須支援英文與中文兩種語言，英文為主要（預設）語言。Agent 將中文定為繁體中文（zh-Hant，依 owner 使用的書寫系統），新增 REQ-022、TEST-031 與 T-044；範圍是產品 UI 與 AI 文字輸出，repository 文件語言不變。",
+      "quote": "and app must support 2 language chinese and eng, and the main language will be eng",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-18",
+      "source": "Claude Code session 指示，由 agent 記錄；繁體／簡體與文件語言的解讀待 owner 確認",
+      "still_open": [
+        "是否另需簡體中文（zh-Hans）",
+        "repository 文件是否也改為英文"
+      ]
     }
   ]
 }
