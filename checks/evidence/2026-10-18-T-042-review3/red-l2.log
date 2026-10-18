@@ -1,0 +1,11 @@
+# red-l2: the new tests on the code before the fix
+# github.com/kcl1104/geminus/internal/domainpack [github.com/kcl1104/geminus/internal/domainpack.test]
+internal/domainpack/export_test.go:5:77: undefined: newRegistry
+internal/domainpack/export_test.go:8:24: undefined: checkPackPackage
+FAIL	github.com/kcl1104/geminus/internal/domainpack [build failed]
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	2.173s
+--- FAIL: TestRegistration (0.00s)
+    registry_test.go:26: two packs of one package: <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.312s
+FAIL

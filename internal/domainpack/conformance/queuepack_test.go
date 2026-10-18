@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/domainpack"
@@ -154,5 +155,74 @@ func TestInvalidVariantsBreakTheirRule(t *testing.T) {
 		if !slices.ContainsFunc(genericIssues(&v), func(is model.ValidationIssue) bool { return is.Code == want }) {
 			t.Errorf("%s: no %s error, got %v", name, want, genericIssues(&v))
 		}
+	}
+}
+
+// The sentinel model is the suite model under other names: every ID and
+// every reference carries the sentinel, and it is still a valid model
+// (T-042 third review L3).
+func TestSentinelModel(t *testing.T) {
+	m := queueModel(t)
+	m.Constraints = []model.Constraint{{Type: model.ConstraintOutgoingProbabilitySum, NodeID: "follow_up", Equals: 1}}
+	m.Metrics = append(m.Metrics,
+		model.Metric{ID: "busy", Type: model.MetricResourceUtilization, ResourceID: "clerk"},
+		model.Metric{ID: "waiting", Type: model.MetricQueueWait, NodeID: "line"},
+		model.Metric{ID: "left", Type: model.MetricSinkThroughput, SinkID: "leave"})
+	errorsOf := func(ir *model.ModelIR) []model.ValidationIssue {
+		var out []model.ValidationIssue
+		for _, is := range allIssues(ir) {
+			if is.Severity == model.SeverityError {
+				out = append(out, is)
+			}
+		}
+		return out
+	}
+	if errs := errorsOf(&m); len(errs) > 0 {
+		t.Fatalf("the test model is invalid: %v", errs)
+	}
+	s := sentinelModel(&m)
+	if errs := errorsOf(&s); len(errs) > 0 {
+		t.Errorf("the sentinel model is invalid: %v", errs)
+	}
+	var ids []string
+	for _, e := range s.EntityTypes {
+		ids = append(ids, e.ID)
+	}
+	for _, r := range s.Resources {
+		ids = append(ids, r.ID)
+	}
+	for _, n := range s.Nodes {
+		ids = append(ids, n.ID)
+		if n.EntityType != "" {
+			ids = append(ids, n.EntityType)
+		}
+		for _, r := range n.Requires {
+			ids = append(ids, r.ResourceID)
+		}
+	}
+	for _, f := range s.Flows {
+		ids = append(ids, f.ID, f.From, f.To)
+	}
+	for _, c := range s.Constraints {
+		ids = append(ids, c.NodeID)
+	}
+	for _, mt := range s.Metrics {
+		ids = append(ids, mt.ID)
+		for _, ref := range []string{mt.SinkID, mt.ResourceID, mt.NodeID} {
+			if ref != "" {
+				ids = append(ids, ref)
+			}
+		}
+	}
+	for k := range s.Views.TwoD.Positions {
+		ids = append(ids, k)
+	}
+	for _, id := range ids {
+		if !strings.HasPrefix(id, sentinelID) {
+			t.Errorf("%q does not carry the sentinel", id)
+		}
+	}
+	if s.Name != sentinel || m.Nodes[0].ID != "arrivals" {
+		t.Errorf("name %q; the original changed: %q", s.Name, m.Nodes[0].ID)
 	}
 }

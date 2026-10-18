@@ -413,6 +413,9 @@ func TestRound2Probes(t *testing.T) {
 		}, "pack-layout", "./internal/domainpack/packs/beta", "a subpackage of ./internal/domainpack/packs depends on ./internal/domainpack"},
 		{"pack subpackage in another package's tests", map[string]string{sd + "zzsub/a.go": "package zzsub\n", "cmd/api/zz_probe_test.go": "package main\n\nimport _ \"" + module + "/internal/domainpack/softwaredelivery/zzsub\"\n"}, "pack-layout", "./cmd/api", "imports ./internal/domainpack/softwaredelivery/zzsub"},
 		{"pack third-party module", map[string]string{sd + "zz_probe.go": "package softwaredelivery\n\nimport _ \"github.com/go-jose/go-jose/v4\"\n"}, "domain-packs", "./internal/domainpack/softwaredelivery", "github.com/go-jose/go-jose/v4"},
+		// Third review L1: an allowed module's other packages are not allowed.
+		{"kernel x/text package that reads files", map[string]string{eng + "zz_probe.go": "package engine\n\nimport \"golang.org/x/text/unicode/cldr\"\n\nfunc zzRead() { _, _ = (&cldr.Decoder{}).DecodePath(\"/etc\") }\n"}, "generic-kernel", "./internal/simulation/engine", "golang.org/x/text/unicode/cldr"},
+		{"pack x/text package that reads files", map[string]string{sd + "zz_probe.go": "package softwaredelivery\n\nimport _ \"golang.org/x/text/unicode/cldr\"\n"}, "domain-packs", "./internal/domainpack/softwaredelivery", "golang.org/x/text/unicode/cldr"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -443,6 +446,54 @@ func TestRound2Probes(t *testing.T) {
 	}
 }
 
+// go list reports each package's module: the main module's packages, a
+// dependency's, and none for the standard library.
+func TestModuleInfoLoaded(t *testing.T) {
+	g, err := load(repoRoot(t), nil, host, "./internal/model/validate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]*moduleInfo{
+		module + "/internal/model/validate":        {module, true},
+		"github.com/santhosh-tekuri/jsonschema/v6": {"github.com/santhosh-tekuri/jsonschema/v6", false},
+		"strings": nil,
+	} {
+		p := g.pkgs[path]
+		if p == nil {
+			t.Fatalf("%s is not in the graph", path)
+		}
+		if (p.Module == nil) != (want == nil) || (want != nil && *p.Module != *want) {
+			t.Errorf("%s: module %+v, want %+v", path, p.Module, want)
+		}
+	}
+}
+
+// A package under the module path that belongs to a nested module (its
+// own go.mod, wired in with replace) fails closed, and the report says why
+// (T-042 third review L4).
+func TestNestedModule(t *testing.T) {
+	m := func(p string) string { return module + "/" + p }
+	g := &graph{pkgs: map[string]*pkg{}, whole: true}
+	main := &moduleInfo{module, true}
+	g.pkgs[m("cmd/api")] = &pkg{ImportPath: m("cmd/api"), Module: main, Imports: []string{m("tools/zz"), m("internal/zz/_hidden")}}
+	g.pkgs[m("tools/zz")] = &pkg{ImportPath: m("tools/zz"), Module: &moduleInfo{m("tools"), false}}
+	g.pkgs[m("internal/zz/_hidden")] = &pkg{ImportPath: m("internal/zz/_hidden"), Module: main}
+	g.roots = []string{m("cmd/api")}
+	violations, _ := check(g, rules)
+	got := map[string]string{}
+	for _, v := range violations {
+		if v.rule == "every-package-listed" {
+			got[rel(v.pkg)] = v.detail
+		}
+	}
+	if d := got["./tools/zz"]; !strings.HasPrefix(d, "a package of the nested module "+m("tools")) {
+		t.Errorf("nested module package: %q", d)
+	}
+	if d := got["./internal/zz/_hidden"]; !strings.HasPrefix(d, "a module package that ./... does not list") {
+		t.Errorf("unlisted main-module package: %q", d)
+	}
+}
+
 // concrete is a package path that pattern matches: its base, or a package
 // below it when the base is excluded.
 func concrete(pattern string, skip func(string) bool) (string, bool) {
@@ -463,7 +514,7 @@ func concrete(pattern string, skip func(string) bool) (string, bool) {
 // violation. Removing an entry from rules.go fails here (T-042 review C).
 // via is a third-party package every rule allows, through which tests
 // reach a dependency transitively.
-const via = "golang.org/x/text/zzvia"
+const via = "golang.org/x/text/internal/zzvia"
 
 func TestEveryRuleEntryIsEnforced(t *testing.T) {
 	isStd := func(p string) bool { return !inModule(p) && !strings.Contains(strings.Split(p, "/")[0], ".") }

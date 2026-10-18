@@ -31,7 +31,7 @@ func (fakePack) DefaultViews(*model.ModelIR) domainpack.ViewDefinitions {
 
 // REQ-003: an unregistered domain fails closed.
 func TestRegistry(t *testing.T) {
-	r, err := domainpack.NewRegistry(fakePack{"b"}, fakePack{"a"})
+	r, err := domainpack.NewRegistryAnyPackage(fakePack{"b"}, fakePack{"a"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,10 +44,10 @@ func TestRegistry(t *testing.T) {
 	if _, err := r.Lookup("manufacturing"); !errors.Is(err, domainpack.ErrUnsupportedDomain) {
 		t.Errorf("unknown domain: %v", err)
 	}
-	if _, err := domainpack.NewRegistry(fakePack{"a"}, fakePack{"a"}); err == nil {
+	if _, err := domainpack.NewRegistryAnyPackage(fakePack{"a"}, fakePack{"a"}); err == nil {
 		t.Error("duplicate ID accepted")
 	}
-	if _, err := domainpack.NewRegistry(fakePack{""}); err == nil {
+	if _, err := domainpack.NewRegistryAnyPackage(fakePack{""}); err == nil {
 		t.Error("empty ID accepted")
 	}
 }
@@ -109,7 +109,7 @@ func TestDependencies(t *testing.T) {
 
 // Review of T-011: nil inputs are errors or empty results, never panics.
 func TestNilInputs(t *testing.T) {
-	if _, err := domainpack.NewRegistry(fakePack{"a"}, nil); err == nil {
+	if _, err := domainpack.NewRegistryAnyPackage(fakePack{"a"}, nil); err == nil {
 		t.Error("nil pack accepted")
 	}
 	var r *domainpack.Registry
@@ -157,5 +157,34 @@ func TestLayoutTolerance(t *testing.T) {
 	ir.Nodes = append(ir.Nodes, model.Node{ID: "start", Type: model.NodeSink})
 	if got := domainpack.LayeredLayout(ir).Positions; got["start"] != base["start"] || len(got) != 3 {
 		t.Errorf("duplicate ID: %v", got)
+	}
+}
+
+// One package holds one pack (T-042 third review L2): a pack registered for
+// production is declared in its own direct subpackage of internal/domainpack.
+// The architecture rules keep those packages apart, so two packs in one
+// package, a pack type from a pack's subpackage (a generic instantiated
+// elsewhere) or one from outside internal/domainpack would escape them.
+func TestRegistryPackages(t *testing.T) {
+	if _, err := domainpack.NewRegistry(fakePack{"a"}); err == nil {
+		t.Error("a pack declared in a test package was registered")
+	}
+	const root = "github.com/kcl1104/geminus/internal/domainpack"
+	for pkg, ok := range map[string]bool{
+		root + "/softwaredelivery":                   true,
+		root + "/manufacturing":                      true,
+		root:                                         false,
+		root + "/":                                   false,
+		root + "/softwaredelivery/templates":         false,
+		root + "/softwaredelivery/zzgen":             false,
+		root + "x/softwaredelivery":                  false,
+		root + "_test":                               false,
+		"github.com/kcl1104/geminus/internal/zzpack": false,
+		"main": false, // a pack type declared in a command
+		"":     false,
+	} {
+		if err := domainpack.CheckPackPackage(pkg); (err == nil) != ok {
+			t.Errorf("%q: %v", pkg, err)
+		}
 	}
 }

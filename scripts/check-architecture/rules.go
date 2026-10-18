@@ -51,8 +51,9 @@ var ioStd = []string{
 // standard packages; the third-party allowlist refuses them. Adding one
 // is a reviewed change to this list. What import rules cannot see at all:
 // writes to stdout and stderr through fmt.Print, log or the print builtins,
-// and time.LoadLocation reading the zoneinfo database; review and the
-// determinism goldens cover those.
+// time.LoadLocation reading the zoneinfo database, and file access inside
+// an allowed third-party package (jsonschema's FileLoader reads file://
+// URLs); review and the determinism goldens cover those.
 var kernelStd = []string{
 	"bytes", "cmp", "container/heap", "context", "crypto/sha256", "embed", "encoding/binary", "encoding/hex",
 	"encoding/json/jsontext", "encoding/json/v2", "errors", "fmt", "io", "iter", "maps", "math", "math/bits",
@@ -73,13 +74,19 @@ var llmSDKs = []string{
 	"github.com/tmc/langchaingo/...", "github.com/cohere-ai/...", "github.com/mistralai/...",
 }
 
-// kernelThirdParty is every non-standard module the kernel may link: RFC
+// kernelThirdParty is every non-standard package the kernel may link: RFC
 // 8785 canonical JSON, the JSON Schema validator and its message catalog.
-// Adding one is a reviewed change to this list.
+// For golang.org/x/text only the packages the catalog links, not the
+// module: golang.org/x/text/unicode/cldr, for one, reads directories and
+// zip files (T-042 third review L1). Adding one is a reviewed change to
+// this list.
 var kernelThirdParty = []string{
 	"github.com/gowebpki/jcs/...",
 	"github.com/santhosh-tekuri/jsonschema/v6/...",
-	"golang.org/x/text/...",
+	"golang.org/x/text/feature/plural",
+	"golang.org/x/text/internal/...", // importable only through the packages above
+	"golang.org/x/text/language",
+	"golang.org/x/text/message/...",
 }
 
 // Test infrastructure: imported from _test.go files only.

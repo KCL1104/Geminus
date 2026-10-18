@@ -1,0 +1,7 @@
+# red-l3: the new tests on the code before the fix
+--- FAIL: TestBrokenPacksAreCaught (2.06s)
+    --- FAIL: TestBrokenPacksAreCaught/remembersLastNodeIDs/stateless (0.03s)
+        broken_test.go:813: no stateless finding ("returns text"); got []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/conformance	2.067s
+FAIL

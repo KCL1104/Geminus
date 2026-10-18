@@ -101,6 +101,55 @@ func (c *checker) renamed() string {
 // sentinel is user text a pack must never carry into static pack data.
 const sentinel = "CONFORMANCE-SENTINEL-c0ffee: customer roadmap"
 
+// sentinelID prefixes every ID of the sentinel model: IDs are customer
+// text too (T-042 third review L3).
+const sentinelID = "sentinelc0ffee_"
+
+// sentinelModel is a copy of m in which every name and ID carries the
+// sentinel. References are renamed with their targets, so it is the same
+// model under another tenant's names.
+func sentinelModel(m *model.ModelIR) model.ModelIR {
+	ir := clone(m)
+	id := func(s string) string {
+		if s == "" {
+			return s
+		}
+		return (sentinelID + s)[:min(len(sentinelID)+len(s), 128)]
+	}
+	ir.Name = sentinel
+	for i := range ir.EntityTypes {
+		ir.EntityTypes[i].ID, ir.EntityTypes[i].Name = id(ir.EntityTypes[i].ID), sentinel
+	}
+	for i := range ir.Resources {
+		ir.Resources[i].ID, ir.Resources[i].Name = id(ir.Resources[i].ID), sentinel
+	}
+	for i := range ir.Nodes {
+		n := &ir.Nodes[i]
+		n.ID, n.Name, n.EntityType = id(n.ID), sentinel, id(n.EntityType)
+		for j := range n.Requires {
+			n.Requires[j].ResourceID = id(n.Requires[j].ResourceID)
+		}
+	}
+	for i := range ir.Flows {
+		f := &ir.Flows[i]
+		f.ID, f.From, f.To = id(f.ID), id(f.From), id(f.To)
+	}
+	for i := range ir.Constraints {
+		ir.Constraints[i].NodeID = id(ir.Constraints[i].NodeID)
+	}
+	for i := range ir.Metrics {
+		mt := &ir.Metrics[i]
+		mt.ID, mt.SinkID, mt.ResourceID, mt.NodeID = id(mt.ID), id(mt.SinkID), id(mt.ResourceID), id(mt.NodeID)
+	}
+	if pos := ir.Views.TwoD.Positions; pos != nil {
+		ir.Views.TwoD.Positions = make(map[string]model.Position, len(pos))
+		for k, v := range pos {
+			ir.Views.TwoD.Positions[id(k)] = v
+		}
+	}
+	return ir
+}
+
 // events is a small non-empty canonical event dataset.
 var events = domainpack.CanonicalEventDataset{DatasetVersionID: "dsv_01M4YDQK00CNF0RMANCE00000E", Events: []domainpack.CanonicalEvent{
 	{CaseID: "case-1", EventType: "started", Timestamp: "2026-10-15T09:00:00Z"},
@@ -727,11 +776,7 @@ func (c *checker) static(ctx context.Context) {
 	if !c.call("stateless", func() { before = answers() }) {
 		return
 	}
-	ir := clone(&c.s.Models[0])
-	ir.Name = sentinel
-	for i := range ir.Nodes {
-		ir.Nodes[i].Name = sentinel
-	}
+	ir := sentinelModel(&c.s.Models[0])
 	seen := events
 	seen.Events = append(slices.Clone(events.Events), domainpack.CanonicalEvent{CaseID: sentinel, EventType: sentinel, Timestamp: "2026-10-15T11:00:00Z"})
 	// ComputeMetrics is not exposed here: an engine result carries no
@@ -746,7 +791,7 @@ func (c *checker) static(ctx context.Context) {
 	if !c.call("prompt/static", func() { final = c.staticData() }) {
 		return
 	}
-	if strings.Contains(final, sentinel) {
+	if strings.Contains(final, sentinel) || strings.Contains(final, sentinelID) {
 		c.fail("prompt/static", "the prompt context or a catalog carries text from a model or dataset the pack was given")
 	} else if c.initial != "" && final != c.initial {
 		c.fail("prompt/static", "the prompt context or a catalog changed after the pack was given models and events")
@@ -755,7 +800,7 @@ func (c *checker) static(ctx context.Context) {
 	if !c.call("stateless", func() { after = answers() }) {
 		return
 	}
-	if strings.Contains(after, sentinel) {
+	if strings.Contains(after, sentinel) || strings.Contains(after, sentinelID) {
 		c.fail("stateless", "Validate, DefaultViews or ComputeMetrics returns text from a model or dataset of an earlier call")
 	} else if after != before {
 		c.fail("stateless", "Validate, DefaultViews or ComputeMetrics answers differently after the pack saw another model")

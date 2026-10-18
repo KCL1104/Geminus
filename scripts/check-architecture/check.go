@@ -27,12 +27,19 @@ type pkg struct {
 	IgnoredGoFiles []string
 	Error          *struct{ Err string }
 	DepsErrors     []*struct{ Err string }
+	Module         *moduleInfo // nil for the standard library
 
 	// Non-Go sources, built or excluded by constraints (goOnly). The first
 	// configuration that lists a package lists every such file, so they
 	// need no merging.
 	CgoFiles, CFiles, CXXFiles, MFiles, HFiles, FFiles, SFiles []string
 	SwigFiles, SwigCXXFiles, SysoFiles, IgnoredOtherFiles      []string
+}
+
+// moduleInfo is the module a package belongs to.
+type moduleInfo struct {
+	Path string
+	Main bool // the module being checked
 }
 
 // otherFiles are p's non-Go source files.
@@ -93,7 +100,7 @@ func load(dir string, goflags []string, configs []buildConfig, patterns ...strin
 		if err != nil {
 			return nil, err
 		}
-		out, err := goList(dir, c, append(append([]string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,Standard,ForTest,Imports,TestImports,XTestImports,IgnoredGoFiles,CgoFiles,CFiles,CXXFiles,MFiles,HFiles,FFiles,SFiles,SwigFiles,SwigCXXFiles,SysoFiles,IgnoredOtherFiles,Error,DepsErrors"}, goflags...), patterns...))
+		out, err := goList(dir, c, append(append([]string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,Standard,ForTest,Imports,TestImports,XTestImports,IgnoredGoFiles,Module,CgoFiles,CFiles,CXXFiles,MFiles,HFiles,FFiles,SFiles,SwigFiles,SwigCXXFiles,SysoFiles,IgnoredOtherFiles,Error,DepsErrors"}, goflags...), patterns...))
 		if err != nil {
 			return nil, err
 		}
@@ -408,14 +415,23 @@ func structure(g *graph) []violation {
 		}
 		slices.Sort(linked)
 		for _, p := range linked {
-			out = append(out, violation{rule: "every-package-listed", pkg: p, detail: "a module package that ./... does not list (testdata, or a name starting with \".\" or \"_\"), so no rule checks it as a package, but something imports it",
+			detail := "a module package that ./... does not list (testdata, or a name starting with \".\" or \"_\"), so no rule checks it as a package, but something imports it"
+			if m := g.pkgs[p].Module; m != nil && !m.Main {
+				// A nested go.mod under the module path, wired in with replace
+				// (T-042 third review L4): still refused, for the real reason.
+				detail = "a package of the nested module " + m.Path + " under this module's path, which ./... does not list, so no rule checks it as a package, but something imports it"
+			}
+			out = append(out, violation{rule: "every-package-listed", pkg: p, detail: detail,
 				why: "every package that is linked must be checked (T-042 review N2); move it to a listed directory"})
 		}
 	}
 	for _, root := range g.roots {
 		p := g.pkgs[root]
-		// Implementing DomainPack needs the interface's types, so a
-		// subpackage that cannot reach them cannot be a second pack.
+		// A subpackage that uses the DomainPack interface is refused, so it
+		// does not implement a second pack directly. This is no proof: a
+		// generic declared in a subpackage, or a second pack type in the
+		// pack's own package, passes (T-042 third review L2), which
+		// domainpack.NewRegistry refuses at registration instead.
 		if unit, ok := packUnit(root); ok && root != unit && reaches(g, root, module+"/internal/domainpack") {
 			out = append(out, violation{rule: "pack-layout", pkg: root, detail: "a subpackage of " + rel(unit) + " depends on ./internal/domainpack: only a pack's own package implements the DomainPack interface",
 				why: "one directory holds one pack; its subpackages are its internals (T-042 review N4)"})

@@ -566,7 +566,8 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-009_VALIDATION.md",
           "summary": "Project routes（POST/GET /v1/projects、GET /v1/projects/{id}）與共用 HTTP 層（ADR-019，PROPOSED）：封閉 error code 與 status 由 contract test 鎖成 schema、server 發的 req_ ULID、strict 且經 schema 驗證的 JSON body（415/413/400/422）、Scoped middleware（token → 單一 X-Organization-ID → ResolveUser），membership 與 role 在同一個 tenant.DB.Run transaction 檢查（非 member 404、role 不足 403）。Create 的效果、audit event 與 idempotency response 同一 transaction（D-011：org/actor/operation scope、JCS hash、byte 相同的重播、409、24 小時）；list 以 (created_at, id) keyset 與綁 organization／list 的 cursor 分頁；storage 皆另帶 organization filter。cmd/api 以 API runtime login 實際服務。make integration-test（db-test＋DB-backed Go tests，-p 1）在新的 PostgreSQL 16 cluster 通過；CI db job 改跑它。Worker 部分 NOT RUN（T-019）。",
-          "reviewer": "pending: independent reviewer agent (H-003)"
+          "reviewer": "pending: independent reviewer agent (H-003)",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/39124340510 (fb6e265: 4/4 success)"
         }
       ]
     },
@@ -2317,7 +2318,7 @@
       "id": "T-042",
       "title": "Generic kernel / adapter dependency guard",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Simulation",
       "planning_window": "Week 6–8",
       "depends_on": [
@@ -2363,8 +2364,12 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-042_VALIDATION.md",
           "summary": "internal/domainpack/conformance：DomainPack conformance suite（identity、catalog、validate fail closed、views 只用 IR node ID 且無第二份 topology、metrics 經 engine 不改 generic 結果且 schema-valid／可重現、inference、prompt、並行；kernel 對改名 domain 的 validator issues 與 engine 數字不變）；test-only generic queue pack 與 SoftwareDeliveryDomainPack 皆通過；40 個壞 pack 各觸發指定 finding。scripts/check-architecture（make architecture-check，CI backend）：go list -e -deps -test build graph 上 8 條遞移規則，16 個 overlay probe 與 synthetic graph 驗證。mutation 80/80＋3 equivalent＋2 kernel guards。CB-37（metrics.dora 名稱）登記給 owner。",
-          "reviewer": null,
-          "review_round_2": "independent reviewer agent (H-003) 2026-10-18 複核 a0feead：CHANGES REQUESTED — 首輪發現全部確認已修；N1–N3（經 module proxy、_／testdata 目錄、assembly 繞過 forbidDirect）、N4（doc.go 讓兩個 pack 共用目錄）與 N5–N11（site 557 應為 kernel guard、TEST-002 變體缺 stage、跨呼叫洩漏、推論 determinism、(model, error)、reviewer 額外 mutant、報告過期）。修正：moduleOnly、kernelStd allowlist、goOnly、every-package-listed、pack subpackage 封裝與不得依賴介面、pack 第三方 allowlist；suite 的 8 個變體、stateless、inference/deterministic、結果與錯誤不得並存、metrics/renamed-run kernel guard。證據 checks/evidence/2026-10-18-T-042-review2/。等待第三次複核。"
+          "reviewer": "independent reviewer agent (H-003); owner did not review line by line",
+          "review_round_2": "independent reviewer agent (H-003) 2026-10-18 複核 a0feead：CHANGES REQUESTED — 首輪發現全部確認已修；N1–N3（經 module proxy、_／testdata 目錄、assembly 繞過 forbidDirect）、N4（doc.go 讓兩個 pack 共用目錄）與 N5–N11（site 557 應為 kernel guard、TEST-002 變體缺 stage、跨呼叫洩漏、推論 determinism、(model, error)、reviewer 額外 mutant、報告過期）。修正：moduleOnly、kernelStd allowlist、goOnly、every-package-listed、pack subpackage 封裝與不得依賴介面、pack 第三方 allowlist；suite 的 8 個變體、stateless、inference/deterministic、結果與錯誤不得並存、metrics/renamed-run kernel guard。證據 checks/evidence/2026-10-18-T-042-review2/。等待第三次複核。",
+          "review_round_3": "同一 reviewer 複核 bc6da42（以 git archive export，未使用含 T-009 修改的工作樹）：ACCEPT。N1–N11 已修正，16 個設定下 kernel 與 pack 碰不到 I/O、DB、LLM、其他 pack、application layer、proxy、非 Go 原始檔或未列出的 package；報告數字全部重現。6 個 low 發現於驗收後先紅後綠修正：L1 x/text 只允許 catalog 連結的 package（unicode/cldr 會讀檔），jsonschema FileLoader 列入 import 規則看不到的事；L2 報告「subpackage 不可能是第二個 pack」為誤，改由 NewRegistry 在登錄時要求一個直接子 package 一個 pack；L3 sentinel model 的所有 ID 帶 sentinel；L4 nested module 以正確訊息拒絕；L5 CI 成本保留 -race；L6 報告表更新。174 RUN；mutation 196/196＋1 equivalent＋3 kernel guards（4/4 pairs）。證據 checks/evidence/2026-10-18-T-042-review3/。",
+          "accepted_at": "2026-10-18",
+          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；第二輪 CHANGES REQUESTED 已修正（bc6da42），同一 reviewer 第三次複核 ACCEPT；複核的 low 發現亦已修正",
+          "ci_before_acceptance": "https://github.com/KCL1104/Geminus/actions/runs/39118014604 (bc6da42: 4/4 success); https://github.com/KCL1104/Geminus/actions/runs/39124340510 (fb6e265, with T-009: 4/4 success)"
         }
       ]
     },

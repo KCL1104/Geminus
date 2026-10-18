@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -569,6 +570,31 @@ func (p leaksViewsIntoPrompt) PromptContext() domainpack.PromptContext {
 	return c
 }
 
+// leaksIDsIntoPrompt remembers the node IDs it laid out and puts them into
+// the prompt context: IDs are customer text too (T-042 third review L3).
+type leaksIDsIntoPrompt struct {
+	queuePack
+	seen *sync.Map
+}
+
+func (p leaksIDsIntoPrompt) DefaultViews(ir *model.ModelIR) domainpack.ViewDefinitions {
+	for _, n := range ir.Nodes {
+		p.seen.Store(n.ID, true)
+	}
+	return p.queuePack.DefaultViews(ir)
+}
+
+func (p leaksIDsIntoPrompt) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	var ids []string
+	p.seen.Range(func(k, _ any) bool { ids = append(ids, k.(string)); return true })
+	slices.Sort(ids)
+	for _, id := range ids {
+		c.Rules = append(c.Rules, "Customer step: "+id)
+	}
+	return c
+}
+
 // leaksEventsIntoPrompt remembers case IDs of the events it was given,
 // other than the suite's own "case-" ones, and puts them into the prompt.
 type leaksEventsIntoPrompt struct{ queuePack }
@@ -605,6 +631,30 @@ func (p remembersLastModel) Validate(ir *model.ModelIR) []model.ValidationIssue 
 	name := ir.Name
 	if prev := p.last.Swap(&name); prev != nil && *prev != ir.Name {
 		out = append(out, model.NewIssue("LAST_MODEL", "", "last model checked: "+*prev, model.SeverityWarning))
+	}
+	return out
+}
+
+// remembersLastNodeIDs warns with the node IDs of the model it validated
+// before: another tenant's customer-authored IDs, which a sentinel model
+// sharing the suite model's IDs would not reveal (T-042 third review L3).
+type remembersLastNodeIDs struct {
+	queuePack
+	last *atomic.Pointer[string]
+}
+
+func (p remembersLastNodeIDs) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	out := p.queuePack.Validate(ir)
+	if ir == nil {
+		return out
+	}
+	var ids []string
+	for _, n := range ir.Nodes {
+		ids = append(ids, n.ID)
+	}
+	cur := strings.Join(ids, ",")
+	if prev := p.last.Swap(&cur); prev != nil && *prev != cur {
+		out = append(out, model.NewIssue("LAST_NODES", "/nodes", "previous model's nodes: "+*prev, model.SeverityWarning))
 	}
 	return out
 }
@@ -762,8 +812,10 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 		// exposure, and be recognised as customer text (not just a change).
 		{leaksIntoPrompt{}, "prompt/static", "carries text"},
 		{leaksViewsIntoPrompt{}, "prompt/static", "carries text"},
+		{leaksIDsIntoPrompt{seen: new(sync.Map)}, "prompt/static", "carries text"},
 		{leaksEventsIntoPrompt{}, "prompt/static", "carries text"},
 		{remembersLastModel{last: new(atomic.Pointer[string])}, "stateless", "returns text"},
+		{remembersLastNodeIDs{last: new(atomic.Pointer[string])}, "stateless", "returns text"},
 		{countsIntoIssues{n: new(atomic.Int64)}, "stateless", "answers differently"},
 		{viewsRememberLastModel{last: new(atomic.Pointer[string])}, "stateless", "answers differently"},
 		{countsMetrics{n: new(atomic.Int64)}, "stateless", "answers differently"},

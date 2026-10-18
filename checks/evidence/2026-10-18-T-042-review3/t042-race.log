@@ -1,0 +1,4 @@
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.919s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	25.068s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	4.440s
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	115.358s

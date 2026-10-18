@@ -14,8 +14,10 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/simulation"
@@ -127,9 +129,18 @@ type Registry struct {
 	packs map[string]DomainPack
 }
 
-// NewRegistry registers packs; a nil pack, or a duplicate or empty ID, is an error.
-func NewRegistry(packs ...DomainPack) (*Registry, error) {
+// NewRegistry registers packs. A nil pack, a duplicate or empty ID, or a
+// pack whose type is not declared in its own direct subpackage of
+// internal/domainpack is an error. One package holds one pack: the
+// architecture rules keep those packages apart, which two packs of one
+// package, a pack type declared in a pack's subpackage (such as a generic
+// instantiated elsewhere) or one outside internal/domainpack would escape
+// (T-042 third review L2).
+func NewRegistry(packs ...DomainPack) (*Registry, error) { return newRegistry(true, packs...) }
+
+func newRegistry(checkPackage bool, packs ...DomainPack) (*Registry, error) {
 	r := &Registry{packs: map[string]DomainPack{}}
+	byPackage := map[string]string{}
 	for _, p := range packs {
 		if p == nil {
 			return nil, errors.New("domainpack: a pack is nil")
@@ -141,9 +152,32 @@ func NewRegistry(packs ...DomainPack) (*Registry, error) {
 		if _, dup := r.packs[id]; dup {
 			return nil, fmt.Errorf("domainpack: %q registered twice", id)
 		}
+		if checkPackage {
+			t := reflect.TypeOf(p)
+			for t.Kind() == reflect.Pointer {
+				t = t.Elem()
+			}
+			if err := checkPackPackage(t.PkgPath()); err != nil {
+				return nil, fmt.Errorf("domainpack: %q: %w", id, err)
+			}
+			if other, dup := byPackage[t.PkgPath()]; dup {
+				return nil, fmt.Errorf("domainpack: %q and %q are declared in one package, %s; one package holds one pack", other, id, t.PkgPath())
+			}
+			byPackage[t.PkgPath()] = id
+		}
 		r.packs[id] = p
 	}
 	return r, nil
+}
+
+// checkPackPackage accepts the import path of a direct subpackage of this
+// package.
+func checkPackPackage(pkg string) error {
+	name, ok := strings.CutPrefix(pkg, reflect.TypeFor[Registry]().PkgPath()+"/")
+	if !ok || name == "" || strings.Contains(name, "/") {
+		return fmt.Errorf("the pack type is declared in %q, not in its own direct subpackage of internal/domainpack", pkg)
+	}
+	return nil
 }
 
 // Lookup returns the pack for a domain, or ErrUnsupportedDomain. A nil

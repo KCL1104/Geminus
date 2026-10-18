@@ -1,0 +1,7 @@
+# red-l1: the new tests on the code before the fix
+--- FAIL: TestRound2Probes (0.27s)
+    --- FAIL: TestRound2Probes/kernel_x/text_package_that_reads_files (0.47s)
+    --- FAIL: TestRound2Probes/pack_x/text_package_that_reads_files (0.52s)
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	2.681s
+FAIL

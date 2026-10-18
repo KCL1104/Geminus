@@ -1,0 +1,5 @@
+# Reviewer's L4 repo (review-t042-r3/nested/repo: tools/go.mod wired in with replace, imported by cmd/api), checked with the round-3 binary
+[every-package-listed] ./tools/zzlib: a package of the nested module github.com/kcl1104/geminus/tools under this module's path, which ./... does not list, so no rule checks it as a package, but something imports it
+    rule: every package that is linked must be checked (T-042 review N2); move it to a listed directory
+FAIL architecture: 1 violation(s)
+exit 1

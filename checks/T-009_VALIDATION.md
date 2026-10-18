@@ -48,7 +48,7 @@
 | Mutation（`mutants.py`，164 個） | — | **156/156 被擋，8 個 equivalent**（見下） |
 | 紅燈：新的 contract 檢查 | 1 | 重複的 `'415'` key 與缺少的 413 都被 `check_contracts.py` 擋下（`red-contracts.log`） |
 | Login 建立的競爭（`role-race-probe.log`） | — | 8 個 session 同時執行舊的 `IF NOT EXISTS … CREATE ROLE` 20 輪：4 個失敗；修正後 0。4 個 package 並行、每輪先刪 login 的 Go probe 在新舊程式都 0/10（package 啟動時間錯開），因此以 SQL 層的 probe 證明 |
-| GitHub Actions | — | 推送後補上 |
+| GitHub Actions run 39124340510（fb6e265） | success | 4/4：backend（含 architecture-check、govulncheck）、db migrations + API integration（`make integration-test`，PostgreSQL 16 service container）、frontend、spec-check |
 
 ### Mutation
 

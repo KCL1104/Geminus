@@ -1,8 +1,8 @@
 # T-042 驗證報告：Generic kernel／adapter dependency guard
 
-**日期：2026-10-15（review 修正 2026-10-18，第二輪修正 2026-10-18）｜狀態：`review`（第二輪獨立 review 為 CHANGES REQUESTED，已修正，等待同一 reviewer 第三次複核；依 H-003 驗收）｜需求：REQ-003、REQ-011｜Gate：無｜驗收測試：TEST-001、TEST-002、TEST-025（後端部分）**
+**日期：2026-10-15（review 修正 2026-10-18，第二輪與第三輪修正 2026-10-18）｜狀態：`done`（第二輪 CHANGES REQUESTED 已修正；同一 reviewer 第三次複核 bc6da42 為 **ACCEPT**，其 low 發現已先紅後綠修正；依 H-003 驗收，owner 可隨時重開）｜需求：REQ-003、REQ-011｜Gate：無｜驗收測試：TEST-001、TEST-002、TEST-025（後端部分）**
 
-逐條輸出：首版 `checks/evidence/2026-10-15-T-042/`，第一輪 review 後 `checks/evidence/2026-10-15-T-042-review/`，第二輪 review 後 `checks/evidence/2026-10-18-T-042-review2/`。以下「交付內容」「檢查項」「架構規則」三表描述目前（第二輪修正後）的狀態。範圍依 IMPLEMENTATION_PLAN：這是 test-only 的 boundary guard，**不是**第二個產品 domain。
+逐條輸出：首版 `checks/evidence/2026-10-15-T-042/`，第一輪 review 後 `checks/evidence/2026-10-15-T-042-review/`，第二輪 review 後 `checks/evidence/2026-10-18-T-042-review2/`，第三輪後 `checks/evidence/2026-10-18-T-042-review3/`。以下「交付內容」「檢查項」「架構規則」三表描述目前（第三輪修正後，含 T-009 對 checker 的修改）的狀態。範圍依 IMPLEMENTATION_PLAN：這是 test-only 的 boundary guard，**不是**第二個產品 domain。
 
 ## 交付內容
 
@@ -10,7 +10,8 @@
 |---|---|
 | `internal/domainpack/conformance/conformance.go` | DomainPack conformance suite（test-only，只在 `_test.go` 中 import）。`Check(ctx, Suite)` 回傳 findings，`Run(t, Suite)` 把每個 finding 報成測試錯誤；pack 的每次呼叫都在 recover 內，panic 是 finding 而不是讓 suite 崩潰。檢查項見下表 |
 | `internal/domainpack/conformance/queuepack_test.go`、`testdata/generic-queue.json` | 只存在於測試檔的 generic queue pack（`generic_queue`：客人排隊等 clerk 的 service counter，容量 2、rework 回到 queue），用與 software delivery 相同的 generic primitives、同一個 IR schema、validator、engine 與 view 資料；它的 `longest_queue_wait_minutes` 由 engine 的 queue stats 推導（available），`abandon_rate` 為 unavailable 並帶 reason |
-| `internal/domainpack/conformance/broken_test.go` | 67 列測試、64 種壞 pack（大多只壞一個方法；為了讓 prompt 的 catalog 一致或為了洩漏，少數覆寫兩個方法），每列都必須產生指定的 finding（部分列另要求 detail 內容，區分「含 sentinel」與「只是改變」）；4 個正確 pack（拒絕推論、會推論、123 字元 ID、ID 等於 suite 的改名 domain）0 finding；另有 suite 本身的錯誤（沒有 model、model 不 valid、engine 無法執行的 model）與 `Run` 確實讓測試失敗（子 process） |
+| `internal/domainpack/domainpack.go` | `NewRegistry` 只接受型別宣告在 `internal/domainpack` 自己的直接子 package 中的 pack，且一個 package 一個 pack（第三輪 L2）：架構規則把這些 package 分開，同一 package 的第二個 pack、宣告在 pack subpackage 的型別（例如在別處 instantiate 的 generic）或 `internal/domainpack` 以外的 pack 都會逃過規則。測試 pack 經 `export_test.go` 的 `NewRegistryAnyPackage` 登錄 |
+| `internal/domainpack/conformance/broken_test.go` | 69 列測試、66 種壞 pack（大多只壞一個方法；為了讓 prompt 的 catalog 一致或為了洩漏，少數覆寫兩個方法），每列都必須產生指定的 finding（部分列另要求 detail 內容，區分「含 sentinel」與「只是改變」）；4 個正確 pack（拒絕推論、會推論、123 字元 ID、ID 等於 suite 的改名 domain）0 finding；另有 suite 本身的錯誤（沒有 model、model 不 valid、engine 無法執行的 model）與 `Run` 確實讓測試失敗（子 process） |
 | `internal/domainpack/softwaredelivery/conformance_test.go` | P0 pack 以預設 template 與 4 個 golden model（report-example 以合成的 frozen samples 解析 empirical dataset）通過 suite |
 | `scripts/check-architecture/` | `make architecture-check`：把 `go list -e -deps -test` 的 build graph 在 8 個平台 × cgo 開／關（16 個設定）上合併，檢查 9 條依賴規則（`rules.go`）與結構規則（`every-file-built`、`every-package-listed`、`pack-layout`）；違規時列出整條 import chain 或原因與規則理由，exit 1；任何 package（含測試檔）無法 build 是錯誤（exit 2）；一條規則若沒有套用到任何 package 也是錯誤（除非標為 future） |
 | `Makefile`、`.github/workflows/ci.yml` | `architecture-check` 由 NOT IMPLEMENTED 換成真實命令；CI backend job 新增此步驟；`GO_PKGS`、gofmt 與 govulncheck 涵蓋 `./scripts/...` |
@@ -27,28 +28,43 @@
 | `views/*` | `DefaultViews` 對原樣、去掉 positions、只留一個已存位置、已存位置在預設格點上四種輸入：只回本 IR node ID 的 positions（不多不少）、不重疊、保留已存位置、不改 IR、決定性，套回 IR 後仍 valid（2D 是同一 IR 的 views，3D 由 2D 推導，沒有另一份 topology） |
 | `metrics/*` | 經過 generic engine：`ComputeMetrics` 不改 Result、engine 擁有的部分（除 domain metrics 與 digest 外全部）不因 pack 而變、Result（含 pack 指標）通過 schema、digest 可重現、metric key 非空；**同一 IR 改名 domain 後能執行（`metrics/renamed-run`）且 engine 的數字完全相同** |
 | `inference/*` | 空 dataset 與取消的 context 必須回錯誤且不帶結果；有 events 時只能回錯誤（不帶結果）或本 domain 的 valid model，不回 (nil, nil)；同一 dataset 兩次呼叫結果相同（`inference/deterministic`：ID 由 server 分配，D-016） |
-| `prompt/*` | domain 等於 ID、有 summary、無空規則、catalog 與 pack 的 catalog 相同；pack 看過帶 sentinel 的 model（名稱與 node 名稱）與 events 後，prompt 與 catalog 不含 sentinel 且與 pack 看到任何 IR 前相同 |
-| `stateless` | pack 看過帶 sentinel 的 model 後，對 suite 每個 model 的 `Validate`、`DefaultViews` 與 `ComputeMetrics` 回答與之前相同且不含 sentinel（不把一個 tenant 的 model 帶進另一個的回答） |
+| `prompt/*` | domain 等於 ID、有 summary、無空規則、catalog 與 pack 的 catalog 相同；pack 看過 sentinel model（名稱、node 名稱與所有 ID 都帶 sentinel，reference 一併改名，仍是 valid model）與帶 sentinel 的 events 後，prompt 與 catalog 不含 sentinel 且與 pack 看到任何 IR 前相同 |
+| `stateless` | pack 看過 sentinel model 後，對 suite 每個 model 的 `Validate`、`DefaultViews` 與 `ComputeMetrics` 回答與之前相同且不含 sentinel 或 sentinel ID 前綴（不把一個 tenant 的 model，包括它的 ID，帶進另一個的回答；第三輪 L3） |
 | `concurrent` | 8 個 goroutine 同時呼叫每個方法（含 `ComputeMetrics`、`InferFromEvents`）的結果與循序呼叫相同、不 panic，finding 指出是哪個方法；data race 由 `make backend-race` 檢查 |
 
 ### 架構規則（`scripts/check-architecture/rules.go`）
 
 | 規則 | 內容 |
 |---|---|
-| `generic-kernel` | `internal/model`、`internal/simulation`、`internal/results`、`internal/domainpack`（介面）與 `schemas` 不依賴任何 domain pack、application layer（cmd、auth、tenant、project、storage、import、ai、audit、config）、test helpers、`testing`、網路／DB／process／plugin I/O（`net`、`net/http`、`database/sql`、`os/exec`…；`net/url`、`net/netip` 由第三方 parser 使用，遞移允許）、DB driver、LLM SDK。三個 allowlist：遞移依賴中的 module package 只能是 kernel 本身（`moduleOnly`，module 內其他 package 不能替它做 I/O）；第三方只允許 jcs、jsonschema、x/text；package **自己** import 的標準函式庫只能是 `kernelStd`（計算、編碼、hash、embed；`io/ioutil`、`path/filepath`、`text/template`、`archive/zip`、`mime`、`crypto/x509`、`log`、`runtime/debug` 等會在底下碰檔案或網路的 package 不在其中）。另外不得自己 import `os`、`syscall`、`unsafe`、`C` 等（`forbidDirect`），且只能有 Go 原始檔（`goOnly`：assembly、C、`.syso` 等可以不經 import 直接做 system call）。新增任何一項都要改此表 |
+| `generic-kernel` | `internal/model`、`internal/simulation`、`internal/results`、`internal/domainpack`（介面）與 `schemas` 不依賴任何 domain pack、application layer（cmd、auth、tenant、project、storage、import、ai、audit、config、httpapi、api）、test helpers、`testing`、網路／DB／process／plugin I/O（`net`、`net/http`、`database/sql`、`os/exec`…；`net/url`、`net/netip` 由第三方 parser 使用，遞移允許）、DB driver、LLM SDK。三個 allowlist：遞移依賴中的 module package 只能是 kernel 本身（`moduleOnly`，module 內其他 package 不能替它做 I/O）；第三方只允許 jcs、jsonschema，以及 x/text 中 message catalog 連結的 package（`language`、`message/...`、`feature/plural`、`internal/...`；整個 module 不行，例如 `unicode/cldr` 會讀目錄與 zip，第三輪 L1）；package **自己** import 的標準函式庫只能是 `kernelStd`（計算、編碼、hash、embed；`io/ioutil`、`path/filepath`、`text/template`、`archive/zip`、`mime`、`crypto/x509`、`log`、`runtime/debug` 等會在底下碰檔案或網路的 package 不在其中）。`os`、`syscall`、`unsafe`、`C`、`golang.org/x/sys` 都不在 allowlist 中，因此被拒絕（第二輪起不再另有 `forbidDirect`）；且只能有 Go 原始檔（`goOnly`：assembly、C、`.syso` 等可以不經 import 直接做 system call）。新增任何一項都要改此表 |
 | `generic-kernel-tests` | 上述 package 的測試也不 import 具體 pack、application layer、DB 或 LLM |
-| `domain-packs` | pack 只建在 kernel 上：不依賴其他 pack、application layer、test helpers、I/O、DB、LLM；可用自己的 subpackage；與 kernel 相同的 `moduleOnly`（kernel＋自己的 unit）、第三方 allowlist、`kernelStd`、`forbidDirect` 與 `goOnly` |
+| `domain-packs` | pack 只建在 kernel 上：不依賴其他 pack、application layer、test helpers、I/O、DB、LLM；可用自己的 subpackage；與 kernel 相同的 `moduleOnly`（kernel＋自己的 unit）、第三方 allowlist、`kernelStd` 與 `goOnly` |
 | `conformance-is-generic` | conformance suite 不指名具體 pack |
 | `no-test-infra-in-production` | production code 不連結 `testing`、`contracttest` 或 conformance |
 | `llm-sdks-only-in-ai` | LLM SDK 只在 `internal/ai` 與 `cmd` |
-| `db-only-in-storage` | DB driver／`database/sql` 只在 `internal/storage`、`internal/tenant` 與 `cmd` |
+| `db-only-in-storage` | DB driver／`database/sql` 只在 `internal/storage`、`internal/tenant` 與 `cmd`。T-009 起這兩者是 gateway（`through`）：經由它們存取資料的 package 不因它們內部的 driver 而違規，自己 import driver 仍是違規（ADR-019） |
 | `ai-suggests-only`（future） | `internal/ai` 不得依賴 storage、tenant、cmd、`os/exec`、DB；package 尚未建立，標為 future |
 
-結構規則：`every-file-built`（任何設定都不編譯的檔案、或只在自訂 tag 下存在的 package）、`every-package-listed`（被 import 卻不在 `./...` 中的 module package：`testdata`、以 `_` 或 `.` 開頭的目錄）、`pack-layout`（pack 是 `internal/domainpack` 的直接子 package；pack 的 subpackage 只能由 pack 自己 import，且不得依賴 `internal/domainpack`——實作 DomainPack 需要該介面的型別，所以 subpackage 不可能是第二個 pack）。
+結構規則：`every-file-built`（任何設定都不編譯的檔案、或只在自訂 tag 下存在的 package）、`every-package-listed`（被 import 卻不在 `./...` 中的 module package：`testdata`、以 `_` 或 `.` 開頭的目錄；module path 下另一個 `go.mod` 的 package 同樣拒絕，訊息指出是 nested module，第三輪 L4）、`pack-layout`（pack 是 `internal/domainpack` 的直接子 package；pack 的 subpackage 只能由 pack 自己 import，且不得依賴 `internal/domainpack`）。**更正（第三輪 L2）**：第二輪寫「所以 subpackage 不可能是第二個 pack」是錯的：同一 package 中嵌入 pack 的第二個型別、或宣告在 subpackage 且只 import kernel 的 generic pack 在 pack package 中 instantiate，都通過 `pack-layout`。「一個 package 一個 pack」改由 `NewRegistry` 在登錄時強制（見交付內容）。`pack-layout` 也因此拒絕一些合理的版面：依賴 `domainpack` 型別的 catalog subpackage、拆成 subpackage 的 conformance suite、由 cmd 直接 import pack 的 subpackage（例如 templates）；需要時再放寬並記錄理由。
 
-**Import 規則看不到的事**（文件與 rules.go 都明說）：經 `fmt.Print`、`log` 或 `print` 寫到 stdout／stderr，以及 `time.LoadLocation` 讀 zoneinfo。這些由 review 與 determinism golden 涵蓋。
+**Import 規則看不到的事**（文件與 rules.go 都明說）：經 `fmt.Print`、`log` 或 `print` 寫到 stdout／stderr，`time.LoadLocation` 讀 zoneinfo，以及允許的第三方 package 內部的檔案存取（jsonschema 的 `FileLoader` 會讀 `file://` URL，pack 使用該 library 時無法以 import 規則排除，第三輪 L1）。這些由 review 與 determinism golden 涵蓋。
 
 既有各 package 的 `TestDependencies`（`contracttest.OnlyDeps`）保留；本 checker 是跨整個 module、含遞移與測試依賴的集中檢查。
+
+## 第三輪獨立 review（2026-10-18，同一 reviewer 複核 bc6da42）：ACCEPT
+
+Reviewer 全部結果來自 `git archive bc6da42` 的 export（工作樹當時有未提交的 T-009 修改，未被使用）。N1–N11 皆已修正（N4 依定義重新界定）；16 個設定下 kernel 與 pack 都碰不到 net/http、DB driver、LLM SDK、其他 pack、application layer、module proxy、非 Go 原始檔或未列出的 package；報告數字全部重現（mutation 166/166＋1 equivalent＋3 guard、4/4 pair；165 RUN；67 列、64 種壞 pack）。CONFIRMED 的 low 發現，驗收後先寫會失敗的測試再修正（紅燈 log 在 `checks/evidence/2026-10-18-T-042-review3/`）：
+
+| # | 發現 | 修正 | 證明 |
+|---|---|---|---|
+| L1 | 第三方 allowlist 以整個 module 為單位：kernel 可 import `golang.org/x/text/unicode/cldr` 並 `DecodePath("/etc")`；pack 可用 jsonschema 的 `FileLoader` 讀檔 | x/text 只允許 catalog 連結的 4 組 package；`FileLoader` 列入「import 規則看不到的事」（library 在用，無法以 import 排除） | `TestRound2Probes` 新增 kernel 與 pack 的 `unicode/cldr` probe（舊 allowlist：2 個 FAIL，`red-l1.log`） |
+| L2 | `pack-layout` 無法保證一個目錄一個 pack（同 package 的第二個 pack、subpackage 的 generic pack 都通過），報告說法為誤；另有合理版面被拒 | `NewRegistry` 在登錄時要求每個 pack 的型別宣告在 `internal/domainpack` 自己的直接子 package、一個 package 一個 pack；報告與 checker 註解更正；被拒的版面列為已知限制 | `TestRegistryPackages`（路徑規則，含 `main`、`_test`、無 `/` 的前綴）、`softwaredelivery.TestRegistration`（同 package 的 `zzSecond` 被拒、pointer 可用）（舊程式：同 package 兩個 pack 被接受，`red-l2.log`） |
+| L3 | `stateless` 的 sentinel model 與 Models[0] 共用 node ID：回報上一個 model node ID 的 pack 0 finding（真實情況會洩漏另一個 tenant 的 ID） | `sentinelModel`：名稱與所有 ID（entity type、resource、node、flow、metric、view positions）都帶 sentinel 前綴，reference 一併改名，仍是 valid model；`stateless` 與 `prompt/static` 也檢查前綴 | `remembersLastNodeIDs`（舊程式 0 finding，`red-l3.log`）、`leaksIDsIntoPrompt`、`TestSentinelModel`（每個 ID 與 reference 帶前綴且 model valid） |
+| L4 | module path 下的 nested module（`tools/go.mod`＋replace）被當成 main module 的 package，以誤導的訊息拒絕 | `go list` 的 `Module` 欄位：不屬於 main module 的 package 以「nested module」訊息拒絕（仍 fail closed） | `TestNestedModule`、`TestModuleInfoLoaded`；reviewer 的 nested repo 以新 binary 執行，訊息為 `a package of the nested module github.com/kcl1104/geminus/tools …`（`nested-module-probe.log`） |
+| L5 | CI 成本約加倍（checker 測試在 `-race` 下 65 s） | 不改：checker 的 probe 測試以 `t.Parallel` 並行呼叫 `go list`，保留 `-race`；目前每個 backend job 約 2 分鐘可接受 | — |
+| L6 | 報告「架構規則」表仍寫已刪除的 `forbidDirect` | 表已更新 | — |
+
+PLAUSIBLE（未重現或依設計）：stale `ComputeMetrics` cache 需新的 pack instance 才能偵測；overlap 只比較完全相同的位置；`kernelStd` 拒絕 `hash/fnv`、`encoding/base64`（需要時各為一行 reviewed 變更）；`every-package-listed` 在實際版面無 false positive；freeze site 只能經 kernel 的 hashing 缺陷到達。
 
 ## 第二輪獨立 review（2026-10-18，同一 reviewer 複核 a0feead）與修正
 
@@ -109,6 +125,19 @@ reviewer 的 conformance probe 在新版：R1（NaN）、R3（改寫 seed）、R
 
 ## 實際執行結果
 
+第三輪 review 修正後（`checks/evidence/2026-10-18-T-042-review3/`，含 T-009 fb6e265）：
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make architecture-check` | 0 | `PASS architecture: 32 packages, 9 rules, 16 build configurations`（`architecture-check.log`；T-009 的 package 加入後） |
+| `go test -count=1 -v ./internal/domainpack/... ./scripts/...` | 0 | 174 個 RUN 全 PASS（`t042-tests.log`；第二輪 165，加上本輪的 9 個） |
+| `go test -race -count=1 ./internal/domainpack/... ./scripts/...` | 0 | `t042-race.log` |
+| 紅燈：本輪的新測試在修正前的程式上 | 1 | `red-l1.log`（舊 allowlist：kernel 與 pack 的 `unicode/cldr` probe 2 個 FAIL）、`red-l2.log`（同一 package 的兩個 pack 被接受；新的 API 尚不存在而無法編譯）、`red-l3.log`（`remembersLastNodeIDs` 0 finding） |
+| reviewer 的 nested module repo，以新 binary 執行 | 1 | 預期的違規，訊息為 nested module（`nested-module-probe.log`） |
+| Mutation（`mutants.py`，本目錄） | 0 | **196/196 被擋，1 個 equivalent，3 個 kernel guard（4/4 個 pair 證明）**（`mutation.log`，單次完整執行）。52 個 finding site、6 個 kernel mutant、4 個 pair、148 個 suite／checker／規則表 mutant：第二輪的 118 個（3 個 pattern 跟著改寫的程式更新）加上本輪 30 個（sentinel model 的每類 ID 與 reference、前綴檢查、`NewRegistry` 的套件檢查與其各個條件、x/text 的範圍與各項、nested module 訊息與 `Module` 欄位）。Equivalent 同第二輪：`metrics/run` 的 freeze site |
+| `make spec-check` | 0 | |
+| GitHub Actions | 推送後補記 | |
+
 第二輪 review 修正後（`checks/evidence/2026-10-18-T-042-review2/`）：
 
 | 指令 | Exit | 說明 |
@@ -156,12 +185,15 @@ reviewer 的 conformance probe 在新版：R1（NaN）、R3（改寫 seed）、R
 | suite 的 `validate/generic-ignores-domain`、`metrics/engine-ignores-domain` 與兩個 kernel mutant | 改名 domain 不改變 validator issues 與 engine 數字 | TEST-002（referential／graph／distribution 規則與 domain 無關）、REQ-011 |
 | suite 的 `views/*` | positions 只用 IR 的 node ID、不多不少、保留已存位置、套回 IR 仍 valid；沒有第二份 topology | TEST-025（後端部分） |
 | `TestBrokenPacksAreCaught`、`TestInvalidSuites`、`TestUnrunnableModel`、`TestConcurrentDisagreement`、`TestRunReportsFindings` | 每個檢查項都有會觸發它的壞 pack；suite 誤設定是錯誤而非通過；`Run` 讓測試失敗 | — |
+| `TestRegistryPackages`、`softwaredelivery.TestRegistration` | 登錄的 pack 型別在自己的直接子 package、一個 package 一個 pack | REQ-003 |
+| `TestSentinelModel`、`remembersLastNodeIDs`、`leaksIDsIntoPrompt` | sentinel model 的所有 ID 與 reference 帶 sentinel 且仍 valid；回報或放入 prompt 的上一個 model 的 ID 被抓到 | SECURITY §7 |
+| `TestNestedModule`、`TestModuleInfoLoaded` | nested module 的 package 以正確原因拒絕；`go list` 提供每個 package 的 module | — |
 | `TestRepositoryConforms`、`TestProbesAreCaught`（16 個 overlay probe）、`TestSyntheticGraph`、`TestPatterns`、`TestVendoredGoIsNotChecked`、`TestBrokenBuildIsAnError` | repo 符合規則且每條非 future 規則都套用到 package；kernel 加入 net/http、pack、storage、pgx、未列入的第三方、os/exec、testing，kernel 測試 import pack，pack 加入 net/http、tenant、conformance，conformance 指名 pack，cmd／storage 連結 test helpers 都被抓到並附 chain；LLM SDK、`internal/ai`、pack 之間依賴、遞移 chain 以 synthetic graph 驗證 | REQ-003 |
 
 ## 需 owner 知悉
 
 - **CB-37（NEW）**：generic Result 的 domain metrics 欄位叫 `metrics.dora`。任何 pack 的 `ComputeMetrics` 都寫進這個名為 DORA 的欄位（generic queue pack 的 `longest_queue_wait_minutes` 也在 `dora` 下）。P0 只有 software delivery，不阻擋；建議在第二個真正的 domain 之前以 schema 版本變更改名（例如 domain metrics，或依 pack ID 分組）。未自行修改 contract。
-- DB driver 目前也被 `internal/tenant` 使用（`postgres.Tx`），規則照現況允許 storage 與 tenant；若 owner 希望 tenant 只透過 storage 介面，需另外調整。
+- DB driver 也被 `internal/tenant` 使用（`postgres.Tx`），規則允許 storage 與 tenant，T-009 起兩者是 gateway（ADR-019，PROPOSED）；若 owner 希望 tenant 只透過 storage 介面，需另外調整。
 
 ## 與規劃的差異
 
@@ -174,4 +206,3 @@ reviewer 的 conformance probe 在新版：R1（NaN）、R3（改寫 seed）、R
 |---|---|
 | TEST-025 前端部分（2D／3D 同 ID 互選、3D 不能寫 IR、renderer 切換） | React Flow／PlayCanvas adapter 尚未建立：T-015、T-033、T-034 |
 | `ai-suggests-only` 實際套用 | `internal/ai` 尚未建立（T-024）；規則已在表中並標 future |
-| 第三次獨立複核 | 推送後由同一 reviewer 進行 |
