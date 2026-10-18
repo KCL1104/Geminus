@@ -33,7 +33,7 @@ export function validationKey(code: string | undefined): MessageKey | null {
 }
 
 export function ProblemView({ problem }: { problem: Problem }) {
-  const { t } = useI18n();
+  const { t, gap } = useI18n();
   const advice = guidanceFor(problem);
   const shown = problem.kind !== "not_found";
   return (
@@ -42,7 +42,9 @@ export function ProblemView({ problem }: { problem: Problem }) {
       {advice && <p>{t(advice)}</p>}
       {problem.message && shown && (
         <p>
-          {t("problem.technical")} <span lang="en">{problem.message}</span>
+          {t("problem.technical")}
+          {gap}
+          <span lang="en">{problem.message}</span>
         </p>
       )}
       {problem.details.length > 0 && shown && (
@@ -60,7 +62,9 @@ export function ProblemView({ problem }: { problem: Problem }) {
       {problem.retryAfterSeconds !== null && <p>{t("problem.retryAfter", { count: problem.retryAfterSeconds })}</p>}
       {problem.requestId && (
         <p>
-          {t("problem.requestId")} <code>{problem.requestId}</code>
+          {t("problem.requestId")}
+          {gap}
+          <code>{problem.requestId}</code>
         </p>
       )}
     </section>

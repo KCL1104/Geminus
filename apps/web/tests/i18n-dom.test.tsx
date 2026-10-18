@@ -8,12 +8,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import ProjectsPage from "../app/projects/page";
 import { LocaleMenu, LocaleSwitcher } from "../app/_components/locale-switcher";
 import { ProblemView } from "../app/_components/problem-view";
+import ErrorPage from "../app/error";
 import { DraftStatus } from "../app/_components/states";
 import { createApiClient } from "../lib/api/client";
 import { networkProblem, type Problem } from "../lib/api/problem";
 import { ApiProvider } from "../lib/api/provider";
 import { type Auth, AuthProvider } from "../lib/auth/session";
-import { I18nProvider } from "../lib/i18n/provider";
+import { I18nProvider, useRememberedLocale } from "../lib/i18n/provider";
 import type { Locale } from "../lib/i18n/locale";
 import type { Draft } from "../lib/contracts";
 import { openDraft, reduceDraft } from "../lib/state/draft";
@@ -63,7 +64,7 @@ describe("zh-Hant", () => {
     await settle();
     expect(el.textContent).toContain("Pipeline"); // user data, as entered
     expect(el.textContent).toMatch(/建立於 2026年10月15日/);
-    expect(el.querySelector('[role="note"]')?.textContent).toBe("顯示前 1 個專案。還有更多專案，此版本尚無法翻頁。");
+    expect(el.querySelector('[role="note"]')?.textContent).toBe("顯示前 1 個專案。還有更多專案，目前尚無法翻頁。");
   });
 
   it("explains each error code in Chinese and keeps the server's English message as data", async () => {
@@ -73,6 +74,49 @@ describe("zh-Hant", () => {
     const server = el.querySelector('[lang="en"]');
     expect(server?.textContent).toBe("draft revision is stale");
     expect(el.textContent).toContain("請求 ID：");
+    // No space after a full-width colon (T-044 review L7).
+    expect(el.textContent).toContain("技術細節：draft revision is stale");
+    expect(el.textContent).toContain("請求 ID：req_01M4YDQK00TA00000000000001");
+  });
+
+  it("says the same in Chinese for a missing resource and another tenant's (TEST-009, T-044 review L3)", async () => {
+    const el = await mount(<ProblemView problem={problem({ kind: "not_found", code: "NOT_FOUND", status: 404, message: "model mdl_x of org_y", requestId: "req_01M4YDQK00TA00000000000001", details: [{ path: "/organizations/org_y", reason: "owned by org_y" }] })} />);
+    expect(el.querySelector("h2")?.textContent).toBe(zhHant["problem.heading.not_found"]);
+    expect(el.textContent).toContain(zhHant["error.NOT_FOUND"]);
+    expect(el.textContent).not.toContain("org_y");
+    expect(el.querySelector("ul")).toBeNull();
+    expect(el.textContent).toContain("req_01M4YDQK00TA00000000000001");
+  });
+
+  it("keeps the page when a project has no usable creation time (T-044 review M2)", async () => {
+    for (const created_at of [undefined, null, "not a time"]) {
+      const api = createApiClient({
+        baseUrl: "https://api.test",
+        session: () => signedIn.session,
+        fetch: (async () => new Response(JSON.stringify({ items: [{ id: "prj_01M4YDQK00TA00000000000001", name: "Pipeline", organization_id: ORG, created_at, created_by: "usr_01M4YDQK00TA00000000000001" }], next_cursor: null }))) as typeof fetch,
+      });
+      const el = await mount(<AuthProvider value={signedIn}><ApiProvider client={api}><ProjectsPage /></ApiProvider></AuthProvider>);
+      await settle();
+      expect(el.textContent, String(created_at)).toContain("Pipeline");
+      expect(el.textContent).not.toMatch(/null|undefined/);
+      if (created_at === "not a time") expect(el.textContent).toContain("建立於 not a time");
+      else expect(el.textContent).not.toContain("建立於");
+    }
+  });
+
+  it("shows a page that failed to render in Chinese, with a retry and the server's reference", async () => {
+    let retried = 0;
+    const failure = Object.assign(new Error("secret internal detail"), { digest: "4096051231" });
+    const el = await mount(<ErrorPage error={failure} retry={() => retried++} />);
+    expect(el.querySelector("h1")?.textContent).toBe(zhHant["crash.title"]);
+    expect(el.textContent).toContain(zhHant["crash.body"]);
+    expect(el.textContent).toContain("參考編號：4096051231");
+    expect(el.textContent).not.toContain("secret internal detail");
+    const retry = [...el.querySelectorAll("button")].find((b) => b.textContent === zhHant.retry)!;
+    await act(async () => retry.click());
+    expect(retried).toBe(1);
+    const plain = await mount(<ErrorPage error={new Error("x")} retry={() => {}} />, "en");
+    expect(plain.textContent).not.toContain("Reference");
   });
 
   it("names each validation issue by its code, and an unknown code by the server's reason", async () => {
@@ -91,6 +135,11 @@ describe("zh-Hant", () => {
     const el = await mount(<AuthProvider value={signedIn}><DraftStatus session={s} onReload={async () => null} onDiscard={() => {}} /></AuthProvider>);
     expect(el.textContent).toContain("草稿修訂版 3。");
     expect(el.textContent).toContain("2 項變更尚未儲存。");
+    // Chinese sentences follow each other without a space (T-044 review L7).
+    expect(el.querySelector('[role="status"]')?.textContent).toBe("有尚未儲存的變更。草稿修訂版 3。2 項變更尚未儲存。");
+    // A revision is a number, not an amount: it is not grouped.
+    const big = await mount(<AuthProvider value={signedIn}><DraftStatus session={openDraft({ ...draft, revision: 12345 })} onReload={async () => null} onDiscard={() => {}} /></AuthProvider>, "en");
+    expect(big.querySelector('[role="status"]')?.textContent).toBe("All changes saved. Draft revision 12345.");
     const wait = await mount(<ProblemView problem={problem({ kind: "rate_limited", code: "RATE_LIMITED", status: 429, retryAfterSeconds: 30 })} />);
     expect(wait.textContent).toContain("請在 30 秒後重試。");
   });
@@ -108,6 +157,15 @@ describe("zh-Hant", () => {
     });
     expect(document.cookie).toContain("geminus_locale=zh-Hant");
     expect(refreshed).toBe(1);
+  });
+
+  it("reads the remembered choice in the browser, for the page that replaces a failed layout", async () => {
+    function Probe() {
+      return <p>{useRememberedLocale()}</p>;
+    }
+    expect((await mount(<Probe />, "en")).textContent).toBe("en");
+    document.cookie = "geminus_locale=zh-Hant; Path=/";
+    expect((await mount(<Probe />, "en")).textContent).toBe("zh-Hant");
   });
 
   it("re-renders the server components after a choice in the app shell", async () => {

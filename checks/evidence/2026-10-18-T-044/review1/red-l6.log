@@ -1,0 +1,8 @@
+    pack_test.go:503: blank name: accepted
+    pack_test.go:503: over-long name: accepted
+    pack_test.go:503: control character: accepted
+--- FAIL: TestTemplateNamesFailure (0.01s)
+    pack_test.go:541: an over-long name: reported as invalid input: softwaredelivery: the template is invalid with this input (1 issue(s))
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.058s
+FAIL

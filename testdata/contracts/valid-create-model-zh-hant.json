@@ -1,0 +1,6 @@
+{
+  "name": "我的交付流程",
+  "domain": "software_delivery",
+  "template": "default_delivery_pipeline",
+  "locale": "zh-Hant"
+}

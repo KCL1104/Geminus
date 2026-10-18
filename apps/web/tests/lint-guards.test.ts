@@ -49,6 +49,9 @@ describe("eslint-config-next plugins run under the pinned ESLint", () => {
 });
 
 // REQ-022: user-visible text comes from the message catalog.
+// The rules that keep user-visible text in the catalog.
+const textRules = ["react/jsx-no-literals", "no-restricted-syntax", "no-restricted-globals", "no-restricted-properties"];
+
 describe("hard-coded UI text", () => {
   it.each([
     ["JSX text", "export const P = () => <p>Hello</p>;"],
@@ -67,9 +70,27 @@ describe("hard-coded UI text", () => {
     ["a string in a fragment's conditional", 'export const P = ({ a }: { a: boolean }) => <>{a && "Yes"}</>;'],
     ["Chinese text in a conditional", 'export const P = ({ a }: { a: boolean }) => <p>{a && "專案"}</p>;'],
     ["a template literal in a conditional", "export const P = ({ a, n }: { a: boolean; n: number }) => <p>{a && `${n} items`}</p>;"],
+    // T-044 review M3
+    ["a conditional aria-label", 'export const B = ({ open }: { open: boolean }) => <button aria-label={open ? "Close menu" : "Open menu"} />;'],
+    ["an alt fallback", 'export const I = ({ alt }: { alt?: string }) => <img src="/a.png" alt={alt ?? "Avatar"} />;'],
+    ["a concatenated title", 'export const S = ({ n }: { n: string }) => <span title={"Delete " + n} />;'],
+    ["a cast aria-label", 'export const N = () => <nav aria-label={"Main" as string} />;'],
+    ["a text prop on a component", 'declare const Notice: (p: { text: string }) => null;\nexport const P = () => <Notice text="Saved" />;'],
+    ["a message prop on a component", 'declare const Notice: (p: { message: string }) => null;\nexport const P = () => <Notice message={"Saved"} />;'],
+    ["a submit button value", 'export const F = () => <input type="submit" value="Save" />;'],
+    ["text in an object prop", 'declare const V: (p: { problem: { message: string } }) => null;\nexport const P = () => <V problem={{ message: "Something failed" }} />;'],
+    ["a string in an array", 'export const P = () => <p>{["Hello"]}</p>;'],
+    ["a concatenated child", 'export const P = ({ n }: { n: string }) => <p>{"Delete " + n}</p>;'],
+    ["a string a map returns", 'export const P = ({ xs }: { xs: number[] }) => <p>{xs.map(() => "item")}</p>;'],
+    ["a conditional a map returns", 'export const P = ({ xs }: { xs: boolean[] }) => <p>{xs.map((x) => (x ? "Yes" : "No"))}</p>;'],
+    ["accented text in a conditional", 'export const P = ({ a }: { a: boolean }) => <p>{a && "Été"}</p>;'],
+    ["a rare CJK character in a conditional", 'export const P = ({ a }: { a: boolean }) => <p>{a && "\u{2000B}"}</p>;'],
+    ["alert", 'export const B = () => <button onClick={() => alert("Saved")} />;'],
+    ["window.confirm", 'export const B = () => <button onClick={() => window.confirm("Sure?")} />;'],
+    ["document.title", 'export const P = () => { document.title = "Home"; return null; };'],
   ])("rejects %s", async (_, code) => {
     const ids = await ruleIds(code);
-    expect(ids.some((id) => id === "react/jsx-no-literals" || id === "no-restricted-syntax"), ids.join(",")).toBe(true);
+    expect(ids.some((id) => id !== null && textRules.includes(id)), ids.join(",")).toBe(true);
   });
 
   it.each([
@@ -80,9 +101,18 @@ describe("hard-coded UI text", () => {
     ["a conditional between data", "export const P = ({ a, b }: { a: string; b: string }) => <p>{a || b}{a ? \"/\" : null}</p>;"],
     ["a catalog key chosen by a condition", 'declare const t: (k: string) => string;\nexport const P = ({ a }: { a: boolean }) => <p>{t(a ? "x.y" : "x.z")}</p>;'],
     ["a conditional that maps data", 'export const P = ({ a }: { a: boolean }) => <p>{a && [1].map((n) => String(n)).join("x")}</p>;'],
+    ["a decorative image", 'export const I = () => <img src="/a.png" alt="" />;'],
+    ["an option value", 'export const O = () => <select><option value="en">{"/"}</option></select>;'],
+    ["a hidden input value", 'export const F = () => <input type="hidden" name="m" value="edit" />;'],
+    ["a handler argument", 'declare const set: (m: string) => void;\nexport const B = () => <button type="button" onClick={() => set("edit")} />;'],
+    ["a conditional class name", 'export const P = ({ a }: { a: boolean }) => <p className={a ? "on" : "off"} />;'],
+    ["a built href", 'export const L = ({ id }: { id: string }) => <a href={"/projects/" + id} />;'],
+    ["a comparison in a condition", 'declare const X: () => null;\nexport const P = ({ m }: { m: string }) => <div>{m === "edit" && <X />}</div>;'],
+    ["a catalog key in a cast", 'declare const t: (k: string) => string;\nexport const N = ({ open }: { open: boolean }) => <nav aria-label={t(open ? "a.open" : "a.closed")} />;'],
+    ["a list of elements", 'export const P = ({ xs }: { xs: string[] }) => <ul>{xs.map((x) => <li key={x}>{x}</li>)}</ul>;'],
+    ["an empty message", 'declare const V: (p: { problem: { message: string } }) => null;\nexport const P = () => <V problem={{ message: "" }} />;'],
   ])("allows %s", async (_, code) => {
     const ids = await ruleIds(code);
-    expect(ids).not.toContain("react/jsx-no-literals");
-    expect(ids).not.toContain("no-restricted-syntax");
+    for (const rule of textRules) expect(ids).not.toContain(rule);
   });
 });

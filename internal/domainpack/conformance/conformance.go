@@ -333,8 +333,12 @@ func encoded(v any) string {
 	return string(data)
 }
 
-// templateModelID is the model ID templates are asked for.
-const templateModelID = "mdl_01M4YDQK00TEMP1ATE00000000"
+// templateModelID is the model ID templates are asked for; otherModelID the
+// second caller's, for templates/copies.
+const (
+	templateModelID = "mdl_01M4YDQK00TEMP1ATE00000000"
+	otherModelID    = "mdl_01M4YDQK00TEMP1ATE00000001"
+)
 
 // templates: a pack that offers create-model templates (TemplateProvider)
 // lists at least one; each, in every Locale, is a valid model of the pack's
@@ -384,20 +388,52 @@ func (c *checker) templates() {
 			if again, err, ok := get("templates/deterministic", name, locale); ok && (err != nil || again == nil || encoded(again) != encoded(ir)) {
 				c.fail("templates/deterministic", "template %q in %s differs between two calls", name, locale)
 			}
+			// Each caller gets its own model: building one for another model
+			// ID and name, and changing it all the way down, leaves the first
+			// as it was.
+			before := encoded(ir)
+			var other *model.ModelIR
+			if c.call("templates/copies", func() { other, _ = tp.Template(name, otherModelID, "Other template", locale) }) && other != nil {
+				const changed = "changed by the caller"
+				other.Name = changed
+				for i := range other.EntityTypes {
+					other.EntityTypes[i].Name = changed
+				}
+				for i := range other.Resources {
+					other.Resources[i].Name = changed
+				}
+				for i := range other.Nodes {
+					other.Nodes[i].Name = changed
+				}
+				if encoded(ir) != before {
+					c.fail("templates/copies", "template %q in %s: a second model shares data with the first one", name, locale)
+				}
+			}
 			if s := withoutNames(ir); first == "" {
 				first = s
 			} else if s != first {
 				c.fail("templates/locales", "template %q in %s differs from %s in more than its names", name, locale, domainpack.Locales[0])
 			}
 		}
-		for _, bad := range []domainpack.Locale{"", "fr", "EN", "zh-hant", "zh-Hans"} {
+		for _, bad := range []domainpack.Locale{"", "fr", "EN", "zh-hant", "zh-Hans", "zh", "zh-TW", "zh-Hant-TW", "en-US", "en-GB"} {
 			if ir, err, ok := get("templates/unknown-locale", name, bad); ok && (err == nil || ir != nil) {
 				c.fail("templates/unknown-locale", "template %q accepts the locale %q", name, bad)
 			}
 		}
 	}
-	if ir, err, ok := get("templates/unknown-template", "zz_no_such_template", domainpack.Locales[0]); ok && (err == nil || ir != nil) {
-		c.fail("templates/unknown-template", "an unknown template is answered with a model")
+	unknown := []string{"zz_no_such_template"}
+	for _, name := range names {
+		// A name in another case, or padded, is another (unknown) name.
+		for _, v := range []string{strings.ToUpper(name), strings.ToLower(name), " " + name, name + " "} {
+			if !slices.Contains(names, v) && !slices.Contains(unknown, v) {
+				unknown = append(unknown, v)
+			}
+		}
+	}
+	for _, name := range unknown {
+		if ir, err, ok := get("templates/unknown-template", name, domainpack.Locales[0]); ok && (err == nil || ir != nil) {
+			c.fail("templates/unknown-template", "the unknown template %q is answered with a model", name)
+		}
 	}
 }
 
@@ -901,7 +937,19 @@ func (c *checker) static(ctx context.Context) {
 // under -race (make backend-race).
 func (c *checker) concurrent(ctx context.Context) {
 	ir := clone(&c.s.Models[0])
-	methods := []string{"NodeCatalog", "ResourceCatalog", "Validate", "DefaultViews", "PromptContext", "ComputeMetrics", "InferFromEvents"}
+	methods := []string{"NodeCatalog", "ResourceCatalog", "Validate", "DefaultViews", "PromptContext", "ComputeMetrics", "InferFromEvents", "Template"}
+	// A template provider's first template, in the last locale (T-044 review M1).
+	template := func() string { return "" }
+	if tp, ok := c.s.Pack.(domainpack.TemplateProvider); ok {
+		template = func() string {
+			names := tp.Templates()
+			if len(names) == 0 {
+				return ""
+			}
+			ir, err := tp.Template(names[0], templateModelID, "Conformance template", domainpack.Locales[len(domainpack.Locales)-1])
+			return encoded(ir) + fmt.Sprint(err)
+		}
+	}
 	calls := func(ir *model.ModelIR) []string {
 		var metrics map[string]simulation.MetricSummary
 		if c.result != nil {
@@ -909,7 +957,7 @@ func (c *checker) concurrent(ctx context.Context) {
 		}
 		inferred, err := c.s.Pack.InferFromEvents(ctx, events)
 		return []string{encoded(c.s.Pack.NodeCatalog()), encoded(c.s.Pack.ResourceCatalog()), encoded(c.s.Pack.Validate(ir)), encoded(c.s.Pack.DefaultViews(ir)),
-			encoded(c.s.Pack.PromptContext()), encoded(metrics), encoded(inferred) + fmt.Sprint(err)}
+			encoded(c.s.Pack.PromptContext()), encoded(metrics), encoded(inferred) + fmt.Sprint(err), template()}
 	}
 	var want []string
 	if !c.call("concurrent", func() { want = calls(&ir) }) {

@@ -1,0 +1,6 @@
+{
+  "name": "My pipeline",
+  "domain": "software_delivery",
+  "template": "default_delivery_pipeline",
+  "locale": "zh-TW"
+}

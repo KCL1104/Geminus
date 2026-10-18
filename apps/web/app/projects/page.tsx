@@ -17,11 +17,15 @@ function Projects() {
         ) : (
           <>
             <ul>
-              {page.items.map((p) => (
-                <li key={p.id}>
-                  <Link href={`/projects/${p.id}`}>{p.name}</Link> · {t("projects.created", { date: dateTime(p.created_at) })}
-                </li>
-              ))}
+              {page.items.map((p) => {
+                const created = dateTime(p.created_at);
+                return (
+                  <li key={p.id}>
+                    <Link href={`/projects/${p.id}`}>{p.name}</Link>
+                    {created && <> · {t("projects.created", { date: created })}</>}
+                  </li>
+                );
+              })}
             </ul>
             <MorePages cursor={page.next_cursor} shown={page.items.length} what="projects" />
           </>

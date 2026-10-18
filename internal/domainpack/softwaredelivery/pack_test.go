@@ -484,10 +484,19 @@ func TestNamesFileStrict(t *testing.T) {
 	if ir.EntityTypes[0].Name != "變更" || ir.Resources[0].Name == en.Resources[0].Name {
 		t.Errorf("names not applied: %v %v", ir.EntityTypes, ir.Resources)
 	}
+	// The longest name the IR schema allows (200 characters) still fits.
+	long := *en
+	long.EntityTypes, long.Resources, long.Nodes = slices.Clone(en.EntityTypes), slices.Clone(en.Resources), slices.Clone(en.Nodes)
+	if err := softwaredelivery.ApplyNames(&long, softwaredelivery.DefaultTemplate, domainpack.TraditionalChinese, with("entity_types", "change", strings.Repeat("長", 200))); err != nil {
+		t.Errorf("a 200-character name: %v", err)
+	}
 	for name, raw := range map[string][]byte{
 		"missing entity type": with("entity_types", "change", nil),
 		"missing resource":    with("resources", "ci_runner", nil),
 		"empty resource name": with("resources", "reviewer", ""),
+		"blank name":          with("resources", "reviewer", " \u3000 "), // spaces only: no control character
+		"control character":   with("resources", "reviewer", "審查\u0007者"),
+		"over-long name":      with("entity_types", "change", strings.Repeat("長", 201)),
 		"extra entity type":   with("entity_types", "ticket", "工單"),
 		"extra resource":      with("resources", "approver", "核准者"),
 		"extra node":          with("nodes", "review", "審查"),
@@ -523,12 +532,19 @@ func TestTemplateNamesFailure(t *testing.T) {
 	}
 	tmpl, namesFile := "templates/"+softwaredelivery.DefaultTemplate+".json", "templates/"+softwaredelivery.DefaultTemplate+".zh-Hant.names.json"
 	for name, read := range map[string]func(string) ([]byte, error){
-		"no names file":  files(map[string][]byte{tmpl: base}),
-		"a name missing": files(map[string][]byte{tmpl: base, namesFile: []byte(strings.Replace(string(names), `"ci_runner": "CI 執行器",`, "", 1))}),
+		"no names file":     files(map[string][]byte{tmpl: base}),
+		"a name missing":    files(map[string][]byte{tmpl: base, namesFile: []byte(strings.Replace(string(names), `"ci_runner": "CI 執行器",`, "", 1))}),
+		"an over-long name": files(map[string][]byte{tmpl: base, namesFile: []byte(strings.Replace(string(names), `"CI 執行器"`, `"`+strings.Repeat("長", 201)+`"`, 1))}),
 	} {
 		ir, err := softwaredelivery.TemplateFrom(read, softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
 		if err == nil || ir != nil {
 			t.Errorf("%s: %v %v", name, ir, err)
+		}
+		// A broken names file is the pack's fault, not the caller's input
+		// (T-044 review L6).
+		var invalid *softwaredelivery.InvalidError
+		if errors.As(err, &invalid) || errors.Is(err, softwaredelivery.ErrInvalidTemplateInput) {
+			t.Errorf("%s: reported as invalid input: %v", name, err)
 		}
 	}
 	// The same files, complete, give the embedded template.

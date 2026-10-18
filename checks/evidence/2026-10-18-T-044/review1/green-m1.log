@@ -1,0 +1,5 @@
+    --- PASS: TestBrokenPacksAreCaught/templateCached/templates/copies (0.10s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesResources/templates/copies (0.05s)
+    --- PASS: TestBrokenPacksAreCaught/templateCounts/concurrent (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/templateLocaleFallback/templates/unknown-locale (0.05s)
+    --- PASS: TestBrokenPacksAreCaught/templateAnyCase/templates/unknown-template (0.05s)

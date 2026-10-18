@@ -15,6 +15,18 @@ export function parseLocale(value: string | null | undefined): Locale {
   return locales.find((l) => l === value) ?? defaultLocale;
 }
 
+/**
+ * The locale a Cookie header (or document.cookie) names. A browser lists the
+ * most specific cookie first, so the first value wins.
+ */
+export function cookieLocale(header: string): Locale {
+  for (const pair of header.split(";")) {
+    const at = pair.indexOf("=");
+    if (at >= 0 && pair.slice(0, at).trim() === localeCookie) return parseLocale(pair.slice(at + 1));
+  }
+  return defaultLocale;
+}
+
 /** The Set-Cookie value for remembering locale for a year. */
 export function localeCookieValue(locale: Locale, secure: boolean): string {
   return `${localeCookie}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax${secure ? "; Secure" : ""}`;

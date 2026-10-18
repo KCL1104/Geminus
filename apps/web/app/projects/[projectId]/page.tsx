@@ -20,7 +20,7 @@ function Models({ projectId }: { projectId: string }) {
             <ul>
               {page.items.map((m) => (
                 <li key={m.id}>
-                  <Link href={`/models/${m.id}`}>{m.name}</Link> — {t("models.version", { version: m.latest_version.version })}
+                  <Link href={`/models/${m.id}`}>{m.name}</Link> — {t("models.version", { version: String(m.latest_version.version) })}
                   {m.draft.out_of_date && <> {t("models.outOfDate")}</>}
                 </li>
               ))}

@@ -1,0 +1,6 @@
+=== RUN   TestNamesFileStrict
+--- PASS: TestNamesFileStrict (0.04s)
+=== RUN   TestTemplateNamesFailure
+--- PASS: TestTemplateNamesFailure (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.059s

@@ -14,6 +14,13 @@ export const en = {
   "home.title": "Geminus",
   "home.toProjects": "Go to projects",
 
+  "notFound.title": "Page not found",
+  "notFound.body": "There is no page at this address.",
+  "notFound.home": "Go to the start page",
+  "crash.title": "Something went wrong",
+  "crash.body": "This page could not be shown.",
+  "crash.reference": "Reference: {digest}",
+
   "projects.title": "Projects",
   "projects.empty": "No projects yet.",
   "projects.created": "created {date}",

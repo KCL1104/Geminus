@@ -1,0 +1,11 @@
+    --- FAIL: TestBrokenPacksAreCaught/templateCached/templates/copies (0.05s)
+    --- FAIL: TestBrokenPacksAreCaught/templateCounts/concurrent (0.04s)
+    --- FAIL: TestBrokenPacksAreCaught/templateLocaleFallback/templates/unknown-locale (0.05s)
+    --- FAIL: TestBrokenPacksAreCaught/templateAnyCase/templates/unknown-template (0.05s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/conformance	4.296s
+FAIL
+    --- FAIL: TestBrokenPacksAreCaught/templateSharesResources/templates/copies (0.10s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/conformance	0.415s
+FAIL

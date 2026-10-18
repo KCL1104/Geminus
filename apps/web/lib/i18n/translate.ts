@@ -43,20 +43,31 @@ export function createTranslator(locale: Locale): Translator {
       text = (plural.select(count) === "one" ? m.one : undefined) ?? m.other;
     }
     return text.replace(placeholder, (_, name: string) => {
-      const v = params[name];
+      const v = Object.hasOwn(params, name) ? params[name] : undefined;
       if (v === undefined) throw new Error(`message ${key} has no value for {${name}}`);
       return typeof v === "number" ? numbers.format(v) : v;
     });
   };
 }
 
-// RFC 3339 date-time, as the contracts use; Date.parse alone accepts much more.
-const dateTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+// RFC 3339 date-time, as the contracts use (T and Z in either case);
+// Date.parse alone accepts much more.
+const dateTime = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/i;
+
+// Whether the fields name a time that exists: Date rolls 2026-02-30 over to
+// March 2 instead of refusing it (T-044 review L4). A leap second (:60)
+// cannot be shown either.
+function exists(m: RegExpExecArray): boolean {
+  const [year, month, day, hour, minute, second, offsetHour = 0, offsetMinute = 0] = m.slice(1).map((f) => (f === undefined ? undefined : Number(f)));
+  const days = new Date(Date.UTC(year!, month!, 0)).getUTCDate();
+  return month! >= 1 && month! <= 12 && day! >= 1 && day! <= days && hour! <= 23 && minute! <= 59 && second! <= 59 && offsetHour <= 23 && offsetMinute <= 59;
+}
 
 /** Dates and times in the reader's time zone, written the locale's way. */
 export function formatDateTime(locale: Locale, iso: string): string {
-  const d = new Date(iso);
-  if (!dateTime.test(iso) || Number.isNaN(d.getTime())) throw new Error("not a date-time");
+  const m = dateTime.exec(iso);
+  const d = new Date(iso.toUpperCase());
+  if (m === null || !exists(m) || Number.isNaN(d.getTime())) throw new Error("not a date-time");
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
 

@@ -815,6 +815,87 @@ func (p templateErrorAndModel) Template(name, modelID, modelName string, locale 
 	return ir, err
 }
 
+// templateCached hands every caller the model it built first for the
+// locale: a second tenant gets the first one's ID and name, and a change
+// one caller makes shows up for the other (T-044 review M1). It never
+// writes the shared model itself, so the suite runs race-free.
+type templateCached struct {
+	templates
+	mu    *sync.Mutex
+	cache map[domainpack.Locale]*model.ModelIR
+}
+
+func (p templateCached) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if ir, ok := p.cache[locale]; ok {
+		return ir, nil
+	}
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err == nil {
+		p.cache[locale] = ir
+	}
+	return ir, err
+}
+
+// templateSharesResources builds a new model each time but hands every
+// caller the same resources, so one caller's change shows up for another.
+type templateSharesResources struct {
+	templates
+	mu        *sync.Mutex
+	resources *[]model.Resource
+}
+
+func (p templateSharesResources) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if *p.resources == nil {
+		*p.resources = ir.Resources
+	}
+	ir.Resources = *p.resources
+	return ir, nil
+}
+
+// templateCounts names its template after how often it was built; only
+// the concurrent step compares Template across goroutines.
+type templateCounts struct {
+	templates
+	n *atomic.Int64
+}
+
+func (p templateCounts) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err == nil {
+		ir.Resources[0].Name = fmt.Sprintf("Clerk %d", p.n.Add(1))
+	}
+	return ir, err
+}
+
+// templateLocaleFallback answers a regional or bare language tag with the
+// locale it resembles.
+type templateLocaleFallback struct{ templates }
+
+func (p templateLocaleFallback) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	switch locale {
+	case "zh-TW", "zh", "zh-Hant-TW":
+		locale = domainpack.TraditionalChinese
+	case "en-US":
+		locale = domainpack.English
+	}
+	return p.templates.Template(name, modelID, modelName, locale)
+}
+
+// templateAnyCase accepts its template name in any case.
+type templateAnyCase struct{ templates }
+
+func (p templateAnyCase) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	return p.templates.Template(strings.ToLower(name), modelID, modelName, locale)
+}
+
 // templateOtherDomain builds its template in another domain.
 type templateOtherDomain struct{ templates }
 
@@ -1044,6 +1125,11 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 		{templatePanics{}, "templates/valid", "panicked"},
 		{templateNilModel{}, "templates/valid", "no model"},
 		{templateErrorAndModel{}, "templates/valid", "names incomplete"},
+		{templateCached{mu: new(sync.Mutex), cache: map[domainpack.Locale]*model.ModelIR{}}, "templates/copies", ""},
+		{templateSharesResources{mu: new(sync.Mutex), resources: new([]model.Resource)}, "templates/copies", ""},
+		{templateCounts{n: new(atomic.Int64)}, "concurrent", "Template"},
+		{templateLocaleFallback{}, "templates/unknown-locale", ""},
+		{templateAnyCase{}, "templates/unknown-template", ""},
 		{templateOtherDomain{}, "templates/valid", "not the ones asked for"},
 		{templateKeepsModelID{}, "templates/valid", "not the ones asked for"},
 		{templateAgainstOwnRules{}, "templates/valid", "pack's rules"},

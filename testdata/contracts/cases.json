@@ -687,6 +687,30 @@
       "expected_error_paths": [
         "/metrics/resources/server/reason"
       ]
+    },
+    {
+      "id": "valid-create-model-zh-hant",
+      "instance": "testdata/contracts/valid-create-model-zh-hant.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-create-model-default-locale",
+      "instance": "testdata/contracts/valid-create-model-default-locale.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-create-model-locale",
+      "instance": "testdata/contracts/invalid-create-model-locale.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/locale"
+      ]
     }
   ]
 }

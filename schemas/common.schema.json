@@ -424,7 +424,7 @@
         "PATCH_TARGET_MISSING",
         "PATCH_TEST_FAILED"
       ],
-      "description": "The issue codes the generic validator (TWIN_IR_SPEC §4, D-023), the patch policy (D-014, D-020) and the P0 domain pack emit; Go tests keep this list equal to their constants. ValidationIssue.code stays open: a later pack may add a code, which the UI shows with a generic text."
+      "description": "The issue codes the generic validator (TWIN_IR_SPEC §4, D-023), the patch policy (D-014, D-020) and the P0 domain pack emit; Go tests keep this list equal to their constants. ValidationIssue.code stays open: a later pack may add a code; the UI then shows the issue's own message as English text (ADR-020)."
     }
   }
 }

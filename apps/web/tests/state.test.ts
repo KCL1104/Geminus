@@ -168,7 +168,9 @@ describe("draft session", () => {
         if (request === null) expect(s.inFlight).toBeNull();
       }
     }
-  });
+    // About 3 s idle: the default 5 s fails it under load, and a timeout is
+    // not a finding (T-044 review L2). The assertions are unchanged.
+  }, 60_000);
 });
 
 describe("selection", () => {

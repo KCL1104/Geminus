@@ -37,7 +37,7 @@ function ModelView({ modelId }: { modelId: string }) {
           <p>
             <Link href={`/projects/${page.model.project_id}`}>{t("model.back")}</Link>
           </p>
-          <p>{t("model.summary", { version: page.model.latest_version.version, domain: page.model.domain })}</p>
+          <p>{t("model.summary", { version: String(page.model.latest_version.version), domain: page.model.domain })}</p>
           {session && <DraftStatus session={session} onReload={reload} onDiscard={() => dispatch({ type: "discardLocal" })} />}
           <p>{t("model.notInBuild")}</p>
         </>

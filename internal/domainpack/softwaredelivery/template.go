@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/domainpack"
@@ -75,6 +77,9 @@ func (Pack) Template(templateName, modelID, name string, locale domainpack.Local
 	return Template(templateName, modelID, name, locale)
 }
 
+// maxNameLength is model-ir.schema.json's maxLength for a name, in characters.
+const maxNameLength = 200
+
 // readFile reads one template file by its path; Template reads the
 // embedded ones. A function rather than an io/fs value: a pack does no I/O
 // of its own (docs/ARCHITECTURE.md §2–§3).
@@ -109,8 +114,14 @@ func applyNames(ir *model.ModelIR, templateName string, locale domainpack.Locale
 			return nil // unnamed in the template, unnamed in every locale
 		}
 		n, ok := from[id]
-		if !ok || n == "" {
+		if !ok || strings.TrimSpace(n) == "" {
 			return fmt.Errorf("softwaredelivery: template %s has no %s name for %s %s", templateName, locale, kind, id)
+		}
+		// A bad name is the names file's fault, so it is an internal error
+		// here rather than an InvalidError about the caller's input later
+		// (T-044 review L6).
+		if strings.ContainsFunc(n, unicode.IsControl) || utf8.RuneCountInString(n) > maxNameLength {
+			return fmt.Errorf("softwaredelivery: template %s has an unusable %s name for %s %s", templateName, locale, kind, id)
 		}
 		*name, used[id] = n, true
 		return nil

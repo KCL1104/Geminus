@@ -81,15 +81,22 @@ export function DraftStatus({ session, onReload, onDiscard }: {
   onDiscard: () => void;
 }) {
   const { role } = useAuth();
-  const { t } = useI18n();
+  const { t, gap } = useI18n();
   const [reloadProblem, setReloadProblem] = useState<Problem | null>(null);
   const pending = pendingOps(session).length;
   const reload = async () => setReloadProblem(await onReload());
   return (
     <section aria-label={t("draft.label")} data-draft-status={session.status}>
       <p role="status">
-        {t(`draft.status.${session.status}`)} {t("draft.revision", { revision: session.remote.revision })}
-        {pending > 0 && <> {t("draft.pending", { count: pending })}</>}
+        {t(`draft.status.${session.status}`)}
+        {gap}
+        {t("draft.revision", { revision: String(session.remote.revision) })}
+        {pending > 0 && (
+          <>
+            {gap}
+            {t("draft.pending", { count: pending })}
+          </>
+        )}
       </p>
       {session.remote.out_of_date && <p role="note">{t("draft.outOfDate")}</p>}
       {session.problem && <ProblemView problem={session.problem} />}

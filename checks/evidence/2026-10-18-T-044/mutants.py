@@ -67,9 +67,15 @@ GO = [
     ("locales-compared-with-names", CONF, "if s := withoutNames(ir); first == \"\" {", "if s := encoded(ir); first == \"\" {"),
     ("locales-skipped", CONF, "} else if s != first {", "} else if false && s != first {"),
     ("one-locale-only", CONF, "\t\tfor _, locale := range domainpack.Locales {\n\t\t\tir, err, ok := get(", "\t\tfor _, locale := range domainpack.Locales[:1] {\n\t\t\tir, err, ok := get("),
-    ("bad-locales-none", CONF, "range []domainpack.Locale{\"\", \"fr\", \"EN\", \"zh-hant\", \"zh-Hans\"} {", "range []domainpack.Locale{} {"),
+    ('bad-locales-none', CONF, 'range []domainpack.Locale{"", "fr", "EN", "zh-hant", "zh-Hans", "zh", "zh-TW", "zh-Hant-TW", "en-US", "en-GB"} {', 'range []domainpack.Locale{} {'),
+    ('bad-locales-no-regions', CONF, 'range []domainpack.Locale{"", "fr", "EN", "zh-hant", "zh-Hans", "zh", "zh-TW", "zh-Hant-TW", "en-US", "en-GB"} {', 'range []domainpack.Locale{"", "fr", "EN", "zh-hant", "zh-Hans"} {'),
     ("unknown-locale-model-ok", CONF, "get(\"templates/unknown-locale\", name, bad); ok && (err == nil || ir != nil) {", "get(\"templates/unknown-locale\", name, bad); ok && (err == nil || false && ir != nil) {"),
-    ("unknown-template-model-ok", CONF, "get(\"templates/unknown-template\", \"zz_no_such_template\", domainpack.Locales[0]); ok && (err == nil || ir != nil) {", "get(\"templates/unknown-template\", \"zz_no_such_template\", domainpack.Locales[0]); ok && (err == nil || false && ir != nil) {"),
+    ('unknown-template-model-ok', CONF, 'get("templates/unknown-template", name, domainpack.Locales[0]); ok && (err == nil || ir != nil) {', 'get("templates/unknown-template", name, domainpack.Locales[0]); ok && (err == nil || false && ir != nil) {'),
+    ('unknown-template-no-variants', CONF, 'for _, v := range []string{strings.ToUpper(name), strings.ToLower(name), " " + name, name + " "} {', 'for _, v := range []string{strings.ToUpper(name)}[:0] {'),
+    ('copies-unchecked', CONF, '\t\t\t\tif encoded(ir) != before {', '\t\t\t\tif false && encoded(ir) != before {'),
+    ('copies-shallow', CONF, '\t\t\t\tfor i := range other.Resources {', '\t\t\t\tfor i := range other.Resources[:0] {'),
+    ('copies-call-skipped', CONF, '&& other != nil {\n\t\t\t\tconst changed', '&& other != nil && false {\n\t\t\t\tconst changed'),
+    ('concurrent-no-template', CONF, '\t\t\tnames := tp.Templates()\n\t\t\tif len(names) == 0 {', '\t\t\tnames := tp.Templates()\n\t\t\tif true || len(names) == 0 {'),
     ("templates-step-dropped", CONF, "{\"templates\", c.templates},", ""),
     # softwaredelivery: locales and names
     ("unknown-locale-accepted", TMPL, "if !slices.Contains(domainpack.Locales, locale) {\n\t\treturn nil, ErrUnknownLocale", "if false && !slices.Contains(domainpack.Locales, locale) {\n\t\treturn nil, ErrUnknownLocale"),
@@ -77,8 +83,11 @@ GO = [
     ("localize-error-ignored", TMPL, "\tif err := localize(read, &ir, templateName, locale); err != nil {\n\t\treturn nil, err\n\t}", "\t_ = localize(read, &ir, templateName, locale)"),
     ("english-also-read", TMPL, "\tif locale == domainpack.English {\n\t\treturn nil\n\t}\n\traw, err", "\tif false && locale == domainpack.English {\n\t\treturn nil\n\t}\n\traw, err"),
     ("unknown-members-ok", TMPL, "if err := json.Unmarshal(raw, &names, json.RejectUnknownMembers(true)); err != nil {", "if err := json.Unmarshal(raw, &names); err != nil {"),
-    ("missing-name-kept", TMPL, "\t\tif !ok || n == \"\" {\n\t\t\treturn fmt.Errorf", "\t\tif false && (!ok || n == \"\") {\n\t\t\treturn fmt.Errorf"),
-    ("empty-name-ok", TMPL, "\t\tif !ok || n == \"\" {\n\t\t\treturn fmt.Errorf", "\t\tif !ok {\n\t\t\treturn fmt.Errorf"),
+    ('missing-name-kept', TMPL, '\t\tif !ok || strings.TrimSpace(n) == "" {', '\t\tif false && (!ok || strings.TrimSpace(n) == "") {'),
+    ('blank-name-ok', TMPL, '\t\tif !ok || strings.TrimSpace(n) == "" {', '\t\tif !ok || n == "" {'),
+    ('control-name-ok', TMPL, 'if strings.ContainsFunc(n, unicode.IsControl) || utf8', 'if false && strings.ContainsFunc(n, unicode.IsControl) || utf8'),
+    ('long-name-ok', TMPL, '|| utf8.RuneCountInString(n) > maxNameLength {', '|| false {'),
+    ('long-name-off-by-one', TMPL, '|| utf8.RuneCountInString(n) > maxNameLength {', '|| utf8.RuneCountInString(n) >= maxNameLength {'),
     ("extra-name-ok", TMPL, "\t\tif len(used) != len(c.from) {", "\t\tif false && len(used) != len(c.from) {"),
     ("unnamed-gets-name", TMPL, "\t\tif *name == \"\" {\n\t\t\treturn nil // unnamed", "\t\tif false && *name == \"\" {\n\t\t\treturn nil // unnamed"),
     ("pack-templates-empty", TMPL, "func (Pack) Templates() []string { return Templates() }", "func (Pack) Templates() []string { return nil }"),
@@ -101,8 +110,18 @@ COPY = [
     ("plural-count-unchecked", W + "lib/i18n/translate.ts", "if (typeof count !== \"number\") throw", "if (false) throw", "web"),
     ("missing-param-shown", W + "lib/i18n/translate.ts", "if (v === undefined) throw new Error(`message ${key} has no value for {${name}}`);", "if (v === undefined) return `{${name}}`;", "web"),
     ("numbers-unformatted", W + "lib/i18n/translate.ts", "return typeof v === \"number\" ? numbers.format(v) : v;", "return String(v);", "web"),
-    ("date-shape-unchecked", W + "lib/i18n/translate.ts", "if (!dateTime.test(iso) || Number.isNaN(d.getTime()))", "if (Number.isNaN(d.getTime()))", "web"),
-    ("date-invalid-unchecked", W + "lib/i18n/translate.ts", "if (!dateTime.test(iso) || Number.isNaN(d.getTime()))", "if (!dateTime.test(iso))", "web"),
+    ('date-shape-unchecked', W + 'lib/i18n/translate.ts', 'if (m === null || !exists(m) || Number.isNaN(d.getTime()))', 'if (Number.isNaN(d.getTime()))', 'web'),
+    ('date-invalid-unchecked', W + 'lib/i18n/translate.ts', 'if (m === null || !exists(m) || Number.isNaN(d.getTime()))', 'if (m === null || !exists(m))', 'web'),
+    ('date-calendar-unchecked', W + 'lib/i18n/translate.ts', 'if (m === null || !exists(m) || Number.isNaN(d.getTime()))', 'if (m === null || Number.isNaN(d.getTime()))', 'web'),
+    ('date-month-length-ignored', W + 'lib/i18n/translate.ts', 'const days = new Date(Date.UTC(year!, month!, 0)).getUTCDate();', 'const days = 31;', 'web'),
+    ('date-hour-24', W + 'lib/i18n/translate.ts', 'hour! <= 23', 'hour! <= 24', 'web'),
+    ('date-case-strict', W + 'lib/i18n/translate.ts', '(?:Z|[+-](\\d{2}):(\\d{2}))$/i;', '(?:Z|[+-](\\d{2}):(\\d{2}))$/;', 'web'),
+    ('params-inherited', W + 'lib/i18n/translate.ts', 'const v = Object.hasOwn(params, name) ? params[name] : undefined;', 'const v = params[name];', 'web'),
+    ('date-nonstring-shown', W + 'lib/i18n/provider.tsx', '      if (typeof iso !== "string") return "";\n', '', 'web'),
+    ('gap-zh-space', W + 'lib/i18n/provider.tsx', 'gap: locale === "zh-Hant" ? "" : " ",', 'gap: " ",', 'web'),
+    ('remembered-locale-default', W + 'lib/i18n/provider.tsx', '() => cookieLocale(document.cookie), () => defaultLocale);', '() => defaultLocale, () => defaultLocale);', 'web'),
+    ('cookie-last-wins', W + 'lib/i18n/locale.ts', 'for (const pair of header.split(";"))', 'for (const pair of header.split(";").reverse())', 'web'),
+    ('cookie-name-suffix', W + 'lib/i18n/locale.ts', 'pair.slice(0, at).trim() === localeCookie', 'pair.slice(0, at).trim().endsWith(localeCookie)', 'web'),
     ("zh-catalog-is-en", W + "lib/i18n/translate.ts", "{ en, \"zh-Hant\": zhHant }", "{ en, \"zh-Hant\": en }", "web"),
     ("duration-short", W + "lib/i18n/translate.ts", "unitDisplay: \"long\"", "unitDisplay: \"short\"", "web"),
     # locale choice
@@ -127,8 +146,11 @@ COPY = [
     ("not-found-echoes", W + "app/_components/problem-view.tsx", "const shown = problem.kind !== \"not_found\";", "const shown = true;", "web"),
     ("retry-after-count", W + "app/_components/problem-view.tsx", "t(\"problem.retryAfter\", { count: problem.retryAfterSeconds })", "t(\"problem.retryAfter\", { count: 2 })", "web"),
     # states
-    ("pending-hidden", W + "app/_components/states.tsx", "{pending > 0 && <> {t(\"draft.pending\", { count: pending })}</>}", "{false && <> {t(\"draft.pending\", { count: pending })}</>}", "web"),
-    ("revision-wrong", W + "app/_components/states.tsx", "t(\"draft.revision\", { revision: session.remote.revision })", "t(\"draft.revision\", { revision: 0 })", "web"),
+    ('pending-hidden', W + 'app/_components/states.tsx', '{pending > 0 && (', '{false && (', 'web'),
+    ('revision-wrong', W + 'app/_components/states.tsx', '{ revision: String(session.remote.revision) }', '{ revision: "0" }', 'web'),
+    ('revision-grouped', W + 'app/_components/states.tsx', '{ revision: String(session.remote.revision) }', '{ revision: session.remote.revision }', 'web'),
+    ('status-no-gap', W + 'app/_components/states.tsx', '{t(`draft.status.${session.status}`)}\n        {gap}\n', '{t(`draft.status.${session.status}`)}\n', 'web'),
+    ('technical-space', W + 'app/_components/problem-view.tsx', '{t("problem.technical")}\n          {gap}', '{t("problem.technical")}\n          {" "}', 'web'),
     ("more-pages-count", W + "app/_components/states.tsx", "t(`morePages.${what}`, { count: shown })", "t(`morePages.${what}`, { count: 2 })", "web"),
     ("loading-fixed", W + "app/_components/states.tsx", "{t(`loading.${what}`)}", "{t(\"loading.projects\")}", "web"),
     ("read-only-swapped", W + "app/_components/states.tsx", "t(role === null ? \"readOnly.unknownRole\" : \"readOnly.viewer\")", "t(role === null ? \"readOnly.viewer\" : \"readOnly.unknownRole\")", "web"),
@@ -143,26 +165,43 @@ COPY = [
     ("shell-provider-en", W + "app/layout.tsx", "<I18nProvider locale={locale}>", "<I18nProvider locale=\"en\">", "web"),
     ("shell-nav-en", W + "app/layout.tsx", "const t = createTranslator(locale);", "const t = createTranslator(\"en\");", "web"),
     ("home-en", W + "app/page.tsx", "const t = createTranslator(await requestLocale());", "const t = createTranslator(\"en\");", "web"),
-    ("created-raw", W + "app/projects/page.tsx", "{ date: dateTime(p.created_at) }", "{ date: p.created_at }", "web"),
-    ("created-hidden", W + "app/projects/page.tsx", " · {t(\"projects.created\", { date: dateTime(p.created_at) })}", "", "web"),
+    ('created-raw', W + 'app/projects/page.tsx', '{created && <> · {t("projects.created", { date: created })}</>}', '<> · {t("projects.created", { date: String(p.created_at) })}</>', 'web'),
+    ('created-hidden', W + 'app/projects/page.tsx', '{created && <> · {t("projects.created", { date: created })}</>}', '', 'web'),
+    ('not-found-en', W + 'app/not-found.tsx', '  const t = createTranslator(await requestLocale());', '  const t = createTranslator("en");', 'web'),
+    ('not-found-title-en', W + 'app/not-found.tsx', 'return { title: createTranslator(await requestLocale())("notFound.title") };', 'return { title: createTranslator("en")("notFound.title") };', 'web'),
+    ('crash-shows-message', W + 'app/_components/crash.tsx', '<p>{t("crash.body")}</p>', '<p>{error.message}</p>', 'web'),
+    ('crash-no-reference', W + 'app/_components/crash.tsx', '{error.digest && <p>', '{false && error.digest && <p>', 'web'),
+    ('crash-no-retry', W + 'app/_components/crash.tsx', 'onClick={() => retry()}', 'onClick={() => {}}', 'web'),
     # lint rule
     ("lint-no-strings-off", W + "eslint.config.mjs", "noStrings: true", "noStrings: false", "web"),
     ("lint-props-checked", W + "eslint.config.mjs", "ignoreProps: true", "ignoreProps: false", "web"),
-    ("lint-attr-literal", W + "eslint.config.mjs", "        { selector: `JSXAttribute[name.name=${textAttributes}] > Literal`, message: catalogText },\n", "", "web"),
-    ("lint-attr-expression", W + "eslint.config.mjs", "        { selector: `JSXAttribute[name.name=${textAttributes}] > JSXExpressionContainer > Literal`, message: catalogText },\n", "", "web"),
-    ("lint-attr-template", W + "eslint.config.mjs", "        { selector: `JSXAttribute[name.name=${textAttributes}] > JSXExpressionContainer > TemplateLiteral`, message: catalogText },\n", "", "web"),
+    ('lint-attr-literal', W + 'eslint.config.mjs', '        { selector: `JSXAttribute[name.name=${textAttributes}] > Literal[value=${letters}]`, message: catalogText },\n', '', 'web'),
+    ('lint-attr-paths', W + 'eslint.config.mjs', '  ...through(`JSXAttribute[name.name=${textAttributes}] > JSXExpressionContainer`, 0, 3),\n', '', 'web'),
+    ('lint-attr-depth-0', W + 'eslint.config.mjs', 'JSXExpressionContainer`, 0, 3),', 'JSXExpressionContainer`, 1, 3),', 'web'),
+    ('lint-child-paths', W + 'eslint.config.mjs', '  ...through(child, 1, 3),\n', '', 'web'),
+    ('lint-child-depth-1', W + 'eslint.config.mjs', '  ...through(child, 1, 3),', '  ...through(child, 1, 1),', 'web'),
+    ('lint-callback-paths', W + 'eslint.config.mjs', '  ...through(`${child} CallExpression > ArrowFunctionExpression`, 0, 3),\n', '', 'web'),
+    ('lint-no-concatenation', W + 'eslint.config.mjs', 'BinaryExpression[operator="+"], ', '', 'web'),
+    ('lint-any-binary', W + 'eslint.config.mjs', 'BinaryExpression[operator="+"]', 'BinaryExpression', 'web'),
+    ('lint-no-cast', W + 'eslint.config.mjs', 'TSAsExpression, ', '', 'web'),
+    ('lint-no-array', W + 'eslint.config.mjs', ", ArrayExpression)';", ")';", 'web'),
+    ('lint-condition-any-path', W + 'eslint.config.mjs', 'from + ` > ${passThrough}`.repeat(min + i)', 'from + ` ${passThrough}`.repeat(min + i)', 'web'),
+    ('lint-latin-only', W + 'eslint.config.mjs', 'const letters = "/\\\\p{L}/u";', 'const letters = "/[A-Za-z]/";', 'web'),
+    ('lint-no-text-props', W + 'eslint.config.mjs', '|label|text|message|description|heading|caption|tooltip|hint|helperText|errorMessage)$/', '|label)$/', 'web'),
+    ('lint-submit-value', W + 'eslint.config.mjs', 'JSXOpeningElement[name.name="input"]:has(', 'JSXOpeningElement[name.name="inputx"]:has(', 'web'),
+    ('lint-object-props', W + 'eslint.config.mjs', 'JSXAttribute > JSXExpressionContainer > ObjectExpression > Property', 'JSXAttribute > JSXExpressionContainer > ObjectExpression > ObjectExpression > Property', 'web'),
+    ('lint-document-title', W + 'eslint.config.mjs', '[object.name="document"][property.name="title"]', '[object.name="documentx"][property.name="title"]', 'web'),
+    ('lint-dialog-globals', W + 'eslint.config.mjs', '"no-restricted-globals": ["error",', '"no-restricted-globals": ["off",', 'web'),
+    ('lint-dialog-properties', W + 'eslint.config.mjs', '"no-restricted-properties": ["error",', '"no-restricted-properties": ["off",', 'web'),
     ("lint-attr-title-missing", W + "eslint.config.mjs", "|title|alt|", "|alt|", "web"),
     ("lint-condition-literal", W + "eslint.config.mjs", "          { selector: `${path} > Literal[value=${letters}]`, message: catalogText },\n", "", "web"),
     ("lint-condition-template", W + "eslint.config.mjs", "          { selector: `${path} > TemplateLiteral`, message: catalogText },\n", "", "web"),
-    ("lint-condition-depth-1", W + "eslint.config.mjs", "[1, 2, 3].map(", "[1].map(", "web"),
     ("lint-condition-no-fragment", W + "eslint.config.mjs", ":matches(JSXElement, JSXFragment) > JSXExpressionContainer", "JSXElement > JSXExpressionContainer", "web"),
-    ("lint-condition-any-path", W + "eslint.config.mjs", "`:matches(JSXElement, JSXFragment) > JSXExpressionContainer${` > ${condition}`.repeat(depth)}`", "`:matches(JSXElement, JSXFragment) > JSXExpressionContainer ${condition}`", "web"),
-    ("lint-latin-only", W + "eslint.config.mjs", "const letters = \"/[A-Za-z\\\\u3400-\\\\u9fff]/\";", "const letters = \"/[A-Za-z]/\";", "web"),
 ]
 
 EQUIVALENT = {
     "list-panic-continues": "after a Templates() panic the pack already fails (templates/list panicked); going on with no names only adds the unknown-template probe, which can add a finding but never remove one",
-    "date-invalid-unchecked": "Intl.DateTimeFormat.format throws RangeError on an Invalid Date, so a shape-valid but impossible date-time still throws",
+    "date-invalid-unchecked": "a string that passes the shape and calendar checks is a valid Date, and Intl.DateTimeFormat.format would throw RangeError on an Invalid Date anyway",
 }
 
 
@@ -204,12 +243,23 @@ def go_overlay(tmp, i, f, src):
     return verdict(p, "go test")
 
 
+# A mutant that does not build, an ESLint config ESLint refuses, or a test
+# that ran out of time proves nothing about the code: each is a harness
+# error, never a kill (T-044 review L1, L2).
+HARNESS_ERRORS = {
+    "BUILD-FAILED": ("build failed", "setup failed"),
+    "CONFIG-INVALID": ("Configuration for rule", "should NOT have duplicate items", "Failed to load config", "ConfigError"),
+    "TIMEOUT": ("Test timed out", "panic: test timed out", "Hook timed out"),
+}
+
+
 def verdict(p, stage):
     o = p.stdout + p.stderr
     if p.returncode == 0:
         return "SURVIVED", ""
-    if "build failed" in o or "setup failed" in o:
-        return "BUILD-FAILED", o[-300:].replace("\n", " ")
+    for kind, marks in HARNESS_ERRORS.items():
+        if any(m in o for m in marks):
+            return kind, o[-300:].replace("\n", " ")
     first = next((l.strip() for l in o.splitlines() if l.strip().startswith(("--- FAIL", "panic:", "FAIL ", "×", "error TS"))), "")
     if not first:
         first = next((l.strip() for l in o.splitlines() if " error " in l), "")
@@ -292,8 +342,7 @@ def main() -> int:
             finally:
                 path.write_text(orig)
             print("\t".join(results[-1]), flush=True)
-    # A mutant that does not build proves nothing: it is a harness error.
-    wrong = [r for r in results if r[1] == "BUILD-FAILED" or (r[1] == "SURVIVED") != (r[0] in EQUIVALENT)]
+    wrong = [r for r in results if r[1] in HARNESS_ERRORS or (r[1] == "SURVIVED") != (r[0] in EQUIVALENT)]
     killed = sum(r[1] == "KILLED" for r in results)
     print(f"total={len(results)} killed={killed} equivalent={sum(r[0] in EQUIVALENT for r in results)} unexpected={len(wrong)}")
     for r in wrong:

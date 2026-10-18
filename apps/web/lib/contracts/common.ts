@@ -110,5 +110,5 @@ export type ErrorCode = "INVALID_REQUEST" | "IDEMPOTENCY_KEY_REQUIRED" | "UNAUTH
 /** UI, template and AI prose language (REQ-022, H-005): en is the default; zh-Hant is Traditional Chinese. */
 export type Locale = "en" | "zh-Hant";
 
-/** The issue codes the generic validator (TWIN_IR_SPEC §4, D-023), the patch policy (D-014, D-020) and the P0 domain pack emit; Go tests keep this list equal to their constants. ValidationIssue.code stays open: a later pack may add a code, which the UI shows with a generic text. */
+/** The issue codes the generic validator (TWIN_IR_SPEC §4, D-023), the patch policy (D-014, D-020) and the P0 domain pack emit; Go tests keep this list equal to their constants. ValidationIssue.code stays open: a later pack may add a code; the UI then shows the issue's own message as English text (ADR-020). */
 export type ValidationCode = "JSON_INVALID" | "IR_SCHEMA_INVALID" | "LIMIT_EXCEEDED" | "DUPLICATE_ID" | "UNKNOWN_REFERENCE" | "VIEW_REFERENCE_INVALID" | "ROUTING_INVALID" | "NO_REACHABLE_SINK" | "ZERO_TIME_CYCLE" | "UNREACHABLE_NODE" | "RESOURCE_REQUIREMENT_INVALID" | "DISTRIBUTION_INVALID" | "CONSTRAINT_FAILED" | "DATASET_BINDING_INVALID" | "DOMAIN_MISMATCH" | "PATCH_SCHEMA_INVALID" | "PATCH_PATH_INVALID" | "PATCH_PATH_FORBIDDEN" | "PATCH_TEST_REQUIRED" | "PATCH_TARGET_MISSING" | "PATCH_TEST_FAILED";

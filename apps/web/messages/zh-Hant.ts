@@ -4,7 +4,7 @@ import type { Catalog } from "../lib/i18n/translate";
 
 export const zhHant: Catalog = {
   "app.name": "Geminus",
-  "nav.label": "主要",
+  "nav.label": "主選單",
   "nav.projects": "專案",
   "locale.label": "語言",
   "locale.en": "English",
@@ -12,6 +12,13 @@ export const zhHant: Catalog = {
 
   "home.title": "Geminus",
   "home.toProjects": "前往專案",
+
+  "notFound.title": "找不到此頁面",
+  "notFound.body": "這個網址沒有對應的頁面。",
+  "notFound.home": "前往首頁",
+  "crash.title": "發生錯誤",
+  "crash.body": "無法顯示此頁面。",
+  "crash.reference": "參考編號：{digest}",
 
   "projects.title": "專案",
   "projects.empty": "目前還沒有專案。",
@@ -23,14 +30,14 @@ export const zhHant: Catalog = {
   "models.outOfDate": "（草稿已過時）",
   "model.back": "返回專案",
   "model.summary": "最新版本 {version}；領域 {domain}。",
-  "model.notInBuild": "此版本尚未包含 2D 編輯器與 3D 檢視器（T-015、T-017）。",
+  "model.notInBuild": "目前的應用程式尚未提供 2D 編輯器與 3D 檢視器（T-015、T-017）。",
 
   "loading.projects": "正在載入專案…",
   "loading.models": "正在載入模型…",
   "loading.model": "正在載入此模型…",
   "retry": "重試",
-  "morePages.projects": { other: "顯示前 {count} 個專案。還有更多專案，此版本尚無法翻頁。" },
-  "morePages.models": { other: "顯示前 {count} 個模型。還有更多模型，此版本尚無法翻頁。" },
+  "morePages.projects": { other: "顯示前 {count} 個專案。還有更多專案，目前尚無法翻頁。" },
+  "morePages.models": { other: "顯示前 {count} 個模型。還有更多模型，目前尚無法翻頁。" },
   "readOnly.unknownRole": "尚未得知你的角色，因此無法編輯。",
   "readOnly.viewer": "你可以檢視這個模型，但不能修改。",
 
@@ -42,11 +49,11 @@ export const zhHant: Catalog = {
   "draft.status.error": "未儲存。",
   "draft.revision": "草稿修訂版 {revision}。",
   "draft.pending": { other: "{count} 項變更尚未儲存。" },
-  "draft.outOfDate": "此草稿所依據的版本之後，已有較新的版本發佈。",
+  "draft.outOfDate": "此草稿所依據的版本之後，已有較新的版本發布。",
   "draft.kept": "在你離開或重新載入此頁之前，你的變更會保留在此頁。",
   "draft.reload": "重新載入目前的草稿",
   "draft.discard": "捨棄我的變更",
-  "draft.publishUnavailable": "草稿須為最新且沒有錯誤，才能發佈。",
+  "draft.publishUnavailable": "草稿須為最新且沒有錯誤，才能發布。",
 
   "problem.heading.unauthenticated": "需要登入",
   "problem.heading.forbidden": "你沒有執行此操作的權限",
@@ -99,7 +106,7 @@ export const zhHant: Catalog = {
   "validation.ZERO_TIME_CYCLE": "迴圈不花任何時間，工作會無限循環。",
   "validation.UNREACHABLE_NODE": "沒有任何來源能到達這個步驟，因此它永遠不會被使用。",
   "validation.RESOURCE_REQUIREMENT_INVALID": "資源需求無效。",
-  "validation.DISTRIBUTION_INVALID": "時間分佈無效。",
+  "validation.DISTRIBUTION_INVALID": "時間分布無效。",
   "validation.CONSTRAINT_FAILED": "未滿足模型的限制條件。",
   "validation.DATASET_BINDING_INVALID": "所使用的資料集不存在、不被允許或不一致。",
   "validation.DOMAIN_MISMATCH": "模型屬於其他領域。",

@@ -1,0 +1,18 @@
+     × rejects a conditional aria-label 27ms
+     × rejects an alt fallback 21ms
+     × rejects a concatenated title 17ms
+     × rejects a cast aria-label 21ms
+     × rejects a text prop on a component 34ms
+     × rejects a message prop on a component 15ms
+     × rejects a submit button value 14ms
+     × rejects text in an object prop 25ms
+     × rejects a string in an array 15ms
+     × rejects a string a map returns 25ms
+     × rejects a conditional a map returns 21ms
+     × rejects a rare CJK character in a conditional 19ms
+     × rejects alert 15ms
+     × rejects window.confirm 15ms
+     × rejects document.title 19ms
+     × allows a decorative image 14ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  16 failed | 45 passed (61)

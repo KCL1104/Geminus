@@ -6,7 +6,7 @@ import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
 import type { ProblemKind } from "../lib/api/problem";
 import { i18nFor } from "../lib/i18n/provider";
-import { defaultLocale, localeCookie, localeCookieValue, locales, parseLocale } from "../lib/i18n/locale";
+import { cookieLocale, defaultLocale, localeCookie, localeCookieValue, locales, parseLocale } from "../lib/i18n/locale";
 import { catalogs, createTranslator, formatDateTime, formatDuration, formatNumber, type Message, type MessageKey, placeholders } from "../lib/i18n/translate";
 
 const common = JSON.parse(readFileSync(join(process.cwd(), "../../schemas/common.schema.json"), "utf8")) as {
@@ -64,9 +64,9 @@ describe("translator", () => {
   const zh = createTranslator("zh-Hant");
 
   it("fills placeholders and formats numbers for the locale", () => {
-    expect(t("models.version", { version: 3 })).toBe("version 3");
-    expect(t("draft.revision", { revision: 12345 })).toBe("Draft revision 12,345.");
-    expect(zh("draft.revision", { revision: 12345 })).toBe("草稿修訂版 12,345。");
+    expect(t("models.version", { version: "3" })).toBe("version 3");
+    expect(t("morePages.projects", { count: 12345 })).toBe("Showing the first 12,345 projects. More exist; this build cannot page through them yet.");
+    expect(zh("morePages.projects", { count: 12345 })).toBe("顯示前 12,345 個專案。還有更多專案，目前尚無法翻頁。");
     expect(t("projects.created", { date: "x" })).toBe("created x");
   });
 
@@ -82,6 +82,8 @@ describe("translator", () => {
     expect(() => t("models.version")).toThrow(/version/);
     expect(() => t("draft.pending")).toThrow(/count/);
     expect(() => t("draft.pending", { count: "2" })).toThrow(/count/);
+    // Only the params' own values count (T-044 review, info).
+    expect(() => t("models.version", Object.create({ version: "3" }) as Record<string, string>)).toThrow(/version/);
   });
 });
 
@@ -97,6 +99,19 @@ describe("locale choice", () => {
     expect(localeCookieValue("zh-Hant", true)).toBe("geminus_locale=zh-Hant; Path=/; Max-Age=31536000; SameSite=Lax; Secure");
     expect(localeCookieValue("en", false)).toBe("geminus_locale=en; Path=/; Max-Age=31536000; SameSite=Lax");
   });
+
+  it("reads the choice from a Cookie header or document.cookie, first value wins", () => {
+    expect(cookieLocale("a=b; geminus_locale=zh-Hant; c=d")).toBe("zh-Hant");
+    expect(cookieLocale("geminus_locale=zh-Hant; geminus_locale=en")).toBe("zh-Hant");
+    for (const v of ["", "geminus_locale=zh-hant", "xgeminus_locale=zh-Hant", "geminus_locale = zh-Hant", "geminus_locale"]) expect(cookieLocale(v), v).toBe("en");
+  });
+});
+
+describe("joining", () => {
+  it("puts a space between sentences in English and none in Chinese (T-044 review L7)", () => {
+    expect(i18nFor("en").gap).toBe(" ");
+    expect(i18nFor("zh-Hant").gap).toBe("");
+  });
 });
 
 describe("formatting", () => {
@@ -109,11 +124,19 @@ describe("formatting", () => {
     // Only RFC 3339, the contract's date-time: Date.parse accepts far more.
     expect(() => formatDateTime("en", "10/18/2026")).toThrow();
     expect(() => formatDateTime("en", "2026-10-18")).toThrow();
+    // Dates that do not exist are not rolled over (T-044 review L4).
+    for (const v of ["2026-02-30T00:00:00Z", "2026-02-29T00:00:00Z", "2026-13-01T00:00:00Z", "2026-00-10T00:00:00Z", "2026-10-00T00:00:00Z", "2026-10-18T24:00:00Z", "2026-10-18T10:60:00Z", "2026-10-18T10:00:61Z", "2026-10-18T10:00:00+24:00", "2026-10-18T10:00:00+08:60"])
+      expect(() => formatDateTime("en", v), v).toThrow();
+    expect(formatDateTime("en", "2028-02-29T12:00:00Z")).toMatch(/2028/);
+    // RFC 3339 allows lowercase t and z.
+    expect(formatDateTime("en", "2026-10-18t09:30:00z")).toBe(formatDateTime("en", "2026-10-18T09:30:00Z"));
     expect(formatDateTime("en", "2026-10-18T09:30:00.123+08:00")).toMatch(/2026/);
   });
 
   it("shows a server value that is not a date-time as it came, instead of failing the page", () => {
     expect(i18nFor("en").dateTime("2026-13-99")).toBe("2026-13-99");
+    // A value of the wrong type shows nothing, never "null" or "undefined" (T-044 review M2).
+    for (const v of [null, undefined, 42]) expect(i18nFor("zh-Hant").dateTime(v as unknown as string)).toBe("");
     expect(i18nFor("zh-Hant").dateTime("2026-10-18T09:30:00Z")).toBe(formatDateTime("zh-Hant", "2026-10-18T09:30:00Z"));
   });
 

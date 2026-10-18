@@ -10,9 +10,12 @@
 - `createTranslator(locale)`：
   - 插值 `{name}`；數字參數依 locale 用 `Intl.NumberFormat` 格式化。
   - 複數訊息是 `{ one?, other }`，依 `params.count` 用 `Intl.PluralRules` 選；zh-Hant 只有 `other`。
-  - 缺參數或 `count` 不是數字時 throw：這是程式錯誤，不顯示 `{name}`。
-- 日期、數字、期間：`formatDateTime`（只接受 RFC 3339 date-time，即 contract 的格式；`Date.parse` 接受的範圍大得多）、`formatNumber`、`formatDuration`（`Intl.NumberFormat` unit style）。
-  - 元件經 `useI18n().dateTime` 使用：API 給的值若不是 date-time，就照原樣顯示，不讓整頁失敗。
+  - 缺參數或 `count` 不是數字時 throw：這是程式錯誤，不顯示 `{name}`。只看 params 自己的值（`Object.hasOwn`），不看 prototype。
+  - 修訂號、版本號這類編號以字串傳入，不加千分位；只有數量（count）依語言分組。
+  - `gap`：句與句、標籤與值之間的間隔，英文一個空格，中文沒有（「已儲存。草稿修訂版 3。」、「技術細節：…」）。
+- 日期、數字、期間：`formatDateTime`、`formatNumber`、`formatDuration`（`Intl.NumberFormat` unit style）。
+  - `formatDateTime` 只接受 RFC 3339 date-time（contract 的格式，`T`／`Z` 大小寫皆可），且日期與時間必須存在：`Date.parse` 接受的範圍大得多，並把 2026-02-30 或 24:00 進位成別的時間（T-044 review L4）。檢查不依賴 V8：其他瀏覽器的 `Date` 解析不同。
+  - 元件經 `useI18n().dateTime` 使用：API 給的字串若不是 date-time，就照原樣顯示；不是字串的值（缺欄位、`null`）顯示為空，該段文字略過，不讓整頁失敗（T-044 review M2）。
 - `tests/i18n.test.ts` 鎖住：
   - 兩語 key 相同且沒有空值；placeholder 與複數形狀相同；
   - 兩語相同的文字只限 `app.name`、`home.title` 與兩個語言名稱；
@@ -61,25 +64,39 @@
   - 每個 locale 都產生一個通過 generic validator 與 pack 規則的 model，domain、ID、名稱正確；
   - 兩次呼叫相同；
   - 除名稱外各 locale 完全相同；
-  - 未知 locale 或 template 只回 error。
+  - 未知 locale 或 template 只回 error：locale 包括 `zh`、`zh-TW`、`zh-Hant-TW`、`en-US` 這類近似值，template 包括大小寫不同或前後有空白的名稱。
+  - 每個呼叫者拿到自己的 model：以另一個 model ID 與名稱再要一次，並改動它的每個名稱，第一個 model 不變（`templates/copies`）。
+  - `Template` 也在 `concurrent` 步驟中並行呼叫；data race 由 `make backend-race` 抓（T-044 review M1）。
 - SoftwareDelivery：`templates/<template>.zh-Hant.names.json` 依 ID 給名稱，嚴格比對。
-  - 少一個、多一個、空名或未知 member 都是 internal error，避免某語言混雜兩種語言。
+  - 少一個、多一個、空白或含控制字元的名稱、超過 IR 上限（200 字元）的名稱、未知 member 都是 internal error，避免某語言混雜兩種語言；不會變成表示「呼叫者輸入有誤」的 `InvalidError`（T-044 review L6）。
   - ID 與其他內容在各語言相同。
 - `CreateModel` request 加 optional `locale`（省略即 `en`）。建立 model 的 handler（T-012／T-013）傳入它。建立後的名稱是使用者資料，切換語言不會改。
 
 ### Lint（`apps/web/eslint.config.mjs`，對 `**/*.tsx`，tests 除外）
 
-- `react/jsx-no-literals`：noStrings、ignoreProps；允許空白與少數標點。
-- `no-restricted-syntax` 擋兩類寫法：
-  - 文字 attribute（`aria-label`、`aria-description`、`aria-placeholder`、`aria-roledescription`、`aria-valuetext`、`title`、`alt`、`placeholder`、`label`）的字串、字串 expression 或 template literal；
-  - 由條件（`&&`、`||`、`?:`，最多三層）在 element 或 fragment 直接渲染的含字母或中文字串與 template literal。
-  - `t(a ? "k.x" : "k.y")` 的 key 是參數，不算。
-- `tests/lint-guards.test.ts` 對每個 selector 有正反例。
+- `react/jsx-no-literals`：noStrings、ignoreProps；允許空白與少數標點。它只看 JSX 中裸露的字串。
+- `no-restricted-syntax`（T-044 review M3 擴大）：
+  - 「含字母」以 `\p{L}` 判斷（任何文字，含重音字母與 CJK 擴充區）。
+  - 文字 prop：`aria-label`、`aria-description`、`aria-placeholder`、`aria-roledescription`、`aria-valuetext`、`title`、`alt`、`placeholder`、`label`，以及元件常用的 `text`、`message`、`description`、`heading`、`caption`、`tooltip`、`hint`、`helperText`、`errorMessage`。它們的含字母字串值都擋，經最多三層「傳遞」也擋。傳遞指條件 `&&`／`||`／`??`／`?:`、`+` 串接、`as`／`satisfies`／`!`、陣列。`alt=""`（裝飾圖）可以。
+  - Element 或 fragment 的子 expression，經一到三層傳遞後的含字母字串或 template literal；callback 回傳的字串（`xs.map(() => "item")`）也算。
+  - `<input type="submit|button|reset" value="…">`；JSX prop 中物件的文字欄位（`problem={{ message: "…" }}`）。
+  - `document.title = …`（用 metadata）。
+- `no-restricted-globals`／`no-restricted-properties`：`alert`、`confirm`、`prompt`（含 `window.`），改用頁內 dialog。
+- 函式呼叫不是傳遞：`t(a ? "k.x" : "k.y")` 的 key、`onClick={() => set("edit")}` 的參數、`m === "edit"` 的比較都不算。
+- `tests/lint-guards.test.ts` 對每類寫法有正反例，mutation 證明每個 selector 都有測試擋。
 - **限制**（需人工 review）：
-  - 在 JSX 外組好的字串（`const s = "Hello"; … {s}`）；
+  - 在 JSX 外組好的字串（`const s = "Hello"; … {s}`），以及經函式呼叫才進 JSX 的字串（`String("x")`、`label("x")`、`.join("and")`）；
+  - 其他名稱的文字 prop；
+  - 四層以上的傳遞；
+  - 只有符號、沒有字母的文字（`→`、`©`）；
   - `lib/` 內產生的英文診斷（刻意保留為 technical message）；
-  - 四層以上的條件；
   - `metadata` 物件。
+
+### 錯誤與找不到的頁面（T-044 review M2）
+
+- `app/not-found.tsx`：任何沒有頁面的網址，以讀者的語言顯示（含 `<title>`）。Next.js 內建的 404 頁只有英文，且會標成 `lang="zh-Hant"`。
+- `app/error.tsx`：route 渲染失敗時，在 root layout 內以 catalog 文字顯示，可重試；有 server 的 `digest` 就顯示為參考編號，不顯示 error message（可能含內部資訊）。
+- `app/global-error.tsx`：root layout 本身失敗時取代整份文件。它沒有 server 的 locale，先以英文渲染，瀏覽器讀到 cookie 後換成記住的語言（`useRememberedLocale`）。
 
 ### 不在本 ADR
 
