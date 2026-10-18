@@ -1,26 +1,29 @@
 # T-010 驗證報告：受控 onboarding 與成員管理
 
-**日期：2026-10-18｜狀態：`review`（實作與自我驗證完成，送獨立 review；依 H-003 驗收）｜需求：REQ-001、REQ-002、REQ-019｜Gate：D-008、D-012、D-036（皆已批准）｜實作選擇：ADR-023（PROPOSED）｜驗收測試：TEST-009（membership 部分）、TEST-011（provisioning 部分）；TEST-026 見 NOT RUN**
+**日期：2026-10-18｜狀態：`review`（review round 1 CHANGES REQUESTED 已修正，送同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-001、REQ-002、REQ-019｜Gate：D-008、D-012、D-036（皆已批准）｜實作選擇：ADR-023（PROPOSED）｜驗收測試：TEST-009（membership 部分）、TEST-011（provisioning 部分）；TEST-026 見 NOT RUN**
 
 逐條輸出在 `checks/evidence/2026-10-18-T-010/`。範圍依 tasks.json：
 
 - operator-only 的初始 org／owner／user provisioning；
 - owner-only 的成員 list／add／update／remove（已知的 user）；
 - 鎖定 organization 保留最後一位 owner；撤權立即影響寫入；
-- 成員變更不在 `Run(ReadWrite)` 的 `FOR SHARE` 之上取 D-036 的有序鎖（T-009 re-review R1），並以兩個 owner 並行變更證明無 deadlock。
+- 成員變更不在 `Run(ReadWrite)` 的 `FOR SHARE` 之上取 D-036 的有序鎖（T-009 re-review R1），並證明無 deadlock（round 1 後以三個以上 owner 的隨機壓力測試）。
+
+Review round 1 的發現與處理見文末；以下各節已更新為修正後（57cb767）的狀態。
 
 ## 交付內容
 
 | 位置 | 內容 |
 |---|---|
-| `internal/tenant/owners.go` | `DB.RunOwners`：先依 user_id 順序 `FOR UPDATE` 鎖住全部 owner membership，再讀 caller 的 role；不先以 `FOR SHARE` 鎖 caller 自己的 row；caller 在等鎖時被升為 owner 時再鎖一次 |
+| `internal/tenant/owners.go` | `DB.RunOwners`：不上鎖讀 caller 的 role，非成員 404、非 owner 403，不取任何鎖；取該 organization 的 transaction 層級 advisory lock（成員變更一次一個）；依 user_id 順序 `FOR UPDATE` 鎖住全部 owner membership（D-036）；再讀一次 caller 的 role |
 | `internal/tenant/memberships` | Service：`List`、`Create`（Idempotency-Key）、`Update`、`Delete`；最後一位 owner、audit、cursor；HTTP handler 與 `Routes`（path 的 organization 必須是選定的） |
 | `internal/storage/memberships` | twin.memberships 的 SQL，每個 statement 帶 organization filter；新增以 `ON CONFLICT DO NOTHING` 分辨已是成員，FK 分辨未知 user |
-| `internal/storage/provisioning`、`cmd/provision-tenant` | Operator 的 provisioning：`user` 與 `organization` 指令；login 必須能 `SET ROLE twin_owner` 且不是 runtime login 或 superuser；建立 organization 時同一 transaction 建立 owner membership 與 audit `organization.provision` |
+| `internal/storage/provisioning`、`cmd/provision-tenant` | Operator 的 provisioning：`user` 與 `organization` 指令；login 必須能 `SET ROLE twin_owner`，不是 runtime login，沒有 SUPERUSER／BYPASSRLS／CREATEROLE／CREATEDB／REPLICATION；同一 identity 並行只建立一次（`ON CONFLICT`）；issuer／subject 依 ADR-017 verifier（`auth.ValidIdentity`）、名稱需可列印且無前後空白；建立 organization 時同一 transaction 建立 owner membership 與 audit `organization.provision` |
+| `internal/auth` | `ValidIdentity`：verifier 會接受的 issuer 與 subject，給 provisioning 用 |
 | `internal/httpapi` | `IdempotencyKey`、`PageQuery`、`InvalidCursor` 從 project 移出共用 |
 | `internal/api` | 註冊 membership routes |
 | `Makefile` | `db-go-test` 加入 `./cmd/provision-tenant/...` |
-| 文件 | ADR-023（PROPOSED）；ADR-019 的 R1 註記；db/README.md 的 provisioning login 與測試表 |
+| 文件 | ADR-023（PROPOSED；round 1 後改寫鎖的設計、等待關係、風險與待 owner 決定事項）；ADR-019 的 R1 註記（更正「確認無 deadlock」）；db/README.md 的 provisioning login 與測試表；tasks.json：T-023 scope 加入撤權時關閉 stream（L6） |
 
 ## 實際執行結果
 
@@ -64,19 +67,29 @@
 | `TestDelete` | 唯一 owner 不能移除；被移除者下一個 request 被拒；再移除 404；audit | D-036、撤權 |
 | `TestRemovalWaitsForAWrite` | 成員已開始的寫入未結束前，移除等待；寫入完成後移除生效，下一個寫入被拒 | ADR-019 |
 | `TestOwnersChangeAtOnce` | 15 輪兩位 owner 同時互相降級，並夾雜 owner 自己的寫入：每輪恰一個成功、另一個被拒、剩一位 owner，沒有 deadlock 或 503 | T-009 re-review R1、D-036 |
-| `TestPromotedWhileWaiting` | 等鎖時被升為 owner 的 caller 可降級另一位 owner（再鎖一次，不以不完整的集合誤判為最後一位） | ADR-023 |
+| `TestCallerChangedWhileWaiting` | 尚未 commit 的升級不算：caller 立刻 403、不等鎖；等 membership lock 時被降級 403、被移除 404；目標不變、無 audit（取代 round 1 前的 `TestPromotedWhileWaiting`） | ADR-023、review M3 |
+| `TestRefusedRequestsTakeNoLock` | 非成員與 viewer 在某 owner 寫入進行中仍立刻被拒，且另一位 owner 的寫入不等它們 | review M1 |
+| `TestOwnerSetIsCurrent` | 升級因目標的寫入而等待時，接著的自我降級、降級新 owner、移除新 owner 都成功（不誤判最後一位），最後剩一位 owner | review M3 |
+| `TestMembershipChangesUnderLoad` | 3 位 owner、6 個 user、10 個 worker、5 秒隨機升降級、移除、重新加入、寫入、列表：每輪 370–420 次成功變更（少於 50 即失敗），沒有 40P01 或其他非預期錯誤，從未出現沒有 owner 的 organization | review M2 |
+| `TestOwnerLockAcrossPlans` | 審查者的 probe：兩個變更以不同 plan（seq scan 的 heap 順序≠user_id 順序）取 owner 鎖、兩位 owner 都在寫入中：3 輪皆無 deadlock 且都成功 | review L1、M2 |
+| `TestOwnerRowsLockedDuringAChange` | D-036：變更進行中另一位 owner 的寫入要等；非 owner 也非目標的成員寫入不等 | D-036、ADR-023 |
+| `TestReplayNeedsTheRole` | 被降級的 owner 重播同一 Idempotency-Key 得 403，被移除得 404 | D-011、review L2 |
 | `TestScopeIsValidatedBeforeTheDatabase`（internal/tenant） | 無效的 organization／user ID 在碰資料庫前即被拒（`Run` 與 `RunOwners`） | D-008 |
 | `TestOrganizationFilter`、`TestListAfter`（storage/memberships） | 以 superuser 執行時 organization filter 本身讓 a 讀不到、改不到、刪不到 b 的成員；keyset 從給定 user ID 之後開始 | AGENTS.md（application filter 與 RLS 並存） |
 | `TestList` | 以 user_id 分頁不重不漏、符合 Memberships schema；cursor 不能用於其他 organization、竄改即拒；limit 0／101 被拒 | API_DATABASE §3 |
 | `TestRoutesMatchContract` | Routes 的 method、path、role 等於 api-operations.json | D-012 |
 | `TestMembershipRoutes`（internal/api） | 整個 HTTP stack：owner 200、editor 403、其他 organization 404、path 與 header 的 organization 不同 404、401；缺 Idempotency-Key 400；409／422 的 code；PATCH、DELETE 204（無 body、有 X-Request-ID）；被移除者下一個 request 404；3 筆 audit | TEST-009 |
-| `TestCheckOperator`、`TestAPICannotProvision`、`TestProvision`（storage/provisioning） | Operator login（`NOINHERIT … IN ROLE twin_owner`）可以，superuser、API login 與沒有任何 role 的 login 被拒；API login 即使設了 RLS 讀的 setting 也不能 INSERT users／organizations（42501）；user 依 issuer／subject 只建一次；organization 有 owner 與 system audit，owner 立刻能解析並以 owner 身分工作；不合格的名稱與 identity 被拒 | D-008、TEST-011 |
+| `TestCheckOperator`、`TestAPICannotProvision`、`TestProvision`、`TestUserOnceUnderConcurrency`（storage/provisioning） | Operator login（`NOINHERIT` 或 `INHERIT … IN ROLE twin_owner`）可以；superuser、API login、worker login、沒有任何 role 的 login、同時是 twin_worker 或 twin_api 的 owner、有 BYPASSRLS／CREATEROLE／CREATEDB／REPLICATION 的 owner 被拒；API login 即使設了 RLS 讀的 setting 也不能 INSERT users／organizations（42501）；user 依 issuer／subject 只建一次，8 個並行呼叫 10 輪都回同一 ID、恰一個回報建立；organization 有 owner 與 system audit，owner 立刻能解析並以 owner 身分工作；空白、前後空白、C1 控制、U+202E、U+200B、NBSP、private use、非 UTF-8 的名稱與 verifier 不會接受的 issuer／subject（http、相對、換行、U+0000、過長）被拒 | D-008、TEST-011、review L2–L4、I3 |
+| `TestValidIdentity`（internal/auth） | issuer 與 verifier 設定的規則一致（同一組值兩邊判斷相同），subject 與 token `sub` 的規則一致，含 255／256 bytes 邊界 | ADR-017、review L4 |
 | `TestProvision`、`TestRefusals`（cmd/provision-tenant） | 輸出只有 ID 的 JSON；API login、superuser exit 4；用法與輸入錯誤 exit 2，且沒有輸出 | D-008 |
 
 ## 需 owner 知悉
 
 - ADR-023 為 PROPOSED：provisioning 指令與 login 規則（superuser 也拒絕）、成員 API 的錯誤碼（最後一位 owner 與已是成員為 409 LIFECYCLE_CONFLICT、未知 user 為 422）、PATCH 相同 role 不寫入、列表依 user_id 排序。
 - 部署時需要為 provisioning 建立一個 `NOINHERIT … IN ROLE twin_owner` 的 login（db/README.md）。
+- **待 owner 決定（review L5）**：provisioning 以 `twin_owner`（schema owner）執行，權限超過所需；最小權限需新增專用 role 與 migration（ADR-023）。決定前維持現狀。
+- 語意改變（review M1）：成員變更以 request 開始時已 commit 的 role 判斷；尚未 commit 的升級不算，caller 收到 403、重試即可。
+- 已知風險（review I3，ADR-023）：owner 可加入任何已存在的 user ID（不需該 user 同意）；新增的 422 與 409／201 會透露某個全域 user ID 是否存在（ULID 不可猜）。
 
 ## 與規劃的差異
 
@@ -90,3 +103,25 @@
 | 撤權時關閉 SSE stream（TEST-026） | SSE 尚不存在（T-023）；撤權後的下一個 request 已被拒（`TestDelete`、`TestMembershipRoutes`） |
 | 前端成員管理畫面 | 不在 T-010 scope；UI 依 T-045 的 design gate |
 | 真實 IdP 的 subject 與 provisioning | Auth0 tenant 尚未建立（ADR-018／T-043）；測試用 test OIDC provider |
+
+## Review round 1（2026-10-18，同一 reviewer，審 e779f6b）
+
+結論 CHANGES REQUESTED：所有 make target、38 個 test、mutation 46＋2 皆重現，但 probe 證實三個 medium 缺陷（皆未破壞「至少一位 owner」）。處理如下，修正在 57cb767，證據在 `checks/evidence/2026-10-18-T-010/review1/`。
+
+| 發現 | 內容 | 處理 |
+|---|---|---|
+| M1 | 非成員與非 owner 在 membership 檢查前就鎖住該 organization 的 owner rows（跨 tenant 干擾，被拒前擋住 owner 的寫入 0.7 s） | `RunOwners` 先不上鎖讀 role，非成員／非 owner 在取任何鎖前被拒；`TestRefusedRequestsTakeNoLock`（紅：兩個情形都等滿 2 s；綠）。審查者的 HTTP 跨 tenant probe：被拒 22 ms，另一 owner 的寫入 18 ms（原 1.0 s／0.7 s） |
+| M2 | 仍有 deadlock：re-lock 路徑，以及 READ COMMITTED 下分多個 statement 取鎖；只測了兩位 owner | 每個 organization 的 transaction 層級 advisory lock，成員變更一次一個；移除 re-lock。`TestMembershipChangesUnderLoad`（紅：13 個 40P01；綠：三輪 370–417 次成功變更、0 非預期錯誤）、`TestOwnerLockAcrossPlans`；拿掉 advisory lock 與 ORDER BY 時兩者都出現 40P01 |
+| M3 | owner 集合取自 FOR UPDATE statement 的 snapshot，等待中 commit 的新 owner 不在其中，誤回「最後一位 owner」409 | advisory lock 之後才開始的 FOR UPDATE statement 看得到前一個變更；`TestOwnerSetIsCurrent`（紅：三個變體都 2 位 owner 卻被拒；綠） |
+| L1 | `owners-unordered` 的等價理由（同一 query 同一 plan）不成立 | 加入審查者的 plan-order probe（`TestOwnerLockAcrossPlans`）。在 advisory lock 下這個 mutant 確實不改變行為（理由改寫，見 mutation 節），ORDER BY 依已批准的 D-036 保留 |
+| L2 | 測試缺口：重播前未檢查 role、CheckOperator 的 twin_worker 子句 | `TestReplayNeedsTheRole`；`TestCheckOperator` 加入 owner＋worker、owner＋API、worker login；mutant `prov-worker-allowed` |
+| L3 | `provision-tenant user` 並行時 23505 | `INSERT … ON CONFLICT (oidc_issuer, oidc_subject) DO NOTHING` 後再讀；`TestUserOnceUnderConcurrency`（舊程式紅：23505） |
+| L4 | 名稱接受 C1、U+202E、U+200B、只有空白；subject 接受換行（verifier 不接受，無法登入） | 名稱需全為可列印字元、無前後空白；issuer／subject 用 `auth.ValidIdentity`（與 verifier 同一組規則，`TestValidIdentity`）；舊程式在新的 `TestProvision` 下 14 個輸入被接受（`red-provisioning.log`） |
+| L5 | provisioning login 以 schema owner 執行，權限過大 | 記入 ADR-023 待 owner 決定；CheckOperator 另拒多餘屬性（I3） |
+| L6 | 撤權時關閉 stream 只寫在 T-010 | 加入 T-023 scope |
+| I1 | ADR-023「寫入不等變更」錯誤、未寫明被拒的嘗試也會擋寫入、兩處引用章節錯誤；ADR-019「確認無 deadlock」 | ADR-023 改寫等待關係並更正引用（API_DATABASE §8、§2）；ADR-019 改為說明 round 1 的發現與現行做法，並註明是測試結果不是證明 |
+| I2 | 報告說 mutation exit 0，但留存的 log 都以 exit=1 結尾 | 最終全量 mutation 在 57cb767 的乾淨 worktree 執行，log 以 exit=0 結尾（`review1/mutation-final.log`） |
+| I3 | 未經同意加入、user ID 是否存在的揭露、先驗格式再驗權限；CheckOperator 接受有 BYPASSRLS／CREATEROLE 的 owner | 風險記入 ADR-023；CheckOperator 拒絕 SUPERUSER、BYPASSRLS、CREATEROLE、CREATEDB、REPLICATION |
+
+審查者的 9 個 membership probe 與 2 個 HTTP probe 在修正後的程式上全部通過（`reviewer-probes-on-fix.log`、`reviewer-http-probes-on-fix.log`；`TestReviewRelockDeadlock` 現在因 caller 尚未 commit 的升級不算而得 403，0 deadlock）。
+

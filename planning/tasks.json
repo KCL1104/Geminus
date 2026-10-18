@@ -601,7 +601,7 @@
         "建立 operator-only initial org/owner/user provisioning 流程。",
         "Owner-only list/add/update/remove known user membership。",
         "鎖 org 保留 last Owner；撤權立即影響 write/stream。",
-        "成員變更不可在 `Run(ReadWrite)` 的 `FOR SHARE` 之上取 D-036 的有序鎖（兩個 owner 同時變更會 deadlock，T-009 re-review R1，見 ADR-019）：提供先取 D-036 有序 `FOR UPDATE`、再重讀 caller role 的 run 模式，並以兩個 owner 並行變更的測試證明無 deadlock。"
+        "成員變更不可在 `Run(ReadWrite)` 的 `FOR SHARE` 之上取 D-036 的有序鎖（兩個 owner 同時變更會 deadlock，T-009 re-review R1，見 ADR-019）：提供先取 D-036 有序 `FOR UPDATE`、再重讀 caller role 的 run 模式，並以兩個 owner 並行變更的測試證明無 deadlock。（review round 1 後：先不上鎖檢查 caller 是 owner，再取每個 organization 的 advisory lock，然後才是 D-036 的有序鎖與 role 重讀；以三個以上 owner 的隨機壓力測試驗證，ADR-023。）"
       ],
       "planned_outputs": [
         "internal/tenant/memberships/",
@@ -1360,7 +1360,8 @@
       "scope": [
         "freeze version/patch/config/datasets/engine/limits 並202入列。",
         "checkpoint cancellation、durable logical-run budgets含retries。",
-        "lease-fenced atomic results、progress/SSE與trace authorization。"
+        "lease-fenced atomic results、progress/SSE與trace authorization。",
+        "撤權（成員被移除或降級）時關閉該使用者已開的 SSE stream，或在送出下一個事件前重新檢查 membership 與 role（TEST-026；T-010 review L6 移交，T-010 只保證下一個 request 被拒）。"
       ],
       "planned_outputs": [
         "internal/simulation/service/",
