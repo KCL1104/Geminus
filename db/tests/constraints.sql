@@ -307,4 +307,19 @@ SELECT pg_temp.check(count(*)=0, 'ID columns without their D-001 domain: ' ||
     coalesce(string_agg(table_name||'.'||column_name||'='||coalesce(domain_name,'text')||' want '||coalesce(want,'?'), ', '), ''))
   FROM expected WHERE want IS NULL OR domain_name IS DISTINCT FROM want;
 
+-- T-012 / D-028 (migration 0003): a draft keeps the semantic issues of its
+-- IR as a JSON array of at most 1000 issues (http.schema.json Draft.issues).
+INSERT INTO twin.model_drafts(organization_id,model_id,base_version_id,revision,ir,hash,updated_by)
+  VALUES ('org_01M4YDQK00TA00000000000000','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001',1,'{"schema_version":"0.1","model_id":"mdl_01M4YDQK00TA00000000000001","domain":"software_delivery","name":"Model A v1","time_unit":"minute","entity_types":[{"id":"change","name":"Change"}],"resources":[{"id":"worker","type":"human","name":"Worker","capacity":1,"queue_discipline":"fifo"}],"nodes":[{"id":"start","type":"source","entity_type":"change","arrival":{"distribution":{"type":"constant","value":10},"max_entities":1}},{"id":"work","type":"process","service_time":{"distribution":{"type":"constant","value":1}},"requires":[{"resource_id":"worker","units":1}]},{"id":"end","type":"sink"}],"flows":[{"id":"start_work","from":"start","to":"work","routing":{"type":"probability","probability":1}},{"id":"work_end","from":"work","to":"end","routing":{"type":"probability","probability":1}}],"constraints":[],"metrics":[],"views":{"2d":{},"3d":{}}}','sha256:432750f646ba93a763271505eaf1daa556ef60f2b8d7c97999529683c226120e','usr_01M4YDQK00TA00000000000001');
+SELECT pg_temp.check((SELECT issues FROM twin.model_drafts WHERE organization_id='org_01M4YDQK00TA00000000000000' AND model_id='mdl_01M4YDQK00TA00000000000001')='[]'::jsonb,
+  'a new draft has no issues');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET issues='{}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND model_id='mdl_01M4YDQK00TA00000000000001'$q$,'23514');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET issues=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND model_id='mdl_01M4YDQK00TA00000000000001'$q$,'23502');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET issues=(SELECT jsonb_agg(jsonb_build_object('code','X','path','','message','m','severity','warning')) FROM generate_series(1,1001))
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND model_id='mdl_01M4YDQK00TA00000000000001'$q$,'23514');
+UPDATE twin.model_drafts SET issues=(SELECT jsonb_agg(jsonb_build_object('code','X','path','','message','m','severity','warning')) FROM generate_series(1,1000))
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND model_id='mdl_01M4YDQK00TA00000000000001';
+SELECT pg_temp.check((SELECT jsonb_array_length(issues) FROM twin.model_drafts WHERE organization_id='org_01M4YDQK00TA00000000000000' AND model_id='mdl_01M4YDQK00TA00000000000001')=1000,
+  'a draft keeps 1000 issues');
+
 ROLLBACK;

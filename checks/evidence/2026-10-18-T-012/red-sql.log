@@ -1,0 +1,3 @@
+psql:db/tests/constraints.sql:315: ERROR:  column "issues" does not exist
+LINE 1: SELECT pg_temp.check((SELECT issues FROM twin.model_drafts W...
+                                     ^

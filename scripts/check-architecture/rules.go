@@ -22,6 +22,7 @@ var appLayers = []string{
 	"./internal/auth/...",
 	"./internal/tenant/...",
 	"./internal/project/...",
+	"./internal/models/...", // model, draft and version service (T-012, ADR-022)
 	"./internal/storage/...",
 	"./internal/import/...",
 	"./internal/ai/...",

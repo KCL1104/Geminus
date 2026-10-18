@@ -307,4 +307,19 @@ SELECT pg_temp.check(count(*)=0, 'ID columns without their D-001 domain: ' ||
     coalesce(string_agg(table_name||'.'||column_name||'='||coalesce(domain_name,'text')||' want '||coalesce(want,'?'), ', '), ''))
   FROM expected WHERE want IS NULL OR domain_name IS DISTINCT FROM want;
 
+-- T-012 / D-028 (migration 0003): a draft keeps the semantic issues of its
+-- IR as a JSON array of at most 1000 issues (http.schema.json Draft.issues).
+INSERT INTO twin.model_drafts(organization_id,model_id,base_version_id,revision,ir,hash,updated_by)
+  VALUES ('{{ORG_A}}','{{MDL_A}}','{{MV_A1}}',1,'{{IR_A1}}','{{IR_A1_HASH}}','{{USR_A}}');
+SELECT pg_temp.check((SELECT issues FROM twin.model_drafts WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}')='[]'::jsonb,
+  'a new draft has no issues');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET issues='{}' WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,'23514');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET issues=NULL WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,'23502');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET issues=(SELECT jsonb_agg(jsonb_build_object('code','X','path','','message','m','severity','warning')) FROM generate_series(1,1001))
+  WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,'23514');
+UPDATE twin.model_drafts SET issues=(SELECT jsonb_agg(jsonb_build_object('code','X','path','','message','m','severity','warning')) FROM generate_series(1,1000))
+  WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}';
+SELECT pg_temp.check((SELECT jsonb_array_length(issues) FROM twin.model_drafts WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}')=1000,
+  'a draft keeps 1000 issues');
+
 ROLLBACK;

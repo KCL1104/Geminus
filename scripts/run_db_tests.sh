@@ -15,13 +15,16 @@ run() { psql -X "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$1"; }
 run db/bootstrap_roles.sql
 run migrations/0001_core.up.sql
 run migrations/0002_rls.up.sql
+run migrations/0003_draft_issues.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
+run migrations/0003_draft_issues.down.sql
 run migrations/0002_rls.down.sql
 run migrations/0001_core.down.sql
 run migrations/0001_core.up.sql
 run migrations/0002_rls.up.sql
+run migrations/0003_draft_issues.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
