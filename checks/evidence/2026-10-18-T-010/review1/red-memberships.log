@@ -1,0 +1,32 @@
+=== RUN   TestRefusedRequestsTakeNoLock
+=== RUN   TestRefusedRequestsTakeNoLock/non-member
+    serialize_test.go:102: the refused request waited for an owner's write
+    serialize_test.go:115: an owner's write waited for a refused request
+=== RUN   TestRefusedRequestsTakeNoLock/viewer
+    serialize_test.go:102: the refused request waited for an owner's write
+    serialize_test.go:115: an owner's write waited for a refused request
+--- FAIL: TestRefusedRequestsTakeNoLock (8.09s)
+    --- FAIL: TestRefusedRequestsTakeNoLock/non-member (4.04s)
+    --- FAIL: TestRefusedRequestsTakeNoLock/viewer (4.05s)
+=== RUN   TestOwnerSetIsCurrent
+=== RUN   TestOwnerSetIsCurrent/demote_self
+    serialize_test.go:160: demote self after the promotion: memberships: the organization must keep an owner
+    serialize_test.go:163: 2 owners
+=== RUN   TestOwnerSetIsCurrent/demote_the_new_owner
+    serialize_test.go:160: demote the new owner after the promotion: memberships: the organization must keep an owner
+    serialize_test.go:163: 2 owners
+=== RUN   TestOwnerSetIsCurrent/remove_the_new_owner
+    serialize_test.go:160: remove the new owner after the promotion: memberships: the organization must keep an owner
+    serialize_test.go:163: 2 owners
+--- FAIL: TestOwnerSetIsCurrent (1.94s)
+    --- FAIL: TestOwnerSetIsCurrent/demote_self (0.65s)
+    --- FAIL: TestOwnerSetIsCurrent/demote_the_new_owner (0.65s)
+    --- FAIL: TestOwnerSetIsCurrent/remove_the_new_owner (0.64s)
+=== RUN   TestMembershipChangesUnderLoad
+    serialize_test.go:237: 13 unexpected errors, the first: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+--- FAIL: TestMembershipChangesUnderLoad (6.85s)
+=== RUN   TestReplayNeedsTheRole
+--- PASS: TestReplayNeedsTheRole (0.06s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/tenant/memberships	16.964s
+FAIL

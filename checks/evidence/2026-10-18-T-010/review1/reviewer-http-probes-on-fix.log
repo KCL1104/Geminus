@@ -1,0 +1,29 @@
+=== RUN   TestReviewMembershipHTTP
+    zz_review_test.go:58: POST text/plain              -> 415 ct="application/json" {"error":{"code":"UNSUPPORTED_MEDIA_TYPE","message":"the request body must be application/json","request_id":"req_01M58F8ZHZ48JCM3W8V5AE5K4J"}}
+    zz_review_test.go:58: POST >1MiB                   -> 413 ct="application/json" {"error":{"code":"PAYLOAD_TOO_LARGE","message":"the request body is larger than 1048576 bytes","request_id":"req_01M58F8ZJAVPAJWS9TABV3B7VS"}}
+    zz_review_test.go:58: POST NUL in user_id          -> 422 ct="application/json" {"error":{"code":"REQUEST_VALIDATION_FAILED","message":"the request body does not match the schema","details":[{"path":"/user_id","reason":"'usr_\\x00' does not match pattern '^usr_[0-7][0-9A-HJKMNP-TV-Z]{25}$'","severity":"error"},{"path":"/user_id","reason":"minLength: got 5, want 30","severity":"
+    zz_review_test.go:58: POST malformed JSON          -> 400 ct="application/json" {"error":{"code":"INVALID_REQUEST","message":"the request body is not valid JSON","details":[{"path":"/user_id","reason":"jsontext: unexpected EOF within \"/user_id\" after offset 11"}],"request_id":"req_01M58F8ZK41DJX0B4ZPD1SKGD4"}}
+    zz_review_test.go:58: POST duplicate member        -> 400 ct="application/json" {"error":{"code":"INVALID_REQUEST","message":"the request body is not valid JSON","details":[{"path":"/user_id","reason":"jsontext: duplicate object member name \"user_id\""}],"request_id":"req_01M58F8ZK7NSFDPDH3ZHRFY288"}}
+    zz_review_test.go:58: POST viewer bad body         -> 422 ct="application/json" {"error":{"code":"REQUEST_VALIDATION_FAILED","message":"the request body does not match the schema","details":[{"path":"","reason":"missing required members: role, user_id","severity":"error"}],"request_id":"req_01M58F8ZKBQTNWR74WCW399MPP"}}
+    zz_review_test.go:58: POST viewer no key           -> 400 ct="application/json" {"error":{"code":"IDEMPOTENCY_KEY_REQUIRED","message":"an Idempotency-Key header is required","request_id":"req_01M58F8ZKE34NNWZM3PVYRVKCS"}}
+    zz_review_test.go:58: PATCH viewer malformed user  -> 400 ct="application/json" {"error":{"code":"INVALID_REQUEST","message":"user_id must be a user ID","details":[{"path":"","reason":"user_id"}],"request_id":"req_01M58F8ZKJM162ZSX4SF2S75XB"}}
+    zz_review_test.go:58: PATCH lowercase user         -> 400 ct="application/json" {"error":{"code":"INVALID_REQUEST","message":"user_id must be a user ID","details":[{"path":"","reason":"user_id"}],"request_id":"req_01M58F8ZKNCET68C8YATM04JD9"}}
+    zz_review_test.go:58: PATCH no body                -> 400 ct="application/json" {"error":{"code":"INVALID_REQUEST","message":"the request body is not valid JSON","details":[{"path":"","reason":"jsontext: unexpected EOF"}],"request_id":"req_01M58F8ZKSXQWYEM4NMFYTHABM"}}
+    zz_review_test.go:58: PATCH merge-patch type       -> 415 ct="application/json" {"error":{"code":"UNSUPPORTED_MEDIA_TYPE","message":"the request body must be application/json","request_id":"req_01M58F8ZKXJJ0F48JF10CXGVTE"}}
+    zz_review_test.go:58: PATCH >1MiB                  -> 413 ct="application/json" {"error":{"code":"PAYLOAD_TOO_LARGE","message":"the request body is larger than 1048576 bytes","request_id":"req_01M58F8ZM1B7YATTW2BTKKFWCT"}}
+    zz_review_test.go:58: PUT                          -> 404 ct="application/json" {"error":{"code":"NOT_FOUND","message":"no such operation","request_id":"req_01M58F8ZMA9DPZ30Y3SF6A7TFJ"}}
+    zz_review_test.go:58: path org lowercase           -> 404 ct="application/json" {"error":{"code":"NOT_FOUND","message":"not found","request_id":"req_01M58F8ZMDKC5KCYQFY7VJZJRX"}}
+    zz_review_test.go:58: path org encoded             -> 200 ct="application/json" {"items":[{"organization_id":"org_01M58F8ZH4GFC4K89FB1AC4RT9","user_id":"usr_01M58F8ZH7T3EP8Q1F6CM85Y03","role":"owner","created_at":"2026-10-18T21:39:22.788805Z"},{"organization_id":"org_01M58F8ZH4GFC4K89FB1AC4RT9","user_id":"usr_01M58F8ZHB6QPRXTNR8G24APZ0","role":"editor","created_at":"2026-10-18T
+    zz_review_test.go:58: trailing slash               -> 404 ct="application/json" {"error":{"code":"NOT_FOUND","message":"no such operation","request_id":"req_01M58F8ZN1MMKWDJS9E0E5JV9Z"}}
+    zz_review_test.go:58: no org header                -> 400 ct="application/json" {"error":{"code":"INVALID_REQUEST","message":"exactly one X-Organization-ID header with an organization ID is required","details":[{"path":"","reason":"X-Organization-ID"}],"request_id":"req_01M58F8ZN3MPTGHEYYM0R6FKDZ"}}
+    zz_review_test.go:58: limit 100 + cursor junk      -> 400 ct="application/json" {"error":{"code":"INVALID_REQUEST","message":"the cursor is not valid for this list","details":[{"path":"","reason":"cursor"}],"request_id":"req_01M58F8ZN6A6S86Q9HBXJFXBPE"}}
+    zz_review_test.go:58: DELETE with body             -> 404 ct="application/json" {"error":{"code":"NOT_FOUND","message":"not found","request_id":"req_01M58F8ZNB1N1AK4D8VSEEGD16"}}
+    zz_review_test.go:58: DELETE non-member valid id   -> 404 ct="application/json" {"error":{"code":"NOT_FOUND","message":"not found","request_id":"req_01M58F8ZNJNYXVE420VCKVXPB3"}}
+    zz_review_test.go:65: DELETE 204: status 204 headers map[Date:[Sun, 18 Oct 2026 21:39:22 GMT] X-Request-Id:[req_01M58F8ZPA16BG3EA4XSNPCJW1]] body ""
+    zz_review_test.go:71: replay after removal: 201 {"created_at":"2026-10-18T21:39:22.940731Z","organization_id":"org_01M58F8ZH4GFC4K89FB1AC4RT9","role":"viewer","user_id":"usr_01M58F8ZHJAWASQ0ZK802RT3YG"}
+--- PASS: TestReviewMembershipHTTP (0.32s)
+=== RUN   TestReviewCrossTenantLockViaHTTP
+    zz_review_test.go:146: stranger's PATCH: 404 {"error":{"code":"NOT_FOUND","message":"not found","request_id":"req_01M58F8ZTBNPNDZTRMPNB9Q69W"}} after 22.610192ms; a's other owner's write took 17.680757ms
+--- PASS: TestReviewCrossTenantLockViaHTTP (1.11s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	1.449s

@@ -13,10 +13,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/storage/postgres"
 )
@@ -25,29 +27,34 @@ import (
 const Actor = "provision-tenant"
 
 var (
-	// ErrInvalidInput: an issuer, subject or organization name the schema
-	// would refuse (empty, too long, not UTF-8, U+0000 or control
-	// characters in a name).
+	// ErrInvalidInput: an issuer and subject no verified token can carry
+	// (auth.ValidIdentity), or an organization name that is empty, blank,
+	// longer than 200 characters, starts or ends with a space, or has a
+	// character that is not printable (control, format such as U+202E or
+	// U+200B, a separator other than the ASCII space, private use).
 	ErrInvalidInput = errors.New("provisioning: invalid input")
 	// ErrNotOperator: the login cannot act as twin_owner, or is also a
 	// runtime login (twin_api or twin_worker).
 	ErrNotOperator = errors.New("provisioning: the login is not an operator login")
 )
 
-// CheckOperator confirms that the login may SET ROLE twin_owner and is not
-// a member of a runtime role: provisioning must not run as the API or the
-// worker, and the API must not be able to provision. A superuser is a
-// member of every role, so it is refused too: provisioning has a login of
-// its own (db/README.md).
+// CheckOperator confirms that the login may SET ROLE twin_owner, is not a
+// member of a runtime role and has none of the SUPERUSER, BYPASSRLS,
+// CREATEROLE, CREATEDB or REPLICATION attributes: provisioning must not run
+// as the API or the worker, the API must not be able to provision, and the
+// provisioning login gets no more than it needs (db/README.md). A superuser
+// is also a member of every role.
 func CheckOperator(ctx context.Context, db *postgres.DB) error {
 	return db.Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
-		var owner, runtime bool
+		var owner, runtime, attrs bool
 		err := tx.QueryRow(ctx, `SELECT pg_has_role(session_user,'twin_owner','SET'),
-			pg_has_role(session_user,'twin_api','MEMBER') OR pg_has_role(session_user,'twin_worker','MEMBER')`).Scan(&owner, &runtime)
+			pg_has_role(session_user,'twin_api','MEMBER') OR pg_has_role(session_user,'twin_worker','MEMBER'),
+			rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication
+			FROM pg_roles WHERE rolname = session_user`).Scan(&owner, &runtime, &attrs)
 		if err != nil {
 			return err
 		}
-		if !owner || runtime {
+		if !owner || runtime || attrs {
 			return ErrNotOperator
 		}
 		return nil
@@ -77,7 +84,7 @@ func Organization(ctx context.Context, db *postgres.DB, name, issuer, subject st
 	if err := identity(issuer, subject); err != nil {
 		return "", "", err
 	}
-	if name == "" || utf8.RuneCountInString(name) > 200 || !utf8.ValidString(name) || strings.ContainsFunc(name, func(r rune) bool { return r < 0x20 || r == 0x7f }) {
+	if !validName(name) {
 		return "", "", fmt.Errorf("%w: organization name", ErrInvalidInput)
 	}
 	orgID = ids.New("org")
@@ -115,34 +122,36 @@ func asOwner(ctx context.Context, tx pgx.Tx) error {
 }
 
 // user finds or creates the user. The users policy shows a row only to a
-// transaction whose identity settings name it.
+// transaction whose identity settings name it. Concurrent calls for one
+// identity create it once: the loser's insert does nothing and the select
+// that follows sees the winner's row.
 func user(ctx context.Context, tx pgx.Tx, issuer, subject string) (string, bool, error) {
 	if _, err := tx.Exec(ctx, `SELECT set_config('app.oidc_issuer',$1,true), set_config('app.oidc_subject',$2,true)`, issuer, subject); err != nil {
 		return "", false, err
 	}
-	var id string
-	err := tx.QueryRow(ctx, `SELECT id FROM twin.users WHERE oidc_issuer=$1 AND oidc_subject=$2`, issuer, subject).Scan(&id)
-	if err == nil {
-		return id, false, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	id := ids.New("usr")
+	tag, err := tx.Exec(ctx, `INSERT INTO twin.users(id,oidc_issuer,oidc_subject) VALUES ($1,$2,$3)
+		ON CONFLICT (oidc_issuer, oidc_subject) DO NOTHING`, id, issuer, subject)
+	if err != nil {
 		return "", false, err
 	}
-	id = ids.New("usr")
-	_, err = tx.Exec(ctx, `INSERT INTO twin.users(id,oidc_issuer,oidc_subject) VALUES ($1,$2,$3)`, id, issuer, subject)
-	return id, true, err
+	if tag.RowsAffected() == 1 {
+		return id, true, nil
+	}
+	err = tx.QueryRow(ctx, `SELECT id FROM twin.users WHERE oidc_issuer=$1 AND oidc_subject=$2`, issuer, subject).Scan(&id)
+	return id, false, err
 }
 
-// identity applies the limits tenant.ResolveUser applies to a verified
-// identity, so every provisioned user can sign in.
+// identity accepts what a verified token can carry, so every provisioned
+// user can sign in.
 func identity(issuer, subject string) error {
-	for _, s := range []string{issuer, subject} {
-		if s == "" || !utf8.ValidString(s) || strings.ContainsRune(s, 0) {
-			return fmt.Errorf("%w: issuer and subject must be non-empty UTF-8 without U+0000", ErrInvalidInput)
-		}
-	}
-	if len(issuer) > 2048 || len(subject) > 255 {
-		return fmt.Errorf("%w: issuer or subject too long", ErrInvalidInput)
+	if !auth.ValidIdentity(issuer, subject) {
+		return fmt.Errorf("%w: the issuer must be an absolute https URL and the subject 1 to 255 bytes, both printable", ErrInvalidInput)
 	}
 	return nil
+}
+
+func validName(name string) bool {
+	return utf8.ValidString(name) && strings.TrimSpace(name) == name && name != "" && utf8.RuneCountInString(name) <= 200 &&
+		!strings.ContainsFunc(name, func(r rune) bool { return !unicode.IsPrint(r) })
 }

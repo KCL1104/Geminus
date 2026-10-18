@@ -4,11 +4,11 @@
 // Users and organizations themselves are provisioned by an operator
 // (cmd/provision-tenant, D-008), never through the API.
 //
-// Every write runs in tenant.DB.RunOwners, which locks the organization's
-// owner memberships in user_id order before it reads the caller's role: a
-// write does not first share-lock the caller's own row, so two owners
-// changing memberships at once queue instead of deadlocking (T-009
-// re-review R1, ADR-019). SQL lives in internal/storage/memberships.
+// Every write runs in tenant.DB.RunOwners: it refuses a caller who is not
+// an owner before taking any lock, runs one membership change of an
+// organization at a time, and locks the owner memberships in user_id order
+// before the change judges "the last owner" (D-036, ADR-023). SQL lives in
+// internal/storage/memberships.
 package memberships
 
 import (
@@ -81,7 +81,8 @@ type Service struct {
 }
 
 // manageRoles: only an owner manages memberships (x-required-roles,
-// SECURITY §2).
+// SECURITY §2). List checks it; the writes run in tenant.DB.RunOwners,
+// which admits only owners, so a change here needs one there.
 var manageRoles = []tenant.Role{tenant.Owner}
 
 const (
@@ -146,9 +147,6 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key st
 	var status int
 	var out []byte
 	err = s.DB.RunOwners(ctx, sc, func(ctx context.Context, tx tenant.Tx, m tenant.Membership, _ []string) error {
-		if err := m.Require(manageRoles...); err != nil {
-			return err
-		}
 		replay, err := idempotency.Claim(ctx, tx, k, hashing.Sum(canonical))
 		if err != nil {
 			return err
@@ -193,9 +191,6 @@ func (s *Service) Update(ctx context.Context, sc tenant.Scope, requestID, user s
 	}
 	var out Membership
 	err := s.DB.RunOwners(ctx, sc, func(ctx context.Context, tx tenant.Tx, m tenant.Membership, owners []string) error {
-		if err := m.Require(manageRoles...); err != nil {
-			return err
-		}
 		cur, err := store.Get(ctx, tx, m.OrganizationID, user, true)
 		if errors.Is(err, store.ErrNotFound) {
 			return ErrNotFound
@@ -231,9 +226,6 @@ func (s *Service) Update(ctx context.Context, sc tenant.Scope, requestID, user s
 // share-locks the row this deletes (ADR-019).
 func (s *Service) Delete(ctx context.Context, sc tenant.Scope, requestID, user string) error {
 	return s.DB.RunOwners(ctx, sc, func(ctx context.Context, tx tenant.Tx, m tenant.Membership, owners []string) error {
-		if err := m.Require(manageRoles...); err != nil {
-			return err
-		}
 		cur, err := store.Get(ctx, tx, m.OrganizationID, user, true)
 		if errors.Is(err, store.ErrNotFound) {
 			return ErrNotFound

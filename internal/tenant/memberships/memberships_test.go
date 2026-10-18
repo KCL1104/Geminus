@@ -444,37 +444,69 @@ func TestRoutesMatchContract(t *testing.T) {
 	}
 }
 
-// A caller made an owner while waiting for the owner lock is not in the set
-// the lock returned: RunOwners locks again instead of judging "the last
-// owner" from an incomplete set (ADR-023).
-func TestPromotedWhileWaiting(t *testing.T) {
-	e := setup(t)
-	ctx := context.Background()
-	a, c := e.org.Members[tenant.Owner].UserID, e.org.Members[tenant.Editor].UserID
-	tx, err := e.admin.Begin(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer tx.Rollback(ctx)
-	if _, err := tx.Exec(ctx, `SELECT 1 FROM twin.memberships WHERE organization_id=$1 AND role='owner' ORDER BY user_id FOR UPDATE`, e.org.ID); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := tx.Exec(ctx, `UPDATE twin.memberships SET role='owner' WHERE organization_id=$1 AND user_id=$2`, e.org.ID, c); err != nil {
-		t.Fatal(err)
-	}
-	done := make(chan error, 1)
-	go func() {
-		_, err := e.svc.Update(ctx, e.as(c), requestID(), a, memberships.UpdateRequest{Role: tenant.Editor})
-		done <- err
-	}()
-	time.Sleep(500 * time.Millisecond)
-	if err := tx.Commit(ctx); err != nil {
-		t.Fatal(err)
-	}
-	if err := <-done; err != nil {
-		t.Errorf("demoting the other owner after being made one: %v", err)
-	}
-	if e.role(t, a) != tenant.Editor || e.role(t, c) != tenant.Owner {
-		t.Errorf("roles: a %s, c %s", e.role(t, a), e.role(t, c))
+// A request is judged by the caller's role when it starts and again once it
+// holds the organization's membership lock (ADR-023): a caller made an
+// owner by a change not yet committed is refused at once, and one demoted
+// or removed while the request waits for the lock is refused when it gets
+// it, with nothing changed.
+func TestCallerChangedWhileWaiting(t *testing.T) {
+	for _, c := range []struct {
+		name, sql string
+		want      error
+		waits     bool
+	}{
+		{"promoted", `UPDATE twin.memberships SET role='owner' WHERE organization_id=$1 AND user_id=$2`, tenant.ErrForbidden, false},
+		{"demoted", `UPDATE twin.memberships SET role='editor' WHERE organization_id=$1 AND user_id=$2`, tenant.ErrForbidden, true},
+		{"removed", `DELETE FROM twin.memberships WHERE organization_id=$1 AND user_id=$2`, tenant.ErrNoMembership, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			e := setup(t)
+			ctx := context.Background()
+			caller, target := e.org.Members[tenant.Editor].UserID, e.org.Members[tenant.Viewer].UserID
+			if c.waits {
+				caller = dbtest.NewUser(t, e.admin, issuer).UserID
+				e.join(t, caller, tenant.Owner)
+			}
+			tx, err := e.admin.Begin(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback(ctx)
+			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('twin.memberships:' || $1, 0))`, e.org.ID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := tx.Exec(ctx, c.sql, e.org.ID, caller); err != nil {
+				t.Fatal(err)
+			}
+			done := make(chan error, 1)
+			go func() {
+				_, err := e.svc.Update(ctx, e.as(caller), requestID(), target, memberships.UpdateRequest{Role: tenant.Editor})
+				done <- err
+			}()
+			select {
+			case err := <-done:
+				if c.waits {
+					t.Fatalf("did not wait for the membership lock: %v", err)
+				}
+				if !errors.Is(err, c.want) {
+					t.Errorf("refused with %v, want %v", err, c.want)
+				}
+			case <-time.After(500 * time.Millisecond):
+				if !c.waits {
+					t.Fatal("a request by a non-owner waited for the membership lock")
+				}
+			}
+			if err := tx.Commit(ctx); err != nil {
+				t.Fatal(err)
+			}
+			if c.waits {
+				if err := <-done; !errors.Is(err, c.want) {
+					t.Errorf("refused with %v, want %v", err, c.want)
+				}
+			}
+			if e.role(t, target) != tenant.Viewer || len(e.audit(t)) != 0 {
+				t.Errorf("a refused change changed something: %s %v", e.role(t, target), e.audit(t))
+			}
+		})
 	}
 }

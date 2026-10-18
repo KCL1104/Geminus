@@ -151,6 +151,17 @@ func httpsURL(raw string, queryOK bool) error {
 	return nil
 }
 
+// ValidIdentity reports whether a token this package accepts can carry
+// issuer and subject: the issuer is what Config.Validate accepts (the
+// token's iss must equal it) and printable, and the subject is what a
+// token's sub must be. Provisioning checks it, so every user it creates can
+// sign in (ADR-023).
+func ValidIdentity(issuer, subject string) bool {
+	return httpsURL(issuer, false) == nil && printable(issuer) && validSubject(subject)
+}
+
+func validSubject(s string) bool { return s != "" && len(s) <= maxSubject && printable(s) }
+
 // printable: valid UTF-8 of graphic characters and ASCII spaces only; no
 // control, format (e.g. U+202E), separator or private-use characters,
 // which could disguise an identifier in logs.
@@ -337,7 +348,7 @@ func (v *OIDCVerifier) claims(payload []byte) (Identity, error) {
 	} else if c.Iat != nil && iat.After(now.Add(skew)) {
 		return Identity{}, invalid(ReasonIssuedInFuture)
 	}
-	if c.Sub == nil || *c.Sub == "" || len(*c.Sub) > maxSubject || !printable(*c.Sub) {
+	if c.Sub == nil || !validSubject(*c.Sub) {
 		return Identity{}, invalid(ReasonSubject)
 	}
 	return Identity{Issuer: *c.Iss, Subject: *c.Sub, Expiry: exp}, nil

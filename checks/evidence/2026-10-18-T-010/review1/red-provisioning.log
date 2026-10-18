@@ -1,0 +1,30 @@
+=== RUN   TestCheckOperator
+    provisioning_test.go:79: an owner with CREATEROLE: <nil>
+    provisioning_test.go:79: an owner with CREATEDB: <nil>
+    provisioning_test.go:79: an owner with BYPASSRLS: <nil>
+    provisioning_test.go:79: an owner with REPLICATION: <nil>
+--- FAIL: TestCheckOperator (0.20s)
+=== RUN   TestAPICannotProvision
+--- PASS: TestAPICannotProvision (0.02s)
+=== RUN   TestProvision
+    provisioning_test.go:171: " " "https://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: " Acme" "https://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Acme " "https://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Ac\u0085me" "https://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Acme\u202e" "https://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Ac\u200bme" "https://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Ac\u00a0me" "https://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Ac\ue000me" "https://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Acme" "http://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:175: user "http://test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Acme" "test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:175: user "test.invalid" "sub-x_01M58FE6N0W8W011RZFF386G9K": <nil>
+    provisioning_test.go:171: "Acme" "https://test.invalid" "a\nb": <nil>
+    provisioning_test.go:175: user "https://test.invalid" "a\nb": <nil>
+--- FAIL: TestProvision (0.09s)
+=== RUN   TestUserOnceUnderConcurrency
+    provisioning_test.go:203: round 0, call 1: "usr_01M58FE6RGQ9SCXWCWAMK1KWW1" postgres: unique constraint violated (SQLSTATE 23505): constraint users_oidc_issuer_oidc_subject_key: duplicate key value violates unique constraint "users_oidc_issuer_oidc_subject_key" (first "usr_01M58FE6R925DQ17YA5RRK05YQ")
+--- FAIL: TestUserOnceUnderConcurrency (0.04s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/provisioning	0.371s
+FAIL

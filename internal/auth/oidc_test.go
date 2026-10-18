@@ -468,6 +468,46 @@ func TestConfigValidation(t *testing.T) {
 	}
 }
 
+// ValidIdentity accepts exactly the issuers Config accepts (when printable)
+// and the subjects a token's sub may carry (ADR-023: every provisioned user
+// can sign in).
+func TestValidIdentity(t *testing.T) {
+	const iss, sub = "https://id.example/realm", "auth0|65f0c1"
+	if !auth.ValidIdentity(iss, sub) {
+		t.Fatal("a good identity is refused")
+	}
+	for _, c := range []struct{ name, issuer, subject string }{
+		{"no issuer", "", sub},
+		{"http issuer", "http://id.example", sub},
+		{"issuer query", "https://id.example/?x=1", sub},
+		{"issuer fragment", "https://id.example/#x", sub},
+		{"issuer credentials", "https://u:p@id.example", sub},
+		{"relative issuer", "id.example", sub},
+		{"issuer too long", "https://id.example/" + strings.Repeat("a", 2048), sub},
+		{"issuer with U+202E", "https://id.example/‮", sub},
+		{"no subject", iss, ""},
+		{"subject too long", iss, strings.Repeat("s", 256)},
+		{"subject newline", iss, "a\nb"},
+		{"subject U+0000", iss, "a\x00b"},
+		{"subject U+0085", iss, "a\u0085b"},
+		{"subject U+200B", iss, "a​b"},
+		{"subject not UTF-8", iss, "a\xffb"},
+	} {
+		if auth.ValidIdentity(c.issuer, c.subject) {
+			t.Errorf("%s: accepted", c.name)
+		}
+	}
+	if !auth.ValidIdentity(iss, strings.Repeat("s", 255)) || !auth.ValidIdentity(iss, "a b 中") {
+		t.Error("a subject at the limits is refused")
+	}
+	for _, issuer := range []string{iss, "https://id.example", "http://id.example", "https://id.example/?x=1"} {
+		_, err := auth.NewOIDCVerifier(auth.Config{Issuer: issuer, Audience: "https://api.example", JWKSURL: "https://id.example/jwks"})
+		if (err == nil) != auth.ValidIdentity(issuer, sub) {
+			t.Errorf("%s: the config and ValidIdentity disagree (%v)", issuer, err)
+		}
+	}
+}
+
 // A key is used only with its own algorithm: the JWK's alg pins it within a
 // family (an RS256 key never verifies PS256), and without an alg the key
 // type and curve must fit the token's alg.

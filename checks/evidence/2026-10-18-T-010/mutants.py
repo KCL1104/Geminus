@@ -27,27 +27,32 @@ ONLY = {a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--only=")}
 ARGS = [a for a in sys.argv[1:] if a != "--check" and not a.startswith("--only=")]
 CHECK_ONLY = "--check" in sys.argv[1:]
 REPO = pathlib.Path(ARGS[0] if ARGS else pathlib.Path(__file__).resolve().parents[3])
-PKGS = ["./internal/tenant/...", "./internal/storage/memberships/...", "./internal/storage/provisioning/...", "./internal/api/...", "./cmd/provision-tenant/..."]
+PKGS = ["./internal/tenant/...", "./internal/storage/memberships/...", "./internal/storage/provisioning/...", "./internal/api/...", "./cmd/provision-tenant/...", "./internal/auth/..."]
 OWN = "internal/tenant/owners.go"
 SVC = "internal/tenant/memberships/memberships.go"
 HTTP = "internal/tenant/memberships/http.go"
 ST = "internal/storage/memberships/memberships.go"
 PROV = "internal/storage/provisioning/provisioning.go"
 CMD = "cmd/provision-tenant/main.go"
+AUTH = "internal/auth/oidc.go"
 
 MUTANTS = [
-    # RunOwners: the D-036 lock before the caller's role (ADR-023)
+    # RunOwners: refuse before any lock, one change at a time, the D-036
+    # lock, the role again (ADR-023; T-010 review M1-M3)
     ("owners-scope-unchecked", OWN, "\tif !orgID.MatchString(s.OrganizationID) || !userID.MatchString(s.UserID) {\n\t\treturn ErrInvalidScope\n\t}\n\treturn d.db.Tx(ctx, pgx.TxOptions{}", "\treturn d.db.Tx(ctx, pgx.TxOptions{}"),
-    ("owners-unordered", OWN, "\t\t\t\tORDER BY user_id FOR UPDATE`, s.OrganizationID)", "\t\t\t\tFOR UPDATE`, s.OrganizationID)"),
-    ("owners-not-locked", OWN, "\t\t\t\tORDER BY user_id FOR UPDATE`, s.OrganizationID)", "\t\t\t\tORDER BY user_id`, s.OrganizationID)"),
+    ("owners-no-scope", OWN, "\t\tif err := setScope(ctx, tx, s.OrganizationID, s.UserID); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif err := requireOwner", "\t\tif err := requireOwner"),
+    ("owners-no-precheck", OWN, "\t\tif err := requireOwner(ctx, tx, s); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock", "\t\tif _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock"),
+    ("owners-no-advisory-lock", OWN, "`SELECT pg_advisory_xact_lock(hashtextextended('twin.memberships:' || $1, 0))`", "`SELECT $1::text`"),
+    ("owners-unordered", OWN, "\t\t\tORDER BY user_id FOR UPDATE`, s.OrganizationID)", "\t\t\tFOR UPDATE`, s.OrganizationID)"),
+    ("owners-not-locked", OWN, "\t\t\tORDER BY user_id FOR UPDATE`, s.OrganizationID)", "\t\t\tORDER BY user_id`, s.OrganizationID)"),
     ("owners-any-role", OWN, "WHERE organization_id=$1 AND role='owner'\n", "WHERE organization_id=$1 AND role IS NOT NULL\n"),
-    ("owners-non-member-allowed", OWN, "\t\t\tif errors.Is(err, pgx.ErrNoRows) {\n\t\t\t\treturn ErrNoMembership\n\t\t\t}", "\t\t\tif errors.Is(err, pgx.ErrNoRows) {\n\t\t\t\trole = Owner\n\t\t\t\terr = nil\n\t\t\t}"),
-    ("owners-no-relock", OWN, "\t\t\t\tif attempt == 0 {\n\t\t\t\t\tcontinue\n\t\t\t\t}", "\t\t\t\tif attempt == 0 {\n\t\t\t\t\treturn fn(ctx, tx, Membership{OrganizationID: s.OrganizationID, UserID: s.UserID, Role: role}, owners)\n\t\t\t\t}"),
-    ("owners-no-scope", OWN, "\t\tif err := setScope(ctx, tx, s.OrganizationID, s.UserID); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tfor attempt", "\t\tfor attempt"),
+    ("owners-no-recheck", OWN, "\t\tif err := requireOwner(ctx, tx, s); err != nil {\n\t\t\treturn err\n\t\t}\n\t\treturn fn(", "\t\treturn fn("),
+    ("owners-non-member-allowed", OWN, "\tif errors.Is(err, pgx.ErrNoRows) {\n\t\treturn ErrNoMembership\n\t}", "\tif errors.Is(err, pgx.ErrNoRows) {\n\t\treturn nil\n\t}"),
+    ("owners-non-owner-allowed", OWN, "\tif role != Owner {\n\t\treturn ErrForbidden\n\t}", "\tif false {\n\t\treturn ErrForbidden\n\t}"),
+    ("owners-forbidden-as-no-membership", OWN, "\tif role != Owner {\n\t\treturn ErrForbidden\n\t}", "\tif role != Owner {\n\t\treturn ErrNoMembership\n\t}"),
     # roles
     ("manage-roles-members", SVC, "var manageRoles = []tenant.Role{tenant.Owner}", "var manageRoles = tenant.Members"),
     ("list-no-role", SVC, "\t\tif err := m.Require(manageRoles...); err != nil {\n\t\t\treturn err\n\t\t}\n\t\trows, err := store.List", "\t\trows, err := store.List"),
-    ("create-no-role", SVC, "\t\tif err := m.Require(manageRoles...); err != nil {\n\t\t\treturn err\n\t\t}\n\t\treplay, err", "\t\treplay, err"),
     # create
     ("create-input-unchecked", SVC, "\tif !ValidUserID(req.UserID) || !validRole(req.Role) {\n\t\treturn 0, nil, ErrInvalidRequest\n\t}", "\tif false {\n\t\treturn 0, nil, ErrInvalidRequest\n\t}"),
     ("create-no-replay", SVC, "\t\tif replay != nil {\n\t\t\tstatus = replay.Status", "\t\tif false && replay != nil {\n\t\t\tstatus = replay.Status"),
@@ -83,31 +88,61 @@ MUTANTS = [
     ("http-unknown-user-404", HTTP, "\t\treturn &httpapi.Error{Code: httpapi.RequestValidationFailed, Message: \"no user has this ID\",", "\t\treturn &httpapi.Error{Code: httpapi.NotFound, Message: \"no user has this ID\","),
     ("http-delete-200", HTTP, "\tw.WriteHeader(http.StatusNoContent)", "\tw.WriteHeader(http.StatusOK)"),
     # provisioning (D-008, TEST-011)
-    ("prov-owner-unchecked", PROV, "\t\tif !owner || runtime {", "\t\tif runtime {"),
-    ("prov-runtime-allowed", PROV, "\t\tif !owner || runtime {", "\t\tif !owner {"),
+    ("prov-owner-unchecked", PROV, "\t\tif !owner || runtime || attrs {", "\t\tif runtime || attrs {"),
+    ("prov-runtime-allowed", PROV, "\t\tif !owner || runtime || attrs {", "\t\tif !owner || attrs {"),
+    ("prov-worker-allowed", PROV, " OR pg_has_role(session_user,'twin_worker','MEMBER'),", ","),
+    ("prov-attributes-allowed", PROV, "\t\tif !owner || runtime || attrs {", "\t\tif !owner || runtime {"),
+    ("prov-superuser-attribute", PROV, "\t\t\trolsuper OR rolbypassrls", "\t\t\tfalse OR rolbypassrls"),
+    ("prov-bypassrls-allowed", PROV, "rolsuper OR rolbypassrls OR rolcreaterole", "rolsuper OR rolcreaterole"),
+    ("prov-createrole-allowed", PROV, "rolbypassrls OR rolcreaterole OR rolcreatedb", "rolbypassrls OR rolcreatedb"),
+    ("prov-createdb-allowed", PROV, "rolcreaterole OR rolcreatedb OR rolreplication", "rolcreaterole OR rolreplication"),
+    ("prov-replication-allowed", PROV, " OR rolcreatedb OR rolreplication\n", " OR rolcreatedb\n"),
     ("prov-no-set-role", PROV, "\t_, err := tx.Exec(ctx, `SET LOCAL ROLE twin_owner`)\n\treturn err", "\treturn nil"),
-    ("prov-identity-unchecked", PROV, "\tfor _, s := range []string{issuer, subject} {\n\t\tif s == \"\" ||", "\tfor _, s := range []string{} {\n\t\tif s == \"\" ||"),
-    ("prov-name-unchecked", PROV, "\tif name == \"\" || utf8.RuneCountInString(name) > 200", "\tif false && utf8.RuneCountInString(name) > 200"),
-    ("prov-user-duplicated", PROV, "\tif err == nil {\n\t\treturn id, false, nil\n\t}", "\tif false {\n\t\treturn id, false, nil\n\t}"),
+    ("prov-identity-unchecked", PROV, "\tif !auth.ValidIdentity(issuer, subject) {", "\tif false {"),
+    ("prov-name-unchecked", PROV, "\tif !validName(name) {", "\tif false {"),
+    ("prov-name-untrimmed", PROV, "strings.TrimSpace(name) == name && ", ""),
+    ("prov-name-empty", PROV, " && name != \"\" && ", " && "),
+    ("prov-name-long", PROV, "utf8.RuneCountInString(name) <= 200", "utf8.RuneCountInString(name) <= 201"),
+    ("prov-name-controls-only", PROV, "func(r rune) bool { return !unicode.IsPrint(r) }", "func(r rune) bool { return r < 0x20 || r == 0x7f }"),
+    ("prov-name-not-utf8", PROV, "\treturn utf8.ValidString(name) && ", "\treturn "),
+    ("prov-user-conflict-unhandled", PROV, "\n\t\tON CONFLICT (oidc_issuer, oidc_subject) DO NOTHING`", "`"),
+    ("prov-user-always-created", PROV, "\tif tag.RowsAffected() == 1 {", "\tif tag.RowsAffected() >= 0 {"),
+    ("prov-user-never-created", PROV, "\tif tag.RowsAffected() == 1 {", "\tif tag.RowsAffected() > 1 {"),
+    # auth.ValidIdentity, which provisioning checks (ADR-017, T-010 review L4)
+    ("auth-identity-issuer-unchecked", AUTH, "\treturn httpsURL(issuer, false) == nil && printable(issuer) && validSubject(subject)", "\treturn printable(issuer) && validSubject(subject)"),
+    ("auth-identity-issuer-query", AUTH, "\treturn httpsURL(issuer, false) == nil && printable(issuer) && validSubject(subject)", "\treturn httpsURL(issuer, true) == nil && printable(issuer) && validSubject(subject)"),
+    ("auth-identity-issuer-not-printable", AUTH, "\treturn httpsURL(issuer, false) == nil && printable(issuer) && validSubject(subject)", "\treturn httpsURL(issuer, false) == nil && validSubject(subject)"),
+    ("auth-identity-subject-unchecked", AUTH, "\treturn httpsURL(issuer, false) == nil && printable(issuer) && validSubject(subject)", "\treturn httpsURL(issuer, false) == nil && printable(issuer)"),
+    ("auth-subject-empty", AUTH, "func validSubject(s string) bool { return s != \"\" && len(s) <= maxSubject", "func validSubject(s string) bool { return len(s) <= maxSubject"),
+    ("auth-subject-long", AUTH, "len(s) <= maxSubject && printable(s) }", "len(s) <= maxSubject+1 && printable(s) }"),
+    ("auth-subject-not-printable", AUTH, "len(s) <= maxSubject && printable(s) }", "len(s) <= maxSubject }"),
     ("prov-no-owner-membership", PROV, "VALUES ($1,$2,'owner')`, orgID, userID)", "VALUES ($1,$2,'viewer')`, orgID, userID)"),
     ("prov-no-audit", PROV, "'organization.provision','organization'", "'organization.created','organization'"),
     ("cmd-operator-unchecked", CMD, "\tif err := provisioning.CheckOperator(ctx, db); errors.Is(err, provisioning.ErrNotOperator) {", "\tif err := provisioning.CheckOperator(ctx, db); false && errors.Is(err, provisioning.ErrNotOperator) {"),
 ]
 
 EQUIVALENT: dict[str, str] = {
-    # Only RunOwners locks owner memberships, and every RunOwners runs the
-    # same query with the same plan, so all of them meet the rows in the
-    # same order with or without ORDER BY: no cycle among them either way.
-    # The user_id order is D-036's contract with any other code that locks
-    # owner rows (the T-007 SQL tests lock in that order); no test of this
-    # package can tell the two apart.
-    "owners-unordered": "every owner lock is this one query with one plan, so its lockers already agree on the order",
-    # Every membership change runs in RunOwners and holds the owner lock for
-    # its whole transaction, so no other change can move the target between
-    # Get and SetRole; a member's own write share-locks the row, which
-    # SetRole's UPDATE waits for in any case. The lock stays as a guard for
-    # a writer outside RunOwners.
-    "update-target-unlocked": "the owner lock already serializes every change to the target; SetRole's UPDATE waits for a member's write anyway",
+    # With the per-organization advisory lock, one membership change at a
+    # time takes owner locks, and the only other membership row lock, Run's
+    # FOR SHARE, is the first lock of its transaction and never waits while
+    # holding one. So the order in which the owner rows are met cannot form
+    # a cycle: TestOwnerLockAcrossPlans (the reviewer's plan-order probe)
+    # and TestMembershipChangesUnderLoad pass with this mutant and fail
+    # when the advisory lock is removed as well. ORDER BY stays: D-036 is
+    # approved and names it. (Round 1's reason, "one query with one plan",
+    # was wrong: T-010 review L1.)
+    "owners-unordered": "under the advisory lock only one transaction at a time takes owner locks, so their order cannot form a cycle",
+    # Every membership change runs one at a time under the membership lock,
+    # so no other change can move the target between Get and SetRole; a
+    # member's own write share-locks the row, which SetRole's UPDATE waits
+    # for in any case. Only the no-op path (same role) stops waiting for the
+    # target's write. The lock stays as a guard for a writer outside
+    # RunOwners. (The reviewer accepted this one.)
+    "update-target-unlocked": "membership changes run one at a time; SetRole's UPDATE waits for a member's write anyway",
+    # A superuser is a member of every role, so the runtime-role check
+    # refuses it before its attributes matter (TestCheckOperator's
+    # superuser case fails on prov-runtime-allowed instead).
+    "prov-superuser-attribute": "a superuser is a member of twin_api and twin_worker, so the runtime-role check already refuses it",
 }
 
 HARNESS_ERRORS = {

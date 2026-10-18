@@ -1,0 +1,77 @@
+=== RUN   TestCallerChangedWhileWaiting
+=== RUN   TestCallerChangedWhileWaiting/promoted
+=== RUN   TestCallerChangedWhileWaiting/demoted
+=== RUN   TestCallerChangedWhileWaiting/removed
+--- PASS: TestCallerChangedWhileWaiting (1.12s)
+    --- PASS: TestCallerChangedWhileWaiting/promoted (0.05s)
+    --- PASS: TestCallerChangedWhileWaiting/demoted (0.53s)
+    --- PASS: TestCallerChangedWhileWaiting/removed (0.54s)
+=== RUN   TestRefusedRequestsTakeNoLock
+=== RUN   TestRefusedRequestsTakeNoLock/non-member
+=== RUN   TestRefusedRequestsTakeNoLock/viewer
+--- PASS: TestRefusedRequestsTakeNoLock (0.12s)
+    --- PASS: TestRefusedRequestsTakeNoLock/non-member (0.06s)
+    --- PASS: TestRefusedRequestsTakeNoLock/viewer (0.06s)
+=== RUN   TestOwnerSetIsCurrent
+=== RUN   TestOwnerSetIsCurrent/demote_self
+=== RUN   TestOwnerSetIsCurrent/demote_the_new_owner
+=== RUN   TestOwnerSetIsCurrent/remove_the_new_owner
+--- PASS: TestOwnerSetIsCurrent (1.97s)
+    --- PASS: TestOwnerSetIsCurrent/demote_self (0.65s)
+    --- PASS: TestOwnerSetIsCurrent/demote_the_new_owner (0.67s)
+    --- PASS: TestOwnerSetIsCurrent/remove_the_new_owner (0.66s)
+=== RUN   TestMembershipChangesUnderLoad
+    serialize_test.go:240: 370 membership changes succeeded
+--- PASS: TestMembershipChangesUnderLoad (5.28s)
+=== RUN   TestCallerChangedWhileWaiting
+=== RUN   TestCallerChangedWhileWaiting/promoted
+=== RUN   TestCallerChangedWhileWaiting/demoted
+=== RUN   TestCallerChangedWhileWaiting/removed
+--- PASS: TestCallerChangedWhileWaiting (1.09s)
+    --- PASS: TestCallerChangedWhileWaiting/promoted (0.03s)
+    --- PASS: TestCallerChangedWhileWaiting/demoted (0.53s)
+    --- PASS: TestCallerChangedWhileWaiting/removed (0.53s)
+=== RUN   TestRefusedRequestsTakeNoLock
+=== RUN   TestRefusedRequestsTakeNoLock/non-member
+=== RUN   TestRefusedRequestsTakeNoLock/viewer
+--- PASS: TestRefusedRequestsTakeNoLock (0.10s)
+    --- PASS: TestRefusedRequestsTakeNoLock/non-member (0.05s)
+    --- PASS: TestRefusedRequestsTakeNoLock/viewer (0.05s)
+=== RUN   TestOwnerSetIsCurrent
+=== RUN   TestOwnerSetIsCurrent/demote_self
+=== RUN   TestOwnerSetIsCurrent/demote_the_new_owner
+=== RUN   TestOwnerSetIsCurrent/remove_the_new_owner
+--- PASS: TestOwnerSetIsCurrent (1.96s)
+    --- PASS: TestOwnerSetIsCurrent/demote_self (0.66s)
+    --- PASS: TestOwnerSetIsCurrent/demote_the_new_owner (0.65s)
+    --- PASS: TestOwnerSetIsCurrent/remove_the_new_owner (0.65s)
+=== RUN   TestMembershipChangesUnderLoad
+    serialize_test.go:240: 397 membership changes succeeded
+--- PASS: TestMembershipChangesUnderLoad (5.27s)
+=== RUN   TestCallerChangedWhileWaiting
+=== RUN   TestCallerChangedWhileWaiting/promoted
+=== RUN   TestCallerChangedWhileWaiting/demoted
+=== RUN   TestCallerChangedWhileWaiting/removed
+--- PASS: TestCallerChangedWhileWaiting (1.09s)
+    --- PASS: TestCallerChangedWhileWaiting/promoted (0.03s)
+    --- PASS: TestCallerChangedWhileWaiting/demoted (0.53s)
+    --- PASS: TestCallerChangedWhileWaiting/removed (0.53s)
+=== RUN   TestRefusedRequestsTakeNoLock
+=== RUN   TestRefusedRequestsTakeNoLock/non-member
+=== RUN   TestRefusedRequestsTakeNoLock/viewer
+--- PASS: TestRefusedRequestsTakeNoLock (0.11s)
+    --- PASS: TestRefusedRequestsTakeNoLock/non-member (0.06s)
+    --- PASS: TestRefusedRequestsTakeNoLock/viewer (0.05s)
+=== RUN   TestOwnerSetIsCurrent
+=== RUN   TestOwnerSetIsCurrent/demote_self
+=== RUN   TestOwnerSetIsCurrent/demote_the_new_owner
+=== RUN   TestOwnerSetIsCurrent/remove_the_new_owner
+--- PASS: TestOwnerSetIsCurrent (1.96s)
+    --- PASS: TestOwnerSetIsCurrent/demote_self (0.65s)
+    --- PASS: TestOwnerSetIsCurrent/demote_the_new_owner (0.66s)
+    --- PASS: TestOwnerSetIsCurrent/remove_the_new_owner (0.65s)
+=== RUN   TestMembershipChangesUnderLoad
+    serialize_test.go:240: 417 membership changes succeeded
+--- PASS: TestMembershipChangesUnderLoad (5.30s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	25.403s

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -35,30 +36,48 @@ func operator(t *testing.T) *postgres.DB {
 	return postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, Operator), 2, false))
 }
 
-// Only an operator login provisions: the API, the worker and a superuser
-// (a member of every role) are refused (D-008, TEST-011).
-func TestCheckOperator(t *testing.T) {
-	ctx := context.Background()
-	if err := provisioning.CheckOperator(ctx, operator(t)); err != nil {
-		t.Errorf("the operator login: %v", err)
-	}
-	if err := provisioning.CheckOperator(ctx, postgres.OpenPool(dbtest.Admin(t))); !errors.Is(err, provisioning.ErrNotOperator) {
-		t.Errorf("a superuser: %v", err)
-	}
-	if err := provisioning.CheckOperator(ctx, postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, dbtest.APILogin), 1, false))); !errors.Is(err, provisioning.ErrNotOperator) {
-		t.Errorf("the API login: %v", err)
-	}
-	// A login with no role at all is not an operator either.
-	if _, err := dbtest.Admin(t).Exec(ctx, `DO $$ BEGIN
-		IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dt_test_plain_login') THEN
-			CREATE ROLE dt_test_plain_login LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
+// login creates (once) a login with the given attributes and IN ROLE list.
+func login(t *testing.T, name, attrs string) *postgres.DB {
+	t.Helper()
+	if _, err := dbtest.Admin(t).Exec(context.Background(), `DO $$ BEGIN
+		IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '`+name+`') THEN
+			CREATE ROLE `+name+` LOGIN `+attrs+`;
 		END IF;
 		EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
 		END $$`); err != nil {
 		t.Fatal(err)
 	}
-	if err := provisioning.CheckOperator(ctx, postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, "dt_test_plain_login"), 1, false))); !errors.Is(err, provisioning.ErrNotOperator) {
-		t.Errorf("a login without the owner role: %v", err)
+	return postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, name), 1, false))
+}
+
+// Only an operator login provisions: the API, the worker, a superuser (a
+// member of every role), a login that is also a runtime login, one with
+// more attributes than it needs and one without the owner role are refused
+// (D-008, TEST-011; T-010 review L2, I3).
+func TestCheckOperator(t *testing.T) {
+	ctx := context.Background()
+	if err := provisioning.CheckOperator(ctx, operator(t)); err != nil {
+		t.Errorf("the operator login: %v", err)
+	}
+	if err := provisioning.CheckOperator(ctx, login(t, "dt_test_inherit_provisioner", "INHERIT IN ROLE twin_owner")); err != nil {
+		t.Errorf("an INHERIT member of twin_owner: %v", err)
+	}
+	refused := map[string]*postgres.DB{
+		"a superuser":                    postgres.OpenPool(dbtest.Admin(t)),
+		"the API login":                  postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, dbtest.APILogin), 1, false)),
+		"the worker login":               login(t, "dt_test_worker_only", "NOINHERIT IN ROLE twin_worker"),
+		"a login without the owner role": login(t, "dt_test_plain_login", "NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB"),
+		"an owner that is a worker":      login(t, "dt_test_owner_worker", "NOINHERIT IN ROLE twin_owner, twin_worker"),
+		"an owner that is the API":       login(t, "dt_test_owner_api", "NOINHERIT IN ROLE twin_owner, twin_api"),
+		"an owner with BYPASSRLS":        login(t, "dt_test_owner_bypassrls", "NOINHERIT BYPASSRLS IN ROLE twin_owner"),
+		"an owner with CREATEROLE":       login(t, "dt_test_owner_createrole", "NOINHERIT CREATEROLE IN ROLE twin_owner"),
+		"an owner with CREATEDB":         login(t, "dt_test_owner_createdb", "NOINHERIT CREATEDB IN ROLE twin_owner"),
+		"an owner with REPLICATION":      login(t, "dt_test_owner_replication", "NOINHERIT REPLICATION IN ROLE twin_owner"),
+	}
+	for name, db := range refused {
+		if err := provisioning.CheckOperator(ctx, db); !errors.Is(err, provisioning.ErrNotOperator) {
+			t.Errorf("%s: %v", name, err)
+		}
 	}
 }
 
@@ -132,12 +151,63 @@ func TestProvision(t *testing.T) {
 		{"", issuer, subject},
 		{strings.Repeat("n", 201), issuer, subject},
 		{"tab\tname", issuer, subject},
+		{" ", issuer, subject},
+		{" Acme", issuer, subject},
+		{"Acme ", issuer, subject},
+		{"Ac\u0085me", issuer, subject}, // C1 control
+		{"Acme\u202e", issuer, subject}, // bidi override (format)
+		{"Ac\u200bme", issuer, subject}, // zero width space (format)
+		{"Ac\u00a0me", issuer, subject}, // a separator other than the ASCII space
+		{"Ac\ue000me", issuer, subject}, // private use
+		{"Ac\xffme", issuer, subject},   // not UTF-8
 		{"Acme", "", subject},
+		{"Acme", "http://test.invalid", subject},
+		{"Acme", "test.invalid", subject},
 		{"Acme", issuer, "a\x00b"},
+		{"Acme", issuer, "a\nb"},
 		{"Acme", issuer, strings.Repeat("s", 256)},
 	} {
 		if _, _, err := provisioning.Organization(ctx, db, bad.name, bad.issuer, bad.subject); !errors.Is(err, provisioning.ErrInvalidInput) {
 			t.Errorf("%q %q %q: %v", bad.name, bad.issuer, bad.subject, err)
+		}
+		if bad.name == "Acme" {
+			if _, _, err := provisioning.User(ctx, db, bad.issuer, bad.subject); !errors.Is(err, provisioning.ErrInvalidInput) {
+				t.Errorf("user %q %q: %v", bad.issuer, bad.subject, err)
+			}
+		}
+	}
+	for _, good := range []string{"A", strings.Repeat("名", 200), "Acme 公司 (Taiwan) – R&D"} {
+		if _, _, err := provisioning.Organization(ctx, db, good, issuer, subject); err != nil {
+			t.Errorf("%q: %v", good, err)
+		}
+	}
+}
+
+// Parallel provisioning of one identity creates one user: every call gets
+// its ID and exactly one reports creating it (T-010 review L3).
+func TestUserOnceUnderConcurrency(t *testing.T) {
+	ctx := context.Background()
+	operator(t)
+	db := postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, Operator), 8, false))
+	for round := range 10 {
+		subject := "sub-" + ids.New("x")
+		var wg sync.WaitGroup
+		got, made, errs := make([]string, 8), make([]bool, 8), make([]error, 8)
+		for i := range 8 {
+			wg.Go(func() { got[i], made[i], errs[i] = provisioning.User(ctx, db, issuer, subject) })
+		}
+		wg.Wait()
+		created := 0
+		for i := range 8 {
+			if errs[i] != nil || got[i] != got[0] {
+				t.Fatalf("round %d, call %d: %q %v (first %q)", round, i, got[i], errs[i], got[0])
+			}
+			if made[i] {
+				created++
+			}
+		}
+		if created != 1 {
+			t.Errorf("round %d: %d calls report creating the user", round, created)
 		}
 	}
 }

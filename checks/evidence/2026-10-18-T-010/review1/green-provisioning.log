@@ -1,0 +1,16 @@
+=== RUN   TestCheckOperator
+--- PASS: TestCheckOperator (0.22s)
+=== RUN   TestAPICannotProvision
+--- PASS: TestAPICannotProvision (0.02s)
+=== RUN   TestProvision
+--- PASS: TestProvision (0.06s)
+=== RUN   TestUserOnceUnderConcurrency
+--- PASS: TestUserOnceUnderConcurrency (0.08s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.402s
+=== RUN   TestProvision
+--- PASS: TestProvision (0.04s)
+=== RUN   TestRefusals
+--- PASS: TestRefusals (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.103s

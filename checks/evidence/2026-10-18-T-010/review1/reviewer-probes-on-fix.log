@@ -1,0 +1,84 @@
+=== RUN   TestReviewNonMemberLocksOwnerRows
+=== RUN   TestReviewNonMemberLocksOwnerRows/outsider
+    zz_review_test.go:158: outsider request: tenant: no membership in the selected organization after 10.765198ms; low owner's unrelated write took 9.907588ms
+=== RUN   TestReviewNonMemberLocksOwnerRows/viewer
+    zz_review_test.go:158: viewer request: tenant: role does not allow this operation after 8.275115ms; low owner's unrelated write took 3.001661ms
+--- PASS: TestReviewNonMemberLocksOwnerRows (0.73s)
+    --- PASS: TestReviewNonMemberLocksOwnerRows/outsider (0.37s)
+    --- PASS: TestReviewNonMemberLocksOwnerRows/viewer (0.36s)
+=== RUN   TestReviewStaleOwnerSetFalseLastOwner
+=== RUN   TestReviewStaleOwnerSetFalseLastOwner/demote-self
+    zz_review_test.go:211: demote-self after the promotion committed: <nil> (owners now 1)
+=== RUN   TestReviewStaleOwnerSetFalseLastOwner/demote-new-owner
+    zz_review_test.go:211: demote-new-owner after the promotion committed: <nil> (owners now 1)
+=== RUN   TestReviewStaleOwnerSetFalseLastOwner/remove-new-owner
+    zz_review_test.go:211: remove-new-owner after the promotion committed: <nil> (owners now 1)
+--- PASS: TestReviewStaleOwnerSetFalseLastOwner (1.36s)
+    --- PASS: TestReviewStaleOwnerSetFalseLastOwner/demote-self (0.45s)
+    --- PASS: TestReviewStaleOwnerSetFalseLastOwner/demote-new-owner (0.46s)
+    --- PASS: TestReviewStaleOwnerSetFalseLastOwner/remove-new-owner (0.46s)
+=== RUN   TestReviewRelockDeadlock
+    zz_review_test.go:278: round 0: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 1: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 2: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 3: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 4: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 5: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 6: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 7: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 8: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 9: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 10: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 11: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 12: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 13: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 14: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 15: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 16: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 17: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 18: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:278: round 19: RunOwners tenant: role does not allow this operation
+    zz_review_test.go:282: re-lock rounds 20: deadlock/retryable 0, other errors 20
+--- PASS: TestReviewRelockDeadlock (3.32s)
+=== RUN   TestReviewReplayAfterRevocation
+--- PASS: TestReviewReplayAfterRevocation (0.13s)
+=== RUN   TestReviewDemotionWaitsForWrite
+--- PASS: TestReviewDemotionWaitsForWrite (0.37s)
+=== RUN   TestReviewStress
+    zz_review_test.go:460:    188 create:memberships: already a member
+    zz_review_test.go:460:    151 create:ok
+    zz_review_test.go:460:    823 create:tenant: no membership in the selected organization
+    zz_review_test.go:460:    588 create:tenant: role does not allow this operation
+    zz_review_test.go:460:    146 delete:memberships: not found
+    zz_review_test.go:460:     33 delete:memberships: the organization must keep an owner
+    zz_review_test.go:460:    155 delete:ok
+    zz_review_test.go:460:    780 delete:tenant: no membership in the selected organization
+    zz_review_test.go:460:    585 delete:tenant: role does not allow this operation
+    zz_review_test.go:460:    378 list:ok
+    zz_review_test.go:460:    853 list:tenant: no membership in the selected organization
+    zz_review_test.go:460:    548 list:tenant: role does not allow this operation
+    zz_review_test.go:460:    308 update:memberships: not found
+    zz_review_test.go:460:     44 update:memberships: the organization must keep an owner
+    zz_review_test.go:460:    358 update:ok
+    zz_review_test.go:460:   1584 update:tenant: no membership in the selected organization
+    zz_review_test.go:460:   1149 update:tenant: role does not allow this operation
+    zz_review_test.go:460:    927 write:ok
+    zz_review_test.go:460:    819 write:tenant: no membership in the selected organization
+    zz_review_test.go:465: zero-owner observations: 0; owners at end: 1
+--- PASS: TestReviewStress (8.27s)
+=== RUN   TestReviewOwnerLockPlanOrder
+    zz_review_test.go:524: round 0: seq-plan change <nil>; index-plan change <nil>
+    zz_review_test.go:524: round 1: seq-plan change <nil>; index-plan change <nil>
+    zz_review_test.go:524: round 2: seq-plan change <nil>; index-plan change <nil>
+    zz_review_test.go:524: round 3: seq-plan change <nil>; index-plan change <nil>
+    zz_review_test.go:524: round 4: seq-plan change <nil>; index-plan change <nil>
+    zz_review_test.go:526: deadlocks 0/5
+--- PASS: TestReviewOwnerLockPlanOrder (1.66s)
+=== RUN   TestReviewPlanDebug
+    zz_review_test.go:547: &options=-c%20enable_indexscan%3Doff%20-c%20enable_bitmapscan%3Doff%20-c%20enable_indexonlyscan%3Doff: [LockRows  (cost=0.25..11.48 rows=1 width=37)   ->  Result  (cost=0.25..11.47 rows=1 width=37)         One-Time Filter: (twin.current_organization_id() = 'org_01M58F8J0WJGC6KYF1Z4MB3BE1'::text)         ->  Seq Scan on memberships  (cost=0.25..11.47 rows=1 width=37)               Filter: (((organization_id)::text = 'org_01M58F8J0WJGC6KYF1Z4MB3BE1'::text) AND (role = 'owner'::text))]
+    zz_review_test.go:547: &options=-c%20enable_seqscan%3Doff%20-c%20enable_bitmapscan%3Doff: [LockRows  (cost=0.27..8.30 rows=1 width=37)   ->  Result  (cost=0.27..8.29 rows=1 width=37)         One-Time Filter: (twin.current_organization_id() = 'org_01M58F8J0WJGC6KYF1Z4MB3BE1'::text)         ->  Index Scan using memberships_pkey on memberships  (cost=0.27..8.29 rows=1 width=37)               Index Cond: ((organization_id)::text = 'org_01M58F8J0WJGC6KYF1Z4MB3BE1'::text)               Filter: (role = 'owner'::text)]
+--- PASS: TestReviewPlanDebug (0.04s)
+=== RUN   TestReviewSelfDemotionRace
+--- PASS: TestReviewSelfDemotionRace (0.27s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	16.178s

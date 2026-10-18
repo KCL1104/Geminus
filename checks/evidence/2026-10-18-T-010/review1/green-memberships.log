@@ -1,0 +1,44 @@
+=== RUN   TestRoles
+--- PASS: TestRoles (0.07s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.08s)
+=== RUN   TestUpdate
+--- PASS: TestUpdate (0.06s)
+=== RUN   TestDelete
+--- PASS: TestDelete (0.06s)
+=== RUN   TestRemovalWaitsForAWrite
+--- PASS: TestRemovalWaitsForAWrite (0.54s)
+=== RUN   TestOwnersChangeAtOnce
+--- PASS: TestOwnersChangeAtOnce (0.55s)
+=== RUN   TestList
+--- PASS: TestList (0.04s)
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestCallerChangedWhileWaiting
+=== RUN   TestCallerChangedWhileWaiting/promoted
+=== RUN   TestCallerChangedWhileWaiting/demoted
+=== RUN   TestCallerChangedWhileWaiting/removed
+--- PASS: TestCallerChangedWhileWaiting (1.11s)
+    --- PASS: TestCallerChangedWhileWaiting/promoted (0.03s)
+    --- PASS: TestCallerChangedWhileWaiting/demoted (0.54s)
+    --- PASS: TestCallerChangedWhileWaiting/removed (0.53s)
+=== RUN   TestRefusedRequestsTakeNoLock
+=== RUN   TestRefusedRequestsTakeNoLock/non-member
+=== RUN   TestRefusedRequestsTakeNoLock/viewer
+--- PASS: TestRefusedRequestsTakeNoLock (0.10s)
+    --- PASS: TestRefusedRequestsTakeNoLock/non-member (0.05s)
+    --- PASS: TestRefusedRequestsTakeNoLock/viewer (0.05s)
+=== RUN   TestOwnerSetIsCurrent
+=== RUN   TestOwnerSetIsCurrent/demote_self
+=== RUN   TestOwnerSetIsCurrent/demote_the_new_owner
+=== RUN   TestOwnerSetIsCurrent/remove_the_new_owner
+--- PASS: TestOwnerSetIsCurrent (1.95s)
+    --- PASS: TestOwnerSetIsCurrent/demote_self (0.65s)
+    --- PASS: TestOwnerSetIsCurrent/demote_the_new_owner (0.65s)
+    --- PASS: TestOwnerSetIsCurrent/remove_the_new_owner (0.65s)
+=== RUN   TestMembershipChangesUnderLoad
+--- PASS: TestMembershipChangesUnderLoad (5.29s)
+=== RUN   TestReplayNeedsTheRole
+--- PASS: TestReplayNeedsTheRole (0.10s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	9.963s
