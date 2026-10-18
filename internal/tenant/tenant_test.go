@@ -37,6 +37,9 @@ func TestScopeIsValidatedBeforeTheDatabase(t *testing.T) {
 		if err := d.Run(context.Background(), s, pgx.TxOptions{}, fn); !errors.Is(err, tenant.ErrInvalidScope) {
 			t.Errorf("%+v: %v", s, err)
 		}
+		if err := d.RunOwners(context.Background(), s, func(context.Context, pgx.Tx, tenant.Membership, []string) error { called = true; return nil }); !errors.Is(err, tenant.ErrInvalidScope) {
+			t.Errorf("owners, %+v: %v", s, err)
+		}
 	}
 	if called {
 		t.Error("fn ran for an invalid scope")
@@ -303,6 +306,48 @@ func TestRunModes(t *testing.T) {
 		if err != nil || got != c.want {
 			t.Errorf("%s: transaction_read_only %q, want %q (%v)", name, got, c.want, err)
 		}
+	}
+}
+
+// ReadSnapshot is one snapshot: a row another transaction commits between
+// two statements is not seen, while ReadOnly sees it; and it is read-only
+// (T-012 review 2 N2).
+func TestReadSnapshot(t *testing.T) {
+	adm := admin(t)
+	a := newOrg(t, adm)
+	d := tenant.New(as(t, apiLogin, 2, true))
+	sc := tenant.Scope{OrganizationID: a.id, UserID: a.user}
+	count := func(ctx context.Context, tx tenant.Tx) int {
+		var n int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM twin.projects WHERE organization_id=$1`, a.id).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	for name, c := range map[string]struct {
+		opts tenant.TxOptions
+		sees bool
+	}{"snapshot": {tenant.ReadSnapshot, false}, "read-only": {tenant.ReadOnly, true}} {
+		err := d.Run(context.Background(), sc, c.opts, func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
+			before := count(ctx, tx)
+			if _, err := adm.Exec(ctx, `INSERT INTO twin.projects(id,organization_id,name,created_by) VALUES ($1,$2,'P',$3)`, newID(t, "prj"), a.id, a.user); err != nil {
+				return err
+			}
+			if after := count(ctx, tx); (after != before) != c.sees {
+				t.Errorf("%s: %d projects before the other commit, %d after", name, before, after)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	err := d.Run(context.Background(), sc, tenant.ReadSnapshot, func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
+		_, err := tx.Exec(ctx, `INSERT INTO twin.projects(id,organization_id,name,created_by) VALUES ($1,$2,'P',$3)`, newID(t, "prj"), a.id, a.user)
+		return err
+	})
+	if err == nil {
+		t.Error("a write in a snapshot read")
 	}
 }
 

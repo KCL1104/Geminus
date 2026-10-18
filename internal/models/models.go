@@ -404,10 +404,10 @@ func (s *Service) PatchDraft(ctx context.Context, sc tenant.Scope, requestID, mo
 			return err
 		}
 		if !res.Applied() {
-			return &InvalidError{Issues: res.PatchIssues}
+			return &InvalidError{Issues: capped(validate.Sort(res.PatchIssues))}
 		}
 		if res.Validation.IR == nil { // not schema-valid: nothing is saved (D-028)
-			return &InvalidError{Issues: res.Validation.Issues}
+			return &InvalidError{Issues: capped(validate.Sort(res.Validation.Issues))}
 		}
 		if at, ok := nulAt(res.Candidate); ok {
 			return &InvalidError{Issues: []model.ValidationIssue{model.NewIssue(validate.IRSchemaInvalid, at, "U+0000 cannot be stored", model.SeverityError)}}
@@ -771,8 +771,9 @@ func capped(issues []model.ValidationIssue) []model.ValidationIssue {
 	return append([]model.ValidationIssue{marker}, kept...)
 }
 
-// nulAt is the JSON Pointer of the first string or member name in doc that
-// holds U+0000, which PostgreSQL text and jsonb cannot store.
+// nulAt is the JSON Pointer of the first string in doc that holds U+0000,
+// which PostgreSQL text and jsonb cannot store: the value's, or for a
+// member name the object's (as httpapi.DecodeJSON reports one).
 func nulAt(doc []byte) (string, bool) {
 	if !bytes.Contains(doc, []byte(`\u0000`)) {
 		return "", false
@@ -784,7 +785,11 @@ func nulAt(doc []byte) (string, bool) {
 			return "", false
 		}
 		if tok.Kind() == '"' && strings.ContainsRune(tok.String(), 0) {
-			return string(dec.StackPointer()), true
+			p := dec.StackPointer()
+			if kind, n := dec.StackIndex(dec.StackDepth()); kind == '{' && n%2 == 1 {
+				p = p.Parent()
+			}
+			return string(p), true
 		}
 	}
 }

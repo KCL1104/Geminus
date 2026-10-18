@@ -19,7 +19,7 @@
   - domain pack 的 `Validate`；
   - 以 base version 的 manifest 做 dataset binding stage（`datasets.Resolve`）。
   - 前一個 stage 有 error 就不跑下一個（D-023；T-012 review I1）。結果依 D-023 排序。
-  - 最多 1000 個（migration 0003 與 `Error.details` 的上限；T-012 review M2）：超過時保留排序後的前 999 個，最前面加一個 path 為 `""` 的 `LIMIT_EXCEEDED`，說明還有幾個沒列出；被略去的有 error 時它是 error，所以 publish 是否被擋與完整清單相同。
+  - 最多 1000 個（migration 0003 與 `Error.details` 的上限；T-012 review M2；patch 本身與 schema 的 422 也一樣，review 2 N1）：超過時保留排序後的前 999 個，最前面加一個 path 為 `""` 的 `LIMIT_EXCEEDED`，說明還有幾個沒列出；被略去的有 error 時它是 error，所以 publish 是否被擋與完整清單相同。
   - Path：IR 的部分相對於 IR（去掉 `/ir`）；dataset 的部分是 `/dataset_bindings/<i>/…`，`i` 是 base version 的 `dataset_bindings` 中的位置（TWIN_IR_SPEC §5.2；T-012 review L2）。
   - Schema 不合格（含 2 MiB 上限）的 patch 結果不寫入，回 422。
 
@@ -37,7 +37,7 @@
   - 同一 transaction 建立 model、v1（parent null、manifest `[]`）與 draft revision 1，設 latest 為 v1，寫 audit `model.create` 與 idempotency response。
 - **Patch draft**（If-Match）：
   - 以 `patch.Apply(ManualDraft)` 套到 draft 的 canonical 形式；patch 本身的錯誤或 schema 不合格的結果回 422，不寫入。
-  - 字串或 member name 含 U+0000 的結果回 422（`IR_SCHEMA_INVALID`，path 指向該值）：PostgreSQL 的 text 與 jsonb 無法存它（T-012 review L5）。
+  - 字串或 member name 含 U+0000 的結果回 422（`IR_SCHEMA_INVALID`，path 指向該值；member name 則指向其物件，與 `httpapi.DecodeJSON` 相同）：PostgreSQL 的 text 與 jsonb 無法存它（T-012 review L5、review 2 I2）。
   - 合格就存新 IR、hash 與 issues，revision+1，寫 audit `model.draft.update`。
 - **Publish**（idempotency key、If-Match、`expected_base_version_id`）：
   - revision、expected base、draft base 與 latest 必須一致，否則 409 `MODEL_VERSION_CONFLICT`。stale draft 不能 publish（D-003）。
@@ -70,13 +70,13 @@
   - manifest 為空時，不需讀任何物件；
   - manifest 非空（不論是否用到）而沒有 store 時，回 503 `SERVICE_UNAVAILABLE`，不假裝驗證過。
 
-## 待 owner 決定（T-013 開放 route 之前）
+## 待 owner 決定（T-013 開放 route 之前；D-040、D-041，PROPOSED）
 
-- **儲存形式的讀取放大（T-012 review M4）**：jsonb 保存值而不是 bytes，讀出時數字以完整十進位印出（`1e300` 印成 301 位）。2 MiB 上限量的是 canonical bytes，reviewer 以 1.94 MB 的 canonical draft 得到 83.6 MB 的 jsonb 文字，一次 GetDraft 3.9 秒；每次 patch、publish 也要讀它。T-012 的檢查已改用 canonical 形式（M1），所以不會再誤判上限，但讀取的成本仍與 jsonb 文字成正比。選項：
+- **儲存形式的讀取放大（T-012 review M4）**：jsonb 保存值而不是 bytes，讀出時數字以完整十進位印出（`1e300` 印成 301 位）。2 MiB 上限量的是 canonical bytes，reviewer 以 1.94 MB 的 canonical draft 得到 83.6 MB 的 jsonb 文字，一次 GetDraft 3.9 秒；每次 patch、publish 也要讀它。T-012 的檢查已改用 canonical 形式（M1），所以不會再誤判上限，但成本仍與 jsonb 文字成正比，寫入也一樣：複核時 1.94 MB 的 canonical draft（83.6 MB 文字）GetDraft 3.5 秒、patch 4.9 秒、publish 5.8 秒（T-012 review 2 N3）。Run 與 worker（T-021／T-023）讀 version IR 時也受影響。記為 D-040，為 T-013 的 decision gate。選項：
   1. **（建議）IR 欄位改為保存 canonical 文字**：新 migration 把 `model_versions.ir`、`model_drafts.ir`（及之後 scenario 的 patch 等）改為 `json`（保存原文字）或 `text`。讀出即為 hash 涵蓋的 bytes，SQL 也能以 `sha256` 核對 hash；不再需要讀取時 canonicalize。代價：一個 migration 與 storage 調整；失去 jsonb 運算子（目前沒有查詢使用）。
   2. 在 IR contract 限制自由容器（metadata、domain_attributes）中數字的寫法（例如 |x| 在 1e-6 到 1e21 之間）：需改 TWIN_IR_SPEC 與 validator，且是使用者看得到的限制。
   3. 不改，只靠 rate limit（T-036）：不建議。
-- **Publish 的 `comment`（T-012 review L9）**：contract 允許最多 2000 字並納入 idempotency hash，但沒有地方保存。選項：在 ModelVersion 加欄位保存（需 migration 與 contract），或從 PublishModel 移除。建議保存：版本說明對審閱有用，且屬使用者資料，不放 audit。
+- **Publish 的 `comment`（T-012 review L9；D-041）**：contract 允許最多 2000 字並納入 idempotency hash，但沒有地方保存。選項：在 ModelVersion 加欄位保存（需 migration 與 contract），或從 PublishModel 移除。建議保存：版本說明對審閱有用，且屬使用者資料，不放 audit。
 
 ## Consequences
 

@@ -1,0 +1,11 @@
+patch-not-applied-saved	KILLED	--- FAIL: TestMoreIssuesThanADraftHolds (0.52s)
+tenant-snapshot-read-committed	KILLED	--- FAIL: TestReadsSeeOneSnapshot (1.47s)
+tenant-snapshot-writable	KILLED	--- FAIL: TestReadSnapshot (0.06s)
+patch-issues-uncapped	KILLED	--- FAIL: TestMoreIssuesThanADraftHolds (0.46s)
+schema-issues-uncapped	KILLED	--- FAIL: TestMoreIssuesThanADraftHolds (0.51s)
+nul-name-pointer	KILLED	--- FAIL: TestNULIsRefused (0.08s)
+patch-nul-allowed	KILLED	--- FAIL: TestNULIsRefused (0.16s)
+nul-fast-path-wrong	KILLED	--- FAIL: TestNULIsRefused (0.09s)
+nul-pointer-lost	KILLED	--- FAIL: TestNULIsRefused (0.07s)
+total=9 killed=9 equivalent=0 unexpected=0
+exit=0

@@ -1,0 +1,94 @@
+=== RUN   TestStoredTextIsNotWhatIsChecked
+--- PASS: TestStoredTextIsNotWhatIsChecked (5.84s)
+=== RUN   TestMoreIssuesThanADraftHolds
+--- PASS: TestMoreIssuesThanADraftHolds (2.49s)
+=== RUN   TestCappedBoundary
+--- PASS: TestCappedBoundary (0.01s)
+=== RUN   TestPublishKeepsUnusedBindings
+--- PASS: TestPublishKeepsUnusedBindings (0.30s)
+=== RUN   TestDatasetIssuePaths
+--- PASS: TestDatasetIssuePaths (0.26s)
+=== RUN   TestReadsSeeOneSnapshot
+--- PASS: TestReadsSeeOneSnapshot (5.05s)
+=== RUN   TestCleanAgainstItsOwnBase
+--- PASS: TestCleanAgainstItsOwnBase (0.20s)
+=== RUN   TestCreateChecksTheTemplate
+--- PASS: TestCreateChecksTheTemplate (0.15s)
+=== RUN   TestIssueOrderAndStages
+--- PASS: TestIssueOrderAndStages (0.20s)
+=== RUN   TestNULIsRefused
+--- PASS: TestNULIsRefused (0.17s)
+=== RUN   TestListLimits
+--- PASS: TestListLimits (0.12s)
+=== RUN   TestWritesWaitForTheModelRow
+--- PASS: TestWritesWaitForTheModelRow (1.18s)
+=== RUN   TestPublishIdempotencyScope
+--- PASS: TestPublishIdempotencyScope (0.19s)
+=== RUN   TestCursorBindings
+--- PASS: TestCursorBindings (0.11s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.19s)
+=== RUN   TestRolesAndTenancy
+--- PASS: TestRolesAndTenancy (0.12s)
+=== RUN   TestPatchDraft
+--- PASS: TestPatchDraft (0.26s)
+=== RUN   TestConcurrentPatches
+--- PASS: TestConcurrentPatches (0.14s)
+=== RUN   TestPublish
+--- PASS: TestPublish (0.32s)
+=== RUN   TestPublishRace
+--- PASS: TestPublishRace (0.21s)
+=== RUN   TestDraftWhenAnotherVersionArrives
+--- PASS: TestDraftWhenAnotherVersionArrives (0.29s)
+=== RUN   TestVersionsAreImmutable
+--- PASS: TestVersionsAreImmutable (0.16s)
+=== RUN   TestDatasets
+--- PASS: TestDatasets (0.34s)
+=== RUN   TestLists
+--- PASS: TestLists (0.55s)
+=== RUN   TestPackRules
+--- PASS: TestPackRules (0.14s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/models	20.073s
+=== RUN   TestOrganizationFilter
+--- PASS: TestOrganizationFilter (0.06s)
+=== RUN   TestUpdateDraftCAS
+--- PASS: TestUpdateDraftCAS (0.04s)
+=== RUN   TestVersionManifest
+--- PASS: TestVersionManifest (0.05s)
+=== RUN   TestListModelsKeyset
+--- PASS: TestListModelsKeyset (0.06s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.243s
+=== RUN   TestRequire
+--- PASS: TestRequire (0.00s)
+=== RUN   TestScopeIsValidatedBeforeTheDatabase
+--- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+=== RUN   TestRuntimeRoles
+--- PASS: TestRuntimeRoles (0.12s)
+=== RUN   TestRunScopes
+--- PASS: TestRunScopes (0.09s)
+=== RUN   TestRunModes
+--- PASS: TestRunModes (0.07s)
+=== RUN   TestReadSnapshot
+--- PASS: TestReadSnapshot (0.06s)
+=== RUN   TestRunLocksMembership
+--- PASS: TestRunLocksMembership (0.56s)
+=== RUN   TestRunErrors
+--- PASS: TestRunErrors (0.00s)
+=== RUN   TestPoolReuseLeavesNoScope
+--- PASS: TestPoolReuseLeavesNoScope (0.28s)
+=== RUN   TestWorkerAssignment
+--- PASS: TestWorkerAssignment (0.04s)
+=== RUN   TestGuardDiscardsSessionState
+--- PASS: TestGuardDiscardsSessionState (0.12s)
+=== RUN   TestGuardCoversEverySetting
+--- PASS: TestGuardCoversEverySetting (0.00s)
+=== RUN   TestUnsafeRuntimeLogins
+--- PASS: TestUnsafeRuntimeLogins (0.12s)
+=== RUN   TestRuntimeLoginCannotCreate
+--- PASS: TestRuntimeLoginCannotCreate (0.04s)
+=== RUN   TestResolveUser
+--- PASS: TestResolveUser (0.07s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant	2.610s

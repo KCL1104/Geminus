@@ -102,6 +102,12 @@ EQUIVALENT: dict[str, str] = {
     # owner rows (the T-007 SQL tests lock in that order); no test of this
     # package can tell the two apart.
     "owners-unordered": "every owner lock is this one query with one plan, so its lockers already agree on the order",
+    # Every membership change runs in RunOwners and holds the owner lock for
+    # its whole transaction, so no other change can move the target between
+    # Get and SetRole; a member's own write share-locks the row, which
+    # SetRole's UPDATE waits for in any case. The lock stays as a guard for
+    # a writer outside RunOwners.
+    "update-target-unlocked": "the owner lock already serializes every change to the target; SetRole's UPDATE waits for a member's write anyway",
 }
 
 HARNESS_ERRORS = {

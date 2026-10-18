@@ -5,6 +5,7 @@ package memberships_test
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -262,6 +263,9 @@ func TestRemovalWaitsForAWrite(t *testing.T) {
 	ctx := context.Background()
 	editor := e.org.Members[tenant.Editor].UserID
 	started, release, wrote := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	var once sync.Once
+	releaseWrite := func() { once.Do(func() { close(release) }) }
+	defer releaseWrite() // a failure below must not leave the write holding its connection
 	go func() {
 		wrote <- e.db.Run(ctx, e.as(editor), tenant.ReadWrite, func(context.Context, tenant.Tx, tenant.Membership) error {
 			close(started)
@@ -277,7 +281,7 @@ func TestRemovalWaitsForAWrite(t *testing.T) {
 		t.Fatalf("the removal did not wait for the write: %v", err)
 	case <-time.After(500 * time.Millisecond):
 	}
-	close(release)
+	releaseWrite()
 	if err := <-wrote; err != nil {
 		t.Errorf("the write: %v", err)
 	}
@@ -359,7 +363,7 @@ func TestList(t *testing.T) {
 	slices.Sort(want)
 	var got []string
 	cursor := ""
-	for {
+	for range len(want) + 1 { // a cursor that does not move on fails instead of looping
 		page, err := e.svc.List(ctx, owner, cursor, 1)
 		if err != nil {
 			t.Fatal(err)
@@ -378,6 +382,11 @@ func TestList(t *testing.T) {
 	}
 	if !slices.Equal(got, want) {
 		t.Errorf("listed %v, want %v", got, want)
+	}
+	// The same position, written another way, is not a cursor this list issued.
+	other := base64.RawURLEncoding.EncodeToString(fmt.Appendf(nil, `{"v":1, "o":%q,"l":"memberships","i":%q}`, e.org.ID, want[0]))
+	if _, err := e.svc.List(ctx, owner, other, 10); !errors.Is(err, memberships.ErrInvalidCursor) {
+		t.Errorf("a cursor in another form: %v", err)
 	}
 	for _, c := range []string{"x", cursor + "A"} {
 		if _, err := e.svc.List(ctx, owner, c, 10); !errors.Is(err, memberships.ErrInvalidCursor) {

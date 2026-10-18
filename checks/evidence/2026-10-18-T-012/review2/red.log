@@ -1,0 +1,9 @@
+=== RUN   TestMoreIssuesThanADraftHolds
+    edges_test.go:151: a schema-invalid patch: 1992 issues, models: invalid (1992 issue(s))
+--- FAIL: TestMoreIssuesThanADraftHolds (0.59s)
+=== RUN   TestNULIsRefused
+    edges_test.go:469: [{"op":"add","path":"/metadata/n\u0000te","value":1}]: models: invalid (1 issue(s))
+--- FAIL: TestNULIsRefused (0.10s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/models	0.722s
+FAIL

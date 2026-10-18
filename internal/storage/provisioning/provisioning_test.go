@@ -48,6 +48,18 @@ func TestCheckOperator(t *testing.T) {
 	if err := provisioning.CheckOperator(ctx, postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, dbtest.APILogin), 1, false))); !errors.Is(err, provisioning.ErrNotOperator) {
 		t.Errorf("the API login: %v", err)
 	}
+	// A login with no role at all is not an operator either.
+	if _, err := dbtest.Admin(t).Exec(ctx, `DO $$ BEGIN
+		IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dt_test_plain_login') THEN
+			CREATE ROLE dt_test_plain_login LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB;
+		END IF;
+		EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
+		END $$`); err != nil {
+		t.Fatal(err)
+	}
+	if err := provisioning.CheckOperator(ctx, postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, "dt_test_plain_login"), 1, false))); !errors.Is(err, provisioning.ErrNotOperator) {
+		t.Errorf("a login without the owner role: %v", err)
+	}
 }
 
 // The API login cannot create users or organizations, even with the scope

@@ -135,6 +135,35 @@ func TestMoreIssuesThanADraftHolds(t *testing.T) {
 	if _, _, err := e.publish(sc, m.ID, 2, m.LatestVersion.ID, key()); !errors.As(err, &invalid) || len(invalid.Issues) != 1000 {
 		t.Errorf("publish: %v", err)
 	}
+	// A patch whose result is not schema-valid, with as many issues: the
+	// 422 holds at most 1000 too (Error.details; T-012 review 2 N1).
+	ops = ops[:0]
+	for i := range 996 {
+		ops = append(ops, fmt.Sprintf(`{"op":"add","path":"/resources/-","value":{"id":"r%d","type":"human","name":"","capacity":0,"queue_discipline":"fifo"}}`, i))
+	}
+	invalid = nil
+	_, err = e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 2, []byte("["+strings.Join(ops, ",")+"]"))
+	if !errors.As(err, &invalid) || len(invalid.Issues) != 1000 || invalid.Issues[0].Code != validate.LimitExceeded {
+		n := 0
+		if invalid != nil {
+			n = len(invalid.Issues)
+		}
+		t.Errorf("a schema-invalid patch: %d issues, %v", n, err)
+	}
+	// A patch document with as many errors of its own (move is not allowed).
+	ops = ops[:0]
+	for i := range 1100 {
+		ops = append(ops, fmt.Sprintf(`{"op":"move","from":"/name","path":"/x%d"}`, i))
+	}
+	invalid = nil
+	_, err = e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 2, []byte("["+strings.Join(ops, ",")+"]"))
+	if !errors.As(err, &invalid) || len(invalid.Issues) != 1000 || invalid.Issues[0].Code != validate.LimitExceeded {
+		n := 0
+		if invalid != nil {
+			n = len(invalid.Issues)
+		}
+		t.Errorf("a patch with errors of its own: %d issues, %v", n, err)
+	}
 }
 
 // Up to 1000 issues are kept as they are; from 1001 the first 999 follow a
@@ -446,7 +475,7 @@ func TestNULIsRefused(t *testing.T) {
 	for doc, path := range map[string]string{
 		`[{"op":"replace","path":"/name","value":"a\u0000b"}]`:            "/name",
 		`[{"op":"add","path":"/metadata/note","value":["ok","x\u0000"]}]`: "/metadata/note/1",
-		`[{"op":"add","path":"/metadata/n\u0000te","value":1}]`:           "/metadata/n\u0000te",
+		`[{"op":"add","path":"/metadata/n\u0000te","value":1}]`:           "/metadata", // a name: its object, as httpapi
 	} {
 		var invalid *models.InvalidError
 		_, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 1, []byte(doc))

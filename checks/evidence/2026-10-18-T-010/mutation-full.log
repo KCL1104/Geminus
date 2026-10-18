@@ -1,0 +1,62 @@
+owners-scope-unchecked	SURVIVED	
+owners-unordered	SURVIVED	
+owners-not-locked	KILLED	--- FAIL: TestOwnersChangeAtOnce (0.09s)
+owners-any-role	KILLED	--- FAIL: TestUpdate (0.05s)
+owners-non-member-allowed	KILLED	--- FAIL: TestRoles (0.12s)
+owners-no-relock	KILLED	--- FAIL: TestPromotedWhileWaiting (0.53s)
+owners-no-scope	TIMEOUT	st_id":"req_01M58AFHZ7YA4ZR21PJRF68W9C"}}     memberships_test.go:58: add: 404 {"error":{"code":"NOT_FOUND","message":"not found","request_id":"req_01M58AFHZFDERG9VY09S3CC2TE"}} FAIL FAIL	github.com/kcl1104/geminus/internal/api	4.533s ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.116s FAIL 
+manage-roles-members	KILLED	--- FAIL: TestRoles (0.10s)
+list-no-role	KILLED	--- FAIL: TestRoles (0.12s)
+create-no-role	KILLED	--- FAIL: TestRoles (0.13s)
+create-input-unchecked	KILLED	--- FAIL: TestCreate (0.11s)
+create-no-replay	KILLED	--- FAIL: TestCreate (0.09s)
+create-exists-as-other	KILLED	--- FAIL: TestCreate (0.12s)
+create-no-audit	KILLED	--- FAIL: TestCreate (0.12s)
+create-status-200	KILLED	--- FAIL: TestCreate (0.05s)
+update-role-unchecked	KILLED	--- FAIL: TestUpdate (0.09s)
+update-last-owner-allowed	KILLED	--- FAIL: TestUpdate (0.05s)
+update-no-op-written	KILLED	--- FAIL: TestUpdate (0.08s)
+update-no-audit	KILLED	--- FAIL: TestUpdate (0.09s)
+update-target-unlocked	SURVIVED	
+delete-last-owner-allowed	KILLED	--- FAIL: TestDelete (0.05s)
+delete-no-audit	KILLED	--- FAIL: TestDelete (0.06s)
+delete-not-found-hidden	KILLED	--- FAIL: TestDelete (0.09s)
+list-limit-unchecked	KILLED	--- FAIL: TestList (0.08s)
+list-page-short	KILLED	--- FAIL: TestList (0.03s)
+cursor-any-org	KILLED	--- FAIL: TestList (0.05s)
+cursor-not-canonical	SURVIVED	
+sql-get-any-org	SURVIVED	
+sql-list-any-org	SURVIVED	
+sql-list-after-inclusive	TIMEOUT	internal/tenant/memberships	600.031s ?   	github.com/kcl1104/geminus/internal/storage/memberships	[no test files] ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.133s ok  	github.com/kcl1104/geminus/internal/api	4.318s ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.083s FAIL 
+sql-setrole-any-org	SURVIVED	
+sql-delete-any-org	SURVIVED	
+sql-delete-rows-unchecked	SURVIVED	
+sql-unknown-user-unmapped	KILLED	--- FAIL: TestCreate (0.08s)
+http-path-org-unchecked	KILLED	--- FAIL: TestMembershipRoutes (0.28s)
+http-path-user-unchecked	KILLED	--- FAIL: TestMembershipRoutes (0.26s)
+http-last-owner-500	KILLED	--- FAIL: TestMembershipRoutes (0.26s)
+http-unknown-user-404	KILLED	--- FAIL: TestMembershipRoutes (0.39s)
+http-delete-200	KILLED	--- FAIL: TestMembershipRoutes (0.40s)
+prov-owner-unchecked	SURVIVED	
+prov-runtime-allowed	KILLED	--- FAIL: TestCheckOperator (0.03s)
+prov-no-set-role	KILLED	--- FAIL: TestProvision (0.02s)
+prov-identity-unchecked	KILLED	--- FAIL: TestProvision (0.04s)
+prov-name-unchecked	KILLED	--- FAIL: TestProvision (0.05s)
+prov-user-duplicated	KILLED	--- FAIL: TestProvision (0.02s)
+prov-no-owner-membership	KILLED	--- FAIL: TestProvision (0.04s)
+prov-no-audit	KILLED	--- FAIL: TestProvision (0.04s)
+cmd-operator-unchecked	KILLED	--- FAIL: TestRefusals (0.03s)
+total=48 killed=36 equivalent=0 unexpected=12
+UNEXPECTED	owners-scope-unchecked	SURVIVED	
+UNEXPECTED	owners-unordered	SURVIVED	
+UNEXPECTED	owners-no-scope	TIMEOUT	st_id":"req_01M58AFHZ7YA4ZR21PJRF68W9C"}}     memberships_test.go:58: add: 404 {"error":{"code":"NOT_FOUND","message":"not found","request_id":"req_01M58AFHZFDERG9VY09S3CC2TE"}} FAIL FAIL	github.com/kcl1104/geminus/internal/api	4.533s ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.116s FAIL 
+UNEXPECTED	update-target-unlocked	SURVIVED	
+UNEXPECTED	cursor-not-canonical	SURVIVED	
+UNEXPECTED	sql-get-any-org	SURVIVED	
+UNEXPECTED	sql-list-any-org	SURVIVED	
+UNEXPECTED	sql-list-after-inclusive	TIMEOUT	internal/tenant/memberships	600.031s ?   	github.com/kcl1104/geminus/internal/storage/memberships	[no test files] ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.133s ok  	github.com/kcl1104/geminus/internal/api	4.318s ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.083s FAIL 
+UNEXPECTED	sql-setrole-any-org	SURVIVED	
+UNEXPECTED	sql-delete-any-org	SURVIVED	
+UNEXPECTED	sql-delete-rows-unchecked	SURVIVED	
+UNEXPECTED	prov-owner-unchecked	SURVIVED	
+exit=1

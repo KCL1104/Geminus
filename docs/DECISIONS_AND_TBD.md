@@ -1,6 +1,6 @@
 # Decisions & TBD Register
 
-版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；D-001–D-037 於 2026-10-15、D-038–D-039 於 2026-10-18 由 owner 批准，目前沒有 PROPOSED 的 D-entry。
+版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；D-001–D-037 於 2026-10-15、D-038–D-039 於 2026-10-18 由 owner 批准；D-040、D-041（T-012 review 發現，gate T-013）為 PROPOSED，待 owner 決定。
 
 ## 狀態與採用方法
 
@@ -192,6 +192,8 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | D-037 | CB-16 | Worker 對 imports／jobs 的欄位級權限 | worker 只能 UPDATE imports 的 profile／validation／mapping_suggestion／error 類欄位與 jobs 的 lease／status／attempt／error 類欄位；guard trigger 禁止 worker 將 import 設為 COMMITTED 或修改 mapping、mapping_revision、dataset_version_id、proposal_id。 |
 | D-038 | T-020 實作與獨立 review | DES engine 實作語意與 numerical profile | exponential ≥1 tick；>365 天樣本以 365 天＋1 tick 表示；triangular 分支規則並 clamp 回 [min,max]；decision 只含 p>0 flow 並依 flow ID 排序；ARRIVAL 順序為建立→排下一個→路由，同 tick 同 priority 依排程順序；entity ID `r<rep>/<source>/<n>`；ln 為固定演算法（不使用平台 `math.Log`、不融合 FMA）；Compile 自行核對 manifest；sink 未寫 outcome 視為 completed（CB-22，T-021）；零時間 service 完成後同 tick 再 dispatch（dispatch 不一定是該 tick 最後一個事件）；授予依 request 順序並逐筆回報 in-use；經過顯式 queue 時 queue 與 process 各算一次 visit；被 FIFO 擋住的 request 擋住其整個 bundle。詳見 SIMULATION_SPEC.md §2–§4。**2026-10-18 owner 依原文批准（H-004）；gate：T-023 對外提供 run 結果前。** |
 | D-039 | T-022 實作 | 結果彙整與 sampled trace 的實作語意 | replication-mean lead time 只要有一個 replication 沒有完整 cohort 即 unavailable；available summary 的 reason 為 null、n<2 時 CI 為 null；暫定 reason codes（NO_COMPLETED_ENTITY_IN_WINDOW、REPLICATION_WITHOUT_COMPLETED_COHORT、NO_COMPLETED_QUEUE_VISIT_IN_WINDOW）；trace 只記 replication 0、rate 1/8、SHA-256(entity ID) 選取、到 max_trace_events 截斷並標 truncated、無事件時不產生 artifact、queue_enter 記實際進入的 node；progress 非同步且不影響 run；queue／resource stats 的 unavailable 必帶 reason；engine_version `des-go-0.1.0`。詳見 SIMULATION_SPEC.md §5、§9。**2026-10-18 owner 依原文批准（H-004）；gate：T-023 對外提供 run 結果前。** |
+| D-040 | T-012 review M4 | IR 的儲存形式 | **PROPOSED。** jsonb 讀回時數字以完整十進位印出（`1e300` 為 301 位），1.94 MB 的 canonical draft 讀出 83.6 MB；讀寫與 run 都受影響。建議：新 migration 把 IR 欄位改存 canonical 文字（`json` 或 `text`），讀出即為 hash 涵蓋的 bytes。替代：限制自由容器中數字的寫法，或不改。詳見 ADR-022。gate：T-013 開放 model routes 前。 |
+| D-041 | T-012 review L9 | Publish 的 comment | **PROPOSED。** PublishModel 允許 comment 並納入 idempotency hash，但沒有地方保存。建議：在 ModelVersion 保存（使用者資料，不放 audit）；替代：從 contract 移除。gate：T-013 開放 publish route 前。 |
 
 ## 人類決策紀錄
 

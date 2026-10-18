@@ -117,9 +117,32 @@ Mutation（`review1/mutation-full.log`、`mutation-rerun.log`）：harness 增�
 | `go test -race -p 1 -v`（models、storage/models、tenant） | 0 | `green.log`：41 個 test，0 SKIP |
 | mutation | 0 | 94 個：92 killed、2 equivalent、0 unexpected |
 
+## 複核（review round 2，2026-10-18，H-003）：ACCEPT
+
+同一 reviewer 以 `git archive 3950245` 的 export（程式為 f4fde3a）與新建的 `dt_test_t012_review_r2*` 複核，結論 **ACCEPT**：首輪 medium 與 low 全部已修，經它的 probe 驗證（R1–R17 重跑全過；另 9 個新 probe S1–S9 除 S1 外全過）；M4 與 L9 記為 owner 決定可接受。它重現：integration-test、43 個 DB test（race、0 SKIP）、backend-test／race（0 cached）、architecture、spec-check 皆 exit 0；mutation 94 個 92 killed＋2 equivalent＋0 unexpected，兩個 equivalent 屬實。另提出 4 個 low、5 個 info，依過去做法在 ACCEPT 後處理，證據在 `checks/evidence/2026-10-18-T-012/review2/`（`red.log` 為修正前的新測試、`green.log` 為修正後）：
+
+| # | 發現 | 處理 |
+|---|---|---|
+| N1 | PatchDraft 的 422（patch 本身與 schema 的 issue）沒有封頂：996 個不合格 resource 產生 1992 個 issue，超過 `Error.details` 的 1000 | 兩者也經 `capped`（排序後保留 999 個加 `LIMIT_EXCEEDED`）；patch 本身可產生超過 1000 個 issue（1100 個 `move` op），也測到。`TestMoreIssuesThanADraftHolds` |
+| N2 | `tenant.ReadSnapshot` 沒有確定性的測試 | `internal/tenant` 的 `TestReadSnapshot`：另一個 transaction 在兩個 statement 之間 commit 的 row，ReadSnapshot 看不到、ReadOnly 看得到；ReadSnapshot 不能寫入。對應 mutant 併入 harness |
+| N3 | M4 只記在 ADR-022 與 T-013 scope，沒有登記為 decision gate | 新增 D-040（IR 儲存形式）、D-041（publish comment），皆 PROPOSED，列為 T-013 的 decision gate：`checks/decisions-check.json` 顯示 T-013 等待這兩個決定。ADR-022 補上寫入成本（GetDraft 3.5 秒、patch 4.9 秒、publish 5.8 秒）與 run／worker 也受影響 |
+| N4 | 首輪報告的 `review1/green.log` 與 `mutation-full.log` 早於最後加入的測試 | 本節的 `green.log` 在最終程式上執行；mutation 的最終數字見下 |
+| I1 | tasks.json 的 summary 仍是首版內容 | 驗收時更新 |
+| I2 | NUL 在 member name 時，pointer 本身含 U+0000，與 httpapi 指向父物件不一致 | 改為指向父物件，與 `httpapi.DecodeJSON` 相同。`TestNULIsRefused` |
+| I3 | 全 manifest 規則讓有 binding 的 model 每次寫入都重讀所有 snapshot | 記給 T-016：依 content hash 快取 |
+| I4 | `advance` 為了比對 hash 讀整個 version（含 IR） | 屬 D-040 的成本；決定儲存形式時一併改為只讀 hash |
+| I5 | Service 層的 Create 名稱含 NUL 回 22021 | HTTP 層的 `DecodeJSON` 已擋（T-009 L1）；T-013 的 route 測試涵蓋 |
+
+複核後的結果：
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `go test -race -p 1 -v`（models、storage/models、tenant） | 0 | `review2/green.log`：44 個 test，0 SKIP |
+| mutation（新增與改動的 mutant） | 0 | `review2/mutation.log`：新增的 5 個（patch 與 schema 422 的封頂、member name 的 pointer、ReadSnapshot 的隔離等級與唯讀）與 pattern 改動的 4 個全部 killed。Harness 合計 99 個：97 killed、2 equivalent、0 unexpected |
+
 ## 需 owner 知悉
 
-- ADR-022「待 owner 決定」：IR 儲存形式（review M4，建議改存 canonical 文字）與 publish `comment` 的保存或移除（L9）。兩者在 T-013 開放 route 之前處理。
+- **D-040、D-041（PROPOSED，T-013 的 decision gate）**：IR 儲存形式（review M4，建議改存 canonical 文字）與 publish `comment` 的保存或移除（L9），見 ADR-022「待 owner 決定」。T-013 在 owner 決定前不能開始。
 - AGENTS.md §3 仍把 `internal/model/` 寫成 commit service 的位置（review I9）；那是 owner 維護的檔案，建議改成 `internal/models/`。
 - ADR-022 為 PROPOSED：
   - service 的位置（`internal/models`，不是規劃的 `internal/model/service/`）；

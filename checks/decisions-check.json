@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 39,
-    "proposed": 0,
+    "proposed": 2,
     "rejected": 0,
     "superseded": 0
   },
@@ -36,7 +36,10 @@
       "awaiting_task_review": [
         "T-012"
       ],
-      "awaiting_decisions": []
+      "awaiting_decisions": [
+        "D-040",
+        "D-041"
+      ]
     },
     {
       "id": "T-024",
@@ -380,6 +383,20 @@
       "gate": "T-023 對外提供 run 結果前",
       "gates_tasks": [
         "T-023"
+      ]
+    },
+    "D-040": {
+      "status": "proposed",
+      "gate": "T-013 開放 model routes 前",
+      "gates_tasks": [
+        "T-013"
+      ]
+    },
+    "D-041": {
+      "status": "proposed",
+      "gate": "T-013 開放 publish route 前",
+      "gates_tasks": [
+        "T-013"
       ]
     }
   },

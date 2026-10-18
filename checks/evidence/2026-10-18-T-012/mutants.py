@@ -26,7 +26,7 @@ ONLY = {a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--only=")}
 ARGS = [a for a in sys.argv[1:] if a != "--check" and not a.startswith("--only=")]
 CHECK_ONLY = "--check" in sys.argv[1:]
 REPO = pathlib.Path(ARGS[0] if ARGS else pathlib.Path(__file__).resolve().parents[3])
-PKGS = ["./internal/models/...", "./internal/storage/models/..."]
+PKGS = ["./internal/models/...", "./internal/storage/models/...", "./internal/tenant"]
 SVC = "internal/models/models.go"
 ST = "internal/storage/models/models.go"
 
@@ -46,12 +46,18 @@ MUTANTS = [
     ("create-response-version-2", SVC, "\t\tresp, err := json.Marshal(publicModel(mdl, d, 1))", "\t\tresp, err := json.Marshal(publicModel(mdl, d, 2))"),
     # patch
     ("patch-revision-unchecked", SVC, "\t\tif d.Revision != expected {\n\t\t\treturn ErrConflict\n\t\t}\n\t\tcurrent, err := canonicalIR(d.IR)", "\t\tcurrent, err := canonicalIR(d.IR)"),
-    ("patch-not-applied-saved", SVC, "\t\tif !res.Applied() {\n\t\t\treturn &InvalidError{Issues: res.PatchIssues}\n\t\t}", "\t\tif false && !res.Applied() {\n\t\t\treturn &InvalidError{Issues: res.PatchIssues}\n\t\t}"),
+    ("patch-not-applied-saved", SVC, "\t\tif !res.Applied() {\n\t\t\treturn &InvalidError{Issues: capped(", "\t\tif false && !res.Applied() {\n\t\t\treturn &InvalidError{Issues: capped("),
     ("patch-mode-ai", SVC, "patch.Apply(current, patchDoc, patch.ManualDraft)", "patch.Apply(current, patchDoc, patch.AIEdit)"),
     # review round 1: L5, M1
+    # review round 2: N1, N2, I2
+    ("tenant-snapshot-read-committed", "internal/tenant/transaction.go", "\tReadSnapshot = TxOptions{AccessMode: pgx.ReadOnly, IsoLevel: pgx.RepeatableRead}", "\tReadSnapshot = TxOptions{AccessMode: pgx.ReadOnly}"),
+    ("tenant-snapshot-writable", "internal/tenant/transaction.go", "\tReadSnapshot = TxOptions{AccessMode: pgx.ReadOnly, IsoLevel: pgx.RepeatableRead}", "\tReadSnapshot = TxOptions{IsoLevel: pgx.RepeatableRead}"),
+    ("patch-issues-uncapped", SVC, "\t\t\treturn &InvalidError{Issues: capped(validate.Sort(res.PatchIssues))}", "\t\t\treturn &InvalidError{Issues: res.PatchIssues}"),
+    ("schema-issues-uncapped", SVC, "\t\t\treturn &InvalidError{Issues: capped(validate.Sort(res.Validation.Issues))}", "\t\t\treturn &InvalidError{Issues: res.Validation.Issues}"),
+    ("nul-name-pointer", SVC, "\t\t\t\tp = p.Parent()\n", ""),
     ("patch-nul-allowed", SVC, "\t\tif at, ok := nulAt(res.Candidate); ok {", "\t\tif at, ok := nulAt(res.Candidate); false && ok {"),
     ("nul-fast-path-wrong", SVC, "\tif !bytes.Contains(doc, []byte(`\\u0000`)) {", "\tif true || !bytes.Contains(doc, []byte(`\\u0000`)) {"),
-    ("nul-pointer-lost", SVC, "\t\t\treturn string(dec.StackPointer()), true", "\t\t\treturn \"\", true"),
+    ("nul-pointer-lost", SVC, "\t\t\treturn string(p), true", "\t\t\treturn \"\", true"),
     ("patch-base-stored-text", SVC, "\t\tres, err := patch.Apply(current, patchDoc", "\t\t_ = current\n\t\tres, err := patch.Apply(d.IR, patchDoc"),
     ("patch-issues-dropped", SVC, "\t\t\tRevision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)", "\t\t\tRevision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues[:0], UpdatedBy: m.UserID}, d.Revision)"),
     ("patch-revision-same", SVC, "\t\t\tRevision: d.Revision + 1, IR: res.Candidate,", "\t\t\tRevision: d.Revision, IR: res.Candidate,"),

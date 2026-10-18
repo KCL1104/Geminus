@@ -1,0 +1,15 @@
+owners-scope-unchecked	KILLED	--- FAIL: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+owners-unordered	SURVIVED	
+owners-no-scope	KILLED	--- FAIL: TestRoles (0.08s)
+update-target-unlocked	SURVIVED	
+cursor-not-canonical	KILLED	--- FAIL: TestList (0.05s)
+sql-get-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.03s)
+sql-list-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.03s)
+sql-list-after-inclusive	KILLED	--- FAIL: TestList (0.06s)
+sql-setrole-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.03s)
+sql-delete-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.02s)
+sql-delete-rows-unchecked	KILLED	--- FAIL: TestOrganizationFilter (0.03s)
+prov-owner-unchecked	KILLED	--- FAIL: TestCheckOperator (0.05s)
+total=12 killed=10 equivalent=3 unexpected=1
+UNEXPECTED	sql-delete-rows-unchecked	KILLED	--- FAIL: TestOrganizationFilter (0.03s)
+exit=1

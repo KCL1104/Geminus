@@ -770,7 +770,9 @@
         "D-012",
         "D-015",
         "D-024",
-        "D-025"
+        "D-025",
+        "D-040",
+        "D-041"
       ],
       "scope": [
         "綁定 create/get/draft/patch/publish/list/version/reset routes。",

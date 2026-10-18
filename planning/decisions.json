@@ -545,6 +545,32 @@
       "approved_by": "KCL1104 (repository owner; session decision)",
       "approved_at": "2026-10-18",
       "resolves": []
+    },
+    {
+      "id": "D-040",
+      "title": "IR 的儲存形式（T-012 review M4）",
+      "source_gap": "jsonb 讀回時數字以完整十進位印出，2 MiB 上限量的是 canonical bytes：1.94 MB 的 canonical draft 是 83.6 MB 的 jsonb 文字，GetDraft 3.5 s、patch 4.9 s、publish 5.8 s；run／worker（T-021／T-023）也讀 version IR",
+      "proposal": "（建議）新 migration 把 model_versions.ir、model_drafts.ir（及之後保存 IR 或 patch 的欄位）改存 canonical 文字（json 或 text），讀出即為 hash 涵蓋的 bytes，SQL 可核對 hash；替代方案：在 IR contract 限制自由容器中數字的寫法（如 |x| 介於 1e-6 與 1e21），或不改只靠 rate limit（不建議）。詳見 ADR-022「待 owner 決定」。",
+      "source_pages": "N/A（實作發現；ADR-022、TWIN_IR_SPEC §5、D-029）",
+      "owner_role": "Platform",
+      "gate": "T-013 開放 model routes 前",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null,
+      "resolves": []
+    },
+    {
+      "id": "D-041",
+      "title": "Publish request 的 comment（T-012 review L9）",
+      "source_gap": "http.schema.json 的 PublishModel 允許 comment（≤2000 字）並納入 idempotency hash，但沒有欄位保存；audit 不放使用者文字",
+      "proposal": "（建議）在 ModelVersion 加 comment 欄位保存（migration 與 contract，屬使用者資料、不放 audit）；替代方案：從 PublishModel 移除 comment。詳見 ADR-022「待 owner 決定」。",
+      "source_pages": "N/A（實作發現；ADR-022、http.schema.json）",
+      "owner_role": "Platform / Product",
+      "gate": "T-013 開放 publish route 前",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null,
+      "resolves": []
     }
   ],
   "human_decisions": [
