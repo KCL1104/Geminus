@@ -59,12 +59,14 @@ describe("hard-coded UI text", () => {
     ["a placeholder", 'export const I = () => <input placeholder="Name" />;'],
     ["an alt text", 'export const A = () => <img src="/a.png" alt="Logo" />;'],
     ["an aria-label expression", 'export const N = () => <nav aria-label={"Main"} />;'],
+    ["an aria-label template literal", "export const N = ({ n }: { n: number }) => <nav aria-label={`Main ${n}`} />;"],
     ["a string after &&", 'export const P = ({ a }: { a: boolean }) => <p>{a && " (out of date)"}</p>;'],
     ["a string in a conditional", 'export const P = ({ a }: { a: boolean }) => <p>{a ? "Yes" : "No"}</p>;'],
     ["Chinese text", "export const P = () => <p>專案</p>;"],
     ["a string in a nested conditional", 'export const P = ({ a, b }: { a: boolean; b: boolean }) => <p>{a && (b ? "Yes" : null)}</p>;'],
     ["a string in a fragment's conditional", 'export const P = ({ a }: { a: boolean }) => <>{a && "Yes"}</>;'],
     ["Chinese text in a conditional", 'export const P = ({ a }: { a: boolean }) => <p>{a && "專案"}</p>;'],
+    ["a template literal in a conditional", "export const P = ({ a, n }: { a: boolean; n: number }) => <p>{a && `${n} items`}</p>;"],
   ])("rejects %s", async (_, code) => {
     const ids = await ruleIds(code);
     expect(ids.some((id) => id === "react/jsx-no-literals" || id === "no-restricted-syntax"), ids.join(",")).toBe(true);

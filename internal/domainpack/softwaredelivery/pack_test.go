@@ -6,11 +6,13 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"maps"
+	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/domainpack"
@@ -499,6 +501,52 @@ func TestNamesFileStrict(t *testing.T) {
 			t.Errorf("%s: accepted", name)
 		}
 	}
+}
+
+// A names file that is missing or does not fit the template makes Template
+// fail with no model, instead of falling back to the English names.
+func TestTemplateNamesFailure(t *testing.T) {
+	base, err := os.ReadFile(filepath.Join("templates", softwaredelivery.DefaultTemplate+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	names, err := os.ReadFile(filepath.Join("templates", softwaredelivery.DefaultTemplate+".zh-Hant.names.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := func(data []byte) *fstest.MapFile { return &fstest.MapFile{Data: data} }
+	for name, fsys := range map[string]fstest.MapFS{
+		"no names file":  {"templates/" + softwaredelivery.DefaultTemplate + ".json": file(base)},
+		"a name missing": {"templates/" + softwaredelivery.DefaultTemplate + ".json": file(base), "templates/" + softwaredelivery.DefaultTemplate + ".zh-Hant.names.json": file([]byte(strings.Replace(string(names), `"ci_runner": "CI 執行器",`, "", 1)))},
+	} {
+		ir, err := softwaredelivery.TemplateFrom(fsys, softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
+		if err == nil || ir != nil {
+			t.Errorf("%s: %v %v", name, ir, err)
+		}
+	}
+	// The same files, complete, give the embedded template.
+	fsys := fstest.MapFS{"templates/" + softwaredelivery.DefaultTemplate + ".json": file(base), "templates/" + softwaredelivery.DefaultTemplate + ".zh-Hant.names.json": file(names)}
+	got, err := softwaredelivery.TemplateFrom(fsys, softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
+	want, _ := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
+	if err != nil || want == nil {
+		t.Fatalf("%v %v", err, want)
+	}
+	if a, b := mustEncode(t, got), mustEncode(t, want); a != b {
+		t.Error("TemplateFrom with the embedded files differs from Template")
+	}
+}
+
+func mustEncode(t *testing.T, ir *model.ModelIR) string {
+	t.Helper()
+	data, err := model.Encode(ir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := jsontext.Value(data)
+	if err := v.Canonicalize(); err != nil {
+		t.Fatal(err)
+	}
+	return string(v)
 }
 
 // The pack's validation code is in the contract's catalogue
