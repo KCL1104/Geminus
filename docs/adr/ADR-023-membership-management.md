@@ -10,7 +10,7 @@
 - 指令：
   - `provision-tenant user -issuer … -subject …`：建立或找到該 OIDC identity 的 user，印出 `user_id`；
   - `provision-tenant organization -name … -owner-issuer … -owner-subject …`：在一個 transaction 中建立 organization、（必要時）owner user、owner membership，並寫 audit `organization.provision`（actor_type `system`，actor_id `provision-tenant`）。
-- 資料庫連線為 `GEMINUS_PROVISION_DATABASE_URL`：這個 login 必須能 `SET ROLE twin_owner`，不是 `twin_api`／`twin_worker` 的成員，且沒有 SUPERUSER、BYPASSRLS、CREATEROLE、CREATEDB、REPLICATION 屬性（`TestCheckOperator`，T-010 review L2、I3）。Superuser 也是每個 role 的成員。Provisioning 用自己的 login（db/README.md），建議 `NOINHERIT`：owner 權限只在 `SET ROLE` 之後才有。每個操作以 `SET LOCAL ROLE twin_owner` 執行，隨 transaction 結束。
+- 資料庫連線為 `GEMINUS_PROVISION_DATABASE_URL`：這個 login 必須能 `SET ROLE twin_provisioner`，不是 `twin_owner`、`twin_api`、`twin_worker` 的成員，且沒有 SUPERUSER、BYPASSRLS、CREATEROLE、CREATEDB、REPLICATION 屬性（`TestCheckOperator`，T-010 review L2、I3；D-042）。Superuser 也是每個 role 的成員。Provisioning 用自己的 login（db/README.md），建議 `NOINHERIT`：權限只在 `SET ROLE` 之後才有。每個操作以 `SET LOCAL ROLE twin_provisioner` 執行，隨 transaction 結束；`twin_provisioner` 只有 users 的 SELECT／INSERT 與 organizations、memberships、audit_events 的 INSERT，RLS 照樣適用（migration 0004，`db/tests/roles.sql`）。
 - 同一 identity 的 `user` 可並行執行：`INSERT … ON CONFLICT (oidc_issuer, oidc_subject) DO NOTHING` 後再讀，只建立一次（`TestUserOnceUnderConcurrency`，review L3）。
 - 輸入限制與 ADR-017 verifier 相同（`auth.ValidIdentity`）：issuer 是 verifier 設定會接受的 absolute https URL（無 query、fragment、credentials，≤2048 bytes）且可列印，subject 1–255 bytes 且可列印（無控制、格式字元如 U+202E／U+200B、ASCII 空白以外的分隔字元），所以建立的 user 都能登入。Organization 名稱 1–200 字、全為可列印字元、不能全空白或以空白開頭結尾（review L4）。
 - 位置：tasks.json 規劃的 `scripts/provision-tenant/` 改為 `cmd/provision-tenant`：architecture check 只允許 cmd 開啟資料庫連線，SQL 在 `internal/storage/provisioning`。
@@ -54,4 +54,5 @@ D-036 的 ORDER BY 在有 advisory lock 之後不再是避免 deadlock 所必需
   - owner 可以把任何已存在的 user ID 加入自己的 organization，不需要該 user 同意（D-008 允許加入已知 user）；
   - 新增回 422（user 不存在）與 409／201（存在）的差異，會透露某個全域 user ID 是否存在。ULID 不可猜，風險低，P0 接受；若日後需要，改為一律回同一種答案或改用邀請流程。
   - Request 先驗格式再驗權限：viewer 送錯誤格式會先得到 400／422 而不是 403。不揭露資料，無害。
-- **Provisioning 的最小權限 role（review L5；D-042 APPROVED，H-009）**：provisioning login 原以 `twin_owner`（schema owner）執行，平常的 onboarding 憑證因此也有 DDL 與 policy 權限，超過所需。Owner 決定改用專用 role：新 migration 建立 NOLOGIN 的 provisioning role，只有所需的寫入與讀取，`cmd/provision-tenant` 改為 SET ROLE 它；在上 production 前完成，實作併入 T-010。
+- **Provisioning 的最小權限 role（review L5；D-042 APPROVED，H-009，已實作）**：provisioning login 原以 `twin_owner`（schema owner）執行，平常的 onboarding 憑證因此也有 DDL 與 policy 權限。現在改用 NOLOGIN 的 `twin_provisioner`（`db/bootstrap_roles.sql` 建立、migration 0004 授權），只能做 provisioning 需要的事。部署需要先跑 bootstrap 與 0004，再把 provisioning login 改為 `IN ROLE twin_provisioner`；原本 `IN ROLE twin_owner` 的 login 會被拒絕。
+- **Audit 只能以自己的身分寫入（實作 D-042 時發現）**：0002 的 guard 只限制 `user` event，API role 可以寫出 `worker` 或 `system` 的 event。Migration 0004 改為：API 只寫 scoped user 的 `user` event，worker 寫 `worker` 或 `system`（不能以人的身分），provisioning 只寫 `system`；schema owner 不受限。

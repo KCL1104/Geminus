@@ -1,0 +1,13 @@
+users-not-readable	KILLED
+memberships-not-insertable	KILLED
+extra-update	KILLED
+extra-select	KILLED
+schema-create	KILLED
+api-writes-worker	KILLED
+api-writes-system	KILLED
+provisioner-writes-worker	KILLED
+provisioner-writes-user	KILLED
+worker-writes-user	KILLED
+user-any-actor	KILLED
+no-search-path	KILLED
+total=12 unexpected=0

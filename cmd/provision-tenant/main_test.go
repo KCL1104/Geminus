@@ -11,14 +11,14 @@ import (
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 )
 
-const operator = "dt_test_provisioner"
+const operator = "dt_test_provisioner_login"
 
 func operatorURL(t *testing.T) string {
 	t.Helper()
 	admin := dbtest.Admin(t)
 	if _, err := admin.Exec(context.Background(), `DO $$ BEGIN
 		IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '`+operator+`') THEN
-			CREATE ROLE `+operator+` LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE twin_owner;
+			CREATE ROLE `+operator+` LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE twin_provisioner;
 		END IF;
 		EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
 		END $$`); err != nil {

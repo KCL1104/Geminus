@@ -12,12 +12,17 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='twin_worker') THEN
     CREATE ROLE twin_worker NOLOGIN NOSUPERUSER NOBYPASSRLS;
   END IF;
+  -- D-042: what an operator's provisioning login acts as (cmd/provision-tenant).
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='twin_provisioner') THEN
+    CREATE ROLE twin_provisioner NOLOGIN NOSUPERUSER NOBYPASSRLS;
+  END IF;
 END $$;
 -- Abort rather than silently accepting unsafe pre-existing runtime roles.
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles
-             WHERE rolname IN ('twin_api','twin_worker') AND (rolsuper OR rolbypassrls)) THEN
+             WHERE rolname IN ('twin_api','twin_worker','twin_provisioner')
+               AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication)) THEN
     RAISE EXCEPTION 'unsafe twin runtime role attributes';
   END IF;
 END $$;

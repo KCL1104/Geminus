@@ -88,16 +88,20 @@ MUTANTS = [
     ("http-unknown-user-404", HTTP, "\t\treturn &httpapi.Error{Code: httpapi.RequestValidationFailed, Message: \"no user has this ID\",", "\t\treturn &httpapi.Error{Code: httpapi.NotFound, Message: \"no user has this ID\","),
     ("http-delete-200", HTTP, "\tw.WriteHeader(http.StatusNoContent)", "\tw.WriteHeader(http.StatusOK)"),
     # provisioning (D-008, TEST-011)
-    ("prov-owner-unchecked", PROV, "\t\tif !owner || runtime || attrs {", "\t\tif runtime || attrs {"),
-    ("prov-runtime-allowed", PROV, "\t\tif !owner || runtime || attrs {", "\t\tif !owner || attrs {"),
+    ("prov-role-unchecked", PROV, "\t\tif !provisioner || other || attrs {", "\t\tif other || attrs {"),
+    ("prov-other-roles-allowed", PROV, "\t\tif !provisioner || other || attrs {", "\t\tif !provisioner || attrs {"),
+    ("prov-owner-member-allowed", PROV, "pg_has_role(session_user,'twin_owner','MEMBER') OR pg_has_role(session_user,'twin_api','MEMBER')", "pg_has_role(session_user,'twin_api','MEMBER')"),
+    ("prov-api-member-allowed", PROV, " OR pg_has_role(session_user,'twin_api','MEMBER') OR", " OR"),
     ("prov-worker-allowed", PROV, " OR pg_has_role(session_user,'twin_worker','MEMBER'),", ","),
-    ("prov-attributes-allowed", PROV, "\t\tif !owner || runtime || attrs {", "\t\tif !owner || runtime {"),
+    ("prov-attributes-allowed", PROV, "\t\tif !provisioner || other || attrs {", "\t\tif !provisioner || other {"),
+    ("prov-set-not-required", PROV, "pg_has_role(session_user,'twin_provisioner','SET')", "pg_has_role(session_user,'twin_provisioner','MEMBER')"),
     ("prov-superuser-attribute", PROV, "\t\t\trolsuper OR rolbypassrls", "\t\t\tfalse OR rolbypassrls"),
     ("prov-bypassrls-allowed", PROV, "rolsuper OR rolbypassrls OR rolcreaterole", "rolsuper OR rolcreaterole"),
     ("prov-createrole-allowed", PROV, "rolbypassrls OR rolcreaterole OR rolcreatedb", "rolbypassrls OR rolcreatedb"),
     ("prov-createdb-allowed", PROV, "rolcreaterole OR rolcreatedb OR rolreplication", "rolcreaterole OR rolreplication"),
     ("prov-replication-allowed", PROV, " OR rolcreatedb OR rolreplication\n", " OR rolcreatedb\n"),
-    ("prov-no-set-role", PROV, "\t_, err := tx.Exec(ctx, `SET LOCAL ROLE twin_owner`)\n\treturn err", "\treturn nil"),
+    ("prov-no-set-role", PROV, "\t_, err := tx.Exec(ctx, `SET LOCAL ROLE twin_provisioner`)\n\treturn err", "\treturn nil"),
+    ("prov-set-role-owner", PROV, "`SET LOCAL ROLE twin_provisioner`", "`SET LOCAL ROLE twin_owner`"),
     ("prov-identity-unchecked", PROV, "\tif !auth.ValidIdentity(issuer, subject) {", "\tif false && !auth.ValidIdentity(issuer, subject) {"),
     ("prov-name-unchecked", PROV, "\tif !validName(name) {", "\tif false {"),
     ("prov-name-untrimmed", PROV, "strings.TrimSpace(name) == name && ", ""),
@@ -139,10 +143,10 @@ EQUIVALENT: dict[str, str] = {
     # target's write. The lock stays as a guard for a writer outside
     # RunOwners. (The reviewer accepted this one.)
     "update-target-unlocked": "membership changes run one at a time; SetRole's UPDATE waits for a member's write anyway",
-    # A superuser is a member of every role, so the runtime-role check
-    # refuses it before its attributes matter (TestCheckOperator's
-    # superuser case fails on prov-runtime-allowed instead).
-    "prov-superuser-attribute": "a superuser is a member of twin_api and twin_worker, so the runtime-role check already refuses it",
+    # A superuser is a member of every role, so the role check refuses it
+    # before its attributes matter (TestCheckOperator's superuser case fails
+    # on prov-other-roles-allowed instead).
+    "prov-superuser-attribute": "a superuser is a member of twin_owner, twin_api and twin_worker, so the role check already refuses it",
 }
 
 HARNESS_ERRORS = {

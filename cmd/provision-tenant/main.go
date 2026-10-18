@@ -6,8 +6,8 @@
 //	provision-tenant organization -name NAME -owner-issuer ISSUER -owner-subject SUBJECT
 //
 // The database comes from GEMINUS_PROVISION_DATABASE_URL: a login that may
-// SET ROLE twin_owner and is neither a runtime login nor a superuser
-// (db/README.md). The result is one JSON object on stdout with the IDs;
+// SET ROLE twin_provisioner and is neither the schema owner, a runtime login
+// nor a superuser (D-042, db/README.md). The result is one JSON object on stdout with the IDs;
 // an owner then adds other users by ID through the membership API.
 package main
 
@@ -71,7 +71,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	}
 	defer db.Close()
 	if err := provisioning.CheckOperator(ctx, db); errors.Is(err, provisioning.ErrNotOperator) {
-		fmt.Fprintln(stderr, "refusing the database login: it must be able to SET ROLE twin_owner and be neither a runtime login nor a superuser")
+		fmt.Fprintln(stderr, "refusing the database login: it must be able to SET ROLE twin_provisioner, must not be a member of twin_owner, twin_api or twin_worker, and must not have SUPERUSER, BYPASSRLS, CREATEROLE, CREATEDB or REPLICATION")
 		return exitRefused
 	} else if err != nil {
 		fmt.Fprintln(stderr, "database unavailable:", err)

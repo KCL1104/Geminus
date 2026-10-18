@@ -2,10 +2,12 @@
 // (D-008, T-010): it creates users and organizations with their first
 // owner. The API never does this: its role has no INSERT on twin.users or
 // twin.organizations, and no route exposes it. An operator runs it through
-// cmd/provision-tenant with a login that may act as twin_owner and is not a
-// runtime login. Each operation is one transaction that switches to
-// twin_owner with SET LOCAL (it ends with the transaction) and sets the
-// settings the RLS policies read.
+// cmd/provision-tenant with a login that may act as twin_provisioner and is
+// neither the schema owner nor a runtime login. Each operation is one
+// transaction that switches to twin_provisioner with SET LOCAL (it ends with
+// the transaction) and sets the settings the RLS policies read.
+// twin_provisioner can only insert users, organizations, memberships and
+// audit events, and read users (D-042, migrations/0004_provisioner.up.sql).
 package provisioning
 
 import (
@@ -33,28 +35,30 @@ var (
 	// character that is not printable (control, format such as U+202E or
 	// U+200B, a separator other than the ASCII space, private use).
 	ErrInvalidInput = errors.New("provisioning: invalid input")
-	// ErrNotOperator: the login cannot act as twin_owner, or is also a
-	// runtime login (twin_api or twin_worker).
+	// ErrNotOperator: the login cannot act as twin_provisioner, is also the
+	// schema owner (twin_owner) or a runtime login (twin_api, twin_worker),
+	// or has an attribute it does not need.
 	ErrNotOperator = errors.New("provisioning: the login is not an operator login")
 )
 
-// CheckOperator confirms that the login may SET ROLE twin_owner, is not a
-// member of a runtime role and has none of the SUPERUSER, BYPASSRLS,
-// CREATEROLE, CREATEDB or REPLICATION attributes: provisioning must not run
-// as the API or the worker, the API must not be able to provision, and the
-// provisioning login gets no more than it needs (db/README.md). A superuser
-// is also a member of every role.
+// CheckOperator confirms that the login may SET ROLE twin_provisioner, is
+// not a member of twin_owner or a runtime role and has none of the
+// SUPERUSER, BYPASSRLS, CREATEROLE, CREATEDB or REPLICATION attributes:
+// provisioning must not run as the schema owner, the API or the worker, the
+// API must not be able to provision, and the provisioning login gets no
+// more than it needs (D-042, db/README.md). A superuser is also a member of
+// every role.
 func CheckOperator(ctx context.Context, db *postgres.DB) error {
 	return db.Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
-		var owner, runtime, attrs bool
-		err := tx.QueryRow(ctx, `SELECT pg_has_role(session_user,'twin_owner','SET'),
-			pg_has_role(session_user,'twin_api','MEMBER') OR pg_has_role(session_user,'twin_worker','MEMBER'),
+		var provisioner, other, attrs bool
+		err := tx.QueryRow(ctx, `SELECT pg_has_role(session_user,'twin_provisioner','SET'),
+			pg_has_role(session_user,'twin_owner','MEMBER') OR pg_has_role(session_user,'twin_api','MEMBER') OR pg_has_role(session_user,'twin_worker','MEMBER'),
 			rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication
-			FROM pg_roles WHERE rolname = session_user`).Scan(&owner, &runtime, &attrs)
+			FROM pg_roles WHERE rolname = session_user`).Scan(&provisioner, &other, &attrs)
 		if err != nil {
 			return err
 		}
-		if !owner || runtime || attrs {
+		if !provisioner || other || attrs {
 			return ErrNotOperator
 		}
 		return nil
@@ -68,7 +72,7 @@ func User(ctx context.Context, db *postgres.DB, issuer, subject string) (id stri
 		return "", false, err
 	}
 	err = db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-		if err := asOwner(ctx, tx); err != nil {
+		if err := asProvisioner(ctx, tx); err != nil {
 			return err
 		}
 		id, created, err = user(ctx, tx, issuer, subject)
@@ -89,7 +93,7 @@ func Organization(ctx context.Context, db *postgres.DB, name, issuer, subject st
 	}
 	orgID = ids.New("org")
 	err = db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-		if err := asOwner(ctx, tx); err != nil {
+		if err := asProvisioner(ctx, tx); err != nil {
 			return err
 		}
 		var err error
@@ -116,8 +120,8 @@ func Organization(ctx context.Context, db *postgres.DB, name, issuer, subject st
 	return orgID, userID, nil
 }
 
-func asOwner(ctx context.Context, tx pgx.Tx) error {
-	_, err := tx.Exec(ctx, `SET LOCAL ROLE twin_owner`)
+func asProvisioner(ctx context.Context, tx pgx.Tx) error {
+	_, err := tx.Exec(ctx, `SET LOCAL ROLE twin_provisioner`)
 	return err
 }
 

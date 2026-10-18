@@ -20,14 +20,14 @@ const issuer = "https://test.invalid"
 
 // Operator is a login that may act as twin_owner and nothing else: what an
 // operator provisions with (db/README.md).
-const Operator = "dt_test_provisioner"
+const Operator = "dt_test_provisioner_login"
 
 func operator(t *testing.T) *postgres.DB {
 	t.Helper()
 	admin := dbtest.Admin(t)
 	if _, err := admin.Exec(context.Background(), `DO $$ BEGIN
 		IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '`+Operator+`') THEN
-			CREATE ROLE `+Operator+` LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE twin_owner;
+			CREATE ROLE `+Operator+` LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE twin_provisioner;
 		END IF;
 		EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
 		END $$`); err != nil {
@@ -50,34 +50,86 @@ func login(t *testing.T, name, attrs string) *postgres.DB {
 	return postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, name), 1, false))
 }
 
-// Only an operator login provisions: the API, the worker, a superuser (a
-// member of every role), a login that is also a runtime login, one with
-// more attributes than it needs and one without the owner role are refused
-// (D-008, TEST-011; T-010 review L2, I3).
+// Only an operator login provisions: one that may act as twin_provisioner
+// and is nothing else. The schema owner, the API, the worker, a superuser
+// (a member of every role), a provisioning login that is also one of them,
+// one with more attributes than it needs and one without the role are
+// refused (D-008, D-042, TEST-011; T-010 review L2, I3).
 func TestCheckOperator(t *testing.T) {
 	ctx := context.Background()
 	if err := provisioning.CheckOperator(ctx, operator(t)); err != nil {
 		t.Errorf("the operator login: %v", err)
 	}
-	if err := provisioning.CheckOperator(ctx, login(t, "dt_test_inherit_provisioner", "INHERIT IN ROLE twin_owner")); err != nil {
-		t.Errorf("an INHERIT member of twin_owner: %v", err)
+	if err := provisioning.CheckOperator(ctx, login(t, "dt_test_prov_inherit", "INHERIT IN ROLE twin_provisioner")); err != nil {
+		t.Errorf("an INHERIT member of twin_provisioner: %v", err)
 	}
 	refused := map[string]*postgres.DB{
-		"a superuser":                    postgres.OpenPool(dbtest.Admin(t)),
-		"the API login":                  postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, dbtest.APILogin), 1, false)),
-		"the worker login":               login(t, "dt_test_worker_only", "NOINHERIT IN ROLE twin_worker"),
-		"a login without the owner role": login(t, "dt_test_plain_login", "NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB"),
-		"an owner that is a worker":      login(t, "dt_test_owner_worker", "NOINHERIT IN ROLE twin_owner, twin_worker"),
-		"an owner that is the API":       login(t, "dt_test_owner_api", "NOINHERIT IN ROLE twin_owner, twin_api"),
-		"an owner with BYPASSRLS":        login(t, "dt_test_owner_bypassrls", "NOINHERIT BYPASSRLS IN ROLE twin_owner"),
-		"an owner with CREATEROLE":       login(t, "dt_test_owner_createrole", "NOINHERIT CREATEROLE IN ROLE twin_owner"),
-		"an owner with CREATEDB":         login(t, "dt_test_owner_createdb", "NOINHERIT CREATEDB IN ROLE twin_owner"),
-		"an owner with REPLICATION":      login(t, "dt_test_owner_replication", "NOINHERIT REPLICATION IN ROLE twin_owner"),
+		"a superuser":                     postgres.OpenPool(dbtest.Admin(t)),
+		"the API login":                   postgres.OpenPool(dbtest.Pool(t, dbtest.LoginURL(t, dbtest.APILogin), 1, false)),
+		"the worker login":                login(t, "dt_test_worker_only", "NOINHERIT IN ROLE twin_worker"),
+		"a login without the role":        login(t, "dt_test_plain_login", "NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB"),
+		"a member of the schema owner":    login(t, "dt_test_prov_schema_owner", "NOINHERIT IN ROLE twin_owner"),
+		"a provisioner that is the owner": login(t, "dt_test_prov_owner", "NOINHERIT IN ROLE twin_provisioner, twin_owner"),
+		"a provisioner that is a worker":  login(t, "dt_test_prov_worker", "NOINHERIT IN ROLE twin_provisioner, twin_worker"),
+		"a provisioner that is the API":   login(t, "dt_test_prov_api", "NOINHERIT IN ROLE twin_provisioner, twin_api"),
+		"a provisioner with BYPASSRLS":    login(t, "dt_test_prov_bypassrls", "NOINHERIT BYPASSRLS IN ROLE twin_provisioner"),
+		"a provisioner with CREATEROLE":   login(t, "dt_test_prov_createrole", "NOINHERIT CREATEROLE IN ROLE twin_provisioner"),
+		"a provisioner with CREATEDB":     login(t, "dt_test_prov_createdb", "NOINHERIT CREATEDB IN ROLE twin_provisioner"),
+		"a provisioner with REPLICATION":  login(t, "dt_test_prov_replication", "NOINHERIT REPLICATION IN ROLE twin_provisioner"),
 	}
+	// A member that inherits the role's rights but may not SET ROLE to it:
+	// provisioning switches to the role, so it needs SET (PostgreSQL 16).
+	inheritOnly := login(t, "dt_test_prov_no_set", "NOINHERIT")
+	if _, err := dbtest.Admin(t).Exec(ctx, `GRANT twin_provisioner TO dt_test_prov_no_set WITH INHERIT TRUE, SET FALSE`); err != nil {
+		t.Fatal(err)
+	}
+	refused["a member that cannot SET ROLE"] = inheritOnly
 	for name, db := range refused {
 		if err := provisioning.CheckOperator(ctx, db); !errors.Is(err, provisioning.ErrNotOperator) {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+}
+
+// Provisioning acts as twin_provisioner, which cannot change what it
+// created or touch anything else, even through the operator login (D-042;
+// the full privilege matrix is in db/tests/roles.sql).
+func TestProvisionerCannotChangeAnything(t *testing.T) {
+	ctx := context.Background()
+	db := operator(t)
+	org, owner, err := provisioning.Organization(ctx, db, "Acme", issuer, "sub-"+ids.New("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`UPDATE twin.memberships SET role='viewer' WHERE organization_id=current_setting('app.organization_id')`,
+		`DELETE FROM twin.memberships WHERE organization_id=current_setting('app.organization_id')`,
+		`UPDATE twin.organizations SET name='x' WHERE id=current_setting('app.organization_id')`,
+		`SELECT count(*) FROM twin.memberships`,
+		`SELECT count(*) FROM twin.audit_events`,
+		`ALTER TABLE twin.memberships DISABLE ROW LEVEL SECURITY`,
+	} {
+		err := db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+			if _, err := tx.Exec(ctx, `SET LOCAL ROLE twin_provisioner`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `SELECT set_config('app.organization_id',$1,true)`, org); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, stmt)
+			return err
+		})
+		if !errors.Is(err, postgres.ErrPermission) {
+			t.Errorf("%s: %v", stmt, err)
+		}
+	}
+	// The operator login itself (NOINHERIT) has no rights without SET ROLE.
+	err = db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ($1,$2,'viewer')`, org, owner)
+		return err
+	})
+	if !errors.Is(err, postgres.ErrPermission) {
+		t.Errorf("the operator login without SET ROLE: %v", err)
 	}
 }
 

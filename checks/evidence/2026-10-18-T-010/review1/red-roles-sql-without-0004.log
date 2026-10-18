@@ -1,0 +1,3 @@
+psql:db/tests/roles.sql:138: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,re
+psql:db/tests/roles.sql:138: WARNING:  FAILED: expected SQLSTATE 42501 but the statement succeeded: INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,re
+psql:db/tests/roles.sql:150: ERROR:  permission denied for schema twin

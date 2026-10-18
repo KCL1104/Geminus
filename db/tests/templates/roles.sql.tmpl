@@ -129,6 +129,59 @@ SELECT pg_temp.must_fail($q$INSERT INTO twin.audit_events(id,organization_id,act
 INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id)
   VALUES ('{{AUD_A1}}','{{ORG_A}}','user','{{USR_A}}','import.commit','import','{{IMP_A1}}','{{REQ_A1}}');
 
+-- 0004: every role writes audit events only as itself. The API writes as
+-- the scoped user, never as the worker or the system; the worker as the
+-- worker or the system.
+SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
+  $q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('{{AUD_A3}}','{{ORG_A}}','worker','worker-1','import.profile','import','{{IMP_A1}}','{{REQ_A1}}')$q$,
+  $q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('{{AUD_A3}}','{{ORG_A}}','system','provision-tenant','organization.provision','organization','{{ORG_A}}','{{REQ_A1}}')$q$
+]) AS s;
+SET LOCAL ROLE twin_worker;
+INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id)
+  VALUES ('{{AUD_A3}}','{{ORG_A}}','system','reaper','job.expire','job','{{JOB_A1}}','{{REQ_A1}}');
+
+-- D-042: provisioning acts as twin_provisioner. It inserts users,
+-- organizations, memberships and system audit events and reads users;
+-- RLS applies to it, and it can do nothing else.
+SET LOCAL ROLE twin_provisioner;
+SELECT set_config('app.oidc_issuer','https://test.invalid',true), set_config('app.oidc_subject','subject_p',true),
+       set_config('app.organization_id','{{ORG_P}}',true), set_config('app.user_id','',true);
+INSERT INTO twin.users(id,oidc_issuer,oidc_subject) VALUES ('{{USR_P}}','https://test.invalid','subject_p')
+  ON CONFLICT (oidc_issuer,oidc_subject) DO NOTHING;
+SELECT pg_temp.check((SELECT count(*) FROM twin.users WHERE id='{{USR_P}}')=1, 'provisioning reads the user it names');
+SELECT pg_temp.check((SELECT count(*) FROM twin.users)=1, 'provisioning reads only the user its settings name');
+INSERT INTO twin.organizations(id,organization_id,name) VALUES ('{{ORG_P}}','{{ORG_P}}','Tenant P');
+INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ('{{ORG_P}}','{{USR_P}}','owner');
+INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id)
+  VALUES ('{{AUD_P1}}','{{ORG_P}}','system','provision-tenant','organization.provision','organization','{{ORG_P}}','{{REQ_A1}}');
+-- Not as a person, even with app.user_id set to one.
+SELECT set_config('app.user_id','{{USR_P}}',true);
+SELECT pg_temp.must_fail($q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('{{AUD_P2}}','{{ORG_P}}','user','{{USR_P}}','organization.provision','organization','{{ORG_P}}','{{REQ_A1}}')$q$, '42501');
+SELECT set_config('app.user_id','',true);
+SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
+  $q$INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ('{{ORG_A}}','{{USR_P}}','owner')$q$,
+  $q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('{{AUD_P2}}','{{ORG_P}}','user','{{USR_P}}','organization.provision','organization','{{ORG_P}}','{{REQ_A1}}')$q$,
+  $q$INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id) VALUES ('{{AUD_P2}}','{{ORG_P}}','worker','worker-1','organization.provision','organization','{{ORG_P}}','{{REQ_A1}}')$q$,
+  $q$UPDATE twin.users SET oidc_subject='other' WHERE id='{{USR_P}}'$q$,
+  $q$DELETE FROM twin.users WHERE id='{{USR_P}}'$q$,
+  $q$UPDATE twin.organizations SET name='x' WHERE id='{{ORG_P}}'$q$,
+  $q$DELETE FROM twin.organizations WHERE id='{{ORG_P}}'$q$,
+  $q$SELECT 1 FROM twin.organizations$q$,
+  $q$SELECT 1 FROM twin.memberships$q$,
+  $q$UPDATE twin.memberships SET role='viewer' WHERE organization_id='{{ORG_P}}'$q$,
+  $q$DELETE FROM twin.memberships WHERE organization_id='{{ORG_P}}'$q$,
+  $q$SELECT 1 FROM twin.audit_events$q$,
+  $q$INSERT INTO twin.projects(id,organization_id,name,created_by) VALUES ('{{PRJ_X}}','{{ORG_P}}','P','{{USR_P}}')$q$,
+  $q$SELECT 1 FROM twin.model_versions$q$,
+  $q$TRUNCATE twin.audit_events$q$,
+  $q$CREATE TABLE twin.provisioner_probe(x int)$q$,
+  $q$ALTER TABLE twin.memberships DISABLE ROW LEVEL SECURITY$q$,
+  $q$DROP POLICY tenant_isolation ON twin.memberships$q$
+]) AS s;
+SET LOCAL ROLE twin_owner;
+SELECT set_config('app.oidc_issuer','https://test.invalid',true), set_config('app.oidc_subject','subject_a',true),
+       set_config('app.organization_id','{{ORG_A}}',true), set_config('app.user_id','{{USR_A}}',true);
+
 -- Defence in depth: the guards hold even with a broader worker grant (e.g.
 -- pg_write_all_data) and a shadowing function earlier on the search_path
 -- (clusters upgraded from PG14 still let PUBLIC create in schema public).
@@ -152,8 +205,9 @@ GRANT UPDATE (status,total_rows,invalid_rows,preview,validation,mapping_suggesti
 REVOKE CREATE ON SCHEMA public FROM twin_worker;
 DROP FUNCTION public.pg_has_role(name, text, text);
 
--- TEST-011 (structural): FORCE RLS everywhere, runtime roles separate and
--- owning nothing, worker without identity, membership or idempotency access.
+-- TEST-011 (structural): FORCE RLS everywhere, runtime and provisioning roles
+-- separate and owning nothing, worker without identity, membership or
+-- idempotency access, provisioning with only its five grants (D-042).
 SET LOCAL ROLE twin_owner;
 SELECT pg_temp.check(count(*)=0, 'tables without FORCE RLS or a policy: ' || coalesce(string_agg(c.relname, ', '), ''))
   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -161,13 +215,23 @@ SELECT pg_temp.check(count(*)=0, 'tables without FORCE RLS or a policy: ' || coa
     AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid));
 SELECT pg_temp.check(count(*)=0, 'objects owned by a runtime role: ' || coalesce(string_agg(d.classid::regclass || ' ' || d.objid, ', '), ''))
   FROM pg_shdepend d
-  WHERE d.deptype='o' AND d.refclassid='pg_authid'::regclass AND pg_get_userbyid(d.refobjid) IN ('twin_api','twin_worker')
+  WHERE d.deptype='o' AND d.refclassid='pg_authid'::regclass AND pg_get_userbyid(d.refobjid) IN ('twin_api','twin_worker','twin_provisioner')
     AND d.dbid IN (0, (SELECT oid FROM pg_database WHERE datname=current_database()));
 SELECT pg_temp.check(count(*)=0, 'twin functions without a fixed search_path: ' || coalesce(string_agg(p.proname, ', '), ''))
   FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
   WHERE n.nspname='twin' AND NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c WHERE c LIKE 'search_path=%');
 SELECT pg_temp.check(NOT pg_has_role(a, b, 'MEMBER'), format('%s must not be a member of %s', a, b))
-  FROM (VALUES ('twin_api','twin_owner'),('twin_worker','twin_owner'),('twin_api','twin_worker'),('twin_worker','twin_api')) AS t(a, b);
+  FROM (VALUES ('twin_api','twin_owner'),('twin_worker','twin_owner'),('twin_api','twin_worker'),('twin_worker','twin_api'),
+               ('twin_provisioner','twin_owner'),('twin_provisioner','twin_api'),('twin_provisioner','twin_worker'),
+               ('twin_api','twin_provisioner'),('twin_worker','twin_provisioner')) AS t(a, b);
+-- D-042: twin_provisioner's table privileges are exactly these.
+SELECT pg_temp.check(has_table_privilege('twin_provisioner', 'twin.' || c.relname, p) =
+    ((c.relname, p) IN (('users','SELECT'),('users','INSERT'),('organizations','INSERT'),('memberships','INSERT'),('audit_events','INSERT'))),
+    format('twin_provisioner %s on %s', p, c.relname))
+  FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace,
+       unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
+  WHERE n.nspname='twin' AND c.relkind='r';
+SELECT pg_temp.check(NOT has_schema_privilege('twin_provisioner', 'twin', 'CREATE'), 'twin_provisioner cannot create in twin');
 SELECT pg_temp.check(NOT has_table_privilege('twin_worker', 'twin.' || t, p), format('worker has no %s on %s', p, t))
   FROM unnest(ARRAY['users','memberships','idempotency_keys','model_drafts']) AS t,
        unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p;
