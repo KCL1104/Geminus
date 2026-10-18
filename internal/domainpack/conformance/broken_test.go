@@ -804,6 +804,17 @@ func (p templateNilModel) Template(name, modelID, modelName string, locale domai
 	return p.templates.Template(name, modelID, modelName, locale)
 }
 
+// templateErrorAndModel answers zh-Hant with a model and an error.
+type templateErrorAndModel struct{ templates }
+
+func (p templateErrorAndModel) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err == nil && locale == domainpack.TraditionalChinese {
+		err = errors.New("names incomplete")
+	}
+	return ir, err
+}
+
 // templateOtherDomain builds its template in another domain.
 type templateOtherDomain struct{ templates }
 
@@ -1032,6 +1043,7 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 		{templatesPanic{}, "templates/list", "panicked"},
 		{templatePanics{}, "templates/valid", "panicked"},
 		{templateNilModel{}, "templates/valid", "no model"},
+		{templateErrorAndModel{}, "templates/valid", "names incomplete"},
 		{templateOtherDomain{}, "templates/valid", "not the ones asked for"},
 		{templateKeepsModelID{}, "templates/valid", "not the ones asked for"},
 		{templateAgainstOwnRules{}, "templates/valid", "pack's rules"},

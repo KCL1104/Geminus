@@ -63,13 +63,13 @@ GO = [
     ("valid-pack-rules-skipped", CONF, "&& slices.ContainsFunc(domain, isError) {\n\t\t\t\t\tc.fail(\"templates/valid\"", "&& false && slices.ContainsFunc(domain, isError) {\n\t\t\t\t\tc.fail(\"templates/valid\""),
     ("valid-nil-ok", CONF, "if err != nil || ir == nil {\n\t\t\t\tc.fail(\"templates/valid\"", "if err != nil {\n\t\t\t\tc.fail(\"templates/valid\""),
     ("valid-error-ok", CONF, "if err != nil || ir == nil {\n\t\t\t\tc.fail(\"templates/valid\"", "if ir == nil {\n\t\t\t\tc.fail(\"templates/valid\""),
-    ("deterministic-skipped", CONF, "ok && (err != nil || again == nil || encoded(again) != encoded(ir)) {", "ok && false {"),
+    ("deterministic-skipped", CONF, "ok && (err != nil || again == nil || encoded(again) != encoded(ir)) {", "ok && false && (err != nil || again == nil || encoded(again) != encoded(ir)) {"),
     ("locales-compared-with-names", CONF, "if s := withoutNames(ir); first == \"\" {", "if s := encoded(ir); first == \"\" {"),
     ("locales-skipped", CONF, "} else if s != first {", "} else if false && s != first {"),
     ("one-locale-only", CONF, "\t\tfor _, locale := range domainpack.Locales {\n\t\t\tir, err, ok := get(", "\t\tfor _, locale := range domainpack.Locales[:1] {\n\t\t\tir, err, ok := get("),
     ("bad-locales-none", CONF, "range []domainpack.Locale{\"\", \"fr\", \"EN\", \"zh-hant\", \"zh-Hans\"} {", "range []domainpack.Locale{} {"),
-    ("unknown-locale-model-ok", CONF, "get(\"templates/unknown-locale\", name, bad); ok && (err == nil || ir != nil) {", "get(\"templates/unknown-locale\", name, bad); ok && err == nil {"),
-    ("unknown-template-model-ok", CONF, "get(\"templates/unknown-template\", \"zz_no_such_template\", domainpack.Locales[0]); ok && (err == nil || ir != nil) {", "get(\"templates/unknown-template\", \"zz_no_such_template\", domainpack.Locales[0]); ok && err == nil {"),
+    ("unknown-locale-model-ok", CONF, "get(\"templates/unknown-locale\", name, bad); ok && (err == nil || ir != nil) {", "get(\"templates/unknown-locale\", name, bad); ok && (err == nil || false && ir != nil) {"),
+    ("unknown-template-model-ok", CONF, "get(\"templates/unknown-template\", \"zz_no_such_template\", domainpack.Locales[0]); ok && (err == nil || ir != nil) {", "get(\"templates/unknown-template\", \"zz_no_such_template\", domainpack.Locales[0]); ok && (err == nil || false && ir != nil) {"),
     ("templates-step-dropped", CONF, "{\"templates\", c.templates},", ""),
     # softwaredelivery: locales and names
     ("unknown-locale-accepted", TMPL, "if !slices.Contains(domainpack.Locales, locale) {\n\t\treturn nil, ErrUnknownLocale", "if false && !slices.Contains(domainpack.Locales, locale) {\n\t\treturn nil, ErrUnknownLocale"),
@@ -161,6 +161,7 @@ COPY = [
 ]
 
 EQUIVALENT = {
+    "list-panic-continues": "after a Templates() panic the pack already fails (templates/list panicked); going on with no names only adds the unknown-template probe, which can add a finding but never remove one",
     "date-invalid-unchecked": "Intl.DateTimeFormat.format throws RangeError on an Invalid Date, so a shape-valid but impossible date-time still throws",
 }
 
@@ -291,7 +292,8 @@ def main() -> int:
             finally:
                 path.write_text(orig)
             print("\t".join(results[-1]), flush=True)
-    wrong = [r for r in results if (r[1] == "SURVIVED") != (r[0] in EQUIVALENT)]
+    # A mutant that does not build proves nothing: it is a harness error.
+    wrong = [r for r in results if r[1] == "BUILD-FAILED" or (r[1] == "SURVIVED") != (r[0] in EQUIVALENT)]
     killed = sum(r[1] == "KILLED" for r in results)
     print(f"total={len(results)} killed={killed} equivalent={sum(r[0] in EQUIVALENT for r in results)} unexpected={len(wrong)}")
     for r in wrong:
