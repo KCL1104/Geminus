@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 39,
-    "proposed": 2,
+    "approved": 42,
+    "proposed": 0,
     "rejected": 0,
     "superseded": 0
   },
@@ -14,7 +14,8 @@
     "H-005",
     "H-006",
     "H-007",
-    "H-008"
+    "H-008",
+    "H-009"
   ],
   "tasks_by_status": {
     "blocked": 0,
@@ -24,21 +25,13 @@
     "review": 1
   },
   "ready_tasks": [
+    "T-013",
     "T-016",
     "T-019",
     "T-024",
     "T-043"
   ],
-  "next_after_review": [
-    {
-      "id": "T-013",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-040",
-        "D-041"
-      ]
-    }
-  ],
+  "next_after_review": [],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -376,17 +369,24 @@
       ]
     },
     "D-040": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-013 開放 model routes 前",
       "gates_tasks": [
         "T-013"
       ]
     },
     "D-041": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-013 開放 publish route 前",
       "gates_tasks": [
         "T-013"
+      ]
+    },
+    "D-042": {
+      "status": "approved",
+      "gate": "production 部署前（實作併入 T-010）",
+      "gates_tasks": [
+        "T-010"
       ]
     }
   },

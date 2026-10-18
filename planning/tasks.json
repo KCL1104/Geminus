@@ -595,13 +595,15 @@
       "decision_gates": [
         "D-008",
         "D-012",
-        "D-036"
+        "D-036",
+        "D-042"
       ],
       "scope": [
         "建立 operator-only initial org/owner/user provisioning 流程。",
         "Owner-only list/add/update/remove known user membership。",
         "鎖 org 保留 last Owner；撤權立即影響 write/stream。",
-        "成員變更不可在 `Run(ReadWrite)` 的 `FOR SHARE` 之上取 D-036 的有序鎖（兩個 owner 同時變更會 deadlock，T-009 re-review R1，見 ADR-019）：提供先取 D-036 有序 `FOR UPDATE`、再重讀 caller role 的 run 模式，並以兩個 owner 並行變更的測試證明無 deadlock。（review round 1 後：先不上鎖檢查 caller 是 owner，再取每個 organization 的 advisory lock，然後才是 D-036 的有序鎖與 role 重讀；以三個以上 owner 的隨機壓力測試驗證，ADR-023。）"
+        "成員變更不可在 `Run(ReadWrite)` 的 `FOR SHARE` 之上取 D-036 的有序鎖（兩個 owner 同時變更會 deadlock，T-009 re-review R1，見 ADR-019）：提供先取 D-036 有序 `FOR UPDATE`、再重讀 caller role 的 run 模式，並以兩個 owner 並行變更的測試證明無 deadlock。（review round 1 後：先不上鎖檢查 caller 是 owner，再取每個 organization 的 advisory lock，然後才是 D-036 的有序鎖與 role 重讀；以三個以上 owner 的隨機壓力測試驗證，ADR-023。）",
+        "Provisioning 改用最小權限的專用 role（D-042，H-009）：新 migration 建立 NOLOGIN role，只有所需的寫入與讀取；RLS／audit trigger 的 provisioning 例外改認此 role；cmd/provision-tenant 改 SET ROLE 它，CheckOperator 拒絕 twin_owner 與 runtime role 的成員。"
       ],
       "planned_outputs": [
         "internal/tenant/memberships/",
@@ -794,7 +796,7 @@
         "綁定 create/get/draft/patch/publish/list/version/reset routes。",
         "If-Match/ETag/media type/error 與 OpenAPI contract tests。",
         "產生 TS client；禁止重複 IR types。",
-        "開放 route 之前處理 ADR-022「待 owner 決定」：IR 儲存形式的讀取放大（T-012 review M4，建議 IR 欄位改存 canonical 文字並以 reviewer 的 R11c probe 先紅後綠）與 PublishModel.comment 的保存或移除（L9）。"
+        "開放 route 之前實作 owner 的決定（H-009）：D-040 新 migration 把 IR 欄位改存 canonical 文字（以 reviewer 的 R11c probe 先紅後綠）；D-041 在 ModelVersion 保存 PublishModel.comment（migration 與 contract）。"
       ],
       "planned_outputs": [
         "internal/model/http/",
@@ -2557,7 +2559,8 @@
         "Design tokens（顏色、字體與 CJK fallback、間距、密度、focus ring；dark mode 視 ADR 決定）與 app shell、基本元件（button、field、select、dialog、toast、table，以及 loading／empty／error／權限不足／409 狀態），套用到 T-014／T-044 既有畫面；文字仍只來自 T-044 catalog。",
         "UX 流程：每個 UI 任務先交可點擊 prototype 經 owner review，review 紀錄放在該任務 evidence；本任務以 T-015 editor 與 T-031 proposal review 的 low-fi prototype 驗證流程。T-043 的登入頁先用既有語意化 HTML，本任務完成後套用。",
         "自動檢查：axe-core（vitest DOM 與 Playwright）、只用鍵盤的 E2E、Playwright 截圖比對（en／zh-Hant × 390px／1280px），納入 make frontend-test／e2e-test 與 CI；截圖 baseline 變更需人工確認，不自動覆寫。",
-        "Owner 已定的限制（H-008）：無法以 prop 覆寫的元件庫無障礙字串可用該庫翻譯，但須列清單、審閱用語並以測試列出所有非 catalog 字串（React Aria 的繁中須傳 `zh-TW`，`zh-Hant` 會得到簡體）；P0 只做淺色主題、tokens 預留深色；只用系統字型；不用付費元件授權與安裝時回傳資料的套件。Spike 依 survey.md §6：React Aria Components＋CSS Modules＋tokens、Base UI＋Tailwind＋TanStack Table、Mantine，同一組表單＋表格＋dialog＋React Flow 小畫布與相同 9 項量測。"
+        "Owner 已定的限制（H-008）：無法以 prop 覆寫的元件庫無障礙字串可用該庫翻譯，但須列清單、審閱用語並以測試列出所有非 catalog 字串（React Aria 的繁中須傳 `zh-TW`，`zh-Hant` 會得到簡體）；P0 只做淺色主題、tokens 預留深色；只用系統字型；不用付費元件授權與安裝時回傳資料的套件。Spike 依 survey.md §6：React Aria Components＋CSS Modules＋tokens、Base UI＋Tailwind＋TanStack Table、Mantine，同一組表單＋表格＋dialog＋React Flow 小畫布與相同 9 項量測。",
+        "Owner 已選定（H-009，ADR-021 ACCEPTED）：React Aria Components 1.21.1＋CSS Modules＋CSS custom-property tokens；5 種 React Aria 內建繁中字串依 H-008 使用（清單見 ADR-021）；axe-core／@axe-core/playwright（MPL-2.0）只作測試工具；保留 React Flow 署名；成功回饋用頁內 role=\"status\"，toast 不在 P0 元件內。Spike 程式不搬進 repo，依選定的組重寫並先寫測試。"
       ],
       "planned_outputs": [
         "apps/web/ui/",

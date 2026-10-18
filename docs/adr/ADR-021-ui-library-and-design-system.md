@@ -1,6 +1,6 @@
 # ADR-021 — UI 函式庫與 design system（T-045）
 
-狀態：PROPOSED（T-045 agent 依 survey 與三個 spike 提出；**owner 選定後改為 ACCEPTED 才開始實作**，H-007）。日期：2026-10-18。依據：REQ-022、REQ-023、TEST-033、H-007、H-008、ADR-016、ADR-020；`checks/evidence/2026-10-18-T-045/` 的 `survey.md`、`spike-spec.md`、`spike-1-react-aria.md`、`spike-2-base-ui-tailwind.md`、`spike-3-mantine.md`。
+狀態：ACCEPTED（T-045 agent 依 survey 與三個 spike 提出；owner 於 2026-10-18 採用全部建議，H-009）。日期：2026-10-18。依據：REQ-022、REQ-023、TEST-033、H-007、H-008、ADR-016、ADR-020；`checks/evidence/2026-10-18-T-045/` 的 `survey.md`、`spike-spec.md`、`spike-1-react-aria.md`、`spike-2-base-ui-tailwind.md`、`spike-3-mantine.md`。
 
 ## 背景
 
@@ -48,13 +48,13 @@ H-007 要求比較多個 UI 函式庫，不直接採用 Tailwind＋shadcn/ui。S
   - 5 種函式庫繁中字串 → 依 H-008 列清單、審閱、以 Playwright 測試列出。
 - 若 owner 更重視 Tailwind／shadcn 生態與 token 強制、願意自己維護 grid 無障礙，選 2；若更重視「立刻有完整外觀」而接受較大的 CSS 與 root layout 的 inline script，選 3。
 
-## 待 owner 決定
+## Owner 的決定（H-009）
 
-1. **選哪一組**（建議 1）。
-2. 若選 1：接受下列 React Aria 繁中字串依 H-008 使用函式庫翻譯：可排序的欄、已依據「…」欄遞增／遞減排序、已選取「…」。、關閉（Select 的隱藏關閉鈕）、數字欄位（可覆寫，但覆寫會失去 React Aria 在 iOS 的處理；建議不覆寫）。
-3. 接受 axe-core／@axe-core/playwright（MPL-2.0）作為只在測試使用的工具（TEST-033 需要）；若選 2，另含 lightningcss（建置時）。
-4. React Flow 署名：保留（建議，免費授權的慣例）或隱藏。
-5. 成功回饋：頁內 `role="status"` 訊息（建議；通知會遮住焦點，且 React Aria 的 Toast 尚為 UNSTABLE）或 toast。
+1. **選 1：React Aria Components 1.21.1＋CSS Modules＋CSS custom-property tokens。**
+2. 下列 React Aria 繁中字串依 H-008 使用函式庫翻譯（列清單、審閱，並以 Playwright 測試列出）：可排序的欄、已依據「…」欄遞增／遞減排序、已選取「…」。、關閉（Select 的隱藏關閉鈕）、數字欄位（不覆寫，保留 React Aria 在 iOS 的處理）。
+3. axe-core 與 @axe-core/playwright（MPL-2.0）只作測試與開發工具，不隨產品發布。
+4. 保留 React Flow 署名（不設 `proOptions.hideAttribution`）。
+5. 成功回饋用頁內 `role="status"` 訊息，不用 toast。
 
 ## 選定後的實作（T-045 其餘 scope）
 

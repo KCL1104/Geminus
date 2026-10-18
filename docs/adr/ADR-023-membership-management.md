@@ -1,6 +1,6 @@
 # ADR-023 — 成員管理與受控 provisioning（T-010）
 
-狀態：PROPOSED（T-010 agent 選定，依 owner「除非真的阻擋作業或重大決策再來問我」先實作；owner 同意後改為 ACCEPTED）。日期：2026-10-18。依據：D-008、D-012、D-036（皆 APPROVED）、API_DATABASE §1、§2、§8、SECURITY §2、ADR-017、ADR-019（T-009 re-review R1）、T-010 review round 1（M1–M3、L1–L6、I1–I3）。
+狀態：ACCEPTED（T-010 agent 選定並先實作；owner 於 2026-10-18 批准，含 review round 1 後的鎖定設計，H-009）。日期：2026-10-18。依據：D-008、D-012、D-036（皆 APPROVED）、API_DATABASE §1、§2、§8、SECURITY §2、ADR-017、ADR-019（T-009 re-review R1）、T-010 review round 1（M1–M3、L1–L6、I1–I3）。
 
 ## Decision
 
@@ -54,4 +54,4 @@ D-036 的 ORDER BY 在有 advisory lock 之後不再是避免 deadlock 所必需
   - owner 可以把任何已存在的 user ID 加入自己的 organization，不需要該 user 同意（D-008 允許加入已知 user）；
   - 新增回 422（user 不存在）與 409／201（存在）的差異，會透露某個全域 user ID 是否存在。ULID 不可猜，風險低，P0 接受；若日後需要，改為一律回同一種答案或改用邀請流程。
   - Request 先驗格式再驗權限：viewer 送錯誤格式會先得到 400／422 而不是 403。不揭露資料，無害。
-- **待 owner 決定（review L5）**：provisioning login 以 `twin_owner`（schema owner）執行，平常的 onboarding 憑證因此也有 DDL 與 policy 權限，超過所需。最小權限的做法是新增一個專用 role，只有 users、organizations、memberships、audit_events 的 INSERT（與 users 的 SELECT），需要新 migration。在 owner 決定前維持 `twin_owner`，並以 `NOINHERIT`、拒絕多餘屬性與 runtime role 降低風險。
+- **Provisioning 的最小權限 role（review L5；D-042 APPROVED，H-009）**：provisioning login 原以 `twin_owner`（schema owner）執行，平常的 onboarding 憑證因此也有 DDL 與 policy 權限，超過所需。Owner 決定改用專用 role：新 migration 建立 NOLOGIN 的 provisioning role，只有所需的寫入與讀取，`cmd/provision-tenant` 改為 SET ROLE 它；在上 production 前完成，實作併入 T-010。

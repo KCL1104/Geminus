@@ -1,6 +1,6 @@
 # ADR-022 — Model／Draft／Version service（T-012）
 
-狀態：PROPOSED（T-012 agent 選定，依 owner「除非真的阻擋作業或重大決策再來問我」先實作；owner 同意後改為 ACCEPTED）。日期：2026-10-18。依據：D-003、D-028（皆 APPROVED）、D-011、D-020、D-029、API_DATABASE §3–§4、TWIN_IR_SPEC §5。
+狀態：ACCEPTED（T-012 agent 選定並先實作；owner 於 2026-10-18 批准，H-009）。日期：2026-10-18。依據：D-003、D-028（皆 APPROVED）、D-011、D-020、D-029、API_DATABASE §3–§4、TWIN_IR_SPEC §5。
 
 ## Decision
 
@@ -70,7 +70,9 @@
   - manifest 為空時，不需讀任何物件；
   - manifest 非空（不論是否用到）而沒有 store 時，回 503 `SERVICE_UNAVAILABLE`，不假裝驗證過。
 
-## 待 owner 決定（T-013 開放 route 之前；D-040、D-041，PROPOSED）
+## Owner 的決定（H-009：D-040、D-041 APPROVED，於 T-013 開放 route 之前實作）
+
+Owner 採用下列兩項的建議方案：IR 欄位改存 canonical 文字（D-040，選項 1），ModelVersion 保存 `comment`（D-041）。以下保留決定前的分析。
 
 - **儲存形式的讀取放大（T-012 review M4）**：jsonb 保存值而不是 bytes，讀出時數字以完整十進位印出（`1e300` 印成 301 位）。2 MiB 上限量的是 canonical bytes，reviewer 以 1.94 MB 的 canonical draft 得到 83.6 MB 的 jsonb 文字，一次 GetDraft 3.9 秒；每次 patch、publish 也要讀它。T-012 的檢查已改用 canonical 形式（M1），所以不會再誤判上限，但成本仍與 jsonb 文字成正比，寫入也一樣：複核時 1.94 MB 的 canonical draft（83.6 MB 文字）GetDraft 3.5 秒、patch 4.9 秒、publish 5.8 秒（T-012 review 2 N3）。Run 與 worker（T-021／T-023）讀 version IR 時也受影響。記為 D-040，為 T-013 的 decision gate。選項：
   1. **（建議）IR 欄位改為保存 canonical 文字**：新 migration 把 `model_versions.ir`、`model_drafts.ir`（及之後 scenario 的 patch 等）改為 `json`（保存原文字）或 `text`。讀出即為 hash 涵蓋的 bytes，SQL 也能以 `sha256` 核對 hash；不再需要讀取時 canonicalize。代價：一個 migration 與 storage 調整；失去 jsonb 運算子（目前沒有查詢使用）。
