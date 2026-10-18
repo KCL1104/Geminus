@@ -6,7 +6,6 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"io/fs"
 	"regexp"
 	"slices"
 	"unicode/utf8"
@@ -76,12 +75,17 @@ func (Pack) Template(templateName, modelID, name string, locale domainpack.Local
 	return Template(templateName, modelID, name, locale)
 }
 
+// readFile reads one template file by its path; Template reads the
+// embedded ones. A function rather than an io/fs value: a pack does no I/O
+// of its own (docs/ARCHITECTURE.md §2–§3).
+type readFile func(name string) ([]byte, error)
+
 // localize gives ir the template's default names in locale.
-func localize(fsys fs.ReadFileFS, ir *model.ModelIR, templateName string, locale domainpack.Locale) error {
+func localize(read readFile, ir *model.ModelIR, templateName string, locale domainpack.Locale) error {
 	if locale == domainpack.English {
 		return nil
 	}
-	raw, err := fsys.ReadFile("templates/" + templateName + "." + string(locale) + ".names.json")
+	raw, err := read("templates/" + templateName + "." + string(locale) + ".names.json")
 	if err != nil {
 		return fmt.Errorf("softwaredelivery: %s names of template %s: %w", locale, templateName, err)
 	}
@@ -159,10 +163,10 @@ func applyNames(ir *model.ModelIR, templateName string, locale domainpack.Locale
 // ErrUnknownTemplate, ErrUnknownLocale, ErrInvalidModelID or an
 // *InvalidError; any other error is internal.
 func Template(templateName, newModelID, name string, locale domainpack.Locale) (*model.ModelIR, error) {
-	return templateFrom(templates, templateName, newModelID, name, locale)
+	return templateFrom(templates.ReadFile, templateName, newModelID, name, locale)
 }
 
-func templateFrom(fsys fs.ReadFileFS, templateName, newModelID, name string, locale domainpack.Locale) (*model.ModelIR, error) {
+func templateFrom(read readFile, templateName, newModelID, name string, locale domainpack.Locale) (*model.ModelIR, error) {
 	if !slices.Contains(Templates(), templateName) {
 		return nil, ErrUnknownTemplate
 	}
@@ -176,7 +180,7 @@ func templateFrom(fsys fs.ReadFileFS, templateName, newModelID, name string, loc
 		return nil, &InvalidError{Issues: []model.ValidationIssue{
 			model.NewIssue(validate.IRSchemaInvalid, "/name", "the name is not valid UTF-8", model.SeverityError)}}
 	}
-	raw, err := fsys.ReadFile("templates/" + templateName + ".json")
+	raw, err := read("templates/" + templateName + ".json")
 	if err != nil {
 		return nil, fmt.Errorf("softwaredelivery: reading template %s: %w", templateName, err)
 	}
@@ -187,7 +191,7 @@ func templateFrom(fsys fs.ReadFileFS, templateName, newModelID, name string, loc
 	if ir.Metadata, err = userMetadata(templateName, ir.Metadata); err != nil {
 		return nil, fmt.Errorf("softwaredelivery: template %s metadata: %w", templateName, err)
 	}
-	if err := localize(fsys, &ir, templateName, locale); err != nil {
+	if err := localize(read, &ir, templateName, locale); err != nil {
 		return nil, err
 	}
 	ir.ModelID, ir.Name = newModelID, name

@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"testing/fstest"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/domainpack"
@@ -514,19 +513,26 @@ func TestTemplateNamesFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	file := func(data []byte) *fstest.MapFile { return &fstest.MapFile{Data: data} }
-	for name, fsys := range map[string]fstest.MapFS{
-		"no names file":  {"templates/" + softwaredelivery.DefaultTemplate + ".json": file(base)},
-		"a name missing": {"templates/" + softwaredelivery.DefaultTemplate + ".json": file(base), "templates/" + softwaredelivery.DefaultTemplate + ".zh-Hant.names.json": file([]byte(strings.Replace(string(names), `"ci_runner": "CI 執行器",`, "", 1)))},
+	files := func(m map[string][]byte) func(string) ([]byte, error) {
+		return func(name string) ([]byte, error) {
+			if data, ok := m[name]; ok {
+				return data, nil
+			}
+			return nil, os.ErrNotExist
+		}
+	}
+	tmpl, namesFile := "templates/"+softwaredelivery.DefaultTemplate+".json", "templates/"+softwaredelivery.DefaultTemplate+".zh-Hant.names.json"
+	for name, read := range map[string]func(string) ([]byte, error){
+		"no names file":  files(map[string][]byte{tmpl: base}),
+		"a name missing": files(map[string][]byte{tmpl: base, namesFile: []byte(strings.Replace(string(names), `"ci_runner": "CI 執行器",`, "", 1))}),
 	} {
-		ir, err := softwaredelivery.TemplateFrom(fsys, softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
+		ir, err := softwaredelivery.TemplateFrom(read, softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
 		if err == nil || ir != nil {
 			t.Errorf("%s: %v %v", name, ir, err)
 		}
 	}
 	// The same files, complete, give the embedded template.
-	fsys := fstest.MapFS{"templates/" + softwaredelivery.DefaultTemplate + ".json": file(base), "templates/" + softwaredelivery.DefaultTemplate + ".zh-Hant.names.json": file(names)}
-	got, err := softwaredelivery.TemplateFrom(fsys, softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
+	got, err := softwaredelivery.TemplateFrom(files(map[string][]byte{tmpl: base, namesFile: names}), softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
 	want, _ := softwaredelivery.Template(softwaredelivery.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese)
 	if err != nil || want == nil {
 		t.Fatalf("%v %v", err, want)

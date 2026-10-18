@@ -73,8 +73,8 @@ GO = [
     ("templates-step-dropped", CONF, "{\"templates\", c.templates},", ""),
     # softwaredelivery: locales and names
     ("unknown-locale-accepted", TMPL, "if !slices.Contains(domainpack.Locales, locale) {\n\t\treturn nil, ErrUnknownLocale", "if false && !slices.Contains(domainpack.Locales, locale) {\n\t\treturn nil, ErrUnknownLocale"),
-    ("not-localized", TMPL, "\tif err := localize(fsys, &ir, templateName, locale); err != nil {\n\t\treturn nil, err\n\t}", "\tif err := localize(fsys, &ir, templateName, domainpack.English); err != nil {\n\t\treturn nil, err\n\t}"),
-    ("localize-error-ignored", TMPL, "\tif err := localize(fsys, &ir, templateName, locale); err != nil {\n\t\treturn nil, err\n\t}", "\t_ = localize(fsys, &ir, templateName, locale)"),
+    ("not-localized", TMPL, "\tif err := localize(read, &ir, templateName, locale); err != nil {\n\t\treturn nil, err\n\t}", "\tif err := localize(read, &ir, templateName, domainpack.English); err != nil {\n\t\treturn nil, err\n\t}"),
+    ("localize-error-ignored", TMPL, "\tif err := localize(read, &ir, templateName, locale); err != nil {\n\t\treturn nil, err\n\t}", "\t_ = localize(read, &ir, templateName, locale)"),
     ("english-also-read", TMPL, "\tif locale == domainpack.English {\n\t\treturn nil\n\t}\n\traw, err", "\tif false && locale == domainpack.English {\n\t\treturn nil\n\t}\n\traw, err"),
     ("unknown-members-ok", TMPL, "if err := json.Unmarshal(raw, &names, json.RejectUnknownMembers(true)); err != nil {", "if err := json.Unmarshal(raw, &names); err != nil {"),
     ("missing-name-kept", TMPL, "\t\tif !ok || n == \"\" {\n\t\t\treturn fmt.Errorf", "\t\tif false && (!ok || n == \"\") {\n\t\t\treturn fmt.Errorf"),
