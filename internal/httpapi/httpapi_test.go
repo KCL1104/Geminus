@@ -17,7 +17,6 @@ import (
 
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/model/validate"
-	"github.com/kcl1104/geminus/internal/storage/postgres"
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/schemas"
 )
@@ -108,8 +107,8 @@ func TestWriteError(t *testing.T) {
 		{"unknown user", tenant.ErrUnknownUser, 403, Forbidden, ""},
 		{"no membership", tenant.ErrNoMembership, 404, NotFound, ""},
 		{"role", tenant.ErrForbidden, 403, Forbidden, ""},
-		{"retryable", fmt.Errorf("tx: %w", postgres.ErrRetryable), 503, ServiceUnavailable, ""},
-		{"outcome unknown", postgres.ErrOutcomeUnknown, 503, ServiceUnavailable, ""},
+		{"retryable", fmt.Errorf("tx: %w", tenant.ErrRetryable), 503, ServiceUnavailable, ""},
+		{"outcome unknown", tenant.ErrOutcomeUnknown, 503, ServiceUnavailable, ""},
 		{"cancelled", context.Canceled, 503, ServiceUnavailable, ""},
 		{"deadline", fmt.Errorf("query: %w", context.DeadlineExceeded), 503, ServiceUnavailable, ""},
 		{"internal", errors.New("pq: relation twin.secret_table does not exist at 10.0.0.5"), 500, InternalError, ""},
@@ -229,6 +228,7 @@ func TestDecodeJSON(t *testing.T) {
 		{"missing name", "application/json", `{}`, 422, RequestValidationFailed, ""},
 		{"empty name", "application/json", `{"name":""}`, 422, RequestValidationFailed, "/name"},
 		{"two failures", "application/json", `{"name":"","x":1}`, 422, RequestValidationFailed, "/name"},
+		{"U+0000 in a value", "application/json", `{"name":"P\u0000"}`, 422, RequestValidationFailed, "/name"},
 		{"array", "application/json", `[]`, 422, RequestValidationFailed, ""},
 	} {
 		r := httptest.NewRequest("POST", "/", strings.NewReader(c.body))
@@ -406,6 +406,28 @@ func TestScoped(t *testing.T) {
 		}
 		if c.status != 403 && c.resolver.got != [2]string{} {
 			t.Errorf("%s: resolved a user before refusing the request", c.name)
+		}
+	}
+}
+
+// U+0000 is found in values and member names at any depth, with the
+// pointer of the value or of the object holding the name (review L1).
+func TestNULStrings(t *testing.T) {
+	for doc, want := range map[string]string{
+		`{"a":"x\u0000"}`:                    "/a",
+		`{"a":{"b":["ok","\u0000"]}}`:        "/a/b/1",
+		`{"x":{"k\u0000":1}}`:                "/x",
+		`{"k\u0000":1}`:                      "",
+		`["\u0000"]`:                         "/0",
+		`{"a":[[[[[[[[[["\u0000"]]]]]]]]]]}`: "/a/0/0/0/0/0/0/0/0/0/0",
+	} {
+		if got, ok := nulString([]byte(doc)); !ok || got != want {
+			t.Errorf("%s: %q %v, want %q", doc, got, ok, want)
+		}
+	}
+	for _, doc := range []string{`{"a":"x"}`, `{"a":"\\u0000"}`, `{"a":"\u0001"}`, `{}`} {
+		if got, ok := nulString([]byte(doc)); ok {
+			t.Errorf("%s: U+0000 reported at %q", doc, got)
 		}
 	}
 }

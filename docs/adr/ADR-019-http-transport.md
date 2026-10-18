@@ -30,10 +30,11 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
   | `tenant.ErrUnknownUser` | 403 |
   | `tenant.ErrNoMembership` | 404（不揭露 organization 是否存在） |
   | `tenant.ErrForbidden` | 403 |
-  | `postgres.ErrRetryable`、`ErrOutcomeUnknown` | 503，提示以同一 Idempotency-Key 重試 |
+  | `tenant.ErrRetryable`、`ErrOutcomeUnknown`（即 `postgres.Classify` 的錯誤；httpapi 不 import storage 基礎層） | 503，提示重試（write 用同一 Idempotency-Key） |
 
 - 其他錯誤一律 500 `INTERNAL_ERROR`，訊息固定為 `internal error`，原因只寫 log（帶 request_id）。
 - Panic 轉為 500；`http.ErrAbortHandler` 照原意中止回應。
+- Contract 以外的 request 也回 envelope（T-009 review L2）：非 clean form 的 path（ServeMux 原本會 307 redirect）與 HEAD（ServeMux 原本交給 GET 的 handler）都是 404 `NOT_FOUND`；其他未宣告的 method 亦同。`OPTIONS *` 由 net/http 自己回空的 200，不到 handler。
 
 ### Request ID
 
@@ -45,6 +46,8 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
 - Content-Type 必須是 `application/json`，只接受 `charset=utf-8` 參數（media type、參數名稱與值皆不分大小寫），否則 415；參數格式錯誤也是 415。
 - 大小上限預設 1 MiB，超過回 413。每個有 request body 的 operation 都在 openapi 宣告 413 與 415，`scripts/check_contracts.py` 檢查。讀取中斷的 body 回 400，即使已讀到的部分是合法 JSON。
 - 解析失敗回 400 `INVALID_REQUEST`，涵蓋不合法 JSON、重複成員名稱、非 UTF-8、尾端多餘資料，detail 附 JSON Pointer。
+- 字串（值或成員名稱）含 U+0000 回 422 `REQUEST_VALIDATION_FAILED`，detail 指向該值或該 object：PostgreSQL 的 text 無法存放它，否則會在 DB 變成 500（T-009 review L1）。
+- Query string 格式錯誤（例如 `;` 分隔、無法解碼的 `%`）回 400，不只讀其中能讀的部分（`httpapi.Query`，T-009 review L6）。
 - 對 `schemas/` 的 request schema 驗證不過回 422 `REQUEST_VALIDATION_FAILED`，每個失敗的 JSON Pointer 各一個 detail。用的是 generic validator 同一份 schema，不另寫一套。Schema reference 無法解析，或通過 schema 的 body 無法解碼成 Go type（schema 與 type 不一致），是 server 的錯：500，不會當成功處理。
 
 ### Scope
@@ -55,7 +58,8 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
   3. 以 `tenant.ResolveUser` 解析 user；
   4. 把 scope 交給 handler。
 - Header 只是 selector（D-008）。Membership 與 role 由 handler 在 `tenant.DB.Run` 的同一個 transaction 中檢查：非 member 回 404，role 不足回 403。
-- Route 的 role 與 `planning/api-operations.json` 的 `x-required-roles` 由 contract test 鎖住。
+- 讀寫的 run 以 `FOR SHARE` 鎖住它檢查過的 membership row 直到 transaction 結束：同時發生的撤權或 role 變更會等這個 write commit，不會先 commit 而讓 write 繼續（T-009 review L3）。唯讀的 run 不上鎖。
+- Route 的 role 與 `planning/api-operations.json` 的 `x-required-roles` 由 contract test 鎖住；service 要求的是同一組值（`createRoles`、`readRoles`），所以被鎖住的就是實際執行的（T-009 review L5）。
 
 ### 寫入
 
@@ -67,7 +71,7 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
   - Request hash 是 body 的 JCS canonical form 的 SHA-256。
   - 同 key、同 hash 重播已存的 status 與 body，不同 hash 回 409 `IDEMPOTENCY_KEY_CONFLICT`。
   - 兩個並行 request 搶同一個 key 時，由 primary key 序列化：後到的等前者 commit 後重播。
-  - 保留 24 小時，過期後重新 claim。
+  - 保留 24 小時，過期後重新 claim。已存在的 key 以 `FOR UPDATE` 讀取：搶同一個過期 key 的重試依序讀到前一個留下的狀態，只有第一個重新 claim（T-009 review M1）。
   - Response 以 JCS canonical form 送出，jsonb 往返後重播的 bytes 仍相同。
   - `Idempotency-Key` 只接受 8–128 個可見 ASCII 字元（openapi `IdempotencyKey` 的 pattern `^[!-~]{8,128}$`）。
 - **Audit**：`internal/storage/auditlog` 在同一個 transaction 寫 `twin.audit_events`，`actor_id` 為 scope 的 user；DB trigger 也會強制這點。Metadata 只放 ID 與計數。
@@ -81,18 +85,18 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
 
 ### DB rule 的 gateway
 
-`db-only-in-storage` 改為不追進 `internal/storage` 與 `internal/tenant` 內部的依賴（`through`）：其他 package 經由它們存取資料，自己不 import driver。`tenant.Tx`／`tenant.TxOptions` 是 pgx 的 alias，service 持有 transaction 只為交給 storage。
-
-Import 規則看不到 SQL 字串：service 透過 `tenant.Tx` 自己寫 SQL 這件事，只能靠 review 擋下（`internal/project` 沒有 SQL）。
+- `db-only-in-storage` 改為不追進 `internal/storage` 與 `internal/tenant` 內部的依賴（`through`）：其他 package 經由它們存取資料，自己不 import driver。`tenant.Tx`／`tenant.TxOptions` 是 pgx 的 alias，service 持有 transaction 只為交給 storage。
+- 這兩個 gateway 包含 storage 的基礎層 `internal/storage/postgres`，它的 `Open` 接受任何連線字串：經由它，一個 package 可以自己開連線，繞過 `tenant.DB.Run`、`CheckRuntimeRole` 與 `Guard`（T-009 review M2）。新規則 `db-handles-only-in-gateways`：只有 `internal/storage`、`internal/tenant` 與 `cmd` 可以依賴它；httpapi 需要的錯誤由 `tenant` 轉出（`tenant.ErrRetryable`、`ErrOutcomeUnknown`）。
+- Import 規則看不到 SQL 字串：service 透過 `tenant.Tx` 自己寫 SQL（包括經 `tx.Conn()` 取得的連線）這件事只能靠 review 擋下（`internal/project` 沒有 SQL）。這些 SQL 仍在 `tenant.DB.Run` 的 transaction 內，以同一個 API login、在 RLS 與 scope 之下執行。
 
 ### Server
 
 `cmd/api` 的啟動與關閉：
 
 - **啟動**：
-  - 以 API runtime login 連 PostgreSQL；superuser、BYPASSRLS 或 table owner 都會被拒絕（`tenant.CheckRuntimeRole`）。
-  - Pool 裝 `tenant.Guard`。
-  - Timeouts：read header 10 s、read 30 s、write 60 s、idle 120 s；header 上限 32 KiB。
+  - 以 API runtime login 連 PostgreSQL；superuser、BYPASSRLS 或 table owner 都會被拒絕（`tenant.CheckRuntimeRole`，log 為 `refusing the database login`）；DB 無法連線時 log 為 `database unavailable`，含 host、user、database，不含密碼。
+  - Pool 裝 `tenant.Guard`（`poolConfig`）。
+  - Timeouts：read header 10 s、read 30 s、write 60 s、idle 120 s；header 上限 32 KiB（`newServer`）。兩者與 shutdown 等待時間由測試鎖住，因為少了任何一項都不會反映在回應上（T-009 review M1、L4）。
   - 監聽 `API_LISTEN_ADDR`（預設 `:8080`）。
 - **關閉**：SIGINT／SIGTERM 時 graceful shutdown，最多等 20 s。
 

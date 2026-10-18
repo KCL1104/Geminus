@@ -20,11 +20,12 @@ type Route struct {
 }
 
 // Routes are the project operations this package serves. A contract test
-// compares them with planning/api-operations.json.
+// compares them with planning/api-operations.json; their roles are the
+// ones the service requires (createRoles, readRoles).
 var Routes = []Route{
-	{"POST", "/v1/projects", "createProject", tenant.Writers},
-	{"GET", "/v1/projects", "listProjects", tenant.Members},
-	{"GET", "/v1/projects/{id}", "getProject", tenant.Members},
+	{"POST", "/v1/projects", "createProject", createRoles},
+	{"GET", "/v1/projects", "listProjects", readRoles},
+	{"GET", "/v1/projects/{id}", "getProject", readRoles},
 }
 
 // Register adds the project routes to mux.
@@ -83,7 +84,10 @@ func idempotencyKey(r *http.Request) (string, error) {
 }
 
 func (h handlers) list(w http.ResponseWriter, r *http.Request, sc tenant.Scope) error {
-	q := r.URL.Query()
+	q, err := httpapi.Query(r)
+	if err != nil {
+		return err
+	}
 	limit := 50
 	if vs, ok := q["limit"]; ok {
 		n, err := strconv.Atoi(vs[0])

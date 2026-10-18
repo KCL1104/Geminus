@@ -61,6 +61,14 @@ type Service struct {
 
 const createOperation = "createProject"
 
+// The roles each operation requires (x-required-roles). Routes declares
+// the same values, so the contract test on Routes locks what is enforced
+// (T-009 review L5).
+var (
+	createRoles = tenant.Writers
+	readRoles   = tenant.Members
+)
+
 // Create creates a project named req.Name, or replays the response of the
 // earlier request with the same Idempotency-Key. It returns the HTTP
 // status and body to send. body is the request body as received; its
@@ -75,7 +83,7 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key st
 	var status int
 	var out []byte
 	err = s.DB.Run(ctx, sc, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
-		if err := m.Require(tenant.Writers...); err != nil {
+		if err := m.Require(createRoles...); err != nil {
 			return err
 		}
 		replay, err := idempotency.Claim(ctx, tx, k, hash)
@@ -114,7 +122,7 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key st
 func (s *Service) Get(ctx context.Context, sc tenant.Scope, id string) (Project, error) {
 	var out Project
 	err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
-		if err := m.Require(tenant.Members...); err != nil {
+		if err := m.Require(readRoles...); err != nil {
 			return err
 		}
 		p, err := projects.Get(ctx, tx, m.OrganizationID, id)
@@ -139,7 +147,7 @@ func (s *Service) List(ctx context.Context, sc tenant.Scope, cursor string, limi
 	}
 	page := Page{Items: []Project{}}
 	err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
-		if err := m.Require(tenant.Members...); err != nil {
+		if err := m.Require(readRoles...); err != nil {
 			return err
 		}
 		rows, err := projects.List(ctx, tx, m.OrganizationID, after, limit+1)

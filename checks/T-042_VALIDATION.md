@@ -13,7 +13,7 @@
 | `internal/domainpack/domainpack.go` | `NewRegistry` 只接受型別宣告在 `internal/domainpack` 自己的直接子 package 中的 pack，且一個 package 一個 pack（第三輪 L2）：架構規則把這些 package 分開，同一 package 的第二個 pack、宣告在 pack subpackage 的型別（例如在別處 instantiate 的 generic）或 `internal/domainpack` 以外的 pack 都會逃過規則。測試 pack 經 `export_test.go` 的 `NewRegistryAnyPackage` 登錄 |
 | `internal/domainpack/conformance/broken_test.go` | 69 列測試、66 種壞 pack（大多只壞一個方法；為了讓 prompt 的 catalog 一致或為了洩漏，少數覆寫兩個方法），每列都必須產生指定的 finding（部分列另要求 detail 內容，區分「含 sentinel」與「只是改變」）；4 個正確 pack（拒絕推論、會推論、123 字元 ID、ID 等於 suite 的改名 domain）0 finding；另有 suite 本身的錯誤（沒有 model、model 不 valid、engine 無法執行的 model）與 `Run` 確實讓測試失敗（子 process） |
 | `internal/domainpack/softwaredelivery/conformance_test.go` | P0 pack 以預設 template 與 4 個 golden model（report-example 以合成的 frozen samples 解析 empirical dataset）通過 suite |
-| `scripts/check-architecture/` | `make architecture-check`：把 `go list -e -deps -test` 的 build graph 在 8 個平台 × cgo 開／關（16 個設定）上合併，檢查 9 條依賴規則（`rules.go`）與結構規則（`every-file-built`、`every-package-listed`、`pack-layout`）；違規時列出整條 import chain 或原因與規則理由，exit 1；任何 package（含測試檔）無法 build 是錯誤（exit 2）；一條規則若沒有套用到任何 package 也是錯誤（除非標為 future） |
+| `scripts/check-architecture/` | `make architecture-check`：把 `go list -e -deps -test` 的 build graph 在 8 個平台 × cgo 開／關（16 個設定）上合併，檢查依賴規則（`rules.go`；T-042 驗收時 9 條，T-009 review 加入第 10 條 `db-handles-only-in-gateways`）與結構規則（`every-file-built`、`every-package-listed`、`pack-layout`）；違規時列出整條 import chain 或原因與規則理由，exit 1；任何 package（含測試檔）無法 build 是錯誤（exit 2）；一條規則若沒有套用到任何 package 也是錯誤（除非標為 future） |
 | `Makefile`、`.github/workflows/ci.yml` | `architecture-check` 由 NOT IMPLEMENTED 換成真實命令；CI backend job 新增此步驟；`GO_PKGS`、gofmt 與 govulncheck 涵蓋 `./scripts/...` |
 | `docs/ARCHITECTURE.md` §3 | T-042 實作段落 |
 | `docs/CONTRACT_BLOCKERS.md` | CB-37（見下） |
@@ -43,6 +43,7 @@
 | `no-test-infra-in-production` | production code 不連結 `testing`、`contracttest` 或 conformance |
 | `llm-sdks-only-in-ai` | LLM SDK 只在 `internal/ai` 與 `cmd` |
 | `db-only-in-storage` | DB driver／`database/sql` 只在 `internal/storage`、`internal/tenant` 與 `cmd`。T-009 起這兩者是 gateway（`through`）：經由它們存取資料的 package 不因它們內部的 driver 而違規，自己 import driver 仍是違規（ADR-019） |
+| `db-handles-only-in-gateways`（T-009 review M2） | storage 的基礎層 `internal/storage/postgres`（`Open` 接受任何連線字串）只能由 `internal/storage`、`internal/tenant` 與 `cmd` 依賴，其他 package 無法自己開連線繞過 tenant scope |
 | `ai-suggests-only`（future） | `internal/ai` 不得依賴 storage、tenant、cmd、`os/exec`、DB；package 尚未建立，標為 future |
 
 結構規則：`every-file-built`（任何設定都不編譯的檔案、或只在自訂 tag 下存在的 package）、`every-package-listed`（被 import 卻不在 `./...` 中的 module package：`testdata`、以 `_` 或 `.` 開頭的目錄；module path 下另一個 `go.mod` 的 package 同樣拒絕，訊息指出是 nested module，第三輪 L4）、`pack-layout`（pack 是 `internal/domainpack` 的直接子 package；pack 的 subpackage 只能由 pack 自己 import，且不得依賴 `internal/domainpack`）。**更正（第三輪 L2）**：第二輪寫「所以 subpackage 不可能是第二個 pack」是錯的：同一 package 中嵌入 pack 的第二個型別、或宣告在 subpackage 且只 import kernel 的 generic pack 在 pack package 中 instantiate，都通過 `pack-layout`。「一個 package 一個 pack」改由 `NewRegistry` 在登錄時強制（見交付內容）。`pack-layout` 也因此拒絕一些合理的版面：依賴 `domainpack` 型別的 catalog subpackage、拆成 subpackage 的 conformance suite、由 cmd 直接 import pack 的 subpackage（例如 templates）；需要時再放寬並記錄理由。
@@ -136,7 +137,7 @@ reviewer 的 conformance probe 在新版：R1（NaN）、R3（改寫 seed）、R
 | reviewer 的 nested module repo，以新 binary 執行 | 1 | 預期的違規，訊息為 nested module（`nested-module-probe.log`） |
 | Mutation（`mutants.py`，本目錄） | 0 | **196/196 被擋，1 個 equivalent，3 個 kernel guard（4/4 個 pair 證明）**（`mutation.log`，單次完整執行）。52 個 finding site、6 個 kernel mutant、4 個 pair、148 個 suite／checker／規則表 mutant：第二輪的 118 個（3 個 pattern 跟著改寫的程式更新）加上本輪 30 個（sentinel model 的每類 ID 與 reference、前綴檢查、`NewRegistry` 的套件檢查與其各個條件、x/text 的範圍與各項、nested module 訊息與 `Module` 欄位）。Equivalent 同第二輪：`metrics/run` 的 freeze site |
 | `make spec-check` | 0 | |
-| GitHub Actions | 推送後補記 | |
+| GitHub Actions run 39129882500（426ed72，驗收 commit） | success | 4/4 |
 
 第二輪 review 修正後（`checks/evidence/2026-10-18-T-042-review2/`）：
 

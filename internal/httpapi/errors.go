@@ -14,7 +14,6 @@ import (
 	"net/http"
 
 	"github.com/kcl1104/geminus/internal/auth"
-	"github.com/kcl1104/geminus/internal/storage/postgres"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
@@ -105,8 +104,8 @@ func classify(err error) (*Error, bool) {
 		return Errorf(NotFound, "not found"), true
 	case errors.Is(err, tenant.ErrForbidden):
 		return Errorf(Forbidden, "your role in this organization does not allow this operation"), true
-	case errors.Is(err, postgres.ErrRetryable), errors.Is(err, postgres.ErrOutcomeUnknown):
-		return Errorf(ServiceUnavailable, "the request could not be completed; retry it with the same Idempotency-Key"), true
+	case errors.Is(err, tenant.ErrRetryable), errors.Is(err, tenant.ErrOutcomeUnknown):
+		return Errorf(ServiceUnavailable, "the request could not be completed; retry it (a write with the same Idempotency-Key)"), true
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return Errorf(ServiceUnavailable, "the request did not complete in time"), true
 	}

@@ -1,0 +1,61 @@
+== review round 1: new tests on fb6e265's code (before the fixes)
+-- api, tenant, storage, checker (behaviour; build failures are listed as such)
+--- FAIL: TestOutsideTheContract (0.12s)
+    api_test.go:495: GET /v1//projects: 200 {"items":[],"next_cursor":null}
+    api_test.go:495: GET /v1/x/../projects: 200 {"items":[],"next_cursor":null}
+    api_test.go:495: GET /v1/./projects: 200 {"items":[],"next_cursor":null}
+    api_test.go:495: GET //v1/projects: 200 {"items":[],"next_cursor":null}
+    api_test.go:501: HEAD /v1/projects: 200 map[Cache-Control:[no-store] Content-Length:[31] Content-Type:[application/json] Date:[Sun, 18 Oct 2026 13:05:40 GMT] X-Content-Type-Options:[nosniff] X-Request-Id:[req_01M57HWBPYRWQ6M0TXZHEKQRX4]]
+    api_test.go:507: ?limit=1;cursor=x: 200 {"items":[],"next_cursor":null}
+    api_test.go:507: ?limit=%zz: 200 {"items":[],"next_cursor":null}
+    api_test.go:507: ?cursor=%: 200 {"items":[],"next_cursor":null}
+    api_test.go:513: NUL in a name: 500 {"error":{"code":"INTERNAL_ERROR","message":"internal error","request_id":"req_01M57HWBQDKJZ125VP8E2MD49E"}}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/api	1.639s
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/tenant	600.074s
+FAIL
+ok  	github.com/kcl1104/geminus/internal/storage/projects	0.041s
+--- FAIL: TestSyntheticGraph (0.00s)
+    check_test.go:255: missing violation "db-handles-only-in-gateways ./internal/rawdb ./internal/rawdb>./internal/storage/postgres"
+    check_test.go:255: missing violation "db-handles-only-in-gateways ./internal/ai ./internal/ai>./internal/storage/postgres"
+--- FAIL: TestRound2Probes (0.34s)
+    --- FAIL: TestRound2Probes/service_opening_its_own_database_handle (0.52s)
+--- FAIL: TestPolicy (0.00s)
+    check_test.go:703: rule db-handles-only-in-gateways is gone
+    check_test.go:703: rule db-handles-only-in-gateways is gone
+    check_test.go:703: rule db-handles-only-in-gateways is gone
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	2.926s
+FAIL
+-- cmd/api and httpapi: the new API (newServer, poolConfig, shutdownGrace, nulString) does not exist yet
+# github.com/kcl1104/geminus/internal/httpapi
+# [github.com/kcl1104/geminus/internal/httpapi]
+vet: internal/httpapi/httpapi_test.go:424:17: undefined: nulString
+# github.com/kcl1104/geminus/cmd/api
+# [github.com/kcl1104/geminus/cmd/api]
+vet: cmd/api/main_test.go:78:7: undefined: newServer
+-- M1: tests that guard correct code, run against the mutant each exists for
+select-not-locked:
+--- FAIL: TestExpiredKeyRace (0.18s)
+    api_test.go:480: round 0: 4 different answers to one request
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/api	0.194s
+cursor-length-unbounded:
+--- FAIL: TestList (0.61s)
+    api_test.go:615: a cursor of 2050 characters: 200 {"items":[{"id":"prj_01M57JF0WYGZRT7ZAK29HR56XS","organization_id":"org_01M57JF0RHKXMV0X9QWM5PWQRJ","name":"Pd","created_at":"2026-10-18T13:15:52.093495Z","created_by":"usr_01M57JF0RKJMQ4BKD2QN5BXRQ6"},{"id":"prj_01M57JF0X4M9WJXSK5W5TP934X","organization_id":"org_01M57JF0RHKXMV0X9QWM5PWQRJ","name":"Pe","created_at":"2026-10-18T13:15:52.099752Z","created_by":"usr_01M57JF0RKJMQ4BKD2QN5BXRQ6"},{"id":"prj_01M57JF0XBEFS31KG5WVW52KG0","organization_id":"org_01M57JF0RHKXMV0X9QWM5PWQRJ","name":"Pf","created_at":"2026-10-18T13:15:52.105944Z","created_by":"usr_01M57JF0RKJMQ4BKD2QN5BXRQ6"},{"id":"prj_01M57JF0XHAS70GSB2W9TNNZMJ","organization_id":"org_01M57JF0RHKXMV0X9QWM5PWQRJ","name":"Pg","created_at":"2026-10-18T13:15:52.11245Z","created_by":"usr_01M57JF0RKJMQ4BKD2QN5BXRQ6"}],"next_cursor":null}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/api	0.674s
+
+[exited with code 0]
+-- tenant, with the test's own wait fixed (the first attempt above hung on a test bug: it waited twice for one result)
+--- FAIL: TestRunLocksMembership (0.03s)
+    tenant_test.go:343: read-write: the role change committed while the run was in progress
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/tenant	0.038s
+FAIL
+-- keyset without the id tie-break (first page), against the plan-independent test
+--- FAIL: TestKeysetTies (0.03s)
+    projects_test.go:101: without index scans: [prj_01M57JFV9TTMY4NRNC08JX6VFJ prj_01M57JFV9TFFDR8SDBAT9NMVG4 prj_01M57JFV9TA12E0WN84NC2JP3H prj_01M57JFV9T2H2PF9K6YNQQBNS6], want [prj_01M57JFV9T2H2PF9K6YNQQBNS6 prj_01M57JFV9TA12E0WN84NC2JP3H prj_01M57JFV9TFFDR8SDBAT9NMVG4 prj_01M57JFV9TTMY4NRNC08JX6VFJ] (<nil>)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/projects	0.031s

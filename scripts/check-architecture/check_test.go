@@ -219,10 +219,13 @@ func TestSyntheticGraph(t *testing.T) {
 	add(m("internal/domainpack/alpha/second"), false, m("internal/domainpack/alpha/rules"), m("internal/domainpack"))
 	// A service reaches the database through the tenant scope (a gateway of
 	// db-only-in-storage), not by importing the driver.
-	add(m("internal/tenant"), false, "github.com/jackc/pgx/v5")
+	add(m("internal/tenant"), false, "github.com/jackc/pgx/v5", m("internal/storage/postgres"))
 	add("github.com/jackc/pgx/v5", false)
 	add(m("internal/service"), false, m("internal/tenant"))
 	add(m("internal/rawsql"), false, m("internal/tenant"), "github.com/jackc/pgx/v5")
+	// Opening its own handle through the raw foundation is not going through
+	// a gateway (T-009 review M2).
+	add(m("internal/rawdb"), false, m("internal/storage/postgres"))
 	violations, errs := check(g, rules)
 	if len(errs) > 0 {
 		t.Fatal(errs)
@@ -245,6 +248,8 @@ func TestSyntheticGraph(t *testing.T) {
 		"pack-layout ./internal/project ",
 		"pack-layout ./internal/domainpack/alpha/second ",
 		"db-only-in-storage ./internal/rawsql ./internal/rawsql>github.com/jackc/pgx/v5",
+		"db-handles-only-in-gateways ./internal/rawdb ./internal/rawdb>./internal/storage/postgres",
+		"db-handles-only-in-gateways ./internal/ai ./internal/ai>./internal/storage/postgres",
 	} {
 		if !got[want] {
 			t.Errorf("missing violation %q", want)
@@ -252,7 +257,7 @@ func TestSyntheticGraph(t *testing.T) {
 	}
 	for v := range got {
 		for _, never := range []string{"domain-packs ./internal/domainpack/alpha ", "llm-sdks-only-in-ai ./internal/ai ", "llm-sdks-only-in-ai ./cmd/api ",
-			"db-only-in-storage ./internal/service ",
+			"db-only-in-storage ./internal/service ", "db-handles-only-in-gateways ./internal/service ", "db-handles-only-in-gateways ./internal/storage/",
 			"no-test-infra-in-production ./internal/contracttest ", "db-only-in-storage ./internal/storage/postgres "} {
 			if strings.HasPrefix(v, never) {
 				t.Errorf("unexpected violation %q", v)
@@ -413,6 +418,8 @@ func TestRound2Probes(t *testing.T) {
 		}, "pack-layout", "./internal/domainpack/packs/beta", "a subpackage of ./internal/domainpack/packs depends on ./internal/domainpack"},
 		{"pack subpackage in another package's tests", map[string]string{sd + "zzsub/a.go": "package zzsub\n", "cmd/api/zz_probe_test.go": "package main\n\nimport _ \"" + module + "/internal/domainpack/softwaredelivery/zzsub\"\n"}, "pack-layout", "./cmd/api", "imports ./internal/domainpack/softwaredelivery/zzsub"},
 		{"pack third-party module", map[string]string{sd + "zz_probe.go": "package softwaredelivery\n\nimport _ \"github.com/go-jose/go-jose/v4\"\n"}, "domain-packs", "./internal/domainpack/softwaredelivery", "github.com/go-jose/go-jose/v4"},
+		// T-009 review M2: a service opening its own handle, around the tenant scope.
+		{"service opening its own database handle", map[string]string{"internal/project/zzrawdb/r.go": "package zzrawdb\n\nimport _ \"" + module + "/internal/storage/postgres\"\n"}, "db-handles-only-in-gateways", "./internal/project/zzrawdb", "./internal/storage/postgres"},
 		// Third review L1: an allowed module's other packages are not allowed.
 		{"kernel x/text package that reads files", map[string]string{eng + "zz_probe.go": "package engine\n\nimport \"golang.org/x/text/unicode/cldr\"\n\nfunc zzRead() { _, _ = (&cldr.Decoder{}).DecodePath(\"/etc\") }\n"}, "generic-kernel", "./internal/simulation/engine", "golang.org/x/text/unicode/cldr"},
 		{"pack x/text package that reads files", map[string]string{sd + "zz_probe.go": "package softwaredelivery\n\nimport _ \"golang.org/x/text/unicode/cldr\"\n"}, "domain-packs", "./internal/domainpack/softwaredelivery", "golang.org/x/text/unicode/cldr"},
@@ -673,6 +680,9 @@ func TestPolicy(t *testing.T) {
 		want{"llm-sdks-only-in-ai", m("tools/x"), llm, false, false},
 		want{"db-only-in-storage", m("internal/config"), append(slices.Clone(db), "database/sql"), false, false},
 		want{"db-only-in-storage", m("pkg/anything"), db, false, false},
+		want{"db-handles-only-in-gateways", m("internal/project"), []string{m("internal/storage/postgres")}, false, false},
+		want{"db-handles-only-in-gateways", m("internal/httpapi"), []string{m("internal/storage/postgres")}, true, false},
+		want{"db-handles-only-in-gateways", m("pkg/anything"), []string{m("internal/storage/postgres")}, false, false},
 		want{"auth-authenticates-only", m("internal/auth"), slices.Concat([]string{m("internal/tenant"), m("internal/storage/postgres"), m("internal/ai"), m("cmd/api"),
 			m("internal/config"), m("internal/domainpack/softwaredelivery"), m("internal/model"), m("internal/simulation/des"), "database/sql"}, db, llm), false, false},
 		want{"ai-suggests-only", m("internal/ai"), slices.Concat([]string{m("internal/storage/postgres"), m("internal/tenant"), m("cmd/api"), "os/exec", "database/sql"}, db), false, false},

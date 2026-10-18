@@ -202,6 +202,18 @@ var rules = []rule{
 		through: []string{"./internal/storage/...", "./internal/tenant/..."},
 	},
 	{
+		// The gateways above include the raw foundation, whose Open takes
+		// any connection string: through it a package could open its own
+		// handle around tenant.DB.Run, CheckRuntimeRole and Guard (T-009
+		// review M2). Only the gateways themselves and cmd use it.
+		name:    "db-handles-only-in-gateways",
+		why:     "connections are opened by cmd and used through internal/tenant and the storage packages, so every query runs in the tenant scope",
+		applies: []string{"./..."},
+		except:  []string{"./internal/storage/...", "./internal/tenant/...", "./cmd/..."},
+		forbid:  []string{"./internal/storage/postgres/..."},
+		through: []string{"./internal/storage/...", "./internal/tenant/..."},
+	},
+	{
 		name:    "auth-authenticates-only",
 		why:     "internal/auth verifies tokens only; users, memberships and roles come from the tenant scope, never from auth (docs/ARCHITECTURE.md §2, D-008)",
 		applies: []string{"./internal/auth/..."},

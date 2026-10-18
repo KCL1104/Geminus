@@ -55,6 +55,9 @@ func Claim(ctx context.Context, tx pgx.Tx, k Key, hash string) (*Response, error
 	if tag.RowsAffected() == 1 {
 		return nil, nil
 	}
+	// FOR UPDATE: retries racing on an expired key queue here, and each
+	// reads the row as the one before it left it, so only the first
+	// re-claims it (T-009 review M1).
 	var stored string
 	var status *int
 	var body []byte

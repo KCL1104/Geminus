@@ -567,7 +567,8 @@
           "report": "checks/T-009_VALIDATION.md",
           "summary": "Project routes（POST/GET /v1/projects、GET /v1/projects/{id}）與共用 HTTP 層（ADR-019，PROPOSED）：封閉 error code 與 status 由 contract test 鎖成 schema、server 發的 req_ ULID、strict 且經 schema 驗證的 JSON body（415/413/400/422）、Scoped middleware（token → 單一 X-Organization-ID → ResolveUser），membership 與 role 在同一個 tenant.DB.Run transaction 檢查（非 member 404、role 不足 403）。Create 的效果、audit event 與 idempotency response 同一 transaction（D-011：org/actor/operation scope、JCS hash、byte 相同的重播、409、24 小時）；list 以 (created_at, id) keyset 與綁 organization／list 的 cursor 分頁；storage 皆另帶 organization filter。cmd/api 以 API runtime login 實際服務。make integration-test（db-test＋DB-backed Go tests，-p 1）在新的 PostgreSQL 16 cluster 通過；CI db job 改跑它。Worker 部分 NOT RUN（T-019）。",
           "reviewer": "pending: independent reviewer agent (H-003)",
-          "ci": "https://github.com/KCL1104/Geminus/actions/runs/39124340510 (fb6e265: 4/4 success)"
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/39124340510 (fb6e265: 4/4 success)",
+          "review_round_1": "independent reviewer agent (H-003) 2026-10-18 審 fb6e265（git archive export）：CHANGES REQUESTED — runtime 行為成立；M1 mutation 證據分類有誤（select-not-locked、cursor-length-unbounded、guard-not-installed 不是 equivalent）；M2 through gateway 含 storage/postgres，service 可自己開連線繞過 tenant scope；L1 U+0000 → 500；L2 非 clean path 307、HEAD 未宣告；L3 撤權可在 write 進行中先 commit；L4 server 設定無測試；L5 Routes.Roles 未用於授權；L6 格式錯誤的 query 被丟棄；L7 keyset tie-break 測試依賴 plan；L8 訊息。全部先紅後綠修正（red-review1.log）：過期 key 競爭測試、2048/2050 cursor、TestServerSettings、db-handles-only-in-gateways、U+0000 422、非 clean path/HEAD 404 envelope、membership FOR SHARE、roles 共用、httpapi.Query、關閉 index scan 的 tie 測試、DB 訊息分開。mutation 在最終工作樹單次完整執行。等待同一 reviewer 複核。"
         }
       ]
     },
@@ -2369,7 +2370,8 @@
           "review_round_3": "同一 reviewer 複核 bc6da42（以 git archive export，未使用含 T-009 修改的工作樹）：ACCEPT。N1–N11 已修正，16 個設定下 kernel 與 pack 碰不到 I/O、DB、LLM、其他 pack、application layer、proxy、非 Go 原始檔或未列出的 package；報告數字全部重現。6 個 low 發現於驗收後先紅後綠修正：L1 x/text 只允許 catalog 連結的 package（unicode/cldr 會讀檔），jsonschema FileLoader 列入 import 規則看不到的事；L2 報告「subpackage 不可能是第二個 pack」為誤，改由 NewRegistry 在登錄時要求一個直接子 package 一個 pack；L3 sentinel model 的所有 ID 帶 sentinel；L4 nested module 以正確訊息拒絕；L5 CI 成本保留 -race；L6 報告表更新。174 RUN；mutation 196/196＋1 equivalent＋3 kernel guards（4/4 pairs）。證據 checks/evidence/2026-10-18-T-042-review3/。",
           "accepted_at": "2026-10-18",
           "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；第二輪 CHANGES REQUESTED 已修正（bc6da42），同一 reviewer 第三次複核 ACCEPT；複核的 low 發現亦已修正",
-          "ci_before_acceptance": "https://github.com/KCL1104/Geminus/actions/runs/39118014604 (bc6da42: 4/4 success); https://github.com/KCL1104/Geminus/actions/runs/39124340510 (fb6e265, with T-009: 4/4 success)"
+          "ci_before_acceptance": "https://github.com/KCL1104/Geminus/actions/runs/39118014604 (bc6da42: 4/4 success); https://github.com/KCL1104/Geminus/actions/runs/39124340510 (fb6e265, with T-009: 4/4 success)",
+          "ci_after_acceptance": "https://github.com/KCL1104/Geminus/actions/runs/39129882500 (426ed72: 4/4 success)"
         }
       ]
     },

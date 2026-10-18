@@ -43,6 +43,14 @@ type (
 	TxOptions = pgx.TxOptions
 )
 
+// Errors of a run that callers map without the storage foundation, which
+// only gateways and cmd may import (T-009 review M2): retrying may succeed,
+// or the commit's outcome is unknown.
+var (
+	ErrRetryable      = postgres.ErrRetryable
+	ErrOutcomeUnknown = postgres.ErrOutcomeUnknown
+)
+
 // Transaction modes for Run.
 var (
 	ReadWrite = TxOptions{}
@@ -133,9 +141,12 @@ func setScope(ctx context.Context, tx pgx.Tx, org, user string) error {
 }
 
 // Run executes fn in one transaction scoped to s, after confirming that
-// s.UserID is a member of s.OrganizationID. Errors from fn are classified by
-// postgres.Classify; the transaction rolls back on error, panic or
-// cancellation, which also clears the scope.
+// s.UserID is a member of s.OrganizationID. A read-write run keeps the
+// membership row share-locked until it ends, so a concurrent revocation or
+// role change waits for the write instead of committing first while the
+// write goes on (T-009 review L3); a read-only run takes no lock. Errors
+// from fn are classified by postgres.Classify; the transaction rolls back
+// on error, panic or cancellation, which also clears the scope.
 func (d *DB) Run(ctx context.Context, s Scope, opts pgx.TxOptions, fn func(ctx context.Context, tx pgx.Tx, m Membership) error) error {
 	if !orgID.MatchString(s.OrganizationID) || !userID.MatchString(s.UserID) {
 		return ErrInvalidScope
@@ -144,9 +155,12 @@ func (d *DB) Run(ctx context.Context, s Scope, opts pgx.TxOptions, fn func(ctx c
 		if err := setScope(ctx, tx, s.OrganizationID, s.UserID); err != nil {
 			return err
 		}
+		q := `SELECT role FROM twin.memberships WHERE organization_id=$1 AND user_id=$2`
+		if opts.AccessMode != pgx.ReadOnly {
+			q += ` FOR SHARE`
+		}
 		var role Role
-		err := tx.QueryRow(ctx, `SELECT role FROM twin.memberships WHERE organization_id=$1 AND user_id=$2`,
-			s.OrganizationID, s.UserID).Scan(&role)
+		err := tx.QueryRow(ctx, q, s.OrganizationID, s.UserID).Scan(&role)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoMembership
 		}

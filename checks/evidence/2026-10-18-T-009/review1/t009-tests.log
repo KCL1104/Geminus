@@ -1,0 +1,140 @@
+=== RUN   TestEncode
+--- PASS: TestEncode (0.00s)
+=== RUN   TestNew
+--- PASS: TestNew (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ids	0.012s
+=== RUN   TestStatusMatchesSchema
+--- PASS: TestStatusMatchesSchema (0.00s)
+=== RUN   TestWriteError
+--- PASS: TestWriteError (0.01s)
+=== RUN   TestOrganizationIDMatchesSchema
+--- PASS: TestOrganizationIDMatchesSchema (0.00s)
+=== RUN   TestRequestID
+--- PASS: TestRequestID (0.00s)
+=== RUN   TestRecover
+--- PASS: TestRecover (0.00s)
+=== RUN   TestDecodeJSON
+--- PASS: TestDecodeJSON (0.01s)
+=== RUN   TestDecodeJSONFailures
+--- PASS: TestDecodeJSONFailures (0.00s)
+=== RUN   TestWriteJSONFallback
+--- PASS: TestWriteJSONFallback (0.00s)
+=== RUN   TestScoped
+--- PASS: TestScoped (0.00s)
+=== RUN   TestNULStrings
+--- PASS: TestNULStrings (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/httpapi	0.038s
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestProjectIDMatchesSchema
+--- PASS: TestProjectIDMatchesSchema (0.00s)
+=== RUN   TestCursor
+--- PASS: TestCursor (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/project	0.012s
+=== RUN   TestRoleMatrix
+--- PASS: TestRoleMatrix (0.27s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.20s)
+=== RUN   TestIdempotency
+--- PASS: TestIdempotency (0.27s)
+=== RUN   TestExpiredKeyRace
+--- PASS: TestExpiredKeyRace (1.31s)
+=== RUN   TestOutsideTheContract
+--- PASS: TestOutsideTheContract (0.12s)
+=== RUN   TestList
+--- PASS: TestList (0.73s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	2.922s
+=== RUN   TestOrganizationFilter
+--- PASS: TestOrganizationFilter (0.01s)
+=== RUN   TestKeysetTies
+--- PASS: TestKeysetTies (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/projects	0.035s
+=== RUN   TestLoadAuth
+--- PASS: TestLoadAuth (0.00s)
+=== RUN   TestLoadValid
+=== RUN   TestLoadValid/defaults_to_disabled_AI
+=== RUN   TestLoadValid/explicitly_disabled_AI
+=== RUN   TestLoadValid/unix_socket_via_host=
+=== RUN   TestLoadValid/postgres_scheme
+=== RUN   TestLoadValid/object_storage_disabled
+--- PASS: TestLoadValid (0.00s)
+    --- PASS: TestLoadValid/defaults_to_disabled_AI (0.00s)
+    --- PASS: TestLoadValid/explicitly_disabled_AI (0.00s)
+    --- PASS: TestLoadValid/unix_socket_via_host= (0.00s)
+    --- PASS: TestLoadValid/postgres_scheme (0.00s)
+    --- PASS: TestLoadValid/object_storage_disabled (0.00s)
+=== RUN   TestLoadRejects
+=== RUN   TestLoadRejects/missing_database
+=== RUN   TestLoadRejects/wrong_scheme
+=== RUN   TestLoadRejects/no_database_name
+=== RUN   TestLoadRejects/no_host
+=== RUN   TestLoadRejects/unparseable
+=== RUN   TestLoadRejects/anthropic_not_yet_implemented
+=== RUN   TestLoadRejects/unknown_provider
+=== RUN   TestLoadRejects/provider_is_case-sensitive
+=== RUN   TestLoadRejects/key_while_disabled
+=== RUN   TestLoadRejects/object_storage_TBD
+=== RUN   TestLoadRejects/all_problems_reported_together
+--- PASS: TestLoadRejects (0.00s)
+    --- PASS: TestLoadRejects/missing_database (0.00s)
+    --- PASS: TestLoadRejects/wrong_scheme (0.00s)
+    --- PASS: TestLoadRejects/no_database_name (0.00s)
+    --- PASS: TestLoadRejects/no_host (0.00s)
+    --- PASS: TestLoadRejects/unparseable (0.00s)
+    --- PASS: TestLoadRejects/anthropic_not_yet_implemented (0.00s)
+    --- PASS: TestLoadRejects/unknown_provider (0.00s)
+    --- PASS: TestLoadRejects/provider_is_case-sensitive (0.00s)
+    --- PASS: TestLoadRejects/key_while_disabled (0.00s)
+    --- PASS: TestLoadRejects/object_storage_TBD (0.00s)
+    --- PASS: TestLoadRejects/all_problems_reported_together (0.00s)
+=== RUN   TestErrorsNeverEchoSecrets
+--- PASS: TestErrorsNeverEchoSecrets (0.00s)
+=== RUN   TestLoadServer
+--- PASS: TestLoadServer (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config	0.006s
+=== RUN   TestRunRejectsInvalidConfiguration
+--- PASS: TestRunRejectsInvalidConfiguration (0.00s)
+=== RUN   TestRunNeedsTheDatabase
+--- PASS: TestRunNeedsTheDatabase (0.00s)
+=== RUN   TestServerSettings
+--- PASS: TestServerSettings (0.00s)
+=== RUN   TestRunServesAndStops
+--- PASS: TestRunServesAndStops (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/api	0.037s
+=== RUN   TestRequire
+--- PASS: TestRequire (0.00s)
+=== RUN   TestScopeIsValidatedBeforeTheDatabase
+--- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+=== RUN   TestRuntimeRoles
+--- PASS: TestRuntimeRoles (0.06s)
+=== RUN   TestRunScopes
+--- PASS: TestRunScopes (0.04s)
+=== RUN   TestRunModes
+--- PASS: TestRunModes (0.03s)
+=== RUN   TestRunLocksMembership
+--- PASS: TestRunLocksMembership (0.53s)
+=== RUN   TestRunErrors
+--- PASS: TestRunErrors (0.00s)
+=== RUN   TestPoolReuseLeavesNoScope
+--- PASS: TestPoolReuseLeavesNoScope (0.25s)
+=== RUN   TestWorkerAssignment
+--- PASS: TestWorkerAssignment (0.03s)
+=== RUN   TestGuardDiscardsSessionState
+--- PASS: TestGuardDiscardsSessionState (0.07s)
+=== RUN   TestGuardCoversEverySetting
+--- PASS: TestGuardCoversEverySetting (0.00s)
+=== RUN   TestUnsafeRuntimeLogins
+--- PASS: TestUnsafeRuntimeLogins (0.06s)
+=== RUN   TestRuntimeLoginCannotCreate
+--- PASS: TestRuntimeLoginCannotCreate (0.04s)
+=== RUN   TestResolveUser
+--- PASS: TestResolveUser (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant	1.151s

@@ -53,12 +53,11 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
-	poolCfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	poolCfg, err := poolConfig(cfg.DatabaseURL)
 	if err != nil {
 		log.Error("invalid configuration", "error", "DATABASE_URL is not a valid PostgreSQL connection string")
 		return exitConfig
 	}
-	poolCfg.AfterRelease = tenant.Guard
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		log.Error("database unavailable", "error", "the connection pool could not be created")
@@ -68,9 +67,14 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 	checkCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	err = tenant.CheckRuntimeRole(checkCtx, pool, tenant.APIRole)
 	cancel()
-	if err != nil {
-		// The error names roles and attributes, never the URL or password.
+	if errors.Is(err, tenant.ErrUnsafeRole) {
+		// The error names roles and attributes, never the password.
 		log.Error("refusing the database login", "error", err.Error())
+		return exitDatabase
+	}
+	if err != nil {
+		// pgx names the host, user and database, never the password.
+		log.Error("database unavailable", "error", err.Error())
 		return exitDatabase
 	}
 	ln, err := net.Listen("tcp", srvCfg.Addr)
@@ -78,15 +82,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("cannot listen", "addr", srvCfg.Addr, "error", err.Error())
 		return exitServe
 	}
-	srv := &http.Server{
-		Handler:           api.Handler(log, verifier, tenant.New(pool)),
-		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      60 * time.Second,
-		IdleTimeout:       120 * time.Second,
-		MaxHeaderBytes:    32 << 10,
-		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
-	}
+	srv := newServer(api.Handler(log, verifier, tenant.New(pool)), log)
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
 	log.Info("serving", "addr", ln.Addr().String())
@@ -99,7 +95,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		return exitServe
 	case <-ctx.Done():
 	}
-	shutdown, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	shutdown, cancel := context.WithTimeout(context.Background(), shutdownGrace)
 	defer cancel()
 	if err := srv.Shutdown(shutdown); err != nil {
 		log.Error("shutdown", "error", err.Error())
@@ -107,4 +103,32 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 	}
 	log.Info("stopped")
 	return 0
+}
+
+// shutdownGrace is how long a shutdown waits for requests in progress.
+const shutdownGrace = 20 * time.Second
+
+// poolConfig is the API's connection pool: every connection released to it
+// is checked for leftover tenant scope (tenant.Guard).
+func poolConfig(databaseURL string) (*pgxpool.Config, error) {
+	cfg, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, err
+	}
+	cfg.AfterRelease = tenant.Guard
+	return cfg, nil
+}
+
+// newServer is the API's listener with the limits of ADR-019: slow or
+// oversized requests and idle connections are cut off.
+func newServer(h http.Handler, log *slog.Logger) *http.Server {
+	return &http.Server{
+		Handler:           h,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    32 << 10,
+		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),
+	}
 }

@@ -1,7 +1,9 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"log/slog"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/kcl1104/geminus/internal/ids"
@@ -88,10 +91,52 @@ func DecodeJSON(r *http.Request, max int64, ref string, dst any) ([]byte, error)
 		}
 		return nil, e
 	}
+	// PostgreSQL text cannot hold U+0000, so a string carrying it is refused
+	// here rather than failing in the database (T-009 review L1).
+	if path, ok := nulString(data); ok {
+		return nil, &Error{Code: RequestValidationFailed, Message: "the request body does not match the schema",
+			Details: []Detail{{Path: path, Reason: "strings may not contain U+0000", Severity: "error"}}}
+	}
 	if err := json.Unmarshal(data, dst); err != nil {
 		return nil, fmt.Errorf("schema-valid body does not decode: %w", err) // schema and type drifted
 	}
 	return data, nil
+}
+
+// nulString reports the JSON Pointer of the first string of data, a valid
+// JSON document, that contains U+0000: the value's, or for a member name
+// the object's.
+func nulString(data []byte) (string, bool) {
+	if !bytes.Contains(data, []byte(`\u0000`)) { // the only way to write U+0000 in JSON
+		return "", false
+	}
+	dec := jsontext.NewDecoder(bytes.NewReader(data))
+	for {
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return "", false
+		}
+		if tok.Kind() != '"' || !strings.ContainsRune(tok.String(), 0) {
+			continue
+		}
+		p := dec.StackPointer()
+		if kind, n := dec.StackIndex(dec.StackDepth()); kind == '{' && n%2 == 1 {
+			p = p.Parent() // a member name
+		}
+		return string(p), true
+	}
+}
+
+// Query parses the request's query string. Unlike r.URL.Query, it refuses
+// a malformed one instead of dropping the pairs it cannot read (T-009
+// review L6).
+func Query(r *http.Request) (url.Values, error) {
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return nil, &Error{Code: InvalidRequest, Message: "the query string is malformed",
+			Details: []Detail{{Path: "", Reason: "query string"}}}
+	}
+	return q, nil
 }
 
 func utf8Charset(params map[string]string) bool {

@@ -6,6 +6,7 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"path"
 
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/httpapi"
@@ -14,12 +15,22 @@ import (
 )
 
 // Handler serves every implemented /v1 operation. Any other path or method
-// is 404 NOT_FOUND in the error envelope.
+// is 404 NOT_FOUND in the error envelope, including what ServeMux would
+// answer differently (T-009 review L2): a path that is not in clean form
+// (a redirect) and HEAD (GET's handler). No operation declares either.
+// "OPTIONS *" never gets here: net/http answers it with an empty 200.
 func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB) http.Handler {
 	mux := http.NewServeMux()
 	project.Register(mux, log, v, db, &project.Service{DB: db})
-	mux.Handle("/", httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
+	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")
-	}))
-	return mux
+	})
+	mux.Handle("/", notFound)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead || r.URL.Path != path.Clean(r.URL.Path) {
+			notFound.ServeHTTP(w, r)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
 }

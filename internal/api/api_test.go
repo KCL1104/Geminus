@@ -448,6 +448,75 @@ func TestIdempotency(t *testing.T) {
 	}
 }
 
+// An expired key under racing retries (review M1): every round expires
+// the key, then 16 retries of one request race on it. The row lock makes
+// them claim it once; without it each would read "expired" and create a
+// project.
+func TestExpiredKeyRace(t *testing.T) {
+	e := setup(t)
+	owner := e.a.Members[tenant.Owner]
+	const rounds, n = 30, 16
+	if r := e.create(owner.Subject, e.a.ID, "key-expired-race", `{"name":"Expired race"}`); r.status != 201 {
+		t.Fatalf("%d %s", r.status, r.body)
+	}
+	for round := range rounds {
+		if _, err := e.admin.Exec(context.Background(), `UPDATE twin.idempotency_keys SET created_at=now()-interval '2 days', expires_at=now()-interval '1 day'
+			WHERE organization_id=$1 AND key='key-expired-race'`, e.a.ID); err != nil {
+			t.Fatal(err)
+		}
+		bodies := make([]string, n)
+		var wg sync.WaitGroup
+		for i := range n {
+			wg.Go(func() {
+				r := e.create(owner.Subject, e.a.ID, "key-expired-race", `{"name":"Expired race"}`)
+				if r.status != 201 {
+					t.Errorf("round %d: %d %s", round, r.status, r.body)
+				}
+				bodies[i] = string(r.body)
+			})
+		}
+		wg.Wait()
+		if uniq := slices.Compact(slices.Sorted(slices.Values(bodies))); len(uniq) != 1 {
+			t.Fatalf("round %d: %d different answers to one request", round, len(uniq))
+		}
+		if c := e.count(`SELECT count(*) FROM twin.projects WHERE organization_id=$1 AND name='Expired race'`, e.a.ID); c != round+2 {
+			t.Fatalf("round %d: %d projects, want %d (one per claim)", round, c, round+2)
+		}
+	}
+}
+
+// Requests outside the contract still get the error envelope (review L2):
+// paths ServeMux would redirect, and methods no operation declares.
+func TestOutsideTheContract(t *testing.T) {
+	e := setup(t)
+	owner := e.a.Members[tenant.Owner]
+	for _, path := range []string{"/v1//projects", "/v1/x/../projects", "/v1/./projects", "/v1/projects/", "//v1/projects"} {
+		if r := e.do("GET", path, owner.Subject, e.a.ID, nil, ""); r.status != 404 || code(t, r) != "NOT_FOUND" {
+			t.Errorf("GET %s: %d %s", path, r.status, r.body)
+		}
+	}
+	for _, method := range []string{"HEAD", "PUT", "PATCH", "OPTIONS"} {
+		r := e.do(method, "/v1/projects", owner.Subject, e.a.ID, nil, "")
+		if r.status != 404 || !strings.HasPrefix(r.header.Get("X-Request-ID"), "req_") || r.header.Get("Content-Type") != "application/json" {
+			t.Errorf("%s /v1/projects: %d %v", method, r.status, r.header)
+		}
+	}
+	// Malformed query strings are refused, not partly read (review L6).
+	for _, q := range []string{"limit=1;cursor=x", "limit=%zz", "cursor=%"} {
+		if r := e.do("GET", "/v1/projects?"+q, owner.Subject, e.a.ID, nil, ""); r.status != 400 || code(t, r) != "INVALID_REQUEST" {
+			t.Errorf("?%s: %d %s", q, r.status, r.body)
+		}
+	}
+	// U+0000 cannot be stored as text: refused as a validation failure,
+	// not a database error (review L1). An escaped backslash is just text.
+	if r := e.create(owner.Subject, e.a.ID, "key-nul-1", `{"name":"a\u0000b"}`); r.status != 422 || code(t, r) != "REQUEST_VALIDATION_FAILED" {
+		t.Errorf("NUL in a name: %d %s", r.status, r.body)
+	}
+	if r := e.create(owner.Subject, e.a.ID, "key-nul-2", `{"name":"a\\u0000b"}`); r.status != 201 || decode[project](t, r).Name != `a\u0000b` {
+		t.Errorf("an escaped backslash before u0000: %d %s", r.status, r.body)
+	}
+}
+
 type page struct {
 	Items      []project `json:"items"`
 	NextCursor *string   `json:"next_cursor"`
@@ -527,6 +596,23 @@ func TestList(t *testing.T) {
 	loose := canonical[:len(canonical)-1] + string(digits[strings.IndexByte(digits, canonical[len(canonical)-1])+1])
 	if r := e.do("GET", "/v1/projects?cursor="+canonical, viewer.Subject, e.a.ID, nil, ""); r.status != 200 {
 		t.Errorf("canonical encoding of a valid cursor: %d %s", r.status, r.body)
+	}
+	// A valid cursor padded with JSON whitespace: 2048 characters (1536
+	// bytes) is the contract's maximum; 2050 is refused although it decodes
+	// (review M1).
+	pad := func(n int) string {
+		b := append([]byte("{"+strings.Repeat(" ", n-len(raw))), raw[1:]...)
+		return base64.RawURLEncoding.EncodeToString(b)
+	}
+	if c := pad(1536); len(c) != 2048 {
+		t.Fatalf("padded cursor of %d characters", len(c))
+	} else if r := e.do("GET", "/v1/projects?cursor="+c, viewer.Subject, e.a.ID, nil, ""); r.status != 200 {
+		t.Errorf("a valid cursor of 2048 characters: %d %s", r.status, r.body)
+	}
+	if c := pad(1537); len(c) != 2050 {
+		t.Fatalf("padded cursor of %d characters", len(c))
+	} else if r := e.do("GET", "/v1/projects?cursor="+c, viewer.Subject, e.a.ID, nil, ""); r.status != 400 {
+		t.Errorf("a cursor of 2050 characters: %d %s", r.status, r.body)
 	}
 	for name, bad := range map[string]string{
 		"other organization's cursor": edit(e.a.ID, e.b.ID),

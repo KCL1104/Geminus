@@ -306,6 +306,71 @@ func TestRunModes(t *testing.T) {
 	}
 }
 
+// A write and a revocation of its membership are ordered (review L3): a
+// read-write run locks the membership row it checked, so a concurrent
+// DELETE or role change waits for the write to commit instead of
+// committing first while the write goes on. A read-only run takes no lock.
+func TestRunLocksMembership(t *testing.T) {
+	adm := admin(t)
+	a := newOrg(t, adm)
+	d := tenant.New(as(t, apiLogin, 2, true))
+	sc := tenant.Scope{OrganizationID: a.id, UserID: a.user}
+	ctx := context.Background()
+	for _, c := range []struct {
+		name    string
+		opts    tenant.TxOptions
+		blocked bool
+	}{{"read-write", tenant.ReadWrite, true}, {"read-only", tenant.ReadOnly, false}} {
+		inside, release, runDone := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+		go func() {
+			runDone <- d.Run(ctx, sc, c.opts, func(context.Context, tenant.Tx, tenant.Membership) error {
+				close(inside)
+				<-release
+				return nil
+			})
+		}()
+		<-inside
+		revoked := make(chan error, 1)
+		go func() {
+			_, err := adm.Exec(ctx, `UPDATE twin.memberships SET role='viewer' WHERE organization_id=$1 AND user_id=$2`, a.id, a.user)
+			revoked <- err
+		}()
+		var revokeErr error
+		waited := false
+		select {
+		case revokeErr = <-revoked:
+			if c.blocked {
+				t.Errorf("%s: the role change committed while the run was in progress", c.name)
+			}
+		case <-time.After(500 * time.Millisecond):
+			waited = true
+			if !c.blocked {
+				t.Errorf("%s: the role change waited for a read-only run", c.name)
+			}
+		}
+		close(release)
+		if err := <-runDone; err != nil {
+			t.Errorf("%s: %v", c.name, err)
+		}
+		if waited {
+			revokeErr = <-revoked
+		}
+		if revokeErr != nil {
+			t.Errorf("%s: the role change: %v", c.name, revokeErr)
+		}
+		if _, err := adm.Exec(ctx, `UPDATE twin.memberships SET role='owner' WHERE organization_id=$1 AND user_id=$2`, a.id, a.user); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// The run errors callers map (internal/httpapi) are the ones Run returns.
+func TestRunErrors(t *testing.T) {
+	if tenant.ErrRetryable != postgres.ErrRetryable || tenant.ErrOutcomeUnknown != postgres.ErrOutcomeUnknown {
+		t.Error("tenant's run errors are not postgres.Classify's")
+	}
+}
+
 func scopeOf(t *testing.T, p *pgxpool.Pool) (org, user string, sameRole bool) {
 	t.Helper()
 	if err := p.QueryRow(context.Background(), `SELECT coalesce(current_setting('app.organization_id', true), ''),

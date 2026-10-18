@@ -49,12 +49,12 @@ CHECKER = ["./scripts/check-architecture/..."]
 
 OPEN = "\tif err != nil || media != \"application/json\" || !utf8Charset(params) {"
 CHARSET = "\t\tif k != \"charset\" || !strings.EqualFold(v, \"utf-8\") {"
-CAT = "\tcase errors.Is(err, postgres.ErrRetryable), errors.Is(err, postgres.ErrOutcomeUnknown):"
+CAT = "\tcase errors.Is(err, tenant.ErrRetryable), errors.Is(err, tenant.ErrOutcomeUnknown):"
 CANCEL = "\tcase errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):"
 SEL = "\t\tif len(values) != 1 || !orgID.MatchString(values[0]) {"
-MEMBERS_GET = "\t\tif err := m.Require(tenant.Members...); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tp, err := projects.Get"
-MEMBERS_LIST = "\t\tif err := m.Require(tenant.Members...); err != nil {\n\t\t\treturn err\n\t\t}\n\t\trows, err"
-REQUIRE_WRITERS = "\t\tif err := m.Require(tenant.Writers...); err != nil {\n\t\t\treturn err\n\t\t}\n"
+MEMBERS_GET = "\t\tif err := m.Require(readRoles...); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tp, err := projects.Get"
+MEMBERS_LIST = "\t\tif err := m.Require(readRoles...); err != nil {\n\t\t\treturn err\n\t\t}\n\t\trows, err"
+REQUIRE_WRITERS = "\t\tif err := m.Require(createRoles...); err != nil {\n\t\t\treturn err\n\t\t}\n"
 CLAIM_REPLAY = ("\t\treplay, err := idempotency.Claim(ctx, tx, k, hash)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n"
                 "\t\tif replay != nil {\n\t\t\t// jsonb keeps the value, not the bytes: both answers are sent\n"
                 "\t\t\t// in canonical form, so a replay is byte-identical.\n\t\t\tstatus = replay.Status\n"
@@ -66,7 +66,9 @@ CURSOR_Q = "\t\tif len(vs) != 1 || vs[0] == \"\" || len(vs[0]) > 2048 {"
 CONFLICT = "\tif errors.Is(err, idempotency.ErrConflict) || errors.Is(err, idempotency.ErrInProgress) {"
 KEYSET = "AND (created_at, id) > ($2, $3)"
 PORT = "\tif err != nil || perr != nil || n < 0 || n > 65535 {"
-THROUGH = "\t\tthrough: []string{\"./internal/storage/...\", \"./internal/tenant/...\"},"
+THROUGH = "\t\tforbid:  cat(dbDrivers, []string{\"database/sql/...\"}),\n\t\tthrough: []string{\"./internal/storage/...\", \"./internal/tenant/...\"},"
+
+DB_HANDLES_RULE = '\t{\n\t\t// The gateways above include the raw foundation, whose Open takes\n\t\t// any connection string: through it a package could open its own\n\t\t// handle around tenant.DB.Run, CheckRuntimeRole and Guard (T-009\n\t\t// review M2). Only the gateways themselves and cmd use it.\n\t\tname:    "db-handles-only-in-gateways",\n\t\twhy:     "connections are opened by cmd and used through internal/tenant and the storage packages, so every query runs in the tenant scope",\n\t\tapplies: []string{"./..."},\n\t\texcept:  []string{"./internal/storage/...", "./internal/tenant/...", "./cmd/..."},\n\t\tforbid:  []string{"./internal/storage/postgres/..."},\n\t\tthrough: []string{"./internal/storage/...", "./internal/tenant/..."},\n\t},\n'
 
 MUT = [
     # --- Error envelope (errors.go).
@@ -77,8 +79,8 @@ MUT = [
     ("no-membership-unmapped", E, "\tcase errors.Is(err, tenant.ErrNoMembership):", "\tcase errors.Is(err, tenant.ErrNoMembership) && false:"),
     ("no-membership-as-403", E, "\t\treturn Errorf(NotFound, \"not found\"), true", "\t\treturn Errorf(Forbidden, \"not found\"), true"),
     ("forbidden-unmapped", E, "\tcase errors.Is(err, tenant.ErrForbidden):", "\tcase errors.Is(err, tenant.ErrForbidden) && false:"),
-    ("retryable-unmapped", E, CAT, "\tcase errors.Is(err, postgres.ErrOutcomeUnknown):"),
-    ("outcome-unknown-unmapped", E, CAT, "\tcase errors.Is(err, postgres.ErrRetryable):"),
+    ("retryable-unmapped", E, CAT, "\tcase errors.Is(err, tenant.ErrOutcomeUnknown):"),
+    ("outcome-unknown-unmapped", E, CAT, "\tcase errors.Is(err, tenant.ErrRetryable):"),
     ("canceled-unmapped", E, CANCEL, "\tcase errors.Is(err, context.DeadlineExceeded):"),
     ("deadline-unmapped", E, CANCEL, "\tcase errors.Is(err, context.Canceled):"),
     ("internal-message-leaks", E, "\treturn Errorf(InternalError, \"internal error\"), false", "\treturn Errorf(InternalError, err.Error()), false"),
@@ -137,10 +139,10 @@ MUT = [
     ("read-only-is-read-write", TX, "\tReadOnly  = TxOptions{AccessMode: pgx.ReadOnly}", "\tReadOnly  = TxOptions{}"),
     ("read-write-is-read-only", TX, "\tReadWrite = TxOptions{}", "\tReadWrite = TxOptions{AccessMode: pgx.ReadOnly}"),
     # --- Project service (project.go).
-    ("create-role-unchecked", PJ, "\t\tif err := m.Require(tenant.Writers...); err != nil {\n\t\t\treturn err\n\t\t}\n", ""),
+    ("create-role-unchecked", PJ, REQUIRE_WRITERS, ""),
     ("replay-before-role-check", PJ, REQUIRE_WRITERS + CLAIM_REPLAY, CLAIM_REPLAY + REQUIRE_WRITERS),
-    ("get-requires-writer", PJ, MEMBERS_GET, MEMBERS_GET.replace("Members", "Writers")),
-    ("list-requires-writer", PJ, MEMBERS_LIST, MEMBERS_LIST.replace("Members", "Writers")),
+    ("get-requires-writer", PJ, MEMBERS_GET, MEMBERS_GET.replace("readRoles", "tenant.Writers")),
+    ("list-requires-writer", PJ, MEMBERS_LIST, MEMBERS_LIST.replace("readRoles", "tenant.Writers")),
     ("hash-of-raw-body", PJ, "\thash := hashing.Sum(canonical)", "\thash := hashing.Sum(body)\n\t_ = canonical"),
     ("replay-not-canonical", PJ, "\t\t\tout, err = hashing.Canonical(replay.Body)", "\t\t\tout, err = replay.Body, nil"),
     ("replay-status-not-stored", PJ, "\t\t\tstatus = replay.Status", "\t\t\tstatus = 200"),
@@ -165,7 +167,7 @@ MUT = [
     ("cursor-id-unchecked", PJ, CURSOR_CHECK, CURSOR_CHECK.replace(" || !ValidID(c.ID)", "")),
     ("project-id-loose", PJ, "`^prj_[0-7][0-9A-HJKMNP-TV-Z]{25}$`", "`^prj_[0-9A-Z]{26}$`"),
     # --- Project handlers (http.go).
-    ("route-role-wrong", PH, "{\"POST\", \"/v1/projects\", \"createProject\", tenant.Writers},", "{\"POST\", \"/v1/projects\", \"createProject\", tenant.Members},"),
+    ("route-role-wrong", PH, "{\"POST\", \"/v1/projects\", \"createProject\", createRoles},", "{\"POST\", \"/v1/projects\", \"createProject\", readRoles},"),
     ("route-path-wrong", PH, "\"/v1/projects/{id}\"", "\"/v1/project/{id}\""),
     ("conflict-unmapped", PH, CONFLICT, "\tif errors.Is(err, idempotency.ErrInProgress) {"),
     # Equivalent: Claim and Complete share one transaction, so a committed
@@ -192,14 +194,13 @@ MUT = [
     ("limit-not-applied", PH, "\t\tlimit = n\n", ""),
     ("cursor-empty-allowed", PH, CURSOR_Q, CURSOR_Q.replace(" || vs[0] == \"\"", "")),
     ("cursor-multiple-allowed", PH, CURSOR_Q, CURSOR_Q.replace("len(vs) != 1 || ", "")),
-    # Equivalent: a cursor over 2048 bytes is never one this service
-    # issued and is refused by decodeCursor; the bound only spares decoding.
-    ("cursor-length-unbounded", PH, CURSOR_Q, CURSOR_Q.replace(" || len(vs[0]) > 2048", ""), "equivalent"),
+    # Review M1: not equivalent; JSON whitespace pads a valid cursor past 2048.
+    ("cursor-length-unbounded", PH, CURSOR_Q, CURSOR_Q.replace(" || len(vs[0]) > 2048", "")),
     ("cursor-not-passed", PH, "\t\tcursor = vs[0]\n", ""),
     ("invalid-cursor-unmapped", PH, "\tif errors.Is(err, ErrInvalidCursor) {", "\tif false {"),
     ("get-id-unchecked", PH, "\tif !ValidID(id) {", "\tif false {"),
     ("not-found-unmapped", PH, "\tif errors.Is(err, ErrNotFound) {", "\tif false {"),
-    ("catch-all-missing", API, "\tmux.Handle(\"/\", httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {\n\t\treturn httpapi.Errorf(httpapi.NotFound, \"no such operation\")\n\t}))\n", "\t_ = httpapi.Errorf\n"),
+    ("catch-all-missing", API, "\tmux.Handle(\"/\", notFound)\n", "\t_ = notFound\n"),
     # --- Idempotency store.
     ("claim-always-new", I, "\tif tag.RowsAffected() == 1 {\n\t\treturn nil, nil", "\tif tag.RowsAffected() >= 0 {\n\t\treturn nil, nil"),
     ("conflict-ignored", I, "\tcase stored != hash:\n\t\treturn nil, ErrConflict", "\tcase false:\n\t\treturn nil, ErrConflict"),
@@ -212,10 +213,9 @@ MUT = [
     ("reclaim-ttl-wrong", I, "created_at=now(), expires_at=now()+make_interval(secs => $6)", "created_at=now(), expires_at=now()+make_interval(secs => $6/2)"),
     ("reclaim-keeps-created-at", I, "completed_at=NULL, created_at=now(), expires_at", "completed_at=NULL, expires_at"),
     ("reclaim-keeps-hash", I, "SET request_hash=$5, response_status=NULL", "SET request_hash=request_hash||left($5::text,0), response_status=NULL"),
-    # Equivalent: INSERT ... ON CONFLICT already waits for the conflicting
-    # row's transaction, and the key's row is not changed by anyone else
-    # in this transaction; FOR UPDATE is kept so the read states its lock.
-    ("select-not-locked", I, " AND key=$4 FOR UPDATE`", " AND key=$4`", "equivalent"),
+    # Review M1: not equivalent; retries racing on an expired key all
+    # re-claim it without the lock (TestExpiredKeyRace).
+    ("select-not-locked", I, " AND key=$4 FOR UPDATE`", " AND key=$4`"),
     ("complete-status-wrong", I, "k.Org, k.Actor, k.Operation, k.Key, r.Status, string(r.Body))", "k.Org, k.Actor, k.Operation, k.Key, 200, string(r.Body))"),
     # Equivalent: Complete always follows its own Claim in one transaction,
     # so the row is claimed and incomplete; the guard reports misuse.
@@ -253,13 +253,40 @@ MUT = [
     ("runtime-role-unchecked", M, "\terr = tenant.CheckRuntimeRole(checkCtx, pool, tenant.APIRole)", "\terr = nil\n\t_, _ = checkCtx, tenant.CheckRuntimeRole"),
     ("server-config-error-ignored", M, "\tsrvCfg, srvErr := config.LoadServer(getenv)\n", "\tsrvCfg, srvErr := config.LoadServer(getenv)\n\tsrvErr = nil\n"),
     ("shutdown-exit-nonzero", M, "\tlog.Info(\"stopped\")\n\treturn 0", "\tlog.Info(\"stopped\")\n\treturn exitServe"),
-    # Equivalent here: tenant's own tests show the guard discards leaked
-    # session state (TestGuardDiscardsSessionState); cmd/api only installs it.
-    ("guard-not-installed", M, "\tpoolCfg.AfterRelease = tenant.Guard\n", "", "equivalent"),
+    # Review M1: not equivalent; TestServerSettings checks the guard is installed.
+    ("guard-not-installed", M, "\tcfg.AfterRelease = tenant.Guard\n", ""),
+    # --- Review round 1 fixes.
+    ("read-header-timeout-dropped", M, "\t\tReadHeaderTimeout: 10 * time.Second,\n", ""),
+    ("read-timeout-dropped", M, "\t\tReadTimeout:       30 * time.Second,\n", ""),
+    ("write-timeout-dropped", M, "\t\tWriteTimeout:      60 * time.Second,\n", ""),
+    ("idle-timeout-dropped", M, "\t\tIdleTimeout:       120 * time.Second,\n", ""),
+    ("header-limit-dropped", M, "\t\tMaxHeaderBytes:    32 << 10,\n", ""),
+    ("server-error-log-dropped", M, "\t\tErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelWarn),\n", ""),
+    ("shutdown-grace-zero", M, "const shutdownGrace = 20 * time.Second", "const shutdownGrace = 0"),
+    ("unsafe-role-reported-as-unavailable", M, "\tif errors.Is(err, tenant.ErrUnsafeRole) {", "\tif false {"),
+    ("unavailable-reported-as-refusal", M, "\t\tlog.Error(\"database unavailable\", \"error\", err.Error())", "\t\tlog.Error(\"refusing the database login\", \"error\", err.Error())"),
+    ("membership-not-locked", TX, "\t\t\tq += ` FOR SHARE`\n", ""),
+    ("membership-key-share-only", TX, "q += ` FOR SHARE`", "q += ` FOR KEY SHARE`"),
+    ("membership-locked-when-read-only", TX, "\t\tif opts.AccessMode != pgx.ReadOnly {\n\t\t\tq += ` FOR SHARE`", "\t\tif true {\n\t\t\tq += ` FOR SHARE`"),
+    ("retryable-alias-wrong", TX, "\tErrRetryable      = postgres.ErrRetryable\n", "\tErrRetryable      = errors.New(\"x\")\n"),
+    ("nul-unchecked", R, "\tif path, ok := nulString(data); ok {", "\tif path, ok := nulString(data); ok && false {"),
+    ("nul-prefilter-wrong", R, "bytes.Contains(data, []byte(`\\u0000`))", "bytes.Contains(data, []byte(`\\u0001`))"),
+    ("nul-in-name-not-parent", R, "\t\t\tp = p.Parent() // a member name\n", ""),
+    ("nul-ignored-when-deep", R, "\t\tif tok.Kind() != '\"' || !strings.ContainsRune(tok.String(), 0) {", "\t\tif tok.Kind() != '\"' || !strings.ContainsRune(tok.String(), 0) || dec.StackDepth() > 9 {"),
+    ("query-errors-ignored", R, "\tq, err := url.ParseQuery(r.URL.RawQuery)\n\tif err != nil {", "\tq, err := url.ParseQuery(r.URL.RawQuery)\n\tif err != nil && false {"),
+    ("list-query-not-strict", PH, "\tq, err := httpapi.Query(r)\n\tif err != nil {\n\t\treturn err\n\t}\n", "\tq := r.URL.Query()\n"),
+    ("create-roles-members", PJ, "\tcreateRoles = tenant.Writers\n", "\tcreateRoles = tenant.Members\n"),
+    ("service-create-roles-bypassed", PJ, "\t\tif err := m.Require(createRoles...); err != nil {", "\t\tif err := m.Require(tenant.Members...); err != nil {"),
+    ("head-served", API, "\t\tif r.Method == http.MethodHead || r.URL.Path != path.Clean(r.URL.Path) {", "\t\tif r.URL.Path != path.Clean(r.URL.Path) {"),
+    ("unclean-paths-served", API, "\t\tif r.Method == http.MethodHead || r.URL.Path != path.Clean(r.URL.Path) {", "\t\tif r.Method == http.MethodHead {\n\t\t\t_ = path.Clean"),
+    ("keyset-first-page-without-id", PS, "ORDER BY created_at, id LIMIT $2`", "ORDER BY created_at LIMIT $2`"),
+    ("keyset-later-pages-without-id", PS, "ORDER BY created_at, id LIMIT $4`", "ORDER BY created_at LIMIT $4`"),
+    ("db-handles-rule-dropped", AR, DB_HANDLES_RULE, "", "checker"),
+    ("db-handles-through-dropped", AR, "\t\tforbid:  []string{\"./internal/storage/postgres/...\"},\n\t\tthrough: []string{\"./internal/storage/...\", \"./internal/tenant/...\"},", "\t\tforbid:  []string{\"./internal/storage/postgres/...\"},", "checker"),
     # --- Architecture checker: the DB rule's gateways (checker tests).
     ("through-ignored", AC, "\t\tif p == nil || (cur != root && matchAny(r.through, cur)) {", "\t\tif p == nil {", "checker"),
-    ("through-tenant-missing", AR, THROUGH, "\t\tthrough: []string{\"./internal/storage/...\"},", "checker"),
-    ("through-storage-missing", AR, THROUGH, "\t\tthrough: []string{\"./internal/tenant/...\"},", "checker"),
+    ("through-tenant-missing", AR, THROUGH, THROUGH.replace(", \"./internal/tenant/...\"}", "}"), "checker"),
+    ("through-storage-missing", AR, THROUGH, THROUGH.replace("\"./internal/storage/...\", ", ""), "checker"),
     ("httpapi-not-app-layer", AR, "\t\"./internal/httpapi/...\", // HTTP transport (T-009, ADR-019)\n", "", "checker"),
     ("api-not-app-layer", AR, "\t\"./internal/api/...\",     // route assembly\n", "", "checker"),
     ("dbtest-not-test-infra", AR, "\t\"./internal/storage/dbtest/...\", // provisions", "\t// \"./internal/storage/dbtest/...\", // provisions", "checker"),

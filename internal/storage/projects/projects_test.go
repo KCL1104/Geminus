@@ -67,8 +67,11 @@ func TestKeysetTies(t *testing.T) {
 	ctx := context.Background()
 	var want []string
 	err := postgres.OpenPool(admin).Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-		for range 4 {
-			p, err := projects.Insert(ctx, tx, projects.Project{ID: ids.New("prj"), OrganizationID: a.ID, Name: "Tied", CreatedBy: a.Members[tenant.Owner].UserID})
+		newIDs := []string{ids.New("prj"), ids.New("prj"), ids.New("prj"), ids.New("prj")}
+		slices.Sort(newIDs)
+		slices.Reverse(newIDs)
+		for _, id := range newIDs {
+			p, err := projects.Insert(ctx, tx, projects.Project{ID: id, OrganizationID: a.ID, Name: "Tied", CreatedBy: a.Members[tenant.Owner].UserID})
 			if err != nil {
 				return err
 			}
@@ -80,6 +83,40 @@ func TestKeysetTies(t *testing.T) {
 		t.Fatal(err)
 	}
 	slices.Sort(want)
+	// The ties' order must come from the query, not from the index the
+	// planner happens to use (review L7): with index scans off, the rows
+	// come back in heap order, which here is the reverse of the ID order.
+	var unplanned []string
+	err = postgres.OpenPool(admin).Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SET LOCAL enable_indexscan=off; SET LOCAL enable_indexonlyscan=off; SET LOCAL enable_bitmapscan=off`); err != nil {
+			return err
+		}
+		page, err := projects.List(ctx, tx, a.ID, nil, 10)
+		for _, p := range page {
+			unplanned = append(unplanned, p.ID)
+		}
+		if err != nil {
+			return err
+		}
+		// And page by page through the keyset query.
+		var paged []string
+		var after *projects.Position
+		for range 6 {
+			page, err := projects.List(ctx, tx, a.ID, after, 1)
+			if err != nil || len(page) == 0 {
+				break
+			}
+			paged = append(paged, page[0].ID)
+			after = &projects.Position{CreatedAt: page[0].CreatedAt, ID: page[0].ID}
+		}
+		if !slices.Equal(paged, want) {
+			t.Errorf("paged without index scans: %v, want %v", paged, want)
+		}
+		return err
+	})
+	if err != nil || !slices.Equal(unplanned, want) {
+		t.Errorf("without index scans: %v, want %v (%v)", unplanned, want, err)
+	}
 	var got []string
 	err = postgres.OpenPool(admin).Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
 		var after *projects.Position
