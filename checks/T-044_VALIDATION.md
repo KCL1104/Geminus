@@ -1,6 +1,6 @@
 # T-044 驗證報告：Bilingual UI foundation（en 預設、zh-Hant）
 
-**日期：2026-10-18｜狀態：`review`（首輪獨立 review 為 CHANGES REQUESTED，已先紅後綠修正，等待同一 reviewer 複核；依 H-003 驗收）｜實作選擇：ADR-020（ACCEPTED，H-006）｜需求：REQ-022、REQ-004｜Gate：無｜驗收測試：TEST-031（T-044 部分，見「驗收對照」）**
+**日期：2026-10-18｜狀態：`review`（首輪獨立 review 為 CHANGES REQUESTED，先紅後綠修正後，同一 reviewer 複核 ACCEPT；複核的 low 發現已修，最終 mutation 執行中，完成後標 done；依 H-003 驗收）｜實作選擇：ADR-020（ACCEPTED，H-006）｜需求：REQ-022、REQ-004｜Gate：無｜驗收測試：TEST-031（T-044 部分，見「驗收對照」）**
 
 逐條輸出在 `checks/evidence/2026-10-18-T-044/`。範圍依 tasks.json：i18n 機制（另立 ADR）、catalog key 一致性、lint 禁止硬編字串、cookie 語言切換與保存、Intl 格式、route 無語言前綴、既有 T-014 畫面與每個 Problem code 的兩語文案、DomainPack template 加 locale（contract 與 conformance suite 先改）且 SoftwareDelivery 提供 zh-Hant 名稱。
 
@@ -12,14 +12,14 @@
 | `schemas/http.schema.json` | `CreateModel.locale`（optional，省略為 `en`），決定 template 預設名稱的語言 |
 | `apps/web/lib/contracts/` | 由 schema 重新生成 |
 | `internal/domainpack/domainpack.go` | `Locale`、`Locales`（預設在前）、optional `TemplateProvider`（`Templates()`、`Template(name, modelID, modelName, locale)`）；`DomainPack` method set 不變 |
-| `internal/domainpack/conformance/conformance.go` | 新步驟 `templates`：`templates/list`（非空、不重複、無空名、panic 是 finding）、`templates/valid`（每個 locale：有 model 且無 error、domain／model ID／名稱為所要求者、通過 generic validator 與 pack 自己的規則（warning 不算））、`templates/deterministic`、`templates/locales`（除名稱外各 locale 的 canonical JSON 相同）、`templates/unknown-locale`（`""`、`fr`、`EN`、`zh-hant`、`zh-Hans` 只回 error）、`templates/unknown-template` |
-| `internal/domainpack/conformance/broken_test.go` | 19 個壞 template pack（每個只壞一個性質）各觸發指定 finding；2 個正確 pack（queue template、只發 warning 的 template）無 finding |
+| `internal/domainpack/conformance/conformance.go` | 新步驟 `templates`：`templates/list`（非空、不重複、無空名、panic 是 finding）、`templates/valid`（每個 locale：有 model 且無 error、domain／model ID／名稱為所要求者、通過 generic validator 與 pack 自己的規則（warning 不算））、`templates/deterministic`、`templates/locales`（除名稱外各 locale 的 canonical JSON 相同）、`templates/unknown-locale`（`""`、`fr`、`EN`、`zh-hant`、`zh-Hans`、`zh`、`zh-TW`、`zh-Hant-TW`、`en-US`、`en-GB` 只回 error）、`templates/unknown-template`（含大小寫不同、前後空白的名稱）、`templates/copies`（另一個呼叫者的 model 被改動到底，第一個不變）；`Template` 也在 `concurrent` 步驟 |
+| `internal/domainpack/conformance/broken_test.go` | 30 個壞 template pack（每個只壞一個性質；首版 19 個，review M1 加 5 個，複核 N1 加 6 個）各觸發指定 finding；2 個正確 pack（queue template、只發 warning 的 template）無 finding |
 | `internal/domainpack/softwaredelivery/template.go` | `Template(..., locale)`；`ErrUnknownLocale`；`templates/default_delivery_pipeline.zh-Hant.names.json` 依 ID 給名稱，嚴格比對（少、多、空名、未知 member、壞 JSON 皆為 internal error）；`Pack` 實作 `TemplateProvider` |
 | `internal/model/validate/codes_test.go` | 宣告的 validator 與 patch code 必須與 contract 的 `ValidationCode`（扣除 pack 的 `DOMAIN_MISMATCH`）完全相同 |
 | `apps/web/lib/i18n/` | `locale.ts`（locale、cookie）、`translate.ts`（translator、Intl 日期／數字／期間）、`provider.tsx`（`I18nProvider`、`useI18n`）、`server.ts`（server components 讀 cookie） |
 | `apps/web/messages/en.ts`、`zh-Hant.ts` | 每個使用者可見字串；zh-Hant 型別對齊 en |
 | `apps/web/app/` | 所有元件改用 catalog；`layout.tsx` 依 cookie 設 `<html lang>`、`I18nProvider` 與語言切換；`_components/locale-switcher.tsx`；ProblemView 依 error code 說明、依 validation code 說明 detail，server／client 的英文訊息以 `lang="en"` 列為技術細節；專案列表顯示建立時間（Intl） |
-| `apps/web/eslint.config.mjs` | `.tsx`（tests 除外）禁止硬編使用者可見字串：JSX 文字、文字 attribute、由條件渲染的字串 |
+| `apps/web/eslint.config.mjs` | tests 除外，`.tsx` 禁止硬編使用者可見字串：JSX 文字、文字 attribute 與元件的文字 prop、經條件／`??`／串接／cast／陣列傳遞（最多三層）或 callback 回傳的字串、submit 的 value、物件 prop 的文字欄位（`\p{L}`）；`.ts` 與 `.tsx` 禁止 `alert`／`confirm`／`prompt`（含 `window.`、`globalThis.`、`self.`）與設定 `document.title`。限制與誤擋見 ADR-020 |
 | 文件 | ADR-020（ACCEPTED，H-006）；ARCHITECTURE.md §4 語言段落 |
 | `checks/evidence/2026-10-18-T-044/mutants.py` | mutation harness（Go 經 `-overlay`；runtime 讀取的檔案與前端在 scratch copy） |
 
@@ -59,6 +59,32 @@ Reviewer 以自己的 `git archive 1d6eadd` export 執行，沒有使用工作�
 | mutation | 0 | 144 個：142 killed（58 由 Go test、84 由 vitest）、2 equivalent、0 unexpected、0 harness 錯誤（`mutation.log`）。第一次修正後的全量執行（`mutation-pass1.log`）有 1 個存活：blank-name 的測試值含 tab，被控制字元檢查擋下，分不出兩個檢查；改用只有空白的值後重跑全量 |
 | `curl`（`next start`） | — | `server-render.log`：`/no-such-route` 回 404，無 cookie 為英文、zh-Hant 為中文 title／h1／內文／連結，沒有 Next.js 的英文 404 文字 |
 | Chromium | 0 | `browser-switch.log`：切換、重新載入、切回，無 console error |
+
+## 複核（review round 2，2026-10-18，H-003）：ACCEPT
+
+同一 reviewer 以 `git archive 1747f9b` 的 export 複核（程式為 beb96e1），結論 **ACCEPT**：首輪發現全部已修，經自己的 probe 驗證；報告數字全部重現（153 tests、190 Go RUN、mutation 144 個 142 killed＋2 equivalent、`next build`／`next start`＋Chromium）。另提出 5 個 low、3 個 info，皆不阻擋驗收。依過去做法（T-042），low 發現在 ACCEPT 後仍先紅後綠處理；證據在 `checks/evidence/2026-10-18-T-044/review2/`。
+
+| # | 發現 | 處理 |
+|---|---|---|
+| N1 | `templates/copies` 只改名稱：淺拷貝快取 model（名稱 slice 重建，共用 flows 與 positions map）的 pack 0 finding，tenant B 改 positions 會出現在 A | 改為 `overwrite`：以 reflection 改動另一個 model 能改到的每個值（字串、整數、浮點、bytes、指標、欄位、slice 元素），並在每個 map 加一個 key（空的共用 map 也看得到）。新增 6 個壞 pack：共用 flows、positions（有值與空的）、metadata bytes、entity types（只有字串）、分布參數的 `*float64`。`red-copies.log`（兩個淺拷貝 pack 0 finding）→ `green-copies.log` |
+| N2 | 擴大後的 lint 誤擋：文字 prop 名稱傳 key 或 token（`message="validation.required"`、`heading="h2"`、`text="sm"`）、子 expression 中任何 callback 的回傳、只含資料的 template literal | 不放寬（放寬會漏掉 callback 回傳的真正文字）；ADR-020 寫明這些 prop 名稱保留給翻譯後文字，與改用其他 prop 名稱或移到 JSX 外的做法 |
+| N3 | Lint 漏洞：dialog 與 `document.title` 的禁止只對 `.tsx`；`globalThis.alert`、`self.confirm`；展開的 attribute；`value={"Save"}`；條件中的物件 prop 文字 | `.ts` 也禁止 dialog 與設定 title；加 `globalThis.`、`self.`、`window.document.title`；submit 的 `value={"…"}` 與 template literal。展開的 attribute 與條件中的物件 prop 文字列入 ADR-020 限制。`red-lint.log`（8 個 case 未擋）→ `green-lint.log` |
+| N4 | 本報告「交付內容」的 unknown-locale 清單、壞 pack 數與 lint 說明過時 | 已改正（30 個壞 template pack、完整 locale 清單、目前的 lint 範圍） |
+| N5（info） | 兩個同名 cookie 時 server 取最後一個、client（global-error）取第一個 | Client 改為取最後一個，與 server 一致；ADR-020 記錄。`red-cookie.log` → `green-cookie.log` |
+| N6（info） | `formatDateTime` 拒絕 `0000-02-29`（`Date.UTC` 把 0–99 年當 1900–1999） | 不改：API 的時間是 server 產生的近年時間；被拒的值顯示為空，不會顯示錯的日期 |
+| N7（info） | 名稱檔接受只有零寬字元或以 bidi override 開頭的名稱 | 不改：名稱檔是 pack 自己的資料（由 code review 管），不是使用者輸入；使用者輸入的名稱由 IR 規則處理 |
+| N8（info） | API 漏了 `revision`／`version` 欄位時會顯示 "undefined" | 不改：兩者在 `http.schema.json` 中為 required（`Draft.revision`、`ModelVersion.version`），缺欄位是 server 違反 contract；client 是否驗證回應的形狀屬 T-013 的 generated client contract test |
+
+### 複核修正後（0748bc0，`review2/`）
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make frontend-test` | 0 | `frontend-test.log`：10 個檔案、162 個 test（lint-guards：41 個應擋、18 個應放行） |
+| `make frontend-build` | 0 | `frontend-build.log` |
+| `make backend-test`、`backend-race`、`architecture-check`、`spec-check` | 0 | 同一 commit 的紀錄在 `checks/evidence/2026-10-18-T-012/`（T-012 驗證時執行）：`PASS architecture: 34 packages, 10 rules, 16 build configurations` |
+| `go test -count=1 -v`（domainpack、conformance、softwaredelivery、model/validate、coldstart） | 0 | `t044-go-tests.log`：196 個 RUN，0 FAIL |
+| mutation | — | 執行中：結果補上前視為 NOT RUN |
+| CI | — | 0748bc0 的 run [39155503173](https://github.com/KCL1104/Geminus/actions/runs/39155503173) 4/4 success |
 
 ## 首版的實際執行結果
 
@@ -107,11 +133,11 @@ Reviewer 以自己的 `git archive 1d6eadd` export 執行，沒有使用工作�
 |---|---|
 | 預設 en | `layout.test.tsx`（無 cookie → `lang="en"`、英文 shell、`en` 為選取項）；`i18n.test.ts`（`defaultLocale`、`parseLocale` 未知值） |
 | zh-Hant 與 en key 完全一致、無空值 | `i18n.test.ts`：key 集合、空值、placeholder 與複數形狀、只有 4 個允許相同的文字；型別（`Catalog`）讓缺 key 無法編譯 |
-| lint 禁止硬編字串 | `lint-guards.test.ts`：33 個應擋、17 個應放行（review M3 後）；`make frontend-test` 的 lint 在 0 warning 下通過 |
+| lint 禁止硬編字串 | `lint-guards.test.ts`：41 個應擋、18 個應放行（review M3 與複核 N3 後）；`make frontend-test` 的 lint 在 0 warning 下通過 |
 | 切換語言後保留 | `i18n-dom.test.tsx`（只寫語言 cookie、呼叫 refresh；`LocaleMenu` 經 router refresh）；`layout.test.tsx`（cookie → `lang="zh-Hant"` 與中文 shell；`zh-hant`、`zh-Hans`、`zh`、`EN`、空值、帶屬性的值都視為未選）；瀏覽器紀錄 |
 | 每個 Problem／validation code 皆有兩語文案 | `i18n.test.ts`（每個 `ErrorCode`、`ValidationCode`、`ProblemKind`）；`codes_test.go`、`TestValidationCodeInContract`（Go 宣告的 code 等於 contract）；`i18n-dom.test.tsx`（中文說明、server 英文訊息標 `lang="en"`、未知 code 顯示 reason） |
 | Intl 日期／數字 | `i18n.test.ts`（日期、數字、百分比、期間、千分位、複數；只接受 RFC 3339）；`i18n-dom.test.tsx`（`建立於 2026年10月15日`、`草稿修訂版 3。`、`2 項變更尚未儲存。`、`請在 30 秒後重試。`） |
-| Template 兩語預設名稱 | `TestTemplateLocales`（en／zh 名稱、除名稱外相同、未知 locale）、`TestNamesFileStrict`、`TestTemplateNamesFailure`、`TestConformance`（P0 pack 通過 `templates` 步驟）、`TestBrokenPacksAreCaught`（24 個壞 template pack）、`TestLocalesMatchContract` |
+| Template 兩語預設名稱 | `TestTemplateLocales`（en／zh 名稱、除名稱外相同、未知 locale）、`TestNamesFileStrict`、`TestTemplateNamesFailure`、`TestConformance`（P0 pack 通過 `templates` 步驟）、`TestBrokenPacksAreCaught`（30 個壞 template pack）、`TestLocalesMatchContract` |
 | 找不到與錯誤的頁面 | `layout.test.tsx`（not-found 兩語、global-error 的 server 快照）、`i18n-dom.test.tsx`（error 頁兩語、重試、digest、不顯示 message；`useRememberedLocale`；缺 `created_at` 不讓整頁失敗） |
 | 404 不洩漏（TEST-009 既有） | `ui.test.tsx`（en）與 `i18n-dom.test.tsx`（zh-Hant，review L3 補上）：不顯示 message／details |
 
