@@ -1,0 +1,23 @@
+# next start (build of beb96e1), curl
+--- cookie []: /no-such-route
+status 404
+<html lang="en">
+<title>Page not found</title>
+<h1>Page not found</h1>
+<p>There is no page at this address.</p>
+<a href="/">Go to the start page</a>
+0
+--- cookie [geminus_locale=zh-Hant]: /no-such-route
+status 404
+<html lang="zh-Hant">
+<title>找不到此頁面</title>
+<h1>找不到此頁面</h1>
+<p>這個網址沒有對應的頁面。</p>
+<a href="/">前往首頁</a>
+0
+--- cookie [geminus_locale=zh-Hant]: /
+<html lang="zh-Hant">
+<nav aria-label="主選單">
+<a href="/projects">專案</a>
+<label for="_R_jb_">語言</label>
+<a href="/projects">前往專案</a>

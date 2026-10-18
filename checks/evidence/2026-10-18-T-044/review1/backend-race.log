@@ -1,0 +1,33 @@
+go test -race ./cmd/... ./internal/... ./schemas/... ./scripts/...
+ok  	github.com/kcl1104/geminus/cmd/api	1.084s
+ok  	github.com/kcl1104/geminus/cmd/worker	(cached)
+ok  	github.com/kcl1104/geminus/internal/api	1.108s
+ok  	github.com/kcl1104/geminus/internal/auth	(cached)
+?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/config	(cached)
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.196s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	31.002s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	3.692s
+ok  	github.com/kcl1104/geminus/internal/httpapi	1.343s
+ok  	github.com/kcl1104/geminus/internal/ids	(cached)
+ok  	github.com/kcl1104/geminus/internal/model	1.798s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	2.275s
+ok  	github.com/kcl1104/geminus/internal/model/patch	1.668s
+ok  	github.com/kcl1104/geminus/internal/model/validate	2.256s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	1.374s
+ok  	github.com/kcl1104/geminus/internal/project	1.060s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	2.538s
+ok  	github.com/kcl1104/geminus/internal/simulation	1.201s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	4.878s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	25.532s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	1.354s
+?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	3.277s
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/projects	(cached)
+ok  	github.com/kcl1104/geminus/internal/tenant	(cached)
+?   	github.com/kcl1104/geminus/schemas	[no test files]
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	94.109s

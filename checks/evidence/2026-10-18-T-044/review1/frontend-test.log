@@ -1,0 +1,27 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+
+ Test Files  10 passed (10)
+      Tests  153 passed (153)
+   Start at  17:41:50
+   Duration  5.25s (tests 76%, import 11%, environment 10%, transform 3%, worker 1%)
+
+    Isolate  10 workers spawned · ~333ms startup each (spawn + environment, per file)
+             at least ~777ms faster with isolate: false — reuses workers across files instead of one per file
+
