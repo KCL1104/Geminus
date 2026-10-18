@@ -2538,7 +2538,7 @@
       "id": "T-045",
       "title": "Design system, UI library evaluation and UX gate",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Frontend / Design",
       "planning_window": "Week 4–5",
       "depends_on": [

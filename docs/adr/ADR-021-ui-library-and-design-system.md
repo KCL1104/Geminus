@@ -1,0 +1,61 @@
+# ADR-021 — UI 函式庫與 design system（T-045）
+
+狀態：PROPOSED（T-045 agent 依 survey 與三個 spike 提出；**owner 選定後改為 ACCEPTED 才開始實作**，H-007）。日期：2026-10-18。依據：REQ-022、REQ-023、TEST-033、H-007、H-008、ADR-016、ADR-020；`checks/evidence/2026-10-18-T-045/` 的 `survey.md`、`spike-spec.md`、`spike-1-react-aria.md`、`spike-2-base-ui-tailwind.md`、`spike-3-mantine.md`。
+
+## 背景
+
+H-007 要求比較多個 UI 函式庫，不直接採用 Tailwind＋shadcn/ui。Survey 比較了 headless primitives、styled 元件庫、企業 design system 與 styling 方式，選出三組 spike。三組在同一頁 `/spike` 做相同內容：表單（ValidationIssue 錯誤、409 衝突）、200／5,000 列的錯誤表格（排序、選取、鍵盤、空與錯誤狀態）、確認 dialog 與成功訊息、React Flow 小畫布；量測相同的 9 項（`spike-spec.md`）。三組都遵守 H-008：只用系統字型、淺色主題、無付費授權、無安裝時腳本或 telemetry，版本皆於 2026-10-04 前發布。
+
+## 比較（量測，機器負載 3–14，時間只能相對比較）
+
+| 項目 | 1. React Aria Components 1.21.1＋CSS Modules | 2. Base UI 1.8.0＋Tailwind 4.3.3＋TanStack Table 9.2.4／Virtual 3.14.13 | 3. Mantine 9.6.3 |
+|---|---|---|---|
+| axe（WCAG 2.0–2.2 A／AA）瀏覽器 13 個狀態 | **0 violation** | **0 violation**（happy-dom 的 dialog 有 1 個 `aria-hidden-focus`，Chrome 為 incomplete） | **0 violation** |
+| 純鍵盤流程 | **66／66**＋5,000 列 7／7 | **53／53**（200 與 5,000 列） | 29／32（React Flow Escape 丟焦點；通知遮住焦點 WCAG 2.4.11；Tab 落到滑出中的通知） |
+| 表格的無障礙 | **函式庫內建**：完整 grid 鍵盤模型、排序、選取、虛擬化 | **自寫**：約 110 行，只涵蓋基本 APG grid（無範圍選取、type-ahead、編輯、欄寬） | **自寫**：256 行，另加 TanStack Virtual |
+| `/spike` First Load JS（gzip，KiB） | 314.0 | **287.0** | ≈289.4（另外每個 route 多 ≈28 KiB JS） |
+| 比 `/` 多出的 JS（gzip） | 170.2 KiB（React Flow ≈55.5、其餘 React Aria＋我們的程式；另有 ≈14.6 KiB 未用的語系可去除） | ≈143.4 KiB（Base UI ≈57、React Flow ≈55、TanStack ≈21） | ≈146.7 KiB |
+| `/spike` CSS（gzip） | **5.6 KiB** | 6.8 KiB | ≈38 KiB（每個元件分開 import 時 ≈17） |
+| 排序 5,000 列（虛擬化）中位數 | 257 ms | **46.9 ms** | ≈70 ms |
+| 排序 200 列（未虛擬化） | 825 ms | **86.8 ms** | 175–230 ms |
+| 我們寫的程式（`ui/`） | 553 行 TS＋673 行 CSS | 686 行 TSX＋174 行 CSS（＋61 行 globals） | 401 行 TS＋236 行 CSS |
+| lint 例外 | **0** | 1（`useVirtualizer`） | 1（`useVirtualizer`） |
+| 無法以 prop 覆寫的函式庫字串（zh-Hant） | 5 種 React Aria 繁中字串（見下，需 H-008 例外清單） | 0 | 0（但 close button 預設沒有名稱，漏傳就無名稱） |
+| Root layout 影響 | 一個 client provider（zh-Hant→zh-TW 對應，有測試） | 無 | `ColorSchemeScript` inline script（日後 CSP 需 nonce）、無 JS 時控制項失去樣式、`suppressHydrationWarning` |
+| 授權 | Apache-2.0 | MIT；Tailwind 4 建置時需要 lightningcss（MPL-2.0，不進 bundle） | MIT |
+| 主要風險 | 1.21.1 在 server 建大型 collection 為 O(n²)（5,000 列 1 分 51 秒；已改為 hydration 後才渲染長表格）；`UNSTABLE_Toast` 不用 | TanStack Table v9 很新（多數範例仍是 v8）；Base UI 每月發版；grid 無障礙全由我們維護、未經螢幕報讀器驗證 | 單一維護者、每年一個 major；我們的 density／focus 覆寫依賴內部變數名；之後要日期元件需 dayjs |
+
+三組共同的發現（與選擇無關）：
+
+- React Flow 12.12.0：Escape 會讓節點失焦（三組都在 wrapper 修正）、edge 在 Tab 順序中先於 node、`<Controls>` 的 `aria-label` 沒有 role、連接點 6–8 px（低於 24 px）、說明文字在 hydration 前是英文、**署名連結 "React Flow" 是唯一無法翻譯的字串**（只能以 `proOptions.hideAttribution` 隱藏，MIT 允許，但廠商請未訂閱 Pro 者保留）。
+- 390 px 時表格在自己的框內橫向捲動、畫布字太小：需要窄螢幕的表格與畫布設計（T-015）。
+- Density 設在頁面 wrapper 時到不了 portal（dialog、下拉、通知），要設在 `<html>`。
+- axe-core 與 @axe-core/playwright 為 MPL-2.0（弱 copyleft、只在開發與測試使用、不隨產品發布）；TEST-033 的自動檢查需要它們。
+- Next.js 16.4.1 的 `next dev` 會在 `apps/web` 寫入 `AGENTS.md`，除非設 `agentRules: false`：會與 repo 的 AGENTS.md 混淆，不論選哪組都要設定。
+- 螢幕報讀器（VoiceOver＋Safari、NVDA＋Firefox）三組都 NOT RUN，需要人執行。
+
+## 建議（agent 的判斷）
+
+**選 1：React Aria Components 1.21.1＋CSS Modules＋CSS custom-property tokens。**
+
+- Survey 預先定的規則：「除非 1 在 axe／鍵盤上失敗而其他組沒有，或其 route JS 超過最佳者約 1.5 倍且沒有無障礙上的好處，否則選 1」。1 沒有任何歸因於 React Aria 的 axe 或鍵盤失敗；JS 為最佳者的 1.09 倍（314.0／287.0）。
+- P0 的畫面以資料密集元件為主（import 錯誤表、proposal 審閱、run 比較、編輯器屬性面板），表格與 grid 的無障礙正是最容易出錯的地方。1 由函式庫提供完整的 grid 鍵盤模型與虛擬化；2 與 3 都要我們自己寫並長期維護，且未經螢幕報讀器驗證。
+- 1 的代價與對策：
+  - CSS 全部自己寫（我們的 tokens 本來就要自訂外觀）；
+  - 未虛擬化的表格排序慢 → 超過約 50 列一律虛擬化；
+  - 大型 collection 的 server render 慢 → 長表格只在 client 渲染；
+  - 未用語系 ≈14.6 KiB → `@react-aria/optimize-locales-plugin` 2.1.0（2026-10-22 起符合兩週規則）確認支援 Turbopack 後加入；
+  - 5 種函式庫繁中字串 → 依 H-008 列清單、審閱、以 Playwright 測試列出。
+- 若 owner 更重視 Tailwind／shadcn 生態與 token 強制、願意自己維護 grid 無障礙，選 2；若更重視「立刻有完整外觀」而接受較大的 CSS 與 root layout 的 inline script，選 3。
+
+## 待 owner 決定
+
+1. **選哪一組**（建議 1）。
+2. 若選 1：接受下列 React Aria 繁中字串依 H-008 使用函式庫翻譯：可排序的欄、已依據「…」欄遞增／遞減排序、已選取「…」。、關閉（Select 的隱藏關閉鈕）、數字欄位（可覆寫，但覆寫會失去 React Aria 在 iOS 的處理；建議不覆寫）。
+3. 接受 axe-core／@axe-core/playwright（MPL-2.0）作為只在測試使用的工具（TEST-033 需要）；若選 2，另含 lightningcss（建置時）。
+4. React Flow 署名：保留（建議，免費授權的慣例）或隱藏。
+5. 成功回饋：頁內 `role="status"` 訊息（建議；通知會遮住焦點，且 React Aria 的 Toast 尚為 UNSTABLE）或 toast。
+
+## 選定後的實作（T-045 其餘 scope）
+
+Design tokens（顏色、系統字型與繁中 fallback、間距、density、focus ring；深色預留）、app shell 與基本元件（button、field、select、dialog、status、table，以及 loading／empty／error／權限不足／409 狀態）套用到 T-014／T-044 的畫面；`agentRules: false`；axe 進 vitest 與 Playwright、純鍵盤 E2E、en／zh-Hant × 390／1280 截圖比對（baseline 變更需人工確認）；T-015 與 T-031 的 low-fi prototype 交 owner review。Spike 的程式只在 scratch，不直接搬進 repo，依選定的組重寫並先寫測試。
