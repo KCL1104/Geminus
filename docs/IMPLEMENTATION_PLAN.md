@@ -16,7 +16,8 @@ flowchart TD
   V --> E[2D Editor / T-014..015]
   V --> L[Login BFF / T-043]
   V --> L10N[Bilingual UI / T-044]
-  L10N --> E
+  L10N --> DS[Design system + UX gate / T-045]
+  DS --> E
   L --> UI
   V --> I[Import profile/map / T-016..017]
   V --> S[DES + Metrics / T-020..022]
@@ -123,3 +124,4 @@ IR/Schema晚變更會傳到AI/UI/engine/DB：先批准D-001/D-014與contract tes
 - **T-042 — Generic kernel / adapter dependency guard**：Simulation；Week 6–8；依賴 T-011, T-020。具體scope/commands/DoD見tasks.json。
 - **T-043 — Browser login session (BFF, ADR-018)**：Frontend / Security；Week 3–5；依賴 T-008, T-014。具體scope/commands/DoD見tasks.json。
 - **T-044 — Bilingual UI foundation (en default, zh-Hant)**：Frontend；Week 3–4；依賴 T-014, T-011。具體scope/commands/DoD見tasks.json。
+- **T-045 — Design system, UI library evaluation and UX gate**：Frontend / Design；Week 4–5；依賴 T-014, T-044；T-015 依賴它（H-007）。具體scope/commands/DoD見tasks.json。

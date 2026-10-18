@@ -854,13 +854,15 @@
         "T-014",
         "T-013",
         "T-011",
-        "T-044"
+        "T-044",
+        "T-045"
       ],
       "requirement_ids": [
         "REQ-004",
         "REQ-006",
         "REQ-017",
-        "REQ-022"
+        "REQ-022",
+        "REQ-023"
       ],
       "decision_gates": [],
       "scope": [
@@ -880,7 +882,8 @@
         "TEST-001",
         "TEST-005",
         "TEST-025",
-        "TEST-031"
+        "TEST-031",
+        "TEST-033"
       ],
       "verification_commands": [
         "make frontend-test",
@@ -1734,7 +1737,8 @@
         "REQ-008",
         "REQ-009",
         "REQ-010",
-        "REQ-022"
+        "REQ-022",
+        "REQ-023"
       ],
       "decision_gates": [
         "D-003",
@@ -1761,7 +1765,8 @@
         "TEST-008",
         "TEST-013",
         "TEST-028",
-        "TEST-031"
+        "TEST-031",
+        "TEST-033"
       ],
       "verification_commands": [
         "make frontend-test",
@@ -1794,7 +1799,8 @@
         "REQ-014",
         "REQ-015",
         "REQ-016",
-        "REQ-022"
+        "REQ-022",
+        "REQ-023"
       ],
       "decision_gates": [],
       "scope": [
@@ -1816,7 +1822,8 @@
         "TEST-024",
         "TEST-026",
         "TEST-028",
-        "TEST-031"
+        "TEST-031",
+        "TEST-033"
       ],
       "verification_commands": [
         "make frontend-test",
@@ -1884,7 +1891,8 @@
         "T-032"
       ],
       "requirement_ids": [
-        "REQ-017"
+        "REQ-017",
+        "REQ-023"
       ],
       "decision_gates": [],
       "scope": [
@@ -1902,7 +1910,8 @@
       "acceptance_tests": [
         "TEST-025",
         "TEST-026",
-        "TEST-029"
+        "TEST-029",
+        "TEST-033"
       ],
       "verification_commands": [
         "make frontend-test",
@@ -2236,7 +2245,8 @@
         "REQ-019",
         "REQ-020",
         "REQ-021",
-        "REQ-022"
+        "REQ-022",
+        "REQ-023"
       ],
       "decision_gates": [],
       "scope": [
@@ -2258,7 +2268,8 @@
         "TEST-028",
         "TEST-030",
         "TEST-031",
-        "TEST-032"
+        "TEST-032",
+        "TEST-033"
       ],
       "verification_commands": [
         "make e2e-test",
@@ -2463,6 +2474,55 @@
       "verification_commands": [
         "make frontend-test",
         "make backend-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-045",
+      "title": "Design system, UI library evaluation and UX gate",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Frontend / Design",
+      "planning_window": "Week 4–5",
+      "depends_on": [
+        "T-014",
+        "T-044"
+      ],
+      "requirement_ids": [
+        "REQ-023",
+        "REQ-022",
+        "REQ-004"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "UI 庫比較（H-007：不只 Tailwind＋shadcn/ui）：至少比較 headless primitives（React Aria Components、Radix Primitives、Base UI、Ark UI、Headless UI）、styled 元件庫（Mantine、MUI、Ant Design、Chakra UI）、企業 design system（IBM Carbon、Microsoft Fluent UI 2、Adobe React Spectrum、GitHub Primer、Atlassian Design System）與 styling 方式（Tailwind、CSS Modules＋CSS variables、zero-runtime CSS-in-JS）。評估：WCAG 2.2 AA 與鍵盤／ARIA 行為、CJK 字型與中英文長度差、React 19／Next.js 16 server components、資料密集元件（table、form、tree、command palette）、與 React Flow／PlayCanvas 並存、theming 與 tokens、license、維護狀態、bundle 大小。以實際 spike（同一個表單＋表格＋dialog）比較前 2–3 名；結論、版本與 license 寫入 ADR-021（PROPOSED，owner 確認後實作）。",
+        "Design tokens（顏色、字體與 CJK fallback、間距、密度、focus ring；dark mode 視 ADR 決定）與 app shell、基本元件（button、field、select、dialog、toast、table，以及 loading／empty／error／權限不足／409 狀態），套用到 T-014／T-044 既有畫面；文字仍只來自 T-044 catalog。",
+        "UX 流程：每個 UI 任務先交可點擊 prototype 經 owner review，review 紀錄放在該任務 evidence；本任務以 T-015 editor 與 T-031 proposal review 的 low-fi prototype 驗證流程。T-043 的登入頁先用既有語意化 HTML，本任務完成後套用。",
+        "自動檢查：axe-core（vitest DOM 與 Playwright）、只用鍵盤的 E2E、Playwright 截圖比對（en／zh-Hant × 390px／1280px），納入 make frontend-test／e2e-test 與 CI；截圖 baseline 變更需人工確認，不自動覆寫。"
+      ],
+      "planned_outputs": [
+        "apps/web/ui/",
+        "apps/web/tests/a11y/",
+        "docs/adr/ADR-021-ui-library-and-design-system.md"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/adr/ADR-016-frontend-server-state-boundary.md",
+        "docs/adr/ADR-020-ui-localization.md"
+      ],
+      "acceptance_tests": [
+        "TEST-033",
+        "TEST-031"
+      ],
+      "verification_commands": [
+        "make frontend-test",
+        "make e2e-test"
       ],
       "definition_of_done": [
         "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",

@@ -205,6 +205,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | H-004 | 2026-10-18 | 依原文批准 D-038、D-039（解除 T-023 的 decision gate）與 ADR-017；auth provider 與 browser token 儲存授權 agent 決定，記為 [ADR-018](adr/ADR-018-browser-session-and-oidc-provider.md)（BFF＋HttpOnly 加密 session cookie；Auth0） | Auth0 tenant 由 owner 建立、方案與費用由 owner 確認；tenant region 依 retention／residency |
 | H-005 | 2026-10-18 | App 支援英文與中文，英文為主要（預設）語言（REQ-022）。Agent 將中文定為繁體中文 `zh-Hant`；範圍為產品 UI 與 AI 文字輸出，repository 文件語言不變 | ~~是否另需簡體中文~~（H-006：先只做繁體）；文件是否改英文 |
 | H-006 | 2026-10-18 | 批准 [ADR-019](adr/ADR-019-http-transport.md)（HTTP transport）與 [ADR-020](adr/ADR-020-ui-localization.md)（UI 語言）為 ACCEPTED；中文先只支援繁體 `zh-Hant`，不加 `zh-Hans`；一般 API 的 rate limiting（429 `RATE_LIMITED`、`Retry-After`）併入 T-036 | 限額數值與計算單位（user／organization）於 T-036 提出 |
+| H-007 | 2026-10-18 | 採用 agent 建議的 UI 設計關卡：REQ-023（WCAG 2.2 AA、共用 design tokens 與元件、UI 任務先交 prototype 經 owner review、兩語與手機／桌面不跑版）、TEST-033、T-045（在 T-015 之前）；UI 庫須比較多個庫的做法後以 ADR-021 決定，不直接採用 Tailwind＋shadcn/ui；owner 尚無視覺偏好，預設中性的工具型介面 | UI 庫與 styling（ADR-021，owner 確認）；視覺取向（看 prototype 後回饋） |
 
 ## 原報告保留的 TBD
 
@@ -215,7 +216,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | Auth provider | ~~managed OIDC，未定案~~ **已由 H-004／ADR-018 決定：Auth0；browser 經 BFF（HttpOnly 加密 session cookie）** | API 端驗證見 ADR-017（ACCEPTED）；登入流程 T-043；Auth0 tenant 由 owner 建立，region 依 retention／residency |
 | Cloud / managed DB | GCP reference / AWS equivalent；managed PostgreSQL | Week 1–2；production deploy |
 | Object storage | cloud-native / S3-compatible abstraction | Week 2；持久化 artifact |
-| Frontend state / UI libraries | TanStack Query、Zustand、Tailwind/shadcn 原文均 TBD | Frontend bootstrap；不影響 IR |
+| Frontend state / UI libraries | TanStack Query、Zustand、Tailwind/shadcn 原文均 TBD；server state 已由 ADR-016 決定；**UI 庫與 styling 由 T-045 比較多個庫後以 ADR-021 決定（H-007）** | T-045；不影響 IR |
 | SQL generation | explicit SQL / sqlc TBD | Backend bootstrap |
 | Model / upload / replications / timeout | 原報告初始目標，不是量測成果 | Alpha benchmark |
 | AI token / tenant quota | per operation / tenant，數值未定 | AI Alpha；無上限時不得開 live AI |

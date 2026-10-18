@@ -12,13 +12,14 @@
     "H-003",
     "H-004",
     "H-005",
-    "H-006"
+    "H-006",
+    "H-007"
   ],
   "tasks_by_status": {
     "blocked": 0,
     "done": 14,
     "in_progress": 0,
-    "not_started": 29,
+    "not_started": 30,
     "review": 1
   },
   "ready_tasks": [

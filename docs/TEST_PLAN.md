@@ -51,6 +51,7 @@ schema / docs / task DAG checks 是第零層 specification hygiene，不等於�
 | TEST-030 | deploy / migration / restore | up/down/up、runtime grants、staging smoke、backup restore、人工production gate | 019–020 |
 | TEST-031 | bilingual UI / locale | 預設 en；zh-Hant catalog 與 en key 完全一致且無空值；lint 禁止 UI 中硬編使用者可見字串；切換語言後保留且不需重新登入；每個 Problem／validation code 皆有兩語文案；Intl 日期／數字；AI prose 依 locale，analyst 數字校驗兩語皆有效；E2E 主流程兩語各跑一次 | 016、022 |
 | TEST-032 | browser session / BFF | document.cookie、storage、回應 body 中沒有 token；cookie 為 `__Host-`、HttpOnly、Secure、SameSite=Lax；跨站 POST、缺 `X-Geminus-Request` 或錯 Origin 被拒；PKCE／state／nonce 錯誤被拒；refresh rotation 與 reuse；logout 撤銷 refresh；未知 identity 403；Go API 不讀 cookie | 001、019 |
+| TEST-033 | UI design / accessibility | axe-core（WCAG 2.2 AA 規則）對每個 route 與主要狀態（loading、empty、error、權限不足、409）0 violation；只用鍵盤完成 E2E 主流程，focus 可見且順序合理；Playwright 截圖比對 en／zh-Hant × 手機（390px）／桌面（1280px），baseline 變更需人工確認；色彩 token 對比達 AA；每個 UI 任務的 prototype 有 owner review 紀錄 | 004、022、023 |
 
 range 003 等指 REQ-003。planning/traceability.csv 提供完整 ID 對照；test row 是驗收要求，不是聲稱已存在產品測試實作。
 

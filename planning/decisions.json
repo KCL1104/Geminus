@@ -617,6 +617,19 @@
       "still_open": [
         "rate limit 的限額數值與計算單位（user／organization），於 T-036 提出"
       ]
+    },
+    {
+      "id": "H-007",
+      "subject": "UI 設計與無障礙關卡",
+      "decision": "採用 agent 建議：新增 REQ-023（WCAG 2.2 AA、共用 design tokens 與元件、每個 UI 任務先交 prototype 經 owner review、兩語與手機／桌面不跑版）、TEST-033 與 T-045（T-015 之前）；UI 庫須比較多個庫的做法後以 ADR-021 決定，不直接採用 Tailwind＋shadcn/ui；owner 尚無視覺偏好，預設中性、資訊密集的工具型介面。",
+      "quote": "好 照你建議 我目前還沒有任何 ui 相關的想法，不過我希望你可以參考更多 ui 庫的做法不只是直接使用 Tailwind 加 shadcn/ui。",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-18",
+      "source": "Claude Code session 指示，由 agent 記錄",
+      "still_open": [
+        "UI 庫與 styling 方式（T-045 比較後 ADR-021，owner 確認）",
+        "視覺取向（owner 看 prototype 後回饋）"
+      ]
     }
   ]
 }

@@ -42,8 +42,11 @@ SOURCE 的三個驗證假設：AI 降低建模門檻；simulation 提供使用�
 | REQ-020 | Observability / deployment | structured logs + traces/metrics；containerized web/api/worker、staging 與受控 production approval；no customer content in product telemetry |
 | REQ-021 | Quality gates | 六層測試、50 curated modeling intents 初始目標、invalid mutation=0、AI leakage=0、mandatory adversarial invented metrics=0 |
 | REQ-022 | Bilingual UI（owner 新增，H-005） | 英文（`en`）為預設與主要語言，另支援繁體中文（`zh-Hant`）；所有使用者可見字串來自 message catalog，兩語 key 完全一致；使用者可切換並記住語言；日期／數字／期間依語言格式化；API 錯誤由 UI 依 error code 在地化；AI 文字輸出依使用者語言，ID、JSON Pointer、enum 與 metric path 不翻譯 |
+| REQ-023 | UI design & accessibility（owner 新增，H-007） | 每個 P0 畫面符合 WCAG 2.2 AA（只用鍵盤可完成主流程、focus 可見、色彩對比、螢幕閱讀器可讀名稱與狀態）；共用 design tokens 與元件，元件庫與 styling 方式經比較多個 UI 庫後以 ADR 決定；每個 UI 任務先交可點擊 prototype 經 owner review 再實作；en 與 zh-Hant、手機與桌面寬度皆不跑版 |
 
 REQ-022 不是原報告需求：owner 於 2026-10-18 新增（H-005）；中文定為繁體 `zh-Hant`，owner 確認先只做繁體（H-006）。
+
+REQ-023 不是原報告需求：owner 於 2026-10-18 同意 agent 建議新增（H-007），並要求比較多個 UI 庫的做法、不直接採用 Tailwind＋shadcn/ui；owner 尚無視覺偏好，預設為中性、資訊密集的工具型介面。
 
 工程補充（已批准）：REQ-002 的 org bootstrap / membership HTTP 範圍見 D-008 / D-012；REQ-007 commit 與 proposal 邊界見 D-009；REQ-010 scenario approval 結果見 D-004；其餘缺值、clock 與一致性細節依專門 Spec。
 
