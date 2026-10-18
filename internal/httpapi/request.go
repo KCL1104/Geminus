@@ -12,6 +12,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/kcl1104/geminus/internal/ids"
@@ -150,4 +151,51 @@ func utf8Charset(params map[string]string) bool {
 		}
 	}
 	return true
+}
+
+// IdempotencyKey reads the Idempotency-Key header (openapi IdempotencyKey:
+// 8–128 characters; visible ASCII here, so it stores and logs
+// unambiguously).
+func IdempotencyKey(r *http.Request) (string, error) {
+	values := r.Header.Values("Idempotency-Key")
+	if len(values) == 0 {
+		return "", Errorf(IdempotencyKeyRequired, "an Idempotency-Key header is required")
+	}
+	k := values[0]
+	if len(values) > 1 || len(k) < 8 || len(k) > 128 || strings.ContainsFunc(k, func(c rune) bool { return c < 0x21 || c > 0x7e }) {
+		return "", &Error{Code: InvalidRequest, Message: "Idempotency-Key must be one value of 8–128 visible ASCII characters",
+			Details: []Detail{{Path: "", Reason: "Idempotency-Key"}}}
+	}
+	return k, nil
+}
+
+// PageQuery reads a list's cursor and limit (openapi Cursor and Limit: at
+// most 2048 characters; 1–100, 50 when absent).
+func PageQuery(r *http.Request) (cursor string, limit int, err error) {
+	q, err := Query(r)
+	if err != nil {
+		return "", 0, err
+	}
+	limit = 50
+	if vs, ok := q["limit"]; ok {
+		n, err := strconv.Atoi(vs[0])
+		if len(vs) != 1 || err != nil || n < 1 || n > 100 || strconv.Itoa(n) != vs[0] {
+			return "", 0, &Error{Code: InvalidRequest, Message: "limit must be one integer from 1 to 100",
+				Details: []Detail{{Path: "", Reason: "limit"}}}
+		}
+		limit = n
+	}
+	if vs, ok := q["cursor"]; ok {
+		if len(vs) != 1 || vs[0] == "" || len(vs[0]) > 2048 {
+			return "", 0, InvalidCursor()
+		}
+		cursor = vs[0]
+	}
+	return cursor, limit, nil
+}
+
+// InvalidCursor is the error for a cursor the list did not issue.
+func InvalidCursor() error {
+	return &Error{Code: InvalidRequest, Message: "the cursor is not valid for this list",
+		Details: []Detail{{Path: "", Reason: "cursor"}}}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/project"
 	"github.com/kcl1104/geminus/internal/tenant"
+	"github.com/kcl1104/geminus/internal/tenant/memberships"
 )
 
 // Handler serves every implemented /v1 operation. Any other path or method
@@ -22,6 +23,7 @@ import (
 func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB) http.Handler {
 	mux := http.NewServeMux()
 	project.Register(mux, log, v, db, &project.Service{DB: db})
+	memberships.Register(mux, log, v, db, &memberships.Service{DB: db})
 	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")
 	})

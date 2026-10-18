@@ -4,8 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/httpapi"
@@ -48,7 +46,7 @@ func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpa
 type handlers struct{ s *Service }
 
 func (h handlers) create(w http.ResponseWriter, r *http.Request, sc tenant.Scope) error {
-	key, err := idempotencyKey(r)
+	key, err := httpapi.IdempotencyKey(r)
 	if err != nil {
 		return err
 	}
@@ -68,56 +66,20 @@ func (h handlers) create(w http.ResponseWriter, r *http.Request, sc tenant.Scope
 	return nil
 }
 
-// idempotencyKey reads the Idempotency-Key header (openapi IdempotencyKey:
-// 8–128 characters; visible ASCII here, so it stores and logs unambiguously).
-func idempotencyKey(r *http.Request) (string, error) {
-	values := r.Header.Values("Idempotency-Key")
-	if len(values) == 0 {
-		return "", httpapi.Errorf(httpapi.IdempotencyKeyRequired, "an Idempotency-Key header is required")
-	}
-	k := values[0]
-	if len(values) > 1 || len(k) < 8 || len(k) > 128 || strings.ContainsFunc(k, func(c rune) bool { return c < 0x21 || c > 0x7e }) {
-		return "", &httpapi.Error{Code: httpapi.InvalidRequest, Message: "Idempotency-Key must be one value of 8–128 visible ASCII characters",
-			Details: []httpapi.Detail{{Path: "", Reason: "Idempotency-Key"}}}
-	}
-	return k, nil
-}
-
 func (h handlers) list(w http.ResponseWriter, r *http.Request, sc tenant.Scope) error {
-	q, err := httpapi.Query(r)
+	cursor, limit, err := httpapi.PageQuery(r)
 	if err != nil {
 		return err
 	}
-	limit := 50
-	if vs, ok := q["limit"]; ok {
-		n, err := strconv.Atoi(vs[0])
-		if len(vs) != 1 || err != nil || n < 1 || n > 100 || strconv.Itoa(n) != vs[0] {
-			return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "limit must be one integer from 1 to 100",
-				Details: []httpapi.Detail{{Path: "", Reason: "limit"}}}
-		}
-		limit = n
-	}
-	cursor := ""
-	if vs, ok := q["cursor"]; ok {
-		if len(vs) != 1 || vs[0] == "" || len(vs[0]) > 2048 {
-			return invalidCursor()
-		}
-		cursor = vs[0]
-	}
 	page, err := h.s.List(r.Context(), sc, cursor, limit)
 	if errors.Is(err, ErrInvalidCursor) {
-		return invalidCursor()
+		return httpapi.InvalidCursor()
 	}
 	if err != nil {
 		return err
 	}
 	httpapi.WriteJSON(w, 200, page)
 	return nil
-}
-
-func invalidCursor() error {
-	return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "the cursor is not valid for this list",
-		Details: []httpapi.Detail{{Path: "", Reason: "cursor"}}}
 }
 
 func (h handlers) get(w http.ResponseWriter, r *http.Request, sc tenant.Scope) error {

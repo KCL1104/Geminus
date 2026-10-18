@@ -1,0 +1,30 @@
+=== RUN   TestRoles
+--- PASS: TestRoles (0.13s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.14s)
+=== RUN   TestUpdate
+--- PASS: TestUpdate (0.11s)
+=== RUN   TestDelete
+--- PASS: TestDelete (0.08s)
+=== RUN   TestRemovalWaitsForAWrite
+--- PASS: TestRemovalWaitsForAWrite (0.55s)
+=== RUN   TestOwnersChangeAtOnce
+    memberships_test.go:326: round 1, owner 1: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 3, owner 1: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 4, owner 0: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 7, owner 1: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 8, owner 1: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 9, owner 1: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 10, owner 1: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 11, owner 0: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 12, owner 0: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 13, owner 1: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+    memberships_test.go:326: round 14, owner 1: postgres: serialization failure or deadlock (SQLSTATE 40P01): deadlock detected
+--- FAIL: TestOwnersChangeAtOnce (11.66s)
+=== RUN   TestList
+--- PASS: TestList (0.07s)
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/tenant/memberships	12.760s
+FAIL

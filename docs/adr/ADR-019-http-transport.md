@@ -60,6 +60,7 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
 - Header 只是 selector（D-008）。Membership 與 role 由 handler 在 `tenant.DB.Run` 的同一個 transaction 中檢查：非 member 回 404，role 不足回 403。
 - 讀寫的 run 以 `FOR SHARE` 鎖住它檢查過的 membership row 直到 transaction 結束：同時發生的撤權或 role 變更會等這個 write commit，不會先 commit 而讓 write 繼續（T-009 review L3）。唯讀的 run 不上鎖。
   - **已知限制（T-009 re-review R1，latent）**：D-036 的成員變更 transaction 依 user_id 順序以 `FOR UPDATE` 鎖該 organization 全部 owner membership。若它跑在 `Run(ReadWrite)` 之上，每個 owner 已先持有自己 row 的 `FOR SHARE`，兩個 owner 同時變更成員會形成 lock cycle（reviewer probe：3／3 次 `40P01`，回 `ErrRetryable`／503）。T-009 沒有變更 membership 的 route。T-010 必須提供不先取 `FOR SHARE` 的 run 模式：先取 D-036 的有序鎖（owner caller 自己的 row 在其中），再重讀 caller 的 role；並加上在 `Run` 之上執行 D-036 的並行測試。
+  - **T-010 已處理**：成員變更改用 `tenant.DB.RunOwners`（ADR-023），先取有序的 owner 鎖再讀 caller 的 role；`TestOwnersChangeAtOnce` 以兩個 owner 同時互相降級並夾雜 owner 自己的寫入，確認無 deadlock。
 - Route 的 role 與 `planning/api-operations.json` 的 `x-required-roles` 由 contract test 鎖住；service 要求的是同一組值（`createRoles`、`readRoles`），所以被鎖住的就是實際執行的（T-009 review L5）。
 
 ### 寫入

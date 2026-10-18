@@ -1,0 +1,64 @@
+=== RUN   TestRequire
+--- PASS: TestRequire (0.00s)
+=== RUN   TestScopeIsValidatedBeforeTheDatabase
+--- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+=== RUN   TestRuntimeRoles
+--- PASS: TestRuntimeRoles (0.11s)
+=== RUN   TestRunScopes
+--- PASS: TestRunScopes (0.08s)
+=== RUN   TestRunModes
+--- PASS: TestRunModes (0.06s)
+=== RUN   TestRunLocksMembership
+--- PASS: TestRunLocksMembership (0.56s)
+=== RUN   TestRunErrors
+--- PASS: TestRunErrors (0.00s)
+=== RUN   TestPoolReuseLeavesNoScope
+--- PASS: TestPoolReuseLeavesNoScope (0.33s)
+=== RUN   TestWorkerAssignment
+--- PASS: TestWorkerAssignment (0.04s)
+=== RUN   TestGuardDiscardsSessionState
+--- PASS: TestGuardDiscardsSessionState (0.16s)
+=== RUN   TestGuardCoversEverySetting
+--- PASS: TestGuardCoversEverySetting (0.00s)
+=== RUN   TestUnsafeRuntimeLogins
+--- PASS: TestUnsafeRuntimeLogins (0.12s)
+=== RUN   TestRuntimeLoginCannotCreate
+--- PASS: TestRuntimeLoginCannotCreate (0.05s)
+=== RUN   TestResolveUser
+--- PASS: TestResolveUser (0.09s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant	2.641s
+=== RUN   TestRoles
+--- PASS: TestRoles (0.14s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.20s)
+=== RUN   TestUpdate
+--- PASS: TestUpdate (0.09s)
+=== RUN   TestDelete
+--- PASS: TestDelete (0.14s)
+=== RUN   TestRemovalWaitsForAWrite
+--- PASS: TestRemovalWaitsForAWrite (0.56s)
+=== RUN   TestOwnersChangeAtOnce
+--- PASS: TestOwnersChangeAtOnce (0.68s)
+=== RUN   TestList
+--- PASS: TestList (0.08s)
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestPromotedWhileWaiting
+--- PASS: TestPromotedWhileWaiting (0.54s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	3.512s
+=== RUN   TestCheckOperator
+--- PASS: TestCheckOperator (0.08s)
+=== RUN   TestAPICannotProvision
+--- PASS: TestAPICannotProvision (0.02s)
+=== RUN   TestProvision
+--- PASS: TestProvision (0.08s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.215s
+=== RUN   TestProvision
+--- PASS: TestProvision (0.06s)
+=== RUN   TestRefusals
+--- PASS: TestRefusals (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.150s

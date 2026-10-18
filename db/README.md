@@ -16,6 +16,20 @@ DT_ALLOW_DB_TESTS=yes GEMINUS_TEST_DATABASE_URL="$DATABASE_URL" make integration
 
 The runner refuses a non-`dt_test_*` database or an existing `twin` schema and creates no login passwords. Never point it at shared or production infrastructure; the down migrations are destructive.
 
+### Provisioning a tenant (T-010, ADR-023)
+
+Users and organizations are created by an operator, never through the API (D-008). Give provisioning a login of its own that may act as the owner role and is nothing else; `cmd/provision-tenant` refuses a runtime login and a superuser (a member of every role):
+
+```sql
+CREATE ROLE geminus_provisioner LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE twin_owner;  -- NOINHERIT: owner rights only after SET ROLE; set its password out of band
+```
+
+```sh
+export GEMINUS_PROVISION_DATABASE_URL='postgresql://geminus_provisioner@<host>/<db>'
+go run ./cmd/provision-tenant organization -name 'Acme' -owner-issuer 'https://<tenant>.auth0.com/' -owner-subject 'auth0|…'
+go run ./cmd/provision-tenant user -issuer 'https://<tenant>.auth0.com/' -subject 'auth0|…'   # then an owner adds the user by ID
+```
+
 ## Tests
 
 | File | Covers |
@@ -26,6 +40,8 @@ The runner refuses a non-`dt_test_*` database or an existing `twin` schema and c
 | `internal/storage/postgres` (Go) | commit/rollback/panic, transaction-local settings on a reused pooled connection, cancellation releases locks, typed errors that never quote row data |
 | `internal/storage/projects` (Go) | the organization filter alone (as the provisioning superuser, whom RLS does not restrict) and keyset paging across rows with the same `created_at` |
 | `internal/api`, `cmd/api` (Go, T-009) | the API through its real handler as the plain API login (`dt_test_api_login`) with a TLS test OIDC provider: role × tenant matrix of the project routes, idempotency (replay, conflict, races, expiry), audit rows, cursor tampering, TEST-010 for projects; `cmd/api` refusing the superuser login and serving/stopping as the API login |
+| `internal/storage/provisioning`, `cmd/provision-tenant` (Go, T-010) | the operator login (`dt_test_provisioner`, created by the test `IN ROLE twin_owner`, no password) creates users and organizations with their first owner and audit event; the API login, the worker login and a superuser are refused; the API login cannot INSERT users or organizations even with the RLS settings |
+| `internal/tenant/memberships` (Go, T-010) | owner-only list/add/update/remove as the API login: roles, idempotency, last owner (D-036), removal waiting for a member's write, two owners demoting each other at once without deadlock (ADR-023) |
 | `internal/tenant` (Go) | real runtime logins (created by the test as `dt_test_*_login`, no password): `CheckRuntimeRole`, no `SET ROLE` to the owner, membership-checked scope, wrong-org and cross-tenant writes, pool reuse after success/error/panic/cancel, `Guard` discarding leaked scope or role, worker allowlist |
 
 Both SQL files are rendered from `db/tests/templates/` by `scripts/render_db_tests.py` (`make db-tests-render`; `make spec-check` fails if they are stale), which fills valid ULID test IDs and real RFC 8785 model hashes. Run them on databases with different default collations: CI's PostgreSQL image uses libc `en_US.utf8`; locally an ICU database works (`CREATE DATABASE dt_test_icu TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER icu ICU_LOCALE 'en-US' LOCALE 'C.utf8'`). For diagnosis, `PGOPTIONS='-c dt.collect=on'` reports every failing case instead of stopping at the first.
