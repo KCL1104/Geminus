@@ -1,0 +1,431 @@
+package auth
+
+import (
+	"bytes"
+	"context"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/rsa"
+	"encoding/base64"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+	"net/url"
+	"slices"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+	"unicode"
+	"unicode/utf8"
+
+	jose "github.com/go-jose/go-jose/v4"
+)
+
+// Limits on what a token and a key set may be.
+const (
+	MaxTokenBytes  = 8 << 10   // a compact JWS longer than this is refused before parsing
+	maxJWKSBytes   = 256 << 10 // a larger JWKS response is an error
+	maxSubject     = 255       // users.oidc_subject is compared byte for byte
+	minRSABits     = 2048
+	maxClockSkew   = 5 * time.Minute
+	defaultSkew    = 30 * time.Second
+	fetchTimeout   = 10 * time.Second
+	defaultRefresh = time.Minute
+	defaultMaxAge  = time.Hour
+	defaultStale   = 24 * time.Hour
+)
+
+// asymmetric is every algorithm a deployment may allow: no "none", no HMAC
+// (a public key must never become a shared secret).
+var asymmetric = []string{"RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512", "EdDSA"}
+
+// Header parameters a token may not carry: key locations and embedded keys
+// (keys come only from the configured JWKS), critical extensions, unencoded
+// payloads, and encryption parameters.
+var forbiddenHeader = []string{"jku", "x5u", "jwk", "x5c", "x5t", "x5t#S256", "crit", "b64", "zip", "enc"}
+
+// Access-token types a typ header may name (RFC 7519, RFC 9068).
+var tokenTypes = []string{"jwt", "at+jwt", "application/at+jwt"}
+
+// Config is a deployment's OIDC provider: endpoints come from the deployment
+// allowlist, never from a token or a discovery document (SECURITY §3).
+type Config struct {
+	Issuer   string // exact iss value; an https URL
+	Audience string // the API's audience; aud must contain it
+	JWKSURL  string // https URL of the provider's JWKS
+	// Algorithms allowed; empty means RS256 and ES256.
+	Algorithms []string
+	// ClockSkew tolerated on exp, nbf and iat; zero means 30 s, at most 5 min.
+	ClockSkew time.Duration
+	// MinRefreshInterval spaces JWKS fetches (an unknown kid triggers one);
+	// KeyMaxAge is how long a fetched JWKS is used before it is refreshed;
+	// KeyMaxStale is how long it may still be used while refreshes fail.
+	// Zero means 1 min, 1 h and 24 h.
+	MinRefreshInterval, KeyMaxAge, KeyMaxStale time.Duration
+	// HTTPClient fetches the JWKS; redirects are never followed. Nil uses a
+	// client with a 10 s timeout.
+	HTTPClient *http.Client
+	Now        func() time.Time
+}
+
+// Validate reports every problem with c, without echoing values.
+func (c Config) Validate() error {
+	var errs []error
+	if err := httpsURL(c.Issuer, false); err != nil {
+		errs = append(errs, fmt.Errorf("issuer: %w", err))
+	}
+	if c.Audience == "" || len(c.Audience) > 512 || !printable(c.Audience) {
+		errs = append(errs, errors.New("audience: required, printable, at most 512 bytes"))
+	}
+	if err := httpsURL(c.JWKSURL, true); err != nil {
+		errs = append(errs, fmt.Errorf("JWKS URL: %w", err))
+	}
+	for _, a := range c.Algorithms {
+		if !slices.Contains(asymmetric, a) {
+			errs = append(errs, fmt.Errorf("algorithm %q is not an allowed asymmetric signature algorithm", a))
+		}
+	}
+	if c.ClockSkew < 0 || c.ClockSkew > maxClockSkew {
+		errs = append(errs, errors.New("clock skew: between 0 and 5 minutes"))
+	}
+	if c.MinRefreshInterval < 0 || c.KeyMaxAge < 0 || c.KeyMaxStale < 0 {
+		errs = append(errs, errors.New("key refresh intervals: not negative"))
+	}
+	return errors.Join(errs...)
+}
+
+func httpsURL(raw string, queryOK bool) error {
+	u, err := url.Parse(raw)
+	switch {
+	case raw == "" || err != nil:
+		return errors.New("required absolute https URL")
+	case u.Scheme != "https" || u.Host == "" || u.Opaque != "":
+		return errors.New("must be an absolute https URL")
+	case u.User != nil:
+		return errors.New("must not contain credentials")
+	case u.Fragment != "" || strings.Contains(raw, "#"):
+		return errors.New("must not contain a fragment")
+	case !queryOK && u.RawQuery != "":
+		return errors.New("must not contain a query")
+	}
+	return nil
+}
+
+func printable(s string) bool {
+	return utf8.ValidString(s) && !strings.ContainsFunc(s, unicode.IsControl)
+}
+
+// OIDCVerifier verifies access tokens of one provider against its JWKS.
+type OIDCVerifier struct {
+	cfg    Config
+	algs   []jose.SignatureAlgorithm
+	client *http.Client
+
+	keys atomic.Pointer[keySet]
+	mu   sync.Mutex // serialises refreshes; fields below
+	last time.Time  // last fetch attempt
+	err  error      // its error, if it failed
+}
+
+type keySet struct {
+	byID    map[string]jose.JSONWebKey
+	fetched time.Time
+}
+
+// NewOIDCVerifier checks cfg and returns a verifier. It does not contact
+// the provider; the JWKS is fetched on first use.
+func NewOIDCVerifier(cfg Config) (*OIDCVerifier, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	if len(cfg.Algorithms) == 0 {
+		cfg.Algorithms = []string{"RS256", "ES256"}
+	}
+	if cfg.ClockSkew == 0 {
+		cfg.ClockSkew = defaultSkew
+	}
+	if cfg.MinRefreshInterval == 0 {
+		cfg.MinRefreshInterval = defaultRefresh
+	}
+	if cfg.KeyMaxAge == 0 {
+		cfg.KeyMaxAge = defaultMaxAge
+	}
+	if cfg.KeyMaxStale == 0 {
+		cfg.KeyMaxStale = defaultStale
+	}
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
+	client := &http.Client{Timeout: fetchTimeout}
+	if cfg.HTTPClient != nil {
+		c := *cfg.HTTPClient
+		client = &c
+	}
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	v := &OIDCVerifier{cfg: cfg, client: client}
+	for _, a := range cfg.Algorithms {
+		v.algs = append(v.algs, jose.SignatureAlgorithm(a))
+	}
+	return v, nil
+}
+
+var _ Verifier = (*OIDCVerifier)(nil)
+
+// Verify checks the token's form, header, signature and claims, in that
+// order, and returns the caller's identity.
+func (v *OIDCVerifier) Verify(ctx context.Context, token string) (Identity, error) {
+	if len(token) > MaxTokenBytes {
+		return Identity{}, invalid(ReasonTooLarge)
+	}
+	if token == "" || strings.Count(token, ".") != 2 {
+		return Identity{}, invalid(ReasonMalformed)
+	}
+	alg, kid, err := v.header(token[:strings.IndexByte(token, '.')])
+	if err != nil {
+		return Identity{}, err
+	}
+	jws, err := jose.ParseSignedCompact(token, v.algs)
+	if err != nil || len(jws.Signatures) != 1 {
+		return Identity{}, invalid(ReasonMalformed)
+	}
+	key, err := v.key(ctx, kid)
+	if err != nil {
+		return Identity{}, err
+	}
+	if (key.Algorithm != "" && key.Algorithm != alg) || !fits(alg, key.Key) {
+		return Identity{}, invalid(ReasonAlgorithm)
+	}
+	payload, err := jws.Verify(key.Key)
+	if err != nil {
+		return Identity{}, invalid(ReasonSignature)
+	}
+	return v.claims(payload)
+}
+
+// header checks the protected header before any key is looked up.
+func (v *OIDCVerifier) header(segment string) (alg, kid string, err error) {
+	raw, err := base64.RawURLEncoding.DecodeString(segment)
+	if err != nil {
+		return "", "", invalid(ReasonMalformed)
+	}
+	var h map[string]jsontext.Value
+	if err := json.Unmarshal(raw, &h); err != nil {
+		return "", "", invalid(ReasonMalformed) // includes duplicate member names
+	}
+	if json.Unmarshal(h["alg"], &alg) != nil || !slices.Contains(v.cfg.Algorithms, alg) {
+		return "", "", invalid(ReasonAlgorithm)
+	}
+	if json.Unmarshal(h["kid"], &kid) != nil || kid == "" || len(kid) > 256 {
+		return "", "", invalid(ReasonHeader)
+	}
+	for _, p := range forbiddenHeader {
+		if _, ok := h[p]; ok {
+			return "", "", invalid(ReasonHeader)
+		}
+	}
+	if t, ok := h["typ"]; ok {
+		var typ string
+		if json.Unmarshal(t, &typ) != nil || !slices.Contains(tokenTypes, strings.ToLower(typ)) {
+			return "", "", invalid(ReasonType)
+		}
+	}
+	return alg, kid, nil
+}
+
+// fits reports whether key is the right kind of key for alg.
+func fits(alg string, key any) bool {
+	switch k := key.(type) {
+	case *rsa.PublicKey:
+		return (strings.HasPrefix(alg, "RS") || strings.HasPrefix(alg, "PS")) && k.N.BitLen() >= minRSABits
+	case *ecdsa.PublicKey:
+		return map[string]elliptic.Curve{"ES256": elliptic.P256(), "ES384": elliptic.P384(), "ES512": elliptic.P521()}[alg] == k.Curve
+	case ed25519.PublicKey:
+		return alg == "EdDSA"
+	}
+	return false
+}
+
+type tokenClaims struct {
+	Iss *string        `json:"iss"`
+	Sub *string        `json:"sub"`
+	Aud jsontext.Value `json:"aud"`
+	Exp *float64       `json:"exp"`
+	Nbf *float64       `json:"nbf"`
+	Iat *float64       `json:"iat"`
+}
+
+func (v *OIDCVerifier) claims(payload []byte) (Identity, error) {
+	var c tokenClaims
+	if err := json.Unmarshal(payload, &c); err != nil {
+		return Identity{}, invalid(ReasonClaims)
+	}
+	if c.Iss == nil || *c.Iss != v.cfg.Issuer {
+		return Identity{}, invalid(ReasonIssuer)
+	}
+	auds, ok := audiences(c.Aud)
+	if !ok {
+		return Identity{}, invalid(ReasonClaims)
+	}
+	if !slices.Contains(auds, v.cfg.Audience) {
+		return Identity{}, invalid(ReasonAudience)
+	}
+	now, skew := v.cfg.Now(), v.cfg.ClockSkew
+	exp, ok := numericDate(c.Exp)
+	if !ok || c.Exp == nil || !now.Before(exp.Add(skew)) {
+		return Identity{}, invalid(ReasonExpired)
+	}
+	if nbf, ok := numericDate(c.Nbf); !ok {
+		return Identity{}, invalid(ReasonClaims)
+	} else if c.Nbf != nil && now.Add(skew).Before(nbf) {
+		return Identity{}, invalid(ReasonNotYetValid)
+	}
+	if iat, ok := numericDate(c.Iat); !ok {
+		return Identity{}, invalid(ReasonClaims)
+	} else if c.Iat != nil && iat.After(now.Add(skew)) {
+		return Identity{}, invalid(ReasonIssuedInFuture)
+	}
+	if c.Sub == nil || *c.Sub == "" || len(*c.Sub) > maxSubject || !printable(*c.Sub) {
+		return Identity{}, invalid(ReasonSubject)
+	}
+	return Identity{Issuer: *c.Iss, Subject: *c.Sub, Expiry: exp}, nil
+}
+
+// audiences reads aud, a string or an array of strings (RFC 7519 §4.1.3).
+func audiences(raw jsontext.Value) ([]string, bool) {
+	if len(raw) == 0 {
+		return nil, true // absent: matches nothing
+	}
+	var one string
+	if json.Unmarshal(raw, &one) == nil {
+		return []string{one}, true
+	}
+	var many []string
+	if json.Unmarshal(raw, &many) == nil {
+		return many, true
+	}
+	return nil, false
+}
+
+// numericDate converts a NumericDate; absent is fine (ok, zero time), a
+// value outside year 1970–9999 is not.
+func numericDate(v *float64) (time.Time, bool) {
+	if v == nil {
+		return time.Time{}, true
+	}
+	if math.IsNaN(*v) || *v < 0 || *v >= 253402300800 {
+		return time.Time{}, false
+	}
+	sec, frac := math.Modf(*v)
+	return time.Unix(int64(sec), int64(frac*1e9)), true
+}
+
+// key returns the verification key for kid. A JWKS is used for KeyMaxAge,
+// then refreshed; an unknown kid also triggers a refresh, so rotated keys
+// are picked up. Refreshes are spaced by MinRefreshInterval, so tokens with
+// random kids cannot make the API hammer the provider. While refreshes fail,
+// keys already fetched stay usable until KeyMaxStale.
+func (v *OIDCVerifier) key(ctx context.Context, kid string) (jose.JSONWebKey, error) {
+	now := v.cfg.Now()
+	if ks := v.keys.Load(); ks != nil && now.Sub(ks.fetched) < v.cfg.KeyMaxAge {
+		if k, ok := ks.byID[kid]; ok {
+			return k, nil
+		}
+	}
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	ks := v.keys.Load()
+	if ks != nil && now.Sub(ks.fetched) < v.cfg.KeyMaxAge {
+		if k, ok := ks.byID[kid]; ok {
+			return k, nil // another request refreshed meanwhile
+		}
+	}
+	if v.last.IsZero() || now.Sub(v.last) >= v.cfg.MinRefreshInterval {
+		v.last = now
+		fresh, err := v.fetch(ctx)
+		v.err = err
+		if err == nil {
+			v.keys.Store(fresh)
+			ks = fresh
+		}
+	}
+	if ks == nil || now.Sub(ks.fetched) >= v.cfg.KeyMaxStale {
+		return jose.JSONWebKey{}, &TokenError{Reason: ReasonKeys, err: ErrKeysUnavailable}
+	}
+	if k, ok := ks.byID[kid]; ok {
+		return k, nil
+	}
+	if v.err != nil {
+		// The key may have been rotated in while the JWKS cannot be read.
+		return jose.JSONWebKey{}, &TokenError{Reason: ReasonKeys, err: ErrKeysUnavailable}
+	}
+	return jose.JSONWebKey{}, invalid(ReasonUnknownKey)
+}
+
+// fetch reads the JWKS. One request's cancellation does not abort a
+// refresh other requests wait for; the fetch has its own timeout.
+func (v *OIDCVerifier) fetch(ctx context.Context) (*keySet, error) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), fetchTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v.cfg.JWKSURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/jwk-set+json, application/json")
+	resp, err := v.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetching JWKS: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetching JWKS: status %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxJWKSBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("reading JWKS: %w", err)
+	}
+	if len(body) > maxJWKSBytes {
+		return nil, errors.New("JWKS larger than 256 KiB")
+	}
+	return v.parseKeys(body, v.cfg.Now())
+}
+
+// parseKeys keeps the usable signing keys: public, with a kid, for
+// signatures, of an allowed algorithm and a sufficient size. A kid that
+// appears twice is dropped, since it would be ambiguous. Keys of unknown
+// types are skipped, so a provider adding one does not break the rest.
+func (v *OIDCVerifier) parseKeys(body []byte, now time.Time) (*keySet, error) {
+	var doc struct {
+		Keys []jsontext.Value `json:"keys"`
+	}
+	if err := json.Unmarshal(body, &doc); err != nil {
+		return nil, errors.New("JWKS is not a JSON key set")
+	}
+	byID := map[string]jose.JSONWebKey{}
+	dup := map[string]bool{}
+	for _, raw := range doc.Keys {
+		var k jose.JSONWebKey
+		if err := k.UnmarshalJSON(bytes.Clone(raw)); err != nil {
+			continue
+		}
+		if k.KeyID == "" || (k.Use != "" && k.Use != "sig") || !k.IsPublic() || !k.Valid() ||
+			(k.Algorithm != "" && !slices.Contains(v.cfg.Algorithms, k.Algorithm)) || !slices.ContainsFunc(v.cfg.Algorithms, func(a string) bool { return fits(a, k.Key) }) {
+			continue
+		}
+		if _, seen := byID[k.KeyID]; seen || dup[k.KeyID] {
+			delete(byID, k.KeyID)
+			dup[k.KeyID] = true
+			continue
+		}
+		byID[k.KeyID] = k
+	}
+	if len(byID) == 0 {
+		return nil, errors.New("JWKS has no usable signing key")
+	}
+	return &keySet{byID: byID, fetched: now}, nil
+}

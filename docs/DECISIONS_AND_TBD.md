@@ -214,7 +214,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 |---|---|---|
 | LLM provider | ~~OpenAI adapter first + provider interface，未定案~~ **已由 H-001 決定：Anthropic Claude API** | 真實 provider integration 仍受 D-018、資料政策、token quota 阻擋 |
 | LLM model | eval 後決定，不 hard-code | Week 7；live AI release |
-| Auth provider | managed OIDC | Week 1；production login |
+| Auth provider | managed OIDC | Week 1；production login。T-008 只實作 provider-agnostic 的 token 驗證（ADR-017 PROPOSED），provider 本身與 browser token 儲存／BFF 仍待決 |
 | Cloud / managed DB | GCP reference / AWS equivalent；managed PostgreSQL | Week 1–2；production deploy |
 | Object storage | cloud-native / S3-compatible abstraction | Week 2；持久化 artifact |
 | Frontend state / UI libraries | TanStack Query、Zustand、Tailwind/shadcn 原文均 TBD | Frontend bootstrap；不影響 IR |

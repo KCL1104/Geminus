@@ -141,6 +141,9 @@ func TestProbesAreCaught(t *testing.T) {
 		{"conformance-names-a-pack", "internal/domainpack/conformance/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "conformance-is-generic", "./internal/domainpack/conformance", "./internal/domainpack/softwaredelivery", false},
 		{"cmd-links-test-helpers", "cmd/api/zz_probe.go", module + "/internal/contracttest", "no-test-infra-in-production", "./cmd/api", "./internal/contracttest", false},
 		{"storage-links-testing", "internal/storage/datasets/zz_probe.go", "testing", "no-test-infra-in-production", "./internal/storage/datasets", "testing", false},
+		{"cmd-links-the-token-signer", "cmd/api/zz_probe.go", module + "/internal/auth/authtest", "no-test-infra-in-production", "./cmd/api", "./internal/auth/authtest", false},
+		{"auth-reads-the-database", "internal/auth/zz_probe.go", module + "/internal/tenant", "auth-authenticates-only", "./internal/auth", "./internal/tenant", false},
+		{"auth-imports-pgx", "internal/auth/zz_probe.go", "github.com/jackc/pgx/v5", "auth-authenticates-only", "./internal/auth", "github.com/jackc/pgx/v5", false},
 	}
 	for _, p := range probes {
 		t.Run(p.name, func(t *testing.T) {
@@ -201,7 +204,8 @@ func TestSyntheticGraph(t *testing.T) {
 	add(m("internal/contracttest"), false, "os/exec", "testing")
 	add("os/exec", true)
 	add("testing", true)
-	add(m("cmd/api"), false, m("internal/ai"))
+	add(m("cmd/api"), false, m("internal/ai"), m("internal/auth"))
+	add(m("internal/auth"), false)
 	// A forbidden package's own imports are reported through it, once.
 	add(m("internal/results/trace"), false, m("internal/domainpack/gamma"))
 	add(m("internal/domainpack/gamma"), false, "net/http")
@@ -475,7 +479,7 @@ func TestPolicy(t *testing.T) {
 	db := []string{"github.com/jackc/pgx/v5", "github.com/lib/pq", "github.com/go-sql-driver/mysql", "gorm.io/gorm", "github.com/jmoiron/sqlx"}
 	llm := []string{"github.com/anthropics/anthropic-sdk-go", "github.com/openai/openai-go", "github.com/sashabaranov/go-openai", "google.golang.org/genai", "github.com/google/generative-ai-go/genai", "cloud.google.com/go/vertexai/genai", "github.com/tmc/langchaingo/llms"}
 	direct := []string{"os", "os/signal", "os/user", "syscall", "unsafe", "runtime/cgo", "C", "plugin", "golang.org/x/sys/unix"}
-	infra := []string{m("internal/contracttest"), m("internal/domainpack/conformance")}
+	infra := []string{m("internal/contracttest"), m("internal/domainpack/conformance"), m("internal/auth/authtest")}
 	type want struct {
 		rule, root string
 		deps       []string
@@ -499,6 +503,8 @@ func TestPolicy(t *testing.T) {
 		want{"llm-sdks-only-in-ai", m("tools/x"), llm, false, false},
 		want{"db-only-in-storage", m("internal/config"), append(slices.Clone(db), "database/sql"), false, false},
 		want{"db-only-in-storage", m("pkg/anything"), db, false, false},
+		want{"auth-authenticates-only", m("internal/auth"), slices.Concat([]string{m("internal/tenant"), m("internal/storage/postgres"), m("internal/ai"), m("cmd/api"),
+			m("internal/config"), m("internal/domainpack/softwaredelivery"), m("internal/model"), m("internal/simulation/des"), "database/sql"}, db, llm), false, false},
 		want{"ai-suggests-only", m("internal/ai"), slices.Concat([]string{m("internal/storage/postgres"), m("internal/tenant"), m("cmd/api"), "os/exec", "database/sql"}, db), false, false},
 	)
 	byName := map[string]rule{}

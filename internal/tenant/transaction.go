@@ -55,6 +55,13 @@ var (
 	ErrInvalidScope = errors.New("tenant: invalid scope")
 	// ErrNotAssigned: the worker is not assigned the organization (D-008 allowlist).
 	ErrNotAssigned = errors.New("tenant: organization not assigned to this worker")
+	// ErrUnknownUser: no user has the verified issuer and subject. Users are
+	// provisioned by a controlled process (D-008), never created from a
+	// token; the API answers 403 FORBIDDEN, since the caller is authenticated.
+	ErrUnknownUser = errors.New("tenant: no user for the verified identity")
+	// ErrInvalidIdentity: the issuer or subject is empty or too long; a
+	// verifier never yields such an identity.
+	ErrInvalidIdentity = errors.New("tenant: invalid identity")
 )
 
 var (
@@ -131,6 +138,35 @@ func (d *DB) Run(ctx context.Context, s Scope, opts pgx.TxOptions, fn func(ctx c
 		}
 		return fn(ctx, tx, Membership{OrganizationID: s.OrganizationID, UserID: s.UserID, Role: role})
 	})
+}
+
+// ResolveUser returns the ID of the user with a verified token's issuer and
+// subject (internal/auth). The lookup runs in its own read-only transaction
+// whose identity settings are what the users RLS policy reads, so it can see
+// only that user's row; the settings die with the transaction. The result
+// becomes Scope.UserID for Run.
+func (d *DB) ResolveUser(ctx context.Context, issuer, subject string) (string, error) {
+	if issuer == "" || subject == "" || len(issuer) > 2048 || len(subject) > 255 {
+		return "", ErrInvalidIdentity
+	}
+	var id string
+	err := d.db.Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.oidc_issuer', $1, true), set_config('app.oidc_subject', $2, true)`, issuer, subject); err != nil {
+			return err
+		}
+		err := tx.QueryRow(ctx, `SELECT id FROM twin.users WHERE oidc_issuer=$1 AND oidc_subject=$2`, issuer, subject).Scan(&id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrUnknownUser
+		}
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	if !userID.MatchString(id) {
+		return "", fmt.Errorf("tenant: stored user ID is not a D-001 ID")
+	}
+	return id, nil
 }
 
 // Worker runs job work for the organizations a deployment assigns to it

@@ -71,6 +71,7 @@ var kernelThirdParty = []string{
 var testInfra = []string{
 	"./internal/contracttest/...",
 	"./internal/domainpack/conformance/...",
+	"./internal/auth/authtest/...", // signs tokens: no production binary may contain it (T-008)
 }
 
 type rule struct {
@@ -159,6 +160,13 @@ var rules = []rule{
 		applies: []string{"./..."},
 		except:  []string{"./internal/storage/...", "./internal/tenant/...", "./cmd/..."},
 		forbid:  cat(dbDrivers, []string{"database/sql/..."}),
+	},
+	{
+		name:    "auth-authenticates-only",
+		why:     "internal/auth verifies tokens only; users, memberships and roles come from the tenant scope, never from auth (docs/ARCHITECTURE.md §2, D-008)",
+		applies: []string{"./internal/auth/..."},
+		forbid:  cat([]string{"./internal/domainpack/...", "./internal/model/...", "./internal/simulation/..."}, appLayers, dbDrivers, llmSDKs, []string{"database/sql/..."}),
+		allow:   []string{"./internal/auth/..."},
 	},
 	{
 		name:    "ai-suggests-only",

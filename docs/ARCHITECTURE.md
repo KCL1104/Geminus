@@ -34,7 +34,7 @@ flowchart LR
 
 | Package / feature | Owns | 不得負責 |
 |---|---|---|
-| internal/auth | JWT verification、subject extraction、issuer/audience/expiry | 信任 client role／選擇任意 tenant |
+| internal/auth | JWT verification、subject extraction、issuer/audience/expiry（T-008，ADR-017） | 信任 client role／選擇任意 tenant |
 | internal/tenant | membership、organization authorization、transaction context | 以 hidden UI button 代替授權 |
 | internal/project | tenant project lifecycle | 直接處理 IR 或 DES |
 | internal/model | IR validation、draft CAS、versions、canonical commit | provider-specific prompt、renderer layout runtime |

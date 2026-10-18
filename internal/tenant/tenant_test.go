@@ -141,14 +141,14 @@ func randInt(t *testing.T, n int64) int64 {
 	return v.Int64()
 }
 
-type org struct{ id, user, project string }
+type org struct{ id, user, project, subject string }
 
 // newOrg commits an organization with one owner and one project, as the
 // provisioning path would (D-008: controlled bootstrap, never the API).
 func newOrg(t *testing.T, p *pgxpool.Pool) org {
 	t.Helper()
-	o := org{id: newID(t, "org"), user: newID(t, "usr"), project: newID(t, "prj")}
-	subject := newID(t, "sub")
+	o := org{id: newID(t, "org"), user: newID(t, "usr"), project: newID(t, "prj"), subject: newID(t, "sub")}
+	subject := o.subject
 	err := postgres.OpenPool(p).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
 		for _, q := range []struct {
 			sql  string
@@ -559,5 +559,73 @@ func TestRuntimeLoginCannotCreate(t *testing.T) {
 	revoke()
 	if err := tenant.CheckRuntimeRole(ctx, as(t, apiLogin, 1, false), tenant.APIRole); err != nil {
 		t.Errorf("after the revoke: %v", err)
+	}
+}
+
+// T-008: a verified identity resolves to its user and nothing else. The
+// users RLS policy (identity_self) lets a transaction see only the row of
+// the issuer and subject it set, and those settings do not outlive the
+// lookup; there is no user for an unknown identity, and none is created.
+func TestResolveUser(t *testing.T) {
+	adm := admin(t)
+	a, b := newOrg(t, adm), newOrg(t, adm)
+	pool := as(t, apiLogin, 1, true)
+	d := tenant.New(pool)
+	ctx := context.Background()
+	const issuer = "https://test.invalid"
+	for _, o := range []org{a, b} {
+		if id, err := d.ResolveUser(ctx, issuer, o.subject); err != nil || id != o.user {
+			t.Errorf("resolve %s: %q %v", o.subject, id, err)
+		}
+	}
+	for name, c := range map[string][2]string{
+		"unknown subject":         {issuer, newID(t, "sub")},
+		"same subject, other iss": {"https://other.invalid", a.subject},
+		"issuer with a slash":     {issuer + "/", a.subject},
+		"subject in another case": {issuer, strings.ToLower(a.subject)},
+		"SQL in the subject":      {issuer, "x' OR '1'='1"},
+		"LIKE pattern in subject": {issuer, "%"},
+	} {
+		if id, err := d.ResolveUser(ctx, c[0], c[1]); !errors.Is(err, tenant.ErrUnknownUser) || id != "" {
+			t.Errorf("%s: %q %v", name, id, err)
+		}
+	}
+	for name, c := range map[string][2]string{
+		"empty issuer":  {"", a.subject},
+		"empty subject": {issuer, ""},
+		"long subject":  {issuer, strings.Repeat("s", 256)},
+		"long issuer":   {"https://" + strings.Repeat("i", 2048), a.subject},
+	} {
+		if _, err := d.ResolveUser(ctx, c[0], c[1]); !errors.Is(err, tenant.ErrInvalidIdentity) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	var n int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM twin.users WHERE coalesce(current_setting('app.oidc_issuer', true), '') = ''
+		AND coalesce(current_setting('app.oidc_subject', true), '') = ''`).Scan(&n); err != nil || n != 0 {
+		t.Errorf("after the lookups the reused connection sees %d users (%v), want 0 and no identity settings", n, err)
+	}
+	// The policy itself: with a's identity set, every user row but a's is invisible.
+	var seen []string
+	err := postgres.OpenPool(pool).Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.oidc_issuer', $1, true), set_config('app.oidc_subject', $2, true)`, issuer, a.subject); err != nil {
+			return err
+		}
+		rows, err := tx.Query(ctx, `SELECT id FROM twin.users`)
+		if err != nil {
+			return err
+		}
+		seen, err = pgx.CollectRows(rows, pgx.RowTo[string])
+		return err
+	})
+	if err != nil || len(seen) != 1 || seen[0] != a.user {
+		t.Errorf("users visible to a's identity: %v %v", seen, err)
+	}
+	// Read-only: the lookup transaction cannot write.
+	if err := postgres.OpenPool(pool).Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `INSERT INTO twin.users(id,oidc_issuer,oidc_subject) VALUES ($1,$2,'new')`, newID(t, "usr"), issuer)
+		return err
+	}); err == nil {
+		t.Error("the API login inserted a user")
 	}
 }

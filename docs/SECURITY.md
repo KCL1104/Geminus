@@ -24,6 +24,8 @@ role 從 DB membership 取得，不從 request body、header、provider 或前�
 
 OIDC provider TBD。驗 JWT signature algorithm allowlist、issuer、audience、exp/nbf、key rotation；不得接受 alg=none 或以 token header 自選任意 JWKS URL。provider endpoints 僅 deployment allowlist。browser token storage/refresh/BFF 模式需在 auth ADR 確認；default 不長期存 localStorage；採 cookie 時補 CSRF/SameSite/secure/httpOnly，不能因 API 原本 Bearer 規格而忽略 cookie write path。
 
+T-008 實作（[ADR-017](adr/ADR-017-oidc-token-verification.md)，PROPOSED）：provider-agnostic 的 `internal/auth.OIDCVerifier`，issuer／audience／JWKS URL 只來自 deployment 設定；alg allowlist（預設 RS256、ES256，拒 none／HMAC）、`kid` 必填、拒 `jku`／`x5u`／`jwk`／`x5c`／`crit`／`b64` 等 header；`iss` 完全相同、`aud` 包含、`exp` 必填、`nbf`／`iat` 檢查、30 秒 skew；JWKS 不跟隨 redirect、未知 `kid` 以至少 1 分鐘間隔 refresh、1 小時後更新；只讀 `Authorization: Bearer`，URL 中的 token 拒絕，不讀 cookie。使用者由 `tenant.ResolveUser` 經 users RLS 解析，未知 identity 不自動建立（D-008）。測試 token 只由 test-only 的 `internal/auth/authtest` 簽發，production 無法連結（architecture check）。Provider 本身與 browser token 儲存／BFF 仍待決。
+
 CORS/Origin allowlist、HTTPS、CSP、escaped labels/markdown、safe download filename；禁止把 bearer token 放 query string、logs 或 SSE URL。SSE / signed downloads 初次與續期都重新授權；stream 長連線也需處理 token expiry / membership revocation。
 
 ## 4. Tenant isolation / DB

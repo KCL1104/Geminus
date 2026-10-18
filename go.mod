@@ -9,6 +9,7 @@ toolchain go1.27.2
 ignore ./apps/web/node_modules
 
 require (
+	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/gowebpki/jcs v1.0.2
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3

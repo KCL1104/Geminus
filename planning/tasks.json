@@ -453,7 +453,7 @@
       "id": "T-008",
       "title": "OIDC/JWT authentication",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Platform",
       "planning_window": "Week 2–3",
       "depends_on": [
@@ -495,7 +495,15 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-18",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-008_VALIDATION.md",
+          "summary": "internal/auth.OIDCVerifier（provider-agnostic；go-jose v4.1.5；alg allowlist 只允許非對稱、kid 必填、拒 jku/x5u/jwk/x5c/crit/b64 等 header、iss 完全相同、aud 包含、exp 必填、nbf/iat、30 秒 skew、sub 限制；JWKS 只來自設定的 https URL、不跟隨 redirect、未知 kid 以 1 分鐘間隔 refresh、1 小時更新、24 小時 stale 上限）；Bearer header only、URL token 拒絕；Middleware 以注入的 error writer 回應；tenant.ResolveUser 經 users RLS 解析、不自動建立 user；config AUTH_OIDC_*；authtest 為 test-only provider（architecture check 禁止 production 連結）。53 個攻擊／錯誤 token 案例、DB 測試、mutation 54/54＋2 equivalent。ADR-017 PROPOSED。",
+          "reviewer": null
+        }
+      ]
     },
     {
       "id": "T-009",
