@@ -30,7 +30,7 @@
 | `make architecture-check` | 0 | `PASS architecture: 24 packages, 9 rules, 16 build configurations`（與 T-042 review 後的 build matrix 合併後） |
 | `govulncheck ./cmd/... ./internal/... ./schemas/... ./scripts/...` | 0 | No vulnerabilities found（含 go-jose v4.1.5） |
 | Mutation（`mutants.py`，已提交） | 0 | **54/54 被擋，2 個 equivalent**（`mutation.log`）。首輪 45/56：`key-alg-ignored`、`curve-ignored`、`jwks-size-unlimited`、`jwks-status-ignored`、`fetch-cancelled-with-request`、`middleware-continues-after-failure` 存活 → 補 `TestKeyAlgorithmPinned`、JWKS 錯誤狀態帶合法內容、合法 JSON 後補空白超過 256 KiB、`TestCancelledRequestStillFetches`、handler 呼叫次數；3 個 mutant 寫法未編譯已改寫；`private-keys-used`（private JWK 解析為 private key 型別，`fits` 不接受，IsPublic 為縱深防禦）與 `resolve-subject-only`（RLS 已限制為同一 issuer／subject，WHERE 是 AGENTS.md 要求的 application filter）列為 equivalent 並在腳本說明 |
-| `make backend-test`／`backend-race`／`backend-build`／`REQUIRE_GOAMD64_V3=1 backend-numeric`／`spec-check`／`frontend-test` | 合併後補記 | |
+| `make backend-test`／`backend-race`／`backend-build`／`REQUIRE_GOAMD64_V3=1 backend-numeric`／`spec-check`／`frontend-test` | 0／0／0／0／0／0 | 與 T-042 review 修正合併後在分支上執行（log 在 `checks/evidence/2026-10-15-T-042-review/`）；db-test／db-go-test 於合併後在新的一次性資料庫重跑（本目錄） |
 | GitHub Actions | 推送後補記 | |
 
 ## 驗收對照

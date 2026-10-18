@@ -86,11 +86,13 @@ review 修正後（`checks/evidence/2026-10-15-T-042-review/`）：
 
 | 指令 | Exit | 說明 |
 |---|---|---|
-| `make architecture-check` | 0 | `PASS architecture: 22 packages, 8 rules, 16 build configurations`（`architecture-check.log`） |
-| `go test -count=1 -v ./internal/domainpack/... ./scripts/...` | 0 | 見 `t042-tests.log` |
+| `make architecture-check` | 0 | `PASS architecture: 24 packages, 9 rules, 16 build configurations`（`architecture-check.log`；含 T-008 的 auth packages 與 `auth-authenticates-only`） |
+| `go test -count=1 -v ./internal/domainpack/... ./scripts/...` | 0 | 132 個 RUN 全 PASS（`t042-tests.log`；與 T-008 合併後） |
 | reviewer 的 conformance probe（改名後以 overlay 放入） | 0 | R1、R3–R6、R8、R9 有 finding，R2 0 finding（`conformance-probes-after.log`）；`-race` 下 R7 觸發 race（`conformance-probes-after-race.log`） |
 | Mutation（`checks/evidence/2026-10-15-T-042-review/mutants.py`） | 0 | **117/117 被擋，3 個 equivalent，2 個 kernel guard（3/3 個 pair 證明）**（`mutation.log`）。54 個 finding site 各自 no-op；5 個 kernel mutant（含 reviewer 的「只對已知 domain 執行錯誤規則」與前綴分支）都被 suite 擋下，且 kernel mutant 加上對應 site 的 no-op 時存活，證明是那兩個 site 擋下的；suite、checker、規則表與 exit code 的 mutant。equivalent：freeze 對 valid model 不會失敗、改名後的 run 不會失敗、test variant 不進 graph 的過濾（walk 不會走到 variant）。過程中：`concurrent-no-result`、`matrix-without-arm64`（darwin/arm64 仍編譯 `_arm64.go`，probe 改為 `_linux_arm64.go`）、`platform-absent-package-is-error`（`./...` 不列出全被排除的 package，改以明確 pattern 測試，並另以目錄掃描抓整個 package 在自訂 tag 後的情形）與 4 個規則表刪除（由表本身產生的測試抓不到刪除，補上獨立於 rules.go 的 `TestPolicy`）先存活，均已補測試；pack 規則中多餘的 `C` 項移除（`forbidDirect` 已涵蓋） |
-| 其他命令 | 合併後補記 | |
+| `make spec-check`／`backend-test`／`backend-race`／`backend-build`／`REQUIRE_GOAMD64_V3=1 backend-numeric`／`frontend-test` | 0／0／0／0／0／0 | 與 T-008 合併後在分支上執行，log 在同一目錄 |
+| `govulncheck ./...`、`actionlint` | 0、0 | |
+| GitHub Actions | 推送後補記 | |
 
 首輪（`checks/evidence/2026-10-15-T-042/`）：
 
