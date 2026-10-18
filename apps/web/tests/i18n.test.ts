@@ -100,9 +100,11 @@ describe("locale choice", () => {
     expect(localeCookieValue("en", false)).toBe("geminus_locale=en; Path=/; Max-Age=31536000; SameSite=Lax");
   });
 
-  it("reads the choice from a Cookie header or document.cookie, first value wins", () => {
+  it("reads the choice from a Cookie header or document.cookie, last value wins", () => {
     expect(cookieLocale("a=b; geminus_locale=zh-Hant; c=d")).toBe("zh-Hant");
-    expect(cookieLocale("geminus_locale=zh-Hant; geminus_locale=en")).toBe("zh-Hant");
+    // As Next.js cookies().get on the server (T-044 review 2 N5).
+    expect(cookieLocale("geminus_locale=zh-Hant; geminus_locale=en")).toBe("en");
+    expect(cookieLocale("geminus_locale=en; geminus_locale=zh-Hant")).toBe("zh-Hant");
     for (const v of ["", "geminus_locale=zh-hant", "xgeminus_locale=zh-Hant", "geminus_locale = zh-Hant", "geminus_locale"]) expect(cookieLocale(v), v).toBe("en");
   });
 });

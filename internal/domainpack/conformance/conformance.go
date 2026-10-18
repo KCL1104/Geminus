@@ -325,6 +325,45 @@ func clone(ir *model.ModelIR) model.ModelIR {
 	return out
 }
 
+// overwrite changes every value reachable from v that a caller could set:
+// strings, numbers and bytes through pointers, fields and slice elements,
+// and each string-keyed map gets a new key (map values in the IR are plain
+// structs, so only a shared map can be seen, empty or not). A template that
+// shares any of it with another caller's model shows the change there
+// (templates/copies; T-044 review 2 N1). It covers the kinds the IR is made
+// of (no interfaces, booleans or pointer cycles); unexported fields cannot
+// be set and are skipped.
+func overwrite(v reflect.Value) {
+	switch v.Kind() {
+	case reflect.Pointer:
+		if !v.IsNil() {
+			overwrite(v.Elem())
+		}
+	case reflect.Struct:
+		for i := range v.NumField() {
+			if f := v.Field(i); f.CanSet() {
+				overwrite(f)
+			}
+		}
+	case reflect.Slice:
+		for i := range v.Len() {
+			overwrite(v.Index(i))
+		}
+	case reflect.Map:
+		if !v.IsNil() && v.Type().Key().Kind() == reflect.String {
+			v.SetMapIndex(reflect.ValueOf("zz_conformance_added").Convert(v.Type().Key()), reflect.Zero(v.Type().Elem()))
+		}
+	case reflect.String:
+		v.SetString(v.String() + " (changed by the caller)")
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		v.SetInt(v.Int() + 1)
+	case reflect.Uint8:
+		v.SetUint(v.Uint() + 1) // the bytes of raw JSON (metadata)
+	case reflect.Float32, reflect.Float64:
+		v.SetFloat(v.Float() + 1)
+	}
+}
+
 func encoded(v any) string {
 	data, err := json.Marshal(v, json.Deterministic(true))
 	if err != nil {
@@ -394,17 +433,7 @@ func (c *checker) templates() {
 			before := encoded(ir)
 			var other *model.ModelIR
 			if c.call("templates/copies", func() { other, _ = tp.Template(name, otherModelID, "Other template", locale) }) && other != nil {
-				const changed = "changed by the caller"
-				other.Name = changed
-				for i := range other.EntityTypes {
-					other.EntityTypes[i].Name = changed
-				}
-				for i := range other.Resources {
-					other.Resources[i].Name = changed
-				}
-				for i := range other.Nodes {
-					other.Nodes[i].Name = changed
-				}
+				overwrite(reflect.ValueOf(other))
 				if encoded(ir) != before {
 					c.fail("templates/copies", "template %q in %s: a second model shares data with the first one", name, locale)
 				}

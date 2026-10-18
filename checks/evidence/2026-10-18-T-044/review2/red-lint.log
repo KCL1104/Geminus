@@ -1,0 +1,66 @@
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+ ❯ tests/lint-guards.test.ts (70 tests | 8 failed) 4910ms
+   ❯ hard-coded UI text (59)
+     × rejects globalThis.alert 30ms
+     × rejects self.confirm 30ms
+     × rejects window.document.title 22ms
+     × rejects a submit button value expression 16ms
+     × rejects window.confirm in a .ts module 40ms
+     × rejects alert in a .ts module 12ms
+     × rejects prompt in a .ts module 12ms
+     × rejects document.title in a .ts module 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects globalThis.alert
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects self.confirm
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects window.document.title
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects a submit button value expression
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/lint-guards.test.ts:98:84
+     96|   ])("rejects %s", async (_, code) => {
+     97|     const ids = await ruleIds(code);
+     98|     expect(ids.some((id) => id !== null && textRules.includes(id)), id…
+       |                                                                                    ^
+     99|   });
+    100|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects window.confirm in a .ts module
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects alert in a .ts module
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects prompt in a .ts module
+ FAIL  tests/lint-guards.test.ts > hard-coded UI text > rejects document.title in a .ts module
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/lint-guards.test.ts:110:84
+    108|   ])("rejects %s in a .ts module", async (_, code) => {
+    109|     const ids = await ruleIds(code, "app/use-probe.ts");
+    110|     expect(ids.some((id) => id !== null && textRules.includes(id)), id…
+       |                                                                                    ^
+    111|   });
+    112|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 62 passed (70)
+   Start at  18:37:13
+   Duration  5.34s (tests 96%, import 3%, transform 2%)
+

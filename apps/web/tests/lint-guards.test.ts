@@ -7,8 +7,8 @@ vi.setConfig({ testTimeout: 30_000 });
 
 const eslint = new ESLint({ cwd: fileURLToPath(new URL("..", import.meta.url)) });
 
-async function ruleIds(code: string): Promise<(string | null)[]> {
-  const [result] = await eslint.lintText(code, { filePath: "app/probe.tsx" });
+async function ruleIds(code: string, filePath = "app/probe.tsx"): Promise<(string | null)[]> {
+  const [result] = await eslint.lintText(code, { filePath });
   if (!result) throw new Error("no lint result");
   const fatal = result.messages.filter((m) => m.fatal);
   if (fatal.length > 0) throw new Error(`parse failure: ${fatal[0]?.message}`);
@@ -88,9 +88,31 @@ describe("hard-coded UI text", () => {
     ["alert", 'export const B = () => <button onClick={() => alert("Saved")} />;'],
     ["window.confirm", 'export const B = () => <button onClick={() => window.confirm("Sure?")} />;'],
     ["document.title", 'export const P = () => { document.title = "Home"; return null; };'],
+    // T-044 review 2 N3
+    ["globalThis.alert", 'export const B = () => <button onClick={() => globalThis.alert("Saved")} />;'],
+    ["self.confirm", 'export const B = () => <button onClick={() => self.confirm("Sure?")} />;'],
+    ["window.document.title", 'export const P = () => { window.document.title = "Home"; return null; };'],
+    ["a submit button value expression", 'export const F = () => <input type="submit" value={"Save"} />;'],
   ])("rejects %s", async (_, code) => {
     const ids = await ruleIds(code);
     expect(ids.some((id) => id !== null && textRules.includes(id)), ids.join(",")).toBe(true);
+  });
+
+  // A hook or helper in a .ts module can open a browser dialog or set the
+  // title as well as a component can (T-044 review 2 N3).
+  it.each([
+    ["window.confirm", 'export const useDiscard = () => () => window.confirm("Discard changes?");'],
+    ["alert", 'export function notify(): void { alert("Saved"); }'],
+    ["prompt", 'export const ask = () => prompt("Name?");'],
+    ["document.title", 'export function retitle(): void { document.title = "Home"; }'],
+  ])("rejects %s in a .ts module", async (_, code) => {
+    const ids = await ruleIds(code, "app/use-probe.ts");
+    expect(ids.some((id) => id !== null && textRules.includes(id)), ids.join(",")).toBe(true);
+  });
+
+  it("allows strings in a .ts module", async () => {
+    const ids = await ruleIds('export const mode = (edit: boolean) => (edit ? "edit" : "view");', "lib/probe.ts");
+    for (const rule of textRules) expect(ids).not.toContain(rule);
   });
 
   it.each([

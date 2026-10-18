@@ -1,0 +1,8 @@
+--- FAIL: TestBrokenPacksAreCaught (0.62s)
+    --- FAIL: TestBrokenPacksAreCaught/templateSharesFlows/templates/copies (0.05s)
+        broken_test.go:1228: no templates/copies finding (""); got []
+    --- FAIL: TestBrokenPacksAreCaught/templateSharesPositions/templates/copies (0.06s)
+        broken_test.go:1228: no templates/copies finding (""); got []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/conformance	0.639s
+FAIL

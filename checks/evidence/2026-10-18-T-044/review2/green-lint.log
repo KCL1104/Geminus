@@ -1,0 +1,9 @@
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+
+ Test Files  1 passed (1)
+      Tests  70 passed (70)
+   Start at  18:37:45
+   Duration  5.00s (tests 95%, import 4%, transform 1%)
+

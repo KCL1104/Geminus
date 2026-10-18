@@ -73,8 +73,16 @@ GO = [
     ('unknown-template-model-ok', CONF, 'get("templates/unknown-template", name, domainpack.Locales[0]); ok && (err == nil || ir != nil) {', 'get("templates/unknown-template", name, domainpack.Locales[0]); ok && (err == nil || false && ir != nil) {'),
     ('unknown-template-no-variants', CONF, 'for _, v := range []string{strings.ToUpper(name), strings.ToLower(name), " " + name, name + " "} {', 'for _, v := range []string{strings.ToUpper(name)}[:0] {'),
     ('copies-unchecked', CONF, '\t\t\t\tif encoded(ir) != before {', '\t\t\t\tif false && encoded(ir) != before {'),
-    ('copies-shallow', CONF, '\t\t\t\tfor i := range other.Resources {', '\t\t\t\tfor i := range other.Resources[:0] {'),
-    ('copies-call-skipped', CONF, '&& other != nil {\n\t\t\t\tconst changed', '&& other != nil && false {\n\t\t\t\tconst changed'),
+    ('copies-call-skipped', CONF, '&& other != nil {\n\t\t\t\toverwrite(', '&& other != nil && false {\n\t\t\t\toverwrite('),
+    # T-044 review 2 N1: each kind overwrite walks, and the key it adds.
+    ('copies-pointer-not-followed', CONF, '\t\tif !v.IsNil() {\n\t\t\toverwrite(v.Elem())', '\t\tif false {\n\t\t\toverwrite(v.Elem())'),
+    ('copies-fields-skipped', CONF, '\t\t\tif f := v.Field(i); f.CanSet() {', '\t\t\tif f := v.Field(i); false && f.CanSet() {'),
+    ('copies-slices-skipped', CONF, '\t\tfor i := range v.Len() {\n\t\t\toverwrite(v.Index(i))', '\t\tfor i := range 0 {\n\t\t\toverwrite(v.Index(i))'),
+    ('copies-no-added-key', CONF, '\t\tif !v.IsNil() && v.Type().Key().Kind() == reflect.String {', '\t\tif false && v.Type().Key().Kind() == reflect.String {'),
+    ('copies-strings-unchanged', CONF, '\t\tv.SetString(v.String() + " (changed by the caller)")', '\t\tv.SetString(v.String())'),
+    ('copies-bytes-unchanged', CONF, '\t\tv.SetUint(v.Uint() + 1) // the bytes', '\t\tv.SetUint(v.Uint()) // the bytes'),
+    ('copies-floats-unchanged', CONF, '\t\tv.SetFloat(v.Float() + 1)', '\t\tv.SetFloat(v.Float())'),
+    ('copies-ints-unchanged', CONF, '\t\tv.SetInt(v.Int() + 1)', '\t\tv.SetInt(v.Int())'),
     ('concurrent-no-template', CONF, '\t\t\tnames := tp.Templates()\n\t\t\tif len(names) == 0 {', '\t\t\tnames := tp.Templates()\n\t\t\tif true || len(names) == 0 {'),
     ("templates-step-dropped", CONF, "{\"templates\", c.templates},", ""),
     # softwaredelivery: locales and names
@@ -120,7 +128,7 @@ COPY = [
     ('date-nonstring-shown', W + 'lib/i18n/provider.tsx', '      if (typeof iso !== "string") return "";\n', '', 'web'),
     ('gap-zh-space', W + 'lib/i18n/provider.tsx', 'gap: locale === "zh-Hant" ? "" : " ",', 'gap: " ",', 'web'),
     ('remembered-locale-default', W + 'lib/i18n/provider.tsx', '() => cookieLocale(document.cookie), () => defaultLocale);', '() => defaultLocale, () => defaultLocale);', 'web'),
-    ('cookie-last-wins', W + 'lib/i18n/locale.ts', 'for (const pair of header.split(";"))', 'for (const pair of header.split(";").reverse())', 'web'),
+    ('cookie-first-wins', W + 'lib/i18n/locale.ts', 'for (const pair of header.split(";"))', 'for (const pair of header.split(";").reverse())', 'web'),
     ('cookie-name-suffix', W + 'lib/i18n/locale.ts', 'pair.slice(0, at).trim() === localeCookie', 'pair.slice(0, at).trim().endsWith(localeCookie)', 'web'),
     ("zh-catalog-is-en", W + "lib/i18n/translate.ts", "{ en, \"zh-Hant\": zhHant }", "{ en, \"zh-Hant\": en }", "web"),
     ("duration-short", W + "lib/i18n/translate.ts", "unitDisplay: \"long\"", "unitDisplay: \"short\"", "web"),
@@ -190,7 +198,14 @@ COPY = [
     ('lint-no-text-props', W + 'eslint.config.mjs', '|label|text|message|description|heading|caption|tooltip|hint|helperText|errorMessage)$/', '|label)$/', 'web'),
     ('lint-submit-value', W + 'eslint.config.mjs', 'JSXOpeningElement[name.name="input"]:has(', 'JSXOpeningElement[name.name="inputx"]:has(', 'web'),
     ('lint-object-props', W + 'eslint.config.mjs', 'JSXAttribute > JSXExpressionContainer > ObjectExpression > Property', 'JSXAttribute > JSXExpressionContainer > ObjectExpression > ObjectExpression > Property', 'web'),
-    ('lint-document-title', W + 'eslint.config.mjs', '[object.name="document"][property.name="title"]', '[object.name="documentx"][property.name="title"]', 'web'),
+    ('lint-document-title', W + 'eslint.config.mjs', ':matches([object.name="document"], ', ':matches([object.name="documentx"], ', 'web'),
+    # T-044 review 2 N3
+    ('lint-window-document-title', W + 'eslint.config.mjs', '[object.property.name="document"])', '[object.property.name="documentx"])', 'web'),
+    ('lint-title-not-in-ts', W + 'eslint.config.mjs', '  { files: ["**/*.ts"], ignores: ["tests/**"], rules: { "no-restricted-syntax": ["error", pageTitle] } },\n', '', 'web'),
+    ('lint-dialogs-not-in-ts', W + 'eslint.config.mjs', '    files: ["**/*.ts", "**/*.tsx"],', '    files: ["**/*.tsx"],', 'web'),
+    ('lint-dialog-globalthis', W + 'eslint.config.mjs', '["window", "globalThis", "self"]', '["window", "self"]', 'web'),
+    ('lint-dialog-self', W + 'eslint.config.mjs', '["window", "globalThis", "self"]', '["window", "globalThis"]', 'web'),
+    ('lint-submit-value-expression', W + 'eslint.config.mjs', '...["", " > JSXExpressionContainer"].map(', '...[""].map(', 'web'),
     ('lint-dialog-globals', W + 'eslint.config.mjs', '"no-restricted-globals": ["error",', '"no-restricted-globals": ["off",', 'web'),
     ('lint-dialog-properties', W + 'eslint.config.mjs', '"no-restricted-properties": ["error",', '"no-restricted-properties": ["off",', 'web'),
     ("lint-attr-title-missing", W + "eslint.config.mjs", "|title|alt|", "|alt|", "web"),
@@ -200,6 +215,7 @@ COPY = [
 ]
 
 EQUIVALENT = {
+    "copies-ints-unchanged": "every IR struct with an int field (Resource, Node, ResourceRequirement, Arrival) also has a string field, and no int sits behind its own pointer, so a shared int is always shown by a changed string",
     "list-panic-continues": "after a Templates() panic the pack already fails (templates/list panicked); going on with no names only adds the unknown-template probe, which can add a finding but never remove one",
     "date-invalid-unchecked": "a string that passes the shape and calendar checks is a valid Date, and Intl.DateTimeFormat.format would throw RangeError on an Invalid Date anyway",
 }

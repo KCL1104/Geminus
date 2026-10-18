@@ -1,0 +1,11 @@
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.327s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	31.689s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	4.010s
+--- PASS: TestBrokenPacksAreCaught (0.71s)
+    --- PASS: TestBrokenPacksAreCaught/templateCached/templates/copies (0.14s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesResources/templates/copies (0.05s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesFlows/templates/copies (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesPositions/templates/copies (0.09s)
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	0.730s
+--- PASS: TestConformance (0.54s)
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.567s

@@ -1,0 +1,31 @@
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+ ❯ tests/i18n.test.ts (17 tests | 1 failed) 49ms
+   ❯ locale choice (3)
+     × reads the choice from a Cookie header or document.cookie, first value wins 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/i18n.test.ts > locale choice > reads the choice from a Cookie header or document.cookie, first value wins
+AssertionError: expected 'zh-Hant' to be 'en' // Object.is equality
+
+Expected: "en"
+Received: "zh-Hant"
+
+ ❯ tests/i18n.test.ts:106:71
+    104|     expect(cookieLocale("a=b; geminus_locale=zh-Hant; c=d")).toBe("zh-…
+    105|     // The last of two wins, as on the server (Next.js cookies().get; …
+    106|     expect(cookieLocale("geminus_locale=zh-Hant; geminus_locale=en")).…
+       |                                                                       ^
+    107|     expect(cookieLocale("geminus_locale=en; geminus_locale=zh-Hant")).…
+    108|     for (const v of ["", "geminus_locale=zh-hant", "xgeminus_locale=zh…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 passed (17)
+   Start at  18:38:35
+   Duration  507ms (transform 50%, import 27%, tests 20%, worker 3%)
+

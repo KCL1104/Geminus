@@ -35,6 +35,7 @@
   - 不設 HttpOnly：由 client 的語言切換寫入，內容不是秘密。
   - 不含身分或 session，不參與授權。Go API 不讀 cookie（ADR-018）。
   - 讀取時完全比對，其他值（含 `zh-hant`、`zh-Hans`、`EN`）一律視為未選、用 `en`。
+  - 有兩個同名 cookie（別的 path 或 domain；app 只設一個）時，server（Next.js `cookies().get`）與 client（`cookieLocale`）都取最後一個，頁面與 global-error 的語言一致（T-044 review 2 N5）。
 - **不做 Accept-Language 協商**：H-005 定英文為主要語言，瀏覽器語言是中文也從 `en` 開始，由使用者切換。
 - **Route 不加語言前綴**：root layout 在 server 端讀 cookie，設定 `<html lang>` 與 `I18nProvider`。
   - 代價：所有 route 變成 dynamic rendering（`next build` 標 ƒ）。ADR-018 的 BFF session 本來就需要每個 request 渲染。
@@ -65,23 +66,23 @@
   - 兩次呼叫相同；
   - 除名稱外各 locale 完全相同；
   - 未知 locale 或 template 只回 error：locale 包括 `zh`、`zh-TW`、`zh-Hant-TW`、`en-US` 這類近似值，template 包括大小寫不同或前後有空白的名稱。
-  - 每個呼叫者拿到自己的 model：以另一個 model ID 與名稱再要一次，並改動它的每個名稱，第一個 model 不變（`templates/copies`）。
+  - 每個呼叫者拿到自己的 model：以另一個 model ID 與名稱再要一次，並改動它能改到的每個值（字串、數字、布林、每個 slice 元素與 map 項目，並在每個 map 加一個 key），第一個 model 不變（`templates/copies`；T-044 review 2 N1：原本只改名稱，淺拷貝而共用 flows 或 positions 的 pack 會通過）。
   - `Template` 也在 `concurrent` 步驟中並行呼叫；data race 由 `make backend-race` 抓（T-044 review M1）。
 - SoftwareDelivery：`templates/<template>.zh-Hant.names.json` 依 ID 給名稱，嚴格比對。
   - 少一個、多一個、空白或含控制字元的名稱、超過 IR 上限（200 字元）的名稱、未知 member 都是 internal error，避免某語言混雜兩種語言；不會變成表示「呼叫者輸入有誤」的 `InvalidError`（T-044 review L6）。
   - ID 與其他內容在各語言相同。
 - `CreateModel` request 加 optional `locale`（省略即 `en`）。建立 model 的 handler（T-012／T-013）傳入它。建立後的名稱是使用者資料，切換語言不會改。
 
-### Lint（`apps/web/eslint.config.mjs`，對 `**/*.tsx`，tests 除外）
+### Lint（`apps/web/eslint.config.mjs`，tests 除外；文字規則對 `**/*.tsx`，dialog 與 title 對 `.ts` 與 `.tsx`）
 
 - `react/jsx-no-literals`：noStrings、ignoreProps；允許空白與少數標點。它只看 JSX 中裸露的字串。
 - `no-restricted-syntax`（T-044 review M3 擴大）：
   - 「含字母」以 `\p{L}` 判斷（任何文字，含重音字母與 CJK 擴充區）。
   - 文字 prop：`aria-label`、`aria-description`、`aria-placeholder`、`aria-roledescription`、`aria-valuetext`、`title`、`alt`、`placeholder`、`label`，以及元件常用的 `text`、`message`、`description`、`heading`、`caption`、`tooltip`、`hint`、`helperText`、`errorMessage`。它們的含字母字串值都擋，經最多三層「傳遞」也擋。傳遞指條件 `&&`／`||`／`??`／`?:`、`+` 串接、`as`／`satisfies`／`!`、陣列。`alt=""`（裝飾圖）可以。
   - Element 或 fragment 的子 expression，經一到三層傳遞後的含字母字串或 template literal；callback 回傳的字串（`xs.map(() => "item")`）也算。
-  - `<input type="submit|button|reset" value="…">`；JSX prop 中物件的文字欄位（`problem={{ message: "…" }}`）。
-  - `document.title = …`（用 metadata）。
-- `no-restricted-globals`／`no-restricted-properties`：`alert`、`confirm`、`prompt`（含 `window.`），改用頁內 dialog。
+  - `<input type="submit|button|reset" value="…">` 與 `value={"…"}`；JSX prop 中物件的文字欄位（`problem={{ message: "…" }}`）。
+  - `document.title = …` 與 `window.document.title = …`（用 metadata），`.ts` 也擋。
+- `no-restricted-globals`／`no-restricted-properties`：`alert`、`confirm`、`prompt`（含 `window.`、`globalThis.`、`self.`），改用頁內 dialog；`.ts` 也擋，hook 一樣能開 dialog（T-044 review 2 N3）。
 - 函式呼叫不是傳遞：`t(a ? "k.x" : "k.y")` 的 key、`onClick={() => set("edit")}` 的參數、`m === "edit"` 的比較都不算。
 - `tests/lint-guards.test.ts` 對每類寫法有正反例，mutation 證明每個 selector 都有測試擋。
 - **限制**（需人工 review）：
@@ -90,7 +91,12 @@
   - 四層以上的傳遞；
   - 只有符號、沒有字母的文字（`→`、`©`）；
   - `lib/` 內產生的英文診斷（刻意保留為 technical message）；
-  - `metadata` 物件。
+  - `metadata` 物件；
+  - 展開的 attribute（`{...{"aria-label": "Main"}}`）、條件中的物件 prop 文字（`problem={a ? { message: "…" } : x}`）、經變數取得的 `window`（T-044 review 2 N3）。
+- **誤擋**（T-044 review 2 N2）：
+  - 上列文字 prop 的名稱保留給翻譯後的文字。傳 key 或 token 給這些 prop（`message="validation.required"`、`heading="h2"`、`text="sm"`）也會被擋；請改用其他 prop 名稱（`messageKey`、`level`、`size`）。
+  - Callback 規則涵蓋子 expression 中任何呼叫的 arrow 回傳值：`{xs.map((x) => <li className={cx(() => "row")} />)}` 之外，`groupBy(xs, () => "k")` 這類只回傳資料的 callback 也擋；只含資料的 template literal（`` xs.map((x) => `${x}%`) ``）也擋。請把它們移到 JSX 外的變數或函式。
+  - 選擇誤擋而不是放寬：放寬會漏掉 callback 回傳的真正文字。
 
 ### 錯誤與找不到的頁面（T-044 review M2）
 

@@ -16,15 +16,18 @@ export function parseLocale(value: string | null | undefined): Locale {
 }
 
 /**
- * The locale a Cookie header (or document.cookie) names. A browser lists the
- * most specific cookie first, so the first value wins.
+ * The locale a Cookie header (or document.cookie) names. Of two cookies with
+ * the name (another path or domain; the app sets one), the last wins, as in
+ * Next.js cookies().get on the server, so a page and its global-error
+ * fallback agree (T-044 review 2 N5).
  */
 export function cookieLocale(header: string): Locale {
+  let value: string | undefined;
   for (const pair of header.split(";")) {
     const at = pair.indexOf("=");
-    if (at >= 0 && pair.slice(0, at).trim() === localeCookie) return parseLocale(pair.slice(at + 1));
+    if (at >= 0 && pair.slice(0, at).trim() === localeCookie) value = pair.slice(at + 1);
   }
-  return defaultLocale;
+  return value === undefined ? defaultLocale : parseLocale(value);
 }
 
 /** The Set-Cookie value for remembering locale for a year. */

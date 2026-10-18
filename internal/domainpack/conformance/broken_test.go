@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"math"
@@ -860,6 +861,135 @@ func (p templateSharesResources) Template(name, modelID, modelName string, local
 	return ir, nil
 }
 
+// templateSharesFlows copies the model it built first but not its flows:
+// the names are fresh, so changing names alone shows nothing, while one
+// caller's change to a flow shows up for another (T-044 review 2 N1).
+type templateSharesFlows struct {
+	templates
+	mu   *sync.Mutex
+	base map[domainpack.Locale]*model.ModelIR
+}
+
+func (p templateSharesFlows) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	b, err := p.first(name, modelID, modelName, locale, nil)
+	if err != nil {
+		return nil, err
+	}
+	cp := *b
+	cp.ModelID, cp.Name = modelID, modelName
+	cp.EntityTypes = slices.Clone(b.EntityTypes)
+	cp.Resources = slices.Clone(b.Resources)
+	cp.Nodes = slices.Clone(b.Nodes)
+	return &cp, nil
+}
+
+// first returns the model built on the first call for the locale.
+func (p templateSharesFlows) first(name, modelID, modelName string, locale domainpack.Locale, prepare func(*model.ModelIR)) (*model.ModelIR, error) {
+	if name != "queue" {
+		return p.templates.Template(name, modelID, modelName, locale)
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if b, ok := p.base[locale]; ok {
+		return b, nil
+	}
+	b, err := p.templates.Template(name, modelID, modelName, locale)
+	if err != nil {
+		return nil, err
+	}
+	if prepare != nil {
+		prepare(b)
+	}
+	p.base[locale] = b
+	return b, nil
+}
+
+// templateSharesPositions builds a new model each time but hands every
+// caller the same 2D positions map; with empty, a map with no positions
+// yet (a caller's first position shows up for the other).
+type templateSharesPositions struct {
+	templateSharesFlows
+	empty bool
+}
+
+func (p templateSharesPositions) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	b, err := p.first(name, modelID, modelName, locale, func(ir *model.ModelIR) {
+		ir.Views.TwoD.Positions = map[string]model.Position{}
+		for i, n := range ir.Nodes {
+			if !p.empty {
+				ir.Views.TwoD.Positions[n.ID] = model.Position{X: float64(200 * i)}
+			}
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err != nil {
+		return nil, err
+	}
+	ir.Views.TwoD.Positions = b.Views.TwoD.Positions
+	return ir, nil
+}
+
+// templateSharesMetadata builds a new model each time but hands every
+// caller the same metadata bytes.
+type templateSharesMetadata struct{ templateSharesFlows }
+
+func (p templateSharesMetadata) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	b, err := p.first(name, modelID, modelName, locale, func(ir *model.ModelIR) {
+		ir.Metadata = jsontext.Value(`{"origin":"template"}`)
+	})
+	if err != nil {
+		return nil, err
+	}
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err != nil {
+		return nil, err
+	}
+	ir.Metadata = b.Metadata
+	return ir, nil
+}
+
+// templateSharesEntityTypes builds a new model each time but hands every
+// caller the same entity types, which hold only strings.
+type templateSharesEntityTypes struct{ templateSharesFlows }
+
+func (p templateSharesEntityTypes) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	b, err := p.first(name, modelID, modelName, locale, nil)
+	if err != nil {
+		return nil, err
+	}
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err != nil {
+		return nil, err
+	}
+	ir.EntityTypes = b.EntityTypes
+	return ir, nil
+}
+
+// templateSharesNumbers builds a new model each time but points every
+// caller's service time parameters at the same numbers.
+type templateSharesNumbers struct{ templateSharesFlows }
+
+func (p templateSharesNumbers) Template(name, modelID, modelName string, locale domainpack.Locale) (*model.ModelIR, error) {
+	b, err := p.first(name, modelID, modelName, locale, nil)
+	if err != nil {
+		return nil, err
+	}
+	ir, err := p.templates.Template(name, modelID, modelName, locale)
+	if err != nil {
+		return nil, err
+	}
+	for i, n := range ir.Nodes {
+		if n.ServiceTime != nil {
+			d, shared := &n.ServiceTime.Distribution, b.Nodes[i].ServiceTime.Distribution
+			d.Min, d.Mode, d.Max = shared.Min, shared.Mode, shared.Max
+		}
+	}
+	return ir, nil
+}
+
 // templateCounts names its template after how often it was built; only
 // the concurrent step compares Template across goroutines.
 type templateCounts struct {
@@ -1127,6 +1257,12 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 		{templateErrorAndModel{}, "templates/valid", "names incomplete"},
 		{templateCached{mu: new(sync.Mutex), cache: map[domainpack.Locale]*model.ModelIR{}}, "templates/copies", ""},
 		{templateSharesResources{mu: new(sync.Mutex), resources: new([]model.Resource)}, "templates/copies", ""},
+		{templateSharesFlows{mu: new(sync.Mutex), base: map[domainpack.Locale]*model.ModelIR{}}, "templates/copies", ""},
+		{templateSharesPositions{templateSharesFlows: templateSharesFlows{mu: new(sync.Mutex), base: map[domainpack.Locale]*model.ModelIR{}}}, "templates/copies", ""},
+		{templateSharesPositions{templateSharesFlows: templateSharesFlows{mu: new(sync.Mutex), base: map[domainpack.Locale]*model.ModelIR{}}, empty: true}, "templates/copies", ""},
+		{templateSharesMetadata{templateSharesFlows{mu: new(sync.Mutex), base: map[domainpack.Locale]*model.ModelIR{}}}, "templates/copies", ""},
+		{templateSharesEntityTypes{templateSharesFlows{mu: new(sync.Mutex), base: map[domainpack.Locale]*model.ModelIR{}}}, "templates/copies", ""},
+		{templateSharesNumbers{templateSharesFlows{mu: new(sync.Mutex), base: map[domainpack.Locale]*model.ModelIR{}}}, "templates/copies", ""},
 		{templateCounts{n: new(atomic.Int64)}, "concurrent", "Template"},
 		{templateLocaleFallback{}, "templates/unknown-locale", ""},
 		{templateAnyCase{}, "templates/unknown-template", ""},

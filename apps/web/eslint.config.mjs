@@ -48,6 +48,15 @@ const renderedPaths = [
   ...through(`JSXAttribute[name.name=${textAttributes}] > JSXExpressionContainer`, 0, 3),
 ];
 const catalogText = "User-visible text comes from the message catalog (messages/en.ts, messages/zh-Hant.ts; REQ-022).";
+// The page title and browser dialogs show text the catalog cannot reach and
+// that the UI cannot style or test; a hook in a .ts module can reach them as
+// well as a component can.
+const dialogs = ["alert", "confirm", "prompt"];
+const dialogText = "Use an in-page dialog with catalog text (REQ-022).";
+const pageTitle = {
+  selector: 'AssignmentExpression > MemberExpression.left[property.name="title"]:matches([object.name="document"], [object.property.name="document"])',
+  message: "Set the page title through metadata (REQ-022).",
+};
 
 export default defineConfig([
   ...nextVitals,
@@ -66,20 +75,26 @@ export default defineConfig([
           { selector: `${path} > TemplateLiteral`, message: catalogText },
         ]),
         { selector: `JSXAttribute[name.name=${textAttributes}] > Literal[value=${letters}]`, message: catalogText },
-        {
-          selector: `JSXOpeningElement[name.name="input"]:has(JSXAttribute[name.name="type"][value.value=/^(submit|button|reset)$/]) > JSXAttribute[name.name="value"] > Literal[value=${letters}]`,
+        ...["", " > JSXExpressionContainer"].map((container) => ({
+          selector: `JSXOpeningElement[name.name="input"]:has(JSXAttribute[name.name="type"][value.value=/^(submit|button|reset)$/]) > JSXAttribute[name.name="value"]${container} > :matches(Literal[value=${letters}], TemplateLiteral)`,
           message: catalogText,
-        },
+        })),
         {
           selector: `JSXAttribute > JSXExpressionContainer > ObjectExpression > Property[key.name=${textAttributes}] > :matches(Literal[value=${letters}], TemplateLiteral)`,
           message: catalogText,
         },
-        { selector: 'AssignmentExpression > MemberExpression.left[object.name="document"][property.name="title"]', message: "Set the page title through metadata (REQ-022)." },
+        pageTitle,
       ],
-      // Browser dialogs show text the catalog cannot reach and that the UI cannot style or test.
-      "no-restricted-globals": ["error", ...["alert", "confirm", "prompt"].map((name) => ({ name, message: "Use an in-page dialog with catalog text (REQ-022)." }))],
-      "no-restricted-properties": ["error", ...["alert", "confirm", "prompt"].map((property) => ({ object: "window", property, message: "Use an in-page dialog with catalog text (REQ-022)." }))],
     },
   },
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    ignores: ["tests/**"],
+    rules: {
+      "no-restricted-globals": ["error", ...dialogs.map((name) => ({ name, message: dialogText }))],
+      "no-restricted-properties": ["error", ...["window", "globalThis", "self"].flatMap((object) => dialogs.map((property) => ({ object, property, message: dialogText })))],
+    },
+  },
+  { files: ["**/*.ts"], ignores: ["tests/**"], rules: { "no-restricted-syntax": ["error", pageTitle] } },
   globalIgnores([".next/**", "out/**", "coverage/**", "next-env.d.ts"]),
 ]);
