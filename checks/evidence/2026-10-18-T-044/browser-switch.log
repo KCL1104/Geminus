@@ -1,0 +1,26 @@
+{
+ "before": {
+  "lang": "en",
+  "h1": "Projects",
+  "select": "en"
+ },
+ "after": {
+  "lang": "zh-Hant",
+  "h1": "專案",
+  "h2": "需要登入",
+  "url": "http://127.0.0.1:3917/projects",
+  "select": "zh-Hant",
+  "cookie": [
+   "geminus_locale=zh-Hant; path=/; sameSite=Lax; secure=false; httpOnly=false"
+  ]
+ },
+ "reloaded": {
+  "lang": "zh-Hant",
+  "h1": "專案"
+ },
+ "back": {
+  "lang": "en",
+  "h1": "Projects"
+ },
+ "errors": []
+}

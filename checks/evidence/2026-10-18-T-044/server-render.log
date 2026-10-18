@@ -1,0 +1,26 @@
+# next start (build of 459fedc), curl
+--- no cookie: /
+<html lang="en">
+<title>Geminus</title>
+<nav aria-label="Main">
+<a href="/projects">Projects</a>
+<label for="_R_jb_">Language</label>
+<h1>Geminus</h1>
+<a href="/projects">Go to projects</a>
+--- geminus_locale=zh-Hant: /
+<html lang="zh-Hant">
+<title>Geminus</title>
+<nav aria-label="主要">
+<a href="/projects">專案</a>
+<label for="_R_jb_">語言</label>
+<h1>Geminus</h1>
+<a href="/projects">前往專案</a>
+--- geminus_locale=zh-hans: /
+<html lang="en">
+--- geminus_locale=zh-hant: /
+<html lang="en">
+--- geminus_locale=EN: /
+<html lang="en">
+--- geminus_locale=zh-Hant: /projects
+<h1>專案</h1>
+<h2>需要登入</h2>

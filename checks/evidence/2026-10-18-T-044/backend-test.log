@@ -1,0 +1,34 @@
+go vet ./cmd/... ./internal/... ./schemas/... ./scripts/...
+go test ./cmd/... ./internal/... ./schemas/... ./scripts/...
+ok  	github.com/kcl1104/geminus/cmd/api	(cached)
+ok  	github.com/kcl1104/geminus/cmd/worker	(cached)
+ok  	github.com/kcl1104/geminus/internal/api	(cached)
+ok  	github.com/kcl1104/geminus/internal/auth	(cached)
+?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/config	(cached)
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	(cached)
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	(cached)
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.488s
+ok  	github.com/kcl1104/geminus/internal/httpapi	(cached)
+ok  	github.com/kcl1104/geminus/internal/ids	(cached)
+ok  	github.com/kcl1104/geminus/internal/model	(cached)
+ok  	github.com/kcl1104/geminus/internal/model/hashing	(cached)
+ok  	github.com/kcl1104/geminus/internal/model/patch	(cached)
+ok  	github.com/kcl1104/geminus/internal/model/validate	(cached)
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	(cached)
+ok  	github.com/kcl1104/geminus/internal/project	(cached)
+ok  	github.com/kcl1104/geminus/internal/results/metrics	(cached)
+ok  	github.com/kcl1104/geminus/internal/simulation	(cached)
+ok  	github.com/kcl1104/geminus/internal/simulation/des	(cached)
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	(cached)
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	(cached)
+?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	(cached)
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/projects	(cached)
+ok  	github.com/kcl1104/geminus/internal/tenant	(cached)
+?   	github.com/kcl1104/geminus/schemas	[no test files]
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	109.617s
