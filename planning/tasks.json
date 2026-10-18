@@ -2457,7 +2457,7 @@
       "id": "T-044",
       "title": "Bilingual UI foundation (en default, zh-Hant)",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Frontend",
       "planning_window": "Week 3–4",
       "depends_on": [
@@ -2503,9 +2503,13 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-044_VALIDATION.md",
           "summary": "雙語 UI 基礎（REQ-022，ADR-020 ACCEPTED／H-006）：contract 的 Locale 與 ValidationCode（Go／TS 由測試鎖成相同）、CreateModel.locale；optional domainpack.TemplateProvider 與 conformance 的 templates 步驟（19 個壞 template pack、2 個正確 pack）；SoftwareDelivery template 的 zh-Hant 名稱檔，嚴格比對。前端自寫 typed catalog（zh-Hant 型別對齊 en）、Intl 複數／日期／數字／期間、cookie geminus_locale 由 root layout 讀取（html lang，無 route 前綴）、語言切換＋router refresh；所有元件改用 catalog，錯誤依 error／validation code 說明，英文技術訊息標 lang=\"en\"；ESLint 擋硬編字串。459fedc 上 frontend-test（118 tests）、frontend-build、backend-test、backend-race、architecture-check、spec-check 皆 exit 0；mutation 104 個：102 killed、2 equivalent、0 unexpected；Chromium 實測切換、重新載入保留、切回。",
-          "reviewer": "pending: independent reviewer agent (H-003)",
+          "reviewer": "independent reviewer agent (H-003); owner did not review line by line",
           "ci": "https://github.com/KCL1104/Geminus/actions/runs/39144694773 (d2b8fd1, includes 459fedc code: 4/4 success)",
-          "review_round_1": "independent reviewer agent (H-003) 2026-10-18 審 1d6eadd（git archive export）：CHANGES REQUESTED，無 blocker；數字全部重現。M1 templates 步驟不檢查並行與共用 model；M2 zh 的 404 為 Next.js 英文頁、缺 created_at 整頁失敗、無 error 頁；M3 lint 漏常見寫法；L1 一個 kill 來自無效 ESLint config；L2 三個 kill 來自逾時；L3 zh 404 無測試；L4 不存在的日期被進位；L5 schema 說明不符；L6 名稱檔空白／控制字元／過長；L7 用語與中文空格；L8 CreateModel.locale 無 fixture。全部先紅後綠修正（beb96e1）：templates/copies＋Template 加入 concurrent＋近似 locale／大小寫 template 探測＋5 個壞 pack；not-found／error／global-error；lint 擴大（\\p{L}、text props、傳遞鏈、callback、submit value、物件 prop、document.title、alert／confirm／prompt）；harness 的 CONFIG-INVALID／TIMEOUT；日期欄位檢查；I18n.gap 與用語；CreateModel fixtures；Object.hasOwn；編號不分組。修正後 153 tests、190 Go RUN、mutation 144：142 killed＋2 equivalent＋0 unexpected。證據 checks/evidence/2026-10-18-T-044/review1/。等待同一 reviewer 複核。"
+          "review_round_1": "independent reviewer agent (H-003) 2026-10-18 審 1d6eadd（git archive export）：CHANGES REQUESTED，無 blocker；數字全部重現。M1 templates 步驟不檢查並行與共用 model；M2 zh 的 404 為 Next.js 英文頁、缺 created_at 整頁失敗、無 error 頁；M3 lint 漏常見寫法；L1 一個 kill 來自無效 ESLint config；L2 三個 kill 來自逾時；L3 zh 404 無測試；L4 不存在的日期被進位；L5 schema 說明不符；L6 名稱檔空白／控制字元／過長；L7 用語與中文空格；L8 CreateModel.locale 無 fixture。全部先紅後綠修正（beb96e1）：templates/copies＋Template 加入 concurrent＋近似 locale／大小寫 template 探測＋5 個壞 pack；not-found／error／global-error；lint 擴大（\\p{L}、text props、傳遞鏈、callback、submit value、物件 prop、document.title、alert／confirm／prompt）；harness 的 CONFIG-INVALID／TIMEOUT；日期欄位檢查；I18n.gap 與用語；CreateModel fixtures；Object.hasOwn；編號不分組。修正後 153 tests、190 Go RUN、mutation 144：142 killed＋2 equivalent＋0 unexpected。證據 checks/evidence/2026-10-18-T-044/review1/。等待同一 reviewer 複核。",
+          "review_round_2": "同一 reviewer 複核 1747f9b（程式 beb96e1，git archive export）：ACCEPT。首輪發現全部已修且經得起 probe；153 tests、190 Go RUN、mutation 142 killed＋2 equivalent、next build／start＋Chromium 皆重現。5 個 low、3 個 info：N1 templates/copies 只改名稱 → overwrite 改動每個可設的值並在 map 加 key，新增 6 個共用資料的壞 pack；N2 lint 誤擋 key 與 token → ADR-020 記錄保留的 prop 名稱與做法；N3 dialog／title 只對 .tsx、globalThis／self、value={\"…\"} → 擴大到 .ts 與這些寫法，展開 attribute 與條件中的物件 prop 列為限制；N4 報告過時列 → 改正；N5 重複 cookie server／client 不一致 → client 取最後一個；N6–N8 記錄不改的理由。修正後（0748bc0）162 tests、196 Go RUN、mutation 157：154 killed＋3 equivalent＋0 unexpected。證據 checks/evidence/2026-10-18-T-044/review2/。",
+          "accepted_at": "2026-10-18",
+          "acceptance": "owner 指示由獨立 agent review 驗收（H-003）；首輪 CHANGES REQUESTED 已修正（beb96e1），同一 reviewer 複核 ACCEPT；複核的 low 發現已處理（0748bc0）",
+          "ci_before_acceptance": "https://github.com/KCL1104/Geminus/actions/runs/39155503173 (0748bc0: 4/4 success)"
         }
       ]
     },

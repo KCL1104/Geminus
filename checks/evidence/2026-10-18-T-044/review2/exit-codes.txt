@@ -1,3 +1,4 @@
 t044-go-tests exit=0
 frontend-test exit=0
 frontend-build exit=0
+mutation exit=0

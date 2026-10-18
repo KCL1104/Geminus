@@ -1,0 +1,159 @@
+site/templates/list@397	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.45s)
+site/templates/valid@412	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.70s)
+site/templates/valid@416	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.74s)
+site/templates/valid@419	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.55s)
+site/templates/valid@424	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.95s)
+site/templates/deterministic@428	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.59s)
+site/templates/copies@438	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.05s)
+site/templates/locales@444	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.22s)
+site/templates/unknown-locale@449	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.25s)
+site/templates/unknown-template@464	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.85s)
+tp-not-checked	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.88s)
+list-empty-ok	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.67s)
+list-blank-ok	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.09s)
+list-dupes-ok	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.04s)
+list-panic-continues	SURVIVED	
+valid-domain-unchecked	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.02s)
+valid-modelid-unchecked	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.25s)
+valid-name-unchecked	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.04s)
+valid-generic-skipped	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.97s)
+valid-warning-fails	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.88s)
+valid-pack-rules-skipped	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.90s)
+valid-nil-ok	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.27s)
+valid-error-ok	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.83s)
+deterministic-skipped	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.24s)
+locales-compared-with-names	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.20s)
+locales-skipped	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (7.10s)
+one-locale-only	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.19s)
+bad-locales-none	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.71s)
+bad-locales-no-regions	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.07s)
+unknown-locale-model-ok	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (6.36s)
+unknown-template-model-ok	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.79s)
+unknown-template-no-variants	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.45s)
+copies-unchecked	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.26s)
+copies-call-skipped	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.71s)
+copies-pointer-not-followed	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.22s)
+copies-fields-skipped	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.55s)
+copies-slices-skipped	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.07s)
+copies-no-added-key	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.73s)
+copies-strings-unchanged	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.47s)
+copies-bytes-unchanged	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (5.05s)
+copies-floats-unchanged	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.67s)
+copies-ints-unchanged	SURVIVED	
+concurrent-no-template	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.49s)
+templates-step-dropped	KILLED	go test: --- FAIL: TestBrokenPacksAreCaught (4.63s)
+unknown-locale-accepted	KILLED	go test: --- FAIL: TestTemplateLocales (0.01s)
+not-localized	KILLED	go test: --- FAIL: TestTemplateLocales (0.01s)
+localize-error-ignored	KILLED	go test: --- FAIL: TestTemplateNamesFailure (0.02s)
+english-also-read	KILLED	go test: --- FAIL: TestConformance (0.00s)
+unknown-members-ok	KILLED	go test: --- FAIL: TestNamesFileStrict (0.00s)
+missing-name-kept	KILLED	go test: --- FAIL: TestNamesFileStrict (0.00s)
+blank-name-ok	KILLED	go test: --- FAIL: TestNamesFileStrict (0.00s)
+control-name-ok	KILLED	go test: --- FAIL: TestNamesFileStrict (0.00s)
+long-name-ok	KILLED	go test: --- FAIL: TestNamesFileStrict (0.01s)
+long-name-off-by-one	KILLED	go test: --- FAIL: TestNamesFileStrict (0.01s)
+extra-name-ok	KILLED	go test: --- FAIL: TestNamesFileStrict (0.00s)
+unnamed-gets-name	KILLED	go test: --- FAIL: TestConformance (0.46s)
+pack-templates-empty	KILLED	go test: --- FAIL: TestConformance (0.49s)
+pack-template-ignores-locale	KILLED	go test: --- FAIL: TestConformance (0.55s)
+locales-default-not-first	KILLED	go test: --- FAIL: TestLocalesMatchContract (0.00s)
+locales-only-english	KILLED	go test: --- FAIL: TestLocalesMatchContract (0.00s)
+names-missing-resource	KILLED	go test: --- FAIL: TestConformance (0.58s)
+names-extra-node	KILLED	go test: --- FAIL: TestConformance (0.46s)
+names-english-copy	KILLED	go test: --- FAIL: TestTemplateLocales (0.01s)
+contract-code-missing	KILLED	go test: --- FAIL: TestCodesMatchContract (0.01s)
+contract-locale-missing	KILLED	go test: --- FAIL: TestLocalesMatchContract (0.00s)
+code-not-in-contract	KILLED	go test: --- FAIL: TestCodesMatchContract (0.00s)
+plural-always-other	KILLED	vitest: × says when a list has more pages than it shows 54ms
+plural-count-unchecked	KILLED	vitest: × refuses a missing value instead of showing a placeholder 23ms
+missing-param-shown	KILLED	vitest: × refuses a missing value instead of showing a placeholder 39ms
+numbers-unformatted	KILLED	vitest: × fills placeholders and formats numbers for the locale 84ms
+date-shape-unchecked	KILLED	vitest: × writes dates the locale's way 14ms
+date-invalid-unchecked	SURVIVED	
+date-calendar-unchecked	KILLED	vitest: × writes dates the locale's way 21ms
+date-month-length-ignored	KILLED	vitest: × writes dates the locale's way 23ms
+date-hour-24	KILLED	vitest: × writes dates the locale's way 17ms
+date-case-strict	KILLED	vitest: × writes dates the locale's way 16ms
+params-inherited	KILLED	vitest: × refuses a missing value instead of showing a placeholder 11ms
+date-nonstring-shown	KILLED	vitest: × shows a server value that is not a date-time as it came, instead of failing the page 10ms
+gap-zh-space	KILLED	vitest: × puts a space between sentences in English and none in Chinese (T-044 review L7) 13ms
+remembered-locale-default	KILLED	vitest: × reads the remembered choice in the browser, for the page that replaces a failed layout 18ms
+cookie-first-wins	KILLED	vitest: × reads the choice from a Cookie header or document.cookie, last value wins 16ms
+cookie-name-suffix	KILLED	vitest: × reads the choice from a Cookie header or document.cookie, last value wins 14ms
+zh-catalog-is-en	KILLED	vitest: × fills placeholders and formats numbers for the locale 14ms
+duration-short	KILLED	vitest: × writes numbers and durations the locale's way 14ms
+locale-case-insensitive	KILLED	vitest: × accepts exactly the supported values and defaults to en 13ms
+locale-prefix	KILLED	vitest: × accepts exactly the supported values and defaults to en 23ms
+default-zh	KILLED	vitest: × are the contract's locales, en first 20ms
+cookie-never-secure	KILLED	vitest: × is remembered in a cookie that holds only the language 9ms
+cookie-no-samesite	KILLED	vitest: × is remembered in a cookie that holds only the language 10ms
+cookie-session-only	KILLED	vitest: × is remembered in a cookie that holds only the language 27ms
+server-ignores-cookie	KILLED	vitest: × is Traditional Chinese when that was chosen 15ms
+provider-date-throws	KILLED	vitest: × keeps the page when a project has no usable creation time (T-044 review M2) 68ms
+provider-ignores-locale	KILLED	vitest: × renders the projects page and its states in Chinese 60ms
+context-default-zh	KILLED	vitest: × does not call the API when signed out, and does when signed in 89ms
+code-not-explained	KILLED	vitest: × explains each error code in Chinese and keeps the server's English message as data 19ms
+kind-guidance-dropped	KILLED	vitest: × explains a 403 and shows validation details and Retry-After 16ms
+validation-never-known	KILLED	vitest: × names each validation issue by its code, and an unknown code by the server's reason 15ms
+validation-any-key	KILLED	vitest: × names each validation issue by its code, and an unknown code by the server's reason 12ms
+message-unmarked	KILLED	vitest: × explains each error code in Chinese and keeps the server's English message as data 48ms
+reason-unmarked	KILLED	vitest: × names each validation issue by its code, and an unknown code by the server's reason 18ms
+not-found-echoes	KILLED	vitest: × says the same in Chinese for a missing resource and another tenant's (TEST-009, T-044 review L3) 36ms
+retry-after-count	KILLED	vitest: × explains a 403 and shows validation details and Retry-After 12ms
+pending-hidden	KILLED	vitest: × gives an editor both choices on a conflict and keeps the changes 66ms
+revision-wrong	KILLED	vitest: × gives an editor both choices on a conflict and keeps the changes 86ms
+revision-grouped	KILLED	vitest: × counts in Chinese 15ms
+status-no-gap	KILLED	vitest: × counts in Chinese 28ms
+technical-space	KILLED	vitest: × explains each error code in Chinese and keeps the server's English message as data 35ms
+more-pages-count	KILLED	vitest: × renders the projects page and its states in Chinese 552ms
+loading-fixed	KILLED	vitest: × RemoteView shows loading, the problem or the data 157ms
+read-only-swapped	KILLED	vitest: × gives a viewer no edit actions 213ms
+switch-no-cookie	KILLED	vitest: × remembers a new choice in the language cookie only 30ms
+switch-no-refresh	KILLED	vitest: × remembers a new choice in the language cookie only 35ms
+menu-no-refresh	KILLED	vitest: × re-renders the server components after a choice in the app shell 34ms
+switch-shows-codes	KILLED	vitest: × remembers a new choice in the language cookie only 134ms
+switch-not-current	KILLED	vitest: × is Traditional Chinese when that was chosen 48ms
+switch-unlabelled	KILLED	vitest: × remembers a new choice in the language cookie only 90ms
+html-lang-fixed	KILLED	vitest: × is Traditional Chinese when that was chosen 9ms
+shell-provider-en	KILLED	vitest: × is Traditional Chinese when that was chosen 57ms
+shell-nav-en	KILLED	vitest: × is Traditional Chinese when that was chosen 208ms
+home-en	KILLED	vitest: × is Traditional Chinese when that was chosen 13ms
+created-raw	KILLED	vitest: × renders the projects page and its states in Chinese 150ms
+created-hidden	KILLED	vitest: × renders the projects page and its states in Chinese 447ms
+not-found-en	KILLED	vitest: × says a page was not found in the reader's language 45ms
+not-found-title-en	KILLED	vitest: × says a page was not found in the reader's language 23ms
+crash-shows-message	KILLED	vitest: × shows a page that failed to render in Chinese, with a retry and the server's reference 117ms
+crash-no-reference	KILLED	vitest: × shows a page that failed to render in Chinese, with a retry and the server's reference 148ms
+crash-no-retry	KILLED	vitest: × shows a page that failed to render in Chinese, with a retry and the server's reference 51ms
+lint-no-strings-off	KILLED	vitest: × rejects a string in JSX 330ms
+lint-props-checked	KILLED	vitest: × allows non-text attributes 60ms
+lint-attr-literal	KILLED	vitest: × rejects an aria-label 73ms
+lint-attr-paths	KILLED	vitest: × rejects an aria-label expression 53ms
+lint-attr-depth-0	KILLED	vitest: × rejects an aria-label expression 138ms
+lint-child-paths	KILLED	vitest: × rejects a string after && 58ms
+lint-child-depth-1	KILLED	vitest: × rejects a string in a nested conditional 93ms
+lint-callback-paths	KILLED	vitest: × rejects a string a map returns 86ms
+lint-no-concatenation	KILLED	vitest: × rejects a concatenated title 48ms
+lint-any-binary	KILLED	vitest: × allows a comparison in a condition 31ms
+lint-no-cast	KILLED	vitest: × rejects a cast aria-label 78ms
+lint-no-array	KILLED	vitest: × rejects a string in an array 139ms
+lint-condition-any-path	KILLED	vitest: × allows a catalog key chosen by a condition 119ms
+lint-latin-only	KILLED	vitest: × rejects Chinese text in a conditional 253ms
+lint-no-text-props	KILLED	vitest: × rejects a text prop on a component 45ms
+lint-submit-value	KILLED	vitest: × rejects a submit button value 25ms
+lint-object-props	KILLED	vitest: × rejects text in an object prop 58ms
+lint-document-title	KILLED	vitest: × rejects document.title 27ms
+lint-window-document-title	KILLED	vitest: × rejects window.document.title 19ms
+lint-title-not-in-ts	KILLED	vitest: × rejects document.title in a .ts module 17ms
+lint-dialogs-not-in-ts	KILLED	vitest: × rejects window.confirm in a .ts module 89ms
+lint-dialog-globalthis	KILLED	vitest: × rejects globalThis.alert 91ms
+lint-dialog-self	KILLED	vitest: × rejects self.confirm 81ms
+lint-submit-value-expression	KILLED	vitest: × rejects a submit button value expression 200ms
+lint-dialog-globals	KILLED	vitest: × rejects alert 138ms
+lint-dialog-properties	KILLED	vitest: × rejects window.confirm 46ms
+lint-attr-title-missing	KILLED	vitest: × rejects a title 95ms
+lint-condition-literal	KILLED	vitest: × rejects an aria-label expression 73ms
+lint-condition-template	KILLED	vitest: × rejects an aria-label template literal 55ms
+lint-condition-no-fragment	KILLED	vitest: × rejects a string in a fragment's conditional 177ms
+total=157 killed=154 equivalent=3 unexpected=0
+exit=0

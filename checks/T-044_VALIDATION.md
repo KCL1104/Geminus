@@ -1,6 +1,6 @@
 # T-044 驗證報告：Bilingual UI foundation（en 預設、zh-Hant）
 
-**日期：2026-10-18｜狀態：`review`（首輪獨立 review 為 CHANGES REQUESTED，先紅後綠修正後，同一 reviewer 複核 ACCEPT；複核的 low 發現已修，最終 mutation 執行中，完成後標 done；依 H-003 驗收）｜實作選擇：ADR-020（ACCEPTED，H-006）｜需求：REQ-022、REQ-004｜Gate：無｜驗收測試：TEST-031（T-044 部分，見「驗收對照」）**
+**日期：2026-10-18｜狀態：`done`（首輪獨立 review 為 CHANGES REQUESTED，先紅後綠修正後，同一 reviewer 複核 ACCEPT；複核的 low 發現已處理；依 H-003 驗收）｜實作選擇：ADR-020（ACCEPTED，H-006）｜需求：REQ-022、REQ-004｜Gate：無｜驗收測試：TEST-031（T-044 部分，見「驗收對照」）**
 
 逐條輸出在 `checks/evidence/2026-10-18-T-044/`。範圍依 tasks.json：i18n 機制（另立 ADR）、catalog key 一致性、lint 禁止硬編字串、cookie 語言切換與保存、Intl 格式、route 無語言前綴、既有 T-014 畫面與每個 Problem code 的兩語文案、DomainPack template 加 locale（contract 與 conformance suite 先改）且 SoftwareDelivery 提供 zh-Hant 名稱。
 
@@ -83,7 +83,7 @@ Reviewer 以自己的 `git archive 1d6eadd` export 執行，沒有使用工作�
 | `make frontend-build` | 0 | `frontend-build.log` |
 | `make backend-test`、`backend-race`、`architecture-check`、`spec-check` | 0 | 同一 commit 的紀錄在 `checks/evidence/2026-10-18-T-012/`（T-012 驗證時執行）：`PASS architecture: 34 packages, 10 rules, 16 build configurations` |
 | `go test -count=1 -v`（domainpack、conformance、softwaredelivery、model/validate、coldstart） | 0 | `t044-go-tests.log`：196 個 RUN，0 FAIL |
-| mutation | — | 執行中：結果補上前視為 NOT RUN |
+| mutation | 0 | `mutation.log`：157 個，154 killed（64 由 Go test、90 由 vitest），3 equivalent，0 unexpected，0 harness 錯誤。新增的 equivalent `copies-ints-unchanged`：IR 中有整數欄位的 struct（Resource、Node、ResourceRequirement、Arrival）都有字串欄位，整數也不在自己的指標後，共用的整數一定經由改動的字串被看到。其他 copies mutant（不跟指標、略過欄位、略過 slice、不加 map key、字串／bytes／浮點不變）皆 killed |
 | CI | — | 0748bc0 的 run [39155503173](https://github.com/KCL1104/Geminus/actions/runs/39155503173) 4/4 success |
 
 ## 首版的實際執行結果

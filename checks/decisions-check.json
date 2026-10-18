@@ -18,16 +18,17 @@
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 15,
+    "done": 16,
     "in_progress": 0,
     "not_started": 28,
-    "review": 2
+    "review": 1
   },
   "ready_tasks": [
     "T-010",
     "T-016",
     "T-019",
-    "T-043"
+    "T-043",
+    "T-045"
   ],
   "next_after_review": [
     {
@@ -41,13 +42,6 @@
       "id": "T-024",
       "awaiting_task_review": [
         "T-012"
-      ],
-      "awaiting_decisions": []
-    },
-    {
-      "id": "T-045",
-      "awaiting_task_review": [
-        "T-044"
       ],
       "awaiting_decisions": []
     }
