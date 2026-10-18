@@ -27,6 +27,17 @@ type pkg struct {
 	IgnoredGoFiles []string
 	Error          *struct{ Err string }
 	DepsErrors     []*struct{ Err string }
+
+	// Non-Go sources, built or excluded by constraints (goOnly). The first
+	// configuration that lists a package lists every such file, so they
+	// need no merging.
+	CgoFiles, CFiles, CXXFiles, MFiles, HFiles, FFiles, SFiles []string
+	SwigFiles, SwigCXXFiles, SysoFiles, IgnoredOtherFiles      []string
+}
+
+// otherFiles are p's non-Go source files.
+func (p *pkg) otherFiles() []string {
+	return slices.Concat(p.CgoFiles, p.CFiles, p.CXXFiles, p.MFiles, p.HFiles, p.FFiles, p.SFiles, p.SwigFiles, p.SwigCXXFiles, p.SysoFiles, p.IgnoredOtherFiles)
 }
 
 // buildConfig is one platform the graph is read for.
@@ -64,6 +75,9 @@ type graph struct {
 	// unlisted are directories of the module with Go files that no
 	// configuration lists as a package: a whole package behind a custom tag.
 	unlisted []string
+	// whole: the graph was read for the whole module (./...), so every
+	// module package in it should be a root.
+	whole bool
 }
 
 // load runs `go list -e -deps -test -json` in dir for each configuration
@@ -79,7 +93,7 @@ func load(dir string, goflags []string, configs []buildConfig, patterns ...strin
 		if err != nil {
 			return nil, err
 		}
-		out, err := goList(dir, c, append(append([]string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,Standard,ForTest,Imports,TestImports,XTestImports,IgnoredGoFiles,Error,DepsErrors"}, goflags...), patterns...))
+		out, err := goList(dir, c, append(append([]string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,Standard,ForTest,Imports,TestImports,XTestImports,IgnoredGoFiles,CgoFiles,CFiles,CXXFiles,MFiles,HFiles,FFiles,SFiles,SwigFiles,SwigCXXFiles,SysoFiles,IgnoredOtherFiles,Error,DepsErrors"}, goflags...), patterns...))
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +160,8 @@ func load(dir string, goflags []string, configs []buildConfig, patterns ...strin
 	if len(g.roots) == 0 {
 		return nil, errors.New("go list found no package")
 	}
-	if len(configs) == len(matrix) && slices.Equal(patterns, defaultPatterns) {
+	g.whole = slices.Equal(patterns, defaultPatterns)
+	if len(configs) == len(matrix) && g.whole {
 		listed := map[string]bool{}
 		for _, r := range g.roots {
 			listed[g.pkgs[r].Dir] = true
@@ -347,9 +362,14 @@ func check(g *graph, rules []rule) (violations []violation, errs []error) {
 			}
 			matched++
 			for _, imp := range g.pkgs[root].Imports {
-				if matchAny(r.forbidDirect, imp) {
+				if std := g.pkgs[imp] != nil && g.pkgs[imp].Standard; r.stdOnly != nil && std && !matchAny(r.stdOnly, imp) {
 					violations = append(violations, violation{rule: r.name, why: r.why, pkg: root, chain: []string{root, imp}})
 				}
+			}
+			if files := g.pkgs[root].otherFiles(); r.goOnly && len(files) > 0 {
+				slices.Sort(files)
+				violations = append(violations, violation{rule: r.name, why: r.why, pkg: root,
+					detail: "non-Go source files " + strings.Join(slices.Compact(files), ", ") + ": assembly, C and object files can make system calls that no import shows"})
 			}
 			start := []string{root}
 			if r.tests {
@@ -375,7 +395,37 @@ func structure(g *graph) []violation {
 		out = append(out, violation{rule: "every-file-built", pkg: d, detail: "a directory with Go files that no platform of the matrix builds as a package, so its imports are not checked",
 			why: "a package only a custom tag compiles could import anything (T-042 review); build it on a matrix platform or remove it"})
 	}
+	if g.whole {
+		listed := map[string]bool{}
+		for _, r := range g.roots {
+			listed[r] = true
+		}
+		var linked []string
+		for path := range g.pkgs {
+			if inModule(path) && !listed[path] {
+				linked = append(linked, path)
+			}
+		}
+		slices.Sort(linked)
+		for _, p := range linked {
+			out = append(out, violation{rule: "every-package-listed", pkg: p, detail: "a module package that ./... does not list (testdata, or a name starting with \".\" or \"_\"), so no rule checks it as a package, but something imports it",
+				why: "every package that is linked must be checked (T-042 review N2); move it to a listed directory"})
+		}
+	}
 	for _, root := range g.roots {
+		p := g.pkgs[root]
+		// Implementing DomainPack needs the interface's types, so a
+		// subpackage that cannot reach them cannot be a second pack.
+		if unit, ok := packUnit(root); ok && root != unit && reaches(g, root, module+"/internal/domainpack") {
+			out = append(out, violation{rule: "pack-layout", pkg: root, detail: "a subpackage of " + rel(unit) + " depends on ./internal/domainpack: only a pack's own package implements the DomainPack interface",
+				why: "one directory holds one pack; its subpackages are its internals (T-042 review N4)"})
+		}
+		for _, imp := range slices.Concat(p.Imports, p.TestImports, p.XTestImports) {
+			if unit, ok := packUnit(imp); ok && imp != unit && !sameUnit(root, imp, 3) {
+				out = append(out, violation{rule: "pack-layout", pkg: root, detail: "imports " + rel(imp) + ", a subpackage of the pack " + rel(unit) + "; only the pack itself is imported from outside it",
+					why: "a pack's subpackages are its own, so two packs under one directory can only be one pack (T-042 review N4)"})
+			}
+		}
 		for _, f := range g.unbuilt[root] {
 			out = append(out, violation{rule: "every-file-built", pkg: root, detail: f + " is excluded by build constraints on every platform of the matrix, so its imports are not checked",
 				why: "a file only a custom tag compiles could import anything (T-042 review); build it on a matrix platform or remove it"})
@@ -389,6 +439,40 @@ func structure(g *graph) []violation {
 		}
 	}
 	return out
+}
+
+// reaches reports whether target is in the production dependency closure
+// of from.
+func reaches(g *graph, from, target string) bool {
+	seen := map[string]bool{from: true}
+	queue := []string{from}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if cur == target {
+			return true
+		}
+		if p := g.pkgs[cur]; p != nil {
+			for _, imp := range p.Imports {
+				if !seen[imp] {
+					seen[imp] = true
+					queue = append(queue, imp)
+				}
+			}
+		}
+	}
+	return false
+}
+
+// packUnit is the direct child of internal/domainpack that path is in: a
+// pack, or the conformance suite, whose subpackages are equally its own.
+func packUnit(path string) (string, bool) {
+	r, ok := strings.CutPrefix(path, module+"/internal/domainpack/")
+	if !ok {
+		return "", false
+	}
+	unit, _, _ := strings.Cut(r, "/")
+	return module + "/internal/domainpack/" + unit, true
 }
 
 // walk visits the dependency closure from start in import order and reports
@@ -438,7 +522,10 @@ func bad(r rule, root, dep string, p *pkg) bool {
 	if matchAny(r.forbid, dep) {
 		return true
 	}
-	if r.thirdParty == nil || inModule(dep) {
+	if inModule(dep) {
+		return r.moduleOnly != nil && !matchAny(r.moduleOnly, dep)
+	}
+	if r.thirdParty == nil {
 		return false
 	}
 	if p == nil {

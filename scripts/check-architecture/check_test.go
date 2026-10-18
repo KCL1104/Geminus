@@ -58,7 +58,7 @@ func overlay(t *testing.T, root string, files map[string]string) string {
 	i := 0
 	for path, src := range files {
 		i++
-		f := filepath.Join(dir, fmt.Sprintf("f%d.go", i))
+		f := filepath.Join(dir, fmt.Sprintf("f%d%s", i, filepath.Ext(path)))
 		if err := os.WriteFile(f, []byte(src), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -212,6 +212,11 @@ func TestSyntheticGraph(t *testing.T) {
 	add("net/http", true)
 	// A dependency missing from the graph is not trusted by an allowlist.
 	add(m("internal/simulation/clock"), false, "example.com/unlisted")
+	// Assembly in the kernel; a pack's subpackage imported from outside.
+	add(m("internal/simulation/asm"), false)
+	g.pkgs[m("internal/simulation/asm")].SFiles = []string{"sys_amd64.s"}
+	add(m("internal/project"), false, m("internal/domainpack/alpha/rules"))
+	add(m("internal/domainpack/alpha/second"), false, m("internal/domainpack/alpha/rules"), m("internal/domainpack"))
 	violations, errs := check(g, rules)
 	if len(errs) > 0 {
 		t.Fatal(errs)
@@ -230,6 +235,9 @@ func TestSyntheticGraph(t *testing.T) {
 		"generic-kernel ./internal/results/trace ./internal/results/trace>./internal/domainpack/gamma",
 		"domain-packs ./internal/domainpack/gamma ./internal/domainpack/gamma>net/http",
 		"generic-kernel ./internal/simulation/clock ./internal/simulation/clock>example.com/unlisted",
+		"generic-kernel ./internal/simulation/asm ",
+		"pack-layout ./internal/project ",
+		"pack-layout ./internal/domainpack/alpha/second ",
 	} {
 		if !got[want] {
 			t.Errorf("missing violation %q", want)
@@ -310,6 +318,8 @@ func TestReviewProbes(t *testing.T) {
 		{"windows-only file", map[string]string{eng + "zz_probe_windows.go": http}, "generic-kernel", "./internal/simulation/engine", "net/http"},
 		{"file only without cgo", map[string]string{eng + "zz_probe.go": "//go:build !cgo\n\n" + http}, "generic-kernel", "./internal/simulation/engine", "net/http"},
 		{"file behind a custom tag", map[string]string{eng + "zz_probe.go": "//go:build integration\n\n" + http}, "every-file-built", "./internal/simulation/engine", "zz_probe.go"},
+		{"arm64-only internal kernel test", map[string]string{"internal/simulation/trace/zz_probe_linux_arm64_test.go": "package trace\n\nimport _ \"" + module + "/internal/domainpack/softwaredelivery\"\n"}, "generic-kernel-tests", "./internal/simulation/trace", "./internal/domainpack/softwaredelivery"},
+		{"arm64-only external kernel test", map[string]string{"internal/model/zz_probe_linux_arm64_test.go": "package model_test\n\nimport _ \"" + module + "/internal/domainpack/softwaredelivery\"\n"}, "generic-kernel-tests", "./internal/model", "./internal/domainpack/softwaredelivery"},
 		{"kernel test behind a custom tag", map[string]string{"internal/model/zz_probe_test.go": "//go:build integration\n\npackage model_test\n\nimport _ \"" + module + "/internal/domainpack/softwaredelivery\"\n"}, "every-file-built", "./internal/model", "zz_probe_test.go"},
 		{"cgo in the kernel", map[string]string{eng + "zz_probe_cgo.go": sock}, "generic-kernel", "./internal/simulation/engine", "C"},
 		{"syscall in the kernel", map[string]string{eng + "zz_probe.go": "package engine\n\nimport \"syscall\"\n\nfunc zzSock() (int, error) { return syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0) }\n"}, "generic-kernel", "./internal/simulation/engine", "syscall"},
@@ -343,6 +353,88 @@ func TestReviewProbes(t *testing.T) {
 	}
 }
 
+// Probes from the second T-042 review (review-t042-r2/probes/arch2.py,
+// arch3.py and asm/): I/O through another module package, packages in
+// directories ./... does not list, standard-library packages that reach the
+// file system underneath, assembly and object files, a pack's subpackages
+// imported from outside it, and a third-party module in a pack. None of
+// them depends on the platform, so the host configuration is enough.
+func TestRound2Probes(t *testing.T) {
+	root := repoRoot(t)
+	const eng = "internal/simulation/engine/"
+	const sd = "internal/domainpack/softwaredelivery/"
+	sock := "import \"syscall\"\n\nfunc ZZSock() (int, error) { return syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0) }\n"
+	use := func(pkg, path, name string) string {
+		return "package " + pkg + "\n\nimport \"" + module + "/" + path + "\"\n\nvar _ = " + name + ".ZZSock\n"
+	}
+	asm := "#include \"textflag.h\"\n\nTEXT ·zzSocket(SB),NOSPLIT,$0-32\n\tMOVQ\t$41, AX\n\tSYSCALL\n\tMOVQ\tAX, fd+24(FP)\n\tRET\n"
+	cases := []struct {
+		name  string
+		files map[string]string
+		rule  string
+		pkg   string
+		want  string // last element of the chain, or the start of the detail
+	}{
+		{"kernel syscall through an internal package", map[string]string{"internal/zzproxy/p.go": "package zzproxy\n\n" + sock, eng + "zz_probe.go": use("engine", "internal/zzproxy", "zzproxy")}, "generic-kernel", "./internal/simulation/engine", "./internal/zzproxy"},
+		{"pack process through pkg/", map[string]string{"pkg/zzproc/p.go": "package zzproc\n\nimport \"os\"\n\nfunc ZZSock() { _, _ = os.StartProcess(\"/bin/sh\", nil, &os.ProcAttr{}) }\n", sd + "zz_probe.go": use("softwaredelivery", "pkg/zzproc", "zzproc")}, "domain-packs", "./internal/domainpack/softwaredelivery", "./pkg/zzproc"},
+		{"kernel package in an _ directory", map[string]string{"internal/simulation/_zz/p.go": "package zz\n\n" + sock, eng + "zz_probe.go": use("engine", "internal/simulation/_zz", "zz")}, "every-package-listed", "./internal/simulation/_zz", "a module package that ./... does not list"},
+		{"kernel package in testdata", map[string]string{"internal/simulation/testdata/zz/p.go": "package zz\n\n" + sock, eng + "zz_probe.go": use("engine", "internal/simulation/testdata/zz", "zz")}, "every-package-listed", "./internal/simulation/testdata/zz", "a module package that ./... does not list"},
+		{"tagged file in an _ package", map[string]string{"internal/simulation/_zz/p.go": "package zz\n\nfunc ZZSock() {}\n", "internal/simulation/_zz/q.go": "//go:build integration\n\npackage zz\n\nimport _ \"net/http\"\n", eng + "zz_probe.go": use("engine", "internal/simulation/_zz", "zz")}, "every-package-listed", "./internal/simulation/_zz", "a module package that ./... does not list"},
+		{"kernel io/ioutil", map[string]string{eng + "zz_probe.go": "package engine\n\nimport \"io/ioutil\"\n\nfunc zzW() error { return ioutil.WriteFile(\"/tmp/x\", nil, 0o600) }\n"}, "generic-kernel", "./internal/simulation/engine", "io/ioutil"},
+		{"kernel path/filepath", map[string]string{eng + "zz_probe.go": "package engine\n\nimport \"path/filepath\"\n\nfunc zzW() error { return filepath.Walk(\"/\", nil) }\n"}, "generic-kernel", "./internal/simulation/engine", "path/filepath"},
+		{"kernel text/template", map[string]string{"internal/results/metrics/zz_probe.go": "package metrics\n\nimport _ \"text/template\"\n"}, "generic-kernel", "./internal/results/metrics", "text/template"},
+		{"pack archive/zip", map[string]string{sd + "zz_probe.go": "package softwaredelivery\n\nimport _ \"archive/zip\"\n"}, "domain-packs", "./internal/domainpack/softwaredelivery", "archive/zip"},
+		{"kernel assembly", map[string]string{eng + "zz_probe_stub.go": "package engine\n\nfunc zzSocket(domain, typ, proto uintptr) (fd uintptr)\n", eng + "zz_probe_amd64.s": asm}, "generic-kernel", "./internal/simulation/engine", "non-Go source files zz_probe_amd64.s"},
+		{"kernel assembly for another platform", map[string]string{eng + "zz_probe_stub.go": "package engine\n\nfunc zzSocket(domain, typ, proto uintptr) (fd uintptr)\n", eng + "zz_probe_s390x.s": asm}, "generic-kernel", "./internal/simulation/engine", "non-Go source files zz_probe_s390x.s"},
+		{"pack object file", map[string]string{sd + "zz_probe.syso": "\x7fELF"}, "domain-packs", "./internal/domainpack/softwaredelivery", "non-Go source files zz_probe.syso"},
+		{"two packs registered from outside one directory", map[string]string{
+			"internal/domainpack/packs/doc.go":     "// Package packs groups packs.\npackage packs\n",
+			"internal/domainpack/packs/alpha/a.go": "package alpha\n\nimport _ \"" + module + "/internal/domainpack/packs/beta\"\n",
+			"internal/domainpack/packs/beta/b.go":  "package beta\n",
+			"internal/zzreg/r.go":                  "package zzreg\n\nimport (\n\t_ \"" + module + "/internal/domainpack/packs/alpha\"\n\t_ \"" + module + "/internal/domainpack/packs/beta\"\n)\n",
+		}, "pack-layout", "./internal/zzreg", "imports ./internal/domainpack/packs/alpha, a subpackage of the pack ./internal/domainpack/packs"},
+		{"two packs under a directory with a doc.go", map[string]string{
+			"internal/domainpack/packs/doc.go":     "// Package packs groups packs.\npackage packs\n",
+			"internal/domainpack/packs/alpha/a.go": "package alpha\n\nimport (\n\t\"" + module + "/internal/domainpack\"\n\t_ \"" + module + "/internal/domainpack/packs/beta\"\n)\n\nvar _ domainpack.DomainPack\n",
+			"internal/domainpack/packs/beta/b.go":  "package beta\n\nimport \"" + module + "/internal/domainpack\"\n\nvar _ domainpack.DomainPack\n",
+		}, "pack-layout", "./internal/domainpack/packs/alpha", "a subpackage of ./internal/domainpack/packs depends on ./internal/domainpack"},
+		{"pack subpackage reaching the interface through another package", map[string]string{
+			"internal/domainpack/packs/doc.go":          "// Package packs groups packs.\npackage packs\n",
+			"internal/domainpack/packs/beta/b.go":       "package beta\n\nimport _ \"" + module + "/internal/domainpack/packs/beta/types\"\n",
+			"internal/domainpack/packs/beta/types/t.go": "package types\n\nimport \"" + module + "/internal/domainpack\"\n\ntype NodeDefinition = domainpack.NodeDefinition\n",
+		}, "pack-layout", "./internal/domainpack/packs/beta", "a subpackage of ./internal/domainpack/packs depends on ./internal/domainpack"},
+		{"pack subpackage in another package's tests", map[string]string{sd + "zzsub/a.go": "package zzsub\n", "cmd/api/zz_probe_test.go": "package main\n\nimport _ \"" + module + "/internal/domainpack/softwaredelivery/zzsub\"\n"}, "pack-layout", "./cmd/api", "imports ./internal/domainpack/softwaredelivery/zzsub"},
+		{"pack third-party module", map[string]string{sd + "zz_probe.go": "package softwaredelivery\n\nimport _ \"github.com/go-jose/go-jose/v4\"\n"}, "domain-packs", "./internal/domainpack/softwaredelivery", "github.com/go-jose/go-jose/v4"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			g, err := load(root, []string{"-overlay=" + overlay(t, root, c.files)}, host, defaultPatterns...)
+			if err != nil {
+				t.Fatal(err)
+			}
+			violations, errs := check(g, rules)
+			if len(errs) > 0 {
+				t.Fatal(errs)
+			}
+			for _, v := range violations {
+				if v.rule == c.rule && rel(v.pkg) == c.pkg && (strings.HasPrefix(v.detail, c.want) || (v.detail == "" && rel(v.chain[len(v.chain)-1]) == c.want)) {
+					return
+				}
+			}
+			t.Errorf("no %s violation of %s for %s; got %v", c.rule, c.pkg, c.want, violations)
+		})
+	}
+	// The pack's own subpackages, and the pack imported from outside, are fine.
+	g, err := load(root, []string{"-overlay=" + overlay(t, root, map[string]string{"cmd/api/zz_probe_test.go": "package main\n\nimport _ \"" + module + "/internal/domainpack/softwaredelivery\"\n"})}, host, defaultPatterns...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if violations, _ := check(g, rules); len(violations) > 0 {
+		t.Errorf("importing a pack from outside it: %v", violations)
+	}
+}
+
 // concrete is a package path that pattern matches: its base, or a package
 // below it when the base is excluded.
 func concrete(pattern string, skip func(string) bool) (string, bool) {
@@ -361,6 +453,10 @@ func concrete(pattern string, skip func(string) bool) (string, bool) {
 // direct-import pattern, and the third-party allowlist), a synthetic package
 // the rule applies to that imports a package the pattern matches is a
 // violation. Removing an entry from rules.go fails here (T-042 review C).
+// via is a third-party package every rule allows, through which tests
+// reach a dependency transitively.
+const via = "golang.org/x/text/zzvia"
+
 func TestEveryRuleEntryIsEnforced(t *testing.T) {
 	isStd := func(p string) bool { return !inModule(p) && !strings.Contains(strings.Split(p, "/")[0], ".") }
 	for _, r := range rules {
@@ -374,14 +470,22 @@ func TestEveryRuleEntryIsEnforced(t *testing.T) {
 		if root == "" {
 			t.Fatalf("%s: no package the rule applies to", r.name)
 		}
+		// A transitive dependency is reached through an allowed third-party
+		// package, so the standard-library allowlist on the package's own
+		// imports cannot be what catches it.
 		probe := func(dep string, direct bool) {
 			t.Helper()
 			g := &graph{pkgs: map[string]*pkg{dep: {ImportPath: dep, Standard: isStd(dep)}}, roots: []string{root}}
+			first := dep
+			if !direct {
+				first = via
+				g.pkgs[via] = &pkg{ImportPath: via, Imports: []string{dep}}
+			}
 			rp := &pkg{ImportPath: root}
 			if r.tests {
-				rp.TestImports = []string{dep}
+				rp.TestImports = []string{first}
 			} else {
-				rp.Imports = []string{dep}
+				rp.Imports = []string{first}
 			}
 			g.pkgs[root] = rp
 			violations, errs := check(g, []rule{r})
@@ -401,13 +505,14 @@ func TestEveryRuleEntryIsEnforced(t *testing.T) {
 				probe(dep, false)
 			}
 		}
-		for _, f := range r.forbidDirect {
-			if dep, ok := concrete(f, allowed); ok {
-				probe(dep, true)
-			}
-		}
 		if r.thirdParty != nil {
 			probe("example.com/zzunlisted", false)
+		}
+		if r.stdOnly != nil {
+			probe("zzunlistedstd", true)
+		}
+		if r.moduleOnly != nil {
+			probe(module+"/zzoutside", false)
 		}
 	}
 }
@@ -478,7 +583,12 @@ func TestPolicy(t *testing.T) {
 	io := []string{"net", "net/http", "net/http/httptest", "net/rpc", "net/smtp", "net/mail", "database/sql", "database/sql/driver", "os/exec", "plugin", "crypto/tls"}
 	db := []string{"github.com/jackc/pgx/v5", "github.com/lib/pq", "github.com/go-sql-driver/mysql", "gorm.io/gorm", "github.com/jmoiron/sqlx"}
 	llm := []string{"github.com/anthropics/anthropic-sdk-go", "github.com/openai/openai-go", "github.com/sashabaranov/go-openai", "google.golang.org/genai", "github.com/google/generative-ai-go/genai", "cloud.google.com/go/vertexai/genai", "github.com/tmc/langchaingo/llms"}
-	direct := []string{"os", "os/signal", "os/user", "syscall", "unsafe", "runtime/cgo", "C", "plugin", "golang.org/x/sys/unix"}
+	direct := []string{"os", "os/signal", "os/user", "syscall", "unsafe", "runtime/cgo", "C", "plugin", "golang.org/x/sys/unix",
+		// not on the standard-library allowlist: file system or network underneath
+		"io/ioutil", "path/filepath", "text/template", "html/template", "archive/zip", "mime", "crypto/x509", "go/parser",
+		"go/build", "debug/elf", "debug/buildinfo", "log", "log/syslog", "runtime/debug", "runtime/pprof", "net/url", "io/fs"}
+	// module packages outside the kernel and third-party modules
+	outside := []string{m("internal/zzproxy"), m("pkg/zzproc"), m("tools/x"), m("internal/simulation_x"), "github.com/go-jose/go-jose/v4", "example.com/x"}
 	infra := []string{m("internal/contracttest"), m("internal/domainpack/conformance"), m("internal/auth/authtest")}
 	type want struct {
 		rule, root string
@@ -489,12 +599,12 @@ func TestPolicy(t *testing.T) {
 	var wants []want
 	for _, k := range kernel {
 		wants = append(wants,
-			want{"generic-kernel", k, slices.Concat(appLayer, io, db, llm, infra, []string{pack, m("internal/domainpack/other"), "testing", "C", "golang.org/x/sync/errgroup"}), false, false},
+			want{"generic-kernel", k, slices.Concat(appLayer, io, db, llm, infra, outside, []string{pack, m("internal/domainpack/other"), "testing", "C", "golang.org/x/sync/errgroup"}), false, false},
 			want{"generic-kernel", k, direct, true, false},
 			want{"generic-kernel-tests", k, slices.Concat([]string{pack}, appLayer, db, llm, []string{"net/http", "database/sql"}), false, true})
 	}
 	wants = append(wants,
-		want{"domain-packs", pack, slices.Concat(appLayer, io, db, llm, infra, []string{m("internal/domainpack/other"), "testing", "C"}), false, false},
+		want{"domain-packs", pack, slices.Concat(appLayer, io, db, llm, infra, outside, []string{m("internal/domainpack/other"), "testing", "C"}), false, false},
 		want{"domain-packs", pack, direct, true, false},
 		want{"conformance-is-generic", m("internal/domainpack/conformance"), slices.Concat([]string{pack}, appLayer, db, llm, []string{"net/http", "database/sql"}), false, false},
 		want{"no-test-infra-in-production", m("cmd/api"), append(slices.Clone(infra), "testing"), false, false},
@@ -511,6 +621,11 @@ func TestPolicy(t *testing.T) {
 	for _, r := range rules {
 		byName[r.name] = r
 	}
+	for _, name := range []string{"generic-kernel", "domain-packs"} {
+		if !byName[name].goOnly {
+			t.Errorf("%s allows non-Go source files", name)
+		}
+	}
 	isStd := func(p string) bool { return !inModule(p) && !strings.Contains(strings.Split(p, "/")[0], ".") }
 	for _, w := range wants {
 		r, ok := byName[w.rule]
@@ -523,13 +638,20 @@ func TestPolicy(t *testing.T) {
 			continue
 		}
 		for _, dep := range w.deps {
+			first := dep
+			if !w.direct {
+				first = via // transitive, so the allowlist on own imports does not decide
+			}
 			rp := &pkg{ImportPath: w.root}
 			if w.test {
-				rp.TestImports = []string{dep}
+				rp.TestImports = []string{first}
 			} else {
-				rp.Imports = []string{dep}
+				rp.Imports = []string{first}
 			}
-			g := &graph{pkgs: map[string]*pkg{w.root: rp, dep: {ImportPath: dep, Standard: isStd(dep)}}, roots: []string{w.root}}
+			g := &graph{pkgs: map[string]*pkg{w.root: rp, via: {ImportPath: via, Imports: []string{dep}}}, roots: []string{w.root}}
+			if dep != "C" { // go list never lists cgo's pseudo-package
+				g.pkgs[dep] = &pkg{ImportPath: dep, Standard: isStd(dep)}
+			}
 			if w.direct {
 				// A direct-only entry: also reachable transitively from a std package.
 				g.pkgs["fmt"] = &pkg{ImportPath: "fmt", Standard: true, Imports: []string{dep}}

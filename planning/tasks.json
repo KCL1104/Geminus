@@ -507,7 +507,8 @@
           "review_round_2": "同一 reviewer 複核 594ecc0：ACCEPT（重跑 51 RUN、54 案例、紅燈 log、mutation 115/115＋2 equivalent；2000 個並行未知 kid、-race stress、時鐘變動皆無問題）。條件：報告的 branch 結果以實際結果提交。4 個 low（cold＋hang 時每個 request 等滿 fetch、Goexit 卡住 refresh、strict base64 略過 CR/LF、邊界測試缺口）於驗收後先紅後綠修正；mutation 125/125＋2 equivalent（mutation-r3.log）。",
           "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/39107609394 (594ecc0: 4/4 success)",
           "accepted_at": "2026-10-18",
-          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；首輪 CHANGES REQUESTED 的發現皆已先紅後綠修正（7949a51），同一 reviewer 複核 ACCEPT；複核的 low 發現亦已修正"
+          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；首輪 CHANGES REQUESTED 的發現皆已先紅後綠修正（7949a51），同一 reviewer 複核 ACCEPT；複核的 low 發現亦已修正",
+          "ci_followups": "https://github.com/KCL1104/Geminus/actions/runs/39114272883 (4bac601: 4/4 success)"
         }
       ]
     },
@@ -2354,7 +2355,8 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-042_VALIDATION.md",
           "summary": "internal/domainpack/conformance：DomainPack conformance suite（identity、catalog、validate fail closed、views 只用 IR node ID 且無第二份 topology、metrics 經 engine 不改 generic 結果且 schema-valid／可重現、inference、prompt、並行；kernel 對改名 domain 的 validator issues 與 engine 數字不變）；test-only generic queue pack 與 SoftwareDeliveryDomainPack 皆通過；40 個壞 pack 各觸發指定 finding。scripts/check-architecture（make architecture-check，CI backend）：go list -e -deps -test build graph 上 8 條遞移規則，16 個 overlay probe 與 synthetic graph 驗證。mutation 80/80＋3 equivalent＋2 kernel guards。CB-37（metrics.dora 名稱）登記給 owner。",
-          "reviewer": null
+          "reviewer": null,
+          "review_round_2": "independent reviewer agent (H-003) 2026-10-18 複核 a0feead：CHANGES REQUESTED — 首輪發現全部確認已修；N1–N3（經 module proxy、_／testdata 目錄、assembly 繞過 forbidDirect）、N4（doc.go 讓兩個 pack 共用目錄）與 N5–N11（site 557 應為 kernel guard、TEST-002 變體缺 stage、跨呼叫洩漏、推論 determinism、(model, error)、reviewer 額外 mutant、報告過期）。修正：moduleOnly、kernelStd allowlist、goOnly、every-package-listed、pack subpackage 封裝與不得依賴介面、pack 第三方 allowlist；suite 的 8 個變體、stateless、inference/deterministic、結果與錯誤不得並存、metrics/renamed-run kernel guard。證據 checks/evidence/2026-10-18-T-042-review2/。等待第三次複核。"
         }
       ]
     },

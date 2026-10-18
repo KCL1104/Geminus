@@ -83,6 +83,7 @@ PLAUSIBLE／資訊：注入的 `Now` 若倒退，refresh 延後到追上為止�
 | 紅燈：新測試在舊程式上 | 1 | `red-auth.log`（9 個測試失敗，例如 `waited 10.008s for a hung refresh`）、`red-tenant.log`（NUL／非 UTF-8 回 `SQLSTATE 22021`）、`red-auth-round2.log`（需要新設定欄位的測試在舊程式上無法編譯）、`red-round3.log`（複核後續：等了 2.0 s、Goexit 卡住到 timeout、CR／LF 通過） |
 | `make spec-check`（本機，含 decision／planning／docs 檢查） | 0 | 594ecc0 的工作樹 |
 | GitHub Actions run 39107609394（594ecc0） | success | 4/4：backend（go vet、test、race、build）、db migrations + repository tests（PostgreSQL 16）、frontend、spec-check |
+| GitHub Actions run 39114272883（4bac601，複核後續） | success | 4/4 |
 
 首版的執行紀錄（39 個 RUN、db-test、govulncheck、mutation 54/54＋2 equivalent）保留在 `checks/evidence/2026-10-15-T-008/`。
 

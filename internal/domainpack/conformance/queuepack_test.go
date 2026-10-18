@@ -134,3 +134,25 @@ func TestGenericQueuePackHasAnAvailableMetric(t *testing.T) {
 		t.Fatalf("longest_queue_wait_minutes %+v", m)
 	}
 }
+
+// Each invalid variant breaks the rule it is named for, on the queue model,
+// so the domain-invariance check reaches every validator stage (T-042
+// review N6): a validator that skipped a stage for an unknown domain would
+// give the renamed copy other issues.
+func TestInvalidVariantsBreakTheirRule(t *testing.T) {
+	ir := queueModel(t)
+	variants := invalidVariants(&ir)
+	if len(variants) != len(variantCodes) {
+		t.Errorf("%d variants for %d expected codes", len(variants), len(variantCodes))
+	}
+	for name, want := range variantCodes {
+		v, ok := variants[name]
+		if !ok {
+			t.Errorf("%s: no variant", name)
+			continue
+		}
+		if !slices.ContainsFunc(genericIssues(&v), func(is model.ValidationIssue) bool { return is.Code == want }) {
+			t.Errorf("%s: no %s error, got %v", name, want, genericIssues(&v))
+		}
+	}
+}

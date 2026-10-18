@@ -5,7 +5,7 @@
 // reach production code. It reads the build graph from `go list` for every
 // platform of a build matrix and merges it, so it sees what the compiler
 // links on each of them, transitive dependencies included. It checks
-// imports, not calls: see directIO in rules.go for what that covers.
+// imports, not calls: see kernelStd in rules.go for what that covers.
 //
 //	go run ./scripts/check-architecture [-C dir] [-overlay file] [-host] [patterns]
 //

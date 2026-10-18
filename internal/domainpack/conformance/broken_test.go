@@ -548,6 +548,142 @@ func (p countsIntoPrompt) PromptContext() domainpack.PromptContext {
 	return c
 }
 
+// leaksViewsIntoPrompt remembers node names it laid out (the suite's models
+// have none) and puts them into the prompt context.
+type leaksViewsIntoPrompt struct{ queuePack }
+
+var seenNames sync.Map
+
+func (p leaksViewsIntoPrompt) DefaultViews(ir *model.ModelIR) domainpack.ViewDefinitions {
+	for _, n := range ir.Nodes {
+		if n.Name != "" {
+			seenNames.Store(n.Name, true)
+		}
+	}
+	return p.queuePack.DefaultViews(ir)
+}
+
+func (p leaksViewsIntoPrompt) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	seenNames.Range(func(k, _ any) bool { c.Rules = append(c.Rules, "Customer step: "+k.(string)); return true })
+	return c
+}
+
+// leaksEventsIntoPrompt remembers case IDs of the events it was given,
+// other than the suite's own "case-" ones, and puts them into the prompt.
+type leaksEventsIntoPrompt struct{ queuePack }
+
+var seenCases sync.Map
+
+func (p leaksEventsIntoPrompt) InferFromEvents(ctx context.Context, d domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	for _, e := range d.Events {
+		if !strings.HasPrefix(e.CaseID, "case-") {
+			seenCases.Store(e.CaseID, true)
+		}
+	}
+	return p.queuePack.InferFromEvents(ctx, d)
+}
+
+func (p leaksEventsIntoPrompt) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	seenCases.Range(func(k, _ any) bool { c.Rules = append(c.Rules, "Customer case: "+k.(string)); return true })
+	return c
+}
+
+// remembersLastModel warns about the model it validated before: one
+// tenant's model name in another tenant's answer (T-042 review N7).
+type remembersLastModel struct {
+	queuePack
+	last *atomic.Pointer[string]
+}
+
+func (p remembersLastModel) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	out := p.queuePack.Validate(ir)
+	if ir == nil {
+		return out
+	}
+	name := ir.Name
+	if prev := p.last.Swap(&name); prev != nil && *prev != ir.Name {
+		out = append(out, model.NewIssue("LAST_MODEL", "", "last model checked: "+*prev, model.SeverityWarning))
+	}
+	return out
+}
+
+// countsIntoIssues adds how often it validated to its issues: its answer
+// for a model depends on earlier calls.
+type countsIntoIssues struct {
+	queuePack
+	n *atomic.Int64
+}
+
+func (p countsIntoIssues) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	return append(p.queuePack.Validate(ir), model.NewIssue("CALLS", "", fmt.Sprint(p.n.Add(1)), model.SeverityWarning))
+}
+
+// viewsRememberLastModel shifts its layout by the length of the name of
+// the model it laid out before.
+type viewsRememberLastModel struct {
+	queuePack
+	last *atomic.Pointer[string]
+}
+
+func (p viewsRememberLastModel) DefaultViews(ir *model.ModelIR) domainpack.ViewDefinitions {
+	v := p.queuePack.DefaultViews(ir)
+	name := ir.Name
+	if prev := p.last.Swap(&name); prev != nil {
+		for id, pos := range v.Positions {
+			v.Positions[id] = model.Position{X: pos.X + float64(len(*prev)), Y: pos.Y}
+		}
+	}
+	return v
+}
+
+// mintsModelIDs answers every inference with a fresh, valid model ID, as a
+// ULID-minting pack would (T-042 review N8).
+type mintsModelIDs struct {
+	answers
+	n *atomic.Int64
+}
+
+func (p mintsModelIDs) InferFromEvents(ctx context.Context, d domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	res, err := p.answers.InferFromEvents(ctx, d)
+	if res != nil {
+		res.Model.ModelID = fmt.Sprintf("mdl_01M4YDQK00GENERCQ%09d", p.n.Add(1))
+	}
+	return res, err
+}
+
+// Each returns a model together with an error in one case (T-042 review N9).
+type modelAndErrorWhenEmpty struct{ answers }
+
+func (p modelAndErrorWhenEmpty) InferFromEvents(ctx context.Context, d domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	res, err := p.answers.InferFromEvents(ctx, events)
+	if len(d.Events) == 0 {
+		return res, fmt.Errorf("%w: no events", domainpack.ErrUnavailable)
+	}
+	return res, err
+}
+
+type modelAndError struct{ answers }
+
+func (p modelAndError) InferFromEvents(ctx context.Context, d domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	res, err := p.answers.InferFromEvents(ctx, d)
+	if err == nil {
+		err = errors.New("low confidence")
+	}
+	return res, err
+}
+
+type modelAndErrorWhenCancelled struct{ answers }
+
+func (p modelAndErrorWhenCancelled) InferFromEvents(ctx context.Context, d domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	res, err := p.answers.InferFromEvents(context.Background(), d)
+	if ctx.Err() != nil {
+		return res, ctx.Err()
+	}
+	return res, err
+}
+
 type promptDropsResources struct{ queuePack }
 
 func (p promptDropsResources) PromptContext() domainpack.PromptContext {
@@ -563,64 +699,79 @@ func (panicsEverywhere) NodeCatalog() []domainpack.NodeDefinition { panic("boom"
 func TestBrokenPacksAreCaught(t *testing.T) {
 	m := queueModel(t)
 	cases := []struct {
-		pack  domainpack.DomainPack
-		check string
+		pack   domainpack.DomainPack
+		check  string
+		detail string // when set, the finding's detail must contain it
 	}{
-		{badID{}, "identity/id"},
-		{otherID{}, "identity/models"},
-		{dupKind{}, "catalog/nodes"},
-		{nonGenericType{}, "catalog/nodes"},
-		{badRequirement{}, "catalog/nodes"},
-		{sharedCatalog{}, "catalog/copies"},
-		{badResourceType{}, "catalog/resources"},
-		{acceptsAnything{}, "validate/fail-closed"},
-		{acceptsAnything{}, "validate/nil"},
-		{rejectsValid{}, "validate/valid-models"},
-		{mutatingValidate{}, "validate/read-only"},
-		{flakyValidate{n: new(atomic.Int64)}, "validate/deterministic"},
-		{panicsOnNil{}, "validate/nil"},
-		{missingNode{}, "views/covers-nodes"},
-		{ghostNode{}, "views/same-ids"},
-		{movesSaved{}, "views/keeps-saved"},
-		{overlapping{}, "views/no-overlap"},
-		{mutatingViews{}, "views/read-only"},
-		{mutatingMetrics{}, "metrics/read-only"},
-		{mutatingMetrics{}, "metrics/generic-unchanged"},
-		{invalidMetric{}, "metrics/schema"},
-		{emptyKey{}, "metrics/keys"},
-		{flakyMetrics{n: new(atomic.Int64)}, "metrics/deterministic"},
-		{nilNil{}, "inference/answer"},
-		{ignoresCancel{m: m}, "inference/cancel"},
-		{proposesForeign{m: m}, "inference/answer"},
-		{unavailableWithResult{}, "inference/answer"},
-		{proposesInvalid{m: m}, "inference/answer"},
-		{promptOtherDomain{}, "prompt/context"},
-		{promptDropsNodes{}, "prompt/catalogs"},
-		{promptChanges{n: new(atomic.Int64)}, "prompt/static"},
-		{panicsEverywhere{}, "catalog/nodes"},
-		{flakyIDPack{flakyID: flakyID{n: new(atomic.Int64)}}, "identity/id"},
-		{emptyCatalog{}, "catalog/nodes"},
-		{noLabel{}, "catalog/nodes"},
-		{dupResource{}, "catalog/resources"},
-		{flakyViews{n: new(atomic.Int64)}, "views/deterministic"},
-		{unencodableViews{}, "views/valid-ir"},
-		{emptySummary{}, "prompt/context"},
-		{emptyRule{}, "prompt/context"},
-		{nanMetric{}, "metrics/run"},
-		{panicsOnEnginePath{}, "metrics/run"},
-		{rewritesSeed{}, "metrics/generic-unchanged"},
-		{rewritesQueues{}, "metrics/generic-unchanged"},
-		{rewritesAdditional{}, "metrics/generic-unchanged"},
-		{leaksIntoPrompt{}, "prompt/static"},
-		{infersFromNothing{answers{m: m}}, "inference/needs-input"},
-		{sharedResourceTypes{}, "catalog/copies"},
-		{sharedResources{}, "catalog/copies"},
-		{mismatchWithoutPath{}, "validate/fail-closed"},
-		{mismatchAsWarning{}, "validate/fail-closed"},
-		{layoutOnlyWithSavedPositions{}, "views/covers-nodes"},
-		{ignoresSavedWhenPlacing{}, "views/no-overlap"},
-		{promptDropsResources{}, "prompt/catalogs"},
-		{countsIntoPrompt{}, "prompt/static"},
+		{badID{}, "identity/id", ""},
+		{otherID{}, "identity/models", ""},
+		{dupKind{}, "catalog/nodes", ""},
+		{nonGenericType{}, "catalog/nodes", ""},
+		{badRequirement{}, "catalog/nodes", ""},
+		{sharedCatalog{}, "catalog/copies", ""},
+		{badResourceType{}, "catalog/resources", ""},
+		{acceptsAnything{}, "validate/fail-closed", ""},
+		{acceptsAnything{}, "validate/nil", ""},
+		{rejectsValid{}, "validate/valid-models", ""},
+		{mutatingValidate{}, "validate/read-only", ""},
+		{flakyValidate{n: new(atomic.Int64)}, "validate/deterministic", ""},
+		{panicsOnNil{}, "validate/nil", ""},
+		{missingNode{}, "views/covers-nodes", ""},
+		{ghostNode{}, "views/same-ids", ""},
+		{movesSaved{}, "views/keeps-saved", ""},
+		{overlapping{}, "views/no-overlap", ""},
+		{mutatingViews{}, "views/read-only", ""},
+		{mutatingMetrics{}, "metrics/read-only", ""},
+		{mutatingMetrics{}, "metrics/generic-unchanged", ""},
+		{invalidMetric{}, "metrics/schema", ""},
+		{emptyKey{}, "metrics/keys", ""},
+		{flakyMetrics{n: new(atomic.Int64)}, "metrics/deterministic", ""},
+		{nilNil{}, "inference/answer", ""},
+		{ignoresCancel{m: m}, "inference/cancel", ""},
+		{proposesForeign{m: m}, "inference/answer", ""},
+		{unavailableWithResult{}, "inference/answer", ""},
+		{proposesInvalid{m: m}, "inference/answer", ""},
+		{promptOtherDomain{}, "prompt/context", ""},
+		{promptDropsNodes{}, "prompt/catalogs", ""},
+		{promptChanges{n: new(atomic.Int64)}, "prompt/static", ""},
+		{panicsEverywhere{}, "catalog/nodes", ""},
+		{flakyIDPack{flakyID: flakyID{n: new(atomic.Int64)}}, "identity/id", ""},
+		{emptyCatalog{}, "catalog/nodes", ""},
+		{noLabel{}, "catalog/nodes", ""},
+		{dupResource{}, "catalog/resources", ""},
+		{flakyViews{n: new(atomic.Int64)}, "views/deterministic", ""},
+		{unencodableViews{}, "views/valid-ir", ""},
+		{emptySummary{}, "prompt/context", ""},
+		{emptyRule{}, "prompt/context", ""},
+		{nanMetric{}, "metrics/run", ""},
+		{panicsOnEnginePath{}, "metrics/run", ""},
+		{rewritesSeed{}, "metrics/generic-unchanged", ""},
+		{rewritesQueues{}, "metrics/generic-unchanged", ""},
+		{rewritesAdditional{}, "metrics/generic-unchanged", ""},
+		{leaksIntoPrompt{}, "prompt/static", ""},
+		{infersFromNothing{answers{m: m}}, "inference/needs-input", ""},
+		{sharedResourceTypes{}, "catalog/copies", ""},
+		{sharedResources{}, "catalog/copies", ""},
+		{mismatchWithoutPath{}, "validate/fail-closed", ""},
+		{mismatchAsWarning{}, "validate/fail-closed", ""},
+		{layoutOnlyWithSavedPositions{}, "views/covers-nodes", ""},
+		{ignoresSavedWhenPlacing{}, "views/no-overlap", ""},
+		{promptDropsResources{}, "prompt/catalogs", ""},
+		{countsIntoPrompt{}, "prompt/static", ""},
+		// Review round 2: the sentinel must reach the pack through each
+		// exposure, and be recognised as customer text (not just a change).
+		{leaksIntoPrompt{}, "prompt/static", "carries text"},
+		{leaksViewsIntoPrompt{}, "prompt/static", "carries text"},
+		{leaksEventsIntoPrompt{}, "prompt/static", "carries text"},
+		{remembersLastModel{last: new(atomic.Pointer[string])}, "stateless", "returns text"},
+		{countsIntoIssues{n: new(atomic.Int64)}, "stateless", "answers differently"},
+		{viewsRememberLastModel{last: new(atomic.Pointer[string])}, "stateless", "answers differently"},
+		{countsMetrics{n: new(atomic.Int64)}, "stateless", "answers differently"},
+		{mintsModelIDs{answers{m: m}, new(atomic.Int64)}, "inference/deterministic", ""},
+		{countsInference{n: new(atomic.Int64)}, "inference/deterministic", ""},
+		{modelAndErrorWhenEmpty{answers{m: m}}, "inference/needs-input", ""},
+		{modelAndError{answers{m: m}}, "inference/answer", "with a result"},
+		{modelAndErrorWhenCancelled{answers{m: m}}, "inference/cancel", ""},
 	}
 	for _, c := range cases {
 		name := typeName(c.pack)
@@ -630,11 +781,11 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, f := range findings {
-				if f.Check == c.check {
+				if f.Check == c.check && strings.Contains(f.Detail, c.detail) {
 					return
 				}
 			}
-			t.Errorf("no %s finding; got %v", c.check, findings)
+			t.Errorf("no %s finding (%q); got %v", c.check, c.detail, findings)
 		})
 	}
 	// Correct packs have none: one that declines inference, one that
@@ -647,6 +798,8 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 		"declines": {Pack: queuePack{}, Models: []model.ModelIR{m}},
 		"answers":  {Pack: answers{m: m}, Models: []model.ModelIR{m}},
 		"long ID":  {Pack: longID{id: long}, Models: []model.ModelIR{lm}},
+		// A pack whose ID is the suite's first renamed domain gets the other.
+		"renamed ID": {Pack: longID{id: renamedDomains[0]}, Models: []model.ModelIR{func() model.ModelIR { r := clone(&m); r.Domain = renamedDomains[0]; return r }()}},
 	} {
 		if findings, err := Check(context.Background(), s); err != nil || len(findings) > 0 {
 			t.Errorf("%s: %v %v", name, err, findings)
@@ -747,7 +900,7 @@ func TestConcurrentDisagreement(t *testing.T) {
 	}
 	c = &checker{s: Suite{Pack: countsInference{n: new(atomic.Int64)}, Models: []model.ModelIR{m}}}
 	c.concurrent(context.Background())
-	if len(c.findings) == 0 || c.findings[0].Check != "concurrent" {
+	if len(c.findings) == 0 || c.findings[0].Check != "concurrent" || !strings.Contains(c.findings[0].Detail, "InferFromEvents disagrees") {
 		t.Errorf("InferFromEvents disagreeing across goroutines: %v", c.findings)
 	}
 	c = &checker{s: Suite{Pack: panicsLater{n: new(atomic.Int64)}, Models: []model.ModelIR{m}}}

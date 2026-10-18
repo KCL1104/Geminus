@@ -9,6 +9,7 @@ package conformance
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -165,11 +166,49 @@ func allIssues(ir *model.ModelIR) []model.ValidationIssue {
 	return res.Issues
 }
 
-// invalidVariants are copies of ir that break one referential, graph or
-// distribution rule each (TEST-002), so the domain-invariance check also
-// compares the validator's error rules, not only an empty issue list.
+// variantCodes is the error each invalid variant must produce: one per
+// validator stage after the schema (limits, ids, refs, routing,
+// distributions, constraints) and the zero-time cycle of TEST-002.
+var variantCodes = map[string]string{
+	"unknown flow target":            validate.UnknownReference,
+	"probabilities not summing to 1": validate.RoutingInvalid,
+	"duplicate node ID":              validate.DuplicateID,
+	"no sink":                        validate.NoReachableSink,
+	"bad triangular distribution":    validate.DistributionInvalid,
+	"metadata nested too deep":       validate.LimitExceeded,
+	"constraint not met":             validate.ConstraintFailed,
+	"zero-time cycle":                validate.ZeroTimeCycle,
+}
+
+// invalidVariants are copies of ir that break one rule each (variantCodes,
+// TEST-002), so the domain-invariance check also compares the validator's
+// error rules, not only an empty issue list.
 func invalidVariants(ir *model.ModelIR) map[string]model.ModelIR {
 	out := map[string]model.ModelIR{}
+	deep := clone(ir)
+	deep.Metadata = jsontext.Value(strings.Repeat(`{"a":`, validate.MaxContainerDepth+1) + "1" + strings.Repeat("}", validate.MaxContainerDepth+1))
+	out["metadata nested too deep"] = deep
+	for _, n := range ir.Nodes {
+		if n.Type == model.NodeSink {
+			// The schema fixes equals at 1; a sink has no outgoing flow.
+			v := clone(ir)
+			v.Constraints = append(v.Constraints, model.Constraint{Type: model.ConstraintOutgoingProbabilitySum, NodeID: n.ID, Equals: 1})
+			out["constraint not met"] = v
+			break
+		}
+	}
+	if len(ir.Flows) > 0 {
+		// A decision node looping to itself, spliced into the first flow.
+		v := clone(ir)
+		const loop = "zz_conformance_loop"
+		to := v.Flows[0].To
+		v.Flows[0].To = loop
+		v.Nodes = append(v.Nodes, model.Node{ID: loop, Type: model.NodeDecision})
+		v.Flows = append(v.Flows,
+			model.Flow{ID: loop + "_again", From: loop, To: loop, Routing: model.Routing{Type: model.RoutingProbability, Probability: 0.5}},
+			model.Flow{ID: loop + "_on", From: loop, To: to, Routing: model.Routing{Type: model.RoutingProbability, Probability: 0.5}})
+		out["zero-time cycle"] = v
+	}
 	if len(ir.Flows) > 0 {
 		v := clone(ir)
 		v.Flows[0].To = "zz_conformance_missing_node"
@@ -554,7 +593,7 @@ func (c *checker) metrics(ctx context.Context) {
 			}
 		}
 		if err != nil {
-			c.fail("metrics/engine-ignores-domain", "model %d: %v", i, err)
+			c.fail("metrics/renamed-run", "model %d: the same IR under another domain does not run: %v", i, err)
 		}
 	}
 }
@@ -599,19 +638,25 @@ func (c *checker) inference(ctx context.Context) {
 	empty := domainpack.CanonicalEventDataset{DatasetVersionID: events.DatasetVersionID}
 	var res *domainpack.InferenceResult
 	var err error
-	if c.call("inference/needs-input", func() { res, err = c.s.Pack.InferFromEvents(ctx, empty) }) && err == nil {
-		c.fail("inference/needs-input", "proposed a model from a dataset with no events")
+	if c.call("inference/needs-input", func() { res, err = c.s.Pack.InferFromEvents(ctx, empty) }) && (err == nil || res != nil) {
+		c.fail("inference/needs-input", "answered a dataset with no events with a result (error %v)", err)
 	}
-	if !c.call("inference/answer", func() { res, err = c.s.Pack.InferFromEvents(ctx, events) }) {
+	var again *domainpack.InferenceResult
+	var againErr error
+	if !c.call("inference/answer", func() {
+		res, err = c.s.Pack.InferFromEvents(ctx, events)
+		again, againErr = c.s.Pack.InferFromEvents(ctx, events)
+	}) {
 		return
 	}
+	if encoded(res) != encoded(again) || fmt.Sprint(err) != fmt.Sprint(againErr) {
+		c.fail("inference/deterministic", "two calls with the same dataset disagree: inference is a function of the dataset, and IDs come from the server (D-016)")
+	}
 	switch {
-	case errors.Is(err, domainpack.ErrUnavailable):
-		if res != nil {
-			c.fail("inference/answer", "ErrUnavailable with a result")
-		}
+	case err != nil && res != nil:
+		c.fail("inference/answer", "an error (%v) with a result", err)
 	case err != nil:
-		// A typed refusal is acceptable.
+		// ErrUnavailable or a typed refusal is acceptable.
 	case res == nil || res.Model == nil:
 		c.fail("inference/answer", "no error and no model")
 	default:
@@ -624,8 +669,8 @@ func (c *checker) inference(ctx context.Context) {
 	}
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	if c.call("inference/cancel", func() { res, err = c.s.Pack.InferFromEvents(cancelled, events) }) && err == nil {
-		c.fail("inference/cancel", "answered with a cancelled context")
+	if c.call("inference/cancel", func() { res, err = c.s.Pack.InferFromEvents(cancelled, events) }) && (err == nil || res != nil) {
+		c.fail("inference/cancel", "answered a cancelled context with a result (error %v)", err)
 	}
 }
 
@@ -659,10 +704,29 @@ func (c *checker) staticData() string {
 }
 
 // static: the prompt context and catalogs are static pack data. After the
-// pack has seen a model, a result and events carrying a sentinel, they are
-// what they were before it saw any IR, and contain no customer text
-// (SECURITY §7; T-042 review B4).
+// pack has seen a model and events carrying a sentinel, they are what they
+// were before it saw any IR, and contain no customer text (SECURITY §7;
+// T-042 review B4). Its other answers are what they were before it saw the
+// sentinel model (stateless, T-042 review N7).
 func (c *checker) static(ctx context.Context) {
+	// What the pack answers for every model before and after it sees the
+	// sentinel model: a pack that remembers an earlier call (another
+	// tenant's model) answers differently (T-042 review N7).
+	answers := func() string {
+		var out []any
+		for i := range c.s.Models {
+			m := clone(&c.s.Models[i])
+			out = append(out, c.s.Pack.Validate(&m), c.s.Pack.DefaultViews(&m))
+		}
+		if c.result != nil {
+			out = append(out, c.s.Pack.ComputeMetrics(clonedResult(c.result)))
+		}
+		return encoded(out)
+	}
+	var before string
+	if !c.call("stateless", func() { before = answers() }) {
+		return
+	}
 	ir := clone(&c.s.Models[0])
 	ir.Name = sentinel
 	for i := range ir.Nodes {
@@ -670,12 +734,12 @@ func (c *checker) static(ctx context.Context) {
 	}
 	seen := events
 	seen.Events = append(slices.Clone(events.Events), domainpack.CanonicalEvent{CaseID: sentinel, EventType: sentinel, Timestamp: "2026-10-15T11:00:00Z"})
+	// ComputeMetrics is not exposed here: an engine result carries no
+	// customer text, and the metrics step already gave it one, which the
+	// comparison with c.initial covers.
 	c.call("prompt/static", func() {
 		c.s.Pack.Validate(&ir)
 		c.s.Pack.DefaultViews(&ir)
-		if c.result != nil {
-			c.s.Pack.ComputeMetrics(clonedResult(c.result))
-		}
 		_, _ = c.s.Pack.InferFromEvents(ctx, seen)
 	})
 	var final string
@@ -687,6 +751,15 @@ func (c *checker) static(ctx context.Context) {
 	} else if c.initial != "" && final != c.initial {
 		c.fail("prompt/static", "the prompt context or a catalog changed after the pack was given models and events")
 	}
+	var after string
+	if !c.call("stateless", func() { after = answers() }) {
+		return
+	}
+	if strings.Contains(after, sentinel) {
+		c.fail("stateless", "Validate, DefaultViews or ComputeMetrics returns text from a model or dataset of an earlier call")
+	} else if after != before {
+		c.fail("stateless", "Validate, DefaultViews or ComputeMetrics answers differently after the pack saw another model")
+	}
 }
 
 // concurrent: packs must be safe for concurrent use (the API and worker
@@ -696,21 +769,22 @@ func (c *checker) static(ctx context.Context) {
 // under -race (make backend-race).
 func (c *checker) concurrent(ctx context.Context) {
 	ir := clone(&c.s.Models[0])
-	calls := func(ir *model.ModelIR) string {
+	methods := []string{"NodeCatalog", "ResourceCatalog", "Validate", "DefaultViews", "PromptContext", "ComputeMetrics", "InferFromEvents"}
+	calls := func(ir *model.ModelIR) []string {
 		var metrics map[string]simulation.MetricSummary
 		if c.result != nil {
 			metrics = c.s.Pack.ComputeMetrics(clonedResult(c.result))
 		}
 		inferred, err := c.s.Pack.InferFromEvents(ctx, events)
-		return encoded([]any{c.s.Pack.NodeCatalog(), c.s.Pack.ResourceCatalog(), c.s.Pack.Validate(ir), c.s.Pack.DefaultViews(ir),
-			c.s.Pack.PromptContext(), metrics, inferred, fmt.Sprint(err)})
+		return []string{encoded(c.s.Pack.NodeCatalog()), encoded(c.s.Pack.ResourceCatalog()), encoded(c.s.Pack.Validate(ir)), encoded(c.s.Pack.DefaultViews(ir)),
+			encoded(c.s.Pack.PromptContext()), encoded(metrics), encoded(inferred) + fmt.Sprint(err)}
 	}
-	var want string
+	var want []string
 	if !c.call("concurrent", func() { want = calls(&ir) }) {
 		return
 	}
 	const n = 8
-	got := make([]string, n)
+	got := make([][]string, n)
 	var wg sync.WaitGroup
 	var panics sync.Map
 	for g := range n {
@@ -730,8 +804,10 @@ func (c *checker) concurrent(ctx context.Context) {
 		return true
 	})
 	for g, s := range got {
-		if s != want && s != "" {
-			c.fail("concurrent", "goroutine %d disagrees with a sequential call", g)
+		for k := range s {
+			if s[k] != want[k] {
+				c.fail("concurrent", "goroutine %d: %s disagrees with a sequential call", g, methods[k])
+			}
 		}
 	}
 }

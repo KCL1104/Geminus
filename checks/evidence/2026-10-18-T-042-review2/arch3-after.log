@@ -1,0 +1,8 @@
+pack-via-proxy-cgo	exit=2	MISSED	check-architecture: github.com/kcl1104/geminus/internal/domainpack/softwaredelivery (linux/amd64 cgo=0): build constraints exclude all Go files in /home/user/Geminus/internal/zzproxy
+kernel-via-proxy-cgo	exit=2	MISSED	check-architecture: github.com/kcl1104/geminus/internal/simulation/engine (linux/amd64 cgo=0): build constraints exclude all Go files in /home/user/Geminus/internal/zzproxy
+kernel-via-proxy-linkname	exit=1	OK	[generic-kernel] ./internal/results/metrics depends on ./internal/zzproxy |     via ./internal/results/metrics -> ./internal/simulation/engine -> ./internal/zzproxy |     rule: the generic kernel imports no domain pack, application layer, I/O, database or LLM SDK (AGENTS.md §2, REQ-003) | [generic-k
+   go build: 0 
+underscore-dir-custom-tag-file-linked-by-kernel	exit=1	OK	[every-package-listed] ./internal/simulation/_zz: a module package that ./... does not list (testdata, or a name starting with "." or "_"), so no rule checks it as a package, but something imports it |     rule: every package that is linked must be checked (T-042 review N2); move it to a listed dire
+   with -tags integration the engine links net/http: True
+testdata-dir-arm64-free(control: matrix still sees it)	exit=1	OK	[every-package-listed] ./internal/simulation/testdata/zz: a module package that ./... does not list (testdata, or a name starting with "." or "_"), so no rule checks it as a package, but something imports it |     rule: every package that is linked must be checked (T-042 review N2); move it to a lis
+vendor-dir-import	exit=2	MISSED	check-architecture: github.com/kcl1104/geminus/internal/simulation/engine (linux/amd64 cgo=1): github.com/kcl1104/geminus/internal/simulation/vendor/zz must be imported as zz

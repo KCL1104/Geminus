@@ -21,8 +21,12 @@ import (
 	"github.com/kcl1104/geminus/internal/simulation"
 )
 
-// DomainPack is one domain. Implementations must be safe for concurrent use
-// and deterministic: the same IR gives the same issues, views and metrics.
+// DomainPack is one domain. Implementations must be safe for concurrent use,
+// deterministic and stateless: the same IR gives the same issues, views and
+// metrics, the same dataset gives the same inference result, and no call
+// depends on an earlier one (a pack never carries one tenant's model into
+// another's answer). IDs a proposal needs come from the server's allocation
+// pool (D-016), so a pack never mints them.
 type DomainPack interface {
 	ID() string
 	NodeCatalog() []NodeDefinition
