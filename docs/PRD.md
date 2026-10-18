@@ -46,6 +46,8 @@ SOURCE 的三個驗證假設：AI 降低建模門檻；simulation 提供使用�
 
 REQ-022 不是原報告需求：owner 於 2026-10-18 新增（H-005）；中文定為繁體 `zh-Hant`，owner 確認先只做繁體（H-006）。
 
+REQ-022 的例外（H-008）：UI 元件庫內建、無法以 prop 覆寫的無障礙字串，可用該庫自己的翻譯，但須列清單、審閱並以測試列出。
+
 REQ-023 不是原報告需求：owner 於 2026-10-18 同意 agent 建議新增（H-007），並要求比較多個 UI 庫的做法、不直接採用 Tailwind＋shadcn/ui；owner 尚無視覺偏好，預設為中性、資訊密集的工具型介面。
 
 工程補充（已批准）：REQ-002 的 org bootstrap / membership HTTP 範圍見 D-008 / D-012；REQ-007 commit 與 proposal 邊界見 D-009；REQ-010 scenario approval 結果見 D-004；其餘缺值、clock 與一致性細節依專門 Spec。

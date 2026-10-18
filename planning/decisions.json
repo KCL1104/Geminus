@@ -630,6 +630,18 @@
         "UI 庫與 styling 方式（T-045 比較後 ADR-021，owner 確認）",
         "視覺取向（owner 看 prototype 後回饋）"
       ]
+    },
+    {
+      "id": "H-008",
+      "subject": "UI 庫比較的四個 owner 問題",
+      "decision": "採用 agent 建議：(1) 元件庫內建、無法以 prop 覆寫的無障礙字串可用該庫的翻譯，須列清單、spike 中審閱、以測試列出所有非 catalog 字串；(2) P0 只做淺色，tokens 預留深色；(3) P0 只用系統字型，不載入 web font；(4) 不使用付費元件授權，也不使用安裝時回傳資料的套件。",
+      "quote": "照你的建議",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-18",
+      "source": "Claude Code session 指示，由 agent 記錄；四個問題與建議見 checks/evidence/2026-10-18-T-045/survey.md §6",
+      "still_open": [
+        "UI 庫與 styling 方式（T-045 spike 後 ADR-021）"
+      ]
     }
   ]
 }

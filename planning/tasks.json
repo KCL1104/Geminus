@@ -2520,7 +2520,8 @@
         "UI 庫比較（H-007：不只 Tailwind＋shadcn/ui）：至少比較 headless primitives（React Aria Components、Radix Primitives、Base UI、Ark UI、Headless UI）、styled 元件庫（Mantine、MUI、Ant Design、Chakra UI）、企業 design system（IBM Carbon、Microsoft Fluent UI 2、Adobe React Spectrum、GitHub Primer、Atlassian Design System）與 styling 方式（Tailwind、CSS Modules＋CSS variables、zero-runtime CSS-in-JS）。評估：WCAG 2.2 AA 與鍵盤／ARIA 行為、CJK 字型與中英文長度差、React 19／Next.js 16 server components、資料密集元件（table、form、tree、command palette）、與 React Flow／PlayCanvas 並存、theming 與 tokens、license、維護狀態、bundle 大小。以實際 spike（同一個表單＋表格＋dialog）比較前 2–3 名；結論、版本與 license 寫入 ADR-021（PROPOSED，owner 確認後實作）。",
         "Design tokens（顏色、字體與 CJK fallback、間距、密度、focus ring；dark mode 視 ADR 決定）與 app shell、基本元件（button、field、select、dialog、toast、table，以及 loading／empty／error／權限不足／409 狀態），套用到 T-014／T-044 既有畫面；文字仍只來自 T-044 catalog。",
         "UX 流程：每個 UI 任務先交可點擊 prototype 經 owner review，review 紀錄放在該任務 evidence；本任務以 T-015 editor 與 T-031 proposal review 的 low-fi prototype 驗證流程。T-043 的登入頁先用既有語意化 HTML，本任務完成後套用。",
-        "自動檢查：axe-core（vitest DOM 與 Playwright）、只用鍵盤的 E2E、Playwright 截圖比對（en／zh-Hant × 390px／1280px），納入 make frontend-test／e2e-test 與 CI；截圖 baseline 變更需人工確認，不自動覆寫。"
+        "自動檢查：axe-core（vitest DOM 與 Playwright）、只用鍵盤的 E2E、Playwright 截圖比對（en／zh-Hant × 390px／1280px），納入 make frontend-test／e2e-test 與 CI；截圖 baseline 變更需人工確認，不自動覆寫。",
+        "Owner 已定的限制（H-008）：無法以 prop 覆寫的元件庫無障礙字串可用該庫翻譯，但須列清單、審閱用語並以測試列出所有非 catalog 字串（React Aria 的繁中須傳 `zh-TW`，`zh-Hant` 會得到簡體）；P0 只做淺色主題、tokens 預留深色；只用系統字型；不用付費元件授權與安裝時回傳資料的套件。Spike 依 survey.md §6：React Aria Components＋CSS Modules＋tokens、Base UI＋Tailwind＋TanStack Table、Mantine，同一組表單＋表格＋dialog＋React Flow 小畫布與相同 9 項量測。"
       ],
       "planned_outputs": [
         "apps/web/ui/",
@@ -2530,7 +2531,8 @@
       "spec_refs": [
         "docs/PRD.md",
         "docs/adr/ADR-016-frontend-server-state-boundary.md",
-        "docs/adr/ADR-020-ui-localization.md"
+        "docs/adr/ADR-020-ui-localization.md",
+        "checks/evidence/2026-10-18-T-045/survey.md"
       ],
       "acceptance_tests": [
         "TEST-033",
