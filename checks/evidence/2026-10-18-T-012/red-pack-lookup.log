@@ -1,0 +1,3 @@
+# github.com/kcl1104/geminus/internal/models_test
+# [github.com/kcl1104/geminus/internal/models_test]
+vet: internal/models/models_test.go:796:16: cannot use rulePacks{} (value of struct type rulePacks) as *domainpack.Registry value in assignment

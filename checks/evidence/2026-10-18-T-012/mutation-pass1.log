@@ -1,0 +1,77 @@
+create-no-role	KILLED	--- FAIL: TestRolesAndTenancy (0.28s)
+write-roles-are-members	KILLED	--- FAIL: TestRolesAndTenancy (0.22s)
+create-any-project	KILLED	--- FAIL: TestRolesAndTenancy (0.12s)
+list-any-project	KILLED	--- FAIL: TestRolesAndTenancy (0.12s)
+not-found-leaks	KILLED	--- FAIL: TestRolesAndTenancy (0.17s)
+create-no-idempotency	KILLED	--- FAIL: TestCreate (0.25s)
+hash-ignores-path	KILLED	--- FAIL: TestCreate (0.19s)
+create-locale-ignored	KILLED	--- FAIL: TestCreate (0.22s)
+create-no-audit	KILLED	--- FAIL: TestCreate (0.22s)
+create-draft-revision-2	KILLED	--- FAIL: TestCreate (0.17s)
+create-response-version-2	KILLED	--- FAIL: TestCreate (0.15s)
+patch-revision-unchecked	KILLED	--- FAIL: TestPatchDraft (0.22s)
+patch-not-applied-saved	KILLED	--- FAIL: TestPatchDraft (0.16s)
+patch-mode-ai	SURVIVED	
+patch-issues-dropped	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.229s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmpaygsz6kk/m14.go:375:3: declared and not used: issues 
+patch-revision-same	KILLED	--- FAIL: TestPatchDraft (0.21s)
+patch-no-audit	KILLED	--- FAIL: TestPatchDraft (0.13s)
+patch-stale-not-conflict	SURVIVED	
+publish-revision-unchecked	KILLED	--- FAIL: TestPublish (0.15s)
+publish-expected-base-unchecked	KILLED	--- FAIL: TestPublish (0.13s)
+publish-out-of-date-allowed	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.20s)
+publish-clean-allowed	KILLED	--- FAIL: TestPublish (0.11s)
+publish-errors-allowed	KILLED	--- FAIL: TestPublish (0.24s)
+publish-version-skips	KILLED	--- FAIL: TestPublish (0.19s)
+publish-no-parent	KILLED	--- FAIL: TestPublish (0.17s)
+publish-full-manifest	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.158s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmpaygsz6kk/m25.go:496:3: declared and not used: resolution 
+publish-no-advance	KILLED	--- FAIL: TestPublish (0.15s)
+publish-no-audit	SURVIVED	
+publish-no-idempotency	KILLED	--- FAIL: TestPublish (0.17s)
+advance-no-latest	KILLED	--- FAIL: TestPublish (0.23s)
+advance-name-kept	KILLED	--- FAIL: TestPublish (0.14s)
+advance-dirty-overwritten	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.12s)
+advance-clean-left	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.09s)
+advance-publish-not-synced	KILLED	--- FAIL: TestPublish (0.12s)
+sync-revision-same	KILLED	--- FAIL: TestPublish (0.15s)
+sync-base-kept	KILLED	--- FAIL: TestPublish (0.13s)
+reset-unconfirmed	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.13s)
+reset-revision-unchecked	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.17s)
+reset-latest-unchecked	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.14s)
+reset-no-audit	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.13s)
+check-no-pack	SURVIVED	
+check-full-manifest	KILLED	--- FAIL: TestDatasets (0.11s)
+check-no-store-guard	KILLED	--- FAIL: TestDatasets (0.13s)
+check-no-bindings	KILLED	--- FAIL: TestDatasets (0.11s)
+check-ir-prefix-kept	KILLED	--- FAIL: TestDatasets (0.16s)
+used-bindings-all	KILLED	--- FAIL: TestDatasets (0.11s)
+ir-not-canonical	KILLED	--- FAIL: TestCreate (0.18s)
+model-never-out-of-date	SURVIVED	
+draft-never-out-of-date	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.18s)
+models-page-short	KILLED	--- FAIL: TestLists (0.14s)
+versions-page-short	KILLED	--- FAIL: TestLists (0.26s)
+cursor-any-parent	KILLED	--- FAIL: TestLists (0.26s)
+cursor-not-canonical	SURVIVED	
+sql-model-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.04s)
+sql-lock-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.05s)
+sql-lock-no-lock	KILLED	--- FAIL: TestPublishRace (0.14s)
+sql-latest-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.04s)
+sql-list-models-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.04s)
+sql-list-models-unordered-ties	KILLED	--- FAIL: TestLists (0.25s)
+sql-version-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.06s)
+sql-versions-oldest-first	KILLED	--- FAIL: TestPublish (0.21s)
+sql-versions-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.06s)
+sql-no-binding-rows	KILLED	--- FAIL: TestDatasets (0.13s)
+sql-draft-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.05s)
+sql-update-any-revision	KILLED	--- FAIL: TestUpdateDraftCAS (0.03s)
+sql-update-any-org	KILLED	--- FAIL: TestOrganizationFilter (0.05s)
+sql-issues-not-stored	KILLED	--- FAIL: TestUpdateDraftCAS (0.04s)
+total=67 killed=59 equivalent=0 unexpected=8
+UNEXPECTED	patch-mode-ai	SURVIVED	
+UNEXPECTED	patch-issues-dropped	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.229s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmpaygsz6kk/m14.go:375:3: declared and not used: issues 
+UNEXPECTED	patch-stale-not-conflict	SURVIVED	
+UNEXPECTED	publish-full-manifest	BUILD-FAILED	FAIL	github.com/kcl1104/geminus/internal/models [build failed] ok  	github.com/kcl1104/geminus/internal/storage/models	0.158s FAIL # github.com/kcl1104/geminus/internal/models [github.com/kcl1104/geminus/internal/models.test] /tmp/tmpaygsz6kk/m25.go:496:3: declared and not used: resolution 
+UNEXPECTED	publish-no-audit	SURVIVED	
+UNEXPECTED	check-no-pack	SURVIVED	
+UNEXPECTED	model-never-out-of-date	SURVIVED	
+UNEXPECTED	cursor-not-canonical	SURVIVED	
+exit=1

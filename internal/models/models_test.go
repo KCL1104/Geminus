@@ -3,6 +3,7 @@ package models_test
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -287,6 +288,12 @@ func TestPatchDraft(t *testing.T) {
 	if got := e.audit(t, rid); len(got) != 1 || got[0] != "model.draft.update model "+m.ID {
 		t.Errorf("audit %v", got)
 	}
+	// A person may move the 2D layout; an AI edit may not (TWIN_IR_SPEC §6).
+	moved, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 2, []byte(`[{"op":"replace","path":"/views/2d/positions/ci","value":{"x":410,"y":120}}]`))
+	if err != nil || moved.Revision != 3 || !bytes.Contains(moved.IR, []byte(`"ci":{"x":410,"y":120}`)) {
+		t.Fatalf("moving a node in the 2D view: %v", err)
+	}
+	d = moved
 	if _, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 1, rename("Stale")); !errors.Is(err, models.ErrConflict) {
 		t.Errorf("stale revision: %v", err)
 	}
@@ -300,21 +307,21 @@ func TestPatchDraft(t *testing.T) {
 		"test that fails":  `[{"op":"test","path":"/name","value":"Other"}]`,
 		"wrong value type": `[{"op":"replace","path":"/time_unit","value":"week"}]`,
 	} {
-		if _, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 2, []byte(doc)); !errors.As(err, &invalid) || len(invalid.Issues) == 0 {
+		if _, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 3, []byte(doc)); !errors.As(err, &invalid) || len(invalid.Issues) == 0 {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
 	after, err := e.svc.GetDraft(ctx, sc, m.ID)
-	if err != nil || after.Revision != 2 || after.Hash != d.Hash {
+	if err != nil || after.Revision != 3 || after.Hash != d.Hash {
 		t.Errorf("a refused patch changed the draft: %+v %v", after, err)
 	}
 	// Removing the sink's incoming flow leaves no reachable sink: saved,
 	// with the error among the issues.
-	broken, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 2, []byte(`[{"op":"test","path":"/nodes/8/id","value":"deployed"},{"op":"remove","path":"/nodes/8"}]`))
+	broken, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 3, []byte(`[{"op":"test","path":"/nodes/8/id","value":"deployed"},{"op":"remove","path":"/nodes/8"}]`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if broken.Revision != 3 || !slices.ContainsFunc(broken.Issues, func(i model.ValidationIssue) bool { return i.Severity == model.SeverityError }) {
+	if broken.Revision != 4 || !slices.ContainsFunc(broken.Issues, func(i model.ValidationIssue) bool { return i.Severity == model.SeverityError }) {
 		t.Errorf("semantic errors are saved with the draft: %+v", broken.Issues)
 	}
 }
@@ -374,8 +381,8 @@ func TestPublish(t *testing.T) {
 	if _, _, err := e.publish(sc, m.ID, 2, ids.New("mv"), key()); !errors.Is(err, models.ErrConflict) {
 		t.Errorf("wrong expected base: %v", err)
 	}
-	k := key()
-	status, out, err := e.publish(sc, m.ID, 2, v1, k)
+	k, rid := key(), requestID()
+	status, out, err := e.svc.Publish(ctx, sc, rid, k, m.ID, 2, fmt.Appendf(nil, `{"expected_base_version_id":%q}`, v1), models.PublishRequest{ExpectedBaseVersionID: v1})
 	if err != nil || status != 201 {
 		t.Fatalf("publish: %d %v", status, err)
 	}
@@ -386,6 +393,9 @@ func TestPublish(t *testing.T) {
 	}
 	if v2.Version != 2 || v2.ParentVersionID == nil || *v2.ParentVersionID != v1 || v2.ModelID != m.ID || !bytes.Contains(v2.IR, []byte("Published name")) {
 		t.Errorf("v2 %+v", v2)
+	}
+	if got := e.audit(t, rid); len(got) != 1 || got[0] != "model.publish model_version "+v2.ID {
+		t.Errorf("audit %v", got)
 	}
 	got, err := e.svc.GetModel(ctx, sc, m.ID)
 	if err != nil || got.LatestVersion.ID != v2.ID || got.LatestVersion.Version != 2 || got.Name != "Published name" ||
@@ -480,6 +490,9 @@ func TestDraftWhenAnotherVersionArrives(t *testing.T) {
 	kept, err := e.svc.GetDraft(ctx, sc, m.ID)
 	if err != nil || kept.Revision != edited.Revision || kept.Hash != edited.Hash || kept.BaseVersionID != v2 || !kept.OutOfDate {
 		t.Errorf("dirty draft not kept: %+v %v", kept, err)
+	}
+	if summary, err := e.svc.GetModel(ctx, sc, m.ID); err != nil || !summary.Draft.OutOfDate || summary.LatestVersion.ID != v3 || summary.Draft.BaseVersionID != v2 {
+		t.Errorf("model summary of an out-of-date draft: %+v %v", summary, err)
 	}
 	// Out of date: publish refuses it instead of overwriting v3.
 	if _, _, err := e.publish(sc, m.ID, kept.Revision, v2, key()); !errors.Is(err, models.ErrConflict) {
@@ -704,7 +717,14 @@ func TestLists(t *testing.T) {
 		t.Fatal(err)
 	}
 	p2 := e.newProject(t, e.org)
-	for name, c := range map[string]string{"another project's": *first.NextCursor, "garbage": "x", "padded": *first.NextCursor + "A"} {
+	// The same cursor with its JSON spaced out decodes to the same values
+	// but is not one this service issued.
+	raw, err := base64.RawURLEncoding.DecodeString(*first.NextCursor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spaced := base64.RawURLEncoding.EncodeToString(bytes.ReplaceAll(raw, []byte(`,"`), []byte(`, "`)))
+	for name, c := range map[string]string{"another project's": *first.NextCursor, "garbage": "x", "padded": *first.NextCursor + "A", "spaced": spaced} {
 		project := e.project
 		if name == "another project's" {
 			project = p2
@@ -747,5 +767,46 @@ func TestLists(t *testing.T) {
 	}
 	if !slices.Equal(numbers, []int64{3, 2, 1}) {
 		t.Errorf("versions %v", numbers)
+	}
+}
+
+// rulePack is the software delivery pack with one rule of its own: a model
+// named "Forbidden" is an error. The service saves pack issues with the
+// draft and refuses to publish them.
+type rulePack struct{ softwaredelivery.Pack }
+
+func (rulePack) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir != nil && ir.Name == "Forbidden" {
+		return []model.ValidationIssue{model.NewIssue("PACK_NAME_RULE", "/name", "this name is not allowed", model.SeverityError)}
+	}
+	return softwaredelivery.Pack{}.Validate(ir)
+}
+
+type rulePacks struct{}
+
+func (rulePacks) Lookup(domain string) (domainpack.DomainPack, error) {
+	if domain != softwaredelivery.ID {
+		return nil, domainpack.ErrUnsupportedDomain
+	}
+	return rulePack{}, nil
+}
+
+func TestPackRules(t *testing.T) {
+	e := setup(t)
+	e.svc.Packs = rulePacks{}
+	ctx := context.Background()
+	sc := e.scope(tenant.Editor)
+	m := e.create(t, sc, createBody)
+	d, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 1, rename("Forbidden"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(d.Issues, func(i model.ValidationIssue) bool { return i.Code == "PACK_NAME_RULE" && i.Path == "/name" }) {
+		t.Errorf("the pack's issue is not saved: %v", d.Issues)
+	}
+	var invalid *models.InvalidError
+	if _, _, err := e.publish(sc, m.ID, 2, m.LatestVersion.ID, key()); !errors.As(err, &invalid) ||
+		!slices.ContainsFunc(invalid.Issues, func(i model.ValidationIssue) bool { return i.Code == "PACK_NAME_RULE" }) {
+		t.Errorf("publishing against the pack's rule: %v", err)
 	}
 }

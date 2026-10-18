@@ -59,10 +59,15 @@ func (e *InvalidError) Error() string {
 	return fmt.Sprintf("models: invalid (%d issue(s))", len(e.Issues))
 }
 
+// PackLookup finds the domain pack of a model; *domainpack.Registry is one.
+type PackLookup interface {
+	Lookup(domain string) (domainpack.DomainPack, error)
+}
+
 // Service runs model operations for a verified scope.
 type Service struct {
 	DB    *tenant.DB
-	Packs *domainpack.Registry
+	Packs PackLookup
 	// Datasets opens frozen dataset snapshots; nil until object storage
 	// exists (T-016). A manifest that is not empty then fails closed.
 	Datasets datasets.Store

@@ -48,7 +48,7 @@ MUTANTS = [
     ("patch-revision-unchecked", SVC, "\t\tif d.Revision != expected {\n\t\t\treturn ErrConflict\n\t\t}\n\t\tres, err := patch.Apply", "\t\tres, err := patch.Apply"),
     ("patch-not-applied-saved", SVC, "\t\tif !res.Applied() {\n\t\t\treturn &InvalidError{Issues: res.PatchIssues}\n\t\t}", "\t\tif false && !res.Applied() {\n\t\t\treturn &InvalidError{Issues: res.PatchIssues}\n\t\t}"),
     ("patch-mode-ai", SVC, "patch.Apply(d.IR, patchDoc, patch.ManualDraft)", "patch.Apply(d.IR, patchDoc, patch.AIEdit)"),
-    ("patch-issues-dropped", SVC, "\t\t\tRevision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)", "\t\t\tRevision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: nil, UpdatedBy: m.UserID}, d.Revision)"),
+    ("patch-issues-dropped", SVC, "\t\t\tRevision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)", "\t\t\tRevision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues[:0], UpdatedBy: m.UserID}, d.Revision)"),
     ("patch-revision-same", SVC, "\t\t\tRevision: d.Revision + 1, IR: res.Candidate,", "\t\t\tRevision: d.Revision, IR: res.Candidate,"),
     ("patch-no-audit", SVC, "\t\t\tAction: \"model.draft.update\",", "\t\t\tAction: \"model.draft.updated\","),
     ("patch-stale-not-conflict", SVC, "\t\tif errors.Is(err, store.ErrStale) {\n\t\t\treturn ErrConflict\n\t\t}\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{\n\t\t\tAction: \"model.draft.update\"", "\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{\n\t\t\tAction: \"model.draft.update\""),
@@ -60,7 +60,7 @@ MUTANTS = [
     ("publish-errors-allowed", SVC, "\t\tif slices.ContainsFunc(issues, isError) {\n\t\t\treturn &InvalidError{Issues: issues}\n\t\t}", "\t\tif false && slices.ContainsFunc(issues, isError) {\n\t\t\treturn &InvalidError{Issues: issues}\n\t\t}"),
     ("publish-version-skips", SVC, "\t\t\tVersion: base.Version + 1, SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID,", "\t\t\tVersion: base.Version + 2, SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID,"),
     ("publish-no-parent", SVC, "SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID,", "SchemaVersion: res.IR.SchemaVersion, ParentVersionID: nil,"),
-    ("publish-full-manifest", SVC, "\t\t\tDatasetBindings: resolution.Manifest, CreatedBy: m.UserID})", "\t\t\tDatasetBindings: base.DatasetBindings, CreatedBy: m.UserID})"),
+    ("publish-full-manifest", SVC, "\t\t\tDatasetBindings: resolution.Manifest, CreatedBy: m.UserID})", "\t\t\tDatasetBindings: append(base.DatasetBindings, resolution.Manifest[:0]...), CreatedBy: m.UserID})"),
     ("publish-no-advance", SVC, "\t\tif err := s.advance(ctx, tx, m, mdl, d, base, v, res.IR.Name); err != nil {\n\t\t\treturn err\n\t\t}", "\t\t_ = s.advance"),
     ("publish-no-audit", SVC, "\t\t\tAction: \"model.publish\",", "\t\t\tAction: \"model.published\","),
     ("publish-no-idempotency", SVC, "\t\tif replay != nil {\n\t\t\tstatus = replay.Status\n\t\t\tout, err = hashing.Canonical(replay.Body)\n\t\t\treturn err\n\t\t}\n\t\tmdl, err := store.LockModel", "\t\tif replay != nil && false {\n\t\t\tstatus = replay.Status\n\t\t\tout, err = hashing.Canonical(replay.Body)\n\t\t\treturn err\n\t\t}\n\t\tmdl, err := store.LockModel"),
@@ -109,7 +109,13 @@ MUTANTS = [
     ("sql-issues-not-stored", ST, "\tissues, err := encodeIssues(d.Issues)\n\tif err != nil {\n\t\treturn Draft{}, err\n\t}\n\terr = tx.QueryRow(ctx, `UPDATE", "\tissues, err := encodeIssues(nil)\n\tif err != nil {\n\t\treturn Draft{}, err\n\t}\n\terr = tx.QueryRow(ctx, `UPDATE"),
 ]
 
-EQUIVALENT: dict[str, str] = {}
+EQUIVALENT: dict[str, str] = {
+    # PatchDraft locks the model row (FOR UPDATE) and compares the draft's
+    # revision with the expected one inside that transaction; every draft
+    # write takes the same lock first, so UpdateDraft's CAS cannot lose and
+    # ErrStale is unreachable here (the mapping is a second guard).
+    "patch-stale-not-conflict": "unreachable: the model lock and the revision check come first",
+}
 
 HARNESS_ERRORS = {
     "BUILD-FAILED": ("build failed", "setup failed"),
