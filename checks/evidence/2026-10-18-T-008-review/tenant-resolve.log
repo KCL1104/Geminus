@@ -1,5 +1,5 @@
 === RUN   TestResolveUser
---- PASS: TestResolveUser (0.05s)
+--- PASS: TestResolveUser (0.06s)
 PASS
-ok  	github.com/kcl1104/geminus/internal/tenant	0.052s
+ok  	github.com/kcl1104/geminus/internal/tenant	0.064s
 exit 0

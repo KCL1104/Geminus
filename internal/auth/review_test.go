@@ -10,8 +10,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -272,8 +274,8 @@ func TestConfigBounds(t *testing.T) {
 	good := auth.Config{Issuer: "https://id.example/realm", Audience: "https://api.example", JWKSURL: "https://id.example/jwks"}
 	for name, edit := range map[string]func(*auth.Config){
 		"echoed algorithm":           func(c *auth.Config) { c.Algorithms = []string{"SECRETVALUE"} },
-		"issuer over 2048 bytes":     func(c *auth.Config) { c.Issuer = "https://id.example/" + strings.Repeat("i", 2048) },
-		"JWKS URL over 2048 bytes":   func(c *auth.Config) { c.JWKSURL = "https://id.example/" + strings.Repeat("j", 2048) },
+		"issuer of 2049 bytes":       func(c *auth.Config) { c.Issuer = "https://id.example/" + strings.Repeat("i", 2049-19) },
+		"JWKS URL of 2049 bytes":     func(c *auth.Config) { c.JWKSURL = "https://id.example/" + strings.Repeat("j", 2049-19) },
 		"stale limit below max age":  func(c *auth.Config) { c.KeyMaxAge, c.KeyMaxStale = 2*time.Hour, time.Hour },
 		"refresh interval above age": func(c *auth.Config) { c.MinRefreshInterval, c.KeyMaxAge = 2*time.Hour, time.Hour },
 		"refresh interval over a day": func(c *auth.Config) {
@@ -379,5 +381,125 @@ func TestRequireAccessTokenType(t *testing.T) {
 		if _, err := lax.Verify(context.Background(), tok); auth.Reason(err) != c.lax {
 			t.Errorf("not required, typ %v: %v", c.typ, err)
 		}
+	}
+}
+
+// Re-review #1: after a failed fetch the provider is likely still down, so
+// a request waits for the retry for at most a second instead of holding its
+// connection for the whole fetch timeout.
+func TestRetryAfterFailureWaitsBriefly(t *testing.T) {
+	p, v, c := setup(t, func(c *auth.Config) { c.FetchTimeout = 2 * time.Second })
+	release := p.Hold()
+	t.Cleanup(release)
+	tok := p.Token(t, p.RSA, nil, p.Claims("u", t0))
+	if _, err := v.Verify(context.Background(), tok); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("first fetch, provider hanging: %v", err)
+	}
+	c.Add(6 * time.Second) // past the cold retry interval: a retry starts
+	start := time.Now()
+	_, err := v.Verify(context.Background(), tok)
+	if !errors.Is(err, auth.ErrKeysUnavailable) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("during the retry: %v, want the previous fetch's error", err)
+	}
+	if d := time.Since(start); d < 900*time.Millisecond || d > 1700*time.Millisecond {
+		t.Errorf("waited %v for the retry, want about 1 s", d)
+	}
+}
+
+type goexitOnce struct {
+	done atomic.Bool
+	next http.RoundTripper
+}
+
+func (g *goexitOnce) RoundTrip(r *http.Request) (*http.Response, error) {
+	if g.done.CompareAndSwap(false, true) {
+		runtime.Goexit()
+	}
+	return g.next.RoundTrip(r)
+}
+
+// Re-review #2: a fetch that never returns normally (runtime.Goexit in a
+// transport) still ends the refresh, so the next one can start.
+func TestFetchGoexitRecovers(t *testing.T) {
+	p := authtest.New(t)
+	c := &clock{now: t0}
+	cfg := p.Config()
+	cfg.Now, cfg.HTTPClient = c.Now, &http.Client{Transport: &goexitOnce{next: p.Server.Client().Transport}}
+	v, err := auth.NewOIDCVerifier(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v.Verify(context.Background(), p.Token(t, p.RSA, nil, p.Claims("u", t0))); !errors.Is(err, auth.ErrKeysUnavailable) || !strings.Contains(err.Error(), "aborted") {
+		t.Fatalf("aborted fetch: %v", err)
+	}
+	c.Add(6 * time.Second)
+	if _, err := v.Verify(context.Background(), p.Token(t, p.RSA, nil, p.Claims("u", c.Now()))); err != nil {
+		t.Errorf("the next fetch: %v", err)
+	}
+}
+
+// Re-review #3: Go's base64 decoder skips CR and LF even in strict mode; a
+// token is base64url characters and dots only.
+func TestNewlinesInToken(t *testing.T) {
+	p, v, _ := setup(t)
+	parts := strings.Split(p.Token(t, p.RSA, nil, p.Claims("u", t0)), ".")
+	for i := range parts {
+		for _, nl := range []string{"\r\n", "\n", "\r"} {
+			q := append([]string(nil), parts...)
+			q[i] = q[i][:4] + nl + q[i][4:]
+			if _, err := v.Verify(context.Background(), strings.Join(q, ".")); auth.Reason(err) != auth.ReasonMalformed {
+				t.Errorf("segment %d with %q: %v", i, nl, err)
+			}
+		}
+	}
+	for _, bad := range []string{"+", "/", "=", " ", "\x00", "é"} {
+		q := append([]string(nil), parts...)
+		q[1] += bad
+		if _, err := v.Verify(context.Background(), strings.Join(q, ".")); auth.Reason(err) != auth.ReasonMalformed {
+			t.Errorf("payload with %q: %v", bad, err)
+		}
+	}
+}
+
+// Re-review #4: the exact ages at which a cached key is refreshed and at
+// which it stops being usable, and the full refresh interval while keys are
+// cached (the 5 s retry is only for no usable keys).
+func TestKeyAgeBoundaries(t *testing.T) {
+	p, v, c := setup(t)
+	ctx := context.Background()
+	verify := func() error { _, err := v.Verify(ctx, p.Token(t, p.RSA, nil, p.Claims("u", c.Now()))); return err }
+	if err := verify(); err != nil || p.Hits() != 1 {
+		t.Fatalf("first use: %v, %d fetches", err, p.Hits())
+	}
+	c.Add(6 * time.Second)
+	if _, err := v.Verify(ctx, p.Token(t, authtest.Key{ID: "random", Alg: "RS256", Signer: p.RSA.Signer}, nil, p.Claims("u", c.Now()))); auth.Reason(err) != auth.ReasonUnknownKey || p.Hits() != 1 {
+		t.Errorf("unknown kid 6 s after a successful fetch: %v, %d fetches (want no fetch before MinRefreshInterval)", err, p.Hits())
+	}
+	c.Add(time.Hour - 6*time.Second - time.Nanosecond)
+	if err := verify(); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	if p.Hits() != 1 {
+		t.Errorf("%d fetches 1 ns before KeyMaxAge, want 1", p.Hits())
+	}
+	c.Add(time.Nanosecond)
+	if err := verify(); err != nil {
+		t.Fatal(err)
+	}
+	if !waitFor(t, func() bool { return p.Hits() == 2 }) {
+		t.Errorf("%d fetches at KeyMaxAge, want a background refresh", p.Hits())
+	}
+	// Refreshed at 1 h. With the provider down, the keys stay usable until
+	// exactly 25 h (KeyMaxStale after the last success).
+	p.SetJWKS(nil, http.StatusServiceUnavailable)
+	c.Add(24*time.Hour - time.Nanosecond)
+	if err := verify(); err != nil {
+		t.Errorf("1 ns before KeyMaxStale: %v", err)
+	}
+	waitFor(t, func() bool { return p.Hits() == 3 })
+	c.Add(time.Nanosecond)
+	if err := verify(); !errors.Is(err, auth.ErrKeysUnavailable) {
+		t.Errorf("at KeyMaxStale: %v", err)
 	}
 }

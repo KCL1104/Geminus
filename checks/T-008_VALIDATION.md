@@ -1,6 +1,6 @@
 # T-008 驗證報告：OIDC／JWT authentication
 
-**日期：2026-10-18｜狀態：`review`（首輪獨立 review CHANGES REQUESTED → 已先紅後綠修正，等待同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-001、REQ-002、REQ-019｜Gate：D-008（已批准）｜實作選擇：ADR-017（2026-10-18 owner 同意，ACCEPTED）**
+**日期：2026-10-18｜狀態：`done`（首輪獨立 review CHANGES REQUESTED → 先紅後綠修正 → 同一 reviewer 複核 **ACCEPT**；複核的 low 發現已先紅後綠修正；依 H-003 由 agent review 驗收，owner 可隨時重開）｜需求：REQ-001、REQ-002、REQ-019｜Gate：D-008（已批准）｜實作選擇：ADR-017（2026-10-18 owner 同意，ACCEPTED）**
 
 逐條輸出：首版在 `checks/evidence/2026-10-15-T-008/`，review 修正後在 `checks/evidence/2026-10-18-T-008-review/`。範圍依 tasks.json 的 scope：「先用可替換 verifier + signed test tokens」。本任務只固定 API 如何驗證任何 OIDC provider 的 access token；provider（Auth0）與 browser session（BFF）由 ADR-018 決定，屬 T-043。
 
@@ -47,6 +47,19 @@ Reviewer 未找到繞過 token 驗證的方法（所有演算法、key、header�
 
 未改：go-jose v4.1.6（2026-10-14）未滿兩週，依 AGENTS.md 不升級；滿兩週後檢查其 changelog 是否為安全修正。
 
+### 複核（2026-10-18，同一 reviewer，594ecc0）：ACCEPT
+
+Reviewer 重跑了全部可離線重現的項目（51 個 RUN、54 個案例、紅燈 log、mutation 115/115＋2 equivalent），另寫 stress 測試攻擊非同步 refresh：2000 個並行未知 kid 對卡住的 provider 只抓 1 次、已知 kid 最壞 75 ms（`-race`）、goroutine 數回落（無洩漏）；時鐘變動、provider 在 ok／503／缺 key 間切換、隨機 kid，`-race` 下 3 次皆無 data race，也從未接受未發布的 kid。條件：報告的 branch 結果欄要以實際結果提交（本次提交）。CONFIRMED（皆 low），已於驗收後先紅後綠修正（`red-round3.log`）：
+
+| # | 發現 | 修正 | 測試 |
+|---|---|---|---|
+| R1 | cold 狀態且 provider 卡住時，預設 fetch timeout（10 s）大於 cold retry（5 s），每個 request 都等到抓取結束（probe：14 秒內 56 個 request 0 個立即回答） | 上一次抓取失敗時，request 最多等 1 秒（`failedWait`），之後以上一次的錯誤回 503 | `TestRetryAfterFailureWaitsBriefly`（舊程式等了 2.0 s） |
+| R2 | transport 呼叫 `runtime.Goexit` 時 refresh 狀態不會清除，verifier 從此不再抓取 | goroutine 內以 `defer` 更新狀態並關閉 done；未正常結束時錯誤為 `fetching JWKS: aborted` | `TestFetchGoexitRecovers`（舊程式卡住到 test timeout） |
+| R3 | Go 的 strict base64 仍略過 CR／LF：直接呼叫 `Verify` 時插入 `\r\n` 的 token 通過（經 `BearerToken` 不可能，token68 先擋） | token 只能含 base64url 字元與 `.` | `TestNewlinesInToken`（舊程式 3 段皆通過） |
+| R4 | 測試缺口：cold retry 套用到有快取 key 時、URL 2049 bytes（原測試用 2067）、KeyMaxAge／KeyMaxStale 的奈秒邊界 | — | `TestKeyAgeBoundaries`、`TestConfigBounds` 改為恰好 2049 bytes；reviewer 的 8 個 mutant 納入腳本 |
+
+PLAUSIBLE／資訊：注入的 `Now` 若倒退，refresh 延後到追上為止（production 用 `time.Now`，單調）→ `Config.Now` 註解與 ADR-017 寫明必須單調；fetch 的 panic 值不保留（避免把 transport 內容帶進錯誤），維持；`ReasonKeys` 的錯誤字串含 transport 原因（`dial tcp …`、內部 host），不含 URL 或 query credential → ADR-017 寫明只供 log，T-013 的 error writer 不得把 `err.Error()` 回給 client；ADR-017 的 ACCEPTED 引用 H-004，reviewer 只能確認紀錄存在。
+
 ### 首版報告的更正
 
 | 首版說法 | 實際 |
@@ -62,13 +75,14 @@ Reviewer 未找到繞過 token 驗證的方法（所有演算法、key、header�
 
 | 指令 | Exit | 說明 |
 |---|---|---|
-| `go test -count=1 -v ./internal/auth/... ./internal/config/... ./cmd/...` | 0 | 51 個 RUN 全 PASS（`auth-tests.log`） |
+| `go test -count=1 -v ./internal/auth/... ./internal/config/... ./cmd/...` | 0 | 55 個 RUN 全 PASS（`auth-tests.log`；複核時為 51，加上複核後續的 4 個測試） |
 | `go test -race -count=3 ./internal/auth/... ./internal/config/...` | 0 | `auth-race.log` |
 | `GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 -run TestResolveUser -v ./internal/tenant/`（一次性 PostgreSQL 16，`dt_test_t008`） | 0 | `tenant-resolve.log` |
 | Mutation（`mutants.py`，取代首版腳本；首版的 pattern 指向已改寫的程式） | 0 | **114/114 被擋，2 個 equivalent**（`mutation.log`），另 `throttle-only-after-success` 1/1（`mutation-addendum.log`，`--only` 單獨執行）。共 117 個 mutant，含 reviewer 另寫的 15 個與每項修正各自的 mutant。首次執行 109/115：`segment-count-unchecked` 存活 → 補「段數錯誤但可解碼、`alg:none`」2 個案例；`negative-intervals-allowed` 存活 → 該分支是 dead code（負值必然落入下一個 case），刪除；4 個 mutant 寫法未編譯（unused import）已改寫。Equivalent：`private-keys-used`（go-jose 的 `IsPublic` 接受的正是 `fits` 接受的三種型別，reviewer 亦確認）、`resolve-read-only-unasserted`（斷言只在 transaction 非唯讀時觸發，`resolve-not-read-only` 證明它會觸發） |
-| 紅燈：新測試在舊程式上 | 1 | `red-auth.log`（9 個測試失敗，例如 `waited 10.008s for a hung refresh`）、`red-tenant.log`（NUL／非 UTF-8 回 `SQLSTATE 22021`）、`red-auth-round2.log`（需要新設定欄位的測試在舊程式上無法編譯） |
-| `make backend-test`／`backend-race`／`backend-build`／`architecture-check`／`spec-check`／`frontend-test` | 見下 | BRANCH_RESULTS |
-| GitHub Actions | 推送後補記 | |
+| Mutation，複核後續（同一腳本加入 reviewer 的 8 個與後續修正各自的 mutant） | 0 | **125/125 被擋，2 個 equivalent**（`mutation-r3.log`；共 127 個） |
+| 紅燈：新測試在舊程式上 | 1 | `red-auth.log`（9 個測試失敗，例如 `waited 10.008s for a hung refresh`）、`red-tenant.log`（NUL／非 UTF-8 回 `SQLSTATE 22021`）、`red-auth-round2.log`（需要新設定欄位的測試在舊程式上無法編譯）、`red-round3.log`（複核後續：等了 2.0 s、Goexit 卡住到 timeout、CR／LF 通過） |
+| `make spec-check`（本機，含 decision／planning／docs 檢查） | 0 | 594ecc0 的工作樹 |
+| GitHub Actions run 39107609394（594ecc0） | success | 4/4：backend（go vet、test、race、build）、db migrations + repository tests（PostgreSQL 16）、frontend、spec-check |
 
 首版的執行紀錄（39 個 RUN、db-test、govulncheck、mutation 54/54＋2 equivalent）保留在 `checks/evidence/2026-10-15-T-008/`。
 

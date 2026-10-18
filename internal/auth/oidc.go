@@ -42,6 +42,7 @@ const (
 	minRefresh     = time.Second
 	maxRefresh     = 24 * time.Hour
 	coldRetry      = 5 * time.Second // retry interval while no usable keys are cached
+	failedWait     = time.Second     // how long a request waits for a retry after a failed fetch
 	defaultMaxAge  = time.Hour
 	defaultStale   = 24 * time.Hour
 	maxStale       = 7 * 24 * time.Hour
@@ -84,7 +85,10 @@ type Config struct {
 	// HTTPClient fetches the JWKS; redirects are never followed. Nil uses a
 	// default client.
 	HTTPClient *http.Client
-	Now        func() time.Time
+	// Now is the clock; nil means time.Now. It must not run backwards
+	// (time.Now's monotonic reading): a clock set back delays refreshes
+	// until it catches up.
+	Now func() time.Time
 }
 
 // Validate reports every problem with c, without echoing values.
@@ -209,6 +213,13 @@ var _ Verifier = (*OIDCVerifier)(nil)
 func (v *OIDCVerifier) Verify(ctx context.Context, token string) (Identity, error) {
 	if len(token) > MaxTokenBytes {
 		return Identity{}, invalid(ReasonTooLarge)
+	}
+	// Only base64url characters and dots: the decoder below would skip CR
+	// and LF, giving one token several spellings.
+	if strings.ContainsFunc(token, func(r rune) bool {
+		return !('A' <= r && r <= 'Z' || 'a' <= r && r <= 'z' || '0' <= r && r <= '9' || r == '-' || r == '_' || r == '.')
+	}) {
+		return Identity{}, invalid(ReasonMalformed)
 	}
 	segments := strings.Split(token, ".")
 	if len(segments) != 3 {
@@ -365,9 +376,10 @@ func numericDate(v *float64) (time.Time, bool) {
 // once, also while the JWKS is refreshed in the background after KeyMaxAge,
 // and while refreshes fail, until KeyMaxStale (stale-while-revalidate). An
 // unknown kid waits for a refresh, so rotated keys are picked up, but only
-// until ctx ends. One fetch at a time, spaced by MinRefreshInterval (5 s
-// while no usable keys are cached), so tokens with random kids cannot make
-// the API hammer the provider.
+// until ctx ends, and for at most a second when the previous fetch failed
+// (the provider is likely still down). One fetch at a time, spaced by
+// MinRefreshInterval (5 s while no usable keys are cached), so tokens with
+// random kids cannot make the API hammer the provider.
 func (v *OIDCVerifier) key(ctx context.Context, kid string) (jose.JSONWebKey, error) {
 	now := v.cfg.Now()
 	if ks := v.keys.Load(); ks != nil && now.Sub(ks.fetched) < v.cfg.KeyMaxStale {
@@ -378,11 +390,19 @@ func (v *OIDCVerifier) key(ctx context.Context, kid string) (jose.JSONWebKey, er
 			return k, nil
 		}
 	}
-	if done := v.refresh(now); done != nil {
+	if done, failed := v.refresh(now); done != nil {
+		var limit <-chan time.Time
+		if failed != nil {
+			t := time.NewTimer(failedWait)
+			defer t.Stop()
+			limit = t.C
+		}
 		select {
 		case <-done:
 		case <-ctx.Done():
 			return jose.JSONWebKey{}, keysUnavailable(ctx.Err())
+		case <-limit:
+			return jose.JSONWebKey{}, keysUnavailable(failed)
 		}
 	}
 	v.mu.Lock()
@@ -403,35 +423,41 @@ func (v *OIDCVerifier) key(ctx context.Context, kid string) (jose.JSONWebKey, er
 
 // refresh starts a JWKS fetch unless one is in flight or the last one
 // started too recently. It returns a channel closed when the fetch in
-// flight ends, or nil if there is none.
-func (v *OIDCVerifier) refresh(now time.Time) <-chan struct{} {
+// flight ends, or nil if there is none, and the previous fetch's error.
+func (v *OIDCVerifier) refresh(now time.Time) (<-chan struct{}, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if v.refreshing != nil {
-		return v.refreshing
+		return v.refreshing, v.err
 	}
 	interval := v.cfg.MinRefreshInterval
 	if ks := v.keys.Load(); ks == nil || now.Sub(ks.fetched) >= v.cfg.KeyMaxStale {
 		interval = min(interval, coldRetry)
 	}
 	if !v.last.IsZero() && now.Sub(v.last) < interval {
-		return nil
+		return nil, v.err
 	}
 	v.last = now
 	done := make(chan struct{})
 	v.refreshing = done
 	go func() {
-		// No request's context: the fetch serves every waiting request.
-		ks, err := v.safeFetch()
-		v.mu.Lock()
-		if err == nil {
-			v.keys.Store(ks)
-		}
-		v.err, v.refreshing = err, nil
-		v.mu.Unlock()
-		close(done)
+		// No request's context: the fetch serves every waiting request. The
+		// deferred update also runs if the fetch never returns normally
+		// (runtime.Goexit in a transport), so a refresh is never stuck.
+		var ks *keySet
+		err := errors.New("fetching JWKS: aborted")
+		defer func() {
+			v.mu.Lock()
+			if err == nil {
+				v.keys.Store(ks)
+			}
+			v.err, v.refreshing = err, nil
+			v.mu.Unlock()
+			close(done)
+		}()
+		ks, err = v.safeFetch()
 	}()
-	return done
+	return done, v.err
 }
 
 // safeFetch is fetch with a panic turned into an error: the fetch runs in

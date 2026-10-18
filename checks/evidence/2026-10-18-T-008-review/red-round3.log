@@ -1,0 +1,24 @@
+== red round 3: re-review tests on 594ecc0 oidc.go
+-- TestRetryAfterFailureWaitsBriefly
+--- FAIL: TestRetryAfterFailureWaitsBriefly (4.04s)
+    review_test.go:405: waited 2.001447743s for the retry, want about 1 s
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/auth	4.047s
+FAIL
+-- TestFetchGoexitRecovers
+panic: test timed out after 30s
+FAIL	github.com/kcl1104/geminus/internal/auth	30.037s
+FAIL
+-- TestNewlinesInToken
+--- FAIL: TestNewlinesInToken (0.07s)
+    review_test.go:451: segment 0 with "\r\n": <nil>
+    review_test.go:451: segment 0 with "\n": <nil>
+    review_test.go:451: segment 0 with "\r": <nil>
+    review_test.go:451: segment 1 with "\r\n": <nil>
+    review_test.go:451: segment 1 with "\n": <nil>
+    review_test.go:451: segment 1 with "\r": <nil>
+    review_test.go:451: segment 2 with "\r\n": <nil>
+-- TestKeyAgeBoundaries
+ok  	github.com/kcl1104/geminus/internal/auth	0.153s
+-- TestConfigBounds
+ok  	github.com/kcl1104/geminus/internal/auth	0.005s

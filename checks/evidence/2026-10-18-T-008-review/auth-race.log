@@ -1,4 +1,4 @@
-ok  	github.com/kcl1104/geminus/internal/auth	15.295s
+ok  	github.com/kcl1104/geminus/internal/auth	28.443s
 ?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
-ok  	github.com/kcl1104/geminus/internal/config	1.022s
+ok  	github.com/kcl1104/geminus/internal/config	1.025s
 exit 0
