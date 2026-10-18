@@ -691,7 +691,7 @@
       "id": "T-012",
       "title": "Model / Draft / Version service",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Platform",
       "planning_window": "Week 3–4",
       "depends_on": [
@@ -737,7 +737,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-18",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-012_VALIDATION.md",
+          "summary": "Model／Draft／Version service（ADR-022，PROPOSED）：internal/models（application layer；internal/model 是 generic kernel）與 internal/storage/models（每個 statement 帶 organization filter）。Create 以 pack template（依 locale）在同一 transaction 建立 model、v1、draft revision 1、audit 與 idempotency response；PatchDraft 以 If-Match revision 套 ManualDraft patch，schema 不合格不寫入，語意／pack／dataset issues 存入 migration 0003 的 model_drafts.issues；Publish 需目前 revision、expected base、base 為 latest 且 draft dirty，完整驗證後建 latest+1（parent 為 base，只凍結用到的 binding）並讓 draft 跟上；Reset 需確認；其他路徑產生的版本讓 clean draft 跟上、dirty draft 保留為 out_of_date；所有寫入先鎖 model row，stale 一律 409。0748bc0 上 backend-test、backend-race、architecture-check、spec-check、integration-test（新建 dt_test_t012）皆 exit 0；15 個 DB test 0 SKIP；mutation 67 個：66 killed、1 equivalent、0 unexpected。HTTP routes 與 TS client 屬 T-013。",
+          "reviewer": "pending: independent reviewer agent (H-003)",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/39155503173 (0748bc0: 4/4 success)"
+        }
+      ]
     },
     {
       "id": "T-013",

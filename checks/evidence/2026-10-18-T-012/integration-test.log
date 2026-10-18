@@ -1541,15 +1541,15 @@ make db-go-test
 make[1]: Entering directory '/home/user/Geminus'
 GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/api/... ./cmd/api/...
 ?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
-ok  	github.com/kcl1104/geminus/internal/storage/datasets	2.955s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	2.988s
 ?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
 ?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
-ok  	github.com/kcl1104/geminus/internal/storage/models	1.266s
-ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.479s
-ok  	github.com/kcl1104/geminus/internal/storage/projects	1.089s
-ok  	github.com/kcl1104/geminus/internal/tenant	2.418s
-ok  	github.com/kcl1104/geminus/internal/models	3.319s
-ok  	github.com/kcl1104/geminus/internal/api	6.631s
-ok  	github.com/kcl1104/geminus/cmd/api	1.114s
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.254s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.508s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	1.084s
+ok  	github.com/kcl1104/geminus/internal/tenant	2.588s
+ok  	github.com/kcl1104/geminus/internal/models	3.942s
+ok  	github.com/kcl1104/geminus/internal/api	6.594s
+ok  	github.com/kcl1104/geminus/cmd/api	1.121s
 make[1]: Leaving directory '/home/user/Geminus'
 integration-test: API and database covered; worker integration is NOT RUN until T-019 adds the job loop.

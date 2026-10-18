@@ -1,0 +1,34 @@
+=== RUN   TestCreate
+--- PASS: TestCreate (0.38s)
+=== RUN   TestRolesAndTenancy
+--- PASS: TestRolesAndTenancy (0.14s)
+=== RUN   TestPatchDraft
+--- PASS: TestPatchDraft (0.25s)
+=== RUN   TestConcurrentPatches
+--- PASS: TestConcurrentPatches (0.16s)
+=== RUN   TestPublish
+--- PASS: TestPublish (0.35s)
+=== RUN   TestPublishRace
+--- PASS: TestPublishRace (0.23s)
+=== RUN   TestDraftWhenAnotherVersionArrives
+--- PASS: TestDraftWhenAnotherVersionArrives (0.29s)
+=== RUN   TestVersionsAreImmutable
+--- PASS: TestVersionsAreImmutable (0.19s)
+=== RUN   TestDatasets
+--- PASS: TestDatasets (0.33s)
+=== RUN   TestLists
+--- PASS: TestLists (0.52s)
+=== RUN   TestPackRules
+--- PASS: TestPackRules (0.14s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/models	4.049s
+=== RUN   TestOrganizationFilter
+--- PASS: TestOrganizationFilter (0.05s)
+=== RUN   TestUpdateDraftCAS
+--- PASS: TestUpdateDraftCAS (0.04s)
+=== RUN   TestVersionManifest
+--- PASS: TestVersionManifest (0.06s)
+=== RUN   TestListModelsKeyset
+--- PASS: TestListModelsKeyset (0.08s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.263s
