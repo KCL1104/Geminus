@@ -80,7 +80,7 @@ APPROVED D-007：logical run 的 wall/event budgets 要包含 retries，而非�
 | Tables | Responsibility / immutable boundary |
 |---|---|
 | users、organizations、memberships、projects | identity、scope、role；users 為 global auth identity 特例，其餘 tenant owned |
-| models、model_drafts、model_versions | latest pointer、CAS draft、immutable full IR；parent 同 org/model |
+| models、model_drafts、model_versions | latest pointer、CAS draft（revision；`issues` 存寫入當時的語意 issues，D-028，migration 0003）、immutable full IR；parent 同 org/model；服務規則見 ADR-022（T-012） |
 | datasets、dataset_versions、model_version_datasets | immutable object hash/unit/lineage；version binding 不指 mutable alias |
 | imports、ai_proposals、scenarios | lifecycle、immutable review payload、scenario patch；source proposal unique effect |
 | simulation_runs、run_datasets、simulation_results | frozen inputs、snapshot manifest、unique immutable result；mutable progress 與 input 分離 |

@@ -1,6 +1,6 @@
 # Database: migrations, SQL tests, execution boundary
 
-`migrations/` holds the schema (0001 core, 0002 RLS and grants). Until T-006 is accepted they are drafts that have only run on disposable `dt_test_*` databases; from then on a migration applied to any persistent environment is never edited — changes go into a new numbered file.
+`migrations/` holds the schema (0001 core, 0002 RLS and grants, 0003 the draft's semantic issues for T-012 / D-028). Until T-006 is accepted they are drafts that have only run on disposable `dt_test_*` databases; from then on a migration applied to any persistent environment is never edited — changes go into a new numbered file.
 
 ## Run
 
