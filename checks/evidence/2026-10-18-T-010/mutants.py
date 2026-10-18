@@ -98,7 +98,7 @@ MUTANTS = [
     ("prov-createdb-allowed", PROV, "rolcreaterole OR rolcreatedb OR rolreplication", "rolcreaterole OR rolreplication"),
     ("prov-replication-allowed", PROV, " OR rolcreatedb OR rolreplication\n", " OR rolcreatedb\n"),
     ("prov-no-set-role", PROV, "\t_, err := tx.Exec(ctx, `SET LOCAL ROLE twin_owner`)\n\treturn err", "\treturn nil"),
-    ("prov-identity-unchecked", PROV, "\tif !auth.ValidIdentity(issuer, subject) {", "\tif false {"),
+    ("prov-identity-unchecked", PROV, "\tif !auth.ValidIdentity(issuer, subject) {", "\tif false && !auth.ValidIdentity(issuer, subject) {"),
     ("prov-name-unchecked", PROV, "\tif !validName(name) {", "\tif false {"),
     ("prov-name-untrimmed", PROV, "strings.TrimSpace(name) == name && ", ""),
     ("prov-name-empty", PROV, " && name != \"\" && ", " && "),
