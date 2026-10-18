@@ -28,7 +28,7 @@
 | `openapi/openapi.yaml` | 17 個有 request body 的 operation 補上 413（server 對每個 JSON body 都可能回 413）；`IdempotencyKey` 加上 pattern `^[!-~]{8,128}$` |
 | `scripts/check_contracts.py` | 每個 request body 必須宣告 413 與 415；載入 openapi.yaml 時拒絕重複的 YAML key（PyYAML 預設保留最後一個，不報錯） |
 | 測試基礎 | `db-go-test` 以 `-p 1` 依序執行 DB package（共用一個 database，部分測試改變 database 層級的狀態）；`dbtest` 與 tenant 測試建立 login 時容許另一個測試同時建立 |
-| 文件 | ADR-019（PROPOSED）；ARCHITECTURE.md §2；db/README.md |
+| 文件 | ADR-019（ACCEPTED，H-006）；ARCHITECTURE.md §2；db/README.md |
 
 ## 獨立 review（2026-10-18，H-003）：CHANGES REQUESTED 與修正
 
@@ -122,8 +122,8 @@ Reviewer 以 `git archive fb6e265` 的 export 與自己的 disposable database �
 
 ## 需 owner 知悉
 
-- ADR-019 為 PROPOSED：HTTP 層的分工、錯誤對應、request ID、body 規則、idempotency 與 cursor 的設計。依授權先實作；owner 同意後改為 ACCEPTED。
-- 沒有任何任務負責一般 API 的 rate limiting（429 `RATE_LIMITED`）：T-036 只涵蓋 BFF 的 login／refresh，T-023 等為 admission quota。建議併入 T-036。
+- ADR-019（HTTP 層的分工、錯誤對應、request ID、body 規則、idempotency 與 cursor 的設計）已由 owner 批准為 ACCEPTED（H-006，2026-10-18）。
+- 一般 API 的 rate limiting（429 `RATE_LIMITED`）原本沒有任務負責（T-036 只涵蓋 BFF 的 login／refresh，T-023 等為 admission quota）；owner 同意併入 T-036（H-006），已加入其 scope。
 - Cursor 未簽章：只能在 caller 自己 organization 的資料內移動（RLS＋organization filter）。若將來 cursor 攜帶 filter，需在 cursor 內綁定它。
 
 ## 與規劃的差異

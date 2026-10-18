@@ -1992,7 +1992,8 @@
         "完整route×role×tenant matrix，pool/worker/artifact/SSE leaks。",
         "approval races、injection、resource exhaustion、CSV export。",
         "dependency/secret/container scans與attack regression corpus。",
-        "BFF session：cookie flags、CSRF／Origin、refresh reuse、logout、login／refresh rate limiting（ADR-018）。"
+        "BFF session：cookie flags、CSRF／Origin、refresh reuse、logout、login／refresh rate limiting（ADR-018）。",
+        "一般 API rate limiting（H-006）：每個 route 的限額（依 user 與 organization 計）、超過時回 429 `RATE_LIMITED` 與 `Retry-After`（D-025）；不因限額洩漏其他 tenant 的存在；限額數值與儲存方式另立 ADR，不引入 P0 停止線外的元件（如 Redis）。"
       ],
       "planned_outputs": [
         "internal/securitytest/",

@@ -1,6 +1,6 @@
 # ADR-020 — UI 語言：自寫 typed catalog、cookie 語言偏好、template 兩語預設名稱（T-044）
 
-狀態：PROPOSED（T-044 agent 選定，依 owner「除非真的阻擋作業或重大決策再來問我」先實作；owner 同意後改為 ACCEPTED）。日期：2026-10-18。需求：REQ-022（owner 新增，H-005）、REQ-004。T-044 scope 要求「i18n 機制（自寫或 library，另立 ADR、版本釘住）」。
+狀態：ACCEPTED（T-044 agent 選定並先實作；owner 於 2026-10-18 批准，並決定中文先只做繁體 `zh-Hant`，H-006）。日期：2026-10-18。需求：REQ-022（owner 新增，H-005）、REQ-004。T-044 scope 要求「i18n 機制（自寫或 library，另立 ADR、版本釘住）」。
 
 ## Decision
 
@@ -25,7 +25,7 @@
 
 ### Locale 與保存
 
-- Locale 只有 `en`（預設、主要）與 `zh-Hant`（H-005 解讀，待 owner 確認是否另需 `zh-Hans`）。
+- Locale 只有 `en`（預設、主要）與 `zh-Hant`（H-005；H-006 決定先不加 `zh-Hans`）。
   - Contract 是 `common.schema.json#/$defs/Locale`；Go `domainpack.Locales` 與 TS `locales` 由測試鎖成相同。
 - 偏好存在 cookie `geminus_locale`：
   - 值只能是 `en` 或 `zh-Hant`；`Path=/; Max-Age=31536000; SameSite=Lax`，https 下加 `Secure`。

@@ -602,8 +602,20 @@
       "decided_at": "2026-10-18",
       "source": "Claude Code session 指示，由 agent 記錄；繁體／簡體與文件語言的解讀待 owner 確認",
       "still_open": [
-        "是否另需簡體中文（zh-Hans）",
         "repository 文件是否也改為英文"
+      ],
+      "resolved_later": "是否另需簡體中文：H-006 決定先只做繁體 zh-Hant"
+    },
+    {
+      "id": "H-006",
+      "subject": "ADR-019、ADR-020 批准；中文先只做繁體；一般 API rate limiting 歸屬",
+      "decision": "ADR-019（HTTP transport）與 ADR-020（UI 語言）由 PROPOSED 改為 ACCEPTED；中文先只支援繁體 zh-Hant，不加 zh-Hans；一般 API 的 rate limiting（429 RATE_LIMITED、Retry-After）併入 T-036。",
+      "quote": "ADR-019、ADR-020 都是 PROPOSED 好你開始做吧；中文是否確定用繁體 zh-Hant，還是也要簡體。 先繁體就好；目前沒有任何任務負責一般 API 的 rate limiting，我建議併入 T-036。 好",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-18",
+      "source": "Claude Code session 指示，由 agent 記錄；「好你開始做吧」解讀為同意兩個 ADR 改為 ACCEPTED",
+      "still_open": [
+        "rate limit 的限額數值與計算單位（user／organization），於 T-036 提出"
       ]
     }
   ]

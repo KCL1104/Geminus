@@ -1,6 +1,6 @@
 # ADR-019 — HTTP transport, error envelope and request scope (T-009)
 
-狀態：PROPOSED（T-009 agent 選定，依 owner 授權先實作；owner 同意後改為 ACCEPTED）。日期：2026-10-18。ADR-001 已鎖定 `net/http`、不引入重型 framework；本 ADR 固定第一批 route（projects）所建立、之後每個 route 共用的 HTTP 層。
+狀態：ACCEPTED（T-009 agent 選定並先實作；owner 於 2026-10-18 批准，H-006）。日期：2026-10-18。ADR-001 已鎖定 `net/http`、不引入重型 framework；本 ADR 固定第一批 route（projects）所建立、之後每個 route 共用的 HTTP 層。
 
 ## Decision
 
