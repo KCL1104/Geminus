@@ -1,6 +1,6 @@
 # T-012 驗證報告：Model／Draft／Version service
 
-**日期：2026-10-18｜狀態：`review`（首輪獨立 review 為 CHANGES REQUESTED，已先紅後綠修正，等待同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-005、REQ-006、REQ-009｜Gate：D-003、D-028（皆已批准；另用到已批准的 D-011、D-014、D-020、D-023、D-029）｜實作選擇：ADR-022（PROPOSED）**
+**日期：2026-10-18｜狀態：`done`（首輪獨立 review 為 CHANGES REQUESTED，先紅後綠修正後，同一 reviewer 複核 ACCEPT；複核的 low 發現已處理；依 H-003 驗收）｜需求：REQ-005、REQ-006、REQ-009｜Gate：D-003、D-028（皆已批准；另用到已批准的 D-011、D-014、D-020、D-023、D-029）｜實作選擇：ADR-022（PROPOSED）**
 
 逐條輸出在 `checks/evidence/2026-10-18-T-012/`。範圍依 tasks.json：
 
@@ -138,6 +138,7 @@ Mutation（`review1/mutation-full.log`、`mutation-rerun.log`）：harness 增�
 | 指令 | Exit | 說明 |
 |---|---|---|
 | `go test -race -p 1 -v`（models、storage/models、tenant） | 0 | `review2/green.log`：44 個 test，0 SKIP |
+| CI | — | d83a1af 的 run [39164574740](https://github.com/KCL1104/Geminus/actions/runs/39164574740) 4/4 success |
 | mutation（新增與改動的 mutant） | 0 | `review2/mutation.log`：新增的 5 個（patch 與 schema 422 的封頂、member name 的 pointer、ReadSnapshot 的隔離等級與唯讀）與 pattern 改動的 4 個全部 killed。Harness 合計 99 個：97 killed、2 equivalent、0 unexpected |
 
 ## 需 owner 知悉

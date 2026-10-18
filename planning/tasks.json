@@ -580,7 +580,7 @@
       "id": "T-010",
       "title": "受控 onboarding / membership 管理",
       "priority": "P0",
-      "status": "not_started",
+      "status": "review",
       "owner_role": "Platform",
       "planning_window": "Week 3–4",
       "depends_on": [
@@ -605,7 +605,10 @@
       ],
       "planned_outputs": [
         "internal/tenant/memberships/",
-        "scripts/provision-tenant/"
+        "internal/tenant/owners.go",
+        "internal/storage/memberships/",
+        "internal/storage/provisioning/",
+        "cmd/provision-tenant/"
       ],
       "spec_refs": [
         "docs/API_DATABASE.md",
@@ -617,7 +620,7 @@
         "TEST-026"
       ],
       "verification_commands": [
-        "go test ./internal/tenant/...",
+        "go test ./internal/tenant/... ./internal/storage/memberships/... ./internal/storage/provisioning/... ./cmd/provision-tenant/...",
         "make integration-test"
       ],
       "definition_of_done": [
@@ -626,7 +629,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-18",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-010_VALIDATION.md",
+          "summary": "成員管理與受控 provisioning（ADR-023，PROPOSED）：owner-only 的 list／add（已知 user，Idempotency-Key）／update／delete 與 HTTP routes（path 的 organization 必須是選定的）；最後一位 owner 409、未知 user 422、已是成員 409；audit 只記 role。tenant.DB.RunOwners 先依 user_id 順序 FOR UPDATE 鎖全部 owner membership 再讀 caller 的 role（不先 FOR SHARE），等鎖時被升為 owner 會再鎖一次：天真版本 15 輪 11 輪 deadlock，改後 0（T-009 re-review R1）；移除等待成員已開始的寫入，生效後下一個 request 即被拒。cmd/provision-tenant 以能 SET ROLE twin_owner、非 runtime 也非 superuser 的 operator login 建立 user 與 organization（含 owner membership 與 system audit）；API role 不能 INSERT users／organizations（TEST-011）。d83a1af 上 backend-test／race／architecture／spec／integration-test 皆 exit 0（無 cached）；38 個 test（race、0 SKIP）；mutation 48：46 killed＋2 equivalent。SSE 撤權（TEST-026）NOT RUN（T-023）。",
+          "reviewer": "pending: independent reviewer agent (H-003)",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/39164574740 (d83a1af: 4/4 success)"
+        }
+      ]
     },
     {
       "id": "T-011",
@@ -691,7 +703,7 @@
       "id": "T-012",
       "title": "Model / Draft / Version service",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Platform",
       "planning_window": "Week 3–4",
       "depends_on": [
@@ -743,10 +755,14 @@
           "date": "2026-10-18",
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-012_VALIDATION.md",
-          "summary": "Model／Draft／Version service（ADR-022，PROPOSED）：internal/models（application layer；internal/model 是 generic kernel）與 internal/storage/models（每個 statement 帶 organization filter）。Create 以 pack template（依 locale）在同一 transaction 建立 model、v1、draft revision 1、audit 與 idempotency response；PatchDraft 以 If-Match revision 套 ManualDraft patch，schema 不合格不寫入，語意／pack／dataset issues 存入 migration 0003 的 model_drafts.issues；Publish 需目前 revision、expected base、base 為 latest 且 draft dirty，完整驗證後建 latest+1（parent 為 base，只凍結用到的 binding）並讓 draft 跟上；Reset 需確認；其他路徑產生的版本讓 clean draft 跟上、dirty draft 保留為 out_of_date；所有寫入先鎖 model row，stale 一律 409。0748bc0 上 backend-test、backend-race、architecture-check、spec-check、integration-test（新建 dt_test_t012）皆 exit 0；15 個 DB test 0 SKIP；mutation 67 個：66 killed、1 equivalent、0 unexpected。HTTP routes 與 TS client 屬 T-013。",
-          "reviewer": "pending: independent reviewer agent (H-003)",
+          "summary": "Model／Draft／Version service（ADR-022，PROPOSED）：internal/models 與 internal/storage/models（每個 statement 帶 organization filter）。Create 以 pack template（依 locale，有 error 即 fail closed）在同一 transaction 建立 model、v1、draft revision 1、audit 與 idempotency response；PatchDraft 以 If-Match revision 套 ManualDraft patch 到 canonical 形式，schema 不合格與 U+0000 不寫入，語意／pack／dataset issues（D-023 stage 停止、排序、最多 1000 個並以 LIMIT_EXCEEDED 計數）存入 migration 0003 的 model_drafts.issues；Publish 需目前 revision、expected base、base 為 latest 且 draft dirty，以 canonical 形式完整驗證後建 latest+1（parent 為 base，凍結 base 的全部 binding，TWIN_IR_SPEC §5.2）並讓 draft 跟上；Reset 需確認；其他路徑的版本讓 clean（對自己的 base）draft 跟上、dirty draft 保留為 out_of_date；寫入先鎖 model row、stale 一律 409；讀取為 REPEATABLE READ 唯讀 snapshot。最終：44 個 DB test（race、0 SKIP）、backend-test／race／architecture／spec／integration-test exit 0、mutation 99：97 killed＋2 equivalent。IR 儲存形式（D-040）與 publish comment（D-041）為 PROPOSED，gate T-013。",
+          "reviewer": "independent reviewer agent (H-003); owner did not review line by line",
           "ci": "https://github.com/KCL1104/Geminus/actions/runs/39155503173 (0748bc0: 4/4 success)",
-          "review_round_1": "independent reviewer agent (H-003) 2026-10-18 審 d04cc31（git archive export、新 disposable DB）：CHANGES REQUESTED。Tenancy、role、CAS、immutability、idempotency、audit、D-003 皆經得起 probe；mutation 重跑 65 killed＋1 equivalent＋1 unexpected（sql-lock-no-lock 依時序）。M1 publish／reset 驗證 jsonb 文字（數字展開、上限誤判、500）；M2 >1000 issues 撞 migration 上限（500）；M3 版本只凍結用到的 binding，與 TWIN_IR_SPEC §5.2 矛盾；M4 jsonb 讀取放大（43 倍）；L1 讀取不一致；L2 dataset path 索引；L3 clean 判斷用 latest；L4 Create 不檢查 template；L5 U+0000；L6 limit 0 panic；L7 鎖與 idempotency 等測試缺口；L8 tasks.json 路徑；L9 comment 未保存；I1–I9。先紅後綠修正（f4fde3a）：canonical 形式驗證與儲存、issue 上限與 LIMIT_EXCEEDED、依 §5.2 凍結全部 binding、ReadSnapshot、自己的 base、template fail closed、U+0000 422、limit 檢查、確定性的鎖測試與 11 個 reviewer mutant；M4 與 L9 記入 ADR-022 待 owner 決定並列為 T-013 前置。修正後 41 個 DB test（race、0 SKIP）、backend-test／race／architecture／spec／integration-test 皆 exit 0（無 cached）、mutation 94：92 killed＋2 equivalent＋0 unexpected。證據 checks/evidence/2026-10-18-T-012/review1/。等待同一 reviewer 複核。"
+          "review_round_1": "independent reviewer agent (H-003) 2026-10-18 審 d04cc31（git archive export、新 disposable DB）：CHANGES REQUESTED。Tenancy、role、CAS、immutability、idempotency、audit、D-003 皆經得起 probe；mutation 重跑 65 killed＋1 equivalent＋1 unexpected（sql-lock-no-lock 依時序）。M1 publish／reset 驗證 jsonb 文字（數字展開、上限誤判、500）；M2 >1000 issues 撞 migration 上限（500）；M3 版本只凍結用到的 binding，與 TWIN_IR_SPEC §5.2 矛盾；M4 jsonb 讀取放大（43 倍）；L1 讀取不一致；L2 dataset path 索引；L3 clean 判斷用 latest；L4 Create 不檢查 template；L5 U+0000；L6 limit 0 panic；L7 鎖與 idempotency 等測試缺口；L8 tasks.json 路徑；L9 comment 未保存；I1–I9。先紅後綠修正（f4fde3a）：canonical 形式驗證與儲存、issue 上限與 LIMIT_EXCEEDED、依 §5.2 凍結全部 binding、ReadSnapshot、自己的 base、template fail closed、U+0000 422、limit 檢查、確定性的鎖測試與 11 個 reviewer mutant；M4 與 L9 記入 ADR-022 待 owner 決定並列為 T-013 前置。修正後 41 個 DB test（race、0 SKIP）、backend-test／race／architecture／spec／integration-test 皆 exit 0（無 cached）、mutation 94：92 killed＋2 equivalent＋0 unexpected。證據 checks/evidence/2026-10-18-T-012/review1/。等待同一 reviewer 複核。",
+          "review_round_2": "同一 reviewer 複核 3950245（程式 f4fde3a，git archive export、新 disposable DB）：ACCEPT。首輪 medium／low 全部已修，R1–R17 probe 重跑全過；integration-test、43 DB test、backend-test／race（0 cached）、architecture、spec-check 與 mutation 94：92 killed＋2 equivalent 皆重現。4 個 low、5 個 info：N1 PatchDraft 的 422 未封頂 → patch 與 schema issue 也經 capped；N2 ReadSnapshot 無確定性測試 → tenant TestReadSnapshot；N3 M4 未登記為 gate → D-040、D-041 PROPOSED 並列為 T-013 的 decision gate；N4 首輪 green.log 早於最後的測試 → review2/green.log 在最終程式執行；I1 summary 更新；I2 NUL member name 指向父物件；I3–I5 記入報告與 ADR-022。修正後 44 個 DB test、mutation 99：97 killed＋2 equivalent、CI 4/4。證據 checks/evidence/2026-10-18-T-012/review2/。",
+          "accepted_at": "2026-10-18",
+          "acceptance": "owner 指示由獨立 agent review 驗收（H-003）；首輪 CHANGES REQUESTED 已修正（f4fde3a），同一 reviewer 複核 ACCEPT；複核的 low 發現已處理（d83a1af）。ADR-022 仍為 PROPOSED，D-040／D-041 待 owner 決定（gate T-013）",
+          "ci_before_acceptance": "https://github.com/KCL1104/Geminus/actions/runs/39164574740 (d83a1af: 4/4 success)"
         }
       ]
     },
