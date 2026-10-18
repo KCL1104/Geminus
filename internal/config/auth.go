@@ -15,6 +15,7 @@ import (
 //	AUTH_OIDC_AUDIENCE    the API's audience
 //	AUTH_OIDC_JWKS_URL    https URL of the provider's JWKS
 //	AUTH_OIDC_ALGORITHMS  optional comma-separated allowlist (default RS256,ES256)
+//	AUTH_OIDC_REQUIRE_AT_JWT  optional "true": only tokens typed at+jwt (RFC 9068)
 //
 // It does not contact the provider. Messages never include the values.
 func LoadAuth(getenv func(string) string) (auth.Config, error) {
@@ -31,6 +32,13 @@ func LoadAuth(getenv func(string) string) (auth.Config, error) {
 		for _, a := range strings.Split(algs, ",") {
 			cfg.Algorithms = append(cfg.Algorithms, strings.TrimSpace(a))
 		}
+	}
+	switch getenv("AUTH_OIDC_REQUIRE_AT_JWT") {
+	case "", "false":
+	case "true":
+		cfg.RequireAccessTokenType = true
+	default:
+		errs = append(errs, &Error{"AUTH_OIDC_REQUIRE_AT_JWT", CodeInvalid, `"true", "false" or unset`})
 	}
 	if len(errs) > 0 {
 		return auth.Config{}, errors.Join(errs...)

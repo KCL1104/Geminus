@@ -32,13 +32,19 @@ const (
 	MaxTokenBytes  = 8 << 10   // a compact JWS longer than this is refused before parsing
 	maxJWKSBytes   = 256 << 10 // a larger JWKS response is an error
 	maxSubject     = 255       // users.oidc_subject is compared byte for byte
+	maxURL         = 2048      // users.oidc_issuer, as tenant.ResolveUser bounds it
 	minRSABits     = 2048
 	maxClockSkew   = 5 * time.Minute
 	defaultSkew    = 30 * time.Second
-	fetchTimeout   = 10 * time.Second
+	defaultFetch   = 10 * time.Second
+	maxFetch       = time.Minute
 	defaultRefresh = time.Minute
+	minRefresh     = time.Second
+	maxRefresh     = 24 * time.Hour
+	coldRetry      = 5 * time.Second // retry interval while no usable keys are cached
 	defaultMaxAge  = time.Hour
 	defaultStale   = 24 * time.Hour
+	maxStale       = 7 * 24 * time.Hour
 )
 
 // asymmetric is every algorithm a deployment may allow: no "none", no HMAC
@@ -64,12 +70,19 @@ type Config struct {
 	// ClockSkew tolerated on exp, nbf and iat; zero means 30 s, at most 5 min.
 	ClockSkew time.Duration
 	// MinRefreshInterval spaces JWKS fetches (an unknown kid triggers one);
-	// KeyMaxAge is how long a fetched JWKS is used before it is refreshed;
-	// KeyMaxStale is how long it may still be used while refreshes fail.
-	// Zero means 1 min, 1 h and 24 h.
+	// KeyMaxAge is how long a fetched JWKS is used before it is refreshed in
+	// the background; KeyMaxStale is how long it may still be used while
+	// refreshes fail. Zero means 1 min, 1 h and 24 h; they must be ordered,
+	// MinRefreshInterval between 1 s and 24 h, KeyMaxStale at most 7 days.
 	MinRefreshInterval, KeyMaxAge, KeyMaxStale time.Duration
+	// FetchTimeout bounds one JWKS fetch; zero means 10 s, at most 1 min.
+	FetchTimeout time.Duration
+	// RequireAccessTokenType refuses tokens whose typ is not at+jwt
+	// (RFC 9068), for providers that mark access tokens, so an ID token
+	// that happens to carry the API's audience is never accepted.
+	RequireAccessTokenType bool
 	// HTTPClient fetches the JWKS; redirects are never followed. Nil uses a
-	// client with a 10 s timeout.
+	// default client.
 	HTTPClient *http.Client
 	Now        func() time.Time
 }
@@ -86,18 +99,33 @@ func (c Config) Validate() error {
 	if err := httpsURL(c.JWKSURL, true); err != nil {
 		errs = append(errs, fmt.Errorf("JWKS URL: %w", err))
 	}
-	for _, a := range c.Algorithms {
+	for i, a := range c.Algorithms {
 		if !slices.Contains(asymmetric, a) {
-			errs = append(errs, fmt.Errorf("algorithm %q is not an allowed asymmetric signature algorithm", a))
+			errs = append(errs, fmt.Errorf("algorithm %d is not an allowed asymmetric signature algorithm", i+1))
 		}
 	}
 	if c.ClockSkew < 0 || c.ClockSkew > maxClockSkew {
 		errs = append(errs, errors.New("clock skew: between 0 and 5 minutes"))
 	}
-	if c.MinRefreshInterval < 0 || c.KeyMaxAge < 0 || c.KeyMaxStale < 0 {
-		errs = append(errs, errors.New("key refresh intervals: not negative"))
+	if c.FetchTimeout < 0 || c.FetchTimeout > maxFetch {
+		errs = append(errs, errors.New("fetch timeout: between 0 and 1 minute"))
+	}
+	refresh, age, stale := or(c.MinRefreshInterval, defaultRefresh), or(c.KeyMaxAge, defaultMaxAge), or(c.KeyMaxStale, defaultStale)
+	switch { // a negative interval fails the first or the second case
+	case refresh < minRefresh || refresh > maxRefresh || stale > maxStale:
+		errs = append(errs, errors.New("key refresh intervals: refresh between 1 s and 24 h, stale limit at most 7 days"))
+	case refresh > age || age > stale:
+		errs = append(errs, errors.New("key refresh intervals: refresh interval <= max age <= stale limit"))
 	}
 	return errors.Join(errs...)
+}
+
+// or is d, or def when d is zero.
+func or(d, def time.Duration) time.Duration {
+	if d == 0 {
+		return def
+	}
+	return d
 }
 
 func httpsURL(raw string, queryOK bool) error {
@@ -105,6 +133,8 @@ func httpsURL(raw string, queryOK bool) error {
 	switch {
 	case raw == "" || err != nil:
 		return errors.New("required absolute https URL")
+	case len(raw) > maxURL:
+		return errors.New("at most 2048 bytes")
 	case u.Scheme != "https" || u.Host == "" || u.Opaque != "":
 		return errors.New("must be an absolute https URL")
 	case u.User != nil:
@@ -117,8 +147,11 @@ func httpsURL(raw string, queryOK bool) error {
 	return nil
 }
 
+// printable: valid UTF-8 of graphic characters and ASCII spaces only; no
+// control, format (e.g. U+202E), separator or private-use characters,
+// which could disguise an identifier in logs.
 func printable(s string) bool {
-	return utf8.ValidString(s) && !strings.ContainsFunc(s, unicode.IsControl)
+	return utf8.ValidString(s) && !strings.ContainsFunc(s, func(r rune) bool { return !unicode.IsPrint(r) })
 }
 
 // OIDCVerifier verifies access tokens of one provider against its JWKS.
@@ -127,10 +160,11 @@ type OIDCVerifier struct {
 	algs   []jose.SignatureAlgorithm
 	client *http.Client
 
-	keys atomic.Pointer[keySet]
-	mu   sync.Mutex // serialises refreshes; fields below
-	last time.Time  // last fetch attempt
-	err  error      // its error, if it failed
+	keys       atomic.Pointer[keySet] // stored under mu
+	mu         sync.Mutex             // guards the fields below
+	refreshing chan struct{}          // closed when the fetch in flight ends
+	last       time.Time              // start of the last fetch
+	err        error                  // its error, if it failed
 }
 
 type keySet struct {
@@ -147,22 +181,15 @@ func NewOIDCVerifier(cfg Config) (*OIDCVerifier, error) {
 	if len(cfg.Algorithms) == 0 {
 		cfg.Algorithms = []string{"RS256", "ES256"}
 	}
-	if cfg.ClockSkew == 0 {
-		cfg.ClockSkew = defaultSkew
-	}
-	if cfg.MinRefreshInterval == 0 {
-		cfg.MinRefreshInterval = defaultRefresh
-	}
-	if cfg.KeyMaxAge == 0 {
-		cfg.KeyMaxAge = defaultMaxAge
-	}
-	if cfg.KeyMaxStale == 0 {
-		cfg.KeyMaxStale = defaultStale
-	}
+	cfg.ClockSkew = or(cfg.ClockSkew, defaultSkew)
+	cfg.FetchTimeout = or(cfg.FetchTimeout, defaultFetch)
+	cfg.MinRefreshInterval = or(cfg.MinRefreshInterval, defaultRefresh)
+	cfg.KeyMaxAge = or(cfg.KeyMaxAge, defaultMaxAge)
+	cfg.KeyMaxStale = or(cfg.KeyMaxStale, defaultStale)
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	client := &http.Client{Timeout: fetchTimeout}
+	client := &http.Client{}
 	if cfg.HTTPClient != nil {
 		c := *cfg.HTTPClient
 		client = &c
@@ -183,10 +210,22 @@ func (v *OIDCVerifier) Verify(ctx context.Context, token string) (Identity, erro
 	if len(token) > MaxTokenBytes {
 		return Identity{}, invalid(ReasonTooLarge)
 	}
-	if token == "" || strings.Count(token, ".") != 2 {
+	segments := strings.Split(token, ".")
+	if len(segments) != 3 {
 		return Identity{}, invalid(ReasonMalformed)
 	}
-	alg, kid, err := v.header(token[:strings.IndexByte(token, '.')])
+	var header []byte
+	for i, seg := range segments {
+		// Strict: each segment has exactly one encoding.
+		b, err := base64.RawURLEncoding.Strict().DecodeString(seg)
+		if err != nil {
+			return Identity{}, invalid(ReasonMalformed)
+		}
+		if i == 0 {
+			header = b
+		}
+	}
+	alg, kid, err := v.header(header)
 	if err != nil {
 		return Identity{}, err
 	}
@@ -209,11 +248,7 @@ func (v *OIDCVerifier) Verify(ctx context.Context, token string) (Identity, erro
 }
 
 // header checks the protected header before any key is looked up.
-func (v *OIDCVerifier) header(segment string) (alg, kid string, err error) {
-	raw, err := base64.RawURLEncoding.DecodeString(segment)
-	if err != nil {
-		return "", "", invalid(ReasonMalformed)
-	}
+func (v *OIDCVerifier) header(raw []byte) (alg, kid string, err error) {
 	var h map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &h); err != nil {
 		return "", "", invalid(ReasonMalformed) // includes duplicate member names
@@ -229,9 +264,10 @@ func (v *OIDCVerifier) header(segment string) (alg, kid string, err error) {
 			return "", "", invalid(ReasonHeader)
 		}
 	}
-	if t, ok := h["typ"]; ok {
+	if t, ok := h["typ"]; ok || v.cfg.RequireAccessTokenType {
 		var typ string
-		if json.Unmarshal(t, &typ) != nil || !slices.Contains(tokenTypes, strings.ToLower(typ)) {
+		if json.Unmarshal(t, &typ) != nil || !slices.Contains(tokenTypes, strings.ToLower(typ)) ||
+			(v.cfg.RequireAccessTokenType && !strings.HasSuffix(strings.ToLower(typ), "at+jwt")) {
 			return "", "", invalid(ReasonType)
 		}
 	}
@@ -325,60 +361,114 @@ func numericDate(v *float64) (time.Time, bool) {
 	return time.Unix(int64(sec), int64(frac*1e9)), true
 }
 
-// key returns the verification key for kid. A JWKS is used for KeyMaxAge,
-// then refreshed; an unknown kid also triggers a refresh, so rotated keys
-// are picked up. Refreshes are spaced by MinRefreshInterval, so tokens with
-// random kids cannot make the API hammer the provider. While refreshes fail,
-// keys already fetched stay usable until KeyMaxStale.
+// key returns the verification key for kid. A cached key is returned at
+// once, also while the JWKS is refreshed in the background after KeyMaxAge,
+// and while refreshes fail, until KeyMaxStale (stale-while-revalidate). An
+// unknown kid waits for a refresh, so rotated keys are picked up, but only
+// until ctx ends. One fetch at a time, spaced by MinRefreshInterval (5 s
+// while no usable keys are cached), so tokens with random kids cannot make
+// the API hammer the provider.
 func (v *OIDCVerifier) key(ctx context.Context, kid string) (jose.JSONWebKey, error) {
 	now := v.cfg.Now()
-	if ks := v.keys.Load(); ks != nil && now.Sub(ks.fetched) < v.cfg.KeyMaxAge {
+	if ks := v.keys.Load(); ks != nil && now.Sub(ks.fetched) < v.cfg.KeyMaxStale {
 		if k, ok := ks.byID[kid]; ok {
+			if now.Sub(ks.fetched) >= v.cfg.KeyMaxAge {
+				v.refresh(now)
+			}
 			return k, nil
 		}
 	}
+	if done := v.refresh(now); done != nil {
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return jose.JSONWebKey{}, keysUnavailable(ctx.Err())
+		}
+	}
 	v.mu.Lock()
-	defer v.mu.Unlock()
-	ks := v.keys.Load()
-	if ks != nil && now.Sub(ks.fetched) < v.cfg.KeyMaxAge {
-		if k, ok := ks.byID[kid]; ok {
-			return k, nil // another request refreshed meanwhile
-		}
-	}
-	if v.last.IsZero() || now.Sub(v.last) >= v.cfg.MinRefreshInterval {
-		v.last = now
-		fresh, err := v.fetch(ctx)
-		v.err = err
-		if err == nil {
-			v.keys.Store(fresh)
-			ks = fresh
-		}
-	}
+	ks, fetchErr := v.keys.Load(), v.err
+	v.mu.Unlock()
 	if ks == nil || now.Sub(ks.fetched) >= v.cfg.KeyMaxStale {
-		return jose.JSONWebKey{}, &TokenError{Reason: ReasonKeys, err: ErrKeysUnavailable}
+		return jose.JSONWebKey{}, keysUnavailable(fetchErr)
 	}
 	if k, ok := ks.byID[kid]; ok {
 		return k, nil
 	}
-	if v.err != nil {
+	if fetchErr != nil {
 		// The key may have been rotated in while the JWKS cannot be read.
-		return jose.JSONWebKey{}, &TokenError{Reason: ReasonKeys, err: ErrKeysUnavailable}
+		return jose.JSONWebKey{}, keysUnavailable(fetchErr)
 	}
 	return jose.JSONWebKey{}, invalid(ReasonUnknownKey)
 }
 
-// fetch reads the JWKS. One request's cancellation does not abort a
-// refresh other requests wait for; the fetch has its own timeout.
-func (v *OIDCVerifier) fetch(ctx context.Context) (*keySet, error) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), fetchTimeout)
+// refresh starts a JWKS fetch unless one is in flight or the last one
+// started too recently. It returns a channel closed when the fetch in
+// flight ends, or nil if there is none.
+func (v *OIDCVerifier) refresh(now time.Time) <-chan struct{} {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.refreshing != nil {
+		return v.refreshing
+	}
+	interval := v.cfg.MinRefreshInterval
+	if ks := v.keys.Load(); ks == nil || now.Sub(ks.fetched) >= v.cfg.KeyMaxStale {
+		interval = min(interval, coldRetry)
+	}
+	if !v.last.IsZero() && now.Sub(v.last) < interval {
+		return nil
+	}
+	v.last = now
+	done := make(chan struct{})
+	v.refreshing = done
+	go func() {
+		// No request's context: the fetch serves every waiting request.
+		ks, err := v.safeFetch()
+		v.mu.Lock()
+		if err == nil {
+			v.keys.Store(ks)
+		}
+		v.err, v.refreshing = err, nil
+		v.mu.Unlock()
+		close(done)
+	}()
+	return done
+}
+
+// safeFetch is fetch with a panic turned into an error: the fetch runs in
+// its own goroutine, where net/http would not contain it.
+func (v *OIDCVerifier) safeFetch() (ks *keySet, err error) {
+	defer func() {
+		if recover() != nil {
+			ks, err = nil, errors.New("fetching JWKS: internal error")
+		}
+	}()
+	return v.fetch()
+}
+
+// keysUnavailable is ReasonKeys with its cause, which never holds the URL.
+func keysUnavailable(cause error) error {
+	if cause == nil {
+		return &TokenError{Reason: ReasonKeys, err: ErrKeysUnavailable}
+	}
+	return &TokenError{Reason: ReasonKeys, err: fmt.Errorf("%w: %w", ErrKeysUnavailable, cause)}
+}
+
+// fetch reads the JWKS within FetchTimeout. Its errors leave out the URL,
+// which may carry a credential in its query.
+func (v *OIDCVerifier) fetch() (*keySet, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), v.cfg.FetchTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, v.cfg.JWKSURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("fetching JWKS: invalid request")
 	}
 	req.Header.Set("Accept", "application/jwk-set+json, application/json")
 	resp, err := v.client.Do(req)
 	if err != nil {
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			err = ue.Err
+		}
 		return nil, fmt.Errorf("fetching JWKS: %w", err)
 	}
 	defer resp.Body.Close()

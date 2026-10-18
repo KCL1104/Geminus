@@ -1,0 +1,43 @@
+== red: T-008 review tests on 400dddb code
+--- FAIL: TestBearerToken (0.00s)
+    http_test.go:48: basic: "" auth: invalid token: scheme
+    http_test.go:48: not token68: "" auth: invalid token: scheme
+    http_test.go:48: Access_Token in the query: "a.b.c" <nil>
+    http_test.go:48: ACCESS_TOKEN in the query: "a.b.c" <nil>
+    http_test.go:48: token after a semicolon: "a.b.c" <nil>
+    http_test.go:48: token with a bad escape: "a.b.c" <nil>
+    http_test.go:48: unreadable query: "a.b.c" <nil>
+--- FAIL: TestChallenge (0.00s)
+    http_test.go:69: not_bearer: "Bearer realm=\"geminus\", error=\"invalid_token\"", want "Bearer realm=\"geminus\""
+    http_test.go:69: scheme: "Bearer realm=\"geminus\", error=\"invalid_token\"", want "Bearer realm=\"geminus\", error=\"invalid_request\""
+    http_test.go:69: token_in_query: "Bearer realm=\"geminus\", error=\"invalid_token\"", want "Bearer realm=\"geminus\", error=\"invalid_request\""
+    http_test.go:69: keys_unavailable: "Bearer realm=\"geminus\", error=\"invalid_token\"", want ""
+    http_test.go:75: Basic credentials: auth: invalid token: scheme -> "Bearer realm=\"geminus\", error=\"invalid_token\""
+--- FAIL: TestRefreshNeverBlocksUsableKeys (10.11s)
+    review_test.go:52: a request with a usable key waited 10.008427947s for a hung refresh
+--- FAIL: TestKeysErrorKeepsTheCause (0.05s)
+    review_test.go:112: 404: auth: signing keys unavailable: keys_unavailable
+    review_test.go:125: unreachable provider: auth: signing keys unavailable: keys_unavailable
+--- FAIL: TestStrictEncoding (0.02s)
+    review_test.go:153: segment 0 re-encoded: <nil>
+    review_test.go:153: segment 1 re-encoded: <nil>
+    review_test.go:153: segment 2 re-encoded: <nil>
+--- FAIL: TestEndlessJWKSBody (0.08s)
+    review_test.go:220: endless body: auth: signing keys unavailable: keys_unavailable after 4.750159ms
+--- FAIL: TestColdStartRecovers (0.07s)
+    review_test.go:236: 6 s after a failed cold start, with the provider back: auth: signing keys unavailable: keys_unavailable
+--- FAIL: TestSubjectFormatCharacters (0.24s)
+    review_test.go:247: sub "user\u202eadmin": <nil>
+    review_test.go:247: sub "a\u200bb": <nil>
+    review_test.go:247: sub "x\ufeff": <nil>
+--- FAIL: TestConfigBounds (0.00s)
+    review_test.go:272: echoed algorithm: the error echoes the value: algorithm "SECRETVALUE" is not an allowed asymmetric signature algorithm
+    review_test.go:270: issuer over 2048 bytes: accepted
+    review_test.go:270: JWKS URL over 2048 bytes: accepted
+    review_test.go:270: stale limit below max age: accepted
+    review_test.go:270: refresh interval above age: accepted
+    review_test.go:270: refresh interval over a day: accepted
+    review_test.go:270: audience format character: accepted
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/auth	13.886s
+FAIL

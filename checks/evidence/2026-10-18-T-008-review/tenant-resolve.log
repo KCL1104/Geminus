@@ -1,0 +1,5 @@
+=== RUN   TestResolveUser
+--- PASS: TestResolveUser (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant	0.052s
+exit 0

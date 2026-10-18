@@ -591,19 +591,49 @@ func TestResolveUser(t *testing.T) {
 		}
 	}
 	for name, c := range map[string][2]string{
-		"empty issuer":  {"", a.subject},
-		"empty subject": {issuer, ""},
-		"long subject":  {issuer, strings.Repeat("s", 256)},
-		"long issuer":   {"https://" + strings.Repeat("i", 2048), a.subject},
+		"empty issuer":   {"", a.subject},
+		"empty subject":  {issuer, ""},
+		"long subject":   {issuer, strings.Repeat("s", 256)},
+		"long issuer":    {"https://" + strings.Repeat("i", 2048), a.subject},
+		"NUL in subject": {issuer, a.subject + "\x00"},
+		"NUL in issuer":  {issuer + "\x00", a.subject},
+		"invalid UTF-8":  {issuer, "sub-\xff"},
+		"invalid issuer": {"https://\xc3", a.subject},
 	} {
 		if _, err := d.ResolveUser(ctx, c[0], c[1]); !errors.Is(err, tenant.ErrInvalidIdentity) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
+	// The longest identity that fits is accepted (and unknown).
+	if _, err := d.ResolveUser(ctx, "https://"+strings.Repeat("i", 2040), strings.Repeat("s", 255)); !errors.Is(err, tenant.ErrUnknownUser) {
+		t.Errorf("longest identity: %v", err)
+	}
+	// The settings are transaction-local by themselves: on a pool without
+	// the release guard the reused connection carries no identity and sees
+	// no user (review #2).
+	bare := as(t, apiLogin, 1, false)
+	if id, err := tenant.New(bare).ResolveUser(ctx, issuer, a.subject); err != nil || id != a.user {
+		t.Fatalf("resolve on the unguarded pool: %q %v", id, err)
+	}
+	var iss, sub string
 	var n int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM twin.users WHERE coalesce(current_setting('app.oidc_issuer', true), '') = ''
-		AND coalesce(current_setting('app.oidc_subject', true), '') = ''`).Scan(&n); err != nil || n != 0 {
-		t.Errorf("after the lookups the reused connection sees %d users (%v), want 0 and no identity settings", n, err)
+	if err := bare.QueryRow(ctx, `SELECT coalesce(current_setting('app.oidc_issuer', true), ''), coalesce(current_setting('app.oidc_subject', true), ''),
+		(SELECT count(*) FROM twin.users)`).Scan(&iss, &sub, &n); err != nil || iss != "" || sub != "" || n != 0 {
+		t.Errorf("after the lookup the reused connection has issuer %q, subject %q and sees %d users (%v), want none", iss, sub, n, err)
+	}
+	// The application filter holds without RLS too: a superuser, whom RLS
+	// does not restrict, still resolves only the exact issuer and subject.
+	super := tenant.New(adm)
+	if id, err := super.ResolveUser(ctx, issuer, a.subject); err != nil || id != a.user {
+		t.Errorf("superuser resolve: %q %v", id, err)
+	}
+	for name, c := range map[string][2]string{
+		"same subject, other iss": {"https://other.invalid", a.subject},
+		"same issuer, no subject": {issuer, newID(t, "sub")},
+	} {
+		if id, err := super.ResolveUser(ctx, c[0], c[1]); !errors.Is(err, tenant.ErrUnknownUser) {
+			t.Errorf("superuser, %s: %q %v", name, id, err)
+		}
 	}
 	// The policy itself: with a's identity set, every user row but a's is invisible.
 	var seen []string
@@ -621,11 +651,16 @@ func TestResolveUser(t *testing.T) {
 	if err != nil || len(seen) != 1 || seen[0] != a.user {
 		t.Errorf("users visible to a's identity: %v %v", seen, err)
 	}
-	// Read-only: the lookup transaction cannot write.
-	if err := postgres.OpenPool(pool).Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+	// No user is ever created by the API login, even in a read-write
+	// transaction with a matching identity (review #10): users are
+	// provisioned elsewhere.
+	if err := postgres.OpenPool(pool).Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.oidc_issuer', $1, true), set_config('app.oidc_subject', 'new', true)`, issuer); err != nil {
+			return err
+		}
 		_, err := tx.Exec(ctx, `INSERT INTO twin.users(id,oidc_issuer,oidc_subject) VALUES ($1,$2,'new')`, newID(t, "usr"), issuer)
 		return err
-	}); err == nil {
-		t.Error("the API login inserted a user")
+	}); !errors.Is(err, postgres.ErrPermission) {
+		t.Errorf("the API login inserting a user: %v, want permission denied", err)
 	}
 }

@@ -21,15 +21,23 @@ func TestBearerToken(t *testing.T) {
 		{"bearer", "/", []string{"Bearer abc.def.ghi"}, "abc.def.ghi", ""},
 		{"scheme is case-insensitive", "/", []string{"bearer abc.def.ghi"}, "abc.def.ghi", ""},
 		{"missing", "/", nil, "", auth.ReasonMissing},
-		{"basic", "/", []string{"Basic dXNlcjpwYXNz"}, "", auth.ReasonScheme},
+		{"basic", "/", []string{"Basic dXNlcjpwYXNz"}, "", auth.ReasonNotBearer},
 		{"no token", "/", []string{"Bearer"}, "", auth.ReasonScheme},
 		{"empty token", "/", []string{"Bearer "}, "", auth.ReasonScheme},
 		{"two spaces", "/", []string{"Bearer  abc"}, "", auth.ReasonScheme},
 		{"two headers", "/", []string{"Bearer a.b.c", "Bearer d.e.f"}, "", auth.ReasonScheme},
-		{"not token68", "/", []string{"Bearer a.b.c,other"}, "", auth.ReasonScheme},
+		{"not token68", "/", []string{"Bearer a.b.c,other"}, "", auth.ReasonMalformed},
 		{"token in the query", "/models?access_token=a.b.c", nil, "", auth.ReasonTokenInQuery},
 		{"token in the query and the header", "/models?access_token=x", []string{"Bearer a.b.c"}, "", auth.ReasonTokenInQuery},
 		{"id_token in the query", "/models?id_token=x", []string{"Bearer a.b.c"}, "", auth.ReasonTokenInQuery},
+		// Review #7: spellings url.Query() does not normalise or drops.
+		{"Access_Token in the query", "/models?Access_Token=x", []string{"Bearer a.b.c"}, "", auth.ReasonTokenInQuery},
+		{"ACCESS_TOKEN in the query", "/models?ACCESS_TOKEN=x", []string{"Bearer a.b.c"}, "", auth.ReasonTokenInQuery},
+		{"token after a semicolon", "/models?x=1;access_token=x", []string{"Bearer a.b.c"}, "", auth.ReasonTokenInQuery},
+		{"token with a bad escape", "/models?access_token=%zz", []string{"Bearer a.b.c"}, "", auth.ReasonTokenInQuery},
+		{"escaped parameter name", "/models?access%5Ftoken=x", []string{"Bearer a.b.c"}, "", auth.ReasonTokenInQuery},
+		{"unreadable query", "/models?%zz=1", []string{"Bearer a.b.c"}, "", auth.ReasonTokenInQuery},
+		{"other parameters", "/models?page=2&access=1", []string{"Bearer a.b.c"}, "a.b.c", ""},
 	} {
 		r := httptest.NewRequest(http.MethodGet, c.url, nil)
 		for _, h := range c.headers {
@@ -42,16 +50,29 @@ func TestBearerToken(t *testing.T) {
 	}
 }
 
+// RFC 6750 §3: no error code without Bearer credentials, invalid_request
+// for a malformed request, invalid_token for a bad token, and no challenge
+// for a 503 (review #11).
 func TestChallenge(t *testing.T) {
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
-	_, missing := auth.BearerToken(r)
-	if got := auth.Challenge(missing); got != `Bearer realm="geminus"` {
-		t.Errorf("missing: %s", got)
+	for _, c := range []struct {
+		reason, want string
+	}{
+		{auth.ReasonMissing, `Bearer realm="geminus"`},
+		{auth.ReasonNotBearer, `Bearer realm="geminus"`},
+		{auth.ReasonScheme, `Bearer realm="geminus", error="invalid_request"`},
+		{auth.ReasonTokenInQuery, `Bearer realm="geminus", error="invalid_request"`},
+		{auth.ReasonMalformed, `Bearer realm="geminus", error="invalid_token"`},
+		{auth.ReasonExpired, `Bearer realm="geminus", error="invalid_token"`},
+		{auth.ReasonKeys, ""},
+	} {
+		if got := auth.Challenge(&auth.TokenError{Reason: c.reason}); got != c.want {
+			t.Errorf("%s: %q, want %q", c.reason, got, c.want)
+		}
 	}
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Header.Set("Authorization", "Basic x")
-	_, bad := auth.BearerToken(r)
-	if got := auth.Challenge(bad); got != `Bearer realm="geminus", error="invalid_token"` {
-		t.Errorf("invalid: %s", got)
+	if _, err := auth.BearerToken(r); auth.Challenge(err) != `Bearer realm="geminus"` {
+		t.Errorf("Basic credentials: %v -> %q", err, auth.Challenge(err))
 	}
 }
 

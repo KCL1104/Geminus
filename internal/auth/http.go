@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -11,8 +12,7 @@ import (
 // is present: URLs reach logs, history and referrers (SECURITY §3). Cookies
 // are not read; a cookie mode needs the CSRF design of the auth ADR first.
 func BearerToken(r *http.Request) (string, error) {
-	q := r.URL.Query()
-	if q.Has("access_token") || q.Has("id_token") {
+	if tokenInQuery(r.URL.RawQuery) {
 		return "", invalid(ReasonTokenInQuery)
 	}
 	h := r.Header.Values("Authorization")
@@ -22,11 +22,30 @@ func BearerToken(r *http.Request) (string, error) {
 	if len(h) > 1 {
 		return "", invalid(ReasonScheme)
 	}
-	scheme, token, ok := strings.Cut(h[0], " ")
-	if !ok || !strings.EqualFold(scheme, "Bearer") || token == "" || !token68(token) {
+	scheme, token, _ := strings.Cut(h[0], " ")
+	switch {
+	case !strings.EqualFold(scheme, "Bearer"):
+		return "", invalid(ReasonNotBearer)
+	case token == "" || token[0] == ' ':
 		return "", invalid(ReasonScheme)
+	case !token68(token):
+		return "", invalid(ReasonMalformed)
 	}
 	return token, nil
+}
+
+// tokenInQuery reports a parameter named access_token or id_token in any
+// spelling: any case, escaped, after "&" or ";". A query whose names cannot
+// be read counts too, since it might hide one.
+func tokenInQuery(raw string) bool {
+	for _, pair := range strings.FieldsFunc(raw, func(r rune) bool { return r == '&' || r == ';' }) {
+		name, _, _ := strings.Cut(pair, "=")
+		name, err := url.QueryUnescape(name)
+		if err != nil || strings.EqualFold(name, "access_token") || strings.EqualFold(name, "id_token") {
+			return true
+		}
+	}
+	return false
 }
 
 // token68 is RFC 7235's token68 (a compact JWS is a subset).
@@ -45,11 +64,18 @@ func token68(s string) bool {
 	return true
 }
 
-// Challenge is the WWW-Authenticate value for a 401 caused by err (RFC 6750
-// §3: a request without credentials gets no error code).
+// Challenge is the WWW-Authenticate value for a response to err (RFC 6750
+// §3): no error code without Bearer credentials, invalid_request for a
+// malformed request, invalid_token for a token that is not acceptable, and
+// "" (no header) when the keys are unavailable, which is a 503, not a 401.
 func Challenge(err error) string {
-	if Reason(err) == ReasonMissing {
+	switch Reason(err) {
+	case ReasonMissing, ReasonNotBearer:
 		return `Bearer realm="geminus"`
+	case ReasonScheme, ReasonTokenInQuery:
+		return `Bearer realm="geminus", error="invalid_request"`
+	case ReasonKeys:
+		return ""
 	}
 	return `Bearer realm="geminus", error="invalid_token"`
 }

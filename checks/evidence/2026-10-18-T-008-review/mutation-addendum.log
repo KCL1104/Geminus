@@ -1,0 +1,2 @@
+throttle-only-after-success	KILLED --- FAIL: TestOutageRefreshThrottled (0.57s)
+1/1 killed, 0 equivalent (documented above)

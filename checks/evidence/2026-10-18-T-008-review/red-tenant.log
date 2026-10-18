@@ -1,0 +1,8 @@
+--- FAIL: TestResolveUser (0.05s)
+    tenant_test.go:604: invalid UTF-8: postgres: database error (SQLSTATE 22021)
+    tenant_test.go:604: NUL in subject: postgres: database error (SQLSTATE 22021)
+    tenant_test.go:604: NUL in issuer: postgres: database error (SQLSTATE 22021)
+    tenant_test.go:604: invalid issuer: postgres: database error (SQLSTATE 22021)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/tenant	0.059s
+FAIL

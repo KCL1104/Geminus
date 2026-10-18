@@ -130,6 +130,10 @@ func TestRejectedTokens(t *testing.T) {
 		{"empty", "", auth.ReasonMalformed},
 		{"two parts", "a.b", auth.ReasonMalformed},
 		{"four parts", valid + ".x", auth.ReasonMalformed},
+		// The segment count is checked before the header: a bad header in
+		// a token of the wrong shape is still malformed.
+		{"two decodable parts, alg none", base64.RawURLEncoding.EncodeToString(header(map[string]any{"alg": "none"})) + "." + parts[1], auth.ReasonMalformed},
+		{"four decodable parts, alg none", base64.RawURLEncoding.EncodeToString(header(map[string]any{"alg": "none"})) + "." + parts[1] + "." + parts[2] + "." + parts[2], auth.ReasonMalformed},
 		{"too large", strings.Repeat("a", auth.MaxTokenBytes+1), auth.ReasonTooLarge},
 		{"header not base64", "!!." + parts[1] + "." + parts[2], auth.ReasonMalformed},
 		{"header not JSON", authtest.Sign(t, p.RSA, []byte("not json"), mustJSON(t, claims)), auth.ReasonMalformed},
@@ -257,8 +261,15 @@ func TestKeyRotation(t *testing.T) {
 		t.Errorf("a cached key within KeyMaxAge: %v", err)
 	}
 	c.Add(31 * time.Minute)
-	if _, err := v.Verify(ctx, p.Token(t, p.RSA, nil, p.Claims("user-1", c.Now()))); auth.Reason(err) != auth.ReasonUnknownKey {
-		t.Errorf("a retired key after KeyMaxAge: %v", err)
+	// Past KeyMaxAge the cached key still serves while the background
+	// refresh runs; once it completes, the retired key is unknown.
+	retired := p.Token(t, p.RSA, nil, p.Claims("user-1", c.Now()))
+	if !waitFor(t, func() bool { _, err := v.Verify(ctx, retired); return auth.Reason(err) == auth.ReasonUnknownKey }) {
+		_, err := v.Verify(ctx, retired)
+		t.Errorf("a retired key after KeyMaxAge and a refresh: %v", err)
+	}
+	if p.Hits() != 3 {
+		t.Errorf("%d fetches, want 3", p.Hits())
 	}
 }
 
@@ -284,6 +295,11 @@ func TestJWKSUnavailable(t *testing.T) {
 	}
 	if _, err := v.Verify(ctx, p.Token(t, p.EC, nil, p.Claims("u", c.Now()))); !errors.Is(err, auth.ErrKeysUnavailable) {
 		t.Errorf("unknown kid while the provider is down: %v", err)
+	}
+	// The failed refresh has completed (the unknown kid waited for it); the
+	// cached keys survive it.
+	if _, err := v.Verify(ctx, p.Token(t, p.RSA, nil, p.Claims("u", c.Now()))); err != nil {
+		t.Errorf("stale keys after a failed refresh: %v", err)
 	}
 	c.Add(23 * time.Hour)
 	if _, err := v.Verify(ctx, p.Token(t, p.RSA, nil, p.Claims("u", c.Now()))); !errors.Is(err, auth.ErrKeysUnavailable) {
@@ -382,30 +398,32 @@ func TestJWKSRedirectNotFollowed(t *testing.T) {
 }
 
 // A request whose context is cancelled does not abort the refresh others
-// wait for; concurrent verification is race-free (run with -race).
+// wait for; it may itself give up with ErrKeysUnavailable. Concurrent
+// verification is race-free (run with -race).
 func TestConcurrentVerify(t *testing.T) {
 	p, v, _ := setup(t)
 	release := p.Hold()
 	ctx, cancel := context.WithCancel(context.Background())
 	tok := p.Token(t, p.RSA, nil, p.Claims("u", t0))
 	var wg sync.WaitGroup
-	errs := make(chan error, 32)
+	errs := make([]error, 32)
 	for i := range 32 {
 		wg.Go(func() {
 			c := context.Background()
 			if i == 0 {
 				c = ctx
 			}
-			_, err := v.Verify(c, tok)
-			errs <- err
+			_, errs[i] = v.Verify(c, tok)
 		})
 	}
 	cancel()
 	time.Sleep(20 * time.Millisecond)
 	release()
 	wg.Wait()
-	close(errs)
-	for err := range errs {
+	if err := errs[0]; err != nil && (!errors.Is(err, auth.ErrKeysUnavailable) || !errors.Is(err, context.Canceled)) {
+		t.Errorf("cancelled request: %v", err)
+	}
+	for _, err := range errs[1:] {
 		if err != nil {
 			t.Errorf("verify: %v", err)
 		}
@@ -479,19 +497,25 @@ func TestKeyAlgorithmPinned(t *testing.T) {
 	}
 }
 
-// A request that is already cancelled still completes the JWKS fetch it
-// starts: the fetch has its own context and timeout.
+// A request that is already cancelled gets ErrKeysUnavailable at once, but
+// the JWKS fetch it starts completes (it has its own context and timeout)
+// and serves the next request.
 func TestCancelledRequestStillFetches(t *testing.T) {
 	p, v, _ := setup(t)
 	release := p.Hold()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		release()
-	}()
-	if _, err := v.Verify(ctx, p.Token(t, p.RSA, nil, p.Claims("u", t0))); err != nil {
-		t.Errorf("cancelled request: %v", err)
+	tok := p.Token(t, p.RSA, nil, p.Claims("u", t0))
+	start := time.Now()
+	if _, err := v.Verify(ctx, tok); !errors.Is(err, auth.ErrKeysUnavailable) || !errors.Is(err, context.Canceled) || time.Since(start) > time.Second {
+		t.Errorf("cancelled request: %v after %v", err, time.Since(start))
+	}
+	if !waitFor(t, func() bool { return p.Hits() == 1 }) {
+		t.Fatal("the fetch did not reach the provider")
+	}
+	release()
+	if _, err := v.Verify(context.Background(), tok); err != nil {
+		t.Errorf("next request: %v", err)
 	}
 	if p.Hits() != 1 {
 		t.Errorf("%d fetches", p.Hits())

@@ -1,0 +1,17 @@
+== red round 2: current tests on 2a1de73 implementation (oidc.go, http.go, auth.go, config/auth.go)
+# github.com/kcl1104/geminus/internal/config [github.com/kcl1104/geminus/internal/config.test]
+internal/config/auth_test.go:36:106: cfg.RequireAccessTokenType undefined (type auth.Config has no field or method RequireAccessTokenType)
+internal/config/auth_test.go:37:62: cfg.RequireAccessTokenType undefined (type auth.Config has no field or method RequireAccessTokenType)
+# github.com/kcl1104/geminus/internal/auth_test [github.com/kcl1104/geminus/internal/auth.test]
+internal/auth/http_test.go:24:59: undefined: auth.ReasonNotBearer
+internal/auth/http_test.go:61:9: undefined: auth.ReasonNotBearer
+internal/auth/review_test.go:286:59: c.FetchTimeout undefined (type *auth.Config has no field or method FetchTimeout)
+internal/auth/review_test.go:287:59: c.FetchTimeout undefined (type *auth.Config has no field or method FetchTimeout)
+internal/auth/review_test.go:309:54: c.FetchTimeout undefined (type *auth.Config has no field or method FetchTimeout)
+internal/auth/review_test.go:311:54: c.RequireAccessTokenType undefined (type *auth.Config has no field or method RequireAccessTokenType)
+internal/auth/review_test.go:324:47: c.FetchTimeout undefined (type *auth.Config has no field or method FetchTimeout)
+internal/auth/review_test.go:356:52: c.RequireAccessTokenType undefined (type *auth.Config has no field or method RequireAccessTokenType)
+FAIL	github.com/kcl1104/geminus/internal/auth [build failed]
+FAIL	github.com/kcl1104/geminus/internal/config [build failed]
+FAIL
+exit 1

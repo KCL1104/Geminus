@@ -42,7 +42,8 @@ var (
 // Reason codes of a TokenError.
 const (
 	ReasonMissing        = "missing"          // no Authorization header
-	ReasonScheme         = "scheme"           // not a single "Bearer <token>"
+	ReasonNotBearer      = "not_bearer"       // credentials of another scheme (e.g. Basic)
+	ReasonScheme         = "scheme"           // several Authorization headers, or "Bearer" without a token
 	ReasonTokenInQuery   = "token_in_query"   // access_token in the URL (SECURITY §3)
 	ReasonTooLarge       = "too_large"        // longer than MaxTokenBytes
 	ReasonMalformed      = "malformed"        // not a compact JWS

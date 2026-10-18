@@ -32,6 +32,14 @@ func TestLoadAuth(t *testing.T) {
 	if err != nil || !slices.Equal(cfg.Algorithms, []string{"ES256", "PS256"}) {
 		t.Fatalf("algorithms: %v %v", cfg.Algorithms, err)
 	}
+	for value, want := range map[string]bool{"": false, "false": false, "true": true} {
+		if cfg, err := LoadAuth(env(withEnv(validAuth, "AUTH_OIDC_REQUIRE_AT_JWT", value))); err != nil || cfg.RequireAccessTokenType != want {
+			t.Errorf("AUTH_OIDC_REQUIRE_AT_JWT=%q: %v %v", value, cfg.RequireAccessTokenType, err)
+		}
+	}
+	if _, err := LoadAuth(env(withEnv(validAuth, "AUTH_OIDC_REQUIRE_AT_JWT", "yes"))); err == nil || !slices.Equal(codes(t, err), []string{"AUTH_OIDC_REQUIRE_AT_JWT:invalid"}) {
+		t.Errorf("AUTH_OIDC_REQUIRE_AT_JWT=yes: %v", err)
+	}
 	if _, err := LoadAuth(env(nil)); err == nil || !slices.Equal(codes(t, err), []string{"AUTH_OIDC_ISSUER:required", "AUTH_OIDC_AUDIENCE:required", "AUTH_OIDC_JWKS_URL:required"}) {
 		t.Errorf("empty: %v", err)
 	}
