@@ -94,7 +94,15 @@ MUTANTS = [
     ("cmd-operator-unchecked", CMD, "\tif err := provisioning.CheckOperator(ctx, db); errors.Is(err, provisioning.ErrNotOperator) {", "\tif err := provisioning.CheckOperator(ctx, db); false && errors.Is(err, provisioning.ErrNotOperator) {"),
 ]
 
-EQUIVALENT: dict[str, str] = {}
+EQUIVALENT: dict[str, str] = {
+    # Only RunOwners locks owner memberships, and every RunOwners runs the
+    # same query with the same plan, so all of them meet the rows in the
+    # same order with or without ORDER BY: no cycle among them either way.
+    # The user_id order is D-036's contract with any other code that locks
+    # owner rows (the T-007 SQL tests lock in that order); no test of this
+    # package can tell the two apart.
+    "owners-unordered": "every owner lock is this one query with one plan, so its lockers already agree on the order",
+}
 
 HARNESS_ERRORS = {
     "BUILD-FAILED": ("build failed", "setup failed"),
