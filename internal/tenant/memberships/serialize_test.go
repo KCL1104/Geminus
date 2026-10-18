@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"net/url"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -327,10 +329,17 @@ func TestOwnerLockAcrossPlans(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	opts := func(o string) *memberships.Service {
-		return &memberships.Service{DB: tenant.New(dbtest.Pool(t, dbtest.LoginURL(t, dbtest.APILogin)+"&options="+o, 4, true))}
+		u, err := url.Parse(dbtest.LoginURL(t, dbtest.APILogin))
+		if err != nil {
+			t.Fatal("invalid database URL")
+		}
+		q := u.Query()
+		q.Set("options", o)                                     // the startup options; the URL may or may not have a query already
+		u.RawQuery = strings.ReplaceAll(q.Encode(), "+", "%20") // pgx does not read "+" as a space
+		return &memberships.Service{DB: tenant.New(dbtest.Pool(t, u.String(), 4, true))}
 	}
-	seq := opts("-c%20enable_indexscan%3Doff%20-c%20enable_bitmapscan%3Doff%20-c%20enable_indexonlyscan%3Doff")
-	idx := opts("-c%20enable_seqscan%3Doff%20-c%20enable_bitmapscan%3Doff")
+	seq := opts("-c enable_indexscan=off -c enable_bitmapscan=off -c enable_indexonlyscan=off")
+	idx := opts("-c enable_seqscan=off -c enable_bitmapscan=off")
 	for round := range 3 {
 		base := time.Now().Add(-time.Hour)
 		a, b, v := e.userAt(t, base), e.userAt(t, base.Add(time.Minute)), e.userAt(t, base.Add(2*time.Minute))

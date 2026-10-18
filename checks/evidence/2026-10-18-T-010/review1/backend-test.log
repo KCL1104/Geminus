@@ -1,0 +1,40 @@
+go vet ./cmd/... ./internal/... ./schemas/... ./scripts/...
+go test ./cmd/... ./internal/... ./schemas/... ./scripts/...
+ok  	github.com/kcl1104/geminus/cmd/api	0.035s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.016s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.010s
+ok  	github.com/kcl1104/geminus/internal/api	0.014s
+ok  	github.com/kcl1104/geminus/internal/auth	11.408s
+?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/config	0.016s
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.295s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	6.916s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.641s
+ok  	github.com/kcl1104/geminus/internal/httpapi	0.094s
+ok  	github.com/kcl1104/geminus/internal/ids	0.021s
+ok  	github.com/kcl1104/geminus/internal/model	0.396s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.302s
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.178s
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.375s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	0.127s
+ok  	github.com/kcl1104/geminus/internal/models	0.030s
+ok  	github.com/kcl1104/geminus/internal/project	0.016s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.439s
+ok  	github.com/kcl1104/geminus/internal/simulation	0.210s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	1.080s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	4.136s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.068s
+?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	0.617s
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	0.011s
+ok  	github.com/kcl1104/geminus/internal/storage/models	0.017s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	0.016s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	0.006s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.017s
+ok  	github.com/kcl1104/geminus/internal/tenant	0.007s
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	0.017s
+?   	github.com/kcl1104/geminus/schemas	[no test files]
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	79.489s
