@@ -1,0 +1,38 @@
+main-violations-exit-0	SURVIVED 
+main-errs-ignored	SURVIVED 
+main-load-error-exit-0	SURVIVED 
+load-deps-errors-ignored	SURVIVED 
+load-roots-not-required	SURVIVED 
+tests-only-xtests	KILLED --- FAIL: TestProbesAreCaught (2.29s)
+third-party-inmodule-dropped	KILLED --- FAIL: TestRepositoryConforms (0.17s)
+kernel-no-schemas	SURVIVED 
+iostd-no-net	SURVIVED 
+iostd-no-sql	SURVIVED 
+iostd-no-plugin-tls-rpc-smtp-mail	SURVIVED 
+applayers-no-cmd	SURVIVED 
+applayers-no-config	SURVIVED 
+applayers-no-ai-audit-auth-import-project	SURVIVED 
+kernel-tests-no-applayers	SURVIVED 
+kernel-tests-no-http	SURVIVED 
+packs-no-iostd	KILLED --- FAIL: TestProbesAreCaught (2.46s)
+packs-testing-allowed	SURVIVED 
+conformance-may-use-applayers	SURVIVED 
+ai-rule-no-exec-tenant	SURVIVED 
+db-rule-only-pgx	SURVIVED 
+run-suite-error-ignored	SURVIVED 
+copies-resourcetypes-not-mutated	SURVIVED 
+copies-resources-not-mutated	SURVIVED 
+fail-closed-any-path	SURVIVED 
+fail-closed-any-severity	SURVIVED 
+views-no-unpositioned-variant	SURVIVED 
+inference-context-not-cancelled	SURVIVED 
+prompt-resources-not-compared	SURVIVED 
+concurrent-one-goroutine	SURVIVED 
+metrics-deterministic-skip	BUILD-FAILED /kcl1104/geminus/internal/domainpack/conformance
+../tmp/tmpdzu0vwkt/m30.go:438:3: declared and not used: again
+# github.com/kcl1104/geminus/internal/domainpack/conformance [github.com/kcl1104/geminus/internal/domainpack/conformance.test]
+../tmp/tmpdzu0vwkt/m30.go:438:3: declared and not used: again
+
+metrics-schema-ignores-error	SURVIVED 
+generic-part-ignores-additional	SURVIVED 
+views-one-saved-on-first-node	KILLED --- FAIL: TestBrokenPacksAreCaught (0.58s)

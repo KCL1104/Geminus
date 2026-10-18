@@ -37,6 +37,14 @@ var ioStd = []string{
 	"database/sql/...", "os/exec", "plugin", "crypto/tls",
 }
 
+// directIO is what kernel and pack code may not import itself: the file
+// system and process API, raw system calls, unsafe (go:linkname needs it)
+// and cgo ("C" is always a package's own import, so this is where it is
+// caught, for every kernel and pack package). The standard library still uses them underneath, so this applies
+// to a package's own imports only. Import rules cannot see a call; with
+// these out of reach, I/O needs one of the forbidden packages.
+var directIO = []string{"os", "os/signal", "os/user", "syscall", "unsafe", "runtime/cgo", "C", "plugin", "golang.org/x/sys/..."}
+
 // Database drivers and LLM SDKs. This list cannot be complete; the kernel's
 // third-party allowlist below is what stops an unlisted one.
 var dbDrivers = []string{
@@ -74,6 +82,9 @@ type rule struct {
 	// they also match allow. thirdParty, when set, is the only non-standard,
 	// non-module code allowed.
 	forbid, allow, thirdParty []string
+	// forbidDirect: imports the package itself may not have (transitive
+	// dependencies may).
+	forbidDirect []string
 	// unitDepth > 0 allows dependencies that share the package's first
 	// unitDepth path elements (a pack may use its own subpackages).
 	unitDepth int
@@ -95,12 +106,13 @@ func cat(lists ...[]string) []string {
 
 var rules = []rule{
 	{
-		name:       "generic-kernel",
-		why:        "the generic kernel imports no domain pack, application layer, I/O, database or LLM SDK (AGENTS.md §2, REQ-003)",
-		applies:    genericKernel,
-		forbid:     cat([]string{"./internal/domainpack/..."}, appLayers, testInfra, ioStd, dbDrivers, llmSDKs, []string{"testing"}),
-		allow:      []string{"./internal/domainpack"},
-		thirdParty: kernelThirdParty,
+		name:         "generic-kernel",
+		why:          "the generic kernel imports no domain pack, application layer, I/O, database or LLM SDK (AGENTS.md §2, REQ-003)",
+		applies:      genericKernel,
+		forbid:       cat([]string{"./internal/domainpack/..."}, appLayers, testInfra, ioStd, dbDrivers, llmSDKs, []string{"testing"}),
+		allow:        []string{"./internal/domainpack"},
+		thirdParty:   kernelThirdParty,
+		forbidDirect: directIO,
 	},
 	{
 		name:    "generic-kernel-tests",
@@ -111,13 +123,14 @@ var rules = []rule{
 		tests:   true,
 	},
 	{
-		name:      "domain-packs",
-		why:       "a DomainPack builds on the generic kernel only: no other pack, application layer, I/O, database or LLM SDK (docs/ARCHITECTURE.md §2–§3)",
-		applies:   []string{"./internal/domainpack/..."},
-		except:    cat([]string{"./internal/domainpack"}, testInfra),
-		forbid:    cat([]string{"./internal/domainpack/..."}, appLayers, testInfra, ioStd, dbDrivers, llmSDKs, []string{"testing"}),
-		allow:     []string{"./internal/domainpack"},
-		unitDepth: 3,
+		name:         "domain-packs",
+		why:          "a DomainPack builds on the generic kernel only: no other pack, application layer, I/O, database or LLM SDK (docs/ARCHITECTURE.md §2–§3)",
+		applies:      []string{"./internal/domainpack/..."},
+		except:       cat([]string{"./internal/domainpack"}, testInfra),
+		forbid:       cat([]string{"./internal/domainpack/..."}, appLayers, testInfra, ioStd, dbDrivers, llmSDKs, []string{"testing"}),
+		allow:        []string{"./internal/domainpack"},
+		unitDepth:    3,
+		forbidDirect: directIO,
 	},
 	{
 		name:    "conformance-is-generic",

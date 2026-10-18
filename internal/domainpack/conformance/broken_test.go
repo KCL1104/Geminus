@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -352,6 +353,209 @@ func (p emptyRule) PromptContext() domainpack.PromptContext {
 	return c
 }
 
+// T-042 review: packs the first suite let through.
+
+type nanMetric struct{ queuePack }
+
+func (nanMetric) ComputeMetrics(*simulation.Result) map[string]simulation.MetricSummary {
+	v := math.NaN()
+	return map[string]simulation.MetricSummary{"nan": {Status: simulation.Available, Mean: &v, P50: &v, P95: &v, SampleCount: 1, Population: simulation.PopulationReplication, Unit: "x"}}
+}
+
+// onEnginePath is true while the engine calls ComputeMetrics: the digest is
+// not yet set. A pack that behaves differently there fools a check that
+// only calls ComputeMetrics directly.
+func onEnginePath(r *simulation.Result) bool { return r.Reproducibility.ResultDigest == "" }
+
+type panicsOnEnginePath struct{ queuePack }
+
+func (p panicsOnEnginePath) ComputeMetrics(r *simulation.Result) map[string]simulation.MetricSummary {
+	if onEnginePath(r) {
+		panic("engine path")
+	}
+	return p.queuePack.ComputeMetrics(r)
+}
+
+type rewritesSeed struct{ queuePack }
+
+func (p rewritesSeed) ComputeMetrics(r *simulation.Result) map[string]simulation.MetricSummary {
+	if onEnginePath(r) {
+		r.Reproducibility.Seed = 7
+		r.Reproducibility.ModelHash = "sha256:" + strings.Repeat("0", 64)
+	}
+	return p.queuePack.ComputeMetrics(r)
+}
+
+type rewritesQueues struct{ queuePack }
+
+func (p rewritesQueues) ComputeMetrics(r *simulation.Result) map[string]simulation.MetricSummary {
+	if onEnginePath(r) {
+		for k, q := range r.Metrics.Queues {
+			q.SampleCount++
+			r.Metrics.Queues[k] = q
+		}
+	}
+	return p.queuePack.ComputeMetrics(r)
+}
+
+type rewritesAdditional struct{ queuePack }
+
+func (p rewritesAdditional) ComputeMetrics(r *simulation.Result) map[string]simulation.MetricSummary {
+	if onEnginePath(r) {
+		reason := "X"
+		r.Metrics.AdditionalMetrics["zz_injected"] = simulation.MetricSummary{Status: simulation.Unavailable, Population: simulation.PopulationReplication, Unit: "x", Reason: &reason}
+	}
+	return p.queuePack.ComputeMetrics(r)
+}
+
+var (
+	lastSeenMu sync.Mutex
+	lastSeen   string
+)
+
+// leaksIntoPrompt remembers the last model it validated and puts its name
+// into the prompt context.
+type leaksIntoPrompt struct{ queuePack }
+
+func (p leaksIntoPrompt) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir != nil {
+		lastSeenMu.Lock()
+		lastSeen = ir.Name
+		lastSeenMu.Unlock()
+	}
+	return p.queuePack.Validate(ir)
+}
+
+func (p leaksIntoPrompt) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	lastSeenMu.Lock()
+	defer lastSeenMu.Unlock()
+	if lastSeen != "" && lastSeen != "Test-only service counter" {
+		c.Rules = append(c.Rules, "Customer model: "+lastSeen)
+	}
+	return c
+}
+
+// answers is a correct pack that infers: an error without events or with a
+// cancelled context, a valid model of its domain otherwise.
+type answers struct {
+	queuePack
+	m model.ModelIR
+}
+
+func (p answers) InferFromEvents(ctx context.Context, d domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if len(d.Events) == 0 {
+		return nil, fmt.Errorf("%w: no events", domainpack.ErrUnavailable)
+	}
+	m := clone(&p.m)
+	return &domainpack.InferenceResult{Model: &m, Assumptions: []string{"test-only"}}, nil
+}
+
+// infersFromNothing invents a model from an empty dataset.
+type infersFromNothing struct{ answers }
+
+func (p infersFromNothing) InferFromEvents(ctx context.Context, _ domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	return p.answers.InferFromEvents(ctx, events)
+}
+
+var sharedTypes = []string{"generic", "human"}
+
+type sharedResourceTypes struct{ queuePack }
+
+func (p sharedResourceTypes) NodeCatalog() []domainpack.NodeDefinition {
+	n := p.queuePack.NodeCatalog()
+	n[2].ResourceTypes = sharedTypes
+	return n
+}
+func (p sharedResourceTypes) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	c.Nodes = p.NodeCatalog()
+	return c
+}
+
+var sharedRes = queuePack{}.ResourceCatalog()
+
+type sharedResources struct{ queuePack }
+
+func (sharedResources) ResourceCatalog() []domainpack.ResourceDefinition { return sharedRes }
+func (p sharedResources) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	c.Resources = p.ResourceCatalog()
+	return c
+}
+
+type mismatchWithoutPath struct{ queuePack }
+
+func (p mismatchWithoutPath) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir != nil && ir.Domain != queueDomain {
+		return []model.ValidationIssue{model.NewIssue(DomainMismatch, "", "other domain", model.SeverityError)}
+	}
+	return p.queuePack.Validate(ir)
+}
+
+type mismatchAsWarning struct{ queuePack }
+
+func (p mismatchAsWarning) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir != nil && ir.Domain != queueDomain {
+		return []model.ValidationIssue{model.NewIssue(DomainMismatch, "/domain", "other domain", model.SeverityWarning)}
+	}
+	return p.queuePack.Validate(ir)
+}
+
+// layoutOnlyWithSavedPositions lays nothing out for an IR with no saved
+// position.
+type layoutOnlyWithSavedPositions struct{ queuePack }
+
+func (p layoutOnlyWithSavedPositions) DefaultViews(ir *model.ModelIR) domainpack.ViewDefinitions {
+	if len(ir.Views.TwoD.Positions) == 0 {
+		return domainpack.ViewDefinitions{Positions: map[string]model.Position{}}
+	}
+	return p.queuePack.DefaultViews(ir)
+}
+
+// ignoresSavedWhenPlacing lays the other nodes out as if nothing were saved.
+type ignoresSavedWhenPlacing struct{ queuePack }
+
+func (ignoresSavedWhenPlacing) DefaultViews(ir *model.ModelIR) domainpack.ViewDefinitions {
+	c := *ir
+	c.Views.TwoD.Positions = nil
+	v := domainpack.LayeredLayout(&c)
+	for id, pos := range ir.Views.TwoD.Positions {
+		v.Positions[id] = pos
+	}
+	return v
+}
+
+var validated atomic.Int64
+
+// countsIntoPrompt reports in its prompt context how many models it has
+// validated: stable between two calls, changed after seeing models.
+type countsIntoPrompt struct{ queuePack }
+
+func (p countsIntoPrompt) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	validated.Add(1)
+	return p.queuePack.Validate(ir)
+}
+
+func (p countsIntoPrompt) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	if n := validated.Load(); n > 0 {
+		c.Rules = append(c.Rules, fmt.Sprintf("seen %d models", n))
+	}
+	return c
+}
+
+type promptDropsResources struct{ queuePack }
+
+func (p promptDropsResources) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	c.Resources = nil
+	return c
+}
+
 type panicsEverywhere struct{ queuePack }
 
 func (panicsEverywhere) NodeCatalog() []domainpack.NodeDefinition { panic("boom") }
@@ -402,6 +606,21 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 		{unencodableViews{}, "views/valid-ir"},
 		{emptySummary{}, "prompt/context"},
 		{emptyRule{}, "prompt/context"},
+		{nanMetric{}, "metrics/run"},
+		{panicsOnEnginePath{}, "metrics/run"},
+		{rewritesSeed{}, "metrics/generic-unchanged"},
+		{rewritesQueues{}, "metrics/generic-unchanged"},
+		{rewritesAdditional{}, "metrics/generic-unchanged"},
+		{leaksIntoPrompt{}, "prompt/static"},
+		{infersFromNothing{answers{m: m}}, "inference/needs-input"},
+		{sharedResourceTypes{}, "catalog/copies"},
+		{sharedResources{}, "catalog/copies"},
+		{mismatchWithoutPath{}, "validate/fail-closed"},
+		{mismatchAsWarning{}, "validate/fail-closed"},
+		{layoutOnlyWithSavedPositions{}, "views/covers-nodes"},
+		{ignoresSavedWhenPlacing{}, "views/no-overlap"},
+		{promptDropsResources{}, "prompt/catalogs"},
+		{countsIntoPrompt{}, "prompt/static"},
 	}
 	for _, c := range cases {
 		name := typeName(c.pack)
@@ -418,9 +637,20 @@ func TestBrokenPacksAreCaught(t *testing.T) {
 			t.Errorf("no %s finding; got %v", c.check, findings)
 		})
 	}
-	// The correct pack has none.
-	if findings, err := Check(context.Background(), Suite{Pack: queuePack{}, Models: []model.ModelIR{m}}); err != nil || len(findings) > 0 {
-		t.Errorf("queuePack: %v %v", err, findings)
+	// Correct packs have none: one that declines inference, one that
+	// answers it, and one whose ID is 123 characters long (the suite's
+	// renamed domain must stay valid, T-042 review B3).
+	long := strings.Repeat("d", 123)
+	lm := clone(&m)
+	lm.Domain = long
+	for name, s := range map[string]Suite{
+		"declines": {Pack: queuePack{}, Models: []model.ModelIR{m}},
+		"answers":  {Pack: answers{m: m}, Models: []model.ModelIR{m}},
+		"long ID":  {Pack: longID{id: long}, Models: []model.ModelIR{lm}},
+	} {
+		if findings, err := Check(context.Background(), s); err != nil || len(findings) > 0 {
+			t.Errorf("%s: %v %v", name, err, findings)
+		}
 	}
 }
 
@@ -458,6 +688,23 @@ func TestHelperRunBrokenPack(t *testing.T) {
 	Run(t, Suite{Pack: acceptsAnything{}, Models: []model.ModelIR{queueModel(t)}})
 }
 
+// An invalid suite fails Run instead of passing silently (T-042 review C).
+func TestRunFailsInvalidSuites(t *testing.T) {
+	cmd := exec.Command(os.Args[0], "-test.run=^TestHelperRunInvalidSuite$", "-test.count=1")
+	cmd.Env = append(os.Environ(), "CONFORMANCE_HELPER=1")
+	out, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "invalid suite") {
+		t.Errorf("Run passed an invalid suite (err %v):\n%s", err, out)
+	}
+}
+
+func TestHelperRunInvalidSuite(t *testing.T) {
+	if os.Getenv("CONFORMANCE_HELPER") != "1" {
+		return // only meaningful in the child process of TestRunFailsInvalidSuites
+	}
+	Run(t, Suite{Pack: queuePack{}})
+}
+
 // A suite without models, or with a model the generic validator rejects,
 // is an error rather than a pass.
 func TestInvalidSuites(t *testing.T) {
@@ -475,20 +722,84 @@ func TestInvalidSuites(t *testing.T) {
 func TestConcurrentDisagreement(t *testing.T) {
 	m := queueModel(t)
 	c := &checker{s: Suite{Pack: promptChanges{n: new(atomic.Int64)}, Models: []model.ModelIR{m}}}
-	c.concurrent()
+	c.concurrent(context.Background())
 	if len(c.findings) == 0 || c.findings[0].Check != "concurrent" {
 		t.Errorf("findings %v", c.findings)
 	}
+	plain, err := runWithPack(func() simulation.RunInput {
+		in, _ := (&checker{s: Suite{Models: []model.ModelIR{m}}}).freeze(m)
+		return in
+	}(), queuePack{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The metrics step keeps an engine result, so the concurrency and
+	// static checks can call ComputeMetrics.
+	kept := &checker{s: Suite{Pack: queuePack{}, Models: []model.ModelIR{m}}}
+	kept.metrics(context.Background())
+	if kept.result == nil {
+		t.Fatal("the metrics step kept no engine result")
+	}
+	c = &checker{s: Suite{Pack: countsMetrics{n: new(atomic.Int64)}, Models: []model.ModelIR{m}}, result: plain}
+	c.concurrent(context.Background())
+	if len(c.findings) == 0 || c.findings[0].Check != "concurrent" {
+		t.Errorf("ComputeMetrics disagreeing across goroutines: %v", c.findings)
+	}
+	c = &checker{s: Suite{Pack: countsInference{n: new(atomic.Int64)}, Models: []model.ModelIR{m}}}
+	c.concurrent(context.Background())
+	if len(c.findings) == 0 || c.findings[0].Check != "concurrent" {
+		t.Errorf("InferFromEvents disagreeing across goroutines: %v", c.findings)
+	}
 	c = &checker{s: Suite{Pack: panicsLater{n: new(atomic.Int64)}, Models: []model.ModelIR{m}}}
-	c.concurrent()
+	c.concurrent(context.Background())
 	if len(c.findings) == 0 || !strings.Contains(c.findings[0].Detail, "panicked") {
 		t.Errorf("panicking goroutines: %v", c.findings)
 	}
 	c = &checker{s: Suite{Pack: queuePack{}, Models: []model.ModelIR{m}}}
-	c.concurrent()
+	c.concurrent(context.Background())
 	if len(c.findings) != 0 {
 		t.Errorf("queuePack: %v", c.findings)
 	}
+}
+
+type longID struct {
+	queuePack
+	id string
+}
+
+func (p longID) ID() string { return p.id }
+func (p longID) Validate(ir *model.ModelIR) []model.ValidationIssue {
+	if ir == nil || ir.Domain != p.id {
+		return []model.ValidationIssue{model.NewIssue(DomainMismatch, "/domain", "other domain", model.SeverityError)}
+	}
+	return nil
+}
+func (p longID) PromptContext() domainpack.PromptContext {
+	c := p.queuePack.PromptContext()
+	c.Domain = p.id
+	return c
+}
+
+// countsMetrics returns how often ComputeMetrics ran: concurrent calls
+// disagree with the sequential one.
+type countsMetrics struct {
+	queuePack
+	n *atomic.Int64
+}
+
+func (p countsMetrics) ComputeMetrics(*simulation.Result) map[string]simulation.MetricSummary {
+	v := float64(p.n.Add(1))
+	return map[string]simulation.MetricSummary{"calls": {Status: simulation.Available, Mean: &v, P50: &v, P95: &v, SampleCount: 1, Population: simulation.PopulationReplication, Unit: "call"}}
+}
+
+// countsInference answers with how often it was asked.
+type countsInference struct {
+	queuePack
+	n *atomic.Int64
+}
+
+func (p countsInference) InferFromEvents(context.Context, domainpack.CanonicalEventDataset) (*domainpack.InferenceResult, error) {
+	return nil, fmt.Errorf("%w: call %d", domainpack.ErrUnavailable, p.n.Add(1))
 }
 
 type panicsLater struct {

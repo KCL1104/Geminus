@@ -7,91 +7,270 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 )
 
 // pkg is one package of the build graph, as `go list -json` reports it.
 type pkg struct {
-	ImportPath   string
-	Standard     bool
-	ForTest      string
-	Imports      []string
-	TestImports  []string
-	XTestImports []string
-	Error        *struct{ Err string }
-	DepsErrors   []*struct{ Err string }
+	ImportPath     string
+	Dir            string
+	Standard       bool
+	ForTest        string
+	Imports        []string
+	TestImports    []string
+	XTestImports   []string
+	IgnoredGoFiles []string
+	Error          *struct{ Err string }
+	DepsErrors     []*struct{ Err string }
 }
 
-// graph maps import paths to packages; roots are the packages listed by the
-// patterns (not their dependencies).
+// buildConfig is one platform the graph is read for.
+type buildConfig struct{ GOOS, GOARCH, CGO string }
+
+func (c buildConfig) String() string { return c.GOOS + "/" + c.GOARCH + " cgo=" + c.CGO }
+
+// matrix is every platform the engine is built or checked for
+// (scripts/check_no_fma.sh) plus darwin and windows, each with cgo on and
+// off: a file behind a platform suffix or a cgo tag is compiled somewhere,
+// so its imports must be checked (T-042 review). go list evaluates build
+// constraints without compiling, so no cross toolchain is needed.
+var matrix = func() []buildConfig {
+	var out []buildConfig
+	for _, p := range []string{"linux/amd64", "linux/arm64", "linux/ppc64le", "linux/s390x", "linux/riscv64", "linux/loong64", "darwin/arm64", "windows/amd64"} {
+		goos, goarch, _ := strings.Cut(p, "/")
+		for _, cgo := range []string{"1", "0"} {
+			out = append(out, buildConfig{goos, goarch, cgo})
+		}
+	}
+	return out
+}()
+
+// host is the current platform only, for tests that do not need the matrix.
+var host = []buildConfig{{GOOS: "", GOARCH: "", CGO: ""}}
+
+// graph is the union of the build graphs of every configuration: a package's
+// imports are those of any platform. unbuilt lists, per root, the Go files
+// that no configuration compiles (a custom build tag, //go:build ignore):
+// their imports are invisible, so they are reported.
 type graph struct {
-	pkgs  map[string]*pkg
-	roots []string
+	pkgs    map[string]*pkg
+	roots   []string
+	unbuilt map[string][]string
+	// unlisted are directories of the module with Go files that no
+	// configuration lists as a package: a whole package behind a custom tag.
+	unlisted []string
 }
 
-// load runs `go list -e -deps -test -json` in dir. A package that does not
-// build (a missing import, a syntax error) is an error, not a pass. Test
-// variants ("p [q.test]", "q.test") are dropped: a package's test imports are
-// on its plain entry, and their dependencies are ordinary packages of the graph.
-func load(dir string, goflags []string, patterns ...string) (*graph, error) {
-	roots, err := goList(dir, append(append([]string{"list", "-e", "-f", "{{.ImportPath}}"}, goflags...), patterns...))
-	if err != nil {
-		return nil, err
+// load runs `go list -e -deps -test -json` in dir for each configuration
+// and merges the results. A package that does not build in some
+// configuration, test files included, is an error, not a pass; a package
+// whose files a platform excludes entirely is simply absent there.
+func load(dir string, goflags []string, configs []buildConfig, patterns ...string) (*graph, error) {
+	g := &graph{pkgs: map[string]*pkg{}, unbuilt: map[string][]string{}}
+	rootSet := map[string]bool{}
+	ignored := map[string]map[string]int{} // root -> file -> configurations that ignore it
+	for _, c := range configs {
+		roots, err := goList(dir, c, append(append([]string{"list", "-e", "-f", "{{.ImportPath}}"}, goflags...), patterns...))
+		if err != nil {
+			return nil, err
+		}
+		out, err := goList(dir, c, append(append([]string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,Standard,ForTest,Imports,TestImports,XTestImports,IgnoredGoFiles,Error,DepsErrors"}, goflags...), patterns...))
+		if err != nil {
+			return nil, err
+		}
+		here := map[string]bool{}
+		for _, r := range strings.Fields(string(roots)) {
+			here[r] = true
+		}
+		dec := jsontext.NewDecoder(bytes.NewReader(out))
+		for {
+			var p pkg
+			if err := json.UnmarshalDecode(dec, &p); errors.Is(err, io.EOF) {
+				break
+			} else if err != nil {
+				return nil, fmt.Errorf("decoding go list: %w", err)
+			}
+			if p.Error != nil && strings.Contains(p.Error.Err, "build constraints exclude all Go files") {
+				if here[p.ImportPath] {
+					if ignored[p.ImportPath] == nil {
+						ignored[p.ImportPath] = map[string]int{}
+					}
+					for _, f := range p.IgnoredGoFiles {
+						ignored[p.ImportPath][f]++
+					}
+				}
+				continue // the package does not exist on this platform
+			}
+			if p.Error != nil {
+				return nil, fmt.Errorf("%s (%s): %s", p.ImportPath, c, p.Error.Err)
+			}
+			for _, e := range p.DepsErrors {
+				return nil, fmt.Errorf("%s (%s): %s", p.ImportPath, c, e.Err)
+			}
+			if p.ForTest != "" || strings.HasSuffix(p.ImportPath, ".test") || strings.Contains(p.ImportPath, " ") {
+				continue // test variants: checked for errors above, merged through the plain entry
+			}
+			if here[p.ImportPath] {
+				rootSet[p.ImportPath] = true
+				if ignored[p.ImportPath] == nil {
+					ignored[p.ImportPath] = map[string]int{}
+				}
+				for _, f := range p.IgnoredGoFiles {
+					ignored[p.ImportPath][f]++
+				}
+			}
+			if q := g.pkgs[p.ImportPath]; q != nil {
+				q.Imports = union(q.Imports, p.Imports)
+				q.TestImports = union(q.TestImports, p.TestImports)
+				q.XTestImports = union(q.XTestImports, p.XTestImports)
+			} else {
+				g.pkgs[p.ImportPath] = &p
+			}
+		}
 	}
-	out, err := goList(dir, append(append([]string{"list", "-e", "-deps", "-test", "-json=ImportPath,Standard,ForTest,Imports,TestImports,XTestImports,Error,DepsErrors"}, goflags...), patterns...))
-	if err != nil {
-		return nil, err
+	for r := range rootSet {
+		g.roots = append(g.roots, r)
+		for f, n := range ignored[r] {
+			if n == len(configs) && len(configs) == len(matrix) {
+				g.unbuilt[r] = append(g.unbuilt[r], f)
+			}
+		}
+		slices.Sort(g.unbuilt[r])
 	}
-	g := &graph{pkgs: map[string]*pkg{}, roots: strings.Fields(string(roots))}
-	dec := jsontext.NewDecoder(bytes.NewReader(out))
-	for {
-		var p pkg
-		if err := json.UnmarshalDecode(dec, &p); errors.Is(err, io.EOF) {
-			break
-		} else if err != nil {
-			return nil, fmt.Errorf("decoding go list: %w", err)
-		}
-		if p.ForTest != "" || strings.HasSuffix(p.ImportPath, ".test") || strings.Contains(p.ImportPath, " ") {
-			continue
-		}
-		if p.Error != nil {
-			return nil, fmt.Errorf("%s: %s", p.ImportPath, p.Error.Err)
-		}
-		for _, e := range p.DepsErrors {
-			return nil, fmt.Errorf("%s: %s", p.ImportPath, e.Err)
-		}
-		g.pkgs[p.ImportPath] = &p
+	slices.Sort(g.roots)
+	if len(g.roots) == 0 {
+		return nil, errors.New("go list found no package")
 	}
-	for _, r := range g.roots {
-		if g.pkgs[r] == nil {
-			return nil, fmt.Errorf("go list did not describe %s", r)
+	if len(configs) == len(matrix) && slices.Equal(patterns, defaultPatterns) {
+		listed := map[string]bool{}
+		for _, r := range g.roots {
+			listed[g.pkgs[r].Dir] = true
+		}
+		dirs, err := goDirs(dir, goflags)
+		if err != nil {
+			return nil, err
+		}
+		for _, d := range dirs {
+			if !listed[d] {
+				g.unlisted = append(g.unlisted, d)
+			}
 		}
 	}
 	return g, nil
 }
 
-func goList(dir string, args []string) ([]byte, error) {
+// goDirs lists the module's directories that hold Go files, as ./... walks
+// them (no testdata, vendor, node_modules, nested modules, or names starting
+// with "." or "_"), including files a -overlay adds.
+func goDirs(dir string, goflags []string) ([]string, error) {
+	root, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
+	}
+	set := map[string]bool{}
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if path != root && (strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") || name == "testdata" || name == "vendor" || name == "node_modules") {
+				return filepath.SkipDir
+			}
+			if path != root {
+				if _, err := os.Stat(filepath.Join(path, "go.mod")); err == nil {
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+		if strings.HasSuffix(path, ".go") {
+			set[filepath.Dir(path)] = true
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range goflags {
+		ov, ok := strings.CutPrefix(f, "-overlay=")
+		if !ok {
+			continue
+		}
+		data, err := os.ReadFile(ov)
+		if err != nil {
+			return nil, err
+		}
+		var o struct{ Replace map[string]string }
+		if err := json.Unmarshal(data, &o); err != nil {
+			return nil, fmt.Errorf("overlay: %w", err)
+		}
+		for path, src := range o.Replace {
+			rel, err := filepath.Rel(root, path)
+			if err != nil || src == "" || !strings.HasSuffix(path, ".go") || strings.HasPrefix(rel, "..") {
+				continue
+			}
+			skip := false
+			for _, e := range strings.Split(filepath.Dir(rel), string(filepath.Separator)) {
+				if strings.HasPrefix(e, ".") && e != "." || strings.HasPrefix(e, "_") || e == "testdata" || e == "vendor" || e == "node_modules" {
+					skip = true
+				}
+			}
+			if !skip {
+				set[filepath.Dir(path)] = true
+			}
+		}
+	}
+	out := make([]string, 0, len(set))
+	for d := range set {
+		out = append(out, d)
+	}
+	slices.Sort(out)
+	return out, nil
+}
+
+func union(a, b []string) []string {
+	for _, s := range b {
+		if !slices.Contains(a, s) {
+			a = append(a, s)
+		}
+	}
+	return a
+}
+
+func goList(dir string, c buildConfig, args []string) ([]byte, error) {
 	cmd := exec.Command("go", args...)
 	cmd.Dir = dir
+	if c.GOOS != "" {
+		cmd.Env = append(os.Environ(), "GOOS="+c.GOOS, "GOARCH="+c.GOARCH, "CGO_ENABLED="+c.CGO)
+	}
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("go %s: %w: %s", strings.Join(args[:1], " "), err, strings.TrimSpace(stderr.String()))
+		return nil, fmt.Errorf("go %s (%s): %w: %s", strings.Join(args[:1], " "), c, err, strings.TrimSpace(stderr.String()))
 	}
 	return out, nil
 }
 
-// violation is one forbidden dependency with the import chain that reaches it.
+// violation is one forbidden dependency with the import chain that reaches
+// it, or (detail set) a structural problem of one package.
 type violation struct {
 	rule, why, pkg string
 	chain          []string // pkg ... dep
 	test           bool
+	detail         string
 }
 
 func (v violation) String() string {
+	if v.detail != "" {
+		return fmt.Sprintf("[%s] %s: %s\n    rule: %s", v.rule, rel(v.pkg), v.detail, v.why)
+	}
 	kind := "depends on"
 	if v.test {
 		kind = "tests depend on"
@@ -159,6 +338,7 @@ func sameUnit(a, b string, depth int) bool {
 // patterns match no root is reported unless it is marked future, so a typo
 // cannot silently guard nothing.
 func check(g *graph, rules []rule) (violations []violation, errs []error) {
+	violations = structure(g)
 	for _, r := range rules {
 		matched := 0
 		for _, root := range g.roots {
@@ -166,6 +346,11 @@ func check(g *graph, rules []rule) (violations []violation, errs []error) {
 				continue
 			}
 			matched++
+			for _, imp := range g.pkgs[root].Imports {
+				if matchAny(r.forbidDirect, imp) {
+					violations = append(violations, violation{rule: r.name, why: r.why, pkg: root, chain: []string{root, imp}})
+				}
+			}
 			start := []string{root}
 			if r.tests {
 				p := g.pkgs[root]
@@ -178,6 +363,32 @@ func check(g *graph, rules []rule) (violations []violation, errs []error) {
 		}
 	}
 	return violations, errs
+}
+
+// structure reports what no import rule can see: Go files that no
+// configuration of the matrix compiles, and a pack that is not a direct
+// child of internal/domainpack (two packs under one directory would count
+// as one unit and could import each other).
+func structure(g *graph) []violation {
+	var out []violation
+	for _, d := range g.unlisted {
+		out = append(out, violation{rule: "every-file-built", pkg: d, detail: "a directory with Go files that no platform of the matrix builds as a package, so its imports are not checked",
+			why: "a package only a custom tag compiles could import anything (T-042 review); build it on a matrix platform or remove it"})
+	}
+	for _, root := range g.roots {
+		for _, f := range g.unbuilt[root] {
+			out = append(out, violation{rule: "every-file-built", pkg: root, detail: f + " is excluded by build constraints on every platform of the matrix, so its imports are not checked",
+				why: "a file only a custom tag compiles could import anything (T-042 review); build it on a matrix platform or remove it"})
+		}
+		if r, ok := strings.CutPrefix(root, module+"/internal/domainpack/"); ok {
+			unit, _, nested := strings.Cut(r, "/")
+			if nested && unit != "conformance" && !slices.Contains(g.roots, module+"/internal/domainpack/"+unit) {
+				out = append(out, violation{rule: "pack-layout", pkg: root, detail: "./internal/domainpack/" + unit + " is not a package: a pack is a direct child of internal/domainpack, and its subpackages are its own",
+					why: "domain-packs groups a pack with its subpackages; a directory holding several packs would let them import each other"})
+			}
+		}
+	}
+	return out
 }
 
 // walk visits the dependency closure from start in import order and reports
@@ -227,7 +438,7 @@ func bad(r rule, root, dep string, p *pkg) bool {
 	if matchAny(r.forbid, dep) {
 		return true
 	}
-	if r.thirdParty == nil || inModule(dep) || dep == "C" || dep == "unsafe" {
+	if r.thirdParty == nil || inModule(dep) {
 		return false
 	}
 	if p == nil {

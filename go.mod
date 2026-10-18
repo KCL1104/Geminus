@@ -5,6 +5,9 @@ go 1.27.0
 // Pinned per docs/adr/ADR-011-toolchain-bootstrap.md; GOTOOLCHAIN=auto fetches it.
 toolchain go1.27.2
 
+// Go code vendored by npm is not part of the module: keep it out of ./... (CB-35).
+ignore ./apps/web/node_modules
+
 require (
 	github.com/gowebpki/jcs v1.0.2
 	github.com/jackc/pgx/v5 v5.11.0

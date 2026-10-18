@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -79,7 +80,32 @@ var ErrSuite = errors.New("conformance: invalid suite")
 type checker struct {
 	s        Suite
 	findings []Finding
+	initial  string             // prompt context and catalogs before the pack saw any IR
+	result   *simulation.Result // an engine result of the first model, for the concurrency check
 }
+
+// renamedDomains: a copy of a model gets one of these to show that the
+// generic validator and engine never read the domain. They share no prefix,
+// suffix or length with a realistic pack ID, so no test on the domain can
+// treat both alike (T-042 review B1, B3).
+var renamedDomains = []string{"zz.conformance:renamed", "qq.conformance:second"}
+
+func (c *checker) renamed() string {
+	if c.s.Pack.ID() == renamedDomains[0] {
+		return renamedDomains[1]
+	}
+	return renamedDomains[0]
+}
+
+// sentinel is user text a pack must never carry into static pack data.
+const sentinel = "CONFORMANCE-SENTINEL-c0ffee: customer roadmap"
+
+// events is a small non-empty canonical event dataset.
+var events = domainpack.CanonicalEventDataset{DatasetVersionID: "dsv_01M4YDQK00CNF0RMANCE00000E", Events: []domainpack.CanonicalEvent{
+	{CaseID: "case-1", EventType: "started", Timestamp: "2026-10-15T09:00:00Z"},
+	{CaseID: "case-1", EventType: "finished", Timestamp: "2026-10-15T10:30:00Z"},
+	{CaseID: "case-2", EventType: "started", Timestamp: "2026-10-15T09:20:00Z"},
+}}
 
 func (c *checker) fail(check, format string, args ...any) {
 	c.findings = append(c.findings, Finding{check, fmt.Sprintf(format, args...)})
@@ -113,14 +139,69 @@ func Check(ctx context.Context, s Suite) ([]Finding, error) {
 		name string
 		run  func()
 	}{
+		// Static pack data is read before the pack sees any model, and
+		// compared at the end (prompt/static).
+		{"prompt/context", func() { c.initial = c.staticData() }},
 		{"identity", c.identity}, {"catalog", c.catalogs}, {"validate", c.validate}, {"views", c.views},
 		{"metrics", func() { c.metrics(ctx) }}, {"inference", func() { c.inference(ctx) }},
-		{"prompt", c.prompt}, {"concurrent", c.concurrent},
+		{"prompt", c.prompt}, {"concurrent", func() { c.concurrent(ctx) }}, {"prompt/static", func() { c.static(ctx) }},
 	} {
 		// Each step guards its own pack calls; this catches the rest.
 		c.call(step.name, step.run)
 	}
 	return c.findings, nil
+}
+
+// allIssues is everything the generic validator reports on ir, warnings included.
+func allIssues(ir *model.ModelIR) []model.ValidationIssue {
+	data, err := model.Encode(ir)
+	if err != nil {
+		return []model.ValidationIssue{model.NewIssue("ENCODE", "", err.Error(), model.SeverityError)}
+	}
+	res, err := validate.IR(data)
+	if err != nil {
+		return []model.ValidationIssue{model.NewIssue("VALIDATE", "", err.Error(), model.SeverityError)}
+	}
+	return res.Issues
+}
+
+// invalidVariants are copies of ir that break one referential, graph or
+// distribution rule each (TEST-002), so the domain-invariance check also
+// compares the validator's error rules, not only an empty issue list.
+func invalidVariants(ir *model.ModelIR) map[string]model.ModelIR {
+	out := map[string]model.ModelIR{}
+	if len(ir.Flows) > 0 {
+		v := clone(ir)
+		v.Flows[0].To = "zz_conformance_missing_node"
+		out["unknown flow target"] = v
+		v = clone(ir)
+		v.Flows[0].Routing.Probability /= 2
+		out["probabilities not summing to 1"] = v
+	}
+	if len(ir.Nodes) > 0 {
+		v := clone(ir)
+		v.Nodes = append(v.Nodes, v.Nodes[0])
+		out["duplicate node ID"] = v
+	}
+	v := clone(ir)
+	sinks := map[string]bool{}
+	v.Nodes = slices.DeleteFunc(v.Nodes, func(n model.Node) bool { sinks[n.ID] = n.Type == model.NodeSink; return sinks[n.ID] })
+	v.Flows = slices.DeleteFunc(v.Flows, func(f model.Flow) bool { return sinks[f.From] || sinks[f.To] })
+	out["no sink"] = v
+	for i, n := range ir.Nodes {
+		if n.ServiceTime != nil {
+			v := clone(ir)
+			lo, mode, hi := 5.0, 1.0, 3.0
+			v.Nodes[i].ServiceTime.Distribution = model.Distribution{Type: model.DistTriangular, Min: &lo, Mode: &mode, Max: &hi}
+			out["bad triangular distribution"] = v
+			break
+		}
+	}
+	return out
+}
+
+func hasError(issues []model.ValidationIssue) bool {
+	return slices.ContainsFunc(issues, func(i model.ValidationIssue) bool { return i.Severity == model.SeverityError })
 }
 
 // genericIssues is the generic validator's verdict (schema and semantics) on ir.
@@ -240,7 +321,6 @@ func (c *checker) catalogs() {
 }
 
 func (c *checker) validate() {
-	id := c.s.Pack.ID()
 	for i := range c.s.Models {
 		ir := clone(&c.s.Models[i])
 		before := encoded(&ir)
@@ -260,7 +340,7 @@ func (c *checker) validate() {
 			c.fail("validate/deterministic", "model %d: two calls disagree", i)
 		}
 		other := clone(&c.s.Models[i])
-		other.Domain = id + "_other"
+		other.Domain = c.renamed()
 		var foreign []model.ValidationIssue
 		if c.call("validate/fail-closed", func() { foreign = c.s.Pack.Validate(&other) }) &&
 			!slices.ContainsFunc(foreign, func(is model.ValidationIssue) bool {
@@ -268,10 +348,18 @@ func (c *checker) validate() {
 			}) {
 			c.fail("validate/fail-closed", "model %d with domain %q: no %s error at /domain (got %v)", i, other.Domain, DomainMismatch, foreign)
 		}
-		// The generic validator never reads the domain (REQ-003): the
-		// same IR under another domain has the same generic issues.
-		if a, b := encoded(validate.Semantic(&ir)), encoded(validate.Semantic(&other)); a != b {
-			c.fail("validate/generic-ignores-domain", "model %d: %s vs %s", i, a, b)
+		// The generic validator never reads the domain (REQ-003, TEST-002):
+		// the same IR under an unrelated domain has the same issues, for the
+		// valid model and for variants that break one rule each.
+		variants := invalidVariants(&c.s.Models[i])
+		variants["as given"] = clone(&c.s.Models[i])
+		for _, name := range slices.Sorted(mapKeys(variants)) {
+			v := variants[name]
+			a := allIssues(&v)
+			v.Domain = c.renamed()
+			if b := allIssues(&v); encoded(a) != encoded(b) {
+				c.fail("validate/generic-ignores-domain", "model %d %s: %s vs %s", i, name, encoded(a), encoded(b))
+			}
 		}
 	}
 	var nilIssues []model.ValidationIssue
@@ -286,13 +374,25 @@ func (c *checker) validate() {
 // valid; 3D derives from 2D, so no pack supplies another topology.
 func (c *checker) views() {
 	for i := range c.s.Models {
-		for _, variant := range []string{"as given", "without positions", "with one saved position"} {
+		// A saved position on a point of the default layout makes the
+		// pack place the other nodes around it (T-042 review B8).
+		stripped := clone(&c.s.Models[i])
+		stripped.Views.TwoD.Positions = nil
+		var grid domainpack.ViewDefinitions
+		c.call("views/default", func() { grid = c.s.Pack.DefaultViews(&stripped) })
+		for _, variant := range []string{"as given", "without positions", "with one saved position", "with a saved position on the default grid"} {
 			ir := clone(&c.s.Models[i])
 			switch variant {
 			case "without positions":
 				ir.Views.TwoD.Positions = nil
 			case "with one saved position":
 				ir.Views.TwoD.Positions = map[string]model.Position{ir.Nodes[len(ir.Nodes)-1].ID: {X: -7777, Y: 3333}}
+			case "with a saved position on the default grid":
+				p, ok := grid.Positions[ir.Nodes[0].ID]
+				if len(ir.Nodes) < 2 || !ok {
+					continue
+				}
+				ir.Views.TwoD.Positions = map[string]model.Position{ir.Nodes[1].ID: p}
 			}
 			saved := maps(ir.Views.TwoD.Positions)
 			before := encoded(&ir)
@@ -402,6 +502,9 @@ func (c *checker) metrics(ctx context.Context) {
 			c.fail("metrics/run", "model %d: the engine rejected a valid model: %v", i, err)
 			continue
 		}
+		if c.result == nil {
+			c.result = plain
+		}
 		cp := clonedResult(plain)
 		before := encoded(cp)
 		var got map[string]simulation.MetricSummary
@@ -432,7 +535,7 @@ func (c *checker) metrics(ctx context.Context) {
 		if issues, err := validate.Document(doc, "simulation.schema.json#/$defs/Result", validate.IRSchemaInvalid); err != nil || len(issues) > 0 {
 			c.fail("metrics/schema", "model %d: the Result with the pack's metrics is not schema-valid: %v %v", i, err, issues)
 		}
-		if g1, g2 := genericPart(res), genericPart(plain); g1 != g2 {
+		if g1, g2 := engineOwned(res), engineOwned(plain); g1 != g2 {
 			c.fail("metrics/generic-unchanged", "model %d: the pack changed the engine's generic metrics", i)
 		}
 		again, err := (&des.Engine{DomainMetrics: c.s.Pack.ComputeMetrics}).Run(ctx, in, nil)
@@ -442,11 +545,11 @@ func (c *checker) metrics(ctx context.Context) {
 		// The engine never reads the domain: the same IR under another
 		// domain has the same generic numbers.
 		other := clone(&c.s.Models[i])
-		other.Domain = c.s.Pack.ID() + "_other"
+		other.Domain = c.renamed()
 		oin, err := c.freeze(other)
 		if err == nil {
 			var ores *simulation.Result
-			if ores, err = (&des.Engine{}).Run(ctx, oin, nil); err == nil && genericPart(ores) != genericPart(plain) {
+			if ores, err = (&des.Engine{}).Run(ctx, oin, nil); err == nil && domainFree(ores) != domainFree(plain) {
 				c.fail("metrics/engine-ignores-domain", "model %d: renaming the domain changed the engine's numbers", i)
 			}
 		}
@@ -468,23 +571,38 @@ func clonedResult(r *simulation.Result) *simulation.Result {
 	return &out
 }
 
-// genericPart is the engine-owned content of a result: everything but the
-// domain metrics, the digest over them and the hashes of the frozen input.
-func genericPart(r *simulation.Result) string {
+// engineOwned is what the engine alone decides in a result: everything but
+// the domain metrics and the digest over them. Seed, hashes and all generic
+// metrics stay in, so a pack cannot rewrite them (T-042 review B6).
+func engineOwned(r *simulation.Result) string {
 	cp := *r
 	cp.Metrics.DORA = nil
-	cp.Reproducibility = simulation.Reproducibility{}
+	cp.Reproducibility.ResultDigest = ""
 	return encoded(cp)
 }
 
-// inference: a pack either declines with ErrUnavailable or proposes a model
-// of its own domain that the generic validator accepts; it never answers
-// (nil, nil) and stops when its context is cancelled.
+// domainFree is engineOwned without the model hashes, which differ when
+// the domain is renamed.
+func domainFree(r *simulation.Result) string {
+	cp := *r
+	cp.Metrics.DORA = nil
+	cp.Reproducibility.ResultDigest, cp.Reproducibility.ModelHash, cp.Reproducibility.EffectiveModelHash = "", "", ""
+	return encoded(cp)
+}
+
+// inference: with no events a pack answers with an error (needs input or
+// unavailable, never an invented model: AGENTS.md §2); with events it
+// either declines with ErrUnavailable or proposes a model of its own domain
+// that the generic validator accepts; it never answers (nil, nil) and stops
+// when its context is cancelled.
 func (c *checker) inference(ctx context.Context) {
-	empty := domainpack.CanonicalEventDataset{DatasetVersionID: "dsv_conformance"}
+	empty := domainpack.CanonicalEventDataset{DatasetVersionID: events.DatasetVersionID}
 	var res *domainpack.InferenceResult
 	var err error
-	if !c.call("inference/answer", func() { res, err = c.s.Pack.InferFromEvents(ctx, empty) }) {
+	if c.call("inference/needs-input", func() { res, err = c.s.Pack.InferFromEvents(ctx, empty) }) && err == nil {
+		c.fail("inference/needs-input", "proposed a model from a dataset with no events")
+	}
+	if !c.call("inference/answer", func() { res, err = c.s.Pack.InferFromEvents(ctx, events) }) {
 		return
 	}
 	switch {
@@ -493,7 +611,7 @@ func (c *checker) inference(ctx context.Context) {
 			c.fail("inference/answer", "ErrUnavailable with a result")
 		}
 	case err != nil:
-		// A typed refusal of an empty dataset is acceptable.
+		// A typed refusal is acceptable.
 	case res == nil || res.Model == nil:
 		c.fail("inference/answer", "no error and no model")
 	default:
@@ -506,7 +624,7 @@ func (c *checker) inference(ctx context.Context) {
 	}
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
-	if c.call("inference/cancel", func() { res, err = c.s.Pack.InferFromEvents(cancelled, empty) }) && err == nil {
+	if c.call("inference/cancel", func() { res, err = c.s.Pack.InferFromEvents(cancelled, events) }) && err == nil {
 		c.fail("inference/cancel", "answered with a cancelled context")
 	}
 }
@@ -535,13 +653,57 @@ func (c *checker) prompt() {
 	}
 }
 
+// staticData is the prompt context and catalogs, encoded.
+func (c *checker) staticData() string {
+	return encoded([]any{c.s.Pack.PromptContext(), c.s.Pack.NodeCatalog(), c.s.Pack.ResourceCatalog()})
+}
+
+// static: the prompt context and catalogs are static pack data. After the
+// pack has seen a model, a result and events carrying a sentinel, they are
+// what they were before it saw any IR, and contain no customer text
+// (SECURITY §7; T-042 review B4).
+func (c *checker) static(ctx context.Context) {
+	ir := clone(&c.s.Models[0])
+	ir.Name = sentinel
+	for i := range ir.Nodes {
+		ir.Nodes[i].Name = sentinel
+	}
+	seen := events
+	seen.Events = append(slices.Clone(events.Events), domainpack.CanonicalEvent{CaseID: sentinel, EventType: sentinel, Timestamp: "2026-10-15T11:00:00Z"})
+	c.call("prompt/static", func() {
+		c.s.Pack.Validate(&ir)
+		c.s.Pack.DefaultViews(&ir)
+		if c.result != nil {
+			c.s.Pack.ComputeMetrics(clonedResult(c.result))
+		}
+		_, _ = c.s.Pack.InferFromEvents(ctx, seen)
+	})
+	var final string
+	if !c.call("prompt/static", func() { final = c.staticData() }) {
+		return
+	}
+	if strings.Contains(final, sentinel) {
+		c.fail("prompt/static", "the prompt context or a catalog carries text from a model or dataset the pack was given")
+	} else if c.initial != "" && final != c.initial {
+		c.fail("prompt/static", "the prompt context or a catalog changed after the pack was given models and events")
+	}
+}
+
 // concurrent: packs must be safe for concurrent use (the API and worker
-// share one registry). Disagreement is reported here; data races are found
-// by running the suite under -race (make backend-race).
-func (c *checker) concurrent() {
+// share one registry): every method, ComputeMetrics and InferFromEvents
+// included, gives each of 8 goroutines what a sequential call gives.
+// Disagreement is reported here; data races are found by running the suite
+// under -race (make backend-race).
+func (c *checker) concurrent(ctx context.Context) {
 	ir := clone(&c.s.Models[0])
 	calls := func(ir *model.ModelIR) string {
-		return encoded([]any{c.s.Pack.NodeCatalog(), c.s.Pack.ResourceCatalog(), c.s.Pack.Validate(ir), c.s.Pack.DefaultViews(ir), c.s.Pack.PromptContext()})
+		var metrics map[string]simulation.MetricSummary
+		if c.result != nil {
+			metrics = c.s.Pack.ComputeMetrics(clonedResult(c.result))
+		}
+		inferred, err := c.s.Pack.InferFromEvents(ctx, events)
+		return encoded([]any{c.s.Pack.NodeCatalog(), c.s.Pack.ResourceCatalog(), c.s.Pack.Validate(ir), c.s.Pack.DefaultViews(ir),
+			c.s.Pack.PromptContext(), metrics, inferred, fmt.Sprint(err)})
 	}
 	var want string
 	if !c.call("concurrent", func() { want = calls(&ir) }) {

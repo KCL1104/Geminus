@@ -64,7 +64,8 @@ db-go-test:
 # Package dependency rules of docs/ARCHITECTURE.md §2 (T-042), read from the build graph.
 architecture-check:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
-	go run ./scripts/check-architecture
+	go build -o bin/check-architecture ./scripts/check-architecture
+	bin/check-architecture
 integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

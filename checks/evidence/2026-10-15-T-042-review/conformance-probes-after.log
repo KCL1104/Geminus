@@ -1,0 +1,25 @@
+=== RUN   TestReviewProbes
+    zz_review_test.go:188: PROBE R1-nan-metric: 1 finding(s) [metrics/run: model 0: engine: internal invariant violated: result digest: hashing: input cannot be canonicalized: the result has a non-finite number or invalid UTF-8]
+    zz_review_test.go:188: PROBE R2-long-id-correct-pack: 0 finding(s) []
+    zz_review_test.go:188: PROBE R3-tampers-reproducibility: 1 finding(s) [metrics/generic-unchanged: model 0: the pack changed the engine's generic metrics]
+    zz_review_test.go:188: PROBE R3b-tampers-generic(control): 1 finding(s) [metrics/generic-unchanged: model 0: the pack changed the engine's generic metrics]
+    zz_review_test.go:188: PROBE R4-ignores-saved-when-placing: 1 finding(s) [views/no-overlap: model 0 with a saved position on the default grid: "line" and "arrivals" share {0 0}]
+    zz_review_test.go:188: PROBE R5-fabricates-inference: 1 finding(s) [inference/needs-input: proposed a model from a dataset with no events]
+    zz_review_test.go:188: PROBE R6-leaks-prompt: 1 finding(s) [prompt/static: the prompt context or a catalog carries text from a model or dataset the pack was given]
+    zz_review_test.go:188: PROBE R7-racy-metrics: 0 finding(s) []
+    zz_review_test.go:188: PROBE R8-panics-in-engine: 1 finding(s) [metrics/run: model 0: engine: internal invariant violated: panic in DomainMetrics: engine path]
+    zz_review_test.go:188: PROBE R9-nearly-overlapping: 1 finding(s) [views/no-overlap: model 0 with a saved position on the default grid: "line" and "arrivals" share {0 0}]
+--- PASS: TestReviewProbes (0.19s)
+=== RUN   TestReviewR4Overlap
+    zz_review_test.go:201: PROBE R4: counter={240 0} line={240 0} overlap=true; shared layout line={240 120}
+--- PASS: TestReviewR4Overlap (0.00s)
+=== RUN   TestReviewR6Leak
+    zz_review_test.go:211: PROBE R6: rules=["Test-only domain; not a product." "Customer model: ACME secret roadmap"]
+--- PASS: TestReviewR6Leak (0.00s)
+=== RUN   TestReviewR7Race
+--- PASS: TestReviewR7Race (0.00s)
+=== RUN   TestReviewR3Lie
+    zz_review_test.go:234: PROBE R3: config seed=42 recorded seed=7 model_hash=sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (input sha256:68b48efd06091177c996d944c199fce71b19c24aabea9bf17ceee938b63fb415)
+--- PASS: TestReviewR3Lie (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	0.204s

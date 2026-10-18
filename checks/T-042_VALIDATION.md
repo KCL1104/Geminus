@@ -1,6 +1,6 @@
 # T-042 驗證報告：Generic kernel／adapter dependency guard
 
-**日期：2026-10-15｜狀態：`review`（等待獨立 review，依 H-003 驗收）｜需求：REQ-003、REQ-011｜Gate：無｜驗收測試：TEST-001、TEST-002、TEST-025（後端部分）**
+**日期：2026-10-15（review 修正 2026-10-18）｜狀態：`review`（首輪獨立 review 為 CHANGES REQUESTED，已修正，等待同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-003、REQ-011｜Gate：無｜驗收測試：TEST-001、TEST-002、TEST-025（後端部分）**
 
 逐條輸出在 `checks/evidence/2026-10-15-T-042/`。範圍依 IMPLEMENTATION_PLAN：這是 test-only 的 boundary guard，**不是**第二個產品 domain。
 
@@ -45,14 +45,61 @@
 
 既有各 package 的 `TestDependencies`（`contracttest.OnlyDeps`）保留；本 checker 是跨整個 module、含遞移與測試依賴的集中檢查。
 
+## 獨立 review 結果與處理（2026-10-18）
+
+Review 由另一個 agent 在 `git archive` 的副本上以 overlay 進行（H-003），未修改 repo；首輪因額度上限中斷，額度重置後由同一 agent 續完。結論 **CHANGES REQUESTED**：checker 在 linux/amd64 上能抓到 kernel 依賴 pack、HTTP、DB driver、LLM SDK，40 個壞 pack 也都被抓到，報告數字全部可重現；但有以下缺口。reviewer 的 probe 在舊版的結果保留為 `checks/evidence/2026-10-15-T-042-review/arch-probes-before.log`、`conformance-probes-before.log`、`reviewer-extra-mutants-before.log`。
+
+| # | 發現 | 等級 | 處理 | 證據 |
+|---|---|---|---|---|
+| A1 | 只讀 linux/amd64、cgo 開的 graph：`_arm64.go`、`_windows.go`、`//go:build !cgo`、自訂 tag 的檔案（含 import pack 的 kernel 測試）都看不到 | 中 | graph 改為 8 個平台 × cgo 開／關（16 個設定）的聯集；任何設定都不編譯的檔案以 `every-file-built` 報為違規；平台上不存在的 package 不是錯誤 | `TestReviewProbes`（arm64、windows、!cgo、自訂 tag、tag 後的 kernel 測試、windows-only package） |
+| A2 | 只檢查 `cmd`、`internal`、`schemas`、`scripts`：`pkg/`、`tools/`、module 根目錄的違規通過 | 低中 | 預設 pattern 改為 `./...`；`go.mod` 加 `ignore ./apps/web/node_modules`（Go ≥1.25），vendored Go 不再出現在 `./...`（CB-35） | `TestReviewProbes`（pkg/、tools/、根目錄）、`TestVendoredGoIsNotChecked` |
+| A3 | `import "C"` 被豁免 | 低中 | kernel 與 pack 禁止 `C`；移除 checker 對 `C`／`unsafe` 的豁免 | `TestReviewProbes`（cgo socket） |
+| A4 | import 層級檢查看不到 `syscall.Socket`、`os.StartProcess`；`internal/domainpack/packs/{alpha,beta}` 被當成同一個 pack | 低 | kernel 與 pack 不得自己 import `os`、`os/signal`、`os/user`、`syscall`、`unsafe`、`runtime/cgo`、`C`、`plugin`、`golang.org/x/sys`（`forbidDirect`；目前沒有 kernel／pack package 直接使用它們）；pack 必須是 `internal/domainpack` 的直接子 package（`pack-layout`）。文件改為明說檢查的是 import 而非呼叫 | `TestReviewProbes`（syscall、os、unsafe、兩個 pack 同目錄） |
+| A5 | `.test` entry 的錯誤（測試檔語法錯誤）被丟掉；`go run` 把 exit 1／2 都變成 1 | 低 | 所有 entry（含 test variant）先檢查錯誤再過濾；`main` 改為可測的 `run`，`make architecture-check` 先 build 再執行 binary | `TestBrokenBuildIsAnError`（測試檔語法錯誤、xtest、arm64-only 缺 import）、`TestRunExitCodes` |
+| B1 | 「kernel 不讀 domain」只比對 valid model，且改名為 ID 加 `_other`：只對其他 domain 停用錯誤規則、或依 domain 前綴分支的 kernel mutant 都存活 | 中 | 改名為不相干的固定 domain（`zz.conformance:renamed`）；同時比對 5 個破壞單一規則的變體（未知 flow 目標、機率和、重複 ID、沒有 sink、錯誤 triangular）的完整 issue 清單 | reviewer 的 3 個 kernel mutant 與長度 mutant 現在被 suite 擋下；`PAIRS` 證明是這兩個 site 擋下的（`mutation.log`） |
+| B2 | 3 個「equivalent」site 中 2 個可達：NaN 指標與只在 engine 路徑 panic 的 pack 能觸發第二個 `metrics/run` | 中（證據正確性） | 補 `nanMetric`、`panicsOnEnginePath`；該 site 不再列 equivalent；首輪標題改正為「80/82 被擋、1 equivalent、2 kernel guard」 | `TestBrokenPacksAreCaught` |
+| B3 | 123 字元 ID 的正確 pack 因 suite 自己改名超過 128 字元而得到 finding | 低 | 固定的改名 domain 與 ID 長度無關 | `longID` 正確 pack 0 finding |
+| B4 | pack 可把看過的 model 名稱放進 `PromptContext` 而通過 `prompt/static` | 中低 | 在 pack 看到任何 IR 前讀 prompt 與 catalog；最後讓它看帶 sentinel 的 model、result 與 events，再讀一次：必須相同且不含 sentinel | `leaksIntoPrompt`、`countsIntoPrompt` |
+| B5 | 空 dataset 推論出 model 被接受 | 低中 | 空 dataset 必須回錯誤（`inference/needs-input`）；回答檢查改用有 events 的 dataset；新增會回答的正確 pack `answers`（0 finding） | `infersFromNothing` |
+| B6 | `genericPart` 清空整個 `Reproducibility`：pack 可在 engine 路徑改 seed 與 model hash | 低 | pack 對照只清 `ResultDigest`（`engineOwned`）；改名對照另外只清兩個 model hash（`domainFree`） | `rewritesSeed`、`rewritesQueues`、`rewritesAdditional` |
+| B7 | 並行檢查不呼叫 `ComputeMetrics`、`InferFromEvents` | 低 | 兩者加入並行檢查 | `TestConcurrentDisagreement`（`countsMetrics`、`countsInference`）；reviewer 的 racy pack 在 `-race` 下被抓到（`conformance-probes-after-race.log`） |
+| B8 | `views/no-overlap` 不會把已存位置放在 layout 格點上 | 低 | 新變體：把第二個 node 存在第一個 node 的預設位置 | `ignoresSavedWhenPlacing`（reviewer 的 R4、R9 現在有 finding） |
+| C | reviewer 自寫 34 個 mutant 中 29 個存活：`main` exit code、規則表各 entry、`Run` 的錯誤路徑、catalog 副本與 fail-closed 的子條件、views 變體、inference 取消、prompt resources、`genericPart` 的範圍 | 低 | `TestEveryRuleEntryIsEnforced`（每條規則的每個 forbid／direct pattern 與第三方 allowlist 各用一個 synthetic graph 驗證）、`TestRunExitCodes`、`TestRunFailsInvalidSuites`（子 process）、`sharedResourceTypes`、`sharedResources`、`mismatchWithoutPath`、`mismatchAsWarning`、`layoutOnlyWithSavedPositions`、`promptDropsResources`、`answers` | `mutation.log` |
+
+reviewer 的 conformance probe 在新版：R1（NaN）、R3（改寫 seed）、R4／R9（重疊）、R5（無中生有的推論）、R6（prompt 洩漏）、R8（engine 路徑 panic）都有 finding；R2（長 ID 的正確 pack）0 finding；R7（racy ComputeMetrics）在 `-race` 下由 suite 的並行檢查觸發 race（`conformance-probes-after.log`、`conformance-probes-after-race.log`）。
+
+### 首版說法更正
+
+| 首版 | 更正 |
+|---|---|
+| 「Mutation 80/80＋3 equivalent＋2 kernel guards」 | 其中一個「equivalent」可達（B2）、kernel guard 的證明只涵蓋完全相同與長度分支：首輪實為 80/82 被擋、1 equivalent、2 kernel guard。review 後的數字見下 |
+| 「40 個各自只壞一個方法的 pack」 | 40 列測試、38 種 pack（`acceptsAnything`、`mutatingMetrics` 各用兩次），其中 3 種為了讓 prompt 的 catalog 一致而覆寫兩個方法 |
+| 「任何 package 無法 build 是錯誤」 | 首版不含測試檔（A5），已修正 |
+| 「並行呼叫結果一致」 | 首版不含 `ComputeMetrics`、`InferFromEvents`（B7），已修正 |
+| 「kernel 不讀 domain」／TEST-002 | 首版只比對 valid model 與完全相同／長度分支（B1），已修正 |
+| TEST-001 | 本任務只對應正半部（非 software delivery 的 valid IR 通過同一 validator）；負半部屬 T-003／T-004 |
+| NOT RUN | 漏列非 amd64、cgo 關閉的檢查；現在由 build matrix 涵蓋 |
+
 ## 實際執行結果
+
+review 修正後（`checks/evidence/2026-10-15-T-042-review/`）：
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make architecture-check` | 0 | `PASS architecture: 22 packages, 8 rules, 16 build configurations`（`architecture-check.log`） |
+| `go test -count=1 -v ./internal/domainpack/... ./scripts/...` | 0 | 見 `t042-tests.log` |
+| reviewer 的 conformance probe（改名後以 overlay 放入） | 0 | R1、R3–R6、R8、R9 有 finding，R2 0 finding（`conformance-probes-after.log`）；`-race` 下 R7 觸發 race（`conformance-probes-after-race.log`） |
+| Mutation（`checks/evidence/2026-10-15-T-042-review/mutants.py`） | 0 | **117/117 被擋，3 個 equivalent，2 個 kernel guard（3/3 個 pair 證明）**（`mutation.log`）。54 個 finding site 各自 no-op；5 個 kernel mutant（含 reviewer 的「只對已知 domain 執行錯誤規則」與前綴分支）都被 suite 擋下，且 kernel mutant 加上對應 site 的 no-op 時存活，證明是那兩個 site 擋下的；suite、checker、規則表與 exit code 的 mutant。equivalent：freeze 對 valid model 不會失敗、改名後的 run 不會失敗、test variant 不進 graph 的過濾（walk 不會走到 variant）。過程中：`concurrent-no-result`、`matrix-without-arm64`（darwin/arm64 仍編譯 `_arm64.go`，probe 改為 `_linux_arm64.go`）、`platform-absent-package-is-error`（`./...` 不列出全被排除的 package，改以明確 pattern 測試，並另以目錄掃描抓整個 package 在自訂 tag 後的情形）與 4 個規則表刪除（由表本身產生的測試抓不到刪除，補上獨立於 rules.go 的 `TestPolicy`）先存活，均已補測試；pack 規則中多餘的 `C` 項移除（`forbidDirect` 已涵蓋） |
+| 其他命令 | 合併後補記 | |
+
+首輪（`checks/evidence/2026-10-15-T-042/`）：
 
 | 指令 | Exit | 說明 |
 |---|---|---|
 | `make architecture-check`（T-042 前） | 2 | `NOT IMPLEMENTED: architecture-check …`（`before.log`） |
 | `make architecture-check` | 0 | `PASS architecture: 22 packages, 8 rules`（`architecture-check.log`） |
 | `go test -count=1 -v ./internal/domainpack/... ./scripts/...` | 0 | 92 個 RUN 全 PASS（`t042-tests.log`） |
-| Mutation（`mutants.py`，已提交） | 0 | **80/80 被擋，3 個 equivalent，2 個 kernel guard**（`mutation.log`）。46 個 finding site 各自變成 no-op；另有 conformance 機制、checker 邏輯、規則表與預設 patterns 的 mutant，以及兩個讓 kernel 讀 domain 的 mutant（validator 對某個 domain 多一個 warning、engine seed 加上 domain 長度）——只在 `./internal/domainpack/...` 跑，由 conformance suite 擋下。equivalent：freeze 對 valid model 不會失敗、第二次 run 與第一次同輸入、改名 domain 不會讓 run 失敗。kernel guard：`validate/generic-ignores-domain` 與 `metrics/engine-ignores-domain` 的主要 site 無法由 pack 觸發，由上述 kernel mutant 證明 |
+| Mutation（`mutants.py`，已提交） | 0 | 首版寫「**80/80 被擋，3 個 equivalent，2 個 kernel guard**」——review 指出其中一個 equivalent 可達，實為 80/82（見上方更正）（`mutation.log`）。46 個 finding site 各自變成 no-op；另有 conformance 機制、checker 邏輯、規則表與預設 patterns 的 mutant，以及兩個讓 kernel 讀 domain 的 mutant（validator 對某個 domain 多一個 warning、engine seed 加上 domain 長度）——只在 `./internal/domainpack/...` 跑，由 conformance suite 擋下。equivalent：freeze 對 valid model 不會失敗、第二次 run 與第一次同輸入、改名 domain 不會讓 run 失敗。kernel guard：`validate/generic-ignores-domain` 與 `metrics/engine-ignores-domain` 的主要 site 無法由 pack 觸發，由上述 kernel mutant 證明 |
 | 首輪 mutation | 0 | 74/80：`run-ignores-findings`、`unknown-dep-trusted`、`list-errors-ignored`、`violations-stop-walk-dropped`、`patterns-whole-tree` 存活，`tests-ignored` 未編譯 → 補 `TestRunReportsFindings`（子 process）、synthetic graph 的未知依賴與「違規 package 的依賴只經由它回報一次」、改用 `go list -e` 並補 `TestBrokenBuildIsAnError`、以 overlay 在 `apps/web/node_modules` 放一個 Go package 的 `TestVendoredGoIsNotChecked`（不依賴機器上是否有 node_modules），mutant 改寫為可編譯 |
 | `make spec-check` / `backend-test` / `backend-race` / `backend-build` / `REQUIRE_GOAMD64_V3=1 backend-numeric` / `frontend-test` | 0 / 0 / 0 / 0 / 0 / 0 | 在分支上（含 T-022 複核後續 bc10200）重跑，各自的 log 在 evidence 目錄 |
 | `govulncheck ./cmd/... ./internal/... ./schemas/... ./scripts/...` | 0 | No vulnerabilities found |

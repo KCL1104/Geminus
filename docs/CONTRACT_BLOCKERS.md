@@ -79,7 +79,7 @@
 | ID | 問題 | 處理 | 等級 |
 |---|---|---|---|
 | CB-34 | 依 `requirements-spec.txt` 建立的乾淨環境中 `make spec-check` **失敗**（exit 2）：jsonschema 缺 `rfc3339-validator` 時靜默略過 `date-time`，`invalid-timestamp-format` 反例因此通過 | 已 pin `rfc3339-validator`、`rfc3986-validator`；`check_contracts.py` 在 schema 使用的 format 沒有 checker 時直接失敗（以舊 pins 實測會失敗） | 實測 |
-| CB-35 | `go … ./...` 會納入 `apps/web/node_modules/flatted/golang/...`；`check_docs.py` 會掃 `.venv`／`node_modules` 的 Markdown | Makefile 改用 `./cmd/... ./internal/...`；`check_docs.py` 排除 vendored 目錄 | 實測 |
+| CB-35 | `go … ./...` 會納入 `apps/web/node_modules/flatted/golang/...`；`check_docs.py` 會掃 `.venv`／`node_modules` 的 Markdown | Makefile 改用 `./cmd/... ./internal/...`；T-042 review 後 `go.mod` 以 `ignore ./apps/web/node_modules` 讓 `./...` 不再包含它（architecture check 因此檢查 module 的每個 package）；`check_docs.py` 排除 vendored 目錄 | 實測 |
 | CB-36 | H-001 指定 Anthropic 並要求兩個 organization key rotation，原契約只有單一 credential | 登記 D-018（PROPOSED）；config 暫時拒絕 `AI_PROVIDER=anthropic`，直到 T-024 + D-018 + 資料政策 + quota | 已核對 |
 
 ## G. T-042 boundary guard 發現
