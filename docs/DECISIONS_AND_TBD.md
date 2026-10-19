@@ -1,6 +1,6 @@
 # Decisions & TBD Register
 
-版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；D-001–D-037 於 2026-10-15、D-038–D-039 於 2026-10-18 由 owner 批准；D-040、D-041（T-012 review 發現，gate T-013）與 D-042（T-010 review 發現）於 2026-10-18 批准（H-009），已分別在 T-013a、T-013b、T-010 實作。
+版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；D-001–D-037 於 2026-10-15、D-038–D-039 於 2026-10-18 由 owner 批准；D-040、D-041（T-012 review 發現，gate T-013）與 D-042（T-010 review 發現）於 2026-10-18 批准（H-009），已分別在 T-013a、T-013b、T-010 實作。D-047–D-060 為 T-046 於 2026-10-19 提出的 PROPOSED，尚未批准。
 
 ## 狀態與採用方法
 
@@ -213,6 +213,94 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 |---|---|---|---|
 | D-045 | CB-17 | 使用者自己的 membership（`/me`） | **APPROVED（2026-10-19，H-010）。** 新增 `GET /v1/me`（任何已驗證的使用者；不帶 `X-Organization-ID`）：回 `user_id` 與 `memberships[]`（`organization_id`、organization `name`、`role`），依 organization 名稱再依 ID 排序，P0 至多 100 筆；未知 identity 回 403（不自動建立，D-008）。RLS 新增只讀的 policy：API 只看得到 `user_id` 等於驗證後 scope 中 user 的 membership，與這些 membership 所屬 organization 的 `id`、`name`（新 migration；其他 tenant 的任何 row 仍不可見）。UI 以此選 organization 並取得 role，role 仍只決定介面，API 每次自己授權。gate：T-043 的 UI bootstrap 前。**實作（T-043 的 D-045 slice，2026-10-19，待獨立 review）：** migration 0008 的 `own_memberships`、`own_organizations` 是只給 `twin_api` 的 permissive `FOR SELECT` policy，只在**沒有選 organization** 時成立，所以選了 organization 的 transaction 看到的與 0002 的 `tenant_isolation` 完全相同；`tenant.DB.RunSelf` 是只設 user 的唯讀 transaction；`internal/tenant/me` 與 `httpapi.Self`（帶 `X-Organization-ID` 即 400）；排序為 byte 順序（`COLLATE "C"`，與 DB 的 collation 無關）；超過 100 筆時回前 100 筆並帶 `truncated: true`；不寫 audit；client 的 `getMe()`。見 checks/T-043_VALIDATION.md 的 D-045 一節。 |
 | D-046 | CB-31 | AI 新增 entity 的 ID allocation pool | **APPROVED（2026-10-19，H-010）。** 每個 proposal 在建立時由 server 產生 pool：每種 entity（node、flow、resource）16 個 ID，格式 `<kind>_<小寫 ULID>`（符合 IR 的 ID pattern），存在 `ai_proposals.id_pool`（新 migration；之後不可改）並放進 provider context。Validation 與 approval 時要求 patch 新增的每個 entity ID 都來自同 proposal 的 pool、種類相符、在 base IR 中未使用；不足時 provider 回 `needs_input`。gate：T-024 的 context builder 前。 |
+
+### T-046 的提案：電子產線的引擎語義與 domain 規格（2026-10-19，PROPOSED，待 owner）
+
+H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝與阻塞、故障、班表、隨時間變化的投入與批次（REQ-024）。T-046 phase 1 提出新核心 primitive 的 [ADR-026](adr/ADR-026-line-flow-primitives.md)（PROPOSED）與 domain 規格 [ELECTRONICS_LINE.md](domains/ELECTRONICS_LINE.md)（PROPOSED）。每項 decision 的選項與後果、對決定性與 result digest 的影響、golden vectors 草案與 SimPy reference 的做法寫在這兩份文件中對應 D-ID 的一節；下面只列問題與建議。全部 **PROPOSED**：approved_by／approved_at 為 null，批准前不實作 kernel、不改 schema 與 fixtures。Gate 已加到 T-047–T-051 的 `decision_gates`（T-046 phase 2 的 schema 變更同樣要等它們；D-059、D-060 的任務 gate 待 owner 決定後再補）。
+
+#### D-047 — 新 primitive 的相容性契約與 differential
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation / Contracts。Gate：T-046 phase 2 改 schema 前；T-047–T-050 實作前。**
+
+問題：新欄位如何進入 IR、Result 與 engine_version，才能讓沒用到的模型與現行 kernel 逐 bit 相同？選項：A optional 欄位、schema_version 維持 0.1；B 新 schema_version 0.2 加升級流程；C 新統計一律進 Result（會改所有既有 digest，不採用）。建議 A：Result 的新成員只在用到時出現；每個 kernel 任務升 engine_version minor；判準是 observation 序列相同、且把 engine_version 換回 `des-go-0.1.0` 後 digest 等於鎖定值；鎖定檔不重產；以凍結的舊 kernel 與「中性設定」做 differential。
+
+#### D-048 — 新事件的同 tick 順序
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-047 實作前。**
+
+問題：故障、修復、班表容量變化、批次逾時與解除阻塞在同一 tick 的哪裡？選項：A 新增 priority 15（在 arrival 10 之後、dispatch 20 之前）；B priority 5；C priority 25。建議 A：dispatch 看到該 tick 最後的容量，既有三個 priority 的相對順序不變；解除阻塞在 dispatch 內進行，不是事件。
+
+#### D-049 — 有限緩衝與阻塞
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-047 實作前。**
+
+問題：容量定義在哪、BAS 或 BBS、被擋 entity 持有什麼、與 resource-wise FIFO 和 bundle 的交互、source 與 delay 被擋時？選項：A blocking after service；B blocking before service（要跨 process 預留空位、提早抽 routing）；C 以下游 slot resource 模擬（resource 無法跨 process 持有）。建議 A：顯式 queue 的 `capacity` 限制等待中的 entity 數；被擋的 entity 留在出發 node（process 保留整個 bundle，source 形成 release backlog）；解除只在 dispatch 內依 FIFO 進行；沒有被擋時 observation 與現行相同。
+
+#### D-050 — 死結的偵測
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-047 實作前；T-051 的 template 須通過。**
+
+問題：重測迴圈與共用 resource 造成的循環阻塞怎麼偵測、回什麼 typed error？選項：A validator 的 `BLOCKING_CYCLE`（阻塞相依圖的充分條件）＋ runtime `ErrDeadlock` backstop；B 只做 runtime 偵測；C 不偵測（違反 TEST-034）。建議 A：成本低、在 publish／run 前以 JSON Pointer 回報；代價是保守，每個迴圈至少要有一個無限 buffer。
+
+#### D-051 — Resource 故障（MTBF／MTTR）
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-048 實作前。**
+
+問題：故障時鐘、服務中 entity 的處理、多 unit、RNG stream 命名、availability？選項：A 每個 unit 一組日曆時間時鐘、finish-first；B preempt-resume；C preempt-restart。建議 A：kernel 的匿名 unit 就夠，停機時間＝TTR；stream 為 (resource ID, `ttf/<u>`／`ttr/<u>`)，既有 stream 不變；availability＝∫min(S, C−down)／∫S。代價：長時間 service 低估中斷影響。
+
+#### D-052 — 班表與 utilization 分母
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-049 實作前。**
+
+問題：班表在 IR 中的表示（tick、無時區）、交班時服務中的 entity、utilization 的分母？選項：A 根層共用的 `calendars[]`（週期性上班區間）＋ resource 的 `calendar_id`；B 每個 resource 自己的容量表；C 絕對日期與時區（P1）。建議 A，交班 finish-first（記 overtime），原 `utilization_mean` 不變，另加 scheduled utilization 與 overtime；每班不同人數延後。
+
+#### D-053 — 隨時間變化的投入
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-049 實作前。**
+
+問題：分時段的投入怎麼表示、與 common random numbers 的關係？選項：A 週期性分段常數 rate、以累積 rate 反函數產生（poisson 或 deterministic，每件一次 draw）；B 明確投入表；C 各時段各自的 interarrival 分布並在跨段時重抽。建議 A：scenario 之間第 k 件用同一個 draw；poisson 為精確的非齊次 Poisson、deterministic 為精確 takt；投入表延後。
+
+#### D-054 — 批次 process（燒機）
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-050 實作前。**
+
+問題：批量上下限、等待上限、成員 ID 與 trace、lead time 與 utilization？選項：A min／max／max_wait，就緒時一個 batch request、一次 service draw、整批離開才釋放；B 只有固定批量；C 合併成一個 entity（P1）。建議 A：成員保留自己的 entity ID，批次 ID `r<rep>/<process>/b<n>`；lead time 與 queue wait 照每件計；utilization 為 chamber 忙碌，另有批量統計。
+
+#### D-055 — 換線是否進 P0
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation / Product。Gate：T-050 實作前。**
+
+選項：A 延到 P1；B P0 最小版（entity_type 改變時加 setup）；C P0 完整版（setup matrix 與派工規則）。建議 A：需要產品組合、unit identity 與非 FIFO 派工，三者都不存在；示範用一個產品族，必要時以計畫停機近似並標示。
+
+#### D-056 — lognormal／Weibull 是否進 P0
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-048 實作前。**
+
+選項：A 延到 P1；B 加 lognormal；C 加 lognormal 與 Weibull。建議 A：TTF／TTR 以停機紀錄的 empirical 表示；每個新分布都要固定的 exp／pow 演算法、Python 移植、vectors 與新的 engine_version，示範價值低。
+
+#### D-057 — 新參數的 scenario allowlist 與 risk
+
+**狀態：PROPOSED（2026-10-19）。負責角色：AI / Simulation。Gate：T-047–T-050 各自開放對應參數前。**
+
+問題：新參數可否在 scenario 中修改、risk 怎麼算？選項：A 擴充 D-021（buffer capacity、breakdown 分布、投入 rate、batch 參數、calendar 參照與 shifts）；B 不擴充（「加大 FCT 前緩衝」須發布新版本，與 baseline 不可比較）；C 只加 buffer capacity。建議 A：新參數的變更至少 medium，擴大 buffer 為 low；新增或刪除 breakdowns、calendars、schedule、batch 仍走 draft→publish。
+
+#### D-058 — 電子產線指標的資料來源與 Result 位置
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Domain / Simulation。Gate：T-051 實作前。**
+
+問題：Pack 的 `ComputeMetrics` 只看 Result，指標放哪、需要哪些 generic 統計？選項：A optional 的 `ComputeModelMetrics(effective IR, result)`、新的 optional `metrics.domain`、`system_wip` 經 IR `metrics[]` 宣告；B 由 kernel 讀 domain 屬性（違反 ADR-010）；C 只在 UI 端計算（不在 digest 中）。建議 A；FPY 是模型輸入，不是 run 結果；公式見 ELECTRONICS_LINE §5。
+
+#### D-059 — Station event log 的 canonical fields
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Import / Domain。Gate：電子產線的 T-017 mapping、T-027 inference 與 T-052 前（任務 gate 待補）。**
+
+選項：A canonical-event 新增 optional `end_timestamp` 與 `shift`，pack 定義 event_type／outcome 詞彙，停機紀錄以設備 ID 為 case_id；B 不改 schema、每筆拆成 start／end 兩個 event；C 沿用 duration_ms 並新增兩欄相減的 transform。建議 A；operator ID 不匯入；常數 transform 屬 CB-28。
+
+#### D-060 — 模擬與觀測比對（REQ-025）
+
+**狀態：PROPOSED（2026-10-19）。負責角色：Simulation / Product。Gate：T-052 前（任務 gate 待補）。**
+
+選項：A 分「輸出比對」與「輸入一致性」，以每期平均比較，顯示模擬平均、replication 範圍、絕對與相對誤差，標 in-sample／hold-out；B 只並列數字；C 統計檢定給通過判定。建議 A：不給通過判定、不自動校準；沒有觀測資料時 unavailable。
 
 ## 人類決策紀錄
 

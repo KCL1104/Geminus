@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 46,
-    "proposed": 0,
+    "proposed": 14,
     "rejected": 0,
     "superseded": 0
   },
@@ -427,6 +427,112 @@
         "T-025",
         "T-026"
       ]
+    },
+    "D-047": {
+      "status": "proposed",
+      "gate": "T-046 phase 2 改 schema 前；T-047–T-050 實作前",
+      "gates_tasks": [
+        "T-047",
+        "T-048",
+        "T-049",
+        "T-050",
+        "T-051"
+      ]
+    },
+    "D-048": {
+      "status": "proposed",
+      "gate": "T-047 實作前",
+      "gates_tasks": [
+        "T-047",
+        "T-048",
+        "T-049",
+        "T-050"
+      ]
+    },
+    "D-049": {
+      "status": "proposed",
+      "gate": "T-047 實作前",
+      "gates_tasks": [
+        "T-047",
+        "T-050"
+      ]
+    },
+    "D-050": {
+      "status": "proposed",
+      "gate": "T-047 實作前；T-051 的 template 須通過",
+      "gates_tasks": [
+        "T-047",
+        "T-051"
+      ]
+    },
+    "D-051": {
+      "status": "proposed",
+      "gate": "T-048 實作前",
+      "gates_tasks": [
+        "T-048"
+      ]
+    },
+    "D-052": {
+      "status": "proposed",
+      "gate": "T-049 實作前",
+      "gates_tasks": [
+        "T-049"
+      ]
+    },
+    "D-053": {
+      "status": "proposed",
+      "gate": "T-049 實作前",
+      "gates_tasks": [
+        "T-049"
+      ]
+    },
+    "D-054": {
+      "status": "proposed",
+      "gate": "T-050 實作前",
+      "gates_tasks": [
+        "T-050"
+      ]
+    },
+    "D-055": {
+      "status": "proposed",
+      "gate": "T-050 實作前（若改為 P0，工作併入 T-050）",
+      "gates_tasks": [
+        "T-050"
+      ]
+    },
+    "D-056": {
+      "status": "proposed",
+      "gate": "T-048 實作前",
+      "gates_tasks": [
+        "T-048"
+      ]
+    },
+    "D-057": {
+      "status": "proposed",
+      "gate": "T-047–T-050 各自開放對應參數前",
+      "gates_tasks": [
+        "T-047",
+        "T-048",
+        "T-049",
+        "T-050"
+      ]
+    },
+    "D-058": {
+      "status": "proposed",
+      "gate": "T-051 實作前",
+      "gates_tasks": [
+        "T-051"
+      ]
+    },
+    "D-059": {
+      "status": "proposed",
+      "gate": "電子產線的 T-017 mapping、T-027 inference 與 T-052 前（phase 1 只更新 T-047–T-051 的 gates，這些任務的 gate 待 owner 決定後補）",
+      "gates_tasks": []
+    },
+    "D-060": {
+      "status": "proposed",
+      "gate": "T-052 前（phase 1 不改 T-052 的 gates）",
+      "gates_tasks": []
     }
   },
   "note": "Shape checks only; whether a recorded approval is genuine is for human review."

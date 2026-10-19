@@ -8,6 +8,8 @@ Simulation 是 immutable ModelVersion + ordered Scenario Patch + frozen empirica
 
 worker 在 engine 外負責授權、快照解析、dataset preload、job claim、timeout/cancellation、progress persistence、result atomic commit。engine 內無 network/DB/LLM、無任意 script。
 
+H-016 的新 primitive（有限緩衝與阻塞、故障、班表、隨時間變化的投入、批次）提案見 [ADR-026](adr/ADR-026-line-flow-primitives.md) 與 D-047–D-057，全部 PROPOSED；批准並實作前，本文件的語義是唯一有效的版本。
+
 ## 2. Clock、event order、arrival
 
 internal tick 固定 **1 millisecond**，int64；所有輸入換算成 tick 後做 overflow / safe bound 檢查。單位換算 second=1000、minute=60000、hour=3600000、day=86400000。非負 sample d 先換成 ms，再 round-half-up；sample>0 卻 round 為 0 時 clamp 到 1 tick，sample=0 保持 0。固定 engine numerical profile，不依不同語言的預設 rounding。實作為 `model.Ticks`（T-005）：一次 binary64 乘法後 `math.Round`（對非負值即 half up，且不像 `floor(x+0.5)` 有 0.49999999999999994 的進位誤差），超過 365 天回錯；config_hash、dataset binding 與 engine 共用此函式，修改即須換 engine_version。
@@ -75,7 +77,7 @@ schema 中 `status=unavailable` 時 mean/p50/p95/CI 都是 null，reason 說明�
 
 ## 6. DORA-oriented metrics 的 gating
 
-本節適用 Software Delivery 範例 pack。P0 domain 自 H-016 起為電子組裝／測試線，其指標（FPY、站別 availability 等）與資料門檻由 T-046 定義（REQ-015）；同一原則：未提供 mapping 一律 unavailable，不以 utilization 冒稱 OEE。
+本節適用 Software Delivery 範例 pack。P0 domain 自 H-016 起為電子組裝／測試線，其指標（FPY、站別 availability 等）與資料門檻由 T-046 定義（REQ-015；提案見 [ELECTRONICS_LINE.md](domains/ELECTRONICS_LINE.md) §5 與 D-058，PROPOSED）；同一原則：未提供 mapping 一律 unavailable，不以 utilization 冒稱 OEE。
 
 SOURCE 僅要求資料充足才計算；沒有提供完整 domain event taxonomy。APPROVED D-010：由 domain pack 保存明確 stage/event-to-milestone mapping 與 data-quality evidence，未提供 mapping 一律 unavailable。一般 source→sink lead time 不能自動當 Change Lead Time。
 
