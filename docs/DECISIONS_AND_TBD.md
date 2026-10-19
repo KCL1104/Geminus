@@ -216,7 +216,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 
 ### T-046 的提案：電子產線的引擎語義與 domain 規格（2026-10-19，PROPOSED，待 owner）
 
-H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝與阻塞、故障、班表、隨時間變化的投入與批次（REQ-024）；H-017（owner：「時間還很久，盡量保留所有功能」）使換線、lognormal／Weibull 與數項原本延後的功能也規劃在 P0。T-046 phase 1 提出新核心 primitive 的 [ADR-026](adr/ADR-026-line-flow-primitives.md)（PROPOSED）與 domain 規格 [ELECTRONICS_LINE.md](domains/ELECTRONICS_LINE.md)（PROPOSED）。每項 decision 的選項與後果、對決定性與 result digest 的影響、golden vectors 草案與 SimPy reference 的做法寫在這兩份文件中對應 D-ID 的一節；下面只列問題與建議。全部 **PROPOSED**：approved_by／approved_at 為 null，批准前不實作 kernel、不改 schema 與 fixtures。Gate：T-046（phase 2 的 contract 變更）等 D-047–D-059；T-047–T-051 依各自用到的 decision；T-027 等 D-059；T-052 等 D-058–D-060。T-017 不另加：它的驗收（TEST-012、TEST-013）是一般的 mapping，station log 的 mapping 驗收在 T-052。
+H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝與阻塞、故障、班表、隨時間變化的投入與批次（REQ-024）；H-017（owner：「時間還很久，盡量保留所有功能」）把換線與 lognormal／Weibull 列為 P0 提案；agent 另依此方向建議把數項原本延後的功能納入 P0，由 owner 在本頁決定。H-017 只是方向，不批准任何 decision。T-046 phase 1 提出新核心 primitive 的 [ADR-026](adr/ADR-026-line-flow-primitives.md)（PROPOSED）與 domain 規格 [ELECTRONICS_LINE.md](domains/ELECTRONICS_LINE.md)（PROPOSED）。每項 decision 的選項與後果、對決定性與 result digest 的影響、golden vectors 草案與 SimPy reference 的做法寫在這兩份文件中對應 D-ID 的一節；下面只列問題與建議。全部 **PROPOSED**：approved_by／approved_at 為 null，批准前不實作 kernel、不改 schema 與 fixtures。Gate：T-046（phase 2 的 contract 變更）等 D-047–D-059；T-047–T-051 依各自用到的 decision；T-027 等 D-059；T-052 等 D-058–D-060。T-017 不另加：它的驗收（TEST-012、TEST-013）是一般的 mapping，station log 的 mapping 驗收在 T-052。
 
 #### D-047 — 新 primitive 的相容性契約與 differential
 
@@ -240,7 +240,7 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-046 phase 2 前；T-047–T-050 實作前；T-051 的 template 須通過。**
 
-問題：循環阻塞與「bundle 永遠湊不齊」（review 的兩個反例：班表不相交的 bundle、相位相反的 constant 故障）怎麼防止與以 typed error 偵測，保證到哪裡？原提案的 backstop 在有週期性班表或故障時永不觸發。選項：A 靜態 R1–R3（error）與 R4（warning）加 runtime 的 B1、B2；B 只做 runtime 偵測；C 不偵測（違反 TEST-034）。建議 A：R1 `BLOCKING_CYCLE`；R2 `CALENDAR_INVALID`（每個 bundle 在班表的最小公倍數週期內至少有一個 tick 湊得齊）；R3 故障 resource 的 request units＝1、一個 bundle 至多一個故障 resource；R4 `STALL_RISK`（故障 resource 的夥伴不一定與它同時上班）。通過 R1–R3 且沒有 R4 時可證明不會永久停滯；B1 `ErrDeadlock`（循環等待，立即、無誤報）；B2 `ErrStalled`（bundle 沒有任何 unit 在使用中而湊不齊超過 W(q)＝L＋E＋TTRmax＋1 tick）。不保證的情形（有 R4 warning 時的部分固定相位、無上界 TTR 的長等待）在 ADR-026 明列。
+問題：循環阻塞與「bundle 永遠湊不齊」（review 的兩個反例：班表不相交的 bundle、相位相反的 constant 故障）怎麼防止與以 typed error 偵測，保證到哪裡？原提案的 backstop 在有週期性班表或故障時永不觸發。選項：A 靜態 R1–R3（error）與 R4（warning）加 runtime 的 B1、B2；B 只做 runtime 偵測；C 不偵測（違反 TEST-034）。建議 A：R1 `BLOCKING_CYCLE`；R2 `CALENDAR_INVALID`（每個 bundle 在班表的最小公倍數週期內至少有一個 tick 湊得齊）；R3 故障 resource 的 request units＝1、一個 bundle 至多一個故障 resource；R4 `STALL_RISK`（故障 resource 的夥伴不一定與它同時上班）。通過 R1–R3 且沒有 R4 時可證明不會永久停滯；B1 `ErrDeadlock`（循環等待，立即、無誤報）；B2 `ErrStalled`（bundle 沒有任何 unit 在使用中而湊不齊：沒有 R4 時超過確定的期限 next_fit(t_q＋TTRmax)，next_fit 以班表算出、含每班容量與例外日；有 R4 且 TTF／TTR 固定時以狀態重複證明永久停滯）。B1、B2 都不會讓之後會前進的 run 失敗。不保證的情形（有 R4 warning 時的部分固定相位、無上界 TTR 的長等待）在 ADR-026 明列。
 
 #### D-051 — Resource 故障（MTBF／MTTR）
 
@@ -252,13 +252,13 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-049 實作前。**
 
-問題：班表在 IR 中的表示（tick、無時區）、交班時服務中的 entity、utilization 的分母、每班人數與例外日？選項：A 根層共用的 `calendars[]`＋ resource 的 `calendar_id`；A＋ 再加每班容量（`shift_capacity`）與以絕對 model 時間表示的 `exceptions`；B 每個 resource 自己的容量表；C 絕對日期與時區（時區不採用）。建議 A＋（H-017）：交班 finish-first（記 overtime），原 `utilization_mean` 不變，另加 scheduled utilization 與 overtime；每個 calendar 在 S 改變時一個事件，只對 S 改變的 resource 記 observation。
+問題：班表在 IR 中的表示（tick、無時區）、交班時服務中的 entity、utilization 的分母、每班人數與例外日？選項：A 根層共用的 `calendars[]`＋ resource 的 `calendar_id`；A＋ 再加每班容量（`shift_capacity`）與以絕對 model 時間表示的 `exceptions`；B 每個 resource 自己的容量表；C 絕對日期與時區（時區不採用）。建議 A＋（agent 依 H-017 的方向）：交班 finish-first（記 overtime），原 `utilization_mean` 不變，另加 scheduled utilization 與 overtime；每個 calendar 在 S 改變時一個事件，只對 S 改變的 resource 記 observation。
 
 #### D-053 — 隨時間變化的投入
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-049 實作前。**
 
-問題：分時段的投入怎麼表示、與 common random numbers 的關係？選項：A 週期性分段常數 rate、以累積 rate 反函數產生（poisson 或 deterministic，每件一次 draw）；B 投入表（整批投入）；C 各時段各自的 interarrival 分布（打亂配對，不採用）。建議 A＋B（H-017）：scenario 之間第 k 件用同一個 draw；numerical profile 固定（含 r 落在 (0, P] 之外時的修正、超過 365 天時的飽和）；投入表每列一個 ARRIVAL、不用 RNG。
+問題：分時段的投入怎麼表示、與 common random numbers 的關係？選項：A 週期性分段常數 rate、以累積 rate 反函數產生（poisson 或 deterministic，每件一次 draw）；B 投入表（整批投入）；C 各時段各自的 interarrival 分布（打亂配對，不採用）。建議 A＋B（agent 依 H-017 的方向）：scenario 之間第 k 件用同一個 draw；numerical profile 固定（含 r 落在 (0, P] 之外時的修正、超過 365 天時的飽和）；投入表每列一個 ARRIVAL、不用 RNG。
 
 #### D-054 — 批次 process（燒機）
 
@@ -270,25 +270,25 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation / Product。Gate：T-050 實作前。**
 
-依 H-017 規劃在 P0；PRD 已列 P1 的優先權、preemption、進階 routing 仍為 P1。問題：產品怎麼表示、換線何時發生在哪個 unit、與 FIFO 和其他功能的交互？選項：A resource 層的 sequence-dependent 換線（`setups` 矩陣、每個 unit 自己的換線狀態、FIFO 派工）；B process 層的固定 setup（無法表示每台機的狀態與矩陣）；C A 加依產品分組的派工（屬 PRD P1）。建議 A：產品＝entity_type（每個產品一個 source）；授予時優先選狀態相符的 unit，先抽換線再抽 service，不新增事件種類；stream 為 (resource ID, `setup/<u>`)；單一產品的模型與現行逐筆相同。
+依 H-017 列為 P0 提案；PRD 已列 P1 的優先權、preemption、進階 routing 仍為 P1。問題：產品怎麼表示、換線何時發生在哪個 unit、與 FIFO 和其他功能的交互？選項：A resource 層的 sequence-dependent 換線（`setups` 矩陣、每個 unit 自己的換線狀態、FIFO 派工）；B process 層的固定 setup（無法表示每台機的狀態與矩陣）；C A 加依產品分組的派工（屬 PRD P1）。建議 A：產品＝entity_type（每個產品一個 source）；授予時優先選狀態相符的 unit，先抽換線再抽 service，不新增事件種類；stream 為 (resource ID, `setup/<u>`)；單一產品的模型與現行逐筆相同。
 
 #### D-056 — lognormal 與 Weibull（P0）
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-048 實作前。**
 
-依 H-017 納入 P0。問題：參數化、抽樣演算法與 numerical profile？選項：A 兩者皆以反函數法、每個樣本一次 draw（lognormal 以 mean、cv 參數化，Φ⁻¹ 用固定的 AS241；Weibull 的冪次以固定的 exp 與 ln 計算）；B lognormal 用 Box–Muller（每個樣本兩個 U，不採用）；C 只加其中一個。建議 A：stream 消耗與 golden 方法不變；需要固定的 exp、Python 逐運算移植、vectors 與新的 engine_version；實作併入 T-048。
+依 H-017 列為 P0 提案。問題：參數化、抽樣演算法與 numerical profile？選項：A 兩者皆以反函數法、每個樣本一次 draw（lognormal 以 mean、cv 參數化，Φ⁻¹ 用固定的 AS241；Weibull 的冪次以固定的 exp 與 ln 計算）；B lognormal 用 Box–Muller（每個樣本兩個 U，不採用）；C 只加其中一個。建議 A：stream 消耗與 golden 方法不變；需要固定的 exp、Python 逐運算移植、vectors 與新的 engine_version；實作併入 T-048。
 
 #### D-057 — 新參數的 scenario allowlist 與 risk
 
 **狀態：PROPOSED（2026-10-19）。負責角色：AI / Simulation。Gate：T-047–T-050 各自開放對應參數前。**
 
-問題：新參數可否在 scenario 中修改、risk 怎麼算？選項：A 擴充 D-021（buffer capacity、breakdown 分布、換線分布、投入 rate 與投入量、batch 參數、calendar 參照、每班容量、shifts 與例外）；B 不擴充（「加大 FCT 前緩衝」須發布新版本，與 baseline 不可比較）；C 只加 buffer capacity。建議 A：新參數的變更至少 medium，擴大 buffer 為 low；允許改分布的路徑都可換成 lognormal／Weibull；新增或刪除 breakdowns、setups、calendars、schedule、batch，以及改故障時鐘，仍走 draft→publish。
+問題：新參數可否在 scenario 中修改、risk 怎麼算？選項：A 擴充 D-021（buffer capacity、breakdown 分布、換線分布、投入 rate 與投入量、batch 參數、calendar 參照、每班容量、shifts 與例外）；B 不擴充（「加大 FCT 前緩衝」須發布新版本，與 baseline 不可比較）；C 只加 buffer capacity。建議 A：新參數的變更至少 medium，擴大 buffer 為 low；candidate 須通過 D-050 的 R1–R3，新出現 `STALL_RISK` warning 時仍可建立、warning 顯示在審核內容中且 risk 至少 medium；允許改分布的路徑都可換成 lognormal／Weibull；新增或刪除 breakdowns、setups、calendars、schedule、batch，以及改故障時鐘，仍走 draft→publish。
 
 #### D-058 — 電子產線指標的資料來源與 Result 位置
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Domain / Simulation。Gate：T-046 phase 2 改 schema 前；T-051 與 T-052 實作前。**
 
-問題：Pack 的 `ComputeMetrics` 只看 Result，指標放哪、需要哪些 generic 統計？選項：A optional 的 `ComputeModelMetrics(effective IR, result)`、新的 optional `metrics.domain`，並列出 pack 需要的 generic Result 成員；B 由 kernel 讀 domain 屬性（違反 ADR-010）；C 只在 UI 端計算（不在 digest 中）。建議 A：每個 replication、每個 resource 的整數 tick 積分（∫U、∫K、∫Z、∫D、∫S、∫A、∫min(U,S)、∫min(P,S)、∫max(0,A−U)、∫max(U−S,0)）與停機、修復、換線的次數，每個 node 的阻塞統計、每個批次 process 的批量，都只在用到對應功能時出現；宣告式的 `system_wip`、`flow_count`、`sink_count`、`period_throughput`（後三者依 H-017 新增）；線班表的上班時間由 pack 從 IR 算出。FPY 是模型輸入；公式見 ELECTRONICS_LINE §5。
+問題：Pack 的 `ComputeMetrics` 只看 Result，指標放哪、需要哪些 generic 統計？選項：A optional 的 `ComputeModelMetrics(effective IR, result)`、新的 optional `metrics.domain`，並列出 pack 需要的 generic Result 成員；B 由 kernel 讀 domain 屬性（違反 ADR-010）；C 只在 UI 端計算（不在 digest 中）。建議 A：每個 replication、每個 resource 的整數 tick 積分（∫U、∫K、∫Z、∫D、∫S、∫A、∫min(U,S)、∫min(P,S)、∫max(0,A−U)、∫max(U−S,0)）與停機、修復、換線的次數，每個 node 的阻塞統計、每個批次 process 的批量，都只在用到對應功能時出現；宣告式的 `system_wip`、`flow_count`、`sink_count`、`period_throughput`（後三者為 agent 依 H-017 的方向新增的建議）；線班表的上班時間由 pack 從 IR 算出。FPY 是模型輸入；公式見 ELECTRONICS_LINE §5。
 
 #### D-059 — Station event log 的 canonical fields
 

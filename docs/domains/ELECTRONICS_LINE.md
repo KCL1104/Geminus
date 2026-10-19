@@ -9,7 +9,7 @@
 - **流動單位**：一片板子（entity type `board`）；機櫃變體為一個機櫃（`rack`，§4.3）。P0 不做拼板／分板（合併與拆分，ADR-026 延後項目），一個 entity 就是一片板子。
 - **站別**：SMT → AOI → ICT → FCT → 燒機 → 包裝出貨，含測試失敗 → 除錯 → 重測，與無法修復時的報廢。
 - **代表問題**（PRD §2）：目前 ICT 測試機 2 台、FCT 3 台、FCT 前緩衝 10 片；增加 1 台 ICT 或加大緩衝時，UPH、瓶頸站、WIP、utilization、阻塞時間與重測比例如何改變。
-- **P0 包含**（皆 PROPOSED）：有限緩衝與阻塞、機台故障（有班表時只在上班時累積）、班表（含每班人數與例外日）、隨時間變化的投入（含整批投入表）、批次、換線與多產品（每個產品一個 source，D-055）、lognormal 與 Weibull（D-056）、模擬的通過比例、重測比例與報廢率（D-058）。Owner 的方向是盡量保留功能（H-017）。
+- **P0 包含**（皆 PROPOSED）：有限緩衝與阻塞、機台故障（有班表時只在上班時累積）、班表（含每班人數與例外日）、隨時間變化的投入（含整批投入表）、批次、換線與多產品（每個產品一個 source，D-055）、lognormal 與 Weibull（D-056）、模擬的通過比例、重測比例與報廢率（D-058）。Owner 的方向是盡量保留功能（H-017；它把換線與 lognormal／Weibull 列為 P0 提案，其餘原本延後的項目由 owner 決定，不批准任何 decision）。
 - **P0 不做**：PRD 已列為 P1 的優先權與派工規則（含依產品分組的換線排序）、服務中斷（preemption）、進階 routing；另有 agent 為收斂而延後的項目（§9）。搬運以 delay node 近似；作業員技能不建模；跨步驟持有 resource 見 §4.3。
 
 ## 2. 站別與典型結構
@@ -155,7 +155,7 @@ TTF 以上班時間計（D-051 的 scheduled 時鐘），所以 mean 600 是「�
 | AOI | 0.750 | 0.933 | 1 | 0.988 | 0.71 | |
 | ICT | 0.750 | 2.248 | 2 | 0.968 | 0.87 | 加 1 台後約 0.58 |
 | **FCT** | 0.749 | 3.596 | 3 | 0.954 | **0.94** | 最高，預期瓶頸 |
-| 燒機 | 0.746 | 6.0（每 chamber 每件，滿批 40 件／240 分） | 6 | 0.979 | 0.76（上班時段） | 24/7 運轉，全週平均約 0.36；下班時把白天的積壓做完 |
+| 燒機 | 0.749（含燒機失敗修好後重燒） | 6.0（每 chamber 每件，滿批 40 件／240 分） | 6 | 0.979 | 0.77（上班時段） | 24/7 運轉，全週平均約 0.36；下班時把白天的積壓做完 |
 | 除錯 | 0.750 | 3.50（修補、ICT 與 FCT 除錯合計） | 4 | — | 0.66 | |
 | 包裝 | 0.746 | 1.100 | 2 | — | 0.41 | 上班開始時要先清掉夜間燒機完成的板子 |
 
@@ -279,7 +279,7 @@ TTF 以上班時間計（D-051 的 scheduled 時鐘），所以 mean 600 是「�
 ## 9. 延後與限制
 
 - **PRD 已列為 P1、維持 P1**：服務中斷（故障、交班、換線的 preemption）；優先權與派工規則（含依產品分組的換線排序）；進階 routing；MES／CFX 等 connectors。
-- **依 H-017 改為建議納入 P0（提案）**：每班不同人數與例外日（D-052）、投入表（D-053）、模擬的首測通過比例、重測比例、報廢率與逐期比較（D-058 的宣告式 generic metrics）。
+- **Agent 依 H-017 的方向建議納入 P0（待 owner 決定）**：每班不同人數與例外日（D-052）、投入表（D-053）、模擬的首測通過比例、重測比例、報廢率與逐期比較（D-058 的宣告式 generic metrics）。
 - **建議在核心完成後另立任務**：capacity 0 的 buffer；拼板／分板；跨步驟持有 resource（機櫃在槽內除錯）；忙碌時間的故障時鐘；做不完就不開始；AGV 與搬運系統（P0 以 delay）。各項的成本與理由見 ADR-026 Consequences 的表。
 - **不建模**：作業員技能；設備在 SMT 線內的細部平衡。
 
@@ -308,7 +308,7 @@ TTF 以上班時間計（D-051 的 scheduled 時鐘），所以 mean 600 是「�
 
   **每個 replication、每個 node**：`replication_summaries[i].blocking[<node ID>]`（模型有有限 buffer 時，對可能被擋的 node）：阻塞次數、完整阻塞的次數與總 tick、∫被擋 entity 數；`replication_summaries[i].batches[<process ID>]`（批次 process）：開始的批數與成員總數。
 
-  **宣告式 generic metrics**（只在 IR `metrics[]` 宣告時計算；`metrics.additional_metrics[<metric id>]` 為跨 replication 的 summary，`replication_summaries[i].declared[<metric id>]` 為每個 replication 的值）：`system_wip`（∫Nsys／T）、`flow_count`（指定 flow 在視窗內的通過次數）、`sink_count`（指定 sink 的進入件數，含 abandoned）、`period_throughput`（指定 period 的每期 completed 件數陣列，視窗須為整數期）。這三種計數是依 H-017 新增的建議（原本延後）；IR `metrics[]` 其餘既有類型與 Result 的對應仍屬 T-029（CB-22）。
+  **宣告式 generic metrics**（只在 IR `metrics[]` 宣告時計算；`metrics.additional_metrics[<metric id>]` 為跨 replication 的 summary，`replication_summaries[i].declared[<metric id>]` 為每個 replication 的值）：`system_wip`（∫Nsys／T）、`flow_count`（指定 flow 在視窗內的通過次數）、`sink_count`（指定 sink 的進入件數，含 abandoned）、`period_throughput`（指定 period 的每期 completed 件數陣列，視窗須為整數期）。這三種計數是 agent 依 H-017 的方向新增的建議（原本延後，待 owner 決定）。細則（review N5）：`flow_count` 在路由解析時計數，與 routing draw 及 failure／rework observation 同時（D-049），之後該 entity 被擋不影響計數；`period_throughput` 的期從 W 起算，H−W 不是 period 的整數倍時 unavailable（reason 暫定 `WINDOW_NOT_WHOLE_PERIODS`）；宣告的 metric ID 不得與內建的 `additional_metrics` key（例如 `replication_mean_lead_time_minutes`）相同，validator 回 `DUPLICATE_ID`（path `/metrics/<i>/id`）。IR `metrics[]` 其餘既有類型與 Result 的對應仍屬 T-029（CB-22）。
 
   線班表的上班時間 L 不放進 Result，由 pack 以 IR 的 calendar 與 `measurement_window` 算出（整數 tick）。
 - B：維持 `ComputeMetrics(result)`，由 engine 把站別角色寫進 Result。後果：generic kernel 要讀 domain_attributes，違反 ADR-010；不採用。
