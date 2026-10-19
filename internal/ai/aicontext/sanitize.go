@@ -104,7 +104,7 @@ var lookAlike = map[rune]rune{
 // credentialName reports whether a member or column name says its value
 // is a credential (review M2, AI_SPEC §3 default deny): a word for a
 // password, secret, credential, API, access, account, private or secret
-// key, connection string, authorization or cookie anywhere in the name, or
+// key, connection string or authorization anywhere in the name, or
 // a token at its end (access_token, GITHUB_TOKEN; not max_tokens). Words
 // are split at punctuation and case changes (DBPassword, AccountKey).
 func credentialName(name string) bool {
@@ -112,7 +112,7 @@ func credentialName(name string) bool {
 	for i, w := range words {
 		switch w {
 		case "password", "passwd", "passphrase", "pwd", "secret", "secrets", "credential", "credentials", "apikey", "accesskey",
-			"accountkey", "privatekey", "secretkey", "clientsecret", "connectionstring", "authorization", "cookie":
+			"accountkey", "privatekey", "secretkey", "clientsecret", "connectionstring", "authorization":
 			return true
 		}
 		if i+1 < len(words) {
