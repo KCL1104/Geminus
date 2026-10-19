@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/ids"
@@ -55,6 +56,10 @@ var (
 	// ErrNotConfirmed: a reset without confirm_discard. The HTTP contract
 	// requires it (ResetDraft), so a request never gets here without it.
 	ErrNotConfirmed = errors.New("models: a reset must be confirmed")
+	// ErrInvalidComment: a publish comment over 2000 characters, with
+	// U+0000 or not UTF-8 (422 at /comment). The HTTP layer refuses these
+	// first (Publish schema, httpapi.DecodeJSON).
+	ErrInvalidComment = errors.New("models: invalid publish comment")
 )
 
 // InvalidError is a patch or model that is not acceptable (422
@@ -148,6 +153,7 @@ type Version struct {
 	IR              jsontext.Value         `json:"ir"`
 	Hash            string                 `json:"hash"`
 	DatasetBindings []model.DatasetBinding `json:"dataset_bindings"`
+	Comment         *string                `json:"comment"` // D-041; null when there was none
 	CreatedBy       string                 `json:"created_by"`
 	CreatedAt       string                 `json:"created_at"`
 }
@@ -491,6 +497,10 @@ func (s *Service) ResetDraft(ctx context.Context, sc tenant.Scope, requestID, mo
 // is validated, datasets included. Like Create it is idempotent per key and
 // returns the HTTP status and body.
 func (s *Service) Publish(ctx context.Context, sc tenant.Scope, requestID, key, modelID string, expected int64, body []byte, req PublishRequest) (int, []byte, error) {
+	comment, err := publishComment(req.Comment)
+	if err != nil {
+		return 0, nil, err
+	}
 	hash, err := requestHash(map[string]any{"model_id": modelID, "if_match_revision": expected}, body)
 	if err != nil {
 		return 0, nil, err
@@ -549,15 +559,15 @@ func (s *Service) Publish(ctx context.Context, sc tenant.Scope, requestID, key, 
 		}
 		v, err := store.InsertVersion(ctx, tx, store.Version{ID: ids.New("mv"), OrganizationID: m.OrganizationID, ModelID: modelID,
 			Version: base.Version + 1, SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID, IR: candidate, Hash: d.Hash,
-			DatasetBindings: resolution.Manifest, CreatedBy: m.UserID})
+			DatasetBindings: resolution.Manifest, Comment: comment, CreatedBy: m.UserID})
 		if err != nil {
 			return err
 		}
 		if err := s.advance(ctx, tx, m, mdl, d, base, v, res.IR.Name); err != nil {
 			return err
 		}
-		// The comment is the user's text: audit metadata holds IDs and counts
-		// only, and no table has a place for it yet (ADR-022).
+		// The comment is the user's text: it is kept with the version
+		// (D-041); audit metadata holds IDs and counts only.
 		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
 			Action: "model.publish", TargetType: "model_version", TargetID: v.ID, RequestID: requestID,
 			Metadata: map[string]any{"version": v.Version, "model_id": modelID}}); err != nil {
@@ -872,7 +882,21 @@ func publicVersion(v store.Version) (Version, error) {
 		bindings = []model.DatasetBinding{}
 	}
 	return Version{ID: v.ID, OrganizationID: v.OrganizationID, ModelID: v.ModelID, Version: v.Version, SchemaVersion: v.SchemaVersion,
-		ParentVersionID: v.ParentVersionID, IR: ir, Hash: v.Hash, DatasetBindings: bindings, CreatedBy: v.CreatedBy, CreatedAt: timestamp(v.CreatedAt)}, nil
+		ParentVersionID: v.ParentVersionID, IR: ir, Hash: v.Hash, DatasetBindings: bindings, Comment: v.Comment, CreatedBy: v.CreatedBy, CreatedAt: timestamp(v.CreatedAt)}, nil
+}
+
+// publishComment is the comment a version keeps (D-041): nil for none or
+// an empty one; at most 2000 characters (code points, as JSON Schema and
+// PostgreSQL count them), without U+0000, which PostgreSQL text cannot
+// store.
+func publishComment(c string) (*string, error) {
+	if c == "" {
+		return nil, nil
+	}
+	if !utf8.ValidString(c) || utf8.RuneCountInString(c) > 2000 || strings.ContainsRune(c, 0) {
+		return nil, ErrInvalidComment
+	}
+	return &c, nil
 }
 
 // cursor_ is the position a page starts after, bound to the organization,

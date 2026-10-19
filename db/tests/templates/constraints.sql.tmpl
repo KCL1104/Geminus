@@ -341,4 +341,17 @@ UPDATE twin.model_drafts SET ir='{{IR_A2}}', hash='{{IR_A2_HASH}}' WHERE organiz
 SELECT pg_temp.check((SELECT ir FROM twin.model_drafts WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}')='{{IR_A2}}',
   'a draft takes another canonical IR with its hash');
 
+-- D-041 (migration 0006): a version keeps its publish comment, 1 to 2000
+-- characters (not bytes), null when there was none, written once.
+SELECT pg_temp.check((SELECT comment FROM twin.model_versions WHERE id='{{MV_A1}}') IS NULL, 'a version without a comment has none');
+SELECT pg_temp.must_fail($q$INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,ir,hash,comment,created_by)
+  VALUES ('mv_01M4YDQK00TA00000000000042','{{ORG_A}}','{{MDL_A2}}',2,'0.1','{{MV_A21}}','{{IR_A21}}','{{IR_A21_HASH}}','','{{USR_A}}')$q$,'23514');
+SELECT pg_temp.must_fail($q$INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,ir,hash,comment,created_by)
+  VALUES ('mv_01M4YDQK00TA00000000000042','{{ORG_A}}','{{MDL_A2}}',2,'0.1','{{MV_A21}}','{{IR_A21}}','{{IR_A21_HASH}}',repeat('審',2001),'{{USR_A}}')$q$,'23514');
+INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,ir,hash,comment,created_by)
+  VALUES ('mv_01M4YDQK00TA00000000000042','{{ORG_A}}','{{MDL_A2}}',2,'0.1','{{MV_A21}}','{{IR_A21}}','{{IR_A21_HASH}}',repeat('審',2000),'{{USR_A}}');
+SELECT pg_temp.check((SELECT octet_length(comment) FROM twin.model_versions WHERE id='mv_01M4YDQK00TA00000000000042')=6000,
+  'a 2000-character comment of 6000 bytes is kept');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_versions SET comment='edited' WHERE id='mv_01M4YDQK00TA00000000000042'$q$,'55000');
+
 ROLLBACK;

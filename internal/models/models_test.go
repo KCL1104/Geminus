@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -424,6 +425,72 @@ func TestPublish(t *testing.T) {
 		t.Errorf("versions after refusals: %+v %v", page, err)
 	}
 	matches(t, "Versions", mustJSON(t, page))
+}
+
+// D-041: a version keeps the comment it was published with, as given; one
+// published with an empty comment, and the first version, have none. A
+// comment is at most 2000 characters (not bytes) and cannot hold U+0000,
+// which PostgreSQL text cannot store, or invalid UTF-8.
+func TestPublishKeepsTheComment(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	sc := e.scope(tenant.Editor)
+	m := e.create(t, sc, createBody)
+	if first, err := e.svc.GetVersion(ctx, sc, m.LatestVersion.ID); err != nil || first.Comment != nil {
+		t.Errorf("the first version's comment: %v %v", first.Comment, err)
+	}
+	base, rev := m.LatestVersion.ID, int64(1)
+	publish := func(comment string) (models.Version, error) {
+		body := fmt.Appendf(nil, `{"expected_base_version_id":%q}`, base)
+		if utf8.ValidString(comment) { // the HTTP layer never passes invalid UTF-8
+			body = fmt.Appendf(nil, `{"expected_base_version_id":%q,"comment":%s}`, base, mustJSON(t, comment))
+		}
+		_, out, err := e.svc.Publish(ctx, sc, requestID(), key(), m.ID, rev, body, models.PublishRequest{ExpectedBaseVersionID: base, Comment: comment})
+		if err != nil {
+			return models.Version{}, err
+		}
+		matches(t, "ModelVersion", out)
+		var v models.Version
+		return v, json.Unmarshal(out, &v)
+	}
+	long := strings.Repeat("審", 2000)
+	for i, comment := range []string{"Ready for review: QA has two testers now.", long, ""} {
+		d, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, rev, rename(fmt.Sprintf("Name %d", i)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rev = d.Revision
+		v, err := publish(comment)
+		if err != nil {
+			t.Fatalf("publishing with %d characters: %v", len([]rune(comment)), err)
+		}
+		stored, err := e.svc.GetVersion(ctx, sc, v.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for what, got := range map[string]*string{"published": v.Comment, "read back": stored.Comment} {
+			if comment == "" && got != nil || comment != "" && (got == nil || *got != comment) {
+				t.Errorf("%d characters, %s: %v", len([]rune(comment)), what, got)
+			}
+		}
+		base, rev = v.ID, rev+1
+	}
+	page, err := e.svc.ListVersions(ctx, sc, m.ID, "", 10)
+	// Newest first: the empty comment, the long one, the short one, none.
+	if err != nil || len(page.Items) != 4 || page.Items[0].Comment != nil || page.Items[1].Comment == nil || *page.Items[1].Comment != long ||
+		page.Items[3].Comment != nil {
+		t.Errorf("listed versions: %v", err)
+	}
+	d, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, rev, rename("Refused"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rev = d.Revision
+	for name, comment := range map[string]string{"2001 characters": long + "審", "U+0000": "a\x00b", "invalid UTF-8": "a\xffb"} {
+		if _, err := publish(comment); !errors.Is(err, models.ErrInvalidComment) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
 }
 
 // Two publishes of the same draft race: one creates version 2, the other

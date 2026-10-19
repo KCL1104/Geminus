@@ -312,6 +312,7 @@
   },
   "hash": "sha256:04dc2e7265b6ee636c2ce0a05a30cce80677390e4a2ad14a61bae61bc2ad03f2",
   "dataset_bindings": [],
+  "comment": null,
   "created_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
   "created_at": "2026-10-15T08:30:00Z"
 }

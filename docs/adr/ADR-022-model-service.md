@@ -76,6 +76,8 @@ Owner 採用下列兩項的建議方案：IR 欄位改存 canonical 文字（D-0
 
 **D-040 已實作（T-013a）**：migration 0005 把兩個 `ir` 欄位改為 `text`，並加上 `hash = 'sha256:' || encode(sha256(convert_to(ir,'UTF8')),'hex')` 的 CHECK；service 寫入 canonical bytes，讀出時不再 canonicalize，只再核對一次 hash（不符即錯誤，不回傳）。Reviewer 的 1.94 MB draft 存成 1,942,370 bytes（jsonb 時 83,639,428），本機 `internal/models` 的 DB 測試（含新的 `TestStoredIRIsTheCanonicalBytes`）從 162 秒降為 38 秒。0005 遇到已有 model 的 DB 會停止：SQL 無法從 jsonb 產生 canonical 形式，而尚無部署。
 
+**D-041 已實作（T-013b）**：`ModelVersion.comment`（contract 為必填、可為 null）保存 Publish 的 comment；空字串視為沒有 comment。Migration 0006 以 `char_length` 限制 1 到 2000 個字元（與 JSON Schema 的 `maxLength` 同樣以字元計），version 不可修改，所以 comment 只在建立時寫入。Service 另拒絕超過 2000 字元、含 U+0000 或非 UTF-8 的 comment（`ErrInvalidComment`，HTTP 層會先擋下）。Audit metadata 仍只記 ID 與數量。
+
 - **儲存形式的讀取放大（T-012 review M4）**：jsonb 保存值而不是 bytes，讀出時數字以完整十進位印出（`1e300` 印成 301 位）。2 MiB 上限量的是 canonical bytes，reviewer 以 1.94 MB 的 canonical draft 得到 83.6 MB 的 jsonb 文字，一次 GetDraft 3.9 秒；每次 patch、publish 也要讀它。T-012 的檢查已改用 canonical 形式（M1），所以不會再誤判上限，但成本仍與 jsonb 文字成正比，寫入也一樣：複核時 1.94 MB 的 canonical draft（83.6 MB 文字）GetDraft 3.5 秒、patch 4.9 秒、publish 5.8 秒（T-012 review 2 N3）。Run 與 worker（T-021／T-023）讀 version IR 時也受影響。記為 D-040，為 T-013 的 decision gate。選項：
   1. **（建議）IR 欄位改為保存 canonical 文字**：新 migration 把 `model_versions.ir`、`model_drafts.ir`（及之後 scenario 的 patch 等）改為 `json`（保存原文字）或 `text`。讀出即為 hash 涵蓋的 bytes，SQL 也能以 `sha256` 核對 hash；不再需要讀取時 canonicalize。代價：一個 migration 與 storage 調整；失去 jsonb 運算子（目前沒有查詢使用）。
   2. 在 IR contract 限制自由容器（metadata、domain_attributes）中數字的寫法（例如 |x| 在 1e-6 到 1e21 之間）：需改 TWIN_IR_SPEC 與 validator，且是使用者看得到的限制。

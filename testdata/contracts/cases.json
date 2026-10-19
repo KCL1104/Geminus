@@ -552,6 +552,16 @@
       "layer": "schema"
     },
     {
+      "id": "invalid-model-version-empty-comment",
+      "instance": "testdata/contracts/invalid-model-version-empty-comment.json",
+      "schema": "schemas/http.schema.json#/$defs/ModelVersion",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/comment"
+      ]
+    },
+    {
       "id": "invalid-draft-missing-issues",
       "instance": "testdata/contracts/invalid-draft-missing-issues.json",
       "schema": "schemas/http.schema.json#/$defs/Draft",

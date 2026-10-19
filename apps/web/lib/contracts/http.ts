@@ -64,6 +64,7 @@ export type ModelVersion = {
   ir: ModelIR;
   hash: string;
   dataset_bindings: DatasetBinding[];
+  comment: string | null;
   created_by: UserID;
   created_at: string;
 };

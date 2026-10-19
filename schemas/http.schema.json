@@ -239,6 +239,19 @@
           "minItems": 0,
           "maxItems": 1000
         },
+        "comment": {
+          "$comment": "D-041: Publish.comment as given; null when there was none (or it was empty), and for the first version.",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "created_by": {
           "$ref": "common.schema.json#/$defs/UserID"
         },
@@ -257,6 +270,7 @@
         "ir",
         "hash",
         "dataset_bindings",
+        "comment",
         "created_by",
         "created_at"
       ],

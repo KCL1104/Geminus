@@ -37,6 +37,7 @@ type Version struct {
 	IR                          []byte // the canonical text its hash covers (D-040)
 	Hash                        string
 	DatasetBindings             []model.DatasetBinding // byte order of logical_ref (D-034)
+	Comment                     *string                // the publish comment (D-041); nil when there was none
 	CreatedBy                   string
 	CreatedAt                   time.Time
 }
@@ -149,9 +150,9 @@ func InsertVersion(ctx context.Context, tx pgx.Tx, v Version) (Version, error) {
 	if err != nil {
 		return Version{}, fmt.Errorf("encoding the manifest: %w", err)
 	}
-	if err := tx.QueryRow(ctx, `INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,source_proposal_id,ir,hash,dataset_bindings,created_by)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING created_at`,
-		v.ID, v.OrganizationID, v.ModelID, v.Version, v.SchemaVersion, v.ParentVersionID, v.SourceProposalID, v.IR, v.Hash, manifest, v.CreatedBy).Scan(&v.CreatedAt); err != nil {
+	if err := tx.QueryRow(ctx, `INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,source_proposal_id,ir,hash,dataset_bindings,comment,created_by)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING created_at`,
+		v.ID, v.OrganizationID, v.ModelID, v.Version, v.SchemaVersion, v.ParentVersionID, v.SourceProposalID, v.IR, v.Hash, manifest, v.Comment, v.CreatedBy).Scan(&v.CreatedAt); err != nil {
 		return Version{}, err
 	}
 	for _, b := range bindings {
@@ -164,12 +165,12 @@ func InsertVersion(ctx context.Context, tx pgx.Tx, v Version) (Version, error) {
 	return v, nil
 }
 
-const versionColumns = `id, model_id, version, schema_version, parent_version_id, source_proposal_id, ir, hash, dataset_bindings, created_by, created_at`
+const versionColumns = `id, model_id, version, schema_version, parent_version_id, source_proposal_id, ir, hash, dataset_bindings, comment, created_by, created_at`
 
 func scanVersion(row pgx.Row, org string) (Version, error) {
 	v := Version{OrganizationID: org}
 	var manifest []byte
-	err := row.Scan(&v.ID, &v.ModelID, &v.Version, &v.SchemaVersion, &v.ParentVersionID, &v.SourceProposalID, &v.IR, &v.Hash, &manifest, &v.CreatedBy, &v.CreatedAt)
+	err := row.Scan(&v.ID, &v.ModelID, &v.Version, &v.SchemaVersion, &v.ParentVersionID, &v.SourceProposalID, &v.IR, &v.Hash, &manifest, &v.Comment, &v.CreatedBy, &v.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Version{}, ErrNotFound
 	}
