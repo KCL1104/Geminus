@@ -145,7 +145,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .node .nn{font-weight:600;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .node .np{display:block;padding:8px 12px 0;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .node .np.wr{white-space:normal}
-.node .np.sm{font-size:var(--fs1);padding-top:2px;white-space:nowrap;font-stretch:87.5%}
+.node .np.sl{padding-top:2px}
 .node .np.wr+.np.wr{padding-top:2px}
 .tag.flag{position:absolute;top:-11px;right:8px}
 .node .nm{display:block;padding:6px 12px 0}
@@ -159,7 +159,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .node .bar.b i{border:1.5px solid var(--base);background:none}
 .node .bar.s{background:var(--well)}.node .bar.s i{background:var(--sc)}
 .node .chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 0}
-.node .kl{display:block;font-size:var(--fs1);color:var(--ink2);line-height:16px;margin-top:6px}
+.node .kl{display:block;font-size:var(--fs1);color:var(--ink2);line-height:16px;margin-top:6px;word-break:keep-all}
 .node .vl{display:block;font-size:var(--fs3);line-height:20px;white-space:nowrap}
 .ubar{display:block;margin:4px 0 2px;overflow:visible}
 .ubar .ut{stroke:var(--rule);stroke-width:1}
@@ -176,6 +176,8 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .tag{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 6px;border:1px solid var(--sc);border-radius:10px;color:var(--sc);font-size:var(--fs1);font-weight:600;flex:none;white-space:nowrap}
 .tag .ic{width:12px;height:12px}
 .tag.ink{border-color:var(--ink);background:var(--ink);color:var(--onink)}
+/* Review is drawn at about 82% at 1280: its labels use the node text size so they stay 11 px or more */
+.app[data-mode="review"] .node .tag,.app[data-mode="review"] .pool .tag{font-size:var(--fs2);height:22px}.app[data-mode="review"] .tag.flag{top:-12px}
 .tag.err{border-color:var(--err);color:var(--err)}
 .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 7px;border-radius:var(--r1);font-size:var(--fs1);font-weight:600;white-space:nowrap}
 .chip .ic{width:13px;height:13px}
@@ -194,6 +196,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .callout{position:absolute;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid var(--ambedge);border-radius:var(--r2);background:var(--ambwash);color:var(--amb);font-size:var(--fs1);white-space:nowrap;pointer-events:none}
 .callout .ic{color:var(--ambmark)}.callout b{font-weight:600}
 .rmtag{position:absolute;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border:1px solid var(--err);border-radius:var(--r1);background:var(--raised);color:var(--err);font-size:var(--fs1);font-weight:600;white-space:nowrap;pointer-events:none}
+.app[data-mode="review"] .rmtag{font-size:var(--fs2);height:28px}
 
 /* canvas chrome */
 .ctop{position:absolute;top:16px;left:16px;right:16px;display:flex;align-items:flex-start;gap:12px;pointer-events:none;z-index:3}
@@ -263,7 +266,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 /* strip (Marey timetable) */
 .strip{border-top:1px solid var(--edge);background:var(--sheet);min-width:0}
 .sh{height:40px;display:flex;align-items:center;gap:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;white-space:nowrap;min-width:0}
-.sh .day{font-weight:600;font-size:var(--fs2);min-width:92px}
+.sh .day{font-weight:600;font-size:var(--fs2);min-width:92px;flex:none}
 .scrub{width:200px;height:16px;margin:0;flex:none}
 .sh .sam{color:var(--ink2);overflow:hidden;text-overflow:ellipsis;min-width:0}
 .sh .e3{display:none}
@@ -297,14 +300,14 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .sec{margin-top:20px}
 .sec>.hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
 .sec>.hd .lb{text-align:right}
-.say{font-size:var(--fs3);line-height:1.35;margin-bottom:14px}
+.say{font-size:var(--fs3);line-height:1.35;margin-bottom:14px;text-wrap:balance}
 .say b{font-weight:600}
 .ctab{width:100%;border-collapse:collapse}
 .ctab th{font-size:var(--fs1);font-weight:600;text-align:right;padding:6px 4px 8px;vertical-align:bottom;border-bottom:1px solid var(--edge);white-space:nowrap}
 .ctab th small,.ctab td small{display:block;font-size:var(--fs1);font-weight:400;color:var(--ink2);margin-top:1px}
 .ctab th .k{vertical-align:middle;margin-right:4px}
-.ctab tbody th{text-align:left;padding:9px 4px 9px 0;vertical-align:top;border-bottom:1px solid var(--rule);font-weight:600;white-space:nowrap}
-.ctab td{text-align:right;padding:9px 4px;vertical-align:top;border-bottom:1px solid var(--rule);white-space:nowrap}
+.ctab tbody th{text-align:left;padding:6px 4px 6px 0;vertical-align:top;border-bottom:1px solid var(--rule);font-weight:600;white-space:nowrap}
+.ctab td{text-align:right;padding:6px 4px;vertical-align:top;border-bottom:1px solid var(--rule);white-space:nowrap}
 .ctab thead th:first-child{text-align:left;padding-left:0}
 .ctab .mv{display:block;font-size:var(--fs3);line-height:20px}
 .ctab .iv{display:block;font-size:var(--fs3);line-height:18px;color:var(--ink2);font-stretch:87.5%}
@@ -678,10 +681,10 @@ en: {
   f_backlog: "starting backlog", f_wip: "work-in-progress limit",
   e_rate: "Arrival rate must be a whole number from 1 to 1000.", e_backlog: "Starting backlog must be a whole number from 0 to 1000.", e_wip: "Work-in-progress limit must be a whole number from 1 to 1000.",
   tcap: "Large figures: median of 30 runs. Small figures: 90% interval. Lead time counts from the start of work; WIP includes the backlog.",
-  fWarm: "Warm-up", fWarmV: "first {n} days left out",
-  rugRun7: "Run {r}, the sampled trace.", stepNote: "Day counts: run {r}", savedSub: "No unsaved changes", noErrors: "No errors.", colon: ": ", comma: ", ",
-  optRerun: "Run {s} again", optRerunSub: "Patch {s} on v{v}, new seed. Same dataset and engine.",
-  optBase: "Run baseline on v{v}", optBaseSub: "v{v} without a patch, new seed",
+  fWarm: "Warm-up, not counted", fWarmV: "first {n} working days",
+  rugRun7: "Run {r}, the sampled trace.", stepNote: "Counts from run {r}", savedSub: "No unsaved changes", noErrors: "No errors.", colon: ": ", comma: ", ",
+  optRerun: "Run {s} again", optRerunSub: "Patch {s} on v{v}. New seed for work times; same arrivals, dataset and engine.",
+  optBase: "Run baseline on v{v}", optBaseSub: "v{v} without a patch. New seed for work times; same arrivals.",
   optDraft: "Run draft rev {rev}", optDraftSub: "Drafts don't run. Publish the draft as a version first.",
   draftErrs: pl("The draft has 1 error.", "The draft has {n} errors."),
   capEdit: "Editing draft rev {rev}, based on v{v}", readOnly: "Read-only", capSimA: "v{v} with patch {s}", capSimB: "v{v}, no patch",
@@ -696,20 +699,20 @@ en: {
   k_source: "Source", k_process: "Process step", k_sink: "End", k_pool: "Resource pool",
   arrives: "Work arrives", perWeekN: "{n} items/week", capN: "Capacity {n}", capNone: "Capacity not set", fromPool: "from {pool}",
   durLine: "{a}–{b}\u00a0h, usually {m}\u00a0h", durExp: "Mean {m} h", durData: "Measured times, dataset rev 7",
-  util: "Utilisation", qp95: "Queue p95", qDay: "Queue, day {d}", waitDay: "Waiting to start, day {d}", relDay: "Released, day {d}",
+  util: "Utilisation", qp95: "Queue p95", qDay: "Queue, working\u00a0day\u00a0{d}", waitDay: "Waiting to start, working\u00a0day\u00a0{d}", waitShort: "Waiting to start", relDay: "Released by working\u00a0day\u00a0{d}", arrDay: "Arrived by working\u00a0day\u00a0{d}",
   sizeN: "size {n}", tagAdded: "Added", tagNew: "New in v{v}",
   calloutQ: "{step} queue p95 {a} → {b} in {s}",
   rmTag: "Removed: {a} → {b}",
   to: "to",
   threeH: "3D view", threeBody: "A read-only 3D projection of the same model and run: the same steps and IDs as the 2D canvas, with playback from the sampled trace.", notIn: "Not in this prototype", back2d: "Back to 2D",
-  stripH: "Playback", play: "Play", pause: "Pause", dayOf: "Day {d} of {n}", dayAria: "Day", sampled: "Sampled trace, run {r} of {n}", every3: "(lines: every 3rd work item)",
+  stripH: "Playback", play: "Play", pause: "Pause", dayOf: "Working day {d} of {n}", dayAria: "Working day", sampled: "Sampled trace, run {r} of {n}", every3: "(lines: every 3rd work item)",
   keyFlat: "Flat: waiting. Steep: moving.", rowsGroup: "Steps in the timetable",
-  mareyT: "Work items through the steps, days {a} to {b}",
-  mareyD: "Sampled trace, run {r} of {n}. Dashed lines: {an}. Solid lines: {bn}. Each line is one work item; flat stretches are waiting. On day {d}, {step} has {qa} waiting in {an} and {qb} in {bn}.",
+  mareyT: "Work items through the steps, working days {a} to {b}",
+  mareyD: "Sampled trace, run {r} of {n}. Dashed lines: {an}. Solid lines: {bn}. Each line is one work item; flat stretches are waiting. On working day {d}, {step} has {qa} waiting in {an} and {qb} in {bn}.",
   compareH: "Compare", compareSub: "{a} and {b}", fullScreen: "Full screen", exitFull: "Exit full screen",
-  saySum: "Median lead time {a} → {b} days: {p}% {dir}.", shorter: "shorter", longer: "longer", same: "no change",
+  saySum: "Median lead time {a} → {b} working days: {p}% {dir}.", shorter: "shorter", longer: "longer", same: "no change",
   thMetric: "Metric",
-  m_lead: "Lead time", ms_lead: "median, days", mu_lead: "days",
+  m_lead: "Lead time", ms_lead: "median, working days", mu_lead: "working days",
   m_thru: "Throughput", ms_thru: "median, per week", mu_thru: "items/week",
   m_qa: "{step} queue p95", ms_qa: "median, items", mu_qa: "items",
   m_wip: "WIP", ms_wip: "mean, items", mu_wip: "items",
@@ -724,7 +727,7 @@ en: {
   r5why: "Dataset rev 6 has no started_at column. Fixed in rev 7; run again to use it.", r4why: "By Mei Lin at 12 of 30 runs. Nothing was saved.",
   cancelledAt: "At {k} of {n} runs. Nothing was saved.",
   cancel: "Cancel", cancelRun: "Cancel {id}", progress: "{id} progress", compareWith: "Compare {b} with {a}", inCompare: "In Compare",
-  factsH: "Run facts", fRuns: "Runs", fRunsV: "{n} runs × {d} days", fSeed: "Seed", fEngine: "Engine", fDataset: "Dataset", fDatasetV: "rev {n}", fData: "Data", synthetic: "Synthetic example data",
+  factsH: "Run facts", fRuns: "Runs", fRunsV: "{n} runs × {d} working days", fTime: "Working day", fTimeV: "8 hours; 5 per week", fArr: "Arrivals", fArrV: "Same in both runs", fSeed: "Seed", fEngine: "Engine", fDataset: "Dataset", fDatasetV: "rev {n}", fData: "Data", synthetic: "Synthetic example data",
   askAi: "Ask AI to explain", askAiNote: "The AI explains results from the runs and the model, and can suggest a next experiment. It can't start a run.",
   rvTitle: "Add a security review", rvSub: "Proposal {p} from AI, asked by Mei Lin. Based on v{v}, the latest version.", rvSubStale: "Proposal {p} from AI, asked by Mei Lin. Based on v{v}.",
   request: "Request", requestText: "Add a security review between Code review and CI, staffed by 2 security reviewers.",
@@ -755,7 +758,7 @@ en: {
   dataNote: "Measured times from dataset rev 7, column {col}, {rows} rows (synthetic).", dataNone: "Dataset rev 7 has no measured times for this step.",
   curveT: "Triangular distribution of time per work item", curveD: "From {a} to {b} hours, most often {m}.",
   delStep: "Delete step", noDelete: "The source and the end can't be deleted.", addPoolHere: "Add a resource pool",
-  arrivals: "Arrival rate", arrivalsHelp: "Work items per week.", sinkNote: "Work leaves the model here.",
+  arrivals: "Arrival rate", arrivalsHelp: "Work items per week of 5 working days.", sinkNote: "Work leaves the model here.",
   poolSize: "Size", poolHelp: "People or machines in this pool.", serves: "Serves {step}", delPool: "Delete pool",
   dec: "Decrease {f}", inc: "Increase {f}", pathL: "Path",
   e_cap_empty: "Capacity is empty. Enter a whole number from 1 to 1000.", e_cap_range: "Capacity must be a whole number from 1 to 1000.",
@@ -788,12 +791,12 @@ en: {
   kk_play: "Play or pause the timetable (Simulate)", kk_full: "Compare full screen (Simulate)", kk_esc: "Close, or go back to where you were", kk_help: "This list",
   aboutH: "About this prototype",
   ab1: "A static design prototype of the Geminus model workspace. Every number on it is synthetic example data. Nothing is saved, except your theme and language choice in this browser.",
-  ab2: "The strip under the canvas is a Marey graphic timetable: time runs left to right, the steps stand top to bottom, and each work item is a line through them. Where a line goes flat, the item is waiting. The playhead is shared with the canvas, so the queue counts on the steps follow the day.",
+  ab2: "The strip under the canvas is a Marey graphic timetable: time runs left to right in 8-hour working days, the steps stand top to bottom, and each work item is a line through them. Where a line goes flat, the item is waiting. The playhead is shared with the canvas, so the queue counts on the steps follow the working day. Both runs see the same arrivals; only the work times differ.",
   ab3: "Try this: fix the error in the draft and publish v4; run S-2 again, then cancel it or let it finish; show Compare full screen as you would in a meeting; approve, edit or reject proposal P-14.",
   ab4: "Not in this prototype: the 3D view, importing data and asking the AI. Their entry points are marked.",
   ab5: "Archivo with tabular figures, with Noto Sans TC for Chinese. Graphite ink on a white sheet; the baseline is dashed graphite and the scenario solid deep green; amber is for warnings and red for errors. The dark theme is gray-black.",
   phEditH: "Editing needs a larger screen", phEditP: "On a phone you can read results and review proposals. Open Geminus on a desktop to edit the model.", goSim: "Go to Simulate", goReview: "Go to Review",
-  pstepsH: "Steps on day {d}", delta: "Δ",
+  pstepsH: "Steps on working day {d}", delta: "Δ",
   toastClose: "Dismiss",
 },
 zh: {
@@ -819,10 +822,10 @@ zh: {
   f_backlog: "起始待辦", f_wip: "在製品上限",
   e_rate: "到達率必須是 1 到 1000 的整數。", e_backlog: "起始待辦必須是 0 到 1000 的整數。", e_wip: "在製品上限必須是 1 到 1000 的整數。",
   tcap: "大字：30 次模擬的中位數。小字：90% 區間。前置時間從開始工作起算；在製品含待辦。",
-  fWarm: "暖機", fWarmV: "不計前 {n} 天",
-  rugRun7: "第 {r} 次模擬，即取樣追蹤。", stepNote: "每日數量：第 {r} 次模擬", savedSub: "沒有未儲存的變更", noErrors: "沒有錯誤。", colon: "：", comma: "，",
-  optRerun: "重新執行 {s}", optRerunSub: "v{v} 套用修補 {s}，使用新的 seed。資料集與引擎不變。",
-  optBase: "執行 v{v} 基準", optBaseSub: "v{v} 不套用修補，使用新的 seed",
+  fWarm: "暖機，不計入", fWarmV: "前 {n} 個工作日",
+  rugRun7: "第 {r} 次模擬，即取樣追蹤。", stepNote: "計數來自第 {r} 次模擬", savedSub: "沒有未儲存的變更", noErrors: "沒有錯誤。", colon: "：", comma: "，",
+  optRerun: "重新執行 {s}", optRerunSub: "v{v} 套用修補 {s}。工作時間使用新的 seed；到達、資料集與引擎不變。",
+  optBase: "執行 v{v} 基準", optBaseSub: "v{v} 不套用修補。工作時間使用新的 seed；到達不變。",
   optDraft: "執行草稿第 {rev} 版修訂", optDraftSub: "草稿不能直接執行，請先發布成版本。",
   draftErrs: pl("草稿有 1 個錯誤。", "草稿有 {n} 個錯誤。"),
   capEdit: "編輯草稿第 {rev} 版修訂，基於 v{v}", readOnly: "唯讀", capSimA: "v{v} 套用修補 {s}", capSimB: "v{v}，未套用修補",
@@ -837,20 +840,20 @@ zh: {
   k_source: "來源", k_process: "處理步驟", k_sink: "終點", k_pool: "資源池",
   arrives: "工作進入", perWeekN: "每週 {n} 項", capN: "容量 {n}", capNone: "未設定容量", fromPool: "來自{pool}",
   durLine: "{a}–{b}\u00a0小時，通常 {m}\u00a0小時", durExp: "平均 {m} 小時", durData: "實測時間，資料集第 7 版",
-  util: "使用率", qp95: "佇列 p95", qDay: "第 {d} 天佇列", waitDay: "第 {d} 天等待開始", relDay: "上線，第 {d} 天",
+  util: "使用率", qp95: "佇列 p95", qDay: "第 {d} 工作日佇列", waitDay: "第 {d} 工作日等待開始", waitShort: "等待開始", relDay: "至第 {d} 工作日已上線", arrDay: "至第 {d} 工作日已到達",
   sizeN: "{n} 人", tagAdded: "新增", tagNew: "v{v} 新增",
   calloutQ: "{s} 中{step}佇列 p95 {a} → {b}",
   rmTag: "移除：{a} → {b}",
   to: "變為",
   threeH: "3D 檢視", threeBody: "同一個模型與模擬的唯讀 3D 投影：步驟與 ID 和 2D 畫布相同，播放使用取樣的追蹤資料。", notIn: "這個原型不包含", back2d: "回到 2D",
-  stripH: "播放", play: "播放", pause: "暫停", dayOf: "第 {d} 天，共 {n} 天", dayAria: "日期", sampled: "取樣追蹤，第 {r} 次模擬，共 {n} 次", every3: "（每 3 個工作項目畫 1 條線）",
+  stripH: "播放", play: "播放", pause: "暫停", dayOf: "第 {d}／{n} 個工作日", dayAria: "工作日", sampled: "取樣追蹤，第 {r} 次模擬，共 {n} 次", every3: "（每 3 個工作項目畫 1 條線）",
   keyFlat: "平：在等待。陡：在前進。", rowsGroup: "時刻表中的步驟",
-  mareyT: "工作項目通過各步驟，第 {a} 到 {b} 天",
-  mareyD: "取樣追蹤，第 {r} 次模擬，共 {n} 次。虛線：{an}。實線：{bn}。每條線是一個工作項目，平的部分是在等待。第 {d} 天，{step}在 {an} 有 {qa} 項等待，在 {bn} 有 {qb} 項。",
+  mareyT: "工作項目通過各步驟，第 {a} 到 {b} 個工作日",
+  mareyD: "取樣追蹤，第 {r} 次模擬，共 {n} 次。虛線：{an}。實線：{bn}。每條線是一個工作項目，平的部分是在等待。第 {d} 個工作日，{step}在 {an} 有 {qa} 項等待，在 {bn} 有 {qb} 項。",
   compareH: "比較", compareSub: "{a} 與 {b}", fullScreen: "全螢幕", exitFull: "結束全螢幕",
-  saySum: "前置時間中位數 {a} → {b} 天：{dir} {p}%。", shorter: "縮短", longer: "增加", same: "沒有變化",
+  saySum: "前置時間中位數 {a} → {b} 個工作日：{dir} {p}%。", shorter: "縮短", longer: "增加", same: "沒有變化",
   thMetric: "指標",
-  m_lead: "前置時間", ms_lead: "中位數，天", mu_lead: "天",
+  m_lead: "前置時間", ms_lead: "中位數，工作日", mu_lead: "工作日",
   m_thru: "產出量", ms_thru: "中位數，每週", mu_thru: "項／週",
   m_qa: "{step}佇列 p95", ms_qa: "中位數，項", mu_qa: "項",
   m_wip: "在製品", ms_wip: "平均，項", mu_wip: "項",
@@ -865,7 +868,7 @@ zh: {
   r5why: "資料集第 6 版沒有 started_at 欄位。第 7 版已修正，重新執行即可使用。", r4why: "由 Mei Lin 在第 12／30 次時取消，沒有儲存任何結果。",
   cancelledAt: "在第 {k}／{n} 次時取消，沒有儲存任何結果。",
   cancel: "取消", cancelRun: "取消 {id}", progress: "{id} 進度", compareWith: "比較 {b} 與 {a}", inCompare: "比較中",
-  factsH: "模擬資訊", fRuns: "次數", fRunsV: "{n} 次 × {d} 天", fSeed: "Seed", fEngine: "引擎", fDataset: "資料集", fDatasetV: "第 {n} 版", fData: "資料", synthetic: "合成的示範資料",
+  factsH: "模擬資訊", fRuns: "次數", fRunsV: "{n} 次 × {d} 個工作日", fTime: "工作日", fTimeV: "8 小時；每週 5 個", fArr: "到達", fArrV: "兩次模擬相同", fSeed: "Seed", fEngine: "引擎", fDataset: "資料集", fDatasetV: "第 {n} 版", fData: "資料", synthetic: "合成的示範資料",
   askAi: "請 AI 解釋", askAiNote: "AI 會根據模擬與模型解釋結果，也能建議下一個實驗，但不能自行啟動模擬。",
   rvTitle: "加入資安審查", rvSub: "AI 建議 {p}，提問者 Mei Lin。基於最新版本 v{v}。", rvSubStale: "AI 建議 {p}，提問者 Mei Lin。基於 v{v}。",
   request: "需求", requestText: "在程式碼審查與 CI 之間加入資安審查，由 2 位資安審查員負責。",
@@ -896,7 +899,7 @@ zh: {
   dataNote: "來自資料集第 7 版欄位 {col} 的實測時間，共 {rows} 列（合成資料）。", dataNone: "資料集第 7 版沒有這個步驟的實測時間。",
   curveT: "每個工作項目所需時間的三角分布", curveD: "從 {a} 到 {b} 小時，最常見 {m} 小時。",
   delStep: "刪除步驟", noDelete: "來源與終點不能刪除。", addPoolHere: "新增資源池",
-  arrivals: "到達率", arrivalsHelp: "每週進入的工作項目數。", sinkNote: "工作在這裡離開模型。",
+  arrivals: "到達率", arrivalsHelp: "每週（5 個工作日）進入的工作項目數。", sinkNote: "工作在這裡離開模型。",
   poolSize: "大小", poolHelp: "這個資源池中的人數或機器數。", serves: "支援{step}", delPool: "刪除資源池",
   dec: "減少{f}", inc: "增加{f}", pathL: "路徑",
   e_cap_empty: "容量是空的。請輸入 1 到 1000 的整數。", e_cap_range: "容量必須是 1 到 1000 的整數。",
@@ -929,12 +932,12 @@ zh: {
   kk_play: "播放或暫停時刻表（模擬）", kk_full: "全螢幕比較（模擬）", kk_esc: "關閉，或回到原來的位置", kk_help: "這份清單",
   aboutH: "關於這個原型",
   ab1: "這是 Geminus 模型工作台的靜態設計原型。畫面上的每個數字都是合成的示範資料。除了主題與語言選擇會存在這個瀏覽器，其他都不會被儲存。",
-  ab2: "畫布下方的時間帶是 Marey 圖解時刻表：時間由左到右，步驟由上到下，每個工作項目是一條穿過步驟的線。線變平的地方，就是項目在等待。播放頭與畫布共用，所以步驟上的佇列數量會跟著日期變化。",
+  ab2: "畫布下方的時間帶是 Marey 圖解時刻表：時間以 8 小時的工作日由左到右，步驟由上到下，每個工作項目是一條穿過步驟的線。線變平的地方，就是項目在等待。播放頭與畫布共用，所以步驟上的佇列數量會跟著工作日變化。兩次模擬的到達相同，只有工作時間不同。",
   ab3: "可以試試：修正草稿中的錯誤並發布 v4；重新執行 S-2，然後取消或等它完成；像在會議中一樣把比較結果全螢幕顯示；批准、修改或拒絕建議 P-14。",
   ab4: "這個原型不包含：3D 檢視、匯入資料、詢問 AI。它們的入口有標示。",
   ab5: "字型為 Archivo（表格數字）與 Noto Sans TC。白色紙面上的石墨色墨水；基準為石墨色虛線，情境為深綠色實線；琥珀色表示警告，紅色表示錯誤。深色主題為灰黑色。",
   phEditH: "編輯需要較大的螢幕", phEditP: "在手機上可以查看結果與審閱建議。要編輯模型，請在桌機上開啟 Geminus。", goSim: "前往模擬", goReview: "前往審閱",
-  pstepsH: "第 {d} 天的步驟", delta: "Δ",
+  pstepsH: "第 {d} 個工作日的步驟", delta: "Δ",
   toastClose: "關閉通知",
 },
 };
@@ -1001,6 +1004,9 @@ function proposalModel() {
 /* the engine's run settings: 90 working days per run, the first 10 left out of every
    statistic (warm-up), and day-to-day variation in arrivals, which come in clumps of 3 */
 const SIM = { days: 90, warmup: 10, burst: 0.58, clump: 3, runs: 30, sample: 6 };
+/* common random numbers: run i of every run ID sees the same arrivals, keyed to this seed;
+   a run's own seed draws only the work times */
+const ARR_SEED = 4127;
 const METRICS = [
   { key: "lead", dp: 1, lower: true }, { key: "thru", dp: 1, lower: false },
   { key: "qa", dp: 0, lower: true, step: "qa" }, { key: "wip", dp: 0, lower: true },
@@ -1154,7 +1160,7 @@ function runData(r) {
   if (dataCache.has(r.id)) return dataCache.get(r.id);
   const m = runModel(r), all = [];
   let tr = null;
-  for (let i = 0; i < SIM.runs; i++) { const out = simulate(m, runSeed(r.seed, i), i === SIM.sample); all.push(out.metrics); if (i === SIM.sample) tr = out.trace; }
+  for (let i = 0; i < SIM.runs; i++) { const out = simulate(m, runSeed(r.seed, i), i === SIM.sample, runSeed(ARR_SEED, i)); all.push(out.metrics); if (i === SIM.sample) tr = out.trace; }
   const r2 = (v) => Math.round(v * 100) / 100, r1 = (v) => Math.round(v * 10) / 10;
   const vals = { lead: all.map((x) => r2(x.lead)), thru: all.map((x) => r2(x.thru)), wip: all.map((x) => r1(x.wip)) };
   const q = {}, util = {};
@@ -1180,16 +1186,16 @@ function stepStats(r, id) {
   return { cap: capOf(m, id), util: Math.round(median(d.util[id]) * 100), q95: d.q[id] ? median(d.q[id]) : null };
 }
 /* minimal discrete-event simulation (time in 8-hour working days) */
-function simulate(m, seed, keep) {
+function simulate(m, seed, keep, aseed = seed) {
   const ids = procs(m), steps = ids.map((id) => ({ id, c: capOf(m, id), s: m.steps[id] })), src = m.steps[srcOf(m)] || {};
   const days = SIM.days, W0 = SIM.warmup, rate = (src.rate ?? 23) / 5, wip = src.wip ?? 17, K = steps.length;
   const items = []; let nid = 0;
   for (let i = 0; i < (src.backlog ?? 0); i++) items.push({ id: nid++, arr: 0, at: [] });
   for (let d = 0; d < days; d++) {
-    const mult = 1 + SIM.burst * (h32(seed, d, 991) * 2 - 1) * 1.6, lam = Math.max(0, rate * mult);
-    let n = 0, p = Math.exp(-lam), F = p; const u = h32(seed, d, 992);
+    const mult = 1 + SIM.burst * (h32(aseed, d, 991) * 2 - 1) * 1.6, lam = Math.max(0, rate * mult);
+    let n = 0, p = Math.exp(-lam), F = p; const u = h32(aseed, d, 992);
     while (u > F && n < 60) { n++; p *= lam / n; F += p; }
-    const ts = []; for (let i = 0; i < n; i++) ts.push(d + h32(seed, d * 64 + i, 993));
+    const ts = []; for (let i = 0; i < n; i++) ts.push(d + h32(aseed, d * 64 + i, 993));
     ts.sort((a, b) => a - b);
     for (let i = 0; i < ts.length; i++) ts[i] = ts[i - (i % SIM.clump)];
     for (const tt of ts) items.push({ id: nid++, arr: tt, at: [] });
@@ -1227,6 +1233,7 @@ function simulate(m, seed, keep) {
 function trace(r) { return runData(r).trace; }
 function countAt(tr, id, time) {
   let n = 0;
+  if (id === "@arr") { for (const it of tr.items) if (it.arr <= time) n++; return n; }
   if (id === tr.src) { for (const it of tr.items) if (it.arr <= time && !(it.admit <= time)) n++; return n; }
   if (id === tr.sink) { for (const it of tr.items) if (it.rel !== undefined && it.rel <= time) n++; return n; }
   const k = tr.ids.indexOf(id); if (k < 0) return null;
@@ -1311,10 +1318,12 @@ function renderActs() {
 }
 
 /* ============================== render: canvas ============================== */
-const GAP = { edit: 34, simulate: 22, review: 30 };
+/* Simulate and Review use the compact widths so six or seven steps fit at a readable zoom;
+   the source is wider so its settings read at the node's text size */
+const GAP = { edit: 34, simulate: 20, review: 18 };
 function nodeW(kind, mode) {
-  if (mode === "simulate") return kind === "process" ? 136 : 124;
-  return kind === "process" ? 152 : kind === "source" ? 132 : 116;
+  if (mode === "edit") return kind === "process" ? 152 : kind === "source" ? 140 : 116;
+  return kind === "process" ? 136 : kind === "source" ? 140 : 124;
 }
 function canvasCtx() {
   if (state.mode === "edit") return { kind: "edit", m: state.draft.data };
@@ -1358,7 +1367,8 @@ function nodeHTML(ctx, id, p, roving, iss) {
     const dayPair = `<span class="vl">${inA ? `<span data-qd="a:${id}"></span>${arrow()}` : ""}<b class="sv" data-qd="b:${id}"></b></span>`;
     if (s.kind === "source") {
       cls.push("withv");
-      body = `${sourceLines(s)}<span class="nm"><span class="kl" data-dl="waitDay">${esc(t("waitDay", { d }))}</span>${dayPair}</span>`;
+      const arrPair = `<span class="vl"><span data-qd="a:@arr"></span>${arrow()}<b class="sv" data-qd="b:@arr"></b></span>`;
+      body = `${sourceLines(s)}<span class="nm"><span class="kl" data-dl="arrDay">${esc(t("arrDay", { d }))}</span>${arrPair}<span class="kl">${esc(t("waitShort"))}</span>${dayPair}</span>`;
     } else if (s.kind === "sink") {
       cls.push("withv");
       body = `<span class="nm"><span class="kl" data-dl="relDay">${esc(t("relDay", { d }))}</span>${dayPair}</span>`;
@@ -1385,7 +1395,8 @@ function nodeHTML(ctx, id, p, roving, iss) {
   return `<button type="button" class="${cls.filter(Boolean).join(" ")}" id="node-${esc(id)}" data-k="step" data-id="${esc(id)}" tabindex="${tab}" aria-pressed="${sel}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px"><span class="nh">${head}</span>${body}</button>`;
 }
 function sourceLines(s) {
-  return `<span class="np wr">${esc(t("perWeekN", { n: num(s.rate) }))}</span><span class="np sm" title="${esc(t("startBacklog", { n: s.backlog ?? 0 }))}">${esc(t("startBacklog", { n: s.backlog ?? 0 }))}</span><span class="np sm" title="${esc(t("wipLine", { n: s.wip ?? 17 }))}">${esc(t("wipLine", { n: s.wip ?? 17 }))}</span>`;
+  const bl = t("startBacklog", { n: s.backlog ?? 0 }), wl = t("wipLine", { n: s.wip ?? 17 });
+  return `<span class="np wr">${esc(t("perWeekN", { n: num(s.rate) }))}</span><span class="np sl" title="${esc(bl)}">${esc(bl)}</span><span class="np sl" title="${esc(wl)}">${esc(wl)}</span>`;
 }
 /* utilisation in the strip's line grammar: dashed graphite for the baseline, solid green for the scenario */
 function utilBars(a, b, w) {
@@ -1414,7 +1425,7 @@ function poolHTML(ctx, pid, x, w, roving, iss) {
 function renderCanvas() {
   const ctx = canvasCtx(), m = ctx.m, pos = layoutOf(ctx), roving = rovingTarget(ctx);
   const iss = ctx.kind === "edit" ? issues(m) : [];
-  const poolW = state.mode === "simulate" ? 204 : 176;
+  const poolW = state.mode === "simulate" ? 204 : state.mode === "review" ? 200 : 176;
   let html = "";
   for (const id of order(m)) html += nodeHTML(ctx, id, pos[id], roving, iss);
   for (const [pid, p] of Object.entries(m.pools)) { const s = pos[p.step]; if (!s) continue; html += poolHTML(ctx, pid, s.x + (s.w - poolW) / 2, poolW, roving, iss); }
@@ -1426,9 +1437,17 @@ function renderCanvas() {
   const rowBottom = Math.max(...order(m).map((id) => (state.pos[id] && state.mode === "edit" ? pos[id].y : 0) + box[id].h));
   const poolY = (state.mode === "edit" ? Math.max(...order(m).filter((id) => !state.pos[id]).map((id) => box[id].h), 0) : rowBottom) + (state.mode === "simulate" ? 60 : 48);
   const pbox = {};
+  // pools that would touch the one before them drop to a second row, so every name reads in full
+  const rowEnd = [], lane = {};
+  for (const [pid, p] of Object.entries(m.pools).sort((a, b) => (box[a[1].step]?.x ?? 0) - (box[b[1].step]?.x ?? 0))) {
+    const el = $("#pool-" + CSS.escape(pid)); if (!el || !box[p.step] || (state.mode === "edit" && state.pos[p.step])) continue;
+    const x = parseFloat(el.style.left); let r = 0;
+    while (rowEnd[r] !== undefined && x < rowEnd[r] + 12) r++;
+    rowEnd[r] = x + el.offsetWidth; lane[pid] = r;
+  }
   for (const [pid, p] of Object.entries(m.pools)) {
     const el = $("#pool-" + CSS.escape(pid)); if (!el) continue;
-    const s = box[p.step], y = state.mode === "edit" && state.pos[p.step] ? s.y + s.h + 48 : poolY;
+    const s = box[p.step], y = state.mode === "edit" && state.pos[p.step] ? s.y + s.h + 48 : poolY + (lane[pid] || 0) * 60;
     el.style.top = y + "px";
     pbox[pid] = { x: parseFloat(el.style.left), y, w: el.offsetWidth, h: el.offsetHeight, step: p.step };
   }
@@ -1485,7 +1504,7 @@ function factTokens(seedTxt) {
   const tok = (l, v) => `<span class="tok"><span class="tl">${esc(l)}</span>${esc(v)}</span>`;
   return `<span class="l3">${tok(t("fSeed"), seedTxt)}${tok(t("fEngine"), "des 0.4.0")}${tok(t("fDataset"), t("fDatasetV", { n: 7 }))}<span class="tok syn">${ic("info", "sm")}${esc(t("synthetic"))}</span></span>`;
 }
-function seedText() { const A = runById(state.cmp.a), B = runById(state.cmp.b); return A.seed === B.seed ? String(B.seed) : `${A.seed}${t("comma")}${B.seed}`; }
+function seedText() { const A = runById(state.cmp.a), B = runById(state.cmp.b); return A.seed === B.seed ? String(B.seed) : `${A.id} ${A.seed}${t("comma")}${B.id} ${B.seed}`; }
 function renderCanvasChrome(ctx, iss) {
   const zoom = `<div class="vseg" role="group" aria-label="${esc(t("viewGroup"))}"><button type="button" id="v2d" aria-pressed="${!state.v3d}">${esc(t("v2d"))}</button><button type="button" id="v3d" aria-pressed="${state.v3d}">${esc(t("v3d"))}</button></div>
     <div class="zoom" role="group" aria-label="${esc(t("zoomGroup"))}"><button type="button" id="z-out" aria-label="${esc(t("zoomOut"))}">${ic("minus")}</button><output id="z-pct" aria-live="off">${Math.round(state.view.k * 100)}%</output><button type="button" id="z-in" aria-label="${esc(t("zoomIn"))}">${ic("plus")}</button></div>
@@ -1776,9 +1795,9 @@ function compareHTML(full) {
   }).join("");
   const table = `<table class="ctab"><caption class="vh">${esc(t("compareSub", { a: `${runLong(A)} (${A.id})`, b: `${runLong(B)} (${B.id})` }))}</caption>
     <thead><tr><th scope="col">${esc(t("thMetric"))}</th><th scope="col">${KEYB}${esc(runShort(A))}<small>${esc(A.id)}</small></th><th scope="col" class="s">${KEYS}${esc(runShort(B))}<small>${esc(B.id)}</small></th><th scope="col">Δ</th><th scope="col">Δ%</th></tr></thead><tbody>${rows}</tbody></table><p class="tcap">${esc(t("tcap"))}</p>`;
-  const seeds = A.seed === B.seed ? String(B.seed) : `${A.id} ${A.seed}${t("comma")}${B.id} ${B.seed}`;
+  const seeds = seedText();
   const fact = (l, v, cls = "") => `<div><dt>${esc(l)}</dt><dd class="${cls}">${v}</dd></div>`;
-  const facts = `<section class="sec" aria-labelledby="facts-h"><div class="hd"><h3 id="facts-h">${esc(t("factsH"))}</h3></div><dl class="facts two">${fact(t("fRuns"), esc(t("fRunsV", { n: SIM.runs, d: SIM.days })))}${fact(t("fWarm"), esc(t("fWarmV", { n: SIM.warmup })))}${fact(t("fSeed"), esc(seeds))}${fact(t("fEngine"), "des 0.4.0")}${fact(t("fDataset"), esc(t("fDatasetV", { n: 7 })))}${fact(t("fData"), `${ic("info")}${esc(t("synthetic"))}`, "syn")}</dl></section>`;
+  const facts = `<section class="sec" aria-labelledby="facts-h"><div class="hd"><h3 id="facts-h">${esc(t("factsH"))}</h3></div><dl class="facts two">${fact(t("fRuns"), esc(t("fRunsV", { n: SIM.runs, d: SIM.days })))}${fact(t("fWarm"), esc(t("fWarmV", { n: SIM.warmup })))}${fact(t("fTime"), esc(t("fTimeV")))}${fact(t("fArr"), esc(t("fArrV")))}${fact(t("fSeed"), esc(seeds))}${fact(t("fEngine"), "des 0.4.0")}${fact(t("fDataset"), esc(t("fDatasetV", { n: 7 })))}${fact(t("fData"), `${ic("info")}${esc(t("synthetic"))}`, "syn")}</dl></section>`;
   const head = `<div class="ph2"><div><h2 id="panel-h">${esc(t("compareH"))}</h2><p class="sub">${esc(t("compareSub", { a: `${runLong(A)} (${A.id})`, b: `${runLong(B)} (${B.id})` }))}</p></div><button type="button" class="btn fullbtn" id="full-btn" aria-pressed="${full}" aria-keyshortcuts="F">${ic(full ? "shrink" : "expand")}${esc(full ? t("exitFull") : t("fullScreen"))}</button></div>`;
   const run7 = `<svg class="k7" viewBox="0 0 10 8" aria-hidden="true" focusable="false"><path d="M5 0 9.5 7H.5z"/></svg>`;
   const rugCap = `<p class="capn">${esc(t("rugCap"))} ${run7}${esc(t("rugRun7", { r: SIM.sample + 1 }))}</p>`;
@@ -1786,8 +1805,10 @@ function compareHTML(full) {
     return `<div class="full"><div class="fullg"><div>${head}${say}${table}${facts}</div><div class="rugs">${METRICS.map((mt) => `<section aria-labelledby="rh-${mt.key}"><div class="hd" style="display:flex;justify-content:space-between;gap:8px;margin-bottom:2px"><h3 id="rh-${mt.key}">${esc(t("rugH", { m: metricLabel(mt.key, mB) }))}</h3><span class="lb">${esc(t("mu_" + mt.key))}</span></div><div class="rugbox" data-rug="${mt.key}"></div></section>`).join("")}<div class="rugcap">${rugCap}</div></div></div></div>`;
   }
   const label = metricLabel(state.metric, mB);
-  let h = head + say + table + facts;
+  // the rug sits right under the table whose row it shows; the run facts follow it
+  let h = head + say + table;
   h += `<section class="sec" aria-labelledby="rug-h"><div class="hd"><h3 id="rug-h">${esc(t("rugH", { m: label }))}</h3><span class="lb">${esc(t("rugN", { n: SIM.runs, u: t("mu_" + state.metric) }))}</span></div><div class="rugbox" data-rug="${state.metric}"></div>${rugCap}</section>`;
+  h += facts;
   // the selected step, the same numbers the canvas shows
   const sid = state.sel && state.sel.k === "step" ? state.sel.id : null;
   if (sid && mB.steps[sid]) {
@@ -1799,7 +1820,8 @@ function compareHTML(full) {
       dl = `<dt>${esc(t("capacity"))}</dt><dd>${pair(sa?.cap, sb.cap)}</dd><dt>${esc(t("util"))}</dt><dd>${pair(sa?.util, sb.util, "%")}</dd><dt>${esc(t("qp95"))}</dt><dd>${pair(sa?.q95, sb.q95)}</dd><dt data-dl="qDay">${esc(t("qDay", { d: Math.floor(state.t) }))}</dt><dd>${mA.steps[sid] ? `<span data-qd="a:${sid}"></span>${arrow()}` : ""}<b class="sv" data-qd="b:${sid}"></b></dd>`;
     } else {
       const key = s.kind === "source" ? "waitDay" : "relDay";
-      dl = `<dt data-dl="${key}">${esc(t(key, { d: Math.floor(state.t) }))}</dt><dd><span data-qd="a:${sid}"></span>${arrow()}<b class="sv" data-qd="b:${sid}"></b></dd>`;
+      if (s.kind === "source") dl = `<dt data-dl="arrDay">${esc(t("arrDay", { d: Math.floor(state.t) }))}</dt><dd><span data-qd="a:@arr"></span>${arrow()}<b class="sv" data-qd="b:@arr"></b></dd>`;
+      dl += `<dt data-dl="${key}">${esc(t(key, { d: Math.floor(state.t) }))}</dt><dd><span data-qd="a:${sid}"></span>${arrow()}<b class="sv" data-qd="b:${sid}"></b></dd>`;
     }
     h += `<section class="sec" aria-labelledby="step-h"><div class="hd"><h3 id="step-h">${esc(t("stepH", { name: stepName(mB, sid) }))}</h3><span class="lb">${esc(t("stepNote", { r: SIM.sample + 1 }))}</span></div><dl class="stepbox">${dl}</dl></section>`;
   } else h += `<section class="sec"><p class="help">${esc(t("stepNone"))}</p></section>`;
@@ -1923,6 +1945,7 @@ function renderPhoneSteps() {
         <dt>${esc(t("qp95"))}</dt><dd>${pair(sa?.q95, sb.q95)}</dd><dd class="d">${dd(sa?.q95, sb.q95)}</dd>`;
     }
     const key = s.kind === "source" ? "waitDay" : s.kind === "sink" ? "relDay" : "qDay";
+    if (s.kind === "source") rows += `<dt data-dl="arrDay">${esc(t("arrDay", { d }))}</dt><dd><span data-qd="a:@arr"></span>${arrow()}<b class="sv" data-qd="b:@arr"></b></dd><dd class="d" data-qdd="@arr"></dd>`;
     rows += `<dt data-dl="${key}">${esc(t(key, { d }))}</dt><dd>${inA ? `<span data-qd="a:${id}"></span>${arrow()}` : ""}<b class="sv" data-qd="b:${id}"></b></dd><dd class="d" data-qdd="${id}"></dd>`;
     return `<li class="${sel ? "is-sel" : ""}"><div class="pn"><button type="button" class="link" id="ps-${esc(id)}" data-pstep="${esc(id)}" aria-pressed="${sel}">${esc(stepName(mB, id))}</button></div><dl>${rows}</dl></li>`;
   }).join("");
