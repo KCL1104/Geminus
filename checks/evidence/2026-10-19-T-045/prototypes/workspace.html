@@ -116,6 +116,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .pv .x{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .pv .dot{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--ink2);flex:none}
 .pv .warnt{color:var(--amb)}
+.pv .tok{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}
 .prov[data-c="1"] .o1,.prov[data-c="2"] .o1,.prov[data-c="2"] .o2,.prov[data-c="3"] .o1,.prov[data-c="3"] .o2,.prov[data-c="3"] .o3{display:none}
 .acts{display:flex;align-items:center;gap:8px;flex:none}
 .acts .why{color:var(--ink2);font-size:var(--fs1);max-width:150px;text-align:right;line-height:1.25}
@@ -126,7 +127,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 /* stage */
 .stage{display:grid;grid-template-columns:minmax(0,1fr) var(--panelw);grid-template-rows:minmax(0,1fr);min-height:0;min-width:0}
 .ccol{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:0;min-width:0;background:var(--sheet);position:relative}
-.flow{position:relative;overflow:hidden;min-height:0;background-color:var(--sheet);background-image:linear-gradient(var(--gridmaj) 1px,transparent 1px),linear-gradient(90deg,var(--gridmaj) 1px,transparent 1px),linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:80px 80px,80px 80px,16px 16px,16px 16px;touch-action:none;cursor:grab}
+.flow{position:relative;overflow:hidden;min-height:0;background-color:var(--sheet);touch-action:none;cursor:grab}
 .flow.panning{cursor:grabbing}
 .world{position:absolute;left:0;top:0;transform-origin:0 0}
 .edges{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
@@ -144,6 +145,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .node .nn{font-weight:600;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .node .np{display:block;padding:8px 12px 0;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .node .np.wr{white-space:normal}
+.node .np.sm{font-size:var(--fs1);padding-top:2px;white-space:nowrap;font-stretch:87.5%}
 .node .np.wr+.np.wr{padding-top:2px}
 .tag.flag{position:absolute;top:-11px;right:8px}
 .node .nm{display:block;padding:6px 12px 0}
@@ -157,6 +159,12 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .node .bar.b i{border:1.5px solid var(--base);background:none}
 .node .bar.s{background:var(--well)}.node .bar.s i{background:var(--sc)}
 .node .chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 0}
+.node .kl{display:block;font-size:var(--fs1);color:var(--ink2);line-height:16px;margin-top:6px}
+.node .vl{display:block;font-size:var(--fs3);line-height:20px;white-space:nowrap}
+.ubar{display:block;margin:4px 0 2px;overflow:visible}
+.ubar .ut{stroke:var(--rule);stroke-width:1}
+.ubar .ub{stroke:var(--base);stroke-width:2;stroke-dasharray:4 2.5}
+.ubar .us{stroke:var(--sc);stroke-width:2.5}
 .node.end{padding-bottom:0}.node.end .nh{border-bottom:0}
 .node.end.withv{padding-bottom:10px}.node.end.withv .nh{border-bottom:1px solid var(--rule)}
 .node.is-sel{box-shadow:0 0 0 3px var(--sheet),0 0 0 5px var(--sel);border-color:var(--sel)}
@@ -191,7 +199,12 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .ctop{position:absolute;top:16px;left:16px;right:16px;display:flex;align-items:flex-start;gap:12px;pointer-events:none;z-index:3}
 .ctop>*{pointer-events:auto}
 .ctop .sp{flex:1;pointer-events:none}
-.cap{display:flex;flex-direction:column;gap:2px;background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r2);padding:6px 10px;font-size:var(--fs1);color:var(--ink2);max-width:420px}
+.cap{display:flex;flex-direction:column;gap:3px;background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r2);padding:6px 10px;font-size:var(--fs1);color:var(--ink2);max-width:460px;min-width:0}
+.cap .l3{display:flex;flex-wrap:wrap;gap:2px 12px}
+.cap .tok{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;color:var(--ink)}
+.cap .tok .tl{color:var(--ink2)}
+.cap .tok.syn{font-weight:600}
+.cap .tok .ic{color:var(--ink2)}
 .cap .l1{display:flex;align-items:center;gap:6px;color:var(--ink);font-size:var(--fs2);font-weight:600;white-space:nowrap}
 .cap .l2{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .cap .l2 span{display:inline-flex;align-items:center;gap:6px}
@@ -212,7 +225,6 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .pill{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:16px;background:var(--raised);font-weight:500}
 .pill:hover{background:var(--hover)}
 .pill .ic.e{color:var(--err)}.pill .ic.w{color:var(--ambmark)}.pill .ic.ok{color:var(--sc)}
-.edcap{font-size:var(--fs1);color:var(--ink2);background:var(--sheet);padding:4px 8px;border-radius:var(--r1);border:1px solid var(--rule);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .three{position:absolute;inset:0;display:grid;place-items:center;background:var(--sheet);z-index:4;padding:24px}
 .three .box{max-width:460px;display:flex;flex-direction:column;gap:12px;align-items:flex-start}
 .three h2{font-size:var(--fs4);font-weight:600;display:flex;align-items:center;gap:8px}
@@ -265,6 +277,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .marey polyline{fill:none;stroke-linejoin:round;stroke-linecap:round}
 .marey .lb0{stroke:var(--base);stroke-width:1.4;stroke-dasharray:5 3}.marey .ls0{stroke:var(--sc);stroke-width:1.75}
 .eb,.db{fill:var(--sheet);stroke:var(--base);stroke-width:1.25}.es,.ds{fill:var(--sc)}.ds{stroke:var(--sheet);stroke-width:1}.db{stroke-width:1.5}
+.stn{stroke:var(--tgmaj);stroke-width:1}
 .ph{stroke:var(--ink);stroke-width:1.5}.phf{fill:var(--ink)}.marey .phl{fill:var(--onink);font-size:var(--fs1);font-weight:600}
 .rows{position:absolute;left:0;top:0}
 .rowb{position:absolute;left:8px;display:flex;align-items:center;padding:0 8px;border:0;background:none;border-radius:var(--r1);font-size:var(--fs2);color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
@@ -281,32 +294,36 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .panel h2{font-size:var(--fs4);font-weight:600;line-height:24px;text-wrap:balance;overflow-wrap:anywhere}
 .panel .sub{font-size:var(--fs2);color:var(--ink2);margin-top:2px}
 .panel h3{font-size:var(--fs2);font-weight:600}
-.sec{margin-top:24px}
+.sec{margin-top:20px}
 .sec>.hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
 .sec>.hd .lb{text-align:right}
 .say{font-size:var(--fs3);line-height:1.35;margin-bottom:14px}
 .say b{font-weight:600}
 .ctab{width:100%;border-collapse:collapse}
-.ctab th{font-size:var(--fs1);font-weight:600;text-align:right;padding:6px 6px 8px;vertical-align:bottom;border-bottom:1px solid var(--edge);white-space:nowrap}
-.ctab th small,.ctab td small{display:block;font-size:var(--fs1);font-weight:400;color:var(--ink3);margin-top:2px;white-space:normal}
+.ctab th{font-size:var(--fs1);font-weight:600;text-align:right;padding:6px 4px 8px;vertical-align:bottom;border-bottom:1px solid var(--edge);white-space:nowrap}
+.ctab th small,.ctab td small{display:block;font-size:var(--fs1);font-weight:400;color:var(--ink2);margin-top:1px}
 .ctab th .k{vertical-align:middle;margin-right:4px}
-.ctab td{text-align:right;padding:9px 6px 2px;font-size:var(--fs3);white-space:nowrap}
-.ctab td:first-child,.ctab th:first-child{text-align:left;padding-left:0;white-space:normal}
+.ctab tbody th{text-align:left;padding:9px 4px 9px 0;vertical-align:top;border-bottom:1px solid var(--rule);font-weight:600;white-space:nowrap}
+.ctab td{text-align:right;padding:9px 4px;vertical-align:top;border-bottom:1px solid var(--rule);white-space:nowrap}
+.ctab thead th:first-child{text-align:left;padding-left:0}
+.ctab .mv{display:block;font-size:var(--fs3);line-height:20px}
+.ctab .iv{display:block;font-size:var(--fs3);line-height:18px;color:var(--ink2);font-stretch:87.5%}
 .ctab th.s,.ctab td.s{background:var(--scwash)}
-.ctab th.s{color:var(--sc)}.ctab td.s{color:var(--sc);font-weight:600}
-.ctab td.dd{font-weight:600}
-.ctab tr.iv td{font-size:var(--fs3);color:var(--ink2);padding:2px 6px 9px;border-bottom:1px solid var(--rule)}
-.ctab tr.iv td:first-child{padding-left:0;font-size:var(--fs1)}
-.ctab tr.iv td.s{color:var(--sc);font-weight:500}
-.ctab tr.is-on td{background:var(--seltint)}.ctab tr.is-on td.s{background:var(--scwash)}
-.mbtn{border:0;background:none;padding:0;text-align:left;font-size:var(--fs2);font-weight:600;color:var(--ink);display:block;text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:3px}
+.ctab th.s{color:var(--sc)}.ctab td.s .mv{color:var(--sc);font-weight:600}.ctab td.s .iv{color:var(--sc)}
+.ctab td.dd{font-weight:600;font-size:var(--fs3);line-height:20px}
+.ctab tr.is-on th,.ctab tr.is-on td{background:var(--seltint)}.ctab tr.is-on td.s{background:var(--scwash)}
+.mname{font-weight:600}
+.tcap{font-size:var(--fs1);color:var(--ink2);margin-top:8px;line-height:1.35}
+.mbtn{border:0;background:none;padding:0;text-align:left;font-size:var(--fs2);font-weight:600;color:var(--ink);display:block;text-decoration:underline;text-decoration-color:var(--edge);text-underline-offset:3px;white-space:nowrap}
 .mbtn:hover{text-decoration-color:var(--ink)}
 .mbtn[aria-pressed="true"]{text-decoration-color:var(--ink);text-decoration-thickness:2px}
 .una{color:var(--ink2);font-size:var(--fs1)}
 .rug{display:block;width:100%;height:auto;overflow:visible}
 .rug text{font-size:var(--fs1);fill:var(--ink3)}
 .rug .dn{font-size:var(--fs2);font-weight:600;fill:var(--ink)}.rug .dn.s{fill:var(--sc)}
-.rug .dv{font-size:var(--fs3);font-weight:600;fill:var(--ink)}.rug .dv.s{fill:var(--sc)}
+.rug .dv{font-size:var(--fs3);font-weight:600;fill:var(--ink);paint-order:stroke;stroke:var(--panel);stroke-width:4px;stroke-linejoin:round}.rug .dv.s{fill:var(--sc)}
+.rug .c7b{fill:var(--ink)}.rug .c7s{fill:var(--sc)}
+.k7{width:10px;height:8px;fill:var(--ink);vertical-align:0;margin:0 3px 0 2px}
 .rug .tb{stroke:var(--base);stroke-width:1}.rug .ts{stroke:var(--sc);stroke-width:1.25}
 .rug .ib{stroke:var(--base);stroke-width:1.5;stroke-dasharray:4 2.5}.rug .is{stroke:var(--sc);stroke-width:1.75}
 .rug .kb{stroke:var(--base);stroke-width:1.5}.rug .ks{stroke:var(--sc);stroke-width:1.75}
@@ -315,6 +332,8 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .rug .ax{stroke:var(--edge);stroke-width:1}
 .capn{font-size:var(--fs1);color:var(--ink2);margin-top:6px}
 .facts{display:grid;grid-template-columns:minmax(88px,auto) minmax(0,1fr);gap:8px 16px;font-size:var(--fs2)}
+.facts.two{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
+.facts.two>div{display:flex;flex-direction:column;gap:1px;min-width:0}
 .facts dt{color:var(--ink3);font-size:var(--fs1);line-height:19px}
 .facts dd{display:flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere}
 .syn{font-weight:600}.syn .ic{color:var(--ink2)}
@@ -415,7 +434,8 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .opt{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r1);cursor:pointer;min-height:36px}
 .opt .ot{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .opt .os{color:var(--ink2);font-size:var(--fs1);white-space:nowrap}
-.opt[aria-selected="true"]{background:var(--seltint);box-shadow:inset 2px 0 0 var(--ink)}
+.opt[aria-selected="true"]{background:var(--seltint)}
+.opt[aria-selected="true"] .ot{font-weight:600;color:var(--ink)}
 .opt[aria-disabled="true"] .ot{color:var(--ink4)}
 .opt:hover{background:var(--hover)}
 .pempty{padding:20px 16px;display:flex;flex-direction:column;gap:4px}
@@ -435,19 +455,23 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
 .full .say{font-size:var(--fs4)}
 .full .ctab th{font-size:var(--fs3)}
 .full .ctab th small,.full .ctab td small{font-size:var(--fs3)}
-.full .ctab td{font-size:var(--fs5);padding-top:14px}
-.full .ctab td:first-child{font-size:var(--fs4)}
-.full .ctab tr.iv td{font-size:var(--fs3);color:var(--ink)}
-.full .ctab tr.iv td.s{color:var(--sc)}
 .full .mbtn{font-size:var(--fs4)}
 .full .rug text{font-size:var(--fs3);fill:var(--ink2)}
-.full .rug .dn,.full .rug .dv{font-size:var(--fs4)}
+.full .rug .dn{font-size:var(--fs4)}
 .full .rug .dv{font-size:var(--fs5)}
 .full .capn,.full .facts,.full .facts dt{font-size:var(--fs3)}
-.full .rugs{display:flex;flex-direction:column;gap:14px}
+.full .rugs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px;align-content:start}
+.full .rugcap{grid-column:1/-1}
+.full .ctab .mv{font-size:var(--fs5);line-height:28px}
+.full .ctab .iv{font-size:var(--fs3)}
+.full .ctab td.dd{font-size:var(--fs5);line-height:28px}
+.full .ctab tbody th{font-size:var(--fs4)}
+.full .tcap{font-size:var(--fs3)}
+.full .facts.two{grid-template-columns:repeat(3,minmax(0,1fr))}
 .full .rugs h3{font-size:var(--fs3)}
 
-@media (max-width:1366px){:root{--panelw:360px}.scrub{width:120px}.keys{gap:12px}.sh{gap:10px}}
+@media (max-width:1366px){:root{--panelw:360px}.scrub{width:120px}.keys{gap:12px}.sh{gap:10px}
+  .ctab th,.ctab td{padding-left:3px;padding-right:3px}.ctab .iv{font-stretch:75%}.ctab tbody th,.ctab tbody th small{font-stretch:87.5%}}
 @media (max-width:1100px){.keys .kf{display:none}.pv.hide-md{display:none}}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{transition:none!important;animation:none!important}
@@ -488,6 +512,7 @@ kbd{font-family:inherit;font-size:var(--fs1);font-weight:500;line-height:1;color
   .keys{flex-wrap:wrap;gap:6px 14px;flex:1 1 100%}
   .keys .kf{display:inline-flex}
   .mwrap{height:160px}
+  .rowb{font-stretch:87.5%}
   .psteps{display:block;padding:8px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
   .psteps h2{font-size:var(--fs3);font-weight:600;margin:8px 0 4px}
   .psteps li{padding:10px 0;border-top:1px solid var(--rule)}
@@ -647,7 +672,14 @@ en: {
   saveDraft: "Save draft", nothingToSave: "No unsaved changes to save", publishN: "Publish v{n}…",
   whyErr: pl("Fix 1 error to publish", "Fix {n} errors to publish"), whyBase: "Rebase the draft on v{v} to publish", whyNothing: "No changes since v{v} to publish",
   runAgain: "Run {s} again", runMore: "More ways to run", runBusy: "{id} has not finished. Wait for it or cancel it.",
-  revN: "rev {rev}", onV: "on v{v}", sep: ", ", unsavedTag: "unsaved", more: "All properties", runBusyShort: "{id} has not finished", here: "You are here", savedSub: "No unsaved changes", noErrors: "No errors.", colon: ": ", comma: ", ",
+  revN: "rev {rev}", onV: "on v{v}", sep: ", ", unsavedTag: "unsaved", more: "All properties", runBusyShort: "{id} has not finished", here: "You are here",
+  startBacklog: "Backlog at start {n}", wipLine: "WIP limit {n}", itemsN: "{n} items",
+  backlogL: "Starting backlog", backlogHelp: "Items already waiting when each run starts.", wipL: "Work-in-progress limit", wipHelp: "New work starts only while fewer items than this are in progress.",
+  f_backlog: "starting backlog", f_wip: "work-in-progress limit",
+  e_rate: "Arrival rate must be a whole number from 1 to 1000.", e_backlog: "Starting backlog must be a whole number from 0 to 1000.", e_wip: "Work-in-progress limit must be a whole number from 1 to 1000.",
+  tcap: "Large figures: median of 30 runs. Small figures: 90% interval. Lead time counts from the start of work; WIP includes the backlog.",
+  fWarm: "Warm-up", fWarmV: "first {n} days left out",
+  rugRun7: "Run {r}, the sampled trace.", stepNote: "Day counts: run {r}", savedSub: "No unsaved changes", noErrors: "No errors.", colon: ": ", comma: ", ",
   optRerun: "Run {s} again", optRerunSub: "Patch {s} on v{v}, new seed. Same dataset and engine.",
   optBase: "Run baseline on v{v}", optBaseSub: "v{v} without a patch, new seed",
   optDraft: "Run draft rev {rev}", optDraftSub: "Drafts don't run. Publish the draft as a version first.",
@@ -664,7 +696,7 @@ en: {
   k_source: "Source", k_process: "Process step", k_sink: "End", k_pool: "Resource pool",
   arrives: "Work arrives", perWeekN: "{n} items/week", capN: "Capacity {n}", capNone: "Capacity not set", fromPool: "from {pool}",
   durLine: "{a}–{b}\u00a0h, usually {m}\u00a0h", durExp: "Mean {m} h", durData: "Measured times, dataset rev 7",
-  util: "Utilisation", qp95: "Queue p95", qDay: "Queue, day {d}", waitDay: "Waiting to start, day {d}", relDay: "Released by day {d}",
+  util: "Utilisation", qp95: "Queue p95", qDay: "Queue, day {d}", waitDay: "Waiting to start, day {d}", relDay: "Released, day {d}",
   sizeN: "size {n}", tagAdded: "Added", tagNew: "New in v{v}",
   calloutQ: "{step} queue p95 {a} → {b} in {s}",
   rmTag: "Removed: {a} → {b}",
@@ -677,12 +709,12 @@ en: {
   compareH: "Compare", compareSub: "{a} and {b}", fullScreen: "Full screen", exitFull: "Exit full screen",
   saySum: "Median lead time {a} → {b} days: {p}% {dir}.", shorter: "shorter", longer: "longer", same: "no change",
   thMetric: "Metric",
-  m_lead: "Lead time", ms_lead: "median, days from start", mu_lead: "days",
-  m_thru: "Throughput", ms_thru: "median, items/week", mu_thru: "items/week",
-  m_qa: "{step} queue p95", ms_qa: "median of runs, items", mu_qa: "items",
-  m_wip: "WIP", ms_wip: "mean, items incl. backlog", mu_wip: "items",
+  m_lead: "Lead time", ms_lead: "median, days", mu_lead: "days",
+  m_thru: "Throughput", ms_thru: "median, per week", mu_thru: "items/week",
+  m_qa: "{step} queue p95", ms_qa: "median, items", mu_qa: "items",
+  m_wip: "WIP", ms_wip: "mean, items", mu_wip: "items",
   iv90: "90% interval", unavailable: "Unavailable: the run has no {step} step.",
-  rugH: "{m} per run", rugN: "{n} runs, {u}", rugCap: "One mark per run (a tick, or a dot where runs share a value). Bar: 90% interval. Tall mark: median.",
+  rugH: "{m} per run", rugN: "{n} runs, {u}", rugCap: "One mark per run; dots where runs share a value. Bar: 90% interval. Tall mark: median.",
   rugPick: "Show {m} per run",
   rugT: "{m} per run", rugD: "{n} runs each. {an}: median {am}, 90% interval {alo} to {ahi}. {bn}: median {bm}, 90% interval {blo} to {bhi}. Unit: {u}.",
   stepH: "Step: {name}", stepNone: "Select a step on the canvas or a row in the timetable to see its numbers.",
@@ -781,7 +813,14 @@ zh: {
   saveDraft: "儲存草稿", nothingToSave: "沒有未儲存的變更", publishN: "發布 v{n}…",
   whyErr: pl("修正 1 個錯誤後才能發布", "修正 {n} 個錯誤後才能發布"), whyBase: "先把草稿改為基於 v{v} 才能發布", whyNothing: "與 v{v} 相比沒有變更可發布",
   runAgain: "重新執行 {s}", runMore: "其他執行方式", runBusy: "{id} 尚未完成。請等待或取消。",
-  revN: "第 {rev} 版修訂", onV: "基於 v{v}", sep: "、", unsavedTag: "未儲存", more: "所有屬性", runBusyShort: "{id} 尚未完成", here: "目前所在", savedSub: "沒有未儲存的變更", noErrors: "沒有錯誤。", colon: "：", comma: "，",
+  revN: "第 {rev} 版修訂", onV: "基於 v{v}", sep: "、", unsavedTag: "未儲存", more: "所有屬性", runBusyShort: "{id} 尚未完成", here: "目前所在",
+  startBacklog: "起始待辦 {n}", wipLine: "在製品上限 {n}", itemsN: "{n} 項",
+  backlogL: "起始待辦", backlogHelp: "每次模擬開始時已在等待的項目。", wipL: "在製品上限", wipHelp: "進行中的項目少於這個數時，才會開始新工作。",
+  f_backlog: "起始待辦", f_wip: "在製品上限",
+  e_rate: "到達率必須是 1 到 1000 的整數。", e_backlog: "起始待辦必須是 0 到 1000 的整數。", e_wip: "在製品上限必須是 1 到 1000 的整數。",
+  tcap: "大字：30 次模擬的中位數。小字：90% 區間。前置時間從開始工作起算；在製品含待辦。",
+  fWarm: "暖機", fWarmV: "不計前 {n} 天",
+  rugRun7: "第 {r} 次模擬，即取樣追蹤。", stepNote: "每日數量：第 {r} 次模擬", savedSub: "沒有未儲存的變更", noErrors: "沒有錯誤。", colon: "：", comma: "，",
   optRerun: "重新執行 {s}", optRerunSub: "v{v} 套用修補 {s}，使用新的 seed。資料集與引擎不變。",
   optBase: "執行 v{v} 基準", optBaseSub: "v{v} 不套用修補，使用新的 seed",
   optDraft: "執行草稿第 {rev} 版修訂", optDraftSub: "草稿不能直接執行，請先發布成版本。",
@@ -798,7 +837,7 @@ zh: {
   k_source: "來源", k_process: "處理步驟", k_sink: "終點", k_pool: "資源池",
   arrives: "工作進入", perWeekN: "每週 {n} 項", capN: "容量 {n}", capNone: "未設定容量", fromPool: "來自{pool}",
   durLine: "{a}–{b}\u00a0小時，通常 {m}\u00a0小時", durExp: "平均 {m} 小時", durData: "實測時間，資料集第 7 版",
-  util: "使用率", qp95: "佇列 p95", qDay: "第 {d} 天佇列", waitDay: "第 {d} 天等待開始", relDay: "第 {d} 天前已上線",
+  util: "使用率", qp95: "佇列 p95", qDay: "第 {d} 天佇列", waitDay: "第 {d} 天等待開始", relDay: "上線，第 {d} 天",
   sizeN: "{n} 人", tagAdded: "新增", tagNew: "v{v} 新增",
   calloutQ: "{s} 中{step}佇列 p95 {a} → {b}",
   rmTag: "移除：{a} → {b}",
@@ -811,12 +850,12 @@ zh: {
   compareH: "比較", compareSub: "{a} 與 {b}", fullScreen: "全螢幕", exitFull: "結束全螢幕",
   saySum: "前置時間中位數 {a} → {b} 天：{dir} {p}%。", shorter: "縮短", longer: "增加", same: "沒有變化",
   thMetric: "指標",
-  m_lead: "前置時間", ms_lead: "中位數，從開始起算的天數", mu_lead: "天",
-  m_thru: "產出量", ms_thru: "中位數，每週項目數", mu_thru: "項／週",
-  m_qa: "{step}佇列 p95", ms_qa: "各次模擬的中位數，項", mu_qa: "項",
-  m_wip: "在製品", ms_wip: "平均，含待辦，項", mu_wip: "項",
+  m_lead: "前置時間", ms_lead: "中位數，天", mu_lead: "天",
+  m_thru: "產出量", ms_thru: "中位數，每週", mu_thru: "項／週",
+  m_qa: "{step}佇列 p95", ms_qa: "中位數，項", mu_qa: "項",
+  m_wip: "在製品", ms_wip: "平均，項", mu_wip: "項",
   iv90: "90% 區間", unavailable: "無法提供：這次模擬沒有「{step}」步驟。",
-  rugH: "每次模擬的{m}", rugN: "{n} 次模擬，{u}", rugCap: "每次模擬一個記號（刻線；數值相同時改用點）。橫條：90% 區間。長刻線：中位數。",
+  rugH: "每次模擬的{m}", rugN: "{n} 次模擬，{u}", rugCap: "每次模擬一個記號；數值相同時改用點。橫條：90% 區間。長刻線：中位數。",
   rugPick: "顯示每次模擬的{m}",
   rugT: "每次模擬的{m}", rugD: "各 {n} 次模擬。{an}：中位數 {am}，90% 區間 {alo} 到 {ahi}。{bn}：中位數 {bm}，90% 區間 {blo} 到 {bhi}。單位：{u}。",
   stepH: "步驟：{name}", stepNone: "在畫布上選取步驟，或在時刻表選取一列，就會顯示它的數字。",
@@ -939,10 +978,10 @@ function triInv(u, a, m, b) { if (!(b > a)) return a; const f = (m - a) / (b - a
 /* ============================== model data (synthetic) ============================== */
 const V3 = {
   steps: {
-    src: { kind: "source", rate: 24 },
-    cr: { kind: "process", cap: 4, pool: "rev", dist: "tri", tri: [1.5, 4, 8.7], mean: 4.7 },
-    ci: { kind: "process", cap: 3, pool: null, dist: "tri", tri: [1, 2, 4.2], mean: 2.4 },
-    qa: { kind: "process", cap: 3, pool: "qae", dist: "tri", tri: [3.5, 5, 7.3], mean: 5.3 },
+    src: { kind: "source", rate: 23, backlog: 15, wip: 17 },
+    cr: { kind: "process", cap: 4, pool: "rev", dist: "tri", tri: [2, 5.2, 11.4], mean: 6.2 },
+    ci: { kind: "process", cap: 3, pool: null, dist: "tri", tri: [0.8, 1.5, 4.9], mean: 2.4 },
+    qa: { kind: "process", cap: 3, pool: "qae", dist: "tri", tri: [2, 3.8, 10.9], mean: 5.6 },
     dep: { kind: "process", cap: 1, pool: null, dist: "tri", tri: [0.5, 1, 1.65], mean: 1.1 },
     rel: { kind: "sink" },
   },
@@ -959,10 +998,9 @@ function proposalModel() {
   m.edges.push(["cr", "sec"], ["sec", "ci"]);
   return m;
 }
-/* targets for the per-run generator: median, 5th and 95th percentile (nearest rank) */
-const T_V3 = { lead: [3.8, 3.1, 4.6], thru: [21.4, 19.9, 23.0], wip: [61, 54, 69], q: { cr: [2, 1, 4], ci: [0, 0, 1], qa: [14, 10, 19], dep: [1, 0, 2] } };
-const T_S2 = { lead: [2.9, 2.4, 3.5], thru: [23.7, 22.1, 25.2], wip: [44, 39, 50], q: { cr: [6, 4, 8], ci: [0, 0, 1], qa: [4, 3, 6], dep: [2, 1, 3] } };
-const SALT = { lead: 11, thru: 12, wip: 13, cr: 21, ci: 22, qa: 23, dep: 24 };
+/* the engine's run settings: 90 working days per run, the first 10 left out of every
+   statistic (warm-up), and day-to-day variation in arrivals, which come in clumps of 3 */
+const SIM = { days: 90, warmup: 10, burst: 0.58, clump: 3, runs: 30, sample: 6 };
 const METRICS = [
   { key: "lead", dp: 1, lower: true }, { key: "thru", dp: 1, lower: false },
   { key: "qa", dp: 0, lower: true, step: "qa" }, { key: "wip", dp: 0, lower: true },
@@ -986,7 +1024,7 @@ const state = {
   full: false, v3d: false, view: { x: 0, y: 0, k: 1 }, notice: null,
 };
 (function initDraft() {
-  const saved = clone(V3); saved.steps.ci.cap = 4; saved.steps.cr.tri[1] = 3.5;
+  const saved = clone(V3); saved.steps.ci.cap = 4; saved.steps.cr.tri[1] = 4.7;
   const data = clone(saved); data.steps.ci.cap = null;
   state.draft = { v: 3, rev: 12, saved, data };
 })();
@@ -1018,7 +1056,7 @@ function diff(a, b) {
     const x = a.steps[id], y = b.steps[id]; if (!x) continue;
     const set = (field, from, to) => out.push({ op: "set", what: "step", id, field, from, to });
     if ((x.name ?? null) !== (y.name ?? null)) set("name", stepName(a, id), stepName(b, id));
-    if (x.kind === "source" && !same(x.rate, y.rate)) set("rate", x.rate, y.rate);
+    if (x.kind === "source") for (const f of ["rate", "backlog", "wip"]) if (!same(x[f], y[f])) set(f, x[f], y[f]);
     if (x.kind !== "process") continue;
     if (!x.pool && !y.pool && !same(x.cap, y.cap)) set("cap", x.cap, y.cap);
     if (x.dist !== y.dist) set("dist", x.dist, y.dist);
@@ -1041,6 +1079,7 @@ function fmtVal(f, v) {
   if (["min", "mode", "max", "mean"].includes(f)) return t("hrs", { v: num(v) });
   if (f === "dist") return t("d_" + v);
   if (f === "rate") return t("perWeekN", { n: v });
+  if (f === "backlog") return t("itemsN", { n: v });
   return String(v);
 }
 function changeText(c, a, b) {
@@ -1061,6 +1100,11 @@ function issues(m) {
   for (const id of order(m)) {
     const s = m.steps[id];
     if (s.name != null && !String(s.name).trim()) out.push({ sev: "error", id, field: "name", code: "name_empty", path: `/steps/${id}/name`, msg: t("e_name") });
+    if (s.kind === "source") {
+      if (!okInt(s.rate)) out.push({ sev: "error", id, field: "rate", code: "arrival_rate", path: `/steps/${id}/arrival_rate`, msg: t("e_rate") });
+      if (!(Number.isInteger(s.backlog) && s.backlog >= 0 && s.backlog <= 1000)) out.push({ sev: "error", id, field: "backlog", code: "starting_backlog", path: `/steps/${id}/starting_backlog`, msg: t("e_backlog") });
+      if (!okInt(s.wip)) out.push({ sev: "error", id, field: "wip", code: "wip_limit", path: `/steps/${id}/wip_limit`, msg: t("e_wip") });
+    }
     if (s.kind !== "process") continue;
     if (!s.pool) {
       if (s.cap === null || s.cap === undefined) out.push({ sev: "error", id, field: "cap", code: "capacity_empty", path: `/steps/${id}/capacity`, msg: t("e_cap_empty") });
@@ -1100,39 +1144,22 @@ function runModel(r) { const base = state.versions[r.v].data; return r.kind === 
 const runShort = (r) => (r.kind === "base" ? t("lblBaseShort", { v: r.v }) : r.s);
 const runLong = (r) => (r.kind === "base" ? t("lblBase", { v: r.v }) : r.s);
 const runWhat = (r) => (r.kind === "base" ? t("rw_base", { v: r.v }) : t("rw_scen", { s: r.s, v: r.v }));
-function targetsFor(m) {
-  const qa = m.steps.qa ? capOf(m, "qa") : 3;
-  const tg = clone(qa >= 5 ? T_S2 : T_V3);
-  const shift = (arr, d) => arr.map((v) => +(v + d).toFixed(1));
-  if (m.steps.ci && capOf(m, "ci") >= 4) { tg.lead = shift(tg.lead, -0.1); tg.q.ci = [0, 0, 0]; }
-  for (const id of procs(m)) if (!["cr", "ci", "qa", "dep"].includes(id)) { tg.lead = shift(tg.lead, 0.5); tg.thru = shift(tg.thru, -0.3); tg.wip = tg.wip.map((v) => v + 5); tg.q[id] = [2, 1, 4]; }
-  for (const id of Object.keys(tg.q)) if (!m.steps[id]) delete tg.q[id];
-  return tg;
-}
-/* 30 per-run values: a smooth quantile curve through the targets, with seeded jitter, in
-   seeded run order. Labels and graphics are both computed from these arrays. */
-function genValues(seed, salt, tgt, dp, exact) {
-  const [med, lo, hi] = tgt, n = 30, L = (u) => Math.log(u / (1 - u)), L5 = L(0.05), q = [];
-  for (let i = 0; i < n; i++) { const u = (i + 0.5) / n, z = L(u) / L5; q.push(u < 0.5 ? med + (lo - med) * z : med + (hi - med) * -z); }
-  const shift = exact ? 0 : (h32(seed, salt, 99) - 0.5) * 0.12 * (hi - lo);
-  const v = q.map((x, i) => {
-    if (exact && (i === 1 || i === 14 || i === 15 || i === 28)) return x;
-    const g = Math.min(i > 0 ? x - q[i - 1] : Infinity, i < n - 1 ? q[i + 1] - x : Infinity);
-    return x + shift + (h32(seed, salt, i) - 0.5) * 0.9 * g;
-  });
-  const f = Math.pow(10, dp), r = v.map((x) => Math.max(0, Math.round(x * f) / f));
-  for (let i = n - 1; i > 0; i--) { const j = Math.floor(h32(seed, salt, 1000 + i) * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; }
-  return r;
-}
 function stats(arr) { const s = [...arr].sort((x, y) => x - y); return { med: (s[14] + s[15]) / 2, lo: s[1], hi: s[28], min: s[0], max: s[29], n: s.length }; }
+const median = (arr) => stats(arr).med;
 const dataCache = new Map();
+const runSeed = (seed, i) => fmix((seed >>> 0) ^ Math.imul(i + 1, 0x9e3779b9)) >>> 0;
+/* one run = 30 simulated runs of the run's model; run 7 (index 6) is also the sampled trace
+   the timetable draws, so every number on the page comes from these 30 runs */
 function runData(r) {
   if (dataCache.has(r.id)) return dataCache.get(r.id);
-  const m = runModel(r), tg = targetsFor(m), exact = r.seed === 4127, off = r.kind === "scen" ? 100 : 0;
-  const vals = { lead: genValues(r.seed, SALT.lead + off, tg.lead, 2, exact), thru: genValues(r.seed, SALT.thru + off, tg.thru, 2, exact), wip: genValues(r.seed, SALT.wip + off, tg.wip, 1, exact) };
-  const q = {};
-  for (const id of procs(m)) q[id] = genValues(r.seed, (SALT[id] || 30 + (strHash(id) % 50)) + off, tg.q[id] || [1, 0, 2], 0, exact);
-  const d = { m, vals, q };
+  const m = runModel(r), all = [];
+  let tr = null;
+  for (let i = 0; i < SIM.runs; i++) { const out = simulate(m, runSeed(r.seed, i), i === SIM.sample); all.push(out.metrics); if (i === SIM.sample) tr = out.trace; }
+  const r2 = (v) => Math.round(v * 100) / 100, r1 = (v) => Math.round(v * 10) / 10;
+  const vals = { lead: all.map((x) => r2(x.lead)), thru: all.map((x) => r2(x.thru)), wip: all.map((x) => r1(x.wip)) };
+  const q = {}, util = {};
+  for (const id of procs(m)) { q[id] = all.map((x) => x.q[id]); util[id] = all.map((x) => x.util[id]); }
+  const d = { m, vals, q, util, trace: tr };
   dataCache.set(r.id, d);
   return d;
 }
@@ -1141,51 +1168,63 @@ const roundTo = (v, dp) => +(+v).toFixed(dp);
 function metricRow(key, A, B) {
   const va = metricVals(A, key), vb = metricVals(B, key);
   if (!va || !vb) return null;
-  const sa = stats(va), sb = stats(vb), dp = MET[key].dp;
+  const sa = stats(va), sb = stats(vb);
+  // integer counts can have a half-way median; show the decimal rather than round it away
+  const ints = va.every(Number.isInteger) && vb.every(Number.isInteger);
+  const dp = MET[key].dp === 0 && ints && (sa.med % 1 || sb.med % 1) ? 1 : MET[key].dp;
   const a = roundTo(sa.med, dp), b = roundTo(sb.med, dp), d = roundTo(b - a, dp);
-  return { key, sa, sb, a, b, d, pct: a ? Math.round((d / a) * 100) : 0, dp };
+  return { key, sa, sb, a, b, d, pct: a ? Math.round((d / a) * 100) : 0, dp, va, vb };
 }
-function utilPct(m, id, thruMed) { const c = capOf(m, id); if (!c || !Number.isFinite(c)) return null; return Math.min(100, Math.round(((thruMed * meanH(m, id)) / (c * 40)) * 100)); }
 function stepStats(r, id) {
   const d = runData(r), m = d.m; if (!m.steps[id] || m.steps[id].kind !== "process") return null;
-  const thru = roundTo(stats(d.vals.thru).med, 1);
-  return { cap: capOf(m, id), util: utilPct(m, id, thru), q95: d.q[id] ? roundTo(stats(d.q[id]).med, 0) : null };
+  return { cap: capOf(m, id), util: Math.round(median(d.util[id]) * 100), q95: d.q[id] ? median(d.q[id]) : null };
 }
-
-/* minimal discrete-event simulation for the sampled trace (time in 8-hour working days) */
-const traceCache = new Map();
-function simulate(m, seed) {
-  const ids = procs(m), steps = ids.map((id) => ({ id, c: capOf(m, id), s: m.steps[id] }));
-  const rate = (m.steps[srcOf(m)]?.rate ?? 24) / 5, wip = 18, burst = 0.4, days = 90;
+/* minimal discrete-event simulation (time in 8-hour working days) */
+function simulate(m, seed, keep) {
+  const ids = procs(m), steps = ids.map((id) => ({ id, c: capOf(m, id), s: m.steps[id] })), src = m.steps[srcOf(m)] || {};
+  const days = SIM.days, W0 = SIM.warmup, rate = (src.rate ?? 23) / 5, wip = src.wip ?? 17, K = steps.length;
   const items = []; let nid = 0;
+  for (let i = 0; i < (src.backlog ?? 0); i++) items.push({ id: nid++, arr: 0, at: [] });
   for (let d = 0; d < days; d++) {
-    const mult = 1 + burst * (h32(seed, d, 991) * 2 - 1) * 1.6, lam = Math.max(0, rate * mult);
+    const mult = 1 + SIM.burst * (h32(seed, d, 991) * 2 - 1) * 1.6, lam = Math.max(0, rate * mult);
     let n = 0, p = Math.exp(-lam), F = p; const u = h32(seed, d, 992);
-    while (u > F && n < 40) { n++; p *= lam / n; F += p; }
+    while (u > F && n < 60) { n++; p *= lam / n; F += p; }
     const ts = []; for (let i = 0; i < n; i++) ts.push(d + h32(seed, d * 64 + i, 993));
     ts.sort((a, b) => a - b);
+    for (let i = 0; i < ts.length; i++) ts[i] = ts[i - (i % SIM.clump)];
     for (const tt of ts) items.push({ id: nid++, arr: tt, at: [] });
   }
   const heap = []; let seq = 0;
   const lt = (a, b) => a.t < b.t || (a.t === b.t && a.s < b.s);
   const push = (e) => { e.s = seq++; heap.push(e); let i = heap.length - 1; while (i > 0) { const pa = (i - 1) >> 1; if (lt(heap[i], heap[pa])) { [heap[i], heap[pa]] = [heap[pa], heap[i]]; i = pa; } else break; } };
   const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let k = i; if (l < heap.length && lt(heap[l], heap[k])) k = l; if (r < heap.length && lt(heap[r], heap[k])) k = r; if (k === i) break; [heap[i], heap[k]] = [heap[k], heap[i]]; i = k; } } return top; };
-  const K = steps.length, q = steps.map(() => []), busy = steps.map(() => 0), backlog = [];
-  let inprog = 0;
-  const svc = (st, it) => { const u = h32(seed, it.id, strHash(st.id)), s = st.s; if (s.dist === "exp") return -s.mean * Math.log(1 - u); const tri = s.dist === "data" && DATASET[st.id] ? DATASET[st.id].tri : s.tri; return triInv(u, tri[0], tri[1], tri[2]); };
+  const q = steps.map(() => []), busy = steps.map(() => 0), backlog = [], qlog = steps.map(() => [[0, 0]]), busyT = steps.map(() => 0), sysLog = [[0, 0]];
+  let inprog = 0, sys = 0;
+  const clip = (a, b) => Math.max(0, Math.min(b, days) - Math.max(a, W0));
+  const svc = (st, it) => { const u = h32(seed, it.id, strHash(st.id)), s = st.s; if (s.dist === "exp") return (-s.mean * Math.log(1 - u)) / 8; const tri = s.dist === "data" && DATASET[st.id] ? DATASET[st.id].tri : s.tri; return triInv(u, tri[0], tri[1], tri[2]) / 8; };
   for (const it of items) push({ t: it.arr, type: "arr", it });
   const admit = (now) => { while (inprog < wip && backlog.length) { const it = backlog.shift(); inprog++; it.admit = now; push({ t: now + 0.04, type: "enq", it, k: 0 }); } };
-  const start = (k, now) => { while (busy[k] < steps[k].c && q[k].length) { const it = q[k].shift(); busy[k]++; const sv = svc(steps[k], it) / 8; it.at[k].start = now; it.at[k].end = now + sv; push({ t: now + sv, type: "done", it, k }); } };
+  const start = (k, now) => { while (busy[k] < steps[k].c && q[k].length) { const it = q[k].shift(); busy[k]++; const sv = svc(steps[k], it); it.at[k].start = now; it.at[k].end = now + sv; busyT[k] += clip(now, now + sv); push({ t: now + sv, type: "done", it, k }); } qlog[k].push([now, q[k].length]); };
   while (heap.length) {
     const e = pop();
     if (e.t > days + 2) break;
-    if (e.type === "arr") { backlog.push(e.it); admit(e.t); }
-    else if (e.type === "enq") { if (!K) { e.it.rel = e.t; inprog--; admit(e.t); continue; } e.it.at[0] = { enq: e.t }; q[0].push(e.it); start(0, e.t); }
-    else { busy[e.k]--; if (e.k + 1 < K) { e.it.at[e.k + 1] = { enq: e.t }; q[e.k + 1].push(e.it); start(e.k + 1, e.t); } else { e.it.rel = e.t; inprog--; admit(e.t); } start(e.k, e.t); }
+    if (e.type === "arr") { sys++; sysLog.push([e.t, sys]); backlog.push(e.it); admit(e.t); }
+    else if (e.type === "enq") { if (!K) { e.it.rel = e.t; inprog--; sys--; sysLog.push([e.t, sys]); admit(e.t); continue; } e.it.at[0] = { enq: e.t }; q[0].push(e.it); start(0, e.t); }
+    else { busy[e.k]--; if (e.k + 1 < K) { e.it.at[e.k + 1] = { enq: e.t }; q[e.k + 1].push(e.it); start(e.k + 1, e.t); } else { e.it.rel = e.t; inprog--; sys--; sysLog.push([e.t, sys]); admit(e.t); } start(e.k, e.t); }
   }
-  return { items, ids, src: srcOf(m), sink: sinkOf(m) };
+  const rel = items.filter((it) => it.rel !== undefined && it.rel >= W0 && it.rel <= days);
+  const leads = rel.map((it) => it.rel - it.admit).sort((a, b) => a - b);
+  const mid = (s) => (s.length ? (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2) : NaN);
+  const p95 = (log) => { const v = []; let j = 0; for (let tt = W0; tt <= days; tt += 0.05) { while (j + 1 < log.length && log[j + 1][0] <= tt) j++; v.push(log[j][1]); } v.sort((a, b) => a - b); return v[Math.ceil(0.95 * v.length) - 1]; };
+  const mean = (log) => { let acc = 0, j = 0; for (let tt = W0; tt < days; tt += 0.05) { while (j + 1 < log.length && log[j + 1][0] <= tt) j++; acc += log[j][1]; } return acc / Math.round((days - W0) / 0.05); };
+  const metrics = {
+    lead: mid(leads), thru: rel.length / ((days - W0) / 5), wip: mean(sysLog),
+    q: Object.fromEntries(steps.map((s, k) => [s.id, p95(qlog[k])])),
+    util: Object.fromEntries(steps.map((s, k) => [s.id, busyT[k] / (s.c * (days - W0))])),
+  };
+  return { metrics, trace: keep ? { items, ids, src: srcOf(m), sink: sinkOf(m) } : null };
 }
-function trace(r) { if (!traceCache.has(r.id)) traceCache.set(r.id, simulate(runModel(r), r.seed)); return traceCache.get(r.id); }
+function trace(r) { return runData(r).trace; }
 function countAt(tr, id, time) {
   let n = 0;
   if (id === tr.src) { for (const it of tr.items) if (it.arr <= time && !(it.admit <= time)) n++; return n; }
@@ -1238,13 +1277,13 @@ function renderChrome() {
 function renderProv() {
   const d = state.draft, lv = state.latest, u = unsavedCount(), A = runById(state.cmp.a), B = runById(state.cmp.b), sc = SCEN["S-2"];
   const draftState = d.v < lv
-    ? `<span class="warnt x">${esc(t("newer", { v: lv }))}</span>`
-    : u ? `<span class="dot" aria-hidden="true"></span><span class="x">${esc(t("unsaved", { n: u }))}</span>` : `<span class="mu x">${esc(t("savedState"))}</span>`;
+    ? `<span class="tok warnt"><span class="x">${esc(t("newer", { v: lv }))}</span></span>`
+    : u ? `<span class="tok"><span class="dot" aria-hidden="true"></span><span class="x">${esc(t("unsaved", { n: u }))}</span></span>` : `<span class="tok mu"><span class="x">${esc(t("savedState"))}</span></span>`;
   $("#prov").innerHTML = `
-    <div class="pv"><dt>${esc(t("pVersion"))}</dt><dd>${ic("ver")}<b>v${lv}</b><span class="mu x o3">${esc(t("published"))}</span></dd></div>
-    <div class="pv"><dt>${esc(t("pDraft"))}</dt><dd>${ic("draft")}<b>${esc(t("revN", { rev: d.rev }))}</b><span class="mu">${esc(t("onV", { v: d.v }))}</span>${draftState}</dd></div>
-    <div class="pv s"><dt>${esc(t("pScenario"))}</dt><dd>${ic("branch")}<b class="sv">S-2</b><span class="x o1 optl">${esc(t("s2name"))}</span><span class="mu">${esc(t("patchOn", { v: sc.v }))}</span></dd></div>
-    <div class="pv"><dt>${esc(t("pRuns"))}</dt><dd>${KEYS}<b>${esc(B.id)}</b><span class="mu o2">${esc(runShort(B))}</span><span class="mu">${esc(t("against"))}</span>${KEYB}<b>${esc(A.id)}</b><span class="mu x o2">${esc(runLong(A))}</span></dd></div>`;
+    <div class="pv"><dt>${esc(t("pVersion"))}</dt><dd><span class="tok">${ic("ver")}<b>v${lv}</b></span><span class="mu x o3">${esc(t("published"))}</span></dd></div>
+    <div class="pv"><dt>${esc(t("pDraft"))}</dt><dd><span class="tok">${ic("draft")}<b>${esc(t("revN", { rev: d.rev }))}</b></span><span class="tok mu">${esc(t("onV", { v: d.v }))}</span>${draftState}</dd></div>
+    <div class="pv s"><dt>${esc(t("pScenario"))}</dt><dd><span class="tok">${ic("branch")}<b class="sv">S-2</b></span><span class="x o1 optl">${esc(t("s2name"))}</span><span class="tok mu">${esc(t("patchOn", { v: sc.v }))}</span></dd></div>
+    <div class="pv"><dt>${esc(t("pRuns"))}</dt><dd><span class="tok">${KEYS}<b>${esc(B.id)}</b><span class="mu o2">${esc(runShort(B))}</span></span><span class="tok mu">${esc(t("against"))}</span><span class="tok">${KEYB}<b>${esc(A.id)}</b><span class="mu x o2">${esc(runLong(A))}</span></span></dd></div>`;
   for (const pv of $$("#prov .pv")) pv.title = $$("dt, dd > *", pv).map((e) => e.textContent.trim()).filter(Boolean).join(" ");
 }
 function fitProv() {
@@ -1252,7 +1291,7 @@ function fitProv() {
   for (let c = 0; c <= 3; c++) {
     prov.dataset.c = String(c);
     if (phone()) break;
-    const cut = $$("#prov .x").some((x) => x.offsetParent && x.scrollWidth > x.clientWidth + 1);
+    const cut = $$("#prov .x").some((x) => x.offsetParent && x.scrollWidth > x.clientWidth);
     if (!cut && prov.scrollWidth <= prov.clientWidth + 1) break;
   }
 }
@@ -1272,9 +1311,9 @@ function renderActs() {
 }
 
 /* ============================== render: canvas ============================== */
-const GAP = { edit: 34, simulate: 26, review: 30 };
+const GAP = { edit: 34, simulate: 22, review: 30 };
 function nodeW(kind, mode) {
-  if (mode === "simulate") return kind === "process" ? 160 : 150;
+  if (mode === "simulate") return kind === "process" ? 136 : 124;
   return kind === "process" ? 152 : kind === "source" ? 132 : 116;
 }
 function canvasCtx() {
@@ -1308,30 +1347,31 @@ function nodeHTML(ctx, id, p, roving, iss) {
   if (ctx.kind === "edit") {
     const mine = iss.filter((i) => i.id === id && !i.pool), e = errsOf(mine).length, w = warnsOf(mine).length;
     if (e) cls.push("has-err");
-    if (s.kind === "source") body = `<span class="np">${esc(t("arrives"))}</span><span class="np">${esc(t("perWeekN", { n: num(s.rate) }))}</span>`;
+    if (s.kind === "source") body = sourceLines(s);
     else if (s.kind === "process") {
       const c = capOf(m, id), capTxt = c == null || Number.isNaN(c) ? t("capNone") : t("capN", { n: c });
       body = `<span class="np wr">${esc(capTxt)}</span><span class="np wr">${esc(durText(m, id))}</span>`;
     }
     if (e || w) body += `<span class="chips">${e ? `<span class="chip err">${ic("err")}${esc(t("nErr", { n: e }))}</span>` : ""}${w ? `<span class="chip warn">${ic("warn")}${esc(t("nWarn", { n: w }))}</span>` : ""}</span>`;
   } else if (ctx.kind === "sim") {
-    const A = ctx.A, B = ctx.B, inA = !!ctx.mA.steps[id];
+    const A = ctx.A, B = ctx.B, inA = !!ctx.mA.steps[id], d = Math.floor(state.t);
+    const dayPair = `<span class="vl">${inA ? `<span data-qd="a:${id}"></span>${arrow()}` : ""}<b class="sv" data-qd="b:${id}"></b></span>`;
     if (s.kind === "source") {
       cls.push("withv");
-      body = `<span class="np">${esc(t("perWeekN", { n: num(s.rate) }))}</span><span class="nm"><span class="kv"><span class="k1" data-dl="waitDay">${esc(t("waitDay", { d: Math.floor(state.t) }))}</span></span><span class="kv"><span></span><span class="v1">${inA ? `<span data-qd="a:${id}"></span>${arrow()}` : ""}<b class="sv" data-qd="b:${id}"></b></span></span></span>`;
+      body = `${sourceLines(s)}<span class="nm"><span class="kl" data-dl="waitDay">${esc(t("waitDay", { d }))}</span>${dayPair}</span>`;
     } else if (s.kind === "sink") {
       cls.push("withv");
-      body = `<span class="nm"><span class="kv"><span class="k1" data-dl="relDay">${esc(t("relDay", { d: Math.floor(state.t) }))}</span></span><span class="kv"><span></span><span class="v1">${inA ? `<span data-qd="a:${id}"></span>${arrow()}` : ""}<b class="sv" data-qd="b:${id}"></b></span></span></span>`;
+      body = `<span class="nm"><span class="kl" data-dl="relDay">${esc(t("relDay", { d }))}</span>${dayPair}</span>`;
     } else {
       const sa = inA ? stepStats(A, id) : null, sb = stepStats(B, id), patched = A.v === B.v && sa && sa.cap !== sb.cap, flagNew = inA ? "" : `<span class="tag ink flag">${esc(t("tagNew", { v: B.v }))}</span>`;
       if (patched) head += `<span class="tag">${ic("branch")}${esc(B.s || "")}</span>`;
       const pair = (a, b, suf = "") => (a == null ? `<b class="sv">${b}${suf}</b>` : `${a}${suf}${arrow()}<b class="sv">${b}${suf}</b>`);
       body = `<span class="np">${esc(t("capacity"))} ${sa && sa.cap !== sb.cap ? `${sa.cap}${arrow()}<b class="sv">${sb.cap}</b>` : esc(sb.cap)}</span>
         <span class="nm">
-          <span class="kv"><span class="k1">${esc(t("util"))}</span><span class="v1">${pair(sa ? sa.util : null, sb.util, "%")}</span></span>
-          <span class="bars" aria-hidden="true">${sa ? `<span class="bar b"><i style="width:${sa.util}%"></i></span>` : ""}<span class="bar s"><i style="width:${sb.util}%"></i></span></span>
-          <span class="kv"><span class="k1">${esc(t("qp95"))}</span><span class="v1">${pair(sa ? sa.q95 : null, sb.q95)}</span></span>
-          <span class="kv"><span class="k1" data-dl="qDay">${esc(t("qDay", { d: Math.floor(state.t) }))}</span><span class="v1">${inA ? `<span data-qd="a:${id}"></span>${arrow()}` : ""}<b class="sv" data-qd="b:${id}"></b></span></span>
+          <span class="kl">${esc(t("util"))}</span>
+          <span class="vl">${pair(sa ? sa.util : null, sb.util, "%")}</span>
+          ${utilBars(sa ? sa.util : null, sb.util, p.w - 24)}
+          <span class="kl" data-dl="qDay">${esc(t("qDay", { d }))}</span>${dayPair}
         </span>${flagNew}`;
     }
   } else {
@@ -1339,10 +1379,18 @@ function nodeHTML(ctx, id, p, roving, iss) {
       const c = capOf(m, id);
       body = `<span class="np wr">${esc(t("capN", { n: c }))}</span><span class="np wr">${esc(durText(m, id))}</span>`;
       if (!ctx.base.steps[id]) { cls.push("is-added"); body += `<span class="tag ink flag">${esc(ctx.kind === "rev-done" ? t("tagNew", { v: state.proposal.vn }) : t("tagAdded"))}</span>`; }
-    } else if (s.kind === "source") body = `<span class="np">${esc(t("perWeekN", { n: num(s.rate) }))}</span>`;
+    } else if (s.kind === "source") body = sourceLines(s);
   }
   if (sel) cls.push("is-sel");
   return `<button type="button" class="${cls.filter(Boolean).join(" ")}" id="node-${esc(id)}" data-k="step" data-id="${esc(id)}" tabindex="${tab}" aria-pressed="${sel}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px"><span class="nh">${head}</span>${body}</button>`;
+}
+function sourceLines(s) {
+  return `<span class="np wr">${esc(t("perWeekN", { n: num(s.rate) }))}</span><span class="np sm" title="${esc(t("startBacklog", { n: s.backlog ?? 0 }))}">${esc(t("startBacklog", { n: s.backlog ?? 0 }))}</span><span class="np sm" title="${esc(t("wipLine", { n: s.wip ?? 17 }))}">${esc(t("wipLine", { n: s.wip ?? 17 }))}</span>`;
+}
+/* utilisation in the strip's line grammar: dashed graphite for the baseline, solid green for the scenario */
+function utilBars(a, b, w) {
+  const X = (v) => ((w * Math.max(0, Math.min(100, v))) / 100).toFixed(1);
+  return `<svg class="ubar" width="${w}" height="12" aria-hidden="true" focusable="false"><line class="ut" x1="0" y1="3" x2="${w}" y2="3"/><line class="ut" x1="0" y1="9.5" x2="${w}" y2="9.5"/>${a == null ? "" : `<line class="ub" x1="0" y1="3" x2="${X(a)}" y2="3"/>`}<line class="us" x1="0" y1="9.5" x2="${X(b)}" y2="9.5"/></svg>`;
 }
 function durText(m, id) {
   const s = m.steps[id];
@@ -1433,6 +1481,11 @@ function renderCanvas() {
   updateDay();
   applyView();
 }
+function factTokens(seedTxt) {
+  const tok = (l, v) => `<span class="tok"><span class="tl">${esc(l)}</span>${esc(v)}</span>`;
+  return `<span class="l3">${tok(t("fSeed"), seedTxt)}${tok(t("fEngine"), "des 0.4.0")}${tok(t("fDataset"), t("fDatasetV", { n: 7 }))}<span class="tok syn">${ic("info", "sm")}${esc(t("synthetic"))}</span></span>`;
+}
+function seedText() { const A = runById(state.cmp.a), B = runById(state.cmp.b); return A.seed === B.seed ? String(B.seed) : `${A.seed}${t("comma")}${B.seed}`; }
 function renderCanvasChrome(ctx, iss) {
   const zoom = `<div class="vseg" role="group" aria-label="${esc(t("viewGroup"))}"><button type="button" id="v2d" aria-pressed="${!state.v3d}">${esc(t("v2d"))}</button><button type="button" id="v3d" aria-pressed="${state.v3d}">${esc(t("v3d"))}</button></div>
     <div class="zoom" role="group" aria-label="${esc(t("zoomGroup"))}"><button type="button" id="z-out" aria-label="${esc(t("zoomOut"))}">${ic("minus")}</button><output id="z-pct" aria-live="off">${Math.round(state.view.k * 100)}%</output><button type="button" id="z-in" aria-label="${esc(t("zoomIn"))}">${ic("plus")}</button></div>
@@ -1452,18 +1505,18 @@ function renderCanvasChrome(ctx, iss) {
     </div>`;
   } else if (ctx.kind === "sim") {
     const A = ctx.A, B = ctx.B;
-    left = `<div class="cap"><span class="l1">${ic("lock")}${esc(t("readOnly"))}${esc(t("colon"))}${esc(B.kind === "scen" ? t("capSimA", { v: B.v, s: B.s }) : t("capSimB", { v: B.v }))}</span>
-      <span class="l2"><span>${esc(t("capRuns", { b: B.id, a: A.id }))}${esc(t("comma"))}${esc(A.seed === B.seed ? t("seedOne", { s: B.seed }) : t("seedTwo", { a: A.seed, b: B.seed }))}</span></span></div>`;
+    left = `<div class="cap" id="chip"><span class="l1">${ic("lock")}${esc(t("readOnly"))}${esc(t("colon"))}${esc(B.kind === "scen" ? t("capSimA", { v: B.v, s: B.s }) : t("capSimB", { v: B.v }))}</span>
+      <span class="l2"><span>${esc(t("capRuns", { b: B.id, a: A.id }))}</span></span>${factTokens(seedText())}</div>`;
   } else {
     const p = state.proposal;
     const l1 = ctx.kind === "rev-done" ? t("capApproved", { n: p.vn, v: p.v, p: p.id }) : ctx.kind === "rev-plain" ? t("capRejected", { v: p.v, p: p.id }) : t("capReview", { p: p.id, v: p.v });
-    left = `<div class="cap"><span class="l1">${ic("lock")}${esc(l1)}</span><span class="l2"><span>${esc(t("capReviewSub"))}</span>${ctx.kind === "rev" ? `<span><svg class="k" viewBox="0 0 20 8" aria-hidden="true"><line x1="1" y1="4" x2="19" y2="4" style="stroke:var(--ink);stroke-width:2"/></svg>${esc(t("legAdded"))}</span><span><svg class="k" viewBox="0 0 20 8" aria-hidden="true"><line x1="1" y1="4" x2="19" y2="4" style="stroke:var(--err);stroke-width:1.75;stroke-dasharray:6 4"/></svg>${esc(t("legRemoved"))}</span>` : ""}</span></div>`;
+    left = `<div class="cap" id="chip"><span class="l1">${ic("lock")}${esc(l1)}</span><span class="l2"><span>${esc(t("capReviewSub"))}</span>${ctx.kind === "rev" ? `<span><svg class="k" viewBox="0 0 20 8" aria-hidden="true"><line x1="1" y1="4" x2="19" y2="4" style="stroke:var(--ink);stroke-width:2"/></svg>${esc(t("legAdded"))}</span><span><svg class="k" viewBox="0 0 20 8" aria-hidden="true"><line x1="1" y1="4" x2="19" y2="4" style="stroke:var(--err);stroke-width:1.75;stroke-dasharray:6 4"/></svg>${esc(t("legRemoved"))}</span>` : ""}</span>${factTokens(seedText())}</div>`;
   }
   $("#ctop").innerHTML = left + `<span class="sp"></span>` + zoom;
   const bot = $("#cbot");
   if (ctx.kind === "edit") {
     const e = errsOf(iss).length, w = warnsOf(iss).length, open = !!$("#drawer");
-    bot.innerHTML = `<button type="button" class="pill" id="pill" aria-expanded="${open}" aria-controls="drawer">${e ? ic("err", "e") : w ? ic("warn", "w") : ic("ok", "ok")}<span>${esc(issueSummary(iss))}</span></button><span class="edcap">${esc(t("capEdit", { rev: state.draft.rev, v: state.draft.v }))}</span>`;
+    bot.innerHTML = `<button type="button" class="pill" id="pill" aria-expanded="${open}" aria-controls="drawer">${e ? ic("err", "e") : w ? ic("warn", "w") : ic("ok", "ok")}<span>${esc(issueSummary(iss))}</span></button><div class="cap" id="chip"><span class="l1">${ic("draft")}${esc(t("capEdit", { rev: state.draft.rev, v: state.draft.v }))}</span>${factTokens(seedText())}</div>`;
   } else bot.innerHTML = "";
   const three = $("#three");
   three.hidden = !state.v3d;
@@ -1472,14 +1525,11 @@ function renderCanvasChrome(ctx, iss) {
 function applyView() {
   const { x, y, k } = state.view;
   $("#world").style.transform = `translate(${x}px, ${y}px) scale(${k})`;
-  const f = $("#flow");
-  f.style.backgroundSize = `${80 * k}px ${80 * k}px, ${80 * k}px ${80 * k}px, ${16 * k}px ${16 * k}px, ${16 * k}px ${16 * k}px`;
-  f.style.backgroundPosition = `${x - 1}px ${y - 1}px`;
   const z = $("#z-pct"); if (z) { z.textContent = Math.round(k * 100) + "%"; }
 }
 function fit() {
   const f = $("#flow"), b = state.bbox; if (!b || !f.clientWidth) return;
-  const top = 72, bottom = state.mode === "edit" ? 64 : 24, side = 24;
+  const top = ($("#ctop")?.offsetHeight || 40) + 32, bottom = (state.mode === "edit" ? $("#cbot")?.offsetHeight || 40 : 0) + 24, side = 24;
   const W = f.clientWidth - side * 2, H = f.clientHeight - top - bottom;
   const k = Math.max(0.4, Math.min(1, W / (b.x1 - b.x0), H / (b.y1 - b.y0)));
   state.view = { k, x: side + (W - (b.x1 - b.x0) * k) / 2 - b.x0 * k, y: top + Math.min(130, Math.max(0, (H - (b.y1 - b.y0) * k) / 2)) - b.y0 * k };
@@ -1501,9 +1551,16 @@ function renderStrip() {
   drawMarey();
 }
 function updatePlayBtn() { const b = $("#play"); b.setAttribute("aria-label", state.playing ? t("pause") : t("play")); b.title = (state.playing ? t("pause") : t("play")) + " (K)"; $("#play-use").setAttribute("href", state.playing ? "#i-pause" : "#i-play"); }
+function labelWidth(names) {
+  let m = $("#mmeasure");
+  if (!m) { m = document.createElement("span"); m.id = "mmeasure"; m.className = "rowb"; m.setAttribute("aria-hidden", "true"); m.style.cssText = "position:absolute;visibility:hidden;left:-9999px;top:0;width:auto;height:auto;padding:0;overflow:visible;max-width:none;font-weight:600"; $("#rows").appendChild(m); }
+  let w = 0; for (const n of names) { m.textContent = n; w = Math.max(w, m.getBoundingClientRect().width); }
+  return Math.ceil(w);
+}
 function geo() {
   const w = $("#mwrap"), W = w.clientWidth || 800, H = w.clientHeight || 180, ph = phone();
-  const labW = ph ? 96 : 120, x0 = labW, x1 = W - (ph ? 14 : 24);
+  const B = runById(state.cmp.b), mB = runModel(B), names = order(mB).map((id) => stepName(mB, id));
+  const labW = Math.min(Math.round(W * 0.42), Math.max(ph ? 72 : 112, labelWidth(names) + 34)), x0 = labW, x1 = W - (ph ? 14 : 24);
   const span = Math.max(3, Math.round((x1 - x0) / 112));
   return { W, H, labW, x0, x1, span, pxd: (x1 - x0) / span, top: 18 };
 }
@@ -1522,37 +1579,49 @@ function drawMarey() {
   s += `<defs><clipPath id="mclip"><rect x="${g.x0}" y="${g.top - 4}" width="${g.x1 - g.x0}" height="${bottom - g.top + 8}"/></clipPath></defs>`;
   if (state.sel && state.sel.k === "step" && yRow[state.sel.id] !== undefined) s += `<rect class="selrow" x="4" y="${yRow[state.sel.id]}" width="${g.W - 8}" height="${rowH}"/>`;
   for (let q = Math.ceil(ws * 4); q <= we * 4; q++) { const tt = q / 4, x = X(tt).toFixed(1); s += `<line class="${q % 4 ? "tgm" : "tgM"}" x1="${x}" y1="${g.top}" x2="${x}" y2="${bottom}"/>`; }
-  rows.forEach((id, i) => (s += `<line class="rr" x1="${g.labW - 104 > 0 ? 16 : 4}" y1="${g.top + i * rowH}" x2="${g.x1}" y2="${g.top + i * rowH}"/>`));
-  s += `<line class="rr" x1="16" y1="${bottom}" x2="${g.x1}" y2="${bottom}"/>`;
-  s += `<text x="16" y="12" class="ax">${esc(t("dayAria"))}</text>`;
+  rows.forEach((id, i) => (s += `<line class="rr" x1="8" y1="${g.top + i * rowH}" x2="${g.x1}" y2="${g.top + i * rowH}"/>`));
+  s += `<line class="rr" x1="8" y1="${bottom}" x2="${g.x1}" y2="${bottom}"/>`;
+  s += `<text x="12" y="12" class="ax">${esc(t("dayAria"))}</text>`;
   for (let d = Math.ceil(ws); d <= we; d++) if (Math.abs(d - state.t) > 0.35) s += `<text x="${X(d).toFixed(1)}" y="12" class="ax" text-anchor="middle">${d}</text>`;
-  const lines = (r, mm, cls, dy) => {
-    const tr = trace(r), out = [];
-    const lane = (it) => 4 + ((it.id / 3) % 6) * ((rowH - 12) / 6) + dy;
-    for (const it of tr.items) {
-      if (it.id % 3) continue;
-      const endT = it.rel ?? 92;
-      if (endT < ws - 0.2 || it.arr > we + 0.2) continue;
-      const pts = [], y = (id) => (yRow[id] === undefined ? null : yRow[id] + lane(it));
-      const push = (tt, id) => { const yy = y(id); if (yy !== null) pts.push([tt, yy]); };
-      push(it.arr, tr.src);
-      if (it.admit === undefined) { push(92, tr.src); }
+  /* one queue rule for every row: each waiting stretch takes the lowest free lane, lanes are
+     2.5 px apart and 3 px in from the row edges; the baseline stacks down from the top, the
+     scenario up from the bottom. All releases land on one Released station line. */
+  const PITCH = 2.5, maxLane = Math.max(0, Math.floor((rowH - 6) / 2 / PITCH)), relY = (yRow[order(mB).find((id) => mB.steps[id].kind === "sink")] ?? bottom - rowH) + rowH / 2;
+  const lines = (r, cls, fromBottom) => {
+    const tr = trace(r), rowIds = [tr.src, ...tr.ids], lanes = new Map(), out = [];
+    const drawn = tr.items.filter((it) => it.id % 3 === 0 && (it.rel ?? 92) >= ws - 0.2 && it.arr <= we + 0.2);
+    rowIds.forEach((rid, k) => {
+      const iv = [];
+      for (const it of drawn) {
+        if (k === 0) iv.push({ it, a: it.arr, b: it.admit ?? 92 });
+        else { const at = it.at[k - 1]; if (at) iv.push({ it, a: at.enq, b: at.start ?? 92 }); }
+      }
+      iv.sort((x, y) => x.a - y.a || x.it.id - y.it.id);
+      const ends = [];
+      for (const v of iv) { let lane = ends.findIndex((e) => e <= v.a); if (lane < 0) { lane = ends.length; ends.push(v.b); } else ends[lane] = v.b; lanes.set(v.it.id + ":" + k, lane); }
+    });
+    const yAt = (k, lane) => { const top = yRow[rowIds[k]]; if (top === undefined) return null; const l = Math.min(lane, maxLane); return fromBottom ? top + rowH - 3 - l * PITCH : top + 3 + l * PITCH; };
+    for (const it of drawn) {
+      const pts = [], at = (tt, k) => { const y = yAt(k, lanes.get(it.id + ":" + k) ?? 0); if (y !== null) pts.push([tt, y]); };
+      at(it.arr, 0);
+      if (it.admit === undefined) at(92, 0);
       else {
-        push(it.admit, tr.src);
-        tr.ids.forEach((id, k) => {
-          const a = it.at[k]; if (!a) return;
-          push(a.enq, id);
-          if (a.start === undefined) { push(92, id); return; }
-          push(a.start, id);
-          if (a.end !== undefined) push(a.end, tr.ids[k + 1] ?? tr.sink);
+        at(it.admit, 0);
+        tr.ids.forEach((id, j) => {
+          const a = it.at[j]; if (!a) return;
+          at(a.enq, j + 1);
+          if (a.start === undefined) { at(92, j + 1); return; }
+          at(a.start, j + 1);
+          if (a.end !== undefined && j === tr.ids.length - 1) pts.push([a.end, relY]);
         });
       }
       out.push({ it, pts });
     }
     g[cls] = out;
-    return out.map((o) => `<polyline class="${cls}" points="${o.pts.map((p) => `${X(p[0]).toFixed(1)},${p[1].toFixed(1)}`).join(" ")}"/>${o.it.rel !== undefined && o.it.rel >= ws && o.it.rel <= we ? `<circle class="${cls === "lb0" ? "eb" : "es"}" cx="${X(o.it.rel).toFixed(1)}" cy="${o.pts[o.pts.length - 1][1].toFixed(1)}" r="2"/>` : ""}`).join("");
+    return out.map((o) => `<polyline class="${cls}" points="${o.pts.map((pp) => `${X(pp[0]).toFixed(1)},${pp[1].toFixed(1)}`).join(" ")}"/>${o.it.rel !== undefined && o.it.rel >= ws && o.it.rel <= we ? `<circle class="${cls === "lb0" ? "eb" : "es"}" cx="${X(o.it.rel).toFixed(1)}" cy="${relY.toFixed(1)}" r="2.2"/>` : ""}`).join("");
   };
-  s += `<g clip-path="url(#mclip)">${lines(A, mA, "lb0", 0)}${lines(B, mB, "ls0", 2.5)}</g><g id="mph"></g>`;
+  s += `<line class="stn" x1="${g.x0}" y1="${relY.toFixed(1)}" x2="${g.x1}" y2="${relY.toFixed(1)}"/>`;
+  s += `<g clip-path="url(#mclip)">${lines(A, "lb0", false)}${lines(B, "ls0", true)}</g><g id="mph"></g>`;
   const svg = $("#marey");
   svg.setAttribute("width", g.W); svg.setAttribute("height", g.H); svg.setAttribute("viewBox", `0 0 ${g.W} ${g.H}`);
   svg.innerHTML = s;
@@ -1599,6 +1668,7 @@ function renderPanel() {
   else if (state.mode === "simulate") { p.innerHTML = compareHTML(state.full && !phone()); fillRugs(); }
   else p.innerHTML = reviewHTML();
   p.classList.toggle("full", state.full && !phone());
+  updateDay();
 }
 function phoneEditHTML() {
   return `<div class="pedit" style="flex-direction:column;gap:12px"><h2 id="panel-h">${esc(t("phEditH"))}</h2><p class="mu">${esc(t("phEditP"))}</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn pri" data-go="simulate" id="ph-sim">${esc(t("goSim"))}</button><button type="button" class="btn" data-go="review" id="ph-rev">${esc(t("goReview"))}</button></div></div>`;
@@ -1639,7 +1709,10 @@ function inspectorHTML(m, id) {
   const nameErr = fieldErr(iss, id, "name", "f-name-e");
   h += `<div class="grp"><label for="f-name">${esc(t("name"))}</label><input class="inp" id="f-name" type="text" autocomplete="off" value="${esc(s.name ?? nm)}" aria-invalid="${!!nameErr}" ${nameErr ? 'aria-describedby="f-name-e"' : ""}>${nameErr}</div>`;
   if (s.kind === "source") {
-    h += `<div class="grp"><label for="f-rate">${esc(t("arrivals"))}</label>${stepperHTML("f-rate", s.rate, t("arrivals"), false, "f-rate-h")}<p class="help" id="f-rate-h">${esc(t("arrivalsHelp"))}</p></div>`;
+    const se = (f) => iss.some((i) => i.id === id && i.field === f);
+    h += `<div class="grp"><label for="f-rate">${esc(t("arrivals"))}</label>${stepperHTML("f-rate", s.rate ?? "", t("arrivals"), se("rate"), "f-rate-h")}<p class="help" id="f-rate-h">${esc(se("rate") ? t("e_rate") : t("arrivalsHelp"))}</p></div>`;
+    h += `<div class="grp"><label for="f-backlog">${esc(t("backlogL"))}</label>${stepperHTML("f-backlog", s.backlog ?? 0, t("f_backlog"), se("backlog"), "f-backlog-h")}<p class="help" id="f-backlog-h">${esc(se("backlog") ? t("e_backlog") : t("backlogHelp"))}</p></div>`;
+    h += `<div class="grp"><label for="f-wip">${esc(t("wipL"))}</label>${stepperHTML("f-wip", s.wip ?? 17, t("f_wip"), se("wip"), "f-wip-h")}<p class="help" id="f-wip-h">${esc(se("wip") ? t("e_wip") : t("wipHelp"))}</p></div>`;
   } else if (s.kind === "sink") {
     h += `<p class="help" style="margin-top:12px">${esc(t("sinkNote"))}</p>`;
   } else {
@@ -1696,22 +1769,25 @@ function compareHTML(full) {
   const rows = METRICS.map((mt) => {
     const r = metricRow(mt.key, A, B), on = state.metric === mt.key && !full ? "is-on" : "";
     const label = metricLabel(mt.key, mB.steps.qa ? mB : mA);
-    if (!r) return `<tr><td>${esc(label)}</td><td colspan="4" class="una">${esc(t("unavailable", { step: NAMES[state.lang].qa }))}</td></tr>`;
-    const btn = full ? `<span class="mbtn" style="text-decoration:none">${esc(label)}</span>` : `<button type="button" class="mbtn" id="mb-${mt.key}" data-metric="${mt.key}" aria-pressed="${state.metric === mt.key}" aria-label="${esc(t("rugPick", { m: label }))}">${esc(label)}</button>`;
-    return `<tr class="${on}"><td>${btn}<small>${esc(t("ms_" + mt.key))}</small></td><td>${num(r.a, r.dp)}</td><td class="s">${num(r.b, r.dp)}</td><td class="dd">${signed(r.d, r.dp)}</td><td class="dd">${signed(r.pct, 0)}%</td></tr>
-      <tr class="iv ${on}"><td>${esc(t("iv90"))}</td><td>${num(r.sa.lo, r.dp)}–${num(r.sa.hi, r.dp)}</td><td class="s">${num(r.sb.lo, r.dp)}–${num(r.sb.hi, r.dp)}</td><td></td><td></td></tr>`;
+    if (!r) return `<tr><th scope="row">${esc(label)}</th><td colspan="4" class="una">${esc(t("unavailable", { step: NAMES[state.lang].qa }))}</td></tr>`;
+    const name = full ? `<span class="mname">${esc(label)}</span>` : `<button type="button" class="mbtn" id="mb-${mt.key}" data-metric="${mt.key}" aria-pressed="${state.metric === mt.key}" aria-label="${esc(t("rugPick", { m: label }))}">${esc(label)}</button>`;
+    const iv = (st) => `<span class="iv"><span class="vh">${esc(t("iv90"))} </span>${num(st.lo, r.dp)}–${num(st.hi, r.dp)}</span>`;
+    return `<tr class="${on}"><th scope="row">${name}<small>${esc(t("ms_" + mt.key))}</small></th><td><span class="mv">${num(r.a, r.dp)}</span>${iv(r.sa)}</td><td class="s"><span class="mv">${num(r.b, r.dp)}</span>${iv(r.sb)}</td><td class="dd">${signed(r.d, r.dp)}</td><td class="dd">${signed(r.pct, 0)}%</td></tr>`;
   }).join("");
   const table = `<table class="ctab"><caption class="vh">${esc(t("compareSub", { a: `${runLong(A)} (${A.id})`, b: `${runLong(B)} (${B.id})` }))}</caption>
-    <thead><tr><th scope="col">${esc(t("thMetric"))}</th><th scope="col">${KEYB}${esc(runShort(A))}<small>${esc(A.id)}</small></th><th scope="col" class="s">${KEYS}${esc(runShort(B))}<small>${esc(B.id)}</small></th><th scope="col">Δ</th><th scope="col">Δ%</th></tr></thead><tbody>${rows}</tbody></table>`;
+    <thead><tr><th scope="col">${esc(t("thMetric"))}</th><th scope="col">${KEYB}${esc(runShort(A))}<small>${esc(A.id)}</small></th><th scope="col" class="s">${KEYS}${esc(runShort(B))}<small>${esc(B.id)}</small></th><th scope="col">Δ</th><th scope="col">Δ%</th></tr></thead><tbody>${rows}</tbody></table><p class="tcap">${esc(t("tcap"))}</p>`;
   const seeds = A.seed === B.seed ? String(B.seed) : `${A.id} ${A.seed}${t("comma")}${B.id} ${B.seed}`;
-  const facts = `<section class="sec" aria-labelledby="facts-h"><div class="hd"><h3 id="facts-h">${esc(t("factsH"))}</h3></div><dl class="facts"><dt>${esc(t("fRuns"))}</dt><dd>${esc(t("fRunsV", { n: 30, d: 90 }))}</dd><dt>${esc(t("fSeed"))}</dt><dd>${esc(seeds)}</dd><dt>${esc(t("fEngine"))}</dt><dd>des 0.4.0</dd><dt>${esc(t("fDataset"))}</dt><dd>${esc(t("fDatasetV", { n: 7 }))}</dd><dt>${esc(t("fData"))}</dt><dd class="syn">${ic("info")}${esc(t("synthetic"))}</dd></dl></section>`;
+  const fact = (l, v, cls = "") => `<div><dt>${esc(l)}</dt><dd class="${cls}">${v}</dd></div>`;
+  const facts = `<section class="sec" aria-labelledby="facts-h"><div class="hd"><h3 id="facts-h">${esc(t("factsH"))}</h3></div><dl class="facts two">${fact(t("fRuns"), esc(t("fRunsV", { n: SIM.runs, d: SIM.days })))}${fact(t("fWarm"), esc(t("fWarmV", { n: SIM.warmup })))}${fact(t("fSeed"), esc(seeds))}${fact(t("fEngine"), "des 0.4.0")}${fact(t("fDataset"), esc(t("fDatasetV", { n: 7 })))}${fact(t("fData"), `${ic("info")}${esc(t("synthetic"))}`, "syn")}</dl></section>`;
   const head = `<div class="ph2"><div><h2 id="panel-h">${esc(t("compareH"))}</h2><p class="sub">${esc(t("compareSub", { a: `${runLong(A)} (${A.id})`, b: `${runLong(B)} (${B.id})` }))}</p></div><button type="button" class="btn fullbtn" id="full-btn" aria-pressed="${full}" aria-keyshortcuts="F">${ic(full ? "shrink" : "expand")}${esc(full ? t("exitFull") : t("fullScreen"))}</button></div>`;
+  const run7 = `<svg class="k7" viewBox="0 0 10 8" aria-hidden="true" focusable="false"><path d="M5 0 9.5 7H.5z"/></svg>`;
+  const rugCap = `<p class="capn">${esc(t("rugCap"))} ${run7}${esc(t("rugRun7", { r: SIM.sample + 1 }))}</p>`;
   if (full) {
-    return `<div class="full"><div class="fullg"><div>${head}${say}${table}${facts}</div><div class="rugs">${METRICS.map((mt) => `<section aria-labelledby="rh-${mt.key}"><div class="hd" style="display:flex;justify-content:space-between;gap:8px;margin-bottom:2px"><h3 id="rh-${mt.key}">${esc(t("rugH", { m: metricLabel(mt.key, mB) }))}</h3><span class="lb">${esc(t("rugN", { n: 30, u: t("mu_" + mt.key) }))}</span></div><div class="rugbox" data-rug="${mt.key}"></div></section>`).join("")}<p class="capn">${esc(t("rugCap"))}</p></div></div></div>`;
+    return `<div class="full"><div class="fullg"><div>${head}${say}${table}${facts}</div><div class="rugs">${METRICS.map((mt) => `<section aria-labelledby="rh-${mt.key}"><div class="hd" style="display:flex;justify-content:space-between;gap:8px;margin-bottom:2px"><h3 id="rh-${mt.key}">${esc(t("rugH", { m: metricLabel(mt.key, mB) }))}</h3><span class="lb">${esc(t("mu_" + mt.key))}</span></div><div class="rugbox" data-rug="${mt.key}"></div></section>`).join("")}<div class="rugcap">${rugCap}</div></div></div></div>`;
   }
   const label = metricLabel(state.metric, mB);
-  let h = head + say + table;
-  h += `<section class="sec" aria-labelledby="rug-h"><div class="hd"><h3 id="rug-h">${esc(t("rugH", { m: label }))}</h3><span class="lb">${esc(t("rugN", { n: 30, u: t("mu_" + state.metric) }))}</span></div><div class="rugbox" data-rug="${state.metric}"></div><p class="capn">${esc(t("rugCap"))}</p></section>`;
+  let h = head + say + table + facts;
+  h += `<section class="sec" aria-labelledby="rug-h"><div class="hd"><h3 id="rug-h">${esc(t("rugH", { m: label }))}</h3><span class="lb">${esc(t("rugN", { n: SIM.runs, u: t("mu_" + state.metric) }))}</span></div><div class="rugbox" data-rug="${state.metric}"></div>${rugCap}</section>`;
   // the selected step, the same numbers the canvas shows
   const sid = state.sel && state.sel.k === "step" ? state.sel.id : null;
   if (sid && mB.steps[sid]) {
@@ -1719,16 +1795,15 @@ function compareHTML(full) {
     let dl = "";
     if (s.kind === "process") {
       const sa = mA.steps[sid] ? stepStats(A, sid) : null, sb = stepStats(B, sid);
-      const pair = (a, b, suf = "") => (a == null ? `<b class="sv">${b}${suf}</b>` : `${a}${suf}${arrow()}<b class="sv">${b}${suf}</b>`);
+      const pair = (a, b, suf = "") => (a == null ? `<b class="sv">${num(b)}${suf}</b>` : `${num(a)}${suf}${arrow()}<b class="sv">${num(b)}${suf}</b>`);
       dl = `<dt>${esc(t("capacity"))}</dt><dd>${pair(sa?.cap, sb.cap)}</dd><dt>${esc(t("util"))}</dt><dd>${pair(sa?.util, sb.util, "%")}</dd><dt>${esc(t("qp95"))}</dt><dd>${pair(sa?.q95, sb.q95)}</dd><dt data-dl="qDay">${esc(t("qDay", { d: Math.floor(state.t) }))}</dt><dd>${mA.steps[sid] ? `<span data-qd="a:${sid}"></span>${arrow()}` : ""}<b class="sv" data-qd="b:${sid}"></b></dd>`;
     } else {
       const key = s.kind === "source" ? "waitDay" : "relDay";
       dl = `<dt data-dl="${key}">${esc(t(key, { d: Math.floor(state.t) }))}</dt><dd><span data-qd="a:${sid}"></span>${arrow()}<b class="sv" data-qd="b:${sid}"></b></dd>`;
     }
-    h += `<section class="sec" aria-labelledby="step-h"><div class="hd"><h3 id="step-h">${esc(t("stepH", { name: stepName(mB, sid) }))}</h3></div><dl class="stepbox">${dl}</dl></section>`;
+    h += `<section class="sec" aria-labelledby="step-h"><div class="hd"><h3 id="step-h">${esc(t("stepH", { name: stepName(mB, sid) }))}</h3><span class="lb">${esc(t("stepNote", { r: SIM.sample + 1 }))}</span></div><dl class="stepbox">${dl}</dl></section>`;
   } else h += `<section class="sec"><p class="help">${esc(t("stepNone"))}</p></section>`;
   h += runsHTML();
-  h += facts;
   h += `<div class="entry" style="margin-top:16px"><button type="button" class="btn" id="e-ask">${ic("ask")}${esc(t("askAi"))}</button><span>${esc(t("notIn"))}</span></div>`;
   return h;
 }
@@ -1755,44 +1830,44 @@ function niceTicks(lo, hi, n) {
   for (let v = Math.floor(lo / step + 1e-9) * step; v <= end + step * 0.01; v += step) out.push(+v.toFixed(6));
   return out;
 }
-function rugSVG(key, w, full, rhFit) {
+function rugSVG(key, w, full) {
   const A = runById(state.cmp.a), B = runById(state.cmp.b), r = metricRow(key, A, B);
   if (!r) return `<p class="una">${esc(t("unavailable", { step: NAMES[state.lang].qa }))}</p>`;
-  const va = metricVals(A, key), vb = metricVals(B, key), dp = r.dp, u = t("mu_" + key);
-  const ticks = niceTicks(Math.min(r.sa.min, r.sb.min), Math.max(r.sa.max, r.sb.max), full ? 5 : 4);
+  const va = r.va, vb = r.vb, dp = r.dp, u = t("mu_" + key);
+  const ticks = niceTicks(Math.min(r.sa.min, r.sb.min), Math.max(r.sa.max, r.sb.max), full ? 4 : 4);
   const d0 = ticks[0], d1 = ticks[ticks.length - 1];
-  const L = full ? 92 : 64, R = 12, X = (v) => L + ((v - d0) / (d1 - d0 || 1)) * (w - L - R);
-  const rh = rhFit || (full ? 50 : 48), top = full ? 22 : 18, H = top + rh * 2 + (full ? 28 : 24);
+  const L = full ? 60 : 56, R = 12, X = (v) => L + ((v - d0) / (d1 - d0 || 1)) * (w - L - R);
+  // label room above the ticks (median numeral sits 4+ px clear of them), ticks, interval, run-7 caret
+  const lab = full ? 34 : 28, rh = lab + 36, top = lab, ly = full ? 11 : 9;
   const repeats = (vals) => vals.every(Number.isInteger) && new Set(vals).size < vals.length, discrete = repeats(va) || repeats(vb);
-  const row = (vals, st, y, cls, name, id) => {
-    const s = cls === "b";
-    let o = `<text x="0" y="${y + (full ? 12 : 10)}" class="dn ${s ? "" : "s"}">${esc(name)}</text><text x="0" y="${y + (full ? 32 : 26)}">${esc(id)}</text>`;
+  const row = (vals, st, y, s, name, id) => {
+    let o = `<text x="0" y="${y + (full ? 13 : 11)}" class="dn ${s ? "" : "s"}">${esc(name)}</text><text x="0" y="${y + (full ? 32 : 27)}">${esc(id)}</text>`;
     if (discrete) {
       const cnt = {}; for (const v of vals) cnt[v] = (cnt[v] || 0) + 1;
-      const gap = Math.min(4.5, 15 / Math.max(...Object.values(cnt)));
+      const gap = Math.min(4.5, 14 / Math.max(...Object.values(cnt)));
       for (const [v, c] of Object.entries(cnt)) for (let i = 0; i < c; i++) o += `<circle class="${s ? "mbo" : "mso"}" cx="${X(+v).toFixed(1)}" cy="${(y + 15 - i * gap).toFixed(1)}" r="1.9"/>`;
     } else for (const v of vals) o += `<line class="${s ? "tb" : "ts"}" x1="${X(v).toFixed(1)}" y1="${y}" x2="${X(v).toFixed(1)}" y2="${y + 16}"/>`;
-    const iy = y + 23;
+    const iy = y + 22;
     o += `<line class="${s ? "ib" : "is"}" x1="${X(st.lo).toFixed(1)}" y1="${iy}" x2="${X(st.hi).toFixed(1)}" y2="${iy}"/><line class="${s ? "kb" : "ks"}" x1="${X(st.lo).toFixed(1)}" y1="${iy - 3}" x2="${X(st.lo).toFixed(1)}" y2="${iy + 3}"/><line class="${s ? "kb" : "ks"}" x1="${X(st.hi).toFixed(1)}" y1="${iy - 3}" x2="${X(st.hi).toFixed(1)}" y2="${iy + 3}"/>`;
-    const mx = X(st.med).toFixed(1);
-    o += `<line class="${s ? "mb" : "ms"}" x1="${mx}" y1="${y - 2}" x2="${mx}" y2="${iy + 3}"/><circle class="${s ? "mbo" : "mso"}" cx="${mx}" cy="${y - 4}" r="3"/>`;
-    const end = +mx > w - 48;
-    o += `<text x="${(+mx + (end ? -7 : 7)).toFixed(1)}" y="${y - 1}" class="dv ${s ? "" : "s"}" text-anchor="${end ? "end" : "start"}">${num(st.med, dp)}</text>`;
+    const k7 = X(vals[SIM.sample]);
+    o += `<path class="${s ? "c7b" : "c7s"}" d="M${k7.toFixed(1)} ${iy + 5}l-4 6h8z"/>`;
+    const mx = X(st.med);
+    o += `<line class="${s ? "mb" : "ms"}" x1="${mx.toFixed(1)}" y1="${y - 3}" x2="${mx.toFixed(1)}" y2="${iy + 3}"/><circle class="${s ? "mbo" : "mso"}" cx="${mx.toFixed(1)}" cy="${y - 6}" r="2.5"/>`;
+    const end = mx > w - 48;
+    o += `<text x="${(mx + (end ? -6 : 6)).toFixed(1)}" y="${y - ly}" class="dv ${s ? "" : "s"}" text-anchor="${end ? "end" : "start"}">${num(st.med, dp)}</text>`;
     return o;
   };
-  let s = row(va, r.sa, top, "b", runShort(A), A.id) + row(vb, r.sb, top + rh, "s", runShort(B), B.id);
-  const ay = top + rh * 2 - 4;
+  let s = row(va, r.sa, top, true, runShort(A), A.id) + row(vb, r.sb, top + rh, false, runShort(B), B.id);
+  const ay = top + rh + 36;
   s += `<line class="ax" x1="${L}" y1="${ay}" x2="${w - R}" y2="${ay}"/>`;
   for (const v of ticks) s += `<line class="ax" x1="${X(v).toFixed(1)}" y1="${ay}" x2="${X(v).toFixed(1)}" y2="${ay + 4}"/><text x="${X(v).toFixed(1)}" y="${ay + (full ? 22 : 17)}" text-anchor="middle">${num(v)}</text>`;
   const label = metricLabel(key, runModel(B)), tid = `rt-${key}`, did = `rd-${key}`;
-  const desc = t("rugD", { n: 30, an: `${runLong(A)} ${A.id}`, am: num(r.sa.med, dp), alo: num(r.sa.lo, dp), ahi: num(r.sa.hi, dp), bn: `${runLong(B)} ${B.id}`, bm: num(r.sb.med, dp), blo: num(r.sb.lo, dp), bhi: num(r.sb.hi, dp), u });
-  return `<svg class="rug" width="${w}" height="${H}" viewBox="0 0 ${w} ${H}" role="img" aria-labelledby="${tid} ${did}"><title id="${tid}">${esc(t("rugT", { m: label }))}</title><desc id="${did}">${esc(desc)}</desc>${s}</svg>`;
+  const desc = t("rugD", { n: SIM.runs, an: `${runLong(A)} ${A.id}`, am: num(r.sa.med, dp), alo: num(r.sa.lo, dp), ahi: num(r.sa.hi, dp), bn: `${runLong(B)} ${B.id}`, bm: num(r.sb.med, dp), blo: num(r.sb.lo, dp), bhi: num(r.sb.hi, dp), u });
+  return `<svg class="rug" width="${w}" height="${ay + (full ? 30 : 24)}" viewBox="0 0 ${w} ${ay + (full ? 30 : 24)}" role="img" aria-labelledby="${tid} ${did}"><title id="${tid}">${esc(t("rugT", { m: label }))}</title><desc id="${did}">${esc(desc)}</desc>${s}</svg>`;
 }
 function fillRugs() {
-  const full = state.full && !phone(), boxes = $$("#panel .rugbox");
-  let rh = 0;
-  if (full) { const panel = $("#panel"), avail = panel.clientHeight - 56, per = avail / boxes.length - 46; rh = Math.max(34, Math.min(50, Math.floor((per - 50) / 2))); }
-  for (const box of boxes) { const w = Math.max(240, Math.floor(box.clientWidth)); box.innerHTML = rugSVG(box.dataset.rug, w, full, rh); }
+  const full = state.full && !phone();
+  for (const box of $$("#panel .rugbox")) { const w = Math.max(220, Math.floor(box.clientWidth)); box.innerHTML = rugSVG(box.dataset.rug, w, full); }
 }
 
 /* ---------- Review ---------- */
@@ -2196,9 +2271,8 @@ function setField(id, f, raw) {
   const m = state.draft.data, s = m.steps[id]; if (!s) return;
   let v;
   if (f === "name") { v = String(raw); if ((s.name ?? stepName(m, id)) === v) return; change((d) => { d.steps[id].name = v; }); return; }
-  if (f === "cap" || f === "rate") v = parseInt0(raw); else v = parseNum(raw);
-  if (f === "cap") { if (same(s.cap, v)) return; change((d) => { d.steps[id].cap = v; }); }
-  else if (f === "rate") { if (same(s.rate, v)) return; change((d) => { d.steps[id].rate = v; }); }
+  if (["cap", "rate", "backlog", "wip"].includes(f)) v = parseInt0(raw); else v = parseNum(raw);
+  if (["cap", "rate", "backlog", "wip"].includes(f)) { if (same(s[f], v)) return; change((d) => { d.steps[id][f] = v; }); }
   else if (f === "mean") { if (same(s.mean, v)) return; change((d) => { d.steps[id].mean = v; }); }
   else { const i = { min: 0, mode: 1, max: 2 }[f]; if (same(s.tri[i], v)) return; change((d) => { d.steps[id].tri[i] = v; }); }
 }
@@ -2433,7 +2507,7 @@ function onButton(b, e) {
   if (b.dataset.runbase) { startRun({ kind: "base", v: +b.dataset.runbase }); $("#act-run")?.focus(); return; }
   if (b.dataset.dist) { const sid = state.sel.id; if (state.draft.data.steps[sid].dist !== b.dataset.dist) change((d) => { d.steps[sid].dist = b.dataset.dist; }); $("#dist-" + b.dataset.dist)?.focus(); return; }
   if (b.dataset.step && b.closest(".stepper")) {
-    const inp = $("#" + b.dataset.step), cur = parseInt0(inp.value), nv = Math.max(1, (Number.isInteger(cur) ? cur : 0) + +b.dataset.d);
+    const inp = $("#" + b.dataset.step), cur = parseInt0(inp.value), nv = Math.max(inp.id === "f-backlog" ? 0 : 1, (Number.isInteger(cur) ? cur : 0) + +b.dataset.d);
     commitInput(inp, String(nv)); $("#" + b.dataset.step)?.focus(); return;
   }
   if (b.dataset.pstep) { select("step", b.dataset.pstep); $("#ps-" + CSS.escape(b.dataset.pstep))?.focus(); return; }
@@ -2500,7 +2574,7 @@ function commitInput(inp, val) {
     if (id === "f-pname") { if ((state.draft.data.pools[s.id].name ?? poolName(state.draft.data, s.id)) !== val) change((d) => { d.pools[s.id].name = val; }); }
     return;
   }
-  const map = { "f-name": "name", "f-cap": "cap", "f-rate": "rate", "f-min": "min", "f-mode": "mode", "f-max": "max", "f-mean": "mean" };
+  const map = { "f-name": "name", "f-cap": "cap", "f-rate": "rate", "f-backlog": "backlog", "f-wip": "wip", "f-min": "min", "f-mode": "mode", "f-max": "max", "f-mean": "mean" };
   if (map[id]) setField(s.id, map[id], val);
 }
 document.addEventListener("click", (e) => {
