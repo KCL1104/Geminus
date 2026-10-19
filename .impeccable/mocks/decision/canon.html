@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>Geminus Simulate canon light</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..600&amp;display=swap">
+<style>
+:root{
+  --ground:#f5f5f6;--shell:#ffffff;--surface:#ffffff;--raised:#ffffff;--well:#efeff1;--dot:#cfcfd4;--line:#e6e6e9;--line-2:#d6d6db;--edge:#86868e;
+  --text:#18181b;--text-2:#52525b;--text-3:#6b6b73;--avatar:#e4e4e7;
+  --accent:#2563eb;--accent-text:#1d4ed8;--accent-soft:#eef3ff;--primary:#2563eb;--on-primary:#ffffff;
+  --base:#52525b;--base-soft:#ececef;--scen:#2563eb;--scen-soft:#e3ecff;
+  --good:#15803d;--good-soft:#ecfdf3;--warn:#b45309;--warn-soft:#fffaeb;--warn-line:#f2cd85;
+  --sh-1:0 1px 2px rgba(17,17,20,.06),0 1px 3px rgba(17,17,20,.05);--sh-2:0 8px 20px rgba(17,17,20,.08),0 1px 3px rgba(17,17,20,.06);
+  --f1:12px;--f2:13.5px;--f3:15.2px;--f4:17.1px;
+}
+*{box-sizing:border-box}
+body{width:1440px;height:900px;overflow:hidden;margin:0;background:var(--ground);color:var(--text);font:400 var(--f2)/20px "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans TC",sans-serif;font-optical-sizing:auto;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit} b{font-weight:600} .i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.i.s12{width:12px;height:12px;stroke-width:2} .to{width:12px;height:12px;fill:none;stroke:var(--text-3);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-1px;margin:0 2px} .num{font-variant-numeric:tabular-nums}
+.mut{color:var(--text-3)} .sec-t{color:var(--text-2)}
+/* shell */
+.top{position:absolute;left:0;top:0;width:1440px;height:52px;background:var(--shell);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 16px;gap:14px} .brand{display:flex;align-items:center;gap:8px;font-size:var(--f3);font-weight:600;letter-spacing:-.01em}
+.vr{width:1px;height:20px;background:var(--line-2)} .crumbs{display:flex;align-items:center;gap:8px;color:var(--text-2)} .crumbs b{color:var(--text);font-weight:500} .seg{position:absolute;left:50%;transform:translateX(-50%);display:flex;padding:3px;gap:2px;background:var(--well);border-radius:9px}
+.seg button{height:28px;padding:0 14px;border:1px solid transparent;border-radius:7px;background:none;color:var(--text-2);font-weight:500} .seg button.on{background:var(--raised);border-color:var(--edge);color:var(--text);font-weight:600;box-shadow:var(--sh-1)}
+.right{margin-left:auto;display:flex;align-items:center;gap:8px} .btn{height:32px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid transparent;border-radius:8px;background:none;font-weight:500;white-space:nowrap}
+.btn.sec{border-color:var(--edge);background:var(--surface)} .btn.ghost{color:var(--text-2)} .btn.pri{background:var(--primary);color:var(--on-primary);border-color:var(--primary)} .btn.sm{height:28px;padding:0 10px;font-size:var(--f1)}
+kbd{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 5px;margin-left:6px;border:1px solid var(--line-2);border-radius:5px;background:var(--well);font:500 var(--f1)/1 inherit;color:var(--text-2)}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--avatar);display:grid;place-items:center;font-size:var(--f1);font-weight:600;color:var(--text)} .ctx{position:absolute;left:0;top:52px;width:1440px;height:44px;background:var(--shell);border-bottom:1px solid var(--line-2);display:flex;align-items:center;padding:0 10px;gap:2px}
+.pv{height:32px;display:inline-flex;align-items:center;gap:6px;padding:0 8px;border:0;border-radius:7px;background:none;white-space:nowrap;color:var(--text)} .pv .i{color:var(--text-3)} .pv .k{color:var(--text-3)} .pv .cd{width:12px;height:12px;stroke-width:2;color:var(--text-3)}
+.ctx .chev{color:var(--text-3);margin:0 2px} .ctx .end{margin-left:auto} .badge{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:10px;font-size:var(--f1);font-weight:500;line-height:1}
+.badge .d{width:6px;height:6px;border-radius:50%;background:currentColor} .b-good{background:var(--good-soft);color:var(--good)} .b-acc{background:var(--accent-soft);color:var(--accent-text)} .b-warn{background:var(--warn-soft);color:var(--warn)} .b-neu{background:var(--surface);color:var(--text-2);border:1px solid var(--line-2)}
+/* canvas */
+.canvas{position:absolute;left:0;top:96px;width:1040px;height:804px;background-color:var(--ground);background-image:radial-gradient(circle,var(--dot) 1px,transparent 1.3px);background-size:20px 20px;background-position:10px 10px;overflow:hidden}
+.float{position:absolute;background:var(--surface);border:1px solid var(--line-2);border-radius:10px;box-shadow:var(--sh-2)} .legend{left:16px;top:16px;padding:10px 12px;font-size:var(--f1);line-height:16px;display:grid;gap:7px}
+.legend .t{font-weight:600;color:var(--text)} .legend div{display:flex;align-items:center;gap:8px;color:var(--text-2)} .sw-bar{width:18px;height:6px;border-radius:3px;background:var(--scen)} .sw-tick{width:18px;height:12px;position:relative;flex:none} .sw-tick::before{content:"";position:absolute;left:0;top:3px;width:18px;height:6px;border-radius:3px;background:var(--well)} .sw-tick::after{content:"";position:absolute;left:8px;top:0;width:2px;height:12px;background:var(--base);border-radius:1px}
+.sw-ring{width:18px;height:12px;flex:none;border-radius:4px;border:1px solid var(--accent);box-shadow:0 0 0 1px var(--accent);background:var(--surface)} .synth{right:16px;top:16px;height:32px;display:flex;align-items:center;gap:6px;padding:0 10px;font-size:var(--f1);font-weight:500;color:var(--text-2)}
+.edges{position:absolute;left:0;top:0;width:1040px;height:748px} .node{position:absolute;top:240px;width:160px;background:var(--surface);border:1px solid var(--edge);border-radius:10px;box-shadow:var(--sh-1);padding:12px 12px 12px;overflow:hidden}
+.node.chg{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--sh-1)} .nh{display:flex;align-items:center;gap:7px;height:20px} .nh .i{color:var(--text-2)} .nh .badge{margin-left:auto} .nd{margin-top:2px;line-height:18px;color:var(--text-2)}
+.nm{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);font-size:var(--f1);line-height:18px} .kv{display:flex;justify-content:space-between;align-items:center;gap:6px;color:var(--text-3);white-space:nowrap} .kv b{color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.kv+.kv{margin-top:6px} .kv.st{flex-direction:column;align-items:flex-start;gap:0;margin-top:8px} .bar{position:relative;height:6px;margin:5px 0 0;border-radius:3px;background:var(--well)} .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--scen)} .bar u{position:absolute;top:-3px;width:2px;height:12px;margin-left:-1px;border-radius:1px;background:var(--base)}
+.warn{margin:12px -12px -12px;padding:8px 12px;display:flex;gap:7px;align-items:flex-start;background:var(--warn-soft);border-top:1px solid var(--warn-line);color:var(--warn);font-size:var(--f1);line-height:16px;font-weight:500}
+.warn .i{width:14px;height:14px;margin-top:1px} .term{height:64px;display:flex;align-items:center;padding:0 10px} .pool{position:absolute;top:446px;width:224px;height:58px;background:var(--surface);border:1px solid var(--edge);border-radius:29px;box-shadow:var(--sh-1);display:flex;align-items:center;gap:10px;padding:0 16px 0 10px}
+.pool.chg{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--sh-1)} .pool .ic{width:32px;height:32px;border-radius:50%;background:var(--well);display:grid;place-items:center;color:var(--text-2);flex:none}
+.pool .tx{flex:1;line-height:18px} .pool .tx span{display:block;font-size:var(--f1);line-height:16px;color:var(--text-3)} .pool .v{font-size:var(--f3);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.zoom{right:16px;bottom:72px;display:flex;align-items:center;padding:3px;gap:2px;border-color:var(--edge)} .zoom button{width:30px;height:28px;border:0;border-radius:6px;background:none;display:grid;place-items:center;color:var(--text-2)}
+.zoom .pct{width:46px;font-size:var(--f1);font-weight:500;color:var(--text);font-variant-numeric:tabular-nums} .zoom .sep{width:1px;height:18px;background:var(--line-2);margin:0 2px} .play{position:absolute;left:0;bottom:0;width:1040px;height:56px;background:var(--shell);border-top:1px solid var(--line-2);display:flex;align-items:center;gap:14px;padding:0 16px}
+.ib{width:32px;height:32px;border:1px solid var(--edge);border-radius:8px;background:var(--surface);display:grid;place-items:center;color:var(--text)} .ib .i{fill:currentColor;stroke-width:1.25} .day{min-width:96px;font-weight:600;font-variant-numeric:tabular-nums}
+.scrub{flex:1;position:relative;height:20px} .scrub .tr{position:absolute;left:0;right:0;top:9px;height:2px;background:var(--edge);border-radius:1px} .scrub .fi{position:absolute;left:0;top:8px;height:4px;width:37.8%;background:var(--accent);border-radius:2px}
+.scrub .th{position:absolute;left:37.8%;top:3px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:var(--sh-1)} .scrub .tk{position:absolute;top:14px;width:1px;height:5px;background:var(--edge)}
+.trace{display:flex;align-items:center;gap:6px;color:var(--text-2);white-space:nowrap}
+/* panel */
+.panel{position:absolute;left:1040px;top:96px;width:400px;height:804px;background:var(--shell);border-left:1px solid var(--line-2);padding:18px 20px 20px;display:flex;flex-direction:column} .ph{display:flex;align-items:flex-start;justify-content:space-between}
+h2{margin:0;font-size:var(--f4);line-height:24px;font-weight:600;letter-spacing:-.01em} .sub{margin:4px 0 0;color:var(--text-2);display:flex;align-items:center;gap:6px} .mk{width:10px;height:10px;flex:none} .mk.o{border:1.5px solid var(--base);border-radius:50%;background:var(--surface)} .mk.f{border-radius:50%;background:var(--scen)}
+table{width:100%;border-collapse:collapse;margin-top:18px} td{font-variant-numeric:tabular-nums} td:first-child{font-variant-numeric:normal} th{font-size:var(--f1);font-weight:500;color:var(--text-3);text-align:right;padding:0 0 8px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+th:first-child,td:first-child{text-align:left} th .mk{display:inline-block;vertical-align:-1px;margin-right:5px;width:9px;height:9px} td{padding:10px 0;text-align:right;border-bottom:1px solid var(--line);vertical-align:top;font-size:var(--f3);line-height:22px}
+td:first-child{font-size:var(--f2);line-height:18px} td:first-child span{display:block;font-size:var(--f1);line-height:16px;color:var(--text-3)} td.s{font-weight:600} td.d{font-size:var(--f2);color:var(--text-2)}
+tr.lt td{border-bottom:0;padding-bottom:4px} tr.iv td{padding:0 0 10px;font-size:var(--f1);line-height:16px;color:var(--text-2)} tr.iv td:first-child{color:var(--text-3)} .pill{display:inline-block;min-width:46px;padding:1px 6px;border-radius:6px;background:var(--good-soft);color:var(--good);font-size:var(--f1);font-weight:600;line-height:18px;text-align:center}
+h3{margin:0;font-size:var(--f2);line-height:20px;font-weight:600} .cap{margin:2px 0 10px;font-size:var(--f1);line-height:16px;color:var(--text-3)} .dist{margin-top:24px}
+.dist svg text{font:var(--f1) "Inter",ui-sans-serif,system-ui,sans-serif;fill:var(--text-3)} .facts{margin-top:auto;padding-top:16px;border-top:1px solid var(--line)} dl{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin:10px 0 0}
+dl div{display:flex;flex-direction:column} dt{font-size:var(--f1);line-height:16px;color:var(--text-3)} dd{margin:2px 0 0;font-weight:500;font-variant-numeric:tabular-nums} .note{margin-top:14px;display:flex;align-items:center;gap:8px;color:var(--text-2);font-size:var(--f1)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 13.5 13.5"/></symbol><symbol id="i-globe" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c1.7 1.7 2.5 3.7 2.5 6S9.7 12.3 8 14C6.3 12.3 5.5 10.3 5.5 8S6.3 3.7 8 2"/></symbol><symbol id="i-cmd" viewBox="0 0 16 16"><path d="M10 4v8a2 2 0 1 0 2-2H4a2 2 0 1 0 2 2V4a2 2 0 1 0-2 2h8a2 2 0 1 0-2-2"/></symbol><symbol id="i-rerun" viewBox="0 0 16 16"><path d="M13.25 8A5.25 5.25 0 1 1 11.7 4.3"/><path d="M12.5 1.75v3h-3"/><path d="M6.75 6v4l3.25-2z"/></symbol>
+<symbol id="i-down" viewBox="0 0 16 16"><path d="M4.5 6.5 8 10l3.5-3.5"/></symbol><symbol id="i-right" viewBox="0 0 16 16"><path d="M6.5 4 10.5 8l-4 4"/></symbol><symbol id="i-to" viewBox="0 0 16 16"><path d="M2.5 8h11M9.5 4l4 4-4 4"/></symbol><symbol id="i-tag" viewBox="0 0 16 16"><path d="M2.5 2.5h5.25l5.75 5.75-5.25 5.25L2.5 7.75z"/><circle cx="5.5" cy="5.5" r=".6"/></symbol>
+<symbol id="i-branch" viewBox="0 0 16 16"><circle cx="4.5" cy="3.5" r="1.5"/><circle cx="4.5" cy="12.5" r="1.5"/><circle cx="11.5" cy="5" r="1.5"/><path d="M4.5 5v6M11.5 6.5c0 2.75-2.25 3.25-6 4.5"/></symbol><symbol id="i-run" viewBox="0 0 16 16"><path d="M1.5 8.5h2.75l2-5 3.5 9 2-4h2.75"/></symbol><symbol id="i-pencil" viewBox="0 0 16 16"><path d="M10.5 2.75l2.75 2.75-7.5 7.5H3v-2.75z"/><path d="M9 4.25 11.75 7"/></symbol><symbol id="i-max" viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5 9.25 6.75M2.5 13.5l4.25-4.25"/></symbol>
+<symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 7.5V11M8 5h.01"/></symbol><symbol id="i-warn" viewBox="0 0 16 16"><path d="M8 2.25 14.25 13.25H1.75z"/><path d="M8 6.5v3M8 11.25h.01"/></symbol><symbol id="i-in" viewBox="0 0 16 16"><path d="M9.5 2.5h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3"/><path d="M2.5 8h7M6.5 5l3 3-3 3"/></symbol><symbol id="i-eye" viewBox="0 0 16 16"><path d="M1.5 8S4 3.5 8 3.5 14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></symbol>
+<symbol id="i-server" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="4.5" rx="1"/><rect x="2.5" y="9" width="11" height="4.5" rx="1"/><path d="M5 4.75h.01M5 11.25h.01"/></symbol><symbol id="i-check" viewBox="0 0 16 16"><path d="M5.5 2.5h5v2h-5z"/><path d="M5.5 3.5h-2v10h9v-10h-2"/><path d="M6 9.25l1.5 1.5 2.75-3"/></symbol><symbol id="i-up" viewBox="0 0 16 16"><path d="M8 10V2.5M5 5.5l3-3 3 3"/><path d="M2.5 9.5v4h11v-4"/></symbol><symbol id="i-flag" viewBox="0 0 16 16"><path d="M3.5 14V2.5"/><path d="M3.5 3h8.5l-1.75 3 1.75 3H3.5"/></symbol>
+<symbol id="i-users" viewBox="0 0 16 16"><circle cx="6" cy="5.5" r="2.25"/><path d="M2 13c0-2.2 1.8-3.75 4-3.75S10 10.8 10 13"/><path d="M10.5 3.4a2.25 2.25 0 0 1 0 4.2M12 9.5c1.25.5 2 1.75 2 3.5"/></symbol><symbol id="i-minus" viewBox="0 0 16 16"><path d="M3.5 8h9"/></symbol><symbol id="i-plus" viewBox="0 0 16 16"><path d="M3.5 8h9M8 3.5v9"/></symbol><symbol id="i-fit" viewBox="0 0 16 16"><path d="M2.5 5.5v-3h3M10.5 2.5h3v3M13.5 10.5v3h-3M5.5 13.5h-3v-3"/><rect x="5.5" y="5.5" width="5" height="5" rx="1"/></symbol>
+<symbol id="i-play" viewBox="0 0 16 16"><path d="M5 3.25v9.5L12.5 8z"/></symbol>
+</defs></svg>
+
+<header class="top">
+  <div class="brand"><svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" style="fill:var(--text)"/><circle cx="9.5" cy="12" r="4.25" style="fill:none;stroke:var(--shell);stroke-width:1.5"/><circle cx="14.5" cy="12" r="4.25" style="fill:none;stroke:var(--shell);stroke-width:1.5"/></svg>Geminus</div>
+  <span class="vr"></span>
+  <nav class="crumbs" aria-label="Breadcrumb"><span>Payments platform</span><span class="mut">/</span><b>Checkout delivery</b></nav>
+  <div class="seg" role="tablist" aria-label="Mode"><button role="tab">Edit</button><button role="tab" class="on" aria-selected="true">Simulate</button><button role="tab">Review</button></div>
+  <div class="right">
+    <button class="btn sec sec-t"><svg class="i"><use href="#i-search"/></svg>Find<kbd><svg class="i s12"><use href="#i-cmd"/></svg>K</kbd></button>
+    <button class="btn ghost"><svg class="i"><use href="#i-globe"/></svg>EN</button>
+    <span class="avatar" aria-label="Signed in as ML">ML</span>
+    <button class="btn pri"><svg class="i"><use href="#i-rerun"/></svg>Run S-2 again</button>
+  </div>
+</header>
+
+<div class="ctx" aria-label="What is shown">
+  <button class="pv"><svg class="i"><use href="#i-tag"/></svg><span class="k">Version</span><b>v3</b><span class="badge b-good"><span class="d"></span>Published</span><svg class="i cd"><use href="#i-down"/></svg></button>
+  <svg class="i chev"><use href="#i-right"/></svg>
+  <button class="pv"><svg class="i"><use href="#i-branch"/></svg><span class="k">Scenario</span><b>S-2</b><span>+2 QA engineers</span><span class="badge b-acc">Patch on v3</span><svg class="i cd"><use href="#i-down"/></svg></button>
+  <svg class="i chev"><use href="#i-right"/></svg>
+  <button class="pv"><svg class="i"><use href="#i-run"/></svg><span class="k">Run</span><b>R-7</b><span class="sec-t">scenario</span><span class="k">&nbsp;compared with</span><b>R-6</b><span class="sec-t">v3 baseline</span><svg class="i cd"><use href="#i-down"/></svg></button>
+  <button class="pv end"><svg class="i"><use href="#i-pencil"/></svg><span class="k">Draft</span><b>rev 12</b><span class="sec-t">based on v3</span><span class="badge b-warn"><span class="d"></span>1 unsaved change</span></button>
+</div>
+
+<main class="canvas" aria-label="Model canvas">
+  <svg class="edges" viewBox="0 0 1040 748" aria-hidden="true">
+    <g fill="none" stroke="var(--edge)" stroke-width="1.5"><path d="M132 272H155M321 272H344M510 272H533M699 272H722M888 272H911"/></g>
+    <g fill="var(--edge)"><path d="M160 272l-7-4v8zM349 272l-7-4v8zM538 272l-7-4v8zM727 272l-7-4v8zM916 272l-7-4v8z"/></g>
+    <g fill="none" stroke="var(--edge)" stroke-width="1.5" stroke-dasharray="4 4"><path d="M241 338V446M619 368V446"/></g>
+  </svg>
+  <div class="float legend"><span class="t">Run overlay</span><div><span class="sw-bar"></span>S-2 scenario, R-7</div><div><span class="sw-tick"></span>v3 baseline, R-6, where it differs</div><div><span class="sw-ring"></span>Changed by S-2</div><div><span class="num" style="color:var(--text)">a<svg class="to"><use href="#i-to"/></svg>b</span>reads baseline to scenario</div></div>
+  <div class="float synth"><svg class="i"><use href="#i-info"/></svg>Synthetic example data</div>
+
+  <div class="node" style="left:16px;width:116px"><div class="nh"><svg class="i"><use href="#i-in"/></svg><b>Source</b></div><div class="nd">Work arrives</div><div class="nm"><div class="mut">Arrival rate</div><div style="color:var(--text)"><b class="num" style="font-size:var(--f2)">24</b> items/week</div></div></div>
+  <div class="node" style="left:161px"><div class="nh"><svg class="i"><use href="#i-eye"/></svg><b>Code review</b></div><div class="nd">4 reviewers</div><div class="nm"><div class="kv"><span>Utilisation</span><b>71%</b></div><div class="bar"><i style="width:71%"></i></div></div></div>
+  <div class="node" style="left:350px"><div class="nh"><svg class="i"><use href="#i-server"/></svg><b>CI</b></div><div class="nd">3 runners</div><div class="nm"><div class="kv"><span>Utilisation</span><b>48%</b></div><div class="bar"><i style="width:48%"></i></div></div></div>
+  <div class="node chg" style="left:539px"><div class="nh"><svg class="i"><use href="#i-check"/></svg><b>QA test</b><span class="badge b-acc"><svg class="i s12"><use href="#i-branch"/></svg>S-2</span></div><div class="nd">3<svg class="to"><use href="#i-to"/></svg>5 QA engineers</div><div class="nm"><div class="kv"><span>Utilisation</span><b>94%<svg class="to"><use href="#i-to"/></svg>57%</b></div><div class="bar"><i style="width:57%"></i><u style="left:94%"></u></div><div class="kv st"><span>Queue p95</span><b>14<svg class="to"><use href="#i-to"/></svg>4 items</b></div></div></div>
+  <div class="node" style="left:728px"><div class="nh"><svg class="i"><use href="#i-up"/></svg><b>Deploy</b></div><div class="nd">1 slot</div><div class="nm"><div class="kv"><span>Utilisation</span><b>63%</b></div><div class="bar"><i style="width:63%"></i></div></div><div class="warn" role="note"><svg class="i"><use href="#i-warn"/></svg><span>Queue p95 6 items in S-2</span></div></div>
+  <div class="node term" style="left:917px;width:106px"><div class="nh"><svg class="i"><use href="#i-flag"/></svg><b>Released</b></div></div>
+
+  <div class="pool" style="left:129px"><span class="ic"><svg class="i"><use href="#i-users"/></svg></span><span class="tx"><b>Reviewers</b><span>Resource pool</span></span><span class="v">4</span></div>
+  <div class="pool chg" style="left:507px"><span class="ic"><svg class="i"><use href="#i-users"/></svg></span><span class="tx"><b>QA engineers</b><span>Resource pool</span></span><span class="v">3<svg class="to"><use href="#i-to"/></svg>5</span></div>
+
+  <div class="float zoom" role="group" aria-label="Zoom"><button aria-label="Zoom out"><svg class="i"><use href="#i-minus"/></svg></button><button class="pct">90%</button><button aria-label="Zoom in"><svg class="i"><use href="#i-plus"/></svg></button><span class="sep"></span><button aria-label="Fit to screen"><svg class="i"><use href="#i-fit"/></svg></button></div>
+
+  <div class="play" aria-label="Playback">
+    <button class="ib" aria-label="Play"><svg class="i"><use href="#i-play"/></svg></button>
+    <span class="day">Day 34 <span class="mut" style="font-weight:400">of 90</span></span>
+    <div class="scrub" role="slider" aria-valuemin="1" aria-valuemax="90" aria-valuenow="34" aria-label="Simulated day"><span class="tr"></span><span class="tk" style="left:33.3%"></span><span class="tk" style="left:66.6%"></span><span class="fi"></span><span class="th"></span></div>
+    <span class="trace"><svg class="i"><use href="#i-info"/></svg>Sampled trace, run 7 of 30</span>
+  </div>
+</main>
+
+<aside class="panel" aria-label="Compare">
+  <div class="ph"><div><h2>Compare</h2><p class="sub"><span class="mk o"></span>v3 baseline (R-6) and <span class="mk f"></span>S-2 (R-7)</p></div><button class="btn sec sm"><svg class="i s12"><use href="#i-max"/></svg>Full screen</button></div>
+  <table>
+    <thead><tr><th style="width:134px">Metric</th><th><span class="mk o"></span>v3</th><th><span class="mk f"></span>S-2</th><th style="width:52px">Δ</th><th style="width:66px">Δ%</th></tr></thead>
+    <tbody>
+      <tr class="lt"><td><b>Lead time</b><span>median, days</span></td><td>3.8</td><td class="s">2.9</td><td class="d">−0.9</td><td><span class="pill">−24%</span></td></tr>
+      <tr class="iv"><td>90% interval</td><td>3.1–4.6</td><td>2.4–3.5</td><td></td><td></td></tr>
+      <tr><td><b>Throughput</b><span>median, items/week</span></td><td>21.4</td><td class="s">23.7</td><td class="d">+2.3</td><td><span class="pill">+11%</span></td></tr>
+      <tr><td><b>QA queue p95</b><span>items</span></td><td>14</td><td class="s">4</td><td class="d">−10</td><td><span class="pill">−71%</span></td></tr>
+      <tr><td><b>WIP</b><span>mean, items</span></td><td>61</td><td class="s">44</td><td class="d">−17</td><td><span class="pill">−28%</span></td></tr>
+    </tbody>
+  </table>
+  <section class="dist">
+    <h3>Lead time across 30 runs</h3>
+    <p class="cap">Each dot is one run. The band is the 90% interval; the line is the median.</p>
+    <svg width="360" height="142" viewBox="0 0 360 142" role="img" aria-label="Lead time per run in days. v3 baseline median 3.8, 90% interval 3.1 to 4.6. S-2 median 2.9, interval 2.4 to 3.5.">
+      <g stroke="var(--line)" stroke-width="1"><path d="M52.5 10V120M152.5 10V120M252.5 10V120M352.5 10V120"/></g>
+      <rect x="162" y="20" width="150" height="32" rx="4" style="fill:var(--base-soft)"/>
+      <rect x="92" y="68" width="110" height="40" rx="4" style="fill:var(--scen-soft)"/>
+      <path d="M232 16V56" stroke="var(--base)" stroke-width="2"/><path d="M142 64V112" stroke="var(--scen)" stroke-width="2"/>
+      <g transform="translate(52 36)" style="fill:var(--surface);stroke:var(--base);stroke-width:1.4"><circle cx="92" cy="0" r="3.1"/><circle cx="110" cy="0" r="3.1"/><circle cx="126" cy="0" r="3.1"/><circle cx="133" cy="1.2" r="3.1"/><circle cx="140" cy="0" r="3.1"/><circle cx="141" cy="7" r="3.1"/><circle cx="146" cy="-3.8" r="3.1"/><circle cx="150" cy="2.1" r="3.1"/><circle cx="156" cy="-1.7" r="3.1"/><circle cx="158" cy="5.1" r="3.1"/><circle cx="161" cy="-6.8" r="3.1"/><circle cx="169" cy="0" r="3.1"/><circle cx="170" cy="7" r="3.1"/><circle cx="176" cy="1.2" r="3.1"/><circle cx="178" cy="-5.6" r="3.1"/><circle cx="183" cy="0" r="3.1"/><circle cx="186" cy="6.4" r="3.1"/><circle cx="191" cy="0" r="3.1"/><circle cx="194" cy="6.4" r="3.1"/><circle cx="200" cy="0" r="3.1"/><circle cx="201" cy="-7" r="3.1"/><circle cx="210" cy="0" r="3.1"/><circle cx="213" cy="6.4" r="3.1"/><circle cx="219" cy="0" r="3.1"/><circle cx="226" cy="1.2" r="3.1"/><circle cx="235" cy="0" r="3.1"/><circle cx="241" cy="3.8" r="3.1"/><circle cx="244" cy="-2.6" r="3.1"/><circle cx="262" cy="0" r="3.1"/><circle cx="278" cy="0" r="3.1"/></g>
+      <g transform="translate(52 88)" style="fill:var(--scen)"><circle cx="26" cy="0" r="3.25"/><circle cx="40" cy="0" r="3.25"/><circle cx="44" cy="5.9" r="3.25"/><circle cx="53" cy="0" r="3.25"/><circle cx="58" cy="5" r="3.25"/><circle cx="64" cy="0" r="3.25"/><circle cx="67" cy="6.4" r="3.25"/><circle cx="73" cy="0" r="3.25"/><circle cx="73" cy="-7.1" r="3.25"/><circle cx="73" cy="10.2" r="3.25"/><circle cx="76" cy="-13.5" r="3.25"/><circle cx="82" cy="0" r="3.25"/><circle cx="84" cy="6.8" r="3.25"/><circle cx="85" cy="-6.4" r="3.25"/><circle cx="88" cy="12.7" r="3.25"/><circle cx="90" cy="0" r="3.25"/><circle cx="96" cy="3.8" r="3.25"/><circle cx="97" cy="-3.2" r="3.25"/><circle cx="101" cy="8.8" r="3.25"/><circle cx="104" cy="0" r="3.25"/><circle cx="106" cy="-6.8" r="3.25"/><circle cx="108" cy="5.9" r="3.25"/><circle cx="112" cy="0" r="3.25"/><circle cx="122" cy="0" r="3.25"/><circle cx="124" cy="6.8" r="3.25"/><circle cx="124" cy="-6.8" r="3.25"/><circle cx="133" cy="0" r="3.25"/><circle cx="138" cy="5" r="3.25"/><circle cx="151" cy="0" r="3.25"/><circle cx="171" cy="0" r="3.25"/></g>
+      <text x="0" y="40" style="fill:var(--text);font-weight:600">v3</text><text x="0" y="92" style="fill:var(--text);font-weight:600">S-2</text>
+      <text x="238" y="16" style="fill:var(--text-2)">3.8</text><text x="148" y="64" style="fill:var(--text-2)">2.9</text>
+      <path d="M52 120.5H352" stroke="var(--line-2)"/>
+      <text x="52" y="136" text-anchor="middle">2 d</text><text x="152" y="136" text-anchor="middle">3 d</text><text x="252" y="136" text-anchor="middle">4 d</text><text x="352" y="136" text-anchor="end">5 d</text>
+    </svg>
+  </section>
+  <section class="facts">
+    <h3>Run details</h3>
+    <dl><div><dt>Runs</dt><dd>30 runs × 90 days</dd></div><div><dt>Seed</dt><dd>4127</dd></div><div><dt>Engine</dt><dd>des 0.4.0</dd></div><div><dt>Dataset</dt><dd>rev 7</dd></div></dl>
+    <div class="note"><span class="badge b-neu"><svg class="i s12"><use href="#i-info"/></svg>Synthetic example data</span></div>
+  </section>
+</aside>
+</body>
+</html>

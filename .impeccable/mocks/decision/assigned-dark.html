@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<title>Geminus, stereoscope card dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--mount:#121212;--mrule:#2c2c2c;--canvas:#1a1a1a;--grid1:#222222;--grid2:#2d2d2d;--paper:#1e1e1e;--node:#272727;--well:#151515;--line:#323232;--edge:#747474;--ink:#ececec;--ink2:#c6c6c6;--ink3:#a2a2a2;--onink:#121212;--base:#b9bcbe;--scen:#e5ae3e;--scens:#e5ae3e;--warn:#f2916b;--good:#88cb9c;--avatar:#c6c6c6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:900px;overflow:hidden;margin:0;position:relative;background:var(--mount);color:var(--ink);font:400 13px/1.4 "Libre Franklin","Franklin Gothic Book","Franklin Gothic",Arial,"Noto Sans TC",sans-serif;font-variant-numeric:tabular-nums lining-nums}
+b{font-weight:600}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{height:32px;padding:0 12px;border:1px solid var(--edge);border-radius:6px;background:var(--node);color:var(--ink);display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:500}
+.btn.ic{width:32px;padding:0;justify-content:center}.btn.sm{height:28px}.btn.sm.ic{width:28px}
+.btn.pri{background:var(--scen);border-color:var(--scens);color:#121212;font-weight:600}
+kbd{font:inherit;font-size:11px;color:var(--ink3);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.seg{display:inline-flex;padding:2px;border:1px solid var(--edge);border-radius:6px;background:var(--well)}
+.seg span{padding:3px 12px;border-radius:4px;color:var(--ink2);font-weight:500}.seg .on{background:var(--ink);color:var(--onink)}
+.seg.sm span{padding:2px 10px}
+.mh,.ms{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:5px;flex:none}
+.mh{border:1.5px solid var(--base);background:transparent}.ms{background:var(--scen);border:1px solid var(--scens)}
+.code{display:inline-block;font-size:11px;font-weight:600;line-height:16px;padding:0 5px;border:1px solid var(--edge);border-radius:3px;color:var(--ink2);background:var(--node);white-space:nowrap}
+.tag{display:inline-block;font-size:11px;font-weight:700;line-height:16px;padding:0 6px;border-radius:3px;background:var(--ink);color:var(--onink)}
+/* shell: the card mount */
+.top{position:absolute;left:0;top:0;width:1440px;height:48px;padding:0 16px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.brand{display:flex;align-items:center;gap:16px}.brand .wm{font-size:16px;font-weight:700;letter-spacing:-.01em}
+.crumb{color:var(--ink2)}.crumb b{color:var(--ink)}
+.acts{display:flex;justify-content:flex-end;align-items:center;gap:8px}
+.av{width:32px;height:32px;border-radius:50%;background:var(--avatar);color:var(--onink);display:grid;place-items:center;font-size:11px;font-weight:700}
+.prov{position:absolute;left:0;top:48px;width:1440px;height:40px;padding:0 16px;border-top:1px solid var(--mrule);display:flex;align-items:center;gap:20px;white-space:nowrap}
+.prov .p{display:flex;align-items:center;gap:8px}.prov .p+.p{padding-left:20px;border-left:1px solid var(--mrule)}
+.pl{font-size:11px;color:var(--ink2)}.prov .sp{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--ink2)}
+.ok{display:inline-flex;align-items:center;gap:4px;color:var(--good);font-weight:600}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ink2);display:inline-block}
+/* canvas: the left print */
+.cv{position:absolute;left:8px;top:88px;width:1016px;height:804px;background:var(--canvas);outline:1px solid var(--mrule)}
+.tb{height:44px;padding:0 12px;display:flex;align-items:center;gap:12px;background:var(--paper);border-bottom:1px solid var(--line)}
+.tb .r{margin-left:auto;display:flex;align-items:center;gap:12px}.vr{width:1px;height:20px;background:var(--line)}
+.sel{color:var(--ink2)}.sel b{color:var(--ink);font-weight:500}
+.sw{display:inline-flex;align-items:center;gap:8px}.sw i{width:28px;height:16px;border-radius:8px;background:var(--ink);position:relative}.sw i::after{content:"";position:absolute;right:2px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--onink)}
+.zm{display:inline-flex;align-items:center;gap:4px}.zm span{min-width:44px;text-align:center;color:var(--ink2)}
+.flow{position:absolute;left:0;top:44px;width:1016px;height:680px;overflow:hidden;background-color:var(--canvas);
+ background-image:linear-gradient(var(--grid2) 1px,transparent 1px),linear-gradient(90deg,var(--grid2) 1px,transparent 1px),linear-gradient(var(--grid1) 1px,transparent 1px),linear-gradient(90deg,var(--grid1) 1px,transparent 1px);
+ background-size:64px 64px,64px 64px,8px 8px,8px 8px}
+.wires{position:absolute;left:0;top:0}.wires .a{stroke:var(--ink2);stroke-width:1.5;fill:none}.wires .k{stroke:var(--ink3);stroke-width:1.5;stroke-dasharray:4 4;fill:none}.wires .w{stroke:var(--warn);stroke-width:1.5}
+.wires .ah{fill:var(--ink2)}
+.node{position:absolute;top:168px;height:144px;background:var(--node);border:1px solid var(--edge);border-radius:4px;overflow:hidden}
+.nh{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-bottom:1px solid var(--line)}.nh b{white-space:nowrap}
+.nb{padding:8px 10px 0}.sub{color:var(--ink2)}
+.kv{margin-top:20px}.kv span,.mt span{display:block;font-size:11px;color:var(--ink3)}.kv b{font-size:16px}
+.mt{margin-top:20px}.mt p{display:flex;align-items:center;gap:8px}.mt b{font-size:16px;min-width:34px}
+.bar{flex:1;display:block;height:8px;border-radius:4px;background:var(--well);border:1px solid var(--edge);overflow:hidden}.bar i{display:block;height:100%;background:var(--base)}
+.node.qa{outline:2px solid var(--ink);outline-offset:3px}.node.qa .nh{background:var(--scen);border-bottom-color:var(--scens);color:#121212}.node.qa .nh .code{background:transparent;border-color:#121212;color:#121212}
+.qa .tag{margin-left:auto;background:#121212;color:#f1f2f2}
+.tw{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:6px}.tw th{font-size:11px;font-weight:600;color:var(--ink2);text-align:right;padding:0 0 2px;white-space:nowrap}.tw th:first-child{text-align:left}
+.tw td{text-align:right;padding:2px 0;border-top:1px solid var(--line)}.tw td:first-child{text-align:left;font-size:11px;color:var(--ink3)}.tw td.b{color:var(--ink2)}.tw td.s{font-weight:700;font-size:16px}
+.warn{position:absolute;left:712px;top:328px;display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--node);border:1px solid var(--warn);border-radius:4px;color:var(--ink);white-space:nowrap}.warn svg{color:var(--warn)}.warn b{color:var(--warn)}
+.pool{position:absolute;top:416px;height:72px;background:var(--paper);border:1px solid var(--edge);border-radius:12px;padding:0 12px}
+.pool .nh{padding:0;border:0;height:32px}.toks{display:flex;align-items:center;gap:5px;height:28px}.toks .mh,.toks .ms{width:12px;height:12px;margin:0}.toks b{margin-left:auto;font-size:16px}
+.legend{position:absolute;left:24px;bottom:24px;display:flex;align-items:center;gap:16px;padding:6px 10px;background:var(--paper);border:1px solid var(--line);border-radius:4px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center}
+.play{position:absolute;left:0;top:724px;width:1016px;height:80px;padding:10px 16px;background:var(--paper);border-top:1px solid var(--line);display:grid;grid-template-columns:200px 512px 200px;gap:24px;align-items:center}
+.play .l{display:flex;align-items:center;gap:12px}.day{font-size:19px;font-weight:600;white-space:nowrap}.day small{font-size:13px;font-weight:400;color:var(--ink2)}
+.play svg text,.win svg text{font-size:11px;fill:var(--ink3)}.play .lc{font-weight:600;fill:var(--ink2)}.play .lcb{fill:var(--node);stroke:var(--edge)}
+.ln{fill:var(--scen);stroke:var(--scens);stroke-width:1}.lb{stroke:var(--edge);stroke-width:1}.ph{stroke:var(--ink);stroke-width:1.5}
+.tr{fill:var(--well);stroke:var(--edge);stroke-width:1}.tp{fill:var(--ink)}.tk{stroke:var(--ink3)}.th{fill:var(--ink);stroke:var(--paper);stroke-width:2}
+.play .r{display:flex;flex-direction:column;align-items:flex-end;gap:2px}.play .r b{font-weight:600}
+/* compare: the right print, and the stereo card */
+.cmp{position:absolute;left:1032px;top:88px;width:400px;height:804px;background:var(--paper);outline:1px solid var(--mrule);padding:16px}
+.ch{display:flex;justify-content:space-between;align-items:flex-start}h2{font-size:23px;line-height:28px;font-weight:600;letter-spacing:-.01em}.ch p{color:var(--ink2);margin-top:2px}
+.twh{display:flex;justify-content:space-between;align-items:center;margin-top:20px}h3{font-size:16px;font-weight:600}
+.card{margin-top:10px;background:var(--mount);border-radius:4px;padding:10px 10px 6px}
+.pair{display:flex;gap:8px}
+.win{width:170px;background:var(--node);border:1px solid var(--edge);border-radius:50% 50% 3px 3px/16px 16px 3px 3px;padding-top:12px;text-align:center}
+.wl{display:flex;justify-content:center;align-items:center}.wl span{color:var(--ink2);margin-left:6px}.ws{font-size:11px;color:var(--ink2);margin:1px 0 4px}
+.win svg{display:block}.dh{fill:var(--node);stroke:var(--base);stroke-width:1.5}.ds{fill:var(--scen);stroke:var(--scens);stroke-width:1}
+.md{stroke:var(--ink);stroke-width:1.5}.gh{stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 2}.win svg .mdt{fill:var(--ink);font-weight:600}.win svg .ght{fill:var(--ink3)}
+.iv{stroke:var(--ink2);stroke-width:1;fill:none}.ax{stroke:var(--edge);stroke-width:1}
+.imprint{display:flex;justify-content:space-between;padding:6px 2px 0;font-size:11px;font-variant-caps:small-caps;letter-spacing:.06em;font-weight:500;color:var(--ink2)}
+.rows{margin-top:18px}
+.row{display:grid;grid-template-columns:1fr 52px 52px 44px 48px;column-gap:8px;align-items:baseline;padding:9px 0 8px;border-top:1px solid var(--line)}
+.row.hd{font-size:11px;color:var(--ink2);font-weight:600;padding:0 0 6px;border-top:0}.row.hd>*:not(:first-child){text-align:right}
+.row .v,.row .d{text-align:right}.row .v{font-size:16px;color:var(--ink2)}.row .v.s{font-weight:700;color:var(--ink)}.row .d{font-weight:500}.row .d.p{font-weight:700}
+.m b{margin-right:6px}.m small{display:block;font-size:11px;color:var(--ink3)}
+.pf{font-size:11px;color:var(--ink3);margin-top:3px}.pf b{color:var(--ink2);margin-right:6px}.pi{font-size:11px;color:var(--ink2);text-align:right;margin-top:3px}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px;padding-top:12px;border-top:1px solid var(--line)}
+.facts dt{font-size:11px;color:var(--ink3)}.facts dd{font-weight:500}
+.syn{display:flex;gap:8px;align-items:flex-start;margin-top:14px;padding:8px 10px;background:var(--well);border:1px solid var(--line);border-radius:4px;color:var(--ink2)}.syn b{color:var(--ink)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="wm">Geminus</span><span class="crumb">Payments platform / <b>Checkout delivery</b></span></div>
+  <div class="seg" role="tablist" aria-label="Mode"><span>Edit</span><span class="on" aria-selected="true">Simulate</span><span>Review</span></div>
+  <div class="acts">
+    <button class="btn"><svg class="i" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg>Find<kbd>⌘K</kbd></button>
+    <button class="btn">EN</button><span class="av" aria-label="Signed in as ML">ML</span>
+    <button class="btn pri"><svg class="i" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></svg>Run S-2 again</button>
+  </div>
+</header>
+<div class="prov" aria-label="Provenance">
+  <div class="p"><span class="pl">Published</span><span><i class="mh"></i><b>v3</b></span></div>
+  <div class="p"><span class="pl">Draft</span><span><b>rev 12</b>, based on v3</span><span class="dot"></span><span>1 unsaved change</span></div>
+  <div class="p"><span class="pl">Scenario</span><span><i class="ms"></i><b>S-2</b> “+2 QA engineers”, a patch on v3</span></div>
+  <div class="p"><span class="pl">Run</span><span><i class="ms"></i><b>R-7</b> (scenario) compared with <i class="mh"></i><b>R-6</b> (v3 baseline)</span><span class="ok"><svg class="i" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>Completed</span></div>
+  <div class="sp"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 7.5V11M8 5h0"/></svg>Synthetic example data</div>
+</div>
+
+<main class="cv" aria-label="Canvas">
+  <div class="tb">
+    <div class="seg sm" aria-label="View"><span class="on">2D</span><span>3D</span></div>
+    <button class="btn sm sel">Overlay <b>R-7 utilisation and queue</b><svg class="i" viewBox="0 0 16 16"><path d="m4.5 6.5 3.5 3.5 3.5-3.5"/></svg></button>
+    <div class="r">
+      <span class="sw"><i role="switch" aria-checked="true"></i><b>Snap</b><span class="sel">8 px grid</span></span><span class="vr"></span>
+      <span class="zm"><button class="btn sm ic" aria-label="Zoom out"><svg class="i" viewBox="0 0 16 16"><path d="M4 8h8"/></svg></button><span>100%</span><button class="btn sm ic" aria-label="Zoom in"><svg class="i" viewBox="0 0 16 16"><path d="M4 8h8M8 4v8"/></svg></button></span>
+      <button class="btn sm"><svg class="i" viewBox="0 0 16 16"><path d="M2.5 5.5v-3h3M10.5 2.5h3v3M13.5 10.5v3h-3M5.5 13.5h-3v-3"/><rect x="5.5" y="5.5" width="5" height="5" rx=".5"/></svg>Fit</button>
+    </div>
+  </div>
+  <div class="flow">
+    <svg class="wires" width="1016" height="680" aria-hidden="true">
+      <defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path class="ah" d="M0 0 8 4 0 8z"/></marker></defs>
+            <path class="a" d="M144 240H174" marker-end="url(#ar)"/><path class="a" d="M312 240H342" marker-end="url(#ar)"/><path class="a" d="M456 240H486" marker-end="url(#ar)"/><path class="a" d="M680 240H710" marker-end="url(#ar)"/><path class="a" d="M840 240H870" marker-end="url(#ar)"/>
+      <path class="k" d="M244 314V416M584 318V416"/><path class="w" d="M776 312V328"/>
+    </svg>
+    <div class="node" style="left:24px;width:120px"><div class="nh"><span class="code">SRC</span><b>Source</b></div><div class="nb"><p class="sub">Work arrives</p><div class="kv"><span>Arrival rate</span><b>24</b> items/week</div></div></div>
+    <div class="node" style="left:176px;width:136px"><div class="nh"><span class="code">REV</span><b>Code review</b></div><div class="nb"><p class="sub">4 reviewers</p><div class="mt"><span>Utilisation</span><p><b>71%</b><span class="bar"><i style="width:71%"></i></span></p></div></div></div>
+    <div class="node" style="left:344px;width:112px"><div class="nh"><span class="code">CI</span><b>CI</b></div><div class="nb"><p class="sub">3 runners</p><div class="mt"><span>Utilisation</span><p><b>48%</b><span class="bar"><i style="width:48%"></i></span></p></div></div></div>
+    <div class="node qa" style="left:488px;width:192px"><div class="nh"><span class="code">QA</span><b>QA test</b><span class="tag">S-2</span></div><div class="nb"><p class="sub"><b>3 → 5</b> QA engineers</p>
+      <table class="tw"><colgroup><col><col style="width:40px"><col style="width:44px"></colgroup><tr><th></th><th><i class="mh"></i>v3</th><th><i class="ms"></i>S-2</th></tr><tr><td>Utilisation</td><td class="b">94%</td><td class="s">57%</td></tr><tr><td>Queue p95</td><td class="b">14</td><td class="s">4</td></tr></table></div></div>
+    <div class="node" style="left:712px;width:128px"><div class="nh"><span class="code">DEP</span><b>Deploy</b></div><div class="nb"><p class="sub">1 slot</p><div class="mt"><span>Utilisation</span><p><b>63%</b><span class="bar"><i style="width:63%"></i></span></p></div></div></div>
+    <div class="node" style="left:872px;width:120px"><div class="nh"><span class="code">OUT</span><b>Released</b></div><div class="nb"><p class="sub">Work leaves</p><div class="kv"><span>Throughput</span><b>23.7</b> /week</div></div></div>
+    <div class="warn" role="status"><svg class="i" viewBox="0 0 16 16"><path d="M8 2.5 14 13H2z"/><path d="M8 6.5v3M8 11.5h0"/></svg><b>Warning</b>Queue p95 6 items in S-2</div>
+    <div class="pool" style="left:176px;width:136px"><div class="nh"><span class="code">P-REV</span><b>Reviewers</b></div><div class="toks"><i class="mh"></i><i class="mh"></i><i class="mh"></i><i class="mh"></i><b>4</b></div></div>
+    <div class="pool" style="left:488px;width:192px"><div class="nh"><span class="code">P-QA</span><b>QA engineers</b></div><div class="toks"><i class="mh"></i><i class="mh"></i><i class="mh"></i><i class="ms"></i><i class="ms"></i><b>3 → 5</b></div></div>
+    <div class="legend"><span><i class="mh"></i>v3 baseline, R-6</span><span><i class="ms"></i>S-2 scenario, R-7</span><span>Single values are from R-7</span></div>
+  </div>
+  <div class="play" aria-label="Playback">
+    <div class="l"><button class="btn ic" aria-label="Play"><svg class="i" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></svg></button><span class="day">Day 34 <small>of 90</small></span></div>
+    <svg viewBox="0 0 512 60" width="512" height="60" aria-label="Scrubber, day 34 of 90"><rect class="lcb" x="0.5" y="2.5" width="32" height="15" rx="3"/><text class="lc" x="16.5" y="14" text-anchor="middle">QA</text><rect class="lcb" x="0.5" y="21.5" width="32" height="15" rx="3"/><text class="lc" x="16.5" y="33" text-anchor="middle">DEP</text><path class="ln" d="M44 18L44.0 12.0H54.2L54.2 12.0H64.4L64.4 12.0H74.7L74.7 10.0H84.9L84.9 12.0H95.1L95.1 10.0H105.3L105.3 14.0H115.6L115.6 12.0H125.8L125.8 10.0H136.0L136.0 12.0H146.2L146.2 12.0H156.4L156.4 12.0H166.7L166.7 10.0H176.9L176.9 10.0H187.1L187.1 12.0H197.3L197.3 10.0H207.6L207.6 10.0H217.8L217.8 14.0H228.0L228.0 14.0H238.2L238.2 12.0H248.4L248.4 12.0H258.7L258.7 14.0H268.9L268.9 12.0H279.1L279.1 12.0H289.3L289.3 10.0H299.6L299.6 12.0H309.8L309.8 12.0H320.0L320.0 14.0H330.2L330.2 12.0H340.4L340.4 12.0H350.7L350.7 12.0H360.9L360.9 12.0H371.1L371.1 12.0H381.3L381.3 10.0H391.6L391.6 12.0H401.8L401.8 10.0H412.0L412.0 14.0H422.2L422.2 16.0H432.4L432.4 16.0H442.7L442.7 16.0H452.9L452.9 16.0H463.1L463.1 16.0H473.3L473.3 16.0H483.6L483.6 14.0H493.8L493.8 14.0H504.0V18 Z"/><line class="lb" x1="44" y1="18" x2="504" y2="18"/><path class="ln" d="M44 37L44.0 31.0H54.2L54.2 31.0H64.4L64.4 29.0H74.7L74.7 31.0H84.9L84.9 33.0H95.1L95.1 35.0H105.3L105.3 33.0H115.6L115.6 35.0H125.8L125.8 33.0H136.0L136.0 35.0H146.2L146.2 35.0H156.4L156.4 31.0H166.7L166.7 29.0H176.9L176.9 31.0H187.1L187.1 31.0H197.3L197.3 33.0H207.6L207.6 31.0H217.8L217.8 33.0H228.0L228.0 35.0H238.2L238.2 33.0H248.4L248.4 35.0H258.7L258.7 31.0H268.9L268.9 33.0H279.1L279.1 33.0H289.3L289.3 35.0H299.6L299.6 33.0H309.8L309.8 33.0H320.0L320.0 31.0H330.2L330.2 31.0H340.4L340.4 33.0H350.7L350.7 33.0H360.9L360.9 33.0H371.1L371.1 35.0H381.3L381.3 33.0H391.6L391.6 33.0H401.8L401.8 35.0H412.0L412.0 35.0H422.2L422.2 35.0H432.4L432.4 33.0H442.7L442.7 31.0H452.9L452.9 29.0H463.1L463.1 29.0H473.3L473.3 27.0H483.6L483.6 27.0H493.8L493.8 29.0H504.0V37 Z"/><line class="lb" x1="44" y1="37" x2="504" y2="37"/><line class="ph" x1="217.8" y1="0" x2="217.8" y2="45"/><rect class="tr" x="44" y="40" width="460" height="4" rx="2"/><rect class="tp" x="44" y="40" width="173.8" height="4" rx="2"/><line class="tk" x1="44.0" y1="47" x2="44.0" y2="50"/><text x="44.0" y="59" text-anchor="start">Day 0</text><line class="tk" x1="95.1" y1="47" x2="95.1" y2="50"/><line class="tk" x1="146.2" y1="47" x2="146.2" y2="50"/><line class="tk" x1="197.3" y1="47" x2="197.3" y2="50"/><text x="197.3" y="59" text-anchor="middle">30</text><line class="tk" x1="248.4" y1="47" x2="248.4" y2="50"/><line class="tk" x1="299.6" y1="47" x2="299.6" y2="50"/><line class="tk" x1="350.7" y1="47" x2="350.7" y2="50"/><text x="350.7" y="59" text-anchor="middle">60</text><line class="tk" x1="401.8" y1="47" x2="401.8" y2="50"/><line class="tk" x1="452.9" y1="47" x2="452.9" y2="50"/><line class="tk" x1="504.0" y1="47" x2="504.0" y2="50"/><text x="504.0" y="59" text-anchor="end">90</text><circle class="th" cx="217.8" cy="42" r="6"/></svg>
+    <div class="r"><span class="pl">Sampled trace</span><b>run 7 of 30</b></div>
+  </div>
+</main>
+
+<aside class="cmp" aria-label="Compare">
+  <div class="ch"><div><h2>Compare</h2><p>v3 baseline (R-6) and S-2 (R-7)</p></div><button class="btn ic" aria-label="Open compare full screen"><svg class="i" viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9"/></svg></button></div>
+  <div class="twh"><h3>Lead time over 30 runs</h3><div class="seg sm" aria-label="Pair view"><span class="on">Side by side</span><span>Fused</span></div></div>
+  <figure class="card">
+    <div class="pair">
+      <div class="win"><div class="wl"><i class="mh"></i><b>v3 baseline</b><span>R-6</span></div><div class="ws">median 3.8, 90% 3.1–4.6</div><svg viewBox="0 0 168 104" width="168" height="104" aria-hidden="true"><line class="gh" x1="53.6" y1="2" x2="53.6" y2="72"/><text class="ght" x="49.6" y="9" text-anchor="end">S-2</text><line class="md" x1="99.2" y1="2" x2="99.2" y2="72"/><text class="mdt" x="106.2" y="9" text-anchor="start">3.8</text><circle class="dh" cx="58.7" cy="67" r="4"/><circle class="dh" cx="68.8" cy="67" r="4"/><circle class="dh" cx="68.8" cy="58" r="4"/><circle class="dh" cx="78.9" cy="67" r="4"/><circle class="dh" cx="78.9" cy="58" r="4"/><circle class="dh" cx="78.9" cy="49" r="4"/><circle class="dh" cx="89.1" cy="67" r="4"/><circle class="dh" cx="89.1" cy="58" r="4"/><circle class="dh" cx="89.1" cy="49" r="4"/><circle class="dh" cx="89.1" cy="40" r="4"/><circle class="dh" cx="89.1" cy="31" r="4"/><circle class="dh" cx="99.2" cy="67" r="4"/><circle class="dh" cx="99.2" cy="58" r="4"/><circle class="dh" cx="99.2" cy="49" r="4"/><circle class="dh" cx="99.2" cy="40" r="4"/><circle class="dh" cx="99.2" cy="31" r="4"/><circle class="dh" cx="99.2" cy="22" r="4"/><circle class="dh" cx="109.3" cy="67" r="4"/><circle class="dh" cx="109.3" cy="58" r="4"/><circle class="dh" cx="109.3" cy="49" r="4"/><circle class="dh" cx="109.3" cy="40" r="4"/><circle class="dh" cx="109.3" cy="31" r="4"/><circle class="dh" cx="119.5" cy="67" r="4"/><circle class="dh" cx="119.5" cy="58" r="4"/><circle class="dh" cx="119.5" cy="49" r="4"/><circle class="dh" cx="119.5" cy="40" r="4"/><circle class="dh" cx="129.6" cy="67" r="4"/><circle class="dh" cx="129.6" cy="58" r="4"/><circle class="dh" cx="139.7" cy="67" r="4"/><circle class="dh" cx="139.7" cy="58" r="4"/><path class="iv" d="M63.7 76v6M63.7 79H139.7M139.7 76v6"/><line class="ax" x1="8.0" y1="86" x2="160" y2="86"/><line class="ax" x1="8.0" y1="86" x2="8.0" y2="90"/><text x="8.0" y="101" text-anchor="start">2</text><line class="ax" x1="58.7" y1="86" x2="58.7" y2="90"/><text x="58.7" y="101" text-anchor="middle">3</text><line class="ax" x1="109.3" y1="86" x2="109.3" y2="90"/><text x="109.3" y="101" text-anchor="middle">4</text><line class="ax" x1="160.0" y1="86" x2="160.0" y2="90"/><text x="160.0" y="101" text-anchor="end">5 d</text></svg></div>
+      <div class="win"><div class="wl"><i class="ms"></i><b>S-2 scenario</b><span>R-7</span></div><div class="ws">median 2.9, 90% 2.4–3.5</div><svg viewBox="0 0 168 104" width="168" height="104" aria-hidden="true"><line class="gh" x1="99.2" y1="2" x2="99.2" y2="72"/><text class="ght" x="103.2" y="9" text-anchor="start">v3</text><line class="md" x1="53.6" y1="2" x2="53.6" y2="72"/><text class="mdt" x="46.6" y="9" text-anchor="end">2.9</text><circle class="ds" cx="23.2" cy="67" r="4"/><circle class="ds" cx="23.2" cy="58" r="4"/><circle class="ds" cx="33.3" cy="67" r="4"/><circle class="ds" cx="33.3" cy="58" r="4"/><circle class="ds" cx="33.3" cy="49" r="4"/><circle class="ds" cx="43.5" cy="67" r="4"/><circle class="ds" cx="43.5" cy="58" r="4"/><circle class="ds" cx="43.5" cy="49" r="4"/><circle class="ds" cx="43.5" cy="40" r="4"/><circle class="ds" cx="43.5" cy="31" r="4"/><circle class="ds" cx="53.6" cy="67" r="4"/><circle class="ds" cx="53.6" cy="58" r="4"/><circle class="ds" cx="53.6" cy="49" r="4"/><circle class="ds" cx="53.6" cy="40" r="4"/><circle class="ds" cx="53.6" cy="31" r="4"/><circle class="ds" cx="53.6" cy="22" r="4"/><circle class="ds" cx="53.6" cy="13" r="4"/><circle class="ds" cx="63.7" cy="67" r="4"/><circle class="ds" cx="63.7" cy="58" r="4"/><circle class="ds" cx="63.7" cy="49" r="4"/><circle class="ds" cx="63.7" cy="40" r="4"/><circle class="ds" cx="63.7" cy="31" r="4"/><circle class="ds" cx="63.7" cy="22" r="4"/><circle class="ds" cx="73.9" cy="67" r="4"/><circle class="ds" cx="73.9" cy="58" r="4"/><circle class="ds" cx="73.9" cy="49" r="4"/><circle class="ds" cx="73.9" cy="40" r="4"/><circle class="ds" cx="84.0" cy="67" r="4"/><circle class="ds" cx="84.0" cy="58" r="4"/><circle class="ds" cx="84.0" cy="49" r="4"/><path class="iv" d="M28.3 76v6M28.3 79H84.0M84.0 76v6"/><line class="ax" x1="8.0" y1="86" x2="160" y2="86"/><line class="ax" x1="8.0" y1="86" x2="8.0" y2="90"/><text x="8.0" y="101" text-anchor="start">2</text><line class="ax" x1="58.7" y1="86" x2="58.7" y2="90"/><text x="58.7" y="101" text-anchor="middle">3</text><line class="ax" x1="109.3" y1="86" x2="109.3" y2="90"/><text x="109.3" y="101" text-anchor="middle">4</text><line class="ax" x1="160.0" y1="86" x2="160.0" y2="90"/><text x="160.0" y="101" text-anchor="end">5 d</text></svg></div>
+    </div>
+    <figcaption class="imprint"><span>No. R-7</span><span>Lead time, days</span><span>v3 and S-2</span></figcaption>
+  </figure>
+  <div class="rows" role="table" aria-label="Metrics">
+    <div class="row hd" role="row"><span>Metric</span><span><i class="mh"></i>v3</span><span><i class="ms"></i>S-2</span><span>Δ</span><span>Δ%</span></div>
+    <div class="row" role="row"><div class="m"><b>Lead time</b><span class="code">SRC–OUT</span><small>median, days</small></div><div class="v">3.8</div><div class="v s">2.9</div><div class="d">−0.9</div><div class="d p">−24%</div>
+      <div class="pf"><b>n=30</b>90% interval</div><div class="pi">3.1–4.6</div><div class="pi">2.4–3.5</div></div>
+    <div class="row" role="row"><div class="m"><b>Throughput</b><span class="code">OUT</span><small>median, items/week</small></div><div class="v">21.4</div><div class="v s">23.7</div><div class="d">+2.3</div><div class="d p">+11%</div>
+      <div class="pf" style="grid-column:1/-1"><b>n=30</b>source: OUT completions, per run</div></div>
+    <div class="row" role="row"><div class="m"><b>QA queue p95</b><span class="code">QA</span><small>items</small></div><div class="v">14</div><div class="v s">4</div><div class="d">−10</div><div class="d p">−71%</div>
+      <div class="pf" style="grid-column:1/-1"><b>n=30</b>source: QA queue samples, per run</div></div>
+    <div class="row" role="row"><div class="m"><b>WIP</b><span class="code">SRC–OUT</span><small>mean, items</small></div><div class="v">61</div><div class="v s">44</div><div class="d">−17</div><div class="d p">−28%</div>
+      <div class="pf" style="grid-column:1/-1"><b>n=30</b>source: all steps, time-weighted, per run</div></div>
+  </div>
+  <dl class="facts"><div><dt>Runs</dt><dd>30 × 90 days</dd></div><div><dt>Seed</dt><dd>4127</dd></div><div><dt>Engine</dt><dd>des 0.4.0</dd></div><div><dt>Dataset</dt><dd>rev 7</dd></div></dl>
+  <p class="syn"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 7.5V11M8 5h0"/></svg><span><b>Synthetic example data.</b> Estimates under these conditions, not forecasts.</span></p>
+</aside>
+</body>
+</html>
