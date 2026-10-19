@@ -240,13 +240,13 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-046 phase 2 前；T-047–T-050 實作前；T-051 的 template 須通過。**
 
-問題：循環阻塞與「bundle 永遠湊不齊」（review 的兩個反例：班表不相交的 bundle、相位相反的 constant 故障）怎麼防止與以 typed error 偵測，保證到哪裡？原提案的 backstop 在有週期性班表或故障時永不觸發。選項：A 靜態 R1–R3（error）與 R4（warning）加 runtime 的 B1、B2；B 只做 runtime 偵測；C 不偵測（違反 TEST-034）。建議 A：R1 `BLOCKING_CYCLE`；R2 `CALENDAR_INVALID`（每個 bundle 在班表的最小公倍數週期內至少有一個 tick 湊得齊）；R3 故障 resource 的 request units＝1、一個 bundle 至多一個故障 resource；R4 `STALL_RISK`（故障 resource 的夥伴不一定與它同時上班）。通過 R1–R3 且沒有 R4 時可證明不會永久停滯；B1 `ErrDeadlock`（循環等待，立即、無誤報）；B2 `ErrStalled`（bundle 沒有任何 unit 在使用中而湊不齊：沒有 R4 時超過確定的期限 next_fit(t_q＋TTRmax)，next_fit 以班表算出、含每班容量與例外日；有 R4 且 TTF／TTR 固定時以狀態重複證明永久停滯）。B1、B2 都不會讓之後會前進的 run 失敗。不保證的情形（有 R4 warning 時的部分固定相位、無上界 TTR 的長等待）在 ADR-026 明列。
+問題：循環阻塞與「bundle 永遠湊不齊」（review 的兩個反例：班表不相交的 bundle、相位相反的 constant 故障）怎麼防止與以 typed error 偵測，保證到哪裡？原提案的 backstop 在有週期性班表或故障時永不觸發；例外日不是週期的，使期限與狀態簽章在例外日前後失效（review N6）。選項：A 靜態 R1–R4 全為 error，加 runtime 的 B1、B2；A′ R4 為 warning，另以狀態簽章偵測固定相位的鎖定；B 只做 runtime 偵測；C 不偵測（違反 TEST-034）。建議 A：R1 `BLOCKING_CYCLE`；R2 `CALENDAR_INVALID`（每個 bundle 在班表的最小公倍數週期內至少有一個 tick 湊得齊）；R3 故障 resource 的 request units＝1、一個 bundle 至多一個故障 resource；R4 `STALL_RISK`（故障 resource 上班時夥伴都夠，只看週期部分；訊息建議給機台作業員的 calendar）。每個 valid 的模型都可證明不會永久停滯；B1 `ErrDeadlock`（循環等待，立即、無誤報）；B2 `ErrStalled`（bundle 沒有任何 unit 在使用中，且已過期限 next_fit(max(t_q, X_end)＋TTRmax)；X_end 是 bundle 的 calendar 最後一段例外的結束）。兩者對 valid 的模型都不觸發、不記狀態。代價：R4 拒絕「會故障的機台沒有班表、作業員有班表」等寫法。A′ 的代價：簽章只能在 X_end 之後比對、記憶體要以每個 replication 的總量設限並計入 limits、只偵測 TTF／TTR 固定的鎖定，其他不偵測。這也回答了「warning 或 error」。
 
 #### D-051 — Resource 故障（MTBF／MTTR）
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-048 實作前。**
 
-問題：故障時鐘、服務中 entity 的處理、多 unit、RNG stream 命名、availability？選項（處理）：A finish-first、每個 unit 一組故障時鐘；B preempt-resume；C preempt-restart（B、C 屬 PRD P1）。選項（時鐘）：日曆時間、排班時間（scheduled）、忙碌時間。建議 A 加 optional `clock`：有 calendar 時預設 scheduled（只在上班時前進，由確定的班表直接算出故障時刻，不需 unit identity；日曆時鐘在 `two_shift_weekdays` 下會使上班時的故障率只剩約 48%），沒有 calendar 時兩者相同；TTF 要以同一時鐘估計；stream 為 (resource ID, `ttf/<u>`／`ttr/<u>`)，既有 stream 不變；availability＝∫min(S, C−down)／∫S。代價：長時間 service 低估中斷影響。
+問題：故障時鐘、服務中 entity 的處理、多 unit、RNG stream 命名、availability？選項（處理）：A finish-first、每個 unit 一組故障時鐘；B preempt-resume；C preempt-restart（B、C 屬 PRD P1）。選項（時鐘）：日曆時間、排班時間、忙碌時間。建議 A，時鐘一律只在 resource 上班時前進（由確定的班表直接算出故障時刻，不需 unit identity；沒有 calendar 時即日曆時間；日曆時鐘在 `two_shift_weekdays` 下會使上班時的故障率只剩約 48%）。D-050 建議 R4 為 error，所以不提供 `clock` 欄位；若 owner 改採 A′ 再加回。TTF 要以上班時間估計；stream 為 (resource ID, `ttf/<u>`／`ttr/<u>`)，既有 stream 不變；availability＝∫min(S, C−down)／∫S。代價：長時間 service 低估中斷影響。
 
 #### D-052 — 班表與 utilization 分母
 
@@ -282,7 +282,7 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 
 **狀態：PROPOSED（2026-10-19）。負責角色：AI / Simulation。Gate：T-047–T-050 各自開放對應參數前。**
 
-問題：新參數可否在 scenario 中修改、risk 怎麼算？選項：A 擴充 D-021（buffer capacity、breakdown 分布、換線分布、投入 rate 與投入量、batch 參數、calendar 參照、每班容量、shifts 與例外）；B 不擴充（「加大 FCT 前緩衝」須發布新版本，與 baseline 不可比較）；C 只加 buffer capacity。建議 A：新參數的變更至少 medium，擴大 buffer 為 low；candidate 須通過 D-050 的 R1–R3，新出現 `STALL_RISK` warning 時仍可建立、warning 顯示在審核內容中且 risk 至少 medium；允許改分布的路徑都可換成 lognormal／Weibull；新增或刪除 breakdowns、setups、calendars、schedule、batch，以及改故障時鐘，仍走 draft→publish。
+問題：新參數可否在 scenario 中修改、risk 怎麼算？選項：A 擴充 D-021（buffer capacity、breakdown 分布、換線分布、投入 rate 與投入量、batch 參數、calendar 參照、每班容量、shifts 與例外）；B 不擴充（「加大 FCT 前緩衝」須發布新版本，與 baseline 不可比較）；C 只加 buffer capacity。建議 A：新參數的變更至少 medium，擴大 buffer 為 low；candidate 須通過 D-050 的 R1–R4（違反即 invalid；若 owner 改採 D-050 的 A′，新出現 `STALL_RISK` warning 時仍可建立、warning 顯示在審核內容中且 risk 至少 medium）；允許改分布的路徑都可換成 lognormal／Weibull；新增或刪除 breakdowns、setups、calendars、schedule、batch 仍走 draft→publish。
 
 #### D-058 — 電子產線指標的資料來源與 Result 位置
 

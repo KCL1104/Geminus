@@ -114,23 +114,23 @@ flowchart LR
 
 Queue 名稱後的數字是 synthetic 的 `capacity`；沒有數字的 queue 為無限（`q_smt` 也是無限，所以 source 的 release backlog 不會出現在 template 中）。
 
-**死結檢查（D-050）。** Holder 的共用分量：{ict, ict_retest}（`ict_tester`）、{fct, fct_retest}（`fct_tester`）、{aoi_touchup, ict_debug, fct_debug}（`debug_operator`），其餘各自一個。阻塞邊：smt→aoi、aoi→ICT、除錯→ICT（經 `aoi_rework` 進 `q_ict`）、ICT→FCT、FCT→燒機、燒機→包裝。除錯前的 buffer 無限，所以沒有指向除錯分量的邊，圖無 cycle，通過。若把 `q_ict_debug` 改為有限，ICT 的失敗會被除錯區擋住（ICT→除錯），而除錯已能被 `q_ict` 擋住（除錯→ICT），形成 cycle 並被拒絕；`q_fct_debug` 改為有限時同理（FCT→除錯→ICT→FCT）。只把 `q_ict_retest` 改為有限則不會：它只增加已存在的「除錯→ICT」邊，沒有任何邊進入除錯分量。另外三個 D-050 規則：每個 bundle 只有一個 resource，R2（班表交集）、R3（故障 resource 的 units＝1）自然成立，也沒有 R4 的 `STALL_RISK` warning。
+**死結檢查（D-050）。** Holder 的共用分量：{ict, ict_retest}（`ict_tester`）、{fct, fct_retest}（`fct_tester`）、{aoi_touchup, ict_debug, fct_debug}（`debug_operator`），其餘各自一個。阻塞邊：smt→aoi、aoi→ICT、除錯→ICT（經 `aoi_rework` 進 `q_ict`）、ICT→FCT、FCT→燒機、燒機→包裝。除錯前的 buffer 無限，所以沒有指向除錯分量的邊，圖無 cycle，通過。若把 `q_ict_debug` 改為有限，ICT 的失敗會被除錯區擋住（ICT→除錯），而除錯已能被 `q_ict` 擋住（除錯→ICT），形成 cycle 並被拒絕；`q_fct_debug` 改為有限時同理（FCT→除錯→ICT→FCT）。只把 `q_ict_retest` 改為有限則不會：它只增加已存在的「除錯→ICT」邊，沒有任何邊進入除錯分量。另外三個 D-050 規則：每個 bundle 只有一個 resource，R2（班表交集）、R3（故障 resource 的 units＝1）自然成立，R4（故障 resource 與夥伴的上班時間）也成立。
 
 ### 4.2 參數（全部 synthetic）
 
 時間單位為 minute。三角分布寫作 tri(min, mode, max)。
 
-| Resource | Type | Capacity | 班表 | 故障 TTF（時鐘） | 故障 TTR |
+| Resource | Type | Capacity | 班表 | 故障 TTF | 故障 TTR |
 |---|---|---|---|---|---|
-| `smt_line` | machine | 1 | `two_shift_weekdays` | exponential(mean 600)（scheduled） | tri(10, 20, 90) |
-| `aoi` | machine | 1 | `two_shift_weekdays` | exponential(mean 1200)（scheduled） | tri(5, 10, 30) |
-| `ict_tester` | machine | 2 | `two_shift_weekdays` | exponential(mean 900)（scheduled） | tri(10, 20, 60) |
-| `fct_tester` | machine | 3 | `two_shift_weekdays` | exponential(mean 900)（scheduled） | tri(10, 30, 90) |
-| `burn_in_chamber` | machine | 6 | 無（24/7） | exponential(mean 10080)（calendar） | tri(60, 120, 480) |
+| `smt_line` | machine | 1 | `two_shift_weekdays` | exponential(mean 600) | tri(10, 20, 90) |
+| `aoi` | machine | 1 | `two_shift_weekdays` | exponential(mean 1200) | tri(5, 10, 30) |
+| `ict_tester` | machine | 2 | `two_shift_weekdays` | exponential(mean 900) | tri(10, 20, 60) |
+| `fct_tester` | machine | 3 | `two_shift_weekdays` | exponential(mean 900) | tri(10, 30, 90) |
+| `burn_in_chamber` | machine | 6 | 無（24/7） | exponential(mean 10080) | tri(60, 120, 480) |
 | `debug_operator` | human | 4 | `two_shift_weekdays` | — | — |
 | `pack_station` | human | 2 | `two_shift_weekdays` | — | — |
 
-TTF 以上班時間計（D-051 的 scheduled 時鐘），所以 mean 600 是「上班 600 分鐘」約故障一次；燒機沒有班表，兩種時鐘相同。
+TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 600 是「上班 600 分鐘」約故障一次；燒機沒有班表，即日曆時間。
 
 | Process | 需要 | Service time |
 |---|---|---|
@@ -246,7 +246,7 @@ TTF 以上班時間計（D-051 的 scheduled 時鐘），所以 mean 600 是「�
 
 **Data-quality 檢查（提案）**：end < start；同一 serial 的作業時間重疊；同一設備的作業數超過推論的 capacity；serial 的站別順序與拓樸不符；停機與作業在同一設備上重疊（停機中仍有作業）；觀測期間內的資料缺口。研究稿指出微小停機常未被記錄、彙總的 OEE 不足以建模故障（未驗證）；因此 P0 只用逐筆停機紀錄估計故障參數，缺少時 `breakdowns` 由使用者輸入或回 needs_input，不從 OEE 反推。
 
-**可推導的量（T-027 的範圍，此處只作參考）**：各站 service time 樣本＝end−start（empirical dataset）；首測與重測以 serial＋station 依 start 排序區分；routing 機率與 FPY 由 result 計數；TTR＝恢復−停機開始（日曆時間）；TTF＝上次恢復到下次停機開始之間的上班時間（有班表的設備，對應 D-051 的 scheduled 時鐘；以日曆間隔估計會把夜間與週末算進去，使上班時的故障率被低估，例如 `two_shift_weekdays` 下只有約 48%），沒有班表的設備為日曆時間；release rate 由第一站的 start 依時段計數；換線時間：同一設備上相鄰兩件的 product 不同時，前一件 end 到下一件 start 的間隔（含可能的閒置，只能當上限，需使用者確認）；設備並行數由同時進行的作業推估 capacity。推論結果一律經 proposal 與人類批准（D-009），不直接改 Twin。
+**可推導的量（T-027 的範圍，此處只作參考）**：各站 service time 樣本＝end−start（empirical dataset）；首測與重測以 serial＋station 依 start 排序區分；routing 機率與 FPY 由 result 計數；TTR＝恢復−停機開始（日曆時間）；TTF＝上次恢復到下次停機開始之間的上班時間（有班表的設備，對應 D-051 只在上班時前進的時鐘；以日曆間隔估計會把夜間與週末算進去，使上班時的故障率被低估，例如 `two_shift_weekdays` 下只有約 48%），沒有班表的設備為日曆時間；release rate 由第一站的 start 依時段計數；換線時間：同一設備上相鄰兩件的 product 不同時，前一件 end 到下一件 start 的間隔（含可能的閒置，只能當上限，需使用者確認）；設備並行數由同時進行的作業推估 capacity。推論結果一律經 proposal 與人類批准（D-009），不直接改 Twin。
 
 **時間對應。** Model 時間沒有時區。比對與推論時，使用者指定一個 anchor（例如 model t=0 ＝ 某個含 offset 的 RFC 3339 時刻，且為班表 period 的起點）；跨 DST 變換的視窗在 P0 回 data-quality issue。
 
