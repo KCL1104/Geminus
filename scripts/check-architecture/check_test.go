@@ -144,6 +144,9 @@ func TestProbesAreCaught(t *testing.T) {
 		{"cmd-links-the-token-signer", "cmd/api/zz_probe.go", module + "/internal/auth/authtest", "no-test-infra-in-production", "./cmd/api", "./internal/auth/authtest", false},
 		{"auth-reads-the-database", "internal/auth/zz_probe.go", module + "/internal/tenant", "auth-authenticates-only", "./internal/auth", "./internal/tenant", false},
 		{"auth-imports-pgx", "internal/auth/zz_probe.go", "github.com/jackc/pgx/v5", "auth-authenticates-only", "./internal/auth", "github.com/jackc/pgx/v5", false},
+		{"api-links-the-worker-scope", "cmd/api/zz_probe.go", module + "/internal/tenant/workerscope", "worker-scope-only-in-the-worker", "./cmd/api", "./internal/tenant/workerscope", false},
+		{"a-service-links-the-worker-scope", "internal/project/zz_probe.go", module + "/internal/tenant/workerscope", "worker-scope-only-in-the-worker", "./internal/project", "./internal/tenant/workerscope", false},
+		{"storage-links-the-worker-scope", "internal/storage/projects/zz_probe.go", module + "/internal/tenant/workerscope", "worker-scope-only-in-the-worker", "./internal/storage/projects", "./internal/tenant/workerscope", false},
 	}
 	for _, p := range probes {
 		t.Run(p.name, func(t *testing.T) {

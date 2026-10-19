@@ -1100,7 +1100,7 @@
       "id": "T-019",
       "title": "PostgreSQL job queue / leases",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Platform",
       "planning_window": "Week 5–6",
       "depends_on": [

@@ -35,7 +35,7 @@ flowchart LR
 | Package / feature | Owns | 不得負責 |
 |---|---|---|
 | internal/auth | JWT verification、subject extraction、issuer/audience/expiry（T-008，ADR-017） | 信任 client role／選擇任意 tenant |
-| internal/tenant | membership、organization authorization、transaction context | 以 hidden UI button 代替授權 |
+| internal/tenant | membership、organization authorization、transaction context；`workerscope`：worker 在指派的 organization 執行（不查 membership，只有 worker 端可 import，T-019） | 以 hidden UI button 代替授權 |
 | internal/project | tenant project lifecycle（T-009：create／list／get，idempotent create 與 audit 同一 transaction） | 直接處理 IR 或 DES；自己寫 SQL |
 | internal/httpapi | HTTP transport（ADR-019）：error envelope、request ID、schema 驗證的 JSON body、token→`tenant.Scope` middleware | business rule；從 header 或 body 取得 role |
 | internal/api | 把所有 route 組成 cmd/api 與整合測試共用的 handler | business rule |

@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/kcl1104/geminus/internal/tenant/internal/scope"
 )
 
 // RunOwners executes fn in one read-write transaction in which an owner
@@ -32,7 +34,7 @@ func (d *DB) RunOwners(ctx context.Context, s Scope, fn func(ctx context.Context
 		return ErrInvalidScope
 	}
 	return d.db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-		if err := setScope(ctx, tx, s.OrganizationID, s.UserID); err != nil {
+		if err := scope.Set(ctx, tx, s.OrganizationID, s.UserID); err != nil {
 			return err
 		}
 		if err := requireOwner(ctx, tx, s); err != nil {

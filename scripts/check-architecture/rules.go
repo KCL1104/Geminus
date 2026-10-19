@@ -215,6 +215,16 @@ var rules = []rule{
 		through: []string{"./internal/storage/...", "./internal/tenant/..."},
 	},
 	{
+		// tenant.DB.Run checks the member's role in every transaction; the
+		// worker scope runs in an assigned organization without one (D-008).
+		// Only the worker may link it (T-019; ADR-019 R3b).
+		name:    "worker-scope-only-in-the-worker",
+		why:     "the worker scope checks no membership: only the worker binary and its job loop may run in it, never the API or a service it shares",
+		applies: []string{"./..."},
+		except:  []string{"./cmd/worker/...", "./internal/worker/...", "./internal/tenant/workerscope/..."},
+		forbid:  []string{"./internal/tenant/workerscope/..."},
+	},
+	{
 		name:    "auth-authenticates-only",
 		why:     "internal/auth verifies tokens only; users, memberships and roles come from the tenant scope, never from auth (docs/ARCHITECTURE.md §2, D-008)",
 		applies: []string{"./internal/auth/..."},

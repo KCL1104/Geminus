@@ -90,7 +90,7 @@ Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects
 - `db-only-in-storage` 改為不追進 `internal/storage` 與 `internal/tenant` 內部的依賴（`through`）：其他 package 經由它們存取資料，自己不 import driver。`tenant.Tx`／`tenant.TxOptions` 是 pgx 的 alias，service 持有 transaction 只為交給 storage。
 - 這兩個 gateway 包含 storage 的基礎層 `internal/storage/postgres`，它的 `Open` 接受任何連線字串：經由它，一個 package 可以自己開連線，繞過 `tenant.DB.Run`、`CheckRuntimeRole` 與 `Guard`（T-009 review M2）。新規則 `db-handles-only-in-gateways`：只有 `internal/storage`、`internal/tenant` 與 `cmd` 可以依賴它；httpapi 需要的錯誤由 `tenant` 轉出（`tenant.ErrRetryable`、`ErrOutcomeUnknown`）。
 - Import 規則看不到 SQL 字串：service 透過 `tenant.Tx` 自己寫 SQL（包括經 `tx.Conn()` 取得的連線）這件事只能靠 review 擋下（`internal/project` 沒有 SQL）。這些 SQL 在 `tenant.DB.Run` 的 transaction 內以同一個 API login 執行，但**不受 scope 約束**：它可以 `set_config('app.organization_id', …)` 改掉 transaction 的 tenant context，讀別的 organization（T-009 re-review R3a）。所以 SQL 只寫在 `internal/storage`，由 review 把關；T-036 評估把 `tenant.Tx` 縮成沒有 `Conn()` 的介面。
-- Worker scope（R3b）：`tenant.NewWorker` 在 `internal/tenant`，API 端程式也能 import，以任何 organization 執行而不查 membership，import 規則看不出來。目前沒有 production 呼叫者。T-019 必須把它移到只有 worker 端可 import 的 package，並加 architecture 規則。
+- Worker scope（R3b）：`tenant.NewWorker` 在 `internal/tenant`，API 端程式也能 import，以任何 organization 執行而不查 membership，import 規則看不出來。目前沒有 production 呼叫者。T-019 必須把它移到只有 worker 端可 import 的 package，並加 architecture 規則。**已處理（T-019a）**：移到 `internal/tenant/workerscope`（設定 scope 的 SQL 在只有 `internal/tenant/...` 能 import 的 `internal/tenant/internal/scope`），architecture 規則 `worker-scope-only-in-the-worker` 只允許 `cmd/worker`、`internal/worker` 與它自己 import，三個 probe（cmd/api、service、storage）確認會被抓到。
 
 ### Server
 

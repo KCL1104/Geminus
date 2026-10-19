@@ -20,8 +20,12 @@ import (
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
-// APILogin is a plain login in twin_api (no superuser, no BYPASSRLS).
-const APILogin = "dt_test_api_login"
+// APILogin and WorkerLogin are plain logins in twin_api and twin_worker (no
+// superuser, no BYPASSRLS).
+const (
+	APILogin    = "dt_test_api_login"
+	WorkerLogin = "dt_test_worker_login"
+)
 
 // AdminURL returns the provisioning URL or skips the test.
 func AdminURL(t testing.TB) string {
@@ -56,7 +60,7 @@ func Pool(t testing.TB, rawURL string, maxConns int32, guard bool) *pgxpool.Pool
 }
 
 // Admin returns a pool on the provisioning login after checking that the
-// database is disposable and migrated, with the API login created.
+// database is disposable and migrated, with the runtime logins created.
 func Admin(t testing.TB) *pgxpool.Pool {
 	t.Helper()
 	p := Pool(t, AdminURL(t), 4, false)
@@ -71,13 +75,15 @@ func Admin(t testing.TB) *pgxpool.Pool {
 	}
 	// Roles are cluster-wide: another test may create the login at the same
 	// moment, which is not an error.
-	if _, err := p.Exec(context.Background(), `DO $$ BEGIN
-		IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '`+APILogin+`') THEN
-			CREATE ROLE `+APILogin+` LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE twin_api;
-		END IF;
-		EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
-		END $$`); err != nil {
-		t.Fatal(err)
+	for login, role := range map[string]string{APILogin: "twin_api", WorkerLogin: "twin_worker"} {
+		if _, err := p.Exec(context.Background(), `DO $$ BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '`+login+`') THEN
+				CREATE ROLE `+login+` LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE `+role+`;
+			END IF;
+			EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
+			END $$`); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return p
 }

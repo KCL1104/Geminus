@@ -44,9 +44,6 @@ func TestScopeIsValidatedBeforeTheDatabase(t *testing.T) {
 	if called {
 		t.Error("fn ran for an invalid scope")
 	}
-	if _, err := tenant.NewWorker(d, []string{"org_01M4YDQK00TA00000000000000", "org_bad"}); !errors.Is(err, tenant.ErrInvalidScope) {
-		t.Errorf("worker allowlist with a bad ID: %v", err)
-	}
 }
 
 // --- Integration tests with real runtime logins on a disposable database.
@@ -486,33 +483,6 @@ func TestPoolReuseLeavesNoScope(t *testing.T) {
 	clean("a session-level SET ROLE")
 	if pool.Stat().NewConnsCount() != before+1 {
 		t.Errorf("the connection with a leaked role was reused")
-	}
-}
-
-// D-008: the worker serves assigned organizations only, one per transaction.
-func TestWorkerAssignment(t *testing.T) {
-	adm := admin(t)
-	a, b := newOrg(t, adm), newOrg(t, adm)
-	d := tenant.New(as(t, workerLogin, 1, true))
-	w, err := tenant.NewWorker(d, []string{a.id})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := context.Background()
-	if err := w.Run(ctx, b.id, pgx.TxOptions{}, func(context.Context, pgx.Tx) error { return nil }); !errors.Is(err, tenant.ErrNotAssigned) {
-		t.Errorf("unassigned organization: %v", err)
-	}
-	var n int
-	if err := w.Run(ctx, a.id, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT count(*) FROM twin.projects WHERE id = ANY($1)`, []string{a.project, b.project}).Scan(&n)
-	}); err != nil || n != 1 {
-		t.Errorf("assigned scope sees %d of the two projects (%v)", n, err)
-	}
-	if err := w.Run(ctx, a.id, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, `SELECT count(*) FROM twin.memberships`)
-		return err
-	}); !errors.Is(err, postgres.ErrPermission) {
-		t.Errorf("the worker reads memberships: %v", err)
 	}
 }
 

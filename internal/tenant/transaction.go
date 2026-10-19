@@ -15,8 +15,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
-	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -24,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kcl1104/geminus/internal/storage/postgres"
+	"github.com/kcl1104/geminus/internal/tenant/internal/scope"
 )
 
 // Role is a membership role.
@@ -81,8 +80,6 @@ var (
 	ErrNoMembership = errors.New("tenant: no membership in the selected organization")
 	// ErrInvalidScope: an ID in the scope is not a D-001 ID of its kind.
 	ErrInvalidScope = errors.New("tenant: invalid scope")
-	// ErrNotAssigned: the worker is not assigned the organization (D-008 allowlist).
-	ErrNotAssigned = errors.New("tenant: organization not assigned to this worker")
 	// ErrUnknownUser: no user has the verified issuer and subject. Users are
 	// provisioned by a controlled process (D-008), never created from a
 	// token; the API answers 403 FORBIDDEN, since the caller is authenticated.
@@ -94,8 +91,8 @@ var (
 )
 
 var (
-	orgID  = regexp.MustCompile(`^org_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
-	userID = regexp.MustCompile(`^usr_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
+	orgID  = scope.OrgID
+	userID = scope.UserID
 )
 
 // DB runs scoped transactions on a pool.
@@ -139,11 +136,6 @@ func Guard(conn *pgx.Conn) bool {
 	return err == nil && clean
 }
 
-func setScope(ctx context.Context, tx pgx.Tx, org, user string) error {
-	_, err := tx.Exec(ctx, `SELECT set_config('app.organization_id', $1, true), set_config('app.user_id', $2, true)`, org, user)
-	return err
-}
-
 // Run executes fn in one transaction scoped to s, after confirming that
 // s.UserID is a member of s.OrganizationID. A read-write run keeps the
 // membership row share-locked until it ends, so a concurrent revocation or
@@ -156,7 +148,7 @@ func (d *DB) Run(ctx context.Context, s Scope, opts pgx.TxOptions, fn func(ctx c
 		return ErrInvalidScope
 	}
 	return d.db.Tx(ctx, opts, func(ctx context.Context, tx pgx.Tx) error {
-		if err := setScope(ctx, tx, s.OrganizationID, s.UserID); err != nil {
+		if err := scope.Set(ctx, tx, s.OrganizationID, s.UserID); err != nil {
 			return err
 		}
 		q := `SELECT role FROM twin.memberships WHERE organization_id=$1 AND user_id=$2`
@@ -212,38 +204,4 @@ func (d *DB) ResolveUser(ctx context.Context, issuer, subject string) (string, e
 		return "", fmt.Errorf("tenant: stored user ID is not a D-001 ID")
 	}
 	return id, nil
-}
-
-// Worker runs job work for the organizations a deployment assigns to it
-// (D-008): one organization per transaction, never a cross-tenant scan, and
-// never an organization taken from a job payload without being assigned.
-type Worker struct {
-	db       *DB
-	assigned []string
-}
-
-// NewWorker returns a worker scope for the assigned organizations.
-func NewWorker(d *DB, assigned []string) (*Worker, error) {
-	for _, o := range assigned {
-		if !orgID.MatchString(o) {
-			return nil, fmt.Errorf("%w: assigned organization %q", ErrInvalidScope, o)
-		}
-	}
-	return &Worker{db: d, assigned: slices.Clone(assigned)}, nil
-}
-
-// Assigned lists the organizations to poll, in deployment order.
-func (w *Worker) Assigned() []string { return slices.Clone(w.assigned) }
-
-// Run executes fn in one transaction scoped to org, which must be assigned.
-func (w *Worker) Run(ctx context.Context, org string, opts pgx.TxOptions, fn func(ctx context.Context, tx pgx.Tx) error) error {
-	if !slices.Contains(w.assigned, org) {
-		return ErrNotAssigned
-	}
-	return w.db.db.Tx(ctx, opts, func(ctx context.Context, tx pgx.Tx) error {
-		if err := setScope(ctx, tx, org, ""); err != nil {
-			return err
-		}
-		return fn(ctx, tx)
-	})
 }

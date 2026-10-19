@@ -20,13 +20,12 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 18,
-    "in_progress": 1,
-    "not_started": 25,
+    "in_progress": 2,
+    "not_started": 24,
     "review": 1
   },
   "ready_tasks": [
     "T-016",
-    "T-019",
     "T-024",
     "T-043"
   ],
