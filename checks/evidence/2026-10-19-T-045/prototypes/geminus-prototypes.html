@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geminus low-fi prototypes</title>
+<style>
+/* Low-fi prototype for owner review (T-045, REQ-023). Not product code:
+   the real screens are built in T-015 and T-031 with apps/web/ui. Colours
+   and sizes are the design tokens of apps/web/ui/tokens.css. */
+:root {
+  color-scheme: light;
+  --bg: #ffffff; --surface: #f6f7f9; --surface-hover: #eceef2; --border: #d9dde3; --border-strong: #6b7380;
+  --text: #1b1f24; --muted: #545c68; --accent: #1f5fbf; --accent-hover: #194f9f; --on-accent: #ffffff;
+  --selected: #e8f0fc; --danger: #b42318; --danger-bg: #fdf0ef; --warning: #8a5300; --warning-bg: #fff6e5;
+  --success: #17663a; --success-bg: #ebf7ef; --info: #143f80; --info-bg: #e8f0fc; --focus: #1f5fbf;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --control: 32px; --radius: 6px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); }
+:lang(zh-Hant) body, body:lang(zh-Hant) { line-height: 1.6; }
+h1, h2, h3 { margin: 0 0 8px; line-height: 1.25; }
+h1 { font-size: 20px; } h2 { font-size: 16px; } h3 { font-size: 14px; }
+p { margin: 0 0 8px; }
+code { font-family: var(--mono); font-size: 0.95em; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+button, select, input { font: inherit; }
+.btn { min-height: var(--control); padding: 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg); color: var(--text); font-weight: 600; cursor: pointer; }
+.btn:hover { background: var(--surface-hover); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.quiet { border-color: transparent; background: transparent; color: var(--accent); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+input, select { min-height: var(--control); padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg); color: var(--text); }
+input[aria-invalid=true] { border-color: var(--danger); }
+label { font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.hint { color: var(--muted); font-size: 13px; }
+.err { color: var(--danger); font-size: 13px; }
+.callout { margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--border); border-left-width: 4px; border-radius: var(--radius); background: var(--surface); }
+.callout.info { border-color: var(--info); background: var(--info-bg); }
+.callout.warning { border-color: var(--warning); background: var(--warning-bg); }
+.callout.danger { border-color: var(--danger); background: var(--danger-bg); }
+.callout.success { border-color: var(--success); background: var(--success-bg); }
+.callout h3 { margin-bottom: 4px; }
+.callout.danger h3 { color: var(--danger); } .callout.warning h3 { color: var(--warning); }
+.status:empty { display: none; }
+.status { margin: 0 0 12px; padding: 6px 12px; border-left: 4px solid var(--success); background: var(--success-bg); color: var(--success); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.badge { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 11px; background: var(--surface-hover); font-size: 12px; font-weight: 600; }
+.badge.high { background: var(--danger-bg); color: var(--danger); } .badge.low { background: var(--success-bg); color: var(--success); }
+.badge.err { background: var(--danger-bg); color: var(--danger); } .badge.warn { background: var(--warning-bg); color: var(--warning); }
+table { width: 100%; border-collapse: collapse; }
+th, td { height: 32px; padding: 0 10px; border-bottom: 1px solid var(--border); text-align: start; }
+th { background: var(--surface); border-bottom-color: var(--border-strong); white-space: nowrap; }
+tr.clickable { cursor: pointer; } tr.clickable:hover { background: var(--surface); }
+.box { border: 1px solid var(--border); border-radius: var(--radius); overflow: auto; margin-bottom: 12px; }
+
+/* Shell */
+.proto-bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 16px; background: #fff8d6; border-bottom: 2px dashed #8a5300; font-size: 13px; }
+.proto-bar strong { color: #8a5300; }
+header.app { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; min-height: 48px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+header.app .brand { font-size: 16px; font-weight: 600; }
+header.app nav { display: flex; gap: 16px; }
+header.app nav button { border: 0; background: none; color: var(--accent); font-weight: 600; min-height: var(--control); cursor: pointer; padding: 0 2px; }
+header.app nav button[aria-current=page] { color: var(--text); text-decoration: underline; text-underline-offset: 6px; }
+header.app .tools { margin-inline-start: auto; }
+main { padding: 16px; max-width: 1280px; margin: 0 auto; }
+
+/* Editor */
+.editor-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 12px; }
+.editor-head .meta { color: var(--muted); }
+.editor-head .actions { margin-inline-start: auto; }
+.editor { display: grid; grid-template-columns: 180px 1fr 300px; gap: 12px; }
+.editor > * { min-width: 0; } /* the canvas scrolls in its box instead of widening the page */
+.palette, .props { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--bg); }
+.palette ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.palette .btn { width: 100%; justify-content: flex-start; text-align: start; }
+.canvas { position: relative; min-height: 360px; border: 1px solid var(--border); border-radius: var(--radius); background: radial-gradient(circle, #c4c9d1 1px, transparent 1px) 0 0/16px 16px, var(--surface); overflow: auto; }
+.canvas svg { display: block; min-width: 760px; }
+.node rect { fill: #fff; stroke: var(--border-strong); stroke-width: 1.5; rx: 6; }
+.node text { font: 600 13px var(--font); fill: var(--text); }
+.node .sub { font-weight: 400; font-size: 11px; fill: var(--muted); }
+.node.selected rect { stroke: var(--accent); stroke-width: 3; }
+.node.has-error rect { stroke: var(--danger); }
+.node:focus-visible rect { stroke: var(--focus); stroke-width: 3; stroke-dasharray: 4 2; }
+.node { cursor: pointer; }
+.edge { stroke: var(--border-strong); stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+.issue-dot { fill: var(--danger); }
+.canvas-note { position: absolute; left: 8px; bottom: 8px; font-size: 12px; color: var(--muted); background: rgba(255,255,255,.85); padding: 2px 6px; border-radius: 4px; }
+.issues { margin-top: 12px; }
+
+/* Import / proposal */
+.steps { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 16px; padding: 0; list-style: none; counter-reset: s; }
+.steps li { counter-increment: s; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 16px; color: var(--muted); }
+.steps li::before { content: counter(s); display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-hover); font-size: 12px; font-weight: 600; }
+.steps li[aria-current=step] { border-color: var(--accent); color: var(--text); font-weight: 600; }
+.steps li[aria-current=step]::before { background: var(--accent); color: #fff; }
+.steps li.done::before { content: "✓"; background: var(--success); color: #fff; }
+.drop { display: grid; place-items: center; gap: 8px; min-height: 140px; padding: 16px; border: 2px dashed var(--border-strong); border-radius: var(--radius); background: var(--surface); text-align: center; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.panel { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px; }
+.diff li { margin-bottom: 6px; }
+.diff .op { display: inline-block; min-width: 64px; font-weight: 600; }
+.diff .add { color: var(--success); } .diff .chg { color: var(--info); } .diff .del { color: var(--danger); }
+.kind-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.sticky-actions { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border); background: var(--bg); }
+/* Keep a focused control from scrolling under the sticky bar (WCAG 2.4.11). */
+html { scroll-padding-bottom: 72px; }
+
+dialog { width: min(30rem, calc(100% - 32px)); padding: 20px; border: 0; border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,.25); }
+dialog::backdrop { background: rgba(27,31,36,.45); }
+dialog .row { justify-content: flex-end; margin-top: 16px; }
+
+.hidden { display: none !important; }
+
+/* Phone: one column; the properties become a panel under the canvas; the palette a menu. */
+@media (max-width: 760px) {
+  .editor { grid-template-columns: 1fr; }
+  .palette ul { flex-direction: row; flex-wrap: wrap; }
+  .palette .btn { width: auto; }
+  .two { grid-template-columns: 1fr; }
+  header.app .tools { margin-inline-start: 0; }
+  .sticky-actions { position: static; }
+}
+</style>
+</head>
+<body>
+<div class="proto-bar" role="region" aria-labelledby="proto-label">
+  <strong id="proto-label" data-t="proto.label"></strong>
+  <span data-t="proto.note"></span>
+  <label class="row"><span data-t="proto.state"></span>
+    <select id="proto-state"></select>
+  </label>
+</div>
+<header class="app">
+  <span class="brand">Geminus</span>
+  <nav aria-label="Main" id="nav">
+    <button type="button" data-view="editor" aria-current="page" data-t="nav.editor"></button>
+    <button type="button" data-view="import" data-t="nav.import"></button>
+    <button type="button" data-view="proposal" data-t="nav.proposal"></button>
+  </nav>
+  <div class="tools row">
+    <label for="lang" data-t="lang"></label>
+    <select id="lang"><option value="en" lang="en">English</option><option value="zh-Hant" lang="zh-Hant">繁體中文</option></select>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+  <p class="status" role="status" id="status"></p>
+  <div id="banner"></div>
+
+  <!-- T-015: model editor -->
+  <section id="view-editor">
+    <div class="editor-head">
+      <h1>Delivery pipeline</h1>
+      <span class="badge" id="ver"></span>
+      <span class="meta" id="draft-state"></span>
+      <div class="actions row">
+        <button type="button" class="btn" id="save" disabled data-t="ed.save"></button>
+        <button type="button" class="btn primary" id="publish" data-t="ed.publish"></button>
+        <button type="button" class="btn quiet" id="reset" data-t="ed.reset"></button>
+      </div>
+    </div>
+    <div class="editor">
+      <aside class="palette" aria-labelledby="pal-h">
+        <h2 id="pal-h" data-t="ed.palette"></h2>
+        <ul>
+          <li><button type="button" class="btn" data-add="queue" data-t="ed.add.queue"></button></li>
+          <li><button type="button" class="btn" data-add="process" data-t="ed.add.process"></button></li>
+          <li><button type="button" class="btn" data-add="decision" data-t="ed.add.decision"></button></li>
+          <li><button type="button" class="btn" data-add="resource" data-t="ed.add.resource"></button></li>
+        </ul>
+        <p class="hint" data-t="ed.palette.hint"></p>
+      </aside>
+      <div>
+        <div class="canvas" role="application" aria-roledescription="" id="canvas-wrap" aria-describedby="canvas-help">
+          <svg id="canvas" width="760" height="300" viewBox="0 0 760 300">
+            <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b7380"/></marker></defs>
+            <g id="edges"></g><g id="nodes"></g>
+          </svg>
+          <span class="canvas-note" id="canvas-help" data-t="ed.canvas.help"></span>
+        </div>
+        <div class="issues">
+          <h2 data-t="ed.issues"></h2>
+          <div class="box"><table><thead><tr><th data-t="ed.col.where"></th><th data-t="ed.col.problem"></th><th data-t="ed.col.sev"></th></tr></thead><tbody id="issues"></tbody></table></div>
+        </div>
+      </div>
+      <aside class="props" aria-labelledby="props-h">
+        <h2 id="props-h" data-t="ed.props"></h2>
+        <div id="props"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- T-031: import -->
+  <section id="view-import" class="hidden">
+    <h1 data-t="im.title"></h1>
+    <ol class="steps" id="im-steps"></ol>
+    <div id="im-body"></div>
+  </section>
+
+  <!-- T-031: proposal review -->
+  <section id="view-proposal" class="hidden">
+    <h1 data-t="pr.title"></h1>
+    <div class="kind-tabs" role="group" aria-label="">
+      <button type="button" class="btn" id="kind-edit" aria-pressed="true" data-t="pr.kind.edit"></button>
+      <button type="button" class="btn" id="kind-scenario" aria-pressed="false" data-t="pr.kind.scenario"></button>
+    </div>
+    <div id="pr-body"></div>
+  </section>
+</main>
+
+<dialog id="dlg" aria-labelledby="dlg-h" aria-describedby="dlg-b">
+  <h2 id="dlg-h"></h2>
+  <div id="dlg-b"></div>
+  <div class="row"><button type="button" class="btn" id="dlg-cancel" autofocus></button><button type="button" class="btn" id="dlg-ok"></button></div>
+</dialog>
+
+<script>
+"use strict";
+const T = {
+  en: {
+    "proto.label": "Prototype for review", "proto.note": "Low fidelity: layout and flow only. Nothing is saved. Use the menu to see other states.", "proto.state": "Show state:",
+    "nav.editor": "Model editor", "nav.import": "Import data", "nav.proposal": "AI proposal review", "lang": "Language",
+    "st.normal": "Normal", "st.loading": "Loading", "st.forbidden": "No permission (viewer)", "st.conflict": "Someone else saved (409)", "st.network": "API unreachable", "st.needsInput": "AI needs more information", "st.stale": "Proposal base is out of date",
+    "ed.version": "Version {v} · draft revision {r}", "ed.saved": "All changes saved", "ed.dirty": "{n} unsaved changes", "ed.save": "Save draft", "ed.publish": "Publish version", "ed.reset": "Reset draft…",
+    "ed.palette": "Add a step", "ed.add.queue": "Queue", "ed.add.process": "Process", "ed.add.decision": "Decision", "ed.add.resource": "Resource pool", "ed.palette.hint": "Then connect it on the canvas.",
+    "ed.canvas": "Model canvas", "ed.canvas.help": "Arrow keys move between steps; Enter selects; Delete removes.",
+    "ed.issues": "Validation issues", "ed.col.where": "Where", "ed.col.problem": "Problem", "ed.col.sev": "Severity", "ed.sev.error": "Error", "ed.sev.warning": "Warning", "ed.noIssues": "No issues. The model can be published.",
+    "ed.props": "Properties", "ed.props.none": "Select a step on the canvas or in the issue list.", "ed.name": "Name", "ed.nameHint": "Shown to everyone in the project.", "ed.capacity": "Capacity (parallel work items)", "ed.duration": "Duration", "ed.dist": "Distribution", "ed.dist.tri": "Triangular (min, mode, max)", "ed.dist.exp": "Exponential (mean)", "ed.dist.emp": "From a dataset", "ed.minutes": "minutes", "ed.delete": "Delete step",
+    "ed.saved.ok": "Draft saved as revision {r}.", "ed.cap.err": "Enter a whole number from 1 to 1000.",
+    "ed.pub.h": "Publish version {v}?", "ed.pub.b": "Everyone in the project will see version {v}. Version {old} stays as it was; runs keep using the version they were started with.", "ed.pub.ok": "Publish", "ed.pub.done": "Version {v} published.",
+    "ed.pub.blocked.h": "Fix the errors first", "ed.pub.blocked.b": "{n} errors stop this version from being published. Select an issue to go to its step.",
+    "ed.reset.h": "Reset the draft?", "ed.reset.b": "Your {n} unsaved changes and the saved draft are replaced by version {v}. This cannot be undone.", "ed.reset.ok": "Reset", "ed.reset.done": "Draft reset to version {v}.",
+    "ed.conflict.h": "Someone else saved this model", "ed.conflict.b": "Nothing was overwritten. Your {n} changes are kept on this page.", "ed.conflict.reload": "Load their version and reapply mine", "ed.conflict.discard": "Discard my changes",
+    "ed.forbidden": "You can view this model but not change it. Ask an owner or editor.", "ed.leave.h": "Leave with unsaved changes?", "ed.leave.b": "Your {n} changes have not been saved.", "ed.leave.ok": "Leave without saving",
+    "common.cancel": "Cancel", "common.keep": "Keep editing", "common.retry": "Try again", "common.loading": "Loading…",
+    "net.h": "The API could not be reached", "net.b": "Your changes are kept on this page. Check the connection and try again.", "forbid.h": "You do not have permission to do this",
+    "im.title": "Import data", "im.s1": "Upload", "im.s2": "Preview", "im.s3": "Map columns", "im.s4": "Commit",
+    "im.drop": "Drop a CSV or JSON file here, or", "im.choose": "Choose a file", "im.limits": "Up to 50 MB. The file is kept private to this organization.", "im.upload": "Upload example file",
+    "im.profile": "{rows} rows read. {bad} rows are not valid and will be left out.", "im.download": "Download the invalid rows (CSV)", "im.preview": "First rows", "im.next": "Next", "im.back": "Back",
+    "im.map.h": "Which column holds what?", "im.map.hint": "Suggestions are marked. Check every one: nothing is used until you commit.", "im.suggested": "Suggested",
+    "im.f.ticket": "Work item ID", "im.f.stage": "Step", "im.f.start": "Started at", "im.f.end": "Finished at", "im.f.ignore": "Do not use",
+    "im.commit.h": "Commit the import?", "im.commit.b": "This creates dataset version 2 with {rows} rows. The model does not change until you approve a proposal that uses it.", "im.commit": "Commit import", "im.commit.done": "Dataset version 2 created.",
+    "im.col.row": "Row", "im.col.problem": "Problem",
+    "pr.title": "AI proposal review", "pr.kind.edit": "Model edit", "pr.kind.scenario": "Scenario (what-if)",
+    "pr.base": "Based on version {v}", "pr.base.ok": "This is the current version.", "pr.intent": "Your request", "pr.intentText": "Add a security review step between Review and CI, staffed by the 2 security reviewers.",
+    "pr.risk": "Risk", "pr.risk.server": "Checked by the server: {level}", "pr.risk.ai": "The AI said: {level}", "pr.risk.high": "high", "pr.risk.low": "low", "pr.risk.why": "High because it adds a resource pool and changes the path every work item takes.",
+    "pr.changes": "Changes", "pr.op.add": "Add", "pr.op.change": "Change", "pr.op.remove": "Remove",
+    "pr.c1": "step “Security review” (process, capacity 2, triangular 30 / 60 / 180 minutes)", "pr.c2": "resource pool “Security reviewers” (2 people)", "pr.c3": "connection Review → CI becomes Review → Security review → CI",
+    "pr.assume": "Assumptions the AI made", "pr.a1": "Security review takes 30 to 180 minutes, most often 60 (no data was given).", "pr.a2": "Every work item goes through security review.",
+    "pr.valid": "Validation", "pr.valid.ok": "The changed model passes all checks.", "pr.effects": "Expected effects (not yet simulated)", "pr.e1": "Lead time probably rises by about 1 hour per work item.",
+    "pr.approve.edit": "Approve and create version {v}", "pr.approve.scenario": "Approve scenario", "pr.reject": "Reject", "pr.editFirst": "Edit before approving",
+    "pr.approve.h": "Create version {v} from this proposal?", "pr.approve.b": "The server checks the proposal again against version {base}. If the model changed since, nothing is created and you are told.", "pr.approve.done": "Version {v} created from the proposal.",
+    "pr.scen.h": "Save this scenario?", "pr.scen.b": "It is saved on version {base}; the model does not change. Nothing runs until you start a simulation yourself.", "pr.scen.done": "Scenario saved. Start a simulation to compare it with the baseline.",
+    "pr.scen.note": "A scenario is a what-if on top of version {base}. Approving it never changes the model.",
+    "pr.reject.h": "Reject the proposal?", "pr.reject.b": "The model stays as it is. You can say why (optional):", "pr.reject.done": "Proposal rejected. Nothing changed.",
+    "pr.needs.h": "The AI needs more information", "pr.needs.b": "It could not make a complete proposal. Answer these and ask again:", "pr.needs.q1": "How long does a security review usually take?", "pr.needs.q2": "Do all work items need one, or only some?", "pr.needs.ask": "Answer and ask again",
+    "pr.stale.h": "The model changed since this proposal", "pr.stale.b": "It was made for version {base}; the current version is {cur}. It cannot be approved. Ask the AI again on version {cur}.", "pr.stale.again": "Ask again on version {cur}",
+  },
+  "zh-Hant": {
+    "proto.label": "供審閱的 prototype", "proto.note": "低擬真：只看版面與流程，不會儲存任何東西。可用選單切換其他狀態。", "proto.state": "顯示狀態：",
+    "nav.editor": "模型編輯器", "nav.import": "匯入資料", "nav.proposal": "AI 建議審閱", "lang": "語言",
+    "st.normal": "一般", "st.loading": "載入中", "st.forbidden": "沒有權限（檢視者）", "st.conflict": "別人已儲存（409）", "st.network": "無法連上 API", "st.needsInput": "AI 需要更多資訊", "st.stale": "建議所依據的版本已過時",
+    "ed.version": "版本 {v} · 草稿修訂 {r}", "ed.saved": "所有變更已儲存", "ed.dirty": "{n} 項未儲存的變更", "ed.save": "儲存草稿", "ed.publish": "發布版本", "ed.reset": "重設草稿…",
+    "ed.palette": "新增步驟", "ed.add.queue": "佇列", "ed.add.process": "處理步驟", "ed.add.decision": "分流", "ed.add.resource": "資源池", "ed.palette.hint": "新增後在畫布上連接。",
+    "ed.canvas": "模型畫布", "ed.canvas.help": "方向鍵在步驟間移動；Enter 選取；Delete 刪除。",
+    "ed.issues": "驗證問題", "ed.col.where": "位置", "ed.col.problem": "問題", "ed.col.sev": "嚴重程度", "ed.sev.error": "錯誤", "ed.sev.warning": "警告", "ed.noIssues": "沒有問題，模型可以發布。",
+    "ed.props": "屬性", "ed.props.none": "在畫布或問題清單中選取一個步驟。", "ed.name": "名稱", "ed.nameHint": "專案中的所有人都看得到。", "ed.capacity": "容量（可同時處理的工作項目）", "ed.duration": "所需時間", "ed.dist": "分布", "ed.dist.tri": "三角分布（最小、最常見、最大）", "ed.dist.exp": "指數分布（平均）", "ed.dist.emp": "來自資料集", "ed.minutes": "分鐘", "ed.delete": "刪除步驟",
+    "ed.saved.ok": "草稿已儲存為修訂 {r}。", "ed.cap.err": "請輸入 1 到 1000 的整數。",
+    "ed.pub.h": "要發布版本 {v} 嗎？", "ed.pub.b": "專案中的所有人都會看到版本 {v}。版本 {old} 維持原樣；已開始的模擬繼續使用當時的版本。", "ed.pub.ok": "發布", "ed.pub.done": "版本 {v} 已發布。",
+    "ed.pub.blocked.h": "請先修正錯誤", "ed.pub.blocked.b": "有 {n} 個錯誤，這個版本還不能發布。選取問題即可跳到對應的步驟。",
+    "ed.reset.h": "要重設草稿嗎？", "ed.reset.b": "你的 {n} 項未儲存變更與已儲存的草稿都會被版本 {v} 取代，且無法復原。", "ed.reset.ok": "重設", "ed.reset.done": "草稿已重設為版本 {v}。",
+    "ed.conflict.h": "別人已儲存了這個模型", "ed.conflict.b": "沒有任何內容被覆寫。你的 {n} 項變更仍保留在這個頁面上。", "ed.conflict.reload": "載入對方的版本並重新套用我的變更", "ed.conflict.discard": "捨棄我的變更",
+    "ed.forbidden": "你可以檢視這個模型，但不能修改。請洽 owner 或 editor。", "ed.leave.h": "要在未儲存的情況下離開嗎？", "ed.leave.b": "你的 {n} 項變更尚未儲存。", "ed.leave.ok": "不儲存並離開",
+    "common.cancel": "取消", "common.keep": "繼續編輯", "common.retry": "再試一次", "common.loading": "載入中…",
+    "net.h": "無法連上 API", "net.b": "你的變更仍保留在這個頁面上。請檢查連線後再試一次。", "forbid.h": "你沒有執行這項操作的權限",
+    "im.title": "匯入資料", "im.s1": "上傳", "im.s2": "預覽", "im.s3": "對應欄位", "im.s4": "確認匯入",
+    "im.drop": "將 CSV 或 JSON 檔拖放到這裡，或", "im.choose": "選擇檔案", "im.limits": "最大 50 MB。檔案只限本組織存取。", "im.upload": "上傳範例檔",
+    "im.profile": "已讀取 {rows} 列，其中 {bad} 列無效，不會使用。", "im.download": "下載無效的列（CSV）", "im.preview": "前幾列", "im.next": "下一步", "im.back": "上一步",
+    "im.map.h": "每一欄代表什麼？", "im.map.hint": "建議的對應會標示出來，請逐一確認：確認匯入前不會使用任何資料。", "im.suggested": "建議",
+    "im.f.ticket": "工作項目 ID", "im.f.stage": "步驟", "im.f.start": "開始時間", "im.f.end": "完成時間", "im.f.ignore": "不使用",
+    "im.commit.h": "要確認匯入嗎？", "im.commit.b": "這會建立含 {rows} 列的資料集版本 2。在你批准使用它的建議之前，模型不會改變。", "im.commit": "確認匯入", "im.commit.done": "已建立資料集版本 2。",
+    "im.col.row": "列", "im.col.problem": "問題",
+    "pr.title": "AI 建議審閱", "pr.kind.edit": "修改模型", "pr.kind.scenario": "情境（假設分析）",
+    "pr.base": "依據版本 {v}", "pr.base.ok": "這是目前的版本。", "pr.intent": "你的需求", "pr.intentText": "在 Review 與 CI 之間加入資安審查步驟，由 2 位資安審查員負責。",
+    "pr.risk": "風險", "pr.risk.server": "伺服器檢查結果：{level}", "pr.risk.ai": "AI 的判斷：{level}", "pr.risk.high": "高", "pr.risk.low": "低", "pr.risk.why": "因為新增了資源池，且改變了每個工作項目經過的路徑，所以為高。",
+    "pr.changes": "變更", "pr.op.add": "新增", "pr.op.change": "修改", "pr.op.remove": "移除",
+    "pr.c1": "步驟「Security review」（處理步驟，容量 2，三角分布 30／60／180 分鐘）", "pr.c2": "資源池「Security reviewers」（2 人）", "pr.c3": "連線 Review → CI 改為 Review → Security review → CI",
+    "pr.assume": "AI 的假設", "pr.a1": "資安審查需 30 到 180 分鐘，最常見為 60 分鐘（沒有提供資料）。", "pr.a2": "每個工作項目都要經過資安審查。",
+    "pr.valid": "驗證", "pr.valid.ok": "修改後的模型通過所有檢查。", "pr.effects": "預期影響（尚未模擬）", "pr.e1": "每個工作項目的前置時間可能增加約 1 小時。",
+    "pr.approve.edit": "批准並建立版本 {v}", "pr.approve.scenario": "批准情境", "pr.reject": "拒絕", "pr.editFirst": "先修改再批准",
+    "pr.approve.h": "要由這個建議建立版本 {v} 嗎？", "pr.approve.b": "伺服器會再依版本 {base} 檢查一次。若模型已被修改，不會建立任何東西，並會告訴你。", "pr.approve.done": "已由建議建立版本 {v}。",
+    "pr.scen.h": "要儲存這個情境嗎？", "pr.scen.b": "它會存在版本 {base} 上，模型不會改變。在你自己開始模擬之前，不會執行任何東西。", "pr.scen.done": "情境已儲存。開始模擬即可與基準比較。",
+    "pr.scen.note": "情境是在版本 {base} 上的假設分析，批准它永遠不會改變模型。",
+    "pr.reject.h": "要拒絕這個建議嗎？", "pr.reject.b": "模型維持原樣。你可以說明原因（選填）：", "pr.reject.done": "已拒絕建議，沒有任何變更。",
+    "pr.needs.h": "AI 需要更多資訊", "pr.needs.b": "它無法提出完整的建議。請回答以下問題後再問一次：", "pr.needs.q1": "資安審查通常需要多久？", "pr.needs.q2": "所有工作項目都需要，還是只有部分？", "pr.needs.ask": "回答並再問一次",
+    "pr.stale.h": "這個建議產生後模型已被修改", "pr.stale.b": "它是依版本 {base} 產生的，目前版本是 {cur}，因此無法批准。請在版本 {cur} 上再問 AI 一次。", "pr.stale.again": "在版本 {cur} 上再問一次",
+  },
+};
+let lang = "en";
+const t = (k, p = {}) => (T[lang][k] ?? k).replace(/\{(\w+)\}/g, (_, n) => String(p[n] ?? ""));
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- state ---------- */
+const S = { view: "editor", proto: "normal", version: 3, revision: 12, dirty: 0, selected: "review", status: "",
+  nodes: [
+    { id: "source", name: "Source", kind: "source", x: 20, y: 120 }, { id: "review", name: "Review", kind: "process", x: 150, y: 120, capacity: "0", issue: "cap" },
+    { id: "ci", name: "CI", kind: "process", x: 280, y: 120, capacity: "4" }, { id: "test", name: "Test", kind: "process", x: 410, y: 120, capacity: "3", issue: "dist" },
+    { id: "deploy", name: "Deploy", kind: "process", x: 540, y: 120, capacity: "1" }, { id: "sink", name: "Done", kind: "sink", x: 660, y: 120 } ],
+  importStep: 1, kind: "edit" };
+const issues = () => S.nodes.filter((n) => n.issue === "cap" && !(Number.isInteger(+n.capacity) && +n.capacity >= 1 && +n.capacity <= 1000)).map((n) => ({ node: n.id, path: `/nodes/${n.id}/capacity`, msg: t("ed.cap.err"), sev: "error" }))
+  .concat(S.nodes.filter((n) => n.issue === "dist").map((n) => ({ node: n.id, path: `/nodes/${n.id}/duration`, msg: lang === "en" ? "The maximum is below the most common value." : "最大值小於最常見的值。", sev: "warning" })));
+
+/* ---------- rendering ---------- */
+function renderStatic() {
+  document.documentElement.lang = lang;
+  for (const el of document.querySelectorAll("[data-t]")) el.textContent = t(el.dataset.t);
+  $("#nav").setAttribute("aria-label", lang === "en" ? "Main" : "主選單");
+  $("#canvas-wrap").setAttribute("aria-label", t("ed.canvas"));
+  const ps = $("#proto-state"); const keep = S.proto;
+  ps.innerHTML = ["normal", "loading", "forbidden", "conflict", "network", "needsInput", "stale"].map((k) => `<option value="${k}">${esc(t("st." + k))}</option>`).join("");
+  ps.value = keep;
+}
+function setStatus(msg) { S.status = msg; $("#status").textContent = msg; }
+function banner() {
+  const b = $("#banner"); b.innerHTML = "";
+  if (S.proto === "conflict" && S.view === "editor") b.innerHTML = `<section class="callout danger" role="alert"><h3>${esc(t("ed.conflict.h"))}</h3><p>${esc(t("ed.conflict.b", { n: Math.max(S.dirty, 2) }))}</p><div class="row"><button type="button" class="btn primary" id="c-reload">${esc(t("ed.conflict.reload"))}</button><button type="button" class="btn danger" id="c-discard">${esc(t("ed.conflict.discard"))}</button></div></section>`;
+  if (S.proto === "network") b.innerHTML = `<section class="callout danger" role="alert"><h3>${esc(t("net.h"))}</h3><p>${esc(t("net.b"))}</p><button type="button" class="btn" id="retry">${esc(t("common.retry"))}</button></section>`;
+  if (S.proto === "forbidden") b.innerHTML = `<section class="callout info" role="note">${esc(t("ed.forbidden"))}</section>`;
+  if (S.proto === "loading") b.innerHTML = `<p role="status" aria-busy="true">${esc(t("common.loading"))}</p>`;
+  $("#c-reload")?.addEventListener("click", () => { S.proto = "normal"; S.revision += 1; setStatus(t("ed.saved.ok", { r: S.revision })); render(); });
+  $("#c-discard")?.addEventListener("click", () => confirmDlg("ed.reset.h", t("ed.reset.b", { n: Math.max(S.dirty, 2), v: S.version }), "ed.reset.ok", "danger", () => { S.proto = "normal"; S.dirty = 0; setStatus(t("ed.reset.done", { v: S.version })); render(); }));
+  $("#retry")?.addEventListener("click", () => { S.proto = "normal"; render(); });
+}
+function renderEditor() {
+  const ro = S.proto === "forbidden";
+  $("#ver").textContent = t("ed.version", { v: S.version, r: S.revision });
+  $("#draft-state").textContent = S.dirty ? t("ed.dirty", { n: S.dirty }) : t("ed.saved");
+  $("#save").disabled = ro || !S.dirty || S.proto === "conflict";
+  $("#publish").disabled = ro || S.proto === "conflict";
+  $("#reset").disabled = ro;
+  for (const b of document.querySelectorAll("[data-add]")) b.disabled = ro;
+  const errs = issues();
+  const ids = new Set(errs.filter((e) => e.sev === "error").map((e) => e.node));
+  $("#edges").innerHTML = S.nodes.slice(0, -1).map((n, i) => { const m = S.nodes[i + 1]; return `<path class="edge" d="M${n.x + 100} ${n.y + 25} L${m.x - 4} ${m.y + 25}"/>`; }).join("");
+  $("#nodes").innerHTML = S.nodes.map((n) => `<g class="node${n.id === S.selected ? " selected" : ""}${ids.has(n.id) ? " has-error" : ""}" tabindex="0" role="button" aria-pressed="${n.id === S.selected}" data-node="${n.id}" transform="translate(${n.x} ${n.y})"><rect width="100" height="50"/><text x="10" y="22">${esc(n.name)}</text><text class="sub" x="10" y="38">${esc(t("ed.add." + (n.kind === "process" ? "process" : n.kind === "source" ? "queue" : "queue")))}</text>${ids.has(n.id) ? '<circle class="issue-dot" cx="92" cy="8" r="5"/>' : ""}</g>`).join("");
+  for (const g of document.querySelectorAll("[data-node]")) {
+    g.addEventListener("click", () => select(g.dataset.node));
+    g.addEventListener("keydown", (e) => {
+      const i = S.nodes.findIndex((n) => n.id === g.dataset.node);
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(g.dataset.node); }
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); const j = Math.min(S.nodes.length - 1, Math.max(0, i + (e.key === "ArrowRight" ? 1 : -1))); document.querySelector(`[data-node="${S.nodes[j].id}"]`)?.focus(); }
+    });
+  }
+  $("#issues").innerHTML = errs.length ? errs.map((e) => `<tr class="clickable" tabindex="0" data-goto="${e.node}"><td><code>${esc(e.path)}</code></td><td>${esc(e.msg)}</td><td><span class="badge ${e.sev === "error" ? "err" : "warn"}">${esc(t(e.sev === "error" ? "ed.sev.error" : "ed.sev.warning"))}</span></td></tr>`).join("") : `<tr><td colspan="3">${esc(t("ed.noIssues"))}</td></tr>`;
+  for (const r of document.querySelectorAll("[data-goto]")) { const go = () => { select(r.dataset.goto); $("#cap")?.focus(); }; r.addEventListener("click", go); r.addEventListener("keydown", (e) => e.key === "Enter" && go()); }
+  const n = S.nodes.find((x) => x.id === S.selected);
+  const p = $("#props");
+  if (!n) { p.innerHTML = `<p class="hint">${esc(t("ed.props.none"))}</p>`; return; }
+  const capErr = errs.find((e) => e.node === n.id && e.sev === "error");
+  p.innerHTML = `<div class="field"><label for="nm">${esc(t("ed.name"))}</label><input id="nm" value="${esc(n.name)}" ${ro ? "disabled" : ""} aria-describedby="nm-h"><span class="hint" id="nm-h">${esc(t("ed.nameHint"))}</span></div>` +
+    (n.kind === "process" ? `<div class="field"><label for="cap">${esc(t("ed.capacity"))}</label><input id="cap" inputmode="numeric" value="${esc(n.capacity)}" ${ro ? "disabled" : ""} ${capErr ? 'aria-invalid="true" aria-describedby="cap-e"' : ""}>${capErr ? `<span class="err" id="cap-e">${esc(capErr.msg)}</span>` : ""}</div>
+      <fieldset class="field" style="border:0;padding:0;margin:0 0 12px"><legend style="font-weight:600">${esc(t("ed.duration"))}</legend><label class="hint" for="dist" style="font-weight:400">${esc(t("ed.dist"))}</label><select id="dist" ${ro ? "disabled" : ""}><option>${esc(t("ed.dist.tri"))}</option><option>${esc(t("ed.dist.exp"))}</option><option>${esc(t("ed.dist.emp"))}</option></select>
+      <div class="row"><input aria-label="min" size="4" value="10" ${ro ? "disabled" : ""}><input aria-label="mode" size="4" value="30" ${ro ? "disabled" : ""}><input aria-label="max" size="4" value="${n.issue === "dist" ? "20" : "90"}" ${ro ? "disabled" : ""}><span class="hint">${esc(t("ed.minutes"))}</span></div></fieldset>` : "") +
+    `<button type="button" class="btn danger" id="del" ${ro || n.kind !== "process" ? "disabled" : ""}>${esc(t("ed.delete"))}</button>`;
+  const edit = () => { S.dirty += 1; $("#draft-state").textContent = t("ed.dirty", { n: S.dirty }); $("#save").disabled = S.proto === "conflict"; };
+  $("#nm")?.addEventListener("input", (e) => { n.name = e.target.value; edit(); renderCanvasOnly(); });
+  $("#cap")?.addEventListener("change", (e) => { n.capacity = e.target.value; edit(); renderEditor(); $("#cap")?.focus(); });
+  $("#del")?.addEventListener("click", () => confirmDlg("ed.delete", lang === "en" ? `Delete “${n.name}” and its connections?` : `要刪除「${n.name}」與它的連線嗎？`, "ed.delete", "danger", () => { S.nodes = S.nodes.filter((x) => x.id !== n.id); S.selected = null; S.dirty += 1; render(); }));
+}
+function renderCanvasOnly() { const g = document.querySelector(`[data-node="${S.selected}"] text`); const n = S.nodes.find((x) => x.id === S.selected); if (g && n) g.textContent = n.name; }
+function select(id) { S.selected = id; renderEditor(); document.querySelector(`[data-node="${id}"]`)?.focus(); }
+
+function renderImport() {
+  const steps = ["im.s1", "im.s2", "im.s3", "im.s4"];
+  $("#im-steps").innerHTML = steps.map((k, i) => `<li${i + 1 === S.importStep ? ' aria-current="step"' : ""} class="${i + 1 < S.importStep ? "done" : ""}">${esc(t(k))}</li>`).join("");
+  const b = $("#im-body");
+  const rows = [["T-101", "Review", "2026-09-01 09:12", "2026-09-01 11:40"], ["T-102", "CI", "2026-09-01 09:30", "2026-09-01 09:52"], ["T-103", "Review", "2026-09-01 10:02", ""], ["T-104", "Deploy", "not a date", "2026-09-02 08:00"]];
+  if (S.importStep === 1) {
+    b.innerHTML = `<div class="drop"><p>${esc(t("im.drop"))}</p><button type="button" class="btn" id="choose">${esc(t("im.choose"))}</button><p class="hint">${esc(t("im.limits"))}</p></div><div class="row" style="margin-top:12px"><button type="button" class="btn primary" id="up">${esc(t("im.upload"))}</button></div>`;
+    $("#up").addEventListener("click", () => { S.importStep = 2; renderImport(); });
+    $("#choose").addEventListener("click", () => { S.importStep = 2; renderImport(); });
+  } else if (S.importStep === 2) {
+    b.innerHTML = `<section class="callout warning" role="note">${esc(t("im.profile", { rows: "1,284", bad: 3 }))} <button type="button" class="btn quiet">${esc(t("im.download"))}</button></section>
+      <div class="two"><div><h2>${esc(t("im.preview"))}</h2><div class="box"><table><thead><tr><th>ticket</th><th>stage</th><th>started</th><th>finished</th></tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td><code>${esc(c)}</code></td>`).join("")}</tr>`).join("")}</tbody></table></div></div>
+      <div><h2>${esc(lang === "en" ? "Invalid rows" : "無效的列")}</h2><div class="box"><table><thead><tr><th>${esc(t("im.col.row"))}</th><th>${esc(t("im.col.problem"))}</th></tr></thead><tbody><tr><td>4</td><td>${esc(lang === "en" ? "“started” is not a date-time." : "「started」不是日期時間。")}</td></tr><tr><td>311</td><td>${esc(lang === "en" ? "“finished” is before “started”." : "「finished」早於「started」。")}</td></tr><tr><td>902</td><td>${esc(lang === "en" ? "Unknown step “Hotfix”." : "未知的步驟「Hotfix」。")}</td></tr></tbody></table></div></div></div>
+      <div class="row"><button type="button" class="btn" id="bk">${esc(t("im.back"))}</button><button type="button" class="btn primary" id="nx">${esc(t("im.next"))}</button></div>`;
+    $("#bk").addEventListener("click", () => { S.importStep = 1; renderImport(); }); $("#nx").addEventListener("click", () => { S.importStep = 3; renderImport(); });
+  } else {
+    const cols = [["ticket", "im.f.ticket", true], ["stage", "im.f.stage", true], ["started", "im.f.start", true], ["finished", "im.f.end", false]];
+    const opts = ["im.f.ticket", "im.f.stage", "im.f.start", "im.f.end", "im.f.ignore"];
+    b.innerHTML = `<h2>${esc(t("im.map.h"))}</h2><p class="hint">${esc(t("im.map.hint"))}</p><div class="box"><table><thead><tr><th>${esc(lang === "en" ? "Column in the file" : "檔案中的欄")}</th><th>${esc(lang === "en" ? "Means" : "代表")}</th><th></th></tr></thead><tbody>${cols.map(([c, f, sug], i) => `<tr><td><code>${c}</code></td><td><label class="hidden" for="m${i}">${c}</label><select id="m${i}">${opts.map((o) => `<option${o === f ? " selected" : ""}>${esc(t(o))}</option>`).join("")}</select></td><td>${sug ? `<span class="badge">${esc(t("im.suggested"))}</span>` : ""}</td></tr>`).join("")}</tbody></table></div>
+      <div class="row"><button type="button" class="btn" id="bk">${esc(t("im.back"))}</button><button type="button" class="btn primary" id="cm">${esc(t("im.commit"))}</button></div>`;
+    $("#bk").addEventListener("click", () => { S.importStep = 2; renderImport(); });
+    $("#cm").addEventListener("click", () => confirmDlg("im.commit.h", t("im.commit.b", { rows: "1,281" }), "im.commit", "primary", () => { S.importStep = 4; setStatus(t("im.commit.done")); renderImport(); }));
+  }
+}
+
+function renderProposal() {
+  $("#kind-edit").setAttribute("aria-pressed", S.kind === "edit"); $("#kind-scenario").setAttribute("aria-pressed", S.kind === "scenario");
+  $("#kind-edit").className = "btn" + (S.kind === "edit" ? " primary" : ""); $("#kind-scenario").className = "btn" + (S.kind === "scenario" ? " primary" : "");
+  document.querySelector(".kind-tabs").setAttribute("aria-label", lang === "en" ? "Proposal type" : "建議類型");
+  const b = $("#pr-body");
+  if (S.proto === "needsInput") {
+    b.innerHTML = `<section class="callout warning" role="note"><h3>${esc(t("pr.needs.h"))}</h3><p>${esc(t("pr.needs.b"))}</p><div class="field"><label for="q1">${esc(t("pr.needs.q1"))}</label><input id="q1"></div><div class="field"><label for="q2">${esc(t("pr.needs.q2"))}</label><input id="q2"></div><button type="button" class="btn primary">${esc(t("pr.needs.ask"))}</button></section>`;
+    return;
+  }
+  const stale = S.proto === "stale";
+  b.innerHTML = (stale ? `<section class="callout danger" role="alert"><h3>${esc(t("pr.stale.h"))}</h3><p>${esc(t("pr.stale.b", { base: 3, cur: 4 }))}</p><button type="button" class="btn primary">${esc(t("pr.stale.again", { cur: 4 }))}</button></section>` : "") +
+    (S.kind === "scenario" ? `<section class="callout info" role="note">${esc(t("pr.scen.note", { base: 3 }))}</section>` : "") +
+    `<div class="two"><div>
+      <section class="panel"><h2>${esc(t("pr.intent"))}</h2><p>${esc(t("pr.intentText"))}</p><p class="row"><span class="badge">${esc(t("pr.base", { v: 3 }))}</span><span class="hint">${stale ? "" : esc(t("pr.base.ok"))}</span></p></section>
+      <section class="panel"><h2>${esc(t("pr.changes"))}</h2><ul class="diff">
+        <li><span class="op add">${esc(t("pr.op.add"))}</span>${esc(t("pr.c1"))}</li><li><span class="op add">${esc(t("pr.op.add"))}</span>${esc(t("pr.c2"))}</li><li><span class="op chg">${esc(t("pr.op.change"))}</span>${esc(t("pr.c3"))}</li></ul></section>
+      <section class="panel"><h2>${esc(t("pr.assume"))}</h2><ul><li>${esc(t("pr.a1"))}</li><li>${esc(t("pr.a2"))}</li></ul></section>
+    </div><div>
+      <section class="panel"><h2>${esc(t("pr.risk"))}</h2><p class="row"><span class="badge high">${esc(t("pr.risk.server", { level: t("pr.risk.high") }))}</span><span class="badge">${esc(t("pr.risk.ai", { level: t("pr.risk.low") }))}</span></p><p class="hint">${esc(t("pr.risk.why"))}</p></section>
+      <section class="panel"><h2>${esc(t("pr.valid"))}</h2><p>${esc(t("pr.valid.ok"))}</p></section>
+      <section class="panel"><h2>${esc(t("pr.effects"))}</h2><p>${esc(t("pr.e1"))}</p></section>
+    </div></div>
+    <div class="sticky-actions">
+      <button type="button" class="btn primary" id="ap" ${stale || S.proto === "forbidden" ? "disabled" : ""}>${esc(S.kind === "edit" ? t("pr.approve.edit", { v: 4 }) : t("pr.approve.scenario"))}</button>
+      <button type="button" class="btn" id="ef" ${stale ? "disabled" : ""}>${esc(t("pr.editFirst"))}</button>
+      <button type="button" class="btn danger" id="rj">${esc(t("pr.reject"))}</button>
+    </div>`;
+  $("#ap").addEventListener("click", () => S.kind === "edit"
+    ? confirmDlg("pr.approve.h", t("pr.approve.b", { base: 3 }), "pr.approve.edit", "primary", () => setStatus(t("pr.approve.done", { v: 4 })), { v: 4 })
+    : confirmDlg("pr.scen.h", t("pr.scen.b", { base: 3 }), "pr.approve.scenario", "primary", () => setStatus(t("pr.scen.done"))));
+  $("#rj").addEventListener("click", () => confirmDlg("pr.reject.h", `${esc(t("pr.reject.b"))}<div class="field" style="margin-top:8px"><label class="hidden" for="why">why</label><input id="why"></div>`, "pr.reject", "danger", () => setStatus(t("pr.reject.done")), {}, true));
+  $("#ef").addEventListener("click", () => { S.view = "editor"; render(); });
+}
+
+/* ---------- dialog ---------- */
+let onOk = null, opener = null;
+function confirmDlg(hKey, body, okKey, tone, ok, params = {}, html = false) {
+  opener = document.activeElement;
+  $("#dlg-h").textContent = t(hKey, params);
+  if (html) $("#dlg-b").innerHTML = body; else $("#dlg-b").textContent = body;
+  $("#dlg-cancel").textContent = t("common.cancel");
+  $("#dlg-ok").textContent = t(okKey, params);
+  $("#dlg-ok").className = "btn " + tone;
+  onOk = ok; $("#dlg").showModal(); $("#dlg-cancel").focus();
+}
+$("#dlg-cancel").addEventListener("click", () => $("#dlg").close());
+$("#dlg-ok").addEventListener("click", () => { $("#dlg").close(); onOk?.(); });
+$("#dlg").addEventListener("close", () => { if (opener?.isConnected) opener.focus(); });
+
+/* ---------- wiring ---------- */
+function render() {
+  renderStatic(); banner();
+  for (const v of ["editor", "import", "proposal"]) { $("#view-" + v).classList.toggle("hidden", S.view !== v); document.querySelector(`[data-view="${v}"]`).toggleAttribute("aria-current", S.view === v); if (S.view === v) document.querySelector(`[data-view="${v}"]`).setAttribute("aria-current", "page"); }
+  if (S.view === "editor") renderEditor(); else if (S.view === "import") renderImport(); else renderProposal();
+}
+for (const b of document.querySelectorAll("[data-view]")) b.addEventListener("click", () => {
+  const go = () => { S.view = b.dataset.view; setStatus(""); render(); $("#main").focus(); };
+  if (S.view === "editor" && S.dirty && b.dataset.view !== "editor") confirmDlg("ed.leave.h", t("ed.leave.b", { n: S.dirty }), "ed.leave.ok", "danger", () => { S.dirty = 0; go(); });
+  else go();
+});
+$("#lang").addEventListener("change", (e) => { lang = e.target.value; render(); });
+$("#proto-state").addEventListener("change", (e) => { S.proto = e.target.value; render(); });
+$("#save").addEventListener("click", () => { S.revision += 1; S.dirty = 0; setStatus(t("ed.saved.ok", { r: S.revision })); renderEditor(); $("#save").focus(); });
+$("#publish").addEventListener("click", () => {
+  const n = issues().filter((e) => e.sev === "error").length;
+  if (n) confirmDlg("ed.pub.blocked.h", t("ed.pub.blocked.b", { n }), "common.keep", "primary", () => {});
+  else confirmDlg("ed.pub.h", t("ed.pub.b", { v: S.version + 1, old: S.version }), "ed.pub.ok", "primary", () => { S.version += 1; S.dirty = 0; setStatus(t("ed.pub.done", { v: S.version })); renderEditor(); }, { v: S.version + 1 });
+});
+$("#reset").addEventListener("click", () => confirmDlg("ed.reset.h", t("ed.reset.b", { n: S.dirty, v: S.version }), "ed.reset.ok", "danger", () => { S.dirty = 0; setStatus(t("ed.reset.done", { v: S.version })); renderEditor(); }));
+for (const b of document.querySelectorAll("[data-add]")) b.addEventListener("click", () => { const id = "new" + S.nodes.length; S.nodes.splice(S.nodes.length - 1, 0, { id, name: t("ed.add." + b.dataset.add), kind: "process", x: 0, y: 0, capacity: "1" }); S.nodes.forEach((n, i) => { n.x = 20 + i * (720 / Math.max(1, S.nodes.length - 1)) * 0.95; }); S.dirty += 1; select(id); });
+$("#kind-edit").addEventListener("click", () => { S.kind = "edit"; renderProposal(); });
+$("#kind-scenario").addEventListener("click", () => { S.kind = "scenario"; renderProposal(); });
+render();
+</script>
+</body>
+</html>
