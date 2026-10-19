@@ -3,20 +3,21 @@
 // valid, as CSV a person opens in a spreadsheet. It is a derived artifact:
 // the uploaded file itself is never changed.
 //
-// The report is RFC 4180 CSV with CRLF line ends, in UTF-8 with a BOM (so
-// spreadsheets read non-ASCII column names and values), with the header
-// path,line,column,code,message,value. Column names and values come from
-// the uploaded file, and messages may quote them, so every cell goes
-// through Safe: a cell a spreadsheet would run as a formula starts with an
-// apostrophe instead. A report is bounded (MaxBytes): what does not fit is
-// counted in a last ERRORS_TRUNCATED row.
+// The report is RFC 4180 CSV with CRLF line ends and every cell quoted, in
+// UTF-8 with a BOM (so spreadsheets read non-ASCII column names and
+// values), with the header path,line,column,code,message,value. Column
+// names and values come from the uploaded file, and messages may quote
+// them, so every cell goes through Safe: a cell a spreadsheet would run as
+// a formula starts with an apostrophe instead, and so does every part of
+// it after a ',', ';', tab or line end, should a spreadsheet split it there
+// (T-016 review M2: ';' is a list separator in many locales). A report is
+// bounded (MaxBytes): what does not fit is counted in a last
+// ERRORS_TRUNCATED row.
 //
 // The package is pure: it neither reads nor writes storage.
 package report
 
 import (
-	"bytes"
-	"encoding/csv"
 	"errors"
 	"strconv"
 	"strings"
@@ -59,34 +60,66 @@ func formula(r rune) bool {
 	return false
 }
 
-// Safe returns cell as a spreadsheet shows it as text: a cell that starts
-// with a tab, a carriage return or a line feed, or whose first character
-// after white space is =, +, - or @ (or a full-width form), gets a leading
-// apostrophe. Any other cell is returned unchanged.
-func Safe(cell string) string {
-	first, _ := utf8.DecodeRuneInString(cell)
-	if first == '\t' || first == '\r' || first == '\n' {
-		return "'" + cell
-	}
-	if r, _ := utf8.DecodeRuneInString(strings.TrimLeftFunc(cell, unicode.IsSpace)); formula(r) {
-		return "'" + cell
-	}
-	return cell
+// separator is where a spreadsheet may split a cell: ',', ';' (the list
+// separator of many locales), a tab or a line end.
+func separator(r rune) bool {
+	return r == ',' || r == ';' || r == '\t' || r == '\r' || r == '\n'
 }
 
+// startsFormula reports whether s, after white space and quotes, starts
+// with a formula character.
+func startsFormula(s string) bool {
+	r, _ := utf8.DecodeRuneInString(strings.TrimLeftFunc(s, func(r rune) bool { return r == '"' || unicode.IsSpace(r) }))
+	return formula(r)
+}
+
+// Safe returns cell as a spreadsheet shows it as text (OWASP CSV
+// injection): a cell that starts with a tab, a carriage return or a line
+// feed, or whose first character after white space and quotes is =, +, -
+// or @ (or a full-width form), gets a leading apostrophe; so does every
+// part of it after a separator (',', ';', a tab or a line end) that would
+// start that way, the apostrophe following the separator. Any other cell
+// is returned unchanged; Safe(Safe(c)) is Safe(c).
+func Safe(cell string) string {
+	var b strings.Builder
+	changed := false
+	at := true // at the start of the cell or of a part
+	for i := 0; i < len(cell); {
+		r, w := utf8.DecodeRuneInString(cell[i:])
+		if at && (startsFormula(cell[i:]) || (i == 0 && (r == '\t' || r == '\r' || r == '\n'))) {
+			if !changed {
+				b.Grow(len(cell) + 8)
+				b.WriteString(cell[:i])
+				changed = true
+			}
+			b.WriteByte('\'')
+		}
+		if changed {
+			b.WriteString(cell[i : i+w])
+		}
+		at = separator(r)
+		i += w
+	}
+	if !changed {
+		return cell
+	}
+	return b.String()
+}
+
+// line is one row of the report: every cell UTF-8, safe and quoted, and
+// CRLF at the end.
 func line(cells []string) ([]byte, error) {
-	var b bytes.Buffer
-	w := csv.NewWriter(&b)
-	w.UseCRLF = true
-	safe := make([]string, len(cells))
+	var b []byte
 	for i, c := range cells {
-		safe[i] = Safe(c)
+		c = strings.ToValidUTF8(c, "\uFFFD")
+		if i > 0 {
+			b = append(b, ',')
+		}
+		b = append(b, '"')
+		b = append(b, strings.ReplaceAll(Safe(c), `"`, `""`)...)
+		b = append(b, '"')
 	}
-	if err := w.Write(safe); err != nil {
-		return nil, err
-	}
-	w.Flush()
-	return b.Bytes(), w.Error()
+	return append(b, '\r', '\n'), nil
 }
 
 func truncation(n int) ([]byte, error) {

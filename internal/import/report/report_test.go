@@ -6,23 +6,46 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/import/report"
 )
 
 // TEST-029: a cell a spreadsheet would run as a formula (or as DDE) starts
-// with an apostrophe, so it shows as text; nothing else changes.
+// with an apostrophe, so it shows as text; so does every part of it that a
+// spreadsheet splitting on ',', ';', a tab or a line end would make a cell
+// of its own (T-016 review M2): an apostrophe follows the separator. Nothing
+// else changes.
 func TestSafe(t *testing.T) {
 	cases := map[string]string{
+		// After a separator, white space and quotes (T-016 review M2).
+		"a;@SUM(1)":                              "a;'@SUM(1)",
+		"a,=1":                                   "a,'=1",
+		"a\t+1":                                  "a\t'+1",
+		"a\n-1":                                  "a\n'-1",
+		"a\r=1":                                  "a\r'=1",
+		"x; =1":                                  "x;' =1",
+		"x;\"=1\"":                               "x;'\"=1\"",
+		"x; \" @a":                               "x;' \" @a",
+		"名;＝1":                                   "名;'＝1",
+		"a;b;=c;d;+e":                            "a;b;'=c;d;'+e",
+		"=1;=2":                                  "'=1;'=2",
+		"\"=1\"":                                 "'\"=1\"",
+		"1;2":                                    "1;2",
+		"a; b":                                   "a; b",
+		"a;'=b":                                  "a;'=b",
+		"the row has 2 fields; the header has 3": "the row has 2 fields; the header has 3",
 		"=1+2":                                   "'=1+2",
 		"+1":                                     "'+1",
 		"-1":                                     "'-1",
 		"@SUM(A1)":                               "'@SUM(A1)",
-		"\t=1":                                   "'\t=1",
-		"\r=1":                                   "'\r=1",
-		"\n=1":                                   "'\n=1",
+		"\t=1":                                   "'\t'=1",
+		"\r=1":                                   "'\r'=1",
+		"\n=1":                                   "'\n'=1",
+		"\tx":                                    "'\tx",
 		"  =1":                                   "'  =1",
-		" \t@x":                                  "' \t@x",
+		" \t@x":                                  "' \t'@x",
 		"＝1":                                     "'＝1",
 		"＋1":                                     "'＋1",
 		"－1":                                     "'－1",
@@ -42,6 +65,9 @@ func TestSafe(t *testing.T) {
 	for in, want := range cases {
 		if got := report.Safe(in); got != want {
 			t.Errorf("Safe(%q) = %q, want %q", in, got, want)
+		}
+		if again := report.Safe(want); again != want {
+			t.Errorf("Safe(%q) = %q: not idempotent", want, again)
 		}
 	}
 }
@@ -141,4 +167,93 @@ func TestRenderIsBounded(t *testing.T) {
 	if _, err := report.Render(entries, 0, 10); err == nil {
 		t.Error("a limit below the header and the truncation row was accepted")
 	}
+}
+
+// Cells that would run as formulas once a spreadsheet splits them.
+var splitVectors = []string{
+	"a;@SUM(1)", "x,=1", "y\t+1", "z\n-1", "w\r@1", " ;=1", "q;\"=1", "名;＝1", "=HYPERLINK(\"x\");=1",
+	"a, \"quoted\"\nmessage", "\t=1", "@x", "the row has 2 fields; the header has 3",
+}
+
+// TEST-029, T-016 review M2: every cell of a report is quoted, so a
+// spreadsheet that splits on ';' (a European list separator) or a tab still
+// keeps each cell whole.
+func TestRenderQuotesEveryCell(t *testing.T) {
+	var entries []report.Entry
+	for i, v := range splitVectors {
+		entries = append(entries, report.Entry{Path: "/" + strconv.Itoa(i), Line: i + 2, Column: v, Code: "X", Message: v, Value: v})
+	}
+	data, err := report.Render(entries, 1, report.MaxBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want bytes.Buffer
+	want.WriteString("\xef\xbb\xbf")
+	for _, row := range parse(t, data) {
+		for i, cell := range row {
+			if i > 0 {
+				want.WriteByte(',')
+			}
+			want.WriteString(`"` + strings.ReplaceAll(cell, `"`, `""`) + `"`)
+		}
+		want.WriteString("\r\n")
+	}
+	if !bytes.Equal(data, want.Bytes()) {
+		t.Errorf("a cell is not quoted:\n%q\nwant\n%q", data, want.Bytes())
+	}
+}
+
+// TEST-029, T-016 review M2: however a spreadsheet splits a report, on
+// ',', ';', tabs or line ends and whether it honours quotes or not, no part
+// starts with a formula character after white space and quotes.
+func TestNoFormulaAfterASeparator(t *testing.T) {
+	var entries []report.Entry
+	for i, v := range splitVectors {
+		entries = append(entries, report.Entry{Path: "/" + v, Line: i + 2, Column: v, Code: v, Message: v, Value: v})
+	}
+	data, err := report.Render(entries, 0, report.MaxBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.FieldsFunc(strings.TrimPrefix(string(data), "\ufeff"), func(r rune) bool {
+		return r == ',' || r == ';' || r == '\t' || r == '\r' || r == '\n'
+	})
+	for _, part := range parts {
+		trimmed := strings.TrimLeftFunc(part, func(r rune) bool { return r == '"' || unicode.IsSpace(r) })
+		if r, _ := utf8.DecodeRuneInString(trimmed); strings.ContainsRune("=+-@＝＋－＠", r) {
+			t.Errorf("a part starts a formula: %q", part)
+		}
+	}
+	// Each split cell, as a spreadsheet unquotes it, is safe too.
+	for _, row := range parse(t, data) {
+		for _, cell := range row {
+			if report.Safe(cell) != cell {
+				t.Errorf("cell %q is not safe", cell)
+			}
+		}
+	}
+}
+
+// Whatever a cell holds, Safe is idempotent, only adds apostrophes, and
+// leaves no part after a separator starting a formula.
+func FuzzSafe(f *testing.F) {
+	for _, v := range splitVectors {
+		f.Add(v)
+	}
+	f.Fuzz(func(t *testing.T, cell string) {
+		if !utf8.ValidString(cell) {
+			return
+		}
+		safe := report.Safe(cell)
+		if report.Safe(safe) != safe || strings.ReplaceAll(safe, "'", "") != strings.ReplaceAll(cell, "'", "") {
+			t.Fatalf("Safe(%q) = %q", cell, safe)
+		}
+		parts := strings.FieldsFunc(safe, func(r rune) bool { return r == ',' || r == ';' || r == '\t' || r == '\r' || r == '\n' })
+		for _, part := range parts {
+			trimmed := strings.TrimLeftFunc(part, func(r rune) bool { return r == '"' || unicode.IsSpace(r) })
+			if r, _ := utf8.DecodeRuneInString(trimmed); strings.ContainsRune("=+-@＝＋－＠", r) {
+				t.Fatalf("Safe(%q) = %q: the part %q starts a formula", cell, safe, part)
+			}
+		}
+	})
 }
