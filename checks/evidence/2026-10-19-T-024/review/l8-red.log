@@ -1,0 +1,10 @@
+$ go test -count=1 -run TestDefaultAnswers ./internal/ai/provider/fake/
+# extra environment: none
+--- FAIL: TestDefaultAnswers (0.01s)
+    fake_test.go:60: en: the fake reports usage {InputTokens:333 OutputTokens:210 CacheReadInputTokens:0 CacheCreationInputTokens:0}
+    fake_test.go:60: zh-Hant: the fake reports usage {InputTokens:333 OutputTokens:202 CacheReadInputTokens:0 CacheCreationInputTokens:0}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/fake	0.019s
+FAIL
+
+# exit 1 after 0s

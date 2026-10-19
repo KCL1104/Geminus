@@ -118,7 +118,9 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	b.mu.Lock()
 	a, scripted := b.script[req.Prompt.Role][key]
 	b.mu.Unlock()
-	resp := provider.Response{Model: "fake", Usage: provider.Usage{InputTokens: int64(len(req.Prompt.User())), OutputTokens: 0}}
+	// No usage: the fake runs no model and counts no tokens, and bytes
+	// reported as tokens would mislead usage and quota records (review L8).
+	resp := provider.Response{Model: "fake"}
 	switch {
 	case scripted && a.Err != nil:
 		return resp, a.Err
@@ -131,7 +133,6 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 		}
 		resp.Text = text
 	}
-	resp.Usage.OutputTokens = int64(len(resp.Text))
 	return resp, nil
 }
 

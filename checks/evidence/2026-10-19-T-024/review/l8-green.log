@@ -1,0 +1,8 @@
+$ go test -count=1 ./internal/ai/provider/... ./internal/ai/corpus/
+# extra environment: none
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.086s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.707s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.029s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	0.683s
+
+# exit 0 after 1s
