@@ -222,3 +222,18 @@ func encodeOther(org, mdl string) string {
 	data, _ := json.Marshal(cursor{Version: 1, Org: org, List: "projects", Model: mdl, After: "2026-10-19T00:00:00Z", ID: ids.New("sim")})
 	return base64.RawURLEncoding.EncodeToString(data)
 }
+
+// T-023 review I1: after a write the deadline outlasts the longest silence
+// before the next one (a keep-alive at the first poll after KeepAlive)
+// plus that write's own WriteTimeout, for the defaults and for any setting.
+func TestStreamIdleDeadline(t *testing.T) {
+	d := Stream{}.withDefaults()
+	if d.Poll != time.Second || d.KeepAlive != 15*time.Second || d.WriteTimeout != 10*time.Second || d.MaxAge != 10*time.Minute {
+		t.Errorf("defaults %+v", d)
+	}
+	for _, c := range []Stream{d, {Poll: 20 * time.Millisecond, KeepAlive: 600 * time.Millisecond, WriteTimeout: 250 * time.Millisecond}} {
+		if c.idle() < c.KeepAlive+c.Poll+c.WriteTimeout {
+			t.Errorf("%+v: a write's deadline lasts %v after it", c, c.idle())
+		}
+	}
+}

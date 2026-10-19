@@ -5,13 +5,16 @@ import (
 	"context"
 	"encoding/json/v2"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/runs"
 	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -280,6 +283,62 @@ func TestAnIdleStreamEndsWhenTheMemberIsRemoved(t *testing.T) {
 	}
 	if n := e.count(`SELECT progress_revision FROM twin.simulation_runs WHERE id=$1`, id); n != 0 {
 		t.Errorf("the run changed (revision %d); this test needs it idle", n)
+	}
+}
+
+// T-023 review I1: a write deadline that lapses while the stream is idle
+// resets an HTTP/2 stream (HTTP/1.1 only notices at the next write). The
+// deadline set before each write therefore covers the silence that may
+// follow it, so a stream whose keep-alive is longer than its write timeout
+// stays open over HTTP/2 and keeps sending keep-alive comments.
+func TestAnIdleStreamOutlivesItsWriteTimeoutOverHTTP2(t *testing.T) {
+	e := setupRuns(t, api.WithStream(runs.Stream{Poll: 20 * time.Millisecond, KeepAlive: 600 * time.Millisecond, WriteTimeout: 250 * time.Millisecond}))
+	viewer, editor := e.a.Members[tenant.Viewer], e.a.Members[tenant.Editor]
+	_, mv := e.version(t, e.a, golden(t, "deterministic-queue.json"), nil)
+	id := decode[runBody](t, e.createRun(editor.Subject, e.a.ID, "run-sse-h2-1", runRequest(mv, 1, "none", nil))).ID
+	h2 := httptest.NewUnstartedServer(e.srv.Config.Handler)
+	h2.EnableHTTP2 = true
+	h2.StartTLS()
+	t.Cleanup(h2.Close)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", h2.URL+"/v1/simulations/"+id+"/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Authorization", "Bearer "+e.token(viewer.Subject))
+	req.Header.Set("X-Organization-ID", e.a.ID)
+	res, err := h2.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 || res.ProtoMajor != 2 {
+		t.Fatalf("%d over %s", res.StatusCode, res.Proto)
+	}
+	lines := make(chan string)
+	ended := make(chan error, 1)
+	go func() {
+		sc := bufio.NewScanner(res.Body)
+		for sc.Scan() {
+			lines <- sc.Text()
+		}
+		ended <- sc.Err()
+	}()
+	opened, comments := time.Now(), 0
+	for time.Since(opened) < 2*time.Second {
+		select {
+		case line := <-lines:
+			if strings.HasPrefix(line, ":") {
+				comments++
+			}
+		case err := <-ended:
+			t.Fatalf("the idle stream ended after %v (write timeout 250 ms, keep-alive 600 ms): %v", time.Since(opened), err)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	if comments < 2 {
+		t.Errorf("%d keep-alive comments in 2 s (keep-alive 600 ms)", comments)
 	}
 }
 

@@ -53,6 +53,13 @@ type Stream struct {
 	WriteTimeout time.Duration
 }
 
+// idle is how long a stream may go without a write after one: the next
+// write (at the latest a keep-alive) starts within KeepAlive + Poll and
+// then has WriteTimeout. The write deadline must not lapse in between: an
+// HTTP/2 stream is reset when it does, even with no write pending (T-023
+// review I1).
+func (c Stream) idle() time.Duration { return c.KeepAlive + c.Poll + c.WriteTimeout }
+
 func (c Stream) withDefaults() Stream {
 	if c.Poll <= 0 {
 		c.Poll = time.Second
@@ -312,12 +319,18 @@ func (h handlers) events(w http.ResponseWriter, r *http.Request, sc tenant.Scope
 	w.WriteHeader(http.StatusOK)
 	// From here on the response has begun: problems end the stream, they
 	// are never written as an error envelope.
+	// Each write gets WriteTimeout; after it, the deadline covers the
+	// silence until the next one (idle).
 	write := func(text string) bool {
 		_ = rc.SetWriteDeadline(time.Now().Add(h.stream.WriteTimeout))
 		if _, err := w.Write([]byte(text)); err != nil {
 			return false
 		}
-		return rc.Flush() == nil
+		if rc.Flush() != nil {
+			return false
+		}
+		_ = rc.SetWriteDeadline(time.Now().Add(h.stream.idle()))
+		return true
 	}
 	send := func(s Snapshot) bool {
 		data, err := json.Marshal(s)
