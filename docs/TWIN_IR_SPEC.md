@@ -45,7 +45,7 @@ APPROVED D-001（2026-10-15）：伺服器產生的資源 ID 為 `<prefix>_<ULID
 
 所有 flows 都有 id/from/to/routing={type:probability,probability}。decision 可有多個 outgoing flows，概率和=1；其餘非 sink 節點恰有一個 probability=1 的 flow；sink 沒有 outgoing。queue 只接一個 process，是候選 P0 限制，不暗加 calendar/priority/preemption。
 
-resource 的 type 保留 human / machine / generic；capacity 為正整數；queue_discipline=fifo。可選 role 提供 domain catalog 語義。Software Delivery catalog（範例 pack）包含 developer、reviewer、ci_runner、test_environment、deployment_slot、generic_resource；電子產線 catalog 由 T-046 定義（H-016）；kernel 不依角色字串决定行為。
+resource 的 type 保留 human / machine / generic；capacity 為正整數；queue_discipline=fifo。可選 role 提供 domain catalog 語義。範例 pack 的 Software Delivery catalog 包含 developer、reviewer、ci_runner、test_environment、deployment_slot、generic_resource；電子產線 catalog 由 T-046 定義（H-016）；kernel 不依角色字串决定行為。
 
 requires 每項為 {resource_id,units}。同一 process 不可重複列同一 resource；units≤capacity。capacity=0、負值、非整數、unknown resource 一律 invalid，不以無限等待替代 validation。
 
