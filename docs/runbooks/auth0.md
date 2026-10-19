@@ -34,7 +34,7 @@ Applications → Applications → Create → **Regular Web Application**：
 | Grant types | 只勾 Authorization Code 與 Refresh Token |
 | ID token signature | RS256（BFF 固定以 RS256 驗 ID token 簽章） |
 | Refresh token rotation | 開，reuse detection 開 |
-| Rotation 的 reuse interval | 只有一個 web instance 時設 0；多個 instance 時設 30 秒，與 BFF 在 process 內共用 refresh 結果的時間相同（`REFRESH_REUSE_MS`） |
+| Rotation 的 reuse interval | 30 秒，與 BFF 在 process 內共用 refresh 結果的時間相同（`REFRESH_REUSE_MS`）。只有一個 web instance 時也不設 0：瀏覽器取消的 request 或遺失的回應拿不到 rotation 後的 cookie，30 秒內的重送仍能拿到新 token，而不是被當成 reuse 撤銷整個 session |
 | Refresh token expiration | Inactivity lifetime 43200 秒（12 小時）、Absolute lifetime 604800 秒（7 天） |
 
 使用者：關閉 database connection 的 sign-up。使用者與 organization 只由 operator 以 `cmd/provision-tenant` 建立，subject 用 Auth0 的 `user_id`（例如 `auth0|…`）；未 provision 的 identity 登入後 API 回 403，不會自動建立（D-008）。
@@ -63,7 +63,7 @@ Go API：`AUTH_OIDC_ISSUER` 與上面相同、`AUTH_OIDC_AUDIENCE` 為 API Ident
 
 設定不完整或不合格時，BFF 的 `/auth/login`、`/auth/callback`、`/auth/logout` 與 `/api/v1/*` 一律回 503（`/auth/error` 是一般頁面，照常顯示），log 只寫變數名稱，不寫值。
 
-Auth0 暫時無法 refresh（5xx、逾時、連不上、429 等 `invalid_grant` 以外的回應）時，`/api/v1/*` 回 503，session cookie 保留，下一個 request 再試；只有 Auth0 拒絕 refresh token（`invalid_grant`：reuse、撤銷、過期）時才結束 session（401 並清除 cookie）。
+Auth0 暫時無法 refresh（連不上、逾時、5xx、429、`temporarily_unavailable`、`server_error`）或 client 設定錯誤（`invalid_client`）時，`/api/v1/*` 回 503（`Retry-After: 5`），session cookie 保留，下一個 request 再試；log 的 `session.refresh_unavailable` 帶 OAuth 錯誤碼與 status，可分辨限流與 client secret 錯誤。Auth0 拒絕 refresh token（`invalid_grant`：reuse、撤銷、過期；以及其他 OAuth 錯誤）、session 沒有 refresh token，或 Auth0 的回答無法使用時才結束 session（401 並清除 cookie，log 為 `session.refresh_failed`）。
 
 ### Session 金鑰與輪替
 
@@ -81,6 +81,7 @@ openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
 2. 呼叫任一頁面的 API：request 只到同源 `/api/v1/…`，沒有 `Authorization` header。
 3. 登出：Auth0 的 log 有 refresh token 撤銷與 logout；之後 `/api/v1/…` 回 401。
 4. 未 provision 的使用者登入：API 回 403。
-5. 登出時 BFF 不帶 `id_token_hint`（ID token 驗完即丟）：確認 Auth0 是否因此顯示登出確認畫面；若會，評估 Auth0 的 logout 設定或改為保留 ID token 的 hash 以外的方式（需另行決定）。
+5. 封鎖測試使用者、以及讓 refresh token 過期，確認 Auth0 回的錯誤碼（預期 `invalid_grant`）讓 session 以 401 結束，而不是 503。
+6. 登出時 BFF 不帶 `id_token_hint`（ID token 驗完即丟）：確認 Auth0 是否因此顯示登出確認畫面；若會，評估 Auth0 的 logout 設定或改為保留 ID token 的 hash 以外的方式（需另行決定）。
 
 自動化的對應測試是 `apps/web/tests/bff.test.ts`（單元）與 `apps/web-e2e/tests/session.spec.ts`（瀏覽器，TEST-032），兩者都只連測試 provider；連 Auth0 的檢查只能在 staging 由人執行（NOT RUN in CI）。

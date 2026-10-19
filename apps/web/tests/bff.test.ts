@@ -6,7 +6,7 @@ import { apiError, bff, type BffDeps, cookieValue, newRequestId, REFRESH_MARGIN_
 import { BffConfigError, loadBffConfig } from "../lib/session/config";
 import { newOidc } from "../lib/session/oidc";
 import { parseSealKeys, seal } from "../lib/session/seal";
-import { LOGIN_COOKIE, LOGIN_MS, MAX_TOKEN, readSession, SESSION_COOKIE, type Session, sessionCookie } from "../lib/session/session";
+import { LOGIN_COOKIE, LOGIN_MS, MAX_TOKEN, readSession, SKEW_MS, SESSION_COOKIE, type Session, sessionCookie } from "../lib/session/session";
 import { AUDIENCE, CLIENT_ID, CLIENT_SECRET, ENDPOINTS, FakeProvider, type IdTokenChange, ISSUER } from "./fake-oidc";
 
 const APP = "https://app.test.invalid";
@@ -283,6 +283,9 @@ describe("callback", () => {
     await refused(await callback(`code=${code}&state=${state}`, login), "failed");
     expect(e.logs.some((l) => l.startsWith("login.failed"))).toBe(true);
     expect(e.logs).not.toContain("login.succeeded");
+    // The refresh token issued and not kept is revoked, not left live.
+    expect(e.provider.revoked).toHaveLength(1);
+    expect(e.provider.refreshState(e.provider.revoked[0] as string)).toBe("revoked");
   });
 
   it("logs why without tokens", async () => {
@@ -320,6 +323,7 @@ describe("logout", () => {
     const s = (await sessionOf(value)) as Session;
     const res = await e.h.logout(new Request(`${APP}/auth/logout`, { method: "POST", headers: { ...csrf, cookie: `${SESSION_COOKIE}=${value}` } }));
     expect(res.status).toBe(200);
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(cookieNamed(res, SESSION_COOKIE)).toBe(`${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`);
     expect(e.provider.revoked).toEqual([s.refreshToken]);
     expect(e.provider.refreshState(s.refreshToken as string)).toBe("revoked");
@@ -596,6 +600,7 @@ describe("proxy", () => {
     it.each<[string, (p: FakeProvider) => void]>([
       ["answers 503", (p) => (p.failRefresh = true)],
       ["cannot be reached", (p) => (p.unreachableRefresh = true)],
+      ["times out", (p) => (p.unreachableRefresh = "timeout")],
       // An OAuth error that is not a refusal of the token: Auth0's rate limit.
       ["answers 429 too_many_requests", (p) => (p.refreshError = [429, "too_many_requests"])],
     ])("keeps the session when the provider %s, and the next request tries again", async (_, down) => {
@@ -607,10 +612,96 @@ describe("proxy", () => {
       // No Set-Cookie: the browser keeps the cookie it sent.
       expect(res.headers.getSetCookie()).toEqual([]);
       expect(e.api.requests).toHaveLength(0);
+      expect(res.headers.get("retry-after")).toBe("5");
       expect(e.logs.some((l) => l.startsWith("session.refresh_unavailable"))).toBe(true);
       e.provider.failRefresh = e.provider.unreachableRefresh = false;
       e.provider.refreshError = undefined;
       expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(200);
+    });
+
+    // Which provider answers end the session (401, cookie cleared) and which
+    // keep it for a later try (503): only a refusal of the token, or an
+    // answer that may have spent it, ends it.
+    it.each<[number, string | null, string | undefined, 401 | 503]>([
+      [400, "invalid_grant", undefined, 401],
+      [403, "invalid_grant", undefined, 401],
+      [400, "invalid_grant", 'Bearer error="invalid_grant"', 401],
+      [400, "access_denied", undefined, 401],
+      [400, "unauthorized_client", undefined, 401],
+      [400, "invalid_scope", undefined, 401],
+      [400, "invalid_request", undefined, 401],
+      [400, "some_new_code", undefined, 401],
+      [401, "invalid_client", undefined, 503],
+      [401, "invalid_client", 'Basic realm="token"', 503],
+      [400, "temporarily_unavailable", undefined, 503],
+      [400, "server_error", undefined, 503],
+      [429, "too_many_requests", undefined, 503],
+      [500, "server_error", undefined, 503],
+      [404, null, undefined, 503],
+      // A 2xx that is not the expected 200: the token may be spent.
+      [201, null, undefined, 401],
+    ])("a refresh answered %i %s (challenge %s) answers %i", async (status, error, challenge, want) => {
+      const { value } = await expiring(1000);
+      e.provider.refreshError = [status, error, challenge];
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      expect(res.status).toBe(want);
+      expect(cookieNamed(res, SESSION_COOKIE) ?? "").toMatch(want === 401 ? /Max-Age=0$/ : /^$/);
+      // The log names the provider's code, and never a token.
+      const line = e.logs.find((l) => l.startsWith(want === 401 ? "session.refresh_failed" : "session.refresh_unavailable")) as string;
+      // (oauth4webapi reads an OAuth error from 4xx answers only.)
+      if (error !== null && challenge === undefined && status < 500) expect(line).toContain(`"error":"${error}"`);
+      expect(line).toContain(`"status":${status}`);
+      expect(line).not.toMatch(/at-|rt-/);
+    });
+
+    it.each<[string, (p: FakeProvider) => void]>([
+      ["an ID token signed by another key", (p) => ((p.refreshIdToken = true), (p.idToken = { badSignature: true }))],
+      ["an unknown token type", (p) => (p.refreshExtra = { token_type: "mac" })],
+      ["an empty refresh token", (p) => (p.refreshExtra = { refresh_token: "" })],
+      ["an access token over the session's limit", (p) => (p.accessTokenLength = MAX_TOKEN + 1)],
+    ])("ends the session when the refresh answer has %s (the old token may be spent)", async (_, change) => {
+      const { value } = await expiring(1000);
+      change(e.provider);
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      expect(res.status).toBe(401);
+      expect(cookieNamed(res, SESSION_COOKIE)).toMatch(/Max-Age=0$/);
+      expect(e.api.requests).toHaveLength(0);
+    });
+
+    // (The signature is checked: one by another key ends the session, above.)
+    it("accepts a refresh answer with a valid ID token", async () => {
+      const { value } = await expiring(1000);
+      e.provider.refreshIdToken = true;
+      expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(200);
+    });
+
+    it("keeps the refresh token of a provider that does not rotate", async () => {
+      const { value, s } = await expiring(1000);
+      e.provider.rotateRefresh = false;
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      const fresh = (await sessionOf(valueOf(cookieNamed(res, SESSION_COOKIE) as string))) as Session;
+      expect(fresh.refreshToken).toBe(s.refreshToken);
+      expect(fresh.accessToken).not.toBe(s.accessToken);
+      expect(e.provider.refreshState(s.refreshToken as string)).toBe("live");
+    });
+
+    it.each<[string, (a: Env["api"]) => void, number]>([
+      ["does not answer", (a) => (a.fail = true), 503],
+      ["answers an error", (a) => (a.respond = () => new Response("{}", { status: 500, headers: { "content-type": "application/json" } })), 500],
+    ])("delivers the refreshed session when the API %s", async (_, down, status) => {
+      const { value, s } = await expiring(1000);
+      down(e.api);
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      expect(res.status).toBe(status);
+      // Without the new cookie the browser would retry with the spent token
+      // after the reuse window, and rotation would end the session.
+      const fresh = (await sessionOf(valueOf(cookieNamed(res, SESSION_COOKIE) as string))) as Session;
+      expect(fresh.refreshToken).not.toBe(s.refreshToken);
+      e.api.fail = false;
+      e.api.respond = () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+      e.clock.now += REFRESH_REUSE_MS + 1000;
+      const later = valueOf(await sessionCookie(e.deps.keys, { ...fresh, accessExpiresAt: e.clock.now + 600_000 }, e.clock.now));
+      expect((await e.h.proxy(get("projects", later), ["projects"])).status).toBe(200);
     });
 
     it("gives two sessions refreshing at once their own tokens", async () => {
@@ -637,6 +728,8 @@ describe("proxy", () => {
       expect(cookieNamed(res, SESSION_COOKIE)).toMatch(/Max-Age=0$/);
       expect(e.api.requests).toHaveLength(0);
       expect(e.logs.some((l) => l.startsWith("session.refresh_failed"))).toBe(true);
+      // The new refresh token, which the session cannot hold, is revoked.
+      expect(e.provider.revoked).toHaveLength(1);
     });
 
     it("after logout, an older cookie cannot get the session's tokens from the shared refresh", async () => {
@@ -659,6 +752,15 @@ describe("proxy", () => {
       const res = await e.h.proxy(get("projects", value), ["projects"]);
       expect(res.status).toBe(401);
     });
+  });
+});
+
+describe("timing", () => {
+  it("holds the values ADR-018 and the runbook rely on", () => {
+    // The runbook sets Auth0's reuse interval to the reuse window.
+    expect(REFRESH_REUSE_MS).toBe(30_000);
+    expect(REFRESH_MARGIN_MS).toBe(60_000);
+    expect(SKEW_MS).toBe(60_000);
   });
 });
 
@@ -724,6 +826,7 @@ describe("helpers", () => {
     const res = apiError("FORBIDDEN", "cross-site request refused", Date.now());
     expect(res.status).toBe(403);
     expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     const body = (await res.json()) as { error: Record<string, unknown> };
     expect(Object.keys(body.error).sort()).toEqual(["code", "message", "request_id"]);
   });

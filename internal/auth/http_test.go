@@ -4,8 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/auth"
@@ -174,5 +179,42 @@ func TestCookiesAreNotRead(t *testing.T) {
 		if w.Code != http.StatusUnauthorized || calls != 0 || auth.Reason(failed) != auth.ReasonMissing {
 			t.Errorf("a token in the %s cookie: %d, handler called %d times, %v", name, w.Code, calls, failed)
 		}
+	}
+}
+
+// TEST-032 structurally: no Go code outside tests reads or sets a cookie,
+// in any way (a request's cookies, the Cookie header, http.Cookie), so no
+// cookie can ever stand in for the Bearer token.
+func TestNoGoCodeHandlesCookies(t *testing.T) {
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
+		t.Fatalf("not the module root: %s", root)
+	}
+	cookie := regexp.MustCompile(`(?i)\.cookies?\(|"(set-)?cookie"|http\.cookie\b|setcookie`)
+	checked := 0
+	for _, dir := range []string{"internal", "cmd"} {
+		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return err
+			}
+			src, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			checked++
+			if loc := cookie.FindIndex(src); loc != nil {
+				t.Errorf("%s handles cookies: %q", path, src[loc[0]:loc[1]])
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if checked < 50 {
+		t.Fatalf("only %d Go files checked", checked)
 	}
 }

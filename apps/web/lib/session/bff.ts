@@ -3,7 +3,7 @@
 // the Next.js route files are one line each and the tests need no server.
 // Server-side only.
 import type { BffConfig } from "./config";
-import { endSessionUrl, finishLogin, type Oidc, OidcFailure, refresh, revoke, startLogin } from "./oidc";
+import { discard, endSessionUrl, finishLogin, type Oidc, OidcFailure, refresh, revoke, startLogin } from "./oidc";
 import { type SealKeys, SealedTooLarge } from "./seal";
 import { clearCookie, LOGIN_COOKIE, loginCookie, readLogin, readSession, SESSION_COOKIE, type Session, safeReturnTo, sessionCookie } from "./session";
 
@@ -177,6 +177,7 @@ export function bff(deps: BffDeps) {
       } catch (e) {
         if (!(e instanceof SealedTooLarge)) throw e;
         deps.log("login.failed", { reason: "the session does not fit in its cookie" });
+        if (session.refreshToken !== null) await discard(oidc, session.refreshToken);
         return failed("failed");
       }
       deps.log("login.succeeded");
@@ -202,7 +203,7 @@ export function bff(deps: BffDeps) {
       }
       return new Response(JSON.stringify({ redirect: endSessionUrl(oidc) }), {
         status: 200,
-        headers: [["Content-Type", "application/json"], ["Cache-Control", "no-store"], ["Set-Cookie", clearCookie(SESSION_COOKIE)]],
+        headers: [["Content-Type", "application/json"], ["Cache-Control", "no-store"], ["X-Content-Type-Options", "nosniff"], ["Set-Cookie", clearCookie(SESSION_COOKIE)]],
       });
     },
 
@@ -241,13 +242,17 @@ async function proxy(deps: BffDeps, refreshes: RefreshCache, request: Request, p
       session = await refreshOnce(deps, refreshes, session, now);
       write = true;
     } catch (e) {
-      const reason = e instanceof OidcFailure ? e.reason : "unknown";
+      // The provider's OAuth error code and status tell a refusal, a rate
+      // limit and a misconfigured client apart in the log.
+      const fields: Record<string, string | number> = { reason: e instanceof OidcFailure ? e.reason : "unknown" };
+      if (e instanceof OidcFailure && e.answer.error !== undefined) fields.error = e.answer.error;
+      if (e instanceof OidcFailure && e.answer.status !== undefined) fields.status = e.answer.status;
       if (e instanceof OidcFailure && !e.refused) {
         // An outage is not the end of the session: the cookie stays.
-        deps.log("session.refresh_unavailable", { reason });
-        return apiError("SERVICE_UNAVAILABLE", "the identity provider is unavailable", now);
+        deps.log("session.refresh_unavailable", fields);
+        return apiError("SERVICE_UNAVAILABLE", "the identity provider is unavailable", now, [["Retry-After", "5"]]);
       }
-      deps.log("session.refresh_failed", { reason });
+      deps.log("session.refresh_failed", fields);
       return apiError("UNAUTHENTICATED", "the session has ended", now, [["Set-Cookie", clearCookie(SESSION_COOKIE)]]);
     }
   }
@@ -260,6 +265,7 @@ async function proxy(deps: BffDeps, refreshes: RefreshCache, request: Request, p
     } catch (e) {
       if (!(e instanceof SealedTooLarge)) throw e;
       deps.log("session.refresh_failed", { reason: "the session does not fit in its cookie" });
+      if (session.refreshToken !== null) await discard(deps.oidc, session.refreshToken);
       return apiError("UNAUTHENTICATED", "the session has ended", now, [["Set-Cookie", clearCookie(SESSION_COOKIE)]]);
     }
   }
@@ -285,7 +291,9 @@ async function proxy(deps: BffDeps, refreshes: RefreshCache, request: Request, p
     } as RequestInit);
   } catch {
     deps.log("proxy.unavailable");
-    return apiError("SERVICE_UNAVAILABLE", "the API is unavailable", now);
+    // A refresh before the call rotated the tokens: the browser must get
+    // them even now, or its next request spends the old refresh token again.
+    return apiError("SERVICE_UNAVAILABLE", "the API is unavailable", now, setCookie === null ? [] : [["Set-Cookie", setCookie]]);
   }
   const out = new Headers();
   for (const h of responseHeaders) {

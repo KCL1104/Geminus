@@ -37,10 +37,19 @@ export class FakeProvider {
   failRevocation = false;
   /** The token endpoint is down for refresh grants (503). */
   failRefresh = false;
-  /** The token endpoint cannot be reached for refresh grants (a network error). */
-  unreachableRefresh = false;
-  /** The token endpoint answers refresh grants with this OAuth error (status, error code). */
-  refreshError: [number, string] | undefined;
+  /** The token endpoint cannot be reached for refresh grants: a network error, or a timeout. */
+  unreachableRefresh: boolean | "timeout" = false;
+  /**
+   * The token endpoint answers refresh grants with this status and OAuth
+   * error code (null: no OAuth error in the body), and this WWW-Authenticate.
+   */
+  refreshError: [number, string | null, string?] | undefined;
+  /** Refresh grants rotate the refresh token (false: the old one stays live and none is returned). */
+  rotateRefresh = true;
+  /** Refresh answers carry an ID token (as Auth0's do for scope openid), changed by idToken. */
+  refreshIdToken = false;
+  /** Fields merged into refresh answers (to make them malformed). */
+  refreshExtra: Record<string, unknown> = {};
   issueRefreshToken = true;
   /** Lengths of the tokens issued (unset: about 40 characters). */
   accessTokenLength: number | undefined;
@@ -69,7 +78,7 @@ export class FakeProvider {
     return `${head}.${body}.${b64url(sig)}`;
   }
 
-  private tokens(nonce: string | null): Record<string, unknown> {
+  private tokens(nonce: string | null, idToken = nonce !== null): Record<string, unknown> {
     const now = this.now();
     const c = this.idToken;
     const family = b64url(randomBytes(8));
@@ -82,12 +91,12 @@ export class FakeProvider {
     const out: Record<string, unknown> = { access_token: sized("at-", this.accessTokenLength), token_type: "Bearer", scope: "openid offline_access" };
     if (this.expiresIn !== undefined) out.expires_in = this.expiresIn;
     if (this.issueRefreshToken) out.refresh_token = refresh;
-    if (nonce !== null) {
+    if (idToken) {
       const claims: Record<string, unknown> = {
         iss: c.iss ?? ISSUER,
         aud: c.aud ?? CLIENT_ID,
         sub: c.sub === undefined ? "auth0|user-1" : c.sub,
-        nonce: c.nonce ?? nonce,
+        ...(nonce === null ? {} : { nonce: c.nonce ?? nonce }),
         iat: c.iat ?? now,
         exp: c.exp ?? now + 600,
       };
@@ -120,18 +129,29 @@ export class FakeProvider {
         return this.json(200, this.tokens(code.nonce));
       }
       if (body.get("grant_type") === "refresh_token") {
+        if (this.unreachableRefresh === "timeout") throw new DOMException("The operation timed out.", "TimeoutError");
         if (this.unreachableRefresh) throw new TypeError("fetch failed");
         if (this.failRefresh) return this.json(503, { error: "temporarily_unavailable" });
-        if (this.refreshError !== undefined) return this.json(this.refreshError[0], { error: this.refreshError[1] });
+        if (this.refreshError !== undefined) {
+          const [status, error, challenge] = this.refreshError;
+          const r = this.json(status, error === null ? {} : { error });
+          if (challenge !== undefined) r.headers.set("www-authenticate", challenge);
+          return r;
+        }
         const t = this.refresh.get(body.get("refresh_token") ?? "");
         if (t === undefined || t.state !== "live") {
           if (t?.state === "spent") for (const v of this.refresh.values()) if (v.family === t.family) v.state = "revoked";
           return this.json(400, { error: "invalid_grant" });
         }
-        t.state = "spent";
-        const out = this.tokens(null);
-        const next = out.refresh_token as string | undefined;
-        if (next !== undefined) (this.refresh.get(next) as { family: string }).family = t.family;
+        const out = { ...this.tokens(null, this.refreshIdToken), ...this.refreshExtra };
+        if (this.rotateRefresh) {
+          t.state = "spent";
+          const next = out.refresh_token as string | undefined;
+          if (typeof next === "string" && this.refresh.has(next)) (this.refresh.get(next) as { family: string }).family = t.family;
+        } else {
+          this.refresh.delete(out.refresh_token as string);
+          delete out.refresh_token;
+        }
         return this.json(200, out);
       }
       return this.json(400, { error: "unsupported_grant_type" });
