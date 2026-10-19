@@ -612,6 +612,36 @@
       "resolves": [],
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-045",
+      "title": "使用者自己的 membership（/me，CB-17）",
+      "source_gap": "沒有 /me 或 membership discovery：登入後 client 無法取得自己的 user ID、可用的 organization 與 role（CB-17；非成員的 X-Organization-ID 已由 T-009 定為 404）",
+      "proposal": "新增 GET /v1/me（任何已驗證使用者，不帶 X-Organization-ID）：user_id 與 memberships[]（organization_id、organization name、role），依名稱再依 ID 排序，P0 至多 100 筆；未知 identity 回 403。新 migration 加只讀的 RLS policy：API 只看得到 user_id 等於驗證後 scope 中 user 的 membership 與其 organization 的 id、name；UI 以此選 organization 與取得 role（只決定介面，API 照常授權）。",
+      "source_pages": "N/A（CB-17；openapi.yaml、0002_rls.up.sql）",
+      "owner_role": "Security / Frontend",
+      "gate": "T-043 的 UI bootstrap 前",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null,
+      "resolves": [
+        "CB-17"
+      ]
+    },
+    {
+      "id": "D-046",
+      "title": "AI 新增 entity 的 ID allocation pool（CB-31）",
+      "source_gap": "D-016 要求新增的 node／resource ID 來自 server 提供的 pool，但 pool 的格式、大小與儲存位置未定，approval 時無法重新驗證",
+      "proposal": "每個 proposal 建立時由 server 產生 pool：node、flow、resource 各 16 個 ID，格式 <kind>_<小寫 ULID>（符合 IR ID pattern），存於 ai_proposals.id_pool（新 migration，之後不可改）並放進 provider context；validation 與 approval 都要求 patch 新增的每個 entity ID 來自同 proposal 的 pool、種類相符且 base IR 未使用；不足時 provider 回 needs_input。",
+      "source_pages": "N/A（CB-31；AI_SPEC §3、proposal.schema.json、0001_core.up.sql）",
+      "owner_role": "AI / Security",
+      "gate": "T-024 的 context builder 前",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null,
+      "resolves": [
+        "CB-31"
+      ]
     }
   ],
   "human_decisions": [

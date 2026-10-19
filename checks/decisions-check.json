@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 42,
-    "proposed": 2,
+    "proposed": 4,
     "rejected": 0,
     "superseded": 0
   },
@@ -24,10 +24,7 @@
     "not_started": 24,
     "review": 1
   },
-  "ready_tasks": [
-    "T-024",
-    "T-043"
-  ],
+  "ready_tasks": [],
   "next_after_review": [
     {
       "id": "T-016",
@@ -45,11 +42,25 @@
       "awaiting_decisions": []
     },
     {
+      "id": "T-024",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-046"
+      ]
+    },
+    {
       "id": "T-035",
       "awaiting_task_review": [
         "T-019"
       ],
       "awaiting_decisions": []
+    },
+    {
+      "id": "T-043",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-045"
+      ]
     }
   ],
   "gates": {
@@ -422,6 +433,22 @@
       "gate": "T-016 寫入 upload 前",
       "gates_tasks": [
         "T-016"
+      ]
+    },
+    "D-045": {
+      "status": "proposed",
+      "gate": "T-043 的 UI bootstrap 前",
+      "gates_tasks": [
+        "T-043"
+      ]
+    },
+    "D-046": {
+      "status": "proposed",
+      "gate": "T-024 的 context builder 前",
+      "gates_tasks": [
+        "T-024",
+        "T-025",
+        "T-026"
       ]
     }
   },

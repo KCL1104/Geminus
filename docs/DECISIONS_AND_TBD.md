@@ -203,6 +203,13 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | D-043 | CB-27 | Import 的 profile、preview 與人工 mapping | **PROPOSED。** (a) Import 增加 `profile`（profiling 完成前為 null）：`format`（csv／json_events／json_model）、`encoding`（`utf-8` 或 `utf-8-bom`）、`rows`、`columns[]`（`name` ≤256 字元、`index`、`inferred`：empty／boolean／integer／number／timestamp／string／mixed、`non_empty`、`max_length`）；每個 import 至多 256 欄，preview 的 `maxProperties` 改為 256；json_model 的 `columns` 為空。(b) `preview` 是前 100 筆的**原始**值，以來源欄名為 key（CSV 一律字串；JSON events 原值，另限深度、字串長度與總 bytes）；mapping 之後的 canonical 預覽屬 validation（T-017），`valid-import.json` 依此修正。(c) 人工 `SaveMapping` 改用只含 `source_column`、`target_field`、`transform` 的 mapping schema，不要求 AI 專用的 `confidence`、`evidence`、`requires_confirmation`；AI suggestion 仍用 ai-mapping。gate：T-016 開放 upload／profile 前（(c) 為 T-017 前）。 |
 | D-044 | 原報告 TBD（object storage） | P0 的 object storage | **PROPOSED。** `internal/storage/objects` 定義 S3 相容的最小介面（put 時計算 SHA-256 與大小、get、delete 只給受控 maintenance；key 一律由 server 依 D-035 產生）。P0 先提供 filesystem adapter，只用於 development 與測試（`APP_ENV=production` 時拒絕啟動）；正式環境的 adapter（雲端廠商、bucket、region、加密金鑰、retention、signed URL 期限）由 owner 選定雲端後另立 ADR，未定前不收真實客戶資料（SECURITY §6）。下載先由 API 授權後串流，不發 signed URL。gate：T-016 寫入 upload 前。 |
 
+### 其他待決的契約缺口（2026-10-19，PROPOSED，待 owner）
+
+| ID | 解決 | 主題 | 提案 |
+|---|---|---|---|
+| D-045 | CB-17 | 使用者自己的 membership（`/me`） | **PROPOSED。** 新增 `GET /v1/me`（任何已驗證的使用者；不帶 `X-Organization-ID`）：回 `user_id` 與 `memberships[]`（`organization_id`、organization `name`、`role`），依 organization 名稱再依 ID 排序，P0 至多 100 筆；未知 identity 回 403（不自動建立，D-008）。RLS 新增只讀的 policy：API 只看得到 `user_id` 等於驗證後 scope 中 user 的 membership，與這些 membership 所屬 organization 的 `id`、`name`（新 migration；其他 tenant 的任何 row 仍不可見）。UI 以此選 organization 並取得 role，role 仍只決定介面，API 每次自己授權。gate：T-043 的 UI bootstrap 前。 |
+| D-046 | CB-31 | AI 新增 entity 的 ID allocation pool | **PROPOSED。** 每個 proposal 在建立時由 server 產生 pool：每種 entity（node、flow、resource）16 個 ID，格式 `<kind>_<小寫 ULID>`（符合 IR 的 ID pattern），存在 `ai_proposals.id_pool`（新 migration；之後不可改）並放進 provider context。Validation 與 approval 時要求 patch 新增的每個 entity ID 都來自同 proposal 的 pool、種類相符、在 base IR 中未使用；不足時 provider 回 `needs_input`。gate：T-024 的 context builder 前。 |
+
 ## 人類決策紀錄
 
 由 agent 依 repository owner 的明確指示記錄，措辭待 owner 於 PR review 確認；機器可讀版本在 `planning/decisions.json` 的 `human_decisions`。

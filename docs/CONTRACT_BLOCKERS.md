@@ -39,7 +39,7 @@
 | CB-14 | **安全**：object key CHECK 用 `LIKE 'tenant/'‖org‖'/%'`，`_` 是萬用字元，`tenant/orgXa/…` 可通過 `org_a` 的檢查 | 0001_core.up.sql:132、185、186、334；**實測**：LIKE=true、`starts_with`=false | T-006 | NEW | 實測 |
 | CB-15 | Dataset manifest 以 DB 預設 collation `ORDER BY logical_ref`（無 `COLLATE "C"`），與 Go byte 排序可能不同，造成 commit 失敗或 hash 不一致 | 0001_core.up.sql:497、:521；TWIN_IR_SPEC.md:68；common.schema.json:173 | T-005、T-006 | D-006（未定排序） | 已核對（本環境未裝 en_US，排序差異未實測） |
 | CB-16 | Worker 對 `imports`、`jobs` 有整表 UPDATE，可改寫已確認 mapping 或設 COMMITTED；其他表用 column grant | 0002_rls.up.sql:54 vs API_DATABASE.md:49、:51、D-009 | T-007、T-016–T-018 | D-013（細節 NEW） | 已核對 |
-| CB-17 | 無 `/me`／membership discovery，client 無法取得自己的 user ID 與可用 organization；非成員或不存在的 `X-Organization-ID` 回應碼未定 | openapi.yaml:2120-2127、:2186-2203；0002_rls.up.sql:24、:31-35 | T-008–T-010、UI bootstrap | D-008（部分） | 審查回報 |
+| CB-17 | 無 `/me`／membership discovery，client 無法取得自己的 user ID 與可用 organization；非成員或不存在的 `X-Organization-ID` 回應碼未定 | openapi.yaml:2120-2127、:2186-2203；0002_rls.up.sql:24、:31-35 | T-008–T-010、UI bootstrap | D-008（部分）；`/me` 見 D-045（PROPOSED，2026-10-19） | 審查回報 |
 | CB-18 | Idempotency：過期但未清除的 key 重用行為未定；`saveImportMapping` 是唯一沒有 Idempotency-Key 的 POST | API_DATABASE.md:69；0001_core.up.sql:392-407；openapi.yaml:1140-1153 | T-017、T-019 | D-007/D-011（細節 NEW） | 審查回報 |
 
 ## C. 阻擋 T-019（queue / lease）
@@ -70,7 +70,7 @@
 | CB-28 | Transform 只有 identity/rfc3339/integer_ms/boolean_literal 且無參數：naive timestamp 或非 ms duration 永遠無法 validate；`metadata` 無 transform；重複 target 行為未定 | ai-mapping.schema.json:33、51-58；canonical-event.schema.json:18-58；TWIN_IR_SPEC.md:86 | T-017、T-027 | D-009（行為 NEW） | 審查回報 |
 | CB-29 | Import 無「validation 進行中」狀態，也未記錄 validation 對應的 mapping revision | API_DATABASE.md:49；import.schema.json:51-61；0001_core.up.sql:161-165 | T-003、T-017 | NEW | 審查回報 |
 | CB-30 | Prose 中數字與確定性語句的驗證規則未定（P0 是否驗證或禁止數字、違規時 failed 或剝除欄位） | AI_SPEC.md:53、:83；TEST_PLAN.md TEST-024；analysis.schema.json:19-49、121-124 | T-025、T-030 | NEW | 審查回報 |
-| CB-31 | Server-issued ID allocation pool 無格式、範圍與儲存位置，approval 時無法 revalidate | AI_SPEC.md:33；proposal.schema.json；0001_core.up.sql:190-234 | T-024–T-026 | D-016（細節 NEW） | 審查回報 |
+| CB-31 | Server-issued ID allocation pool 無格式、範圍與儲存位置，approval 時無法 revalidate | AI_SPEC.md:33；proposal.schema.json；0001_core.up.sql:190-234 | T-024–T-026 | D-016；細節見 D-046（PROPOSED，2026-10-19） | 審查回報 |
 | CB-32 | Eval corpus 無 context fixtures；expected labels（`reject_context_reference` 等）無對應 status／error code | TEST_PLAN.md:57；analyst.jsonl、import-mapper.jsonl、modeler.jsonl | T-025、T-027、T-030 的 `make ai-eval` | NEW | 審查回報 |
 | CB-33 | AI scenario approval 沒有 scenario name 來源；「latest=base」規則套用於 scenario 使舊版本上的 AI scenario 永遠無法批准 | scenario.schema.json:32-36；0001_core.up.sql:247；http.schema.json:447-466；AI_SPEC.md:57、:61 | T-026、T-028 | D-004（部分） | 審查回報 |
 

@@ -1440,7 +1440,8 @@
       "decision_gates": [
         "D-002",
         "D-016",
-        "D-018"
+        "D-018",
+        "D-046"
       ],
       "scope": [
         "provider interface、explicit fake/disabled/live modes。",
@@ -1499,7 +1500,8 @@
         "D-016",
         "D-020",
         "D-022",
-        "D-027"
+        "D-027",
+        "D-046"
       ],
       "scope": [
         "durable generating job→proposed content→server validator/risk→ready。",
@@ -1549,7 +1551,8 @@
         "D-003",
         "D-011",
         "D-027",
-        "D-030"
+        "D-030",
+        "D-046"
       ],
       "scope": [
         "role/base revalidation、shared model lock、idempotent exactly-one version。",
@@ -2469,7 +2472,9 @@
         "REQ-002",
         "REQ-019"
       ],
-      "decision_gates": [],
+      "decision_gates": [
+        "D-045"
+      ],
       "scope": [
         "Next.js 伺服器端 OIDC confidential client：Authorization Code＋PKCE（S256）、state、nonce；endpoints 只來自 deployment 設定；通用 OIDC library（候選 openid-client），版本釘住並記 license。",
         "`__Host-` HttpOnly／Secure／SameSite=Lax 加密 session cookie（AES-256-GCM、key 輪替、>3.5 KB 視為錯誤）；瀏覽器 JS 拿不到任何 token；callback 後丟棄 ID token。",
