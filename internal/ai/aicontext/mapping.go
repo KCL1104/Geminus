@@ -2,6 +2,7 @@ package aicontext
 
 import (
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"slices"
 	"strings"
@@ -90,12 +91,20 @@ func Mapping(in MappingInput) (provider.MappingContext, error) {
 	sample := make([]any, 0, len(rows))
 	for i, row := range rows {
 		out := map[string]any{}
-		for k, v := range row {
-			x, err := z.json(v)
-			if err != nil {
+		// In column order, so that which of two columns whose names redact
+		// alike is kept does not depend on map order (review L4).
+		for _, k := range in.Columns {
+			v, ok := row[k]
+			if !ok {
+				continue
+			}
+			var x any
+			if err := json.Unmarshal(v, &x, jsontext.AllowDuplicateNames(false), jsontext.AllowInvalidUTF8(false)); err != nil {
 				return provider.MappingContext{}, &Error{Code: InvalidInput, Path: fmt.Sprintf("/sample_rows/%d", i), cause: err}
 			}
-			out[z.textBound(k, 256)] = x
+			// A cell under a credential-like column name is redacted whole
+			// (review M2).
+			z.member(out, k, x)
 		}
 		sample = append(sample, out)
 	}

@@ -107,6 +107,9 @@ const (
 	ReasonTruncated    Reason = "truncated"     // strings cut to their bound
 	ReasonBounded      Reason = "bounded"       // rows or items beyond the sample bound
 	ReasonUnavailable  Reason = "not_available" // supplied as unavailable
+	// ReasonCollision: a member whose name redacted to the name of a member
+	// already sent (two e-mail addresses as keys); the first is kept.
+	ReasonCollision Reason = "redaction_collision"
 )
 
 // Omission is one entry of CONTEXT_OMISSIONS: what, how many, why. It
@@ -228,6 +231,7 @@ func (o *omissions) sorted() []Omission {
 func assemble(role provider.Role, loc locale.Locale, system string, version string, blocks []provider.Block,
 	om *omissions, z *sanitizer) (provider.Prompt, error) {
 	om.add("strings", z.counts[RedactTruncated], ReasonTruncated)
+	om.add("members", z.counts[collided], ReasonCollision)
 	list := om.sorted()
 	redacted := z.redacted()
 	omBlock, err := block(provider.ServerData, "CONTEXT_OMISSIONS", struct {
