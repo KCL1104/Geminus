@@ -1,7 +1,7 @@
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 # Explicit package roots: `./...` would also match Go files that npm packages
 # ship under apps/web/node_modules (e.g. flatted/golang).
-GO_PKGS := ./cmd/... ./internal/... ./schemas/... ./scripts/...
+GO_PKGS := ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
 WEB := apps/web
 WEB_E2E := apps/web-e2e
 export NEXT_TELEMETRY_DISABLED := 1
@@ -35,7 +35,7 @@ db-tests-render:
 	$(PYTHON) scripts/render_db_tests.py
 backend-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included in this spec pack.' >&2; exit 2; }
-	@unformatted=$$(gofmt -l cmd internal schemas scripts); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
+	@unformatted=$$(gofmt -l cmd internal schemas scripts prompts); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
 	go vet $(GO_PKGS)
 	go test $(GO_PKGS)
 # No fused multiply-add in engine/statistics code on any GOARCH, and the numeric tests as an FMA-capable build.
@@ -85,6 +85,13 @@ integration-test:
 	$(MAKE) db-test
 	$(MAKE) db-go-test
 	@echo 'integration-test: API, job loop, simulation (T-023) and import profile (T-016) handlers and database covered; the import validation (T-017) and AI (T-025) job handlers are NOT RUN until those tasks add them.'
-ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test:
+# The AI eval corpus through the context builder and the deterministic fake provider (T-024): the context-side
+# zero-tolerance gates for every case, the scorecard in checks/ai-evals/fake-provider.json. Fake results only.
+ai-eval:
+	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
+	@mkdir -p checks/ai-evals
+	GEMINUS_AI_EVAL_REPORT=$(CURDIR)/checks/ai-evals/fake-provider.json go test -count=1 -run '^TestFakeProviderEval$$' -v ./internal/ai/corpus/
+	@echo 'ai-eval: fake-provider context suite only. Proposal scoring, risk floors and database effects (T-025, T-026, T-038), the analyst output checks (T-030) and the live provider eval (make ai-eval-live) are NOT RUN.' >&2
+ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2
