@@ -1,0 +1,3 @@
+ M checks/docs-check.json
+?? checks/T-023_VALIDATION.md
+?? checks/evidence/2026-10-19-T-023/

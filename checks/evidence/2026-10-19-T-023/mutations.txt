@@ -1,0 +1,46 @@
+T-023c targeted mutations (2026-10-19). Each new test passed on the code as
+inherited; each mutation below removes or inverts the check the test guards.
+The mutated file was copied aside, changed, tested against the disposable
+database dt_test_t023_base (PostgreSQL 16.15), and restored byte for byte
+(git diff empty afterwards).
+
+1. internal/runs/runner/runner.go start(): remove the
+   `case r.CancellationRequested` branch (an attempt after a crash ignores
+   the earlier cancellation request).
+   go test -run TestACancellationOutlivesACrash ./internal/runs/runner
+   --- FAIL: runner_test.go:561: reserved 1000040 events, want only the crashed attempt's 40
+   KILLED
+
+2. internal/runs/runner/runner.go failed(): WALL_TIMEOUT_EXCEEDED made
+   retryable.
+   go test -run TestTheWallClockEndsAnAttempt ./internal/runs/runner
+   --- FAIL: runner_test.go:589: jsontext: unexpected EOF (the run was
+   requeued, so it has no failure)
+   KILLED
+
+3. internal/runs/runs.go Create(): the role check moved after the
+   Idempotency-Key replay.
+   go test -run TestARevokedMemberGetsNoReplay ./internal/api
+   --- FAIL: simulations_test.go:618: a demoted member's create replay: 202 {...}
+   KILLED
+
+4. internal/runs/http.go events(): on ErrNoMembership / ErrNotFound the
+   stream writes a keep-alive and continues instead of ending.
+   go test -run TestAnIdleStreamEndsWhenTheMemberIsRemoved ./internal/api
+   --- FAIL: simulations_stream_test.go:277: no event within 5s
+   KILLED
+
+Red before green (the fix did not exist yet):
+
+5. db/tests/runs.sql (identity rows) against 0009 before the identity guard:
+   ERROR: FAILED: expected SQLSTATE 55000 but the statement succeeded:
+   UPDATE twin.simulation_runs SET name='renamed' ... ; green after the guard.
+
+6. apps/web typecheck with contracts.test.ts's `cancelOption` case before the
+   generator change: tests/contracts.test.ts(87,3): error TS2578: Unused
+   '@ts-expect-error' directive (CancelSimulation was Record<string, unknown>);
+   green after it (Record<string, never>).
+
+7. scripts/check-architecture TestProbesAreCaught before the rule:
+   api-links-the-simulation-handler and a-service-links-the-handler:
+   "no job-handlers-only-in-the-worker violation ... got []"; green after it.
