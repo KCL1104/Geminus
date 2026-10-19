@@ -85,7 +85,7 @@ func (p *preview) addJSON(event jsontext.Value) error {
 	if !p.wants() {
 		return nil
 	}
-	dec := jsontext.NewDecoder(bytes.NewReader(event))
+	dec := reread(nil, event)
 	var b bytes.Buffer
 	enc := jsontext.NewEncoder(&b)
 	extra := 0

@@ -29,14 +29,15 @@ func FuzzRead(f *testing.F) {
 	f.Fuzz(func(t *testing.T, which byte, data []byte) {
 		format := formats[int(which)%len(formats)]
 		lim := small
-		lim.MaxFieldChars, lim.PreviewStringChars, lim.MaxModelBytes = 64, 8, 4096
+		lim.MaxFieldChars, lim.PreviewStringChars, lim.MaxModelBytes, lim.MaxRecordBytes = 64, 8, 4096, 1024
 		res, err := importprofile.Read(context.Background(), bytes.NewReader(data), format, lim)
 		if err != nil {
 			var fail *importprofile.Failure
 			if !errors.As(err, &fail) {
 				t.Fatalf("not a failure: %v", err)
 			}
-			if fail.Code == "" || fail.Message == "" || (fail.Path != "" && !strings.HasPrefix(fail.Path, "/")) || !utf8.ValidString(fail.Path) {
+			if fail.Code == "" || fail.Message == "" || (fail.Path != "" && !strings.HasPrefix(fail.Path, "/")) || !utf8.ValidString(fail.Path) ||
+				utf8.RuneCountInString(fail.Path) > 2048 {
 				t.Fatalf("failure %+v", fail)
 			}
 			return

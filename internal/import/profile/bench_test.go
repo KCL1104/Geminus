@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
@@ -24,6 +25,30 @@ func BenchmarkReadCSVAtTheLimits(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		res, err := importprofile.Read(context.Background(), bytes.NewReader(data), importprofile.CSV, importprofile.DefaultLimits)
+		if err != nil || res.Profile.Rows != 100_000 {
+			b.Fatalf("%d rows: %v", res.Profile.Rows, err)
+		}
+	}
+}
+
+// The same rows as JSON events, about 50 MB.
+func BenchmarkReadJSONEventsAtTheLimits(b *testing.B) {
+	var buf bytes.Buffer
+	buf.WriteString("[")
+	pad := strings.Repeat("說明", 64)
+	for i := range 100_000 {
+		if i > 0 {
+			buf.WriteString(",\n")
+		}
+		fmt.Fprintf(&buf, `{"案件編號":"CASE-%06d","階段":"檢驗","開始時間":"2026-10-15T08:%02d:%02d+08:00","耗時毫秒":%d,"資源":"工站-%d","結果":true,"備註":"%s"}`,
+			i, i/60%60, i%60, i*13%7200000, i%17, pad)
+	}
+	buf.WriteString("]")
+	data := buf.Bytes()
+	b.SetBytes(int64(len(data)))
+	b.ReportAllocs()
+	for b.Loop() {
+		res, err := importprofile.Read(context.Background(), bytes.NewReader(data), importprofile.JSONEvents, importprofile.DefaultLimits)
 		if err != nil || res.Profile.Rows != 100_000 {
 			b.Fatalf("%d rows: %v", res.Profile.Rows, err)
 		}

@@ -38,6 +38,18 @@ func jsonError(err error, base string) error {
 	return fail(CodeJSONInvalid, path, "the file is not valid JSON at byte offset %d", se.ByteOffset)
 }
 
+// reread makes dec (a new decoder when nil) read v, a value the file's own
+// decoder has read in full, and so checked (repeated names included,
+// D-014): in place, and without tracking names again, which would cost as
+// much again (about 20 bytes a name).
+func reread(dec *jsontext.Decoder, v []byte) *jsontext.Decoder {
+	if dec == nil {
+		return jsontext.NewDecoder(bytes.NewBuffer(v), jsontext.AllowDuplicateNames(true))
+	}
+	dec.Reset(bytes.NewBuffer(v), jsontext.AllowDuplicateNames(true))
+	return dec
+}
+
 // after checks that nothing but white space follows the file's value.
 func after(dec *jsontext.Decoder) error {
 	_, err := dec.ReadToken()
@@ -56,8 +68,9 @@ func after(dec *jsontext.Decoder) error {
 // check walks the JSON value v at pointer base, depth containers deep, and
 // refuses what the file may not hold: nesting deeper than MaxDepth, a
 // number that is not finite as binary64 and U+0000 in a string or a name.
-func check(v jsontext.Value, base string, depth int, lim Limits) error {
-	dec := jsontext.NewDecoder(bytes.NewReader(v))
+// dec, if not nil, is a decoder to reuse.
+func check(dec *jsontext.Decoder, v jsontext.Value, base string, depth int, lim Limits) error {
+	dec = reread(dec, v)
 	for {
 		tok, err := dec.ReadToken()
 		if err == io.EOF {
@@ -87,16 +100,64 @@ func check(v jsontext.Value, base string, depth int, lim Limits) error {
 	}
 }
 
+// window is the events file as the decoder reads it: never more than
+// MaxRecordBytes past the end of the last row (T-016 review H1). The
+// decoder holds a whole value before it returns it, so the window, moved
+// past each row before the next one is read, bounds what it holds by one
+// row with the white space and comma before it; beyond it the read fails
+// with the row's failure.
+type window struct {
+	r          io.Reader
+	off, limit int64 // bytes passed on, and how many may be
+	max        int
+	row        int // the row being read: beforeArray, afterArray or its index
+}
+
+const (
+	beforeArray = -1
+	afterArray  = -2
+)
+
+func (w *window) Read(p []byte) (int, error) {
+	room := w.limit - w.off
+	if room <= 0 {
+		return 0, w.failure()
+	}
+	if int64(len(p)) > room {
+		p = p[:room]
+	}
+	n, err := w.r.Read(p)
+	w.off += int64(n)
+	return n, err
+}
+
+// at moves the window to max bytes past offset, for row.
+func (w *window) at(offset int64, row int) { w.limit, w.row = offset+int64(w.max), row }
+
+func (w *window) failure() *Failure {
+	switch w.row {
+	case beforeArray:
+		return fail(CodeLimitExceeded, "", "the array does not start within the file's first %d bytes", w.max)
+	case afterArray:
+		return fail(CodeLimitExceeded, "", "more than %d bytes follow the array", w.max)
+	}
+	return fail(CodeLimitExceeded, pointer(w.row), "row %d, with the white space before it, is longer than %d bytes", w.row, w.max)
+}
+
 // columns are the JSON events' top-level member names in order of first
 // appearance, with their statistics.
 type columns struct {
 	names []string
 	index map[string]int
 	stats []colStats
+	// Decoders reused for each row and each value.
+	walk, check *jsontext.Decoder
 }
 
 func readEvents(ctx context.Context, tr *text, lim Limits) (Result, error) {
-	dec := jsontext.NewDecoder(tr)
+	win := &window{r: tr, max: lim.MaxRecordBytes}
+	win.at(0, beforeArray)
+	dec := jsontext.NewDecoder(win)
 	tok, err := dec.ReadToken()
 	if err == io.EOF {
 		return Result{}, fail(CodeEmpty, "", "the file is empty")
@@ -107,7 +168,7 @@ func readEvents(ctx context.Context, tr *text, lim Limits) (Result, error) {
 	if tok.Kind() != '[' {
 		return Result{}, fail(CodeShapeInvalid, "", "a JSON events file is one array of objects")
 	}
-	cols := columns{index: map[string]int{}}
+	cols := columns{index: map[string]int{}, walk: jsontext.NewDecoder(bytes.NewBuffer(nil)), check: jsontext.NewDecoder(bytes.NewBuffer(nil))}
 	pv := newPreview(lim)
 	var res Result
 	for row := 0; ; row++ {
@@ -116,6 +177,7 @@ func readEvents(ctx context.Context, tr *text, lim Limits) (Result, error) {
 				return Result{}, err
 			}
 		}
+		win.at(dec.InputOffset(), row)
 		if dec.PeekKind() == ']' {
 			if _, err := dec.ReadToken(); err != nil {
 				return Result{}, jsonError(err, "")
@@ -140,6 +202,7 @@ func readEvents(ctx context.Context, tr *text, lim Limits) (Result, error) {
 		}
 		res.Profile.Rows++
 	}
+	win.at(dec.InputOffset(), afterArray)
 	if err := after(dec); err != nil {
 		return Result{}, err
 	}
@@ -156,7 +219,8 @@ func readEvents(ctx context.Context, tr *text, lim Limits) (Result, error) {
 
 // add checks one event and adds its members to the columns.
 func (c *columns) add(event jsontext.Value, row int, lim Limits) error {
-	dec := jsontext.NewDecoder(bytes.NewReader(event))
+	c.walk = reread(c.walk, event)
+	dec := c.walk
 	if _, err := dec.ReadToken(); err != nil { // '{'
 		return jsonError(err, pointer(row))
 	}
@@ -177,7 +241,7 @@ func (c *columns) add(event jsontext.Value, row int, lim Limits) error {
 		if err != nil {
 			return jsonError(err, pointer(row))
 		}
-		if err := check(v, at, 2, lim); err != nil {
+		if err := check(c.check, v, at, 2, lim); err != nil {
 			return err
 		}
 		t, length, err := classifyJSON(v)
@@ -221,7 +285,7 @@ func readModel(tr *text, lim Limits) (Result, error) {
 	if v.Kind() != '{' {
 		return Result{}, fail(CodeShapeInvalid, "", "a JSON model file is one JSON object (a Model IR document)")
 	}
-	if err := check(v, "", 0, lim); err != nil {
+	if err := check(nil, v, "", 0, lim); err != nil {
 		return Result{}, err
 	}
 	if err := after(dec); err != nil {

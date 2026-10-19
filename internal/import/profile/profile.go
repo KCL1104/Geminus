@@ -19,12 +19,18 @@
 //     value fail.
 //
 // Everything is bounded (Limits): rows, columns, column name and value
-// length (in characters), nesting depth, a model's size, the preview's rows,
-// string length and bytes, and the invalid rows kept. A file that breaks a
-// rule is a *Failure with a typed code, a JSON Pointer into the file seen as
-// an array of rows (for a JSON model, into the document) and a message that
-// never quotes the file's own bytes for CSV and encoding problems. Reading
-// stops when the context ends.
+// length (in characters), nesting depth, a model's size, a CSV record's and
+// a JSON row's size as written, the preview's rows, string length and
+// bytes, and the invalid rows kept. The bounds hold while the file is read,
+// so what profiling holds in memory never grows with the file (T-016
+// review H1): a CSV record is split only once it is known to be within
+// MaxRecordBytes, and of a row only the header's fields and one more are
+// kept; the JSON decoder never holds more than one row (MaxRecordBytes,
+// with the white space before it). A file that breaks a rule is a *Failure
+// with a typed code, a JSON Pointer into the file seen as an array of rows
+// (for a JSON model, into the document) of at most model.MaxIssuePath
+// characters (a longer one is cut at a '/') and a message that never quotes
+// the file's own bytes. Reading stops when the context ends.
 package profile
 
 import (
@@ -34,7 +40,9 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
+	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
@@ -93,6 +101,11 @@ type Limits struct {
 	MaxFieldChars int // a value, in characters (a JSON value's compact text)
 	MaxDepth      int // JSON nesting, the outermost array or object counting 1
 	MaxModelBytes int // a JSON model file (D-029: the IR's 2 MiB)
+	// MaxRecordBytes bounds a CSV record (the header included), from its
+	// first byte to its line end, and a JSON events row with the white
+	// space and comma before it, as written; also the bytes before a JSON
+	// events array and after it.
+	MaxRecordBytes int
 	// The preview: the first PreviewRows rows, string values cut to
 	// PreviewStringChars characters, PreviewBytes in all as stored.
 	PreviewRows, PreviewStringChars, PreviewBytes int
@@ -102,11 +115,19 @@ type Limits struct {
 }
 
 // DefaultLimits are D-007's and D-043's limits and the implementation's
-// own (field length, depth, preview string and bytes, kept errors; to be
-// confirmed by the benchmark, T-037).
+// own (field length, depth, record size, preview string and bytes, kept
+// errors; to be confirmed by the benchmark, T-037; CB-39(c)).
 var DefaultLimits = Limits{
 	MaxRows: 100_000, MaxColumns: 256, MaxNameChars: 256, MaxFieldChars: 32_768, MaxDepth: 32,
-	MaxModelBytes: validate.MaxIRBytes, PreviewRows: 100, PreviewStringChars: 256, PreviewBytes: 1 << 20, MaxRowErrors: 10_000,
+	MaxModelBytes: validate.MaxIRBytes, MaxRecordBytes: 1 << 20,
+	PreviewRows: 100, PreviewStringChars: 256, PreviewBytes: 1 << 20, MaxRowErrors: 10_000,
+}
+
+// valid reports whether every bound is set: at least 1 for what a file may
+// hold, at least 0 for what is kept of it.
+func (l Limits) valid() bool {
+	return min(l.MaxRows, l.MaxColumns, l.MaxNameChars, l.MaxFieldChars, l.MaxDepth, l.MaxModelBytes, l.MaxRecordBytes) >= 1 &&
+		min(l.PreviewRows, l.PreviewStringChars, l.PreviewBytes, l.MaxRowErrors) >= 0
 }
 
 // Failure codes: why a file cannot be profiled (the import's error,
@@ -128,7 +149,7 @@ const (
 
 // Failure: the file cannot be profiled. Path is a JSON Pointer into the
 // file seen as an array of rows (a JSON model: into the document), "" for
-// the whole file.
+// the whole file, of at most model.MaxIssuePath characters.
 type Failure struct {
 	Code, Message, Path string
 }
@@ -138,7 +159,26 @@ func (f *Failure) Error() string {
 }
 
 func fail(code, path, format string, args ...any) *Failure {
-	return &Failure{Code: code, Path: path, Message: fmt.Sprintf(format, args...)}
+	return &Failure{Code: code, Path: boundPath(path), Message: fmt.Sprintf(format, args...)}
+}
+
+// boundPath is path cut, if it has more than model.MaxIssuePath
+// characters, at the last '/' among its first model.MaxIssuePath+1: the
+// pointer of an ancestor (T-016 review L1; as model.NewIssue cuts). Member
+// names of any length thus never fill an import's error.
+func boundPath(path string) string {
+	chars := 0
+	for i := range path {
+		if chars == model.MaxIssuePath+1 {
+			cut := path[:i]
+			if j := strings.LastIndexByte(cut, '/'); j >= 0 {
+				return cut[:j]
+			}
+			return ""
+		}
+		chars++
+	}
+	return path
 }
 
 // RowError is a row the profile counts as invalid: a CSV record whose
@@ -174,6 +214,9 @@ type Result struct {
 func Read(ctx context.Context, r io.Reader, f Format, lim Limits) (Result, error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
+	}
+	if !lim.valid() {
+		return Result{}, errors.New("profile: a limit is not set")
 	}
 	tr := newText(ctx, r)
 	var res Result

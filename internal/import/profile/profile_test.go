@@ -24,7 +24,7 @@ func readFixture(t *testing.T, name string) []byte {
 
 // small limits keep the limit tests fast; the defaults are checked apart.
 var small = importprofile.Limits{
-	MaxRows: 5, MaxColumns: 4, MaxNameChars: 8, MaxFieldChars: 12, MaxDepth: 6, MaxModelBytes: 256,
+	MaxRows: 5, MaxColumns: 4, MaxNameChars: 8, MaxFieldChars: 12, MaxDepth: 6, MaxModelBytes: 256, MaxRecordBytes: 256,
 	PreviewRows: 3, PreviewStringChars: 6, PreviewBytes: 4096, MaxRowErrors: 2,
 }
 
@@ -331,7 +331,7 @@ func TestInvalidRows(t *testing.T) {
 		"10,11,12\n" +
 		"x\n"
 	res, err := read(t, importprofile.CSV, importprofile.Limits{MaxRows: 10, MaxColumns: 4, MaxNameChars: 8, MaxFieldChars: 64, MaxDepth: 6,
-		MaxModelBytes: 256, PreviewRows: 10, PreviewStringChars: 64, PreviewBytes: 4096, MaxRowErrors: 2}, data)
+		MaxModelBytes: 256, MaxRecordBytes: 256, PreviewRows: 10, PreviewStringChars: 64, PreviewBytes: 4096, MaxRowErrors: 2}, data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +458,7 @@ func (c *cancelAfter) Read(p []byte) (int, error) {
 func TestDefaultLimits(t *testing.T) {
 	d := importprofile.DefaultLimits
 	if d.MaxRows != 100_000 || d.MaxColumns != 256 || d.MaxNameChars != 256 || d.MaxFieldChars != 32_768 || d.MaxDepth != 32 ||
-		d.MaxModelBytes != 2<<20 || d.PreviewRows != 100 || d.PreviewStringChars != 256 || d.PreviewBytes != 1<<20 || d.MaxRowErrors != 10_000 {
+		d.MaxModelBytes != 2<<20 || d.MaxRecordBytes != 1<<20 || d.PreviewRows != 100 || d.PreviewStringChars != 256 || d.PreviewBytes != 1<<20 || d.MaxRowErrors != 10_000 {
 		t.Errorf("%+v", d)
 	}
 }

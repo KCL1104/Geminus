@@ -51,22 +51,24 @@ func csvError(err error, row int) error {
 }
 
 func readCSV(ctx context.Context, tr *text, lim Limits) (Result, error) {
-	cr := csv.NewReader(tr)
-	cr.FieldsPerRecord = -1 // a different count is an invalid row, not a failure
-	cr.ReuseRecord = true
-	header, err := cr.Read()
-	if err == io.EOF {
+	// The header keeps at most MaxColumns names; a row keeps its columns'
+	// fields and the first one beyond them (an invalid row's value).
+	cr := newRecords(tr, lim.MaxColumns, lim.MaxFieldChars, lim.MaxRecordBytes)
+	err := cr.Read()
+	switch {
+	case err == io.EOF:
 		return Result{}, fail(CodeEmpty, "", "the file is empty")
-	}
-	if err != nil {
+	case errors.Is(err, errRecordTooLong):
+		return Result{}, fail(CodeLimitExceeded, "", "the header is longer than %d bytes", lim.MaxRecordBytes)
+	case err != nil:
 		return Result{}, csvError(err, -1)
 	}
-	if len(header) > lim.MaxColumns {
-		return Result{}, fail(CodeLimitExceeded, "", "the header has %d columns; the limit is %d", len(header), lim.MaxColumns)
+	if cr.fields > lim.MaxColumns {
+		return Result{}, fail(CodeLimitExceeded, "", "the header has %d columns; the limit is %d", cr.fields, lim.MaxColumns)
 	}
-	names := make([]string, len(header))
-	seen := make(map[string]int, len(header))
-	for i, name := range header {
+	names := make([]string, len(cr.rec))
+	seen := make(map[string]int, len(cr.rec))
+	for i, name := range cr.rec {
 		n := utf8.RuneCountInString(name)
 		if name == "" {
 			return Result{}, fail(CodeColumnInvalid, "", "column %d of the header has no name", i+1)
@@ -79,6 +81,7 @@ func readCSV(ctx context.Context, tr *text, lim Limits) (Result, error) {
 		}
 		seen[name], names[i] = i, name
 	}
+	cr.keep = len(names) + 1
 	stats := make([]colStats, len(names))
 	pv := newPreview(lim)
 	var res Result
@@ -88,9 +91,12 @@ func readCSV(ctx context.Context, tr *text, lim Limits) (Result, error) {
 				return Result{}, err
 			}
 		}
-		rec, err := cr.Read()
+		err := cr.Read()
 		if err == io.EOF {
 			break
+		}
+		if errors.Is(err, errRecordTooLong) {
+			return Result{}, fail(CodeLimitExceeded, pointer(row), "the record starting on line %d is longer than %d bytes", cr.start, lim.MaxRecordBytes)
 		}
 		if err != nil {
 			return Result{}, csvError(err, row)
@@ -98,26 +104,24 @@ func readCSV(ctx context.Context, tr *text, lim Limits) (Result, error) {
 		if row >= lim.MaxRows {
 			return Result{}, fail(CodeLimitExceeded, pointer(row), "the file has more than %d rows", lim.MaxRows)
 		}
-		line, _ := cr.FieldPos(0)
-		for i, v := range rec {
-			if n := utf8.RuneCountInString(v); n > lim.MaxFieldChars {
-				path := pointer(row)
-				if i < len(names) {
-					path = pointer(row, names[i])
-				}
-				return Result{}, fail(CodeLimitExceeded, path, "line %d: a value of %d characters; a value is at most %d", line, n, lim.MaxFieldChars)
+		rec, line := cr.rec, cr.start
+		if i := cr.long; i >= 0 {
+			path := pointer(row)
+			if i < len(names) {
+				path = pointer(row, names[i])
 			}
+			return Result{}, fail(CodeLimitExceeded, path, "line %d: a value of %d characters; a value is at most %d", line, cr.longChars, lim.MaxFieldChars)
 		}
-		if len(rec) == len(names) {
+		if cr.fields == len(names) {
 			for i, v := range rec {
 				stats[i].add(classifyText(v), utf8.RuneCountInString(v))
 			}
 		} else {
 			res.InvalidRows++
 			e := RowError{Row: row, Line: line, Code: CodeFieldCount,
-				Message: "the row has " + strconv.Itoa(len(rec)) + " fields; the header has " + strconv.Itoa(len(names))}
-			if len(rec) < len(names) {
-				e.Column = names[len(rec)]
+				Message: "the row has " + strconv.Itoa(cr.fields) + " fields; the header has " + strconv.Itoa(len(names))}
+			if cr.fields < len(names) {
+				e.Column = names[cr.fields]
 			} else {
 				e.Value = cut(rec[len(names)], lim.PreviewStringChars)
 			}

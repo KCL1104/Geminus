@@ -100,11 +100,8 @@ func classifyJSON(v jsontext.Value) (Type, int, error) {
 }
 
 func unquote(v jsontext.Value) (string, error) {
-	tok, err := jsontext.NewDecoder(strings.NewReader(string(v))).ReadToken()
-	if err != nil {
-		return "", err
-	}
-	return tok.String(), nil
+	s, err := jsontext.AppendUnquote(nil, v)
+	return string(s), err
 }
 
 // colStats is what a column's values have shown so far.
