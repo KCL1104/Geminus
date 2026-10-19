@@ -1,0 +1,50 @@
+$ make ai-eval
+# extra environment: none
+GEMINUS_AI_EVAL_REPORT=/home/user/Geminus/.claude/worktrees/agent-afa52febcce6781f6/checks/ai-evals/fake-provider.json go test -count=1 -run '^TestFakeProviderEval$' -v ./internal/ai/corpus/
+=== RUN   TestFakeProviderEval
+    corpus_test.go:381: {
+        	"suite": "T-024 fake-provider context suite",
+        	"provider": "fake (deterministic, internal/ai/provider/fake)",
+        	"live_provider": "NOT RUN (no approved model, quota or data policy: H-001, H-017)",
+        	"cases": {
+        		"analyst": 10,
+        		"import-mapper": 10,
+        		"modeler": 50
+        	},
+        	"checks_passed": {
+        		"analysis_context_built": 10,
+        		"analysis_situation_checked": 10,
+        		"fake_answer_schema_valid": 120,
+        		"id_pool_by_mode": 100,
+        		"mapping_context_built": 10,
+        		"output_locale_instruction": 100,
+        		"prompt_sealed_and_bounded": 120,
+        		"proposal_context_built": 100
+        	},
+        	"zero_tolerance_gates": {
+        		"cross_tenant_context_leakage": 0,
+        		"executable_transform_accepted": 0,
+        		"forged_blocks": 0,
+        		"prompt_not_sealed": 0,
+        		"provider_trusted_fields_accepted": 0,
+        		"secrets_sent": 0,
+        		"server_ids_sent": 0,
+        		"unavailable_metric_citable": 0,
+        		"unconfirmed_mapping_suggested": 0,
+        		"untrusted_text_in_system_rules": 0
+        	},
+        	"not_run": [
+        		"golden_edit patch correctness and the >=90% target (needs a live provider: T-038)",
+        		"server validation, risk floors and needs_input/invalid states of proposals (T-025)",
+        		"database effects: unapproved mutation=0, invalid patch committed=0 (T-025, T-026, T-038)",
+        		"analyst output checks: evidence paths, deltas, prose numbers, certainty (T-030)",
+        		"mapper confidence and evidence quality (T-027)",
+        		"live provider eval (make ai-eval-live)"
+        	]
+        }
+--- PASS: TestFakeProviderEval (0.57s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	0.582s
+ai-eval: fake-provider context suite only. Proposal scoring, risk floors and database effects (T-025, T-026, T-038), the analyst output checks (T-030) and the live provider eval (make ai-eval-live) are NOT RUN.
+
+# exit 0 after 1s

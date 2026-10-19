@@ -1,6 +1,6 @@
 # T-024 驗證報告：Sanitized AI context／provider adapter
 
-**日期：2026-10-19｜狀態：實作完成，尚未 review；`planning/tasks.json` 的狀態未改，由 reviewer 決定｜需求：REQ-008、REQ-016、REQ-019、REQ-022｜Gate：D-002、D-016、D-018、D-046（皆 APPROVED）；新 ADR-027（PROPOSED）｜驗收測試：TEST-006、TEST-009、TEST-024、TEST-027、TEST-031（本任務只涵蓋 context／provider 端，見「驗收測試」）**
+**日期：2026-10-19｜狀態：獨立 review 第一輪 CHANGES REQUESTED（H1、M2、L3–L8、INFO），全部先紅後綠修正（見「Review 後的修正」），待複核；`planning/tasks.json` 的狀態未改，由 reviewer 決定｜需求：REQ-008、REQ-016、REQ-019、REQ-022｜Gate：D-002、D-016、D-018、D-046（皆 APPROVED）；新 ADR-027（PROPOSED）｜驗收測試：TEST-006、TEST-009、TEST-024、TEST-027、TEST-031（本任務只涵蓋 context／provider 端，見「驗收測試」）**
 
 範圍依 tasks.json：
 
@@ -9,7 +9,7 @@
 3. token／timeout／retry 預算與 provider schema projection；
 4. `output_locale`（en 預設／zh-Hant，server 驗證）：只有 prose 依語言，ID／path／code／metric 不翻譯；analyst 數字以阿拉伯數字校驗。
 
-**沒有任何 live AI 呼叫。** Live AI 仍關閉，直到 owner 核准 model、quota 與資料政策（H-001、H-017、D-018 的 gate「任何 live AI 呼叫前」）。本 agent 沒有尋找、讀取或要求任何 API key；live adapter 只對本機 `httptest` server 測過，對真實 API 的測試為 NOT RUN。Context builder 是 domain-neutral 的（H-016 把 P0 domain 改為電子組裝／測試線）：domain 文字只來自 DomainPack 的 `PromptContext`，`TestDomainNeutral` 檢查 builder 自己不含任何 domain 詞彙。
+**沒有任何 live AI 呼叫。** Live AI 仍關閉，直到 owner 核准 model、quota 與資料政策（H-001、H-017、D-018 的 gate「任何 live AI 呼叫前」）。本 agent 沒有尋找、讀取或要求任何 API key；live adapter 只對本機 `httptest` server 測過，對真實 API 的測試為 NOT RUN。Context builder 是 domain-neutral 的（H-016 把 P0 domain 改為電子組裝／測試線）：domain 文字只來自 DomainPack 的 `PromptContext`。第一版的 `TestDomainNeutral` 只檢查 `software_delivery` 不出現（review L7）；現在 `TestNoDomainVocabulary` 檢查 builder 的每個 string literal 與它產生的四個 role 的 rules 都沒有兩個 domain 的詞彙，只允許契約自己的 member 名稱。
 
 逐條輸出在 `checks/evidence/2026-10-19-T-024/`：`exit-codes.txt`、`environment.txt`、各指令的 log、`mutations.txt`，以及產生它們的 `t024_run.py`（執行指令並保留 log 與 exit code）與 `t024_mutate.py`（mutation harness）。
 
@@ -32,7 +32,7 @@
 
 | Scope | 判定 | 證據 |
 |---|---|---|
-| 1. Provider interface 與三種 mode | 已完成 | `provider.LLMProvider`（AI_SPEC §2 的三個方法，收 sealed prompt、回 typed output 與 audit metadata）。所有 mode 走同一個 `Client`：呼叫前檢查 cancellation、disabled、organization、role／mode、prompt 的 hash 與大小、每個 organization 的並行數；回答先依 role 的 output schema 驗證再 strict decode。`disabled`（預設）回 `provider_not_configured`／`policy_not_approved`；`fake` 只在 APP_ENV development／test；`anthropic` 只在 `AI_POLICY_APPROVAL` 是 build 內登記的 owner 核准時啟用，而登記清單（`approvedLivePolicies`）是空的。`TestDisabled`、`TestValidAnswers`、`TestAdversarialAnswersAreRefused`、`TestRequestsTheClientRefuses`、`TestLiveAIStaysOff`、`TestLoadAIRejects`、`TestLiveAIApproved`（以測試中暫時登記的核准檢查兩把 key 與其 label、預算覆寫，以及 `ANTHROPIC_API_KEY` 不被讀取） |
+| 1. Provider interface 與三種 mode | 已完成 | `provider.LLMProvider`（AI_SPEC §2 的三個方法，收 sealed prompt、回 typed output 與 audit metadata）。所有 mode 走同一個 `Client`：呼叫前檢查 cancellation、disabled、organization、role／mode、prompt 的 hash 與大小、每個 organization 的並行數；回答先依 role 的 output schema 驗證再 strict decode。`disabled`（預設）回 `provider_not_configured`／`policy_not_approved`；`fake` 只在 APP_ENV development／test；`anthropic` 只在 `AI_POLICY_APPROVAL` 是 build 內登記的 owner 核准時啟用，而登記清單（review L5 後為 `internal/config/aiapproval`，adapter 只接受它產生的 token）是空的。`TestDisabled`、`TestValidAnswers`、`TestAdversarialAnswersAreRefused`、`TestRequestsTheClientRefuses`、`TestLiveAIStaysOff`、`TestLoadAIRejects`、`TestLiveAIApproved`（以測試中暫時登記的核准檢查兩把 key 與其 label、預算覆寫，以及 `ANTHROPIC_API_KEY` 不被讀取） |
 | 1a. Live adapter（D-018） | 已完成，只有本機測試 | 官方 SDK v1.78.0（2026-09-30 發布，滿兩週，MIT，THIRD_PARTY_NOTICES）。`NewMessageService` 加明確 option，不經 SDK 讀 `ANTHROPIC_*` 環境變數或 profile；key 由 config 注入（`GEMINUS_ANTHROPIC_API_KEY_A`／`_B`，label `org-a`／`org-b`），只在 metadata 與錯誤中以 label 出現；只有 401／402／403 換下一把 key，408／409／429／5xx 只在同一把重試；不跟隨 redirect；`tool_use`、`pause_turn`、未知 stop reason 與 tool block 一律拒絕。Model 字串沒有預設（必填設定）。`TestRequestShape`（設好 `ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`、`ANTHROPIC_BASE_URL`、`ANTHROPIC_CUSTOM_HEADERS` 時 request 仍只帶注入的 key 與 base URL）、`TestFailover`、`TestSameCredentialRetries`、`TestErrorsAreSanitized`、`TestStopReasons`、`TestTimeoutsAndCancellation`、`TestNoRedirects`、`TestNewRefuses` |
 | 2. Tenant-safe context | 已完成 | 其他 organization／model 的 base version、pool、data summary、run result、import 一律 `cross_tenant_input`（附 JSON Pointer），不回部分 context；不送 model／version／run ID、hash、views。`TestCrossTenantInputsAreRefused`、`TestAnalysisRefusals`、`TestMappingRefusals` |
 | 2a. Redaction | 已完成 | PEM private key、`sk-ant-`、`sk-`／`pk-`／`rk-`、AWS、GitHub、Slack、Google key、JWT、Bearer／Basic、`key=value`、URL、e-mail、IPv4、D-001 server ID、不可見／控制字元（含 member name）以 `[REDACTED:<kind>]` 取代並計數。`TestSanitizerRedacts`、`TestSanitizerKeeps`、`TestSanitizerBoundsAndKeys`、`TestRedaction`、`TestMappingContext` |
@@ -84,6 +84,41 @@ Coordinator 的後續指示：rebase 到 `claude/lucid-meitner-vq1awo`（ee92d2b
 | `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（`rebase/spec-check.log`） | 0 | 42 個正例、70 個反例 fixture；TS contracts（95 個型別）、9 個 db/tests 檔皆為最新；重產的 `docs-check.json`（93 個 markdown、77 個 relative link）隨本版 commit |
 | `make ai-eval`（`rebase/ai-fake-suite.log`） | 0 | fake provider；10 個 zero-tolerance gate 皆為 0；scorecard 與 rebase 前相同 |
 
+## Review 後的修正
+
+獨立 review 第一輪結論為 CHANGES REQUESTED（兩個小但真實的缺口：H1、M2）。Rebase 到最新的 `claude/lucid-meitner-vq1awo`（11af1c9，即本任務已推上的 commit，沒有新的上游變更）後，每一項都先寫失敗的測試，紅與綠的輸出在 `checks/evidence/2026-10-19-T-024/review/`（`exit-codes.txt` 依序列出每一次執行）。
+
+| 項目 | 問題 | 修正 | 先紅後綠 |
+|---|---|---|---|
+| H1（confirmed） | `locale.Numbers` 把 unicode letter 之後的數字當成識別字的一部分，而漢字是 letter：「降至12分鐘」「利用率為88%」這類不加空格的 zh-Hant 數字從不檢查，TEST-024／TEST-031 的「兩語都校驗」靜默失效 | 只有 ASCII 字母、數字與 `_ / . : # -` 延續識別字（ID、path、code 都是 ASCII） | `TestNumbers`、`TestCheckProse` 加入不空格的 zh 例（`h1-red.log`：8 個失敗）；mutation M25 |
+| M2（confirmed） | `key=value` 規則的 `\b` 在 `_` 之後不成立（`DB_PASSWORD=`、`aws_secret_access_key =`、`?access_token=`、`GITHUB_TOKEN=`）；JSON 的 key 與 value 分開處理，`{"password":"…"}` 原樣送出；沒有 Stripe、GitLab、Azure `AccountKey=`、PGP、單獨一格的 PEM body、沒有 scheme 的 URL；ai-eval 的 `secrets_sent` 只放一種 `sk-ant-` | 關鍵字前可有 `[A-Za-z0-9_-]*` 前綴；名稱像 credential 的 member 與 import 欄位，值整個遮蔽；新增上述 pattern（base64 規則要求大小寫與數字混合，hex digest 不受影響）；`secrets_sent` 在每個 case 放 10 種 credential 形狀與一個只靠名稱辨識的值 | `TestSanitizerRedacts` 12 例、`TestSanitizerRedactsByMemberName`、`TestSanitizerKeeps` 的反例、`TestRedaction`、`TestMappingContext`；`m2-l3-l4-red.log`：6 個 aicontext 測試失敗，ai-eval 的 `secrets_sent` 為 1062；mutation M26、M27、M36 |
+| L3 | 看起來像角括號的字元（`＜/untrusted_data＞`、`‹…›`）原樣送出 | 全形、小型、CJK、數學與技術用角括號、單書名號、modifier arrowhead 轉為 ASCII（計為 `delimiter`），再由 `Seal` escape；《》「」不動 | `TestSanitizerFoldsLookAlikeDelimiters`、`TestRedaction`；mutation M28 |
+| L4 | 兩個名稱遮蔽成同一個 marker 時只留第一個，沒有記錄；import row 依 map 順序，留哪一個不固定 | 計數並列在 CONTEXT_OMISSIONS（`members`／`redaction_collision`）；import row 依欄位順序 | `TestSanitizerCountsCollisions`、`TestRedaction`、`TestMappingContext`；mutation M29 |
+| L5 | adapter 只檢查 `Approval` 非空字串 | 新的 leaf package `internal/config/aiapproval` 保存登記清單（仍為空）與 `Approval` token：只有 `Recorded` 能從清單產生，零值無效，`Valid` 每次重查；config 與 adapter 都只用這個型別，`anthropic.New` 拒絕無效 token；只有該目錄的測試能暫時登記（`export_test.go`），需要核准的 config 測試搬到那裡；`ai-suggests-only` 只 allow 這個 leaf（新 probe） | `l5-red.log`：`New` 接受一個沒有登記的核准；mutation M14（改到新位置）、M32 |
+| L6 | sealed prompt 的 hash 不含 organization | `Prompt.OrganizationID`：`Seal` 要求、進 `InputHash`（不送 provider）、`Verify` 重算，`Client` 拒絕 organization 與呼叫不同的 prompt；context builder 封存 scope 的 organization | `TestSealBindsTheOrganization`、`TestVerify`、`TestRequestsTheClientRefuses` 的兩個新例、context 測試（`l6-red.log`）。第一次綠的執行卡在 `TestConcurrencyPerOrganization`：它的第二個 organization 沿用第一個的 prompt，現在在 backend 之前就被拒絕；以 PID 停止該 test binary，改為封存第二個 organization 的 prompt 後重跑通過（`exit-codes.txt` 的兩筆 `l6-green.log`）；mutation M30、M31 |
+| L7 | THIRD_PARTY_NOTICES 與 ADR-027 說 YAML rc 是 SDK 的 profile 設定用；`TestDomainNeutral` 只檢查 `software_delivery` 不出現 | 更正為 `pb33f/ordered-map/v2` 的 `yaml.go` 帶入（`go mod why -m`），ADR-011 記錄 `go.yaml.in/yaml/v4` v4.0.0-rc.2（2025-08-28 發布，pin）為接受的 transitive pre-release 與風險；新的 `TestNoDomainVocabulary` 檢查 builder 的每個 string literal 與它對 neutral pack 產生的四個 role 的 rules，沒有兩個 domain（software delivery、ELECTRONICS_LINE.md）的詞彙，只允許契約自己的 member 名稱（`metrics.dora`，CB-37；`deployment_id`） | `l7-red.log`：analyst template 的 DORA、importer template 的 deployment；改為中性用語（analyst-0.3.1、importer-0.2.1） |
+| L8 | fake 把 byte 數報成 token usage | 回報 0 | `TestDefaultAnswers`（`l8-red.log`）；mutation M33 |
+| INFO | 之後的呼叫靜默跳過被拒的 credential；402 後要重啟才再試；其餘待記錄 | 跳過的 credential 每次都列在 `failed_over_from`；402 休息 15 分鐘後再試，401／403 直到重啟（換 key）；ADR-027 記錄：`CheckProse` 忽略正負號（T-030 檢查 delta 方向）、SDK 在 `MaxOutputBytes` 之前讀完整個 body、IR 放得進 budget 就送完整 IR 的 minimal-context 選擇 | `TestFailover` 的後續呼叫、`TestBillingCooldown`（`credentials-red.log`；綠的以 `-race` 執行）；mutation M34、M35 |
+
+第一次執行 `make backend-test`（`review/final/backend-test-first-attempt-cookie-guard.log`，exit 2）在 `internal/auth` 的 `TestNoGoCodeHandlesCookies` 失敗：M2 的 credential 名稱清單有 cookie 這個字，而 Go module 不得出現 cookie header 的名稱（ADR-018）。修正是把它從清單拿掉（不是改寫字串繞過 guard）；長 base64 的 session 值仍由 base64 規則遮蔽。
+
+**Mutation**（`review/mutations.txt`，harness 為 `review/t024_mutate.py`）：原有 24 個加上 review 的 12 個（M25–M36），每個只跑指定的測試（`-timeout 90s`），跑完逐 byte 還原。第一次執行（`review/mutations-first-run.txt`）35/36：M28 的 mutant 無法編譯（`a` 未使用），harness 標為 INVALID 而不算擋下；改寫成可編譯的 mutant 後，在最終程式（拿掉 cookie 之後）重跑 **36/36 killed**，所有檔案還原。
+
+### Review 後的執行結果
+
+先 `go clean -testcache`；沒有設定任何 DB URL，沒有 PostgreSQL process。Log 與 exit code 在 `checks/evidence/2026-10-19-T-024/review/final/`（`exit-codes.txt`）。
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `go test -count=1 -v ./internal/ai/... ./internal/config/... ./internal/secret/...`（`final/go-test-ai.log`） | 0 | 78 個 top-level test，0 FAIL、0 SKIP（含 `internal/config/aiapproval`） |
+| `make backend-test`（第一次） | 2 | 見上：cookie guard |
+| `make backend-test`（`final/backend-test.log`） | 0 | gofmt、go vet、53 個 package ok；DB-backed 測試 skip（NOT RUN） |
+| `make backend-race`（`final/backend-race.log`） | 0 | 53 個 package ok（`-race`） |
+| `make architecture-check`（`final/architecture-check.log`） | 0 | 65 packages、15 rules、16 build configurations；`ai-suggests-only` 多了 `internal/config/aiapproval` 的 allow 與一個 probe |
+| `make ai-eval`（`final/ai-fake-suite.log`） | 0 | fake provider；10 個 zero-tolerance gate 皆為 0，`secrets_sent` 現在檢查 10 種形狀與名稱辨識的值；scorecard 檔案沒有改變 |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（`final/spec-check.log`） | 0 | TS contracts、9 個 db/tests 檔皆為最新；沒有任何 `checks/*.json` 改變（本輪沒有新增契約、fixture 或 markdown 檔） |
+| `python3 -I t024_mutate.py`（`review/mutations.txt`） | 0 | 36/36 killed |
+
 ## 驗收測試
 
 | 驗收 | T-024 涵蓋 | 其餘 |
@@ -108,7 +143,7 @@ Coordinator 的後續指示：rebase 到 `claude/lucid-meitner-vq1awo`（ee92d2b
 ## 需要 owner 或 reviewer 決定
 
 - **ADR-027**（PROPOSED）：package 劃分、mode、預算預設值、redaction 範圍、`output_config.format` 而非 forced tool。
-- **Live AI 的核准**：model、token quota、資料政策、兩個 organization 的 retention／ZDR 一致（D-018、H-017）。核准後由 owner 經 review 的變更在 `internal/config/ai.go` 的 `approvedLivePolicies` 登記一筆，並設定 `AI_MODEL` 與兩把 key；agent 不登記。
+- **Live AI 的核准**：model、token quota、資料政策、兩個 organization 的 retention／ZDR 一致（D-018、H-017）。核准後由 owner 經 review 的變更在 `internal/config/aiapproval` 的登記清單加一筆（review L5 前是 `internal/config/ai.go` 的 `approvedLivePolicies`），並設定 `AI_MODEL` 與兩把 key；agent 不登記。
 - **CB-40**：(a) pool 違規的 issue code（建議 `ID_POOL_VIOLATION`）；(b) `AI_OUTPUT_INVALID` 是否列入 ValidationCode 目錄；(c) provider 錯誤 code 對 HTTP ErrorCode 與 proposal／analysis `failed` 的對應；(d) `provider_metadata` 的 schema；(e) Proposal API 是否顯示 pool 與 `output_locale`。
 - 401／402／403 後的 credential 在 process 重啟前不再使用；是否需要定期重新探測（例如 credits 補充後）。
 - 預算預設值（prompt 128 KiB、output 8192 tokens、120 s、retry 2、每 organization 並行 2）是工程候選，benchmark 與 quota 決定後可調。
@@ -117,7 +152,8 @@ Coordinator 的後續指示：rebase 到 `claude/lucid-meitner-vq1awo`（ee92d2b
 
 - Migration 0011 與其 SQL 測試沒有記錄在案的執行結果（見 NOT RUN）；在 coordinator 跑過 integration 前，它們是未驗證的草案。Rebase 後 `run_db_tests.sh` 的順序（0010 與 0011 up，所有 SQL suite，0011 down，`pool_rows.sql`，0011 up 必須失敗且不留下欄位，0010 down，0009 down…）只經過閱讀檢查。
 - 並行限制是每個 process 的，多個 worker 會倍增；沒有期間 quota。
-- Redaction 是 heuristic：可能漏掉格式不在清單內的 credential（例如沒有 key 名稱的長隨機字串、IPv6 位址不遮蔽），也可能遮蔽無害的字串（例如看似 `key=value` 的設定）。遮蔽數量在 `Disclosure` 中可見。
-- 中文數字的判定是 heuristic（例外清單如「萬一」「一一」），可能有誤判或漏判；`CheckProse` 尚未接到 analyst 的 completed 判定（T-030）。
-- SDK 連結了未使用的路徑（環境變數與 profile 的讀取、webhook、`go.yaml.in/yaml/v4` v4.0.0-rc.2 這個 release candidate）；adapter 不呼叫它們，`TestRequestShape` 與 mutation M11 檢查 adapter 不經由它們，但它們仍在 binary 中。
+- Redaction 是 heuristic（review M2 後範圍較大）：仍可能漏掉格式不在清單內、名稱也不像 credential 的值（例如 40 字以下、沒有關鍵字的隨機字串；IPv6 位址不遮蔽），也會遮蔽無害的字串（以 token 等為關鍵字的 `key=value`、40 字以上大小寫混合的長識別字、有 path 的 `host.tld/…`）。遮蔽數量在 `Disclosure` 中可見。
+- 中文數字的判定是 heuristic（例外清單如「萬一」「一一」），可能有誤判或漏判；`CheckProse` 忽略正負號，也尚未接到 analyst 的 completed 判定（T-030）。
+- SDK 連結了未使用的路徑（環境變數與 profile 的讀取、webhook，以及經 `pb33f/ordered-map/v2` 帶入的 `go.yaml.in/yaml/v4` v4.0.0-rc.2 這個 release candidate，ADR-011 記為接受的 transitive pre-release）；adapter 不呼叫它們，`TestRequestShape` 與 mutation M11 檢查 adapter 不經由環境變數，但它們仍在 binary 中。
+- 402 的冷卻（15 分鐘）與並行限制都是每個 process 的；多個 worker 各自探測。
 - 工作樹留有空目錄 `internal/ai/eval`（改名為 `corpus` 時留下，未追蹤，不會被 commit）。Rebase 後再試 `rmdir internal/ai/eval`，guard 仍拒絕（原文："this command runs a string through eval, which can't be verified to stay inside the worktree. Refusing to run it"），依規則沒有繞過。

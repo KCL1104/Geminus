@@ -16,3 +16,8 @@ l7-red.log: exit 1 (go test -count=1 -run TestNoDomainVocabulary ./internal/ai/a
 l7-red.log: exit 1 (go test -count=1 -run TestNoDomainVocabulary ./internal/ai/aicontext/; env: none)
 l7-red.log: exit 1 (go test -count=1 -run TestNoDomainVocabulary ./internal/ai/aicontext/; env: none)
 l7-green.log: exit 0 (go test -count=1 -timeout 120s ./internal/ai/... ./prompts/...; env: none)
+
+Notes (written after the runs):
+- m2-l3-l4-red.log ran twice: the first run did not compile (the tests named RedactDelimiter and collided before they existed); the constants were added alone, and the second run is the red log kept.
+- l6-green.log first run (exit 1): TestConcurrencyPerOrganization hung once the client compared the prompt's organization; the test binary was stopped by its PID and the test fixed; the second run is the log kept.
+- l7-red.log ran three times: the first failed on a setup mistake in the new test (a scenario input without a pool), the second allowed the contract name dora in the rules text too; the third is the red log kept (DORA in the analyst template, deployment in the importer template).
