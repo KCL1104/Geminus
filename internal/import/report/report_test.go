@@ -25,6 +25,7 @@ func TestSafe(t *testing.T) {
 		"a\t+1":                                  "a\t'+1",
 		"a\n-1":                                  "a\n'-1",
 		"a\r=1":                                  "a\r'=1",
+		"x\r\n+1":                                "x\r\n'+1", // CRLF is one line end: one apostrophe
 		"x; =1":                                  "x;' =1",
 		"x;\"=1\"":                               "x;'\"=1\"",
 		"x; \" @a":                               "x;' \" @a",

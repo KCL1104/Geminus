@@ -77,9 +77,10 @@ func startsFormula(s string) bool {
 // injection): a cell that starts with a tab, a carriage return or a line
 // feed, or whose first character after white space and quotes is =, +, -
 // or @ (or a full-width form), gets a leading apostrophe; so does every
-// part of it after a separator (',', ';', a tab or a line end) that would
-// start that way, the apostrophe following the separator. Any other cell
-// is returned unchanged; Safe(Safe(c)) is Safe(c).
+// part of it after a separator (',', ';', a tab or a line end, "\r\n"
+// being one) that would start that way, the apostrophe following the
+// separator. Any other cell is returned unchanged; Safe(Safe(c)) is
+// Safe(c).
 func Safe(cell string) string {
 	var b strings.Builder
 	changed := false
@@ -97,7 +98,7 @@ func Safe(cell string) string {
 		if changed {
 			b.WriteString(cell[i : i+w])
 		}
-		at = separator(r)
+		at = separator(r) && !(r == '\r' && strings.HasPrefix(cell[i+w:], "\n")) // "\r\n" is one line end
 		i += w
 	}
 	if !changed {
