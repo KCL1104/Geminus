@@ -28,7 +28,9 @@
   "next_after_review": [
     {
       "id": "T-016",
-      "awaiting_task_review": [],
+      "awaiting_task_review": [
+        "T-019"
+      ],
       "awaiting_decisions": [
         "D-043",
         "D-044"

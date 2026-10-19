@@ -6,8 +6,15 @@
 --   running -> running (heartbeat, lease taken over), queued (retry, reaper),
 --              completed, failed, cancelled
 --   completed, failed, cancelled: final.
--- A job starts queued with no attempt, lease or error; its identity and
--- input never change; attempts and lease tokens never go back.
+-- A job starts queued with no attempt, lease or error; a queued job always
+-- has an attempt left; its identity and input never change; attempts and
+-- lease tokens never go back. The runtime roles each move a job only their
+-- own way (T-019 review L3): the API enqueues, cancels a queued job or
+-- reschedules it (priority, available_at); the worker claims a queued job
+-- and ends or retries a running one. Only the schema owner (operators,
+-- migrations) is otherwise unrestricted. This guards INSERT and UPDATE;
+-- removing rows is a retention matter, not a lifecycle one (the runtime
+-- roles have no DELETE on jobs).
 BEGIN;
 SET LOCAL ROLE twin_owner;
 CREATE FUNCTION twin.protect_job_state() RETURNS trigger LANGUAGE plpgsql
@@ -39,6 +46,21 @@ BEGIN
   END IF;
   IF NEW.attempt<OLD.attempt OR NEW.lease_token<OLD.lease_token THEN
     RAISE EXCEPTION 'a job''s attempts and lease tokens never go back' USING ERRCODE='55000';
+  END IF;
+  IF NEW.status='queued' AND NEW.attempt>=NEW.max_attempts THEN
+    RAISE EXCEPTION 'a queued job has an attempt left' USING ERRCODE='55000';
+  END IF;
+  IF NOT pg_catalog.pg_has_role(current_user,'twin_owner','USAGE') THEN
+    IF pg_catalog.pg_has_role(current_user,'twin_api','USAGE')
+       AND NOT (OLD.status='queued' AND NEW.status IN ('queued','cancelled')
+                AND ROW(NEW.attempt,NEW.lease_token,NEW.locked_at,NEW.locked_by,NEW.lease_expires_at,NEW.heartbeat_at,NEW.error)
+                    IS NOT DISTINCT FROM
+                    ROW(OLD.attempt,OLD.lease_token,OLD.locked_at,OLD.locked_by,OLD.lease_expires_at,OLD.heartbeat_at,OLD.error)) THEN
+      RAISE EXCEPTION 'the API only cancels or reschedules a queued job' USING ERRCODE='55000';
+    END IF;
+    IF pg_catalog.pg_has_role(current_user,'twin_worker','USAGE') AND OLD.status='queued' AND NEW.status<>'running' THEN
+      RAISE EXCEPTION 'the worker only claims a queued job' USING ERRCODE='55000';
+    END IF;
   END IF;
   IF OLD.status='queued' AND NEW.status='running' AND (NEW.attempt<>OLD.attempt+1 OR NEW.lease_token<=OLD.lease_token) THEN
     RAISE EXCEPTION 'a claim starts the next attempt under a new lease token' USING ERRCODE='55000';

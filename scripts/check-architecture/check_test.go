@@ -179,6 +179,36 @@ func TestProbesAreCaught(t *testing.T) {
 	}
 }
 
+// A package outside the worker implements a job handler through
+// internal/worker/handler without reaching the worker scope (T-019 review
+// M3): the import, simulation and AI packages will.
+func TestHandlersPlugInWithoutTheWorkerScope(t *testing.T) {
+	root := repoRoot(t)
+	ov := overlay(t, root, map[string]string{"internal/project/zz_probe.go": `package project
+
+import (
+	"context"
+
+	"` + module + `/internal/worker/handler"
+)
+
+var _ handler.Handler = handler.Func(func(context.Context, handler.Run) error { return nil })
+`})
+	g, err := load(root, []string{"-overlay=" + ov}, host, defaultPatterns...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	violations, errs := check(g, rules)
+	if len(errs) > 0 {
+		t.Fatal(errs)
+	}
+	for _, v := range violations {
+		if rel(v.pkg) == "./internal/project" {
+			t.Errorf("a handler outside the worker violates %s: %v", v.rule, v.chain)
+		}
+	}
+}
+
 // Rules on a synthetic graph: what the repository cannot show yet (an LLM
 // SDK, the AI package) and the rule machinery itself.
 func TestSyntheticGraph(t *testing.T) {

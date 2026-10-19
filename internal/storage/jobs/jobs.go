@@ -137,8 +137,14 @@ type Failure struct {
 	Retryable bool   `json:"retryable"`
 }
 
-// Error makes a Failure an error a handler can return.
-func (f *Failure) Error() string { return f.Code + ": " + f.Message }
+// Error makes a Failure an error a handler can return. A nil *Failure (a
+// handler's bug) still answers, so logging it cannot crash the worker.
+func (f *Failure) Error() string {
+	if f == nil {
+		return "jobs: a nil failure"
+	}
+	return f.Code + ": " + f.Message
+}
 
 // LeaseExpired is the failure the reaper records.
 const LeaseExpired = "LEASE_EXPIRED"

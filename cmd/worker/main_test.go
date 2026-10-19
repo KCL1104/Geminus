@@ -15,7 +15,7 @@ import (
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/storage/postgres"
 	"github.com/kcl1104/geminus/internal/tenant"
-	"github.com/kcl1104/geminus/internal/worker"
+	"github.com/kcl1104/geminus/internal/worker/handler"
 )
 
 var validEnv = map[string]string{
@@ -36,7 +36,7 @@ func with(kv ...string) func(string) string {
 }
 
 // someHandler stands for the handlers later tasks register.
-var someHandler = map[jobs.Type]worker.Handler{jobs.ImportProfile: worker.HandlerFunc(func(context.Context, jobs.Job, worker.Finish) error { return nil })}
+var someHandler = map[jobs.Type]handler.Handler{jobs.ImportProfile: handler.Func(func(context.Context, handler.Run) error { return nil })}
 
 func TestRunRejectsInvalidConfiguration(t *testing.T) {
 	var stderr bytes.Buffer
@@ -66,21 +66,55 @@ func TestRunRefusesToStartWithoutHandlers(t *testing.T) {
 	}
 }
 
+// The allowlist is checked with the rest of the configuration, before the
+// handlers and before any connection (T-019 review L4).
 func TestRunRefusesABadAllowlist(t *testing.T) {
-	for _, orgs := range []string{"org_bad", ids.New("usr"), validEnv["WORKER_ORGANIZATION_IDS"] + "," + validEnv["WORKER_ORGANIZATION_IDS"], ids.New("org") + ","} {
-		var stderr bytes.Buffer
-		if code := run(context.Background(), with("WORKER_ORGANIZATION_IDS", orgs), &stderr, someHandler); code != exitConfig || !strings.Contains(stderr.String(), "WORKER_ORGANIZATION_IDS") {
-			t.Errorf("%q: exit %d: %s", orgs, code, stderr.String())
+	for _, orgs := range []string{"org_bad", ids.New("usr"), validEnv["WORKER_ORGANIZATION_IDS"] + "," + validEnv["WORKER_ORGANIZATION_IDS"], ids.New("org") + ",", "not-an-id,,,"} {
+		for name, hs := range map[string]map[jobs.Type]handler.Handler{"with a handler": someHandler, "without one": handlers()} {
+			var stderr bytes.Buffer
+			if code := run(context.Background(), with("WORKER_ORGANIZATION_IDS", orgs), &stderr, hs); code != exitConfig || !strings.Contains(stderr.String(), "WORKER_ORGANIZATION_IDS") {
+				t.Errorf("%q %s: exit %d: %s", orgs, name, code, stderr.String())
+			}
 		}
+	}
+}
+
+// Every connection the pool hands back is checked for leftover tenant
+// scope (tenant.Guard).
+func TestPoolGuardsReleasedConnections(t *testing.T) {
+	cfg, err := poolConfig(validEnv["DATABASE_URL"])
+	if err != nil || cfg.AfterRelease == nil {
+		t.Fatalf("the pool has no release guard (%v)", err)
+	}
+	if _, err := poolConfig("not a url"); err == nil {
+		t.Error("an invalid DATABASE_URL was accepted")
 	}
 }
 
 func TestRunNeedsTheDatabase(t *testing.T) {
 	var stderr bytes.Buffer
-	if code := run(context.Background(), with(), &stderr, someHandler); code != exitDatabase {
+	// Bounded, so a worker that wrongly started fails the test instead of
+	// hanging it (T-019 review I1).
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if code := run(ctx, with(), &stderr, someHandler); code != exitDatabase {
 		t.Fatalf("exit = %d, want %d: %s", code, exitDatabase, stderr.String())
 	}
 	if out := stderr.String(); !strings.Contains(out, "database unavailable") || strings.Contains(out, "db-pass-123") {
+		t.Fatalf("stderr: %s", out)
+	}
+}
+
+// A signal before the loop began (the context already ended) is a stop,
+// not a database failure.
+func TestRunStopsBeforeStarting(t *testing.T) {
+	var stderr bytes.Buffer
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if code := run(ctx, with(), &stderr, someHandler); code != 0 {
+		t.Fatalf("exit = %d, want 0: %s", code, stderr.String())
+	}
+	if out := stderr.String(); !strings.Contains(out, "stopped before starting") || strings.Contains(out, "database unavailable") {
 		t.Fatalf("stderr: %s", out)
 	}
 }
@@ -123,7 +157,8 @@ func TestRunWorksAndStops(t *testing.T) {
 		t.Fatal(err)
 	}
 	ran := make(chan struct{}, 1)
-	handlers := map[jobs.Type]worker.Handler{jobs.ImportProfile: worker.HandlerFunc(func(ctx context.Context, j jobs.Job, finish worker.Finish) error {
+	handlers := map[jobs.Type]handler.Handler{jobs.ImportProfile: handler.Func(func(ctx context.Context, run handler.Run) error {
+		finish := run.Finish
 		if err := finish(ctx, jobs.Completed, func(context.Context, tenant.Tx) error { return nil }); err != nil {
 			return err
 		}

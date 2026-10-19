@@ -46,8 +46,28 @@ MUTANTS = [
     ("claim-any-attempt", "(NEW.attempt<>OLD.attempt+1 OR NEW.lease_token<=OLD.lease_token)", "(NEW.lease_token<=OLD.lease_token)"),
     ("claim-same-token", "(NEW.attempt<>OLD.attempt+1 OR NEW.lease_token<=OLD.lease_token)", "(NEW.attempt<>OLD.attempt+1)"),
     ("no-search-path", "LANGUAGE plpgsql\n  SET search_path = pg_catalog, pg_temp AS $$", "LANGUAGE plpgsql\n  AS $$"),
+    # Identity (review: rv-*-mutable), one column at a time
+    ("rv-id-mutable", "ROW(NEW.id,NEW.organization_id,NEW.type,", "ROW(OLD.id,NEW.organization_id,NEW.type,"),
+    ("rv-org-mutable", "ROW(NEW.id,NEW.organization_id,NEW.type,", "ROW(NEW.id,OLD.organization_id,NEW.type,"),
+    ("rv-type-mutable", "ROW(NEW.id,NEW.organization_id,NEW.type,", "ROW(NEW.id,NEW.organization_id,OLD.type,"),
+    ("rv-run-id-mutable", "NEW.payload,NEW.simulation_run_id,", "NEW.payload,OLD.simulation_run_id,"),
+    ("proposal-id-mutable", "NEW.simulation_run_id,NEW.ai_proposal_id,", "NEW.simulation_run_id,OLD.ai_proposal_id,"),
+    ("rv-import-id-mutable", "NEW.ai_proposal_id,NEW.import_id,", "NEW.ai_proposal_id,OLD.import_id,"),
+    ("analysis-id-mutable", "\n         NEW.ai_analysis_id,", "\n         OLD.ai_analysis_id,"),
+    # A queued job has an attempt left
+    ("queued-without-attempts", "  IF NEW.status='queued' AND NEW.attempt>=NEW.max_attempts THEN", "  IF false THEN"),
+    # Each runtime role only its own way (review L3)
+    ("owner-restricted-as-api", "  IF NOT pg_catalog.pg_has_role(current_user,'twin_owner','USAGE') THEN", "  IF true THEN"),
+    ("roles-unrestricted", "  IF NOT pg_catalog.pg_has_role(current_user,'twin_owner','USAGE') THEN", "  IF false THEN"),
+    ("api-any-move", "    IF pg_catalog.pg_has_role(current_user,'twin_api','USAGE')\n       AND NOT", "    IF false\n       AND NOT"),
+    ("api-moves-a-running-job", "       AND NOT (OLD.status='queued' AND NEW.status IN ('queued','cancelled')", "       AND NOT (NEW.status IN ('queued','cancelled')"),
+    ("api-claims", "NEW.status IN ('queued','cancelled')\n", "NEW.status IN ('queued','running','cancelled')\n"),
+    ("api-touches-the-lease", "AND ROW(NEW.attempt,NEW.lease_token,NEW.locked_at,NEW.locked_by,NEW.lease_expires_at,NEW.heartbeat_at,NEW.error)", "AND ROW(OLD.attempt,OLD.lease_token,OLD.locked_at,OLD.locked_by,OLD.lease_expires_at,OLD.heartbeat_at,OLD.error)"),
+    ("worker-any-move", "    IF pg_catalog.pg_has_role(current_user,'twin_worker','USAGE') AND OLD.status='queued' AND NEW.status<>'running' THEN", "    IF false THEN"),
 ]
-EQUIVALENT: dict[str, str] = {}
+EQUIVALENT: dict[str, str] = {
+    "api-claims": "a claim changes attempt and lease_token (the claim rule requires attempt+1 and a new token), which the API's own check keeps unchanged; leaving running out of the API's statuses only states the rule twice",
+}
 
 
 def psql(url, *args):

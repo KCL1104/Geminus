@@ -566,6 +566,19 @@ func TestBackoff(t *testing.T) {
 	}
 }
 
+// A Failure is an error a handler returns; a nil one (a handler's bug)
+// still answers, so the worker can log it.
+func TestAFailureIsAnError(t *testing.T) {
+	var err error = &jobs.Failure{Code: "INVALID_INPUT", Message: "the upload is not CSV"}
+	if err.Error() != "INVALID_INPUT: the upload is not CSV" {
+		t.Errorf("a failure: %q", err.Error())
+	}
+	var none *jobs.Failure
+	if err = none; err.Error() != "jobs: a nil failure" {
+		t.Errorf("a nil failure: %q", err.Error())
+	}
+}
+
 // The reaper skips a job a finalizing transaction holds (SKIP LOCKED): it
 // neither waits for that transaction nor takes the job from under it.
 func TestReapSkipsAJobBeingFinalized(t *testing.T) {
@@ -794,6 +807,88 @@ func TestCancelRacesTheClaim(t *testing.T) {
 			t.Errorf("%s claimed %v, cancelled %v", j.ID, claimed[j.ID], cancelled[j.ID])
 		case cancelled[j.ID] && got.Status != jobs.Cancelled, claimed[j.ID] && got.Status != jobs.Running:
 			t.Errorf("%s is %s", j.ID, got.Status)
+		}
+	}
+}
+
+// leaseLeft is how long job id's lease has left by the database's clock.
+func (e *env) leaseLeft(t *testing.T, id string) time.Duration {
+	t.Helper()
+	var ms float64
+	if err := e.admin.QueryRow(context.Background(), `SELECT extract(epoch FROM lease_expires_at - clock_timestamp())*1000 FROM twin.jobs WHERE id=$1`, id).Scan(&ms); err != nil {
+		t.Fatal(err)
+	}
+	return time.Duration(ms) * time.Millisecond
+}
+
+// A claim and a heartbeat each hold the job for one Policy.Lease from the
+// database's now() (T-019 review M4), not more and not less.
+func TestTheLeaseLastsOneLease(t *testing.T) {
+	e := setup(t)
+	e.enqueue(t, e.org, e.prj, e.model, e.base, 0)
+	j, l, _ := e.claim(t, e.org.ID, "worker-1")
+	if left := e.leaseLeft(t, j.ID); left < fast.Lease-5*time.Second || left > fast.Lease {
+		t.Errorf("after the claim the lease has %v left, want about %v", left, fast.Lease)
+	}
+	if _, err := e.admin.Exec(context.Background(), `UPDATE twin.jobs SET lease_expires_at=now()+interval '1 second' WHERE id=$1`, j.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error { return jobs.Heartbeat(ctx, tx, l, fast) }); err != nil {
+		t.Fatal(err)
+	}
+	if left := e.leaseLeft(t, j.ID); left < fast.Lease-5*time.Second || left > fast.Lease {
+		t.Errorf("after a heartbeat the lease has %v left, want about %v", left, fast.Lease)
+	}
+}
+
+// Each retry waits the backoff of the attempt that failed: base, then
+// twice the base (T-019 review L6).
+func TestRetriesBackOffByAttempt(t *testing.T) {
+	e := setup(t)
+	j := e.enqueue(t, e.org, e.prj, e.model, e.base, 0)
+	for attempt := 1; attempt <= 2; attempt++ {
+		_, l, ok := e.claim(t, e.org.ID, "worker-1")
+		if !ok {
+			t.Fatalf("attempt %d was not claimed", attempt)
+		}
+		if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error {
+			_, err := jobs.Fail(ctx, tx, l, jobs.Failure{Code: "X", Message: "x", Retryable: true}, fast)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+		waitsFor(t, e.get(t, e.org.ID, j.ID), fast.Backoff(attempt))
+		e.due(t, j.ID)
+	}
+	if fast.Backoff(2) != 2*fast.Backoff(1) {
+		t.Errorf("the policy's backoff does not double: %v, %v", fast.Backoff(1), fast.Backoff(2))
+	}
+}
+
+// One reap takes back at most its limit; the next takes the rest (T-019
+// review L6).
+func TestReapTakesItsLimit(t *testing.T) {
+	e := setup(t)
+	var ids []string
+	for range 3 {
+		e.enqueue(t, e.org, e.prj, e.model, e.base, 0)
+		j, _, _ := e.claim(t, e.org.ID, "worker-1")
+		ids = append(ids, j.ID)
+	}
+	for _, id := range ids {
+		e.expire(t, id)
+	}
+	for _, want := range []int{2, 1, 0} {
+		var requeued, failed int
+		if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error {
+			var err error
+			requeued, failed, err = jobs.Reap(ctx, tx, e.org.ID, 2, fast)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+		if requeued+failed != want {
+			t.Errorf("a reap with limit 2 took %d, want %d", requeued+failed, want)
 		}
 	}
 }

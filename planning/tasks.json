@@ -958,7 +958,8 @@
       "depends_on": [
         "T-009",
         "T-006",
-        "T-003"
+        "T-003",
+        "T-019"
       ],
       "requirement_ids": [
         "REQ-007",

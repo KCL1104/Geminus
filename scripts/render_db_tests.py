@@ -38,11 +38,12 @@ IDS = {
     "MDL_A": ("mdl", "A", 1), "MDL_A2": ("mdl", "A", 2), "MDL_B": ("mdl", "B", 1), "MDL_X": ("mdl", "A", 99),
     "MV_A1": ("mv", "A", 1), "MV_A2": ("mv", "A", 2), "MV_X": ("mv", "A", 21), "MV_A21": ("mv", "A", 22),
     "MV_B1": ("mv", "B", 1), "DS_A": ("ds", "A", 1), "DSV_A1": ("dsv", "A", 1), "DSV_A2": ("dsv", "A", 2),
-    "AIP_A1": ("aip", "A", 1), "AIP_A2": ("aip", "A", 2), "IMP_A1": ("imp", "A", 1), "SIM_A1": ("sim", "A", 1),
+    "AIP_A1": ("aip", "A", 1), "AIP_A2": ("aip", "A", 2), "IMP_A1": ("imp", "A", 1), "IMP_A2": ("imp", "A", 2), "ANA_A1": ("ana", "A", 1), "SIM_A1": ("sim", "A", 1),
     "AUD_A1": ("aud", "A", 1), "REQ_A1": ("req", "A", 1), "USR_A2": ("usr", "A", 2), "JOB_A1": ("job", "A", 1),
     "AIP_A9": ("aip", "A", 9), "ORG_P": ("org", "P", 0), "USR_P": ("usr", "P", 1),
     "AUD_A3": ("aud", "A", 3), "AUD_A4": ("aud", "A", 4), "AUD_P1": ("aud", "P", 1), "AUD_P2": ("aud", "P", 2),
     "JOB_A2": ("job", "A", 2), "JOB_A3": ("job", "A", 3), "JOB_A4": ("job", "A", 4), "JOB_A5": ("job", "A", 5),
+    "JOB_A6": ("job", "A", 6), "JOB_A7": ("job", "A", 7), "JOB_A8": ("job", "A", 8),
 }
 
 

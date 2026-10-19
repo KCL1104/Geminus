@@ -1,6 +1,6 @@
 # T-019 驗證報告：PostgreSQL job queue、lease 與 worker 迴圈
 
-**日期：2026-10-19｜狀態：`review`（送獨立 reviewer；依 H-003 驗收）｜需求：REQ-012、REQ-018、REQ-019｜Gate：D-007、D-008、D-011（APPROVED）；ADR-024（PROPOSED，待 owner）｜驗收測試：TEST-010（worker 部分）、TEST-020、TEST-021（佇列部分）**
+**日期：2026-10-19｜狀態：`review`（review round 1 為 CHANGES REQUESTED，修正後送 round 2；依 H-003 驗收）｜需求：REQ-012、REQ-018、REQ-019｜Gate：D-007、D-008、D-011（APPROVED）；ADR-024（PROPOSED，待 owner）｜驗收測試：TEST-010（worker 部分）、TEST-020、TEST-021（佇列部分）**
 
 範圍依 tasks.json：
 
@@ -9,7 +9,7 @@
 - resource、job、audit 在同一個 enqueue transaction；過時的 finalize 被拒；
 - worker scope 移到只有 worker 端能 import 的 package，並以 architecture 規則禁止 API 端依賴（T-009 re-review R3b）。
 
-分三段交付：T-019a（36d2d44）、T-019b（4ab2eff、962c8b1）、T-019c／d（c6a51c1）。逐條輸出在 `checks/evidence/2026-10-19-T-019/`。
+分三段交付：T-019a（36d2d44）、T-019b（4ab2eff、962c8b1）、T-019c／d（c6a51c1、5a68042），review round 1 的修正見下方專節。逐條輸出在 `checks/evidence/2026-10-19-T-019/`（round 1 修正後的在 `round1/`）。
 
 ## 交付內容
 
@@ -18,9 +18,10 @@
 | `internal/tenant/workerscope`、`internal/tenant/internal/scope`（T-019a） | worker scope：`New(pool, assigned)` 只接受 organization ID、每個一次；`Run` 只在 assigned organization 中、以 transaction-local 設定執行，不查 membership。Scope 的 ID 規則與 `set_config` 放在只有 `internal/tenant` 底下能 import 的 package |
 | `scripts/check-architecture`（T-019a） | 規則 `worker-scope-only-in-the-worker`：只有 `cmd/worker`、`internal/worker` 與 workerscope 本身能依賴它；三個 probe（cmd/api、service、storage）在規則之前通過、之後被擋 |
 | `internal/storage/jobs`（T-019b、c） | `Enqueue`（在 resource 與 audit 的 transaction 中；不合格的 job 在送到 DB 前拒絕）、`Claim`（organization filter、只取有 handler 的 type、priority／created_at／id、`SKIP LOCKED`、attempt 與 token 加一）、`Heartbeat`、`Lock`、`Complete`、`Cancel`、`Fail`（以 organization、job、worker、token、running、未過期為 fence；不符回 `ErrLeaseLost`）、`CancelQueued`（只取消仍為 queued 的 job）、`Reap`（逐 organization 取回過期 lease，`SKIP LOCKED`，跳過正在 finalize 的 job）、`Policy` 與 backoff |
-| `migrations/0007_job_states.*`（T-019c） | trigger 對所有 role 強制 job 的生命週期：以 queued、無 attempt／lease／error 建立；queued 只能被 claim（attempt 恰加一、token 變大）或取消；completed／failed／cancelled 不可再改；identity 與輸入不可改；attempt 與 token 不回退；不改值的 UPDATE 照常通過。Down migration 移除 trigger 與 function |
-| `internal/worker`（T-019c） | 迴圈：每次 pass 依 deployment 順序走過每個 organization，reap 後至多 claim 並執行一個 job；heartbeat 每 `Heartbeat` 續期（每次至多一個 `Heartbeat`），lease 失去或一整個 lease 續不上即取消 handler；`Finish` 先 `Lock`，再寫 handler 的結果，再以 completed 或 cancelled 結束 job；attempt 結果依 ADR-024 的表記錄（error 原文只寫 log） |
-| `internal/config/worker.go`、`cmd/worker`（T-019c） | `WORKER_ID`、`WORKER_ORGANIZATION_IDS`（皆必填）；worker runtime role 檢查與 pool guard；跑到 SIGINT／SIGTERM。目前沒有 handler（T-016、T-023、T-025），所以驗完設定後 exit 2（NOT IMPLEMENTED），不連 DB |
+| `migrations/0007_job_states.*`（T-019c、round 1） | trigger 對所有 role 強制 job 的生命週期：以 queued、無 attempt／lease／error 建立；queued 只能被 claim（attempt 恰加一、token 變大）或取消；queued 的 job 一定還有 attempt；completed／failed／cancelled 不可再改；identity 與輸入不可改；attempt 與 token 不回退；不改值的 UPDATE 照常通過。另依 role 限制：API 只能取消或重排 queued 的 job，worker 從 queued 只能 claim，只有 schema owner 不受這一條限制。只管 INSERT 與 UPDATE。Down migration 移除 trigger 與 function |
+| `internal/worker`（T-019c、round 1） | 迴圈：每次 pass 依 deployment 順序走過每個 organization，reap 後至多 claim 並執行一個 job；heartbeat 每 `Heartbeat` 續期，lease 失去時立即、否則在「最後一次成功續期的開始 + lease − 半個 heartbeat」取消 handler，不等進行中的續期；`Checkpoint` 與 `Finish` 都先 `Lock`；`Finish` 在同一個 transaction 寫 handler 的結果並以 completed 或 cancelled 結束 job；attempt 結果依 ADR-024 的表記錄（handler 的 Failure 經檢查；error 原文只以有界、去除控制字元的形式寫 log；panic 值不寫 log） |
+| `internal/worker/handler`（round 1） | handler 的接口（`Handler`、`Func`、`Run`）；leaf package，不依賴 worker scope，T-016、T-023、T-025 的 handler 實作它而不違反 architecture 規則 |
+| `internal/config/worker.go`、`cmd/worker`（T-019c、round 1） | `WORKER_ID`、`WORKER_ORGANIZATION_IDS`（皆必填，allowlist 在 handler 檢查之前驗）；worker runtime role 檢查與 pool guard；第一個 SIGINT／SIGTERM 停止迴圈，第二個立即結束 process。目前沒有 handler（T-016、T-023、T-025），所以驗完設定後 exit 2（NOT IMPLEMENTED），不連 DB |
 | `internal/storage/dbtest` | `NewImport`（測試用的 import resource）、worker login |
 | `Makefile`、`scripts/run_db_tests.sh`、`db/tests/` | `db-go-test` 加入 `internal/worker`、`cmd/worker`；0007 加入 up／down／up；0007 的 SQL 測試 |
 | 文件 | ADR-024（PROPOSED）、ARCHITECTURE §2 與 §6、API_DATABASE §7 與 §9、db/README、.env.example |
@@ -60,15 +61,39 @@
 | `TestReapAfterACrash`、`TestReapSkipsAJobBeingFinalized`、`TestFailRetriesOnlyWhatMayBeRetried`、`TestBackoff` | 過期 lease 被 reap、backoff 後以新 token 重跑，當掉的 worker 寫不進去，attempt 用完即 failed；reaper 跳過正在 finalize 的 job；可重試與不可重試的 failure；backoff 倍增與上限 | TEST-020、D-011 |
 | `TestCancellation`、`TestCancelRacesTheClaim` | queued job 立即取消且不再被 claim、重複取消回 false、別的 organization 取消不到；running job 不能直接取消，handler 以 `Cancel` 結束後 `Complete` 被拒，反之亦然；完成的 job 取消不到；3 個 worker claim 與取消並行時，每個 job 恰為其中一種 | TEST-021 |
 | `TestAJobRunsOnceWithItsResult`、`TestAJobEndsCancelled`（worker） | job 只執行一次，結果（import 狀態）與 completed 一起 commit，handler 看到的 job 是 running、attempt 1、自己的 lease；以 cancelled 結束時結果一起 commit；completed／cancelled 以外的結束被拒且不執行 fn | TEST-020、TEST-021 |
-| `TestFailedAttempts` | 不可重試的 Failure、包在 error 中的可重試 Failure、一般 error（retry，原文不存、只在 log）、最後一次 attempt 的 error（failed）、結果 transaction 失敗（rollback、retry）、panic（不重試）、沒有結果（NO_RESULT）；失敗的 attempt 都不留下結果 | D-011 |
+| `TestFailedAttempts`、`TestAFailureIsAnError` | 不可重試的 Failure、包在 error 中的可重試 Failure、一般 error（retry，原文不存；log 中去除控制字元、至多 500 字）、最後一次 attempt 的 error（failed）、typed nil 的 Failure、沒有或不合格的 code、空白或過長的 message、結果 transaction 失敗（rollback、retry）、帶值的 panic 與 runtime panic（不重試；值不進 log，runtime error 的訊息與 stack 進 log）、沒有結果（NO_RESULT）；失敗的 attempt 都不留下結果 | D-011、SECURITY §7 |
 | `TestTheHeartbeatKeepsALongJob`、`TestALostLeaseStopsTheHandler`、`TestFinishAfterTheLeaseExpired` | 執行時間為 lease 兩倍的 job 仍完成；lease 被別人取得後，下一次 heartbeat 就停止 handler（遠早於 lease 結束），之後的 `Finish` 為 `ErrLeaseLost`、fn 不執行、job 不被改；lease 過期但 heartbeat 尚未發現時 `Finish` 被拒，下一次 pass 把 job reap 回 queued | TEST-020 |
-| `TestAHungRenewalCannotOutliveTheLease`、`TestTheHeartbeatGivesUpWithoutTheDatabase` | 續期卡在 row lock 時，每次在一個 heartbeat 後逾時，lease 結束時 handler 停止（不早於 lease）；DB 完全無回應時，一整個 lease 沒有續期成功才停止 handler；兩者都不寫入 job | TEST-020 |
-| `TestStoppingRequeuesTheJob` | 停止中的 worker 把 job 以 `WORKER_STOPPED`（可重試）放回 queued | D-011 |
+| `TestAHungRenewalCannotOutliveTheLease`、`TestTheHeartbeatGivesUpWithoutTheDatabase`、`TestOneFailedRenewalIsSurvived`、`TestASlowRenewalCountsFromItsStart`、`TestTheLeaseLastsOneLease` | lease 3 s、heartbeat 1 s：續期卡在 row lock 或 DB 完全無回應時，handler 在 2.5 s ± 300 ms 停止，且當時 DB 的 lease 仍有效；一次續期失敗、下一次成功時 job 照常完成；1 s 開始、2.2 s 才成功的續期讓期限從 1 s 起算（3.5 s 停止，lease 仍有效）；claim 與 heartbeat 寫入的 lease 為 `now()+Lease`；都不寫入 job | TEST-020 |
+| `TestStoppingRequeuesTheJob`、`TestTheFailureRecordIsBounded`、`TestAnIdleWorkerPauses` | 停止中的 worker 把 job 以 `WORKER_STOPPED`（可重試）放回 queued，但 handler 自己回的不可重試 Failure 照樣為準；記錄 attempt 的結束至多等一個 heartbeat；閒置的 worker 每個 Idle 只有兩個 transaction | D-011 |
 | `TestOrganizationsTakeTurns`、`TestAnUnhandledTypeStaysQueued`、`TestWorkersShareTheQueue` | 每次 pass 每個 organization 一個 job、依 deployment 順序；沒有 handler 的 type 保持 queued；兩個 worker 的 `Run` 各 job 恰執行一次，context 結束後 `Run` 返回 | D-008 |
-| `TestNewChecksTheConfig`、`TestLoadWorker`、`cmd/worker` 的 5 個測試 | 設定驗證（ID、heartbeat 至多 lease 的三分之一、handler、idle、reap、log）；`WORKER_ID` 與 allowlist 必填、ID 只能是可見 ASCII；cmd 拒絕不合格的 allowlist（exit 1）、連不上 DB（exit 3）、superuser login（exit 3）、沒有 handler 的 build（exit 2，不連 DB），stderr 不含密碼；以 worker login 執行一個 job 後收到停止即 exit 0 | D-008、REQ-019 |
+| `TestNewChecksTheConfig`、`TestLoadWorker`、`cmd/worker` 的 7 個測試 | 設定驗證（ID、heartbeat 至多 lease 的三分之一、handler、idle、reap、log）；`WORKER_ID` 與 allowlist 必填、ID 只能是可見 ASCII；cmd 拒絕不合格的 allowlist（exit 1，有沒有 handler 都一樣）、連不上 DB（exit 3）、superuser login（exit 3）、沒有 handler 的 build（exit 2，不連 DB），stderr 不含密碼；pool 歸還時有 guard；以 worker login 執行一個 job 後收到停止即 exit 0；第二個 SIGINT 結束 process（子 process） | D-008、REQ-019 |
 | `TestNewRefusesABadAllowlist`、`TestAssignment`（workerscope） | allowlist 的格式與重複；未指派的 organization 被拒；只看到指派 organization 的 row；不能讀 memberships；pool 中不留 scope | TEST-010、D-008 |
-| `db/tests/constraints.sql`（0007） | 非 queued、帶 attempt、token 或 error 的 INSERT 被拒；queued 直接 completed／failed、沒換 token 或跳過 attempt 的 claim、改 payload／max_attempts／created_at 被拒；queued→queued、claim、heartbeat、retry、第二次 claim、completed 可行；token 或 attempt 回退被拒；終態的 job 對 API、worker、owner 都不可改；不改值的 UPDATE 可行 | TEST-020、TEST-021 |
-| `scripts/check-architecture` | worker scope 只在 worker 端；三個 probe | ADR-019 R3b |
+| `db/tests/constraints.sql`（0007） | 非 queued、帶 attempt、token 或 error 的 INSERT 被拒；API 只能取消或重排 queued 的 job（不能 claim、改 attempt 或 error、直接 completed，也不能結束、接手、重排或取消 running 的 job）；worker 從 queued 只能 claim（不能取消、重排、直接 completed、不換 token 或跳過 attempt 的 claim）；claim、heartbeat、retry、第二次 claim、completed 可行；最後一次 attempt 不能回到 queued；token 或 attempt 回退被拒；owner 逐欄改 identity 與輸入都被拒；終態的 job 對 API、worker、owner 都不可改；不改值的 UPDATE 可行；同時屬於 owner 與 runtime role 的 login（suite 的 superuser）視同 owner，可手動結束 running 的 job | TEST-020、TEST-021 |
+| `scripts/check-architecture` | worker scope 只在 worker 端；三個 probe；`internal/worker/handler` 之外的 package 實作 handler 不違反規則 | ADR-019 R3b |
+
+## Review round 1（5a68042：CHANGES REQUESTED）的修正
+
+獨立 reviewer 的 M1–M4、L1–L8、I1–I5 全部處理；沒有任何一項以「不修」結案。每一項都有測試或 mutant 佐證（下表「證據」欄的 mutant 名稱見兩個 harness）。
+
+| 項目 | 修正 | 證據 |
+|---|---|---|
+| **M1** heartbeat 在 DB 的 lease 結束後約一個 heartbeat 才放棄，預設設定下兩個 handler 會同時跑同一個 job | 期限改為「最後一次成功續期（一開始是 claim）的 transaction 開始前讀的時間 + lease − 半個 heartbeat」，由獨立的 timer 執行，不等進行中的續期；續期本身以期限為時限；同時只有一個續期 | `TestAHungRenewalCannotOutliveTheLease`、`TestTheHeartbeatGivesUpWithoutTheDatabase` 改為檢查上下界（2.5 s ± 300 ms）且停止時 DB 的 lease 仍有效；新增 `TestOneFailedRenewalIsSurvived`、`TestASlowRenewalCountsFromItsStart`（續期在 1 s 開始、2.2 s 才完成，期限從 1 s 起算）。Mutants：`deadline-*`、`rv-give-up-after-two-leases`、`rv-renewed-never-updated`、`deadline-timer-not-reset`、`deadline-from-the-renewal-end`、`renewals-overlap` |
+| **M2** typed-nil 的 `*jobs.Failure` 讓整個 process panic | `errors.As(err, &f) && f != nil`，typed nil 視為一般 error（INTERNAL、可重試）；`(*Failure).Error()` 對 nil 也回答 | `TestFailedAttempts` 的 typed nil 案例、`TestAFailureIsAnError`；`typed-nil-failure-used`、`nil-failure-crashes` |
+| **M3** handler 介面在 `internal/worker`（依賴 workerscope），T-016／T-023／T-025 的 handler 會違反 architecture 規則；handler 沒有 lease 下的讀取與 checkpoint | 新的 leaf package `internal/worker/handler`：`Handler`、`Func`、`Run`（`Job`、`Checkpoint`、`Finish`）；`Checkpoint` 與 `Finish` 都先 `Lock`，失去 lease 時立即停止 handler | `TestHandlersPlugInWithoutTheWorkerScope`（architecture；舊的位置會失敗）、`TestCheckpointsUnderTheLease`（含失去 lease 後 handler 的 context 立即結束）；`locked-without-lock`、`locked-lease-loss-not-noted` |
+| **M4** 沒有測試限制 heartbeat 的時間上限 | 見 M1；另驗 claim 與 heartbeat 寫入的 lease 長度 | `TestTheLeaseLastsOneLease`；`rv-claim-lease-x10`、`rv-heartbeat-lease-x10`。`rv-heartbeat-timeout-100x` 不再適用（每次續期不再有自己的時限，而以期限為界）；對應的 `renewal-unbounded` 列為等價（理由在 harness） |
+| **L1** worker 停止時蓋過 handler 自己的結果 | 判斷順序改為：完成 → lease 失去 → handler 的 Failure → panic → 停止 → 無結果 → 其他 error | `TestStoppingRequeuesTheJob` 兩個案例；`stop-overrides-the-verdict` |
+| **L2** 沒有 code 的 Failure 不被記錄，job 留到 lease 過期 | `checked`：code 不符 `^[A-Z][A-Z0-9_]{0,63}$` 記為 INTERNAL（保留 retry 判斷）；message 空白或超過 1000 字改為通用文字 | `TestFailedAttempts` 的四個案例；`failure-not-checked`、`checked-*` |
+| **L3** API login 能 claim、結束、接手 job，把 queued job 的 attempt 設滿；worker login 能直接取消 queued job | 0007 加上：queued 的 job 必須還有 attempt；API 只能把 queued 改為 queued（priority、available_at）或 cancelled，且不能動 attempt、token、lease、error；worker 從 queued 只能 claim；只有 schema owner 不受角色限制。`claim-ignores-attempts` 的等價理由因此對所有寫入成立 | `constraints.sql` 的 0007 段逐一以 twin_api、twin_worker、twin_owner 測試；SQL mutants `queued-without-attempts`、`api-*`、`worker-any-move`、`roles-unrestricted`、`owner-restricted-as-api` |
+| **L4** `cmd/worker` 先檢查 handler 才檢查 allowlist | allowlist 先以 `workerscope.New(nil, …)` 檢查 | `TestRunRefusesABadAllowlist`（有、無 handler 兩種）；`cmd-allowlist-checked-late` |
+| **L5** SQL 測試只改 payload、max_attempts、created_at | 以 owner 逐欄改 id、organization_id、type、type＋resource、import_id（改成另一個有效 import）、simulation_run_id、ai_proposal_id、ai_analysis_id，都必須由 trigger 以 55000 拒絕（CHECK 或 FK 先拒絕也算測試失敗） | SQL mutants `rv-*-mutable`、`proposal-id-mutable`、`analysis-id-mutable` |
+| **L6** backoff、reap 上限、idle、shutdown 記錄的時限、pool guard 沒有測試 | 新增測試 | `TestRetriesBackOffByAttempt`、`TestReapTakesItsLimit`、`TestAnIdleWorkerPauses`、`TestTheFailureRecordIsBounded`、`TestPoolGuardsReleasedConnections`；對應的 5 個 `rv-*` mutants |
+| **L7** 超過一個 lease 的 finalize transaction 一定失敗 | 記為限制（`handler.Run` 的說明與 ADR-024）：`Checkpoint`／`Finish` 的 transaction 持有 row lock，必須在 lease 減一個 heartbeat 內結束；長的計算放在 transaction 之外。沒有採用「`Lock` 時延長 lease、暫停續期」：那會多出第二條續期路徑 | 文件 |
+| **L8** handler 的 error 與 panic 值原樣寫入 log | Error 文字去除控制字元、至多 500 字（`logText`）；panic 只記 runtime error 的訊息或值的型別，加 stack；`handler.Handler` 與 ADR-024 規定 handler 的 error 不得含客戶資料、prompt、provider 輸出或 secret | `TestFailedAttempts`：secret 的 panic 值不進 log、控制字元與長度、stack 有記錄；`panic-value-logged`、`error-logged-raw`、`log-text-*`、`runtime-panic-message-dropped`、`panic-stack-dropped` |
+| **I1** `cmd-no-role-check` 只靠 300 秒 timeout 被擋 | `TestRunNeedsTheDatabase` 改用 10 秒的 context | 見 mutation log 的失敗 test 名稱 |
+| **I2** 0007 不管 DELETE | 文件寫明 0007 只管 INSERT 與 UPDATE；刪除屬保存期限（runtime role 沒有 DELETE） | 0007 的註解、ADR-024 |
+| **I3** ADR 說只用 DB 的 `now()` | ADR 改寫：worker 以自己在 transaction 開始前讀的時間起算，半個 heartbeat 的餘裕涵蓋停止與小的時鐘偏差，更大的偏差由部署（NTP）避免 | 文件 |
+| **I4** 第二個 SIGTERM 被吞掉 | `listen()`：收到第一個 signal 時先恢復預設處理、再結束 context，所以第二個 signal 立即結束 process。第一版（`signal.NotifyContext` 加 goroutine）有 race：context 先結束，第二個 signal 若在 `stop()` 之前到達就被吞掉——新測試第一次執行就失敗，因此改寫。每個 job 的總時限屬於 handler 與其 resource（ADR-024 Consequences） | `TestASecondSignalEndsTheProcess`（以子 process 送兩次 SIGINT，檢查它被 SIGINT 結束）；`cmd-second-signal-swallowed` |
+| **I5** T-016 的 `depends_on` 沒有 T-019 | 已加入 | `planning/tasks.json` |
 
 ## 決策與 owner 知悉
 

@@ -23,6 +23,7 @@ import (
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/internal/tenant/workerscope"
 	"github.com/kcl1104/geminus/internal/worker"
+	"github.com/kcl1104/geminus/internal/worker/handler"
 )
 
 const issuer = "https://test.invalid"
@@ -36,15 +37,15 @@ var policy = jobs.Policy{Lease: time.Minute, MaxAttempts: 3, BackoffBase: time.H
 // instead of hanging it.
 const wait = 20 * time.Second
 
-func config(h worker.Handler, log io.Writer) worker.Config {
+func config(h handler.Handler, log io.Writer) worker.Config {
 	return worker.Config{
 		ID: "worker-1", Policy: policy, Heartbeat: 20 * time.Second, Idle: 20 * time.Millisecond, ReapLimit: 10,
-		Handlers: map[jobs.Type]worker.Handler{jobs.ImportProfile: h},
+		Handlers: map[jobs.Type]handler.Handler{jobs.ImportProfile: h},
 		Log:      slog.New(slog.NewTextHandler(log, nil)),
 	}
 }
 
-var noop = worker.HandlerFunc(func(context.Context, jobs.Job, worker.Finish) error { return nil })
+var noop = handler.Func(func(context.Context, handler.Run) error { return nil })
 
 func TestNewChecksTheConfig(t *testing.T) {
 	scope, err := workerscope.New(nil, []string{ids.New("org")})
@@ -218,7 +219,8 @@ func TestAJobRunsOnceWithItsResult(t *testing.T) {
 	e := setup(t, 1)
 	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
 	var seen []jobs.Job
-	w := e.worker(t, config(worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+	w := e.worker(t, config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		job, finish := run.Job(), run.Finish
 		seen = append(seen, job)
 		return finish(ctx, jobs.Completed, profile(job))
 	}), e.log))
@@ -254,9 +256,10 @@ func TestAJobEndsCancelled(t *testing.T) {
 	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
 	var invalid error
 	ran := false
-	w := e.worker(t, config(worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+	w := e.worker(t, config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		job, finish := run.Job(), run.Finish
 		for _, end := range []jobs.Status{jobs.Failed, jobs.Queued, jobs.Running, ""} {
-			if err := finish(ctx, end, func(context.Context, tenant.Tx) error { ran = true; return nil }); !errors.Is(err, worker.ErrInvalidEnd) {
+			if err := finish(ctx, end, func(context.Context, tenant.Tx) error { ran = true; return nil }); !errors.Is(err, handler.ErrInvalidEnd) {
 				invalid = fmt.Errorf("ending as %q: %v", end, err)
 			}
 		}
@@ -279,33 +282,89 @@ func TestAJobEndsCancelled(t *testing.T) {
 	}
 }
 
+// A checkpoint reads and writes under the lease without ending the job:
+// its writes commit while the lease holds, and once it is lost nothing runs.
+func TestCheckpointsUnderTheLease(t *testing.T) {
+	e := setup(t, 1)
+	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+	var first, second error
+	ranAfterLoss, stopped := false, false
+	statusBetween := ""
+	w := e.worker(t, config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		first = run.Checkpoint(ctx, profile(run.Job()))
+		statusBetween = e.importStatus(t, run.Job())
+		e.exec(t, `UPDATE twin.jobs SET locked_by='worker-2', lease_token=lease_token+1 WHERE id=$1`, run.Job().ID)
+		second = run.Checkpoint(context.WithoutCancel(ctx), func(context.Context, tenant.Tx) error { ranAfterLoss = true; return nil })
+		// The handler is stopped at once, not at the next heartbeat.
+		stopped = ctx.Err() != nil
+		return second
+	}), e.log))
+	w.Pass(context.Background())
+	if first != nil || statusBetween != "PROFILING" {
+		t.Errorf("the checkpoint under the lease: %v; the import was %q before the end", first, statusBetween)
+	}
+	if !errors.Is(second, jobs.ErrLeaseLost) || ranAfterLoss || !stopped {
+		t.Errorf("a checkpoint after the lease was lost: %v (its function ran: %v; the handler was stopped: %v)", second, ranAfterLoss, stopped)
+	}
+	if got := e.job(t, j); got.Status != jobs.Running || got.LockedBy != "worker-2" || got.Error != nil {
+		t.Errorf("the worker wrote to a job it lost: %+v", got)
+	}
+}
+
 // An attempt that ends without a result records why: the handler's
 // Failure as given, anything else as a code of the loop's own; the error
 // text is logged, never stored.
 func TestFailedAttempts(t *testing.T) {
 	e := setup(t, 1)
-	const secret = "s3://bucket/tenant-private-key"
+	// A value a handler panics with may hold the data it worked on: it is
+	// neither stored nor logged. Error text is logged (handlers keep data
+	// out of it), never stored.
+	const secret = "row 3: customer@example.com"
+	const errText = "reading s3://bucket/x: not found"
+	// What the log keeps of an error: no control characters, 500 at most.
+	long := "line 1\nline 2\x1b[2J" + strings.Repeat("x", 600)
 	errBoom := errors.New("boom")
 	for _, c := range []struct {
 		name     string
 		attempts int
-		handle   func(ctx context.Context, job jobs.Job, finish worker.Finish) error
+		handle   func(ctx context.Context, run handler.Run) error
 		status   jobs.Status
 		failure  jobs.Failure
 	}{
-		{"a failure that is not retried", 0, func(context.Context, jobs.Job, worker.Finish) error {
+		{"a failure that is not retried", 0, func(context.Context, handler.Run) error {
 			return &jobs.Failure{Code: "INVALID_INPUT", Message: "the upload is not CSV"}
 		}, jobs.Failed, jobs.Failure{Code: "INVALID_INPUT", Message: "the upload is not CSV"}},
-		{"a wrapped retryable failure", 0, func(context.Context, jobs.Job, worker.Finish) error {
+		{"a wrapped retryable failure", 0, func(context.Context, handler.Run) error {
 			return fmt.Errorf("profiling: %w", &jobs.Failure{Code: "STORAGE_UNAVAILABLE", Message: "the object store did not answer", Retryable: true})
 		}, jobs.Queued, jobs.Failure{Code: "STORAGE_UNAVAILABLE", Message: "the object store did not answer", Retryable: true}},
-		{"an error", 0, func(context.Context, jobs.Job, worker.Finish) error {
-			return errors.New("reading " + secret + ": not found")
+		{"an error", 0, func(context.Context, handler.Run) error {
+			return errors.New(errText)
 		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
-		{"an error on the last attempt", 1, func(context.Context, jobs.Job, worker.Finish) error {
-			return errors.New("reading " + secret + ": not found")
+		{"an error with control characters, overlong", 0, func(context.Context, handler.Run) error {
+			return errors.New(long)
+		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
+		{"an error on the last attempt", 1, func(context.Context, handler.Run) error {
+			return errors.New(errText)
 		}, jobs.Failed, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
-		{"the result's transaction fails", 0, func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+		// A handler's bug: a nil *Failure in a non-nil error.
+		{"a typed nil failure", 0, func(context.Context, handler.Run) error {
+			var f *jobs.Failure
+			return f
+		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
+		{"a failure without a code", 0, func(context.Context, handler.Run) error {
+			return &jobs.Failure{Message: "no code", Retryable: false}
+		}, jobs.Failed, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed"}},
+		{"a failure with an invalid code", 0, func(context.Context, handler.Run) error {
+			return &jobs.Failure{Code: "bad code", Message: "x", Retryable: true}
+		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
+		{"a failure without a message", 0, func(context.Context, handler.Run) error {
+			return &jobs.Failure{Code: "INVALID_INPUT"}
+		}, jobs.Failed, jobs.Failure{Code: "INVALID_INPUT", Message: "the job failed"}},
+		{"a failure with an overlong message", 0, func(context.Context, handler.Run) error {
+			return &jobs.Failure{Code: "INVALID_INPUT", Message: strings.Repeat("字", 1001)}
+		}, jobs.Failed, jobs.Failure{Code: "INVALID_INPUT", Message: "the job failed"}},
+		{"the result's transaction fails", 0, func(ctx context.Context, run handler.Run) error {
+			job, finish := run.Job(), run.Finish
 			err := finish(ctx, jobs.Completed, func(ctx context.Context, tx tenant.Tx) error {
 				if err := profile(job)(ctx, tx); err != nil {
 					return err
@@ -317,16 +376,20 @@ func TestFailedAttempts(t *testing.T) {
 			}
 			return err
 		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
-		{"a panic", 0, func(context.Context, jobs.Job, worker.Finish) error {
-			panic("index out of range")
+		{"a panic with a value", 0, func(context.Context, handler.Run) error {
+			panic(secret)
 		}, jobs.Failed, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed"}},
-		{"no result", 0, func(context.Context, jobs.Job, worker.Finish) error {
+		{"a runtime panic", 0, func(context.Context, handler.Run) error {
+			var rows []int
+			return fmt.Errorf("%d", rows[len(rows)])
+		}, jobs.Failed, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed"}},
+		{"no result", 0, func(context.Context, handler.Run) error {
 			return nil
 		}, jobs.Failed, jobs.Failure{Code: worker.NoResult, Message: "the handler returned without a result"}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, c.attempts)
-			if !e.worker(t, config(worker.HandlerFunc(c.handle), e.log)).Pass(context.Background()) {
+			if !e.worker(t, config(handler.Func(c.handle), e.log)).Pass(context.Background()) {
 				t.Fatal("the pass ran no job")
 			}
 			got := e.job(t, j)
@@ -346,8 +409,19 @@ func TestFailedAttempts(t *testing.T) {
 			}
 		})
 	}
-	if !strings.Contains(e.log.String(), secret) || !strings.Contains(e.log.String(), "index out of range") {
-		t.Error("the handler's errors were not logged")
+	out := e.log.String()
+	if !strings.Contains(out, errText) || !strings.Contains(out, "index out of range [0] with length 0") || !strings.Contains(out, "handler panicked with a string") {
+		t.Errorf("the handlers' errors were not logged as they may be: %s", out)
+	}
+	if strings.Contains(out, secret) {
+		t.Errorf("a panic's value was logged: %s", out)
+	}
+	const kept = "line 1 line 2 [2J"
+	if !strings.Contains(out, kept+strings.Repeat("x", 500-len(kept))+"…") || strings.Contains(out, strings.Repeat("x", 501-len(kept))) {
+		t.Errorf("an error's text was not logged without control characters and bounded: %s", out)
+	}
+	if !strings.Contains(out, "stack=\"goroutine ") {
+		t.Errorf("a panic's stack was not logged: %s", out)
 	}
 }
 
@@ -355,7 +429,8 @@ func TestFailedAttempts(t *testing.T) {
 func TestTheHeartbeatKeepsALongJob(t *testing.T) {
 	e := setup(t, 1)
 	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
-	cfg := config(worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+	cfg := config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		job, finish := run.Job(), run.Finish
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -381,7 +456,8 @@ func TestALostLeaseStopsTheHandler(t *testing.T) {
 	var stopped time.Duration
 	var wrote bool
 	var ferr error
-	cfg := config(worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+	cfg := config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		job, finish := run.Job(), run.Finish
 		e.exec(t, `UPDATE twin.jobs SET locked_by='worker-2', lease_token=lease_token+1 WHERE id=$1`, job.ID)
 		start := time.Now()
 		select {
@@ -420,7 +496,8 @@ func TestFinishAfterTheLeaseExpired(t *testing.T) {
 	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
 	var ferr error
 	var wrote bool
-	handler := worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+	handler := handler.Func(func(ctx context.Context, run handler.Run) error {
+		job, finish := run.Job(), run.Finish
 		e.exec(t, `UPDATE twin.jobs SET lease_expires_at=now()-interval '1 second' WHERE id=$1`, job.ID)
 		ferr = finish(ctx, jobs.Completed, func(ctx context.Context, tx tenant.Tx) error {
 			wrote = true
@@ -452,60 +529,43 @@ func TestFinishAfterTheLeaseExpired(t *testing.T) {
 	}
 }
 
-// A renewal that hangs (here on a row lock) times out after one heartbeat,
-// so it cannot keep a handler running past its lease: once the lease has
-// ended the next renewal finds it lost, and the handler stops then, not
-// before.
-func TestAHungRenewalCannotOutliveTheLease(t *testing.T) {
-	e := setup(t, 1)
-	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
-	const lease = 1500 * time.Millisecond
-	var held, stopped time.Duration
-	cfg := config(worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
-		// The row lock makes every renewal wait, as a hung database would.
-		tx, err := e.admin.Begin(context.Background())
-		if err != nil {
-			return err
-		}
-		defer tx.Rollback(context.Background())
-		if _, err := tx.Exec(context.Background(), `SELECT 1 FROM twin.jobs WHERE id=$1 FOR UPDATE`, job.ID); err != nil {
-			return err
-		}
-		start := time.Now()
-		select {
-		case <-ctx.Done():
-			stopped = time.Since(start)
-		case <-time.After(wait):
-			held = time.Since(start)
-		}
-		return ctx.Err()
-	}), e.log)
-	cfg.Policy.Lease, cfg.Heartbeat = lease, 100*time.Millisecond
-	e.worker(t, cfg).Pass(context.Background())
-	if stopped == 0 || stopped < lease-200*time.Millisecond {
-		t.Errorf("the handler stopped after %v (held %v), want about the lease, %v", stopped, held, lease)
-	}
-	if got := e.job(t, j); got.Status != jobs.Running || got.Error != nil {
-		t.Errorf("the worker wrote to a job it lost: %+v", got)
-	}
-	if !strings.Contains(e.log.String(), "renewing the lease failed") {
-		t.Error("the failed renewals were not logged")
-	}
+// Timing tests use a lease of three seconds renewed every second: the
+// handler must be stopped half a heartbeat before the lease could end, so
+// at 2.5 s after the claim when nothing renews it, with the lease still
+// valid in the database (checked there, with its clock) when it stops.
+const (
+	tLease = 3 * time.Second
+	tBeat  = time.Second
+)
+
+func timed(cfg worker.Config) worker.Config {
+	cfg.Policy.Lease, cfg.Heartbeat = tLease, tBeat
+	return cfg
 }
 
-// A database that does not answer at all: every renewal fails, and after a
-// whole lease without one the handler is stopped (not before: two renewals
-// may fail meanwhile). The worker writes nothing; the lease ends on its own.
-func TestTheHeartbeatGivesUpWithoutTheDatabase(t *testing.T) {
-	e := setup(t, 1)
-	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
-	var down atomic.Bool
+// leaseHolds reports whether job's lease is still unexpired by the
+// database's clock.
+func (e *env) leaseHolds(t *testing.T, id string) bool {
+	t.Helper()
+	var ok bool
+	if err := e.admin.QueryRow(context.Background(), `SELECT status='running' AND lease_expires_at>clock_timestamp() FROM twin.jobs WHERE id=$1`, id).Scan(&ok); err != nil {
+		t.Error(err)
+	}
+	return ok
+}
+
+// flaky is a worker scope whose database stops answering while down is set
+// (every transaction fails at its start) and that counts transactions.
+func (e *env) flaky(t *testing.T) (scope *workerscope.Worker, down *atomic.Bool, txs *atomic.Int64) {
+	t.Helper()
+	down, txs = new(atomic.Bool), new(atomic.Int64)
 	pc, err := pgxpool.ParseConfig(dbtest.LoginURL(t, dbtest.WorkerLogin))
 	if err != nil {
 		t.Fatal(err)
 	}
 	pc.AfterRelease = tenant.Guard
 	pc.PrepareConn = func(context.Context, *pgx.Conn) (bool, error) {
+		txs.Add(1)
 		if down.Load() {
 			return true, errors.New("the database does not answer")
 		}
@@ -516,33 +576,91 @@ func TestTheHeartbeatGivesUpWithoutTheDatabase(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(pool.Close)
-	scope, err := workerscope.New(pool, []string{e.orgs[0].ID})
+	var assigned []string
+	for _, o := range e.orgs {
+		assigned = append(assigned, o.ID)
+	}
+	scope, err = workerscope.New(pool, assigned)
 	if err != nil {
 		t.Fatal(err)
 	}
-	const lease = 1500 * time.Millisecond
-	var held, stopped time.Duration
-	cfg := config(worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+	return scope, down, txs
+}
+
+// stopsInTime checks a handler that was stopped after running for ran:
+// not before the deadline (no renewal succeeded since the claim), and while
+// the database still held the lease.
+func stopsInTime(t *testing.T, ran time.Duration, held bool) {
+	t.Helper()
+	if want := tLease - tBeat/2; ran < want-300*time.Millisecond || ran > want+300*time.Millisecond {
+		t.Errorf("the handler stopped after %v, want about %v", ran, want)
+	}
+	if !held {
+		t.Error("the handler was stopped after its lease had ended in the database")
+	}
+}
+
+// A renewal that hangs (here on a row lock, as a database that does not
+// answer would) cannot keep the handler running past its lease: the
+// deadline stops it whether or not the renewal returns.
+func TestAHungRenewalCannotOutliveTheLease(t *testing.T) {
+	e := setup(t, 1)
+	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+	var ran time.Duration
+	var held bool
+	cfg := timed(config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		start := time.Now()
+		tx, err := e.admin.Begin(context.Background())
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback(context.Background())
+		if _, err := tx.Exec(context.Background(), `SELECT 1 FROM twin.jobs WHERE id=$1 FOR UPDATE`, run.Job().ID); err != nil {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			ran, held = time.Since(start), e.leaseHolds(t, run.Job().ID)
+		case <-time.After(wait):
+		}
+		return ctx.Err()
+	}), e.log))
+	e.worker(t, cfg).Pass(context.Background())
+	stopsInTime(t, ran, held)
+	if got := e.job(t, j); got.Status != jobs.Running || got.Error != nil {
+		t.Errorf("the worker wrote to a job it lost: %+v", got)
+	}
+	if !strings.Contains(e.log.String(), "the lease could not be renewed in time") {
+		t.Errorf("log: %s", e.log.String())
+	}
+}
+
+// A database that does not answer at all: every renewal fails at once, and
+// the handler is stopped at the deadline, while the lease still holds. The
+// worker writes nothing; the lease ends on its own.
+func TestTheHeartbeatGivesUpWithoutTheDatabase(t *testing.T) {
+	e := setup(t, 1)
+	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+	scope, down, _ := e.flaky(t)
+	var ran time.Duration
+	var held bool
+	cfg := timed(config(handler.Func(func(ctx context.Context, run handler.Run) error {
 		down.Store(true)
 		start := time.Now()
 		select {
 		case <-ctx.Done():
-			stopped = time.Since(start)
+			ran, held = time.Since(start), e.leaseHolds(t, run.Job().ID)
 		case <-time.After(wait):
-			held = time.Since(start)
 		}
 		return ctx.Err()
-	}), e.log)
-	cfg.Policy.Lease, cfg.Heartbeat = lease, 100*time.Millisecond
+	}), e.log))
 	w, err := worker.New(scope, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	w.Pass(context.Background())
 	down.Store(false)
-	if stopped == 0 || stopped < lease-200*time.Millisecond {
-		t.Errorf("the handler stopped after %v (held %v), want about the lease, %v", stopped, held, lease)
-	}
+	stopsInTime(t, ran, held)
 	if got := e.job(t, j); got.Status != jobs.Running || got.Error != nil || got.LockedBy != "worker-1" {
 		t.Errorf("the worker wrote to a job it lost: %+v", got)
 	}
@@ -551,24 +669,199 @@ func TestTheHeartbeatGivesUpWithoutTheDatabase(t *testing.T) {
 	}
 }
 
-// A worker that stops during an attempt puts the job back for a retry.
-func TestStoppingRequeuesTheJob(t *testing.T) {
+// One failed renewal in a long job does not stop it: the deadline counts
+// from the last renewal that succeeded, and the next one keeps the job.
+func TestOneFailedRenewalIsSurvived(t *testing.T) {
 	e := setup(t, 1)
 	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	w := e.worker(t, config(worker.HandlerFunc(func(hctx context.Context, job jobs.Job, finish worker.Finish) error {
-		cancel()
-		select {
-		case <-hctx.Done():
-		case <-time.After(wait):
+	scope, down, _ := e.flaky(t)
+	cfg := timed(config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		// Renewals at about 1 s and 2 s succeed, the one at 3 s fails, the
+		// one at 4 s succeeds again.
+		steps := []struct {
+			at   time.Duration
+			down bool
+		}{{2500 * time.Millisecond, true}, {3500 * time.Millisecond, false}, {5500 * time.Millisecond, false}}
+		start := time.Now()
+		for _, st := range steps {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Until(start.Add(st.at))):
+			}
+			down.Store(st.down)
 		}
-		return hctx.Err()
+		return run.Finish(ctx, jobs.Completed, profile(run.Job()))
 	}), e.log))
-	w.Pass(ctx)
-	got := e.job(t, j)
-	if want := (jobs.Failure{Code: worker.WorkerStopped, Message: "the worker stopped during the attempt", Retryable: true}); got.Status != jobs.Queued || stored(t, got) != want || got.Attempt != 1 {
-		t.Errorf("the job is %s, attempt %d, %s", got.Status, got.Attempt, got.Error)
+	w, err := worker.New(scope, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Pass(context.Background())
+	if got := e.job(t, j); got.Status != jobs.Completed {
+		t.Errorf("a job that outlived one failed renewal: %s %s", got.Status, got.Error)
+	}
+	if !strings.Contains(e.log.String(), "renewing the lease failed") {
+		t.Errorf("the failed renewal was not logged: %s", e.log.String())
+	}
+}
+
+// A renewal that succeeds late renews the lease from its transaction's
+// start, which is where the worker counts from too: here the renewal at
+// about 1 s waits on a row lock until 2.2 s (the tick at 2 s finds it still
+// in flight and starts none), and the database stops answering after it.
+// The lease then lasts until 1 s + 3 s, and the handler is stopped half a
+// heartbeat before, at 3.5 s, while it holds.
+func TestASlowRenewalCountsFromItsStart(t *testing.T) {
+	e := setup(t, 1)
+	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+	scope, down, _ := e.flaky(t)
+	var ran time.Duration
+	var held bool
+	cfg := timed(config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		start := time.Now()
+		tx, err := e.admin.Begin(context.Background())
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback(context.Background())
+		if _, err := tx.Exec(context.Background(), `SELECT 1 FROM twin.jobs WHERE id=$1 FOR UPDATE`, run.Job().ID); err != nil {
+			return err
+		}
+		for _, st := range []struct {
+			at time.Duration
+			do func()
+		}{
+			{2200 * time.Millisecond, func() { tx.Rollback(context.Background()) }},
+			{2500 * time.Millisecond, func() { down.Store(true) }},
+			{wait, func() {}},
+		} {
+			select {
+			case <-ctx.Done():
+				ran, held = time.Since(start), e.leaseHolds(t, run.Job().ID)
+				return ctx.Err()
+			case <-time.After(time.Until(start.Add(st.at))):
+			}
+			st.do()
+		}
+		return ctx.Err()
+	}), e.log))
+	w, err := worker.New(scope, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Pass(context.Background())
+	down.Store(false)
+	if want := time.Second + tLease - tBeat/2; ran < want-300*time.Millisecond || ran > want+300*time.Millisecond {
+		t.Errorf("the handler stopped after %v, want about %v", ran, want)
+	}
+	if !held {
+		t.Error("the handler was stopped after its lease had ended in the database")
+	}
+	if got := e.job(t, j); got.Status != jobs.Running || got.Error != nil || got.LockedBy != "worker-1" {
+		t.Errorf("the worker wrote to a job it lost: %+v", got)
+	}
+}
+
+// A worker that stops during an attempt puts the job back for a retry,
+// unless the handler's own failure says it may not be retried.
+func TestStoppingRequeuesTheJob(t *testing.T) {
+	e := setup(t, 1)
+	budget := &jobs.Failure{Code: "BUDGET_EXCEEDED", Message: "the run used its event budget"}
+	for _, c := range []struct {
+		name   string
+		ret    func(ctx context.Context) error
+		status jobs.Status
+		want   jobs.Failure
+	}{
+		{"the handler returns the context's error", func(ctx context.Context) error { return ctx.Err() }, jobs.Queued,
+			jobs.Failure{Code: worker.WorkerStopped, Message: "the worker stopped during the attempt", Retryable: true}},
+		{"the handler returns a failure that may not be retried", func(context.Context) error { return budget }, jobs.Failed, *budget},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			w := e.worker(t, config(handler.Func(func(hctx context.Context, run handler.Run) error {
+				cancel()
+				select {
+				case <-hctx.Done():
+				case <-time.After(wait):
+				}
+				return c.ret(hctx)
+			}), e.log))
+			w.Pass(ctx)
+			if got := e.job(t, j); got.Status != c.status || stored(t, got) != c.want || got.Attempt != 1 {
+				t.Errorf("the job is %s, attempt %d, %s", got.Status, got.Attempt, got.Error)
+			}
+		})
+	}
+}
+
+// Recording the attempt's end waits at most one heartbeat: a database that
+// does not answer cannot hold the worker (the reaper takes the job back).
+func TestTheFailureRecordIsBounded(t *testing.T) {
+	e := setup(t, 1)
+	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+	release := make(chan struct{})
+	var held sync.WaitGroup
+	cfg := config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		// The job's row stays locked after the handler returns, so the
+		// failure record waits for it.
+		locked := make(chan struct{})
+		held.Go(func() {
+			tx, err := e.admin.Begin(context.Background())
+			if err != nil {
+				t.Error(err)
+				close(locked)
+				return
+			}
+			defer tx.Rollback(context.Background())
+			if _, err := tx.Exec(context.Background(), `SELECT 1 FROM twin.jobs WHERE id=$1 FOR UPDATE`, run.Job().ID); err != nil {
+				t.Error(err)
+			}
+			close(locked)
+			select {
+			case <-release:
+			case <-time.After(wait):
+			}
+		})
+		<-locked
+		return errors.New("the object store did not answer")
+	}), e.log)
+	cfg.Policy.Lease, cfg.Heartbeat = 1500*time.Millisecond, 500*time.Millisecond
+	start := time.Now()
+	e.worker(t, cfg).Pass(context.Background())
+	took := time.Since(start)
+	close(release)
+	held.Wait()
+	if took > 2*time.Second {
+		t.Errorf("the pass took %v with the record blocked, want about one heartbeat", took)
+	}
+	if !strings.Contains(e.log.String(), "recording the failure failed") {
+		t.Errorf("log: %s", e.log.String())
+	}
+	if got := e.job(t, j); got.Status != jobs.Running {
+		t.Errorf("the job is %s; the reaper is to take it back", got.Status)
+	}
+}
+
+// Without jobs, a running worker pauses between passes: an idle worker
+// makes two transactions per organization per Idle, not a busy loop.
+func TestAnIdleWorkerPauses(t *testing.T) {
+	e := setup(t, 1)
+	scope, _, txs := e.flaky(t)
+	cfg := config(handler.Func(func(context.Context, handler.Run) error { return nil }), e.log)
+	cfg.Idle = 200 * time.Millisecond
+	w, err := worker.New(scope, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	w.Run(ctx)
+	if n := txs.Load(); n < 4 || n > 14 {
+		t.Errorf("%d transactions in a second of idling with a 200 ms pause, want about 10", n)
 	}
 }
 
@@ -580,7 +873,8 @@ func TestOrganizationsTakeTurns(t *testing.T) {
 	queued := []jobs.Job{e.enqueue(t, a, jobs.ImportProfile, 0), e.enqueue(t, a, jobs.ImportProfile, 0),
 		e.enqueue(t, b, jobs.ImportProfile, 0), e.enqueue(t, b, jobs.ImportProfile, 0)}
 	var order []string
-	w := e.worker(t, config(worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+	w := e.worker(t, config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		job, finish := run.Job(), run.Finish
 		order = append(order, job.OrganizationID)
 		return finish(ctx, jobs.Completed, profile(job))
 	}), e.log))
@@ -616,7 +910,7 @@ func TestAnUnhandledTypeStaysQueued(t *testing.T) {
 	e := setup(t, 1)
 	j := e.enqueue(t, e.orgs[0], jobs.ImportValidate, 0)
 	ran := false
-	w := e.worker(t, config(worker.HandlerFunc(func(context.Context, jobs.Job, worker.Finish) error { ran = true; return nil }), e.log))
+	w := e.worker(t, config(handler.Func(func(context.Context, handler.Run) error { ran = true; return nil }), e.log))
 	if w.Pass(context.Background()) || ran {
 		t.Error("the worker ran a job it has no handler for")
 	}
@@ -635,7 +929,8 @@ func TestWorkersShareTheQueue(t *testing.T) {
 	var mu sync.Mutex
 	runs := map[string]int{}
 	done := make(chan struct{}, len(queued))
-	handler := worker.HandlerFunc(func(ctx context.Context, job jobs.Job, finish worker.Finish) error {
+	handler := handler.Func(func(ctx context.Context, run handler.Run) error {
+		job, finish := run.Job(), run.Finish
 		mu.Lock()
 		runs[job.ID]++
 		mu.Unlock()

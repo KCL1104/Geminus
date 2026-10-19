@@ -1,0 +1,7 @@
+cmd-starts-without-handlers	KILLED	--- FAIL: TestRunRefusesToStartWithoutHandlers (0.00s)
+cmd-allowlist-checked-late	KILLED	--- FAIL: TestRunRefusesABadAllowlist (0.00s)
+cmd-no-role-check	KILLED	--- FAIL: TestRunNeedsTheDatabase (10.00s)
+rv-cmd-no-pool-guard	KILLED	--- FAIL: TestPoolGuardsReleasedConnections (0.00s)
+cmd-second-signal-swallowed	KILLED	--- FAIL: TestASecondSignalEndsTheProcess (20.02s)
+cmd-stop-before-start-fails	KILLED	--- FAIL: TestRunStopsBeforeStarting (0.00s)
+total=6 unexpected=0

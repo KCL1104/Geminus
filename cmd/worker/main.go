@@ -26,6 +26,7 @@ import (
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/internal/tenant/workerscope"
 	"github.com/kcl1104/geminus/internal/worker"
+	"github.com/kcl1104/geminus/internal/worker/handler"
 )
 
 const (
@@ -44,18 +45,37 @@ const (
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := listen()
 	defer stop()
 	os.Exit(run(ctx, os.Getenv, os.Stderr, handlers()))
 }
 
+// listen ends ctx at the first SIGINT or SIGTERM: the worker then stops its
+// handler and records the attempt. The signals' default handling is
+// restored before ctx ends, so a second signal ends the process at once,
+// even while a handler does not return.
+func listen() (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(context.Background())
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		select {
+		case <-signals:
+		case <-ctx.Done():
+		}
+		signal.Stop(signals)
+		cancel()
+	}()
+	return ctx, func() { signal.Stop(signals); cancel() }
+}
+
 // handlers is the registry of the job types this build can run. Each task
-// that delivers a handler adds it here; until then it is empty and the
-// worker refuses to start.
-func handlers() map[jobs.Type]worker.Handler { return nil }
+// that delivers a handler (internal/worker/handler) adds it here; until then
+// it is empty and the worker refuses to start.
+func handlers() map[jobs.Type]handler.Handler { return nil }
 
 // run runs the loop with handlers until ctx ends.
-func run(ctx context.Context, getenv func(string) string, stderr io.Writer, handlers map[jobs.Type]worker.Handler) int {
+func run(ctx context.Context, getenv func(string) string, stderr io.Writer, handlers map[jobs.Type]handler.Handler) int {
 	log := slog.New(slog.NewJSONHandler(stderr, nil)).With("component", "worker")
 	cfg, err := config.Load(getenv)
 	wcfg, werr := config.LoadWorker(getenv)
@@ -63,19 +83,22 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, hand
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
+	// The whole configuration is checked before anything else, the allowlist
+	// included (workerscope checks it without a pool).
+	if _, err := workerscope.New(nil, wcfg.Organizations); err != nil {
+		log.Error("invalid configuration", "error", "WORKER_ORGANIZATION_IDS must list organization IDs, each once")
+		return exitConfig
+	}
 	if len(handlers) == 0 {
 		log.Error("NOT IMPLEMENTED: no job handler exists yet (T-016, T-023, T-025); refusing to start",
 			"ai_provider", string(cfg.AIProvider))
 		return exitNotImplemented
 	}
-	poolCfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	poolCfg, err := poolConfig(cfg.DatabaseURL)
 	if err != nil {
 		log.Error("invalid configuration", "error", "DATABASE_URL is not a valid PostgreSQL connection string")
 		return exitConfig
 	}
-	// Every connection released to the pool is checked for leftover tenant
-	// scope.
-	poolCfg.AfterRelease = tenant.Guard
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		log.Error("database unavailable", "error", "the connection pool could not be created")
@@ -101,6 +124,11 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, hand
 		log.Error("refusing the database login", "error", err.Error())
 		return exitDatabase
 	}
+	if ctx.Err() != nil {
+		// A signal before the loop began: a stop, not a database failure.
+		log.Info("stopped before starting")
+		return 0
+	}
 	if err != nil {
 		// pgx names the host, user and database, never the password.
 		log.Error("database unavailable", "error", err.Error())
@@ -110,4 +138,15 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, hand
 	w.Run(ctx)
 	log.Info("stopped")
 	return 0
+}
+
+// poolConfig is the worker's connection pool: every connection released to
+// it is checked for leftover tenant scope (tenant.Guard).
+func poolConfig(databaseURL string) (*pgxpool.Config, error) {
+	cfg, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, err
+	}
+	cfg.AfterRelease = tenant.Guard
+	return cfg, nil
 }
