@@ -196,19 +196,19 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | D-041 | T-012 review L9 | Publish 的 comment | **APPROVED（H-009）。** 在 ModelVersion 保存 comment（使用者資料，不放 audit；migration 與 contract）。gate：T-013 開放 publish route 前。 |
 | D-042 | T-010 review L5 | Provisioning 的最小權限 role | **APPROVED（H-009）。** 新 migration 建立 NOLOGIN 的 provisioning role，只有 users、organizations、memberships、audit_events 所需的寫入（與所需的 SELECT），RLS 與 audit trigger 的 provisioning 例外改認此 role；`cmd/provision-tenant` 改為 SET ROLE 它，不再以 schema owner `twin_owner` 執行。gate：production 部署前（併入 T-010）。 |
 
-### T-016 前的提案（2026-10-19，PROPOSED，待 owner）
+### T-016 前的提案（2026-10-19，APPROVED，H-010）
 
 | ID | 解決 | 主題 | 提案 |
 |---|---|---|---|
-| D-043 | CB-27 | Import 的 profile、preview 與人工 mapping | **PROPOSED。** (a) Import 增加 `profile`（profiling 完成前為 null）：`format`（csv／json_events／json_model）、`encoding`（`utf-8` 或 `utf-8-bom`）、`rows`、`columns[]`（`name` ≤256 字元、`index`、`inferred`：empty／boolean／integer／number／timestamp／string／mixed、`non_empty`、`max_length`）；每個 import 至多 256 欄，preview 的 `maxProperties` 改為 256；json_model 的 `columns` 為空。(b) `preview` 是前 100 筆的**原始**值，以來源欄名為 key（CSV 一律字串；JSON events 原值，另限深度、字串長度與總 bytes）；mapping 之後的 canonical 預覽屬 validation（T-017），`valid-import.json` 依此修正。(c) 人工 `SaveMapping` 改用只含 `source_column`、`target_field`、`transform` 的 mapping schema，不要求 AI 專用的 `confidence`、`evidence`、`requires_confirmation`；AI suggestion 仍用 ai-mapping。gate：T-016 開放 upload／profile 前（(c) 為 T-017 前）。 |
-| D-044 | 原報告 TBD（object storage） | P0 的 object storage | **PROPOSED。** `internal/storage/objects` 定義 S3 相容的最小介面（put 時計算 SHA-256 與大小、get、delete 只給受控 maintenance；key 一律由 server 依 D-035 產生）。P0 先提供 filesystem adapter，只用於 development 與測試（`APP_ENV=production` 時拒絕啟動）；正式環境的 adapter（雲端廠商、bucket、region、加密金鑰、retention、signed URL 期限）由 owner 選定雲端後另立 ADR，未定前不收真實客戶資料（SECURITY §6）。下載先由 API 授權後串流，不發 signed URL。gate：T-016 寫入 upload 前。 |
+| D-043 | CB-27 | Import 的 profile、preview 與人工 mapping | **APPROVED（2026-10-19，H-010）。** (a) Import 增加 `profile`（profiling 完成前為 null）：`format`（csv／json_events／json_model）、`encoding`（`utf-8` 或 `utf-8-bom`）、`rows`、`columns[]`（`name` ≤256 字元、`index`、`inferred`：empty／boolean／integer／number／timestamp／string／mixed、`non_empty`、`max_length`）；每個 import 至多 256 欄，preview 的 `maxProperties` 改為 256；json_model 的 `columns` 為空。(b) `preview` 是前 100 筆的**原始**值，以來源欄名為 key（CSV 一律字串；JSON events 原值，另限深度、字串長度與總 bytes）；mapping 之後的 canonical 預覽屬 validation（T-017），`valid-import.json` 依此修正。(c) 人工 `SaveMapping` 改用只含 `source_column`、`target_field`、`transform` 的 mapping schema，不要求 AI 專用的 `confidence`、`evidence`、`requires_confirmation`；AI suggestion 仍用 ai-mapping。gate：T-016 開放 upload／profile 前（(c) 為 T-017 前）。 |
+| D-044 | 原報告 TBD（object storage） | P0 的 object storage | **APPROVED（2026-10-19，H-010）。** `internal/storage/objects` 定義 S3 相容的最小介面（put 時計算 SHA-256 與大小、get、delete 只給受控 maintenance；key 一律由 server 依 D-035 產生）。P0 先提供 filesystem adapter，只用於 development 與測試（`APP_ENV=production` 時拒絕啟動）；正式環境的 adapter（雲端廠商、bucket、region、加密金鑰、retention、signed URL 期限）由 owner 選定雲端後另立 ADR，未定前不收真實客戶資料（SECURITY §6）。下載先由 API 授權後串流，不發 signed URL。gate：T-016 寫入 upload 前。 |
 
-### 其他待決的契約缺口（2026-10-19，PROPOSED，待 owner）
+### 其他契約缺口（2026-10-19，APPROVED，H-010）
 
 | ID | 解決 | 主題 | 提案 |
 |---|---|---|---|
-| D-045 | CB-17 | 使用者自己的 membership（`/me`） | **PROPOSED。** 新增 `GET /v1/me`（任何已驗證的使用者；不帶 `X-Organization-ID`）：回 `user_id` 與 `memberships[]`（`organization_id`、organization `name`、`role`），依 organization 名稱再依 ID 排序，P0 至多 100 筆；未知 identity 回 403（不自動建立，D-008）。RLS 新增只讀的 policy：API 只看得到 `user_id` 等於驗證後 scope 中 user 的 membership，與這些 membership 所屬 organization 的 `id`、`name`（新 migration；其他 tenant 的任何 row 仍不可見）。UI 以此選 organization 並取得 role，role 仍只決定介面，API 每次自己授權。gate：T-043 的 UI bootstrap 前。 |
-| D-046 | CB-31 | AI 新增 entity 的 ID allocation pool | **PROPOSED。** 每個 proposal 在建立時由 server 產生 pool：每種 entity（node、flow、resource）16 個 ID，格式 `<kind>_<小寫 ULID>`（符合 IR 的 ID pattern），存在 `ai_proposals.id_pool`（新 migration；之後不可改）並放進 provider context。Validation 與 approval 時要求 patch 新增的每個 entity ID 都來自同 proposal 的 pool、種類相符、在 base IR 中未使用；不足時 provider 回 `needs_input`。gate：T-024 的 context builder 前。 |
+| D-045 | CB-17 | 使用者自己的 membership（`/me`） | **APPROVED（2026-10-19，H-010）。** 新增 `GET /v1/me`（任何已驗證的使用者；不帶 `X-Organization-ID`）：回 `user_id` 與 `memberships[]`（`organization_id`、organization `name`、`role`），依 organization 名稱再依 ID 排序，P0 至多 100 筆；未知 identity 回 403（不自動建立，D-008）。RLS 新增只讀的 policy：API 只看得到 `user_id` 等於驗證後 scope 中 user 的 membership，與這些 membership 所屬 organization 的 `id`、`name`（新 migration；其他 tenant 的任何 row 仍不可見）。UI 以此選 organization 並取得 role，role 仍只決定介面，API 每次自己授權。gate：T-043 的 UI bootstrap 前。 |
+| D-046 | CB-31 | AI 新增 entity 的 ID allocation pool | **APPROVED（2026-10-19，H-010）。** 每個 proposal 在建立時由 server 產生 pool：每種 entity（node、flow、resource）16 個 ID，格式 `<kind>_<小寫 ULID>`（符合 IR 的 ID pattern），存在 `ai_proposals.id_pool`（新 migration；之後不可改）並放進 provider context。Validation 與 approval 時要求 patch 新增的每個 entity ID 都來自同 proposal 的 pool、種類相符、在 base IR 中未使用；不足時 provider 回 `needs_input`。gate：T-024 的 context builder 前。 |
 
 ## 人類決策紀錄
 
@@ -225,6 +225,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | H-007 | 2026-10-18 | 採用 agent 建議的 UI 設計關卡：REQ-023（WCAG 2.2 AA、共用 design tokens 與元件、UI 任務先交 prototype 經 owner review、兩語與手機／桌面不跑版）、TEST-033、T-045（在 T-015 之前）；UI 庫須比較多個庫的做法後以 ADR-021 決定，不直接採用 Tailwind＋shadcn/ui；owner 尚無視覺偏好，預設中性的工具型介面 | UI 庫與 styling（ADR-021，owner 確認）；視覺取向（看 prototype 後回饋） |
 | H-008 | 2026-10-18 | 採用 T-045 UI 庫比較（`checks/evidence/2026-10-18-T-045/survey.md`）的四項建議：(1) UI 元件庫內建、無法以 prop 覆寫的無障礙字串可用該庫自己的翻譯（例如 React Aria 的 `zh-TW`），須列清單、在 spike 中審閱用語，並以測試列出所有不來自 catalog 的字串；(2) P0 只做淺色主題，tokens 預留深色；(3) P0 只用系統字型（含繁中 fallback），不載入 web font；(4) 不使用付費元件授權，也不使用安裝時回傳資料的套件 | UI 庫與 styling 仍由 T-045 spike 後的 ADR-021 決定 |
 | H-009 | 2026-10-18 | 10 項全部照 agent 建議（「全都照建議」）：UI 用 React Aria Components 1.21.1＋CSS Modules（[ADR-021](adr/ADR-021-ui-library-and-design-system.md) ACCEPTED）；依 H-008 接受 5 種 React Aria 內建繁中字串；axe-core／@axe-core/playwright（MPL-2.0）只作測試工具；保留 React Flow 署名；成功回饋用頁內 `role="status"`；D-040（IR 存 canonical 文字）、D-041（保存 comment）、D-042（provisioning 最小權限 role）APPROVED；[ADR-022](adr/ADR-022-model-service.md)、[ADR-023](adr/ADR-023-membership-management.md) ACCEPTED | 視覺取向（看 prototype 後）；螢幕報讀器實測（需人執行） |
+| H-010 | 2026-10-19 | 照 agent 建議（「其他都照你建議吧」）：批准 D-043、D-044、D-045、D-046；[ADR-024](adr/ADR-024-job-queue-and-worker.md) ACCEPTED（參數照提案，`WORKER_STOPPED` 計入 attempt）；ADR-011、ADR-013 ACCEPTED；Auth0 refresh token rotation 的 reuse interval 為 30 秒；接受 React Aria 同一組選取通知的其餘繁中字串（「未選取「…」。」「已選取所有項目。」「已選取 N 個項目。」） | T-045 prototype 審閱與截圖 baseline 確認（已整理成 artifact，待 owner 回覆）；live AI 的資料政策、retention、quota 與 model；雲端廠商與 region；Auth0 tenant 由 owner 建立 |
 
 ## 原報告保留的 TBD
 
@@ -234,7 +235,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | LLM model | eval 後決定，不 hard-code | Week 7；live AI release |
 | Auth provider | ~~managed OIDC，未定案~~ **已由 H-004／ADR-018 決定：Auth0；browser 經 BFF（HttpOnly 加密 session cookie）** | API 端驗證見 ADR-017（ACCEPTED）；登入流程 T-043；Auth0 tenant 由 owner 建立，region 依 retention／residency |
 | Cloud / managed DB | GCP reference / AWS equivalent；managed PostgreSQL | Week 1–2；production deploy |
-| Object storage | cloud-native / S3-compatible abstraction；P0 介面與 development 用 adapter 見 D-044（PROPOSED），正式廠商待 owner | Week 2；持久化 artifact |
+| Object storage | cloud-native / S3-compatible abstraction；P0 介面與 development 用 adapter 見 D-044（APPROVED，H-010），正式廠商待 owner 選定雲端 | Week 2；持久化 artifact |
 | Frontend state / UI libraries | TanStack Query、Zustand、Tailwind/shadcn 原文均 TBD；server state 已由 ADR-016 決定；**UI 庫與 styling 由 T-045 比較多個庫後以 ADR-021 決定（H-007）** | T-045；不影響 IR |
 | SQL generation | explicit SQL / sqlc TBD | Backend bootstrap |
 | Model / upload / replications / timeout | 原報告初始目標，不是量測成果 | Alpha benchmark |

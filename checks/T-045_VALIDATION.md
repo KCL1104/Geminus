@@ -58,7 +58,7 @@
 
 ## Prototype（owner review）
 
-`checks/evidence/2026-10-19-T-045/prototypes/geminus-prototypes.html`，已傳給 owner。
+`checks/evidence/2026-10-19-T-045/prototypes/geminus-prototypes.html`，已傳給 owner；2026-10-19 依 owner 要求與截圖 baseline 一起整理成一個審閱頁（claude.ai artifact「Geminus UI 審閱」，private），內容為同一個檔案與 16 張 baseline，未改動。
 
 - **模型編輯器（T-015）**：步驟面板、畫布（方向鍵移動、Enter 選取）、屬性面板（含 server 回傳的欄位錯誤）、驗證問題表（點選即跳到該步驟）、儲存草稿、有錯誤時無法發布、重設與離開的確認、409（保留使用者的變更，可重新載入後套用或捨棄）、檢視者唯讀、API 無法連線。
 - **匯入與 AI 建議審閱（T-031）**：上傳、無效列與下載、欄位對應（建議需逐一確認）、確認匯入；建議的 diff、AI 的假設、server 計算的風險與 AI 的判斷並列、驗證、預期影響；修改模型與情境的批准分開，文字也不同；needs_input；base 過時時無法批准。
@@ -68,7 +68,7 @@
 ## 待 owner 決定或知悉
 
 - **Prototype 審閱**：流程與版面是否符合期待；回饋將記入本報告並帶入 T-015／T-031。
-- **React Aria 選取通知的同類字串**：owner 接受的是「已選取「…」。」。同一組通知還有「未選取「…」。」「已選取所有項目。」「已選取 N 個項目。」，在取消選取、全選或多選時出現，無法以 prop 覆寫。建議一併接受（同一種通知）；在決定前，字串測試只涵蓋已接受的那一句。
+- **React Aria 選取通知的同類字串（H-010：接受）**：除了「已選取「…」。」，owner 也接受「未選取「…」。」「已選取所有項目。」「已選取 N 個項目。」（英文為 `… not selected.`、`All items selected.`、`N item(s) selected.`）。字串測試接著改為把它們列入接受清單，並實際全選、再取消一列，檢查三句都出現過（下一個 commit；在那之前字串測試仍只接受原本那一句）。同一則數量訊息在 0 個時的寫法「未選取任何項目。」不在 owner 接受的清單中，測試不觸發它；若之後出現，字串測試會擋下，再請 owner 確認。
 - **截圖 baseline 的人工確認**：見下節；TEST-033 要求 baseline 變更由人確認，目前只有 agent 看過。
 
 ## 截圖 baseline

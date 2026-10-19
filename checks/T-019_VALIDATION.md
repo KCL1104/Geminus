@@ -1,6 +1,6 @@
 # T-019 驗證報告：PostgreSQL job queue、lease 與 worker 迴圈
 
-**日期：2026-10-19｜狀態：`review`（review round 1、2、3 皆為 CHANGES REQUESTED，修正後送 round 4；依 H-003 驗收）｜需求：REQ-012、REQ-018、REQ-019｜Gate：D-007、D-008、D-011（APPROVED）；ADR-024（PROPOSED，待 owner）｜驗收測試：TEST-010（worker 部分）、TEST-020、TEST-021（佇列部分）**
+**日期：2026-10-19｜狀態：`review`（review round 1、2、3 皆為 CHANGES REQUESTED，修正後送 round 4；依 H-003 驗收）｜需求：REQ-012、REQ-018、REQ-019｜Gate：D-007、D-008、D-011（APPROVED）；ADR-024（ACCEPTED，H-010）｜驗收測試：TEST-010（worker 部分）、TEST-020、TEST-021（佇列部分）**
 
 範圍依 tasks.json：
 
@@ -24,7 +24,7 @@
 | `internal/config/worker.go`、`cmd/worker`（T-019c、round 1） | `WORKER_ID`、`WORKER_ORGANIZATION_IDS`（皆必填，allowlist 在 handler 檢查之前驗）；worker runtime role 檢查與 pool guard；第一個 SIGINT／SIGTERM 停止迴圈，第二個立即結束 process。目前沒有 handler（T-016、T-023、T-025），所以驗完設定後 exit 2（NOT IMPLEMENTED），不連 DB |
 | `internal/storage/dbtest` | `NewImport`（測試用的 import resource）、worker login |
 | `Makefile`、`scripts/run_db_tests.sh`、`db/tests/` | `db-go-test` 加入 `internal/worker`、`cmd/worker`；0007 加入 up／down／up；0007 的 SQL 測試 |
-| 文件 | ADR-024（PROPOSED）、ARCHITECTURE §2 與 §6、API_DATABASE §7 與 §9、db/README、.env.example |
+| 文件 | ADR-024（ACCEPTED，H-010）、ARCHITECTURE §2 與 §6、API_DATABASE §7 與 §9、db/README、.env.example |
 
 ## 實際執行結果
 
@@ -146,9 +146,9 @@ Round 3 確認 round 2 的 M1（handler 回傳的路徑）、L2、L4、L5、I2�
 
 ## 決策與 owner 知悉
 
-- **ADR-024 為 PROPOSED，待 owner 決定**：
+- **ADR-024 已由 owner 接受（H-010，2026-10-19，照提案）**：
   - 參數：lease 30 秒與 heartbeat 10 秒是 D-007 已批准的候選值；max attempts 3 是 API_DATABASE §7 的候選值；backoff（5 秒起倍增、最多 5 分鐘）、無 job 時 1 秒、每次 pass 每個 organization reap 100 個是本 ADR 的提案。都不是 benchmark 的結果（D-007 要求之後 benchmark 與評審）。
-  - `WORKER_STOPPED` 是否計入 attempt（目前計入，部署時反覆重啟可能讓 job 提早 failed）。
+  - `WORKER_STOPPED` 計入 attempt（部署時反覆重啟可能讓 job 提早 failed；真的發生時再改為不計入）。
 - Migration 0007 是新的 DB 規則（job 的終態不可改），不在 tasks.json 的明列 scope 內；它是 TEST-020／TEST-021 的「舊 lease 無權 finalize」「cancel 與 complete 互斥」在 DB 端的保證，與 runs、proposals 已有的終態保護一致。
 - 沒有使用 live AI、雲端或任何外部服務。
 

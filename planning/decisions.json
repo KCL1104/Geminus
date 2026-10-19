@@ -593,12 +593,12 @@
       "source_pages": "N/A（CB-27；import.schema.json、valid-import.json、ai-mapping.schema.json、http.schema.json SaveMapping）",
       "owner_role": "Import / Product",
       "gate": "T-016 開放 upload／profile 前（(c) 為 T-017 前）",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [
         "CB-27"
       ],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-010)",
+      "approved_at": "2026-10-19"
     },
     {
       "id": "D-044",
@@ -608,10 +608,10 @@
       "source_pages": "N/A（原報告 TBD：Object storage；SECURITY §6）",
       "owner_role": "Platform / Security",
       "gate": "T-016 寫入 upload 前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-010)",
+      "approved_at": "2026-10-19"
     },
     {
       "id": "D-045",
@@ -621,9 +621,9 @@
       "source_pages": "N/A（CB-17；openapi.yaml、0002_rls.up.sql）",
       "owner_role": "Security / Frontend",
       "gate": "T-043 的 UI bootstrap 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null,
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-010)",
+      "approved_at": "2026-10-19",
       "resolves": [
         "CB-17"
       ]
@@ -636,9 +636,9 @@
       "source_pages": "N/A（CB-31；AI_SPEC §3、proposal.schema.json、0001_core.up.sql）",
       "owner_role": "AI / Security",
       "gate": "T-024 的 context builder 前",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null,
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-010)",
+      "approved_at": "2026-10-19",
       "resolves": [
         "CB-31"
       ]
@@ -751,6 +751,21 @@
       "still_open": [
         "視覺取向（owner 看 T-015／T-031 prototype 後回饋）",
         "螢幕報讀器實測（需要人執行）"
+      ]
+    },
+    {
+      "id": "H-010",
+      "subject": "D-043／D-044／D-045／D-046、ADR-024、ADR-011、ADR-013、Auth0 reuse interval、T-045 的 React Aria 字串",
+      "decision": "照 agent 建議：(1) 批准 D-043（import profile、原始值 preview、人工 mapping schema）；(2) 批准 D-044（S3 相容介面，P0 只有 development／測試用 filesystem adapter，正式廠商待選定雲端後另立 ADR，未定前不收真實客戶資料）；(3) 批准 D-045（GET /v1/me 與只讀的 RLS policy）；(4) 批准 D-046（每個 proposal 由 server 產生的 entity ID pool）；(5) ADR-024 ACCEPTED，參數照提案，WORKER_STOPPED 計入 attempt；(6) ADR-011、ADR-013 ACCEPTED；(7) Auth0 refresh token rotation 的 reuse interval 為 30 秒；(8) 接受 React Aria 同一組選取通知的其餘繁中字串（未選取「…」。、已選取所有項目。、已選取 N 個項目。）。",
+      "quote": "5. a 你可以整理成 artifact 給我看嗎？ b 好照你建議 c 也整理到 artifact 給我看．其他都照你建議吧",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-19",
+      "source": "Claude Code session 指示，由 agent 記錄；8 項問題與建議見該 session 的列表",
+      "still_open": [
+        "T-045 prototype 審閱（5a）與截圖 baseline 確認（5c）：已整理成 artifact 供 owner 審閱，結果待回覆",
+        "live AI 的資料政策、retention、quota 與 model（T-024 真實呼叫前）",
+        "雲端廠商與 region（正式 object storage、T-039）",
+        "Auth0 tenant 由 owner 依 runbook 建立"
       ]
     }
   ]

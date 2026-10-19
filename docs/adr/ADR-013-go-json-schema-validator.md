@@ -1,6 +1,6 @@
 # ADR-013 — Go JSON Schema validator and embedded schemas
 
-狀態：PROPOSED（T-004 agent 選定，待人類 review）。日期：2026-10-15。
+狀態：ACCEPTED（2026-10-19，owner H-010；T-004 agent 選定）。日期：2026-10-15。
 
 ## Decision
 

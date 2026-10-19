@@ -1,6 +1,6 @@
 # T-043 驗證報告：瀏覽器登入 session（BFF，ADR-018）
 
-**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；登入後的 UI bootstrap 等 D-045，見下）｜需求：REQ-019｜Gate：D-045（PROPOSED，待 owner）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
+**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；登入後的 UI bootstrap 等 D-045，見下）｜需求：REQ-019｜Gate：D-045（APPROVED，H-010）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
 
 範圍依 tasks.json：
 
@@ -121,10 +121,10 @@ Round 3 確認 round 2 全部修好（L-3 的 refresh 路徑沒有測試釘住�
 
 ## 決策與 owner 知悉
 
-- **D-045（PROPOSED，待 owner）**：登入之後的 UI bootstrap（登入／登出按鈕、organization 選擇、從 API 取得 role、未知 identity 在 UI 顯示 403）需要 `GET /v1/me`。在 D-045 批准並實作前，BFF 已能登入、轉送與登出，但 UI 仍一律顯示未登入（沒有元件知道 session 存在）。T-043 的 decision gate 因此包含 D-045；BFF 部分先送審。
+- **D-045（APPROVED，H-010）**：登入之後的 UI bootstrap（登入／登出按鈕、organization 選擇、從 API 取得 role、未知 identity 在 UI 顯示 403）需要 `GET /v1/me`。在 D-045 批准並實作前，BFF 已能登入、轉送與登出，但 UI 仍一律顯示未登入（沒有元件知道 session 存在）。T-043 的 decision gate 因此包含 D-045；BFF 部分先送審。
 - 加入登入／登出按鈕會改變每個頁面的 header，所有截圖 baseline 需要重做；依 T-045 的規則只能由 owner 以 CI 的 `update_screenshots` 產生並確認後提交。
 - Auth0 tenant 與 credential 由 owner 依 `docs/runbooks/auth0.md` 建立；agent 沒有建立帳號、沒有任何 credential，也沒有連過 Auth0。
-- **Auth0 的 rotation reuse interval（owner 決定）**：runbook 建議一律設 30 秒（round 2 I-3）。代價是：refresh token 被 rotation 後 30 秒內，被竊的舊 token 仍能換到新 token 而不觸發 reuse detection；好處是被取消的 request 或遺失的回應不會讓使用者被登出。設 0 也能運作，只是上述情況會結束 session。
+- **Auth0 的 rotation reuse interval（owner 已決定，H-010：30 秒）**：runbook 一律設 30 秒（round 2 I-3）。代價是：refresh token 被 rotation 後 30 秒內，被竊的舊 token 仍能換到新 token 而不觸發 reuse detection；好處是被取消的 request 或遺失的回應不會讓使用者被登出。設 0 也能運作，只是上述情況會結束 session。
 - 新依賴：openid-client 6.8.8（MIT），帶入 oauth4webapi 3.8.8 與 jose 6.2.12（MIT），三者皆於 2026-09-05 發布；`npm audit --omit=dev` 為 0。
 
 ## 與規劃的差異
@@ -138,7 +138,7 @@ Round 3 確認 round 2 全部修好（L-3 的 refresh 路徑沒有測試釘住�
 | 項目 | 原因／歸屬 |
 |---|---|
 | 連 Auth0 的檢查 | 沒有 tenant 與 credential；`docs/runbooks/auth0.md` §5 在 staging 由人執行 |
-| 登入 UI、organization 選擇、UI 中的 403 | D-045 待 owner；之後隨新截圖 baseline 一起做 |
+| 登入 UI、organization 選擇、UI 中的 403 | D-045 已批准（H-010），接著實作；隨新截圖 baseline 一起做 |
 | 瀏覽器→BFF→Go API→DB 的閉環 | T-040 |
 | 多個 web instance 之間的 refresh 協調 | P0 單一 instance；多 instance 時以 Auth0 的 reuse interval 30 秒涵蓋（runbook） |
 | Login、callback、refresh 的 rate limiting 與告警 | T-036／T-035（ADR-018 §3）。BFF 不轉送 client IP（不送 X-Forwarded-For），API 端的 rate limiting 若要以 IP 區分，T-036 需決定由 BFF 轉送可信的 client IP |

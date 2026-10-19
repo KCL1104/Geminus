@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 42,
-    "proposed": 4,
+    "approved": 46,
+    "proposed": 0,
     "rejected": 0,
     "superseded": 0
   },
@@ -15,7 +15,8 @@
     "H-006",
     "H-007",
     "H-008",
-    "H-009"
+    "H-009",
+    "H-010"
   ],
   "tasks_by_status": {
     "blocked": 0,
@@ -24,17 +25,16 @@
     "not_started": 23,
     "review": 1
   },
-  "ready_tasks": [],
+  "ready_tasks": [
+    "T-024"
+  ],
   "next_after_review": [
     {
       "id": "T-016",
       "awaiting_task_review": [
         "T-019"
       ],
-      "awaiting_decisions": [
-        "D-043",
-        "D-044"
-      ]
+      "awaiting_decisions": []
     },
     {
       "id": "T-023",
@@ -42,13 +42,6 @@
         "T-019"
       ],
       "awaiting_decisions": []
-    },
-    {
-      "id": "T-024",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-046"
-      ]
     },
     {
       "id": "T-035",
@@ -416,7 +409,7 @@
       ]
     },
     "D-043": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-016 開放 upload／profile 前（(c) 為 T-017 前）",
       "gates_tasks": [
         "T-016",
@@ -424,21 +417,21 @@
       ]
     },
     "D-044": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-016 寫入 upload 前",
       "gates_tasks": [
         "T-016"
       ]
     },
     "D-045": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-043 的 UI bootstrap 前",
       "gates_tasks": [
         "T-043"
       ]
     },
     "D-046": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-024 的 context builder 前",
       "gates_tasks": [
         "T-024",

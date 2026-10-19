@@ -1,6 +1,6 @@
 # ADR-024 — PostgreSQL job queue 與 worker 迴圈（T-019）
 
-狀態：PROPOSED（T-019 agent 提出並先實作；待 owner 決定；review round 1、2 後修訂）。日期：2026-10-19。依據：D-007、D-008、D-011（皆 APPROVED）、ARCHITECTURE §6、API_DATABASE §6–§7、TEST-020、TEST-021、ADR-019（T-009 re-review R3b）。
+狀態：ACCEPTED（2026-10-19，owner H-010：參數照提案，`WORKER_STOPPED` 計入 attempt）。T-019 agent 提出並先實作，review round 1–3 後修訂。日期：2026-10-19。依據：D-007、D-008、D-011（皆 APPROVED）、ARCHITECTURE §6、API_DATABASE §6–§7、TEST-020、TEST-021、ADR-019（T-009 re-review R3b）。
 
 ## Decision
 
@@ -79,7 +79,7 @@
 - 參數改動只需改 `jobs.DefaultPolicy` 與 `cmd/worker` 的常數，不影響 schema。
 - **Worker login 受信任處理 job（round 3 I3，接受）**：所有 worker 共用一個 role，DB 分不出 holder。0007 擋住直接接手別人的 lease，但 worker login 仍能結束任何 running 的 job、把 lease 設成任意長度（包括 `infinity`，job 永遠不被 reap）、或讓 lease 過期後經 reaper 再 claim（舊 holder 的寫入被 token 擋下，得到 `ErrLeaseLost`）。Lease 長度只來自 `jobs.DefaultPolicy`；DB 端不另設上限，這樣的 job 由 operator 手動結束。
 
-## 待 owner 決定
+## Owner 的決定（H-010，2026-10-19）
 
-- 是否接受上表的參數與 backoff 公式（D-007 的 lease／heartbeat 已是 APPROVED 候選值；其餘為本 ADR 提案）。
-- `WORKER_STOPPED` 是否計入 attempt（目前計入）。
+- 接受上表的參數與 backoff 公式（D-007 的 lease／heartbeat 為 APPROVED 候選值，其餘為本 ADR 的提案）。它們仍不是 benchmark 的結果，T-037 實測後可另以 ADR 修改。
+- `WORKER_STOPPED` 計入 attempt（見 Consequences；部署過於頻繁而讓 job 提早 failed 時再改為不計入）。

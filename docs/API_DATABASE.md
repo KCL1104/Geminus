@@ -71,7 +71,7 @@ reserve key 與 operation effect、audit、response 同一短 transaction；在�
 
 claim 用 organization filter + SKIP LOCKED + priority DESC/created_at/id。attempt 增加、lease_token 增加、lease_expires_at 保存；初始30s lease /10s heartbeat /max_attempts3 是候選。heartbeat/finalize 都核對 organization、job_id、worker_id、lease_token、running、not expired；更新零 rows 表示失去 ownership，不可重试 unscoped write。
 
-result finalize transaction 鎖 job，再鎖 run，核實有效 lease +無 cancel flag；insert unique result、run completed、job completed、audit 同時 commit。lease expired 的舊 worker 永遠不能覆寫新結果。reaper 逐 tenant 處理 expired lease，先核實 retry budget；run frozen input 不變。non-transient validation/budget failure 不 retry；有限 exponential backoff 的參數仍需配置。T-019 的佇列與 worker 迴圈依 [ADR-024](adr/ADR-024-job-queue-and-worker.md)（PROPOSED：30 s lease／10 s heartbeat／3 attempts、backoff 5 s 起倍增至多 5 min；queued 立即取消、cancel 與 complete 互斥；migration 0007 讓終態 job 不可改）；run 的 finalize、cancel flag 與 budget 屬 T-023。
+result finalize transaction 鎖 job，再鎖 run，核實有效 lease +無 cancel flag；insert unique result、run completed、job completed、audit 同時 commit。lease expired 的舊 worker 永遠不能覆寫新結果。reaper 逐 tenant 處理 expired lease，先核實 retry budget；run frozen input 不變。non-transient validation/budget failure 不 retry；有限 exponential backoff 的參數仍需配置。T-019 的佇列與 worker 迴圈依 [ADR-024](adr/ADR-024-job-queue-and-worker.md)（ACCEPTED，H-010：30 s lease／10 s heartbeat／3 attempts、backoff 5 s 起倍增至多 5 min；queued 立即取消、cancel 與 complete 互斥；migration 0007 讓終態 job 不可改）；run 的 finalize、cancel flag 與 budget 屬 T-023。
 
 APPROVED D-007：logical run 的 wall/event budgets 要包含 retries，而非每次重試重設。worker 使用 durable budget reservations、有限批次 credit 與外部 cancellation governor；engine 只讀授予的 budget/context，不直接讀 DB。實作時要測 crash 前已保留但未用完的 credit 可被保守消耗，不能超額。這一部分為 T-021/T-023 的必測項，不在本包聲稱已完成。
 

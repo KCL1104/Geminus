@@ -1,6 +1,6 @@
 # ADR-011 — Toolchain / repository bootstrap versions
 
-狀態：PROPOSED（T-002 agent 選定，待人類 review；不影響 ADR-001–010 的 SOURCE 邊界）。日期：2026-10-15。
+狀態：ACCEPTED（2026-10-19，owner H-010；T-002 agent 選定；不影響 ADR-001–010 的 SOURCE 邊界）。日期：2026-10-15。
 
 ## Decision
 
