@@ -1012,6 +1012,12 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-016_VALIDATION.md",
           "summary": "契約：import.schema.json 依 D-043 加 profile 與原始值 preview（≤256 欄），valid-import.json 修正；uploadImport／getImport 的規則與範例；downloadImportErrors 依 D-044 改為授權後串流 CSV（CB-38(b)）。Migration 0010：profile 與 error report 的 hash、大小，upload 不可改、profile 恰在 profiling 之後且只寫一次、API 不寫 profile／preview／report、FAILED 與 COMMITTED 為終態（db/tests/imports.sql）。internal/import/profile（純粹、串流、有界的 CSV／JSON profile，UTF-8 含／不含 BOM、中文，不猜編碼，typed failure 與 JSON Pointer）、internal/import/report（formula-safe CSV）、internal/import/upload（先授權再讀 body，串流寫入、SHA-256、50 MB 上限不依賴 Content-Length、拒絕壓縮檔與執行檔、idempotent，與 job、audit 同一 transaction）、internal/import/profiler（worker 才連結，核對 upload 的 hash 後 profile，結果與 job 一起 commit）。未改 Twin（D-009）。驗證見報告；狀態未改，由 reviewer 決定。"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-016_VALIDATION.md",
+          "summary": "獨立 review 第 1 輪 CHANGES REQUESTED 的修正：H1 profile 的記憶體不隨檔案成長（自有、與 encoding/csv 對照 fuzz 的 CSV 掃描器，record 與 JSON 一列至多 1 MiB，一列只保留 header 欄數加一，JSON decoder 以 1 MiB 視窗讀取）；L1 failure path 至多 2,048 字元；M2 error report 每個 cell 加引號、分隔字元後的公式字元也中和；M1 migration 0010 的 import 跟隨唯一的 profile job（partial unique index、follow_import_profile_job），移除讀取時推導；M3 import 建立時不帶任何推導值、API 在 UPLOADED／PROFILING 時不改任何欄位、report key 不得是 upload key；L2 OpenAPI 範例與程式一致。DB 測試在本 session 無法執行（su postgres 被拒），列為 NOT RUN。狀態未改，由 reviewer 決定。"
         }
       ]
     },

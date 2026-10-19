@@ -1154,8 +1154,12 @@ paths:
         profile and the first rows'' raw values, or FAILED with error. A FAILED import''s error.details[0] carries the
         failure''s own code and, for a parse error, a JSON Pointer into the file seen as an array of rows (a JSON events
         file is that array; a CSV row''s index counts data rows from 0) or, for a JSON model, into the document;
-        error.request_id is the upload''s. invalid_rows counts CSV rows whose field count differs from the header; they
-        are listed in the error report (downloadImportErrors).'
+        error.request_id is the upload''s; a message never quotes the file and a path has at most 2,048 characters (a
+        longer one names an ancestor). A CSV record (the header included) and a JSON events row are at most 1 MiB as
+        written, a JSON model at most 2 MiB (IMPORT_LIMIT_EXCEEDED). An import whose import_profile job fails for good or
+        is cancelled before the file is profiled is FAILED with the job''s error (for example OBJECT_STORAGE_UNAVAILABLE
+        or JOB_CANCELLED). invalid_rows counts CSV rows whose field count differs from the header; they are listed in the
+        error report (downloadImportErrors).'
       tags:
       - Imports
       x-origin: SOURCE
@@ -1229,10 +1233,10 @@ paths:
                     error:
                       error:
                         code: REQUEST_VALIDATION_FAILED
-                        message: the file is not valid JSON
+                        message: the file cannot be read as uploaded
                         details:
                         - path: /41/case_id
-                          reason: duplicate object member name "case_id"
+                          reason: a member name repeats within one JSON object
                           code: JSON_DUPLICATE_KEY
                           severity: error
                         request_id: req_01M4YDQK00V6H8S0ST4F7510KR
@@ -1386,13 +1390,15 @@ paths:
         table. D-044 (approved; T-016, CB-38(b)): the API authorizes the caller against the import, then serves the
         stored report itself, checked against its recorded SHA-256 and size (500 and no bytes when it does not match); no
         signed URL, and the client names only the import, never an object key. 404 NOT_FOUND when the import has no error
-        report. The report is CSV (RFC 4180, CRLF, UTF-8 with a BOM so that spreadsheets read non-ASCII text) with the
-        header path,line,column,code,message,value: path is the JSON Pointer of the row (or row and column) in the file seen
-        as an array of rows, line the 1-based line of the uploaded file where the record starts, column the source column
-        name, value at most 256 characters of the offending value. Every cell that starts (after spaces) with =, +, -, @, a
-        tab, a carriage return or a line feed, or their full-width forms, is prefixed with an apostrophe, so a spreadsheet
-        shows it as text and never runs it as a formula (TEST-029); the stored upload is never changed. A report is at
-        most 16 MiB: a last row with code ERRORS_TRUNCATED says how many errors are not listed.'
+        report. The report is CSV (RFC 4180, CRLF, every cell quoted, UTF-8 with a BOM so that spreadsheets read non-ASCII
+        text) with the header path,line,column,code,message,value: path is the JSON Pointer of the row (or row and column)
+        in the file seen as an array of rows, line the 1-based line of the uploaded file where the record starts, column
+        the source column name, value at most 256 characters of the offending value. Every cell that starts (after spaces
+        and quotes) with =, +, -, @, a tab, a carriage return or a line feed, or their full-width forms, is prefixed with an
+        apostrophe, and so is every part of a cell after a comma, semicolon, tab or line end that would start that way
+        (the apostrophe follows the separator), so a spreadsheet shows it as text and never runs it as a formula, however
+        it splits cells (TEST-029); the stored upload is never changed. A report is at most 16 MiB: a last row with code
+        ERRORS_TRUNCATED says how many errors are not listed.'
       tags:
       - Imports
       x-origin: PROPOSED
