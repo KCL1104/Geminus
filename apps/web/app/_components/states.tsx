@@ -37,10 +37,11 @@ export function RequireSession({ children }: { children: ReactNode }) {
 /** Failures that can go away on their own; the others need a different request or role. */
 const retryable: ReadonlySet<ProblemKind> = new Set(["network", "unavailable", "rate_limited", "internal", "protocol"]);
 
-export function RemoteView<T>({ remote, what, onRetry, children }: {
+export function RemoteView<T>({ remote, what, onRetry, headingLevel, children }: {
   remote: Remote<T>;
   what: Loadable;
   onRetry?: () => void;
+  headingLevel?: 2 | 3;
   children: (data: T) => ReactNode;
 }) {
   const { t } = useI18n();
@@ -48,7 +49,7 @@ export function RemoteView<T>({ remote, what, onRetry, children }: {
   if (remote.state === "failed") {
     return (
       <>
-        <ProblemView problem={remote.problem} />
+        <ProblemView problem={remote.problem} headingLevel={headingLevel} />
         {onRetry && retryable.has(remote.problem.kind) && (
           <Button onPress={onRetry}>{t("retry")}</Button>
         )}

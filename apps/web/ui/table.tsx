@@ -12,6 +12,7 @@ import {
   TableLayout,
   Virtualizer,
 } from "react-aria-components";
+import { useI18n } from "../lib/i18n/provider";
 import { Checkbox } from "./checkbox";
 import { cx } from "./cx";
 import { SortIcon } from "./icons";
@@ -38,11 +39,13 @@ function useIsClient(): boolean {
  * quadratic time (ADR-021). Sorting is the caller's: sortDescriptor shows
  * it, onSortChange asks for another.
  */
-export function DataTable<T extends { id: string }>({ label, columns, rows, renderCell, empty, sortDescriptor, onSortChange, selectionMode = "none", selectedKeys, onSelectionChange }: {
+export function DataTable<T extends { id: string }>({ label, columns, rows, renderCell, rowText, empty, sortDescriptor, onSortChange, selectionMode = "none", selectedKeys, onSelectionChange }: {
   label: string;
   columns: TableColumn[];
   rows: T[];
   renderCell: (row: T, column: string) => ReactNode;
+  /** The row as text: what type-ahead matches and what selection announces ("… selected"). */
+  rowText: (row: T) => string;
   empty: ReactNode;
   sortDescriptor?: SortDescriptor;
   onSortChange?: (d: SortDescriptor) => void;
@@ -50,6 +53,7 @@ export function DataTable<T extends { id: string }>({ label, columns, rows, rend
   selectedKeys?: Selection;
   onSelectionChange?: (keys: Selection) => void;
 }) {
+  const { t } = useI18n();
   const isClient = useIsClient();
   const virtual = rows.length > virtualizeAbove;
   if (virtual && !isClient) return <div className={styles.pending} style={{ height: virtualHeight }} data-pending="" />;
@@ -68,7 +72,7 @@ export function DataTable<T extends { id: string }>({ label, columns, rows, rend
       <TableHeader className={styles.header}>
         {selectable && (
           <Column className={styles.selectCell}>
-            <Checkbox slot="selection" />
+            <Checkbox slot="selection" aria-label={t("table.selectAll")} />
           </Column>
         )}
         {columns.map((c) => (
@@ -84,10 +88,10 @@ export function DataTable<T extends { id: string }>({ label, columns, rows, rend
       </TableHeader>
       <TableBody items={rows} renderEmptyState={() => <p className={styles.empty}>{empty}</p>}>
         {(row) => (
-          <Row id={row.id} className={styles.row}>
+          <Row id={row.id} textValue={rowText(row)} className={styles.row}>
             {selectable && (
               <Cell className={styles.selectCell}>
-                <Checkbox slot="selection" />
+                <Checkbox slot="selection" aria-label={t("table.selectRow")} />
               </Cell>
             )}
             {columns.map((c) => (

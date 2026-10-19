@@ -33,12 +33,12 @@ export function validationKey(code: string | undefined): MessageKey | null {
   return code !== undefined && Object.hasOwn(en, key) ? (key as MessageKey) : null;
 }
 
-export function ProblemView({ problem }: { problem: Problem }) {
+export function ProblemView({ problem, headingLevel = 2 }: { problem: Problem; headingLevel?: 2 | 3 }) {
   const { t, gap } = useI18n();
   const advice = guidanceFor(problem);
   const shown = problem.kind !== "not_found";
   return (
-    <Callout tone="danger" heading={t(`problem.heading.${problem.kind}`)} data-problem={problem.kind}>
+    <Callout tone="danger" heading={t(`problem.heading.${problem.kind}`)} headingLevel={headingLevel} data-problem={problem.kind}>
       {advice && <p>{t(advice)}</p>}
       {problem.message && shown && (
         <p>

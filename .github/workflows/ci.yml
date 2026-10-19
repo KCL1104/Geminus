@@ -6,6 +6,12 @@ name: ci
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      update_screenshots:
+        description: "Make new screenshot baselines (uploaded as the artifact 'screenshots' for a person to review and commit)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -75,6 +81,43 @@ jobs:
         run: npm audit --prefix apps/web --omit=dev --audit-level=high
       - run: make frontend-test
       - run: make frontend-build
+
+  e2e:
+    name: browser checks (axe, keyboard, strings, screenshots)
+    runs-on: ubuntu-24.04
+    # Screenshots depend on the fonts installed, so baselines are made and
+    # compared only in this pinned image (apps/web-e2e/README.md).
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble@sha256:f1e7e01021efd65dd1a2c56064be399f3e4de00fd021ac561325f2bfbb2b837a
+    env:
+      E2E_SCREENSHOTS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: apps/web/.nvmrc
+      - run: npm ci --prefix apps/web --no-audit
+      - run: npm ci --prefix apps/web-e2e --no-audit
+      # The image has no make: the same command as `make e2e-test`.
+      - if: ${{ !inputs.update_screenshots }}
+        run: npm --prefix apps/web-e2e test
+      - name: Make new screenshot baselines (never committed by CI)
+        if: ${{ inputs.update_screenshots }}
+        run: npm --prefix apps/web-e2e test -- tests/screenshots.spec.ts --update-snapshots
+      - if: ${{ inputs.update_screenshots }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: screenshots
+          path: apps/web-e2e/tests/__screenshots__/
+          if-no-files-found: error
+      - if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-results
+          path: apps/web-e2e/test-results/
+          if-no-files-found: ignore
 
   db-smoke:
     # Disposable service container only (default libc en_US.utf8 collation, so

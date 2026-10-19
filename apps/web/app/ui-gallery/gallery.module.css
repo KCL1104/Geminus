@@ -1,0 +1,17 @@
+.intro {
+  max-width: 48rem;
+  color: var(--gm-color-text-muted);
+}
+
+.section {
+  margin: 0 0 var(--gm-space-6);
+  padding: 0 0 var(--gm-space-5);
+  border-bottom: 1px solid var(--gm-color-border);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-3);
+}

@@ -68,6 +68,12 @@
   outline: none;
 }
 
+/* The grid itself takes focus when it has no rows. */
+.table[data-focus-visible] {
+  outline: var(--gm-focus-ring);
+  outline-offset: -2px;
+}
+
 .row[data-focus-visible],
 .cell[data-focus-visible],
 .column[data-focus-visible] {

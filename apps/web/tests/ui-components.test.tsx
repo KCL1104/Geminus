@@ -182,7 +182,7 @@ describe("DataTable", () => {
   it("is a grid with column headers, a row header and sort state", async () => {
     const el = await mount(
       <DataTable label="Issues" columns={[...columns]} rows={rows(3)} sortDescriptor={{ column: "name", direction: "ascending" }}
-        renderCell={(r, c) => (c === "name" ? r.name : String(r.count))} empty="Nothing here" />,
+        rowText={(r) => r.name} renderCell={(r, c) => (c === "name" ? r.name : String(r.count))} empty="Nothing here" />,
     );
     await settle();
     const grid = el.querySelector("[role=grid]")!;
@@ -194,14 +194,14 @@ describe("DataTable", () => {
   });
 
   it("says when it is empty", async () => {
-    const el = await mount(<DataTable label="Issues" columns={[...columns]} rows={[]} renderCell={() => ""} empty="Nothing here" />);
+    const el = await mount(<DataTable label="Issues" columns={[...columns]} rows={[] as Row[]} rowText={(r) => r.name} renderCell={() => ""} empty="Nothing here" />);
     await settle();
     expect(el.textContent).toContain("Nothing here");
     expect(await violations()).toEqual([]);
   });
 
   it("virtualizes a long table and renders it only in the browser", async () => {
-    const el = await mount(<DataTable label="Issues" columns={[...columns]} rows={rows(500)} renderCell={(r, c) => (c === "name" ? r.name : String(r.count))} empty="" />);
+    const el = await mount(<DataTable label="Issues" columns={[...columns]} rows={rows(500)} rowText={(r) => r.name} renderCell={(r, c) => (c === "name" ? r.name : String(r.count))} empty="" />);
     await settle();
     const grid = el.querySelector("[role=grid]")!;
     expect(grid.getAttribute("aria-rowcount")).toBe("501");
@@ -213,8 +213,8 @@ describe("DataTable", () => {
     const html = renderToStaticMarkup(
       <I18nProvider locale="en">
         <UiProvider>
-          <DataTable label="Issues" columns={[...columns]} rows={rows(500)} renderCell={(r) => r.name} empty="" />
-          <DataTable label="Short" columns={[...columns]} rows={rows(3)} renderCell={(r) => r.name} empty="" />
+          <DataTable label="Issues" columns={[...columns]} rows={rows(500)} rowText={(r) => r.name} renderCell={(r) => r.name} empty="" />
+          <DataTable label="Short" columns={[...columns]} rows={rows(3)} rowText={(r) => r.name} renderCell={(r) => r.name} empty="" />
         </UiProvider>
       </I18nProvider>,
     );

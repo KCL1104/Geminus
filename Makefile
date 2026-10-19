@@ -3,8 +3,9 @@ PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 # ship under apps/web/node_modules (e.g. flatted/golang).
 GO_PKGS := ./cmd/... ./internal/... ./schemas/... ./scripts/...
 WEB := apps/web
+WEB_E2E := apps/web-e2e
 export NEXT_TELEMETRY_DISABLED := 1
-.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
+.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
 spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests
 spec-contracts:
 	$(PYTHON) scripts/check_contracts.py
@@ -55,6 +56,14 @@ frontend-test:
 frontend-build:
 	@test -f $(WEB)/package.json || { echo 'NOT IMPLEMENTED: Next.js application is not included.' >&2; exit 2; }
 	npm --prefix $(WEB) run build
+# Browser checks (TEST-033): axe, keyboard-only flows, library strings and,
+# with E2E_SCREENSHOTS=1 in CI's pinned container, screenshots. Builds and
+# starts apps/web itself; needs `npm ci` in apps/web and apps/web-e2e.
+e2e-test:
+	@test -f $(WEB_E2E)/package.json || { echo 'NOT IMPLEMENTED: browser checks are not included.' >&2; exit 2; }
+	npm --prefix $(WEB_E2E) test
+	@test "$$E2E_SCREENSHOTS" = 1 || echo 'e2e-test: screenshots NOT RUN (only with E2E_SCREENSHOTS=1, in CI'"'"'s pinned Playwright container).' >&2
+	@echo 'e2e-test: UI checks covered; the product closed loop with the fake provider is NOT RUN until T-040.' >&2
 db-test:
 	bash scripts/run_db_tests.sh
 # Go integration tests against the database `make db-test` left migrated; a skip is a failure here.
@@ -75,6 +84,6 @@ integration-test:
 	$(MAKE) db-test
 	$(MAKE) db-go-test
 	@echo 'integration-test: API and database covered; worker integration is NOT RUN until T-019 adds the job loop.'
-e2e-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test:
+ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

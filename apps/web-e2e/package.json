@@ -1,0 +1,21 @@
+{
+  "name": "@geminus/web-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser checks of apps/web (TEST-033): axe, keyboard-only flows, library strings, screenshots. Kept out of apps/web so the test tools never reach a production install.",
+  "engines": {
+    "node": ">=24.21.0 <25"
+  },
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.56.1",
+    "axe-core": "4.13.0"
+  },
+  "overrides": {
+    "playwright-core": "1.56.1"
+  }
+}
