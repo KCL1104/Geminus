@@ -1,0 +1,106 @@
+fixed-iv	KILLED	× never seals the same value to the same bytes 6ms
+seal-with-previous-key	KILLED	× seals under the current key after a rotation, never the previous one 10ms
+aad-ignores-the-cookie	KILLED	× opens what it sealed, for that cookie only 12ms
+previous-key-ignored	KILLED	× opens values of the previous key, not of a retired or unknown one 7ms
+size-unchecked	KILLED	× refuses a value too large for one cookie 15ms
+non-canonical-base64	KILLED	× refuses a non-canonical spelling without quoting the key 7ms
+three-keys	KILLED	× refuses three keys without quoting the key 19ms
+short-key	KILLED	× refuses a short key without quoting the key 12ms
+duplicate-key-ids	KILLED	× refuses two keys with one ID without quoting the key 14ms
+idle-unchecked	KILLED	× ends after 12 hours idle or 7 days in all 8ms
+absolute-unchecked	KILLED	× ends after 12 hours idle or 7 days in all 13ms
+login-never-expires	KILLED	× round-trips for ten minutes 12ms
+return-to-other-host	KILLED	× refuses a return path it would not have stored 9ms
+return-to-backslash	KILLED	× refuses a return path it would not have stored 11ms
+return-to-non-ascii	KILLED	× /x y → / 8ms
+login-from-the-future	KILLED	× round-trips for ten minutes 18ms
+session-from-the-future	KILLED	× ends after 12 hours idle or 7 days in all 16ms
+no-skew-tolerance	KILLED	× ends after 12 hours idle or 7 days in all 15ms
+login-extra-fields	KILLED	× refuses a sealed login of the wrong shape 8ms
+not-httponly	KILLED	× round-trips with the cookie attributes ADR-018 requires 16ms
+extra-session-fields	KILLED	× refuses a sealed value of the wrong shape 15ms
+csrf-without-header	KILLED	× {"origin":"https://app.test.invalid"} → false 210ms
+csrf-any-origin	KILLED	× {"x-geminus-request":"1"} → false 115ms
+csrf-cross-site-fetch	KILLED	× {"origin":"https://app.test.invalid","x-geminus-request":"1","sec-fetch-site":"cross-site"} → false 58ms
+csrf-only-delete	KILLED	× refuses a state-changing request from anywhere but the app 92ms
+logout-without-csrf	KILLED	× is refused cross-site and then revokes nothing 53ms
+proxy-forwards-cookies	KILLED	× forwards with the session's token and nothing of the browser's credentials 84ms
+proxy-forwards-authorization	SURVIVED
+proxy-returns-set-cookie	KILLED	× forwards with the session's token and nothing of the browser's credentials 199ms
+proxy-returns-location	KILLED	× forwards with the session's token and nothing of the browser's credentials 94ms
+proxy-any-path	KILLED	× refuses the path [".."] 106ms
+unauthenticated-keeps-the-cookie	KILLED	× answers 401 in the API's envelope without a session 137ms
+touch-every-request	KILLED	× forwards with the session's token and nothing of the browser's credentials 146ms
+any-method	KILLED	× refuses the method OPTIONS without calling the API 326ms
+upload-buffered	KILLED	× streams an upload to the API without buffering it 1061ms
+download-buffered	KILLED	× answers with nosniff, and never lets a cache store a response that sets the session 126ms
+no-cancellation	KILLED	× passes the browser's cancellation on to the API 87ms
+no-content-type-back	KILLED	× streams the API's answer: an event arrives before the stream ends 149ms
+no-last-event-id	KILLED	× streams the API's answer: an event arrives before the stream ends 89ms
+follow-api-redirects	KILLED	× does not follow the API's redirects 107ms
+no-nosniff	KILLED	× answers with nosniff, and never lets a cache store a response that sets the session 171ms
+cookie-response-cacheable	KILLED	× answers with nosniff, and never lets a cache store a response that sets the session 120ms
+api-down-is-500	KILLED	× answers 503 when the API does not answer 82ms
+never-refresh	KILLED	× refreshes under a minute left and keeps the rotated token 152ms
+refresh-not-shared	KILLED	× refreshes once for concurrent and late requests with the old token 110ms
+refresh-shared-forever	KILLED	× refreshes again after the reuse window, which the provider refuses as a reuse 97ms
+refresh-failure-remembered	KILLED	× shares by token, forgets failures, expires after the reuse window 75ms
+refresh-key-constant	KILLED	× gives two sessions refreshing at once their own tokens 74ms
+refresh-cache-unbounded	KILLED	× keeps at most its limit; past it a refresh is not shared 83ms
+logout-keeps-the-shared-refresh	KILLED	× after logout, an older cookie cannot get the session's tokens from the shared refresh 77ms
+forget-keeps-what-it-issued	KILLED	× after logout, an older cookie cannot get the session's tokens from the shared refresh 97ms
+forget-keeps-what-it-spent	KILLED	× forgets the refresh that spent or issued a token 163ms
+outage-ends-the-session	KILLED	× keeps the session when the provider answers 503, and asks again after the retry window 206ms
+outage-clears-the-cookie	KILLED	× keeps the session when the provider answers 503, and asks again after the retry window 98ms
+record-ignores-the-endpoint	KILLED	× ends the session, revoking the issued token, when the ID token's keys cannot be fetched 127ms
+no-answer-refuses	KILLED	× keeps the session when the provider cannot be reached, and asks again after the retry window 243ms
+2xx-answer-kept	KILLED	× a refresh answered 201 null (challenge undefined) answers 401 135ms
+5xx-refuses	KILLED	× a refresh answered 500 internal_error (challenge undefined) answers 503 323ms
+429-refuses	KILLED	× a refresh answered 429 rate_limited (challenge undefined) answers 503 121ms
+unavailable-codes-refuse	KILLED	× a refresh answered 401 invalid_client (challenge undefined) answers 503 182ms
+invalid-client-refuses	KILLED	× a refresh answered 401 invalid_client (challenge undefined) answers 503 158ms
+codeless-4xx-refuses	KILLED	× a refresh answered 404 null (challenge undefined) answers 503 209ms
+error-code-not-recorded	KILLED	× ends the session when the provider refuses the refresh (reuse or revocation) 70ms
+issued-token-not-recorded	KILLED	× ends the session when the refresh answer has an ID token signed by another key (the old token may be spent) 264ms
+issued-token-not-discarded	KILLED	× ends the session when the refresh answer has an ID token signed by another key (the old token may be spent) 82ms
+every-refresh-failure-temporary	KILLED	× ends the session when the provider refuses the refresh (reuse or revocation) 240ms
+refresh-unfit-tokens-temporary	KILLED	× ends the session when the refresh answer has an access token over the session's limit (the old token may be spent) 100ms
+refresh-drops-unrotated-token	KILLED	× revokes a provider's unrotated token when the session it would have kept ends 104ms
+unkept-login-token-left-live	KILLED	× refuses an access token over the session's limit, and says so in the log 182ms
+unfit-refresh-token-left-live	KILLED	× ends the session when the refresh answer has an access token over the session's limit (the old token may be spent) 109ms
+unrotated-token-left-live	KILLED	× revokes a provider's unrotated token when the session it would have kept ends 145ms
+discard-rethrows	KILLED	× answers without waiting long for a revocation, and logs one that fails 2160ms
+discard-failure-silent	KILLED	× answers without waiting long for a revocation, and logs one that fails 2125ms
+discard-unbounded	KILLED	× answers without waiting long for a revocation, and logs one that fails 5166ms
+failures-not-shared	KILLED	× keeps the session when the provider answers 503, and asks again after the retry window 125ms
+failures-shared-for-the-reuse-window	KILLED	× keeps the session when the provider answers 503, and asks again after the retry window 275ms
+retry-window-a-minute	KILLED	× holds the values ADR-018 and the runbook rely on 210ms
+headers-not-first	KILLED	× sends the headers ahead of the API's body when it sets the session 77ms
+headers-first-always	KILLED	× streams the API's answer: an event arrives before the stream ends 129ms
+unkept-callback-token-left-live	KILLED	× refuses tokens too large together for the cookie, and says so in the log 184ms
+unkept-refresh-token-left-live	KILLED	× ends the session when the refreshed tokens do not fit it (the old refresh token is spent) 193ms
+no-retry-after	KILLED	× keeps the session when the provider answers 503, and asks again after the retry window 91ms
+codes-not-logged	KILLED	× a refresh answered 400 invalid_grant (challenge undefined) answers 401 131ms
+api-down-drops-the-refreshed-cookie	KILLED	× delivers the refreshed session when the API does not answer 129ms
+cookie-only-on-2xx	KILLED	× delivers the refreshed session when the API answers an error 80ms
+apierror-without-nosniff	KILLED	× answers errors the client reads as the API's 94ms
+logout-without-nosniff	KILLED	× revokes the refresh token, clears the cookie and returns the provider's logout URL 119ms
+skew-a-day	KILLED	× holds the values ADR-018 and the runbook rely on 108ms
+reuse-window-an-hour	KILLED	× holds the values ADR-018 and the runbook rely on 237ms
+tokens-unchecked	KILLED	× refuses an access token over the session's limit, and says so in the log 53ms
+too-large-at-the-callback-is-500	KILLED	× refuses tokens too large together for the cookie, and says so in the log 107ms
+too-large-at-refresh-is-500	KILLED	× ends the session when the refreshed tokens do not fit it (the old refresh token is spent) 47ms
+logout-without-revocation	KILLED	× revokes the refresh token, clears the cookie and returns the provider's logout URL 135ms
+callback-uses-the-request-host	KILLED	× sends the configured redirect URI, whatever host the request came in on 71ms
+provider-error-ignored	KILLED	× refuses the provider's error 74ms
+id-token-signature-unchecked	KILLED	× refuses an ID token with a signature by another key 98ms
+no-audience	KILLED	× sends the browser to the provider with PKCE, state and nonce 157ms
+no-subject-check	KILLED	× refuses an ID token with an empty subject 91ms
+any-expiry	KILLED	× refuses a token response without expires_in 132ms
+unconfigured-is-500	KILLED	× answers 503 with an invalid endpoint, naming the variable and not the values 114ms
+built-per-request	KILLED	× answers 503 with an invalid endpoint, naming the variable and not the values 124ms
+http-anywhere	KILLED	× refuses BFF_APP_ORIGIN=http://app.test.invalid without quoting a value 200ms
+mixed-http	KILLED	× allows plain http only when everything is on loopback 128ms
+scopes-without-openid	KILLED	× refuses BFF_OIDC_SCOPES=profile email without quoting a value 95ms
+origin-with-a-path	KILLED	× refuses BFF_APP_ORIGIN=https://app.test.invalid/path without quoting a value 98ms
+total=105 unexpected=0

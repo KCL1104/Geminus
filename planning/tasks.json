@@ -2547,8 +2547,16 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-043_VALIDATION.md",
           "summary": "Review round 2 修正（9875be4）：refresh 之後 API 失敗時 503 仍帶新的 session cookie（M-1）；refresh 失敗依 provider 的回答分類（連不上、逾時、5xx、429、temporarily_unavailable、server_error、too_many_requests、invalid_client 保留 session 並回 503 與 Retry-After；其他 OAuth 錯誤、非預期的 2xx、無法使用的回答結束 session），log 帶 OAuth 錯誤碼與 status（L-1、L-2）；發出卻不保留的 refresh token 盡力撤銷（L-3）；不 rotation 的 provider、nosniff、時間常數的測試（L-4）；TestNoGoCodeHandlesCookies（I-6）；runbook 建議 Auth0 reuse interval 一律 30 秒（owner 決定）。02a4200 乾淨 worktree：frontend-test（392 tests）、go test internal/auth、frontend-build、e2e-test（49 passed，TEST-032 8/8）、npm audit 0、spec-check exit 0；TS mutation 93（92 killed、1 等價）。",
-          "reviewer": "pending: independent reviewer agent round 3 (H-003), BFF part",
+          "reviewer": "independent reviewer agent (H-003), round 3 on 9875be4/626fa25: ACCEPT (BFF part), with low findings L-1–L-5 to fix or record before T-043 closes",
           "decisions_pending": "D-045（GET /v1/me）待 owner；Auth0 tenant 與 reuse interval 由 owner 依 docs/runbooks/auth0.md 設定"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-043_VALIDATION.md",
+          "summary": "Review round 3 修正（dade6c2）：refresh 失敗是否結束 session 改由 token endpoint 本身的回答決定（client 的 fetch 記錄 status、body 的 OAuth 錯誤碼與 2xx 回答的新 refresh token）；2xx 但無法使用（含 JWKS 抓不到）結束 session 並撤銷新 token（L-1）；challenge 沒有 error 參數時以 body 的錯誤碼分類與記 log（L-2）；帶 Set-Cookie 的回應先送空 chunk，API 送出 header 後斷線仍拿到新 cookie（L-3，unit 與 E2E）；非 JSON 的 4xx、200 HTML、204、refresh 路徑的撤銷、discard 盡力而為的測試（L-4）；SECURITY §3、runbook、報告更正（L-5）；discard 最多等 2 秒並記 log（I-1、I-2）；TestNoGoCodeHandlesCookies 改為 go/ast（I-5）；provider 不可用的失敗共用 5 秒，runbook 加上 Auth0 對錯誤 client secret 與失敗 Action 的 staging 檢查（I-6）。dade6c2 乾淨 worktree：frontend-test（408 tests）、go test -race internal/auth、frontend-build、e2e-test（50 passed，TEST-032 9/9；16 個截圖測試只在 CI container 執行）、npm audit 0、spec-check exit 0；TS mutation 105（104 killed、1 等價）；CI run 39242110814 通過。",
+          "reviewer": "round 3 ACCEPT with low findings (above); these fixes are reviewed in the T-043 final review, after D-045 and the sign-in UI",
+          "decisions_pending": "D-045（GET /v1/me）待 owner；Auth0 tenant 與 reuse interval 由 owner 依 docs/runbooks/auth0.md 設定；Auth0 對錯誤 client secret 的回答在 staging 確認（runbook §5 第 5 點）"
         }
       ]
     },

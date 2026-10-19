@@ -1,0 +1,8 @@
+frontend-test exit=0
+go-auth-test exit=0
+frontend-build exit=0
+e2e-test exit=0
+npm-audit-production exit=0
+npm-ls-session exit=0
+ts-mutants exit=0
+spec-check exit=0
