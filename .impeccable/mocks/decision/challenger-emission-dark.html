@@ -7,7 +7,7 @@
 <!-- Decision sketch, direction "Emission line rail". Every state is a line's form on one calibrated rail: solid committed, dashed uncommitted, half-height stale, struck removed, doubled shown now or flagged. Colour is only data. Synthetic example data. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&amp;family=Barlow+Semi+Condensed:wght@400;500;600&amp;display=swap">
 <style>
-:root{--ground:#131313;--surface:#1a1a1a;--raised:#202020;--well:#0e0e0e;--pool:#171717;--rule:#2e2e2e;--edge:#707070;--text:#e9e5db;--text2:#a7a399;--line:#d8d3c6;--scen:#7fd673;--sodium:#f1c540;--indigo:#9196ff;--red:#ff6d60;--sel:#2c2c2c;--btn:#e9e5db;--btnfg:#141414;--s1:12px;--s2:13.5px;--s3:15.2px;--s4:17.1px;--s5:19.2px;--ui:"Barlow","Noto Sans TC","Helvetica Neue",Arial,sans-serif;--sc:"Barlow Semi Condensed","Barlow","Noto Sans TC","Arial Narrow",Arial,sans-serif}
+:root{--ground:#131313;--surface:#1a1a1a;--raised:#202020;--well:#0e0e0e;--pool:#171717;--rule:#2e2e2e;--edge:#707070;--text:#e9e5db;--text2:#a7a399;--line:#d8d3c6;--scen:#7fd673;--sodium:#f1c540;--indigo:#9196ff;--violet:#b48cff;--red:#ff6d60;--sel:#2c2c2c;--btn:#e9e5db;--btnfg:#141414;--s1:12px;--s2:13.5px;--s3:15.2px;--s4:17.1px;--s5:19.2px;--ui:"Barlow","Noto Sans TC","Helvetica Neue",Arial,sans-serif;--sc:"Barlow Semi Condensed","Barlow","Noto Sans TC","Arial Narrow",Arial,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
 body{width:1440px;height:900px;overflow:hidden;margin:0;position:relative;background:var(--ground);color:var(--text);font:400 var(--s2)/1.35 var(--ui);font-variant-numeric:tabular-nums lining-nums;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
@@ -22,7 +22,7 @@ svg{display:block;flex:none}
 .seg{display:flex;height:34px;padding:2px;gap:2px;background:var(--well);border:1px solid var(--edge);border-radius:6px}
 .seg button{position:relative;padding:0 16px;border-radius:4px;color:var(--text2);font-weight:500}
 .seg .on{background:var(--sel);color:var(--text);font-weight:600;box-shadow:inset 0 0 0 1px var(--edge)}
-.seg .on::after{content:"";position:absolute;left:16px;right:16px;bottom:5px;height:3px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.seg .em{display:inline-block;width:1.5px;height:13px;margin-right:8px;vertical-align:-1px}.seg .on::after{content:"";position:absolute;left:25px;right:16px;bottom:5px;height:3px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .right{margin-left:auto;display:flex;align-items:center;gap:10px}
 .btn{height:32px;display:inline-flex;align-items:center;gap:7px;padding:0 11px;border:1px solid var(--edge);border-radius:5px;background:var(--raised);font-weight:500;white-space:nowrap}
 .btn kbd{font:500 var(--s1)/1 var(--sc);color:var(--text2);padding:3px 5px;border:1px solid var(--rule);border-radius:3px;margin-left:4px}
@@ -41,7 +41,7 @@ svg{display:block;flex:none}
 .ib{width:32px;height:30px;display:grid;place-items:center;color:var(--text)}
 .zv{min-width:44px;text-align:center;font:500 var(--s1)/1 var(--sc);color:var(--text)}
 .node,.pool{position:absolute;border:1px solid var(--edge);border-radius:3px;padding:10px 11px}
-.node{top:236px;height:120px;background:var(--raised)}
+.node{top:266px;height:120px;background:var(--raised)}
 .node h3{font-size:var(--s3);font-weight:600;line-height:20px;display:flex;justify-content:space-between;align-items:center}
 .node p{color:var(--text2);line-height:18px;margin-bottom:17px}.node .row{margin-bottom:3px}
 .term{border-radius:14px}
@@ -51,10 +51,10 @@ svg{display:block;flex:none}
 .tag{font:600 var(--s1)/1 var(--sc);color:var(--scen);border:1px solid var(--scen);border-radius:3px;padding:2px 5px}
 .chg{border:1px dashed var(--scen)}
 .flag{border:3px double var(--sodium);padding:8px 9px}
-.ann{position:absolute;top:180px;padding:0 12px}
+.ann{position:absolute;top:210px;padding:0 12px}
 .ann .row{margin-bottom:4px}
 .warn{display:flex;gap:6px;align-items:flex-start;font-weight:500;line-height:18px;margin-bottom:2px}.warn .i{color:var(--sodium);margin-top:1px}
-.pool{top:420px;height:80px;background:var(--pool)}
+.pool{top:450px;height:80px;background:var(--pool)}
 .pool .row{margin-bottom:8px}.pool .row b{font-weight:600}.pool .cap{margin-top:8px;display:flex;justify-content:space-between;align-items:center;font:400 var(--s1)/18px var(--sc);color:var(--text2)}
 /* playback */
 .play{position:absolute;left:0;top:840px;width:1040px;height:60px;display:flex;align-items:center;gap:18px;padding:0 28px 0 20px;background:var(--surface);border-top:1px solid var(--rule)}
@@ -81,7 +81,7 @@ svg{display:block;flex:none}
 <header class="strip">
   <div class="brand"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><path d="M1 15.5H19" stroke-width="1"/><path d="M4.5 4V15.5M16.5 10V15.5" stroke-width="1.5"/><path d="M9.5 2V15.5M12.5 2V15.5" stroke-width="1"/></svg>Geminus</div>
   <nav class="crumbs" aria-label="Breadcrumb"><span>Payments platform</span><span aria-hidden="true">/</span><b aria-current="page">Checkout delivery</b></nav>
-  <div class="seg" role="tablist" aria-label="Mode"><button role="tab" aria-selected="false">Edit</button><button role="tab" aria-selected="true" class="on">Simulate</button><button role="tab" aria-selected="false">Review</button></div>
+  <div class="seg" role="tablist" aria-label="Mode"><button role="tab" aria-selected="false"><i class="em" style="background:var(--indigo)"></i>Edit</button><button role="tab" aria-selected="true" class="on"><i class="em" style="background:var(--scen)"></i>Simulate</button><button role="tab" aria-selected="false"><i class="em" style="background:var(--violet)"></i>Review</button></div>
   <div class="right">
     <button class="btn"><svg class="i" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>Find<kbd>⌘K</kbd></button>
     <button class="btn" aria-label="Language, English">EN<svg class="i" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4.5 6.5L8 10l3.5-3.5"/></svg></button>
@@ -105,7 +105,7 @@ svg{display:block;flex:none}
     <span class="chip">Synthetic example data</span>
     <div class="zoom"><div class="grp"><button class="ib" aria-label="Zoom out"><svg class="i" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3.5 8h9"/></svg></button><span class="zv">100%</span><button class="ib" aria-label="Zoom in"><svg class="i" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3.5 8h9M8 3.5v9"/></svg></button></div><button class="btn"><svg class="i" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2.5 5.5v-3h3M10.5 2.5h3v3M13.5 10.5v3h-3M5.5 13.5h-3v-3"/><rect x="5.5" y="5.5" width="5" height="5"/></svg>Fit</button></div>
   </div>
-  <svg class="wires" width="1040" height="700" viewBox="0 0 1040 700" aria-hidden="true"><g fill="none" stroke-width="1" class="ax"><path d="M157 296.5H189M184 292.0L189 296.5L184 301.0M331 296.5H363M358 292.0L363 296.5L358 301.0M493 296.5H525M520 292.0L525 296.5L520 301.0M683 296.5H715M710 292.0L715 296.5L710 301.0M857 296.5H889M884 292.0L889 296.5L884 301.0M260.5 357V419M604.5 357V419"/></g></svg>
+  <svg class="wires" width="1040" height="700" viewBox="0 0 1040 700" aria-hidden="true"><g fill="none" stroke-width="1" class="ax"><path d="M157 326.5H189M184 322.0L189 326.5L184 331.0M331 326.5H363M358 322.0L363 326.5L358 331.0M493 326.5H525M520 322.0L525 326.5L520 331.0M683 326.5H715M710 322.0L715 326.5L710 331.0M857 326.5H889M884 322.0L889 326.5L884 331.0M260.5 387V449M604.5 387V449"/></g></svg>
 
   <div class="ann" style="left:526px;width:156px"><div class="row"><span>Queue p95, items</span><b>14 → <em>4</em></b></div><svg class="g" width="132" height="25" viewBox="0 0 132 25" aria-hidden="true"><g fill="none" stroke-width="1"><path class="ax" d="M0 12.5H132"/><path class=mk-b d="M1.5 2V12M6.5 2V12M11.5 2V12M16.5 2V12M21.5 2V12M26.5 2V12M31.5 2V12M36.5 2V12M41.5 2V12M46.5 2V12M51.5 2V12M56.5 2V12M61.5 2V12M66.5 2V12"/><path class=mk-s stroke-width=1.5 d="M1.5 13V23M6.5 13V23M11.5 13V23M16.5 13V23"/></g></svg></div>
   <div class="ann" role="note" style="left:716px;width:210px"><div class="warn"><svg class="i" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 2.2l6.3 11.1H1.7z" stroke-linejoin="round"/><path d="M8 6.4v3.2M8 11.4v.1" stroke-linecap="round"/></svg><span>Queue p95 6 items in S-2</span></div><svg class="g" width="116" height="25" viewBox="0 0 116 25" aria-hidden="true"><g fill="none" stroke-width="1"><path class="ax" d="M0 12.5H116"/><path class=mk-w stroke-width=1.5 d="M1.5 13V23M6.5 13V23M11.5 13V23M16.5 13V23M21.5 13V23M26.5 13V23"/></g></svg></div>
