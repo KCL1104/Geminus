@@ -43,7 +43,7 @@ type env struct {
 	logsMu *sync.Mutex
 }
 
-func setup(t *testing.T) *env {
+func setup(t *testing.T, opts ...api.Option) *env {
 	t.Helper()
 	admin := dbtest.Admin(t)
 	p := authtest.New(t)
@@ -58,7 +58,7 @@ func setup(t *testing.T) *env {
 	}
 	e := &env{t: t, p: p, admin: admin, logs: &bytes.Buffer{}, logsMu: &sync.Mutex{}}
 	log := slog.New(slog.NewJSONHandler(lockedWriter{e.logs, e.logsMu}, nil))
-	h, err := api.Handler(log, v, tenant.New(pool))
+	h, err := api.Handler(log, v, tenant.New(pool), opts...)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -349,6 +349,12 @@
       ],
       "additionalProperties": false
     },
+    "CancelSimulation": {
+      "$comment": "T-023: the cancelSimulation body, an empty object (the run is in the path; the request is idempotent per Idempotency-Key).",
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
     "ProposalRequest": {
       "type": "object",
       "properties": {

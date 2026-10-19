@@ -29,11 +29,24 @@ type Event struct {
 // AppendUser records e as an action of the user tx is scoped to (its
 // app.user_id), in organization org.
 func AppendUser(ctx context.Context, tx pgx.Tx, org, user string, e Event) error {
+	return appendEvent(ctx, tx, org, "user", user, e)
+}
+
+// AppendWorker records e as an action of the worker named worker (an
+// actor reference: a letter, then letters, digits, '_', '.', ':' or '-',
+// at most 128 characters), in organization org: what a job did, under
+// the request that queued it (T-023). The database lets only the worker
+// role write worker events (0004).
+func AppendWorker(ctx context.Context, tx pgx.Tx, org, worker string, e Event) error {
+	return appendEvent(ctx, tx, org, "worker", worker, e)
+}
+
+func appendEvent(ctx context.Context, tx pgx.Tx, org, actorType, actor string, e Event) error {
 	data, err := json.Marshal(e.Metadata, json.Deterministic(true)) // a nil map is {} in json/v2
 	if err != nil {
 		return fmt.Errorf("audit: metadata: %w", err)
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id,metadata)
-		VALUES ($1,$2,'user',$3,$4,$5,$6,$7,$8)`, ids.New("aud"), org, user, e.Action, e.TargetType, e.TargetID, e.RequestID, string(data))
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, ids.New("aud"), org, actorType, actor, e.Action, e.TargetType, e.TargetID, e.RequestID, string(data))
 	return err
 }

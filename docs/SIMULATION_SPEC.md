@@ -95,6 +95,8 @@ matching seed/node streams 可用於 paired experiments，但 scenario topology 
 
 context checkpoint 至少每個 heap pop、每個 distribution 批量處理段、每次 replication、每個 artifact/aggregation batch。T-020 實作：每次 pop 先檢查 cancellation，再從整個 run 共用的 event budget 扣 1（含 warmup；平行 replications 以 atomic 計數，超過即 `ErrEventBudget`，run 失敗、不產生結果）；不變量被破壞回 `ErrInternal`，不會靜默略過。worker bounded polling 將 cancellation_requested 傳入 context。≤5s 是原報告待 benchmark 的目標，不是已測結果。timeout / event cap / active entity cap / cancellation 分別有 typed error；不要包裝為 completed。
 
+T-023 實作（`engine.Credit`、`des.Options`、`internal/runs/runner`）：event budget 改為分批授予的 credit。`engine.NewCreditBudget(limit, granted, credit)` 先授予 `granted` 個 events，用完時（在 mutex 下，同一時間只有一個 `Grant`，其他 replication 等它）呼叫 `Credit.Grant(ctx, granted)` 取得新的總授予量（必須大於舊值且不超過 limit，否則 `ErrInternal`）；已達 limit 時為 `ErrEventBudget`，Grant 的錯誤（含 context 取消、wall timeout）使 run 以該錯誤失敗，之後不再 Grant。每次 pop 的扣除照舊（先檢查 cancellation 再扣 1）；只有授予量改變，事件的處理順序、RNG 與結果不變：不同批次大小與 worker 數下 digest 相同（`des/credit_test.go`）。`des.Output.Events` 是實際用掉的 events。Worker 的 `Grant` 在 lease 下把 run 的 `event_budget_reserved` 由上次的值推進到新值才回傳，所以 engine 從不使用未保留的 events；batch 預設為 max_events 的十分之一（至少 1）。Retry 時 engine 的 limit 為 `max_events − 之前 attempt 保留的量`、wall timeout 為從第一次開始起剩下的時間（無條件進位到秒，且 attempt 另以絕對 deadline 結束）。Progress 由 worker 每秒寫入一次（engine 的 sink 只保留最新一筆）；同一個 checkpoint 讀回 `cancellation_requested`，已請求時以 `context.CancelCause` 停止 engine（engine 在下一個 pop 前看到），worker 以 cancelled 結束 job 與 run，不存結果。≤5 s 的取消目標在測試中實測（`TestCancelRunning`，見 checks/T-023_VALIDATION.md），不是 benchmark。
+
 aggregate 依 replication_index 升序彙整；progress 不是 correctness input。所有 replications 完成後才可完成 run。重試使用原 frozen input；lease token 失效的 attempt 必須丟棄 finalize，不可覆蓋後來的成功結果。
 
 ## 9. Result digest / sampled trace

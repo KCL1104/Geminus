@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
@@ -36,7 +38,12 @@ func with(kv ...string) func(string) string {
 }
 
 // someHandler stands for the handlers later tasks register.
-var someHandler = map[jobs.Type]handler.Handler{jobs.ImportProfile: handler.Func(func(context.Context, handler.Run) error { return nil })}
+var someHandler = fixed(map[jobs.Type]handler.Handler{jobs.ImportProfile: handler.Func(func(context.Context, handler.Run) error { return nil })})
+
+// fixed is a build whose handlers are hs.
+func fixed(hs map[jobs.Type]handler.Handler) builder {
+	return func(deps) (map[jobs.Type]handler.Handler, error) { return hs, nil }
+}
 
 func TestRunRejectsInvalidConfiguration(t *testing.T) {
 	var stderr bytes.Buffer
@@ -50,15 +57,15 @@ func TestRunRejectsInvalidConfiguration(t *testing.T) {
 	}
 }
 
-// This build has no job handler, so the worker refuses to start before it
-// connects anywhere.
+// A build without any job handler refuses to start before it connects
+// anywhere.
 func TestRunRefusesToStartWithoutHandlers(t *testing.T) {
 	var stderr bytes.Buffer
-	if code := run(context.Background(), with(), &stderr, handlers()); code != exitNotImplemented {
+	if code := run(context.Background(), with(), &stderr, fixed(nil)); code != exitNotImplemented {
 		t.Fatalf("exit = %d, want %d", code, exitNotImplemented)
 	}
 	out := stderr.String()
-	if !strings.Contains(out, "NOT IMPLEMENTED") || !strings.Contains(out, "T-016") {
+	if !strings.Contains(out, "NOT IMPLEMENTED") || !strings.Contains(out, "no job handler") {
 		t.Fatalf("stderr does not explain what is missing: %s", out)
 	}
 	if strings.Contains(out, "db-pass-123") || strings.Contains(out, "database") {
@@ -66,11 +73,39 @@ func TestRunRefusesToStartWithoutHandlers(t *testing.T) {
 	}
 }
 
+// This build runs simulation jobs (T-023); nothing else yet.
+func TestTheBuildRunsSimulations(t *testing.T) {
+	hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
+	if err != nil || len(hs) != 1 || hs[jobs.Simulation] == nil {
+		t.Fatalf("%v %v", hs, err)
+	}
+}
+
+// The simulation handler names the worker in audit events, so a WORKER_ID
+// that cannot be an audit actor is a configuration error, as is an object
+// storage root the adapter cannot use; both before any connection.
+func TestRunRefusesWhatTheHandlersCannotUse(t *testing.T) {
+	for name, getenv := range map[string]func(string) string{
+		"a worker ID that is no actor": with("WORKER_ID", "0worker/a"),
+		"a missing storage root":       with("OBJECT_STORAGE_PROVIDER", "filesystem", "APP_ENV", "test", "OBJECT_STORAGE_ROOT", "/nonexistent-geminus-objects"),
+	} {
+		var stderr bytes.Buffer
+		if code := run(context.Background(), getenv, &stderr, handlers); code != exitConfig || strings.Contains(stderr.String(), "database") {
+			t.Errorf("%s: exit %d: %s", name, code, stderr.String())
+		}
+	}
+	var stderr bytes.Buffer
+	if code := run(context.Background(), with("OBJECT_STORAGE_PROVIDER", "filesystem", "APP_ENV", "production", "OBJECT_STORAGE_ROOT", t.TempDir()), &stderr, handlers); code != exitConfig ||
+		!strings.Contains(stderr.String(), "OBJECT_STORAGE_PROVIDER") {
+		t.Errorf("the filesystem adapter in production: exit %d: %s", code, stderr.String())
+	}
+}
+
 // The allowlist is checked with the rest of the configuration, before the
 // handlers and before any connection (T-019 review L4).
 func TestRunRefusesABadAllowlist(t *testing.T) {
 	for _, orgs := range []string{"org_bad", ids.New("usr"), validEnv["WORKER_ORGANIZATION_IDS"] + "," + validEnv["WORKER_ORGANIZATION_IDS"], ids.New("org") + ",", "not-an-id,,,"} {
-		for name, hs := range map[string]map[jobs.Type]handler.Handler{"with a handler": someHandler, "without one": handlers()} {
+		for name, hs := range map[string]builder{"with a handler": someHandler, "the build's": handlers} {
 			var stderr bytes.Buffer
 			if code := run(context.Background(), with("WORKER_ORGANIZATION_IDS", orgs), &stderr, hs); code != exitConfig || !strings.Contains(stderr.String(), "WORKER_ORGANIZATION_IDS") {
 				t.Errorf("%q %s: exit %d: %s", orgs, name, code, stderr.String())
@@ -83,7 +118,7 @@ func TestRunRefusesABadAllowlist(t *testing.T) {
 // handler check and before any connection (T-019 round 2 I5).
 func TestRunRefusesABadConnectionString(t *testing.T) {
 	bad := "postgresql://twin_worker:db-pass-123@/twin?host=/nonexistent-geminus-socket&connect_timeout=soon"
-	for name, hs := range map[string]map[jobs.Type]handler.Handler{"with a handler": someHandler, "without one": handlers()} {
+	for name, hs := range map[string]builder{"with a handler": someHandler, "the build's": handlers} {
 		var stderr bytes.Buffer
 		if code := run(context.Background(), with("DATABASE_URL", bad), &stderr, hs); code != exitConfig || !strings.Contains(stderr.String(), "DATABASE_URL") || strings.Contains(stderr.String(), "db-pass-123") {
 			t.Errorf("%s: exit %d: %s", name, code, stderr.String())
@@ -181,7 +216,7 @@ func TestRunWorksAndStops(t *testing.T) {
 	defer cancel()
 	done := make(chan int, 1)
 	go func() {
-		done <- run(ctx, with("DATABASE_URL", dbtest.LoginURL(t, dbtest.WorkerLogin), "WORKER_ORGANIZATION_IDS", o.ID), &stderr, handlers)
+		done <- run(ctx, with("DATABASE_URL", dbtest.LoginURL(t, dbtest.WorkerLogin), "WORKER_ORGANIZATION_IDS", o.ID), &stderr, fixed(handlers))
 	}()
 	select {
 	case <-ran:

@@ -61,6 +61,9 @@ var _ simulation.Engine = (*Engine)(nil)
 type Output struct {
 	Result *simulation.Result
 	Trace  *simulation.TraceArtifact
+	// Events is how many events the replications processed together (the
+	// event budget spent; progress, not part of the result).
+	Events int64
 }
 
 func (e *Engine) version() string {
@@ -228,7 +231,7 @@ func (e *Engine) RunWith(ctx context.Context, in simulation.RunInput, opts Optio
 		Status: "completed", EngineVersion: e.version(), Metrics: m, ReplicationSummaries: summaries,
 		MeasurementWindow: window, Reproducibility: repro, Trace: simulation.Trace{},
 	}
-	out := &Output{Result: res}
+	out := &Output{Result: res, Events: budget.Used()}
 	if rec != nil {
 		out.Trace = rec.Artifact(e.version())
 		res.Trace = simulation.Trace{Available: len(out.Trace.Events) > 0, SampledEvents: len(out.Trace.Events)}

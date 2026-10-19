@@ -1606,10 +1606,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties: {}
-              required: []
-              additionalProperties: false
+              $ref: ../schemas/http.schema.json#/$defs/CancelSimulation
   /simulations/{id}/results:
     get:
       operationId: getSimulationResults
@@ -1726,9 +1723,11 @@ paths:
   /simulations/{id}/trace:
     get:
       operationId: downloadSimulationTrace
-      summary: Authorize sampled playback artifact
-      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table.
+      summary: Download the sampled playback artifact
+      description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table. D-044 (approved): the API authorizes the caller against the run, then serves the stored artifact
+        itself, checked against its recorded SHA-256 and size; no signed URL. 409 RESULT_NOT_READY while the run
+        is not completed; 404 NOT_FOUND when the completed run has no sampled trace.'
       tags:
       - Simulations
       x-origin: PROPOSED
@@ -1745,14 +1744,18 @@ paths:
           $ref: ../schemas/common.schema.json#/$defs/RunID
       responses:
         '200':
-          description: Success.
+          description: The sampled trace artifact, as stored, as an attachment.
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'
+            Content-Disposition:
+              schema:
+                type: string
+                pattern: ^attachment; filename="sim_[0-7][0-9A-HJKMNP-TV-Z]{25}-trace\.json"$
           content:
             application/json:
               schema:
-                $ref: ../schemas/http.schema.json#/$defs/SignedDownload
+                $ref: ../schemas/simulation.schema.json#/$defs/TraceArtifact
         '400':
           $ref: '#/components/responses/Error400'
         '401':

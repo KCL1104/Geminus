@@ -74,6 +74,8 @@ Owner 變更（H-016，2026-10-19）：原報告以 Software Delivery 為 P0 第
 
 候選決策：原報告的 500 nodes / 1,000 edges、50 MB / 100k rows、1,000 replications、300 s timeout 僅作初始上限候選。另提案 event budget=10M/run、active entities=100k、trace=100k/run、lease=30s、heartbeat=10s、idempotency TTL=24h；均需 benchmark/評審。
 
+實作註記（T-023，2026-10-19，待獨立 review；不改變本決策的狀態）：run 在入列時凍結 server 的 execution limits（`internal/runs.DefaultLimits`：300 s、10M events、100k active entities、10k visits、100k trace events），client 無法設定。跨 retry 的 budget：wall clock 從第一次開始起算（`execution_deadline_at`），events 以 durable reservation 分批授予（預設每批 max_events 的十分之一），之前 attempt 保留的量算作已用；細節見 API_DATABASE §7、SIMULATION_SPEC §8。批次大小是實作參數，不是本決策的一部分；benchmark（T-037）後可調。
+
 ### D-008 — Tenant context、onboarding 與 worker scope
 
 **狀態：APPROVED（2026-10-15，KCL1104）。負責角色：Security / Platform。Gate：任何共享 DB 服務啟動前。**
@@ -203,7 +205,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | ID | 解決 | 主題 | 提案 |
 |---|---|---|---|
 | D-043 | CB-27 | Import 的 profile、preview 與人工 mapping | **APPROVED（2026-10-19，H-010）。** (a) Import 增加 `profile`（profiling 完成前為 null）：`format`（csv／json_events／json_model）、`encoding`（`utf-8` 或 `utf-8-bom`）、`rows`、`columns[]`（`name` ≤256 字元、`index`、`inferred`：empty／boolean／integer／number／timestamp／string／mixed、`non_empty`、`max_length`）；每個 import 至多 256 欄，preview 的 `maxProperties` 改為 256；json_model 的 `columns` 為空。(b) `preview` 是前 100 筆的**原始**值，以來源欄名為 key（CSV 一律字串；JSON events 原值，另限深度、字串長度與總 bytes）；mapping 之後的 canonical 預覽屬 validation（T-017），`valid-import.json` 依此修正。(c) 人工 `SaveMapping` 改用只含 `source_column`、`target_field`、`transform` 的 mapping schema，不要求 AI 專用的 `confidence`、`evidence`、`requires_confirmation`；AI suggestion 仍用 ai-mapping。gate：T-016 開放 upload／profile 前（(c) 為 T-017 前）。 |
-| D-044 | 原報告 TBD（object storage） | P0 的 object storage | **APPROVED（2026-10-19，H-010）。** `internal/storage/objects` 定義 S3 相容的最小介面（put 時計算 SHA-256 與大小、get、delete 只給受控 maintenance；key 一律由 server 依 D-035 產生）。P0 先提供 filesystem adapter，只用於 development 與測試（`APP_ENV=production` 時拒絕啟動）；正式環境的 adapter（雲端廠商、bucket、region、加密金鑰、retention、signed URL 期限）由 owner 選定雲端後另立 ADR，未定前不收真實客戶資料（SECURITY §6）。下載先由 API 授權後串流，不發 signed URL。gate：T-016 寫入 upload 前。 |
+| D-044 | 原報告 TBD（object storage） | P0 的 object storage | **APPROVED（2026-10-19，H-010）。** `internal/storage/objects` 定義 S3 相容的最小介面（put 時計算 SHA-256 與大小、get、delete 只給受控 maintenance；key 一律由 server 依 D-035 產生）。P0 先提供 filesystem adapter，只用於 development 與測試（`APP_ENV=production` 時拒絕啟動）；正式環境的 adapter（雲端廠商、bucket、region、加密金鑰、retention、signed URL 期限）由 owner 選定雲端後另立 ADR，未定前不收真實客戶資料（SECURITY §6）。下載先由 API 授權後串流，不發 signed URL。gate：T-016 寫入 upload 前。**實作（T-023，2026-10-19，待獨立 review）：** `internal/storage/objects`（`Store`、`Maintainer`、`NewKey`／`ValidKey` 與 DB 的 `object_key_ok` 同一規則）與 `FS` adapter（`OBJECT_STORAGE_PROVIDER=filesystem`、`OBJECT_STORAGE_ROOT`；只在 `APP_ENV` 為 development／test 時接受，`APP_ENV` 未設也拒絕；寫入不覆寫既有 key）；simulation trace 由 API 授權、核對大小與 SHA-256 後串流（`downloadSimulationTrace` 改回 `TraceArtifact`，見 CB-38(b)）；dataset snapshot 由 `internal/storage/snapshots` 讀取。正式 adapter 與孤兒 object 的 maintenance 未做。 |
 
 ### 其他契約缺口（2026-10-19，APPROVED，H-010）
 

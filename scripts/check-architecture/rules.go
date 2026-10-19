@@ -23,6 +23,8 @@ var appLayers = []string{
 	"./internal/tenant/...",
 	"./internal/project/...",
 	"./internal/models/...", // model, draft and version service (T-012, ADR-022)
+	"./internal/runs/...",   // simulation run service and its job handler (T-023)
+	"./internal/worker/...", // the job loop and its handler interface (T-019, ADR-024)
 	"./internal/storage/...",
 	"./internal/import/...",
 	"./internal/ai/...",

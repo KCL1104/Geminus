@@ -88,6 +88,12 @@
 |---|---|---|---|---|---|
 | CB-37 | generic Result 的 domain metrics 欄位叫 `metrics.dora`：任何 DomainPack 的 `ComputeMetrics`（含 T-042 test-only generic queue pack 的 `longest_queue_wait_minutes`）都寫進名為 DORA 的欄位，generic contract 帶了 software-delivery 的名稱 | simulation.schema.json `Result.metrics.dora`；`des.Engine.DomainMetrics`；`internal/domainpack/conformance/queuepack_test.go` | 第二個真正的 domain（P1）；P0 只有 software delivery，不阻擋 | NEW（建議在第二個 pack 前以 schema 版本變更改名為 domain metrics，或依 pack ID 分組；不在 T-042 自行修改 contract） | 實測 |
 
+## H. T-023 run API／worker 發現
+
+| ID | 問題 | 證據 | 阻擋 | 涵蓋 | 等級 |
+|---|---|---|---|---|---|
+| CB-38 | (a) Run 的 failure 沒有 code 目錄：`Run.error` 是 common `Error` envelope，`error.code` 只能是封閉的 ErrorCode 清單，沒有 run 專用的 code（event budget、wall timeout、entity 上限、input、engine version、artifact storage、lease／worker 耗盡）。T-023 暫時對應為：上限與 engine 拒絕的 input → `MODEL_VALIDATION_FAILED`（D-023 把 runtime limit 算作 validator 的 issue），基礎設施重試用完 → `SERVICE_UNAVAILABLE`，其餘 → `INTERNAL_ERROR`；failure 本身的 code（`EVENT_BUDGET_EXCEEDED`、`WALL_TIMEOUT_EXCEEDED`、`ACTIVE_ENTITIES_EXCEEDED`、`ENTITY_VISITS_EXCEEDED`、`RUN_INPUT_INVALID`、`ENGINE_VERSION_MISMATCH`、`ENGINE_INTERNAL`、`ARTIFACT_STORAGE_FAILED`，及 ADR-024 的 `LEASE_EXPIRED`、`WORKER_STOPPED`、`INTERNAL`、`NO_RESULT`）放在 `details[0].code`，上限的 `details[0].path` 為 Run 中該上限的位置。(b) `downloadSimulationTrace` 原本回 `SignedDownload`，與 APPROVED D-044「授權後串流，不發 signed URL」衝突；T-023 依 D-044 改為直接回 `TraceArtifact`（`Content-Disposition: attachment`）。`downloadImportErrors` 仍回 `SignedDownload`，未改。 | simulation.schema.json `Run.error`；common.schema.json `ErrorCode`；`internal/runs/runs.go` `runError`；openapi `downloadSimulationTrace`、`downloadImportErrors` | (a) UI 依 code 顯示 run 失敗的原因（T-032）；(b) T-016／T-017 的 error report 下載 | (a) NEW；(b) D-044 | 實測 |
+
 ## 已核對為一致的項目（摘要）
 
 Golden 算術（GOLDEN-001/002）與 SplitMix64／replication seed vectors 可重算；proposal、import、run、analysis 狀態 enum 在 schema、OpenAPI、SQL CHECK 間一致；composite tenant FK 指向既有 PK/unique；`x-required-roles` 與 SECURITY.md RBAC 及報告 p.40 一致；runtime roles NOSUPERUSER/NOBYPASSRLS、FORCE RLS；0.80 confidence 門檻各處一致；provider output schema 不接受 trusted fields。
@@ -99,4 +105,5 @@ Golden 算術（GOLDEN-001/002）與 SplitMix64／replication seed vectors 可�
 3. **T-005/T-020 golden 前**：D-005、D-006（CB-01、CB-15、CB-20、CB-21）。
 4. **T-019 前**：D-007、D-011（CB-18、CB-19）。
 5. **T-024 前**：D-016、D-018，以及資料政策與 token quota（原報告 TBD）。
-6. 其他 TBD（auth provider、cloud/DB、object storage、SQL generation、frontend state libs）見 [DECISIONS_AND_TBD.md](DECISIONS_AND_TBD.md)；機器可讀的 gate 對照見 `checks/decisions-check.json`。
+6. **T-032 前**：CB-38（run failure 的 code 目錄；T-023 的暫定對應見該列）；T-016／T-017 前決定 `downloadImportErrors` 是否也依 D-044 改為串流。
+7. 其他 TBD（auth provider、cloud/DB、object storage、SQL generation、frontend state libs）見 [DECISIONS_AND_TBD.md](DECISIONS_AND_TBD.md)；機器可讀的 gate 對照見 `checks/decisions-check.json`。

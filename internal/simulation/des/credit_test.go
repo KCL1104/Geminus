@@ -91,6 +91,9 @@ func TestCreditGivesTheSameResult(t *testing.T) {
 		if out.Trace == nil || len(out.Trace.Events) != len(want.Trace.Events) {
 			t.Errorf("%+v: the trace differs", c)
 		}
+		if out.Events != events || want.Events != events {
+			t.Errorf("%+v: %d events reported (%d without credit), %d processed", c, out.Events, want.Events, events)
+		}
 		var wantCalls int64
 		if events > c.initial {
 			wantCalls = (events - c.initial + c.batch - 1) / c.batch

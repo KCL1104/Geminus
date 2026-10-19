@@ -22,6 +22,7 @@ import (
 	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
@@ -53,6 +54,15 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
+	var opts []api.Option
+	if cfg.ObjectStorage.Provider == config.ObjectStorageFilesystem {
+		fs, err := objects.NewFS(cfg.ObjectStorage.Root, cfg.Env)
+		if err != nil {
+			log.Error("invalid configuration", "error", "OBJECT_STORAGE_ROOT cannot be used: "+err.Error())
+			return exitConfig
+		}
+		opts = append(opts, api.WithObjects(fs))
+	}
 	poolCfg, err := poolConfig(cfg.DatabaseURL)
 	if err != nil {
 		log.Error("invalid configuration", "error", "DATABASE_URL is not a valid PostgreSQL connection string")
@@ -77,7 +87,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("database unavailable", "error", err.Error())
 		return exitDatabase
 	}
-	handler, err := api.Handler(log, verifier, tenant.New(pool))
+	handler, err := api.Handler(log, verifier, tenant.New(pool), opts...)
 	if err != nil {
 		log.Error("the domain packs are not valid", "error", err.Error())
 		return exitConfig

@@ -32,6 +32,8 @@ T-008 實作（[ADR-017](adr/ADR-017-oidc-token-verification.md)，2026-10-18 AC
 
 CORS/Origin allowlist、HTTPS、CSP、escaped labels/markdown、safe download filename；禁止把 bearer token 放 query string、logs 或 SSE URL。SSE / signed downloads 初次與續期都重新授權；stream 長連線也需處理 token expiry / membership revocation。
 
+T-023 實作（TEST-026，`internal/runs`）：progress SSE 只讀 `Authorization: Bearer`；開始前與之後**每個事件之前**都在新的 transaction 中重新查 membership 與 role 再讀 run（REPEATABLE READ，所以事件不會反映撤權之後才 commit 的變化），成員被移除或 role 不再能讀 run 時 stream 立即結束、不再送任何事件；token 的 `exp` 到時、連線滿 10 分鐘、run 終態、client 離開或寫入 10 秒未完成也結束，重連時由一般 request 重新授權。降級（例如 editor→viewer）仍可讀 run，所以 stream 繼續；之後的寫入（取消）照常每次查 role。Trace 下載的檔名只由 run ID 組成（`<run ID>-trace.json`，attachment），不含使用者輸入。
+
 ## 4. Tenant isolation / DB
 
 所有 tenant data tables NOT NULL organization_id + composite org/parent FKs + application filter + FORCE RLS。runtime role 不得 SUPERUSER、BYPASSRLS、REPLICATION、擁有任何物件、屬於目標 runtime role 以外的任何 role（含只能 SET ROLE 者與 predefined roles），或能建立物件；`tenant.CheckRuntimeRole` 在啟動時檢查（API_DATABASE §9）。per-request transaction-local context 由 verified membership 選定；pool checkout/commit/rollback/reset 後無 scope 殘留。
@@ -61,6 +63,8 @@ error report 的 spreadsheet 可執行字首（例如 =、+、-、@）需安全�
 
 object keys 固定 tenant/{organization_id}/imports、simulation-results、assets 前綴（DB 以 `starts_with` 檢查，不用 LIKE：organization ID 的 `_` 是 LIKE 萬用字元，D-035；前綴之後只允許 server 產生的 ASCII 段，拒 `..`、`.` 段、空段、`%`、反斜線、控制與 Unicode 相似字元）；client 用 resource ID 要求下載，不能 supply arbitrary bucket/key/URL。server 授權後產短期 signed URL；URL 不進 audit metadata、telemetry 或 provider context。expiry / encryption key management / retention / backup policy beta 前決定，無 policy 不開放真實客戶資料。
 
+D-044（APPROVED，H-010）取代上段 P0 的 signed URL：下載先由 API 授權後串流，不發 signed URL。T-023 的 simulation trace 依此實作：API 在 transaction 中確認 membership（viewer 以上）、run 為 completed、result 帶 trace、object key 在本 organization 的 `simulation-results` 前綴之下，transaction 結束後才讀 object，大小與 SHA-256 都與 result row 相同才送出；不符或不見時 500、不送任何 bytes。Object key 由 server 產生（`objects.NewKey`，與 DB 的 `object_key_ok` 同一規則），client 只送 run ID。Filesystem adapter 只在 `APP_ENV` 為 development／test 時可用，`APP_ENV` 未設時也拒絕（fail closed）；寫入以暫存檔＋hard link 完成，從不覆寫既有 key。`openapi` 的 `downloadImportErrors` 仍回 `SignedDownload`，是否同樣改為串流留給 T-016／T-017（CB-38 一併列出）。
+
 ## 7. AI data governance
 
 最小 context、bounded summaries、credential redaction、跨 tenant hard filter；UNTRUSTED_DATA 與 system rules 分離。provider/model/data residency/retention 必須人類確認；不因 SDK 有某預設就假設客戶允許資料外送。production logs 不留 raw CSV/model/prompt/provider output，除非明確批准的 diagnostic policy。
@@ -69,7 +73,7 @@ object keys 固定 tenant/{organization_id}/imports、simulation-results、asset
 
 ## 8. Resource / job safety
 
-入列前 admission quota，execution timeout、event/entity/visit/trace limits、bounded replication pool、provider tokens/concurrency/retry caps。warmup 和 retries 都計費/計 budget；trace sampling 不改結果也不能無限長。worker lease_token fencing 防 stale finalize；cancel race 在鎖 run+job 後重新判斷。object upload 完而 DB commit 失敗時結果不可見，孤兒 artifact 由受控 maintenance 清理。
+入列前 admission quota，execution timeout、event/entity/visit/trace limits、bounded replication pool、provider tokens/concurrency/retry caps。warmup 和 retries 都計費/計 budget；trace sampling 不改結果也不能無限長。worker lease_token fencing 防 stale finalize；cancel race 在鎖 run+job 後重新判斷。object upload 完而 DB commit 失敗時結果不可見，孤兒 artifact 由受控 maintenance 清理。T-023：cancel 與 finalize 都先鎖 job 再鎖 run，finalize 看到取消請求即改為 cancelled、不存結果（`TestCancelRacesCompletion`）；execution limits 由 server 在入列時凍結，client 無法設定或提高；event budget 跨 retry 以 durable reservation 計算，wall clock 從第一次開始起算（API_DATABASE §7）；孤兒 trace object 的 maintenance 尚未實作。
 
 ## 9. Audit / observability / release
 

@@ -4,9 +4,9 @@
 // login (refusing an unsafe one) and runs internal/worker's loop over the
 // deployment's organizations until SIGINT or SIGTERM.
 //
-// No job handler exists yet (import profiling is T-016, simulation T-023,
-// AI proposals and analyses T-025), so after validating configuration it
-// exits with status 2 instead of claiming jobs it cannot run.
+// The handlers this build registers: simulation runs (T-023,
+// internal/runs/runner). Import profiling (T-016) and AI proposals and
+// analyses (T-025) are not built yet; their jobs stay queued.
 package main
 
 import (
@@ -22,7 +22,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/domainpack"
+	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
+	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
+	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/internal/tenant/workerscope"
 	"github.com/kcl1104/geminus/internal/worker"
@@ -47,7 +51,7 @@ const (
 func main() {
 	ctx, stop := listen()
 	defer stop()
-	os.Exit(run(ctx, os.Getenv, os.Stderr, handlers()))
+	os.Exit(run(ctx, os.Getenv, os.Stderr, handlers))
 }
 
 // listen ends ctx at the first SIGINT or SIGTERM: the worker then stops its
@@ -69,13 +73,45 @@ func listen() (context.Context, context.CancelFunc) {
 	return ctx, func() { signal.Stop(signals); cancel() }
 }
 
-// handlers is the registry of the job types this build can run. Each task
-// that delivers a handler (internal/worker/handler) adds it here; until then
-// it is empty and the worker refuses to start.
-func handlers() map[jobs.Type]handler.Handler { return nil }
+// deps is what the handlers are built from: the validated configuration.
+type deps struct {
+	worker  config.Worker
+	objects objects.Store // nil when object storage is disabled
+	log     *slog.Logger
+}
 
-// run runs the loop with handlers until ctx ends.
-func run(ctx context.Context, getenv func(string) string, stderr io.Writer, handlers map[jobs.Type]handler.Handler) int {
+// builder makes the handlers a build runs.
+type builder func(deps) (map[jobs.Type]handler.Handler, error)
+
+// handlers is the registry of the job types this build can run. Each task
+// that delivers a handler (internal/worker/handler) adds it here.
+func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
+	packs, err := domainpack.NewRegistry(softwaredelivery.Pack{})
+	if err != nil {
+		return nil, err
+	}
+	sim, err := runner.New(runner.Config{Packs: packs, Objects: d.objects, Actor: d.worker.ID, Log: d.log})
+	if err != nil {
+		return nil, err
+	}
+	return map[jobs.Type]handler.Handler{jobs.Simulation: sim}, nil
+}
+
+// objectStore opens the configured object storage (D-044): nil when it is
+// disabled; the filesystem adapter only for development and tests.
+func objectStore(cfg config.Config) (objects.Store, error) {
+	if cfg.ObjectStorage.Provider != config.ObjectStorageFilesystem {
+		return nil, nil
+	}
+	fs, err := objects.NewFS(cfg.ObjectStorage.Root, cfg.Env)
+	if err != nil {
+		return nil, err
+	}
+	return fs, nil
+}
+
+// run runs the loop with the handlers build makes until ctx ends.
+func run(ctx context.Context, getenv func(string) string, stderr io.Writer, build builder) int {
 	log := slog.New(slog.NewJSONHandler(stderr, nil)).With("component", "worker")
 	cfg, err := config.Load(getenv)
 	wcfg, werr := config.LoadWorker(getenv)
@@ -95,9 +131,18 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, hand
 		log.Error("invalid configuration", "error", "DATABASE_URL is not a valid PostgreSQL connection string")
 		return exitConfig
 	}
+	store, err := objectStore(cfg)
+	if err != nil {
+		log.Error("invalid configuration", "error", "OBJECT_STORAGE_ROOT cannot be used: "+err.Error())
+		return exitConfig
+	}
+	handlers, err := build(deps{worker: wcfg, objects: store, log: log})
+	if err != nil {
+		log.Error("invalid configuration", "error", err.Error())
+		return exitConfig
+	}
 	if len(handlers) == 0 {
-		log.Error("NOT IMPLEMENTED: no job handler exists yet (T-016, T-023, T-025); refusing to start",
-			"ai_provider", string(cfg.AIProvider))
+		log.Error("NOT IMPLEMENTED: this build has no job handler; refusing to start", "ai_provider", string(cfg.AIProvider))
 		return exitNotImplemented
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
