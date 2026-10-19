@@ -94,6 +94,14 @@
 |---|---|---|---|---|---|
 | CB-38 | (a) Run 的 failure 沒有 code 目錄：`Run.error` 是 common `Error` envelope，`error.code` 只能是封閉的 ErrorCode 清單，沒有 run 專用的 code（event budget、wall timeout、entity 上限、input、engine version、artifact storage、lease／worker 耗盡）。T-023 暫時對應為：上限與 engine 拒絕的 input → `MODEL_VALIDATION_FAILED`（D-023 把 runtime limit 算作 validator 的 issue），基礎設施重試用完 → `SERVICE_UNAVAILABLE`，其餘 → `INTERNAL_ERROR`；failure 本身的 code（`EVENT_BUDGET_EXCEEDED`、`WALL_TIMEOUT_EXCEEDED`、`ACTIVE_ENTITIES_EXCEEDED`、`ENTITY_VISITS_EXCEEDED`、`RUN_INPUT_INVALID`、`ENGINE_VERSION_MISMATCH`、`ENGINE_INTERNAL`、`ARTIFACT_STORAGE_FAILED`，及 ADR-024 的 `LEASE_EXPIRED`、`WORKER_STOPPED`、`INTERNAL`、`NO_RESULT`）放在 `details[0].code`，上限的 `details[0].path` 為 Run 中該上限的位置。(b) `downloadSimulationTrace` 原本回 `SignedDownload`，與 APPROVED D-044「授權後串流，不發 signed URL」衝突；T-023 依 D-044 改為直接回 `TraceArtifact`（`Content-Disposition: attachment`）。`downloadImportErrors` 仍回 `SignedDownload`，未改。 | simulation.schema.json `Run.error`；common.schema.json `ErrorCode`；`internal/runs/runs.go` `runError`；openapi `downloadSimulationTrace`、`downloadImportErrors` | (a) UI 依 code 顯示 run 失敗的原因（T-032）；(b) T-016／T-017 的 error report 下載 | (a) NEW；(b) D-044 | 實測 |
 
+## I. T-016 import 上傳與 profile 發現
+
+| ID | 問題 | 證據 | 阻擋 | 涵蓋 | 等級 |
+|---|---|---|---|---|---|
+| CB-39 | (a) Import 的 failure 沒有 code 目錄：`Import.error` 是 common `Error` envelope，`error.code` 只能是封閉的 ErrorCode 清單。T-016 暫時對應為：超過上限（`IMPORT_LIMIT_EXCEEDED`）→ `PAYLOAD_TOO_LARGE`；檔案本身的其他問題（`IMPORT_ENCODING_INVALID`、`IMPORT_NUL_CHARACTER`、`IMPORT_EMPTY`、`IMPORT_COLUMN_INVALID`、`IMPORT_SHAPE_INVALID`、`CSV_SYNTAX_INVALID`、`JSON_INVALID`、`JSON_DUPLICATE_KEY`、`JSON_NUMBER_NOT_FINITE`）→ `REQUEST_VALIDATION_FAILED`；基礎設施重試用完（`OBJECT_STORAGE_FAILED`、`OBJECT_STORAGE_UNAVAILABLE`、`LEASE_EXPIRED`、`WORKER_STOPPED`）→ `SERVICE_UNAVAILABLE`；其餘（`UPLOAD_CORRUPT`、`UPLOAD_MISSING`、`JOB_CANCELLED`、`IMPORT_INPUT_INVALID`、`INTERNAL`）→ `INTERNAL_ERROR`；failure 自己的 code 與 JSON Pointer 放在 `details[0]`（與 CB-38(a) 的做法相同）。(b) 需要 owner 確認的行為選擇：只有 header 或空陣列的檔案為 FAILED（`IMPORT_EMPTY`），而不是 0 列的 profile；CSV 欄位數不符的 record 是 invalid row（AWAITING_MAPPING＋error report），不是整個檔案失敗；CSV 只接受逗號分隔；JSON object／array 值推斷為 mixed；preview 字串在 256 字元處以「…」截斷、以 1 MiB 為上限，資料庫會印出超過 400 字元的 JSON 數字改存 binary64 最短形式；profile job 失敗時以 API 讀取時的 FAILED 呈現，row 不跟隨 job（見 API_DATABASE §5）。(c) 實作參數，待 benchmark（T-037）：值 32,768 字元、JSON 巢狀 32 層、preview 256 字元與 1 MiB、error report 16 MiB 與保留 10,000 筆 invalid row、上傳讀取期限 5 分鐘。(d) 孤兒 object（file 之後還有 part、與同一 key 競爭落敗、commit 失敗）沒有 maintenance 清理，與 T-023 的 L6 同一項。 | `internal/import/upload/resource.go` `envelope`；`internal/import/profile` `DefaultLimits`；openapi `uploadImport`、`getImport`、`downloadImportErrors` | (a) UI 依 code 顯示 import 失敗的原因（T-015／T-017）；(b)(c) Alpha 設定凍結（D-007）；(d) 正式 object storage adapter 前 | (a) NEW；(b) D-043；(c) D-007；(d) D-044 | 實測 |
+
+CB-38(b) 已由 T-016 依 D-044 解決：`downloadImportErrors` 改為授權後直接串流 CSV（`text/csv`，attachment），不再回 `SignedDownload`；`SignedDownload` 仍留在 http.schema.json，P0 沒有 operation 使用（正式 adapter 的 ADR 決定是否需要）。
+
 ## 已核對為一致的項目（摘要）
 
 Golden 算術（GOLDEN-001/002）與 SplitMix64／replication seed vectors 可重算；proposal、import、run、analysis 狀態 enum 在 schema、OpenAPI、SQL CHECK 間一致；composite tenant FK 指向既有 PK/unique；`x-required-roles` 與 SECURITY.md RBAC 及報告 p.40 一致；runtime roles NOSUPERUSER/NOBYPASSRLS、FORCE RLS；0.80 confidence 門檻各處一致；provider output schema 不接受 trusted fields。
@@ -105,5 +113,5 @@ Golden 算術（GOLDEN-001/002）與 SplitMix64／replication seed vectors 可�
 3. **T-005/T-020 golden 前**：D-005、D-006（CB-01、CB-15、CB-20、CB-21）。
 4. **T-019 前**：D-007、D-011（CB-18、CB-19）。
 5. **T-024 前**：D-016、D-018，以及資料政策與 token quota（原報告 TBD）。
-6. **T-032 前**：CB-38（run failure 的 code 目錄；T-023 的暫定對應見該列）；T-016／T-017 前決定 `downloadImportErrors` 是否也依 D-044 改為串流。
+6. **T-032 前**：CB-38（run failure 的 code 目錄；T-023 的暫定對應見該列）；~~T-016／T-017 前決定 `downloadImportErrors` 是否也依 D-044 改為串流~~（T-016 已依 D-044 改為串流）。T-015／T-017 前：CB-39（import failure 的 code 目錄與 T-016 的行為選擇、實作參數）。
 7. 其他 TBD（auth provider、cloud/DB、object storage、SQL generation、frontend state libs）見 [DECISIONS_AND_TBD.md](DECISIONS_AND_TBD.md)；機器可讀的 gate 對照見 `checks/decisions-check.json`。

@@ -6,7 +6,7 @@
 // registers it.
 //
 // A handler reads and writes the database, so it is an adapter: it lives
-// where database access is allowed (T-016's internal/import/upload, for
+// where database access is allowed (T-016's internal/import/profiler, for
 // one), never inside the generic kernel (internal/model, internal/simulation,
 // internal/results) or internal/ai, whose own rules forbid internal/storage
 // and internal/tenant. The simulation (T-023) and AI (T-025) handlers call

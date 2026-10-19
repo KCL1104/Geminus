@@ -402,6 +402,50 @@ func TestImportRoleMatrix(t *testing.T) {
 	if r := e.upload(t, stranger, e.a.ID, "key-stranger", fields(m, "csv_events", "a.csv", file)); r.status != 403 {
 		t.Errorf("unknown identity: %d %s", r.status, r.body)
 	}
+	// The role is checked before any of the body is read: a client that
+	// waits for 100 Continue never sends the body of a refused upload, and
+	// sends it for an allowed one.
+	for who, want := range map[string]int{viewer.Subject: 403, outsider.Subject: 404, editor.Subject: 202} {
+		body, ct := multipartBody(t, fields(m, "csv_events", "continue.csv", file))
+		rd := &watched{r: body}
+		req, _ := http.NewRequest("POST", e.srv.URL+"/v1/imports", rd)
+		req.ContentLength = int64(body.Len())
+		req.Header.Set("Authorization", "Bearer "+e.token(who))
+		req.Header.Set("X-Organization-ID", e.a.ID)
+		req.Header.Set("Content-Type", ct)
+		req.Header.Set("Idempotency-Key", "key-continue-"+who)
+		req.Header.Set("Expect", "100-continue")
+		client := &http.Client{Transport: &http.Transport{ExpectContinueTimeout: 10 * time.Second}}
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.Copy(io.Discard, res.Body)
+		res.Body.Close()
+		if res.StatusCode != want || rd.read() != (want == 202) {
+			t.Errorf("%s: %d, body read: %v", who, res.StatusCode, rd.read())
+		}
+	}
+}
+
+// watched is a body that records whether anything read it.
+type watched struct {
+	mu   sync.Mutex
+	r    io.Reader
+	used bool
+}
+
+func (w *watched) Read(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.used = true
+	return w.r.Read(p)
+}
+
+func (w *watched) read() bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.used
 }
 
 // TEST-012: what an upload may not be, refused before anything is

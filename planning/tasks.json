@@ -981,7 +981,12 @@
       ],
       "planned_outputs": [
         "internal/import/upload/",
-        "internal/storage/objects/"
+        "internal/import/profile/",
+        "internal/import/report/",
+        "internal/import/profiler/",
+        "internal/storage/imports/",
+        "internal/storage/objects/",
+        "migrations/0010_import_uploads.up.sql"
       ],
       "spec_refs": [
         "docs/API_DATABASE.md",
@@ -1001,7 +1006,14 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-016_VALIDATION.md",
+          "summary": "契約：import.schema.json 依 D-043 加 profile 與原始值 preview（≤256 欄），valid-import.json 修正；uploadImport／getImport 的規則與範例；downloadImportErrors 依 D-044 改為授權後串流 CSV（CB-38(b)）。Migration 0010：profile 與 error report 的 hash、大小，upload 不可改、profile 恰在 profiling 之後且只寫一次、API 不寫 profile／preview／report、FAILED 與 COMMITTED 為終態（db/tests/imports.sql）。internal/import/profile（純粹、串流、有界的 CSV／JSON profile，UTF-8 含／不含 BOM、中文，不猜編碼，typed failure 與 JSON Pointer）、internal/import/report（formula-safe CSV）、internal/import/upload（先授權再讀 body，串流寫入、SHA-256、50 MB 上限不依賴 Content-Length、拒絕壓縮檔與執行檔、idempotent，與 job、audit 同一 transaction）、internal/import/profiler（worker 才連結，核對 upload 的 hash 後 profile，結果與 job 一起 commit）。未改 Twin（D-009）。驗證見報告；狀態未改，由 reviewer 決定。"
+        }
+      ]
     },
     {
       "id": "T-017",
