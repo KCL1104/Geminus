@@ -2515,7 +2515,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-043_VALIDATION.md",
+          "summary": "BFF 部分（74e327a、f83c692）：AES-256-GCM 封裝的 __Host- session cookie（key 輪替、3.5 KB 上限、閒置 12 小時／滿 7 天）；openid-client 6.8.8 的 Authorization Code＋PKCE S256、state、nonce，ID token 另驗簽章後丟棄；同源 /api/v1 proxy（Origin、Sec-Fetch-Site、X-Geminus-Request 的 CSRF 檢查、header allowlist、伺服器端 refresh 單一化與 30 秒 reuse）；logout 撤銷 refresh token 與 RP-initiated logout；測試用 OIDC provider 與 API 替身；Auth0 runbook。52c667c 乾淨 worktree：frontend-test（334 tests）、frontend-build、e2e-test（49 passed，TEST-032 8/8；16 個截圖測試只在 CI container 執行）、npm audit（production）0、spec-check exit 0；TS mutation 43（41 killed、2 等價）。登入後的 UI bootstrap（/me、organization 選擇、UI 的 403）等 D-045；新的截圖 baseline 由 owner 產生。",
+          "reviewer": "pending: independent reviewer agent (H-003), BFF part",
+          "decisions_pending": "D-045（GET /v1/me）待 owner；Auth0 tenant 由 owner 依 docs/runbooks/auth0.md 建立"
+        }
+      ]
     },
     {
       "id": "T-044",

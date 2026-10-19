@@ -1,0 +1,80 @@
+npm --prefix apps/web-e2e test
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test
+
+
+Running 65 tests using 1 worker
+
+  ✓   1 [chromium] › tests/a11y.spec.ts:17:9 › en at 390px › / has no violation (1.4s)
+  ✓   2 [chromium] › tests/a11y.spec.ts:17:9 › en at 390px › /projects has no violation (1.2s)
+  ✓   3 [chromium] › tests/a11y.spec.ts:17:9 › en at 390px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.3s)
+  ✓   4 [chromium] › tests/a11y.spec.ts:17:9 › en at 390px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.4s)
+  ✓   5 [chromium] › tests/a11y.spec.ts:17:9 › en at 390px › /no-such-page has no violation (1.4s)
+  ✓   6 [chromium] › tests/a11y.spec.ts:17:9 › en at 390px › /ui-gallery has no violation (3.2s)
+  ✓   7 [chromium] › tests/a11y.spec.ts:17:9 › en at 390px › /auth/error?reason=expired has no violation (1.3s)
+  ✓   8 [chromium] › tests/a11y.spec.ts:30:7 › en at 390px › gallery states that need an action have no violation (4.7s)
+  ✓   9 [chromium] › tests/a11y.spec.ts:17:9 › en at 1280px › / has no violation (1.3s)
+  ✓  10 [chromium] › tests/a11y.spec.ts:17:9 › en at 1280px › /projects has no violation (1.2s)
+  ✓  11 [chromium] › tests/a11y.spec.ts:17:9 › en at 1280px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.4s)
+  ✓  12 [chromium] › tests/a11y.spec.ts:17:9 › en at 1280px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.3s)
+  ✓  13 [chromium] › tests/a11y.spec.ts:17:9 › en at 1280px › /no-such-page has no violation (1.2s)
+  ✓  14 [chromium] › tests/a11y.spec.ts:17:9 › en at 1280px › /ui-gallery has no violation (3.4s)
+  ✓  15 [chromium] › tests/a11y.spec.ts:17:9 › en at 1280px › /auth/error?reason=expired has no violation (1.3s)
+  ✓  16 [chromium] › tests/a11y.spec.ts:30:7 › en at 1280px › gallery states that need an action have no violation (4.4s)
+  ✓  17 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 390px › / has no violation (1.3s)
+  ✓  18 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 390px › /projects has no violation (1.2s)
+  ✓  19 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 390px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.3s)
+  ✓  20 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 390px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.4s)
+  ✓  21 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 390px › /no-such-page has no violation (1.3s)
+  ✓  22 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 390px › /ui-gallery has no violation (2.8s)
+  ✓  23 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 390px › /auth/error?reason=expired has no violation (1.2s)
+  ✓  24 [chromium] › tests/a11y.spec.ts:30:7 › zh-Hant at 390px › gallery states that need an action have no violation (4.3s)
+  ✓  25 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 1280px › / has no violation (1.3s)
+  ✓  26 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 1280px › /projects has no violation (1.2s)
+  ✓  27 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 1280px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.4s)
+  ✓  28 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 1280px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.3s)
+  ✓  29 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 1280px › /no-such-page has no violation (1.3s)
+  ✓  30 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 1280px › /ui-gallery has no violation (3.0s)
+  ✓  31 [chromium] › tests/a11y.spec.ts:17:9 › zh-Hant at 1280px › /auth/error?reason=expired has no violation (1.2s)
+  ✓  32 [chromium] › tests/a11y.spec.ts:30:7 › zh-Hant at 1280px › gallery states that need an action have no violation (4.3s)
+  ✓  33 [chromium] › tests/keyboard.spec.ts:10:1 › the shell: skip link first, then navigation and language; the skip link moves focus to main (812ms)
+  ✓  34 [chromium] › tests/keyboard.spec.ts:29:1 › the language changes from the keyboard and the page follows (846ms)
+  ✓  35 [chromium] › tests/keyboard.spec.ts:55:3 › component gallery › a status message after an action (1.2s)
+  ✓  36 [chromium] › tests/keyboard.spec.ts:63:3 › component gallery › a confirmation dialog: focus on Cancel, trapped, Escape returns focus, confirm acts (1.5s)
+  ✓  37 [chromium] › tests/keyboard.spec.ts:87:3 › component gallery › a select: open, move, choose (1.3s)
+  ✓  38 [chromium] › tests/keyboard.spec.ts:98:3 › component gallery › a table: one tab stop, arrows move, Enter sorts, Space selects (1.6s)
+  ✓  39 [chromium] › tests/keyboard.spec.ts:124:3 › component gallery › a long table is virtualized and reachable to its last row (1.2s)
+  -  40 [chromium] › tests/screenshots.spec.ts:25:9 › en at 390px › / looks as accepted
+  -  41 [chromium] › tests/screenshots.spec.ts:25:9 › en at 390px › /projects looks as accepted
+  -  42 [chromium] › tests/screenshots.spec.ts:25:9 › en at 390px › /no-such-page looks as accepted
+  -  43 [chromium] › tests/screenshots.spec.ts:25:9 › en at 390px › /ui-gallery looks as accepted
+  -  44 [chromium] › tests/screenshots.spec.ts:25:9 › en at 1280px › / looks as accepted
+  -  45 [chromium] › tests/screenshots.spec.ts:25:9 › en at 1280px › /projects looks as accepted
+  -  46 [chromium] › tests/screenshots.spec.ts:25:9 › en at 1280px › /no-such-page looks as accepted
+  -  47 [chromium] › tests/screenshots.spec.ts:25:9 › en at 1280px › /ui-gallery looks as accepted
+  -  48 [chromium] › tests/screenshots.spec.ts:25:9 › zh-Hant at 390px › / looks as accepted
+  -  49 [chromium] › tests/screenshots.spec.ts:25:9 › zh-Hant at 390px › /projects looks as accepted
+  -  50 [chromium] › tests/screenshots.spec.ts:25:9 › zh-Hant at 390px › /no-such-page looks as accepted
+  -  51 [chromium] › tests/screenshots.spec.ts:25:9 › zh-Hant at 390px › /ui-gallery looks as accepted
+  -  52 [chromium] › tests/screenshots.spec.ts:25:9 › zh-Hant at 1280px › / looks as accepted
+  -  53 [chromium] › tests/screenshots.spec.ts:25:9 › zh-Hant at 1280px › /projects looks as accepted
+  -  54 [chromium] › tests/screenshots.spec.ts:25:9 › zh-Hant at 1280px › /no-such-page looks as accepted
+  -  55 [chromium] › tests/screenshots.spec.ts:25:9 › zh-Hant at 1280px › /ui-gallery looks as accepted
+  ✓  56 [chromium] › tests/session.spec.ts:43:1 › sign-in leaves one HttpOnly __Host- cookie and nothing a script can read (362ms)
+  ✓  57 [chromium] › tests/session.spec.ts:69:1 › the proxy adds the token, sends no cookie to the API and returns no token (287ms)
+  ✓  58 [chromium] › tests/session.spec.ts:94:1 › without a session the proxy answers 401 in the API's envelope (200ms)
+  ✓  59 [chromium] › tests/session.spec.ts:102:1 › a write without the app's header, from another origin or from a cross-site form is refused (330ms)
+  ✓  60 [chromium] › tests/session.spec.ts:130:1 › a tampered state or a replayed callback lands on the sign-in error page (320ms)
+  ✓  61 [chromium] › tests/session.spec.ts:153:1 › a token close to expiry is refreshed on the server, and the old refresh token is spent (265ms)
+  ✓  62 [chromium] › tests/session.spec.ts:171:1 › logout revokes the refresh token, clears the cookie and signs out at the provider (313ms)
+  ✓  63 [chromium] › tests/session.spec.ts:199:1 › an identity provisioning does not know gets the API's 403 (230ms)
+en: strings not from the catalog: ["sortable column","sorted by column Path in ascending order","/resources/reviewers selected.","sorted by column Path in descending order","Dismiss"]
+  ✓  64 [chromium] › tests/strings.spec.ts:41:3 › en: every string is the catalog's or an accepted React Aria string (1.5s)
+zh-Hant: strings not from the catalog: ["可排序的欄","已依據「路徑」欄遞增排序","已選取「/resources/reviewers」。","已依據「路徑」欄遞減排序","關閉"]
+  ✓  65 [chromium] › tests/strings.spec.ts:41:3 › zh-Hant: every string is the catalog's or an accepted React Aria string (1.5s)
+
+  16 skipped
+  49 passed (1.4m)
+e2e-test: screenshots NOT RUN (only with E2E_SCREENSHOTS=1, in CI's pinned Playwright container).
+e2e-test: UI checks covered; the product closed loop with the fake provider is NOT RUN until T-040.
