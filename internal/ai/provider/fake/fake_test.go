@@ -16,7 +16,7 @@ const org = "org_01M4YDQK00TA00000000000000"
 
 func prompt(t *testing.T, role provider.Role, loc locale.Locale, blocks ...provider.Block) provider.Prompt {
 	t.Helper()
-	p, err := provider.Seal(provider.Prompt{Role: role, TemplateVersion: "t", Locale: loc, System: "rules", Blocks: blocks})
+	p, err := provider.Seal(provider.Prompt{OrganizationID: org, Role: role, TemplateVersion: "t", Locale: loc, System: "rules", Blocks: blocks})
 	if err != nil {
 		t.Fatal(err)
 	}

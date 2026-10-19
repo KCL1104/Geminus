@@ -116,7 +116,7 @@ func Mapping(in MappingInput) (provider.MappingContext, error) {
 	if err != nil {
 		return provider.MappingContext{}, err
 	}
-	p, err := assemble(provider.RoleImporter, loc, system, version, []provider.Block{cols, rowsBlock}, om, z)
+	p, err := assemble(in.Scope.OrganizationID, provider.RoleImporter, loc, system, version, []provider.Block{cols, rowsBlock}, om, z)
 	if err != nil {
 		return provider.MappingContext{}, err
 	}

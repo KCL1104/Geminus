@@ -298,7 +298,7 @@ func Analysis(in AnalysisInput) (AnalysisPrompt, error) {
 			return AnalysisPrompt{}, err
 		}
 	}
-	p, err := assemble(provider.RoleAnalyst, loc, system, version, blocks, om, z)
+	p, err := assemble(in.Scope.OrganizationID, provider.RoleAnalyst, loc, system, version, blocks, om, z)
 	if err != nil {
 		return AnalysisPrompt{}, err
 	}

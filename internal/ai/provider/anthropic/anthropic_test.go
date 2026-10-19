@@ -145,7 +145,7 @@ func client(t *testing.T, s *server, cfg anthropic.Config, mutate ...func(*provi
 func prompt(t *testing.T) provider.Prompt {
 	t.Helper()
 	intent, _ := jsontext.AppendQuote(nil, "raise the ICT tester capacity")
-	p, err := provider.Seal(provider.Prompt{Role: provider.RoleModeler, TemplateVersion: "modeler-test", Locale: locale.English,
+	p, err := provider.Seal(provider.Prompt{OrganizationID: org, Role: provider.RoleModeler, TemplateVersion: "modeler-test", Locale: locale.English,
 		System: "rules", Blocks: []provider.Block{{Kind: provider.UntrustedData, Name: "USER_INTENT", Content: intent}}})
 	if err != nil {
 		t.Fatal(err)

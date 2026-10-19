@@ -73,15 +73,19 @@ type Disclosure struct {
 // made only of blocks. Build prompts with internal/ai/aicontext and Seal;
 // the client refuses a prompt whose InputHash does not match its content.
 type Prompt struct {
+	// OrganizationID is the organization whose data the prompt holds. It is
+	// sealed into InputHash but never sent, and the client refuses the
+	// prompt for any other organization (review L6).
+	OrganizationID  string
 	Role            Role
 	TemplateVersion string
 	Locale          locale.Locale
 	System          string
 	Blocks          []Block
 	Disclosure      Disclosure
-	// InputHash is "sha256:<hex>" of the JCS form of the role, template
-	// version, locale, system text and rendered user message: the
-	// sanitized input hash of the audit record (AI_SPEC §10).
+	// InputHash is "sha256:<hex>" of the JCS form of the organization,
+	// role, template version, locale, system text and rendered user
+	// message: the sanitized input hash of the audit record (AI_SPEC §10).
 	InputHash string
 }
 
@@ -111,6 +115,9 @@ func canonicalContent(v jsontext.Value) (jsontext.Value, error) {
 func Seal(p Prompt) (Prompt, error) {
 	fail := func(format string, a ...any) (Prompt, error) {
 		return Prompt{}, fmt.Errorf("%w: "+format, append([]any{ErrInvalidPrompt}, a...)...)
+	}
+	if !organizationID.MatchString(p.OrganizationID) {
+		return fail("an organization ID is required")
 	}
 	if p.Role.OutputSchema() == "" {
 		return fail("unknown role")
@@ -172,12 +179,13 @@ func (p Prompt) User() string {
 
 func (p Prompt) hash() (string, error) {
 	doc, err := json.Marshal(struct {
+		OrganizationID  string        `json:"organization_id"`
 		Role            Role          `json:"role"`
 		TemplateVersion string        `json:"template_version"`
 		Locale          locale.Locale `json:"locale"`
 		System          string        `json:"system"`
 		User            string        `json:"user"`
-	}{p.Role, p.TemplateVersion, p.Locale, p.System, p.User()})
+	}{p.OrganizationID, p.Role, p.TemplateVersion, p.Locale, p.System, p.User()})
 	if err != nil {
 		return "", err
 	}
@@ -189,7 +197,8 @@ func (p Prompt) Verify() error {
 	if p.InputHash == "" {
 		return fmt.Errorf("%w: not sealed", ErrInvalidPrompt)
 	}
-	again, err := Seal(Prompt{Role: p.Role, TemplateVersion: p.TemplateVersion, Locale: p.Locale, System: p.System, Blocks: p.Blocks})
+	again, err := Seal(Prompt{OrganizationID: p.OrganizationID, Role: p.Role, TemplateVersion: p.TemplateVersion, Locale: p.Locale,
+		System: p.System, Blocks: p.Blocks})
 	if err != nil {
 		return err
 	}

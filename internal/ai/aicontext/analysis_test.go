@@ -57,7 +57,7 @@ func TestAnalysisContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := a.Context.Prompt
-	if a.Context.OrganizationID != orgA || p.Role != provider.RoleAnalyst || p.TemplateVersion != "analyst-0.3.0" || p.Verify() != nil {
+	if a.Context.OrganizationID != orgA || p.OrganizationID != orgA || p.Role != provider.RoleAnalyst || p.TemplateVersion != "analyst-0.3.0" || p.Verify() != nil {
 		t.Fatalf("%+v", a.Context)
 	}
 	b := blocks(t, p)

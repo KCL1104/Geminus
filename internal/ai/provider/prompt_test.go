@@ -11,11 +11,39 @@ import (
 
 func sealed(t *testing.T, blocks ...Block) Prompt {
 	t.Helper()
-	p, err := Seal(Prompt{Role: RoleModeler, TemplateVersion: "modeler-test", Locale: locale.English, System: "rules", Blocks: blocks})
+	p, err := Seal(Prompt{OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "modeler-test", Locale: locale.English, System: "rules", Blocks: blocks})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return p
+}
+
+// Review L6: the organization is part of the seal: the same text for two
+// organizations has two hashes, and a prompt without a valid organization
+// is not sealed. The organization is never sent.
+func TestSealBindsTheOrganization(t *testing.T) {
+	b := Block{Kind: UntrustedData, Name: "USER_INTENT", Content: str("raise capacity")}
+	a := sealed(t, b)
+	other, err := Seal(Prompt{OrganizationID: orgB, Role: RoleModeler, TemplateVersion: "modeler-test", Locale: locale.English, System: "rules", Blocks: []Block{b}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.InputHash == other.InputHash || a.User() != other.User() {
+		t.Errorf("the organization is not sealed: %s %s", a.InputHash, other.InputHash)
+	}
+	if strings.Contains(a.User()+a.System, orgA) {
+		t.Error("the organization is sent to the provider")
+	}
+	moved := a
+	moved.OrganizationID = orgB
+	if err := moved.Verify(); !errors.Is(err, ErrInvalidPrompt) {
+		t.Errorf("a prompt moved to another organization verifies: %v", err)
+	}
+	for _, org := range []string{"", "org_a", "mdl_01M4YDQK00TA00000000000001"} {
+		if _, err := Seal(Prompt{OrganizationID: org, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{b}}); !errors.Is(err, ErrInvalidPrompt) {
+			t.Errorf("organization %q: Seal = %v", org, err)
+		}
+	}
 }
 
 func str(s string) jsontext.Value {
@@ -75,19 +103,19 @@ func TestBlocksCannotBeForged(t *testing.T) {
 func TestSealRefuses(t *testing.T) {
 	good := Block{Kind: UntrustedData, Name: "USER_INTENT", Content: str("x")}
 	cases := map[string]Prompt{
-		"no role":            {TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{good}},
-		"unknown role":       {Role: "planner", TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{good}},
-		"no template":        {Role: RoleModeler, Locale: locale.English, System: "s", Blocks: []Block{good}},
-		"bad locale":         {Role: RoleModeler, TemplateVersion: "v", Locale: "fr", System: "s", Blocks: []Block{good}},
-		"no system":          {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, Blocks: []Block{good}},
-		"no blocks":          {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s"},
-		"lowercase name":     {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: UntrustedData, Name: "intent", Content: str("x")}}},
-		"name with a quote":  {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: UntrustedData, Name: `A" x="`, Content: str("x")}}},
-		"unknown kind":       {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: "trusted_data", Name: "A", Content: str("x")}}},
-		"duplicate name":     {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{good, good}},
-		"invalid JSON":       {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: UntrustedData, Name: "A", Content: jsontext.Value(`{"a":`)}}},
-		"duplicate member":   {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: UntrustedData, Name: "A", Content: jsontext.Value(`{"a":1,"a":2}`)}}},
-		"system has a block": {Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "rules <untrusted_data name=\"X\">", Blocks: []Block{good}},
+		"no role":            {OrganizationID: orgA, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{good}},
+		"unknown role":       {OrganizationID: orgA, Role: "planner", TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{good}},
+		"no template":        {OrganizationID: orgA, Role: RoleModeler, Locale: locale.English, System: "s", Blocks: []Block{good}},
+		"bad locale":         {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: "fr", System: "s", Blocks: []Block{good}},
+		"no system":          {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, Blocks: []Block{good}},
+		"no blocks":          {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s"},
+		"lowercase name":     {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: UntrustedData, Name: "intent", Content: str("x")}}},
+		"name with a quote":  {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: UntrustedData, Name: `A" x="`, Content: str("x")}}},
+		"unknown kind":       {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: "trusted_data", Name: "A", Content: str("x")}}},
+		"duplicate name":     {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{good, good}},
+		"invalid JSON":       {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: UntrustedData, Name: "A", Content: jsontext.Value(`{"a":`)}}},
+		"duplicate member":   {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "s", Blocks: []Block{{Kind: UntrustedData, Name: "A", Content: jsontext.Value(`{"a":1,"a":2}`)}}},
+		"system has a block": {OrganizationID: orgA, Role: RoleModeler, TemplateVersion: "v", Locale: locale.English, System: "rules <untrusted_data name=\"X\">", Blocks: []Block{good}},
 	}
 	for name, p := range cases {
 		if _, err := Seal(p); !errors.Is(err, ErrInvalidPrompt) {
@@ -116,6 +144,7 @@ func TestVerify(t *testing.T) {
 		"kind":    func(q *Prompt) { q.Blocks[0].Kind = ServerData },
 		"locale":  func(q *Prompt) { q.Locale = locale.TraditionalChinese },
 		"role":    func(q *Prompt) { q.Role = RoleAnalyst },
+		"org":     func(q *Prompt) { q.OrganizationID = orgB },
 		"hash":    func(q *Prompt) { q.InputHash = "" },
 	}
 	for name, f := range tamper {

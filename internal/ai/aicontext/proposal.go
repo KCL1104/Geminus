@@ -383,7 +383,7 @@ func Proposal(in ProposalInput) (provider.ProposalContext, error) {
 		if err := add(provider.UntrustedData, "USER_INTENT", z.textBound(in.Intent, maxIntentRunes)); err != nil {
 			return provider.ProposalContext{}, err
 		}
-		p, err := assemble(role, loc, system, version, blocks, om, z)
+		p, err := assemble(in.Scope.OrganizationID, role, loc, system, version, blocks, om, z)
 		if err != nil {
 			return provider.ProposalContext{}, err
 		}

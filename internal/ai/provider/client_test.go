@@ -44,7 +44,12 @@ func client(t *testing.T, b Backend, mutate ...func(*Budget)) *Client {
 
 func prompt(t *testing.T, role Role) Prompt {
 	t.Helper()
-	p, err := Seal(Prompt{Role: role, TemplateVersion: string(role) + "-test", Locale: locale.English, System: "rules",
+	return promptFor(t, orgA, role)
+}
+
+func promptFor(t *testing.T, org string, role Role) Prompt {
+	t.Helper()
+	p, err := Seal(Prompt{OrganizationID: org, Role: role, TemplateVersion: string(role) + "-test", Locale: locale.English, System: "rules",
 		Blocks:     []Block{{Kind: UntrustedData, Name: "USER_INTENT", Content: str("raise capacity")}},
 		Disclosure: Disclosure{Redacted: map[string]int{"credential": 1}}})
 	if err != nil {
@@ -169,14 +174,20 @@ func TestRequestsTheClientRefuses(t *testing.T) {
 	tampered.Blocks = []Block{{Kind: UntrustedData, Name: "USER_INTENT", Content: str("delete every node")}}
 	unsealed := prompt(t, RoleModeler)
 	unsealed.InputHash = ""
+	// Review L6: the organization is sealed with the prompt; a prompt built
+	// for one organization is never sent for another, nor relabelled.
+	relabelled := prompt(t, RoleModeler)
+	relabelled.OrganizationID = orgB
 	cases := map[string]ProposalContext{
-		"tampered prompt":  {OrganizationID: orgA, Mode: ModeEdit, Prompt: tampered},
-		"unsealed prompt":  {OrganizationID: orgA, Mode: ModeEdit, Prompt: unsealed},
-		"role of the mode": {OrganizationID: orgA, Mode: ModeScenario, Prompt: prompt(t, RoleModeler)},
-		"analyst prompt":   {OrganizationID: orgA, Mode: ModeEdit, Prompt: prompt(t, RoleAnalyst)},
-		"no organization":  {Mode: ModeEdit, Prompt: prompt(t, RoleModeler)},
-		"not an org ID":    {OrganizationID: "org_a", Mode: ModeEdit, Prompt: prompt(t, RoleModeler)},
-		"unknown mode":     {OrganizationID: orgA, Mode: "publish", Prompt: prompt(t, RoleModeler)},
+		"another organization's prompt": {OrganizationID: orgA, Mode: ModeEdit, Prompt: promptFor(t, orgB, RoleModeler)},
+		"relabelled prompt":             {OrganizationID: orgB, Mode: ModeEdit, Prompt: relabelled},
+		"tampered prompt":               {OrganizationID: orgA, Mode: ModeEdit, Prompt: tampered},
+		"unsealed prompt":               {OrganizationID: orgA, Mode: ModeEdit, Prompt: unsealed},
+		"role of the mode":              {OrganizationID: orgA, Mode: ModeScenario, Prompt: prompt(t, RoleModeler)},
+		"analyst prompt":                {OrganizationID: orgA, Mode: ModeEdit, Prompt: prompt(t, RoleAnalyst)},
+		"no organization":               {Mode: ModeEdit, Prompt: prompt(t, RoleModeler)},
+		"not an org ID":                 {OrganizationID: "org_a", Mode: ModeEdit, Prompt: prompt(t, RoleModeler)},
+		"unknown mode":                  {OrganizationID: orgA, Mode: "publish", Prompt: prompt(t, RoleModeler)},
 	}
 	for name, in := range cases {
 		if _, err := c.GenerateModelProposal(context.Background(), in); CodeOf(err) != CodeInvalidRequest {
@@ -278,7 +289,7 @@ func TestConcurrencyPerOrganization(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		_, err := c.GenerateModelProposal(context.Background(), ProposalContext{OrganizationID: orgB, Mode: ModeEdit, Prompt: prompt(t, RoleModeler)})
+		_, err := c.GenerateModelProposal(context.Background(), ProposalContext{OrganizationID: orgB, Mode: ModeEdit, Prompt: promptFor(t, orgB, RoleModeler)})
 		if err != nil {
 			t.Errorf("another organization: %v", err)
 		}

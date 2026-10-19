@@ -212,7 +212,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, out 
 	if d, ok := c.backend.(Disabled); ok {
 		return nil, Metadata{}, d.err()
 	}
-	if role == "" || !organizationID.MatchString(org) || p.Role != role || p.Verify() != nil {
+	if role == "" || !organizationID.MatchString(org) || p.OrganizationID != org || p.Role != role || p.Verify() != nil {
 		return nil, Metadata{}, invalidRequest()
 	}
 	if len(p.System)+len(p.User()) > c.budget.MaxPromptBytes {

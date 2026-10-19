@@ -96,7 +96,7 @@ func TestProposalContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := ctx.Prompt
-	if ctx.OrganizationID != orgA || ctx.Mode != provider.ModeEdit || p.Role != provider.RoleModeler || p.Verify() != nil {
+	if ctx.OrganizationID != orgA || p.OrganizationID != orgA || ctx.Mode != provider.ModeEdit || p.Role != provider.RoleModeler || p.Verify() != nil {
 		t.Fatalf("context %+v", ctx)
 	}
 	if p.TemplateVersion != "modeler-0.2.0" || p.Locale != locale.English {

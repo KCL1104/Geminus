@@ -228,7 +228,7 @@ func (o *omissions) sorted() []Omission {
 
 // assemble seals a prompt: system rules and blocks, with the omissions and
 // redactions as the last server block and in the disclosure.
-func assemble(role provider.Role, loc locale.Locale, system string, version string, blocks []provider.Block,
+func assemble(org string, role provider.Role, loc locale.Locale, system string, version string, blocks []provider.Block,
 	om *omissions, z *sanitizer) (provider.Prompt, error) {
 	om.add("strings", z.counts[RedactTruncated], ReasonTruncated)
 	om.add("members", z.counts[collided], ReasonCollision)
@@ -245,7 +245,7 @@ func assemble(role provider.Role, loc locale.Locale, system string, version stri
 	for _, o := range list {
 		disclosure.Omitted[o.What+":"+string(o.Reason)] += o.Count
 	}
-	return provider.Seal(provider.Prompt{Role: role, TemplateVersion: version, Locale: loc, System: system,
+	return provider.Seal(provider.Prompt{OrganizationID: org, Role: role, TemplateVersion: version, Locale: loc, System: system,
 		Blocks: append(slices.Clone(blocks), omBlock), Disclosure: disclosure})
 }
 
