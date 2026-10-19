@@ -95,6 +95,33 @@ Review round 1 的修正（5d8f44e）在乾淨的 worktree 執行（`git worktre
 | **I4** 第二個 SIGTERM 被吞掉 | `listen()`：收到第一個 signal 時先恢復預設處理、再結束 context，所以第二個 signal 立即結束 process。第一版（`signal.NotifyContext` 加 goroutine）有 race：context 先結束，第二個 signal 若在 `stop()` 之前到達就被吞掉——新測試第一次執行就失敗，因此改寫。每個 job 的總時限屬於 handler 與其 resource（ADR-024 Consequences） | `TestASecondSignalEndsTheProcess`（以子 process 送兩次 SIGINT，檢查它被 SIGINT 結束）；`cmd-second-signal-swallowed`。另外，迴圈開始前收到的 signal 原本會以 exit 3「database unavailable」結束，改為停止（exit 0）：`TestRunStopsBeforeStarting`、`cmd-stop-before-start-fails` |
 | **I5** T-016 的 `depends_on` 沒有 T-019 | 已加入 | `planning/tasks.json` |
 
+## Review round 2（52c667c：CHANGES REQUESTED）的修正
+
+Round 2 確認 M1、M4、L1、L4、L5、L6、I1、I4、I5 已修好，L3 的 API 部分已修好；提出新的 M1、L1–L5 與 I1–I5。全部處理，I4 為接受並記錄。
+
+| 項目 | 修正 | 證據 |
+|---|---|---|
+| **M1** handler 的 error 型別本身壞掉（typed nil 的 `*os.PathError`、`Error()` 讀取自己的值、包住自己的 Unwrap）時，worker 在 recover 之外讀取它而崩潰或卡住 | `read`：在 recover 之內讀取 error（`errors.Is`／`errors.As`、`Error()`），先檢查 Unwrap 樹至多 64 個 error；讀不了的 error 記為 `INTERNAL`、不重試，log 只寫型別。永遠卡住的方法無法在 process 內防範（寫明於 ADR-024） | `TestFailedAttempts` 的 typed nil `*os.PathError`、typed nil 自訂型別、包住自己的 error；`read-unprotected`、`chains-unbounded`、`broken-not-noted`、`broken-retried` |
+| **L1** handler 被停止後（甚至 DB 的 lease 結束後），以 detached context 呼叫的 `Checkpoint`／`Finish` 仍寫入 | Attempt 停止後兩者都不再開始（lease 失去時 `jobs.ErrLeaseLost`，worker 停止時新的 `handler.ErrStopped`）；transaction 的 context 也隨 attempt 結束（`context.AfterFunc`），進行中的 transaction 被取消並 rollback。文件改為與行為一致 | `TestNothingIsWrittenAfterTheAttemptStops`（期限與 worker 停止兩種）、`TestATransactionIsCancelledWhenTheAttemptStops`（已寫入、持有 row lock 越過期限的 checkpoint 沒有 commit）；`writes-after-the-stop`、`transaction-outlives-the-attempt`、`stopped-hides-the-lost-lease`、`mid-transaction-stop-unreported` |
+| **L2** 「可容許一次續期失敗」只在失敗於一個 heartbeat 內回來時成立 | Heartbeat 改為依序續期：每次至多一個 heartbeat（也不超過期限），卡住的續期放棄後立刻開始下一次（ticker 保留錯過的 tick）；期限由獨立的 goroutine 執行 | `TestAHungRenewalIsRetried`（約 1 秒的續期卡 1.5 秒後失敗，job 仍完成）；`TestASlowRenewalCountsFromItsStart` 改為在一個 heartbeat 內完成的慢續期；`renewal-unbounded`（原本列為等價，現在被擋下）、`renewal-bounded-by-the-deadline-only`、`earliest-is-latest` |
+| **L3** handler package 從 T-023、T-025 的 planned paths 用不了 | 寫明 handler 是 adapter，不能放在 generic kernel 或 `internal/ai`（既有規則禁止它們依賴 storage 與 tenant）；T-023、T-025 需要各自的 adapter package，由那兩個任務命名並記錄（`handler.go`、ADR-024） | `TestHandlersPlugInWithoutTheWorkerScope` 改為三個位置：T-016 的 `internal/import/upload` 不違反任何規則；`internal/simulation/handler` 違反 `generic-kernel`；`internal/ai/handler` 違反 `ai-suggests-only`；三者都不碰 worker scope |
+| **L4** PostgreSQL 存不了的 message（NUL、非 UTF-8）讓 Failure 沒被記錄 | `checked` 也替換非 UTF-8 或含 NUL 的 message | `TestFailedAttempts` 兩個案例；`checked-keeps-nul`、`checked-keeps-invalid-utf8` |
+| **L5** 測試缺口 | worker 停止時 handler 回 nil 記為 `WORKER_STOPPED`（不是 `NO_RESULT`）；API 不能動 queued job 的 lease 欄位；claim 的 statement 拖 0.8 秒時期限仍從 claim 的 transaction 開始前算起；code 超過 64 字；message 以字元而非 byte 計算；`Run` 在 context 結束後 5 秒內返回 | `TestStoppingRequeuesTheJob` 第三個案例、`constraints.sql`、`TestASlowClaimCountsFromBeforeIt`、`TestFailedAttempts`、`TestRunReturnsWhenStopped`；`api-lease-columns-unchecked`、`code-length-unbounded`、`checked-counts-bytes`；`loop-ignores-stop` 現在 5 秒內被擋下。`rv2-cmd-stop-after-cancel`（`listen()` 中先 `cancel` 再 `Stop`）的時間窗只有幾微秒，子 process 測試碰不到；順序是刻意的，寫在註解中 |
+| **I1** worker login 可以把 running job 的 attempt 調高、直接接手別人的 lease、把 lease 延長一年、保留 lease 回到 queued | 0007：worker 對 running job 只能續期（attempt、token、holder、error 不變），離開 running 時必須清除 lease；attempt 與 token 只在 claim 時改變。Lease 的長度上限沒有放進 DB：那是部署的參數（ADR-024），DB 中再寫一份會重複設定 | `constraints.sql` 的 9 個新的 must_fail；`worker-running-unrestricted`、`worker-changes-attempt-or-token`、`worker-takes-over`、`worker-keeps-the-lease` |
+| **I2** 0007 讓三個 role 以外的 role 通過 | 不是 owner、API 或 worker 的 role 一律被拒；只有 owner 與 API 能 enqueue | `constraints.sql`：在 rollback 的 transaction 中授權給 `twin_provisioner` 與 worker 後仍以 55000 被拒；`other-roles-allowed`、`anyone-enqueues` |
+| **I3** 時鐘的說法不精確 | 改寫：worker 以 monotonic clock 計時，與 DB 的時鐘差距不影響；餘裕涵蓋停止 handler、DB 時鐘往前跳與短於半個 heartbeat 的 process 暫停 | `worker.go` 註解、ADR-024 |
+| **I4** 期限停止 attempt 時，handler 這時才回的 Failure 不記錄 | 接受並記錄：reaper 以可重試的 `LEASE_EXPIRED` 取回，下一次 attempt 會再得到 handler 的判斷 | ADR-024 Consequences |
+| **I5** pgx 拒絕的 `DATABASE_URL` 在 handler 檢查之後才被發現 | 在 handler 檢查之前以 pgx 解析 | `TestRunRefusesABadConnectionString`；`cmd-bad-connection-string-not-a-config-error` |
+
+`fence-any-status` 的等價理由依 reviewer 的意見改寫（現在由 0007 對 worker 的規則保證）。
+
+這一輪 mutation 找到的：
+
+- `typed-nil-failure-used` 起初存活：`read` 中的 `&& f != nil` 與 `run` 的 `v.failure != nil` 重複（typed nil 的 `*jobs.Failure` 在欄位中就是 nil）。移除前者，mutant 改為針對真正的防線（`run` 的判斷），被擋下。
+- `writes-after-the-stop`（拿掉「attempt 停止後不再開始」）存活，列為等價：attempt 停止後 `context.AfterFunc` 立即取消 transaction 的 context，呼叫在第一個 statement 就失敗、什麼都不寫；提早返回讓這件事不依賴取消的 goroutine 是否先跑，也不執行 fn。
+- 乾淨 worktree 的驗證（`go test -race`）抓到新 heartbeat 的 data race：期限的 goroutine 在啟動時讀取 `deadline`，而續期迴圈同時寫入。改為在 goroutine 啟動前建立 timer，goroutine 只經由 timer 與 channel 取得期限；之後 `-race -count=3` 通過。Mutation harness 不以 `-race` 執行，所以沒有發現它。
+- SQL 的 `attempt-goes-back`、`token-goes-back` 起初存活：worker 的新規則先擋下了原本的測試；補 owner（不受角色限制）把 attempt 與 token 調回的案例後被擋下。
+
 ## 決策與 owner 知悉
 
 - **ADR-024 為 PROPOSED，待 owner 決定**：

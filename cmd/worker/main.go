@@ -83,21 +83,22 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, hand
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
-	// The whole configuration is checked before anything else, the allowlist
-	// included (workerscope checks it without a pool).
+	// The whole configuration is checked before anything else: the allowlist
+	// (workerscope checks it without a pool) and the connection string as
+	// pgx reads it, which no connection is made for yet.
 	if _, err := workerscope.New(nil, wcfg.Organizations); err != nil {
 		log.Error("invalid configuration", "error", "WORKER_ORGANIZATION_IDS must list organization IDs, each once")
+		return exitConfig
+	}
+	poolCfg, err := poolConfig(cfg.DatabaseURL)
+	if err != nil {
+		log.Error("invalid configuration", "error", "DATABASE_URL is not a valid PostgreSQL connection string")
 		return exitConfig
 	}
 	if len(handlers) == 0 {
 		log.Error("NOT IMPLEMENTED: no job handler exists yet (T-016, T-023, T-025); refusing to start",
 			"ai_provider", string(cfg.AIProvider))
 		return exitNotImplemented
-	}
-	poolCfg, err := poolConfig(cfg.DatabaseURL)
-	if err != nil {
-		log.Error("invalid configuration", "error", "DATABASE_URL is not a valid PostgreSQL connection string")
-		return exitConfig
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {

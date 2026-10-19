@@ -387,7 +387,13 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
      WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET attempt=2 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
-  $q$UPDATE twin.jobs SET status='completed' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$
+  $q$UPDATE twin.jobs SET status='completed' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
+  -- Nor touch a queued job's lease columns.
+  $q$UPDATE twin.jobs SET locked_by='api' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
+  $q$UPDATE twin.jobs SET locked_at=now() WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
+  $q$UPDATE twin.jobs SET lease_expires_at=now()+interval '1 minute' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
+  $q$UPDATE twin.jobs SET heartbeat_at=now() WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
+  $q$UPDATE twin.jobs SET lease_token=lease_token+1 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$
 ]) AS s;
 
 -- The worker claims a queued job, and only claims it.
@@ -410,7 +416,19 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.jobs SET status='queued', attempt=0, locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
   -- The last attempt's end is final: a retry would leave a queued job no claim takes.
   $q$UPDATE twin.jobs SET status='queued', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error='{"code":"X","message":"x","retryable":true}'
-     WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A6}}'$q$
+     WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A6}}'$q$,
+  -- A running job's lease is its holder's (round 2 I1): no attempt or token
+  -- outside a claim, no takeover, no error while running, and it is cleared
+  -- when the job leaves running.
+  $q$UPDATE twin.jobs SET attempt=attempt+1 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET lease_token=lease_token+1 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET locked_by='worker-2', lease_token=lease_token+1 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET locked_by='worker-2' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET locked_at=now()+interval '1 second' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET status='queued', error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET status='completed', locked_at=NULL, lease_expires_at=NULL WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET status='failed', locked_by=NULL, locked_at=NULL, error='{"code":"X","message":"x","retryable":false}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$
 ]) AS s;
 UPDATE twin.jobs SET status='queued', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error='{"code":"X","message":"x","retryable":true}'
   WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}';
@@ -444,6 +462,10 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.jobs SET payload='{"import_id":"other"}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET max_attempts=10 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET created_at=now()-interval '1 day' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
+  -- Attempts and tokens never go back, for the owner too (the worker's own
+  -- rule refuses any change of them outside a claim).
+  $q$UPDATE twin.jobs SET attempt=0 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
+  $q$UPDATE twin.jobs SET lease_token=lease_token-1 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET id='job_01M4YDQK00TA00000000000099' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET organization_id='{{ORG_B}}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET type='import_validate' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
@@ -472,6 +494,21 @@ UPDATE twin.jobs SET status=status WHERE organization_id='{{ORG_A}}' AND id IN (
 RESET ROLE;
 UPDATE twin.jobs SET status='failed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error='{"code":"OPERATOR","message":"x","retryable":false}'
   WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}';
+-- Any other role is refused, whatever privileges it is given (round 2 I2).
+GRANT SELECT, INSERT, UPDATE ON twin.jobs TO twin_provisioner;
+SET LOCAL ROLE twin_provisioner;
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  $q$UPDATE twin.jobs SET status='cancelled' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A8}}'$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000098','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}')$q$
+]) AS s;
+-- Nor does the worker enqueue, even given INSERT.
+RESET ROLE;
+REVOKE SELECT, INSERT, UPDATE ON twin.jobs FROM twin_provisioner;
+GRANT INSERT ON twin.jobs TO twin_worker;
+SET LOCAL ROLE twin_worker;
+SELECT pg_temp.must_fail($q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000097','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}')$q$, '55000');
+RESET ROLE;
+REVOKE INSERT ON twin.jobs FROM twin_worker;
 SET LOCAL ROLE twin_worker;
 SELECT pg_temp.must_fail($q$UPDATE twin.jobs SET status='queued', error=NULL WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A4}}'$q$, '55000');
 SET LOCAL ROLE twin_api;

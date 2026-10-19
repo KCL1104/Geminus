@@ -57,13 +57,22 @@ MUTANTS = [
     # A queued job has an attempt left
     ("queued-without-attempts", "  IF NEW.status='queued' AND NEW.attempt>=NEW.max_attempts THEN", "  IF false THEN"),
     # Each runtime role only its own way (review L3)
-    ("owner-restricted-as-api", "  IF NOT pg_catalog.pg_has_role(current_user,'twin_owner','USAGE') THEN", "  IF true THEN"),
-    ("roles-unrestricted", "  IF NOT pg_catalog.pg_has_role(current_user,'twin_owner','USAGE') THEN", "  IF false THEN"),
-    ("api-any-move", "    IF pg_catalog.pg_has_role(current_user,'twin_api','USAGE')\n       AND NOT", "    IF false\n       AND NOT"),
+    ("owner-restricted-as-api", "  IF NOT owner THEN", "  IF true THEN"),
+    ("roles-unrestricted", "  IF NOT owner THEN", "  IF false THEN"),
+    ("api-any-move", "    IF api\n       AND NOT", "    IF false\n       AND NOT"),
     ("api-moves-a-running-job", "       AND NOT (OLD.status='queued' AND NEW.status IN ('queued','cancelled')", "       AND NOT (NEW.status IN ('queued','cancelled')"),
     ("api-claims", "NEW.status IN ('queued','cancelled')\n", "NEW.status IN ('queued','running','cancelled')\n"),
     ("api-touches-the-lease", "AND ROW(NEW.attempt,NEW.lease_token,NEW.locked_at,NEW.locked_by,NEW.lease_expires_at,NEW.heartbeat_at,NEW.error)", "AND ROW(OLD.attempt,OLD.lease_token,OLD.locked_at,OLD.locked_by,OLD.lease_expires_at,OLD.heartbeat_at,OLD.error)"),
-    ("worker-any-move", "    IF pg_catalog.pg_has_role(current_user,'twin_worker','USAGE') AND OLD.status='queued' AND NEW.status<>'running' THEN", "    IF false THEN"),
+    ("worker-any-move", "    IF worker AND OLD.status='queued' AND NEW.status<>'running' THEN", "    IF false THEN"),
+    ("api-lease-columns-unchecked", "ROW(NEW.attempt,NEW.lease_token,NEW.locked_at,NEW.locked_by,NEW.lease_expires_at,NEW.heartbeat_at,NEW.error)", "ROW(NEW.attempt,OLD.lease_token,OLD.locked_at,OLD.locked_by,OLD.lease_expires_at,OLD.heartbeat_at,NEW.error)"),
+    # A running job's lease is its holder's (round 2 I1)
+    ("worker-running-unrestricted", "    IF worker AND OLD.status='running'\n", "    IF false AND OLD.status='running'\n"),
+    ("worker-changes-attempt-or-token", "ROW(NEW.attempt,NEW.lease_token) IS DISTINCT FROM ROW(OLD.attempt,OLD.lease_token)", "false"),
+    ("worker-takes-over", "            OR (NEW.status='running' AND ROW(NEW.locked_by,NEW.locked_at,NEW.error) IS DISTINCT FROM ROW(OLD.locked_by,OLD.locked_at,OLD.error))\n", ""),
+    ("worker-keeps-the-lease", "\n            OR (NEW.status<>'running' AND (NEW.locked_by IS NOT NULL OR NEW.locked_at IS NOT NULL OR NEW.lease_expires_at IS NOT NULL))", ""),
+    # Every other role is refused (round 2 I2)
+    ("other-roles-allowed", "  IF NOT (owner OR api OR worker) THEN", "  IF false THEN"),
+    ("anyone-enqueues", "    IF NOT (owner OR api) THEN", "    IF false THEN"),
 ]
 EQUIVALENT: dict[str, str] = {
     "api-claims": "a claim changes attempt and lease_token (the claim rule requires attempt+1 and a new token), which the API's own check keeps unchanged; leaving running out of the API's statuses only states the rule twice",

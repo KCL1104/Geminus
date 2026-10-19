@@ -79,6 +79,18 @@ func TestRunRefusesABadAllowlist(t *testing.T) {
 	}
 }
 
+// A connection string pgx refuses is a configuration error too, before the
+// handler check and before any connection (T-019 round 2 I5).
+func TestRunRefusesABadConnectionString(t *testing.T) {
+	bad := "postgresql://twin_worker:db-pass-123@/twin?host=/nonexistent-geminus-socket&connect_timeout=soon"
+	for name, hs := range map[string]map[jobs.Type]handler.Handler{"with a handler": someHandler, "without one": handlers()} {
+		var stderr bytes.Buffer
+		if code := run(context.Background(), with("DATABASE_URL", bad), &stderr, hs); code != exitConfig || !strings.Contains(stderr.String(), "DATABASE_URL") || strings.Contains(stderr.String(), "db-pass-123") {
+			t.Errorf("%s: exit %d: %s", name, code, stderr.String())
+		}
+	}
+}
+
 // Every connection the pool hands back is checked for leftover tenant
 // scope (tenant.Guard).
 func TestPoolGuardsReleasedConnections(t *testing.T) {

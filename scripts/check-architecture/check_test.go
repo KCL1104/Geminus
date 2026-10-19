@@ -179,32 +179,61 @@ func TestProbesAreCaught(t *testing.T) {
 	}
 }
 
-// A package outside the worker implements a job handler through
-// internal/worker/handler without reaching the worker scope (T-019 review
-// M3): the import, simulation and AI packages will.
+// A job handler implements internal/worker/handler's Handler outside the
+// worker (T-019 review M3): at T-016's planned path it breaks no rule. A
+// handler reads and writes the database, so it cannot live in the generic
+// kernel or in internal/ai, whose own rules forbid that (round 2 L3); the
+// simulation (T-023) and AI (T-025) handlers need adapter packages of their
+// own (ADR-024).
 func TestHandlersPlugInWithoutTheWorkerScope(t *testing.T) {
 	root := repoRoot(t)
-	ov := overlay(t, root, map[string]string{"internal/project/zz_probe.go": `package project
+	probe := func(dir string) string {
+		pkg := dir[strings.LastIndex(dir, "/")+1:]
+		return `package ` + pkg + `
 
 import (
 	"context"
 
+	"` + module + `/internal/storage/jobs"
+	"` + module + `/internal/tenant"
 	"` + module + `/internal/worker/handler"
 )
 
-var _ handler.Handler = handler.Func(func(context.Context, handler.Run) error { return nil })
-`})
-	g, err := load(root, []string{"-overlay=" + ov}, host, defaultPatterns...)
-	if err != nil {
-		t.Fatal(err)
+var _ handler.Handler = handler.Func(func(ctx context.Context, run handler.Run) error {
+	return run.Finish(ctx, jobs.Completed, func(context.Context, tenant.Tx) error { return nil })
+})
+`
 	}
-	violations, errs := check(g, rules)
-	if len(errs) > 0 {
-		t.Fatal(errs)
-	}
-	for _, v := range violations {
-		if rel(v.pkg) == "./internal/project" {
-			t.Errorf("a handler outside the worker violates %s: %v", v.rule, v.chain)
+	for dir, want := range map[string][]string{
+		"internal/import/upload":      nil,
+		"internal/simulation/handler": {"generic-kernel"},
+		"internal/ai/handler":         {"ai-suggests-only"},
+	} {
+		ov := overlay(t, root, map[string]string{dir + "/zz_probe.go": probe(dir)})
+		g, err := load(root, []string{"-overlay=" + ov}, host, defaultPatterns...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		violations, errs := check(g, rules)
+		if len(errs) > 0 {
+			t.Fatal(errs)
+		}
+		var got []string
+		for _, v := range violations {
+			if rel(v.pkg) == "./"+dir {
+				if v.rule == "worker-scope-only-in-the-worker" {
+					t.Errorf("a handler in %s reaches the worker scope: %v", dir, v.chain)
+				}
+				got = append(got, v.rule)
+			}
+		}
+		for _, rule := range want {
+			if !slices.Contains(got, rule) {
+				t.Errorf("a handler in %s: rules broken %v, want %s among them", dir, got, rule)
+			}
+		}
+		if want == nil && len(got) > 0 {
+			t.Errorf("a handler in %s breaks %v", dir, got)
 		}
 	}
 }

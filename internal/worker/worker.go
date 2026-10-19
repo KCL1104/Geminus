@@ -4,7 +4,8 @@
 // then claims one job of a type it has a handler for (internal/worker/handler)
 // and runs it, renewing the lease meanwhile and stopping the handler before
 // the lease could end. Every database access of the handler is fenced by the
-// lease, so once it is lost nothing the handler does is written.
+// lease and ends with the attempt, so once the handler is stopped nothing it
+// does is written.
 package worker
 
 import (
@@ -20,6 +21,7 @@ import (
 	"sync"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -39,9 +41,10 @@ type Config struct {
 	// ID names this worker in the lease (twin.jobs.locked_by).
 	ID     string
 	Policy jobs.Policy
-	// Heartbeat renews the lease; at most a third of Policy.Lease. The
-	// handler is stopped half a Heartbeat before the lease could end (see
-	// heartbeat), so one renewal may fail without stopping it.
+	// Heartbeat renews the lease; at most a third of Policy.Lease. Each
+	// renewal may take at most one Heartbeat, and the handler is stopped half
+	// a Heartbeat before the lease could end (see heartbeat), so one renewal
+	// may fail without stopping it.
 	Heartbeat time.Duration
 	// Idle is the pause after a pass that found no job.
 	Idle time.Duration
@@ -145,7 +148,11 @@ type attempt struct {
 	w     *Worker
 	job   jobs.Job
 	lease jobs.Lease
-	lost  func()
+	// alive ends when the attempt stops: its lease lost or its deadline
+	// reached, the worker stopping, or the handler returned.
+	alive  context.Context
+	lost   func()
+	isLost func() bool
 
 	mu       sync.Mutex
 	finished bool
@@ -154,9 +161,25 @@ type attempt struct {
 
 func (a *attempt) Job() jobs.Job { return a.job }
 
+// stopped is why a stopped attempt writes nothing.
+func (a *attempt) stopped() error {
+	if a.isLost() {
+		return jobs.ErrLeaseLost
+	}
+	return handler.ErrStopped
+}
+
 // locked runs fn, then end (if any), in one transaction after locking the
-// job under the lease.
+// job under the lease. Nothing starts once the attempt has stopped, and the
+// transaction ends with the attempt as well as with ctx: a handler's own
+// context (even a detached one) cannot carry a write past the deadline.
 func (a *attempt) locked(ctx context.Context, fn, end func(ctx context.Context, tx tenant.Tx) error) error {
+	if a.alive.Err() != nil {
+		return a.stopped()
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	defer context.AfterFunc(a.alive, cancel)()
 	err := a.w.scope.Run(ctx, a.lease.OrganizationID, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx) error {
 		if _, err := jobs.Lock(ctx, tx, a.lease); err != nil {
 			return err
@@ -171,6 +194,10 @@ func (a *attempt) locked(ctx context.Context, fn, end func(ctx context.Context, 
 	})
 	if errors.Is(err, jobs.ErrLeaseLost) {
 		a.lost()
+	}
+	if err != nil && a.alive.Err() != nil {
+		// Stopped mid-transaction: it rolled back.
+		return a.stopped()
 	}
 	return err
 }
@@ -205,39 +232,40 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 	var mu sync.Mutex
 	lost := false
 	setLost := func() { mu.Lock(); lost = true; mu.Unlock(); stop() }
-	a := &attempt{w: w, job: job, lease: lease, lost: setLost}
+	isLost := func() bool { mu.Lock(); defer mu.Unlock(); return lost }
+	a := &attempt{w: w, job: job, lease: lease, alive: hctx, lost: setLost, isLost: isLost}
 
 	var beats sync.WaitGroup
 	beats.Go(func() { w.heartbeat(hctx, lease, claimed, setLost, log) })
 	err := w.handle(hctx, a)
 	stop()
 	beats.Wait()
-	mu.Lock()
-	isLost := lost
-	mu.Unlock()
 	a.mu.Lock()
 	isFinished, end := a.finished, a.ended
 	a.mu.Unlock()
+	v := read(err)
 
 	switch {
 	case isFinished:
 		log.Info("job ended", "status", string(end))
 		return
-	case isLost || errors.Is(err, jobs.ErrLeaseLost):
+	case isLost() || v.leaseLost:
 		log.Warn("lease lost; the attempt ends without writing")
 		return
 	}
 	var failure jobs.Failure
-	var f *jobs.Failure
-	var p panicked
 	switch {
 	// The handler's own verdict counts even when the worker is stopping:
 	// a failure that may not be retried must not become a retry.
-	case errors.As(err, &f) && f != nil:
-		failure = checked(*f, log)
-	case errors.As(err, &p):
+	case v.failure != nil:
+		failure = checked(*v.failure, log)
+	case v.panicked != nil:
 		failure = jobs.Failure{Code: Internal, Message: "the job's handler failed"}
-		log.Error("job handler panicked", "panic", p.Error(), "stack", p.stack)
+		log.Error("job handler panicked", "panic", v.panicked.Error(), "stack", v.panicked.stack)
+	case v.broken:
+		// A bug like a panic: not retried.
+		failure = jobs.Failure{Code: Internal, Message: "the job's handler failed"}
+		log.Error("the job's handler returned an error that cannot be read", "type", fmt.Sprintf("%T", err))
 	case ctx.Err() != nil:
 		failure = jobs.Failure{Code: WorkerStopped, Message: "the worker stopped during the attempt", Retryable: true}
 	case err == nil:
@@ -245,8 +273,8 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 	default:
 		failure = jobs.Failure{Code: Internal, Message: "the job's handler failed", Retryable: true}
 	}
-	if err != nil && !errors.As(err, &p) {
-		log.Error("job attempt failed", "code", failure.Code, "error", logText(err))
+	if err != nil && v.panicked == nil && !v.broken {
+		log.Error("job attempt failed", "code", failure.Code, "error", v.text)
 	}
 	// The worker may be stopping: record the attempt's end on a context of
 	// its own, bounded by the lease the record needs.
@@ -266,17 +294,91 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 	log.Info("job attempt ended", "code", failure.Code, "retried", retried)
 }
 
+// verdict is what the loop reads of a handler's error.
+type verdict struct {
+	leaseLost bool
+	failure   *jobs.Failure
+	panicked  *panicked
+	// broken: the error could not be read (see read).
+	broken bool
+	// text is the error's text for the log (logText).
+	text string
+}
+
+// maxErrors bounds the errors read in one error's Unwrap tree.
+const maxErrors = 64
+
+// read reads err defensively: a handler's error type may be broken, a nil
+// receiver whose methods dereference it or an Unwrap chain that never ends,
+// and must neither crash nor stall the worker that serves every assigned
+// organization. A panic in its methods, or a tree of more than maxErrors
+// errors, makes it broken. (A method that blocks forever cannot be guarded
+// against in-process.)
+func read(err error) (v verdict) {
+	if err == nil {
+		return verdict{}
+	}
+	defer func() {
+		if recover() != nil {
+			v = verdict{broken: true}
+		}
+	}()
+	if !finite(err) {
+		return verdict{broken: true}
+	}
+	v.leaseLost = errors.Is(err, jobs.ErrLeaseLost)
+	// A typed nil *jobs.Failure stays nil here, so run treats it as an
+	// ordinary error (review M2).
+	var f *jobs.Failure
+	if errors.As(err, &f) {
+		v.failure = f
+	}
+	var p panicked
+	if errors.As(err, &p) {
+		v.panicked = &p
+	}
+	v.text = logText(err)
+	return v
+}
+
+// finite reports whether err's Unwrap tree holds at most maxErrors errors.
+func finite(err error) bool {
+	queue := []error{err}
+	for seen := 0; len(queue) > 0; seen++ {
+		if seen == maxErrors || len(queue) > maxErrors {
+			return false
+		}
+		e := queue[0]
+		queue = queue[1:]
+		switch u := e.(type) {
+		case interface{ Unwrap() error }:
+			if next := u.Unwrap(); next != nil {
+				queue = append(queue, next)
+			}
+		case interface{ Unwrap() []error }:
+			for _, next := range u.Unwrap() {
+				if next != nil {
+					queue = append(queue, next)
+				}
+			}
+		}
+	}
+	return true
+}
+
 var failureCode = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
 
 // checked is the handler's failure as it can be stored: an invalid code is
-// recorded as INTERNAL (its retry decision kept), and a missing or overlong
-// message is replaced, so the attempt always ends with a record.
+// recorded as INTERNAL (its retry decision kept), and a message that is
+// missing, over 1000 characters, not UTF-8 or holding NUL (which JSON or
+// PostgreSQL cannot store) is replaced, so the attempt always ends with a
+// record.
 func checked(f jobs.Failure, log *slog.Logger) jobs.Failure {
 	if !failureCode.MatchString(f.Code) {
 		log.Error("the job's handler returned a failure with an invalid code")
 		return jobs.Failure{Code: Internal, Message: "the job's handler failed", Retryable: f.Retryable}
 	}
-	if n := len([]rune(f.Message)); n == 0 || n > 1000 {
+	if n := utf8.RuneCountInString(f.Message); n == 0 || n > 1000 || !utf8.ValidString(f.Message) || strings.ContainsRune(f.Message, 0) {
 		f.Message = "the job failed"
 	}
 	return f
@@ -328,72 +430,84 @@ func (w *Worker) handle(ctx context.Context, a *attempt) (err error) {
 // handler (setLost) before the lease could end in the database:
 //
 //   - The database's lease runs from its transaction's now(), which is no
-//     earlier than the worker's clock read before that transaction began.
-//     The worker counts from there, the claim's at first and then each
-//     successful renewal's, and stops the handler half a Heartbeat before
-//     that start plus the lease. With a lease of three heartbeats, one
-//     renewal may fail and the next still keeps the job; the margin covers
-//     stopping and a worker clock a little behind the database's (a larger
-//     skew is the deployment's to prevent, NTP).
+//     earlier than when the worker started that transaction. The worker
+//     counts from there, the claim's at first and then each successful
+//     renewal's, and stops the handler half a Heartbeat before that start
+//     plus the lease, on a timer of its own that does not wait for a
+//     renewal in flight. With a lease of three heartbeats one renewal may
+//     fail and the next still keeps the job.
+//   - Renewals run one at a time, each for at most one Heartbeat (and never
+//     past the deadline). One that hangs is given up after a Heartbeat and
+//     the next starts at once (the ticker kept the tick it missed), so a
+//     connection that hangs cannot use up the margin for a retry.
 //   - A renewal that finds the lease gone (expired, reaped, claimed again)
 //     stops the handler at once.
-//   - A renewal that fails or hangs changes nothing: it is bounded by the
-//     deadline, and the deadline stops the handler whether or not a renewal
-//     is still in flight.
+//   - The worker measures with Go's monotonic clock, so an offset between
+//     its wall clock and the database's does not matter. What the half
+//     Heartbeat of margin covers is stopping the handler, a forward step of
+//     the database's clock, and a pause of the worker process shorter than
+//     it; longer ones are the deployment's to prevent (NTP slewing, no
+//     suspended VMs).
 func (w *Worker) heartbeat(ctx context.Context, lease jobs.Lease, start time.Time, setLost func(), log *slog.Logger) {
 	keep := w.cfg.Policy.Lease - w.cfg.Heartbeat/2
 	deadline := start.Add(keep)
+	deadlines := make(chan time.Time, 1)
+	// The watcher gets the deadline only through its timer and deadlines:
+	// the loop below owns deadline.
 	expire := time.NewTimer(time.Until(deadline))
-	defer expire.Stop()
+	var watch sync.WaitGroup
+	defer watch.Wait()
+	watch.Go(func() {
+		defer expire.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-expire.C:
+				log.Warn("the lease could not be renewed in time; the attempt stops")
+				setLost()
+				return
+			case d := <-deadlines:
+				expire.Reset(time.Until(d))
+			}
+		}
+	})
 	tick := time.NewTicker(w.cfg.Heartbeat)
 	defer tick.Stop()
-	type renewal struct {
-		start time.Time
-		err   error
-	}
-	done := make(chan renewal, 1)
-	inFlight := false
-	// Every way out ends ctx first (setLost or the caller), so a renewal
-	// still in flight returns promptly.
-	defer func() {
-		if inFlight {
-			<-done
-		}
-	}()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-expire.C:
-			log.Warn("the lease could not be renewed in time; the attempt stops")
+		case <-tick.C:
+		}
+		started := time.Now()
+		bctx, cancel := context.WithDeadline(ctx, earliest(deadline, started.Add(w.cfg.Heartbeat)))
+		err := w.scope.Run(bctx, lease.OrganizationID, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx) error {
+			return jobs.Heartbeat(ctx, tx, lease, w.cfg.Policy)
+		})
+		cancel()
+		switch {
+		case err == nil:
+			deadline = started.Add(keep)
+			select {
+			case deadlines <- deadline:
+			case <-ctx.Done():
+				return
+			}
+		case ctx.Err() != nil:
+			return
+		case errors.Is(err, jobs.ErrLeaseLost):
 			setLost()
 			return
-		case <-tick.C:
-			if inFlight {
-				continue
-			}
-			inFlight = true
-			go func(started, until time.Time) {
-				bctx, cancel := context.WithDeadline(ctx, until)
-				defer cancel()
-				done <- renewal{started, w.scope.Run(bctx, lease.OrganizationID, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx) error {
-					return jobs.Heartbeat(ctx, tx, lease, w.cfg.Policy)
-				})}
-			}(time.Now(), deadline)
-		case r := <-done:
-			inFlight = false
-			switch {
-			case r.err == nil:
-				deadline = r.start.Add(keep)
-				expire.Reset(time.Until(deadline))
-			case ctx.Err() != nil:
-				return
-			case errors.Is(r.err, jobs.ErrLeaseLost):
-				setLost()
-				return
-			default:
-				log.Warn("renewing the lease failed", "error", r.err.Error())
-			}
+		default:
+			log.Warn("renewing the lease failed", "error", err.Error())
 		}
 	}
+}
+
+func earliest(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
 }
