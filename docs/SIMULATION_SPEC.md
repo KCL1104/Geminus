@@ -75,6 +75,8 @@ schema 中 `status=unavailable` 時 mean/p50/p95/CI 都是 null，reason 說明�
 
 ## 6. DORA-oriented metrics 的 gating
 
+本節適用 Software Delivery 範例 pack。P0 domain 自 H-016 起為電子組裝／測試線，其指標（FPY、站別 availability 等）與資料門檻由 T-046 定義（REQ-015）；同一原則：未提供 mapping 一律 unavailable，不以 utilization 冒稱 OEE。
+
 SOURCE 僅要求資料充足才計算；沒有提供完整 domain event taxonomy。APPROVED D-010：由 domain pack 保存明確 stage/event-to-milestone mapping 與 data-quality evidence，未提供 mapping 一律 unavailable。一般 source→sink lead time 不能自動當 Change Lead Time。
 
 Change Lead Time 需要 change commit/deployed 關係與時間；Deployment Frequency 需要可辨識 production deployment 及觀測期間；Failed Deployment Recovery Time 需要 failure 與 recovery 配對；Change Failure Percentage 需要 deployment denominator 與 failure classification；Deployment Rework Rate 需要可辨識 rework deployment 與 denominator。公式、dedup/batching、calendar denominator 需在 DomainPack metric definition 明列並經 pilot 資料確認。P0 fixture 的 CI fail/rework 不足以冒稱 deployment failure/recovery。

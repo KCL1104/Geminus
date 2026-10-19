@@ -10,7 +10,7 @@
 
 ## 2. 不可違反的 P0 invariants
 
-- Generic Twin IR + DomainPack + SimulationEngine + ModelChangeProposal 四個邊界保持分離；generic engine 不 import software-delivery package、HTTP、pgx、LLM SDK 或 frontend types。
+- Generic Twin IR + DomainPack + SimulationEngine + ModelChangeProposal 四個邊界保持分離；generic engine 不 import 任何 domain package（electronics-line、software-delivery 等）、HTTP、pgx、LLM SDK 或 frontend types。
 - AI 只能建議，不能 approve、publish、寫 DB、執行任意程式／SQL、呼叫 production tools、自行啟動 simulation。Schema-valid 不是 authorized；risk/validation 必須由 server 計算。
 - ModelVersion、Scenario、dataset revision、completed result 均不可原地修改。Simulation 永遠綁 immutable version、patch、dataset manifest、engine/config/seed。
 - stale revision/base 回 409，不 silent overwrite / auto-rebase。Approval 以同一 transaction 完成 revalidation、一次性 canonical effect、audit、idempotency response。
@@ -24,7 +24,7 @@
 apps/web/               Next.js UI；由 task bootstrap 建立
 cmd/api/ cmd/worker/     組裝、設定與生命周期，不放 business rules
 internal/model/         draft/version、IR validation、commit service
-internal/domainpack/    SoftwareDeliveryDomainPack；只透過接口連接 generic kernel
+internal/domainpack/    電子產線 pack（P0，H-016）與 SoftwareDeliveryDomainPack（範例）；只透過接口連接 generic kernel
 internal/simulation/    pure Go DES；CPU/memory/time bounded
 internal/ai/            context、provider adapter、proposal、analyst；無 mutation tool
 internal/import/        upload/profile/map/validate/freeze/inference
@@ -78,4 +78,4 @@ make ai-eval              # app-owned fixture suite；fake 與 live provider 結
 
 ## 7. 範圍停止線
 
-P0 不加入 native GitHub/Jira connectors、Kafka/Redis/RabbitMQ、GraphQL、CRDT、BIM/CAD、physics simulation、3D authoring、arbitrary Python runtime、autonomous multi-agent framework 或 AI production actions。SimPy 僅 independent reference test。Rust / iTwin 只留接口，不預先重寫。
+P0 不加入 native MES/CFX/GitHub/Jira connectors、Kafka/Redis/RabbitMQ、GraphQL、CRDT、BIM/CAD、physics simulation、3D authoring、arbitrary Python runtime、autonomous multi-agent framework 或 AI production actions。SimPy 僅 independent reference test。Rust / iTwin 只留接口，不預先重寫。

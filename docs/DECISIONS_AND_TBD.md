@@ -14,6 +14,8 @@ T-001（2026-10-15）盤點出的跨文件矛盾與未定義行為列於 [CONTRA
 
 Go modular monolith + separate worker；Next.js / React / TypeScript；React Flow 2D authoring；PlayCanvas 3D read-only viewer；PostgreSQL + P0 PostgreSQL jobs；REST-first；Generic Twin IR + Domain Pack；native Go DES；AI proposal-only + deterministic validation + human approval；immutable versions；Scenario patch 不修改 canonical version。P1 的 broker、connectors、GraphQL、3D authoring、Rust engine、iTwin adapter 不可偷渡進 P0。
 
+Owner 變更（H-016，2026-10-19）：原報告以 Software Delivery 為 P0 第一個 domain，現改為電子組裝／測試線；原屬 P1 的 calendar 中，班表（shift calendar）拉進 P0，priority／preemption 仍為 P1。其他鎖定邊界不變。
+
 ## 需要確認的工程提案
 
 ### D-001 — 識別碼與欄位命名
@@ -227,10 +229,11 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | H-009 | 2026-10-18 | 10 項全部照 agent 建議（「全都照建議」）：UI 用 React Aria Components 1.21.1＋CSS Modules（[ADR-021](adr/ADR-021-ui-library-and-design-system.md) ACCEPTED）；依 H-008 接受 5 種 React Aria 內建繁中字串；axe-core／@axe-core/playwright（MPL-2.0）只作測試工具；保留 React Flow 署名；成功回饋用頁內 `role="status"`；D-040（IR 存 canonical 文字）、D-041（保存 comment）、D-042（provisioning 最小權限 role）APPROVED；[ADR-022](adr/ADR-022-model-service.md)、[ADR-023](adr/ADR-023-membership-management.md) ACCEPTED | 視覺取向（看 prototype 後）；螢幕報讀器實測（需人執行） |
 | H-010 | 2026-10-19 | 照 agent 建議（「其他都照你建議吧」）：批准 D-043、D-044、D-045、D-046；[ADR-024](adr/ADR-024-job-queue-and-worker.md) ACCEPTED（參數照提案，`WORKER_STOPPED` 計入 attempt）；ADR-011、ADR-013 ACCEPTED；Auth0 refresh token rotation 的 reuse interval 為 30 秒；接受 React Aria 同一組選取通知的其餘繁中字串（「未選取「…」。」「已選取所有項目。」「已選取 N 個項目。」） | T-045 prototype 審閱與截圖 baseline 確認（已整理成 artifact，待 owner 回覆）；live AI 的資料政策、retention、quota 與 model；雲端廠商與 region；Auth0 tenant 由 owner 建立 |
 | H-011 | 2026-10-19 | 放寬 H-008：可使用 web font（須為 OFL 等開源授權）、可做深色主題。Owner 認為目前的 UI 太普通，請 agent 研究各大產品與 digital twin 產品的 UI 後提出方向；agent 提出 A 控制室、B 精密工具、C 工程藍圖三個方向（建議 C 為主，融合 A 與 B） | ~~選定視覺方向與預設主題~~ 已由 H-013 決定 |
-| H-012 | 2026-10-19 | 產品願景涵蓋所有場景（製造業、工業、倉儲、航太、城市、建築工程等），P0 仍先做 Software Delivery，不改 P0／P1 範圍；PRODUCT.md 須寫入 3D（P0 的 3D 仍唯讀，SOURCE）；使用情境為桌機決策、每天長時間建模、會議投影；以桌機為主，手機可看結果與審核 proposal、不編輯拓撲；品牌只有名稱 Geminus；深色主題用灰黑色、不用藍色；以 impeccable（Apache-2.0）做 UI 檢查與改進。詳見 `PRODUCT.md` | ~~3D authoring 是否及何時納入~~ H-014：P0 不做，選定第二個 domain 時再決定；~~視覺方向與預設主題~~ H-013 |
+| H-012 | 2026-10-19 | 產品願景涵蓋所有場景（製造業、工業、倉儲、航太、城市、建築工程等），~~P0 仍先做 Software Delivery，不改 P0／P1 範圍~~（H-016 改為電子組裝／測試線）；PRODUCT.md 須寫入 3D（P0 的 3D 仍唯讀，SOURCE）；使用情境為桌機決策、每天長時間建模、會議投影；以桌機為主，手機可看結果與審核 proposal、不編輯拓撲；品牌只有名稱 Geminus；深色主題用灰黑色、不用藍色；以 impeccable（Apache-2.0）做 UI 檢查與改進。詳見 `PRODUCT.md` | ~~3D authoring 是否及何時納入~~ H-014：P0 不做，選定第二個 domain 時再決定；~~視覺方向與預設主題~~ H-013 |
 | H-013 | 2026-10-19 | 視覺方向選 Marey 圖表時刻表（impeccable 方向輪，agent 排名第一的候選）：時間由左往右、步驟由上往下、每個工作項目一條線，線變平就是排隊；scenario 深綠、baseline 石墨虛線；字型 Archivo；深色灰黑。預設主題跟隨系統，使用者可切換並記住。草稿在 `.impeccable/mocks/decision/` | 依此方向建成的 design system（DESIGN.md、tokens、元件）待 owner 檢視 |
 | H-014 | 2026-10-19 | 3D 維持現狀：P0 只做唯讀 3D 檢視（T-033、T-034），3D authoring 不進 P0；選定第二個（空間型）domain 時再決定；不另開空間型 IR 擴充 spike | 選定第二個 domain 時決定 3D authoring |
 | H-015 | 2026-10-19 | 專案授權為私有＋保留所有權利（`LICENSE`）：不授予任何使用、複製、修改、散布或作為服務提供的權利。Agent 提出 FSL-1.1-ALv2（建議，若維持公開）、私有、AGPL-3.0、Apache-2.0 四個選項 | owner 在 GitHub 將 repo 改為私有；著作權人名稱（目前為 KCL1104）；AI 生成程式碼著作權與原報告權利請律師確認 |
+| H-016 | 2026-10-19 | P0 第一個 domain 由 Software Delivery 改為**電子組裝／測試線**（SMT、AOI、ICT、FCT、燒機，含測試失敗→除錯→重測；AI 伺服器機櫃整合測試為變體），倉儲人力與尖峰為第二個 domain（P1）。採 agent 比較五組研究後的建議（理由見 `planning/decisions.json` 的 rationale）。SoftwareDeliveryDomainPack 保留為範例與 conformance pack。引擎在 P0 補上有限緩衝與阻塞、機台故障、班表、隨時間變化的投入、批次；語義由 T-046 提出 PROPOSED decisions 待批准，換線是否進 P0 另決定。近期目標為初步產品與技術驗證後投 launchpad；owner 尚無可接觸的潛在使用者，示範只用標為 synthetic 的資料。3D 不變（H-014）。偏離原報告：原報告以 Software Delivery 為 P0，calendar 屬 P1 | T-046 的引擎語義 decisions；launchpad 名稱與期限；示範用 live AI 的 model、quota 與資料政策；研究稿是否提交（repo 改私有後）；客戶訪談（建議 5–10 場）；倉儲開始前決定 3D authoring |
 
 ## 原報告保留的 TBD
 

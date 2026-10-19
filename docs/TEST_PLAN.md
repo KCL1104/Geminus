@@ -41,7 +41,7 @@ schema / docs / task DAG checks 是第零層 specification hygiene，不等於�
 | TEST-020 | leases / retry / stale finalize | crash回收；舊lease無權finalize；同run只有一份final result | 012 |
 | TEST-021 | cancel / timeout / limits | queued immediate cancel；running checkpoint；cancel-vs-complete互斥；超限非completed | 012、019 |
 | TEST-022 | result stats / comparison | known Type7 values；population正確；n<2 CI=null；baseline0相對差=null | 013–014 |
-| TEST-023 | DORA data completeness | 缺deployment/failure/recovery mapping回unavailable；CI failure不是DORA | 015 |
+| TEST-023 | DORA data completeness（範例 pack） | 缺deployment/failure/recovery mapping回unavailable；CI failure不是DORA | 015 |
 | TEST-024 | analyst grounding | wrong run/path/null metric/錯delta/虛構 prose 數字不completed | 016 |
 | TEST-025 | 2D/3D adapters / selection | 不生成第二topology；同ID互選；3D不能寫IR | 004、017 |
 | TEST-026 | playback / SSE reconnect | play/pause/scrub；sampling標示；auth header；reconnect latest snapshot；撤權close | 012、017 |
@@ -52,6 +52,9 @@ schema / docs / task DAG checks 是第零層 specification hygiene，不等於�
 | TEST-031 | bilingual UI / locale | 預設 en；zh-Hant catalog 與 en key 完全一致且無空值；lint 禁止 UI 中硬編使用者可見字串；切換語言後保留且不需重新登入；每個 Problem／validation code 皆有兩語文案；Intl 日期／數字；AI prose 依 locale，analyst 數字校驗兩語皆有效；E2E 主流程兩語各跑一次 | 016、022 |
 | TEST-032 | browser session / BFF | document.cookie、storage、回應 body 中沒有 token；cookie 為 `__Host-`、HttpOnly、Secure、SameSite=Lax；跨站 POST、缺 `X-Geminus-Request` 或錯 Origin 被拒；PKCE／state／nonce 錯誤被拒；refresh rotation 與 reuse；logout 撤銷 refresh；未知 identity 403；Go API 不讀 cookie | 001、019 |
 | TEST-033 | UI design / accessibility | axe-core（WCAG 2.2 AA 規則）對每個 route 與主要狀態（loading、empty、error、權限不足、409）0 violation；只用鍵盤完成 E2E 主流程，focus 可見且順序合理；Playwright 截圖比對 en／zh-Hant × 手機（390px）／桌面（1280px），baseline 變更需人工確認；色彩 token 對比達 AA；每個 UI 任務的 prototype 有 owner review 紀錄 | 004、022、023 |
+| TEST-034 | 產線流動語義（H-016） | 有限緩衝與阻塞、resource 故障、班表、隨時間變化的投入、批次各有固定 golden vectors；沒用到新功能的模型與現行 kernel 結果完全相同（differential）；與獨立 SimPy reference 在預定容差內一致；deadlock／不可行設定回 typed error，不默默卡住；同 seed digest 可重現 | 011、013、024 |
+| TEST-035 | 電子產線指標的資料門檻（H-016） | UPH、FPY、站別 availability 等只在對應語義資料齊全時產生；缺資料回 unavailable 並帶 reason；utilization 不冒稱 OEE；示範資料標為 synthetic | 003、015 |
+| TEST-036 | 模擬與觀測的比對（H-016） | 以已知 ground truth 的 synthetic 資料集，baseline 並列模擬與觀測的產出與誤差，數字可由 fixture 驗算；沒有觀測資料時回 unavailable，不宣稱已校準 | 025 |
 
 range 003 等指 REQ-003。planning/traceability.csv 提供完整 ID 對照；test row 是驗收要求，不是聲稱已存在產品測試實作。
 

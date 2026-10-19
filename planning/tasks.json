@@ -906,14 +906,16 @@
         "T-013",
         "T-011",
         "T-044",
-        "T-045"
+        "T-045",
+        "T-046"
       ],
       "requirement_ids": [
         "REQ-004",
         "REQ-006",
         "REQ-017",
         "REQ-022",
-        "REQ-023"
+        "REQ-023",
+        "REQ-024"
       ],
       "decision_gates": [],
       "scope": [
@@ -1010,7 +1012,8 @@
       "planning_window": "Week 5–6",
       "depends_on": [
         "T-016",
-        "T-004"
+        "T-004",
+        "T-046"
       ],
       "requirement_ids": [
         "REQ-007"
@@ -1630,7 +1633,8 @@
       "depends_on": [
         "T-024",
         "T-017",
-        "T-025"
+        "T-025",
+        "T-051"
       ],
       "requirement_ids": [
         "REQ-007",
@@ -2157,13 +2161,18 @@
       "depends_on": [
         "T-022",
         "T-023",
-        "T-034"
+        "T-034",
+        "T-047",
+        "T-048",
+        "T-049",
+        "T-050"
       ],
       "requirement_ids": [
         "REQ-011",
         "REQ-013",
         "REQ-017",
-        "REQ-021"
+        "REQ-021",
+        "REQ-024"
       ],
       "decision_gates": [
         "D-005",
@@ -2193,7 +2202,8 @@
         "TEST-019",
         "TEST-021",
         "TEST-022",
-        "TEST-025"
+        "TEST-025",
+        "TEST-034"
       ],
       "verification_commands": [
         "make simulation-reference-test",
@@ -2218,7 +2228,9 @@
         "T-025",
         "T-026",
         "T-027",
-        "T-030"
+        "T-030",
+        "T-051",
+        "T-052"
       ],
       "requirement_ids": [
         "REQ-008",
@@ -2326,7 +2338,9 @@
         "T-038",
         "T-039",
         "T-043",
-        "T-044"
+        "T-044",
+        "T-051",
+        "T-052"
       ],
       "requirement_ids": [
         "REQ-001",
@@ -2351,7 +2365,9 @@
         "REQ-020",
         "REQ-021",
         "REQ-022",
-        "REQ-023"
+        "REQ-023",
+        "REQ-024",
+        "REQ-025"
       ],
       "decision_gates": [],
       "scope": [
@@ -2374,7 +2390,10 @@
         "TEST-030",
         "TEST-031",
         "TEST-032",
-        "TEST-033"
+        "TEST-033",
+        "TEST-034",
+        "TEST-035",
+        "TEST-036"
       ],
       "verification_commands": [
         "make e2e-test",
@@ -2696,6 +2715,359 @@
       "verification_commands": [
         "make frontend-test",
         "make e2e-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-046",
+      "title": "電子產線 domain spec 與引擎擴充 contract（H-016）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation + Product",
+      "planning_window": "H-016 re-plan（未重估週數）",
+      "depends_on": [
+        "T-004",
+        "T-021",
+        "T-022"
+      ],
+      "requirement_ids": [
+        "REQ-003",
+        "REQ-004",
+        "REQ-013",
+        "REQ-015",
+        "REQ-024",
+        "REQ-025"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "定義電子組裝／測試線 domain：站別（研究提案 SMT、AOI、ICT、FCT、燒機、包裝出貨，含測試失敗→除錯→重測）、資源 catalog（machine、tester、chamber、operator）、指標（UPH、FPY、WIP、阻塞／缺料、availability）與資料不足時的 unavailable 規則（REQ-015）。",
+        "依 TWIN_IR_SPEC §8 提出新核心 primitive 的 ADR，語義列為 PROPOSED decisions：有限緩衝與阻塞、resource 故障（MTBF/MTTR、對服務中工件的處理）、班表（resource 可用時段、交班時的處理）、隨時間變化的投入（release schedule）、批次 process、換線是否延至 P1、是否加 lognormal/Weibull；每項附選項、建議、golden vectors 與 SimPy reference 的對照方式。agent 不自行批准。",
+        "定義 station event log 的 canonical fields（站別、序號、開始／結束、結果、停機事件、班別），供 T-017 mapping 與 T-027 inference；定義 REQ-025 的模擬與觀測比對指標及誤差的呈現方式。",
+        "先改 contract：IR schema 新欄位與 schema 版本、valid／invalid fixtures、受影響的 OpenAPI／TS contract；本任務不改 kernel 程式。批准後更新 T-047–T-051 的 decision gates。"
+      ],
+      "planned_outputs": [
+        "docs/domains/ELECTRONICS_LINE.md",
+        "docs/adr/",
+        "docs/TWIN_IR_SPEC.md",
+        "docs/SIMULATION_SPEC.md",
+        "schemas/",
+        "testdata/contracts/",
+        "testdata/simulation/",
+        "planning/decisions.json"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/TWIN_IR_SPEC.md",
+        "docs/SIMULATION_SPEC.md",
+        "docs/DECISIONS_AND_TBD.md",
+        "docs/adr/ADR-025-p0-domain-electronics-line.md"
+      ],
+      "acceptance_tests": [
+        "TEST-001",
+        "TEST-002",
+        "TEST-034"
+      ],
+      "verification_commands": [
+        "make spec-check",
+        "go test ./internal/model/... ./internal/contracttest/..."
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-047",
+      "title": "DES 有限緩衝與阻塞（H-016）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "H-016 re-plan（未重估週數）",
+      "depends_on": [
+        "T-046"
+      ],
+      "requirement_ids": [
+        "REQ-011",
+        "REQ-013",
+        "REQ-024"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "依批准的 decision 實作有限緩衝與阻塞（例如 blocking after service），上游被擋時保留 resource 並記阻塞時間；與既有 resource-wise FIFO、all-or-nothing bundle 的交互有明確 golden。decision gates 在 T-046 建立 D-ID 後補上；批准前不實作。",
+        "deadlock 或循環阻塞的處理依 decision（typed error 或明確規則），不默默卡住到 horizon。",
+        "固定 golden vectors、與舊 kernel 的 differential（無限緩衝時結果完全相同）、SimPy reference 比對、mutation 與 fuzz。"
+      ],
+      "planned_outputs": [
+        "internal/simulation/engine/",
+        "testdata/simulation/",
+        "scripts/engine_reference.py"
+      ],
+      "spec_refs": [
+        "docs/SIMULATION_SPEC.md",
+        "testdata/simulation/expected-cases.json"
+      ],
+      "acceptance_tests": [
+        "TEST-015",
+        "TEST-016",
+        "TEST-019",
+        "TEST-034"
+      ],
+      "verification_commands": [
+        "go test ./internal/simulation/...",
+        "go test -race ./internal/simulation/...",
+        "make simulation-reference-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-048",
+      "title": "DES resource 故障與停機（MTBF/MTTR，H-016）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "H-016 re-plan（未重估週數）",
+      "depends_on": [
+        "T-046"
+      ],
+      "requirement_ids": [
+        "REQ-011",
+        "REQ-013",
+        "REQ-024"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "依批准的 decision 實作 resource 故障：故障間隔與修復時間各用獨立 RNG stream，不改變其他 stream；服務中工件的處理（中斷後續作或做完再停）依 decision。decision gates 在 T-046 建立 D-ID 後補上；批准前不實作。",
+        "停機時間與 availability 指標進 Result，事件順序與 tie-break 有 golden。",
+        "沒有設定故障的模型結果與現行 kernel 完全相同（differential）；SimPy reference 比對。"
+      ],
+      "planned_outputs": [
+        "internal/simulation/engine/",
+        "internal/results/metrics/",
+        "testdata/simulation/"
+      ],
+      "spec_refs": [
+        "docs/SIMULATION_SPEC.md",
+        "testdata/simulation/expected-cases.json"
+      ],
+      "acceptance_tests": [
+        "TEST-015",
+        "TEST-019",
+        "TEST-034"
+      ],
+      "verification_commands": [
+        "go test ./internal/simulation/... ./internal/results/...",
+        "go test -race ./internal/simulation/...",
+        "make simulation-reference-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-049",
+      "title": "DES 班表與隨時間變化的投入（H-016）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "H-016 re-plan（未重估週數）",
+      "depends_on": [
+        "T-046"
+      ],
+      "requirement_ids": [
+        "REQ-011",
+        "REQ-013",
+        "REQ-024"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "依批准的 decision 實作 resource 班表（可用時段、交班時服務中工件的處理）與 source 的 release schedule（分時段投入率或投入表）；時間以 tick 表示，不用 wall clock 或時區函式庫。decision gates 在 T-046 建立 D-ID 後補上；批准前不實作。",
+        "utilization 的分母依 decision（排班時間或整段時間）在 Result 中標明。",
+        "沒有班表的模型結果與現行 kernel 完全相同；跨班 golden 與 SimPy reference 比對。"
+      ],
+      "planned_outputs": [
+        "internal/simulation/engine/",
+        "internal/results/metrics/",
+        "testdata/simulation/"
+      ],
+      "spec_refs": [
+        "docs/SIMULATION_SPEC.md",
+        "testdata/simulation/expected-cases.json"
+      ],
+      "acceptance_tests": [
+        "TEST-015",
+        "TEST-019",
+        "TEST-034"
+      ],
+      "verification_commands": [
+        "go test ./internal/simulation/... ./internal/results/...",
+        "go test -race ./internal/simulation/...",
+        "make simulation-reference-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-050",
+      "title": "DES 批次 process（燒機，H-016）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "H-016 re-plan（未重估週數）",
+      "depends_on": [
+        "T-046"
+      ],
+      "requirement_ids": [
+        "REQ-011",
+        "REQ-013",
+        "REQ-024"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "依批准的 decision 實作批次 process（最小／最大批量、等待上限、批內工件一起開始與結束），工件 ID 與 trace 仍可追蹤；換線若經 decision 納入 P0 也在此任務。decision gates 在 T-046 建立 D-ID 後補上；批准前不實作。",
+        "批次的 lead time、等待湊批時間與 utilization 定義在 SIMULATION_SPEC 寫明。",
+        "沒有批次 process 的模型結果與現行 kernel 完全相同；golden 與 SimPy reference 比對。"
+      ],
+      "planned_outputs": [
+        "internal/simulation/engine/",
+        "testdata/simulation/"
+      ],
+      "spec_refs": [
+        "docs/SIMULATION_SPEC.md",
+        "testdata/simulation/expected-cases.json"
+      ],
+      "acceptance_tests": [
+        "TEST-015",
+        "TEST-019",
+        "TEST-034"
+      ],
+      "verification_commands": [
+        "go test ./internal/simulation/...",
+        "go test -race ./internal/simulation/...",
+        "make simulation-reference-test"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-051",
+      "title": "電子產線 DomainPack / full template / 指標（H-016）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation",
+      "planning_window": "H-016 re-plan（未重估週數）",
+      "depends_on": [
+        "T-046",
+        "T-047",
+        "T-048",
+        "T-049",
+        "T-050",
+        "T-042"
+      ],
+      "requirement_ids": [
+        "REQ-003",
+        "REQ-004",
+        "REQ-015",
+        "REQ-024"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "依 T-046 的 spec 建立電子產線 pack：catalog、validation rules、full template（en 與 zh-Hant 名稱）、layered default views，並註冊到 Registry；通過 T-042 的 conformance suite 與 architecture guard。",
+        "domain 指標（UPH、FPY、站別 availability 等）在資料不足時回 unavailable（REQ-015）；InferFromEvents 在 T-027 前回 ErrUnavailable，不假裝推論。",
+        "SoftwareDeliveryDomainPack 保留為範例，兩個 pack 的測試都通過；template 的示範參數標為 synthetic。"
+      ],
+      "planned_outputs": [
+        "internal/domainpack/electronicsline/"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/ARCHITECTURE.md",
+        "docs/TWIN_IR_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-001",
+        "TEST-002",
+        "TEST-035"
+      ],
+      "verification_commands": [
+        "go test ./internal/domainpack/...",
+        "make architecture-check"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-052",
+      "title": "Synthetic 產線資料與模擬／觀測比對（H-016）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Simulation + AI / Full-stack",
+      "planning_window": "H-016 re-plan（未重估週數）",
+      "depends_on": [
+        "T-051",
+        "T-017"
+      ],
+      "requirement_ids": [
+        "REQ-007",
+        "REQ-021",
+        "REQ-025"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "以固定 seed 產生標為 synthetic 的 station event logs（含停機事件、測試失敗與重測），附產生它的 ground-truth 模型；不使用任何客戶資料。",
+        "走一次 import→mapping→dataset，baseline run 並列模擬與觀測（例如每週產出、站別 cycle time）與誤差（REQ-025）；沒有觀測資料時回 unavailable。",
+        "資料集與 ground truth 進 testdata，作為 T-027 inference、T-038 AI eval 與 T-040 E2E 的 fixture。"
+      ],
+      "planned_outputs": [
+        "testdata/datasets/electronics-line/",
+        "scripts/",
+        "internal/results/"
+      ],
+      "spec_refs": [
+        "docs/PRD.md",
+        "docs/SIMULATION_SPEC.md"
+      ],
+      "acceptance_tests": [
+        "TEST-013",
+        "TEST-035",
+        "TEST-036"
+      ],
+      "verification_commands": [
+        "go test ./internal/results/... ./internal/domainpack/...",
+        "make spec-check"
       ],
       "definition_of_done": [
         "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",

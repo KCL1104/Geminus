@@ -45,7 +45,7 @@ APPROVED D-001（2026-10-15）：伺服器產生的資源 ID 為 `<prefix>_<ULID
 
 所有 flows 都有 id/from/to/routing={type:probability,probability}。decision 可有多個 outgoing flows，概率和=1；其餘非 sink 節點恰有一個 probability=1 的 flow；sink 沒有 outgoing。queue 只接一個 process，是候選 P0 限制，不暗加 calendar/priority/preemption。
 
-resource 的 type 保留 human / machine / generic；capacity 為正整數；queue_discipline=fifo。可選 role 提供 domain catalog 語義。Software Delivery catalog 包含 developer、reviewer、ci_runner、test_environment、deployment_slot、generic_resource；kernel 不依角色字串决定行為。
+resource 的 type 保留 human / machine / generic；capacity 為正整數；queue_discipline=fifo。可選 role 提供 domain catalog 語義。Software Delivery catalog（範例 pack）包含 developer、reviewer、ci_runner、test_environment、deployment_slot、generic_resource；電子產線 catalog 由 T-046 定義（H-016）；kernel 不依角色字串决定行為。
 
 requires 每項為 {resource_id,units}。同一 process 不可重複列同一 resource；units≤capacity。capacity=0、負值、非整數、unknown resource 一律 invalid，不以無限等待替代 validation。
 
@@ -135,6 +135,6 @@ canonical-event.schema.json 保留 case_id/event_type/timestamp 必填，stage r
 
 ## 8. 相容性與擴充
 
-未知 schema_version 拒絕，不默默盡力解析。v0.1 新欄位／新 node 或 constraints 需更新 schema、fixtures、Go/TS contract tests 和 version migration 策略。Future DomainPack 可使用既有 generic primitives 與 domain attributes；新增核心 primitive 應有獨立 ADR，不能以 arbitrary script 绕過 contract。
+未知 schema_version 拒絕，不默默盡力解析。v0.1 新欄位／新 node 或 constraints 需更新 schema、fixtures、Go/TS contract tests 和 version migration 策略。Future DomainPack 可使用既有 generic primitives 與 domain attributes；新增核心 primitive 應有獨立 ADR，不能以 arbitrary script 绕過 contract。H-016（ADR-025）需要的有限緩衝與阻塞、resource 故障、班表、隨時間變化的投入與批次即屬此類，由 T-046 提出 ADR 與 PROPOSED decisions，批准前上表的 P0 限制（FIFO、不加 calendar/priority/preemption）照舊。
 
 補充（D-010）：單純回到前一節點的 flow 不自動等於 domain rework。需要可辨識的 rework node 或已批准的 DomainPack mapping 才計數；不能以 f_retry 之類的字串名稱在 generic kernel 硬編語義。

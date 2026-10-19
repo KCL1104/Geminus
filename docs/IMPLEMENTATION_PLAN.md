@@ -21,6 +21,10 @@ flowchart TD
   L --> UI
   V --> I[Import profile/map / T-016..017]
   V --> S[DES + Metrics / T-020..022]
+  S --> LF[Line-flow engine + electronics pack / T-046..T-052]
+  LF --> E
+  LF --> INF
+  LF --> G
   C --> J[Queue / T-019]
   S --> RUN[Run worker / T-023]
   J --> RUN
@@ -40,6 +44,8 @@ flowchart TD
   D3 --> G
   G --> B[Staging + E2E + Beta / T-039..041]
 ```
+
+H-016（2026-10-19，[ADR-025](adr/ADR-025-p0-domain-electronics-line.md)）：P0 domain 改為電子組裝／測試線。T-046 先定 domain spec、新核心 primitive 的 ADR 與 PROPOSED decisions（owner 批准前不實作）；T-047–T-050 依序改同一個 kernel（有限緩衝與阻塞、故障、班表與投入、批次），一次做一個，每個都要有「沒用到新功能時與現行 kernel 結果完全相同」的 differential；T-051 建 pack，T-052 產生 synthetic 資料並做模擬／觀測比對。近期目標（初步產品＋技術驗證、投 launchpad）對應 Product Alpha；原 16 週估計早於 H-016，新增工作尚未重估週數。T-023、T-024 以後與 domain 無關的任務照原順序。
 
 T-035 audit/observability 基線應從第一個write/job即接入，Week12–14做完整硬化；不是到第12週才補tenant safety。T-042是test-only generic boundary guard，不是P0增加第二個客戶domain。T-043（BFF 登入，ADR-018）與 T-044（en 預設＋zh-Hant，REQ-022）為 2026-10-18 依 owner 決定（H-004、H-005）新增；T-044 在 T-015 之前完成，之後的 UI 任務一律經 catalog。
 
@@ -124,4 +130,11 @@ IR/Schema晚變更會傳到AI/UI/engine/DB：先批准D-001/D-014與contract tes
 - **T-042 — Generic kernel / adapter dependency guard**：Simulation；Week 6–8；依賴 T-011, T-020。具體scope/commands/DoD見tasks.json。
 - **T-043 — Browser login session (BFF, ADR-018)**：Frontend / Security；Week 3–5；依賴 T-008, T-014。具體scope/commands/DoD見tasks.json。
 - **T-044 — Bilingual UI foundation (en default, zh-Hant)**：Frontend；Week 3–4；依賴 T-014, T-011。具體scope/commands/DoD見tasks.json。
+- **T-046 — 電子產線 domain spec 與引擎擴充 contract（H-016）**：Simulation + Product；H-016 re-plan；依賴 T-004, T-021, T-022。具體scope/commands/DoD見tasks.json。
+- **T-047 — DES 有限緩衝與阻塞（H-016）**：Simulation；H-016 re-plan；依賴 T-046。具體scope/commands/DoD見tasks.json。
+- **T-048 — DES resource 故障與停機（MTBF/MTTR，H-016）**：Simulation；H-016 re-plan；依賴 T-046。具體scope/commands/DoD見tasks.json。
+- **T-049 — DES 班表與隨時間變化的投入（H-016）**：Simulation；H-016 re-plan；依賴 T-046。具體scope/commands/DoD見tasks.json。
+- **T-050 — DES 批次 process（燒機，H-016）**：Simulation；H-016 re-plan；依賴 T-046。具體scope/commands/DoD見tasks.json。
+- **T-051 — 電子產線 DomainPack / full template / 指標（H-016）**：Simulation；H-016 re-plan；依賴 T-046–T-050, T-042。具體scope/commands/DoD見tasks.json。
+- **T-052 — Synthetic 產線資料與模擬／觀測比對（H-016）**：Simulation + AI / Full-stack；H-016 re-plan；依賴 T-051, T-017。具體scope/commands/DoD見tasks.json。
 - **T-045 — Design system, UI library evaluation and UX gate**：Frontend / Design；Week 4–5；依賴 T-014, T-044；T-015 依賴它（H-007）。具體scope/commands/DoD見tasks.json。

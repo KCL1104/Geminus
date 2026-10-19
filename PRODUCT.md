@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-本檔記錄 Geminus 的產品事實，供 UI 設計與評審使用，不含視覺決定（視覺系統待 owner 選定方向後另記於 DESIGN.md）。來源：`docs/PRD.md`、`docs/DECISIONS_AND_TBD.md`，以及 owner 在 2026-10-19 的回答（H-012）。與 SOURCE 或 PRD 衝突時以它們為準。
+本檔記錄 Geminus 的產品事實，供 UI 設計與評審使用，不含視覺決定（視覺系統待 owner 選定方向後另記於 DESIGN.md）。來源：`docs/PRD.md`、`docs/DECISIONS_AND_TBD.md`，以及 owner 在 2026-10-19 的回答（H-012、H-016）。與 SOURCE 或 PRD 衝突時以它們為準。
 
 ## Platform
 
@@ -11,12 +11,12 @@ web
 ## Users
 
 - **長期對象**：任何需要先模擬再決策的流程或營運負責人。Owner 希望涵蓋製造業、工業、倉儲、航太、城市、建築工程等場景（H-012）。
-- **P0 對象**：Software Delivery 這個 domain 的使用者，包括工程主管、Platform／DevOps 負責人和 delivery process owner（PRD §2）。
+- **P0 對象**：電子組裝／測試線的使用者，包括工業工程（IE）、生產技術、產線規劃人員和製造主管（H-016，PRD §2）。原報告的 P0 是 Software Delivery，現在只保留為範例 pack。
 - **權限角色**：只有 Owner、Editor、Viewer 三種。Owner 與 Editor 可以編輯、建立 proposal、批准、啟動 simulation；Viewer 只能讀取；只有 Owner 能管理成員。
 
 Owner 確認的三種使用情境（H-012）：
 
-1. **桌機決策**：一週數次，每次 30–60 分鐘。使用者帶著 what-if 問題來，例如「增加 reviewer 或 CI runner 後，lead time、queue p95、utilization 會怎麼變」，要的是可信的比較，不是看動畫。
+1. **桌機決策**：一週數次，每次 30–60 分鐘。使用者帶著 what-if 問題來，例如「多一台 ICT 測試機或加大 FCT 前的緩衝後，UPH、瓶頸站、WIP、utilization 會怎麼變」，要的是可信的比較，不是看動畫。
 2. **每天長時間建模**：process owner 每天在 2D 編輯器裡長時間維護模型。這需要長時間使用不疲勞、資訊夠密、鍵盤操作順手。
 3. **會議投影**：baseline 與 scenario 的比較結果常在會議中投影或分享螢幕給團隊看。結果畫面在投影機和低品質螢幕分享下也必須看得清楚。
 
@@ -28,7 +28,7 @@ Geminus 是 AI-native 的 Digital Twin Modeling + Simulation + Decision Support 
 
 ## Positioning
 
-Geminus 不是 DevOps dashboard，也不是 3D 動畫工具。它在架構上由四個彼此分離的邊界組成：一個通用的 Twin kernel（Generic IR + DES），各領域各自的 DomainPack，一個只能提出建議的 AI 層，以及由人類批准的 ModelChangeProposal。
+Geminus 不是產線看板，也不是 3D 動畫工具。它在架構上由四個彼此分離的邊界組成：一個通用的 Twin kernel（Generic IR + DES），各領域各自的 DomainPack，一個只能提出建議的 AI 層，以及由人類批准的 ModelChangeProposal。
 
 它的差異在三點：
 
@@ -49,13 +49,14 @@ Geminus 不是 DevOps dashboard，也不是 3D 動畫工具。它在架構上由
 
 ## Capabilities and Constraints
 
-- **Domain 範圍**：P0 先做 Software Delivery，因為它偏流程導向，最容易起步。第二個正式 domain 屬於 P1。長期願景涵蓋所有場景（H-012）。因此 kernel、介面詞彙、圖示和設計系統都不能預設只有軟體開發這一種情境，domain 專屬的東西由 DomainPack 提供。
+- **Domain 範圍**：P0 先做電子組裝／測試線（SMT、AOI、ICT、FCT、燒機），第二個正式 domain 是倉儲人力與尖峰，屬於 P1（H-016）。Owner 原本想從軟體開發起步，研究後改選電子產線：它是離散事件模擬最大的應用、和台灣產業最吻合，也最能帶出 3D 與實體場景的願景。長期願景涵蓋所有場景（H-012）。因此 kernel、介面詞彙、圖示和設計系統都不能預設只有一種情境，domain 專屬的東西由 DomainPack 提供。
+- **引擎範圍**：為了讓產線工程師相信結果，P0 引擎補上有限緩衝與阻塞、機台故障、班表、隨時間變化的投入和批次（REQ-024）；語義待 owner 批准（T-046）。
 - **2D 與 3D**：P0 中 2D 是 authoring，3D 是唯讀的 projection 和 playback；兩者共用 entity ID 與 IR topology（SOURCE）。Owner 認為 3D 對後續的空間型 domain（工廠、倉儲、城市、建築）可能更關鍵（H-012）。P0 只做唯讀 3D；3D authoring 在選定第二個 domain 時再決定（H-014）。3D 是一級畫面，不是附屬品。
 - **裝置**：以桌機為主。手機可以看結果、審核和批准或拒絕 proposal，但不編輯拓撲（H-012）。所有寬度都不能跑版（REQ-023）。
 - **語言**：英文 `en` 是預設，另支援繁體中文 `zh-Hant`。所有使用者可見的字串都來自 message catalog（REQ-022）。
 - **並行與不可變**：版本衝突（stale）時回 409 並清楚顯示，不 silent overwrite，也不自動 rebase。ModelVersion、Scenario 和完成的 result 都不可原地修改。
 - **P0 不做**：BIM／CAD、physics simulation、3D authoring、即時串流、AI 的 production 動作（AGENTS.md §7）。
-- **尚未決定**：live AI provider 的使用政策與 quota、cloud 廠商、Auth0 tenant 設定、視覺方向與預設主題（H-011）。
+- **尚未決定**：live AI provider 的使用政策與 quota、cloud 廠商、Auth0 tenant 設定、launchpad 的計畫名稱與期限（H-016）。視覺方向已由 H-013 決定。
 
 ## Brand Commitments
 
@@ -65,9 +66,9 @@ Owner 指定的視覺限制（H-012）：深色主題用灰黑色，不用藍色
 
 ## Evidence on Hand
 
-- 目前沒有真實客戶、客戶資料、benchmark、testimonial 或已達成的指標。
-- PRD 裡的例子（例如 2 個 reviewer、3 個 CI runner）只是示意，不是客戶的實際情況。原型和 UI 中的示範資料一律標為 synthetic。
-- 有 Software Delivery template，pipeline 為 Source → Review → CI → Test → Deploy → Sink（T-011）。
+- 目前沒有真實客戶、客戶資料、benchmark、testimonial 或已達成的指標；owner 也還沒有可接觸的潛在使用者（H-016）。
+- PRD 裡的例子（例如 2 台 ICT、3 台 FCT）只是示意，不是客戶的實際情況。原型和 UI 中的示範資料一律標為 synthetic。
+- 有 Software Delivery 範例 template，pipeline 為 Source → Review → CI → Test → Deploy → Sink（T-011）；電子產線 template 尚未建立（T-051）。
 - PRD §6 的工程目標不是已達成的成果，不可寫成產品宣稱。
 
 ## Product Principles
