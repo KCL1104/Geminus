@@ -274,6 +274,21 @@ describe("model writes and versions (T-013)", () => {
     expect(f.calls).toHaveLength(0);
   });
 
+  it("refuses a revision the server cannot have issued instead of throwing", async () => {
+    const f = fakeFetch();
+    const client = api(f);
+    const reset = { expected_latest_version_id: VERSION, confirm_discard: true } as const;
+    for (const revision of [0, -1, 1.5, Number.NaN, 2 ** 53]) {
+      const results = [
+        await client.patchDraft(MODEL, revision, [{ op: "test", path: "/name", value: "x" }]),
+        await client.resetDraft(MODEL, revision, reset),
+        await client.publishVersion(MODEL, revision, { expected_base_version_id: VERSION }, "key-revision-1"),
+      ];
+      expect(results.map((r) => !r.ok && r.problem.kind)).toEqual(["invalid", "invalid", "invalid"]);
+    }
+    expect(f.calls).toHaveLength(0);
+  });
+
   it("makes keys the server accepts, a new one each time", () => {
     const a = newIdempotencyKey();
     expect(a).toMatch(/^[\x21-\x7e]{8,128}$/);

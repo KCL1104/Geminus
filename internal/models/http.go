@@ -91,7 +91,9 @@ var draftETags = regexp.MustCompile(`^"draft-revision-([1-9][0-9]*)"$`)
 // ifMatch is the draft revision the If-Match header names. A write must
 // say which revision it read (D-003): without the header the request is
 // 428; anything but one ETag of the draft's form (a list, "*", a weak
-// ETag) is 400.
+// ETag) is 400. A well-formed revision too large for any draft is -1, so
+// the service still checks the caller first and then answers 409 (T-013
+// review L1).
 func ifMatch(r *http.Request) (int64, error) {
 	values := r.Header.Values("If-Match")
 	if len(values) == 0 {
@@ -104,7 +106,7 @@ func ifMatch(r *http.Request) (int64, error) {
 	}
 	n, err := strconv.ParseInt(m[1], 10, 64)
 	if err != nil { // well formed, but no draft has reached that revision
-		return 0, ErrConflict
+		return -1, nil
 	}
 	return n, nil
 }
@@ -128,6 +130,12 @@ func refused(err error) error {
 		return httpapi.InvalidCursor()
 	case errors.Is(err, ErrDatasetsUnavailable):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "the version binds datasets and dataset storage is not available")
+	case errors.Is(err, ErrInvalidLimit): // PageQuery bounds it first
+		return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "limit must be one integer from 1 to 100",
+			Details: []httpapi.Detail{{Path: "", Reason: "limit"}}}
+	case errors.Is(err, ErrNotConfirmed): // the ResetDraft schema requires it first
+		return &httpapi.Error{Code: httpapi.RequestValidationFailed, Message: "the request body does not match the schema",
+			Details: []httpapi.Detail{{Path: "/confirm_discard", Reason: "a reset must be confirmed", Severity: "error"}}}
 	case errors.Is(err, ErrInvalidComment):
 		return &httpapi.Error{Code: httpapi.RequestValidationFailed, Message: "the request body does not match the schema",
 			Details: []httpapi.Detail{{Path: "/comment", Reason: "at most 2000 characters, without U+0000", Severity: "error"}}}

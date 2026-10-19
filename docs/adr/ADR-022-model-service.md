@@ -74,17 +74,17 @@
 
 - Route 在 `internal/models/http.go`，與 `internal/project`、`internal/tenant/memberships` 相同的模式：`Routes` 與 `planning/api-operations.json` 比對（method、path、role），`api.Handler` 註冊。`api.Handler` 自己建立 domain pack registry（P0 只有 software delivery），`cmd/api` 與整合測試因此一定用同一組 pack；dataset storage 尚不存在（T-016），綁 dataset 的 version 回 503。
 - Path 的 ID 必須是該種類的 D-001 ID，否則 400；格式正確但不存在（或在別的 organization）為 404。
-- **If-Match**（patch、reset、publish）：必須恰好一個 `"draft-revision-N"`。沒有為 428 `PRECONDITION_REQUIRED`；list、`*`、weak ETag、`0` 或前導 0、超過 100 字元、多個 header 為 400；格式正確但大到沒有 draft 能到的 revision 為 409。
+- **If-Match**（patch、reset、publish）：必須恰好一個 `"draft-revision-N"`。沒有為 428 `PRECONDITION_REQUIRED`；list、`*`、weak ETag、`0` 或前導 0、超過 100 字元、多個 header 為 400；格式正確但大到沒有 draft 能到的 revision 以 -1 交給 service，先檢查 role 與 tenant（viewer 403、其他 organization 404），再回 409（T-013 review L1）。
 - Draft 的回應（get、patch、reset）帶強 ETag `"draft-revision-N"`，等於 body 的 revision。
 - **Patch body**：`application/json-patch+json`（其他 415），最多 2 MiB（與 IR 上限相同，D-029；超過 413）。不符 patch schema 或沒有任何 operation 為 422 `REQUEST_VALIDATION_FAILED`（ADR-019：request schema）；能否套用、結果是否為合格 model 由 service 判斷，為 422 `MODEL_VALIDATION_FAILED`，details 是 issues（含 code 與 severity）。
 - Service 的錯誤對應：not found 404；revision 或 base 不符 409 `MODEL_VERSION_CONFLICT`；clean draft publish 409 `LIFECYCLE_CONFLICT`；cursor 400；idempotency key 用於不同 request 409 `IDEMPOTENCY_KEY_CONFLICT`；comment 422（`/comment`）；dataset storage 不在 503。其他（tenant、交易）由 `httpapi` 分類。
-- 前端 client（`apps/web/lib/api/client.ts`）有全部九個 operation；寫入的 Idempotency-Key 由呼叫者給，重試時沿用，client 先檢查格式。Client 的測試以 fake fetch 呼叫每個 operation，比對 `api-operations.json` 的 method 與 path。
+- 前端 client（`apps/web/lib/api/client.ts`）有全部九個 operation，手寫在產生的 contract types 之上（與 T-014 相同；不是產生的 client）；寫入的 Idempotency-Key 由呼叫者給，重試時沿用；key、ID 與 revision 都先在 client 檢查，不合格就不送出（回 Problem，不丟例外）。Client 的測試以 fake fetch 呼叫每個 operation，比對 `api-operations.json` 的 method 與 path。
 
 ## Owner 的決定（H-009：D-040、D-041 APPROVED，於 T-013 開放 route 之前實作）
 
 Owner 採用下列兩項的建議方案：IR 欄位改存 canonical 文字（D-040，選項 1），ModelVersion 保存 `comment`（D-041）。以下保留決定前的分析。
 
-**D-040 已實作（T-013a）**：migration 0005 把兩個 `ir` 欄位改為 `text`，並加上 `hash = 'sha256:' || encode(sha256(convert_to(ir,'UTF8')),'hex')` 的 CHECK；service 寫入 canonical bytes，讀出時不再 canonicalize，只再核對一次 hash（不符即錯誤，不回傳）。Reviewer 的 1.94 MB draft 存成 1,942,370 bytes（jsonb 時 83,639,428），本機 `internal/models` 的 DB 測試（含新的 `TestStoredIRIsTheCanonicalBytes`）從 162 秒降為 38 秒。0005 遇到已有 model 的 DB 會停止：SQL 無法從 jsonb 產生 canonical 形式，而尚無部署。
+**D-040 已實作（T-013a）**：migration 0005 把兩個 `ir` 欄位改為 `text`，並加上 `hash = 'sha256:' || encode(sha256(convert_to(ir,'UTF8')),'hex')` 的 CHECK；service 寫入 canonical bytes，讀出時不再 canonicalize，只再核對一次 hash（不符即錯誤，不回傳）。T-013 review M1：`patch.Apply` 原以 Go 的 deterministic JSON 產生 candidate，它與 RFC 8785 在兩處不同（`-0`；成員名稱依 UTF-8 bytes 而非 UTF-16 code units 排序，例如全形「：」與 CJK Ext-B 字元並列），`PatchDraft` 因此存入非 canonical 的 bytes，被 DB 的 hash CHECK 擋下而回 500。現在 `patch.Apply` 回傳 RFC 8785 形式，驗證、hash 與儲存的是同一份 bytes（unit、service、HTTP 三層的 regression test）。Reviewer 的 1.94 MB draft 存成 1,942,370 bytes（jsonb 時 83,639,428），本機 `internal/models` 的 DB 測試（含新的 `TestStoredIRIsTheCanonicalBytes`）從 162 秒降為 38 秒。0005 遇到已有 model 的 DB 會停止：SQL 無法從 jsonb 產生 canonical 形式，而尚無部署。
 
 **D-041 已實作（T-013b）**：`ModelVersion.comment`（contract 為必填、可為 null）保存 Publish 的 comment；空字串視為沒有 comment。Migration 0006 以 `char_length` 限制 1 到 2000 個字元（與 JSON Schema 的 `maxLength` 同樣以字元計），version 不可修改，所以 comment 只在建立時寫入。Service 另拒絕超過 2000 字元、含 U+0000 或非 UTF-8 的 comment（`ErrInvalidComment`，HTTP 層會先擋下）。Audit metadata 仍只記 ID 與數量。
 

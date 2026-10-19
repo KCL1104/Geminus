@@ -81,7 +81,7 @@ func TestIfMatch(t *testing.T) {
 		{[]string{`"draft-revision-1"`, `"draft-revision-1"`}, 0, httpapi.InvalidRequest, nil},
 		{[]string{`""`}, 0, httpapi.InvalidRequest, nil},
 		{[]string{fmt.Sprintf(`"draft-revision-1%0100d"`, 0)}, 0, httpapi.InvalidRequest, nil},
-		{[]string{`"draft-revision-9223372036854775808"`}, 0, "", models.ErrConflict},
+		{[]string{`"draft-revision-9223372036854775808"`}, -1, "", nil},
 	} {
 		r, _ := http.NewRequest("PATCH", "/", nil)
 		for _, v := range c.values {
@@ -115,6 +115,8 @@ func TestRefused(t *testing.T) {
 		models.ErrInvalidCursor:       httpapi.InvalidRequest,
 		models.ErrDatasetsUnavailable: httpapi.ServiceUnavailable,
 		models.ErrInvalidComment:      httpapi.RequestValidationFailed,
+		models.ErrInvalidLimit:        httpapi.InvalidRequest,
+		models.ErrNotConfirmed:        httpapi.RequestValidationFailed,
 		idempotency.ErrConflict:       httpapi.IdempotencyKeyConflict,
 		idempotency.ErrInProgress:     httpapi.IdempotencyKeyConflict,
 		fmt.Errorf("wrapped: %w", &models.InvalidError{Issues: []model.ValidationIssue{issue}}): httpapi.ModelValidationFailed,
@@ -126,7 +128,7 @@ func TestRefused(t *testing.T) {
 		if want == httpapi.ModelValidationFailed && !slices.Equal(e.Details, []httpapi.Detail{{Path: "/flows/0/to", Reason: "no such node", Code: "UNKNOWN_REFERENCE", Severity: "error"}}) {
 			t.Errorf("details %+v", e.Details)
 		}
-		if want == httpapi.RequestValidationFailed && (len(e.Details) != 1 || e.Details[0].Path != "/comment") {
+		if errors.Is(err, models.ErrInvalidComment) && (len(e.Details) != 1 || e.Details[0].Path != "/comment") {
 			t.Errorf("comment details %+v", e.Details)
 		}
 		if _, ok := httpapi.Status[e.Code]; !ok {

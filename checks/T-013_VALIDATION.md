@@ -1,6 +1,6 @@
 # T-013 驗證報告：Model 的 HTTP contract 與 client 整合
 
-**日期：2026-10-19｜狀態：`review`（實作與自我驗證完成；送獨立 review，依 H-003 驗收）｜需求：REQ-004、REQ-005、REQ-006｜Gate：D-012、D-015、D-024、D-025（APPROVED）、D-040、D-041（APPROVED，H-009）｜驗收測試：TEST-001、TEST-005、TEST-009（model 部分）**
+**日期：2026-10-19｜狀態：`review`（review round 1 CHANGES REQUESTED 已修正，送同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-004、REQ-005、REQ-006｜Gate：D-012、D-015、D-024、D-025（APPROVED）、D-040、D-041（APPROVED，H-009）｜驗收測試：TEST-001、TEST-005、TEST-009（model 部分）**
 
 範圍依 tasks.json：
 
@@ -16,12 +16,12 @@
 | 位置 | 內容 |
 |---|---|
 | `migrations/0005_ir_text.*`（D-040） | `model_versions.ir`、`model_drafts.ir` 改為 `text`；具名 CHECK：object、`model_id`（version 另有 `schema_version`）、`hash = 'sha256:' \|\| sha256(ir 的 UTF-8 bytes)`。SQL 無法從 jsonb 產生 canonical 形式，所以有 model 的 DB 會停止（ERRCODE 55000，看 row 時暫時 NO FORCE RLS，同一 transaction 內恢復）；down 回到 0001 的 jsonb 檢查 |
-| `internal/models`、`internal/storage/models`（D-040） | 寫入 canonical bytes；讀出不再 canonicalize，只再核對 hash（不符即錯誤，不回傳） |
+| `internal/models`、`internal/storage/models`、`internal/model/patch`（D-040） | 寫入 canonical bytes；讀出不再 canonicalize，只再核對 hash（不符即錯誤，不回傳）；review M1 後 patch 的結果也是 RFC 8785 形式 |
 | `migrations/0006_version_comment.*`、contract（D-041） | `ModelVersion.comment` 必填、可為 null，1–2000 個字元（`char_length`，與 JSON Schema 同樣以字元計）；空字串視為沒有；version 不可修改，所以只在建立時寫入。Service 另拒絕超過 2000 字元、含 U+0000、非 UTF-8 的 comment（`ErrInvalidComment`）；新 negative fixture；TS contract 重新產生 |
 | `internal/models/http.go` | 九個 route（`Routes` 與 `planning/api-operations.json` 比對）：path ID 檢查、If-Match 解析、draft 回應的強 ETag、patch body（`application/json-patch+json`、2 MiB、schema 與至少一個 operation）、service 錯誤對應 contract code |
 | `internal/httpapi/request.go` | `DecodeMedia`：`DecodeJSON` 的其他 JSON media type 版本 |
 | `internal/api/api.go`、`cmd/api/main.go` | `api.Handler` 自己建立 domain pack registry 並回傳錯誤（`cmd/api` 為 exit 1），cmd 與整合測試用同一組 pack；註冊 model routes |
-| `apps/web/lib/api/client.ts` | `createModel`、`resetDraft`、`publishVersion`、`listVersions`、`getModelVersion`（T-014 已有讀取與 `patchDraft`）；寫入的 Idempotency-Key 由呼叫者給（`newIdempotencyKey`），送出前檢查格式；型別全部來自產生的 contract types |
+| `apps/web/lib/api/client.ts` | `createModel`、`resetDraft`、`publishVersion`、`listVersions`、`getModelVersion`（T-014 已有讀取與 `patchDraft`）；寫入的 Idempotency-Key 由呼叫者給（`newIdempotencyKey`）；key、ID、revision 送出前檢查；手寫在產生的 contract types 之上 |
 | `scripts/run_db_tests.sh`、`scripts/render_db_tests.py`、`db/tests/` | 0005、0006 加入 up／down／up；fixture 改用 canonical 文字；`ir_rows.sql` 給 0005 的拒絕測試 |
 | 文件 | ADR-022（D-040、D-041 的實作、HTTP 一節、comment 不再是缺口）、ARCHITECTURE §2、API_DATABASE §9、db/README |
 
@@ -51,7 +51,7 @@
 | 測試 | 驗證 | 需求 |
 |---|---|---|
 | `TestRoutesMatchContract`（internal/models） | 九個 route 的 method、path、role 與 api-operations.json 相同，且恰為這九個 | D-012、TEST-001 |
-| `TestIfMatch` | 13 種 header：缺少 428；未加引號、weak、`0`、前導 0、`*`、list、兩個 header、空、超過 100 字元 400；`int64` 上限可用；超過上限 409 | D-003 |
+| `TestIfMatch` | 13 種 header：缺少 428；未加引號、weak、`0`、前導 0、`*`、list、兩個 header、空、超過 100 字元 400；`int64` 上限可用；超過上限為 -1（交給 service：先檢查 role 與 tenant，再 409；review L1） | D-003 |
 | `TestRefused` | 每個 service 錯誤的 contract code 與 status；422 帶 issue 的 path、message、code、severity；comment 指向 `/comment`；tenant 與其他錯誤原樣交給 httpapi | ADR-019 |
 | `TestModelRoutes`（internal/api，真實 handler、API login、TLS 測試 OIDC） | create（replay 回同一 body）→ get → draft 的 ETag → patch（ETag 2）→ publish 帶 comment（replay 相同、audit 一筆）→ versions → version 讀回 comment → model 的 latest 與 revision → patch → reset（ETag 5、內容回到 latest）→ list models；每個回應符合 schema 並帶 request ID | TEST-001、REQ-004–006 |
 | `TestModelRoleMatrix` | 四個讀取 route × viewer 200、另一 organization 的成員 404、以自己 organization 讀別人的 404、未知 identity 403、無 token 401；四個寫入 route 以 viewer 403、以別的 organization 404，且 draft 不變；ID 種類或格式錯 400，格式正確但不存在 404 | TEST-009 |
@@ -73,7 +73,8 @@
 ## 與規劃的差異
 
 - tasks.json 的 `internal/model/http/` 不可行：`internal/model` 是 generic kernel，architecture check 禁止它依賴 HTTP（AGENTS.md §2）。HTTP adapter 依 `internal/project` 的模式放在 `internal/models/http.go`；tasks.json 的 planned output 已更正。
-- 本任務的 HTTP adapter 先寫實作再寫測試（AGENTS.md §5 要求先寫測試）；以 23 個 mutant 全部被擋下作為測試有效的證據。
+- 本任務的 HTTP adapter 先寫實作再寫測試（AGENTS.md §5 要求先寫測試）；以 mutant 全部被擋下作為測試有效的證據。
+- tasks.json 寫「產生 TS client」；client 是手寫在產生的 contract types 之上（T-014 的做法），沒有重複 IR 型別，但不是產生的 client（review L4）。
 
 ## NOT RUN／延後
 
@@ -83,3 +84,24 @@
 | 前端編輯器使用新的 client operation | T-015（依 T-045 的 design gate） |
 | 瀏覽器的產品閉環 E2E | T-040 |
 | 真實 IdP | Auth0 tenant 尚未建立（ADR-018／T-043）；測試用 test OIDC provider |
+
+## Review round 1（2026-10-19，獨立 reviewer，審 101abac）
+
+結論 **CHANGES REQUESTED**：一個 must-fix，其餘（route、If-Match／ETag、media type、tenant／role、race、migration 0005／0006、D-041、TS client）經 probe 與 mutant 都成立。Reviewer 重現：integration-test、backend-test、architecture、spec-check（重產的 json 與 commit 相同）、frontend 217、63 個 Go test、HTTP mutation 23/23；自己的 9 個 Go mutant 殺 8 個、4 個 SQL mutant、4 個 TS mutant 全殺。
+
+| 發現 | 內容 | 處理 |
+|---|---|---|
+| M1 | `patch.Apply` 以 Go 的 deterministic JSON 產生 candidate，與 RFC 8785 在 `-0` 與 UTF-16 成員排序（如全形「：」與 CJK Ext-B「𠀀」、U+FFFD 與 emoji）不同；`PatchDraft` 存入非 canonical bytes，DB 的 hash CHECK 擋下 → 合法 patch 回 500（9 個中 4 個），且 TS client 會送出這種 key 順序。D-040 的 regression；報告「service 寫入 canonical bytes」的說法因此不實 | `patch.Apply` 回傳 RFC 8785 形式（根本修正：之後的 scenario 與 AI patch 也一樣）。先紅後綠：`TestCandidateIsCanonical`（patch，5 種）、`TestPatchedDraftIsCanonical`（service）、`TestPatchResultsAreStoredCanonical`（HTTP），修正前皆失敗（unit 不 canonical、service 23514、HTTP 500）；`TestStoredIRIsTheCanonicalBytes` 另檢查 `stored == Canonical(stored)`；mutant `patch-candidate-not-canonical` 被擋下 |
+| L1 | 格式正確但超過 int64 的 If-Match 在檢查 role／tenant 前就回 409（viewer 應 403、其他 tenant 應 404） | 改以 -1 交給 service；`TestDraftPreconditions` 加 viewer 403、其他 organization 404、editor 409；mutant `if-match-overflow-before-the-role` 被擋下 |
+| L2 | 沒有測試涵蓋 publish idempotency hash 中的 model_id（reviewer 的 mutant 存活：同一 key 對另一個 model 會 replay） | `TestPublishRefusals`：同一 key、body、If-Match 對另一個 model 為 409 IDEMPOTENCY_KEY_CONFLICT；mutant `publish-hash-without-model-id` 被擋下 |
+| L3 | TEST-009 矩陣缺 `listModels`，寫入缺「指定 A 的非成員」、未知 identity、無 token | 已補（行為原本就正確） |
+| L4 | 文件說法過頭（D-040）；TS client 是手寫的，未列為差異 | ADR-022、本報告、tasks.json 已更正 |
+| I1 | `internal/auth` 的 `TestKeyAgeBoundaries` 在負載下失敗一次（`waitFor` 的結果被忽略） | 原因：背景 refresh 在測試推進時鐘之後才存 keys，keys 以那時的時鐘為 fetched 時間；測試改為等 refresh 完成（`export_test.go` 的 `Refreshing`），並檢查結果；`-race -count=20` 通過 |
+| I2 | `ErrInvalidLimit`、`ErrNotConfirmed` 未對應（HTTP 到不了） | 對應為 400 `limit` 與 422 `/confirm_discard`；`TestRefused`；兩個 mutant 被擋下 |
+| I3 | 假設 DB 為 UTF8 encoding | 記錄；既有 SQL 測試本來就在 SQL_ASCII 上失敗，不是新問題 |
+| I4 | `draftETag` 對不合格 revision 丟 `RangeError` | client 先檢查 revision，回 Problem；新 vitest |
+| I5 | createModel 接受只有空白或 bidi 控制字元的名稱 | schema 允許；屬產品決定，記錄待 owner |
+| I6 | adapter 先於測試 | 已列於差異 |
+
+修正後 HTTP mutation 28 個全部被擋下（新增 6 個）。
+

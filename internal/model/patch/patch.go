@@ -16,6 +16,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
@@ -52,7 +53,8 @@ type Result struct {
 	// PatchIssues point into the patch document. When any is an error the
 	// patch did not apply and Candidate is nil.
 	PatchIssues []model.ValidationIssue
-	// Candidate is the patched IR (canonical member order), nil if not applied.
+	// Candidate is the patched IR in RFC 8785 form, the bytes a model hash
+	// covers (D-040), nil if not applied.
 	Candidate []byte
 	// Validation is the full validation of Candidate.
 	Validation validate.Result
@@ -98,7 +100,13 @@ func Apply(base, patchDoc []byte, mode Mode) (Result, error) {
 	if issues := afterApply(tree, baseRefs, ops, mode); len(issues) > 0 {
 		return Result{PatchIssues: validate.Sort(issues)}, nil
 	}
-	candidate, err := json.Marshal(tree, json.Deterministic(true))
+	// Go's deterministic encoding is not RFC 8785: it writes -0 and sorts
+	// member names by UTF-8 bytes, not UTF-16 code units (T-013 review M1).
+	encoded, err := json.Marshal(tree, json.Deterministic(true))
+	if err != nil {
+		return Result{}, err
+	}
+	candidate, err := hashing.Canonical(encoded)
 	if err != nil {
 		return Result{}, err
 	}

@@ -14,6 +14,7 @@ const createModelBody = `{"name":"Pipeline","domain":"software_delivery","templa
 
 type modelSummary struct {
 	ID            string `json:"id"`
+	ProjectID     string `json:"project_id"`
 	Name          string `json:"name"`
 	LatestVersion struct {
 		ID      string `json:"id"`
@@ -182,7 +183,7 @@ func TestModelRoleMatrix(t *testing.T) {
 	stranger := dbtest.NewUser(t, e.admin, e.p.Issuer)
 	draft := decode[draftBody](t, e.do("GET", "/v1/models/"+m.ID+"/draft", owner.Subject, e.a.ID, nil, ""))
 	model, version := "/v1/models/"+m.ID, "/v1/model-versions/"+m.LatestVersion.ID
-	reads := []string{model, model + "/draft", model + "/versions", version}
+	reads := []string{"/v1/projects/" + m.ProjectID + "/models", model, model + "/draft", model + "/versions", version}
 	for _, path := range reads {
 		for name, c := range map[string]struct {
 			subject, org string
@@ -212,11 +213,20 @@ func TestModelRoleMatrix(t *testing.T) {
 		if req.method == "PATCH" {
 			hh["Content-Type"] = "application/json-patch+json"
 		}
-		if r := e.do(req.method, req.path, viewer.Subject, e.a.ID, hh, req.body); r.status != 403 || code(t, r) != "FORBIDDEN" {
-			t.Errorf("%s as a viewer: %d %s", name, r.status, r.body)
-		}
-		if r := e.do(req.method, req.path, outsider.Subject, e.b.ID, hh, req.body); r.status != 404 || code(t, r) != "NOT_FOUND" {
-			t.Errorf("%s from another organization: %d %s", name, r.status, r.body)
+		for caller, c := range map[string]struct {
+			subject, org string
+			status       int
+			code         string
+		}{
+			"a viewer":                         {viewer.Subject, e.a.ID, 403, "FORBIDDEN"},
+			"another organization's member":    {outsider.Subject, e.a.ID, 404, "NOT_FOUND"},
+			"a member of the other one, in it": {outsider.Subject, e.b.ID, 404, "NOT_FOUND"},
+			"an unknown identity":              {stranger.Subject + "-unknown", e.a.ID, 403, "FORBIDDEN"},
+			"no token":                         {"", e.a.ID, 401, "UNAUTHENTICATED"},
+		} {
+			if r := e.do(req.method, req.path, c.subject, c.org, hh, req.body); r.status != c.status || code(t, r) != c.code {
+				t.Errorf("%s as %s: %d %s", name, caller, r.status, r.body)
+			}
 		}
 	}
 	if after := decode[draftBody](t, e.do("GET", model+"/draft", owner.Subject, e.a.ID, nil, "")); after.Revision != draft.Revision || after.Hash != draft.Hash {
@@ -262,11 +272,12 @@ func TestDraftPreconditions(t *testing.T) {
 	}
 	for name, write := range writes {
 		for v, want := range map[string]string{
-			"":                     "PRECONDITION_REQUIRED",
-			`draft-revision-1`:     "INVALID_REQUEST",
-			`W/"draft-revision-1"`: "INVALID_REQUEST",
-			`*`:                    "INVALID_REQUEST",
-			`"draft-revision-7"`:   "MODEL_VERSION_CONFLICT",
+			"":                                     "PRECONDITION_REQUIRED",
+			`draft-revision-1`:                     "INVALID_REQUEST",
+			`W/"draft-revision-1"`:                 "INVALID_REQUEST",
+			`*`:                                    "INVALID_REQUEST",
+			`"draft-revision-7"`:                   "MODEL_VERSION_CONFLICT",
+			`"draft-revision-9223372036854775808"`: "MODEL_VERSION_CONFLICT",
 		} {
 			r := write(v)
 			if got := code(t, r); got != want {
@@ -279,6 +290,16 @@ func TestDraftPreconditions(t *testing.T) {
 	}
 	if d := decode[draftBody](t, e.do("GET", "/v1/models/"+m.ID+"/draft", owner.Subject, e.a.ID, nil, "")); d.Revision != 1 {
 		t.Fatalf("refused writes changed the draft to revision %d", d.Revision)
+	}
+	// A revision too large for any draft is still a conflict only for a
+	// caller who may write: the role and the tenant are checked first.
+	huge := map[string]string{"Content-Type": "application/json-patch+json", "If-Match": `"draft-revision-9223372036854775808"`}
+	viewer, outsider := e.a.Members[tenant.Viewer], e.b.Members[tenant.Owner]
+	if r := e.do("PATCH", "/v1/models/"+m.ID+"/draft", viewer.Subject, e.a.ID, huge, rename); r.status != 403 || code(t, r) != "FORBIDDEN" {
+		t.Errorf("a viewer with a huge revision: %d %s", r.status, r.body)
+	}
+	if r := e.do("PATCH", "/v1/models/"+m.ID+"/draft", outsider.Subject, e.b.ID, huge, rename); r.status != 404 || code(t, r) != "NOT_FOUND" {
+		t.Errorf("another organization with a huge revision: %d %s", r.status, r.body)
 	}
 
 	var wg sync.WaitGroup
@@ -379,6 +400,11 @@ func TestPublishRefusals(t *testing.T) {
 	if r := e.publish(editor.Subject, m.ID, "key-ref-bind", etag(2), pub(`"two"`)); r.status != 409 || code(t, r) != "IDEMPOTENCY_KEY_CONFLICT" {
 		t.Errorf("the key with another comment: %d %s", r.status, r.body)
 	}
+	// The same key, body and If-Match for another model is another request.
+	m2 := e.newModelIn(t, "-second")
+	if r := e.publish(editor.Subject, m2.ID, "key-ref-bind", etag(2), pub(`"one"`)); r.status != 409 || code(t, r) != "IDEMPOTENCY_KEY_CONFLICT" {
+		t.Errorf("the key on another model: %d %s", r.status, r.body)
+	}
 	// Removing the sink leaves flows that point at nothing: the draft is
 	// saved with the error, and publishing it is refused.
 	version := decode[modelSummary](t, e.do("GET", "/v1/models/"+m.ID, editor.Subject, e.a.ID, nil, "")).LatestVersion.ID
@@ -447,5 +473,27 @@ func TestModelLists(t *testing.T) {
 		if r := e.do("GET", path, owner.Subject, e.a.ID, nil, ""); r.status != 400 || code(t, r) != want {
 			t.Errorf("GET %s: %d %s", path, r.status, r.body)
 		}
+	}
+}
+
+// T-013 review M1 over HTTP: patches whose result Go's deterministic JSON
+// writes differently from RFC 8785 are saved (200), as the TS client sends
+// them (JSON.stringify keeps the members' insertion order).
+func TestPatchResultsAreStoredCanonical(t *testing.T) {
+	e := setup(t)
+	m := e.newModel(t)
+	editor := e.a.Members[tenant.Editor]
+	rev := int64(1)
+	for name, value := range map[string]string{
+		"negative zero":       `{"z":-0}`,
+		"UTF-16 member order": `{"：":1,"𠀀":2,"z":0}`,
+		"empty and U+10000":   `{"":1,"𐀀":2}`,
+	} {
+		r := e.patch(editor.Subject, m.ID, etag(rev), `[{"op":"add","path":"/metadata","value":`+value+`}]`)
+		if r.status != 200 {
+			t.Fatalf("%s: %d %s", name, r.status, r.body)
+		}
+		valid(t, r, "http.schema.json#/$defs/Draft")
+		rev++
 	}
 }

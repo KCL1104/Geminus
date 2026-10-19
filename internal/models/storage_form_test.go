@@ -58,6 +58,9 @@ func TestStoredIRIsTheCanonicalBytes(t *testing.T) {
 	if !bytes.Equal(stored, d.IR) {
 		t.Errorf("the stored draft is %d bytes, its canonical form %d", len(stored), len(d.IR))
 	}
+	if canonical, err := hashing.Canonical(stored); err != nil || !bytes.Equal(canonical, stored) {
+		t.Errorf("the stored draft is not in canonical form (%v)", err)
+	}
 	if hashing.Sum(stored) != hash || hash != d.Hash {
 		t.Errorf("the stored hash %s is not the stored bytes' %s (draft %s)", hash, hashing.Sum(stored), d.Hash)
 	}
@@ -89,5 +92,34 @@ func TestStoredIRMustMatchItsHash(t *testing.T) {
 	spaced := bytes.ReplaceAll(ir, []byte(`,`), []byte(`, `))
 	if _, err := models.StoredIR(spaced, hashing.Sum(ir)); err == nil {
 		t.Error("the same value in other bytes was accepted under the original hash")
+	}
+}
+
+// A patch whose result Go's deterministic encoding writes differently from
+// RFC 8785 (-0; member names in U+E000-U+FFFF beside ones above U+FFFF,
+// such as a fullwidth colon and a CJK Extension B character) is saved in
+// canonical form with its hash, not refused by the hash check (T-013
+// review M1).
+func TestPatchedDraftIsCanonical(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	sc := e.scope(tenant.Editor)
+	m := e.create(t, sc, createBody)
+	rev := int64(1)
+	for name, value := range map[string]string{
+		"negative zero":       `{"z":-0}`,
+		"UTF-16 member order": `{"\uff1a":1,"\ud840\udc00":2}`,
+		"U+FFFD and an emoji": `{"\ufffd":1,"\ud83d\ude00":2}`,
+	} {
+		d, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, rev, []byte(`[{"op":"add","path":"/metadata","value":`+value+`}]`))
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		rev = d.Revision
+		stored, hash := e.storedIR(t, `SELECT ir, hash FROM twin.model_drafts WHERE model_id=$1`, m.ID)
+		canonical, err := hashing.Canonical(stored)
+		if err != nil || !bytes.Equal(canonical, stored) || hashing.Sum(stored) != hash || !bytes.Equal(stored, d.IR) {
+			t.Errorf("%s: the stored draft is not the canonical bytes of its hash (%v)", name, err)
+		}
 	}
 }

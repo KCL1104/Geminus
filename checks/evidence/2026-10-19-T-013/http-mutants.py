@@ -19,15 +19,19 @@ import tempfile
 REPO = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).resolve().parents[3]).resolve()
 HTTP = "internal/models/http.go"
 API = "internal/api/api.go"
+MODELS = "internal/models/models.go"
+PATCH = "internal/model/patch/patch.go"
 TESTS = [
-    ("./internal/models/", "TestRoutesMatchContract|TestIfMatch|TestRefused"),
-    ("./internal/api/", "TestModel|TestDraftPreconditions|TestPatchBody|TestPublishRefusals"),
+    ("./internal/model/patch/", "TestCandidateIsCanonical"),
+    ("./internal/models/", "TestRoutesMatchContract|TestIfMatch|TestRefused|TestPatchedDraftIsCanonical|TestStoredIRIsTheCanonicalBytes"),
+    ("./internal/api/", "TestModel|TestDraftPreconditions|TestPatchBody|TestPublishRefusals|TestPatchResultsAreStoredCanonical"),
 ]
 
 MUTANTS = [
     ("missing-if-match-is-400", HTTP, "return 0, httpapi.Errorf(httpapi.PreconditionRequired,", "return 0, httpapi.Errorf(httpapi.InvalidRequest,"),
     ("if-match-list-accepted", HTTP, "if len(values) > 1 || len(values[0]) > 100 || m == nil {", "if len(values[0]) > 100 || m == nil {"),
-    ("if-match-overflow-ignored", HTTP, "return 0, ErrConflict", "return 0, nil"),
+    ("if-match-overflow-is-a-revision", HTTP, "return -1, nil", "return 1, nil"),
+    ("if-match-overflow-before-the-role", HTTP, "return -1, nil", "return 0, ErrConflict"),
     ("if-match-weak-accepted", HTTP, 'regexp.MustCompile(`^"draft-revision-', 'regexp.MustCompile(`^(?:W/)?"draft-revision-'),
     ("no-etag-on-get", HTTP, "\tsetETag(w, d)\n\thttpapi.WriteJSON(w, 200, d)\n\treturn nil\n}\n\n// patchDraft", "\thttpapi.WriteJSON(w, 200, d)\n\treturn nil\n}\n\n// patchDraft"),
     ("etag-off-by-one", HTTP, '`"draft-revision-%d"`, d.Revision)', '`"draft-revision-%d"`, d.Revision+1)'),
@@ -41,6 +45,11 @@ MUTANTS = [
     ("datasets-unmapped", HTTP, "case errors.Is(err, ErrDatasetsUnavailable):", "case false:"),
     ("in-progress-unmapped", HTTP, ", errors.Is(err, idempotency.ErrInProgress):", ":"),
     ("comment-error-unmapped", HTTP, "case errors.Is(err, ErrInvalidComment):", "case false:"),
+    ("limit-error-unmapped", HTTP, "case errors.Is(err, ErrInvalidLimit):", "case false:"),
+    ("confirm-error-unmapped", HTTP, "case errors.Is(err, ErrNotConfirmed):", "case false:"),
+    # T-013 review: the key is bound to the model (L2); patch results are canonical (M1).
+    ("publish-hash-without-model-id", MODELS, 'hash, err := requestHash(map[string]any{"model_id": modelID, "if_match_revision": expected}, body)', 'hash, err := requestHash(map[string]any{"if_match_revision": expected}, body)'),
+    ("patch-candidate-not-canonical", PATCH, "\tcandidate, err := hashing.Canonical(encoded)\n", "\tcandidate, err := encoded, error(nil)\n\t_ = hashing.Canonical\n"),
     ("publish-without-key", HTTP, 'id, err := pathID(r, modelIDs, "model")\n\tif err != nil {\n\t\treturn err\n\t}\n\tkey, err := httpapi.IdempotencyKey(r)', 'id, err := pathID(r, modelIDs, "model")\n\tif err != nil {\n\t\treturn err\n\t}\n\tkey, err := "", error(nil)'),
     ("reset-ignores-if-match", HTTP, "\tvar req ResetRequest\n", "\texpected = 1 << 40\n\tvar req ResetRequest\n"),
     ("version-path-takes-model-id", HTTP, 'pathID(r, versionIDs, "model version")', 'pathID(r, modelIDs, "model version")'),

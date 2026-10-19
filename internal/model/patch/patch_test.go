@@ -12,6 +12,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
@@ -403,6 +404,32 @@ func TestCopyIsRejected(t *testing.T) {
 		r := mustApply(t, base(t), `[{"op":"copy","from":"/name","path":"/metadata"}]`, mode)
 		if r.Applied() || len(r.PatchIssues) == 0 || r.PatchIssues[0].Code != SchemaInvalid {
 			t.Errorf("%v: %v", mode, r.PatchIssues)
+		}
+	}
+}
+
+// The candidate is the RFC 8785 form of the result: the bytes a hash covers
+// and a draft stores (D-040). Go's deterministic encoding differs from it
+// for -0 and for member names that sort differently by UTF-16 code units
+// than by UTF-8 bytes (U+FF1A before U+20000; T-013 review M1).
+func TestCandidateIsCanonical(t *testing.T) {
+	for name, value := range map[string]string{
+		"negative zero":           `{"z":-0}`,
+		"negative zero, fraction": `{"z":-0.0}`,
+		"UTF-16 member order":     `{"：":1,"𠀀":2}`,
+		"U+FFFD and an emoji":     `{"�":1,"😀":2}`,
+		"empty and supplementary": `{"":1,"𐀀":2}`,
+	} {
+		r := mustApply(t, base(t), `[{"op":"add","path":"/metadata","value":`+value+`}]`, ManualDraft)
+		if !r.Applied() {
+			t.Fatalf("%s: %v", name, r.PatchIssues)
+		}
+		canonical, err := hashing.Canonical(r.Candidate)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(r.Candidate, canonical) {
+			t.Errorf("%s: the candidate is not canonical:\n%s\n%s", name, r.Candidate, canonical)
 		}
 	}
 }

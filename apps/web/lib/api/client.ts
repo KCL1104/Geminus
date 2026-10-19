@@ -83,6 +83,10 @@ function apiBase(baseUrl: string): { origin: string; path: string } | null {
 
 const badKey = (): Failed => ({ ok: false, problem: invalidRequestProblem("An Idempotency-Key is 8 to 128 visible ASCII characters.") });
 
+/** A draft revision the server can have issued (a positive safe integer); anything else is refused locally, never thrown. */
+const validRevision = (n: number): boolean => Number.isSafeInteger(n) && n >= 1;
+const badRevision = (): Failed => ({ ok: false, problem: invalidRequestProblem("A draft revision is a positive integer.") });
+
 const notFound = (what: string): Failed => ({
   ok: false,
   problem: { kind: "not_found", code: null, status: null, message: `${what} does not exist.`, requestId: null, details: [], retryAfterSeconds: null },
@@ -165,6 +169,7 @@ export function createApiClient(cfg: ClientConfig) {
     /** Saves ops on top of `revision`; a stale revision comes back as a 409 conflict, never a silent overwrite. */
     async patchDraft(modelId: string, revision: number, patch: JsonPatch, opts: { signal?: AbortSignal } = {}): Promise<Result<Draft>> {
       if (!isID("mdl", modelId)) return notFound("The model");
+      if (!validRevision(revision)) return badRevision();
       if (patch.length === 0) return { ok: false, problem: invalidRequestProblem("A draft change needs at least one operation.") };
       return checkDraft(
         await call<Draft>({
@@ -193,6 +198,7 @@ export function createApiClient(cfg: ClientConfig) {
     /** Discards the draft's changes; `revision` and the latest version must still be current (D-003). */
     async resetDraft(modelId: string, revision: number, body: ResetDraft, opts: { signal?: AbortSignal } = {}): Promise<Result<Draft>> {
       if (!isID("mdl", modelId)) return notFound("The model");
+      if (!validRevision(revision)) return badRevision();
       return checkDraft(
         await call<Draft>({
           method: "POST",
@@ -207,6 +213,7 @@ export function createApiClient(cfg: ClientConfig) {
     /** Publishes the draft at `revision` as the next immutable version; reuse `key` to retry. */
     async publishVersion(modelId: string, revision: number, body: Publish, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<ModelVersion>> {
       if (!isID("mdl", modelId)) return notFound("The model");
+      if (!validRevision(revision)) return badRevision();
       if (!IDEMPOTENCY_KEY.test(key)) return badKey();
       return call<ModelVersion>({
         method: "POST",

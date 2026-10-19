@@ -487,7 +487,9 @@ func TestKeyAgeBoundaries(t *testing.T) {
 	if err := verify(); err != nil {
 		t.Fatal(err)
 	}
-	if !waitFor(t, func() bool { return p.Hits() == 2 }) {
+	// Until the refresh has stored its keys: they are stamped with the
+	// clock's time then, and the clock moves on next.
+	if !waitFor(t, func() bool { return p.Hits() == 2 && !v.Refreshing() }) {
 		t.Errorf("%d fetches at KeyMaxAge, want a background refresh", p.Hits())
 	}
 	// Refreshed at 1 h. With the provider down, the keys stay usable until
@@ -497,7 +499,9 @@ func TestKeyAgeBoundaries(t *testing.T) {
 	if err := verify(); err != nil {
 		t.Errorf("1 ns before KeyMaxStale: %v", err)
 	}
-	waitFor(t, func() bool { return p.Hits() == 3 })
+	if !waitFor(t, func() bool { return p.Hits() == 3 && !v.Refreshing() }) {
+		t.Errorf("%d fetches 1 ns before KeyMaxStale, want a background refresh", p.Hits())
+	}
 	c.Add(time.Nanosecond)
 	if err := verify(); !errors.Is(err, auth.ErrKeysUnavailable) {
 		t.Errorf("at KeyMaxStale: %v", err)
