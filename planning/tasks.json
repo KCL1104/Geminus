@@ -1402,7 +1402,7 @@
       "id": "T-023",
       "title": "Run API / worker / cancellation integration",
       "priority": "P0",
-      "status": "not_started",
+      "status": "done",
       "owner_role": "Platform + Simulation",
       "planning_window": "Week 7–8",
       "depends_on": [
@@ -1461,7 +1461,22 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-023_VALIDATION.md",
+          "summary": "Run 建立時凍結 version、patch、config、dataset manifest、engine version 與 server limits，run、job、audit、idempotency 同一 transaction 提交後才回 202（migration 0009、internal/runs）；checkpoint 取消與跨 retry 的 durable 預算（wall clock 自首次開始、event 以 durable batch 預留）；結果在 lease 下與 job 一起提交，cancel 與 complete 互斥；trace 先授權再驗 SHA-256 與大小、fail closed（D-044）；SSE 每個事件前在新 transaction 重查 membership 與 role，成員被移除即關閉；simulation handler 在 adapter package internal/runs/runner，只由 worker 連結（architecture rule）；domain pack 由 internal/packs 單一 registry 提供給 API 與 worker。驗證：backend-test、backend-race、architecture-check、spec-check、frontend-test（413）、integration-test（新的 dt_test_* 資料庫，20 個 Go DB 套件，0 fail、0 skip）皆 exit 0；瀏覽器 E2E（T-032/T-040）、mutation harness、benchmark（T-037）、production object storage adapter NOT RUN。",
+          "reviewer": "agent independent review at owner's request (H-003); owner did not review line by line",
+          "review": "independent reviewer agent (H-003): ACCEPT, no high finding; M1 recorded as a gate on the D-044 production-adapter ADR; L1 (0009 owner write could stall an organization's queue), L2 (packs registered twice), I1 (SSE keep-alive vs HTTP/2 write deadline), I3 (audit hashes), I4, I5 fixed red-first (0b180b1..e8aeb37); L3–L6 and I2 recorded as follow-ups",
+          "review_evidence": "checks/evidence/2026-10-19-T-023/",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/39312923377 (bdc6254: success)",
+          "re_review": "same reviewer, e8aeb37: ACCEPT; every fix confirmed, the deferred trigger run_completes_with_its_job breaks no legitimate path (worker Finish, cancel, reaper retry and give-up, API cancel, down migration); integration-test exit 0 on its own disposable cluster",
+          "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/39318495649 (e8aeb37: success)",
+          "accepted_at": "2026-10-19",
+          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；首輪 ACCEPT 的 low 與 info 發現已先紅後綠修正，同一 reviewer 複核 ACCEPT"
+        }
+      ]
     },
     {
       "id": "T-024",
