@@ -230,6 +230,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | H-012 | 2026-10-19 | 產品願景涵蓋所有場景（製造業、工業、倉儲、航太、城市、建築工程等），P0 仍先做 Software Delivery，不改 P0／P1 範圍；PRODUCT.md 須寫入 3D（P0 的 3D 仍唯讀，SOURCE）；使用情境為桌機決策、每天長時間建模、會議投影；以桌機為主，手機可看結果與審核 proposal、不編輯拓撲；品牌只有名稱 Geminus；深色主題用灰黑色、不用藍色；以 impeccable（Apache-2.0）做 UI 檢查與改進。詳見 `PRODUCT.md` | ~~3D authoring 是否及何時納入~~ H-014：P0 不做，選定第二個 domain 時再決定；~~視覺方向與預設主題~~ H-013 |
 | H-013 | 2026-10-19 | 視覺方向選 Marey 圖表時刻表（impeccable 方向輪，agent 排名第一的候選）：時間由左往右、步驟由上往下、每個工作項目一條線，線變平就是排隊；scenario 深綠、baseline 石墨虛線；字型 Archivo；深色灰黑。預設主題跟隨系統，使用者可切換並記住。草稿在 `.impeccable/mocks/decision/` | 依此方向建成的 design system（DESIGN.md、tokens、元件）待 owner 檢視 |
 | H-014 | 2026-10-19 | 3D 維持現狀：P0 只做唯讀 3D 檢視（T-033、T-034），3D authoring 不進 P0；選定第二個（空間型）domain 時再決定；不另開空間型 IR 擴充 spike | 選定第二個 domain 時決定 3D authoring |
+| H-015 | 2026-10-19 | 專案授權為私有＋保留所有權利（`LICENSE`）：不授予任何使用、複製、修改、散布或作為服務提供的權利。Agent 提出 FSL-1.1-ALv2（建議，若維持公開）、私有、AGPL-3.0、Apache-2.0 四個選項 | owner 在 GitHub 將 repo 改為私有；著作權人名稱（目前為 KCL1104）；AI 生成程式碼著作權與原報告權利請律師確認 |
 
 ## 原報告保留的 TBD
 

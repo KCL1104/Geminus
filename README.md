@@ -52,3 +52,7 @@ Go / frontend / DB / live AI 測試要由 coding agent 在對應任務完成後�
 ## 交付與重現
 
 [來源索引](sources/SOURCE_MAP.md) 保留頁碼與原始檔 hash；[validation report](checks/VALIDATION_REPORT.md) 記錄實際跑過與未跑過的檢查。`MANIFEST.sha256` 是交付檔案校驗清單；不包含它自己的 hash。
+
+## 授權
+
+專有軟體，保留所有權利（[LICENSE](LICENSE)，owner 決定 H-015）。未經著作權人書面同意，不得使用、複製、修改、散布或作為服務提供。第三方元件依其各自的授權，見 [THIRD_PARTY_NOTICES](docs/THIRD_PARTY_NOTICES.md) 與 ADR-011、ADR-021 的授權欄。

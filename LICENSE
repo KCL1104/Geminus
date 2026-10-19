@@ -1,0 +1,13 @@
+Copyright (c) 2026 KCL1104. All rights reserved.
+
+This repository and everything in it (source code, specifications,
+documentation, designs, prompts, test data and other material) is
+proprietary. No license or right to use, copy, modify, merge, publish,
+distribute, sublicense, sell, host or offer it as a service, in whole or
+in part, is granted, except by the copyright holder in writing.
+
+Third-party components keep their own licenses and notices: see
+docs/THIRD_PARTY_NOTICES.md, the license columns of
+docs/adr/ADR-011-toolchain-bootstrap.md and
+docs/adr/ADR-021-ui-library-and-design-system.md, and the lockfiles
+(go.sum, apps/web/package-lock.json, apps/web-e2e/package-lock.json).

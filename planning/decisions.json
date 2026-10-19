@@ -816,6 +816,20 @@
       "still_open": [
         "選定第二個 domain 時決定 3D authoring 是否納入"
       ]
+    },
+    {
+      "id": "H-015",
+      "subject": "專案授權",
+      "decision": "私有＋保留所有權利：repository 為專有軟體，不授予任何使用、複製、修改、散布或作為服務提供的權利（LICENSE）。Repo 改為私有由 owner 在 GitHub 操作。Agent 提出的選項：FSL-1.1-ALv2（agent 建議，若維持公開）、私有＋保留所有權利、AGPL-3.0、Apache-2.0。",
+      "quote": "私有＋保留所有權利",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-19",
+      "source": "Claude Code session 的問題卡回答，由 agent 記錄",
+      "still_open": [
+        "owner 在 GitHub 將 repository 改為私有（agent 不變更 repo 可見性）",
+        "LICENSE 的著作權人目前寫 GitHub 帳號 KCL1104，有法定姓名或公司時由 owner 更正",
+        "AI 生成程式碼的著作權可執行性與原報告（sources/）的權利，建議由律師確認"
+      ]
     }
   ]
 }
