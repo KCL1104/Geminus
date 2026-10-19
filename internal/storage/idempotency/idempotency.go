@@ -83,6 +83,18 @@ func Claim(ctx context.Context, tx pgx.Tx, k Key, hash string) (*Response, error
 	return &Response{Status: *status, Body: body}, nil
 }
 
+// Seen reports whether k has an unexpired row: a request with this key was
+// made before (completed or not). It reads only, so a request whose body is
+// large (an upload, T-016) can tell before storing that body whether it can
+// only be a replay or a conflict; Claim still decides.
+func Seen(ctx context.Context, tx pgx.Tx, k Key) (bool, error) {
+	var seen bool
+	err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM twin.idempotency_keys
+		WHERE organization_id=$1 AND actor_id=$2 AND operation_scope=$3 AND key=$4 AND expires_at > now())`,
+		k.Org, k.Actor, k.Operation, k.Key).Scan(&seen)
+	return seen, err
+}
+
 // Complete stores the response of a request Claim claimed in tx.
 func Complete(ctx context.Context, tx pgx.Tx, k Key, r Response) error {
 	tag, err := tx.Exec(ctx, `UPDATE twin.idempotency_keys SET response_status=$5, response_body=$6, completed_at=now()

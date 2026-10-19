@@ -7,9 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"time"
 
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/httpapi"
+	"github.com/kcl1104/geminus/internal/import/upload"
 	"github.com/kcl1104/geminus/internal/models"
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/project"
@@ -25,14 +27,17 @@ import (
 type Option func(*options)
 
 type options struct {
-	objects objects.Store
-	limits  simulation.ExecutionLimits
-	stream  runs.Stream
+	objects   objects.Store
+	limits    simulation.ExecutionLimits
+	stream    runs.Stream
+	maxUpload int64
+	upload    upload.Options
 }
 
 // WithObjects gives the API private object storage (D-044): dataset
-// snapshots for runs and the runs' trace artifacts. Without it a run that
-// needs either fails closed with 503.
+// snapshots for runs, the runs' trace artifacts, uploaded import files and
+// their error reports. Without it a run that needs either, and every
+// upload, fails closed with 503.
 func WithObjects(s objects.Store) Option { return func(o *options) { o.objects = s } }
 
 // WithRunLimits sets the execution limits new runs freeze (D-007's when
@@ -41,6 +46,16 @@ func WithRunLimits(l simulation.ExecutionLimits) Option { return func(o *options
 
 // WithStream sets how the progress stream polls and ends (tests shorten it).
 func WithStream(s runs.Stream) Option { return func(o *options) { o.stream = s } }
+
+// WithUploadMaxBytes bounds an uploaded import file (D-007's 50,000,000
+// bytes when unset; tests lower it).
+func WithUploadMaxBytes(n int64) Option { return func(o *options) { o.maxUpload = n } }
+
+// WithUploadTimeout bounds reading one upload (5 minutes when unset; tests
+// shorten it).
+func WithUploadTimeout(d time.Duration) Option {
+	return func(o *options) { o.upload.UploadTimeout = d }
+}
 
 // Domains lists the domains Handler serves (internal/packs, the registry
 // the worker builds as well).
@@ -59,8 +74,9 @@ func Domains() ([]string, error) {
 // "OPTIONS *" never gets here: net/http answers it with an empty 200.
 // The domain packs are internal/packs' (the worker's as well). Publishing
 // a version that binds datasets still fails closed with 503 (the model
-// service has no dataset store until uploads exist, T-016); runs read
-// dataset snapshots and store traces through the object storage given.
+// service has no dataset store until an import commit freezes one, T-018);
+// runs read dataset snapshots and store traces, and uploads store their
+// files, through the object storage given.
 func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (http.Handler, error) {
 	var o options
 	for _, opt := range opts {
@@ -76,6 +92,7 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	me.Register(mux, log, v, db, &me.Service{DB: db})
 	models.Register(mux, log, v, db, &models.Service{DB: db, Packs: served})
 	runs.Register(mux, log, v, db, &runs.Service{DB: db, Packs: served, Objects: o.objects, Limits: o.limits}, o.stream)
+	upload.Register(mux, log, v, db, &upload.Service{DB: db, Objects: o.objects, MaxBytes: o.maxUpload}, o.upload)
 	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")
 	})

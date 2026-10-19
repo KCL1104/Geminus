@@ -235,8 +235,23 @@ var rules = []rule{
 		name:    "job-handlers-only-in-the-worker",
 		why:     "job handlers run claimed jobs under the worker's lease: only the worker binary registers them, never the API or a service it shares (ADR-024)",
 		applies: []string{"./..."},
-		except:  []string{"./cmd/worker/...", "./internal/runs/runner/..."},
-		forbid:  []string{"./internal/runs/runner/..."},
+		except:  []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/..."},
+		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/..."}, // T-023, T-016
+	},
+	{
+		// The parser and the report writer read and write bytes: the
+		// upload service and the profile job own storage, tenants and
+		// transport (T-016), so the file's handling can be tested, and
+		// reasoned about, on its own.
+		name:       "import-parsing-is-pure",
+		why:        "internal/import/profile and internal/import/report only read and write bytes: no storage, tenant, HTTP, database, file, process or LLM access (T-016)",
+		applies:    []string{"./internal/import/profile/...", "./internal/import/report/..."},
+		forbid:     cat(appLayers, testInfra, ioStd, dbDrivers, llmSDKs, []string{"testing"}),
+		allow:      []string{"./internal/import/profile/...", "./internal/import/report/..."},
+		thirdParty: kernelThirdParty,
+		stdOnly:    cat(kernelStd, []string{"encoding/csv"}),
+		moduleOnly: cat(genericKernel, []string{"./internal/import/profile/...", "./internal/import/report/..."}),
+		goOnly:     true,
 	},
 	{
 		// The API accepts runs the worker then runs: both must serve the

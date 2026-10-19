@@ -149,6 +149,12 @@ func TestProbesAreCaught(t *testing.T) {
 		{"storage-links-the-worker-scope", "internal/storage/projects/zz_probe.go", module + "/internal/tenant/workerscope", "worker-scope-only-in-the-worker", "./internal/storage/projects", "./internal/tenant/workerscope", false},
 		{"api-links-the-simulation-handler", "cmd/api/zz_probe.go", module + "/internal/runs/runner", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/runs/runner", false},
 		{"a-service-links-the-handler", "internal/models/zz_probe.go", module + "/internal/runs/runner", "job-handlers-only-in-the-worker", "./internal/models", "./internal/runs/runner", false},
+		{"api-links-the-import-profiler", "cmd/api/zz_probe.go", module + "/internal/import/profiler", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/import/profiler", false},
+		{"the-upload-service-links-the-profiler", "internal/import/upload/zz_probe.go", module + "/internal/import/profiler", "job-handlers-only-in-the-worker", "./internal/import/upload", "./internal/import/profiler", false},
+		{"the-parser-reads-object-storage", "internal/import/profile/zz_probe.go", module + "/internal/storage/objects", "import-parsing-is-pure", "./internal/import/profile", "./internal/storage/objects", false},
+		{"the-parser-reads-the-tenant", "internal/import/profile/zz_probe.go", module + "/internal/tenant", "import-parsing-is-pure", "./internal/import/profile", "./internal/tenant", false},
+		{"the-report-serves-http", "internal/import/report/zz_probe.go", "net/http", "import-parsing-is-pure", "./internal/import/report", "net/http", false},
+		{"the-report-opens-files", "internal/import/report/zz_probe.go", "os", "import-parsing-is-pure", "./internal/import/report", "os", false},
 		{"the-worker-names-a-pack", "cmd/worker/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "packs-named-in-one-place", "./cmd/worker", "./internal/domainpack/softwaredelivery", false},
 		{"a-service-names-a-pack", "internal/runs/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "packs-named-in-one-place", "./internal/runs", "./internal/domainpack/softwaredelivery", false},
 	}
@@ -292,6 +298,11 @@ func TestSyntheticGraph(t *testing.T) {
 	// Opening its own handle through the raw foundation is not going through
 	// a gateway (T-009 review M2).
 	add(m("internal/rawdb"), false, m("internal/storage/postgres"))
+	// The import parser may use the kernel and the report writer, nothing
+	// that reaches storage (T-016).
+	add(m("internal/import/report"), false, "encoding/csv")
+	add("encoding/csv", true)
+	add(m("internal/import/profile"), false, m("internal/model"), m("internal/import/report"), m("internal/storage/postgres"))
 	violations, errs := check(g, rules)
 	if len(errs) > 0 {
 		t.Fatal(errs)
@@ -316,6 +327,7 @@ func TestSyntheticGraph(t *testing.T) {
 		"db-only-in-storage ./internal/rawsql ./internal/rawsql>github.com/jackc/pgx/v5",
 		"db-handles-only-in-gateways ./internal/rawdb ./internal/rawdb>./internal/storage/postgres",
 		"db-handles-only-in-gateways ./internal/ai ./internal/ai>./internal/storage/postgres",
+		"import-parsing-is-pure ./internal/import/profile ./internal/import/profile>./internal/storage/postgres",
 	} {
 		if !got[want] {
 			t.Errorf("missing violation %q", want)
@@ -324,7 +336,9 @@ func TestSyntheticGraph(t *testing.T) {
 	for v := range got {
 		for _, never := range []string{"domain-packs ./internal/domainpack/alpha ", "llm-sdks-only-in-ai ./internal/ai ", "llm-sdks-only-in-ai ./cmd/api ",
 			"db-only-in-storage ./internal/service ", "db-handles-only-in-gateways ./internal/service ", "db-handles-only-in-gateways ./internal/storage/",
-			"no-test-infra-in-production ./internal/contracttest ", "db-only-in-storage ./internal/storage/postgres "} {
+			"no-test-infra-in-production ./internal/contracttest ", "db-only-in-storage ./internal/storage/postgres ",
+			"import-parsing-is-pure ./internal/import/report ", "import-parsing-is-pure ./internal/import/profile ./internal/import/profile>./internal/model",
+			"import-parsing-is-pure ./internal/import/profile ./internal/import/profile>./internal/import/report"} {
 			if strings.HasPrefix(v, never) {
 				t.Errorf("unexpected violation %q", v)
 			}

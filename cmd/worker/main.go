@@ -5,7 +5,8 @@
 // deployment's organizations until SIGINT or SIGTERM.
 //
 // The handlers this build registers: simulation runs (T-023,
-// internal/runs/runner). Import profiling (T-016) and AI proposals and
+// internal/runs/runner) and import profiling (T-016,
+// internal/import/profiler). Import validation (T-017) and AI proposals and
 // analyses (T-025) are not built yet; their jobs stay queued.
 package main
 
@@ -22,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
@@ -93,7 +95,11 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[jobs.Type]handler.Handler{jobs.Simulation: sim}, nil
+	profile, err := profiler.New(profiler.Config{Objects: d.objects, Actor: d.worker.ID, Log: d.log})
+	if err != nil {
+		return nil, err
+	}
+	return map[jobs.Type]handler.Handler{jobs.Simulation: sim, jobs.ImportProfile: profile}, nil
 }
 
 // objectStore opens the configured object storage (D-044): nil when it is
