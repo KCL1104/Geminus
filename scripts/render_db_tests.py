@@ -53,6 +53,9 @@ IDS = {
     "JOB_A12": ("job", "A", 12), "JOB_A13": ("job", "A", 13), "JOB_A14": ("job", "A", 14), "JOB_A15": ("job", "A", 15),
     "JOB_A16": ("job", "A", 16), "JOB_A17": ("job", "A", 17), "JOB_A18": ("job", "A", 18),
     "ART_A1": ("art", "A", 1), "ART_A2": ("art", "A", 2),
+    # T-016 (imports.sql): uploads, their profile jobs and an ID no row has.
+    "IMP_A3": ("imp", "A", 3), "IMP_A4": ("imp", "A", 4), "IMP_A5": ("imp", "A", 5), "IMP_A6": ("imp", "A", 6),
+    "IMP_A9": ("imp", "A", 9), "JOB_A21": ("job", "A", 21), "JOB_A22": ("job", "A", 22),
 }
 
 

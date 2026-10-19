@@ -84,6 +84,11 @@ SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
 UPDATE twin.jobs SET status='running', attempt=attempt+1, locked_at=now(), locked_by='worker-1', lease_token=lease_token+1,
     lease_expires_at=now()+interval '30 seconds', heartbeat_at=now(), available_at=now(), error=NULL
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000001';
+-- T-016 (0010): the worker also writes the profile and the error report's
+-- hash and size, and moves the import past profiling.
+UPDATE twin.imports SET status='AWAITING_MAPPING', profile='{"format":"csv","encoding":"utf-8","rows":3,"columns":[]}',
+    error_report_object_key='tenant/org_01M4YDQK00TA00000000000000/imports/imp_01M4YDQK00TA00000000000001/profile-errors-1.csv', error_report_content_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222', error_report_size_bytes=10
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';
 -- The API keeps the human-confirmed columns.
 SET LOCAL ROLE twin_api;
 UPDATE twin.imports SET mapping='{"fields":[]}', mapping_revision=mapping_revision+1
@@ -113,6 +118,8 @@ SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
 SET LOCAL ROLE twin_api;
 UPDATE twin.imports SET status='COMMITTED', invalid_rows=0, dataset_version_id='dsv_01M4YDQK00TA00000000000001', proposal_id='aip_01M4YDQK00TA00000000000001'
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';
+-- T-016 (0010): a committed import is final for the API as well.
+SELECT pg_temp.must_fail($q$UPDATE twin.imports SET mapping='{"fields":[1]}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'$q$, '55000');
 SET LOCAL ROLE twin_worker;
 SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
   $q$UPDATE twin.imports SET status='FAILED' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'$q$,

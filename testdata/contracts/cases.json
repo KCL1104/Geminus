@@ -135,6 +135,90 @@
       "layer": "schema"
     },
     {
+      "id": "valid-import-profiling",
+      "instance": "testdata/contracts/valid-import-profiling.json",
+      "schema": "schemas/import.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-import-json-model",
+      "instance": "testdata/contracts/valid-import-json-model.json",
+      "schema": "schemas/import.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-import-without-profile",
+      "instance": "testdata/contracts/invalid-import-without-profile.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-import-preview-257-columns",
+      "instance": "testdata/contracts/invalid-import-preview-257-columns.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/preview/0"
+      ]
+    },
+    {
+      "id": "invalid-import-profile-unknown-type",
+      "instance": "testdata/contracts/invalid-import-profile-unknown-type.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/profile/columns/1/inferred"
+      ]
+    },
+    {
+      "id": "invalid-import-profile-json-model-columns",
+      "instance": "testdata/contracts/invalid-import-profile-json-model-columns.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/profile/columns"
+      ]
+    },
+    {
+      "id": "invalid-import-profile-column-name-257",
+      "instance": "testdata/contracts/invalid-import-profile-column-name-257.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/profile/columns/0/name"
+      ]
+    },
+    {
+      "id": "invalid-import-profile-encoding",
+      "instance": "testdata/contracts/invalid-import-profile-encoding.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/profile/encoding"
+      ]
+    },
+    {
+      "id": "invalid-import-profile-257-columns",
+      "instance": "testdata/contracts/invalid-import-profile-257-columns.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/profile/columns"
+      ]
+    },
+    {
       "id": "valid-result",
       "instance": "testdata/contracts/valid-result.json",
       "schema": "schemas/simulation.schema.json#/$defs/Result",

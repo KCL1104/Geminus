@@ -16,6 +16,7 @@ export type Import = {
   mapping_revision: number;
   total_rows: number;
   invalid_rows: number;
+  profile: Profile | null;
   preview: Record<string, unknown>[];
   mapping: AiMapping | null;
   validation: Validation | null;
@@ -25,4 +26,21 @@ export type Import = {
   error: Error | null;
   mapping_suggestion_status: "none" | "generating" | "ready" | "failed";
   mapping_suggestion: AiMapping | null;
+};
+
+/** D-043(a): the profile of the whole uploaded file, computed by the import_profile job. rows counts data rows (CSV records after the header, JSON events array elements; 0 for json_model). columns lists the source columns in file order: the CSV header, or the top-level member names of the JSON events in order of first appearance; empty for json_model. */
+export type Profile = {
+  format: "csv" | "json_events" | "json_model";
+  encoding: "utf-8" | "utf-8-bom";
+  rows: number;
+  columns: ProfileColumn[];
+};
+
+/** One source column (D-043(a)). inferred is the one type all non-empty values share (integer and number together are number), empty when no value is non-empty, else mixed; JSON objects and arrays count as mixed. non_empty counts values that are present, not null and not the empty string; max_length is the longest value in characters (Unicode code points). */
+export type ProfileColumn = {
+  name: string;
+  index: number;
+  inferred: "empty" | "boolean" | "integer" | "number" | "timestamp" | "string" | "mixed";
+  non_empty: number;
+  max_length: number;
 };

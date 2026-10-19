@@ -5,7 +5,7 @@
 // typecheck` fails if a type ever becomes too permissive.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { AnalysisOutput, CancelSimulation, Error, JsonPatch, ModelIR, ProposalOutput } from "../lib/contracts";
+import type { AnalysisOutput, CancelSimulation, Error, Import, JsonPatch, ModelIR, ProfileColumn, ProposalOutput } from "../lib/contracts";
 
 const fixture = (name: string): unknown =>
   JSON.parse(readFileSync(new URL(`../../../testdata/contracts/${name}`, import.meta.url), "utf8"));
@@ -59,12 +59,72 @@ const errorBody: Error = {
 // cancelSimulation's body is a closed empty object (T-023).
 const cancelBody: CancelSimulation = {};
 
+// An import after profiling (D-043, T-016): raw preview values keyed by the
+// source column names (CSV values are strings), and the file's profile.
+const profiledImport: Import = {
+  id: "imp_01M4YDQK0001HSSAXJ76PRHJ58",
+  organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  project_id: "prj_01M4YDQK00K9HVKK0GQKY0MHSA",
+  model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  kind: "csv_events",
+  filename: "synthetic-steps.csv",
+  status: "AWAITING_MAPPING",
+  mapping_revision: 0,
+  total_rows: 2,
+  invalid_rows: 0,
+  profile: {
+    format: "csv",
+    encoding: "utf-8-bom",
+    rows: 2,
+    columns: [
+      { name: "案件編號", index: 0, inferred: "string", non_empty: 2, max_length: 7 },
+      { name: "階段", index: 1, inferred: "string", non_empty: 2, max_length: 2 },
+      { name: "開始時間", index: 2, inferred: "timestamp", non_empty: 2, max_length: 25 },
+      { name: "耗時毫秒", index: 3, inferred: "integer", non_empty: 1, max_length: 7 },
+      { name: "備註", index: 4, inferred: "empty", non_empty: 0, max_length: 0 },
+    ],
+  },
+  preview: [
+    { 案件編號: "CASE-01", 階段: "檢驗", 開始時間: "2026-10-15T08:30:00+08:00", 耗時毫秒: "7200000", 備註: "" },
+    { 案件編號: "CASE-02", 階段: "組裝", 開始時間: "2026-10-15T08:31:00+08:00", 耗時毫秒: "", 備註: "" },
+  ],
+  mapping: null,
+  validation: null,
+  dataset_version_id: null,
+  proposal_id: null,
+  created_at: "2026-10-15T08:30:00Z",
+  error: null,
+  mapping_suggestion_status: "ready",
+  mapping_suggestion: {
+    mappings: [
+      {
+        source_column: "案件編號",
+        target_field: "case_id",
+        confidence: 0.96,
+        evidence: "Sample values identify the same case across rows.",
+        transform: "identity",
+        requires_confirmation: false,
+      },
+      {
+        source_column: "開始時間",
+        target_field: "timestamp",
+        confidence: 0.7,
+        evidence: "RFC 3339 values with an offset; confirm the time zone.",
+        transform: "rfc3339",
+        requires_confirmation: true,
+      },
+    ],
+  },
+};
+
 describe("generated contract types match the shared fixtures", () => {
   it.each([
     ["valid-minimal-ir.json", minimalIR],
     ["valid-patch.json", scenarioPatch],
     ["valid-error.json", errorBody],
     ["valid-cancel-simulation.json", cancelBody],
+    ["valid-import.json", profiledImport],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
   });
@@ -86,4 +146,8 @@ export const rejected = {
   providerApproval: { status: "approved" } satisfies Pick<ProposalOutput, "status">,
   // @ts-expect-error a closed empty object takes no member: a cancellation has no options (T-023)
   cancelOption: { force: true } satisfies CancelSimulation,
+  // @ts-expect-error a profile column type outside D-043's list
+  profileType: { name: "a", index: 0, inferred: "date", non_empty: 0, max_length: 0 } satisfies ProfileColumn,
+  // @ts-expect-error an import always has a profile member, null until profiling completes (D-043)
+  noProfile: { ...profiledImport, profile: undefined } satisfies Import,
 };

@@ -126,7 +126,10 @@ SELECT pg_temp.must_fail(format($q$INSERT INTO twin.dataset_versions(id,organiza
   ]) AS k;
 INSERT INTO twin.dataset_versions(id,organization_id,dataset_id,version,object_key,content_hash,content_type,row_count,unit,created_by)
   VALUES ('dsv_01M4YDQK00TA00000000000009','{{ORG_A}}','{{DS_A}}',9,'tenant/{{ORG_A}}/datasets/ok.json','{{H3}}','application/json',1,'minute','{{USR_A}}');
-SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,upload_content_hash,size_bytes,status,created_by) VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv',%L,%L,'{{H1}}',10,'UPLOADED','{{USR_A}}')$q$, u, e),'23514')
+-- An error report is named by its key, hash and size together (0010), so
+-- each row with a report key has the other two: only object_key_ok fails.
+SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,error_report_content_hash,error_report_size_bytes,upload_content_hash,size_bytes,status,created_by) VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv',%L,%L,%L,%L,'{{H1}}',10,'UPLOADED','{{USR_A}}')$q$,
+    u, e, CASE WHEN e IS NOT NULL THEN '{{H2}}' END, CASE WHEN e IS NOT NULL THEN 10 END),'23514')
   FROM (VALUES
     ('tenant/{{ORG_A_WILD}}/imports/a.csv', NULL),
     ('tenant/{{ORG_A}}/imports//a.csv', NULL),
@@ -134,9 +137,9 @@ SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,p
     ('tenant/{{ORG_A}}/imports/a.csv', 'tenant/{{ORG_A_WILD}}/imports/a-errors.csv'),
     ('tenant/{{ORG_A}}/imports/a.csv', 'tenant/{{ORG_A}}/imports/../a-errors.csv')
   ) AS t(u, e);
-INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,upload_content_hash,size_bytes,status,created_by)
-  VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv','tenant/{{ORG_A}}/imports/a.csv','tenant/{{ORG_A}}/imports/a-errors.csv','{{H1}}',10,'UPLOADED','{{USR_A}}'),
-         ('{{IMP_A2}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','b.csv','tenant/{{ORG_A}}/imports/b.csv','tenant/{{ORG_A}}/imports/b-errors.csv','{{H1}}',10,'UPLOADED','{{USR_A}}');
+INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,error_report_content_hash,error_report_size_bytes,upload_content_hash,size_bytes,status,created_by)
+  VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv','tenant/{{ORG_A}}/imports/a.csv','tenant/{{ORG_A}}/imports/a-errors.csv','{{H2}}',10,'{{H1}}',10,'UPLOADED','{{USR_A}}'),
+         ('{{IMP_A2}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','b.csv','tenant/{{ORG_A}}/imports/b.csv','tenant/{{ORG_A}}/imports/b-errors.csv','{{H2}}',10,'{{H1}}',10,'UPLOADED','{{USR_A}}');
 -- 0009 (T-023): a run starts queued with its job; the worker claims the
 -- job and runs it, then stores a result that reproduces its input and
 -- names its trace in full, and completes the run with its job.

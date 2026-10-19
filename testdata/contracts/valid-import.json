@@ -5,24 +5,67 @@
   "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
   "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
   "kind": "csv_events",
-  "filename": "synthetic.csv",
+  "filename": "synthetic-steps.csv",
   "status": "AWAITING_MAPPING",
   "mapping_revision": 0,
-  "total_rows": 1,
+  "total_rows": 2,
   "invalid_rows": 0,
+  "profile": {
+    "format": "csv",
+    "encoding": "utf-8-bom",
+    "rows": 2,
+    "columns": [
+      {
+        "name": "案件編號",
+        "index": 0,
+        "inferred": "string",
+        "non_empty": 2,
+        "max_length": 7
+      },
+      {
+        "name": "階段",
+        "index": 1,
+        "inferred": "string",
+        "non_empty": 2,
+        "max_length": 2
+      },
+      {
+        "name": "開始時間",
+        "index": 2,
+        "inferred": "timestamp",
+        "non_empty": 2,
+        "max_length": 25
+      },
+      {
+        "name": "耗時毫秒",
+        "index": 3,
+        "inferred": "integer",
+        "non_empty": 1,
+        "max_length": 7
+      },
+      {
+        "name": "備註",
+        "index": 4,
+        "inferred": "empty",
+        "non_empty": 0,
+        "max_length": 0
+      }
+    ]
+  },
   "preview": [
     {
-      "case_id": "PR-1042",
-      "event_type": "review_started",
-      "timestamp": "2026-10-15T08:30:00Z",
-      "stage": "code_review",
-      "duration_ms": 7200000,
-      "resource_id": "reviewer-team-a",
-      "outcome": "passed",
-      "is_rework": false,
-      "metadata": {
-        "fixture": true
-      }
+      "案件編號": "CASE-01",
+      "階段": "檢驗",
+      "開始時間": "2026-10-15T08:30:00+08:00",
+      "耗時毫秒": "7200000",
+      "備註": ""
+    },
+    {
+      "案件編號": "CASE-02",
+      "階段": "組裝",
+      "開始時間": "2026-10-15T08:31:00+08:00",
+      "耗時毫秒": "",
+      "備註": ""
     }
   ],
   "mapping": null,
@@ -35,18 +78,18 @@
   "mapping_suggestion": {
     "mappings": [
       {
-        "source_column": "pull_request_id",
+        "source_column": "案件編號",
         "target_field": "case_id",
         "confidence": 0.96,
-        "evidence": "Sample values identify the same PR across multiple rows.",
+        "evidence": "Sample values identify the same case across rows.",
         "transform": "identity",
         "requires_confirmation": false
       },
       {
-        "source_column": "created_at",
+        "source_column": "開始時間",
         "target_field": "timestamp",
         "confidence": 0.7,
-        "evidence": "Timestamp-looking values need timezone confirmation.",
+        "evidence": "RFC 3339 values with an offset; confirm the time zone.",
         "transform": "rfc3339",
         "requires_confirmation": true
       }

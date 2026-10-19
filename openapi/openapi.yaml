@@ -1058,7 +1058,19 @@ paths:
     post:
       operationId: uploadImport
       summary: Upload CSV or JSON for preview
-      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      description: 'Core route from report pp.29–35. T-016 (D-007, D-009, D-035, D-043, D-044): the caller''s role is
+        checked before any of the body is read. The parts project_id, model_id, base_version_id and kind come first, each
+        once, and file is the last part (its filename is kept, 1–255 characters, without any directory); a file part before
+        all four, a repeated or unknown part, or a part after file is refused. The file is streamed to private object
+        storage under a key the server makes (tenant/<organization>/imports/<import>/upload) while its SHA-256 and size are
+        computed; at most 50,000,000 bytes are accepted whether or not Content-Length is sent (413 PAYLOAD_TOO_LARGE, nothing
+        kept), an empty file is 422, and archives and executables (ZIP, gzip, bzip2, xz, zstd, 7z, RAR, tar, OLE, ELF, PE,
+        Mach-O, WebAssembly, scripts starting with #!, and such file name extensions) are 415 UNSUPPORTED_MEDIA_TYPE with
+        details[0].code IMPORT_FORMAT_REJECTED. CSV is UTF-8 (a BOM is allowed and recorded), comma separated (RFC 4180);
+        no other encoding or delimiter is guessed. The import, its import_profile job and the import.upload audit event
+        commit together; 202 means the job is durably queued and nothing in the file has been parsed yet. Profiling never
+        changes the Twin (D-009). The Idempotency-Key fingerprint is the four fields, the file name and the file''s SHA-256
+        and size; a retry with the same key and file replays the first response.'
       tags:
       - Imports
       x-origin: SOURCE
@@ -1076,6 +1088,12 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/http.schema.json#/$defs/ImportAccepted
+              examples:
+                accepted:
+                  summary: Stored and queued for profiling
+                  value:
+                    id: imp_01M4YDQK0001HSSAXJ76PRHJ58
+                    status: UPLOADED
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1131,7 +1149,13 @@ paths:
     get:
       operationId: getImport
       summary: Get preview, validation and lifecycle
-      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      description: 'Core route from report pp.29–35. T-016 (D-043): profile is null and preview empty while status is
+        UPLOADED or PROFILING; once the import_profile job has read the whole file the import is AWAITING_MAPPING with the
+        profile and the first rows'' raw values, or FAILED with error. A FAILED import''s error.details[0] carries the
+        failure''s own code and, for a parse error, a JSON Pointer into the file seen as an array of rows (a JSON events
+        file is that array; a CSV row''s index counts data rows from 0) or, for a JSON model, into the document;
+        error.request_id is the upload''s. invalid_rows counts CSV rows whose field count differs from the header; they
+        are listed in the error report (downloadImportErrors).'
       tags:
       - Imports
       x-origin: SOURCE
@@ -1156,6 +1180,64 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/import.schema.json
+              examples:
+                profiling:
+                  summary: Uploaded; the profile job has not finished
+                  value:
+                    id: imp_01M4YDQK0001HSSAXJ76PRHJ58
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    project_id: prj_01M4YDQK00K9HVKK0GQKY0MHSA
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    kind: csv_events
+                    filename: synthetic-steps.csv
+                    status: PROFILING
+                    mapping_revision: 0
+                    total_rows: 0
+                    invalid_rows: 0
+                    profile: null
+                    preview: []
+                    mapping: null
+                    validation: null
+                    dataset_version_id: null
+                    proposal_id: null
+                    created_at: '2026-10-15T08:30:00Z'
+                    error: null
+                    mapping_suggestion_status: none
+                    mapping_suggestion: null
+                failed:
+                  summary: A JSON events file with a repeated member name
+                  value:
+                    id: imp_01M4YDQK0001HSSAXJ76PRHJ59
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    project_id: prj_01M4YDQK00K9HVKK0GQKY0MHSA
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    kind: json_events
+                    filename: events.json
+                    status: FAILED
+                    mapping_revision: 0
+                    total_rows: 0
+                    invalid_rows: 0
+                    profile: null
+                    preview: []
+                    mapping: null
+                    validation: null
+                    dataset_version_id: null
+                    proposal_id: null
+                    created_at: '2026-10-15T08:30:00Z'
+                    error:
+                      error:
+                        code: REQUEST_VALIDATION_FAILED
+                        message: the file is not valid JSON
+                        details:
+                        - path: /41/case_id
+                          reason: duplicate object member name "case_id"
+                          code: JSON_DUPLICATE_KEY
+                          severity: error
+                        request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                    mapping_suggestion_status: none
+                    mapping_suggestion: null
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1302,9 +1384,18 @@ paths:
   /imports/{id}/errors:
     get:
       operationId: downloadImportErrors
-      summary: Authorize download of row/schema error report
-      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table.
+      summary: Download the row error report
+      description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table. D-044 (approved; T-016, CB-38(b)): the API authorizes the caller against the import, then serves the
+        stored report itself, checked against its recorded SHA-256 and size (500 and no bytes when it does not match); no
+        signed URL, and the client names only the import, never an object key. 404 NOT_FOUND when the import has no error
+        report. The report is CSV (RFC 4180, CRLF, UTF-8 with a BOM so that spreadsheets read non-ASCII text) with the
+        header path,line,column,code,message,value: path is the JSON Pointer of the row (or row and column) in the file seen
+        as an array of rows, line the 1-based line of the uploaded file where the record starts, column the source column
+        name, value at most 256 characters of the offending value. Every cell that starts (after spaces) with =, +, -, @, a
+        tab, a carriage return or a line feed, or their full-width forms, is prefixed with an apostrophe, so a spreadsheet
+        shows it as text and never runs it as a formula (TEST-029); the stored upload is never changed. A report is at
+        most 16 MiB: a last row with code ERRORS_TRUNCATED says how many errors are not listed.'
       tags:
       - Imports
       x-origin: PROPOSED
@@ -1321,14 +1412,18 @@ paths:
           $ref: ../schemas/common.schema.json#/$defs/ImportID
       responses:
         '200':
-          description: Success.
+          description: The error report, as stored, as an attachment.
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'
-          content:
-            application/json:
+            Content-Disposition:
               schema:
-                $ref: ../schemas/http.schema.json#/$defs/SignedDownload
+                type: string
+                pattern: ^attachment; filename="imp_[0-7][0-9A-HJKMNP-TV-Z]{25}-errors\.csv"$
+          content:
+            text/csv:
+              schema:
+                type: string
         '400':
           $ref: '#/components/responses/Error400'
         '401':

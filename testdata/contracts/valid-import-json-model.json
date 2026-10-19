@@ -1,0 +1,28 @@
+{
+  "id": "imp_01M4YDQK0001HSSAXJ76PRHJ58",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "project_id": "prj_01M4YDQK00K9HVKK0GQKY0MHSA",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "kind": "json_model",
+  "filename": "model.json",
+  "status": "AWAITING_MAPPING",
+  "mapping_revision": 0,
+  "total_rows": 0,
+  "invalid_rows": 0,
+  "profile": {
+    "format": "json_model",
+    "encoding": "utf-8",
+    "rows": 0,
+    "columns": []
+  },
+  "preview": [],
+  "mapping": null,
+  "validation": null,
+  "dataset_version_id": null,
+  "proposal_id": null,
+  "created_at": "2026-10-15T08:30:00Z",
+  "error": null,
+  "mapping_suggestion_status": "none",
+  "mapping_suggestion": null
+}
