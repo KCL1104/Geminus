@@ -105,9 +105,34 @@ func (e *Engine) Run(ctx context.Context, in simulation.RunInput, progress simul
 // several replications fail, which limit is reported can vary between runs;
 // each reported limit was really exceeded.
 func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progress simulation.ProgressSink) (*Output, error) {
+	return e.RunWith(ctx, in, Options{Progress: progress})
+}
+
+// Options govern one run without changing its result: where progress goes
+// and how the event budget is granted.
+type Options struct {
+	Progress simulation.ProgressSink
+	// Credit, if set, grants the run's event budget (in.Limits.MaxEvents) in
+	// batches: Granted events at once, the rest as Credit grants them
+	// (engine.NewCreditBudget). The worker reserves each grant durably, so a
+	// logical run's budget holds across retries (D-007). Without it the
+	// whole budget is granted at once.
+	Credit  engine.Credit
+	Granted int64
+}
+
+// ErrInvalidOptions: Options.Granted is outside 0..in.Limits.MaxEvents.
+var ErrInvalidOptions = errors.New("des: invalid run options")
+
+// RunWith is RunWithTrace with opts.
+func (e *Engine) RunWith(ctx context.Context, in simulation.RunInput, opts Options) (*Output, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if opts.Credit != nil && (opts.Granted < 0 || opts.Granted > in.Limits.MaxEvents) {
+		return nil, ErrInvalidOptions
+	}
+	progress := opts.Progress
 	p, err := engine.Compile(in)
 	if err != nil {
 		return nil, err
@@ -132,6 +157,9 @@ func (e *Engine) RunWithTrace(ctx context.Context, in simulation.RunInput, progr
 	}
 	reps := make([]metrics.Replication, n)
 	budget := engine.NewBudget(in.Limits.MaxEvents)
+	if opts.Credit != nil {
+		budget = engine.NewCreditBudget(in.Limits.MaxEvents, opts.Granted, opts.Credit)
+	}
 	workers := e.Workers
 	if workers <= 0 {
 		workers = runtime.GOMAXPROCS(0)

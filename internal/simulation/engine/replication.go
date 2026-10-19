@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 	"sync/atomic"
 )
 
@@ -23,20 +24,92 @@ var (
 // safe for replications running in parallel; which one hits the cap first
 // may vary, but hitting it always fails the whole run, so no result depends
 // on that order.
+//
+// A budget may be granted in batches (NewCreditBudget): events beyond what
+// is granted wait until Credit grants more. The worker reserves each grant
+// durably before it returns (D-007, API_DATABASE §7), so the engine never
+// spends an event that is not reserved, and a crash loses at most the
+// unspent part of the last grant. When and how the batches arrive never
+// changes a result: only whether the run fails.
 type Budget struct {
-	max  int64
-	used atomic.Int64
+	max     int64
+	used    atomic.Int64
+	granted atomic.Int64 // events that may be spent now; max without a Credit
+
+	credit Credit
+	mu     sync.Mutex // one grant at a time
+	err    error      // under mu: the failure of a grant, which fails every waiter
 }
 
-// NewBudget allows max events.
-func NewBudget(max int64) *Budget { return &Budget{max: max} }
+// Credit grants a run more of its event budget. Grant is called with the
+// events granted so far, when a replication needs one more, and returns the
+// new total: more than granted and at most the budget's max. It may block
+// (the worker writes the reservation to the database) and must return
+// promptly once ctx ends. An error, or a total outside that range, fails the
+// run. Grant is never called concurrently.
+type Credit interface {
+	Grant(ctx context.Context, granted int64) (int64, error)
+}
+
+// NewBudget allows max events, all of them at once.
+func NewBudget(max int64) *Budget {
+	b := &Budget{max: max}
+	b.granted.Store(max)
+	return b
+}
+
+// NewCreditBudget allows limit events, granted of them at once and the rest
+// as c grants them. granted is clamped to 0..limit; a nil c grants nothing
+// more.
+func NewCreditBudget(limit, granted int64, c Credit) *Budget {
+	b := &Budget{max: limit, credit: c}
+	b.granted.Store(min(max(granted, 0), limit))
+	return b
+}
 
 // Used reports how many events were processed.
 func (b *Budget) Used() int64 { return min(b.used.Load(), b.max) }
 
-func (b *Budget) spend() error {
-	if b.used.Add(1) > b.max {
+// Granted reports how many events the run may spend so far.
+func (b *Budget) Granted() int64 { return b.granted.Load() }
+
+func (b *Budget) spend(ctx context.Context) error {
+	n := b.used.Add(1)
+	if n > b.max {
 		return ErrEventBudget
+	}
+	if n <= b.granted.Load() {
+		return nil
+	}
+	return b.wait(ctx, n)
+}
+
+// wait blocks until event n is granted. Replications that need more credit
+// queue on mu; the first asks Credit, and each one after it finds the grant
+// already made or asks for the next.
+func (b *Budget) wait(ctx context.Context, n int64) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for g := b.granted.Load(); n > g; g = b.granted.Load() {
+		if b.err != nil {
+			return b.err
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if b.credit == nil {
+			b.err = ErrEventBudget
+			return b.err
+		}
+		next, err := b.credit.Grant(ctx, g)
+		if err == nil && (next <= g || next > b.max) {
+			err = fmt.Errorf("%w: credit granted %d events after %d of a budget of %d", ErrInternal, next, g, b.max)
+		}
+		if err != nil {
+			b.err = err
+			return err
+		}
+		b.granted.Store(next)
 	}
 	return nil
 }
@@ -176,7 +249,7 @@ func (r *replication) run(ctx context.Context, b *Budget) error {
 			return fmt.Errorf("%w: event at tick %d (now %d, horizon %d)", ErrInternal, e.Tick, r.now, r.p.horizon)
 		}
 		r.now, r.cur = e.Tick, e
-		if err := b.spend(); err != nil {
+		if err := b.spend(ctx); err != nil {
 			return err
 		}
 		if r.onProcessed != nil {

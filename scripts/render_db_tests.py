@@ -47,6 +47,12 @@ IDS = {
     # D-045 (self.sql): more organizations and users, and IDs no row has.
     "ORG_C": ("org", "C", 0), "ORG_D": ("org", "D", 0), "ORG_X": ("org", "X", 0),
     "USR_C": ("usr", "C", 1), "USR_X": ("usr", "X", 1), "PRJ_C": ("prj", "C", 1), "PRJ_D": ("prj", "D", 1),
+    # T-023 (runs.sql, constraints.sql): runs, their jobs and trace artifacts.
+    "SIM_A2": ("sim", "A", 2), "SIM_A3": ("sim", "A", 3), "SIM_A4": ("sim", "A", 4), "SIM_A5": ("sim", "A", 5),
+    "SIM_A6": ("sim", "A", 6), "SIM_A7": ("sim", "A", 7), "SIM_X": ("sim", "A", 99),
+    "JOB_A12": ("job", "A", 12), "JOB_A13": ("job", "A", 13), "JOB_A14": ("job", "A", 14), "JOB_A15": ("job", "A", 15),
+    "JOB_A16": ("job", "A", 16), "JOB_A17": ("job", "A", 17),
+    "ART_A1": ("art", "A", 1), "ART_A2": ("art", "A", 2),
 }
 
 
@@ -63,6 +69,8 @@ def values() -> dict[str, str]:
     v["INV_IR"], v["INV_IR_HASH"] = v["IR_A1"], v["IR_A1_HASH"]
     # Dataset object hashes are shape-only: the database cannot see object bytes.
     v["H1"], v["H2"], v["H3"] = ("sha256:" + c * 64 for c in "123")
+    # A run without datasets has the manifest hash of [] (D-019).
+    v["EMPTY_MANIFEST_HASH"] = "sha256:" + hashlib.sha256(rfc8785.dumps([])).hexdigest()
     # CB-14: the same ID with its '_' replaced, which LIKE's '_' wildcard would accept.
     v["ORG_A_WILD"] = v["ORG_A"].replace("_", "X", 1)
     return v

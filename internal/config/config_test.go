@@ -51,7 +51,19 @@ func TestLoadValid(t *testing.T) {
 			if cfg.DatabaseURL != kv["DATABASE_URL"] {
 				t.Fatalf("DatabaseURL not preserved")
 			}
+			if cfg.ObjectStorage != (ObjectStorage{Provider: ObjectStorageDisabled}) {
+				t.Fatalf("ObjectStorage = %+v, want disabled", cfg.ObjectStorage)
+			}
 		})
+	}
+	for _, e := range []string{"development", "test"} {
+		cfg, err := Load(env(map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "filesystem", "OBJECT_STORAGE_ROOT": "/srv/objects", "APP_ENV": e}))
+		if err != nil || cfg.ObjectStorage != (ObjectStorage{Provider: ObjectStorageFilesystem, Root: "/srv/objects"}) || cfg.Env != e {
+			t.Errorf("filesystem in %s: %+v %v", e, cfg, err)
+		}
+	}
+	if cfg, err := Load(env(map[string]string{"DATABASE_URL": validDB, "APP_ENV": "production"})); err != nil || cfg.Env != "production" {
+		t.Errorf("production without object storage: %+v %v", cfg, err)
 	}
 }
 
@@ -72,6 +84,23 @@ func TestLoadRejects(t *testing.T) {
 		{"provider is case-sensitive", map[string]string{"DATABASE_URL": validDB, "AI_PROVIDER": "Disabled"}, []string{"AI_PROVIDER:invalid"}},
 		{"key while disabled", map[string]string{"DATABASE_URL": validDB, "AI_API_KEY": "k"}, []string{"AI_API_KEY:invalid"}},
 		{"object storage TBD", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "s3"},
+			[]string{"OBJECT_STORAGE_PROVIDER:not_implemented"}},
+		// D-044: the filesystem adapter only for development and tests; an
+		// unset APP_ENV fails closed.
+		{"filesystem in production", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "filesystem", "OBJECT_STORAGE_ROOT": "/srv/objects", "APP_ENV": "production"},
+			[]string{"OBJECT_STORAGE_PROVIDER:invalid"}},
+		{"filesystem without APP_ENV", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "filesystem", "OBJECT_STORAGE_ROOT": "/srv/objects"},
+			[]string{"OBJECT_STORAGE_PROVIDER:invalid"}},
+		{"filesystem without a root", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "filesystem", "APP_ENV": "test"},
+			[]string{"OBJECT_STORAGE_ROOT:required"}},
+		{"a relative root", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "filesystem", "OBJECT_STORAGE_ROOT": "objects", "APP_ENV": "test"},
+			[]string{"OBJECT_STORAGE_ROOT:invalid"}},
+		{"an unclean root", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "filesystem", "OBJECT_STORAGE_ROOT": "/srv/../objects", "APP_ENV": "development"},
+			[]string{"OBJECT_STORAGE_ROOT:invalid"}},
+		{"a root while disabled", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_ROOT": "/srv/objects"},
+			[]string{"OBJECT_STORAGE_ROOT:invalid"}},
+		{"unknown APP_ENV", map[string]string{"DATABASE_URL": validDB, "APP_ENV": "prod"}, []string{"APP_ENV:invalid"}},
+		{"the provider is case-sensitive", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "Filesystem", "OBJECT_STORAGE_ROOT": "/srv/objects", "APP_ENV": "test"},
 			[]string{"OBJECT_STORAGE_PROVIDER:not_implemented"}},
 		{"all problems reported together",
 			map[string]string{"AI_PROVIDER": "openai", "OBJECT_STORAGE_PROVIDER": "gcs"},

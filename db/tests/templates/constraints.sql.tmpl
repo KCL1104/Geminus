@@ -31,6 +31,14 @@ CREATE FUNCTION pg_temp.check(ok boolean, what text) RETURNS void LANGUAGE plpgs
 BEGIN
   IF ok IS NOT TRUE THEN PERFORM pg_temp.fail(what); END IF;
 END $$;
+-- Migration 0009: the result of {{SIM_A1}}, reproducing its input and
+-- naming trace artifact art.
+CREATE FUNCTION pg_temp.result_of(art text) RETURNS text LANGUAGE sql AS $$
+  SELECT jsonb_build_object('run_id','{{SIM_A1}}','status','completed','engine_version','test',
+    'reproducibility',jsonb_build_object('seed',1,'replications',1,'model_hash','{{IR_A1_HASH}}','effective_model_hash','{{IR_A1_HASH}}',
+      'config_hash','{{H1}}','dataset_manifest_hash','{{EMPTY_MANIFEST_HASH}}','result_digest','{{H1}}'),
+    'trace',jsonb_build_object('available',true,'sampled_events',1,'artifact_id',art))::text
+$$;
 
 SET LOCAL ROLE twin_owner;
 -- Tenant B first: deferred manifest checks run in the tenant context that is
@@ -129,22 +137,31 @@ SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,p
 INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,upload_content_hash,size_bytes,status,created_by)
   VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv','tenant/{{ORG_A}}/imports/a.csv','tenant/{{ORG_A}}/imports/a-errors.csv','{{H1}}',10,'UPLOADED','{{USR_A}}'),
          ('{{IMP_A2}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','b.csv','tenant/{{ORG_A}}/imports/b.csv','tenant/{{ORG_A}}/imports/b-errors.csv','{{H1}}',10,'UPLOADED','{{USR_A}}');
+-- 0009 (T-023): a run starts queued; the worker runs it, then stores a
+-- result that reproduces its input and names its trace in full.
 INSERT INTO twin.simulation_runs(id,organization_id,model_id,model_version_id,name,scenario_patch,config,seed,replications,engine_version,
-    model_hash,effective_model_hash,config_hash,dataset_manifest_hash,dataset_bindings,execution_limits,status,completed_replications,
-    started_at,execution_deadline_at,finished_at,created_by)
+    model_hash,effective_model_hash,config_hash,dataset_manifest_hash,dataset_bindings,execution_limits,status,created_by)
   VALUES ('{{SIM_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','baseline','[]','{}',1,1,'test','{{IR_A1_HASH}}','{{IR_A1_HASH}}','{{H1}}',
-    'sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945','[]','{"max_events":10}','completed',1,now(),now(),now(),'{{USR_A}}');
+    '{{EMPTY_MANIFEST_HASH}}','[]','{"max_events":10}','queued','{{USR_A}}');
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE twin_worker;
-SELECT pg_temp.must_fail(format($q$INSERT INTO twin.simulation_results(run_id,organization_id,result,result_digest,trace_object_key) VALUES ('{{SIM_A1}}','{{ORG_A}}','{"run_id":"{{SIM_A1}}","status":"completed"}','{{H1}}',%L)$q$, k),'23514')
+UPDATE twin.simulation_runs SET status='running', started_at=now(), execution_deadline_at=now()+interval '1 minute', progress_revision=1
+  WHERE organization_id='{{ORG_A}}' AND id='{{SIM_A1}}';
+-- The keys under the run's own prefix isolate object_key_ok (D-035).
+SELECT pg_temp.must_fail(format($q$INSERT INTO twin.simulation_results(run_id,organization_id,result,result_digest,trace_artifact_id,trace_object_key,trace_content_hash,trace_size_bytes)
+    VALUES ('{{SIM_A1}}','{{ORG_A}}',%L,'{{H1}}','{{ART_A1}}',%L,'{{H2}}',10)$q$, pg_temp.result_of('{{ART_A1}}'), k),'23514')
   FROM unnest(ARRAY[
-    'tenant/{{ORG_A_WILD}}/simulation-results/t.jsonl',
-    'tenant/{{ORG_A}}/simulation-results//t.jsonl',
+    'tenant/{{ORG_A_WILD}}/simulation-results/{{SIM_A1}}/t.jsonl',
+    'tenant/{{ORG_A}}/simulation-results/{{SIM_A1}}//t.jsonl',
+    'tenant/{{ORG_A}}/simulation-results/{{SIM_A1}}/../t.jsonl',
+    'tenant/{{ORG_A}}/simulation-results/{{SIM_A1}}/.t.jsonl',
     'tenant/{{ORG_A}}/imports/t.jsonl'
   ]) AS k;
-INSERT INTO twin.simulation_results(run_id,organization_id,result,result_digest,trace_object_key)
-  VALUES ('{{SIM_A1}}','{{ORG_A}}','{"run_id":"{{SIM_A1}}","status":"completed"}','{{H1}}','tenant/{{ORG_A}}/simulation-results/t.jsonl');
+INSERT INTO twin.simulation_results(run_id,organization_id,result,result_digest,trace_artifact_id,trace_object_key,trace_content_hash,trace_size_bytes)
+  VALUES ('{{SIM_A1}}','{{ORG_A}}',pg_temp.result_of('{{ART_A1}}')::jsonb,'{{H1}}','{{ART_A1}}','tenant/{{ORG_A}}/simulation-results/{{SIM_A1}}/t.jsonl','{{H2}}',10);
+UPDATE twin.simulation_runs SET status='completed', completed_replications=1, finished_at=now(), progress_revision=2
+  WHERE organization_id='{{ORG_A}}' AND id='{{SIM_A1}}';
 SET LOCAL ROLE twin_owner;
 SELECT pg_temp.check(NOT EXISTS (
   SELECT 1 FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace
