@@ -584,6 +584,34 @@
       "approved_by": "KCL1104 (repository owner; session decision, H-009)",
       "approved_at": "2026-10-18",
       "resolves": []
+    },
+    {
+      "id": "D-043",
+      "title": "Import 的 profile、preview 與人工 mapping（CB-27）",
+      "source_gap": "Import resource 沒有 profile／columns 的契約；preview 是原始值還是 mapping 後的值不一致（valid-import.json 在 mapping 為 null 時已是 canonical 欄位）；人工 mapping 被迫填 AI 專用的 confidence／evidence",
+      "proposal": "(a) Import 增加 profile（format、encoding utf-8／utf-8-bom、rows、columns[]：name ≤256 字元、index、inferred empty／boolean／integer／number／timestamp／string／mixed、non_empty、max_length；至多 256 欄，preview maxProperties 改 256）；(b) preview 為前 100 筆原始值，以來源欄名為 key，canonical 預覽屬 validation（T-017），修正 valid-import.json；(c) SaveMapping 改用只含 source_column、target_field、transform 的人工 mapping schema，AI suggestion 仍用 ai-mapping。",
+      "source_pages": "N/A（CB-27；import.schema.json、valid-import.json、ai-mapping.schema.json、http.schema.json SaveMapping）",
+      "owner_role": "Import / Product",
+      "gate": "T-016 開放 upload／profile 前（(c) 為 T-017 前）",
+      "status": "proposed",
+      "resolves": [
+        "CB-27"
+      ],
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-044",
+      "title": "P0 的 object storage（原報告 TBD）",
+      "source_gap": "原報告只寫 cloud-native／S3-compatible abstraction；雲端廠商、bucket、加密、retention、signed URL 皆 TBD，T-016 卻需要儲存 upload",
+      "proposal": "internal/storage/objects 定義 S3 相容的最小介面（put 時計算 SHA-256 與大小、get、受控 maintenance 才能 delete；key 由 server 依 D-035 產生）；P0 先提供只用於 development 與測試的 filesystem adapter（APP_ENV=production 時拒絕啟動）；正式 adapter 待 owner 選定雲端後另立 ADR，未定前不收真實客戶資料；下載由 API 授權後串流，不發 signed URL。",
+      "source_pages": "N/A（原報告 TBD：Object storage；SECURITY §6）",
+      "owner_role": "Platform / Security",
+      "gate": "T-016 寫入 upload 前",
+      "status": "proposed",
+      "resolves": [],
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

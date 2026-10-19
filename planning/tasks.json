@@ -966,7 +966,9 @@
       ],
       "decision_gates": [
         "D-007",
-        "D-009"
+        "D-009",
+        "D-043",
+        "D-044"
       ],
       "scope": [
         "streaming bounded upload、content hash、private object keys。",
@@ -1014,7 +1016,8 @@
       ],
       "decision_gates": [
         "D-009",
-        "D-014"
+        "D-014",
+        "D-043"
       ],
       "scope": [
         "canonical-event mapper與有限transform。",

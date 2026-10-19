@@ -66,7 +66,7 @@
 | ID | 問題 | 證據 | 阻擋 | 涵蓋 | 等級 |
 |---|---|---|---|---|---|
 | CB-26 | Import inference proposal 沒有 generator 契約：deterministic DomainPack 或 LLM 未定；`InferenceResult` 無 schema；confidence/risk/intent、data quality 欄位來源未定 | ARCHITECTURE.md:63；AI_SPEC.md:16-20、:75；proposal.schema.json:135-180；0001_core.up.sql:198-228 | T-018、T-025、T-027 | D-009（只涵蓋 commit 邊界） | 審查回報 |
-| CB-27 | Import resource 無 profile/columns 契約；preview 是 raw 還是 mapped 不一致；人工 mapping 被迫填 AI 專用 confidence/evidence | import.schema.json:7-166；valid-import.json:13-46；ai-mapping.schema.json:64-71；http.schema.json:585-605 | T-016、T-017、T-027 | NEW | 審查回報 |
+| CB-27 | Import resource 無 profile/columns 契約；preview 是 raw 還是 mapped 不一致；人工 mapping 被迫填 AI 專用 confidence/evidence | import.schema.json:7-166；valid-import.json:13-46；ai-mapping.schema.json:64-71；http.schema.json:585-605 | T-016、T-017、T-027 | D-043（PROPOSED，2026-10-19） | 審查回報 |
 | CB-28 | Transform 只有 identity/rfc3339/integer_ms/boolean_literal 且無參數：naive timestamp 或非 ms duration 永遠無法 validate；`metadata` 無 transform；重複 target 行為未定 | ai-mapping.schema.json:33、51-58；canonical-event.schema.json:18-58；TWIN_IR_SPEC.md:86 | T-017、T-027 | D-009（行為 NEW） | 審查回報 |
 | CB-29 | Import 無「validation 進行中」狀態，也未記錄 validation 對應的 mapping revision | API_DATABASE.md:49；import.schema.json:51-61；0001_core.up.sql:161-165 | T-003、T-017 | NEW | 審查回報 |
 | CB-30 | Prose 中數字與確定性語句的驗證規則未定（P0 是否驗證或禁止數字、違規時 failed 或剝除欄位） | AI_SPEC.md:53、:83；TEST_PLAN.md TEST-024；analysis.schema.json:19-49、121-124 | T-025、T-030 | NEW | 審查回報 |

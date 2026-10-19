@@ -196,6 +196,13 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | D-041 | T-012 review L9 | Publish 的 comment | **APPROVED（H-009）。** 在 ModelVersion 保存 comment（使用者資料，不放 audit；migration 與 contract）。gate：T-013 開放 publish route 前。 |
 | D-042 | T-010 review L5 | Provisioning 的最小權限 role | **APPROVED（H-009）。** 新 migration 建立 NOLOGIN 的 provisioning role，只有 users、organizations、memberships、audit_events 所需的寫入（與所需的 SELECT），RLS 與 audit trigger 的 provisioning 例外改認此 role；`cmd/provision-tenant` 改為 SET ROLE 它，不再以 schema owner `twin_owner` 執行。gate：production 部署前（併入 T-010）。 |
 
+### T-016 前的提案（2026-10-19，PROPOSED，待 owner）
+
+| ID | 解決 | 主題 | 提案 |
+|---|---|---|---|
+| D-043 | CB-27 | Import 的 profile、preview 與人工 mapping | **PROPOSED。** (a) Import 增加 `profile`（profiling 完成前為 null）：`format`（csv／json_events／json_model）、`encoding`（`utf-8` 或 `utf-8-bom`）、`rows`、`columns[]`（`name` ≤256 字元、`index`、`inferred`：empty／boolean／integer／number／timestamp／string／mixed、`non_empty`、`max_length`）；每個 import 至多 256 欄，preview 的 `maxProperties` 改為 256；json_model 的 `columns` 為空。(b) `preview` 是前 100 筆的**原始**值，以來源欄名為 key（CSV 一律字串；JSON events 原值，另限深度、字串長度與總 bytes）；mapping 之後的 canonical 預覽屬 validation（T-017），`valid-import.json` 依此修正。(c) 人工 `SaveMapping` 改用只含 `source_column`、`target_field`、`transform` 的 mapping schema，不要求 AI 專用的 `confidence`、`evidence`、`requires_confirmation`；AI suggestion 仍用 ai-mapping。gate：T-016 開放 upload／profile 前（(c) 為 T-017 前）。 |
+| D-044 | 原報告 TBD（object storage） | P0 的 object storage | **PROPOSED。** `internal/storage/objects` 定義 S3 相容的最小介面（put 時計算 SHA-256 與大小、get、delete 只給受控 maintenance；key 一律由 server 依 D-035 產生）。P0 先提供 filesystem adapter，只用於 development 與測試（`APP_ENV=production` 時拒絕啟動）；正式環境的 adapter（雲端廠商、bucket、region、加密金鑰、retention、signed URL 期限）由 owner 選定雲端後另立 ADR，未定前不收真實客戶資料（SECURITY §6）。下載先由 API 授權後串流，不發 signed URL。gate：T-016 寫入 upload 前。 |
+
 ## 人類決策紀錄
 
 由 agent 依 repository owner 的明確指示記錄，措辭待 owner 於 PR review 確認；機器可讀版本在 `planning/decisions.json` 的 `human_decisions`。
@@ -220,7 +227,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | LLM model | eval 後決定，不 hard-code | Week 7；live AI release |
 | Auth provider | ~~managed OIDC，未定案~~ **已由 H-004／ADR-018 決定：Auth0；browser 經 BFF（HttpOnly 加密 session cookie）** | API 端驗證見 ADR-017（ACCEPTED）；登入流程 T-043；Auth0 tenant 由 owner 建立，region 依 retention／residency |
 | Cloud / managed DB | GCP reference / AWS equivalent；managed PostgreSQL | Week 1–2；production deploy |
-| Object storage | cloud-native / S3-compatible abstraction | Week 2；持久化 artifact |
+| Object storage | cloud-native / S3-compatible abstraction；P0 介面與 development 用 adapter 見 D-044（PROPOSED），正式廠商待 owner | Week 2；持久化 artifact |
 | Frontend state / UI libraries | TanStack Query、Zustand、Tailwind/shadcn 原文均 TBD；server state 已由 ADR-016 決定；**UI 庫與 styling 由 T-045 比較多個庫後以 ADR-021 決定（H-007）** | T-045；不影響 IR |
 | SQL generation | explicit SQL / sqlc TBD | Backend bootstrap |
 | Model / upload / replications / timeout | 原報告初始目標，不是量測成果 | Alpha benchmark |

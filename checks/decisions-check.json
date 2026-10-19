@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 42,
-    "proposed": 0,
+    "proposed": 2,
     "rejected": 0,
     "superseded": 0
   },
@@ -25,11 +25,18 @@
     "review": 1
   },
   "ready_tasks": [
-    "T-016",
     "T-024",
     "T-043"
   ],
   "next_after_review": [
+    {
+      "id": "T-016",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-043",
+        "D-044"
+      ]
+    },
     {
       "id": "T-023",
       "awaiting_task_review": [
@@ -400,6 +407,21 @@
       "gate": "production 部署前（實作併入 T-010）",
       "gates_tasks": [
         "T-010"
+      ]
+    },
+    "D-043": {
+      "status": "proposed",
+      "gate": "T-016 開放 upload／profile 前（(c) 為 T-017 前）",
+      "gates_tasks": [
+        "T-016",
+        "T-017"
+      ]
+    },
+    "D-044": {
+      "status": "proposed",
+      "gate": "T-016 寫入 upload 前",
+      "gates_tasks": [
+        "T-016"
       ]
     }
   },
