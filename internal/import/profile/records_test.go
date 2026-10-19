@@ -82,7 +82,7 @@ func TestRecordBounds(t *testing.T) {
 		max  int
 		ok   bool
 	}{
-		{"abc\n", 4, true}, {"abc\n", 3, false}, {"abc", 3, true}, {"abc\r\n", 5, true}, {"abc\r\n", 4, false},
+		{"abc\n", 4, true}, {"abc\n", 3, false}, {"abc", 3, true}, {"abcd", 3, false}, {"abc\r\n", 5, true}, {"abc\r\n", 4, false},
 		{"\n\r\n\nabc\n", 4, true}, {"\"a\nb\"\n", 6, true}, {"\"a\nb\"\n", 5, false}, {"a,b,c\n", 6, true}, {"a,b,c\n", 5, false},
 	} {
 		p, err := read(c.data, unbounded, unbounded, c.max)
@@ -98,14 +98,20 @@ func TestRecordBounds(t *testing.T) {
 	if err != nil || !slices.Equal(p.rec, []string{"a", "b,c"}) || p.fields != 5 {
 		t.Errorf("%q %d: %v", p.rec, p.fields, err)
 	}
-	// The first long field, counted in characters, kept or not.
-	p, err = read("ab,名名名,cdef,ghijk\n", 1, 3, unbounded)
-	if err != nil || p.long != 2 || p.longChars != 4 || !slices.Equal(p.rec, []string{"ab"}) {
-		t.Errorf("long field %d of %d characters: %v", p.long, p.longChars, err)
-	}
-	p, err = read("ab,名名名\n", 2, 3, unbounded)
-	if err != nil || p.long != -1 {
-		t.Errorf("long field %d: %v", p.long, err)
+	// The first long field, counted in characters, kept or not, however
+	// the bytes arrive.
+	for _, src := range []func(string) io.Reader{
+		func(s string) io.Reader { return strings.NewReader(s) },
+		func(s string) io.Reader { return iotest.OneByteReader(strings.NewReader(s)) },
+	} {
+		p := newRecords(src("ab,名名名,cdef,ghijk\n"), 1, 3, unbounded)
+		if err := p.Read(); err != nil || p.long != 2 || p.longChars != 4 || !slices.Equal(p.rec, []string{"ab"}) {
+			t.Errorf("long field %d of %d characters: %v", p.long, p.longChars, err)
+		}
+		p = newRecords(src("ab,名名名\n"), 2, 3, unbounded)
+		if err := p.Read(); err != nil || p.long != -1 {
+			t.Errorf("long field %d: %v", p.long, err)
+		}
 	}
 	// The next record starts afresh.
 	p = newRecords(strings.NewReader("aaaa,b\nc\n"), 1, 3, unbounded)

@@ -116,6 +116,11 @@ func TestHostileFilesAreBounded(t *testing.T) {
 			importprofile.CodeLimitExceeded, "/0", "row 0, with the white space before it, is longer than 1048576 bytes", 32 * mib, nil},
 		{"a JSON model with an object of 4M members", importprofile.JSONModel, members(`{"a":{`, 4_000_000, "}}"),
 			importprofile.CodeLimitExceeded, "", "2097152 bytes", 16 * mib, nil},
+		// Within the row limit: the names are checked once, as the row is
+		// read (about 26 MiB here; checking them again would double it);
+		// the value is then too long.
+		{"a JSON row with an object of 80,000 members", importprofile.JSONEvents, members(`[{"a":{`, 80_000, "}}]"),
+			importprofile.CodeLimitExceeded, "/0/a", "a value of 868891 characters", 40 * mib, nil},
 		{"40 MB of white space in a JSON row", importprofile.JSONEvents, repeat(`[{"a":`, " ", `1}]`, 40_000_000),
 			importprofile.CodeLimitExceeded, "/0", "longer than 1048576 bytes", 8 * mib, nil},
 		{"40 MB of white space between JSON rows", importprofile.JSONEvents, repeat(`[{"a":1},`, " ", `{"a":2}]`, 40_000_000),
@@ -194,5 +199,22 @@ func TestFailurePathsAreBounded(t *testing.T) {
 				t.Errorf("got %s at %d characters %.40q: %q; want %s at %.40q", f.Code, utf8.RuneCountInString(f.Path), f.Path, f.Message, c.code, c.path)
 			}
 		})
+	}
+}
+
+// A bound left unset is the caller's error, never a file read without it.
+func TestLimitsMustBeSet(t *testing.T) {
+	noRecord := importprofile.DefaultLimits
+	noRecord.MaxRecordBytes = 0
+	negative := importprofile.DefaultLimits
+	negative.PreviewRows = -1
+	for _, lim := range []importprofile.Limits{{}, noRecord, negative} {
+		for _, f := range []importprofile.Format{importprofile.CSV, importprofile.JSONEvents, importprofile.JSONModel} {
+			_, err := importprofile.Read(context.Background(), strings.NewReader("a\n1\n"), f, lim)
+			var fail *importprofile.Failure
+			if err == nil || errors.As(err, &fail) {
+				t.Errorf("%s with %+v: %v", f, lim, err)
+			}
+		}
 	}
 }
