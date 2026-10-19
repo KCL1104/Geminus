@@ -1,0 +1,10 @@
+$ go test -count=1 -run TestNoDomainVocabulary ./internal/ai/aicontext/
+# extra environment: none
+--- FAIL: TestNoDomainVocabulary (0.05s)
+    proposal_test.go:607: the analyst rules name [dora]
+    proposal_test.go:607: the importer rules name [deployment]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/aicontext	0.060s
+FAIL
+
+# exit 1 after 1s

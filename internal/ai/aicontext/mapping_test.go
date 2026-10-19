@@ -51,7 +51,7 @@ func TestMappingContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := ctx.Prompt
-	if ctx.OrganizationID != orgA || p.OrganizationID != orgA || p.Role != provider.RoleImporter || p.TemplateVersion != "importer-0.2.0" || p.Verify() != nil {
+	if ctx.OrganizationID != orgA || p.OrganizationID != orgA || p.Role != provider.RoleImporter || p.TemplateVersion != "importer-0.2.1" || p.Verify() != nil {
 		t.Fatalf("%+v", ctx)
 	}
 	b := blocks(t, p)

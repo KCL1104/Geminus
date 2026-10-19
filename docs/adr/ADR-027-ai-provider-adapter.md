@@ -42,7 +42,7 @@ tasks.json 原規劃的 `internal/ai/context/` 改名為 `internal/ai/aicontext`
 ### Context builder（`aicontext`）
 
 - **跨 tenant hard filter**：每個輸入都帶 organization（與 model）：base version、ID pool、data summary、run result、import。任何一個不屬於 request 的 scope，整個 build 失敗（`cross_tenant_input`，附 JSON Pointer），不回部分 context。Run result 的 run ID 必須是該 run 的；只分析 completed 的 run。
-- **System rules 只有可信文字**：版本化 template（`prompts/<role>/system.md`）、固定的 server rules（`context-rules-1`）、mode 規則（edit 的 pool 規則、scenario 的 D-021 allowlist）、domain pack 的靜態 `PromptContext`（domain-neutral：builder 不含任何 domain 詞彙）、`output_locale` 的固定 instruction。
+- **System rules 只有可信文字**：版本化 template（`prompts/<role>/system.md`）、固定的 server rules（`context-rules-1`）、mode 規則（edit 的 pool 規則、scenario 的 D-021 allowlist）、domain pack 的靜態 `PromptContext`（domain-neutral：builder 不含任何 domain 詞彙。`TestNoDomainVocabulary` 檢查 builder 的每個 string literal 與它對 neutral pack 產生的四個 role 的 rules（含版本化 template）都沒有兩個 domain 的詞彙——software delivery 範例 pack 與 docs/domains/ELECTRONICS_LINE.md 的電子線；例外只有契約自己的 member 名稱：`Result.metrics.dora`（CB-37）與 canonical event 的 `deployment_id` target field。T-024 review L7 因此把 analyst 與 importer template 的 DORA／deployment 字眼改為中性，版本為 analyst-0.3.1、importer-0.2.1）、`output_locale` 的固定 instruction。
 - **User message 只有 block**：`<server_data name="…">`（ID_ALLOCATION_POOL、ALLOWED_METRIC_REFERENCES、CONTEXT_OMISSIONS）與 `<untrusted_data name="…">`（model IR、entity index、intent、question、selected IDs、data summary、results、columns、sample rows）。每個 block 的內容是一個 JSON 值，`Seal` 重新編碼並跳脫 `<`、`>`、`&`、U+2028、U+2029，所以資料無法關閉自己的 block 或偽造另一個；`Seal` 也拒絕含 block 的 system rules。`InputHash` = JCS＋SHA-256（role、template version、locale、system、user），是 audit 的 sanitized input hash。
 - **Redaction（default deny）**：每個 untrusted 字串與 member name：private key、`sk-ant-`／`sk-`／`pk-`／`rk-` key、AWS、GitHub、Slack、Google key、JWT、bearer／basic token、`password=`／`token:` 類 key=value、任何 URL、e-mail、IPv4、D-001 的 server ID（大寫 ULID；pool 的小寫 ID 不受影響）、不可見的 control／format 字元（bidi override、zero-width、BOM）。以 `[REDACTED:<kind>]` 標示並計數。
 - **Bounded 與 minimal**：字串 2000 字（intent 20000、question 10000、名稱 200、cell 200）；root metadata ≤ 2 KiB、node 的 domain_attributes ≤ 1 KiB；data summary ≤ 8 KiB；sample rows ≤ 20；columns ≤ 256；不送 model ID、version ID、run ID、hash、views、replication summaries、dataset version ID。
@@ -70,7 +70,7 @@ tasks.json 原規劃的 `internal/ai/context/` 改名為 `internal/ai/aicontext`
 - `locale.CheckProse` 比對數字時忽略正負號（「減少 3.5」對應 -3.5）；delta 的方向是否正確由 T-030 的 analyst 檢查負責。
 - Minimal context 的選擇：IR 放得進 budget 時送完整 IR（減去 server 綁定的 ID 與 view），因為 patch 的 JSON Pointer index 與 reference 需要整個 topology；超出 budget 才依序縮減（見 Context builder）。
 - 並行限制是每個 process 的；多個 worker 會倍增。期間 quota、prompt caching（資料保留屬資料政策）、refusal fallback 到其他 model（換 model 屬 owner）都沒有做。
-- 連帶 module 中有 `go.yaml.in/yaml/v4` 的 release candidate（SDK 的 profile 設定使用；本 adapter 不呼叫該路徑）。
+- 連帶 module 中有 `go.yaml.in/yaml/v4` v4.0.0-rc.2（2025-08-28 發布的 release candidate）：由 `github.com/pb33f/ordered-map/v2` 的 `yaml.go` 引入（SDK 與 invopop/jsonschema 都 import ordered-map），不是 SDK 的 profile 設定；本 module 與 adapter 的路徑都不做 YAML 編解碼。ADR-011 記錄為接受的 transitive pre-release 與其風險。
 
 ## Alternatives
 

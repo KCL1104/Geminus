@@ -5,7 +5,11 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -508,5 +512,99 @@ func TestDomainNeutral(t *testing.T) {
 	}
 	if !strings.Contains(ctx.Prompt.System, "Synthetic electronics_line line") || strings.Contains(ctx.Prompt.System, "software_delivery") {
 		t.Error("the rules do not follow the pack")
+	}
+}
+
+// domainVocabulary is the vocabulary of both domains: the software
+// delivery example pack and the electronics assembly and test line
+// (docs/domains/ELECTRONICS_LINE.md, H-016). Review L7: the builder's own
+// text never holds it; domain text comes from the pack's PromptContext.
+var domainVocabulary = []string{
+	"software", "delivery", "deploy", "deployment", "pull request", "pull_request", "code review", "code_review", "reviewer",
+	"ci runner", "ci_runner", "commit", "dora", "lead time", "change failure", "incident",
+	"smt", "aoi", "ict", "fct", "burn-in", "burn_in", "reflow", "solder", "pcb", "pcba", "tester", "debug_operator",
+	"燒機", "錫膏", "迴焊", "電路測試", "功能測試", "測試機", "治具",
+}
+
+// contractNames are member names the contract gives, which the builder
+// must use as the schemas spell them: Result.metrics.dora (CB-37) and the
+// canonical-event target fields (ai-mapping.schema.json,
+// TestMappingVocabularyIsTheSchemas).
+var contractNames = []string{"dora", "deployment_id"}
+
+func vocabularyIn(text string, allowed []string) []string {
+	for _, a := range allowed {
+		text = regexp.MustCompile(`(?i)\b`+regexp.QuoteMeta(a)+`\b`).ReplaceAllString(text, "")
+	}
+	var found []string
+	for _, w := range domainVocabulary {
+		if w[0] < 0x80 {
+			if regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(w) + `\b`).MatchString(text) {
+				found = append(found, w)
+			}
+		} else if strings.Contains(text, w) {
+			found = append(found, w)
+		}
+	}
+	return found
+}
+
+// Review L7: no string literal of the builder and no rules text it emits
+// for a neutral pack names either domain; the versioned templates are part
+// of that text.
+func TestNoDomainVocabulary(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fset := token.NewFileSet()
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, f, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(file, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+				if found := vocabularyIn(lit.Value, contractNames); len(found) > 0 {
+					t.Errorf("%s: %s names %v", fset.Position(lit.Pos()), lit.Value, found)
+				}
+			}
+			return true
+		})
+	}
+
+	neutral := domainpack.PromptContext{Domain: "neutral_line", Summary: "A neutral test domain.", Rules: []string{"Keep the flow."}}
+	in := input(t)
+	in.Base.IR.Domain, in.Domain = "neutral_line", neutral
+	p, err := Proposal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sin := in
+	sin.Mode = provider.ModeScenario
+	s, err := Proposal(sin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ain := analysisInput(t)
+	ain.Version.IR.Domain, ain.Domain = "neutral_line", neutral
+	a, err := Analysis(ain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := Mapping(mappingInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, system := range map[string]string{"modeler": p.Prompt.System, "scenario": s.Prompt.System, "analyst": a.Context.Prompt.System,
+		"importer": m.Prompt.System} {
+		// The rules list the mapping target fields; they never need the
+		// dora member, which only metric paths in blocks carry.
+		if found := vocabularyIn(system, []string{"deployment_id"}); len(found) > 0 {
+			t.Errorf("the %s rules name %v", name, found)
+		}
 	}
 }

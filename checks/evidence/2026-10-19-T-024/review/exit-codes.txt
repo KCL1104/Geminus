@@ -12,3 +12,7 @@ l8-red.log: exit 1 (go test -count=1 -run TestDefaultAnswers ./internal/ai/provi
 l8-green.log: exit 0 (go test -count=1 ./internal/ai/provider/... ./internal/ai/corpus/; env: none)
 credentials-red.log: exit 1 (go test -count=1 -timeout 120s -run TestFailover|TestBillingCooldown ./internal/ai/provider/anthropic/; env: none)
 credentials-green.log: exit 0 (go test -count=1 -race -timeout 200s ./internal/ai/provider/anthropic/; env: none)
+l7-red.log: exit 1 (go test -count=1 -run TestNoDomainVocabulary ./internal/ai/aicontext/; env: none)
+l7-red.log: exit 1 (go test -count=1 -run TestNoDomainVocabulary ./internal/ai/aicontext/; env: none)
+l7-red.log: exit 1 (go test -count=1 -run TestNoDomainVocabulary ./internal/ai/aicontext/; env: none)
+l7-green.log: exit 0 (go test -count=1 -timeout 120s ./internal/ai/... ./prompts/...; env: none)

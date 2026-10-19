@@ -258,7 +258,9 @@ func unverifiable(text string) []Finding {
 
 // matches reports whether the prose number n states v: v rounded to the
 // decimals n shows (a sign may be carried by the words around it), or, for
-// a percentage, 100·v so rounded.
+// a percentage, 100·v so rounded. The sign is ignored ("fell by 3.5"
+// states -3.5), so whether a delta's direction is right is not checked
+// here: T-030's analyst checks compare it with the comparison.
 func matches(n Number, v float64) bool {
 	tol := 0.5*math.Pow(10, -float64(n.Decimals)) + 1e-9*math.Max(1, math.Abs(v))
 	if math.Abs(math.Abs(v)-math.Abs(n.Value)) <= tol {

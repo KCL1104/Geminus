@@ -63,9 +63,9 @@ T-024 adds the official Anthropic Go SDK for the live provider adapter (`interna
 | `github.com/buger/jsonparser` | v1.1.2 | MIT | SDK dependency |
 | `github.com/invopop/jsonschema` | v0.14.0 | MIT | SDK (schemas from Go types; not used by the adapter) |
 | `github.com/bahlo/generic-list-go` | v0.2.0 | BSD-3-Clause | invopop/jsonschema |
-| `github.com/pb33f/ordered-map/v2` | v2.3.1 | Apache-2.0 | invopop/jsonschema |
+| `github.com/pb33f/ordered-map/v2` | v2.3.1 | Apache-2.0 | the SDK and invopop/jsonschema (ordered maps) |
 | `github.com/standard-webhooks/standard-webhooks/libraries` | v0.0.1 | MIT | SDK (webhook verification; not used by the adapter) |
-| `go.yaml.in/yaml/v4` | v4.0.0-rc.2 | MIT and Apache-2.0 (its NOTICE: Copyright 2011-2016 Canonical Ltd.) | SDK profile configuration (not used by the adapter); a release candidate |
+| `go.yaml.in/yaml/v4` | v4.0.0-rc.2 (published 2025-08-28) | MIT and Apache-2.0 (its NOTICE: Copyright 2011-2016 Canonical Ltd.) | pb33f/ordered-map/v2, whose `yaml.go` gives ordered maps YAML (un)marshalling; nothing in this module or the adapter's path marshals YAML (`go mod why -m go.yaml.in/yaml/v4`). A release candidate, accepted as a transitive pre-release in ADR-011 |
 | `golang.org/x/sync` | v0.23.0 (already required) | BSD-3-Clause | SDK (`errgroup`) |
 
 The MIT notice of the SDK, as its `LICENSE` file states it:
