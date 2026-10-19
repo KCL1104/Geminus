@@ -191,10 +191,12 @@ var rules = []rule{
 		forbid:  cat(testInfra, []string{"testing"}),
 	},
 	{
+		// T-024: the adapter package itself, not all of internal/ai, so the
+		// context builder, the interface and the fake never link an SDK.
 		name:    "llm-sdks-only-in-ai",
 		why:     "only the AI provider adapter may use an LLM SDK; SDK types stay out of domain signatures (docs/ARCHITECTURE.md §1)",
 		applies: []string{"./..."},
-		except:  []string{"./internal/ai/...", "./cmd/..."},
+		except:  []string{"./internal/ai/provider/anthropic/...", "./cmd/..."},
 		forbid:  llmSDKs,
 	},
 	{
@@ -273,10 +275,28 @@ var rules = []rule{
 		allow:   []string{"./internal/auth/..."},
 	},
 	{
+		// T-024: internal/ai exists now. Besides storage, the tenant scope
+		// and process execution, it reaches no application layer at all:
+		// no write service (models, runs, worker), no HTTP handler, no
+		// auth, no config, no pack registry.
 		name:    "ai-suggests-only",
-		why:     "AI only suggests: no SQL handle, storage, tenant scope or process execution (AGENTS.md §2)",
+		why:     "AI only suggests: no SQL handle, storage, tenant scope, write service or process execution (AGENTS.md §2)",
 		applies: []string{"./internal/ai/..."},
-		forbid:  cat([]string{"./internal/storage/...", "./internal/tenant/...", "./cmd/...", "os/exec"}, dbDrivers, []string{"database/sql/..."}),
-		future:  true,
+		forbid:  cat([]string{"os/exec"}, appLayers, dbDrivers, []string{"database/sql/..."}),
+		allow:   []string{"./internal/ai/..."},
+	},
+	{
+		// The provider adapter is the only AI package that talks to the
+		// network; the context builder, the interface, the fake, the ID pool
+		// and the locale checks are computation on what the server read, so
+		// they import computation, encoding and embed packages only.
+		name:       "ai-is-pure-but-the-adapter",
+		why:        "outside the provider adapter, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)",
+		applies:    []string{"./internal/ai/..."},
+		except:     []string{"./internal/ai/provider/anthropic/..."},
+		forbid:     cat(ioStd, llmSDKs),
+		thirdParty: kernelThirdParty,
+		stdOnly:    kernelStd,
+		goOnly:     true,
 	},
 }

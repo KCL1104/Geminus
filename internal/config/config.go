@@ -18,10 +18,14 @@ type AIProvider string
 
 const (
 	AIProviderDisabled AIProvider = "disabled"
+	// AIProviderFake is the deterministic fake provider (T-024), for
+	// development and tests only.
+	AIProviderFake AIProvider = "fake"
 	// AIProviderAnthropic is the provider chosen by the repository owner on
-	// 2026-10-15 (docs/DECISIONS_AND_TBD.md, H-001). It is recognised but not
-	// yet accepted: the adapter is T-024 and live use is gated by D-018, the
-	// data policy and token quotas.
+	// 2026-10-15 (docs/DECISIONS_AND_TBD.md, H-001). The adapter is T-024;
+	// it is called only once the owner's approval of model, token quota and
+	// data policy is recorded (LoadAI): until then every AI call fails with
+	// AI_POLICY_NOT_APPROVED.
 	AIProviderAnthropic AIProvider = "anthropic"
 )
 
@@ -79,18 +83,16 @@ func Load(getenv func(string) string) (Config, error) {
 		errs = append(errs, err)
 	}
 
-	switch p := AIProvider(getenv("AI_PROVIDER")); p {
-	case "", AIProviderDisabled:
-		cfg.AIProvider = AIProviderDisabled
-	case AIProviderAnthropic:
-		errs = append(errs, &Error{"AI_PROVIDER", CodeNotImplemented,
-			"anthropic adapter is delivered by T-024; live AI also needs D-018, an approved data policy and token quotas"})
-	default:
-		errs = append(errs, &Error{"AI_PROVIDER", CodeInvalid, `unknown provider; allowed: "disabled"`})
-	}
-
-	if cfg.AIProvider == AIProviderDisabled && getenv("AI_API_KEY") != "" {
-		errs = append(errs, &Error{"AI_API_KEY", CodeInvalid, "must be empty while AI_PROVIDER is disabled"})
+	// The AI configuration (ai.go); its problems are reported with the rest.
+	if ai, err := LoadAI(getenv); err != nil {
+		var joined interface{ Unwrap() []error }
+		if errors.As(err, &joined) {
+			errs = append(errs, joined.Unwrap()...)
+		} else {
+			errs = append(errs, err)
+		}
+	} else {
+		cfg.AIProvider = ai.Provider
 	}
 
 	switch cfg.Env = getenv("APP_ENV"); cfg.Env {

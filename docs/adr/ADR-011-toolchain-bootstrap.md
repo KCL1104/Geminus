@@ -20,7 +20,7 @@
 | OIDC client（T-043） | `openid-client` 6.8.8，帶入 `oauth4webapi` 3.8.8 與 `jose` 6.2.12（三者皆 2026-09-05 發布，滿兩週） | MIT | ADR-018 指定通用 OIDC／OAuth client。只在伺服器端使用（`apps/web/lib/session`，`tests/server-only.test.ts` 檢查沒有 client module 能引用）；ID token 另以 `enableNonRepudiationChecks` 驗簽 |
 | 瀏覽器檢查（T-045） | `@playwright/test` 1.56.1、`@axe-core/playwright` 4.13.0、`axe-core` 4.13.0（`apps/web-e2e`，不進 `apps/web`）；CI 的 e2e job 用 `mcr.microsoft.com/playwright:v1.56.1-noble`，以 index digest `sha256:f1e7e010…b837a` pin | Apache-2.0；axe 為 MPL-2.0（只用於測試，H-009） | 截圖 baseline 只在這個 image 中產生與比對（字型一致） |
 
-HTTP 層依 ADR-001 使用 `net/http`，不引入 web framework。SQL generation（sqlc／explicit SQL）、frontend state／UI libraries、auth、cloud、object storage 仍為 TBD，本 ADR 不選。LLM provider 已由 H-001 指定 Anthropic，但 SDK（`github.com/anthropics/anthropic-sdk-go`）版本留給 T-024 選定。
+HTTP 層依 ADR-001 使用 `net/http`，不引入 web framework。SQL generation（sqlc／explicit SQL）、frontend state／UI libraries、auth、cloud、object storage 仍為 TBD，本 ADR 不選。LLM provider 已由 H-001 指定 Anthropic，但 SDK（`github.com/anthropics/anthropic-sdk-go`）版本留給 T-024 選定。T-024（2026-10-19，ADR-027 PROPOSED，待 review）：`github.com/anthropics/anthropic-sdk-go` **v1.78.0**（2026-09-30 發布，滿兩週；v1.79.0／v1.79.1／v1.80.0 為 2026-10-07～09 發布，未滿兩週），MIT；`go.mod`／`go.sum` pin。只有 `internal/ai/provider/anthropic` 連結它（architecture rule `llm-sdks-only-in-ai`）；它連帶的 module 與授權列在 [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES.md)。尚未以它呼叫真實 API（live AI 待 owner 核准 model、quota、資料政策，H-017）。
 
 ## Consequences
 

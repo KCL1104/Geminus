@@ -1,6 +1,6 @@
 # Third-party notices
 
-Source code adapted from third parties, with the notices their licenses require. Dependencies pulled in as modules or packages are listed with their licenses in [ADR-011](adr/ADR-011-toolchain-bootstrap.md) and their lockfiles; this file covers code copied into this repository.
+Source code adapted from third parties, with the notices their licenses require. Dependencies pulled in as modules or packages are listed with their licenses in [ADR-011](adr/ADR-011-toolchain-bootstrap.md) and their lockfiles; this file covers code copied into this repository, and the Go modules the live AI adapter links (last section, T-024).
 
 ## Go `math.log` (pinned logarithm)
 
@@ -47,4 +47,35 @@ Permission to use, copy, modify, and distribute this
 software is freely granted, provided that this notice
 is preserved.
 ====================================================
+```
+
+## Go modules linked by the live AI adapter (T-024)
+
+T-024 adds the official Anthropic Go SDK for the live provider adapter (`internal/ai/provider/anthropic`, ADR-027 PROPOSED; ADR-011 records the pin). Only that package links it (architecture rule `llm-sdks-only-in-ai`). Versions are pinned in `go.mod` and `go.sum`; each module's own license file ships in its module and applies to it.
+
+| Module | Version | License | Linked because |
+|---|---|---|---|
+| `github.com/anthropics/anthropic-sdk-go` | v1.78.0 (published 2026-09-30) | MIT, Copyright 2023 Anthropic, PBC | the SDK |
+| `github.com/tidwall/gjson` | v1.18.0 | MIT | SDK JSON handling |
+| `github.com/tidwall/sjson` | v1.2.5 | MIT | SDK JSON handling |
+| `github.com/tidwall/match` | v1.1.1 | MIT | gjson |
+| `github.com/tidwall/pretty` | v1.2.1 | MIT | gjson |
+| `github.com/buger/jsonparser` | v1.1.2 | MIT | SDK dependency |
+| `github.com/invopop/jsonschema` | v0.14.0 | MIT | SDK (schemas from Go types; not used by the adapter) |
+| `github.com/bahlo/generic-list-go` | v0.2.0 | BSD-3-Clause | invopop/jsonschema |
+| `github.com/pb33f/ordered-map/v2` | v2.3.1 | Apache-2.0 | invopop/jsonschema |
+| `github.com/standard-webhooks/standard-webhooks/libraries` | v0.0.1 | MIT | SDK (webhook verification; not used by the adapter) |
+| `go.yaml.in/yaml/v4` | v4.0.0-rc.2 | MIT and Apache-2.0 (its NOTICE: Copyright 2011-2016 Canonical Ltd.) | SDK profile configuration (not used by the adapter); a release candidate |
+| `golang.org/x/sync` | v0.23.0 (already required) | BSD-3-Clause | SDK (`errgroup`) |
+
+The MIT notice of the SDK, as its `LICENSE` file states it:
+
+```text
+Copyright 2023 Anthropic, PBC.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```

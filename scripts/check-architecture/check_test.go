@@ -157,6 +157,20 @@ func TestProbesAreCaught(t *testing.T) {
 		{"the-report-opens-files", "internal/import/report/zz_probe.go", "os", "import-parsing-is-pure", "./internal/import/report", "os", false},
 		{"the-worker-names-a-pack", "cmd/worker/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "packs-named-in-one-place", "./cmd/worker", "./internal/domainpack/softwaredelivery", false},
 		{"a-service-names-a-pack", "internal/runs/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "packs-named-in-one-place", "./internal/runs", "./internal/domainpack/softwaredelivery", false},
+		// T-024: the provider adapter has no DB handle or storage, and only it
+		// links the SDK or the network.
+		{"the-adapter-imports-pgx", "internal/ai/provider/anthropic/zz_probe.go", "github.com/jackc/pgx/v5", "ai-suggests-only", "./internal/ai/provider/anthropic", "github.com/jackc/pgx/v5", false},
+		{"the-adapter-imports-storage", "internal/ai/provider/anthropic/zz_probe.go", module + "/internal/storage/models", "ai-suggests-only", "./internal/ai/provider/anthropic", "./internal/storage/models", false},
+		{"the-provider-imports-the-tenant-scope", "internal/ai/provider/zz_probe.go", module + "/internal/tenant", "ai-suggests-only", "./internal/ai/provider", "./internal/tenant", false},
+		{"the-context-imports-a-write-service", "internal/ai/aicontext/zz_probe.go", module + "/internal/models", "ai-suggests-only", "./internal/ai/aicontext", "./internal/models", false},
+		{"the-context-imports-the-job-handler", "internal/ai/aicontext/zz_probe.go", module + "/internal/runs/runner", "ai-suggests-only", "./internal/ai/aicontext", "./internal/runs/runner", false},
+		{"the-fake-imports-config", "internal/ai/provider/fake/zz_probe.go", module + "/internal/config", "ai-suggests-only", "./internal/ai/provider/fake", "./internal/config", false},
+		{"the-context-imports-the-sdk", "internal/ai/aicontext/zz_probe.go", "github.com/anthropics/anthropic-sdk-go", "llm-sdks-only-in-ai", "./internal/ai/aicontext", "github.com/anthropics/anthropic-sdk-go", false},
+		{"the-provider-imports-the-sdk", "internal/ai/provider/zz_probe.go", "github.com/anthropics/anthropic-sdk-go", "ai-is-pure-but-the-adapter", "./internal/ai/provider", "github.com/anthropics/anthropic-sdk-go", false},
+		{"the-fake-goes-online", "internal/ai/provider/fake/zz_probe.go", "net/http", "ai-is-pure-but-the-adapter", "./internal/ai/provider/fake", "net/http", false},
+		{"the-pool-reads-files", "internal/ai/idpool/zz_probe.go", "os", "ai-is-pure-but-the-adapter", "./internal/ai/idpool", "os", false},
+		{"the-context-runs-a-process", "internal/ai/aicontext/zz_probe.go", "os/exec", "ai-suggests-only", "./internal/ai/aicontext", "os/exec", false},
+		{"a-service-links-the-adapter", "internal/models/zz_probe.go", module + "/internal/ai/provider/anthropic", "llm-sdks-only-in-ai", "./internal/models", "github.com/anthropics/anthropic-sdk-go", false},
 	}
 	for _, p := range probes {
 		t.Run(p.name, func(t *testing.T) {
@@ -268,7 +282,10 @@ func TestSyntheticGraph(t *testing.T) {
 	add(m("internal/domainpack/alpha/rules"), false, m("internal/model"))
 	add(m("internal/domainpack/beta"), false, m("internal/domainpack/alpha"))
 	add(m("internal/domainpack/conformance"), false, m("internal/domainpack"))
-	add(m("internal/ai"), false, m("internal/storage/postgres"), "github.com/anthropics/anthropic-sdk-go")
+	add(m("internal/ai"), false, m("internal/storage/postgres"))
+	// T-024: only the adapter links the SDK; the context builder may not.
+	add(m("internal/ai/provider/anthropic"), false, "github.com/anthropics/anthropic-sdk-go")
+	add(m("internal/ai/aicontext"), false, "github.com/anthropics/anthropic-sdk-go")
 	add(m("internal/storage/postgres"), false, "database/sql")
 	add("database/sql", true)
 	add(m("internal/results/metrics"), false, m("internal/model"))
@@ -328,13 +345,16 @@ func TestSyntheticGraph(t *testing.T) {
 		"db-handles-only-in-gateways ./internal/rawdb ./internal/rawdb>./internal/storage/postgres",
 		"db-handles-only-in-gateways ./internal/ai ./internal/ai>./internal/storage/postgres",
 		"import-parsing-is-pure ./internal/import/profile ./internal/import/profile>./internal/storage/postgres",
+		"llm-sdks-only-in-ai ./internal/ai/aicontext ./internal/ai/aicontext>github.com/anthropics/anthropic-sdk-go",
+		"ai-is-pure-but-the-adapter ./internal/ai/aicontext ./internal/ai/aicontext>github.com/anthropics/anthropic-sdk-go",
 	} {
 		if !got[want] {
 			t.Errorf("missing violation %q", want)
 		}
 	}
 	for v := range got {
-		for _, never := range []string{"domain-packs ./internal/domainpack/alpha ", "llm-sdks-only-in-ai ./internal/ai ", "llm-sdks-only-in-ai ./cmd/api ",
+		for _, never := range []string{"domain-packs ./internal/domainpack/alpha ", "llm-sdks-only-in-ai ./internal/ai/provider/anthropic ",
+			"llm-sdks-only-in-ai ./cmd/api ", "ai-is-pure-but-the-adapter ./internal/ai/provider/anthropic ",
 			"db-only-in-storage ./internal/service ", "db-handles-only-in-gateways ./internal/service ", "db-handles-only-in-gateways ./internal/storage/",
 			"no-test-infra-in-production ./internal/contracttest ", "db-only-in-storage ./internal/storage/postgres ",
 			"import-parsing-is-pure ./internal/import/report ", "import-parsing-is-pure ./internal/import/profile ./internal/import/profile>./internal/model",
@@ -766,6 +786,17 @@ func TestPolicy(t *testing.T) {
 		want{"auth-authenticates-only", m("internal/auth"), slices.Concat([]string{m("internal/tenant"), m("internal/storage/postgres"), m("internal/ai"), m("cmd/api"),
 			m("internal/config"), m("internal/domainpack/softwaredelivery"), m("internal/model"), m("internal/simulation/des"), "database/sql"}, db, llm), false, false},
 		want{"ai-suggests-only", m("internal/ai"), slices.Concat([]string{m("internal/storage/postgres"), m("internal/tenant"), m("cmd/api"), "os/exec", "database/sql"}, db), false, false},
+		// T-024: no write service, worker, handler, auth or config for any AI
+		// package, the adapter included; I/O and SDKs only in the adapter.
+		want{"ai-suggests-only", m("internal/ai/provider/anthropic"), slices.Concat([]string{m("internal/storage/models"), m("internal/models"), m("internal/runs"),
+			m("internal/runs/runner"), m("internal/worker"), m("internal/httpapi"), m("internal/api"), m("internal/auth"), m("internal/config"),
+			m("internal/packs"), m("internal/project"), m("internal/tenant/workerscope"), m("cmd/worker"), "os/exec", "database/sql"}, db), false, false},
+		want{"ai-suggests-only", m("internal/ai/aicontext"), []string{m("internal/models"), m("internal/storage/objects"), m("internal/import")}, false, false},
+		want{"ai-is-pure-but-the-adapter", m("internal/ai/aicontext"), slices.Concat(io, llm), false, false},
+		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider"), slices.Concat(io, llm), false, false},
+		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider/fake"), direct, true, false},
+		want{"llm-sdks-only-in-ai", m("internal/ai/aicontext"), llm, false, false},
+		want{"llm-sdks-only-in-ai", m("internal/ai/provider"), llm, false, false},
 	)
 	byName := map[string]rule{}
 	for _, r := range rules {
