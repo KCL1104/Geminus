@@ -5,9 +5,11 @@
 // organization.
 //
 // The API inserts an import UPLOADED with its upload's object key, SHA-256
-// and size, which never change; the worker moves it to PROFILING and then
-// to AWAITING_MAPPING with its profile, preview and error report, or to
-// FAILED with why (0010 holds every role to that).
+// and size, which never change, and its one profile job; the worker moves
+// it to PROFILING and then to AWAITING_MAPPING with its profile, preview
+// and error report, or to FAILED with why; when the job fails or is
+// cancelled first, the import follows it to FAILED with the job's error
+// (0010 holds every role to that).
 package imports
 
 import (
@@ -39,7 +41,7 @@ type Report struct {
 	Size        int64
 }
 
-// Import is one row of twin.imports, with what its profile job says.
+// Import is one row of twin.imports, with the request that uploaded it.
 type Import struct {
 	ID, OrganizationID, ProjectID, ModelID, BaseVersionID string
 	Kind, Filename                                        string
@@ -58,16 +60,15 @@ type Import struct {
 	DatasetVersionID, ProposalID *string
 	CreatedBy                    string
 	CreatedAt                    time.Time
-	// The import's profile job: its status and the failure it recorded
-	// (nil when none), and the request that queued it (its payload).
-	JobStatus  string
-	JobFailure []byte
-	RequestID  string
+	// RequestID is the request that uploaded the file (its profile job's
+	// payload).
+	RequestID string
 }
 
 // Failure is the error JSON of a FAILED import: why its file cannot be
 // imported (a profile failure, with a JSON Pointer into the file) or why
-// its profile job could not profile it (a jobs.Failure, without one).
+// its profile job could not profile it (the job's jobs.Failure, without
+// one, which the import takes when it follows its job, 0010).
 type Failure struct {
 	Code      string `json:"code"`
 	Message   string `json:"message"`
@@ -88,8 +89,9 @@ const (
 	// InputInvalid: the job does not name its import, or its import is not
 	// one it can profile; not retried.
 	InputInvalid = "IMPORT_INPUT_INVALID"
-	// JobCancelled: the profile job ended cancelled before it profiled the
-	// file (an operator's action; the API has no way to cancel one).
+	// JobCancelled: the profile job ended cancelled, without an error,
+	// before it profiled the file (0010 records it; an operator's action,
+	// the API having no route that cancels one).
 	JobCancelled = "JOB_CANCELLED"
 )
 
@@ -124,14 +126,12 @@ const columns = `i.id, i.project_id, i.model_id, i.base_version_id, i.kind, i.fi
 	i.size_bytes, i.status, i.mapping_revision, i.total_rows, i.invalid_rows, i.profile, i.preview, i.mapping, i.validation,
 	i.mapping_suggestion_status, i.mapping_suggestion, i.error, i.error_report_object_key, i.error_report_content_hash,
 	i.error_report_size_bytes, i.dataset_version_id, i.proposal_id, i.created_by, i.created_at,
-	coalesce(j.status, ''), j.error, coalesce(j.payload->>'request_id', '')`
+	coalesce(j.payload->>'request_id', '')`
 
-// from joins each import with its latest profile job (the API queues one
-// with the import).
-const from = ` FROM twin.imports i LEFT JOIN LATERAL (
-	  SELECT status, error, payload FROM twin.jobs
-	  WHERE organization_id=i.organization_id AND import_id=i.id AND type='import_profile'
-	  ORDER BY created_at DESC, id DESC LIMIT 1) j ON true`
+// from joins each import with its profile job (one at most, 0010; the API
+// queues it with the import).
+const from = ` FROM twin.imports i LEFT JOIN twin.jobs j
+	  ON j.organization_id=i.organization_id AND j.import_id=i.id AND j.type='import_profile'`
 
 func scan(row pgx.Row, org string) (Import, error) {
 	i := Import{OrganizationID: org}
@@ -141,7 +141,7 @@ func scan(row pgx.Row, org string) (Import, error) {
 	err := row.Scan(&i.ID, &i.ProjectID, &i.ModelID, &i.BaseVersionID, &i.Kind, &i.Filename, &i.UploadKey, &i.UploadSHA256,
 		&i.Size, &status, &i.MappingRevision, &i.TotalRows, &i.InvalidRows, &i.Profile, &i.Preview, &i.Mapping, &i.Validation,
 		&i.MappingSuggestionStatus, &i.MappingSuggestion, &i.Failure, &key, &hash, &size, &i.DatasetVersionID, &i.ProposalID,
-		&i.CreatedBy, &i.CreatedAt, &i.JobStatus, &i.JobFailure, &i.RequestID)
+		&i.CreatedBy, &i.CreatedAt, &i.RequestID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Import{}, ErrNotFound
 	}

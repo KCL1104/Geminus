@@ -761,9 +761,10 @@ func TestProfileIntegrity(t *testing.T) {
 }
 
 // A profile job that fails is retried; once its attempts are spent the
-// import shows FAILED with the job's failure (the import's row keeps the
-// state the job left it in, 0010). A retry after a crash profiles from
-// PROFILING.
+// import is FAILED with the job's failure, in its own row (T-016 review
+// M1: the import follows its job, 0010), and so when an operator cancels
+// the job. An import has one profile job. A retry after a crash profiles
+// from PROFILING.
 func TestProfileJobFailures(t *testing.T) {
 	e := setupRuns(t)
 	m := e.newModel(t)
@@ -780,11 +781,35 @@ func TestProfileJobFailures(t *testing.T) {
 		got.Error.Error.RequestID != r.header.Get("X-Request-ID") {
 		t.Errorf("%+v", got)
 	}
-	var status string
+	var status, rowError, jobError string
 	var attempts int
-	if err := e.admin.QueryRow(context.Background(), `SELECT i.status, j.attempt FROM twin.imports i JOIN twin.jobs j ON j.import_id=i.id WHERE i.id=$1`, id).Scan(&status, &attempts); err != nil ||
-		status != "PROFILING" || attempts != fastPolicy.MaxAttempts {
-		t.Errorf("row %s after %d attempts: %v", status, attempts, err)
+	if err := e.admin.QueryRow(context.Background(), `SELECT i.status, i.error::text, j.error::text, j.attempt FROM twin.imports i JOIN twin.jobs j ON j.import_id=i.id WHERE i.id=$1`, id).
+		Scan(&status, &rowError, &jobError, &attempts); err != nil || status != "FAILED" || rowError != jobError || attempts != fastPolicy.MaxAttempts {
+		t.Errorf("row %s (%s; the job: %s) after %d attempts: %v", status, rowError, jobError, attempts, err)
+	}
+	// A second profile job for the import is refused: one could profile it
+	// again, or end after the import followed the first.
+	err := ownerTxErr(e, e.a.ID, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ($1,$2,'import_profile','queued','{}',$3)`,
+			"job_01M4YDQK00TA00000000000077", e.a.ID, id)
+		return err
+	})
+	if err == nil || !strings.Contains(err.Error(), "23505") {
+		t.Errorf("a second profile job: %v", err)
+	}
+	// An operator cancelling a queued job: the import is FAILED at once.
+	r = e.upload(t, editor.Subject, e.a.ID, "key-job-3", fields(m, "csv_events", "a.csv", "a,b\n1,2\n"))
+	if r.status != 202 {
+		t.Fatalf("%d %s", r.status, r.body)
+	}
+	id = decode[accepted](t, r).ID
+	e.ownerTx(t, e.a.ID, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `UPDATE twin.jobs SET status='cancelled' WHERE import_id=$1 AND type='import_profile'`, id)
+		return err
+	})
+	if got := e.getImport(t, editor.Subject, id); got.Status != "FAILED" || got.Error.Error.Code != "INTERNAL_ERROR" ||
+		got.Error.Error.Details[0].Code != "JOB_CANCELLED" || got.Error.Error.RequestID != r.header.Get("X-Request-ID") {
+		t.Errorf("after the job was cancelled: %+v", got)
 	}
 	// A first attempt that marks the import and then dies; the retry
 	// profiles it from PROFILING.
@@ -858,6 +883,16 @@ func TestErrorReportAuthorization(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "23514") {
 		t.Errorf("another tenant's key: %v", err)
+	}
+	// Nor is an import's report ever its own upload (T-016 review M3: the
+	// upload would be served as a report, unneutralised).
+	err = ownerTxErr(e, e.a.ID, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `UPDATE twin.imports SET error_report_object_key=upload_object_key, error_report_content_hash=upload_content_hash,
+			error_report_size_bytes=size_bytes WHERE id=$1`, two)
+		return err
+	})
+	if err == nil || !strings.Contains(err.Error(), "23514") {
+		t.Errorf("the upload as its report: %v", err)
 	}
 	// The route takes no key and no URL.
 	for _, q := range []string{"?key=tenant/" + e.b.ID + "/imports/x", "?url=http://x.invalid/a"} {

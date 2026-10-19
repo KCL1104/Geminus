@@ -56,6 +56,9 @@ IDS = {
     # T-016 (imports.sql): uploads, their profile jobs and an ID no row has.
     "IMP_A3": ("imp", "A", 3), "IMP_A4": ("imp", "A", 4), "IMP_A5": ("imp", "A", 5), "IMP_A6": ("imp", "A", 6),
     "IMP_A9": ("imp", "A", 9), "JOB_A21": ("job", "A", 21), "JOB_A22": ("job", "A", 22),
+    # T-016 review M1, M3: imports that follow their profile jobs.
+    "IMP_A7": ("imp", "A", 7), "IMP_A8": ("imp", "A", 8), "IMP_A10": ("imp", "A", 10),
+    "JOB_A23": ("job", "A", 23), "JOB_A24": ("job", "A", 24), "JOB_A25": ("job", "A", 25), "JOB_A26": ("job", "A", 26),
     # T-024 (proposals.sql, pool_rows.sql): proposals and their ID allocation pools (D-046).
     "AIP_A3": ("aip", "A", 3), "AIP_A4": ("aip", "A", 4), "AIP_B1": ("aip", "B", 1),
 }

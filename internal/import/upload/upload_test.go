@@ -18,7 +18,6 @@ import (
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	store "github.com/kcl1104/geminus/internal/storage/imports"
-	"github.com/kcl1104/geminus/internal/storage/jobs"
 )
 
 // The import routes are the contract's: method, path and roles
@@ -222,36 +221,39 @@ func TestEnvelope(t *testing.T) {
 	}
 }
 
-// An import whose profile job failed or was cancelled before it left
-// profiling is FAILED with the job's failure; once profiled, the job's end
-// no longer decides.
-func TestFailedJobs(t *testing.T) {
-	base := store.Import{ID: "imp_01M4YDQK0001HSSAXJ76PRHJ58", Status: store.Profiling, Preview: []byte("[]"), RequestID: "req_01M4YDQK00V6H8S0ST4F7510KR"}
-	failed := base
-	failed.JobStatus, failed.JobFailure = string(jobs.Failed), []byte(`{"code":"OBJECT_STORAGE_FAILED","message":"m","retryable":true}`)
-	p, err := public(failed, "req_01M4YDQK00TA00000000000099")
-	if err != nil || p.Status != "FAILED" || p.Error == nil || p.Error.Error.Code != "SERVICE_UNAVAILABLE" || p.Error.Error.RequestID != base.RequestID {
-		t.Errorf("%+v %v", p, err)
+// An import is shown as stored (T-016 review M1: the row follows its
+// profile job, 0010): FAILED with the error in its row, under the request
+// that uploaded it, whatever the job's error was; any other state with no
+// error. A FAILED row without a failure it can show is an error, not a
+// guess.
+func TestStoredStatus(t *testing.T) {
+	base := store.Import{ID: "imp_01M4YDQK0001HSSAXJ76PRHJ58", Status: store.Failed, Preview: []byte("[]"), RequestID: "req_01M4YDQK00V6H8S0ST4F7510KR"}
+	for stored, want := range map[string][2]string{
+		`{"code":"OBJECT_STORAGE_UNAVAILABLE","message":"this worker has no object storage","retryable":true}`:         {"SERVICE_UNAVAILABLE", "OBJECT_STORAGE_UNAVAILABLE"},
+		`{"code":"JOB_CANCELLED","message":"the profile job was ended before it profiled the file","retryable":false}`: {"INTERNAL_ERROR", store.JobCancelled},
+		`{"code":"INTERNAL","message":"the profile job failed","retryable":false}`:                                     {"INTERNAL_ERROR", "INTERNAL"},
+		`{"code":"JSON_DUPLICATE_KEY","message":"m","path":"/1/b","retryable":false}`:                                  {"REQUEST_VALIDATION_FAILED", "JSON_DUPLICATE_KEY"},
+	} {
+		failed := base
+		failed.Failure = []byte(stored)
+		p, err := public(failed, "req_01M4YDQK00TA00000000000099")
+		if err != nil || p.Status != "FAILED" || p.Error == nil || p.Error.Error.Code != want[0] || p.Error.Error.Details[0].Code != want[1] ||
+			p.Error.Error.RequestID != base.RequestID {
+			t.Errorf("%s: %+v %v", stored, p, err)
+		}
 	}
-	cancelled := base
-	cancelled.Status, cancelled.JobStatus = store.Uploaded, string(jobs.Cancelled)
-	if p, err := public(cancelled, ""); err != nil || p.Status != "FAILED" || p.Error.Error.Details[0].Code != store.JobCancelled {
-		t.Errorf("%+v %v", p, err)
+	for _, s := range []store.Status{store.Uploaded, store.Profiling, store.AwaitingMapping} {
+		i := base
+		i.Status = s
+		if s == store.AwaitingMapping {
+			i.Profile = []byte(`{}`)
+		}
+		if p, err := public(i, ""); err != nil || p.Status != string(s) || p.Error != nil {
+			t.Errorf("%s: %+v %v", s, p, err)
+		}
 	}
-	silent := base
-	silent.JobStatus = string(jobs.Failed)
-	if p, err := public(silent, ""); err != nil || p.Status != "FAILED" || p.Error.Error.Code != "INTERNAL_ERROR" || p.Error.Error.Details[0].Code != "INTERNAL" {
-		t.Errorf("a failed job without its failure: %+v %v", p, err)
-	}
-	running := base
-	running.JobStatus = string(jobs.Running)
-	if p, err := public(running, ""); err != nil || p.Status != "PROFILING" || p.Error != nil || string(p.Profile) != "null" {
-		t.Errorf("%+v %v", p, err)
-	}
-	profiled := base
-	profiled.Status, profiled.Profile, profiled.JobStatus = store.AwaitingMapping, []byte(`{}`), string(jobs.Failed)
-	if p, err := public(profiled, ""); err != nil || p.Status != "AWAITING_MAPPING" || p.Error != nil {
-		t.Errorf("%+v %v", p, err)
+	if _, err := public(base, ""); err == nil {
+		t.Error("a FAILED import without its failure was shown")
 	}
 }
 

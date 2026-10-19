@@ -126,20 +126,30 @@ SELECT pg_temp.must_fail(format($q$INSERT INTO twin.dataset_versions(id,organiza
   ]) AS k;
 INSERT INTO twin.dataset_versions(id,organization_id,dataset_id,version,object_key,content_hash,content_type,row_count,unit,created_by)
   VALUES ('dsv_01M4YDQK00TA00000000000009','{{ORG_A}}','{{DS_A}}',9,'tenant/{{ORG_A}}/datasets/ok.json','{{H3}}','application/json',1,'minute','{{USR_A}}');
--- An error report is named by its key, hash and size together (0010), so
--- each row with a report key has the other two: only object_key_ok fails.
-SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,error_report_content_hash,error_report_size_bytes,upload_content_hash,size_bytes,status,created_by) VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv',%L,%L,%L,%L,'{{H1}}',10,'UPLOADED','{{USR_A}}')$q$,
-    u, e, CASE WHEN e IS NOT NULL THEN '{{H2}}' END, CASE WHEN e IS NOT NULL THEN 10 END),'23514')
-  FROM (VALUES
-    ('tenant/{{ORG_A_WILD}}/imports/a.csv', NULL),
-    ('tenant/{{ORG_A}}/imports//a.csv', NULL),
-    ('tenant/{{ORG_A}}/datasets/a.csv', NULL),
-    ('tenant/{{ORG_A}}/imports/a.csv', 'tenant/{{ORG_A_WILD}}/imports/a-errors.csv'),
-    ('tenant/{{ORG_A}}/imports/a.csv', 'tenant/{{ORG_A}}/imports/../a-errors.csv')
-  ) AS t(u, e);
-INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,error_report_content_hash,error_report_size_bytes,upload_content_hash,size_bytes,status,created_by)
-  VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv','tenant/{{ORG_A}}/imports/a.csv','tenant/{{ORG_A}}/imports/a-errors.csv','{{H2}}',10,'{{H1}}',10,'UPLOADED','{{USR_A}}'),
-         ('{{IMP_A2}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','b.csv','tenant/{{ORG_A}}/imports/b.csv','tenant/{{ORG_A}}/imports/b-errors.csv','{{H2}}',10,'{{H1}}',10,'UPLOADED','{{USR_A}}');
+SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,upload_content_hash,size_bytes,status,created_by) VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv',%L,'{{H1}}',10,'UPLOADED','{{USR_A}}')$q$, u),'23514')
+  FROM unnest(ARRAY[
+    'tenant/{{ORG_A_WILD}}/imports/a.csv',
+    'tenant/{{ORG_A}}/imports//a.csv',
+    'tenant/{{ORG_A}}/datasets/a.csv'
+  ]) AS u;
+INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,upload_content_hash,size_bytes,status,created_by)
+  VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv','tenant/{{ORG_A}}/imports/a.csv','{{H1}}',10,'UPLOADED','{{USR_A}}'),
+         ('{{IMP_A2}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','b.csv','tenant/{{ORG_A}}/imports/b.csv','{{H1}}',10,'UPLOADED','{{USR_A}}');
+-- An error report is named by its key, hash and size together, and only
+-- by a job or an operator (0010: an import starts without one), so each
+-- row given a report key here has the other two: only object_key_ok fails.
+SET LOCAL ROLE twin_owner;
+SELECT pg_temp.must_fail(format($q$UPDATE twin.imports SET error_report_object_key=%L, error_report_content_hash='{{H2}}', error_report_size_bytes=10
+    WHERE organization_id='{{ORG_A}}' AND id='{{IMP_A1}}'$q$, e),'23514')
+  FROM unnest(ARRAY[
+    'tenant/{{ORG_A_WILD}}/imports/a-errors.csv',
+    'tenant/{{ORG_A}}/imports/../a-errors.csv'
+  ]) AS e;
+UPDATE twin.imports SET error_report_object_key='tenant/{{ORG_A}}/imports/a-errors.csv', error_report_content_hash='{{H2}}', error_report_size_bytes=10
+  WHERE organization_id='{{ORG_A}}' AND id='{{IMP_A1}}';
+UPDATE twin.imports SET error_report_object_key='tenant/{{ORG_A}}/imports/b-errors.csv', error_report_content_hash='{{H2}}', error_report_size_bytes=10
+  WHERE organization_id='{{ORG_A}}' AND id='{{IMP_A2}}';
+SET LOCAL ROLE twin_api;
 -- 0009 (T-023): a run starts queued with its job; the worker claims the
 -- job and runs it, then stores a result that reproduces its input and
 -- names its trace in full, and completes the run with its job.
@@ -389,26 +399,26 @@ SELECT pg_temp.must_fail($q$UPDATE twin.model_versions SET comment='edited' WHER
 -- identity and input never change; attempts and lease tokens never go back.
 SET LOCAL ROLE twin_api;
 SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','completed','{}','{{IMP_A1}}')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','completed','{}','{{IMP_A1}}')$q$,
   $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at,locked_by,lease_expires_at)
-     VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','running','{}','{{IMP_A1}}',now(),'w',now()+interval '30 seconds')$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,attempt) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',1)$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_token) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',7)$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}','{"code":"X"}')$q$,
+     VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','running','{}','{{IMP_A1}}',now(),'w',now()+interval '30 seconds')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,attempt) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',1)$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_token) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',7)$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}','{"code":"X"}')$q$,
   -- Each lease column on its own (round 3 L2).
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',now())$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_by) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}','w')$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_expires_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',now()+interval '30 seconds')$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,heartbeat_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',now())$q$
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',now())$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_by) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}','w')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_expires_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',now()+interval '30 seconds')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,heartbeat_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',now())$q$
 ]) AS s;
 INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,max_attempts) VALUES
-  ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{"import_id":"{{IMP_A1}}"}','{{IMP_A1}}',3),
-  ('{{JOB_A3}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',3),
-  ('{{JOB_A4}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',3),
-  ('{{JOB_A5}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',3),
-  ('{{JOB_A6}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',1),
-  ('{{JOB_A7}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',3),
-  ('{{JOB_A8}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',3);
+  ('{{JOB_A2}}','{{ORG_A}}','import_validate','queued','{"import_id":"{{IMP_A1}}"}','{{IMP_A1}}',3),
+  ('{{JOB_A3}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',3),
+  ('{{JOB_A4}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',3),
+  ('{{JOB_A5}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',3),
+  ('{{JOB_A6}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',1),
+  ('{{JOB_A7}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',3),
+  ('{{JOB_A8}}','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}',3);
 -- The API may cancel or reschedule a queued job, nothing else.
 UPDATE twin.jobs SET status='cancelled' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A3}}';
 UPDATE twin.jobs SET available_at=now()+interval '1 minute', priority=5 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}';
@@ -499,7 +509,7 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.jobs SET lease_token=lease_token-1 WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET id='job_01M4YDQK00TA00000000000099' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET organization_id='{{ORG_B}}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
-  $q$UPDATE twin.jobs SET type='import_validate' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
+  $q$UPDATE twin.jobs SET type='import_mapping' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   $q$UPDATE twin.jobs SET type='simulation', import_id=NULL, simulation_run_id='{{SIM_A1}}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A7}}'$q$,
   -- Each resource column on its own; only the trigger answers 55000, so a
   -- CHECK or foreign key refusing the row instead fails the test too.
@@ -530,14 +540,14 @@ GRANT SELECT, INSERT, UPDATE ON twin.jobs TO twin_provisioner;
 SET LOCAL ROLE twin_provisioner;
 SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.jobs SET status='cancelled' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A8}}'$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000098','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}')$q$
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000098','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}')$q$
 ]) AS s;
 -- Nor does the worker enqueue, even given INSERT.
 RESET ROLE;
 REVOKE SELECT, INSERT, UPDATE ON twin.jobs FROM twin_provisioner;
 GRANT INSERT ON twin.jobs TO twin_worker;
 SET LOCAL ROLE twin_worker;
-SELECT pg_temp.must_fail($q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000097','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}')$q$, '55000');
+SELECT pg_temp.must_fail($q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000097','{{ORG_A}}','import_validate','queued','{}','{{IMP_A1}}')$q$, '55000');
 RESET ROLE;
 REVOKE INSERT ON twin.jobs FROM twin_worker;
 SET LOCAL ROLE twin_worker;

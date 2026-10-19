@@ -209,12 +209,37 @@ func stored(t *testing.T, j jobs.Job) jobs.Failure {
 	return f
 }
 
-// profile is the result the tests' handlers commit: the import moves on.
+// profile is the result the tests' handlers commit: the import moves on,
+// marked as the handler's (one row counted), so that a result is told
+// apart from the import following its failed job (0010).
 func profile(j jobs.Job) func(ctx context.Context, tx tenant.Tx) error {
 	return func(ctx context.Context, tx tenant.Tx) error {
-		_, err := tx.Exec(ctx, `UPDATE twin.imports SET status='PROFILING' WHERE id=$1`, j.Resource.ImportID)
+		_, err := tx.Exec(ctx, `UPDATE twin.imports SET status='PROFILING', total_rows=1 WHERE id=$1`, j.Resource.ImportID)
 		return err
 	}
+}
+
+// untouched is the import as a job that wrote no result leaves it: still
+// UPLOADED, or FAILED with the job's error when the job failed (the import
+// follows its profile job, 0010), and never with the handler's mark.
+func (e *env) untouched(t *testing.T, j jobs.Job) string {
+	t.Helper()
+	var s string
+	var rows int
+	var followed bool
+	if err := e.admin.QueryRow(context.Background(), `SELECT i.status, i.total_rows, i.error IS NOT DISTINCT FROM j.error
+		FROM twin.imports i JOIN twin.jobs j ON j.import_id=i.id WHERE j.id=$1`, j.ID).Scan(&s, &rows, &followed); err != nil {
+		t.Fatal(err)
+	}
+	got := e.job(t, j)
+	want := "UPLOADED"
+	if got.Status == jobs.Failed || got.Status == jobs.Cancelled {
+		want = "FAILED"
+	}
+	if s != want || rows != 0 || (want == "FAILED" && !followed) {
+		return fmt.Sprintf("%s with %d rows (the job %s; its error recorded: %v)", s, rows, got.Status, followed)
+	}
+	return ""
 }
 
 // A claimed job runs once; its result and its completion commit together,
@@ -486,7 +511,7 @@ func TestFailedAttempts(t *testing.T) {
 			if strings.Contains(string(got.Error), secret) {
 				t.Errorf("the error text was stored: %s", got.Error)
 			}
-			if s := e.importStatus(t, j); s != "UPLOADED" {
+			if s := e.untouched(t, j); s != "" {
 				t.Errorf("a failed attempt wrote its result: the import is %s", s)
 			}
 		})
@@ -1313,7 +1338,7 @@ func TestAFailureReturnedWhileStoppingCounts(t *testing.T) {
 			if got := e.job(t, j); got.Status != jobs.Failed || stored(t, got) != *invalid {
 				t.Errorf("the job is %s %s, want failed with the handler's failure", got.Status, got.Error)
 			}
-			if s := e.importStatus(t, j); s != "UPLOADED" {
+			if s := e.untouched(t, j); s != "" {
 				t.Errorf("a transaction that failed committed: the import is %s", s)
 			}
 		})

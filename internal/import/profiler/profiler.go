@@ -12,9 +12,11 @@
 // A file that cannot be profiled is an outcome, not a job failure: the job
 // completes and the import is FAILED with the file's failure. The job
 // fails, and is retried while attempts remain, when object storage fails
-// (OBJECT_STORAGE_FAILED, OBJECT_STORAGE_UNAVAILABLE); an import whose job
-// failed for good shows as FAILED with the job's failure (internal/import/upload). An upload that is missing or is not what its import names
-// fails the import at once (UPLOAD_MISSING, UPLOAD_CORRUPT).
+// (OBJECT_STORAGE_FAILED, OBJECT_STORAGE_UNAVAILABLE); when the job fails
+// for good the import follows it to FAILED with the job's failure, in the
+// same transaction (migration 0010). An upload that is missing or is not
+// what its import names fails the import at once (UPLOAD_MISSING,
+// UPLOAD_CORRUPT).
 package profiler
 
 import (

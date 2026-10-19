@@ -112,9 +112,9 @@ func envelope(stored []byte, requestID string) (*ErrorEnvelope, error) {
 		Details: []ErrorDetail{{Path: is.Path, Reason: is.Message, Code: f.Code, Severity: string(model.SeverityError)}}}}, nil
 }
 
-// public is the import resource of i. An import whose profile job failed
-// (or was cancelled) before the import left profiling is FAILED, with the
-// job's failure: the job's row is where that is recorded (0010).
+// public is the import resource of i, as stored: an import whose profile
+// job failed or was cancelled is FAILED with the job's error in its own row
+// (0010: the import follows its job).
 func public(i store.Import, requestID string) (Import, error) {
 	p := Import{ID: i.ID, OrganizationID: i.OrganizationID, ProjectID: i.ProjectID, ModelID: i.ModelID, BaseVersionID: i.BaseVersionID,
 		Kind: i.Kind, Filename: i.Filename, Status: string(i.Status), MappingRevision: i.MappingRevision, TotalRows: i.TotalRows,
@@ -124,20 +124,8 @@ func public(i store.Import, requestID string) (Import, error) {
 	if i.RequestID != "" {
 		requestID = i.RequestID
 	}
-	failure := i.Failure
-	if (i.Status == store.Uploaded || i.Status == store.Profiling) && (i.JobStatus == string(jobs.Failed) || i.JobStatus == string(jobs.Cancelled)) {
-		p.Status = string(store.Failed)
-		failure = i.JobFailure
-		switch {
-		case failure != nil:
-		case i.JobStatus == string(jobs.Cancelled):
-			failure = []byte(`{"code":"` + store.JobCancelled + `","message":"the profile job was ended before it profiled the file","retryable":false}`)
-		default: // a failed job records its failure; this is the stand-in should one not
-			failure = []byte(`{"code":"INTERNAL","message":"the profile job failed","retryable":false}`)
-		}
-	}
-	if p.Status == string(store.Failed) {
-		e, err := envelope(failure, requestID)
+	if i.Status == store.Failed {
+		e, err := envelope(i.Failure, requestID)
 		if err != nil {
 			return Import{}, fmt.Errorf("import %s: %w", i.ID, err)
 		}

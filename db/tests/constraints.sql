@@ -126,20 +126,30 @@ SELECT pg_temp.must_fail(format($q$INSERT INTO twin.dataset_versions(id,organiza
   ]) AS k;
 INSERT INTO twin.dataset_versions(id,organization_id,dataset_id,version,object_key,content_hash,content_type,row_count,unit,created_by)
   VALUES ('dsv_01M4YDQK00TA00000000000009','org_01M4YDQK00TA00000000000000','ds_01M4YDQK00TA00000000000001',9,'tenant/org_01M4YDQK00TA00000000000000/datasets/ok.json','sha256:3333333333333333333333333333333333333333333333333333333333333333','application/json',1,'minute','usr_01M4YDQK00TA00000000000001');
--- An error report is named by its key, hash and size together (0010), so
--- each row with a report key has the other two: only object_key_ok fails.
-SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,error_report_content_hash,error_report_size_bytes,upload_content_hash,size_bytes,status,created_by) VALUES ('imp_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','a.csv',%L,%L,%L,%L,'sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001')$q$,
-    u, e, CASE WHEN e IS NOT NULL THEN 'sha256:2222222222222222222222222222222222222222222222222222222222222222' END, CASE WHEN e IS NOT NULL THEN 10 END),'23514')
-  FROM (VALUES
-    ('tenant/orgX01M4YDQK00TA00000000000000/imports/a.csv', NULL),
-    ('tenant/org_01M4YDQK00TA00000000000000/imports//a.csv', NULL),
-    ('tenant/org_01M4YDQK00TA00000000000000/datasets/a.csv', NULL),
-    ('tenant/org_01M4YDQK00TA00000000000000/imports/a.csv', 'tenant/orgX01M4YDQK00TA00000000000000/imports/a-errors.csv'),
-    ('tenant/org_01M4YDQK00TA00000000000000/imports/a.csv', 'tenant/org_01M4YDQK00TA00000000000000/imports/../a-errors.csv')
-  ) AS t(u, e);
-INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,error_report_content_hash,error_report_size_bytes,upload_content_hash,size_bytes,status,created_by)
-  VALUES ('imp_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','a.csv','tenant/org_01M4YDQK00TA00000000000000/imports/a.csv','tenant/org_01M4YDQK00TA00000000000000/imports/a-errors.csv','sha256:2222222222222222222222222222222222222222222222222222222222222222',10,'sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001'),
-         ('imp_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','b.csv','tenant/org_01M4YDQK00TA00000000000000/imports/b.csv','tenant/org_01M4YDQK00TA00000000000000/imports/b-errors.csv','sha256:2222222222222222222222222222222222222222222222222222222222222222',10,'sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001');
+SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,upload_content_hash,size_bytes,status,created_by) VALUES ('imp_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','a.csv',%L,'sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001')$q$, u),'23514')
+  FROM unnest(ARRAY[
+    'tenant/orgX01M4YDQK00TA00000000000000/imports/a.csv',
+    'tenant/org_01M4YDQK00TA00000000000000/imports//a.csv',
+    'tenant/org_01M4YDQK00TA00000000000000/datasets/a.csv'
+  ]) AS u;
+INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,upload_content_hash,size_bytes,status,created_by)
+  VALUES ('imp_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','a.csv','tenant/org_01M4YDQK00TA00000000000000/imports/a.csv','sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001'),
+         ('imp_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','b.csv','tenant/org_01M4YDQK00TA00000000000000/imports/b.csv','sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001');
+-- An error report is named by its key, hash and size together, and only
+-- by a job or an operator (0010: an import starts without one), so each
+-- row given a report key here has the other two: only object_key_ok fails.
+SET LOCAL ROLE twin_owner;
+SELECT pg_temp.must_fail(format($q$UPDATE twin.imports SET error_report_object_key=%L, error_report_content_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222', error_report_size_bytes=10
+    WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001'$q$, e),'23514')
+  FROM unnest(ARRAY[
+    'tenant/orgX01M4YDQK00TA00000000000000/imports/a-errors.csv',
+    'tenant/org_01M4YDQK00TA00000000000000/imports/../a-errors.csv'
+  ]) AS e;
+UPDATE twin.imports SET error_report_object_key='tenant/org_01M4YDQK00TA00000000000000/imports/a-errors.csv', error_report_content_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222', error_report_size_bytes=10
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';
+UPDATE twin.imports SET error_report_object_key='tenant/org_01M4YDQK00TA00000000000000/imports/b-errors.csv', error_report_content_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222', error_report_size_bytes=10
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000002';
+SET LOCAL ROLE twin_api;
 -- 0009 (T-023): a run starts queued with its job; the worker claims the
 -- job and runs it, then stores a result that reproduces its input and
 -- names its trace in full, and completes the run with its job.
@@ -389,26 +399,26 @@ SELECT pg_temp.must_fail($q$UPDATE twin.model_versions SET comment='edited' WHER
 -- identity and input never change; attempts and lease tokens never go back.
 SET LOCAL ROLE twin_api;
 SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','completed','{}','imp_01M4YDQK00TA00000000000001')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','completed','{}','imp_01M4YDQK00TA00000000000001')$q$,
   $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at,locked_by,lease_expires_at)
-     VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','running','{}','imp_01M4YDQK00TA00000000000001',now(),'w',now()+interval '30 seconds')$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,attempt) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',1)$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_token) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',7)$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001','{"code":"X"}')$q$,
+     VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','running','{}','imp_01M4YDQK00TA00000000000001',now(),'w',now()+interval '30 seconds')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,attempt) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',1)$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_token) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',7)$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001','{"code":"X"}')$q$,
   -- Each lease column on its own (round 3 L2).
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',now())$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_by) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001','w')$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_expires_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',now()+interval '30 seconds')$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,heartbeat_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',now())$q$
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',now())$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_by) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001','w')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_expires_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',now()+interval '30 seconds')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,heartbeat_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',now())$q$
 ]) AS s;
 INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,max_attempts) VALUES
-  ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{"import_id":"imp_01M4YDQK00TA00000000000001"}','imp_01M4YDQK00TA00000000000001',3),
-  ('job_01M4YDQK00TA00000000000003','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',3),
-  ('job_01M4YDQK00TA00000000000004','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',3),
-  ('job_01M4YDQK00TA00000000000005','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',3),
-  ('job_01M4YDQK00TA00000000000006','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',1),
-  ('job_01M4YDQK00TA00000000000007','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',3),
-  ('job_01M4YDQK00TA00000000000008','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',3);
+  ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','queued','{"import_id":"imp_01M4YDQK00TA00000000000001"}','imp_01M4YDQK00TA00000000000001',3),
+  ('job_01M4YDQK00TA00000000000003','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',3),
+  ('job_01M4YDQK00TA00000000000004','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',3),
+  ('job_01M4YDQK00TA00000000000005','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',3),
+  ('job_01M4YDQK00TA00000000000006','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',1),
+  ('job_01M4YDQK00TA00000000000007','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',3),
+  ('job_01M4YDQK00TA00000000000008','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001',3);
 -- The API may cancel or reschedule a queued job, nothing else.
 UPDATE twin.jobs SET status='cancelled' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000003';
 UPDATE twin.jobs SET available_at=now()+interval '1 minute', priority=5 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002';
@@ -499,7 +509,7 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.jobs SET lease_token=lease_token-1 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000007'$q$,
   $q$UPDATE twin.jobs SET id='job_01M4YDQK00TA00000000000099' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000007'$q$,
   $q$UPDATE twin.jobs SET organization_id='org_01M4YDQK00TB00000000000000' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000007'$q$,
-  $q$UPDATE twin.jobs SET type='import_validate' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000007'$q$,
+  $q$UPDATE twin.jobs SET type='import_mapping' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000007'$q$,
   $q$UPDATE twin.jobs SET type='simulation', import_id=NULL, simulation_run_id='sim_01M4YDQK00TA00000000000001' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000007'$q$,
   -- Each resource column on its own; only the trigger answers 55000, so a
   -- CHECK or foreign key refusing the row instead fails the test too.
@@ -530,14 +540,14 @@ GRANT SELECT, INSERT, UPDATE ON twin.jobs TO twin_provisioner;
 SET LOCAL ROLE twin_provisioner;
 SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.jobs SET status='cancelled' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000008'$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000098','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001')$q$
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000098','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001')$q$
 ]) AS s;
 -- Nor does the worker enqueue, even given INSERT.
 RESET ROLE;
 REVOKE SELECT, INSERT, UPDATE ON twin.jobs FROM twin_provisioner;
 GRANT INSERT ON twin.jobs TO twin_worker;
 SET LOCAL ROLE twin_worker;
-SELECT pg_temp.must_fail($q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000097','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001')$q$, '55000');
+SELECT pg_temp.must_fail($q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000097','org_01M4YDQK00TA00000000000000','import_validate','queued','{}','imp_01M4YDQK00TA00000000000001')$q$, '55000');
 RESET ROLE;
 REVOKE INSERT ON twin.jobs FROM twin_worker;
 SET LOCAL ROLE twin_worker;
