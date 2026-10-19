@@ -1,0 +1,4 @@
+typed-nil-failure-used	KILLED	the test binary panicked: panic: runtime error: invalid memory address or nil pointer dereference
+read-unprotected	KILLED	the test binary panicked: panic: runtime error: invalid memory address or nil pointer dereference
+panic-not-recovered	KILLED	the test binary panicked: panic: row 3: customer@example.com
+total=3 unexpected=0

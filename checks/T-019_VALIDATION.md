@@ -28,21 +28,19 @@
 
 ## 實際執行結果
 
-Review round 2 的修正（02a4200）在乾淨的 worktree 執行（`git worktree`，先 `go clean -testcache`；log 中沒有 cached 結果），DB 為一次性 PostgreSQL 16 cluster 上新建的 `dt_test_t019_r2`，執行後刪除。Log 在 `checks/evidence/2026-10-19-T-019/round2/`，exit code 見 `exit-codes.txt`，環境見 `environment.txt`（Go 1.27.2、Node 24.21.0、PostgreSQL 16.15、4 CPU）。先前各輪的結果保留在 `final/`（c6a51c1）與 `round1/`（5d8f44e）。
-
-這一次驗證之前，同一份修正的第一次乾淨驗證（4a54180，未 push）在 `go test -race` 抓到新 heartbeat 的 data race（見下方 round 2 一節），修正後 amend 為 02a4200 再從頭驗證。
+Review round 3 的修正（2136c05）在乾淨的 worktree 執行（`git worktree`，先 `go clean -testcache`；log 中沒有 cached 結果），DB 為一次性 PostgreSQL 16 cluster 上新建的 `dt_test_t019_r3`，執行後刪除。Log 在 `checks/evidence/2026-10-19-T-019/round3/`，exit code 見 `exit-codes.txt`，環境見 `environment.txt`（Go 1.27.2、Node 24.21.0、PostgreSQL 16.15、4 CPU）。先前各輪的結果保留在 `final/`（c6a51c1）、`round1/`（5d8f44e）與 `round2/`（02a4200）。
 
 | 指令 | Exit | 說明 |
 |---|---|---|
 | `make backend-test`、`backend-race` | 0 | 各 35 個 package ok |
 | `make architecture-check` | 0 | 43 packages、11 rules、16 build configurations |
-| `make frontend-test` | 0 | 18 個檔案 392 個 test（本任務未改前端；數量包含 T-043） |
+| `make frontend-test` | 0 | 18 個檔案 408 個 test（本任務未改前端；數量包含 T-043） |
 | `make spec-check` | 0 | 重產的 `checks/*.json` 與 commit 相同（`spec-check-status.txt` 為空） |
-| `make integration-test`（新建的 `dt_test_t019_r2`） | 0 | migration 0001–0007 up／down／up、SQL tests、`db-go-test` 的 16 個 package（race）；唯一的 NOT RUN 是各 job type 的 handler（T-016、T-023、T-025） |
-| `go test -race -p 1 -v`（jobs、worker、worker/handler、workerscope、config、cmd/worker） | 0 | `t019-go-tests.log`：56 個 top-level test 通過，0 SKIP、0 FAIL |
-| `go test -race -count=5`（worker 與 cmd/worker 中與時間有關的 20 個測試） | 0 | `timing-x5.log`：100/100 通過，沒有 data race |
-| `mutants.py`（Go，115 個） | 0 | `mutation-go.log`：在 02a4200 上完整跑一次，110 killed、5 等價（理由在 harness：RLS 已限制 organization 的兩個 filter、0007 擋下沒有 attempt 的 queued job、不在 running 的 job 沒有可對上的 holder、停止的 attempt 由 `AfterFunc` 立即取消其 transaction），0 unexpected |
-| `sql-mutants.py`（0007，39 個） | 0 | `mutation-sql.log`：baseline 時 SQL suite 與 jobs、worker、cmd/worker 的 Go 測試都過；38 killed、1 等價（`api-claims`：claim 必須改 attempt 與 token，API 的檢查不准改），0 unexpected |
+| `make integration-test`（新建的 `dt_test_t019_r3`） | 0 | migration 0001–0007 up／down／up、SQL tests、`db-go-test` 的 16 個 package（race）；唯一的 NOT RUN 是各 job type 的 handler（T-016、T-023、T-025） |
+| `go test -race -p 1 -v`（jobs、worker、worker/handler、workerscope、config、cmd/worker） | 0 | `t019-go-tests.log`：60 個 top-level test、53 個 subtest 通過，0 SKIP、0 FAIL |
+| `go test -race -count=5`（worker 與 cmd/worker 中與時間有關的 24 個測試，含新的 commit、context、續期時間點測試） | 0 | `timing-x5.log`：120/120 通過，沒有 data race |
+| `mutants.py`（Go，132 個） | 1 → 0 | `mutation-go.log`：124 killed、5 等價（理由在 harness），3 個標為 BUILD-FAILED：`typed-nil-failure-used`、`read-unprotected`、`panic-not-recovered` 讓 `passWithin` 的 goroutine panic，test binary 沒有 `--- FAIL` 就結束，harness 誤判為建置失敗。Harness 改為把 test binary 的 panic 判為 killed（8eb6647），在同一個 worktree（2136c05）與新的 `dt_test_t019_r3b` 上重跑這 3 個：`mutation-go-rerun.log` 3 killed、0 unexpected。合計 127 killed、5 等價、0 unexpected |
+| `sql-mutants.py`（0007，46 個） | 0 | `mutation-sql.log`：baseline 時 SQL suite 與 jobs、worker、cmd/worker 的 Go 測試都過；45 killed、1 等價（`api-claims`），0 unexpected |
 
 ### 先紅後綠與 mutation 找到的缺口
 

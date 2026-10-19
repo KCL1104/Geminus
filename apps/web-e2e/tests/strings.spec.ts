@@ -12,10 +12,19 @@ const catalogPatterns = (c: Catalog) => Object.values(c).flatMap((m) => (typeof 
 
 // The React Aria strings accepted in its own translation (H-008, H-009 item
 // 2): sortable column, sorted ascending / descending, item selected, the
-// Select popover's hidden dismiss button, number field.
+// Select popover's hidden dismiss button, number field; and the rest of the
+// selection notices (H-010): item deselected, all selected, N selected.
 const reactAria = {
-  "zh-Hant": [/^可排序的欄$/, /^已依據「.+」欄遞增排序$/, /^已依據「.+」欄遞減排序$/, /^已選取「.+」。$/, /^關閉$/, /^數字欄位$/],
-  en: [/^sortable column$/, /^sorted by column .+ in ascending order$/, /^sorted by column .+ in descending order$/, /^.+ selected\.$/, /^Dismiss$/, /^Number field$/],
+  "zh-Hant": [/^可排序的欄$/, /^已依據「.+」欄遞增排序$/, /^已依據「.+」欄遞減排序$/, /^已選取「.+」。$/, /^關閉$/, /^數字欄位$/,
+    /^未選取「.+」。$/, /^已選取所有項目。$/, /^已選取 \d+ 個項目。$/],
+  en: [/^sortable column$/, /^sorted by column .+ in ascending order$/, /^sorted by column .+ in descending order$/, /^.+ selected\.$/, /^Dismiss$/, /^Number field$/,
+    /^.+ not selected\.$/, /^All items selected\.$/, /^\d+ items? selected\.$/],
+};
+// The selection notices this test makes React Aria announce (H-010), so
+// their acceptance is checked, not assumed.
+const selectionNotices = {
+  "zh-Hant": [/^未選取「.+」。$/, /^已選取所有項目。$/, /^已選取 \d+ 個項目。$/],
+  en: [/^.+ not selected\.$/, /^All items selected\.$/, /^\d+ items? selected\.$/],
 };
 
 /** Text and the attributes people read or hear, outside data (<code>, lang="en" technical text). */
@@ -50,6 +59,21 @@ for (const [locale, catalog] of [["en", en], ["zh-Hant", zhHant]] as const) {
     await grid.getByRole("row").nth(1).getByRole("rowheader").click();
     await expect(grid.locator("[aria-selected=true]")).toHaveCount(1);
     for (const s of await strings(page)) seen.add(s);
+    // Select all, then deselect two rows: all selected, the count of those
+    // left, and one deselected.
+    // (the native input sits under the drawn box, as React Aria builds it)
+    await grid.getByRole("checkbox").first().focus();
+    await page.keyboard.press("Space");
+    await expect(grid.locator("[aria-selected=true]")).toHaveCount(5);
+    for (const s of await strings(page)) seen.add(s);
+    await grid.getByRole("row").nth(1).getByRole("rowheader").click();
+    await expect(grid.locator("[aria-selected=true]")).toHaveCount(4);
+    for (const s of await strings(page)) seen.add(s);
+    // Leaving "all" announces only the count; deselecting from a set of
+    // rows names the row.
+    await grid.getByRole("row").nth(2).getByRole("rowheader").click();
+    await expect(grid.locator("[aria-selected=true]")).toHaveCount(3);
+    for (const s of await strings(page)) seen.add(s);
     await page.getByRole("button", { name: locale === "en" ? "Time unit" : "時間單位" }).click();
     for (const s of await strings(page)) seen.add(s);
     await page.keyboard.press("Escape");
@@ -57,8 +81,12 @@ for (const [locale, catalog] of [["en", en], ["zh-Hant", zhHant]] as const) {
     for (const s of await strings(page)) seen.add(s);
 
     const fromLibrary = [...seen].filter((s) => !known.some((p) => p.test(s)));
-    const unexpected = fromLibrary.filter((s) => !reactAria[locale].some((p) => p.test(s)));
+    // React Aria's announcer joins the notices of one change ("… not
+    // selected. 3 items selected."): each sentence must be accepted.
+    const sentences = fromLibrary.flatMap((s) => s.split(/(?<=[。.])\s+/));
+    const unexpected = sentences.filter((s) => !reactAria[locale].some((p) => p.test(s)));
     console.log(`${locale}: strings not from the catalog: ${JSON.stringify(fromLibrary)}`);
     expect(unexpected).toEqual([]);
+    for (const p of selectionNotices[locale]) expect(sentences.some((s) => p.test(s)), `announced: ${p}`).toBe(true);
   });
 }

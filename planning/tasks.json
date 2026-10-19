@@ -1177,6 +1177,14 @@
           "summary": "Review round 2 修正（02a4200）：在 recover 之內、以有界的 Unwrap 走訪讀取 handler 的 error，壞掉的 error 型別記為 INTERNAL 而不讓 worker 崩潰或卡住（M1）；attempt 停止後 Checkpoint／Finish 不再開始，進行中的 transaction 隨 attempt 取消並 rollback（L1）；續期依序執行、每次至多一個 heartbeat，卡住的續期放棄後立刻重試，期限由獨立 goroutine 執行（L2；第一次乾淨驗證以 -race 抓到其 data race 並修正）；handler 的放置位置與 T-023／T-025 的註記（L3）；非 UTF-8 與含 NUL 的 message（L4）；測試缺口（L5）；0007 限制 worker 對 running job 只能續期自己的 lease、離開 running 時清除，其他 role 一律拒絕、只有 API 與 owner 能 enqueue（I1、I2）；時鐘說法（I3）；I4 接受；DATABASE_URL 先驗（I5）。02a4200 乾淨 worktree：backend-test／race／architecture／frontend／spec／integration-test exit 0（無 cached），56 個 Go test（race、0 SKIP），計時測試 ×5 100/100；mutation Go 115（110 killed、5 等價）、SQL 39（38 killed、1 等價），0 unexpected。",
           "reviewer": "independent reviewer agent (H-003), round 3 on 02a4200/814a805: CHANGES REQUESTED (M1, L1, L2)",
           "decisions_pending": "ADR-024（參數與 WORKER_STOPPED 是否計入 attempt）待 owner"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-019_VALIDATION.md",
+          "summary": "Review round 3 修正（2136c05）：attempt 停止後 Checkpoint／Finish 回報 transaction 實際的結果：fn 的 error 包在停止的原因中（handler 的 Failure 仍為準），回答遺失的 COMMIT 一律為 tenant.ErrOutcomeUnknown，記錄已不屬於這個 attempt 的 job 時只記 warning（M1）；fn 的 error 先經 worker 有界、有 recover 的讀取再交給 transaction，不再讓 worker 卡住（L1）；Unwrap 樹超過 64 個 error 改為可重試的 INTERNAL（I1）；續期從 claim 開始起每個 heartbeat 到期（I2）；logText 逐字截斷（I4）；測試補上扣住 COMMIT 回答、停止時回 Failure、深的 error 鏈、handler 自己的 context、記錄的時限、慢 claim 後的續期、pass 限時與各 lease 欄位的 SQL 測試（L2）；0007、db/README、ADR-024、ARCHITECTURE 與報告改正（I3、I6–I8）。2136c05 乾淨 worktree：backend-test／race／architecture／frontend／spec／integration-test exit 0（無 cached），60 個 top-level 與 53 個 subtest（race、0 SKIP），計時測試 ×5 120/120；mutation Go 132（127 killed、5 等價；其中 3 個 panic 的 mutant 以修正後的 harness 重跑）、SQL 46（45 killed、1 等價），0 unexpected。ADR-024 已由 owner 接受（H-010）。",
+          "reviewer": "pending: independent reviewer agent round 4 (H-003)",
+          "decisions_pending": "無（ADR-024 已接受，H-010）"
         }
       ]
     },
