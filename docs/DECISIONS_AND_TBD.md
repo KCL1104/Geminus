@@ -226,6 +226,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | H-008 | 2026-10-18 | 採用 T-045 UI 庫比較（`checks/evidence/2026-10-18-T-045/survey.md`）的四項建議：(1) UI 元件庫內建、無法以 prop 覆寫的無障礙字串可用該庫自己的翻譯（例如 React Aria 的 `zh-TW`），須列清單、在 spike 中審閱用語，並以測試列出所有不來自 catalog 的字串；(2) P0 只做淺色主題，tokens 預留深色；(3) P0 只用系統字型（含繁中 fallback），不載入 web font；(4) 不使用付費元件授權，也不使用安裝時回傳資料的套件 | UI 庫與 styling 仍由 T-045 spike 後的 ADR-021 決定 |
 | H-009 | 2026-10-18 | 10 項全部照 agent 建議（「全都照建議」）：UI 用 React Aria Components 1.21.1＋CSS Modules（[ADR-021](adr/ADR-021-ui-library-and-design-system.md) ACCEPTED）；依 H-008 接受 5 種 React Aria 內建繁中字串；axe-core／@axe-core/playwright（MPL-2.0）只作測試工具；保留 React Flow 署名；成功回饋用頁內 `role="status"`；D-040（IR 存 canonical 文字）、D-041（保存 comment）、D-042（provisioning 最小權限 role）APPROVED；[ADR-022](adr/ADR-022-model-service.md)、[ADR-023](adr/ADR-023-membership-management.md) ACCEPTED | 視覺取向（看 prototype 後）；螢幕報讀器實測（需人執行） |
 | H-010 | 2026-10-19 | 照 agent 建議（「其他都照你建議吧」）：批准 D-043、D-044、D-045、D-046；[ADR-024](adr/ADR-024-job-queue-and-worker.md) ACCEPTED（參數照提案，`WORKER_STOPPED` 計入 attempt）；ADR-011、ADR-013 ACCEPTED；Auth0 refresh token rotation 的 reuse interval 為 30 秒；接受 React Aria 同一組選取通知的其餘繁中字串（「未選取「…」。」「已選取所有項目。」「已選取 N 個項目。」） | T-045 prototype 審閱與截圖 baseline 確認（已整理成 artifact，待 owner 回覆）；live AI 的資料政策、retention、quota 與 model；雲端廠商與 region；Auth0 tenant 由 owner 建立 |
+| H-011 | 2026-10-19 | 放寬 H-008：可使用 web font（須為 OFL 等開源授權）、可做深色主題。Owner 認為目前的 UI 太普通，請 agent 研究各大產品與 digital twin 產品的 UI 後提出方向；agent 提出 A 控制室、B 精密工具、C 工程藍圖三個方向（建議 C 為主，融合 A 與 B） | 選定視覺方向與預設主題（淺色、深色或跟系統） |
 
 ## 原報告保留的 TBD
 

@@ -204,6 +204,11 @@ def run(overlay: str | None, pkg: str) -> str:
             return "KILLED\t" + next(l.strip() for l in r.stdout.splitlines() if l.startswith("--- FAIL"))
         if "panic: test timed out" in r.stdout:
             return "KILLED\ttest timed out (a hang the tests do not bound)"
+        # A panic outside the test goroutine (a pass run under passWithin)
+        # ends the test binary without a "--- FAIL" line: still a failure.
+        if "\npanic: " in "\n" + r.stdout + r.stderr:
+            first = next(l for l in (r.stdout + r.stderr).splitlines() if l.startswith("panic: "))
+            return "KILLED\tthe test binary panicked: " + first
         return "BUILD-FAILED\t" + (r.stdout + r.stderr).strip().splitlines()[-1]
     return "SURVIVED"
 

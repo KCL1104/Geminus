@@ -767,6 +767,18 @@
         "雲端廠商與 region（正式 object storage、T-039）",
         "Auth0 tenant 由 owner 依 runbook 建立"
       ]
+    },
+    {
+      "id": "H-011",
+      "subject": "放寬 H-008 的 UI 限制；視覺方向",
+      "decision": "(1) 放寬 H-008：可使用 web font（須為 OFL 等開源授權）、可做深色主題；(2) owner 認為目前的 UI 太普通，請 agent 研究各大產品與 digital twin 產品的 UI 後提出方向供選擇（agent 提出 A 控制室、B 精密工具、C 工程藍圖三個方向，建議 C 為主融合 A 與 B）。",
+      "quote": "好可以放寬",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-19",
+      "source": "Claude Code session 指示，由 agent 記錄；三個方向見該 session 的比較頁",
+      "still_open": [
+        "從 A／B／C 或其融合中選定視覺方向，以及預設主題（淺色、深色或跟系統）"
+      ]
     }
   ]
 }
