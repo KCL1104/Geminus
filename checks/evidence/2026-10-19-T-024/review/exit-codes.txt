@@ -1,0 +1,2 @@
+h1-red.log: exit 1 (go test -count=1 -run TestNumbers|TestCheckProse ./internal/ai/locale/; env: none)
+h1-green.log: exit 0 (go test -count=1 ./internal/ai/locale/ ./internal/ai/aicontext/ ./internal/ai/corpus/; env: none)

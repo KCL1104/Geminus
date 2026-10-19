@@ -109,9 +109,17 @@ var number = regexp.MustCompile(`[-+−]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:
 
 // identifierRune reports whether r continues an identifier or path, so a
 // digit after it belongs to that token (q1, v2, node_01j, /metrics/x1).
+// Only ASCII counts: IDs, paths and codes are ASCII (TWIN_IR_SPEC, D-001),
+// while zh-Hant prose writes numbers right after Han characters
+// (「降至12分鐘」), which are letters to unicode.IsLetter (T-024 review H1).
 func identifierRune(r rune) bool {
-	return r == '_' || r == '/' || r == '.' || r == ':' || r == '#' || r == '-' || unicode.IsLetter(r) || unicode.IsDigit(r)
+	return r == '_' || r == '/' || r == '.' || r == ':' || r == '#' || r == '-' || asciiLetter(r) || asciiDigit(r)
 }
+
+func asciiLetter(r rune) bool {
+	return r < utf8.RuneSelf && ('a' <= r && r <= 'z' || 'A' <= r && r <= 'Z')
+}
+func asciiDigit(r rune) bool { return '0' <= r && r <= '9' }
 
 // Numbers returns the Arabic numbers in text and the number writings that
 // cannot be verified. Digits inside identifiers and paths are skipped.
@@ -128,11 +136,11 @@ func Numbers(text string) ([]Number, []Finding) {
 		}
 		before, _ := utf8.DecodeLastRuneInString(text[:start])
 		switch {
-		case start > 0 && sign != "" && unicode.IsDigit(before):
+		case start > 0 && sign != "" && asciiDigit(before):
 			// A range or difference, "1-5": the second number has no sign.
 			start += len(text[start:end]) - len(raw)
 			sign = ""
-		case start > 0 && identifierRune(before) && (sign == "" || unicode.IsLetter(before) || before == '_'):
+		case start > 0 && identifierRune(before) && (sign == "" || asciiLetter(before) || before == '_'):
 			// Part of an identifier or path: q1, node_01j, ict-2.
 			continue
 		}

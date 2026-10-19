@@ -1,0 +1,7 @@
+$ go test -count=1 ./internal/ai/locale/ ./internal/ai/aicontext/ ./internal/ai/corpus/
+# extra environment: none
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.393s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.440s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	1.177s
+
+# exit 0 after 4s

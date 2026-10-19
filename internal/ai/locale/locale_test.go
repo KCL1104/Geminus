@@ -95,6 +95,16 @@ func TestNumbers(t *testing.T) {
 		// a range: the second bound is checked too, without a sign
 		{"between 1-5 testers", []float64{1, 5}},
 		{"the ict-2 station", nil},
+		// zh-Hant writes numbers next to the characters, without spaces
+		// (review H1): a Han character never makes a digit part of an
+		// identifier.
+		{"等待時間由47.5分鐘降至12分鐘。", []float64{47.5, 12}},
+		{"吞吐量增加了999件", []float64{999}},
+		{"利用率為88%", []float64{88}},
+		{"第2站的利用率為0.95，等待-3分鐘", []float64{2, 0.95, -3}},
+		{"由1至5台", []float64{1, 5}},
+		// an ASCII identifier inside Chinese text is still an identifier
+		{"測試機ict_tester2與節點node_01j的佇列q1", nil},
 	}
 	for _, c := range cases {
 		got, _ := Numbers(c.text)
@@ -146,6 +156,7 @@ func TestCheckProse(t *testing.T) {
 	ok := []string{
 		"Wait fell from 47.5 to 12 minutes.",
 		"等待時間由 47.51 分鐘降至 12 分鐘，減少 3.5。",
+		"等待時間由47.51分鐘降至12分鐘，減少3.5，相對變化12.5%。",
 		"Relative change 12.5%.",
 		"Throughput 1,234.5 units; about 48 minutes before.",
 		"No numbers here.",
@@ -163,6 +174,10 @@ func TestCheckProse(t *testing.T) {
 		"Forty-seven minutes of wait": NumberWord,
 		"等待 ４７ 分鐘":                    NonASCIIDigit,
 		"Wait 47.5123456 minutes.":    Unverified, // more digits than supplied is not the supplied value
+		// review H1: unspaced zh-Hant numbers are checked too
+		"等待時間由99分鐘降至3分鐘。": Unverified,
+		"吞吐量增加了999件":      Unverified,
+		"利用率為88%":         Unverified,
 	}
 	for text, want := range bad {
 		f := CheckProse(text, supplied)

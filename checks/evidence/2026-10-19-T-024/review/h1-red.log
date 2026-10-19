@@ -1,0 +1,17 @@
+$ go test -count=1 -run TestNumbers|TestCheckProse ./internal/ai/locale/
+# extra environment: none
+--- FAIL: TestNumbers (0.00s)
+    locale_test.go:112: Numbers("等待時間由47.5分鐘降至12分鐘。") = [], want [47.5 12]
+    locale_test.go:112: Numbers("吞吐量增加了999件") = [], want [999]
+    locale_test.go:112: Numbers("利用率為88%") = [], want [88]
+    locale_test.go:112: Numbers("第2站的利用率為0.95，等待-3分鐘") = [], want [2 0.95 -3]
+    locale_test.go:112: Numbers("由1至5台") = [], want [1 5]
+--- FAIL: TestCheckProse (0.00s)
+    locale_test.go:185: "吞吐量增加了999件": findings [], want one unverified
+    locale_test.go:185: "利用率為88%": findings [], want one unverified
+    locale_test.go:185: "等待時間由99分鐘降至3分鐘。": findings [], want one unverified
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/locale	0.071s
+FAIL
+
+# exit 1 after 1s
