@@ -1,0 +1,8 @@
+goos: linux
+goarch: amd64
+pkg: github.com/kcl1104/geminus/internal/import/profile
+cpu: Intel(R) Xeon(R) Processor @ 2.10GHz
+BenchmarkReadCSVAtTheLimits-4          	       5	 427537663 ns/op	 106.32 MB/s	45342844 B/op	  102878 allocs/op
+BenchmarkReadJSONEventsAtTheLimits-4   	       5	1082213484 ns/op	  50.41 MB/s	255590520 B/op	 5702966 allocs/op
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/profile	8.293s

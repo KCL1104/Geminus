@@ -1,0 +1,113 @@
+T-016 review round 1: targeted mutations of the fixes that need no
+database (scratch mutate_r1.py): each edits one file, runs the named tests
+and restores the file byte for byte (checked). 23 mutations: 20 killed on
+the first run; 3 survived (plain-cap-off: a record at the end of the input
+without a line end could pass the record limit by up to one read buffer;
+bytes-counted-as-characters: continuation bytes reach add() only when
+bytes arrive one at a time; names-tracked-again: no test read a row with
+many nested names within the row limit). Tests were added for each
+(commit c113c4d) and the three rerun: all killed. 23/23 killed.
+Mutations of the SQL and of DB-backed behaviour: NOT RUN (no database).
+
+record-cap-off: KILLED (go test -run TestHostileFilesAreBounded|TestRecordBounds ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	3.488s
+    FAIL
+plain-cap-off: SURVIVED (go test -run TestHostileFilesAreBounded|TestRecordBounds ./internal/import/profile: exit 0) internal/import/profile/records.go
+    ok  	github.com/kcl1104/geminus/internal/import/profile	3.026s
+row-keeps-every-field: KILLED (go test -run TestHostileFilesAreBounded ./internal/import/profile: exit 1) internal/import/profile/csv.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	2.987s
+    FAIL
+long-field-unchecked: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.015s
+    FAIL
+bytes-counted-as-characters: SURVIVED (go test -run TestRecordBounds ./internal/import/profile: exit 0) internal/import/profile/records.go
+    ok  	github.com/kcl1104/geminus/internal/import/profile	0.008s
+plain-bytes-counted-as-characters: KILLED (go test -run TestRecordBounds|TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    # github.com/kcl1104/geminus/internal/import/profile [github.com/kcl1104/geminus/internal/import/profile.test]
+    internal/import/profile/records.go:146:9: declared and not used: c
+crlf-kept: KILLED (go test -run FuzzRecordsAsEncodingCSV ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.013s
+    FAIL
+bare-quote-accepted: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.014s
+    FAIL
+eof-in-quote-position: KILLED (go test -run FuzzRecordsAsEncodingCSV ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.012s
+    FAIL
+empty-lines-kept: KILLED (go test -run FuzzRecordsAsEncodingCSV ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.013s
+    FAIL
+plain-position-off: KILLED (go test -run FuzzRecordsAsEncodingCSV ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.014s
+    FAIL
+window-unbounded: KILLED (go test -run TestHostileFilesAreBounded ./internal/import/profile: exit 1) internal/import/profile/json.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	10.217s
+    FAIL
+window-not-moved: KILLED (go test -run TestHostileFilesAreBounded ./internal/import/profile: exit 1) internal/import/profile/json.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	3.041s
+    FAIL
+path-unbounded: KILLED (go test -run TestFailurePathsAreBounded ./internal/import/profile: exit 1) internal/import/profile/profile.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.012s
+    FAIL
+path-cut-one-short: KILLED (go test -run TestFailurePathsAreBounded ./internal/import/profile: exit 1) internal/import/profile/profile.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.012s
+    FAIL
+names-tracked-again: SURVIVED (go test -run TestHostileFilesAreBounded ./internal/import/profile: exit 0) internal/import/profile/json.go
+    ok  	github.com/kcl1104/geminus/internal/import/profile	3.357s
+limits-unchecked: KILLED (go test -run TestLimitsMustBeSet ./internal/import/profile: exit 1) internal/import/profile/profile.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.008s
+    FAIL
+separator-ignored: KILLED (go test -run TestSafe|TestNoFormulaAfterASeparator ./internal/import/report: exit 1) internal/import/report/report.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/report	0.003s
+    FAIL
+semicolon-not-a-separator: KILLED (go test -run TestSafe|TestNoFormulaAfterASeparator ./internal/import/report: exit 1) internal/import/report/report.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/report	0.004s
+    FAIL
+quotes-not-skipped: KILLED (go test -run TestSafe ./internal/import/report: exit 1) internal/import/report/report.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/report	0.002s
+    FAIL
+leading-control-ignored: KILLED (go test -run TestSafe ./internal/import/report: exit 1) internal/import/report/report.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/report	0.002s
+    FAIL
+cells-unquoted: KILLED (go test -run TestRenderQuotesEveryCell ./internal/import/report: exit 1) internal/import/report/report.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/report	0.002s
+    FAIL
+failed-not-shown: KILLED (go test -run TestStoredStatus ./internal/import/upload: exit 1) internal/import/upload/resource.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/upload	0.009s
+    FAIL
+TOTAL: 20 killed, 3 survived of 23
+
+Rerun of the three after commit c113c4d:
+plain-cap-off: KILLED (go test -run TestHostileFilesAreBounded|TestRecordBounds ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	3.333s
+    FAIL
+bytes-counted-as-characters: KILLED (go test -run TestRecordBounds ./internal/import/profile: exit 1) internal/import/profile/records.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.007s
+    FAIL
+names-tracked-again: KILLED (go test -run TestHostileFilesAreBounded ./internal/import/profile: exit 1) internal/import/profile/json.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	3.475s
+    FAIL
+TOTAL: 3 killed, 0 survived of 3

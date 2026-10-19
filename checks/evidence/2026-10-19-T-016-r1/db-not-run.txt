@@ -1,0 +1,24 @@
+DB runs: NOT RUN (2026-10-19)
+
+Per the coordinator's rule for this round, the one way allowed to run the
+disposable cluster was `su postgres -c '<cmd>'`, and only if it ran without
+being refused. The first attempt, `su postgres -c 'id'`, was refused by the
+session's worktree guard before it ran:
+
+  This agent is isolated in the worktree
+  /home/user/Geminus/.claude/worktrees/agent-a82aa0cf672389844, but this
+  command runs su in a plain command; what it reads or is handed as shell
+  text cannot be shown not to run git. Refusing to run it — a
+  worktree-isolated agent's git operations must target its own worktree.
+  Run the plain command from
+  /home/user/Geminus/.claude/worktrees/agent-a82aa0cf672389844.
+
+So nothing else was tried. NOT RUN: make integration-test (migrations
+0001-0011 up/down/up with db/tests/*.sql, including the changed 0010,
+imports.sql and constraints.sql), the DB-backed Go tests (internal/api
+TestProfileJobFailures and TestErrorReportAuthorization as changed,
+internal/worker as changed, internal/storage/jobs, and the rest of the
+make db-go-test packages), the SQL red run and the DB-backed mutations.
+make backend-test and make backend-race ran those packages without a
+database, where their DB-backed tests do not run. The coordinator runs
+make integration-test.

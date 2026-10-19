@@ -1,0 +1,11 @@
+make backend-test: exit 0
+make backend-race: exit 0
+make architecture-check: exit 0
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python: exit 0
+go test -count=1 -v (round-1 tests; t016-r1-go-tests.log): exit 0
+go test -fuzz=FuzzRecordsAsEncodingCSV -fuzztime=60s ./internal/import/profile: exit 0
+go test -fuzz=FuzzRead -fuzztime=60s ./internal/import/profile: exit 0
+go test -fuzz=FuzzSafe -fuzztime=30s ./internal/import/report: exit 0
+go test -bench AtTheLimits -benchtime=5x ./internal/import/profile: exit 0
+make integration-test: NOT RUN (db-not-run.txt)
+make frontend-test: NOT RUN (no TypeScript change this round)
