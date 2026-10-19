@@ -31,6 +31,9 @@ const issuer = "https://test.invalid"
 // expires or becomes due by itself while a test runs; expire and due move
 // a job there explicitly (what a crash or the passing time would do), so
 // no assertion depends on timing.
+// handled are the types the tests' worker takes.
+var handled = []jobs.Type{jobs.ImportProfile}
+
 var fast = jobs.Policy{Lease: time.Minute, MaxAttempts: 3, BackoffBase: time.Hour, BackoffMax: 4 * time.Hour}
 
 // expire ends the job's lease now, as when its worker stopped renewing it.
@@ -169,7 +172,7 @@ func (e *env) claim(t *testing.T, org, worker string) (jobs.Job, jobs.Lease, boo
 	var ok bool
 	err := e.worker.Run(context.Background(), org, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
 		var err error
-		j, l, ok, err = jobs.Claim(ctx, tx, org, worker, fast)
+		j, l, ok, err = jobs.Claim(ctx, tx, org, worker, handled, fast)
 		return err
 	})
 	if err != nil {
@@ -290,6 +293,18 @@ func TestClaimOrderAndScope(t *testing.T) {
 	oprj, omdl, omv := e.newModel(t, e.other)
 	foreign := e.enqueue(t, e.other, oprj, omdl, omv, 9)
 
+	// A worker takes only the types it handles; the others stay queued.
+	if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error {
+		if _, _, ok, err := jobs.Claim(ctx, tx, e.org.ID, "worker-sim", []jobs.Type{jobs.Simulation, jobs.Analysis}, fast); err != nil || ok {
+			t.Errorf("a worker without the import handler claimed an import job: %v %v", ok, err)
+		}
+		if _, _, _, err := jobs.Claim(ctx, tx, e.org.ID, "worker-none", nil, fast); err == nil {
+			t.Error("a claim for no type was accepted")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
 	var got []string
 	for range 3 {
 		j, l, ok := e.claim(t, e.org.ID, "worker-1")
@@ -336,7 +351,7 @@ func TestConcurrentClaims(t *testing.T) {
 				var ok bool
 				err := e.worker.Run(context.Background(), e.org.ID, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
 					var err error
-					j, _, ok, err = jobs.Claim(ctx, tx, e.org.ID, "worker-"+string(rune('a'+w)), fast)
+					j, _, ok, err = jobs.Claim(ctx, tx, e.org.ID, "worker-"+string(rune('a'+w)), handled, fast)
 					return err
 				})
 				if err != nil {
@@ -607,7 +622,7 @@ func TestClaimSkipsAHeldJob(t *testing.T) {
 	var j jobs.Job
 	var ok bool
 	err = e.worker.Run(quick, e.org.ID, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-		j, _, ok, err = jobs.Claim(ctx, tx, e.org.ID, "worker-1", fast)
+		j, _, ok, err = jobs.Claim(ctx, tx, e.org.ID, "worker-1", handled, fast)
 		return err
 	})
 	if err != nil || !ok || j.ID != second.ID {

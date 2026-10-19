@@ -207,25 +207,32 @@ func scan(row pgx.Row) (Job, error) {
 
 func millis(d time.Duration) int64 { return d.Milliseconds() }
 
-// Claim takes the next available job of org for worker: highest priority,
-// then oldest, then by ID; one whose attempts are spent is never taken.
+// Claim takes the next available job of org, of one of the types the
+// worker handles: highest priority, then oldest, then by ID; one whose
+// attempts are spent is never taken, and a type no worker handles stays
+// queued.
 // Jobs other workers hold locked are skipped (SKIP LOCKED), so concurrent
 // claims never take the same job. ok is false when there is none. The
 // claim raises the attempt and the lease token: a token names one attempt.
-func Claim(ctx context.Context, tx pgx.Tx, org, worker string, p Policy) (j Job, l Lease, ok bool, err error) {
-	if !p.valid() || worker == "" {
+func Claim(ctx context.Context, tx pgx.Tx, org, worker string, types []Type, p Policy) (j Job, l Lease, ok bool, err error) {
+	if !p.valid() || worker == "" || len(types) == 0 {
 		return Job{}, Lease{}, false, fmt.Errorf("jobs: invalid claim")
+	}
+	names := make([]string, len(types))
+	for i, t := range types {
+		names[i] = string(t)
 	}
 	j, err = scan(tx.QueryRow(ctx, `WITH next_job AS (
 		  SELECT id FROM twin.jobs
 		  WHERE organization_id=$1 AND status='queued' AND available_at<=now() AND attempt<max_attempts
+		    AND type=ANY($4)
 		  ORDER BY priority DESC, created_at, id
 		  FOR UPDATE SKIP LOCKED LIMIT 1
 		)
 		UPDATE twin.jobs j SET status='running', attempt=attempt+1, locked_at=now(), locked_by=$2,
 		  lease_token=lease_token+1, lease_expires_at=now()+($3::bigint*interval '1 millisecond'), heartbeat_at=now()
 		FROM next_job n WHERE j.organization_id=$1 AND j.id=n.id
-		RETURNING `+qualified, org, worker, millis(p.Lease)))
+		RETURNING `+qualified, org, worker, millis(p.Lease), names))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Job{}, Lease{}, false, nil
 	}

@@ -28,6 +28,7 @@ MUTANTS = [
     ("claim-not-skip-locked", JOBS, "FOR UPDATE SKIP LOCKED LIMIT 1", "FOR UPDATE LIMIT 1"),
     ("claim-ignores-available-at", JOBS, "status='queued' AND available_at<=now() AND attempt<max_attempts", "status='queued' AND attempt<max_attempts"),
     ("claim-ignores-attempts", JOBS, "available_at<=now() AND attempt<max_attempts\n", "available_at<=now()\n"),
+    ("claim-any-type", JOBS, "\n\t\t    AND type=ANY($4)\n", "\n\t\t    AND $4::text[] IS NOT NULL\n"),
     ("claim-newest-first", JOBS, "ORDER BY priority DESC, created_at, id", "ORDER BY priority DESC, created_at DESC, id"),
     ("claim-priority-ignored", JOBS, "ORDER BY priority DESC, created_at, id", "ORDER BY created_at, id"),
     ("claim-same-token", JOBS, "lease_token=lease_token+1,", "lease_token=lease_token,"),
