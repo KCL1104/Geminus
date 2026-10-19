@@ -1,0 +1,8 @@
+backend-test exit=0
+backend-race exit=0
+architecture-check exit=0
+spec-check exit=0
+integration-test exit=0
+t010-go-tests exit=0
+sql-mutation exit=0
+go-mutation exit=0

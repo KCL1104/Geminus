@@ -1,6 +1,6 @@
 # T-010 驗證報告：受控 onboarding 與成員管理
 
-**日期：2026-10-18｜狀態：`review`（review round 1 CHANGES REQUESTED 已修正，並實作 owner 批准的 D-042；送同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-001、REQ-002、REQ-019｜Gate：D-008、D-012、D-036（皆已批准）｜實作選擇：ADR-023（ACCEPTED，H-009）、D-042（APPROVED）｜驗收測試：TEST-009（membership 部分）、TEST-011（provisioning 部分）；TEST-026 見 NOT RUN**
+**日期：2026-10-18（review round 2：2026-10-19）｜狀態：`done`（依 H-003 驗收：round 1 CHANGES REQUESTED 已修正並實作 D-042；同一 reviewer 複核 ACCEPT，複核的 low 發現 L1 與 I1、I2 已處理）｜需求：REQ-001、REQ-002、REQ-019｜Gate：D-008、D-012、D-036（皆已批准）｜實作選擇：ADR-023（ACCEPTED，H-009）、D-042（APPROVED）｜驗收測試：TEST-009（membership 部分）、TEST-011（provisioning 部分）；TEST-026 見 NOT RUN**
 
 逐條輸出在 `checks/evidence/2026-10-18-T-010/`。範圍依 tasks.json：
 
@@ -9,7 +9,7 @@
 - 鎖定 organization 保留最後一位 owner；撤權立即影響寫入；
 - 成員變更不在 `Run(ReadWrite)` 的 `FOR SHARE` 之上取 D-036 的有序鎖（T-009 re-review R1），並證明無 deadlock（round 1 後以三個以上 owner 的隨機壓力測試）。
 
-Review round 1 的發現與處理見文末；以下各節已更新為修正與 D-042 之後（e2faab3）的狀態。
+Review round 1 與 round 2 的發現與處理見文末；以下各節為 round 2 修正之後（592007f）的狀態。
 
 ## 交付內容
 
@@ -20,11 +20,25 @@ Review round 1 的發現與處理見文末；以下各節已更新為修正與 D
 | `internal/storage/memberships` | twin.memberships 的 SQL，每個 statement 帶 organization filter；新增以 `ON CONFLICT DO NOTHING` 分辨已是成員，FK 分辨未知 user |
 | `internal/storage/provisioning`、`cmd/provision-tenant` | Operator 的 provisioning：`user` 與 `organization` 指令，以 `SET LOCAL ROLE twin_provisioner` 執行；login 必須能 `SET ROLE twin_provisioner`，不是 twin_owner 或 runtime role 的成員，沒有 SUPERUSER／BYPASSRLS／CREATEROLE／CREATEDB／REPLICATION；同一 identity 並行只建立一次（`ON CONFLICT`）；issuer／subject 依 ADR-017 verifier（`auth.ValidIdentity`）、名稱需可列印且無前後空白；建立 organization 時同一 transaction 建立 owner membership 與 audit `organization.provision` |
 | `internal/auth` | `ValidIdentity`：verifier 會接受的 issuer 與 subject，給 provisioning 用 |
-| `db/bootstrap_roles.sql`、`migrations/0004_provisioner.*`、`db/tests/roles.sql`（D-042） | NOLOGIN 的 `twin_provisioner`：只有 users 的 SELECT／INSERT 與 organizations、memberships、audit_events 的 INSERT，RLS 照樣適用；audit guard 改為每個 role 只能以自己的身分寫 event（API：scoped user；worker：worker 或 system；provisioning：system）；SQL 測試含完整權限矩陣與被拒的語句 |
+| `db/bootstrap_roles.sql`、`migrations/0004_provisioner.*`、`db/tests/roles.sql`（D-042） | NOLOGIN 的 `twin_provisioner`：只有 users 的 SELECT／INSERT 與 organizations、memberships、audit_events 的 INSERT，RLS 照樣適用；trigger 只讓它把成員與 audit event 加到本 transaction 建立的 organization（review 2 L1）；audit guard 改為每個 role 只能以自己的身分寫 event（API：scoped user；worker：worker 或 system；provisioning：system）；SQL 測試含完整權限矩陣與被拒的語句 |
 | `internal/httpapi` | `IdempotencyKey`、`PageQuery`、`InvalidCursor` 從 project 移出共用 |
 | `internal/api` | 註冊 membership routes |
 | `Makefile` | `db-go-test` 加入 `./cmd/provision-tenant/...` |
-| 文件 | ADR-023（PROPOSED；round 1 後改寫鎖的設計、等待關係、風險與待 owner 決定事項）；ADR-019 的 R1 註記（更正「確認無 deadlock」）；db/README.md 的 provisioning login 與測試表；tasks.json：T-023 scope 加入撤權時關閉 stream（L6） |
+| 文件 | ADR-023（ACCEPTED，H-009；round 1 後改寫鎖的設計、等待關係與風險；round 2 寫明 deadlock 論證依賴的不變式）；ADR-019 的 R1 註記（更正「確認無 deadlock」）；db/README.md 的 provisioning login 與測試表；tasks.json：T-023 scope 加入撤權時關閉 stream（L6） |
+
+## 實際執行結果（review round 2 修正之後，592007f）
+
+在 592007f 的乾淨 worktree 執行（先 `go clean -testcache`，log 中沒有 cached 結果），DB 為新建的 `dt_test_t010_final`（Go mutation 用新建的 `dt_test_t010_mut`，SQL mutation 每個 mutant 新建 `dt_test_sqlmut`）。Log 在 `checks/evidence/2026-10-18-T-010/review2/`，exit code 見 `exit-codes.txt`。
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make backend-test`、`backend-race`、`architecture-check`、`spec-check` | 0 | 各自的 log |
+| `make integration-test`（新建的 `dt_test_t010_final`） | 0 | migration 0001–0004 up／down／up、SQL tests、`db-go-test`；唯一的 NOT RUN 是 worker 整合（T-019） |
+| `go test -race -p 1 -v`（tenant、tenant/memberships、storage/memberships、storage/provisioning、api、cmd/provision-tenant、auth） | 0 | `t010-go-tests.log`：78 個 test 通過（多了 `TestProvisionerEntersOnlyTheOrganizationItCreates`），0 SKIP、0 FAIL；壓力測試 545 次成功變更 |
+| Go mutation（`mutants.py`，76 個） | 0 | `mutation-final.log`：73 killed、3 equivalent、0 unexpected |
+| SQL mutation（`sql-mutants.py`，19 個，每個 mutant 另跑 provisioning 的 Go 測試） | 0 | `sql-mutation.log`：19 個全部 killed，其中 `guard-any-organization`、`guard-not-for-provisioner` 只有 Go 測試擋得下（單一 transaction 的 SQL suite 看不到另一個 transaction 建立的 organization） |
+
+CI：592007f 與 9f7294e 一起 push，run [39187121935](https://github.com/KCL1104/Geminus/actions/runs/39187121935)（9f7294e）5 個 job 全過；之後 7191164 的 run 也成功。
 
 ## 實際執行結果（review round 1 修正與 D-042 之後，e2faab3）
 
@@ -119,14 +133,14 @@ CI 曾在 adbb22b 與 f2ce4b2 失敗：`TestOwnerLockAcrossPlans`（移植自審
 | `TestRoutesMatchContract` | Routes 的 method、path、role 等於 api-operations.json | D-012 |
 | `TestMembershipRoutes`（internal/api） | 整個 HTTP stack：owner 200、editor 403、其他 organization 404、path 與 header 的 organization 不同 404、401；缺 Idempotency-Key 400；409／422 的 code；PATCH、DELETE 204（無 body、有 X-Request-ID）；被移除者下一個 request 404；3 筆 audit | TEST-009 |
 | `TestCheckOperator`、`TestProvisionerCannotChangeAnything`、`TestAPICannotProvision`、`TestProvision`、`TestUserOnceUnderConcurrency`（storage/provisioning） | Operator login（`NOINHERIT` 或 `INHERIT … IN ROLE twin_provisioner`）可以；superuser、API login、worker login、沒有任何 role 的 login、schema owner 的成員、同時是 twin_owner／twin_worker／twin_api 的 provisioner、是成員但不能 SET ROLE 的 login、有 BYPASSRLS／CREATEROLE／CREATEDB／REPLICATION 的 provisioner 被拒；以 twin_provisioner 不能改或讀 memberships、organizations、audit_events，不能關 RLS，operator login 未 SET ROLE 時沒有任何權限；API login 即使設了 RLS 讀的 setting 也不能 INSERT users／organizations（42501）；user 依 issuer／subject 只建一次，8 個並行呼叫 10 輪都回同一 ID、恰一個回報建立；organization 有 owner 與 system audit，owner 立刻能解析並以 owner 身分工作；空白、前後空白、C1 控制、U+202E、U+200B、NBSP、private use、非 UTF-8 的名稱與 verifier 不會接受的 issuer／subject（http、相對、換行、U+0000、過長）被拒 | D-008、D-042、TEST-011、review L2–L4、I3 |
-| `db/tests/roles.sql`（D-042 部分） | twin_provisioner 的權限矩陣恰為五項、不能在 twin 建立物件、不是其他 twin role 的成員、不擁有物件；以它建立 user／organization／owner／system audit，只讀得到自己設定的 user；跨 organization 的 membership 被 RLS 擋下；寫 user／worker event、改刪、TRUNCATE、DDL、關 RLS、刪 policy 皆 42501；API 不能寫 worker／system event，worker 可寫 system | D-042、TEST-011 |
+| `db/tests/roles.sql`（D-042 部分） | twin_provisioner 的權限矩陣恰為五項、不能在 twin 建立物件、不是其他 twin role 的成員、不擁有物件；以它建立 user／organization／owner／system audit，只讀得到自己設定的 user；以自己的 scope 插入其他 organization 的 membership 被 RLS 擋下（設成其他 organization 的 scope 時由 round 2 的 guard 擋下，行為測試在 Go：`TestProvisionerEntersOnlyTheOrganizationItCreates`）；guard 的 trigger、definer 函式的 search_path 與 EXECUTE 權限；沒有 foreign key 參照 `twin.memberships`；寫 user／worker event、改刪、TRUNCATE、DDL、關 RLS、刪 policy 皆 42501；API 不能寫 worker／system event，worker 可寫 system | D-042、TEST-011 |
+| `TestProvisionerEntersOnlyTheOrganizationItCreates`（storage/provisioning） | 以 twin_provisioner 把 owner 或 system audit event 加到其他 tenant 的 organization、加到之前 provisioning 建立的 organization、或建立一個 organization 後再加到另一個：皆 42501；受害 organization 的成員數不變。修正前六種都被接受 | review 2 L1、D-042 |
 | `TestValidIdentity`（internal/auth） | issuer 與 verifier 設定的規則一致（同一組值兩邊判斷相同），subject 與 token `sub` 的規則一致，含 255／256 bytes 邊界 | ADR-017、review L4 |
 | `TestProvision`、`TestRefusals`（cmd/provision-tenant） | 輸出只有 ID 的 JSON；API login、superuser exit 4；用法與輸入錯誤 exit 2，且沒有輸出 | D-008 |
 
 ## 需 owner 知悉
 
-- ADR-023 為 PROPOSED：provisioning 指令與 login 規則（superuser 也拒絕）、成員 API 的錯誤碼（最後一位 owner 與已是成員為 409 LIFECYCLE_CONFLICT、未知 user 為 422）、PATCH 相同 role 不寫入、列表依 user_id 排序。
-- 部署時需要為 provisioning 建立一個 `NOINHERIT … IN ROLE twin_owner` 的 login（db/README.md）。
+- ADR-023 已 ACCEPTED（H-009）：provisioning 指令與 login 規則（superuser 也拒絕）、成員 API 的錯誤碼（最後一位 owner 與已是成員為 409 LIFECYCLE_CONFLICT、未知 user 為 422）、PATCH 相同 role 不寫入、列表依 user_id 排序。
 - **D-042（owner 已批准，H-009）已實作**：provisioning 改以 `twin_provisioner` 執行。部署時先跑 `db/bootstrap_roles.sql` 與 migration 0004，再把 provisioning login 改為 `IN ROLE twin_provisioner`；原本 `IN ROLE twin_owner` 的 login 會被拒絕（exit 4）。
 - **實作 D-042 時發現並一併修正**：0002 的 audit guard 只限制 `user` event，API role 能寫出 `worker`／`system` 的 audit event；0004 改為每個 role 只能以自己的身分寫入。
 - 語意改變（review M1）：成員變更以 request 開始時已 commit 的 role 判斷；尚未 commit 的升級不算，caller 收到 403、重試即可。
@@ -165,4 +179,16 @@ CI 曾在 adbb22b 與 f2ce4b2 失敗：`TestOwnerLockAcrossPlans`（移植自審
 | I3 | 未經同意加入、user ID 是否存在的揭露、先驗格式再驗權限；CheckOperator 接受有 BYPASSRLS／CREATEROLE 的 owner | 風險記入 ADR-023；CheckOperator 拒絕 SUPERUSER、BYPASSRLS、CREATEROLE、CREATEDB、REPLICATION |
 
 審查者的 9 個 membership probe 與 2 個 HTTP probe 在修正後的程式上全部通過（`reviewer-probes-on-fix.log`、`reviewer-http-probes-on-fix.log`；`TestReviewRelockDeadlock` 現在因 caller 尚未 commit 的升級不算而得 403，0 deadlock）。
+
+## Review round 2（2026-10-19，同一 reviewer，審 e5db3d8）
+
+結論 **ACCEPT**：round 1 的 M1–M3 都已修正，reviewer 自己的 round-1 probe 在新程式上全過；所有 make target、77 個 test（race、0 SKIP）、壓力測試三輪、Go mutation 76（73＋3 equivalent）與 SQL mutation 12/12 皆重現。Deadlock-freedom 的論證（ADR-023）經 grep 與 migration 檢查後接受。處理如下（592007f），證據在 `checks/evidence/2026-10-18-T-010/review2/`。
+
+| 發現 | 內容 | 處理 |
+|---|---|---|
+| L1 | Provisioning 憑證仍能接管任何既有 organization：RLS 讀的是 role 自己設定的 scope，twin_provisioner 對 memberships、audit_events 有 INSERT，所以能把任何 user 加為 owner 並寫 system audit event。不是 regression（原本以 twin_owner 執行能做更多），但 0004、ADR-023、本報告的說法過頭 | Migration 0004（尚未部署任何地方，所以直接修改）加入 `guard_provisioner_target` trigger：對 provisioning role，organization row 的 xmin 必須是本 transaction 的 ID（SECURITY DEFINER 的 `created_in_this_transaction`，search_path 固定，只有 twin_provisioner 能呼叫；EXECUTE 在 expression 準備時檢查，所以呼叫放在巢狀的 IF 中）。`TestProvisionerEntersOnlyTheOrganizationItCreates` 修正前六種情形都被接受，修正後皆 42501。SQL mutation 加入 7 個 guard 的 mutant，harness 改為每個 mutant 另跑 provisioning 的 Go 測試（並把安裝失敗與 Go build 錯誤算成 harness 錯誤，不算 kill）：19/19。說法已更正（0004 註解、ADR-023、db/README、API_DATABASE、本報告） |
+| I1 | 本報告第 27、128、129 行仍寫 ADR-023 為 PROPOSED，並要求建立會被拒絕的 `IN ROLE twin_owner` login；tasks.json 的 summary 仍描述 round 0 的設計 | 已更正；tasks.json 的 summary 改寫為現行設計 |
+| I2 | Deadlock 論證依賴後續任務必須維持的不變式 | ADR-023 寫明：membership row 只由 `RunOwners` 與 `Run` 的第一個 `FOR SHARE` 上鎖，且沒有 foreign key 參照 `twin.memberships`；`db/tests/roles.sql` 檢查後者 |
+
+L1 的修正是在 ACCEPT 之後加的強化，由 agent 以先紅後綠與 mutation 驗證；reviewer 尚未看過 592007f（報告仍以 reviewer 的 ACCEPT 為驗收依據）。
 

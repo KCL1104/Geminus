@@ -1,0 +1,187 @@
+=== RUN   TestRequire
+--- PASS: TestRequire (0.00s)
+=== RUN   TestScopeIsValidatedBeforeTheDatabase
+--- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+=== RUN   TestRuntimeRoles
+--- PASS: TestRuntimeRoles (0.07s)
+=== RUN   TestRunScopes
+--- PASS: TestRunScopes (0.05s)
+=== RUN   TestRunModes
+--- PASS: TestRunModes (0.06s)
+=== RUN   TestReadSnapshot
+--- PASS: TestReadSnapshot (0.04s)
+=== RUN   TestRunLocksMembership
+--- PASS: TestRunLocksMembership (0.57s)
+=== RUN   TestRunErrors
+--- PASS: TestRunErrors (0.00s)
+=== RUN   TestPoolReuseLeavesNoScope
+--- PASS: TestPoolReuseLeavesNoScope (0.26s)
+=== RUN   TestWorkerAssignment
+--- PASS: TestWorkerAssignment (0.03s)
+=== RUN   TestGuardDiscardsSessionState
+--- PASS: TestGuardDiscardsSessionState (0.08s)
+=== RUN   TestGuardCoversEverySetting
+--- PASS: TestGuardCoversEverySetting (0.00s)
+=== RUN   TestUnsafeRuntimeLogins
+--- PASS: TestUnsafeRuntimeLogins (0.08s)
+=== RUN   TestRuntimeLoginCannotCreate
+--- PASS: TestRuntimeLoginCannotCreate (0.03s)
+=== RUN   TestResolveUser
+--- PASS: TestResolveUser (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant	2.339s
+=== RUN   TestRoles
+--- PASS: TestRoles (0.05s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.10s)
+=== RUN   TestUpdate
+--- PASS: TestUpdate (0.05s)
+=== RUN   TestDelete
+--- PASS: TestDelete (0.04s)
+=== RUN   TestRemovalWaitsForAWrite
+--- PASS: TestRemovalWaitsForAWrite (0.54s)
+=== RUN   TestOwnersChangeAtOnce
+--- PASS: TestOwnersChangeAtOnce (0.50s)
+=== RUN   TestList
+--- PASS: TestList (0.03s)
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestCallerChangedWhileWaiting
+=== RUN   TestCallerChangedWhileWaiting/promoted
+=== RUN   TestCallerChangedWhileWaiting/demoted
+=== RUN   TestCallerChangedWhileWaiting/removed
+--- PASS: TestCallerChangedWhileWaiting (1.06s)
+    --- PASS: TestCallerChangedWhileWaiting/promoted (0.02s)
+    --- PASS: TestCallerChangedWhileWaiting/demoted (0.52s)
+    --- PASS: TestCallerChangedWhileWaiting/removed (0.52s)
+=== RUN   TestRefusedRequestsTakeNoLock
+=== RUN   TestRefusedRequestsTakeNoLock/non-member
+=== RUN   TestRefusedRequestsTakeNoLock/viewer
+--- PASS: TestRefusedRequestsTakeNoLock (0.06s)
+    --- PASS: TestRefusedRequestsTakeNoLock/non-member (0.03s)
+    --- PASS: TestRefusedRequestsTakeNoLock/viewer (0.03s)
+=== RUN   TestOwnerRowsLockedDuringAChange
+--- PASS: TestOwnerRowsLockedDuringAChange (0.64s)
+=== RUN   TestOwnerSetIsCurrent
+=== RUN   TestOwnerSetIsCurrent/demote_self
+=== RUN   TestOwnerSetIsCurrent/demote_the_new_owner
+=== RUN   TestOwnerSetIsCurrent/remove_the_new_owner
+--- PASS: TestOwnerSetIsCurrent (1.92s)
+    --- PASS: TestOwnerSetIsCurrent/demote_self (0.64s)
+    --- PASS: TestOwnerSetIsCurrent/demote_the_new_owner (0.64s)
+    --- PASS: TestOwnerSetIsCurrent/remove_the_new_owner (0.64s)
+=== RUN   TestMembershipChangesUnderLoad
+    serialize_test.go:312: 545 membership changes succeeded
+--- PASS: TestMembershipChangesUnderLoad (5.25s)
+=== RUN   TestOwnerLockAcrossPlans
+--- PASS: TestOwnerLockAcrossPlans (0.98s)
+=== RUN   TestReplayNeedsTheRole
+--- PASS: TestReplayNeedsTheRole (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	12.331s
+=== RUN   TestOrganizationFilter
+--- PASS: TestOrganizationFilter (0.02s)
+=== RUN   TestListAfter
+--- PASS: TestListAfter (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	1.047s
+=== RUN   TestCheckOperator
+--- PASS: TestCheckOperator (0.16s)
+=== RUN   TestProvisionerCannotChangeAnything
+--- PASS: TestProvisionerCannotChangeAnything (0.03s)
+=== RUN   TestAPICannotProvision
+--- PASS: TestAPICannotProvision (0.00s)
+=== RUN   TestProvision
+--- PASS: TestProvision (0.04s)
+=== RUN   TestUserOnceUnderConcurrency
+--- PASS: TestUserOnceUnderConcurrency (0.04s)
+=== RUN   TestProvisionerEntersOnlyTheOrganizationItCreates
+--- PASS: TestProvisionerEntersOnlyTheOrganizationItCreates (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.330s
+=== RUN   TestRoleMatrix
+--- PASS: TestRoleMatrix (0.31s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.27s)
+=== RUN   TestIdempotency
+--- PASS: TestIdempotency (0.32s)
+=== RUN   TestExpiredKeyRace
+--- PASS: TestExpiredKeyRace (1.34s)
+=== RUN   TestOutsideTheContract
+--- PASS: TestOutsideTheContract (0.24s)
+=== RUN   TestList
+--- PASS: TestList (0.67s)
+=== RUN   TestMembershipRoutes
+--- PASS: TestMembershipRoutes (0.22s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	4.415s
+=== RUN   TestProvision
+--- PASS: TestProvision (0.03s)
+=== RUN   TestRefusals
+--- PASS: TestRefusals (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.082s
+=== RUN   TestBearerToken
+--- PASS: TestBearerToken (0.00s)
+=== RUN   TestChallenge
+--- PASS: TestChallenge (0.00s)
+=== RUN   TestMiddleware
+--- PASS: TestMiddleware (0.12s)
+=== RUN   TestValidTokens
+--- PASS: TestValidTokens (0.27s)
+=== RUN   TestRejectedTokens
+--- PASS: TestRejectedTokens (0.29s)
+=== RUN   TestClockSkewBoundaries
+--- PASS: TestClockSkewBoundaries (0.45s)
+=== RUN   TestKeyRotation
+--- PASS: TestKeyRotation (0.28s)
+=== RUN   TestJWKSUnavailable
+--- PASS: TestJWKSUnavailable (0.10s)
+=== RUN   TestJWKSContent
+--- PASS: TestJWKSContent (0.47s)
+=== RUN   TestJWKSRedirectNotFollowed
+--- PASS: TestJWKSRedirectNotFollowed (0.11s)
+=== RUN   TestConcurrentVerify
+--- PASS: TestConcurrentVerify (0.18s)
+=== RUN   TestConfigValidation
+--- PASS: TestConfigValidation (0.00s)
+=== RUN   TestValidIdentity
+--- PASS: TestValidIdentity (0.00s)
+=== RUN   TestKeyAlgorithmPinned
+--- PASS: TestKeyAlgorithmPinned (0.16s)
+=== RUN   TestCancelledRequestStillFetches
+--- PASS: TestCancelledRequestStillFetches (0.23s)
+=== RUN   TestRefreshNeverBlocksUsableKeys
+--- PASS: TestRefreshNeverBlocksUsableKeys (0.18s)
+=== RUN   TestOutageRefreshThrottled
+--- PASS: TestOutageRefreshThrottled (0.66s)
+=== RUN   TestKeysErrorKeepsTheCause
+--- PASS: TestKeysErrorKeepsTheCause (0.06s)
+=== RUN   TestStrictEncoding
+--- PASS: TestStrictEncoding (0.20s)
+=== RUN   TestAllAlgorithms
+--- PASS: TestAllAlgorithms (3.28s)
+=== RUN   TestEndlessJWKSBody
+--- PASS: TestEndlessJWKSBody (0.16s)
+=== RUN   TestColdStartRecovers
+--- PASS: TestColdStartRecovers (0.07s)
+=== RUN   TestSubjectFormatCharacters
+--- PASS: TestSubjectFormatCharacters (0.12s)
+=== RUN   TestConfigBounds
+--- PASS: TestConfigBounds (0.00s)
+=== RUN   TestFetchTimeout
+--- PASS: TestFetchTimeout (0.25s)
+=== RUN   TestFetchPanicContained
+--- PASS: TestFetchPanicContained (0.17s)
+=== RUN   TestRequireAccessTokenType
+--- PASS: TestRequireAccessTokenType (0.15s)
+=== RUN   TestRetryAfterFailureWaitsBriefly
+--- PASS: TestRetryAfterFailureWaitsBriefly (3.11s)
+=== RUN   TestFetchGoexitRecovers
+--- PASS: TestFetchGoexitRecovers (0.08s)
+=== RUN   TestNewlinesInToken
+--- PASS: TestNewlinesInToken (0.05s)
+=== RUN   TestKeyAgeBoundaries
+--- PASS: TestKeyAgeBoundaries (0.17s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/auth	12.407s

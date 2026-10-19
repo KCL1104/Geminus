@@ -1,0 +1,21 @@
+users-not-readable	KILLED
+memberships-not-insertable	KILLED
+extra-update	KILLED
+extra-select	KILLED
+schema-create	KILLED
+api-writes-worker	KILLED
+api-writes-system	KILLED
+provisioner-writes-worker	KILLED
+provisioner-writes-user	KILLED
+worker-writes-user	KILLED
+user-any-actor	KILLED
+no-search-path	KILLED
+guard-any-organization	KILLED-GO
+guard-not-for-provisioner	KILLED-GO
+guard-memberships-unguarded	KILLED
+guard-audit-unguarded	KILLED
+guard-invoker-rights	KILLED
+guard-definer-no-search-path	KILLED
+guard-callable-by-api	KILLED
+total=19 unexpected=0
+exit=0
