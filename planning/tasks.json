@@ -2521,7 +2521,15 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-043_VALIDATION.md",
           "summary": "BFF 部分（74e327a、f83c692）：AES-256-GCM 封裝的 __Host- session cookie（key 輪替、3.5 KB 上限、閒置 12 小時／滿 7 天）；openid-client 6.8.8 的 Authorization Code＋PKCE S256、state、nonce，ID token 另驗簽章後丟棄；同源 /api/v1 proxy（Origin、Sec-Fetch-Site、X-Geminus-Request 的 CSRF 檢查、header allowlist、伺服器端 refresh 單一化與 30 秒 reuse）；logout 撤銷 refresh token 與 RP-initiated logout；測試用 OIDC provider 與 API 替身；Auth0 runbook。52c667c 乾淨 worktree：frontend-test（334 tests）、frontend-build、e2e-test（49 passed，TEST-032 8/8；16 個截圖測試只在 CI container 執行）、npm audit（production）0、spec-check exit 0；TS mutation 43（41 killed、2 等價）。登入後的 UI bootstrap（/me、organization 選擇、UI 的 403）等 D-045；新的截圖 baseline 由 owner 產生。",
-          "reviewer": "pending: independent reviewer agent (H-003), BFF part",
+          "reviewer": "independent reviewer agent (H-003), round 1 on 74e327a/f83c692/5b02db2: CHANGES REQUESTED (M-1, M-2, L-1–L-8)",
+          "decisions_pending": "D-045（GET /v1/me）待 owner；Auth0 tenant 由 owner 依 docs/runbooks/auth0.md 建立"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-043_VALIDATION.md",
+          "summary": "Review round 1 修正（3f743eb）：provider 暫時失敗（5xx、連不上、逾時、429）回 503 並保留 session，只有 invalid_grant 等拒絕才結束（M-2）；兩個 session 同時 refresh、輪替後以新 key 封裝、server.ts 的 503 與 log、空的 sub 都有測試，no-subject-check 不是等價（M-1）；token 依 session 規則檢查、放不下 cookie 時乾淨失敗（L-2）；return path 只接受可見 ASCII（L-3）；nosniff 與帶 Set-Cookie 時 no-store（L-4）；60 秒時鐘容差（L-5）；以 expires_in 計算到期（L-6）；真正的跨站 form E2E（L-1）；Go API 不讀 cookie 的測試、evidence 改名（L-7）；串流、取消、header、redirect、method、cache 上限的測試，登出丟棄共用的 refresh（L-8）。3f743eb 乾淨 worktree：frontend-test（366 tests）、go test internal/auth、frontend-build、e2e-test（49 passed，TEST-032 8/8）、npm audit 0、spec-check exit 0；TS mutation 72（71 killed、1 等價）。",
+          "reviewer": "pending: independent reviewer agent round 2 (H-003), BFF part",
           "decisions_pending": "D-045（GET /v1/me）待 owner；Auth0 tenant 由 owner 依 docs/runbooks/auth0.md 建立"
         }
       ]

@@ -17,11 +17,11 @@ npm --prefix apps/web run test:unit
  RUN  v5.0.4 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/wt-t043/apps/web
 
 
- Test Files  17 passed (17)
-      Tests  334 passed (334)
-   Start at  05:58:58
-   Duration  10.63s (tests 71%, import 18%, environment 6%, transform 5%, worker 1%)
+ Test Files  18 passed (18)
+      Tests  366 passed (366)
+   Start at  07:09:18
+   Duration  14.54s (tests 74%, import 16%, environment 5%, transform 4%)
 
-    Isolate  17 workers spawned · ~259ms startup each (spawn + environment, per file)
-             at least ~1.21s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  18 workers spawned · ~237ms startup each (spawn + environment, per file)
+             at least ~1.19s faster with isolate: false — reuses workers across files instead of one per file
 
