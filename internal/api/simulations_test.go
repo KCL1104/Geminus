@@ -587,6 +587,56 @@ func TestRunIdempotency(t *testing.T) {
 	}
 }
 
+// API_DATABASE §7: the role is checked before a replay, so an earlier
+// success is no pass after the member was demoted or removed. The same key
+// and body that answered 202 (create) or 200 (cancel) answer 403 to a
+// viewer and 404 to a former member, and nothing more is written.
+func TestARevokedMemberGetsNoReplay(t *testing.T) {
+	e := setupRuns(t)
+	editor, owner := e.a.Members[tenant.Editor], e.a.Members[tenant.Owner]
+	_, mv := e.version(t, e.a, golden(t, "deterministic-queue.json"), nil)
+	body := runRequest(mv, 1, "none", nil)
+	created := e.createRun(editor.Subject, e.a.ID, "run-revoke-0001", body)
+	if created.status != 202 {
+		t.Fatalf("%d %s", created.status, created.body)
+	}
+	id := decode[runBody](t, created).ID
+	cancelled := e.cancelRun(editor.Subject, e.a.ID, "cancel-revoke-0001", id)
+	if cancelled.status != 200 {
+		t.Fatalf("%d %s", cancelled.status, cancelled.body)
+	}
+	ownerRun := decode[runBody](t, e.createRun(owner.Subject, e.a.ID, "run-revoke-0002", body)).ID
+	ownerCancel := e.cancelRun(owner.Subject, e.a.ID, "cancel-revoke-0002", ownerRun)
+	if ownerCancel.status != 200 {
+		t.Fatalf("%d %s", ownerCancel.status, ownerCancel.body)
+	}
+	before := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1`, e.a.ID)
+	if _, err := e.admin.Exec(context.Background(), `UPDATE twin.memberships SET role='viewer' WHERE organization_id=$1 AND user_id=$2`, e.a.ID, editor.UserID); err != nil {
+		t.Fatal(err)
+	}
+	if r := e.createRun(editor.Subject, e.a.ID, "run-revoke-0001", body); r.status != 403 || code(t, r) != "FORBIDDEN" {
+		t.Errorf("a demoted member's create replay: %d %s", r.status, r.body)
+	}
+	if r := e.cancelRun(editor.Subject, e.a.ID, "cancel-revoke-0001", id); r.status != 403 || code(t, r) != "FORBIDDEN" {
+		t.Errorf("a demoted member's cancel replay: %d %s", r.status, r.body)
+	}
+	if _, err := e.admin.Exec(context.Background(), `DELETE FROM twin.memberships WHERE organization_id=$1 AND user_id=$2`, e.a.ID, owner.UserID); err != nil {
+		t.Fatal(err)
+	}
+	if r := e.createRun(owner.Subject, e.a.ID, "run-revoke-0002", body); r.status != 404 || code(t, r) != "NOT_FOUND" {
+		t.Errorf("a removed member's create replay: %d %s", r.status, r.body)
+	}
+	if r := e.cancelRun(owner.Subject, e.a.ID, "cancel-revoke-0002", ownerRun); r.status != 404 || code(t, r) != "NOT_FOUND" {
+		t.Errorf("a removed member's cancel replay: %d %s", r.status, r.body)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.simulation_runs WHERE organization_id=$1`, e.a.ID); n != 2 {
+		t.Errorf("%d runs, want the 2 created before the revocations", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1`, e.a.ID); n != before {
+		t.Errorf("%d audit events after the refused replays, %d before", n, before)
+	}
+}
+
 // keep the imports the later tests use
 var (
 	_ = bufio.NewReader

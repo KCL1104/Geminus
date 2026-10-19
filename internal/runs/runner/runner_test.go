@@ -522,3 +522,83 @@ func TestOneJobPerRun(t *testing.T) {
 		t.Errorf("a second job for the run: %v", err)
 	}
 }
+
+// TEST-021 with TEST-020 (ADR-024, CB-19): a cancellation requested while
+// an attempt is running survives that attempt's crash. The reaper puts the
+// job back and the run follows to queued with the request kept; the next
+// attempt sees the request before it starts anything and ends the job
+// cancelled: no result, no further event reserved.
+func TestACancellationOutlivesACrash(t *testing.T) {
+	e := setup(t, runs.DefaultLimits)
+	mv := e.version(t, "deterministic-queue.json")
+	id := e.create(t, mv, simulation.RunConfig{Horizon: simulation.Duration{Value: 1010, Unit: model.Minute}, Replications: 2, Seed: 1,
+		TraceLevel: simulation.TraceNone, Warmup: simulation.Duration{Unit: model.Minute}})
+	short := jobs.Policy{Lease: 500 * time.Millisecond, MaxAttempts: 3, BackoffBase: 20 * time.Millisecond, BackoffMax: 100 * time.Millisecond}
+	if err := e.scope.Run(context.Background(), e.org.ID, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx) error {
+		if _, _, ok, err := jobs.Claim(ctx, tx, e.org.ID, "crashed-worker", []jobs.Type{jobs.Simulation}, short); err != nil || !ok {
+			return errors.Join(err, errors.New("no claim"))
+		}
+		_, err := store.Start(ctx, tx, e.org.ID, id, 40)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	editor := e.org.Members[tenant.Editor]
+	status, out, err := e.runs.Cancel(context.Background(), tenant.Scope{OrganizationID: e.org.ID, UserID: editor.UserID}, ids.New("req"), ids.New("key"), id, []byte(`{}`))
+	var answered runs.Run
+	if err == nil {
+		err = json.Unmarshal(out, &answered)
+	}
+	if err != nil || status != 200 || answered.Status != "running" || !answered.CancellationRequested {
+		t.Fatalf("cancel during the crashed attempt: %d %+v %v", status, answered, err)
+	}
+	time.Sleep(600 * time.Millisecond) // the crashed attempt's lease ends
+	r := e.until(t, e.loop(t, e.handler(t, Config{})), id, 30*time.Second)
+	if r.Status != store.Cancelled || !r.CancellationRequested || r.Failure != nil {
+		t.Errorf("run %+v", r)
+	}
+	if r.EventBudgetReserved != 40 {
+		t.Errorf("reserved %d events, want only the crashed attempt's 40", r.EventBudgetReserved)
+	}
+	if n := e.count(t, `SELECT count(*) FROM twin.simulation_results WHERE run_id=$1`, id); n != 0 {
+		t.Error("a result despite the cancellation")
+	}
+	if n := e.count(t, `SELECT count(*) FROM twin.jobs WHERE simulation_run_id=$1 AND status='cancelled' AND attempt=2`, id); n != 1 {
+		t.Error("the job did not end cancelled in the attempt after the crash")
+	}
+	if n := e.count(t, `SELECT count(*) FROM twin.audit_events WHERE target_id=$1 AND action='simulation.cancelled' AND actor_type='worker' AND (metadata->>'attempt')::int=2`, id); n != 1 {
+		t.Errorf("%d worker cancellation audit events for attempt 2", n)
+	}
+}
+
+// D-007, TEST-021: within one attempt the wall clock is a limit like the
+// others: a run longer than wall_timeout_seconds fails at it,
+// WALL_TIMEOUT_EXCEEDED, not retried, without a result.
+func TestTheWallClockEndsAnAttempt(t *testing.T) {
+	limits := runs.DefaultLimits
+	limits.WallTimeoutSeconds = 1
+	e := setup(t, limits)
+	mv := e.version(t, "default-delivery.json")
+	id := e.create(t, mv, simulation.RunConfig{Horizon: simulation.Duration{Value: 365, Unit: model.Day}, Warmup: simulation.Duration{Unit: model.Day},
+		Replications: 400, Seed: 5, TraceLevel: simulation.TraceNone})
+	w := e.loop(t, e.handler(t, Config{Workers: 1}))
+	began := time.Now()
+	w.Pass(context.Background())
+	took := time.Since(began)
+	r := e.run(t, id)
+	if f := e.failure(t, id); r.Status != store.Failed || f.Code != store.WallTimeoutExceeded || f.Retryable {
+		t.Fatalf("run %+v, failure %+v", r, f)
+	}
+	if took > 5*time.Second {
+		t.Errorf("the attempt took %v with a 1 s wall time", took)
+	}
+	if r.StartedAt == nil || r.ExecutionDeadlineAt == nil || r.ExecutionDeadlineAt.Sub(*r.StartedAt) != time.Second {
+		t.Errorf("deadline %v from start %v", r.ExecutionDeadlineAt, r.StartedAt)
+	}
+	if n := e.count(t, `SELECT count(*) FROM twin.jobs WHERE simulation_run_id=$1 AND status='failed' AND attempt=1`, id); n != 1 {
+		t.Error("the wall timeout was retried")
+	}
+	if n := e.count(t, `SELECT count(*) FROM twin.simulation_results WHERE run_id=$1`, id); n != 0 {
+		t.Error("a timed-out run has a result")
+	}
+}

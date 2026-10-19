@@ -248,6 +248,41 @@ func TestStreamEndsWhenTheMemberIsRemoved(t *testing.T) {
 	}
 }
 
+// TEST-026: the recheck does not wait for the run to change. A member
+// removed while the run stands still loses the stream at the next poll:
+// it ends without another event (keep-alive comments are written only
+// after a recheck succeeds).
+func TestAnIdleStreamEndsWhenTheMemberIsRemoved(t *testing.T) {
+	e := setupRuns(t)
+	viewer, editor := e.a.Members[tenant.Viewer], e.a.Members[tenant.Editor]
+	_, mv := e.version(t, e.a, golden(t, "deterministic-queue.json"), nil)
+	id := decode[runBody](t, e.createRun(editor.Subject, e.a.ID, "run-sse-idle1", runRequest(mv, 1, "none", nil))).ID
+	s := e.openStream(t, viewer.Subject, e.a.ID, id, "", nil)
+	if snap, _, ok := s.next(t, 5*time.Second); !ok || snap.Revision != 0 {
+		t.Fatalf("first event %+v", snap)
+	}
+	// The stream stays open while nothing changes: keep-alive comments.
+	select {
+	case ev, ok := <-s.events:
+		if !ok || !ev.comment {
+			t.Fatalf("while nothing changed: %+v %v", ev, ok)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no keep-alive while the run waited")
+	}
+	if _, err := e.admin.Exec(context.Background(), `DELETE FROM twin.memberships WHERE organization_id=$1 AND user_id=$2`, e.a.ID, viewer.UserID); err != nil {
+		t.Fatal(err)
+	}
+	removed := time.Now()
+	s.ended(t, 5*time.Second)
+	if took := time.Since(removed); took > time.Second {
+		t.Errorf("the stream ended %v after the removal (poll 20 ms)", took)
+	}
+	if n := e.count(`SELECT progress_revision FROM twin.simulation_runs WHERE id=$1`, id); n != 0 {
+		t.Errorf("the run changed (revision %d); this test needs it idle", n)
+	}
+}
+
 // The stream ends when its token expires, whether or not the run is
 // final; the client then reconnects with a fresh token (SECURITY §3).
 func TestStreamEndsWithItsToken(t *testing.T) {
