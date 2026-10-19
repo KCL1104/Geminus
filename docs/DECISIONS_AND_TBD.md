@@ -1,6 +1,6 @@
 # Decisions & TBD Register
 
-版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；D-001–D-037 於 2026-10-15、D-038–D-039 於 2026-10-18 由 owner 批准；D-040、D-041（T-012 review 發現，gate T-013）為 PROPOSED，待 owner 決定。
+版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；D-001–D-037 於 2026-10-15、D-038–D-039 於 2026-10-18 由 owner 批准；D-040、D-041（T-012 review 發現，gate T-013）與 D-042（T-010 review 發現）於 2026-10-18 批准（H-009），已分別在 T-013a、T-013b、T-010 實作。
 
 ## 狀態與採用方法
 

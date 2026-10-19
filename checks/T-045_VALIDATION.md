@@ -35,6 +35,7 @@
 | CI e2e job（ce9768d，固定容器） | 37 passed、16 skipped（當時還沒有 baseline，截圖 NOT RUN） |
 | CI 手動 run 39183828451（5ed0c78，`update_screenshots`） | 5 個 job 全過；產生第一組 baseline，檢視時發現下述第 4 個問題，未採用 |
 | CI 手動 run 39184979891（8a3e89a，`update_screenshots`） | 5 個 job 全過（含新的表格檢查）；產生的 16 張即提交的 baseline |
+| CI run 39185593556（c33717f，提交 baseline 後） | 5 個 job 全過；browser checks 53 passed、0 skipped（截圖比對有執行） |
 | 依賴稽核 | 新增套件的發布日期、授權、install script 逐一列出；`npm audit --omit=dev` 0 vulnerability |
 
 ### 自動檢查涵蓋的內容
@@ -76,7 +77,7 @@
 - 兩次 run 之間沒有改動的 14 張逐位元組相同，只有修正過的 390 px gallery 兩張不同：容器內的 render 是確定的。
 - Agent 的檢視：繁中字形正常（容器有 CJK 字型）；沒有重疊或截斷；390 px 時寬表格在自己的框內橫向捲動，頁面本身不橫向捲動；錯誤、警告、成功、資訊的顏色與文字一致；停用的「發布」按鈕顏色較淡（停用元件不受對比要求）。
 - **Owner 確認：尚未收到**（已傳送截圖；TEST-033 要求紀錄）。若 owner 要求修改，以新的手動 run 重新產生。
-- 提交 baseline 後第一次 CI 的比對結果：待補（見 commit 後的 CI run）。
+- 提交 baseline 後第一次 CI 的比對：c33717f 的 run [39185593556](https://github.com/KCL1104/Geminus/actions/runs/39185593556) 的 browser checks job 53 passed、0 skipped，16 張截圖都與 baseline 比對通過；之後的 push 也都通過。
 
 ## NOT RUN／限制
 

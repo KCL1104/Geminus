@@ -802,7 +802,7 @@
         "開放 route 之前實作 owner 的決定（H-009）：D-040 新 migration 把 IR 欄位改存 canonical 文字（以 reviewer 的 R11c probe 先紅後綠）；D-041 在 ModelVersion 保存 PublishModel.comment（migration 與 contract）。"
       ],
       "planned_outputs": [
-        "internal/model/http/",
+        "internal/models/http.go",
         "apps/web/lib/api/"
       ],
       "spec_refs": [
