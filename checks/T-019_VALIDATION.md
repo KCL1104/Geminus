@@ -28,19 +28,19 @@
 
 ## 實際執行結果
 
-所有指令在 c6a51c1 的乾淨 worktree 執行（`git worktree`，先 `go clean -testcache`；log 中沒有 cached 結果），DB 為一次性 PostgreSQL 16 cluster 上新建的 `dt_test_t019_final`。Log 在 `checks/evidence/2026-10-19-T-019/final/`，exit code 見 `exit-codes.txt`。
+Review round 1 的修正（5d8f44e）在乾淨的 worktree 執行（`git worktree`，先 `go clean -testcache`；log 中沒有 cached 結果），DB 為一次性 PostgreSQL 16 cluster 上新建的 `dt_test_t019_r1`，執行後刪除。Log 在 `checks/evidence/2026-10-19-T-019/round1/`，exit code 見 `exit-codes.txt`，環境見 `environment.txt`（Go 1.27.2、Node 24.21.0、PostgreSQL 16.15、4 CPU）。送審前的 c6a51c1 結果保留在 `final/`。
 
 | 指令 | Exit | 說明 |
 |---|---|---|
 | `make backend-test`、`backend-race` | 0 | 各 35 個 package ok |
-| `make architecture-check` | 0 | 42 packages、11 rules、16 build configurations |
-| `make frontend-test` | 0 | 14 個檔案 218 個 test（本任務未改前端） |
-| `make spec-check` | 0 | 重產的 `checks/*.json` 與 commit 相同 |
-| `make integration-test`（新建的 `dt_test_t019_final`） | 0 | migration 0001–0007 up／down／up、0005 拒絕有 model 的 DB、SQL tests、`db-go-test` 的 16 個 package（含 `internal/worker`、`cmd/worker`）；唯一的 NOT RUN 是各 job type 的 handler（T-016、T-023、T-025） |
-| `go test -race -p 1 -v`（jobs、worker、workerscope、config、cmd/worker） | 0 | `t019-go-tests.log`：38 個 test 通過，0 SKIP、0 FAIL |
-| `go test -race -count=5`（worker 中與時間有關的 7 個測試：名稱含 Heartbeat、Lease、Renewal、Stopping、Share） | 0 | `t019-timing-x5.log`：5 次全過，檢查 lease、heartbeat 與停止的測試不會 flaky |
-| `mutants.py`（Go，67 個） | 0 | `mutation-go.log`：63 個 killed、4 個等價（理由寫在 harness 中：RLS 已限制 organization 的兩個 filter、不可能出現的「attempt 用完的 queued job」、已清除 worker 的終態 job），0 unexpected |
-| `sql-mutants.py`（0007，17 個） | 0 | `mutation-sql.log`：baseline 時 SQL suite 與 jobs、worker、cmd/worker 的 Go 測試都過；17 個全部 killed |
+| `make architecture-check` | 0 | 43 packages、11 rules、16 build configurations |
+| `make frontend-test` | 0 | 17 個檔案 334 個 test（本次未改前端；數量包含 T-043） |
+| `make spec-check` | 0 | 重產的 `checks/*.json` 與 commit 相同（`spec-check-status.txt` 為空） |
+| `make integration-test`（新建的 `dt_test_t019_r1`） | 0 | migration 0001–0007 up／down／up、SQL tests、`db-go-test` 的 16 個 package（race）；唯一的 NOT RUN 是各 job type 的 handler（T-016、T-023、T-025） |
+| `go test -race -p 1 -v`（jobs、worker、worker/handler、workerscope、config、cmd/worker） | 0 | `t019-go-tests.log`：50 個 top-level test 通過，0 SKIP、0 FAIL |
+| `go test -race -count=5`（worker 與 cmd/worker 中與時間有關的 13 個測試） | 0 | `timing-x5.log`：65/65 通過（含上下界都檢查的 deadline 測試與 signal 測試） |
+| `mutants.py`（Go，101 個） | 0 | `mutation-go.log`：100 個在修正的 tree 上跑完，95 killed、5 等價（理由在 harness：RLS 已限制 organization 的兩個 filter、0007 擋下沒有 attempt 的 queued job、已清除 worker 的終態 job、續期的時限與期限的 timer 重複），0 unexpected。之後只改了 `cmd/worker/main.go`（啟動途中的 signal）與其測試，所以 cmd 的 6 個 mutant（含新的一個）在最終版本上重跑：`mutation-go-cmd-rerun.log` 6/6 killed。其他 mutant 測的 package 不 import `cmd/worker` |
+| `sql-mutants.py`（0007，32 個） | 0 | `mutation-sql.log`：baseline 時 SQL suite 與 jobs、worker、cmd/worker 的 Go 測試都過；31 killed、1 等價（`api-claims`：claim 必須改 attempt 與 token，API 的檢查不准改），0 unexpected。第一次執行另有 2 個存活（owner 把 queued 直接改為 completed／failed、API 只改 status 去取消或重排 running job），補測試後被擋下 |
 
 ### 先紅後綠與 mutation 找到的缺口
 
@@ -66,7 +66,7 @@
 | `TestAHungRenewalCannotOutliveTheLease`、`TestTheHeartbeatGivesUpWithoutTheDatabase`、`TestOneFailedRenewalIsSurvived`、`TestASlowRenewalCountsFromItsStart`、`TestTheLeaseLastsOneLease` | lease 3 s、heartbeat 1 s：續期卡在 row lock 或 DB 完全無回應時，handler 在 2.5 s ± 300 ms 停止，且當時 DB 的 lease 仍有效；一次續期失敗、下一次成功時 job 照常完成；1 s 開始、2.2 s 才成功的續期讓期限從 1 s 起算（3.5 s 停止，lease 仍有效）；claim 與 heartbeat 寫入的 lease 為 `now()+Lease`；都不寫入 job | TEST-020 |
 | `TestStoppingRequeuesTheJob`、`TestTheFailureRecordIsBounded`、`TestAnIdleWorkerPauses` | 停止中的 worker 把 job 以 `WORKER_STOPPED`（可重試）放回 queued，但 handler 自己回的不可重試 Failure 照樣為準；記錄 attempt 的結束至多等一個 heartbeat；閒置的 worker 每個 Idle 只有兩個 transaction | D-011 |
 | `TestOrganizationsTakeTurns`、`TestAnUnhandledTypeStaysQueued`、`TestWorkersShareTheQueue` | 每次 pass 每個 organization 一個 job、依 deployment 順序；沒有 handler 的 type 保持 queued；兩個 worker 的 `Run` 各 job 恰執行一次，context 結束後 `Run` 返回 | D-008 |
-| `TestNewChecksTheConfig`、`TestLoadWorker`、`cmd/worker` 的 7 個測試 | 設定驗證（ID、heartbeat 至多 lease 的三分之一、handler、idle、reap、log）；`WORKER_ID` 與 allowlist 必填、ID 只能是可見 ASCII；cmd 拒絕不合格的 allowlist（exit 1，有沒有 handler 都一樣）、連不上 DB（exit 3）、superuser login（exit 3）、沒有 handler 的 build（exit 2，不連 DB），stderr 不含密碼；pool 歸還時有 guard；以 worker login 執行一個 job 後收到停止即 exit 0；第二個 SIGINT 結束 process（子 process） | D-008、REQ-019 |
+| `TestNewChecksTheConfig`、`TestLoadWorker`、`cmd/worker` 的 8 個測試 | 設定驗證（ID、heartbeat 至多 lease 的三分之一、handler、idle、reap、log）；`WORKER_ID` 與 allowlist 必填、ID 只能是可見 ASCII；cmd 拒絕不合格的 allowlist（exit 1，有沒有 handler 都一樣）、連不上 DB（exit 3）、superuser login（exit 3）、沒有 handler 的 build（exit 2，不連 DB），stderr 不含密碼；pool 歸還時有 guard；以 worker login 執行一個 job 後收到停止即 exit 0；啟動途中收到 signal 為停止（exit 0），不是 DB 錯誤；第二個 SIGINT 結束 process（子 process） | D-008、REQ-019 |
 | `TestNewRefusesABadAllowlist`、`TestAssignment`（workerscope） | allowlist 的格式與重複；未指派的 organization 被拒；只看到指派 organization 的 row；不能讀 memberships；pool 中不留 scope | TEST-010、D-008 |
 | `db/tests/constraints.sql`（0007） | 非 queued、帶 attempt、token 或 error 的 INSERT 被拒；API 只能取消或重排 queued 的 job（不能 claim、改 attempt 或 error、直接 completed，也不能結束、接手、重排或取消 running 的 job）；worker 從 queued 只能 claim（不能取消、重排、直接 completed、不換 token 或跳過 attempt 的 claim）；claim、heartbeat、retry、第二次 claim、completed 可行；最後一次 attempt 不能回到 queued；token 或 attempt 回退被拒；owner 逐欄改 identity 與輸入都被拒；終態的 job 對 API、worker、owner 都不可改；不改值的 UPDATE 可行；同時屬於 owner 與 runtime role 的 login（suite 的 superuser）視同 owner，可手動結束 running 的 job | TEST-020、TEST-021 |
 | `scripts/check-architecture` | worker scope 只在 worker 端；三個 probe；`internal/worker/handler` 之外的 package 實作 handler 不違反規則 | ADR-019 R3b |
@@ -92,7 +92,7 @@
 | **I1** `cmd-no-role-check` 只靠 300 秒 timeout 被擋 | `TestRunNeedsTheDatabase` 改用 10 秒的 context | 見 mutation log 的失敗 test 名稱 |
 | **I2** 0007 不管 DELETE | 文件寫明 0007 只管 INSERT 與 UPDATE；刪除屬保存期限（runtime role 沒有 DELETE） | 0007 的註解、ADR-024 |
 | **I3** ADR 說只用 DB 的 `now()` | ADR 改寫：worker 以自己在 transaction 開始前讀的時間起算，半個 heartbeat 的餘裕涵蓋停止與小的時鐘偏差，更大的偏差由部署（NTP）避免 | 文件 |
-| **I4** 第二個 SIGTERM 被吞掉 | `listen()`：收到第一個 signal 時先恢復預設處理、再結束 context，所以第二個 signal 立即結束 process。第一版（`signal.NotifyContext` 加 goroutine）有 race：context 先結束，第二個 signal 若在 `stop()` 之前到達就被吞掉——新測試第一次執行就失敗，因此改寫。每個 job 的總時限屬於 handler 與其 resource（ADR-024 Consequences） | `TestASecondSignalEndsTheProcess`（以子 process 送兩次 SIGINT，檢查它被 SIGINT 結束）；`cmd-second-signal-swallowed` |
+| **I4** 第二個 SIGTERM 被吞掉 | `listen()`：收到第一個 signal 時先恢復預設處理、再結束 context，所以第二個 signal 立即結束 process。第一版（`signal.NotifyContext` 加 goroutine）有 race：context 先結束，第二個 signal 若在 `stop()` 之前到達就被吞掉——新測試第一次執行就失敗，因此改寫。每個 job 的總時限屬於 handler 與其 resource（ADR-024 Consequences） | `TestASecondSignalEndsTheProcess`（以子 process 送兩次 SIGINT，檢查它被 SIGINT 結束）；`cmd-second-signal-swallowed`。另外，迴圈開始前收到的 signal 原本會以 exit 3「database unavailable」結束，改為停止（exit 0）：`TestRunStopsBeforeStarting`、`cmd-stop-before-start-fails` |
 | **I5** T-016 的 `depends_on` 沒有 T-019 | 已加入 | `planning/tasks.json` |
 
 ## 決策與 owner 知悉

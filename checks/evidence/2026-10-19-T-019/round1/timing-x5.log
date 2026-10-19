@@ -1,0 +1,154 @@
+=== RUN   TestCheckpointsUnderTheLease
+--- PASS: TestCheckpointsUnderTheLease (0.06s)
+=== RUN   TestTheHeartbeatKeepsALongJob
+--- PASS: TestTheHeartbeatKeepsALongJob (3.06s)
+=== RUN   TestALostLeaseStopsTheHandler
+--- PASS: TestALostLeaseStopsTheHandler (0.16s)
+=== RUN   TestFinishAfterTheLeaseExpired
+--- PASS: TestFinishAfterTheLeaseExpired (0.06s)
+=== RUN   TestAHungRenewalCannotOutliveTheLease
+--- PASS: TestAHungRenewalCannotOutliveTheLease (2.55s)
+=== RUN   TestTheHeartbeatGivesUpWithoutTheDatabase
+--- PASS: TestTheHeartbeatGivesUpWithoutTheDatabase (2.55s)
+=== RUN   TestOneFailedRenewalIsSurvived
+--- PASS: TestOneFailedRenewalIsSurvived (5.57s)
+=== RUN   TestASlowRenewalCountsFromItsStart
+--- PASS: TestASlowRenewalCountsFromItsStart (3.57s)
+=== RUN   TestStoppingRequeuesTheJob
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried
+--- PASS: TestStoppingRequeuesTheJob (0.08s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error (0.04s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried (0.01s)
+=== RUN   TestTheFailureRecordIsBounded
+--- PASS: TestTheFailureRecordIsBounded (0.56s)
+=== RUN   TestAnIdleWorkerPauses
+--- PASS: TestAnIdleWorkerPauses (1.04s)
+=== RUN   TestWorkersShareTheQueue
+--- PASS: TestWorkersShareTheQueue (0.15s)
+=== RUN   TestCheckpointsUnderTheLease
+--- PASS: TestCheckpointsUnderTheLease (0.07s)
+=== RUN   TestTheHeartbeatKeepsALongJob
+--- PASS: TestTheHeartbeatKeepsALongJob (3.06s)
+=== RUN   TestALostLeaseStopsTheHandler
+--- PASS: TestALostLeaseStopsTheHandler (0.16s)
+=== RUN   TestFinishAfterTheLeaseExpired
+--- PASS: TestFinishAfterTheLeaseExpired (0.08s)
+=== RUN   TestAHungRenewalCannotOutliveTheLease
+--- PASS: TestAHungRenewalCannotOutliveTheLease (2.55s)
+=== RUN   TestTheHeartbeatGivesUpWithoutTheDatabase
+--- PASS: TestTheHeartbeatGivesUpWithoutTheDatabase (2.55s)
+=== RUN   TestOneFailedRenewalIsSurvived
+--- PASS: TestOneFailedRenewalIsSurvived (5.56s)
+=== RUN   TestASlowRenewalCountsFromItsStart
+--- PASS: TestASlowRenewalCountsFromItsStart (3.56s)
+=== RUN   TestStoppingRequeuesTheJob
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried
+--- PASS: TestStoppingRequeuesTheJob (0.08s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error (0.04s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried (0.02s)
+=== RUN   TestTheFailureRecordIsBounded
+--- PASS: TestTheFailureRecordIsBounded (0.55s)
+=== RUN   TestAnIdleWorkerPauses
+--- PASS: TestAnIdleWorkerPauses (1.02s)
+=== RUN   TestWorkersShareTheQueue
+--- PASS: TestWorkersShareTheQueue (0.10s)
+=== RUN   TestCheckpointsUnderTheLease
+--- PASS: TestCheckpointsUnderTheLease (0.05s)
+=== RUN   TestTheHeartbeatKeepsALongJob
+--- PASS: TestTheHeartbeatKeepsALongJob (3.06s)
+=== RUN   TestALostLeaseStopsTheHandler
+--- PASS: TestALostLeaseStopsTheHandler (0.16s)
+=== RUN   TestFinishAfterTheLeaseExpired
+--- PASS: TestFinishAfterTheLeaseExpired (0.07s)
+=== RUN   TestAHungRenewalCannotOutliveTheLease
+--- PASS: TestAHungRenewalCannotOutliveTheLease (2.55s)
+=== RUN   TestTheHeartbeatGivesUpWithoutTheDatabase
+--- PASS: TestTheHeartbeatGivesUpWithoutTheDatabase (2.54s)
+=== RUN   TestOneFailedRenewalIsSurvived
+--- PASS: TestOneFailedRenewalIsSurvived (5.58s)
+=== RUN   TestASlowRenewalCountsFromItsStart
+--- PASS: TestASlowRenewalCountsFromItsStart (3.56s)
+=== RUN   TestStoppingRequeuesTheJob
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried
+--- PASS: TestStoppingRequeuesTheJob (0.07s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error (0.03s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried (0.01s)
+=== RUN   TestTheFailureRecordIsBounded
+--- PASS: TestTheFailureRecordIsBounded (0.56s)
+=== RUN   TestAnIdleWorkerPauses
+--- PASS: TestAnIdleWorkerPauses (1.03s)
+=== RUN   TestWorkersShareTheQueue
+--- PASS: TestWorkersShareTheQueue (0.13s)
+=== RUN   TestCheckpointsUnderTheLease
+--- PASS: TestCheckpointsUnderTheLease (0.06s)
+=== RUN   TestTheHeartbeatKeepsALongJob
+--- PASS: TestTheHeartbeatKeepsALongJob (3.06s)
+=== RUN   TestALostLeaseStopsTheHandler
+--- PASS: TestALostLeaseStopsTheHandler (0.15s)
+=== RUN   TestFinishAfterTheLeaseExpired
+--- PASS: TestFinishAfterTheLeaseExpired (0.05s)
+=== RUN   TestAHungRenewalCannotOutliveTheLease
+--- PASS: TestAHungRenewalCannotOutliveTheLease (2.54s)
+=== RUN   TestTheHeartbeatGivesUpWithoutTheDatabase
+--- PASS: TestTheHeartbeatGivesUpWithoutTheDatabase (2.55s)
+=== RUN   TestOneFailedRenewalIsSurvived
+--- PASS: TestOneFailedRenewalIsSurvived (5.56s)
+=== RUN   TestASlowRenewalCountsFromItsStart
+--- PASS: TestASlowRenewalCountsFromItsStart (3.56s)
+=== RUN   TestStoppingRequeuesTheJob
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried
+--- PASS: TestStoppingRequeuesTheJob (0.07s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error (0.04s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried (0.01s)
+=== RUN   TestTheFailureRecordIsBounded
+--- PASS: TestTheFailureRecordIsBounded (0.56s)
+=== RUN   TestAnIdleWorkerPauses
+--- PASS: TestAnIdleWorkerPauses (1.02s)
+=== RUN   TestWorkersShareTheQueue
+--- PASS: TestWorkersShareTheQueue (0.14s)
+=== RUN   TestCheckpointsUnderTheLease
+--- PASS: TestCheckpointsUnderTheLease (0.07s)
+=== RUN   TestTheHeartbeatKeepsALongJob
+--- PASS: TestTheHeartbeatKeepsALongJob (3.06s)
+=== RUN   TestALostLeaseStopsTheHandler
+--- PASS: TestALostLeaseStopsTheHandler (0.16s)
+=== RUN   TestFinishAfterTheLeaseExpired
+--- PASS: TestFinishAfterTheLeaseExpired (0.06s)
+=== RUN   TestAHungRenewalCannotOutliveTheLease
+--- PASS: TestAHungRenewalCannotOutliveTheLease (2.55s)
+=== RUN   TestTheHeartbeatGivesUpWithoutTheDatabase
+--- PASS: TestTheHeartbeatGivesUpWithoutTheDatabase (2.54s)
+=== RUN   TestOneFailedRenewalIsSurvived
+--- PASS: TestOneFailedRenewalIsSurvived (5.56s)
+=== RUN   TestASlowRenewalCountsFromItsStart
+--- PASS: TestASlowRenewalCountsFromItsStart (3.56s)
+=== RUN   TestStoppingRequeuesTheJob
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error
+=== RUN   TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried
+--- PASS: TestStoppingRequeuesTheJob (0.07s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_the_context's_error (0.03s)
+    --- PASS: TestStoppingRequeuesTheJob/the_handler_returns_a_failure_that_may_not_be_retried (0.02s)
+=== RUN   TestTheFailureRecordIsBounded
+--- PASS: TestTheFailureRecordIsBounded (0.56s)
+=== RUN   TestAnIdleWorkerPauses
+--- PASS: TestAnIdleWorkerPauses (1.02s)
+=== RUN   TestWorkersShareTheQueue
+--- PASS: TestWorkersShareTheQueue (0.13s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/worker	97.797s
+=== RUN   TestASecondSignalEndsTheProcess
+--- PASS: TestASecondSignalEndsTheProcess (0.02s)
+=== RUN   TestASecondSignalEndsTheProcess
+--- PASS: TestASecondSignalEndsTheProcess (0.02s)
+=== RUN   TestASecondSignalEndsTheProcess
+--- PASS: TestASecondSignalEndsTheProcess (0.03s)
+=== RUN   TestASecondSignalEndsTheProcess
+--- PASS: TestASecondSignalEndsTheProcess (0.02s)
+=== RUN   TestASecondSignalEndsTheProcess
+--- PASS: TestASecondSignalEndsTheProcess (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	1.150s

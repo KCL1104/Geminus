@@ -59,7 +59,7 @@
 
 - **Log（review L8）**：存下的永遠只有上表的 Failure。Handler 的 error 文字會寫進 log（去除控制字元、至多 500 字），所以 handler 的 error 不得含客戶資料、prompt、provider 輸出或 secret（SECURITY §7）；panic 只記 runtime error 的訊息或 panic 值的型別（值可能是 handler 正在處理的資料）與 stack。
 
-- 停止時：取消 handler 的 context，等它返回，在自己的 context（不隨停止取消，時限一個 heartbeat）上記錄結果；若連這也失敗，lease 過期後 reaper 取回。第二個 SIGINT／SIGTERM 立刻結束 process（review I4），給不理會 context 的 handler。
+- 停止時：取消 handler 的 context，等它返回，在自己的 context（不隨停止取消，時限一個 heartbeat）上記錄結果；若連這也失敗，lease 過期後 reaper 取回。第二個 SIGINT／SIGTERM 立刻結束 process（review I4），給不理會 context 的 handler；迴圈開始前收到的 signal 是停止（exit 0），不是 DB 錯誤。
 - 設定在連線與 handler 檢查之前全部驗完，包括 allowlist（review L4）。
 - 目前沒有任何 handler：import profiling 是 T-016，simulation 是 T-023，AI proposal 與 analysis 是 T-025。在那之前 `cmd/worker` 驗完設定後以 exit 2（NOT IMPLEMENTED）拒絕啟動，不會 claim 無法執行的 job。
 
