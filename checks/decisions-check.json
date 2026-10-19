@@ -495,7 +495,7 @@
     },
     "D-055": {
       "status": "proposed",
-      "gate": "T-050 實作前（若改為 P0，工作併入 T-050）",
+      "gate": "T-050 實作前",
       "gates_tasks": [
         "T-050"
       ]

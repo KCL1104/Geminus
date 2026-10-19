@@ -9,7 +9,8 @@
 - **流動單位**：一片板子（entity type `board`）；機櫃變體為一個機櫃（`rack`，§4.3）。P0 不做拼板／分板（合併與拆分，ADR-026 延後項目），一個 entity 就是一片板子。
 - **站別**：SMT → AOI → ICT → FCT → 燒機 → 包裝出貨，含測試失敗 → 除錯 → 重測，與無法修復時的報廢。
 - **代表問題**（PRD §2）：目前 ICT 測試機 2 台、FCT 3 台、FCT 前緩衝 10 片；增加 1 台 ICT 或加大緩衝時，UPH、瓶頸站、WIP、utilization、阻塞時間與重測比例如何改變。
-- **P0 不做**：換線（D-055）、多產品組合、優先權與派工規則、搬運（以 delay node 近似）、作業員技能、服務中斷（preemption）、跨步驟持有 resource（§4.3）。
+- **P0 包含**（皆 PROPOSED）：有限緩衝與阻塞、機台故障、班表、隨時間變化的投入、批次、換線與多產品（每個產品一個 source，D-055）、lognormal 與 Weibull（D-056）。Owner 的方向是盡量保留功能。
+- **P0 不做**：PRD 已列為 P1 的優先權與派工規則（含依產品分組的換線排序）、服務中斷（preemption）、進階 routing；另有 agent 為收斂而延後的項目（§9）。搬運以 delay node 近似；作業員技能不建模；跨步驟持有 resource 見 §4.3。
 
 ## 2. 站別與典型結構
 
@@ -17,7 +18,7 @@
 
 | 站 | 做什麼（概述） | IR 表示（提案） | 用到的 primitive |
 |---|---|---|---|
-| SMT | 錫膏印刷、零件置放、迴焊等組成的一條線 | 一個 process，resource `smt_line`（整條線視為一個 server，線內各機台的平衡不建模） | 故障、班表 |
+| SMT | 錫膏印刷、零件置放、迴焊等組成的一條線 | 一個 process，resource `smt_line`（整條線視為一個 server，線內各機台的平衡不建模） | 故障、班表；多產品時換線（§4.4） |
 | AOI | 自動光學檢查 | process（`aoi`）＋ decision（pass／fail）；fail 經 failure node 到人工修補，再進 ICT | 有限緩衝、故障、班表 |
 | ICT | 電路測試 | 首測 process 與重測 process 共用 `ict_tester`；fail → failure node → 除錯 → rework node → 重測 | 有限緩衝、故障、班表 |
 | FCT | 功能測試 | 同 ICT 的結構，resource `fct_tester` | 同上 |
@@ -158,11 +159,18 @@ Queue 名稱後的數字是 synthetic 的 `capacity`；沒有數字的 queue 為
 | 重測 | process，與系統測試共用 `test_slot` | 同系統測試 |
 | 包裝出貨 | process → shipped | tri(60, 90, 120) |
 
-限制：實務上機櫃常在測試槽內除錯（槽位在除錯期間仍被占用）；P0 的 resource 在每個 process 結束時釋放，無法跨步驟持有，所以除錯期間槽位會被釋放。這會高估槽位的可用時間；P0 的近似是把除錯建成同時需要 `test_slot` 與 `debug_engineer` 的 process（重新取得槽位，等待時間可能偏長），並在結果中標示此近似。跨步驟持有 resource 屬 P1。長時間的測試也讓 finish-first（D-051、D-052）的低估更明顯。
+限制：實務上機櫃常在測試槽內除錯（槽位在除錯期間仍被占用）；P0 的 resource 在每個 process 結束時釋放，無法跨步驟持有，所以除錯期間槽位會被釋放。這會高估槽位的可用時間；P0 的近似是把除錯建成同時需要 `test_slot` 與 `debug_engineer` 的 process（重新取得槽位，等待時間可能偏長），並在結果中標示此近似。跨步驟持有 resource 目前未排入 P0（§9）。長時間的測試也讓 finish-first（D-051、D-052）的低估更明顯。
+
+### 4.4 多產品與換線變體（synthetic）
+
+- 兩個產品族 `board_a`、`board_b`，各自一個 source（release schedule 各為 §4.2 的 0.5 倍 rate），其餘拓樸與 §4.1 相同（站別不分產品）。
+- `smt_line` 的 `setups`：A→B 與 B→A 皆 tri(15, 25, 45) minute，`initial` 為 `board_a`；其他 resource 沒有換線。FIFO 派工下兩種產品交錯，換線次數會偏多；依產品分組的排程屬 PRD P1。
+- 故障修復時間可改用 lognormal（例如 `smt_line` 的 TTR 為 lognormal(mean 25, cv 0.8)），示範 D-056；數值同樣是 synthetic。
+- 這個變體讓「SMT 換線時間減半」也成為可比較的 scenario（D-055 的分布可依 D-057 修改）。
 
 ## 5. Domain 指標（REQ-015）
 
-**符號。** 每個 replication r 的量測視窗 [W, H]，T＝H−W（tick）。Resource ρ：capacity C；班表容量 S(t)（沒有班表時 S≡C）；停機 unit 數 D(t)（沒有故障時 0）；使用中 unit 數 U(t)（現行 `in_use`）；其中被 blocked entity 持有的 K(t)（沒有有限 buffer 時 0），處理中 P(t)＝U(t)−K(t)；可用的排班容量 A(t)＝min(S(t), C−D(t))。積分都在 [W, H]。除非另註，指標是每個 replication 一個值，跨 replications 以現行 MetricSummary 彙整（population＝replication，Student-t CI，SIMULATION_SPEC §5）。
+**符號。** 每個 replication r 的量測視窗 [W, H]，T＝H−W（tick）。Resource ρ：capacity C；班表容量 S(t)（沒有班表時 S≡C）；停機 unit 數 D(t)（沒有故障時 0）；使用中 unit 數 U(t)（現行 `in_use`）；其中被 blocked entity 持有的 K(t)（沒有有限 buffer 時 0）與換線中的 Z(t)（沒有 setups 時 0），處理中 P(t)＝U(t)−K(t)−Z(t)；可用的排班容量 A(t)＝min(S(t), C−D(t))。積分都在 [W, H]。除非另註，指標是每個 replication 一個值，跨 replications 以現行 MetricSummary 彙整（population＝replication，Student-t CI，SIMULATION_SPEC §5）。
 
 **站別的 primary resource**：§3.4 規則 1 的 resource；指標以它代表該站。
 
@@ -177,26 +185,28 @@ Queue 名稱後的數字是 synthetic 的 `capacity`；沒有數字的 queue 為
 | 阻塞比例（站） | ∫K(t)dt ／ (C·T)（primary resource） | 模型至少有一個有限 buffer（D-049） | 沒有有限 buffer：`NO_FINITE_BUFFERS`（模型假設無限緩衝，阻塞未建模） |
 | 平均阻塞時間（站） | 完整阻塞（開始 ≥ W、結束 ≤ H）的平均時間（minute） | 同上 | 同上；沒有完整阻塞：`NO_COMPLETED_BLOCK_IN_WINDOW` |
 | 停機比例（站） | ∫D(t)dt ／ (C·T) | resource 有 `breakdowns`（D-051） | `NO_BREAKDOWN_MODEL` |
+| 換線比例（站） | ∫Z(t)dt ／ (C·T) | resource 有 `setups`（D-055） | `NO_SETUP_MODEL` |
+| 換線次數（站） | 視窗內開始的換線數（每個 replication 一個值） | 同上 | 同上 |
 | Availability（站） | ∫A(t)dt ／ ∫S(t)dt（時間可用率） | 同上 | `NO_BREAKDOWN_MODEL`；∫S＝0：`NO_SCHEDULED_TIME_IN_WINDOW` |
 | 缺料（starved）比例（站） | ∫max(0, A(t)−U(t))dt ／ (C·T) | primary resource 只被該站（首測與重測）使用，且這些 process 只需要它一個 resource | 否則：`STARVATION_UNDEFINED_SHARED_RESOURCE`（改以「閒置比例」顯示同一公式） |
-| 下班比例（站） | 1 −（處理＋阻塞＋停機＋閒置），處理＝∫P／(C·T) | — | — |
+| 下班比例（站） | 1 −（處理＋換線＋阻塞＋停機＋閒置），處理＝∫P／(C·T) | — | — |
 | Scheduled utilization（站） | ∫min(U, S)dt ／ ∫S dt（D-052） | resource 有 calendar | 沒有 calendar 時與 `utilization_mean` 相同，不另列；∫S＝0：`NO_SCHEDULED_TIME_IN_WINDOW` |
 | Overtime（站） | ∫max(U−S, 0)dt ／ 60,000（minute） | resource 有 calendar | 同上 |
 | Line balance | LBᵣ＝mean_s(w_s) ／ max_s(w_s)，w_s＝∫min(P, S)dt ／ ∫S dt（主線各站的 primary resource，每個 resource 只算一次） | 至少 2 個主線站可辨識 | 少於 2 站：`TOO_FEW_STATIONS`；max w＝0：`NO_PROCESSING_IN_WINDOW`；站的 role 缺：`STATION_ROLE_MISSING` |
 
 說明：
 
-- **五種狀態的比例相加為 1**：處理 P、阻塞 K、停機 D、閒置 max(0, A−U)、下班（其餘）。Finish-first 讓 U 可能暫時超過 A（overtime 或尚未停機的故障），此時閒置為 0、下班比例相應變小；因為 U＋D ≤ C 恆成立，下班比例不會小於 0。
+- **六種狀態的比例相加為 1**：處理 P、換線 Z、阻塞 K、停機 D、閒置 max(0, A−U)、下班（其餘）。Finish-first 讓 U 可能暫時超過 A（overtime 或尚未停機的故障），此時閒置為 0、下班比例相應變小；因為 U＋D ≤ C 恆成立，下班比例不會小於 0。
 - **閒置只在專用 resource 時才叫缺料**：專用且單一 resource 的站，若有 unit 閒置而 buffer 有件，dispatch 會在同一 tick 授予，所以閒置必然是 buffer 空；共用 resource 或多 resource bundle 的閒置可能是在等別的 resource（D-038 (m)），不能稱為缺料。
 - **候選瓶頸**：w_s 最大的站（同值取 node ID 較小者），在 UI 顯示為「工作比例最高的站」；這是常見的判讀方式，不是證明。
 - **不稱 OEE**：P0 不計算 OEE。Utilization 不是 OEE；availability 只是時間可用率，沒有 performance（理想 cycle time）與 quality 因子。UI 與 AI analyst 都不得把任何指標標為 OEE。
 - **FPY 是輸入**：機率路由下，模擬出來的首測通過比例只是輸入機率加上抽樣誤差，不是預測；P0 把它當模型輸入顯示，並在 §7 與觀測值比對。實際的通過次數統計延後到 IR `metrics[]` 與 Result 的對應（T-029，CB-22）。
-- **沒有的功能不填 0**：模型沒有故障、有限緩衝或班表時，對應指標回 unavailable 並說明模型的假設，而不是顯示 100% availability 或 0 阻塞（REQ-015：不捏造）。
+- **沒有的功能不填 0**：模型沒有故障、有限緩衝、換線或班表時，對應指標回 unavailable 並說明模型的假設，而不是顯示 100% availability 或 0 阻塞（REQ-015：不捏造）。
 - Lead time、queue wait、utilization、failure／rework count 沿用現行定義；lead time 從投入（arrival）起算，含 release backlog。報廢率需要 abandoned 件數，現行 Result 沒有，延後。
 
 ## 6. Station event log 的 canonical fields（import mapping）
 
-兩種紀錄。對應的 canonical-event 欄位中，`end_timestamp` 與 `shift` 是 D-059 提議新增的 optional 欄位（尚未改 schema）。
+兩種紀錄。對應的 canonical-event 欄位中，`end_timestamp`、`shift` 與 `product` 是 D-059 提議新增的 optional 欄位（尚未改 schema）。
 
 **作業紀錄**（一片板子在一站的一次作業或測試）：
 
@@ -211,14 +221,14 @@ Queue 名稱後的數字是 synthetic 的 `capacity`；沒有數字的 queue 為
 | result | 測試站必填 | `outcome` | `pass`／`fail`；其他值為 data-quality issue |
 | shift | 選填 | `shift`（新增） | 班別標籤，只用於 §7 的分組 |
 | duration | 選填 | `duration_ms` | 與 end−start 不一致時為 data-quality issue（TWIN_IR_SPEC §7） |
-| product／family | 選填 | `metadata` | P0 只有一個產品族（D-055） |
+| product／family | 多產品時必填 | `product`（新增，D-059） | 對應到 IR 的 entity type；推論換線與各產品的 cycle time 需要它（D-055） |
 | operator ID | **不匯入** | — | 個人資料；mapping 時保持未對應，不進 dataset、prompt 或 telemetry |
 
 **停機紀錄**（一台設備的一段停機）：`case_id`＝設備 ID（canonical-event 要求 case_id），`event_type`＝`downtime`，`resource_id`＝設備 ID，`stage`＝站別，`timestamp`＝停機開始，`end_timestamp`＝恢復，`outcome`＝原因碼（選填）。計畫停機（休息、保養）若有原因碼可辨識，推論時排除於故障之外。
 
 **Data-quality 檢查（提案）**：end < start；同一 serial 的作業時間重疊；同一設備的作業數超過推論的 capacity；serial 的站別順序與拓樸不符；停機與作業在同一設備上重疊（停機中仍有作業）；觀測期間內的資料缺口。研究稿指出微小停機常未被記錄、彙總的 OEE 不足以建模故障（未驗證）；因此 P0 只用逐筆停機紀錄估計故障參數，缺少時 `breakdowns` 由使用者輸入或回 needs_input，不從 OEE 反推。
 
-**可推導的量（T-027 的範圍，此處只作參考）**：各站 service time 樣本＝end−start（empirical dataset）；首測與重測以 serial＋station 依 start 排序區分；routing 機率與 FPY 由 result 計數；TTR＝恢復−停機開始；TTF＝上次恢復到下次停機開始的日曆時間（與 D-051 的時鐘一致）；release rate 由第一站的 start 依時段計數；設備並行數由同時進行的作業推估 capacity。推論結果一律經 proposal 與人類批准（D-009），不直接改 Twin。
+**可推導的量（T-027 的範圍，此處只作參考）**：各站 service time 樣本＝end−start（empirical dataset）；首測與重測以 serial＋station 依 start 排序區分；routing 機率與 FPY 由 result 計數；TTR＝恢復−停機開始；TTF＝上次恢復到下次停機開始的日曆時間（與 D-051 的時鐘一致）；release rate 由第一站的 start 依時段計數；換線時間：同一設備上相鄰兩件的 product 不同時，前一件 end 到下一件 start 的間隔（含可能的閒置，只能當上限，需使用者確認）；設備並行數由同時進行的作業推估 capacity。推論結果一律經 proposal 與人類批准（D-009），不直接改 Twin。
 
 **時間對應。** Model 時間沒有時區。比對與推論時，使用者指定一個 anchor（例如 model t=0 ＝ 某個含 offset 的 RFC 3339 時刻，且為班表 period 的起點）；跨 DST 變換的視窗在 P0 回 data-quality issue。
 
@@ -250,7 +260,9 @@ Queue 名稱後的數字是 synthetic 的 `capacity`；沒有數字的 queue 為
 
 ## 9. 延後與限制
 
-換線與產品組合（D-055）；lognormal／Weibull（D-056）；服務中斷（故障、交班）；每班不同人數；假日、時區與 DST；明確投入表；capacity 0 的 buffer；拼板／分板；跨步驟持有 resource（機櫃在槽內除錯）；優先權與派工規則；作業員技能；AGV 與搬運系統（P0 以 delay）；實際的 FPY 與重測次數統計、報廢率、逐期序列比較（需要 IR `metrics[]` 與 Result 的對應，T-029）；設備在 SMT 線內的細部平衡。
+- **PRD 已列為 P1、維持 P1**：服務中斷（故障、交班、換線的 preemption）；優先權與派工規則（含依產品分組的換線排序）；進階 routing；MES／CFX 等 connectors。
+- **Agent 為收斂而延後、不屬 PRD P1（owner 可要求納入 P0）**：每班不同人數；假日與例外日（時區與 DST 仍不用）；明確投入表；capacity 0 的 buffer；拼板／分板；跨步驟持有 resource（機櫃在槽內除錯）；實際的 FPY 與重測次數統計、報廢率、逐期序列比較（需要 IR `metrics[]` 與 Result 的對應，T-029）；AGV 與搬運系統（P0 以 delay）。
+- **不建模**：作業員技能；設備在 SMT 線內的細部平衡。
 
 ## 10. 本文件提出的 decisions
 
@@ -270,7 +282,7 @@ Queue 名稱後的數字是 synthetic 的 `capacity`；沒有數字的 queue 為
 **問題。** 現行 canonical-event 一筆只有一個時間，沒有結束時間與班別；停機紀錄沒有 serial；這些怎麼對應？
 
 **選項。**
-- A：canonical-event 新增 optional `end_timestamp`（RFC 3339，≥ timestamp，與 duration_ms 並存時要一致）與 `shift`（字串 ≤ 64）；pack 定義 `event_type`（`operation`、`downtime`）與 `outcome`（`pass`、`fail`、原因碼）詞彙；停機紀錄的 `case_id` 用設備 ID；operator ID 不匯入（§6）。後果：大多數一列一筆作業的匯出可以直接 mapping；schema 是 additive 變更。
+- A：canonical-event 新增 optional `end_timestamp`（RFC 3339，≥ timestamp，與 duration_ms 並存時要一致）、`shift`（字串 ≤ 64）與 `product`（字串 ≤ 128，mapping 時對應到 entity type；多產品時必填，D-055）；pack 定義 `event_type`（`operation`、`downtime`）與 `outcome`（`pass`、`fail`、原因碼）詞彙；停機紀錄的 `case_id` 用設備 ID；operator ID 不匯入（§6）。後果：大多數一列一筆作業的匯出可以直接 mapping；schema 是 additive 變更。
 - B：不改 schema：每筆作業拆成 start 與 end 兩個 event，班別放 `metadata`。後果：使用者要先自行轉檔；`metadata` 沒有 transform（CB-28）。
 - C：沿用 `duration_ms`，新增「兩欄相減」的 transform。後果：transform 需要參數（CB-28 目前不支援），且失去結束時刻的原值。
 

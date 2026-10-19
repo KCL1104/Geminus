@@ -30,8 +30,8 @@
 | 班表 | 根層 `calendars[]`、resource `calendar_id` | 週期性上班區間；交班時 finish-first；新增 scheduled utilization，原 utilization 不變 | D-052 | T-049 |
 | 投入排程 | source `arrival.schedule` | 週期性分段常數 rate，以累積 rate 反函數產生；每個 arrival 一次 draw | D-053 | T-049 |
 | 批次 | process `batch` | min／max／max_wait；一批一個 request、一次 service draw；整批離開才釋放 | D-054 | T-050 |
-| 換線 | — | P1（建議） | D-055 | — |
-| lognormal／Weibull | — | P1（建議） | D-056 | — |
+| 換線 | resource `setups` | P0：sequence-dependent 換線矩陣、每個 unit 自己的換線狀態、FIFO 派工；stream (resource ID, `setup/<u>`) | D-055 | T-050 |
+| lognormal／Weibull | distribution `lognormal`（mean、cv）、`weibull`（shape、scale） | P0：反函數法、每個樣本一次 draw、固定的 exp 與 AS241 | D-056 | T-048 |
 | Scenario 與 risk | patch allowlist | 新參數可在 scenario 中修改，risk 至少 medium（擴大 buffer 除外） | D-057 | T-047–T-050 |
 
 以下逐項列出問題、選項與後果、建議、對決定性與 digest 的影響、golden vectors 草案與 SimPy reference 的做法。Golden vectors 的數字由手算得出，是草案；實作時另以 `scripts/engine_reference.py`（逐運算移植）與 kernel 輸出交叉驗證後才凍結，不得看結果再改預期值。
@@ -57,7 +57,7 @@
 
 **Differential（每個 T-047–T-050 都要做）。**
 1. 把 des-go-0.1.0 的 kernel 與 replication 凍結成 test-only 副本（T-021 複核保留舊 kernel 的同一做法），以 `kernel_check_test.go` 的隨機模型產生器（bundle、顯式 queue、零時間 service、decision 迴圈、failure／rework）跑不含新欄位的模型，observation 序列逐筆相同；件數在實作任務中固定（T-021 的複核約 50,000 個）。
-2. 「中性設定」必須與不設定逐筆相同：buffer capacity ≥ `max_active_entities`（不可能擋住）；breakdown 的 TTF 為 constant 且晚於 horizon（事件不排程、不取 seq）；calendar 只有一個涵蓋整個 period 的 shift（容量不變，不排事件）；單段的 deterministic 投入排程，rate 與 period 選可精確表示、1/rate 為整數 tick 的值（例如每 minute 0.5 件、period 60 minute），與同值的 constant interarrival 同時刻（兩者都不抽 RNG）。批次沒有中性設定（批次 request 取得 FIFO 位置的時點不同，D-054），不列入。
+2. 「中性設定」必須與不設定逐筆相同：buffer capacity ≥ `max_active_entities`（不可能擋住）；breakdown 的 TTF 為 constant 且晚於 horizon（事件不排程、不取 seq）；calendar 只有一個涵蓋整個 period 的 shift（容量不變，不排事件）；單段的 deterministic 投入排程，rate 與 period 選可精確表示、1/rate 為整數 tick 的值（例如每 minute 0.5 件、period 60 minute），與同值的 constant interarrival 同時刻（兩者都不抽 RNG）；單一產品、沒有 `initial` 的 setups（永不換線，D-055）。批次沒有中性設定（批次 request 取得 FIFO 位置的時點不同，D-054），不列入。
 3. GOLDEN-001／002 與既有 des、metrics 測試在新 kernel 上照跑，依上面的判準比對鎖定 digest。
 
 **SimPy。** 不適用；本項的 reference 是凍結的舊 kernel。
@@ -88,7 +88,7 @@
 **選項。**
 - A（BAS）：顯式 queue node 加 `capacity`（1–100000），只計等待中、尚未授予的 entity，缺＝無限；entity 的路由走到已滿的 buffer 時，留在出發的 node 成為 blocked：process 保留整個 bundle，source 形成 release backlog，delay 不占資源；buffer 有空位時依 blocked 的 FIFO 移入。後果：符合產線「做完的板子留在機台上，直到下一站有位置」；不需預留機制；不改 routing stream 的抽樣時點。
 - B（BBS）：下游 buffer 有空位（或預留一格）才開始服務。後果：授予時要跨 process 預留下游空位，與 all-or-nothing bundle、resource-wise FIFO 的交互複雜；經 decision 的機率路由在服務前不知道去哪，要提早抽 routing 或預留所有可能的下游，改變 routing stream 的抽樣時點；不適合有測試失敗分支的產線。
-- C：以「下游 slot resource」模擬（process 的 requires 加入下游 buffer slot）。後果：現行 kernel 在每個 process 結束時釋放全部 resource，slot 無法跨 process 持有；需要「跨步驟持有 resource」這種更一般的新 primitive（P1）。
+- C：以「下游 slot resource」模擬（process 的 requires 加入下游 buffer slot）。後果：現行 kernel 在每個 process 結束時釋放全部 resource，slot 無法跨 process 持有；需要「跨步驟持有 resource」這種更一般的新 primitive（未排入 P0，見 Consequences）。
 
 **建議：A。** 理由：BAS 是產線的常見假設、工程師容易理解；它只在「進入 buffer」這一步加檢查，routing 的抽樣時點、resource-wise FIFO 與 bundle 規則都不變，沒有被擋時與現行完全相同。
 
@@ -147,8 +147,8 @@
 
 **選項（服務中 entity 的處理）。**
 - A：每個 unit 一組獨立的 alternating renewal，時鐘依日曆時間（從修好起算，不論忙閒、班表、阻塞）；故障時若有不在使用中的 unit（含下班的）立即停機；全部在使用中時 finish-first：等下一個被釋放的 unit 停機（多個等待中的故障依故障時刻 FIFO），修復時間從停機起算；服務中的工件照常完成。後果：kernel 的匿名 unit 就夠，不需 unit identity、不需取消已排程的事件；每次故障的停機時間＝TTR，產能損失與 preempt-resume 相同，只有那一件工件完成得較早；長時間 service（燒機、機櫃測試）會低估中斷的影響。
-- B：preempt-resume（中斷、修好後做完剩餘時間）。後果：需要 unit identity（哪個工件被中斷）、取消並重排 SERVICE_COMPLETE（heap 要 lazy deletion）、規定 bundle 其他 resource 在中斷期間保留或釋放；與阻塞、班表、批次的交互多；P1。
-- C：preempt-restart（中斷後重做或報廢）。後果：同 B，另需重抽 service（RNG 消耗改變）或報廢路由；P1。
+- B：preempt-resume（中斷、修好後做完剩餘時間）。後果：需要 unit identity（哪個工件被中斷）、取消並重排 SERVICE_COMPLETE（heap 要 lazy deletion）、規定 bundle 其他 resource 在中斷期間保留或釋放；與阻塞、班表、批次的交互多；屬 PRD P1 的 preemption。
+- C：preempt-restart（中斷後重做或報廢）。後果：同 B，另需重抽 service（RNG 消耗改變）或報廢路由；屬 PRD P1 的 preemption。
 
 時鐘的其他選項：忙碌時間（需要每個 unit 的忙碌累計，即 unit identity）、次數制（每 N 件）；都延後。
 
@@ -180,14 +180,14 @@
 **選項（表示）。**
 - A：根層 `calendars[]`（`id`、`period`、`shifts`：period 內的 [start, end) 上班區間，以 model 的 time_unit 表示），resource 以 `calendar_id` 參照；上班時 S(t)＝capacity，下班時 0。後果：多站共用一份班表，有共同的「線的排班時數」可作 UPH 分母；無法表達每班人數不同（白班 2 人、夜班 1 人），延後為 optional 的每班容量，不破壞 A 的文件。
 - B：每個 resource 自己的週期性容量表（[{at, capacity}]）。後果：可表達每班不同人數；每個 resource 重複一份；沒有共同的線班表，UPH 每排班小時要另外指定分母。
-- C：絕對日期的班表（含假日、例外）與時區。後果：需要時區、DST 與日期函式，違反「以 tick 表示、不用 wall clock」（T-049 scope）；P1。
+- C：絕對日期的班表（含假日、例外）與時區。後果：需要時區、DST 與日期函式，違反「以 tick 表示、不用 wall clock」（T-049 scope）；時區與 DST 不採用，假日等絕對日期的例外未排入 P0（見 Consequences）。
 
 **建議：A。** 理由：多站共用同一份班表是產線的常態，也給「排班小時」一個明確的分母；每班人數不同可以之後以 optional 欄位加入，不破壞 A 的文件。
 
 **語義（A）。**
 - t=0 對應 period 的 offset 0（model 本地時間；沒有時區、DST、假日）。Period ≤ 365 天；shifts 至少一個、依 start 排序、不重疊、0 ≤ start < end ≤ period（跨午夜的夜班拆成兩段）；以 `model.Ticks` 量化，量化後仍須嚴格遞增；至多 100 段（D-029 類的候選上限）。違反回 `CALENDAR_INVALID`；未知 `calendar_id` 回 `UNKNOWN_REFERENCE`。沒有 `calendar_id` 的 resource 全天可用（D-017：不暗加班表）。
 - Kernel 只在 S 改變時排 CAPACITY_CHANGE（priority 15）；同時間只有一個待處理的變化事件。
-- **交班選項**：(a) finish-first：服務中與被擋住的 entity 照常完成或等待，超出排班的忙碌時間記為 overtime；(b) preempt-resume：與 D-051 B 相同的機制，P1；(c) 做不完就不開始：要在授予前知道 service 長度並改變抽樣時點，P1。**建議 (a)。**
+- **交班選項**：(a) finish-first：服務中與被擋住的 entity 照常完成或等待，超出排班的忙碌時間記為 overtime；(b) preempt-resume：與 D-051 B 相同的機制，屬 PRD P1 的 preemption；(c) 做不完就不開始：要在授予前知道 service 長度並改變抽樣時點，未排入 P0（見 Consequences）。**建議 (a)。**
 - **分母選項**：(i) 原 `utilization_mean`（∫inUse/(C·T)）不變，另對有班表的 resource 加 `scheduled_utilization` ＝ ∫min(inUse, S)dt/∫S dt 與 overtime ＝ ∫max(inUse−S, 0)dt；(ii) 有班表的 resource 改用 ∫S 當 `utilization_mean` 的分母：同一欄位對不同 resource 意義不同，舊的使用者會誤讀；(iii) 只有 C·T：單班滿載的站顯示約 33%，工程師會覺得錯。**建議 (i)。**
 - 與故障：故障時鐘在下班時照走；授予條件 `inUse + units ≤ min(S, C−down)`。
 
@@ -203,7 +203,7 @@
 
 **選項。**
 - A：週期性分段常數 rate，以累積 rate 反函數產生：source 的 `arrival.schedule`（`period`、`segments: [{start, rate}]`，rate 為每個 model time_unit 的期望件數，`process`：`poisson` 或 `deterministic`），與 `arrival.distribution` 二擇一。令 Λ(t)＝∫₀ᵗ λ(s)ds、a₀＝0，第 k 件 aₖ＝aₖ₋₁＋Xₖ，Xₖ＝1（deterministic）或 −ln(1−U)（poisson，從該 source 的 arrival stream 抽一次），時刻 τₖ＝min{t : Λ(t) ≥ aₖ}，量化為 tick 後至少比上一件晚 1 tick。後果：每件恰一次 draw，不同 scenario 的第 k 件用同一個 draw（配對保留）；poisson 是精確的非齊次 Poisson process，deterministic 是精確的 takt；不支援 triangular／empirical interarrival；一次投入一整批以短時段高 rate 近似。
-- B：明確的投入表（[{at, quantity}]，週期或絕對）。後果：最貼近生產計畫、不用 RNG；長 horizon 的 takt 投入需要大量列（每 30 秒一件、一週約 2 萬列）；可作為 P1 附加。
+- B：明確的投入表（[{at, quantity}]，週期或絕對）。後果：最貼近生產計畫、不用 RNG；長 horizon 的 takt 投入需要大量列（每 30 秒一件、一週約 2 萬列）；未排入 P0，可在 A 之外附加（見 Consequences）。
 - C：各時段各自的 interarrival 分布，跨段時丟棄並在下一段起點重抽。後果：支援任意分布；跨段規則對非指數分布有扭曲；draw 的消耗取決於跨段次數，scenario 之間的配對被打亂。
 
 **建議：A。** 理由：規劃者通常以「每小時投入多少」描述投入；每件恰一次 draw，使 scenario 之間的比較保持配對；沒有跨段規則的歧義。
@@ -226,7 +226,7 @@
 **選項。**
 - A：process 加 `batch: {min_size, max_size, max_wait}`。Buffer 中等待的工件達 max_size，或最老的已等 max_wait 且至少 min_size 件時，「就緒」並建立一個 batch request（一個 bundle、取得一個 FIFO 位置）；授予時依 FIFO 取 min(等待數, max_size) 件；整批一次 service draw、同時開始與結束；完成後依 FIFO 逐件路由；整批都離開（含被擋住的）才釋放 bundle。後果：符合燒機室；batch request 在「就緒」時才取得 FIFO 位置（一般 process 是每件進入時）；每個批次 process 同時至多一個未授予的 batch request。
 - B：只有固定批量（湊滿 max_size 才開始，沒有 max_wait）。後果：最簡單；低投入時段（夜班）可能永遠湊不滿，不真實。
-- C：合併成一個 entity（assemble／separate）。後果：需要合併與拆分、ID 對照，trace 與 lead time 另定；P1（拼板／分板也屬此類）。
+- C：合併成一個 entity（assemble／separate）。後果：需要合併與拆分、ID 對照，trace 與 lead time 另定；未排入 P0（拼板／分板也屬此類，見 Consequences）。
 
 **建議：A。** 理由：燒機室的典型規則就是「滿批或等太久就開」；成員保留自己的 ID，lead time、trace 與 3D 回放都不需新的 entity 概念。
 
@@ -243,33 +243,59 @@
 
 **SimPy。** Buffer 為 `simpy.Store`；一個 batcher process 等到件數 ≥ max_size，或件數 ≥ min_size 且最老的已等 max_wait（以 timeout 事件喚醒），再 request chamber、取出至多 max_size 件、timeout(service)、逐件放到下一站。確定性案例逐值比對，隨機案例以預先固定的容差比對。
 
-### D-055 換線（setup／changeover）是否進 P0
+### D-055 換線（setup／changeover，P0）
 
-**問題。** High-mix SMT 的換線時間是否在 P0 建模？
+Owner 的方向（2026-10-19，經 coordinator 轉達）：時程充裕，盡量保留功能，換線規劃在 P0；PRD 已列為 P1 的優先權、preemption 與進階 routing 仍為 P1。以下語義仍為 PROPOSED。
 
-**選項。**
-- A：延到 P1。後果：示範只用一個產品族；換線損失若必要，以班表中的計畫停機或較長的 cycle time 近似，並標示為近似。
-- B：P0 最小版：process 在 entity_type 與上一件不同時加一段固定的 setup 時間。後果：kernel 的 unit 是匿名的，「上一件」只能以 process 為單位，capacity > 1 時語義模糊；source 需要產品組合（mix），目前沒有。
-- C：P0 完整版：setup matrix（from→to）、依 unit 記錄狀態、依產品分組的派工規則。後果：需要 unit identity 與非 FIFO 的派工，與 resource-wise FIFO 衝突；多個新 decision，工作量最大。
-
-**建議：A。** 理由：需要產品組合、unit identity 與派工規則三個尚不存在的基礎；P0 的示範問題（加測試機、加緩衝）不依賴換線。延後項目：產品組合、sequence-dependent setup、依產品分組的派工、換線的停機統計。
-
-**決定性與 digest。** P0 無影響。**Golden／SimPy。** 不適用（P1 時另立 decision）。
-
-### D-056 lognormal 與 Weibull 是否進 P0
-
-**問題。** 修復時間與故障間隔常用 lognormal、Weibull 描述；是否在 P0 加入？
+**問題。** 產品怎麼表示；換線何時發生、時間怎麼決定、發生在哪個 unit；與 resource-wise FIFO、bundle、故障、班表、批次的交互？
 
 **選項。**
-- A：延到 P1，P0 維持 constant、exponential、triangular、empirical；TTF／TTR 由停機紀錄以 empirical 表示，沒有資料時用 exponential 或 triangular。
-- B：P0 加 lognormal（以 mean 與 CV 參數化）。
-- C：P0 加 lognormal 與 Weibull。
+- A：Resource 層的 sequence-dependent setup：resource 的 optional `setups`（`initial`、`default`、`transitions: [{from, to, distribution}]`）；產品＝entity 的 `entity_type`（多產品以多個 source 表示，每個 source 一種 entity type，現有 IR 已支援）；有 setups 的 resource 記錄每個 unit 的換線狀態；授予時選 unit（優先狀態相符者，否則 index 最小的可用 unit），狀態不同時先抽換線時間再抽 service，unit 在換線＋service 期間都在使用中；派工仍是 FIFO。後果：涵蓋每台機各自的狀態與換線矩陣；resource-wise FIFO 與 all-or-nothing 不變；FIFO 下產品交錯會造成較多換線（實務上以排程分組降低，分組派工屬 PRD P1 的 priority／dispatch）。
+- B：Process 層的固定 setup：process 在 entity_type 與上一件不同時加一段 setup。後果：較簡單；capacity > 1 時「上一件」只能以 process 計，不符合每台機各自的狀態；無法表達換線矩陣。
+- C：A＋依產品分組的派工（campaign、最小換線排序）。後果：最接近實務排程，但屬 PRD P1 的 priority／dispatch rules，且與 resource-wise FIFO 衝突；P1。
 
-B、C 的後果：Weibull 的反函數需要 pow（＝exp(y·ln x)），lognormal 需要常態分布的反函數（有理逼近）與 exp；每個都要固定演算法（不用平台 `math.Exp`／`math.Pow`、不融合 FMA）、Python 逐運算移植、vectors、`make backend-numeric` 的組語檢查、參數範圍與 365 天上限的 validator 規則，以及新的 engine_version。
+**建議：A。** 理由：每台機各自的換線狀態與換線矩陣是工程師對換線的基本期待；只改「授予後、service 前」這一步與 unit 的選擇，派工規則不變。
 
-**建議：A。** 理由：P0 的主線是「匯入紀錄 → empirical」，參數化分布的示範價值低，數值 profile 的成本高。批准 B 或 C 時，工作併入 T-048。
+**語義（A）。**
+- IR：resource 的 optional `setups`：`initial`（entity type，可省略）、`default`（distribution，可省略）、`transitions`（from ≠ to、(from, to) 不重複、皆為既有 entity type）。換線時間取 (目前狀態, 產品) 的 transition，沒有列出時用 default，default 也沒有時為 0；狀態相同不換線。`initial` 省略時，每個 unit 的第一件不換線並把狀態設為該產品。違反回 `SETUP_INVALID`；未知 entity type 回 `UNKNOWN_REFERENCE`。
+- P0 限制（違反回 `SETUP_INVALID`）：有 setups 的 resource 在每個 requires 中 units＝1；一個 process 至多需要一個有 setups 的 resource；批次 process 不得需要有 setups 的 resource（批內可能混產品）。
+- **Unit identity**：只對有 setups 的 resource，記錄每個 unit 的狀態（使用中、停機、閒置）與換線狀態；容量規則仍是計數（`inUse + units ≤ min(S, C−down)`，D-051、D-052）。授予時在可用 unit 中取狀態與產品相符者 index 最小的，否則取可用 unit 中 index 最小的。D-051 的故障語義不變，只是確定是哪個 unit：立即停機時取閒置 unit 中 index 最小者；等待中的故障由下一個被釋放的 unit 承擔；停機不改變該 unit 的換線狀態。
+- **抽樣與事件**：授予時若需換線，先從 (resource ID, `setup/<u>`) 抽換線時間，再照現行從 (process, service) 抽 service；完成事件排在換線＋service 之後，仍是一個 SERVICE_COMPLETE，不新增事件種類。授予時記 Setup observation（resource、unit、時間），再記 ServiceStart（現行）；queue wait 仍算到授予為止。
+- **統計**（只對有 setups 的 resource）：視窗內開始的換線次數、換線的 unit 時間比例 ∫(換線中的 unit)dt/(C·T)（跨 W／H 的部分依重疊計）、完整換線時間的平均。ELECTRONICS_LINE §5 的站別狀態把「處理」分成處理與換線。
+- **與其他功能**：故障與交班 finish-first（換線與 service 都做完）；被擋時 unit 照 D-049 持有。Scenario 可依 D-057 的規則修改 `setups` 中的分布（replace，risk 至少 medium）；新增或刪除 setups 走 draft→publish。
+- **Event log**：推論換線需要每個 serial 的產品（D-059 的 optional `product`）。
 
-**決定性與 digest。** A 無影響。**Golden／SimPy。** B、C 時：每個 sampler 10⁵ 次 draw 的 SHA-256（同 T-020）；SimPy 端以 numpy／scipy 的分布做統計比對。
+**決定性與 digest。** 只影響有 setups 的 resource。單一產品且沒有 `initial` 的模型永不換線、不記 Setup observation，與沒有 setups 時逐筆相同（D-047 的中性設定）；unit 的選擇是固定規則，不依 map 順序。實作於 T-050（其 scope 已含「換線若納入 P0」）。
+
+**Golden vectors。** G-S1：1 unit；`src_a` interarrival 10、`src_b` interarrival 20（constant）；service 2；A→B 與 B→A 換線 3：A1 於 10–12（第一件不換線，狀態 A）；t=20 B1 的 arrival seq 較小（t=0 排程）先進 buffer，於 20–25（換線 3＋service 2），A2 於 25–30；t=30 的 A3 不換線（30–32）；t=40 B2 先於 A4。G-S2：2 unit、狀態分別為 A、B：B 的工件選 unit 1、不換線。G-S3：transitions 優先於 default、default 缺時為 0、`initial` 有與無。G-S4：中性（單一產品）與沒有 setups 逐筆相同。G-S5：capacity +1 時 unit 0..C−1 的 setup stream 序列不變。G-S6：等待中的故障落在換線中的 unit：做完換線與 service 後才停機。
+
+**SimPy。** Unit 選擇是自訂規則（SimPy 的 Store／FilterStore 不直接支援「優先相符，否則最小 index」），以 Python 自寫的 dispatcher 管理 unit 狀態，搭配 SimPy 的時間推進；確定性案例逐值比對，隨機案例比對換線次數、換線比例與 throughput（預先固定容差）。
+
+**仍為 P1。** 依產品分組的派工與換線最小化排序（PRD P1：priority／dispatch）；換線中斷（preemption）。
+
+### D-056 lognormal 與 Weibull（P0）
+
+Owner 的方向同 D-055：納入 P0。以下語義仍為 PROPOSED。
+
+**問題。** 修復時間與故障間隔常以 lognormal、Weibull 描述；參數化、抽樣演算法與 numerical profile 怎麼定，才能維持「跨平台逐 bit 相同、每個樣本一次 draw」？
+
+**選項。**
+- A：兩者皆以反函數法、每個樣本一個 U：Weibull x＝scale·(−ln(1−U))^(1/shape)，冪次以 exp(ln(y)/shape) 計算；lognormal 以 mean 與 cv 參數化，σ²＝ln(1＋cv²)、μ＝ln(mean)−σ²/2，x＝exp(μ＋σ·Φ⁻¹(U))，Φ⁻¹ 用固定的有理逼近（Wichura AS241）。exp 採 Go `math.exp` 的 pure-Go 演算法、每個乘積明確捨入（同 D-038 (g) 對 ln 的做法）。後果：stream 的消耗與現有 sampler 相同（一個樣本一次 draw）；需要固定的 exp 與 AS241、Python 逐運算移植、vectors、組語檢查與新的 engine_version。
+- B：lognormal 以 Box–Muller 產生常態。後果：每個樣本兩個 U（或要快取一個），stream 消耗與其他 sampler 不同，另需固定的 sin／cos；不採用。
+- C：只加其中一個。後果：工作約少一半；另一個常見的模型仍缺。
+
+**建議：A。** 理由：兩者是故障間隔與修復時間最常見的參數化分布，owner 要求盡量保留功能；反函數法讓「一個樣本一次 draw」與 golden 的方法都不變；mean 與 cv 是工程師較熟悉的參數。
+
+**語義（A）。**
+- IR：distribution 新增 `{"type": "lognormal", "mean", "cv"}` 與 `{"type": "weibull", "shape", "scale"}`，參數以 model time_unit 表示（cv、shape 無單位）；`mean`、`scale` > 0；候選範圍 0 < cv ≤ 10、0.1 ≤ shape ≤ 20（待 vectors 與溢位分析後定案）；可用於所有分布欄位（interarrival、service、delay、TTF、TTR、換線）。
+- D-033：兩者的支援為 (0, ∞)，視為恆 > 0；樣本量化後至少 1 tick（同 D-038 (a)）；超過 365 天以 365 天＋1 tick 表示（D-038 (b)）。Validation：參數有限、> 0、在範圍內，`mean`／`scale` 換算後不超過 365 天（D-029）；違反回 `DISTRIBUTION_INVALID`。
+- Numerical profile：exp、ln、sqrt 與 AS241 的運算順序與常數（bit pattern）寫入 vectors；不呼叫平台 `math.Exp`／`math.Pow`；`make backend-numeric` 一併檢查。改動任一即換 engine_version。實作併入 T-048（故障參數最常用到）。
+
+**決定性與 digest。** 只影響使用這兩種分布的模型；其他 sampler 與 stream 不變。
+
+**Golden vectors。** 同 T-020 的做法：每個 sampler 的 12-draw 向量與 10⁵ 次 draw 的 SHA-256（含量化前的 binary64 值）；10⁶ 個 exp 輸入的 SHA-256 與邊界值（下溢、上溢、次正規數）；AS241 在 U 接近 0、0.5、1 的值；由 mean、cv 換算出的 μ、σ 的 bit pattern。
+
+**SimPy。** Python reference 逐運算移植以求逐 bit 相同；另以 numpy／scipy 等獨立實作的分布，對 10⁵ 個樣本做 KS 檢定與前兩階動差比對（預先固定容差），確認 profile 在統計上正確。
 
 ### D-057 新參數的 scenario allowlist 與 risk
 
@@ -294,8 +320,9 @@ B、C 的後果：Weibull 的反函數需要 pow（＝exp(y·ln x)），lognorma
 
 ## Consequences
 
-- **批准後的 contract 變更（T-046 phase 2）**：`model-ir.schema.json`（queue `capacity`、resource `breakdowns` 與 `calendar_id`、根層 `calendars`、source `arrival.schedule`、process `batch`、`metrics[]` 的 `system_wip`，D-058）；`simulation.schema.json`（Result 的 optional 新成員、trace 的新事件類型）；validator codes（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`）與 D-023 的排序；patch allowlist（D-057）；valid／invalid fixtures；`make ts-contracts`。
+- **批准後的 contract 變更（T-046 phase 2）**：`model-ir.schema.json`（queue `capacity`、resource `breakdowns`、`calendar_id` 與 `setups`、根層 `calendars`、source `arrival.schedule`、process `batch`、distribution 的 `lognormal` 與 `weibull`、`metrics[]` 的 `system_wip`，D-058）；`canonical-event.schema.json`（D-059）；`simulation.schema.json`（Result 的 optional 新成員、trace 的新事件類型）；validator codes（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`、`SETUP_INVALID`）與 D-023 的排序；patch allowlist（D-057）；valid／invalid fixtures；`make ts-contracts`。
 - **Engine**：T-047–T-050 各升一次 engine_version minor（des-go-0.2.0 起）；鎖定檔不重新產生；凍結的舊 kernel 保留在 test 中；`make simulation-reference-test` 由 SimPy reference 取代（SimPy 的版本與授權在引入時固定並記入 THIRD_PARTY_NOTICES，不用 floating latest）。
 - **效能**：解除阻塞在 dispatch 內連鎖、每個 unit 的故障事件與班表事件增加事件數；全部計入 event budget，T-037 的 benchmark 需涵蓋代表性的產線模型。
-- **限制（延後）**：preemption（故障與交班）、換線、lognormal／Weibull、每班不同人數、假日與時區、明確投入表、capacity 0 的 buffer、合併／拆分（拼板）、跨步驟持有 resource、優先權與派工規則、搬運（P0 用 delay node）、實際的 FPY 與重測次數統計（T-029 的 metrics 對應）。
+- **PRD 已列為 P1、維持 P1**：preemption（故障、交班與換線的中斷）、優先權與派工規則（含依產品分組的換線排序）、進階 routing、connectors（MES／CFX 等）。
+- **Agent 為了收斂而延後、不屬 PRD P1（owner 可要求納入 P0）**：每班不同人數（D-052）、明確投入表（D-053 B）、capacity 0 的 buffer（D-049）、合併／拆分（拼板，D-054 C）、跨步驟持有 resource（機櫃在槽內除錯）、假日與例外日（絕對日期；時區與 DST 仍不用，T-049 scope）、實際的 FPY 與重測次數統計、報廢率、逐期的模擬／觀測序列（後三者需要 T-029 的 metrics 對應）、搬運系統（P0 用 delay node）。
 - **風險**：finish-first 在長 service（燒機、機櫃測試）下低估故障與交班的影響，UI 與文件須標示；`BLOCKING_CYCLE` 是保守條件，可能拒絕實際不會卡住的模型，錯誤訊息要說明「每個迴圈至少一個無限 buffer」。

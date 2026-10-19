@@ -252,7 +252,7 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-049 實作前。**
 
-問題：班表在 IR 中的表示（tick、無時區）、交班時服務中的 entity、utilization 的分母？選項：A 根層共用的 `calendars[]`（週期性上班區間）＋ resource 的 `calendar_id`；B 每個 resource 自己的容量表；C 絕對日期與時區（P1）。建議 A，交班 finish-first（記 overtime），原 `utilization_mean` 不變，另加 scheduled utilization 與 overtime；每班不同人數延後。
+問題：班表在 IR 中的表示（tick、無時區）、交班時服務中的 entity、utilization 的分母？選項：A 根層共用的 `calendars[]`（週期性上班區間）＋ resource 的 `calendar_id`；B 每個 resource 自己的容量表；C 絕對日期與時區（時區不採用，假日等例外未排入 P0）。建議 A，交班 finish-first（記 overtime），原 `utilization_mean` 不變，另加 scheduled utilization 與 overtime；每班不同人數延後。
 
 #### D-053 — 隨時間變化的投入
 
@@ -264,19 +264,19 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-050 實作前。**
 
-問題：批量上下限、等待上限、成員 ID 與 trace、lead time 與 utilization？選項：A min／max／max_wait，就緒時一個 batch request、一次 service draw、整批離開才釋放；B 只有固定批量；C 合併成一個 entity（P1）。建議 A：成員保留自己的 entity ID，批次 ID `r<rep>/<process>/b<n>`；lead time 與 queue wait 照每件計；utilization 為 chamber 忙碌，另有批量統計。
+問題：批量上下限、等待上限、成員 ID 與 trace、lead time 與 utilization？選項：A min／max／max_wait，就緒時一個 batch request、一次 service draw、整批離開才釋放；B 只有固定批量；C 合併成一個 entity（未排入 P0，owner 可要求納入）。建議 A：成員保留自己的 entity ID，批次 ID `r<rep>/<process>/b<n>`；lead time 與 queue wait 照每件計；utilization 為 chamber 忙碌，另有批量統計。
 
-#### D-055 — 換線是否進 P0
+#### D-055 — 換線（P0）
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation / Product。Gate：T-050 實作前。**
 
-選項：A 延到 P1；B P0 最小版（entity_type 改變時加 setup）；C P0 完整版（setup matrix 與派工規則）。建議 A：需要產品組合、unit identity 與非 FIFO 派工，三者都不存在；示範用一個產品族，必要時以計畫停機近似並標示。
+Owner 表示時程充裕、盡量保留功能，換線規劃在 P0；PRD 已列 P1 的優先權、preemption、進階 routing 仍為 P1。問題：產品怎麼表示、換線何時發生在哪個 unit、與 FIFO 和其他功能的交互？選項：A resource 層的 sequence-dependent 換線（`setups` 矩陣、每個 unit 自己的換線狀態、FIFO 派工）；B process 層的固定 setup（無法表示每台機的狀態與矩陣）；C A 加依產品分組的派工（屬 PRD P1）。建議 A：產品＝entity_type（每個產品一個 source）；授予時優先選狀態相符的 unit，先抽換線再抽 service，不新增事件種類；stream 為 (resource ID, `setup/<u>`)；單一產品的模型與現行逐筆相同。
 
-#### D-056 — lognormal／Weibull 是否進 P0
+#### D-056 — lognormal 與 Weibull（P0）
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-048 實作前。**
 
-選項：A 延到 P1；B 加 lognormal；C 加 lognormal 與 Weibull。建議 A：TTF／TTR 以停機紀錄的 empirical 表示；每個新分布都要固定的 exp／pow 演算法、Python 移植、vectors 與新的 engine_version，示範價值低。
+依 owner 的方向納入 P0。問題：參數化、抽樣演算法與 numerical profile？選項：A 兩者皆以反函數法、每個樣本一次 draw（lognormal 以 mean、cv 參數化，Φ⁻¹ 用固定的 AS241；Weibull 的冪次以固定的 exp 與 ln 計算）；B lognormal 用 Box–Muller（每個樣本兩個 U，不採用）；C 只加其中一個。建議 A：stream 消耗與 golden 方法不變；需要固定的 exp、Python 逐運算移植、vectors 與新的 engine_version；實作併入 T-048。
 
 #### D-057 — 新參數的 scenario allowlist 與 risk
 
@@ -294,7 +294,7 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 
 **狀態：PROPOSED（2026-10-19）。負責角色：Import / Domain。Gate：電子產線的 T-017 mapping、T-027 inference 與 T-052 前（任務 gate 待補）。**
 
-選項：A canonical-event 新增 optional `end_timestamp` 與 `shift`，pack 定義 event_type／outcome 詞彙，停機紀錄以設備 ID 為 case_id；B 不改 schema、每筆拆成 start／end 兩個 event；C 沿用 duration_ms 並新增兩欄相減的 transform。建議 A；operator ID 不匯入；常數 transform 屬 CB-28。
+選項：A canonical-event 新增 optional `end_timestamp`、`shift` 與 `product`（多產品時必填，D-055），pack 定義 event_type／outcome 詞彙，停機紀錄以設備 ID 為 case_id；B 不改 schema、每筆拆成 start／end 兩個 event；C 沿用 duration_ms 並新增兩欄相減的 transform。建議 A；operator ID 不匯入；常數 transform 屬 CB-28。
 
 #### D-060 — 模擬與觀測比對（REQ-025）
 

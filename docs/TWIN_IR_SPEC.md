@@ -51,7 +51,7 @@ requires 每項為 {resource_id,units}。同一 process 不可重複列同一 re
 
 ## 3. Distributions / units
 
-P0 僅 constant(value)、exponential(mean)、triangular(min,mode,max)、empirical(samples_ref)。lognormal、calendar-dependent、mixtures 為 P1（lognormal／Weibull 是否提前見 D-056，PROPOSED，建議維持 P1）。
+P0 僅 constant(value)、exponential(mean)、triangular(min,mode,max)、empirical(samples_ref)。lognormal、calendar-dependent、mixtures 為 P1（lognormal 與 Weibull 提前到 P0 的提案見 D-056，PROPOSED）。
 
 Schema 驗型別與非負值；semantic validator 另驗 min≤mode≤max、finite numbers、empirical 可解析且非空、unit 可轉換。interarrival 必須嚴格正值；zero service/delay 可以存在，但可達的 zero-time cycle 不能執行。時間換算和 rounding 由 SIMULATION_SPEC 固定。
 
