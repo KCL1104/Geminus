@@ -1,0 +1,45 @@
+aad-ignores-the-cookie	KILLED	× opens what it sealed, for that cookie only 11ms
+previous-key-ignored	KILLED	× opens values of the previous key, not of a retired or unknown one 7ms
+size-unchecked	KILLED	× refuses a value too large for one cookie 10ms
+non-canonical-base64	SURVIVED	UNEXPECTED
+three-keys	KILLED	× refuses three keys without quoting the key 11ms
+short-key	KILLED	× refuses a short key without quoting the key 7ms
+duplicate-key-ids	KILLED	× refuses two keys with one ID without quoting the key 8ms
+idle-unchecked	KILLED	× ends after 12 hours idle or 7 days in all 9ms
+absolute-unchecked	KILLED	× ends after 12 hours idle or 7 days in all 9ms
+future-session	KILLED	× ends after 12 hours idle or 7 days in all 8ms
+login-never-expires	KILLED	× round-trips for ten minutes 8ms
+return-to-other-host	KILLED	× refuses a return path it would not have stored 11ms
+return-to-backslash	KILLED	× refuses a return path it would not have stored 8ms
+not-httponly	KILLED	× round-trips with the cookie attributes ADR-018 requires 8ms
+extra-session-fields	KILLED	× refuses a sealed value of the wrong shape 8ms
+csrf-without-header	KILLED	× {"origin":"https://app.test.invalid"} → false 45ms
+csrf-any-origin	KILLED	× {"x-geminus-request":"1"} → false 62ms
+csrf-cross-site-fetch	KILLED	× {"origin":"https://app.test.invalid","x-geminus-request":"1","sec-fetch-site":"cross-site"} → false 78ms
+csrf-only-delete	KILLED	× refuses a state-changing request from anywhere but the app 67ms
+logout-without-csrf	KILLED	× is refused cross-site and then revokes nothing 191ms
+proxy-forwards-cookies	KILLED	× forwards with the session's token and nothing of the browser's credentials 123ms
+proxy-forwards-authorization	SURVIVED	UNEXPECTED
+proxy-returns-set-cookie	KILLED	× forwards with the session's token and nothing of the browser's credentials 253ms
+proxy-returns-location	KILLED	× forwards with the session's token and nothing of the browser's credentials 138ms
+proxy-any-path	KILLED	× refuses the path [".."] 65ms
+unauthenticated-keeps-the-cookie	KILLED	× answers 401 in the API's envelope without a session 123ms
+touch-every-request	KILLED	× forwards with the session's token and nothing of the browser's credentials 204ms
+api-down-is-500	KILLED	× answers 503 when the API does not answer 162ms
+never-refresh	KILLED	× refreshes under a minute left and keeps the rotated token 50ms
+refresh-not-shared	KILLED	× refreshes once for concurrent and late requests with the old token 117ms
+refresh-shared-forever	KILLED	× refreshes again after the reuse window, which the provider refuses as a reuse 113ms
+refresh-failure-remembered	KILLED	× does not remember a failed refresh: the next request tries again 106ms
+logout-without-revocation	KILLED	× revokes the refresh token, clears the cookie and returns the provider's logout URL 198ms
+callback-uses-the-request-host	KILLED	× sends the configured redirect URI, whatever host the request came in on 119ms
+provider-error-ignored	KILLED	× refuses the provider's error 81ms
+id-token-signature-unchecked	KILLED	× refuses an ID token with a signature by another key 85ms
+no-audience	KILLED	× sends the browser to the provider with PKCE, state and nonce 243ms
+no-subject-check	SURVIVED	UNEXPECTED
+any-expiry	KILLED	× refuses a token response without expires_in 143ms
+http-anywhere	KILLED	× refuses BFF_APP_ORIGIN=http://app.test.invalid without quoting a value 115ms
+mixed-http	KILLED	× allows plain http only when everything is on loopback 101ms
+scopes-without-openid	KILLED	× refuses BFF_OIDC_SCOPES=profile email without quoting a value 95ms
+origin-with-a-path	KILLED	× refuses BFF_APP_ORIGIN=https://app.test.invalid/path without quoting a value 81ms
+total=43 unexpected=3
+exit=1

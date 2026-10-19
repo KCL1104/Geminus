@@ -35,6 +35,8 @@ export class FakeProvider {
   idToken: IdTokenChange = {};
   expiresIn: number | undefined = 600;
   failRevocation = false;
+  /** The token endpoint is down for refresh grants (503). */
+  failRefresh = false;
   issueRefreshToken = true;
 
   /** What /authorize does after the user signs in: a code for these parameters. */
@@ -107,6 +109,7 @@ export class FakeProvider {
         return this.json(200, this.tokens(code.nonce));
       }
       if (body.get("grant_type") === "refresh_token") {
+        if (this.failRefresh) return this.json(503, { error: "temporarily_unavailable" });
         const t = this.refresh.get(body.get("refresh_token") ?? "");
         if (t === undefined || t.state !== "live") {
           if (t?.state === "spent") for (const v of this.refresh.values()) if (v.family === t.family) v.state = "revoked";

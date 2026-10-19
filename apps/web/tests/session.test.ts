@@ -19,6 +19,17 @@ import {
 
 const key = (byte: number) => Buffer.alloc(32, byte).toString("base64url");
 const keysOf = (raw: string) => parseSealKeys(raw);
+
+/** Another base64url spelling of the same bytes: only the last character's unused bits differ. */
+function nonCanonical(b64: string): string {
+  const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const want = Buffer.from(b64, "base64url");
+  for (const c of abc) {
+    const other = b64.slice(0, -1) + c;
+    if (other !== b64 && Buffer.from(other, "base64url").equals(want)) return other;
+  }
+  throw new Error("no spare bits in " + b64);
+}
 const now = Date.UTC(2026, 9, 19, 12);
 
 const session: Session = {
@@ -54,6 +65,8 @@ describe("SESSION_KEYS", () => {
     ["standard base64", `a:${Buffer.alloc(32, 0xfb).toString("base64")}`],
     ["padding", `a:${key(1)}=`],
     ["two keys with one ID", `a:${key(1)},a:${key(2)}`],
+    // The same 32 bytes spelled with other spare bits in the last character.
+    ["a non-canonical spelling", `a:${nonCanonical(key(1))}`],
   ])("refuses %s without quoting the key", async (_, raw) => {
     const err = await keysOf(raw as string).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(SessionConfigError);
@@ -104,6 +117,7 @@ describe("seal", () => {
       `${v}.${id}.${iv.slice(1)}.${data}`,
       `${v}.${id}.${iv}.${data}=`,
       `${v}.${id}.${iv}.${data.slice(0, 10)}`,
+      `${v}.${id}.${iv}.${nonCanonical(data)}`,
       `${v}.${id}.${iv}.${"A".repeat(MAX_COOKIE_BYTES)}`,
     ]) {
       expect(await unseal(keys, SESSION_COOKIE, bad)).toBeNull();

@@ -2,7 +2,7 @@
 
 狀態：ACCEPTED（T-014 agent 選定；owner KCL1104 於 2026-10-15 同意）。日期：2026-10-15。原報告把 TanStack Query、Zustand、Tailwind/shadcn 列為 TBD（DECISIONS_AND_TBD.md「Frontend state / UI libraries」）。
 
-2026-10-18 補記：瀏覽器如何取得 credentials 改由 [ADR-018](ADR-018-browser-session-and-oidc-provider.md)（BFF）決定：T-043 起 `lib/api/client.ts` 改呼叫同源 BFF（`credentials: 'same-origin'`、`X-Geminus-Request`），瀏覽器不持有 token、不再自行設 `Authorization`；下表其餘責任不變。
+2026-10-18 補記：瀏覽器如何取得 credentials 改由 [ADR-018](ADR-018-browser-session-and-oidc-provider.md)（BFF）決定：T-043 起 `lib/api/client.ts` 改呼叫同源 BFF（`credentials: 'same-origin'`、`X-Geminus-Request`），瀏覽器不持有 token、不再自行設 `Authorization`；下表其餘責任不變。2026-10-19（T-043）已實作：client 只呼叫同源的 `/api/v1/…`，`NEXT_PUBLIC_API_BASE_URL` 與 `lib/config.ts` 已移除；BFF 在 `lib/session`（只在伺服器端，`tests/server-only.test.ts`）。
 
 ## Decision
 
@@ -10,7 +10,7 @@ T-014 不引入 state 或 UI library，只用 React 19 與自寫的小型模組�
 
 | 模組 | 責任 |
 |---|---|
-| `lib/api/client.ts` | 唯一的 HTTP 出口：沒有 API URL 或 session 時不送 request；帶 `Authorization` 與 `X-Organization-ID`（只是 selector，D-008），不送 cookie；route 參數先過 D-001 ID 檢查；draft 回應必須有與 body revision 相符的 ETag |
+| `lib/api/client.ts` | 唯一的 HTTP 出口：只呼叫同源 BFF 的 `/api/v1/…`；沒有 session 時不送 request；帶 `X-Organization-ID`（只是 selector，D-008）與 `X-Geminus-Request`，`credentials: 'same-origin'`，不持有也不送 token（T-043 前帶 `Authorization`、不送 cookie）；route 參數先過 D-001 ID 檢查；draft 回應必須有與 body revision 相符的 ETag |
 | `lib/api/problem.ts` | 所有失敗收斂為 `Problem`；狀態碼對應與 schema `x-http-status` 由測試鎖定；錯誤碼與狀態不符、未知碼、非 API 錯誤 body 一律 `protocol`，不猜 |
 | `lib/state/draft.ts` | remote（server 已存）／inFlight（已送出）／unsaved（本機）三者分開；409 或遠端較新 revision 進入 `conflict`，保留全部本機編輯，不自動 rebase；只有使用者明確 reload／discard 才離開 |
 | `lib/state/selection.ts` | 2D／3D 共用的 `selectedEntityId`，只接受目前 IR 的 node／resource／flow ID（TEST-025 的前置） |

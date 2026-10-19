@@ -5,7 +5,7 @@ export type Locale = "en" | "zh-Hant";
 export const locales: Locale[] = ["en", "zh-Hant"];
 
 /** The routes there are; pages that need a session show their signed-out state. */
-export const routes = ["/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery"];
+export const routes = ["/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/auth/error?reason=expired"];
 
 export async function open(page: Page, path: string, locale: Locale): Promise<void> {
   await page.context().addCookies([{ name: "geminus_locale", value: locale, url: "http://127.0.0.1:3100" }]);

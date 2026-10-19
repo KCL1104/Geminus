@@ -175,6 +175,7 @@ export function bff(deps: BffDeps) {
 const requestHeaders = ["accept", "content-type", "if-match", "idempotency-key", "x-organization-id", "last-event-id"];
 // Not Location: a redirect from the API would name its internal address.
 const responseHeaders = ["content-type", "etag", "x-request-id", "retry-after", "content-disposition", "cache-control"];
+// A segment cannot start with ".", so "." and ".." are not segments.
 const SEGMENT = /^[A-Za-z0-9_~-][A-Za-z0-9._~-]*$/;
 const methods = new Set(["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE"]);
 
@@ -187,7 +188,7 @@ async function proxy(deps: BffDeps, refreshes: Refreshes, request: Request, path
   }
   // Each segment is one path segment of the API: no "." or "..", no
   // separators smuggled in encoded, nothing to reach outside /v1.
-  if (path.length === 0 || path.some((s) => !SEGMENT.test(s) || s === "." || s === "..")) {
+  if (path.length === 0 || path.some((s) => !SEGMENT.test(s))) {
     return apiError("INVALID_REQUEST", "invalid API path", now);
   }
   let session = await readSession(keys, cookieValue(request, SESSION_COOKIE), now);

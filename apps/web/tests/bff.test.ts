@@ -196,6 +196,13 @@ describe("callback", () => {
     expect(cookieNamed(res, LOGIN_COOKIE)).toMatch(/Max-Age=0$/);
   };
 
+  it("sends the configured redirect URI, whatever host the request came in on", async () => {
+    const { login, code, state } = await startLogin();
+    // Behind a proxy the request may name an internal host.
+    const res = await e.h.callback(new Request(`http://10.0.0.7:3000/auth/callback?code=${code}&state=${state}`, { headers: { cookie: `${LOGIN_COOKIE}=${login}` } }));
+    expect(res.headers.get("location")).toBe(`${APP}/projects`);
+  });
+
   it("refuses a callback without its login, or after ten minutes", async () => {
     const { login, code, state } = await startLogin();
     await refused(await callback(`code=${code}&state=${state}`, null), "expired");
@@ -322,6 +329,7 @@ describe("proxy", () => {
     for (const value of [null, "garbage", await seal(e.deps.keys, LOGIN_COOKIE, {})]) {
       const res = await e.h.proxy(get("projects", value), ["projects"]);
       expect(res.status).toBe(401);
+      expect(cookieNamed(res, SESSION_COOKIE)).toMatch(/Max-Age=0$/);
       const body = (await res.json()) as { error: { code: string; request_id: string } };
       expect(body.error.code).toBe("UNAUTHENTICATED");
       expect(body.error.request_id).toMatch(REQUEST_ID);
@@ -466,6 +474,25 @@ describe("proxy", () => {
       expect(e.api.requests).toHaveLength(0);
       // Reuse revoked the whole family at the provider.
       expect(e.provider.refreshState(s.refreshToken as string)).toBe("revoked");
+    });
+
+    it("refreshes again after the reuse window, which the provider refuses as a reuse", async () => {
+      const { value } = await expiring(1000);
+      expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(200);
+      e.clock.now += REFRESH_REUSE_MS;
+      // The browser kept the old cookie past the window: its token is spent.
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      expect(res.status).toBe(401);
+      expect(e.provider.tokenCalls("refresh_token")).toBe(2);
+    });
+
+    it("does not remember a failed refresh: the next request tries again", async () => {
+      const { value } = await expiring(1000);
+      e.provider.failRefresh = true;
+      expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(401);
+      e.provider.failRefresh = false;
+      expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(200);
+      expect(e.provider.tokenCalls("refresh_token")).toBe(2);
     });
 
     it("ends a session without a refresh token when its access token expires", async () => {
