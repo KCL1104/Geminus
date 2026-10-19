@@ -49,19 +49,6 @@ func (e *env) adminExec(t *testing.T, sql string, args ...any) {
 	}
 }
 
-// storedText is the length of the draft as PostgreSQL prints its jsonb.
-func (e *env) storedText(t *testing.T, modelID string) int {
-	t.Helper()
-	var n int
-	err := postgres.OpenPool(e.admin).Tx(context.Background(), pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
-		return tx.QueryRow(ctx, `SELECT length(ir::text) FROM twin.model_drafts WHERE model_id=$1`, modelID).Scan(&n)
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return n
-}
-
 // sinks is a patch adding n sink nodes, each with domain attributes that
 // hold count copies of number.
 func sinks(prefix string, n, count int, number string) []byte {
@@ -73,24 +60,22 @@ func sinks(prefix string, n, count int, number string) []byte {
 	return []byte("[" + strings.Join(ops, ",") + "]")
 }
 
-// jsonb prints a stored IR with spaces after ',' and ':' and numbers in
-// full (1e300 as 301 digits): checks run on the canonical form, the one
-// the hash and the 2 MiB limit are about (T-012 review M1). Numbers make
-// the stored text pass the limit with a small draft; the spaces alone do
-// it near the limit (the reviewer's probe R11), through the same path.
-func TestStoredTextIsNotWhatIsChecked(t *testing.T) {
+// Numbers are stored as written: jsonb printed 1e300 as 301 digits and
+// made this 55 KB draft 2.8 MB of text (T-012 review M1). Stored as its
+// canonical text (D-040), the draft is the size that was checked, and it
+// publishes; a reset to the same content as a version works.
+func TestNumbersAreStoredAsWritten(t *testing.T) {
 	e := setup(t)
 	ctx := context.Background()
 	sc := e.scope(tenant.Editor)
 
-	// About 55 KB canonical, about 2.8 MB as jsonb text.
 	m := e.create(t, sc, createBody)
 	d, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 1, sinks("b", 4, 2300, "1e300"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n := e.storedText(t, m.ID); n <= validate.MaxIRBytes {
-		t.Fatalf("fixture: the stored text is only %d bytes", n)
+	if stored, _ := e.storedIR(t, `SELECT ir, hash FROM twin.model_drafts WHERE model_id=$1`, m.ID); len(stored) != len(d.IR) {
+		t.Fatalf("the stored draft is %d bytes, its canonical form %d", len(stored), len(d.IR))
 	}
 	if _, _, err := e.publish(sc, m.ID, 2, m.LatestVersion.ID, key()); err != nil {
 		t.Errorf("publishing a %d-byte draft: %v", len(d.IR), err)

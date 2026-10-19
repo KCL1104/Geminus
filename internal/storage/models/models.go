@@ -34,7 +34,7 @@ type Version struct {
 	SchemaVersion               string
 	ParentVersionID             *string
 	SourceProposalID            *string
-	IR                          []byte // the IR as stored (jsonb)
+	IR                          []byte // the canonical text its hash covers (D-040)
 	Hash                        string
 	DatasetBindings             []model.DatasetBinding // byte order of logical_ref (D-034)
 	CreatedBy                   string

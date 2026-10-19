@@ -322,4 +322,23 @@ UPDATE twin.model_drafts SET issues=(SELECT jsonb_agg(jsonb_build_object('code',
 SELECT pg_temp.check((SELECT jsonb_array_length(issues) FROM twin.model_drafts WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}')=1000,
   'a draft keeps 1000 issues');
 
+-- D-040 (migration 0005): the IR is stored as the canonical text its hash
+-- covers, and the database checks the hash against the stored bytes. The
+-- same JSON value in other bytes is refused.
+SELECT pg_temp.check(count(*)=2 AND bool_and(data_type='text'), 'model_versions.ir and model_drafts.ir are text')
+  FROM information_schema.columns
+  WHERE table_schema='twin' AND column_name='ir' AND table_name IN ('model_versions','model_drafts');
+SELECT pg_temp.check((SELECT ir FROM twin.model_versions WHERE id='{{MV_A1}}')='{{IR_A1}}', 'a version reads back the bytes it was given');
+SELECT pg_temp.must_fail($q$INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,ir,hash,created_by)
+  VALUES ('mv_01M4YDQK00TA00000000000041','{{ORG_A}}','{{MDL_A2}}',2,'0.1','{{MV_A21}}',replace('{{IR_A21}}',',',', '),'{{IR_A21_HASH}}','{{USR_A}}')$q$,'23514');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET ir=replace(ir,',',', ') WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,'23514');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET hash='{{IR_A2_HASH}}' WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,'23514');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET ir='[]', hash='sha256:'||encode(sha256(convert_to('[]','UTF8')),'hex')
+  WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,'23514');
+SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET ir='{"model_id":', hash='sha256:'||encode(sha256(convert_to('{"model_id":','UTF8')),'hex')
+  WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,'22P02');
+UPDATE twin.model_drafts SET ir='{{IR_A2}}', hash='{{IR_A2_HASH}}' WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}';
+SELECT pg_temp.check((SELECT ir FROM twin.model_drafts WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}')='{{IR_A2}}',
+  'a draft takes another canonical IR with its hash');
+
 ROLLBACK;

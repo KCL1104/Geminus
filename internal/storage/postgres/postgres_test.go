@@ -3,6 +3,8 @@ package postgres_test
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -269,8 +271,10 @@ func TestGuardsAreClassified(t *testing.T) {
 	db := postgres.OpenPool(pool(t, 2))
 	a, b := newTenant(t, db), newTenant(t, db)
 	model, version := newID(t, "mdl"), newID(t, "mv")
-	ir := fmt.Sprintf(`{"schema_version":"0.1","model_id":%q}`, model)
-	hash := "sha256:" + strings.Repeat("0", 64)
+	// D-040: the canonical text and the hash of its bytes, which the database checks.
+	ir := fmt.Sprintf(`{"model_id":%q,"schema_version":"0.1"}`, model)
+	sum := sha256.Sum256([]byte(ir))
+	hash := "sha256:" + hex.EncodeToString(sum[:])
 	if err := db.Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
 		if err := a.scope(ctx, tx, "twin_api"); err != nil {
 			return err

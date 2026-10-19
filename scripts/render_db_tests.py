@@ -51,8 +51,10 @@ def values() -> dict[str, str]:
     for name, model, title in [("IR_A1", "MDL_A", "Model A v1"), ("IR_A2", "MDL_A", "Model A v2"),
                                ("IR_A21", "MDL_A2", "Model A2 v1"), ("IR_B1", "MDL_B", "Model B v1")]:
         doc = dict(minimal, model_id=v[model], name=title)
-        v[name] = json.dumps(doc, separators=(",", ":"), ensure_ascii=False)
-        v[name + "_HASH"] = "sha256:" + hashlib.sha256(rfc8785.dumps(doc)).hexdigest()
+        # D-040: stored as the canonical text the hash covers.
+        canonical = rfc8785.dumps(doc)
+        v[name] = canonical.decode("utf-8")
+        v[name + "_HASH"] = "sha256:" + hashlib.sha256(canonical).hexdigest()
     v["INV_IR"], v["INV_IR_HASH"] = v["IR_A1"], v["IR_A1_HASH"]
     # Dataset object hashes are shape-only: the database cannot see object bytes.
     v["H1"], v["H2"], v["H3"] = ("sha256:" + c * 64 for c in "123")

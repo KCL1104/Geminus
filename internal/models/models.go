@@ -395,7 +395,7 @@ func (s *Service) PatchDraft(ctx context.Context, sc tenant.Scope, requestID, mo
 		if d.Revision != expected {
 			return ErrConflict
 		}
-		current, err := canonicalIR(d.IR)
+		current, err := storedIR(d.IR, d.Hash)
 		if err != nil {
 			return err
 		}
@@ -529,7 +529,7 @@ func (s *Service) Publish(ctx context.Context, sc tenant.Scope, requestID, key, 
 		if d.Hash == base.Hash {
 			return ErrNoChanges
 		}
-		candidate, err := canonicalIR(d.IR)
+		candidate, err := storedIR(d.IR, d.Hash)
 		if err != nil {
 			return err
 		}
@@ -607,7 +607,7 @@ func (s *Service) advance(ctx context.Context, tx tenant.Tx, m tenant.Membership
 
 // syncDraft makes the draft version v's content, one revision later.
 func (s *Service) syncDraft(ctx context.Context, tx tenant.Tx, m tenant.Membership, d store.Draft, v store.Version) (store.Draft, error) {
-	ir, err := canonicalIR(v.IR)
+	ir, err := storedIR(v.IR, v.Hash)
 	if err != nil {
 		return store.Draft{}, err
 	}
@@ -838,15 +838,19 @@ func publicModel(mdl store.Model, d store.Draft, latestVersion int64) Model {
 		LatestVersion: LatestVersion{ID: mdl.LatestVersionID, Version: latestVersion}, CreatedAt: timestamp(mdl.CreatedAt)}
 }
 
-// canonicalIR is a stored IR in the form its hash covers (RFC 8785):
-// jsonb keeps the value but not the bytes, so what was stored is not what
-// is read back.
-func canonicalIR(stored []byte) (jsontext.Value, error) {
-	return hashing.Canonical(stored)
+// storedIR is a stored IR as it was checked and hashed: its canonical text
+// (RFC 8785), read back byte for byte (D-040). The database checks the hash
+// on every write; it is checked again here, so bytes the hash does not
+// cover are an error, never served.
+func storedIR(ir []byte, hash string) (jsontext.Value, error) {
+	if got := hashing.Sum(ir); got != hash {
+		return nil, fmt.Errorf("the stored IR hashes to %s, not its stored hash %s", got, hash)
+	}
+	return jsontext.Value(ir), nil
 }
 
 func publicDraft(d store.Draft, latestVersionID string) (Draft, error) {
-	ir, err := canonicalIR(d.IR)
+	ir, err := storedIR(d.IR, d.Hash)
 	if err != nil {
 		return Draft{}, fmt.Errorf("models: draft of %s: %w", d.ModelID, err)
 	}
@@ -859,7 +863,7 @@ func publicDraft(d store.Draft, latestVersionID string) (Draft, error) {
 }
 
 func publicVersion(v store.Version) (Version, error) {
-	ir, err := canonicalIR(v.IR)
+	ir, err := storedIR(v.IR, v.Hash)
 	if err != nil {
 		return Version{}, fmt.Errorf("models: version %s: %w", v.ID, err)
 	}

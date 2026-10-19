@@ -773,7 +773,7 @@
       "id": "T-013",
       "title": "Model HTTP contract / client integration",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Platform",
       "planning_window": "Week 4",
       "depends_on": [

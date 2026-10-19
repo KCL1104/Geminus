@@ -15,6 +15,9 @@ import (
 // Capped is capped, for its boundary test.
 var Capped = capped
 
+// StoredIR is storedIR, for its test without a database.
+var StoredIR = storedIR
+
 // CommitVersion creates the model's next version from ir and manifest the
 // way an approval will (T-026): not from the draft, then the draft rule of
 // advance. It stands in for that path until it exists.

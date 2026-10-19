@@ -1,6 +1,6 @@
 # Database: migrations, SQL tests, execution boundary
 
-`migrations/` holds the schema (0001 core, 0002 RLS and grants, 0003 the draft's semantic issues for T-012 / D-028). Until T-006 is accepted they are drafts that have only run on disposable `dt_test_*` databases; from then on a migration applied to any persistent environment is never edited — changes go into a new numbered file.
+`migrations/` holds the schema (0001 core, 0002 RLS and grants, 0003 the draft's semantic issues for T-012 / D-028, 0004 the provisioning role for D-042, 0005 the IR stored as the canonical text its hash covers for D-040). 0005 stops on a database that already holds models: SQL cannot produce the canonical form from jsonb, so a development database is re-created. Until T-006 is accepted they are drafts that have only run on disposable `dt_test_*` databases; from then on a migration applied to any persistent environment is never edited — changes go into a new numbered file.
 
 ## Run
 
@@ -35,7 +35,8 @@ go run ./cmd/provision-tenant user -issuer 'https://<tenant>.auth0.com/' -subjec
 | File | Covers |
 |---|---|
 | `db/tests/invariants.sql` | RLS: no-context reads return 0 rows, cross-tenant read/write fail, cross-tenant parent FK fails, runtime roles are not superuser/BYPASSRLS/owner, immutable version trigger |
-| `db/tests/constraints.sql` | D-001 per-kind ID domains, D-035 object keys (`starts_with`; `..`, `//`, `\`, control characters, length), D-034 byte-order manifests and `logical_ref` charset, D-027 risk = max(server, claim), TEST-004 immutability incl. TRUNCATE, runtime privileges |
+| `db/tests/constraints.sql` | D-001 per-kind ID domains, D-035 object keys (`starts_with`; `..`, `//`, `\`, control characters, length), D-034 byte-order manifests and `logical_ref` charset, D-027 risk = max(server, claim), TEST-004 immutability incl. TRUNCATE, runtime privileges, D-040 IR stored as text with its hash checked against the stored bytes (the same JSON value in other bytes is refused) |
+| `db/tests/ir_rows.sql` | a model stored before 0005; `scripts/run_db_tests.sh` checks that 0005 stops on it and changes nothing |
 | `db/tests/roles.sql` | D-037 worker column privileges and the import-commit guard, D-036 owner-membership lock (no `organizations` UPDATE), FORCE RLS and a policy on every table, runtime roles separate and owning nothing, no PUBLIC-executable function, D-042 `twin_provisioner` (exactly its five table privileges, no CREATE, not a member of another twin role, RLS applies, cannot change or read what it does not need, the guard on what it may enter is in place), each role writing audit events only as itself, and no foreign key to `twin.memberships` (ADR-023's deadlock argument) |
 | `internal/storage/postgres` (Go) | commit/rollback/panic, transaction-local settings on a reused pooled connection, cancellation releases locks, typed errors that never quote row data |
 | `internal/storage/projects` (Go) | the organization filter alone (as the provisioning superuser, whom RLS does not restrict) and keyset paging across rows with the same `created_at` |
@@ -44,7 +45,7 @@ go run ./cmd/provision-tenant user -issuer 'https://<tenant>.auth0.com/' -subjec
 | `internal/tenant/memberships` (Go, T-010) | owner-only list/add/update/remove as the API login: roles, idempotency (a replay still needs the role), last owner (D-036) judged on the current owner set, removal waiting for a member's write, refused requests taking no lock, a caller demoted or removed while waiting, owner locks under different plans, and a 5 s randomized load of three owners with no deadlock or owner-less organization (ADR-023) |
 | `internal/tenant` (Go) | real runtime logins (created by the test as `dt_test_*_login`, no password): `CheckRuntimeRole`, no `SET ROLE` to the owner, membership-checked scope, wrong-org and cross-tenant writes, pool reuse after success/error/panic/cancel, `Guard` discarding leaked scope or role, worker allowlist |
 
-Both SQL files are rendered from `db/tests/templates/` by `scripts/render_db_tests.py` (`make db-tests-render`; `make spec-check` fails if they are stale), which fills valid ULID test IDs and real RFC 8785 model hashes. Run them on databases with different default collations: CI's PostgreSQL image uses libc `en_US.utf8`; locally an ICU database works (`CREATE DATABASE dt_test_icu TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER icu ICU_LOCALE 'en-US' LOCALE 'C.utf8'`). For diagnosis, `PGOPTIONS='-c dt.collect=on'` reports every failing case instead of stopping at the first.
+The SQL files are rendered from `db/tests/templates/` by `scripts/render_db_tests.py` (`make db-tests-render`; `make spec-check` fails if they are stale), which fills valid ULID test IDs and real RFC 8785 model hashes. Run them on databases with different default collations: CI's PostgreSQL image uses libc `en_US.utf8`; locally an ICU database works (`CREATE DATABASE dt_test_icu TEMPLATE template0 ENCODING 'UTF8' LOCALE_PROVIDER icu ICU_LOCALE 'en-US' LOCALE 'C.utf8'`). For diagnosis, `PGOPTIONS='-c dt.collect=on'` reports every failing case instead of stopping at the first.
 
 ## What this does not prove
 
