@@ -3,11 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=1440">
-<title>Factory catalog dark</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<title>Factory catalog, dark</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&amp;display=swap">
 <style>
-:root{--ground:#0f0f0f;--surface:#171717;--node:#151515;--well:#242424;--rule:#2b2b2b;--line:#6a6a6a;--frame:#a3a3a3;--ink:#ececec;--ink2:#b0b0b0;--ink3:#8f8f8f;--inv:#111111;--cgrey:#7a7a7a;--cblue:#4a7be6;--now:#ef4a35;--sfill:#e9c21b;--sedge:#e9c21b;--stext:#ebc934;--warn:#f39a3b;--rbase:#e4e4e4;--rbg:#171717;--rsedge:#171717;color-scheme:dark}
+:root{--ground:#0f0f0f;--surface:#171717;--node:#151515;--well:#242424;--rule:#2b2b2b;--line:#777777;--frame:#a3a3a3;--ink:#ececec;--ink2:#b0b0b0;--ink3:#8f8f8f;--inv:#111111;--cgrey:#7a7a7a;--cblue:#4a7be6;--now:#ef4a35;--sfill:#e9c21b;--sedge:#e9c21b;--stext:#ebc934;--warn:#f39a3b;--rbase:#e4e4e4;--rbg:#171717;--rsedge:#171717;color-scheme:dark}
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--ground)}
 body{width:1440px;height:900px;overflow:hidden;margin:0;position:relative;background:var(--ground);color:var(--ink);font:400 14px/20px "Archivo","Helvetica Neue",Arial,"Noto Sans TC",sans-serif;font-variant-numeric:tabular-nums lining-nums;-webkit-font-smoothing:antialiased}
@@ -47,7 +46,7 @@ svg{display:block}
 .zoom{position:absolute;right:39px;top:20px;display:flex;gap:8px}
 .grp{display:flex;border:1px solid var(--line);background:var(--surface);height:32px}.grp button{width:32px;display:grid;place-items:center}.grp span{padding:0 10px;display:flex;align-items:center;border:solid var(--line);border-width:0 1px;font-size:12px}
 .ib{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
-.node{position:absolute;top:290px;height:120px;border:1px solid var(--frame);background:var(--node);padding:10px 12px;display:flex;flex-direction:column}
+.node{position:absolute;top:322px;height:120px;border:1px solid var(--frame);background:var(--node);padding:10px 12px;display:flex;flex-direction:column}
 .node .t{font-size:16px;line-height:20px;font-weight:600}
 .node .d{color:var(--ink2);line-height:20px;white-space:nowrap}
 .node .u{margin-top:auto;font-size:12px;line-height:16px;color:var(--ink3)}.node .rate b{font-weight:600}.node .rate span{font-size:12px;color:var(--ink2)}
@@ -56,13 +55,13 @@ svg{display:block}
 .tr .one{background:var(--ink2)}.tr .b{border:1px solid var(--ink)}.tr .s{background:var(--sfill);box-shadow:inset 0 0 0 1px var(--sedge)}
 .sv{background:var(--sfill);color:#111;padding:0 4px;box-shadow:inset 0 0 0 1px var(--sedge);font-weight:600}
 .tag{position:absolute;top:-1px;right:-1px;background:var(--sfill);color:#111;font-size:12px;line-height:16px;padding:2px 6px;box-shadow:inset 0 0 0 1px var(--sedge)}
-.pool{position:absolute;top:478px;width:176px;height:64px;border:1px solid var(--frame);background:var(--node);padding:8px 12px}
+.pool{position:absolute;top:510px;width:176px;height:64px;border:1px solid var(--frame);background:var(--node);padding:8px 12px}
 .pool .k{display:flex;align-items:center;gap:8px;font-size:12px;line-height:16px;color:var(--ink3)}
 .pool .r{display:flex;justify-content:space-between;align-items:baseline;margin-top:6px}.pool .r b{font-size:16px;font-weight:600}
-.q{position:absolute;left:541px;top:206px;width:156px}.q p{font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:6px}
+.q{position:absolute;left:541px;top:238px;width:156px}.q p{font-size:12px;line-height:16px;color:var(--ink3);margin-bottom:6px}
 .qr{display:flex;align-items:center;gap:8px;height:20px}.qr span{font-weight:600;margin-left:auto}
 .qb{fill:var(--ink)}.qs{fill:var(--sfill);stroke:var(--sedge);stroke-width:.75}
-.warn{position:absolute;left:723px;top:212px;width:156px;border:1px solid var(--warn);background:var(--node);padding:8px 10px;display:flex;gap:8px;line-height:18px}.warn .ico{color:var(--warn);margin-top:1px}.warn b{font-weight:600}
+.warn{position:absolute;left:723px;top:244px;width:156px;border:1px solid var(--warn);background:var(--node);padding:8px 10px;display:flex;gap:8px;line-height:18px}.warn .ico{color:var(--warn);margin-top:1px}.warn b{font-weight:600}
 /* playback */
 .pb{position:absolute;left:0;top:844px;width:1040px;height:56px;background:var(--surface);border-top:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 39px}
 .day{white-space:nowrap;color:var(--ink2)}.day b{font-size:16px;font-weight:600;color:var(--ink)}
@@ -116,8 +115,8 @@ tr.iv th,tr.iv td{font-size:12px;line-height:16px;color:var(--ink2);padding:0 0 
 </section>
 <main class="cv" aria-label="Model canvas">
   <svg class="links" width="1040" height="736" aria-hidden="true">
-    <path d="M155 350H173M168 346l5 4-5 4"/><path d="M337 350H355M350 346l5 4-5 4"/><path d="M519 350H537M532 346l5 4-5 4"/><path d="M701 350H719M714 346l5 4-5 4"/><path d="M883 350H901M896 346l5 4-5 4"/>
-    <path class="ds" d="M255 410V478M619 410V478"/><path d="M619 270V290M801 268V290"/>
+    <path d="M155 382H173M168 378l5 4-5 4"/><path d="M337 382H355M350 378l5 4-5 4"/><path d="M519 382H537M532 378l5 4-5 4"/><path d="M701 382H719M714 378l5 4-5 4"/><path d="M883 382H901M896 378l5 4-5 4"/>
+    <path class="ds" d="M255 442V510M619 442V510"/><path d="M619 302V322M801 300V322"/>
   </svg>
   <div class="chead"><i class="chip k-s"></i><span class="cat">R-7</span><span>Scenario run on <span class="cat s">S-2</span>, overlaid on <span class="cat s">R-6</span></span></div>
   <div class="legend"><span><i class="sw b"></i><span class="cat">R-6</span>baseline</span><span><i class="sw s"></i><span class="cat">R-7</span>scenario S-2</span><span>Values read R-6 → R-7</span></div>
