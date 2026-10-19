@@ -369,7 +369,12 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
      VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','running','{}','{{IMP_A1}}',now(),'w',now()+interval '30 seconds')$q$,
   $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,attempt) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',1)$q$,
   $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_token) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',7)$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}','{"code":"X"}')$q$
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}','{"code":"X"}')$q$,
+  -- Each lease column on its own (round 3 L2).
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',now())$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_by) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}','w')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_expires_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',now()+interval '30 seconds')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,heartbeat_at) VALUES ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{}','{{IMP_A1}}',now())$q$
 ]) AS s;
 INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,max_attempts) VALUES
   ('{{JOB_A2}}','{{ORG_A}}','import_profile','queued','{"import_id":"{{IMP_A1}}"}','{{IMP_A1}}',3),
@@ -428,6 +433,7 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.jobs SET error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
   $q$UPDATE twin.jobs SET status='queued', error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
   $q$UPDATE twin.jobs SET status='completed', locked_at=NULL, lease_expires_at=NULL WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
+  $q$UPDATE twin.jobs SET status='completed', locked_by=NULL, lease_expires_at=NULL WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$,
   $q$UPDATE twin.jobs SET status='failed', locked_by=NULL, locked_at=NULL, error='{"code":"X","message":"x","retryable":false}' WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A2}}'$q$
 ]) AS s;
 UPDATE twin.jobs SET status='queued', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error='{"code":"X","message":"x","retryable":true}'

@@ -33,6 +33,11 @@ MUTANTS = [
     ("insert-with-an-attempt", "OR NEW.attempt<>0 OR", "OR"),
     ("insert-with-a-token", " OR NEW.lease_token<>0 OR", " OR"),
     ("insert-with-an-error", " OR NEW.error IS NOT NULL THEN", " THEN"),
+    # Each lease column on its own (round 3 L2)
+    ("insert-locked-at", "OR NEW.locked_at IS NOT NULL OR NEW.locked_by IS NOT NULL\n", "OR NEW.locked_by IS NOT NULL\n"),
+    ("insert-locked-by", " OR NEW.locked_by IS NOT NULL\n", "\n"),
+    ("insert-with-an-expiry", "\n       OR NEW.lease_expires_at IS NOT NULL OR NEW.heartbeat_at", "\n       OR NEW.heartbeat_at"),
+    ("insert-with-a-heartbeat", " OR NEW.heartbeat_at IS NOT NULL OR NEW.error IS NOT NULL THEN", " OR NEW.error IS NOT NULL THEN"),
     ("no-insert-trigger", "BEFORE INSERT OR UPDATE ON twin.jobs", "BEFORE UPDATE ON twin.jobs"),
     ("no-update-trigger", "BEFORE INSERT OR UPDATE ON twin.jobs", "BEFORE INSERT ON twin.jobs"),
     ("unchanged-row-refused", "  IF NEW IS NOT DISTINCT FROM OLD THEN\n    RETURN NEW;\n  END IF;\n", ""),
@@ -70,6 +75,9 @@ MUTANTS = [
     ("worker-changes-attempt-or-token", "ROW(NEW.attempt,NEW.lease_token) IS DISTINCT FROM ROW(OLD.attempt,OLD.lease_token)", "false"),
     ("worker-takes-over", "            OR (NEW.status='running' AND ROW(NEW.locked_by,NEW.locked_at,NEW.error) IS DISTINCT FROM ROW(OLD.locked_by,OLD.locked_at,OLD.error))\n", ""),
     ("worker-keeps-the-lease", "\n            OR (NEW.status<>'running' AND (NEW.locked_by IS NOT NULL OR NEW.locked_at IS NOT NULL OR NEW.lease_expires_at IS NOT NULL))", ""),
+    ("worker-leaves-locked-at", "(NEW.locked_by IS NOT NULL OR NEW.locked_at IS NOT NULL OR NEW.lease_expires_at IS NOT NULL)", "(NEW.locked_by IS NOT NULL OR NEW.lease_expires_at IS NOT NULL)"),
+    ("worker-leaves-the-expiry", "(NEW.locked_by IS NOT NULL OR NEW.locked_at IS NOT NULL OR NEW.lease_expires_at IS NOT NULL)", "(NEW.locked_by IS NOT NULL OR NEW.locked_at IS NOT NULL)"),
+    ("worker-leaves-the-holder", "(NEW.locked_by IS NOT NULL OR NEW.locked_at IS NOT NULL OR NEW.lease_expires_at IS NOT NULL)", "(NEW.locked_at IS NOT NULL OR NEW.lease_expires_at IS NOT NULL)"),
     # Every other role is refused (round 2 I2)
     ("other-roles-allowed", "  IF NOT (owner OR api OR worker) THEN", "  IF false THEN"),
     ("anyone-enqueues", "    IF NOT (owner OR api) THEN", "    IF false THEN"),

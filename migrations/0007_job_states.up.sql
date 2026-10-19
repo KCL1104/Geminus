@@ -74,8 +74,12 @@ BEGIN
       RAISE EXCEPTION 'the worker only claims a queued job' USING ERRCODE='55000';
     END IF;
     -- A running job's lease is its holder's: renewed (heartbeat_at,
-    -- lease_expires_at), never taken over, and cleared when the job leaves
-    -- running; its attempt and token change only on a claim.
+    -- lease_expires_at), never handed to another holder in place, and
+    -- cleared when the job leaves running; its attempt and token change only
+    -- on a claim. Workers share one role, so the database cannot tell
+    -- holders apart: a worker login may still end any running job, set any
+    -- lease length, or let a lease expire and claim the job again through
+    -- the reaper; the lease token fences the old holder's writes.
     IF worker AND OLD.status='running'
        AND (ROW(NEW.attempt,NEW.lease_token) IS DISTINCT FROM ROW(OLD.attempt,OLD.lease_token)
             OR (NEW.status='running' AND ROW(NEW.locked_by,NEW.locked_at,NEW.error) IS DISTINCT FROM ROW(OLD.locked_by,OLD.locked_at,OLD.error))

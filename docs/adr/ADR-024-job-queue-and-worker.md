@@ -24,7 +24,7 @@
 |---|---|---|
 | Lease | 30 秒 | D-007 候選值 |
 | Heartbeat | 10 秒（至多 lease 的三分之一） | D-007 候選值 |
-| 停止 handler 的時間 | 最後一次成功續期（一開始是 claim）的 transaction 開始前的時間 + lease − 半個 heartbeat；預設即 25 秒，可容許一次續期失敗（每次續期至多一個 heartbeat，卡住的續期放棄後立刻重試） | 本 ADR（review M1、round 2 L2） |
+| 停止 handler 的時間 | 最後一次成功續期（一開始是 claim）的 transaction 開始前的時間 + lease − 半個 heartbeat；預設即 25 秒，可容許一次續期失敗（續期從 claim 開始起每個 heartbeat 一次，每次至多一個 heartbeat，卡住的續期放棄後立刻重試） | 本 ADR（review M1、round 2 L2、round 3 I2） |
 | Max attempts | 3（每個 job 可設 1–10） | API_DATABASE §7 候選值 |
 | Backoff | 第 n 次 attempt 後等 5 秒 × 2^(n−1)，最多 5 分鐘 | 本 ADR（API_DATABASE §7 要求有限 exponential backoff，參數待定） |
 | 無 job 時的間隔 | 1 秒 | 本 ADR |
@@ -38,10 +38,11 @@
 - 一次 pass 依 deployment 的順序走過每個 organization：先 reap，再 claim 至多一個 job 並執行。每個 organization 每次 pass 至多一個 job，所以一個 organization 的大量 job 不會餓死其他 organization。一個 process 一次只執行一個 job；要更多並行就多開 process（每個 job 只會被一個 worker 取得，`TestWorkersShareTheQueue`）。
 - 執行時另有 heartbeat，handler 一定在 DB 的 lease 結束之前被停止（review M1）：
   - DB 的 lease 從 transaction 的 `now()` 起算，不早於 worker 開始該 transaction 的時間。Worker 從那個時間（claim 的，之後每次成功續期的）算起，在 lease 減半個 heartbeat 時取消 handler 的 context；這由獨立的 timer 執行，不等進行中的續期。Lease 為三個 heartbeat 時，一次續期失敗、下一次成功仍能保住 job。
-  - 續期一次只有一個，每次至多一個 heartbeat（也不超過期限）。卡住的續期在一個 heartbeat 後放棄，下一次立刻開始（ticker 保留了錯過的 tick），所以「卡住後才失敗」的連線（例如 failover）不會用掉重試的餘裕（round 2 L2）。
+  - 續期從 claim 的 transaction 開始前的時間起，每個 heartbeat 到期一次（不從 handler 開始時算，所以慢的 claim 不會把續期推遲，round 3 I2）；一次只有一個，每次至多一個 heartbeat（也不超過期限）。卡住的續期在一個 heartbeat 後放棄，這時下一次已到期、立刻開始，所以「卡住後才失敗」的連線（例如 failover）不會用掉重試的餘裕（round 2 L2）。
   - 續期發現 lease 已被取得或已結束（`ErrLeaseLost`）時立刻停止。
   - Worker 以 Go 的 monotonic clock 計時，所以 worker 與 DB 的時鐘差距不影響。半個 heartbeat 的餘裕涵蓋停止 handler 所需的時間、DB 時鐘往前跳、以及短於它的 worker process 暫停；更大的跳動與暫停由部署避免（NTP slewing、不暫停 VM）（round 2 I3）。
-  - 停止之後 handler 做的任何事都不會寫入：`Checkpoint`、`Finish` 在 attempt 停止後不再開始（lease 失去時為 `jobs.ErrLeaseLost`，worker 停止時為 `handler.ErrStopped`），進行中的 transaction 在 attempt 停止時被取消並 rollback，不論 handler 給它什麼 context（round 2 L1）。
+  - 停止之後 handler 做的任何事都不會 commit：`Checkpoint`、`Finish` 在 attempt 停止後不再開始（lease 失去時為 `jobs.ErrLeaseLost`，worker 停止時為 `handler.ErrStopped`），進行中的 transaction 在 attempt 停止時被取消並 rollback，不論 handler 給它什麼 context（round 2 L1）。這時呼叫回傳停止的原因，並包住 `fn` 回傳的 error（若有），所以 `fn` 回的 `*jobs.Failure` 仍算數（round 3 M1）。唯一的例外是 attempt 停止時 DB 已經執行完、只是回答還在路上的 COMMIT：它可能已經 commit，所以呼叫回 `tenant.ErrOutcomeUnknown`，絕不回停止（round 3 M1）；這段時間只有回答的延遲（網路來回、同步複寫的等待）。DB 仍在執行的 COMMIT 會被取消並 rollback。
+  - `fn` 的 error 要經過 transaction 的分類（`postgres.Classify` 以 `errors.As` 走整棵 Unwrap 樹），所以 worker 先以讀 handler error 的同一規則檢查它；讀不了的換成一個代表它的 error 再交給 transaction，worker 不會卡在其中（round 3 L1）。
 - **Handler 如何接上（review M3）**：handler 實作 `internal/worker/handler` 的 `Handler`。這個 package 是 leaf，不依賴 worker scope，所以實作它的 package 不會違反 `worker-scope-only-in-the-worker`；`internal/worker` 執行它們，`cmd/worker` 的 `handlers()` 登錄它們。Handler 讀寫 DB，所以是 adapter：放在允許 DB 存取的地方（例如 T-016 的 `internal/import/upload`），不能放在 generic kernel（`internal/model`、`internal/simulation`、`internal/results`）或 `internal/ai` 之中，它們既有的規則禁止依賴 `internal/storage` 與 `internal/tenant`。因此 T-023（simulation）與 T-025（AI）的 handler 要各自有 adapter package，呼叫 kernel 或 AI 的 package；tasks.json 中這兩個任務的 planned outputs（`internal/simulation/service`、`internal/ai/proposals`）放不下 handler，由那兩個任務決定 package 名稱並記錄（round 2 L3；`TestHandlersPlugInWithoutTheWorkerScope` 檢查這三種位置）。Handler 拿到的 `Run` 只有三個方法：
   - `Job()`：claim 到的 job；
   - `Checkpoint(ctx, fn)`：在 lease 下（先 `Lock`）的一個 transaction，用來讀輸入、寫進度、檢查是否要求取消；
@@ -52,16 +53,17 @@
 | Handler 的結果 | 記錄 | 重試 |
 |---|---|---|
 | lease 已失去 | 不寫任何東西（reaper 或新的 holder 負責） | — |
-| `*jobs.Failure`（可包在其他 error 中；worker 正在停止時也以它為準，review L1） | 原樣；code 不符 `^[A-Z][A-Z0-9_]{0,63}$` 時記為 `INTERNAL`（保留其 retry 判斷），message 空白、超過 1000 字、不是 UTF-8 或含 NUL 時改為通用文字（review L2、round 2 L4）；nil 的 `*jobs.Failure` 視為一般 error（review M2） | 依 `Retryable` |
+| `*jobs.Failure`（可包在其他 error 中，在 Unwrap 樹的前 64 個 error 之內；worker 正在停止時也以它為準，review L1、round 3 M1） | 原樣；code 不符 `^[A-Z][A-Z0-9_]{0,63}$` 時記為 `INTERNAL`（保留其 retry 判斷），message 空白、超過 1000 字、不是 UTF-8 或含 NUL 時改為通用文字（review L2、round 2 L4）；nil 的 `*jobs.Failure` 視為一般 error（review M2） | 依 `Retryable` |
 | panic | `INTERNAL` | 否（是 bug，不是暫時的錯誤） |
-| 讀不了的 error：方法在其值上 panic（例如 typed nil 的 `*os.PathError`），或 Unwrap 樹超過 64 個 error（例如包住自己） | `INTERNAL`；log 只記型別（round 2 M1）。永遠卡住的方法無法在 process 內防範 | 否 |
+| 讀不了的 error：方法在其值上 panic（例如 typed nil 的 `*os.PathError`） | `INTERNAL`；log 只記型別（round 2 M1）。永遠卡住的方法無法在 process 內防範 | 否 |
+| Unwrap 樹超過 64 個 error（例如包住自己，或 join 了許多 row error）：不再往下讀，其中的 Failure 不算 | `INTERNAL`；log 只記型別（round 3 I1） | 是 |
 | worker 收到 SIGINT／SIGTERM | `WORKER_STOPPED` | 是 |
 | 沒有呼叫 `Finish` 就回 nil | `NO_RESULT` | 否 |
 | 其他 error | `INTERNAL` | 是 |
 
 - **Log（review L8）**：存下的永遠只有上表的 Failure。Handler 的 error 文字會寫進 log（去除控制字元、至多 500 字），所以 handler 的 error 不得含客戶資料、prompt、provider 輸出或 secret（SECURITY §7）；panic 只記 runtime error 的訊息或 panic 值的型別（值可能是 handler 正在處理的資料）與 stack。
 
-- 停止時：取消 handler 的 context，等它返回，在自己的 context（不隨停止取消，時限一個 heartbeat）上記錄結果；若連這也失敗，lease 過期後 reaper 取回。第二個 SIGINT／SIGTERM 立刻結束 process（review I4），給不理會 context 的 handler；迴圈開始前收到的 signal 是停止（exit 0），不是 DB 錯誤。
+- 停止時：取消 handler 的 context，等它返回，在自己的 context（不隨停止取消，時限一個 heartbeat）上記錄結果；若連這也失敗，lease 過期後 reaper 取回。記錄同樣受 lease 的 fence 限制：job 已不屬於這個 attempt 時（被 reap，或已由回答遺失的 COMMIT 結束）不寫，只記 warning。第二個 SIGINT／SIGTERM 立刻結束 process（review I4），給不理會 context 的 handler；迴圈開始前收到的 signal 是停止（exit 0），不是 DB 錯誤。
 - 設定在連線與 handler 檢查之前全部驗完，包括 allowlist（review L4）與 pgx 讀得懂的 `DATABASE_URL`（round 2 I5）。
 - 目前沒有任何 handler：import profiling 是 T-016，simulation 是 T-023，AI proposal 與 analysis 是 T-025。在那之前 `cmd/worker` 驗完設定後以 exit 2（NOT IMPLEMENTED）拒絕啟動，不會 claim 無法執行的 job。
 
@@ -75,6 +77,7 @@
 - 每次 pass 每個 organization 兩個短 transaction（reap、claim）；閒置的 worker 每秒 2×N 個 transaction（N 為 assigned organization 數）。Organization 很多時要另立 ADR 設計 dispatcher（ARCHITECTURE §6），不在 worker 中加入跨 tenant 的掃描或 BYPASSRLS。
 - `WORKER_STOPPED` 會用掉一次 attempt：部署期間反覆重啟可能讓 job 提早 failed。若成為問題，可改為不計 attempt 的 requeue（需要 owner 決定）。
 - 參數改動只需改 `jobs.DefaultPolicy` 與 `cmd/worker` 的常數，不影響 schema。
+- **Worker login 受信任處理 job（round 3 I3，接受）**：所有 worker 共用一個 role，DB 分不出 holder。0007 擋住直接接手別人的 lease，但 worker login 仍能結束任何 running 的 job、把 lease 設成任意長度（包括 `infinity`，job 永遠不被 reap）、或讓 lease 過期後經 reaper 再 claim（舊 holder 的寫入被 token 擋下，得到 `ErrLeaseLost`）。Lease 長度只來自 `jobs.DefaultPolicy`；DB 端不另設上限，這樣的 job 由 operator 手動結束。
 
 ## 待 owner 決定
 

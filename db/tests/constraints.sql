@@ -369,7 +369,12 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
      VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','running','{}','imp_01M4YDQK00TA00000000000001',now(),'w',now()+interval '30 seconds')$q$,
   $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,attempt) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',1)$q$,
   $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_token) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',7)$q$,
-  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001','{"code":"X"}')$q$
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001','{"code":"X"}')$q$,
+  -- Each lease column on its own (round 3 L2).
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',now())$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_by) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001','w')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_expires_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',now()+interval '30 seconds')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,heartbeat_at) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',now())$q$
 ]) AS s;
 INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,max_attempts) VALUES
   ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{"import_id":"imp_01M4YDQK00TA00000000000001"}','imp_01M4YDQK00TA00000000000001',3),
@@ -428,6 +433,7 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.jobs SET error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
   $q$UPDATE twin.jobs SET status='queued', error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
   $q$UPDATE twin.jobs SET status='completed', locked_at=NULL, lease_expires_at=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET status='completed', locked_by=NULL, lease_expires_at=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
   $q$UPDATE twin.jobs SET status='failed', locked_by=NULL, locked_at=NULL, error='{"code":"X","message":"x","retryable":false}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$
 ]) AS s;
 UPDATE twin.jobs SET status='queued', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error='{"code":"X","message":"x","retryable":true}'

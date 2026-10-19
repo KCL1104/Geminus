@@ -97,34 +97,57 @@ MUTANTS = [
     # Each renewal bounded by one heartbeat, a hung one retried (round 2 L2)
     ("renewal-unbounded", LOOP, "bctx, cancel := context.WithDeadline(ctx, earliest(deadline, started.Add(w.cfg.Heartbeat)))", "bctx, cancel := context.WithCancel(ctx)"),
     ("renewal-bounded-by-the-deadline-only", LOOP, "earliest(deadline, started.Add(w.cfg.Heartbeat))", "deadline"),
+    # Renewals due from the claim's start; the attempt ends with its handler
+    # (round 3 I2, L2)
+    ("renewals-from-the-handlers-start", LOOP, "\tdue := start.Add(w.cfg.Heartbeat)\n", "\tdue := time.Now().Add(w.cfg.Heartbeat)\n"),
+    ("watcher-outlives-the-attempt", LOOP, "\t\t\tcase <-ctx.Done():\n\t\t\t\treturn\n\t\t\tcase <-expire.C:", "\t\t\tcase <-expire.C:"),
     ("earliest-is-latest", LOOP, "\tif a.Before(b) {\n\t\treturn a\n", "\tif b.Before(a) {\n\t\treturn a\n"),
     # Checkpoint and Finish (review M3)
     ("locked-without-lock", LOOP, "\t\tif _, err := jobs.Lock(ctx, tx, a.lease); err != nil {\n\t\t\treturn err\n\t\t}\n", ""),
-    ("locked-lease-loss-not-noted", LOOP, "\tif errors.Is(err, jobs.ErrLeaseLost) {\n\t\ta.lost()\n\t}\n", ""),
+    ("locked-lease-loss-not-noted", LOOP, "\tcase errors.Is(err, jobs.ErrLeaseLost):\n\t\ta.lost()\n\t\treturn err\n", "\tcase errors.Is(err, jobs.ErrLeaseLost):\n\t\treturn err\n"),
     # Nothing is written once the attempt stops (round 2 L1)
     ("writes-after-the-stop", LOOP, "\tif a.alive.Err() != nil {\n\t\treturn a.stopped()\n\t}\n\tctx, cancel", "\tctx, cancel"),
     ("transaction-outlives-the-attempt", LOOP, "\tdefer context.AfterFunc(a.alive, cancel)()\n", ""),
     ("stopped-hides-the-lost-lease", LOOP, "\tif a.isLost() {\n\t\treturn jobs.ErrLeaseLost\n\t}\n", ""),
-    ("mid-transaction-stop-unreported", LOOP, "\tif err != nil && a.alive.Err() != nil {\n\t\t// Stopped mid-transaction: it rolled back.\n\t\treturn a.stopped()\n\t}\n", ""),
+    ("mid-transaction-stop-unreported", LOOP, "\tcase a.alive.Err() != nil:\n\t\treturn fmt.Errorf(\"%w: %w\", a.stopped(), err)\n\t}\n\treturn err\n", "\t}\n\treturn err\n"),
+    # What the transaction did, even once the attempt stopped (round 3 M1)
+    ("fn-failure-replaced-by-the-stop", LOOP, "\t\tif a.alive.Err() != nil {\n\t\t\treturn fmt.Errorf(\"%w: %w\", a.stopped(), err)\n\t\t}\n", "\t\tif a.alive.Err() != nil {\n\t\t\treturn a.stopped()\n\t\t}\n"),
+    ("fn-failure-without-the-stop", LOOP, "\t\tif a.alive.Err() != nil {\n\t\t\treturn fmt.Errorf(\"%w: %w\", a.stopped(), err)\n\t\t}\n", ""),
+    ("outcome-unknown-reported-as-the-stop", LOOP, "\tcase errors.Is(err, tenant.ErrOutcomeUnknown):\n\t\treturn err\n", ""),
+    ("lost-record-logged-as-a-failure", LOOP, "\tcase errors.Is(ferr, jobs.ErrLeaseLost):\n", "\tcase false:\n"),
+    # A transaction never reads an error the worker could not (round 3 L1)
+    ("fn-error-unguarded", LOOP, "\t\t\treturn readable(err)\n", "\t\t\treturn err\n"),
+    ("readable-unprotected", LOOP, "\tdefer func() {\n\t\tif recover() != nil {\n\t\t\tout = unreadable{typ: typ}\n\t\t}\n\t}()\n", ""),
+    ("readable-unbounded", LOOP, "\tif !finite(err) {\n\t\treturn unreadable{typ: typ, large: true}\n\t}\n", ""),
+    ("unreadable-ignored", LOOP, "\tif errors.As(err, &u) {\n", "\tif false && errors.As(err, &u) {\n"),
+    ("unreadable-always-broken", LOOP, "return verdict{broken: !u.large, large: u.large, typ: u.typ}", "return verdict{broken: true, typ: u.typ}"),
+    ("locked-ignores-the-callers-context", LOOP, "\tctx, cancel := context.WithCancel(ctx)\n\tdefer cancel()\n\tdefer context.AfterFunc", "\tctx, cancel := context.WithCancel(context.WithoutCancel(ctx))\n\tdefer cancel()\n\tdefer context.AfterFunc"),
     ("finish-without-end", LOOP, "\t\treturn end(ctx, tx)\n", "\t\t_ = end\n\t\treturn nil\n"),
     ("finish-cancel-completes", LOOP, "\t\tends = jobs.Cancel\n", "\t\tends = jobs.Complete\n"),
     ("finish-any-end", LOOP, "\tdefault:\n\t\treturn handler.ErrInvalidEnd\n", "\tdefault:\n\t\tends = jobs.Complete\n"),
     ("finish-not-noted", LOOP, "a.finished, a.ended = true, end", "a.finished, a.ended = false, end"),
     ("finish-noted-on-error", LOOP, "\tif err == nil {\n\t\ta.mu.Lock()\n", "\tif true {\n\t\ta.mu.Lock()\n"),
     # The attempt's outcome (review M4, L1, L2, I2, I3)
-    ("lost-lease-recorded", LOOP, "\tcase isLost() || v.leaseLost:\n", "\tcase false && (isLost() || v.leaseLost):\n"),
+    ("lost-lease-recorded", LOOP, "\tcase isLost():\n\t\tlog.Warn", "\tcase false && isLost():\n\t\tlog.Warn"),
     ("stop-overrides-the-verdict", LOOP, "\t// The handler's own verdict counts even when the worker is stopping:\n", "\tcase ctx.Err() != nil:\n\t\tfailure = jobs.Failure{Code: WorkerStopped, Message: \"the worker stopped during the attempt\", Retryable: true}\n"),
     ("stop-not-retried", LOOP, "Message: \"the worker stopped during the attempt\", Retryable: true}", "Message: \"the worker stopped during the attempt\"}"),
     ("stop-recorded-as-error", LOOP, "\tcase ctx.Err() != nil:\n\t\tfailure = jobs.Failure{Code: WorkerStopped,", "\tcase false:\n\t\tfailure = jobs.Failure{Code: WorkerStopped,"),
     ("stop-recorded-on-a-cancelled-context", LOOP, "context.WithTimeout(context.WithoutCancel(ctx), w.cfg.Heartbeat)", "context.WithTimeout(ctx, w.cfg.Heartbeat)"),
     ("rv-failure-record-unbounded", LOOP, "context.WithTimeout(context.WithoutCancel(ctx), w.cfg.Heartbeat)", "context.WithTimeout(context.WithoutCancel(ctx), 1000*w.cfg.Heartbeat)"),
+    ("failure-record-bound-a-lease", LOOP, "context.WithTimeout(context.WithoutCancel(ctx), w.cfg.Heartbeat)", "context.WithTimeout(context.WithoutCancel(ctx), w.cfg.Policy.Lease)"),
     ("no-result-retried", LOOP, "Message: \"the handler returned without a result\"}", "Message: \"the handler returned without a result\", Retryable: true}"),
     ("failure-not-unwrapped", LOOP, "\tif errors.As(err, &f) {\n", "\tif f != nil {\n"),
     ("typed-nil-failure-used", LOOP, "\tcase v.failure != nil:\n", "\tcase errors.As(err, new(*jobs.Failure)):\n"),
     ("failure-not-checked", LOOP, "\t\tfailure = checked(*v.failure, log)\n", "\t\tfailure = *v.failure\n"),
     # Errors that cannot be read (round 2 M1)
-    ("read-unprotected", LOOP, "\tdefer func() {\n\t\tif recover() != nil {\n\t\t\tv = verdict{broken: true}\n\t\t}\n\t}()\n\tif !finite(err) {", "\tif !finite(err) {"),
-    ("chains-unbounded", LOOP, "\tif !finite(err) {\n\t\treturn verdict{broken: true}\n\t}\n", ""),
+    ("read-unprotected", LOOP, "\tdefer func() {\n\t\tif recover() != nil {\n\t\t\tv = verdict{broken: true, typ: typ}\n\t\t}\n\t}()\n", ""),
+    ("chains-unbounded", LOOP, "\tif !finite(err) {\n\t\treturn verdict{large: true, typ: typ}\n\t}\n", ""),
+    # A large tree is an ordinary failure, one within the bound read to its
+    # end (round 3 I1, L2)
+    ("max-errors-small", LOOP, "const maxErrors = 64", "const maxErrors = 3"),
+    ("large-is-broken", LOOP, "return verdict{large: true, typ: typ}", "return verdict{broken: true, typ: typ}"),
+    ("large-not-noted", LOOP, "\tcase v.large:\n", "\tcase false:\n"),
+    ("large-not-retried", LOOP, "\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\", Retryable: true}\n\t\tlog.Error(\"the job's handler returned an error too large to read\"", "\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\"}\n\t\tlog.Error(\"the job's handler returned an error too large to read\""),
     ("broken-not-noted", LOOP, "\tcase v.broken:\n", "\tcase false:\n"),
     ("broken-retried", LOOP, "\t\t// A bug like a panic: not retried.\n\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\"}", "\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\", Retryable: true}"),
     ("checked-any-code", LOOP, "if !failureCode.MatchString(f.Code) {", "if f.Code == \"\" {"),
@@ -136,15 +159,15 @@ MUTANTS = [
     ("checked-keeps-invalid-utf8", LOOP, " || !utf8.ValidString(f.Message)", ""),
     ("code-length-unbounded", LOOP, "`^[A-Z][A-Z0-9_]{0,63}$`", "`^[A-Z][A-Z0-9_]*$`"),
     ("panic-retried", LOOP, "\tcase v.panicked != nil:\n\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\"}", "\tcase v.panicked != nil:\n\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\", Retryable: true}"),
-    ("error-not-retried", LOOP, "Message: \"the job's handler failed\", Retryable: true}", "Message: \"the job's handler failed\"}"),
-    ("error-text-stored", LOOP, "Message: \"the job's handler failed\", Retryable: true}", "Message: err.Error(), Retryable: true}"),
+    ("error-not-retried", LOOP, "\tdefault:\n\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\", Retryable: true}", "\tdefault:\n\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\"}"),
+    ("error-text-stored", LOOP, "\tdefault:\n\t\tfailure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\", Retryable: true}", "\tdefault:\n\t\tfailure = jobs.Failure{Code: Internal, Message: err.Error(), Retryable: true}"),
     ("panic-not-recovered", LOOP, "\t\tif v := recover(); v != nil {\n", "\t\tif v := any(nil); v != nil {\n"),
     ("panic-value-logged", LOOP, "return fmt.Sprintf(\"handler panicked with a %T\", p.value)", "return fmt.Sprintf(\"handler panicked with %v\", p.value)"),
     ("runtime-panic-message-dropped", LOOP, "return \"handler panicked: \" + re.Error()", "return \"handler panicked: \" + fmt.Sprintf(\"%T\", re)"),
     ("panic-stack-dropped", LOOP, "\"stack\", v.panicked.stack)", "\"stack\", \"\")"),
     ("error-logged-raw", LOOP, "v.text = logText(err)", "v.text = err.Error()"),
     ("log-text-keeps-controls", LOOP, "\t\tif unicode.IsControl(r) {\n", "\t\tif false && unicode.IsControl(r) {\n"),
-    ("log-text-unbounded", LOOP, "\tif len(s) > 500 {\n", "\tif len(s) > 500000 {\n"),
+    ("log-text-unbounded", LOOP, "\t\tif n == 500 {\n", "\t\tif n == 500000 {\n"),
     ("new-heartbeat-unbounded", LOOP, "cfg.Heartbeat*3 > cfg.Policy.Lease", "cfg.Heartbeat > cfg.Policy.Lease"),
     ("new-nil-handler", LOOP, "\t\tif h == nil {\n\t\t\treturn nil, fmt.Errorf(\"worker: no handler for %s\", t)\n\t\t}\n", "\t\t_ = fmt.Errorf\n\t\t_ = h\n"),
     # Configuration and the composition root
@@ -166,7 +189,7 @@ EQUIVALENT = {
     "claim-ignores-attempts": "migration 0007 refuses a queued job without an attempt left, for every role (review L3), so no row the claim can see has its attempts spent; the condition is defence in depth",
     "cancel-queued-any-org": "as claim-no-org-filter: RLS confines the API's transaction to the organization it selected, so another organization's job is not there to cancel",
     "writes-after-the-stop": "the transaction's context ends with the attempt: on a stopped attempt context.AfterFunc cancels it at once, so the call fails at its first statement and nothing is written; the early return makes that deterministic (it does not depend on the cancel goroutine running before the transaction's first round trip) and spares fn",
-    "fence-any-status": "a job that is not running has no locked_by for the fence to match: every write that ends a running job clears it, which migration 0007 requires of the worker (round 2 I1), and a queued job cannot become completed or failed",
+    "fence-any-status": "migration 0007 refuses every worker write to a job that is not running (round 2 I1, round 3 I7): a stale holder's renewal or end fails there, and a checkpoint's writes roll back with the end that fails; so the status condition is defence in depth (only an owner leaving a running job with its lease in place makes the difference visible, as 55000 instead of ErrLeaseLost)",
 }
 
 

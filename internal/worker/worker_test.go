@@ -1,13 +1,16 @@
 package worker_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -225,7 +228,9 @@ func TestAJobRunsOnceWithItsResult(t *testing.T) {
 		seen = append(seen, job)
 		return finish(ctx, jobs.Completed, profile(job))
 	}), e.log))
-	if !w.Pass(context.Background()) {
+	// The attempt ends when its handler returns, not when its lease (a
+	// minute) would (round 3 L2).
+	if !passWithin(t, w, 5*time.Second) {
 		t.Fatal("the pass ran no job")
 	}
 	if w.Pass(context.Background()) {
@@ -389,9 +394,51 @@ func TestFailedAttempts(t *testing.T) {
 			var r *rowError
 			return r
 		}, jobs.Failed, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed"}},
+		// A tree of more than 64 errors is not read further: an ordinary
+		// failure, retried (round 3 I1), whether it never ends or is just
+		// large; one within the bound is read to its end (round 3 L2).
 		{"an error that wraps itself", 0, func(context.Context, handler.Run) error {
 			return selfWrapping{}
+		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
+		{"a join of many errors", 0, func(context.Context, handler.Run) error {
+			return errors.Join(slices.Repeat([]error{errBoom}, 70)...)
+		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
+		{"a failure deep in a chain", 0, func(context.Context, handler.Run) error {
+			var err error = &jobs.Failure{Code: "INVALID_INPUT", Message: "deep"}
+			for i := range 40 {
+				err = fmt.Errorf("step %d: %w", i, err)
+			}
+			return err
+		}, jobs.Failed, jobs.Failure{Code: "INVALID_INPUT", Message: "deep"}},
+		{"a failure among many errors", 0, func(context.Context, handler.Run) error {
+			return errors.Join(append(slices.Repeat([]error{errBoom}, 40), &jobs.Failure{Code: "INVALID_INPUT", Message: "joined"})...)
+		}, jobs.Failed, jobs.Failure{Code: "INVALID_INPUT", Message: "joined"}},
+		// The same errors from a transaction's function (round 3 L1): the
+		// transaction never reads one the worker could not, so the worker
+		// neither stalls nor loses the handler's verdict.
+		{"a checkpoint's error that wraps itself", 0, func(ctx context.Context, run handler.Run) error {
+			return run.Checkpoint(ctx, func(context.Context, tenant.Tx) error { return selfWrapping{} })
+		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
+		{"a checkpoint's typed nil *os.PathError", 0, func(ctx context.Context, run handler.Run) error {
+			return run.Checkpoint(ctx, func(context.Context, tenant.Tx) error {
+				var p *os.PathError
+				return p
+			})
 		}, jobs.Failed, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed"}},
+		{"a checkpoint's failure", 0, func(ctx context.Context, run handler.Run) error {
+			return run.Checkpoint(ctx, func(context.Context, tenant.Tx) error {
+				return &jobs.Failure{Code: "INVALID_INPUT", Message: "the upload is not CSV"}
+			})
+		}, jobs.Failed, jobs.Failure{Code: "INVALID_INPUT", Message: "the upload is not CSV"}},
+		{"a result's failure deep in a chain", 0, func(ctx context.Context, run handler.Run) error {
+			return run.Finish(ctx, jobs.Completed, func(context.Context, tenant.Tx) error {
+				var err error = &jobs.Failure{Code: "INVALID_INPUT", Message: "deep"}
+				for i := range 40 {
+					err = fmt.Errorf("step %d: %w", i, err)
+				}
+				return err
+			})
+		}, jobs.Failed, jobs.Failure{Code: "INVALID_INPUT", Message: "deep"}},
 		{"the result's transaction fails", 0, func(ctx context.Context, run handler.Run) error {
 			job, finish := run.Job(), run.Finish
 			err := finish(ctx, jobs.Completed, func(ctx context.Context, tx tenant.Tx) error {
@@ -418,7 +465,7 @@ func TestFailedAttempts(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, c.attempts)
-			if !e.worker(t, config(handler.Func(c.handle), e.log)).Pass(context.Background()) {
+			if !passWithin(t, e.worker(t, config(handler.Func(c.handle), e.log)), 5*time.Second) {
 				t.Fatal("the pass ran no job")
 			}
 			got := e.job(t, j)
@@ -452,8 +499,31 @@ func TestFailedAttempts(t *testing.T) {
 	if !strings.Contains(out, "stack=\"goroutine ") {
 		t.Errorf("a panic's stack was not logged: %s", out)
 	}
-	if !strings.Contains(out, "cannot be read") || !strings.Contains(out, "type=*fs.PathError") || !strings.Contains(out, "type=*worker_test.rowError") || !strings.Contains(out, "type=worker_test.selfWrapping") {
+	if !strings.Contains(out, "cannot be read") || !strings.Contains(out, "type=*fs.PathError") || !strings.Contains(out, "type=*worker_test.rowError") {
 		t.Errorf("the unreadable errors were not logged by type: %s", out)
+	}
+	if !strings.Contains(out, "too large to read") || !strings.Contains(out, "type=worker_test.selfWrapping") || !strings.Contains(out, "type=*errors.joinError") {
+		t.Errorf("the errors too large to read were not logged by type: %s", out)
+	}
+	// Read inside a recover: no unreadable error panics the handler.
+	if strings.Contains(out, "nil pointer dereference") {
+		t.Errorf("reading an error panicked: %s", out)
+	}
+}
+
+// passWithin runs one pass of w, failing the test if it does not return
+// within d: a worker that stalls fails here instead of at the test binary's
+// timeout (round 3 L2).
+func passWithin(t *testing.T, w *worker.Worker, d time.Duration) bool {
+	t.Helper()
+	done := make(chan bool, 1)
+	go func() { done <- w.Pass(context.Background()) }()
+	select {
+	case ran := <-done:
+		return ran
+	case <-time.After(d):
+		t.Fatalf("the pass did not return within %v", d)
+		return false
 	}
 }
 
@@ -610,6 +680,92 @@ type flakyDB struct {
 	// claimDelay: the claim's statement waits this long after its
 	// transaction began.
 	claimDelay atomic.Int64
+	// holdCommit: the database's answer to the next COMMIT is held back this
+	// long, as on a slow network; the COMMIT itself reaches the database,
+	// which commits at once.
+	holdCommit atomic.Int64
+}
+
+// heldConn is a connection to the database that holds back the answer to a
+// COMMIT when its flakyDB asks, until the hold ends or the client gives up
+// waiting (the read deadline pgx sets when its context ends).
+type heldConn struct {
+	net.Conn
+	f        *flakyDB
+	mu       sync.Mutex
+	hold     time.Duration
+	deadline time.Time
+	changed  chan struct{}
+}
+
+func (c *heldConn) Write(p []byte) (int, error) {
+	if bytes.Contains(p, []byte("commit\x00")) {
+		if h := c.f.holdCommit.Swap(0); h > 0 {
+			c.mu.Lock()
+			c.hold = time.Duration(h)
+			c.mu.Unlock()
+		}
+	}
+	return c.Conn.Write(p)
+}
+
+// Read holds back the first answer after a held COMMIT (a read may have
+// begun before the COMMIT was written, so the answer is held once read).
+func (c *heldConn) Read(p []byte) (int, error) {
+	n, err := c.Conn.Read(p)
+	c.mu.Lock()
+	h := c.hold
+	if n > 0 {
+		c.hold = 0
+	}
+	c.mu.Unlock()
+	if h > 0 && n > 0 && !c.waitOut(h) {
+		return 0, os.ErrDeadlineExceeded
+	}
+	return n, err
+}
+
+// waitOut waits for h, or until the read deadline passes (false).
+func (c *heldConn) waitOut(h time.Duration) bool {
+	end := time.Now().Add(h)
+	for {
+		c.mu.Lock()
+		d, changed := c.deadline, c.changed
+		c.mu.Unlock()
+		now := time.Now()
+		if !d.IsZero() && !now.Before(d) {
+			return false
+		}
+		if !now.Before(end) {
+			return true
+		}
+		until := end
+		if !d.IsZero() && d.Before(until) {
+			until = d
+		}
+		select {
+		case <-time.After(time.Until(until)):
+		case <-changed:
+		}
+	}
+}
+
+func (c *heldConn) SetDeadline(t time.Time) error {
+	c.setReadDeadline(t)
+	return c.Conn.SetDeadline(t)
+}
+
+func (c *heldConn) SetReadDeadline(t time.Time) error {
+	c.setReadDeadline(t)
+	return c.Conn.SetReadDeadline(t)
+}
+
+func (c *heldConn) setReadDeadline(t time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.deadline = t
+	close(c.changed)
+	c.changed = make(chan struct{})
 }
 
 // slowClaim delays the claim's statement (TraceQueryStart runs after the
@@ -634,6 +790,13 @@ func (e *env) flakyDB(t *testing.T) *flakyDB {
 	}
 	pc.AfterRelease = tenant.Guard
 	pc.ConnConfig.Tracer = slowClaim{f}
+	pc.ConnConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		c, err := (&net.Dialer{}).DialContext(ctx, network, addr)
+		if err != nil {
+			return nil, err
+		}
+		return &heldConn{Conn: c, f: f, changed: make(chan struct{})}, nil
+	}
 	pc.PrepareConn = func(ctx context.Context, _ *pgx.Conn) (bool, error) {
 		f.txs.Add(1)
 		if f.down.Load() {
@@ -912,6 +1075,49 @@ func TestASlowClaimCountsFromBeforeIt(t *testing.T) {
 	}
 }
 
+// Renewals are due every heartbeat from the claim's start, not from when
+// the handler began (round 3 I2): after a claim of 0.6 s, the renewal due
+// at 1 s fails and the one at 2 s keeps the job. Counted from the handler's
+// start they would come at 1.6 s and 2.6 s, after the deadline at 2.5 s.
+func TestRenewalsAreDueFromTheClaim(t *testing.T) {
+	e := setup(t, 1)
+	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+	f := e.flakyDB(t)
+	f.claimDelay.Store(int64(600 * time.Millisecond))
+	cfg := timed(config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		f.claimDelay.Store(0)
+		f.down.Store(true)
+		start := time.Now()
+		for _, st := range []struct {
+			at time.Duration
+			do func()
+		}{
+			{1200 * time.Millisecond, func() { f.down.Store(false) }},
+			{2500 * time.Millisecond, func() {}},
+		} {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Until(start.Add(st.at))):
+			}
+			st.do()
+		}
+		return run.Finish(ctx, jobs.Completed, profile(run.Job()))
+	}), e.log))
+	w, err := worker.New(f.scope, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Pass(context.Background())
+	f.down.Store(false)
+	if got := e.job(t, j); got.Status != jobs.Completed {
+		t.Errorf("the job is %s %s", got.Status, got.Error)
+	}
+	if !strings.Contains(e.log.String(), "renewing the lease failed") {
+		t.Errorf("the failed renewal was not logged: %s", e.log.String())
+	}
+}
+
 // Once the attempt has stopped, Checkpoint and Finish write nothing, even
 // on a context the handler detached: the lease's deadline gives
 // jobs.ErrLeaseLost, the worker stopping handler.ErrStopped.
@@ -1051,6 +1257,149 @@ func TestStoppingRequeuesTheJob(t *testing.T) {
 	}
 }
 
+// A failure the transaction's function returns while the attempt stops
+// still counts: the call returns the stop wrapping it, nothing commits, and
+// the handler's verdict is recorded (round 3 M1).
+func TestAFailureReturnedWhileStoppingCounts(t *testing.T) {
+	e := setup(t, 1)
+	invalid := &jobs.Failure{Code: "INVALID_INPUT", Message: "the upload is not CSV"}
+	for _, c := range []struct {
+		name string
+		call func(ctx context.Context, run handler.Run, fn func(context.Context, tenant.Tx) error) error
+	}{
+		{"checkpoint", func(ctx context.Context, run handler.Run, fn func(context.Context, tenant.Tx) error) error {
+			return run.Checkpoint(ctx, fn)
+		}},
+		{"finish", func(ctx context.Context, run handler.Run, fn func(context.Context, tenant.Tx) error) error {
+			return run.Finish(ctx, jobs.Completed, fn)
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var err error
+			w := e.worker(t, config(handler.Func(func(hctx context.Context, run handler.Run) error {
+				err = c.call(hctx, run, func(ctx context.Context, tx tenant.Tx) error {
+					if err := profile(run.Job())(ctx, tx); err != nil {
+						return err
+					}
+					cancel()
+					select {
+					case <-ctx.Done():
+					case <-time.After(wait):
+					}
+					return invalid
+				})
+				return err
+			}), e.log))
+			w.Pass(ctx)
+			var f *jobs.Failure
+			if !errors.Is(err, handler.ErrStopped) || !errors.As(err, &f) || f != invalid {
+				t.Errorf("the call returned %v", err)
+			}
+			if got := e.job(t, j); got.Status != jobs.Failed || stored(t, got) != *invalid {
+				t.Errorf("the job is %s %s, want failed with the handler's failure", got.Status, got.Error)
+			}
+			if s := e.importStatus(t, j); s != "UPLOADED" {
+				t.Errorf("a transaction that failed committed: the import is %s", s)
+			}
+		})
+	}
+}
+
+// A COMMIT the database carried out before the attempt stopped, its answer
+// still on the way, may have committed: the call says so
+// (tenant.ErrOutcomeUnknown), never that it rolled back (round 3 M1). Here
+// the answer is held back 2 s and the worker stops 300 ms into the call.
+// The job's end is then whatever committed: a finished job stays finished
+// (the attempt's own record is fenced out), a checkpoint's job is retried.
+func TestALostCommitAnswerIsNotReportedAsRolledBack(t *testing.T) {
+	e := setup(t, 1)
+	for _, c := range []struct {
+		name   string
+		call   func(ctx context.Context, run handler.Run) error
+		status jobs.Status
+		log    string
+	}{
+		{"finish", func(ctx context.Context, run handler.Run) error {
+			return run.Finish(ctx, jobs.Completed, profile(run.Job()))
+		}, jobs.Completed, "the job is no longer this attempt's"},
+		{"checkpoint", func(ctx context.Context, run handler.Run) error {
+			return run.Checkpoint(ctx, profile(run.Job()))
+		}, jobs.Queued, "code=WORKER_STOPPED retried=true"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+			f := e.flakyDB(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var err error
+			var took time.Duration
+			log := &logs{}
+			w, werr := worker.New(f.scope, config(handler.Func(func(hctx context.Context, run handler.Run) error {
+				f.holdCommit.Store(int64(2 * time.Second))
+				stop := time.AfterFunc(300*time.Millisecond, cancel)
+				defer stop.Stop()
+				start := time.Now()
+				err = c.call(hctx, run)
+				took = time.Since(start)
+				return err
+			}), log))
+			if werr != nil {
+				t.Fatal(werr)
+			}
+			w.Pass(ctx)
+			if !errors.Is(err, tenant.ErrOutcomeUnknown) || errors.Is(err, handler.ErrStopped) || errors.Is(err, jobs.ErrLeaseLost) || took > time.Second {
+				t.Errorf("the call returned %v after %v", err, took)
+			}
+			if s := e.importStatus(t, j); s != "PROFILING" {
+				t.Errorf("the committed write is missing: the import is %s", s)
+			}
+			if got := e.job(t, j); got.Status != c.status {
+				t.Errorf("the job is %s %s, want %s", got.Status, got.Error, c.status)
+			}
+			if out := log.String(); !strings.Contains(out, c.log) || strings.Contains(out, "recording the failure failed") {
+				t.Errorf("log: %s", out)
+			}
+		})
+	}
+}
+
+// A checkpoint ends with the handler's own context too: here its deadline
+// ends a statement that would take 5 s, the transaction rolls back, and
+// the attempt goes on to finish (round 3 L2).
+func TestACheckpointEndsWithItsContext(t *testing.T) {
+	e := setup(t, 1)
+	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+	var cp error
+	var took time.Duration
+	w := e.worker(t, config(handler.Func(func(ctx context.Context, run handler.Run) error {
+		cctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+		defer cancel()
+		start := time.Now()
+		cp = run.Checkpoint(cctx, func(ctx context.Context, tx tenant.Tx) error {
+			if err := profile(run.Job())(ctx, tx); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, `SELECT pg_sleep(5)`)
+			return err
+		})
+		took = time.Since(start)
+		return run.Finish(ctx, jobs.Completed, func(context.Context, tenant.Tx) error { return nil })
+	}), e.log))
+	passWithin(t, w, 10*time.Second)
+	if !errors.Is(cp, context.DeadlineExceeded) || errors.Is(cp, handler.ErrStopped) || took > 2*time.Second {
+		t.Errorf("the checkpoint returned %v after %v", cp, took)
+	}
+	if got := e.job(t, j); got.Status != jobs.Completed {
+		t.Errorf("the job is %s %s", got.Status, got.Error)
+	}
+	if s := e.importStatus(t, j); s != "UPLOADED" {
+		t.Errorf("the cancelled checkpoint committed: the import is %s", s)
+	}
+}
+
 // Recording the attempt's end waits at most one heartbeat: a database that
 // does not answer cannot hold the worker (the reaper takes the job back).
 func TestTheFailureRecordIsBounded(t *testing.T) {
@@ -1082,13 +1431,14 @@ func TestTheFailureRecordIsBounded(t *testing.T) {
 		<-locked
 		return errors.New("the object store did not answer")
 	}), e.log)
-	cfg.Policy.Lease, cfg.Heartbeat = 1500*time.Millisecond, 500*time.Millisecond
+	// One heartbeat, not the lease (round 3 L2).
+	cfg.Policy.Lease, cfg.Heartbeat = 3*time.Second, 500*time.Millisecond
 	start := time.Now()
 	e.worker(t, cfg).Pass(context.Background())
 	took := time.Since(start)
 	close(release)
 	held.Wait()
-	if took > 2*time.Second {
+	if took > 1500*time.Millisecond {
 		t.Errorf("the pass took %v with the record blocked, want about one heartbeat", took)
 	}
 	if !strings.Contains(e.log.String(), "recording the failure failed") {

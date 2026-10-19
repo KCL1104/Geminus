@@ -27,7 +27,13 @@ import (
 // Once the attempt has stopped (the lease lost, its deadline reached, the
 // worker stopping) neither starts: jobs.ErrLeaseLost when the lease is lost,
 // ErrStopped otherwise. A transaction in progress when the attempt stops is
-// cancelled and rolls back, whatever context the handler gave it.
+// cancelled, whatever context the handler gave it, and rolls back: the call
+// returns that stop, wrapping fn's error if fn returned one (so a
+// *jobs.Failure it returned still counts when the handler returns it). The
+// one exception is a COMMIT the database had already carried out when the
+// attempt stopped, its answer still on the way: the call then returns
+// tenant.ErrOutcomeUnknown, never the stop, as the transaction may have
+// committed.
 //
 // Such a transaction holds the job's row lock, which the lease's renewal
 // waits for: it must end well within one heartbeat, or the renewal is given
@@ -51,8 +57,9 @@ var (
 	// ErrInvalidEnd: Finish was asked to end a job other than as completed
 	// or cancelled; nothing was written.
 	ErrInvalidEnd = errors.New("handler: a job ends as completed or cancelled")
-	// ErrStopped: the attempt has stopped (the worker is stopping) and
-	// writes nothing more; the worker records the attempt's end.
+	// ErrStopped: the attempt has stopped (the worker is stopping): the
+	// call's transaction, if one ran, did not commit, and nothing more is
+	// written; the worker records the attempt's end.
 	ErrStopped = errors.New("handler: the attempt has stopped")
 )
 
@@ -61,9 +68,14 @@ var (
 // whether it may be retried; any other error is retried while attempts
 // remain and is recorded only as INTERNAL. The worker logs the error's text
 // (bounded), so it must not carry customer data, prompts, provider output
-// or secrets (SECURITY §7); a handler's error types must be safe to call on
-// any value, though the worker survives one that is not. ctx ends when the
-// attempt stops; the handler then returns promptly.
+// or secrets (SECURITY §7). The worker reads at most 64 errors of an
+// error's Unwrap tree: a larger one (a join of many row errors, say) is not
+// read, so a *jobs.Failure in it does not count, and it is retried as
+// INTERNAL; a Failure belongs near the top. A handler's error types must be
+// safe to call on any value, though the worker survives one that is not
+// (one whose method panics is recorded as INTERNAL and not retried; one
+// whose method blocks stalls the worker). ctx ends when the attempt stops;
+// the handler then returns promptly.
 type Handler interface {
 	Handle(ctx context.Context, run Run) error
 }
