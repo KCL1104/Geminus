@@ -22,8 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kcl1104/geminus/internal/config"
-	"github.com/kcl1104/geminus/internal/domainpack"
-	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
+	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/storage/objects"
@@ -86,11 +85,11 @@ type builder func(deps) (map[jobs.Type]handler.Handler, error)
 // handlers is the registry of the job types this build can run. Each task
 // that delivers a handler (internal/worker/handler) adds it here.
 func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
-	packs, err := domainpack.NewRegistry(softwaredelivery.Pack{})
+	served, err := packs.Registry() // the API's packs (T-023 review L2)
 	if err != nil {
 		return nil, err
 	}
-	sim, err := runner.New(runner.Config{Packs: packs, Objects: d.objects, Actor: d.worker.ID, Log: d.log})
+	sim, err := runner.New(runner.Config{Packs: served, Objects: d.objects, Actor: d.worker.ID, Log: d.log})
 	if err != nil {
 		return nil, err
 	}

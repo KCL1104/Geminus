@@ -1,0 +1,18 @@
+// Package packs names the domain packs this deployment serves (T-023
+// review L2). It is the one registry both binaries build: the API
+// (internal/api) to validate models and accept runs, the worker
+// (cmd/worker) to run them, so the API never accepts a run of a domain the
+// worker cannot run. No other production package names a concrete pack
+// (architecture rule packs-named-in-one-place); the generic kernel never
+// imports this package.
+package packs
+
+import (
+	"github.com/kcl1104/geminus/internal/domainpack"
+	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
+)
+
+// Registry returns a new registry of the packs this deployment serves.
+func Registry() (*domainpack.Registry, error) {
+	return domainpack.NewRegistry(softwaredelivery.Pack{})
+}

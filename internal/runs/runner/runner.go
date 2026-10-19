@@ -55,9 +55,11 @@ import (
 	"github.com/kcl1104/geminus/internal/worker/handler"
 )
 
-// PackLookup finds a model's domain pack; *domainpack.Registry is one.
+// PackLookup finds a model's domain pack and lists the domains it serves;
+// *domainpack.Registry is one.
 type PackLookup interface {
 	Lookup(domain string) (domainpack.DomainPack, error)
+	Domains() []string
 }
 
 // MaxTraceBytes bounds a stored trace artifact (migration 0009).
@@ -121,6 +123,9 @@ func New(cfg Config) (*Handler, error) {
 	}
 	return &Handler{cfg: cfg}, nil
 }
+
+// Domains lists the domains whose runs h can run, in sorted order.
+func (h *Handler) Domains() []string { return h.cfg.Packs.Domains() }
 
 // payload is the job's frozen reference (internal/runs Create).
 type payload struct {

@@ -24,6 +24,7 @@ var appLayers = []string{
 	"./internal/project/...",
 	"./internal/models/...", // model, draft and version service (T-012, ADR-022)
 	"./internal/runs/...",   // simulation run service and its job handler (T-023)
+	"./internal/packs/...",  // the packs a deployment serves (T-023 review L2)
 	"./internal/worker/...", // the job loop and its handler interface (T-019, ADR-024)
 	"./internal/storage/...",
 	"./internal/import/...",
@@ -236,6 +237,18 @@ var rules = []rule{
 		applies: []string{"./..."},
 		except:  []string{"./cmd/worker/...", "./internal/runs/runner/..."},
 		forbid:  []string{"./internal/runs/runner/..."},
+	},
+	{
+		// The API accepts runs the worker then runs: both must serve the
+		// same packs, so only internal/packs names them (T-023 review L2).
+		// Packs and their own subpackages are the domain-packs rule's.
+		name:    "packs-named-in-one-place",
+		why:     "internal/packs is the one place that names the packs a deployment serves, so the API and the worker always serve the same domains",
+		applies: []string{"./..."},
+		except:  []string{"./internal/packs/...", "./internal/domainpack/..."},
+		forbid:  []string{"./internal/domainpack/..."},
+		allow:   []string{"./internal/domainpack"},
+		through: []string{"./internal/packs/..."},
 	},
 	{
 		name:    "auth-authenticates-only",

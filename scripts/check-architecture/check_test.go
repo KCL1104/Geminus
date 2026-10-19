@@ -149,14 +149,16 @@ func TestProbesAreCaught(t *testing.T) {
 		{"storage-links-the-worker-scope", "internal/storage/projects/zz_probe.go", module + "/internal/tenant/workerscope", "worker-scope-only-in-the-worker", "./internal/storage/projects", "./internal/tenant/workerscope", false},
 		{"api-links-the-simulation-handler", "cmd/api/zz_probe.go", module + "/internal/runs/runner", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/runs/runner", false},
 		{"a-service-links-the-handler", "internal/models/zz_probe.go", module + "/internal/runs/runner", "job-handlers-only-in-the-worker", "./internal/models", "./internal/runs/runner", false},
+		{"the-worker-names-a-pack", "cmd/worker/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "packs-named-in-one-place", "./cmd/worker", "./internal/domainpack/softwaredelivery", false},
+		{"a-service-names-a-pack", "internal/runs/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "packs-named-in-one-place", "./internal/runs", "./internal/domainpack/softwaredelivery", false},
 	}
 	for _, p := range probes {
 		t.Run(p.name, func(t *testing.T) {
 			pkgName := filepath.Base(filepath.Dir(p.file))
-			switch pkgName {
-			case "api":
-				pkgName = "main"
-			case "domainpack":
+			switch {
+			case strings.HasPrefix(p.file, "cmd/"):
+				pkgName = "main" // the binaries
+			case pkgName == "domainpack":
 				pkgName = "domainpack_test" // an external test: the pack imports the interface
 			}
 			ov := overlay(t, root, map[string]string{p.file: "package " + pkgName + "\n\nimport _ \"" + p.imp + "\"\n"})

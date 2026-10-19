@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -11,8 +12,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/ids"
+	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/storage/postgres"
@@ -78,6 +81,29 @@ func TestTheBuildRunsSimulations(t *testing.T) {
 	hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
 	if err != nil || len(hs) != 1 || hs[jobs.Simulation] == nil {
 		t.Fatalf("%v %v", hs, err)
+	}
+}
+
+// T-023 review L2: the worker runs the domains the API accepts runs of,
+// no more and no fewer: both build their packs with internal/packs, and
+// the simulation handler this build registers serves exactly the API's
+// domains. Otherwise the API would accept runs the worker fails for good
+// (RUN_INPUT_INVALID).
+func TestTheWorkerServesTheAPIsPacks(t *testing.T) {
+	hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sim, ok := hs[jobs.Simulation].(*runner.Handler)
+	if !ok {
+		t.Fatalf("the simulation handler is a %T", hs[jobs.Simulation])
+	}
+	apiDomains, err := api.Domains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := sim.Domains(); len(got) == 0 || !slices.Equal(got, apiDomains) {
+		t.Errorf("the worker serves %v, the API %v", got, apiDomains)
 	}
 }
 
