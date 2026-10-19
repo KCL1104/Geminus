@@ -1,0 +1,74 @@
+/* The app shell (T-045): header with the product name, main navigation and
+   the language choice; one main region. */
+.skip {
+  position: absolute;
+  top: var(--gm-space-2);
+  left: var(--gm-space-2);
+  z-index: 200;
+  padding: var(--gm-space-2) var(--gm-space-3);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-bg);
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-2) var(--gm-space-5);
+  min-height: 48px;
+  padding: var(--gm-space-2) var(--gm-space-4);
+  border-bottom: 1px solid var(--gm-color-border);
+  background: var(--gm-color-surface);
+}
+
+.brand {
+  font-size: var(--gm-font-size-lg);
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-4);
+}
+
+.nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--gm-control-height);
+  font-weight: var(--gm-font-weight-strong);
+  text-decoration: none;
+}
+
+.nav a:hover {
+  text-decoration: underline;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: var(--gm-space-2);
+  margin-inline-start: auto;
+}
+
+.tools select {
+  min-height: var(--gm-control-height);
+  padding: 0 var(--gm-space-2);
+  border: 1px solid var(--gm-color-border-strong);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-bg);
+  color: var(--gm-color-text);
+  font: inherit;
+}
+
+.main {
+  max-width: var(--gm-content-width);
+  margin: 0 auto;
+  padding: var(--gm-space-5) var(--gm-space-4);
+  outline: none;
+}

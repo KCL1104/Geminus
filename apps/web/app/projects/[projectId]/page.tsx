@@ -3,6 +3,7 @@ import Link from "next/link";
 import { use } from "react";
 import { useApi } from "../../../lib/api/provider";
 import { useI18n } from "../../../lib/i18n/provider";
+import list from "../../../ui/list.module.css";
 import { MorePages, RemoteView, RequireSession } from "../../_components/states";
 import { useRemote } from "../../_components/use-remote";
 
@@ -14,14 +15,15 @@ function Models({ projectId }: { projectId: string }) {
     <RemoteView remote={remote} what="models" onRetry={retry}>
       {(page) =>
         page.items.length === 0 ? (
-          <p>{t("models.empty")}</p>
+          <p className={list.empty}>{t("models.empty")}</p>
         ) : (
           <>
-            <ul>
+            <ul className={list.list}>
               {page.items.map((m) => (
                 <li key={m.id}>
-                  <Link href={`/models/${m.id}`}>{m.name}</Link> — {t("models.version", { version: String(m.latest_version.version) })}
-                  {m.draft.out_of_date && <> {t("models.outOfDate")}</>}
+                  <Link href={`/models/${m.id}`}>{m.name}</Link>
+                  <span className={list.meta}>{t("models.version", { version: String(m.latest_version.version) })}</span>
+                  {m.draft.out_of_date && <span className={list.meta}>{t("models.outOfDate")}</span>}
                 </li>
               ))}
             </ul>

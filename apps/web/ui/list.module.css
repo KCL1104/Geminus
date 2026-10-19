@@ -1,0 +1,34 @@
+/* A list of things to open (projects, models): one row each, the name as the link. */
+.list {
+  margin: 0 0 var(--gm-space-4);
+  padding: 0;
+  border: 1px solid var(--gm-color-border);
+  border-radius: var(--gm-radius-md);
+  list-style: none;
+}
+
+.list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gm-space-1) var(--gm-space-3);
+  min-height: var(--gm-row-height);
+  padding: var(--gm-space-2) var(--gm-space-3);
+}
+
+.list > li + li {
+  border-top: 1px solid var(--gm-color-border);
+}
+
+.list > li > a {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.meta {
+  color: var(--gm-color-text-muted);
+  font-size: var(--gm-font-size-sm);
+}
+
+.empty {
+  color: var(--gm-color-text-muted);
+}

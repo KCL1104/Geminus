@@ -12,6 +12,7 @@ import type { Problem, ProblemKind } from "../../lib/api/problem";
 import { useI18n } from "../../lib/i18n/provider";
 import type { MessageKey } from "../../lib/i18n/translate";
 import { en } from "../../messages/en";
+import { Callout } from "../../ui/callout";
 
 const guidance: Partial<Record<ProblemKind, MessageKey>> = {
   unauthenticated: "problem.guidance.unauthenticated",
@@ -37,8 +38,7 @@ export function ProblemView({ problem }: { problem: Problem }) {
   const advice = guidanceFor(problem);
   const shown = problem.kind !== "not_found";
   return (
-    <section role="alert" data-problem={problem.kind}>
-      <h2>{t(`problem.heading.${problem.kind}`)}</h2>
+    <Callout tone="danger" heading={t(`problem.heading.${problem.kind}`)} data-problem={problem.kind}>
       {advice && <p>{t(advice)}</p>}
       {problem.message && shown && (
         <p>
@@ -67,6 +67,6 @@ export function ProblemView({ problem }: { problem: Problem }) {
           <code>{problem.requestId}</code>
         </p>
       )}
-    </section>
+    </Callout>
   );
 }

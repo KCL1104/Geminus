@@ -6,6 +6,7 @@ export const zhHant: Catalog = {
   "app.name": "Geminus",
   "nav.label": "主選單",
   "nav.projects": "專案",
+  "nav.skip": "跳到主要內容",
   "locale.label": "語言",
   "locale.en": "English",
   "locale.zh-Hant": "繁體中文",

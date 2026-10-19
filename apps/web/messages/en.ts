@@ -7,6 +7,7 @@ export const en = {
   "app.name": "Geminus",
   "nav.label": "Main",
   "nav.projects": "Projects",
+  "nav.skip": "Skip to main content",
   "locale.label": "Language",
   "locale.en": "English",
   "locale.zh-Hant": "繁體中文",

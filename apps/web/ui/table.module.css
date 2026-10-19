@@ -1,0 +1,88 @@
+/* Positioned, so React Aria's hidden inputs stay inside the scroll box. */
+.scroll {
+  position: relative;
+  max-width: 100%;
+  overflow: auto;
+  margin: 0 0 var(--gm-space-4);
+  border: 1px solid var(--gm-color-border);
+  border-radius: var(--gm-radius-md);
+}
+
+.pending {
+  border: 1px solid var(--gm-color-border);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  outline: none;
+}
+
+.virtual {
+  display: block;
+  overflow: auto;
+}
+
+.header {
+  background: var(--gm-color-surface);
+}
+
+.column {
+  height: var(--gm-row-height);
+  padding: 0 var(--gm-space-3);
+  border-bottom: 1px solid var(--gm-color-border-strong);
+  text-align: start;
+  font-weight: var(--gm-font-weight-strong);
+  white-space: nowrap;
+  outline: none;
+}
+
+.column[data-allows-sorting] {
+  cursor: pointer;
+}
+
+.columnInner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gm-space-1);
+}
+
+.row {
+  outline: none;
+}
+
+.row[data-hovered] {
+  background: var(--gm-color-surface);
+}
+
+.row[data-selected] {
+  background: var(--gm-color-selected);
+}
+
+.cell {
+  height: var(--gm-row-height);
+  padding: 0 var(--gm-space-3);
+  border-bottom: 1px solid var(--gm-color-border);
+  outline: none;
+}
+
+.row[data-focus-visible],
+.cell[data-focus-visible],
+.column[data-focus-visible] {
+  outline: var(--gm-focus-ring);
+  outline-offset: -2px;
+}
+
+.selectCell {
+  width: 40px;
+  padding: 0 var(--gm-space-2);
+  border-bottom: 1px solid var(--gm-color-border);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--gm-space-4);
+  color: var(--gm-color-text-muted);
+}

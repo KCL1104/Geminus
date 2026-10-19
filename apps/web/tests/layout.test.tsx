@@ -30,7 +30,9 @@ describe("server shell", () => {
   it("is English without a remembered choice", async () => {
     const out = await shell();
     expect(out).toMatch(/^<html lang="en">/);
-    expect(out).toContain('<nav aria-label="Main"><a href="/projects">Projects</a></nav>');
+    expect(out).toMatch(/<nav aria-label="Main"( class="[^"]*")?><a href="\/projects">Projects<\/a><\/nav>/);
+    expect(out).toMatch(/<a href="#main"[^>]*>Skip to main content<\/a>/);
+    expect(out).toMatch(/<main id="main" tabindex="-1"/);
     expect(out).toContain("Go to projects");
     expect(out).toContain('<option value="en" lang="en" selected="">English</option>');
     expect(await generateMetadata()).toEqual({ title: "Geminus" });
@@ -40,7 +42,8 @@ describe("server shell", () => {
     jar.locale = "zh-Hant";
     const out = await shell();
     expect(out).toMatch(/^<html lang="zh-Hant">/);
-    expect(out).toContain('<nav aria-label="主選單"><a href="/projects">專案</a></nav>');
+    expect(out).toMatch(/<nav aria-label="主選單"( class="[^"]*")?><a href="\/projects">專案<\/a><\/nav>/);
+    expect(out).toMatch(/<a href="#main"[^>]*>跳到主要內容<\/a>/);
     expect(out).toContain("前往專案");
     expect(out).toContain('<option value="zh-Hant" lang="zh-Hant" selected="">繁體中文</option>');
     expect(out).not.toContain("Go to projects");

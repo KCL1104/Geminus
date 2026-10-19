@@ -7,6 +7,7 @@ import { createTranslator } from "../lib/i18n/translate";
 import { UiProvider } from "../ui/provider";
 import "../ui/tokens.css";
 import "../ui/base.css";
+import shell from "../ui/shell.module.css";
 import { LocaleMenu } from "./_components/locale-switcher";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -24,13 +25,21 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body>
         <I18nProvider locale={locale}>
           <UiProvider>
-          <header>
-            <nav aria-label={t("nav.label")}>
-              <Link href="/projects">{t("nav.projects")}</Link>
-            </nav>
-            <LocaleMenu />
-          </header>
-          <main>{children}</main>
+            <a href="#main" className={shell.skip}>
+              {t("nav.skip")}
+            </a>
+            <header className={shell.header}>
+              <span className={shell.brand}>{t("app.name")}</span>
+              <nav aria-label={t("nav.label")} className={shell.nav}>
+                <Link href="/projects">{t("nav.projects")}</Link>
+              </nav>
+              <div className={shell.tools}>
+                <LocaleMenu />
+              </div>
+            </header>
+            <main id="main" tabIndex={-1} className={shell.main}>
+              {children}
+            </main>
           </UiProvider>
         </I18nProvider>
       </body>

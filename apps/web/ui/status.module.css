@@ -1,0 +1,14 @@
+.status {
+  margin: 0 0 var(--gm-space-4);
+  padding: var(--gm-space-2) var(--gm-space-3);
+  border-left: 4px solid var(--gm-color-success);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-success-bg);
+  color: var(--gm-color-success);
+}
+
+.status[data-empty] {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
