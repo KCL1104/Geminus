@@ -1,6 +1,6 @@
 # T-023 驗證報告：Run API、worker 與 cancellation integration
 
-**日期：2026-10-19｜狀態：待獨立 review（`planning/tasks.json` 的狀態未改，由 reviewer 決定）｜需求：REQ-011、REQ-012、REQ-019｜Gate：D-007、D-011、D-038、D-039（皆 APPROVED；D-038／D-039 的 gate 為「T-023 對外提供 run 結果前」，H-004）；ADR-024（ACCEPTED，H-010）；D-044（APPROVED，H-010）｜驗收測試：TEST-014、TEST-019、TEST-020、TEST-021、TEST-026**
+**日期：2026-10-19｜狀態：獨立 review **ACCEPT**（無 high finding）；review 的 L1、L2、I1、I3、I4、I5 已修正（見「Review 後的修正」），M1、L3–L6、I2 列為 follow-up；`planning/tasks.json` 的狀態未改，由 reviewer 決定｜需求：REQ-011、REQ-012、REQ-019｜Gate：D-007、D-011、D-038、D-039（皆 APPROVED；D-038／D-039 的 gate 為「T-023 對外提供 run 結果前」，H-004）；ADR-024（ACCEPTED，H-010）；D-044（APPROVED，H-010）｜驗收測試：TEST-014、TEST-019、TEST-020、TEST-021、TEST-026**
 
 範圍依 tasks.json：
 
@@ -12,15 +12,18 @@
 
 T-023 是 domain-neutral 的：H-016 把 P0 domain 改為電子組裝／測試線，但 kernel 擴充（T-047–T-050）不屬於本任務，這裡沒有加入任何 domain 專屬的程式。Run service 與 handler 只經 `PackLookup` 使用部署登錄的 pack（目前與 API 相同，只有 software delivery 範例 pack）。
 
-逐條輸出在 `checks/evidence/2026-10-19-T-023/`：`exit-codes.txt`、`environment.txt`、各指令的 log、`mutations.txt`（本輪的 mutation 與紅→綠紀錄）、`baseline-integration.log`（接手時的兩個 commit 在修正前的 integration 結果）。
+逐條輸出在 `checks/evidence/2026-10-19-T-023/`：`exit-codes.txt`、`environment.txt`、各指令的 log、`mutations.txt`（本輪的 mutation 與紅→綠紀錄）、`baseline-integration.log`（接手時的兩個 commit 在修正前的 integration 結果）；review 後的修正與重跑在其 `review/`。
 
 ## Commit
 
 | Commit | 內容 |
 |---|---|
-| T-023a（ebcfa1e） | migration 0009（run 的生命週期、run 跟隨 job、result 與 trace 的約束）、`engine.Credit` 分批授予 event budget、`internal/storage/objects`（D-044 介面與 filesystem adapter）、object storage 設定 |
-| T-023b（75039b7） | `internal/runs`（service 與 HTTP adapter）、`internal/runs/runner`（job handler）、`internal/storage/runs`、`internal/storage/snapshots`、worker audit event、`cmd/worker` 登錄 handler、契約（`CancelSimulation`、trace 下載回 `TraceArtifact`）、文件 |
-| T-023c（本輪：c6626b9、2f5ed5b、a27c10a、855a282；本報告另一個 commit） | 0009 凍結 run 的 identity；architecture 規則 `job-handlers-only-in-the-worker`；TS 產生器的封閉空物件、run 的契約範例；四個補上的測試 |
+| T-023a（c7f46d0） | migration 0009（run 的生命週期、run 跟隨 job、result 與 trace 的約束）、`engine.Credit` 分批授予 event budget、`internal/storage/objects`（D-044 介面與 filesystem adapter）、object storage 設定 |
+| T-023b（eed30da） | `internal/runs`（service 與 HTTP adapter）、`internal/runs/runner`（job handler）、`internal/storage/runs`、`internal/storage/snapshots`、worker audit event、`cmd/worker` 登錄 handler、契約（`CancelSimulation`、trace 下載回 `TraceArtifact`）、文件 |
+| T-023c（a5660a2、83fab99、6623eaf、2e88b1e；報告 bdc6254） | 0009 凍結 run 的 identity；architecture 規則 `job-handlers-only-in-the-worker`；TS 產生器的封閉空物件、run 的契約範例；四個補上的測試 |
+| Review 後的修正（0b180b1、b54c9d8、35933cc、c2e479c、18e34f8；報告另一個 commit） | L1、L2、I1、I3、I5（見「Review 後的修正」）；I4 為本報告的 hash |
+
+以上為 `claude/lucid-meitner-vq1awo` 上的 hash（c7f46d0..bdc6254 由 coordinator cherry-pick 到 e76b038 之上；e76b038 只改 decision 文件）。本報告第一輪的 evidence 是在 rebase 前的 855a282 產生的，那份程式與 2e88b1e 相同（`git diff 855a282 2e88b1e` 只有 e76b038 的 `docs/DECISIONS_AND_TBD.md`、`planning/decisions.json`、`checks/decisions-check.json`）。
 
 T-023a／b 是前一個 agent 的工作，接手時未驗證。本輪先 rebase 到 `claude/lucid-meitner-vq1awo`（沒有衝突；migration 編號 0009 未與 main 的 0008 衝突），以修正前的程式跑一次 integration（`baseline-integration.log`，exit 0），再逐條稽核、補測試與修正，最後 rebase 到 2c9332c 後重跑全部驗證。
 
@@ -44,7 +47,7 @@ T-023a／b 是前一個 agent 的工作，接手時未驗證。本輪先 rebase 
 
 **與指示的差異**：指示要求 cluster 放在 scratchpad 之下。Sandbox 只讓 root 在 scratchpad 建立檔案（`postgres` 使用者可以 mkdir，但建立任何檔案都是 Permission denied，777 的目錄也一樣），PostgreSQL 又不能以 root 執行，關閉 sandbox 的請求被拒；因此 cluster 放在 `postgres` 使用者的 home（`/var/lib/postgresql/geminus-t023-v2`，socket 也在那裡），其餘條件不變。第一次嘗試的 URL 以 `user=postgres` query 參數覆蓋了測試 login，那次 run 無效、已中止，整個 cluster 重建後才開始計算結果。
 
-Log 與 exit code 在 `checks/evidence/2026-10-19-T-023/`（`exit-codes.txt`）；環境（`environment.txt`）：HEAD 855a282、Go 1.27.2、Node 22.22.0、PostgreSQL 16.15、4 CPU。
+Log 與 exit code 在 `checks/evidence/2026-10-19-T-023/`（`exit-codes.txt`）；環境（`environment.txt`）：HEAD 855a282（rebase 前；同一份程式現為 2e88b1e）、Go 1.27.2、Node 22.22.0、PostgreSQL 16.15、4 CPU。
 
 | 指令 | Exit | 說明 |
 |---|---|---|
@@ -94,30 +97,63 @@ Log 與 exit code 在 `checks/evidence/2026-10-19-T-023/`（`exit-codes.txt`）�
 - 四個新的 Go 測試在接手的程式上就通過（程式本來就正確），所以以 mutation 證明它們擋得下缺陷：拿掉 attempt 開始時的取消檢查、把 wall timeout 改為可重試、把 role 檢查移到 replay 之後、讓 SSE 在撤權後寫 keep-alive 並繼續——4 個都被擋下（killed）。每次 mutation 後檔案還原，`git diff` 為空。
 - 沒有對 T-023a／b 全部程式跑 `mutants.py`／`sql-mutants.py` 那種全面的 mutation（見 NOT RUN）。
 
+## Review 後的修正
+
+獨立 review 的結論為 ACCEPT（沒有 high finding）。下列項目每一個都先寫失敗的測試再修（紅的輸出在 `checks/evidence/2026-10-19-T-023/review/`）。
+
+| 項目 | 問題 | 修正 | 先紅後綠 |
+|---|---|---|---|
+| L1（reviewer 的 probe 確認） | schema owner 可以把 running 的 run 直接改為 failed（cancelled、queued 亦同），而 job 仍在執行；lease 到期後 `follow_simulation_job` 拒絕已終結的 run，使 reaper 對整個 organization 的 UPDATE 失敗，`Worker.Pass` 之後每次都跳過該 organization 的 claim。以 result 把 run 直接 completed 也一樣 | 0009（尚未部署）：run 變成 queued、failed、cancelled 一律只能由 job 的 trigger 帶動，owner 也一樣（operator 結束或重試 job，run 跟隨）；新增 deferred constraint trigger `run_completes_with_its_job`：run 只能在完成其 job 的同一個 transaction 中 completed。Down migration 移除新的 trigger 與 function；`constraints.sql` 的 run fixture 補上它的 job | `runs.sql` 新的一段：owner 的三種直接改動都被拒、lease 到期後 reaper 的 statement 取回 job 且 run 跟隨為 queued、沒有 job 的 completed 被拒（55000）、operator 以 job 的 failed 結束 run。修正前（`dt.collect=on`）：owner 的改動成功，reaper 的 statement 失敗於 `a failed run cannot follow its job to queued`（`l1-red-before-fix.log`），即 review 描述的卡住 |
+| L2 | domain pack 在 `internal/api` 與 `cmd/worker` 各登錄一次；不一致時 API 接受的 run 會在 worker 永久失敗（`RUN_INPUT_INVALID`） | 新增 application-layer package `internal/packs`（`packs.Registry`），兩個 binary 都由它建立 registry；architecture 規則 `packs-named-in-one-place`：其他 production package 不得指名具體的 pack（generic kernel 本來就不能 import 它，`internal/packs` 列入 app layers）；`runner.Handler.Domains`、`api.Domains` | `TestTheWorkerServesTheAPIsPacks`（cmd/worker：worker 登錄的 simulation handler 的 domain 等於 API 的）修正前無法編譯；兩個 probe（cmd/worker、internal/runs 指名 pack）修正前沒有 violation；`internal/packs.TestRegistry` |
+| I1 | SSE 每次寫入前把 write deadline 設為 10 s 後，之後到下一次寫入（keep-alive 15 s）之間期限已過；HTTP/2 的 stream 在期限過時就被 reset，即使沒有寫入在進行 | 每次寫入仍以 `WriteTimeout` 開始；寫完後期限延到 `KeepAlive + Poll + WriteTimeout`（下一次可能的寫入加上它自己的時限） | `TestAnIdleStreamOutlivesItsWriteTimeoutOverHTTP2`（TLS＋HTTP/2，keep-alive 600 ms、write timeout 250 ms）：修正前 250 ms 時 `stream error: stream ID 1; INTERNAL_ERROR`，修正後 2 秒內持續收到 keep-alive；`TestStreamIdleDeadline` 檢查預設值與該設定下的關係 |
+| I3 | `simulation.create` 的 audit metadata 沒有 effective model hash 與 config hash（SECURITY §9） | 另記 `model_hash`、`effective_model_hash`、`config_hash`、`dataset_manifest_hash`（只有 hash，沒有內容） | `TestRunClosedLoop` 比對 audit 與 run row 的四個 hash，並確認沒有 patch／config 的內容；修正前失敗 |
+| I4 | 本報告與 evidence 是 rebase 前的 hash | Commit 表改為 branch 上的 hash，`environment.txt` 補上對照 | — |
+| I5 | tasks.json 的 planned outputs 是原規劃的 `internal/simulation/service`、`internal/simulation/http` | 改為實際的 package 與 migration 0009；scope 第 5 條記下決定的名稱並指向 ARCHITECTURE §6（`spec_refs` 加入 `docs/ARCHITECTURE.md`）；status 未改 | `scripts/check_planning.py` 通過 |
+
+### 修正後的執行結果
+
+在 18e34f8（review 的修正都在其中）重跑，先 `go clean -testcache`；新建的 `dt_test_t023_review`，同一個 cluster（`/var/lib/postgresql/geminus-t023-v2`，port 55444），跑完後以 `pg_ctl stop` 停止。Log 與 exit code 在 `checks/evidence/2026-10-19-T-023/review/`（`exit-codes.txt`、`environment.txt`）。
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make backend-test` | 0 | 40 個 package ok（多了 `internal/packs`）；DB-backed 測試在這裡 skip，由 integration 執行 |
+| `make backend-race` | 0 | 40 個 package ok |
+| `make architecture-check` | 0 | 50 packages、13 rules（新增 `packs-named-in-one-place`）、16 build configurations |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | 沒有任何 `checks/*.json` 改變（`spec-check-status.txt` 只列出本報告與 evidence）；db/tests 為最新 |
+| `make frontend-test` | 0 | 18 個檔案 413 個 test（本輪未改 TS，照樣執行）；Node 22.22.0 |
+| `make integration-test`（`dt_test_t023_review`） | 0 | migration up／down／up（含 0009 新的 trigger 與其 down）、6 個 SQL suite（含 L1 的一段），`db-go-test` 的 20 個 package（`-race`），0 FAIL、0 SKIP |
+| `go test -race -count=1 ./internal/simulation/...` | 0 | |
+| `go test -race -p 1 -count=1 -v`（T-023 的 package 與 api、cmd/worker；`t023-go-tests.log`） | 0 | 165 個 top-level test 通過，0 FAIL、0 SKIP，含 `TestTheWorkerServesTheAPIsPacks`、`TestAnIdleStreamOutlivesItsWriteTimeoutOverHTTP2`、`TestStreamIdleDeadline`、`TestRunClosedLoop`（I3）；取消在請求後 13 ms 生效（測試的 checkpoint 20 ms） |
+
+### Follow-up（review 指定，本輪不修）
+
+- **M1**：建立 run 的 transaction 在讀 dataset snapshot 與 compile model 時（`runs.go` 的 `freeze`，在 `Create` 的 transaction 中）一直佔著一個 pooled connection 與 idempotency key 的 row lock，也沒有 statement／idle timeout。在任何經網路的 object storage adapter 之前，必須拆成幾個短的 transaction（gate：D-044 production adapter 的 ADR）。
+- **L3**：trace 下載在記憶體中讀完整個 artifact（≤64 MiB），沒有並行數上限。
+- **L4**：engine version 不符時 run 永久失敗（`ENGINE_VERSION_MISMATCH`，不重試）；需要部署程序（例如先排空再換版，或讓 worker 不 claim 別的 engine 的 run）。
+- **L5**：failed 的 run 沒有 audit event（只記在 job 與 run 的 row）。
+- **L6**：孤兒 trace object（lease 失去或 commit 失敗後已上傳的 object）沒有 maintenance 清理（SECURITY §8）。
+- **I2**：可重試的 `ARTIFACT_STORAGE_FAILED` 會讓下一個 attempt 重跑整個 engine，而之前 attempt 保留的 events 算作已用，可能以誤導的 `EVENT_BUDGET_EXCEEDED` 結束；之後應在同一個 attempt 內重試上傳。
+
 ## NOT RUN
 
 - `make e2e-test` 的 product closed loop（瀏覽器 → run → compare → analyst）：UI 尚無 run 畫面（T-032；closed loop 為 T-040）；本輪未改 UI。
 - 全面的 mutation harness（`mutants.py`、`sql-mutants.py`）於 T-023 的程式與 0009：只跑了上述 7 個有針對性的紅綠／mutation 檢查。
 - 取消 ≤5 s、run 的 wall／event 上限與 batch 大小的 benchmark（T-037）：`TestCancelRunning` 只在測試機上量一次，不是效能測試結果。
 - Production object storage adapter：等 owner 選雲端（D-044）；只有 development／test 的 filesystem adapter。
-- 經 `cmd/api` 的 `http.Server`（`WriteTimeout` 60 s）超過 60 秒的 SSE：handler 每次寫入前以 `ResponseController.SetWriteDeadline` 延長期限，但沒有超過 60 秒的端對端測試（API 測試使用 `httptest` server）。
+- 經 `cmd/api` 本身的 `http.Server`（`WriteTimeout` 60 s）超過 60 秒的 SSE：handler 以 `ResponseController.SetWriteDeadline` 設定每次寫入與其後的期限（I1），HTTP/2 下的閒置期限以 `httptest` 的 TLS server 測過，但沒有以 cmd/api 的 server 設定跑超過 60 秒的端對端測試。
 - `frontend-test` 以 Node 22.22.0 執行；`apps/web/package.json` 要求 ≥24.21.0，這台機器沒有 Node 24（之前的驗證用 24.21.0）。
 - Import（T-016）與 AI（T-025）的 job handler：尚不存在。
 
 ## 需要 owner 或 reviewer 決定
 
 - **CB-38**：run failure 沒有 code 目錄，目前的暫定對應（上限與 input → `MODEL_VALIDATION_FAILED`，基礎設施 → `SERVICE_UNAVAILABLE`，其餘 → `INTERNAL_ERROR`，原 code 在 `details[0].code`）待 owner 在 T-032 前決定。`downloadImportErrors` 是否也依 D-044 改為串流留給 T-016／T-017。
-- **tasks.json 的 planned outputs**：T-023 仍列 `internal/simulation/service`、`internal/simulation/http`；實際 package 記在 ARCHITECTURE §6，planning 是否更新由 reviewer 決定（本輪未改 tasks.json）。
+- ~~tasks.json 的 planned outputs~~：review I5 後已改為實際的 package（status 未改）。
 - **降級的語意**：降級為 viewer 的成員仍可讀 run，所以 stream 繼續；若 owner 希望任何 role 變更都結束 stream，需要另外決定。
 - D-007 的 event batch（max_events 的十分之一）是實作參數，benchmark 後可調。
 
 ## 殘餘風險
 
-- **入列時在 DB transaction 內讀 dataset snapshot 與 `engine.Compile`**：讀取有 D-007 的上限（每個 dataset ≤100k samples），但 object I/O 發生在持有 idempotency key row lock 的 transaction 中。Object storage 很慢時會拉長 transaction；改為 transaction 外先解析、再於 transaction 中確認凍結值，是之後可做的改動。
-- **兩份 pack 登錄**：`internal/api.Handler` 與 `cmd/worker` 的 `handlers()` 各自登錄 software delivery pack。兩邊不一致時，API 接受的 run 會在 worker 以 `RUN_INPUT_INVALID` 失敗（不重試，fail closed）。H-016 換 domain 時兩處都要改。
-- **滾動部署時的 engine version**：worker 的 engine 與 run 凍結的不同時，run 以 `ENGINE_VERSION_MISMATCH` 失敗且不重試；部署期間新舊 worker 並存會讓 run 失敗而不是等待。
-- **孤兒 trace object**：lease 失去或 commit 失敗後上傳的 object 留在 storage，maintenance 尚未實作。
-- Trace 下載在記憶體中讀完整個 artifact（≤64 MiB）再核對與送出。
-- Run 失敗只記在 job 與 run 的 row，沒有 audit event（ADR-024 的迴圈不寫 audit）；建立、取消請求、取消結束、完成都有。
+- Review 指定的 follow-up：M1（建立 run 的 transaction 中的 object I/O 與 compile）、L3（trace 的記憶體）、L4（engine version 與部署）、L5（failed run 沒有 audit）、L6（孤兒 trace）、I2（上傳失敗的重試可能以 event budget 結束），見上一節。
+- Pack 登錄的不一致（原為殘餘風險）已由 L2 消除：只剩 `internal/packs` 一處，規則與測試防止再分開。
 - 所有 worker 共用一個 DB role（ADR-024 round 3 I3，已接受）；`WORKER_STOPPED` 計入 attempt（H-010）。
 - 這台機器上留有前一個 agent 的 cluster 目錄 `/var/lib/postgresql/geminus-t023`（沒有在執行的 process，只剩 lock 檔）；本輪沒有動它。

@@ -1,0 +1,9 @@
+backend-test 0
+backend-race 0
+architecture-check 0
+spec-check 0
+frontend-test 0
+integration-test 0
+simulation-race 0
+t023-go-tests 0
+done

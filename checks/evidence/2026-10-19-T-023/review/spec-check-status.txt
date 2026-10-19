@@ -1,0 +1,9 @@
+ M checks/T-023_VALIDATION.md
+ M checks/evidence/2026-10-19-T-023/environment.txt
+?? checks/evidence/2026-10-19-T-023/review/architecture-check.log
+?? checks/evidence/2026-10-19-T-023/review/backend-race.log
+?? checks/evidence/2026-10-19-T-023/review/backend-test.log
+?? checks/evidence/2026-10-19-T-023/review/environment.txt
+?? checks/evidence/2026-10-19-T-023/review/exit-codes.txt
+?? checks/evidence/2026-10-19-T-023/review/spec-check-status.txt
+?? checks/evidence/2026-10-19-T-023/review/spec-check.log

@@ -5,3 +5,4 @@ v22.22.0
 psql (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
 Linux 6.18.44-fc-v139 x86_64
 4
+note: 855a282 is the pre-rebase hash; the same code is 2e88b1e on claude/lucid-meitner-vq1awo (cherry-picked onto e76b038, which changed decision docs only).
