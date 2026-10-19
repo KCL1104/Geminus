@@ -28,8 +28,8 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 20,
-    "in_progress": 2,
-    "not_started": 30,
+    "in_progress": 3,
+    "not_started": 29,
     "review": 0
   },
   "ready_tasks": [
@@ -38,27 +38,7 @@
     "T-024",
     "T-035"
   ],
-  "next_after_review": [
-    {
-      "id": "T-046",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-047",
-        "D-048",
-        "D-049",
-        "D-050",
-        "D-051",
-        "D-052",
-        "D-053",
-        "D-054",
-        "D-055",
-        "D-056",
-        "D-057",
-        "D-058",
-        "D-059"
-      ]
-    }
-  ],
+  "next_after_review": [],
   "gates": {
     "D-001": {
       "status": "approved",

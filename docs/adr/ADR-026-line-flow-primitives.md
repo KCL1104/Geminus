@@ -122,7 +122,7 @@
 
 **選項。**
 - A：靜態規則 R1–R4 全為 error，加上 runtime 的 B1（循環等待，精確）與 B2（湊不齊，確定的期限）。後果：所有 valid 的模型都在可證明不會永久停滯的範圍內；B2 只是實作或規則缺口的 backstop；runtime 不需要狀態記錄。代價是 R4 會拒絕「會故障的機台沒有班表、作業員有班表」這類常見寫法，使用者要照錯誤訊息給機台作業員的班表（機台本來就只在作業員在時運轉）；同一台會故障的機台被兩個班別不重疊的作業員使用時無法滿足 R4，要拆成兩個 resource。
-- A′：R1–R3 為 error、R4 為 warning，B2 對有 warning 的 bundle 另以狀態簽章偵測固定相位的永久鎖定（上一版的 B2b）。後果：接受更多模型；但有 warning 的模型只在 TTF、TTR 固定時能偵測，其他鎖定不偵測；簽章必須從所有例外日結束之後才記錄與比對（例外日不是週期的，review N6 (a)）；簽章的記憶體要以每個 replication 的總量設上限、計入 run 的 limits，存 digest 時在回報前要以完整狀態或重新模擬確認（review N7）；實作與驗證成本明顯較高。
+- A′：R1–R3 為 error、R4 為 warning，B2 對有 warning 的 bundle 另以狀態簽章偵測固定相位的永久鎖定（上一版的 B2b）。後果：接受更多模型；但有 warning 的模型只在 TTF、TTR 固定時能偵測，其他鎖定不偵測；簽章必須從所有例外日結束之後才記錄與比對（例外日不是週期的，review N6 (a)）；簽章的記憶體要以每個 replication 的總量設上限、計入 run 的 limits，存 digest 時在回報前要以完整狀態或重新模擬確認（review N7）；實作與驗證成本明顯較高；D-051 的 `clock` 欄位隨之恢復，R4 的 warning 也要加回「有 calendar 卻用日曆時鐘」的條件，否則沒有 warning 的 bundle 仍可能在夥伴下班時故障，不誤報的論證就不成立（review round 4 L2）。
 - B：只做 runtime 偵測（一般 wait-for 分析加週期性判斷）。後果：在有隨機故障的週期性模型中，「之後會不會恢復」沒有一般的判定法；錯誤在跑到一半、依 seed 才出現。
 - C：不偵測，靠 horizon 與 limits。後果：違反 TEST-034；不採用。
 

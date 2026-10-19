@@ -2735,7 +2735,7 @@
       "id": "T-046",
       "title": "電子產線 domain spec 與引擎擴充 contract（H-016）",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Simulation + Product",
       "planning_window": "H-016 re-plan（未重估週數）",
       "depends_on": [

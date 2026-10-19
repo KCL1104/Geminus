@@ -246,7 +246,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 
 **Data-quality 檢查（提案）**：end < start；同一 serial 的作業時間重疊；同一設備的作業數超過推論的 capacity；serial 的站別順序與拓樸不符；停機與作業在同一設備上重疊（停機中仍有作業）；觀測期間內的資料缺口。研究稿指出微小停機常未被記錄、彙總的 OEE 不足以建模故障（未驗證）；因此 P0 只用逐筆停機紀錄估計故障參數，缺少時 `breakdowns` 由使用者輸入或回 needs_input，不從 OEE 反推。
 
-**可推導的量（T-027 的範圍，此處只作參考）**：各站 service time 樣本＝end−start（empirical dataset）；首測與重測以 serial＋station 依 start 排序區分；routing 機率與 FPY 由 result 計數；TTR＝恢復−停機開始（日曆時間）；TTF＝上次恢復到下次停機開始之間的上班時間（有班表的設備，對應 D-051 只在上班時前進的時鐘；以日曆間隔估計會把夜間與週末算進去，使上班時的故障率被低估，例如 `two_shift_weekdays` 下只有約 48%），沒有班表的設備為日曆時間；release rate 由第一站的 start 依時段計數；換線時間：同一設備上相鄰兩件的 product 不同時，前一件 end 到下一件 start 的間隔（含可能的閒置，只能當上限，需使用者確認）；設備並行數由同時進行的作業推估 capacity。推論結果一律經 proposal 與人類批准（D-009），不直接改 Twin。
+**可推導的量（T-027 的範圍，此處只作參考）**：各站 service time 樣本＝end−start（empirical dataset）；首測與重測以 serial＋station 依 start 排序區分；routing 機率與 FPY 由 result 計數；TTR＝恢復−停機開始（日曆時間）；TTF＝上次恢復到下次停機開始之間的上班時間（有班表的設備，對應 D-051 只在上班時前進的時鐘；以日曆間隔估計會把夜間與週末算進去，使上班時的故障率被低估，例如 `two_shift_weekdays` 下只有約 48%），沒有班表的設備為日曆時間（只在產線上班時運轉的設備，即使沒有作業員夥伴，也要給它產線的 calendar：否則 R4 不會提醒，而以日曆間隔估計的 TTF 又會低估上班時的故障率；review round 4 L1）；release rate 由第一站的 start 依時段計數；換線時間：同一設備上相鄰兩件的 product 不同時，前一件 end 到下一件 start 的間隔（含可能的閒置，只能當上限，需使用者確認）；設備並行數由同時進行的作業推估 capacity。推論結果一律經 proposal 與人類批准（D-009），不直接改 Twin。
 
 **時間對應。** Model 時間沒有時區。比對與推論時，使用者指定一個 anchor（例如 model t=0 ＝ 某個含 offset 的 RFC 3339 時刻，且為班表 period 的起點）；跨 DST 變換的視窗在 P0 回 data-quality issue。
 
