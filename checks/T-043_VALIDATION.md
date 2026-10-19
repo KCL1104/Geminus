@@ -35,20 +35,20 @@
 
 ## 實際執行結果
 
-Review round 1 的修正（3f743eb）在乾淨的 worktree 執行，Node 24.21.0、4 CPU；沒有 DB，也沒有連任何真的 identity provider。Log 在 `checks/evidence/2026-10-19-T-043/final/`，exit code 見 `exit-codes.txt`。送審時（52c667c）的結果被這次取代；當時的數字為 334 個 unit test、43 個 mutant。
+Review round 2 的修正（9875be4）在 02a4200（其上只有 T-019 的 commit，未改 `apps/`、`internal/auth`）的乾淨 worktree 執行，Node 24.21.0、4 CPU；沒有 DB，也沒有連任何真的 identity provider。Log 在 `checks/evidence/2026-10-19-T-043/final/`，exit code 見 `exit-codes.txt`。先前各輪的數字：送審時（52c667c）334 個 unit test、43 個 mutant；round 1 修正後（3f743eb）366 個、72 個。
 
 | 指令 | Exit | 說明 |
 |---|---|---|
-| `make frontend-test` | 0 | lint（0 warning）、typecheck、unit：18 個檔案 366 個 test；其中 session、BFF、server 與 server-only guard 四個檔案 149 個 |
-| `go test -race ./internal/auth/` | 0 | 含新的 `TestCookiesAreNotRead`（TEST-032：Go API 不讀 cookie） |
+| `make frontend-test` | 0 | lint（0 warning）、typecheck、unit：18 個檔案 392 個 test；其中 session、BFF、server 與 server-only guard 四個檔案 175 個 |
+| `go test -race ./internal/auth/` | 0 | 含 `TestCookiesAreNotRead` 與 `TestNoGoCodeHandlesCookies`（TEST-032：Go API 不讀寫 cookie） |
 | `make frontend-build` | 0 | `next build`：`/auth/login`、`/auth/callback`、`/auth/logout`、`/auth/error`、`/api/v1/[...path]` 都是動態 route |
-| `make e2e-test` | 0 | Chromium 49 passed、16 skipped：skipped 的是截圖測試，只在 CI 的固定 Playwright container 中執行（NOT RUN）。TEST-032 的 `session.spec.ts` 8 個全過（跨站 form 改為真正的跨站），使用 `apps/web-e2e/fake/servers.mjs` 的測試 provider 與 API 替身 |
+| `make e2e-test` | 0 | Chromium 49 passed、16 skipped：skipped 的是截圖測試，只在 CI 的固定 Playwright container 中執行（NOT RUN）。TEST-032 的 `session.spec.ts` 8 個全過（真正的跨站 form），使用 `apps/web-e2e/fake/servers.mjs` 的測試 provider 與 API 替身 |
 | `npm audit --omit=dev`（apps/web） | 0 | 0 vulnerabilities |
 | `npm ls openid-client oauth4webapi jose` | 0 | openid-client 6.8.8、oauth4webapi 3.8.8、jose 6.2.12 |
-| `ts-mutants.py`（72 個） | 0 | `ts-mutants.log`：71 killed、1 等價（`proxy-forwards-authorization`：proxy 在複製 header 之後一律覆寫 Authorization），0 unexpected。其中 29 個是 review 之後加入的（reviewer 的 14 個與修正的 mutant）；第一次執行時 `every-provider-error-refuses` 存活（oauth4webapi 只對 4xx 的 JSON 錯誤丟 `ResponseBodyError`，503 的測試分不出來），補 429 的案例後被擋下 |
+| `ts-mutants.py`（93 個） | 0 | `ts-mutants.log`：92 killed、1 等價（`proxy-forwards-authorization`：proxy 在複製 header 之後一律覆寫 Authorization），0 unexpected |
 | `make spec-check` | 0 | 重產的 `checks/*.json` 與 commit 相同（`spec-check-status.txt` 為空） |
 
-CI（GitHub Actions `ci`）：f83c692 的 run 39201576112 與 5d8f44e 的 run 39206441390 全部 job 通過，其中「browser checks (axe, keyboard, strings, screenshots)」job 在固定 container 中執行（沿用現有截圖 baseline；BFF 沒有改變任何頁面的外觀）。本次修正的 commit 推上後以 CI 再確認。
+CI（GitHub Actions `ci`）：f83c692 的 run 39201576112、5d8f44e 的 run 39206441390 與 9ca5ccd 的 run 39216342157 全部 job 通過，其中「browser checks (axe, keyboard, strings, screenshots)」job 在固定 container 中執行（沿用現有截圖 baseline；BFF 沒有改變任何頁面的外觀）。本次修正推上後以 CI 再確認。
 
 ### 先紅後綠與 mutation 找到的缺口
 

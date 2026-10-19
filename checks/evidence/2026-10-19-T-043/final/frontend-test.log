@@ -18,10 +18,10 @@ npm --prefix apps/web run test:unit
 
 
  Test Files  18 passed (18)
-      Tests  366 passed (366)
-   Start at  07:09:18
-   Duration  14.54s (tests 74%, import 16%, environment 5%, transform 4%)
+      Tests  392 passed (392)
+   Start at  09:20:39
+   Duration  16.33s (tests 78%, import 14%, environment 5%, transform 3%)
 
-    Isolate  18 workers spawned · ~237ms startup each (spawn + environment, per file)
-             at least ~1.19s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  18 workers spawned · ~226ms startup each (spawn + environment, per file)
+             at least ~1.13s faster with isolate: false — reuses workers across files instead of one per file
 

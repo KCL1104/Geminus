@@ -2531,8 +2531,16 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-043_VALIDATION.md",
           "summary": "Review round 1 修正（3f743eb）：provider 暫時失敗（5xx、連不上、逾時、429）回 503 並保留 session，只有 invalid_grant 等拒絕才結束（M-2）；兩個 session 同時 refresh、輪替後以新 key 封裝、server.ts 的 503 與 log、空的 sub 都有測試，no-subject-check 不是等價（M-1）；token 依 session 規則檢查、放不下 cookie 時乾淨失敗（L-2）；return path 只接受可見 ASCII（L-3）；nosniff 與帶 Set-Cookie 時 no-store（L-4）；60 秒時鐘容差（L-5）；以 expires_in 計算到期（L-6）；真正的跨站 form E2E（L-1）；Go API 不讀 cookie 的測試、evidence 改名（L-7）；串流、取消、header、redirect、method、cache 上限的測試，登出丟棄共用的 refresh（L-8）。3f743eb 乾淨 worktree：frontend-test（366 tests）、go test internal/auth、frontend-build、e2e-test（49 passed，TEST-032 8/8）、npm audit 0、spec-check exit 0；TS mutation 72（71 killed、1 等價）。",
-          "reviewer": "pending: independent reviewer agent round 2 (H-003), BFF part",
+          "reviewer": "independent reviewer agent (H-003), round 2 on 3f743eb/9ca5ccd: CHANGES REQUESTED (M-1, L-1–L-4)",
           "decisions_pending": "D-045（GET /v1/me）待 owner；Auth0 tenant 由 owner 依 docs/runbooks/auth0.md 建立"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-043_VALIDATION.md",
+          "summary": "Review round 2 修正（9875be4）：refresh 之後 API 失敗時 503 仍帶新的 session cookie（M-1）；refresh 失敗依 provider 的回答分類（連不上、逾時、5xx、429、temporarily_unavailable、server_error、too_many_requests、invalid_client 保留 session 並回 503 與 Retry-After；其他 OAuth 錯誤、非預期的 2xx、無法使用的回答結束 session），log 帶 OAuth 錯誤碼與 status（L-1、L-2）；發出卻不保留的 refresh token 盡力撤銷（L-3）；不 rotation 的 provider、nosniff、時間常數的測試（L-4）；TestNoGoCodeHandlesCookies（I-6）；runbook 建議 Auth0 reuse interval 一律 30 秒（owner 決定）。02a4200 乾淨 worktree：frontend-test（392 tests）、go test internal/auth、frontend-build、e2e-test（49 passed，TEST-032 8/8）、npm audit 0、spec-check exit 0；TS mutation 93（92 killed、1 等價）。",
+          "reviewer": "pending: independent reviewer agent round 3 (H-003), BFF part",
+          "decisions_pending": "D-045（GET /v1/me）待 owner；Auth0 tenant 與 reuse interval 由 owner 依 docs/runbooks/auth0.md 設定"
         }
       ]
     },
