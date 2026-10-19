@@ -1,0 +1,8 @@
+commit: b4f9ae3 (the seven T-024 commits rebased onto ee92d2b, claude/lucid-meitner-vq1awo after T-016); the runs used that tree, plus only the report edits committed with these logs
+date: 2026-10-19
+go version go1.27.2 linux/amd64
+4 CPUs
+go clean -testcache before the runs
+make ts-contracts ran directly before the logs (exit 0, "wrote 14 files, 95 types", no file changed); not through t024_run.py, so not in exit-codes.txt
+no database: no DATABASE_URL or GEMINUS_TEST_DATABASE_URL, no PostgreSQL process, per the coordinator's instruction
+no API key was looked for, read or set; no network call to any AI provider

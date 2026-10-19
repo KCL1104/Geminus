@@ -1,0 +1,5 @@
+backend-test.log: exit 0 (make backend-test; env: none)
+backend-race.log: exit 0 (make backend-race; env: none)
+architecture-check.log: exit 0 (make architecture-check; env: none)
+ai-fake-suite.log: exit 0 (make ai-eval; env: none)
+spec-check.log: exit 0 (make spec-check PYTHON=/home/user/Geminus/.venv/bin/python; env: none)
