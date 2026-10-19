@@ -61,6 +61,8 @@ Geminus 不是 DevOps dashboard，也不是 3D 動畫工具。它在架構上由
 
 產品名稱是 **Geminus**。目前沒有 logo、品牌色或語氣規範（H-012），這些由設計系統建立，並經 owner 批准。
 
+Owner 指定的視覺限制（H-012）：深色主題用灰黑色，不用藍色。
+
 ## Evidence on Hand
 
 - 目前沒有真實客戶、客戶資料、benchmark、testimonial 或已達成的指標。
