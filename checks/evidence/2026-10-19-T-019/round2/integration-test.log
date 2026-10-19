@@ -1,0 +1,2589 @@
+make db-test
+make[1]: Entering directory '/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/wt-t019r2'
+bash scripts/run_db_tests.sh
+DO
+DO
+BEGIN
+CREATE SCHEMA
+SET
+REVOKE
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE FUNCTION
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE FUNCTION
+CREATE FUNCTION
+DO
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+DO
+COMMIT
+BEGIN
+SET
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+GRANT
+DO
+ALTER TABLE
+ALTER TABLE
+CREATE POLICY
+REVOKE
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+ALTER DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES
+DO
+COMMIT
+ALTER TABLE
+BEGIN
+SET
+GRANT
+DO
+GRANT
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE TRIGGER
+COMMIT
+BEGIN
+SET
+ALTER TABLE
+ALTER TABLE
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+COMMIT
+BEGIN
+SET
+ALTER TABLE
+COMMIT
+BEGIN
+SET
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+COMMIT
+BEGIN
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ set_config |           set_config           |           set_config           
+------------+--------------------------------+--------------------------------
+ subject_b  | org_01M4YDQK00TB00000000000000 | usr_01M4YDQK00TB00000000000001
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET
+ set_config |           set_config           |           set_config           
+------------+--------------------------------+--------------------------------
+ subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+DO
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+DO
+SET
+DO
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+DO
+ROLLBACK
+BEGIN
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_b  | org_01M4YDQK00TB00000000000000 | usr_01M4YDQK00TB00000000000001
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+ set_config |           set_config           |           set_config           
+------------+--------------------------------+--------------------------------
+ subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 2
+SET CONSTRAINTS
+SET CONSTRAINTS
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+INSERT 0 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(21 rows)
+
+INSERT 0 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+(5 rows)
+
+INSERT 0 2
+INSERT 0 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+INSERT 0 1
+SET
+ check 
+-------
+ 
+(1 row)
+
+SET
+INSERT 0 1
+INSERT 0 2
+DO
+SET CONSTRAINTS
+DO
+SET CONSTRAINTS
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(8 rows)
+
+INSERT 0 4
+ check 
+-------
+ 
+(1 row)
+
+SET
+UPDATE 1
+ must_fail 
+-----------
+ 
+(1 row)
+
+UPDATE 1
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+(5 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+INSERT 0 1
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+SET CONSTRAINTS
+SET CONSTRAINTS
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(42 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+SET
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "models"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "model_drafts"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "model_version_datasets"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "imports"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "ai_proposals"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "scenarios"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "simulation_runs"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "run_datasets"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "simulation_results"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "ai_analyses"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "jobs"
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+INSERT 0 1
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+INSERT 0 1
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+(5 rows)
+
+INSERT 0 7
+UPDATE 1
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+(5 rows)
+
+UPDATE 5
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(12 rows)
+
+UPDATE 1
+UPDATE 1
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+UPDATE 2
+UPDATE 1
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+(6 rows)
+
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(21 rows)
+
+UPDATE 4
+RESET
+UPDATE 1
+GRANT
+SET
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+RESET
+REVOKE
+GRANT
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+RESET
+REVOKE
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ROLLBACK
+BEGIN
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+INSERT 0 1
+ set_config 
+------------
+ subject_a2
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+SET
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(10 rows)
+
+UPDATE 1
+SET
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+SET
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SET
+UPDATE 1
+SET
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+INSERT 0 1
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+INSERT 0 1
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+SET
+INSERT 0 1
+SET
+      set_config      | set_config |           set_config           | set_config 
+----------------------+------------+--------------------------------+------------
+ https://test.invalid | subject_p  | org_01M4YDQK00TP00000000000000 | 
+(1 row)
+
+INSERT 0 1
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+           set_config           
+--------------------------------
+ usr_01M4YDQK00TP00000000000001
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ set_config 
+------------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(18 rows)
+
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+RESET
+GRANT
+GRANT
+SET
+CREATE FUNCTION
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SET
+RESET
+REVOKE
+GRANT
+REVOKE
+DROP FUNCTION
+SET
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(140 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+(3 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(16 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+(6 rows)
+
+ROLLBACK
+BEGIN
+SET
+DROP TRIGGER
+DROP FUNCTION
+COMMIT
+BEGIN
+SET
+ALTER TABLE
+COMMIT
+BEGIN
+SET
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+COMMIT
+BEGIN
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+COMMIT
+BEGIN
+SET
+DROP TRIGGER
+DROP TRIGGER
+DROP FUNCTION
+DROP FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+DO
+REVOKE
+COMMIT
+ALTER TABLE
+BEGIN
+SET
+REVOKE
+REVOKE
+DO
+REVOKE
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "tenant_isolation" for relation "twin.users" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.organizations" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.model_drafts" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.scenarios" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.simulation_runs" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.run_datasets" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.ai_analyses" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.jobs" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.datasets" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.dataset_versions" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.idempotency_keys" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.projects" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.models" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.model_version_datasets" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.imports" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.ai_proposals" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.simulation_results" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.memberships" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.audit_events" does not exist, skipping
+psql:migrations/0002_rls.down.sql:25: NOTICE:  policy "identity_self" for relation "twin.model_versions" does not exist, skipping
+DO
+DROP TRIGGER
+DROP FUNCTION
+DROP TRIGGER
+DROP FUNCTION
+DROP TRIGGER
+DROP FUNCTION
+DROP FUNCTION
+DROP FUNCTION
+COMMIT
+BEGIN
+SET
+psql:migrations/0001_core.down.sql:5: NOTICE:  drop cascades to 48 other objects
+DETAIL:  drop cascades to type twin.org_id
+drop cascades to type twin.usr_id
+drop cascades to type twin.prj_id
+drop cascades to type twin.mdl_id
+drop cascades to type twin.mv_id
+drop cascades to type twin.ds_id
+drop cascades to type twin.dsv_id
+drop cascades to type twin.imp_id
+drop cascades to type twin.aip_id
+drop cascades to type twin.scn_id
+drop cascades to type twin.sim_id
+drop cascades to type twin.ana_id
+drop cascades to type twin.job_id
+drop cascades to type twin.aud_id
+drop cascades to type twin.req_id
+drop cascades to type twin.art_id
+drop cascades to type twin.public_id
+drop cascades to type twin.actor_ref
+drop cascades to type twin.sha256
+drop cascades to function twin.object_key_ok(text,text)
+drop cascades to type twin.logical_ref
+drop cascades to type twin.time_unit
+drop cascades to table twin.users
+drop cascades to table twin.organizations
+drop cascades to table twin.memberships
+drop cascades to table twin.projects
+drop cascades to table twin.models
+drop cascades to table twin.model_versions
+drop cascades to table twin.model_drafts
+drop cascades to table twin.datasets
+drop cascades to table twin.dataset_versions
+drop cascades to table twin.model_version_datasets
+drop cascades to table twin.imports
+drop cascades to table twin.ai_proposals
+drop cascades to table twin.scenarios
+drop cascades to table twin.simulation_runs
+drop cascades to table twin.run_datasets
+drop cascades to table twin.simulation_results
+drop cascades to table twin.ai_analyses
+drop cascades to table twin.jobs
+drop cascades to table twin.idempotency_keys
+drop cascades to table twin.audit_events
+drop cascades to function twin.reject_mutation()
+drop cascades to function twin.reject_truncate()
+drop cascades to function twin.protect_run_inputs()
+drop cascades to function twin.protect_proposal_content()
+drop cascades to function twin.verify_version_dataset_manifest()
+drop cascades to function twin.verify_run_dataset_manifest()
+DROP SCHEMA
+COMMIT
+BEGIN
+CREATE SCHEMA
+SET
+REVOKE
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE FUNCTION
+CREATE DOMAIN
+CREATE DOMAIN
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE INDEX
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE FUNCTION
+CREATE FUNCTION
+DO
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE TRIGGER
+DO
+COMMIT
+BEGIN
+SET
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+DO
+GRANT
+DO
+ALTER TABLE
+ALTER TABLE
+CREATE POLICY
+REVOKE
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+ALTER DEFAULT PRIVILEGES
+ALTER DEFAULT PRIVILEGES
+DO
+COMMIT
+ALTER TABLE
+BEGIN
+SET
+GRANT
+DO
+GRANT
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+CREATE TRIGGER
+COMMIT
+BEGIN
+SET
+ALTER TABLE
+ALTER TABLE
+DO
+DO
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+COMMIT
+BEGIN
+SET
+ALTER TABLE
+COMMIT
+BEGIN
+SET
+CREATE FUNCTION
+REVOKE
+CREATE TRIGGER
+COMMIT
+BEGIN
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ set_config |           set_config           |           set_config           
+------------+--------------------------------+--------------------------------
+ subject_b  | org_01M4YDQK00TB00000000000000 | usr_01M4YDQK00TB00000000000001
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET
+ set_config |           set_config           |           set_config           
+------------+--------------------------------+--------------------------------
+ subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+DO
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+DO
+SET
+DO
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+DO
+ROLLBACK
+BEGIN
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_b  | org_01M4YDQK00TB00000000000000 | usr_01M4YDQK00TB00000000000001
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+ set_config |           set_config           |           set_config           
+------------+--------------------------------+--------------------------------
+ subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 2
+SET CONSTRAINTS
+SET CONSTRAINTS
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+INSERT 0 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(21 rows)
+
+INSERT 0 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+(5 rows)
+
+INSERT 0 2
+INSERT 0 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+INSERT 0 1
+SET
+ check 
+-------
+ 
+(1 row)
+
+SET
+INSERT 0 1
+INSERT 0 2
+DO
+SET CONSTRAINTS
+DO
+SET CONSTRAINTS
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(8 rows)
+
+INSERT 0 4
+ check 
+-------
+ 
+(1 row)
+
+SET
+UPDATE 1
+ must_fail 
+-----------
+ 
+(1 row)
+
+UPDATE 1
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+(5 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+INSERT 0 1
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+SET CONSTRAINTS
+SET CONSTRAINTS
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(42 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+SET
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "models"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "model_drafts"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "model_version_datasets"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "imports"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "ai_proposals"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "scenarios"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "simulation_runs"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "run_datasets"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "simulation_results"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "ai_analyses"
+psql:db/tests/constraints.sql:277: NOTICE:  truncate cascades to table "jobs"
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+INSERT 0 1
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+INSERT 0 1
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+(5 rows)
+
+INSERT 0 7
+UPDATE 1
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+(5 rows)
+
+UPDATE 5
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(12 rows)
+
+UPDATE 1
+UPDATE 1
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+UPDATE 2
+UPDATE 1
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+(6 rows)
+
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(21 rows)
+
+UPDATE 4
+RESET
+UPDATE 1
+GRANT
+SET
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+RESET
+REVOKE
+GRANT
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+RESET
+REVOKE
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ROLLBACK
+BEGIN
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+INSERT 0 1
+ set_config 
+------------
+ subject_a2
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+SET CONSTRAINTS
+SET CONSTRAINTS
+SET
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(10 rows)
+
+UPDATE 1
+SET
+UPDATE 1
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+SET
+UPDATE 1
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SET
+UPDATE 1
+SET
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+INSERT 0 1
+SET
+ must_fail 
+-----------
+ 
+(1 row)
+
+INSERT 0 1
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+SET
+INSERT 0 1
+SET
+      set_config      | set_config |           set_config           | set_config 
+----------------------+------------+--------------------------------+------------
+ https://test.invalid | subject_p  | org_01M4YDQK00TP00000000000000 | 
+(1 row)
+
+INSERT 0 1
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+           set_config           
+--------------------------------
+ usr_01M4YDQK00TP00000000000001
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ set_config 
+------------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(18 rows)
+
+SET
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+RESET
+GRANT
+GRANT
+SET
+CREATE FUNCTION
+SET
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+(4 rows)
+
+SET
+RESET
+REVOKE
+GRANT
+REVOKE
+DROP FUNCTION
+SET
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(140 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+(3 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(16 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+ 
+ 
+ 
+ 
+ 
+(6 rows)
+
+ROLLBACK
+DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.
+make[1]: Leaving directory '/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/wt-t019r2'
+make db-go-test
+make[1]: Entering directory '/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/wt-t019r2'
+GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/api/... ./internal/worker/... ./cmd/api/... ./cmd/worker/... ./cmd/provision-tenant/...
+?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	2.197s
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	2.411s
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	1.052s
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.189s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.427s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	1.069s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.358s
+ok  	github.com/kcl1104/geminus/internal/tenant	2.202s
+?   	github.com/kcl1104/geminus/internal/tenant/internal/scope	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	12.437s
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	1.049s
+ok  	github.com/kcl1104/geminus/internal/models	44.850s
+ok  	github.com/kcl1104/geminus/internal/api	8.696s
+ok  	github.com/kcl1104/geminus/internal/worker	35.385s
+?   	github.com/kcl1104/geminus/internal/worker/handler	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/api	1.107s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.119s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.076s
+make[1]: Leaving directory '/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/wt-t019r2'
+integration-test: API, job loop and database covered; job handlers (import T-016, simulation T-023, AI T-025) are NOT RUN until those tasks add them.

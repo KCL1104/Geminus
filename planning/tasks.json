@@ -1167,7 +1167,15 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-019_VALIDATION.md",
           "summary": "Review round 1 修正（5d8f44e）：heartbeat 的期限改為最後一次成功續期（或 claim）的開始 + lease − 半個 heartbeat，由獨立 timer 執行（M1、M4，上下界與 DB lease 都檢查）；typed-nil Failure（M2）；leaf package internal/worker/handler 與 Checkpoint（M3）；handler 的結果優先於停止、Failure 檢查（L1、L2）；0007 依 role 限制轉移、queued 必有 attempt、逐欄 identity 測試（L3、L5）；allowlist 先驗、參數測試、有界的 log、panic 值不進 log、第二個 signal 結束 process、啟動途中的 signal 為停止、T-016 依賴 T-019（L4、L6–L8、I1–I5）。乾淨 worktree：backend-test／race／architecture／frontend／spec／integration-test exit 0（無 cached），50 個 Go test（race、0 SKIP），計時測試 ×5 65/65；mutation Go 101（96 killed、5 等價）、SQL 32（31 killed、1 等價），0 unexpected。",
-          "reviewer": "pending: independent reviewer agent round 2 (H-003)",
+          "reviewer": "independent reviewer agent (H-003), round 2 on 52c667c: CHANGES REQUESTED (M1, L1–L5, I1–I5)",
+          "decisions_pending": "ADR-024（參數與 WORKER_STOPPED 是否計入 attempt）待 owner"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-019_VALIDATION.md",
+          "summary": "Review round 2 修正（02a4200）：在 recover 之內、以有界的 Unwrap 走訪讀取 handler 的 error，壞掉的 error 型別記為 INTERNAL 而不讓 worker 崩潰或卡住（M1）；attempt 停止後 Checkpoint／Finish 不再開始，進行中的 transaction 隨 attempt 取消並 rollback（L1）；續期依序執行、每次至多一個 heartbeat，卡住的續期放棄後立刻重試，期限由獨立 goroutine 執行（L2；第一次乾淨驗證以 -race 抓到其 data race 並修正）；handler 的放置位置與 T-023／T-025 的註記（L3）；非 UTF-8 與含 NUL 的 message（L4）；測試缺口（L5）；0007 限制 worker 對 running job 只能續期自己的 lease、離開 running 時清除，其他 role 一律拒絕、只有 API 與 owner 能 enqueue（I1、I2）；時鐘說法（I3）；I4 接受；DATABASE_URL 先驗（I5）。02a4200 乾淨 worktree：backend-test／race／architecture／frontend／spec／integration-test exit 0（無 cached），56 個 Go test（race、0 SKIP），計時測試 ×5 100/100；mutation Go 115（110 killed、5 等價）、SQL 39（38 killed、1 等價），0 unexpected。",
+          "reviewer": "pending: independent reviewer agent round 3 (H-003)",
           "decisions_pending": "ADR-024（參數與 WORKER_STOPPED 是否計入 attempt）待 owner"
         }
       ]

@@ -1,6 +1,6 @@
 # T-019 驗證報告：PostgreSQL job queue、lease 與 worker 迴圈
 
-**日期：2026-10-19｜狀態：`review`（review round 1 為 CHANGES REQUESTED，修正後送 round 2；依 H-003 驗收）｜需求：REQ-012、REQ-018、REQ-019｜Gate：D-007、D-008、D-011（APPROVED）；ADR-024（PROPOSED，待 owner）｜驗收測試：TEST-010（worker 部分）、TEST-020、TEST-021（佇列部分）**
+**日期：2026-10-19｜狀態：`review`（review round 1、2 皆為 CHANGES REQUESTED，修正後送 round 3；依 H-003 驗收）｜需求：REQ-012、REQ-018、REQ-019｜Gate：D-007、D-008、D-011（APPROVED）；ADR-024（PROPOSED，待 owner）｜驗收測試：TEST-010（worker 部分）、TEST-020、TEST-021（佇列部分）**
 
 範圍依 tasks.json：
 
@@ -9,7 +9,7 @@
 - resource、job、audit 在同一個 enqueue transaction；過時的 finalize 被拒；
 - worker scope 移到只有 worker 端能 import 的 package，並以 architecture 規則禁止 API 端依賴（T-009 re-review R3b）。
 
-分三段交付：T-019a（36d2d44）、T-019b（4ab2eff、962c8b1）、T-019c／d（c6a51c1、5a68042），review round 1 的修正見下方專節。逐條輸出在 `checks/evidence/2026-10-19-T-019/`（round 1 修正後的在 `round1/`）。
+分三段交付：T-019a（36d2d44）、T-019b（4ab2eff、962c8b1）、T-019c／d（c6a51c1、5a68042），review round 1 的修正見下方專節。逐條輸出在 `checks/evidence/2026-10-19-T-019/`（round 1、2 修正後的在 `round1/`、`round2/`）。
 
 ## 交付內容
 
@@ -28,19 +28,21 @@
 
 ## 實際執行結果
 
-Review round 1 的修正（5d8f44e）在乾淨的 worktree 執行（`git worktree`，先 `go clean -testcache`；log 中沒有 cached 結果），DB 為一次性 PostgreSQL 16 cluster 上新建的 `dt_test_t019_r1`，執行後刪除。Log 在 `checks/evidence/2026-10-19-T-019/round1/`，exit code 見 `exit-codes.txt`，環境見 `environment.txt`（Go 1.27.2、Node 24.21.0、PostgreSQL 16.15、4 CPU）。送審前的 c6a51c1 結果保留在 `final/`。
+Review round 2 的修正（02a4200）在乾淨的 worktree 執行（`git worktree`，先 `go clean -testcache`；log 中沒有 cached 結果），DB 為一次性 PostgreSQL 16 cluster 上新建的 `dt_test_t019_r2`，執行後刪除。Log 在 `checks/evidence/2026-10-19-T-019/round2/`，exit code 見 `exit-codes.txt`，環境見 `environment.txt`（Go 1.27.2、Node 24.21.0、PostgreSQL 16.15、4 CPU）。先前各輪的結果保留在 `final/`（c6a51c1）與 `round1/`（5d8f44e）。
+
+這一次驗證之前，同一份修正的第一次乾淨驗證（4a54180，未 push）在 `go test -race` 抓到新 heartbeat 的 data race（見下方 round 2 一節），修正後 amend 為 02a4200 再從頭驗證。
 
 | 指令 | Exit | 說明 |
 |---|---|---|
 | `make backend-test`、`backend-race` | 0 | 各 35 個 package ok |
 | `make architecture-check` | 0 | 43 packages、11 rules、16 build configurations |
-| `make frontend-test` | 0 | 17 個檔案 334 個 test（本次未改前端；數量包含 T-043） |
+| `make frontend-test` | 0 | 18 個檔案 392 個 test（本任務未改前端；數量包含 T-043） |
 | `make spec-check` | 0 | 重產的 `checks/*.json` 與 commit 相同（`spec-check-status.txt` 為空） |
-| `make integration-test`（新建的 `dt_test_t019_r1`） | 0 | migration 0001–0007 up／down／up、SQL tests、`db-go-test` 的 16 個 package（race）；唯一的 NOT RUN 是各 job type 的 handler（T-016、T-023、T-025） |
-| `go test -race -p 1 -v`（jobs、worker、worker/handler、workerscope、config、cmd/worker） | 0 | `t019-go-tests.log`：50 個 top-level test 通過，0 SKIP、0 FAIL |
-| `go test -race -count=5`（worker 與 cmd/worker 中與時間有關的 13 個測試） | 0 | `timing-x5.log`：65/65 通過（含上下界都檢查的 deadline 測試與 signal 測試） |
-| `mutants.py`（Go，101 個） | 0 | `mutation-go.log`：100 個在修正的 tree 上跑完，95 killed、5 等價（理由在 harness：RLS 已限制 organization 的兩個 filter、0007 擋下沒有 attempt 的 queued job、已清除 worker 的終態 job、續期的時限與期限的 timer 重複），0 unexpected。之後只改了 `cmd/worker/main.go`（啟動途中的 signal）與其測試，所以 cmd 的 6 個 mutant（含新的一個）在最終版本上重跑：`mutation-go-cmd-rerun.log` 6/6 killed。其他 mutant 測的 package 不 import `cmd/worker` |
-| `sql-mutants.py`（0007，32 個） | 0 | `mutation-sql.log`：baseline 時 SQL suite 與 jobs、worker、cmd/worker 的 Go 測試都過；31 killed、1 等價（`api-claims`：claim 必須改 attempt 與 token，API 的檢查不准改），0 unexpected。第一次執行另有 2 個存活（owner 把 queued 直接改為 completed／failed、API 只改 status 去取消或重排 running job），補測試後被擋下 |
+| `make integration-test`（新建的 `dt_test_t019_r2`） | 0 | migration 0001–0007 up／down／up、SQL tests、`db-go-test` 的 16 個 package（race）；唯一的 NOT RUN 是各 job type 的 handler（T-016、T-023、T-025） |
+| `go test -race -p 1 -v`（jobs、worker、worker/handler、workerscope、config、cmd/worker） | 0 | `t019-go-tests.log`：56 個 top-level test 通過，0 SKIP、0 FAIL |
+| `go test -race -count=5`（worker 與 cmd/worker 中與時間有關的 20 個測試） | 0 | `timing-x5.log`：100/100 通過，沒有 data race |
+| `mutants.py`（Go，115 個） | 0 | `mutation-go.log`：在 02a4200 上完整跑一次，110 killed、5 等價（理由在 harness：RLS 已限制 organization 的兩個 filter、0007 擋下沒有 attempt 的 queued job、不在 running 的 job 沒有可對上的 holder、停止的 attempt 由 `AfterFunc` 立即取消其 transaction），0 unexpected |
+| `sql-mutants.py`（0007，39 個） | 0 | `mutation-sql.log`：baseline 時 SQL suite 與 jobs、worker、cmd/worker 的 Go 測試都過；38 killed、1 等價（`api-claims`：claim 必須改 attempt 與 token，API 的檢查不准改），0 unexpected |
 
 ### 先紅後綠與 mutation 找到的缺口
 
