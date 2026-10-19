@@ -140,6 +140,37 @@ describe("client", () => {
     expect(call.init.cache).toBe("no-store");
   });
 
+  it("reads the user's own memberships (D-045) with no session and never the tenant selector", async () => {
+    const me = fixture("valid-me.json");
+    for (const current of [null, session]) {
+      const f = fakeFetch(json(200, me, { "X-Request-ID": REQ, "Cache-Control": "no-store" }));
+      const r = await createApiClient({ session: () => current, fetch: f.fetch }).getMe();
+      expect(r).toEqual({ ok: true, data: me, requestId: REQ, etag: null });
+      const call = f.calls[0]!;
+      expect([call.init.method, call.url.toString()]).toEqual(["GET", "https://app.test/api/v1/me"]);
+      const headers = call.init.headers as Record<string, string>;
+      expect(Object.keys(headers).map((h) => h.toLowerCase())).not.toContain("x-organization-id");
+      expect(headers.Authorization).toBeUndefined();
+      expect([headers.Accept, headers["X-Geminus-Request"]]).toEqual(["application/json", "1"]);
+      expect([call.init.credentials, call.init.redirect, call.init.cache, call.init.body]).toEqual(["same-origin", "error", "no-store", undefined]);
+    }
+  });
+
+  it("maps the answers /me can give like any other", async () => {
+    const cases: [Response | Error, string][] = [
+      [json(401, errorBody("UNAUTHENTICATED")), "unauthenticated"], // signed out (the BFF)
+      [json(403, errorBody("FORBIDDEN")), "forbidden"], // an identity without a user
+      [json(400, errorBody("INVALID_REQUEST")), "invalid"],
+      [json(503, errorBody("SERVICE_UNAVAILABLE"), { "Retry-After": "5" }), "unavailable"],
+      [new TypeError("fetch failed"), "network"],
+      [new Response("<html>", { status: 200 }), "protocol"],
+    ];
+    for (const [answer, kind] of cases) {
+      const r = await createApiClient({ session: () => null, fetch: fakeFetch(answer).fetch }).getMe();
+      expect(!r.ok && r.problem.kind).toBe(kind);
+    }
+  });
+
   it("rejects malformed route IDs locally as not found", async () => {
     const f = fakeFetch();
     const api = createApiClient({ session: () => session, fetch: f.fetch });
@@ -213,7 +244,7 @@ describe("client", () => {
 
 const operations = (
   JSON.parse(readFileSync(new URL("../../../planning/api-operations.json", import.meta.url), "utf8")) as {
-    operations: { method: string; path: string; operation_id: string }[];
+    operations: { method: string; path: string; operation_id: string; scope?: "user" }[];
   }
 ).operations;
 
@@ -296,10 +327,12 @@ describe("model writes and versions (T-013)", () => {
 
   it("calls each operation at the contract's method and path", async () => {
     const ok = () => json(200, { items: [], next_cursor: null });
-    const f = fakeFetch(...Array.from({ length: 10 }, ok));
+    const f = fakeFetch(...Array.from({ length: 11 }, ok));
     const client = api(f);
     const seen: Record<string, number> = {};
     const record = (id: string) => (seen[id] = f.calls.length - 1);
+    await client.getMe();
+    record("getMe");
     await client.listProjects();
     record("listProjects");
     await client.listModels(PROJECT);
@@ -327,6 +360,9 @@ describe("model writes and versions (T-013)", () => {
       expect(call.url.pathname.startsWith("/api/v1/")).toBe(true);
       const template = call.url.pathname.slice("/api".length).replace(/\/(prj|mdl|mv)_[0-9A-Z]{26}/g, "/{id}");
       expect([id, call.init.method, template]).toEqual([id, op?.method, op?.path]);
+      // The tenant selector goes with every operation in an organization, and only with those (D-045).
+      const selector = (call.init.headers as Record<string, string>)["X-Organization-ID"];
+      expect([id, selector]).toEqual([id, op?.scope === "user" ? undefined : ORG]);
     }
   });
 });

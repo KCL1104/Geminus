@@ -412,6 +412,76 @@ func TestScoped(t *testing.T) {
 	}
 }
 
+// Self (D-045): the token is verified first, any X-Organization-ID is
+// refused before a user is resolved, an unknown identity is 403, and next
+// gets the resolved user with the identity in its context.
+func TestSelf(t *testing.T) {
+	const org = "org_01M4YDQK00TA00000000000000"
+	const user = "usr_01M4YDQK00TA00000000000001"
+	good := fakeVerifier{id: auth.Identity{Issuer: "https://id", Subject: "s"}}
+	bearer := []string{"Bearer a.b.c"}
+	for _, c := range []struct {
+		name     string
+		v        auth.Verifier
+		resolver *fakeResolver
+		headers  map[string][]string
+		status   int
+		code     Code
+	}{
+		{"ok", good, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer}, 204, ""},
+		{"no token", good, &fakeResolver{user: user}, nil, 401, Unauthenticated},
+		{"token in the query only", good, &fakeResolver{user: user}, nil, 401, Unauthenticated},
+		{"rejected token", fakeVerifier{err: &auth.TokenError{Reason: auth.ReasonSignature}}, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer}, 401, Unauthenticated},
+		{"rejected token and a selector", fakeVerifier{err: &auth.TokenError{Reason: auth.ReasonSignature}}, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer, "X-Organization-ID": {org}}, 401, Unauthenticated},
+		{"keys unavailable", fakeVerifier{err: fmt.Errorf("jwks: %w", auth.ErrKeysUnavailable)}, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer}, 503, ServiceUnavailable},
+		{"a selector", good, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer, "X-Organization-ID": {org}}, 400, InvalidRequest},
+		{"an empty selector", good, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer, "X-Organization-ID": {""}}, 400, InvalidRequest},
+		{"two selectors", good, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer, "X-Organization-ID": {org, org}}, 400, InvalidRequest},
+		{"a malformed selector", good, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer, "X-Organization-ID": {"org_x"}}, 400, InvalidRequest},
+		{"a selector in lower case", good, &fakeResolver{user: user}, map[string][]string{"Authorization": bearer, "x-organization-id": {org}}, 400, InvalidRequest},
+		{"unknown user", good, &fakeResolver{err: tenant.ErrUnknownUser}, map[string][]string{"Authorization": bearer}, 403, Forbidden},
+		{"resolver unavailable", good, &fakeResolver{err: tenant.ErrRetryable}, map[string][]string{"Authorization": bearer}, 503, ServiceUnavailable},
+	} {
+		r := httptest.NewRequest("GET", "/v1/me", nil)
+		if c.name == "token in the query only" {
+			r = httptest.NewRequest("GET", "/v1/me?access_token=a.b.c", nil)
+		}
+		for k, vs := range c.headers {
+			for _, v := range vs {
+				r.Header.Add(k, v)
+			}
+		}
+		var got string
+		var verified, called bool
+		w := serve(slog.Default(), Self(c.v, c.resolver, func(w http.ResponseWriter, r *http.Request, u string) error {
+			got, called = u, true
+			_, verified = auth.IdentityFrom(r.Context())
+			w.WriteHeader(204)
+			return nil
+		}), r)
+		if w.Code != c.status {
+			t.Errorf("%s: %d %s", c.name, w.Code, w.Body)
+			continue
+		}
+		if c.status == 204 {
+			if got != user || !verified || c.resolver.got != [2]string{"https://id", "s"} {
+				t.Errorf("%s: user %q, identity in context %v, resolved %v", c.name, got, verified, c.resolver.got)
+			}
+			continue
+		}
+		e := checkEnvelope(t, w)
+		if e.Error.Code != c.code || called {
+			t.Errorf("%s: %s (next called: %v)", c.name, w.Body, called)
+		}
+		if c.code == InvalidRequest && (len(e.Error.Details) != 1 || e.Error.Details[0].Reason != "X-Organization-ID" || e.Error.Details[0].Path != "") {
+			t.Errorf("%s: details %+v, want one naming the header", c.name, e.Error.Details)
+		}
+		if c.resolver.err == nil && c.resolver.got != [2]string{} {
+			t.Errorf("%s: resolved a user before refusing the request", c.name)
+		}
+	}
+}
+
 // U+0000 is found in values and member names at any depth, with the
 // pointer of the value or of the object holding the name (review L1).
 func TestNULStrings(t *testing.T) {

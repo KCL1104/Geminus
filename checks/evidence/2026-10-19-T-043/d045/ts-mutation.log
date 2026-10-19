@@ -1,0 +1,8 @@
+baseline	tests/api.test.ts tests/bff.test.ts pass
+me-sends-the-selector	KILLED	× reads the user's own memberships (D-045) with no session and never the tenant selector 14ms
+me-needs-a-session	KILLED	× reads the user's own memberships (D-045) with no session and never the tenant selector 16ms
+selector-never-sent	KILLED	× goes through the same-origin BFF with the tenant selector and the CSRF header, never a token (ADR-018) 13ms
+me-wrong-path	KILLED	× reads the user's own memberships (D-045) with no session and never the tenant selector 9ms
+scoped-without-a-session	KILLED	× sends nothing without a session 10ms
+me-without-the-csrf-header	KILLED	× goes through the same-origin BFF with the tenant selector and the CSRF header, never a token (ADR-018) 10ms
+total=6 unexpected=0

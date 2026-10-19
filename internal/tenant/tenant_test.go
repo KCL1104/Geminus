@@ -41,6 +41,12 @@ func TestScopeIsValidatedBeforeTheDatabase(t *testing.T) {
 			t.Errorf("owners, %+v: %v", s, err)
 		}
 	}
+	for _, user := range []string{"", "usr_x", "usr_01m4ydqk00ta00000000000001", "org_01M4YDQK00TA00000000000000",
+		"usr_81M4YDQK00TA00000000000001", "usr_01M4YDQK00TA00000000000001 ", "usr_01M4YDQK00TA00000000000001'; RESET ROLE; --"} {
+		if err := d.RunSelf(context.Background(), user, func(context.Context, pgx.Tx) error { called = true; return nil }); !errors.Is(err, tenant.ErrInvalidScope) {
+			t.Errorf("self, %q: %v", user, err)
+		}
+	}
 	if called {
 		t.Error("fn ran for an invalid scope")
 	}

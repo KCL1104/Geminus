@@ -1,6 +1,8 @@
 // Package memberships is the SQL of twin.memberships for membership
-// management (T-010). Every statement runs in a tenant.DB transaction (RLS)
-// and also filters by organization. The D-036 owner lock is taken by
+// management (T-010) and for the user's own memberships (D-045). Every
+// statement runs in a tenant.DB transaction (RLS) and also filters by
+// organization, except OfUser, which filters by the user its RunSelf
+// transaction is scoped to. The D-036 owner lock is taken by
 // tenant.DB.RunOwners before any of these run.
 package memberships
 
@@ -90,6 +92,35 @@ func SetRole(ctx context.Context, tx pgx.Tx, org, user, role string) (Membership
 		return Membership{}, ErrNotFound
 	}
 	return m, err
+}
+
+// Own is one of a user's memberships with its organization's name (D-045).
+type Own struct {
+	OrganizationID   string
+	OrganizationName string
+	Role             string
+}
+
+// OfUser returns up to limit of user's memberships with their
+// organizations' names, ordered by organization name, then organization
+// ID, in byte order (COLLATE "C": the same order whatever the database's
+// collation, and the order Go compares strings in). It runs in
+// tenant.DB.RunSelf, where RLS shows only the user's own memberships and
+// their organizations (migration 0008); the user filter is the
+// application's own, next to it.
+func OfUser(ctx context.Context, tx pgx.Tx, user string, limit int) ([]Own, error) {
+	rows, err := tx.Query(ctx, `SELECT m.organization_id, o.name, m.role
+		FROM twin.memberships m JOIN twin.organizations o ON o.id = m.organization_id
+		WHERE m.user_id = $1
+		ORDER BY o.name COLLATE "C", m.organization_id COLLATE "C" LIMIT $2`, user, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Own, error) {
+		var m Own
+		err := r.Scan(&m.OrganizationID, &m.OrganizationName, &m.Role)
+		return m, err
+	})
 }
 
 // Delete removes user's membership in org.

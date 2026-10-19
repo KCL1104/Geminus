@@ -44,3 +44,32 @@ func Scoped(v auth.Verifier, users Resolver, next func(w http.ResponseWriter, r 
 		return next(w, r.WithContext(ctx), tenant.Scope{OrganizationID: values[0], UserID: user})
 	}
 }
+
+// Self authenticates a request that reads the caller's own identity and
+// selects no organization (D-045, GET /v1/me), in Scoped's order: it
+// verifies the token (auth.BearerToken and v), refuses a request that
+// carries X-Organization-ID, even empty (400: the header is never ignored,
+// so a client cannot believe it selected an organization), and resolves
+// the user, then calls next with the user's ID. An identity without a user
+// is tenant.ErrUnknownUser (403); none is created (D-008).
+func Self(v auth.Verifier, users Resolver, next func(w http.ResponseWriter, r *http.Request, user string) error) HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		token, err := auth.BearerToken(r)
+		if err != nil {
+			return err
+		}
+		id, err := v.Verify(r.Context(), token)
+		if err != nil {
+			return err
+		}
+		if len(r.Header.Values("X-Organization-ID")) > 0 {
+			return &Error{Code: InvalidRequest, Message: "this operation selects no organization: send no X-Organization-ID header",
+				Details: []Detail{{Path: "", Reason: "X-Organization-ID"}}}
+		}
+		user, err := users.ResolveUser(r.Context(), id.Issuer, id.Subject)
+		if err != nil {
+			return err
+		}
+		return next(w, r.WithContext(auth.WithIdentity(r.Context(), id)), user)
+	}
+}

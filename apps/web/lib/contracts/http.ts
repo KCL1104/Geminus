@@ -283,3 +283,17 @@ export type MembershipWrite = {
 export type MembershipUpdate = {
   role: "owner" | "editor" | "viewer";
 };
+
+/** GET /v1/me (D-045): the caller's user ID and own memberships, ordered by organization name, then organization ID, in byte (code point) order. At most 100; truncated is true when the user has more, and memberships is then the first 100 in that order. */
+export type Me = {
+  user_id: UserID;
+  memberships: OwnMembership[];
+  truncated: boolean;
+};
+
+/** One of the caller's memberships (D-045). The role only shapes the UI; the API authorizes every request itself. */
+export type OwnMembership = {
+  organization_id: OrganizationID;
+  organization_name: string;
+  role: "owner" | "editor" | "viewer";
+};

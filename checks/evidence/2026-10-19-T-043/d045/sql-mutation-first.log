@@ -1,0 +1,13 @@
+baseline	SQL suites and the /me Go tests pass
+memberships-any-user	KILLED	db/tests/self.sql: the self scope sees exactly the user's own memberships: org_01M4YDQK00TA00000000000000:usr_01M4YDQK00TA00000000000001:owner org_01M4YDQK00TA00000000000000:usr_0
+memberships-with-an-organization-selected	KILLED	db/tests/self.sql: the API with org_01M4YDQK00TA00000000000000 selected as usr_01M4YDQK00TA00000000000001 sees org_01M4YDQK00TA00000000000000:usr_01M4YDQK00TA00000000000001:owner 
+memberships-for-all-commands	KILLED	db/tests/self.sql: own_memberships and own_organizations are permissive SELECT policies for twin_api only
+memberships-for-every-role	KILLED	db/tests/self.sql: own_memberships and own_organizations are permissive SELECT policies for twin_api only
+memberships-restrictive	KILLED	db/tests/roles.sql: the API locks the owner memberships
+organizations-any-member	SURVIVED	UNEXPECTED
+organizations-any-organization-of-the-user	KILLED	db/tests/self.sql: the self scope sees exactly the organizations the user belongs to: org_01M4YDQK00TA00000000000000:Tenant A org_01M4YDQK00TB00000000000000:Tenant B org_01M4YDQK0
+organizations-with-an-organization-selected	SURVIVED	UNEXPECTED
+organizations-for-all-commands	KILLED	db/tests/self.sql: own_memberships and own_organizations are permissive SELECT policies for twin_api only
+organizations-for-the-worker	KILLED	db/tests/self.sql: own_memberships and own_organizations are permissive SELECT policies for twin_api only
+total=10 unexpected=2
+exit=1

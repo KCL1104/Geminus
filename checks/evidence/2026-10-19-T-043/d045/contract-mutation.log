@@ -1,0 +1,12 @@
+baseline	check_contracts.py passes
+me-without-its-scope	KILLED	AssertionError: ('get', '/me')
+me-requires-the-selector	KILLED	AssertionError: ('get', '/me')
+me-without-the-selector-parameter	KILLED	AssertionError: ('get', '/me')
+selector-takes-a-value	KILLED	AssertionError: ('get', '/me')
+me-with-a-role	KILLED	AssertionError: ('get', '/me')
+example-off-schema	KILLED	AssertionError: ('get', '/me', '200', 'memberships', ["'admin' is not one of ['owner', 'editor', 'viewer']"])
+own-400-lists-another-status	KILLED	AssertionError: ('get', '/me', '400')
+me-without-403	KILLED	AssertionError: ('get', '/me')
+inventory-without-the-scope	KILLED	AssertionError: getMe
+inventory-with-a-role	KILLED	AssertionError: getMe
+total=10 unexpected=0

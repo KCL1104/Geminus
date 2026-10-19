@@ -2574,6 +2574,14 @@
           "summary": "Review round 3 修正（dade6c2）：refresh 失敗是否結束 session 改由 token endpoint 本身的回答決定（client 的 fetch 記錄 status、body 的 OAuth 錯誤碼與 2xx 回答的新 refresh token）；2xx 但無法使用（含 JWKS 抓不到）結束 session 並撤銷新 token（L-1）；challenge 沒有 error 參數時以 body 的錯誤碼分類與記 log（L-2）；帶 Set-Cookie 的回應先送空 chunk，API 送出 header 後斷線仍拿到新 cookie（L-3，unit 與 E2E）；非 JSON 的 4xx、200 HTML、204、refresh 路徑的撤銷、discard 盡力而為的測試（L-4）；SECURITY §3、runbook、報告更正（L-5）；discard 最多等 2 秒並記 log（I-1、I-2）；TestNoGoCodeHandlesCookies 改為 go/ast（I-5）；provider 不可用的失敗共用 5 秒，runbook 加上 Auth0 對錯誤 client secret 與失敗 Action 的 staging 檢查（I-6）。dade6c2 乾淨 worktree：frontend-test（408 tests）、go test -race internal/auth、frontend-build、e2e-test（50 passed，TEST-032 9/9；16 個截圖測試只在 CI container 執行）、npm audit 0、spec-check exit 0；TS mutation 105（104 killed、1 等價）；CI run 39242110814 通過。",
           "reviewer": "round 3 ACCEPT with low findings (above); these fixes are reviewed in the T-043 final review, after D-045 and the sign-in UI",
           "decisions_pending": "D-045（GET /v1/me）待 owner；Auth0 tenant 與 reuse interval 由 owner 依 docs/runbooks/auth0.md 設定；Auth0 對錯誤 client secret 的回答在 staging 確認（runbook §5 第 5 點）"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-043_VALIDATION.md",
+          "summary": "D-045 slice（GET /v1/me，未 commit，基於 628c4ca）：contract（http.schema.json Me／OwnMembership、2 正例 5 反例；openapi getMe 以 x-tenant-scope: user、無 role、NoOrganizationContext（schema not: {}）；check_contracts.py 檢查 organization／user scope 與 inventory 的 method、path、origin、roles、scope）；migration 0008 的 own_memberships、own_organizations（permissive FOR SELECT TO twin_api，只在沒有選 organization 時成立）；tenant.DB.RunSelf（只設 user 的唯讀 transaction）；storage memberships.OfUser（COLLATE \"C\" 依名稱再依 ID）；internal/tenant/me（至多 100 筆，多於 100 時 truncated）；httpapi.Self（帶 X-Organization-ID 即 400，未知 identity 403）；client getMe()（不送 selector；BFF 不需改）。db/tests/self.sql（0008 不存在時先紅）。全新 ICU en-US 的 dt_test_d045_final：make integration-test exit 0（db-test up/down/up 5 個 suite、db-go-test 17 個 package）；spec-check、backend-test、backend-race（36 個 package）、architecture-check、frontend-test（411 tests）exit 0；mutation：Go 20／20、SQL 10／10（第一次 2 個存活：own_organizations 自己的兩個條件被 memberships 的 RLS 遮住，補 probe policy 測試後 killed）、TS 6／6、contract 10／10 killed。e2e-test NOT RUN（UI 未改）。",
+          "reviewer": "pending: independent reviewer (H-003)",
+          "decisions_pending": "Auth0 tenant 與 reuse interval 由 owner 依 docs/runbooks/auth0.md 設定；sign-in UI 等 design system 與新的截圖 baseline（owner）"
         }
       ]
     },

@@ -18,6 +18,8 @@ Browser、CSV/JSON uploads、user model labels、LLM output、client IDs、queue
 | 管理 membership | 否 | 否 | 是 |
 | 讀 tenant audit feed | 否 | 否 | 是（D-012 候選最小權限） |
 
+讀自己的 membership（`GET /v1/me`，D-045）不在表中：任何已 provisioning 的使用者都可以（不需要任何 organization 的 role，也不選 organization），未知 identity 403；它回的 role 只決定 UI，不是任何 operation 的授權。
+
 role 從 DB membership 取得，不從 request body、header、provider 或前端狀態取得。所有 object read 也要驗 org/parent。跨 tenant ID 回404；本 tenant role 不足回403。Owner 不是跨 tenant 超級管理員。last-owner 更新依 D-036 以 user_id 順序鎖住該 organization 全部 owner membership（`FOR UPDATE`）後再檢查人數，以 transaction 保留至少一位 Owner；不鎖 organization row，API 也沒有它的 UPDATE grant（CB-13）。
 
 ## 3. Authentication / browser
@@ -33,6 +35,13 @@ CORS/Origin allowlist、HTTPS、CSP、escaped labels/markdown、safe download fi
 ## 4. Tenant isolation / DB
 
 所有 tenant data tables NOT NULL organization_id + composite org/parent FKs + application filter + FORCE RLS。runtime role 不得 SUPERUSER、BYPASSRLS、REPLICATION、擁有任何物件、屬於目標 runtime role 以外的任何 role（含只能 SET ROLE 者與 predefined roles），或能建立物件；`tenant.CheckRuntimeRole` 在啟動時檢查（API_DATABASE §9）。per-request transaction-local context 由 verified membership 選定；pool checkout/commit/rollback/reset 後無 scope 殘留。
+
+D-045（`GET /v1/me`，migration 0008）是 tenant isolation 唯一的放寬，範圍刻意收窄：
+- **只在沒有選 organization 時成立。** `own_memberships`、`own_organizations` 都以 `app.organization_id` 未設為條件。選了 organization 的 transaction（`tenant.DB.Run`、`RunOwners`、worker scope）看到的與 0002 的 `tenant_isolation` 完全相同，所以既有的每條 tenant 隔離論證不變，一個 request 也不能在選了 organization 後順便看到自己其他 organization 的資料。反過來，沒有選 organization 時，`tenant_isolation` 一律不成立，只剩這兩個 policy。
+- **只看得到自己的。** 只有 `user_id` 等於 `app.user_id` 的 membership，以及這些 membership 所屬 organization 的 row（API 只讀 `id`、`name`；這一列也是成員選了該 organization 時本來就看得到的）；同一 organization 的其他成員、其他 organization、其他任何表的 row 都看不到（`db/tests/self.sql` 逐表檢查）。API 中 `app.user_id` 只經 `internal/tenant/internal/scope`（`Run`、`RunOwners`、`RunSelf` 共用）設定；`RunSelf` 把它設為 `ResolveUser` 從驗證後 token 解析出的 user。
+- **只讀、只給 API。** `FOR SELECT TO twin_api`：不能經由它們新增、修改、刪除或鎖 row（UPDATE、DELETE、`FOR UPDATE`／`FOR SHARE` 還需要 UPDATE／DELETE policy，只有 `tenant_isolation` 是），`RunSelf` 本身也是唯讀 transaction；worker 與 provisioning 沒有這兩張表的 SELECT，policy 也不給它們。membership row 仍只由 `RunOwners` 與 `Run` 的 `FOR SHARE` 上鎖（ADR-023 的不變式）。
+- **policy 之間沒有循環。** `own_organizations` 的 subquery 以呼叫者的 role 讀 memberships，受 memberships 的 RLS 限制（測試拿掉 `own_memberships` 時就看不到任何 organization）；memberships 的 policy 不讀 organizations。
+- 這仍是 defence in depth：`OfUser` 另以 `user_id` 過濾，HTTP 層要求不帶 `X-Organization-ID`。
 
 RLS 不是對 arbitrary SQL 注入的完整隔離：若攻擊者能任意執行 set_config 或直接使用 shared DB credentials，仍能挑 scope。必須參數化 queries、限定 handlers、不曝 SQL console、不讓 LLM 持 DB handle、保護 runtime secret。RLS 的保證是阻止未加 filter 的意外 scope 外 query，不可誇大為抗 compromised application server 的絕對 tenant sandbox。
 

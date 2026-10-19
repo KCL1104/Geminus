@@ -1,0 +1,12 @@
+{
+  "user_id": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+  "memberships": [
+    {
+      "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+      "organization_name": "Acme Delivery",
+      "role": "owner",
+      "user_id": "usr_01M4YDQK0016KTK4JM6KAHZ6BR"
+    }
+  ],
+  "truncated": false
+}

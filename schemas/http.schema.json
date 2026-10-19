@@ -1281,6 +1281,60 @@
         "role"
       ],
       "additionalProperties": false
+    },
+    "Me": {
+      "description": "GET /v1/me (D-045): the caller's user ID and own memberships, ordered by organization name, then organization ID, in byte (code point) order. At most 100; truncated is true when the user has more, and memberships is then the first 100 in that order.",
+      "type": "object",
+      "properties": {
+        "user_id": {
+          "$ref": "common.schema.json#/$defs/UserID"
+        },
+        "memberships": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OwnMembership"
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "user_id",
+        "memberships",
+        "truncated"
+      ],
+      "additionalProperties": false
+    },
+    "OwnMembership": {
+      "description": "One of the caller's memberships (D-045). The role only shapes the UI; the API authorizes every request itself.",
+      "type": "object",
+      "properties": {
+        "organization_id": {
+          "$ref": "common.schema.json#/$defs/OrganizationID"
+        },
+        "organization_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "owner",
+            "editor",
+            "viewer"
+          ]
+        }
+      },
+      "required": [
+        "organization_id",
+        "organization_name",
+        "role"
+      ],
+      "additionalProperties": false
     }
   }
 }

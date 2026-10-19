@@ -401,6 +401,34 @@ describe("proxy", () => {
     expect(allHeaders(res)).not.toContain(s.accessToken);
   });
 
+  it("forwards GET /api/v1/me (D-045) without adding an organization, and passes the API's answer back", async () => {
+    const value = await signIn();
+    const s = (await sessionOf(value)) as Session;
+    const me = '{"user_id":"usr_01M4YDQK0016KTK4JM6KAHZ6BR","memberships":[],"truncated":false}';
+    e.api.respond = (r) =>
+      r.headers.has("x-organization-id")
+        ? new Response('{"error":{"code":"INVALID_REQUEST","message":"x","request_id":"req_01M4YDQK00TA00000000000002"}}', { status: 400, headers: { "content-type": "application/json" } })
+        : new Response(me, { status: 200, headers: { "content-type": "application/json", "cache-control": "no-store", "x-request-id": "req_01M4YDQK00TA00000000000001" } });
+    const res = await e.h.proxy(get("me", value, { accept: "application/json" }), ["me"]);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(me);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const sent = e.api.requests[0] as Request;
+    expect([sent.method, sent.url]).toEqual(["GET", `${API}/v1/me`]);
+    expect(sent.headers.get("authorization")).toBe(`Bearer ${s.accessToken}`);
+    expect(sent.headers.has("x-organization-id")).toBe(false);
+    expect(sent.headers.get("cookie")).toBeNull();
+    // The proxy never drops or adds the selector: one the browser sends goes
+    // to the API, which refuses it there.
+    const refused = await e.h.proxy(get("me", value, { "x-organization-id": "org_01M4YDQK00TA00000000000000" }), ["me"]);
+    expect(refused.status).toBe(400);
+    expect((e.api.requests[1] as Request).headers.get("x-organization-id")).toBe("org_01M4YDQK00TA00000000000000");
+    // Signed out: the BFF answers 401 and the API is not called.
+    const out = await e.h.proxy(get("me", null), ["me"]);
+    expect(out.status).toBe(401);
+    expect(e.api.requests).toHaveLength(2);
+  });
+
   it("refuses a state-changing request from anywhere but the app", async () => {
     const value = await signIn();
     const tries: Record<string, string>[] = [{}, { origin: APP }, { origin: "https://evil.example", "x-geminus-request": "1" }, { ...csrf, "sec-fetch-site": "cross-site" }];

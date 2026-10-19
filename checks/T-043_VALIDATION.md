@@ -1,6 +1,6 @@
 # T-043 驗證報告：瀏覽器登入 session（BFF，ADR-018）
 
-**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；登入後的 UI bootstrap 等 D-045，見下）｜需求：REQ-019｜Gate：D-045（APPROVED，H-010）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
+**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；D-045 的 API 與 client 部分（`GET /v1/me`）已實作、待獨立 review，見「D-045 slice」；登入後的 UI bootstrap 等 design system）｜需求：REQ-019｜Gate：D-045（APPROVED，H-010）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
 
 範圍依 tasks.json：
 
@@ -119,9 +119,81 @@ Round 3 確認 round 2 全部修好（L-3 的 refresh 路徑沒有測試釘住�
 | **I-5** `TestNoGoCodeHandlesCookies` 是 regex | 改為 go/ast：selector `Cookie`、`Cookies`、`CookiesNamed`、`AddCookie`、`SetCookie`、`ParseCookie`、`ParseSetCookie`，以及兩種字串 literal 中的 `Cookie`／`Set-Cookie`；以 `http.ParseCookie(r.Header.Get(`Cookie`))` 的 probe 確認會失敗後移除 | `internal/auth/http_test.go` |
 | **I-6** Auth0 對錯誤 client secret 的回答未確認 | Runbook §5 第 5 點加上錯誤 secret 與失敗的 Action 的 staging 檢查；暫時失敗共用 5 秒（`REFRESH_RETRY_MS`），設定錯誤期間，每個 instance 對同一個 refresh token 每 5 秒最多呼叫 token endpoint 一次（共用表未滿時；滿了就不共用） | `keeps the session when the provider %s, and asks again after the retry window`；`failures-not-shared`、`failures-shared-for-the-reuse-window`、`retry-window-a-minute` |
 
+## D-045 slice：`GET /v1/me`（2026-10-19，agent 實作，待獨立 review（H-003））
+
+D-045（APPROVED，H-010；解決 CB-17）的 API、DB 與 client 部分，是 T-043 sign-in UI 的前置；UI 本身等 design system，不在這一片。
+
+### 交付內容
+
+| 位置 | 內容 |
+|---|---|
+| `schemas/http.schema.json` `Me`、`OwnMembership`；`testdata/contracts/` 2 個正例、5 個反例 | `user_id`、`memberships[]`（`organization_id`、`organization_name` 1–200 字、`role`）至多 100、`truncated`；反例：未知 role、多餘成員、缺 `truncated`、空名稱、101 筆 |
+| `openapi/openapi.yaml` `GET /me`（`getMe`） | `x-tenant-scope: user`、`x-required-roles: []`；`NoOrganizationContext` 參數（schema `not: {}`：不得送出）；200（schema、兩個 example、`Cache-Control: no-store`）、自己的 400（只列 `INVALID_REQUEST`，帶 header 時）、401、自己的 403（未知 identity）、429、500、503 |
+| `scripts/check_contracts.py` | operation 預設在 organization 中：必須要求 `X-Organization-ID` 且列出 role；`x-tenant-scope: user` 的不列 role、宣告 header 不得送出、有 400／401／403、path 不含 organization；operation 自己的錯誤 response 只列該 status 的 code；inline example 依 schema 驗證；`planning/api-operations.json` 的 method、path、origin、roles、scope 與 openapi 逐一相同（原本只比 operation ID） |
+| `planning/api-operations.json` | `getMe`（`roles: []`、`scope: "user"`） |
+| `migrations/0008_me.up.sql`／`.down.sql` | `own_memberships`、`own_organizations`：permissive、`FOR SELECT TO twin_api`，只在 `app.organization_id` 未設時成立（見 SECURITY §4、API_DATABASE §9） |
+| `internal/tenant/self.go` | `DB.RunSelf(ctx, user, fn)`：先驗 D-001 user ID（`ErrInvalidScope`，不碰 DB），唯讀 transaction，經 `internal/scope.Set` 設 organization `""` 與 user，錯誤分類與 transaction-local 設定同 `Run` |
+| `internal/storage/memberships.OfUser` | `memberships` join `organizations`，`WHERE m.user_id = $1`，`ORDER BY o.name COLLATE "C", m.organization_id COLLATE "C" LIMIT $2` |
+| `internal/tenant/me` | `Service.Get`（向 `OfUser` 要 101 筆，有第 101 筆就只回 100 筆並 `truncated: true`；空清單編成 `[]`）；`Register`／`Routes`（`GET /v1/me`，scope `user`，沒有 role） |
+| `internal/httpapi.Self` | 順序同 `Scoped`：驗 token → 帶任何 `X-Organization-ID`（含空值、多個）回 400 `INVALID_REQUEST`（detail reason `X-Organization-ID`）→ `ResolveUser`（未知 identity 403，沿用既有 mapping，不建立 user） |
+| `internal/api`（wiring）、`cmd/api` 測試 | `me.Register`；`cmd/api` 實際 serve 的 binary 對 `GET /v1/me` 回 401 |
+| `apps/web/lib/api/client.ts` `getMe()`；`lib/contracts/http.ts`（重新產生） | 不需要 organization 的 session、不送 `X-Organization-ID`，其餘與其他 operation 相同（`X-Geminus-Request`、`same-origin`、`redirect: error`、`no-store`、錯誤 mapping）。BFF proxy 不需要改：它只轉送瀏覽器送來的 `x-organization-id`、不會自己加，path 沒有 allowlist（只限一般 segment），測試確認 |
+| 文件 | API_DATABASE §2、§9；SECURITY §2、§4；CONTRACT_BLOCKERS CB-17；DECISIONS_AND_TBD D-045 的實作註記；ARCHITECTURE（`internal/tenant`、`internal/httpapi`）；ADR-019 補記；db/README（0008、`self.sql` 與 Go 測試） |
+
+沒有 audit event：本 codebase 的讀取（list／get）都不記 audit，`GET /v1/me` 照做（`TestMe` 檢查）。`Cache-Control: no-store` 本來就由 `httpapi.WriteBody` 加在每個回應上，沒有另外加。Handler 不寫 log；未預期的錯誤只 log 錯誤本身（不含 organization 名稱，`TestHandler`、`TestMe` 檢查 log）。
+
+### 與指定設計的差異
+
+- **排序用 byte 順序（`COLLATE "C"`）。** D-045 只說「依名稱再依 ID」。DB 的預設 collation 各環境不同（CI 為 libc `en_US.utf8`，那裡 `acme` 排在 `Zeta` 前面），截斷到 100 筆時取哪 100 筆也就不同；比照 D-034／CB-15，以 `COLLATE "C"` 讓順序與 Go 的字串比較相同、與環境無關。UI 若要依語言排序，可在畫面上另排（清單至多 100 筆）。寫在 openapi、schema 的 description 與 API_DATABASE §2。
+- **欄位名稱**為 parent 指定的 `organization_name`（D-045 原文「organization `name`」）。
+- **`X-Organization-ID` 在 openapi 中以參數宣告**（`NoOrganizationContext`，`required: false`、schema `not: {}`），而不只寫在 description，讓 `check_contracts.py` 能檢查。
+- 其餘照指定設計；沒有做不到的部分。
+
+### 測試
+
+先寫的負向測試：`db/tests/self.sql` 在 0008 不存在時先跑，7 個 case 失敗後停在 savepoint 的 `DROP POLICY`（`red-self-sql-without-0008.log`）；`check_contracts.py` 在 openapi 加入 `/me` 後先以既有的「每個 operation 都要求 `X-Organization-ID`」失敗，再改寫檢查。Go 與 TypeScript 的實作與測試是同時寫的，沒有先紅的紀錄；以下的 mutation 補上這部分的證據。
+
+- **SQL（`db/tests/self.sql`，由 `templates/self.sql.tmpl` 產生；`scripts/run_db_tests.sh` 在兩輪 up 之後都跑，down 先撤 0008）**：四個 organization、三個 user。沒有選 organization、只設 `app.user_id`：恰好是自己的 membership（跨 organization）、恰好是自己所屬的 organization（id、name），看不到同一 organization 其他成員的 membership、其他 organization、任何其他表的 row（逐表）；沒有 user、未知 user：什麼都看不到；`/me` 的 query 與順序。`own_organizations` 的 subquery 受 memberships 的 RLS 限制（savepoint 中拿掉 `own_memberships` 就看不到 organization），但它自己也寫明兩個條件（savepoint 中加一個顯示所有 membership 的 probe policy，仍只看到自己的 organization，選了 organization 時也不多）。SELECT only：INSERT 被拒（42501），UPDATE、DELETE、`FOR SHARE`、`FOR UPDATE` 碰不到 row，organizations 不能寫或鎖，嘗試之後 membership 不變。選了 organization（自己的、不是成員的、不存在的）：API 看到的與 owner role（只有 `tenant_isolation`）看到的逐一相同，且等於預期的 row，比較中確實有其他 tenant 的 row。Policy 是 permissive `FOR SELECT TO twin_api`、兩張表只有 `tenant_isolation` 與這兩個；owner role 沒有選 organization 時看不到。Worker：兩張表都沒有 SELECT（42501），沒有選 organization 時任何表都看不到。
+- **Go（真實 runtime login，`dt_test_api_login`）**：`internal/tenant` 的 `TestRunSelf`（只看得到自己的 membership 與 organization，看不到自己 organization 的 project、users；另一個 user、未知 user ID）、`TestRunSelfModeAndScope`（唯讀：寫入 25006；fn 的錯誤原樣；成功、拒絕的寫入、錯誤、panic、取消後連線上沒有 scope，有無 `Guard` 皆然，`Guard` 沒有換過連線）、`TestRunSelfTakesNoLock`（`FOR SHARE`／`FOR UPDATE`／`FOR KEY SHARE` 25006；進行中的 `RunSelf` 不擋 role 變更）、`TestScopeIsValidatedBeforeTheDatabase`（7 個不合格的 user ID，不碰 DB）；`internal/storage/memberships.TestOfUser`（以 superuser 執行，只靠 user filter；`Zeta`、`acme`、`Acme`×2、`Ärzte`、`_Underscore`、`研發部`、`Acme `、`a`、`Z` 與 4 個以 ID 遞減順序插入的同名 organization：byte 順序與 ID tie-break；limit）；`internal/httpapi.TestSelf`（13 個 case：token 先驗、任何 selector 400 且在解析 user 之前、未知 identity 403）；`internal/tenant/me` 的 `TestPage`（0、1、99、100、101、150 筆）、`TestHandler`（10 個 case 與空清單：schema、header、log、拒絕時不讀清單）、`TestRoutesMatchContract`、`TestFixturesRoundTrip`；`internal/api` 的 `TestMe`（經真實 handler 與 TLS 測試 provider：9 個名稱含同名的 organization 依序、另一個 user 的 membership 不出現、空清單、未知 identity 403 且沒有建立 user、401、四種 `X-Organization-ID` 都 400、其他 method 404、撤權與 role 變更立即反映、撤權的 organization 照常 404、沒有 audit、log 沒有 organization 名稱）與 `TestMeTruncates`（101 筆：100 筆且 `truncated`，依名稱順序而非建立順序；恰好 100 筆：不 `truncated`）；`cmd/api.TestRunServesAndStops`（binary serve `GET /v1/me`）。
+- **TypeScript**：`tests/api.test.ts`（`getMe` 沒有 session 也送、有 session 也不送 `X-Organization-ID`；6 種回答的 mapping；每個 operation 只有 organization 中的才帶 selector）；`tests/bff.test.ts`（`GET /api/v1/me` 轉成 `/v1/me`、帶 Bearer、不加 selector、`no-store` 回到瀏覽器；瀏覽器送的 selector 原樣轉送由 API 拒絕；未登入 401 且不呼叫 API）。
+
+### 實際執行結果
+
+在本 worktree（branch `claude/lucid-meitner-vq1awo`，基於 628c4ca，未 commit）執行；Go 1.27.2、Node 24.21.0、PostgreSQL 16.15（自建的一次性 cluster，port 55442，只用 `dt_test_d045_*` 資料庫）。Log 在 `checks/evidence/2026-10-19-T-043/d045/`。
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make spec-check PYTHON=.venv/bin/python` | 0 | contracts：openapi 42 個 operation，schema 正例 30（+2）、反例 52（+5，有精確 path 的 47）；db tests 5 個檔案 fresh |
+| `make backend-test` | 0 | gofmt、`go vet`、`go test`：36 個 package ok（沒有 DB 時 DB 測試 skip，見下一列以 DB 執行） |
+| `make backend-race` | 0 | 36 個 package ok |
+| `make architecture-check` | 0 | 44 packages、11 rules、16 build configurations（新 package `internal/tenant/me` 在 `internal/tenant/...` 之下，不需要新規則） |
+| `make frontend-test` | 0 | lint（0 warning）、typecheck、unit：18 個檔案 411 個 test（+3） |
+| `make integration-test`（全新的 `dt_test_d045_final`，ICU `en-US` collation，`DT_ALLOW_DB_TESTS=yes`） | 0 | `db-test`：up（含 0008）、5 個 SQL suite、down（先撤 0008）、up、5 個 suite；`db-go-test`（`-race`、`GEMINUS_REQUIRE_DB_TESTS=1`）17 個 package ok。`integration-test.log` |
+| D-045 的 Go 測試，`-race -v`（同一 DB） | 0 | 6 個 package 的 13 個 test 全過（`d045-go-tests.log`） |
+| `go-mutants.py`（ICU DB） | 0 | 20 個 mutant 全部 killed（`go-mutation.log`） |
+| `sql-mutants.py`（每個 mutant 一個全新 DB） | 0 | 10 個全部 killed（`sql-mutation.log`）；第一次執行 2 個存活，見下 |
+| `ts-mutants.py` | 0 | 6 個全部 killed（`ts-mutation.log`） |
+| `contract-mutants.py` | 0 | 10 個全部 killed（`contract-mutation.log`） |
+
+基準：改動前在 C.UTF-8 的全新 DB 上 `make integration-test` exit 0（同一個 cluster）。
+
+### Mutation
+
+四個 harness 都不修改 repository（Go 用 `go test -overlay`，SQL 每個 mutant 一個全新 DB，TS 與 contract 用複本），build／install 失敗算 harness 錯誤，不算 killed；Go 的 test binary crash 算 killed（H-011）。
+
+- **Go（20）**：RunSelf 不驗 user ID、讀寫 transaction、scope 沒有 user；`OfUser` 沒有 user filter、只依 ID 排序、用 DB 的 collation（ICU DB 才殺得掉，所以 harness 在 ICU DB 上跑）、沒有 ID tie-break、名稱倒序；`>=` 截斷（off-by-one）、只要 100 筆（看不出有沒有更多）、不截斷、上限 101、空清單為 nil；selector 不檢查、只拒絕兩個以上、先解析 user 再檢查、忽略 token 錯誤；未知 identity 改回 404；拿掉 `no-store`；route 沒有接上。全部 killed，沒有等價的。
+- **SQL（10）**：memberships policy 不限 user、選了 organization 也成立、`FOR ALL`、給每個 role、restrictive；organizations policy 不限 user（任何成員）、不限 organization、選了 organization 也成立、`FOR ALL`、也給 worker。**第一次執行（`sql-mutation-first.log`）有 2 個存活**：`organizations-any-member` 與 `organizations-with-an-organization-selected`。原因：`own_organizations` 的 subquery 受 memberships 的 RLS 限制，所以在現有 policy 下，拿掉它自己的 user 條件或 organization 未設的條件，看到的 row 都不變；它的這兩個條件是 defence in depth，測試看不到。補上 probe policy 的測試（savepoint 中讓 API 看得到所有 membership，`own_organizations` 仍只顯示自己的 organization、選了 organization 時不多），第二次執行 10 個全部 killed。
+- **TS（6）**：`getMe` 送 selector、需要 session、路徑錯誤；selector 完全不送；organization 的 operation 沒有 session 也送；沒有 CSRF header。
+- **Contract（10）**：`/me` 沒有 scope、要求 selector、沒有 selector 參數、selector 可帶值、有 role；example 不符 schema；自己的 400 列了別的 status 的 code；沒有 403；inventory 沒有 scope、有 role。
+
+### 給 reviewer 的注意事項
+
+- 同一個 worktree 中另一個 session 同時在處理 T-019 round 4，已 commit 為 628c4ca；這一片的檔案不在那個 commit 中。
+- 這一片沒有跑 `make e2e-test`（UI 沒有變；`apps/web-e2e/fake/servers.mjs` 的 API 替身沒有 `/v1/me`，sign-in UI 需要時再加）。
+
 ## 決策與 owner 知悉
 
-- **D-045（APPROVED，H-010）**：登入之後的 UI bootstrap（登入／登出按鈕、organization 選擇、從 API 取得 role、未知 identity 在 UI 顯示 403）需要 `GET /v1/me`。在 D-045 批准並實作前，BFF 已能登入、轉送與登出，但 UI 仍一律顯示未登入（沒有元件知道 session 存在）。T-043 的 decision gate 因此包含 D-045；BFF 部分先送審。
+- **D-045（APPROVED，H-010）**：登入之後的 UI bootstrap（登入／登出按鈕、organization 選擇、從 API 取得 role、未知 identity 在 UI 顯示 403）需要 `GET /v1/me`。API、DB 與 client（`getMe()`）已在「D-045 slice」實作、待獨立 review；在 UI 實作前，BFF 已能登入、轉送與登出，但 UI 仍一律顯示未登入（沒有元件知道 session 存在）。T-043 的 decision gate 因此包含 D-045；BFF 部分先送審。
 - 加入登入／登出按鈕會改變每個頁面的 header，所有截圖 baseline 需要重做；依 T-045 的規則只能由 owner 以 CI 的 `update_screenshots` 產生並確認後提交。
 - Auth0 tenant 與 credential 由 owner 依 `docs/runbooks/auth0.md` 建立；agent 沒有建立帳號、沒有任何 credential，也沒有連過 Auth0。
 - **Auth0 的 rotation reuse interval（owner 已決定，H-010：30 秒）**：runbook 一律設 30 秒（round 2 I-3）。代價是：refresh token 被 rotation 後 30 秒內，被竊的舊 token 仍能換到新 token 而不觸發 reuse detection；好處是被取消的 request 或遺失的回應不會讓使用者被登出。設 0 也能運作，只是上述情況會結束 session。
@@ -138,7 +210,8 @@ Round 3 確認 round 2 全部修好（L-3 的 refresh 路徑沒有測試釘住�
 | 項目 | 原因／歸屬 |
 |---|---|
 | 連 Auth0 的檢查 | 沒有 tenant 與 credential；`docs/runbooks/auth0.md` §5 在 staging 由人執行 |
-| 登入 UI、organization 選擇、UI 中的 403 | D-045 已批准（H-010），接著實作；隨新截圖 baseline 一起做 |
+| 登入 UI、organization 選擇、UI 中的 403 | `GET /v1/me` 與 `getMe()` 已實作（D-045 slice）；UI 等 design system，隨新截圖 baseline 一起做 |
+| `make e2e-test`（D-045 slice） | NOT RUN：這一片沒有改 UI；E2E 的 API 替身尚無 `/v1/me` |
 | 瀏覽器→BFF→Go API→DB 的閉環 | T-040 |
 | 多個 web instance 之間的 refresh 協調 | P0 單一 instance；多 instance 時以 Auth0 的 reuse interval 30 秒涵蓋（runbook） |
 | Login、callback、refresh 的 rate limiting 與告警 | T-036／T-035（ADR-018 §3）。BFF 不轉送 client IP（不送 X-Forwarded-For），API 端的 rate limiting 若要以 IP 區分，T-036 需決定由 BFF 轉送可信的 client IP |

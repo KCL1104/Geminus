@@ -121,6 +121,31 @@ type Org struct {
 // have the given OIDC issuer and random subjects.
 func NewOrg(t testing.TB, admin *pgxpool.Pool, issuer string, roles ...tenant.Role) Org {
 	t.Helper()
+	return NewOrgNamed(t, admin, issuer, "Test org", roles...)
+}
+
+// Join commits user's membership of org with role, as provisioning or an
+// owner would.
+func Join(t testing.TB, admin *pgxpool.Pool, org, user string, role tenant.Role) {
+	t.Helper()
+	err := postgres.OpenPool(admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SET LOCAL ROLE twin_owner`); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.organization_id',$1,true)`, org); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ($1,$2,$3)`, org, user, string(role))
+		return err
+	})
+	if err != nil {
+		t.Fatalf("adding a membership: %v", err)
+	}
+}
+
+// NewOrgNamed is NewOrg for an organization with the given name.
+func NewOrgNamed(t testing.TB, admin *pgxpool.Pool, issuer, name string, roles ...tenant.Role) Org {
+	t.Helper()
 	o := Org{ID: ids.New("org"), Members: map[tenant.Role]Member{}}
 	err := postgres.OpenPool(admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SET LOCAL ROLE twin_owner`); err != nil {
@@ -131,7 +156,7 @@ func NewOrg(t testing.TB, admin *pgxpool.Pool, issuer string, roles ...tenant.Ro
 		if _, err := tx.Exec(ctx, `SELECT set_config('app.organization_id',$1,true)`, o.ID); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO twin.organizations(id,organization_id,name) VALUES ($1,$1,'Test org')`, o.ID); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO twin.organizations(id,organization_id,name) VALUES ($1,$1,$2)`, o.ID, name); err != nil {
 			return err
 		}
 		for _, r := range roles {

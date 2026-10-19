@@ -2181,6 +2181,87 @@ paths:
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
+  /me:
+    get:
+      operationId: getMe
+      summary: The caller's user ID and own memberships
+      description: 'D-045 (approved, H-010; resolves CB-17): membership discovery for the UI. Any authenticated
+        user whose identity was provisioned (D-008); it selects no organization (x-tenant-scope user), so no role
+        is required and X-Organization-ID must not be sent. Returns the caller''s memberships with each
+        organization''s ID and name, ordered by organization name, then organization ID, in byte (code point)
+        order; at most 100, with truncated true and the first 100 in that order when there are more. A user
+        without memberships gets an empty list. An identity without a user is 403 FORBIDDEN, and none is
+        created. The role only shapes the UI: every other operation authorizes its own request. Personal data:
+        never cached (Cache-Control: no-store). A read, so not audited.'
+      tags:
+      - Memberships
+      x-origin: PROPOSED
+      x-tenant-scope: user
+      x-required-roles: []
+      parameters:
+      - $ref: '#/components/parameters/NoOrganizationContext'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+            Cache-Control:
+              $ref: '#/components/headers/NoStore'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/http.schema.json#/$defs/Me
+              examples:
+                memberships:
+                  summary: Three memberships; two organizations share a name and are ordered by ID
+                  value:
+                    user_id: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    memberships:
+                    - organization_id: org_01M4YDQK004J6EG1BW3SRYPDGD
+                      organization_name: Acme Delivery
+                      role: viewer
+                    - organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                      organization_name: Acme Delivery
+                      role: owner
+                    - organization_id: org_01M4YDQK00TA00000000000003
+                      organization_name: 研發部
+                      role: editor
+                    truncated: false
+                none:
+                  summary: A provisioned user without memberships
+                  value:
+                    user_id: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    memberships: []
+                    truncated: false
+        '400':
+          description: 'X-Organization-ID was sent (detail reason X-Organization-ID), or the request is otherwise
+            malformed. Codes: INVALID_REQUEST.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          description: 'The token is valid but no user has its identity (users are provisioned, never created from
+            a token, D-008). Codes: FORBIDDEN.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
 components:
   securitySchemes:
     bearerAuth:
@@ -2196,6 +2277,15 @@ components:
         from this header. D-008.
       schema:
         $ref: ../schemas/common.schema.json#/$defs/OrganizationID
+    NoOrganizationContext:
+      name: X-Organization-ID
+      in: header
+      required: false
+      description: 'Must not be sent: the operation reads the caller''s own identity and selects no organization
+        (D-045). A request that carries the header, even empty, is 400 INVALID_REQUEST with detail reason
+        X-Organization-ID; the header is never ignored, so a client cannot believe it selected one.'
+      schema:
+        not: {}
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -2351,6 +2441,11 @@ components:
       description: Correlation ID generated or safely accepted by API.
       schema:
         $ref: ../schemas/common.schema.json#/$defs/RequestID
+    NoStore:
+      description: Always no-store; the response is personal data (D-045).
+      schema:
+        type: string
+        const: no-store
     DraftETag:
       description: Strong current draft revision ETag.
       schema:

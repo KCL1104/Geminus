@@ -1,7 +1,8 @@
 // Package httpapi is the API's HTTP transport (ADR-019): the error
 // envelope of common.schema.json#/$defs/Error, request IDs, strict and
 // schema-validated JSON bodies, and the middleware that turns a verified
-// token and the X-Organization-ID selector into a tenant.Scope. Handlers
+// token and the X-Organization-ID selector into a tenant.Scope (Scoped), or
+// a verified token alone into the caller's user ID (Self, D-045). Handlers
 // return errors; this package alone decides their status and body, so the
 // API has one error format.
 package httpapi

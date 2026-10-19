@@ -15,6 +15,7 @@ import (
 	"github.com/kcl1104/geminus/internal/models"
 	"github.com/kcl1104/geminus/internal/project"
 	"github.com/kcl1104/geminus/internal/tenant"
+	"github.com/kcl1104/geminus/internal/tenant/me"
 	"github.com/kcl1104/geminus/internal/tenant/memberships"
 )
 
@@ -34,6 +35,7 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB) (http.Handler, er
 	mux := http.NewServeMux()
 	project.Register(mux, log, v, db, &project.Service{DB: db})
 	memberships.Register(mux, log, v, db, &memberships.Service{DB: db})
+	me.Register(mux, log, v, db, &me.Service{DB: db})
 	models.Register(mux, log, v, db, &models.Service{DB: db, Packs: packs})
 	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")

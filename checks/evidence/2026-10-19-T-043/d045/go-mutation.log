@@ -1,0 +1,23 @@
+baseline	./cmd/api/ ./internal/api/ ./internal/httpapi/ ./internal/storage/memberships/ ./internal/tenant/ ./internal/tenant/me/ pass
+self-no-user-check	KILLED	--- FAIL: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+self-read-write	KILLED	--- FAIL: TestRunSelf (0.04s)
+self-scope-without-the-user	KILLED	--- FAIL: TestRunSelf (0.04s)
+ofuser-no-user-filter	KILLED	--- FAIL: TestOfUser (0.05s)
+ofuser-order-by-id	KILLED	--- FAIL: TestOfUser (0.06s)
+ofuser-database-collation	KILLED	--- FAIL: TestOfUser (0.05s)
+ofuser-no-tie-break	KILLED	--- FAIL: TestOfUser (0.06s)
+ofuser-names-descending	KILLED	--- FAIL: TestOfUser (0.05s)
+truncated-at-100	KILLED	--- FAIL: TestPage (0.00s)
+asks-for-exactly-100	KILLED	--- FAIL: TestMeTruncates (0.45s)
+not-cut	KILLED	--- FAIL: TestPage (0.00s)
+limit-101	KILLED	--- FAIL: TestPage (0.00s)
+empty-list-is-null	KILLED	--- FAIL: TestPage (0.00s)
+selector-accepted	KILLED	--- FAIL: TestSelf (0.00s)
+one-selector-accepted	KILLED	--- FAIL: TestSelf (0.00s)
+selector-checked-after-resolving	KILLED	--- FAIL: TestSelf (0.00s)
+token-error-ignored	KILLED	--- FAIL: TestSelf (0.00s)
+unknown-user-is-404	KILLED	--- FAIL: TestWriteError (0.01s)
+no-store-removed	KILLED	--- FAIL: TestHandler (0.02s)
+me-not-wired	KILLED	--- FAIL: TestMe (0.11s)
+total=20 unexpected=0
+exit=0

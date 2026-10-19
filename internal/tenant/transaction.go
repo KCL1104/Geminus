@@ -7,6 +7,8 @@
 // from a verified identity (D-008): the X-Organization-ID header only selects
 // which membership to use, and Run checks that membership before fn runs.
 // RLS is defence in depth; the application filters by organization as well.
+// RunSelf (D-045) is the one transaction with no organization selected: it
+// reads the user's own memberships for GET /v1/me, read-only.
 //
 // Implements D-008 (approved 2026-10-15).
 package tenant

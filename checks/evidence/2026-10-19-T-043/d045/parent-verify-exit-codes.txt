@@ -1,0 +1,5 @@
+spec-check exit=0
+backend-test exit=0
+architecture-check exit=0
+frontend-test exit=0
+integration-test exit=0

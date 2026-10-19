@@ -39,7 +39,7 @@
 | CB-14 | **安全**：object key CHECK 用 `LIKE 'tenant/'‖org‖'/%'`，`_` 是萬用字元，`tenant/orgXa/…` 可通過 `org_a` 的檢查 | 0001_core.up.sql:132、185、186、334；**實測**：LIKE=true、`starts_with`=false | T-006 | NEW | 實測 |
 | CB-15 | Dataset manifest 以 DB 預設 collation `ORDER BY logical_ref`（無 `COLLATE "C"`），與 Go byte 排序可能不同，造成 commit 失敗或 hash 不一致 | 0001_core.up.sql:497、:521；TWIN_IR_SPEC.md:68；common.schema.json:173 | T-005、T-006 | D-006（未定排序） | 已核對（本環境未裝 en_US，排序差異未實測） |
 | CB-16 | Worker 對 `imports`、`jobs` 有整表 UPDATE，可改寫已確認 mapping 或設 COMMITTED；其他表用 column grant | 0002_rls.up.sql:54 vs API_DATABASE.md:49、:51、D-009 | T-007、T-016–T-018 | D-013（細節 NEW） | 已核對 |
-| CB-17 | 無 `/me`／membership discovery，client 無法取得自己的 user ID 與可用 organization；非成員或不存在的 `X-Organization-ID` 回應碼未定 | openapi.yaml:2120-2127、:2186-2203；0002_rls.up.sql:24、:31-35 | T-008–T-010、UI bootstrap | D-008（部分）；`/me` 見 D-045（PROPOSED，2026-10-19） | 審查回報 |
+| CB-17 | 無 `/me`／membership discovery，client 無法取得自己的 user ID 與可用 organization；非成員或不存在的 `X-Organization-ID` 回應碼未定 | openapi.yaml:2120-2127、:2186-2203；0002_rls.up.sql:24、:31-35 | T-008–T-010、UI bootstrap | D-008（部分）；**已由 D-045 解決（APPROVED，H-010；2026-10-19 實作於 T-043 的 D-045 slice，待獨立 review）**：`GET /v1/me` 回自己的 user ID 與 membership（organization ID、名稱、role），migration 0008；非成員或不存在的 `X-Organization-ID` 已由 T-009 定為 404 | 審查回報 |
 | CB-18 | Idempotency：過期但未清除的 key 重用行為未定；`saveImportMapping` 是唯一沒有 Idempotency-Key 的 POST | API_DATABASE.md:69；0001_core.up.sql:392-407；openapi.yaml:1140-1153 | T-017、T-019 | D-007/D-011（細節 NEW） | 審查回報 |
 
 ## C. 阻擋 T-019（queue / lease）

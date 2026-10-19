@@ -44,6 +44,9 @@ IDS = {
     "AUD_A3": ("aud", "A", 3), "AUD_A4": ("aud", "A", 4), "AUD_P1": ("aud", "P", 1), "AUD_P2": ("aud", "P", 2),
     "JOB_A2": ("job", "A", 2), "JOB_A3": ("job", "A", 3), "JOB_A4": ("job", "A", 4), "JOB_A5": ("job", "A", 5),
     "JOB_A6": ("job", "A", 6), "JOB_A7": ("job", "A", 7), "JOB_A8": ("job", "A", 8),
+    # D-045 (self.sql): more organizations and users, and IDs no row has.
+    "ORG_C": ("org", "C", 0), "ORG_D": ("org", "D", 0), "ORG_X": ("org", "X", 0),
+    "USR_C": ("usr", "C", 1), "USR_X": ("usr", "X", 1), "PRJ_C": ("prj", "C", 1), "PRJ_D": ("prj", "D", 1),
 }
 
 

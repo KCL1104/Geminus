@@ -1,0 +1,13 @@
+make backend-test: 0
+make backend-race: 0
+make architecture-check: 0
+make frontend-test: 0
+make integration-test (fresh dt_test_d045_final, ICU en-US): 0 (integration-test.log)
+go test -race -v of the D-045 tests (dt_test_d045_final): 0 (d045-go-tests.log)
+go-mutants.py (dt_test_d045_icu): 0, 20 killed, 0 unexpected (go-mutation.log)
+sql-mutants.py, first run: 1, 8 killed, 2 survived (sql-mutation-first.log)
+sql-mutants.py, after the probe-policy test: 0, 10 killed (sql-mutation.log)
+ts-mutants.py: 0, 6 killed (ts-mutation.log)
+contract-mutants.py: 0, 10 killed (contract-mutation.log)
+self.sql without 0008 (red): 3, 7 cases failed, then stopped (red-self-sql-without-0008.log)
+make spec-check PYTHON=.venv/bin/python: 0

@@ -721,6 +721,70 @@
       "expected_error_paths": [
         "/locale"
       ]
+    },
+    {
+      "id": "valid-me",
+      "instance": "testdata/contracts/valid-me.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-me-no-memberships",
+      "instance": "testdata/contracts/valid-me-no-memberships.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-me-unknown-role",
+      "instance": "testdata/contracts/invalid-me-unknown-role.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/memberships/0/role"
+      ]
+    },
+    {
+      "id": "invalid-me-membership-extra-member",
+      "instance": "testdata/contracts/invalid-me-membership-extra-member.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/memberships/0"
+      ]
+    },
+    {
+      "id": "invalid-me-without-truncated",
+      "instance": "testdata/contracts/invalid-me-without-truncated.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-me-empty-organization-name",
+      "instance": "testdata/contracts/invalid-me-empty-organization-name.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/memberships/0/organization_name"
+      ]
+    },
+    {
+      "id": "invalid-me-over-100",
+      "instance": "testdata/contracts/invalid-me-over-100.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/memberships"
+      ]
     }
   ]
 }

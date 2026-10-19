@@ -20,9 +20,12 @@ run migrations/0004_provisioner.up.sql
 run migrations/0005_ir_text.up.sql
 run migrations/0006_version_comment.up.sql
 run migrations/0007_job_states.up.sql
+run migrations/0008_me.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
+run db/tests/self.sql
+run migrations/0008_me.down.sql
 run migrations/0007_job_states.down.sql
 run migrations/0006_version_comment.down.sql
 run migrations/0005_ir_text.down.sql
@@ -48,7 +51,9 @@ run migrations/0004_provisioner.up.sql
 run migrations/0005_ir_text.up.sql
 run migrations/0006_version_comment.up.sql
 run migrations/0007_job_states.up.sql
+run migrations/0008_me.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
+run db/tests/self.sql
 echo 'DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.'

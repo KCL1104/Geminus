@@ -1,0 +1,10 @@
+# db/tests/self.sql on a fresh dt_test_* database migrated through 0007 only (no 0008), collect mode (PGOPTIONS='-c dt.collect=on'): every case the missing policies break, then the suite stops at the savepoint's DROP POLICY.
+psql:db/tests/self.sql:135: WARNING:  FAILED: own_memberships and own_organizations are permissive SELECT policies for twin_api only
+psql:db/tests/self.sql:137: WARNING:  FAILED: memberships and organizations have only tenant_isolation and the 0008 policies: tenant_isolation, tenant_isolation
+psql:db/tests/self.sql:144: WARNING:  FAILED: the self scope sees exactly the user's own memberships: 
+psql:db/tests/self.sql:146: WARNING:  FAILED: the self scope sees exactly the organizations the user belongs to: 
+psql:db/tests/self.sql:157: WARNING:  FAILED: the /me query
+psql:db/tests/self.sql:162: WARNING:  FAILED: user c in the self scope:  / 
+psql:db/tests/self.sql:166: WARNING:  FAILED: user b in the self scope:  / 
+psql:db/tests/self.sql:181: ERROR:  policy "own_memberships" for table "memberships" does not exist
+exit=3

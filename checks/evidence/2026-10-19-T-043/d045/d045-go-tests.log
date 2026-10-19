@@ -1,0 +1,39 @@
+=== RUN   TestRunSelf
+--- PASS: TestRunSelf (0.04s)
+=== RUN   TestRunSelfModeAndScope
+--- PASS: TestRunSelfModeAndScope (0.50s)
+=== RUN   TestRunSelfTakesNoLock
+--- PASS: TestRunSelfTakesNoLock (0.04s)
+=== RUN   TestScopeIsValidatedBeforeTheDatabase
+--- PASS: TestScopeIsValidatedBeforeTheDatabase (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant	1.603s
+=== RUN   TestOfUser
+--- PASS: TestOfUser (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	1.071s
+=== RUN   TestSelf
+--- PASS: TestSelf (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/httpapi	1.105s
+=== RUN   TestPage
+--- PASS: TestPage (0.00s)
+=== RUN   TestHandler
+--- PASS: TestHandler (0.07s)
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestFixturesRoundTrip
+--- PASS: TestFixturesRoundTrip (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant/me	1.138s
+=== RUN   TestMe
+--- PASS: TestMe (0.29s)
+=== RUN   TestMeTruncates
+--- PASS: TestMeTruncates (0.40s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	1.757s
+=== RUN   TestRunServesAndStops
+--- PASS: TestRunServesAndStops (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/api	1.089s
+exit=0

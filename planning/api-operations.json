@@ -424,6 +424,14 @@
       "roles": [
         "owner"
       ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/me",
+      "operation_id": "getMe",
+      "origin": "PROPOSED",
+      "roles": [],
+      "scope": "user"
     }
   ]
 }

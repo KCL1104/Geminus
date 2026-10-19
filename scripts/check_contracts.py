@@ -162,14 +162,30 @@ def main() -> dict[str, Any]:
             assert method in {'get','post','put','patch','delete','options','head','trace'}
             operations.append(operation['operationId'])
             assert operation['x-origin'] in {'SOURCE','PROPOSED'}
-            assert set(operation['x-required-roles']) <= {'owner','editor','viewer'}
+            roles=operation['x-required-roles']
+            assert set(roles) <= {'owner','editor','viewer'} and len(roles)==len(set(roles)),(method,path)
             resolved=[]
             for p in operation['parameters']:
                 resolved.append(pointer(oas,p['$ref'][1:]) if '$ref' in p else p)
             path_vars=set(re.findall(r'\{([^}]+)\}',path))
             assert path_vars=={p['name'] for p in resolved if p['in']=='path'}
             assert all(p.get('required') for p in resolved if p['in']=='path')
-            assert any(p['name']=='X-Organization-ID' and p['required'] for p in resolved)
+            # An operation runs in one organization (the default): X-Organization-ID
+            # is required and a role of that membership authorizes it. Or, with
+            # x-tenant-scope user, it reads the caller's own identity (D-045): no
+            # organization, so no role, and the header is declared as one that must
+            # not be sent (no value is valid) and is refused with 400 (the server
+            # never ignores it); an unknown identity is 403.
+            scope=operation.get('x-tenant-scope','organization')
+            assert scope in {'organization','user'},(method,path,scope)
+            selectors=[p for p in resolved if p['name']=='X-Organization-ID']
+            assert len(selectors)==1 and selectors[0]['in']=='header',(method,path)
+            if scope=='organization':
+                assert roles and selectors[0]['required'],(method,path)
+            else:
+                assert roles==[] and not selectors[0].get('required') and selectors[0]['schema']=={'not':{}},(method,path)
+                assert {'400','401','403'} <= set(operation['responses']),(method,path)
+                assert not re.search(r'\{[^}]*organization',path),(method,path)
             assert operation['responses']
     assert len(operations)==len(set(operations))
     # D-025: every error code maps to exactly one documented error response,
@@ -186,11 +202,34 @@ def main() -> dict[str, Any]:
         for method,operation in item.items():
             if 'requestBody' in operation:
                 assert '413' in operation['responses'] and '415' in operation['responses'],(method,path)
-            for code in operation['responses']:
-                if code[0] in '45': assert int(code) in error_responses,(method,path,code)
+            for code,resp in operation['responses'].items():
+                if code[0] in '45':
+                    assert int(code) in error_responses,(method,path,code)
+                    # An operation's own error response lists only codes of its status.
+                    if '$ref' not in resp:
+                        listed=re.search(r'Codes: (.*)\.$',resp['description']).group(1).split(', ')
+                        assert listed and all(status_of.get(c)==int(code) for c in listed),(method,path,code)
+                        assert resp['content']['application/json']['schema']=={'$ref':'../schemas/common.schema.json#/$defs/Error'},(method,path,code)
+                # Inline examples match the response's schema.
+                for media in resp.get('content',{}).values():
+                    for name,example in media.get('examples',{}).items():
+                        ref=media['schema']['$ref']
+                        assert ref.startswith('../schemas/'),(method,path,code,ref)
+                        errors=list(validator(ref[len('../'):]).iter_errors(example['value']))
+                        assert not errors,(method,path,code,name,[e.message for e in errors])
     inventory=load(ROOT/'planning/api-operations.json')['operations']
     assert set(operations)=={x['operation_id'] for x in inventory}
     assert len(inventory)==len(operations)
+    # The inventory the Go and TypeScript route tests read is the contract's:
+    # method, path, origin, roles and tenant scope of each operation.
+    by_id={x['operation_id']:x for x in inventory}
+    for path,item in oas['paths'].items():
+        for method,operation in item.items():
+            x=by_id[operation['operationId']]
+            assert set(x) <= {'method','path','operation_id','origin','roles','scope'},x
+            assert (x['method'],x['path'],x['origin'],x['roles'],x.get('scope','organization'))==\
+                (method.upper(),'/v1'+path,operation['x-origin'],operation['x-required-roles'],
+                 operation.get('x-tenant-scope','organization')),operation['operationId']
     # Optional installed parser adds a structural model check; not full OAS conformance.
     fastapi_status='NOT_RUN_NOT_INSTALLED'
     try:

@@ -2,8 +2,10 @@
 // the API through the same-origin BFF (ADR-018, T-043): the browser holds no
 // token, the session cookie goes along and the BFF adds the bearer token. It
 // fails closed: without a session it sends nothing and returns a Problem, so
-// the UI can never show data the server did not return.
-import type { CreateModel, Draft, JsonPatch, Model, Models, ModelVersion, OrganizationID, Projects, Publish, ResetDraft, Versions } from "../contracts";
+// the UI can never show data the server did not return. The one exception is
+// getMe (D-045), which selects no organization: it is how the UI learns the
+// organizations to choose from, and the BFF and API authenticate it.
+import type { CreateModel, Draft, JsonPatch, Me, Model, Models, ModelVersion, OrganizationID, Projects, Publish, ResetDraft, Versions } from "../contracts";
 import { draftETag, parseDraftETag } from "./etag";
 import { isID } from "./ids";
 import {
@@ -43,6 +45,12 @@ type Request = {
   ifMatch?: string;
   idempotencyKey?: string;
   signal?: AbortSignal;
+  /**
+   * False for an operation that selects no organization (GET /me, D-045):
+   * it needs no session's organization and never sends X-Organization-ID,
+   * which the API refuses there. The BFF still requires the sign-in.
+   */
+  organization?: false;
 };
 
 // openapi IdempotencyKey: 8–128 characters; the server takes visible ASCII.
@@ -73,8 +81,9 @@ export function createApiClient(cfg: ClientConfig) {
   const doFetch = cfg.fetch ?? globalThis.fetch.bind(globalThis);
 
   async function call<T>(req: Request): Promise<Result<T>> {
-    const session = cfg.session();
-    if (session === null) return { ok: false, problem: unauthenticatedProblem() };
+    const scoped = req.organization !== false;
+    const session = scoped ? cfg.session() : null;
+    if (scoped && session === null) return { ok: false, problem: unauthenticatedProblem() };
 
     // A same-origin path: req.path is a fixed template with validated IDs,
     // so the request can only reach the BFF's API proxy.
@@ -83,10 +92,10 @@ export function createApiClient(cfg: ClientConfig) {
     const url = API_PREFIX + req.path + (query.size > 0 ? `?${query}` : "");
     const headers: Record<string, string> = {
       Accept: "application/json",
-      "X-Organization-ID": session.organizationId,
       // The BFF refuses a state-changing request without it (CSRF, ADR-018).
       "X-Geminus-Request": "1",
     };
+    if (session !== null) headers["X-Organization-ID"] = session.organizationId;
     if (req.contentType) headers["Content-Type"] = req.contentType;
     if (req.ifMatch) headers["If-Match"] = req.ifMatch;
     if (req.idempotencyKey) headers["Idempotency-Key"] = req.idempotencyKey;
@@ -128,6 +137,16 @@ export function createApiClient(cfg: ClientConfig) {
   }
 
   return {
+    /**
+     * The signed-in user's ID and memberships (D-045), for choosing an
+     * organization and learning the role there before any session exists.
+     * The role only shapes the UI; the API authorizes every request. A
+     * signed-out browser gets "unauthenticated" from the BFF, an identity
+     * without a user "forbidden".
+     */
+    getMe(opts: { signal?: AbortSignal } = {}) {
+      return call<Me>({ method: "GET", path: "/me", organization: false, signal: opts.signal });
+    },
     listProjects(opts: { cursor?: string; signal?: AbortSignal } = {}) {
       return call<Projects>({ method: "GET", path: "/projects", query: { cursor: opts.cursor }, signal: opts.signal });
     },

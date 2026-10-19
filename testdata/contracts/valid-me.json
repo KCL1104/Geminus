@@ -1,0 +1,21 @@
+{
+  "user_id": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+  "memberships": [
+    {
+      "organization_id": "org_01M4YDQK004J6EG1BW3SRYPDGD",
+      "organization_name": "Acme Delivery",
+      "role": "viewer"
+    },
+    {
+      "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+      "organization_name": "Acme Delivery",
+      "role": "owner"
+    },
+    {
+      "organization_id": "org_01M4YDQK00TA00000000000003",
+      "organization_name": "研發部",
+      "role": "editor"
+    }
+  ],
+  "truncated": false
+}

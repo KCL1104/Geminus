@@ -148,14 +148,17 @@ func TestRunServesAndStops(t *testing.T) {
 	case <-time.After(30 * time.Second):
 		t.Fatal("not serving after 30 s")
 	}
-	res, err := http.Get("http://" + addr + "/v1/projects")
-	if err != nil {
-		t.Fatal(err)
-	}
-	body, _ := io.ReadAll(res.Body)
-	res.Body.Close()
-	if res.StatusCode != 401 || !strings.Contains(string(body), `"UNAUTHENTICATED"`) || res.Header.Get("X-Request-ID") == "" {
-		t.Errorf("unauthenticated request: %d %s", res.StatusCode, body)
+	// An organization's route and GET /v1/me (D-045), which selects none.
+	for _, path := range []string{"/v1/projects", "/v1/me"} {
+		res, err := http.Get("http://" + addr + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != 401 || !strings.Contains(string(body), `"UNAUTHENTICATED"`) || res.Header.Get("X-Request-ID") == "" {
+			t.Errorf("unauthenticated request to %s: %d %s", path, res.StatusCode, body)
+		}
 	}
 	cancel()
 	select {
