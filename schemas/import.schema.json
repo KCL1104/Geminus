@@ -75,7 +75,7 @@
         "type": "object",
         "maxProperties": 256,
         "additionalProperties": true,
-        "description": "UNTRUSTED_DATA (D-043): one source row's raw values keyed by source column name, in file order; CSV values are always strings, JSON event values are the raw JSON values. The server cuts strings longer than 256 characters to 255 characters and a final U+2026, and bounds the whole preview to 1 MiB, so it may hold fewer than 100 rows. A CSV row with too few fields lacks the missing columns; fields beyond the header are left out (the error report lists the row)."
+        "description": "UNTRUSTED_DATA (D-043): one source row's raw values keyed by source column name (member order is not significant: profile.columns gives the column order), the first rows of the file in order; CSV values are always strings, JSON event values are the raw JSON values. The server cuts string values (at any depth) longer than 256 characters to 255 characters and a final U+2026, and bounds the whole preview to 1 MiB, so it may hold fewer than 100 rows. A CSV row with too few fields lacks the missing columns; fields beyond the header are left out (the error report lists the row)."
       },
       "minItems": 0,
       "maxItems": 100
