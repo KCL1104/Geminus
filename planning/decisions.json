@@ -779,6 +779,19 @@
       "still_open": [
         "從 A／B／C 或其融合中選定視覺方向，以及預設主題（淺色、深色或跟系統）"
       ]
+    },
+    {
+      "id": "H-012",
+      "subject": "產品願景範圍、使用情境、手機範圍、品牌、深色主題色調、UI 評審工具",
+      "decision": "(1) PRODUCT.md 涵蓋所有場景（製造業、工業、倉儲、航太、城市、建築工程等）；P0 仍先做偏流程導向的 Software Delivery，不改變 P0／P1 範圍。(2) Owner 認為 3D 對後續 domain 更關鍵，PRODUCT.md 須寫入 3D；P0 的 3D 仍是唯讀 projection（SOURCE）。(3) 使用情境：桌機決策、每天長時間建模、會議投影。(4) 以桌機為主；手機可看結果、審核並批准或拒絕 proposal，不編輯拓撲。(5) 品牌只有名稱 Geminus。(6) 深色主題不用藍色，改用灰黑色。(7) 用 impeccable（pbakaus，Apache-2.0）做整體 UI 檢查、評分、改進與優化。",
+      "quote": "我希望能擴展到所有情境的，包括製造業, 工業, 倉儲, 航太, 城市, 建築工程等所有場景，初期可能先從軟體開發這種偏流程導向的開始但在 PRODUCT.md 上我希望是包含所有部分的；深色主題我不想要用藍色的，這個顏色 ai 味很重，我想要灰黑色的深色主題",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-19",
+      "source": "Claude Code session 指示與 impeccable init 訪談回答，由 agent 記錄；寫入 PRODUCT.md",
+      "still_open": [
+        "3D authoring 是否及何時納入（SOURCE 將其排除於 P0，改變須 owner 決定）",
+        "視覺方向與預設主題（沿用 H-011 的未決項）"
+      ]
     }
   ]
 }
