@@ -777,7 +777,7 @@
       "decided_at": "2026-10-19",
       "source": "Claude Code session 指示，由 agent 記錄；三個方向見該 session 的比較頁",
       "still_open": [
-        "從 A／B／C 或其融合中選定視覺方向，以及預設主題（淺色、深色或跟系統）"
+        "已由 H-013 決定：視覺方向為 Marey 圖表時刻表，預設主題跟隨系統"
       ]
     },
     {
@@ -791,6 +791,18 @@
       "still_open": [
         "3D authoring 是否及何時納入（SOURCE 將其排除於 P0，改變須 owner 決定）",
         "視覺方向與預設主題（沿用 H-011 的未決項）"
+      ]
+    },
+    {
+      "id": "H-013",
+      "subject": "視覺方向與預設主題（解決 H-011 的未決項）",
+      "decision": "(1) 視覺方向選 Marey 圖表時刻表（impeccable 方向輪中 agent 排名第一的候選）：時間由左往右、步驟由上往下、每個工作項目一條線，線變平就是排隊；scenario 用深綠、baseline 用石墨虛線；字型 Archivo；深色為灰黑（H-012）。同輪其他選項：立體照片卡（抽中）、光譜發射線、Factory 目錄、類別標準，均未選。(2) 預設主題跟隨系統，使用者可切換並記住。實際 token 值與元件寫入 DESIGN.md／ADR 後再請 owner 檢視。",
+      "quote": "Marey 時刻表；跟隨系統",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-19",
+      "source": "Claude Code session 中 impeccable 方向輪的問題卡回答，由 agent 記錄；比較頁為該 session 的 artifact，草稿在 .impeccable/mocks/decision/",
+      "still_open": [
+        "依 Marey 方向建成的 design system（DESIGN.md、tokens、元件）待 owner 檢視"
       ]
     }
   ]
