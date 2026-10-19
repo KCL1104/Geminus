@@ -2,7 +2,7 @@
 // proposal is created the server generates, for each kind of entity a
 // proposal may add (node, flow, resource), 16 IDs "<kind>_<lowercase
 // ULID>". The pool is stored with the proposal and never changes
-// (ai_proposals.id_pool, migration 0010), the provider context lists it, and
+// (ai_proposals.id_pool, migration 0011), the provider context lists it, and
 // validation and approval accept a new entity only with an ID from the list
 // of its own kind that the base IR does not use. A provider that needs more
 // IDs answers needs_input. The provider never mints IDs (D-016).

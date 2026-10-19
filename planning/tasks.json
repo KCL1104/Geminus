@@ -1518,11 +1518,21 @@
         "provider interface、explicit fake/disabled/live modes。",
         "tenant-safe context、redaction、UNTRUSTED_DATA、ID allocation pool。",
         "token/timeout/retry budgets與provider schema projection。",
-        "`output_locale`（en 預設／zh-Hant，server 驗證）：只有 prose 依語言輸出，ID／path／code／metric 不翻譯；analyst 數字以阿拉伯數字校驗（AI_SPEC §3、§9）。"
+        "`output_locale`（en 預設／zh-Hant，server 驗證）：只有 prose 依語言輸出，ID／path／code／metric 不翻譯；analyst 數字以阿拉伯數字校驗（AI_SPEC §3、§9）。",
+        "Package 名稱（T-024 決定，ADR-027 PROPOSED）：原規劃的 `internal/ai/context` 改為 `internal/ai/aicontext`，避免與標準函式庫 `context` 同名；live adapter 在 `internal/ai/provider/anthropic`，是唯一連結 LLM SDK 的 package。"
       ],
       "planned_outputs": [
         "internal/ai/provider/",
-        "internal/ai/context/"
+        "internal/ai/provider/fake/",
+        "internal/ai/provider/anthropic/",
+        "internal/ai/aicontext/",
+        "internal/ai/idpool/",
+        "internal/ai/locale/",
+        "internal/ai/corpus/",
+        "internal/secret/",
+        "internal/config/ai.go",
+        "prompts/embed.go",
+        "migrations/0011_ai_id_pool.up.sql"
       ],
       "spec_refs": [
         "docs/AI_SPEC.md",

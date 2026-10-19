@@ -24,6 +24,8 @@ ProposalContext 的 mode 由 server 固定為 edit/scenario；可以用同一 pr
 
 未選 provider/model、token budget 或 data policy 時，live AI 明確 disabled 並回 AI_PROVIDER_NOT_CONFIGURED / AI_POLICY_NOT_APPROVED。development fake provider 只能顯式配置；不得在 production timeout 時偷偷回 synthetic answer。不得 hard-code「最新 model」；用 app-owned eval corpus 比較後決定。
 
+T-024 實作（[ADR-027](adr/ADR-027-ai-provider-adapter.md) PROPOSED，待 review；不批准任何 live 呼叫）：`internal/ai/provider` 的 `LLMProvider` 收 sealed `Prompt`（`internal/ai/aicontext` 產生），回傳 typed output 與 audit metadata（provider、model、credential label、prompt_template_version、schema、output_locale、input／output hash、tokens、latency，無 prompt、無回答文字、無 key）。三個 mode 都經過同一個 `Client`：prompt 未 seal 或被改、role 與 mode 不符、超過 prompt 預算、同一 organization 的並行數已滿、逾時、取消，各有 typed code；回答必須是一個通過完整 2020-12 output schema 的 JSON document，否則 `invalid_output`（只留 issue path）。Mode 由 `internal/config.LoadAI` 決定：`disabled`（預設）、`fake`（只限 APP_ENV development／test）、`anthropic`（沒有 owner 的已記錄核准時回 `policy_not_approved` 且不讀 key；`AI_POLICY_APPROVAL` 必須是 build 列出的核准，目前清單為空）。Live adapter 用官方 Go SDK v1.78.0，key 明確注入（不讀 `ANTHROPIC_API_KEY` 等環境預設），只在 401／402／403 換 credential，429／529／5xx 在同一 credential 重試（D-018）；只對本機 test server 測過，真實 API 呼叫 NOT RUN。Structured output 的投影（`anthropic.Project`）只移除 subset 不支援的 constraint 並列出，`oneOf` 改 `anyOf`，拒絕開放 object。
+
 ## 3. Context builder
 
 輸入只能由已授權 repository 和 scoped result service 取出：immutable model slice + entity-ID index、完整 schema/domain rules、intent、selected entity IDs、sanitized data summary、approved limits；analyst 另接 results/statistical summary/comparison。不接受 client 自己提供的 full model / baseline metrics 作可信 authority。
@@ -33,6 +35,8 @@ ProposalContext 的 mode 由 server 固定為 edit/scenario；可以用同一 pr
 輸出語言（REQ-022）：每個 AI request 帶 `output_locale`（`en` 預設，或 `zh-Hant`），取自使用者的 UI 語言，由 server 驗證為允許值後放進 provider instruction；client 的其他文字不能改變它。只有 prose（summary、assumptions、explanation、clarifying question）依該語言輸出；ID、JSON Patch path、JSON Pointer、enum／reason code、metric path、單位一律不翻譯。Analyst prose 中的數字一律以阿拉伯數字與供應值的單位書寫，§9 的數字校驗對兩種語言都適用；無法校驗的中文數字寫法（如「四十七」）視為未校驗數字。Request contract 在 T-024／T-025 依「先改 contract」加入此欄位；eval corpus 含 zh-Hant intents（T-038）。
 
 APPROVED D-016：新增 node/resource 的 ID 必須來自 server 提供的 allocation pool，且在同一 patch 中明確建立；不准編造外部 dataset 或引用未建立／未授權 resource。若 pool/schema/intent 不足，needs_input。server 做完整 candidate IR referential validation，不只驗 slice。
+
+T-024 實作（`internal/ai/aicontext`，ADR-027）：每個輸入帶 organization（與 model）；有任何一個不是 request scope 的，整個 build 失敗（`cross_tenant_input`），不回部分 context。System 只有版本化 template、固定 server rules、domain pack 的靜態 `PromptContext` 與 `output_locale` instruction；user message 只有 `server_data`（ID_ALLOCATION_POOL、ALLOWED_METRIC_REFERENCES、CONTEXT_OMISSIONS）與 `untrusted_data` block，內容是跳脫過 `<`、`>`、`&` 的 JSON，資料無法關閉或偽造 block。所有 untrusted 字串與 member name 都 redact credential、URL、e-mail、IPv4、D-001 server ID 與不可見字元並計數，並受長度界限；不送 model／version／run ID、hash、views。超出預算時依序拿掉 metadata 與 domain attributes、只完整顯示選取 entity 的鄰近範圍（其他以 `{"id","omitted":"budget"}` 佔住原 index）、不送 IR；ENTITY_INDEX 永遠列出每個 entity 與真實 index，CONTEXT_OMISSIONS 列出省略的種類、數量與 reason code；仍超過預算即 `context_too_large`。D-046 的 pool 由 `internal/ai/idpool` 產生（每種 16 個 `<kind>_<小寫 ULID>`，不與 base 衝突），存在 `ai_proposals.id_pool`（migration 0011，所有 role 都不可改），只放進 edit mode 的 context；`Pool.Check(base, candidate)` 列出不是來自同種類 pool 的新 entity ID，供 T-025／T-026 對應成 validation issue（code 待定，見 CB-40）。`output_locale` 由 `internal/ai/locale.Parse` 驗證（空值為 en；錯誤指向 `/output_locale`），`ProposalRequest`、`AnalysisRequest` 與新的 `MappingSuggestionRequest` 已加入此欄位。
 
 ## 4. Provider output / proposal 狀態機
 
@@ -82,13 +86,13 @@ commit 凍結 dataset，inference 從資料提出 model proposal（含 assumptio
 
 server 驗：evidence 的 run 角色有對應 run（baseline=null 時不得引用 baseline）、metric path 存在且不跨 tenant、值可用、所有數值 delta 与已計算 comparison 相等、baseline=0 的 relative_delta 必須 null。不存在的 metric、錯值或錯 run 使 analysis failed，不儲存為 completed。不把合法 JSON 當 grounded answer。缺 baseline 時 baseline=null、delta=[]，不創造比較。
 
-observation/inference 分開。文字中的重大数值也要能對 supplied values 核對；不能只驗 structured delta 而放過 prose 中的虚構數字。uncertainty 需反映 low replications、missing data、censoring、assumptions；不得把模擬結果稱為必然未來。P0 無足夠自動 verifier 時，禁止無 evidence 的 numeric prose，改以 server-rendered metric blocks + qualitative explanation。
+observation/inference 分開。文字中的重大数值也要能對 supplied values 核對；不能只驗 structured delta 而放過 prose 中的虚構數字。T-024 提供核對的基礎（接到 analysis 的 completed／failed 屬 T-030）：analysis context 回傳可引用的 metric（只有 available 的，依 run 角色）與供應的數字（結果、比較、config、容量與機率，不含 array index）；`locale.CheckProse` 在兩種語言下找出與供應值不符的阿拉伯數字、數字詞（中文數字串、百分之、數字＋量詞或單位；英文 two…trillion、dozen、twice、half）與非 ASCII 數字。uncertainty 需反映 low replications、missing data、censoring、assumptions；不得把模擬結果稱為必然未來。P0 無足夠自動 verifier 時，禁止無 evidence 的 numeric prose，改以 server-rendered metric blocks + qualitative explanation。
 
 ## 10. Audit、budget、eval gates
 
 記 provider/model、prompt_template_version、schema_version、sanitized input hashes、proposal hash、tokens、latency、approver、request_id；不索取／保存 private chain-of-thought。只需 summary、assumptions、evidence、risk、changes。
 
-對每 tenant/request 限 token、concurrency、provider timeout、有限 retry。P0 可對 schema parse failure 做最多一次 bounded repair **候選 D-011**，但 repair 後仍完整校驗；不能無限「修到能 commit」。schema-valid 但 risk/authorization 不合法不能用 repair 繞過。
+對每 tenant/request 限 token、concurrency、provider timeout、有限 retry。T-024 實作每個 request 的部分（`provider.Budget`，工程候選值：prompt 128 KiB、output 8192 tokens、整個呼叫 120 s、每個 attempt 90 s、retry 2、每個 organization 在單一 process 並行 2；上限由 `BudgetCaps` 檢查）；依 tenant 與期間累計的 token quota 需要持久化與 owner 的 quota 數字，尚未做（T-025／T-036）。`make ai-eval` 以 fake provider 對整個 corpus 檢查 context 端的 zero-tolerance gate（`checks/ai-evals/fake-provider.json`）；proposal 評分、DB effects、analyst 輸出檢查與 live eval 為 NOT RUN。P0 可對 schema parse failure 做最多一次 bounded repair **候選 D-011**，但 repair 後仍完整校驗；不能無限「修到能 commit」。schema-valid 但 risk/authorization 不合法不能用 repair 繞過。
 
 `testdata/ai-evals/modeler.jsonl` 提供 50 個起始 modeling intents，另有 mapper/analyst corpus。這些是待執行評測，不是 live model 成績。mandatory safety gates：structurally invalid reaches approval=0；unapproved mutation=0；cross-tenant context leakage=0；invalid patch committed=0；mandatory adversarial invented metrics=0。golden intent correct patch≥90% 仍依原報告為待 baseline 校準目標，不允許把 safety 0-tolerance 改成平均分数。
 

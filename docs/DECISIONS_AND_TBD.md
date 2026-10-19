@@ -164,6 +164,8 @@ Owner 變更（H-016，2026-10-19）：原報告以 Software Delivery 為 P0 第
 
 候選決策：有序 primary→secondary failover。只有 402 `billing_error`（credits 用完）或 401/403（key 無效／撤銷）才把該 credential 標為不可用並切換；429/529/5xx 只在同一 credential 依 SDK backoff 重試，不跨 organization，以免實質合併兩個 organization 的 rate limit（是否符合 Anthropic 條款需人類確認）。Key 只以 label 出現在 proposal／analysis／audit；adapter 明確注入 key，不依賴 `ANTHROPIC_API_KEY`；兩個 organization 的 retention／ZDR 設定須一致並寫入資料政策；key 只存 secret manager。
 
+T-024 實作（2026-10-19，[ADR-027](adr/ADR-027-ai-provider-adapter.md) PROPOSED；本決議狀態不變）：`internal/ai/provider/anthropic` 依序嘗試 `org-a`（`GEMINUS_ANTHROPIC_API_KEY_A`）、`org-b`（`_B`）；401／402／403 把該 credential 在 process 存活期間標為不可用並換下一把（`failed_over_from` 記在 metadata），兩把都不可用回 `credentials_exhausted`；408／409／429／5xx（含 529）與連線錯誤只由 SDK 在同一把 key 重試（budget 的 `MaxRetries`）。Key 由 config 注入、adapter 不讀環境變數；錯誤、metadata 只帶 label。只對本機 httptest server 測過；任何 live 呼叫仍待 owner 核准 model、quota 與資料政策（H-017），config 的核准清單為空。未做：credential 失效後的重新探測（需重啟 process）。
+
 ## T-001 阻擋項決議（2026-10-15，KCL1104 逐項選擇）
 
 D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09）。以下為新登記且已批准的決議；CB-13 以後的項目會在各自任務開工前再逐項詢問。
@@ -212,7 +214,7 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | ID | 解決 | 主題 | 提案 |
 |---|---|---|---|
 | D-045 | CB-17 | 使用者自己的 membership（`/me`） | **APPROVED（2026-10-19，H-010）。** 新增 `GET /v1/me`（任何已驗證的使用者；不帶 `X-Organization-ID`）：回 `user_id` 與 `memberships[]`（`organization_id`、organization `name`、`role`），依 organization 名稱再依 ID 排序，P0 至多 100 筆；未知 identity 回 403（不自動建立，D-008）。RLS 新增只讀的 policy：API 只看得到 `user_id` 等於驗證後 scope 中 user 的 membership，與這些 membership 所屬 organization 的 `id`、`name`（新 migration；其他 tenant 的任何 row 仍不可見）。UI 以此選 organization 並取得 role，role 仍只決定介面，API 每次自己授權。gate：T-043 的 UI bootstrap 前。**實作（T-043 的 D-045 slice，2026-10-19，待獨立 review）：** migration 0008 的 `own_memberships`、`own_organizations` 是只給 `twin_api` 的 permissive `FOR SELECT` policy，只在**沒有選 organization** 時成立，所以選了 organization 的 transaction 看到的與 0002 的 `tenant_isolation` 完全相同；`tenant.DB.RunSelf` 是只設 user 的唯讀 transaction；`internal/tenant/me` 與 `httpapi.Self`（帶 `X-Organization-ID` 即 400）；排序為 byte 順序（`COLLATE "C"`，與 DB 的 collation 無關）；超過 100 筆時回前 100 筆並帶 `truncated: true`；不寫 audit；client 的 `getMe()`。見 checks/T-043_VALIDATION.md 的 D-045 一節。 |
-| D-046 | CB-31 | AI 新增 entity 的 ID allocation pool | **APPROVED（2026-10-19，H-010）。** 每個 proposal 在建立時由 server 產生 pool：每種 entity（node、flow、resource）16 個 ID，格式 `<kind>_<小寫 ULID>`（符合 IR 的 ID pattern），存在 `ai_proposals.id_pool`（新 migration；之後不可改）並放進 provider context。Validation 與 approval 時要求 patch 新增的每個 entity ID 都來自同 proposal 的 pool、種類相符、在 base IR 中未使用；不足時 provider 回 `needs_input`。gate：T-024 的 context builder 前。 |
+| D-046 | CB-31 | AI 新增 entity 的 ID allocation pool | **APPROVED（2026-10-19，H-010）。** 每個 proposal 在建立時由 server 產生 pool：每種 entity（node、flow、resource）16 個 ID，格式 `<kind>_<小寫 ULID>`（符合 IR 的 ID pattern），存在 `ai_proposals.id_pool`（新 migration；之後不可改）並放進 provider context。Validation 與 approval 時要求 patch 新增的每個 entity ID 都來自同 proposal 的 pool、種類相符、在 base IR 中未使用；不足時 provider 回 `needs_input`。gate：T-024 的 context builder 前。T-024 實作：`internal/ai/idpool`（產生、形狀檢查、`Check(base, candidate)` 回報 `not_in_pool`／`wrong_kind`／`used_in_base`／`missing_ir`）；schema `common.schema.json#/$defs/IdAllocationPool`；migration 0011 新增 `ai_proposals.id_pool`（NOT NULL、`twin.id_pool_ok` CHECK、建立後由 trigger 禁止修改），既有 proposal 的資料庫拒絕套用。違規的 issue code 未定（CB-40）。 |
 
 ### T-046 的提案：電子產線的引擎語義與 domain 規格（2026-10-19，PROPOSED，待 owner）
 
