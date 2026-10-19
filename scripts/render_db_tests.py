@@ -42,6 +42,7 @@ IDS = {
     "AUD_A1": ("aud", "A", 1), "REQ_A1": ("req", "A", 1), "USR_A2": ("usr", "A", 2), "JOB_A1": ("job", "A", 1),
     "AIP_A9": ("aip", "A", 9), "ORG_P": ("org", "P", 0), "USR_P": ("usr", "P", 1),
     "AUD_A3": ("aud", "A", 3), "AUD_A4": ("aud", "A", 4), "AUD_P1": ("aud", "P", 1), "AUD_P2": ("aud", "P", 2),
+    "JOB_A2": ("job", "A", 2), "JOB_A3": ("job", "A", 3), "JOB_A4": ("job", "A", 4), "JOB_A5": ("job", "A", 5),
 }
 
 

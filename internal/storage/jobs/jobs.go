@@ -1,4 +1,4 @@
-// Package jobs is the PostgreSQL job queue (T-019; API_DATABASE §6, D-007,
+// Package jobs is the PostgreSQL job queue (T-019; API_DATABASE §6–§7, D-007,
 // D-011): the API enqueues a job in the same transaction as the resource it
 // works on and its audit event; a worker claims one job at a time in an
 // organization it is assigned (internal/tenant/workerscope), holds it with a
@@ -136,6 +136,9 @@ type Failure struct {
 	Message   string `json:"message"`
 	Retryable bool   `json:"retryable"`
 }
+
+// Error makes a Failure an error a handler can return.
+func (f *Failure) Error() string { return f.Code + ": " + f.Message }
 
 // LeaseExpired is the failure the reaper records.
 const LeaseExpired = "LEASE_EXPIRED"
@@ -278,9 +281,15 @@ func Lock(ctx context.Context, tx pgx.Tx, l Lease) (Job, error) {
 }
 
 // Complete ends the job successfully.
-func Complete(ctx context.Context, tx pgx.Tx, l Lease) error {
-	tag, err := tx.Exec(ctx, `UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error=NULL
-		WHERE `+fence, l.OrganizationID, l.JobID, l.WorkerID, l.Token)
+func Complete(ctx context.Context, tx pgx.Tx, l Lease) error { return end(ctx, tx, l, Completed) }
+
+// Cancel ends the job as cancelled: its handler stopped at a checkpoint
+// because cancellation of its resource was requested (API_DATABASE §6).
+func Cancel(ctx context.Context, tx pgx.Tx, l Lease) error { return end(ctx, tx, l, Cancelled) }
+
+func end(ctx context.Context, tx pgx.Tx, l Lease, s Status) error {
+	tag, err := tx.Exec(ctx, `UPDATE twin.jobs SET status=$5, locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error=NULL
+		WHERE `+fence, l.OrganizationID, l.JobID, l.WorkerID, l.Token, string(s))
 	if err != nil {
 		return err
 	}
@@ -288,6 +297,18 @@ func Complete(ctx context.Context, tx pgx.Tx, l Lease) error {
 		return ErrLeaseLost
 	}
 	return nil
+}
+
+// CancelQueued cancels job id of org if it is still queued, in the
+// transaction that cancels its resource: a queued job ends at once
+// (API_DATABASE §6). It reports whether it did. A running job is stopped by
+// its handler at a checkpoint instead (Cancel), and a finished one stays.
+func CancelQueued(ctx context.Context, tx pgx.Tx, org, id string) (bool, error) {
+	tag, err := tx.Exec(ctx, `UPDATE twin.jobs SET status='cancelled' WHERE organization_id=$1 AND id=$2 AND status='queued'`, org, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 // Fail ends the attempt with f. A retryable failure with attempts left

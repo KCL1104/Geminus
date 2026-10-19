@@ -397,6 +397,7 @@ func TestTheLeaseFencesEveryWrite(t *testing.T) {
 		"heartbeat": func(ctx context.Context, tx pgx.Tx, l jobs.Lease) error { return jobs.Heartbeat(ctx, tx, l, fast) },
 		"lock":      func(ctx context.Context, tx pgx.Tx, l jobs.Lease) error { _, err := jobs.Lock(ctx, tx, l); return err },
 		"complete":  func(ctx context.Context, tx pgx.Tx, l jobs.Lease) error { return jobs.Complete(ctx, tx, l) },
+		"cancel":    func(ctx context.Context, tx pgx.Tx, l jobs.Lease) error { return jobs.Cancel(ctx, tx, l) },
 		"fail": func(ctx context.Context, tx pgx.Tx, l jobs.Lease) error {
 			_, err := jobs.Fail(ctx, tx, l, jobs.Failure{Code: "X", Message: "x", Retryable: true}, fast)
 			return err
@@ -659,5 +660,140 @@ func TestLockHoldsTheJob(t *testing.T) {
 	}
 	if err := tryLock(); err != nil {
 		t.Errorf("the lock outlived the transaction: %v", err)
+	}
+}
+
+// cancelQueued cancels a queued job as the organization's owner through the
+// API scope, the way a cancel request will (T-023).
+func (e *env) cancelQueued(t *testing.T, o dbtest.Org, id string) bool {
+	t.Helper()
+	var ok bool
+	owner := o.Members[tenant.Owner]
+	if err := e.api.Run(context.Background(), tenant.Scope{OrganizationID: o.ID, UserID: owner.UserID}, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
+		var err error
+		ok, err = jobs.CancelQueued(ctx, tx, o.ID, id)
+		return err
+	}); err != nil {
+		t.Error(err) // not Fatal: TestCancelRacesTheClaim calls it from another goroutine
+	}
+	return ok
+}
+
+// TEST-021 at the queue: a queued job is cancelled at once and never
+// claimed; a running one is not (its handler stops at a checkpoint and
+// ends it with Cancel); cancelling and completing exclude each other, and
+// a finished job stays as it ended.
+func TestCancellation(t *testing.T) {
+	e := setup(t)
+	queued := e.enqueue(t, e.org, e.prj, e.model, e.base, 0)
+	if e.cancelQueued(t, e.other, queued.ID) {
+		t.Error("another organization cancelled the job")
+	}
+	if !e.cancelQueued(t, e.org, queued.ID) {
+		t.Fatal("a queued job was not cancelled")
+	}
+	if got := e.get(t, e.org.ID, queued.ID); got.Status != jobs.Cancelled || got.Attempt != 0 || got.LockedBy != "" {
+		t.Errorf("the cancelled job is %+v", got)
+	}
+	if e.cancelQueued(t, e.org, queued.ID) {
+		t.Error("a cancelled job was cancelled again")
+	}
+	if _, _, ok := e.claim(t, e.org.ID, "worker-1"); ok {
+		t.Error("a cancelled job was claimed")
+	}
+
+	// Cancel ends a running job; nothing the lease could do follows.
+	running := e.enqueue(t, e.org, e.prj, e.model, e.base, 0)
+	_, l, _ := e.claim(t, e.org.ID, "worker-1")
+	if e.cancelQueued(t, e.org, running.ID) {
+		t.Error("a running job was cancelled without its handler")
+	}
+	if got := e.get(t, e.org.ID, running.ID); got.Status != jobs.Running {
+		t.Errorf("the running job is %s", got.Status)
+	}
+	if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := jobs.Lock(ctx, tx, l); err != nil {
+			return err
+		}
+		return jobs.Cancel(ctx, tx, l)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error { return jobs.Complete(ctx, tx, l) }); !errors.Is(err, jobs.ErrLeaseLost) {
+		t.Errorf("completing a cancelled job: %v", err)
+	}
+	if got := e.get(t, e.org.ID, running.ID); got.Status != jobs.Cancelled || got.LockedBy != "" || got.LeaseExpiresAt != nil || got.Error != nil {
+		t.Errorf("the cancelled job is %+v", got)
+	}
+
+	// And the other way round.
+	done := e.enqueue(t, e.org, e.prj, e.model, e.base, 0)
+	_, l, _ = e.claim(t, e.org.ID, "worker-1")
+	if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error { return jobs.Complete(ctx, tx, l) }); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error { return jobs.Cancel(ctx, tx, l) }); !errors.Is(err, jobs.ErrLeaseLost) {
+		t.Errorf("cancelling a completed job: %v", err)
+	}
+	if e.cancelQueued(t, e.org, done.ID) {
+		t.Error("a completed job was cancelled")
+	}
+	if got := e.get(t, e.org.ID, done.ID); got.Status != jobs.Completed {
+		t.Errorf("the completed job is %s", got.Status)
+	}
+}
+
+// A cancel request racing the claims: every job is either cancelled while
+// queued or claimed, never both.
+func TestCancelRacesTheClaim(t *testing.T) {
+	e := setup(t)
+	const n = 12
+	var queued []jobs.Job
+	for range n {
+		queued = append(queued, e.enqueue(t, e.org, e.prj, e.model, e.base, 0))
+	}
+	var mu sync.Mutex
+	claimed, cancelled := map[string]bool{}, map[string]bool{}
+	var wg sync.WaitGroup
+	for w := range 3 {
+		wg.Go(func() {
+			for {
+				var j jobs.Job
+				var ok bool
+				if err := e.worker.Run(context.Background(), e.org.ID, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+					var err error
+					j, _, ok, err = jobs.Claim(ctx, tx, e.org.ID, "worker-"+string(rune('a'+w)), handled, fast)
+					return err
+				}); err != nil {
+					t.Error(err)
+					return
+				}
+				if !ok {
+					return
+				}
+				mu.Lock()
+				claimed[j.ID] = true
+				mu.Unlock()
+			}
+		})
+	}
+	wg.Go(func() {
+		for _, j := range slices.Backward(queued) {
+			if e.cancelQueued(t, e.org, j.ID) {
+				mu.Lock()
+				cancelled[j.ID] = true
+				mu.Unlock()
+			}
+		}
+	})
+	wg.Wait()
+	for _, j := range queued {
+		got := e.get(t, e.org.ID, j.ID)
+		switch {
+		case claimed[j.ID] == cancelled[j.ID]:
+			t.Errorf("%s claimed %v, cancelled %v", j.ID, claimed[j.ID], cancelled[j.ID])
+		case cancelled[j.ID] && got.Status != jobs.Cancelled, claimed[j.ID] && got.Status != jobs.Running:
+			t.Errorf("%s is %s", j.ID, got.Status)
+		}
 	}
 }

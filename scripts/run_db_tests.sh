@@ -19,9 +19,11 @@ run migrations/0003_draft_issues.up.sql
 run migrations/0004_provisioner.up.sql
 run migrations/0005_ir_text.up.sql
 run migrations/0006_version_comment.up.sql
+run migrations/0007_job_states.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
+run migrations/0007_job_states.down.sql
 run migrations/0006_version_comment.down.sql
 run migrations/0005_ir_text.down.sql
 # D-040: 0005 stores the canonical IR text, which SQL cannot make from
@@ -45,6 +47,7 @@ run migrations/0003_draft_issues.up.sql
 run migrations/0004_provisioner.up.sql
 run migrations/0005_ir_text.up.sql
 run migrations/0006_version_comment.up.sql
+run migrations/0007_job_states.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql

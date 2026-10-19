@@ -2,36 +2,161 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/kcl1104/geminus/internal/ids"
+	"github.com/kcl1104/geminus/internal/storage/dbtest"
+	"github.com/kcl1104/geminus/internal/storage/jobs"
+	"github.com/kcl1104/geminus/internal/storage/postgres"
+	"github.com/kcl1104/geminus/internal/tenant"
+	"github.com/kcl1104/geminus/internal/worker"
 )
+
+var validEnv = map[string]string{
+	"DATABASE_URL":            "postgresql://twin_worker:db-pass-123@/twin?host=/nonexistent-geminus-socket",
+	"WORKER_ID":               "worker-0",
+	"WORKER_ORGANIZATION_IDS": ids.New("org"),
+}
+
+func with(kv ...string) func(string) string {
+	m := map[string]string{}
+	for k, v := range validEnv {
+		m[k] = v
+	}
+	for i := 0; i+1 < len(kv); i += 2 {
+		m[kv[i]] = kv[i+1]
+	}
+	return func(k string) string { return m[k] }
+}
+
+// someHandler stands for the handlers later tasks register.
+var someHandler = map[jobs.Type]worker.Handler{jobs.ImportProfile: worker.HandlerFunc(func(context.Context, jobs.Job, worker.Finish) error { return nil })}
 
 func TestRunRejectsInvalidConfiguration(t *testing.T) {
 	var stderr bytes.Buffer
-	if code := run(func(string) string { return "" }, &stderr); code != exitConfig {
+	if code := run(context.Background(), func(string) string { return "" }, &stderr, someHandler); code != exitConfig {
 		t.Fatalf("exit = %d, want %d", code, exitConfig)
 	}
-	if !strings.Contains(stderr.String(), "DATABASE_URL") {
-		t.Fatalf("stderr does not name the missing variable: %s", stderr.String())
+	for _, v := range []string{"DATABASE_URL", "WORKER_ID", "WORKER_ORGANIZATION_IDS"} {
+		if !strings.Contains(stderr.String(), v) {
+			t.Errorf("stderr does not name %s: %s", v, stderr.String())
+		}
 	}
 }
 
-func TestRunRefusesToStartUntilImplemented(t *testing.T) {
+// This build has no job handler, so the worker refuses to start before it
+// connects anywhere.
+func TestRunRefusesToStartWithoutHandlers(t *testing.T) {
 	var stderr bytes.Buffer
-	getenv := func(k string) string {
-		if k == "DATABASE_URL" {
-			return "postgresql://twin_worker:db-pass-123@db.internal/twin"
-		}
-		return ""
-	}
-	if code := run(getenv, &stderr); code != exitNotImplemented {
+	if code := run(context.Background(), with(), &stderr, handlers()); code != exitNotImplemented {
 		t.Fatalf("exit = %d, want %d", code, exitNotImplemented)
 	}
 	out := stderr.String()
-	if !strings.Contains(out, "NOT IMPLEMENTED") || !strings.Contains(out, "T-019") {
+	if !strings.Contains(out, "NOT IMPLEMENTED") || !strings.Contains(out, "T-016") {
 		t.Fatalf("stderr does not explain what is missing: %s", out)
 	}
-	if strings.Contains(out, "db-pass-123") {
-		t.Fatalf("stderr leaks the database password: %s", out)
+	if strings.Contains(out, "db-pass-123") || strings.Contains(out, "database") {
+		t.Fatalf("stderr leaks the password or shows a connection attempt: %s", out)
+	}
+}
+
+func TestRunRefusesABadAllowlist(t *testing.T) {
+	for _, orgs := range []string{"org_bad", ids.New("usr"), validEnv["WORKER_ORGANIZATION_IDS"] + "," + validEnv["WORKER_ORGANIZATION_IDS"], ids.New("org") + ","} {
+		var stderr bytes.Buffer
+		if code := run(context.Background(), with("WORKER_ORGANIZATION_IDS", orgs), &stderr, someHandler); code != exitConfig || !strings.Contains(stderr.String(), "WORKER_ORGANIZATION_IDS") {
+			t.Errorf("%q: exit %d: %s", orgs, code, stderr.String())
+		}
+	}
+}
+
+func TestRunNeedsTheDatabase(t *testing.T) {
+	var stderr bytes.Buffer
+	if code := run(context.Background(), with(), &stderr, someHandler); code != exitDatabase {
+		t.Fatalf("exit = %d, want %d: %s", code, exitDatabase, stderr.String())
+	}
+	if out := stderr.String(); !strings.Contains(out, "database unavailable") || strings.Contains(out, "db-pass-123") {
+		t.Fatalf("stderr: %s", out)
+	}
+}
+
+type syncBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+func (s *syncBuffer) String() string { s.mu.Lock(); defer s.mu.Unlock(); return s.b.String() }
+
+// Against the disposable database: the worker refuses a superuser login,
+// runs a job of an assigned organization as the worker login, and stops
+// when signalled.
+func TestRunWorksAndStops(t *testing.T) {
+	admin := dbtest.Admin(t) // skips unless the disposable database is configured; creates the worker login
+	o := dbtest.NewOrg(t, admin, "https://test.invalid", tenant.Owner)
+	var stderr syncBuffer
+	// Bounded, so a worker that wrongly accepted the login stops and the
+	// test fails instead of hanging.
+	refuse, cancelRefuse := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelRefuse()
+	if code := run(refuse, with("DATABASE_URL", dbtest.AdminURL(t), "WORKER_ORGANIZATION_IDS", o.ID), &stderr, someHandler); code != exitDatabase ||
+		!strings.Contains(stderr.String(), "refusing the database login") {
+		t.Fatalf("a superuser login: exit %d: %s", code, stderr.String())
+	}
+	imp := dbtest.NewImport(t, admin, o)
+	var job jobs.Job
+	if err := postgres.OpenPool(admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		job, err = jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: o.ID, Type: jobs.ImportProfile,
+			Resource: jobs.Resource{ImportID: imp}, Payload: map[string]any{"import_id": imp}}, jobs.DefaultPolicy)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ran := make(chan struct{}, 1)
+	handlers := map[jobs.Type]worker.Handler{jobs.ImportProfile: worker.HandlerFunc(func(ctx context.Context, j jobs.Job, finish worker.Finish) error {
+		if err := finish(ctx, jobs.Completed, func(context.Context, tenant.Tx) error { return nil }); err != nil {
+			return err
+		}
+		ran <- struct{}{}
+		return nil
+	})}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan int, 1)
+	go func() {
+		done <- run(ctx, with("DATABASE_URL", dbtest.LoginURL(t, dbtest.WorkerLogin), "WORKER_ORGANIZATION_IDS", o.ID), &stderr, handlers)
+	}()
+	select {
+	case <-ran:
+	case code := <-done:
+		t.Fatalf("exited %d: %s", code, stderr.String())
+	case <-time.After(20 * time.Second):
+		t.Fatalf("the job did not run: %s", stderr.String())
+	}
+	cancel()
+	select {
+	case code := <-done:
+		if code != 0 {
+			t.Fatalf("exit = %d: %s", code, stderr.String())
+		}
+	case <-time.After(20 * time.Second):
+		t.Fatal("the worker did not stop")
+	}
+	var status jobs.Status
+	if err := admin.QueryRow(context.Background(), `SELECT status FROM twin.jobs WHERE id=$1`, job.ID).Scan(&status); err != nil || status != jobs.Completed {
+		t.Errorf("the job is %s (%v)", status, err)
+	}
+	if out := stderr.String(); !strings.Contains(out, `"msg":"running"`) || !strings.Contains(out, `"msg":"stopped"`) {
+		t.Errorf("stderr: %s", out)
 	}
 }

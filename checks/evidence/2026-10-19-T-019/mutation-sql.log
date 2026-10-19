@@ -1,0 +1,19 @@
+baseline	SQL suites and Go tests pass
+insert-any-status	KILLED
+insert-with-an-attempt	KILLED
+insert-with-a-token	KILLED
+insert-with-an-error	KILLED
+no-insert-trigger	KILLED
+no-update-trigger	KILLED
+unchanged-row-refused	KILLED
+finished-not-final	KILLED
+queued-straight-to-an-end	KILLED
+payload-mutable	KILLED
+max-attempts-mutable	KILLED
+created-at-mutable	KILLED
+attempt-goes-back	KILLED
+token-goes-back	KILLED
+claim-any-attempt	KILLED
+claim-same-token	KILLED
+no-search-path	KILLED
+total=17 unexpected=0

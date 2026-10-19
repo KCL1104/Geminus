@@ -48,7 +48,8 @@ flowchart LR
 | internal/simulation | heap、clock、RNG、resource queues、routing、metrics | HTTP/DB/network、tenant discovery、UI |
 | internal/results | aggregation、comparison、evidence catalog、trace artifacts | AI 自己计算未供應的實際數值 |
 | internal/audit | append-only events、request correlation | raw prompts/secrets/chain-of-thought |
-| internal/storage | tenant-aware repos、object adapter、transactions；`auditlog`（同一 transaction 的 audit append）、`idempotency`（D-011）、`projects`、`models`（models／drafts／versions 與 binding rows） | 將 untrusted organization_id 自動當授權 |
+| internal/storage | tenant-aware repos、object adapter、transactions；`auditlog`（同一 transaction 的 audit append）、`idempotency`（D-011）、`projects`、`models`（models／drafts／versions 與 binding rows）、`jobs`（佇列、lease fence、重試、reaper、取消；T-019，ADR-024） | 將 untrusted organization_id 自動當授權 |
+| internal/worker | job 迴圈（T-019，ADR-024）：逐 organization reap 與 claim、heartbeat、lease 失去即停止 handler、`Finish` 讓結果與 job 的結束一起 commit、attempt 結果的記錄 | handler 的 business rule；跨 tenant 掃描或 BYPASSRLS |
 | cmd/api / cmd/worker | composition root、config、lifecycle | 隱藏 business rule 或不同版本 validator |
 | apps/web/features | editor、import、proposals、simulations、results、3D | 第二套 topology、server authorization |
 
@@ -105,6 +106,8 @@ APPROVED D-008：每個 tenant request 的順序為 verify JWT →取得 subject
 ## 6. Queue / storage / isolation
 
 PostgreSQL jobs 使用 `FOR UPDATE SKIP LOCKED`，P0 不加入 broker。APPROVED D-008：worker 只輪詢 deployment 指派的 organization allowlist，逐 tenant 設 transaction-local context；**不提供跨 tenant 的 unrestricted jobs SELECT，也不授 BYPASSRLS**。之後若需要 dispatcher，用獨立 ADR 設計最小權限接口，不把 security-definer global scanner 偷塞進 worker。
+
+T-019 實作（[ADR-024](adr/ADR-024-job-queue-and-worker.md)，PROPOSED）：`internal/storage/jobs` 是佇列（enqueue 與 resource、audit 同一 transaction；claim 依 priority／created_at／id、`SKIP LOCKED`；以 organization、job、worker、lease token 為 fence 的 heartbeat、lock、complete、cancel、fail；有限 backoff 的重試；逐 organization 取回過期 lease 的 reaper；queued job 立即取消）；migration 0007 在 DB 端對所有 role 強制 job 的生命週期（終態不可改、identity 與輸入不可改、attempt 與 token 不回退）。`internal/tenant/workerscope` 是唯一的 worker scope，只有 `cmd/worker`、`internal/worker` 能依賴（architecture rule `worker-scope-only-in-the-worker`）。`internal/worker` 是迴圈：每次 pass 依序走過 `WORKER_ORGANIZATION_IDS`，每個 organization reap 後至多執行一個 job，heartbeat 續期，lease 失去或一整個 lease 續不上就取消 handler；handler 以 `Finish` 讓結果與 job 的結束（completed 或 cancelled）一起 commit。`cmd/worker` 只組裝設定、連線（worker runtime role 檢查與 pool guard）與生命週期；目前沒有 handler（T-016、T-023、T-025），所以驗完設定後以 exit 2 拒絕啟動。
 
 大檔與 trace/result artifact 放 private object storage，DB 放 metadata、hash、organization_id、authorized object key。client 只能持有 resource ID，不可送任意 bucket/key/url 讓 server 讀取。empirical datasets 在編譯前下載驗 hash、轉換 units、freeze；run 中斷網不影響純 DES。
 

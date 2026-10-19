@@ -354,4 +354,79 @@ SELECT pg_temp.check((SELECT octet_length(comment) FROM twin.model_versions WHER
   'a 2000-character comment of 6000 bytes is kept');
 SELECT pg_temp.must_fail($q$UPDATE twin.model_versions SET comment='edited' WHERE id='mv_01M4YDQK00TA00000000000042'$q$,'55000');
 
+
+-- T-019 (migration 0007; TEST-020, TEST-021): a job moves only along its
+-- lifecycle, whatever the role. It starts queued with no attempt, lease or
+-- error; a claim takes the next attempt under a new lease token; a finished
+-- job is final; its identity and input never change; attempts and lease
+-- tokens never go back.
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','completed','{}','imp_01M4YDQK00TA00000000000001')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,locked_at,locked_by,lease_expires_at)
+     VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','running','{}','imp_01M4YDQK00TA00000000000001',now(),'w',now()+interval '30 seconds')$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,attempt) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',1)$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,lease_token) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001',7)$q$,
+  $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id,error) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001','{"code":"X"}')$q$
+]) AS s;
+INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES
+  ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_profile','queued','{"import_id":"imp_01M4YDQK00TA00000000000001"}','imp_01M4YDQK00TA00000000000001'),
+  ('job_01M4YDQK00TA00000000000003','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001'),
+  ('job_01M4YDQK00TA00000000000004','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001'),
+  ('job_01M4YDQK00TA00000000000005','org_01M4YDQK00TA00000000000000','import_profile','queued','{}','imp_01M4YDQK00TA00000000000001');
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  $q$UPDATE twin.jobs SET status='completed' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET status='failed', error='{"code":"X","message":"x","retryable":false}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET status='running', attempt=attempt+1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds'
+     WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET status='running', attempt=attempt+2, lease_token=lease_token+1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds'
+     WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET payload='{"import_id":"other"}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET max_attempts=10 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET created_at=now()-interval '1 day' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$
+]) AS s;
+-- queued -> queued (a later start), the claim, a heartbeat, a retry, a
+-- second claim, the end.
+UPDATE twin.jobs SET available_at=now()+interval '1 minute', priority=5 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002';
+UPDATE twin.jobs SET status='running', attempt=attempt+1, lease_token=lease_token+1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002';
+UPDATE twin.jobs SET heartbeat_at=now(), lease_expires_at=now()+interval '30 seconds' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002';
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  $q$UPDATE twin.jobs SET lease_token=lease_token-1 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET status='queued', attempt=0, locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$
+]) AS s;
+UPDATE twin.jobs SET status='queued', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error='{"code":"X","message":"x","retryable":true}'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002';
+UPDATE twin.jobs SET status='running', attempt=attempt+1, lease_token=lease_token+1, locked_at=now(), locked_by='w2', lease_expires_at=now()+interval '30 seconds'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002';
+UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002';
+SELECT pg_temp.check((SELECT status='completed' AND attempt=2 AND lease_token=2 FROM twin.jobs WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'),
+  'a job retried once completes on its second attempt under its second token');
+-- Cancelled while queued; failed and cancelled while running.
+UPDATE twin.jobs SET status='cancelled' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000003';
+UPDATE twin.jobs SET status='running', attempt=1, lease_token=1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id IN ('job_01M4YDQK00TA00000000000004','job_01M4YDQK00TA00000000000005');
+UPDATE twin.jobs SET status='failed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error='{"code":"X","message":"x","retryable":false}'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000004';
+UPDATE twin.jobs SET status='cancelled', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000005';
+-- Final for every role: a resurrection, a second end, any other change.
+-- Writing a row unchanged is not a change.
+UPDATE twin.jobs SET status=status WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id IN ('job_01M4YDQK00TA00000000000002','job_01M4YDQK00TA00000000000003','job_01M4YDQK00TA00000000000004','job_01M4YDQK00TA00000000000005');
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  $q$UPDATE twin.jobs SET status='running', attempt=attempt+1, lease_token=lease_token+1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds'
+     WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET heartbeat_at=clock_timestamp() WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$,
+  $q$UPDATE twin.jobs SET status='queued' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000003'$q$,
+  $q$UPDATE twin.jobs SET status='completed' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000003'$q$,
+  $q$UPDATE twin.jobs SET status='queued', error=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000004'$q$,
+  $q$UPDATE twin.jobs SET status='completed' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000005'$q$
+]) AS s;
+SET LOCAL ROLE twin_worker;
+SELECT pg_temp.must_fail($q$UPDATE twin.jobs SET status='queued', error=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000004'$q$, '55000');
+SET LOCAL ROLE twin_owner;
+SELECT pg_temp.must_fail($q$UPDATE twin.jobs SET status='running', attempt=attempt+1, lease_token=lease_token+1, locked_at=now(), locked_by='w',
+    lease_expires_at=now()+interval '30 seconds' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000002'$q$, '55000');
+SET LOCAL ROLE twin_api;
+SELECT pg_temp.check((SELECT string_agg(status, ',' ORDER BY id) FROM twin.jobs WHERE organization_id='org_01M4YDQK00TA00000000000000'
+    AND id IN ('job_01M4YDQK00TA00000000000002','job_01M4YDQK00TA00000000000003','job_01M4YDQK00TA00000000000004','job_01M4YDQK00TA00000000000005'))='completed,cancelled,failed,cancelled', 'the jobs ended as they did');
+
 ROLLBACK;

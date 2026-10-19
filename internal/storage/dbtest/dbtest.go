@@ -7,15 +7,19 @@ package dbtest
 
 import (
 	"context"
+	"encoding/json/v2"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/ids"
+	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/storage/postgres"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -171,4 +175,54 @@ func insertUser(ctx context.Context, tx pgx.Tx, m Member, issuer string) error {
 	}
 	_, err := tx.Exec(ctx, `INSERT INTO twin.users(id,oidc_issuer,oidc_subject) VALUES ($1,$2,$3)`, m.UserID, issuer, m.Subject)
 	return err
+}
+
+// NewImport inserts, as the provisioning login, a project, a model with its
+// first version (the minimal contract IR, in canonical form with its hash)
+// and an uploaded import in o, and returns the import's ID: a resource row
+// for an import job. o needs an owner.
+func NewImport(t testing.TB, admin *pgxpool.Pool, o Org) string {
+	t.Helper()
+	owner, ok := o.Members[tenant.Owner]
+	if !ok {
+		t.Fatal("dbtest.NewImport needs an organization with an owner")
+	}
+	prj, mdl, mv, imp := ids.New("prj"), ids.New("mdl"), ids.New("mv"), ids.New("imp")
+	var doc map[string]any
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata", "contracts", "valid-minimal-ir.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	doc["model_id"] = mdl
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ir, err := hashing.Canonical(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = postgres.OpenPool(admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		for _, q := range []struct {
+			sql  string
+			args []any
+		}{
+			{`INSERT INTO twin.projects(id,organization_id,name,created_by) VALUES ($1,$2,'P',$3)`, []any{prj, o.ID, owner.UserID}},
+			{`INSERT INTO twin.models(id,organization_id,project_id,name,domain,created_by) VALUES ($1,$2,$3,'M','software_delivery',$4)`, []any{mdl, o.ID, prj, owner.UserID}},
+			{`INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,ir,hash,created_by) VALUES ($1,$2,$3,1,'0.1',$4,$5,$6)`,
+				[]any{mv, o.ID, mdl, string(ir), hashing.Sum(ir), owner.UserID}},
+			{`UPDATE twin.models SET latest_version_id=$1 WHERE id=$2`, []any{mv, mdl}},
+			{`INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,upload_content_hash,size_bytes,status,created_by)
+				VALUES ($1,$2,$3,$4,$5,'csv_events','events.csv',$6,$7,10,'UPLOADED',$8)`,
+				[]any{imp, o.ID, prj, mdl, mv, "tenant/" + o.ID + "/imports/" + imp + ".csv", hashing.Sum([]byte(imp)), owner.UserID}},
+		} {
+			if _, err := tx.Exec(ctx, q.sql, q.args...); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return imp
 }

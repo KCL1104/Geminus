@@ -71,19 +71,20 @@ db-test:
 # schema public in tenant.TestRuntimeLoginCannotCreate), so they run one package at a time (-p 1).
 db-go-test:
 	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL to the disposable dt_test_* database used by make db-test.' >&2; exit 2; }
-	GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/api/... ./cmd/api/... ./cmd/provision-tenant/...
+	GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/api/... ./internal/worker/... ./cmd/api/... ./cmd/worker/... ./cmd/provision-tenant/...
 # Package dependency rules of docs/ARCHITECTURE.md §2 (T-042), read from the build graph.
 architecture-check:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/check-architecture ./scripts/check-architecture
 	bin/check-architecture
-# API + PostgreSQL/RLS integration on a fresh disposable database (T-009): the SQL tests (which migrate it),
-# then the Go DB-backed tests through the real HTTP handler as the plain API login. The worker joins with T-019.
+# API + worker + PostgreSQL/RLS integration on a fresh disposable database (T-009, T-019): the SQL tests (which
+# migrate it), then the Go DB-backed tests through the real HTTP handler as the plain API login and through the
+# job loop as the plain worker login.
 integration-test:
 	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL (and DATABASE_URL, DT_ALLOW_DB_TESTS=yes for make db-test) to a fresh dt_test_* database.' >&2; exit 2; }
 	$(MAKE) db-test
 	$(MAKE) db-go-test
-	@echo 'integration-test: API and database covered; worker integration is NOT RUN until T-019 adds the job loop.'
+	@echo 'integration-test: API, job loop and database covered; job handlers (import T-016, simulation T-023, AI T-025) are NOT RUN until those tasks add them.'
 ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

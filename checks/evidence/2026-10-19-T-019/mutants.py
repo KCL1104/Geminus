@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """T-019 mutation check: each mutant weakens one rule of the job queue
-(internal/storage/jobs), the worker scope (internal/tenant/workerscope) or
-the architecture rule that confines it, and must make that package's tests
-fail. Mutants are applied with `go test -overlay`; the repository is never
+(internal/storage/jobs), the worker scope (internal/tenant/workerscope),
+the architecture rule that confines it, the job loop (internal/worker), its
+configuration (internal/config) or its composition root (cmd/worker), and
+must make that package's tests fail. Mutants are applied with `go test -overlay`; the repository is never
 modified. A mutant that does not build is a harness error, never a kill.
 
 Usage: GEMINUS_TEST_DATABASE_URL=... python3 checks/evidence/2026-10-19-T-019/mutants.py [--only=NAME ...] [repo-root]
@@ -20,7 +21,11 @@ REPO = pathlib.Path(ARGS[0] if ARGS else pathlib.Path(__file__).resolve().parent
 JOBS = "internal/storage/jobs/jobs.go"
 SCOPE = "internal/tenant/workerscope/workerscope.go"
 RULES = "scripts/check-architecture/rules.go"
-TESTS = {JOBS: "./internal/storage/jobs/", SCOPE: "./internal/tenant/workerscope/", RULES: "./scripts/check-architecture/"}
+LOOP = "internal/worker/worker.go"
+CONFIG = "internal/config/worker.go"
+CMD = "cmd/worker/main.go"
+TESTS = {JOBS: "./internal/storage/jobs/", SCOPE: "./internal/tenant/workerscope/", RULES: "./scripts/check-architecture/",
+         LOOP: "./internal/worker/", CONFIG: "./internal/config/", CMD: "./cmd/worker/"}
 
 MUTANTS = [
     # Claim
@@ -40,7 +45,12 @@ MUTANTS = [
     ("fence-any-status", JOBS, "lease_token=$4 AND status='running' AND lease_expires_at>now()`", "lease_token=$4 AND lease_expires_at>now()`"),
     ("heartbeat-ignores-rows", JOBS, "\tif tag.RowsAffected() != 1 {\n\t\treturn ErrLeaseLost\n\t}\n\treturn nil\n}\n\n// Lock", "\t_ = tag\n\treturn nil\n}\n\n// Lock"),
     ("lock-not-for-update", JOBS, "+fence+` FOR UPDATE`", "+fence+``"),
-    ("complete-keeps-the-lock", JOBS, "SET status='completed', locked_at=NULL, locked_by=NULL,", "SET status='completed', locked_at=NULL,"),
+    ("end-keeps-the-lock", JOBS, "SET status=$5, locked_at=NULL, locked_by=NULL,", "SET status=$5, locked_at=NULL,"),
+    # Cancellation (TEST-021)
+    ("cancel-queued-any-status", JOBS, "WHERE organization_id=$1 AND id=$2 AND status='queued'`, org, id)", "WHERE organization_id=$1 AND id=$2`, org, id)"),
+    ("cancel-queued-any-org", JOBS, "SET status='cancelled' WHERE organization_id=$1 AND id=$2", "SET status='cancelled' WHERE $1::text<>'' AND id=$2"),
+    ("cancel-queued-always-reports", JOBS, "return tag.RowsAffected() == 1, nil", "return tag.RowsAffected() >= 0, nil"),
+    ("cancel-completes", JOBS, "return end(ctx, tx, l, Cancelled)", "return end(ctx, tx, l, Completed)"),
     # Fail and retry
     ("fail-retries-everything", JOBS, "status=CASE WHEN $5 AND attempt<max_attempts THEN 'queued'", "status=CASE WHEN $5::boolean IS NOT NULL AND attempt<max_attempts THEN 'queued'"),
     ("fail-retries-the-last-attempt", JOBS, "status=CASE WHEN $5 AND attempt<max_attempts THEN 'queued'", "status=CASE WHEN $5 AND attempt<=max_attempts THEN 'queued'"),
@@ -60,25 +70,61 @@ MUTANTS = [
     ("scope-not-set", SCOPE, "\t\tif err := scope.Set(ctx, tx, org, \"\"); err != nil {\n\t\t\treturn err\n\t\t}\n", ""),
     ("scope-duplicates-ok", SCOPE, "!scope.OrgID.MatchString(o) || slices.Contains(assigned[:i], o)", "!scope.OrgID.MatchString(o) || slices.Contains(assigned[:i], \"\")"),
     ("scope-any-id", SCOPE, "!scope.OrgID.MatchString(o) || slices.Contains(assigned[:i], o)", "o == \"\" || slices.Contains(assigned[:i], o)"),
+    # The job loop
+    ("loop-no-reaping", LOOP, "requeued, failed, err := jobs.Reap(ctx, tx, org, w.cfg.ReapLimit, w.cfg.Policy)", "requeued, failed, err := 0, 0, error(nil)"),
+    ("loop-one-organization-a-pass", LOOP, "\t\t\tworked = true\n\t\t}\n", "\t\t\treturn true\n\t\t}\n"),
+    ("loop-claims-unhandled-types", LOOP, "jobs.Claim(ctx, tx, org, w.cfg.ID, w.types, w.cfg.Policy)", "jobs.Claim(ctx, tx, org, w.cfg.ID, append(w.types, jobs.ImportValidate), w.cfg.Policy)"),
+    ("loop-ignores-stop", LOOP, "\tfor ctx.Err() == nil {\n\t\tif w.Pass(ctx) {", "\tfor {\n\t\tif w.Pass(ctx) {"),
+    ("no-heartbeat", LOOP, "beats.Go(func() { w.heartbeat(hctx, lease, setLost, log) })", "beats.Go(func() {})"),
+    ("heartbeat-ignores-a-lost-lease", LOOP, "\t\tcase errors.Is(err, jobs.ErrLeaseLost):\n\t\t\tsetLost()\n\t\t\treturn\n", ""),
+    ("heartbeat-never-gives-up", LOOP, "if time.Since(renewed) >= w.cfg.Policy.Lease {", "if time.Since(renewed) >= 1000*w.cfg.Policy.Lease {"),
+    ("heartbeat-gives-up-at-once", LOOP, "if time.Since(renewed) >= w.cfg.Policy.Lease {", "if time.Since(renewed) >= 0 {"),
+    ("heartbeat-unbounded", LOOP, "bctx, cancel := context.WithTimeout(ctx, w.cfg.Heartbeat)", "bctx, cancel := context.WithCancel(ctx)"),
+    ("finish-without-lock", LOOP, "\t\t\tif _, err := jobs.Lock(ctx, tx, lease); err != nil {\n\t\t\t\treturn err\n\t\t\t}\n", ""),
+    ("finish-without-end", LOOP, "\t\t\treturn ends(ctx, tx, lease)\n", "\t\t\t_ = ends\n\t\t\treturn nil\n"),
+    ("finish-cancel-completes", LOOP, "\t\t\tends = jobs.Cancel\n", "\t\t\tends = jobs.Complete\n"),
+    ("finish-any-end", LOOP, "\t\tdefault:\n\t\t\treturn ErrInvalidEnd\n", "\t\tdefault:\n\t\t\tends = jobs.Complete\n"),
+    ("finish-not-noted", LOOP, "finished, ended = true, end", "finished, ended = false, end"),
+    ("lost-lease-recorded", LOOP, "\tcase isLost || errors.Is(err, jobs.ErrLeaseLost):\n", "\tcase false && (isLost || errors.Is(err, jobs.ErrLeaseLost)):\n"),
+    ("stop-not-retried", LOOP, "Message: \"the worker stopped during the attempt\", Retryable: true}", "Message: \"the worker stopped during the attempt\"}"),
+    ("stop-recorded-as-error", LOOP, "\tcase ctx.Err() != nil:\n\t\tfailure = jobs.Failure{Code: WorkerStopped,", "\tcase false:\n\t\tfailure = jobs.Failure{Code: WorkerStopped,"),
+    ("stop-recorded-on-a-cancelled-context", LOOP, "context.WithTimeout(context.WithoutCancel(ctx), w.cfg.Heartbeat)", "context.WithTimeout(ctx, w.cfg.Heartbeat)"),
+    ("no-result-retried", LOOP, "Message: \"the handler returned without a result\"}", "Message: \"the handler returned without a result\", Retryable: true}"),
+    ("failure-not-unwrapped", LOOP, "\t\tcase errors.As(err, &f):\n", "\t\tcase f != nil:\n"),
+    ("panic-retried", LOOP, "failure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\"}", "failure = jobs.Failure{Code: Internal, Message: \"the job's handler failed\", Retryable: true}"),
+    ("error-not-retried", LOOP, "Message: \"the job's handler failed\", Retryable: true}", "Message: \"the job's handler failed\"}"),
+    ("error-text-stored", LOOP, "Message: \"the job's handler failed\", Retryable: true}", "Message: err.Error(), Retryable: true}"),
+    ("panic-not-recovered", LOOP, "\t\tif v := recover(); v != nil {\n", "\t\tif v := any(nil); v != nil {\n"),
+    ("new-heartbeat-unbounded", LOOP, "cfg.Heartbeat*3 > cfg.Policy.Lease", "cfg.Heartbeat > cfg.Policy.Lease"),
+    ("new-nil-handler", LOOP, "\t\tif h == nil {\n\t\t\treturn nil, fmt.Errorf(\"worker: no handler for %s\", t)\n\t\t}\n", "\t\t_ = fmt.Errorf\n\t\t_ = h\n"),
+    # Configuration and the composition root
+    ("config-worker-id-optional", CONFIG, "\tcase w.ID == \"\":\n", "\tcase false:\n"),
+    ("config-worker-id-any", CONFIG, "r < 0x21 || r > 0x7e", "r < 0x20"),
+    ("config-blank-allowlist", CONFIG, "case strings.TrimSpace(raw) == \"\":", "case raw == \"\":"),
+    ("cmd-starts-without-handlers", CMD, "\tif len(handlers) == 0 {\n", "\tif len(handlers) < 0 {\n"),
+    ("cmd-no-role-check", CMD, "\terr = tenant.CheckRuntimeRole(checkCtx, pool, tenant.WorkerRole)\n", "\t_ = checkCtx\n\terr = nil\n"),
     # The architecture rule
     ("rule-exempts-everything", RULES, 'except:  []string{"./cmd/worker/...", "./internal/worker/...", "./internal/tenant/workerscope/..."},', 'except:  []string{"./..."},'),
 ]
 EQUIVALENT = {
     "claim-no-org-filter": "RLS confines the worker's transaction to the organization its scope sets, so the filter is defence in depth; no test can see it go (the application filter is required by AGENTS.md, and kept)",
     "claim-ignores-attempts": "no write leaves a queued job with its attempts spent: Fail and Reap fail a job whose last attempt ends; the condition guards against data changed by hand",
+    "cancel-queued-any-org": "as claim-no-org-filter: RLS confines the API's transaction to the organization it selected, so another organization's job is not there to cancel",
     "fence-any-status": "every write that ends a running job also clears locked_by, which the fence still requires, so a finished job never matches",
 }
 
 
 def run(overlay: str | None, pkg: str) -> str:
     env = dict(os.environ, GEMINUS_REQUIRE_DB_TESTS="1")
-    cmd = ["go", "test", "-count=1", pkg]
+    cmd = ["go", "test", "-count=1", "-timeout=300s", pkg]
     if overlay:
         cmd.insert(2, "-overlay=" + overlay)
     r = subprocess.run(cmd, cwd=REPO, env=env, capture_output=True, text=True, timeout=900)
     if r.returncode:
         if "--- FAIL" in r.stdout:
             return "KILLED\t" + next(l.strip() for l in r.stdout.splitlines() if l.startswith("--- FAIL"))
+        if "panic: test timed out" in r.stdout:
+            return "KILLED\ttest timed out (a hang the tests do not bound)"
         return "BUILD-FAILED\t" + (r.stdout + r.stderr).strip().splitlines()[-1]
     return "SURVIVED"
 

@@ -121,3 +121,26 @@ func TestLoadServer(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadWorker(t *testing.T) {
+	w, err := LoadWorker(env(map[string]string{"WORKER_ID": "worker-0.pod_a:1", "WORKER_ORGANIZATION_IDS": " org_a , org_b"}))
+	if err != nil || w.ID != "worker-0.pod_a:1" || !slices.Equal(w.Organizations, []string{"org_a", "org_b"}) {
+		t.Errorf("%+v %v", w, err)
+	}
+	// An empty entry is kept, for workerscope to refuse: the list is never
+	// silently shortened.
+	if w, err := LoadWorker(env(map[string]string{"WORKER_ID": "w", "WORKER_ORGANIZATION_IDS": "org_a,,org_b,"})); err != nil || len(w.Organizations) != 4 {
+		t.Errorf("%+v %v", w, err)
+	}
+	if _, err := LoadWorker(env(nil)); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ID:required", "WORKER_ORGANIZATION_IDS:required"}) {
+		t.Errorf("nothing set: %v", err)
+	}
+	for _, id := range []string{"has space", "tab\t", "naïve", strings.Repeat("w", 201), "\x7f"} {
+		if _, err := LoadWorker(env(map[string]string{"WORKER_ID": id, "WORKER_ORGANIZATION_IDS": " , "})); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ID:invalid"}) {
+			t.Errorf("%q: %v", id, err)
+		}
+	}
+	if _, err := LoadWorker(env(map[string]string{"WORKER_ID": strings.Repeat("w", 200), "WORKER_ORGANIZATION_IDS": " \t"})); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ORGANIZATION_IDS:required"}) {
+		t.Errorf("a blank allowlist: %v", err)
+	}
+}
