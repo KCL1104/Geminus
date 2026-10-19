@@ -219,6 +219,19 @@ func profile(j jobs.Job) func(ctx context.Context, tx tenant.Tx) error {
 	}
 }
 
+// importRow is j's import: its status, its rows (1: the handler's mark)
+// and its error's code ("" when none).
+func (e *env) importRow(t *testing.T, j jobs.Job) (string, int, string) {
+	t.Helper()
+	var s, code string
+	var rows int
+	if err := e.admin.QueryRow(context.Background(), `SELECT status, total_rows, coalesce(error->>'code', '') FROM twin.imports WHERE id=$1`,
+		j.Resource.ImportID).Scan(&s, &rows, &code); err != nil {
+		t.Fatal(err)
+	}
+	return s, rows, code
+}
+
 // untouched is the import as a job that wrote no result leaves it: still
 // UPLOADED, or FAILED with the job's error when the job failed (the import
 // follows its profile job, 0010), and never with the handler's mark.
@@ -305,8 +318,12 @@ func TestAJobEndsCancelled(t *testing.T) {
 	if got := e.job(t, j); got.Status != jobs.Cancelled || got.Error != nil || got.LockedBy != "" {
 		t.Errorf("the job is %+v", got)
 	}
-	if s := e.importStatus(t, j); s != "PROFILING" {
-		t.Errorf("the handler's writes were not committed with the end: the import is %s", s)
+	// The handler's write (PROFILING with its mark, one statement) committed
+	// with the end, and the end came after it in the same transaction: the
+	// cancelled profile job then moved the import on to FAILED (0010: an
+	// import follows its job; the trigger leaves the mark as it is).
+	if s, rows, code := e.importRow(t, j); rows != 1 || s != "FAILED" || code != "JOB_CANCELLED" {
+		t.Errorf("the handler's writes were not committed with the end: the import is %s with %d rows (%q)", s, rows, code)
 	}
 	if !strings.Contains(e.log.String(), "status=cancelled") {
 		t.Errorf("log: %s", e.log.String())

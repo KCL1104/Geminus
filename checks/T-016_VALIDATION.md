@@ -177,7 +177,22 @@ T-016 是 domain-neutral 的：H-016 把 P0 domain 改為電子組裝／測試�
 ### 需要 owner 或 reviewer 決定（第 1 輪新增）
 
 - **CB-39(c)**：新的實作參數 1 MiB（CSV record、JSON events 的一列與陣列前後的資料）與 path 2,048 字元。1 MiB 會拒絕欄位很多且很長的合法列（例如 256 欄各 4,000 字元以上）；若要放寬，記憶體上限隨之放大。
-- **T-019 測試的修改**：已接受的 T-019 worker 測試與 `constraints.sql` 為配合 M1 改了斷言的形式與 job type（強度不變，見上表），需要 reviewer 確認。
+- **T-019 測試的修改**：已接受的 T-019 worker 測試與 `constraints.sql` 為配合 M1 改了斷言的形式與 job type（強度不變，見上表與下一節），需要 reviewer 確認。
+
+### Coordinator 的 integration-test 之後（9c01793）
+
+Coordinator 在一次性的 `dt_test_*` 資料庫上對 9c01793 執行 `make integration-test`：exit 2，其他 22 個 package ok，只有 `internal/worker` 的 `TestAJobEndsCancelled` 失敗（「the handler's writes were not committed with the end: the import is FAILED」）。原因：這個 T-019 測試的 handler 在 `Finish(Cancelled, profile(job))` 中寫 import 為 PROFILING；`Finish` 在同一 transaction 中先 lock job、執行 fn、最後 `jobs.Cancel`（`internal/worker/worker.go` 的 `locked`），M1 的 trigger 隨後讓這個 PROFILING 的 import 跟著被取消的 job 變 FAILED，所以 status 不再是 PROFILING。
+
+**判斷：被取消的 profile job 讓 import 變 FAILED 是對的**，不改 trigger：review M1 明確要求 failed 或 cancelled 都使 import FAILED；profile job 結束而 import 仍在 UPLOADED／PROFILING，就沒有任何 job 會再 profile 它（每個 import 只有一個 profile job），import 會永遠卡住，正是 M1 指出的問題；真正的 profiler 從不以 cancelled 結束，而 handler 若已把 import 寫到 profiling 之後（AWAITING_MAPPING），trigger 不動它。
+
+**修正（只改測試的觀察方式，不降低斷言）**：handler 的寫入是 `profile(job)` 的單一 statement，同時寫 status PROFILING 與標記 `total_rows=1`；trigger 只改 status 與 error。測試改為要求標記存在（handler 的寫入與 end 一起 commit）、job 為 cancelled、import 為 FAILED 且 error code 為 `JOB_CANCELLED`（end 在 fn 之後、同一 transaction 執行：若 end 先在另一個 transaction commit，fn 對 FAILED 的 import 會被拒、標記不會在）。原斷言（PROFILING）能抓到的缺陷（fn 的寫入沒有 commit）新斷言都抓得到，另外還固定了 end 的效果。
+
+**本輪改過的 T-019 測試（全部在 `internal/worker/worker_test.go`，另有 `constraints.sql`）**：
+- `profile()` helper：除 PROFILING 外同一 statement 寫 `total_rows=1` 作為 handler 的標記。期望 PROFILING 的測試（`TestAJobRunsOnceWithItsResult`、`TestCheckpointsUnderTheLease`、`TestALostCommitAnswerIsNotReportedAsRolledBack`）不變：它們的 job 結束為 completed、running 或 queued，trigger 不介入。
+- `TestFailedAttempts`（表格的最後檢查）與 `TestAFailureReturnedWhileStoppingCounts`：原為 import 必須 UPLOADED（失敗的 attempt 沒寫入結果）；改為 `untouched()`：沒有標記（結果的那一個 statement 沒有 commit），且 job queued 時 import 恰為 UPLOADED、job failed 時恰為 FAILED 並帶與 job 完全相同的 error。原斷言抓得到的「失敗的 attempt 寫入了結果」，標記一樣抓得到。
+- `TestAJobEndsCancelled`：如上。
+- `db/tests/templates/constraints.sql.tmpl` 的 T-019 job 生命週期段：job type 由 `import_profile` 改為 `import_validate`（改 type 的拒絕檢查由改成 `import_validate` 改為改成 `import_mapping`）。0007 的規則與 type 無關，同一段需要同一個 import 上的 7 個 job，而 0010 只允許一個 `import_profile` job。所有 SQLSTATE 期望值與狀態檢查不變。
+- 其他 worker 測試對 import 的斷言都是 job 為 running、queued 或 completed 的情況，不受 trigger 影響；`internal/api` 中會讓 import job 失敗或取消的只有 T-016 自己的 `TestProfileJobFailures`（已期望 FAILED）；`internal/storage/jobs` 的測試不檢查 import。
 
 ### 殘餘風險（第 1 輪）
 
