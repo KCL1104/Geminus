@@ -1427,16 +1427,22 @@
         "checkpoint cancellation、durable logical-run budgets含retries。",
         "lease-fenced atomic results、progress/SSE與trace authorization。",
         "撤權（成員被移除或降級）時關閉該使用者已開的 SSE stream，或在送出下一個事件前重新檢查 membership 與 role（TEST-026；T-010 review L6 移交，T-010 只保證下一個 request 被拒）。",
-        "Simulation 的 job handler（T-019、ADR-024）讀寫 DB，是 adapter：不能放在 generic kernel（internal/simulation/...），需另立 adapter package 實作 internal/worker/handler 的 Handler 並呼叫 engine；package 名稱由本任務決定並記錄（T-019 round 2 L3）。"
+        "Simulation 的 job handler（T-019、ADR-024）讀寫 DB，是 adapter：不能放在 generic kernel（internal/simulation/...），需另立 adapter package 實作 internal/worker/handler 的 Handler 並呼叫 engine；package 名稱由本任務決定並記錄（T-019 round 2 L3）。已決定：handler 為 internal/runs/runner，service 與 HTTP adapter 為 internal/runs，SQL 為 internal/storage/runs；原規劃的 internal/simulation/service、internal/simulation/http 會落在 generic kernel 之下，理由見 docs/ARCHITECTURE.md §6。"
       ],
       "planned_outputs": [
-        "internal/simulation/service/",
-        "internal/simulation/http/",
-        "cmd/worker/"
+        "internal/runs/",
+        "internal/runs/runner/",
+        "internal/storage/runs/",
+        "internal/storage/objects/",
+        "internal/storage/snapshots/",
+        "internal/packs/",
+        "cmd/worker/",
+        "migrations/0009_simulation_runs.up.sql"
       ],
       "spec_refs": [
         "docs/API_DATABASE.md",
-        "docs/SIMULATION_SPEC.md"
+        "docs/SIMULATION_SPEC.md",
+        "docs/ARCHITECTURE.md"
       ],
       "acceptance_tests": [
         "TEST-014",
