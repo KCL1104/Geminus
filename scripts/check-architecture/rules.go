@@ -227,6 +227,17 @@ var rules = []rule{
 		forbid:  []string{"./internal/tenant/workerscope/..."},
 	},
 	{
+		// A job handler runs a claimed job under the worker's lease; the
+		// worker binary registers it (ADR-024). The API and the services it
+		// shares never link one, so no request can run the engine or write
+		// as the worker (T-023).
+		name:    "job-handlers-only-in-the-worker",
+		why:     "job handlers run claimed jobs under the worker's lease: only the worker binary registers them, never the API or a service it shares (ADR-024)",
+		applies: []string{"./..."},
+		except:  []string{"./cmd/worker/...", "./internal/runs/runner/..."},
+		forbid:  []string{"./internal/runs/runner/..."},
+	},
+	{
 		name:    "auth-authenticates-only",
 		why:     "internal/auth verifies tokens only; users, memberships and roles come from the tenant scope, never from auth (docs/ARCHITECTURE.md §2, D-008)",
 		applies: []string{"./internal/auth/..."},
