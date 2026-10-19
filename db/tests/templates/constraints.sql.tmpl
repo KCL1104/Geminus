@@ -137,15 +137,19 @@ SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,p
 INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,upload_content_hash,size_bytes,status,created_by)
   VALUES ('{{IMP_A1}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','a.csv','tenant/{{ORG_A}}/imports/a.csv','tenant/{{ORG_A}}/imports/a-errors.csv','{{H1}}',10,'UPLOADED','{{USR_A}}'),
          ('{{IMP_A2}}','{{ORG_A}}','{{PRJ_A}}','{{MDL_A}}','{{MV_A1}}','csv_events','b.csv','tenant/{{ORG_A}}/imports/b.csv','tenant/{{ORG_A}}/imports/b-errors.csv','{{H1}}',10,'UPLOADED','{{USR_A}}');
--- 0009 (T-023): a run starts queued; the worker runs it, then stores a
--- result that reproduces its input and names its trace in full.
+-- 0009 (T-023): a run starts queued with its job; the worker claims the
+-- job and runs it, then stores a result that reproduces its input and
+-- names its trace in full, and completes the run with its job.
 INSERT INTO twin.simulation_runs(id,organization_id,model_id,model_version_id,name,scenario_patch,config,seed,replications,engine_version,
     model_hash,effective_model_hash,config_hash,dataset_manifest_hash,dataset_bindings,execution_limits,status,created_by)
   VALUES ('{{SIM_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','baseline','[]','{}',1,1,'test','{{IR_A1_HASH}}','{{IR_A1_HASH}}','{{H1}}',
     '{{EMPTY_MANIFEST_HASH}}','[]','{"max_events":10}','queued','{{USR_A}}');
+INSERT INTO twin.jobs(id,organization_id,type,status,payload,simulation_run_id) VALUES ('{{JOB_A18}}','{{ORG_A}}','simulation','queued','{}','{{SIM_A1}}');
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE twin_worker;
+UPDATE twin.jobs SET status='running', attempt=1, lease_token=1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds', heartbeat_at=now()
+  WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A18}}';
 UPDATE twin.simulation_runs SET status='running', started_at=now(), execution_deadline_at=now()+interval '1 minute', progress_revision=1
   WHERE organization_id='{{ORG_A}}' AND id='{{SIM_A1}}';
 -- The keys under the run's own prefix isolate object_key_ok (D-035).
@@ -162,6 +166,7 @@ INSERT INTO twin.simulation_results(run_id,organization_id,result,result_digest,
   VALUES ('{{SIM_A1}}','{{ORG_A}}',pg_temp.result_of('{{ART_A1}}')::jsonb,'{{H1}}','{{ART_A1}}','tenant/{{ORG_A}}/simulation-results/{{SIM_A1}}/t.jsonl','{{H2}}',10);
 UPDATE twin.simulation_runs SET status='completed', completed_replications=1, finished_at=now(), progress_revision=2
   WHERE organization_id='{{ORG_A}}' AND id='{{SIM_A1}}';
+UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A18}}';
 SET LOCAL ROLE twin_owner;
 SELECT pg_temp.check(NOT EXISTS (
   SELECT 1 FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace

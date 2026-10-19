@@ -44,7 +44,17 @@ CREATE FUNCTION pg_temp.state(run text) RETURNS text LANGUAGE sql AS $$
     error->>'code', finished_at IS NOT NULL)
   FROM twin.simulation_runs WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id=run
 $$;
-GRANT EXECUTE ON FUNCTION pg_temp.result(text, text, text), pg_temp.state(text) TO PUBLIC;
+-- What an operator's direct UPDATE of a run did: 'moved', or 'refused'
+-- (55000, rolled back).
+CREATE FUNCTION pg_temp.operator_moves(run text, change text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE format('UPDATE twin.simulation_runs SET %s, progress_revision=progress_revision+1 WHERE organization_id=%L AND id=%L',
+    change, 'org_01M4YDQK00TA00000000000000', run);
+  RETURN 'moved';
+EXCEPTION WHEN SQLSTATE '55000' THEN
+  RETURN 'refused';
+END $$;
+GRANT EXECUTE ON FUNCTION pg_temp.result(text, text, text), pg_temp.state(text), pg_temp.operator_moves(text, text) TO PUBLIC;
 
 SET LOCAL ROLE twin_owner;
 SELECT set_config('app.oidc_issuer','https://test.invalid',true), set_config('app.oidc_subject','subject_a',true),
@@ -232,13 +242,55 @@ RESET ROLE;
 UPDATE twin.jobs SET status='failed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000017';
 SELECT pg_temp.check(pg_temp.state('sim_01M4YDQK00TA00000000000006')='failed 0 0 2 f INTERNAL t', 'a failure without a record: '||pg_temp.state('sim_01M4YDQK00TA00000000000006'));
 
+-- T-023 review L1: a run moves to queued, failed or cancelled only with its
+-- job, for every role, the owner included (an operator fails or cancels the
+-- job, and the run follows); and it completes only in the transaction that
+-- completes its job. Otherwise the run is final while its job still runs,
+-- and once the lease expires the reaper's UPDATE fails for the whole
+-- organization on every pass (follow_simulation_job refuses a final run).
+SET LOCAL ROLE twin_worker;
+UPDATE twin.jobs SET status='running', attempt=attempt+1, lease_token=lease_token+1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds', heartbeat_at=now()
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000014';
+UPDATE twin.simulation_runs SET status='running', progress_revision=progress_revision+1 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000003';
+SET LOCAL ROLE twin_owner;
+SELECT pg_temp.check(pg_temp.operator_moves('sim_01M4YDQK00TA00000000000003', c) = 'refused', 'the owner moved a running run itself: '||c)
+  FROM unnest(ARRAY[
+    $c$status='failed', error='{"code":"OPERATOR","message":"stuck","retryable":false}', finished_at=now()$c$,
+    $c$status='cancelled', finished_at=now()$c$,
+    $c$status='queued', completed_replications=0$c$]) AS c;
+-- The lease expires; the reaper's statement (as jobs.Reap writes it) takes
+-- the job back, and the run follows.
+UPDATE twin.jobs SET lease_expires_at=now()-interval '1 second' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000014';
+SET LOCAL ROLE twin_worker;
+UPDATE twin.jobs SET status=CASE WHEN attempt<max_attempts THEN 'queued' ELSE 'failed' END, locked_at=NULL, locked_by=NULL, lease_expires_at=NULL,
+    error='{"code":"LEASE_EXPIRED","message":"the lease expired","retryable":true}'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND status='running' AND lease_expires_at<=now();
+SELECT pg_temp.check(pg_temp.state('sim_01M4YDQK00TA00000000000003') LIKE 'queued 0 0 % f f', 'the reaper takes the job back and the run follows: '||pg_temp.state('sim_01M4YDQK00TA00000000000003'));
+-- Completing the run without its job is refused at commit (here at once).
+UPDATE twin.jobs SET status='running', attempt=attempt+1, lease_token=lease_token+1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds', heartbeat_at=now()
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000014';
+UPDATE twin.simulation_runs SET status='running', progress_revision=progress_revision+1 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000003';
+SET LOCAL ROLE twin_owner;
+SET CONSTRAINTS twin.run_completes_with_its_job IMMEDIATE;
+SELECT pg_temp.must_fail(format($q$DO $d$ BEGIN
+    INSERT INTO twin.simulation_results(run_id,organization_id,result,result_digest) VALUES ('sim_01M4YDQK00TA00000000000003','org_01M4YDQK00TA00000000000000',%L,'sha256:2222222222222222222222222222222222222222222222222222222222222222');
+    UPDATE twin.simulation_runs SET status='completed', completed_replications=2, finished_at=now(), progress_revision=progress_revision+1
+      WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000003';
+  END $d$$q$, pg_temp.result('sim_01M4YDQK00TA00000000000003','sha256:2222222222222222222222222222222222222222222222222222222222222222',NULL)), '55000');
+SET CONSTRAINTS ALL DEFERRED;
+-- The operator's way: end the job; the run follows.
+UPDATE twin.jobs SET status='failed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error='{"code":"OPERATOR","message":"ended by an operator","retryable":false}'
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000014';
+SELECT pg_temp.check(pg_temp.state('sim_01M4YDQK00TA00000000000003') LIKE 'failed 0 0 % f OPERATOR t', 'the operator fails the job, the run follows: '||pg_temp.state('sim_01M4YDQK00TA00000000000003'));
+RESET ROLE;
+
 -- Any other role is refused, whatever privileges it is given.
 GRANT SELECT, INSERT, UPDATE ON twin.simulation_runs TO twin_provisioner;
 SET LOCAL ROLE twin_provisioner;
 SELECT pg_temp.must_fail($q$UPDATE twin.simulation_runs SET cancellation_requested=true, progress_revision=progress_revision+1 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000007'$q$, '55000');
 RESET ROLE;
 REVOKE SELECT, INSERT, UPDATE ON twin.simulation_runs FROM twin_provisioner;
-SELECT pg_temp.check(string_agg(status, ',' ORDER BY id)='completed,cancelled,queued,failed,cancelled,failed,queued', 'the runs ended as they did: '||string_agg(status, ',' ORDER BY id))
+SELECT pg_temp.check(string_agg(status, ',' ORDER BY id)='completed,cancelled,failed,failed,cancelled,failed,queued', 'the runs ended as they did: '||string_agg(status, ',' ORDER BY id))
   FROM twin.simulation_runs WHERE organization_id='org_01M4YDQK00TA00000000000000';
 
 ROLLBACK;

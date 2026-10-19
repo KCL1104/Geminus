@@ -137,15 +137,19 @@ SELECT pg_temp.must_fail(format($q$INSERT INTO twin.imports(id,organization_id,p
 INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,error_report_object_key,upload_content_hash,size_bytes,status,created_by)
   VALUES ('imp_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','a.csv','tenant/org_01M4YDQK00TA00000000000000/imports/a.csv','tenant/org_01M4YDQK00TA00000000000000/imports/a-errors.csv','sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001'),
          ('imp_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','prj_01M4YDQK00TA00000000000001','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','csv_events','b.csv','tenant/org_01M4YDQK00TA00000000000000/imports/b.csv','tenant/org_01M4YDQK00TA00000000000000/imports/b-errors.csv','sha256:1111111111111111111111111111111111111111111111111111111111111111',10,'UPLOADED','usr_01M4YDQK00TA00000000000001');
--- 0009 (T-023): a run starts queued; the worker runs it, then stores a
--- result that reproduces its input and names its trace in full.
+-- 0009 (T-023): a run starts queued with its job; the worker claims the
+-- job and runs it, then stores a result that reproduces its input and
+-- names its trace in full, and completes the run with its job.
 INSERT INTO twin.simulation_runs(id,organization_id,model_id,model_version_id,name,scenario_patch,config,seed,replications,engine_version,
     model_hash,effective_model_hash,config_hash,dataset_manifest_hash,dataset_bindings,execution_limits,status,created_by)
   VALUES ('sim_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','mdl_01M4YDQK00TA00000000000001','mv_01M4YDQK00TA00000000000001','baseline','[]','{}',1,1,'test','sha256:432750f646ba93a763271505eaf1daa556ef60f2b8d7c97999529683c226120e','sha256:432750f646ba93a763271505eaf1daa556ef60f2b8d7c97999529683c226120e','sha256:1111111111111111111111111111111111111111111111111111111111111111',
     'sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945','[]','{"max_events":10}','queued','usr_01M4YDQK00TA00000000000001');
+INSERT INTO twin.jobs(id,organization_id,type,status,payload,simulation_run_id) VALUES ('job_01M4YDQK00TA00000000000018','org_01M4YDQK00TA00000000000000','simulation','queued','{}','sim_01M4YDQK00TA00000000000001');
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE twin_worker;
+UPDATE twin.jobs SET status='running', attempt=1, lease_token=1, locked_at=now(), locked_by='w', lease_expires_at=now()+interval '30 seconds', heartbeat_at=now()
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000018';
 UPDATE twin.simulation_runs SET status='running', started_at=now(), execution_deadline_at=now()+interval '1 minute', progress_revision=1
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000001';
 -- The keys under the run's own prefix isolate object_key_ok (D-035).
@@ -162,6 +166,7 @@ INSERT INTO twin.simulation_results(run_id,organization_id,result,result_digest,
   VALUES ('sim_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000',pg_temp.result_of('art_01M4YDQK00TA00000000000001')::jsonb,'sha256:1111111111111111111111111111111111111111111111111111111111111111','art_01M4YDQK00TA00000000000001','tenant/org_01M4YDQK00TA00000000000000/simulation-results/sim_01M4YDQK00TA00000000000001/t.jsonl','sha256:2222222222222222222222222222222222222222222222222222222222222222',10);
 UPDATE twin.simulation_runs SET status='completed', completed_replications=1, finished_at=now(), progress_revision=2
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000001';
+UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000018';
 SET LOCAL ROLE twin_owner;
 SELECT pg_temp.check(NOT EXISTS (
   SELECT 1 FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace

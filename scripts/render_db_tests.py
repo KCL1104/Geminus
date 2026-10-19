@@ -51,7 +51,7 @@ IDS = {
     "SIM_A2": ("sim", "A", 2), "SIM_A3": ("sim", "A", 3), "SIM_A4": ("sim", "A", 4), "SIM_A5": ("sim", "A", 5),
     "SIM_A6": ("sim", "A", 6), "SIM_A7": ("sim", "A", 7), "SIM_X": ("sim", "A", 99),
     "JOB_A12": ("job", "A", 12), "JOB_A13": ("job", "A", 13), "JOB_A14": ("job", "A", 14), "JOB_A15": ("job", "A", 15),
-    "JOB_A16": ("job", "A", 16), "JOB_A17": ("job", "A", 17),
+    "JOB_A16": ("job", "A", 16), "JOB_A17": ("job", "A", 17), "JOB_A18": ("job", "A", 18),
     "ART_A1": ("art", "A", 1), "ART_A2": ("art", "A", 2),
 }
 

@@ -1,0 +1,260 @@
+NOTICE:  database "dt_test_t023_l1red" does not exist, skipping
+      set_config      | set_config |           set_config           |           set_config           
+----------------------+------------+--------------------------------+--------------------------------
+ https://test.invalid | subject_a  | org_01M4YDQK00TA00000000000000 | usr_01M4YDQK00TA00000000000001
+(1 row)
+
+ set_config 
+------------
+ subject_a2
+(1 row)
+
+ set_config 
+------------
+ subject_a
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+(4 rows)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(9 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+(4 rows)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(7 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(8 rows)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+(3 rows)
+
+ must_fail 
+-----------
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+(8 rows)
+
+ must_fail 
+-----------
+ 
+ 
+(2 rows)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ must_fail 
+-----------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+ check 
+-------
+ 
+(1 row)
+
+psql:db/tests/runs.sql:260: WARNING:  FAILED: the owner moved a running run itself: status='failed', error='{"code":"OPERATOR","message":"stuck","retryable":false}', finished_at=now()
+ check 
+-------
+ 
+ 
+ 
+(3 rows)
+
+psql:db/tests/runs.sql:267: ERROR:  a failed run cannot follow its job to queued
+CONTEXT:  PL/pgSQL function twin.follow_simulation_job() line 17 at RAISE

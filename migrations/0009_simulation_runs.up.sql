@@ -18,6 +18,10 @@
 --     only once its run has completed with its result.
 --   * A run's identity (ID, name, creator, creation time) never changes,
 --     for any role (0001 freezes its inputs).
+--   * Only the job moves a run to queued, failed or cancelled, for every
+--     role, the owner included, and a run completes only in the
+--     transaction that completes its job: a run final while its job still
+--     runs would stall the reaper (T-023 review L1).
 --   * Each runtime role moves a run only its own way, as 0007 does for
 --     jobs: the API creates runs and requests cancellation; the worker
 --     starts an attempt (queued -> running), writes its progress and event
@@ -90,6 +94,13 @@ BEGIN
       AND NEW.progress_revision <= OLD.progress_revision) THEN
     RAISE EXCEPTION 'every visible change of a run advances its progress revision' USING ERRCODE = '55000';
   END IF;
+  -- Only the job moves a run to queued, failed or cancelled, whoever asks,
+  -- the owner included: a run final while its job still runs would make
+  -- the reaper's UPDATE fail for the whole organization once the lease
+  -- expires (T-023 review L1). An operator ends the job; the run follows.
+  IF NEW.status <> OLD.status AND NEW.status IN ('queued', 'failed', 'cancelled') AND NOT followed THEN
+    RAISE EXCEPTION 'a run becomes % only with its job: end or retry the job, and the run follows', NEW.status USING ERRCODE = '55000';
+  END IF;
   IF owner THEN
     RETURN NEW;
   END IF;
@@ -144,6 +155,24 @@ END $$;
 REVOKE ALL ON FUNCTION twin.check_simulation_result() FROM PUBLIC;
 CREATE TRIGGER check_simulation_result BEFORE INSERT ON twin.simulation_results
   FOR EACH ROW EXECUTE FUNCTION twin.check_simulation_result();
+
+-- A run completes only in the transaction that completes its job (the
+-- worker's Finish), for every role: a completed run whose job still runs
+-- would stall the reaper as above (T-023 review L1).
+CREATE FUNCTION twin.check_run_completes_with_its_job() RETURNS trigger LANGUAGE plpgsql
+  SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM twin.jobs j
+                 WHERE j.organization_id = NEW.organization_id AND j.simulation_run_id = NEW.id AND j.status = 'completed') THEN
+    RAISE EXCEPTION 'a run completes in the transaction that completes its job' USING ERRCODE = '55000';
+  END IF;
+  RETURN NULL;
+END $$;
+REVOKE ALL ON FUNCTION twin.check_run_completes_with_its_job() FROM PUBLIC;
+CREATE CONSTRAINT TRIGGER run_completes_with_its_job AFTER UPDATE OF status ON twin.simulation_runs
+  DEFERRABLE INITIALLY DEFERRED
+  FOR EACH ROW WHEN (NEW.status = 'completed' AND OLD.status IS DISTINCT FROM NEW.status)
+  EXECUTE FUNCTION twin.check_run_completes_with_its_job();
 
 -- Runs with the privileges of whoever moves the job: the worker (its
 -- column UPDATE on simulation_runs covers what this writes) or the API.
