@@ -1,0 +1,28 @@
+rv2-claimed-after-the-claim	KILLED	--- FAIL: TestASlowClaimCountsFromBeforeIt (3.36s)
+rv2-deadline-from-the-heartbeat-start	KILLED	--- FAIL: TestASlowClaimCountsFromBeforeIt (3.36s)
+rv2-cmd-stop-after-cancel	SURVIVED
+rv3-no-width-check	SURVIVED
+rv3-text-read-outside-recover	KILLED	the test binary panicked: panic: runtime error: invalid memory address or nil pointer dereference
+rv3-new-deadline-dropped-when-busy	SURVIVED
+rv3-renewal-bound-two-heartbeats	KILLED	--- FAIL: TestAHungRenewalIsRetried (2.55s)
+rv3-broken-before-failure	KILLED	--- FAIL: TestFailedAttempts (0.32s)
+rv4-fn-failure-stop-is-always-ErrStopped	SURVIVED
+rv4-other-stop-is-always-ErrStopped	KILLED	--- FAIL: TestATransactionIsCancelledWhenTheAttemptStops (3.55s)
+rv4-other-stop-drops-the-cause	SURVIVED
+rv4-outcome-unknown-wrapped-in-the-stop	KILLED	--- FAIL: TestALostCommitAnswerIsNotReportedAsRolledBack (0.69s)
+rv4-outcome-unknown-marks-the-lease-lost	KILLED	--- FAIL: TestALostCommitAnswerIsNotReportedAsRolledBack (0.69s)
+rv4-fn-error-read-like-the-transactions	SURVIVED
+rv4-lost-record-goes-on	SURVIVED
+rv4-readable-panic-is-large	KILLED	--- FAIL: TestFailedAttempts (0.31s)
+rv4-readable-large-is-broken	KILLED	--- FAIL: TestFailedAttempts (0.33s)
+rv4-max-errors-63	SURVIVED
+rv4-max-errors-65	SURVIVED
+rv4-log-text-counts-bytes	SURVIVED
+rv4-log-text-ellipsis-always	SURVIVED
+rv4-due-not-advanced	KILLED	--- FAIL: TestASlowRenewalCountsFromItsStart (4.46s)
+rv4-due-from-the-renewals-end	KILLED	--- FAIL: TestAHungRenewalIsRetried (2.56s)
+rv4-due-from-the-renewals-start	SURVIVED
+rv4-first-renewal-at-the-claim	KILLED	--- FAIL: TestFinishAfterTheLeaseExpired (0.14s); --- FAIL: TestALostCommitAnswerIsNotReportedAsRolledBack (0.40s)
+rv4-due-two-heartbeats	KILLED	--- FAIL: TestOneFailedRenewalIsSurvived (3.54s); --- FAIL: TestAHungRenewalIsRetried (2.55s); --- FAIL: TestRenewalsAreDueFromTheClaim (2.55s)
+total=26 survived=12
+exit=0 seconds=946

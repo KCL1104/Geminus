@@ -196,9 +196,10 @@ func (a *attempt) locked(ctx context.Context, fn, end func(ctx context.Context, 
 			return err
 		}
 		if err := fn(ctx, tx); err != nil {
-			// The transaction reads fn's error (to classify it) with
-			// unbounded walks: only one the worker can read reaches it
-			// (round 3 L1).
+			// The transaction classifies fn's error with unbounded walks
+			// of its Unwrap tree, so readable bounds the tree first
+			// (round 3 L1). Only the tree's shape is checked: an As
+			// method that panics still panics there (round 4 I1).
 			failed = true
 			return readable(err)
 		}

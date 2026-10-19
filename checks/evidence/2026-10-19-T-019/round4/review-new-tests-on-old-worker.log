@@ -1,0 +1,30 @@
+=== RUN   TestRenewalsAreDueFromTheClaim
+    worker_test.go:1114: the job is running 
+--- FAIL: TestRenewalsAreDueFromTheClaim (2.55s)
+=== RUN   TestAFailureReturnedWhileStoppingCounts
+=== RUN   TestAFailureReturnedWhileStoppingCounts/checkpoint
+    worker_test.go:1299: the call returned handler: the attempt has stopped
+    worker_test.go:1302: the job is queued {"code": "WORKER_STOPPED", "message": "the worker stopped during the attempt", "retryable": true}, want failed with the handler's failure
+=== RUN   TestAFailureReturnedWhileStoppingCounts/finish
+    worker_test.go:1299: the call returned handler: the attempt has stopped
+    worker_test.go:1302: the job is queued {"code": "WORKER_STOPPED", "message": "the worker stopped during the attempt", "retryable": true}, want failed with the handler's failure
+--- FAIL: TestAFailureReturnedWhileStoppingCounts (0.07s)
+    --- FAIL: TestAFailureReturnedWhileStoppingCounts/checkpoint (0.03s)
+    --- FAIL: TestAFailureReturnedWhileStoppingCounts/finish (0.01s)
+=== RUN   TestALostCommitAnswerIsNotReportedAsRolledBack
+=== RUN   TestALostCommitAnswerIsNotReportedAsRolledBack/finish
+    worker_test.go:1354: the call returned handler: the attempt has stopped after 300.826204ms
+    worker_test.go:1363: log: time=2026-10-19T14:28:55.369Z level=ERROR msg="job attempt failed" organization_id=org_01M5A91G3M979ZZTBARR1XP4FT job_id=job_01M5A91G4C4VKRMSXT7RWGJ2QJ type=import_profile attempt=1 code=WORKER_STOPPED error="handler: the attempt has stopped"
+        time=2026-10-19T14:28:55.372Z level=ERROR msg="recording the failure failed" organization_id=org_01M5A91G3M979ZZTBARR1XP4FT job_id=job_01M5A91G4C4VKRMSXT7RWGJ2QJ type=import_profile attempt=1 code=WORKER_STOPPED error="jobs: lease lost"
+=== RUN   TestALostCommitAnswerIsNotReportedAsRolledBack/checkpoint
+    worker_test.go:1354: the call returned handler: the attempt has stopped after 300.486637ms
+--- FAIL: TestALostCommitAnswerIsNotReportedAsRolledBack (0.69s)
+    --- FAIL: TestALostCommitAnswerIsNotReportedAsRolledBack/finish (0.34s)
+    --- FAIL: TestALostCommitAnswerIsNotReportedAsRolledBack/checkpoint (0.33s)
+=== RUN   TestACheckpointEndsWithItsContext
+--- PASS: TestACheckpointEndsWithItsContext (0.25s)
+=== RUN   TestTheFailureRecordIsBounded
+--- PASS: TestTheFailureRecordIsBounded (0.55s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/worker	4.111s
+FAIL

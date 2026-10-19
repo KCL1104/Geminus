@@ -452,6 +452,12 @@ func TestFailedAttempts(t *testing.T) {
 			}
 			return err
 		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
+		// The worker reads its own outcome of the transaction, never with
+		// fn's error's Is methods: one that panics is an ordinary error,
+		// retried (round 4 L2).
+		{"a checkpoint's error whose Is panics", 0, func(ctx context.Context, run handler.Run) error {
+			return run.Checkpoint(ctx, func(context.Context, tenant.Tx) error { return isPanics{} })
+		}, jobs.Queued, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed", Retryable: true}},
 		{"a panic with a value", 0, func(context.Context, handler.Run) error {
 			panic(secret)
 		}, jobs.Failed, jobs.Failure{Code: worker.Internal, Message: "the job's handler failed"}},
@@ -531,6 +537,12 @@ func passWithin(t *testing.T, w *worker.Worker, d time.Duration) bool {
 type rowError struct{ row int }
 
 func (r *rowError) Error() string { return fmt.Sprintf("row %d", r.row) }
+
+// isPanics is an error whose Is method panics.
+type isPanics struct{}
+
+func (isPanics) Error() string { return "is panics" }
+func (isPanics) Is(error) bool { panic("Is called") }
 
 // selfWrapping is an Unwrap chain that never ends.
 type selfWrapping struct{}
@@ -1305,6 +1317,41 @@ func TestAFailureReturnedWhileStoppingCounts(t *testing.T) {
 				t.Errorf("a transaction that failed committed: the import is %s", s)
 			}
 		})
+	}
+}
+
+// A Failure fn returns after the attempt lost its lease (here its deadline
+// passed while fn held the job's row lock, so no renewal could land) reaches
+// the handler wrapped in jobs.ErrLeaseLost, not ErrStopped; nothing is
+// recorded, the job being no longer the attempt's (round 4 L2).
+func TestAFailureReturnedAfterTheLeaseIsLost(t *testing.T) {
+	e := setup(t, 1)
+	j := e.enqueue(t, e.orgs[0], jobs.ImportProfile, 0)
+	invalid := &jobs.Failure{Code: "INVALID_INPUT", Message: "the upload is not CSV"}
+	var err error
+	cfg := config(handler.Func(func(hctx context.Context, run handler.Run) error {
+		err = run.Checkpoint(hctx, func(ctx context.Context, tx tenant.Tx) error {
+			select {
+			case <-ctx.Done():
+			case <-time.After(wait):
+			}
+			return invalid
+		})
+		return err
+	}), e.log)
+	cfg.Policy.Lease, cfg.Heartbeat = 1500*time.Millisecond, 500*time.Millisecond
+	if !passWithin(t, e.worker(t, cfg), 5*time.Second) {
+		t.Fatal("the pass ran no job")
+	}
+	var f *jobs.Failure
+	if !errors.Is(err, jobs.ErrLeaseLost) || errors.Is(err, handler.ErrStopped) || !errors.As(err, &f) || f != invalid {
+		t.Errorf("the call returned %v", err)
+	}
+	if got := e.job(t, j); got.Status != jobs.Running || got.Error != nil || got.Attempt != 1 {
+		t.Errorf("the worker recorded the end of a job it lost: %+v", got)
+	}
+	if s := e.importStatus(t, j); s != "UPLOADED" {
+		t.Errorf("the import is %s", s)
 	}
 }
 

@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	2.387s
+ok  	github.com/kcl1104/geminus/internal/worker	40.888s
+?   	github.com/kcl1104/geminus/internal/worker/handler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	1.055s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.110s

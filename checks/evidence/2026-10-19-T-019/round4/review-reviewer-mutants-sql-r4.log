@@ -1,0 +1,26 @@
+baseline	SQL suites and Go tests pass
+rv2-api-lease-columns	KILLED
+rv2-worker-reschedules	KILLED
+rv2-queued-at-max	KILLED
+rv3-roles-by-session-user	KILLED
+rv3-worker-by-membership	SURVIVED	UNEXPECTED
+rv3-insert-with-a-heartbeat	KILLED
+rv3-insert-locked	KILLED
+rv3-insert-with-an-expiry	KILLED
+rv3-worker-moves-locked-at	KILLED
+rv3-worker-sets-an-error-while-running	KILLED
+rv3-worker-leaves-locked-at	KILLED
+rv3-worker-leaves-the-expiry	KILLED
+rv3-worker-leaves-the-holder	KILLED
+rv3-worker-token-only	KILLED
+rv3-worker-attempt-only	KILLED
+rv3-worker-enqueues	KILLED
+rv4-cancelled-not-final	KILLED
+rv4-failed-not-final	KILLED
+rv4-claim-same-token	KILLED
+rv4-claim-skips-attempts	KILLED
+rv4-created-at-mutable	KILLED
+rv4-max-attempts-mutable	KILLED
+rv4-tokens-go-back	KILLED
+total=23 unexpected=1
+exit=1 seconds=68

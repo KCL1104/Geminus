@@ -24,37 +24,18 @@
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 19,
+    "done": 20,
     "in_progress": 2,
     "not_started": 23,
-    "review": 1
+    "review": 0
   },
   "ready_tasks": [
-    "T-024"
+    "T-016",
+    "T-023",
+    "T-024",
+    "T-035"
   ],
-  "next_after_review": [
-    {
-      "id": "T-016",
-      "awaiting_task_review": [
-        "T-019"
-      ],
-      "awaiting_decisions": []
-    },
-    {
-      "id": "T-023",
-      "awaiting_task_review": [
-        "T-019"
-      ],
-      "awaiting_decisions": []
-    },
-    {
-      "id": "T-035",
-      "awaiting_task_review": [
-        "T-019"
-      ],
-      "awaiting_decisions": []
-    }
-  ],
+  "next_after_review": [],
   "gates": {
     "D-001": {
       "status": "approved",

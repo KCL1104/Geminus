@@ -1106,7 +1106,7 @@
       "id": "T-019",
       "title": "PostgreSQL job queue / leases",
       "priority": "P0",
-      "status": "review",
+      "status": "done",
       "owner_role": "Platform",
       "planning_window": "Week 5–6",
       "depends_on": [
@@ -1183,7 +1183,16 @@
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-019_VALIDATION.md",
           "summary": "Review round 3 修正（2136c05）：attempt 停止後 Checkpoint／Finish 回報 transaction 實際的結果：fn 的 error 包在停止的原因中（handler 的 Failure 仍為準），回答遺失的 COMMIT 一律為 tenant.ErrOutcomeUnknown，記錄已不屬於這個 attempt 的 job 時只記 warning（M1）；fn 的 error 先經 worker 有界、有 recover 的讀取再交給 transaction，不再讓 worker 卡住（L1）；Unwrap 樹超過 64 個 error 改為可重試的 INTERNAL（I1）；續期從 claim 開始起每個 heartbeat 到期（I2）；logText 逐字截斷（I4）；測試補上扣住 COMMIT 回答、停止時回 Failure、深的 error 鏈、handler 自己的 context、記錄的時限、慢 claim 後的續期、pass 限時與各 lease 欄位的 SQL 測試（L2）；0007、db/README、ADR-024、ARCHITECTURE 與報告改正（I3、I6–I8）。2136c05 乾淨 worktree：backend-test／race／architecture／frontend／spec／integration-test exit 0（無 cached），60 個 top-level 與 53 個 subtest（race、0 SKIP），計時測試 ×5 120/120；mutation Go 132（127 killed、5 等價；其中 3 個 panic 的 mutant 以修正後的 harness 重跑）、SQL 46（45 killed、1 等價），0 unexpected。ADR-024 已由 owner 接受（H-010）。",
-          "reviewer": "pending: independent reviewer agent round 4 (H-003)",
+          "reviewer": "independent reviewer agent round 4 (H-003): ACCEPT (750b729), low findings below",
+          "decisions_pending": "無（ADR-024 已接受，H-010）"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-019_VALIDATION.md",
+          "summary": "Review round 4（750b729）ACCEPT 後處理 low 與 info：L1 handler.Run、ADR-024、ARCHITECTURE、db/README 改為「已送出的 COMMIT 一律回 tenant.ErrOutcomeUnknown（不論 DB 之後是否 commit）；fn 的 Failure 只在 worker 停止時算數，lease 失去後不記錄」；L2 新增 TestAFailureReturnedAfterTheLeaseIsLost 與 TestFailedAttempts 的「checkpoint 的 error 的 Is 會 panic」，擋下 reviewer 存活的 rv4-fn-failure-stop-is-always-ErrStopped 與 rv4-fn-error-read-like-the-transactions；L3、I1、I3、I5 以 handler 與 ADR 的說明處理（不改行為）；I2 接受；I4 為 T-006 的 follow-up。乾淨 worktree（8d9754d＋本修正）：T-019 packages race ok、backend-test、architecture-check、spec-check exit 0。",
+          "reviewer": "independent reviewer agent (H-003): round 1 CHANGES REQUESTED (5a68042), round 2 CHANGES REQUESTED (52c667c), round 3 CHANGES REQUESTED (02a4200, 814a805), round 4 ACCEPT (750b729); the low findings were addressed after acceptance without changing behaviour",
+          "follow_up": "T-006 postgres.commitError：回答為 ROLLBACK 的 COMMIT（pgx.ErrTxCommitRollback）被分類為 ErrOutcomeUnknown，其實結果已知（round 4 I4）；以獨立的小修正處理",
           "decisions_pending": "無（ADR-024 已接受，H-010）"
         }
       ]

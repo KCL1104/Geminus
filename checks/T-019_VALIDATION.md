@@ -142,6 +142,33 @@ Round 3 確認 round 2 的 M1（handler 回傳的路徑）、L2、L4、L5、I2�
 | **I7** 等價 mutant 的理由 | `fence-any-status` 的理由依 reviewer 改寫（0007 拒絕 worker 對非 running job 的任何寫入；只有 owner 結束 job 卻保留 lease 時，舊 holder 才會得到 55000 而非 `ErrLeaseLost`） | `mutants.py` |
 | **I8** Round 2 I5 的例子不精確 | 記錄於 round 2 I5 列：Unix socket 的 `sslmode=bogus` pgx 本來就接受 | 本報告 |
 
+## Review round 4（2136c05、8eb6647、750b729：ACCEPT）
+
+獨立 reviewer agent（H-003）於 2026-10-19 審 750b729：**ACCEPT**。Round 3 的 M1、L1、L2、I1、I2、I4 已在程式中修好，且由在 round 3 的 `worker.go` 上會失敗的測試釘住；I3、I6–I8 以文件完成。Reviewer 的重跑全部通過，數字與作者一致：
+
+- T-019 的 Go 測試（race、`-p 1`）：60 個 top-level 與 53 個 subtest PASS，0 SKIP。
+- 計時測試 ×5：120/120；在 4 個 CPU hog 下 ×5：35/35。
+- `backend-test`、`backend-race`、`architecture-check`、`spec-check`、`integration-test`（新的 `dt_test_rv019d_main`）皆 exit 0。
+- 作者的 mutants：Go 132（127 killed、5 等價），SQL 46（45 killed、1 等價），0 unexpected；5 個等價的理由全部接受。
+- Reviewer 自己的 mutants：Go 26（14 killed），SQL 23（22 killed）。
+
+另提出 3 個 low 與 8 個 info，都不破壞 invariant（停止後只有已送出的 COMMIT 可能 commit，且回報為 `tenant.ErrOutcomeUnknown`；已 commit 的 COMMIT 不會被報為 rollback；worker 停止時 `fn` 的 Failure 仍算數；lease 失去後不記錄任何東西）。處理如下：
+
+| 項目 | 處理 | 證據 |
+|---|---|---|
+| **L1** handler 契約說「DB 已執行完的 COMMIT」才回 `ErrOutcomeUnknown`；實際上任何已送出的 COMMIT 都回它（DB 之後可能 rollback）。「Failure 仍算數」只在 worker 停止時成立，lease 失去後不記錄 | `handler.Run`、ADR-024、ARCHITECTURE、db/README 改寫：已送出的 COMMIT 一律為 `ErrOutcomeUnknown`，不論 DB 之後是否 commit；`fn` 的 error 包在停止的原因中，Failure 只在 worker 停止（`ErrStopped`）時算數，lease 失去（`jobs.ErrLeaseLost`）後什麼都不記錄 | 文件 |
+| **L2** 兩個行為正確但沒有測試釘住（reviewer 的 mutants `rv4-fn-failure-stop-is-always-ErrStopped`、`rv4-fn-error-read-like-the-transactions` 存活） | 新增 `TestAFailureReturnedAfterTheLeaseIsLost`（`fn` 握著 job 的 row lock 直到 lease 到期後回 Failure：呼叫回包住它的 `jobs.ErrLeaseLost`，不是 `ErrStopped`；job 仍為 running、沒有記錄）；`TestFailedAttempts` 新增「checkpoint 的 error 的 `Is` 會 panic」：一般 error，INTERNAL、可重試 | 兩個 mutant 都被擋下：前者 `TestAFailureReturnedAfterTheLeaseIsLost` 失敗，後者 `TestFailedAttempts/a_checkpoint's_error_whose_Is_panics` 失敗（`round4/`） |
+| **L3** 讀不了的 `fn` error 換成替代品後，handler 拿到的也是替代品，`handler.Run` 沒有說明 | 採 reviewer 提的第二個做法：在 `handler.Run` 寫明（只帶型別名稱、handler 無法檢視、記錄方式與原 error 相同），並建議 `fn` 的 error 保持小、直接回 `*jobs.Failure`。不改行為（改成保留原 error 回傳屬於行為變更，需要再一輪審查，好處有限） | 文件 |
+| **I1** `readable()` 只檢查 Unwrap 樹的形狀，`As` 會 panic 的 error 仍在分類時 panic 出 `Checkpoint`／`Finish`（從 handler 自己開的 goroutine 呼叫時 process 結束） | `handler.Handler` 說明、`worker.go` 的註解、ADR-024 改為不誇大檢查範圍 | 文件 |
+| **I2** 第一次 Unwrap 回 nil、之後回自己的 error 可通過 `finite()` 再讓 `errors.As` 卡住 | 接受並記錄：需要刻意構造，與已接受的「方法永遠卡住」（round 3 I5）同類 | 本報告 |
+| **I3** 無限遞迴的方法造成 stack overflow，process 結束 | `handler.Handler` 說明加入 | 文件 |
+| **I4** T-006 的 `postgres.commitError`：回答為 ROLLBACK 的 COMMIT（`fn` 吞掉失敗的 statement）被報為 `ErrOutcomeUnknown`，其實結果已知 | 不在 T-019 範圍；記為 T-006 的 follow-up（tasks.json T-019 本輪的紀錄），之後以獨立的小修正處理 | 本報告 |
+| **I5** 「Failure belongs near the top」對大的樹沒有幫助 | 改為「直接回 Failure 本身（它沒有 Unwrap），不要放在樹中」 | 文件 |
+| **I6** 其他存活的 reviewer mutants（不決定性的時間窗、只差 log、64 的邊界、續期從何時算的差異等） | 接受（reviewer 判為 minor、等價或只影響 log） | `round4/review-reviewer-mutants-go-r4.log` |
+| **I7、I8** 等價 mutant 與報告的數字 | Reviewer 全部接受，與作者一致 | — |
+
+修正後在乾淨 worktree（8d9754d 加上本修正）：T-019 的 package（`internal/storage/jobs`、`internal/worker/...`、`internal/tenant/workerscope`、`cmd/worker`）race、`-p 1`、新的 `dt_test_t019r4fix` 皆 ok；`backend-test`（35 個 package ok）、`architecture-check`、`spec-check` exit 0（`round4/fix-exit-codes.txt`、`round4/fix-worker-race.log`）。
+
 ## 決策與 owner 知悉
 
 - **ADR-024 已由 owner 接受（H-010，2026-10-19，照提案）**：
