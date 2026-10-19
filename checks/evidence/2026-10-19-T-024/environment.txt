@@ -1,0 +1,10 @@
+commit: 9026843 (the T-024 code and docs commits; the logs were produced on the working tree just before these commits, with the same content; go-test-ai.log ran before gofmt -w changed whitespace in anthropic_test.go and rules.go)
+base: 6f57240 (claude/lucid-meitner-vq1awo)
+date: 2026-10-19T22:03:31Z
+go version go1.27.2 linux/amd64
+node v22.22.0 (apps/web requires >=24.21.0 <25; npm ci refuses with EBADENGINE, see frontend-npm-ci.log)
+postgres (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) - not used for any recorded result, see T-024_VALIDATION.md "NOT RUN"
+Linux 6.18.44-fc-v139 x86_64
+4 CPUs
+go clean -testcache before the recorded runs
+no API key was looked for, read or set by this agent (per the task); the adapter tests use fake key literals and t.Setenv, against a local httptest server; no network call to any AI provider

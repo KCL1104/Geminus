@@ -1,0 +1,8 @@
+$ make backend-test
+# extra environment: none
+gofmt required:
+internal/ai/provider/anthropic/anthropic_test.go
+scripts/check-architecture/rules.go
+make: *** [Makefile:38: backend-test] Error 1
+
+# exit 2 after 0s

@@ -1,0 +1,10 @@
+go-test-ai.log: exit 0 (go test -count=1 -v ./internal/ai/...; env: none)
+backend-test.log: exit 2 (make backend-test; env: none)  [first attempt: gofmt required for two files; log kept as backend-test-first-attempt-gofmt.log; gofmt -w applied, whitespace only]
+backend-test.log: exit 0 (make backend-test; env: none)
+backend-race.log: exit 0 (make backend-race; env: none)
+architecture-check.log: exit 0 (make architecture-check; env: none)
+spec-check.log: exit 0 (make spec-check PYTHON=/home/user/Geminus/.venv/bin/python; env: none)
+ai-fake-suite.log: exit 0 (make ai-eval; env: none)
+frontend-npm-ci.log: exit 1 (npm --prefix apps/web ci --no-audit --no-fund; env: none)
+mutations.txt: exit 0 (python3 -I t024_mutate.py, second run, 24/24 killed, files restored; run in the background before the logs above; the first run, 22/24, is described in T-024_VALIDATION.md)
+spec-check-after-report.log: exit 0 (make spec-check PYTHON=/home/user/Geminus/.venv/bin/python; env: none)
