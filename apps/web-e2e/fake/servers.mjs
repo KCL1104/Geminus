@@ -5,7 +5,9 @@
 //
 // Control endpoints for the tests: POST /__subject (body: the subject the
 // next sign-in gets), POST /__access-seconds (body: the lifetime of the next
-// access tokens), GET /__state (counts and what the API saw).
+// access tokens), POST /__api-cut (body "headers": the API's next answers
+// send their headers and then drop the connection; empty: normal), GET
+// /__state (counts and what the API saw).
 import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto";
 import { createServer } from "node:http";
 
@@ -20,7 +22,7 @@ const b64url = (b) => Buffer.from(b).toString("base64url");
 const codes = new Map();
 const refresh = new Map(); // token -> { state, family, sub }
 const access = new Map(); // token -> { sub, exp }
-const state = { subject: "auth0|e2e-user", accessSeconds: 600, revoked: [], refreshGrants: 0, codeGrants: 0, apiCalls: [], logouts: 0 };
+const state = { subject: "auth0|e2e-user", accessSeconds: 600, revoked: [], refreshGrants: 0, codeGrants: 0, apiCalls: [], logouts: 0, apiCut: "" };
 
 function jwt(claims) {
   const head = b64url(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "e2e" }));
@@ -108,6 +110,10 @@ createServer(async (req, res) => {
     state.subject = (await body(req)).trim();
     return json(res, 200, { subject: state.subject });
   }
+  if (req.method === "POST" && url.pathname === "/__api-cut") {
+    state.apiCut = (await body(req)).trim();
+    return json(res, 200, { apiCut: state.apiCut });
+  }
   if (req.method === "POST" && url.pathname === "/__access-seconds") {
     state.accessSeconds = Number((await body(req)).trim());
     return json(res, 200, { accessSeconds: state.accessSeconds });
@@ -132,6 +138,13 @@ createServer(async (req, res) => {
   }
   if (known.sub === "auth0|unknown") {
     return json(res, 403, { error: { code: "FORBIDDEN", message: "unknown identity", request_id: rid } }, { "x-request-id": rid });
+  }
+  if (req.method === "GET" && url.pathname === "/v1/projects" && state.apiCut === "headers") {
+    // Headers, then the connection drops before any body byte.
+    res.writeHead(200, { "content-type": "application/json", "x-request-id": rid });
+    res.flushHeaders();
+    setTimeout(() => res.destroy(), 50);
+    return;
   }
   if (req.method === "GET" && url.pathname === "/v1/projects") {
     return json(res, 200, { items: [], next_cursor: null }, { "x-request-id": rid, "set-cookie": "api_cookie=1" });

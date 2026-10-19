@@ -3,6 +3,7 @@
 // discovery). The ID token is checked (signature, iss, aud, exp, nonce, sub)
 // and dropped; only the access and refresh tokens are kept, sealed in the
 // session cookie. Server-side only.
+import { AsyncLocalStorage } from "node:async_hooks";
 import * as client from "openid-client";
 import type { BffConfig } from "./config";
 import { type Login, type Session, sessionToken } from "./session";
@@ -13,6 +14,8 @@ export type Oidc = {
   postLogoutRedirectUri: string;
   audience: string;
   scopes: string;
+  /** The BFF's structured log (bff.ts BffDeps.log); never tokens. */
+  log: (event: string, fields?: Record<string, string | number>) => void;
 };
 
 /**
@@ -42,33 +45,51 @@ export class OidcFailure extends Error {
 const UNAVAILABLE = new Set(["temporarily_unavailable", "server_error", "too_many_requests", "invalid_client"]);
 
 /**
- * How a failed refresh grant ends (ADR-018). The session ends when the
- * provider refused the token (invalid_grant, and any other OAuth error but
- * UNAVAILABLE's) or answered 2xx with something unusable (it may have spent
- * the token by then). It stays when the provider did not answer, timed out,
- * or answered 5xx, 429, UNAVAILABLE's codes or no OAuth error at all: the
- * token was not spent, and a later request tries again.
+ * What the token endpoint answered during one refresh grant, recorded by the
+ * client's fetch (tokenAnswers): openid-client's error alone cannot tell the
+ * token endpoint's answer from, say, a JWKS fetch made after it.
  */
-function refusal(e: unknown): { refused: boolean; error?: string; status?: number } {
-  if (e instanceof TypeError) return { refused: false };
-  if (e instanceof client.ResponseBodyError) {
-    return { refused: !(UNAVAILABLE.has(e.error) || e.status === 429 || e.status >= 500), error: e.error, status: e.status };
+type TokenAnswer = { status?: number; error?: string; refreshToken?: string };
+const tokenAnswers = new AsyncLocalStorage<TokenAnswer>();
+
+/**
+ * Whether a failed refresh grant ends the session (ADR-018), from what the
+ * token endpoint answered. It ends when the endpoint answered 2xx and the
+ * answer could not be used (an ID token that does not verify or whose keys
+ * cannot be fetched, an unknown token type: the provider may have spent the
+ * token, so the new refresh token is discarded), or answered an OAuth error
+ * other than UNAVAILABLE's. It stays when the endpoint did not answer
+ * (unreachable, timed out), or answered 5xx, 429, UNAVAILABLE's codes, or a
+ * non-2xx without an OAuth error (an edge's error page): the provider did not
+ * take the token, and a later request tries again.
+ */
+function refused(a: TokenAnswer): boolean {
+  if (a.status === undefined) return false;
+  if (a.status >= 200 && a.status < 300) return true;
+  if (a.status === 429 || a.status >= 500) return false;
+  return a.error !== undefined && !UNAVAILABLE.has(a.error);
+}
+
+/** Records the token endpoint's answer for the refresh grant in progress. */
+async function record(url: string, tokenEndpoint: string, res: Response): Promise<void> {
+  const a = tokenAnswers.getStore();
+  if (a === undefined || url !== tokenEndpoint) return;
+  a.status = res.status;
+  try {
+    const body = (await res.clone().json()) as Record<string, unknown> | null;
+    if (typeof body?.error === "string" && body.error !== "") a.error = body.error;
+    if (res.ok && typeof body?.refresh_token === "string" && body.refresh_token !== "") a.refreshToken = body.refresh_token;
+  } catch {
+    // Not JSON: an answer without an OAuth error.
   }
-  if (e instanceof client.WWWAuthenticateChallengeError) {
-    const error = e.cause.map((c) => c.parameters.error).find((x) => typeof x === "string");
-    return { refused: error !== undefined && !UNAVAILABLE.has(error) && e.status !== 429 && e.status < 500, error, status: e.status };
-  }
-  if (e instanceof client.ClientError) {
-    if (e.code === "OAUTH_TIMEOUT" || e.code === "OAUTH_ABORT") return { refused: false };
-    if ((e.code === "OAUTH_RESPONSE_IS_NOT_CONFORM" || e.code === "OAUTH_RESPONSE_IS_NOT_JSON") && e.cause instanceof Response) {
-      return { refused: e.cause.status >= 200 && e.cause.status < 300, status: e.cause.status };
-    }
-  }
-  return { refused: true };
 }
 
 /** fetchImpl replaces the network for the provider's endpoints (tests). */
-export function newOidc(cfg: BffConfig, fetchImpl?: (url: string, init: RequestInit) => Promise<Response>): Oidc {
+export function newOidc(
+  cfg: BffConfig,
+  fetchImpl?: (url: string, init: RequestInit) => Promise<Response>,
+  log: Oidc["log"] = () => {},
+): Oidc {
   const o = cfg.oidc;
   const config = new client.Configuration(
     {
@@ -83,7 +104,12 @@ export function newOidc(cfg: BffConfig, fetchImpl?: (url: string, init: RequestI
     { id_token_signed_response_alg: "RS256" },
     client.ClientSecretPost(o.clientSecret),
   );
-  if (fetchImpl !== undefined) config[client.customFetch] = (url, options) => fetchImpl(url, options as RequestInit);
+  const send = fetchImpl ?? ((url: string, init: RequestInit) => fetch(url, init));
+  config[client.customFetch] = async (url, options) => {
+    const res = await send(url, options as RequestInit);
+    await record(url, o.tokenEndpoint, res);
+    return res;
+  };
   if (cfg.loopbackHttp) client.allowInsecureRequests(config);
   // openid-client trusts TLS for an ID token from the token endpoint (OIDC
   // Core 3.1.3.7) and skips its signature; check it against the deployment's
@@ -95,6 +121,7 @@ export function newOidc(cfg: BffConfig, fetchImpl?: (url: string, init: RequestI
     postLogoutRedirectUri: `${cfg.appOrigin}/`,
     audience: o.audience,
     scopes: o.scopes,
+    log,
   };
 }
 
@@ -129,8 +156,10 @@ async function fields(o: Oidc, tokens: client.TokenEndpointResponse, keepRefresh
   if (s === undefined || !Number.isSafeInteger(s) || s <= 0) throw new Error("the token response has no positive expires_in");
   const refreshToken = tokens.refresh_token ?? keepRefresh;
   if (!sessionToken(tokens.access_token) || (refreshToken !== null && !sessionToken(refreshToken))) {
-    // Not kept, so not left live at the provider either.
-    if (typeof tokens.refresh_token === "string" && tokens.refresh_token !== "") await discard(o, tokens.refresh_token);
+    // The session ends without it, so it is not left live at the provider
+    // either (the new token, or the one a provider that does not rotate
+    // would have let it keep).
+    if (refreshToken !== null && refreshToken !== "") await discard(o, refreshToken);
     throw new Error("the provider's tokens do not fit the session");
   }
   return { accessToken: tokens.access_token, refreshToken, accessExpiresAt: now + s * 1000 };
@@ -161,16 +190,20 @@ export async function finishLogin(o: Oidc, callback: URL, login: Login, now: num
  * and the old one is spent; a reused or revoked one is refused
  * (invalid_grant), which ends the session, as does an answer the session
  * cannot use. An outage is not a refusal: the session stays and a later
- * request tries again (refusal, OidcFailure.refused).
+ * request tries again (refused, OidcFailure.refused).
  */
 export async function refresh(o: Oidc, s: Session, now: number): Promise<Session> {
-  if (s.refreshToken === null) throw new OidcFailure("refresh", "the session has no refresh token");
+  const token = s.refreshToken;
+  if (token === null) throw new OidcFailure("refresh", "the session has no refresh token");
+  const answer: TokenAnswer = {};
   let tokens: client.TokenEndpointResponse;
   try {
-    tokens = await client.refreshTokenGrant(o.config, s.refreshToken);
+    tokens = await tokenAnswers.run(answer, () => client.refreshTokenGrant(o.config, token));
   } catch (e) {
-    const { refused, ...answer } = refusal(e);
-    throw new OidcFailure("refresh", e instanceof Error ? e.message : "unknown error", refused, answer);
+    const ended = refused(answer);
+    // A 2xx that could not be used: the token it issued is not kept.
+    if (ended && answer.refreshToken !== undefined) await discard(o, answer.refreshToken);
+    throw new OidcFailure("refresh", e instanceof Error ? e.message : "unknown error", ended, { error: answer.error, status: answer.status });
   }
   try {
     return { ...s, ...(await fields(o, tokens, s.refreshToken, now)) };
@@ -180,13 +213,21 @@ export async function refresh(o: Oidc, s: Session, now: number): Promise<Session
   }
 }
 
-/** Revokes a refresh token the session cannot keep; failures are ignored (it expires on its own). */
+/** How long an answer waits for a discard; the revocation goes on after it. */
+export const DISCARD_WAIT_MS = 2000;
+
+/**
+ * Revokes a refresh token the session will not keep, best effort: it never
+ * throws, a failure is logged (the token then expires on its own), and the
+ * caller waits at most DISCARD_WAIT_MS.
+ */
 export async function discard(o: Oidc, refreshToken: string): Promise<void> {
-  try {
-    await client.tokenRevocation(o.config, refreshToken, { token_type_hint: "refresh_token" });
-  } catch {
-    // Best effort.
-  }
+  const revocation = client.tokenRevocation(o.config, refreshToken, { token_type_hint: "refresh_token" }).catch((e: unknown) => {
+    o.log("session.discard_failed", { reason: e instanceof Error ? e.message : "unknown error" });
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([revocation, new Promise<void>((done) => (timer = setTimeout(done, DISCARD_WAIT_MS)))]);
+  clearTimeout(timer);
 }
 
 export async function revoke(o: Oidc, refreshToken: string): Promise<void> {

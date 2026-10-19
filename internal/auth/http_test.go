@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -182,9 +185,12 @@ func TestCookiesAreNotRead(t *testing.T) {
 	}
 }
 
-// TEST-032 structurally: no Go code outside tests reads or sets a cookie,
-// in any way (a request's cookies, the Cookie header, http.Cookie), so no
-// cookie can ever stand in for the Bearer token.
+// TEST-032 structurally: no Go code outside tests reads or sets a cookie, in
+// any way the syntax shows: a call or selector named like net/http's cookie
+// API (Cookie, Cookies, CookiesNamed, AddCookie, SetCookie, ParseCookie,
+// ParseSetCookie, the Cookie type), or a string literal, raw or not, that
+// names the Cookie or Set-Cookie header. (A name built at run time, by
+// concatenation, is beyond a syntax check.)
 func TestNoGoCodeHandlesCookies(t *testing.T) {
 	root, err := filepath.Abs("../..")
 	if err != nil {
@@ -193,21 +199,34 @@ func TestNoGoCodeHandlesCookies(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
 		t.Fatalf("not the module root: %s", root)
 	}
-	cookie := regexp.MustCompile(`(?i)\.cookies?\(|"(set-)?cookie"|http\.cookie\b|setcookie`)
+	names := map[string]bool{"Cookie": true, "Cookies": true, "CookiesNamed": true, "AddCookie": true, "SetCookie": true, "ParseCookie": true, "ParseSetCookie": true}
 	checked := 0
 	for _, dir := range []string{"internal", "cmd"} {
 		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 				return err
 			}
-			src, err := os.ReadFile(path)
+			fset := token.NewFileSet()
+			f, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
 			if err != nil {
 				return err
 			}
 			checked++
-			if loc := cookie.FindIndex(src); loc != nil {
-				t.Errorf("%s handles cookies: %q", path, src[loc[0]:loc[1]])
-			}
+			ast.Inspect(f, func(n ast.Node) bool {
+				switch n := n.(type) {
+				case *ast.SelectorExpr:
+					if names[n.Sel.Name] {
+						t.Errorf("%s: %s uses %s", path, fset.Position(n.Pos()), n.Sel.Name)
+					}
+				case *ast.BasicLit:
+					if n.Kind == token.STRING {
+						if v, err := strconv.Unquote(n.Value); err == nil && (strings.EqualFold(v, "cookie") || strings.EqualFold(v, "set-cookie")) {
+							t.Errorf("%s: %s names the %s header", path, fset.Position(n.Pos()), v)
+						}
+					}
+				}
+				return true
+			})
 			return nil
 		})
 		if err != nil {

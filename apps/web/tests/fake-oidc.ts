@@ -50,6 +50,13 @@ export class FakeProvider {
   refreshIdToken = false;
   /** Fields merged into refresh answers (to make them malformed). */
   refreshExtra: Record<string, unknown> = {};
+  /** Refresh grants get this answer as is: status, content type, body (an edge's error page, say). */
+  refreshRaw: [number, string, string | null] | undefined;
+  /** The JWKS endpoint answers 503. */
+  failJwks = false;
+  /** Revocations hang until release() is called. */
+  hangRevocation = false;
+  private hung: (() => void)[] = [];
   issueRefreshToken = true;
   /** Lengths of the tokens issued (unset: about 40 characters). */
   accessTokenLength: number | undefined;
@@ -115,6 +122,7 @@ export class FakeProvider {
     const body = new URLSearchParams(typeof init.body === "string" ? init.body : init.body instanceof URLSearchParams ? init.body.toString() : "");
     this.calls.push({ url, body });
     if (url === ENDPOINTS.jwks) {
+      if (this.failJwks) return this.json(503, { error: "temporarily_unavailable" });
       const jwk = this.keys.publicKey.export({ format: "jwk" });
       return this.json(200, { keys: [{ ...jwk, kid: "k1", alg: "RS256", use: "sig" }] });
     }
@@ -132,6 +140,10 @@ export class FakeProvider {
         if (this.unreachableRefresh === "timeout") throw new DOMException("The operation timed out.", "TimeoutError");
         if (this.unreachableRefresh) throw new TypeError("fetch failed");
         if (this.failRefresh) return this.json(503, { error: "temporarily_unavailable" });
+        if (this.refreshRaw !== undefined) {
+          const [status, type, text] = this.refreshRaw;
+          return new Response(text, { status, headers: type === "" ? {} : { "content-type": type } });
+        }
         if (this.refreshError !== undefined) {
           const [status, error, challenge] = this.refreshError;
           const r = this.json(status, error === null ? {} : { error });
@@ -158,6 +170,7 @@ export class FakeProvider {
     }
     if (url === ENDPOINTS.revocation) {
       if (this.failRevocation) return this.json(503, { error: "temporarily_unavailable" });
+      if (this.hangRevocation) await new Promise<void>((done) => this.hung.push(done));
       const token = body.get("token") ?? "";
       this.revoked.push(token);
       const t = this.refresh.get(token);
@@ -166,6 +179,11 @@ export class FakeProvider {
     }
     return new Response("not found", { status: 404 });
   };
+
+  /** Lets hung revocations go on. */
+  release(): void {
+    for (const done of this.hung.splice(0)) done();
+  }
 
   refreshState(token: string): "live" | "spent" | "revoked" | undefined {
     return this.refresh.get(token)?.state;

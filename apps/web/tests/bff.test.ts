@@ -2,9 +2,9 @@
 // proxy against an in-process provider (tests/fake-oidc.ts) and a recorded
 // API. No network, no real provider.
 import { beforeEach, describe, expect, it } from "vitest";
-import { apiError, bff, type BffDeps, cookieValue, newRequestId, REFRESH_MARGIN_MS, REFRESH_REUSE_MS, RefreshCache, sameOrigin } from "../lib/session/bff";
+import { apiError, bff, type BffDeps, cookieValue, newRequestId, REFRESH_MARGIN_MS, REFRESH_RETRY_MS, REFRESH_REUSE_MS, RefreshCache, sameOrigin } from "../lib/session/bff";
 import { BffConfigError, loadBffConfig } from "../lib/session/config";
-import { newOidc } from "../lib/session/oidc";
+import { DISCARD_WAIT_MS, newOidc } from "../lib/session/oidc";
 import { parseSealKeys, seal } from "../lib/session/seal";
 import { LOGIN_COOKIE, LOGIN_MS, MAX_TOKEN, readSession, SKEW_MS, SESSION_COOKIE, type Session, sessionCookie } from "../lib/session/session";
 import { AUDIENCE, CLIENT_ID, CLIENT_SECRET, ENDPOINTS, FakeProvider, type IdTokenChange, ISSUER } from "./fake-oidc";
@@ -44,11 +44,12 @@ beforeEach(async () => {
   const cfg = loadBffConfig(env);
   const clock = { now: Date.now() };
   const logs: string[] = [];
+  const log: BffDeps["log"] = (event, fields) => logs.push(fields === undefined ? event : `${event} ${JSON.stringify(fields)}`);
   const api: Env["api"] = { requests: [], inits: [], respond: () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } }), fail: false };
   const deps: BffDeps = {
     cfg,
     keys: await parseSealKeys(env.SESSION_KEYS),
-    oidc: newOidc(cfg, provider.fetch),
+    oidc: newOidc(cfg, provider.fetch, log),
     now: () => clock.now,
     fetch: async (input, init) => {
       const r = new Request(input as string, init);
@@ -57,7 +58,7 @@ beforeEach(async () => {
       if (api.fail) throw new TypeError("connection refused");
       return api.respond(r);
     },
-    log: (event, fields) => logs.push(fields === undefined ? event : `${event} ${JSON.stringify(fields)}`),
+    log,
   };
   e = { provider, deps, h: bff(deps), api, logs, clock };
 });
@@ -603,7 +604,7 @@ describe("proxy", () => {
       ["times out", (p) => (p.unreachableRefresh = "timeout")],
       // An OAuth error that is not a refusal of the token: Auth0's rate limit.
       ["answers 429 too_many_requests", (p) => (p.refreshError = [429, "too_many_requests"])],
-    ])("keeps the session when the provider %s, and the next request tries again", async (_, down) => {
+    ])("keeps the session when the provider %s, and asks again after the retry window", async (_, down) => {
       const { value } = await expiring(1000);
       down(e.provider);
       const res = await e.h.proxy(get("projects", value), ["projects"]);
@@ -616,7 +617,14 @@ describe("proxy", () => {
       expect(e.logs.some((l) => l.startsWith("session.refresh_unavailable"))).toBe(true);
       e.provider.failRefresh = e.provider.unreachableRefresh = false;
       e.provider.refreshError = undefined;
+      // Within the window the failure is shared: the provider is not asked.
+      const calls = e.provider.tokenCalls("refresh_token");
+      e.clock.now += REFRESH_RETRY_MS - 1;
+      expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(503);
+      expect(e.provider.tokenCalls("refresh_token")).toBe(calls);
+      e.clock.now += 1;
       expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(200);
+      expect(e.provider.tokenCalls("refresh_token")).toBe(calls + 1);
     });
 
     // Which provider answers end the session (401, cookie cleared) and which
@@ -626,6 +634,10 @@ describe("proxy", () => {
       [400, "invalid_grant", undefined, 401],
       [403, "invalid_grant", undefined, 401],
       [400, "invalid_grant", 'Bearer error="invalid_grant"', 401],
+      // A challenge without an error parameter: the body says what happened.
+      [400, "invalid_grant", 'Bearer realm="token"', 401],
+      [403, "invalid_grant", 'Basic realm="token"', 401],
+      [401, "access_denied", 'Basic realm="token"', 401],
       [400, "access_denied", undefined, 401],
       [400, "unauthorized_client", undefined, 401],
       [400, "invalid_scope", undefined, 401],
@@ -637,6 +649,9 @@ describe("proxy", () => {
       [400, "server_error", undefined, 503],
       [429, "too_many_requests", undefined, 503],
       [500, "server_error", undefined, 503],
+      // 5xx and 429 keep the session whatever code they carry.
+      [500, "internal_error", undefined, 503],
+      [429, "rate_limited", undefined, 503],
       [404, null, undefined, 503],
       // A 2xx that is not the expected 200: the token may be spent.
       [201, null, undefined, 401],
@@ -648,24 +663,82 @@ describe("proxy", () => {
       expect(cookieNamed(res, SESSION_COOKIE) ?? "").toMatch(want === 401 ? /Max-Age=0$/ : /^$/);
       // The log names the provider's code, and never a token.
       const line = e.logs.find((l) => l.startsWith(want === 401 ? "session.refresh_failed" : "session.refresh_unavailable")) as string;
-      // (oauth4webapi reads an OAuth error from 4xx answers only.)
-      if (error !== null && challenge === undefined && status < 500) expect(line).toContain(`"error":"${error}"`);
+      // The code comes from the token endpoint's body, whatever the status.
+      if (error !== null) expect(line).toContain(`"error":"${error}"`);
       expect(line).toContain(`"status":${status}`);
       expect(line).not.toMatch(/at-|rt-/);
     });
 
-    it.each<[string, (p: FakeProvider) => void]>([
-      ["an ID token signed by another key", (p) => ((p.refreshIdToken = true), (p.idToken = { badSignature: true }))],
-      ["an unknown token type", (p) => (p.refreshExtra = { token_type: "mac" })],
-      ["an empty refresh token", (p) => (p.refreshExtra = { refresh_token: "" })],
-      ["an access token over the session's limit", (p) => (p.accessTokenLength = MAX_TOKEN + 1)],
-    ])("ends the session when the refresh answer has %s (the old token may be spent)", async (_, change) => {
+    // Each answer came back 2xx: the provider may have rotated the token, so
+    // the session ends and the token it issued is revoked (none for "").
+    it.each<[string, (p: FakeProvider) => void, number]>([
+      ["an ID token signed by another key", (p) => ((p.refreshIdToken = true), (p.idToken = { badSignature: true })), 1],
+      ["an unknown token type", (p) => (p.refreshExtra = { token_type: "mac" }), 1],
+      ["an empty refresh token", (p) => (p.refreshExtra = { refresh_token: "" }), 0],
+      ["an access token over the session's limit", (p) => (p.accessTokenLength = MAX_TOKEN + 1), 1],
+      ["a body that is not JSON", (p) => (p.refreshRaw = [200, "text/html", "<html>ok</html>"]), 0],
+      ["no body (204)", (p) => (p.refreshRaw = [204, "", null]), 0],
+    ])("ends the session when the refresh answer has %s (the old token may be spent)", async (_, change, revoked) => {
       const { value } = await expiring(1000);
       change(e.provider);
       const res = await e.h.proxy(get("projects", value), ["projects"]);
       expect(res.status).toBe(401);
       expect(cookieNamed(res, SESSION_COOKIE)).toMatch(/Max-Age=0$/);
       expect(e.api.requests).toHaveLength(0);
+      expect(e.provider.revoked).toHaveLength(revoked);
+    });
+
+    // A non-2xx answer without an OAuth error (an edge's page in front of the
+    // provider) did not take the token.
+    it.each<[number, string, string | null]>([
+      [403, "text/html", "<html>blocked</html>"],
+      [429, "text/plain", ""],
+      [429, "", null],
+      [404, "text/html", "<html>not found</html>"],
+      [400, "text/plain", "bad request"],
+    ])("keeps the session when the refresh is answered %i %s without an OAuth error", async (status, type, text) => {
+      const { value } = await expiring(1000);
+      e.provider.refreshRaw = [status, type, text];
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      expect(res.status).toBe(503);
+      expect(res.headers.getSetCookie()).toEqual([]);
+    });
+
+    it("ends the session, revoking the issued token, when the ID token's keys cannot be fetched", async () => {
+      // A BFF with nothing cached: the refresh answer's ID token needs the
+      // JWKS, which does not answer after the token endpoint said 200.
+      const { s } = await expiring(1000);
+      const cold = bff({ ...e.deps, oidc: newOidc(e.deps.cfg, e.provider.fetch, e.deps.log) });
+      e.provider.refreshIdToken = true;
+      e.provider.failJwks = true;
+      const value = valueOf(await sessionCookie(e.deps.keys, s, e.clock.now));
+      const res = await cold.proxy(get("projects", value), ["projects"]);
+      expect(res.status).toBe(401);
+      expect(e.provider.refreshState(s.refreshToken as string)).not.toBe("live");
+      expect(e.provider.revoked).toHaveLength(1);
+      expect(e.logs.find((l) => l.startsWith("session.refresh_failed"))).toContain('"status":200');
+    });
+
+    it("answers without waiting long for a revocation, and logs one that fails", async () => {
+      const { value } = await expiring(1000);
+      e.provider.accessTokenLength = MAX_TOKEN + 1;
+      e.provider.hangRevocation = true;
+      const start = Date.now();
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      const took = Date.now() - start;
+      e.provider.release();
+      expect(res.status).toBe(401);
+      expect(took).toBeLessThan(DISCARD_WAIT_MS + 1000);
+      expect(took).toBeGreaterThanOrEqual(DISCARD_WAIT_MS - 100);
+      e.provider.accessTokenLength = undefined;
+      e.provider.hangRevocation = false;
+      const { value: other } = await expiring(1000);
+      e.provider.accessTokenLength = MAX_TOKEN + 1;
+      e.provider.failRevocation = true;
+      expect((await e.h.proxy(get("projects", other), ["projects"])).status).toBe(401);
+      const line = e.logs.find((l) => l.startsWith("session.discard_failed"));
+      expect(line).toBeDefined();
+      expect(line).not.toMatch(/at-|rt-/);
     });
 
     // (The signature is checked: one by another key ends the session, above.)
@@ -673,6 +746,14 @@ describe("proxy", () => {
       const { value } = await expiring(1000);
       e.provider.refreshIdToken = true;
       expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(200);
+    });
+
+    it("revokes a provider's unrotated token when the session it would have kept ends", async () => {
+      const { s, value } = await expiring(1000);
+      e.provider.rotateRefresh = false;
+      e.provider.accessTokenLength = MAX_TOKEN + 1;
+      expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(401);
+      expect(e.provider.revoked).toEqual([s.refreshToken]);
     });
 
     it("keeps the refresh token of a provider that does not rotate", async () => {
@@ -702,6 +783,23 @@ describe("proxy", () => {
       e.clock.now += REFRESH_REUSE_MS + 1000;
       const later = valueOf(await sessionCookie(e.deps.keys, { ...fresh, accessExpiresAt: e.clock.now + 600_000 }, e.clock.now));
       expect((await e.h.proxy(get("projects", later), ["projects"])).status).toBe(200);
+    });
+
+    // Next sends the headers with the first chunk: an empty one goes first
+    // when the session cookie is set, so an API answer cut before its first
+    // byte still delivers the cookie (the E2E checks it end to end).
+    it("sends the headers ahead of the API's body when it sets the session", async () => {
+      const read = async (r: Response) => {
+        const chunks: number[] = [];
+        const reader = (r.body as ReadableStream<Uint8Array>).getReader();
+        for (let c = await reader.read(); !c.done; c = await reader.read()) chunks.push(c.value.length);
+        return chunks;
+      };
+      e.api.respond = () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } });
+      const { value } = await expiring(1000);
+      expect(await read(await e.h.proxy(get("projects", value), ["projects"]))).toEqual([0, 2]);
+      const plain = await signIn();
+      expect(await read(await e.h.proxy(get("projects", plain), ["projects"]))).toEqual([2]);
     });
 
     it("gives two sessions refreshing at once their own tokens", async () => {
@@ -760,6 +858,8 @@ describe("timing", () => {
     // The runbook sets Auth0's reuse interval to the reuse window.
     expect(REFRESH_REUSE_MS).toBe(30_000);
     expect(REFRESH_MARGIN_MS).toBe(60_000);
+    // The provider-unavailable 503 says Retry-After: 5.
+    expect(REFRESH_RETRY_MS).toBe(5_000);
     expect(SKEW_MS).toBe(60_000);
   });
 });

@@ -31,6 +31,12 @@ const TOUCH_MS = 5 * 60_000;
 export const REFRESH_REUSE_MS = 30_000;
 /** At most this many refreshes are shared at once; past it a refresh is not shared. */
 export const REFRESH_CACHE_MAX = 10_000;
+/**
+ * How long a refresh that failed for want of the provider is shared, so a
+ * provider in trouble is asked again at most this often per token (the 503's
+ * Retry-After).
+ */
+export const REFRESH_RETRY_MS = 5_000;
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
@@ -88,11 +94,12 @@ async function digest(token: string): Promise<string> {
 /**
  * One refresh per refresh token: concurrent requests, and for
  * REFRESH_REUSE_MS late ones that still carry the spent token, share its
- * result, keyed by the token's digest. A failed refresh is not remembered,
- * so the next request may try again. At most max are kept.
+ * result, keyed by the token's digest. A refresh the provider refused is not
+ * remembered; one that failed for want of the provider is shared for
+ * REFRESH_RETRY_MS, then tried again. At most max are kept.
  */
 export class RefreshCache {
-  private readonly entries = new Map<string, { at: number; result: Promise<Session>; issued?: string }>();
+  private readonly entries = new Map<string, { at: number; result: Promise<Session>; issued?: string; failed?: boolean }>();
 
   constructor(private readonly max = REFRESH_CACHE_MAX) {}
 
@@ -102,19 +109,22 @@ export class RefreshCache {
 
   /** The refresh of refreshToken at now: a shared one, or run's. */
   async refresh(refreshToken: string, now: number, run: () => Promise<Session>): Promise<Session> {
-    for (const [k, v] of this.entries) if (now - v.at >= REFRESH_REUSE_MS) this.entries.delete(k);
+    for (const [k, v] of this.entries) if (now - v.at >= (v.failed ? REFRESH_RETRY_MS : REFRESH_REUSE_MS)) this.entries.delete(k);
     const key = await digest(refreshToken);
     const known = this.entries.get(key);
     if (known !== undefined) return known.result;
     const result = run();
     if (this.entries.size < this.max) {
-      const entry: { at: number; result: Promise<Session>; issued?: string } = { at: now, result };
+      const entry: { at: number; result: Promise<Session>; issued?: string; failed?: boolean } = { at: now, result };
       this.entries.set(key, entry);
       result.then(
         (s) => {
           entry.issued = s.refreshToken ?? undefined;
         },
-        () => this.entries.delete(key),
+        (e: unknown) => {
+          if (e instanceof OidcFailure && !e.refused) entry.failed = true;
+          else this.entries.delete(key);
+        },
       );
     }
     return result;
@@ -306,5 +316,30 @@ async function proxy(deps: BffDeps, refreshes: RefreshCache, request: Request, p
     // A response that sets the session is never stored by a cache.
     out.set("cache-control", "no-store");
   }
-  return new Response(upstream.body, { status: upstream.status, headers: out });
+  // With a new session cookie, the headers go out before the API's first
+  // byte: Next sends them with the first chunk, so an answer cut before any
+  // body would otherwise lose the cookie, and with it the rotated tokens.
+  const body = setCookie !== null && upstream.body !== null ? headersFirst(upstream.body) : upstream.body;
+  return new Response(body, { status: upstream.status, headers: out });
+}
+
+/** body behind an empty first chunk. */
+function headersFirst(body: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  let started = false;
+  return new ReadableStream<Uint8Array>({
+    async pull(c) {
+      if (!started) {
+        started = true;
+        c.enqueue(new Uint8Array(0));
+        return;
+      }
+      const { done, value } = await reader.read();
+      if (done) c.close();
+      else c.enqueue(value);
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
 }

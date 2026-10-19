@@ -19,7 +19,7 @@ async function build(): Promise<Handlers | null> {
   try {
     const cfg = loadBffConfig(process.env);
     const keys = await parseSealKeys(process.env.SESSION_KEYS);
-    return bff({ cfg, keys, oidc: newOidc(cfg), now: Date.now, fetch, log });
+    return bff({ cfg, keys, oidc: newOidc(cfg, undefined, log), now: Date.now, fetch, log });
   } catch (e) {
     if (e instanceof BffConfigError || e instanceof SessionConfigError) {
       // Names the variables, never their values.

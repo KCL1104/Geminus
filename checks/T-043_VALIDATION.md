@@ -1,6 +1,6 @@
 # T-043 驗證報告：瀏覽器登入 session（BFF，ADR-018）
 
-**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 皆為 CHANGES REQUESTED，修正後送 round 3；登入後的 UI bootstrap 等 D-045，見下）｜需求：REQ-019｜Gate：D-045（PROPOSED，待 owner）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
+**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；登入後的 UI bootstrap 等 D-045，見下）｜需求：REQ-019｜Gate：D-045（PROPOSED，待 owner）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
 
 範圍依 tasks.json：
 
@@ -30,7 +30,7 @@
 - 轉給 API 的 header 只有 accept、content-type、if-match、idempotency-key、x-organization-id、last-event-id，加上 BFF 的 `Authorization: Bearer`；cookie、瀏覽器自己的 Authorization、X-Forwarded-For 等都不轉。
 - 回給瀏覽器的 header 只有 content-type、etag、x-request-id、retry-after、content-disposition、cache-control；API 的 Set-Cookie 與 Location（會洩漏內部位址）不回。Body 雙向串流。
 - Path 只接受一般的 segment（不能以 `.` 開頭、不能含分隔字元），所以到不了 `/v1` 以外。
-- Access token 剩不到 60 秒時在伺服器端 refresh。同一個 refresh token 只 refresh 一次：並發的 request，以及 30 秒內仍帶舊 cookie 的晚到 request，共用同一個結果；否則 rotation 會把第二次使用當成竊用而撤銷整個 session。失敗的 refresh 不保留，下一個 request 會再試；provider 拒絕時清 cookie 並回 401。
+- Access token 剩不到 60 秒時在伺服器端 refresh。同一個 refresh token 只 refresh 一次：並發的 request，以及 30 秒內仍帶舊 cookie 的晚到 request，共用同一個結果；否則 rotation 會把第二次使用當成竊用而撤銷整個 session。Provider 拒絕的 refresh 不保留，清 cookie 並回 401；provider 不可用的 refresh 回 503（`Retry-After: 5`），這個失敗共用 5 秒（`REFRESH_RETRY_MS`），之後的 request 再試。是否拒絕只看 token endpoint 本身的回答（SECURITY §3）。
 - Session 的最後使用時間最多每 5 分鐘寫回一次。
 
 ## 實際執行結果
@@ -90,14 +90,34 @@ Round 2 確認 round 1 全部修好並有測試釘住；提出新的 M-1、L-1�
 | **M-1** Refresh 之後 Go API 連不上時，503 沒有帶已封裝好的新 cookie：瀏覽器留著已被 rotation 的 refresh token，30 秒後被當成 reuse，整個 session 被撤銷（round 1 之前就有的問題） | API 連不上的 503 也帶新的 session cookie；API 回任何 status 時本來就會帶 | `delivers the refreshed session when the API does not answer / answers an error`（31 秒後以新 cookie 仍為 200）；`api-down-drops-the-refreshed-cookie`、`cookie-only-on-2xx` |
 | **L-1** Provider 回 200 但 openid-client 拒絕的 refresh 被當成暫時失敗（舊 token 可能已被用掉） | `refusal()` 依 provider 的回答分類：只有沒有回答、逾時、5xx、429、`temporarily_unavailable`／`server_error`／`too_many_requests`／`invalid_client`，或沒有 OAuth 錯誤的非 2xx 回答才保留 session；2xx 但無法使用（例如 ID token 簽章不對、token type 不明、空的 refresh token）結束 session | 4 個「refresh 回答無法使用」的案例；refresh 回答帶有效 ID token 時通過；`unusable-answer-temporary`、`unexpected-2xx-temporary` |
 | **L-2** 其他 OAuth 拒絕最多 503 長達 12 小時；log 分不出原因 | 分類如上（`access_denied`、`unauthorized_client`、`invalid_scope`、`invalid_request` 與未知的錯誤碼都結束 session；`invalid_client` 視為部署設定錯誤而保留）；log 帶 OAuth 錯誤碼與 HTTP status（不帶 description）；provider 不可用的 503 帶 `Retry-After: 5`。Runbook §5 加上在 staging 確認 Auth0 對封鎖使用者與過期 refresh token 回的錯誤碼 | 16 個依回答分類的案例（含 WWW-Authenticate 與 201），逾時與連不上的案例；`network-refuses`、`timeout-refuses`、`invalid-client-refuses`、`only-429-is-temporary`、`challenge-*`、`codes-not-logged`、`no-retry-after` |
-| **L-3** 放不進 session 的 token 在 provider 端仍然有效 | 發出卻不保留的 refresh token 盡力撤銷：callback 的 token 不合格或放不進 cookie、refresh 的 token 不合格或放不進 cookie | callback 與 refresh 的案例都檢查 provider 的撤銷紀錄；`unkept-login-token-left-live`、`unkept-callback-token-left-live`、`unkept-refresh-token-left-live` |
+| **L-3** 放不進 session 的 token 在 provider 端仍然有效 | 發出卻不保留的 refresh token 盡力撤銷：callback 的 token 不合格或放不進 cookie、refresh 的 token 不合格或放不進 cookie | callback 的案例檢查 provider 的撤銷紀錄；refresh 的案例當時沒有檢查（round 3 L-4 指出此處寫得過頭，round 3 補上）；`unkept-login-token-left-live`、`unkept-callback-token-left-live`、`unkept-refresh-token-left-live` |
 | **L-4** 測試缺口 | refresh 時 token 不合格（原本只有放不進 cookie 的案例）；不 rotation 的 provider 保留舊 refresh token；BFF 自己的錯誤與登出回應的 nosniff；`SKEW_MS`、`REFRESH_REUSE_MS`、`REFRESH_MARGIN_MS` 的值 | `refresh-unfit-tokens-temporary`、`refresh-drops-unrotated-token`、`apierror-without-nosniff`、`logout-without-nosniff`、`skew-a-day`、`reuse-window-an-hour` |
 | **I-1** `proxy-forwards-authorization` 的等價成立 | — | — |
 | **I-2** 登出時仍在進行中的 refresh 可能讓那個 request 拿到仍有效的 cookie | SECURITY §3 寫明（refresh token family 已撤銷，access token 在到期前至多 10 分鐘仍可用；無狀態 session 的限制） | 文件 |
 | **I-3** 被取消的 request 或遺失的回應拿不到 rotation 後的 cookie | Runbook：Auth0 的 reuse interval 改為一律 30 秒（只有一個 instance 時也不設 0），由 owner 在 Auth0 設定 | `docs/runbooks/auth0.md` |
 | **I-4** 登出的 JSON 回應沒有 nosniff | 加上 | `logout-without-nosniff` |
 | **I-5** OPTIONS 在 Next 由框架回應，proxy 的 OPTIONS 測試只是後備 | 記錄於此；後備仍保留並測試 | — |
-| **I-6** `TestCookiesAreNotRead` 範圍窄 | 新增 `TestNoGoCodeHandlesCookies`：`internal/`、`cmd/` 中非測試的 Go 程式不得讀寫 cookie（`.Cookie(`、`.Cookies(`、`"Cookie"`、`http.Cookie`、`SetCookie`）；以一個讀 `session` cookie 的 probe 檔確認會失敗 | `internal/auth/http_test.go` |
+| **I-6** `TestCookiesAreNotRead` 範圍窄 | 新增 `TestNoGoCodeHandlesCookies`：`internal/`、`cmd/` 中非測試的 Go 程式不得讀寫 cookie（`.Cookie(`、`.Cookies(`、`"Cookie"`、`http.Cookie`、`SetCookie`）；以一個讀 `session` cookie 的 probe 檔確認會失敗（round 3 I-5 改為 go/ast 檢查，見下） | `internal/auth/http_test.go` |
+
+Round 2 表中引用的分類 mutant（`unusable-answer-temporary`、`unexpected-2xx-temporary`、`network-refuses`、`timeout-refuses`、`only-429-is-temporary`、`challenge-*`）針對的是 round 3 移除的 `refusal()`，在 626fa25 的 `ts-mutants.py` 中；round 3 以下表的 mutant 取代。
+
+## Review round 3（9875be4、626fa25：ACCEPT，5 個 low finding）的修正
+
+Round 3 確認 round 2 全部修好（L-3 的 refresh 路徑沒有測試釘住，列入 L-4），沒有 must-fix；提出 L-1–L-5 與 I-1–I-6，要求在 T-043 結案前修正或記錄。全部處理；這些修正由 T-043 結案前（D-045 與 UI bootstrap 之後）的 final review 審查，本輪不另外送審。
+
+| 項目 | 修正 | 證據 |
+|---|---|---|
+| **L-1** Refresh 時 JWKS 抓不到被當成 provider 不可用（token endpoint 已回 200，Auth0 已 rotation） | 改由 token endpoint 本身的回答決定：client 的 `customFetch` 只記錄 token endpoint 的 status、body 中的 OAuth 錯誤碼與 2xx 回答中的新 refresh token（`AsyncLocalStorage`，每次 refresh 一份），不從 openid-client 的錯誤型別推論。2xx 但無法使用（包括驗 ID token 的 JWKS 抓不到）結束 session 並盡力撤銷新的 refresh token；log 的 status 是 token endpoint 的 | `ends the session, revoking the issued token, when the ID token's keys cannot be fetched`（冷的 BFF、JWKS 503）；`record-ignores-the-endpoint`、`2xx-answer-kept`、`issued-token-not-recorded`、`issued-token-not-discarded` |
+| **L-2** `WWW-Authenticate` 沒有 `error` 參數的 4xx 拒絕被保留 | 錯誤碼一律從 token endpoint 的 body 讀（不看 challenge），所以分類與 log 都與 challenge 無關 | 3 個 challenge 無錯誤碼的案例（400／403／401，Bearer 與 Basic）為 401；log 帶 body 的錯誤碼；`error-code-not-recorded` |
+| **L-3** API 送出 header 後、任何 body 之前中斷時，rotation 後的 cookie 到不了瀏覽器 | 帶 Set-Cookie 的回應在 API 的 body 前先送一個空 chunk（`headersFirst`），Next 因此先送出 header | `sends the headers ahead of the API's body when it sets the session`（chunk 為 [0, 2]，不帶 cookie 時為 [2]）；E2E `a refresh is kept when the API's answer is cut after its headers`（API 替身送出 header 後斷線：cookie 已換新，31 秒後仍為 200、0 個撤銷；拿掉 `headersFirst` 時失敗）；`headers-not-first`、`headers-first-always` |
+| **L-4** Reviewer 的 mutant 存活 | 非 JSON 的 4xx（403／429 HTML、429 無 body、400 text、404 HTML）保留 session 的表；refresh 回答不合格時檢查撤銷數；`discard()` 失敗不影響回答；200 HTML 與 204 結束 session；5xx 與 429 帶任何錯誤碼都保留；log 的錯誤碼不分 status 都從 body 讀 | `keeps the session when the refresh is answered %i %s without an OAuth error`、`ends the session when the refresh answer has %s`（含撤銷數）、`answers without waiting long for a revocation, and logs one that fails`；`codeless-4xx-refuses`、`5xx-refuses`、`429-refuses`、`unavailable-codes-refuse`、`discard-rethrows`、`unfit-refresh-token-left-live` |
+| **L-5** 文件 | SECURITY §3 重寫分類（不再自相矛盾；寫明沒有 OAuth 錯誤的非 2xx 保留、JWKS 的情況結束 session、「token 沒有被用掉」只用於 token endpoint 沒有接受的情況）；runbook 同步；本報告 NOT RUN 的引用改為 §5 第 6 點；round 2 L-3 的證據欄改正 | 文件 |
+| **I-1** `discard()` 最多讓回答等到 OIDC client 的 timeout | 回答最多等 `DISCARD_WAIT_MS` = 2 秒，撤銷在背景繼續 | 撤銷 endpoint 不回應時，refresh 的 401 約 2 秒後回答（callback 用同一個 `discard()`，沒有另外計時）；`discard-unbounded` |
+| **I-2** `discard()` 失敗沒有 log | 記 `session.discard_failed`（只有原因，不含 token） | 同上（log 中沒有 token）；`discard-failure-silent` |
+| **I-3** 發出卻不保留的 token 有些仍有效 | 2xx 但無法使用的 refresh 回答中的新 token（L-1）與不 rotation 時原本會保留的 token 都撤銷；openid-client 拒絕的 callback 回答中的 token 仍未撤銷（login 時沒有任何 session 持有它，在 provider 端自行到期） | `revokes a provider's unrotated token when the session it would have kept ends`；`unrotated-token-left-live` |
+| **I-4** `discard()` 沒有洩漏 | — | — |
+| **I-5** `TestNoGoCodeHandlesCookies` 是 regex | 改為 go/ast：selector `Cookie`、`Cookies`、`CookiesNamed`、`AddCookie`、`SetCookie`、`ParseCookie`、`ParseSetCookie`，以及兩種字串 literal 中的 `Cookie`／`Set-Cookie`；以 `http.ParseCookie(r.Header.Get(`Cookie`))` 的 probe 確認會失敗後移除 | `internal/auth/http_test.go` |
+| **I-6** Auth0 對錯誤 client secret 的回答未確認 | Runbook §5 第 5 點加上錯誤 secret 與失敗的 Action 的 staging 檢查；暫時失敗共用 5 秒（`REFRESH_RETRY_MS`），設定錯誤期間，每個 instance 對同一個 refresh token 每 5 秒最多呼叫 token endpoint 一次（共用表未滿時；滿了就不共用） | `keeps the session when the provider %s, and asks again after the retry window`；`failures-not-shared`、`failures-shared-for-the-reuse-window`、`retry-window-a-minute` |
 
 ## 決策與 owner 知悉
 
@@ -123,4 +143,5 @@ Round 2 確認 round 1 全部修好並有測試釘住；提出新的 M-1、L-1�
 | 多個 web instance 之間的 refresh 協調 | P0 單一 instance；多 instance 時以 Auth0 的 reuse interval 30 秒涵蓋（runbook） |
 | Login、callback、refresh 的 rate limiting 與告警 | T-036／T-035（ADR-018 §3）。BFF 不轉送 client IP（不送 X-Forwarded-For），API 端的 rate limiting 若要以 IP 區分，T-036 需決定由 BFF 轉送可信的 client IP |
 | SSE 經過 proxy 的長時間連線 | proxy 沒有自己的 timeout，undici 預設 300 秒；T-023 的 run events 需要比這更頻繁的 heartbeat |
-| Auth0 登出是否要求確認（BFF 不帶 `id_token_hint`） | staging，`docs/runbooks/auth0.md` §5 第 5 點 |
+| Auth0 登出是否要求確認（BFF 不帶 `id_token_hint`） | staging，`docs/runbooks/auth0.md` §5 第 6 點 |
+| Auth0 對錯誤 client secret 與失敗的 Action 實際回的 status 與錯誤碼 | staging，`docs/runbooks/auth0.md` §5 第 5 點（round 3 I-6）；未確認前，`invalid_client` 保留 session 是依 RFC 6749 的推論 |

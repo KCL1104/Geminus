@@ -134,6 +134,39 @@ test("a token close to expiry is refreshed on the server, and the old refresh to
   expect(Object.values(after.refreshStates).filter((s) => s === "spent").length).toBe(Object.values(before.refreshStates).filter((s) => s === "spent").length + 1);
 });
 
+// The refreshed session reaches the browser even when the API's answer is
+// cut after its headers: otherwise its next request would spend the rotated
+// refresh token again, which rotation answers by revoking the session.
+test("a refresh is kept when the API's answer is cut after its headers", async ({ page, request }) => {
+  await request.post(`${PROVIDER}/__access-seconds`, { data: "30" });
+  await signIn(page);
+  const cookie = async () => (await appCookies(page)).find((c) => c.name === "__Host-geminus_session")?.value;
+  const before = { cookie: await cookie(), state: await providerState(request) };
+  await request.post(`${PROVIDER}/__api-cut`, { data: "headers" });
+  try {
+    const cut = await page.evaluate(async () => {
+      try {
+        const r = await fetch("/api/v1/projects", { headers: { "X-Organization-ID": "org_01M4YDQK00TA00000000000000" } });
+        await r.text();
+        return "answered";
+      } catch {
+        return "failed";
+      }
+    });
+    expect(cut).toBe("failed");
+  } finally {
+    await request.post(`${PROVIDER}/__api-cut`, { data: "" });
+  }
+  const mid = await providerState(request);
+  expect(mid.refreshGrants).toBe(before.state.refreshGrants + 1);
+  expect(await cookie()).not.toBe(before.cookie);
+  // The new cookie carries the rotated token: no second refresh, no reuse.
+  await request.post(`${PROVIDER}/__access-seconds`, { data: "600" });
+  expect((await inPage(page, "/api/v1/projects", { headers: { "X-Organization-ID": ORG } })).status).toBe(200);
+  const after = await providerState(request);
+  expect(Object.values(after.refreshStates).filter((s) => s === "revoked").length).toBe(Object.values(before.state.refreshStates).filter((s) => s === "revoked").length);
+});
+
 test("logout revokes the refresh token, clears the cookie and signs out at the provider", async ({ page, request }) => {
   await signIn(page);
   const before = await providerState(request);
