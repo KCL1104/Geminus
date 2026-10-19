@@ -322,6 +322,7 @@ func Proposal(in ProposalInput) (provider.ProposalContext, error) {
 	}
 	for _, level := range levels {
 		z := newSanitizer(maxStringRunes)
+		z.exempt(modelIDs(in.Base.IR))
 		om := &omissions{}
 		om.add("selected_entity_ids", unknown, ReasonNotInModel)
 		var blocks []provider.Block

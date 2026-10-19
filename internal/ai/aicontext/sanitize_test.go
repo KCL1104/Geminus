@@ -39,6 +39,8 @@ func TestSanitizerRedacts(t *testing.T) {
 		{"callback?access_token=abcdef123456&next=1", RedactCredential, "abcdef123456"},
 		{"GITHUB_TOKEN=abcdef1234567890", RedactCredential, "abcdef1234567890"},
 		{"x-api-key: q8Zr5Tq2LmN0", RedactCredential, "q8Zr5Tq2LmN0"},
+		{"spring.datasource.password=hunter2hunter2", RedactCredential, "hunter2"},
+		{"refresh_token: abcdef123456", RedactCredential, "abcdef123456"},
 		{"stripe sk_live_0000EXAMPLE", RedactCredential, "0000EXAMPLE"},
 		{"gitlab glpat-EXAMPLEtoken", RedactCredential, "EXAMPLEtoken"},
 		{"DefaultEndpointsProtocol=https;AccountName=demo;AccountKey=Zm9vYmFyYmF6cXV4==;EndpointSuffix=example.invalid", RedactCredential, "Zm9vYmFy"},
@@ -65,6 +67,11 @@ func TestSanitizerKeeps(t *testing.T) {
 		// review M2: the wider rules leave these alone
 		"max_output_tokens = 8192", "3f786850e387550fdab836ed7e6dc881de23001b", "synthetic-steps.csv",
 		"/metrics/queues/q1/mean_wait", "a/b and c.d", "QUEUEWAITTIMEMINUTESBASELINEVERSUSSCENARIOAAAA",
+		// re-review L-new: long camel-case names with digits, and prose
+		// whose key only contains a credential word
+		"AssemblyLineStation12ThroughputCalibrationV2Final", "Line1Station2Tester3Buffer4Robot5Feeder6Oven7",
+		"the tokenizer: whitespace", "secretary: Johnson", "max_tokens: 8192000", "token_bucket_rate: 150000",
+		"secret_stage: Final Assembly", "pwd_station = Line 3", "rate_token: 150000", "credentials_required: always",
 	} {
 		z := newSanitizer(2000)
 		if out := z.text(s); out != s || len(z.counts) != 0 {
@@ -102,6 +109,9 @@ func TestSanitizerRedactsByMemberName(t *testing.T) {
 		"AccountKey": "k", "credentials": "c", "connection_string": "Server=db;Password=pw",
 		// not credentials
 		"max_tokens": 8192, "token_budget_note": "fits", "name": "Line A", "secretary": "Bob", "passport_scan": "no",
+		// re-review L-new: a credential word that is not the name's head
+		"secret_stage": "Final Assembly", "pwd_station": "Line 3", "rate_token": 150000, "credentials_required": "always",
+		"token_bucket_rate": 150000, "tokenizer": "whitespace",
 	}
 	v := z.value(in).(map[string]any)
 	for _, k := range []string{"password", "api_key", "DB_PASSWORD", "client-secret", "Authorization", "access_token",
@@ -110,7 +120,8 @@ func TestSanitizerRedactsByMemberName(t *testing.T) {
 			t.Errorf("%s: %v", k, v[k])
 		}
 	}
-	for _, k := range []string{"max_tokens", "token_budget_note", "name", "secretary", "passport_scan"} {
+	for _, k := range []string{"max_tokens", "token_budget_note", "name", "secretary", "passport_scan", "secret_stage", "pwd_station",
+		"rate_token", "credentials_required", "token_bucket_rate", "tokenizer"} {
 		if !reflect.DeepEqual(v[k], in[k]) {
 			t.Errorf("%s changed: %v", k, v[k])
 		}
@@ -122,6 +133,31 @@ func TestSanitizerRedactsByMemberName(t *testing.T) {
 	z = newSanitizer(100)
 	if v := z.value(map[string]any{"password": nil, "token": true}).(map[string]any); v["password"] != nil || v["token"] != true || len(z.counts) != 0 {
 		t.Errorf("%v %v", v, z.counts)
+	}
+}
+
+// Re-review L-new: the base IR's own entity IDs are never redacted by the
+// base64 rule, as a value or inside text, however long; the same text is
+// redacted when it is not an ID of the model.
+func TestSanitizerKeepsModelIDs(t *testing.T) {
+	const id = "Line1Station2Tester3Buffer4Robot5Feeder6Oven7Packing8Shipping9Dock10" // 68 characters
+	for _, s := range []string{id, "route via " + id + " first"} {
+		z := newSanitizer(2000)
+		z.exempt([]string{id})
+		if out := z.text(s); out != s || len(z.counts) != 0 {
+			t.Errorf("%q -> %q %v", s, out, z.counts)
+		}
+		z = newSanitizer(2000)
+		if out := z.text(s); out == s || z.counts[RedactCredential] != 1 {
+			t.Errorf("not an ID of the model: %q -> %q %v", s, out, z.counts)
+		}
+	}
+	// An exempt ID protects only itself: a credential next to it is still
+	// redacted.
+	z := newSanitizer(2000)
+	z.exempt([]string{id})
+	if out := z.text(id + " key MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKj"); !strings.HasPrefix(out, id+" key [REDACTED:credential]") {
+		t.Errorf("%q", out)
 	}
 }
 

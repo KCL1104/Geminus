@@ -41,8 +41,9 @@ type pattern struct {
 	// keep is the number of leading submatches kept in front of the marker
 	// (the "password=" of password=...).
 	keep bool
-	// accept, when set, decides whether a match is redacted.
-	accept func(string) bool
+	// accept, when set, decides whether the match at loc (submatch
+	// indices into s) is redacted.
+	accept func(z *sanitizer, s string, loc []int) bool
 }
 
 // patterns are applied in order; credentials first, so a key inside a URL
@@ -66,16 +67,23 @@ var patterns = []pattern{
 	{RedactCredential, regexp.MustCompile(`\bAIza[0-9A-Za-z_-]{30,}`), false, nil},
 	{RedactCredential, regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}`), false, nil},
 	{RedactCredential, regexp.MustCompile(`(?i)\b(?:bearer|basic)\s+[A-Za-z0-9._~+/=-]{12,}`), false, nil},
-	// key=value and key: value, the keyword anywhere in the key
-	// (DB_PASSWORD, aws_secret_access_key, ?access_token=, AccountKey=;
-	// review M2). The value stops at a separator of query strings and
-	// connection strings.
-	{RedactCredential, regexp.MustCompile(`(?i)(\b[A-Za-z0-9_-]*?(?:password|passwd|passphrase|pwd|secret|token|api[_-]?key|access[_-]?key|account[_-]?key|` +
-		`client[_-]?secret|private[_-]?key|authorization|credentials?)[A-Za-z0-9_-]*\s*[:=]\s*)[^\s,;"'&]{6,}`), true, nil},
+	// key=value and key: value whose key ends with a whole credential word,
+	// after any segments separated by _ . or - (DB_PASSWORD,
+	// aws_secret_access_key, ?access_token=, GITHUB_TOKEN=, AccountKey=,
+	// spring.datasource.password; review M2). A word inside another word
+	// or before the key's last segment is not one (re-review L-new:
+	// tokenizer, secretary, max_tokens, token_bucket_rate, secret_stage,
+	// pwd_station, credentials_required); a token counts alone or after a
+	// qualifier that names a credential (access, refresh, github...), not
+	// after any word (rate_token). The value stops at a separator of query
+	// strings and connection strings.
+	{RedactCredential, regexp.MustCompile(`(?i)(\b(?:(?:[A-Za-z0-9.]+[_.-])*?(?:password|passwd|passphrase|pwd|secrets?|credentials?|authorization|` +
+		`(?:api|access|account|private|secret)[_-]?key|client[_-]?secret|connection[_-]?string|` +
+		`(?:access|refresh|id|auth|api|bearer|session|oauth|personal|secret|private|github|gh|gitlab|slack|npm|pypi|bot|csrf|xsrf|jwt)[_.-]?token)|` +
+		`token)\s*[:=]\s*)[^\s,;"'&]{6,}`), true, nil},
 	// A long base64 run with upper- and lowercase letters and digits: a key
-	// body line in a cell of its own, a token or a signature. Hex digests
-	// (one case) and words are left alone.
-	{RedactCredential, regexp.MustCompile(`[A-Za-z0-9+/]{40,}={0,2}`), false, mixedBase64},
+	// body line in a cell of its own, a token or a signature (longBase64).
+	{RedactCredential, regexp.MustCompile(`[A-Za-z0-9+/]{40,}={0,2}`), false, longBase64},
 	{RedactURL, regexp.MustCompile(`(?i)\b[a-z][a-z0-9+.-]{1,15}://[^\s"'<>]+`), false, nil},
 	// Without a scheme: www.host, or a host with a top-level domain and a
 	// path (intranet.example.com/wiki). A bare file name (steps.csv) stays.
@@ -85,11 +93,23 @@ var patterns = []pattern{
 	{RedactServerID, regexp.MustCompile(`\b(?:aip|ana|art|aud|ds|dsv|imp|job|mdl|mv|org|prj|req|scn|sim|usr)_[0-7][0-9A-HJKMNP-TV-Z]{25}\b`), false, nil},
 }
 
-// mixedBase64 accepts a base64 run that has an uppercase letter, a
-// lowercase letter and a digit.
-func mixedBase64(s string) bool {
-	return strings.ContainsAny(s, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") && strings.ContainsAny(s, "abcdefghijklmnopqrstuvwxyz") &&
-		strings.ContainsAny(s, "0123456789")
+// longBase64 accepts a base64 run that has an uppercase letter, a
+// lowercase letter and a digit, and either a '+', '/' or '=' or at least
+// 64 characters (a PEM body line), unless it lies inside one of the
+// model's own entity IDs (re-review L-new): long camel-case names with
+// digits (Line1Station2Tester3…) are not credentials, and an ID the
+// provider cannot see cannot be quoted in a test op. Hex digests (one
+// case) and words are left alone.
+func longBase64(z *sanitizer, s string, loc []int) bool {
+	m := s[loc[0]:loc[1]]
+	if !strings.ContainsAny(m, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") || !strings.ContainsAny(m, "abcdefghijklmnopqrstuvwxyz") ||
+		!strings.ContainsAny(m, "0123456789") {
+		return false
+	}
+	if !strings.ContainsAny(m, "+/=") && len(m) < 64 {
+		return false
+	}
+	return !z.withinExemptID(s, loc[0], loc[1])
 }
 
 // lookAlike maps angle brackets that read like '<' or '>' to ASCII
@@ -102,28 +122,42 @@ var lookAlike = map[rune]rune{
 }
 
 // credentialName reports whether a member or column name says its value
-// is a credential (review M2, AI_SPEC §3 default deny): a word for a
-// password, secret, credential, API, access, account, private or secret
-// key, connection string or authorization anywhere in the name, or
-// a token at its end (access_token, GITHUB_TOKEN; not max_tokens). Words
-// are split at punctuation and case changes (DBPassword, AccountKey).
+// is a credential (review M2, AI_SPEC §3 default deny): its last word is a
+// password, passphrase, secret, credential or authorization, its last two
+// words are an API, access, account, private or secret key or a
+// connection string, or it is a token, alone or after a qualifier that
+// names a credential (access_token, GITHUB_TOKEN). A credential word that
+// is not the name's last is not one (re-review L-new: secret_stage,
+// pwd_station, credentials_required, token_bucket_rate, max_tokens,
+// tokenizer, rate_token). Words are split at punctuation and case changes
+// (DBPassword, AccountKey).
 func credentialName(name string) bool {
 	words := nameWords(name)
-	for i, w := range words {
-		switch w {
-		case "password", "passwd", "passphrase", "pwd", "secret", "secrets", "credential", "credentials", "apikey", "accesskey",
-			"accountkey", "privatekey", "secretkey", "clientsecret", "connectionstring", "authorization":
+	if len(words) == 0 {
+		return false
+	}
+	last := words[len(words)-1]
+	switch last {
+	case "password", "passwd", "passphrase", "pwd", "secret", "secrets", "credential", "credentials", "authorization",
+		"apikey", "accesskey", "accountkey", "privatekey", "secretkey", "clientsecret", "connectionstring":
+		return true
+	case "token":
+		return len(words) == 1 || tokenQualifiers[words[len(words)-2]]
+	}
+	if len(words) >= 2 {
+		switch words[len(words)-2] + last {
+		case "apikey", "accesskey", "accountkey", "privatekey", "secretkey", "connectionstring":
 			return true
 		}
-		if i+1 < len(words) {
-			switch w + words[i+1] {
-			case "apikey", "accesskey", "accountkey", "privatekey", "secretkey", "connectionstring":
-				return true
-			}
-		}
 	}
-	return len(words) > 0 && words[len(words)-1] == "token"
+	return false
 }
+
+// tokenQualifiers are the words before "token" that make it a credential,
+// as the key=value pattern lists them.
+var tokenQualifiers = map[string]bool{"access": true, "refresh": true, "id": true, "auth": true, "api": true, "bearer": true,
+	"session": true, "oauth": true, "personal": true, "secret": true, "private": true, "github": true, "gh": true, "gitlab": true,
+	"slack": true, "npm": true, "pypi": true, "bot": true, "csrf": true, "xsrf": true, "jwt": true}
 
 // nameWords splits a name into lowercase words at every character that is
 // not a letter or digit and at case changes.
@@ -169,6 +203,38 @@ func invisible(r rune) bool {
 type sanitizer struct {
 	maxRunes int
 	counts   map[string]int
+	// ids are the model's own entity IDs long enough to look like base64;
+	// the base64 rule never redacts inside one (re-review L-new).
+	ids []string
+}
+
+// exempt names the base IR's entity IDs. References use the same IDs, so
+// they are kept wherever they occur.
+func (z *sanitizer) exempt(ids []string) {
+	for _, id := range ids {
+		if len(id) >= 40 {
+			z.ids = append(z.ids, id)
+		}
+	}
+}
+
+// withinExemptID reports whether s[start:end] lies inside an occurrence of
+// one of the exempt IDs.
+func (z *sanitizer) withinExemptID(s string, start, end int) bool {
+	for _, id := range z.ids {
+		for off := 0; off <= start; {
+			i := strings.Index(s[off:], id)
+			if i < 0 {
+				break
+			}
+			p := off + i
+			if p <= start && end <= p+len(id) {
+				return true
+			}
+			off = p + 1
+		}
+	}
+	return false
 }
 
 func newSanitizer(maxRunes int) *sanitizer {
@@ -203,23 +269,34 @@ func (z *sanitizer) textBound(s string, maxRunes int) string {
 		}, s)
 	}
 	for _, p := range patterns {
-		s = p.re.ReplaceAllStringFunc(s, func(m string) string {
-			if p.accept != nil && !p.accept(m) {
-				return m
-			}
-			marker := "[REDACTED:" + p.kind + "]"
-			if p.keep {
-				if sub := p.re.FindStringSubmatch(m); len(sub) > 1 {
-					if strings.HasPrefix(m[len(sub[1]):], "[REDACTED:") {
-						return m // the value was redacted by an earlier pattern
-					}
-					z.counts[p.kind]++
-					return sub[1] + marker
+		locs := p.re.FindAllStringSubmatchIndex(s, -1)
+		if locs == nil {
+			continue
+		}
+		marker := "[REDACTED:" + p.kind + "]"
+		var b strings.Builder
+		last := 0
+		for _, loc := range locs {
+			b.WriteString(s[last:loc[0]])
+			last = loc[1]
+			m := s[loc[0]:loc[1]]
+			switch {
+			case p.accept != nil && !p.accept(z, s, loc):
+				b.WriteString(m)
+			case p.keep && len(loc) >= 4 && loc[2] >= 0:
+				if strings.HasPrefix(s[loc[3]:loc[1]], "[REDACTED:") {
+					b.WriteString(m) // the value was redacted by an earlier pattern
+					continue
 				}
+				z.counts[p.kind]++
+				b.WriteString(s[loc[2]:loc[3]] + marker)
+			default:
+				z.counts[p.kind]++
+				b.WriteString(marker)
 			}
-			z.counts[p.kind]++
-			return marker
-		})
+		}
+		b.WriteString(s[last:])
+		s = b.String()
 	}
 	if maxRunes > 0 && utf8.RuneCountInString(s) > maxRunes {
 		z.counts[RedactTruncated]++

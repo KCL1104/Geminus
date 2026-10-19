@@ -198,6 +198,7 @@ func Analysis(in AnalysisInput) (AnalysisPrompt, error) {
 		domainRules(in.Domain)
 
 	z := newSanitizer(maxStringRunes)
+	z.exempt(modelIDs(in.Version.IR))
 	om := &omissions{}
 	var blocks []provider.Block
 	add := func(kind provider.BlockKind, name string, v any) error {

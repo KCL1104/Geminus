@@ -268,6 +268,32 @@ func parseLocale(s string) (locale.Locale, error) {
 	return loc, nil
 }
 
+// modelIDs lists the IR's own entity IDs (entity types, resources, nodes,
+// flows, metrics); every reference in the IR is one of them. The
+// sanitizer never redacts them by the base64 rule (re-review L-new).
+func modelIDs(ir *model.ModelIR) []string {
+	if ir == nil {
+		return nil
+	}
+	var ids []string
+	for _, e := range ir.EntityTypes {
+		ids = append(ids, e.ID)
+	}
+	for _, r := range ir.Resources {
+		ids = append(ids, r.ID)
+	}
+	for _, n := range ir.Nodes {
+		ids = append(ids, n.ID)
+	}
+	for _, f := range ir.Flows {
+		ids = append(ids, f.ID)
+	}
+	for _, m := range ir.Metrics {
+		ids = append(ids, m.ID)
+	}
+	return ids
+}
+
 // raw unmarshals v strictly into a generic value for sanitizing.
 func raw(v any) (any, error) {
 	data, err := json.Marshal(v, json.Deterministic(true))

@@ -323,6 +323,42 @@ func TestRedaction(t *testing.T) {
 	}
 }
 
+// Re-review L-new: a long camel-case entity ID (IR IDs may have 128
+// characters) and the references to it reach the provider as they are,
+// so the provider can quote them in a test op; nothing is redacted.
+func TestLongModelIDsReachTheProvider(t *testing.T) {
+	const id = "Line1Station2Tester3Buffer4Robot5Feeder6Oven7Packing8Shipping9Dock10"
+	in := input(t)
+	old := in.Base.IR.Resources[0].ID
+	in.Base.IR.Resources[0].ID = id
+	for i := range in.Base.IR.Nodes {
+		for j := range in.Base.IR.Nodes[i].Requires {
+			if in.Base.IR.Nodes[i].Requires[j].ResourceID == old {
+				in.Base.IR.Nodes[i].Requires[j].ResourceID = id
+			}
+		}
+	}
+	in.SelectedEntityIDs = []string{id}
+	in.Intent = "Raise " + id + " to 3."
+	ctx, err := Proposal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := ctx.Prompt
+	b := blocks(t, p)
+	for _, name := range []string{"CURRENT_MODEL_IR", "ENTITY_INDEX", "SELECTED_ENTITIES", "USER_INTENT"} {
+		if n := strings.Count(string(b[name].Content), id); n == 0 {
+			t.Errorf("%s does not show the ID", name)
+		}
+	}
+	if strings.Count(string(b["CURRENT_MODEL_IR"].Content), id) < 2 {
+		t.Error("the reference to the resource is redacted")
+	}
+	if len(p.Disclosure.Redacted) != 0 {
+		t.Errorf("redacted %v", p.Disclosure.Redacted)
+	}
+}
+
 // Every input must belong to the request's organization and model: the
 // builder fails closed, with no partial context (cross-tenant hard filter).
 func TestCrossTenantInputsAreRefused(t *testing.T) {

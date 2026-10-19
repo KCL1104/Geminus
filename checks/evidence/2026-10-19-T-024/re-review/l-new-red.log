@@ -1,0 +1,33 @@
+$ go test -count=1 -run TestSanitizer|TestLongModelIDsReachTheProvider ./internal/ai/aicontext/
+# extra environment: none
+--- FAIL: TestLongModelIDsReachTheProvider (0.00s)
+    proposal_test.go:351: CURRENT_MODEL_IR does not show the ID
+    proposal_test.go:351: ENTITY_INDEX does not show the ID
+    proposal_test.go:351: SELECTED_ENTITIES does not show the ID
+    proposal_test.go:351: USER_INTENT does not show the ID
+    proposal_test.go:355: the reference to the resource is redacted
+    proposal_test.go:358: redacted map[credential:5]
+--- FAIL: TestSanitizerKeeps (0.00s)
+    sanitize_test.go:78: "AssemblyLineStation12ThroughputCalibrationV2Final" -> "[REDACTED:credential]" map[credential:1]
+    sanitize_test.go:78: "Line1Station2Tester3Buffer4Robot5Feeder6Oven7" -> "[REDACTED:credential]" map[credential:1]
+    sanitize_test.go:78: "the tokenizer: whitespace" -> "the tokenizer: [REDACTED:credential]" map[credential:1]
+    sanitize_test.go:78: "secretary: Johnson" -> "secretary: [REDACTED:credential]" map[credential:1]
+    sanitize_test.go:78: "max_tokens: 8192000" -> "max_tokens: [REDACTED:credential]" map[credential:1]
+    sanitize_test.go:78: "token_bucket_rate: 150000" -> "token_bucket_rate: [REDACTED:credential]" map[credential:1]
+    sanitize_test.go:78: "rate_token: 150000" -> "rate_token: [REDACTED:credential]" map[credential:1]
+    sanitize_test.go:78: "credentials_required: always" -> "credentials_required: [REDACTED:credential]" map[credential:1]
+--- FAIL: TestSanitizerRedactsByMemberName (0.00s)
+    sanitize_test.go:126: secret_stage changed: [REDACTED:credential]
+    sanitize_test.go:126: pwd_station changed: [REDACTED:credential]
+    sanitize_test.go:126: rate_token changed: [REDACTED:credential]
+    sanitize_test.go:126: credentials_required changed: [REDACTED:credential]
+    sanitize_test.go:130: counts map[credential:14]
+--- FAIL: TestSanitizerKeepsModelIDs (0.00s)
+    sanitize_test.go:148: "Line1Station2Tester3Buffer4Robot5Feeder6Oven7Packing8Shipping9Dock10" -> "[REDACTED:credential]" map[credential:1]
+    sanitize_test.go:148: "route via Line1Station2Tester3Buffer4Robot5Feeder6Oven7Packing8Shipping9Dock10 first" -> "route via [REDACTED:credential] first" map[credential:1]
+    sanitize_test.go:160: "[REDACTED:credential] key [REDACTED:credential]"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/aicontext	0.022s
+FAIL
+
+# exit 1 after 1s

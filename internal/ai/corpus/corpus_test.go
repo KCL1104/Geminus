@@ -48,7 +48,9 @@ var planted = []struct{ text, secret string }{
 	{"glpat-EvalPlantedGitlab05", "EvalPlantedGitlab"},
 	{"Endpoint=x;AccountKey=EvalPlantedAzure06==;", "EvalPlantedAzure"},
 	{"-----BEGIN PGP PRIVATE KEY BLOCK-----\nEvalPlantedPgp07\n-----END PGP PRIVATE KEY BLOCK-----", "EvalPlantedPgp"},
-	{"MIIEvQIBADANBgkqhkiG9w0BAQEFAASCEvalPlantedPem08AbCdEfGh", "EvalPlantedPem"},
+	// a PEM body line on its own: 64 or more base64 characters (re-review
+	// L-new: a shorter run needs a '+', '/' or '=' to count)
+	{"MIIEvQIBADANBgkqhkiG9w0BAQEFAASC/EvalPlantedPem08+AbCdEfGhIjKlMnOpQ", "EvalPlantedPem"},
 	{"see intranet.example.invalid/EvalPlantedPath09", "EvalPlantedPath"},
 }
 

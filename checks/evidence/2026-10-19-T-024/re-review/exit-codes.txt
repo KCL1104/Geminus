@@ -1,0 +1,2 @@
+l-new-red.log: exit 1 (go test -count=1 -run TestSanitizer|TestLongModelIDsReachTheProvider ./internal/ai/aicontext/; env: none)
+l-new-green.log: exit 0 (go test -count=1 -v -run TestSanitizer|TestLongModelIDsReachTheProvider|TestRedaction|TestMappingContext|TestFakeProviderEval ./internal/ai/aicontext/ ./internal/ai/corpus/; env: none)
