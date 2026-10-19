@@ -785,6 +785,40 @@
       "expected_error_paths": [
         "/memberships"
       ]
+    },
+    {
+      "id": "valid-me-name-200",
+      "instance": "testdata/contracts/valid-me-name-200.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-me-100",
+      "instance": "testdata/contracts/valid-me-100.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-me-name-201",
+      "instance": "testdata/contracts/invalid-me-name-201.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/memberships/0/organization_name"
+      ]
+    },
+    {
+      "id": "invalid-me-extra-member",
+      "instance": "testdata/contracts/invalid-me-extra-member.json",
+      "schema": "schemas/http.schema.json#/$defs/Me",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
     }
   ]
 }

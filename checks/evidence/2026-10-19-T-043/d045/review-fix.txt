@@ -1,0 +1,16 @@
+D-045 independent review (161f62e): ACCEPT, low findings fixed 2026-10-19.
+Mutants that survived the review, now killed:
+  Go  handler reads under context.Background()      -> TestTheReadEndsWithTheRequest FAIL (killed)
+  TS  getMe drops opts.signal                       -> api.test.ts "ends the /me request with the caller's signal" FAIL (killed)
+  schema OwnMembership.organization_name maxLength 199 -> check_contracts.py exit 1 (killed by valid-me-name-200)
+  schema OwnMembership.organization_name maxLength 500 -> check_contracts.py exit 1 (killed by invalid-me-name-201)
+  schema Me additionalProperties true               -> check_contracts.py exit 1 (killed by invalid-me-extra-member)
+Each mutant was applied to the working copy, the named check run, and the file restored byte for byte.
+
+Verified in a clean worktree (aec461f plus these fixes), fresh dt_test_d045fix:
+  spec-check exit=0
+  backend-test exit=0
+  architecture-check exit=0
+  frontend-test exit=0
+  integration-test exit=0
+  integration-test: 17 Go packages ok; frontend-test: 412 tests

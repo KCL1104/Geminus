@@ -22,7 +22,9 @@ func (d *DB) RunSelf(ctx context.Context, user string, fn func(ctx context.Conte
 	if !userID.MatchString(user) {
 		return ErrInvalidScope
 	}
-	return d.db.Tx(ctx, ReadOnly, func(ctx context.Context, tx pgx.Tx) error {
+	// Read-only by a literal, not the package's exported ReadOnly, which
+	// code elsewhere could reassign (D-045 review I6).
+	return d.db.Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
 		if err := scope.Set(ctx, tx, "", user); err != nil {
 			return err
 		}

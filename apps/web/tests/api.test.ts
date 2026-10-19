@@ -156,6 +156,13 @@ describe("client", () => {
     }
   });
 
+  it("ends the /me request with the caller's signal (D-045 review L1)", async () => {
+    const ctl = new AbortController();
+    const f = fakeFetch(json(200, fixture("valid-me.json"), { "X-Request-ID": REQ }));
+    await createApiClient({ session: () => null, fetch: f.fetch }).getMe({ signal: ctl.signal });
+    expect(f.calls[0]!.init.signal).toBe(ctl.signal);
+  });
+
   it("maps the answers /me can give like any other", async () => {
     const cases: [Response | Error, string][] = [
       [json(401, errorBody("UNAUTHENTICATED")), "unauthenticated"], // signed out (the BFF)

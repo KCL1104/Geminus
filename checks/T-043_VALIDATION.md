@@ -1,6 +1,6 @@
 # T-043 驗證報告：瀏覽器登入 session（BFF，ADR-018）
 
-**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；D-045 的 API 與 client 部分（`GET /v1/me`）已實作、待獨立 review，見「D-045 slice」；登入後的 UI bootstrap 等 design system）｜需求：REQ-019｜Gate：D-045（APPROVED，H-010）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
+**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；D-045 的 API 與 client 部分（`GET /v1/me`）已實作（161f62e），獨立 review ACCEPT 並有 3 個 low finding，已修正，見「D-045 slice」；登入後的 UI bootstrap 等 design system）｜需求：REQ-019｜Gate：D-045（APPROVED，H-010）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
 
 範圍依 tasks.json：
 
@@ -119,7 +119,7 @@ Round 3 確認 round 2 全部修好（L-3 的 refresh 路徑沒有測試釘住�
 | **I-5** `TestNoGoCodeHandlesCookies` 是 regex | 改為 go/ast：selector `Cookie`、`Cookies`、`CookiesNamed`、`AddCookie`、`SetCookie`、`ParseCookie`、`ParseSetCookie`，以及兩種字串 literal 中的 `Cookie`／`Set-Cookie`；以 `http.ParseCookie(r.Header.Get(`Cookie`))` 的 probe 確認會失敗後移除 | `internal/auth/http_test.go` |
 | **I-6** Auth0 對錯誤 client secret 的回答未確認 | Runbook §5 第 5 點加上錯誤 secret 與失敗的 Action 的 staging 檢查；暫時失敗共用 5 秒（`REFRESH_RETRY_MS`），設定錯誤期間，每個 instance 對同一個 refresh token 每 5 秒最多呼叫 token endpoint 一次（共用表未滿時；滿了就不共用） | `keeps the session when the provider %s, and asks again after the retry window`；`failures-not-shared`、`failures-shared-for-the-reuse-window`、`retry-window-a-minute` |
 
-## D-045 slice：`GET /v1/me`（2026-10-19，agent 實作，待獨立 review（H-003））
+## D-045 slice：`GET /v1/me`（2026-10-19，agent 實作，161f62e；獨立 review ACCEPT（H-003））
 
 D-045（APPROVED，H-010；解決 CB-17）的 API、DB 與 client 部分，是 T-043 sign-in UI 的前置；UI 本身等 design system，不在這一片。
 
@@ -147,6 +147,7 @@ D-045（APPROVED，H-010；解決 CB-17）的 API、DB 與 client 部分，是 T
 - **排序用 byte 順序（`COLLATE "C"`）。** D-045 只說「依名稱再依 ID」。DB 的預設 collation 各環境不同（CI 為 libc `en_US.utf8`，那裡 `acme` 排在 `Zeta` 前面），截斷到 100 筆時取哪 100 筆也就不同；比照 D-034／CB-15，以 `COLLATE "C"` 讓順序與 Go 的字串比較相同、與環境無關。UI 若要依語言排序，可在畫面上另排（清單至多 100 筆）。寫在 openapi、schema 的 description 與 API_DATABASE §2。
 - **欄位名稱**為 parent 指定的 `organization_name`（D-045 原文「organization `name`」）。
 - **`X-Organization-ID` 在 openapi 中以參數宣告**（`NoOrganizationContext`，`required: false`、schema `not: {}`），而不只寫在 description，讓 `check_contracts.py` 能檢查。
+- **Organization 的整個 row 可讀，不只 `id`、`name`。** D-045 原文為「organization 的 `id`、`name`」；RLS 只能限制 row，不能限制欄位，`own_organizations` 讓 API 讀得到該 row 的所有欄位（`id`、`organization_id`、`name`、`created_at`）。這些欄位成員在選了該 organization 時本來就看得到（SECURITY §4），API 也只讀 `id` 與 `name`（review I2）。
 - 其餘照指定設計；沒有做不到的部分。
 
 ### 測試
@@ -159,7 +160,7 @@ D-045（APPROVED，H-010；解決 CB-17）的 API、DB 與 client 部分，是 T
 
 ### 實際執行結果
 
-在本 worktree（branch `claude/lucid-meitner-vq1awo`，基於 628c4ca，未 commit）執行；Go 1.27.2、Node 24.21.0、PostgreSQL 16.15（自建的一次性 cluster，port 55442，只用 `dt_test_d045_*` 資料庫）。Log 在 `checks/evidence/2026-10-19-T-043/d045/`。
+實作者在共用的 checkout 中（當時 HEAD 為 628c4ca，未 commit）執行下表；Go 1.27.2、Node 24.21.0、PostgreSQL 16.15（自建的一次性 cluster，port 55442，只用 `dt_test_d045_*` 資料庫）。Log 在 `checks/evidence/2026-10-19-T-043/d045/`。Commit 前，parent 在乾淨的 worktree（d040abd 加上這一片，即 161f62e 的內容）重跑 `spec-check`、`backend-test`（36 個 package）、`architecture-check`、`frontend-test`（411 個 test）與全新 `dt_test_d045_verify` 上的 `integration-test`（17 個 Go package、0 skip），皆 exit 0（`parent-verify-exit-codes.txt`、`parent-verify-integration-test.log`；review L3）。
 
 | 指令 | Exit | 說明 |
 |---|---|---|
@@ -188,8 +189,24 @@ D-045（APPROVED，H-010；解決 CB-17）的 API、DB 與 client 部分，是 T
 
 ### 給 reviewer 的注意事項
 
-- 同一個 worktree 中另一個 session 同時在處理 T-019 round 4，已 commit 為 628c4ca；這一片的檔案不在那個 commit 中。
+- 同一個 checkout 中另一個 session 同時在處理 T-019 round 4，已 commit 為 628c4ca；這一片的檔案不在那個 commit 中，另由 parent 驗證後 commit 為 161f62e（parent 為 d040abd）。
 - 這一片沒有跑 `make e2e-test`（UI 沒有變；`apps/web-e2e/fake/servers.mjs` 的 API 替身沒有 `/v1/me`，sign-in UI 需要時再加）。
+
+### Independent review（161f62e：ACCEPT）
+
+獨立 reviewer agent（H-003）於 2026-10-19 以 `git archive 161f62e` 審查：**ACCEPT**，沒有 must-fix。SQL probe 找不到任何讀到他人 membership 或其他 organization row 的方式（未選 organization 的 self-join、相關子查詢、`COPY`；`RESET`、空白、小寫或尾端空白的 scope 值；ResolveUser 式的 transaction；generic plan 的 prepared statement；`row_security=off`、`FOR KEY SHARE`／`FOR NO KEY UPDATE`、upsert、`MERGE`；provisioner 與 worker 42501；沒有 view 或可利用的 definer function）。Reviewer 重跑 `spec-check`、`backend-test`、`backend-race`、`architecture-check`、`frontend-test`、全新 ICU `dt_test_rvd045_main` 上的 `integration-test` 皆 exit 0；作者的 mutants 全部重現（Go 20、SQL 10、TS 6、contract 10 全 killed）；自己的 mutants：Go 19（13 killed、3 等價、3 存活）、SQL 10（9 killed、1 等價）、TS 6（5 killed）、contract 13（7 killed）。
+
+| 項目 | 處理 | 證據 |
+|---|---|---|
+| **L1** `/me` 的 request context 沒有測試：handler 改用 `context.Background()`、`getMe` 不傳 `signal` 都存活 | `internal/tenant/me.TestTheReadEndsWithTheRequest`（取消的 request context 傳到讀取）；`api.test.ts`「ends the /me request with the caller's signal」 | 兩個 mutant 都被擋下（`d045/review-fix.txt`） |
+| **L2** `organization_name` 的 `maxLength: 200`（須等於 DB 的 `length(name) BETWEEN 1 AND 200`）與 `Me` 的 `additionalProperties: false` 沒有 fixture 釘住 | 新 fixture：`valid-me-name-200`（200 個 CJK 字元，以 code point 計）、`invalid-me-name-201`、`invalid-me-extra-member`（多一個頂層成員）、`valid-me-100`（恰好 100 筆、`truncated`）；`TestFixturesRoundTrip` 改為 4 個正例 | `maxLength` 199、500 與 `additionalProperties: true` 三個 mutant 都由 `check_contracts.py` 擋下 |
+| **L3** 報告與 tasks.json 寫的驗證基準為 628c4ca 上未 commit 的 worktree，沒有提到 parent 的重新驗證 | 「實際執行結果」與 tasks.json 改正 | 本報告 |
+| **I1** collation 的 mutant 只在非 C 的 DB 上擋得下 | 接受並記錄（CI 為 `en_US.utf8`、ICU DB 都擋得下） | 本報告 |
+| **I2** Organization 整個 row 可讀 | 列入「與指定設計的差異」 | 本報告 |
+| **I3** `check_contracts.py` 不檢查 operation 層級的 `security` 與宣告的 `Cache-Control` header | 接受（`security` 的缺口在這一片之前就存在；實際的 header 由 Go 測試檢查） | — |
+| **I4** `EXPLAIN ANALYZE` 的 `Rows Removed by Filter` 透露被 RLS 隱藏的 row 數 | 接受（需要任意 SQL，SECURITY.md 已排除；選了 organization 時亦同） | — |
+| **I5** Go 與 TS 測試沒有先紅的紀錄 | 已在本報告說明，由 mutation 補足 | — |
+| **I6** `RunSelf` 的唯讀模式來自可被重新指定的 exported 變數 `tenant.ReadOnly` | 改為字面的 `pgx.TxOptions{AccessMode: pgx.ReadOnly}`；`TestRunSelfModeAndScope` 仍檢查寫入得到 25006 | 測試 |
 
 ## 決策與 owner 知悉
 

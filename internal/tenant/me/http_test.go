@@ -164,6 +164,33 @@ func TestHandler(t *testing.T) {
 	}
 }
 
+// ctxReader records the context the list was read under.
+type ctxReader struct {
+	called bool
+	err    error
+}
+
+func (r *ctxReader) Get(ctx context.Context, _ string) (me.Me, error) {
+	r.called, r.err = true, ctx.Err()
+	return me.Me{UserID: user, Memberships: []me.Membership{}}, nil
+}
+
+// The list is read under the request's context, so a client that goes
+// away ends the database read too (AGENTS.md §5; D-045 review L1).
+func TestTheReadEndsWithTheRequest(t *testing.T) {
+	r := &ctxReader{}
+	mux := http.NewServeMux()
+	me.Register(mux, slog.New(slog.DiscardHandler), verifier{}, &resolver{}, r)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req := httptest.NewRequest("GET", "/v1/me", nil).WithContext(ctx)
+	req.Header.Set("Authorization", "Bearer a.b.c")
+	mux.ServeHTTP(httptest.NewRecorder(), req)
+	if !r.called || !errors.Is(r.err, context.Canceled) {
+		t.Errorf("read called %v under a context that ended with %v, want the request's (canceled)", r.called, r.err)
+	}
+}
+
 // The route is the contract's: GET /v1/me, scope "user", no role
 // (planning/api-operations.json, from openapi.yaml).
 func TestRoutesMatchContract(t *testing.T) {
@@ -217,7 +244,7 @@ func TestFixturesRoundTrip(t *testing.T) {
 		contracttest.RoundTrip[me.Me](t, c.ID, contracttest.ReadFile(t, filepath.Join(root, c.Instance)))
 		n++
 	}
-	if n != 2 {
-		t.Errorf("%d Me fixtures, want valid-me and valid-me-no-memberships", n)
+	if n != 4 {
+		t.Errorf("%d Me fixtures, want valid-me, valid-me-no-memberships, valid-me-name-200 and valid-me-100", n)
 	}
 }

@@ -2579,8 +2579,16 @@
           "date": "2026-10-19",
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-043_VALIDATION.md",
-          "summary": "D-045 slice（GET /v1/me，未 commit，基於 628c4ca）：contract（http.schema.json Me／OwnMembership、2 正例 5 反例；openapi getMe 以 x-tenant-scope: user、無 role、NoOrganizationContext（schema not: {}）；check_contracts.py 檢查 organization／user scope 與 inventory 的 method、path、origin、roles、scope）；migration 0008 的 own_memberships、own_organizations（permissive FOR SELECT TO twin_api，只在沒有選 organization 時成立）；tenant.DB.RunSelf（只設 user 的唯讀 transaction）；storage memberships.OfUser（COLLATE \"C\" 依名稱再依 ID）；internal/tenant/me（至多 100 筆，多於 100 時 truncated）；httpapi.Self（帶 X-Organization-ID 即 400，未知 identity 403）；client getMe()（不送 selector；BFF 不需改）。db/tests/self.sql（0008 不存在時先紅）。全新 ICU en-US 的 dt_test_d045_final：make integration-test exit 0（db-test up/down/up 5 個 suite、db-go-test 17 個 package）；spec-check、backend-test、backend-race（36 個 package）、architecture-check、frontend-test（411 tests）exit 0；mutation：Go 20／20、SQL 10／10（第一次 2 個存活：own_organizations 自己的兩個條件被 memberships 的 RLS 遮住，補 probe policy 測試後 killed）、TS 6／6、contract 10／10 killed。e2e-test NOT RUN（UI 未改）。",
-          "reviewer": "pending: independent reviewer (H-003)",
+          "summary": "D-045 slice（GET /v1/me，161f62e，parent d040abd）：contract（http.schema.json Me／OwnMembership、2 正例 5 反例；openapi getMe 以 x-tenant-scope: user、無 role、NoOrganizationContext（schema not: {}）；check_contracts.py 檢查 organization／user scope 與 inventory 的 method、path、origin、roles、scope）；migration 0008 的 own_memberships、own_organizations（permissive FOR SELECT TO twin_api，只在沒有選 organization 時成立）；tenant.DB.RunSelf（只設 user 的唯讀 transaction）；storage memberships.OfUser（COLLATE \"C\" 依名稱再依 ID）；internal/tenant/me（至多 100 筆，多於 100 時 truncated）；httpapi.Self（帶 X-Organization-ID 即 400，未知 identity 403）；client getMe()（不送 selector；BFF 不需改）。db/tests/self.sql（0008 不存在時先紅）。全新 ICU en-US 的 dt_test_d045_final：make integration-test exit 0（db-test up/down/up 5 個 suite、db-go-test 17 個 package）；spec-check、backend-test、backend-race（36 個 package）、architecture-check、frontend-test（411 tests）exit 0；mutation：Go 20／20、SQL 10／10（第一次 2 個存活：own_organizations 自己的兩個條件被 memberships 的 RLS 遮住，補 probe policy 測試後 killed）、TS 6／6、contract 10／10 killed。e2e-test NOT RUN（UI 未改）。Commit 前 parent 在乾淨 worktree（d040abd＋本片）重跑 spec-check、backend-test、architecture-check、frontend-test 與全新 dt_test_d045_verify 的 integration-test，皆 exit 0（parent-verify-*）。",
+          "reviewer": "independent reviewer agent (H-003): ACCEPT (161f62e) with L1–L3, I1–I6; fixed below",
+          "decisions_pending": "Auth0 tenant 與 reuse interval 由 owner 依 docs/runbooks/auth0.md 設定；sign-in UI 等 design system 與新的截圖 baseline（owner）"
+        },
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-043_VALIDATION.md",
+          "summary": "D-045 review（161f62e）ACCEPT 後的修正：L1 internal/tenant/me.TestTheReadEndsWithTheRequest 與 api.test.ts 的 signal 測試（擋下 handler 改用 context.Background() 與 getMe 不傳 signal）；L2 fixtures valid-me-name-200、invalid-me-name-201、invalid-me-extra-member、valid-me-100（擋下 maxLength 199／500 與 additionalProperties true）；L3 報告與本條目的驗證基準改正；I2 列入與設計的差異（organization 整個 row 可讀，RLS 無法限欄位）；I6 RunSelf 以字面的唯讀 TxOptions。I1、I3、I4 接受並記錄，I5 已說明。",
+          "reviewer": "independent reviewer agent (H-003): ACCEPT (161f62e); low findings fixed after acceptance without changing behaviour",
           "decisions_pending": "Auth0 tenant 與 reuse interval 由 owner 依 docs/runbooks/auth0.md 設定；sign-in UI 等 design system 與新的截圖 baseline（owner）"
         }
       ]
