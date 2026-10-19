@@ -25,16 +25,16 @@
 | 相容性與驗證方法 | — | optional 欄位、schema_version 維持 0.1、Result 新成員只在用到時出現、每個 kernel 任務升 engine_version minor、凍結舊 kernel 做 differential | D-047 | T-047–T-050 |
 | 同 tick 順序 | — | 新增 priority 15（故障、修復、班表容量變化、批次逾時）；解除阻塞在 dispatch 內 | D-048 | T-047–T-050 |
 | 有限緩衝與阻塞 | queue node `capacity` | blocking after service；被擋的 entity 留在出發 node、保留整個 bundle；FIFO 解除 | D-049 | T-047 |
-| 死結 | — | validator 的 `BLOCKING_CYCLE`（充分條件）＋ runtime `ErrDeadlock` backstop | D-050 | T-047 |
-| 故障 | resource `breakdowns` | 每個 unit 一組 time-based 故障時鐘；finish-first；stream (resource ID, `ttf/<u>`／`ttr/<u>`) | D-051 | T-048 |
-| 班表 | 根層 `calendars[]`、resource `calendar_id` | 週期性上班區間；交班時 finish-first；新增 scheduled utilization，原 utilization 不變 | D-052 | T-049 |
-| 投入排程 | source `arrival.schedule` | 週期性分段常數 rate，以累積 rate 反函數產生；每個 arrival 一次 draw | D-053 | T-049 |
+| 死結與停滯 | — | validator：`BLOCKING_CYCLE`、bundle 的班表交集（`CALENDAR_INVALID`）、故障 resource 的 bundle 形狀，與 `STALL_RISK` warning；runtime：`ErrDeadlock`（循環等待，精確）與 `ErrStalled`（湊不齊，有界）；保證與不保證明列 | D-050 | T-047–T-050 |
+| 故障 | resource `breakdowns`（含 `clock`） | 每個 unit 一組故障時鐘，有 calendar 時預設只在上班時前進；finish-first；stream (resource ID, `ttf/<u>`／`ttr/<u>`) | D-051 | T-048 |
+| 班表 | 根層 `calendars[]`（含 `exceptions`）、resource `calendar_id` 與 `shift_capacity` | 週期性上班區間、每班容量、以絕對 model 時間表示的例外日；交班時 finish-first；新增 scheduled utilization，原 utilization 不變 | D-052 | T-049 |
+| 投入排程 | source `arrival.schedule` | 週期性分段常數 rate（poisson／deterministic，每個 arrival 一次 draw）或投入表（table） | D-053 | T-049 |
 | 批次 | process `batch` | min／max／max_wait；一批一個 request、一次 service draw；整批離開才釋放 | D-054 | T-050 |
 | 換線 | resource `setups` | P0：sequence-dependent 換線矩陣、每個 unit 自己的換線狀態、FIFO 派工；stream (resource ID, `setup/<u>`) | D-055 | T-050 |
 | lognormal／Weibull | distribution `lognormal`（mean、cv）、`weibull`（shape、scale） | P0：反函數法、每個樣本一次 draw、固定的 exp 與 AS241 | D-056 | T-048 |
 | Scenario 與 risk | patch allowlist | 新參數可在 scenario 中修改，risk 至少 medium（擴大 buffer 除外） | D-057 | T-047–T-050 |
 
-以下逐項列出問題、選項與後果、建議、對決定性與 digest 的影響、golden vectors 草案與 SimPy reference 的做法。Golden vectors 的數字由手算得出，是草案；實作時另以 `scripts/engine_reference.py`（逐運算移植）與 kernel 輸出交叉驗證後才凍結，不得看結果再改預期值。
+以下逐項列出問題、選項與後果、建議、對決定性與 digest 的影響、golden vectors 草案與 SimPy reference 的做法。Golden vectors 的數字由手算得出，是草案，不得看 kernel 的結果再改預期值。`scripts/engine_reference.py` 只移植數值 profile（RNG、量化、sampler、事件順序與 arrival），它自己聲明不是 DES engine，所以只能交叉驗證數值向量（例如 D-053 的 G-R1／G-R2／G-R6、D-056 的分布向量）；阻塞、故障、班表、批次、換線的 kernel golden 要由獨立的 SimPy reference，或擴充 `kernel_check_test.go` 那種只看 observation 的檢查器來獨立確認，再凍結。
 
 ### D-047 相容性契約與 differential 方法
 
@@ -49,16 +49,16 @@
 
 **細則。**
 - Go 型別對缺少的新欄位一律不輸出（pointer 或 `omitzero`），既有 fixtures 重新 encode 後 model_hash 相同（contract test）。
-- 新事件計入 `max_events`；被擋住或在 release backlog 中的 entity 計入 `max_active_entities`；新的 runtime 失敗有 typed error（`ErrDeadlock`，D-050）。
-- 新 observation kind 接在現有編號之後，不重新編號（observation digest 編碼含 kind 數值）。
+- 新事件計入 `max_events`；被擋住或在 release backlog 中的 entity 計入 `max_active_entities`；新的 runtime 失敗有 typed error（`ErrDeadlock`、`ErrStalled`，D-050）。
+- 新 observation kind 接在現有編號之後，不重新編號（observation digest 編碼含 kind 數值）。新功能只對實際的轉換記 observation：t=0 的初始容量、初始的「正常」狀態都不記（Capacity、ResourceUp 只在改變時出現），初始值由 Program 提供給 Collector。
 - 既有的鎖定檔（`kernel-observation-digests.json`、`engine-golden-digests.json`）**不重新產生**。
 
-**決定性與 digest。** engine_version 在 digest payload 中，升版會改變 digest 字串；因此「逐 bit 相同」的判準是：observation 序列（含 seq）相同，且把 Result 的 engine_version 換回 `des-go-0.1.0` 後算出的 digest 等於鎖定值。新版本另立自己的鎖。
+**決定性與 digest。** engine_version 在 digest payload 中，升版會改變 digest 字串；因此對**沒有任何新欄位**的模型，「逐 bit 相同」的判準是：observation 序列（含 seq）相同，且把 Result 的 engine_version 換回 `des-go-0.1.0` 後算出的 digest 等於鎖定值。用了新欄位（即使是中性設定）的模型會多出新的 Result 成員，digest 必然不同，所以只比 observation 序列與既有的 Result 成員（見下方第 2 步）。新版本另立自己的鎖。
 
 **Differential（每個 T-047–T-050 都要做）。**
 1. 把 des-go-0.1.0 的 kernel 與 replication 凍結成 test-only 副本（T-021 複核保留舊 kernel 的同一做法），以 `kernel_check_test.go` 的隨機模型產生器（bundle、顯式 queue、零時間 service、decision 迴圈、failure／rework）跑不含新欄位的模型，observation 序列逐筆相同；件數在實作任務中固定（T-021 的複核約 50,000 個）。
-2. 「中性設定」必須與不設定逐筆相同：buffer capacity ≥ `max_active_entities`（不可能擋住）；breakdown 的 TTF 為 constant 且晚於 horizon（事件不排程、不取 seq）；calendar 只有一個涵蓋整個 period 的 shift（容量不變，不排事件）；單段的 deterministic 投入排程，rate 與 period 選可精確表示、1/rate 為整數 tick 的值（例如每 minute 0.5 件、period 60 minute），與同值的 constant interarrival 同時刻（兩者都不抽 RNG）；單一產品、沒有 `initial` 的 setups（永不換線，D-055）。批次沒有中性設定（批次 request 取得 FIFO 位置的時點不同，D-054），不列入。
-3. GOLDEN-001／002 與既有 des、metrics 測試在新 kernel 上照跑，依上面的判準比對鎖定 digest。
+2. 「中性設定」與不設定的模型比較：observation 序列（含 seq）逐筆相同，且既有的每個 Result 成員（metrics 的 throughput、lead time、resources 的既有欄位、queues、failure／rework count、replication_summaries 的既有欄位、measurement_window）逐值相同；功能帶來的新成員不比，也不比整份 digest。中性設定中不得出現任何新 observation（包括 t=0 的 Capacity 或 ResourceUp）。中性設定：buffer capacity ≥ `max_active_entities`（不可能擋住）；breakdown 的 TTF 為 constant 且晚於 horizon（事件不排程、不取 seq）；calendar 只有一個涵蓋整個 period 的 shift（容量不變，不排事件）；單段的 deterministic 投入排程，rate 與 period 選可精確表示、1/rate 為整數 tick 的值（例如每 minute 0.5 件、period 60 minute），與同值的 constant interarrival 同時刻（兩者都不抽 RNG）；單一產品、沒有 `initial` 的 setups（永不換線，D-055）。批次沒有中性設定（批次 request 取得 FIFO 位置的時點不同，D-054），不列入。
+3. GOLDEN-001／002 與既有 des、metrics 測試（模型都沒有新欄位）在新 kernel 上照跑，依上面「沒有新欄位」的判準比對鎖定 digest。
 
 **SimPy。** 不適用；本項的 reference 是凍結的舊 kernel。
 
@@ -73,7 +73,7 @@
 
 **建議：A。** 理由：容量的改變在授予之前生效，不需要額外的 dispatch，也不改變既有事件的順序。
 
-**細則。** t=0 初始化順序：各 source 的第一個 arrival（node ID 順序，與現行相同），再依 resource ID 順序排各 unit 的第一次故障（unit index 順序）與各班表的第一次容量變化；批次逾時只在 entity 進入 buffer 後才排。若 dispatch 進行中為當前 tick 排了 priority 15 的事件（例如 0 tick 的修復），它在該次 dispatch 之後執行，並視需要再排一次 priority 20 的 dispatch（D-038 (j) 的延伸，tick 不倒退）。
+**細則。** t=0 初始化順序（review L3）：(1) 各 source 的第一個 arrival（node ID 順序，與現行相同）；(2) 各 calendar 的第一個 CAPACITY_CHANGE（S 會改變的才排；calendar ID 順序；每個 calendar 一個事件，D-052）；(3) 各有 breakdowns 的 resource（resource ID 順序）的各 unit 第一次故障（unit index 順序；scheduled 時鐘依 calendar 算出時刻，D-051）。批次逾時只在 entity 進入 buffer 後才排。同一 tick、同為 priority 15 的事件依 seq，也就是依排程的先後。若 dispatch 進行中為當前 tick 排了 priority 15 的事件（例如 0 tick 的修復），它在該次 dispatch 之後執行，並視需要再排一次 priority 20 的 dispatch（D-038 (j) 的延伸，tick 不倒退）。
 
 **決定性與 digest。** 全序不變；沒有新功能的模型不會出現 priority 15 的事件，seq 與現行相同。
 
@@ -95,8 +95,9 @@
 **語義（A）。**
 - **容量與「滿」**：capacity 屬於 process 的 request buffer（D-005：顯式 queue 只是它的名字），不論 entity 經 queue node 或直接進入 process 都算；占用數 = 等待中、尚未授予的 entity 數（不含服務中）。只有顯式 queue node 能宣告 capacity，沒有顯式 queue 的 process 仍為無限。capacity 0（無緩衝的直接交接）延後：它需要「進入即授予」，改變「只在 dispatch 授予」的規則。
 - **路由先解析**：decision／failure／rework 這段在出發事件中照現行解析（同時刻抽 routing、記 failure／rework observation、計 visit）；只有最後一步「進入 buffer」檢查容量。被擋的 entity 目標固定，解除時不重抽。
-- **SERVICE_COMPLETE**：先解析目標。不會被擋時與現行完全相同（釋放 bundle → ServiceEnd → 路由 observation → 進入）；會被擋時記 ServiceEnd、路由 observation、Blocked，bundle 維持 in use。ARRIVAL 被擋時記 Arrival 後記 Blocked（release backlog）；DELAY_COMPLETE 被擋時記 DelayEnd 後記 Blocked。
-- **解除**：只有授予會讓 entity 離開 buffer，所以解除只發生在 dispatch 中。每次授予使 P 的 buffer 少一件後，若 P 有 blocked entity，依 blocked FIFO（變成 blocked 的處理順序）移入最前面的一件：原子釋放其出發 process 的整個 bundle（ObsResource；這些 resource 的 FIFO 最前面的 held candidate 取消 held，比照 SERVICE_COMPLETE）、記 Unblocked、以新的 request seq 排到 P 的 FIFO 最後（ObsQueueEnter，At＝queue node）。Dispatch 持續取最小 seq 的 candidate，直到沒有 candidate 放得下為止（fixpoint）；連鎖（下游授予 → 解除 → 上游釋放 → 上游授予 → 再解除）都在同一個 dispatch 內完成。
+- **SERVICE_COMPLETE**：先解析目標。解析只抽 decision 的 routing 並計算 visit，不排程任何事件、不記 observation；之後的提交照現行的步驟與順序。不會被擋時與現行完全相同（釋放 bundle 的 ObsResource → ServiceEnd → needDispatch → 路由 observation → 進入 buffer／排 delay（delay 的抽樣仍在此時）／sink），所以 seq 也相同；會被擋時記 ServiceEnd、路由 observation、Blocked，bundle 維持 in use，**不**呼叫 needDispatch（沒有釋放、也沒有 enqueue，不取 seq）。ARRIVAL 被擋時記 Arrival 後記 Blocked（release backlog）；DELAY_COMPLETE 被擋時記 DelayEnd 後記 Blocked。
+- **路由中途觸發 limit（review L3）**：解析時若超過 `max_entity_visits`（或其他 limit），先依現行順序送出已經會記的 observation（釋放的 ObsResource、ServiceEnd，以及失敗 node 之前的路由 observation），再回 `ErrEntityVisits`，與現行 kernel 在錯誤前送出的 observation 完全相同（differential 依賴這個順序）。
+- **解除**：只有授予會讓 entity 離開 buffer，所以解除只發生在 dispatch 中。每次授予使 P 的 buffer 少一件後，若 P 有 blocked entity，依 blocked FIFO（變成 blocked 的處理順序）移入最前面的一件：原子釋放其出發 process 的整個 bundle（ObsResource；這些 resource 的 FIFO 最前面的 held candidate 取消 held，比照 SERVICE_COMPLETE）、記 Unblocked、以新的 request seq 排到 P 的 FIFO 最後（ObsQueueEnter，At＝queue node）。Dispatch 持續取最小 seq 的 candidate，直到沒有 candidate 放得下為止（fixpoint）；連鎖（下游授予 → 解除 → 上游釋放 → 上游授予 → 再解除）都在同一個 dispatch 內完成。在 dispatch 中的釋放與 enqueue **不**再排 DISPATCH 事件（現行 `enqueue` 會呼叫 needDispatch；dispatch 進行中視為已有待處理的 dispatch，不取 seq）。釋放的 unit 先滿足等待中的故障（D-051），其餘才可授予。
 - **不變量**：P 有 blocked entity ⇒ P 的占用數＝capacity（事件邊界上）；新到的 entity 遇到已滿的 buffer 一律排在既有 blocked entity 之後。
 - **與 FIFO 和 bundle**：blocked entity 不在 P 的 resource FIFO 中占位置；它持有的 unit 對任何 request（包括出發 process 自己的）都不可用；P 的授予仍是 all-or-nothing，D-038 (m) 的「FIFO 擋住」照舊。
 - **Source**：投入時刻不因阻塞改變（arrival stream 照常），entity 在 source 等待；lead time 由 arrival 起算，所以含 backlog 時間；backlog 另有自己的統計。
@@ -115,109 +116,136 @@
 
 **SimPy。** Machine 為 `simpy.Resource(capacity)`；有限 buffer 為「空位」的 `simpy.Resource(capacity=B)`：entity 取得 A、timeout(service)、在**仍持有 A** 的情況下 request B 的空位（阻塞）、取得空位後釋放 A、request B 的 machine、取得後釋放空位。Source 照時刻產生 entity，各自先 request 空位。確定性且沒有同時刻 tie 的案例逐值比對，隨機案例以預先固定的容差比對 throughput、阻塞比例、buffer 滿的比例。
 
-### D-050 死結的偵測
+### D-050 死結與停滯（deadlock／starvation）的防止與偵測
 
-**問題。** 有限 buffer（尤其測試失敗 → 除錯 → 重測的迴圈與共用 resource）可能循環阻塞而永久卡住；怎麼偵測、回什麼 typed error？
+**問題。** 有限 buffer、共用 resource、班表、故障、批次與換線合在一起時，request 可能永遠等下去：(1) 循環阻塞（重測迴圈、共用 resource）；(2) bundle 的 resource 永遠湊不齊。Review 指出兩個反例：班表 R1 [0,480)、R2 [480,1440)（period 1440）而 process X 需要 R1＋R2，X 永不授予，`q_X` 填滿後上游永久被擋，且 X 被 FIFO 擋住的 request 讓其他使用 R1／R2 的 request 也永遠等（D-038 (m)）；capacity 2、TTF＝TTR＝10（constant）而 X 需要 2 unit，兩個故障時鐘最後相差 10，每次一個 unit 修好，另一個的故障都在 dispatch 之前處理，永遠沒有 2 個空 unit。原提案的 runtime backstop 要求「heap 中沒有能釋放 unit 的事件」，但週期性的 CAPACITY_CHANGE 與 REPAIR 一直都在，所以有班表或故障時它永不觸發。要怎麼靜態防止、runtime 怎麼以 typed error 偵測，保證到哪裡？
 
 **選項。**
-- A：靜態拒絕＋runtime backstop。Validator 在 graph rules 階段建「阻塞相依圖」，有 cycle（含自環）即回 `BLOCKING_CYCLE` error；runtime 另檢查全面停滯，回 `ErrDeadlock`。後果：可證明的充分條件、成本低、在 publish／run 之前以 JSON Pointer 回報；保守：容量其實夠大的有限迴圈也被拒絕（每個迴圈至少要有一個無限 buffer）。
-- B：只做 runtime 偵測（每次 dispatch 後建 wait-for graph 找 cycle）。後果：接受所有實際不會卡住的模型；但每次 dispatch 都有額外成本，規則要區分「之後會修好、會上班」與「永遠卡住」，容易出錯；錯誤在跑到一半、依 seed 才出現。
-- C：不偵測，靠 horizon 與 limits。後果：違反 TEST-034（不得默默卡住）；不採用。
+- A：靜態規則 R1–R3（error）與 R4（warning）＋ runtime 的 B1（循環等待，精確）與 B2（bundle 湊不齊而且沒有任何 unit 被占用，有界的等待窗）。後果：對「通過 R1–R3 且沒有 R4 warning」的模型可證明不會永久停滯；殘餘情形明列；每次 dispatch 的額外成本與 held candidate 數成正比。
+- B：只做 runtime 偵測（每次 dispatch 後的一般 wait-for 分析加週期性判斷）。後果：接受較多模型；但在有隨機故障的週期性模型中，「之後會不會恢復」沒有一般的判定法；錯誤在跑到一半、依 seed 才出現。
+- C：不偵測，靠 horizon 與 limits。後果：違反 TEST-034；不採用。
 
-**建議：A。** 理由：錯誤在執行前就以 JSON Pointer 指出，與 seed 無關；規則簡單、可獨立實作比對；保守的代價（迴圈要有一個無限 buffer）對除錯與重測區通常可接受。
+**建議：A。** 理由：大部分錯誤在執行前就以 JSON Pointer 指出、與 seed 無關；保證的範圍可以說清楚；runtime 只補靜態規則管不到的部分。
 
-**規則（A）。**
-- **Holder**：至少需要一個 resource 的 process（含批次 process）；source、delay、沒有 resource 的 process 被擋時不持有任何東西。
-- **阻塞邊** A → P：A 是 holder，且 A 的出路（沿 p>0 flow，經 decision／failure／rework，可再經一個 queue node）可能到達 P 的有限 buffer。
-- **共用分量**：需要同一個 resource 的 process 屬同一分量（union-find，依 ID 順序）。
-- **判定**：把阻塞邊投影到分量上（分量(A) → 分量(P)），有 cycle（含分量(A)＝分量(P)）就拒絕。Issue：`BLOCKING_CYCLE`、error、path 為 cycle 上每個有限 queue 的 `/nodes/<i>/capacity`，message 依 ID 順序列出 cycle 的 node；依 D-023 排序。
-- **充分性（草證）**：永久被擋的 entity 等的 buffer P 永不再授予；P 最前面的 request 永遠放不下，其 resource 的 unit 由服務中（有限時間）、停機（有限修復）、下班（下一個 shift 會來，D-052 要求至少一個 shift）或 blocked entity 持有，也可能排在共用 resource 的其他 request 之後；只剩 blocked holder 能永久占住，而它們屬於 P 的共用分量，又在等另一個有限 buffer；圖是有限的，故必有 cycle。沒有 cycle 就沒有永久阻塞。
-- **Runtime backstop**：dispatch 結束時若有 blocked entity，而 heap 中沒有任何可能釋放 unit 或空位的事件（SERVICE_COMPLETE、DELAY_COMPLETE、REPAIR、增加容量的 CAPACITY_CHANGE、BATCH_TIMEOUT），且沒有此類事件因晚於 horizon 被丟棄，回 `ErrDeadlock`（帶最早 blocked entity 的 ID、node、tick；job failure code 暫定 `SIMULATION_DEADLOCK`）。在 A 的規則下它不應觸發，若觸發即為規則缺口，以 bug 處理並保留最小重現。
-- Template 的除錯與重測 buffer 為無限，因此通過（[ELECTRONICS_LINE §4](../domains/ELECTRONICS_LINE.md)）。
+**靜態規則（validator；R1 在 graph rules 階段，R2–R4 在 distribution／domain semantics 之後）。**
+- **R1 `BLOCKING_CYCLE`（error）**：holder＝至少需要一個 resource 的 process（含批次 process）；source、delay、沒有 resource 的 process 被擋時不持有任何東西。A 是 holder 且 A 的出路（沿 p>0 flow，經 decision／failure／rework，可再經一個 queue node）可能到達 P 的有限 buffer 時，有阻塞邊 A→P；需要同一個 resource 的 process 合為一個共用分量（union-find，依 ID 順序）；把阻塞邊投影到分量上，有 cycle（含分量(A)＝分量(P)）就拒絕。Path 為 cycle 上每個有限 queue 的 `/nodes/<i>/capacity`；message 依 ID 順序列出 cycle 上的 node 與造成合併的共用 resource，並說明修正方式：讓 cycle 上至少一個 buffer 為無限，或讓被擋的 process 不與擋住它的 process 共用 resource。
+- **R2 `CALENDAR_INVALID`（error，bundle 的可用時間）**：模型中所有 calendar 的 period 的最小公倍數 L ≤ 365 天；每個 process（含批次）在 [0, L) 中至少有一個 tick，使 bundle 的每個 resource r 都有 S_r(t) ≥ 其 units（沒有班表時 S_r≡C_r；每班容量見 D-052；例外日見 D-052，不計入此判定）。Path 為 `/nodes/<i>/requires`。第一個反例被拒絕。
+- **R3 `RESOURCE_REQUIREMENT_INVALID`（error，故障 resource 的 bundle 形狀）**：對有 breakdowns 的 resource 的 request，units 必須為 1；一個 bundle 至多一個有 breakdowns 的 resource。第二個反例與「兩個反相故障的 resource 在同一 bundle」被拒絕。代價：同時需要兩台會故障的設備的步驟，要建成一個代表整組的 resource（整組一起故障）。
+- **R4 `STALL_RISK`（warning，不阻擋 publish）**：bundle 中有故障 resource R，而 (a) bundle 中有其他 resource Q 在 R 上班的某些 tick 不上班（S_Q < units），或 (b) R 有 calendar 但用日曆時間時鐘（D-051）。建議的修正：給 R 一個包含在夥伴上班時間內的 calendar，並用 scheduled 時鐘（template 即如此）。
 
-**決定性與 digest。** Validator 輸出依 D-023 排序；runtime 檢查只讀計數，不影響事件順序。
+**保證（前提：service、delay、修復與換線時間有限；TTF 至少 1 tick，D-051）。** 通過 R1–R3 且沒有 R4 warning 的模型，在不限 horizon 時，每個等待中的 request 終會被授予、每個 blocked entity 終會移動，B1、B2 永不觸發。草證：
+1. 所有等待中的 request 裡 seq 最小的，在它每個 resource 的 FIFO 都排第一，所以有 request 等待時必有 candidate；依 D-038 (m)，共用其 resource 的較晚 request 不能先授予，所以被釋放或修好的 unit 都留給它。
+2. Candidate 的 bundle 中的 unit 只會是：服務中（有限時間內釋放，或依 BAS 變成被擋）、被 blocked entity 持有、停機（有限修復）、下班。
+3. 若有 unit 被 blocked entity（在 A）持有，A 在等 P 的 buffer，P 的最前面又是一個 candidate；每一步都是共用分量之間的一條阻塞邊。R1 使分量圖無 cycle，所以這條鏈會停在一個 bundle 中沒有 unit 被 blocked entity 持有的 candidate q。
+4. q 的 bundle 中服務中的 unit 在有限時間內釋放，之後只缺停機或下班的容量。沒有故障 resource 時，依 R2，每個長度 L 的窗中都有一個 tick 讓整個 bundle 上班，該 tick 的 CAPACITY_CHANGE 會觸發 dispatch 而授予 q。有故障 resource R 時（R3：唯一一個，units＝1）：每個停機的 unit 在 TTR 內修好，修好的 tick 它是可用的（下一次故障至少再 1 tick）；沒有 R4 時，R 的上班時間包含在夥伴的上班時間內，且 R 的時鐘在下班時暫停，所以修好的 unit 到 R 下一次上班時仍然可用，那時夥伴也都上班，q 被授予。
+5. q 被授予使 P 的 buffer 有空位 → 解除最前面的 blocked entity → 釋放其 bundle；沿第 3 步的鏈往回歸納，鏈上每個 request 終被授予。
+6. 其他功能：批次 request 只在就緒後存在，就緒前的湊批等待不是停滯（沒有 request）；換線只延長 service，unit 的選擇不影響「放不放得下」（計數）；投入排程只增加 arrival；finish-first 的 overtime 與等待中的故障都屬「使用中、有限時間內釋放」。
+7. 等待上界：q 的 bundle 中沒有任何 unit 在使用中時，至多再等 W(q)＝L＋E＋TTRmax(q)＋1 tick，其中 L 為上述最小公倍數（沒有 calendar 時為 0），E 為最長的連續例外日區間（D-052，沒有時為 0），TTRmax(q) 為 q 的故障 resource 的 TTR 分布可能的最大值（沒有故障時為 0；exponential、lognormal、Weibull 為無上界，此時沒有時間上界，B2 的時間檢查對該 bundle 關閉）。
 
-**Golden vectors。** Invalid：(1) process 經 decision 回到自己的有限 queue（自環）；(2) 兩個有限 buffer 構成迴圈；(3) A 與 P 共用 resource 且 A 可能被 P 的有限 buffer 擋住（圖上沒有 flow cycle 也拒絕）。Valid：template 的迴圈（除錯、重測 buffer 無限）；迴圈中唯一的無限步驟是 delay（delay 不是 holder）。Runtime：test-only 的 Program 繞過 validator，建一個已知的兩站死結，在預期 tick 回 `ErrDeadlock`。
+**不保證（明列）。**
+- 有 R4 warning 時，故障與班表可能固定相位而永遠湊不齊（例：機台沒有 calendar、TTF 960／TTR 480 為 constant，作業員 shift 為每天 [960, 1440)）。B2 會在 bundle 中沒有任何 unit 被占用時偵測到；若同時有 unit 被 blocked entity 持有，B1、B2 都不觸發，症狀是上游 backlog 增長，最後 `ErrActiveEntities` 或在 horizon 截尾。
+- TTR 分布無上界時，等待終會結束（機率為 1）但沒有上界；B2 只做「沒有任何待處理的容量增加」的立即檢查。
+- B2 對有 R4 warning 的模型是保守的：可能讓一個稍後才會恢復的 run 失敗；錯誤會指出 bundle、已等的時間與 W(q)。
+- R1 是保守的：迴圈中有限 buffer 足以容納所有可能在迴圈內的 entity 時，模型其實不會死結，仍被拒絕。
+- 停滯只指永久等待；在 horizon 時尚未結束的等待是截尾，不是錯誤。
 
-**SimPy。** SimPy 本身不偵測死結（事件用完即停）。Reference 以 Python 獨立實作同一個圖規則，在隨機 IR 上與 Go validator 比對 issue 清單；另以 SimPy 跑被拒絕的小 buffer 模型，作為「確實可能停滯」的示意（不作為驗收條件）。
+**Runtime backstop。** 兩者只讀計數，不影響事件順序或 RNG；觸發即 run failed、沒有部分結果（SIMULATION_SPEC §8）。每次 dispatch 結束時檢查；修好、上班與 batch 就緒都會觸發 dispatch，所以週期性模型每個 period 至少檢查一次。
+- **B1 `ErrDeadlock`（循環等待，精確）**：有 blocked entity 或 held candidate；heap 中沒有 SERVICE_COMPLETE、DELAY_COMPLETE、BATCH_TIMEOUT，也沒有這些事件因晚於 horizon 被丟棄；且每個 held candidate 都是 release-bound（bundle 中某個 r 有 inUse_r＋units > C_r，修好或上班都不能讓它放得下）→ 回 `ErrDeadlock`（job failure code 暫定 `SIMULATION_DEADLOCK`），帶最早的 blocked entity（沒有時為最早的 candidate）的 ID、node 與 tick。沒有誤報：沒有任何進行中的工作能釋放 unit，容量事件也幫不了 release-bound 的 candidate。週期性事件不影響它。
+- **B2 `ErrStalled`（湊不齊，有界）**：held candidate q 的 bundle 中每個 resource 都沒有 unit 在使用中（只缺停機或下班的容量）。這個狀態只會因 q 被授予而結束（其他 request 不能先取這些 unit），所以從進入此狀態的 tick 起計：已等 ≥ W(q)，或 q 的 resource 沒有任何待處理、會增加容量的事件（REPAIR、增加容量的 CAPACITY_CHANGE）且沒有此類事件因晚於 horizon 被丟棄 → 回 `ErrStalled`（暫定 `SIMULATION_STALLED`），帶 q 的 entity ID、process、開始等待的 tick 與 W(q)。依上面的保證，沒有 R4 warning 的模型不會觸發。
+
+**決定性與 digest。** Validator 輸出依 D-023 排序（STALL_RISK 為 warning）；runtime 檢查不改變事件或抽樣；失敗的 run 沒有 result digest。
+
+**Golden vectors。**
+- Invalid：(1) process 經 decision 回到自己的有限 queue；(2) 兩個有限 buffer 構成迴圈；(3) A 與 P 共用 resource 且 A 可能被 P 的有限 buffer 擋住（沒有 flow cycle 也拒絕）；(4) 第一個反例 → `CALENDAR_INVALID` 於 X 的 `/requires`；(5) period 300 天與 7 天（最小公倍數 > 365 天）→ `CALENDAR_INVALID`；(6) 第二個反例（故障 resource 上 units＝2）→ `RESOURCE_REQUIREMENT_INVALID`；(7) 同一 bundle 兩個故障 resource → 同上。
+- Warning：機台（無 calendar、有故障）＋作業員（有 calendar）在同一 bundle → valid，帶 `STALL_RISK`。Valid、無 warning：template。
+- G-D1（B2）：上面「不保證」的固定相位例子，只有一個 arrival 在 t=10 分鐘。t=10 起 q 的兩個 resource 都沒有 unit 在使用中；W＝1440＋0＋480 分鐘＋1 tick；dispatch 發生在 960（上班；同 tick 機台故障，依 D-048 的初始順序班表事件先處理）、1440（下班與修好，下班的 seq 較小）、2400；在 2400 分鐘回 `ErrStalled`，entity `r0/<source>/1`。
+- G-D2（B1）：test-only 的 Program 繞過 R1，兩站各 1 unit、capacity 1 的 queue 互相回流，另有一個無關 resource 帶班表（使 heap 永不為空），在最後一個服務中的 entity 完成並被擋的那個 tick 回 `ErrDeadlock`（tick 於 T-047 手算後固定）。
+- Property：隨機產生通過 R1–R3 且沒有 R4 warning 的模型（含 constant 的 TTF／TTR 與班表），長 horizon 下 B1、B2 不觸發；Python 獨立實作的 R1–R4 與 Go validator 在隨機 IR 上的 issue 清單相同。
+
+**SimPy。** SimPy 不偵測停滯（事件用完即停，週期性模型則一直跑到 horizon）。Reference 做三件事：Python 獨立實作 R1–R4 並與 Go 比對；以 SimPy 跑兩個反例，確認第一次之後再也沒有授予（示意，不作驗收）；對保證範圍內的隨機模型，確認 SimPy 與 Go 每個 L 都有授予。
 
 ### D-051 Resource 故障（MTBF／MTTR）
 
-**問題。** (1) 故障時鐘依日曆時間還是忙碌時間；(2) 故障時服務中的 entity：preempt-resume、preempt-restart 或 finish-first；(3) 多 unit 的 resource；(4) RNG stream 命名，使既有 stream 不變；(5) availability 的定義。
+**問題。** (1) 故障時鐘依日曆時間、排班時間還是忙碌時間；(2) 故障時服務中的 entity：preempt-resume、preempt-restart 或 finish-first；(3) 多 unit 的 resource；(4) RNG stream 命名，使既有 stream 不變；(5) availability 的定義。
 
 **選項（服務中 entity 的處理）。**
-- A：每個 unit 一組獨立的 alternating renewal，時鐘依日曆時間（從修好起算，不論忙閒、班表、阻塞）；故障時若有不在使用中的 unit（含下班的）立即停機；全部在使用中時 finish-first：等下一個被釋放的 unit 停機（多個等待中的故障依故障時刻 FIFO），修復時間從停機起算；服務中的工件照常完成。後果：kernel 的匿名 unit 就夠，不需 unit identity、不需取消已排程的事件；每次故障的停機時間＝TTR，產能損失與 preempt-resume 相同，只有那一件工件完成得較早；長時間 service（燒機、機櫃測試）會低估中斷的影響。
+- A：每個 unit 一組獨立的 alternating renewal；故障時若有不在使用中的 unit（含下班的）立即停機；全部在使用中時 finish-first：等下一個被釋放的 unit 停機（多個等待中的故障依故障時刻 FIFO），修復時間從停機起算；服務中的工件照常完成。後果：kernel 的匿名 unit 就夠，不需 unit identity、不需取消已排程的事件；每次故障的停機時間＝TTR，產能損失與 preempt-resume 相同，只有那一件工件完成得較早；長時間 service（燒機、機櫃測試）會低估中斷的影響。
 - B：preempt-resume（中斷、修好後做完剩餘時間）。後果：需要 unit identity（哪個工件被中斷）、取消並重排 SERVICE_COMPLETE（heap 要 lazy deletion）、規定 bundle 其他 resource 在中斷期間保留或釋放；與阻塞、班表、批次的交互多；屬 PRD P1 的 preemption。
 - C：preempt-restart（中斷後重做或報廢）。後果：同 B，另需重抽 service（RNG 消耗改變）或報廢路由；屬 PRD P1 的 preemption。
 
-時鐘的其他選項：忙碌時間（需要每個 unit 的忙碌累計，即 unit identity）、次數制（每 N 件）；都延後。
+**選項（故障時鐘，T-046 review M1）。**
+- (i) 日曆時間：從修好起算，不論忙閒、上下班。後果：最簡單；但機台是在運轉中故障的，停機紀錄中「修好到下次故障」的日曆間隔包含夜間與週末，以 `two_shift_weekdays`（∫S／T＝80／168）而言，模型在上班時的故障率只有資料的約 48%，而下班時的故障拿走閒置 unit、不造成任何損失，系統性地低估上班時的停機。
+- (ii) 排班時間（scheduled）：時鐘只在該 resource 上班（S(t) > 0）時前進。以 resource 為單位，不需 unit identity；因為班表是確定的，抽到 TTF 時就能直接算出故障時刻：t_fail＝min{t : Θ(t) ≥ Θ(t_up)＋TTF}，Θ(t) 為 [0, t) 中 S > 0 的 tick 數（整數運算，不需暫停或取消事件）。後果：上班時的故障率與「以上班時間估計」的 MTBF 一致；每班不同人數時（D-052）只要 S > 0 就前進，是近似。
+- (iii) 忙碌時間：只在 unit 服務中前進。後果：最貼近磨耗型故障，但需要所有 unit 的 identity 與忙碌累計；未排入 P0（見 Consequences）。
 
-**建議：A，時鐘依日曆時間。** 理由：實作最小、與匿名 unit 相容；故障序列與負載無關，scenario 之間配對最好；MTBF 可直接由停機紀錄的「修好到下次停機」日曆時間估計（[ELECTRONICS_LINE §6](../domains/ELECTRONICS_LINE.md)）。
+**建議：A；時鐘欄位 `clock`，有 calendar 的 resource 預設並建議用 (ii) scheduled，沒有 calendar 的 resource 兩者相同。** 理由：A 實作最小、與匿名 unit 相容；(ii) 修正了 (i) 在班表下的系統性低估，又不需 unit identity；有 calendar 卻選 (i) 時 validator 回 D-050 的 `STALL_RISK` warning。TTF 須以同一時鐘估計：scheduled 時為「修好到下次故障之間的上班時間」（[ELECTRONICS_LINE §6](../domains/ELECTRONICS_LINE.md)）。
 
-**語義（A）。**
-- IR：resource 的 `breakdowns: {time_to_failure: {distribution}, time_to_repair: {distribution}}`。TTF 的最小可能 tick 必須 > 0（同 D-033 對 interarrival 的規則，避免同一 tick 的事件風暴），否則 `DISTRIBUTION_INVALID`；TTR ≥ 0；empirical 經 dataset binding（D-006）。
-- 每個 unit u（0..capacity−1）在 t=0 為正常，第一個 TTF 在 t=0 抽；故障 → 停機時抽 TTR、排 REPAIR；REPAIR 時 down 減一、抽下一個 TTF、排 FAILURE。
+**語義（A＋(ii)）。**
+- IR：resource 的 `breakdowns: {time_to_failure: {distribution}, time_to_repair: {distribution}, clock: "scheduled" | "calendar"}`（`clock` 省略時：有 `calendar_id` 為 scheduled，否則 calendar）。TTF 的最小可能 tick 必須 > 0（同 D-033 對 interarrival 的規則，避免同一 tick 的事件風暴），否則 `DISTRIBUTION_INVALID`；TTR ≥ 0，以日曆時間計（修復可跨下班）；empirical 經 dataset binding（D-006）。D-050 R3：對有 breakdowns 的 resource 的 request units＝1，一個 bundle 至多一個有 breakdowns 的 resource。
+- 每個 unit u（0..capacity−1）在 t=0 為正常，第一個 TTF 在 t=0 抽；故障 → 停機時抽 TTR、排 REPAIR；REPAIR 時 down 減一、抽下一個 TTF、依時鐘算出故障時刻並排 FAILURE。scheduled 時鐘下故障只會發生在上班時間；目標恰在一段上班的結束時達到時，故障時刻即該段的結束 tick。
 - 授予條件改為 `inUse + units ≤ min(S(t), C − down)`（S 為班表容量，沒有班表時為 C，D-052）。等待中的故障在每次釋放 unit 時優先滿足（被釋放的 unit 直接停機），其餘才變成可用；REPAIR 與上班一樣會取消該 resource 最前面 candidate 的 held 並排 dispatch。
-- **Stream**：(resource ID, `ttf/<u>`) 與 (resource ID, `ttr/<u>`)，u 為十進位 unit index；validator 已要求 node 與 resource ID 不重複（DUPLICATE_ID），purpose 也是新的字串，既有 stream 不受影響。Capacity 加一只新增 unit C 的 stream，unit 0..C−1 的抽樣序列不變（stream 層級的 common random numbers）。
-- **統計**（只對有 breakdowns 的 resource）：視窗內開始停機的次數、停機比例 ∫D/(C·T)、完整修復時間的平均、availability ＝ ∫min(S, C−D)dt / ∫S dt（∫S=0 時 unavailable）。等待中（尚未停機）的時間不算停機。Equipment breakdown 與 generic `failure` node（測試不良）是不同的東西，`failure_count` 照舊只算 failure node（D-010）。
+- **Stream**：(resource ID, `ttf/<u>`) 與 (resource ID, `ttr/<u>`)，u 為十進位 unit index；validator 已要求 node 與 resource ID 不重複（DUPLICATE_ID），purpose 也是新的字串，既有 stream 不受影響。Capacity 加一只新增 unit C 的 stream，unit 0..C−1 的抽樣序列不變（stream 層級的 common random numbers）。時鐘不影響抽樣，只影響抽到的 TTF 如何換成時刻。
+- **統計**（只對有 breakdowns 的 resource；Result 中的位置見 D-058）：視窗內開始停機的次數、停機比例 ∫D/(C·T)、完整修復時間的平均、availability ＝ ∫min(S, C−D)dt / ∫S dt（∫S=0 時 unavailable）。等待中（尚未停機）的時間不算停機。Equipment breakdown 與 generic `failure` node（測試不良）是不同的東西，`failure_count` 照舊只算 failure node（D-010）。
 
-**決定性與 digest。** 新事件（FAILURE、REPAIR，priority 15）與 ResourceDown／ResourceUp observation 只出現在有 breakdowns 的模型。
+**決定性與 digest。** 新事件（FAILURE、REPAIR，priority 15）與 ResourceDown／ResourceUp observation 只出現在有 breakdowns 的模型；t=0 不記 ResourceUp（只記實際的轉換，D-047）。Θ 的計算全為整數 tick。
 
 **Golden vectors。**
-- G-F1 閒置時故障：1 unit、interarrival 2、服務 1、TTF 10、TTR 3（constant）：t=10 的 arrival 先進 buffer，故障（15）使 unit 停機到 13，13 時授予，下一次故障在 23。
+- G-F1 閒置時故障：1 unit、interarrival 2、服務 1、TTF 10、TTR 3（constant，無 calendar）：t=10 的 arrival 先進 buffer，故障（15）使 unit 停機到 13，13 時授予，下一次故障在 23。
 - G-F2 服務中故障（finish-first）：interarrival 3、服務 2、TTF 10、TTR 3：10 時 unit 忙（9–11），故障等待；11 釋放即停機到 14；12 到的 entity 在 14 開始；下一次故障在 24，此時 unit 閒置，24 到的 entity 等到 27。
 - G-F3 2 unit、一個等待中的故障、兩次釋放：第一個被釋放的 unit 停機、第二個變成可用。
 - G-F4 capacity +1 的 scenario：unit 0..C−1 的 TTF／TTR 抽樣序列與 baseline 相同（比對 stream 輸出，不比對時刻）。
 - G-F5 中性：constant TTF 晚於 horizon 與沒有 breakdowns 逐筆相同。
+- G-F6 時鐘：calendar period 10 分鐘、shift [0,6)、TTF 8、TTR 1（constant）。scheduled：上班時間在 [0,6) 累積 6、[10,12) 再 2，於 12 故障，13 修好，再累積 8（[13,16) 的 3 與 [20,25) 的 5）於 25 故障。calendar：於 8 故障（下班，拿走閒置 unit，沒有損失），9 修好，17 再故障。
 - `engine-vectors.json` 加各 unit 前 k 個 TTF／TTR 的 Python 參考值。
 
-**SimPy。** 用 `simpy.PriorityResource`：每個 unit 一個故障 process，`timeout(TTF)` 後以比工件高的 priority request 一個 unit（non-preemptive），取得後 hold TTR 再釋放。Non-preemptive priority 的語義正是「取閒置 unit，否則取下一個被釋放的 unit」；同 priority 依 request 時刻排序，對應等待中故障的 FIFO。
+**SimPy。** 用 `simpy.PriorityResource`：每個 unit 一個故障 process，`timeout(TTF)` 後以比工件高的 priority request 一個 unit（non-preemptive），取得後 hold TTR 再釋放。Non-preemptive priority 的語義正是「取閒置 unit，否則取下一個被釋放的 unit」；同 priority 依 request 時刻排序，對應等待中故障的 FIFO。scheduled 時鐘：故障 process 的 timeout 只在上班期間累積（以班表 process 的事件暫停與恢復），以隨機容差比對。
 
 ### D-052 班表（shift calendar）
 
-**問題。** (1) 班表在 IR 中以 tick 表示且不用時區；(2) 交班時服務中的 entity；(3) utilization 的分母。
+**問題。** (1) 班表在 IR 中以 tick 表示且不用時區；(2) 交班時服務中的 entity；(3) utilization 的分母；(4) 每班不同人數與假日等例外是否納入（H-017：盡量保留功能）。
 
 **選項（表示）。**
-- A：根層 `calendars[]`（`id`、`period`、`shifts`：period 內的 [start, end) 上班區間，以 model 的 time_unit 表示），resource 以 `calendar_id` 參照；上班時 S(t)＝capacity，下班時 0。後果：多站共用一份班表，有共同的「線的排班時數」可作 UPH 分母；無法表達每班人數不同（白班 2 人、夜班 1 人），延後為 optional 的每班容量，不破壞 A 的文件。
+- A：根層 `calendars[]`（`id`、`period`、`shifts`：period 內的 [start, end) 上班區間，可帶 `label`，以 model 的 time_unit 表示），resource 以 `calendar_id` 參照；上班時 S(t)＝capacity，下班時 0。後果：多站共用一份班表，有共同的「線的排班時數」可作 UPH 分母。
+- A＋：A 再加兩個 optional 欄位：resource 的 `shift_capacity`（label → 0..capacity，表達白班 2 人、夜班 1 人）與 calendar 的 `exceptions`（[{start, end, open}]，以從 t=0 起的絕對 model 時間表示，不用日期與時區；open＝false 為停工，如假日；open＝true 為加班，S＝capacity）。後果：每班人數與假日都可表達，仍只是 S(t) 的另一種寫法，kernel 不變；validator 與 D-050 的 R2 要多處理兩種情形。
 - B：每個 resource 自己的週期性容量表（[{at, capacity}]）。後果：可表達每班不同人數；每個 resource 重複一份；沒有共同的線班表，UPH 每排班小時要另外指定分母。
-- C：絕對日期的班表（含假日、例外）與時區。後果：需要時區、DST 與日期函式，違反「以 tick 表示、不用 wall clock」（T-049 scope）；時區與 DST 不採用，假日等絕對日期的例外未排入 P0（見 Consequences）。
+- C：絕對日期的班表與時區。後果：需要時區、DST 與日期函式，違反「以 tick 表示、不用 wall clock」（T-049 scope）；不採用（例外日以 A＋ 的絕對 model 時間表示即可）。
 
-**建議：A。** 理由：多站共用同一份班表是產線的常態，也給「排班小時」一個明確的分母；每班人數不同可以之後以 optional 欄位加入，不破壞 A 的文件。
+**建議：A＋。** 理由：多站共用同一份班表是產線的常態，也給「排班小時」一個明確的分母；依 H-017，每班人數與假日的成本低（都只改 S(t)），一併納入。
 
-**語義（A）。**
-- t=0 對應 period 的 offset 0（model 本地時間；沒有時區、DST、假日）。Period ≤ 365 天；shifts 至少一個、依 start 排序、不重疊、0 ≤ start < end ≤ period（跨午夜的夜班拆成兩段）；以 `model.Ticks` 量化，量化後仍須嚴格遞增；至多 100 段（D-029 類的候選上限）。違反回 `CALENDAR_INVALID`；未知 `calendar_id` 回 `UNKNOWN_REFERENCE`。沒有 `calendar_id` 的 resource 全天可用（D-017：不暗加班表）。
-- Kernel 只在 S 改變時排 CAPACITY_CHANGE（priority 15）；同時間只有一個待處理的變化事件。
+**語義（A＋）。**
+- t=0 對應 period 的 offset 0（model 本地時間；沒有時區、DST）。Period ≤ 365 天；shifts 至少一個、依 start 排序、不重疊、0 ≤ start < end ≤ period（跨午夜的夜班拆成兩段）；以 `model.Ticks` 量化，量化後仍須嚴格遞增；至多 100 段。`shift_capacity` 的 label 必須存在於該 calendar、值為 0..capacity 的整數；沒有列出的 label 與沒有 label 的 shift 用 capacity。`exceptions` 依 start 排序、不重疊、0 ≤ start < end ≤ 365 天、至多 100 段；例外內 S＝0（open＝false）或 capacity（open＝true）。違反回 `CALENDAR_INVALID`；未知 `calendar_id` 回 `UNKNOWN_REFERENCE`；D-050 的 R2 另檢查每個 bundle 的可用時間（不計例外）。沒有 `calendar_id` 的 resource 全天可用（D-017：不暗加班表）。
+- **事件**：每個 calendar 在它的 S 模式改變的時刻排一個 CAPACITY_CHANGE（priority 15）；同一 calendar 同時只有一個待處理的變化事件。處理時依 resource ID 順序更新所有引用它的 resource，只對 S 真的改變的 resource 記 Capacity observation；容量增加的 resource 取消其最前面 candidate 的 held 並排 dispatch。t=0 的初始 S 由 Program 決定，不記 observation（D-047）。
 - **交班選項**：(a) finish-first：服務中與被擋住的 entity 照常完成或等待，超出排班的忙碌時間記為 overtime；(b) preempt-resume：與 D-051 B 相同的機制，屬 PRD P1 的 preemption；(c) 做不完就不開始：要在授予前知道 service 長度並改變抽樣時點，未排入 P0（見 Consequences）。**建議 (a)。**
 - **分母選項**：(i) 原 `utilization_mean`（∫inUse/(C·T)）不變，另對有班表的 resource 加 `scheduled_utilization` ＝ ∫min(inUse, S)dt/∫S dt 與 overtime ＝ ∫max(inUse−S, 0)dt；(ii) 有班表的 resource 改用 ∫S 當 `utilization_mean` 的分母：同一欄位對不同 resource 意義不同，舊的使用者會誤讀；(iii) 只有 C·T：單班滿載的站顯示約 33%，工程師會覺得錯。**建議 (i)。**
-- 與故障：故障時鐘在下班時照走；授予條件 `inUse + units ≤ min(S, C−down)`。
+- 與故障：scheduled 時鐘在 S＝0 時暫停（含停工的例外），calendar 時鐘照走（D-051）；授予條件 `inUse + units ≤ min(S, C−down)`。
 
 **決定性與 digest。** CAPACITY_CHANGE 不用 RNG；只有引用班表的 resource 會有新事件與 Capacity observation。
 
-**Golden vectors。** G-C1：1 unit、period 10 min、shift [0,6)、interarrival 2、服務 3：服務 2–5、5–8（6 下班，overtime 2 分鐘）；6 到的 entity 在 10 上班時開始（10–13），8 到的在 13 開始；第一個 period 的 scheduled utilization 4/6。G-C2：上班與 arrival 同 tick，於該 tick 授予。G-C3：中性（一個涵蓋整個 period 的 shift）與沒有班表逐筆相同。G-C4：bundle 的兩個 resource 有不同班表，只在兩者都上班時授予。
+**Golden vectors。** G-C1：1 unit、period 10 min、shift [0,6)、interarrival 2、服務 3：服務 2–5、5–8（6 下班，overtime 2 分鐘）；6 到的 entity 在 10 上班時開始（10–13），8 到的在 13 開始；第一個 period 的 scheduled utilization 4/6。G-C2：上班與 arrival 同 tick，於該 tick 授予。G-C3：中性（一個涵蓋整個 period 的 shift）與沒有班表逐筆相同。G-C4：bundle 的兩個 resource 有不同但有交集的班表，只在兩者都上班時授予。G-C5：capacity 2、`day` 班 2、`night` 班 1：夜班同時至多 1 件在服務；換班時已在服務的第 2 件做完（overtime）。G-C6：一段 open＝false 的例外使該段沒有授予，scheduled 時鐘的故障時刻順延同樣長度。G-C7：兩個 resource 引用同一 calendar：一個 CAPACITY_CHANGE，Capacity observation 依 resource ID 順序。
 
-**SimPy。** 每個 resource 一個班表 process：下班時以最高 priority（non-preemptive）request 全部 unit 並持有到上班；上班時釋放已取得的 unit，並取消尚未取得的 request。Finish-first 與本提案相同。與故障同時使用時只做隨機容差比對。
+**SimPy。** 每個 resource 一個班表 process：容量從 c1 降到 c2 時，以最高 priority（non-preemptive）request c1−c2 個 unit 並持有到容量回升；回升時釋放已取得的 unit，並取消尚未取得的 request。Finish-first 與本提案相同；例外日與每班容量都是同一個 process 的不同時刻表。與故障同時使用時只做隨機容差比對。
 
 ### D-053 隨時間變化的投入（release schedule）
 
-**問題。** 投入率依時段變化要怎麼表示？與 common random numbers 的關係？
+**問題。** 投入率依時段變化要怎麼表示？與 common random numbers 的關係？生產計畫式的投入表是否也納入（H-017）？
 
 **選項。**
-- A：週期性分段常數 rate，以累積 rate 反函數產生：source 的 `arrival.schedule`（`period`、`segments: [{start, rate}]`，rate 為每個 model time_unit 的期望件數，`process`：`poisson` 或 `deterministic`），與 `arrival.distribution` 二擇一。令 Λ(t)＝∫₀ᵗ λ(s)ds、a₀＝0，第 k 件 aₖ＝aₖ₋₁＋Xₖ，Xₖ＝1（deterministic）或 −ln(1−U)（poisson，從該 source 的 arrival stream 抽一次），時刻 τₖ＝min{t : Λ(t) ≥ aₖ}，量化為 tick 後至少比上一件晚 1 tick。後果：每件恰一次 draw，不同 scenario 的第 k 件用同一個 draw（配對保留）；poisson 是精確的非齊次 Poisson process，deterministic 是精確的 takt；不支援 triangular／empirical interarrival；一次投入一整批以短時段高 rate 近似。
-- B：明確的投入表（[{at, quantity}]，週期或絕對）。後果：最貼近生產計畫、不用 RNG；長 horizon 的 takt 投入需要大量列（每 30 秒一件、一週約 2 萬列）；未排入 P0，可在 A 之外附加（見 Consequences）。
-- C：各時段各自的 interarrival 分布，跨段時丟棄並在下一段起點重抽。後果：支援任意分布；跨段規則對非指數分布有扭曲；draw 的消耗取決於跨段次數，scenario 之間的配對被打亂。
+- A：週期性分段常數 rate，以累積 rate 反函數產生：source 的 `arrival.schedule`（`period`、`segments: [{start, rate}]`，rate 為每個 model time_unit 的期望件數，`process`：`poisson` 或 `deterministic`），與 `arrival.distribution` 二擇一。令 Λ(t)＝∫₀ᵗ λ(s)ds、a₀＝0，第 k 件 aₖ＝aₖ₋₁＋Xₖ，Xₖ＝1（deterministic）或 −ln(1−U)（poisson，從該 source 的 arrival stream 抽一次），時刻 τₖ＝min{t : Λ(t) ≥ aₖ}，量化為 tick 後至少比上一件晚 1 tick。後果：每件恰一次 draw，不同 scenario 的第 k 件用同一個 draw（配對保留）；poisson 是精確的非齊次 Poisson process，deterministic 是精確的 takt；不支援 triangular／empirical interarrival。
+- B：明確的投入表（`process: "table"`，`releases: [{at, quantity}]`，period 內週期重複）。後果：最貼近生產計畫（例如每班開始投入一批）、不用 RNG；長 horizon 的 takt 投入要很多列，所以作為 A 之外的第三種 process，而不是取代 A。
+- C：各時段各自的 interarrival 分布，跨段時丟棄並在下一段起點重抽。後果：支援任意分布；跨段規則對非指數分布有扭曲；draw 的消耗取決於跨段次數，scenario 之間的配對被打亂；不採用。
 
-**建議：A。** 理由：規劃者通常以「每小時投入多少」描述投入；每件恰一次 draw，使 scenario 之間的比較保持配對；沒有跨段規則的歧義。
+**建議：A＋B（三種 process：poisson、deterministic、table）。** 理由：規劃者通常以「每小時投入多少」描述投入，A 每件恰一次 draw、配對保留；依 H-017，B 的成本低（不用 RNG、validation 簡單）且能表達整批投入，一併納入。
 
-**語義（A）。**
-- Validation（`RELEASE_SCHEDULE_INVALID`）：period ∈ (0, 365 天]；第一段 start＝0、start 嚴格遞增且 < period；rate 有限且 ≥ 0、至少一段 > 0、每段 rate ≤ 每 tick 1 件；至多 1000 段；`max_entities` 照舊適用。
-- Numerical profile：P＝Λ(period) 依段順序以 binary64 累加（每個乘積明確捨入，同 D-038 (g)）；k＝⌈a/P⌉−1、r＝a−k·P ∈ (0, P]，取第一個累積 ≥ r 的正 rate 段，τ＝k·period＋startⱼ＋(r−cumⱼ)/rateⱼ；量化同 `model.Ticks`（一次乘法、round half up）；ln 用固定的 `engine.ln`。累加器 a 保留未量化的值，不從量化後的 tick 回推，避免漂移。
-- 第一件在 Λ⁻¹(X₁)，與現行「t=0 起抽第一個 interarrival」一致。
+**語義。**
+- Validation（`RELEASE_SCHEDULE_INVALID`）：period ∈ (0, 365 天]。Rate 型：第一段 start＝0、start 嚴格遞增且 < period；rate 有限且 ≥ 0、至少一段 > 0、每段 rate ≤ 每 tick 1 件；至多 1000 段。Table 型：`at` 在 [0, period) 內嚴格遞增、`quantity` 為 1..10000 的整數、至多 1000 列。`max_entities` 照舊適用。
+- **Rate 型的 numerical profile（review L4）**：P＝Λ(period) 依段順序以 binary64 累加（每個乘積明確捨入，同 D-038 (g)），同時記下每段的起點累積 cumStartⱼ 與終點累積 cumEndⱼ。k＝⌈a/P⌉−1、r＝a−k·P；binary64 下 r 可能落在 (0, P] 之外（例：P＝0.3、a＝502.5），所以修正一次：r ≤ 0 時 k 減 1、r 加 P；r > P 時 k 加 1、r 減 P。取第一個 rateⱼ > 0 且 cumEndⱼ ≥ r 的段 j，τ＝k·period＋startⱼ＋(r−cumStartⱼ)/rateⱼ，再 clamp 到 [k·period＋startⱼ, k·period＋endⱼ]。τ 以 sampler 的量化規則換成 tick（一次乘法、round half up；超過 365 天時飽和為 365 天＋1 tick，事件不處理，不用會報錯的 `model.Ticks`），再取 max(該 tick, 上一件＋1)。ln 用固定的 `engine.ln`。累加器 a 保留未量化的值，不從量化後的 tick 回推，避免漂移。第一件在 Λ⁻¹(X₁)，與現行「t=0 起抽第一個 interarrival」一致。
+- **Table 型**：每一列一個 ARRIVAL 事件；處理時先排下一列的 ARRIVAL，再依序建立 quantity 個 entity，每建立一個就照現行路由（entity 編號連續）；達到 `max_entities` 即停止。同 tick 的多件投入是有限的（quantity 上限），不構成 D-033 所禁止的零時間循環。
 
-**決定性與 digest。** 只有用 schedule 的 source 改變；其他 source 的 stream 與事件不變。
+**決定性與 digest。** 只有用 schedule 的 source 改變；其他 source 的 stream 與事件不變。Table 型不用 RNG。
 
-**Golden vectors。** G-R1 deterministic：period 60 min、[0,30) rate 1/min、[30,60) rate 0：arrival 在 1..30、61..90、121..150 分鐘（a＝30 落在 30 而不是 60，固定 ⌈⌉ 的邊界）。G-R2 poisson：固定 seed 的前 N 個 arrival tick 由 Python reference 逐 bit 產生。G-R3 一段 rate 加倍的 scenario：第 k 個 draw 與 baseline 相同。G-R4 中性：上述可精確表示的單段 rate 與同值的 constant interarrival 同時刻。G-R5 高 rate：tick 嚴格遞增。
+**Golden vectors。** G-R1 deterministic：period 60 min、[0,30) rate 1/min、[30,60) rate 0：arrival 在 1..30、61..90、121..150 分鐘（a＝30 落在 30 而不是 60，固定 ⌈⌉ 的邊界）。G-R2 poisson：固定 seed 的前 N 個 arrival tick 由 Python reference 逐 bit 產生。G-R3 一段 rate 加倍的 scenario：第 k 個 draw 與 baseline 相同。G-R4 中性：上述可精確表示的單段 rate 與同值的 constant interarrival 同時刻。G-R5 高 rate：tick 嚴格遞增。G-R6 修正步驟：P＝0.3、a＝502.5 等落在邊界外的 r 被修正，且 τ 與 Python reference 逐 bit 相同。G-R7 table：period 1440、[{at 360, quantity 50}, {at 840, quantity 50}]：每天 360 與 840 分鐘各 50 件、entity 編號連續、同 tick 依建立順序路由。
 
-**SimPy。** 以不同的演算法產生非齊次 Poisson process（Lewis–Shedler thinning，Python 自己的 RNG），在大量 replication 上比對各段件數的平均與變異數（預先固定容差）；deterministic 逐值比對。
+**SimPy。** Rate 型以不同的演算法產生非齊次 Poisson process（Lewis–Shedler thinning，Python 自己的 RNG），在大量 replication 上比對各段件數的平均與變異數（預先固定容差）；deterministic 與 table 逐值比對。
 
 ### D-054 批次 process（燒機）
 
@@ -233,7 +261,7 @@
 **語義（A）。**
 - Validation（`BATCH_INVALID`）：1 ≤ min_size ≤ max_size ≤ 10000；min_size < max_size 時必須有 max_wait（≥ 0）；buffer 為有限時 capacity ≥ max_size。
 - 就緒檢查：每次有 entity 進入 buffer、每次授予之後、以及 BATCH_TIMEOUT（priority 15）時。最老的未分批 entity 改變時排一個逾時事件（進入時刻＋max_wait；已過期則立即檢查），過時的逾時事件到時忽略。授予後立即重新檢查，所以多個 chamber 可在同一次 dispatch 各開一批。
-- 授予：一次 bundle（units 以批計）、從 (process, service) stream 抽一次；成員依 FIFO 各記 ServiceStart 並帶批次 ID `r<rep>/<process>/b<n>`，另記 BatchStart（批量）。完成：先依 FIFO 解析每個成員的路由（routing draw 依成員順序，進入同一 buffer 時依序占位）；沒有成員被擋時，先釋放 bundle 再依序記各成員的 ServiceEnd 與路由；有成員被擋時不釋放，被擋的成員依 D-049 等待，最後一個離開時才釋放。
+- 授予：一次 bundle（units 以批計）、從 (process, service) stream 抽一次；成員依 FIFO 各記 ServiceStart 並帶批次 ID `r<rep>/<process>/b<n>`，另記 BatchStart（批量）；observation 順序為 bundle 的 ObsResource → BatchStart → 各成員的 ServiceStart。完成（一個 SERVICE_COMPLETE）：先依 FIFO 解析每個成員的路由（routing draw 依成員順序，進入同一 buffer 時依序占位，後面的成員看到前面成員已占的位置）。沒有成員被擋時：bundle 的 ObsResource（一次）→ needDispatch → 依 FIFO 每個成員的 ServiceEnd、路由 observation、進入 buffer／delay／sink。有成員被擋時（review L3）：不釋放、不呼叫 needDispatch（除非有成員 enqueue）；依 FIFO 每個成員記 ServiceEnd、路由 observation，然後是進入（未被擋的成員照常 enqueue，enqueue 會排 dispatch）或 Blocked。之後在 dispatch 中解除非最後一個的被擋成員時，只記 Unblocked 與 QueueEnter；解除最後一個時，先記 bundle 的 ObsResource（釋放、先滿足等待中的故障），再記 Unblocked 與 QueueEnter。
 - Lead time、queue wait 照每件計（queue wait 含等待湊批）；resource 的 utilization 是 chamber 忙碌（不是槽位）；批次統計（只對批次 process）：開始的批數、平均批量、平均批量／max_size。
 - 與阻塞：成員被擋時持有 chamber，批次 process 是 D-050 的 holder。與故障、班表：finish-first（整批做完）。
 
@@ -245,7 +273,7 @@
 
 ### D-055 換線（setup／changeover，P0）
 
-Owner 的方向（2026-10-19，經 coordinator 轉達）：時程充裕，盡量保留功能，換線規劃在 P0；PRD 已列為 P1 的優先權、preemption 與進階 routing 仍為 P1。以下語義仍為 PROPOSED。
+Owner 的方向（H-017，2026-10-19：「時間還很久，盡量保留所有功能」）：換線規劃在 P0；PRD 已列為 P1 的優先權、preemption 與進階 routing 仍為 P1。以下語義仍為 PROPOSED。
 
 **問題。** 產品怎麼表示；換線何時發生、時間怎麼決定、發生在哪個 unit；與 resource-wise FIFO、bundle、故障、班表、批次的交互？
 
@@ -275,7 +303,7 @@ Owner 的方向（2026-10-19，經 coordinator 轉達）：時程充裕，盡量
 
 ### D-056 lognormal 與 Weibull（P0）
 
-Owner 的方向同 D-055：納入 P0。以下語義仍為 PROPOSED。
+Owner 的方向同 D-055（H-017）：納入 P0。以下語義仍為 PROPOSED。
 
 **問題。** 修復時間與故障間隔常以 lognormal、Weibull 描述；參數化、抽樣演算法與 numerical profile 怎麼定，才能維持「跨平台逐 bit 相同、每個樣本一次 draw」？
 
@@ -302,11 +330,11 @@ Owner 的方向同 D-055：納入 P0。以下語義仍為 PROPOSED。
 **問題。** 新參數可否在 scenario（同一 ModelVersion 上的 patch）中修改？Server risk 怎麼算？
 
 **選項。**
-- A：擴充 D-021 的 scenario allowlist（人工與 AI 相同）：queue node 的 `capacity`（replace，以及 add／remove，即無限↔有限）、`breakdowns` 的 TTF／TTR distribution（replace）、`arrival/schedule/segments/*/rate`（replace）、`batch` 的 min_size／max_size／max_wait（replace）、resource 的 `calendar_id`（replace，只能指向既有 calendar）與 `calendars/*/shifts`（replace）；新增或刪除 breakdowns、calendars、schedule、batch 仍走 draft→publish。Manual 與 AI edit allowlist 加入根層 `calendars`。D-020 的「先 test 元素 id」照舊；candidate 照舊完整驗證（含 `BLOCKING_CYCLE`）。Risk：縮小 buffer 或把無限改為有限、任何 breakdown 參數、改 calendar 或 shifts、改 release rate、改 batch 參數至少 medium；擴大既有的有限 buffer 或改回無限為 low（與增加 resource capacity 對稱）；模型只能調高（D-027）。
+- A：擴充 D-021 的 scenario allowlist（人工與 AI 相同）：queue node 的 `capacity`（replace，以及 add／remove，即無限↔有限）、`breakdowns` 的 TTF／TTR distribution（replace）、`arrival/schedule/segments/*/rate` 與 `arrival/schedule/releases/*/quantity`（replace）、`batch` 的 min_size／max_size／max_wait（replace）、`setups` 的 `transitions/*/distribution` 與 `default`（replace，review M2）、resource 的 `calendar_id`（replace，只能指向既有 calendar）、`shift_capacity/*`（replace）、`calendars/*/shifts` 與 `calendars/*/exceptions`（replace）；凡是允許修改 distribution 的路徑，都可換成 D-056 的 lognormal／Weibull。新增或刪除 breakdowns、setups、calendars、schedule、batch，以及改 `breakdowns/clock`，仍走 draft→publish。Manual 與 AI edit allowlist 加入根層 `calendars`。D-020 的「先 test 元素 id」照舊；candidate 照舊完整驗證（含 D-050 的 R1–R3）。Risk：縮小 buffer 或把無限改為有限、任何 breakdown 參數、任何換線參數、改 calendar、shifts、每班容量或例外、改 release rate 或投入量、改 batch 參數至少 medium；擴大既有的有限 buffer 或改回無限為 low（與增加 resource capacity 對稱）；模型只能調高（D-027）。
 - B：不擴充，新參數只能發布新版本。後果：示範的「加大 FCT 前緩衝」必須發布新版本，baseline 與 scenario 不再屬同一 ModelVersion，SIMULATION_SPEC §7 的比較條件不成立（comparable=false），只能並列描述值。
 - C：只加 queue `capacity`（示範所需的最小集合）。後果：最小；班表、故障、投入的 what-if 要發布新版本，同樣不可比較。
 
-**建議：A。** 理由：工廠的典型 what-if（加緩衝、加一班、縮短 MTTR、改投入）都是參數，不是拓樸；B、C 會讓這些比較失去 §7 的可比性。若 owner 希望先收斂，C 是最小可行的退路。
+**建議：A。** 理由：工廠的典型 what-if（加緩衝、加一班、縮短 MTTR、縮短換線、改投入）都是參數，不是拓樸；B、C 會讓這些比較失去 §7 的可比性。若 owner 希望先收斂，C 是最小可行的退路。
 
 **決定性與 digest。** 不影響 kernel；patch_hash 與 effective_model_hash 照 D-019。
 
@@ -316,13 +344,28 @@ Owner 的方向同 D-055：納入 P0。以下語義仍為 PROPOSED。
 
 - **在 domain pack 中以現有 primitive 模擬**：resource 無法跨 process 持有、capacity 不隨時間變，做不到；也違反 ADR-010（domain 不改 generic engine）。
 - **改用外部 DES 函式庫或在 production 跑 SimPy**：違反 ADR-006（native Go DES）與 AGENTS §7（不加 arbitrary Python runtime）；SimPy 只作獨立 reference。
-- **一般化的「跨步驟持有 resource」或 script hook**：能表達更多（機櫃在測試槽內除錯），但範圍與驗證成本遠大於 P0 需要；延後（見 ELECTRONICS_LINE §9）。
+- **一般化的「跨步驟持有 resource」或 script hook**：能表達更多（機櫃在測試槽內除錯），但會改變 D-050 的 holder 與阻塞圖，範圍與驗證成本大；script hook 違反 AGENTS §7。跨步驟持有建議在核心完成後另立任務（見下表）。
 
 ## Consequences
 
-- **批准後的 contract 變更（T-046 phase 2）**：`model-ir.schema.json`（queue `capacity`、resource `breakdowns`、`calendar_id` 與 `setups`、根層 `calendars`、source `arrival.schedule`、process `batch`、distribution 的 `lognormal` 與 `weibull`、`metrics[]` 的 `system_wip`，D-058）；`canonical-event.schema.json`（D-059）；`simulation.schema.json`（Result 的 optional 新成員、trace 的新事件類型）；validator codes（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`、`SETUP_INVALID`）與 D-023 的排序；patch allowlist（D-057）；valid／invalid fixtures；`make ts-contracts`。
+- **批准後的 contract 變更（T-046 phase 2）**：`model-ir.schema.json`（queue `capacity`；resource `breakdowns`（含 `clock`）、`calendar_id`、`shift_capacity`、`setups`；根層 `calendars`（含 shift `label` 與 `exceptions`）；source `arrival.schedule`（rate 型與 table 型）；process `batch`；distribution 的 `lognormal` 與 `weibull`；`metrics[]` 的 `system_wip`、`flow_count`、`sink_count`、`period_throughput`，D-058）；`canonical-event.schema.json`（D-059）；`simulation.schema.json`（Result 的 optional 新成員與每個 replication 的 resource 狀態積分（D-058）、trace 的新事件類型、run failure 的 `SIMULATION_DEADLOCK`／`SIMULATION_STALLED`）；validator codes（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`、`SETUP_INVALID`、warning `STALL_RISK`，以及 `RESOURCE_REQUIREMENT_INVALID` 的 D-050 R3 規則）與 D-023 的排序；patch allowlist（D-057）；valid／invalid fixtures；`make ts-contracts`。
 - **Engine**：T-047–T-050 各升一次 engine_version minor（des-go-0.2.0 起）；鎖定檔不重新產生；凍結的舊 kernel 保留在 test 中；`make simulation-reference-test` 由 SimPy reference 取代（SimPy 的版本與授權在引入時固定並記入 THIRD_PARTY_NOTICES，不用 floating latest）。
-- **效能**：解除阻塞在 dispatch 內連鎖、每個 unit 的故障事件與班表事件增加事件數；全部計入 event budget，T-037 的 benchmark 需涵蓋代表性的產線模型。
+- **效能**：解除阻塞在 dispatch 內連鎖、每個 unit 的故障事件與班表事件增加事件數，D-050 的檢查與 held candidate 數成正比；全部計入 event budget，T-037 的 benchmark 需涵蓋代表性的產線模型。
 - **PRD 已列為 P1、維持 P1**：preemption（故障、交班與換線的中斷）、優先權與派工規則（含依產品分組的換線排序）、進階 routing、connectors（MES／CFX 等）。
-- **Agent 為了收斂而延後、不屬 PRD P1（owner 可要求納入 P0）**：每班不同人數（D-052）、明確投入表（D-053 B）、capacity 0 的 buffer（D-049）、合併／拆分（拼板，D-054 C）、跨步驟持有 resource（機櫃在槽內除錯）、假日與例外日（絕對日期；時區與 DST 仍不用，T-049 scope）、實際的 FPY 與重測次數統計、報廢率、逐期的模擬／觀測序列（後三者需要 T-029 的 metrics 對應）、搬運系統（P0 用 delay node）。
-- **風險**：finish-first 在長 service（燒機、機櫃測試）下低估故障與交班的影響，UI 與文件須標示；`BLOCKING_CYCLE` 是保守條件，可能拒絕實際不會卡住的模型，錯誤訊息要說明「每個迴圈至少一個無限 buffer」。
+- **風險**：finish-first 在長 service（燒機、機櫃測試）下低估故障與交班的影響，UI 與文件須標示；D-050 的 R1 是保守條件，可能拒絕實際不會卡住的模型，錯誤訊息要指出 cycle 上的 buffer 與共用 resource，並說明兩種修正（cycle 上至少一個 buffer 改為無限，或讓被擋的 process 不與擋住它的 process 共用 resource）；有 `STALL_RISK` warning 的模型可能在 runtime 以 `ErrStalled` 失敗，或在殘餘情形下只表現為 backlog 增長（D-050「不保證」）。
+
+**其餘功能的建議（H-017：owner 希望盡量保留功能）。** 下表是 agent 原先為了收斂而延後、不屬 PRD P1 的項目；「P0」者已寫進對應 decision 的提案，仍待 owner 批准。
+
+| 項目 | 建議 | 成本 | 理由 |
+|---|---|---|---|
+| 每班不同人數 | P0（D-052 A＋） | 低：只是 S(t) 的另一種寫法；R2 改以 S ≥ units 判定 | 夜班人力較少很常見 |
+| 假日與例外日（絕對 model 時間，不用時區） | P0（D-052 A＋） | 低：S(t) 的覆蓋；D-050 的 W(q) 加上最長例外 | 週別產出比對（REQ-025）需要 |
+| 投入表（整批投入） | P0（D-053 table 型） | 低：不用 RNG，validation 簡單 | 生產計畫常以整批投入 |
+| 實際的 FPY 與重測次數、報廢率、逐期的模擬序列 | P0（D-058 的宣告式 generic metrics） | 低到中：只在 IR `metrics[]` 宣告時計數；逐期需每個 replication 一個陣列 | FPY 的檢查與 REQ-025 的逐期比較 |
+| Capacity 0 的 buffer（無緩衝直接交接） | 之後：T-047 完成後另立任務 | 中到高：要「進入即授予」的保留語義，改變「只在 dispatch 授予」的不變量 | 以 capacity 1 近似，差距是一個暫存位 |
+| 合併／拆分（拼板、分板） | 之後：核心完成後另立任務 | 高：新的 node 類型、entity 合併與新 ID、lead time、trace 與 3D 的定義 | P0 以板為單位可運作 |
+| 跨步驟持有 resource（機櫃在槽內除錯） | 之後：核心完成後另立任務 | 高：新 primitive，改變 D-050 的 holder 與阻塞圖 | P0 有標示過的近似 |
+| 忙碌時間的故障時鐘 | 之後 | 中：所有故障 resource 都要 unit identity | D-051 的 scheduled 時鐘已修正主要偏差 |
+| 做不完就不開始（交班前） | 之後 | 中：要先抽 service 再決定是否開始，抽樣的丟棄規則會影響配對 | 需求較少，finish-first 已記 overtime |
+| 搬運系統（AGV、輸送） | 之後 | 高：載具 resource、路徑與距離 | delay node（加上需要人力的 process）可近似 |
+| 分段的 interarrival 分布（D-053 C） | 不採用 | — | 跨段規則扭曲分布，且打亂 scenario 之間的配對 |

@@ -1648,7 +1648,8 @@
       ],
       "decision_gates": [
         "D-009",
-        "D-016"
+        "D-016",
+        "D-059"
       ],
       "scope": [
         "read-only mapping suggestion獨立於confirmed mapping。",
@@ -2750,7 +2751,21 @@
         "REQ-024",
         "REQ-025"
       ],
-      "decision_gates": [],
+      "decision_gates": [
+        "D-047",
+        "D-048",
+        "D-049",
+        "D-050",
+        "D-051",
+        "D-052",
+        "D-053",
+        "D-054",
+        "D-055",
+        "D-056",
+        "D-057",
+        "D-058",
+        "D-059"
+      ],
       "scope": [
         "定義電子組裝／測試線 domain：站別（研究提案 SMT、AOI、ICT、FCT、燒機、包裝出貨，含測試失敗→除錯→重測）、資源 catalog（machine、tester、chamber、operator）、指標（UPH、FPY、WIP、阻塞／缺料、availability）與資料不足時的 unavailable 規則（REQ-015）。",
         "依 TWIN_IR_SPEC §8 提出新核心 primitive 的 ADR，語義列為 PROPOSED decisions：有限緩衝與阻塞、resource 故障（MTBF/MTTR、對服務中工件的處理）、班表（resource 可用時段、交班時的處理）、隨時間變化的投入（release schedule）、批次 process、換線是否延至 P1、是否加 lognormal/Weibull；每項附選項、建議、golden vectors 與 SimPy reference 的對照方式。agent 不自行批准。",
@@ -2864,6 +2879,7 @@
       "decision_gates": [
         "D-047",
         "D-048",
+        "D-050",
         "D-051",
         "D-056",
         "D-057"
@@ -2918,6 +2934,7 @@
       "decision_gates": [
         "D-047",
         "D-048",
+        "D-050",
         "D-052",
         "D-053",
         "D-057"
@@ -2973,6 +2990,7 @@
         "D-047",
         "D-048",
         "D-049",
+        "D-050",
         "D-054",
         "D-055",
         "D-057"
@@ -3032,6 +3050,8 @@
       "decision_gates": [
         "D-047",
         "D-050",
+        "D-055",
+        "D-056",
         "D-058"
       ],
       "scope": [
@@ -3080,7 +3100,11 @@
         "REQ-021",
         "REQ-025"
       ],
-      "decision_gates": [],
+      "decision_gates": [
+        "D-058",
+        "D-059",
+        "D-060"
+      ],
       "scope": [
         "以固定 seed 產生標為 synthetic 的 station event logs（含停機事件、測試失敗與重測），附產生它的 ground-truth 模型；不使用任何客戶資料。",
         "走一次 import→mapping→dataset，baseline run 並列模擬與觀測（例如每週產出、站別 cycle time）與誤差（REQ-025）；沒有觀測資料時回 unavailable。",
