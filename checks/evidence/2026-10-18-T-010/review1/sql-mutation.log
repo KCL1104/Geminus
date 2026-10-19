@@ -11,3 +11,4 @@ worker-writes-user	KILLED
 user-any-actor	KILLED
 no-search-path	KILLED
 total=12 unexpected=0
+exit=0
