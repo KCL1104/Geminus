@@ -56,7 +56,19 @@ IDS = {
     # T-016 (imports.sql): uploads, their profile jobs and an ID no row has.
     "IMP_A3": ("imp", "A", 3), "IMP_A4": ("imp", "A", 4), "IMP_A5": ("imp", "A", 5), "IMP_A6": ("imp", "A", 6),
     "IMP_A9": ("imp", "A", 9), "JOB_A21": ("job", "A", 21), "JOB_A22": ("job", "A", 22),
+    # T-024 (proposals.sql, pool_rows.sql): proposals and their ID allocation pools (D-046).
+    "AIP_A3": ("aip", "A", 3), "AIP_A4": ("aip", "A", 4), "AIP_B1": ("aip", "B", 1),
 }
+
+
+def id_pool(first: int) -> str:
+    """A D-046 pool as JSON: 16 lowercase-ULID-shaped IDs of each kind, <kind>_01m4ydqk00ta<n>."""
+    pool = {kind: [f"{kind}_01m4ydqk00ta{first + i:014d}" for i in range(16)] for kind in ("node", "flow", "resource")}
+    for kind, ids in pool.items():
+        for value in ids:
+            if not re.fullmatch(rf"{kind}_[0-7][0-9a-hjkmnp-tv-z]{{25}}", value):
+                raise ValueError(value)
+    return json.dumps(pool, separators=(",", ":"))
 
 
 def values() -> dict[str, str]:
@@ -76,6 +88,7 @@ def values() -> dict[str, str]:
     v["EMPTY_MANIFEST_HASH"] = "sha256:" + hashlib.sha256(rfc8785.dumps([])).hexdigest()
     # CB-14: the same ID with its '_' replaced, which LIKE's '_' wildcard would accept.
     v["ORG_A_WILD"] = v["ORG_A"].replace("_", "X", 1)
+    v["POOL_1"], v["POOL_2"] = id_pool(1), id_pool(101)
     return v
 
 

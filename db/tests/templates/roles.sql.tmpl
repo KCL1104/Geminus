@@ -57,8 +57,8 @@ INSERT INTO twin.datasets(id,organization_id,project_id,kind,name,created_by)
   VALUES ('{{DS_A}}','{{ORG_A}}','{{PRJ_A}}','empirical_samples','Review duration','{{USR_A}}');
 INSERT INTO twin.dataset_versions(id,organization_id,dataset_id,version,object_key,content_hash,content_type,row_count,unit,created_by)
   VALUES ('{{DSV_A1}}','{{ORG_A}}','{{DS_A}}',1,'tenant/{{ORG_A}}/datasets/a1.json','{{H1}}','application/json',3,'minute','{{USR_A}}');
-INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,source_import_id,mode,status,intent,created_by)
-  VALUES ('{{AIP_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','{{IMP_A1}}','edit','generating','from import','{{USR_A}}');
+INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,source_import_id,mode,status,intent,created_by,id_pool)
+  VALUES ('{{AIP_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','{{IMP_A1}}','edit','generating','from import','{{USR_A}}','{{POOL_1}}');
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 

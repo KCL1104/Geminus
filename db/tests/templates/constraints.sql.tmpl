@@ -216,14 +216,14 @@ SELECT pg_temp.must_fail($q$INSERT INTO twin.run_datasets(organization_id,run_id
 
 -- D-027: risk_level is max(server_risk_level, provider_risk_claim); the
 -- provider can only raise it and the server value is required with it.
-SELECT pg_temp.must_fail(format($q$INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,mode,status,intent,created_by,server_risk_level,provider_risk_claim,risk_level) VALUES ('aip_01M4YDQK00TA00000000000009','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','t','{{USR_A}}',%L,%L,%L)$q$, s, c, r),'23514')
+SELECT pg_temp.must_fail(format($q$INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,mode,status,intent,created_by,server_risk_level,provider_risk_claim,risk_level,id_pool) VALUES ('aip_01M4YDQK00TA00000000000009','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','t','{{USR_A}}',%L,%L,%L,'{{POOL_1}}')$q$, s, c, r),'23514')
   FROM (VALUES ('low','high','medium'), ('high','low','low'), (NULL,'high','high'), (NULL,NULL,'low'), ('low',NULL,NULL),
                ('low','low',NULL), ('medium','low','high'), ('critical','low','critical')) AS t(s, c, r);
-INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,mode,status,intent,created_by,server_risk_level,provider_risk_claim,risk_level) VALUES
-  ('{{AIP_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','raise capacity','{{USR_A}}','low','high','high'),
-  ('{{AIP_A2}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','claim only','{{USR_A}}',NULL,'low',NULL),
-  ('aip_01M4YDQK00TA00000000000003','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','server wins','{{USR_A}}','medium','low','medium'),
-  ('aip_01M4YDQK00TA00000000000004','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','not classified yet','{{USR_A}}',NULL,NULL,NULL);
+INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,mode,status,intent,created_by,server_risk_level,provider_risk_claim,risk_level,id_pool) VALUES
+  ('{{AIP_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','raise capacity','{{USR_A}}','low','high','high','{{POOL_1}}'),
+  ('{{AIP_A2}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','claim only','{{USR_A}}',NULL,'low',NULL,'{{POOL_1}}'),
+  ('aip_01M4YDQK00TA00000000000003','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','server wins','{{USR_A}}','medium','low','medium','{{POOL_1}}'),
+  ('aip_01M4YDQK00TA00000000000004','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','not classified yet','{{USR_A}}',NULL,NULL,NULL,'{{POOL_1}}');
 SELECT pg_temp.check(has_column_privilege('twin_worker','twin.ai_proposals','server_risk_level','UPDATE') AND
                      has_column_privilege('twin_worker','twin.ai_proposals','provider_risk_claim','UPDATE'),
   'the worker records server risk and the provider claim');

@@ -23,12 +23,26 @@ run migrations/0007_job_states.up.sql
 run migrations/0008_me.up.sql
 run migrations/0009_simulation_runs.up.sql
 run migrations/0010_import_uploads.up.sql
+run migrations/0011_ai_id_pool.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
 run db/tests/self.sql
 run db/tests/runs.sql
 run db/tests/imports.sql
+run db/tests/proposals.sql
+run migrations/0011_ai_id_pool.down.sql
+# D-046: 0011 stores the pool each proposal is created with, which cannot be
+# made up afterwards. On a database with proposals it stops and changes nothing.
+run db/tests/pool_rows.sql
+if out=$(psql -X "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0011_ai_id_pool.up.sql 2>&1); then
+  echo 'FAILED: migration 0011 ran on a database with proposals' >&2; exit 1
+fi
+grep -q 'migration 0011 stores the ID allocation pool' <<<"$out" || { echo "FAILED: migration 0011 stopped for another reason: $out" >&2; exit 1; }
+state=$(psql -X "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "SELECT count(c.column_name) || ' ' || bool_and(r.relforcerowsecurity)
+  FROM pg_class r LEFT JOIN information_schema.columns c ON c.table_schema='twin' AND c.table_name='ai_proposals' AND c.column_name='id_pool'
+  WHERE r.oid = 'twin.ai_proposals'::regclass")
+[[ "$state" == '0 true' ]] || { echo "FAILED: migration 0011 changed ai_proposals: $state" >&2; exit 1; }
 run migrations/0010_import_uploads.down.sql
 run migrations/0009_simulation_runs.down.sql
 run migrations/0008_me.down.sql
@@ -60,10 +74,12 @@ run migrations/0007_job_states.up.sql
 run migrations/0008_me.up.sql
 run migrations/0009_simulation_runs.up.sql
 run migrations/0010_import_uploads.up.sql
+run migrations/0011_ai_id_pool.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
 run db/tests/self.sql
 run db/tests/runs.sql
 run db/tests/imports.sql
+run db/tests/proposals.sql
 echo 'DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.'
