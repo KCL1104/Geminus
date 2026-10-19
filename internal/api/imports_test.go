@@ -737,7 +737,7 @@ func TestProfileIntegrity(t *testing.T) {
 		}
 		return decode[accepted](t, r).ID
 	}
-	changed, removed, shorter := up("key-int-1"), up("key-int-2"), up("key-int-3")
+	changed, removed, shorter, longer := up("key-int-1"), up("key-int-2"), up("key-int-3"), up("key-int-4")
 	file := func(id string) string { return filepath.Join(e.root, "tenant", e.a.ID, "imports", id, "upload") }
 	if err := os.WriteFile(file(changed), []byte("a,b\n1,3\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -748,8 +748,11 @@ func TestProfileIntegrity(t *testing.T) {
 	if err := os.WriteFile(file(shorter), []byte("a,b\n1,"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(file(longer), []byte("a,b\n1,2\n3,4\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	drain(t, e.profileLoop(t, profiler.Config{Objects: e.objects}, nil), 10*time.Second)
-	for id, want := range map[string]string{changed: "UPLOAD_CORRUPT", removed: "UPLOAD_MISSING", shorter: "UPLOAD_CORRUPT"} {
+	for id, want := range map[string]string{changed: "UPLOAD_CORRUPT", removed: "UPLOAD_MISSING", shorter: "UPLOAD_CORRUPT", longer: "UPLOAD_CORRUPT"} {
 		got := e.getImport(t, editor.Subject, id)
 		if got.Status != "FAILED" || got.Error.Error.Code != "INTERNAL_ERROR" || got.Error.Error.Details[0].Code != want || got.Profile != nil {
 			t.Errorf("%s: %+v", want, got)

@@ -128,8 +128,12 @@ func public(i store.Import, requestID string) (Import, error) {
 	if (i.Status == store.Uploaded || i.Status == store.Profiling) && (i.JobStatus == string(jobs.Failed) || i.JobStatus == string(jobs.Cancelled)) {
 		p.Status = string(store.Failed)
 		failure = i.JobFailure
-		if failure == nil {
+		switch {
+		case failure != nil:
+		case i.JobStatus == string(jobs.Cancelled):
 			failure = []byte(`{"code":"` + store.JobCancelled + `","message":"the profile job was ended before it profiled the file","retryable":false}`)
+		default: // a failed job records its failure; this is the stand-in should one not
+			failure = []byte(`{"code":"INTERNAL","message":"the profile job failed","retryable":false}`)
 		}
 	}
 	if p.Status == string(store.Failed) {

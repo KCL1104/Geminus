@@ -209,7 +209,9 @@ func (h *Handler) profile(ctx context.Context, org string, attempt int, imp stor
 		return outcome{}, h.storageFailure(ctx, err)
 	}
 	defer rc.Close()
-	c := &counted{r: storeReader{rc}, h: sha256.New()}
+	// One byte more than the upload is enough to tell an object that is
+	// longer than it.
+	c := &counted{r: storeReader{io.LimitReader(rc, imp.Size+1)}, h: sha256.New()}
 	res, perr := importprofile.Read(ctx, c, format, h.cfg.Limits)
 	var fail *importprofile.Failure
 	switch {

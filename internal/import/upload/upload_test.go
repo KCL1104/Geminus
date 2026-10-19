@@ -238,6 +238,11 @@ func TestFailedJobs(t *testing.T) {
 	if p, err := public(cancelled, ""); err != nil || p.Status != "FAILED" || p.Error.Error.Details[0].Code != store.JobCancelled {
 		t.Errorf("%+v %v", p, err)
 	}
+	silent := base
+	silent.JobStatus = string(jobs.Failed)
+	if p, err := public(silent, ""); err != nil || p.Status != "FAILED" || p.Error.Error.Code != "INTERNAL_ERROR" || p.Error.Error.Details[0].Code != "INTERNAL" {
+		t.Errorf("a failed job without its failure: %+v %v", p, err)
+	}
 	running := base
 	running.JobStatus = string(jobs.Running)
 	if p, err := public(running, ""); err != nil || p.Status != "PROFILING" || p.Error != nil || string(p.Profile) != "null" {
