@@ -850,11 +850,26 @@
       ],
       "still_open": [
         "T-046 提出的引擎語義 decisions（阻塞、故障、班表、投入、批次、換線）待 owner 批准",
-        "launchpad 的計畫名稱與申請期限（影響排程）",
+        "launchpad 的計畫名稱（期限：owner 表示「時間還很久」，H-017）",
         "示範用的 live AI：model、quota 與只用 synthetic 資料時的資料政策（目前停用，只用 fake provider）",
         "研究稿是否提交到 repo（建議 repo 改私有後再提交）",
         "客戶訪談：owner 目前沒有接觸對象；launchpad 申請通常會看客戶驗證，建議並行做 5–10 場訪談",
         "第二個 domain（倉儲）開始前決定 3D authoring（H-014）"
+      ]
+    },
+    {
+      "id": "H-017",
+      "subject": "範圍與時程、示範用 live AI、重開停掉的工作",
+      "decision": "(1) 時程還很久，盡量保留所有功能：不為時程刪減 P0；換線（setup）與 lognormal／Weibull 依此列為 P0 提案（D-055、D-056，仍 PROPOSED）；agent 為簡化而延後、不屬 PRD P1 的項目由 owner 在 T-046 的決策頁決定。PRD 已列為 P1 的項目（priority、preemption、進階 routing、connectors）仍為 P1。(2) 給 launchpad 評審看的示範要用真的 AI（owner：「好」）。這不解除 live AI 的 gate：仍需 T-024 與 owner 對 model、quota、資料政策的決定；agent 提出的建議為 Claude Opus 5.5、開發期兩個帳號合計每月 100 美元上限、示範期只送 synthetic 資料與使用者自己輸入的文字。Owner 以為已提供 API key，但目前環境變數、對話紀錄與 repo 中都沒有 key；key 須由 owner 以雲端環境的 secret 提供（GEMINUS_ANTHROPIC_API_KEY_A／_B），不得貼在對話中。(3) 重開被中斷的 T-023 與 DESIGN.md（documenter）。",
+      "quote": "1. 時間還很久，盡量保留所有功能 2. 好，不過我不是已經給你 api key 了嗎？ 3. 好",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-19",
+      "source": "Claude Code session：owner 回答 agent 的三個問題（launchpad 期限、示範是否用真的 AI、是否重開停掉的工作），由 agent 記錄",
+      "still_open": [
+        "live AI 的 model、quota、資料政策（agent 建議待 owner 確認）",
+        "owner 以環境 secret 提供兩個 API key",
+        "T-046 延後項目是否納入 P0（決策頁）",
+        "launchpad 的計畫名稱"
       ]
     }
   ]
