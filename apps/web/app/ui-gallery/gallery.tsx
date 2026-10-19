@@ -57,9 +57,9 @@ export function Gallery() {
     return sort.direction === "descending" ? out.reverse() : out;
   }, [sort]);
   const columns = [
-    { id: "path", name: t("gallery.table.path"), isRowHeader: true, allowsSorting: true },
-    { id: "code", name: t("gallery.table.code"), allowsSorting: true },
-    { id: "severity", name: t("gallery.table.severity"), allowsSorting: true },
+    { id: "path", name: t("gallery.table.path"), isRowHeader: true, allowsSorting: true, minWidth: 200 },
+    { id: "code", name: t("gallery.table.code"), allowsSorting: true, minWidth: 200 },
+    { id: "severity", name: t("gallery.table.severity"), allowsSorting: true, minWidth: 110 },
   ];
   const cell = (row: Issue, column: string) =>
     column === "severity" ? t(row.severity === "error" ? "gallery.table.error" : "gallery.table.warning") : <code>{row[column as "path" | "code"]}</code>;

@@ -7,7 +7,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def main():
     # Only repository docs; vendored/installed trees carry their own Markdown.
-    skip={'.git','.venv','node_modules','.next'}
+    skip={'.git','.venv','node_modules','.next','test-results','playwright-report'}
     count=0;files=sorted(p for p in ROOT.rglob('*.md') if not skip & set(p.relative_to(ROOT).parts))
     for path in files:
         text=path.read_text(encoding='utf-8')

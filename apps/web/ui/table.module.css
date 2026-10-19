@@ -87,6 +87,15 @@
   border-bottom: 1px solid var(--gm-color-border);
 }
 
+/* A virtualized table's cells have the column's width, whatever their
+   text: cut it off rather than paint over the next cell. */
+.virtual .column,
+.virtual .cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .empty {
   margin: 0;
   padding: var(--gm-space-4);

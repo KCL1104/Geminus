@@ -18,12 +18,25 @@ import { cx } from "./cx";
 import { SortIcon } from "./icons";
 import styles from "./table.module.css";
 
-export type TableColumn = { id: string; name: string; isRowHeader?: boolean; allowsSorting?: boolean };
+export type TableColumn = {
+  id: string;
+  name: string;
+  isRowHeader?: boolean;
+  allowsSorting?: boolean;
+  /**
+   * The narrowest the column gets in a virtualized table, in px. There the
+   * columns share the table's width and a cell does not grow with its
+   * text: what does not fit is cut off with an ellipsis (the row's text
+   * still has all of it). Wider columns than the table scroll sideways.
+   */
+  minWidth?: number;
+};
 
 /** Above this many rows a table is virtualized and rendered in the browser only (ADR-021). */
 export const virtualizeAbove = 50;
 const rowHeight = 32;
 const virtualHeight = 480;
+const defaultMinWidth = 120;
 
 const noSubscription = () => () => {};
 /** False while rendering on the server and hydrating, true after. */
@@ -76,7 +89,15 @@ export function DataTable<T extends { id: string }>({ label, columns, rows, rend
           </Column>
         )}
         {columns.map((c) => (
-          <Column key={c.id} id={c.id} isRowHeader={c.isRowHeader} allowsSorting={c.allowsSorting} textValue={c.name} className={styles.column}>
+          <Column
+            key={c.id}
+            id={c.id}
+            isRowHeader={c.isRowHeader}
+            allowsSorting={c.allowsSorting}
+            textValue={c.name}
+            minWidth={virtual ? (c.minWidth ?? defaultMinWidth) : undefined}
+            className={styles.column}
+          >
             {({ sortDirection }) => (
               <span className={styles.columnInner}>
                 {c.name}
