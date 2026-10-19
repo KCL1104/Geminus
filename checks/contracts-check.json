@@ -1,9 +1,9 @@
 {
   "status": "PASS_LIMITED_SPEC_CHECKS",
   "schema_metaschemas": 13,
-  "schema_positive_fixtures": 32,
-  "schema_negative_fixtures": 54,
-  "negative_fixtures_with_exact_error_path": 49,
+  "schema_positive_fixtures": 35,
+  "schema_negative_fixtures": 55,
+  "negative_fixtures_with_exact_error_path": 50,
   "limited_semantic_negative_fixtures": 7,
   "resolved_local_ref_occurrences": 803,
   "openapi_operations": 42,

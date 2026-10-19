@@ -91,7 +91,7 @@ export type ResetDraft = {
   confirm_discard: true;
 };
 
-export type CancelSimulation = Record<string, unknown>;
+export type CancelSimulation = Record<string, never>;
 
 export type ProposalRequest = {
   base_version_id: ModelVersionID;

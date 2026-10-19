@@ -819,6 +819,37 @@
       "expected_error_paths": [
         ""
       ]
+    },
+    {
+      "id": "valid-cancel-simulation",
+      "instance": "testdata/contracts/valid-cancel-simulation.json",
+      "schema": "schemas/http.schema.json#/$defs/CancelSimulation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-cancel-simulation-option",
+      "instance": "testdata/contracts/invalid-cancel-simulation-option.json",
+      "schema": "schemas/http.schema.json#/$defs/CancelSimulation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-run-failed",
+      "instance": "testdata/contracts/valid-run-failed.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Run",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-progress-snapshot",
+      "instance": "testdata/contracts/valid-progress-snapshot.json",
+      "schema": "schemas/http.schema.json#/$defs/ProgressSnapshot",
+      "valid": true,
+      "layer": "schema"
     }
   ]
 }

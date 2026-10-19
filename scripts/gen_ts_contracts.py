@@ -89,6 +89,8 @@ class Gen:
         props = s.get('properties', {})
         extra = s.get('additionalProperties', True)
         if not props:
+            if extra is False:
+                return 'Record<string, never>'  # a closed empty object: no member at all
             value = self.ts(extra, indent) if isinstance(extra, dict) else 'unknown'
             return f'Record<string, {value}>'
         pad, inner = '  ' * indent, '  ' * (indent + 1)

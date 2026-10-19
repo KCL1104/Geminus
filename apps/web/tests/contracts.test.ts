@@ -5,7 +5,7 @@
 // typecheck` fails if a type ever becomes too permissive.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { AnalysisOutput, Error, JsonPatch, ModelIR, ProposalOutput } from "../lib/contracts";
+import type { AnalysisOutput, CancelSimulation, Error, JsonPatch, ModelIR, ProposalOutput } from "../lib/contracts";
 
 const fixture = (name: string): unknown =>
   JSON.parse(readFileSync(new URL(`../../../testdata/contracts/${name}`, import.meta.url), "utf8"));
@@ -56,11 +56,15 @@ const errorBody: Error = {
   },
 };
 
+// cancelSimulation's body is a closed empty object (T-023).
+const cancelBody: CancelSimulation = {};
+
 describe("generated contract types match the shared fixtures", () => {
   it.each([
     ["valid-minimal-ir.json", minimalIR],
     ["valid-patch.json", scenarioPatch],
     ["valid-error.json", errorBody],
+    ["valid-cancel-simulation.json", cancelBody],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
   });
@@ -80,4 +84,6 @@ export const rejected = {
   analysisRunId: { run_id: "sim_x", summary: "s" } satisfies NonNullable<AnalysisOutput["baseline"]>,
   // @ts-expect-error provider output never claims approval (D-002)
   providerApproval: { status: "approved" } satisfies Pick<ProposalOutput, "status">,
+  // @ts-expect-error a closed empty object takes no member: a cancellation has no options (T-023)
+  cancelOption: { force: true } satisfies CancelSimulation,
 };

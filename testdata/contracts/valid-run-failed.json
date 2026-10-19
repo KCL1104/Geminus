@@ -1,0 +1,71 @@
+{
+  "id": "sim_01M4YDQK00FGZZWH0PP15XPNFA",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+  "model_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "name": "Double CI Capacity",
+  "scenario_patch": [
+    {
+      "op": "test",
+      "path": "/resources/1/id",
+      "value": "ci_runner"
+    },
+    {
+      "op": "replace",
+      "path": "/resources/1/capacity",
+      "value": 6
+    }
+  ],
+  "scenario_id": null,
+  "config": {
+    "horizon": {
+      "value": 30,
+      "unit": "day"
+    },
+    "warmup": {
+      "value": 2,
+      "unit": "day"
+    },
+    "replications": 100,
+    "seed": 1837462,
+    "trace_level": "sampled"
+  },
+  "config_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "model_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "effective_model_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "engine_version": "des-go-0.1.0",
+  "dataset_bindings": [],
+  "execution_limits": {
+    "wall_timeout_seconds": 300,
+    "max_events": 10000000,
+    "max_active_entities": 100000,
+    "max_entity_visits": 10000,
+    "max_trace_events": 100000
+  },
+  "status": "failed",
+  "progress": {
+    "completed_replications": 0,
+    "total_replications": 100,
+    "events_processed": 0,
+    "revision": 3
+  },
+  "cancellation_requested": false,
+  "created_at": "2026-10-19T08:00:00Z",
+  "started_at": "2026-10-19T08:00:01Z",
+  "finished_at": "2026-10-19T08:00:09Z",
+  "error": {
+    "error": {
+      "code": "MODEL_VALIDATION_FAILED",
+      "message": "the run exceeded its event budget (max_events)",
+      "details": [
+        {
+          "path": "/execution_limits/max_events",
+          "reason": "the run exceeded its event budget (max_events)",
+          "code": "EVENT_BUDGET_EXCEEDED",
+          "severity": "error"
+        }
+      ],
+      "request_id": "req_01M4YDQK00V6H8S0ST4F7510KR"
+    }
+  }
+}
