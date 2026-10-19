@@ -789,8 +789,8 @@
       "decided_at": "2026-10-19",
       "source": "Claude Code session 指示與 impeccable init 訪談回答，由 agent 記錄；寫入 PRODUCT.md",
       "still_open": [
-        "3D authoring 是否及何時納入（SOURCE 將其排除於 P0，改變須 owner 決定）",
-        "視覺方向與預設主題（沿用 H-011 的未決項）"
+        "3D authoring：H-014 決定 P0 不做，選定第二個 domain 時再決定",
+        "視覺方向與預設主題：已由 H-013 決定"
       ]
     },
     {
@@ -803,6 +803,18 @@
       "source": "Claude Code session 中 impeccable 方向輪的問題卡回答，由 agent 記錄；比較頁為該 session 的 artifact，草稿在 .impeccable/mocks/decision/",
       "still_open": [
         "依 Marey 方向建成的 design system（DESIGN.md、tokens、元件）待 owner 檢視"
+      ]
+    },
+    {
+      "id": "H-014",
+      "subject": "3D 建模（3D authoring）的時程",
+      "decision": "維持現狀：P0 只做唯讀 3D 檢視（T-033、T-034），3D authoring 不進 P0；選定第二個（空間型）domain 時再決定是否與何時納入。不另開空間型 IR 擴充的 spike。",
+      "quote": "就維持現狀吧",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-19",
+      "source": "Claude Code session 指示，由 agent 記錄；選項見該 session（維持現狀／加空間 IR spike／3D authoring 進 P0）",
+      "still_open": [
+        "選定第二個 domain 時決定 3D authoring 是否納入"
       ]
     }
   ]

@@ -50,7 +50,7 @@ Geminus 不是 DevOps dashboard，也不是 3D 動畫工具。它在架構上由
 ## Capabilities and Constraints
 
 - **Domain 範圍**：P0 先做 Software Delivery，因為它偏流程導向，最容易起步。第二個正式 domain 屬於 P1。長期願景涵蓋所有場景（H-012）。因此 kernel、介面詞彙、圖示和設計系統都不能預設只有軟體開發這一種情境，domain 專屬的東西由 DomainPack 提供。
-- **2D 與 3D**：P0 中 2D 是 authoring，3D 是唯讀的 projection 和 playback；兩者共用 entity ID 與 IR topology（SOURCE）。Owner 認為 3D 對後續的空間型 domain（工廠、倉儲、城市、建築）可能更關鍵（H-012）。不過 SOURCE 把 3D authoring 排除在 P0 之外，若要改變，需要 owner 另外決定（**未決**）。3D 是一級畫面，不是附屬品。
+- **2D 與 3D**：P0 中 2D 是 authoring，3D 是唯讀的 projection 和 playback；兩者共用 entity ID 與 IR topology（SOURCE）。Owner 認為 3D 對後續的空間型 domain（工廠、倉儲、城市、建築）可能更關鍵（H-012）。P0 只做唯讀 3D；3D authoring 在選定第二個 domain 時再決定（H-014）。3D 是一級畫面，不是附屬品。
 - **裝置**：以桌機為主。手機可以看結果、審核和批准或拒絕 proposal，但不編輯拓撲（H-012）。所有寬度都不能跑版（REQ-023）。
 - **語言**：英文 `en` 是預設，另支援繁體中文 `zh-Hant`。所有使用者可見的字串都來自 message catalog（REQ-022）。
 - **並行與不可變**：版本衝突（stale）時回 409 並清楚顯示，不 silent overwrite，也不自動 rebase。ModelVersion、Scenario 和完成的 result 都不可原地修改。
