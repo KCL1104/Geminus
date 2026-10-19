@@ -1,0 +1,29 @@
+
+ RUN  v5.0.4 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/review-t013/r2/src/apps/web
+
+ ❯ tests/api.test.ts (23 tests | 1 failed) 114ms
+   ❯ model writes and versions (T-013) (7)
+     × refuses a revision the server cannot have issued instead of throwing 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/api.test.ts > model writes and versions (T-013) > refuses a revision the server cannot have issued instead of throwing
+RangeError: invalid draft revision 0
+ ❯ draftETag lib/api/etag.ts:6:62
+      4|
+      5| export function draftETag(revision: number): string {
+      6|   if (!Number.isSafeInteger(revision) || revision < 1) throw new Range…
+       |                                                              ^
+      7|   return `"draft-revision-${revision}"`;
+      8| }
+ ❯ Object.publishVersion lib/api/client.ts:222:18
+ ❯ tests/api.test.ts:285:22
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 passed (23)
+   Start at  03:13:34
+   Duration  416ms (tests 53%, transform 31%, import 13%, worker 3%)
+

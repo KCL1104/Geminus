@@ -1,0 +1,38 @@
+
+ RUN  v5.0.4 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/review-t013/r2/src/apps/web
+
+ ❯ tests/api.test.ts (23 tests | 1 failed) 88ms
+   ❯ model writes and versions (T-013) (7)
+     × calls each operation at the contract's method and path 10ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/api.test.ts > model writes and versions (T-013) > calls each operation at the contract's method and path
+AssertionError: expected [ 'listVersions', 'GET', …(1) ] to deeply equal [ 'listVersions', 'GET', …(1) ]
+
+- Expected
++ Received
+
+  [
+    "listVersions",
+    "GET",
+-   "/v1/models/{id}/versions",
++   "/v1/models/{id}/version",
+  ]
+
+ ❯ tests/api.test.ts:328:48
+    326|       const call = f.calls[i]!;
+    327|       const template = call.url.pathname.replace(/\/(prj|mdl|mv)_[0-9A…
+    328|       expect([id, call.init.method, template]).toEqual([id, op?.method…
+       |                                                ^
+    329|     }
+    330|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 passed (23)
+   Start at  03:13:37
+   Duration  329ms (tests 52%, transform 32%, import 13%, worker 3%)
+

@@ -487,7 +487,7 @@ func TestPatchResultsAreStoredCanonical(t *testing.T) {
 	for name, value := range map[string]string{
 		"negative zero":       `{"z":-0}`,
 		"UTF-16 member order": `{"：":1,"𠀀":2,"z":0}`,
-		"empty and U+10000":   `{"":1,"𐀀":2}`,
+		"U+E000 and U+10000":  `{"\ue000":1,"𐀀":2}`,
 	} {
 		r := e.patch(editor.Subject, m.ID, etag(rev), `[{"op":"add","path":"/metadata","value":`+value+`}]`)
 		if r.status != 200 {

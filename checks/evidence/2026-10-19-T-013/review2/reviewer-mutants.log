@@ -1,0 +1,11 @@
+baseline SURVIVED
+list-models-no-project-check	KILLED	--- FAIL: TestRolesAndTenancy (0.11s) --- FAIL: TestLists (0.19s)
+publish-hash-without-model-id	KILLED	--- FAIL: TestPublishRefusals (0.24s)
+patch-response-no-etag	KILLED	--- FAIL: TestModelRoutes (0.18s)
+reset-response-no-etag	KILLED	--- FAIL: TestModelRoutes (0.26s)
+if-match-zero-accepted	KILLED	--- FAIL: TestIfMatch (0.00s)
+comment-nul-not-refused	KILLED	--- FAIL: TestPublishKeepsTheComment (0.13s)
+reset-ignores-latest	KILLED	--- FAIL: TestDraftWhenAnotherVersionArrives (0.09s)
+patch-stores-noncanonical-bytes-with-own-hash	KILLED	--- FAIL: TestCleanAgainstItsOwnBase (0.07s) --- FAIL: TestStoredIRIsTheCanonicalBytes (3.59s) --- FAIL: TestPatchedDraftIsCanonical (0.07s)
+viewer-may-list-only-as-writer	KILLED	--- FAIL: TestReadsSeeOneSnapshot (0.71s) --- FAIL: TestListLimits (0.06s) --- FAIL: TestCursorBindings (0.06s)
+exit 0

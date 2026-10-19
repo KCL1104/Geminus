@@ -1,0 +1,42 @@
+
+ RUN  v5.0.4 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/review-t013/r2/src/apps/web
+
+ ❯ tests/api.test.ts (23 tests | 1 failed) 113ms
+   ❯ model writes and versions (T-013) (7)
+     × refuses bad IDs and keys before sending anything 15ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/api.test.ts > model writes and versions (T-013) > refuses bad IDs and keys before sending anything
+AssertionError: expected [ 'not_found', 'invalid', …(5) ] to deeply equal [ 'not_found', 'invalid', …(5) ]
+
+- Expected
++ Received
+
+  [
+    "not_found",
+    "invalid",
+    "invalid",
+-   "invalid",
++   "network",
+    "not_found",
+    "not_found",
+    "not_found",
+  ]
+
+ ❯ tests/api.test.ts:273:57
+    271|       await client.listVersions(VERSION),
+    272|     ];
+    273|     expect(refused.map((r) => !r.ok && r.problem.kind)).toEqual(["not_…
+       |                                                         ^
+    274|     expect(f.calls).toHaveLength(0);
+    275|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 passed (23)
+   Start at  03:13:38
+   Duration  402ms (tests 48%, transform 38%, import 11%, worker 3%)
+

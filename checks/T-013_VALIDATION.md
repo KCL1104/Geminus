@@ -1,6 +1,6 @@
 # T-013 驗證報告：Model 的 HTTP contract 與 client 整合
 
-**日期：2026-10-19｜狀態：`review`（review round 1 CHANGES REQUESTED 已修正，送同一 reviewer 複核；依 H-003 驗收）｜需求：REQ-004、REQ-005、REQ-006｜Gate：D-012、D-015、D-024、D-025（APPROVED）、D-040、D-041（APPROVED，H-009）｜驗收測試：TEST-001、TEST-005、TEST-009（model 部分）**
+**日期：2026-10-19｜狀態：`done`（review round 1 CHANGES REQUESTED 已修正；round 2 由同一 reviewer 複核 dddb53e：ACCEPT，依 H-003 驗收）｜需求：REQ-004、REQ-005、REQ-006｜Gate：D-012、D-015、D-024、D-025（APPROVED）、D-040、D-041（APPROVED，H-009）｜驗收測試：TEST-001、TEST-005、TEST-009（model 部分）**
 
 範圍依 tasks.json：
 
@@ -105,3 +105,24 @@
 
 修正後 HTTP mutation 28 個全部被擋下（新增 6 個）。
 
+### 修正後的驗證（dddb53e）
+
+乾淨 worktree（`go clean -testcache`，DB 為新建的 `dt_test_t013_r1`），log 在 `checks/evidence/2026-10-19-T-013/review1/`：backend-test、backend-race、architecture-check（41 packages、11 rules）、frontend-test（14 個檔案 218 個 test）、spec-check、integration-test（migration 0001–0006 up／down／up 與全部 DB Go 測試）皆 exit 0；`go test -race -p 1 -v`（patch、models、storage/models、api、httpapi、auth、cmd/api）114 個 test 通過，0 SKIP、0 FAIL；HTTP mutation 28/28。CI：dddb53e 的 run [39192347470](https://github.com/KCL1104/Geminus/actions/runs/39192347470) 成功。
+
+## Review round 2（2026-10-19，同一 reviewer，審 dddb53e）
+
+結論 **ACCEPT**：M1、L1–L4、I1、I2、I4 逐項以 probe 重現為已修正，I3、I5、I6 已記錄。Reviewer 的重現（log 在 `checks/evidence/2026-10-19-T-013/review2/`）：
+
+- M1：`patch.Apply` 的 candidate 在 9 種 probe（`-0`、UTF-16 排序、U+FFFD 與 emoji、NFC／NFD 等）都是 canonical；HTTP 上 9 個 patch 都得到預期 status（round 1 回 500 的 4 個現在 200），存入的 draft 都是 canonical 且 hash 相符；把 101abac 的 `patch.go` 套回時三個新測試都失敗。
+- L1：超大 If-Match 下 viewer 403、非成員與其他 organization 404、未知 identity 403、editor 仍 409；publish 在 409 前取得的 idempotency claim 隨 transaction rollback。
+- L2：同一 key 對另一個 model 回 409 `IDEMPOTENCY_KEY_CONFLICT`，reviewer 與作者的 mutant 都被擋下。L3：20 種寫入×caller 組合與 25 輪並行 patch／publish／reset（每輪恰一個勝出）都通過。
+- I1：在測試 provider 加 30 ms 延遲時，舊測試 5/5 失敗、新測試 5/5 通過；另在 4 個並行 race 執行的負載下 30/30 通過。
+- 數字：integration-test、backend-test、backend-race（34 packages）、architecture-check、spec-check（重產的 json 與 commit 相同）、frontend-test（218）皆 exit 0；六個 package 83 個 test 通過；HTTP mutation 28/28，reviewer 的 Go mutant 9/9、TS client mutant 5/5；SQL mutant 未重跑（migration 與 `db/tests` 在 101abac..dddb53e 無變更，round 1 已全殺）。
+
+| 發現 | 內容 | 處理 |
+|---|---|---|
+| N1 | 新案例「empty and supplementary」（patch）與「empty and U+10000」（HTTP）的 key 真的是空字串，空 key 在 UTF-8 與 UTF-16 都排第一，所以在舊程式上也會通過（應是 U+E000，複製時不可見） | 兩個案例改為 `"\ue000"`。先紅：套回 101abac 的 `patch.go` 時，unit 案例回報「the candidate is not canonical」，只留這一個案例的 HTTP 測試回 500；現行程式通過 |
+| N2 | `TestStoredIRIsTheCanonicalBytes` 新增的 canonical 檢查在舊 `patch.go` 上也通過（`1e300` 兩種寫法相同） | 記錄：regression 由三個新測試擋下，此檢查保留作為 storage 的不變式 |
+| N3 | Repo 尚無 dddb53e 的執行證據 | 已補，見上節 |
+
+NOT RUN（不屬 T-013 或需外部環境）：瀏覽器 E2E（T-040）、真實 IdP、dataset-bound version 經 HTTP 的 503（T-016）、`make e2e-test`、`make ai-eval`。

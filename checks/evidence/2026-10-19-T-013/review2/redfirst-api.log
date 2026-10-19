@@ -1,0 +1,6 @@
+=== RUN   TestPatchResultsAreStoredCanonical
+    models_test.go:494: negative zero: 500 {"error":{"code":"INTERNAL_ERROR","message":"internal error","request_id":"req_01M59231ZDBJPCBAEWASMZR5PA"}}
+--- FAIL: TestPatchResultsAreStoredCanonical (0.25s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/api	0.259s
+FAIL

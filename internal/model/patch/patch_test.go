@@ -414,11 +414,11 @@ func TestCopyIsRejected(t *testing.T) {
 // than by UTF-8 bytes (U+FF1A before U+20000; T-013 review M1).
 func TestCandidateIsCanonical(t *testing.T) {
 	for name, value := range map[string]string{
-		"negative zero":           `{"z":-0}`,
-		"negative zero, fraction": `{"z":-0.0}`,
-		"UTF-16 member order":     `{"：":1,"𠀀":2}`,
-		"U+FFFD and an emoji":     `{"�":1,"😀":2}`,
-		"empty and supplementary": `{"":1,"𐀀":2}`,
+		"negative zero":            `{"z":-0}`,
+		"negative zero, fraction":  `{"z":-0.0}`,
+		"UTF-16 member order":      `{"：":1,"𠀀":2}`,
+		"U+FFFD and an emoji":      `{"�":1,"😀":2}`,
+		"U+E000 and supplementary": `{"\ue000":1,"𐀀":2}`,
 	} {
 		r := mustApply(t, base(t), `[{"op":"add","path":"/metadata","value":`+value+`}]`, ManualDraft)
 		if !r.Applied() {

@@ -19,10 +19,10 @@
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 18,
+    "done": 19,
     "in_progress": 2,
     "not_started": 24,
-    "review": 1
+    "review": 0
   },
   "ready_tasks": [
     "T-016",

@@ -1,0 +1,8 @@
+=== RUN   TestStoredIRIsTheCanonicalBytes
+--- PASS: TestStoredIRIsTheCanonicalBytes (3.19s)
+=== RUN   TestPatchedDraftIsCanonical
+    storage_form_test.go:116: negative zero: postgres: check constraint violated (SQLSTATE 23514): constraint model_drafts_ir_hash: new row for relation "model_drafts" violates check constraint "model_drafts_ir_hash"
+--- FAIL: TestPatchedDraftIsCanonical (0.05s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/models	3.262s
+FAIL

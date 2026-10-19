@@ -1,0 +1,244 @@
+=== RUN   TestSharedFixtures
+--- PASS: TestSharedFixtures (0.13s)
+=== RUN   TestIdentityIsNeverPatchable
+--- PASS: TestIdentityIsNeverPatchable (0.00s)
+=== RUN   TestAllowlists
+=== RUN   TestAllowlists/scenario_capacity
+=== RUN   TestAllowlists/scenario_distribution_member
+=== RUN   TestAllowlists/scenario_routing_probability
+=== RUN   TestAllowlists/scenario_cannot_rename
+=== RUN   TestAllowlists/scenario_cannot_add_nodes
+=== RUN   TestAllowlists/scenario_cannot_remove_flows
+=== RUN   TestAllowlists/scenario_cannot_touch_views
+=== RUN   TestAllowlists/decoded_~1_is_not_the_capacity_token
+=== RUN   TestAllowlists/decoded_~0_is_not_the_capacity_token
+=== RUN   TestAllowlists/leading-zero_index_is_not_an_index
+=== RUN   TestAllowlists/AI_may_not_edit_views
+=== RUN   TestAllowlists/AI_may_not_edit_metadata
+=== RUN   TestAllowlists/AI_may_not_drop_a_kept_node's_position
+=== RUN   TestAllowlists/manual_may_edit_views
+=== RUN   TestAllowlists/manual_may_edit_metadata
+--- PASS: TestAllowlists (0.03s)
+    --- PASS: TestAllowlists/scenario_capacity (0.00s)
+    --- PASS: TestAllowlists/scenario_distribution_member (0.00s)
+    --- PASS: TestAllowlists/scenario_routing_probability (0.00s)
+    --- PASS: TestAllowlists/scenario_cannot_rename (0.00s)
+    --- PASS: TestAllowlists/scenario_cannot_add_nodes (0.00s)
+    --- PASS: TestAllowlists/scenario_cannot_remove_flows (0.00s)
+    --- PASS: TestAllowlists/scenario_cannot_touch_views (0.00s)
+    --- PASS: TestAllowlists/decoded_~1_is_not_the_capacity_token (0.00s)
+    --- PASS: TestAllowlists/decoded_~0_is_not_the_capacity_token (0.00s)
+    --- PASS: TestAllowlists/leading-zero_index_is_not_an_index (0.00s)
+    --- PASS: TestAllowlists/AI_may_not_edit_views (0.00s)
+    --- PASS: TestAllowlists/AI_may_not_edit_metadata (0.00s)
+    --- PASS: TestAllowlists/AI_may_not_drop_a_kept_node's_position (0.00s)
+    --- PASS: TestAllowlists/manual_may_edit_views (0.00s)
+    --- PASS: TestAllowlists/manual_may_edit_metadata (0.00s)
+=== RUN   TestAIDeletesNodeWithItsPosition
+--- PASS: TestAIDeletesNodeWithItsPosition (0.01s)
+=== RUN   TestTestBeforeModify
+=== RUN   TestTestBeforeModify/no_test
+=== RUN   TestTestBeforeModify/test_of_another_element
+=== RUN   TestTestBeforeModify/index_shift_voids_the_test
+=== RUN   TestTestBeforeModify/remove_needs_a_test
+=== RUN   TestTestBeforeModify/constraints_are_identified_by_node_id
+=== RUN   TestTestBeforeModify/dash_is_only_for_add
+=== RUN   TestTestBeforeModify/non-numeric_index
+=== RUN   TestTestBeforeModify/pointer_too_deep
+--- PASS: TestTestBeforeModify (0.02s)
+    --- PASS: TestTestBeforeModify/no_test (0.00s)
+    --- PASS: TestTestBeforeModify/test_of_another_element (0.00s)
+    --- PASS: TestTestBeforeModify/index_shift_voids_the_test (0.00s)
+    --- PASS: TestTestBeforeModify/remove_needs_a_test (0.00s)
+    --- PASS: TestTestBeforeModify/constraints_are_identified_by_node_id (0.00s)
+    --- PASS: TestTestBeforeModify/dash_is_only_for_add (0.00s)
+    --- PASS: TestTestBeforeModify/non-numeric_index (0.00s)
+    --- PASS: TestTestBeforeModify/pointer_too_deep (0.00s)
+=== RUN   TestAtomic
+=== RUN   TestAtomic/second_op_targets_a_missing_element
+=== RUN   TestAtomic/wrong_identity_test
+=== RUN   TestAtomic/replace_of_a_missing_member
+=== RUN   TestAtomic/test_of_a_whole_array_element
+=== RUN   TestAtomic/index_past_the_end
+--- PASS: TestAtomic (0.00s)
+    --- PASS: TestAtomic/second_op_targets_a_missing_element (0.00s)
+    --- PASS: TestAtomic/wrong_identity_test (0.00s)
+    --- PASS: TestAtomic/replace_of_a_missing_member (0.00s)
+    --- PASS: TestAtomic/test_of_a_whole_array_element (0.00s)
+    --- PASS: TestAtomic/index_past_the_end (0.00s)
+=== RUN   TestArrayEditsKeepOrder
+--- PASS: TestArrayEditsKeepOrder (0.00s)
+=== RUN   TestTestComparesJSONValues
+--- PASS: TestTestComparesJSONValues (0.01s)
+=== RUN   TestParsePointer
+--- PASS: TestParsePointer (0.00s)
+=== RUN   TestConcurrentApply
+--- PASS: TestConcurrentApply (0.02s)
+=== RUN   TestUnknownMode
+--- PASS: TestUnknownMode (0.00s)
+=== RUN   TestPatchSizeLimit
+--- PASS: TestPatchSizeLimit (0.01s)
+=== RUN   TestWholeCatalogReplace
+--- PASS: TestWholeCatalogReplace (0.01s)
+=== RUN   TestAIKeepsPositionOfReaddedNode
+--- PASS: TestAIKeepsPositionOfReaddedNode (0.00s)
+=== RUN   TestScenarioCannotCreateDatasetBinding
+--- PASS: TestScenarioCannotCreateDatasetBinding (0.01s)
+=== RUN   TestCopyIsRejected
+--- PASS: TestCopyIsRejected (0.00s)
+=== RUN   TestCandidateIsCanonical
+--- PASS: TestCandidateIsCanonical (0.02s)
+=== RUN   FuzzApply
+=== RUN   FuzzApply/seed#0
+=== RUN   FuzzApply/seed#1
+=== RUN   FuzzApply/seed#2
+=== RUN   FuzzApply/seed#3
+=== RUN   FuzzApply/seed#4
+--- PASS: FuzzApply (0.01s)
+    --- PASS: FuzzApply/seed#0 (0.00s)
+    --- PASS: FuzzApply/seed#1 (0.00s)
+    --- PASS: FuzzApply/seed#2 (0.00s)
+    --- PASS: FuzzApply/seed#3 (0.00s)
+    --- PASS: FuzzApply/seed#4 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/patch	1.344s
+=== RUN   TestNumbersAreStoredAsWritten
+--- PASS: TestNumbersAreStoredAsWritten (1.80s)
+=== RUN   TestMoreIssuesThanADraftHolds
+--- PASS: TestMoreIssuesThanADraftHolds (1.71s)
+=== RUN   TestCappedBoundary
+--- PASS: TestCappedBoundary (0.00s)
+=== RUN   TestPublishKeepsUnusedBindings
+--- PASS: TestPublishKeepsUnusedBindings (0.17s)
+=== RUN   TestDatasetIssuePaths
+--- PASS: TestDatasetIssuePaths (0.15s)
+=== RUN   TestReadsSeeOneSnapshot
+--- PASS: TestReadsSeeOneSnapshot (2.22s)
+=== RUN   TestCleanAgainstItsOwnBase
+--- PASS: TestCleanAgainstItsOwnBase (0.14s)
+=== RUN   TestCreateChecksTheTemplate
+--- PASS: TestCreateChecksTheTemplate (0.10s)
+=== RUN   TestIssueOrderAndStages
+--- PASS: TestIssueOrderAndStages (0.10s)
+=== RUN   TestNULIsRefused
+--- PASS: TestNULIsRefused (0.10s)
+=== RUN   TestListLimits
+--- PASS: TestListLimits (0.07s)
+=== RUN   TestWritesWaitForTheModelRow
+--- PASS: TestWritesWaitForTheModelRow (1.12s)
+=== RUN   TestPublishIdempotencyScope
+--- PASS: TestPublishIdempotencyScope (0.12s)
+=== RUN   TestCursorBindings
+--- PASS: TestCursorBindings (0.07s)
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestIfMatch
+--- PASS: TestIfMatch (0.00s)
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.12s)
+=== RUN   TestRolesAndTenancy
+--- PASS: TestRolesAndTenancy (0.09s)
+=== RUN   TestPatchDraft
+--- PASS: TestPatchDraft (0.15s)
+=== RUN   TestConcurrentPatches
+--- PASS: TestConcurrentPatches (0.09s)
+=== RUN   TestPublish
+--- PASS: TestPublish (0.17s)
+=== RUN   TestPublishKeepsTheComment
+--- PASS: TestPublishKeepsTheComment (0.24s)
+=== RUN   TestPublishRace
+--- PASS: TestPublishRace (0.14s)
+=== RUN   TestDraftWhenAnotherVersionArrives
+--- PASS: TestDraftWhenAnotherVersionArrives (0.17s)
+=== RUN   TestVersionsAreImmutable
+--- PASS: TestVersionsAreImmutable (0.12s)
+=== RUN   TestDatasets
+--- PASS: TestDatasets (0.21s)
+=== RUN   TestLists
+--- PASS: TestLists (0.33s)
+=== RUN   TestPackRules
+--- PASS: TestPackRules (0.11s)
+=== RUN   TestStoredIRIsTheCanonicalBytes
+--- PASS: TestStoredIRIsTheCanonicalBytes (33.31s)
+=== RUN   TestStoredIRMustMatchItsHash
+--- PASS: TestStoredIRMustMatchItsHash (0.00s)
+=== RUN   TestPatchedDraftIsCanonical
+--- PASS: TestPatchedDraftIsCanonical (0.14s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/models	44.296s
+=== RUN   TestOrganizationFilter
+--- PASS: TestOrganizationFilter (0.04s)
+=== RUN   TestUpdateDraftCAS
+--- PASS: TestUpdateDraftCAS (0.03s)
+=== RUN   TestVersionManifest
+--- PASS: TestVersionManifest (0.04s)
+=== RUN   TestListModelsKeyset
+--- PASS: TestListModelsKeyset (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.185s
+=== RUN   TestRoleMatrix
+--- PASS: TestRoleMatrix (0.28s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.40s)
+=== RUN   TestIdempotency
+--- PASS: TestIdempotency (0.35s)
+=== RUN   TestExpiredKeyRace
+--- PASS: TestExpiredKeyRace (1.72s)
+=== RUN   TestOutsideTheContract
+--- PASS: TestOutsideTheContract (0.23s)
+=== RUN   TestList
+--- PASS: TestList (0.77s)
+=== RUN   TestMembershipRoutes
+--- PASS: TestMembershipRoutes (0.26s)
+=== RUN   TestModelRoutes
+--- PASS: TestModelRoutes (0.46s)
+=== RUN   TestModelRoleMatrix
+--- PASS: TestModelRoleMatrix (0.47s)
+=== RUN   TestDraftPreconditions
+--- PASS: TestDraftPreconditions (0.61s)
+=== RUN   TestPatchBody
+--- PASS: TestPatchBody (1.50s)
+=== RUN   TestPublishRefusals
+--- PASS: TestPublishRefusals (0.35s)
+=== RUN   TestModelLists
+--- PASS: TestModelLists (0.46s)
+=== RUN   TestPatchResultsAreStoredCanonical
+--- PASS: TestPatchResultsAreStoredCanonical (0.33s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	9.247s
+=== RUN   TestStatusMatchesSchema
+--- PASS: TestStatusMatchesSchema (0.00s)
+=== RUN   TestWriteError
+--- PASS: TestWriteError (0.06s)
+=== RUN   TestOrganizationIDMatchesSchema
+--- PASS: TestOrganizationIDMatchesSchema (0.00s)
+=== RUN   TestRequestID
+--- PASS: TestRequestID (0.00s)
+=== RUN   TestRecover
+--- PASS: TestRecover (0.00s)
+=== RUN   TestDecodeJSON
+--- PASS: TestDecodeJSON (0.03s)
+=== RUN   TestDecodeJSONFailures
+--- PASS: TestDecodeJSONFailures (0.00s)
+=== RUN   TestWriteJSONFallback
+--- PASS: TestWriteJSONFallback (0.00s)
+=== RUN   TestScoped
+--- PASS: TestScoped (0.00s)
+=== RUN   TestNULStrings
+--- PASS: TestNULStrings (0.00s)
+=== RUN   TestNULPathBounded
+--- PASS: TestNULPathBounded (0.06s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/httpapi	1.223s
+=== RUN   TestRunRejectsInvalidConfiguration
+--- PASS: TestRunRejectsInvalidConfiguration (0.00s)
+=== RUN   TestRunNeedsTheDatabase
+--- PASS: TestRunNeedsTheDatabase (0.00s)
+=== RUN   TestServerSettings
+--- PASS: TestServerSettings (0.00s)
+=== RUN   TestRunServesAndStops
+--- PASS: TestRunServesAndStops (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/api	1.092s

@@ -1,0 +1,37 @@
+
+ RUN  v5.0.4 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/review-t013/r2/src/apps/web
+
+ ❯ tests/api.test.ts (23 tests | 1 failed) 82ms
+   ❯ model writes and versions (T-013) (7)
+     × publishes with If-Match and the key, and reads the version back 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/api.test.ts > model writes and versions (T-013) > publishes with If-Match and the key, and reads the version back
+AssertionError: expected [ undefined, 'key-publish-1' ] to deeply equal [ '"draft-revision-3"', …(1) ]
+
+- Expected
++ Received
+
+  [
+-   "\"draft-revision-3\"",
++   undefined,
+    "key-publish-1",
+  ]
+
+ ❯ tests/api.test.ts:244:63
+    242|     const headers = f.calls[0]!.init.headers as Record<string, string>;
+    243|     expect([f.calls[0]!.init.method, f.calls[0]!.url.pathname]).toEqua…
+    244|     expect([headers["If-Match"], headers["Idempotency-Key"]]).toEqual(…
+       |                                                               ^
+    245|     expect(JSON.parse(String(f.calls[0]!.init.body))).toEqual({ expect…
+    246|     expect((await client.getModelVersion(VERSION)).ok).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 22 passed (23)
+   Start at  03:13:35
+   Duration  391ms (transform 44%, tests 42%, import 12%, worker 2%)
+

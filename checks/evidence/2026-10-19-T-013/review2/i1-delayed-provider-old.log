@@ -1,0 +1,13 @@
+--- FAIL: TestKeyAgeBoundaries (5.19s)
+    review_test.go:498: 1 ns before KeyMaxStale: auth: signing keys unavailable: fetching JWKS: status 503: keys_unavailable
+--- FAIL: TestKeyAgeBoundaries (5.24s)
+    review_test.go:498: 1 ns before KeyMaxStale: auth: signing keys unavailable: fetching JWKS: status 503: keys_unavailable
+--- FAIL: TestKeyAgeBoundaries (5.30s)
+    review_test.go:498: 1 ns before KeyMaxStale: auth: signing keys unavailable: fetching JWKS: status 503: keys_unavailable
+--- FAIL: TestKeyAgeBoundaries (5.20s)
+    review_test.go:498: 1 ns before KeyMaxStale: auth: signing keys unavailable: fetching JWKS: status 503: keys_unavailable
+--- FAIL: TestKeyAgeBoundaries (5.20s)
+    review_test.go:498: 1 ns before KeyMaxStale: auth: signing keys unavailable: fetching JWKS: status 503: keys_unavailable
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/auth	26.134s
+FAIL

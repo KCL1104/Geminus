@@ -1,0 +1,5 @@
+=== RUN   TestReviewProbePublishKeyScope
+    zz_r5_test.go:27: same key, body and If-Match on model b: 409 {"error":{"code":"IDEMPOTENCY_KEY_CONFLICT","message":"this Idempotency-Key was used for a different request","request_id":"req_01M5920M7QB755TP14N7JSPNSJ"}}
+--- PASS: TestReviewProbePublishKeyScope (0.26s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	0.281s
