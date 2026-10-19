@@ -59,3 +59,14 @@ H-007 要求比較多個 UI 函式庫，不直接採用 Tailwind＋shadcn/ui。S
 ## 選定後的實作（T-045 其餘 scope）
 
 Design tokens（顏色、系統字型與繁中 fallback、間距、density、focus ring；深色預留）、app shell 與基本元件（button、field、select、dialog、status、table，以及 loading／empty／error／權限不足／409 狀態）套用到 T-014／T-044 的畫面；`agentRules: false`；axe 進 vitest 與 Playwright、純鍵盤 E2E、en／zh-Hant × 390／1280 截圖比對（baseline 變更需人工確認）；T-015 與 T-031 的 low-fi prototype 交 owner review。Spike 的程式只在 scratch，不直接搬進 repo，依選定的組重寫並先寫測試。
+
+## 實作紀錄（T-045）
+
+- 2026-10-19 安裝於 `apps/web`（`package-lock.json`）：
+  - `react-aria-components` 1.21.1（Apache-2.0，2026-09-04）為唯一新增的 production 依賴，連同 `react-aria` 3.52.1、`react-stately` 3.50.0、`@internationalized/*`、`aria-hidden`、`clsx`、`use-sync-external-store`，共 10 個 lock entry，皆無 install script。
+  - Overrides：`@internationalized/number` 3.6.8、`@react-types/shared` 3.36.1。React Aria 的範圍會解析到 2026-10-08 發布的 3.6.9／3.37.0，未滿兩週。
+  - `axe-core` 4.13.0（MPL-2.0，dev）：只給 vitest 的無障礙檢查用；既有的 4.14.0（eslint-plugin-jsx-a11y 帶入）一併降到 4.13.0。
+  - `npm audit --omit=dev`：0 vulnerability。
+- 瀏覽器 E2E（`@playwright/test` 1.56.1，與機器上的 Chromium 相同版本；`@axe-core/playwright` 4.13.0）放在獨立的 npm 專案，不放進 `apps/web`。原因有二：Next.js 16.4.1 對 `@playwright/test` 宣告了 optional peer dependency，lockfile 因此把它標為非 dev，`npm ci --omit=dev` 會把它裝進 production；`@axe-core/playwright` 也會帶入未滿兩週的 playwright-core 1.64.1。
+- `next.config.ts` 設 `agentRules: false`。
+- Tokens 在 `apps/web/ui/tokens.css`，元素預設在 `ui/base.css`（`@layer base`）。`tests/tokens.test.ts` 檢查 17 組文字與 6 組非文字的對比、只用語意 token、只用系統字型、compact density 仍為 24 px。`UiProvider`（`ui/provider.tsx`）把 `zh-Hant` 對應為 React Aria 的 `zh-TW`（`tests/ui-provider.test.tsx`）。

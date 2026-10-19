@@ -1,0 +1,87 @@
+/* Element defaults (T-045). Layered, so component CSS Modules win. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--gm-color-bg);
+    color: var(--gm-color-text);
+    font-family: var(--gm-font-sans);
+    font-size: var(--gm-font-size-md);
+    line-height: var(--gm-line-height);
+  }
+
+  body:lang(zh-Hant) {
+    /* Chinese text reads better with a little more line height. */
+    line-height: 1.6;
+  }
+
+  h1,
+  h2,
+  h3 {
+    margin: 0 0 var(--gm-space-3);
+    line-height: var(--gm-line-height-tight);
+    font-weight: var(--gm-font-weight-strong);
+  }
+
+  h1 {
+    font-size: var(--gm-font-size-2xl);
+  }
+
+  h2 {
+    font-size: var(--gm-font-size-xl);
+  }
+
+  h3 {
+    font-size: var(--gm-font-size-lg);
+  }
+
+  p {
+    margin: 0 0 var(--gm-space-3);
+  }
+
+  a {
+    color: var(--gm-color-accent);
+    text-underline-offset: 2px;
+  }
+
+  a:hover {
+    color: var(--gm-color-accent-hover);
+  }
+
+  code,
+  kbd,
+  samp {
+    font-family: var(--gm-font-mono);
+    font-size: 0.95em;
+  }
+
+  /* One focus style for everything; React Aria sets data-focus-visible on its own elements. */
+  :focus-visible,
+  [data-focus-visible] {
+    outline: var(--gm-focus-ring);
+    outline-offset: var(--gm-focus-offset);
+  }
+
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

@@ -1,0 +1,99 @@
+/*
+ * Design tokens (T-045, ADR-021). Light theme only in P0 (H-008 item 2):
+ * components use the semantic --gm-color-* tokens, never the palette, so a
+ * dark theme is one more block that redefines the semantic tokens; none is
+ * defined yet. tests/tokens.test.ts checks every colour pair components use
+ * against WCAG 2.2 AA.
+ *
+ * Cascade layers: "base" holds element defaults (ui/base.css), "vendor" any
+ * third-party stylesheet. CSS Modules are unlayered, so they win over both
+ * whatever order the chunks load in.
+ */
+@layer base, vendor;
+
+:root {
+  color-scheme: light;
+
+  /* Palette. Only this file names it. */
+  --gm-palette-white: #ffffff;
+  --gm-palette-neutral-50: #f6f7f9;
+  --gm-palette-neutral-100: #eceef2;
+  --gm-palette-neutral-200: #d9dde3;
+  --gm-palette-neutral-500: #6b7380;
+  --gm-palette-neutral-600: #545c68;
+  --gm-palette-neutral-900: #1b1f24;
+  --gm-palette-blue-50: #e8f0fc;
+  --gm-palette-blue-600: #1f5fbf;
+  --gm-palette-blue-700: #194f9f;
+  --gm-palette-blue-800: #143f80;
+  --gm-palette-red-50: #fdf0ef;
+  --gm-palette-red-700: #b42318;
+  --gm-palette-amber-50: #fff6e5;
+  --gm-palette-amber-800: #8a5300;
+  --gm-palette-green-50: #ebf7ef;
+  --gm-palette-green-800: #17663a;
+
+  /* Semantic colours: what a dark theme would redefine. */
+  --gm-color-bg: var(--gm-palette-white);
+  --gm-color-surface: var(--gm-palette-neutral-50);
+  --gm-color-surface-hover: var(--gm-palette-neutral-100);
+  --gm-color-border: var(--gm-palette-neutral-200);
+  --gm-color-border-strong: var(--gm-palette-neutral-500);
+  --gm-color-text: var(--gm-palette-neutral-900);
+  --gm-color-text-muted: var(--gm-palette-neutral-600);
+  --gm-color-accent: var(--gm-palette-blue-600);
+  --gm-color-accent-hover: var(--gm-palette-blue-700);
+  --gm-color-on-accent: var(--gm-palette-white);
+  --gm-color-selected: var(--gm-palette-blue-50);
+  --gm-color-danger: var(--gm-palette-red-700);
+  --gm-color-on-danger: var(--gm-palette-white);
+  --gm-color-danger-bg: var(--gm-palette-red-50);
+  --gm-color-warning: var(--gm-palette-amber-800);
+  --gm-color-warning-bg: var(--gm-palette-amber-50);
+  --gm-color-success: var(--gm-palette-green-800);
+  --gm-color-success-bg: var(--gm-palette-green-50);
+  --gm-color-info: var(--gm-palette-blue-800);
+  --gm-color-info-bg: var(--gm-palette-blue-50);
+  --gm-color-focus: var(--gm-palette-blue-600);
+
+  /* Type: system fonts only, with Traditional Chinese fallbacks (H-008 item 3). */
+  --gm-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  --gm-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono CJK TC", monospace;
+  --gm-font-size-sm: 0.8125rem;
+  --gm-font-size-md: 0.875rem;
+  --gm-font-size-lg: 1rem;
+  --gm-font-size-xl: 1.25rem;
+  --gm-font-size-2xl: 1.5rem;
+  --gm-line-height: 1.5;
+  --gm-line-height-tight: 1.25;
+  --gm-font-weight-strong: 600;
+
+  /* Spacing and radius. */
+  --gm-space-1: 4px;
+  --gm-space-2: 8px;
+  --gm-space-3: 12px;
+  --gm-space-4: 16px;
+  --gm-space-5: 24px;
+  --gm-space-6: 32px;
+  --gm-radius-sm: 4px;
+  --gm-radius-md: 6px;
+  --gm-content-width: 72rem;
+
+  /* Density: 32 px controls by default, 24 px (the WCAG 2.2 2.5.8 minimum)
+     when <html data-density="compact">. On <html>, so it reaches React
+     Aria's portals (popovers, dialogs) too. */
+  --gm-control-height: 32px;
+  --gm-row-height: 32px;
+  --gm-control-padding-x: var(--gm-space-3);
+
+  /* Focus ring: 2 px, at least 3:1 against every background it sits on. */
+  --gm-focus-width: 2px;
+  --gm-focus-offset: 2px;
+  --gm-focus-ring: var(--gm-focus-width) solid var(--gm-color-focus);
+}
+
+:root[data-density="compact"] {
+  --gm-control-height: 24px;
+  --gm-row-height: 24px;
+  --gm-control-padding-x: var(--gm-space-2);
+}

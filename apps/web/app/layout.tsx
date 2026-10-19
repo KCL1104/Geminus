@@ -4,6 +4,9 @@ import type { ReactNode } from "react";
 import { I18nProvider } from "../lib/i18n/provider";
 import { requestLocale } from "../lib/i18n/server";
 import { createTranslator } from "../lib/i18n/translate";
+import { UiProvider } from "../ui/provider";
+import "../ui/tokens.css";
+import "../ui/base.css";
 import { LocaleMenu } from "./_components/locale-switcher";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -20,6 +23,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang={locale}>
       <body>
         <I18nProvider locale={locale}>
+          <UiProvider>
           <header>
             <nav aria-label={t("nav.label")}>
               <Link href="/projects">{t("nav.projects")}</Link>
@@ -27,6 +31,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <LocaleMenu />
           </header>
           <main>{children}</main>
+          </UiProvider>
         </I18nProvider>
       </body>
     </html>
