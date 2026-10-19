@@ -1,0 +1,8 @@
+commit: a3f8c6c5dd3f2a77f8927d3062c8544259022d1c (the code the logs ran on; the report and evidence are the next commit)
+date: 2026-10-19
+go version go1.27.2 linux/amd64
+node v22.22.0 (apps/web asks for >=24.21.0; installed with --engine-strict=false from the committed lockfile)
+psql (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1); cluster initdb --encoding=UTF8 --locale=C.UTF-8, trust, Unix socket only (listen_addresses=''), port 55446, data in /var/lib/postgresql/geminus-t016, run as postgres; stopped with pg_ctl afterwards
+databases (all dt_test_*, all on that cluster): dt_test_t016_red (SQL red run), dt_test_t016_sql1, dt_test_t016_sql2 (SQL suites), dt_test_t016_go1, dt_test_t016_int1 (development runs and mutations), dt_test_t016_final (the final integration-test and the verbose T-016 run)
+Linux 6.18.44-fc-v139 x86_64, 4 CPU
+go clean -testcache before the final runs

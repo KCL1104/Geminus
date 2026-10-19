@@ -1,0 +1,9 @@
+make backend-test: exit 0
+make backend-race: exit 0
+make architecture-check: exit 0
+make frontend-test: exit 0
+make integration-test (dt_test_t016_final): exit 0
+go test -race -v (T-016 tests): exit 0
+go test -fuzz=FuzzRead -fuzztime=60s ./internal/import/profile: exit 0
+go test -bench BenchmarkReadCSVAtTheLimits -benchtime=5x: exit 0
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python: exit 0

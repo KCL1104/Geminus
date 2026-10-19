@@ -1,0 +1,168 @@
+make: Entering directory '/home/user/Geminus/.claude/worktrees/agent-a82aa0cf672389844'
+/home/user/Geminus/.venv/bin/python scripts/check_contracts.py
+{
+  "status": "PASS_LIMITED_SPEC_CHECKS",
+  "schema_metaschemas": 13,
+  "schema_positive_fixtures": 37,
+  "schema_negative_fixtures": 62,
+  "negative_fixtures_with_exact_error_path": 57,
+  "limited_semantic_negative_fixtures": 7,
+  "resolved_local_ref_occurrences": 804,
+  "openapi_operations": 42,
+  "optional_fastapi_openapi_model": "NOT_RUN_NOT_INSTALLED",
+  "independent_complete_openapi_validator": "NOT_RUN_UNAVAILABLE",
+  "ai_corpus_records": {
+    "analyst": 10,
+    "import-mapper": 10,
+    "modeler": 50
+  },
+  "live_ai_eval": "NOT_RUN",
+  "go_engine_tests": "NOT_RUN"
+}
+/home/user/Geminus/.venv/bin/python scripts/check_planning.py
+{
+  "status": "PASS",
+  "tasks": 52,
+  "dependency_graph": "ACYCLIC",
+  "topological_order": [
+    "T-001",
+    "T-002",
+    "T-003",
+    "T-004",
+    "T-005",
+    "T-006",
+    "T-007",
+    "T-008",
+    "T-009",
+    "T-010",
+    "T-011",
+    "T-012",
+    "T-013",
+    "T-014",
+    "T-044",
+    "T-045",
+    "T-020",
+    "T-021",
+    "T-022",
+    "T-046",
+    "T-015",
+    "T-019",
+    "T-016",
+    "T-017",
+    "T-024",
+    "T-025",
+    "T-047",
+    "T-048",
+    "T-049",
+    "T-050",
+    "T-042",
+    "T-051",
+    "T-027",
+    "T-018",
+    "T-023",
+    "T-026",
+    "T-028",
+    "T-029",
+    "T-030",
+    "T-031",
+    "T-032",
+    "T-033",
+    "T-034",
+    "T-035",
+    "T-043",
+    "T-036",
+    "T-037",
+    "T-052",
+    "T-038",
+    "T-039",
+    "T-040",
+    "T-041"
+  ],
+  "requirements_with_traceability": 25,
+  "proposed_decisions": 14,
+  "completed_tasks": 21
+}
+/home/user/Geminus/.venv/bin/python scripts/check_docs.py
+{
+  "status": "PASS",
+  "markdown_files": 91,
+  "relative_links_checked": 72
+}
+/home/user/Geminus/.venv/bin/python scripts/check_sql_inventory.py
+{
+  "status": "PASS_STATIC_INVENTORY_ONLY",
+  "tables": 20,
+  "tenant_owned_tables": 19,
+  "postgresql_parse": "NOT_RUN_NO_PARSER",
+  "postgresql_migration_execution": "NOT_RUN_NO_SERVER_CLIENT",
+  "rls_runtime_tests": "NOT_RUN",
+  "note": "Keyword/inventory checks do not prove SQL syntax, policies, privileges or execution correctness; execution evidence comes from make db-test / make db-go-test on a disposable database (CI db job)."
+}
+/home/user/Geminus/.venv/bin/python scripts/check_reference_math.py
+{
+  "status": "PASS_REFERENCE_ARITHMETIC_ONLY",
+  "deterministic_fixture_cases": 2,
+  "expected_value_comparisons": 20,
+  "splitmix64_vectors": 5,
+  "replication_seed_vectors": 3,
+  "stream_seed_vectors": 7,
+  "go_des_engine": "NOT_RUN",
+  "simpy_differential": "NOT_RUN",
+  "jcs_hash_verification": "NOT_RUN"
+}
+/home/user/Geminus/.venv/bin/python scripts/engine_reference.py
+{"status": "PASS_ENGINE_REFERENCE_VECTORS", "sampler_cases": 10, "event_pushes": 10, "arrivals": 9, "log_inputs": 1000000, "digest_draws_per_sampler": 100000}
+/home/user/Geminus/.venv/bin/python scripts/check_decisions.py
+{
+  "status": "PASS_REGISTER_SHAPE_ONLY",
+  "decisions_by_status": {
+    "approved": 46,
+    "proposed": 14,
+    "rejected": 0,
+    "superseded": 0
+  },
+  "human_decisions_recorded": [
+    "H-001",
+    "H-002",
+    "H-003",
+    "H-004",
+    "H-005",
+    "H-006",
+    "H-007",
+    "H-008",
+    "H-009",
+    "H-010",
+    "H-011",
+    "H-012",
+    "H-013",
+    "H-014",
+    "H-015",
+    "H-016",
+    "H-017"
+  ],
+  "tasks_by_status": {
+    "blocked": 0,
+    "done": 21,
+    "in_progress": 3,
+    "not_started": 28,
+    "review": 0
+  },
+  "ready_tasks": [
+    "T-016",
+    "T-024",
+    "T-035"
+  ],
+  "next_after_review": [],
+  "note": "Shape checks only; whether a recorded approval is genuine is for human review."
+}
+/home/user/Geminus/.venv/bin/python scripts/gen_ts_contracts.py --check
+{"status": "PASS_TS_CONTRACTS_FRESH", "files": 14, "types": 93}
+/home/user/Geminus/.venv/bin/python scripts/check_hashes.py
+{
+  "status": "PASS_INDEPENDENT_HASHES",
+  "hashes": 27,
+  "errors": []
+}
+/home/user/Geminus/.venv/bin/python scripts/render_db_tests.py --check
+{"status": "PASS_DB_TESTS_FRESH", "files": 7, "stale": []}
+make: Leaving directory '/home/user/Geminus/.claude/worktrees/agent-a82aa0cf672389844'

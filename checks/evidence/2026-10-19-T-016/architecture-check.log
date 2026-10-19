@@ -1,0 +1,5 @@
+make: Entering directory '/home/user/Geminus/.claude/worktrees/agent-a82aa0cf672389844'
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 55 packages, 14 rules, 16 build configurations
+make: Leaving directory '/home/user/Geminus/.claude/worktrees/agent-a82aa0cf672389844'

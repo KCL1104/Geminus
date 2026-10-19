@@ -1,0 +1,537 @@
+=== RUN   TestUnreadableFiles
+=== RUN   TestUnreadableFiles/Big5_bytes
+=== RUN   TestUnreadableFiles/a_lone_continuation_byte
+=== RUN   TestUnreadableFiles/a_truncated_sequence_at_the_end
+=== RUN   TestUnreadableFiles/an_encoded_surrogate
+=== RUN   TestUnreadableFiles/an_overlong_encoding
+=== RUN   TestUnreadableFiles/UTF-16_LE
+=== RUN   TestUnreadableFiles/UTF-16_BE
+=== RUN   TestUnreadableFiles/a_NUL_byte
+=== RUN   TestUnreadableFiles/Latin-1_in_JSON
+=== RUN   TestUnreadableFiles/no_bytes
+=== RUN   TestUnreadableFiles/a_BOM_only
+=== RUN   TestUnreadableFiles/a_header_only
+=== RUN   TestUnreadableFiles/blank_lines_only
+=== RUN   TestUnreadableFiles/an_empty_array
+=== RUN   TestUnreadableFiles/whitespace
+=== RUN   TestUnreadableFiles/a_bare_quote
+=== RUN   TestUnreadableFiles/an_unterminated_quote
+=== RUN   TestUnreadableFiles/text_after_a_closing_quote
+=== RUN   TestUnreadableFiles/an_empty_column_name
+=== RUN   TestUnreadableFiles/a_repeated_column_name
+=== RUN   TestUnreadableFiles/a_column_name_too_long
+=== RUN   TestUnreadableFiles/too_many_columns
+=== RUN   TestUnreadableFiles/an_empty_member_name
+=== RUN   TestUnreadableFiles/a_member_name_too_long
+=== RUN   TestUnreadableFiles/too_many_members
+=== RUN   TestUnreadableFiles/too_many_rows
+=== RUN   TestUnreadableFiles/too_many_events
+=== RUN   TestUnreadableFiles/a_long_CSV_value
+=== RUN   TestUnreadableFiles/a_long_value_beyond_the_header
+=== RUN   TestUnreadableFiles/a_long_JSON_string
+=== RUN   TestUnreadableFiles/a_long_JSON_value
+=== RUN   TestUnreadableFiles/too_deep
+=== RUN   TestUnreadableFiles/a_model_too_large
+=== RUN   TestUnreadableFiles/a_model_too_deep
+=== RUN   TestUnreadableFiles/a_syntax_error
+=== RUN   TestUnreadableFiles/a_duplicate_member
+=== RUN   TestUnreadableFiles/a_nested_duplicate_member
+=== RUN   TestUnreadableFiles/a_duplicate_in_a_model
+=== RUN   TestUnreadableFiles/an_infinite_number
+=== RUN   TestUnreadableFiles/a_negative_infinite_number
+=== RUN   TestUnreadableFiles/an_infinite_number_in_a_model
+=== RUN   TestUnreadableFiles/NaN
+=== RUN   TestUnreadableFiles/an_escaped_NUL
+=== RUN   TestUnreadableFiles/an_escaped_NUL_in_a_name
+=== RUN   TestUnreadableFiles/a_lone_surrogate_escape
+=== RUN   TestUnreadableFiles/data_after_the_array
+=== RUN   TestUnreadableFiles/data_after_the_model
+=== RUN   TestUnreadableFiles/two_models
+=== RUN   TestUnreadableFiles/events_in_an_object
+=== RUN   TestUnreadableFiles/an_event_that_is_not_an_object
+=== RUN   TestUnreadableFiles/a_model_that_is_an_array
+=== RUN   TestUnreadableFiles/an_empty_model_file
+=== RUN   TestUnreadableFiles/a_CSV_given_as_JSON
+--- PASS: TestUnreadableFiles (0.03s)
+    --- PASS: TestUnreadableFiles/Big5_bytes (0.00s)
+    --- PASS: TestUnreadableFiles/a_lone_continuation_byte (0.00s)
+    --- PASS: TestUnreadableFiles/a_truncated_sequence_at_the_end (0.00s)
+    --- PASS: TestUnreadableFiles/an_encoded_surrogate (0.00s)
+    --- PASS: TestUnreadableFiles/an_overlong_encoding (0.00s)
+    --- PASS: TestUnreadableFiles/UTF-16_LE (0.00s)
+    --- PASS: TestUnreadableFiles/UTF-16_BE (0.00s)
+    --- PASS: TestUnreadableFiles/a_NUL_byte (0.00s)
+    --- PASS: TestUnreadableFiles/Latin-1_in_JSON (0.00s)
+    --- PASS: TestUnreadableFiles/no_bytes (0.00s)
+    --- PASS: TestUnreadableFiles/a_BOM_only (0.00s)
+    --- PASS: TestUnreadableFiles/a_header_only (0.00s)
+    --- PASS: TestUnreadableFiles/blank_lines_only (0.00s)
+    --- PASS: TestUnreadableFiles/an_empty_array (0.00s)
+    --- PASS: TestUnreadableFiles/whitespace (0.00s)
+    --- PASS: TestUnreadableFiles/a_bare_quote (0.00s)
+    --- PASS: TestUnreadableFiles/an_unterminated_quote (0.00s)
+    --- PASS: TestUnreadableFiles/text_after_a_closing_quote (0.00s)
+    --- PASS: TestUnreadableFiles/an_empty_column_name (0.00s)
+    --- PASS: TestUnreadableFiles/a_repeated_column_name (0.00s)
+    --- PASS: TestUnreadableFiles/a_column_name_too_long (0.00s)
+    --- PASS: TestUnreadableFiles/too_many_columns (0.00s)
+    --- PASS: TestUnreadableFiles/an_empty_member_name (0.00s)
+    --- PASS: TestUnreadableFiles/a_member_name_too_long (0.00s)
+    --- PASS: TestUnreadableFiles/too_many_members (0.00s)
+    --- PASS: TestUnreadableFiles/too_many_rows (0.00s)
+    --- PASS: TestUnreadableFiles/too_many_events (0.00s)
+    --- PASS: TestUnreadableFiles/a_long_CSV_value (0.00s)
+    --- PASS: TestUnreadableFiles/a_long_value_beyond_the_header (0.00s)
+    --- PASS: TestUnreadableFiles/a_long_JSON_string (0.00s)
+    --- PASS: TestUnreadableFiles/a_long_JSON_value (0.00s)
+    --- PASS: TestUnreadableFiles/too_deep (0.00s)
+    --- PASS: TestUnreadableFiles/a_model_too_large (0.00s)
+    --- PASS: TestUnreadableFiles/a_model_too_deep (0.00s)
+    --- PASS: TestUnreadableFiles/a_syntax_error (0.00s)
+    --- PASS: TestUnreadableFiles/a_duplicate_member (0.00s)
+    --- PASS: TestUnreadableFiles/a_nested_duplicate_member (0.00s)
+    --- PASS: TestUnreadableFiles/a_duplicate_in_a_model (0.00s)
+    --- PASS: TestUnreadableFiles/an_infinite_number (0.00s)
+    --- PASS: TestUnreadableFiles/a_negative_infinite_number (0.00s)
+    --- PASS: TestUnreadableFiles/an_infinite_number_in_a_model (0.00s)
+    --- PASS: TestUnreadableFiles/NaN (0.00s)
+    --- PASS: TestUnreadableFiles/an_escaped_NUL (0.00s)
+    --- PASS: TestUnreadableFiles/an_escaped_NUL_in_a_name (0.00s)
+    --- PASS: TestUnreadableFiles/a_lone_surrogate_escape (0.00s)
+    --- PASS: TestUnreadableFiles/data_after_the_array (0.00s)
+    --- PASS: TestUnreadableFiles/data_after_the_model (0.00s)
+    --- PASS: TestUnreadableFiles/two_models (0.00s)
+    --- PASS: TestUnreadableFiles/events_in_an_object (0.00s)
+    --- PASS: TestUnreadableFiles/an_event_that_is_not_an_object (0.00s)
+    --- PASS: TestUnreadableFiles/a_model_that_is_an_array (0.00s)
+    --- PASS: TestUnreadableFiles/an_empty_model_file (0.00s)
+    --- PASS: TestUnreadableFiles/a_CSV_given_as_JSON (0.00s)
+=== RUN   TestFailureMessagesHoldNoFileContent
+--- PASS: TestFailureMessagesHoldNoFileContent (0.00s)
+=== RUN   TestChineseCSVWithBOM
+--- PASS: TestChineseCSVWithBOM (0.00s)
+=== RUN   TestNoEncodingGuess
+--- PASS: TestNoEncodingGuess (0.00s)
+=== RUN   TestInference
+--- PASS: TestInference (0.00s)
+=== RUN   TestInvalidRows
+--- PASS: TestInvalidRows (0.00s)
+=== RUN   TestPreviewBounds
+--- PASS: TestPreviewBounds (0.00s)
+=== RUN   TestJSONModel
+--- PASS: TestJSONModel (0.00s)
+=== RUN   TestCancellationAndReadErrors
+--- PASS: TestCancellationAndReadErrors (0.02s)
+=== RUN   TestDefaultLimits
+--- PASS: TestDefaultLimits (0.00s)
+=== RUN   TestDeterministic
+--- PASS: TestDeterministic (0.00s)
+=== RUN   FuzzRead
+=== RUN   FuzzRead/seed#0
+=== RUN   FuzzRead/seed#1
+=== RUN   FuzzRead/seed#2
+=== RUN   FuzzRead/seed#3
+=== RUN   FuzzRead/seed#4
+=== RUN   FuzzRead/seed#5
+=== RUN   FuzzRead/seed#6
+=== RUN   FuzzRead/seed#7
+=== RUN   FuzzRead/seed#8
+=== RUN   FuzzRead/seed#9
+=== RUN   FuzzRead/seed#10
+=== RUN   FuzzRead/seed#11
+=== RUN   FuzzRead/seed#12
+=== RUN   FuzzRead/seed#13
+=== RUN   FuzzRead/seed#14
+=== RUN   FuzzRead/seed#15
+=== RUN   FuzzRead/seed#16
+=== RUN   FuzzRead/seed#17
+=== RUN   FuzzRead/seed#18
+=== RUN   FuzzRead/seed#19
+=== RUN   FuzzRead/seed#20
+=== RUN   FuzzRead/seed#21
+=== RUN   FuzzRead/seed#22
+=== RUN   FuzzRead/seed#23
+=== RUN   FuzzRead/seed#24
+=== RUN   FuzzRead/seed#25
+=== RUN   FuzzRead/seed#26
+=== RUN   FuzzRead/seed#27
+=== RUN   FuzzRead/seed#28
+=== RUN   FuzzRead/seed#29
+=== RUN   FuzzRead/seed#30
+=== RUN   FuzzRead/seed#31
+=== RUN   FuzzRead/seed#32
+=== RUN   FuzzRead/seed#33
+=== RUN   FuzzRead/seed#34
+=== RUN   FuzzRead/seed#35
+--- PASS: FuzzRead (0.02s)
+    --- PASS: FuzzRead/seed#0 (0.00s)
+    --- PASS: FuzzRead/seed#1 (0.00s)
+    --- PASS: FuzzRead/seed#2 (0.00s)
+    --- PASS: FuzzRead/seed#3 (0.00s)
+    --- PASS: FuzzRead/seed#4 (0.00s)
+    --- PASS: FuzzRead/seed#5 (0.00s)
+    --- PASS: FuzzRead/seed#6 (0.00s)
+    --- PASS: FuzzRead/seed#7 (0.00s)
+    --- PASS: FuzzRead/seed#8 (0.00s)
+    --- PASS: FuzzRead/seed#9 (0.00s)
+    --- PASS: FuzzRead/seed#10 (0.00s)
+    --- PASS: FuzzRead/seed#11 (0.00s)
+    --- PASS: FuzzRead/seed#12 (0.00s)
+    --- PASS: FuzzRead/seed#13 (0.00s)
+    --- PASS: FuzzRead/seed#14 (0.00s)
+    --- PASS: FuzzRead/seed#15 (0.00s)
+    --- PASS: FuzzRead/seed#16 (0.00s)
+    --- PASS: FuzzRead/seed#17 (0.00s)
+    --- PASS: FuzzRead/seed#18 (0.00s)
+    --- PASS: FuzzRead/seed#19 (0.00s)
+    --- PASS: FuzzRead/seed#20 (0.00s)
+    --- PASS: FuzzRead/seed#21 (0.00s)
+    --- PASS: FuzzRead/seed#22 (0.00s)
+    --- PASS: FuzzRead/seed#23 (0.00s)
+    --- PASS: FuzzRead/seed#24 (0.00s)
+    --- PASS: FuzzRead/seed#25 (0.00s)
+    --- PASS: FuzzRead/seed#26 (0.00s)
+    --- PASS: FuzzRead/seed#27 (0.00s)
+    --- PASS: FuzzRead/seed#28 (0.00s)
+    --- PASS: FuzzRead/seed#29 (0.00s)
+    --- PASS: FuzzRead/seed#30 (0.00s)
+    --- PASS: FuzzRead/seed#31 (0.00s)
+    --- PASS: FuzzRead/seed#32 (0.00s)
+    --- PASS: FuzzRead/seed#33 (0.00s)
+    --- PASS: FuzzRead/seed#34 (0.00s)
+    --- PASS: FuzzRead/seed#35 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/profile	1.140s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+=== RUN   TestSafe
+--- PASS: TestSafe (0.00s)
+=== RUN   TestRender
+--- PASS: TestRender (0.00s)
+=== RUN   TestRenderIsBounded
+--- PASS: TestRenderIsBounded (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/report	1.018s
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestContractParity
+--- PASS: TestContractParity (0.01s)
+=== RUN   TestSniff
+--- PASS: TestSniff (0.00s)
+=== RUN   TestCleanName
+--- PASS: TestCleanName (0.00s)
+=== RUN   TestFieldsCheck
+--- PASS: TestFieldsCheck (0.00s)
+=== RUN   TestEnvelope
+--- PASS: TestEnvelope (0.04s)
+=== RUN   TestFailedJobs
+--- PASS: TestFailedJobs (0.00s)
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestOwnKey
+--- PASS: TestOwnKey (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/upload	1.103s
+=== RUN   TestOutsideTheContract
+--- PASS: TestOutsideTheContract (0.16s)
+=== RUN   TestImportClosedLoop
+--- PASS: TestImportClosedLoop (0.38s)
+=== RUN   TestImportRoleMatrix
+--- PASS: TestImportRoleMatrix (1.03s)
+=== RUN   TestUploadRefusals
+=== RUN   TestUploadRefusals/a_file_name_with_a_control
+=== RUN   TestUploadRefusals/a_ZIP_archive
+=== RUN   TestUploadRefusals/an_ELF_executable
+=== RUN   TestUploadRefusals/a_script
+=== RUN   TestUploadRefusals/an_unknown_part
+=== RUN   TestUploadRefusals/a_repeated_field
+=== RUN   TestUploadRefusals/a_gzip_file
+=== RUN   TestUploadRefusals/an_.exe_name
+=== RUN   TestUploadRefusals/an_unknown_kind
+=== RUN   TestUploadRefusals/a_malformed_project
+=== RUN   TestUploadRefusals/another_project's_model
+=== RUN   TestUploadRefusals/the_file_before_a_field
+=== RUN   TestUploadRefusals/a_field_sent_as_a_file
+=== RUN   TestUploadRefusals/an_encoded_part
+=== RUN   TestUploadRefusals/an_.xlsx_name
+=== RUN   TestUploadRefusals/a_file_over_the_limit
+=== RUN   TestUploadRefusals/a_draft_for_a_version
+=== RUN   TestUploadRefusals/another_model's_version
+=== RUN   TestUploadRefusals/a_field_after_the_file
+=== RUN   TestUploadRefusals/no_file
+=== RUN   TestUploadRefusals/a_field_longer_than_an_ID
+=== RUN   TestUploadRefusals/an_empty_file
+=== RUN   TestUploadRefusals/a_project_that_is_not_there
+=== RUN   TestUploadRefusals/a_file_without_a_name
+--- PASS: TestUploadRefusals (0.31s)
+    --- PASS: TestUploadRefusals/a_file_name_with_a_control (0.00s)
+    --- PASS: TestUploadRefusals/a_ZIP_archive (0.01s)
+    --- PASS: TestUploadRefusals/an_ELF_executable (0.01s)
+    --- PASS: TestUploadRefusals/a_script (0.01s)
+    --- PASS: TestUploadRefusals/an_unknown_part (0.00s)
+    --- PASS: TestUploadRefusals/a_repeated_field (0.00s)
+    --- PASS: TestUploadRefusals/a_gzip_file (0.01s)
+    --- PASS: TestUploadRefusals/an_.exe_name (0.01s)
+    --- PASS: TestUploadRefusals/an_unknown_kind (0.00s)
+    --- PASS: TestUploadRefusals/a_malformed_project (0.00s)
+    --- PASS: TestUploadRefusals/another_project's_model (0.01s)
+    --- PASS: TestUploadRefusals/the_file_before_a_field (0.00s)
+    --- PASS: TestUploadRefusals/a_field_sent_as_a_file (0.00s)
+    --- PASS: TestUploadRefusals/an_encoded_part (0.00s)
+    --- PASS: TestUploadRefusals/an_.xlsx_name (0.01s)
+    --- PASS: TestUploadRefusals/a_file_over_the_limit (0.01s)
+    --- PASS: TestUploadRefusals/a_draft_for_a_version (0.00s)
+    --- PASS: TestUploadRefusals/another_model's_version (0.00s)
+    --- PASS: TestUploadRefusals/a_field_after_the_file (0.01s)
+    --- PASS: TestUploadRefusals/no_file (0.00s)
+    --- PASS: TestUploadRefusals/a_field_longer_than_an_ID (0.00s)
+    --- PASS: TestUploadRefusals/an_empty_file (0.01s)
+    --- PASS: TestUploadRefusals/a_project_that_is_not_there (0.01s)
+    --- PASS: TestUploadRefusals/a_file_without_a_name (0.00s)
+=== RUN   TestUploadIdempotency
+--- PASS: TestUploadIdempotency (0.31s)
+=== RUN   TestProfileFailures
+--- PASS: TestProfileFailures (0.69s)
+=== RUN   TestProfileIntegrity
+--- PASS: TestProfileIntegrity (0.41s)
+=== RUN   TestProfileJobFailures
+--- PASS: TestProfileJobFailures (0.67s)
+=== RUN   TestErrorReportAuthorization
+--- PASS: TestErrorReportAuthorization (0.37s)
+=== RUN   TestASlowUploadHasItsOwnDeadline
+--- PASS: TestASlowUploadHasItsOwnDeadline (5.26s)
+=== RUN   TestMembershipRoutes
+--- PASS: TestMembershipRoutes (0.32s)
+=== RUN   TestModelRoutes
+--- PASS: TestModelRoutes (0.33s)
+=== RUN   TestRunFailures
+--- PASS: TestRunFailures (0.46s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	11.787s
+=== RUN   TestTheBuildRunsSimulations
+--- PASS: TestTheBuildRunsSimulations (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	1.053s
+=== RUN   TestProbesAreCaught
+=== RUN   TestProbesAreCaught/kernel-http
+=== RUN   TestProbesAreCaught/kernel-imports-a-pack
+=== RUN   TestProbesAreCaught/kernel-imports-storage
+=== RUN   TestProbesAreCaught/kernel-imports-pgx
+=== RUN   TestProbesAreCaught/pgx-outside-storage
+=== RUN   TestProbesAreCaught/kernel-unlisted-module
+=== RUN   TestProbesAreCaught/kernel-process-exec
+=== RUN   TestProbesAreCaught/kernel-testing
+=== RUN   TestProbesAreCaught/kernel-test-imports-a-pack
+=== RUN   TestProbesAreCaught/interface-imports-a-pack-in-tests
+=== RUN   TestProbesAreCaught/pack-http
+=== RUN   TestProbesAreCaught/pack-imports-tenant
+=== RUN   TestProbesAreCaught/pack-imports-conformance
+=== RUN   TestProbesAreCaught/conformance-names-a-pack
+=== RUN   TestProbesAreCaught/cmd-links-test-helpers
+=== RUN   TestProbesAreCaught/storage-links-testing
+=== RUN   TestProbesAreCaught/cmd-links-the-token-signer
+=== RUN   TestProbesAreCaught/auth-reads-the-database
+=== RUN   TestProbesAreCaught/auth-imports-pgx
+=== RUN   TestProbesAreCaught/api-links-the-worker-scope
+=== RUN   TestProbesAreCaught/a-service-links-the-worker-scope
+=== RUN   TestProbesAreCaught/storage-links-the-worker-scope
+=== RUN   TestProbesAreCaught/api-links-the-simulation-handler
+=== RUN   TestProbesAreCaught/a-service-links-the-handler
+=== RUN   TestProbesAreCaught/api-links-the-import-profiler
+=== RUN   TestProbesAreCaught/the-upload-service-links-the-profiler
+=== RUN   TestProbesAreCaught/the-parser-reads-object-storage
+=== RUN   TestProbesAreCaught/the-parser-reads-the-tenant
+=== RUN   TestProbesAreCaught/the-report-serves-http
+=== RUN   TestProbesAreCaught/the-report-opens-files
+=== RUN   TestProbesAreCaught/the-worker-names-a-pack
+=== RUN   TestProbesAreCaught/a-service-names-a-pack
+--- PASS: TestProbesAreCaught (12.10s)
+    --- PASS: TestProbesAreCaught/kernel-http (0.40s)
+    --- PASS: TestProbesAreCaught/kernel-imports-a-pack (0.38s)
+    --- PASS: TestProbesAreCaught/kernel-imports-storage (0.37s)
+    --- PASS: TestProbesAreCaught/kernel-imports-pgx (0.37s)
+    --- PASS: TestProbesAreCaught/pgx-outside-storage (0.39s)
+    --- PASS: TestProbesAreCaught/kernel-unlisted-module (0.37s)
+    --- PASS: TestProbesAreCaught/kernel-process-exec (0.39s)
+    --- PASS: TestProbesAreCaught/kernel-testing (0.35s)
+    --- PASS: TestProbesAreCaught/kernel-test-imports-a-pack (0.39s)
+    --- PASS: TestProbesAreCaught/interface-imports-a-pack-in-tests (0.36s)
+    --- PASS: TestProbesAreCaught/pack-http (0.37s)
+    --- PASS: TestProbesAreCaught/pack-imports-tenant (0.35s)
+    --- PASS: TestProbesAreCaught/pack-imports-conformance (0.35s)
+    --- PASS: TestProbesAreCaught/conformance-names-a-pack (0.36s)
+    --- PASS: TestProbesAreCaught/cmd-links-test-helpers (0.36s)
+    --- PASS: TestProbesAreCaught/storage-links-testing (0.35s)
+    --- PASS: TestProbesAreCaught/cmd-links-the-token-signer (0.36s)
+    --- PASS: TestProbesAreCaught/auth-reads-the-database (0.40s)
+    --- PASS: TestProbesAreCaught/auth-imports-pgx (0.39s)
+    --- PASS: TestProbesAreCaught/api-links-the-worker-scope (0.39s)
+    --- PASS: TestProbesAreCaught/a-service-links-the-worker-scope (0.41s)
+    --- PASS: TestProbesAreCaught/storage-links-the-worker-scope (0.37s)
+    --- PASS: TestProbesAreCaught/api-links-the-simulation-handler (0.40s)
+    --- PASS: TestProbesAreCaught/a-service-links-the-handler (0.42s)
+    --- PASS: TestProbesAreCaught/api-links-the-import-profiler (0.41s)
+    --- PASS: TestProbesAreCaught/the-upload-service-links-the-profiler (0.38s)
+    --- PASS: TestProbesAreCaught/the-parser-reads-object-storage (0.36s)
+    --- PASS: TestProbesAreCaught/the-parser-reads-the-tenant (0.39s)
+    --- PASS: TestProbesAreCaught/the-report-serves-http (0.38s)
+    --- PASS: TestProbesAreCaught/the-report-opens-files (0.38s)
+    --- PASS: TestProbesAreCaught/the-worker-names-a-pack (0.35s)
+    --- PASS: TestProbesAreCaught/a-service-names-a-pack (0.38s)
+=== RUN   TestHandlersPlugInWithoutTheWorkerScope
+--- PASS: TestHandlersPlugInWithoutTheWorkerScope (1.13s)
+=== RUN   TestSyntheticGraph
+--- PASS: TestSyntheticGraph (0.00s)
+=== RUN   TestReviewProbes
+=== RUN   TestReviewProbes/linux/arm64-only_file
+=== PAUSE TestReviewProbes/linux/arm64-only_file
+=== RUN   TestReviewProbes/windows-only_file
+=== PAUSE TestReviewProbes/windows-only_file
+=== RUN   TestReviewProbes/file_only_without_cgo
+=== PAUSE TestReviewProbes/file_only_without_cgo
+=== RUN   TestReviewProbes/file_behind_a_custom_tag
+=== PAUSE TestReviewProbes/file_behind_a_custom_tag
+=== RUN   TestReviewProbes/arm64-only_internal_kernel_test
+=== PAUSE TestReviewProbes/arm64-only_internal_kernel_test
+=== RUN   TestReviewProbes/arm64-only_external_kernel_test
+=== PAUSE TestReviewProbes/arm64-only_external_kernel_test
+=== RUN   TestReviewProbes/kernel_test_behind_a_custom_tag
+=== PAUSE TestReviewProbes/kernel_test_behind_a_custom_tag
+=== RUN   TestReviewProbes/cgo_in_the_kernel
+=== PAUSE TestReviewProbes/cgo_in_the_kernel
+=== RUN   TestReviewProbes/syscall_in_the_kernel
+=== PAUSE TestReviewProbes/syscall_in_the_kernel
+=== RUN   TestReviewProbes/os.StartProcess_in_the_kernel
+=== PAUSE TestReviewProbes/os.StartProcess_in_the_kernel
+=== RUN   TestReviewProbes/unsafe_in_a_pack
+=== PAUSE TestReviewProbes/unsafe_in_a_pack
+=== RUN   TestReviewProbes/database/sql_in_a_new_top-level_package
+=== PAUSE TestReviewProbes/database/sql_in_a_new_top-level_package
+=== RUN   TestReviewProbes/test_helpers_in_tools/
+=== PAUSE TestReviewProbes/test_helpers_in_tools/
+=== RUN   TestReviewProbes/database/sql_at_the_module_root
+=== PAUSE TestReviewProbes/database/sql_at_the_module_root
+=== RUN   TestReviewProbes/windows-only_package
+=== PAUSE TestReviewProbes/windows-only_package
+=== RUN   TestReviewProbes/package_behind_a_custom_tag
+=== PAUSE TestReviewProbes/package_behind_a_custom_tag
+=== RUN   TestReviewProbes/two_packs_under_one_directory
+=== PAUSE TestReviewProbes/two_packs_under_one_directory
+=== CONT  TestReviewProbes/windows-only_file
+=== CONT  TestReviewProbes/os.StartProcess_in_the_kernel
+=== CONT  TestReviewProbes/arm64-only_external_kernel_test
+=== CONT  TestReviewProbes/syscall_in_the_kernel
+=== CONT  TestReviewProbes/cgo_in_the_kernel
+=== CONT  TestReviewProbes/kernel_test_behind_a_custom_tag
+=== CONT  TestReviewProbes/arm64-only_internal_kernel_test
+=== CONT  TestReviewProbes/file_only_without_cgo
+=== CONT  TestReviewProbes/linux/arm64-only_file
+=== CONT  TestReviewProbes/file_behind_a_custom_tag
+=== CONT  TestReviewProbes/database/sql_at_the_module_root
+=== CONT  TestReviewProbes/package_behind_a_custom_tag
+=== CONT  TestReviewProbes/two_packs_under_one_directory
+=== CONT  TestReviewProbes/test_helpers_in_tools/
+=== CONT  TestReviewProbes/database/sql_in_a_new_top-level_package
+=== CONT  TestReviewProbes/unsafe_in_a_pack
+=== CONT  TestReviewProbes/windows-only_package
+--- PASS: TestReviewProbes (0.02s)
+    --- PASS: TestReviewProbes/arm64-only_external_kernel_test (9.36s)
+    --- PASS: TestReviewProbes/os.StartProcess_in_the_kernel (9.66s)
+    --- PASS: TestReviewProbes/windows-only_file (9.75s)
+    --- PASS: TestReviewProbes/syscall_in_the_kernel (9.80s)
+    --- PASS: TestReviewProbes/cgo_in_the_kernel (9.40s)
+    --- PASS: TestReviewProbes/kernel_test_behind_a_custom_tag (9.16s)
+    --- PASS: TestReviewProbes/file_only_without_cgo (9.11s)
+    --- PASS: TestReviewProbes/arm64-only_internal_kernel_test (9.16s)
+    --- PASS: TestReviewProbes/linux/arm64-only_file (9.34s)
+    --- PASS: TestReviewProbes/package_behind_a_custom_tag (9.35s)
+    --- PASS: TestReviewProbes/file_behind_a_custom_tag (9.56s)
+    --- PASS: TestReviewProbes/database/sql_at_the_module_root (9.47s)
+    --- PASS: TestReviewProbes/test_helpers_in_tools/ (9.14s)
+    --- PASS: TestReviewProbes/database/sql_in_a_new_top-level_package (9.14s)
+    --- PASS: TestReviewProbes/two_packs_under_one_directory (9.42s)
+    --- PASS: TestReviewProbes/unsafe_in_a_pack (9.17s)
+    --- PASS: TestReviewProbes/windows-only_package (4.58s)
+=== RUN   TestRound2Probes
+=== RUN   TestRound2Probes/kernel_syscall_through_an_internal_package
+=== PAUSE TestRound2Probes/kernel_syscall_through_an_internal_package
+=== RUN   TestRound2Probes/pack_process_through_pkg/
+=== PAUSE TestRound2Probes/pack_process_through_pkg/
+=== RUN   TestRound2Probes/kernel_package_in_an___directory
+=== PAUSE TestRound2Probes/kernel_package_in_an___directory
+=== RUN   TestRound2Probes/kernel_package_in_testdata
+=== PAUSE TestRound2Probes/kernel_package_in_testdata
+=== RUN   TestRound2Probes/tagged_file_in_an___package
+=== PAUSE TestRound2Probes/tagged_file_in_an___package
+=== RUN   TestRound2Probes/kernel_io/ioutil
+=== PAUSE TestRound2Probes/kernel_io/ioutil
+=== RUN   TestRound2Probes/kernel_path/filepath
+=== PAUSE TestRound2Probes/kernel_path/filepath
+=== RUN   TestRound2Probes/kernel_text/template
+=== PAUSE TestRound2Probes/kernel_text/template
+=== RUN   TestRound2Probes/pack_archive/zip
+=== PAUSE TestRound2Probes/pack_archive/zip
+=== RUN   TestRound2Probes/kernel_assembly
+=== PAUSE TestRound2Probes/kernel_assembly
+=== RUN   TestRound2Probes/kernel_assembly_for_another_platform
+=== PAUSE TestRound2Probes/kernel_assembly_for_another_platform
+=== RUN   TestRound2Probes/pack_object_file
+=== PAUSE TestRound2Probes/pack_object_file
+=== RUN   TestRound2Probes/two_packs_registered_from_outside_one_directory
+=== PAUSE TestRound2Probes/two_packs_registered_from_outside_one_directory
+=== RUN   TestRound2Probes/two_packs_under_a_directory_with_a_doc.go
+=== PAUSE TestRound2Probes/two_packs_under_a_directory_with_a_doc.go
+=== RUN   TestRound2Probes/pack_subpackage_reaching_the_interface_through_another_package
+=== PAUSE TestRound2Probes/pack_subpackage_reaching_the_interface_through_another_package
+=== RUN   TestRound2Probes/pack_subpackage_in_another_package's_tests
+=== PAUSE TestRound2Probes/pack_subpackage_in_another_package's_tests
+=== RUN   TestRound2Probes/pack_third-party_module
+=== PAUSE TestRound2Probes/pack_third-party_module
+=== RUN   TestRound2Probes/service_opening_its_own_database_handle
+=== PAUSE TestRound2Probes/service_opening_its_own_database_handle
+=== RUN   TestRound2Probes/kernel_x/text_package_that_reads_files
+=== PAUSE TestRound2Probes/kernel_x/text_package_that_reads_files
+=== RUN   TestRound2Probes/pack_x/text_package_that_reads_files
+=== PAUSE TestRound2Probes/pack_x/text_package_that_reads_files
+=== CONT  TestRound2Probes/pack_process_through_pkg/
+=== CONT  TestRound2Probes/kernel_assembly
+=== CONT  TestRound2Probes/pack_x/text_package_that_reads_files
+=== CONT  TestRound2Probes/kernel_x/text_package_that_reads_files
+=== CONT  TestRound2Probes/pack_third-party_module
+=== CONT  TestRound2Probes/pack_subpackage_in_another_package's_tests
+=== CONT  TestRound2Probes/service_opening_its_own_database_handle
+=== CONT  TestRound2Probes/two_packs_under_a_directory_with_a_doc.go
+=== CONT  TestRound2Probes/pack_subpackage_reaching_the_interface_through_another_package
+=== CONT  TestRound2Probes/pack_object_file
+=== CONT  TestRound2Probes/kernel_assembly_for_another_platform
+=== CONT  TestRound2Probes/tagged_file_in_an___package
+=== CONT  TestRound2Probes/two_packs_registered_from_outside_one_directory
+=== CONT  TestRound2Probes/kernel_text/template
+=== CONT  TestRound2Probes/kernel_path/filepath
+=== CONT  TestRound2Probes/pack_archive/zip
+=== CONT  TestRound2Probes/kernel_package_in_testdata
+=== CONT  TestRound2Probes/kernel_io/ioutil
+=== CONT  TestRound2Probes/kernel_package_in_an___directory
+=== CONT  TestRound2Probes/kernel_syscall_through_an_internal_package
+--- PASS: TestRound2Probes (0.39s)
+    --- PASS: TestRound2Probes/kernel_x/text_package_that_reads_files (0.67s)
+    --- PASS: TestRound2Probes/kernel_assembly (0.76s)
+    --- PASS: TestRound2Probes/pack_process_through_pkg/ (0.77s)
+    --- PASS: TestRound2Probes/pack_x/text_package_that_reads_files (0.78s)
+    --- PASS: TestRound2Probes/pack_third-party_module (0.73s)
+    --- PASS: TestRound2Probes/pack_subpackage_in_another_package's_tests (0.77s)
+    --- PASS: TestRound2Probes/two_packs_under_a_directory_with_a_doc.go (0.77s)
+    --- PASS: TestRound2Probes/service_opening_its_own_database_handle (0.80s)
+    --- PASS: TestRound2Probes/pack_subpackage_reaching_the_interface_through_another_package (0.80s)
+    --- PASS: TestRound2Probes/pack_object_file (0.72s)
+    --- PASS: TestRound2Probes/kernel_assembly_for_another_platform (0.72s)
+    --- PASS: TestRound2Probes/tagged_file_in_an___package (0.70s)
+    --- PASS: TestRound2Probes/pack_archive/zip (0.69s)
+    --- PASS: TestRound2Probes/two_packs_registered_from_outside_one_directory (0.78s)
+    --- PASS: TestRound2Probes/kernel_path/filepath (0.74s)
+    --- PASS: TestRound2Probes/kernel_text/template (0.78s)
+    --- PASS: TestRound2Probes/kernel_package_in_testdata (0.75s)
+    --- PASS: TestRound2Probes/kernel_io/ioutil (0.74s)
+    --- PASS: TestRound2Probes/kernel_package_in_an___directory (0.72s)
+    --- PASS: TestRound2Probes/kernel_syscall_through_an_internal_package (0.70s)
+PASS
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	60.377s

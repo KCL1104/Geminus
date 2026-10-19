@@ -1,0 +1,25 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/282 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 282/282 completed, now fuzzing with 4 workers
+fuzz: elapsed: 3s, execs: 92309 (30769/sec), new interesting: 38 (total: 320)
+fuzz: elapsed: 6s, execs: 142880 (16851/sec), new interesting: 55 (total: 337)
+fuzz: elapsed: 9s, execs: 178635 (11921/sec), new interesting: 66 (total: 348)
+fuzz: elapsed: 12s, execs: 191798 (4386/sec), new interesting: 67 (total: 349)
+fuzz: elapsed: 15s, execs: 191798 (0/sec), new interesting: 67 (total: 349)
+fuzz: elapsed: 18s, execs: 191798 (0/sec), new interesting: 67 (total: 349)
+fuzz: elapsed: 21s, execs: 502148 (103465/sec), new interesting: 74 (total: 356)
+fuzz: elapsed: 24s, execs: 741373 (79741/sec), new interesting: 90 (total: 372)
+fuzz: elapsed: 27s, execs: 789412 (16011/sec), new interesting: 106 (total: 388)
+fuzz: elapsed: 30s, execs: 803746 (4778/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 33s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 36s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 39s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 42s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 45s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 48s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 51s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 54s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 57s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 1m0s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+fuzz: elapsed: 1m1s, execs: 803746 (0/sec), new interesting: 115 (total: 397)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/profile	61.054s

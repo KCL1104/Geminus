@@ -1,0 +1,196 @@
+T-016 red runs and targeted mutations (2026-10-19)
+
+1. SQL (db/tests/imports.sql) before migration 0010's rules
+   Migrations 0001-0009 and only the columns of 0010 (no CHECK, no
+   trigger, scratch file 0010-columns-only.sql), on the fresh disposable
+   database dt_test_t016_red, with dt.collect=on so that every failing
+   case is listed. Each line is a rule of 0010 that the suite checks and
+   that failed without it. (The key-prefix cases already fail on 0001's
+   object_key_ok and so are not listed; the last line is the provisioner
+   case failing on a 0001 function privilege instead of 0010's refusal.)
+
+psql:db/tests/imports.sql:63: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: INSERT INTO twin.imports(id,organization_id,project_id,model_id,base_version_id,kind,filename,upload_object_key,upload_
+psql:db/tests/imports.sql:72: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET preview='[{"a":"1"}]' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YD
+psql:db/tests/imports.sql:72: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET error_report_object_key='tenant/org_01M4YDQK00TA00000000000000/imports/imp_01M4YDQK00TA00000000
+psql:db/tests/imports.sql:72: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET status='FAILED', error='{"code":"X","message":"x","retryable":false}' WHERE organization_id='or
+psql:db/tests/imports.sql:72: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET status='PROFILING' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK0
+psql:db/tests/imports.sql:81: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET filename='other.csv' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQ
+psql:db/tests/imports.sql:81: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET kind='json_events' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK0
+psql:db/tests/imports.sql:81: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET upload_object_key='tenant/org_01M4YDQK00TA00000000000000/imports/imp_01M4YDQK00TA00000000000004
+psql:db/tests/imports.sql:81: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET upload_content_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222' W
+psql:db/tests/imports.sql:81: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET size_bytes=11 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00
+psql:db/tests/imports.sql:81: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET base_version_id='mv_01M4YDQK00TA00000000000001', created_by='usr_01M4YDQK00TA00000000000001', c
+psql:db/tests/imports.sql:93: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET profile='{"format":"csv","encoding":"utf-8","rows":0,"columns":[]}' WHERE organization_id='org_
+psql:db/tests/imports.sql:93: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='PROFILING', profile='{"format":"csv","encoding":"utf-8","rows":0,"columns":[]}' WHERE o
+psql:db/tests/imports.sql:93: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='AWAITING_MAPPING' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01
+psql:db/tests/imports.sql:93: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='FAILED' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA
+psql:db/tests/imports.sql:111: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='AWAITING_MAPPING', profile='[]' WHERE organization_id='org_01M4YDQK00TA00000000000000'
+psql:db/tests/imports.sql:111: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='AWAITING_MAPPING', profile='{}', error_report_object_key='tenant/org_01M4YDQK00TA00000
+psql:db/tests/imports.sql:111: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='AWAITING_MAPPING', profile='{}', error_report_object_key='tenant/org_01M4YDQK00TA00000
+psql:db/tests/imports.sql:111: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='AWAITING_MAPPING', profile='{}', error_report_content_hash='sha256:2222222222222222222
+psql:db/tests/imports.sql:111: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='AWAITING_MAPPING', profile='{}', error_report_object_key='tenant/org_01M4YDQK00TA00000
+psql:db/tests/imports.sql:111: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='AWAITING_MAPPING', profile='{}', error_report_object_key='tenant/org_01M4YDQK00TA00000
+psql:db/tests/imports.sql:126: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET profile='{"format":"csv","encoding":"utf-8","rows":3,"columns":[]}' WHERE organization_id='org
+psql:db/tests/imports.sql:126: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET status='PROFILING', profile=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id
+psql:db/tests/imports.sql:126: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET status='UPLOADED', profile=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id=
+psql:db/tests/imports.sql:133: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET profile='{"format":"csv","encoding":"utf-8","rows":3,"columns":[]}' WHERE organization_id='org
+psql:db/tests/imports.sql:133: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET status='UPLOADED', profile=NULL, preview='[]', total_rows=0, invalid_rows=0 WHERE organization
+psql:db/tests/imports.sql:133: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET upload_content_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222' 
+psql:db/tests/imports.sql:133: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET filename='renamed.csv' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4
+psql:db/tests/imports.sql:141: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET preview='[]' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00
+psql:db/tests/imports.sql:141: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET error_report_object_key=NULL, error_report_content_hash=NULL, error_report_size_bytes=NULL WHE
+psql:db/tests/imports.sql:151: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET status='PROFILING', error=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='
+psql:db/tests/imports.sql:151: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='org_01M4YDQK00TA000
+psql:db/tests/imports.sql:153: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET mapping='{"mappings":[]}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_0
+psql:db/tests/imports.sql:158: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET status='UPLOADED', error=NULL WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='i
+psql:db/tests/imports.sql:158: WARNING:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.imports SET error='{"code":"X","message":"x","retryable":true}' WHERE organization_id='org_01M4YDQK00TA000
+psql:db/tests/imports.sql:163: WARNING:  FAILED: expected SQLSTATE 23514 but the statement succeeded: UPDATE twin.imports SET status='AWAITING_MAPPING' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_0
+psql:db/tests/imports.sql:174: WARNING:  FAILED: expected SQLSTATE 55000 but got 42501 (permission denied for function object_key_ok) for: UPDATE twin.imports SET status='PROFILING' WHERE organization_id='org_01M4YDQK00T
+
+2. Architecture rules before T-016c
+   scripts/check-architecture/rules.go as of 27ba562 with the probe and
+   synthetic-graph tests of T-016c: every new probe fails (no violation),
+   and the synthetic graph test fails; with the T-016c rules all pass
+   (architecture-check.log, t016-go-tests.log).
+
+rules.go of 27ba562 (before T-016c), go test -run TestProbesAreCaught|TestSyntheticGraph: exit 1
+--- FAIL: TestProbesAreCaught (14.69s)
+    --- FAIL: TestProbesAreCaught/api-links-the-import-profiler (0.59s)
+        check_test.go:187: no job-handlers-only-in-the-worker violation of ./cmd/api on ./internal/import/profiler; got []
+    --- FAIL: TestProbesAreCaught/the-upload-service-links-the-profiler (0.46s)
+        check_test.go:187: no job-handlers-only-in-the-worker violation of ./internal/import/upload on ./internal/import/profiler; got []
+    --- FAIL: TestProbesAreCaught/the-parser-reads-object-storage (0.47s)
+        check_test.go:187: no import-parsing-is-pure violation of ./internal/import/profile on ./internal/storage/objects; got []
+    --- FAIL: TestProbesAreCaught/the-parser-reads-the-tenant (0.47s)
+        check_test.go:187: no import-parsing-is-pure violation of ./internal/import/profile on ./internal/tenant; got []
+    --- FAIL: TestProbesAreCaught/the-report-serves-http (0.46s)
+        check_test.go:187: no import-parsing-is-pure violation of ./internal/import/report on net/http; got []
+    --- FAIL: TestProbesAreCaught/the-report-opens-files (0.42s)
+        check_test.go:187: no import-parsing-is-pure violation of ./internal/import/report on os; got []
+--- FAIL: TestSyntheticGraph (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	14.694s
+FAIL
+
+3. Targeted mutations (scratch mutate.py): each edits one file, runs the
+   named tests (DB-backed ones against dt_test_t016_go1, a disposable
+   database migrated by make db-test), and restores the file byte for
+   byte. 26 mutations: 24 killed on the first run; 2 survived because the
+   mutation itself did not change the behaviour (upload-unverified:
+   `false && a || b` still checked the hash; trailing-part-accepted: the
+   next case of the same switch still refused the part), so both were
+   rewritten to remove the check and rerun: both killed. 26/26 killed,
+   0 left. git status after each run: only the files the work changed.
+
+report-safe-off: KILLED (go test -run TestSafe|TestRender ./internal/import/report: exit 1) internal/import/report/report.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/report	0.003s
+    FAIL
+report-no-fullwidth: KILLED (go test -run TestSafe ./internal/import/report: exit 1) internal/import/report/report.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/report	0.003s
+    FAIL
+report-off-end-to-end: KILLED (go test -run TestImportClosedLoop ./internal/api: exit 1) internal/import/report/report.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.370s
+    FAIL
+utf8-invalid-accepted: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/text.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.020s
+    FAIL
+split-sequence-not-held: KILLED (go test -run TestChineseCSVWithBOM ./internal/import/profile: exit 1) internal/import/profile/text.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.010s
+    FAIL
+bom-kept: KILLED (go test -run TestChineseCSVWithBOM ./internal/import/profile: exit 1) internal/import/profile/text.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.008s
+    FAIL
+nul-accepted: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/text.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.014s
+    FAIL
+duplicate-not-typed: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/json.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.014s
+    FAIL
+infinite-accepted: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/json.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.016s
+    FAIL
+depth-unbounded: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/json.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.015s
+    FAIL
+field-unbounded: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/csv.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.015s
+    FAIL
+rows-unbounded: KILLED (go test -run TestUnreadableFiles ./internal/import/profile: exit 1) internal/import/profile/csv.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.015s
+    FAIL
+invalid-rows-in-statistics: KILLED (go test -run TestInvalidRows ./internal/import/profile: exit 1) internal/import/profile/csv.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.007s
+    FAIL
+preview-unbudgeted: KILLED (go test -run TestPreviewBounds ./internal/import/profile: exit 1) internal/import/profile/preview.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.008s
+    FAIL
+stored-number-size-ignored: KILLED (go test -run TestPreviewBounds ./internal/import/profile: exit 1) internal/import/profile/preview.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/import/profile	0.008s
+    FAIL
+no-sniff: KILLED (go test -run TestUploadRefusals ./internal/api: exit 1) internal/import/upload/upload.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.388s
+    FAIL
+no-size-limit: KILLED (go test -run TestUploadRefusals ./internal/api: exit 1) internal/import/upload/upload.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.433s
+    FAIL
+replay-stored-again: KILLED (go test -run TestUploadIdempotency ./internal/api: exit 1) internal/import/upload/upload.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.300s
+    FAIL
+report-hash-unchecked: KILLED (go test -run TestImportClosedLoop ./internal/api: exit 1) internal/import/upload/resource.go
+    FAIL
+    # github.com/kcl1104/geminus/internal/import/upload
+    internal/import/upload/resource.go:15:2: "github.com/kcl1104/geminus/internal/model/hashing" imported and not used
+report-any-key: KILLED (go test -run TestErrorReportAuthorization ./internal/api: exit 1) internal/import/upload/resource.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.415s
+    FAIL
+failed-job-not-shown: KILLED (go test -run TestProfileJobFailures ./internal/api: exit 1) internal/import/upload/resource.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.620s
+    FAIL
+upload-unverified: SURVIVED (go test -run TestProfileIntegrity ./internal/api: exit 0) internal/import/profiler/profiler.go
+    ok  	github.com/kcl1104/geminus/internal/api	0.380s
+no-report-written: KILLED (go test -run TestImportClosedLoop ./internal/api: exit 1) internal/import/profiler/profiler.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.395s
+    FAIL
+no-own-deadline: KILLED (go test -run TestASlowUploadHasItsOwnDeadline ./internal/api: exit 1) internal/import/upload/http.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	1.255s
+    FAIL
+body-read-before-the-role: KILLED (go test -run TestImportRoleMatrix ./internal/api: exit 1) internal/import/upload/http.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.459s
+    FAIL
+trailing-part-accepted: SURVIVED (go test -run TestUploadRefusals ./internal/api: exit 0) internal/import/upload/http.go
+    ok  	github.com/kcl1104/geminus/internal/api	0.267s
+TOTAL: 24 killed, 2 survived of 26
+
+Rerun of the two corrected mutations:
+upload-unverified: KILLED (go test -run TestProfileIntegrity ./internal/api: exit 1) internal/import/profiler/profiler.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.525s
+    FAIL
+trailing-part-accepted: KILLED (go test -run TestUploadRefusals ./internal/api: exit 1) internal/import/upload/http.go
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/api	0.390s
+    FAIL
+TOTAL: 2 killed, 0 survived of 26
