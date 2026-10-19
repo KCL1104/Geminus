@@ -66,9 +66,15 @@ const MaxBodyBytes = 1 << 20
 // schema failure is 422 REQUEST_VALIDATION_FAILED with one detail per
 // failing JSON Pointer.
 func DecodeJSON(r *http.Request, max int64, ref string, dst any) ([]byte, error) {
+	return DecodeMedia(r, "application/json", max, ref, dst)
+}
+
+// DecodeMedia is DecodeJSON for a body of another JSON media type, such as
+// application/json-patch+json.
+func DecodeMedia(r *http.Request, mediaType string, max int64, ref string, dst any) ([]byte, error) {
 	media, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || media != "application/json" || !utf8Charset(params) {
-		return nil, Errorf(UnsupportedMediaType, "the request body must be application/json")
+	if err != nil || media != mediaType || !utf8Charset(params) {
+		return nil, Errorf(UnsupportedMediaType, "the request body must be "+mediaType)
 	}
 	data, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, max))
 	var tooLarge *http.MaxBytesError

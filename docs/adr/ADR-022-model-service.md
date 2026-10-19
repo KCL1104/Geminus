@@ -44,7 +44,7 @@
   - clean draft 沒有可發布的內容，回 409 `LIFECYCLE_CONFLICT`，不建立相同內容的新版本。
   - 完整驗證 candidate 的 canonical 形式：generic、pack、以 base manifest 解析 dataset。任一 error 回 422 `MODEL_VALIDATION_FAILED`（details 為 issues）。
   - 新 version 為 `latest.version+1`，parent 為 base，manifest 為 base 的完整 manifest：沒用到的 binding 也驗證並凍結（TWIN_IR_SPEC §5.2：run 沿用 version manifest）。`model_version_datasets` 同時寫入，由 deferred trigger 檢查與 manifest 一致。
-  - Request 的 `comment` 是使用者文字：audit metadata 只放 ID 與數量，contract 也沒有欄位可存，所以目前不保存（已知缺口，交給 T-013 決定是否加入 ModelVersion）。
+  - Request 的 `comment` 是使用者文字：存在新 version 上（D-041，T-013b），audit metadata 只放 ID 與數量。
   - 之後依「版本推進規則」處理 draft；models 的 `latest_version_id` 與 `name`（跟隨 latest 的 IR name）更新；寫 audit `model.publish` 與 idempotency response。
 - **Reset**（If-Match、`expected_latest_version_id`、`confirm_discard: true`）：
   - 不符回 409。
@@ -69,6 +69,16 @@
 - 解析 snapshot 需要 dataset object storage（T-016）。在它接上之前：
   - manifest 為空時，不需讀任何物件；
   - manifest 非空（不論是否用到）而沒有 store 時，回 503 `SERVICE_UNAVAILABLE`，不假裝驗證過。
+
+### HTTP（T-013c）
+
+- Route 在 `internal/models/http.go`，與 `internal/project`、`internal/tenant/memberships` 相同的模式：`Routes` 與 `planning/api-operations.json` 比對（method、path、role），`api.Handler` 註冊。`api.Handler` 自己建立 domain pack registry（P0 只有 software delivery），`cmd/api` 與整合測試因此一定用同一組 pack；dataset storage 尚不存在（T-016），綁 dataset 的 version 回 503。
+- Path 的 ID 必須是該種類的 D-001 ID，否則 400；格式正確但不存在（或在別的 organization）為 404。
+- **If-Match**（patch、reset、publish）：必須恰好一個 `"draft-revision-N"`。沒有為 428 `PRECONDITION_REQUIRED`；list、`*`、weak ETag、`0` 或前導 0、超過 100 字元、多個 header 為 400；格式正確但大到沒有 draft 能到的 revision 為 409。
+- Draft 的回應（get、patch、reset）帶強 ETag `"draft-revision-N"`，等於 body 的 revision。
+- **Patch body**：`application/json-patch+json`（其他 415），最多 2 MiB（與 IR 上限相同，D-029；超過 413）。不符 patch schema 或沒有任何 operation 為 422 `REQUEST_VALIDATION_FAILED`（ADR-019：request schema）；能否套用、結果是否為合格 model 由 service 判斷，為 422 `MODEL_VALIDATION_FAILED`，details 是 issues（含 code 與 severity）。
+- Service 的錯誤對應：not found 404；revision 或 base 不符 409 `MODEL_VERSION_CONFLICT`；clean draft publish 409 `LIFECYCLE_CONFLICT`；cursor 400；idempotency key 用於不同 request 409 `IDEMPOTENCY_KEY_CONFLICT`；comment 422（`/comment`）；dataset storage 不在 503。其他（tenant、交易）由 `httpapi` 分類。
+- 前端 client（`apps/web/lib/api/client.ts`）有全部九個 operation；寫入的 Idempotency-Key 由呼叫者給，重試時沿用，client 先檢查格式。Client 的測試以 fake fetch 呼叫每個 operation，比對 `api-operations.json` 的 method 與 path。
 
 ## Owner 的決定（H-009：D-040、D-041 APPROVED，於 T-013 開放 route 之前實作）
 

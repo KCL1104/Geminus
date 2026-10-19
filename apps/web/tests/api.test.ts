@@ -2,11 +2,11 @@
 // and maps every error the contract defines (and nothing it does not).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { createApiClient, type Session } from "../lib/api/client";
+import { createApiClient, newIdempotencyKey, type Session } from "../lib/api/client";
 import { draftETag, parseDraftETag } from "../lib/api/etag";
 import { isID } from "../lib/api/ids";
 import { errorCodeStatus, problemFromResponse, validationIssues } from "../lib/api/problem";
-import type { Draft, JsonPatch } from "../lib/contracts";
+import type { Draft, JsonPatch, ModelVersion } from "../lib/contracts";
 
 const commonSchema = JSON.parse(readFileSync(new URL("../../../schemas/common.schema.json", import.meta.url), "utf8")) as {
   $defs: { ErrorCode: { enum: string[]; "x-http-status": Record<string, number> } };
@@ -209,5 +209,108 @@ describe("client", () => {
     const f = fakeFetch(json(200, { items: [], next_cursor: null }));
     await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: f.fetch }).listModels(PROJECT);
     expect(f.calls[0]!.url.pathname).toBe(`/projects/${PROJECT}/models`);
+  });
+});
+
+const operations = (
+  JSON.parse(readFileSync(new URL("../../../planning/api-operations.json", import.meta.url), "utf8")) as {
+    operations: { method: string; path: string; operation_id: string }[];
+  }
+).operations;
+
+describe("model writes and versions (T-013)", () => {
+  const VERSION = "mv_01M4YDQK00FRYWV7GS7X1QCXZR";
+  const version = fixture("valid-model-version.json") as ModelVersion;
+  const api = (f: ReturnType<typeof fakeFetch>) => createApiClient({ baseUrl: "https://api.test/v1", session: () => session, fetch: f.fetch });
+
+  it("creates a model with its Idempotency-Key and a JSON body", async () => {
+    const f = fakeFetch(json(201, { id: MODEL }));
+    const r = await api(f).createModel(PROJECT, { name: "Pipeline", domain: "software_delivery", template: "default_delivery_pipeline" }, "key-create-1");
+    expect(r.ok).toBe(true);
+    const call = f.calls[0]!;
+    const headers = call.init.headers as Record<string, string>;
+    expect([call.init.method, call.url.pathname]).toEqual(["POST", `/v1/projects/${PROJECT}/models`]);
+    expect([headers["Idempotency-Key"], headers["Content-Type"], headers["If-Match"]]).toEqual(["key-create-1", "application/json", undefined]);
+    expect(JSON.parse(String(call.init.body))).toEqual({ name: "Pipeline", domain: "software_delivery", template: "default_delivery_pipeline" });
+  });
+
+  it("publishes with If-Match and the key, and reads the version back", async () => {
+    const f = fakeFetch(json(201, version), json(200, version));
+    const client = api(f);
+    const r = await client.publishVersion(MODEL, 3, { expected_base_version_id: VERSION, comment: "Ready" }, "key-publish-1");
+    expect(r.ok && r.data.comment).toBe(null);
+    const headers = f.calls[0]!.init.headers as Record<string, string>;
+    expect([f.calls[0]!.init.method, f.calls[0]!.url.pathname]).toEqual(["POST", `/v1/models/${MODEL}/versions`]);
+    expect([headers["If-Match"], headers["Idempotency-Key"]]).toEqual(['"draft-revision-3"', "key-publish-1"]);
+    expect(JSON.parse(String(f.calls[0]!.init.body))).toEqual({ expected_base_version_id: VERSION, comment: "Ready" });
+    expect((await client.getModelVersion(VERSION)).ok).toBe(true);
+    expect(f.calls[1]!.url.pathname).toBe(`/v1/model-versions/${VERSION}`);
+  });
+
+  it("resets with If-Match and requires the matching ETag back", async () => {
+    const good = fakeFetch(json(200, draft(5), { ETag: draftETag(5) }));
+    const r = await api(good).resetDraft(MODEL, 4, { expected_latest_version_id: VERSION, confirm_discard: true });
+    expect(r.ok && r.data.revision).toBe(5);
+    expect((good.calls[0]!.init.headers as Record<string, string>)["If-Match"]).toBe('"draft-revision-4"');
+    const stale = fakeFetch(json(200, draft(5), { ETag: draftETag(6) }));
+    const s2 = await api(stale).resetDraft(MODEL, 4, { expected_latest_version_id: VERSION, confirm_discard: true });
+    expect(!s2.ok && s2.problem.kind).toBe("protocol");
+  });
+
+  it("refuses bad IDs and keys before sending anything", async () => {
+    const f = fakeFetch();
+    const client = api(f);
+    const body = { name: "P", domain: "software_delivery", template: "default_delivery_pipeline" } as const;
+    const refused = [
+      await client.createModel(MODEL, body, "key-create-2"),
+      await client.createModel(PROJECT, body, "short"),
+      await client.createModel(PROJECT, body, "key with space"),
+      await client.publishVersion(MODEL, 2, { expected_base_version_id: VERSION }, "k".repeat(129)),
+      await client.publishVersion(VERSION, 2, { expected_base_version_id: VERSION }, "key-publish-2"),
+      await client.getModelVersion(MODEL),
+      await client.listVersions(VERSION),
+    ];
+    expect(refused.map((r) => !r.ok && r.problem.kind)).toEqual(["not_found", "invalid", "invalid", "invalid", "not_found", "not_found", "not_found"]);
+    expect(f.calls).toHaveLength(0);
+  });
+
+  it("makes keys the server accepts, a new one each time", () => {
+    const a = newIdempotencyKey();
+    expect(a).toMatch(/^[\x21-\x7e]{8,128}$/);
+    expect(newIdempotencyKey()).not.toBe(a);
+  });
+
+  it("calls each operation at the contract's method and path", async () => {
+    const ok = () => json(200, { items: [], next_cursor: null });
+    const f = fakeFetch(...Array.from({ length: 10 }, ok));
+    const client = api(f);
+    const seen: Record<string, number> = {};
+    const record = (id: string) => (seen[id] = f.calls.length - 1);
+    await client.listProjects();
+    record("listProjects");
+    await client.listModels(PROJECT);
+    record("listModels");
+    await client.createModel(PROJECT, { name: "P", domain: "software_delivery", template: "default_delivery_pipeline" }, "key-contract-1");
+    record("createModel");
+    await client.getModel(MODEL);
+    record("getModel");
+    await client.getDraft(MODEL);
+    record("getDraft");
+    await client.patchDraft(MODEL, 1, [{ op: "test", path: "/name", value: "x" }]);
+    record("patchDraft");
+    await client.resetDraft(MODEL, 1, { expected_latest_version_id: VERSION, confirm_discard: true });
+    record("resetDraft");
+    await client.publishVersion(MODEL, 1, { expected_base_version_id: VERSION }, "key-contract-2");
+    record("publishVersion");
+    await client.listVersions(MODEL);
+    record("listVersions");
+    await client.getModelVersion(VERSION);
+    record("getModelVersion");
+    for (const [id, i] of Object.entries(seen)) {
+      const op = operations.find((o) => o.operation_id === id);
+      const call = f.calls[i]!;
+      const template = call.url.pathname.replace(/\/(prj|mdl|mv)_[0-9A-Z]{26}/g, "/{id}");
+      expect([id, call.init.method, template]).toEqual([id, op?.method, op?.path]);
+    }
   });
 });

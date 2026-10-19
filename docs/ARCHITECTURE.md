@@ -41,7 +41,7 @@ flowchart LR
 | internal/api | 把所有 route 組成 cmd/api 與整合測試共用的 handler | business rule |
 | internal/ids | D-001 ID（`<prefix>_<ULID>`） | — |
 | internal/model | IR types、validation、JSON Patch、hash（generic kernel；不依賴 storage、tenant 或 pack） | provider-specific prompt、renderer layout runtime |
-| internal/models | model／draft／version service（T-012，ADR-022）：create from template、draft CAS 與 issues、publish、reset、版本推進規則；每個寫入先鎖 model row | 自己寫 SQL；在 generic kernel 內 |
+| internal/models | model／draft／version service（T-012，ADR-022）：create from template、draft CAS 與 issues、publish、reset、版本推進規則；每個寫入先鎖 model row；HTTP adapter（T-013：If-Match／ETag、錯誤對應） | 自己寫 SQL；在 generic kernel 內 |
 | internal/domainpack | catalog、domain rules、event inference、domain metrics、prompt context、default views | 修改 generic engine source 才能加 domain |
 | internal/import | file profile、column map、row validation、frozen datasets、inference proposal | 未批准直接 publish Twin |
 | internal/ai | sanitized context、provider interface、typed outputs、validation orchestration | 直接持有 ModelCommitter、SQL handle、production tool |

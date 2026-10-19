@@ -58,7 +58,11 @@ func setup(t *testing.T) *env {
 	}
 	e := &env{t: t, p: p, admin: admin, logs: &bytes.Buffer{}, logsMu: &sync.Mutex{}}
 	log := slog.New(slog.NewJSONHandler(lockedWriter{e.logs, e.logsMu}, nil))
-	e.srv = httptest.NewServer(api.Handler(log, v, tenant.New(pool)))
+	h, err := api.Handler(log, v, tenant.New(pool))
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.srv = httptest.NewServer(h)
 	t.Cleanup(e.srv.Close)
 	e.a = dbtest.NewOrg(t, admin, p.Issuer, tenant.Owner, tenant.Editor, tenant.Viewer)
 	e.b = dbtest.NewOrg(t, admin, p.Issuer, tenant.Owner)

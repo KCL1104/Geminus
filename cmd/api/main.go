@@ -77,12 +77,17 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("database unavailable", "error", err.Error())
 		return exitDatabase
 	}
+	handler, err := api.Handler(log, verifier, tenant.New(pool))
+	if err != nil {
+		log.Error("the domain packs are not valid", "error", err.Error())
+		return exitConfig
+	}
 	ln, err := net.Listen("tcp", srvCfg.Addr)
 	if err != nil {
 		log.Error("cannot listen", "addr", srvCfg.Addr, "error", err.Error())
 		return exitServe
 	}
-	srv := newServer(api.Handler(log, verifier, tenant.New(pool)), log)
+	srv := newServer(handler, log)
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
 	log.Info("serving", "addr", ln.Addr().String())

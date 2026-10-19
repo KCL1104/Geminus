@@ -1,7 +1,7 @@
 // Typed client for the Go REST API (openapi/openapi.yaml), T-014. It fails
 // closed: without a configured API URL or a session it sends nothing and
 // returns a Problem, so the UI can never show data the server did not return.
-import type { Draft, JsonPatch, Model, Models, OrganizationID, Projects } from "../contracts";
+import type { CreateModel, Draft, JsonPatch, Model, Models, ModelVersion, OrganizationID, Projects, Publish, ResetDraft, Versions } from "../contracts";
 import { draftETag, parseDraftETag } from "./etag";
 import { isID } from "./ids";
 import {
@@ -37,14 +37,26 @@ export type Failed = { ok: false; problem: Problem };
 export type Result<T> = Ok<T> | Failed;
 
 type Request = {
-  method: "GET" | "PATCH";
+  method: "GET" | "PATCH" | "POST";
   path: string;
   query?: Record<string, string | undefined>;
   body?: string;
   contentType?: string;
   ifMatch?: string;
+  idempotencyKey?: string;
   signal?: AbortSignal;
 };
+
+// openapi IdempotencyKey: 8–128 characters; the server takes visible ASCII.
+const IDEMPOTENCY_KEY = /^[\x21-\x7e]{8,128}$/;
+
+/**
+ * A new Idempotency-Key for one write (D-011). Keep it for retries of the
+ * same request: the server answers a retry with the first response.
+ */
+export function newIdempotencyKey(): string {
+  return `key-${crypto.randomUUID()}`;
+}
 
 export type ApiClient = ReturnType<typeof createApiClient>;
 
@@ -68,6 +80,8 @@ function apiBase(baseUrl: string): { origin: string; path: string } | null {
   if (path.includes("//")) return null;
   return { origin: url.origin, path };
 }
+
+const badKey = (): Failed => ({ ok: false, problem: invalidRequestProblem("An Idempotency-Key is 8 to 128 visible ASCII characters.") });
 
 const notFound = (what: string): Failed => ({
   ok: false,
@@ -94,6 +108,7 @@ export function createApiClient(cfg: ClientConfig) {
     };
     if (req.contentType) headers["Content-Type"] = req.contentType;
     if (req.ifMatch) headers["If-Match"] = req.ifMatch;
+    if (req.idempotencyKey) headers["Idempotency-Key"] = req.idempotencyKey;
 
     let res: Response;
     try {
@@ -161,6 +176,55 @@ export function createApiClient(cfg: ClientConfig) {
           signal: opts.signal,
         }),
       );
+    },
+    /** Creates a model, its first version and draft from the domain's template; reuse `key` to retry. */
+    async createModel(projectId: string, body: CreateModel, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Model>> {
+      if (!isID("prj", projectId)) return notFound("The project");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<Model>({
+        method: "POST",
+        path: `/projects/${projectId}/models`,
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    /** Discards the draft's changes; `revision` and the latest version must still be current (D-003). */
+    async resetDraft(modelId: string, revision: number, body: ResetDraft, opts: { signal?: AbortSignal } = {}): Promise<Result<Draft>> {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      return checkDraft(
+        await call<Draft>({
+          method: "POST",
+          path: `/models/${modelId}/draft/reset`,
+          body: JSON.stringify(body),
+          contentType: "application/json",
+          ifMatch: draftETag(revision),
+          signal: opts.signal,
+        }),
+      );
+    },
+    /** Publishes the draft at `revision` as the next immutable version; reuse `key` to retry. */
+    async publishVersion(modelId: string, revision: number, body: Publish, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<ModelVersion>> {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<ModelVersion>({
+        method: "POST",
+        path: `/models/${modelId}/versions`,
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        ifMatch: draftETag(revision),
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    async listVersions(modelId: string, opts: { cursor?: string; signal?: AbortSignal } = {}) {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      return call<Versions>({ method: "GET", path: `/models/${modelId}/versions`, query: { cursor: opts.cursor }, signal: opts.signal });
+    },
+    async getModelVersion(versionId: string, opts: { signal?: AbortSignal } = {}) {
+      if (!isID("mv", versionId)) return notFound("The version");
+      return call<ModelVersion>({ method: "GET", path: `/model-versions/${versionId}`, signal: opts.signal });
     },
   };
 }
