@@ -53,7 +53,32 @@ CI（GitHub Actions `ci`）在 f83c692 與之後的 commit 都通過，包含在
 
 - openid-client 對 token endpoint 回來的 ID token 只信任 TLS、不驗簽章；測試以另一把 key 簽的 ID token 登入成功（紅），開啟 non-repudiation checks、以 JWKS 驗簽後被拒（綠）。
 - Playwright 的 `context.cookies(url)` 在 http URL 上不回傳 Secure cookie，E2E 一開始看不到 session cookie；改為取全部 cookie 再依 domain 過濾。
-- 第一次 mutation 有 3 個存活：reuse 期限結束、失敗的 refresh 不保留、redirect URI 不隨 request 的 host 改變；補測試後被擋下（另補 non-canonical base64、401 清 cookie 的測試）。
+- 送審前的 mutation：reuse 期限結束、失敗的 refresh 不保留、redirect URI 不隨 request 的 host 改變三個 mutant 起初存活，補測試後被擋下（那次執行的 log 沒有保留）。f83c692 最後一次之前的執行（`ts-mutation-before-review.log`，原名誤標為 first run）有 3 個存活：`non-canonical-base64` 補測試後被擋下；`proxy-forwards-authorization` 為等價；`no-subject-check` 當時被誤判為等價（review round 1 M-1d，見下）。
+
+## Review round 1（74e327a、f83c692、5b02db2：CHANGES REQUESTED）的修正
+
+獨立 reviewer 的 M-1、M-2、L-1–L-8 全部處理，Info 中可在本任務做的也做了；沒有任何一項以「不修」結案。證據欄的 mutant 名稱見 `ts-mutants.py`。
+
+| 項目 | 修正 | 證據 |
+|---|---|---|
+| **M-1a** 所有 session 共用 reuse cache 的 key 時，B 會拿到 A refresh 後的 token，沒有測試 | reuse cache 抽成 `RefreshCache`（以 refresh token 的 digest 為 key、上限、30 秒、失敗不保留） | `gives two sessions refreshing at once their own tokens`；`RefreshCache` 的 3 個單元測試；`refresh-key-constant` |
+| **M-1b** 輪替後仍以舊 key 封裝，沒有測試 | （程式本來正確）補測試 | `seals under the current key after a rotation, never the previous one`；`seal-with-previous-key`、`fixed-iv` |
+| **M-1c** `server.ts` 沒有測試，設定不完整時的 503 未驗證 | 新的 `tests/server.test.ts`：三種錯誤設定都回 503、handler 不被呼叫、log 只寫一次且只有變數名稱（不含 client secret 與 key）；完整設定只建一次 | `unconfigured-is-500`、`built-per-request` |
+| **M-1d** `no-subject-check` 不是等價：oauth4webapi 只檢查 `sub` 是字串，`sub: ""` 會通過 | 從 EQUIVALENT 移除，補 `sub: ""` 的測試 | `refuses an ID token with an empty subject`；`no-subject-check` 現在 killed |
+| **M-2** provider 暫時失敗會登出使用者；報告與測試都說下一個 request 會再試，但測試重送的是 401 已叫瀏覽器刪掉的 cookie | `OidcFailure.refused`：只有 `invalid_grant`、沒有 refresh token，或回應無法放進 session 時才結束 session（401、清 cookie）；5xx、連不上、逾時、429 等回 503 `SERVICE_UNAVAILABLE`，不送 Set-Cookie。測試改為瀏覽器保留原 cookie 後重試 | `keeps the session when the provider answers 503 / cannot be reached / answers 429 too_many_requests`；`outage-ends-the-session`、`outage-clears-the-cookie`、`every-refresh-failure-temporary`、`every-provider-error-refuses`（429 的案例是為了它補的：oauth4webapi 只對 4xx 的 JSON 錯誤丟 `ResponseBodyError`） |
+| **L-1** E2E 的「跨站 form」其實是同源 | 以 `page.route` 提供 `http://evil.test` 的頁面，送出寫入與登出兩個 form：都是 403，瀏覽器送出的 Origin 為 `http://evil.test`、沒有帶 session cookie，登出沒有生效（之後同源 API 呼叫仍為 200）。Chromium 在這個 http 頁面不送 `Sec-Fetch-Site`，所以不斷言它 | `session.spec.ts` |
+| **L-2** token 大小限制不一致：讀取拒絕超過 2048 字的 token，封裝卻接受；超過 cookie 上限時 callback 500、refresh 後新 token 遺失 | `finishLogin`／`refresh` 以與讀取相同的規則（`sessionToken`：1–2048 個可見 ASCII）檢查 token，不合格即 `OidcFailure`；callback 封裝前捕捉 `SealedTooLarge` 導向錯誤頁；proxy 在呼叫 API 前封裝，放不下即結束 session（舊 refresh token 可能已被 rotation 用掉） | 3 個 callback 案例與 1 個 refresh 案例；`tokens-unchecked`、`too-large-at-the-callback-is-500`、`too-large-at-refresh-is-500` |
+| **L-3** 非 Latin-1 的 `return_to` 讓 callback 500 | `safeReturnTo` 只接受可見 ASCII（瀏覽器送出的路徑本來就是 percent-encoded），其他回 `/` | `safeReturnTo` 的新案例、`returns to a percent-encoded path, and to / for a raw non-ASCII one`；`return-to-non-ascii` |
+| **L-4** API 的 `nosniff` 被丟掉；BFF 加 Set-Cookie 時仍轉送上游的 `cache-control` | proxy 與 BFF 自己的錯誤回應一律 `X-Content-Type-Options: nosniff`；帶 Set-Cookie 的回應一律 `Cache-Control: no-store` | `answers with nosniff, and never lets a cache store a response that sets the session`；`no-nosniff`、`cookie-response-cacheable` |
+| **L-5** 時鐘容差為 0 | 封裝的時間可以比現在晚 60 秒（`SKEW_MS`），session 與 login transaction 都是 | session 與 login 的 skew 案例；`session-from-the-future`、`no-skew-tolerance`、`login-from-the-future` |
+| **L-6** `accessExpiresAt` 的測試在負載下會 flaky（openid-client 的 `expiresIn()` 以 `Date.now()` 計算） | 改用回應本身的 `expires_in` | `bff.test.ts` 的精確斷言不再依賴時間 |
+| **L-7** 報告與 evidence 的錯誤 | first-run log 改名並如實描述（見上）；TEST-032 的「Go API 不讀 cookie」新增 Go 測試 `TestCookiesAreNotRead`（各種名稱的 cookie 帶有效 token、沒有 Authorization 時一律 401、handler 不被呼叫）；CI 的通過以 run ID 記錄（見上方結果）；runbook 改為 `/auth/error` 照常顯示 | `internal/auth/http_test.go` |
+| **L-8** 串流、取消、回傳的 content-type、`last-event-id`、`redirect: manual`、method allowlist、cache 上限沒有測試 | 補測試：256 KB 上傳以 stream 轉送（`duplex: half`）且內容相同；SSE 在上游結束前就讀到第一個事件；瀏覽器取消會傳到 API 的 signal；上游的 302 不被跟隨、`Location` 不回傳；OPTIONS、PROPFIND、PURGE 回 400 且不呼叫 API；`RefreshCache` 的上限 | `upload-buffered`、`download-buffered`、`no-cancellation`、`no-content-type-back`、`no-last-event-id`、`follow-api-redirects`、`any-method`、`refresh-cache-unbounded` |
+| Info：登出後 30 秒內，舊 cookie 仍可從 reuse cache 拿到新 token | 登出時 `RefreshCache.forget` 丟棄該 session 用掉與發出的 refresh；SECURITY §3 寫明無狀態 session 的限制（被複製的 cookie 在 access token 到期前仍有效，至多 10 分鐘） | `after logout, an older cookie cannot get the session's tokens from the shared refresh`；`logout-keeps-the-shared-refresh`、`forget-keeps-what-it-issued`、`forget-keeps-what-it-spent` |
+| Info：server-only guard 只追 relative import | 新增測試確認 `tsconfig.json` 沒有 `paths`／`baseUrl`（有的話 alias import 會繞過掃描）；沒有加 `import "server-only"`：Next 內建的 alias 沒有型別，需要新依賴或 vitest alias，留待需要時決定 | `server-only.test.ts` |
+| Info：client IP、proxy timeout、Auth0 logout 的 `id_token_hint` | 記入下方 NOT RUN／移交（T-036 的 rate limiting 需要決定是否由 BFF 轉送可信的 client IP；T-023 的 SSE 需要比 undici 預設 300 秒更頻繁的 heartbeat）；runbook §5 加上 staging 檢查 Auth0 登出是否要求確認 | 文件 |
+
+Reviewer 誤在 repository 目錄執行了一次 `npx vitest`（下載 vitest 到 `~/.npm/_npx`、改寫 `node_modules/.vite` 的 cache）；`git status` 乾淨，沒有影響任何 commit。
 
 ## 決策與 owner 知悉
 
@@ -76,4 +101,6 @@ CI（GitHub Actions `ci`）在 f83c692 與之後的 commit 都通過，包含在
 | 登入 UI、organization 選擇、UI 中的 403 | D-045 待 owner；之後隨新截圖 baseline 一起做 |
 | 瀏覽器→BFF→Go API→DB 的閉環 | T-040 |
 | 多個 web instance 之間的 refresh 協調 | P0 單一 instance；多 instance 時以 Auth0 的 reuse interval 30 秒涵蓋（runbook） |
-| Login、callback、refresh 的 rate limiting 與告警 | T-036／T-035（ADR-018 §3） |
+| Login、callback、refresh 的 rate limiting 與告警 | T-036／T-035（ADR-018 §3）。BFF 不轉送 client IP（不送 X-Forwarded-For），API 端的 rate limiting 若要以 IP 區分，T-036 需決定由 BFF 轉送可信的 client IP |
+| SSE 經過 proxy 的長時間連線 | proxy 沒有自己的 timeout，undici 預設 300 秒；T-023 的 run events 需要比這更頻繁的 heartbeat |
+| Auth0 登出是否要求確認（BFF 不帶 `id_token_hint`） | staging，`docs/runbooks/auth0.md` §5 第 5 點 |

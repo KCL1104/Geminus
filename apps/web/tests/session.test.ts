@@ -14,6 +14,7 @@ import {
   SESSION_COOKIE,
   type Session,
   safeReturnTo,
+  SKEW_MS,
   sessionCookie,
 } from "../lib/session/session";
 
@@ -100,6 +101,15 @@ describe("seal", () => {
     expect(await unseal(await keysOf(`k1:${key(9)}`), SESSION_COOKIE, sealed)).toBeNull();
   });
 
+  it("seals under the current key after a rotation, never the previous one", async () => {
+    // Retiring k1 later must not end sessions sealed since the rotation, and
+    // rotating away from a leaked k1 must stop using it at once.
+    const sealed = await seal(await keysOf(`k2:${key(2)},k1:${key(1)}`), SESSION_COOKIE, "x");
+    expect(sealed.split(".")[1]).toBe("k2");
+    expect(await unseal(await keysOf(`k2:${key(2)}`), SESSION_COOKIE, sealed)).toBe("x");
+    expect(await unseal(await keysOf(`k1:${key(1)}`), SESSION_COOKIE, sealed)).toBeNull();
+  });
+
   it("refuses anything tampered with or malformed", async () => {
     const keys = await keysOf(`k1:${key(1)}`);
     const sealed = await seal(keys, SESSION_COOKIE, { a: 1 });
@@ -160,8 +170,10 @@ describe("session cookie", () => {
     const busyValue = valueOf(await sessionCookie(keys, busy, busy.lastSeenAt));
     expect(await readSession(keys, busyValue, busy.lastSeenAt)).not.toBeNull();
     expect(await readSession(keys, busyValue, session.createdAt + ABSOLUTE_MS)).toBeNull();
-    // A session from the future (a clock moved back) is not trusted either.
-    expect(await readSession(keys, value, session.createdAt - 1)).toBeNull();
+    // A clock a little behind the one that sealed it (an NTP step, another
+    // instance) keeps the session; one far behind does not trust it.
+    expect(await readSession(keys, value, session.lastSeenAt - SKEW_MS)).not.toBeNull();
+    expect(await readSession(keys, value, session.lastSeenAt - SKEW_MS - 1)).toBeNull();
   });
 
   it("refuses a sealed value of the wrong shape", async () => {
@@ -200,6 +212,23 @@ describe("login transaction", () => {
     expect(await readLogin(keys, value, now)).toEqual(login);
     expect(await readLogin(keys, value, login.createdAt + LOGIN_MS)).toBeNull();
     expect(await readSession(keys, value, now)).toBeNull();
+    // As for sessions: a little clock skew is tolerated, more is not.
+    expect(await readLogin(keys, value, login.createdAt - SKEW_MS)).toEqual(login);
+    expect(await readLogin(keys, value, login.createdAt - SKEW_MS - 1)).toBeNull();
+  });
+
+  it("refuses a sealed login of the wrong shape", async () => {
+    const keys = await keysOf(`k1:${key(1)}`);
+    for (const bad of [
+      { ...login, extra: 1 },
+      { ...login, state: "" },
+      { ...login, nonce: "x".repeat(129) },
+      { ...login, codeVerifier: "with space" },
+      { ...login, createdAt: 0 },
+      Object.fromEntries(Object.entries(login).filter(([k]) => k !== "nonce")),
+    ]) {
+      expect(await readLogin(keys, await seal(keys, LOGIN_COOKIE, bad), now)).toBeNull();
+    }
   });
 
   it("refuses a return path it would not have stored", async () => {
@@ -222,6 +251,12 @@ describe("safeReturnTo", () => {
     ["https://evil.example", "/"],
     ["/x\ny", "/"],
     ["/x\ty", "/"],
+    ["/x y", "/"],
+    // Decoded from return_to: a raw non-ASCII path (not Latin-1 either) could
+    // not be put in the callback's Location header; its percent-encoding can.
+    ["/projects/\u4e2d", "/"],
+    ["/projects/\u00e9", "/"],
+    ["/projects/%E4%B8%AD", "/projects/%E4%B8%AD"],
     [`/${"a".repeat(512)}`, "/"],
   ])("%s → %s", (input, want) => {
     expect(safeReturnTo(input)).toBe(want);

@@ -49,6 +49,13 @@ describe("server-only session code", () => {
     expect(leaks).toEqual([]);
   });
 
+  it("can rely on relative imports: no path alias could reach it another way", () => {
+    // A tsconfig paths or baseUrl entry would let "@/lib/session/…" or
+    // "lib/session/…" in, which the scan above does not follow.
+    const tsconfig = readFileSync(join(root, "tsconfig.json"), "utf8");
+    expect(tsconfig).not.toMatch(/"(paths|baseUrl)"\s*:/);
+  });
+
   it("is itself never a client module", () => {
     expect(files(SESSION).filter(isClient)).toEqual([]);
   });

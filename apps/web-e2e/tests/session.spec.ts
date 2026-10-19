@@ -80,12 +80,33 @@ test("a write without the app's header, from another origin or from a cross-site
   expect((await inPage(page, "/api/v1/projects", { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } })).status).toBe(403);
   const evil = await page.request.post(`${APP}/api/v1/projects`, { data: "{}", headers: { Origin: "https://evil.example", "X-Geminus-Request": "1" } });
   expect(evil.status()).toBe(403);
-  // A form on another origin: the browser sends Origin "null" (or none of
-  // the session, SameSite=Lax), and the BFF refuses it either way.
-  await page.setContent(`<form method="post" action="${APP}/api/v1/projects"><button>go</button></form>`);
-  const [res] = await Promise.all([page.waitForResponse(`${APP}/api/v1/projects`), page.click("button")]);
-  expect([401, 403]).toContain(res.status());
+  // A form on another site (served here by routing http://evil.test): the
+  // browser posts it cross-site, without the SameSite=Lax session cookie,
+  // and the BFF refuses it. The same holds for a cross-site logout.
+  await page.route("http://evil.test/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: `<form method="post" action="${APP}/api/v1/projects"><button id="write">write</button></form>
+             <form method="post" action="${APP}/auth/logout"><button id="logout">logout</button></form>`,
+    }),
+  );
+  for (const [button, target] of [
+    ["#write", `${APP}/api/v1/projects`],
+    ["#logout", `${APP}/auth/logout`],
+  ] as const) {
+    await page.goto("http://evil.test/");
+    const [res] = await Promise.all([page.waitForResponse(target), page.click(button)]);
+    expect(res.status()).toBe(403);
+    const sent = await res.request().allHeaders();
+    // Chromium sends no Sec-Fetch-Site from this http page; Origin and the
+    // missing X-Geminus-Request are what the BFF refuses on.
+    expect(sent.origin).toBe("http://evil.test");
+    expect(sent.cookie ?? "").not.toContain("__Host-geminus_session");
+  }
   expect((await providerState(request)).apiCalls.length).toBe(before);
+  // The cross-site logout ended nothing.
+  await page.goto("/");
+  expect((await inPage(page, "/api/v1/projects", { headers: { "X-Organization-ID": ORG } })).status).toBe(200);
 });
 
 test("a tampered state or a replayed callback lands on the sign-in error page", async ({ page, request }) => {

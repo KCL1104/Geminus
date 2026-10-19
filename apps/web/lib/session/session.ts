@@ -12,6 +12,13 @@ export const IDLE_MS = 12 * 60 * 60 * 1000;
 export const ABSOLUTE_MS = 7 * 24 * 60 * 60 * 1000;
 /** A login must come back from the provider within this time. */
 export const LOGIN_MS = 10 * 60 * 1000;
+/**
+ * How far in the future a sealed time may be: clocks that differ a little
+ * (an NTP step, another instance) must not end sessions or logins.
+ */
+export const SKEW_MS = 60_000;
+/** The longest access or refresh token a session holds (ASCII, no spaces). */
+export const MAX_TOKEN = 2048;
 
 export type Session = {
   accessToken: string;
@@ -32,6 +39,8 @@ export type Login = {
 };
 
 const token = (v: unknown, max: number): v is string => typeof v === "string" && v.length > 0 && v.length <= max && /^[\x21-\x7e]+$/.test(v);
+/** Whether v can be a session's access or refresh token. */
+export const sessionToken = (v: unknown): v is string => token(v, MAX_TOKEN);
 const time = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
 
 function isSession(v: unknown): v is Session {
@@ -39,8 +48,8 @@ function isSession(v: unknown): v is Session {
   const s = v as Record<string, unknown>;
   return (
     Object.keys(s).length === 5 &&
-    token(s.accessToken, 2048) &&
-    (s.refreshToken === null || token(s.refreshToken, 2048)) &&
+    sessionToken(s.accessToken) &&
+    (s.refreshToken === null || sessionToken(s.refreshToken)) &&
     time(s.accessExpiresAt) &&
     time(s.createdAt) &&
     time(s.lastSeenAt) &&
@@ -65,25 +74,27 @@ function isLogin(v: unknown): v is Login {
 /**
  * A same-origin path to return to after login, or "/" for anything else: it
  * must start with one "/", and must not be "//host", "/\\host" or carry a
- * scheme, control characters or a backslash a browser would read as "/".
+ * scheme, a backslash a browser would read as "/", or anything but visible
+ * ASCII (a path the browser sends is percent-encoded; a raw character
+ * outside Latin-1 could not even be put in the Location header).
  */
 export function safeReturnTo(path: string | null): string {
   if (path === null || path.length > 512 || !path.startsWith("/") || path.startsWith("//")) return "/";
-  if (/[\\\x00-\x1f\x7f]/.test(path)) return "/";
+  if (/[^\x21-\x7e]|\\/.test(path)) return "/";
   return path;
 }
 
 /** The session in the cookie value, or null if none, invalid or expired at now. */
 export async function readSession(keys: SealKeys, value: string | undefined, now: number): Promise<Session | null> {
   const s = await unseal(keys, SESSION_COOKIE, value);
-  if (!isSession(s) || now - s.createdAt >= ABSOLUTE_MS || now - s.lastSeenAt >= IDLE_MS || s.createdAt > now) return null;
+  if (!isSession(s) || now - s.createdAt >= ABSOLUTE_MS || now - s.lastSeenAt >= IDLE_MS || s.lastSeenAt > now + SKEW_MS) return null;
   return s;
 }
 
 /** The login transaction in the cookie value, or null if none, invalid or too old at now. */
 export async function readLogin(keys: SealKeys, value: string | undefined, now: number): Promise<Login | null> {
   const l = await unseal(keys, LOGIN_COOKIE, value);
-  if (!isLogin(l) || now - l.createdAt >= LOGIN_MS || l.createdAt > now) return null;
+  if (!isLogin(l) || now - l.createdAt >= LOGIN_MS || l.createdAt > now + SKEW_MS) return null;
   return l;
 }
 

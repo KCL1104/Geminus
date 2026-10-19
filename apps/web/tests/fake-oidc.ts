@@ -37,7 +37,14 @@ export class FakeProvider {
   failRevocation = false;
   /** The token endpoint is down for refresh grants (503). */
   failRefresh = false;
+  /** The token endpoint cannot be reached for refresh grants (a network error). */
+  unreachableRefresh = false;
+  /** The token endpoint answers refresh grants with this OAuth error (status, error code). */
+  refreshError: [number, string] | undefined;
   issueRefreshToken = true;
+  /** Lengths of the tokens issued (unset: about 40 characters). */
+  accessTokenLength: number | undefined;
+  refreshTokenLength: number | undefined;
 
   /** What /authorize does after the user signs in: a code for these parameters. */
   authorize(authorizationUrl: string): { code: string; state: string; params: URLSearchParams } {
@@ -66,9 +73,13 @@ export class FakeProvider {
     const now = this.now();
     const c = this.idToken;
     const family = b64url(randomBytes(8));
-    const refresh = b64url(randomBytes(24));
+    const sized = (prefix: string, length: number | undefined) => {
+      const t = `${prefix}${b64url(randomBytes(24))}`;
+      return length === undefined ? t : (t + "x".repeat(length)).slice(0, length);
+    };
+    const refresh = sized("rt-", this.refreshTokenLength);
     this.refresh.set(refresh, { state: "live", family });
-    const out: Record<string, unknown> = { access_token: `at-${b64url(randomBytes(24))}`, token_type: "Bearer", scope: "openid offline_access" };
+    const out: Record<string, unknown> = { access_token: sized("at-", this.accessTokenLength), token_type: "Bearer", scope: "openid offline_access" };
     if (this.expiresIn !== undefined) out.expires_in = this.expiresIn;
     if (this.issueRefreshToken) out.refresh_token = refresh;
     if (nonce !== null) {
@@ -109,7 +120,9 @@ export class FakeProvider {
         return this.json(200, this.tokens(code.nonce));
       }
       if (body.get("grant_type") === "refresh_token") {
+        if (this.unreachableRefresh) throw new TypeError("fetch failed");
         if (this.failRefresh) return this.json(503, { error: "temporarily_unavailable" });
+        if (this.refreshError !== undefined) return this.json(this.refreshError[0], { error: this.refreshError[1] });
         const t = this.refresh.get(body.get("refresh_token") ?? "");
         if (t === undefined || t.state !== "live") {
           if (t?.state === "spent") for (const v of this.refresh.values()) if (v.family === t.family) v.state = "revoked";

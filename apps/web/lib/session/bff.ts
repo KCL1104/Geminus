@@ -4,7 +4,7 @@
 // Server-side only.
 import type { BffConfig } from "./config";
 import { endSessionUrl, finishLogin, type Oidc, OidcFailure, refresh, revoke, startLogin } from "./oidc";
-import type { SealKeys } from "./seal";
+import { type SealKeys, SealedTooLarge } from "./seal";
 import { clearCookie, LOGIN_COOKIE, loginCookie, readLogin, readSession, SESSION_COOKIE, type Session, safeReturnTo, sessionCookie } from "./session";
 
 export type BffDeps = {
@@ -29,6 +29,8 @@ const TOUCH_MS = 5 * 60_000;
  * revoking the session (ADR-018).
  */
 export const REFRESH_REUSE_MS = 30_000;
+/** At most this many refreshes are shared at once; past it a refresh is not shared. */
+export const REFRESH_CACHE_MAX = 10_000;
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
@@ -50,7 +52,7 @@ export function apiError(code: ErrorCode, message: string, now: number, headers:
   const requestId = newRequestId(now);
   return new Response(JSON.stringify({ error: { code, message, request_id: requestId } }), {
     status: statusOf[code],
-    headers: [["Content-Type", "application/json"], ["Cache-Control", "no-store"], ["X-Request-ID", requestId], ...headers],
+    headers: [["Content-Type", "application/json"], ["Cache-Control", "no-store"], ["X-Content-Type-Options", "nosniff"], ["X-Request-ID", requestId], ...headers],
   });
 }
 
@@ -79,34 +81,65 @@ export function sameOrigin(request: Request, appOrigin: string): boolean {
 const redirect = (location: string, cookies: string[] = []): Response =>
   new Response(null, { status: 303, headers: [["Location", location], ["Cache-Control", "no-store"], ...cookies.map((c): [string, string] => ["Set-Cookie", c])] });
 
-/** One refresh per refresh token: concurrent and late requests share its result. */
-type Refreshes = Map<string, { at: number; result: Promise<Session> }>;
-
 async function digest(token: string): Promise<string> {
   return Buffer.from(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token))).toString("hex");
 }
 
-async function refreshOnce(deps: BffDeps, refreshes: Refreshes, s: Session, now: number): Promise<Session> {
-  for (const [k, v] of refreshes) if (now - v.at >= REFRESH_REUSE_MS) refreshes.delete(k);
-  const key = s.refreshToken === null ? null : await digest(s.refreshToken);
-  const known = key === null ? undefined : refreshes.get(key);
-  if (known !== undefined) {
-    // The session itself (its creation and idle times) is the caller's.
-    const fresh = await known.result;
-    return { ...s, accessToken: fresh.accessToken, refreshToken: fresh.refreshToken, accessExpiresAt: fresh.accessExpiresAt };
+/**
+ * One refresh per refresh token: concurrent requests, and for
+ * REFRESH_REUSE_MS late ones that still carry the spent token, share its
+ * result, keyed by the token's digest. A failed refresh is not remembered,
+ * so the next request may try again. At most max are kept.
+ */
+export class RefreshCache {
+  private readonly entries = new Map<string, { at: number; result: Promise<Session>; issued?: string }>();
+
+  constructor(private readonly max = REFRESH_CACHE_MAX) {}
+
+  get size(): number {
+    return this.entries.size;
   }
-  const result = refresh(deps.oidc, s, now);
-  if (key !== null && refreshes.size < 10_000) {
-    refreshes.set(key, { at: now, result });
-    // A failed refresh is not remembered: the next request may try again.
-    result.catch(() => refreshes.delete(key));
+
+  /** The refresh of refreshToken at now: a shared one, or run's. */
+  async refresh(refreshToken: string, now: number, run: () => Promise<Session>): Promise<Session> {
+    for (const [k, v] of this.entries) if (now - v.at >= REFRESH_REUSE_MS) this.entries.delete(k);
+    const key = await digest(refreshToken);
+    const known = this.entries.get(key);
+    if (known !== undefined) return known.result;
+    const result = run();
+    if (this.entries.size < this.max) {
+      const entry: { at: number; result: Promise<Session>; issued?: string } = { at: now, result };
+      this.entries.set(key, entry);
+      result.then(
+        (s) => {
+          entry.issued = s.refreshToken ?? undefined;
+        },
+        () => this.entries.delete(key),
+      );
+    }
+    return result;
   }
-  return result;
+
+  /**
+   * Forgets the refreshes that spent refreshToken or issued it (logout), so
+   * an older cookie cannot get the logged-out session's tokens from here.
+   */
+  async forget(refreshToken: string): Promise<void> {
+    this.entries.delete(await digest(refreshToken));
+    for (const [k, v] of this.entries) if (v.issued === refreshToken) this.entries.delete(k);
+  }
+}
+
+async function refreshOnce(deps: BffDeps, refreshes: RefreshCache, s: Session, now: number): Promise<Session> {
+  if (s.refreshToken === null) return refresh(deps.oidc, s, now);
+  const fresh = await refreshes.refresh(s.refreshToken, now, () => refresh(deps.oidc, s, now));
+  // The session itself (its creation and idle times) is the caller's.
+  return { ...s, accessToken: fresh.accessToken, refreshToken: fresh.refreshToken, accessExpiresAt: fresh.accessExpiresAt };
 }
 
 export function bff(deps: BffDeps) {
   const { cfg, keys, oidc } = deps;
-  const refreshes: Refreshes = new Map();
+  const refreshes = new RefreshCache();
   const failed = (reason: string) => redirect(`${cfg.appOrigin}/auth/error?reason=${reason}`, [clearCookie(LOGIN_COOKIE)]);
 
   return {
@@ -138,8 +171,16 @@ export function bff(deps: BffDeps) {
         deps.log("login.failed", { reason: e instanceof OidcFailure ? e.reason : "unknown" });
         return failed("failed");
       }
+      let cookie: string;
+      try {
+        cookie = await sessionCookie(keys, session, now);
+      } catch (e) {
+        if (!(e instanceof SealedTooLarge)) throw e;
+        deps.log("login.failed", { reason: "the session does not fit in its cookie" });
+        return failed("failed");
+      }
       deps.log("login.succeeded");
-      return redirect(`${cfg.appOrigin}${login.returnTo}`, [await sessionCookie(keys, session, now), clearCookie(LOGIN_COOKIE)]);
+      return redirect(`${cfg.appOrigin}${login.returnTo}`, [cookie, clearCookie(LOGIN_COOKIE)]);
     },
 
     /**
@@ -151,6 +192,7 @@ export function bff(deps: BffDeps) {
       if (!sameOrigin(request, cfg.appOrigin)) return apiError("FORBIDDEN", "cross-site request refused", now);
       const session = await readSession(keys, cookieValue(request, SESSION_COOKIE), now);
       if (session?.refreshToken) {
+        await refreshes.forget(session.refreshToken);
         try {
           await revoke(oidc, session.refreshToken);
         } catch (e) {
@@ -179,7 +221,7 @@ const responseHeaders = ["content-type", "etag", "x-request-id", "retry-after", 
 const SEGMENT = /^[A-Za-z0-9_~-][A-Za-z0-9._~-]*$/;
 const methods = new Set(["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE"]);
 
-async function proxy(deps: BffDeps, refreshes: Refreshes, request: Request, path: string[]): Promise<Response> {
+async function proxy(deps: BffDeps, refreshes: RefreshCache, request: Request, path: string[]): Promise<Response> {
   const { cfg, keys } = deps;
   const now = deps.now();
   if (!methods.has(request.method)) return apiError("INVALID_REQUEST", "method not allowed", now);
@@ -199,11 +241,28 @@ async function proxy(deps: BffDeps, refreshes: Refreshes, request: Request, path
       session = await refreshOnce(deps, refreshes, session, now);
       write = true;
     } catch (e) {
-      deps.log("session.refresh_failed", { reason: e instanceof OidcFailure ? e.reason : "unknown" });
+      const reason = e instanceof OidcFailure ? e.reason : "unknown";
+      if (e instanceof OidcFailure && !e.refused) {
+        // An outage is not the end of the session: the cookie stays.
+        deps.log("session.refresh_unavailable", { reason });
+        return apiError("SERVICE_UNAVAILABLE", "the identity provider is unavailable", now);
+      }
+      deps.log("session.refresh_failed", { reason });
       return apiError("UNAUTHENTICATED", "the session has ended", now, [["Set-Cookie", clearCookie(SESSION_COOKIE)]]);
     }
   }
   session = { ...session, lastSeenAt: write ? now : session.lastSeenAt };
+  // Sealed before the API is called: a session the cookie cannot hold ends here.
+  let setCookie: string | null = null;
+  if (write) {
+    try {
+      setCookie = await sessionCookie(keys, session, now);
+    } catch (e) {
+      if (!(e instanceof SealedTooLarge)) throw e;
+      deps.log("session.refresh_failed", { reason: "the session does not fit in its cookie" });
+      return apiError("UNAUTHENTICATED", "the session has ended", now, [["Set-Cookie", clearCookie(SESSION_COOKIE)]]);
+    }
+  }
 
   const target = `${cfg.apiUrl}/v1/${path.join("/")}${new URL(request.url).search}`;
   const headers = new Headers();
@@ -233,6 +292,11 @@ async function proxy(deps: BffDeps, refreshes: Refreshes, request: Request, path
     const v = upstream.headers.get(h);
     if (v !== null) out.set(h, v);
   }
-  if (write) out.append("set-cookie", await sessionCookie(keys, session, now));
+  out.set("x-content-type-options", "nosniff");
+  if (setCookie !== null) {
+    out.append("set-cookie", setCookie);
+    // A response that sets the session is never stored by a cache.
+    out.set("cache-control", "no-store");
+  }
   return new Response(upstream.body, { status: upstream.status, headers: out });
 }

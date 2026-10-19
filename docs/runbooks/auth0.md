@@ -61,7 +61,9 @@ Web（Next.js 伺服器端，BFF）：
 
 Go API：`AUTH_OIDC_ISSUER` 與上面相同、`AUTH_OIDC_AUDIENCE` 為 API Identifier、`AUTH_OIDC_JWKS_URL` 同上、`AUTH_OIDC_REQUIRE_AT_JWT=true`（ADR-017）。
 
-設定不完整或不合格時，BFF 的 `/auth/*` 與 `/api/v1/*` 一律回 503，log 只寫變數名稱，不寫值。
+設定不完整或不合格時，BFF 的 `/auth/login`、`/auth/callback`、`/auth/logout` 與 `/api/v1/*` 一律回 503（`/auth/error` 是一般頁面，照常顯示），log 只寫變數名稱，不寫值。
+
+Auth0 暫時無法 refresh（5xx、逾時、連不上、429 等 `invalid_grant` 以外的回應）時，`/api/v1/*` 回 503，session cookie 保留，下一個 request 再試；只有 Auth0 拒絕 refresh token（`invalid_grant`：reuse、撤銷、過期）時才結束 session（401 並清除 cookie）。
 
 ### Session 金鑰與輪替
 
@@ -79,5 +81,6 @@ openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
 2. 呼叫任一頁面的 API：request 只到同源 `/api/v1/…`，沒有 `Authorization` header。
 3. 登出：Auth0 的 log 有 refresh token 撤銷與 logout；之後 `/api/v1/…` 回 401。
 4. 未 provision 的使用者登入：API 回 403。
+5. 登出時 BFF 不帶 `id_token_hint`（ID token 驗完即丟）：確認 Auth0 是否因此顯示登出確認畫面；若會，評估 Auth0 的 logout 設定或改為保留 ID token 的 hash 以外的方式（需另行決定）。
 
 自動化的對應測試是 `apps/web/tests/bff.test.ts`（單元）與 `apps/web-e2e/tests/session.spec.ts`（瀏覽器，TEST-032），兩者都只連測試 provider；連 Auth0 的檢查只能在 staging 由人執行（NOT RUN in CI）。

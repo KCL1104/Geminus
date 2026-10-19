@@ -5,7 +5,7 @@
 // session cookie. Server-side only.
 import * as client from "openid-client";
 import type { BffConfig } from "./config";
-import type { Login, Session } from "./session";
+import { type Login, type Session, sessionToken } from "./session";
 
 export type Oidc = {
   config: client.Configuration;
@@ -15,11 +15,17 @@ export type Oidc = {
   scopes: string;
 };
 
-/** Why a login, refresh or logout step failed; the cause never reaches the browser. */
+/**
+ * Why a login, refresh or logout step failed; the cause never reaches the
+ * browser. refused: the provider refused (or answered what the session cannot
+ * hold), so the session cannot go on; otherwise the provider was unavailable
+ * and the same step may succeed later.
+ */
 export class OidcFailure extends Error {
   constructor(
     readonly step: "login" | "refresh" | "revoke",
     readonly reason: string,
+    readonly refused = true,
   ) {
     super(`${step}: ${reason}`);
   }
@@ -77,10 +83,17 @@ export async function startLogin(o: Oidc, returnTo: string, now: number): Promis
   return { url: url.toString(), login };
 }
 
-function expiry(tokens: { expiresIn(): number | undefined }, now: number): number {
-  const s = tokens.expiresIn();
+/**
+ * The session fields of a token response at now: tokens the session can
+ * hold (sessionToken) and the access token's expiry from the response's own
+ * expires_in (not openid-client's expiresIn(), which counts from Date.now()).
+ */
+function fields(tokens: client.TokenEndpointResponse, keepRefresh: string | null, now: number): Pick<Session, "accessToken" | "refreshToken" | "accessExpiresAt"> {
+  const s = tokens.expires_in;
   if (s === undefined || !Number.isSafeInteger(s) || s <= 0) throw new Error("the token response has no positive expires_in");
-  return now + s * 1000;
+  const refreshToken = tokens.refresh_token ?? keepRefresh;
+  if (!sessionToken(tokens.access_token) || (refreshToken !== null && !sessionToken(refreshToken))) throw new Error("the provider's tokens do not fit the session");
+  return { accessToken: tokens.access_token, refreshToken, accessExpiresAt: now + s * 1000 };
 }
 
 /**
@@ -97,13 +110,7 @@ export async function finishLogin(o: Oidc, callback: URL, login: Login, now: num
     });
     const claims = tokens.claims();
     if (claims === undefined || typeof claims.sub !== "string" || claims.sub === "") throw new Error("the ID token has no subject");
-    return {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token ?? null,
-      accessExpiresAt: expiry(tokens, now),
-      createdAt: now,
-      lastSeenAt: now,
-    };
+    return { ...fields(tokens, null, now), createdAt: now, lastSeenAt: now };
   } catch (e) {
     throw new OidcFailure("login", e instanceof Error ? e.message : "unknown error");
   }
@@ -111,20 +118,24 @@ export async function finishLogin(o: Oidc, callback: URL, login: Login, now: num
 
 /**
  * New tokens for s. With rotation the provider returns a new refresh token
- * and the old one is spent; a reused one is refused by the provider, which
- * ends the session (OidcFailure).
+ * and the old one is spent; a reused or revoked one is refused
+ * (invalid_grant), which ends the session. Any other failure (an outage, a
+ * timeout, a 5xx) is not a refusal: the session stays and a later request
+ * tries again (OidcFailure.refused).
  */
 export async function refresh(o: Oidc, s: Session, now: number): Promise<Session> {
   if (s.refreshToken === null) throw new OidcFailure("refresh", "the session has no refresh token");
+  let tokens: client.TokenEndpointResponse;
   try {
-    const tokens = await client.refreshTokenGrant(o.config, s.refreshToken);
-    return {
-      ...s,
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token ?? s.refreshToken,
-      accessExpiresAt: expiry(tokens, now),
-    };
+    tokens = await client.refreshTokenGrant(o.config, s.refreshToken);
   } catch (e) {
+    const refused = e instanceof client.ResponseBodyError && e.error === "invalid_grant";
+    throw new OidcFailure("refresh", e instanceof Error ? e.message : "unknown error", refused);
+  }
+  try {
+    return { ...s, ...fields(tokens, s.refreshToken, now) };
+  } catch (e) {
+    // The old refresh token may be spent already: the session cannot go on.
     throw new OidcFailure("refresh", e instanceof Error ? e.message : "unknown error");
   }
 }

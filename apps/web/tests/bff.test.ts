@@ -2,11 +2,11 @@
 // proxy against an in-process provider (tests/fake-oidc.ts) and a recorded
 // API. No network, no real provider.
 import { beforeEach, describe, expect, it } from "vitest";
-import { apiError, bff, type BffDeps, cookieValue, newRequestId, REFRESH_MARGIN_MS, REFRESH_REUSE_MS, sameOrigin } from "../lib/session/bff";
+import { apiError, bff, type BffDeps, cookieValue, newRequestId, REFRESH_MARGIN_MS, REFRESH_REUSE_MS, RefreshCache, sameOrigin } from "../lib/session/bff";
 import { BffConfigError, loadBffConfig } from "../lib/session/config";
 import { newOidc } from "../lib/session/oidc";
 import { parseSealKeys, seal } from "../lib/session/seal";
-import { LOGIN_COOKIE, LOGIN_MS, readSession, SESSION_COOKIE, type Session, sessionCookie } from "../lib/session/session";
+import { LOGIN_COOKIE, LOGIN_MS, MAX_TOKEN, readSession, SESSION_COOKIE, type Session, sessionCookie } from "../lib/session/session";
 import { AUDIENCE, CLIENT_ID, CLIENT_SECRET, ENDPOINTS, FakeProvider, type IdTokenChange, ISSUER } from "./fake-oidc";
 
 const APP = "https://app.test.invalid";
@@ -32,7 +32,7 @@ type Env = {
   provider: FakeProvider;
   deps: BffDeps;
   h: ReturnType<typeof bff>;
-  api: { requests: Request[]; respond: (r: Request) => Response | Promise<Response>; fail: boolean };
+  api: { requests: Request[]; inits: RequestInit[]; respond: (r: Request) => Response | Promise<Response>; fail: boolean };
   logs: string[];
   clock: { now: number };
 };
@@ -44,7 +44,7 @@ beforeEach(async () => {
   const cfg = loadBffConfig(env);
   const clock = { now: Date.now() };
   const logs: string[] = [];
-  const api: Env["api"] = { requests: [], respond: () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } }), fail: false };
+  const api: Env["api"] = { requests: [], inits: [], respond: () => new Response("{}", { status: 200, headers: { "content-type": "application/json" } }), fail: false };
   const deps: BffDeps = {
     cfg,
     keys: await parseSealKeys(env.SESSION_KEYS),
@@ -53,6 +53,7 @@ beforeEach(async () => {
     fetch: async (input, init) => {
       const r = new Request(input as string, init);
       api.requests.push(r);
+      api.inits.push(init as RequestInit);
       if (api.fail) throw new TypeError("connection refused");
       return api.respond(r);
     },
@@ -160,6 +161,19 @@ describe("login", () => {
     for (const p of ["state", "nonce", "code_challenge"]) expect(a.params.get(p)).not.toBe(b.params.get(p));
   });
 
+  it("returns to a percent-encoded path, and to / for a raw non-ASCII one", async () => {
+    for (const [to, want] of [
+      ["/projects/%E4%B8%AD", "/projects/%E4%B8%AD"],
+      ["/projects/\u4e2d", "/"],
+    ]) {
+      const { login, code, state } = await startLogin(to);
+      const res = await callback(`code=${code}&state=${state}`, login);
+      expect(res.status).toBe(303);
+      expect(res.headers.get("location")).toBe(`${APP}${want}`);
+      expect(cookieNamed(res, SESSION_COOKIE)).toBeDefined();
+    }
+  });
+
   it.each(["//evil.example", "https://evil.example", "/\\evil.example"])("does not return to %s", async (to) => {
     const { login, code, state } = await startLogin(to);
     const res = await callback(`code=${code}&state=${state}`, login);
@@ -242,6 +256,8 @@ describe("callback", () => {
     ["another issuer", { iss: "https://evil.test.invalid/" }],
     ["another audience", { aud: "other-client" }],
     ["no subject", { sub: null }],
+    // oauth4webapi only checks that sub is a string; the BFF refuses "".
+    ["an empty subject", { sub: "" }],
     ["an expired ID token", { exp: Math.floor(Date.now() / 1000) - 3600, iat: Math.floor(Date.now() / 1000) - 7200 }],
     ["a signature by another key", { badSignature: true }],
   ])("refuses an ID token with %s", async (_, change) => {
@@ -254,6 +270,19 @@ describe("callback", () => {
     e.provider.expiresIn = undefined;
     const { login, code, state } = await startLogin();
     await refused(await callback(`code=${code}&state=${state}`, login), "failed");
+  });
+
+  it.each<[string, number, number | undefined]>([
+    ["an access token over the session's limit", MAX_TOKEN + 1, undefined],
+    ["a refresh token over the session's limit", 40, MAX_TOKEN + 1],
+    ["tokens too large together for the cookie", MAX_TOKEN, MAX_TOKEN],
+  ])("refuses %s, and says so in the log", async (_, access, refreshLength) => {
+    e.provider.accessTokenLength = access;
+    e.provider.refreshTokenLength = refreshLength;
+    const { login, code, state } = await startLogin();
+    await refused(await callback(`code=${code}&state=${state}`, login), "failed");
+    expect(e.logs.some((l) => l.startsWith("login.failed"))).toBe(true);
+    expect(e.logs).not.toContain("login.succeeded");
   });
 
   it("logs why without tokens", async () => {
@@ -414,6 +443,84 @@ describe("proxy", () => {
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe("SERVICE_UNAVAILABLE");
   });
 
+  it("answers with nosniff, and never lets a cache store a response that sets the session", async () => {
+    const value = await signIn();
+    e.api.respond = () => new Response("{}", { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } });
+    const plain = await e.h.proxy(get("projects", value), ["projects"]);
+    expect(plain.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(plain.headers.get("cache-control")).toBe("public, max-age=60");
+    e.clock.now += 5 * 60_000;
+    const touched = await e.h.proxy(get("projects", value), ["projects"]);
+    expect(cookieNamed(touched, SESSION_COOKIE)).toBeDefined();
+    expect(touched.headers.get("cache-control")).toBe("no-store");
+    expect(touched.headers.get("x-content-type-options")).toBe("nosniff");
+  });
+
+  // TRACE and CONNECT cannot even be built as a Request (forbidden methods).
+  it.each(["OPTIONS", "PROPFIND", "PURGE"])("refuses the method %s without calling the API", async (method) => {
+    const value = await signIn();
+    const res = await e.h.proxy(new Request(`${APP}/api/v1/projects`, { method, headers: { ...csrf, cookie: `${SESSION_COOKIE}=${value}` } }), ["projects"]);
+    expect(res.status).toBe(400);
+    expect(e.api.requests).toHaveLength(0);
+  });
+
+  it("streams an upload to the API without buffering it", async () => {
+    const value = await signIn();
+    const bytes = new Uint8Array(256 * 1024).map((_, i) => i % 251);
+    e.api.respond = async (r) => new Response(new Uint8Array(await r.arrayBuffer()), { status: 201 });
+    const res = await e.h.proxy(
+      new Request(`${APP}/api/v1/imports`, { method: "POST", body: new Blob([bytes]).stream(), duplex: "half", headers: { ...csrf, cookie: `${SESSION_COOKIE}=${value}`, "content-type": "text/csv" } } as RequestInit),
+      ["imports"],
+    );
+    expect(res.status).toBe(201);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+    const init = e.api.inits[0] as RequestInit & { duplex?: string };
+    expect(init.body).toBeInstanceOf(ReadableStream);
+    expect(init.duplex).toBe("half");
+  });
+
+  it("streams the API's answer: an event arrives before the stream ends", async () => {
+    const value = await signIn();
+    let upstream: ReadableStreamDefaultController<Uint8Array> | undefined;
+    const events = new ReadableStream<Uint8Array>({
+      start(c) {
+        upstream = c;
+      },
+    });
+    const push = (s: string) => upstream?.enqueue(new TextEncoder().encode(s));
+    const end = () => upstream?.close();
+    e.api.respond = () => new Response(events, { status: 200, headers: { "content-type": "text/event-stream" } });
+    const pending = e.h.proxy(get("runs/run_x/events", value, { "last-event-id": "41" }), ["runs", "run_x", "events"]);
+    push("id: 42\ndata: {}\n\n");
+    const res = await Promise.race([pending, new Promise<never>((_, no) => setTimeout(() => no(new Error("the proxy waited for the stream to end")), 2000))]);
+    expect(res.headers.get("content-type")).toBe("text/event-stream");
+    expect((e.api.requests[0] as Request).headers.get("last-event-id")).toBe("41");
+    const reader = (res.body as ReadableStream<Uint8Array>).getReader();
+    expect(new TextDecoder().decode((await reader.read()).value)).toBe("id: 42\ndata: {}\n\n");
+    end();
+    expect((await reader.read()).done).toBe(true);
+  });
+
+  it("passes the browser's cancellation on to the API", async () => {
+    const value = await signIn();
+    const browser = new AbortController();
+    await e.h.proxy(new Request(`${APP}/api/v1/projects`, { signal: browser.signal, headers: { cookie: `${SESSION_COOKIE}=${value}` } }), ["projects"]);
+    const sent = (e.api.inits[0] as RequestInit).signal as AbortSignal;
+    expect(sent.aborted).toBe(false);
+    browser.abort();
+    expect(sent.aborted).toBe(true);
+  });
+
+  it("does not follow the API's redirects", async () => {
+    const value = await signIn();
+    e.api.respond = () => new Response(null, { status: 302, headers: { location: "http://10.0.0.5/v1/elsewhere" } });
+    const res = await e.h.proxy(get("projects", value), ["projects"]);
+    expect((e.api.inits[0] as RequestInit).redirect).toBe("manual");
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBeNull();
+    expect(e.api.requests).toHaveLength(1);
+  });
+
   it("writes the idle time back only every five minutes", async () => {
     const value = await signIn();
     expect((await e.h.proxy(get("projects", value), ["projects"])).headers.getSetCookie()).toEqual([]);
@@ -486,13 +593,64 @@ describe("proxy", () => {
       expect(e.provider.tokenCalls("refresh_token")).toBe(2);
     });
 
-    it("does not remember a failed refresh: the next request tries again", async () => {
+    it.each<[string, (p: FakeProvider) => void]>([
+      ["answers 503", (p) => (p.failRefresh = true)],
+      ["cannot be reached", (p) => (p.unreachableRefresh = true)],
+      // An OAuth error that is not a refusal of the token: Auth0's rate limit.
+      ["answers 429 too_many_requests", (p) => (p.refreshError = [429, "too_many_requests"])],
+    ])("keeps the session when the provider %s, and the next request tries again", async (_, down) => {
       const { value } = await expiring(1000);
-      e.provider.failRefresh = true;
-      expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(401);
-      e.provider.failRefresh = false;
+      down(e.provider);
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      expect(res.status).toBe(503);
+      expect(((await res.json()) as { error: { code: string } }).error.code).toBe("SERVICE_UNAVAILABLE");
+      // No Set-Cookie: the browser keeps the cookie it sent.
+      expect(res.headers.getSetCookie()).toEqual([]);
+      expect(e.api.requests).toHaveLength(0);
+      expect(e.logs.some((l) => l.startsWith("session.refresh_unavailable"))).toBe(true);
+      e.provider.failRefresh = e.provider.unreachableRefresh = false;
+      e.provider.refreshError = undefined;
       expect((await e.h.proxy(get("projects", value), ["projects"])).status).toBe(200);
+    });
+
+    it("gives two sessions refreshing at once their own tokens", async () => {
+      const a = await expiring(1000);
+      const b = await expiring(1000);
+      const [ra, rb] = await Promise.all([e.h.proxy(get("projects", a.value), ["projects"]), e.h.proxy(get("projects", b.value), ["projects"])]);
+      const fa = (await sessionOf(valueOf(cookieNamed(ra, SESSION_COOKIE) as string))) as Session;
+      const fb = (await sessionOf(valueOf(cookieNamed(rb, SESSION_COOKIE) as string))) as Session;
       expect(e.provider.tokenCalls("refresh_token")).toBe(2);
+      expect(fa.accessToken).not.toBe(fb.accessToken);
+      expect(fa.refreshToken).not.toBe(fb.refreshToken);
+      expect(fa.createdAt).toBe(a.s.createdAt);
+      expect(fb.createdAt).toBe(b.s.createdAt);
+      const sent = e.api.requests.map((r) => r.headers.get("authorization"));
+      expect(sent.sort()).toEqual([`Bearer ${fa.accessToken}`, `Bearer ${fb.accessToken}`].sort());
+    });
+
+    it("ends the session when the refreshed tokens do not fit it (the old refresh token is spent)", async () => {
+      const { value } = await expiring(1000);
+      e.provider.accessTokenLength = MAX_TOKEN;
+      e.provider.refreshTokenLength = MAX_TOKEN;
+      const res = await e.h.proxy(get("projects", value), ["projects"]);
+      expect(res.status).toBe(401);
+      expect(cookieNamed(res, SESSION_COOKIE)).toMatch(/Max-Age=0$/);
+      expect(e.api.requests).toHaveLength(0);
+      expect(e.logs.some((l) => l.startsWith("session.refresh_failed"))).toBe(true);
+    });
+
+    it("after logout, an older cookie cannot get the session's tokens from the shared refresh", async () => {
+      const { value: old } = await expiring(1000);
+      const refreshed = await e.h.proxy(get("projects", old), ["projects"]);
+      const current = valueOf(cookieNamed(refreshed, SESSION_COOKIE) as string);
+      const out = await e.h.logout(new Request(`${APP}/auth/logout`, { method: "POST", headers: { ...csrf, cookie: `${SESSION_COOKIE}=${current}` } }));
+      expect(out.status).toBe(200);
+      e.api.requests.length = 0;
+      // Within the reuse window the old cookie would have shared the refresh;
+      // now it refreshes with its spent token, which the provider refuses.
+      const res = await e.h.proxy(get("projects", old), ["projects"]);
+      expect(res.status).toBe(401);
+      expect(e.api.requests).toHaveLength(0);
     });
 
     it("ends a session without a refresh token when its access token expires", async () => {
@@ -501,6 +659,47 @@ describe("proxy", () => {
       const res = await e.h.proxy(get("projects", value), ["projects"]);
       expect(res.status).toBe(401);
     });
+  });
+});
+
+describe("RefreshCache", () => {
+  const session = (token: string): Session => ({ accessToken: `at-${token}`, refreshToken: `rt-${token}`, accessExpiresAt: 2, createdAt: 1, lastSeenAt: 1 });
+
+  it("keeps at most its limit; past it a refresh is not shared", async () => {
+    const cache = new RefreshCache(2);
+    let runs = 0;
+    const run = (t: string) => async () => (runs++, session(t));
+    for (const t of ["a", "b", "c"]) await cache.refresh(t, 0, run(t));
+    expect(cache.size).toBe(2);
+    await cache.refresh("a", 1, run("a"));
+    expect(runs).toBe(3);
+    await cache.refresh("c", 1, run("c"));
+    expect(runs).toBe(4);
+  });
+
+  it("shares by token, forgets failures, expires after the reuse window", async () => {
+    const cache = new RefreshCache();
+    let runs = 0;
+    const ok = async () => (runs++, session("x"));
+    await cache.refresh("a", 0, ok);
+    await cache.refresh("b", 0, ok);
+    expect(await cache.refresh("a", REFRESH_REUSE_MS - 1, ok)).toEqual(session("x"));
+    expect(runs).toBe(2);
+    await expect(cache.refresh("f", 0, async () => Promise.reject(new Error("down")))).rejects.toThrow("down");
+    await Promise.resolve();
+    expect(cache.size).toBe(2);
+    await cache.refresh("a", REFRESH_REUSE_MS, ok);
+    expect(runs).toBe(3);
+  });
+
+  it("forgets the refresh that spent or issued a token", async () => {
+    const cache = new RefreshCache();
+    await cache.refresh("old", 0, async () => session("new"));
+    await cache.forget("rt-new");
+    expect(cache.size).toBe(0);
+    await cache.refresh("old", 0, async () => session("new"));
+    await cache.forget("old");
+    expect(cache.size).toBe(0);
   });
 });
 

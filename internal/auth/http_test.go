@@ -152,3 +152,27 @@ func TestMiddleware(t *testing.T) {
 		}()
 	}
 }
+
+// TEST-032: the API never reads a cookie (the browser's session is the
+// BFF's; ADR-018). A valid token in any cookie, without an Authorization
+// header, is no credential.
+func TestCookiesAreNotRead(t *testing.T) {
+	p, v, _ := setup(t)
+	token := p.Token(t, p.RSA, nil, p.Claims("user-1", t0))
+	var failed error
+	calls := 0
+	h := auth.Middleware(v, func(w http.ResponseWriter, _ *http.Request, err error) {
+		failed = err
+		w.WriteHeader(http.StatusUnauthorized)
+	})(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { calls++ }))
+	for _, name := range []string{"__Host-geminus_session", "access_token", "token", "Authorization"} {
+		failed, calls = nil, 0
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.AddCookie(&http.Cookie{Name: name, Value: token})
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != http.StatusUnauthorized || calls != 0 || auth.Reason(failed) != auth.ReasonMissing {
+			t.Errorf("a token in the %s cookie: %d, handler called %d times, %v", name, w.Code, calls, failed)
+		}
+	}
+}
