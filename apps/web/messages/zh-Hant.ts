@@ -20,6 +20,11 @@ export const zhHant: Catalog = {
   "crash.title": "發生錯誤",
   "crash.body": "無法顯示此頁面。",
   "crash.reference": "參考編號：{digest}",
+  "authError.title": "登入未完成",
+  "authError.expired": "登入花費太久，或是在另一個瀏覽器開始的。",
+  "authError.refused": "登入已在身分提供者處取消。",
+  "authError.failed": "無法驗證身分提供者的回應。",
+  "authError.retry": "重新登入",
 
   "projects.title": "專案",
   "projects.empty": "目前還沒有專案。",

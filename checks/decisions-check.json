@@ -20,8 +20,8 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 19,
-    "in_progress": 1,
-    "not_started": 24,
+    "in_progress": 2,
+    "not_started": 23,
     "review": 1
   },
   "ready_tasks": [],
@@ -54,13 +54,6 @@
         "T-019"
       ],
       "awaiting_decisions": []
-    },
-    {
-      "id": "T-043",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-045"
-      ]
     }
   ],
   "gates": {

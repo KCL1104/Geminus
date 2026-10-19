@@ -1,13 +1,14 @@
-// Typed client for the Go REST API (openapi/openapi.yaml), T-014. It fails
-// closed: without a configured API URL or a session it sends nothing and
-// returns a Problem, so the UI can never show data the server did not return.
+// Typed client for the Go REST API (openapi/openapi.yaml), T-014. It calls
+// the API through the same-origin BFF (ADR-018, T-043): the browser holds no
+// token, the session cookie goes along and the BFF adds the bearer token. It
+// fails closed: without a session it sends nothing and returns a Problem, so
+// the UI can never show data the server did not return.
 import type { CreateModel, Draft, JsonPatch, Model, Models, ModelVersion, OrganizationID, Projects, Publish, ResetDraft, Versions } from "../contracts";
 import { draftETag, parseDraftETag } from "./etag";
 import { isID } from "./ids";
 import {
   invalidRequestProblem,
   networkProblem,
-  notConfiguredProblem,
   type Problem,
   problemFromResponse,
   protocolProblem,
@@ -15,19 +16,16 @@ import {
   unauthenticatedProblem,
 } from "./problem";
 
-/** What the auth boundary hands the client for one request (T-008 supplies a real one). */
+/** What the auth boundary hands the client for one request: who is signed in, for which organization. */
 export type Session = {
-  accessToken: string;
   /** Tenant selector only; the server authorizes it against the token's membership (D-008). */
   organizationId: OrganizationID;
 };
 
+/** The BFF's same-origin path to the API's /v1 (ADR-018). */
+export const API_PREFIX = "/api/v1";
+
 export type ClientConfig = {
-  /**
-   * Absolute https URL of the API (plain http only on loopback, for local
-   * development; SECURITY §3), or null when this deployment has none.
-   */
-  baseUrl: string | null;
   session: () => Session | null;
   fetch?: typeof fetch;
 };
@@ -60,27 +58,6 @@ export function newIdempotencyKey(): string {
 
 export type ApiClient = ReturnType<typeof createApiClient>;
 
-const loopback = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-/**
- * The API base, or null when it is not one this client will send a token to:
- * https (http only on loopback), no credentials, query or fragment, and a
- * path without empty segments ("//" would let a path become another host).
- */
-function apiBase(baseUrl: string): { origin: string; path: string } | null {
-  let url: URL;
-  try {
-    url = new URL(baseUrl);
-  } catch {
-    return null;
-  }
-  const secure = url.protocol === "https:" || (url.protocol === "http:" && loopback.has(url.hostname));
-  if (!secure || url.username !== "" || url.password !== "" || url.search !== "" || url.hash !== "" || baseUrl.includes("?") || baseUrl.includes("#")) return null;
-  const path = url.pathname.replace(/\/$/, "");
-  if (path.includes("//")) return null;
-  return { origin: url.origin, path };
-}
-
 const badKey = (): Failed => ({ ok: false, problem: invalidRequestProblem("An Idempotency-Key is 8 to 128 visible ASCII characters.") });
 
 /** A draft revision the server can have issued (a positive safe integer); anything else is refused locally, never thrown. */
@@ -96,19 +73,19 @@ export function createApiClient(cfg: ClientConfig) {
   const doFetch = cfg.fetch ?? globalThis.fetch.bind(globalThis);
 
   async function call<T>(req: Request): Promise<Result<T>> {
-    const base = cfg.baseUrl === null ? null : apiBase(cfg.baseUrl);
-    if (base === null) return { ok: false, problem: notConfiguredProblem("The API") };
     const session = cfg.session();
     if (session === null) return { ok: false, problem: unauthenticatedProblem() };
 
-    // Joined as a string on the fixed origin: req.path is a fixed template
-    // with validated IDs, so the request can only go to the configured host.
-    const url = new URL(base.origin + base.path + req.path);
-    for (const [k, v] of Object.entries(req.query ?? {})) if (v !== undefined) url.searchParams.set(k, v);
+    // A same-origin path: req.path is a fixed template with validated IDs,
+    // so the request can only reach the BFF's API proxy.
+    const query = new URLSearchParams();
+    for (const [k, v] of Object.entries(req.query ?? {})) if (v !== undefined) query.set(k, v);
+    const url = API_PREFIX + req.path + (query.size > 0 ? `?${query}` : "");
     const headers: Record<string, string> = {
       Accept: "application/json",
-      Authorization: `Bearer ${session.accessToken}`,
       "X-Organization-ID": session.organizationId,
+      // The BFF refuses a state-changing request without it (CSRF, ADR-018).
+      "X-Geminus-Request": "1",
     };
     if (req.contentType) headers["Content-Type"] = req.contentType;
     if (req.ifMatch) headers["If-Match"] = req.ifMatch;
@@ -116,7 +93,7 @@ export function createApiClient(cfg: ClientConfig) {
 
     let res: Response;
     try {
-      res = await doFetch(url, { method: req.method, headers, body: req.body, signal: req.signal, credentials: "omit", cache: "no-store" });
+      res = await doFetch(url, { method: req.method, headers, body: req.body, signal: req.signal, credentials: "same-origin", cache: "no-store", redirect: "error" });
     } catch {
       return { ok: false, problem: networkProblem(req.signal?.aborted ? "Request aborted." : "The API could not be reached.") };
     }

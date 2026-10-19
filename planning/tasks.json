@@ -2460,7 +2460,7 @@
       "id": "T-043",
       "title": "Browser login session (BFF, ADR-018)",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Frontend / Security",
       "planning_window": "Week 3–5",
       "depends_on": [

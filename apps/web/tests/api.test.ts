@@ -18,7 +18,7 @@ const ORG = "org_01M4YDQK00Y5H2929M9WWZWTVH";
 const MODEL = "mdl_01M4YDQK004AGVNEGJQJ1NMM0N";
 const PROJECT = "prj_01M4YDQK00TA00000000000001";
 const REQ = "req_01M4YDQK00V6H8S0ST4F7510KR";
-const session: Session = { accessToken: "test-token", organizationId: ORG };
+const session: Session = { organizationId: ORG };
 
 type Call = { url: URL; init: RequestInit };
 
@@ -26,7 +26,8 @@ type Call = { url: URL; init: RequestInit };
 function fakeFetch(...responses: (Response | Error)[]) {
   const calls: Call[] = [];
   const fn = async (input: string | URL | Request, init?: RequestInit) => {
-    calls.push({ url: new URL(String(input)), init: init ?? {} });
+    // The client sends same-origin paths; resolve them as the browser would.
+    calls.push({ url: new URL(String(input), "https://app.test"), init: init ?? {} });
     const next = responses.shift();
     if (next === undefined) throw new Error("unexpected request");
     if (next instanceof Error) throw next;
@@ -116,34 +117,32 @@ describe("ids and ETags", () => {
 });
 
 describe("client", () => {
-  it("sends nothing without an API URL or a session", async () => {
+  it("sends nothing without a session", async () => {
     const f = fakeFetch();
-    const noURL = await createApiClient({ baseUrl: null, session: () => session, fetch: f.fetch }).listProjects();
-    const badURL = await createApiClient({ baseUrl: "javascript:alert(1)", session: () => session, fetch: f.fetch }).listProjects();
-    const noSession = await createApiClient({ baseUrl: "https://api.test", session: () => null, fetch: f.fetch }).listProjects();
-    expect([noURL.ok, badURL.ok, noSession.ok]).toEqual([false, false, false]);
-    expect(!noURL.ok && noURL.problem.kind).toBe("unavailable");
-    expect(!badURL.ok && badURL.problem.kind).toBe("unavailable");
+    const noSession = await createApiClient({ session: () => null, fetch: f.fetch }).listProjects();
     expect(!noSession.ok && noSession.problem.kind).toBe("unauthenticated");
     expect(f.calls).toHaveLength(0);
   });
 
-  it("sends the bearer token and tenant selector, never cookies", async () => {
+  it("goes through the same-origin BFF with the tenant selector and the CSRF header, never a token (ADR-018)", async () => {
     const f = fakeFetch(json(200, { items: [], next_cursor: null }, { "X-Request-ID": REQ }));
-    const api = createApiClient({ baseUrl: "https://api.test/v0/", session: () => session, fetch: f.fetch });
+    const api = createApiClient({ session: () => session, fetch: f.fetch });
     const r = await api.listProjects({ cursor: "c1" });
     expect(r).toEqual({ ok: true, data: { items: [], next_cursor: null }, requestId: REQ, etag: null });
     const call = f.calls[0]!;
-    expect(call.url.toString()).toBe("https://api.test/v0/projects?cursor=c1");
+    expect(call.url.toString()).toBe("https://app.test/api/v1/projects?cursor=c1");
     const headers = call.init.headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer test-token");
+    expect(headers.Authorization).toBeUndefined();
     expect(headers["X-Organization-ID"]).toBe(ORG);
-    expect(call.init.credentials).toBe("omit");
+    expect(headers["X-Geminus-Request"]).toBe("1");
+    expect(call.init.credentials).toBe("same-origin");
+    expect(call.init.redirect).toBe("error");
+    expect(call.init.cache).toBe("no-store");
   });
 
   it("rejects malformed route IDs locally as not found", async () => {
     const f = fakeFetch();
-    const api = createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: f.fetch });
+    const api = createApiClient({ session: () => session, fetch: f.fetch });
     for (const r of [await api.getModel("../projects"), await api.getDraft("mdl_bad"), await api.listModels("mdl_01M4YDQK004AGVNEGJQJ1NMM0N")]) {
       expect(!r.ok && r.problem.kind).toBe("not_found");
     }
@@ -153,7 +152,7 @@ describe("client", () => {
   it("saves a draft with If-Match and the JSON Patch media type", async () => {
     const saved = draft(4);
     const f = fakeFetch(json(200, saved, { ETag: draftETag(4) }));
-    const api = createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: f.fetch });
+    const api = createApiClient({ session: () => session, fetch: f.fetch });
     const patch: JsonPatch = [{ op: "test", path: "/resources/0/id", value: "reviewer" }, { op: "replace", path: "/resources/0/capacity", value: 3 }];
     const r = await api.patchDraft(MODEL, 3, patch);
     expect(r.ok && r.data.revision).toBe(4);
@@ -167,29 +166,29 @@ describe("client", () => {
 
   it("reports a stale revision as a conflict", async () => {
     const f = fakeFetch(json(409, errorBody("MODEL_VERSION_CONFLICT")));
-    const r = await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: f.fetch }).patchDraft(MODEL, 3, [{ op: "test", path: "/name", value: "x" }]);
+    const r = await createApiClient({ session: () => session, fetch: f.fetch }).patchDraft(MODEL, 3, [{ op: "test", path: "/name", value: "x" }]);
     expect(!r.ok && [r.problem.kind, r.problem.code]).toEqual(["conflict", "MODEL_VERSION_CONFLICT"]);
   });
 
   it("treats a draft without a matching ETag as a protocol error", async () => {
     for (const etag of [undefined, draftETag(5), 'W/"draft-revision-4"']) {
       const f = fakeFetch(json(200, draft(4), etag === undefined ? {} : { ETag: etag }));
-      const r = await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: f.fetch }).getDraft(MODEL);
+      const r = await createApiClient({ session: () => session, fetch: f.fetch }).getDraft(MODEL);
       expect(!r.ok && r.problem.kind).toBe("protocol");
     }
   });
 
   it("maps transport failures and non-JSON successes", async () => {
     const down = fakeFetch(new TypeError("fetch failed"));
-    const r1 = await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: down.fetch }).listProjects();
+    const r1 = await createApiClient({ session: () => session, fetch: down.fetch }).listProjects();
     expect(!r1.ok && r1.problem.kind).toBe("network");
     const html = fakeFetch(new Response("<html>", { status: 200 }));
-    const r2 = await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: html.fetch }).listProjects();
+    const r2 = await createApiClient({ session: () => session, fetch: html.fetch }).listProjects();
     expect(!r2.ok && r2.problem.kind).toBe("protocol");
     const ctl = new AbortController();
     ctl.abort();
     const aborted = fakeFetch(new DOMException("aborted", "AbortError"));
-    const r3 = await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: aborted.fetch }).listProjects({ signal: ctl.signal });
+    const r3 = await createApiClient({ session: () => session, fetch: aborted.fetch }).listProjects({ signal: ctl.signal });
     expect(!r3.ok && r3.problem.message).toBe("Request aborted.");
     expect(aborted.calls[0]!.init.signal).toBe(ctl.signal);
   });
@@ -197,7 +196,7 @@ describe("client", () => {
   it("reads the session per request, so a sign-out takes effect immediately", async () => {
     let current: Session | null = session;
     const f = fakeFetch(json(200, { items: [], next_cursor: null }));
-    const api = createApiClient({ baseUrl: "https://api.test", session: () => current, fetch: f.fetch });
+    const api = createApiClient({ session: () => current, fetch: f.fetch });
     expect((await api.listProjects()).ok).toBe(true);
     current = null;
     const r = await api.listProjects();
@@ -207,8 +206,8 @@ describe("client", () => {
 
   it("keeps a valid project ID path intact", async () => {
     const f = fakeFetch(json(200, { items: [], next_cursor: null }));
-    await createApiClient({ baseUrl: "https://api.test", session: () => session, fetch: f.fetch }).listModels(PROJECT);
-    expect(f.calls[0]!.url.pathname).toBe(`/projects/${PROJECT}/models`);
+    await createApiClient({ session: () => session, fetch: f.fetch }).listModels(PROJECT);
+    expect(f.calls[0]!.url.pathname).toBe(`/api/v1/projects/${PROJECT}/models`);
   });
 });
 
@@ -221,7 +220,7 @@ const operations = (
 describe("model writes and versions (T-013)", () => {
   const VERSION = "mv_01M4YDQK00FRYWV7GS7X1QCXZR";
   const version = fixture("valid-model-version.json") as ModelVersion;
-  const api = (f: ReturnType<typeof fakeFetch>) => createApiClient({ baseUrl: "https://api.test/v1", session: () => session, fetch: f.fetch });
+  const api = (f: ReturnType<typeof fakeFetch>) => createApiClient({ session: () => session, fetch: f.fetch });
 
   it("creates a model with its Idempotency-Key and a JSON body", async () => {
     const f = fakeFetch(json(201, { id: MODEL }));
@@ -229,7 +228,7 @@ describe("model writes and versions (T-013)", () => {
     expect(r.ok).toBe(true);
     const call = f.calls[0]!;
     const headers = call.init.headers as Record<string, string>;
-    expect([call.init.method, call.url.pathname]).toEqual(["POST", `/v1/projects/${PROJECT}/models`]);
+    expect([call.init.method, call.url.pathname]).toEqual(["POST", `/api/v1/projects/${PROJECT}/models`]);
     expect([headers["Idempotency-Key"], headers["Content-Type"], headers["If-Match"]]).toEqual(["key-create-1", "application/json", undefined]);
     expect(JSON.parse(String(call.init.body))).toEqual({ name: "Pipeline", domain: "software_delivery", template: "default_delivery_pipeline" });
   });
@@ -240,11 +239,11 @@ describe("model writes and versions (T-013)", () => {
     const r = await client.publishVersion(MODEL, 3, { expected_base_version_id: VERSION, comment: "Ready" }, "key-publish-1");
     expect(r.ok && r.data.comment).toBe(null);
     const headers = f.calls[0]!.init.headers as Record<string, string>;
-    expect([f.calls[0]!.init.method, f.calls[0]!.url.pathname]).toEqual(["POST", `/v1/models/${MODEL}/versions`]);
+    expect([f.calls[0]!.init.method, f.calls[0]!.url.pathname]).toEqual(["POST", `/api/v1/models/${MODEL}/versions`]);
     expect([headers["If-Match"], headers["Idempotency-Key"]]).toEqual(['"draft-revision-3"', "key-publish-1"]);
     expect(JSON.parse(String(f.calls[0]!.init.body))).toEqual({ expected_base_version_id: VERSION, comment: "Ready" });
     expect((await client.getModelVersion(VERSION)).ok).toBe(true);
-    expect(f.calls[1]!.url.pathname).toBe(`/v1/model-versions/${VERSION}`);
+    expect(f.calls[1]!.url.pathname).toBe(`/api/v1/model-versions/${VERSION}`);
   });
 
   it("resets with If-Match and requires the matching ETag back", async () => {
@@ -324,7 +323,9 @@ describe("model writes and versions (T-013)", () => {
     for (const [id, i] of Object.entries(seen)) {
       const op = operations.find((o) => o.operation_id === id);
       const call = f.calls[i]!;
-      const template = call.url.pathname.replace(/\/(prj|mdl|mv)_[0-9A-Z]{26}/g, "/{id}");
+      // The BFF's /api prefix in front of the contract's /v1 path (ADR-018).
+      expect(call.url.pathname.startsWith("/api/v1/")).toBe(true);
+      const template = call.url.pathname.slice("/api".length).replace(/\/(prj|mdl|mv)_[0-9A-Z]{26}/g, "/{id}");
       expect([id, call.init.method, template]).toEqual([id, op?.method, op?.path]);
     }
   });

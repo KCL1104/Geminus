@@ -24,8 +24,8 @@ const fixture = <T,>(name: string): T =>
 
 const ORG = "org_01M4YDQK00Y5H2929M9WWZWTVH";
 const REQ = "req_01M4YDQK00V6H8S0ST4F7510KR";
-const editor: Auth = { session: { accessToken: "t", organizationId: ORG }, role: "editor" };
-const viewer: Auth = { session: { accessToken: "t", organizationId: ORG }, role: "viewer" };
+const editor: Auth = { session: { organizationId: ORG }, role: "editor" };
+const viewer: Auth = { session: { organizationId: ORG }, role: "viewer" };
 const html = (node: ReactNode, auth: Auth | null = null) =>
   renderToStaticMarkup(auth === null ? node : <AuthProvider value={auth}>{node}</AuthProvider>);
 const problemOf = (kind: ProblemKind, extra: Partial<Problem> = {}): Problem => ({
@@ -134,7 +134,7 @@ describe("model page loader", () => {
     latest_version: { id: draft.base_version_id, version: 1 }, created_at: "2026-10-15T08:00:00Z",
   };
   const client = (...responses: Response[]) =>
-    createApiClient({ baseUrl: "https://api.test", session: () => editor.session, fetch: (async () => responses.shift()!) as typeof fetch });
+    createApiClient({ session: () => editor.session, fetch: (async () => responses.shift()!) as typeof fetch });
   const ok = (body: unknown, headers: Record<string, string> = {}) => new Response(JSON.stringify(body), { status: 200, headers });
 
   it("loads model and draft together", async () => {

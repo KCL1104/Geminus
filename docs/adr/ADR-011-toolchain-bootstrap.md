@@ -17,6 +17,7 @@
 | Python（spec checks） | 3.13；`requirements-spec.txt` 精確 pin | PSF | 新增 `rfc3339-validator`、`rfc3986-validator`（見 CB-34） |
 | PostgreSQL（CI smoke） | 16.15（`postgres:16.15` service） | PostgreSQL | **只用於草案 migration smoke**；production DB major 仍是 TBD，不構成選型 |
 | GitHub Actions | checkout v7.0.1、setup-go v7.0.0、setup-node v7.1.0、setup-python v7.0.0、upload-artifact v7.0.1（T-045；v7.0.2 於 2026-10-07 發布，未滿兩週），以 commit SHA pin | MIT | 防止 tag 被移動 |
+| OIDC client（T-043） | `openid-client` 6.8.8，帶入 `oauth4webapi` 3.8.8 與 `jose` 6.2.12（三者皆 2026-09-05 發布，滿兩週） | MIT | ADR-018 指定通用 OIDC／OAuth client。只在伺服器端使用（`apps/web/lib/session`，`tests/server-only.test.ts` 檢查沒有 client module 能引用）；ID token 另以 `enableNonRepudiationChecks` 驗簽 |
 | 瀏覽器檢查（T-045） | `@playwright/test` 1.56.1、`@axe-core/playwright` 4.13.0、`axe-core` 4.13.0（`apps/web-e2e`，不進 `apps/web`）；CI 的 e2e job 用 `mcr.microsoft.com/playwright:v1.56.1-noble`，以 index digest `sha256:f1e7e010…b837a` pin | Apache-2.0；axe 為 MPL-2.0（只用於測試，H-009） | 截圖 baseline 只在這個 image 中產生與比對（字型一致） |
 
 HTTP 層依 ADR-001 使用 `net/http`，不引入 web framework。SQL generation（sqlc／explicit SQL）、frontend state／UI libraries、auth、cloud、object storage 仍為 TBD，本 ADR 不選。LLM provider 已由 H-001 指定 Anthropic，但 SDK（`github.com/anthropics/anthropic-sdk-go`）版本留給 T-024 選定。

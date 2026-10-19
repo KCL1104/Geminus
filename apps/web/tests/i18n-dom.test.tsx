@@ -27,7 +27,7 @@ const router = vi.hoisted(() => ({ refreshed: 0 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => { router.refreshed++; } }) }));
 
 const ORG = "org_01M4YDQK00Y5H2929M9WWZWTVH";
-const signedIn: Auth = { session: { accessToken: "t", organizationId: ORG }, role: "editor" };
+const signedIn: Auth = { session: { organizationId: ORG }, role: "editor" };
 const draft = JSON.parse(readFileSync(join(process.cwd(), "../../testdata/contracts/valid-draft-with-issues.json"), "utf8")) as Draft;
 
 let roots: Root[] = [];
@@ -53,7 +53,6 @@ const problem = (p: Partial<Problem>): Problem => ({ ...networkProblem(""), ...p
 describe("zh-Hant", () => {
   it("renders the projects page and its states in Chinese", async () => {
     const api = createApiClient({
-      baseUrl: "https://api.test",
       session: () => signedIn.session,
       fetch: (async () => new Response(JSON.stringify({ items: [{ id: "prj_01M4YDQK00TA00000000000001", name: "Pipeline", organization_id: ORG, created_at: "2026-10-15T08:00:00Z", created_by: "usr_01M4YDQK00TA00000000000001" }], next_cursor: "c2" }))) as typeof fetch,
     });
@@ -91,8 +90,7 @@ describe("zh-Hant", () => {
   it("keeps the page when a project has no usable creation time (T-044 review M2)", async () => {
     for (const created_at of [undefined, null, "not a time"]) {
       const api = createApiClient({
-        baseUrl: "https://api.test",
-        session: () => signedIn.session,
+          session: () => signedIn.session,
         fetch: (async () => new Response(JSON.stringify({ items: [{ id: "prj_01M4YDQK00TA00000000000001", name: "Pipeline", organization_id: ORG, created_at, created_by: "usr_01M4YDQK00TA00000000000001" }], next_cursor: null }))) as typeof fetch,
       });
       const el = await mount(<AuthProvider value={signedIn}><ApiProvider client={api}><ProjectsPage /></ApiProvider></AuthProvider>);

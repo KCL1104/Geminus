@@ -21,6 +21,11 @@ export const en = {
   "crash.title": "Something went wrong",
   "crash.body": "This page could not be shown.",
   "crash.reference": "Reference: {digest}",
+  "authError.title": "Sign-in did not complete",
+  "authError.expired": "The sign-in took too long or was started in another browser.",
+  "authError.refused": "The sign-in was cancelled at the identity provider.",
+  "authError.failed": "The identity provider's answer could not be verified.",
+  "authError.retry": "Sign in again",
 
   "projects.title": "Projects",
   "projects.empty": "No projects yet.",

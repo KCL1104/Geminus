@@ -22,7 +22,7 @@ import { join } from "node:path";
 
 const ORG = "org_01M4YDQK00Y5H2929M9WWZWTVH";
 const PRJ = "prj_01M4YDQK00TA00000000000001";
-const signedIn: Auth = { session: { accessToken: "t", organizationId: ORG }, role: "editor" };
+const signedIn: Auth = { session: { organizationId: ORG }, role: "editor" };
 const signedOut: Auth = { session: null, role: null };
 // import.meta.url is not a file URL under happy-dom; vitest runs from apps/web.
 const draft = JSON.parse(readFileSync(join(process.cwd(), "../../testdata/contracts/valid-draft-with-issues.json"), "utf8")) as Draft;
@@ -53,7 +53,6 @@ function projects(auth: Auth, respond: () => Response) {
   let calls = 0;
   // The client always has a session, so only the page's auth boundary can keep it from calling.
   const api = createApiClient({
-    baseUrl: "https://api.test",
     session: () => signedIn.session,
     fetch: (async () => { calls++; return respond(); }) as typeof fetch,
   });
