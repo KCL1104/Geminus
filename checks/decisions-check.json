@@ -20,16 +20,31 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 19,
-    "in_progress": 2,
+    "in_progress": 1,
     "not_started": 24,
-    "review": 0
+    "review": 1
   },
   "ready_tasks": [
     "T-016",
     "T-024",
     "T-043"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-023",
+      "awaiting_task_review": [
+        "T-019"
+      ],
+      "awaiting_decisions": []
+    },
+    {
+      "id": "T-035",
+      "awaiting_task_review": [
+        "T-019"
+      ],
+      "awaiting_decisions": []
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",

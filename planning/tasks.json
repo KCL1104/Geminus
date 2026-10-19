@@ -1102,7 +1102,7 @@
       "id": "T-019",
       "title": "PostgreSQL job queue / leases",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "review",
       "owner_role": "Platform",
       "planning_window": "Week 5–6",
       "depends_on": [
@@ -1149,7 +1149,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-19",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-019_VALIDATION.md",
+          "summary": "T-019a（36d2d44）worker scope 移到 internal/tenant/workerscope，architecture rule worker-scope-only-in-the-worker（三個 probe 先過後擋）。T-019b（4ab2eff、962c8b1）internal/storage/jobs：enqueue 與 resource、audit 同一 transaction；claim（organization filter、有 handler 的 type、priority／created_at／id、SKIP LOCKED、attempt 與 token 加一）；以 organization、job、worker、token、running、未過期為 fence 的 heartbeat／lock／complete／fail；有限 backoff 重試；逐 organization 的 reaper。T-019c／d（c6a51c1）：Cancel 與 CancelQueued（TEST-021 的佇列部分）；migration 0007 以 trigger 對所有 role 強制 job 生命週期；internal/worker 迴圈（逐 organization reap＋至多一個 job、heartbeat 每次限時、lease 失去或一整個 lease 續不上即停止 handler、Finish 讓結果與 completed／cancelled 一起 commit、Failure／error／panic／NO_RESULT／WORKER_STOPPED 的記錄）；cmd/worker（WORKER_ID、WORKER_ORGANIZATION_IDS、runtime role 檢查；沒有 handler 時 exit 2）；ADR-024 PROPOSED。c6a51c1 乾淨 worktree：backend-test／race／architecture／frontend／spec／integration-test exit 0（無 cached），38 個 Go test（race、0 SKIP），計時測試 ×5 全過；mutation Go 67（63 killed、4 等價）、SQL 17/17。",
+          "reviewer": "pending: independent reviewer agent (H-003)",
+          "decisions_pending": "ADR-024（參數與 WORKER_STOPPED 是否計入 attempt）待 owner"
+        }
+      ]
     },
     {
       "id": "T-020",

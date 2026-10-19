@@ -1,0 +1,132 @@
+=== RUN   TestEnqueueWithTheResource
+--- PASS: TestEnqueueWithTheResource (0.06s)
+=== RUN   TestClaimOrderAndScope
+--- PASS: TestClaimOrderAndScope (0.11s)
+=== RUN   TestConcurrentClaims
+--- PASS: TestConcurrentClaims (0.13s)
+=== RUN   TestTheLeaseFencesEveryWrite
+--- PASS: TestTheLeaseFencesEveryWrite (0.15s)
+=== RUN   TestReapAfterACrash
+--- PASS: TestReapAfterACrash (0.10s)
+=== RUN   TestFailRetriesOnlyWhatMayBeRetried
+--- PASS: TestFailRetriesOnlyWhatMayBeRetried (0.09s)
+=== RUN   TestBackoff
+--- PASS: TestBackoff (0.00s)
+=== RUN   TestReapSkipsAJobBeingFinalized
+--- PASS: TestReapSkipsAJobBeingFinalized (0.07s)
+=== RUN   TestClaimSkipsAHeldJob
+--- PASS: TestClaimSkipsAHeldJob (0.07s)
+=== RUN   TestLockHoldsTheJob
+--- PASS: TestLockHoldsTheJob (0.06s)
+=== RUN   TestCancellation
+--- PASS: TestCancellation (0.10s)
+=== RUN   TestCancelRacesTheClaim
+--- PASS: TestCancelRacesTheClaim (0.16s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	2.121s
+=== RUN   TestNewChecksTheConfig
+--- PASS: TestNewChecksTheConfig (0.00s)
+=== RUN   TestAJobRunsOnceWithItsResult
+--- PASS: TestAJobRunsOnceWithItsResult (0.06s)
+=== RUN   TestAJobEndsCancelled
+--- PASS: TestAJobEndsCancelled (0.06s)
+=== RUN   TestFailedAttempts
+=== RUN   TestFailedAttempts/a_failure_that_is_not_retried
+=== RUN   TestFailedAttempts/a_wrapped_retryable_failure
+=== RUN   TestFailedAttempts/an_error
+=== RUN   TestFailedAttempts/an_error_on_the_last_attempt
+=== RUN   TestFailedAttempts/the_result's_transaction_fails
+=== RUN   TestFailedAttempts/a_panic
+=== RUN   TestFailedAttempts/no_result
+--- PASS: TestFailedAttempts (0.13s)
+    --- PASS: TestFailedAttempts/a_failure_that_is_not_retried (0.03s)
+    --- PASS: TestFailedAttempts/a_wrapped_retryable_failure (0.01s)
+    --- PASS: TestFailedAttempts/an_error (0.01s)
+    --- PASS: TestFailedAttempts/an_error_on_the_last_attempt (0.01s)
+    --- PASS: TestFailedAttempts/the_result's_transaction_fails (0.01s)
+    --- PASS: TestFailedAttempts/a_panic (0.01s)
+    --- PASS: TestFailedAttempts/no_result (0.02s)
+=== RUN   TestTheHeartbeatKeepsALongJob
+--- PASS: TestTheHeartbeatKeepsALongJob (3.08s)
+=== RUN   TestALostLeaseStopsTheHandler
+--- PASS: TestALostLeaseStopsTheHandler (0.16s)
+=== RUN   TestFinishAfterTheLeaseExpired
+--- PASS: TestFinishAfterTheLeaseExpired (0.06s)
+=== RUN   TestAHungRenewalCannotOutliveTheLease
+--- PASS: TestAHungRenewalCannotOutliveTheLease (1.57s)
+=== RUN   TestTheHeartbeatGivesUpWithoutTheDatabase
+--- PASS: TestTheHeartbeatGivesUpWithoutTheDatabase (1.55s)
+=== RUN   TestStoppingRequeuesTheJob
+--- PASS: TestStoppingRequeuesTheJob (0.05s)
+=== RUN   TestOrganizationsTakeTurns
+--- PASS: TestOrganizationsTakeTurns (0.10s)
+=== RUN   TestAnUnhandledTypeStaysQueued
+--- PASS: TestAnUnhandledTypeStaysQueued (0.04s)
+=== RUN   TestWorkersShareTheQueue
+--- PASS: TestWorkersShareTheQueue (0.10s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/worker	7.986s
+=== RUN   TestNewRefusesABadAllowlist
+--- PASS: TestNewRefusesABadAllowlist (0.00s)
+=== RUN   TestAssignment
+--- PASS: TestAssignment (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	1.058s
+=== RUN   TestLoadAuth
+--- PASS: TestLoadAuth (0.00s)
+=== RUN   TestLoadValid
+=== RUN   TestLoadValid/defaults_to_disabled_AI
+=== RUN   TestLoadValid/explicitly_disabled_AI
+=== RUN   TestLoadValid/unix_socket_via_host=
+=== RUN   TestLoadValid/postgres_scheme
+=== RUN   TestLoadValid/object_storage_disabled
+--- PASS: TestLoadValid (0.00s)
+    --- PASS: TestLoadValid/defaults_to_disabled_AI (0.00s)
+    --- PASS: TestLoadValid/explicitly_disabled_AI (0.00s)
+    --- PASS: TestLoadValid/unix_socket_via_host= (0.00s)
+    --- PASS: TestLoadValid/postgres_scheme (0.00s)
+    --- PASS: TestLoadValid/object_storage_disabled (0.00s)
+=== RUN   TestLoadRejects
+=== RUN   TestLoadRejects/missing_database
+=== RUN   TestLoadRejects/wrong_scheme
+=== RUN   TestLoadRejects/no_database_name
+=== RUN   TestLoadRejects/no_host
+=== RUN   TestLoadRejects/unparseable
+=== RUN   TestLoadRejects/anthropic_not_yet_implemented
+=== RUN   TestLoadRejects/unknown_provider
+=== RUN   TestLoadRejects/provider_is_case-sensitive
+=== RUN   TestLoadRejects/key_while_disabled
+=== RUN   TestLoadRejects/object_storage_TBD
+=== RUN   TestLoadRejects/all_problems_reported_together
+--- PASS: TestLoadRejects (0.00s)
+    --- PASS: TestLoadRejects/missing_database (0.00s)
+    --- PASS: TestLoadRejects/wrong_scheme (0.00s)
+    --- PASS: TestLoadRejects/no_database_name (0.00s)
+    --- PASS: TestLoadRejects/no_host (0.00s)
+    --- PASS: TestLoadRejects/unparseable (0.00s)
+    --- PASS: TestLoadRejects/anthropic_not_yet_implemented (0.00s)
+    --- PASS: TestLoadRejects/unknown_provider (0.00s)
+    --- PASS: TestLoadRejects/provider_is_case-sensitive (0.00s)
+    --- PASS: TestLoadRejects/key_while_disabled (0.00s)
+    --- PASS: TestLoadRejects/object_storage_TBD (0.00s)
+    --- PASS: TestLoadRejects/all_problems_reported_together (0.00s)
+=== RUN   TestErrorsNeverEchoSecrets
+--- PASS: TestErrorsNeverEchoSecrets (0.00s)
+=== RUN   TestLoadServer
+--- PASS: TestLoadServer (0.00s)
+=== RUN   TestLoadWorker
+--- PASS: TestLoadWorker (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config	1.020s
+=== RUN   TestRunRejectsInvalidConfiguration
+--- PASS: TestRunRejectsInvalidConfiguration (0.00s)
+=== RUN   TestRunRefusesToStartWithoutHandlers
+--- PASS: TestRunRefusesToStartWithoutHandlers (0.00s)
+=== RUN   TestRunRefusesABadAllowlist
+--- PASS: TestRunRefusesABadAllowlist (0.00s)
+=== RUN   TestRunNeedsTheDatabase
+--- PASS: TestRunNeedsTheDatabase (0.00s)
+=== RUN   TestRunWorksAndStops
+--- PASS: TestRunWorksAndStops (0.08s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	1.099s
