@@ -1,0 +1,8 @@
+=== RUN   TestStoredIRIsTheCanonicalBytes
+    storage_form_test.go:59: the stored draft is 83639428 bytes, its canonical form 1942370
+    storage_form_test.go:62: the stored hash sha256:2d0e8df769c2bdead0be212cc79fc9b9dec98f04eb17ccdedf948a07bd6e4cbd is not the stored bytes' sha256:11396ca6b7904fd735b1480397b24a899110867f783acfcd2fb39e53ebbf5bad (draft sha256:2d0e8df769c2bdead0be212cc79fc9b9dec98f04eb17ccdedf948a07bd6e4cbd)
+    storage_form_test.go:75: the stored version is 83639428 bytes with hash sha256:2d0e8df769c2bdead0be212cc79fc9b9dec98f04eb17ccdedf948a07bd6e4cbd; the published IR is 1942370 bytes with hash sha256:2d0e8df769c2bdead0be212cc79fc9b9dec98f04eb17ccdedf948a07bd6e4cbd
+--- FAIL: TestStoredIRIsTheCanonicalBytes (18.85s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/models	18.984s
+FAIL

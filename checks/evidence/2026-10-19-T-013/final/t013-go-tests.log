@@ -1,0 +1,136 @@
+=== RUN   TestNumbersAreStoredAsWritten
+--- PASS: TestNumbersAreStoredAsWritten (1.41s)
+=== RUN   TestMoreIssuesThanADraftHolds
+--- PASS: TestMoreIssuesThanADraftHolds (1.47s)
+=== RUN   TestCappedBoundary
+--- PASS: TestCappedBoundary (0.01s)
+=== RUN   TestPublishKeepsUnusedBindings
+--- PASS: TestPublishKeepsUnusedBindings (0.16s)
+=== RUN   TestDatasetIssuePaths
+--- PASS: TestDatasetIssuePaths (0.14s)
+=== RUN   TestReadsSeeOneSnapshot
+--- PASS: TestReadsSeeOneSnapshot (2.06s)
+=== RUN   TestCleanAgainstItsOwnBase
+--- PASS: TestCleanAgainstItsOwnBase (0.15s)
+=== RUN   TestCreateChecksTheTemplate
+--- PASS: TestCreateChecksTheTemplate (0.10s)
+=== RUN   TestIssueOrderAndStages
+--- PASS: TestIssueOrderAndStages (0.11s)
+=== RUN   TestNULIsRefused
+--- PASS: TestNULIsRefused (0.10s)
+=== RUN   TestListLimits
+--- PASS: TestListLimits (0.08s)
+=== RUN   TestWritesWaitForTheModelRow
+--- PASS: TestWritesWaitForTheModelRow (1.11s)
+=== RUN   TestPublishIdempotencyScope
+--- PASS: TestPublishIdempotencyScope (0.11s)
+=== RUN   TestCursorBindings
+--- PASS: TestCursorBindings (0.07s)
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestIfMatch
+--- PASS: TestIfMatch (0.00s)
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.12s)
+=== RUN   TestRolesAndTenancy
+--- PASS: TestRolesAndTenancy (0.10s)
+=== RUN   TestPatchDraft
+--- PASS: TestPatchDraft (0.14s)
+=== RUN   TestConcurrentPatches
+--- PASS: TestConcurrentPatches (0.10s)
+=== RUN   TestPublish
+--- PASS: TestPublish (0.21s)
+=== RUN   TestPublishKeepsTheComment
+--- PASS: TestPublishKeepsTheComment (0.24s)
+=== RUN   TestPublishRace
+--- PASS: TestPublishRace (0.13s)
+=== RUN   TestDraftWhenAnotherVersionArrives
+--- PASS: TestDraftWhenAnotherVersionArrives (0.16s)
+=== RUN   TestVersionsAreImmutable
+--- PASS: TestVersionsAreImmutable (0.10s)
+=== RUN   TestDatasets
+--- PASS: TestDatasets (0.23s)
+=== RUN   TestLists
+--- PASS: TestLists (0.33s)
+=== RUN   TestPackRules
+--- PASS: TestPackRules (0.10s)
+=== RUN   TestStoredIRIsTheCanonicalBytes
+--- PASS: TestStoredIRIsTheCanonicalBytes (25.79s)
+=== RUN   TestStoredIRMustMatchItsHash
+--- PASS: TestStoredIRMustMatchItsHash (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/models	35.903s
+=== RUN   TestOrganizationFilter
+--- PASS: TestOrganizationFilter (0.04s)
+=== RUN   TestUpdateDraftCAS
+--- PASS: TestUpdateDraftCAS (0.03s)
+=== RUN   TestVersionManifest
+--- PASS: TestVersionManifest (0.04s)
+=== RUN   TestListModelsKeyset
+--- PASS: TestListModelsKeyset (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.178s
+=== RUN   TestRoleMatrix
+--- PASS: TestRoleMatrix (0.38s)
+=== RUN   TestCreate
+--- PASS: TestCreate (0.29s)
+=== RUN   TestIdempotency
+--- PASS: TestIdempotency (0.26s)
+=== RUN   TestExpiredKeyRace
+--- PASS: TestExpiredKeyRace (1.42s)
+=== RUN   TestOutsideTheContract
+--- PASS: TestOutsideTheContract (0.14s)
+=== RUN   TestList
+--- PASS: TestList (0.83s)
+=== RUN   TestMembershipRoutes
+--- PASS: TestMembershipRoutes (0.31s)
+=== RUN   TestModelRoutes
+--- PASS: TestModelRoutes (0.46s)
+=== RUN   TestModelRoleMatrix
+--- PASS: TestModelRoleMatrix (0.39s)
+=== RUN   TestDraftPreconditions
+--- PASS: TestDraftPreconditions (0.33s)
+=== RUN   TestPatchBody
+--- PASS: TestPatchBody (1.03s)
+=== RUN   TestPublishRefusals
+--- PASS: TestPublishRefusals (0.34s)
+=== RUN   TestModelLists
+--- PASS: TestModelLists (0.58s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	7.812s
+=== RUN   TestStatusMatchesSchema
+--- PASS: TestStatusMatchesSchema (0.00s)
+=== RUN   TestWriteError
+--- PASS: TestWriteError (0.04s)
+=== RUN   TestOrganizationIDMatchesSchema
+--- PASS: TestOrganizationIDMatchesSchema (0.00s)
+=== RUN   TestRequestID
+--- PASS: TestRequestID (0.00s)
+=== RUN   TestRecover
+--- PASS: TestRecover (0.00s)
+=== RUN   TestDecodeJSON
+--- PASS: TestDecodeJSON (0.03s)
+=== RUN   TestDecodeJSONFailures
+--- PASS: TestDecodeJSONFailures (0.00s)
+=== RUN   TestWriteJSONFallback
+--- PASS: TestWriteJSONFallback (0.00s)
+=== RUN   TestScoped
+--- PASS: TestScoped (0.01s)
+=== RUN   TestNULStrings
+--- PASS: TestNULStrings (0.00s)
+=== RUN   TestNULPathBounded
+--- PASS: TestNULPathBounded (0.06s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/httpapi	1.188s
+=== RUN   TestRunRejectsInvalidConfiguration
+--- PASS: TestRunRejectsInvalidConfiguration (0.00s)
+=== RUN   TestRunNeedsTheDatabase
+--- PASS: TestRunNeedsTheDatabase (0.00s)
+=== RUN   TestServerSettings
+--- PASS: TestServerSettings (0.00s)
+=== RUN   TestRunServesAndStops
+--- PASS: TestRunServesAndStops (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/api	1.084s

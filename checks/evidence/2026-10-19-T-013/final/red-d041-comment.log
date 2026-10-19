@@ -1,0 +1,12 @@
+--- FAIL: TestPublishKeepsTheComment (0.12s)
+    models_test.go:473: 41 characters, published: <nil>
+    models_test.go:473: 41 characters, read back: <nil>
+    models_test.go:473: 2000 characters, published: <nil>
+    models_test.go:473: 2000 characters, read back: <nil>
+    models_test.go:480: listed versions: <nil>
+    models_test.go:487: U+0000: models: the draft or model changed
+    models_test.go:487: invalid UTF-8: models: the draft or model changed
+    models_test.go:487: 2001 characters: models: the draft or model changed
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/models	0.274s
+FAIL
