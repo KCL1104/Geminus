@@ -100,6 +100,8 @@ export type ProposalRequest = {
   context?: {
     selected_entity_ids?: string[];
   };
+  /** Language of the AI's prose (REQ-022, AI_SPEC §3); en when absent. The server validates it and states it in the provider instruction. Only prose follows it, never IDs, JSON Pointers, enum or reason codes, metric paths or units. */
+  output_locale?: Locale;
 };
 
 export type ProposalAccepted = {
@@ -154,6 +156,11 @@ export type ImportAccepted = {
   status: "UPLOADED";
 };
 
+export type MappingSuggestionRequest = {
+  /** Language of the AI's prose (REQ-022, AI_SPEC §3); en when absent. The server validates it and states it in the provider instruction. Only prose follows it, never IDs, JSON Pointers, enum or reason codes, metric paths or units. */
+  output_locale?: Locale;
+};
+
 export type ImportCommitted = {
   id: ImportID;
   status: "COMMITTED";
@@ -172,6 +179,8 @@ export type RunAccepted = {
 export type AnalysisRequest = {
   baseline_run_id?: RunID;
   question?: string;
+  /** Language of the AI's prose (REQ-022, AI_SPEC §3); en when absent. The server validates it and states it in the provider instruction. Only prose follows it, never IDs, JSON Pointers, enum or reason codes, metric paths or units. Numbers in the analysis prose are checked as Arabic numerals in either language. */
+  output_locale?: Locale;
 };
 
 export type AnalysisAccepted = {

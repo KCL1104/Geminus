@@ -934,6 +934,121 @@
       "schema": "schemas/http.schema.json#/$defs/ProgressSnapshot",
       "valid": true,
       "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-request-zh-hant",
+      "instance": "testdata/contracts/valid-proposal-request-zh-hant.json",
+      "schema": "schemas/http.schema.json#/$defs/ProposalRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-request-default-locale",
+      "instance": "testdata/contracts/valid-proposal-request-default-locale.json",
+      "schema": "schemas/http.schema.json#/$defs/ProposalRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-request-locale",
+      "instance": "testdata/contracts/invalid-proposal-request-locale.json",
+      "schema": "schemas/http.schema.json#/$defs/ProposalRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/output_locale"
+      ]
+    },
+    {
+      "id": "valid-analysis-request-locale",
+      "instance": "testdata/contracts/valid-analysis-request-locale.json",
+      "schema": "schemas/http.schema.json#/$defs/AnalysisRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-analysis-request-locale",
+      "instance": "testdata/contracts/invalid-analysis-request-locale.json",
+      "schema": "schemas/http.schema.json#/$defs/AnalysisRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/output_locale"
+      ]
+    },
+    {
+      "id": "valid-mapping-suggestion-request",
+      "instance": "testdata/contracts/valid-mapping-suggestion-request.json",
+      "schema": "schemas/http.schema.json#/$defs/MappingSuggestionRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-mapping-suggestion-request-columns",
+      "instance": "testdata/contracts/invalid-mapping-suggestion-request-columns.json",
+      "schema": "schemas/http.schema.json#/$defs/MappingSuggestionRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-id-allocation-pool",
+      "instance": "testdata/contracts/valid-id-allocation-pool.json",
+      "schema": "schemas/common.schema.json#/$defs/IdAllocationPool",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-id-pool-uppercase",
+      "instance": "testdata/contracts/invalid-id-pool-uppercase.json",
+      "schema": "schemas/common.schema.json#/$defs/IdAllocationPool",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/node/0"
+      ]
+    },
+    {
+      "id": "invalid-id-pool-15-flows",
+      "instance": "testdata/contracts/invalid-id-pool-15-flows.json",
+      "schema": "schemas/common.schema.json#/$defs/IdAllocationPool",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/flow"
+      ]
+    },
+    {
+      "id": "invalid-id-pool-wrong-kind",
+      "instance": "testdata/contracts/invalid-id-pool-wrong-kind.json",
+      "schema": "schemas/common.schema.json#/$defs/IdAllocationPool",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/resource/3"
+      ]
+    },
+    {
+      "id": "invalid-id-pool-duplicate",
+      "instance": "testdata/contracts/invalid-id-pool-duplicate.json",
+      "schema": "schemas/common.schema.json#/$defs/IdAllocationPool",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/node"
+      ]
+    },
+    {
+      "id": "invalid-id-pool-extra-kind",
+      "instance": "testdata/contracts/invalid-id-pool-extra-kind.json",
+      "schema": "schemas/common.schema.json#/$defs/IdAllocationPool",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
     }
   ]
 }

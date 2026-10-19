@@ -1377,10 +1377,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties: {}
-              required: []
-              additionalProperties: false
+              $ref: ../schemas/http.schema.json#/$defs/MappingSuggestionRequest
   /imports/{id}/errors:
     get:
       operationId: downloadImportErrors

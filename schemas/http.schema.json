@@ -390,6 +390,10 @@
           },
           "required": [],
           "additionalProperties": false
+        },
+        "output_locale": {
+          "$ref": "common.schema.json#/$defs/Locale",
+          "description": "Language of the AI's prose (REQ-022, AI_SPEC §3); en when absent. The server validates it and states it in the provider instruction. Only prose follows it, never IDs, JSON Pointers, enum or reason codes, metric paths or units."
         }
       },
       "required": [
@@ -598,6 +602,18 @@
       ],
       "additionalProperties": false
     },
+    "MappingSuggestionRequest": {
+      "$comment": "T-024: the suggestImportMapping body (an inline empty object in openapi.yaml before).",
+      "type": "object",
+      "properties": {
+        "output_locale": {
+          "$ref": "common.schema.json#/$defs/Locale",
+          "description": "Language of the AI's prose (REQ-022, AI_SPEC §3); en when absent. The server validates it and states it in the provider instruction. Only prose follows it, never IDs, JSON Pointers, enum or reason codes, metric paths or units."
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
     "ImportCommitted": {
       "type": "object",
       "properties": {
@@ -661,6 +677,10 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 10000
+        },
+        "output_locale": {
+          "$ref": "common.schema.json#/$defs/Locale",
+          "description": "Language of the AI's prose (REQ-022, AI_SPEC §3); en when absent. The server validates it and states it in the provider instruction. Only prose follows it, never IDs, JSON Pointers, enum or reason codes, metric paths or units. Numbers in the analysis prose are checked as Arabic numerals in either language."
         }
       },
       "required": [],

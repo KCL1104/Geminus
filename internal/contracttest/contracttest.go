@@ -137,6 +137,13 @@ func (s *Schemas) branches(n Node) []Node {
 			}
 		}
 	}
+	// Every allOf member constrains the same value, so its shape counts too
+	// (proposal-output's changes: allOf [json-patch, {minItems: 1}], T-024).
+	if all, ok := n.Value["allOf"].([]any); ok {
+		for _, a := range all {
+			out = append(out, s.branches(Node{n.File, a.(map[string]any)})...)
+		}
+	}
 	if _, ok := n.Value["properties"]; ok || len(out) == 0 {
 		out = append([]Node{n}, out...)
 	}

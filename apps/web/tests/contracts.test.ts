@@ -5,7 +5,20 @@
 // typecheck` fails if a type ever becomes too permissive.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import type { AnalysisOutput, CancelSimulation, Error, Import, JsonPatch, ModelIR, ProfileColumn, ProposalOutput } from "../lib/contracts";
+import type {
+  AnalysisOutput,
+  AnalysisRequest,
+  CancelSimulation,
+  Error,
+  IdAllocationPool,
+  Import,
+  JsonPatch,
+  MappingSuggestionRequest,
+  ModelIR,
+  ProfileColumn,
+  ProposalOutput,
+  ProposalRequest,
+} from "../lib/contracts";
 
 const fixture = (name: string): unknown =>
   JSON.parse(readFileSync(new URL(`../../../testdata/contracts/${name}`, import.meta.url), "utf8"));
@@ -117,6 +130,24 @@ const profiledImport: Import = {
     ],
   },
 };
+// T-024: AI requests carry the prose language, which the server validates (REQ-022).
+const proposalRequest: ProposalRequest = {
+  base_version_id: "mv_01M4YDQK00TA00000000000001",
+  mode: "edit",
+  intent: "把 ICT 測試機從 2 台增加為 3 台，其他不要動。",
+  context: { selected_entity_ids: ["ict_tester"] },
+  output_locale: "zh-Hant",
+};
+const analysisRequest: AnalysisRequest = {
+  baseline_run_id: "sim_01M4YDQK00TA00000000000001",
+  question: "Which station is the bottleneck?",
+  output_locale: "en",
+};
+const mappingRequest: MappingSuggestionRequest = { output_locale: "zh-Hant" };
+const poolIDs = (kind: string): string[] =>
+  Array.from({ length: 16 }, (_, i) => `${kind}_01m4ydqk00ta${String(i + 1).padStart(14, "0")}`);
+// D-046: the server's ID allocation pool, 16 IDs of each kind.
+const idPool: IdAllocationPool = { node: poolIDs("node"), flow: poolIDs("flow"), resource: poolIDs("resource") };
 
 describe("generated contract types match the shared fixtures", () => {
   it.each([
@@ -125,6 +156,10 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-error.json", errorBody],
     ["valid-cancel-simulation.json", cancelBody],
     ["valid-import.json", profiledImport],
+    ["valid-proposal-request-zh-hant.json", proposalRequest],
+    ["valid-analysis-request-locale.json", analysisRequest],
+    ["valid-mapping-suggestion-request.json", mappingRequest],
+    ["valid-id-allocation-pool.json", idPool],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
   });
@@ -150,4 +185,10 @@ export const rejected = {
   profileType: { name: "a", index: 0, inferred: "date", non_empty: 0, max_length: 0 } satisfies ProfileColumn,
   // @ts-expect-error an import always has a profile member, null until profiling completes (D-043)
   noProfile: { ...profiledImport, profile: undefined } satisfies Import,
+  // @ts-expect-error output_locale is one of the two UI languages (REQ-022)
+  proposalLocale: { ...proposalRequest, output_locale: "zh-TW" } satisfies ProposalRequest,
+  // @ts-expect-error a mapping suggestion request takes no client-supplied columns (T-024)
+  mappingColumns: { columns: ["case_id"] } satisfies MappingSuggestionRequest,
+  // @ts-expect-error the pool has exactly the node, flow and resource kinds (D-046)
+  poolExtraKind: { ...idPool, entity_type: [] } satisfies IdAllocationPool,
 };

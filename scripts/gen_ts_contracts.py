@@ -24,7 +24,7 @@ SHAPE = {'type', 'properties', 'required', 'additionalProperties', 'items', 'enu
          'oneOf', 'anyOf', 'allOf', '$ref'}
 IGNORED = {'$schema', '$id', '$comment', '$defs', 'title', 'description', 'minimum', 'maximum',
            'exclusiveMinimum', 'exclusiveMaximum', 'minLength', 'maxLength', 'pattern', 'format',
-           'minItems', 'maxItems', 'maxProperties', 'if', 'then', 'not', 'x-http-status'}
+           'minItems', 'maxItems', 'uniqueItems', 'maxProperties', 'if', 'then', 'not', 'x-http-status'}
 ROOT_NAMES = {'ai-mapping': 'AiMapping', 'analysis-output': 'AnalysisOutput',
               'canonical-event': 'CanonicalEvent', 'dataset-snapshot': 'DatasetSnapshot',
               'import': 'Import', 'json-patch': 'JsonPatch', 'model-ir': 'ModelIR',
