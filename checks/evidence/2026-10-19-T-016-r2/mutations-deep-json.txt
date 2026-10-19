@@ -1,0 +1,12 @@
+events-depth-off-by-one: KILLED (exit 1)
+model-not-mapped: KILLED (exit 1)
+comma-not-skipped: KILLED (exit 1)
+shape-not-checked: KILLED (exit 1)
+any-error-is-depth: SURVIVED (exit 0)
+TOTAL: 4 killed of 5
+events-depth-off-by-one: KILLED (exit 1)
+model-not-mapped: KILLED (exit 1)
+comma-not-skipped: KILLED (exit 1)
+shape-not-checked: KILLED (exit 1)
+any-error-is-depth: KILLED (exit 1)
+TOTAL: 5 killed of 5

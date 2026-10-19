@@ -1,0 +1,5 @@
+--- FAIL: TestSafe (0.00s)
+    report_test.go:68: Safe("x\r\n+1") = "x\r'\n'+1", want "x\r\n'+1"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/import/report	0.003s
+FAIL

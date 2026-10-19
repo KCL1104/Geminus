@@ -1,0 +1,10 @@
+base: claude/lucid-meitner-vq1awo at c911e4c; code at 9bcb384 (78e068b, 9bcb384 on top)
+red: go test -run TestDeepJSONIsALimit ./internal/import/profile before 78e068b: exit 1 (red-deep-json.log: the 10,001- and 20,000-level cases)
+red: go test -run TestSafe ./internal/import/report before 9bcb384: exit 1 (red-safe-crlf.log)
+mutations of tooDeep: 4 of 5 killed, then 5 of 5 once the precedence case was added (mutations-deep-json.txt)
+make backend-test (after go clean -testcache): exit 0
+make backend-race: exit 0
+make architecture-check: exit 0
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python: exit 0
+go test -fuzz=FuzzSafe -fuzztime=20s ./internal/import/report: exit 0
+DB runs: none (only pure packages and the report changed)

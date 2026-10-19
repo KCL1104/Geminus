@@ -199,3 +199,13 @@ Coordinator 在一次性的 `dt_test_*` 資料庫上對 9c01793 執行 `make int
 - 修正的 SQL 與 DB-backed 測試沒有執行過：0010 的 trigger、index 與 CHECK、`imports.sql` 的 SQLSTATE 期望值、`constraints.sql` 的改寫、worker 與 API 測試的新斷言，都可能在第一次執行時才發現錯誤。
 - JSON 的峰值記憶體由 1 MiB 的列與 decoder 的名稱檢查共同決定（約 20 bytes／名稱）；JSON model 2 MiB 的名稱檢查最多約 50 MiB。
 - Report 仍在記憶體中產生（16 MiB，L3）。
+
+## 複審（ACCEPT）之後的追加（2026-10-19）
+
+複審結果 ACCEPT，另有一個 low 與兩個 info；以新 commit 處理，先寫會失敗的測試。本節沒有 DB 執行（不需要：只改純 package 與報告）。
+
+- **Low：超過 decoder 自身深度上限的 JSON**。`encoding/json/jsontext` 自己限制 10,000 層，比 `check` 的 32 層先觸發，所以約 10,000 層以上的 JSON 原本回 `JSON_INVALID`（「not valid JSON」），pointer 還會漏掉 member 名稱（`/0//0/…`，且隨 bytes 到達的方式而不同）。現在 decoder 讀值失敗、且錯誤位置的 pointer 深於 `MaxDepth` 時，`tooDeep` 由 decoder 尚未讀過的 buffer（events 為 `UnreadBuffer`，model 為整個檔案）從該值的開頭以 token 重讀，只讀到超過 `MaxDepth` 的第一個 container，回 `IMPORT_LIMIT_EXCEEDED`（「nesting depth 33; the limit is 32」）與正確、有界的 pointer；值不是 object 時照常為 `IMPORT_SHAPE_INVALID`；decoder 先遇到的淺層 syntax error 照舊回報。測試 `TestDeepJSONIsALimit`：33、10,001、20,000 層，member 之下、後面的列、含 `/` 與 `~` 的巢狀名稱、本身是 array 的列、model，整段讀與逐 byte 讀都相同；以 review 時的程式執行時 10,001 與 20,000 層的 10 個 case 都失敗（33 層的通過）；5 個 targeted mutation 全被擋下。
+- **Info：`protect_import` 的 `pg_trigger_depth() > 1`**（給 T-017／T-018 的後續事項）：`protect_import` 把任何在另一個 trigger 之內的寫入都當成 `follow_import_profile_job` 的，而且只允許 UPLOADED／PROFILING → FAILED。之後若有 trigger 讓 import 跟隨 `import_validate` 或 `import_mapping` job（或其他 trigger 寫 imports），必須同時修改這個函式（例如分辨是哪個 trigger、各自允許的移動），否則那些寫入會被拒（55000）或被誤當成 profile job 的。
+- **Info（cosmetic）：`Safe("x\r\n+1")`** 原本在 `\r` 與 `\n` 之後各加一個 `'`；現在 `\r\n` 算一個行尾，只在其後加一個（`TestSafe` 的向量，先紅後綠；`FuzzSafe` 20 秒）。
+
+驗證見 `checks/evidence/2026-10-19-T-016-r2/exit-codes.txt`。
