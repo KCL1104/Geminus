@@ -2,8 +2,10 @@
 -- schema owner. It creates users, organizations, their first owner
 -- membership and the system audit event, and reads users to find one;
 -- nothing else (no UPDATE, DELETE, DDL or policy change). RLS applies to it
--- as to every role (FORCE ROW LEVEL SECURITY). Prerequisite:
--- db/bootstrap_roles.sql creates the role.
+-- as to every role (FORCE ROW LEVEL SECURITY), but RLS reads a scope the
+-- role sets itself: a guard lets it add members and audit events only to
+-- the organization its own transaction created (T-010 review 2, L1).
+-- Prerequisite: db/bootstrap_roles.sql creates the role.
 -- Found while doing D-042: guard_audit_actor checked only "user" events, so
 -- the API could write an event as the worker or the system. Each role now
 -- writes only as itself: the API as the scoped user, the worker as the
@@ -39,4 +41,36 @@ BEGIN
   END IF;
   RETURN NEW;
 END $$;
+-- Without this, the grants above would let provisioning set another
+-- organization's scope and make anyone its owner, or write system events
+-- into its log. The organization's row has this transaction's ID as its
+-- xmin only if this transaction inserted it (provisioning has no UPDATE,
+-- so it cannot rewrite one; a row inserted under a savepoint has the
+-- subtransaction's ID and is refused, and provisioning uses none).
+CREATE FUNCTION twin.created_in_this_transaction(org text) RETURNS boolean LANGUAGE sql
+  SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $$
+  SELECT EXISTS (SELECT 1 FROM twin.organizations o
+                 WHERE o.id::text = org AND o.xmin = pg_catalog.pg_current_xact_id()::xid)
+$$;
+REVOKE ALL ON FUNCTION twin.created_in_this_transaction(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION twin.created_in_this_transaction(text) TO twin_provisioner;
+CREATE FUNCTION twin.guard_provisioner_target() RETURNS trigger LANGUAGE plpgsql
+  SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  -- Nested: EXECUTE is checked when an expression is prepared, and only
+  -- provisioning may call the function.
+  IF pg_catalog.pg_has_role(current_user,'twin_provisioner','USAGE')
+     AND NOT pg_catalog.pg_has_role(current_user,'twin_owner','USAGE') THEN
+    IF NOT twin.created_in_this_transaction(NEW.organization_id::text) THEN
+      RAISE EXCEPTION 'provisioning adds members and audit events only to the organization it creates'
+        USING ERRCODE='42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION twin.guard_provisioner_target() FROM PUBLIC; -- runs as a trigger, never called directly
+CREATE TRIGGER guard_provisioner_target BEFORE INSERT ON twin.memberships
+  FOR EACH ROW EXECUTE FUNCTION twin.guard_provisioner_target();
+CREATE TRIGGER guard_provisioner_target BEFORE INSERT ON twin.audit_events
+  FOR EACH ROW EXECUTE FUNCTION twin.guard_provisioner_target();
 COMMIT;

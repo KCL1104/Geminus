@@ -36,6 +36,8 @@
 
 為什麼不會 deadlock：membership row 的鎖只有兩種人取。成員變更已由 2 排成一次一個；`Run(ReadWrite)` 的 `FOR SHARE` 是它在 transaction 中第一個取的鎖，等待時不持有任何鎖，取得後也不再等其他 membership row。所以沒有兩個 transaction 能各持一個 membership row 又互等。`TestMembershipChangesUnderLoad`（3 個 owner、6 個 user、10 個 worker、5 秒，隨機升降級、移除、重新加入、寫入、列表；每輪約 370–420 次成功變更）與 `TestOwnerLockAcrossPlans`（審查者的 probe：兩個變更用不同 plan，heap 順序不同於 user_id 順序）都沒有 40P01，也從未出現沒有 owner 的 organization。拿掉 advisory lock 與 ORDER BY 時兩者都出現 40P01。
 
+這個論證依賴一個後續任務必須維持的不變式（review 2 I2）：**membership row 只由 `RunOwners` 與 `Run` 的第一個 `FOR SHARE` 上鎖，且沒有 foreign key 參照 `twin.memberships`**（參照它的 FK 會讓其他表的寫入對 membership row 取 KEY SHARE 鎖）。`db/tests/roles.sql` 檢查沒有這種 FK；新增鎖 membership row 的程式碼必須重新論證並更新本 ADR。
+
 D-036 的 ORDER BY 在有 advisory lock 之後不再是避免 deadlock 所必需（拿掉它的 mutant 不被任何測試殺死，列為等價並寫明理由），但 D-036 已批准，保留它；鎖 owner row 本身仍是必要的：它讓變更等 owner 進行中的寫入結束。
 
 語意：request 以它開始時已 commit 的 role 判斷。尚未 commit 的升級不算，caller 會收到 403，重試即可（取代原本的「再取一次鎖」）。
@@ -54,5 +56,5 @@ D-036 的 ORDER BY 在有 advisory lock 之後不再是避免 deadlock 所必需
   - owner 可以把任何已存在的 user ID 加入自己的 organization，不需要該 user 同意（D-008 允許加入已知 user）；
   - 新增回 422（user 不存在）與 409／201（存在）的差異，會透露某個全域 user ID 是否存在。ULID 不可猜，風險低，P0 接受；若日後需要，改為一律回同一種答案或改用邀請流程。
   - Request 先驗格式再驗權限：viewer 送錯誤格式會先得到 400／422 而不是 403。不揭露資料，無害。
-- **Provisioning 的最小權限 role（review L5；D-042 APPROVED，H-009，已實作）**：provisioning login 原以 `twin_owner`（schema owner）執行，平常的 onboarding 憑證因此也有 DDL 與 policy 權限。現在改用 NOLOGIN 的 `twin_provisioner`（`db/bootstrap_roles.sql` 建立、migration 0004 授權），只能做 provisioning 需要的事。部署需要先跑 bootstrap 與 0004，再把 provisioning login 改為 `IN ROLE twin_provisioner`；原本 `IN ROLE twin_owner` 的 login 會被拒絕。
+- **Provisioning 的最小權限 role（review L5；D-042 APPROVED，H-009，已實作）**：provisioning login 原以 `twin_owner`（schema owner）執行，平常的 onboarding 憑證因此也有 DDL 與 policy 權限。現在改用 NOLOGIN 的 `twin_provisioner`（`db/bootstrap_roles.sql` 建立、migration 0004 授權）：只有 users 的 SELECT／INSERT 與 organizations、memberships、audit_events 的 INSERT。RLS 讀的是 role 自己設定的 scope，所以只靠這些 grant 仍能把任何 user 加為任何既有 organization 的 owner（review 2 L1）；0004 另以 trigger 限制它只能把成員與 audit event 加到本 transaction 建立的 organization（organization row 的 xmin 等於本 transaction ID；`TestProvisionerEntersOnlyTheOrganizationItCreates`）。部署需要先跑 bootstrap 與 0004，再把 provisioning login 改為 `IN ROLE twin_provisioner`；原本 `IN ROLE twin_owner` 的 login 會被拒絕。
 - **Audit 只能以自己的身分寫入（實作 D-042 時發現）**：0002 的 guard 只限制 `user` event，API role 可以寫出 `worker` 或 `system` 的 event。Migration 0004 改為：API 只寫 scoped user 的 `user` event，worker 寫 `worker` 或 `system`（不能以人的身分），provisioning 只寫 `system`；schema owner 不受限。

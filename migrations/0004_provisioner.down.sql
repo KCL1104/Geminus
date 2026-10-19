@@ -1,8 +1,12 @@
--- DEVELOPMENT-ONLY DOWN MIGRATION of 0004: restores 0002's audit guard and
--- removes twin_provisioner's privileges (the role itself is cluster-wide and
+-- DEVELOPMENT-ONLY DOWN MIGRATION of 0004: removes the provisioning guard,
+-- restores 0002's audit guard and removes twin_provisioner's privileges (the role itself is cluster-wide and
 -- stays; db/bootstrap_roles.sql owns it).
 BEGIN;
 SET LOCAL ROLE twin_owner;
+DROP TRIGGER guard_provisioner_target ON twin.memberships;
+DROP TRIGGER guard_provisioner_target ON twin.audit_events;
+DROP FUNCTION twin.guard_provisioner_target();
+DROP FUNCTION twin.created_in_this_transaction(text);
 CREATE OR REPLACE FUNCTION twin.guard_audit_actor() RETURNS trigger LANGUAGE plpgsql
   SET search_path = pg_catalog, pg_temp AS $$
 BEGIN

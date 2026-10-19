@@ -263,3 +263,76 @@ func TestUserOnceUnderConcurrency(t *testing.T) {
 		}
 	}
 }
+
+// Provisioning adds a member or an audit event only to the organization its
+// own transaction created. RLS reads a scope the role sets itself, so
+// without the guard the operator credential could make anyone an owner of
+// any organization and write its system events there (T-010 review 2, L1).
+func TestProvisionerEntersOnlyTheOrganizationItCreates(t *testing.T) {
+	ctx := context.Background()
+	admin := dbtest.Admin(t)
+	victim := dbtest.NewOrg(t, admin, issuer, tenant.Owner, tenant.Viewer)
+	db := operator(t)
+	earlier, _, err := provisioning.Organization(ctx, db, "Earlier", issuer, "sub-"+ids.New("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	intruder, _, err := provisioning.User(ctx, db, issuer, "intruder-"+ids.New("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inserts := map[string]func(ctx context.Context, tx pgx.Tx, org string) error{
+		"an owner": func(ctx context.Context, tx pgx.Tx, org string) error {
+			_, err := tx.Exec(ctx, `INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ($1,$2,'owner')`, org, intruder)
+			return err
+		},
+		"a system audit event": func(ctx context.Context, tx pgx.Tx, org string) error {
+			_, err := tx.Exec(ctx, `INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id)
+				VALUES ($1,$2,'system',$3,'organization.provision','organization',$4,$5)`, ids.New("aud"), org, provisioning.Actor, org, ids.New("req"))
+			return err
+		},
+	}
+	for what, insert := range inserts {
+		for _, target := range []struct{ name, org string }{{"another tenant's organization", victim.ID}, {"an organization provisioned earlier", earlier}} {
+			err := db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+				if _, err := tx.Exec(ctx, `SET LOCAL ROLE twin_provisioner`); err != nil {
+					return err
+				}
+				if _, err := tx.Exec(ctx, `SELECT set_config('app.organization_id',$1,true)`, target.org); err != nil {
+					return err
+				}
+				return insert(ctx, tx, target.org)
+			})
+			if !errors.Is(err, postgres.ErrPermission) {
+				t.Errorf("%s into %s: %v", what, target.name, err)
+			}
+		}
+		// Nor after creating one: the new organization does not open the others.
+		err := db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+			if _, err := tx.Exec(ctx, `SET LOCAL ROLE twin_provisioner`); err != nil {
+				return err
+			}
+			fresh := ids.New("org")
+			if _, err := tx.Exec(ctx, `SELECT set_config('app.organization_id',$1,true)`, fresh); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `INSERT INTO twin.organizations(id,organization_id,name) VALUES ($1,$1,'Fresh')`, fresh); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `SELECT set_config('app.organization_id',$1,true)`, victim.ID); err != nil {
+				return err
+			}
+			return insert(ctx, tx, victim.ID)
+		})
+		if !errors.Is(err, postgres.ErrPermission) {
+			t.Errorf("%s into another tenant's organization after creating one: %v", what, err)
+		}
+	}
+	var members int
+	if err := admin.QueryRow(ctx, `SELECT count(*) FROM twin.memberships WHERE organization_id=$1`, victim.ID).Scan(&members); err != nil {
+		t.Fatal(err)
+	}
+	if members != 2 {
+		t.Errorf("the victim organization has %d members, want its 2", members)
+	}
+}

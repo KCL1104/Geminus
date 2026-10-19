@@ -232,6 +232,26 @@ SELECT pg_temp.check(has_table_privilege('twin_provisioner', 'twin.' || c.relnam
        unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS p
   WHERE n.nspname='twin' AND c.relkind='r';
 SELECT pg_temp.check(NOT has_schema_privilege('twin_provisioner', 'twin', 'CREATE'), 'twin_provisioner cannot create in twin');
+-- T-010 review 2 (L1): provisioning adds members and audit events only to
+-- an organization its own transaction created. The behaviour needs a second
+-- transaction (internal/storage/provisioning); here, that the guard is in
+-- place: a trigger on both tables, a definer function with a fixed
+-- search_path that only provisioning may call.
+SELECT pg_temp.check(count(*)=2, 'guard_provisioner_target is a BEFORE INSERT row trigger on memberships and audit_events')
+  FROM pg_trigger g
+  WHERE g.tgname='guard_provisioner_target' AND g.tgenabled='O' AND g.tgtype & 7 = 7 AND g.tgtype & 24 = 0
+    AND g.tgrelid IN ('twin.memberships'::regclass, 'twin.audit_events'::regclass);
+SELECT pg_temp.check(p.prosecdef AND p.proconfig @> ARRAY['search_path=pg_catalog, pg_temp'],
+    'created_in_this_transaction is SECURITY DEFINER with a fixed search_path')
+  FROM pg_proc p WHERE p.oid='twin.created_in_this_transaction(text)'::regprocedure;
+SELECT pg_temp.check(has_function_privilege(r, 'twin.created_in_this_transaction(text)', 'EXECUTE') = (r='twin_provisioner'),
+    format('%s EXECUTE on created_in_this_transaction', r))
+  FROM unnest(ARRAY['twin_provisioner','twin_api','twin_worker']) AS r;
+-- ADR-023: membership changes cannot deadlock because membership rows are
+-- locked only by tenant.RunOwners and by tenant.Run's first FOR SHARE. A
+-- foreign key to memberships would add row locks from other tables' writes.
+SELECT pg_temp.check(count(*)=0, 'foreign keys referencing twin.memberships: ' || coalesce(string_agg(conname, ', '), ''))
+  FROM pg_constraint WHERE contype='f' AND confrelid='twin.memberships'::regclass;
 SELECT pg_temp.check(NOT has_table_privilege('twin_worker', 'twin.' || t, p), format('worker has no %s on %s', p, t))
   FROM unnest(ARRAY['users','memberships','idempotency_keys','model_drafts']) AS t,
        unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS p;
