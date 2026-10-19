@@ -326,6 +326,14 @@ func TestRunClosedLoop(t *testing.T) {
 		accepted.ID, editor.UserID, r.header.Get("X-Request-ID")); n != 1 {
 		t.Errorf("%d create audit events", n)
 	}
+	// SECURITY §9 (T-023 review I3): the event names the frozen input by its
+	// hashes, never by its content.
+	if n := e.count(`SELECT count(*) FROM twin.audit_events a JOIN twin.simulation_runs r ON r.id=a.target_id
+		WHERE a.action='simulation.create' AND a.target_id=$1 AND a.metadata->>'model_hash'=r.model_hash::text
+		AND a.metadata->>'effective_model_hash'=r.effective_model_hash::text AND a.metadata->>'config_hash'=r.config_hash::text
+		AND a.metadata->>'dataset_manifest_hash'=r.dataset_manifest_hash::text AND NOT a.metadata ? 'scenario_patch' AND NOT a.metadata ? 'config'`, accepted.ID); n != 1 {
+		t.Errorf("the create audit event does not name the frozen input's hashes: %d", n)
+	}
 	if r := e.do("GET", "/v1/simulations/"+accepted.ID+"/results", viewer.Subject, e.a.ID, nil, ""); r.status != 409 || code(t, r) != "RESULT_NOT_READY" {
 		t.Errorf("results while queued: %d %s", r.status, r.body)
 	}

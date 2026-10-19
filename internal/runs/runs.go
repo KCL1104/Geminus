@@ -262,7 +262,10 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key st
 			Resource: jobs.Resource{SimulationRunID: run.ID}, Payload: map[string]any{"run_id": run.ID, "request_id": requestID}}, s.policy()); err != nil {
 			return err
 		}
-		meta := map[string]any{"model_version_id": run.ModelVersionID, "replications": run.Config.Replications, "engine_version": run.EngineVersion}
+		// The frozen input by its hashes only, never its content (SECURITY §9).
+		meta := map[string]any{"model_version_id": run.ModelVersionID, "replications": run.Config.Replications, "engine_version": run.EngineVersion,
+			"model_hash": run.ModelHash, "effective_model_hash": run.EffectiveModelHash, "config_hash": run.ConfigHash,
+			"dataset_manifest_hash": run.DatasetManifestHash}
 		if run.ScenarioID != nil {
 			meta["scenario_id"] = *run.ScenarioID
 		}
