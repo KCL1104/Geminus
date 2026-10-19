@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/kcl1104/geminus/internal/config/aiapproval"
 	"github.com/kcl1104/geminus/internal/secret"
 )
 
@@ -11,8 +12,8 @@ import (
 //
 // Live AI stays off unless a deployment selects it and names the owner's
 // recorded approval of model, token quota and data policy, and this build
-// lists that approval (approvedLivePolicies, empty until the owner records
-// one in a reviewed change). Without it:
+// records that approval (internal/config/aiapproval, empty until the owner
+// records one in a reviewed change). Without it:
 //
 //   - AI_PROVIDER=disabled (the default): every AI call fails with
 //     AI_PROVIDER_NOT_CONFIGURED;
@@ -32,9 +33,10 @@ import (
 // label.
 type AI struct {
 	Provider AIProvider
-	// Approval is the approval AI_POLICY_APPROVAL names; empty unless live
-	// AI is approved.
-	Approval string
+	// Approval is the recorded approval AI_POLICY_APPROVAL names; the zero
+	// value unless live AI is approved. Only aiapproval.Recorded makes one,
+	// and the live adapter takes nothing else (review L5).
+	Approval aiapproval.Approval
 	// Model is AI_MODEL: required for live AI and never defaulted (the TBD
 	// "LLM model" is the owner's choice after an eval).
 	Model string
@@ -44,7 +46,7 @@ type AI struct {
 }
 
 // LiveEnabled reports whether the live provider may be called.
-func (a AI) LiveEnabled() bool { return a.Provider == AIProviderAnthropic && a.Approval != "" }
+func (a AI) LiveEnabled() bool { return a.Provider == AIProviderAnthropic && a.Approval.Valid() }
 
 // AICredential is one API key and the label that proposals, analyses and
 // audit name it by ("org-a", "org-b").
@@ -65,16 +67,8 @@ type AIBudget struct {
 }
 
 // CodeNotApproved: the variable names an approval this build does not
-// list.
+// record (internal/config/aiapproval).
 const CodeNotApproved = "not_approved"
-
-// approvedLivePolicies lists the owner's recorded approvals of live AI.
-// Adding one is the owner's decision, recorded in
-// docs/DECISIONS_AND_TBD.md (model, token quota, data policy, and both
-// organizations' retention settings alike, D-018) and made in a reviewed
-// change; an agent never adds one. Tests add one for the duration of a
-// test.
-var approvedLivePolicies = map[string]bool{}
 
 // Credential labels by variable (D-018: labels only in proposals,
 // analyses and audit).
@@ -113,11 +107,14 @@ func LoadAI(getenv func(string) string) (AI, error) {
 	case approval == "":
 	case ai.Provider != AIProviderAnthropic:
 		errs = append(errs, &Error{"AI_POLICY_APPROVAL", CodeInvalid, "must be empty unless AI_PROVIDER is anthropic"})
-	case !approvedLivePolicies[approval]:
-		errs = append(errs, &Error{"AI_POLICY_APPROVAL", CodeNotApproved,
-			"this build lists no such approval of live AI; the owner records one (model, token quota, data policy) before any live call (H-001, H-017)"})
 	default:
-		ai.Approval = approval
+		a, ok := aiapproval.Recorded(approval)
+		if !ok {
+			errs = append(errs, &Error{"AI_POLICY_APPROVAL", CodeNotApproved,
+				"this build records no such approval of live AI; the owner records one (model, token quota, data policy) before any live call (H-001, H-017)"})
+			break
+		}
+		ai.Approval = a
 	}
 
 	if ai.LiveEnabled() {

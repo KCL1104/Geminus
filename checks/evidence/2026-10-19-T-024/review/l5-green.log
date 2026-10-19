@@ -1,0 +1,13 @@
+$ go test -count=1 -timeout 120s ./internal/config/... ./internal/ai/...
+# extra environment: none
+ok  	github.com/kcl1104/geminus/internal/config	0.006s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.004s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.451s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	0.884s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	0.027s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.019s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.105s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.696s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.025s
+
+# exit 0 after 2s

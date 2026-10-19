@@ -18,6 +18,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/locale"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/anthropic"
+	"github.com/kcl1104/geminus/internal/config/aiapproval"
 	"github.com/kcl1104/geminus/internal/secret"
 )
 
@@ -116,8 +117,11 @@ func (s *server) count(key string) int {
 	return s.hits[key]
 }
 
+// config is a configuration for the local test server. Its Approval is the
+// zero value: this build records none, and only NewForTest, which serves
+// the local server, accepts it (TestNewRefuses).
 func config(keys ...string) anthropic.Config {
-	cfg := anthropic.Config{Approval: "H-TEST", Model: model}
+	cfg := anthropic.Config{Model: model}
 	for i, k := range keys {
 		cfg.Credentials = append(cfg.Credentials, anthropic.Credential{Label: fmt.Sprintf("org-%c", 'a'+i), Key: secret.Secret(k)})
 	}
@@ -426,15 +430,26 @@ func TestNoRedirects(t *testing.T) {
 }
 
 func TestNewRefuses(t *testing.T) {
+	// Review L5: New takes only a recorded approval. This build records
+	// none, so an otherwise complete configuration is refused, whatever ID
+	// the deployment named; a string cannot stand in for the token.
+	unrecorded, _ := aiapproval.Recorded("H-NOT-RECORDED")
 	for name, cfg := range map[string]anthropic.Config{
-		"not approved":     {Model: model, Credentials: config(keyA).Credentials},
-		"no model":         {Approval: "H-TEST", Credentials: config(keyA).Credentials},
-		"no credential":    {Approval: "H-TEST", Model: model},
-		"empty key":        {Approval: "H-TEST", Model: model, Credentials: []anthropic.Credential{{Label: "org-a"}}},
-		"no label":         {Approval: "H-TEST", Model: model, Credentials: []anthropic.Credential{{Key: secret.Secret(keyA)}}},
-		"duplicate labels": {Approval: "H-TEST", Model: model, Credentials: []anthropic.Credential{{Label: "org-a", Key: secret.Secret(keyA)}, {Label: "org-a", Key: secret.Secret(keyB)}}},
+		"not approved":        config(keyA, keyB),
+		"unrecorded approval": {Approval: unrecorded, Model: model, Credentials: config(keyA).Credentials},
 	} {
 		if _, err := anthropic.New(cfg); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+	for name, cfg := range map[string]anthropic.Config{
+		"no model":         {Credentials: config(keyA).Credentials},
+		"no credential":    {Model: model},
+		"empty key":        {Model: model, Credentials: []anthropic.Credential{{Label: "org-a"}}},
+		"no label":         {Model: model, Credentials: []anthropic.Credential{{Key: secret.Secret(keyA)}}},
+		"duplicate labels": {Model: model, Credentials: []anthropic.Credential{{Label: "org-a", Key: secret.Secret(keyA)}, {Label: "org-a", Key: secret.Secret(keyB)}}},
+	} {
+		if _, err := anthropic.NewForTest(cfg, "http://127.0.0.1:1/", nil); err == nil {
 			t.Errorf("%s: accepted", name)
 		} else if strings.Contains(err.Error(), keyA) {
 			t.Errorf("%s: the error leaks the key", name)

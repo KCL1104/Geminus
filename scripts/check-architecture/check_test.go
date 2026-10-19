@@ -165,6 +165,8 @@ func TestProbesAreCaught(t *testing.T) {
 		{"the-context-imports-a-write-service", "internal/ai/aicontext/zz_probe.go", module + "/internal/models", "ai-suggests-only", "./internal/ai/aicontext", "./internal/models", false},
 		{"the-context-imports-the-job-handler", "internal/ai/aicontext/zz_probe.go", module + "/internal/runs/runner", "ai-suggests-only", "./internal/ai/aicontext", "./internal/runs/runner", false},
 		{"the-fake-imports-config", "internal/ai/provider/fake/zz_probe.go", module + "/internal/config", "ai-suggests-only", "./internal/ai/provider/fake", "./internal/config", false},
+		// review L5: the adapter may take the approval token, not the rest of config
+		{"the-adapter-imports-config", "internal/ai/provider/anthropic/zz_probe.go", module + "/internal/config", "ai-suggests-only", "./internal/ai/provider/anthropic", "./internal/config", false},
 		{"the-context-imports-the-sdk", "internal/ai/aicontext/zz_probe.go", "github.com/anthropics/anthropic-sdk-go", "llm-sdks-only-in-ai", "./internal/ai/aicontext", "github.com/anthropics/anthropic-sdk-go", false},
 		{"the-provider-imports-the-sdk", "internal/ai/provider/zz_probe.go", "github.com/anthropics/anthropic-sdk-go", "ai-is-pure-but-the-adapter", "./internal/ai/provider", "github.com/anthropics/anthropic-sdk-go", false},
 		{"the-fake-goes-online", "internal/ai/provider/fake/zz_probe.go", "net/http", "ai-is-pure-but-the-adapter", "./internal/ai/provider/fake", "net/http", false},

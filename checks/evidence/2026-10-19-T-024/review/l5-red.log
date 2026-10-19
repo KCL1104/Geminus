@@ -1,0 +1,9 @@
+$ go test -count=1 -run TestNewRefuses ./internal/ai/provider/anthropic/
+# extra environment: none
+--- FAIL: TestNewRefuses (0.00s)
+    anthropic_test.go:440: unrecorded approval: accepted
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.009s
+FAIL
+
+# exit 1 after 1s

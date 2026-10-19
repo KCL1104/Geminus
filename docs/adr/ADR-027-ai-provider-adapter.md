@@ -29,7 +29,7 @@ tasks.json 原規劃的 `internal/ai/context/` 改名為 `internal/ai/aicontext`
 - `AI_PROVIDER` 未設或 `disabled`：每個 AI 呼叫回 `provider_not_configured`（HTTP 層對應 `AI_PROVIDER_NOT_CONFIGURED`，T-025）。
 - `fake`：只在 `APP_ENV` 為 development／test 時接受（production 或未設時拒絕啟動），與 D-044 的 filesystem adapter 相同。
 - `anthropic` 而沒有 `AI_POLICY_APPROVAL`：接受，但每個 AI 呼叫回 `policy_not_approved`（`AI_POLICY_NOT_APPROVED`），而且**不讀任何 key**。
-- `AI_POLICY_APPROVAL` 必須是這個 build 列出的 owner 核准（`approvedLivePolicies`，目前為空）；否則拒絕啟動（`not_approved`）。加入一筆是 owner 的決定（model、token quota、資料政策、兩個 organization 的 retention／ZDR 一致，D-018），寫入 DECISIONS_AND_TBD 並經 review 的變更；agent 不加。所以預設設定、甚至任何環境變數組合都無法啟用 live AI。
+- `AI_POLICY_APPROVAL` 必須是這個 build 列出的 owner 核准（`internal/config/aiapproval` 的登記清單，目前為空）；否則拒絕啟動（`not_approved`）。核准以 `aiapproval.Approval` token 表示：只有 `aiapproval.Recorded` 能從登記清單產生（零值無效，`Valid` 每次重查清單），config 的 `AI.Approval` 與 live adapter 的 `Config.Approval` 都是這個型別，adapter 的 `New` 拒絕無效的 token（review L5）。這個 leaf package 是 adapter 唯一能 import 的 `internal/config` 部分（`ai-suggests-only` 的 allow）；只有它自己目錄下的測試能暫時登記核准（`export_test.go`）。加入一筆是 owner 的決定（model、token quota、資料政策、兩個 organization 的 retention／ZDR 一致，D-018），寫入 DECISIONS_AND_TBD 並經 review 的變更；agent 不加。所以預設設定、甚至任何環境變數組合都無法啟用 live AI。
 - 核准後才讀 `AI_MODEL`（必填，沒有預設：TBD「LLM model」由 owner 在 eval 後選）、`GEMINUS_ANTHROPIC_API_KEY_A`（primary，必填，label `org-a`）與 `_B`（secondary，選填，label `org-b`）。`AI_API_KEY` 一律拒絕（舊名稱）。`ANTHROPIC_API_KEY` 從不讀取。
 - 預算：`AI_MAX_PROMPT_BYTES`、`AI_MAX_OUTPUT_TOKENS`、`AI_TIMEOUT_SECONDS`、`AI_ATTEMPT_TIMEOUT_SECONDS`、`AI_MAX_RETRIES`、`AI_MAX_CONCURRENT_PER_ORGANIZATION` 覆寫預設值，上限由 `provider.BudgetCaps` 檢查。
 

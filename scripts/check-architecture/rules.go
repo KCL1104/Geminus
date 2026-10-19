@@ -283,7 +283,10 @@ var rules = []rule{
 		why:     "AI only suggests: no SQL handle, storage, tenant scope, write service or process execution (AGENTS.md §2)",
 		applies: []string{"./internal/ai/..."},
 		forbid:  cat([]string{"os/exec"}, appLayers, dbDrivers, []string{"database/sql/..."}),
-		allow:   []string{"./internal/ai/..."},
+		// internal/config/aiapproval is the leaf that holds the recorded
+		// approvals and the token the live adapter requires (review L5); the
+		// rest of internal/config stays out of reach.
+		allow: []string{"./internal/ai/...", "./internal/config/aiapproval"},
 	},
 	{
 		// The provider adapter is the only AI package that talks to the

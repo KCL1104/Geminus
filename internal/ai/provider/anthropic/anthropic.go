@@ -3,12 +3,13 @@
 // github.com/anthropics/anthropic-sdk-go v1.78.0 (MIT,
 // docs/THIRD_PARTY_NOTICES.md, ADR-027).
 //
-// It is built only from an approved live configuration (internal/config's
-// AI.LiveEnabled: the composition root copies Approval, Model and the
-// credentials into Config), and no build calls it before the owner records
-// that approval of model, token quota and data policy (H-017). It has been
-// exercised against a local test server only; no request has been sent to
-// the real API.
+// It is built only from an approved live configuration: New requires a
+// valid aiapproval.Approval, which only a recorded approval yields
+// (internal/config/aiapproval; the composition root copies Approval, Model
+// and the credentials from internal/config's AI into Config), and this
+// build records none before the owner approves model, token quota and data
+// policy (H-017). It has been exercised against a local test server only;
+// no request has been sent to the real API.
 //
 // D-018, as implemented:
 //   - Keys are handed in explicitly. The SDK's environment defaults are not
@@ -39,6 +40,7 @@ import (
 	"github.com/anthropics/anthropic-sdk-go/option"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/config/aiapproval"
 	"github.com/kcl1104/geminus/internal/secret"
 )
 
@@ -48,9 +50,9 @@ const productionURL = "https://api.anthropic.com/"
 
 // Config is an approved live configuration.
 type Config struct {
-	// Approval is the owner's recorded approval the deployment named
-	// (internal/config checks it against the build's list).
-	Approval string
+	// Approval proves the owner's recorded approval the deployment named:
+	// only aiapproval.Recorded makes a valid one (review L5).
+	Approval aiapproval.Approval
 	// Model is the approved model; there is no default.
 	Model string
 	// Credentials in failover order, primary first.
@@ -93,13 +95,18 @@ type Backend struct {
 	projections sync.Map // output schema -> Projection
 }
 
-// New returns the live backend for an approved configuration.
-func New(cfg Config) (*Backend, error) { return newBackend(cfg, productionURL, nil) }
-
-func newBackend(cfg Config, baseURL string, client *http.Client) (*Backend, error) {
-	if strings.TrimSpace(cfg.Approval) == "" {
+// New returns the live backend for an approved configuration: cfg.Approval
+// must be a recorded approval.
+func New(cfg Config) (*Backend, error) {
+	if !cfg.Approval.Valid() {
 		return nil, errors.New("anthropic: live AI is not approved (H-001, H-017)")
 	}
+	return newBackend(cfg, productionURL, nil)
+}
+
+// newBackend checks the rest of cfg. Only New, which checks the approval,
+// and the tests' local server (export_test.go) call it.
+func newBackend(cfg Config, baseURL string, client *http.Client) (*Backend, error) {
 	if strings.TrimSpace(cfg.Model) == "" {
 		return nil, errors.New("anthropic: no model; the owner approves one")
 	}

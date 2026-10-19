@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -24,13 +25,9 @@ func (r *recorder) get(k string) string {
 
 const keyA, keyB = "sk-ant-test-primary-0000000000", "sk-ant-test-secondary-1111111111"
 
-// approve lists an approval for the duration of a test, as the owner's
-// recorded decision would.
-func approve(t *testing.T, id string) {
-	t.Helper()
-	approvedLivePolicies[id] = true
-	t.Cleanup(func() { delete(approvedLivePolicies, id) })
-}
+// The tests that need a recorded approval (the keys read once live AI is
+// approved, a missing model or key) are in internal/config/aiapproval,
+// whose tests alone can record one (review L5).
 
 // Live AI is off by default and stays off without the owner's recorded
 // approval; keys are never read then, and no ANTHROPIC_* variable ever is
@@ -47,7 +44,7 @@ func TestLiveAIStaysOff(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		if ai.LiveEnabled() || ai.Approval != "" || ai.Model != "" || len(ai.Credentials) != 0 {
+		if ai.LiveEnabled() || ai.Approval.Valid() || ai.Approval.ID() != "" || ai.Model != "" || len(ai.Credentials) != 0 {
 			t.Errorf("%s: live AI enabled: %+v", name, ai)
 		}
 		for _, k := range r.read {
@@ -61,55 +58,20 @@ func TestLiveAIStaysOff(t *testing.T) {
 	}
 }
 
-func TestLiveAIApproved(t *testing.T) {
-	approve(t, "H-TEST")
-	r := &recorder{kv: map[string]string{"AI_PROVIDER": "anthropic", "AI_POLICY_APPROVAL": "H-TEST", "AI_MODEL": "approved-model",
-		"GEMINUS_ANTHROPIC_API_KEY_A": keyA, "GEMINUS_ANTHROPIC_API_KEY_B": keyB, "ANTHROPIC_API_KEY": "must-not-be-read",
-		"AI_MAX_OUTPUT_TOKENS": "4000", "AI_MAX_RETRIES": "0"}}
-	ai, err := LoadAI(r.get)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !ai.LiveEnabled() || ai.Model != "approved-model" || len(ai.Credentials) != 2 ||
-		ai.Credentials[0].Label != "org-a" || ai.Credentials[0].Key.Reveal() != keyA ||
-		ai.Credentials[1].Label != "org-b" || ai.Credentials[1].Key.Reveal() != keyB {
-		t.Fatalf("%+v", ai)
-	}
-	if ai.Budget.MaxOutputTokens != 4000 || ai.Budget.MaxRetries == nil || *ai.Budget.MaxRetries != 0 {
-		t.Errorf("budget %+v", ai.Budget)
-	}
-	if slices.Contains(r.read, "ANTHROPIC_API_KEY") {
-		t.Error("ANTHROPIC_API_KEY was read")
-	}
-	// Only the primary key: no failover target, still valid.
-	delete(r.kv, "GEMINUS_ANTHROPIC_API_KEY_B")
-	if ai, err := LoadAI(r.get); err != nil || len(ai.Credentials) != 1 {
-		t.Errorf("primary only: %+v %v", ai, err)
-	}
-}
-
 func TestLoadAIRejects(t *testing.T) {
-	approve(t, "H-TEST")
-	live := func(kv map[string]string) map[string]string {
-		out := map[string]string{"AI_PROVIDER": "anthropic", "AI_POLICY_APPROVAL": "H-TEST", "AI_MODEL": "m", "GEMINUS_ANTHROPIC_API_KEY_A": keyA}
-		for k, v := range kv {
-			if v == "" {
-				delete(out, k)
-			} else {
-				out[k] = v
-			}
-		}
+	live := map[string]string{"AI_PROVIDER": "anthropic", "AI_MODEL": "m", "GEMINUS_ANTHROPIC_API_KEY_A": keyA}
+	with := func(kv map[string]string) map[string]string {
+		out := maps.Clone(live)
+		maps.Copy(out, kv)
 		return out
 	}
 	cases := map[string]struct {
 		kv   map[string]string
 		want []string
 	}{
-		"unlisted approval":       {live(map[string]string{"AI_POLICY_APPROVAL": "H-017"}), []string{"AI_POLICY_APPROVAL:not_approved"}},
+		"unlisted approval":       {with(map[string]string{"AI_POLICY_APPROVAL": "H-017"}), []string{"AI_POLICY_APPROVAL:not_approved"}},
 		"approval while disabled": {map[string]string{"AI_POLICY_APPROVAL": "H-TEST"}, []string{"AI_POLICY_APPROVAL:invalid"}},
 		"approval with the fake":  {map[string]string{"AI_PROVIDER": "fake", "APP_ENV": "test", "AI_POLICY_APPROVAL": "H-TEST"}, []string{"AI_POLICY_APPROVAL:invalid"}},
-		"no model":                {live(map[string]string{"AI_MODEL": ""}), []string{"AI_MODEL:required"}},
-		"no primary key":          {live(map[string]string{"GEMINUS_ANTHROPIC_API_KEY_A": "", "GEMINUS_ANTHROPIC_API_KEY_B": keyB}), []string{"GEMINUS_ANTHROPIC_API_KEY_A:required"}},
 		"fake without APP_ENV":    {map[string]string{"AI_PROVIDER": "fake"}, []string{"AI_PROVIDER:invalid"}},
 		"fake in production":      {map[string]string{"AI_PROVIDER": "fake", "APP_ENV": "production"}, []string{"AI_PROVIDER:invalid"}},
 		"unknown provider":        {map[string]string{"AI_PROVIDER": "openai"}, []string{"AI_PROVIDER:invalid"}},
