@@ -164,7 +164,7 @@ Owner 變更（H-016，2026-10-19）：原報告以 Software Delivery 為 P0 第
 
 候選決策：有序 primary→secondary failover。只有 402 `billing_error`（credits 用完）或 401/403（key 無效／撤銷）才把該 credential 標為不可用並切換；429/529/5xx 只在同一 credential 依 SDK backoff 重試，不跨 organization，以免實質合併兩個 organization 的 rate limit（是否符合 Anthropic 條款需人類確認）。Key 只以 label 出現在 proposal／analysis／audit；adapter 明確注入 key，不依賴 `ANTHROPIC_API_KEY`；兩個 organization 的 retention／ZDR 設定須一致並寫入資料政策；key 只存 secret manager。
 
-T-024 實作（2026-10-19，[ADR-027](adr/ADR-027-ai-provider-adapter.md) PROPOSED；本決議狀態不變）：`internal/ai/provider/anthropic` 依序嘗試 `org-a`（`GEMINUS_ANTHROPIC_API_KEY_A`）、`org-b`（`_B`）；401／402／403 把該 credential 在 process 存活期間標為不可用並換下一把（`failed_over_from` 記在 metadata），兩把都不可用回 `credentials_exhausted`；408／409／429／5xx（含 529）與連線錯誤只由 SDK 在同一把 key 重試（budget 的 `MaxRetries`）。Key 由 config 注入、adapter 不讀環境變數；錯誤、metadata 只帶 label。只對本機 httptest server 測過；任何 live 呼叫仍待 owner 核准 model、quota 與資料政策（H-017），config 的核准清單為空。未做：credential 失效後的重新探測（需重啟 process）。
+T-024 實作（2026-10-19，[ADR-027](adr/ADR-027-ai-provider-adapter.md) PROPOSED；本決議狀態不變）：`internal/ai/provider/anthropic` 依序嘗試 `org-a`（`GEMINUS_ANTHROPIC_API_KEY_A`）、`org-b`（`_B`）；401／402／403 把該 credential 標為不可用並換下一把（`failed_over_from` 記在 metadata，之後每次跳過它的呼叫也記），401／403 直到 process 重啟，402 休息 15 分鐘後再試（T-024 review，ADR-027），兩把都不可用回 `credentials_exhausted`；408／409／429／5xx（含 529）與連線錯誤只由 SDK 在同一把 key 重試（budget 的 `MaxRetries`）。Key 由 config 注入、adapter 不讀環境變數；錯誤、metadata 只帶 label。只對本機 httptest server 測過；任何 live 呼叫仍待 owner 核准 model、quota 與資料政策（H-017），config 的核准清單為空。401／403 的 key 不重新探測（換 key 即重啟 process）。
 
 ## T-001 阻擋項決議（2026-10-15，KCL1104 逐項選擇）
 

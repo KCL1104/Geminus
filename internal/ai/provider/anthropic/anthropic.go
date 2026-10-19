@@ -16,10 +16,16 @@
 //     used, so ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL,
 //     ANTHROPIC_CUSTOM_HEADERS and SDK profiles are never read.
 //   - Credentials are tried in order, primary first. Only 401, 402 and 403
-//     mark a credential unavailable (for the life of the process) and move
-//     to the next; 408, 409, 429, 5xx (529 included) and connection errors
-//     are retried on the same credential with the SDK's backoff, up to the
-//     budget's retries, and then fail without changing credential.
+//     mark a credential unavailable and move to the next: after 401 or 403
+//     (invalid or revoked) for the life of the process, after 402 (credits
+//     used up) for billingCooldown, then it is tried again. 408, 409, 429,
+//     5xx (529 included) and connection errors are retried on the same
+//     credential with the SDK's backoff, up to the budget's retries, and
+//     then fail without changing credential. A credential skipped because
+//     it is unavailable is listed in FailedOver, on every call.
+//   - The SDK reads a whole response body before the client's
+//     MaxOutputBytes check applies; the body is bounded by max_tokens and
+//     the attempt timeout, not by that check.
 //   - A credential is named by its label only: in the response, the
 //     metadata and every error. Errors never carry the provider's body.
 //
@@ -35,6 +41,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	sdk "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -69,21 +76,34 @@ type credential struct {
 	label string
 	key   secret.Secret
 
-	mu          sync.Mutex
-	unavailable bool
+	mu sync.Mutex
+	// disabled: refused with 401 or 403 (invalid or revoked); off until
+	// the process restarts, with a rotated key.
+	disabled bool
+	// resting: refused with 402 (credits used up); tried again from then
+	// on, since credits may be added.
+	resting time.Time
 }
 
-func (c *credential) usable() bool {
+func (c *credential) usable(now time.Time) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return !c.unavailable
+	return !c.disabled && !now.Before(c.resting)
 }
 
-func (c *credential) refuse() {
+func (c *credential) refuse(status int, now time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.unavailable = true
+	if status == http.StatusPaymentRequired {
+		c.resting = now.Add(billingCooldown)
+		return
+	}
+	c.disabled = true
 }
+
+// billingCooldown is how long a credential refused with 402 rests before
+// it is tried again (ADR-027).
+const billingCooldown = 15 * time.Minute
 
 // Backend is the live provider backend.
 type Backend struct {
@@ -91,6 +111,7 @@ type Backend struct {
 	creds   []*credential
 	baseURL string
 	client  *http.Client
+	now     func() time.Time
 
 	projections sync.Map // output schema -> Projection
 }
@@ -113,7 +134,7 @@ func newBackend(cfg Config, baseURL string, client *http.Client) (*Backend, erro
 	if len(cfg.Credentials) == 0 {
 		return nil, errors.New("anthropic: no credential")
 	}
-	b := &Backend{model: cfg.Model, baseURL: baseURL}
+	b := &Backend{model: cfg.Model, baseURL: baseURL, now: time.Now}
 	seen := map[string]bool{}
 	for _, c := range cfg.Credentials {
 		if c.Label == "" || seen[c.Label] || c.Key.Reveal() == "" {
@@ -163,7 +184,10 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	}
 	var failed []string
 	for _, c := range b.creds {
-		if !c.usable() {
+		if !c.usable(b.now()) {
+			// Refused earlier and still off: named, so the metadata and the
+			// audit show every call that did not use the primary.
+			failed = append(failed, c.label)
 			continue
 		}
 		svc := sdk.NewMessageService(
@@ -200,7 +224,7 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 		}
 		switch status := apiErr.StatusCode; {
 		case status == http.StatusUnauthorized, status == http.StatusPaymentRequired, status == http.StatusForbidden:
-			c.refuse()
+			c.refuse(status, b.now())
 			failed = append(failed, c.label)
 			continue
 		case status == http.StatusTooManyRequests:

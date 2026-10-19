@@ -267,11 +267,18 @@ func TestFailover(t *testing.T) {
 			if s.count(keyA) != 1 || s.count(keyB) != 1 {
 				t.Errorf("hits a=%d b=%d", s.count(keyA), s.count(keyB))
 			}
-			if _, err := ask(t, c); err != nil {
+			res, err = ask(t, c)
+			if err != nil {
 				t.Fatal(err)
 			}
 			if s.count(keyA) != 1 || s.count(keyB) != 2 {
 				t.Errorf("the refused credential was tried again: a=%d b=%d", s.count(keyA), s.count(keyB))
+			}
+			// Review INFO: a credential skipped because it was refused
+			// earlier is still named, so audit sees every call that did not
+			// use the primary.
+			if res.Metadata.Credential != "org-b" || !reflect.DeepEqual(res.Metadata.FailedOver, []string{"org-a"}) {
+				t.Errorf("later call: metadata %+v", res.Metadata)
 			}
 		})
 	}
@@ -284,6 +291,44 @@ func TestFailover(t *testing.T) {
 	}
 	if _, err := ask(t, c); provider.CodeOf(err) != provider.CodeCredentialsExhausted || s.count(keyA) != 1 || s.count(keyB) != 1 {
 		t.Errorf("after both were refused: %v a=%d b=%d", err, s.count(keyA), s.count(keyB))
+	}
+}
+
+// ADR-027: a credential refused with 402 (credits used up) is tried again
+// after the billing cooldown, since credits may be added; one refused with
+// 401 or 403 (revoked or invalid) stays off until the process restarts
+// with a new key.
+func TestBillingCooldown(t *testing.T) {
+	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return now }
+	s := newServer(t, map[string][]reply{keyA: {apiError(402, "billing_error"), ok(answerJ)}, keyB: {ok(answerJ)}})
+	c, b := client(t, s, config(keyA, keyB))
+	anthropic.SetClock(b, clock)
+	if res, err := ask(t, c); err != nil || res.Metadata.Credential != "org-b" {
+		t.Fatalf("402: %v %+v", err, res.Metadata)
+	}
+	now = now.Add(anthropic.BillingCooldown - time.Second)
+	if res, err := ask(t, c); err != nil || res.Metadata.Credential != "org-b" || s.count(keyA) != 1 {
+		t.Errorf("within the cooldown: %v %+v a=%d", err, res.Metadata, s.count(keyA))
+	}
+	now = now.Add(2 * time.Second)
+	res, err := ask(t, c)
+	if err != nil || res.Metadata.Credential != "org-a" || len(res.Metadata.FailedOver) != 0 || s.count(keyA) != 2 {
+		t.Errorf("after the cooldown: %v %+v a=%d", err, res.Metadata, s.count(keyA))
+	}
+
+	for _, r := range []reply{apiError(401, "authentication_error"), apiError(403, "permission_error")} {
+		now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
+		s := newServer(t, map[string][]reply{keyA: {r, ok(answerJ)}, keyB: {ok(answerJ)}})
+		c, b := client(t, s, config(keyA, keyB))
+		anthropic.SetClock(b, func() time.Time { return now })
+		if _, err := ask(t, c); err != nil {
+			t.Fatal(err)
+		}
+		now = now.Add(24 * time.Hour)
+		if res, err := ask(t, c); err != nil || res.Metadata.Credential != "org-b" || s.count(keyA) != 1 {
+			t.Errorf("%d a day later: %v %+v a=%d", r.status, err, res.Metadata, s.count(keyA))
+		}
 	}
 }
 

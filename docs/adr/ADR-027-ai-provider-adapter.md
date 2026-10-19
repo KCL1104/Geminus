@@ -57,7 +57,7 @@ tasks.json 原規劃的 `internal/ai/context/` 改名為 `internal/ai/aicontext`
 
 - 官方 SDK `github.com/anthropics/anthropic-sdk-go` **v1.78.0**（2026-09-30 發布，滿兩週；v1.79.x／v1.80.0 未滿兩週）、MIT；連帶的 module 與授權見 THIRD_PARTY_NOTICES。
 - 不用 `NewClient`：它的預設 chain 讀 `ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`、`ANTHROPIC_BASE_URL`、`ANTHROPIC_CUSTOM_HEADERS`、SDK profile 與 workload identity。每個 credential 一個 `NewMessageService`，只帶明確的 base URL、HTTP client、key、retry 數與 attempt timeout。Base URL 是常數 `https://api.anthropic.com/`；只有測試（`export_test.go`）能改。HTTP client 不跟隨 redirect（否則 key header 會跟著走）。
-- D-018：依序嘗試 credential；只有 401、402、403 把它標為不可用（process 存活期間）並換下一個；408、409、429、5xx（含 529）與連線錯誤在同一 credential 以 SDK 的 backoff 重試至預算的次數後失敗（`rate_limited`／`unavailable`，可重試），不換 organization；其他 4xx 為 `request_rejected`，不重試、不換。全部被拒為 `credentials_exhausted`。Response、metadata 與 error 只有 label。
+- D-018：依序嘗試 credential；只有 401、402、403 把它標為不可用並換下一個：401／403（key 無效或撤銷）直到 process 重啟（換 key 時一起重啟），402（credits 用完）休息 15 分鐘（`billingCooldown`）後再試，因為 credits 可能補充（review INFO 的選擇；只有 402 重新探測，401／403 不會因時間過去而變有效）；被跳過的 credential 在之後每次呼叫都列在 `failed_over_from`，audit 看得到每一次沒有用 primary 的呼叫；408、409、429、5xx（含 529）與連線錯誤在同一 credential 以 SDK 的 backoff 重試至預算的次數後失敗（`rate_limited`／`unavailable`，可重試），不換 organization；其他 4xx 為 `request_rejected`，不重試、不換。全部被拒為 `credentials_exhausted`。Response、metadata 與 error 只有 label。
 - Request：approved model、`max_tokens`、system 一個 text block、user 一個 text block、`output_config.format` 為投影後的 schema。沒有 tools、tool_choice、thinking 設定、sampling 參數或 metadata。Stop reason：`end_turn`／`stop_sequence` 取 text block（thinking block 丟棄、不存），`max_tokens` → `output_truncated`，`refusal` → `refused`，其他（含 tool_use、pause_turn）與任何 tool block → `invalid_output`。
 - **Schema projection**：解開 `$ref`（拒絕遞迴）、`oneOf` 改 `anyOf`（每個 output schema 的分支以 const member 區分，兩者允許的值相同），移除 subset 不支援的 constraint（長度、數值界限、pattern、array 界限、uniqueItems、if／then／else、not、不支援的 format）並列在 `Dropped`；拒絕開放的 object、`patternProperties` 等無法投影而不放寬的 keyword。只放寬 constraint、不新增 member、不開放 object；server 以完整 schema 檢查每個回答。
 
@@ -65,7 +65,10 @@ tasks.json 原規劃的 `internal/ai/context/` 改名為 `internal/ai/aicontext`
 
 - 所有 mode 走同一個 `Client`，fake 的回答也要通過完整 schema；E2E（T-040）以 fake 的 script 驅動。
 - Live adapter 只對本機 httptest server 測過。對真實 API 的任何呼叫、投影後的 schema 是否被 API 接受、`output_config` 在 owner 選定的 model 上的行為：**NOT RUN**。
-- 被 401／402／403 標為不可用的 credential 在 process 重啟前不再使用；沒有自動重新探測（credits 補充後需重啟 worker）。
+- 被 401／403 標為不可用的 credential 在 process 重啟前不再使用（換 key 即重啟）；402 的 credential 15 分鐘後再試一次，仍是 402 就再休息 15 分鐘。冷卻時間是每個 process 的，多個 worker 各自探測。
+- SDK 先讀完整個 response body，client 的 `MaxOutputBytes` 才檢查；body 的大小由 `max_tokens` 與 attempt timeout 限制，不由該檢查限制。
+- `locale.CheckProse` 比對數字時忽略正負號（「減少 3.5」對應 -3.5）；delta 的方向是否正確由 T-030 的 analyst 檢查負責。
+- Minimal context 的選擇：IR 放得進 budget 時送完整 IR（減去 server 綁定的 ID 與 view），因為 patch 的 JSON Pointer index 與 reference 需要整個 topology；超出 budget 才依序縮減（見 Context builder）。
 - 並行限制是每個 process 的；多個 worker 會倍增。期間 quota、prompt caching（資料保留屬資料政策）、refusal fallback 到其他 model（換 model 屬 owner）都沒有做。
 - 連帶 module 中有 `go.yaml.in/yaml/v4` 的 release candidate（SDK 的 profile 設定使用；本 adapter 不呼叫該路徑）。
 
