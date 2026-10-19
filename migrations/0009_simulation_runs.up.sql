@@ -16,6 +16,8 @@
 --     one, the run moves with it in the same transaction; a running run is
 --     cancelled only after its cancellation was requested. A job completes
 --     only once its run has completed with its result.
+--   * A run's identity (ID, name, creator, creation time) never changes,
+--     for any role (0001 freezes its inputs).
 --   * Each runtime role moves a run only its own way, as 0007 does for
 --     jobs: the API creates runs and requests cancellation; the worker
 --     starts an attempt (queued -> running), writes its progress and event
@@ -62,6 +64,10 @@ BEGIN
       RAISE EXCEPTION 'a run starts queued with nothing done' USING ERRCODE = '55000';
     END IF;
     RETURN NEW;
+  END IF;
+  -- 0001 freezes the inputs; the identity is frozen here, for every role.
+  IF ROW(NEW.id, NEW.name, NEW.created_by, NEW.created_at) IS DISTINCT FROM ROW(OLD.id, OLD.name, OLD.created_by, OLD.created_at) THEN
+    RAISE EXCEPTION 'a run''s identity (ID, name, creator, creation time) never changes' USING ERRCODE = '55000';
   END IF;
   IF NEW IS NOT DISTINCT FROM OLD OR OLD.status IN ('completed', 'failed', 'cancelled') THEN
     RETURN NEW; -- a final run is protect_run_inputs' to refuse

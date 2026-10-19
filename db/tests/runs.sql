@@ -50,6 +50,9 @@ SET LOCAL ROLE twin_owner;
 SELECT set_config('app.oidc_issuer','https://test.invalid',true), set_config('app.oidc_subject','subject_a',true),
        set_config('app.organization_id','org_01M4YDQK00TA00000000000000',true), set_config('app.user_id','usr_01M4YDQK00TA00000000000001',true);
 INSERT INTO twin.users(id,oidc_issuer,oidc_subject) VALUES ('usr_01M4YDQK00TA00000000000001','https://test.invalid','subject_a');
+SELECT set_config('app.oidc_subject','subject_a2',true);
+INSERT INTO twin.users(id,oidc_issuer,oidc_subject) VALUES ('usr_01M4YDQK00TA00000000000002','https://test.invalid','subject_a2');
+SELECT set_config('app.oidc_subject','subject_a',true);
 INSERT INTO twin.organizations(id,organization_id,name) VALUES ('org_01M4YDQK00TA00000000000000','org_01M4YDQK00TA00000000000000','Tenant A');
 INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ('org_01M4YDQK00TA00000000000000','usr_01M4YDQK00TA00000000000001','owner');
 INSERT INTO twin.projects(id,organization_id,name,created_by) VALUES ('prj_01M4YDQK00TA00000000000001','org_01M4YDQK00TA00000000000000','Project A','usr_01M4YDQK00TA00000000000001');
@@ -113,6 +116,20 @@ SELECT pg_temp.must_fail($q$UPDATE twin.simulation_runs SET status='running', st
 -- Nor moves a queued run straight to completed, or a running one back
 -- without its job.
 SELECT pg_temp.must_fail($q$UPDATE twin.simulation_runs SET status='completed', completed_replications=2, finished_at=now(), progress_revision=progress_revision+1 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000007'$q$, '55000');
+-- A run's identity (its name, who created it and when) never changes: the
+-- API's UPDATE grant covers every column and 0001 freezes only the run's
+-- inputs, so 0009 refuses it for every role, the owner included; the
+-- worker's column grant does not even reach these columns.
+SELECT pg_temp.must_fail(format($q$UPDATE twin.simulation_runs SET %s WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000007'$q$, c), '55000')
+  FROM unnest(ARRAY[$c$name='renamed'$c$, $c$created_at=created_at-interval '1 day'$c$, $c$created_by='usr_01M4YDQK00TA00000000000002'$c$]) AS c;
+SET LOCAL ROLE twin_api;
+SELECT pg_temp.must_fail(format($q$UPDATE twin.simulation_runs SET %s WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000007'$q$, c), '55000')
+  FROM unnest(ARRAY[$c$name='renamed'$c$, $c$created_at=created_at-interval '1 day'$c$, $c$created_by='usr_01M4YDQK00TA00000000000002'$c$,
+                    $c$name='renamed', cancellation_requested=true, progress_revision=progress_revision+1$c$]) AS c;
+SET LOCAL ROLE twin_worker;
+SELECT pg_temp.must_fail(format($q$UPDATE twin.simulation_runs SET %s WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='sim_01M4YDQK00TA00000000000007'$q$, c), '42501')
+  FROM unnest(ARRAY[$c$name='renamed'$c$, $c$created_at=created_at-interval '1 day'$c$, $c$created_by='usr_01M4YDQK00TA00000000000002'$c$]) AS c;
+SET LOCAL ROLE twin_owner;
 
 -- The API cancels a queued job; the run follows at once (TEST-021).
 SET LOCAL ROLE twin_api;
