@@ -50,6 +50,42 @@ func reread(dec *jsontext.Decoder, v []byte) *jsontext.Decoder {
 	return dec
 }
 
+// tooDeep is the failure of a value the decoder could not read because it
+// is nested past the decoder's own limit (10,000 levels; T-016 re-review):
+// check would have refused it at MaxDepth, and the decoder's pointer then
+// loses member names. buf holds the value from its start (after white
+// space and, between rows, a comma), at pointer base, depth containers
+// deep; it is read again only as far as MaxDepth. A value that is not an
+// object is refused as notObject, as when it is read. nil when err is not
+// that (it is then reported as it is).
+func tooDeep(err error, buf []byte, base string, depth int, lim Limits, notObject *Failure) *Failure {
+	var se *jsontext.SyntacticError
+	if !errors.As(err, &se) || strings.Count(string(se.JSONPointer), "/") <= lim.MaxDepth {
+		return nil
+	}
+	buf = bytes.TrimLeft(bytes.TrimPrefix(bytes.TrimLeft(buf, " \t\r\n"), []byte(",")), " \t\r\n")
+	dec := reread(nil, buf)
+	for first := true; ; first = false {
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return nil
+		}
+		if first && tok.Kind() != '{' {
+			return notObject
+		}
+		if k := tok.Kind(); k == '{' || k == '[' {
+			if d := depth + dec.StackDepth(); d > lim.MaxDepth {
+				return fail(CodeLimitExceeded, base+string(dec.StackPointer()), "nesting depth %d; the limit is %d", d, lim.MaxDepth)
+			}
+		}
+	}
+}
+
+// notAnEvent is the failure of row, a value that is not an object.
+func notAnEvent(row int) *Failure {
+	return fail(CodeShapeInvalid, pointer(row), "row %d is not a JSON object: a JSON events file is one array of objects", row)
+}
+
 // after checks that nothing but white space follows the file's value.
 func after(dec *jsontext.Decoder) error {
 	_, err := dec.ReadToken()
@@ -186,13 +222,16 @@ func readEvents(ctx context.Context, tr *text, lim Limits) (Result, error) {
 		}
 		event, err := dec.ReadValue()
 		if err != nil {
+			if f := tooDeep(err, dec.UnreadBuffer(), pointer(row), 1, lim, notAnEvent(row)); f != nil {
+				return Result{}, f
+			}
 			return Result{}, jsonError(err, "")
 		}
 		if row >= lim.MaxRows {
 			return Result{}, fail(CodeLimitExceeded, pointer(row), "the file has more than %d rows", lim.MaxRows)
 		}
 		if event.Kind() != '{' {
-			return Result{}, fail(CodeShapeInvalid, pointer(row), "row %d is not a JSON object: a JSON events file is one array of objects", row)
+			return Result{}, notAnEvent(row)
 		}
 		if err := cols.add(event, row, lim); err != nil {
 			return Result{}, err
@@ -279,11 +318,15 @@ func readModel(tr *text, lim Limits) (Result, error) {
 	if err == io.EOF {
 		return Result{}, fail(CodeEmpty, "", "the file is empty")
 	}
+	notObject := fail(CodeShapeInvalid, "", "a JSON model file is one JSON object (a Model IR document)")
 	if err != nil {
+		if f := tooDeep(err, data, "", 0, lim, notObject); f != nil {
+			return Result{}, f
+		}
 		return Result{}, jsonError(err, "")
 	}
 	if v.Kind() != '{' {
-		return Result{}, fail(CodeShapeInvalid, "", "a JSON model file is one JSON object (a Model IR document)")
+		return Result{}, notObject
 	}
 	if err := check(nil, v, "", 0, lim); err != nil {
 		return Result{}, err

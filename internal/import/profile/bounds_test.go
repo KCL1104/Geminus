@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"runtime"
 	"strconv"
 	"strings"
 	"testing"
+	"testing/iotest"
 	"unicode/utf8"
 
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
@@ -199,6 +201,48 @@ func TestFailurePathsAreBounded(t *testing.T) {
 				t.Errorf("got %s at %d characters %.40q: %q; want %s at %.40q", f.Code, utf8.RuneCountInString(f.Path), f.Path, f.Message, c.code, c.path)
 			}
 		})
+	}
+}
+
+// T-016 re-review: JSON nested past the decoder's own limit (10,000
+// levels) fails as JSON nested past MaxDepth does: IMPORT_LIMIT_EXCEEDED at
+// the first container too deep, its member names kept, never JSON_INVALID
+// with the decoder's pointer (which loses them); the same whatever the
+// bytes arrive like.
+func TestDeepJSONIsALimit(t *testing.T) {
+	nest := func(n int) string { return strings.Repeat("[", n) + "1" + strings.Repeat("]", n) }
+	zeros := func(n int) string { return strings.Repeat("/0", n) }
+	for _, deep := range []int{33, 10_001, 20_000} {
+		cases := []struct {
+			name   string
+			format importprofile.Format
+			data   string
+			code   string
+			path   string
+		}{
+			{"under a member", importprofile.JSONEvents, `[{"m":` + nest(deep) + `}]`, importprofile.CodeLimitExceeded, "/0/m" + zeros(30)},
+			{"in a later row", importprofile.JSONEvents, `[{"a":1} ,` + "\n" + `{"m":` + nest(deep) + `}]`, importprofile.CodeLimitExceeded, "/1/m" + zeros(30)},
+			{"under a nested name", importprofile.JSONEvents, `[{"m":{"k/~":` + nest(deep) + `}}]`, importprofile.CodeLimitExceeded, "/0/m/k~1~0" + zeros(29)},
+			{"a row that is an array", importprofile.JSONEvents, `[` + nest(deep) + `]`, importprofile.CodeShapeInvalid, "/0"},
+			{"in a model", importprofile.JSONModel, `{"m":` + nest(deep) + `}`, importprofile.CodeLimitExceeded, "/m" + zeros(31)},
+		}
+		for _, c := range cases {
+			t.Run(strconv.Itoa(deep)+" levels "+c.name, func(t *testing.T) {
+				for _, r := range []io.Reader{strings.NewReader(c.data), iotest.OneByteReader(strings.NewReader(c.data))} {
+					_, err := importprofile.Read(context.Background(), r, c.format, importprofile.DefaultLimits)
+					var f *importprofile.Failure
+					if !errors.As(err, &f) || f.Code != c.code || f.Path != c.path || (c.code == importprofile.CodeLimitExceeded && !strings.Contains(f.Message, "the limit is 32")) {
+						t.Errorf("got %v; want %s at %.60q", err, c.code, c.path)
+					}
+				}
+			})
+		}
+	}
+	// A syntax error the decoder finds first is reported as it is, even
+	// after a part nested too deep.
+	f := failure(t, importprofile.JSONEvents, importprofile.DefaultLimits, `[{"a":`+nest(40)+`,"b":x}]`)
+	if f.Code != importprofile.CodeJSONInvalid || f.Path != "/0/b" {
+		t.Errorf("got %s at %q", f.Code, f.Path)
 	}
 }
 
