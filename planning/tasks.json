@@ -3195,6 +3195,61 @@
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
       "completion_evidence": []
+    },
+    {
+      "id": "T-053",
+      "title": "Live AI 開啟（H-018）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Security",
+      "planning_window": "H-018（未重估週數）",
+      "depends_on": [
+        "T-024",
+        "T-025"
+      ],
+      "requirement_ids": [
+        "REQ-008",
+        "REQ-016",
+        "REQ-019",
+        "REQ-020"
+      ],
+      "decision_gates": [
+        "D-018"
+      ],
+      "scope": [
+        "程式內的 token 上限：每個 organization 每日上限與兩個 provider organization 合計的每月上限（H-018：開發期每月 100 美元），超過即拒絕並回 typed error；計數持久化、跨 process 一致、計入 audit，不記 prompt 或回應內容。",
+        "依 H-018 在 internal/config/aiapproval 記錄 owner 的批准（model Claude Opus 5.5、資料政策：只送 synthetic 與使用者輸入的文字、log 不存原始 prompt 與回應），並以測試證明只有這筆紀錄能開啟 live。",
+        "查證並記錄 Anthropic 官方文件中 API 的資料保留／ZDR 規則（來源與日期寫入 docs），確認兩個 organization 的設定一致；不一致或無法確認時 live 保持關閉。",
+        "Owner 的動作（agent 不代做）：以雲端環境 secret 提供 GEMINUS_ANTHROPIC_API_KEY_A／_B，並在 Console 設 spend limit；之後以 synthetic 資料跑一次 live smoke 與 make ai-eval-live，結果與 fake 分開記錄。"
+      ],
+      "planned_outputs": [
+        "internal/config/aiapproval/",
+        "internal/ai/provider/",
+        "internal/storage/",
+        "docs/AI_SPEC.md",
+        "docs/SECURITY.md"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "docs/SECURITY.md",
+        "docs/DECISIONS_AND_TBD.md"
+      ],
+      "acceptance_tests": [
+        "TEST-024",
+        "TEST-027"
+      ],
+      "verification_commands": [
+        "go test ./internal/ai/... ./internal/config/...",
+        "make integration-test",
+        "make ai-eval-live"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
     }
   ]
 }

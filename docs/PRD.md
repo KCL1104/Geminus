@@ -52,7 +52,7 @@ REQ-022 不是原報告需求：owner 於 2026-10-18 新增（H-005）；中文�
 
 REQ-022 的例外（H-008）：UI 元件庫內建、無法以 prop 覆寫的無障礙字串，可用該庫自己的翻譯，但須列清單、審閱並以測試列出。
 
-REQ-024、REQ-025 不是原報告需求：owner 於 2026-10-19 採用 agent 建議、把 P0 domain 改為電子組裝／測試線（H-016）而新增；語義細節待 T-046 的 decisions 經 owner 批准。表中 REQ-023 排在 REQ-025 之後只是為了保留原有列的位置。
+REQ-024、REQ-025 不是原報告需求：owner 於 2026-10-19 採用 agent 建議、把 P0 domain 改為電子組裝／測試線（H-016）而新增；語義細節為 D-047–D-060，2026-10-20 由 owner 依建議批准（H-018）。
 
 REQ-023 不是原報告需求：owner 於 2026-10-18 同意 agent 建議新增（H-007），並要求比較多個 UI 庫的做法、不直接採用 Tailwind＋shadcn/ui；owner 尚無視覺偏好，預設為中性、資訊密集的工具型介面。
 
@@ -78,7 +78,7 @@ Upload CSV/JSON → preview 與 row errors → mapping 建議（低於 0.80 需�
 
 ## 5. P1 與明確排除
 
-P1：MES／CFX 與 GitHub/GitLab/Jira/CI connectors、parameter sweeps、advanced routing/priority/preemption（班表已因 H-016 進 P0）、換線 setup（是否進 P0 由 T-046 的 decision 決定）、batch AI experiment approval、rich 3D assets、collaboration、SSO/SAML、billing、telemetry streaming、第二 domain（倉儲人力與尖峰，H-016）、iTwin adapter、必要時 dedicated broker / GraphQL。
+P1：MES／CFX 與 GitHub/GitLab/Jira/CI connectors、parameter sweeps、advanced routing/priority/preemption（班表已因 H-016 進 P0）、P0 之後的產線功能（H-018：零容量緩衝、拼板與分板、跨步驟持有資源、依忙碌時間的故障時鐘、交班前做不完不開始、AGV／搬運）、batch AI experiment approval、rich 3D assets、collaboration、SSO/SAML、billing、telemetry streaming、第二 domain（倉儲人力與尖峰，H-016）、iTwin adapter、必要時 dedicated broker / GraphQL。
 
 P0 不做 BIM/CAD、IoT synchronization、physics/CFD/FEA、CRDT、AI autonomous mutation/production actions、arbitrary Python simulation runtime、3D authoring。完整 viewer 本身仍是 P0，不能因為 non-goal 而移除它。
 

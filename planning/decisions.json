@@ -651,10 +651,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation / Contracts",
       "gate": "T-046 phase 2 改 schema 前；T-047–T-050 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議：IR 新欄位 optional，schema_version 維持 0.1（不升 0.2）。"
     },
     {
       "id": "D-048",
@@ -664,10 +665,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation",
       "gate": "T-047 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議（決策頁），owner：「全都照建議」。"
     },
     {
       "id": "D-049",
@@ -677,10 +679,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation",
       "gate": "T-047 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議（決策頁），owner：「全都照建議」。"
     },
     {
       "id": "D-050",
@@ -690,10 +693,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation",
       "gate": "T-047–T-050 實作前；T-051 的 template 須通過；T-046 phase 2 前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議採 A：R1–R4 全為 error（不採 A′ 的 warning＋狀態簽章）。"
     },
     {
       "id": "D-051",
@@ -703,10 +707,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation",
       "gate": "T-048 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議：故障時手上那件先做完（finish-first），故障時鐘只在上班時前進。"
     },
     {
       "id": "D-052",
@@ -716,10 +721,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation",
       "gate": "T-049 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議：交班時 finish-first，超出記為 overtime。"
     },
     {
       "id": "D-053",
@@ -729,10 +735,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation",
       "gate": "T-049 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議（決策頁），owner：「全都照建議」。"
     },
     {
       "id": "D-054",
@@ -742,10 +749,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation",
       "gate": "T-050 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議（決策頁），owner：「全都照建議」。"
     },
     {
       "id": "D-055",
@@ -755,10 +763,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation / Product",
       "gate": "T-050 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議：換線納入 P0，finish-first，派工仍為 FIFO。"
     },
     {
       "id": "D-056",
@@ -768,10 +777,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "Simulation",
       "gate": "T-048 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議（決策頁），owner：「全都照建議」。"
     },
     {
       "id": "D-057",
@@ -781,10 +791,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/adr/ADR-026-line-flow-primitives.md）",
       "owner_role": "AI / Simulation",
       "gate": "T-047–T-050 各自開放對應參數前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議：完整的 scenario allowlist（不只緩衝容量）。"
     },
     {
       "id": "D-058",
@@ -794,10 +805,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/domains/ELECTRONICS_LINE.md）",
       "owner_role": "Domain / Simulation",
       "gate": "T-046 phase 2 改 schema 前；T-051 與 T-052 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議（決策頁），owner：「全都照建議」。"
     },
     {
       "id": "D-059",
@@ -807,10 +819,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/domains/ELECTRONICS_LINE.md）",
       "owner_role": "Import / Domain",
       "gate": "T-046 phase 2 改 canonical-event schema 前；T-027 的電子產線 inference 與 T-052 前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議（決策頁），owner：「全都照建議」。"
     },
     {
       "id": "D-060",
@@ -820,10 +833,11 @@
       "source_pages": "N/A（H-016、ADR-025、REQ-024／REQ-025；分析與選項見 docs/domains/ELECTRONICS_LINE.md）",
       "owner_role": "Simulation / Product",
       "gate": "T-052 實作前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-018)",
+      "approved_at": "2026-10-20",
+      "approval_note": "依建議（決策頁），owner：「全都照建議」。"
     }
   ],
   "human_decisions": [
@@ -835,9 +849,11 @@
       "decided_at": "2026-10-15",
       "source": "Claude Code session 指示，由 agent 記錄；owner 於 PR review 確認措辭",
       "still_open": [
-        "LLM model（eval 後決定）",
-        "retention／residency 與資料政策",
-        "AI token／tenant quota"
+        "owner 以環境 secret 提供兩個 key（GEMINUS_ANTHROPIC_API_KEY_A／_B）並在 Console 設 spend limit（H-018）",
+        "兩個 organization 的 retention／ZDR 設定一致（上線前查官方文件，H-018）"
+      ],
+      "amended_by": [
+        "H-018"
       ]
     },
     {
@@ -1031,9 +1047,7 @@
         "H-012 (1)：P0 仍先做 Software Delivery"
       ],
       "still_open": [
-        "T-046 提出的引擎語義 decisions（阻塞、故障、班表、投入、批次、換線）待 owner 批准",
         "launchpad 的計畫名稱（期限：owner 表示「時間還很久」，H-017）",
-        "示範用的 live AI：model、quota 與只用 synthetic 資料時的資料政策（目前停用，只用 fake provider）",
         "研究稿是否提交到 repo（建議 repo 改私有後再提交）",
         "客戶訪談：owner 目前沒有接觸對象；launchpad 申請通常會看客戶驗證，建議並行做 5–10 場訪談",
         "第二個 domain（倉儲）開始前決定 3D authoring（H-014）"
@@ -1048,10 +1062,22 @@
       "decided_at": "2026-10-19",
       "source": "Claude Code session：owner 回答 agent 的三個問題（launchpad 期限、示範是否用真的 AI、是否重開停掉的工作），由 agent 記錄",
       "still_open": [
-        "live AI 的 model、quota、資料政策（agent 建議待 owner 確認）",
         "owner 以環境 secret 提供兩個 API key",
-        "T-046 延後項目是否納入 P0（決策頁）",
         "launchpad 的計畫名稱"
+      ]
+    },
+    {
+      "id": "H-018",
+      "subject": "批准 T-046 的引擎語義、延後項目的分配與示範用 live AI 的設定",
+      "decision": "Owner 對決策頁（https://claude.ai/artifact/T5R9YeWWw4q2q8kKkGvU2P）回覆「全都照建議」：(1) D-047–D-060 依建議 APPROVED，ADR-026 ACCEPTED；其中 D-050 採 A（R1–R4 全為 error）、D-047 schema_version 維持 0.1、故障／交班／換線時 finish-first（D-051、D-052、D-055）、D-057 採完整 allowlist。(2) 原本延後的項目：每班不同人數、例外日、批量投入表、產線計數器（模擬良率、重測比例、報廢率、逐期產出）納入 P0；零容量緩衝、拼板與分板、跨步驟持有資源、依忙碌時間的故障時鐘、交班前做不完不開始、AGV／搬運排在 P0 之後；每時段不同的投入分布不採用。(3) 示範用 live AI：model 為 Claude Opus 5.5；開發期兩個 organization 合計每月上限 100 美元（Console spend limit）並在程式內另設每日上限；示範期只送 synthetic 資料與使用者自己輸入的文字，log 不存原始 prompt 與回應；Anthropic 端的保留規則於上線前查官方文件確認，兩個 organization 設定一致。",
+      "quote": "全都照建議",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-20",
+      "source": "Claude Code session：owner 回覆決策頁，由 agent 記錄。決策頁之後才提出的 D-061、D-062（T-025）與 ADR-027 不在此範圍內",
+      "still_open": [
+        "live AI 開啟前：程式內每日 token 上限（T-053）、在 internal/config/aiapproval 記錄本批准、owner 提供兩個 key 與 Console spend limit、查證 Anthropic 的資料保留規則",
+        "ADR-027（AI provider adapter）的接受",
+        "D-061、D-062（T-025 提出）"
       ]
     }
   ]

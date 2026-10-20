@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 46,
-    "proposed": 14,
+    "approved": 60,
+    "proposed": 0,
     "rejected": 0,
     "superseded": 0
   },
@@ -23,13 +23,14 @@
     "H-014",
     "H-015",
     "H-016",
-    "H-017"
+    "H-017",
+    "H-018"
   ],
   "tasks_by_status": {
     "blocked": 0,
     "done": 23,
     "in_progress": 3,
-    "not_started": 26,
+    "not_started": 27,
     "review": 0
   },
   "ready_tasks": [
@@ -205,7 +206,8 @@
       "status": "approved",
       "gate": "T-024 provider adapter 實作前；任何 live AI 呼叫前",
       "gates_tasks": [
-        "T-024"
+        "T-024",
+        "T-053"
       ]
     },
     "D-019": {
@@ -426,7 +428,7 @@
       ]
     },
     "D-047": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-046 phase 2 改 schema 前；T-047–T-050 實作前",
       "gates_tasks": [
         "T-046",
@@ -438,7 +440,7 @@
       ]
     },
     "D-048": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-047 實作前",
       "gates_tasks": [
         "T-046",
@@ -449,7 +451,7 @@
       ]
     },
     "D-049": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-047 實作前",
       "gates_tasks": [
         "T-046",
@@ -458,7 +460,7 @@
       ]
     },
     "D-050": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-047–T-050 實作前；T-051 的 template 須通過；T-046 phase 2 前",
       "gates_tasks": [
         "T-046",
@@ -470,7 +472,7 @@
       ]
     },
     "D-051": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-048 實作前",
       "gates_tasks": [
         "T-046",
@@ -478,7 +480,7 @@
       ]
     },
     "D-052": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-049 實作前",
       "gates_tasks": [
         "T-046",
@@ -486,7 +488,7 @@
       ]
     },
     "D-053": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-049 實作前",
       "gates_tasks": [
         "T-046",
@@ -494,7 +496,7 @@
       ]
     },
     "D-054": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-050 實作前",
       "gates_tasks": [
         "T-046",
@@ -502,7 +504,7 @@
       ]
     },
     "D-055": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-050 實作前",
       "gates_tasks": [
         "T-046",
@@ -511,7 +513,7 @@
       ]
     },
     "D-056": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-048 實作前",
       "gates_tasks": [
         "T-046",
@@ -520,7 +522,7 @@
       ]
     },
     "D-057": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-047–T-050 各自開放對應參數前",
       "gates_tasks": [
         "T-046",
@@ -531,7 +533,7 @@
       ]
     },
     "D-058": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-046 phase 2 改 schema 前；T-051 與 T-052 實作前",
       "gates_tasks": [
         "T-046",
@@ -540,7 +542,7 @@
       ]
     },
     "D-059": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-046 phase 2 改 canonical-event schema 前；T-027 的電子產線 inference 與 T-052 前",
       "gates_tasks": [
         "T-027",
@@ -549,7 +551,7 @@
       ]
     },
     "D-060": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-052 實作前",
       "gates_tasks": [
         "T-052"

@@ -1,6 +1,6 @@
 # Decisions & TBD Register
 
-版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；D-001–D-037 於 2026-10-15、D-038–D-039 於 2026-10-18 由 owner 批准；D-040、D-041（T-012 review 發現，gate T-013）與 D-042（T-010 review 發現）於 2026-10-18 批准（H-009），已分別在 T-013a、T-013b、T-010 實作。D-047–D-060 為 T-046 於 2026-10-19 提出的 PROPOSED，尚未批准。
+版本：handoff-0.1.0；來源：原報告 v0.1（2026-10-15）。各決策是否已批准以本檔各節狀態與 `planning/decisions.json` 為準；D-001–D-037 於 2026-10-15、D-038–D-039 於 2026-10-18 由 owner 批准；D-040、D-041（T-012 review 發現，gate T-013）與 D-042（T-010 review 發現）於 2026-10-18 批准（H-009），已分別在 T-013a、T-013b、T-010 實作。D-047–D-060 為 T-046 於 2026-10-19 提出，2026-10-20 由 owner 依建議批准（H-018）。
 
 ## 狀態與採用方法
 
@@ -216,91 +216,91 @@ D-001 另定：伺服器產生的資源 ID 採「前綴 + ULID」（併解 CB-09
 | D-045 | CB-17 | 使用者自己的 membership（`/me`） | **APPROVED（2026-10-19，H-010）。** 新增 `GET /v1/me`（任何已驗證的使用者；不帶 `X-Organization-ID`）：回 `user_id` 與 `memberships[]`（`organization_id`、organization `name`、`role`），依 organization 名稱再依 ID 排序，P0 至多 100 筆；未知 identity 回 403（不自動建立，D-008）。RLS 新增只讀的 policy：API 只看得到 `user_id` 等於驗證後 scope 中 user 的 membership，與這些 membership 所屬 organization 的 `id`、`name`（新 migration；其他 tenant 的任何 row 仍不可見）。UI 以此選 organization 並取得 role，role 仍只決定介面，API 每次自己授權。gate：T-043 的 UI bootstrap 前。**實作（T-043 的 D-045 slice，2026-10-19，待獨立 review）：** migration 0008 的 `own_memberships`、`own_organizations` 是只給 `twin_api` 的 permissive `FOR SELECT` policy，只在**沒有選 organization** 時成立，所以選了 organization 的 transaction 看到的與 0002 的 `tenant_isolation` 完全相同；`tenant.DB.RunSelf` 是只設 user 的唯讀 transaction；`internal/tenant/me` 與 `httpapi.Self`（帶 `X-Organization-ID` 即 400）；排序為 byte 順序（`COLLATE "C"`，與 DB 的 collation 無關）；超過 100 筆時回前 100 筆並帶 `truncated: true`；不寫 audit；client 的 `getMe()`。見 checks/T-043_VALIDATION.md 的 D-045 一節。 |
 | D-046 | CB-31 | AI 新增 entity 的 ID allocation pool | **APPROVED（2026-10-19，H-010）。** 每個 proposal 在建立時由 server 產生 pool：每種 entity（node、flow、resource）16 個 ID，格式 `<kind>_<小寫 ULID>`（符合 IR 的 ID pattern），存在 `ai_proposals.id_pool`（新 migration；之後不可改）並放進 provider context。Validation 與 approval 時要求 patch 新增的每個 entity ID 都來自同 proposal 的 pool、種類相符、在 base IR 中未使用；不足時 provider 回 `needs_input`。gate：T-024 的 context builder 前。T-024 實作：`internal/ai/idpool`（產生、形狀檢查、`Check(base, candidate)` 回報 `not_in_pool`／`wrong_kind`／`used_in_base`／`missing_ir`）；schema `common.schema.json#/$defs/IdAllocationPool`；migration 0011 新增 `ai_proposals.id_pool`（NOT NULL、`twin.id_pool_ok` CHECK、建立後由 trigger 禁止修改），既有 proposal 的資料庫拒絕套用。違規的 issue code 未定（CB-40）。 |
 
-### T-046 的提案：電子產線的引擎語義與 domain 規格（2026-10-19，PROPOSED，待 owner）
+### T-046 的提案：電子產線的引擎語義與 domain 規格（2026-10-19 提出，2026-10-20 APPROVED，H-018）
 
 H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝與阻塞、故障、班表、隨時間變化的投入與批次（REQ-024）；H-017（owner：「時間還很久，盡量保留所有功能」）把換線與 lognormal／Weibull 列為 P0 提案；agent 另依此方向建議把數項原本延後的功能納入 P0，由 owner 在本頁決定。H-017 只是方向，不批准任何 decision。T-046 phase 1 提出新核心 primitive 的 [ADR-026](adr/ADR-026-line-flow-primitives.md)（PROPOSED）與 domain 規格 [ELECTRONICS_LINE.md](domains/ELECTRONICS_LINE.md)（PROPOSED）。每項 decision 的選項與後果、對決定性與 result digest 的影響、golden vectors 草案與 SimPy reference 的做法寫在這兩份文件中對應 D-ID 的一節；下面只列問題與建議。全部 **PROPOSED**：approved_by／approved_at 為 null，批准前不實作 kernel、不改 schema 與 fixtures。Gate：T-046（phase 2 的 contract 變更）等 D-047–D-059；T-047–T-051 依各自用到的 decision；T-027 等 D-059；T-052 等 D-058–D-060。T-017 不另加：它的驗收（TEST-012、TEST-013）是一般的 mapping，station log 的 mapping 驗收在 T-052。
 
 #### D-047 — 新 primitive 的相容性契約與 differential
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation / Contracts。Gate：T-046 phase 2 改 schema 前；T-047–T-050 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation / Contracts。Gate：T-046 phase 2 改 schema 前；T-047–T-050 實作前。**
 
 問題：新欄位如何進入 IR、Result 與 engine_version，才能讓沒用到的模型與現行 kernel 逐 bit 相同？選項：A optional 欄位、schema_version 維持 0.1；B 新 schema_version 0.2 加升級流程；C 新統計一律進 Result（會改所有既有 digest，不採用）。建議 A：Result 的新成員只在用到時出現；每個 kernel 任務升 engine_version minor；沒有新欄位的模型以「observation 序列相同、engine_version 換回 `des-go-0.1.0` 後 digest 等於鎖定值」判定，鎖定檔不重產；用了新欄位的中性設定只比 observation 序列與既有 Result 成員，且不得有任何新 observation（含 t=0 的 Capacity、ResourceUp）。
 
 #### D-048 — 新事件的同 tick 順序
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-047 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation。Gate：T-047 實作前。**
 
 問題：故障、修復、班表容量變化、批次逾時與解除阻塞在同一 tick 的哪裡？選項：A 新增 priority 15（在 arrival 10 之後、dispatch 20 之前）；B priority 5；C priority 25。建議 A：dispatch 看到該 tick 最後的容量，既有三個 priority 的相對順序不變；解除阻塞在 dispatch 內進行，不是事件；t=0 的順序為 source、calendar（每個 calendar 一個事件）、各 unit 的故障時鐘。
 
 #### D-049 — 有限緩衝與阻塞
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-047 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation。Gate：T-047 實作前。**
 
 問題：容量定義在哪、BAS 或 BBS、被擋 entity 持有什麼、與 resource-wise FIFO 和 bundle 的交互、source 與 delay 被擋時？選項：A blocking after service；B blocking before service（要跨 process 預留空位、提早抽 routing）；C 以下游 slot resource 模擬（resource 無法跨 process 持有）。建議 A：顯式 queue 的 `capacity` 限制等待中的 entity 數；被擋的 entity 留在出發 node（process 保留整個 bundle，source 形成 release backlog）；解除只在 dispatch 內依 FIFO 進行，且不再另排 dispatch；先解析、後提交，沒有被擋時 observation 與 seq 與現行相同，路由中途觸發 limit 時錯誤前的 observation 也與現行相同。
 
 #### D-050 — 死結與停滯的防止與偵測
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-046 phase 2 前；T-047–T-050 實作前；T-051 的 template 須通過。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation。Gate：T-046 phase 2 前；T-047–T-050 實作前；T-051 的 template 須通過。**
 
 問題：循環阻塞與「bundle 永遠湊不齊」（review 的兩個反例：班表不相交的 bundle、相位相反的 constant 故障）怎麼防止與以 typed error 偵測，保證到哪裡？原提案的 backstop 在有週期性班表或故障時永不觸發；例外日不是週期的，使期限與狀態簽章在例外日前後失效（review N6）。選項：A 靜態 R1–R4 全為 error，加 runtime 的 B1、B2；A′ R4 為 warning，另以狀態簽章偵測固定相位的鎖定；B 只做 runtime 偵測；C 不偵測（違反 TEST-034）。建議 A：R1 `BLOCKING_CYCLE`；R2 `CALENDAR_INVALID`（每個 bundle 在班表的最小公倍數週期內至少有一個 tick 湊得齊）；R3 故障 resource 的 request units＝1、一個 bundle 至多一個故障 resource；R4 `STALL_RISK`（故障 resource 上班時夥伴都夠，只看週期部分；訊息建議給機台作業員的 calendar）。每個 valid 的模型都可證明不會永久停滯；B1 `ErrDeadlock`（循環等待，立即、無誤報）；B2 `ErrStalled`（bundle 沒有任何 unit 在使用中，且已過期限 next_fit(max(t_q, X_end)＋TTRmax)；X_end 是 bundle 的 calendar 最後一段例外的結束）。兩者對 valid 的模型都不觸發、不記狀態。代價：R4 拒絕「會故障的機台沒有班表、作業員有班表」等寫法。A′ 的代價：簽章只能在 X_end 之後比對、記憶體要以每個 replication 的總量設限並計入 limits、只偵測 TTF／TTR 固定的鎖定，其他不偵測。這也回答了「warning 或 error」。
 
 #### D-051 — Resource 故障（MTBF／MTTR）
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-048 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation。Gate：T-048 實作前。**
 
 問題：故障時鐘、服務中 entity 的處理、多 unit、RNG stream 命名、availability？選項（處理）：A finish-first、每個 unit 一組故障時鐘；B preempt-resume；C preempt-restart（B、C 屬 PRD P1）。選項（時鐘）：日曆時間、排班時間、忙碌時間。建議 A，時鐘一律只在 resource 上班時前進（由確定的班表直接算出故障時刻，不需 unit identity；沒有 calendar 時即日曆時間；日曆時鐘在 `two_shift_weekdays` 下會使上班時的故障率只剩約 48%）。D-050 建議 R4 為 error，所以不提供 `clock` 欄位；若 owner 改採 A′ 再加回。TTF 要以上班時間估計；stream 為 (resource ID, `ttf/<u>`／`ttr/<u>`)，既有 stream 不變；availability＝∫min(S, C−down)／∫S。代價：長時間 service 低估中斷影響。
 
 #### D-052 — 班表與 utilization 分母
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-049 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation。Gate：T-049 實作前。**
 
 問題：班表在 IR 中的表示（tick、無時區）、交班時服務中的 entity、utilization 的分母、每班人數與例外日？選項：A 根層共用的 `calendars[]`＋ resource 的 `calendar_id`；A＋ 再加每班容量（`shift_capacity`）與以絕對 model 時間表示的 `exceptions`；B 每個 resource 自己的容量表；C 絕對日期與時區（時區不採用）。建議 A＋（agent 依 H-017 的方向）：交班 finish-first（記 overtime），原 `utilization_mean` 不變，另加 scheduled utilization 與 overtime；每個 calendar 在 S 改變時一個事件，只對 S 改變的 resource 記 observation。
 
 #### D-053 — 隨時間變化的投入
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-049 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation。Gate：T-049 實作前。**
 
 問題：分時段的投入怎麼表示、與 common random numbers 的關係？選項：A 週期性分段常數 rate、以累積 rate 反函數產生（poisson 或 deterministic，每件一次 draw）；B 投入表（整批投入）；C 各時段各自的 interarrival 分布（打亂配對，不採用）。建議 A＋B（agent 依 H-017 的方向）：scenario 之間第 k 件用同一個 draw；numerical profile 固定（含 r 落在 (0, P] 之外時的修正、超過 365 天時的飽和）；投入表每列一個 ARRIVAL、不用 RNG。
 
 #### D-054 — 批次 process（燒機）
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-050 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation。Gate：T-050 實作前。**
 
 問題：批量上下限、等待上限、成員 ID 與 trace、lead time 與 utilization？選項：A min／max／max_wait，就緒時一個 batch request、一次 service draw、整批離開才釋放；B 只有固定批量；C 合併成一個 entity（建議之後另立任務）。建議 A：成員保留自己的 entity ID，批次 ID `r<rep>/<process>/b<n>`；lead time 與 queue wait 照每件計；utilization 為 chamber 忙碌，另有批量統計；有成員被擋時的 observation 順序已固定。
 
 #### D-055 — 換線（P0）
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation / Product。Gate：T-050 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation / Product。Gate：T-050 實作前。**
 
 依 H-017 列為 P0 提案；PRD 已列 P1 的優先權、preemption、進階 routing 仍為 P1。問題：產品怎麼表示、換線何時發生在哪個 unit、與 FIFO 和其他功能的交互？選項：A resource 層的 sequence-dependent 換線（`setups` 矩陣、每個 unit 自己的換線狀態、FIFO 派工）；B process 層的固定 setup（無法表示每台機的狀態與矩陣）；C A 加依產品分組的派工（屬 PRD P1）。建議 A：產品＝entity_type（每個產品一個 source）；授予時優先選狀態相符的 unit，先抽換線再抽 service，不新增事件種類；stream 為 (resource ID, `setup/<u>`)；單一產品的模型與現行逐筆相同。
 
 #### D-056 — lognormal 與 Weibull（P0）
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation。Gate：T-048 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation。Gate：T-048 實作前。**
 
 依 H-017 列為 P0 提案。問題：參數化、抽樣演算法與 numerical profile？選項：A 兩者皆以反函數法、每個樣本一次 draw（lognormal 以 mean、cv 參數化，Φ⁻¹ 用固定的 AS241；Weibull 的冪次以固定的 exp 與 ln 計算）；B lognormal 用 Box–Muller（每個樣本兩個 U，不採用）；C 只加其中一個。建議 A：stream 消耗與 golden 方法不變；需要固定的 exp、Python 逐運算移植、vectors 與新的 engine_version；實作併入 T-048。
 
 #### D-057 — 新參數的 scenario allowlist 與 risk
 
-**狀態：PROPOSED（2026-10-19）。負責角色：AI / Simulation。Gate：T-047–T-050 各自開放對應參數前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：AI / Simulation。Gate：T-047–T-050 各自開放對應參數前。**
 
 問題：新參數可否在 scenario 中修改、risk 怎麼算？選項：A 擴充 D-021（buffer capacity、breakdown 分布、換線分布、投入 rate 與投入量、batch 參數、calendar 參照、每班容量、shifts 與例外）；B 不擴充（「加大 FCT 前緩衝」須發布新版本，與 baseline 不可比較）；C 只加 buffer capacity。建議 A：新參數的變更至少 medium，擴大 buffer 為 low；candidate 須通過 D-050 的 R1–R4（違反即 invalid；若 owner 改採 D-050 的 A′，新出現 `STALL_RISK` warning 時仍可建立、warning 顯示在審核內容中且 risk 至少 medium）；允許改分布的路徑都可換成 lognormal／Weibull；新增或刪除 breakdowns、setups、calendars、schedule、batch 仍走 draft→publish。
 
 #### D-058 — 電子產線指標的資料來源與 Result 位置
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Domain / Simulation。Gate：T-046 phase 2 改 schema 前；T-051 與 T-052 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Domain / Simulation。Gate：T-046 phase 2 改 schema 前；T-051 與 T-052 實作前。**
 
 問題：Pack 的 `ComputeMetrics` 只看 Result，指標放哪、需要哪些 generic 統計？選項：A optional 的 `ComputeModelMetrics(effective IR, result)`、新的 optional `metrics.domain`，並列出 pack 需要的 generic Result 成員；B 由 kernel 讀 domain 屬性（違反 ADR-010）；C 只在 UI 端計算（不在 digest 中）。建議 A：每個 replication、每個 resource 的整數 tick 積分（∫U、∫K、∫Z、∫D、∫S、∫A、∫min(U,S)、∫min(P,S)、∫max(0,A−U)、∫max(U−S,0)）與停機、修復、換線的次數，每個 node 的阻塞統計、每個批次 process 的批量，都只在用到對應功能時出現；宣告式的 `system_wip`、`flow_count`、`sink_count`、`period_throughput`（後三者為 agent 依 H-017 的方向新增的建議）；線班表的上班時間由 pack 從 IR 算出。FPY 是模型輸入；公式見 ELECTRONICS_LINE §5。
 
 #### D-059 — Station event log 的 canonical fields
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Import / Domain。Gate：T-046 phase 2 改 canonical-event schema 前；T-027 的電子產線 inference 與 T-052 前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Import / Domain。Gate：T-046 phase 2 改 canonical-event schema 前；T-027 的電子產線 inference 與 T-052 前。**
 
 選項：A canonical-event 新增 optional `end_timestamp`、`shift` 與 `product`（多產品時必填，D-055），pack 定義 event_type／outcome 詞彙，停機紀錄以設備 ID 為 case_id；B 不改 schema、每筆拆成 start／end 兩個 event；C 沿用 duration_ms 並新增兩欄相減的 transform。建議 A；operator ID 不匯入；常數 transform 屬 CB-28。
 
 #### D-060 — 模擬與觀測比對（REQ-025）
 
-**狀態：PROPOSED（2026-10-19）。負責角色：Simulation / Product。Gate：T-052 實作前。**
+**狀態：APPROVED（2026-10-20，KCL1104，H-018：「全都照建議」）。負責角色：Simulation / Product。Gate：T-052 實作前。**
 
 選項：A 分「輸出比對」與「輸入一致性」，以每期平均比較，顯示模擬平均、replication 範圍、絕對與相對誤差，標 in-sample／hold-out；B 只並列數字；C 統計檢定給通過判定。建議 A：不給通過判定、不自動校準；沒有觀測資料時 unavailable；宣告 `period_throughput`（D-058）時另做逐期比較。
 
@@ -327,13 +327,14 @@ H-016 把 P0 domain 改為電子組裝／測試線，引擎要補上有限緩衝
 | H-015 | 2026-10-19 | 專案授權為私有＋保留所有權利（`LICENSE`）：不授予任何使用、複製、修改、散布或作為服務提供的權利。Agent 提出 FSL-1.1-ALv2（建議，若維持公開）、私有、AGPL-3.0、Apache-2.0 四個選項 | owner 在 GitHub 將 repo 改為私有；著作權人名稱（目前為 KCL1104）；AI 生成程式碼著作權與原報告權利請律師確認 |
 | H-016 | 2026-10-19 | P0 第一個 domain 由 Software Delivery 改為**電子組裝／測試線**（SMT、AOI、ICT、FCT、燒機，含測試失敗→除錯→重測；AI 伺服器機櫃整合測試為變體），倉儲人力與尖峰為第二個 domain（P1）。採 agent 比較五組研究後的建議（理由見 `planning/decisions.json` 的 rationale）。SoftwareDeliveryDomainPack 保留為範例與 conformance pack。引擎在 P0 補上有限緩衝與阻塞、機台故障、班表、隨時間變化的投入、批次；語義由 T-046 提出 PROPOSED decisions 待批准，換線是否進 P0 另決定。近期目標為初步產品與技術驗證後投 launchpad；owner 尚無可接觸的潛在使用者，示範只用標為 synthetic 的資料。3D 不變（H-014）。偏離原報告：原報告以 Software Delivery 為 P0，calendar 屬 P1 | T-046 的引擎語義 decisions；launchpad 名稱（期限不急，H-017）；示範用 live AI 的 model、quota 與資料政策；研究稿是否提交（repo 改私有後）；客戶訪談（建議 5–10 場）；倉儲開始前決定 3D authoring |
 | H-017 | 2026-10-19 | 時程還很久，盡量保留所有功能：不為時程刪減 P0，換線與 lognormal／Weibull 列為 P0 提案（D-055、D-056）；PRD 的 P1 項目仍為 P1。示範要用真的 AI，但 live AI 的 gate 不變（T-024＋model、quota、資料政策；agent 建議 Claude Opus 5.5、開發期每月 100 美元、示範期只送 synthetic）。環境中目前沒有 API key，須由 owner 以環境 secret 提供（`GEMINUS_ANTHROPIC_API_KEY_A`／`_B`），不貼在對話。重開被中斷的 T-023 與 DESIGN.md | live AI 的 model、quota、資料政策；owner 提供 key；T-046 延後項目是否納入 P0；launchpad 名稱 |
+| H-018 | 2026-10-20 | Owner 對決策頁回覆「全都照建議」：D-047–D-060 APPROVED、ADR-026 ACCEPTED（D-050 採 A：R1–R4 全為 error；schema_version 維持 0.1；故障、交班、換線 finish-first；D-057 完整 allowlist）；每班人數、例外日、批量投入表、產線計數器納入 P0，零容量緩衝、拼板／分板、跨步驟持有資源、忙碌時間故障時鐘、交班前做不完不開始、AGV 排在 P0 之後；示範用 live AI：Claude Opus 5.5、開發期兩個 organization 合計每月 100 美元並另設每日上限、示範期只送 synthetic 與使用者輸入的文字、log 不存原始 prompt 與回應。D-061、D-062 與 ADR-027 是之後才提出的，不在此範圍 | live AI 開啟前：每日 token 上限（T-053）、在 aiapproval 記錄本批准、owner 提供 key 與 Console spend limit、查證 Anthropic 資料保留規則；ADR-027；D-061、D-062 |
 
 ## 原報告保留的 TBD
 
 | 項目 | 原報告建議／限制 | 決定時間／阻擋範圍 |
 |---|---|---|
 | LLM provider | ~~OpenAI adapter first + provider interface，未定案~~ **已由 H-001 決定：Anthropic Claude API** | 真實 provider integration 仍受 D-018、資料政策、token quota 阻擋 |
-| LLM model | eval 後決定，不 hard-code | Week 7；live AI release |
+| LLM model | ~~eval 後決定，不 hard-code~~ **H-018：示範用 Claude Opus 5.5**（config 指定，不 hard-code；T-038 評估時再比較，換 model 由 owner 決定） | live AI 開啟前的條件見 H-018 與 T-053 |
 | Auth provider | ~~managed OIDC，未定案~~ **已由 H-004／ADR-018 決定：Auth0；browser 經 BFF（HttpOnly 加密 session cookie）** | API 端驗證見 ADR-017（ACCEPTED）；登入流程 T-043；Auth0 tenant 由 owner 建立，region 依 retention／residency |
 | Cloud / managed DB | GCP reference / AWS equivalent；managed PostgreSQL | Week 1–2；production deploy |
 | Object storage | cloud-native / S3-compatible abstraction；P0 介面與 development 用 adapter 見 D-044（APPROVED，H-010），正式廠商待 owner 選定雲端 | Week 2；持久化 artifact |

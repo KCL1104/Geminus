@@ -1,6 +1,6 @@
 # ADR-026 — 產線流動的核心 primitive：有限緩衝與阻塞、故障、班表、投入排程、批次
 
-狀態：**PROPOSED**（2026-10-19，T-046 phase 1 由 agent 提出；owner 尚未批准）。批准前不實作 kernel、不改 schema 與 fixtures，TWIN_IR_SPEC 與 SIMULATION_SPEC 現行的 P0 語義照舊。日期：2026-10-19。依據：H-016、[ADR-025](ADR-025-p0-domain-electronics-line.md)、[ADR-006](ADR-006-native-go-des.md)、[ADR-010](ADR-010-domain-pack-architecture.md)、TWIN_IR_SPEC §8、REQ-024、TEST-034。語義細節為 D-047–D-057（PROPOSED，[登記](../DECISIONS_AND_TBD.md)）；domain 規格與 D-058–D-060 見 [ELECTRONICS_LINE.md](../domains/ELECTRONICS_LINE.md)。
+狀態：**ACCEPTED**（2026-10-20，owner H-018：「全都照建議」；D-050 採 A）。2026-10-19 由 T-046 phase 1 提出。Schema 與 fixtures 的變更在 T-046 phase 2，kernel 在 T-047–T-050；實作前 TWIN_IR_SPEC 與 SIMULATION_SPEC 現行的 P0 語義照舊。日期：2026-10-19。依據：H-016、[ADR-025](ADR-025-p0-domain-electronics-line.md)、[ADR-006](ADR-006-native-go-des.md)、[ADR-010](ADR-010-domain-pack-architecture.md)、TWIN_IR_SPEC §8、REQ-024、TEST-034。語義細節為 D-047–D-057（APPROVED，H-018，[登記](../DECISIONS_AND_TBD.md)）；domain 規格與 D-058–D-060 見 [ELECTRONICS_LINE.md](../domains/ELECTRONICS_LINE.md)。
 
 ## Context
 
@@ -276,7 +276,7 @@
 
 ### D-055 換線（setup／changeover，P0）
 
-Owner 的方向（H-017，2026-10-19：「時間還很久，盡量保留所有功能」；H-017 把換線列為 P0 提案，不批准語義）：換線規劃在 P0；PRD 已列為 P1 的優先權、preemption 與進階 routing 仍為 P1。以下語義仍為 PROPOSED。
+Owner 的方向（H-017，2026-10-19：「時間還很久，盡量保留所有功能」；H-017 把換線列為 P0 提案，不批准語義）：換線規劃在 P0；PRD 已列為 P1 的優先權、preemption 與進階 routing 仍為 P1。以下語義於 2026-10-20 APPROVED（H-018）。
 
 **問題。** 產品怎麼表示；換線何時發生、時間怎麼決定、發生在哪個 unit；與 resource-wise FIFO、bundle、故障、班表、批次的交互？
 
@@ -306,7 +306,7 @@ Owner 的方向（H-017，2026-10-19：「時間還很久，盡量保留所有�
 
 ### D-056 lognormal 與 Weibull（P0）
 
-Owner 的方向同 D-055（H-017 把 lognormal／Weibull 列為 P0 提案）：納入 P0。以下語義仍為 PROPOSED。
+Owner 的方向同 D-055（H-017 把 lognormal／Weibull 列為 P0 提案）：納入 P0。以下語義於 2026-10-20 APPROVED（H-018）。
 
 **問題。** 修復時間與故障間隔常以 lognormal、Weibull 描述；參數化、抽樣演算法與 numerical profile 怎麼定，才能維持「跨平台逐 bit 相同、每個樣本一次 draw」？
 

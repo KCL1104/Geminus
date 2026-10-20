@@ -1,6 +1,6 @@
 # 電子組裝／測試線 Domain 規格（提案）
 
-狀態：**PROPOSED**（T-046 phase 1，2026-10-19，agent 提出；owner 尚未批准）。依據：H-016、[ADR-025](../adr/ADR-025-p0-domain-electronics-line.md)、[PRD](../PRD.md) REQ-003／004／013／015／024／025、[TEST_PLAN](../TEST_PLAN.md) TEST-034–036。引擎的新 primitive 見 [ADR-026](../adr/ADR-026-line-flow-primitives.md)（D-047–D-057）；本文件自己的 decision 為 D-058–D-060（§10）。全部 decision 的狀態以 [DECISIONS_AND_TBD](../DECISIONS_AND_TBD.md) 與 `planning/decisions.json` 為準。
+狀態：**APPROVED**（2026-10-20，owner H-018：「全都照建議」）。2026-10-19 由 T-046 phase 1 提出。依據：H-016、[ADR-025](../adr/ADR-025-p0-domain-electronics-line.md)、[PRD](../PRD.md) REQ-003／004／013／015／024／025、[TEST_PLAN](../TEST_PLAN.md) TEST-034–036。引擎的新 primitive 見 [ADR-026](../adr/ADR-026-line-flow-primitives.md)（D-047–D-057）；本文件自己的 decision 為 D-058–D-060（§10）。全部 decision 的狀態以 [DECISIONS_AND_TBD](../DECISIONS_AND_TBD.md) 與 `planning/decisions.json` 為準。
 
 **數字與來源。** 本文件所有數值都是 **synthetic 示意值**：只為了讓 template 能執行並展示行為，不是任何工廠的實測值，也不是「典型值」。關於工廠資料與工程師期待的說法來自 agent 的研究稿（未提交、未經驗證），只當輸入，不當事實。
 
@@ -9,7 +9,7 @@
 - **流動單位**：一片板子（entity type `board`）；機櫃變體為一個機櫃（`rack`，§4.3）。P0 不做拼板／分板（合併與拆分，ADR-026 延後項目），一個 entity 就是一片板子。
 - **站別**：SMT → AOI → ICT → FCT → 燒機 → 包裝出貨，含測試失敗 → 除錯 → 重測，與無法修復時的報廢。
 - **代表問題**（PRD §2）：目前 ICT 測試機 2 台、FCT 3 台、FCT 前緩衝 10 片；增加 1 台 ICT 或加大緩衝時，UPH、瓶頸站、WIP、utilization、阻塞時間與重測比例如何改變。
-- **P0 包含**（皆 PROPOSED）：有限緩衝與阻塞、機台故障（有班表時只在上班時累積）、班表（含每班人數與例外日）、隨時間變化的投入（含整批投入表）、批次、換線與多產品（每個產品一個 source，D-055）、lognormal 與 Weibull（D-056）、模擬的通過比例、重測比例與報廢率（D-058）。Owner 的方向是盡量保留功能（H-017；它把換線與 lognormal／Weibull 列為 P0 提案，其餘原本延後的項目由 owner 決定，不批准任何 decision）。
+- **P0 包含**（H-018 批准）：有限緩衝與阻塞、機台故障（有班表時只在上班時累積）、班表（含每班人數與例外日）、隨時間變化的投入（含整批投入表）、批次、換線與多產品（每個產品一個 source，D-055）、lognormal 與 Weibull（D-056）、模擬的通過比例、重測比例與報廢率（D-058）。Owner 的方向是盡量保留功能（H-017；它把換線與 lognormal／Weibull 列為 P0 提案，其餘原本延後的項目由 owner 決定，不批准任何 decision）。
 - **P0 不做**：PRD 已列為 P1 的優先權與派工規則（含依產品分組的換線排序）、服務中斷（preemption）、進階 routing；另有 agent 為收斂而延後的項目（§9）。搬運以 delay node 近似；作業員技能不建模；跨步驟持有 resource 見 §4.3。
 
 ## 2. 站別與典型結構

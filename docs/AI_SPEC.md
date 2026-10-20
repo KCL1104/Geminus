@@ -1,6 +1,6 @@
 # AI Modeling / Scenario / Analyst Spec
 
-SOURCE：原報告 pp. 23–28、32–33、41–46。工程補充（皆已批准）：D-002 / D-004 / D-009 / D-010 / D-011 / D-014 / D-016 補足 server envelope、狀態、scenario persistence、可執行安全規則。Provider 已定為 Anthropic Claude API（H-001、D-018）；model／residency／retention 仍 TBD。
+SOURCE：原報告 pp. 23–28、32–33、41–46。工程補充（皆已批准）：D-002 / D-004 / D-009 / D-010 / D-011 / D-014 / D-016 補足 server envelope、狀態、scenario persistence、可執行安全規則。Provider 已定為 Anthropic Claude API（H-001、D-018）；示範用 model 為 Claude Opus 5.5，開發期每月 100 美元上限並另設每日上限，示範期只送 synthetic 資料與使用者輸入的文字（H-018）；Anthropic 端的 retention／residency 上線前查證，live AI 開啟的其餘條件見 T-053。
 
 ## 1. Authority boundary
 
