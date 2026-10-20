@@ -2946,7 +2946,8 @@
         "D-049",
         "D-050",
         "D-057",
-        "D-063"
+        "D-063",
+        "D-064"
       ],
       "scope": [
         "依批准的 decision 實作有限緩衝與阻塞（例如 blocking after service），上游被擋時保留 resource 並記阻塞時間；與既有 resource-wise FIFO、all-or-nothing bundle 的交互有明確 golden。decision gates：D-047、D-048、D-049、D-050、D-057（APPROVED，H-018）與 D-063（APPROVED，H-019）。",
@@ -2956,12 +2957,26 @@
       ],
       "planned_outputs": [
         "internal/simulation/engine/",
+        "internal/simulation/des/",
+        "internal/simulation/trace/",
+        "internal/model/validate/",
+        "internal/results/metrics/",
+        "internal/runs/",
+        "internal/ai/review/",
+        "internal/ai/aicontext/",
+        "prompts/scenario/",
         "testdata/simulation/",
-        "scripts/engine_reference.py"
+        "scripts/engine_reference.py",
+        "scripts/simpy_reference.py",
+        "scripts/check-architecture/",
+        "checks/T-047_VALIDATION.md"
       ],
       "spec_refs": [
         "docs/SIMULATION_SPEC.md",
-        "testdata/simulation/expected-cases.json"
+        "docs/TWIN_IR_SPEC.md",
+        "docs/adr/ADR-026-line-flow-primitives.md",
+        "testdata/simulation/expected-cases.json",
+        "testdata/simulation/blocking-goldens.json"
       ],
       "acceptance_tests": [
         "TEST-015",

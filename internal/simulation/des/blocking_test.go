@@ -305,3 +305,43 @@ func TestBlockingMemberKeys(t *testing.T) {
 		t.Fatal("no case lists member keys")
 	}
 }
+
+// TEST-019 with finite buffers: the stochastic reference cases (30
+// replications, blocking, rework, shared bundles) give the same Result and
+// trace bit for bit whatever the worker count; another seed gives another
+// digest.
+func TestBlockingDeterminism(t *testing.T) {
+	var doc struct {
+		Reference struct {
+			Cases []goldenCase `json:"cases"`
+		} `json:"reference"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/blocking-goldens.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Reference.Cases) < 4 {
+		t.Fatalf("%d reference cases", len(doc.Reference.Cases))
+	}
+	for _, c := range doc.Reference.Cases {
+		t.Run(c.ID, func(t *testing.T) {
+			in := caseInput(t, c)
+			in.Config.TraceLevel = simulation.TraceSampled
+			first := run(t, &Engine{Workers: 1}, in)
+			validResult(t, first.Result)
+			if first.Result.ReplicationSummaries[0].Blocking == nil || first.Trace == nil {
+				t.Fatal("no blocking member or no trace: not a finite-buffer run")
+			}
+			for _, workers := range []int{3, 8, 0} {
+				got := run(t, &Engine{Workers: workers}, in)
+				if !reflect.DeepEqual(got.Result, first.Result) || !reflect.DeepEqual(got.Trace, first.Trace) {
+					t.Fatalf("workers %d: a different result", workers)
+				}
+			}
+			other := in
+			other.Config.Seed++
+			if run(t, &Engine{}, other).Result.Reproducibility.ResultDigest == first.Result.Reproducibility.ResultDigest {
+				t.Error("another seed, the same digest")
+			}
+		})
+	}
+}
