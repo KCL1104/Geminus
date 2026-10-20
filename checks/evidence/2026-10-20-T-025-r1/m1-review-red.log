@@ -1,0 +1,40 @@
+=== RUN   TestInvalidKeepsNoProviderText
+=== RUN   TestInvalidKeepsNoProviderText/extra_member
+    clean_test.go:68: extra member: a invalid outcome keeps provider text: IR_SCHEMA_INVALID "/nodes/2" "members not allowed: PROVIDER_TEXT_MARKER visit http://evil.example"
+=== RUN   TestInvalidKeepsNoProviderText/pattern
+    clean_test.go:68: pattern: a invalid outcome keeps provider text: IR_SCHEMA_INVALID "/flows/0/to" "'PROVIDER_TEXT_MARKER with spaces' does not match pattern '^[A-Za-z][A-Za-z0-9_.:-]{0,127}$'"
+=== RUN   TestInvalidKeepsNoProviderText/wrong_test_value
+=== RUN   TestInvalidKeepsNoProviderText/forbidden_path
+    clean_test.go:68: forbidden path: a invalid outcome keeps provider text: PATCH_PATH_FORBIDDEN "/changes/0/path" "the AI edit allowlist does not include /views/2d/positions/PROVIDER_TEXT_MARKER"
+=== RUN   TestInvalidKeepsNoProviderText/scenario_path
+    clean_test.go:68: scenario path: a invalid outcome keeps provider text: PATCH_PATH_FORBIDDEN "/changes/0/path" "the scenario allowlist does not include /PROVIDER_TEXT_MARKER"
+=== RUN   TestInvalidKeepsNoProviderText/missing_target
+=== RUN   TestInvalidKeepsNoProviderText/duplicate_id
+=== RUN   TestInvalidKeepsNoProviderText/dangling_reference
+    clean_test.go:68: dangling reference: a invalid outcome keeps provider text: UNKNOWN_REFERENCE "/flows/0/to" "no node \"PROVIDER_TEXT_MARKER_node\""
+=== RUN   TestInvalidKeepsNoProviderText/enum
+=== RUN   TestInvalidKeepsNoProviderText/unknown_entity_type
+    clean_test.go:68: unknown entity type: a invalid outcome keeps provider text: UNKNOWN_REFERENCE "/nodes/0/entity_type" "no entity type \"PROVIDER_TEXT_MARKER\""
+=== NAME  TestInvalidKeepsNoProviderText
+    clean_test.go:78: invalid output: a invalid outcome keeps provider text: AI_OUTPUT_INVALID "/PROVIDER_TEXT_MARKER" "members not allowed: PROVIDER_TEXT_MARKER"
+    clean_test.go:78: invalid output: a invalid outcome keeps provider text: AI_OUTPUT_INVALID "/changes/0/value/PROVIDER_TEXT_MARKER/x" "PROVIDER_TEXT_MARKER"
+    clean_test.go:85: refused: a invalid outcome keeps provider text: DATASET_BINDING_INVALID "/dataset_bindings/0/PROVIDER_TEXT_MARKER" "stored snapshot is PROVIDER_TEXT_MARKER"
+    clean_test.go:85: refused: a invalid outcome keeps provider text: DATASET_BINDING_INVALID "/nodes/2/service_time/distribution/samples_ref" "dataset:PROVIDER_TEXT_MARKER has no dataset binding"
+    clean_test.go:90: a later warning: a ready outcome keeps provider text: DATASET_BINDING_INVALID "/x/PROVIDER_TEXT_MARKER" "PROVIDER_TEXT_MARKER"
+    clean_test.go:99: pack error: a invalid outcome keeps provider text: PACK_RULE "/nodes/2/PROVIDER_TEXT_MARKER" "node PROVIDER_TEXT_MARKER breaks a rule"
+    clean_test.go:104: pack warning: a ready outcome keeps provider text: PACK_RULE "/nodes/2/PROVIDER_TEXT_MARKER" "PROVIDER_TEXT_MARKER"
+--- FAIL: TestInvalidKeepsNoProviderText (0.06s)
+    --- FAIL: TestInvalidKeepsNoProviderText/extra_member (0.02s)
+    --- FAIL: TestInvalidKeepsNoProviderText/pattern (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/wrong_test_value (0.00s)
+    --- FAIL: TestInvalidKeepsNoProviderText/forbidden_path (0.00s)
+    --- FAIL: TestInvalidKeepsNoProviderText/scenario_path (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/missing_target (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/duplicate_id (0.00s)
+    --- FAIL: TestInvalidKeepsNoProviderText/dangling_reference (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/enum (0.00s)
+    --- FAIL: TestInvalidKeepsNoProviderText/unknown_entity_type (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.068s
+FAIL
+exit 1

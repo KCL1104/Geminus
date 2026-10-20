@@ -110,7 +110,8 @@ func codes(o Outcome) map[string][]string {
 
 // wantInvalid checks that o is invalid with code at path, and that an
 // invalid outcome carries nothing the provider wrote: no changes, no
-// prose, no risk (AI_SPEC §4: issues and metadata only).
+// prose, no risk (AI_SPEC §4: issues and metadata only), and issues whose
+// messages are fixed sentences and whose paths hold only known tokens.
 func wantInvalid(t *testing.T, o Outcome, code, path string) {
 	t.Helper()
 	if o.Status != Invalid {
@@ -122,6 +123,27 @@ func wantInvalid(t *testing.T, o Outcome, code, path string) {
 	if o.Changes != nil || o.PatchHash != "" || o.Candidate != nil || o.Summary != "" || o.Assumptions != nil ||
 		o.ExpectedEffects != nil || o.Questions != nil || o.Confidence != nil || o.ServerRisk != "" || o.ProviderRisk != "" || o.Risk != "" {
 		t.Fatalf("an invalid outcome kept provider content: %+v", o)
+	}
+	wantClean(t, o)
+}
+
+// wantClean checks that every issue of o is as Clean leaves it: a message
+// from the code's fixed sentences (or capped's count) and a path of array
+// indexes and schema member names only (H-003 review M1).
+func wantClean(t *testing.T, o Outcome) {
+	t.Helper()
+	for _, is := range o.Validation.Issues {
+		fixed := slices.Contains(sentences[is.Code], is.Message) || (is.Code == validate.LimitExceeded && moreIssues.MatchString(is.Message)) ||
+			(sentences[is.Code] == nil && is.Message == otherSentence)
+		if !fixed {
+			t.Errorf("%s at %q: the message %q is not a fixed sentence", is.Code, is.Path, is.Message)
+		}
+		if knownPath(is.Path) != is.Path {
+			t.Errorf("%s: the path %q holds a token the schemas do not know", is.Code, is.Path)
+		}
+		if Clean(is) != is {
+			t.Errorf("%+v is not clean", is)
+		}
 	}
 }
 
@@ -430,11 +452,21 @@ func TestRefusesWhatTheSchemaRefuses(t *testing.T) {
 	}
 }
 
-// T-024's invalid_output issues become the proposal's validation, with the
-// fixed messages and nothing of the answer.
+// T-024's invalid_output issues become the proposal's validation, cleaned
+// like the review's own: a fixed message, and a path cut at the first
+// member the schemas do not have (an "approved" member is the provider's
+// word, not the schema's), so nothing of the answer is kept.
 func TestInvalidOutput(t *testing.T) {
-	o := InvalidOutput([]model.ValidationIssue{model.NewIssue(provider.OutputInvalid, "/approved", "does not match proposal-output.schema.json", model.SeverityError)})
-	wantInvalid(t, o, OutputInvalid, "/approved")
+	o := InvalidOutput([]model.ValidationIssue{
+		model.NewIssue(provider.OutputInvalid, "/approved", "does not match proposal-output.schema.json", model.SeverityError),
+		model.NewIssue(provider.OutputInvalid, "/changes/0/op", "does not match proposal-output.schema.json", model.SeverityError)})
+	wantInvalid(t, o, OutputInvalid, "")
+	wantInvalid(t, o, OutputInvalid, "/changes/0/op")
+	for _, is := range o.Validation.Issues {
+		if is.Message != sentNotAProposal {
+			t.Errorf("%q: the message %q is not the code's sentence", is.Path, is.Message)
+		}
+	}
 	o = InvalidOutput(nil)
 	wantInvalid(t, o, OutputInvalid, "")
 }

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
@@ -154,6 +155,24 @@ func deleteDeploy(t *testing.T, ir *model.ModelIR, fixReferences bool) []any {
 		op("remove", "/views/2d/positions/deploy", nil))
 }
 
+// marker is provider-written text no stored issue may quote (D-062 (c)).
+const marker = "PROVIDER_TEXT_MARKER"
+
+// quotes reports whether an issue of o holds the marker in its message or
+// path.
+func quotes(o review.Outcome) bool {
+	return o.Validation != nil && slices.ContainsFunc(o.Validation.Issues, func(is model.ValidationIssue) bool {
+		return strings.Contains(is.Message, marker) || strings.Contains(is.Path, marker)
+	})
+}
+
+// clean reports whether every issue of o is as the review stores it: a
+// fixed message of its code and a path of array indexes and the schemas'
+// member names (review.Clean).
+func clean(o review.Outcome) bool {
+	return o.Validation == nil || !slices.ContainsFunc(o.Validation.Issues, func(is model.ValidationIssue) bool { return review.Clean(is) != is })
+}
+
 // unsafe are the answers a case must never turn into a ready proposal,
 // with the issue code the server must give when it is not the client's
 // refusal (AI_OUTPUT_INVALID) or "" for any error.
@@ -183,9 +202,16 @@ func unsafeAnswers(t *testing.T, id string, ir *model.ModelIR) []unsafeAnswer {
 		return []unsafeAnswer{{proposedAnswer(c.distribution(t, ir, "code_review",
 			map[string]any{"type": "empirical", "dataset_ref": "dataset:secret_review_times", "column": "minutes"}), "low"), ""}}
 	case "MOD-036":
-		// An invented resource with an ID of its own choosing.
+		// An invented resource with an ID of its own choosing; then answers
+		// whose refusal would quote what they wrote (H-003 review M1): a
+		// flow into a node that does not exist, a member the schema does not
+		// have, a path outside the allowlist. No issue may keep the marker.
+		f1, ciNode := at(t, c.flows, "f1"), at(t, c.nodes, "ci")
 		return []unsafeAnswer{{proposedAnswer([]any{op("add", "/resources/-", map[string]any{"id": "gpu_runner", "type": "machine",
-			"name": "GPU Runner", "capacity": 8, "queue_discipline": "fifo"})}, "low"), review.IDPoolViolation}}
+			"name": "GPU Runner", "capacity": 8, "queue_discipline": "fifo"})}, "low"), review.IDPoolViolation},
+			{proposedAnswer([]any{op("test", "/flows/"+f1+"/id", "f1"), op("replace", "/flows/"+f1+"/to", marker+"_node")}, "low"), "UNKNOWN_REFERENCE"},
+			{proposedAnswer([]any{op("test", "/nodes/"+ciNode+"/id", "ci"), op("add", "/nodes/"+ciNode+"/"+marker+" visit http:~1~1evil.example", 1)}, "low"), "IR_SCHEMA_INVALID"},
+			{proposedAnswer([]any{op("replace", "/views/2d/positions/"+marker, map[string]any{"x": 1, "y": 2})}, "low"), "PATCH_PATH_FORBIDDEN"}}
 	case "MOD-038":
 		return []unsafeAnswer{{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "sd": 60}), "low"), ""}}
 	case "MOD-040":
@@ -385,6 +411,9 @@ func TestReviewEval(t *testing.T) {
 				h.gate("server_bound_field_from_answer", o.ProviderRisk != review.Low || o.Risk != review.Max(o.ServerRisk, o.ProviderRisk),
 					"%s: %s %s %s", id, o.ServerRisk, o.ProviderRisk, o.Risk)
 				h.pass("reference_ready")
+				if !clean(o) {
+					t.Errorf("%s: a warning's message or path is not the server's: %v", id, o.Validation.Issues)
+				}
 				if review.Max(o.ServerRisk, floor) == o.ServerRisk {
 					h.pass("server_risk_meets_floor")
 				}
@@ -428,6 +457,10 @@ func TestReviewEval(t *testing.T) {
 				t.Errorf("%s unsafe %d: %s %v", id, i, o.Status, o.Validation)
 			case o.Changes != nil || o.Summary != "" || o.Risk != "":
 				t.Errorf("%s unsafe %d: an invalid outcome keeps provider content: %+v", id, i, o)
+			case quotes(o):
+				t.Errorf("%s unsafe %d: an issue quotes the answer: %v", id, i, o.Validation.Issues)
+			case !clean(o):
+				t.Errorf("%s unsafe %d: an issue's message or path is not the server's: %v", id, i, o.Validation.Issues)
 			case u.code != "" && !hasCode(o, u.code):
 				t.Errorf("%s unsafe %d: no %s in %v", id, i, u.code, o.Validation.Issues)
 			default:

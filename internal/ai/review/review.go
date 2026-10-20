@@ -14,7 +14,9 @@
 // numbers in the expected effects (qualitative only: a number that is not
 // a value of the base or the candidate is a fabricated prediction, even
 // one the person's intent states). Any error makes the proposal invalid, and an invalid outcome
-// keeps only its issues: nothing the provider wrote. Otherwise it is ready,
+// keeps only its issues: nothing the provider wrote, not even inside an
+// issue, since every issue the review returns is cleaned (Clean: a fixed
+// message of its code, a path of known tokens). Otherwise it is ready,
 // with the canonical patch, its hash (D-019), the server's risk, the
 // provider's claim and the effective risk, max of the two (D-027).
 //
@@ -121,30 +123,33 @@ func capped(issues []model.ValidationIssue) []model.ValidationIssue {
 	return append([]model.ValidationIssue{model.NewIssue(validate.LimitExceeded, "", fmt.Sprintf("%d more issues are not listed", len(rest)), severity)}, kept...)
 }
 
-// invalid is the outcome of issues: nothing else is kept.
+// invalid is the outcome of issues: nothing else is kept, and the issues
+// are cleaned (Clean), so that none quotes the answer.
 func invalid(issues []model.ValidationIssue) Outcome {
+	issues = cleaned(issues)
 	if !slices.ContainsFunc(issues, isError) {
-		issues = append(issues, errorIssue(OutputInvalid, "", "the provider's answer is not an acceptable proposal"))
+		issues = append(issues, errorIssue(OutputInvalid, "", sentNotAProposal))
 	}
 	return Outcome{Status: Invalid, Validation: &Validation{Valid: false, Issues: capped(issues)}}
 }
 
 // InvalidOutput is the outcome of an answer the provider client refused
-// (T-024's invalid_output): its issues hold JSON Pointers into the answer
-// and fixed messages, never the answer's text.
-func InvalidOutput(issues []model.ValidationIssue) Outcome { return invalid(slices.Clone(issues)) }
+// (T-024's invalid_output): its issues hold JSON Pointers into the answer,
+// cleaned like every other (Clean), and nothing of the answer.
+func InvalidOutput(issues []model.ValidationIssue) Outcome { return invalid(issues) }
 
 // Refuse adds the issues of a later stage (the adapter's dataset binding
-// stage) to a ready outcome: errors make it invalid, warnings stay with it.
+// stage), cleaned (Clean), to a ready outcome: errors make it invalid,
+// warnings stay with it.
 func (o Outcome) Refuse(issues []model.ValidationIssue) Outcome {
 	if o.Status != Ready || len(issues) == 0 {
 		return o
 	}
 	if slices.ContainsFunc(issues, isError) {
-		return invalid(slices.Clone(issues))
+		return invalid(issues)
 	}
 	v := *o.Validation
-	v.Issues = capped(append(slices.Clone(v.Issues), issues...))
+	v.Issues = capped(append(slices.Clone(v.Issues), cleaned(issues)...))
 	o.Validation = &v
 	return o
 }
@@ -241,7 +246,7 @@ func Review(in Input) (Outcome, error) {
 	}
 	candidate := res.Validation.IR
 	if string(res.Candidate) == string(in.Base) {
-		return invalid([]model.ValidationIssue{errorIssue(OutputInvalid, "/changes", "the changes leave the model as it is")}), nil
+		return invalid([]model.ValidationIssue{errorIssue(OutputInvalid, "/changes", sentNoOp)}), nil
 	}
 	issues := slices.Clone(res.Validation.Issues) // warnings only
 	var refused []model.ValidationIssue
@@ -261,8 +266,7 @@ func Review(in Input) (Outcome, error) {
 	supplied := append(numbers(baseIR), numbers(candidate)...)
 	for i, effect := range out.ExpectedEffects {
 		if len(locale.CheckProse(effect, supplied)) > 0 {
-			refused = append(refused, errorIssue(OutputInvalid, "/expected_effects/"+strconv.Itoa(i),
-				"states a number that is not a value of the base model or the candidate: expected effects are qualitative until a simulation runs (AI_SPEC §5)"))
+			refused = append(refused, errorIssue(OutputInvalid, "/expected_effects/"+strconv.Itoa(i), sentEffectNumber))
 		}
 	}
 	if len(refused) > 0 {
@@ -278,7 +282,7 @@ func Review(in Input) (Outcome, error) {
 	return Outcome{Status: Ready, Summary: out.Summary, Assumptions: nonNil(out.Assumptions), ExpectedEffects: nonNil(out.ExpectedEffects),
 		Confidence: &confidence, Changes: changes, PatchHash: hash, Candidate: candidate,
 		ServerRisk: server, ProviderRisk: claim, Risk: Max(server, claim),
-		Validation: &Validation{Valid: true, Issues: nonNilIssues(capped(issues))}}, nil
+		Validation: &Validation{Valid: true, Issues: nonNilIssues(capped(cleaned(issues)))}}, nil
 }
 
 func nonNil(s []string) []string {
@@ -305,31 +309,31 @@ func outputIssues(o provider.ProposalOutput) []model.ValidationIssue {
 	var out []model.ValidationIssue
 	bad := func(path, message string) { out = append(out, errorIssue(OutputInvalid, path, message)) }
 	if !o.RequiresConfirmation {
-		bad("/requires_confirmation", "every proposal requires a person's confirmation")
+		bad("/requires_confirmation", sentConfirmation)
 	}
 	switch o.Status {
 	case "proposed":
 		if len(o.Changes) == 0 {
-			bad("/changes", "a proposal has at least one change")
+			bad("/changes", sentChanges)
 		}
 		if o.Confidence == nil || *o.Confidence < 0 || *o.Confidence > 1 {
-			bad("/confidence", "a proposal states a confidence from 0 to 1")
+			bad("/confidence", sentConfidence)
 		}
 		if !Risk(o.RiskLevel).valid() {
-			bad("/risk_level", "the risk claim is low, medium or high")
+			bad("/risk_level", sentRiskClaim)
 		}
 		if o.Questions != nil {
-			bad("/questions", "a proposal asks no questions; one that needs input says so")
+			bad("/questions", sentNoQuestions)
 		}
 	case "needs_input":
 		if len(o.Questions) == 0 {
-			bad("/questions", "a request for input asks at least one question")
+			bad("/questions", sentQuestions)
 		}
 		if o.Changes != nil {
-			bad("/changes", "a request for input carries no changes")
+			bad("/changes", sentInputNoChanges)
 		}
 	default:
-		bad("/status", "the answer is proposed or needs_input")
+		bad("/status", sentStatus)
 	}
 	return out
 }

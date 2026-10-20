@@ -1,0 +1,31 @@
+=== RUN   TestInvalidKeepsNoProviderText
+=== RUN   TestInvalidKeepsNoProviderText/pattern
+=== RUN   TestInvalidKeepsNoProviderText/forbidden_path
+=== RUN   TestInvalidKeepsNoProviderText/missing_target
+=== RUN   TestInvalidKeepsNoProviderText/unknown_entity_type
+=== RUN   TestInvalidKeepsNoProviderText/extra_member
+=== RUN   TestInvalidKeepsNoProviderText/enum
+=== RUN   TestInvalidKeepsNoProviderText/wrong_test_value
+=== RUN   TestInvalidKeepsNoProviderText/scenario_path
+=== RUN   TestInvalidKeepsNoProviderText/duplicate_id
+=== RUN   TestInvalidKeepsNoProviderText/dangling_reference
+--- PASS: TestInvalidKeepsNoProviderText (0.05s)
+    --- PASS: TestInvalidKeepsNoProviderText/pattern (0.02s)
+    --- PASS: TestInvalidKeepsNoProviderText/forbidden_path (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/missing_target (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/unknown_entity_type (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/extra_member (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/enum (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/wrong_test_value (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/scenario_path (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/duplicate_id (0.00s)
+    --- PASS: TestInvalidKeepsNoProviderText/dangling_reference (0.00s)
+=== RUN   TestClean
+--- PASS: TestClean (0.00s)
+=== RUN   TestEveryCodeHasASentence
+--- PASS: TestEveryCodeHasASentence (0.00s)
+=== RUN   TestInvalidOutput
+--- PASS: TestInvalidOutput (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.063s
+exit 0
