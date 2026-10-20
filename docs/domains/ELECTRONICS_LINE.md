@@ -224,7 +224,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 
 ## 6. Station event log 的 canonical fields（import mapping）
 
-兩種紀錄。對應的 canonical-event 欄位中，`end_timestamp`、`shift` 與 `product` 是 D-059 提議新增的 optional 欄位（尚未改 schema）。
+兩種紀錄。對應的 canonical-event 欄位中，`end_timestamp`、`shift` 與 `product` 是 D-059 新增的 optional 欄位（T-046 phase 2 已加入 `canonical-event.schema.json`；fixtures `valid-canonical-event-station.json`、`valid-canonical-event-downtime.json`；mapping 的 target field 尚未加入，見 TWIN_IR_SPEC §7）。
 
 **作業紀錄**（一片板子在一站的一次作業或測試）：
 
@@ -292,7 +292,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 **選項。**
 - A：新增 optional interface（例如 `ModelMetricsProvider`：`ComputeModelMetrics(ir, result)`，ir 為 engine 實際執行的 effective IR），比照 `TemplateProvider`，DomainPack 的 method set 不變；pack 的指標寫入 Result 新的 optional `metrics.domain` map（空時省略），`metrics.dora` 不動（Software Delivery 的結果與 digest 不變）；Result 另有下列 generic 成員，只在模型用到對應功能時出現（D-047），pack 只由它們與 IR 計算 §5 的指標；FPY 是模型輸入，不是 run 結果。後果：既有模型的結果不變；指標在 result_digest 中，analyst 可以引用；generic kernel 仍不讀 domain 屬性。
 
-  **每個 replication、每個 resource**（review M3；`replication_summaries[i].resource_states[<resource ID>]`，名稱於 schema 階段定案；值為 [W, H] 內的整數 tick 積分或次數）：
+  **每個 replication、每個 resource**（review M3；`replication_summaries[i].resource_states[<resource ID>]`，名稱已於 T-046 phase 2 定案（`simulation.schema.json#/$defs/ResourceState`，每組成員以 `dependentRequired` 同時出現）；值為 [W, H] 內的整數 tick 積分或次數）：
 
   | 成員 | 內容 | 出現條件 |
   |---|---|---|
@@ -306,7 +306,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 
   沒有任何功能的 resource 不出現在 `resource_states`：其處理＝utilization、閒置＝1−utilization，pack 由現行 `resource_utilization` 得出。
 
-  **每個 replication、每個 node**：`replication_summaries[i].blocking[<node ID>]`（模型有有限 buffer 時，對可能被擋的 node）：阻塞次數、完整阻塞的次數與總 tick、∫被擋 entity 數；`replication_summaries[i].batches[<process ID>]`（批次 process）：開始的批數與成員總數。
+  **每個 replication、每個 node**：`replication_summaries[i].blocking[<node ID>]`（模型有有限 buffer 時，對可能被擋的 node）：阻塞次數、完整阻塞的次數與總 tick、∫被擋 entity 數（`blocks_started`、`blocks_completed`、`completed_block_ticks`、`blocked_entity_ticks`）；`replication_summaries[i].batches[<process ID>]`（批次 process）：開始的批數與成員總數（`batches_started`、`members_started`）。T-046 phase 2 另依 D-049 的統計清單加入 `replication_summaries[i].buffers[<queue ID>].full_ticks`（有限 buffer 滿的 tick 數，D-063 (b)）。
 
   **宣告式 generic metrics**（只在 IR `metrics[]` 宣告時計算；`metrics.additional_metrics[<metric id>]` 為跨 replication 的 summary，`replication_summaries[i].declared[<metric id>]` 為每個 replication 的值）：`system_wip`（∫Nsys／T）、`flow_count`（指定 flow 在視窗內的通過次數）、`sink_count`（指定 sink 的進入件數，含 abandoned）、`period_throughput`（指定 period 的每期 completed 件數陣列，視窗須為整數期）。這三種計數是 agent 依 H-017 的方向新增的建議（原本延後，待 owner 決定）。細則（review N5）：`flow_count` 在路由解析時計數，與 routing draw 及 failure／rework observation 同時（D-049），之後該 entity 被擋不影響計數；`period_throughput` 的期從 W 起算，H−W 不是 period 的整數倍時 unavailable（reason 暫定 `WINDOW_NOT_WHOLE_PERIODS`）；宣告的 metric ID 不得與內建的 `additional_metrics` key（例如 `replication_mean_lead_time_minutes`）相同，validator 回 `DUPLICATE_ID`（path `/metrics/<i>/id`）。IR `metrics[]` 其餘既有類型與 Result 的對應仍屬 T-029（CB-22）。
 

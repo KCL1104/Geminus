@@ -18,9 +18,9 @@
 
 ## Decision（提案）
 
-新增下列 generic primitive，全部是 IR 的 optional 欄位，缺欄位時語義與現行完全相同。欄位名稱為提案，於 T-046 phase 2 的 schema 變更中定案。
+新增下列 generic primitive，全部是 IR 的 optional 欄位，缺欄位時語義與現行完全相同。欄位名稱已於 T-046 phase 2 的 schema 變更中定案（下表；完整形狀見 TWIN_IR_SPEC §2.1，Result 與 trace 成員見 SIMULATION_SPEC §5、§9），schema_version 維持 `0.1`。T-047–T-051 實作前，用到任何一個的模型由 validator 與 engine 以 `PRIMITIVE_NOT_SUPPORTED` 拒絕（D-063 PROPOSED）。
 
-| Primitive | IR（提案） | 摘要 | Decision | 實作 |
+| Primitive | IR | 摘要 | Decision | 實作 |
 |---|---|---|---|---|
 | 相容性與驗證方法 | — | optional 欄位、schema_version 維持 0.1、Result 新成員只在用到時出現、每個 kernel 任務升 engine_version minor、凍結舊 kernel 做 differential | D-047 | T-047–T-050 |
 | 同 tick 順序 | — | 新增 priority 15（故障、修復、班表容量變化、批次逾時）；解除阻塞在 dispatch 內 | D-048 | T-047–T-050 |
@@ -101,7 +101,7 @@
 - **不變量**：P 有 blocked entity ⇒ P 的占用數＝capacity（事件邊界上）；新到的 entity 遇到已滿的 buffer 一律排在既有 blocked entity 之後。
 - **與 FIFO 和 bundle**：blocked entity 不在 P 的 resource FIFO 中占位置；它持有的 unit 對任何 request（包括出發 process 自己的）都不可用；P 的授予仍是 all-or-nothing，D-038 (m) 的「FIFO 擋住」照舊。
 - **Source**：投入時刻不因阻塞改變（arrival stream 照常），entity 在 source 等待；lead time 由 arrival 起算，所以含 backlog 時間；backlog 另有自己的統計。
-- **統計**（只在模型有有限 buffer 時出現，名稱於 schema 階段定案）：每個可能被擋的 node 的阻塞次數、完整阻塞時間的平均（W ≤ 開始、結束 ≤ H）、被擋 entity 數的時間平均；每個 resource 被 blocked entity 持有的 unit 時間比例 ∫K(t)dt/(C·T)；每個有限 buffer 滿的時間比例。既有 `utilization_mean` 定義不變（∫in_use/(C·T)，含被擋住的 unit）。
+- **統計**（只在模型有有限 buffer 時出現；T-046 phase 2 定名為每個 replication 的 `blocking[<node>]`（`blocks_started`、`blocks_completed`、`completed_block_ticks`、`blocked_entity_ticks`）、`resource_states[<resource>].blocked_ticks` 與 `buffers[<queue>].full_ticks`，SIMULATION_SPEC §5）：每個可能被擋的 node 的阻塞次數、完整阻塞時間的平均（W ≤ 開始、結束 ≤ H）、被擋 entity 數的時間平均；每個 resource 被 blocked entity 持有的 unit 時間比例 ∫K(t)dt/(C·T)；每個有限 buffer 滿的時間比例。既有 `utilization_mean` 定義不變（∫in_use/(C·T)，含被擋住的 unit）。
 
 **決定性與 digest。** 新增 Blocked、Unblocked observation，只出現在有有限 buffer 的模型；「先解析、後釋放」只改變內部步驟，不會被擋時 observation 順序與現行相同。
 
@@ -351,7 +351,7 @@ Owner 的方向同 D-055（H-017 把 lognormal／Weibull 列為 P0 提案）：�
 
 ## Consequences
 
-- **批准後的 contract 變更（T-046 phase 2）**：`model-ir.schema.json`（queue `capacity`；resource `breakdowns`、`calendar_id`、`shift_capacity`、`setups`；根層 `calendars`（含 shift `label` 與 `exceptions`）；source `arrival.schedule`（rate 型與 table 型）；process `batch`；distribution 的 `lognormal` 與 `weibull`；`metrics[]` 的 `system_wip`、`flow_count`、`sink_count`、`period_throughput`，D-058）；`canonical-event.schema.json`（D-059）；`simulation.schema.json`（Result 的 optional 新成員與每個 replication 的 resource 狀態積分（D-058）、trace 的新事件類型、run failure 的 `SIMULATION_DEADLOCK`／`SIMULATION_STALLED`）；validator codes（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`、`SETUP_INVALID`、`STALL_RISK`（error；A′ 時為 warning），以及 `RESOURCE_REQUIREMENT_INVALID` 的 D-050 R3 規則）與 D-023 的排序；patch allowlist（D-057）；valid／invalid fixtures；`make ts-contracts`。
+- **批准後的 contract 變更（T-046 phase 2；已完成，待 review，見 checks/T-046_PHASE2_VALIDATION.md）**：`model-ir.schema.json`（queue `capacity`；resource `breakdowns`、`calendar_id`、`shift_capacity`、`setups`；根層 `calendars`（含 shift `label` 與 `exceptions`）；source `arrival.schedule`（rate 型與 table 型）；process `batch`；distribution 的 `lognormal` 與 `weibull`；`metrics[]` 的 `system_wip`、`flow_count`、`sink_count`、`period_throughput`，D-058）；`canonical-event.schema.json`（D-059）；`simulation.schema.json`（Result 的 optional 新成員與每個 replication 的 resource 狀態積分（D-058）、trace 的新事件類型、run failure 的 `SIMULATION_DEADLOCK`／`SIMULATION_STALLED`）；validator codes（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`、`SETUP_INVALID`、`STALL_RISK`（error；A′ 時為 warning），以及 `RESOURCE_REQUIREMENT_INVALID` 的 D-050 R3 規則）與 D-023 的排序；patch allowlist（D-057）；valid／invalid fixtures；`make ts-contracts`。Phase 2 的做法：上述 codes 進入 ValidationCode 目錄（含 en／zh-Hant 字串），規則本身與它們在 D-023 中的位置寫在 TWIN_IR_SPEC §4（R1 在 graph rules 階段；R2–R4 在 distribution／domain semantics 之後新設的 bundle feasibility 階段），由 T-047–T-050 實作；`testdata/contracts/semantic-*.json` 的 16 個手推 fixture 先固定它們的 code 與 path。Kernel 支援前的 fail closed 需要新的 code `PRIMITIVE_NOT_SUPPORTED` 與 schema 之後的 primitive support 階段，另立 D-063（PROPOSED，待 owner）；phase 2 中其他由 agent 選定、批准文字沒有寫到的 contract 細節也列在 D-063。
 - **Engine**：T-047–T-050 各升一次 engine_version minor（des-go-0.2.0 起）；鎖定檔不重新產生；凍結的舊 kernel 保留在 test 中；`make simulation-reference-test` 由 SimPy reference 取代（SimPy 的版本與授權在引入時固定並記入 THIRD_PARTY_NOTICES，不用 floating latest）。
 - **效能**：解除阻塞在 dispatch 內連鎖、每個 unit 的故障事件與班表事件增加事件數，D-050 的檢查與 held candidate 數成正比；全部計入 event budget，T-037 的 benchmark 需涵蓋代表性的產線模型。
 - **PRD 已列為 P1、維持 P1**：preemption（故障、交班與換線的中斷）、優先權與派工規則（含依產品分組的換線排序）、進階 routing、connectors（MES／CFX 等）。

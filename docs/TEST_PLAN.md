@@ -58,6 +58,8 @@ schema / docs / task DAG checks 是第零層 specification hygiene，不等於�
 
 range 003 等指 REQ-003。planning/traceability.csv 提供完整 ID 對照；test row 是驗收要求，不是聲稱已存在產品測試實作。
 
+T-046 phase 2（ADR-026 的 contract）對 TEST-001／002／034 的延伸：產線流動成員的 schema 正反例（每個反例釘在它的 path）；16 個 `layer: semantic` 的手推 fixture 固定 R1–R4、班表、投入、批次、換線規則的 code 與 path；kernel 支援前，用到任何新成員的模型只回 `PRIMITIVE_NOT_SUPPORTED`（validator 與 engine Compile 各自檢查，D-063 PROPOSED），沒有新成員的模型的 model_hash、validator 結果、Result bytes 與鎖定的 digest 都不變（D-047）。這些不是 TEST-034 的 kernel 驗收；T-047–T-050 解除 gate 時要讓同一批 fixture 回期望的 code，並加上各自的 golden、differential 與 SimPy reference。
+
 ## 3. AI eval corpus / scoring
 
 modeler.jsonl 初始50個有不同語義的 intents，mapper/analyst 另有 adversarial cases。每例包含 context fixture、mode、expected outcome/effects、forbidden effects、risk floor。比較 semantic patch effect，不要求所有 legitimate JSON Patch 使用同一 array index 編碼；允許额外安全 test op，但 business mutation 數量仍要符合要求。

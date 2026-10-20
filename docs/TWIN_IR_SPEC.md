@@ -4,7 +4,7 @@ SOURCE：原報告 pp. 5–6、14–20、24–25、31–35。完整 closed-objec
 
 ## 1. 唯一 canonical representation
 
-`schemas/model-ir.schema.json` 是 IR v0.1 的 source of truth，採 JSON Schema Draft 2020-12。IR 保留原報告的 arrays：entity_types、nodes、flows、resources、constraints、metrics；不能為了 UI 或 patch 方便而擅自改成 dictionaries。IDs 表示 identity；array index 不是穩定 identity。
+`schemas/model-ir.schema.json` 是 IR v0.1 的 source of truth，採 JSON Schema Draft 2020-12。IR 保留原報告的 arrays：entity_types、nodes、flows、resources、constraints、metrics；不能為了 UI 或 patch 方便而擅自改成 dictionaries。IDs 表示 identity；array index 不是穩定 identity。T-046 phase 2 另加 optional 的根層 `calendars` array（D-052，§2.1）。
 
 schema_version、model_id、domain、name、time_unit 及 views 為根層欄位。metadata 與 domain_attributes 是不可信資料容器，不是程式碼或 expression。closed objects 拒絕未知欄位；metadata 例外，但仍受深度／大小及 redaction 限制。原報告的「最小 IR」有空 nodes/flows，它只是 shape 示意，不是可執行模型；可執行模型須通過下述 semantic validation。
 
@@ -49,9 +49,25 @@ resource 的 type 保留 human / machine / generic；capacity 為正整數；que
 
 requires 每項為 {resource_id,units}。同一 process 不可重複列同一 resource；units≤capacity。capacity=0、負值、非整數、unknown resource 一律 invalid，不以無限等待替代 validation。
 
+### 2.1 產線流動的 optional 成員（ADR-026、D-049–D-058；T-046 phase 2）
+
+Schema 已接受下列成員，全部 optional；沒有它們的模型與上面的 P0 行為完全相同（D-047：schema_version 維持 `0.1`，Go 型別不輸出缺少的成員，既有 fixtures 重新 encode 後 model_hash 不變）。**在對應的實作任務完成之前，validator 以 `PRIMITIVE_NOT_SUPPORTED`（error）拒絕任何用到它們的模型，engine 的 Compile 也各自拒絕（D-063 PROPOSED，§4）**，所以這樣的模型不能 publish、不能建立 scenario、不能執行，也不會被當作沒有這些成員而模擬。
+
+| 成員 | 位置與形狀 | Decision | 實作與解除 gate |
+|---|---|---|---|
+| `capacity` | queue node；整數 1–100000；缺＝無限 | D-049 | T-047 |
+| `breakdowns` | resource：`{time_to_failure: {distribution}, time_to_repair: {distribution}}` | D-051 | T-048 |
+| `lognormal`、`weibull` | distribution：`{type: lognormal, mean, cv}`、`{type: weibull, shape, scale}`；schema 只要求 > 0，候選範圍（cv ≤ 10、0.1 ≤ shape ≤ 20）屬 DISTRIBUTION_INVALID | D-056 | T-048 |
+| `calendars` | 根層 array（1–100 個）：`{id, name?, period, shifts: [{start, end, label?}] (1–100), exceptions?: [{start, end, open}] (1–100)}`，時間以 model time_unit 表示、從 t=0 起、沒有時區 | D-052 | T-049 |
+| `calendar_id`、`shift_capacity` | resource：calendar 的 ID；`shift_capacity` 為 shift label → 0..100000 的 object（1–100 個 label），只能與 `calendar_id` 一起出現 | D-052 | T-049 |
+| `arrival.schedule` | source：與 `arrival.distribution` 二擇一；`{process: poisson｜deterministic, period, segments: [{start, rate}] (1–1000)}` 或 `{process: table, period, releases: [{at, quantity 1–10000}] (1–1000)}` | D-053 | T-049 |
+| `batch` | process：`{min_size, max_size}`（1–10000）與 optional 的 `max_wait`（model time_unit） | D-054 | T-050 |
+| `setups` | resource：`{initial?, default?, transitions?: [{from, to, distribution}] (1–9900)}`，`default` 與 `transitions` 至少一個 | D-055 | T-050 |
+| `metrics[]` 的 `system_wip`、`flow_count`（`flow_id`）、`sink_count`（`sink_id`）、`period_throughput`（`period`） | 宣告式 generic 指標，只在宣告時計算 | D-058 | T-051 |
+
 ## 3. Distributions / units
 
-P0 僅 constant(value)、exponential(mean)、triangular(min,mode,max)、empirical(samples_ref)。lognormal、calendar-dependent、mixtures 為 P1（lognormal 與 Weibull 依 D-056 提前到 P0：APPROVED，H-018，實作於 T-048）。
+P0 僅 constant(value)、exponential(mean)、triangular(min,mode,max)、empirical(samples_ref)。lognormal、calendar-dependent、mixtures 為 P1（lognormal 與 Weibull 依 D-056 提前到 P0：APPROVED，H-018，實作於 T-048；schema 自 T-046 phase 2 起接受 `lognormal(mean, cv)` 與 `weibull(shape, scale)`，T-048 之前以 PRIMITIVE_NOT_SUPPORTED 拒絕，§2.1）。
 
 Schema 驗型別與非負值；semantic validator 另驗 min≤mode≤max、finite numbers、empirical 可解析且非空、unit 可轉換。interarrival 必須嚴格正值；zero service/delay 可以存在，但可達的 zero-time cycle 不能執行。時間換算和 rounding 由 SIMULATION_SPEC 固定。
 
@@ -59,7 +75,7 @@ APPROVED D-017：day 在 P0 是連續 24 小時。報告 example mean=16 min 在
 
 ## 4. Semantic validation order
 
-執行與資料修改之前依序驗：JSON parse（拒 duplicate keys / NaN / Infinity）→JSON Schema→limits→ID uniqueness→references→graph rules→distribution/domain semantics→constraint checks→dataset bindings→scenario/patch policy→risk classification。invalid 回 issue code、JSON Pointer path、severity/message。
+執行與資料修改之前依序驗：JSON parse（拒 duplicate keys / NaN / Infinity）→JSON Schema→primitive support（T-046 phase 2，D-063 PROPOSED）→limits→ID uniqueness→references→graph rules→distribution/domain semantics→bundle feasibility（D-050 的 R2–R4，T-048／T-049 起）→constraint checks→dataset bindings→scenario/patch policy→risk classification。invalid 回 issue code、JSON Pointer path、severity/message。
 
 | Code family | 驗證 |
 |---|---|
@@ -78,8 +94,19 @@ APPROVED D-017：day 在 P0 是連續 24 小時。報告 example mean=16 min 在
 | LIMIT_EXCEEDED | D-029 上限：文件 >2 MiB、metadata／domain_attributes 深度 >8 或 canonical（RFC 8785）形式 >16 KiB（不受空白影響）、分布參數換算超過 365 天、pointer 超過 32 層 |
 | UNREACHABLE_NODE | **warning**：沒有 source 能到達的 dormant node，不阻擋 publish |
 | DOMAIN_MISMATCH | DomainPack 階段：IR 的 `domain` 不是該 pack 的 domain（REQ-003 fail closed；未註冊的 domain 由 `domainpack.Registry` 回 unsupported） |
+| PRIMITIVE_NOT_SUPPORTED | **error**，primitive support 階段（D-063 PROPOSED）：模型用到本 build 尚未實作的產線流動成員（§2.1）；path 為該成員，message 固定、不引用模型內容 |
+| BLOCKING_CYCLE | graph rules 階段（D-050 R1）：阻塞相依圖投影到共用 resource 分量後有 cycle；path 為 cycle 上每個有限 queue 的 `/nodes/<i>/capacity` |
+| CALENDAR_INVALID | distribution/domain semantics 階段（D-052）：period 不在 (0, 365 天]、shifts 未排序／重疊／超出 period、量化後不嚴格遞增、例外日未排序／重疊／超出 365 天、`shift_capacity` 的 label 不在該 calendar 或值超過 capacity（path 為出錯的 `/calendars/<c>/period`、`/calendars/<c>/shifts/<k>`、`/calendars/<c>/exceptions/<k>` 或 `/resources/<r>/shift_capacity/<label>`）；bundle feasibility 階段（D-050 R2）：所有 period 的最小公倍數 > 365 天（path `/calendars`），或 bundle 在 [0, L) 中沒有任何 tick 湊得齊（path `/nodes/<i>/requires`） |
+| RELEASE_SCHEDULE_INVALID | distribution/domain semantics 階段（D-053）：period 不在 (0, 365 天]；rate 型的第一段 start≠0、start 不嚴格遞增或 ≥ period、rate 全為 0 或超過每 tick 1 件；table 型的 `at` 不嚴格遞增或不在 [0, period) |
+| BATCH_INVALID | distribution/domain semantics 階段（D-054）：min_size > max_size；min_size < max_size 卻沒有 max_wait（path `/nodes/<i>/batch`）；有限 buffer 的 capacity 小於 max_size（path `/nodes/<i>/batch/max_size`） |
+| SETUP_INVALID | distribution/domain semantics 階段（D-055）：transition 的 from＝to 或 (from, to) 重複（path 該 transition）；有 setups 的 resource 在 requires 中 units≠1、一個 process 需要兩個有 setups 的 resource、批次 process 需要有 setups 的 resource（path 該 requirement） |
+| STALL_RISK | **error**（D-050 採 A），bundle feasibility 階段（D-050 R4）：bundle 中會故障的 resource 上班時，其他 resource 有 tick 不夠；path `/nodes/<i>/requires`，message 建議給它夥伴的 calendar |
+
+T-046 phase 2 對既有 code 的延伸（規則在各自的任務實作）：RESOURCE_REQUIREMENT_INVALID 加入 D-050 R3（bundle feasibility 階段；對有 breakdowns 的 resource 的 request units≠1，path `/nodes/<i>/requires/<k>/units`；一個 bundle 有兩個以上有 breakdowns 的 resource，path `/nodes/<i>/requires`）；DISTRIBUTION_INVALID 加入 lognormal／Weibull 的參數範圍（D-056）與 TTF 可能為 0 tick（D-051，path 為該 distribution）；UNKNOWN_REFERENCE 加入 `calendar_id`、setups 的 entity type、metric 的 `flow_id`／`sink_id`；DUPLICATE_ID 加入 calendar ID 與宣告式 metric ID 等於內建 `additional_metrics` key（D-058，path `/metrics/<i>/id`）；LIMIT_EXCEEDED 照 D-029 涵蓋所有分布參數，包括 resource 中的分布（D-056 原文對 mean／scale 超過 365 天寫 DISTRIBUTION_INVALID，與 D-029 不一致，見 D-063 (c)）。`testdata/contracts/semantic-*.json` 中標 `layer: semantic` 的 16 個 fixture 是這些規則的手推期望（code 與 path）；gate 未解除前 Go 測試要求它們只回 PRIMITIVE_NOT_SUPPORTED，解除後要求回期望的 code 與 path（`TestAgreesWithSharedFixtures`）。
 
 APPROVED D-023（實作於 `internal/model/validate`，T-004）：同一階段收集全部 issue，該階段有 error 就不進下一階段；issues 依 JSON Pointer 排序再依 code、message、severity；token 中只有 RFC 6901 array index 形式（`0` 或不以 0 開頭的數字串）以數值比較（任意長度、不溢位）並排在其他 token 之前，其餘逐 byte 比較，因此順序是全序、與發現順序無關。T-004 的實作解讀（需 owner 確認時可另立決策）：(1) 任何 source 經 p>0 flow 能到達、卻無法到達 sink 的 node 都回 NO_REACHABLE_SINK，不只檢查 source 本身；(2) 指向 source 的 flow 回 ROUTING_INVALID，因為 source 不接收 entity；(3) metric／constraint 只檢查引用存在，不檢查被引用 node 的類型。D-033：zero-time 以分布可能的最小 tick 判定（constant=0、triangular min=0；exponential 的 mean 解碼後 >0 才合法，engine 對 exponential 樣本至少給 1 tick；empirical 在 dataset binding 階段判定）。
+
+Primitive support 階段（T-046 phase 2，實作於 `internal/model/validate/primitives.go`；D-063 PROPOSED）：`validate.Uses` 依 D-023 的 path 順序列出模型中每個產線流動成員的位置（§2.1 的表；分布型別在任何分布位置都算，包括 resource 中的 breakdowns 與 setups），`validate.Checked` 是本 build 已實作規則的 primitive（目前沒有）。對每個未實作的 use 回一個 PRIMITIVE_NOT_SUPPORTED error；這個階段在 schema 之後、limits 之前，有 error 時之後的階段都不執行，所以既有的階段永遠只看到它們完整檢查得了的模型。Engine 的 Compile 另有自己的 kernel 支援清單（`engine.kernelExecutes`，目前也沒有），對 validator 已接受、kernel 還不執行的成員同樣回 PRIMITIVE_NOT_SUPPORTED（path 在 `/model` 之下）。T-047–T-051 各自在同一個任務中加入規則、kernel、engine_version 與 D-057 的 risk 規則後，才把自己的 primitive 加進這兩個清單。
 
 unreachable dormant node 可 warning；無 reachable sink 的活躍路徑是 error。valid graph 仍可能大量 rework，因此 runtime budgets 必須存在。來源未明確要求跨 catalog IDs 全域唯一；上述 node/resource uniqueness 為 D-014 的候選限制。
 
@@ -125,7 +152,9 @@ manual draft patch 可操作 name、nodes、flows、resources、entity_types、c
 
 AI edit allowlist 比 manual 更小：name、nodes、flows、resources、entity_types、constraints、metrics；禁止 views/metadata/identity。AI scenario 僅既有 resources/*/capacity、nodes/*/arrival/distribution、nodes/*/service_time/distribution、nodes/*/delay_time/distribution、flows/*/routing/probability；不能增刪 topology 或創造 dataset binding。物件整段 replace 仍逐欄驗 full candidate IR，不因 parent path 被允許就略過子欄。
 
-所有 patch 都在 copy 上依序 apply，整體成功才提交；任一 op/test 失敗都不產生 partial mutation。array index 只在 pinned immutable base 有意義，diff 顯示 logical entity ID。APPROVED D-020（實作於 `internal/model/patch`）：修改、取代或刪除 nodes／flows／resources／entity_types／metrics／constraints 的既有元素前，同一 patch 必須先 `test` 該元素的識別欄位（constraints 沒有 id，以 `node_id` 識別，為 T-004 解讀）；中間若有插入或刪除，先前的 test 失效。整個 catalog 陣列（如 `replace /resources`、`remove /entity_types`，或對已存在成員的 `add`）在仍有元素時一律拒絕（PATCH_TEST_REQUIRED），因為它不經 id test 就改掉所有既有元素；只能建立不存在或空的 catalog（2026-10-15 review 後的 fail-closed 解讀）。append（`/-`）與插入新元素不需 test。test 不受 allowlist 限制、不算 business mutation，也不能取代 expected base。allowlist 以解碼後 token 做前綴比對；scenario 模式（D-021，人工與 AI 相同）只允許上列五種參數路徑；AI edit 另允許刪除同一 patch 刪掉之 node 的 `/views/2d/positions/{id}`（D-022），且 patch 套用後不得仍有同 id 的 node（刪掉又加回同 id 時座標必須保留）。Scenario patch 不得引入 base model 沒有綁定的 `samples_ref`（「不能創造 dataset binding」；把既有 ref 改用在另一個分布可以）。Patch 文件本身超過 2 MiB 時在 parse 前回 LIMIT_EXCEEDED。patch 錯誤碼：PATCH_SCHEMA_INVALID、PATCH_PATH_INVALID、PATCH_PATH_FORBIDDEN、PATCH_TEST_REQUIRED、PATCH_TARGET_MISSING、PATCH_TEST_FAILED，路徑指向 patch 文件（如 `/3/path`）。刪除 node/resource 必須同時修復 references，否則 invalid。
+所有 patch 都在 copy 上依序 apply，整體成功才提交；任一 op/test 失敗都不產生 partial mutation。array index 只在 pinned immutable base 有意義，diff 顯示 logical entity ID。APPROVED D-020（實作於 `internal/model/patch`）：修改、取代或刪除 nodes／flows／resources／entity_types／metrics／constraints 的既有元素前，同一 patch 必須先 `test` 該元素的識別欄位（constraints 沒有 id，以 `node_id` 識別，為 T-004 解讀）；中間若有插入或刪除，先前的 test 失效。整個 catalog 陣列（如 `replace /resources`、`remove /entity_types`，或對已存在成員的 `add`）在仍有元素時一律拒絕（PATCH_TEST_REQUIRED），因為它不經 id test 就改掉所有既有元素；只能建立不存在或空的 catalog（2026-10-15 review 後的 fail-closed 解讀）。append（`/-`）與插入新元素不需 test。test 不受 allowlist 限制、不算 business mutation，也不能取代 expected base。allowlist 以解碼後 token 做前綴比對；scenario 模式（D-021，人工與 AI 相同）只允許上列五種參數路徑與 D-057 的產線參數路徑（下段）；AI edit 另允許刪除同一 patch 刪掉之 node 的 `/views/2d/positions/{id}`（D-022），且 patch 套用後不得仍有同 id 的 node（刪掉又加回同 id 時座標必須保留）。Scenario patch 不得引入 base model 沒有綁定的 `samples_ref`（「不能創造 dataset binding」；把既有 ref 改用在另一個分布可以）。Patch 文件本身超過 2 MiB 時在 parse 前回 LIMIT_EXCEEDED。patch 錯誤碼：PATCH_SCHEMA_INVALID、PATCH_PATH_INVALID、PATCH_PATH_FORBIDDEN、PATCH_TEST_REQUIRED、PATCH_TARGET_MISSING、PATCH_TEST_FAILED，路徑指向 patch 文件（如 `/3/path`）。刪除 node/resource 必須同時修復 references，否則 invalid。
+
+APPROVED D-057（T-046 phase 2 實作於 `internal/model/patch`）：manual 與 AI edit 的 allowlist 加入根層 `calendars`；`calendars` 與其他 catalog 一樣適用 D-020（改元素前先 `test /calendars/<i>/id`，有元素時不可整段 replace）。Scenario allowlist 另加：`nodes/*/capacity`（replace、add、remove：有限↔無限）；以下只接受 `replace`：`resources/*/breakdowns/time_to_failure/distribution`、`resources/*/breakdowns/time_to_repair/distribution`、`nodes/*/arrival/schedule/segments/*/rate`、`nodes/*/arrival/schedule/releases/*/quantity`、`nodes/*/batch/min_size`、`max_size`、`max_wait`、`resources/*/setups/transitions/*/distribution`、`resources/*/setups/default`、`resources/*/calendar_id`（candidate 必須指向既有 calendar）、`resources/*/shift_capacity/<label>`、`calendars/*/shifts`、`calendars/*/exceptions`。凡是允許修改的分布都可換成 lognormal／Weibull。新增或刪除 breakdowns、setups、calendars、schedule、batch、transition、segment、release 與 shift label，以及改 period、segment start、release 時刻、calendar 名稱，都是 PATCH_PATH_FORBIDDEN，要走 draft→publish。Candidate 照舊完整驗證，所以 gate 解除前這些 scenario 都回 PRIMITIVE_NOT_SUPPORTED。「不能創造 dataset binding」也涵蓋 resource 中的分布。D-057 的 server risk（縮小或新增有限 buffer、任何 breakdown／換線／calendar／投入／批次參數至少 medium，擴大 buffer 或改回無限為 low）在解除對應 gate 的任務中加入 `internal/ai/review`；在那之前 candidate 已被 gate 拒絕，不會計算 risk。
 
 ## 7. View / canonical event schema
 
@@ -133,8 +162,10 @@ AI edit allowlist 比 manual 更小：name、nodes、flows、resources、entity_
 
 canonical-event.schema.json 保留 case_id/event_type/timestamp 必填，stage recommended，其餘 optional。timestamp 是 RFC3339；跨時區先正規化再排序，不能猜無時區時間。duration_ms 與 timestamp-derived duration 不一致時產生 data-quality issue，選用政策要由 domain inference 明列。CSV 的低 confidence mapping 和 dataset 推論永不直接更改 canonical Twin。
 
+APPROVED D-059（T-046 phase 2）：新增 optional 的 `end_timestamp`（RFC 3339）、`shift`（≤ 64 字元）與 `product`（≤ 128 字元，對應 entity type；多產品的 log 必填）。`end_timestamp` ≥ `timestamp`、與 `duration_ms` 一致、多產品時必有 `product` 都是 data-quality 規則（T-017／T-052），不是 schema。停機紀錄的 `case_id` 是設備 ID。Mapping 的 target field（`ai-mapping.schema.json` 的 enum 與 `internal/ai/aicontext.TargetFields`）尚未加入這三個欄位，由 station log 的 mapping（T-052，必要時 T-017）加入。
+
 ## 8. 相容性與擴充
 
-未知 schema_version 拒絕，不默默盡力解析。v0.1 新欄位／新 node 或 constraints 需更新 schema、fixtures、Go/TS contract tests 和 version migration 策略。Future DomainPack 可使用既有 generic primitives 與 domain attributes；新增核心 primitive 應有獨立 ADR，不能以 arbitrary script 绕過 contract。H-016（ADR-025）需要的有限緩衝與阻塞、resource 故障、班表、隨時間變化的投入與批次即屬此類，由 T-046 提出 ADR 與 decisions（2026-10-20 APPROVED，H-018），實作前上表的 P0 限制（FIFO、不加 calendar/priority/preemption）照舊。提案：[ADR-026](adr/ADR-026-line-flow-primitives.md) 與 D-047–D-057（IR 的 optional 新欄位與相容性策略見 D-047），domain 規格見 [ELECTRONICS_LINE.md](domains/ELECTRONICS_LINE.md)；2026-10-20 APPROVED（H-018），schema 變更在 T-046 phase 2。
+未知 schema_version 拒絕，不默默盡力解析。v0.1 新欄位／新 node 或 constraints 需更新 schema、fixtures、Go/TS contract tests 和 version migration 策略。Future DomainPack 可使用既有 generic primitives 與 domain attributes；新增核心 primitive 應有獨立 ADR，不能以 arbitrary script 绕過 contract。H-016（ADR-025）需要的有限緩衝與阻塞、resource 故障、班表、隨時間變化的投入與批次即屬此類，由 T-046 提出 ADR 與 decisions（2026-10-20 APPROVED，H-018），實作前上表的 P0 限制（FIFO、不加 calendar/priority/preemption）照舊。提案：[ADR-026](adr/ADR-026-line-flow-primitives.md) 與 D-047–D-057（IR 的 optional 新欄位與相容性策略見 D-047），domain 規格見 [ELECTRONICS_LINE.md](domains/ELECTRONICS_LINE.md)；2026-10-20 APPROVED（H-018）。T-046 phase 2 已完成 schema 變更（§2.1）：依 D-047 A，schema_version 維持 `0.1`，所有新成員都是 optional，閉合物件讓不認得它們的舊 reader fail closed；「未知 schema_version 拒絕」不變。Schema_version 因此不表示模型用到哪些功能，要看 IR 內容（`validate.Uses`）。
 
 補充（D-010）：單純回到前一節點的 flow 不自動等於 domain rework。需要可辨識的 rework node 或已批准的 DomainPack mapping 才計數；不能以 f_retry 之類的字串名稱在 generic kernel 硬編語義。

@@ -60,7 +60,7 @@ flowchart LR
 
 ## 3. 四個穩定 contracts
 
-**Model IR**：JSON + schemas/model-ir.schema.json；UI、AI、import、engine 與 future domain 的唯一 model interchange。React Flow nodes/edges 只是投影。
+**Model IR**：JSON + schemas/model-ir.schema.json；UI、AI、import、engine 與 future domain 的唯一 model interchange。React Flow nodes/edges 只是投影。T-046 phase 2 起 IR 有 ADR-026 的 optional 產線成員（TWIN_IR_SPEC §2.1）；在實作它們的任務（T-047–T-051）之前，`internal/model/validate` 的 primitive support 階段與 `internal/simulation/engine` 的 kernel 支援清單各自以 `PRIMITIVE_NOT_SUPPORTED` 拒絕用到它們的模型（D-063 PROPOSED），所以 publish、scenario、AI proposal 與 run 都不會把它們當作不存在。兩個清單都在 generic kernel 中，不依賴任何 pack。
 
 **DomainPack**（保留原報告接口概念）：
 
