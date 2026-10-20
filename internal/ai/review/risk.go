@@ -31,18 +31,19 @@ func Max(a, b Risk) Risk {
 //
 //   - high: a node or a resource of the base is gone, or a node changed its
 //     type (the node as it was is gone);
-//   - at least medium: a resource's capacity is lower; a process needs more
-//     units of a resource, or another bundle of resources; a flow was
-//     rewired; a routing probability rose on a flow into a failure or
-//     rework node, or on a flow that lies on a cycle (rework, retest); the
-//     candidate has a cycle the base does not; an entity (node, flow,
-//     resource, entity type, metric) or a constraint was added or removed;
+//   - at least medium: a resource's capacity is lower; a process needs
+//     another quantity (more or fewer units) of a resource, or another
+//     bundle of resources; a flow was re-targeted; a routing probability
+//     rose on a flow into a failure or rework node, or on a flow that lies
+//     on a cycle (rework, retest); the candidate has a cycle the base does
+//     not; an entity (node, flow, resource, entity type, metric) or a
+//     constraint was added, removed or changed;
 //   - low: anything else (a name, a distribution, a higher capacity, less
 //     failure routing).
 //
 // D-016 fixes the first two lines' deletions, lower capacity, new cycles
 // and higher failure probability; the rest is this implementation's
-// reading, recorded as D-061 (PROPOSED). Confidence plays no part.
+// reading, recorded as D-062 (d) (PROPOSED). Confidence plays no part.
 func ServerRisk(base, candidate *model.ModelIR) Risk {
 	level := Low
 	raise := func(r Risk) { level = Max(level, r) }
@@ -128,8 +129,9 @@ func added[T any](from, to map[string]T) bool {
 	return false
 }
 
-// sameRequirements reports whether a process needs the same resources, no
-// more units of any.
+// sameRequirements reports whether a process needs the same resources, the
+// same units of each: fewer units are a change too (D-062 (d): the
+// resource or the quantity a process requires changing; H-003 review L1).
 func sameRequirements(base, cand []model.ResourceRequirement) bool {
 	units := map[string]int{}
 	for _, r := range base {
@@ -144,7 +146,7 @@ func sameRequirements(base, cand []model.ResourceRequirement) bool {
 	}
 	for id, n := range seen {
 		b, ok := units[id]
-		if !ok || n > b {
+		if !ok || n != b {
 			return false
 		}
 	}

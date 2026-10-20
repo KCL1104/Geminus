@@ -1,0 +1,75 @@
+=== RUN   TestRiskIsTheServers
+=== RUN   TestRiskIsTheServers/low_claimed,_low_computed
+=== RUN   TestRiskIsTheServers/the_claim_raises
+=== RUN   TestRiskIsTheServers/a_deletion_claimed_low
+=== RUN   TestRiskIsTheServers/a_deletion_claimed_medium
+--- PASS: TestRiskIsTheServers (0.04s)
+    --- PASS: TestRiskIsTheServers/low_claimed,_low_computed (0.03s)
+    --- PASS: TestRiskIsTheServers/the_claim_raises (0.00s)
+    --- PASS: TestRiskIsTheServers/a_deletion_claimed_low (0.00s)
+    --- PASS: TestRiskIsTheServers/a_deletion_claimed_medium (0.00s)
+=== RUN   TestServerRisk
+=== RUN   TestServerRisk/raise_a_capacity
+=== RUN   TestServerRisk/lower_a_capacity
+=== RUN   TestServerRisk/rename
+=== RUN   TestServerRisk/another_distribution
+=== RUN   TestServerRisk/less_failure_routing
+=== RUN   TestServerRisk/more_failure_routing
+=== RUN   TestServerRisk/more_units_per_job
+=== RUN   TestServerRisk/a_new_cycle
+=== RUN   TestServerRisk/remove_a_resource
+=== RUN   TestServerRisk/add_a_resource
+=== RUN   TestServerRisk/reorder
+=== RUN   TestServerRisk/remove_a_metric
+--- PASS: TestServerRisk (0.03s)
+    --- PASS: TestServerRisk/raise_a_capacity (0.00s)
+    --- PASS: TestServerRisk/lower_a_capacity (0.00s)
+    --- PASS: TestServerRisk/rename (0.00s)
+    --- PASS: TestServerRisk/another_distribution (0.00s)
+    --- PASS: TestServerRisk/less_failure_routing (0.00s)
+    --- PASS: TestServerRisk/more_failure_routing (0.00s)
+    --- PASS: TestServerRisk/more_units_per_job (0.00s)
+    --- PASS: TestServerRisk/a_new_cycle (0.00s)
+    --- PASS: TestServerRisk/remove_a_resource (0.00s)
+    --- PASS: TestServerRisk/add_a_resource (0.00s)
+    --- PASS: TestServerRisk/reorder (0.00s)
+    --- PASS: TestServerRisk/remove_a_metric (0.00s)
+=== RUN   TestEachRiskRule
+=== RUN   TestEachRiskRule/a_node_changes_its_type
+=== RUN   TestEachRiskRule/a_flow_is_re-targeted
+=== RUN   TestEachRiskRule/a_constraint_is_removed
+=== RUN   TestEachRiskRule/an_entity_type_is_added
+=== RUN   TestEachRiskRule/a_metric_is_added
+=== RUN   TestEachRiskRule/a_node_is_added
+=== RUN   TestEachRiskRule/a_flow_is_added
+=== RUN   TestEachRiskRule/a_flow_is_removed
+=== RUN   TestEachRiskRule/another_resource
+=== RUN   TestEachRiskRule/fewer_units
+=== RUN   TestEachRiskRule/more_units
+=== RUN   TestEachRiskRule/the_same_units
+=== RUN   TestEachRiskRule/more_routing_into_a_failure_node_on_no_cycle
+=== RUN   TestEachRiskRule/less_routing_into_a_failure_node_on_no_cycle
+=== RUN   TestEachRiskRule/more_routing_on_a_cycle,_into_a_process
+=== RUN   TestEachRiskRule/less_routing_on_a_cycle,_into_a_process
+--- PASS: TestEachRiskRule (0.05s)
+    --- PASS: TestEachRiskRule/a_node_changes_its_type (0.00s)
+    --- PASS: TestEachRiskRule/a_flow_is_re-targeted (0.00s)
+    --- PASS: TestEachRiskRule/a_constraint_is_removed (0.00s)
+    --- PASS: TestEachRiskRule/an_entity_type_is_added (0.00s)
+    --- PASS: TestEachRiskRule/a_metric_is_added (0.00s)
+    --- PASS: TestEachRiskRule/a_node_is_added (0.00s)
+    --- PASS: TestEachRiskRule/a_flow_is_added (0.00s)
+    --- PASS: TestEachRiskRule/a_flow_is_removed (0.00s)
+    --- PASS: TestEachRiskRule/another_resource (0.00s)
+    --- PASS: TestEachRiskRule/fewer_units (0.00s)
+    --- PASS: TestEachRiskRule/more_units (0.00s)
+    --- PASS: TestEachRiskRule/the_same_units (0.00s)
+    --- PASS: TestEachRiskRule/more_routing_into_a_failure_node_on_no_cycle (0.00s)
+    --- PASS: TestEachRiskRule/less_routing_into_a_failure_node_on_no_cycle (0.00s)
+    --- PASS: TestEachRiskRule/more_routing_on_a_cycle,_into_a_process (0.00s)
+    --- PASS: TestEachRiskRule/less_routing_on_a_cycle,_into_a_process (0.00s)
+=== RUN   TestThePacksRules
+--- PASS: TestThePacksRules (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.207s
+exit 0

@@ -1,0 +1,41 @@
+=== RUN   TestEachRiskRule
+=== RUN   TestEachRiskRule/a_node_changes_its_type
+=== RUN   TestEachRiskRule/a_flow_is_re-targeted
+=== RUN   TestEachRiskRule/a_constraint_is_removed
+=== RUN   TestEachRiskRule/an_entity_type_is_added
+=== RUN   TestEachRiskRule/a_metric_is_added
+=== RUN   TestEachRiskRule/a_node_is_added
+=== RUN   TestEachRiskRule/a_flow_is_added
+=== RUN   TestEachRiskRule/a_flow_is_removed
+=== RUN   TestEachRiskRule/another_resource
+=== RUN   TestEachRiskRule/fewer_units
+    risk_test.go:71: risk "low", want "medium"
+=== RUN   TestEachRiskRule/more_units
+=== RUN   TestEachRiskRule/the_same_units
+=== RUN   TestEachRiskRule/more_routing_into_a_failure_node_on_no_cycle
+=== RUN   TestEachRiskRule/less_routing_into_a_failure_node_on_no_cycle
+=== RUN   TestEachRiskRule/more_routing_on_a_cycle,_into_a_process
+=== RUN   TestEachRiskRule/less_routing_on_a_cycle,_into_a_process
+--- FAIL: TestEachRiskRule (0.06s)
+    --- PASS: TestEachRiskRule/a_node_changes_its_type (0.03s)
+    --- PASS: TestEachRiskRule/a_flow_is_re-targeted (0.00s)
+    --- PASS: TestEachRiskRule/a_constraint_is_removed (0.00s)
+    --- PASS: TestEachRiskRule/an_entity_type_is_added (0.00s)
+    --- PASS: TestEachRiskRule/a_metric_is_added (0.00s)
+    --- PASS: TestEachRiskRule/a_node_is_added (0.00s)
+    --- PASS: TestEachRiskRule/a_flow_is_added (0.00s)
+    --- PASS: TestEachRiskRule/a_flow_is_removed (0.00s)
+    --- PASS: TestEachRiskRule/another_resource (0.00s)
+    --- FAIL: TestEachRiskRule/fewer_units (0.00s)
+    --- PASS: TestEachRiskRule/more_units (0.00s)
+    --- PASS: TestEachRiskRule/the_same_units (0.00s)
+    --- PASS: TestEachRiskRule/more_routing_into_a_failure_node_on_no_cycle (0.00s)
+    --- PASS: TestEachRiskRule/less_routing_into_a_failure_node_on_no_cycle (0.00s)
+    --- PASS: TestEachRiskRule/more_routing_on_a_cycle,_into_a_process (0.00s)
+    --- PASS: TestEachRiskRule/less_routing_on_a_cycle,_into_a_process (0.00s)
+=== RUN   TestThePacksRules
+--- PASS: TestThePacksRules (0.01s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.081s
+FAIL
+exit 1
