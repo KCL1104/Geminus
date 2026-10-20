@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 63,
-    "proposed": 0,
+    "proposed": 3,
     "rejected": 0,
     "superseded": 0
   },
@@ -36,7 +36,6 @@
   },
   "ready_tasks": [
     "T-017",
-    "T-026",
     "T-035",
     "T-047",
     "T-048",
@@ -44,7 +43,17 @@
     "T-050",
     "T-053"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-026",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-067",
+        "D-068",
+        "D-069"
+      ]
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -590,6 +599,28 @@
         "T-049",
         "T-050",
         "T-051"
+      ]
+    },
+    "D-067": {
+      "status": "proposed",
+      "gate": "T-026 驗收前；T-028 的 scenario 讀取與 UI 前",
+      "gates_tasks": [
+        "T-026",
+        "T-028"
+      ]
+    },
+    "D-068": {
+      "status": "proposed",
+      "gate": "T-026 驗收前；T-031 的 review UI 前",
+      "gates_tasks": [
+        "T-026"
+      ]
+    },
+    "D-069": {
+      "status": "proposed",
+      "gate": "T-026 驗收前",
+      "gates_tasks": [
+        "T-026"
       ]
     }
   },

@@ -72,7 +72,7 @@
 | CB-30 | Prose 中數字與確定性語句的驗證規則未定（P0 是否驗證或禁止數字、違規時 failed 或剝除欄位） | AI_SPEC.md:53、:83；TEST_PLAN.md TEST-024；analysis.schema.json:19-49、121-124 | T-025、T-030 | NEW | 審查回報 |
 | CB-31 | Server-issued ID allocation pool 無格式、範圍與儲存位置，approval 時無法 revalidate | AI_SPEC.md:33；proposal.schema.json；0001_core.up.sql:190-234 | T-024–T-026 | D-016；細節見 D-046（PROPOSED，2026-10-19） | 審查回報 |
 | CB-32 | Eval corpus 無 context fixtures；expected labels（`reject_context_reference` 等）無對應 status／error code | TEST_PLAN.md:57；analyst.jsonl、import-mapper.jsonl、modeler.jsonl | T-025、T-027、T-030 的 `make ai-eval` | NEW | 審查回報 |
-| CB-33 | AI scenario approval 沒有 scenario name 來源；「latest=base」規則套用於 scenario 使舊版本上的 AI scenario 永遠無法批准 | scenario.schema.json:32-36；0001_core.up.sql:247；http.schema.json:447-466；AI_SPEC.md:57、:61 | T-026、T-028 | D-004（部分） | 審查回報 |
+| CB-33 | AI scenario approval 沒有 scenario name 來源；「latest=base」規則套用於 scenario 使舊版本上的 AI scenario 永遠無法批准 | scenario.schema.json:32-36；0001_core.up.sql:247；http.schema.json:447-466；AI_SPEC.md:57、:61 | T-026、T-028 | D-004（部分）；T-026：名稱見 D-067（PROPOSED，建議 A 已實作：取自 proposal summary）；latest=base 由 D-062 (b)（APPROVED）與 AI_SPEC §6 決定，兩種 mode 都要求，舊版本上的 scenario 由人工建立（T-028） | 審查回報 |
 
 ## F. 本次 bootstrap 發現並已修正的重現性問題
 
@@ -108,6 +108,12 @@ CB-38(b) 已由 T-016 依 D-044 解決：`downloadImportErrors` 改為授權後�
 | ID | 問題 | 證據 | 阻擋 | 涵蓋 | 等級 |
 |---|---|---|---|---|---|
 | CB-40 | (a) ID pool 違規沒有 issue code：`idpool.Check` 回報 `not_in_pool`／`wrong_kind`／`used_in_base`／`missing_ir` 與 JSON Pointer，但 ValidationCode 目錄沒有對應 code，T-026 approval revalidation 需要一個（建議 `ID_POOL_VIOLATION`，reason 放 message 或 details）。(b) provider 回答不符 output schema 時，T-024 以 issue code `AI_OUTPUT_INVALID` 回報（ValidationIssue.code 為 open，所以合法，但不在 ValidationCode 目錄，UI 只能顯示英文 message）。(c) provider adapter 的 14 個內部錯誤 code（`provider_not_configured`、`policy_not_approved`、`rate_limited`、`concurrency_limited`、`timeout`、`unavailable`、`credentials_exhausted`、`refused`、`output_truncated`、`invalid_output`、`context_too_large`…）沒有對應 D-025 ErrorCode 或 proposal／analysis `failed` 的 `error` 內容的契約；T-024 只提供 typed code，HTTP／狀態對應留給 T-025／T-027／T-030（建議：前兩者 → `AI_PROVIDER_NOT_CONFIGURED`／`AI_POLICY_NOT_APPROVED`，`rate_limited`／`concurrency_limited` → `RATE_LIMITED`，其餘 → proposal `failed` 並以 code 放 `details[0].code`）。(d) `ai_proposals.provider_metadata`（jsonb，預設 `{}`）沒有 schema；T-024 的 `provider.Metadata`（provider、model、credential_label、failed_over_from、role、prompt_template_version、schema、output_locale、input_hash、output_hash、usage、latency_ms、provider_request_id、context 的省略與遮蔽計數）是目前唯一的定義。(e) D-046 的 ID pool 存在 `ai_proposals.id_pool`（migration 0011），但 HTTP `Proposal` 不顯示它，也不顯示 `output_locale`；是否要讓 UI 看到由 T-025／T-028 決定。 | `internal/ai/idpool`；`internal/ai/provider/errors.go`、`provider.go`；common.schema.json `ErrorCode`、`ValidationCode`；0001_core.up.sql `provider_metadata`；0011_ai_id_pool.up.sql | T-025、T-026、T-027、T-030 | D-061（APPROVED，2026-10-20，H-019；T-025 已實作）：(a) `ID_POOL_VIOLATION`、(b) `AI_OUTPUT_INVALID` 已加入 ValidationCode；(c) 的對應在 `internal/proposals/public.go`；(d) 存 `provider.Metadata`，不另立 schema；(e) 不對 client 顯示；D-046（儲存，APPROVED） | 實測 |
+
+## K. T-026 人類批准與拒絕的發現
+
+| ID | 問題 | 證據 | 阻擋 | 涵蓋 | 等級 |
+|---|---|---|---|---|---|
+| CB-42 | (a) Approve 與 Reject 的 `comment` 沒有存放處：`ai_proposals` 沒有欄位，D-041 只涵蓋 publish 的 comment，Proposal 也不顯示誰、何時決定。(b) 非 ready 狀態（generating、needs_input、invalid、failed）的 approve／reject，以及再批准 conflicted 的 proposal，沒有錯誤碼（D-030 只寫 approved／rejected）。(c) Base 已變時 AI_SPEC §6 要求「回 409 且 proposal 轉 conflicted」：一個被拒絕的 request 寫入狀態，它的 409 是否為 Idempotency-Key 的回應、client 指定的 `expected_base_version_id` 與 proposal 的 base 不同時怎麼處理，都沒有定義。(d) 批准時重算的 validation、risk、patch hash 或 manifest 與存下的不同時怎麼處理沒有定義（AI_SPEC §6 只說「重新驗」）。(e) Audit metadata 與資料庫對「一個 proposal 一個 effect」的保證範圍沒有定義（0001 只檢查 approved proposal 指向的 effect 指回它）。另：API_DATABASE §4「同一 proposal 已批准…可回同一 effect」與 D-030 的 409 不一致，CB-12 已由 D-030 解決，T-026 依 D-030 實作，§4 已加註。 | http.schema.json Approve／Reject；proposal.schema.json；0001_core.up.sql `ai_proposals`、`protect_proposal_content`；AI_SPEC §4、§6；API_DATABASE §4 | T-026、T-028、T-031 | D-068（(a)，PROPOSED）、D-069（(b)–(e)，PROPOSED）；T-026 依建議實作（`internal/proposals/approval`、migration 0013） | 實測（T-026 的 Go 與 SQL 測試；SQL 與 DB 測試待 coordinator 執行） |
 
 ## 已核對為一致的項目（摘要）
 

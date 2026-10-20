@@ -55,6 +55,13 @@ worker 只領 assigned tenant jobs，不能依 payload 的 organization_id 蓋�
 
 approval 重新查 role，重新驗 latest/base/risk/dataset/patch，同一 transaction 只執行一次 effect。stale base409，reject無 mutation。Scenario approve 的 source-of-truth version count=0新增；dirty draft 保留；idempotency replay 同樣需 auth，不重用撤權前成功資料當授權。
 
+T-026 實作（`internal/proposals/approval`，migration 0013；D-067–D-069 PROPOSED；DB 測試的執行狀態見本節最後一項）：
+- **只有人能批准**：approve／reject 是 editor 或 owner 經 API 的 request，role 在每個 transaction 中從 membership 讀取（`FOR SHARE`，所以進行中的撤權會先完成，批准看到新的 role）；viewer 403，其他 organization 404。AI 不能批准：批准不呼叫 provider；規則 `decisions-only-in-the-api` 讓 worker、job handler、其他 service 與 `internal/ai` 都無法連結這個 package；worker 沒有 version、scenario 的 INSERT，也不能改 ready 的 proposal（0002）；provider 回答中的 `approved` 等欄位在 T-025 就判為 invalid。
+- **Schema-valid 不是 authorized**：批准時以 `internal/ai/review` 對存下的內容再 review 一次、重跑 dataset binding stage 並重讀 snapshot，不採信存下的 validation、risk 或 hash；存下的 risk 低於 server 重算的值、patch 在 review 後被改、pack 的規則已改變、snapshot 的內容已不符，都不會批准（`TestRecheckTrustsNoStoredResult`、`TestRecheckAppliesTodaysRules`；DB：`TestApprovalReviewsAgain`、`TestApprovalFreezesTheManifest`）。
+- **一個 effect、沒有 rebase**：同一 key 只有一個 effect；換 key 再批准為 409 `PROPOSAL_ALREADY_DECIDED`（D-030）；base 已變時 proposal 轉 conflicted、回 409，不自動 rebase；0013 在 commit 時要求以 proposal 為來源的 version 是 base 的下一個 version、scenario 與 proposal 的 patch 相同，所以 API 的錯誤也無法建立第二個 effect 或從過時的 base 分岔。
+- **Audit 與隱私**：`proposal.approve`、`proposal.reject`、`proposal.conflict` 只記 ID、hash、risk 與狀態；comment 是使用者文字，存在 proposal 與 version，不進 audit（D-041、D-068）。錯誤訊息不引用 provider 的文字（issue 經 `review.Clean`，D-061 (f)）。
+- **DB 測試**：`db/tests/proposal_decisions.sql`、修改過的 `constraints.sql` 與 `internal/proposals/approval`、`internal/api`、`internal/storage/proposals` 的 DB-backed Go 測試在本 worktree NOT RUN（沒有 PostgreSQL；su／runuser 不可用），交給 coordinator 在一次性 database 上執行（`checks/T-026_VALIDATION.md`）。
+
 ## 6. Import / file / object storage
 
 streaming upload 限 bytes/rows、parser depth、columns、field length、memory/time；不因 Content-Length 缺失而取消上限。P0 拒絕 archives/executable formats；JSON duplicate keys/nonfinite numbers 失敗；CSV cell 從不執行。Naive sample validation 不足，commit 前須全量驗證。

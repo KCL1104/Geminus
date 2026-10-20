@@ -86,6 +86,17 @@ confidence 僅為模型自評，不能作為 skip review 或授予權限的條�
 
 如果 latest base 已改，回 409 MODEL_VERSION_CONFLICT、原 proposal 轉 conflicted；不得自動 rebase。reject 不改 model/version/draft hash。角色在 review 後被撤銷，approve 時必須拒絕；之前看過 diff 不等於現在有權限。
 
+T-026 實作（`internal/proposals/approval`；D-067–D-069 PROPOSED，待 owner 決定）的流程如下。批准不呼叫 provider，所以不受 AI 是否開啟影響；AI 與 worker 都無法連結這個 package（architecture 規則 `decisions-only-in-the-api`），worker 也沒有 version、scenario 的 INSERT 與 ready proposal 的 UPDATE（0002）。
+
+1. 在 membership 與 role（editor／owner）之後檢查 Idempotency-Key（fingerprint 為 proposal ID 與 canonical body；replay 前仍先查 role）。
+2. 依序鎖 model row、draft、proposal。approved、rejected、conflicted 回 409 `PROPOSAL_ALREADY_DECIDED`（換了 key 也一樣，D-030）；其他非 ready 的狀態回 409 `LIFECYCLE_CONFLICT`。
+3. Base 已不是 latest：proposal 轉 conflicted（`decided_by` 為這位批准者），audit `proposal.conflict`，回 409 `MODEL_VERSION_CONFLICT`；這個回應與狀態轉換同一 transaction commit，並存為該 key 的回應。`expected_base_version_id` 不是 proposal 的 base：409 `MODEL_VERSION_CONFLICT`，什麼都不變。
+4. 以 `internal/ai/review.Review` 對存下的內容（summary、assumptions、canonical changes、expected effects、confidence、provider claim）再 review 一次，再以 base 的整份 manifest 跑 dataset binding stage 並重讀 snapshot：error 回 422 `MODEL_VALIDATION_FAILED`（proposal 維持 ready）；重算的 server risk 或 effective risk 與存下的不同回 409 `LIFECYCLE_CONFLICT`（`/risk_level` 或 `/server_risk_level`）；patch 或 hash 與存下的不同是 server 錯誤，不批准。
+5. edit：恰好一個新的 ModelVersion（parent 為 base、number 為 base 的加一、IR 為 base 加上 review 過的 changes、manifest 為 proposal 的 `dataset_bindings`（D-062 (g））、comment 為 request 的），成為 latest；clean draft 移到它，dirty draft 原樣保留並回 `draft_out_of_date=true`。scenario：恰好一個 immutable Scenario（base、review 過的 changes 與 hash，名稱取自 summary，D-067），沒有新 version，不入列 run。
+6. Proposal 轉 approved（決定者、時間、comment，D-068），audit `proposal.approve`（ID、hash、risk，不含 comment），idempotency response，同一 transaction commit；migration 0013 在 commit 時再檢查 effect 是這個 approved proposal 自己的。
+
+Reject：ready 或 needs_input 轉 rejected（決定者、時間、comment），audit `proposal.reject`，回 200 與 getProposal 相同的 Proposal；其他狀態同上回 409。Reject 也照同一順序先鎖 model row，所以同一 proposal 的批准與拒絕輪流進行。
+
 ## 7. Scenario Proposal
 
 mode=scenario 的 patch 限於既有 capacity、arrival/service/delay distribution、routing probability 等參數。批准只建立 what-if 描述，**不會 enqueue run**。必須由 authenticated human 另 POST simulations，引用 scenario_id；run 再凍結 base + patch/config/datasets。

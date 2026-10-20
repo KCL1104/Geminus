@@ -1674,15 +1674,21 @@
         "D-030",
         "D-046",
         "D-061",
-        "D-062"
+        "D-062",
+        "D-067",
+        "D-068",
+        "D-069"
       ],
       "scope": [
         "role/base revalidation、shared model lock、idempotent exactly-one version。",
         "dirty draft保留、conflicted state、不偷偷rebase。",
-        "reject/no-mutation、changed-role與double-approve races。"
+        "reject/no-mutation、changed-role與double-approve races。",
+        "package 名稱由本任務決定（T-026，2026-10-20）：原規劃的 internal/model/approval/ 會落在 generic kernel 之下，而批准讀寫 DB、呼叫 model service 與 storage，是 adapter（ARCHITECTURE §3 kernel 規則、§6），所以改為 internal/proposals/approval（service 與 HTTP adapter，與 internal/runs、internal/proposals 的做法相同）；SQL 在 internal/storage/proposals（決策）、internal/storage/scenarios（新）、internal/storage/models（LockDraft）；版本推進共用 internal/models 的 Service.Advance；migration 0013。architecture 規則 decisions-only-in-the-api 只讓 cmd/api 與 internal/api 連結它。"
       ],
       "planned_outputs": [
-        "internal/model/approval/"
+        "internal/proposals/approval/",
+        "internal/storage/scenarios/",
+        "migrations/0013_proposal_decisions.up.sql"
       ],
       "spec_refs": [
         "docs/AI_SPEC.md",
@@ -1696,7 +1702,8 @@
       ],
       "verification_commands": [
         "make integration-test",
-        "go test -race ./internal/model/..."
+        "go test -race ./internal/model/...",
+        "go test -race ./internal/proposals/..."
       ],
       "definition_of_done": [
         "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
@@ -1777,7 +1784,8 @@
         "D-004",
         "D-014",
         "D-020",
-        "D-021"
+        "D-021",
+        "D-067"
       ],
       "scope": [
         "manual Scenario create/read/list；AI mode=scenario。",
