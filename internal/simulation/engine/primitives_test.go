@@ -20,23 +20,29 @@ func lineFlowModel(t *testing.T) model.ModelIR {
 	return ir
 }
 
-// des-go-0.1.0 executes no line-flow primitive (ADR-026; T-047–T-051 add
-// them). A model using one never compiles, so it is never simulated as if
-// the member were absent: the validator's primitive gate refuses it first,
-// with paths under /model (D-063 PROPOSED).
+// des-go-0.2.0 executes finite buffers (T-047) and no other line-flow
+// primitive (ADR-026; T-048–T-051 add them). A model using another never
+// compiles, so it is never simulated as if the member were absent: the
+// validator's primitive gate refuses it first, with paths under /model
+// (D-063). valid-line-flow-ir.json has 19 uses, two of them finite buffers.
 func TestCompileRefusesLineFlowPrimitives(t *testing.T) {
 	_, err := Compile(input(lineFlowModel(t)))
 	var ie *InputError
-	if !errors.As(err, &ie) || !errors.Is(err, ErrInvalidInput) || len(ie.Issues) != 19 {
-		t.Fatalf("want 19 PRIMITIVE_NOT_SUPPORTED issues, got %v", err)
+	if !errors.As(err, &ie) || !errors.Is(err, ErrInvalidInput) || len(ie.Issues) != 17 {
+		t.Fatalf("want 17 PRIMITIVE_NOT_SUPPORTED issues, got %v", err)
 	}
 	for _, is := range ie.Issues {
 		if is.Code != validate.PrimitiveNotSupported || is.Severity != model.SeverityError || is.Path[:7] != "/model/" {
 			t.Errorf("issue %+v", is)
 		}
 	}
-	issueExactly(t, err, "/model/nodes/4/capacity", validate.PrimitiveNotSupported)
+	issueExactly(t, err, "/model/nodes/5/arrival/schedule", validate.PrimitiveNotSupported)
 	issueExactly(t, err, "/model/resources/1/breakdowns", validate.PrimitiveNotSupported)
+	for _, is := range ie.Issues {
+		if is.Path == "/model/nodes/3/capacity" || is.Path == "/model/nodes/4/capacity" {
+			t.Errorf("a finite buffer is refused: %+v", is)
+		}
+	}
 }
 
 // primitiveModels puts each line-flow primitive alone into
@@ -132,12 +138,19 @@ func TestCompileRefusesWhatTheKernelDoesNotRun(t *testing.T) {
 			}
 		})
 	}
-	// The same models, through the real validator, are refused there first.
+	// The same models, through the real validator, are refused there first;
+	// a primitive both checked and executed (T-047: finite_buffer) compiles.
 	validateIR = validate.IR
 	for _, p := range validate.Primitives {
 		ir := golden(t, "deterministic-queue.json")
 		primitiveModels[p].edit(&ir)
 		_, err := Compile(input(ir))
+		if validate.Checked(p) && kernelExecutes[p] {
+			if err != nil {
+				t.Errorf("%s is checked and executed, but Compile refused it: %v", p, err)
+			}
+			continue
+		}
 		var ie *InputError
 		if !errors.As(err, &ie) || len(ie.Issues) != 1 || ie.Issues[0].Path != "/model"+primitiveModels[p].path {
 			t.Errorf("%s through the validator: %v", p, err)
@@ -149,15 +162,22 @@ func TestCompileRefusesWhatTheKernelDoesNotRun(t *testing.T) {
 // validator checks: should a validator rule land before its kernel, Compile
 // still refuses the model. Checked on a decoded model, past the validator.
 func TestKernelRefusesWhatItDoesNotExecute(t *testing.T) {
+	// Each kernel task adds its own primitive, with this list: so far T-047's.
+	executed := map[validate.Primitive]bool{validate.FiniteBuffer: true}
 	for _, p := range validate.Primitives {
-		if kernelExecutes[p] {
-			t.Errorf("%s is executed; update this test with the kernel task that implements it", p)
+		if kernelExecutes[p] != executed[p] {
+			t.Errorf("%s: executed %v, want %v; update this test with the kernel task that implements it", p, kernelExecutes[p], executed[p])
 		}
 	}
 	ir := lineFlowModel(t)
 	issues := unsupported(&ir)
-	want := validate.Uses(&ir)
-	if len(issues) != len(want) || len(want) != 19 {
+	var want []validate.Use
+	for _, u := range validate.Uses(&ir) {
+		if !executed[u.Primitive] {
+			want = append(want, u)
+		}
+	}
+	if len(issues) != len(want) || len(want) != 17 {
 		t.Fatalf("%d issues for %d uses", len(issues), len(want))
 	}
 	for i, u := range want {

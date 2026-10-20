@@ -1,0 +1,3726 @@
+{
+  "status": "HAND_DERIVED_EXPECTATION_NOT_ENGINE_RUN",
+  "semantics_decisions": [
+    "D-047",
+    "D-048",
+    "D-049",
+    "D-050"
+  ],
+  "units": "starts, completions, blocks and lead times in model minutes; Result members in ticks (1 ms)",
+  "notes": "blocks are [entity, node blocked at, from, to] in the order the entities were blocked; to is null when still blocked at the horizon (or at the deadlock).",
+  "cases": [
+    {
+      "id": "G-B1",
+      "title": "two stations in series, b's buffer holds one",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B1",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "ra",
+            "type": "machine",
+            "name": "ra",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "rb",
+            "type": "machine",
+            "name": "rb",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "a",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ra",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qb",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "b",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rb",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__a",
+            "from": "src",
+            "to": "a",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "a__qb",
+            "from": "a",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qb__b",
+            "from": "qb",
+            "to": "b",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b__done",
+            "from": "b",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 20,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "a": [
+            [
+              "r0/src/1",
+              1
+            ],
+            [
+              "r0/src/2",
+              2
+            ],
+            [
+              "r0/src/3",
+              3
+            ],
+            [
+              "r0/src/4",
+              5
+            ],
+            [
+              "r0/src/5",
+              8
+            ],
+            [
+              "r0/src/6",
+              11
+            ],
+            [
+              "r0/src/7",
+              14
+            ],
+            [
+              "r0/src/8",
+              17
+            ],
+            [
+              "r0/src/9",
+              20
+            ]
+          ],
+          "b": [
+            [
+              "r0/src/1",
+              2
+            ],
+            [
+              "r0/src/2",
+              5
+            ],
+            [
+              "r0/src/3",
+              8
+            ],
+            [
+              "r0/src/4",
+              11
+            ],
+            [
+              "r0/src/5",
+              14
+            ],
+            [
+              "r0/src/6",
+              17
+            ],
+            [
+              "r0/src/7",
+              20
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            5
+          ],
+          [
+            "r0/src/2",
+            8
+          ],
+          [
+            "r0/src/3",
+            11
+          ],
+          [
+            "r0/src/4",
+            14
+          ],
+          [
+            "r0/src/5",
+            17
+          ],
+          [
+            "r0/src/6",
+            20
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/src/3",
+            "a",
+            4,
+            5
+          ],
+          [
+            "r0/src/4",
+            "a",
+            6,
+            8
+          ],
+          [
+            "r0/src/5",
+            "a",
+            9,
+            11
+          ],
+          [
+            "r0/src/6",
+            "a",
+            12,
+            14
+          ],
+          [
+            "r0/src/7",
+            "a",
+            15,
+            17
+          ],
+          [
+            "r0/src/8",
+            "a",
+            18,
+            20
+          ]
+        ],
+        "result": {
+          "completed_count": 6,
+          "censored_entities": 14,
+          "lead_times_minutes": [
+            4,
+            6,
+            8,
+            10,
+            12,
+            14
+          ],
+          "queue_waits_minutes": {
+            "qb": [
+              0,
+              2,
+              3,
+              3,
+              3,
+              3,
+              3
+            ],
+            "a": [
+              0,
+              0,
+              0,
+              1,
+              3,
+              5,
+              7,
+              9,
+              11
+            ]
+          },
+          "resource_utilization": {
+            "ra": 0.95,
+            "rb": 0.9
+          },
+          "blocking": {
+            "a": {
+              "blocks_started": 6,
+              "blocks_completed": 6,
+              "completed_block_ticks": 660000,
+              "blocked_entity_ticks": 660000
+            }
+          },
+          "buffers": {
+            "qb": {
+              "full_ticks": 1020000
+            }
+          },
+          "resource_states": {
+            "ra": {
+              "in_use_ticks": 1140000,
+              "blocked_ticks": 660000,
+              "scheduled_processing_ticks": 480000
+            },
+            "rb": {
+              "in_use_ticks": 1080000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 1080000
+            }
+          }
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-B2",
+      "title": "G-B1 with b's buffer unlimited",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B2",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "ra",
+            "type": "machine",
+            "name": "ra",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "rb",
+            "type": "machine",
+            "name": "rb",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "a",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ra",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qb",
+            "type": "queue"
+          },
+          {
+            "id": "b",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rb",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__a",
+            "from": "src",
+            "to": "a",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "a__qb",
+            "from": "a",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qb__b",
+            "from": "qb",
+            "to": "b",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b__done",
+            "from": "b",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 20,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "a": [
+            [
+              "r0/src/1",
+              1
+            ],
+            [
+              "r0/src/2",
+              2
+            ],
+            [
+              "r0/src/3",
+              3
+            ],
+            [
+              "r0/src/4",
+              4
+            ],
+            [
+              "r0/src/5",
+              5
+            ],
+            [
+              "r0/src/6",
+              6
+            ],
+            [
+              "r0/src/7",
+              7
+            ],
+            [
+              "r0/src/8",
+              8
+            ],
+            [
+              "r0/src/9",
+              9
+            ],
+            [
+              "r0/src/10",
+              10
+            ],
+            [
+              "r0/src/11",
+              11
+            ],
+            [
+              "r0/src/12",
+              12
+            ],
+            [
+              "r0/src/13",
+              13
+            ],
+            [
+              "r0/src/14",
+              14
+            ],
+            [
+              "r0/src/15",
+              15
+            ],
+            [
+              "r0/src/16",
+              16
+            ],
+            [
+              "r0/src/17",
+              17
+            ],
+            [
+              "r0/src/18",
+              18
+            ],
+            [
+              "r0/src/19",
+              19
+            ],
+            [
+              "r0/src/20",
+              20
+            ]
+          ],
+          "b": [
+            [
+              "r0/src/1",
+              2
+            ],
+            [
+              "r0/src/2",
+              5
+            ],
+            [
+              "r0/src/3",
+              8
+            ],
+            [
+              "r0/src/4",
+              11
+            ],
+            [
+              "r0/src/5",
+              14
+            ],
+            [
+              "r0/src/6",
+              17
+            ],
+            [
+              "r0/src/7",
+              20
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            5
+          ],
+          [
+            "r0/src/2",
+            8
+          ],
+          [
+            "r0/src/3",
+            11
+          ],
+          [
+            "r0/src/4",
+            14
+          ],
+          [
+            "r0/src/5",
+            17
+          ],
+          [
+            "r0/src/6",
+            20
+          ]
+        ],
+        "blocks": [],
+        "result": {
+          "completed_count": 6,
+          "censored_entities": 14,
+          "lead_times_minutes": [
+            4,
+            6,
+            8,
+            10,
+            12,
+            14
+          ],
+          "queue_waits_minutes": {
+            "qb": [
+              0,
+              2,
+              4,
+              6,
+              8,
+              10,
+              12
+            ],
+            "a": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "resource_utilization": {
+            "ra": 0.95,
+            "rb": 0.9
+          },
+          "blocking": null,
+          "buffers": null,
+          "resource_states": null
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-B3",
+      "title": "two processes blocked by one buffer in the same tick",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B3",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "rb",
+            "type": "machine",
+            "name": "rb",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "ry",
+            "type": "machine",
+            "name": "ry",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "rz",
+            "type": "machine",
+            "name": "rz",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "s0",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              },
+              "max_entities": 2
+            }
+          },
+          {
+            "id": "s1",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s2",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "pz",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rz",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "py",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ry",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qb",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "b",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 10
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rb",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "s0__qb",
+            "from": "s0",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s1__pz",
+            "from": "s1",
+            "to": "pz",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s2__py",
+            "from": "s2",
+            "to": "py",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "pz__qb",
+            "from": "pz",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "py__qb",
+            "from": "py",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qb__b",
+            "from": "qb",
+            "to": "b",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b__done",
+            "from": "b",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 45,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "b": [
+            [
+              "r0/s0/1",
+              1
+            ],
+            [
+              "r0/s0/2",
+              11
+            ],
+            [
+              "r0/s1/1",
+              21
+            ],
+            [
+              "r0/s2/1",
+              31
+            ]
+          ],
+          "pz": [
+            [
+              "r0/s1/1",
+              3
+            ]
+          ],
+          "py": [
+            [
+              "r0/s2/1",
+              3
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/s0/1",
+            11
+          ],
+          [
+            "r0/s0/2",
+            21
+          ],
+          [
+            "r0/s1/1",
+            31
+          ],
+          [
+            "r0/s2/1",
+            41
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/s1/1",
+            "pz",
+            5,
+            11
+          ],
+          [
+            "r0/s2/1",
+            "py",
+            5,
+            21
+          ]
+        ],
+        "result": {
+          "completed_count": 4,
+          "censored_entities": 0,
+          "blocking": {
+            "s0": {
+              "blocks_started": 0,
+              "blocks_completed": 0,
+              "completed_block_ticks": 0,
+              "blocked_entity_ticks": 0
+            },
+            "py": {
+              "blocks_started": 1,
+              "blocks_completed": 1,
+              "completed_block_ticks": 960000,
+              "blocked_entity_ticks": 960000
+            },
+            "pz": {
+              "blocks_started": 1,
+              "blocks_completed": 1,
+              "completed_block_ticks": 360000,
+              "blocked_entity_ticks": 360000
+            }
+          },
+          "buffers": {
+            "qb": {
+              "full_ticks": 1740000
+            }
+          },
+          "resource_states": {
+            "rb": {
+              "in_use_ticks": 2400000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 2400000
+            },
+            "ry": {
+              "in_use_ticks": 1080000,
+              "blocked_ticks": 960000,
+              "scheduled_processing_ticks": 120000
+            },
+            "rz": {
+              "in_use_ticks": 480000,
+              "blocked_ticks": 360000,
+              "scheduled_processing_ticks": 120000
+            }
+          }
+        }
+      },
+      "simpy": "not compared: the order of two blocks in one tick is the kernel's tie-break (D-048), which SimPy does not reproduce"
+    },
+    {
+      "id": "G-B4",
+      "title": "source release backlog",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B4",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "rw",
+            "type": "machine",
+            "name": "rw",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "qw",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "w",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rw",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__qw",
+            "from": "src",
+            "to": "qw",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qw__w",
+            "from": "qw",
+            "to": "w",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "w__done",
+            "from": "w",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 20,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "w": [
+            [
+              "r0/src/1",
+              1
+            ],
+            [
+              "r0/src/2",
+              3
+            ],
+            [
+              "r0/src/3",
+              5
+            ],
+            [
+              "r0/src/4",
+              7
+            ],
+            [
+              "r0/src/5",
+              9
+            ],
+            [
+              "r0/src/6",
+              11
+            ],
+            [
+              "r0/src/7",
+              13
+            ],
+            [
+              "r0/src/8",
+              15
+            ],
+            [
+              "r0/src/9",
+              17
+            ],
+            [
+              "r0/src/10",
+              19
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            3
+          ],
+          [
+            "r0/src/2",
+            5
+          ],
+          [
+            "r0/src/3",
+            7
+          ],
+          [
+            "r0/src/4",
+            9
+          ],
+          [
+            "r0/src/5",
+            11
+          ],
+          [
+            "r0/src/6",
+            13
+          ],
+          [
+            "r0/src/7",
+            15
+          ],
+          [
+            "r0/src/8",
+            17
+          ],
+          [
+            "r0/src/9",
+            19
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/src/3",
+            "src",
+            3,
+            3
+          ],
+          [
+            "r0/src/4",
+            "src",
+            4,
+            5
+          ],
+          [
+            "r0/src/5",
+            "src",
+            5,
+            7
+          ],
+          [
+            "r0/src/6",
+            "src",
+            6,
+            9
+          ],
+          [
+            "r0/src/7",
+            "src",
+            7,
+            11
+          ],
+          [
+            "r0/src/8",
+            "src",
+            8,
+            13
+          ],
+          [
+            "r0/src/9",
+            "src",
+            9,
+            15
+          ],
+          [
+            "r0/src/10",
+            "src",
+            10,
+            17
+          ],
+          [
+            "r0/src/11",
+            "src",
+            11,
+            19
+          ],
+          [
+            "r0/src/12",
+            "src",
+            12,
+            null
+          ],
+          [
+            "r0/src/13",
+            "src",
+            13,
+            null
+          ],
+          [
+            "r0/src/14",
+            "src",
+            14,
+            null
+          ],
+          [
+            "r0/src/15",
+            "src",
+            15,
+            null
+          ],
+          [
+            "r0/src/16",
+            "src",
+            16,
+            null
+          ],
+          [
+            "r0/src/17",
+            "src",
+            17,
+            null
+          ],
+          [
+            "r0/src/18",
+            "src",
+            18,
+            null
+          ],
+          [
+            "r0/src/19",
+            "src",
+            19,
+            null
+          ],
+          [
+            "r0/src/20",
+            "src",
+            20,
+            null
+          ]
+        ],
+        "result": {
+          "completed_count": 9,
+          "censored_entities": 11,
+          "lead_times_minutes": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "blocking": {
+            "src": {
+              "blocks_started": 18,
+              "blocks_completed": 9,
+              "completed_block_ticks": 2160000,
+              "blocked_entity_ticks": 4320000
+            }
+          },
+          "buffers": {
+            "qw": {
+              "full_ticks": 1080000
+            }
+          },
+          "resource_states": {
+            "rw": {
+              "in_use_ticks": 1140000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 1140000
+            }
+          }
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-B5",
+      "title": "a decision before a full buffer draws once",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B5",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "r1",
+            "type": "machine",
+            "name": "r1",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "r2",
+            "type": "machine",
+            "name": "r2",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "ra",
+            "type": "machine",
+            "name": "ra",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              },
+              "max_entities": 12
+            }
+          },
+          {
+            "id": "a",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ra",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "d",
+            "type": "decision"
+          },
+          {
+            "id": "q1",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "q2",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "b1",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 4
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "r1",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "b2",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 4
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "r2",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__a",
+            "from": "src",
+            "to": "a",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "a__d",
+            "from": "a",
+            "to": "d",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "d__q1",
+            "from": "d",
+            "to": "q1",
+            "routing": {
+              "type": "probability",
+              "probability": 0.5
+            }
+          },
+          {
+            "id": "d__q2",
+            "from": "d",
+            "to": "q2",
+            "routing": {
+              "type": "probability",
+              "probability": 0.5
+            }
+          },
+          {
+            "id": "q1__b1",
+            "from": "q1",
+            "to": "b1",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "q2__b2",
+            "from": "q2",
+            "to": "b2",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b1__done",
+            "from": "b1",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b2__done",
+            "from": "b2",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 80,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "routing_draws": "one per completion at a; checked against the d/routing stream in the test"
+      },
+      "simpy": "not compared: the property is the kernel's use of its routing stream"
+    },
+    {
+      "id": "G-B7",
+      "title": "a blocked bundle keeps a shared resource",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B7",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "op",
+            "type": "machine",
+            "name": "op",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "ra",
+            "type": "machine",
+            "name": "ra",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "rb",
+            "type": "machine",
+            "name": "rb",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src_a",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              },
+              "max_entities": 3
+            }
+          },
+          {
+            "id": "src_c",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 4
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "a",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ra",
+                "units": 1
+              },
+              {
+                "resource_id": "op",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qb",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "b",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 10
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rb",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "c",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "op",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src_a__a",
+            "from": "src_a",
+            "to": "a",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "a__qb",
+            "from": "a",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qb__b",
+            "from": "qb",
+            "to": "b",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b__done",
+            "from": "b",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "src_c__c",
+            "from": "src_c",
+            "to": "c",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "c__done",
+            "from": "c",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 40,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "a": [
+            [
+              "r0/src_a/1",
+              1
+            ],
+            [
+              "r0/src_a/2",
+              2
+            ],
+            [
+              "r0/src_a/3",
+              3
+            ]
+          ],
+          "b": [
+            [
+              "r0/src_a/1",
+              2
+            ],
+            [
+              "r0/src_a/2",
+              12
+            ],
+            [
+              "r0/src_a/3",
+              22
+            ]
+          ],
+          "c": [
+            [
+              "r0/src_c/1",
+              12
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src_a/1",
+            12
+          ],
+          [
+            "r0/src_c/1",
+            13
+          ],
+          [
+            "r0/src_a/2",
+            22
+          ],
+          [
+            "r0/src_a/3",
+            32
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/src_a/3",
+            "a",
+            4,
+            12
+          ]
+        ],
+        "result": {
+          "completed_count": 4,
+          "censored_entities": 0,
+          "blocking": {
+            "a": {
+              "blocks_started": 1,
+              "blocks_completed": 1,
+              "completed_block_ticks": 480000,
+              "blocked_entity_ticks": 480000
+            }
+          },
+          "buffers": {
+            "qb": {
+              "full_ticks": 1140000
+            }
+          },
+          "resource_states": {
+            "op": {
+              "in_use_ticks": 720000,
+              "blocked_ticks": 480000,
+              "scheduled_processing_ticks": 240000
+            },
+            "ra": {
+              "in_use_ticks": 660000,
+              "blocked_ticks": 480000,
+              "scheduled_processing_ticks": 180000
+            },
+            "rb": {
+              "in_use_ticks": 1800000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 1800000
+            }
+          }
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-B8",
+      "title": "a chain of unblocks in one dispatch",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B8",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "ra",
+            "type": "machine",
+            "name": "ra",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "rb",
+            "type": "machine",
+            "name": "rb",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "rc",
+            "type": "machine",
+            "name": "rc",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              },
+              "max_entities": 6
+            }
+          },
+          {
+            "id": "a",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ra",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qb",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "b",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rb",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qc",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "c",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 10
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rc",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__a",
+            "from": "src",
+            "to": "a",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "a__qb",
+            "from": "a",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qb__b",
+            "from": "qb",
+            "to": "b",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b__qc",
+            "from": "b",
+            "to": "qc",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qc__c",
+            "from": "qc",
+            "to": "c",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "c__done",
+            "from": "c",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 70,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "a": [
+            [
+              "r0/src/1",
+              1
+            ],
+            [
+              "r0/src/2",
+              2
+            ],
+            [
+              "r0/src/3",
+              3
+            ],
+            [
+              "r0/src/4",
+              4
+            ],
+            [
+              "r0/src/5",
+              5
+            ],
+            [
+              "r0/src/6",
+              13
+            ]
+          ],
+          "b": [
+            [
+              "r0/src/1",
+              2
+            ],
+            [
+              "r0/src/2",
+              3
+            ],
+            [
+              "r0/src/3",
+              4
+            ],
+            [
+              "r0/src/4",
+              13
+            ],
+            [
+              "r0/src/5",
+              23
+            ],
+            [
+              "r0/src/6",
+              33
+            ]
+          ],
+          "c": [
+            [
+              "r0/src/1",
+              3
+            ],
+            [
+              "r0/src/2",
+              13
+            ],
+            [
+              "r0/src/3",
+              23
+            ],
+            [
+              "r0/src/4",
+              33
+            ],
+            [
+              "r0/src/5",
+              43
+            ],
+            [
+              "r0/src/6",
+              53
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            13
+          ],
+          [
+            "r0/src/2",
+            23
+          ],
+          [
+            "r0/src/3",
+            33
+          ],
+          [
+            "r0/src/4",
+            43
+          ],
+          [
+            "r0/src/5",
+            53
+          ],
+          [
+            "r0/src/6",
+            63
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/src/3",
+            "b",
+            5,
+            13
+          ],
+          [
+            "r0/src/5",
+            "a",
+            6,
+            13
+          ],
+          [
+            "r0/src/4",
+            "b",
+            14,
+            23
+          ],
+          [
+            "r0/src/6",
+            "a",
+            14,
+            23
+          ],
+          [
+            "r0/src/5",
+            "b",
+            24,
+            33
+          ],
+          [
+            "r0/src/6",
+            "b",
+            34,
+            43
+          ]
+        ],
+        "dispatch_at_13": [
+          [
+            "resource",
+            "rc",
+            1
+          ],
+          [
+            "service_start",
+            "r0/src/2",
+            "c"
+          ],
+          [
+            "resource",
+            "rb",
+            0
+          ],
+          [
+            "unblocked",
+            "r0/src/3",
+            "b"
+          ],
+          [
+            "queue_enter",
+            "r0/src/3",
+            "qc"
+          ],
+          [
+            "resource",
+            "rb",
+            1
+          ],
+          [
+            "service_start",
+            "r0/src/4",
+            "b"
+          ],
+          [
+            "resource",
+            "ra",
+            0
+          ],
+          [
+            "unblocked",
+            "r0/src/5",
+            "a"
+          ],
+          [
+            "queue_enter",
+            "r0/src/5",
+            "qb"
+          ],
+          [
+            "resource",
+            "ra",
+            1
+          ],
+          [
+            "service_start",
+            "r0/src/6",
+            "a"
+          ]
+        ],
+        "result": {
+          "completed_count": 6,
+          "censored_entities": 0,
+          "lead_times_minutes": [
+            12,
+            21,
+            30,
+            39,
+            48,
+            57
+          ],
+          "blocking": {
+            "a": {
+              "blocks_started": 2,
+              "blocks_completed": 2,
+              "completed_block_ticks": 960000,
+              "blocked_entity_ticks": 960000
+            },
+            "b": {
+              "blocks_started": 4,
+              "blocks_completed": 4,
+              "completed_block_ticks": 2100000,
+              "blocked_entity_ticks": 2100000
+            }
+          },
+          "buffers": {
+            "qb": {
+              "full_ticks": 1680000
+            },
+            "qc": {
+              "full_ticks": 2940000
+            }
+          },
+          "resource_states": {
+            "ra": {
+              "in_use_ticks": 1320000,
+              "blocked_ticks": 960000,
+              "scheduled_processing_ticks": 360000
+            },
+            "rb": {
+              "in_use_ticks": 2460000,
+              "blocked_ticks": 2100000,
+              "scheduled_processing_ticks": 360000
+            },
+            "rc": {
+              "in_use_ticks": 3600000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 3600000
+            }
+          }
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-B9",
+      "title": "a blocked entity has no place in the FIFO it waits for",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B9",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "ra",
+            "type": "machine",
+            "name": "ra",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "rp",
+            "type": "machine",
+            "name": "rp",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "s_f",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              },
+              "max_entities": 2
+            }
+          },
+          {
+            "id": "s_a",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s_x",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 4
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "A",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ra",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qp",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "P",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 5
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rp",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "X",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rp",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "s_f__qp",
+            "from": "s_f",
+            "to": "qp",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s_a__A",
+            "from": "s_a",
+            "to": "A",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "A__qp",
+            "from": "A",
+            "to": "qp",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qp__P",
+            "from": "qp",
+            "to": "P",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "P__done",
+            "from": "P",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s_x__X",
+            "from": "s_x",
+            "to": "X",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "X__done",
+            "from": "X",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 20,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "A": [
+            [
+              "r0/s_a/1",
+              2
+            ]
+          ],
+          "P": [
+            [
+              "r0/s_f/1",
+              1
+            ],
+            [
+              "r0/s_f/2",
+              6
+            ],
+            [
+              "r0/s_a/1",
+              13
+            ]
+          ],
+          "X": [
+            [
+              "r0/s_x/1",
+              11
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/s_f/1",
+            6
+          ],
+          [
+            "r0/s_f/2",
+            11
+          ],
+          [
+            "r0/s_x/1",
+            13
+          ],
+          [
+            "r0/s_a/1",
+            18
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/s_a/1",
+            "A",
+            3,
+            6
+          ]
+        ],
+        "result": {
+          "completed_count": 4,
+          "censored_entities": 0,
+          "queue_waits_minutes": {
+            "qp": [
+              0,
+              4,
+              7
+            ]
+          },
+          "blocking": {
+            "A": {
+              "blocks_started": 1,
+              "blocks_completed": 1,
+              "completed_block_ticks": 180000,
+              "blocked_entity_ticks": 180000
+            },
+            "s_f": {
+              "blocks_started": 0,
+              "blocks_completed": 0,
+              "completed_block_ticks": 0,
+              "blocked_entity_ticks": 0
+            }
+          },
+          "buffers": {
+            "qp": {
+              "full_ticks": 660000
+            }
+          },
+          "resource_states": {
+            "ra": {
+              "in_use_ticks": 240000,
+              "blocked_ticks": 180000,
+              "scheduled_processing_ticks": 60000
+            },
+            "rp": {
+              "in_use_ticks": 1020000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 1020000
+            }
+          }
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-D2",
+      "title": "a circular wait is a typed error at the tick it forms",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-D2",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "r1",
+            "type": "machine",
+            "name": "r1",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "r2",
+            "type": "machine",
+            "name": "r2",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "q1",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "s1",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "r1",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "q2",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "s2",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "r2",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "z",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__q1",
+            "from": "src",
+            "to": "q1",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "q1__s1",
+            "from": "q1",
+            "to": "s1",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s1__q2",
+            "from": "s1",
+            "to": "q2",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "q2__s2",
+            "from": "q2",
+            "to": "s2",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s2__q1",
+            "from": "s2",
+            "to": "q1",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "z__done",
+            "from": "z",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 60,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "validator": {
+        "codes_at": [
+          [
+            "BLOCKING_CYCLE",
+            "/nodes/1/capacity"
+          ],
+          [
+            "BLOCKING_CYCLE",
+            "/nodes/3/capacity"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/0"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/1"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/2"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/3"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/4"
+          ]
+        ]
+      },
+      "expected": {
+        "starts": {
+          "s1": [
+            [
+              "r0/src/1",
+              1
+            ],
+            [
+              "r0/src/2",
+              3
+            ],
+            [
+              "r0/src/3",
+              5
+            ]
+          ],
+          "s2": [
+            [
+              "r0/src/1",
+              3
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/z/1",
+            1
+          ],
+          [
+            "r0/z/2",
+            2
+          ],
+          [
+            "r0/z/3",
+            3
+          ],
+          [
+            "r0/z/4",
+            4
+          ],
+          [
+            "r0/z/5",
+            5
+          ],
+          [
+            "r0/z/6",
+            6
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/src/3",
+            "src",
+            3,
+            3
+          ],
+          [
+            "r0/src/4",
+            "src",
+            4,
+            5
+          ],
+          [
+            "r0/src/5",
+            "src",
+            5,
+            null
+          ],
+          [
+            "r0/src/1",
+            "s2",
+            6,
+            null
+          ],
+          [
+            "r0/src/6",
+            "src",
+            6,
+            null
+          ],
+          [
+            "r0/src/3",
+            "s1",
+            7,
+            null
+          ]
+        ],
+        "deadlock": {
+          "tick": 420000,
+          "entity": "r0/src/5",
+          "node": "src",
+          "since": 300000,
+          "reason": "the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000"
+        },
+        "before_the_deadlock": {
+          "horizon": 6,
+          "completed": true
+        }
+      },
+      "simpy": "illustrative: SimPy does not detect deadlocks; it shows no service starts after 5 and both machines held by blocked entities from 7"
+    }
+  ],
+  "reference": {
+    "tolerance": {
+      "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+      "z": 4.0,
+      "rel": 0.005,
+      "abs": 1e-09
+    },
+    "cases": [
+      {
+        "id": "S1",
+        "title": "three stations, finite buffers 2 and 1",
+        "model": {
+          "schema_version": "0.1",
+          "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+          "domain": "synthetic_line",
+          "name": "S1",
+          "time_unit": "minute",
+          "entity_types": [
+            {
+              "id": "board",
+              "name": "Board"
+            }
+          ],
+          "resources": [
+            {
+              "id": "m1",
+              "type": "machine",
+              "name": "m1",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            },
+            {
+              "id": "m2",
+              "type": "machine",
+              "name": "m2",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            },
+            {
+              "id": "m3",
+              "type": "machine",
+              "name": "m3",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            }
+          ],
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 1.0
+                }
+              }
+            },
+            {
+              "id": "st1",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 0.7
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m1",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "q2",
+              "type": "queue",
+              "capacity": 2
+            },
+            {
+              "id": "st2",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 0.8
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m2",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "q3",
+              "type": "queue",
+              "capacity": 1
+            },
+            {
+              "id": "st3",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 0.75
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m3",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "type": "sink",
+              "outcome": "completed"
+            }
+          ],
+          "flows": [
+            {
+              "id": "src__st1",
+              "from": "src",
+              "to": "st1",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "st1__q2",
+              "from": "st1",
+              "to": "q2",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "q2__st2",
+              "from": "q2",
+              "to": "st2",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "st2__q3",
+              "from": "st2",
+              "to": "q3",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "q3__st3",
+              "from": "q3",
+              "to": "st3",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "st3__done",
+              "from": "st3",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            }
+          ],
+          "constraints": [],
+          "metrics": [],
+          "views": {
+            "2d": {},
+            "3d": {}
+          },
+          "metadata": {
+            "synthetic": true
+          }
+        },
+        "config": {
+          "horizon": {
+            "value": 3000,
+            "unit": "minute"
+          },
+          "warmup": {
+            "value": 300,
+            "unit": "minute"
+          },
+          "replications": 30,
+          "seed": 2047,
+          "trace_level": "none"
+        }
+      },
+      {
+        "id": "S2",
+        "title": "a retest loop through an unlimited buffer before a finite one",
+        "model": {
+          "schema_version": "0.1",
+          "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+          "domain": "synthetic_line",
+          "name": "S2",
+          "time_unit": "minute",
+          "entity_types": [
+            {
+              "id": "board",
+              "name": "Board"
+            }
+          ],
+          "resources": [
+            {
+              "id": "packer",
+              "type": "machine",
+              "name": "packer",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            },
+            {
+              "id": "tester",
+              "type": "machine",
+              "name": "tester",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            }
+          ],
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 1.2
+                }
+              }
+            },
+            {
+              "id": "q1",
+              "type": "queue"
+            },
+            {
+              "id": "test",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 0.8
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "tester",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "d",
+              "type": "decision"
+            },
+            {
+              "id": "rw",
+              "type": "rework"
+            },
+            {
+              "id": "qp",
+              "type": "queue",
+              "capacity": 2
+            },
+            {
+              "id": "pack",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 0.9
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "packer",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "type": "sink",
+              "outcome": "completed"
+            }
+          ],
+          "flows": [
+            {
+              "id": "src__q1",
+              "from": "src",
+              "to": "q1",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "q1__test",
+              "from": "q1",
+              "to": "test",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "test__d",
+              "from": "test",
+              "to": "d",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "d__qp",
+              "from": "d",
+              "to": "qp",
+              "routing": {
+                "type": "probability",
+                "probability": 0.85
+              }
+            },
+            {
+              "id": "d__rw",
+              "from": "d",
+              "to": "rw",
+              "routing": {
+                "type": "probability",
+                "probability": 0.15
+              }
+            },
+            {
+              "id": "rw__q1",
+              "from": "rw",
+              "to": "q1",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "qp__pack",
+              "from": "qp",
+              "to": "pack",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "pack__done",
+              "from": "pack",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            }
+          ],
+          "constraints": [],
+          "metrics": [],
+          "views": {
+            "2d": {},
+            "3d": {}
+          },
+          "metadata": {
+            "synthetic": true
+          }
+        },
+        "config": {
+          "horizon": {
+            "value": 3000,
+            "unit": "minute"
+          },
+          "warmup": {
+            "value": 300,
+            "unit": "minute"
+          },
+          "replications": 30,
+          "seed": 2048,
+          "trace_level": "none"
+        }
+      },
+      {
+        "id": "S3",
+        "title": "a bundle with a shared operator, blocked downstream",
+        "model": {
+          "schema_version": "0.1",
+          "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+          "domain": "synthetic_line",
+          "name": "S3",
+          "time_unit": "minute",
+          "entity_types": [
+            {
+              "id": "board",
+              "name": "Board"
+            }
+          ],
+          "resources": [
+            {
+              "id": "m1",
+              "type": "machine",
+              "name": "m1",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            },
+            {
+              "id": "m2",
+              "type": "machine",
+              "name": "m2",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            },
+            {
+              "id": "op",
+              "type": "machine",
+              "name": "op",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            }
+          ],
+          "nodes": [
+            {
+              "id": "src1",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 2.0
+                }
+              }
+            },
+            {
+              "id": "src2",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 2.5
+                }
+              }
+            },
+            {
+              "id": "p1",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 0.6
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "op",
+                  "units": 1
+                },
+                {
+                  "resource_id": "m1",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "q2",
+              "type": "queue",
+              "capacity": 1
+            },
+            {
+              "id": "p2",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 1.2
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m2",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "p3",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 0.5
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "op",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "type": "sink",
+              "outcome": "completed"
+            }
+          ],
+          "flows": [
+            {
+              "id": "src1__p1",
+              "from": "src1",
+              "to": "p1",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "p1__q2",
+              "from": "p1",
+              "to": "q2",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "q2__p2",
+              "from": "q2",
+              "to": "p2",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "p2__done",
+              "from": "p2",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "src2__p3",
+              "from": "src2",
+              "to": "p3",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "p3__done",
+              "from": "p3",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            }
+          ],
+          "constraints": [],
+          "metrics": [],
+          "views": {
+            "2d": {},
+            "3d": {}
+          },
+          "metadata": {
+            "synthetic": true
+          }
+        },
+        "config": {
+          "horizon": {
+            "value": 3000,
+            "unit": "minute"
+          },
+          "warmup": {
+            "value": 300,
+            "unit": "minute"
+          },
+          "replications": 30,
+          "seed": 2049,
+          "trace_level": "none"
+        }
+      },
+      {
+        "id": "S4",
+        "title": "a source backlog before a buffer of three",
+        "model": {
+          "schema_version": "0.1",
+          "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+          "domain": "synthetic_line",
+          "name": "S4",
+          "time_unit": "minute",
+          "entity_types": [
+            {
+              "id": "board",
+              "name": "Board"
+            }
+          ],
+          "resources": [
+            {
+              "id": "m",
+              "type": "machine",
+              "name": "m",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            }
+          ],
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 1.0
+                }
+              }
+            },
+            {
+              "id": "q1",
+              "type": "queue",
+              "capacity": 3
+            },
+            {
+              "id": "p",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 0.95
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "type": "sink",
+              "outcome": "completed"
+            }
+          ],
+          "flows": [
+            {
+              "id": "src__q1",
+              "from": "src",
+              "to": "q1",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "q1__p",
+              "from": "q1",
+              "to": "p",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "p__done",
+              "from": "p",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            }
+          ],
+          "constraints": [],
+          "metrics": [],
+          "views": {
+            "2d": {},
+            "3d": {}
+          },
+          "metadata": {
+            "synthetic": true
+          }
+        },
+        "config": {
+          "horizon": {
+            "value": 3000,
+            "unit": "minute"
+          },
+          "warmup": {
+            "value": 300,
+            "unit": "minute"
+          },
+          "replications": 30,
+          "seed": 2050,
+          "trace_level": "none"
+        }
+      }
+    ],
+    "metrics": [
+      "completed_count",
+      "mean_lead_time_minutes",
+      "utilization/<resource>",
+      "blocked_fraction/<resource>",
+      "full_fraction/<finite queue>",
+      "blocks_started/<node>",
+      "blocked_entities_mean/<node>",
+      "reworks"
+    ]
+  }
+}

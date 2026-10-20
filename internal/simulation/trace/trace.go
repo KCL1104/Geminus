@@ -52,6 +52,8 @@ var kinds = map[engine.ObservationKind]simulation.TraceEventType{
 	engine.ObsServiceStart: simulation.TraceServiceStart, engine.ObsServiceEnd: simulation.TraceServiceEnd,
 	engine.ObsDelayStart: simulation.TraceDelayStart, engine.ObsDelayEnd: simulation.TraceDelayEnd,
 	engine.ObsFailure: simulation.TraceFailure, engine.ObsRework: simulation.TraceRework,
+	// D-049 (T-047): at the node the entity is blocked at (Observation.Node).
+	engine.ObsBlocked: simulation.TraceBlocked, engine.ObsUnblocked: simulation.TraceUnblocked,
 }
 
 // Observe implements engine.Observer.

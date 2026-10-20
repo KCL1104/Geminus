@@ -39,14 +39,17 @@ func Max(a, b Risk) Risk {
 //     rose on a flow into a failure or rework node, or on a flow that lies
 //     on a cycle (rework, retest); the candidate has a cycle the base does
 //     not; an entity (node, flow, resource, entity type, metric) was added
-//     or removed; a constraint was added, removed or changed;
-//   - low: anything else (a name, a distribution, a higher capacity, less
-//     failure routing).
+//     or removed; a constraint was added, removed or changed; a queue's
+//     buffer is smaller, or finite where it was unlimited (D-057);
+//   - low: anything else (a name, a distribution, a higher capacity, a
+//     larger or an unlimited buffer, less failure routing).
 //
 // D-016 fixes the first two lines' deletions, lower capacity, new cycles
 // and higher failure probability; the rest is D-062 (d), and the cut-off
-// node is D-062 (i) option B, both approved by the owner (H-019).
-// Confidence plays no part.
+// node is D-062 (i) option B, both approved by the owner (H-019); the
+// buffers are D-057 (H-018), from T-047, which lifted their gate. A
+// buffer that closes a blocking cycle never gets here: the candidate is
+// invalid (D-050 R1). Confidence plays no part.
 func ServerRisk(base, candidate *model.ModelIR) Risk {
 	level := Low
 	raise := func(r Risk) { level = Max(level, r) }
@@ -60,6 +63,11 @@ func ServerRisk(base, candidate *model.ModelIR) Risk {
 		case c.Type != n.Type:
 			raise(High)
 		case !sameRequirements(n.Requires, c.Requires):
+			raise(Medium)
+		}
+		// D-057: a smaller buffer, or a finite one where the base had none
+		// (capacity 0 is unlimited); a larger or an unlimited one is low.
+		if ok && c.Type == n.Type && c.Capacity != 0 && (n.Capacity == 0 || c.Capacity < n.Capacity) {
 			raise(Medium)
 		}
 	}

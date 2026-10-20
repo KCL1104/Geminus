@@ -32,9 +32,10 @@ var Primitives = []Primitive{FiniteBuffer, Breakdowns, Lognormal, Weibull, Calen
 	SystemWIP, FlowCount, SinkCount, PeriodThroughput}
 
 // checked holds the primitives whose semantic rules (TWIN_IR_SPEC §4) this
-// validator implements. None yet: each of T-047–T-051 adds its own with the
-// rules, never before. It is only read, never iterated.
-var checked = map[Primitive]bool{}
+// validator implements: finite buffers (T-047: D-050 R1, BLOCKING_CYCLE, in
+// the graph stage). Each of T-048–T-051 adds its own with the rules, never
+// before. It is only read, never iterated.
+var checked = map[Primitive]bool{FiniteBuffer: true}
 
 // Checked reports whether this validator implements p's semantic rules.
 func Checked(p Primitive) bool { return checked[p] }

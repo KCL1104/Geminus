@@ -314,7 +314,7 @@ func routing(ir *model.ModelIR, g *graph) issues {
 		}
 	}
 	out = append(out, reachability(ir, g)...)
-	return out
+	return append(out, blockingCycles(ir, g)...) // D-050 R1 (T-047)
 }
 
 func probabilitySum(ir *model.ModelIR, flows []int) float64 {

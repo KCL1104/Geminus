@@ -27,7 +27,16 @@ type lineFlowRiskCase struct {
 	atLeast Risk
 }
 
-var lineFlowRiskCases = map[validate.Primitive][]lineFlowRiskCase{}
+var lineFlowRiskCases = map[validate.Primitive][]lineFlowRiskCase{
+	// T-047 (D-057): a queue's capacity. In valid-line-flow-ir.json nodes 3
+	// (q_burn_in) and 4 (q_line) are finite buffers of 80 and 20.
+	validate.FiniteBuffer: {
+		{"a smaller buffer", func(c *model.ModelIR) { c.Nodes[4].Capacity = 5 }, Medium},
+		{"a buffer of one", func(c *model.ModelIR) { c.Nodes[3].Capacity = 1 }, Medium},
+		{"a larger buffer", func(c *model.ModelIR) { c.Nodes[4].Capacity = 40 }, Low},
+		{"an unlimited buffer", func(c *model.ModelIR) { c.Nodes[3].Capacity = 0 }, Low},
+	},
+}
 
 // A primitive the validator checks (its gate lifted) must have server-risk
 // cases, and every registered case must hold.

@@ -47,6 +47,7 @@ type Program struct {
 	seed         uint64
 	traceLevel   simulation.TraceLevel
 	limits       simulation.ExecutionLimits
+	finite       bool // some process has a finite buffer (D-049)
 }
 
 type cnode struct {
@@ -61,6 +62,8 @@ type cnode struct {
 	buffer      int     // queue: the process whose request buffer it names; process: itself; otherwise -1
 	label       string  // process: the queue-metric key (its explicit queue's ID, else its own)
 	outcome     model.SinkOutcome
+	capacity    int  // process: its buffer's capacity from its explicit queue (D-049); 0 unlimited
+	canBlock    bool // source, process or delay whose route can reach a finite buffer
 }
 
 type requirement struct {
@@ -129,15 +132,16 @@ func Compile(in simulation.RunInput) (*Program, error) {
 var validateIR = validate.IR
 
 // kernelExecutes holds the line-flow primitives (ADR-026, D-058;
-// validate.Primitives) this kernel executes: none in des-go-0.1.0. Each of
-// T-047–T-051 adds its own together with the kernel change and a new
-// engine_version. It is kept apart from the validator's list so that a
-// primitive whose rules are checked but whose kernel is not there yet is
-// still refused. Only read, never iterated.
-var kernelExecutes = map[validate.Primitive]bool{}
+// validate.Primitives) this kernel executes: finite buffers since
+// des-go-0.2.0 (T-047, D-049). Each of T-048–T-051 adds its own together
+// with the kernel change and a new engine_version. It is kept apart from
+// the validator's list so that a primitive whose rules are checked but
+// whose kernel is not there yet is still refused. Only read, never
+// iterated.
+var kernelExecutes = map[validate.Primitive]bool{validate.FiniteBuffer: true}
 
 // unsupported refuses every use of a primitive the kernel does not execute,
-// so no model is ever run as if such a member were absent (D-063 PROPOSED).
+// so no model is ever run as if such a member were absent (D-063).
 func unsupported(ir *model.ModelIR) []model.ValidationIssue {
 	var out []model.ValidationIssue
 	for _, u := range validate.Uses(ir) {
@@ -391,9 +395,53 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 			p.nodes[i].buffer = p.nodes[i].routes[0].to
 			// Queue metrics of a process belong to its explicit queue (SIMULATION_SPEC §3).
 			p.nodes[p.nodes[i].buffer].label = p.nodes[i].id
+			// So does its capacity (D-049): it bounds the process's buffer,
+			// whether an entity comes through the queue or straight in.
+			if c := nodes[i].Capacity; c > 0 {
+				p.nodes[p.nodes[i].buffer].capacity = c
+				p.finite = true
+			}
+		}
+	}
+	if p.finite {
+		for i := range p.nodes {
+			switch p.nodes[i].typ {
+			case model.NodeSource, model.NodeProcess, model.NodeDelay:
+				p.nodes[i].canBlock = p.reachesFinite(i)
+			}
 		}
 	}
 	return nil
+}
+
+// reachesFinite reports whether a route from node i, through decisions,
+// failure and rework nodes, can end at a finite buffer: an entity leaving i
+// can be blocked there (D-049).
+func (p *Program) reachesFinite(i int) bool {
+	seen := map[int]bool{}
+	stack := []int{}
+	for _, rt := range p.nodes[i].routes {
+		stack = append(stack, rt.to)
+	}
+	for len(stack) > 0 {
+		n := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if seen[n] {
+			continue
+		}
+		seen[n] = true
+		switch c := &p.nodes[n]; c.typ {
+		case model.NodeQueue, model.NodeProcess:
+			if c.buffer >= 0 && p.nodes[c.buffer].capacity > 0 {
+				return true
+			}
+		case model.NodeDecision, model.NodeFailure, model.NodeRework:
+			for _, rt := range c.routes {
+				stack = append(stack, rt.to)
+			}
+		}
+	}
+	return false
 }
 
 // HorizonTicks and WarmupTicks are the measurement window in ticks.
@@ -424,6 +472,29 @@ func (p *Program) NodeType(i int) model.NodeType { return p.nodes[i].typ }
 // QueueLabel is the queue-metric key of process i: the ID of the explicit
 // queue that names its buffer, or the process's own ID; "" for other nodes.
 func (p *Program) QueueLabel(i int) string { return p.nodes[i].label }
+
+// HasFiniteBuffers reports whether some process has a finite buffer
+// (D-049): only then does a run record blocking and its Result members.
+func (p *Program) HasFiniteBuffers() bool { return p.finite }
+
+// BufferCapacity is process i's buffer capacity, 0 when unlimited.
+func (p *Program) BufferCapacity(i int) int { return p.nodes[i].capacity }
+
+// CanBlock reports whether an entity leaving node i (a source, process or
+// delay) can be blocked by a full buffer (D-049).
+func (p *Program) CanBlock(i int) bool { return p.nodes[i].canBlock }
+
+// Requirement is one unit type of a bundle: a resource index and units.
+type Requirement struct{ Resource, Units int }
+
+// Requires is process i's bundle in resource order (a copy).
+func (p *Program) Requires(i int) []Requirement {
+	out := make([]Requirement, len(p.nodes[i].requires))
+	for k, q := range p.nodes[i].requires {
+		out[k] = Requirement{q.resource, q.units}
+	}
+	return out
+}
 
 // ResourceCount, ResourceID and ResourceCapacity describe resources in ID order.
 func (p *Program) ResourceCount() int         { return len(p.resources) }

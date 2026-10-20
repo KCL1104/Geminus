@@ -32,7 +32,7 @@ import (
 // Version is the engine_version of this engine and its numerical profile
 // (SIMULATION_SPEC §4, D-038). A change to any sampled, aggregated or hashed
 // number needs a new version.
-const Version = "des-go-0.1.0"
+const Version = "des-go-0.2.0"
 
 // ErrWallTimeout: the run exceeded wall_timeout_seconds. Like the engine's
 // limit errors it fails the run; nothing partial is returned.

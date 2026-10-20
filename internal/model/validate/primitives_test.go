@@ -20,6 +20,10 @@ var primitiveTasks = map[validate.Primitive]string{
 	validate.SystemWIP: "T-051", validate.FlowCount: "T-051", validate.SinkCount: "T-051", validate.PeriodThroughput: "T-051",
 }
 
+// liftedPrimitives are the primitives whose gate is lifted in this build,
+// each by the task that implemented it.
+var liftedPrimitives = map[validate.Primitive]bool{validate.FiniteBuffer: true} // T-047
+
 func TestPrimitiveCatalog(t *testing.T) {
 	if len(validate.Primitives) != len(primitiveTasks) {
 		t.Fatalf("primitives %v", validate.Primitives)
@@ -28,10 +32,10 @@ func TestPrimitiveCatalog(t *testing.T) {
 		if primitiveTasks[p] == "" {
 			t.Errorf("%s: no implementing task", p)
 		}
-		// Nothing is checked yet: T-047–T-051 turn each on with its rules
-		// and kernel, and update this test and the shared fixtures.
-		if validate.Checked(p) {
-			t.Errorf("%s is checked before %s implemented it", p, primitiveTasks[p])
+		// T-047–T-051 turn each on with its rules and kernel, and update
+		// this list and the shared fixtures: so far only T-047's.
+		if want := liftedPrimitives[p]; validate.Checked(p) != want {
+			t.Errorf("%s: checked %v, want %v (%s)", p, validate.Checked(p), want, primitiveTasks[p])
 		}
 	}
 }
@@ -50,8 +54,6 @@ func TestPrimitiveGate(t *testing.T) {
 		{"/metrics/3/type", "the sink_count metric"},
 		{"/metrics/4/type", "the period_throughput metric"},
 		{"/nodes/1/batch", "batch processes"},
-		{"/nodes/3/capacity", "finite queue capacity"},
-		{"/nodes/4/capacity", "finite queue capacity"},
 		{"/nodes/5/arrival/schedule", "release schedules"},
 		{"/nodes/6/arrival/schedule", "release schedules"},
 		{"/nodes/7/arrival/schedule", "release schedules"},
@@ -63,6 +65,8 @@ func TestPrimitiveGate(t *testing.T) {
 		{"/resources/1/shift_capacity", "shift calendars"},
 		{"/resources/2/calendar_id", "shift calendars"},
 	}
+	// The finite buffers of nodes 3 and 4 are checked since T-047, so they
+	// are no use of an unsupported primitive.
 	if r.Valid() || len(r.Issues) != len(want) {
 		t.Fatalf("got %d issues %v", len(r.Issues), r.Issues)
 	}
@@ -83,10 +87,6 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 		edit func(ir map[string]any)
 		path string
 	}{
-		"finite buffer": {func(ir map[string]any) {
-			ir["nodes"] = append(nodes(ir), map[string]any{"id": "q", "type": "queue", "capacity": 3})
-			ir["flows"] = append(flows(ir), flow("q_work", "q", "work", 1))
-		}, "/nodes/3/capacity"},
 		"breakdowns": {func(ir map[string]any) {
 			obj(ir["resources"].([]any)[0])["breakdowns"] = map[string]any{
 				"time_to_failure": map[string]any{"distribution": map[string]any{"type": "constant", "value": 100}},
@@ -136,6 +136,16 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 	r := run(t, edit(t, func(ir map[string]any) { obj(flows(ir)[0])["to"] = "nowhere" }))
 	if len(r.Issues) != 1 || r.Issues[0].Code != validate.UnknownReference {
 		t.Errorf("control: %v", r.Issues)
+	}
+	// So does a model with a finite buffer, checked since T-047: no gate
+	// issue, the later stages run.
+	r = run(t, edit(t, func(ir map[string]any) {
+		ir["nodes"] = append(nodes(ir), map[string]any{"id": "q", "type": "queue", "capacity": 3})
+		ir["flows"] = append(flows(ir), flow("q_work", "q", "work", 1))
+		obj(flows(ir)[0])["to"] = "nowhere"
+	}))
+	if len(r.Issues) != 1 || r.Issues[0].Code != validate.UnknownReference {
+		t.Errorf("finite buffer: %v, want only the unknown reference", r.Issues)
 	}
 }
 

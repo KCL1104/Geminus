@@ -78,17 +78,39 @@ type Collector struct {
 	queue     []integral  // per process node: queue length
 	busy      []integral  // per resource: units in use
 	finished  bool
+
+	// Finite buffers (D-049, D-058; only when the program has one). since
+	// holds the tick each blocked entity was blocked at; like arrived it is
+	// bounded by the active entities and only indexed.
+	finite        bool
+	since         map[uint64]int64
+	heldUnits     []int64    // per resource: units held by blocked entities (K)
+	held          []integral // per resource: ∫K
+	nodeBlocked   []int64    // per node: entities blocked there
+	blockedAt     []integral // per node: ∫ blocked entities
+	blocksStarted []int64    // per node: blocks that started in [W, H]
+	blocksDone    []int64    // per node: complete blocks (start >= W, end <= H)
+	blockTicks    []int64    // per node: their total length
+	full          []integral // per process node with a finite buffer: 1 while full
 }
 
 // NewCollector starts the collector of one replication of p.
 func NewCollector(p *engine.Program) *Collector {
 	n, r := p.NodeCount(), p.ResourceCount()
-	return &Collector{
+	c := &Collector{
 		p: p, w: p.WarmupTicks(), h: p.HorizonTicks(),
 		arrived: map[uint64]int64{}, entered: map[uint64]int64{},
 		waits: make([][]float64, n), queueLen: make([]int64, n), queue: make([]integral, n),
 		busy: make([]integral, r),
 	}
+	if p.HasFiniteBuffers() {
+		c.finite, c.since = true, map[uint64]int64{}
+		c.heldUnits, c.held = make([]int64, r), make([]integral, r)
+		c.nodeBlocked, c.blockedAt = make([]int64, n), make([]integral, n)
+		c.blocksStarted, c.blocksDone, c.blockTicks = make([]int64, n), make([]int64, n), make([]int64, n)
+		c.full = make([]integral, n)
+	}
+	return c
 }
 
 func (c *Collector) inWindow(t int64) bool { return c.w <= t && t <= c.h }
@@ -98,7 +120,7 @@ func (c *Collector) inWindow(t int64) bool { return c.w <= t && t <= c.h }
 // replications does not keep every replication's entity maps until Build
 // (T-022 review). Build accepts only finished collectors; a collector
 // observes nothing after Finish.
-func (c *Collector) Finish() { c.arrived, c.entered, c.finished = nil, nil, true }
+func (c *Collector) Finish() { c.arrived, c.entered, c.since, c.finished = nil, nil, nil, true }
 
 // Observe implements engine.Observer.
 func (c *Collector) Observe(o engine.Observation) {
@@ -109,6 +131,7 @@ func (c *Collector) Observe(o engine.Observation) {
 		c.entered[o.Entity] = o.Tick
 		c.queueLen[o.Node]++
 		c.queue[o.Node].set(c.queueLen[o.Node], o.Tick, c.w, c.h)
+		c.setFull(o.Node, o.Tick)
 	case engine.ObsServiceStart:
 		// A visit counts when it joined the queue at or after W and started
 		// by H (the kernel processes nothing after H), zero waits included;
@@ -119,6 +142,7 @@ func (c *Collector) Observe(o engine.Observation) {
 		delete(c.entered, o.Entity)
 		c.queueLen[o.Node]--
 		c.queue[o.Node].set(c.queueLen[o.Node], o.Tick, c.w, c.h)
+		c.setFull(o.Node, o.Tick)
 	case engine.ObsResource:
 		c.busy[o.Resource].set(o.Value, o.Tick, c.w, c.h)
 	case engine.ObsFailure:
@@ -129,6 +153,21 @@ func (c *Collector) Observe(o engine.Observation) {
 		if c.inWindow(o.Tick) {
 			c.reworks++
 		}
+	case engine.ObsBlocked:
+		c.since[o.Entity] = o.Tick
+		if c.inWindow(o.Tick) {
+			c.blocksStarted[o.Node]++
+		}
+		c.block(o.Node, o.Tick, +1)
+	case engine.ObsUnblocked:
+		// A complete block: started at or after W, ended by H (the kernel
+		// processes nothing after H).
+		if since := c.since[o.Entity]; since >= c.w && o.Tick <= c.h {
+			c.blocksDone[o.Node]++
+			c.blockTicks[o.Node] += o.Tick - since
+		}
+		delete(c.since, o.Entity)
+		c.block(o.Node, o.Tick, -1)
 	case engine.ObsComplete:
 		arrived := c.arrived[o.Entity]
 		delete(c.arrived, o.Entity)
@@ -139,6 +178,59 @@ func (c *Collector) Observe(o engine.Observation) {
 		// The lead-time cohort: arrived at or after W, completed by H.
 		if arrived >= c.w {
 			c.leads = append(c.leads, float64(o.Tick-arrived)/ticksPerMinute)
+		}
+	}
+}
+
+// setFull keeps the full-time integral of process i's finite buffer.
+func (c *Collector) setFull(i int, t int64) {
+	if cap := c.p.BufferCapacity(i); c.finite && cap > 0 {
+		full := int64(0)
+		if c.queueLen[i] >= int64(cap) {
+			full = 1
+		}
+		c.full[i].set(full, t, c.w, c.h)
+	}
+}
+
+// block counts an entity blocked at (sign +1) or leaving (-1) node n; a
+// process's blocked entity holds its whole bundle (D-049).
+func (c *Collector) block(n int, t int64, sign int64) {
+	c.nodeBlocked[n] += sign
+	c.blockedAt[n].set(c.nodeBlocked[n], t, c.w, c.h)
+	if c.p.NodeType(n) != model.NodeProcess {
+		return
+	}
+	for _, q := range c.p.Requires(n) {
+		c.heldUnits[q.Resource] += sign * int64(q.Units)
+		c.held[q.Resource].set(c.heldUnits[q.Resource], t, c.w, c.h)
+	}
+}
+
+// lineFlow fills a replication summary's finite-buffer members (D-058),
+// present only when the program has a finite buffer (D-047): every
+// resource's in-use and blocked ticks (in_use_ticks − blocked_ticks is the
+// processing time, ∫min(P, S) with S = C, no calendar or changeover yet),
+// every node that can be blocked, every finite buffer's full ticks.
+func (c *Collector) lineFlow(s *simulation.ReplicationSummary) {
+	if !c.finite {
+		return
+	}
+	p, w, h := c.p, c.w, c.h
+	s.ResourceStates = make(map[string]simulation.ResourceState, p.ResourceCount())
+	for i := range p.ResourceCount() {
+		used, held := c.busy[i].total(w, h), c.held[i].total(w, h)
+		s.ResourceStates[p.ResourceID(i)] = simulation.ResourceState{InUseTicks: used, BlockedTicks: &held, ScheduledProcessingTicks: used - held}
+	}
+	s.Blocking = map[string]simulation.NodeBlocking{}
+	s.Buffers = map[string]simulation.BufferState{}
+	for i := range p.NodeCount() {
+		if p.CanBlock(i) {
+			s.Blocking[p.NodeID(i)] = simulation.NodeBlocking{BlocksStarted: c.blocksStarted[i], BlocksCompleted: c.blocksDone[i],
+				CompletedBlockTicks: c.blockTicks[i], BlockedEntityTicks: c.blockedAt[i].total(w, h)}
+		}
+		if p.NodeType(i) == model.NodeProcess && p.BufferCapacity(i) > 0 {
+			s.Buffers[p.QueueLabel(i)] = simulation.BufferState{FullTicks: c.full[i].total(w, h)}
 		}
 	}
 }
@@ -202,6 +294,7 @@ func Build(p *engine.Program, reps []Replication) (simulation.Metrics, []simulat
 				waits[i] = append(waits[i], c.waits[i]...)
 			}
 		}
+		c.lineFlow(&s)
 		summaries = append(summaries, s)
 	}
 	m := simulation.Metrics{

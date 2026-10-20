@@ -432,9 +432,13 @@ func TestDependencies(t *testing.T) {
 }
 
 // The golden cases' digests are pinned (testdata/simulation/
-// engine-golden-digests.json, a regression lock taken from this engine, not
-// an oracle): any numerical change shows up here and needs a new
-// engine_version.
+// engine-golden-digests.json, a regression lock taken from des-go-0.1.0,
+// not an oracle): any numerical change shows up here and needs a new
+// engine_version. The lock is not regenerated (ADR-026 D-047): a model
+// without a line-flow member gives the same Result bit for bit, which is
+// checked as the Result with its engine_version set back to the lock's
+// having the locked digest. The new version's own lock is
+// engine-golden-digests-0.2.0.json (TestGoldenDigests020).
 func TestGoldenDigests(t *testing.T) {
 	root := contracttest.Root(t)
 	var cases struct {
@@ -454,15 +458,60 @@ func TestGoldenDigests(t *testing.T) {
 	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(root, "testdata/simulation/engine-golden-digests.json")), &lock); err != nil {
 		t.Fatal(err)
 	}
-	if lock.EngineVersion != Version || len(lock.Digests) != len(cases.Cases) {
-		t.Fatalf("lock for %s with %d digests; engine %s, %d cases", lock.EngineVersion, len(lock.Digests), Version, len(cases.Cases))
+	if lock.EngineVersion != "des-go-0.1.0" || len(lock.Digests) != len(cases.Cases) {
+		t.Fatalf("lock for %s with %d digests; %d cases", lock.EngineVersion, len(lock.Digests), len(cases.Cases))
 	}
 	for _, c := range cases.Cases {
 		in := input(t, golden(t, filepath.Base(c.Model)), 0, 0, 1, simulation.TraceNone)
 		in.Config = c.Config
-		if got := run(t, &Engine{DomainMetrics: dora}, in).Result.Reproducibility.ResultDigest; got != lock.Digests[c.ID] {
-			t.Errorf("%s: digest %s, locked %s", c.ID, got, lock.Digests[c.ID])
+		res := *run(t, &Engine{DomainMetrics: dora}, in).Result
+		if res.EngineVersion != Version {
+			t.Errorf("%s: engine_version %s", c.ID, res.EngineVersion)
 		}
+		res.EngineVersion, res.Reproducibility.ResultDigest = lock.EngineVersion, ""
+		if got, err := hashing.Result(res); err != nil || got != lock.Digests[c.ID] {
+			t.Errorf("%s: as %s, digest %s, locked %s (%v)", c.ID, lock.EngineVersion, got, lock.Digests[c.ID], err)
+		}
+	}
+}
+
+// des-go-0.2.0's own regression lock (engine output, not an oracle; ADR-026
+// D-047 "新版本另立自己的鎖"): GOLDEN-001/002 and the finite-buffer goldens.
+func TestGoldenDigests020(t *testing.T) {
+	root := contracttest.Root(t)
+	var lock struct {
+		EngineVersion string            `json:"engine_version"`
+		Digests       map[string]string `json:"digests"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(root, "testdata/simulation/engine-golden-digests-0.2.0.json")), &lock); err != nil {
+		t.Fatal(err)
+	}
+	if lock.EngineVersion != Version {
+		t.Fatalf("lock for %s, engine %s", lock.EngineVersion, Version)
+	}
+	var cases struct {
+		Cases []struct {
+			ID     string               `json:"id"`
+			Model  string               `json:"model"`
+			Config simulation.RunConfig `json:"config"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(root, "testdata/simulation/expected-cases.json")), &cases); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, c := range cases.Cases {
+		in := input(t, golden(t, filepath.Base(c.Model)), 0, 0, 1, simulation.TraceNone)
+		in.Config = c.Config
+		got[c.ID] = run(t, &Engine{DomainMetrics: dora}, in).Result.Reproducibility.ResultDigest
+	}
+	for _, c := range blockingCases(t) {
+		if c.Expected.Result != nil {
+			got[c.ID] = run(t, &Engine{}, caseInput(t, c)).Result.Reproducibility.ResultDigest
+		}
+	}
+	if !reflect.DeepEqual(got, lock.Digests) {
+		t.Errorf("digests %v\n locked %v", got, lock.Digests)
 	}
 }
 

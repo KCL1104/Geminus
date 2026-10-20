@@ -1,0 +1,22 @@
+{
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.2.0, T-047) on the cases of expected-cases.json and on the cases of blocking-goldens.json that have an expected result; NOT an independent oracle. Their values are checked against the hand-derived expectations of those files (internal/simulation/des TestBlockingGoldenResults, internal/simulation/engine TestBlockingGoldens); these digests only make any later numerical change visible. des-go-0.1.0's lock (engine-golden-digests.json) is kept as it was (ADR-026 D-047): GOLDEN-001/002 still match it with engine_version set back to des-go-0.1.0.",
+  "engine_version": "des-go-0.2.0",
+  "inputs": {
+    "cases": "expected-cases.json (with the dora stand-in) and blocking-goldens.json (model and config as given, no domain metrics)",
+    "model_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "effective_model_hash": "hashing.Model(model.Encode(model))",
+    "limits": {"wall_timeout_seconds": 300, "max_events": 10000000, "max_active_entities": 100000, "max_entity_visits": 10000, "max_trace_events": 100000},
+    "dataset_manifest": []
+  },
+  "digests": {
+    "GOLDEN-001": "sha256:0a0aa59515b08aa6b53934a7c1d1cbf334bda3cb4a3ef5442d44a1a068fcb242",
+    "GOLDEN-002": "sha256:46f6365f9f8a2a416f81f43978a4dc4f82141b2ab40d7775013a15fb45814225",
+    "G-B1": "sha256:c194061b2d5f5813e415cb1956185a1df52c12f0a37883ccd028b8728c3a08b0",
+    "G-B2": "sha256:f966f1aa5e327f3c8aa09a7a9b4f06479c1d9c7bf601d9e5aa7bc955c8024598",
+    "G-B3": "sha256:3e64510f9e6f87f69d37c3044792eafbce16a6e7c3f25397991b5b61372c59aa",
+    "G-B4": "sha256:a36f1c547d852f40519274a18ab09194ede8070f34dc07c88bc71f772533fca8",
+    "G-B7": "sha256:a14f4546457f244f33f003a52e2c3bdde4d5c098ec35de0893549cfe9ca4bb57",
+    "G-B8": "sha256:e4d541b8a6090e0991ba52e8333f85a2497fe4ae0b46866bbcd9e2ee385806eb",
+    "G-B9": "sha256:c1920773985e1ae2a93137f4247b49713afa61758efcaf47136257f8adfc36c5"
+  }
+}
