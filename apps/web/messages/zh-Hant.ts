@@ -130,7 +130,7 @@ export const zhHant: Catalog = {
   "validation.BATCH_INVALID": "批量或等待上限無效。",
   "validation.SETUP_INVALID": "換線設定無效。",
   "validation.STALL_RISK": "會故障的機台上班時，與它一起作業的資源可能不在班，工作可能永遠等下去。",
-  "validation.PRIMITIVE_NOT_SUPPORTED": "此版本尚無法檢查或執行這項功能。",
+  "validation.PRIMITIVE_NOT_SUPPORTED": "目前的系統版本尚無法檢查或執行這項功能。",
 
   "table.selectAll": "全選",
   "table.selectRow": "選取",

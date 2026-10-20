@@ -137,7 +137,7 @@ export const en = {
   "validation.BATCH_INVALID": "The batch sizes or the waiting limit are not valid.",
   "validation.SETUP_INVALID": "The changeover settings are not valid.",
   "validation.STALL_RISK": "A machine that breaks down can be on shift while the resources it works with are not, so work could wait forever.",
-  "validation.PRIMITIVE_NOT_SUPPORTED": "This version cannot check or run this feature yet.",
+  "validation.PRIMITIVE_NOT_SUPPORTED": "This build of Geminus cannot check or run this feature yet.",
 
   "table.selectAll": "Select all",
   "table.selectRow": "Select",
