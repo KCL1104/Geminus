@@ -30,7 +30,9 @@ func Max(a, b Risk) Risk {
 // it does (D-016; AI_SPEC §5). The rules are domain-neutral:
 //
 //   - high: a node or a resource of the base is gone, or a node changed its
-//     type (the node as it was is gone);
+//     type (the node as it was is gone), or a node some source reached in
+//     the base is still there but no source reaches it (a re-targeted or
+//     removed flow cut it off, which is as good as its deletion);
 //   - at least medium: a resource's capacity is lower; a process needs
 //     another quantity (more or fewer units) of a resource, or another
 //     bundle of resources; a flow was re-targeted; a routing probability
@@ -42,8 +44,9 @@ func Max(a, b Risk) Risk {
 //     failure routing).
 //
 // D-016 fixes the first two lines' deletions, lower capacity, new cycles
-// and higher failure probability; the rest is this implementation's
-// reading, recorded as D-062 (d) (PROPOSED). Confidence plays no part.
+// and higher failure probability; the rest is D-062 (d), and the cut-off
+// node is D-062 (i) option B, both approved by the owner (H-019).
+// Confidence plays no part.
 func ServerRisk(base, candidate *model.ModelIR) Risk {
 	level := Low
 	raise := func(r Risk) { level = Max(level, r) }
@@ -72,6 +75,12 @@ func ServerRisk(base, candidate *model.ModelIR) Risk {
 	}
 	if added(baseNodes, candNodes) || added(baseRes, candRes) {
 		raise(Medium)
+	}
+	candReached := reached(candidate)
+	for id := range reached(base) {
+		if _, ok := candNodes[id]; ok && !candReached[id] {
+			raise(High)
+		}
 	}
 
 	baseFlows, candFlows := byID(base.Flows, func(f model.Flow) string { return f.ID }), byID(candidate.Flows, func(f model.Flow) string { return f.ID })
@@ -171,6 +180,35 @@ func sameConstraints(a, b []model.Constraint) bool {
 		}
 	}
 	return true
+}
+
+// reached are the IDs of ir's nodes some source reaches over flows with a
+// positive probability, the sources included: the nodes the validator does
+// not warn about with UNREACHABLE_NODE (TWIN_IR_SPEC §4).
+func reached(ir *model.ModelIR) map[string]bool {
+	next := map[string][]string{}
+	for _, f := range ir.Flows {
+		if f.Routing.Probability > 0 {
+			next[f.From] = append(next[f.From], f.To)
+		}
+	}
+	out := map[string]bool{}
+	var stack []string
+	for _, n := range ir.Nodes {
+		if n.Type == model.NodeSource {
+			stack = append(stack, n.ID)
+		}
+	}
+	for len(stack) > 0 {
+		v := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if out[v] {
+			continue
+		}
+		out[v] = true
+		stack = append(stack, next[v]...)
+	}
+	return out
 }
 
 type edge struct{ from, to string }

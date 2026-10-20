@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 60,
-    "proposed": 3,
+    "approved": 63,
+    "proposed": 0,
     "rejected": 0,
     "superseded": 0
   },
@@ -24,17 +24,25 @@
     "H-015",
     "H-016",
     "H-017",
-    "H-018"
+    "H-018",
+    "H-019"
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 23,
-    "in_progress": 4,
+    "done": 25,
+    "in_progress": 2,
     "not_started": 26,
     "review": 0
   },
   "ready_tasks": [
-    "T-035"
+    "T-017",
+    "T-026",
+    "T-035",
+    "T-047",
+    "T-048",
+    "T-049",
+    "T-050",
+    "T-053"
   ],
   "next_after_review": [],
   "gates": {
@@ -557,7 +565,7 @@
       ]
     },
     "D-061": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-026 approval revalidation 前；T-027、T-030 沿用 (c) 前",
       "gates_tasks": [
         "T-025",
@@ -565,7 +573,7 @@
       ]
     },
     "D-062": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-026 approval 前",
       "gates_tasks": [
         "T-025",
@@ -573,7 +581,7 @@
       ]
     },
     "D-063": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-047–T-051 各自解除 gate 前",
       "gates_tasks": [
         "T-046",

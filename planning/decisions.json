@@ -847,12 +847,13 @@
       "source_pages": "N/A（CB-40；T-024 的 internal/ai/provider、internal/ai/idpool；T-025 實作見 internal/ai/review、internal/proposals）",
       "owner_role": "AI / API",
       "gate": "T-026 approval revalidation 前；T-027、T-030 沿用 (c) 前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [
         "CB-40"
       ],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-019)",
+      "approved_at": "2026-10-20",
+      "approval_notes": "依建議批准（H-019，Q5 依建議：寫入結果時 DB 的暫時錯誤仍重試）。"
     },
     {
       "id": "D-062",
@@ -862,10 +863,11 @@
       "source_pages": "N/A（D-016、D-027、AI_SPEC §5；T-025）",
       "owner_role": "AI / Security",
       "gate": "T-026 approval 前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-019)",
+      "approved_at": "2026-10-20",
+      "approval_notes": "依建議批准，(i) 選 B（H-019，Q2）：base 中有 source 到得了、candidate 中仍存在但沒有 source 到得了的 node，與刪除同為 high；刪除 flow 造成的不可達也算（internal/ai/review/risk.go）。(e) 依建議：預期效果只能定性（Q1）。"
     },
     {
       "id": "D-063",
@@ -875,10 +877,11 @@
       "source_pages": "N/A（ADR-026 Consequences 的 T-046 phase 2；實作見 internal/model/validate/primitives.go、internal/simulation/engine/compile.go、internal/model/patch/policy.go）",
       "owner_role": "Simulation / Contracts",
       "gate": "T-047–T-051 各自解除 gate 前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-019)",
+      "approved_at": "2026-10-20",
+      "approval_notes": "依建議批准（H-019）：(a) 採 A（Q3）；(b) shift label 採 B（Q4）：scenario 可改 label，被參照的 label 刪除或改名由 candidate validation 回 CALENDAR_INVALID，T-049 解除 calendars 的 gate 前放寬 patch 的 afterApply；(c) 採 LIMIT_EXCEEDED；(d) 照列。"
     }
   ],
   "human_decisions": [
@@ -1119,6 +1122,18 @@
         "live AI 開啟前：程式內每日 token 上限（T-053）、在 internal/config/aiapproval 記錄本批准、owner 提供兩個 key 與 Console spend limit、查證 Anthropic 的資料保留規則",
         "ADR-027（AI provider adapter）的接受",
         "D-061、D-062（T-025 提出）"
+      ]
+    },
+    {
+      "id": "H-019",
+      "subject": "批准 ADR-027、D-061、D-062、D-063（T-024、T-025、T-046 phase 2 的提案）",
+      "decision": "Owner 對決策頁（https://claude.ai/artifact/QkiAbmqDLi1bELibi6Gk5w）回覆「Q2 選 B，其他照建議」：ADR-027 ACCEPTED；D-061 依建議 APPROVED（Q5：寫入結果時 DB 的暫時錯誤仍重試）；D-062 依建議 APPROVED，(e) 預期效果只能定性（Q1），(i) 選 B：flow 改接或刪除使 base 中到得了的 node 變成不可達時，與刪除同為 high（Q2）；D-063 依建議 APPROVED：(a) 採 A（Q3），(b) scenario 可改 shift label（Q4），(c) LIMIT_EXCEEDED，(d) validator 規則延到 T-047–T-050。",
+      "quote": "Q2 選 B，其他照建議",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-20",
+      "source": "Claude Code session：owner 回覆決策頁，由 agent 記錄。回覆與決策頁上的範例句相同，agent 依字面記錄並請 owner 若非本意時告知",
+      "still_open": [
+        "live AI 開啟前（T-053）：程式內每日 token 上限、在 internal/config/aiapproval 記錄 H-018 的批准、owner 提供兩個 key 與 Console spend limit、查證 Anthropic 的資料保留規則"
       ]
     }
   ]

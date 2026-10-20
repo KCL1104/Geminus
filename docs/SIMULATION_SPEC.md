@@ -8,7 +8,7 @@ Simulation 是 immutable ModelVersion + ordered Scenario Patch + frozen empirica
 
 worker 在 engine 外負責授權、快照解析、dataset preload、job claim、timeout/cancellation、progress persistence、result atomic commit。engine 內無 network/DB/LLM、無任意 script。
 
-H-016 的新 primitive（有限緩衝與阻塞、故障、班表、隨時間變化的投入、批次）提案見 [ADR-026](adr/ADR-026-line-flow-primitives.md) 與 D-047–D-057，2026-10-20 APPROVED（H-018）；在 T-047–T-050 實作並更新本文件之前，本文件的語義是唯一有效的版本。T-046 phase 2 已把它們的 IR 成員、Result 成員與 trace 事件類型加入 contract（TWIN_IR_SPEC §2.1、本文件 §5、§9），但 des-go-0.1.0 不執行任何一個：Compile 對用到它們的模型回 `*engine.InputError`（PRIMITIVE_NOT_SUPPORTED，path 在 `/model` 之下；validator 已先拒絕，engine 另有自己的 kernel 支援清單，D-063 PROPOSED），run 在入列時就是 422，不會被當作沒有這些成員而執行。沒有這些成員的模型，observation、Result 與 digest 都與之前逐 byte 相同（D-047；T-046 phase 2 的 differential 見 checks/T-046_PHASE2_VALIDATION.md）。
+H-016 的新 primitive（有限緩衝與阻塞、故障、班表、隨時間變化的投入、批次）提案見 [ADR-026](adr/ADR-026-line-flow-primitives.md) 與 D-047–D-057，2026-10-20 APPROVED（H-018）；在 T-047–T-050 實作並更新本文件之前，本文件的語義是唯一有效的版本。T-046 phase 2 已把它們的 IR 成員、Result 成員與 trace 事件類型加入 contract（TWIN_IR_SPEC §2.1、本文件 §5、§9），但 des-go-0.1.0 不執行任何一個：Compile 對用到它們的模型回 `*engine.InputError`（PRIMITIVE_NOT_SUPPORTED，path 在 `/model` 之下；validator 已先拒絕，engine 另有自己的 kernel 支援清單，D-063 APPROVED，H-019），run 在入列時就是 422，不會被當作沒有這些成員而執行。沒有這些成員的模型，observation、Result 與 digest 都與之前逐 byte 相同（D-047；T-046 phase 2 的 differential 見 checks/T-046_PHASE2_VALIDATION.md）。
 
 ## 2. Clock、event order、arrival
 

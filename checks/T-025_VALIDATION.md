@@ -217,3 +217,11 @@ Info（不修，記錄）：
 - I3：每個 attempt 在呼叫 provider 前讀取並驗證整份 base manifest，snapshot 在呼叫期間留在記憶體中（殘餘風險已記錄）。
 - I4：與 T-046 phase 2 的互動目前 fail closed；`ServerRisk` 的 line-flow 規則與 calendar 的 ID pool 由 T-047–T-051 解除 gate 時補上（T-046 review 第 1 輪的 811982b 與 T-049 scope）。
 - I5：0012 是原地修改的，只在它從未部署時成立（目前沒有任何部署）；套用過舊版 0012 的一次性 `dt_test_*` DB 都必須重建。
+
+## Owner 批准（H-019）與 D-062 (i) 的實作
+
+2026-10-20 owner 對決策頁回覆「Q2 選 B，其他照建議」：D-061 依建議 APPROVED；D-062 依建議 APPROVED，只有 (i) 選 B。T-025 因此標為 done。
+
+D-062 (i) B 的實作（`internal/ai/review/risk.go`）：base 中有 source 到得了（經 probability > 0 的 flow，與 validator 的 `UNREACHABLE_NODE` 相同）、candidate 中仍存在但沒有 source 到得了的 node，與刪除同為 high。依同一理由，刪除 flow 造成的不可達也算；base 中本來就不可達的 node 不受影響。
+
+先紅後綠（`checks/evidence/2026-10-20-H-019/`）：`TestEachRiskRule` 原本的「a flow is re-targeted」（f_test_deploy 改接到 sink，deploy 變成不可達）與「a flow is removed」（刪掉 f_retry，failure 與 rework 不可達）在 B 之下屬於新規則，改名為「a re-target cuts a node off」「a removed flow cuts nodes off」並期望 high；`risk-red.log` 中兩者在改程式前都是 medium（exit 1）。另加三個只觸發舊規則的 case，讓改接與刪除 flow 的 medium 規則仍各自有測試：「a flow is re-targeted」（f_rework_ci 改接到 test，所有 node 仍到得了）、「a flow is removed」（先加 f_skip 再刪掉），以及「a node no source reached stays so」（base 中本來不可達的 sink，結果為 low）。改程式後 `risk-green.log` exit 0。

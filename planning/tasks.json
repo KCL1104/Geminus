@@ -1527,7 +1527,7 @@
         "tenant-safe context、redaction、UNTRUSTED_DATA、ID allocation pool。",
         "token/timeout/retry budgets與provider schema projection。",
         "`output_locale`（en 預設／zh-Hant，server 驗證）：只有 prose 依語言輸出，ID／path／code／metric 不翻譯；analyst 數字以阿拉伯數字校驗（AI_SPEC §3、§9）。",
-        "Package 名稱（T-024 決定，ADR-027 PROPOSED）：原規劃的 `internal/ai/context` 改為 `internal/ai/aicontext`，避免與標準函式庫 `context` 同名；live adapter 在 `internal/ai/provider/anthropic`，是唯一連結 LLM SDK 的 package。"
+        "Package 名稱（T-024 決定，ADR-027 ACCEPTED，H-019）：原規劃的 `internal/ai/context` 改為 `internal/ai/aicontext`，避免與標準函式庫 `context` 同名；live adapter 在 `internal/ai/provider/anthropic`，是唯一連結 LLM SDK 的 package。"
       ],
       "planned_outputs": [
         "internal/ai/provider/",
@@ -1584,7 +1584,7 @@
       "id": "T-025",
       "title": "Async proposal generation / validation",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "AI / Full-stack",
       "planning_window": "Week 7–9",
       "depends_on": [
@@ -1648,7 +1648,7 @@
           "report": "checks/T-025_VALIDATION.md",
           "summary": "Proposal 非同步產生與 server review（fake provider；live AI 未開啟）：internal/ai/review（純粹的 review、server risk、review.Clean）、internal/proposals（service、HTTP）、internal/proposals/generator（model_proposal handler，provider 呼叫在 transaction 外、呼叫前讀取並驗證 snapshot）、internal/storage/proposals、migration 0012（proposal 跟隨 job、invalid／failed 不帶產生的內容）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（1f6ff31、6b5b914：26 個 package ok，沒有 FAIL 或 SKIP），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-20-T-025/、2026-10-20-T-025-r1/ 的 coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 on 175e1ae CHANGES REQUESTED (M1–M4, L1–L5); round 2 on fbb0f8f ACCEPT (L1–L3 fixed by the coordinator)",
-          "decisions_pending": "D-061、D-062 待 owner 批准；批准後 T-025 才標為 done"
+          "decisions": "D-061、D-062 由 owner 批准（H-019，2026-10-20）；D-062 (i) 選 B，已實作於 internal/ai/review/risk.go（先紅後綠，checks/evidence/2026-10-20-H-019/）"
         }
       ]
     },
@@ -2812,7 +2812,7 @@
       "id": "T-046",
       "title": "電子產線 domain spec 與引擎擴充 contract（H-016）",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "Simulation + Product",
       "planning_window": "H-016 re-plan（未重估週數）",
       "depends_on": [
@@ -2897,9 +2897,9 @@
           "date": "2026-10-20",
           "branch": "claude/lucid-meitner-vq1awo",
           "report": "checks/T-046_PHASE2_VALIDATION.md",
-          "summary": "Phase 1（docs/domains/ELECTRONICS_LINE.md、ADR-026、D-047–D-060）經 4 輪獨立 review 通過，owner 於 H-018 批准。Phase 2（contract）：model-ir、canonical-event、simulation schema 的 optional 新成員（schema_version 仍為 0.1，沒有新成員的模型 hash 與結果逐 byte 不變）；7 個新 ValidationCode 與 D-023 位置；D-057 的 patch allowlist；fail closed：validator 的 primitive support 階段與 engine Compile 的 kernel 清單都回 PRIMITIVE_NOT_SUPPORTED（D-063，PROPOSED）；46 個新 fixture、16 個 semantic fixture；Go／TS contract。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（26 個 package ok），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-20-T-046-p2*/coordinator-*）。",
+          "summary": "Phase 1（docs/domains/ELECTRONICS_LINE.md、ADR-026、D-047–D-060）經 4 輪獨立 review 通過，owner 於 H-018 批准。Phase 2（contract）：model-ir、canonical-event、simulation schema 的 optional 新成員（schema_version 仍為 0.1，沒有新成員的模型 hash 與結果逐 byte 不變）；7 個新 ValidationCode 與 D-023 位置；D-057 的 patch allowlist；fail closed：validator 的 primitive support 階段與 engine Compile 的 kernel 清單都回 PRIMITIVE_NOT_SUPPORTED（D-063，APPROVED，H-019）；46 個新 fixture、16 個 semantic fixture；Go／TS contract。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（26 個 package ok），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-20-T-046-p2*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): phase 2 round 1 on d5eb6db CHANGES REQUESTED (M1, M2); round 2 on d09f7aa ACCEPT (L2, I1 fixed by the coordinator; L1 put to the owner in D-063 (b))",
-          "decisions_pending": "D-063 待 owner 批准（含 (b) 的 shift label 選項與 (c) 的 code）；批准後 T-046 才標為 done，T-047–T-051 才能開始"
+          "decisions": "D-063 由 owner 批准（H-019，2026-10-20）；(b) 的 shift label 選 B，由 T-049 放寬 patch 的 afterApply"
         }
       ]
     },
@@ -2927,7 +2927,7 @@
         "D-063"
       ],
       "scope": [
-        "依批准的 decision 實作有限緩衝與阻塞（例如 blocking after service），上游被擋時保留 resource 並記阻塞時間；與既有 resource-wise FIFO、all-or-nothing bundle 的交互有明確 golden。decision gates：D-047、D-048、D-049、D-050、D-057（APPROVED，H-018）與 D-063（PROPOSED，T-046 phase 2）。",
+        "依批准的 decision 實作有限緩衝與阻塞（例如 blocking after service），上游被擋時保留 resource 並記阻塞時間；與既有 resource-wise FIFO、all-or-nothing bundle 的交互有明確 golden。decision gates：D-047、D-048、D-049、D-050、D-057（APPROVED，H-018）與 D-063（APPROVED，H-019）。",
         "deadlock 或循環阻塞的處理依 decision（typed error 或明確規則），不默默卡住到 horizon。",
         "固定 golden vectors、與舊 kernel 的 differential（無限緩衝時結果完全相同）、SimPy reference 比對、mutation 與 fuzz。",
         "T-046 phase 2 的分工（TWIN_IR_SPEC §2.1、§4）：本任務實作 queue `capacity`（`finite_buffer`）的規則與 kernel：R1 `BLOCKING_CYCLE`（graph rules 階段，path 為 cycle 上每個有限 queue 的 `/nodes/<i>/capacity`），使 `semantic-blocking-cycle-*.json` 回期望的 code 與 path；runtime B1 `ErrDeadlock` → job failure `SIMULATION_DEADLOCK`（runner 與 `internal/runs` 的錯誤對應，`valid-run-failed-deadlock.json`）；Result 的 `blocking`、`buffers`、`resource_states[].blocked_ticks`；trace 的 `blocked`、`unblocked`。解除 gate 時，把 primitive 加進 `validate.checked`（internal/model/validate/primitives.go）與 `engine.kernelExecutes`（internal/simulation/engine/compile.go）、升 engine_version、更新 `TestPrimitiveCatalog`、`TestPrimitiveGate`、`TestKernelRefusesWhatItDoesNotExecute` 與 cases.json 的 primitives；在 `internal/ai/review` 加入 D-057 的 server risk，並更新 AI context（`aicontext.modeRules`、prompts/scenario）的 scenario allowlist 說明。只解除自己的 primitive。"
@@ -2985,7 +2985,7 @@
         "D-063"
       ],
       "scope": [
-        "依批准的 decision 實作 resource 故障：故障間隔與修復時間各用獨立 RNG stream，不改變其他 stream；服務中工件的處理（中斷後續作或做完再停）依 decision。decision gates：D-047、D-048、D-050、D-051、D-056、D-057（APPROVED，H-018）與 D-063（PROPOSED，T-046 phase 2）。",
+        "依批准的 decision 實作 resource 故障：故障間隔與修復時間各用獨立 RNG stream，不改變其他 stream；服務中工件的處理（中斷後續作或做完再停）依 decision。decision gates：D-047、D-048、D-050、D-051、D-056、D-057（APPROVED，H-018）與 D-063（APPROVED，H-019）。",
         "停機時間與 availability 指標進 Result，事件順序與 tie-break 有 golden。",
         "沒有設定故障的模型結果與現行 kernel 完全相同（differential）；SimPy reference 比對。",
         "T-046 phase 2 的分工：本任務實作 `breakdowns`、`lognormal`、`weibull`：D-050 R3（`RESOURCE_REQUIREMENT_INVALID`，bundle feasibility 階段）、TTF 可能為 0 tick 與 lognormal／Weibull 參數範圍的 `DISTRIBUTION_INVALID`、resource 中分布的 limits（D-029）、dataset binding、manifest 與 D-033 檢查（目前只看 node 的分布）、D-063 (c) 的 365 天 code；Result 的 `resource_states` 停機與 available 組；runtime B2 `ErrStalled` → `SIMULATION_STALLED`（TTR 的部分）。R4 `STALL_RISK` 需要班表：由 T-048 與 T-049 中後解除 gate 的任務實作。AI eval MOD-038（「把 review 改用 lognormal」預期 safe failure）與 `internal/ai/review` 的 lognormal 測試要依 lognormal 已支援重新判定。解除 gate 時，把 primitive 加進 `validate.checked`（internal/model/validate/primitives.go）與 `engine.kernelExecutes`（internal/simulation/engine/compile.go）、升 engine_version、更新 `TestPrimitiveCatalog`、`TestPrimitiveGate`、`TestKernelRefusesWhatItDoesNotExecute` 與 cases.json 的 primitives；在 `internal/ai/review` 加入 D-057 的 server risk，並更新 AI context（`aicontext.modeRules`、prompts/scenario）的 scenario allowlist 說明。只解除自己的 primitive。",
@@ -3043,11 +3043,11 @@
         "D-063"
       ],
       "scope": [
-        "依批准的 decision 實作 resource 班表（可用時段、交班時服務中工件的處理）與 source 的 release schedule（分時段投入率或投入表）；時間以 tick 表示，不用 wall clock 或時區函式庫。decision gates：D-047、D-048、D-050、D-052、D-053、D-057（APPROVED，H-018）與 D-063（PROPOSED，T-046 phase 2）。",
+        "依批准的 decision 實作 resource 班表（可用時段、交班時服務中工件的處理）與 source 的 release schedule（分時段投入率或投入表）；時間以 tick 表示，不用 wall clock 或時區函式庫。decision gates：D-047、D-048、D-050、D-052、D-053、D-057（APPROVED，H-018）與 D-063（APPROVED，H-019）。",
         "utilization 的分母依 decision（排班時間或整段時間）在 Result 中標明。",
         "沒有班表的模型結果與現行 kernel 完全相同；跨班 golden 與 SimPy reference 比對。",
         "T-046 phase 2 的分工：本任務實作 `calendars`（根層 calendars、`calendar_id`、`shift_capacity`）與 `release_schedule`：`CALENDAR_INVALID`（calendar 的形狀；R2 的最小公倍數與 bundle 可用時間，bundle feasibility 階段）、`UNKNOWN_REFERENCE`（calendar_id）、`DUPLICATE_ID`（calendar ID）、`RELEASE_SCHEDULE_INVALID`；Result 的 `resource_states` 排班與 available 組；B2 的 next_fit 與 X_end；R4（若 T-048 已解除 breakdowns）。解除 gate 時，把 primitive 加進 `validate.checked`（internal/model/validate/primitives.go）與 `engine.kernelExecutes`（internal/simulation/engine/compile.go）、升 engine_version、更新 `TestPrimitiveCatalog`、`TestPrimitiveGate`、`TestKernelRefusesWhatItDoesNotExecute` 與 cases.json 的 primitives；在 `internal/ai/review` 加入 D-057 的 server risk，並更新 AI context（`aicontext.modeRules`、prompts/scenario）的 scenario allowlist 說明。只解除自己的 primitive。",
-        "T-046 review 第 1 輪（I3）：AI edit 的 allowlist 已含根層 `calendars`（D-057），但 D-046 的 ID allocation pool 只有 node、flow、resource，AI 新增的 calendar ID 不受 pool 檢查；解除 calendars 的 gate 前要決定 AI 新增 calendar 的 ID 規則（加入 pool 或禁止 AI 新增 calendar），必要時提出 decision。scenario 不可改 calendar 的 shift label 集合（D-063 (b) 的待決問題），若 owner 改採較寬的解讀，在 internal/model/patch 的 afterApply 改為只由 candidate validation 檢查 `shift_capacity` 參照的 label。"
+        "T-046 review 第 1 輪（I3）：AI edit 的 allowlist 已含根層 `calendars`（D-057），但 D-046 的 ID allocation pool 只有 node、flow、resource，AI 新增的 calendar ID 不受 pool 檢查；解除 calendars 的 gate 前要決定 AI 新增 calendar 的 ID 規則（加入 pool 或禁止 AI 新增 calendar），必要時提出 decision。D-063 (b) 的 shift label：owner 選 B（H-019），解除 calendars 的 gate 前，把 internal/model/patch 的 afterApply 改為允許 scenario 新增、刪除、改名 shift label，被 `shift_capacity` 參照的 label 刪除或改名由 candidate validation 回 `CALENDAR_INVALID`（先寫測試；更新 TWIN_IR_SPEC §6）。"
       ],
       "planned_outputs": [
         "internal/simulation/engine/",
@@ -3102,7 +3102,7 @@
         "D-063"
       ],
       "scope": [
-        "依批准的 decision 實作批次 process（最小／最大批量、等待上限、批內工件一起開始與結束），工件 ID 與 trace 仍可追蹤；換線若經 decision 納入 P0 也在此任務。decision gates：D-047、D-048、D-049、D-050、D-054、D-055、D-057（APPROVED，H-018）與 D-063（PROPOSED，T-046 phase 2）。",
+        "依批准的 decision 實作批次 process（最小／最大批量、等待上限、批內工件一起開始與結束），工件 ID 與 trace 仍可追蹤；換線若經 decision 納入 P0 也在此任務。decision gates：D-047、D-048、D-049、D-050、D-054、D-055、D-057（APPROVED，H-018）與 D-063（APPROVED，H-019）。",
         "批次的 lead time、等待湊批時間與 utilization 定義在 SIMULATION_SPEC 寫明。",
         "沒有批次 process 的模型結果與現行 kernel 完全相同；golden 與 SimPy reference 比對。",
         "T-046 phase 2 的分工：本任務實作 `batch` 與 `setups`：`BATCH_INVALID`、`SETUP_INVALID`、`UNKNOWN_REFERENCE`（setups 的 entity type）；Result 的 `batches` 與 `resource_states` 換線組；trace 的 `setup_start`（`resource_id`）與批次成員的 `batch_id`。解除 gate 時，把 primitive 加進 `validate.checked`（internal/model/validate/primitives.go）與 `engine.kernelExecutes`（internal/simulation/engine/compile.go）、升 engine_version、更新 `TestPrimitiveCatalog`、`TestPrimitiveGate`、`TestKernelRefusesWhatItDoesNotExecute` 與 cases.json 的 primitives；在 `internal/ai/review` 加入 D-057 的 server risk，並更新 AI context（`aicontext.modeRules`、prompts/scenario）的 scenario allowlist 說明。只解除自己的 primitive。"

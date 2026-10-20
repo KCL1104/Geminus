@@ -1,6 +1,6 @@
 # ADR-027 — AI provider adapter 與 sanitized context（T-024）
 
-狀態：PROPOSED（2026-10-19，T-024 agent 提出並實作，待獨立 review 與 owner）。依據：H-001、H-017、D-002、D-016、D-018、D-046（皆 APPROVED）、AI_SPEC §2–§4、§9–§10、SECURITY §7、AGENTS.md §2。本 ADR 不批准任何 live AI 呼叫：model、token quota、資料政策仍待 owner（H-001、H-017）。
+狀態：ACCEPTED（2026-10-20，owner H-019：「Q2 選 B，其他照建議」；2026-10-19 由 T-024 agent 提出並實作，獨立 review 通過）。依據：H-001、H-017、D-002、D-016、D-018、D-046（皆 APPROVED）、AI_SPEC §2–§4、§9–§10、SECURITY §7、AGENTS.md §2。本 ADR 不批准任何 live AI 呼叫：model、token quota、資料政策仍待 owner（H-001、H-017）。
 
 ## Context
 

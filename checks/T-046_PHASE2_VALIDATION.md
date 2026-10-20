@@ -171,3 +171,7 @@ Coordinator 把第 1 輪的 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`
 - I2：engine 的 `validateIR` 只有測試會改；production 的 `init()` 換掉它會被 `TestCompileRejects` 抓到（N4）。在 architecture-check 加「非 `_test.go` 不得指派 `validateIR`」的規則列為後續，在 T-047 解除第一個 gate 前處理。
 - I3：與 T-025 的交互（dc1ae02 的固定句、`knownPath` 保留 gate 的 path）沒有問題。
 - I4：kernel 行為沒有改變（differential 相同）。
+
+## Owner 批准（H-019）
+
+2026-10-20 owner 對決策頁回覆「Q2 選 B，其他照建議」：D-063 依建議 APPROVED。(a) 採 A，兩道關卡 fail closed；(b) 的 shift label 採 B：scenario 可新增、刪除、改名 label，被 `shift_capacity` 參照的 label 刪除或改名由 candidate validation 回 `CALENDAR_INVALID`。T-049 解除 calendars 的 gate 前放寬 `internal/model/patch/policy.go` 的 `afterApply`（已寫入 T-049 的 scope；在那之前 calendars 被 gate 擋住，沒有行為差異）。(c) 超過 365 天的分布參數回 `LIMIT_EXCEEDED`（D-056 的段落已加註）；(d) validator 規則延到 T-047–T-050。T-046 因此標為 done。

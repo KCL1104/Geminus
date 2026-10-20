@@ -24,7 +24,7 @@ ProposalContext 的 mode 由 server 固定為 edit/scenario；可以用同一 pr
 
 未選 provider/model、token budget 或 data policy 時，live AI 明確 disabled 並回 AI_PROVIDER_NOT_CONFIGURED / AI_POLICY_NOT_APPROVED。development fake provider 只能顯式配置；不得在 production timeout 時偷偷回 synthetic answer。不得 hard-code「最新 model」；用 app-owned eval corpus 比較後決定。
 
-T-024 實作（[ADR-027](adr/ADR-027-ai-provider-adapter.md) PROPOSED，待 review；不批准任何 live 呼叫）：`internal/ai/provider` 的 `LLMProvider` 收 sealed `Prompt`（`internal/ai/aicontext` 產生），回傳 typed output 與 audit metadata（provider、model、credential label、prompt_template_version、schema、output_locale、input／output hash、tokens、latency，無 prompt、無回答文字、無 key）。三個 mode 都經過同一個 `Client`：prompt 未 seal 或被改、role 與 mode 不符、超過 prompt 預算、同一 organization 的並行數已滿、逾時、取消，各有 typed code；回答必須是一個通過完整 2020-12 output schema 的 JSON document，否則 `invalid_output`（只留 issue path）。Mode 由 `internal/config.LoadAI` 決定：`disabled`（預設）、`fake`（只限 APP_ENV development／test）、`anthropic`（沒有 owner 的已記錄核准時回 `policy_not_approved` 且不讀 key；`AI_POLICY_APPROVAL` 必須是 build 列出的核准，目前清單為空）。Live adapter 用官方 Go SDK v1.78.0，key 明確注入（不讀 `ANTHROPIC_API_KEY` 等環境預設），只在 401／402／403 換 credential，429／529／5xx 在同一 credential 重試（D-018）；只對本機 test server 測過，真實 API 呼叫 NOT RUN。Structured output 的投影（`anthropic.Project`）只移除 subset 不支援的 constraint 並列出，`oneOf` 改 `anyOf`，拒絕開放 object。
+T-024 實作（[ADR-027](adr/ADR-027-ai-provider-adapter.md) ACCEPTED（H-019）；不批准任何 live 呼叫）：`internal/ai/provider` 的 `LLMProvider` 收 sealed `Prompt`（`internal/ai/aicontext` 產生），回傳 typed output 與 audit metadata（provider、model、credential label、prompt_template_version、schema、output_locale、input／output hash、tokens、latency，無 prompt、無回答文字、無 key）。三個 mode 都經過同一個 `Client`：prompt 未 seal 或被改、role 與 mode 不符、超過 prompt 預算、同一 organization 的並行數已滿、逾時、取消，各有 typed code；回答必須是一個通過完整 2020-12 output schema 的 JSON document，否則 `invalid_output`（只留 issue path）。Mode 由 `internal/config.LoadAI` 決定：`disabled`（預設）、`fake`（只限 APP_ENV development／test）、`anthropic`（沒有 owner 的已記錄核准時回 `policy_not_approved` 且不讀 key；`AI_POLICY_APPROVAL` 必須是 build 列出的核准，目前清單為空）。Live adapter 用官方 Go SDK v1.78.0，key 明確注入（不讀 `ANTHROPIC_API_KEY` 等環境預設），只在 401／402／403 換 credential，429／529／5xx 在同一 credential 重試（D-018）；只對本機 test server 測過，真實 API 呼叫 NOT RUN。Structured output 的投影（`anthropic.Project`）只移除 subset 不支援的 constraint 並列出，`oneOf` 改 `anyOf`，拒絕開放 object。
 
 ## 3. Context builder
 
@@ -52,7 +52,7 @@ approved/rejected/invalid/failed/conflicted 是本候選 workflow 的 terminal s
 
 needs_input 必須帶 questions，不能偷偷附 executable changes。provider timeout/invalid JSON 與合法 needs_input 分開。invalid 留下 sanitized issue / audit metadata，不把原始惡意輸出塞進可執行 context。
 
-T-025 實作（D-061、D-062 PROPOSED）的流程如下。
+T-025 實作（D-061、D-062 APPROVED，H-019）的流程如下。
 
 1. `POST /v1/models/{id}/ai-proposals`（editor／owner）在 AI 關閉時先回 503，不寫入任何資料。
 2. 接著檢查 `base_version_id` 是否為 model 的 latest；不是則回 409 `MODEL_VERSION_CONFLICT`。

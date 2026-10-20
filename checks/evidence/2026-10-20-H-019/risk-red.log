@@ -1,0 +1,8 @@
+--- FAIL: TestEachRiskRule (0.11s)
+    --- FAIL: TestEachRiskRule/a_re-target_cuts_a_node_off (0.01s)
+        risk_test.go:87: risk "medium", want "high"
+    --- FAIL: TestEachRiskRule/a_removed_flow_cuts_nodes_off (0.00s)
+        risk_test.go:87: risk "medium", want "high"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.134s
+FAIL

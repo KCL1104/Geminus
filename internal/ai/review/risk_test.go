@@ -29,21 +29,37 @@ func TestEachRiskRule(t *testing.T) {
 		{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/routing/probability","value":0.7}]`
 	lessRetry := `[{"op":"test","path":"/flows/4/id","value":"f_retry"},{"op":"replace","path":"/flows/4/routing/probability","value":0.1},
 		{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/routing/probability","value":0.9}]`
+	// A shortcut from the CI result straight to deploy, and a sink no
+	// flow enters (UNREACHABLE_NODE, a warning: the base reaches it not).
+	shortcut := `[{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/routing/probability","value":0.7},
+		{"op":"add","path":"/flows/-","value":{"id":"f_skip","from":"ci_result","to":"deploy","routing":{"type":"probability","probability":0.1}}}]`
+	orphan := `[{"op":"add","path":"/nodes/-","value":{"id":"orphan","type":"sink","outcome":"completed"}},
+		{"op":"add","path":"/views/2d/positions/orphan","value":{"x":0,"y":0}}]`
 	for _, c := range []struct {
 		name, before, changes string
 		want                  Risk
 	}{
 		{"a node changes its type", "", `[{"op":"test","path":"/nodes/5/id","value":"ci_rework"},
 			{"op":"replace","path":"/nodes/5","value":{"id":"ci_rework","type":"delay","delay_time":{"distribution":{"type":"constant","value":1}}}}]`, High},
-		{"a flow is re-targeted", "", `[{"op":"test","path":"/flows/7/id","value":"f_test_deploy"},{"op":"replace","path":"/flows/7/to","value":"deployed"}]`, Medium},
+		// Rework goes on to the test step: every node is still reached.
+		{"a flow is re-targeted", "", `[{"op":"test","path":"/flows/6/id","value":"f_rework_ci"},{"op":"replace","path":"/flows/6/to","value":"test"}]`, Medium},
+		// D-062 (i) B (H-019): the test step goes straight to the sink, so
+		// no source reaches deploy any more; that counts as its deletion.
+		{"a re-target cuts a node off", "", `[{"op":"test","path":"/flows/7/id","value":"f_test_deploy"},{"op":"replace","path":"/flows/7/to","value":"deployed"}]`, High},
 		{"a constraint is removed", "", `[{"op":"test","path":"/constraints/0/node_id","value":"ci_result"},{"op":"remove","path":"/constraints/0"}]`, Medium},
 		{"an entity type is added", "", `[{"op":"add","path":"/entity_types/-","value":{"id":"hotfix","name":"Hotfix"}}]`, Medium},
 		{"a metric is added", "", `[{"op":"add","path":"/metrics/-","value":{"id":"rejections","type":"failure_count"}}]`, Medium},
 		{"a node is added", "", `[{"op":"add","path":"/nodes/-","value":{"id":"` + p.Node[0] + `","type":"sink","outcome":"completed"}}]`, Medium},
 		{"a flow is added", "", `[{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/routing/probability","value":0.7},
 			{"op":"add","path":"/flows/-","value":{"id":"` + p.Flow[0] + `","from":"ci_result","to":"deploy","routing":{"type":"probability","probability":0.1}}}]`, Medium},
-		{"a flow is removed", "", `[{"op":"test","path":"/flows/4/id","value":"f_retry"},{"op":"remove","path":"/flows/4"},
-			{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/routing/probability","value":1}]`, Medium},
+		{"a flow is removed", shortcut, `[{"op":"test","path":"/flows/9/id","value":"f_skip"},{"op":"remove","path":"/flows/9"},
+			{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/routing/probability","value":0.8}]`, Medium},
+		// Without the retry flow no source reaches the failure and rework
+		// nodes: cut off like a deletion.
+		{"a removed flow cuts nodes off", "", `[{"op":"test","path":"/flows/4/id","value":"f_retry"},{"op":"remove","path":"/flows/4"},
+			{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/routing/probability","value":1}]`, High},
+		// A node the base does not reach is cut off by nothing.
+		{"a node no source reached stays so", orphan, `[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}]`, Low},
 		{"another resource", "", `[{"op":"test","path":"/nodes/2/id","value":"ci"},{"op":"replace","path":"/nodes/2/requires/0/resource_id","value":"test_environment"}]`, Medium},
 		// L1: D-062 (d) says the quantity changing, not only rising.
 		{"fewer units", twoRunners, `[{"op":"test","path":"/nodes/2/id","value":"ci"},{"op":"replace","path":"/nodes/2/requires/0/units","value":1}]`, Medium},
