@@ -1,0 +1,6 @@
+=== RUN   TestExpectedEffectsAreQualitative
+    review_test.go:390: status "ready", want invalid (map[])
+--- FAIL: TestExpectedEffectsAreQualitative (0.04s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.054s
+FAIL

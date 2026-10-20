@@ -1,0 +1,4 @@
+=== RUN   TestExpectedEffectsAreQualitative
+--- PASS: TestExpectedEffectsAreQualitative (0.06s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.065s

@@ -12,8 +12,8 @@
 // IR, the ID allocation pool (a new node, flow or resource takes an ID of
 // its own kind from the proposal's pool), the domain pack's rules, and the
 // numbers in the expected effects (qualitative only: a number that is not
-// a value of the base, the candidate or the intent is a fabricated
-// prediction). Any error makes the proposal invalid, and an invalid outcome
+// a value of the base or the candidate is a fabricated prediction, even
+// one the person's intent states). Any error makes the proposal invalid, and an invalid outcome
 // keeps only its issues: nothing the provider wrote. Otherwise it is ready,
 // with the canonical patch, its hash (D-019), the server's risk, the
 // provider's claim and the effective risk, max of the two (D-027).
@@ -64,8 +64,6 @@ type Input struct {
 	Pool idpool.Pool
 	// Pack is the model's domain pack.
 	Pack domainpack.DomainPack
-	// Intent is the person's request; its numbers may be restated.
-	Intent string
 	// Output is the provider's schema-valid answer, untrusted.
 	Output provider.ProposalOutput
 }
@@ -258,14 +256,13 @@ func Review(in Input) (Outcome, error) {
 		return invalid(packIssues), nil
 	}
 	issues = append(issues, packIssues...)
+	// The person's numbers are not among them: a demanded outcome restated
+	// as an effect is still a prediction (eval MOD-050).
 	supplied := append(numbers(baseIR), numbers(candidate)...)
-	for _, n := range nums(in.Intent) {
-		supplied = append(supplied, n)
-	}
 	for i, effect := range out.ExpectedEffects {
 		if len(locale.CheckProse(effect, supplied)) > 0 {
 			refused = append(refused, errorIssue(OutputInvalid, "/expected_effects/"+strconv.Itoa(i),
-				"states a number that is not a value of the base model, the candidate or the intent: expected effects are qualitative until a simulation runs (AI_SPEC §5)"))
+				"states a number that is not a value of the base model or the candidate: expected effects are qualitative until a simulation runs (AI_SPEC §5)"))
 		}
 	}
 	if len(refused) > 0 {

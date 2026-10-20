@@ -85,7 +85,7 @@ func proposed(changes model.Patch, claim string) provider.ProposalOutput {
 func input(t testing.TB, mode provider.Mode, out provider.ProposalOutput) Input {
 	t.Helper()
 	doc := base(t)
-	return Input{Mode: mode, Base: doc, Pool: pool(t, doc), Pack: softwaredelivery.Pack{}, Intent: "an intent", Output: out}
+	return Input{Mode: mode, Base: doc, Pool: pool(t, doc), Pack: softwaredelivery.Pack{}, Output: out}
 }
 
 func run(t *testing.T, in Input) Outcome {
@@ -203,7 +203,7 @@ func TestNewIDsComeFromThePool(t *testing.T) {
 			{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/to","value":"` + nodeID + `"},
 			{"op":"add","path":"/flows/-","value":{"id":"` + flowID + `","from":"` + nodeID + `","to":"test","routing":{"type":"probability","probability":1}}}]`
 	}
-	in := Input{Mode: provider.ModeEdit, Base: doc, Pool: p, Pack: softwaredelivery.Pack{}, Intent: "add a queue"}
+	in := Input{Mode: provider.ModeEdit, Base: doc, Pool: p, Pack: softwaredelivery.Pack{}}
 	in.Output = proposed(ops(t, add(p.Node[0], p.Flow[0])), "low")
 	o := run(t, in)
 	if o.Status != Ready {
@@ -343,7 +343,7 @@ func TestWarningsStay(t *testing.T) {
 	// A queue no flow enters: UNREACHABLE_NODE, a warning.
 	changes := `[{"op":"add","path":"/nodes/-","value":{"id":"` + p.Node[0] + `","type":"queue"}},
 		{"op":"add","path":"/flows/-","value":{"id":"` + p.Flow[0] + `","from":"` + p.Node[0] + `","to":"test","routing":{"type":"probability","probability":1}}}]`
-	o := run(t, Input{Mode: provider.ModeEdit, Base: doc, Pool: p, Pack: softwaredelivery.Pack{}, Intent: "x", Output: proposed(ops(t, changes), "low")})
+	o := run(t, Input{Mode: provider.ModeEdit, Base: doc, Pool: p, Pack: softwaredelivery.Pack{}, Output: proposed(ops(t, changes), "low")})
 	if o.Status != Ready || !slices.Contains(codes(o)["/nodes/9"], validate.UnreachableNode) {
 		t.Fatalf("%q %v", o.Status, codes(o))
 	}
@@ -356,30 +356,30 @@ func TestNoChange(t *testing.T) {
 }
 
 // AI_SPEC §5: expected effects are qualitative; a number that is not a
-// value of the base, the candidate or the intent is a fabricated
-// prediction, and the proposal is not ready.
+// value of the base or the candidate is a fabricated prediction, and the
+// proposal is not ready. The review does not see the intent, so a number
+// the person states is no exception: a demanded outcome restated as an
+// effect is still a prediction (eval MOD-050); what the person supplies
+// belongs in the assumptions.
 func TestExpectedEffectsAreQualitative(t *testing.T) {
 	changes := ops(t, `[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}]`)
 	for _, c := range []struct {
 		effects []string
-		intent  string
 		ok      bool
 	}{
-		{[]string{"Waiting at the step may fall; simulate to know by how much."}, "", true},
-		{[]string{"Capacity goes from 3 to 6."}, "", true},
-		{[]string{"Arrivals stay at a mean of 48 minutes."}, "", true},
-		{[]string{"The failure share stays at 20%."}, "", true},
-		{[]string{"Fits the 30 changes a day the intent states."}, "30 changes a day", true},
-		{[]string{"Lead time drops 11%."}, "", false},
-		{[]string{"Waiting may fall.", "Throughput rises by 17 a day."}, "", false},
-		{[]string{"等待時間將減少 11%。"}, "", false},
-		{[]string{"交期縮短四十七分鐘。"}, "", false},
+		{[]string{"Waiting at the step may fall; simulate to know by how much."}, true},
+		{[]string{"Capacity goes from 3 to 6."}, true},
+		{[]string{"Arrivals stay at a mean of 48 minutes."}, true},
+		{[]string{"The failure share stays at 20%."}, true},
+		{[]string{"Fits the 30 changes a day the intent states."}, false},
+		{[]string{"Lead time drops 11%, as asked."}, false},
+		{[]string{"Waiting may fall.", "Throughput rises by 17 a day."}, false},
+		{[]string{"等待時間將減少 11%。"}, false},
+		{[]string{"交期縮短四十七分鐘。"}, false},
 	} {
 		out := proposed(changes, "low")
 		out.ExpectedEffects = c.effects
-		in := input(t, provider.ModeEdit, out)
-		in.Intent = c.intent
-		o := run(t, in)
+		o := run(t, input(t, provider.ModeEdit, out))
 		switch {
 		case c.ok && o.Status != Ready:
 			t.Errorf("%q: %q %v", c.effects, o.Status, codes(o))
