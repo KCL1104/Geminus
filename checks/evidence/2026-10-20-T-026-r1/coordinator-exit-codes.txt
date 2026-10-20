@@ -19,3 +19,10 @@ make db-test                                0   coordinator-rerun-db-test.log
 go test -race -run TestASlowRenewal... ./internal/worker/   0   coordinator-rerun-worker-one.log (3.66 s)
 go test -race ./internal/worker/ (whole package, DB)        0   coordinator-rerun-worker.log
 The timing test is sensitive to CPU starvation; it is not changed (no assertion is loosened).
+
+r1-mutate.py with GEMINUS_TEST_DATABASE_URL (the coordinator's copy adds "-p 1" so the packages do not share the
+database concurrently; run in the T-026 worktree at 2ca319e on dt_test_t026_r1c after make db-test):
+python3 -I r1-mutate.py                     0   coordinator-mutants-with-db.log: 15 of 15 KILLED, including the five
+                                                db-only mutants (apply-ignores-binding-failure, manifest-equality-removed,
+                                                lock-draft-before-model, storage-reject-other-org,
+                                                storage-approve-other-org), each by the test written for it.

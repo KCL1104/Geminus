@@ -1,0 +1,17 @@
+T-026 review round 1 mutants, with GEMINUS_TEST_DATABASE_URL
+fingerprint-ignores-proposal: KILLED --- FAIL: TestFingerprint (0.00s) | --- FAIL: TestTheKeyNamesTheProposal (0.40s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	6.182s
+fingerprint-ignores-body: KILLED --- FAIL: TestFingerprint (0.00s) | --- FAIL: TestApprovalIdempotency (0.41s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	7.939s
+fingerprint-not-normalized: KILLED --- FAIL: TestFingerprint (0.00s) | --- FAIL: TestTheKeyNamesTheProposal (0.41s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	8.760s
+fingerprint-ignores-unknown-members: KILLED --- FAIL: TestFingerprint (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	6.292s | FAIL
+replay-keeps-request-id: KILLED --- FAIL: TestReplayed (0.00s) | --- FAIL: TestApprovalOnAMovedBase (0.58s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	6.227s
+replay-rewrites-nothing: KILLED --- FAIL: TestReplayed (0.00s) | --- FAIL: TestApprovalOnAMovedBase (0.43s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	6.228s
+storage-failure-is-500: KILLED --- FAIL: TestBindingFailure (0.00s) | --- FAIL: TestApprovalFreezesTheManifest (0.33s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	6.517s
+cancel-is-storage-failure: KILLED --- FAIL: TestBindingFailure (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	12.703s | FAIL
+storage-failure-unmapped: KILLED --- FAIL: TestRefused (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	13.503s | FAIL
+storage-detail-code-dropped: KILLED --- FAIL: TestRefused (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	19.423s | FAIL
+apply-ignores-binding-failure (db-only): KILLED --- FAIL: TestApprovalFreezesTheManifest (0.35s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	5.893s | FAIL
+manifest-equality-removed (db-only): KILLED --- FAIL: TestApprovalFreezesTheManifest (0.38s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	7.131s | FAIL
+lock-draft-before-model (db-only): KILLED --- FAIL: TestDecisionsTakeTheModelRowFirst (0.35s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	7.399s | FAIL
+storage-reject-other-org (db-only): KILLED --- FAIL: TestDecisionsStayInTheirOrganization (0.08s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/storage/proposals	0.329s | FAIL
+storage-approve-other-org (db-only): KILLED --- FAIL: TestDecisionsStayInTheirOrganization (0.04s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/storage/proposals	0.164s | FAIL
+TOTAL 15: {'KILLED': 15}
