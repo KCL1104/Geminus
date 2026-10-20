@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/simulation"
+	"github.com/kcl1104/geminus/internal/simulation/des"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	store "github.com/kcl1104/geminus/internal/storage/runs"
@@ -112,6 +114,7 @@ func TestRunError(t *testing.T) {
 		store.ActiveEntitiesExceeded: {"MODEL_VALIDATION_FAILED", "/execution_limits/max_active_entities"},
 		store.EntityVisitsExceeded:   {"MODEL_VALIDATION_FAILED", "/execution_limits/max_entity_visits"},
 		store.RunInputInvalid:        {"MODEL_VALIDATION_FAILED", ""},
+		store.SimulationDeadlock:     {"MODEL_VALIDATION_FAILED", ""},
 		jobs.LeaseExpired:            {"SERVICE_UNAVAILABLE", ""},
 		"WORKER_STOPPED":             {"SERVICE_UNAVAILABLE", ""},
 		store.ArtifactStorageFailed:  {"SERVICE_UNAVAILABLE", ""},
@@ -141,6 +144,60 @@ func TestRunError(t *testing.T) {
 		if _, err := runError([]byte(bad), req); err == nil {
 			t.Errorf("%s was shown", bad)
 		}
+	}
+}
+
+// D-050 B1 (T-047): a deadlocked run's error is the contract example
+// testdata/contracts/valid-run-failed-deadlock.json, whose message is the
+// runner's for the hand-derived G-D2 deadlock (blocking-goldens.json; the
+// engine and the runner tests check that they produce exactly it):
+// MODEL_VALIDATION_FAILED like the execution limits (D-063 (b), CB-38(a)),
+// the failure's own code and severity in details[0].
+func TestDeadlockError(t *testing.T) {
+	root := filepath.Join("..", "..")
+	var golden struct {
+		Cases []struct {
+			Expected struct {
+				Deadlock *struct {
+					Reason string `json:"reason"`
+				} `json:"deadlock"`
+			} `json:"expected"`
+		} `json:"cases"`
+	}
+	data, err := os.ReadFile(filepath.Join(root, "testdata/simulation/blocking-goldens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &golden); err != nil {
+		t.Fatal(err)
+	}
+	reason := ""
+	for _, c := range golden.Cases {
+		if c.Expected.Deadlock != nil {
+			reason = c.Expected.Deadlock.Reason
+		}
+	}
+	var fixture struct {
+		EngineVersion string        `json:"engine_version"`
+		Error         ErrorEnvelope `json:"error"`
+	}
+	data, err = os.ReadFile(filepath.Join(root, "testdata/contracts/valid-run-failed-deadlock.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(jobs.Failure{Code: store.SimulationDeadlock, Message: reason, Retryable: false})
+	e, err := runError(raw, fixture.Error.Error.RequestID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reason == "" || !reflect.DeepEqual(*e, fixture.Error) {
+		t.Errorf("runError %+v\n fixture %+v", *e, fixture.Error)
+	}
+	if fixture.EngineVersion != des.Version {
+		t.Errorf("the fixture's engine_version %s is not this engine's %s", fixture.EngineVersion, des.Version)
 	}
 }
 

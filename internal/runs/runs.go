@@ -805,6 +805,8 @@ var failureCode = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
 //     ACTIVE_ENTITIES_EXCEEDED, ENTITY_VISITS_EXCEEDED) or an input the
 //     engine refused (RUN_INPUT_INVALID): MODEL_VALIDATION_FAILED, as
 //     D-023 counts runtime limits among the validator's issues;
+//   - a deadlock (SIMULATION_DEADLOCK, D-050 B1, T-047):
+//     MODEL_VALIDATION_FAILED as well, with severity error (D-063 (b));
 //   - the infrastructure failing until the attempts were spent
 //     (LEASE_EXPIRED, WORKER_STOPPED, ARTIFACT_STORAGE_FAILED):
 //     SERVICE_UNAVAILABLE;
@@ -826,6 +828,9 @@ func runError(failure []byte, requestID string) (*ErrorEnvelope, error) {
 		body.Details[0].Path, body.Details[0].Severity = path, string(model.SeverityError)
 	case f.Code == store.RunInputInvalid:
 		body.Code = "MODEL_VALIDATION_FAILED"
+	case f.Code == store.SimulationDeadlock:
+		body.Code = "MODEL_VALIDATION_FAILED"
+		body.Details[0].Severity = string(model.SeverityError)
 	case f.Code == jobs.LeaseExpired || f.Code == "WORKER_STOPPED" || f.Code == store.ArtifactStorageFailed:
 		body.Code = "SERVICE_UNAVAILABLE"
 	}

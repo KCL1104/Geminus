@@ -18,6 +18,11 @@ const (
 	WallTimeoutExceeded    = "WALL_TIMEOUT_EXCEEDED"
 	ActiveEntitiesExceeded = "ACTIVE_ENTITIES_EXCEEDED"
 	EntityVisitsExceeded   = "ENTITY_VISITS_EXCEEDED"
+	// SimulationDeadlock: a replication reached a circular wait (ADR-026
+	// D-050 B1, T-047), which a valid model never does (R1); never retried,
+	// the frozen input deadlocks again. SIMULATION_STALLED (B2) comes with
+	// the primitive that can produce it (T-048, T-049).
+	SimulationDeadlock = "SIMULATION_DEADLOCK"
 	// RunInputInvalid: the frozen input no longer compiles or verifies (a
 	// dataset object missing or changed, say): never retried.
 	RunInputInvalid = "RUN_INPUT_INVALID"

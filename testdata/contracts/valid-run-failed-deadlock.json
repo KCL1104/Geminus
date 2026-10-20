@@ -45,11 +45,11 @@
   "error": {
     "error": {
       "code": "MODEL_VALIDATION_FAILED",
-      "message": "the replication deadlocked: r0/start/41 is blocked at node work since tick 5400000",
+      "message": "the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000",
       "details": [
         {
           "path": "",
-          "reason": "the replication deadlocked: r0/start/41 is blocked at node work since tick 5400000",
+          "reason": "the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000",
           "code": "SIMULATION_DEADLOCK",
           "severity": "error"
         }
