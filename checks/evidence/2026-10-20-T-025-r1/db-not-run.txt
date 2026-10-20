@@ -1,0 +1,42 @@
+T-025 review round 1 (2026-10-20): database tests NOT RUN in this worktree.
+
+This environment has no PostgreSQL server (psql client only) and the round's
+instructions forbid trying to start one or running make integration-test; the
+coordinator runs them on a disposable dt_test_* database. Nothing below was
+executed, so no red or green log exists for it; each item says which statement
+is expected to fail on the migration before this round and pass after it.
+
+SQL (db/tests/proposal_jobs.sql, rendered from its template; make db-test):
+  L2  INSERT with decided_by, decided_at or both: 55000 expected (the old
+      INSERT guard let them through, so must_fail would report success).
+  L2  generating -> invalid with assumptions, expected_effects, questions,
+      candidate_dataset_bindings, confidence, provider_risk_claim or
+      patch_hash: 23514 expected from ai_proposals_invalid_content (the old
+      check allowed them; must_fail would report success).
+  L2  a worker writes summary, assumptions, provider_risk_claim, validation and
+      provider_metadata into a generating proposal, then its job fails: the
+      proposal is failed with the job's error and all of it cleared (the old
+      follow_proposal_job kept it).
+  L2  with every user trigger off, failed with any generated column, and
+      invalid with summary or confidence: 23514 expected from
+      ai_proposals_failed_content / ai_proposals_invalid_content (the old
+      migration had no failed check).
+  I1  a trigger on twin.projects that fails a proposal whose job still runs:
+      55000 expected (the old pg_trigger_depth() > 1 test let it through).
+
+Go, DB-backed (make db-go-test):
+  M2  internal/proposals/generator TestUnstorableAnswersAreInvalid: answers
+      with U+0000 in the summary, a patch value and a member name end invalid
+      (AI_OUTPUT_INVALID at /summary, /changes/0/value, /changes/1/value), the
+      fake provider is asked once, the job completes in attempt 1.
+  M2  internal/storage/proposals TestGenerateRefusesUnstorable: text with
+      U+0000 (22021), jsonb with \u0000 (22P05) and a content check (23514)
+      are ErrUnstorable.
+  and every DB-backed test of the packages this round changed
+  (internal/proposals/..., internal/storage/proposals, internal/api,
+  internal/worker), which also exercise the edited migration 0012.
+
+Migration 0012 (up and down) as edited this round has never been executed on
+PostgreSQL: its syntax, the new checks, the lifecycle trigger's job lookup
+under RLS for the API, worker and owner roles, and the follow trigger's column
+privileges are unverified until the coordinator's make integration-test.

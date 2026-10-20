@@ -12,6 +12,7 @@ DROP TRIGGER protect_proposal_lifecycle ON twin.ai_proposals;
 DROP FUNCTION twin.protect_proposal_lifecycle();
 ALTER TABLE twin.ai_proposals
   DROP CONSTRAINT ai_proposals_provider_metadata_object,
+  DROP CONSTRAINT ai_proposals_failed_content,
   DROP CONSTRAINT ai_proposals_invalid_content,
   DROP CONSTRAINT ai_proposals_needs_input_content,
   DROP CONSTRAINT ai_proposals_error_iff_failed,

@@ -1029,6 +1029,36 @@
       ]
     },
     {
+      "id": "invalid-proposal-invalid-with-summary",
+      "instance": "testdata/contracts/invalid-proposal-invalid-with-summary.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-invalid-with-risk-claim",
+      "instance": "testdata/contracts/invalid-proposal-invalid-with-risk-claim.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-failed-with-content",
+      "instance": "testdata/contracts/invalid-proposal-failed-with-content.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
       "id": "valid-analysis-request-locale",
       "instance": "testdata/contracts/valid-analysis-request-locale.json",
       "schema": "schemas/http.schema.json#/$defs/AnalysisRequest",

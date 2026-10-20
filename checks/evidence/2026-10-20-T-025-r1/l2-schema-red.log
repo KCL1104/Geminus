@@ -1,0 +1,28 @@
+=== RUN   TestInvalidAndFailedHoldNothingGenerated
+    content_test.go:58: valid-proposal-invalid.json with summary matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with assumptions matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with risk_level matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with confidence matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with expected_effects matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with questions matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with patch_hash matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with dataset_bindings matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with server_risk_level matches proposal.schema.json
+    content_test.go:58: valid-proposal-invalid.json with provider_risk_claim matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with summary matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with assumptions matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with risk_level matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with confidence matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with changes matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with expected_effects matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with questions matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with patch_hash matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with dataset_bindings matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with server_risk_level matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with provider_risk_claim matches proposal.schema.json
+    content_test.go:58: valid-proposal-failed.json with validation matches proposal.schema.json
+--- FAIL: TestInvalidAndFailedHoldNothingGenerated (0.02s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals	0.028s
+FAIL
+exit 1

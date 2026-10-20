@@ -1,0 +1,5 @@
+=== RUN   TestInvalidAndFailedHoldNothingGenerated
+--- PASS: TestInvalidAndFailedHoldNothingGenerated (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals	0.022s
+exit 0

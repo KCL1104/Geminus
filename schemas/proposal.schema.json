@@ -205,7 +205,7 @@
       }
     },
     {
-      "$comment": "T-025 (D-061 PROPOSED): an invalid proposal keeps its failed validation and nothing the provider wrote that could be approved; only a failed one has an error.",
+      "$comment": "T-025 (D-062 (c) PROPOSED; H-003 review L2): an invalid proposal keeps its failed validation and nothing generated, nothing the provider wrote; only a failed one has an error.",
       "if": {
         "properties": {
           "status": {
@@ -230,8 +230,62 @@
           }
         },
         "not": {
-          "required": [
-            "changes"
+          "anyOf": [
+            {
+              "required": [
+                "summary"
+              ]
+            },
+            {
+              "required": [
+                "assumptions"
+              ]
+            },
+            {
+              "required": [
+                "risk_level"
+              ]
+            },
+            {
+              "required": [
+                "confidence"
+              ]
+            },
+            {
+              "required": [
+                "changes"
+              ]
+            },
+            {
+              "required": [
+                "expected_effects"
+              ]
+            },
+            {
+              "required": [
+                "questions"
+              ]
+            },
+            {
+              "required": [
+                "patch_hash"
+              ]
+            },
+            {
+              "required": [
+                "dataset_bindings"
+              ]
+            },
+            {
+              "required": [
+                "server_risk_level"
+              ]
+            },
+            {
+              "required": [
+                "provider_risk_claim"
+              ]
+            }
           ]
         }
       }
@@ -256,6 +310,85 @@
         "not": {
           "required": [
             "error"
+          ]
+        }
+      }
+    },
+    {
+      "$comment": "T-025 (D-062 (c) PROPOSED; H-003 review L2): a failed proposal holds its error and nothing generated, as migration 0012 holds its row.",
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "summary"
+              ]
+            },
+            {
+              "required": [
+                "assumptions"
+              ]
+            },
+            {
+              "required": [
+                "risk_level"
+              ]
+            },
+            {
+              "required": [
+                "confidence"
+              ]
+            },
+            {
+              "required": [
+                "changes"
+              ]
+            },
+            {
+              "required": [
+                "expected_effects"
+              ]
+            },
+            {
+              "required": [
+                "questions"
+              ]
+            },
+            {
+              "required": [
+                "validation"
+              ]
+            },
+            {
+              "required": [
+                "patch_hash"
+              ]
+            },
+            {
+              "required": [
+                "dataset_bindings"
+              ]
+            },
+            {
+              "required": [
+                "server_risk_level"
+              ]
+            },
+            {
+              "required": [
+                "provider_risk_claim"
+              ]
+            }
           ]
         }
       }
