@@ -1,0 +1,21 @@
+T-025 review round 1 (H-003, CHANGES REQUESTED), 2026-10-20, worktree branch t025-fix1 on fcf824d.
+Environment: Go 1.27.2 linux/amd64, Node 22.22.0, Python venv from requirements-spec.txt, 4 CPUs, no
+PostgreSQL server (psql client only). go clean -testcache before backend-test.
+Each log was written by "<command> > log 2>&1; echo exit $?".
+
+make spec-check PYTHON=.venv/bin/python   0   spec-check.log
+make backend-test                          0   backend-test.log (57 packages ok; DB-backed tests skip: NOT RUN)
+make backend-race                          0   backend-race.log (57 packages ok)
+make architecture-check                    0   architecture-check.log (69 packages, 15 rules, 16 build configurations)
+make ai-eval                               0   ai-eval.log (rewrote checks/ai-evals/fake-review.json: unsafe_answer_invalid 20 -> 24)
+make ts-contracts PYTHON=.venv/bin/python  0   ts-contracts.log (no generated file changed)
+make frontend-test                         2   frontend-test.log: NOT RUN. apps/web/node_modules is absent and Node is
+                                               22.22.0 while apps/web/package.json requires >=24.21.0 <25 (npm ci
+                                               refused with EBADENGINE in the first round); engine-strict was not
+                                               bypassed.
+make integration-test, make db-test,
+make db-go-test                            NOT RUN (no PostgreSQL; the round's rules leave them to the coordinator;
+                                               see db-not-run.txt)
+mutate.py (targeted mutants)               mutants-final.log: 30 killed, 1 survived (M03, equivalent)
+
+Red/green logs per finding: m1-*, m2-*, m3-*, m4-*, l2-*, l3-l5-*.

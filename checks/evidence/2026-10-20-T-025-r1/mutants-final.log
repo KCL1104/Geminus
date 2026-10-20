@@ -1,0 +1,37 @@
+# T-025 review round 1, final code: targeted mutants (mutate.py in this directory; one mutant at a time,
+# the file restored and compared byte for byte afterwards).
+# M2a first ran as a deletion that left the strings import unused (BUILD FAILED); it was rerun as
+# '&& false' and that run is the M2a line below.
+# M03 survives: a new cycle needs a new or re-targeted flow, medium by its own rule, so the mutant is
+# equivalent for ServerRisk's result.
+M01 claim ignored (risk = server) [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestRiskIsTheServers (0.01s); --- FAIL: TestRiskIsTheServers/the_claim_raises (0.00s); --- FAIL: TestReviewEval (0.57s)
+M02 node type change not high [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.04s); --- FAIL: TestEachRiskRule/a_node_changes_its_type (0.00s)
+M03 new cycle not medium [./internal/ai/review/ ./internal/ai/corpus/] => SURVIVED (tests pass)
+M04b probability rise on a cycle ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.04s); --- FAIL: TestEachRiskRule/more_routing_on_a_cycle,_into_a_process (0.00s)
+M04c probability rise into failure/rework ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.09s); --- FAIL: TestEachRiskRule/more_routing_into_a_failure_node_on_no_cycle (0.00s)
+M05 constraint change ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.08s); --- FAIL: TestEachRiskRule/a_constraint_is_removed (0.01s)
+M06 entity type add/remove ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.04s); --- FAIL: TestEachRiskRule/an_entity_type_is_added (0.00s)
+M06b metric add/remove ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestServerRisk (0.03s); --- FAIL: TestServerRisk/remove_a_metric (0.00s); --- FAIL: TestEachRiskRule (0.04s); --- FAIL: TestEachRiskRule/a_metric_is_added (0.00s)
+M07 capacity decrease not medium [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestServerRisk (0.03s); --- FAIL: TestServerRisk/lower_a_capacity (0.00s); --- FAIL: TestReviewEval (0.53s)
+M08 flow re-target not medium [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.05s); --- FAIL: TestEachRiskRule/a_flow_is_re-targeted (0.00s)
+M10 domain pack errors ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestInvalidKeepsNoProviderText (0.07s); --- FAIL: TestThePacksRules (0.00s)
+M16 requirement change not medium [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestServerRisk (0.04s); --- FAIL: TestServerRisk/more_units_per_job (0.01s); --- FAIL: TestEachRiskRule (0.06s); --- FAIL: TestEachRiskRule/another_resource (0.00s)
+M31 added node ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.05s); --- FAIL: TestEachRiskRule/a_node_is_added (0.01s)
+M32 added resource ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestServerRisk (0.03s); --- FAIL: TestServerRisk/add_a_resource (0.00s)
+M33 added flow ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.04s); --- FAIL: TestEachRiskRule/a_flow_is_added (0.00s)
+M34 removed flow ignored [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.07s); --- FAIL: TestEachRiskRule/a_flow_is_removed (0.01s)
+M35 removed node not high [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestRiskIsTheServers (0.02s); --- FAIL: TestRiskIsTheServers/a_deletion_claimed_low (0.01s); --- FAIL: TestRiskIsTheServers/a_deletion_claimed_medium (0.01s); --- FAIL: TestReviewEval (0.70s)
+M36 removed resource not high [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestServerRisk (0.06s); --- FAIL: TestServerRisk/remove_a_resource (0.00s)
+L1 fewer units treated as no change (the old n > b) [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestEachRiskRule (0.09s); --- FAIL: TestEachRiskRule/fewer_units (0.01s)
+M1a invalid issues not cleaned [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestInvalidKeepsNoProviderText (0.16s); --- FAIL: TestInvalidKeepsNoProviderText/extra_member (0.05s); --- FAIL: TestInvalidKeepsNoProviderText/pattern (0.02s); --- FAIL: TestInvalidKeepsNoProviderText/enum (0.00s)
+M1b ready warnings not cleaned [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestInvalidKeepsNoProviderText (0.09s)
+M1c unknown path tokens kept [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestInvalidKeepsNoProviderText (0.10s); --- FAIL: TestClean (0.00s); --- FAIL: TestInvalidOutput (0.00s); --- FAIL: TestUnstorableText (0.07s)
+M2b NUL in changes accepted [./internal/ai/review/ ./internal/ai/corpus/ ./internal/proposals/... ./internal/storage/proposals/] => KILLED: --- FAIL: TestUnstorableText (0.08s); --- FAIL: TestUnstorableText/NUL_in_a_patch_value (0.02s); --- FAIL: TestUnstorableText/NUL_deep_in_a_patch_value (0.02s); --- FAIL: TestUnstorableText/NUL_in_a_member_name (0.00s)
+M2c empty text accepted [./internal/ai/review/ ./internal/ai/corpus/ ./internal/proposals/... ./internal/storage/proposals/] => KILLED: --- FAIL: TestUnstorableText (0.06s); --- FAIL: TestUnstorableText/empty_summary (0.01s); --- FAIL: TestUnstorableText/empty_assumption (0.01s); --- FAIL: TestUnstorableText/empty_expected_effect (0.00s)
+M2d unstorable Finish retried [./internal/proposals/... ./internal/storage/proposals/] => KILLED: --- FAIL: TestFinishFailures (0.00s)
+M3 candidate names supply numbers again [./internal/ai/review/ ./internal/ai/corpus/] => KILLED: --- FAIL: TestNamesDoNotSupplyNumbers (0.02s); --- FAIL: TestNamesDoNotSupplyNumbers/the_model's_name (0.00s); --- FAIL: TestNamesDoNotSupplyNumbers/a_resource's_name (0.00s); --- FAIL: TestNamesDoNotSupplyNumbers/an_added_node's_name (0.00s)
+L3a snapshots not read before the provider call [./internal/proposals/... ./internal/storage/proposals/] => KILLED: --- FAIL: TestSnapshotsAreReadBeforeTheProvider (0.03s); --- FAIL: TestSnapshotsAreReadBeforeTheProvider/storage_fails (0.00s); --- FAIL: TestAReadyProposalBindsTheBasesManifest (0.00s)
+L3b base snapshots not verified before the provider call [./internal/proposals/... ./internal/storage/proposals/] => KILLED: --- FAIL: TestSnapshotsAreReadBeforeTheProvider (0.06s); --- FAIL: TestSnapshotsAreReadBeforeTheProvider/a_snapshot_changed (0.04s); --- FAIL: TestAReadyProposalBindsTheBasesManifest (0.02s)
+L3c a storage failure before the call not retried [./internal/proposals/... ./internal/storage/proposals/] => KILLED: --- FAIL: TestSnapshotsAreReadBeforeTheProvider (0.06s); --- FAIL: TestSnapshotsAreReadBeforeTheProvider/storage_fails (0.00s)
+L5 ready stores no dataset manifest [./internal/proposals/... ./internal/storage/proposals/] => KILLED: --- FAIL: TestAReadyProposalBindsTheBasesManifest (0.01s); --- FAIL: TestGenerated (0.00s)
+M2a NUL in text accepted [./internal/ai/review/ ./internal/ai/corpus/ ./internal/proposals/... ./internal/storage/proposals/] => KILLED: --- FAIL: TestUnstorableText (0.07s); --- FAIL: TestUnstorableText/NUL_in_an_assumption (0.01s); --- FAIL: TestUnstorableText/NUL_in_an_expected_effect (0.01s); --- FAIL: TestUnstorableText/NUL_in_the_summary (0.01s)

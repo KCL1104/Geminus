@@ -1,0 +1,21 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+
+Oops! Something went wrong! :(
+
+ESLint: 10.1.0
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'eslint' imported from /home/user/Geminus/.claude/worktrees/agent-a7aaf00e92c7f69f8/apps/web/eslint.config.mjs
+Did you mean to import "eslint/lib/config-api.js"?
+    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
+    at packageResolve (node:internal/modules/esm/resolve:767:81)
+    at moduleResolve (node:internal/modules/esm/resolve:853:18)
+    at defaultResolve (node:internal/modules/esm/resolve:983:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:182:49)
+make: *** [Makefile:53: frontend-test] Error 2
