@@ -1,0 +1,13 @@
+Coordinator runs on dc1ae02 (T-046 phase 2 review round 1 cherry-picked onto claude/lucid-meitner-vq1awo after fbb0f8f), 2026-10-20.
+Each log was written by "make <target> > log 2>&1; echo exit $?"; the exit code below is that echo.
+
+make spec-check PYTHON=.venv/bin/python   0   coordinator-spec-check.log
+make backend-test                          0   coordinator-backend-test.log
+make backend-race                          2   coordinator-backend-race-disk-full.log: nine packages failed to build with
+                                               "no space left on device" (the session's disk allowance was spent by old
+                                               review copies in the scratchpad, since deleted); no test failed
+make backend-race (re-run)                 0   coordinator-backend-race.log (57 packages ok)
+make architecture-check                    0   coordinator-architecture-check.log
+make ai-eval                               0   coordinator-ai-eval.log
+make frontend-test                         0   coordinator-frontend-test.log
+make integration-test (dt_test_t046_r1)    0   coordinator-integration.log (26 packages ok, no FAIL or SKIP)

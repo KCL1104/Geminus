@@ -1,0 +1,89 @@
+go test -race ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
+ok  	github.com/kcl1104/geminus/cmd/api	1.068s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	(cached)
+# github.com/kcl1104/geminus/internal/api.test
+compile: writing output: write $WORK/b403/_pkg_.a: no space left on device
+github.com/kcl1104/geminus/internal/api_test: write /tmp/go-build1103501300/b404/vet.cfg: no space left on device
+ok  	github.com/kcl1104/geminus/cmd/worker	1.211s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	(cached)
+# github.com/kcl1104/geminus/internal/models.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+# github.com/kcl1104/geminus/internal/proposals/generator.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+# github.com/kcl1104/geminus/internal/results/metrics [github.com/kcl1104/geminus/internal/results/metrics.test]
+compile: writing output: write $WORK/b461/_pkg_.a: no space left on device
+github.com/kcl1104/geminus/internal/runs: write /tmp/go-build1103501300/b463/importcfg: no space left on device
+github.com/kcl1104/geminus/internal/runs/runner: write /tmp/go-build1103501300/b465/importcfg: no space left on device
+# github.com/kcl1104/geminus/internal/simulation/des.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+# github.com/kcl1104/geminus/internal/simulation/trace.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+# github.com/kcl1104/geminus/internal/simulation/engine.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	23.055s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	(cached)
+ok  	github.com/kcl1104/geminus/internal/ai/locale	(cached)
+ok  	github.com/kcl1104/geminus/internal/ai/provider	(cached)
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	(cached)
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	(cached)
+ok  	github.com/kcl1104/geminus/internal/ai/review	4.528s
+FAIL	github.com/kcl1104/geminus/internal/api [build failed]
+ok  	github.com/kcl1104/geminus/internal/auth	11.865s
+?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/config	(cached)
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	(cached)
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	(cached)
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	28.431s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	3.207s
+ok  	github.com/kcl1104/geminus/internal/httpapi	(cached)
+ok  	github.com/kcl1104/geminus/internal/ids	(cached)
+ok  	github.com/kcl1104/geminus/internal/import/profile	(cached)
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/report	(cached)
+ok  	github.com/kcl1104/geminus/internal/import/upload	(cached)
+ok  	github.com/kcl1104/geminus/internal/model	(cached)
+ok  	github.com/kcl1104/geminus/internal/model/hashing	2.056s
+ok  	github.com/kcl1104/geminus/internal/model/patch	1.968s
+ok  	github.com/kcl1104/geminus/internal/model/validate	2.581s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	1.393s
+FAIL	github.com/kcl1104/geminus/internal/models [build failed]
+ok  	github.com/kcl1104/geminus/internal/packs	(cached)
+ok  	github.com/kcl1104/geminus/internal/project	(cached)
+ok  	github.com/kcl1104/geminus/internal/proposals	(cached)
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator [build failed]
+FAIL	github.com/kcl1104/geminus/internal/results/metrics [build failed]
+FAIL	github.com/kcl1104/geminus/internal/runs [build failed]
+FAIL	github.com/kcl1104/geminus/internal/runs/runner [build failed]
+ok  	github.com/kcl1104/geminus/internal/secret	(cached)
+ok  	github.com/kcl1104/geminus/internal/simulation	(cached)
+FAIL	github.com/kcl1104/geminus/internal/simulation/des [build failed]
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine [build failed]
+FAIL	github.com/kcl1104/geminus/internal/simulation/trace [build failed]
+?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	(cached)
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/imports	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/models	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/objects	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/projects	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/proposals	(cached)
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	(cached)
+?   	github.com/kcl1104/geminus/internal/storage/runs	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/snapshots	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant	(cached)
+?   	github.com/kcl1104/geminus/internal/tenant/internal/scope	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant/me	(cached)
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	(cached)
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	(cached)
+ok  	github.com/kcl1104/geminus/internal/worker	(cached)
+?   	github.com/kcl1104/geminus/internal/worker/handler	[no test files]
+?   	github.com/kcl1104/geminus/schemas	[no test files]
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	144.876s
+ok  	github.com/kcl1104/geminus/prompts	(cached)
+FAIL
+make: *** [Makefile:47: backend-race] Error 1

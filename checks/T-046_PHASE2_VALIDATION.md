@@ -152,3 +152,7 @@ Coordinator 把六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（fcf
 **NOT RUN（第 1 輪）**：`make frontend-test`（同上，請 coordinator 執行：L4 的字串與 i18n 測試）；`make integration-test`（本輪沒有改 migration 或 SQL）；`make simulation-reference-test`（目標尚未實作）。
 
 **殘餘風險（第 1 輪新增）**：shift label 的解讀是較嚴格的一邊，若 owner 認為 scenario 可以改 label，要放寬 `afterApply`（T-049 的 scope 已記錄）；`validateIR` 是 package 變數，只有 engine 自己的測試會換，production 程式沒有寫它的路徑；`lineFlowRiskCases` 目前是空的，它只保證「解除 gate 時要登記 case」，case 本身的內容仍要 review；`valid-run-failed-deadlock.json` 見 I5。
+
+### Coordinator 的執行（Review 第 1 輪之後，dc1ae02）
+
+Coordinator 把第 1 輪的 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（fbb0f8f 之後）。beddc8d 與 coordinator 的 6b5b914 為同樣 7 個 code 補了固定句；採用 beddc8d 的版本（dc1ae02），因為它保留 gate 對每個 primitive 的固定 message，6b5b914 只給一句通用句。之後 `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test` 與 `integration-test`（新的 `dt_test_t046_r1`：26 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0。`backend-race` 第一次 exit 2：9 個 package 因 session 的磁碟額度用完而 build 失敗（`no space left on device`），沒有任何 test 失敗；清掉 scratchpad 中舊 review 的副本後重跑 exit 0（57 個 package ok）。因此本輪 NOT RUN 中的 `make frontend-test`（含 L4 的字串與 i18n 測試）已由 coordinator 執行並通過。Log 與 exit code 在 `checks/evidence/2026-10-20-T-046-p2-r1/coordinator-*`。
