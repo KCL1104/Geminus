@@ -193,3 +193,7 @@ T-016 的同一個 pattern：`migrations/0009_simulation_runs.up.sql`（`followe
 - 一個 attempt 在 provider 呼叫期間把 base 的 snapshot 放在記憶體中（每個至多 4 MiB，與 run 預載 sample 相同的量級）。
 - Review 只檢查 provider 回答的文字；provider metadata（例如 live provider 回傳的 model 名稱）若帶 U+0000，會由 DB 拒絕並以不重試的 `PROPOSAL_OUTPUT_UNSTORABLE` 結束，不會重試。
 - Worker 中斷（`LEASE_EXPIRED`、`WORKER_STOPPED`）發生在 provider 呼叫之後時，重試仍會再呼叫一次 provider；這無法在 worker 內避免。寫入結果時 DB 的暫時錯誤（連線中斷、serialization failure，worker 記為可重試的 `INTERNAL`）也一樣會重試並再呼叫一次 provider；本輪只把 DB 拒絕內容（22021、22P05、23514）改為不重試，暫時錯誤保留重試（D-061 (c) 已寫明）。
+
+### Coordinator 的執行（Review 第 1 輪之後）
+
+Coordinator 把第 1 輪的 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-046 phase 2 之後；`checks/contracts-check.json` 的衝突以 `make spec-check` 重產）。整合後的 766984f 上 `make backend-test` exit 2：`TestEveryCodeHasASentence` 要求每個 ValidationCode 都有固定句，但 T-046 phase 2 新增的 7 個 code（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`、`SETUP_INVALID`、`STALL_RISK`、`PRIMITIVE_NOT_SUPPORTED`）沒有。6b5b914 為它們加上不引用任何內容的固定句。之後 `spec-check`、`backend-test`、`backend-race`、`architecture-check`、`ai-eval`（`checks/ai-evals` 沒有變化）與 `integration-test`（新的 `dt_test_t025_r1`：26 個 package ok，沒有 FAIL 或 SKIP，包括本輪新增與修改的 DB 測試與 `proposal_jobs.sql`）都是 exit 0；`frontend-test` 在 766984f 上 exit 0。Log 與 exit code 在 `checks/evidence/2026-10-20-T-025-r1/coordinator-*`。因此本輪「NOT RUN」中由 coordinator 執行的 DB 測試與 `make frontend-test` 已執行並通過。
