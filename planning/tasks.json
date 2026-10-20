@@ -1670,7 +1670,7 @@
       "id": "T-026",
       "title": "Human approve/reject / canonical effect",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Platform + AI",
       "planning_window": "Week 8–10",
       "depends_on": [
@@ -1725,7 +1725,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-20",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-026_VALIDATION.md",
+          "summary": "人類批准與拒絕 AI proposal：internal/proposals/approval（role 與 base 的 revalidation、在 model row lock 下重新 review、重算 risk 與 ID pool、凍結 base 的 dataset manifest、一次 canonical effect：edit 產生一個新 version、scenario 產生一個 scenario；conflict 回 409 並存為 key 的回應；reject 不改任何 model 資料）、migration 0013（decision_comment 與兩個確保唯一 effect 的 deferred trigger）、internal/storage/scenarios、架構規則 decisions-only-in-the-api。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（4abeb96、5dd554c）與帶 DB 的 15 個 mutant（全部擋下），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-20-T-026*/coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 on 4abeb96 CHANGES REQUESTED (M1, L1–L5); round 2 on 5dd554c ACCEPT (N1–N3 fixed by the coordinator)",
+          "decisions_pending": "D-067、D-068、D-069 待 owner 批准；批准後 T-026 才標為 done"
+        }
+      ]
     },
     {
       "id": "T-027",

@@ -1,0 +1,52 @@
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestScenarioName
+--- PASS: TestScenarioName (0.00s)
+=== RUN   TestFingerprint
+--- PASS: TestFingerprint (0.00s)
+=== RUN   TestReplayed
+--- PASS: TestReplayed (0.00s)
+=== RUN   TestBindingFailure
+--- PASS: TestBindingFailure (0.00s)
+=== RUN   TestDecisionComment
+--- PASS: TestDecisionComment (0.00s)
+=== RUN   TestRecheckAppliesTheReviewedChanges
+--- PASS: TestRecheckAppliesTheReviewedChanges (0.27s)
+=== RUN   TestRecheckTrustsNoStoredResult
+--- PASS: TestRecheckTrustsNoStoredResult (0.39s)
+=== RUN   TestRecheckAppliesTodaysRules
+--- PASS: TestRecheckAppliesTodaysRules (0.15s)
+=== RUN   TestApproveEdit
+--- PASS: TestApproveEdit (0.39s)
+=== RUN   TestApproveKeepsADirtyDraft
+--- PASS: TestApproveKeepsADirtyDraft (0.49s)
+=== RUN   TestApproveScenario
+--- PASS: TestApproveScenario (0.33s)
+=== RUN   TestApprovalIdempotency
+--- PASS: TestApprovalIdempotency (0.82s)
+=== RUN   TestDecisionRaces
+--- PASS: TestDecisionRaces (0.82s)
+=== RUN   TestApprovalOnAMovedBase
+--- PASS: TestApprovalOnAMovedBase (1.36s)
+=== RUN   TestDecisionRoles
+--- PASS: TestDecisionRoles (0.83s)
+=== RUN   TestDecisionsWaitForTheModelRow
+--- PASS: TestDecisionsWaitForTheModelRow (1.78s)
+=== RUN   TestDecisionsTakeTheModelRowFirst
+--- PASS: TestDecisionsTakeTheModelRowFirst (0.47s)
+=== RUN   TestTheKeyNamesTheProposal
+--- PASS: TestTheKeyNamesTheProposal (0.72s)
+=== RUN   TestRejectAndStates
+--- PASS: TestRejectAndStates (0.80s)
+=== RUN   TestApprovalReviewsAgain
+--- PASS: TestApprovalReviewsAgain (1.13s)
+=== RUN   TestApprovalFreezesTheManifest
+--- PASS: TestApprovalFreezesTheManifest (1.10s)
+=== RUN   TestScriptedAnswersReachEachMode
+--- PASS: TestScriptedAnswersReachEachMode (0.18s)
+=== RUN   TestTheDBTestsAnswersAreReady
+--- PASS: TestTheDBTestsAnswersAreReady (3.65s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	16.854s

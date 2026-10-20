@@ -831,6 +831,10 @@ func TestDecisionsTakeTheModelRowFirst(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// A Fatalf below must not leave the draft row locked and the
+		// connection out of the pool, or the pool's Close in the test's
+		// cleanup would wait until go test's timeout (review round 2 N1).
+		defer holder.Rollback(ctx)
 		if _, err := holder.Exec(ctx, `SELECT 1 FROM twin.model_drafts WHERE model_id=$1 FOR UPDATE`, m.ID); err != nil {
 			t.Fatal(err)
 		}

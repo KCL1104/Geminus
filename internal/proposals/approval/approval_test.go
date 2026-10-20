@@ -254,6 +254,10 @@ func TestBindingFailure(t *testing.T) {
 	if err := bindingFailure(ctx, fmt.Errorf("reading: %w", context.Canceled)); errors.As(err, &se) || !errors.Is(err, context.Canceled) {
 		t.Errorf("a cancelled request: %v", err)
 	}
+	// The request ended, whatever error the store gave (review round 2 N3).
+	if err := bindingFailure(ctx, cause); errors.As(err, &se) || !errors.Is(err, cause) {
+		t.Errorf("a cancelled request with the store's own error: %v", err)
+	}
 }
 
 func TestDecisionComment(t *testing.T) {

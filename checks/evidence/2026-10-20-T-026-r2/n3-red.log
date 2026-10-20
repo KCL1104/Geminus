@@ -1,0 +1,5 @@
+--- FAIL: TestBindingFailure (0.00s)
+    approval_test.go:259: a cancelled request with the store's own error: approval: the dataset snapshots could not be read: the object store did not answer
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.014s
+FAIL

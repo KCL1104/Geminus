@@ -1,6 +1,6 @@
 # T-026 驗證報告：Human approve/reject／canonical effect
 
-**日期：2026-10-20｜狀態：review round 1 的修正已完成，等 coordinator 的 DB 測試與下一次 review；`planning/tasks.json` 的狀態未改，由 reviewer 決定。｜需求：REQ-006、REQ-009（另涵蓋 REQ-010 的 AI scenario 批准、REQ-018 的 audit）｜Gate：D-003、D-011、D-027、D-030、D-046、D-061、D-062 都已 APPROVED；本任務提出的 D-067、D-068、D-069 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-026 依建議實作，並把三項加進 T-026 的 gate（D-067 另加進 T-028）。｜驗收測試：TEST-005、TEST-006、TEST-007、TEST-009｜本 worktree 不能執行 DB 測試。Coordinator 在一次性 database 上第一次執行 `make integration-test` 時 exit 2（四個 DB-backed 測試失敗，原因在測試設定，見「第二輪」）；修正後第二次執行（branch 上的 95b64e7）exit 0，見文末「Coordinator 的執行」。獨立 review round 1 為 CHANGES REQUESTED（1 Medium、5 Low、4 Info），在 branch `t026-r1` 修正（見「Review round 1」）；**round 1 新增與修改的 DB 測試還沒有在 database 上執行**。**
+**日期：2026-10-20｜狀態：獨立 review 第 2 輪 ACCEPT（2026-10-20，5dd554c）；round 1 的 DB 測試與帶 DB 的 mutant 已由 coordinator 執行並通過（見文末）；D-067–D-069 待 owner 批准後才標為 done。｜需求：REQ-006、REQ-009（另涵蓋 REQ-010 的 AI scenario 批准、REQ-018 的 audit）｜Gate：D-003、D-011、D-027、D-030、D-046、D-061、D-062 都已 APPROVED；本任務提出的 D-067、D-068、D-069 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-026 依建議實作，並把三項加進 T-026 的 gate（D-067 另加進 T-028）。｜驗收測試：TEST-005、TEST-006、TEST-007、TEST-009｜本 worktree 不能執行 DB 測試。Coordinator 在一次性 database 上第一次執行 `make integration-test` 時 exit 2（四個 DB-backed 測試失敗，原因在測試設定，見「第二輪」）；修正後第二次執行（branch 上的 95b64e7）exit 0，見文末「Coordinator 的執行」。獨立 review round 1 為 CHANGES REQUESTED（1 Medium、5 Low、4 Info），在 branch `t026-r1` 修正（見「Review round 1」）；**round 1 新增與修改的 DB 測試還沒有在 database 上執行**。**
 
 範圍依 tasks.json：
 
@@ -183,7 +183,7 @@
 
 ## 殘餘風險
 
-- 最大的風險：review round 1 新增與修改的 DB 測試（`TestTheKeyNamesTheProposal`、`TestDecisionsTakeTheModelRowFirst`、`TestDecisionsStayInTheirOrganization`，以及 `TestApprovalOnAMovedBase`、`TestApprovalFreezesTheManifest`、`TestApprovalReviewsAgain`、`TestApprovalRefusals` 的修改）還沒有在 PostgreSQL 上執行；五個只能由 DB 測試擋下的 mutant（`r1-mutants.log` 的 db-only）在沒有 DB 時存活，要等 coordinator 帶 `GEMINUS_TEST_DATABASE_URL` 再跑。第一版與第二輪的 DB 路徑（scenario 的整條路徑在內）已在 coordinator 的第二次執行中通過。
+- Review round 1 新增與修改的 DB 測試（`TestTheKeyNamesTheProposal`、`TestDecisionsTakeTheModelRowFirst`、`TestDecisionsStayInTheirOrganization`、`TestApprovalOnAMovedBase`、`TestApprovalFreezesTheManifest`、`TestApprovalReviewsAgain`、`TestApprovalRefusals`）已由 coordinator 在一次性 database 上執行並通過；帶 DB 的 15 個 mutant 全部被擋下（見文末「Coordinator 的執行（review round 1 之後）」）。
 - `TestTheDBTestsAnswersAreReady` 的表格是手寫的，對應 DB 測試詢問的 base；DB 測試以後改了 base 或 changes，表格不會自動跟著改。`TestApprovalFreezesTheManifest` 新增的 proposal 是在綁 dataset 的 base 上，表格沒有這個 base。
 - `TestDecisionsTakeTheModelRowFirst` 以 `pg_stat_activity` 的 query 文字（`FROM twin.model_drafts … FOR UPDATE`）找出等待中的決策；若 `LockDraft` 的 SQL 改寫成別的形式，這個測試會在 10 秒後以「no statement … waits」失敗，而不是默默通過。
 - Migration 0013 第 10 行的註解說 worker「cannot name the column」，不精確（worker 讀得到，只是沒有 UPDATE 權限）；已部署的 migration 不可修改，正確的說法在 D-068 (a)、API_DATABASE §8 與 SQL 測試的註解。
@@ -194,7 +194,7 @@
 - Base 已變而沒有人嘗試批准的 proposal 會一直顯示為 ready；UI（T-031）應以 base 與 latest 比較來提示。
 - Conflict 的 409 存為 key 的回應；review round 1 起 replay 時 `error.request_id` 改為這次 request 的 ID（D-069 (a)，PROPOSED），第一次 request 的 ID 只留在 `proposal.conflict` 的 audit event。
 - TS client 沒有 approve／reject 方法，前端的型別測試沒有執行。
-- `internal/storage/scenarios`（`Insert`、`Get`）沒有自己的測試檔，只由 approval 的 DB 測試（`TestApproveScenario`、`TestApprovalClosedLoop`）間接涵蓋，而這兩個測試在修正後還沒有在 DB 上跑過。
+- `internal/storage/scenarios`（`Insert`、`Get`）沒有自己的測試檔，只由 approval 的 DB 測試（`TestApproveScenario`、`TestApprovalClosedLoop`）間接涵蓋；兩者自第 2 輪起在 coordinator 的每次 integration 中都通過。
 - `TestDecisionRoles` 與 `TestDecisionsWaitForTheModelRow` 以 500 ms 判斷「沒有等待」（與 T-012 的鎖測試相同的做法），在很慢的機器上可能誤報。
 
 ## Coordinator 的執行
@@ -202,3 +202,17 @@
 第 1 輪 cherry-pick 到 `claude/lucid-meitner-vq1awo`（0ee3d2a 之後，f595f07）後，`make integration-test` 在一次性的 `dt_test_t026` 上 exit 2：0013 的 up／down／up 與所有 SQL suite 通過，4 個 DB-backed Go 測試失敗（TestApproveScenario、TestApprovalOnAMovedBase、TestDecisionsWaitForTheModelRow、TestApprovalClosedLoop），原因見「第二輪」：測試 helper 以 modeler role 寫入 scenario 的 fake 回答，scenario proposal 停在 needs_input。Coordinator 把本機 branch 退回 0ee3d2a，交回 agent 修正（只改測試）。
 
 第 2 輪後七個 commit 一起 cherry-pick（95b64e7），`spec-check`、`backend-test`、`backend-race`、`architecture-check`、`ai-eval`、`frontend-test`（426 個 test）與 `integration-test`（新的 `dt_test_t026_r2`：27 個 package ok，沒有 FAIL 或 SKIP；scenario 批准的整條路徑第一次在 PostgreSQL 上執行並通過）都是 exit 0。Log 與 exit code 在 `checks/evidence/2026-10-20-T-026/coordinator-*`。上方「NOT RUN」中的 DB 測試與 `make frontend-test` 已由 coordinator 執行。
+
+### Coordinator 的執行（review round 1 之後，5dd554c、d80feb5）
+
+Round 1 的四個 commit 在 T-047 之後 cherry-pick，沒有衝突。`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`（429 個 test）與 `backend-race` 都是 exit 0。`integration-test`（一次性的 `dt_test_t026_r1b`）中所有 migration 與 SQL suite、29 個 Go package（含本輪新增與修改的 approval DB 測試）都通過，唯一失敗是 T-026 範圍外的 T-019 計時測試 `TestASlowRenewalCountsFromItsStart`（4.34 s，期望 3.5 ± 0.3 s；機器的 load average 為 18–19，4 顆 CPU）。在新的 `dt_test_t026_r1c` 上重跑一次：該測試 3.66 s 通過，整個 `internal/worker` 也通過；沒有放寬任何 assertion。之後以同一個 database 執行 `r1-mutate.py`（coordinator 的副本加上 `-p 1`）：15 個 mutant 全部被擋下，包括 5 個只有 DB 測試能擋的。Log 在 `checks/evidence/2026-10-20-T-026-r1/coordinator-*`。
+
+## Review 第 2 輪（H-003，5dd554c）：ACCEPT
+
+同一位獨立 reviewer 以 `git archive` 匯出的 5dd554c 複審：M1、L1–L4 已修正，L5 大致修正，I1 交給 owner（D-069 (b)），I2–I4 已修正；沒有新的 High 或 Medium。Reviewer 也認同 worker 計時失敗與 T-026 無關（`internal/worker` 在 0ee3d2a..5dd554c 之間沒有變更）。新的 Low 由 coordinator 修正（本節的 commit）：
+
+- **N1**：`TestDecisionsTakeTheModelRowFirst` 的 holder transaction 在 `Begin` 後加上 `defer holder.Rollback(ctx)`，`t.Fatalf` 的路徑不會留下鎖住的 draft row 與借出的連線，避免 pool 的 `Close` 等到 go test 的 timeout。已在一次性 database 上執行（`checks/evidence/2026-10-20-T-026-r2/n1-db.log`）。
+- **N2**：本報告開頭、殘餘風險與 coordinator 一節，以及 `docs/SECURITY.md`、`docs/CONTRACT_BLOCKERS.md`（CB-42）中「round 1 的 DB 測試待重跑」的說法，改為引用上面的執行。
+- **N3**：`TestBindingFailure` 加上「request 已取消、store 回普通錯誤」的案例（不是 `DatasetStorageError`）。紅：拿掉 `bindingFailure` 的 `ctx.Err()` 條件時 exit 1（`n3-red.log`）；綠：還原後 exit 0（`n3-green.log`）。
+
+Info（記錄，不修）：I-a request 仍有效而 object store 自己逾時時被當成 request 逾時（一般 503、沒有 `DATASET_STORAGE_FAILED`），`Resolve` 中 server 自己的錯誤也回 503，可在之後收窄分類；I-b 兩個 equivalent mutant；I-c 只有含空 comment 的 body，fingerprint 在部署前後不同（首次部署前沒有影響）；I-d L2 的測試只 assert 不是 typed 錯誤。T-019 的計時測試對 CPU 飢餓敏感，記為 T-019 的後續。
