@@ -175,3 +175,9 @@ Equivalent 的理由（寫在 harness 的註解）：
 - **Fuzz 的次數**：Go fuzzing 顯示的 execs 會少算，FuzzRun 實際執行次數沒有量測；fuzz 時間各為 90 秒到 3 分鐘。
 - **部署時的 engine_version**：run 凍結 engine_version，升到 des-go-0.2.0 後，部署前以 des-go-0.1.0 入列、尚未執行的 run 會以不重試的 `ENGINE_VERSION_MISMATCH` 失敗（T-023 的既有行為，`TestRefusedAttempts`，DB NOT RUN）；目前沒有任何部署。
 - **效能**：有有限 buffer 的程式在每個事件後做 B1 檢查（服務中或 delay 中有 entity 時立即返回，否則掃描 resource FIFO 與 blocked FIFO）；沒有 benchmark。沒有有限 buffer 的程式不檢查（D-047），differential 證明其 observation 不變。
+
+## Coordinator 的執行（cb02b5f）
+
+Coordinator 把 11 個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-017 的 534c9ba 之後）。衝突只在決策登記（D-064 一節放在 T-026、T-017 兩節之前）與 `planning/decisions.json`（加入 D-064）；產生的 `checks/*.json` 由 `make spec-check` 重產。SimPy 4.1.2：MIT（PyPI 的 license 與 classifier），2026-05-24 上傳，超過兩週。
+
+之後 `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`simulation-reference-test`（PASS）、`frontend-test`（429 個 test）、`backend-race`（30 分鐘 timeout）與 `integration-test`（新的 `dt_test_t047`：30 個 package ok，沒有 FAIL 或 SKIP，包括 `internal/runs/runner`、`internal/api` 的 run 測試）都是 exit 0。上方 NOT RUN 中的 DB 測試與 `make frontend-test` 已由 coordinator 執行並通過。Log 與 exit code 在 `checks/evidence/2026-10-20-T-047/coordinator-*`。
