@@ -1605,16 +1605,22 @@
         "D-020",
         "D-022",
         "D-027",
-        "D-046"
+        "D-046",
+        "D-061",
+        "D-062"
       ],
       "scope": [
         "durable generating job→proposed content→server validator/risk→ready。",
         "needs_input/invalid/failed 狀態與immutable ready content。",
         "server-bind all identity/validation/approval fields；無write tools。",
-        "AI proposal 與 analysis 的 job handler（T-019、ADR-024）讀寫 DB，是 adapter：不能放在 internal/ai/...（ai-suggests-only 禁止 storage 與 tenant），需另立 adapter package 實作 internal/worker/handler 的 Handler 並呼叫 internal/ai；package 名稱由本任務決定並記錄（T-019 round 2 L3）。"
+        "AI proposal 與 analysis 的 job handler（T-019、ADR-024）讀寫 DB，是 adapter：不能放在 internal/ai/...（ai-suggests-only 禁止 storage 與 tenant），需另立 adapter package 實作 internal/worker/handler 的 Handler 並呼叫 internal/ai；package 名稱由本任務決定並記錄（T-019 round 2 L3）。已決定：server review 為 internal/ai/review（純粹）；service 與 HTTP adapter 為 internal/proposals；model_proposal handler 為 internal/proposals/generator；SQL 為 internal/storage/proposals。原規劃的 internal/ai/proposals 會讓三個 package 同名，而且 handler 不能放在 internal/ai，理由見 docs/ARCHITECTURE.md §6。Analysis 的 handler 依賴 T-029 的 results／evidence，留給 T-030。"
       ],
       "planned_outputs": [
-        "internal/ai/proposals/"
+        "internal/ai/review/",
+        "internal/proposals/",
+        "internal/proposals/generator/",
+        "internal/storage/proposals/",
+        "migrations/0012_proposal_jobs.up.sql"
       ],
       "spec_refs": [
         "docs/AI_SPEC.md",
@@ -1657,7 +1663,9 @@
         "D-011",
         "D-027",
         "D-030",
-        "D-046"
+        "D-046",
+        "D-061",
+        "D-062"
       ],
       "scope": [
         "role/base revalidation、shared model lock、idempotent exactly-one version。",

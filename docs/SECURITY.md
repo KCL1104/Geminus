@@ -80,6 +80,15 @@ T-024 實作（[ADR-027](adr/ADR-027-ai-provider-adapter.md)，PROPOSED；只用
 - **Output**：回答先依 role 的 output schema 驗證（trusted fields、`approved`／`ready`、tool、move op、root patch、低 confidence 未確認、executable transform、analysis 中的 run ID 都被拒），再 strict decode（重複 member、尾隨文字、invalid UTF-8 也拒）；issue 只留 JSON Pointer 與固定訊息，不回顯回答內容。`tool_use`／`pause_turn`／未知 stop reason、tool block 一律拒絕；`max_tokens` → `output_truncated`，`refusal` → `refused`。
 - **未涵蓋（NOT RUN／後續任務）**：真實 API 呼叫與 projection 被 API 接受；production log／audit 的實際寫入（T-025）；偽造已批准語句與 wrong metric／wrong run 的內容檢查（T-025、T-030；T-024 只保證不可用的 metric 不在可引用清單、prose 數字可用 `locale.CheckProse` 檢查）。
 
+T-025 實作（D-061、D-062 PROPOSED；只用 fake provider，**沒有任何 live AI 呼叫**）：
+- **AI 只建議**：provider 回答只經 review 寫進 proposal 列，沒有 write tool；model、draft、version 不因 proposal 改變（`TestProposalClosedLoop` 比對 draft，DB 測試 NOT RUN）。
+- **Server 綁定欄位**：proposal ID、base、mode、organization、created_by、ID pool、patch_hash、validation 與 risk 都由 server 綁定或計算。回答中帶 `approved`、`approved_by`、`requires_confirmation=false`、root 或 identity patch，都判為 `invalid`；`make ai-eval` 的 `unsafe_answer_ready` 為 0。
+- **偽造的預測**：expected effects 中不是 base 或 candidate 的數字，判為 `AI_OUTPUT_INVALID`。
+- **Invalid 不留內容**：`invalid` 只存 issues（固定 message、JSON Pointer）與 provider metadata，不存回答的文字。
+- **Audit 只記 metadata**：`proposal.create`（user）、`proposal.generate`、`proposal.attempt_failed`（worker）只記 provider、model、credential label、template、schema、hash、tokens、latency、狀態與 risk，不記 prompt、回答或 key（`TestAuditMeta`）。
+- **錯誤不洩漏**：provider 錯誤以固定訊息作為 job failure，HTTP 只顯示對應的 ErrorCode 與原 code（D-061 (c)），不顯示 provider 原文、HTTP status 或 credential label。
+- **未涵蓋**：回答文字（summary、assumptions、questions）不掃描 secret，依賴 context 本來就不含 secret（T-024 的 `secrets_sent` gate）；token quota（T-036）；DB 測試（RLS、trigger、role matrix）在此環境 NOT RUN。
+
 ## 8. Resource / job safety
 
 入列前 admission quota，execution timeout、event/entity/visit/trace limits、bounded replication pool、provider tokens/concurrency/retry caps。warmup 和 retries 都計費/計 budget；trace sampling 不改結果也不能無限長。worker lease_token fencing 防 stale finalize；cancel race 在鎖 run+job 後重新判斷。object upload 完而 DB commit 失敗時結果不可見，孤兒 artifact 由受控 maintenance 清理。T-023：cancel 與 finalize 都先鎖 job 再鎖 run，finalize 看到取消請求即改為 cancelled、不存結果（`TestCancelRacesCompletion`）；execution limits 由 server 在入列時凍結，client 無法設定或提高；event budget 跨 retry 以 durable reservation 計算，wall clock 從第一次開始起算（API_DATABASE §7）；孤兒 trace object 的 maintenance 尚未實作。

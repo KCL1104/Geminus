@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 60,
-    "proposed": 0,
+    "proposed": 2,
     "rejected": 0,
     "superseded": 0
   },
@@ -34,10 +34,18 @@
     "review": 0
   },
   "ready_tasks": [
-    "T-025",
     "T-035"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-025",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-061",
+        "D-062"
+      ]
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -555,6 +563,22 @@
       "gate": "T-052 實作前",
       "gates_tasks": [
         "T-052"
+      ]
+    },
+    "D-061": {
+      "status": "proposed",
+      "gate": "T-026 approval revalidation 前；T-027、T-030 沿用 (c) 前",
+      "gates_tasks": [
+        "T-025",
+        "T-026"
+      ]
+    },
+    "D-062": {
+      "status": "proposed",
+      "gate": "T-026 approval 前",
+      "gates_tasks": [
+        "T-025",
+        "T-026"
       ]
     }
   },

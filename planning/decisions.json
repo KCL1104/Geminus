@@ -838,6 +838,34 @@
       "approved_by": "KCL1104 (repository owner; session decision, H-018)",
       "approved_at": "2026-10-20",
       "approval_note": "依建議（決策頁），owner：「全都照建議」。"
+    },
+    {
+      "id": "D-061",
+      "title": "AI 錯誤與 issue 的契約（CB-40）",
+      "source_gap": "ID pool 違規與 provider 回答不符 schema 沒有 ValidationCode；provider 錯誤沒有對應的 ErrorCode 或 failed 狀態內容；provider_metadata 沒有 schema；id_pool 與 output_locale 是否對 client 顯示未定",
+      "proposal": "(a) ValidationCode 新增 ID_POOL_VIOLATION（固定 message，不引用 ID）；(b) 新增 AI_OUTPUT_INVALID（回答不符 schema、不是 proposal、no-op patch、expected effects 含數字）；(c) provider 錯誤為 job failure：code 為 AI_ 加上 provider code 的大寫，message 固定，只有 concurrency_limited／timeout／rate_limited／unavailable 會重試，job 最終失敗時 proposal 轉為 failed；error.code 的對應：AI_PROVIDER_NOT_CONFIGURED、AI_POLICY_NOT_APPROVED 不變，rate／concurrency → RATE_LIMITED，timeout／unavailable／credentials_exhausted／DATASET_STORAGE_FAILED／LEASE_EXPIRED／WORKER_STOPPED → SERVICE_UNAVAILABLE，context_too_large → PAYLOAD_TOO_LARGE，其餘 → INTERNAL_ERROR，原 code 放在 details[0].code；invalid_output → proposal invalid；AI 關閉時 createProposal 在寫入前回 503；(d) provider_metadata 存 provider.Metadata（不含 prompt、回答、key），不另立 schema，HTTP 不顯示；(e) HTTP Proposal 不顯示 id_pool 與 output_locale，T-028 需要時再加入 contract。",
+      "source_pages": "N/A（CB-40；T-024 的 internal/ai/provider、internal/ai/idpool；T-025 實作見 internal/ai/review、internal/proposals）",
+      "owner_role": "AI / API",
+      "gate": "T-026 approval revalidation 前；T-027、T-030 沿用 (c) 前",
+      "status": "proposed",
+      "resolves": [
+        "CB-40"
+      ],
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-062",
+      "title": "Proposal 生命周期與 server review 的解讀（T-025）",
+      "source_gap": "D-016 只列出 risk 規則的方向；proposal 與 job 的關係、stale base 的時點、invalid／failed 的內容、expected effects 的數字規則未定",
+      "proposal": "(a) proposal 跟隨它的 job（與 run 0009、import 0010 相同）：最多一個 job；generating 轉為 ready／needs_input／invalid 時，job 必須在同一 transaction 中 completed；job failed 或 cancelled 時，proposal 由 trigger 轉為 failed；API 不能改 generating 的 proposal；identity 欄位不可改（migration 0012）；(b) base 不是 latest 時，createProposal 回 409 MODEL_VERSION_CONFLICT，generation 期間 base 變舊由 T-026 處理；(c) invalid 必須帶 validation.valid=false 且沒有 changes，只有 failed 帶 error，invalid 不存回答的文字；(d) server risk 以 entity ID 比對兩個 IR：high 為 node 或 resource 被刪除、node 改 type；至少 medium 為 capacity 降低、requirements 改變、flow 改接、流向 failure／rework 或位在 cycle 上的 flow probability 提高、新增 cycle、新增或刪除 entity、entity type、metric、constraint 改變；其餘 low；最終 risk 為 max(server, claim)；(e) expected effects 的數字只能是 base 或 candidate 的值，intent 中的數字也不算（eval MOD-050）；(f) review 的順序依序為 output、patch、candidate、no-op、ID pool、pack、expected effects、risk、dataset binding，遇到第一個有 error 的階段即停止。",
+      "source_pages": "N/A（D-016、D-027、AI_SPEC §5；T-025）",
+      "owner_role": "AI / Security",
+      "gate": "T-026 approval 前",
+      "status": "proposed",
+      "resolves": [],
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

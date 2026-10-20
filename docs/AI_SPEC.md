@@ -52,6 +52,26 @@ approved/rejected/invalid/failed/conflicted 是本候選 workflow 的 terminal s
 
 needs_input 必須帶 questions，不能偷偷附 executable changes。provider timeout/invalid JSON 與合法 needs_input 分開。invalid 留下 sanitized issue / audit metadata，不把原始惡意輸出塞進可執行 context。
 
+T-025 實作（D-061、D-062 PROPOSED）的流程如下。
+
+1. `POST /v1/models/{id}/ai-proposals`（editor／owner）在 AI 關閉時先回 503，不寫入任何資料。
+2. 接著檢查 `base_version_id` 是否為 model 的 latest；不是則回 409 `MODEL_VERSION_CONFLICT`。
+3. Server 產生 proposal ID 與 ID pool，與 `model_proposal` job、audit `proposal.create`、idempotency response 同一 transaction 寫入，回 202 `generating`。
+4. Worker 的 handler（`internal/proposals/generator`）在 lease 下讀 proposal 與 base。之後在 transaction 外建 context（`aicontext.Proposal`）、呼叫 provider（`provider.Client`），再由 `internal/ai/review` 依序檢查：
+   - output 形狀；
+   - patch（mode allowlist、test-before-modify、atomic）；
+   - candidate validation；
+   - no-op；
+   - ID pool（`ID_POOL_VIOLATION`）；
+   - domain pack；
+   - expected effects 的數字（`AI_OUTPUT_INVALID`）；
+   - server risk。
+5. Review 之後是 dataset binding stage。
+6. 結果與 job 的完成同一 transaction 寫入：`ready`（canonical patch、server 計算的 `patch_hash`、server risk、provider claim、max）、`needs_input`（questions，沒有 changes 與 risk）或 `invalid`（只有 issues 與 provider metadata，不存回答的任何文字）。
+7. Provider 錯誤是 job failure（`AI_<CODE>`，固定訊息）。Job 最終失敗時，proposal 轉為 `failed` 並帶 `error`。
+
+Ready 的內容不可改（migration 0012）。Server 綁定 identity、validation 與 approval 欄位；provider 回答中的這些欄位不符合 output schema，因此判為 `invalid`。Review 不讀 intent，所以 expected effects 中的數字只能是 base 或 candidate 的值（D-062 (e)）。Analysis 的 job handler 屬 T-030（依賴 T-029），本任務沒有做。
+
 ## 5. Model editing / initial modeling
 
 自然語言起始建模先由人類建立 valid template model/v1，再由 AI propose 轉換；不建立可被 simulation 使用的 invalid empty model。AI 加減 topology 必須形成完整 valid candidate IR，所有假設都揭示在 diff/assumptions。delete node/resource 是 high risk；增加 cycle、降低 capacity、提高 failure routing 至少 medium；server 不能被 provider 的 low risk/confidence 下調。
@@ -92,7 +112,7 @@ observation/inference 分開。文字中的重大数值也要能對 supplied val
 
 記 provider/model、prompt_template_version、schema_version、sanitized input hashes、proposal hash、tokens、latency、approver、request_id；不索取／保存 private chain-of-thought。只需 summary、assumptions、evidence、risk、changes。
 
-對每 tenant/request 限 token、concurrency、provider timeout、有限 retry。T-024 實作每個 request 的部分（`provider.Budget`，工程候選值：prompt 128 KiB、output 8192 tokens、整個呼叫 120 s、每個 attempt 90 s、retry 2、每個 organization 在單一 process 並行 2；上限由 `BudgetCaps` 檢查）；依 tenant 與期間累計的 token quota 需要持久化與 owner 的 quota 數字，尚未做（T-025／T-036）。`make ai-eval` 以 fake provider 對整個 corpus 檢查 context 端的 zero-tolerance gate（`checks/ai-evals/fake-provider.json`）；proposal 評分、DB effects、analyst 輸出檢查與 live eval 為 NOT RUN。P0 可對 schema parse failure 做最多一次 bounded repair **候選 D-011**，但 repair 後仍完整校驗；不能無限「修到能 commit」。schema-valid 但 risk/authorization 不合法不能用 repair 繞過。
+對每 tenant/request 限 token、concurrency、provider timeout、有限 retry。T-024 實作每個 request 的部分（`provider.Budget`，工程候選值：prompt 128 KiB、output 8192 tokens、整個呼叫 120 s、每個 attempt 90 s、retry 2、每個 organization 在單一 process 並行 2；上限由 `BudgetCaps` 檢查）；依 tenant 與期間累計的 token quota 需要持久化與 owner 的 quota 數字，尚未做；T-025 沒有做，因為沒有 quota 數字，留給 T-036。`make ai-eval` 以 fake provider 對整個 corpus 做兩件事：(1) 檢查 context 端的 zero-tolerance gate（T-024，`checks/ai-evals/fake-provider.json`）；(2) 以手寫的 reference 與 unsafe 回答檢查 server review（T-025，`checks/ai-evals/fake-review.json`）。(2) 的 gate：golden reference 都 ready，且只靠 server 達到 minimum_risk（回答一律宣稱 low）；needs_input 不留 change；unsafe 回答 ready=0。它評的是 server，不是 model。Model 自己的回答（golden ≥90%）、DB effects、analyst 輸出檢查與 live eval 為 NOT RUN。P0 可對 schema parse failure 做最多一次 bounded repair **候選 D-011**，但 repair 後仍完整校驗；不能無限「修到能 commit」。schema-valid 但 risk/authorization 不合法不能用 repair 繞過。
 
 `testdata/ai-evals/modeler.jsonl` 提供 50 個起始 modeling intents，另有 mapper/analyst corpus。這些是待執行評測，不是 live model 成績。mandatory safety gates：structurally invalid reaches approval=0；unapproved mutation=0；cross-tenant context leakage=0；invalid patch committed=0；mandatory adversarial invented metrics=0。golden intent correct patch≥90% 仍依原報告為待 baseline 校準目標，不允許把 safety 0-tolerance 改成平均分数。
 
