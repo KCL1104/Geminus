@@ -526,7 +526,7 @@ func TestScenarioMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ctx.Prompt.Role != provider.RoleScenario || ctx.Prompt.TemplateVersion != "scenario-0.2.0" || ctx.Mode != provider.ModeScenario {
+	if ctx.Prompt.Role != provider.RoleScenario || ctx.Prompt.TemplateVersion != "scenario-0.3.0" || ctx.Mode != provider.ModeScenario {
 		t.Errorf("%+v", ctx)
 	}
 	if _, ok := blocks(t, ctx.Prompt)["ID_ALLOCATION_POOL"]; ok {
@@ -534,6 +534,19 @@ func TestScenarioMode(t *testing.T) {
 	}
 	if !strings.Contains(ctx.Prompt.System, "SCENARIO_PATCH_ALLOWLIST") {
 		t.Error("no scenario allowlist in the rules")
+	}
+	// D-057 (T-047): a queue's buffer capacity is a scenario parameter now,
+	// with its risk and the blocking-cycle refusal; the other line-flow
+	// parameters are not (their gates are still on).
+	for _, w := range []string{"queue's buffer capacity", "D-057", "BLOCKING_CYCLE", "at least medium"} {
+		if !strings.Contains(ctx.Prompt.System, w) {
+			t.Errorf("the scenario rules do not say %q", w)
+		}
+	}
+	for _, w := range []string{"breakdowns", "calendar", "setups", "batch"} {
+		if strings.Contains(modeRules(provider.ModeScenario), w) {
+			t.Errorf("the scenario rules offer %q, whose gate is still on", w)
+		}
 	}
 }
 

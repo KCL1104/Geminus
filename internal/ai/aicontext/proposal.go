@@ -48,8 +48,10 @@ type ProposalInput struct {
 
 func modeRules(mode provider.Mode) string {
 	if mode == provider.ModeScenario {
-		return "- SCENARIO_PATCH_ALLOWLIST (D-021): a scenario patch only replaces existing capacities, arrival, service and delay distributions " +
-			"and routing probabilities, after a test of the element's id. It never adds or removes entities and never changes IDs, names, views or metadata.\n"
+		return "- SCENARIO_PATCH_ALLOWLIST (D-021, D-057): a scenario patch only replaces existing resource capacities, arrival, service and delay distributions " +
+			"and routing probabilities, and sets, replaces or removes a queue's buffer capacity (/nodes/<i>/capacity: absent means unlimited), " +
+			"after a test of the element's id. A smaller buffer, or a finite one where there was none, is at least medium risk; a buffer that lets " +
+			"full buffers block each other in a cycle is refused (BLOCKING_CYCLE). It never adds or removes entities and never changes IDs, names, views or metadata.\n"
 	}
 	return "- New nodes, flows and resources take their IDs from ID_ALLOCATION_POOL, from the list of their own kind, each ID at most once; " +
 		"never invent an ID. When the pool has too few IDs, answer needs_input.\n"
