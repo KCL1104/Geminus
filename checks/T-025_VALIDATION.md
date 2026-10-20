@@ -101,3 +101,18 @@
 - Generation 期間 base 變舊不會使 proposal 失效；由 T-026 的 approval revalidation 回 409。
 - 可重試的 provider 錯誤每個 attempt 都會再呼叫一次 provider，成本由 ADR-024 的 attempt 上限與 T-024 的 retry 上限決定。
 - 0012 的 deferred constraint trigger 把「job completed」與「proposal generated」綁在同一 transaction；這個設計只有 SQL 測試（NOT RUN）驗證。
+
+## Coordinator 的執行（1f6ff31）
+
+Coordinator 把 T-025 的 9 個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（解決 `docs/DECISIONS_AND_TBD.md` 與 `planning/decisions.json` 中與 H-018 的衝突，兩邊都保留），在 1f6ff31 上執行：
+
+| 命令 | Exit | 結果 |
+|---|---:|---|
+| `make spec-check PYTHON=.venv/bin/python` | 0 | `PASS_DB_TESTS_FRESH`，10 個 SQL 檔 |
+| `make backend-test` | 0 | 57 個 package ok |
+| `make architecture-check` | 0 | 69 個 package、15 條規則、16 種 build configuration |
+| `make ai-eval` | 0 | `TestReviewEval` PASS；live provider 與 real model 的 eval 仍為 NOT RUN |
+| `make frontend-test` | 0 | 18 個 test file、420 個 test 通過（`coordinator-frontend-test.log`） |
+| `make integration-test`（新的 `dt_test_t025_main`，一次性 cluster） | 0 | `run_db_tests.sh` 依序跑 0001–0012 up、所有 SQL suite（含 `proposals.sql`、`proposal_jobs.sql`）、0012 與 0011 down、`pool_rows.sql`、0011 拒絕重跑、其餘 down 與重新 up；之後 DB-backed Go 測試全部 ok，包括 `internal/proposals`、`internal/proposals/generator`、`internal/storage/proposals`、`internal/api`、`internal/worker`；`--- SKIP` 為 0（`coordinator-integration-test.log`） |
+
+因此上方「NOT RUN」中的 DB 測試、migration 0012 與 `make frontend-test` 已由 coordinator 執行並通過；「殘餘風險」第一條與最後一條中的「從未執行」不再成立，lifecycle 的保證以這次執行為證據。Mutation harness、live provider 仍為 NOT RUN。
