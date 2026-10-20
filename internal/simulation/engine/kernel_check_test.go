@@ -302,7 +302,12 @@ func randDist(rng *rand.Rand, allowZero bool) model.Distribution {
 }
 
 func randomModel(t *testing.T, rng *rand.Rand) model.ModelIR {
-	ir := minimal(t)
+	return randomModelFrom(minimal(t), rng)
+}
+
+// randomModelFrom is randomModel on a copy of the minimal model, so that
+// worker goroutines (which must not call t.Fatal) can generate models.
+func randomModelFrom(ir model.ModelIR, rng *rand.Rand) model.ModelIR {
 	ir.Resources = nil
 	nres := 1 + rng.IntN(5)
 	for i := 0; i < nres; i++ {

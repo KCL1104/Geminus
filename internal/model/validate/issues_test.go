@@ -42,3 +42,21 @@ func TestSortIsTotal(t *testing.T) {
 		t.Errorf("distinct issues were merged: %d of %d", len(want), len(in))
 	}
 }
+
+// RFC 6901 escaping: "~" before "/", every occurrence, empty tokens kept
+// (T-047 changed Pointer to share one Replacer).
+func TestPointerEscapes(t *testing.T) {
+	for _, c := range []struct {
+		tokens []string
+		want   string
+	}{
+		{nil, ""},
+		{[]string{"nodes", "3", "capacity"}, "/nodes/3/capacity"},
+		{[]string{"a/b", "c~d", "", "~1", "/~"}, "/a~1b/c~0d//~01/~1~0"},
+		{[]string{"views", "2d", "positions", "x//y~~"}, "/views/2d/positions/x~1~1y~0~0"},
+	} {
+		if got := validate.Pointer(c.tokens...); got != c.want {
+			t.Errorf("Pointer(%q) = %q, want %q", c.tokens, got, c.want)
+		}
+	}
+}

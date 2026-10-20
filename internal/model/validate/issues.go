@@ -8,12 +8,21 @@ import (
 	"github.com/kcl1104/geminus/internal/model"
 )
 
+// pointerEscaper escapes one RFC 6901 token; a Replacer is safe for
+// concurrent use, and building one per token cost more than validating the
+// rest of a model (T-047 profile of the differential).
+var pointerEscaper = strings.NewReplacer("~", "~0", "/", "~1")
+
 // Pointer builds an RFC 6901 JSON Pointer from unescaped tokens.
 func Pointer(tokens ...string) string {
 	var b strings.Builder
 	for _, t := range tokens {
 		b.WriteByte('/')
-		b.WriteString(strings.NewReplacer("~", "~0", "/", "~1").Replace(t))
+		if strings.ContainsAny(t, "~/") {
+			b.WriteString(pointerEscaper.Replace(t))
+		} else {
+			b.WriteString(t)
+		}
 	}
 	return b.String()
 }
