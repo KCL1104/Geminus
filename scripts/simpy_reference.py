@@ -32,8 +32,10 @@ Checks:
 Limits of the interpretation, checked before use: units are 1; a bundle is
 taken one resource at a time while holding the earlier ones, the one it
 shares with other processes first, which equals the engine's all-or-nothing
-grant only when at most one resource of the bundle is shared (its own units
-are free whenever that one is); the script refuses any other model.
+grant only when at most one resource of the bundle is shared and each of
+its own resources has at least the shared one's capacity (then its own
+units are free whenever the shared one is); the script refuses any other
+model, and the cases marked "refused" must be refused (G-B13).
 
     python scripts/simpy_reference.py --go-results bin/simpy-reference-go.json
 """
@@ -104,15 +106,27 @@ class Model:
                     raise SystemExit(f"unsupported: {n['id']} needs {r['units']} units")
                 users.setdefault(r["resource_id"], set()).add(n["id"])
         # A bundle is taken one resource at a time: the one it shares with
-        # other processes first, then its own (free whenever the shared one
-        # is: a unit of its own is only ever held together with it).
+        # other processes first, then its own. That is the engine's
+        # all-or-nothing grant only if an own resource is free whenever the
+        # shared one is: a unit of an own resource O is only ever held
+        # together with a unit of the shared S, by this process's entities,
+        # so at most capacity(S) - 1 others hold O while one more takes S;
+        # with capacity(O) >= capacity(S) a unit of O is then always free.
+        # Otherwise an entity holding S would wait for O and let later
+        # requests take S's other units, which the engine's resource-wise
+        # FIFO does not (G-B13; T-047 review round 1, L1).
         self.order = {}
         for n in ir["nodes"]:
             req = sorted(r["resource_id"] for r in n.get("requires", []))
             shared = [r for r in req if users[r] != {n["id"]}]
             if len(shared) > 1:
                 raise SystemExit(f"unsupported: {n['id']}'s bundle {req} shares {shared}: one at a time would not be all-or-nothing")
-            self.order[n["id"]] = shared + [r for r in req if r not in shared]
+            own = [r for r in req if r not in shared]
+            for r in own:
+                if shared and self.capacity[r] < self.capacity[shared[0]]:
+                    raise SystemExit(f"unsupported: {n['id']}'s own {r} (capacity {self.capacity[r]}) is smaller than its shared "
+                                     f"{shared[0]} (capacity {self.capacity[shared[0]]}): one at a time would not be all-or-nothing")
+            self.order[n["id"]] = shared + own
 
     def requires(self, node):
         return self.order[node]
@@ -374,6 +388,17 @@ def deadlock(case):
     return last, tick
 
 
+def refused(case):
+    """A case the interpretation cannot reproduce (its "simpy" says why) must
+    be refused before it is run, never compared with a wrong reading."""
+    try:
+        Model(case["model"])
+    except SystemExit as e:
+        return str(e)
+    check(False, f"{case['id']}: the script accepted a model it cannot interpret ({case['simpy']})")
+    return None
+
+
 def stochastic(ref, go):
     tol = ref["tolerance"]
     report = []
@@ -433,6 +458,9 @@ def main():
         elif mode.startswith("illustrative"):
             last = deadlock(case)
             compared.append(case["id"] + " (illustrative)")
+        elif mode.startswith("refused"):
+            why = refused(case)
+            skipped.append(f"{case['id']}: refused by the script: {why}")
         else:
             skipped.append(f"{case['id']}: {mode}")
     go = json.loads(Path(args.go_results).read_text())
