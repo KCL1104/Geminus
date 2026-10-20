@@ -1586,7 +1586,9 @@ paths:
         profile and the first rows'' raw values, or FAILED with error. A FAILED import''s error.details[0] carries the
         failure''s own code and, for a parse error, a JSON Pointer into the file seen as an array of rows (a JSON events
         file is that array; a CSV row''s index counts data rows from 0) or, for a JSON model, into the document;
-        error.request_id is the upload''s; a message never quotes the file and a path has at most 2,048 characters (a
+        error.request_id is the request behind the step that failed (the upload''s while the file is profiled; once a
+        mapping is saved, the save of the current mapping_revision; see the validation_failed example); a message never
+        quotes the file and a path has at most 2,048 characters (a
         longer one names an ancestor). A CSV record (the header included) and a JSON events row are at most 1 MiB as
         written, a JSON model at most 2 MiB (IMPORT_LIMIT_EXCEEDED). An import whose import_profile job fails for good or
         is cancelled before the file is profiled is FAILED with the job''s error (for example OBJECT_STORAGE_UNAVAILABLE
@@ -1785,6 +1787,105 @@ paths:
                     error: null
                     mapping_suggestion_status: none
                     mapping_suggestion: null
+                validation_failed:
+                  summary: The validation of mapping revision 2 could not read object storage until its attempts were spent; error.request_id is that save's request
+                  value:
+                    id: imp_01M4YDQK0001HSSAXJ76PRHJ5B
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    project_id: prj_01M4YDQK00K9HVKK0GQKY0MHSA
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    kind: csv_events
+                    filename: synthetic-station-log.csv
+                    status: FAILED
+                    mapping_revision: 2
+                    total_rows: 2
+                    invalid_rows: 0
+                    profile:
+                      format: csv
+                      encoding: utf-8
+                      rows: 2
+                      columns:
+                      - name: 序號
+                        index: 0
+                        inferred: string
+                        non_empty: 2
+                        max_length: 9
+                      - name: 紀錄類型
+                        index: 1
+                        inferred: string
+                        non_empty: 2
+                        max_length: 9
+                      - name: 站別
+                        index: 2
+                        inferred: string
+                        non_empty: 2
+                        max_length: 3
+                      - name: 開始
+                        index: 3
+                        inferred: mixed
+                        non_empty: 2
+                        max_length: 25
+                      - name: 結束
+                        index: 4
+                        inferred: timestamp
+                        non_empty: 2
+                        max_length: 25
+                      - name: 作業員
+                        index: 5
+                        inferred: string
+                        non_empty: 2
+                        max_length: 4
+                    preview:
+                    - 序號: SN-000123
+                      紀錄類型: operation
+                      站別: fct
+                      開始: '2026-10-13T06:12:00+08:00'
+                      結束: '2026-10-13T06:15:10+08:00'
+                      作業員: op-7
+                    - 序號: SN-000124
+                      紀錄類型: operation
+                      站別: fct
+                      開始: 2026/10/13 06:16
+                      結束: '2026-10-13T06:19:02+08:00'
+                      作業員: op-7
+                    canonical_preview: []
+                    mapping:
+                      mappings:
+                      - source_column: 序號
+                        target_field: case_id
+                        transform: identity
+                      - source_column: 紀錄類型
+                        target_field: event_type
+                        transform: identity
+                      - source_column: 站別
+                        target_field: stage
+                        transform: identity
+                      - source_column: 開始
+                        target_field: timestamp
+                        transform: rfc3339
+                      - source_column: 結束
+                        target_field: end_timestamp
+                        transform: rfc3339
+                      - source_column: 作業員
+                        target_field: null
+                        transform: identity
+                    validation: null
+                    dataset_version_id: null
+                    proposal_id: null
+                    created_at: '2026-10-15T08:30:00Z'
+                    error:
+                      error:
+                        code: SERVICE_UNAVAILABLE
+                        message: the file could not be processed; upload it again
+                        details:
+                        - path: ''
+                          reason: this worker has no object storage
+                          code: OBJECT_STORAGE_UNAVAILABLE
+                          severity: error
+                        request_id: req_01M4YDQK00V6H8S0ST4F7510KS
+                    mapping_suggestion_status: none
+                    mapping_suggestion: null
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1817,9 +1918,15 @@ paths:
         (details[0].code MAPPING_REVISION_CONFLICT at /expected_mapping_revision), never an overwrite or a merge. An import
         that is UPLOADED or PROFILING (IMPORT_NOT_PROFILED), FAILED or COMMITTED (IMPORT_FINAL) is 409 too; a json_model
         import has no columns to map (422 MAPPING_NOT_APPLICABLE; T-018 validates it). AWAITING_MAPPING, VALIDATING and
-        VALIDATED imports may be mapped again. When the import has an AI suggestion (mapping_suggestion_status ready), every
-        entry that imports a column exactly as a suggestion entry with requires_confirmation true said must be named in
-        confirmed_low_confidence (422 MAPPING_CONFIRMATION_REQUIRED); the suggestion itself is never applied. Saving, in one
+        VALIDATED imports may be mapped again. When the import has an AI suggestion (mapping_suggestion_status ready), the
+        server decides which of its entries need a person''s confirmation (AI_SPEC §8): those with confidence below 0.80,
+        those that leave a column out (target_field null) and those flagged requires_confirmation, whatever the stored
+        flag says. Every mapping entry that imports a column exactly as such an entry said, and every column such a
+        null entry leaves out that the mapping does not import either, must be named in confirmed_low_confidence (422
+        MAPPING_CONFIRMATION_REQUIRED at the entry, or at /mapping/mappings for a column the mapping does not list); a
+        name that is not such a column is 422 MAPPING_CONFIRMATION_UNKNOWN. The stored suggestion is checked against
+        ai-mapping.schema.json first: one that does not match is 500 INTERNAL_ERROR (details[0].code
+        MAPPING_SUGGESTION_INVALID) and nothing is saved. The suggestion itself is never applied. Saving, in one
         transaction with the import.map audit event and the idempotency response: the import takes the next
         mapping_revision and the mapping and becomes VALIDATING, with its earlier validation, invalid rows, canonical
         preview and error report cleared; one import_validate job is queued for that revision; queued jobs of older

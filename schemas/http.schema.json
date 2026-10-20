@@ -571,7 +571,7 @@
           "minItems": 0,
           "maxItems": 256,
           "uniqueItems": true,
-          "description": "D-070: the source columns whose AI suggestion required confirmation (confidence below 0.80) and that the person confirmed one by one. A mapping entry that imports a column exactly as such a suggestion said must be named here (otherwise 422, details[0].code MAPPING_CONFIRMATION_REQUIRED); a name that is not such an entry of the mapping is 422 MAPPING_CONFIRMATION_UNKNOWN. Absent: none."
+          "description": "D-070 (d): the source columns whose AI suggestion needs a person's confirmation and that the person confirmed one by one. The server decides which suggestion entries need it (AI_SPEC §8): confidence below 0.80, target_field null (the column left out) or requires_confirmation, whatever the stored flag says. A mapping entry that imports a column exactly as such an entry said, and a column such a null entry leaves out that the mapping does not import either, must be named here (otherwise 422, details[0].code MAPPING_CONFIRMATION_REQUIRED); a name that is not such a column is 422 MAPPING_CONFIRMATION_UNKNOWN. Absent: none."
         }
       },
       "required": [
