@@ -1,0 +1,9 @@
+date: 2026-10-20T05:31:48Z
+commit: 590f76f (code; the report and these logs are committed after it)
+go version go1.27.2 linux/amd64
+node v22.22.0
+cpus: 4
+python: Python 3.13.16
+psql client: psql (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)
+PostgreSQL server: none in this worktree; GEMINUS_TEST_DATABASE_URL is unset
+apps/web/node_modules: absent

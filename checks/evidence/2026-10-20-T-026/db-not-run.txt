@@ -1,0 +1,49 @@
+T-026: database tests NOT RUN in this worktree (2026-10-20)
+
+Why: the worktree has no PostgreSQL server (only the psql client) and
+GEMINUS_TEST_DATABASE_URL is unset. Per the coordinator's instruction, su,
+runuser and any other way to start a database as another user were not
+attempted. Every DB-backed Go test below printed SKIP ("NOT RUN: set
+GEMINUS_TEST_DATABASE_URL ...") in t026-go-tests.log; none of them, and
+no SQL file, has ever run against PostgreSQL. Migration 0013 has never
+been executed: its syntax, its triggers and its down migration are
+unverified.
+
+For the coordinator, on a fresh disposable dt_test_* database:
+
+  DT_ALLOW_DB_TESTS=yes DATABASE_URL=... GEMINUS_TEST_DATABASE_URL=... make integration-test
+
+which runs scripts/run_db_tests.sh (0001-0013 up, every SQL suite, 0013 then
+0012 down, ..., up again) and then db-go-test (-race, -p 1, a skip is a
+failure).
+
+New SQL:
+  db/tests/proposal_decisions.sql            (0013; rendered from templates/proposal_decisions.sql.tmpl)
+Changed SQL (fixture only: the approved proposal now sits on version 2,
+the base its approval is the next version of):
+  db/tests/constraints.sql
+Migration:
+  migrations/0013_proposal_decisions.up.sql, .down.sql (up/down/up in run_db_tests.sh)
+
+New DB-backed Go tests:
+  internal/proposals/approval  TestApproveEdit
+  internal/proposals/approval  TestApproveKeepsADirtyDraft
+  internal/proposals/approval  TestApproveScenario
+  internal/proposals/approval  TestApprovalIdempotency
+  internal/proposals/approval  TestDecisionRaces
+  internal/proposals/approval  TestApprovalOnAMovedBase
+  internal/proposals/approval  TestDecisionRoles
+  internal/proposals/approval  TestDecisionsWaitForTheModelRow
+  internal/proposals/approval  TestRejectAndStates
+  internal/proposals/approval  TestApprovalReviewsAgain
+  internal/proposals/approval  TestApprovalFreezesTheManifest
+  internal/api                 TestApprovalClosedLoop
+  internal/api                 TestApprovalRefusals
+  internal/storage/proposals   TestDecisionsNeedTheirState
+
+Existing DB-backed tests that T-026's changes touch and must pass again:
+  internal/proposals/... (generator: the proposal columns read now include
+  the decision record), internal/storage/proposals, internal/models/...
+  (Advance), internal/storage/models (LockDraft), internal/api/...,
+  internal/worker, cmd/api, cmd/worker; all SQL suites (0013 adds checks to
+  ai_proposals, model_versions and scenarios).
