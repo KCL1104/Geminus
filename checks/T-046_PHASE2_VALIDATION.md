@@ -1,6 +1,6 @@
 # T-046 phase 2 驗證報告：電子產線的 contract 變更
 
-**日期：2026-10-20｜狀態：待獨立 review；`planning/tasks.json` 中 T-046 的狀態未改（in_progress），由 reviewer 決定。｜需求：REQ-003、REQ-004、REQ-013、REQ-015、REQ-024、REQ-025｜Gate：D-047–D-059 都已 APPROVED（H-018）；本任務提出的 D-063 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，phase 2 依建議實作，並已列為 T-046、T-047–T-051 的 gate。｜驗收測試：TEST-001、TEST-002、TEST-034（contract 部分）｜`make frontend-test` 為 NOT RUN（見「NOT RUN」）；沒有改 migration 或 SQL，所以沒有 DB 測試要跑。**
+**日期：2026-10-20｜狀態：待獨立 review；`planning/tasks.json` 中 T-046 的狀態未改（in_progress），由 reviewer 決定。｜需求：REQ-003、REQ-004、REQ-013、REQ-015、REQ-024、REQ-025｜Gate：D-047–D-059 都已 APPROVED（H-018）；本任務提出的 D-063 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，phase 2 依建議實作，並已列為 T-046、T-047–T-051 的 gate。｜驗收測試：TEST-001、TEST-002、TEST-034（contract 部分）｜`make frontend-test` 在 agent 的環境無法執行（Node 22），已由 coordinator 在 e0944c4 執行並通過（見文末「Coordinator 的執行」）；沒有改 migration 或 SQL，coordinator 的 `make integration-test` 也通過。Review 第 1 輪的修正見文末。**
 
 範圍依 ADR-026 Consequences 的「批准後的 contract 變更（T-046 phase 2）」與 coordinator 的指示：
 
@@ -17,14 +17,16 @@
 
 ## Commit
 
+Hash 是 coordinator cherry-pick 到 `claude/lucid-meitner-vq1awo` 後的 commit（agent 分支上原為 56e04aa、d122343、46740ed、c1e2530、e31356f、8037908）；之後是 coordinator 的 d5eb6db。
+
 | Commit | 內容 |
 |---|---|
-| 56e04aa | IR：`model-ir.schema.json`、`common.schema.json`（7 個新 ValidationCode）、Go 型別、validator 的 primitive support 階段（`PRIMITIVE_NOT_SUPPORTED`，D-063）、engine Compile 的 kernel 支援清單、IR 的 fixtures 與 cases、產生的 TS、en／zh-Hant 字串 |
-| d122343 | Event、Result、trace：`canonical-event.schema.json`、`simulation.schema.json`、Go 型別、fixtures、TS |
-| 46740ed | Patch allowlist（D-057） |
-| c1e2530 | OpenAPI：`publishVersion`、`createSimulation` 的 422 範例 |
-| e31356f | 文件：D-063 PROPOSED、TWIN_IR_SPEC、SIMULATION_SPEC、ADR-026、ELECTRONICS_LINE、TEST_PLAN、ARCHITECTURE、CB-38、tasks.json（T-046–T-052）、traceability、重產的 `checks/*.json` |
-| 本報告的 commit | 本報告與 evidence |
+| 31aef83 | IR：`model-ir.schema.json`、`common.schema.json`（7 個新 ValidationCode）、Go 型別、validator 的 primitive support 階段（`PRIMITIVE_NOT_SUPPORTED`，D-063）、engine Compile 的 kernel 支援清單、IR 的 fixtures 與 cases、產生的 TS、en／zh-Hant 字串 |
+| 551a5e3 | Event、Result、trace：`canonical-event.schema.json`、`simulation.schema.json`、Go 型別、fixtures、TS |
+| 81640f4 | Patch allowlist（D-057） |
+| 980b3f7 | OpenAPI：`publishVersion`、`createSimulation` 的 422 範例 |
+| 2e631c7 | 文件：D-063 PROPOSED、TWIN_IR_SPEC、SIMULATION_SPEC、ADR-026、ELECTRONICS_LINE、TEST_PLAN、ARCHITECTURE、CB-38、tasks.json（T-046–T-052）、traceability、重產的 `checks/*.json` |
+| e0944c4 | 本報告與 evidence |
 
 ## 稽核：scope 逐條
 
@@ -110,3 +112,43 @@
 ## Coordinator 的執行（e0944c4）
 
 Coordinator 把六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（fcf824d 之後，沒有衝突），在 e0944c4 上執行 `make spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test` 與 `integration-test`（新的一次性資料庫 `dt_test_t046_p2`），全部 exit 0。`make frontend-test`：18 個 test file、422 個 test 通過，所以上方 NOT RUN 中的 `make frontend-test` 已由 coordinator 執行；`integration-test`：26 個 package ok，沒有 FAIL 或 SKIP。Log 與 exit code 在 `checks/evidence/2026-10-20-T-046-p2/coordinator-*`。`make simulation-reference-test` 仍為 NOT RUN（目標尚未實作）。
+
+## Review 第 1 輪（CHANGES REQUESTED：0 High、2 Medium）
+
+**基底：766984f**（T-025 review 第 1 輪之後）。第一次在 r1 上做的修正因 container 重啟遺失，本節是重做的結果；每個 finding 一個 commit，都先紅後綠。Evidence 在 `checks/evidence/2026-10-20-T-046-p2-r1/`。Mutation 以 reviewer 的 `t046p2-review-mutate.py`（未修改）在 worktree 的 scratch 副本上執行。
+
+**基底本身是紅的**：766984f 上 `go test ./internal/ai/review/` 失敗（`base-review-sentences-red.log`）：T-025 review 第 1 輪加的 `TestEveryCodeHasASentence` 要求 ValidationCode 目錄中每個 code 都有固定句，而目錄已有 T-046 phase 2 的 7 個 code，句子表沒有。beddc8d 在 `internal/ai/review/clean.go` 補上這 7 句（`PRIMITIVE_NOT_SUPPORTED` 另保留 gate 自己的 12 個固定 message，它們不引用模型內容）；`risk.go` 沒有改。
+
+| Finding | 修正 | Commit | 紅 → 綠的證據 |
+|---|---|---|---|
+| M1：分布型別在每個位置都算 gate，但沒有逐位置的測試（M1、M2、M3 mutation 存活；M3 下 lognormal 的 delay 會變成 valid、可 publish） | `internal/model/validate/positions_test.go`：7 個 `$ref Distribution` 位置（arrival、service、delay、TTF、TTR、setups default、transition）× {lognormal, weibull}，手寫 path，validator 與 engine Compile 都必須只在那些 path 回 `PRIMITIVE_NOT_SUPPORTED`（容器本身也 gated 時連同容器的 path）；另一個測試從 schema 根沿 properties、items、additionalProperties、oneOf／anyOf／allOf 與本地 `$defs` 走訪，找到的位置必須恰為這 7 個 | 13cd033 | `m1-mutations-M1-M3.log`：M1、M2、M3 都被 `TestEveryDistributionPositionIsGated` 抓到（exit 1） |
+| M2：Compile 的 kernel 清單檢查沒有經過 Compile 的測試（M10 存活；M16＋M10 時有限 buffer 的模型會被編譯並當作無限模擬） | Compile 經由未匯出的 `validateIR`（預設 `validate.IR`）呼叫 validator；`TestCompileRefusesWhatTheKernelDoesNotRun` 換成放行一切的 validator，要求 12 個 primitive 各自在 golden model 中只回一個 `/model/...` 的 `PRIMITIVE_NOT_SUPPORTED`，再以真正的 validator 確認同一批模型先被 validator 擋下。測試不平行、以 defer 還原；`go test -race ./internal/simulation/...` 通過 | 3e5a3a3 | `m2-red-before-injection.log`（注入點不存在時無法編譯）；`m2-mutation-M10.log`：M10 被抓到；`m2-reviewer-m10-script.log`：reviewer 的 M16＋M10 腳本，「M10 alone, repository tests」由 exit 0 變為 exit 1 |
+| L1：「primitive support 在 limits 之前」沒有測試（M7 存活） | `TestPrimitiveGateRunsBeforeEveryLaterStage`：分別破壞 limits（metadata 過深、超過 365 天的分布）、IDs（重複 node）、refs（未知 flow 目標）並宣告 `system_wip`，只能回 gate 的 issue；不宣告時各自回該階段的 error（對照） | ac7b83f | `l1-mutation-M7.log`：M7 被抓到 |
+| L2：沒有東西逼解除 gate 的人補 D-057 的 risk | 新檔 `internal/ai/review/lineflow_risk_test.go`（`risk.go` 未改）：`validate.Checked(p)` 為真而 `lineFlowRiskCases[p]` 沒有 case 時失敗，已登記的 case 必須對 `ServerRisk` 成立；目前沒有 case | da0f336 | `l2-M16-review-test.log`：把 finite_buffer 標為 checked 時這個測試失敗；`l2-mutation-M16.log` |
+| L3：「shifts」允許的 case 刪掉了 `shift_capacity` 還在用的 `evening` | 改為保留 day 與 evening 兩個 label | 1e8429f | `l3-l5-shift-labels-green.log` |
+| L4：UI 的「This version…」「此版本…」像是 ModelVersion | 改為「This build of Geminus…」「目前的系統版本…」 | 43fe8aa | `l4-tscheck.log`（catalog 的型別檢查）；i18n 測試的 vitest 執行見 NOT RUN |
+| L5：D-063 (b) 漏列的選擇；TWIN_IR_SPEC §6 與 allowlist 對 shift label 不一致 | D-063 (b) 補列：exceptions 至少 1 段、`batch_id` 從 b1 起與 rep ≤ 999、宣告式 metric 的 gate path `/metrics/<i>/type`、`ResourceState` 的 anyOf 與 if/then。Shift label 採較嚴格的解讀並實作：scenario 的 `replace calendars/*/shifts` 可移動、增減 shift，但 calendar 的 shift label 集合不可變（新增、刪除、改名為 `PATCH_PATH_FORBIDDEN`）；draft edit 不受限。TWIN_IR_SPEC §6 改為一致的文字；問題列入 D-063 (b) 請 owner 決定。D-057 的批准文字未動 | 1e8429f、6a207ea | `l3-l5-shift-labels-red.log`（5 個禁止的 case 原本都被套用）→ `l3-l5-shift-labels-green.log` |
+| I1：報告開頭仍寫 frontend-test NOT RUN；commit 表是 cherry-pick 前的 hash | 開頭改指向 coordinator 的執行；commit 表改為分支上的 31aef83、551a5e3、81640f4、980b3f7、2e631c7、e0944c4 | 本報告的 commit | — |
+| I2：MOD-038 的 unsafe 回答用了 `sd`，被 `IR_SCHEMA_INVALID` 擋下，不是 gate | `internal/ai/corpus/review_test.go`：保留它並釘成 `IR_SCHEMA_INVALID`，另加合法的 lognormal（mean、cv），要求 `PRIMITIVE_NOT_SUPPORTED`；T-048 的 scope 記錄解除 lognormal 時要重新判定這個 case | 52f07dd、6a207ea | `i2-ai-eval.log`：`make ai-eval` exit 0，unsafe 回答 25 個都 invalid（原 24），zero-tolerance gate 都是 0；`checks/ai-evals/fake-review.json` 隨之更新 |
+| I3：AI edit 可新增 calendars，但 ID pool 不涵蓋 calendar ID | 記入 T-049 的 scope（解除 gate 前決定 AI 新增 calendar 的 ID 規則） | 6a207ea | — |
+| I4：ADR-026 phase 2 bullet 的 R3 規則延後 | D-063 新增 (d)：validator 規則（含 R3）延到 T-047–T-050，與 (a) 一併請 owner 確認 | 6a207ea | — |
+| I5：`valid-run-failed-deadlock.json` 的 engine version 與 message 格式在產生者存在之前就定了 | 記錄於此與殘餘風險：fixture 的 `engine_version` 為假設的 `des-go-0.2.0`，message 為示意格式；只有 code（`SIMULATION_DEADLOCK`）、`details[0]` 的位置與暫定的 `MODEL_VALIDATION_FAILED` 是 contract。T-047 實作 B1 時要以實際輸出更新這個 fixture | — | — |
+
+### 第 1 輪的執行結果
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `go test ./internal/ai/review/`（766984f） | 1 | 基底的紅燈（`base-review-sentences-red.log`） |
+| `go test ./internal/ai/...`（beddc8d 之後） | 0 | `base-review-sentences-green.log` |
+| `make spec-check PYTHON=.venv/bin/python` | 0 | `spec-check.log`（在填好本節之後執行）；重產的 `checks/*.json` 沒有差異（本輪唯一變動的 checks json 是 52f07dd 的 `checks/ai-evals/fake-review.json`） |
+| `make backend-test` | 0 | `backend-test.log`：57 個 package ok，沒有 FAIL 或 SKIP |
+| `make backend-race` | 0 | `backend-race.log`：57 個 package ok，沒有 FAIL |
+| `make architecture-check` | 0 | `architecture-check.log`：69 packages、15 rules、16 build configurations |
+| `make ts-contracts PYTHON=.venv/bin/python` | 0 | schema 本輪沒有改；重產後沒有差異（`ts-contracts.log`） |
+| `make ai-eval` | 0 | `i2-ai-eval.log` |
+| Mutation M1、M2、M3、M7、M10（最終的程式，reviewer 的腳本） | 每個 mutation 下 test 都 exit 1（5/5 caught）；腳本本身 exit 0 | `mutations-final.log`：M1、M2、M3 被 `TestEveryDistributionPositionIsGated` 抓到，M7 被 `TestPrimitiveGateRunsBeforeEveryLaterStage`，M10 被 `TestCompileRefusesWhatTheKernelDoesNotRun` |
+| `npm --prefix apps/web ci --ignore-scripts` | 1 | `EBADENGINE`（Node 22.22.0，需要 ≥ 24.21.0）（`frontend-not-run.log`）；沒有繞過 |
+
+**NOT RUN（第 1 輪）**：`make frontend-test`（同上，請 coordinator 執行：L4 的字串與 i18n 測試）；`make integration-test`（本輪沒有改 migration 或 SQL）；`make simulation-reference-test`（目標尚未實作）。
+
+**殘餘風險（第 1 輪新增）**：shift label 的解讀是較嚴格的一邊，若 owner 認為 scenario 可以改 label，要放寬 `afterApply`（T-049 的 scope 已記錄）；`validateIR` 是 package 變數，只有 engine 自己的測試會換，production 程式沒有寫它的路徑；`lineFlowRiskCases` 目前是空的，它只保證「解除 gate 時要登記 case」，case 本身的內容仍要 review；`valid-run-failed-deadlock.json` 見 I5。

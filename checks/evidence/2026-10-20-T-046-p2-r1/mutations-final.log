@@ -1,0 +1,6 @@
+{"mutation": "M1 Uses: drop lognormal/weibull check of setups.default", "exit": 1, "caught": true, "fails": ["--- FAIL: TestEveryDistributionPositionIsGated (0.02s)", "FAIL", "FAIL\tgithub.com/kcl1104/geminus/internal/model/validate\t0.639s", "FAIL"], "build": []}
+{"mutation": "M2 Uses: drop lognormal/weibull check of time_to_failure", "exit": 1, "caught": true, "fails": ["--- FAIL: TestEveryDistributionPositionIsGated (0.02s)", "FAIL", "FAIL\tgithub.com/kcl1104/geminus/internal/model/validate\t0.464s", "FAIL"], "build": []}
+{"mutation": "M3 Uses: drop lognormal/weibull check of node delay_time", "exit": 1, "caught": true, "fails": ["--- FAIL: TestEveryDistributionPositionIsGated (0.08s)", "FAIL", "FAIL\tgithub.com/kcl1104/geminus/internal/model/validate\t0.966s", "FAIL"], "build": []}
+{"mutation": "M7 D-023 order: support after limits", "exit": 1, "caught": true, "fails": ["--- FAIL: TestPrimitiveGateRunsBeforeEveryLaterStage (0.00s)", "FAIL", "FAIL\tgithub.com/kcl1104/geminus/internal/model/validate\t0.544s", "FAIL"], "build": []}
+{"mutation": "M10 Compile: drop the kernel list check", "exit": 1, "caught": true, "fails": ["--- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun (0.01s)", "FAIL", "FAIL\tgithub.com/kcl1104/geminus/internal/simulation/engine\t5.541s", "FAIL"], "build": []}
+mutate exit 0

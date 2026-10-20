@@ -1,0 +1,5 @@
+make backend-test exit 0
+make backend-race exit 0
+make architecture-check exit 0
+make ts-contracts exit 0
+make spec-check exit 0
