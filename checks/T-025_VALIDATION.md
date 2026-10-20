@@ -30,7 +30,7 @@
 | 1f6ff31 | 本報告、evidence、`checks/docs-check.json` |
 | 175e1ae | Coordinator：在 1f6ff31 執行 `make integration-test` 與 `make frontend-test` 的結果與 log |
 | fcf824d | Coordinator：每個指令的 log 與 `coordinator-exit-codes.txt` |
-| 3404171…（第 1 輪） | Review 第 1 輪的修正，見文末 |
+| fa8077a…6b5b914（第 1 輪） | Review 第 1 輪的修正，見文末 |
 
 ## 稽核：scope 逐條
 
@@ -130,14 +130,17 @@ Coordinator 把 T-025 的 9 個 commit cherry-pick 到 `claude/lucid-meitner-vq1
 
 | Commit | 內容 |
 |---|---|
-| 3404171 | M1：review 回傳的每個 issue 都經 `review.Clean` |
-| b7802fb | M2：U+0000 與空字串判為 invalid；DB 拒絕的內容不重試 |
-| e3a10b4 | M3：patch 寫入的名稱不提供數字 |
-| 61801db | M4、L1：每條 risk 規則一個測試；數量減少也是 medium |
-| ac0a088 | L3、L5：呼叫 provider 前讀取並驗證 snapshot；整份 manifest；OpenAPI 文字 |
-| e492c1f | L2、I1：invalid 與 failed 不帶產生的內容；proposal 只在 job 結束後 failed；SQL 測試 |
-| 2ff89bd | D-061、D-062 的文字（仍 PROPOSED）；AI_SPEC、SECURITY、API_DATABASE、ARCHITECTURE |
-| 本節的 commit | 本報告的更正與本節、evidence、重產的 `checks/ai-evals/fake-review.json` |
+| fa8077a（worktree 上為 3404171） | M1：review 回傳的每個 issue 都經 `review.Clean` |
+| a46a206（worktree 上為 b7802fb） | M2：U+0000 與空字串判為 invalid；DB 拒絕的內容不重試 |
+| 2fc7edf（worktree 上為 e3a10b4） | M3：patch 寫入的名稱不提供數字 |
+| bc05de2（worktree 上為 61801db） | M4、L1：每條 risk 規則一個測試；數量減少也是 medium |
+| 531182f（worktree 上為 ac0a088） | L3、L5：呼叫 provider 前讀取並驗證 snapshot；整份 manifest；OpenAPI 文字 |
+| dc7b574（worktree 上為 e492c1f） | L2、I1：invalid 與 failed 不帶產生的內容；proposal 只在 job 結束後 failed；SQL 測試 |
+| 4ae2c40（worktree 上為 2ff89bd） | D-061、D-062 的文字（仍 PROPOSED）；AI_SPEC、SECURITY、API_DATABASE、ARCHITECTURE |
+| 99048d5（worktree 上為 eb33c38） | 本報告的更正與本節、evidence、重產的 `checks/ai-evals/fake-review.json` |
+| 766984f（worktree 上為 e7b4060） | D-061 (c)：寫入結果時 DB 的暫時錯誤仍重試（只改文件與註解） |
+| 6b5b914 | Coordinator：T-046 phase 2 新增的 7 個 code 的固定句（之後由 dc1ae02 取代） |
+| fbb0f8f | Coordinator 的執行與 evidence |
 
 ### 發現、修正與證據
 
@@ -197,3 +200,20 @@ T-016 的同一個 pattern：`migrations/0009_simulation_runs.up.sql`（`followe
 ### Coordinator 的執行（Review 第 1 輪之後）
 
 Coordinator 把第 1 輪的 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-046 phase 2 之後；`checks/contracts-check.json` 的衝突以 `make spec-check` 重產）。整合後的 766984f 上 `make backend-test` exit 2：`TestEveryCodeHasASentence` 要求每個 ValidationCode 都有固定句，但 T-046 phase 2 新增的 7 個 code（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`、`SETUP_INVALID`、`STALL_RISK`、`PRIMITIVE_NOT_SUPPORTED`）沒有。6b5b914 為它們加上不引用任何內容的固定句。之後 `spec-check`、`backend-test`、`backend-race`、`architecture-check`、`ai-eval`（`checks/ai-evals` 沒有變化）與 `integration-test`（新的 `dt_test_t025_r1`：26 個 package ok，沒有 FAIL 或 SKIP，包括本輪新增與修改的 DB 測試與 `proposal_jobs.sql`）都是 exit 0；`frontend-test` 在 766984f 上 exit 0。Log 與 exit code 在 `checks/evidence/2026-10-20-T-025-r1/coordinator-*`。因此本輪「NOT RUN」中由 coordinator 執行的 DB 測試與 `make frontend-test` 已執行並通過。
+
+## Review 第 2 輪（H-003，fbb0f8f）：ACCEPT
+
+同一位獨立 reviewer 在 fbb0f8f 上複審（以 `git archive` 匯出的副本執行，沒有改動 repo）：第 1 輪的 M1–M4、L1–L3、L5、I1 都已修正，原 probe 重跑得到修正後的結果，mutant 26 個被抓到、3 個為 equivalent 或走不到（M03、N14、N21）；L4 部分修正；I4、I5 已記入 D-062 (i)、(h)。沒有新的 High 或 Medium。結論 **ACCEPT**；這只是程式審查的結論，D-061、D-062 仍是 PROPOSED，T-025 以兩者為 gate。
+
+新的 Low 由 coordinator 修正（本節的 commit）：
+
+- **L1**：第 1 輪 commit 表列的是 worktree 上的 hash。已改為 branch 上的 hash（fa8077a、a46a206、2fc7edf、bc05de2、531182f、dc7b574、4ae2c40、99048d5、766984f、6b5b914、fbb0f8f），並保留 worktree 上的 hash 對照。
+- **L2**：`docs/SECURITY.md` 仍寫第 1 輪的 DB 測試 NOT RUN；已改為 coordinator 在 6b5b914 的執行結果。
+- **L3**：`internal/ai/review/risk.go` 的註解寫 entity「added, removed or changed」為 medium，程式（與 D-062 (d)）只看 entity 的新增與刪除，constraint 才看改變；註解已改成與程式一致，程式未改。
+
+Info（不修，記錄）：
+- I1：呼叫 provider 之後的 binding stage 出錯時不重試（`generator.go`）沒有測試；這條路徑讀記憶體中的副本，實際走不到。
+- I2：Finish 因 DB 暫時錯誤失敗時，`failed()` 不 audit 這次已付費的 provider 呼叫，重試又再呼叫一次（D-061 (c) 已寫明會重試）；AI_SPEC §10 的 token 記錄在此情況有缺口，交 T-036（quota）與 T-053（live AI 開啟前）處理。
+- I3：每個 attempt 在呼叫 provider 前讀取並驗證整份 base manifest，snapshot 在呼叫期間留在記憶體中（殘餘風險已記錄）。
+- I4：與 T-046 phase 2 的互動目前 fail closed；`ServerRisk` 的 line-flow 規則與 calendar 的 ID pool 由 T-047–T-051 解除 gate 時補上（T-046 review 第 1 輪的 811982b 與 T-049 scope）。
+- I5：0012 是原地修改的，只在它從未部署時成立（目前沒有任何部署）；套用過舊版 0012 的一次性 `dt_test_*` DB 都必須重建。

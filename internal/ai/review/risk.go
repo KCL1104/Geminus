@@ -36,8 +36,8 @@ func Max(a, b Risk) Risk {
 //     bundle of resources; a flow was re-targeted; a routing probability
 //     rose on a flow into a failure or rework node, or on a flow that lies
 //     on a cycle (rework, retest); the candidate has a cycle the base does
-//     not; an entity (node, flow, resource, entity type, metric) or a
-//     constraint was added, removed or changed;
+//     not; an entity (node, flow, resource, entity type, metric) was added
+//     or removed; a constraint was added, removed or changed;
 //   - low: anything else (a name, a distribution, a higher capacity, less
 //     failure routing).
 //

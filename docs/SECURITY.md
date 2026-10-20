@@ -89,7 +89,7 @@ T-025 實作（D-061、D-062 PROPOSED；只用 fake provider，**沒有任何 li
 - **Audit 只記 metadata**：`proposal.create`（user）、`proposal.generate`、`proposal.attempt_failed`（worker）只記 provider、model、credential label、template、schema、hash、tokens、latency、狀態與 risk，不記 prompt、回答或 key（`TestAuditMeta`）。
 - **錯誤不洩漏**：provider 錯誤以固定訊息作為 job failure，HTTP 只顯示對應的 ErrorCode 與原 code（D-061 (c)），不顯示 provider 原文、HTTP status 或 credential label。
 - **未涵蓋**：回答文字（summary、assumptions、questions）不掃描 secret，依賴 context 本來就不含 secret（T-024 的 `secrets_sent` gate）；token quota（T-036）。
-- **DB 測試**：coordinator 在 1f6ff31 以一次性 database 執行 `make integration-test`，exit 0：0012 up／down、`proposal_jobs.sql` 與所有 DB-backed Go 測試（含 RLS、trigger、role matrix），`--- SKIP` 為 0（`checks/evidence/2026-10-20-T-025/coordinator-integration-test.log`、`coordinator-exit-codes.txt`）。Review 第 1 輪修改了 0012 並新增 SQL 與 Go 的 DB 測試，這些尚未在 PostgreSQL 上執行（NOT RUN，待 coordinator；`checks/evidence/2026-10-20-T-025-r1/db-not-run.txt`）。
+- **DB 測試**：coordinator 在 1f6ff31 以一次性 database 執行 `make integration-test`，exit 0：0012 up／down、`proposal_jobs.sql` 與所有 DB-backed Go 測試（含 RLS、trigger、role matrix），`--- SKIP` 為 0（`checks/evidence/2026-10-20-T-025/coordinator-integration-test.log`、`coordinator-exit-codes.txt`）。Review 第 1 輪修改了 0012 並新增 SQL 與 Go 的 DB 測試；coordinator 在 6b5b914 以新的一次性 database 執行 `make integration-test`，exit 0（26 個 package ok，沒有 FAIL 或 SKIP；`checks/evidence/2026-10-20-T-025-r1/coordinator-integration.log`、`coordinator-exit-codes.txt`）。
 
 ## 8. Resource / job safety
 

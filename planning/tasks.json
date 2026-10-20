@@ -1584,7 +1584,7 @@
       "id": "T-025",
       "title": "Async proposal generation / validation",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "AI / Full-stack",
       "planning_window": "Week 7–9",
       "depends_on": [
@@ -1641,7 +1641,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-20",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-025_VALIDATION.md",
+          "summary": "Proposal 非同步產生與 server review（fake provider；live AI 未開啟）：internal/ai/review（純粹的 review、server risk、review.Clean）、internal/proposals（service、HTTP）、internal/proposals/generator（model_proposal handler，provider 呼叫在 transaction 外、呼叫前讀取並驗證 snapshot）、internal/storage/proposals、migration 0012（proposal 跟隨 job、invalid／failed 不帶產生的內容）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（1f6ff31、6b5b914：26 個 package ok，沒有 FAIL 或 SKIP），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-20-T-025/、2026-10-20-T-025-r1/ 的 coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 on 175e1ae CHANGES REQUESTED (M1–M4, L1–L5); round 2 on fbb0f8f ACCEPT (L1–L3 fixed by the coordinator)",
+          "decisions_pending": "D-061、D-062 待 owner 批准；批准後 T-025 才標為 done"
+        }
+      ]
     },
     {
       "id": "T-026",
