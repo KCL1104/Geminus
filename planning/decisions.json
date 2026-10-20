@@ -927,6 +927,48 @@
       ],
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-070",
+      "title": "人工 mapping 的詞彙、transform 與低信心建議的確認（T-017）",
+      "source_gap": "D-043 (c) 只定了人工 mapping 的三個成員；D-059 的 end_timestamp、shift、product 何時成為 target field、transform 是否可帶參數（CB-28）、重複 target 與 metadata 的行為、AI_SPEC §8 的低信心建議如何由人確認，都沒有定義。",
+      "proposal": "(a) 人工 mapping 與 AI suggestion 共用 import-mapping.schema.json#/$defs/TargetField：canonical-event 的 13 欄（含 D-059 的 end_timestamp、shift、product）加 metadata，T-017 就加入（建議 A）；(b) transform 由 target field 決定、無參數（identity／rfc3339／integer_ms／boolean_literal），不匯入的欄為 identity；常數與單位換算（CB-28）不在 T-017，請 owner 決定是否另立 decision；(c) 一欄至多一條、metadata 以外的 field 只由一欄填入、case_id／event_type／timestamp 必填、至多 64 欄進 metadata；(d) import 有 ready 的 suggestion 時，與 requires_confirmation 條目完全相同的每條 mapping，都要由人在 confirmed_low_confidence 列出欄名（否則 422 MAPPING_CONFIRMATION_REQUIRED），列出其他名稱為 422 MAPPING_CONFIRMATION_UNKNOWN（建議 A：逐欄確認；B 只要 confirmed=true；C 一律改寫）；(e) 存檔被拒的 MAPPING_* code 放在 422 REQUEST_VALIDATION_FAILED 的 details[].code，path 為 body 的 JSON Pointer，message 固定。",
+      "gate": "T-017 驗收前；(d) 另為 T-027 與 mapping UI（T-031）前",
+      "resolves": [],
+      "source_pages": "N/A（T-017 實作；D-009、D-043 (c)、D-059、AI_SPEC §8、CB-18、CB-28、CB-29、CB-43）",
+      "owner_role": "Import / Product",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-071",
+      "title": "Mapping revision 與 validation 的生命週期（T-017）",
+      "source_gap": "API_DATABASE §5 只寫「增加 revision 並排 validation、同 revision 的 worker 才能發布 validation」；stale revision 的回應、Import 沒有 validation 進行中的狀態（CB-29）、saveImportMapping 沒有 Idempotency-Key（CB-18）、validation 與 commit 之間 dataset 由誰產生、JSON model 的 mapping 都沒有定義。",
+      "proposal": "(a) expected_mapping_revision 不等於目前 revision 時 409 LIFECYCLE_CONFLICT（details[0].code MAPPING_REVISION_CONFLICT，/expected_mapping_revision），不覆寫、不合併；未 profile 為 409 IMPORT_NOT_PROFILED，FAILED／COMMITTED 為 409 IMPORT_FINAL；saveImportMapping 需要 Idempotency-Key；(b) 新增 VALIDATING；存檔在同一 transaction 中加 revision、清空上一次 validation、排該 revision 的 import_validate job（每 revision 一個）、取消其他 revision 的 queued job、寫 import.map audit；(c) stale-job fence：job 只在 import 仍為 VALIDATING 且同 revision 時寫入，否則 completed 不寫入；0014 以 deferred constraint trigger 要求目前 revision 的 job 同 transaction completed；(d) 全合法 VALIDATED、有不合法列 AWAITING_MAPPING＋report、檔案已非 profile 的那份 FAILED（UPLOAD_CORRUPT／UPLOAD_MISSING／UPLOAD_CHANGED），job 最終失敗或被取消時 import 跟著 FAILED；(e) 建議 A：validation 在全合法時再讀一次 upload，存 canonical dataset（canonical-r<rev>-a<attempt>.json，key／SHA-256／大小記在 row），T-018 凍結這份 bytes；B commit 時才 mapping；(f) JSON model 為 422 MAPPING_NOT_APPLICABLE，validation 與身分綁定屬 T-018；(g) VALIDATED → COMMITTED 由 T-018 定義。",
+      "gate": "T-017 驗收前；(e)(g) 另為 T-018 前",
+      "resolves": [
+        "CB-18",
+        "CB-29"
+      ],
+      "source_pages": "N/A（T-017 實作；D-009、D-043 (c)、D-059、AI_SPEC §8、CB-18、CB-28、CB-29、CB-43）",
+      "owner_role": "Import / Product",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-072",
+      "title": "每一列的 validation 規則、回報與上限（T-017）",
+      "source_gap": "D-059 定了 end_timestamp 與 duration_ms 須一致，但沒有容許誤差；值的長度、空值、JSON 值的型別、metadata 的大小、validation 錯誤的回報內容與筆數、canonical preview 與 dataset 的上限都沒有定義。",
+      "proposal": "(a) identity 照原文、依 canonical-event 的字元上限（MAPPING_VALUE_TOO_LONG）；rfc3339 須有 offset、照原文保留 offset；integer_ms 為 0..2^53−1 的十進位整數；boolean_literal 為 true／false（不分大小寫，JSON 布林亦可）；JSON object／array 只能進 metadata；必要欄位空值為 MAPPING_REQUIRED_VALUE_MISSING，其他空值不輸出；(b) end 不得早於 start（EVENT_END_BEFORE_START），duration_ms 與 end − start 的差須小於 1 ms（EVENT_DURATION_INCONSISTENT），整數精確計算；(c) metadata 每列 16 KiB、8 層（EVENT_METADATA_TOO_LARGE）；(d) CSV 欄位數不符為 CSV_FIELD_COUNT；(e) issue path 為 /<列>/<欄名>，message 固定不引用值，issues 至多 100，report 至多 10,000 列且 value 欄空白，canonical preview 為前 100 列、不合法列為 null；(f) dataset 至多 256 MiB（DATASET_TOO_LARGE）；(g) 上限為實作參數，待 T-037。建議 A；B timestamp 轉 UTC；C 報表帶 value。",
+      "gate": "T-017 驗收前",
+      "resolves": [],
+      "source_pages": "N/A（T-017 實作；D-009、D-043 (c)、D-059、AI_SPEC §8、CB-18、CB-28、CB-29、CB-43）",
+      "owner_role": "Import / Product",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

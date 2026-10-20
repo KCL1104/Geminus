@@ -224,7 +224,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 
 ## 6. Station event log 的 canonical fields（import mapping）
 
-兩種紀錄。對應的 canonical-event 欄位中，`end_timestamp`、`shift` 與 `product` 是 D-059 新增的 optional 欄位（T-046 phase 2 已加入 `canonical-event.schema.json`；fixtures `valid-canonical-event-station.json`、`valid-canonical-event-downtime.json`；mapping 的 target field 尚未加入，見 TWIN_IR_SPEC §7）。
+兩種紀錄。對應的 canonical-event 欄位中，`end_timestamp`、`shift` 與 `product` 是 D-059 新增的 optional 欄位（T-046 phase 2 已加入 `canonical-event.schema.json`；fixtures `valid-canonical-event-station.json`、`valid-canonical-event-downtime.json`；T-017 已把它們加入 mapping 的 target field（D-070 (a)，PROPOSED），見 TWIN_IR_SPEC §7）。
 
 **作業紀錄**（一片板子在一站的一次作業或測試）：
 
@@ -232,7 +232,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 |---|---|---|---|
 | serial | 是 | `case_id` | 板子或機櫃的序號 |
 | station | 是 | `stage` | 站別；mapping 時由使用者對應到 IR 的站 |
-| record type | 是 | `event_type` | pack 詞彙：`operation`；CSV 沒有此欄時需要常數 transform（CB-28，T-017） |
+| record type | 是 | `event_type` | pack 詞彙：`operation`；CSV 沒有此欄時需要常數 transform（CB-28）：T-017 沒有實作，待 owner 決定（D-070 (b)、CB-43 (e)） |
 | equipment | 建議 | `resource_id` | 機台、測試機或 chamber 的 ID；用於推論 capacity 與停機對應 |
 | start | 是 | `timestamp` | RFC 3339 含 offset；沒有時區的時間一律拒絕（TWIN_IR_SPEC §7） |
 | end | 是（推論需要） | `end_timestamp`（新增） | ≥ start |
@@ -240,7 +240,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 | shift | 選填 | `shift`（新增） | 班別標籤，只用於 §7 的分組 |
 | duration | 選填 | `duration_ms` | 與 end−start 不一致時為 data-quality issue（TWIN_IR_SPEC §7） |
 | product／family | 多產品時必填 | `product`（新增，D-059） | 對應到 IR 的 entity type；推論換線與各產品的 cycle time 需要它（D-055） |
-| operator ID | **不匯入** | — | 個人資料；mapping 時保持未對應，不進 dataset、prompt 或 telemetry |
+| operator ID | **不匯入** | — | 個人資料；mapping 時保持未對應，不進 dataset、prompt 或 telemetry（詞彙中沒有對應的 field；放進 metadata 無法由 T-017 辨認，CB-43 (f)） |
 
 **停機紀錄**（一台設備的一段停機）：`case_id`＝設備 ID（canonical-event 要求 case_id），`event_type`＝`downtime`，`resource_id`＝設備 ID，`stage`＝站別，`timestamp`＝停機開始，`end_timestamp`＝恢復，`outcome`＝原因碼（選填）。計畫停機（休息、保養）若有原因碼可辨識，推論時排除於故障之外。
 

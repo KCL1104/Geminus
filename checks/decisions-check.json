@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 63,
-    "proposed": 3,
+    "proposed": 6,
     "rejected": 0,
     "superseded": 0
   },
@@ -35,7 +35,6 @@
     "review": 0
   },
   "ready_tasks": [
-    "T-017",
     "T-035",
     "T-047",
     "T-048",
@@ -44,6 +43,15 @@
     "T-053"
   ],
   "next_after_review": [
+    {
+      "id": "T-017",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-070",
+        "D-071",
+        "D-072"
+      ]
+    },
     {
       "id": "T-026",
       "awaiting_task_review": [],
@@ -561,6 +569,7 @@
       "status": "approved",
       "gate": "T-046 phase 2 改 canonical-event schema 前；T-027 的電子產線 inference 與 T-052 前",
       "gates_tasks": [
+        "T-017",
         "T-027",
         "T-046",
         "T-052"
@@ -621,6 +630,28 @@
       "gate": "T-026 驗收前",
       "gates_tasks": [
         "T-026"
+      ]
+    },
+    "D-070": {
+      "status": "proposed",
+      "gate": "T-017 驗收前；(d) 另為 T-027 與 mapping UI（T-031）前",
+      "gates_tasks": [
+        "T-017"
+      ]
+    },
+    "D-071": {
+      "status": "proposed",
+      "gate": "T-017 驗收前；(e)(g) 另為 T-018 前",
+      "gates_tasks": [
+        "T-017",
+        "T-018"
+      ]
+    },
+    "D-072": {
+      "status": "proposed",
+      "gate": "T-017 驗收前",
+      "gates_tasks": [
+        "T-017"
       ]
     }
   },

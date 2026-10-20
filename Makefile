@@ -84,7 +84,7 @@ integration-test:
 	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL (and DATABASE_URL, DT_ALLOW_DB_TESTS=yes for make db-test) to a fresh dt_test_* database.' >&2; exit 2; }
 	$(MAKE) db-test
 	$(MAKE) db-go-test
-	@echo 'integration-test: API, job loop, simulation (T-023), import profile (T-016) and AI proposal (T-025, fake provider) handlers, the proposal decisions (T-026) and database covered; the import validation (T-017) and AI analysis (T-030) job handlers are NOT RUN until those tasks add them.'
+	@echo 'integration-test: API, job loop, simulation (T-023), import profile (T-016), import validation (T-017) and AI proposal (T-025, fake provider) handlers, the proposal decisions (T-026) and database covered; the AI analysis (T-030) job handler is NOT RUN until that task adds it.'
 # The AI eval corpus through the context builder and the deterministic fake provider: the context-side
 # zero-tolerance gates for every case (T-024, checks/ai-evals/fake-provider.json) and the server's review of
 # hand-written reference and unsafe answers (T-025, checks/ai-evals/fake-review.json). Fake results only.

@@ -1041,7 +1041,11 @@
       "decision_gates": [
         "D-009",
         "D-014",
-        "D-043"
+        "D-043",
+        "D-059",
+        "D-070",
+        "D-071",
+        "D-072"
       ],
       "scope": [
         "canonical-event mapper與有限transform。",
@@ -1049,12 +1053,21 @@
         "低confidence確認、invalid row reports與重映射。"
       ],
       "planned_outputs": [
+        "schemas/import-mapping.schema.json",
         "internal/import/mapping/",
-        "internal/import/validation/"
+        "internal/import/validation/",
+        "internal/import/validator/",
+        "internal/import/upload/mapping.go",
+        "internal/storage/imports/mapping.go",
+        "migrations/0014_import_mapping.up.sql",
+        "db/tests/import_mapping.sql",
+        "internal/api/import_mapping_test.go",
+        "checks/T-017_VALIDATION.md"
       ],
       "spec_refs": [
         "schemas/canonical-event.schema.json",
-        "docs/AI_SPEC.md"
+        "docs/AI_SPEC.md",
+        "docs/API_DATABASE.md"
       ],
       "acceptance_tests": [
         "TEST-012",
@@ -1093,7 +1106,8 @@
         "REQ-009"
       ],
       "decision_gates": [
-        "D-009"
+        "D-009",
+        "D-071"
       ],
       "scope": [
         "atomic freeze dataset + generating proposal + job + COMMITTED。",

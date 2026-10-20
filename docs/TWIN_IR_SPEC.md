@@ -162,7 +162,7 @@ APPROVED D-057（T-046 phase 2 實作於 `internal/model/patch`）：manual 與 
 
 canonical-event.schema.json 保留 case_id/event_type/timestamp 必填，stage recommended，其餘 optional。timestamp 是 RFC3339；跨時區先正規化再排序，不能猜無時區時間。duration_ms 與 timestamp-derived duration 不一致時產生 data-quality issue，選用政策要由 domain inference 明列。CSV 的低 confidence mapping 和 dataset 推論永不直接更改 canonical Twin。
 
-APPROVED D-059（T-046 phase 2）：新增 optional 的 `end_timestamp`（RFC 3339）、`shift`（≤ 64 字元）與 `product`（≤ 128 字元，對應 entity type；多產品的 log 必填）。`end_timestamp` ≥ `timestamp`、與 `duration_ms` 一致、多產品時必有 `product` 都是 data-quality 規則（T-017／T-052），不是 schema。停機紀錄的 `case_id` 是設備 ID。Mapping 的 target field（`ai-mapping.schema.json` 的 enum 與 `internal/ai/aicontext.TargetFields`）尚未加入這三個欄位，由 station log 的 mapping（T-052，必要時 T-017）加入。
+APPROVED D-059（T-046 phase 2）：新增 optional 的 `end_timestamp`（RFC 3339）、`shift`（≤ 64 字元）與 `product`（≤ 128 字元，對應 entity type；多產品的 log 必填）。`end_timestamp` ≥ `timestamp`、與 `duration_ms` 一致、多產品時必有 `product` 都是 data-quality 規則（T-017／T-052），不是 schema。停機紀錄的 `case_id` 是設備 ID。T-017（D-070 (a)，PROPOSED）已把這三個欄位加入 mapping 的 target field：`import-mapping.schema.json#/$defs/TargetField`，人工 mapping 與 `ai-mapping.schema.json` 共用，`internal/ai/aicontext.TargetFields` 以 test 對照。`end_timestamp` 不早於 `timestamp`、與 `duration_ms` 的差小於 1 ms 由 T-017 的 validation 檢查（D-072 (b)），不合者為 invalid row；多產品時必有 `product` 仍屬 T-052。
 
 ## 8. 相容性與擴充
 
