@@ -1,0 +1,10 @@
+deadlock-earliest-by-since	KILLED	5s	--- FAIL: TestDeadlockNamesTheEntityBlockedFirst (0.00s)
+block-order-not-incremented	KILLED	6s	--- FAIL: TestDeadlockNamesTheEntityBlockedFirst (0.00s)
+deadlock-bound-ge	SURVIVED	47s	
+blocks-done-strict-warmup	KILLED	1s	--- FAIL: TestBlockingGoldenResults (0.09s)
+blocks-started-strict-warmup	KILLED	1s	--- FAIL: TestBlockingGoldenResults (0.08s)
+held-ignores-units	KILLED	1s	--- FAIL: TestBlockingGoldenResults (0.07s)
+risk-equal-capacity-medium	KILLED	2s	--- FAIL: TestBufferCapacityRisk (0.12s)
+canblock-skips-failure-rework	KILLED	33s	--- FAIL: TestBlockingGoldenResults (0.11s)
+canblock-through-delay	KILLED	52s	--- FAIL: TestBlockingGoldenResults (0.08s)
+exit 0

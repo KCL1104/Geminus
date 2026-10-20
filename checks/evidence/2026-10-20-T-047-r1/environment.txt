@@ -1,0 +1,10 @@
+T-047 review round 1 environment (2026-10-20)
+
+worktree: /home/user/Geminus/.claude/worktrees/agent-a4a2d6cda564af243, branch t047-r1 (from 8413288 on claude/lucid-meitner-vq1awo)
+go version go1.27.2 linux/amd64
+Python 3.13.16 (.venv of the worktree; simpy 4.1.2)
+node v22.22.0
+Linux, 4 CPU, shared with other agent sessions; wall-clock times vary with their load.
+No PostgreSQL server, no DB URL: DB-backed Go tests skip (NOT RUN). No live AI provider, no API key read or set.
+The reviewer's tools (scratchpad t047-review-tools/) were only read and run; review_mutants.py wrote its mutated
+files and logs to the scratchpad (t047r1/review-mutants/), never into the repository.

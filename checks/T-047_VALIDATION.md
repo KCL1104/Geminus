@@ -13,21 +13,23 @@
 
 ## Commit
 
-Branch `t047`（從 0ee3d2a 開出，沒有 push）：
+下表是 `claude/lucid-meitner-vq1awo` 上的 hash（coordinator cherry-pick 到 T-017 的 534c9ba 之後）；括號中是原 worktree branch `t047`（從 0ee3d2a 開出）上的 hash（review 第 1 輪時改成 branch 上的 hash）。
 
 | Commit | 內容 |
 |---|---|
-| 9cb0011 | 凍結 des-go-0.1.0 的 kernel、replication 與 event queue（`frozen010_test.go`，只在測試中、改名）；`TestDifferentialAgainstFrozenKernel`；`validate.Pointer` 共用一個 Replacer（原本每個 token 建一個，佔 differential 大部分時間；行為不變） |
-| 56c9e6c | Validator R1、`finite_buffer` 列入 `checked`；kernel（des-go-0.2.0）：先解析後提交的路由、被擋、解除、B1 `ErrDeadlock`；Result 的 `resource_states`、`blocking`、`buffers`；trace 的 `blocked`、`unblocked`；D-057 的 server risk；手推 golden、只看 observation 的阻塞檢查器、中性 buffer 的 differential、des-go-0.2.0 的 digest 鎖 |
-| abc5ddf | `ErrDeadlock` → 不重試的 job failure `SIMULATION_DEADLOCK`（runner），API 為 `MODEL_VALIDATION_FAILED`、severity error（`internal/runs`）；`valid-run-failed-deadlock.json` 的 message 改為 engine 真正的輸出 |
-| 1e23484 | Scenario allowlist 的 AI context 與 `prompts/scenario/system.md`（scenario-0.3.0）說明 queue 的緩衝 capacity（D-057） |
-| 1df953c | SimPy reference：`make simulation-reference-test`（不再是 placeholder）、`scripts/simpy_reference.py`、SimPy 4.1.2 的 pin、ADR-011、THIRD_PARTY_NOTICES、CI step |
-| ab9a1d0 | 第一版的 validator guard（engine 自己的測試；由 dfe8a51 取代並刪除） |
-| dfe8a51 | Architecture checker 的 source rule `guarded-variables`：production 檔案不可 assign `engine.validateIR` 或取它的位址（T-046 phase 2 review I2，在解除第一個 gate 之前） |
-| 1d0d9ad | `FuzzBlocking`、FuzzKernel／FuzzRun 的 finite-buffer seed、G-B1W、G-B5 的 member keys、R1 的 self-edge case、observation digest 鎖；D-064（PROPOSED）；SIMULATION_SPEC、TWIN_IR_SPEC、ADR-026、TEST_PLAN、ARCHITECTURE |
-| e0e1855 | `TestBlockingDeterminism`（TEST-019 的 finite-buffer 版本）；tasks.json 的 planned outputs、spec refs 與 D-064 gate（status 未改） |
-| 5ea751a | Makefile：`backend-race` 加 `-timeout 30m`（見「實際執行結果」） |
-| （本報告的 commit） | 本報告、evidence、mutation harness 與結果、重產的 `checks/*.json` |
+| 0d8f710（9cb0011） | 凍結 des-go-0.1.0 的 kernel、replication 與 event queue（`frozen010_test.go`，只在測試中、改名）；`TestDifferentialAgainstFrozenKernel`；`validate.Pointer` 共用一個 Replacer（原本每個 token 建一個，佔 differential 大部分時間；行為不變） |
+| 80c5968（56c9e6c） | Validator R1、`finite_buffer` 列入 `checked`；kernel（des-go-0.2.0）：先解析後提交的路由、被擋、解除、B1 `ErrDeadlock`；Result 的 `resource_states`、`blocking`、`buffers`；trace 的 `blocked`、`unblocked`；D-057 的 server risk；手推 golden、只看 observation 的阻塞檢查器、中性 buffer 的 differential、des-go-0.2.0 的 digest 鎖 |
+| 12c76c8（abc5ddf） | `ErrDeadlock` → 不重試的 job failure `SIMULATION_DEADLOCK`（runner），API 為 `MODEL_VALIDATION_FAILED`、severity error（`internal/runs`）；`valid-run-failed-deadlock.json` 的 message 改為 engine 真正的輸出 |
+| 19c5e35（1e23484） | Scenario allowlist 的 AI context 與 `prompts/scenario/system.md`（scenario-0.3.0）說明 queue 的緩衝 capacity（D-057） |
+| ac32da0（1df953c） | SimPy reference：`make simulation-reference-test`（不再是 placeholder）、`scripts/simpy_reference.py`、SimPy 4.1.2 的 pin、ADR-011、THIRD_PARTY_NOTICES、CI step |
+| 3c6e612（ab9a1d0） | 第一版的 validator guard（engine 自己的測試；由 d3cad51 取代並刪除） |
+| d3cad51（dfe8a51） | Architecture checker 的 source rule `guarded-variables`：production 檔案不可 assign `engine.validateIR` 或取它的位址（T-046 phase 2 review I2，在解除第一個 gate 之前） |
+| 6f8d600（1d0d9ad） | `FuzzBlocking`、FuzzKernel／FuzzRun 的 finite-buffer seed、G-B1W、G-B5 的 member keys、R1 的 self-edge case、observation digest 鎖；D-064（PROPOSED）；SIMULATION_SPEC、TWIN_IR_SPEC、ADR-026、TEST_PLAN、ARCHITECTURE |
+| ed4351f（e0e1855） | `TestBlockingDeterminism`（TEST-019 的 finite-buffer 版本）；tasks.json 的 planned outputs、spec refs 與 D-064 gate（status 未改） |
+| f73812f（5ea751a） | Makefile：`backend-race` 加 `-timeout 30m`（見「實際執行結果」） |
+| cb02b5f（747ba06） | 本報告、evidence、mutation harness 與結果、重產的 `checks/*.json` |
+| 78d0549 | Coordinator：在整合後的 branch 上執行，log 在 `coordinator-*` |
+| （review 第 1 輪） | 見文末「Review 第 1 輪」 |
 
 ## 稽核：scope 逐條
 
@@ -77,7 +79,7 @@ Branch `t047`（從 0ee3d2a 開出，沒有 push）：
 | `TestDeterminism`、`TestBlockingDeterminism` | 同一凍結輸入，不論 1、3、8 或預設 worker 數，Result 與 trace 逐 bit 相同；另一個 seed 得到另一個 digest。後者用四個隨機 reference case（30 replications，含阻塞、rework、共用 bundle） | TEST-019 |
 | `TestDifferentialAgainstFrozenKernel` | 凍結的 des-go-0.1.0 kernel（`frozen010_test.go`）與新 kernel 對 50,000 個沒有有限 buffer 的隨機模型與 golden models：observation、結局與錯誤完全相同，包括在路由中途因 `max_entity_visits` 結束、在 arrival 因 `max_active_entities` 結束的 run | TEST-034、D-047 |
 | `TestNeutralBuffersChangeNothing` | 隨機模型加上 capacity ≥ max_active_entities 的中性 buffer：observation（含 seq）與沒有 capacity 的模型在凍結 kernel 上相同，沒有任何 `ObsBlocked`／`ObsUnblocked` | TEST-034、D-047 |
-| `TestRandomBlockingModelsAgainstSpec`、`TestRandomCircularWaitsAreDetected`、`FuzzBlocking`（`kernel_check_blocking_test.go`） | 只看 observation 的阻塞模型（不讀 kernel 內部）：每個 buffer 的等待數不超過 capacity；被擋的 entity 保留 bundle、不在 FIFO 中；解除依 FIFO、在授予之後、同一 dispatch；同一個 replication 平行執行結果相同。R1 被繞過（只在測試中）時，每個 `ErrDeadlock` 在那個 tick 都是真的循環等待，其他 run 沒有經過任何以循環等待結束的 tick（不誤報、不漏報） | TEST-034、D-050 |
+| `TestRandomBlockingModelsAgainstSpec`、`TestRandomCircularWaitsAreDetected`、`FuzzBlocking`（`kernel_check_blocking_test.go`） | 只看 observation 的阻塞模型（不讀 kernel 內部）：每個 buffer 的等待數不超過 capacity；被擋的 entity 保留 bundle、不在 FIFO 中；解除依 FIFO、在授予之後、同一 dispatch；同一個 replication 平行執行結果相同。R1 被繞過（只在測試中）時，每個 `ErrDeadlock` 在那個 tick 都是真的循環等待，其他 run 沒有經過任何以循環等待結束的 tick（不誤報、不漏報）。**更正（review 第 1 輪 I3）**：「不漏報」只在 D-050 B1 的全域定義下成立（沒有任何服務中或 delay 中的 entity）；循環旁有一直服務中的 process 時，局部的循環等待依定義不報，停到 horizon（D-064 (g)） | TEST-034、D-050 |
 | `TestBlockingCycles`、`TestBlockingCycleMessage`、`TestBlockingCycleStage`、`TestAgreesWithSharedFixtures`（validate） | R1 的 15 個 case：一條線、process 自己 buffer 的重測迴圈、經無限 queue 的迴圈、兩個有限 buffer 的迴圈、一有限一無限、共用 resource 但沒有 flow cycle、resource 鏈合併 component、繞過有限 queue 直接進 process、直接進同一 component（self-edge）、直接進共用 resource 的 process、經 failure 與 rework、delay 先釋放 bundle、沒有 resource 的 process 不持有、0% flow 不是路由、source 到不了的 cycle 也拒絕；message 依 ID 排序、不受 IR 陣列順序影響；R1 屬 graph 階段（D-023）；兩個 semantic fixture 回期望的 code 與 path | TEST-001、TEST-034 |
 | `TestPrimitiveCatalog`、`TestPrimitiveGate`、`TestCompileRefusesLineFlowPrimitives`、`TestCompileRefusesWhatTheKernelDoesNotRun`、`TestKernelRefusesWhatItDoesNotExecute` | 只解除 `finite_buffer`；其他 primitive 在 validator 與 Compile 仍回 `PRIMITIVE_NOT_SUPPORTED` | D-063 |
 | `TestEngineFailures`（runner）、`TestDeadlockError`（runs） | `*DeadlockError` 與單獨的 `ErrDeadlock` 都是不重試的 `SIMULATION_DEADLOCK`；message 為 G-D2 的手推 reason；API 的 envelope 等於 `valid-run-failed-deadlock.json`，其 engine_version 等於 `des.Version` | D-050、D-063 (b) |
@@ -106,7 +108,7 @@ Branch `t047`（從 0ee3d2a 開出，沒有 push）：
 - `TestDifferentialAgainstFrozenKernel`：50,000 個隨機模型中 36,643 個 compile（其餘被 validator 拒絕），每個 5 個 replication 中的一個在兩個 kernel 上執行，17,427,661 個 observation 完全相同；結局：31,073 個正常結束、3,190 個在 `max_entity_visits`（路由中途）、2,380 個在 `max_active_entities`，錯誤前的 observation 也相同。之後是 golden models 在 1、14、60 天、每個 3 個 replication 的比對。測試自己要求至少 1/4 compile、各種結局至少 100／1,000 個，否則判為太弱而失敗。
 - `TestNeutralBuffersChangeNothing`：3,728 個隨機模型、5,000 個中性 buffer（capacity ≥ max_active_entities），observation（含 seq）與沒有 capacity 的模型在凍結 kernel 上相同，沒有任何 Blocked／Unblocked。
 - `TestRandomBlockingModelsAgainstSpec`：3,000 個隨機模型中 2,195 個 compile、666 個有有限 buffer；11,095 次被擋、7,501 次解除（114 個 dispatch 有連鎖解除）、131,949 次授予，都與只看 observation 的模型一致。`TestRandomCircularWaitsAreDetected`：R1 繞過時 1,059 個 run，其中 123 個以 `ErrDeadlock` 結束，每一個都是真的循環等待，其他 run 沒有漏報。
-- 外部比對（`differential-base-vs-head.txt`、`differential_dump_test.go.txt`）：同一個 dump 測試以 overlay 分別在 0ee3d2a 與本 branch 上執行，四個 golden model 各三種 horizon／warmup／replication 的完整 Result 與 trace JSON（engine_version 換回 des-go-0.1.0、digest 重算），兩邊 24 行、201,023 bytes，sha256 都是 `0dcb6d050982c611a1a96727ecb27fc5d679eb41f676654e8487e60e63b82e01`：IDENTICAL。這次比對（06:03）在 engine、compile、metrics、trace 與 validator 的 production code 最後一次修改（56c9e6c，05:31）之後；其後只有 runner／runs 的 failure 對應與 AI context（abc5ddf、1e23484，不影響 engine 的輸出）以及測試、文件、architecture checker 與 Makefile 的 commit。
+- 外部比對（`differential-base-vs-head.txt`、`differential_dump_test.go.txt`）：同一個 dump 測試以 overlay 分別在 0ee3d2a 與本 branch 上執行，四個 golden model 各三種 horizon／warmup／replication 的完整 Result 與 trace JSON（engine_version 換回 des-go-0.1.0、digest 重算），兩邊 24 行、201,023 bytes，sha256 都是 `0dcb6d050982c611a1a96727ecb27fc5d679eb41f676654e8487e60e63b82e01`：IDENTICAL。這次比對（06:03）在 engine、compile、metrics、trace 與 validator 的 production code 最後一次修改（80c5968，worktree 上為 56c9e6c，05:31）之後；其後只有 runner／runs 的 failure 對應與 AI context（12c76c8、19c5e35，不影響 engine 的輸出）以及測試、文件、architecture checker 與 Makefile 的 commit。
 
 ## SimPy reference（`make simulation-reference-test`）
 
@@ -115,7 +117,7 @@ SimPy 4.1.2（MIT；2026-05-24 發布，滿兩週；wheel sha256 與 PyPI 公布
 - 確定性：G-B1、G-B1W、G-B2、G-B4、G-B7、G-B8、G-B9 逐值等於手推的 service 開始、完成、每段阻塞與 Result 成員；G-D2 為示意（SimPy 不偵測 deadlock：最後一個 service 開始於 5 分鐘、7 分鐘起無法前進，與 engine 的 7 分鐘相同）。
 - 不比：G-B3（同 tick 的 tie-break 是 kernel 的 D-048，SimPy 不重現）、G-B5（kernel 的 routing stream）。
 - 隨機：S1–S4 各 30 replications，45 個指標的平均都在 fixture 中預先固定的容差內（|Δ| ≤ 4·√(s²_go/n＋s²_simpy/n)＋0.5%·max(|平均|)），45/45。
-- 限制：units 必須為 1；bundle 依「共用 resource 先、自己的後」逐一取得，只在一個 bundle 至多一個共用 resource 時等於 all-or-nothing，腳本對其他模型拒絕執行。這是 reference，不是 oracle：兩邊同樣誤解 D-049 的地方它看不出來，手推 golden 才是語義的依據。
+- 限制：units 必須為 1；bundle 依「共用 resource 先、自己的後」逐一取得，只在一個 bundle 至多一個共用 resource 時等於 all-or-nothing，腳本對其他模型拒絕執行。**更正（review 第 1 輪 L1）**：這個條件不夠，還要自己的每個 resource 的 capacity 不小於共用的那個；反例 G-B13（engine 在 11 讓 Y 開始，腳本會在 3）。腳本已改為拒絕這種模型，fixture 中標為 refused 的 case 每次都必須被拒絕。這是 reference，不是 oracle：兩邊同樣誤解 D-049 的地方它看不出來，手推 golden 才是語義的依據。
 
 ## Mutation
 
@@ -159,7 +161,7 @@ Equivalent 的理由（寫在 harness 的註解）：
 
 ## 需要 owner 或 reviewer 決定
 
-- **D-064**，PROPOSED（`planning/decisions.json`、DECISIONS_AND_TBD）：(a) B1 在每個事件結束、且沒有待執行的 dispatch 時檢查（批准文字寫「每次 dispatch 結束時」，照字面會漏掉 G-D2，run 默默跑到 horizon）；(b) R1 也檢查 source 到不了的 node；(c) 解除在該次授予的 ObsResource、ServiceStart 與 service 抽樣之後（只影響 observation 順序）；(d) `ErrDeadlock` 回報最早的 blocked entity（含 source 的 backlog）。四項都已依建議實作，可回復；不採用時要改的檔案與 golden 寫在 D-064。Gate：T-047 驗收前；planning check 中 T-047 因此為 `next_after_review`，等 D-064。
+- **D-064**，PROPOSED（`planning/decisions.json`、DECISIONS_AND_TBD）：(a) B1 在每個事件結束、且沒有待執行的 dispatch 時檢查（批准文字寫「每次 dispatch 結束時」，照字面會漏掉 G-D2，run 默默跑到 horizon）；(b) R1 也檢查 source 到不了的 node；(c) 解除在該次授予的 ObsResource、ServiceStart 與 service 抽樣之後（只影響 observation 順序）；(d) `ErrDeadlock` 回報最早的 blocked entity（含 source 的 backlog）。四項都已依建議實作，可回復；不採用時要改的檔案與 golden 寫在 D-064。Review 第 1 輪另加 (e)(f) 與兩項說明 (g)(h)，見文末。Gate：T-047 驗收前；planning check 中 T-047 因此為 `next_after_review`，等 D-064。
 - D-065、D-066 未使用。
 - 其他實作選擇（都在已批准的範圍內，寫在 SIMULATION_SPEC §3、§10 與 TWIN_IR_SPEC §4，請 reviewer 確認解讀）：`blocking` 的 key 為「路由到得了有限 buffer 的 node」（不隨抽樣改變）；Result 的新成員只在程式有有限 buffer 時出現（D-047）；R1 的 message 列出 cycle 上的 process、有限 buffer 與合併 component 的 resource；SimPy reference 的容差與不比的 case。
 
@@ -168,10 +170,10 @@ Equivalent 的理由（寫在 harness 的註解）：
 - **D-064 仍是 PROPOSED**。Owner 若對 (a)–(d) 任一項選 B，要改 kernel 或 validator 與對應的 golden、fixture（D-064 列出檔案）；(a) 選 B 會讓 G-D2 這類循環等待默默跑到 horizon，違反 TEST-034。
 - **手推 golden 與 kernel 出自同一個 agent**：`blocking-goldens.json` 是依 D-049／D-050 的文字手推，不是由 engine 產生，但推導者與實作者相同，兩者可能有同樣的誤讀。SimPy reference 以不同的實作方式（SimPy 的 resource、Python 的 RNG）重現了確定性 case 與隨機指標，降低但沒有消除這個風險；G-B3 的同 tick 順序與 G-B5 的 routing stream 只有手推值。Reviewer 宜獨立重推至少 G-B7、G-B8、G-D2。
 - **R1 是保守的檢查**（D-050 已批准）：只看圖，不看 capacity 的大小，所以實際上不會卡死的循環（例如 buffer 夠大、或循環很少被走到）也會被拒絕，scenario 把 buffer 改為有限時也可能因此 invalid。D-064 (b) 選 A 時，source 到不了的部分也會被拒絕。
-- **B1 只在 R1 被繞過時才會觸發**：production 中它是第二道防線；它的正確性由 `TestRandomCircularWaitsAreDetected`（R1 繞過時 1,059 個 run、123 個 deadlock，不誤報、不漏報）與 G-D2 支撐，沒有端對端的 DB 測試（見 NOT RUN）。
+- **B1 只在 R1 被繞過時才會觸發**：production 中它是第二道防線；它的正確性由 `TestRandomCircularWaitsAreDetected`（R1 繞過時 1,059 個 run、123 個 deadlock，依全域定義不誤報、不漏報；review 第 1 輪 I3）、G-D2 與 G-D3 支撐，沒有端對端的 DB 測試（見 NOT RUN）。
 - **Regression lock 不是 oracle**：`engine-golden-digests-0.2.0.json`、`kernel-observation-digests-0.2.0.json` 由 des-go-0.2.0 產生，只讓之後的任何改變被看到；它們本身的正確性靠手推 golden、阻塞檢查器與 SimPy。
 - **Result 成員的解讀**：`blocking` 的 key 是「路由到得了有限 buffer 的 node」（G-B5 固定，不隨抽樣改變），`buffers` 只列有限 buffer，`resource_states` 列所有 resource；這些是 D-058 表的實作解讀，T-048–T-050 會再擴充同一組成員。
-- **SimPy reference 的範圍**：units 必須為 1，bundle 至多一個共用 resource；四個隨機 case、每個 30 replications；容差 z=4 加 0.5% 相對誤差，小於容差的系統性差異（約 0.5% 加上統計誤差）看不出來。
+- **SimPy reference 的範圍**：units 必須為 1，bundle 至多一個共用 resource，且自己的 resource 的 capacity 不小於共用的那個（review 第 1 輪 L1 更正）；四個隨機 case、每個 30 replications；容差 z=4 加 0.5% 相對誤差，小於容差的系統性差異（約 0.5% 加上統計誤差）看不出來。
 - **Fuzz 的次數**：Go fuzzing 顯示的 execs 會少算，FuzzRun 實際執行次數沒有量測；fuzz 時間各為 90 秒到 3 分鐘。
 - **部署時的 engine_version**：run 凍結 engine_version，升到 des-go-0.2.0 後，部署前以 des-go-0.1.0 入列、尚未執行的 run 會以不重試的 `ENGINE_VERSION_MISMATCH` 失敗（T-023 的既有行為，`TestRefusedAttempts`，DB NOT RUN）；目前沒有任何部署。
 - **效能**：有有限 buffer 的程式在每個事件後做 B1 檢查（服務中或 delay 中有 entity 時立即返回，否則掃描 resource FIFO 與 blocked FIFO）；沒有 benchmark。沒有有限 buffer 的程式不檢查（D-047），differential 證明其 observation 不變。
@@ -181,3 +183,89 @@ Equivalent 的理由（寫在 harness 的註解）：
 Coordinator 把 11 個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-017 的 534c9ba 之後）。衝突只在決策登記（D-064 一節放在 T-026、T-017 兩節之前）與 `planning/decisions.json`（加入 D-064）；產生的 `checks/*.json` 由 `make spec-check` 重產。SimPy 4.1.2：MIT（PyPI 的 license 與 classifier），2026-05-24 上傳，超過兩週。
 
 之後 `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`simulation-reference-test`（PASS）、`frontend-test`（429 個 test）、`backend-race`（30 分鐘 timeout）與 `integration-test`（新的 `dt_test_t047`：30 個 package ok，沒有 FAIL 或 SKIP，包括 `internal/runs/runner`、`internal/api` 的 run 測試）都是 exit 0。上方 NOT RUN 中的 DB 測試與 `make frontend-test` 已由 coordinator 執行並通過。Log 與 exit code 在 `checks/evidence/2026-10-20-T-047/coordinator-*`。
+
+## Review 第 1 輪（H-003，2026-10-20）
+
+獨立 review 的結論是 CHANGES REQUESTED（0 個 High、3 個 Medium，另有 Low 與 Info）。Reviewer 獨立重推 G-B7、G-B8、G-D2、G-B1／G-B1W／G-B3／G-B4／G-B9 與六個新情境，都與 engine 相符；D-047 的 differential（16 個 golden 設定、400 個隨機模型）逐 byte 相同。問題都在測試沒有釘住的地方。修正在 branch `t047-r1`（從 8413288 開出，沒有 push）；沒有修改任何 production 的 Go code（kernel、compile、metrics、validator、risk 都沒動），只加測試、golden、SimPy 腳本的拒絕條件、race 下的 differential 件數與文件。D-064 仍是 PROPOSED，`approved_by`／`approved_at` 為 null；沒有碰 T-017（`internal/import`、0014）與 T-026 的範圍，決策登記只改 D-064。Evidence 在 `checks/evidence/2026-10-20-T-047-r1/`。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| ddf2f06 | 新的手推 golden：G-B4W（M1）、G-B10（M2）、G-B11、G-B12（M3）、G-B13（L1 的 engine 端）、G-D3（L2）；L3 的 risk case；runner 與 runs 的測試改為以 ID 取 G-D2；兩個 regression lock 加入新 case |
+| 46f5942 | L1：SimPy 腳本拒絕「自己的 resource 的 capacity 小於共用的」bundle；fixture 中標為 refused 的 case 每次都必須被拒絕 |
+| 2960fb1 | I5：race detector 下 frozen-kernel differential 只跑前 5,000 個模型 |
+| 16a4112 | I2、I3：D-064 (e)–(h)（PROPOSED）、SIMULATION_SPEC §3／§5／§9／§10、TEST_PLAN、Makefile 的註解 |
+| a2afc08 | I5 的修正：2960fb1 用 `//go:build race` 檔，被 architecture checker 的 every-file-built（T-042）擋下；改為讀 test binary 的 `-race` build setting |
+| （本節的 commit） | 本報告的本節與更正、evidence |
+
+### 發現、修正與證據
+
+每個新 golden 的期望值都先依 D-048／D-049 手推（推導寫在 `blocking-goldens.json` 每個 case 前的註解，產生器只組 JSON），再以未改動的 engine 執行；engine 端與 Result 端都一次通過。新增的 regression lock 只在手推值通過之後才取。
+
+| 項目 | 問題 | 修正 | Red（修正前） | Green |
+|---|---|---|---|---|
+| M1 | 「開始 ≥ W」的下界沒有測試：G-B1W 沒有任何阻塞剛好在 W 開始，`aggregate.go` 的 blocks_started 與 blocks_completed 改成嚴格不等號都存活 | G-B4W：G-B4 加 warmup 6、horizon 20，e6 的阻塞在 6 開始。手推：blocks_started 15、blocks_completed 6、completed_block_ticks 1,980,000（33 分）、blocked_entity_ticks 4,200,000（70 分：e5 在 [6,7] 的 1、e6–e11 的 33、e12–e20 的 36）、qw full_ticks 840,000、完成 7、lead time 7／8／9／10（平均 8.5）、qw 的 queue wait 6 筆各 2、censored 11；與 reviewer 的值相同。Result 層（`TestBlockingGoldenResults`）與 SimPy 都比對 | `review-mutants-before.log`（reviewer 的執行）：`blocks-started-strict-warmup`、`blocks-done-strict-warmup` SURVIVED | `review-mutants-rerun.log`：兩者 KILLED（`TestBlockingGoldenResults`）；SimPy 的確定性比對包含 G-B4W |
+| M2 | units > 1 時的 blocked_ticks 沒有測試（所有 golden 都是 units 1，SimPy 腳本拒絕 units ≠ 1）：`sign * int64(q.Units)` 改成 `sign` 存活 | G-B10（reviewer 的 N4）：A 需要 ra×2（capacity 2）。手推：e3 在 A 被擋 [4,5]，持有兩個 unit；ra in_use_ticks 480,000、blocked_ticks 120,000、scheduled_processing_ticks 360,000；utilization 依 §5 為 8／(2×20)。SimPy 不比（units 2），fixture 寫明理由 | `held-ignores-units` SURVIVED | KILLED（`TestBlockingGoldenResults`） |
+| M3 | 哪些 node 出現在 `blocking[<node>]` 沒有測試：`compile.go` 的 `reachesFinite` 只經 decision，或讓 delay 不結束路由，都存活 | G-B11（N5：經 failure node，A 是 key，blocking.A = 1/1/60,000/60,000，failures 3，qB full_ticks 300,000）、G-B12（N6：delay 結束路由，只有 dly 是 key，blocking.dly = 2/2/240,000/240,000，src 不是 key）。兩者都在 golden 的 Result 中（`blocking` 以 `reflect.DeepEqual` 比對整個 map）並列 `member_keys`（`TestBlockingMemberKeys` 現在要求至少 3 個 case）；SimPy 也比對兩者 | `canblock-skips-failure-rework`、`canblock-through-delay` SURVIVED | 兩者 KILLED（`TestBlockingGoldenResults`） |
+| L1 | SimPy 腳本的有效條件寫錯：「units 1、bundle 至多一個共用 resource」不夠，還要自己的 resource 的 capacity 不小於共用的那個。反例 N3：engine 在 11 讓 Y 開始，腳本在 3 | 腳本在 `Model` 中拒絕這種 bundle（理由寫在註解：取得共用的 unit 時，至多 capacity(S)−1 個其他 entity 持有自己的 O，capacity(O) ≥ capacity(S) 時 O 一定有空）；G-B13（N3）成為 engine 的 golden（Y 在 11 開始：held 的 x2 擋住 S 的 FIFO），fixture 標為 refused，腳本每次都要拒絕它。docstring、SIMULATION_SPEC §10、本報告的 SimPy 段與殘餘風險已更正 | `l1-simpy-red.log`：腳本接受 G-B13（`the script accepted a model it cannot interpret`），exit 2 | `l1-simpy-green.log`：以 capacity 的理由拒絕 G-B13，其他確定性 case 與 45／45 隨機指標照樣通過，exit 0 |
+| L2 | D-064 (d)（回報哪個 entity）與「node 順序最前的 buffer」無法區分：G-D2 中最早被擋的 entity 也在 ID 最前的 buffer，`block-order-not-incremented` 存活 | G-D3（R1 繞過，與 G-D2 相同的方式）：x1、y1 都在 4 被擋，y1 等待的 X 的 buffer 在 node 順序上較前，但 x1 先被擋（X 的 SERVICE_COMPLETE 先處理）：回報 `r0/sx/1` 在 X、since 240,000。`TestDeadlockNamesTheEntityBlockedFirst` 也檢查 validator 的 code 與 path，以及 X 的 index 確實小於 Y | `block-order-not-incremented`、`deadlock-earliest-by-since` SURVIVED | 兩者 KILLED（`TestDeadlockNamesTheEntityBlockedFirst`） |
+| L3 | `risk.go` 的 `<` 改成 `<=` 存活 | `TestBufferCapacityRisk` 加「an unchanged buffer beside another change」：base 有 capacity 4 的 q_test，scenario 只改 test 的 service time → low | `risk-equal-capacity-medium` SURVIVED | KILLED（`TestBufferCapacityRisk`） |
+| I2 | 文件沒有寫：長度 0 的阻塞算一次、解除後的 queue wait 從解除起算、`SIMULATION_DEADLOCK` 不重試、回報哪個 replication 取決於排程 | SIMULATION_SPEC §5 新增「有限 buffer 成員的計數細節」一段（含給 UI 的說明）；§9 的 typed error 列表加 `*engine.DeadlockError`；屬語意選擇的兩項列為 D-064 (e)、(f)（PROPOSED），另兩項為 (h) 的說明 | — | — |
+| I3 | B1 只偵測全域的循環等待：循環旁有一直服務中的不相關 process 時會停到 horizon（只在 R1 被繞過時） | 報告與 TEST_PLAN 改為「依全域定義不漏報」；SIMULATION_SPEC §3 寫明；D-064 (g) 給 owner 的說明（要偵測局部循環等待需另一個 decision）。沒有加釘住這個行為的測試（它是定義的限制，不是要保護的行為） | — | — |
+| I5 | race detector 下 engine package 約 607 s，幾乎都在 50,000 個模型的 differential，而 kernel 本身沒有並行 | 只在 race build 下把 frozen-kernel differential 降為前 5,000 個 seed（3,632 個 compile；結局 visits 292、active 234、none 3,106）；`make backend-test` 仍跑 50,000 個（36,643；3,190／2,380／31,073）。結局的下限（100、100、1,000）是絕對數，不變；compile 比例仍是「跑的模型的 1/4」。**偏離指示的地方**：指示要「`race` build tag 的常數」，2960fb1 照做，但 `make backend-test` 中 `TestRepositoryConforms` 失敗：architecture checker 的 every-file-built（T-042）拒絕只有 race tag 才編譯的 `race_test.go`（matrix 的 16 種設定都不帶 race，`backend-test-run1-race-tag.log`）。a2afc08 改為讀 test binary 的 build setting `-race`（`runtime/debug.ReadBuildInfo`；沒有 build information 時跑全部），效果相同，不需要改 checker | `backend-race-run1-timeout.log`（第 0 輪）與 reviewer 的 607 s | 見下表的 backend-race |
+
+### Reviewer 的 mutant 重跑
+
+以 reviewer 的 `review_mutants.py`（唯讀，輸出寫到 scratchpad）在本 branch 上只重跑第 1 輪存活的 9 個（`review-mutants-rerun.log`；修正前的結果是 reviewer 的 `review-mutants-before.log`）：
+
+| Mutant | 第 1 輪 | 本輪 |
+|---|---|---|
+| `deadlock-earliest-by-since` | SURVIVED | KILLED（`TestDeadlockNamesTheEntityBlockedFirst`） |
+| `block-order-not-incremented` | SURVIVED | KILLED（同上） |
+| `deadlock-bound-ge` | SURVIVED | SURVIVED：**equivalent**。`after()` 只在沒有待執行的 dispatch 時檢查；`release()` 會喚醒每個被釋放的 resource FIFO 最前面的 request 並排 dispatch，所以那時每個 held candidate 都至少有一個 resource 放不下（`inUse + units > capacity`），`>` 與 `>=` 的結果相同。與第 0 輪的 `deadlock-ignores-fitting-held` 同一個理由 |
+| `blocks-done-strict-warmup` | SURVIVED | KILLED（`TestBlockingGoldenResults`，G-B4W） |
+| `blocks-started-strict-warmup` | SURVIVED | KILLED（同上） |
+| `held-ignores-units` | SURVIVED | KILLED（同上，G-B10） |
+| `risk-equal-capacity-medium` | SURVIVED | KILLED（`TestBufferCapacityRisk`） |
+| `canblock-skips-failure-rework` | SURVIVED | KILLED（`TestBlockingGoldenResults`，G-B11） |
+| `canblock-through-delay` | SURVIVED | KILLED（同上，G-B12） |
+
+指示說「除了兩個 equivalent 之外都要被擋下」：本輪 8 個被擋下，只剩 `deadlock-bound-ge` 一個 equivalent；`deadlock-earliest-by-since` 也被 G-D3（兩個阻塞同一 tick 開始）擋下，所以不必當成 equivalent。第 0 輪自己的 62 個 mutant 沒有重跑（production code 沒有改，測試只有增加）。
+
+### 實際執行（本輪）
+
+Go 1.27.2、Python 3.13.16（SimPy 4.1.2）、Node 22.22.0、4 CPU（與其他 session 共用），沒有 PostgreSQL；Go 測試都以 `-count=1`。Exit code 在 `exit-codes.txt`。
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `make simulation-reference-test PYTHON=.venv/bin/python`（L1 修正前） | 2 | `l1-simpy-red.log`：腳本接受 G-B13 |
+| `make simulation-reference-test PYTHON=.venv/bin/python`（L1 修正後） | 0 | `l1-simpy-green.log` |
+| `review_mutants.py`（reviewer 的 9 個存活 mutant） | 0 | `review-mutants-rerun.log`：8 KILLED、1 equivalent |
+| `go test -fuzz`：FuzzBlocking 90 秒、FuzzKernel 60 秒、FuzzRun 60 秒 | 0 | `fuzz-*.log`：沒有發現失敗；coordinator 顯示 68,040、341,235、46 execs（會少算，見第 0 輪「Fuzz」）；seed 含新 case 的模型 |
+| `make spec-check PYTHON=.venv/bin/python` | 0 | `spec-check.log`；重產的 `checks/*.json` 沒有變化（D-064 仍是唯一的 T-047 proposed decision） |
+| `make backend-test GOFLAGS=-count=1`（2960fb1） | 2 | `backend-test-run1-race-tag.log`：`TestRepositoryConforms` 的 every-file-built 拒絕 `race_test.go` |
+| `make backend-test GOFLAGS=-count=1` | 0 | `backend-test.log`：61 個 package ok，沒有 `(cached)`；engine 52 s、check-architecture 190 s；DB-backed 測試 skip（NOT RUN） |
+| `make backend-race GOFLAGS=-count=1` | 0 | `backend-race.log`：61 個 package ok，沒有 `(cached)`；engine package 308 s（與其他 package 並行，check-architecture 314 s 最久）。另單獨執行 engine package（`engine-race-alone.log`）：174 s，其中 differential 28 s（5,000 個模型）、`TestNeutralBuffersChangeNothing` 67 s、`TestRandomBlockingModelsAgainstSpec` 38 s、`TestRandomCircularWaitsAreDetected` 21 s；第 0 輪 race 下 engine 為 356 s，reviewer 量到 607 s |
+| `make architecture-check` | 0 | `architecture-check.log`：74 個 package、16 條規則、16 種 build configuration |
+| `make ai-eval` | 0 | `ai-eval.log`：`TestFakeProviderEval`、`TestReviewEval` PASS；`checks/ai-evals/` 沒有變化 |
+| `make simulation-reference-test PYTHON=.venv/bin/python` | 0 | `simulation-reference-test.log`、`simpy-reference-report.json`：確定性 G-B1、G-B1W、G-B2、G-B4、G-B4W、G-B7、G-B8、G-B9、G-B11、G-B12 與 G-D2（示意）；G-B13 被拒絕；45／45 |
+| DB 測試、`make integration-test` | — | NOT RUN（coordinator 執行） |
+
+### NOT RUN（本輪）
+
+- DB 測試與 `make integration-test`：交給 coordinator。本輪沒有 migration、沒有改 production code；受影響的只有測試：`internal/runs/runner` 的 `TestEngineFailures`、`internal/runs` 的 `TestDeadlockError`（都不需要 DB，已在 `backend-test` 中通過）。
+- `make frontend-test`：本輪沒有改 schema、TS 或 `apps/web`，沒有執行（Node 22.22.0，沒有 `node_modules`）。
+- 第 0 輪自己的 mutation harness（62 個）沒有重跑。
+- CI 上的 `make backend-race` 與 `make simulation-reference-test`：只在本機執行。
+
+### 需要 owner 決定（本輪的變化）
+
+D-064 仍是 PROPOSED，本輪補上：(d) 的「最早」是被擋的處理順序（G-D3）；(e) 長度 0 的阻塞算一次（建議 A）；(f) 解除後的 queue wait 從解除起算（建議 A）；(g)、(h) 為說明（全域的 B1、`SIMULATION_DEADLOCK` 不重試與回報哪個 replication）。D-065、D-066 仍未使用。
+
+### 殘餘風險（本輪的變化）
+
+- 新的六個 golden 與 reviewer 的值一致，但期望值仍是同一個 agent 依文字手推；reviewer 已獨立重推第 0 輪的主要 case，本輪的 G-B4W、G-B10、G-B11、G-B12、G-B13 是 reviewer 先給出的情境與數值，我另外重推並相符，G-D3 只有我的推導。
+- `deadlock-bound-ge` 與第 0 輪的 `deadlock-ignores-fitting-held`、`enqueue-capacity-unchecked` 一樣是 invariant 的分支；正確的 kernel 走不到，所以沒有測試能直接檢查它們。
+- race build 下的 differential 只跑 5,000 個模型；完整的 50,000 個只在非 race 的 build 中跑（`make backend-test`、CI 的 backend job）。判斷 race build 依賴 test binary 的 build information（Go 1.18 起提供）；沒有時跑全部，只會變慢、不會變弱。
+- B1 的全域定義（D-064 (g)）：R1 被繞過的模型中，局部的循環等待會停到 horizon；valid 的模型因 R1 不會有循環阻塞。

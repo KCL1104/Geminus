@@ -1,0 +1,27 @@
+T-047 review round 1 (branch t047-r1 from 8413288). Each log ends with its own "exit N" line unless noted.
+
+red / green
+  make simulation-reference-test (before the L1 fix)     2   l1-simpy-red.log   (the script accepted G-B13)
+  make simulation-reference-test (after the L1 fix)      0   l1-simpy-green.log
+  reviewer's mutants, before (the reviewer's run)        -   review-mutants-before.log (9 SURVIVED of 14; copied from the reviewer's logs)
+  review_mutants.py, the 9 survivors, on t047-r1         0   review-mutants-rerun.log  (8 KILLED, deadlock-bound-ge equivalent)
+  make backend-test GOFLAGS=-count=1 on 2960fb1          2   backend-test-run1-race-tag.log (every-file-built refuses race_test.go)
+
+fuzz
+  go test -fuzz FuzzBlocking -fuzztime 90s (engine)      0   fuzz-blocking.log
+  go test -fuzz FuzzKernel -fuzztime 60s (engine)        0   fuzz-kernel.log
+  go test -fuzz FuzzRun -fuzztime 60s (des)              0   fuzz-run.log
+
+verification (a2afc08 and later; Go tests with -count=1)
+  make spec-check PYTHON=.venv/bin/python                0   spec-check.log
+  make backend-test GOFLAGS=-count=1                     0   backend-test.log
+  make backend-race GOFLAGS=-count=1                     0   backend-race.log (engine package 308 s)
+  go test -race -count=1 -v ./internal/simulation/engine/ 0  engine-race-alone.log (filtered to --- and ok lines; 174 s)
+  make architecture-check                                0   architecture-check.log
+  make ai-eval                                           0   ai-eval.log (checks/ai-evals unchanged)
+  make simulation-reference-test PYTHON=.venv/bin/python 0   simulation-reference-test.log, simpy-reference-report.json
+
+NOT RUN
+  make integration-test / db-test / db-go-test (no PostgreSQL; for the coordinator)
+  make frontend-test (no schema, TS or apps/web change; Node 22.22.0 without node_modules)
+  the round-0 mutation harness (62 mutants; no production code changed in this round)

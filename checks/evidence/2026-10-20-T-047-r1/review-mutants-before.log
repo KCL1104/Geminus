@@ -1,0 +1,15 @@
+unblock-releases-destination	KILLED	9s	--- FAIL: TestBlockingGoldens (0.27s)
+deadlock-earliest-by-since	SURVIVED	119s	
+block-order-not-incremented	SURVIVED	83s	
+deadlock-bound-ge	SURVIVED	85s	
+blocks-done-strict-warmup	SURVIVED	10s	
+blocks-started-strict-warmup	SURVIVED	9s	
+held-ignores-units	SURVIVED	9s	
+full-only-when-over-or-equal-after-enter	KILLED	2s	--- FAIL: TestBlockingGoldenResults (0.12s)
+r1-direct-entry-unlabeled	KILLED	49s	--- FAIL: TestBlockingCycles (0.00s)
+r1-queue-edge-to-process	KILLED	55s	--- FAIL: TestBlockingCycles (0.01s)
+r1-holder-edges-from-node	KILLED	45s	--- FAIL: TestRandomBlockingModelsAgainstSpec (0.07s)
+risk-equal-capacity-medium	SURVIVED	6s	
+canblock-skips-failure-rework	SURVIVED	56s	
+canblock-through-delay	SURVIVED	49s	
+exit=0
