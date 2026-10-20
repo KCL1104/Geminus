@@ -67,6 +67,13 @@ IDS = {
     "JOB_A31": ("job", "A", 31), "JOB_A32": ("job", "A", 32), "JOB_A33": ("job", "A", 33), "JOB_A34": ("job", "A", 34),
     "JOB_A35": ("job", "A", 35), "JOB_A36": ("job", "A", 36), "JOB_A37": ("job", "A", 37), "JOB_A38": ("job", "A", 38),
     "JOB_A41": ("job", "A", 41), "JOB_A42": ("job", "A", 42),
+    # T-026 (proposal_decisions.sql): decided proposals, their jobs and effects.
+    "AIP_A21": ("aip", "A", 21), "AIP_A22": ("aip", "A", 22), "AIP_A23": ("aip", "A", 23), "AIP_A24": ("aip", "A", 24),
+    "AIP_A25": ("aip", "A", 25), "AIP_A26": ("aip", "A", 26), "AIP_A27": ("aip", "A", 27), "AIP_A28": ("aip", "A", 28),
+    "JOB_A51": ("job", "A", 51), "JOB_A52": ("job", "A", 52), "JOB_A53": ("job", "A", 53), "JOB_A54": ("job", "A", 54),
+    "JOB_A55": ("job", "A", 55), "JOB_A56": ("job", "A", 56), "JOB_A57": ("job", "A", 57),
+    "MV_A3": ("mv", "A", 3), "MV_A4": ("mv", "A", 4), "MV_A5": ("mv", "A", 5),
+    "SCN_A1": ("scn", "A", 1), "SCN_A2": ("scn", "A", 2), "SCN_A3": ("scn", "A", 3),
 }
 
 

@@ -232,7 +232,8 @@ SELECT pg_temp.must_fail($q$INSERT INTO twin.run_datasets(organization_id,run_id
 INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,mode,status,intent,created_by,id_pool) VALUES
   ('{{AIP_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','raise capacity','{{USR_A}}','{{POOL_1}}'),
   ('{{AIP_A2}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','claim only','{{USR_A}}','{{POOL_1}}'),
-  ('aip_01M4YDQK00TA00000000000003','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','server wins','{{USR_A}}','{{POOL_1}}'),
+  -- On version 2: its approval below is the next version after its base (0013, T-026).
+  ('aip_01M4YDQK00TA00000000000003','{{ORG_A}}','{{MDL_A}}','{{MV_A2}}','edit','generating','server wins','{{USR_A}}','{{POOL_1}}'),
   ('aip_01M4YDQK00TA00000000000004','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','not classified yet','{{USR_A}}','{{POOL_1}}');
 INSERT INTO twin.jobs(id,organization_id,type,status,payload,ai_proposal_id) VALUES
   ('{{JOB_A41}}','{{ORG_A}}','model_proposal','queued','{}','{{AIP_A1}}'),
@@ -288,7 +289,8 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$UPDATE twin.ai_proposals SET decided_by=NULL WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A1}}'$q$,
   $q$UPDATE twin.ai_proposals SET error='{"code":"x"}' WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A1}}'$q$
 ]) AS s;
--- Approval: the version created from the proposal in the same transaction.
+-- Approval: the version created from the proposal in the same transaction,
+-- the next version after the proposal's base (0013 checks it at commit).
 INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,ir,hash,source_proposal_id,created_by)
   VALUES ('mv_01M4YDQK00TA00000000000031','{{ORG_A}}','{{MDL_A}}',3,'0.1','{{MV_A2}}','{{IR_A2}}','{{IR_A2_HASH}}','aip_01M4YDQK00TA00000000000003','{{USR_A}}');
 UPDATE twin.ai_proposals SET status='approved', decided_by='{{USR_A}}', new_version_id='mv_01M4YDQK00TA00000000000031'
