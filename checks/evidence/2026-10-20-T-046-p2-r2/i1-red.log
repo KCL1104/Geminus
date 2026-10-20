@@ -1,0 +1,5 @@
+--- FAIL: TestDistributionPositionsCoverTheSchema (0.00s)
+    positions_test.go:220: the schema has 8 references to Distribution, the walk reaches 7
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.010s
+FAIL

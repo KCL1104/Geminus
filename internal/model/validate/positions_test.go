@@ -4,6 +4,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -156,12 +157,14 @@ func gatePaths(t *testing.T, issues []model.ValidationIssue, root string) []stri
 // root through properties, items and the local $defs, is a position of
 // distributionPositions: a new one cannot be added without a gate test.
 func TestDistributionPositionsCoverTheSchema(t *testing.T) {
+	raw := contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "schemas/model-ir.schema.json"))
 	var schema map[string]any
-	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "schemas/model-ir.schema.json")), &schema); err != nil {
+	if err := json.Unmarshal(raw, &schema); err != nil {
 		t.Fatal(err)
 	}
 	defs := schema["$defs"].(map[string]any)
 	var found []string
+	sites := map[uintptr]bool{} // the schema objects whose $ref is Distribution
 	var walk func(node any, at []string, via []string)
 	walk = func(node any, at []string, via []string) {
 		m, ok := node.(map[string]any)
@@ -173,6 +176,7 @@ func TestDistributionPositionsCoverTheSchema(t *testing.T) {
 			switch {
 			case ref == "#/$defs/Distribution":
 				found = append(found, "/"+strings.Join(at, "/"))
+				sites[reflect.ValueOf(m).Pointer()] = true
 				return
 			case local && !slices.Contains(via, name):
 				walk(defs[name], at, append(slices.Clone(via), name))
@@ -208,6 +212,12 @@ func TestDistributionPositionsCoverTheSchema(t *testing.T) {
 	slices.Sort(table)
 	if len(found) != 7 || !slices.Equal(found, table) {
 		t.Errorf("schema positions %v, table %v", found, table)
+	}
+	// A Distribution under a keyword the walk does not follow
+	// (patternProperties, if/then, dependentSchemas, …) would be a position
+	// no test names: every reference in the text must be one the walk reached.
+	if n := strings.Count(string(raw), `"#/$defs/Distribution"`); len(sites) != n {
+		t.Errorf("the schema has %d references to Distribution, the walk reaches %d", n, len(sites))
 	}
 }
 
