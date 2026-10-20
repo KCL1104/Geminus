@@ -148,3 +148,9 @@
 - TS client 沒有 approve／reject 方法，前端的型別測試沒有執行。
 - `internal/storage/scenarios`（`Insert`、`Get`）沒有自己的測試檔，只由 approval 的 DB 測試（`TestApproveScenario`、`TestApprovalClosedLoop`）間接涵蓋，而這兩個測試在修正後還沒有在 DB 上跑過。
 - `TestDecisionRoles` 與 `TestDecisionsWaitForTheModelRow` 以 500 ms 判斷「沒有等待」（與 T-012 的鎖測試相同的做法），在很慢的機器上可能誤報。
+
+## Coordinator 的執行
+
+第 1 輪 cherry-pick 到 `claude/lucid-meitner-vq1awo`（0ee3d2a 之後，f595f07）後，`make integration-test` 在一次性的 `dt_test_t026` 上 exit 2：0013 的 up／down／up 與所有 SQL suite 通過，4 個 DB-backed Go 測試失敗（TestApproveScenario、TestApprovalOnAMovedBase、TestDecisionsWaitForTheModelRow、TestApprovalClosedLoop），原因見「第二輪」：測試 helper 以 modeler role 寫入 scenario 的 fake 回答，scenario proposal 停在 needs_input。Coordinator 把本機 branch 退回 0ee3d2a，交回 agent 修正（只改測試）。
+
+第 2 輪後七個 commit 一起 cherry-pick（95b64e7），`spec-check`、`backend-test`、`backend-race`、`architecture-check`、`ai-eval`、`frontend-test`（426 個 test）與 `integration-test`（新的 `dt_test_t026_r2`：27 個 package ok，沒有 FAIL 或 SKIP；scenario 批准的整條路徑第一次在 PostgreSQL 上執行並通過）都是 exit 0。Log 與 exit code 在 `checks/evidence/2026-10-20-T-026/coordinator-*`。上方「NOT RUN」中的 DB 測試與 `make frontend-test` 已由 coordinator 執行。

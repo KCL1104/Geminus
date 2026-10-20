@@ -1,0 +1,18 @@
+Coordinator runs, 2026-10-20. Each log was written by "make <target> > log 2>&1; echo exit $?".
+
+First integration, T-026 round 1 cherry-picked after 0ee3d2a (f595f07):
+make integration-test (dt_test_t026)        2   coordinator-integration-red-f595f07.log: 0013 up/down/up and every SQL
+                                                suite passed; four DB-backed Go tests failed (TestApproveScenario,
+                                                TestApprovalOnAMovedBase, TestDecisionsWaitForTheModelRow,
+                                                TestApprovalClosedLoop): the test helpers scripted the fake provider's
+                                                scenario answers under the modeler role, so scenario proposals ended
+                                                needs_input. Local main was reset to 0ee3d2a; the agent fixed the tests.
+
+After round 2, all seven commits cherry-picked after 0ee3d2a (95b64e7):
+make spec-check PYTHON=.venv/bin/python     0   coordinator-spec-check.log
+make backend-test                            0   coordinator-backend-test.log
+make backend-race                            0   coordinator-backend-race.log
+make architecture-check                      0   coordinator-architecture-check.log
+make ai-eval                                 0   coordinator-ai-eval.log
+make frontend-test                           0   coordinator-frontend-test.log (426 tests)
+make integration-test (dt_test_t026_r2)      0   coordinator-integration.log (27 packages ok, no FAIL or SKIP)
