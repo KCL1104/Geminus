@@ -9,6 +9,30 @@ no SQL file, has ever run against PostgreSQL. Migration 0013 has never
 been executed: its syntax, its triggers and its down migration are
 unverified.
 
+Round 2 (after the coordinator's run): the coordinator ran make
+integration-test once on f595f07 (the five commits cherry-picked): exit 2.
+0013 up/down/up and every SQL suite passed; four DB-backed Go tests failed
+("not ready": the scenario proposal ended needs_input), see
+integration-red-excerpt.log. Cause: the test helpers scripted the fake under
+the modeler role, but a scenario request is asked as the scenario role. Fixed
+in 38541d4 (tests only; production code unchanged), together with a second
+fault the first one hid (TestApprovalOnAMovedBase's fourth proposal was a
+no-op patch). 38541d4 has not run on a database. To re-run:
+
+  make integration-test   (the whole suite; preferred)
+
+or, at least, on a database prepared by make db-test:
+
+  GEMINUS_TEST_DATABASE_URL=... go test -race -count=1 -p 1 -v \
+    -run 'TestApproveScenario|TestApprovalOnAMovedBase|TestDecisionsWaitForTheModelRow' ./internal/proposals/approval/
+  GEMINUS_TEST_DATABASE_URL=... go test -race -count=1 -p 1 -v \
+    -run 'TestApprovalClosedLoop|TestApprovalRefusals' ./internal/api/
+
+and then every other test of ./internal/proposals/approval/ (their helper
+ready() changed; their role, modeler for edit, did not).
+
+Round 1 text follows.
+
 For the coordinator, on a fresh disposable dt_test_* database:
 
   DT_ALLOW_DB_TESTS=yes DATABASE_URL=... GEMINUS_TEST_DATABASE_URL=... make integration-test

@@ -1,6 +1,6 @@
 # T-026 驗證報告：Human approve/reject／canonical effect
 
-**日期：2026-10-20｜狀態：待獨立 review；`planning/tasks.json` 的狀態未改，由 reviewer 決定。｜需求：REQ-006、REQ-009（另涵蓋 REQ-010 的 AI scenario 批准、REQ-018 的 audit）｜Gate：D-003、D-011、D-027、D-030、D-046、D-061、D-062 都已 APPROVED；本任務提出的 D-067、D-068、D-069 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-026 依建議實作，並把三項加進 T-026 的 gate（D-067 另加進 T-028）。｜驗收測試：TEST-005、TEST-006、TEST-007、TEST-009｜DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」），交給 coordinator 在一次性 database 上執行。**
+**日期：2026-10-20｜狀態：待獨立 review；`planning/tasks.json` 的狀態未改，由 reviewer 決定。｜需求：REQ-006、REQ-009（另涵蓋 REQ-010 的 AI scenario 批准、REQ-018 的 audit）｜Gate：D-003、D-011、D-027、D-030、D-046、D-061、D-062 都已 APPROVED；本任務提出的 D-067、D-068、D-069 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-026 依建議實作，並把三項加進 T-026 的 gate（D-067 另加進 T-028）。｜驗收測試：TEST-005、TEST-006、TEST-007、TEST-009｜本 worktree 不能執行 DB 測試；coordinator 在一次性 database 上第一次執行 `make integration-test` 時 exit 2（四個 DB-backed 測試失敗，見「第二輪」），原因在測試設定，已修正，**重跑仍待 coordinator**。**
 
 範圍依 tasks.json：
 
@@ -22,9 +22,13 @@
 | b0eb9b2 | Migration 0013（up／down）；`db/tests/proposal_decisions.sql`（template 與 render 的 ID）；`constraints.sql` 的 fixture；`run_db_tests.sh` 依原本的順序加入 0013 |
 | ba56408 | `internal/proposals/approval`（service、revalidation、HTTP adapter、unit 與 DB-backed 測試）；`internal/storage/proposals` 的決策寫入與欄位；`internal/storage/scenarios`；`internal/storage/models.LockDraft`；`internal/models.Service.Advance`；Proposal resource 的決策紀錄；`internal/api` 的 route 與 HTTP 整合測試；architecture 規則 `decisions-only-in-the-api` 與 probe；mutation harness 與 log |
 | 590f76f | 文件：D-067–D-069 PROPOSED（DECISIONS_AND_TBD、decisions.json）、CB-42、CB-33 的涵蓋；ARCHITECTURE、AI_SPEC、API_DATABASE、SECURITY、db/README；tasks.json 的 planned outputs、gate 與 package 的說明（status 未改）；traceability；重產的 `checks/*.json`；Makefile 的說明文字 |
-| （本 commit，hash 見 `git log`） | 本報告；`checks/evidence/2026-10-20-T-026/` 的 `environment.txt`、`exit-codes.txt`、各指令的 log、`db-not-run.txt` |
+| 154ce2b | 本報告（第一版）；`checks/evidence/2026-10-20-T-026/` 的 `environment.txt`、`exit-codes.txt`、各指令的 log、`db-not-run.txt` |
+| 38541d4 | 第二輪的修正（只改測試）：scenario 的回答以 scenario role 寫入 fake；`TestApprovalOnAMovedBase` 第四個 proposal 改為 `lowerCI`；不需 DB 的重現測試；red／green log 與 coordinator 失敗 log 的節錄 |
+| （本 commit，hash 見 `git log`） | 本報告的第二輪更新、`db-not-run.txt`、第二輪的執行 log（`*-r2.log`、`exit-codes-r2.txt`） |
 
 ## 稽核：scope 逐條
+
+表中的「DB NOT RUN」是指在本 worktree。Coordinator 在 f595f07 上的那次執行中，edit 的 DB 路徑與所有 SQL 都已通過，scenario 的路徑則停在 `not ready`；詳見「第二輪」。
 
 | Scope | 判定 | 證據／處理 |
 |---|---|---|
@@ -75,6 +79,7 @@
 | DB：`TestApprovalIdempotency`、`TestDecisionRaces`、`TestApprovalOnAMovedBase`、`TestApprovalFreezesTheManifest`、`proposal_decisions.sql` | 同 key／不同 key 只有一份 effect；不同 proposal 同 base 一個成功一個 409；DB 的一份 effect 保證 | TEST-007 |
 | DB：`TestDecisionRoles`、`TestApprovalRefusals`、`TestApprovalClosedLoop` | role 矩陣、其他 organization 404、HTTP 的所有拒絕與 closed loop | TEST-009、TEST-006 |
 | DB：`TestDecisionsNeedTheirState`（storage） | 決策 SQL 只離開它能離開的狀態，organization filter 本身也成立 | TEST-009 |
+| `TestScriptedAnswersReachEachMode`、`TestTheDBTestsAnswersAreReady`（approval）、`TestTheClosedLoopsAnswersAreReady`（api），第二輪新增，不需 DB | DB 測試寫入的回答以 generator 的方式詢問時，會以 mode 的 role 被讀到，並在它被詢問的 base 上 ready | 測試設定本身（第二輪） |
 
 ### 先紅後綠
 
@@ -83,10 +88,39 @@
 - Architecture probe：第一次以 `internal/ai/review` 連結 approval，因 approval import review 而形成 import cycle、無法載入（沒有保留 log）；改用 approval 不 import 的 `internal/ai/aicontext`，與 T-025 遇到的情況相同。
 - DB 測試與 SQL 都沒有執行，所以沒有它們的 red 或 green。
 
+## 第二輪：coordinator 的 integration 失敗與修正
+
+**Coordinator 的結果**（把五個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`，f595f07，一次性 `dt_test_*` database）：spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（frontend-test 在那裡可以執行：18 個檔案）；`make integration-test` exit 2。Migration 0013 的 up／down／up 與所有 SQL suite（包括 `proposal_decisions.sql`、`constraints.sql`）都通過，25 個 Go package ok。失敗的是四個 DB-backed 測試，訊息都是 `not ready`：proposal 的 `Mode:scenario`，結果是 `Status:needs_input`，`Questions:[Which change should the proposal make?]`，`Changes:null`。四個測試是 `internal/proposals/approval` 的 `TestApproveScenario`（db_test.go:431）、`TestApprovalOnAMovedBase`（:591）、`TestDecisionsWaitForTheModelRow`（:760），以及 `internal/api` 的 `TestApprovalClosedLoop`（approvals_test.go:93）。節錄在 `integration-red-excerpt.log`。Edit mode 的 DB 測試都通過了：`TestApproveEdit`、`TestApproveKeepsADirtyDraft`、`TestApprovalIdempotency`、`TestDecisionRaces`、`TestDecisionRoles`、`TestRejectAndStates`、`TestApprovalReviewsAgain`、`TestApprovalFreezesTheManifest`、`TestDecisionsNeedTheirState`、`TestApprovalRefusals`。
+
+**根本原因：測試設定錯誤，不是 production code 的問題。** 兩個 helper（`db_test.go` 的 `ready`、`approvals_test.go` 的 `readyOver`）不論 mode，都以 `provider.RoleModeler` 寫入 fake 的回答。但 generator 是以 mode 的 role 發出請求的（`provider.Mode(pr.Mode)` 再由 `aicontext.Proposal` 轉成 `Mode.Role()`：edit 用 modeler，scenario 用 scenario）。Fake 只讀請求 role 底下的 script（`fake.Complete` 以 `script[req.Prompt.Role][key]` 查找；`fake_test.go` 的 `TestScript` 也明確測了「scenario role 不使用 modeler 的 script」），所以 scenario 請求沒找到 script，拿到 fake 預設的安全回答 needs_input。T-025 的 generator 測試（`loop_test.go`）對 scenario 本來就用 `RoleScenario`，generator、fake、review 都沒有錯。
+
+**先紅後綠（沒有 DB）**：
+- 新增 `internal/proposals/approval/script_test.go` 與 `internal/api/script_test.go`（不需 DB）。DB 測試現在都透過 `scriptAnswer`／`scriptProposal` 寫入回答，而這兩個測試以 generator 在兩個 transaction 之間做的事（`aicontext.Proposal` 建 context、provider client 呼叫 fake、`review.Review`）詢問同一個 script。`TestScriptedAnswersReachEachMode` 檢查請求的 role 是 mode 的 role、回答是 proposed、review 是 ready。`TestTheDBTestsAnswersAreReady` 與 `TestTheClosedLoopsAnswersAreReady` 把 DB 測試期望 ready 的每個回答，放在它被詢問的 base 上（version 1、approved raiseCI 之後、再 publish 一個改名之後）檢查。
+- Red（`scenario-script-red.log`，exit 1）：helper 仍寫入 modeler 時，三個 scenario 案例都得到 `needs_input`，問題與 coordinator 的 log 相同，這就是 coordinator 看到的錯誤。同一個檢查也找到第二個錯誤：之前被第一個錯誤蓋住，DB 上還沒跑到。`TestApprovalOnAMovedBase` 的第四個 proposal 在 version 3 上又提出 `raiseCI`，但 version 3 的 CI capacity 已經是 6（來自第一個批准），review 把這個什麼都不改的 patch 判為 invalid（`AI_OUTPUT_INVALID` `/changes`「the changes leave the model as it is」）。不修正的話，coordinator 重跑時這個測試會在 db_test.go:655 再失敗一次。
+- 修正（38541d4）：兩個 helper 改為以 `provider.Mode(mode).Role()` 寫入，mode 沒有 role 時直接 panic。第四個 proposal 改為 `lowerCI`，並加上原因的註解。closed loop 的 scenario 回答抽成 `eightRunners` 常數，讓 DB 測試與不需 DB 的檢查使用同一份。沒有降低或移除任何 assertion，也沒有加 skip；production code 沒有改。
+- Green（`scenario-script-green.log`，exit 0）：三個新測試都通過。
+
+**第二輪在本 worktree 的執行**（38541d4，先 `go clean -testcache`；`exit-codes-r2.txt`、`*-r2.log`）：
+
+| 指令 | Exit | 結果 |
+|---|---|---|
+| `make spec-check PYTHON=.venv/bin/python` | 0 | 與第一輪相同，重產的 `checks/*.json` 沒有差異 |
+| `make backend-test` | 0 | 58 個 package ok |
+| `make backend-race` | 0 | 58 個 package ok |
+| `make architecture-check` | 0 | `PASS architecture: 71 packages, 16 rules, 16 build configurations`（新測試 import 的 AI package 不違反規則） |
+| `make ai-eval` | 0 | fake provider 的 suite PASS |
+| `make ts-contracts PYTHON=.venv/bin/python` | 0 | 沒有差異 |
+| `make frontend-test` | 2 | 與第一輪相同：本機沒有 `node_modules`，Node 版本不符。Coordinator 那裡 exit 0 |
+| `go test -count=1 -v`（T-026 相關 package） | 0 | 33 個 PASS（多了 3 個新測試）、98 個 SKIP（都是 DB-backed）、0 個 FAIL |
+| `make integration-test` | — | NOT RUN（本 worktree）；等 coordinator 重跑 |
+
+**仍然只在 DB 上才能驗證的部分**：這四個測試在 `not ready` 之後的步驟（scenario 批准的 201 與 Approval schema、`twin.scenarios` 的一列與它的名稱、patch、hash、0013 的 `scenario_is_its_proposals_effect` 在 API role 下 commit、scenario 的 conflict、publish 移動 base 後的 conflict、指定別的 base 不改任何東西、scenario 批准等待 model row、HTTP 上的 scenario 批准與之後的拒絕）**從未在 PostgreSQL 上執行過**。這一輪我逐行重讀了這些步驟對應的 SQL 與 schema（scenarios 的欄位與 grant、0001 的 approval 規則、proposal schema 的 approved scenario 規則、error envelope），沒有找到其他錯誤，但這不能代替執行。
+
 ## NOT RUN
 
-- **所有 DB 測試**：`make integration-test`、`make db-test`、`db-go-test`。本 worktree 沒有 PostgreSQL server，依 coordinator 的指示沒有嘗試 su、runuser 或其他方式。清單與執行方式在 `db-not-run.txt`，供 coordinator 在新的 `dt_test_*` database 上執行：
-  - SQL：新的 `db/tests/proposal_decisions.sql`、fixture 改過的 `db/tests/constraints.sql`、migration 0013 的 up／down／up（`run_db_tests.sh`）。**Migration 0013 從未在任何 PostgreSQL 上執行過**：語法、trigger 行為、與 0001–0012 的互動、down migration 都沒有驗證。
+- **在本 worktree 執行的 DB 測試：無**。`make integration-test`、`make db-test`、`db-go-test` 都沒有在這裡執行：沒有 PostgreSQL server，依 coordinator 的指示沒有嘗試 su、runuser 或其他方式。Coordinator 執行過一次（f595f07，exit 2，見「第二輪」）；**38541d4 修正之後還沒有在 DB 上重跑**。清單與執行方式在 `db-not-run.txt`：
+  - 修正後必須重跑：`make integration-test` 全部。最少也要跑先前失敗的 `TestApproveScenario`、`TestApprovalOnAMovedBase`、`TestDecisionsWaitForTheModelRow`、`TestApprovalClosedLoop`，以及 helper 被改到、上一次通過的其他 approval DB 測試與 `TestApprovalRefusals`（它們只用 edit，寫入的 role 不變，但 helper 改了）。
+  - SQL：`db/tests/proposal_decisions.sql`、`db/tests/constraints.sql`、migration 0013 的 up／down／up 已在 coordinator 的那次執行中通過（f595f07）；第二輪沒有修改 SQL 或 migration。
   - 新的 DB-backed Go 測試：`internal/proposals/approval` 的 `TestApproveEdit`、`TestApproveKeepsADirtyDraft`、`TestApproveScenario`、`TestApprovalIdempotency`、`TestDecisionRaces`、`TestApprovalOnAMovedBase`、`TestDecisionRoles`、`TestDecisionsWaitForTheModelRow`、`TestRejectAndStates`、`TestApprovalReviewsAgain`、`TestApprovalFreezesTheManifest`；`internal/api` 的 `TestApprovalClosedLoop`、`TestApprovalRefusals`；`internal/storage/proposals` 的 `TestDecisionsNeedTheirState`。
   - 受影響、必須重跑的既有 DB 測試：`internal/proposals/...`（generator 讀的欄位多了決策紀錄）、`internal/storage/proposals`、`internal/models/...`（`Advance`）、`internal/storage/models`（`LockDraft`）、`internal/api/...`、`internal/worker`、`cmd/api`、`cmd/worker`，以及所有 SQL suite。
 - `make frontend-test`：執行了但 exit 2：`apps/web/node_modules` 不存在（`eslint` 為 `ERR_MODULE_NOT_FOUND`），且本機 Node 22.22.0 不符 `package.json` 的 `>=24.21.0 <25`；沒有為此安裝 Node 或依賴，因此 lint、typecheck、unit 都未實際執行，不能列為 PASS。`contracts.test.ts` 的新正反例與 typecheck 都沒有執行；只有 `gen_ts_contracts --check` 確認產生的 TS 是最新的。
@@ -103,7 +137,8 @@
 
 ## 殘餘風險
 
-- 0013 與所有 DB 測試從未執行，是最大的風險；coordinator 的 `make integration-test` 之前，不能認定 lifecycle、一份 effect、競爭與 role 的保證成立。尤其：0013 的 deferred trigger 在 API 與 owner 兩種 role 下透過 RLS 讀 proposal 與 version；`TestApprovalReviewsAgain` 在測試 transaction 中 `DISABLE TRIGGER USER`；`proposal_decisions.sql` 在 plpgsql 的 exception block 中執行 `SET CONSTRAINTS ALL IMMEDIATE`。
+- 最大的風險：scenario 批准的整條路徑（`scenarios.Insert`、scenario 的 0013 trigger 在 API role 下 commit、scenario 的 conflict、等待 model row、HTTP closed loop）、`TestApprovalOnAMovedBase` 中 publish 之後與指定別的 base 的部分，都還沒有在 PostgreSQL 上執行過。第一次執行時，這些測試在 `not ready` 就停下了。38541d4 之後要等 coordinator 重跑 `make integration-test`，才能認定這些保證成立。Coordinator 的那次執行已經涵蓋 0013 的 up／down／up、SQL suite，以及 edit 的 DB 路徑。
+- `TestTheDBTestsAnswersAreReady` 的表格是手寫的，對應 DB 測試詢問的 base；DB 測試以後改了 base 或 changes，表格不會自動跟著改。
 - 批准在持有 model row 的 transaction 中重讀 dataset snapshot（與 publish、建立 run 相同）；manifest 大時（至多 1000 個 binding、每個至多 4 MiB）會延長 lock 的時間，沒有量測。
 - 批准後回傳的 `scenario_id` 在 T-028 之前不能以 `GET /v1/scenarios/{id}` 讀取（route 尚未實作）；`createSimulation` 已能以 `scenario_id` 執行它（T-023）。
 - D-067 的名稱是 provider 寫的 summary，scenario 不可修改，名稱之後無法更正；UI 必須 escape。
@@ -111,5 +146,5 @@
 - Base 已變而沒有人嘗試批准的 proposal 會一直顯示為 ready；UI（T-031）應以 base 與 latest 比較來提示。
 - Conflict 的 409 存為 key 的回應，replay 時 body 中的 `request_id` 是第一次 request 的。
 - TS client 沒有 approve／reject 方法，前端的型別測試沒有執行。
-- `internal/storage/scenarios`（`Insert`、`Get`）沒有自己的測試檔，只由 approval 的 DB 測試（`TestApproveScenario`、`TestApprovalClosedLoop`）間接涵蓋，而那些也沒有執行。
+- `internal/storage/scenarios`（`Insert`、`Get`）沒有自己的測試檔，只由 approval 的 DB 測試（`TestApproveScenario`、`TestApprovalClosedLoop`）間接涵蓋，而這兩個測試在修正後還沒有在 DB 上跑過。
 - `TestDecisionRoles` 與 `TestDecisionsWaitForTheModelRow` 以 500 ms 判斷「沒有等待」（與 T-012 的鎖測試相同的做法），在很慢的機器上可能誤報。
