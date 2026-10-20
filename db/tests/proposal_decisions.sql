@@ -1,7 +1,8 @@
 -- T-026 (migration 0013; AI_SPEC §6, D-003, D-004, D-030; D-068, D-069
 -- PROPOSED; TEST-006, TEST-007): a decision keeps the person's comment,
 -- only on an approved or rejected proposal, written by the decision; the
--- worker cannot name the column; a conflicted proposal names who found the
+-- worker cannot write the column (no UPDATE privilege; it reads it as it
+-- reads every column); a conflicted proposal names who found the
 -- conflict; a version or scenario that names a source proposal is that
 -- approved proposal's one effect when the transaction commits (a version:
 -- the next one after the proposal's base, so an approval on a base that is
@@ -96,7 +97,7 @@ UPDATE twin.models SET latest_version_id='mv_01M4YDQK00TA00000000000001' WHERE o
 SET CONSTRAINTS ALL IMMEDIATE; -- the version's deferred manifest check passes
 SET CONSTRAINTS ALL DEFERRED;
 
--- Who may write what: the worker cannot name the comment and creates no
+-- Who may write what: the worker cannot write the comment and creates no
 -- version or scenario; the API writes the comment; nobody calls the check.
 SELECT pg_temp.check(NOT has_column_privilege('twin_worker','twin.ai_proposals','decision_comment','UPDATE'),
   'the worker cannot write a decision comment');

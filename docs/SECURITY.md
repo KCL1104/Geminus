@@ -60,7 +60,8 @@ T-026 實作（`internal/proposals/approval`，migration 0013；D-067–D-069 PR
 - **Schema-valid 不是 authorized**：批准時以 `internal/ai/review` 對存下的內容再 review 一次、重跑 dataset binding stage 並重讀 snapshot，不採信存下的 validation、risk 或 hash；存下的 risk 低於 server 重算的值、patch 在 review 後被改、pack 的規則已改變、snapshot 的內容已不符，都不會批准（`TestRecheckTrustsNoStoredResult`、`TestRecheckAppliesTodaysRules`；DB：`TestApprovalReviewsAgain`、`TestApprovalFreezesTheManifest`）。
 - **一個 effect、沒有 rebase**：同一 key 只有一個 effect；換 key 再批准為 409 `PROPOSAL_ALREADY_DECIDED`（D-030）；base 已變時 proposal 轉 conflicted、回 409，不自動 rebase；0013 在 commit 時要求以 proposal 為來源的 version 是 base 的下一個 version、scenario 與 proposal 的 patch 相同，所以 API 的錯誤也無法建立第二個 effect 或從過時的 base 分岔。
 - **Audit 與隱私**：`proposal.approve`、`proposal.reject`、`proposal.conflict` 只記 ID、hash、risk 與狀態；comment 是使用者文字，存在 proposal 與 version，不進 audit（D-041、D-068）。錯誤訊息不引用 provider 的文字（issue 經 `review.Clean`，D-061 (f)）。
-- **DB 測試**：`db/tests/proposal_decisions.sql`、修改過的 `constraints.sql` 與 `internal/proposals/approval`、`internal/api`、`internal/storage/proposals` 的 DB-backed Go 測試在本 worktree NOT RUN（沒有 PostgreSQL；su／runuser 不可用），交給 coordinator 在一次性 database 上執行（`checks/T-026_VALIDATION.md`）。
+- **Idempotency 與 tenant**：key 的 scope 不含 proposal，fingerprint 含 proposal ID 與 normalized parsed body，所以一個 key 不會把一個 proposal 的回答交給另一個 proposal（review M1）；replay 仍先查 role，重送的錯誤回答帶這次 request 的 ID。每個決策 SQL 都以 organization 過濾，不只靠 RLS（`TestDecisionsStayInTheirOrganization` 以不受 RLS 限制的 superuser 驗證）。
+- **DB 測試**：`db/tests/proposal_decisions.sql`、修改過的 `constraints.sql` 與 `internal/proposals/approval`、`internal/api`、`internal/storage/proposals` 的 DB-backed Go 測試由 coordinator 在一次性 database 上執行：95b64e7（第二輪）時 `make integration-test` exit 0（`checks/evidence/2026-10-20-T-026/coordinator-integration.log`）。Review round 1 新增的 DB 測試尚未在 database 上執行（`checks/T-026_VALIDATION.md`）。
 
 ## 6. Import / file / object storage
 
