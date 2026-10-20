@@ -12,10 +12,12 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/import/profiler"
+	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
@@ -77,15 +79,66 @@ func TestRunRefusesToStartWithoutHandlers(t *testing.T) {
 	}
 }
 
-// This build runs simulation jobs (T-023) and import profiling (T-016);
-// nothing else yet (import validation is T-017's, AI jobs T-025's).
+// This build runs simulation jobs (T-023), import profiling (T-016) and AI
+// proposals (T-025); nothing else yet (import validation is T-017's,
+// analyses T-030's).
 func TestTheBuildRunsSimulations(t *testing.T) {
 	hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
-	if err != nil || len(hs) != 2 || hs[jobs.Simulation] == nil {
+	if err != nil || len(hs) != 3 || hs[jobs.Simulation] == nil {
 		t.Fatalf("%v %v", hs, err)
 	}
 	if _, ok := hs[jobs.ImportProfile].(*profiler.Handler); !ok {
 		t.Errorf("the import_profile handler is a %T", hs[jobs.ImportProfile])
+	}
+	if _, ok := hs[jobs.ModelProposal].(*generator.Handler); !ok {
+		t.Errorf("the model_proposal handler is a %T", hs[jobs.ModelProposal])
+	}
+}
+
+// T-025: the provider's mode is the configuration's, and without the
+// owner's recorded approval no configuration reaches a live provider:
+// disabled is the default, anthropic without an approval answers
+// policy_not_approved (and config refuses an approval this build does not
+// record), the fake answers only where config allows it.
+func TestTheProviderIsTheConfigured(t *testing.T) {
+	ctx := context.Background()
+	for _, c := range []struct {
+		name string
+		env  []string
+		want provider.Code
+	}{
+		{"default", nil, provider.CodeNotConfigured},
+		{"disabled", []string{"AI_PROVIDER", "disabled"}, provider.CodeNotConfigured},
+		{"live without approval", []string{"AI_PROVIDER", "anthropic"}, provider.CodePolicyNotApproved},
+		// The fake is reached: it refuses this unsealed prompt as any
+		// backend's client would.
+		{"fake", []string{"AI_PROVIDER", "fake", "APP_ENV", "test"}, provider.CodeInvalidRequest},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			ai, err := config.LoadAI(with(c.env...))
+			if err != nil {
+				t.Fatal(err)
+			}
+			client, budget, err := aiClient(ai)
+			if err != nil || budget.Validate() != nil {
+				t.Fatalf("%v %v", err, budget.Validate())
+			}
+			_, err = client.GenerateModelProposal(ctx, provider.ProposalContext{OrganizationID: ids.New("org"), Mode: provider.ModeEdit})
+			if got := provider.CodeOf(err); got != c.want {
+				t.Fatalf("code %q, want %q", got, c.want)
+			}
+		})
+	}
+	if _, err := config.LoadAI(with("AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "owner-approved-2026")); err == nil {
+		t.Fatal("an approval this build does not record was accepted")
+	}
+	// The budget a deployment sets reaches the client and the context.
+	ai, err := config.LoadAI(with("AI_PROVIDER", "fake", "APP_ENV", "test", "AI_MAX_PROMPT_BYTES", "65536", "AI_MAX_RETRIES", "0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, budget, err := aiClient(ai); err != nil || budget.MaxPromptBytes != 65536 || budget.MaxRetries != 0 {
+		t.Fatalf("%+v %v", budget, err)
 	}
 }
 

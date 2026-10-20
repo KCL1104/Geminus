@@ -22,6 +22,7 @@ import (
 	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -54,7 +55,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
-	var opts []api.Option
+	opts := []api.Option{api.WithAI(aiAvailability(cfg))}
 	if cfg.ObjectStorage.Provider == config.ObjectStorageFilesystem {
 		fs, err := objects.NewFS(cfg.ObjectStorage.Root, cfg.Env)
 		if err != nil {
@@ -118,6 +119,23 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 	}
 	log.Info("stopped")
 	return 0
+}
+
+// aiAvailability is whether new AI proposals are accepted (T-025): with the
+// deterministic fake (development and tests only, config refuses it
+// elsewhere) or an approved live provider; otherwise they are refused with
+// the code AI_SPEC §2 names, before anything is stored. The API never
+// calls a provider itself, and reads no key.
+func aiAvailability(cfg config.Config) proposals.Availability {
+	switch {
+	case cfg.AIProvider == config.AIProviderFake:
+		return proposals.Available
+	case cfg.AIProvider == config.AIProviderAnthropic && cfg.AILive:
+		return proposals.Available
+	case cfg.AIProvider == config.AIProviderAnthropic:
+		return proposals.PolicyNotApproved
+	}
+	return proposals.NotConfigured
 }
 
 // shutdownGrace is how long a shutdown waits for requests in progress.

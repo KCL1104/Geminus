@@ -22,10 +22,11 @@ var appLayers = []string{
 	"./internal/auth/...",
 	"./internal/tenant/...",
 	"./internal/project/...",
-	"./internal/models/...", // model, draft and version service (T-012, ADR-022)
-	"./internal/runs/...",   // simulation run service and its job handler (T-023)
-	"./internal/packs/...",  // the packs a deployment serves (T-023 review L2)
-	"./internal/worker/...", // the job loop and its handler interface (T-019, ADR-024)
+	"./internal/models/...",    // model, draft and version service (T-012, ADR-022)
+	"./internal/runs/...",      // simulation run service and its job handler (T-023)
+	"./internal/proposals/...", // AI proposal service and its job handler (T-025)
+	"./internal/packs/...",     // the packs a deployment serves (T-023 review L2)
+	"./internal/worker/...",    // the job loop and its handler interface (T-019, ADR-024)
 	"./internal/storage/...",
 	"./internal/import/...",
 	"./internal/ai/...",
@@ -237,8 +238,8 @@ var rules = []rule{
 		name:    "job-handlers-only-in-the-worker",
 		why:     "job handlers run claimed jobs under the worker's lease: only the worker binary registers them, never the API or a service it shares (ADR-024)",
 		applies: []string{"./..."},
-		except:  []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/..."},
-		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/..."}, // T-023, T-016
+		except:  []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/proposals/generator/..."},
+		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/proposals/generator/..."}, // T-023, T-016, T-025
 	},
 	{
 		// The parser and the report writer read and write bytes: the

@@ -5,9 +5,14 @@
 // deployment's organizations until SIGINT or SIGTERM.
 //
 // The handlers this build registers: simulation runs (T-023,
-// internal/runs/runner) and import profiling (T-016,
-// internal/import/profiler). Import validation (T-017) and AI proposals and
-// analyses (T-025) are not built yet; their jobs stay queued.
+// internal/runs/runner), import profiling (T-016, internal/import/profiler)
+// and AI proposals (T-025, internal/proposals/generator), which ask the
+// provider of the configured mode: disabled (the default; every proposal
+// fails AI_PROVIDER_NOT_CONFIGURED), the deterministic fake (development
+// and tests) or the live adapter, which config enables only with the
+// owner's recorded approval (none is recorded: H-001, H-017). Import
+// validation (T-017) and analyses (T-030) are not built yet; their jobs
+// stay queued.
 package main
 
 import (
@@ -22,9 +27,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/provider/anthropic"
+	"github.com/kcl1104/geminus/internal/ai/provider/fake"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/packs"
+	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/storage/objects"
@@ -77,6 +86,7 @@ func listen() (context.Context, context.CancelFunc) {
 // deps is what the handlers are built from: the validated configuration.
 type deps struct {
 	worker  config.Worker
+	ai      config.AI
 	objects objects.Store // nil when object storage is disabled
 	log     *slog.Logger
 }
@@ -99,7 +109,69 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[jobs.Type]handler.Handler{jobs.Simulation: sim, jobs.ImportProfile: profile}, nil
+	client, budget, err := aiClient(d.ai)
+	if err != nil {
+		return nil, err
+	}
+	proposals, err := generator.New(generator.Config{Provider: client, Budget: budget, Packs: served, Objects: d.objects,
+		Actor: d.worker.ID, Log: d.log})
+	if err != nil {
+		return nil, err
+	}
+	return map[jobs.Type]handler.Handler{jobs.Simulation: sim, jobs.ImportProfile: profile, jobs.ModelProposal: proposals}, nil
+}
+
+// aiClient is the checked provider client of the configured mode (T-024,
+// ADR-027): every mode goes through provider.Client. Disabled, and a live
+// provider without the owner's recorded approval, answer every call with
+// their code and read no key; the fake is for development and tests
+// (config refuses it elsewhere); the live adapter takes the approval token
+// and the keys config read, by label (D-018).
+func aiClient(ai config.AI) (*provider.Client, provider.Budget, error) {
+	budget := provider.DefaultBudget()
+	b := ai.Budget
+	if b.MaxPromptBytes > 0 {
+		budget.MaxPromptBytes = b.MaxPromptBytes
+	}
+	if b.MaxOutputTokens > 0 {
+		budget.MaxOutputTokens = b.MaxOutputTokens
+	}
+	if b.TimeoutSeconds > 0 {
+		budget.Timeout = time.Duration(b.TimeoutSeconds) * time.Second
+	}
+	if b.AttemptTimeoutSeconds > 0 {
+		budget.AttemptTimeout = time.Duration(b.AttemptTimeoutSeconds) * time.Second
+	}
+	if b.MaxRetries != nil {
+		budget.MaxRetries = *b.MaxRetries
+	}
+	if b.MaxConcurrentPerOrganization > 0 {
+		budget.MaxConcurrentPerOrganization = b.MaxConcurrentPerOrganization
+	}
+	var backend provider.Backend
+	switch {
+	case ai.Provider == config.AIProviderFake:
+		backend = fake.New()
+	case ai.LiveEnabled():
+		creds := make([]anthropic.Credential, len(ai.Credentials))
+		for i, c := range ai.Credentials {
+			creds[i] = anthropic.Credential{Label: c.Label, Key: c.Key}
+		}
+		live, err := anthropic.New(anthropic.Config{Approval: ai.Approval, Model: ai.Model, Credentials: creds})
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		backend = live
+	case ai.Provider == config.AIProviderAnthropic:
+		backend = provider.Disabled{Code: provider.CodePolicyNotApproved}
+	default:
+		backend = provider.Disabled{Code: provider.CodeNotConfigured}
+	}
+	client, err := provider.New(backend, budget)
+	if err != nil {
+		return nil, provider.Budget{}, err
+	}
+	return client, budget, nil
 }
 
 // objectStore opens the configured object storage (D-044): nil when it is
@@ -120,6 +192,12 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 	log := slog.New(slog.NewJSONHandler(stderr, nil)).With("component", "worker")
 	cfg, err := config.Load(getenv)
 	wcfg, werr := config.LoadWorker(getenv)
+	// Load checked the AI configuration with the rest; this is its whole
+	// value (mode, approval, budget, credentials by label).
+	ai, aerr := config.LoadAI(getenv)
+	if err == nil {
+		err = aerr
+	}
 	if err = errors.Join(err, werr); err != nil {
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
@@ -141,7 +219,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 		log.Error("invalid configuration", "error", "OBJECT_STORAGE_ROOT cannot be used: "+err.Error())
 		return exitConfig
 	}
-	handlers, err := build(deps{worker: wcfg, objects: store, log: log})
+	handlers, err := build(deps{worker: wcfg, ai: ai, objects: store, log: log})
 	if err != nil {
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig

@@ -1,0 +1,181 @@
+package proposals
+
+import (
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"fmt"
+	"regexp"
+
+	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/storage/jobs"
+	store "github.com/kcl1104/geminus/internal/storage/proposals"
+)
+
+// Proposal is proposal.schema.json: the server's resource. Members a state
+// does not hold are left out.
+type Proposal struct {
+	ProposalID           string                 `json:"proposal_id"`
+	OrganizationID       string                 `json:"organization_id"`
+	ModelID              string                 `json:"model_id"`
+	BaseVersionID        string                 `json:"base_version_id"`
+	Mode                 string                 `json:"mode"`
+	Status               string                 `json:"status"`
+	CreatedBy            string                 `json:"created_by"`
+	CreatedAt            string                 `json:"created_at"`
+	RequiresConfirmation bool                   `json:"requires_confirmation"`
+	Summary              *string                `json:"summary,omitzero"`
+	Assumptions          []string               `json:"assumptions,omitzero"`
+	RiskLevel            *string                `json:"risk_level,omitzero"`
+	Confidence           *float64               `json:"confidence,omitzero"`
+	Changes              jsontext.Value         `json:"changes,omitzero"`
+	ExpectedEffects      []string               `json:"expected_effects,omitzero"`
+	Questions            []string               `json:"questions,omitzero"`
+	Validation           jsontext.Value         `json:"validation,omitzero"`
+	NewVersionID         *string                `json:"new_version_id,omitzero"`
+	ScenarioID           *string                `json:"scenario_id,omitzero"`
+	PatchHash            *string                `json:"patch_hash,omitzero"`
+	Error                *ErrorEnvelope         `json:"error,omitzero"`
+	DatasetBindings      []model.DatasetBinding `json:"dataset_bindings,omitzero"`
+	ServerRiskLevel      *string                `json:"server_risk_level,omitzero"`
+	ProviderRiskClaim    *string                `json:"provider_risk_claim,omitzero"`
+}
+
+func nonNil[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
+}
+
+// Public is the resource of row p: what its state holds, and nothing the
+// provider wrote that the state does not keep. A failed proposal's error is
+// its job's failure in the contract's envelope, under the request that
+// created it (requestID only if that is unknown).
+func Public(p store.Proposal, requestID string) (Proposal, error) {
+	out := Proposal{ProposalID: p.ID, OrganizationID: p.OrganizationID, ModelID: p.ModelID, BaseVersionID: p.BaseVersionID,
+		Mode: p.Mode, Status: string(p.Status), CreatedBy: p.CreatedBy, CreatedAt: timestamp(p.CreatedAt), RequiresConfirmation: true}
+	needsInput := func() {
+		out.Summary, out.Assumptions, out.Questions = p.Summary, nonNil(p.Assumptions), p.Questions
+	}
+	reviewed := func() error {
+		changes, err := hashing.Canonical(p.Patch)
+		if err != nil {
+			return fmt.Errorf("proposal %s: stored patch: %w", p.ID, err)
+		}
+		validation, err := hashing.Canonical(p.Validation)
+		if err != nil {
+			return fmt.Errorf("proposal %s: stored validation: %w", p.ID, err)
+		}
+		out.Summary, out.Assumptions, out.ExpectedEffects = p.Summary, nonNil(p.Assumptions), nonNil(p.ExpectedEffects)
+		out.Changes, out.PatchHash, out.Validation, out.Confidence = changes, p.PatchHash, validation, p.Confidence
+		out.ServerRiskLevel, out.ProviderRiskClaim, out.RiskLevel = p.ServerRisk, p.ProviderRisk, p.Risk
+		out.DatasetBindings = nonNil(p.DatasetBindings)
+		return nil
+	}
+	switch p.Status {
+	case store.Generating:
+	case store.NeedsInput:
+		needsInput()
+	case store.Ready, store.Conflicted:
+		if err := reviewed(); err != nil {
+			return Proposal{}, err
+		}
+	case store.Approved:
+		if err := reviewed(); err != nil {
+			return Proposal{}, err
+		}
+		out.NewVersionID, out.ScenarioID = p.NewVersionID, p.ScenarioID
+	case store.Rejected:
+		// Rejected after review (it has changes) or after asking for
+		// input (it has questions).
+		if p.Patch != nil {
+			if err := reviewed(); err != nil {
+				return Proposal{}, err
+			}
+		} else {
+			needsInput()
+		}
+	case store.Invalid:
+		validation, err := hashing.Canonical(p.Validation)
+		if err != nil {
+			return Proposal{}, fmt.Errorf("proposal %s: stored validation: %w", p.ID, err)
+		}
+		out.Validation = validation
+	case store.Failed:
+		id := p.RequestID
+		if id == "" {
+			id = requestID
+		}
+		e, err := failureError(p.Failure, id)
+		if err != nil {
+			return Proposal{}, fmt.Errorf("proposal %s: %w", p.ID, err)
+		}
+		out.Error = e
+	default:
+		return Proposal{}, fmt.Errorf("proposal %s: unknown status %q", p.ID, p.Status)
+	}
+	return out, nil
+}
+
+// ErrorEnvelope is common.schema.json#/$defs/Error.
+type ErrorEnvelope struct {
+	Error ErrorBody `json:"error"`
+}
+
+// ErrorBody is ErrorEnvelope.error.
+type ErrorBody struct {
+	Code      string        `json:"code"`
+	Message   string        `json:"message"`
+	Details   []ErrorDetail `json:"details"`
+	RequestID string        `json:"request_id"`
+}
+
+// ErrorDetail is one ErrorBody.details entry.
+type ErrorDetail struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+	Code   string `json:"code,omitzero"`
+}
+
+var failureCode = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
+
+// errorCodes maps a proposal job's failure code to the contract's closed
+// ErrorCode list (CB-40 (c), D-061 PROPOSED); the failure's own code stays
+// in details[0].code. The provider client's codes (internal/ai/provider)
+// are the job's failure codes with an AI_ prefix, upper case
+// (internal/proposals/generator).
+var errorCodes = map[string]string{
+	"AI_PROVIDER_NOT_CONFIGURED": "AI_PROVIDER_NOT_CONFIGURED",
+	"AI_POLICY_NOT_APPROVED":     "AI_POLICY_NOT_APPROVED",
+	"AI_RATE_LIMITED":            "RATE_LIMITED",
+	"AI_CONCURRENCY_LIMITED":     "RATE_LIMITED",
+	"AI_TIMEOUT":                 "SERVICE_UNAVAILABLE",
+	"AI_UNAVAILABLE":             "SERVICE_UNAVAILABLE",
+	"AI_CREDENTIALS_EXHAUSTED":   "SERVICE_UNAVAILABLE",
+	"DATASET_STORAGE_FAILED":     "SERVICE_UNAVAILABLE",
+	jobs.LeaseExpired:            "SERVICE_UNAVAILABLE",
+	"WORKER_STOPPED":             "SERVICE_UNAVAILABLE",
+	"AI_CONTEXT_TOO_LARGE":       "PAYLOAD_TOO_LARGE",
+}
+
+// failureError shows a stored job failure as the contract's error. A code
+// the table does not name (AI_REFUSED, AI_OUTPUT_TRUNCATED,
+// AI_REQUEST_REJECTED, AI_INVALID_REQUEST, PROPOSAL_INPUT_INVALID,
+// INTERNAL, NO_RESULT, JOB_CANCELLED...) is INTERNAL_ERROR.
+func failureError(failure []byte, requestID string) (*ErrorEnvelope, error) {
+	var f jobs.Failure
+	if err := json.Unmarshal(failure, &f); err != nil || !failureCode.MatchString(f.Code) {
+		return nil, fmt.Errorf("the stored failure is not a job failure")
+	}
+	message := f.Message
+	if message == "" {
+		message = "the proposal could not be generated"
+	}
+	code, ok := errorCodes[f.Code]
+	if !ok {
+		code = "INTERNAL_ERROR"
+	}
+	return &ErrorEnvelope{Error: ErrorBody{Code: code, Message: message, RequestID: requestID,
+		Details: []ErrorDetail{{Path: "", Reason: message, Code: f.Code}}}}, nil
+}

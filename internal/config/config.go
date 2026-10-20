@@ -33,6 +33,10 @@ const (
 type Config struct {
 	DatabaseURL string
 	AIProvider  AIProvider
+	// AILive reports whether the live provider is selected and approved
+	// (AI.LiveEnabled): only then may an AI request reach it. The API
+	// refuses new AI requests otherwise (T-025), without reading any key.
+	AILive bool
 	// Env is APP_ENV: "development", "test", "production", or "" (unset).
 	Env           string
 	ObjectStorage ObjectStorage
@@ -92,7 +96,7 @@ func Load(getenv func(string) string) (Config, error) {
 			errs = append(errs, err)
 		}
 	} else {
-		cfg.AIProvider = ai.Provider
+		cfg.AIProvider, cfg.AILive = ai.Provider, ai.LiveEnabled()
 	}
 
 	switch cfg.Env = getenv("APP_ENV"); cfg.Env {

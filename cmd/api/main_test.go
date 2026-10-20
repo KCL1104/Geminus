@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -33,6 +35,34 @@ func with(kv ...string) func(string) string {
 		m[kv[i]] = kv[i+1]
 	}
 	return func(k string) string { return m[k] }
+}
+
+// T-025: the API accepts new AI proposals only with the fake (development
+// and tests) or an approved live provider; otherwise it refuses them with
+// the code AI_SPEC §2 names, and no configuration makes it available
+// without the owner's recorded approval (none is recorded).
+func TestAIAvailability(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		env  []string
+		want proposals.Availability
+	}{
+		{"default", nil, proposals.NotConfigured},
+		{"disabled", []string{"AI_PROVIDER", "disabled"}, proposals.NotConfigured},
+		{"live without approval", []string{"AI_PROVIDER", "anthropic"}, proposals.PolicyNotApproved},
+		{"fake", []string{"AI_PROVIDER", "fake", "APP_ENV", "test"}, proposals.Available},
+	} {
+		cfg, err := config.Load(with(c.env...))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if got := aiAvailability(cfg); got != c.want {
+			t.Errorf("%s: %v, want %v", c.name, got, c.want)
+		}
+	}
+	if got := aiAvailability(config.Config{AIProvider: config.AIProviderAnthropic, AILive: true}); got != proposals.Available {
+		t.Errorf("an approved live provider: %v", got)
+	}
 }
 
 func TestRunRejectsInvalidConfiguration(t *testing.T) {

@@ -15,6 +15,7 @@ import (
 	"github.com/kcl1104/geminus/internal/models"
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/project"
+	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/runs"
 	"github.com/kcl1104/geminus/internal/simulation"
 	"github.com/kcl1104/geminus/internal/storage/objects"
@@ -32,6 +33,7 @@ type options struct {
 	stream    runs.Stream
 	maxUpload int64
 	upload    upload.Options
+	ai        proposals.Availability
 }
 
 // WithObjects gives the API private object storage (D-044): dataset
@@ -56,6 +58,11 @@ func WithUploadMaxBytes(n int64) Option { return func(o *options) { o.maxUpload 
 func WithUploadTimeout(d time.Duration) Option {
 	return func(o *options) { o.upload.UploadTimeout = d }
 }
+
+// WithAI says whether this deployment may ask an AI provider (cmd/api
+// derives it from the configuration, T-025). Without it every new proposal
+// is refused with 503 AI_PROVIDER_NOT_CONFIGURED and nothing is stored.
+func WithAI(a proposals.Availability) Option { return func(o *options) { o.ai = a } }
 
 // Domains lists the domains Handler serves (internal/packs, the registry
 // the worker builds as well).
@@ -93,6 +100,7 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	models.Register(mux, log, v, db, &models.Service{DB: db, Packs: served})
 	runs.Register(mux, log, v, db, &runs.Service{DB: db, Packs: served, Objects: o.objects, Limits: o.limits}, o.stream)
 	upload.Register(mux, log, v, db, &upload.Service{DB: db, Objects: o.objects, MaxBytes: o.maxUpload}, o.upload)
+	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai})
 	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")
 	})

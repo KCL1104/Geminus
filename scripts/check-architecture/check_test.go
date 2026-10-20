@@ -151,6 +151,14 @@ func TestProbesAreCaught(t *testing.T) {
 		{"a-service-links-the-handler", "internal/models/zz_probe.go", module + "/internal/runs/runner", "job-handlers-only-in-the-worker", "./internal/models", "./internal/runs/runner", false},
 		{"api-links-the-import-profiler", "cmd/api/zz_probe.go", module + "/internal/import/profiler", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/import/profiler", false},
 		{"the-upload-service-links-the-profiler", "internal/import/upload/zz_probe.go", module + "/internal/import/profiler", "job-handlers-only-in-the-worker", "./internal/import/upload", "./internal/import/profiler", false},
+		// T-025: only the worker links the proposal job handler; the AI
+		// packages never reach the proposal service or its handler.
+		{"api-links-the-proposal-generator", "cmd/api/zz_probe.go", module + "/internal/proposals/generator", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/proposals/generator", false},
+		{"the-proposal-service-links-the-generator", "internal/proposals/zz_probe.go", module + "/internal/proposals/generator", "job-handlers-only-in-the-worker", "./internal/proposals", "./internal/proposals/generator", false},
+		{"the-review-imports-the-proposal-service", "internal/ai/review/zz_probe.go", module + "/internal/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/proposals", false},
+		{"the-review-imports-storage", "internal/ai/review/zz_probe.go", module + "/internal/storage/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/storage/proposals", false},
+		{"the-review-reads-files", "internal/ai/review/zz_probe.go", "os", "ai-is-pure-but-the-adapter", "./internal/ai/review", "os", false},
+		{"the-kernel-imports-the-proposal-service", "internal/results/metrics/zz_probe.go", module + "/internal/proposals", "generic-kernel", "./internal/results/metrics", "./internal/proposals", false},
 		{"the-parser-reads-object-storage", "internal/import/profile/zz_probe.go", module + "/internal/storage/objects", "import-parsing-is-pure", "./internal/import/profile", "./internal/storage/objects", false},
 		{"the-parser-reads-the-tenant", "internal/import/profile/zz_probe.go", module + "/internal/tenant", "import-parsing-is-pure", "./internal/import/profile", "./internal/tenant", false},
 		{"the-report-serves-http", "internal/import/report/zz_probe.go", "net/http", "import-parsing-is-pure", "./internal/import/report", "net/http", false},
