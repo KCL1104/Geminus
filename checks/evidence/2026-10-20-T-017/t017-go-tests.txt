@@ -1,0 +1,629 @@
+=== RUN   TestVocabularyIsTheSchemas
+--- PASS: TestVocabularyIsTheSchemas (0.05s)
+=== RUN   TestCheck
+--- PASS: TestCheck (0.00s)
+=== RUN   TestLowConfidenceNeedsAPerson
+--- PASS: TestLowConfidenceNeedsAPerson (0.00s)
+=== RUN   TestCompile
+--- PASS: TestCompile (0.00s)
+=== RUN   TestTransforms
+--- PASS: TestTransforms (0.00s)
+=== RUN   TestMetadata
+--- PASS: TestMetadata (0.04s)
+=== RUN   TestRowRules
+--- PASS: TestRowRules (0.00s)
+=== RUN   TestApplyAll
+--- PASS: TestApplyAll (0.00s)
+=== RUN   FuzzApply
+=== RUN   FuzzApply/seed#0
+=== RUN   FuzzApply/seed#1
+=== RUN   FuzzApply/seed#2
+=== RUN   FuzzApply/seed#3
+=== RUN   FuzzApply/seed#4
+=== RUN   FuzzApply/seed#5
+=== RUN   FuzzApply/seed#6
+=== RUN   FuzzApply/seed#7
+=== RUN   FuzzApply/seed#8
+=== RUN   FuzzApply/seed#9
+--- PASS: FuzzApply (0.00s)
+    --- PASS: FuzzApply/seed#0 (0.00s)
+    --- PASS: FuzzApply/seed#1 (0.00s)
+    --- PASS: FuzzApply/seed#2 (0.00s)
+    --- PASS: FuzzApply/seed#3 (0.00s)
+    --- PASS: FuzzApply/seed#4 (0.00s)
+    --- PASS: FuzzApply/seed#5 (0.00s)
+    --- PASS: FuzzApply/seed#6 (0.00s)
+    --- PASS: FuzzApply/seed#7 (0.00s)
+    --- PASS: FuzzApply/seed#8 (0.00s)
+    --- PASS: FuzzApply/seed#9 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/mapping	0.161s
+=== RUN   TestRecordBounds
+--- PASS: TestRecordBounds (0.00s)
+=== RUN   TestHostileFilesAreBounded
+=== RUN   TestHostileFilesAreBounded/a_CSV_row_of_40M_commas
+    bounds_test.go:156: a file of 40000003 bytes: 132264 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_CSV_header_of_20M_columns
+    bounds_test.go:156: a file of 20000003 bytes: 136264 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_CSV_value_of_40_MB
+    bounds_test.go:156: a file of 40000003 bytes: 4818072 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_quoted_CSV_value_over_20M_lines
+    bounds_test.go:156: a file of 40000005 bytes: 5373832 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_CSV_header_of_300_columns
+    bounds_test.go:156: a file of 1392 bytes: 149672 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_CSV_row_of_500,000_fields
+    bounds_test.go:156: a file of 500002 bytes: 132152 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_JSON_row_of_40_MB
+    bounds_test.go:156: a file of 40000010 bytes: 4262616 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_JSON_row_of_4M_members
+    bounds_test.go:156: a file of 50888893 bytes: 19338912 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_JSON_row_with_an_object_of_4M_members
+    bounds_test.go:156: a file of 50888899 bytes: 19339168 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_JSON_model_with_an_object_of_4M_members
+    bounds_test.go:156: a file of 50888897 bytes: 4776800 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_JSON_row_with_an_object_of_80,000_members
+    bounds_test.go:156: a file of 868899 bytes: 26462872 bytes allocated
+=== RUN   TestHostileFilesAreBounded/40_MB_of_white_space_in_a_JSON_row
+    bounds_test.go:156: a file of 40000009 bytes: 4262616 bytes allocated
+=== RUN   TestHostileFilesAreBounded/40_MB_of_white_space_between_JSON_rows
+    bounds_test.go:156: a file of 40000017 bytes: 4263768 bytes allocated
+=== RUN   TestHostileFilesAreBounded/40_MB_of_white_space_before_the_JSON_array
+    bounds_test.go:156: a file of 40000009 bytes: 4261264 bytes allocated
+=== RUN   TestHostileFilesAreBounded/40_MB_of_white_space_after_the_JSON_array
+    bounds_test.go:156: a file of 40000009 bytes: 4263512 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_JSON_model_of_40_MB
+    bounds_test.go:156: a file of 40000008 bytes: 4776800 bytes allocated
+=== RUN   TestHostileFilesAreBounded/a_JSON_model_of_150,000_members
+    bounds_test.go:156: a file of 1688897 bytes: 46240184 bytes allocated
+--- PASS: TestHostileFilesAreBounded (3.92s)
+    --- PASS: TestHostileFilesAreBounded/a_CSV_row_of_40M_commas (0.48s)
+    --- PASS: TestHostileFilesAreBounded/a_CSV_header_of_20M_columns (0.19s)
+    --- PASS: TestHostileFilesAreBounded/a_CSV_value_of_40_MB (0.19s)
+    --- PASS: TestHostileFilesAreBounded/a_quoted_CSV_value_over_20M_lines (0.22s)
+    --- PASS: TestHostileFilesAreBounded/a_CSV_header_of_300_columns (0.00s)
+    --- PASS: TestHostileFilesAreBounded/a_CSV_row_of_500,000_fields (0.02s)
+    --- PASS: TestHostileFilesAreBounded/a_JSON_row_of_40_MB (0.29s)
+    --- PASS: TestHostileFilesAreBounded/a_JSON_row_of_4M_members (0.37s)
+    --- PASS: TestHostileFilesAreBounded/a_JSON_row_with_an_object_of_4M_members (0.46s)
+    --- PASS: TestHostileFilesAreBounded/a_JSON_model_with_an_object_of_4M_members (0.30s)
+    --- PASS: TestHostileFilesAreBounded/a_JSON_row_with_an_object_of_80,000_members (0.12s)
+    --- PASS: TestHostileFilesAreBounded/40_MB_of_white_space_in_a_JSON_row (0.26s)
+    --- PASS: TestHostileFilesAreBounded/40_MB_of_white_space_between_JSON_rows (0.26s)
+    --- PASS: TestHostileFilesAreBounded/40_MB_of_white_space_before_the_JSON_array (0.19s)
+    --- PASS: TestHostileFilesAreBounded/40_MB_of_white_space_after_the_JSON_array (0.23s)
+    --- PASS: TestHostileFilesAreBounded/a_JSON_model_of_40_MB (0.19s)
+    --- PASS: TestHostileFilesAreBounded/a_JSON_model_of_150,000_members (0.16s)
+=== RUN   TestFailurePathsAreBounded
+=== RUN   TestFailurePathsAreBounded/a_column_name_of_3,000_characters
+=== RUN   TestFailurePathsAreBounded/too_deep_below_a_long_member_name
+=== RUN   TestFailurePathsAreBounded/a_long_name_repeated_in_a_model
+=== RUN   TestFailurePathsAreBounded/a_syntax_error_below_a_long_name
+=== RUN   TestFailurePathsAreBounded/too_deep_below_a_name_that_fits
+--- PASS: TestFailurePathsAreBounded (0.00s)
+    --- PASS: TestFailurePathsAreBounded/a_column_name_of_3,000_characters (0.00s)
+    --- PASS: TestFailurePathsAreBounded/too_deep_below_a_long_member_name (0.00s)
+    --- PASS: TestFailurePathsAreBounded/a_long_name_repeated_in_a_model (0.00s)
+    --- PASS: TestFailurePathsAreBounded/a_syntax_error_below_a_long_name (0.00s)
+    --- PASS: TestFailurePathsAreBounded/too_deep_below_a_name_that_fits (0.00s)
+=== RUN   TestDeepJSONIsALimit
+=== RUN   TestDeepJSONIsALimit/33_levels_under_a_member
+=== RUN   TestDeepJSONIsALimit/33_levels_in_a_later_row
+=== RUN   TestDeepJSONIsALimit/33_levels_under_a_nested_name
+=== RUN   TestDeepJSONIsALimit/33_levels_a_row_that_is_an_array
+=== RUN   TestDeepJSONIsALimit/33_levels_in_a_model
+=== RUN   TestDeepJSONIsALimit/10001_levels_under_a_member
+=== RUN   TestDeepJSONIsALimit/10001_levels_in_a_later_row
+=== RUN   TestDeepJSONIsALimit/10001_levels_under_a_nested_name
+=== RUN   TestDeepJSONIsALimit/10001_levels_a_row_that_is_an_array
+=== RUN   TestDeepJSONIsALimit/10001_levels_in_a_model
+=== RUN   TestDeepJSONIsALimit/20000_levels_under_a_member
+=== RUN   TestDeepJSONIsALimit/20000_levels_in_a_later_row
+=== RUN   TestDeepJSONIsALimit/20000_levels_under_a_nested_name
+=== RUN   TestDeepJSONIsALimit/20000_levels_a_row_that_is_an_array
+=== RUN   TestDeepJSONIsALimit/20000_levels_in_a_model
+--- PASS: TestDeepJSONIsALimit (0.04s)
+    --- PASS: TestDeepJSONIsALimit/33_levels_under_a_member (0.00s)
+    --- PASS: TestDeepJSONIsALimit/33_levels_in_a_later_row (0.00s)
+    --- PASS: TestDeepJSONIsALimit/33_levels_under_a_nested_name (0.00s)
+    --- PASS: TestDeepJSONIsALimit/33_levels_a_row_that_is_an_array (0.00s)
+    --- PASS: TestDeepJSONIsALimit/33_levels_in_a_model (0.00s)
+    --- PASS: TestDeepJSONIsALimit/10001_levels_under_a_member (0.00s)
+    --- PASS: TestDeepJSONIsALimit/10001_levels_in_a_later_row (0.00s)
+    --- PASS: TestDeepJSONIsALimit/10001_levels_under_a_nested_name (0.00s)
+    --- PASS: TestDeepJSONIsALimit/10001_levels_a_row_that_is_an_array (0.00s)
+    --- PASS: TestDeepJSONIsALimit/10001_levels_in_a_model (0.00s)
+    --- PASS: TestDeepJSONIsALimit/20000_levels_under_a_member (0.01s)
+    --- PASS: TestDeepJSONIsALimit/20000_levels_in_a_later_row (0.01s)
+    --- PASS: TestDeepJSONIsALimit/20000_levels_under_a_nested_name (0.00s)
+    --- PASS: TestDeepJSONIsALimit/20000_levels_a_row_that_is_an_array (0.00s)
+    --- PASS: TestDeepJSONIsALimit/20000_levels_in_a_model (0.00s)
+=== RUN   TestLimitsMustBeSet
+--- PASS: TestLimitsMustBeSet (0.00s)
+=== RUN   TestUnreadableFiles
+=== RUN   TestUnreadableFiles/Big5_bytes
+=== RUN   TestUnreadableFiles/a_lone_continuation_byte
+=== RUN   TestUnreadableFiles/a_truncated_sequence_at_the_end
+=== RUN   TestUnreadableFiles/an_encoded_surrogate
+=== RUN   TestUnreadableFiles/an_overlong_encoding
+=== RUN   TestUnreadableFiles/UTF-16_LE
+=== RUN   TestUnreadableFiles/UTF-16_BE
+=== RUN   TestUnreadableFiles/a_NUL_byte
+=== RUN   TestUnreadableFiles/Latin-1_in_JSON
+=== RUN   TestUnreadableFiles/no_bytes
+=== RUN   TestUnreadableFiles/a_BOM_only
+=== RUN   TestUnreadableFiles/a_header_only
+=== RUN   TestUnreadableFiles/blank_lines_only
+=== RUN   TestUnreadableFiles/an_empty_array
+=== RUN   TestUnreadableFiles/whitespace
+=== RUN   TestUnreadableFiles/a_bare_quote
+=== RUN   TestUnreadableFiles/an_unterminated_quote
+=== RUN   TestUnreadableFiles/text_after_a_closing_quote
+=== RUN   TestUnreadableFiles/an_empty_column_name
+=== RUN   TestUnreadableFiles/a_repeated_column_name
+=== RUN   TestUnreadableFiles/a_column_name_too_long
+=== RUN   TestUnreadableFiles/too_many_columns
+=== RUN   TestUnreadableFiles/an_empty_member_name
+=== RUN   TestUnreadableFiles/a_member_name_too_long
+=== RUN   TestUnreadableFiles/too_many_members
+=== RUN   TestUnreadableFiles/too_many_rows
+=== RUN   TestUnreadableFiles/too_many_events
+=== RUN   TestUnreadableFiles/a_long_CSV_value
+=== RUN   TestUnreadableFiles/a_long_value_beyond_the_header
+=== RUN   TestUnreadableFiles/a_long_JSON_string
+=== RUN   TestUnreadableFiles/a_long_JSON_value
+=== RUN   TestUnreadableFiles/too_deep
+=== RUN   TestUnreadableFiles/a_model_too_large
+=== RUN   TestUnreadableFiles/a_model_too_deep
+=== RUN   TestUnreadableFiles/a_syntax_error
+=== RUN   TestUnreadableFiles/a_duplicate_member
+=== RUN   TestUnreadableFiles/a_nested_duplicate_member
+=== RUN   TestUnreadableFiles/a_duplicate_in_a_model
+=== RUN   TestUnreadableFiles/an_infinite_number
+=== RUN   TestUnreadableFiles/a_negative_infinite_number
+=== RUN   TestUnreadableFiles/an_infinite_number_in_a_model
+=== RUN   TestUnreadableFiles/NaN
+=== RUN   TestUnreadableFiles/an_escaped_NUL
+=== RUN   TestUnreadableFiles/an_escaped_NUL_in_a_name
+=== RUN   TestUnreadableFiles/a_lone_surrogate_escape
+=== RUN   TestUnreadableFiles/data_after_the_array
+=== RUN   TestUnreadableFiles/data_after_the_model
+=== RUN   TestUnreadableFiles/two_models
+=== RUN   TestUnreadableFiles/events_in_an_object
+=== RUN   TestUnreadableFiles/an_event_that_is_not_an_object
+=== RUN   TestUnreadableFiles/a_model_that_is_an_array
+=== RUN   TestUnreadableFiles/an_empty_model_file
+=== RUN   TestUnreadableFiles/a_CSV_given_as_JSON
+--- PASS: TestUnreadableFiles (0.02s)
+    --- PASS: TestUnreadableFiles/Big5_bytes (0.00s)
+    --- PASS: TestUnreadableFiles/a_lone_continuation_byte (0.00s)
+    --- PASS: TestUnreadableFiles/a_truncated_sequence_at_the_end (0.00s)
+    --- PASS: TestUnreadableFiles/an_encoded_surrogate (0.00s)
+    --- PASS: TestUnreadableFiles/an_overlong_encoding (0.00s)
+    --- PASS: TestUnreadableFiles/UTF-16_LE (0.00s)
+    --- PASS: TestUnreadableFiles/UTF-16_BE (0.00s)
+    --- PASS: TestUnreadableFiles/a_NUL_byte (0.00s)
+    --- PASS: TestUnreadableFiles/Latin-1_in_JSON (0.00s)
+    --- PASS: TestUnreadableFiles/no_bytes (0.00s)
+    --- PASS: TestUnreadableFiles/a_BOM_only (0.00s)
+    --- PASS: TestUnreadableFiles/a_header_only (0.00s)
+    --- PASS: TestUnreadableFiles/blank_lines_only (0.00s)
+    --- PASS: TestUnreadableFiles/an_empty_array (0.00s)
+    --- PASS: TestUnreadableFiles/whitespace (0.00s)
+    --- PASS: TestUnreadableFiles/a_bare_quote (0.00s)
+    --- PASS: TestUnreadableFiles/an_unterminated_quote (0.01s)
+    --- PASS: TestUnreadableFiles/text_after_a_closing_quote (0.00s)
+    --- PASS: TestUnreadableFiles/an_empty_column_name (0.00s)
+    --- PASS: TestUnreadableFiles/a_repeated_column_name (0.00s)
+    --- PASS: TestUnreadableFiles/a_column_name_too_long (0.00s)
+    --- PASS: TestUnreadableFiles/too_many_columns (0.00s)
+    --- PASS: TestUnreadableFiles/an_empty_member_name (0.00s)
+    --- PASS: TestUnreadableFiles/a_member_name_too_long (0.00s)
+    --- PASS: TestUnreadableFiles/too_many_members (0.00s)
+    --- PASS: TestUnreadableFiles/too_many_rows (0.00s)
+    --- PASS: TestUnreadableFiles/too_many_events (0.00s)
+    --- PASS: TestUnreadableFiles/a_long_CSV_value (0.00s)
+    --- PASS: TestUnreadableFiles/a_long_value_beyond_the_header (0.00s)
+    --- PASS: TestUnreadableFiles/a_long_JSON_string (0.00s)
+    --- PASS: TestUnreadableFiles/a_long_JSON_value (0.00s)
+    --- PASS: TestUnreadableFiles/too_deep (0.00s)
+    --- PASS: TestUnreadableFiles/a_model_too_large (0.00s)
+    --- PASS: TestUnreadableFiles/a_model_too_deep (0.00s)
+    --- PASS: TestUnreadableFiles/a_syntax_error (0.00s)
+    --- PASS: TestUnreadableFiles/a_duplicate_member (0.00s)
+    --- PASS: TestUnreadableFiles/a_nested_duplicate_member (0.00s)
+    --- PASS: TestUnreadableFiles/a_duplicate_in_a_model (0.00s)
+    --- PASS: TestUnreadableFiles/an_infinite_number (0.00s)
+    --- PASS: TestUnreadableFiles/a_negative_infinite_number (0.00s)
+    --- PASS: TestUnreadableFiles/an_infinite_number_in_a_model (0.00s)
+    --- PASS: TestUnreadableFiles/NaN (0.00s)
+    --- PASS: TestUnreadableFiles/an_escaped_NUL (0.00s)
+    --- PASS: TestUnreadableFiles/an_escaped_NUL_in_a_name (0.00s)
+    --- PASS: TestUnreadableFiles/a_lone_surrogate_escape (0.00s)
+    --- PASS: TestUnreadableFiles/data_after_the_array (0.00s)
+    --- PASS: TestUnreadableFiles/data_after_the_model (0.00s)
+    --- PASS: TestUnreadableFiles/two_models (0.00s)
+    --- PASS: TestUnreadableFiles/events_in_an_object (0.00s)
+    --- PASS: TestUnreadableFiles/an_event_that_is_not_an_object (0.00s)
+    --- PASS: TestUnreadableFiles/a_model_that_is_an_array (0.00s)
+    --- PASS: TestUnreadableFiles/an_empty_model_file (0.00s)
+    --- PASS: TestUnreadableFiles/a_CSV_given_as_JSON (0.00s)
+=== RUN   TestFailureMessagesHoldNoFileContent
+--- PASS: TestFailureMessagesHoldNoFileContent (0.00s)
+=== RUN   TestChineseCSVWithBOM
+--- PASS: TestChineseCSVWithBOM (0.00s)
+=== RUN   TestNoEncodingGuess
+--- PASS: TestNoEncodingGuess (0.00s)
+=== RUN   TestInference
+--- PASS: TestInference (0.00s)
+=== RUN   TestInvalidRows
+--- PASS: TestInvalidRows (0.01s)
+=== RUN   TestPreviewBounds
+--- PASS: TestPreviewBounds (0.00s)
+=== RUN   TestJSONModel
+--- PASS: TestJSONModel (0.00s)
+=== RUN   TestCancellationAndReadErrors
+--- PASS: TestCancellationAndReadErrors (0.00s)
+=== RUN   TestDefaultLimits
+--- PASS: TestDefaultLimits (0.00s)
+=== RUN   TestDeterministic
+--- PASS: TestDeterministic (0.00s)
+=== RUN   TestScanVisitsEveryRow
+--- PASS: TestScanVisitsEveryRow (0.00s)
+=== RUN   TestScanRefusals
+--- PASS: TestScanRefusals (0.00s)
+=== RUN   TestShapesAreTheInferences
+--- PASS: TestShapesAreTheInferences (0.00s)
+=== RUN   TestPreviewJSON
+--- PASS: TestPreviewJSON (0.00s)
+=== RUN   FuzzRecordsAsEncodingCSV
+=== RUN   FuzzRecordsAsEncodingCSV/seed#0
+=== RUN   FuzzRecordsAsEncodingCSV/seed#1
+=== RUN   FuzzRecordsAsEncodingCSV/seed#2
+=== RUN   FuzzRecordsAsEncodingCSV/seed#3
+=== RUN   FuzzRecordsAsEncodingCSV/seed#4
+=== RUN   FuzzRecordsAsEncodingCSV/seed#5
+=== RUN   FuzzRecordsAsEncodingCSV/seed#6
+=== RUN   FuzzRecordsAsEncodingCSV/seed#7
+=== RUN   FuzzRecordsAsEncodingCSV/seed#8
+=== RUN   FuzzRecordsAsEncodingCSV/seed#9
+=== RUN   FuzzRecordsAsEncodingCSV/seed#10
+=== RUN   FuzzRecordsAsEncodingCSV/seed#11
+=== RUN   FuzzRecordsAsEncodingCSV/seed#12
+=== RUN   FuzzRecordsAsEncodingCSV/seed#13
+=== RUN   FuzzRecordsAsEncodingCSV/seed#14
+=== RUN   FuzzRecordsAsEncodingCSV/seed#15
+=== RUN   FuzzRecordsAsEncodingCSV/seed#16
+=== RUN   FuzzRecordsAsEncodingCSV/seed#17
+=== RUN   FuzzRecordsAsEncodingCSV/seed#18
+=== RUN   FuzzRecordsAsEncodingCSV/seed#19
+=== RUN   FuzzRecordsAsEncodingCSV/seed#20
+=== RUN   FuzzRecordsAsEncodingCSV/seed#21
+=== RUN   FuzzRecordsAsEncodingCSV/seed#22
+=== RUN   FuzzRecordsAsEncodingCSV/seed#23
+=== RUN   FuzzRecordsAsEncodingCSV/seed#24
+=== RUN   FuzzRecordsAsEncodingCSV/seed#25
+=== RUN   FuzzRecordsAsEncodingCSV/seed#26
+=== RUN   FuzzRecordsAsEncodingCSV/seed#27
+=== RUN   FuzzRecordsAsEncodingCSV/seed#28
+=== RUN   FuzzRecordsAsEncodingCSV/seed#29
+=== RUN   FuzzRecordsAsEncodingCSV/seed#30
+=== RUN   FuzzRecordsAsEncodingCSV/seed#31
+=== RUN   FuzzRecordsAsEncodingCSV/seed#32
+=== RUN   FuzzRecordsAsEncodingCSV/seed#33
+=== RUN   FuzzRecordsAsEncodingCSV/seed#34
+=== RUN   FuzzRecordsAsEncodingCSV/seed#35
+=== RUN   FuzzRecordsAsEncodingCSV/seed#36
+=== RUN   FuzzRecordsAsEncodingCSV/seed#37
+=== RUN   FuzzRecordsAsEncodingCSV/seed#38
+=== RUN   FuzzRecordsAsEncodingCSV/seed#39
+=== RUN   FuzzRecordsAsEncodingCSV/seed#40
+=== RUN   FuzzRecordsAsEncodingCSV/seed#41
+=== RUN   FuzzRecordsAsEncodingCSV/seed#42
+=== RUN   FuzzRecordsAsEncodingCSV/seed#43
+=== RUN   FuzzRecordsAsEncodingCSV/seed#44
+=== RUN   FuzzRecordsAsEncodingCSV/seed#45
+=== RUN   FuzzRecordsAsEncodingCSV/seed#46
+--- PASS: FuzzRecordsAsEncodingCSV (0.04s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#0 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#1 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#2 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#3 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#4 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#5 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#6 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#7 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#8 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#9 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#10 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#11 (0.01s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#12 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#13 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#14 (0.01s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#15 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#16 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#17 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#18 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#19 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#20 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#21 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#22 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#23 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#24 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#25 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#26 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#27 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#28 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#29 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#30 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#31 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#32 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#33 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#34 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#35 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#36 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#37 (0.01s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#38 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#39 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#40 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#41 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#42 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#43 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#44 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#45 (0.00s)
+    --- PASS: FuzzRecordsAsEncodingCSV/seed#46 (0.00s)
+=== RUN   FuzzRead
+=== RUN   FuzzRead/seed#0
+=== RUN   FuzzRead/seed#1
+=== RUN   FuzzRead/seed#2
+=== RUN   FuzzRead/seed#3
+=== RUN   FuzzRead/seed#4
+=== RUN   FuzzRead/seed#5
+=== RUN   FuzzRead/seed#6
+=== RUN   FuzzRead/seed#7
+=== RUN   FuzzRead/seed#8
+=== RUN   FuzzRead/seed#9
+=== RUN   FuzzRead/seed#10
+=== RUN   FuzzRead/seed#11
+=== RUN   FuzzRead/seed#12
+=== RUN   FuzzRead/seed#13
+=== RUN   FuzzRead/seed#14
+=== RUN   FuzzRead/seed#15
+=== RUN   FuzzRead/seed#16
+=== RUN   FuzzRead/seed#17
+=== RUN   FuzzRead/seed#18
+=== RUN   FuzzRead/seed#19
+=== RUN   FuzzRead/seed#20
+=== RUN   FuzzRead/seed#21
+=== RUN   FuzzRead/seed#22
+=== RUN   FuzzRead/seed#23
+=== RUN   FuzzRead/seed#24
+=== RUN   FuzzRead/seed#25
+=== RUN   FuzzRead/seed#26
+=== RUN   FuzzRead/seed#27
+=== RUN   FuzzRead/seed#28
+=== RUN   FuzzRead/seed#29
+=== RUN   FuzzRead/seed#30
+=== RUN   FuzzRead/seed#31
+=== RUN   FuzzRead/seed#32
+=== RUN   FuzzRead/seed#33
+=== RUN   FuzzRead/seed#34
+=== RUN   FuzzRead/seed#35
+--- PASS: FuzzRead (0.01s)
+    --- PASS: FuzzRead/seed#0 (0.00s)
+    --- PASS: FuzzRead/seed#1 (0.00s)
+    --- PASS: FuzzRead/seed#2 (0.00s)
+    --- PASS: FuzzRead/seed#3 (0.00s)
+    --- PASS: FuzzRead/seed#4 (0.01s)
+    --- PASS: FuzzRead/seed#5 (0.00s)
+    --- PASS: FuzzRead/seed#6 (0.00s)
+    --- PASS: FuzzRead/seed#7 (0.00s)
+    --- PASS: FuzzRead/seed#8 (0.00s)
+    --- PASS: FuzzRead/seed#9 (0.00s)
+    --- PASS: FuzzRead/seed#10 (0.00s)
+    --- PASS: FuzzRead/seed#11 (0.00s)
+    --- PASS: FuzzRead/seed#12 (0.00s)
+    --- PASS: FuzzRead/seed#13 (0.00s)
+    --- PASS: FuzzRead/seed#14 (0.00s)
+    --- PASS: FuzzRead/seed#15 (0.00s)
+    --- PASS: FuzzRead/seed#16 (0.00s)
+    --- PASS: FuzzRead/seed#17 (0.00s)
+    --- PASS: FuzzRead/seed#18 (0.00s)
+    --- PASS: FuzzRead/seed#19 (0.00s)
+    --- PASS: FuzzRead/seed#20 (0.00s)
+    --- PASS: FuzzRead/seed#21 (0.00s)
+    --- PASS: FuzzRead/seed#22 (0.00s)
+    --- PASS: FuzzRead/seed#23 (0.00s)
+    --- PASS: FuzzRead/seed#24 (0.00s)
+    --- PASS: FuzzRead/seed#25 (0.00s)
+    --- PASS: FuzzRead/seed#26 (0.00s)
+    --- PASS: FuzzRead/seed#27 (0.00s)
+    --- PASS: FuzzRead/seed#28 (0.00s)
+    --- PASS: FuzzRead/seed#29 (0.00s)
+    --- PASS: FuzzRead/seed#30 (0.00s)
+    --- PASS: FuzzRead/seed#31 (0.00s)
+    --- PASS: FuzzRead/seed#32 (0.00s)
+    --- PASS: FuzzRead/seed#33 (0.00s)
+    --- PASS: FuzzRead/seed#34 (0.00s)
+    --- PASS: FuzzRead/seed#35 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/profile	4.064s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+=== RUN   TestSafe
+--- PASS: TestSafe (0.00s)
+=== RUN   TestRender
+--- PASS: TestRender (0.00s)
+=== RUN   TestRenderIsBounded
+--- PASS: TestRenderIsBounded (0.00s)
+=== RUN   TestRenderQuotesEveryCell
+--- PASS: TestRenderQuotesEveryCell (0.00s)
+=== RUN   TestNoFormulaAfterASeparator
+--- PASS: TestNoFormulaAfterASeparator (0.00s)
+=== RUN   FuzzSafe
+=== RUN   FuzzSafe/seed#0
+=== RUN   FuzzSafe/seed#1
+=== RUN   FuzzSafe/seed#2
+=== RUN   FuzzSafe/seed#3
+=== RUN   FuzzSafe/seed#4
+=== RUN   FuzzSafe/seed#5
+=== RUN   FuzzSafe/seed#6
+=== RUN   FuzzSafe/seed#7
+=== RUN   FuzzSafe/seed#8
+=== RUN   FuzzSafe/seed#9
+=== RUN   FuzzSafe/seed#10
+=== RUN   FuzzSafe/seed#11
+=== RUN   FuzzSafe/seed#12
+--- PASS: FuzzSafe (0.00s)
+    --- PASS: FuzzSafe/seed#0 (0.00s)
+    --- PASS: FuzzSafe/seed#1 (0.00s)
+    --- PASS: FuzzSafe/seed#2 (0.00s)
+    --- PASS: FuzzSafe/seed#3 (0.00s)
+    --- PASS: FuzzSafe/seed#4 (0.00s)
+    --- PASS: FuzzSafe/seed#5 (0.00s)
+    --- PASS: FuzzSafe/seed#6 (0.00s)
+    --- PASS: FuzzSafe/seed#7 (0.00s)
+    --- PASS: FuzzSafe/seed#8 (0.00s)
+    --- PASS: FuzzSafe/seed#9 (0.00s)
+    --- PASS: FuzzSafe/seed#10 (0.00s)
+    --- PASS: FuzzSafe/seed#11 (0.00s)
+    --- PASS: FuzzSafe/seed#12 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/report	0.017s
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestContractParity
+--- PASS: TestContractParity (0.01s)
+=== RUN   TestSniff
+--- PASS: TestSniff (0.00s)
+=== RUN   TestCleanName
+--- PASS: TestCleanName (0.00s)
+=== RUN   TestFieldsCheck
+--- PASS: TestFieldsCheck (0.00s)
+=== RUN   TestEnvelope
+--- PASS: TestEnvelope (0.02s)
+=== RUN   TestStoredStatus
+--- PASS: TestStoredStatus (0.00s)
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestOwnKey
+--- PASS: TestOwnKey (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/upload	0.054s
+=== RUN   TestAValidLog
+--- PASS: TestAValidLog (0.01s)
+=== RUN   TestInvalidRows
+--- PASS: TestInvalidRows (0.00s)
+=== RUN   TestJSONEvents
+--- PASS: TestJSONEvents (0.00s)
+=== RUN   TestBounds
+--- PASS: TestBounds (0.01s)
+=== RUN   TestTheFileIsTheProfiled
+--- PASS: TestTheFileIsTheProfiled (0.00s)
+=== RUN   FuzzValidate
+=== RUN   FuzzValidate/seed#0
+=== RUN   FuzzValidate/seed#1
+=== RUN   FuzzValidate/seed#2
+=== RUN   FuzzValidate/seed#3
+--- PASS: FuzzValidate (0.00s)
+    --- PASS: FuzzValidate/seed#0 (0.00s)
+    --- PASS: FuzzValidate/seed#1 (0.00s)
+    --- PASS: FuzzValidate/seed#2 (0.00s)
+    --- PASS: FuzzValidate/seed#3 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/validation	0.048s
+=== RUN   TestNew
+--- PASS: TestNew (0.00s)
+=== RUN   TestAJobThatNamesNoImport
+--- PASS: TestAJobThatNamesNoImport (0.00s)
+=== RUN   TestValidationIsTheSchemas
+--- PASS: TestValidationIsTheSchemas (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/validator	0.043s
+=== RUN   TestAnalysisContext
+--- PASS: TestAnalysisContext (0.01s)
+=== RUN   TestAnalysisWithBaseline
+--- PASS: TestAnalysisWithBaseline (0.01s)
+=== RUN   TestAnalysisRefusals
+--- PASS: TestAnalysisRefusals (0.00s)
+=== RUN   TestAnalysisInjection
+--- PASS: TestAnalysisInjection (0.00s)
+=== RUN   TestMappingContext
+--- PASS: TestMappingContext (0.00s)
+=== RUN   TestMappingRefusals
+--- PASS: TestMappingRefusals (0.00s)
+=== RUN   TestMappingVocabularyIsTheSchemas
+--- PASS: TestMappingVocabularyIsTheSchemas (0.00s)
+=== RUN   TestProposalContext
+--- PASS: TestProposalContext (0.01s)
+=== RUN   TestInjectionStaysData
+--- PASS: TestInjectionStaysData (0.04s)
+=== RUN   TestRedaction
+--- PASS: TestRedaction (0.01s)
+=== RUN   TestLongModelIDsReachTheProvider
+--- PASS: TestLongModelIDsReachTheProvider (0.01s)
+=== RUN   TestCrossTenantInputsAreRefused
+--- PASS: TestCrossTenantInputsAreRefused (0.00s)
+=== RUN   TestInvalidInputs
+--- PASS: TestInvalidInputs (0.00s)
+=== RUN   TestOutputLocale
+--- PASS: TestOutputLocale (0.02s)
+=== RUN   TestOmissionsAreVisible
+--- PASS: TestOmissionsAreVisible (0.23s)
+=== RUN   TestScenarioMode
+--- PASS: TestScenarioMode (0.00s)
+=== RUN   TestDomainNeutral
+--- PASS: TestDomainNeutral (0.01s)
+=== RUN   TestNoDomainVocabulary
+--- PASS: TestNoDomainVocabulary (0.11s)
+=== RUN   TestSanitizerRedacts
+--- PASS: TestSanitizerRedacts (0.00s)
+=== RUN   TestSanitizerKeeps
+--- PASS: TestSanitizerKeeps (0.00s)
+=== RUN   TestSanitizerBoundsAndKeys
+--- PASS: TestSanitizerBoundsAndKeys (0.00s)
+=== RUN   TestSanitizerRedactsByMemberName
+--- PASS: TestSanitizerRedactsByMemberName (0.00s)
+=== RUN   TestSanitizerKeepsModelIDs
+--- PASS: TestSanitizerKeepsModelIDs (0.00s)
+=== RUN   TestSanitizerFoldsLookAlikeDelimiters
+--- PASS: TestSanitizerFoldsLookAlikeDelimiters (0.00s)
+=== RUN   TestSanitizerCountsCollisions
+--- PASS: TestSanitizerCountsCollisions (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.503s
+=== RUN   TestRunRejectsInvalidConfiguration
+--- PASS: TestRunRejectsInvalidConfiguration (0.00s)
+=== RUN   TestRunRefusesToStartWithoutHandlers
+--- PASS: TestRunRefusesToStartWithoutHandlers (0.00s)
+=== RUN   TestTheBuildRunsSimulations
+--- PASS: TestTheBuildRunsSimulations (0.00s)
+=== RUN   TestTheProviderIsTheConfigured
+=== RUN   TestTheProviderIsTheConfigured/default
+=== RUN   TestTheProviderIsTheConfigured/disabled
+=== RUN   TestTheProviderIsTheConfigured/live_without_approval
+=== RUN   TestTheProviderIsTheConfigured/fake
+--- PASS: TestTheProviderIsTheConfigured (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/default (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/disabled (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/live_without_approval (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/fake (0.00s)
+=== RUN   TestTheWorkerServesTheAPIsPacks
+--- PASS: TestTheWorkerServesTheAPIsPacks (0.00s)
+=== RUN   TestRunRefusesWhatTheHandlersCannotUse
+--- PASS: TestRunRefusesWhatTheHandlersCannotUse (0.01s)
+=== RUN   TestRunRefusesABadAllowlist
+--- PASS: TestRunRefusesABadAllowlist (0.00s)
+=== RUN   TestRunRefusesABadConnectionString
+--- PASS: TestRunRefusesABadConnectionString (0.00s)
+=== RUN   TestPoolGuardsReleasedConnections
+--- PASS: TestPoolGuardsReleasedConnections (0.00s)
+=== RUN   TestRunNeedsTheDatabase
+--- PASS: TestRunNeedsTheDatabase (0.00s)
+=== RUN   TestRunStopsBeforeStarting
+--- PASS: TestRunStopsBeforeStarting (0.00s)
+=== RUN   TestRunWorksAndStops
+    main_test.go:273: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestRunWorksAndStops (0.00s)
+=== RUN   TestASecondSignalEndsTheProcess
+--- PASS: TestASecondSignalEndsTheProcess (0.11s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	0.176s

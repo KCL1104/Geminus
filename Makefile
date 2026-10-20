@@ -77,7 +77,7 @@ architecture-check:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/check-architecture ./scripts/check-architecture
 	bin/check-architecture
-# API + worker + PostgreSQL/RLS integration on a fresh disposable database (T-009, T-019, T-023, T-016): the SQL tests (which
+# API + worker + PostgreSQL/RLS integration on a fresh disposable database (T-009, T-019, T-023, T-016, T-017): the SQL tests (which
 # migrate it), then the Go DB-backed tests through the real HTTP handler as the plain API login and through the
 # job loop as the plain worker login.
 integration-test:

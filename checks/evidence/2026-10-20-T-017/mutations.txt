@@ -1,0 +1,19 @@
+M1 duration tolerance: 1 ms either way [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestRowRules (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.036s; FAIL
+M2 end before start not checked [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestRowRules (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.040s; FAIL
+M3 a field filled twice accepted [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestCheck (0.01s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.054s; FAIL
+M4 low-confidence entry needs no confirmation [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestLowConfidenceNeedsAPerson (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.039s; FAIL
+M5 confirmation of anything accepted [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestLowConfidenceNeedsAPerson (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.035s; FAIL
+M6 leading zeros accepted in integer_ms [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestTransforms (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.028s; FAIL
+M7 transform not checked against the field [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestCheck (0.00s); --- FAIL: TestCompile (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.031s
+M8 required field may be empty [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestTransforms (0.00s); --- FAIL: TestApplyAll (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.036s
+M9 metadata limit off by one [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestCheck (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.040s; FAIL
+M10 metadata byte bound one byte late [internal/import/mapping/mapping.go]: KILLED (exit 1): --- FAIL: TestMetadata (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.043s; FAIL
+M11 issues not bounded [internal/import/validation/validation.go]: KILLED (exit 1): --- FAIL: TestBounds (0.02s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/validation	0.039s; FAIL
+M12 dataset limit not enforced [internal/import/validation/validation.go]: KILLED (exit 1): --- FAIL: TestBounds (0.01s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/validation	0.059s; FAIL
+M13 CSV field-count row passes [internal/import/validation/validation.go]: KILLED (exit 1): --- FAIL: TestInvalidRows (0.00s); FAIL	github.com/kcl1104/geminus/internal/import/validation	0.035s; FAIL
+M14 changed columns not detected [internal/import/validation/validation.go]: KILLED (exit 1): --- FAIL: TestTheFileIsTheProfiled (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/validation	0.026s; FAIL
+M15 a job with revision 0 runs [internal/import/validator/validator.go]: KILLED (exit 1): --- FAIL: TestAJobThatNamesNoImport (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/validator	0.035s; FAIL
+M16 a job for another import runs [internal/import/validator/validator.go]: KILLED (exit 1): --- FAIL: TestAJobThatNamesNoImport (0.00s); FAIL; FAIL	github.com/kcl1104/geminus/internal/import/validator	0.058s; FAIL
+M17 the API may link the validator [scripts/check-architecture/rules.go]: KILLED (exit 1): --- FAIL: TestProbesAreCaught (45.40s); FAIL; FAIL	github.com/kcl1104/geminus/scripts/check-architecture	180.642s; FAIL
+17 mutations, 17 killed, 0 survived or not applied
+Method: each mutation is a one-line source change given to go test with -overlay (scripts in mutations-harness.py); the worktree was never modified. Run at HEAD 19ef508.

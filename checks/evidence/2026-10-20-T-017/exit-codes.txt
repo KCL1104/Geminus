@@ -1,0 +1,13 @@
+backend-test: exit 0 (started 2026-10-20T06:09:23Z, ended 2026-10-20T06:11:28Z): make backend-test
+backend-race: exit 0 (started 2026-10-20T06:11:28Z, ended 2026-10-20T06:17:02Z): make backend-race
+architecture-check: exit 0 (started 2026-10-20T06:17:02Z, ended 2026-10-20T06:17:13Z): make architecture-check
+ai-eval: exit 0 (started 2026-10-20T06:17:13Z, ended 2026-10-20T06:17:16Z): make ai-eval
+ts-contracts: exit 0 (started 2026-10-20T06:17:16Z, ended 2026-10-20T06:17:16Z): make ts-contracts PYTHON=.venv/bin/python
+frontend-test: exit 0 (started 2026-10-20T06:17:16Z, ended 2026-10-20T06:17:59Z): make frontend-test
+done
+fuzz FuzzApply (./internal/import/mapping/, 60s): exit 0
+fuzz FuzzValidate (./internal/import/validation/, 60s): exit 0
+fuzz FuzzRead (./internal/import/profile/, 60s): exit 0
+fuzz-done
+go test -count=1 -v ./internal/import/... ./internal/ai/aicontext/ ./cmd/worker/: exit 0
+spec-check (final, with the report): exit 0

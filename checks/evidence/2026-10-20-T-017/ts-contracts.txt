@@ -1,0 +1,2 @@
+.venv/bin/python scripts/gen_ts_contracts.py
+wrote 15 files, 106 types to apps/web/lib/contracts

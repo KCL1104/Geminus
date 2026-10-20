@@ -86,7 +86,7 @@
 .venv/bin/python scripts/check_docs.py
 {
   "status": "PASS",
-  "markdown_files": 95,
+  "markdown_files": 96,
   "relative_links_checked": 77
 }
 .venv/bin/python scripts/check_sql_inventory.py

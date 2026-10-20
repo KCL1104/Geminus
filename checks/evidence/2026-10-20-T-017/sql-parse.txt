@@ -1,0 +1,8 @@
+migrations/0014_import_mapping.up.sql: 18 statements, 4 PL/pgSQL bodies parsed
+migrations/0014_import_mapping.down.sql: 13 statements, 1 PL/pgSQL bodies parsed
+db/tests/import_mapping.sql: 143 statements, 14 PL/pgSQL bodies parsed
+db/tests/imports.sql: 87 statements, 5 PL/pgSQL bodies parsed
+db/tests/roles.sql: 91 statements, 4 PL/pgSQL bodies parsed
+db/tests/constraints.sql: 172 statements, 6 PL/pgSQL bodies parsed
+bash -n scripts/run_db_tests.sh: exit 0
+pglast v8.7 (libpg_query): syntax only; the statements inside must_fail strings are not parsed; nothing was executed
