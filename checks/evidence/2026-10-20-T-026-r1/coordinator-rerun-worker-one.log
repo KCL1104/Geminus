@@ -1,0 +1,4 @@
+=== RUN   TestASlowRenewalCountsFromItsStart
+--- PASS: TestASlowRenewalCountsFromItsStart (3.66s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/worker	4.677s

@@ -1,0 +1,21 @@
+Coordinator runs on b1a3258 (T-026 review round 1 cherry-picked onto claude/lucid-meitner-vq1awo after T-047's 78d0549, no
+conflicts), 2026-10-20. Each log was written by "<command> > log 2>&1; echo exit $?".
+
+make spec-check PYTHON=.venv/bin/python    0   coordinator-spec-check.log
+make backend-test                           0   coordinator-backend-test.log
+make architecture-check                     0   coordinator-architecture-check.log
+make ai-eval                                0   coordinator-ai-eval.log
+make frontend-test                          0   coordinator-frontend-test.log (429 tests)
+make backend-race                           0   coordinator-backend-race.log
+make integration-test (dt_test_t026_r1b)    2   coordinator-integration.log: 0013/0014 up/down/up and every SQL suite
+                                                passed; 29 Go packages ok, including internal/proposals/approval,
+                                                internal/storage/proposals and internal/api with this round's new and
+                                                changed DB tests; one failure outside T-026: internal/worker
+                                                TestASlowRenewalCountsFromItsStart (T-019), "the handler stopped after
+                                                4.338s, want about 3.5s" (tolerance 0.3 s). The machine's load average
+                                                was 18-19 on 4 CPUs (two other agents running race tests).
+One re-run to confirm (fresh dt_test_t026_r1c, migrated by make db-test, load average still 15-19):
+make db-test                                0   coordinator-rerun-db-test.log
+go test -race -run TestASlowRenewal... ./internal/worker/   0   coordinator-rerun-worker-one.log (3.66 s)
+go test -race ./internal/worker/ (whole package, DB)        0   coordinator-rerun-worker.log
+The timing test is sensitive to CPU starvation; it is not changed (no assertion is loosened).
