@@ -1,0 +1,6 @@
+--- FAIL: TestLiftedPrimitivesHaveRiskCases (0.00s)
+    lineflow_risk_test.go:50: finite_buffer is checked by the validator, but no D-057 server-risk case is registered for it
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.011s
+FAIL
+exit 1
