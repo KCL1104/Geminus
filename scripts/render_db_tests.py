@@ -74,6 +74,15 @@ IDS = {
     "JOB_A55": ("job", "A", 55), "JOB_A56": ("job", "A", 56), "JOB_A57": ("job", "A", 57),
     "MV_A3": ("mv", "A", 3), "MV_A4": ("mv", "A", 4), "MV_A5": ("mv", "A", 5),
     "SCN_A1": ("scn", "A", 1), "SCN_A2": ("scn", "A", 2), "SCN_A3": ("scn", "A", 3),
+    # T-017 (import_mapping.sql, imports.sql, roles.sql): mapped imports, their profile and validation jobs.
+    "IMP_A11": ("imp", "A", 11), "IMP_A12": ("imp", "A", 12), "IMP_A13": ("imp", "A", 13), "IMP_A14": ("imp", "A", 14),
+    "IMP_A15": ("imp", "A", 15), "IMP_A16": ("imp", "A", 16),
+    # JOB_A51–JOB_A57 are T-026's above: each SQL suite rolls back, so the
+    # same IDs serve both files.
+    "JOB_A58": ("job", "A", 58),
+    "JOB_A59": ("job", "A", 59), "JOB_A60": ("job", "A", 60), "JOB_A61": ("job", "A", 61), "JOB_A62": ("job", "A", 62),
+    "JOB_A63": ("job", "A", 63), "JOB_A64": ("job", "A", 64), "JOB_A65": ("job", "A", 65), "JOB_A66": ("job", "A", 66),
+    "JOB_A67": ("job", "A", 67),
 }
 
 

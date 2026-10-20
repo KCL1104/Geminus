@@ -415,7 +415,9 @@ SELECT pg_temp.must_fail($q$UPDATE twin.model_versions SET comment='edited' WHER
 -- queued job always has an attempt left; a finished job is final; its
 -- identity and input never change; attempts and lease tokens never go back.
 -- The jobs are import_validate jobs of one import: no import follows them
--- (0010 has each import follow its one import_profile job, imports.sql).
+-- (0010 has each import follow its one import_profile job, imports.sql;
+-- 0014 a VALIDATING import the import_validate job of its current mapping
+-- revision, import_mapping.sql, and these name no revision).
 SET LOCAL ROLE twin_api;
 SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
   $q$INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id) VALUES ('job_01M4YDQK00TA00000000000002','org_01M4YDQK00TA00000000000000','import_validate','completed','{}','imp_01M4YDQK00TA00000000000001')$q$,

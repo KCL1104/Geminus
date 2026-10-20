@@ -89,10 +89,15 @@ UPDATE twin.jobs SET status='running', attempt=attempt+1, locked_at=now(), locke
 UPDATE twin.imports SET status='AWAITING_MAPPING', profile='{"format":"csv","encoding":"utf-8","rows":3,"columns":[]}',
     error_report_object_key='tenant/org_01M4YDQK00TA00000000000000/imports/imp_01M4YDQK00TA00000000000001/profile-errors-1.csv', error_report_content_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222', error_report_size_bytes=10
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';
--- The API keeps the human-confirmed columns.
+-- The API keeps the human-confirmed columns: since T-017 (0014) a mapping
+-- is saved as the next revision, VALIDATING with the earlier validation
+-- and error report cleared, with that revision's validation job.
 SET LOCAL ROLE twin_api;
-UPDATE twin.imports SET mapping='{"fields":[]}', mapping_revision=mapping_revision+1
+UPDATE twin.imports SET mapping='{"fields":[]}', mapping_revision=mapping_revision+1, status='VALIDATING', validation=NULL,
+    error_report_object_key=NULL, error_report_content_hash=NULL, error_report_size_bytes=NULL
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';
+INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id)
+  VALUES ('job_01M4YDQK00TA00000000000067','org_01M4YDQK00TA00000000000000','import_validate','queued','{"import_id":"imp_01M4YDQK00TA00000000000001","mapping_revision":1}','imp_01M4YDQK00TA00000000000001');
 
 -- D-036 / CB-13: membership changes lock every owner membership of the
 -- organization in user_id order; the API has no UPDATE (so no FOR UPDATE)

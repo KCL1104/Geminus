@@ -26,6 +26,7 @@ run migrations/0010_import_uploads.up.sql
 run migrations/0011_ai_id_pool.up.sql
 run migrations/0012_proposal_jobs.up.sql
 run migrations/0013_proposal_decisions.up.sql
+run migrations/0014_import_mapping.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
@@ -35,6 +36,8 @@ run db/tests/imports.sql
 run db/tests/proposals.sql
 run db/tests/proposal_jobs.sql
 run db/tests/proposal_decisions.sql
+run db/tests/import_mapping.sql
+run migrations/0014_import_mapping.down.sql
 run migrations/0013_proposal_decisions.down.sql
 run migrations/0012_proposal_jobs.down.sql
 run migrations/0011_ai_id_pool.down.sql
@@ -83,6 +86,7 @@ run migrations/0010_import_uploads.up.sql
 run migrations/0011_ai_id_pool.up.sql
 run migrations/0012_proposal_jobs.up.sql
 run migrations/0013_proposal_decisions.up.sql
+run migrations/0014_import_mapping.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
@@ -92,4 +96,5 @@ run db/tests/imports.sql
 run db/tests/proposals.sql
 run db/tests/proposal_jobs.sql
 run db/tests/proposal_decisions.sql
+run db/tests/import_mapping.sql
 echo 'DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.'

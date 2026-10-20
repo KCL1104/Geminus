@@ -196,17 +196,24 @@ SELECT pg_temp.must_fail(pg_temp.upd('imp_01M4YDQK00TA00000000000003', s), '5500
   $q$upload_content_hash='sha256:2222222222222222222222222222222222222222222222222222222222222222'$q$,
   $q$filename='renamed.csv'$q$
 ]) AS s;
--- The API still keeps the human-confirmed columns of a profiled import
--- (T-017) but never touches its profile, preview or error report.
+-- The API never touches a profiled import's profile, preview or error
+-- report, but still saves its human-confirmed columns: since T-017 (0014)
+-- a mapping as the next revision, VALIDATING with the profile's invalid
+-- row and error report cleared, with that revision's validation job
+-- (import_mapping.sql has the rules).
 SET LOCAL ROLE twin_api;
-UPDATE twin.imports SET mapping='{"mappings":[]}', mapping_revision=mapping_revision+1 WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000003';
 SELECT pg_temp.must_fail(pg_temp.upd('imp_01M4YDQK00TA00000000000003', s), '55000') FROM unnest(ARRAY[
   $q$preview='[]'$q$,
   $q$error_report_object_key=NULL, error_report_content_hash=NULL, error_report_size_bytes=NULL$q$
 ]) AS s;
+UPDATE twin.imports SET mapping='{"mappings":[]}', mapping_revision=mapping_revision+1, status='VALIDATING', invalid_rows=0,
+    error_report_object_key=NULL, error_report_content_hash=NULL, error_report_size_bytes=NULL
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000003';
+INSERT INTO twin.jobs(id,organization_id,type,status,payload,import_id)
+  VALUES ('job_01M4YDQK00TA00000000000066','org_01M4YDQK00TA00000000000000','import_validate','queued','{"import_id":"imp_01M4YDQK00TA00000000000003","mapping_revision":1}','imp_01M4YDQK00TA00000000000003');
 -- Its profile job ending now (an operator's doing) leaves it as it is.
 UPDATE twin.jobs SET status='cancelled' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000021';
-SELECT pg_temp.check(status='AWAITING_MAPPING' AND error IS NULL, 'a profiled import followed its cancelled job: '||status)
+SELECT pg_temp.check(status='VALIDATING' AND mapping_revision=1 AND error IS NULL, 'a profiled import followed its cancelled job: '||status)
   FROM twin.imports WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000003';
 
 -- A file that cannot be profiled: FAILED with its error, and final.
@@ -288,7 +295,7 @@ SELECT pg_temp.must_fail(pg_temp.upd('imp_01M4YDQK00TA00000000000006', $q$status
 RESET ROLE;
 REVOKE SELECT, UPDATE ON twin.imports FROM twin_provisioner;
 SET LOCAL ROLE twin_owner;
-SELECT pg_temp.check(string_agg(status, ',' ORDER BY id)='AWAITING_MAPPING,FAILED,FAILED,UPLOADED,FAILED,FAILED,FAILED',
+SELECT pg_temp.check(string_agg(status, ',' ORDER BY id)='VALIDATING,FAILED,FAILED,UPLOADED,FAILED,FAILED,FAILED',
     'the imports ended as they did: '||string_agg(status, ',' ORDER BY id))
   FROM twin.imports WHERE organization_id='org_01M4YDQK00TA00000000000000';
 
