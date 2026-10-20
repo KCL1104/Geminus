@@ -8,6 +8,8 @@ import { describe, expect, it } from "vitest";
 import type {
   AnalysisOutput,
   AnalysisRequest,
+  Approval,
+  Approve,
   Calendar,
   CancelSimulation,
   CanonicalEvent,
@@ -23,6 +25,7 @@ import type {
   ProposalAccepted,
   ProposalOutput,
   ProposalRequest,
+  Reject,
   ReleaseSchedule,
   ValidationCode,
 } from "../lib/contracts";
@@ -170,6 +173,53 @@ const invalidProposal: Proposal = {
     ],
   },
 };
+// T-026: what approveProposal answers for an edit proposal (the one new
+// version, discriminated by mode), its request, a rejection's request, and
+// an approved proposal with its decision record (D-068 PROPOSED).
+const zeroHash = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+const approvalEdit: Approval = {
+  proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZ6",
+  status: "approved",
+  mode: "edit",
+  new_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZS",
+  version: 2,
+  patch_hash: zeroHash,
+  draft_out_of_date: false,
+};
+const approveBody: Approve = {
+  expected_base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  comment: "Reviewed the diff, the assumptions and the server's risk.",
+};
+const rejectBody: Reject = { comment: "Not now: the line is being re-planned." };
+const approvedProposal: Proposal = {
+  summary: "將 CI runner capacity 從 3 增至 6，其他參數不變。",
+  assumptions: ["服務時間分布不變。"],
+  risk_level: "low",
+  confidence: 0.96,
+  changes: [
+    { op: "test", path: "/resources/1/id", value: "ci_runner" },
+    { op: "replace", path: "/resources/1/capacity", value: 6 },
+  ],
+  expected_effects: ["CI queue waiting 可能下降；仍需模擬。"],
+  requires_confirmation: true,
+  proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZ6",
+  organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  mode: "edit",
+  status: "approved",
+  created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+  created_at: "2026-10-15T08:30:00Z",
+  validation: { valid: true, issues: [] },
+  patch_hash: zeroHash,
+  server_risk_level: "low",
+  provider_risk_claim: "low",
+  dataset_bindings: [],
+  new_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZS",
+  decided_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BS",
+  decided_at: "2026-10-20T09:15:00Z",
+  decision_comment: "檢閱過差異與風險後批准。",
+};
 const analysisRequest: AnalysisRequest = {
   baseline_run_id: "sim_01M4YDQK00TA00000000000001",
   question: "Which station is the bottleneck?",
@@ -221,6 +271,10 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-proposal-accepted.json", proposalAccepted],
     ["valid-proposal-invalid.json", invalidProposal],
     ["valid-canonical-event-station.json", stationEvent],
+    ["valid-approval-edit.json", approvalEdit],
+    ["valid-approve.json", approveBody],
+    ["valid-reject.json", rejectBody],
+    ["valid-proposal-approved.json", approvedProposal],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
   });
@@ -265,6 +319,12 @@ export const rejected = {
   proposalStatus: { ...invalidProposal, status: "publishing" } satisfies Proposal,
   // @ts-expect-error an issue code outside the ValidationCode catalogue is not one (T-025)
   unknownIssueCode: "ID_POOL_OVERFLOW" satisfies ValidationCode,
+  // @ts-expect-error an approval's answer is approved, never another state (T-026)
+  approvalStatus: { ...approvalEdit, status: "rejected" } satisfies Approval,
+  // @ts-expect-error the approver is the verified caller, never a member of the request (T-026)
+  approveApprover: { ...approveBody, approved_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BS" } satisfies Approve,
+  // @ts-expect-error a rejection names no base and creates nothing (T-026)
+  rejectBase: { expected_base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR" } satisfies Reject,
   // @ts-expect-error mixtures are still P1 (TWIN_IR_SPEC §3); lognormal and Weibull are P0 (D-056)
   p1Distribution: { type: "mixture", mean: 3 } satisfies Distribution,
   // @ts-expect-error a lognormal is parameterized by mean and cv, not sd (D-056)

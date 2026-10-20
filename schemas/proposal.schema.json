@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/proposal.schema.json",
   "title": "proposal",
-  "$comment": "SOURCE pp. 24–25,32–33. PROPOSED D-001,D-002,D-004 states and mode-dependent effect. This is a server response, not a client write body. D-027: risk_level = max(server_risk_level, provider_risk_claim).",
+  "$comment": "SOURCE pp. 24–25,32–33. PROPOSED D-001,D-002,D-004 states and mode-dependent effect. This is a server response, not a client write body. D-027: risk_level = max(server_risk_level, provider_risk_claim). T-026 (D-068 PROPOSED): a decided proposal carries decided_by, decided_at and an optional decision_comment.",
   "type": "object",
   "properties": {
     "proposal_id": {
@@ -126,6 +126,21 @@
     "provider_risk_claim": {
       "$ref": "common.schema.json#/$defs/RiskLevel",
       "description": "The provider output's risk_level, kept as an untrusted claim."
+    },
+    "decided_by": {
+      "$ref": "common.schema.json#/$defs/UserID",
+      "description": "T-026 (D-068 PROPOSED): the person whose approve or reject request decided the proposal, or whose approve request found that its base was no longer the model's latest (conflicted). Bound by the server from the verified caller."
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "T-026 (D-068 PROPOSED): when the decision committed (the database's time)."
+    },
+    "decision_comment": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "description": "T-026 (D-068 PROPOSED): the Approve or Reject comment as given; absent when there was none (or it was empty). The person's text: never in audit metadata."
     }
   },
   "required": [
@@ -628,6 +643,70 @@
           "risk_level": {
             "const": "low"
           }
+        }
+      }
+    },
+    {
+      "$comment": "T-026 (D-068 PROPOSED): a decided proposal names who decided it and when; no other state has a decision record (migrations 0001, 0013).",
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "approved",
+              "rejected",
+              "conflicted"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "decided_by",
+          "decided_at"
+        ]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "decided_by"
+              ]
+            },
+            {
+              "required": [
+                "decided_at"
+              ]
+            },
+            {
+              "required": [
+                "decision_comment"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "$comment": "T-026 (D-068 PROPOSED): a conflicted proposal has no comment: the approval that found the base moved decided nothing but the state.",
+      "if": {
+        "properties": {
+          "status": {
+            "const": "conflicted"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "decision_comment"
+          ]
         }
       }
     }

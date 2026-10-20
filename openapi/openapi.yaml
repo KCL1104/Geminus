@@ -800,7 +800,11 @@ paths:
         example AI_RATE_LIMITED, AI_TIMEOUT, LEASE_EXPIRED, JOB_CANCELLED) and error.code maps it (D-061):
         AI_PROVIDER_NOT_CONFIGURED and AI_POLICY_NOT_APPROVED as they are, rate limits RATE_LIMITED, an unavailable
         provider or worker SERVICE_UNAVAILABLE, a context over budget PAYLOAD_TOO_LARGE, anything else INTERNAL_ERROR;
-        error.request_id is the creating request''s. ready, needs_input, invalid and failed content never changes.'
+        error.request_id is the creating request''s. ready, needs_input, invalid and failed content never changes.
+        T-026 (D-068 PROPOSED): approved, rejected and conflicted have decided_by and decided_at (who decided, or
+        whose approval found that the base had moved, and when); approved and rejected have decision_comment when
+        the person gave one; approved has new_version_id (edit) or scenario_id (scenario), and keeps the content
+        that was reviewed, as rejected and conflicted do.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -927,6 +931,43 @@ paths:
                           reason: the AI provider kept refusing the request for its rate limit
                           code: AI_RATE_LIMITED
                         request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                approved:
+                  summary: A person approved it; its one new version is the model's latest
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ6
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: edit
+                    status: approved
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-20T08:30:00Z'
+                    requires_confirmation: true
+                    summary: Raise the tester capacity from 2 to 3.
+                    assumptions:
+                    - Service times stay as they are.
+                    risk_level: low
+                    server_risk_level: low
+                    provider_risk_claim: low
+                    confidence: 0.9
+                    changes:
+                    - op: test
+                      path: /resources/1/id
+                      value: tester
+                    - op: replace
+                      path: /resources/1/capacity
+                      value: 3
+                    patch_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+                    expected_effects:
+                    - Waiting before the test step may fall; a simulation will tell by how much.
+                    validation:
+                      valid: true
+                      issues: []
+                    dataset_bindings: []
+                    new_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZS
+                    decided_by: usr_01M4YDQK0016KTK4JM6KAHZ6BS
+                    decided_at: '2026-10-20T09:15:00Z'
+                    decision_comment: Reviewed the diff, the assumptions and the server's risk.
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -949,10 +990,31 @@ paths:
     post:
       operationId: approveProposal
       summary: Approve after revalidation; effect depends on mode
-      description: edit -> exactly one new ModelVersion. scenario -> exactly one immutable Scenario and ZERO new
-        ModelVersions. No implicit run. Reject stale latest base with 409; no auto-rebase. D-003/D-004. Audit and
-        idempotency response in same transaction. Approving an already approved or rejected proposal with a new
-        Idempotency-Key returns 409 PROPOSAL_ALREADY_DECIDED and changes nothing (D-030).
+      description: 'Core route from report pp.29–35. T-026 (AI_SPEC §6, D-003, D-004, D-011, D-027, D-030, D-046,
+        D-062; D-067, D-068, D-069 PROPOSED): a person, an editor or owner of the proposal''s organization, approves
+        a ready proposal. The AI never approves: no provider, tool or job calls this route, and a worker cannot write
+        a version or a scenario (0002). In one transaction, after the role and the Idempotency-Key (fingerprint: the
+        proposal ID and the canonical body; a replay still needs the role), the server takes the model row, its draft
+        and the proposal, in that order (the lock order of publishVersion), and checks: the proposal is ready
+        (approved, rejected or conflicted: 409 PROPOSAL_ALREADY_DECIDED, whatever the key, D-030; generating,
+        needs_input, invalid or failed: 409 LIFECYCLE_CONFLICT); its base is still the model''s latest version
+        (otherwise the proposal becomes conflicted, for the caller, with an audit event, and 409
+        MODEL_VERSION_CONFLICT is stored as this key''s answer: the only refusal that changes anything; there is no
+        auto-rebase); expected_base_version_id names that base (409 MODEL_VERSION_CONFLICT at
+        /expected_base_version_id, nothing changes). The server then reviews the stored content again as it reviewed
+        the provider''s answer, trusting none of the stored results: patch profile, full candidate validation, ID
+        pool, domain rules, expected effects and its own risk, then the dataset binding stage against the base''s
+        manifest. An error there is 422 MODEL_VALIDATION_FAILED and the proposal stays ready; a server risk other
+        than the one the person reviewed is 409 LIFECYCLE_CONFLICT at /risk_level; a base that binds datasets
+        without dataset storage is 503. edit: exactly one new immutable ModelVersion, the model''s latest: its parent
+        is the base and its number the base''s plus one, its IR the base with the reviewed changes, its dataset
+        manifest the proposal''s dataset_bindings (D-062 (g)) and its comment the request''s; a clean draft moves to
+        it, a dirty one is kept as it is and draft_out_of_date is true (D-003). scenario: exactly one immutable
+        Scenario on the base with the reviewed changes and their hash, named after the proposal''s summary (D-067
+        PROPOSED), and no new version; nothing is queued, a run is the person''s own request (AI_SPEC §7). The
+        proposal becomes approved with the decider, the time and the comment (D-068 PROPOSED); the audit event (IDs,
+        hashes and risk, never the comment) and the idempotency response commit with the effect. The database
+        refuses a second effect of one proposal and an effect that is not the approved proposal''s own (0001, 0013).'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -975,6 +1037,36 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/http.schema.json#/$defs/Approval
+              examples:
+                edit:
+                  summary: One new version, the model's latest; the clean draft moved to it
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ6
+                    status: approved
+                    mode: edit
+                    new_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZS
+                    version: 2
+                    patch_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+                    draft_out_of_date: false
+                edit_dirty_draft:
+                  summary: One new version; the draft had unpublished changes, so it is kept as it was and is out of
+                    date
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ6
+                    status: approved
+                    mode: edit
+                    new_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZS
+                    version: 2
+                    patch_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+                    draft_out_of_date: true
+                scenario:
+                  summary: One immutable scenario on the base; no version, no run
+                  value:
+                    proposal_id: aip_01M4YDQK00Q10EM95Z6H4XK0Y8
+                    status: approved
+                    mode: scenario
+                    scenario_id: scn_01M4YDQK00J4MJS82YRG0PCEC0
+                    patch_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -984,13 +1076,98 @@ paths:
         '404':
           $ref: '#/components/responses/Error404'
         '409':
-          $ref: '#/components/responses/Error409'
+          description: 'The base moved (the proposal is now conflicted), the request names another base, the proposal
+            is not ready or was decided, the server''s risk changed since review, or the key was used for another
+            request. Codes: MODEL_VERSION_CONFLICT, IDEMPOTENCY_KEY_CONFLICT, LIFECYCLE_CONFLICT,
+            PROPOSAL_ALREADY_DECIDED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                base_moved:
+                  summary: A newer version was published or approved; the proposal is now conflicted
+                  value:
+                    error:
+                      code: MODEL_VERSION_CONFLICT
+                      message: the model's latest version is no longer this proposal's base; the proposal is now
+                        conflicted and nothing was applied (ask for a new proposal on the latest version)
+                      details:
+                      - path: /expected_base_version_id
+                        reason: the proposal's base is not the model's latest version
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                another_base:
+                  summary: The request names a base that is not the proposal's
+                  value:
+                    error:
+                      code: MODEL_VERSION_CONFLICT
+                      message: expected_base_version_id is not this proposal's base; nothing was changed
+                      details:
+                      - path: /expected_base_version_id
+                        reason: not this proposal's base
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                already_decided:
+                  summary: The proposal was approved before (D-030), with another key
+                  value:
+                    error:
+                      code: PROPOSAL_ALREADY_DECIDED
+                      message: the proposal is already approved; nothing was changed
+                      details:
+                      - path: ''
+                        reason: the proposal is approved
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                not_ready:
+                  summary: The proposal asks for input; only a ready one can be approved
+                  value:
+                    error:
+                      code: LIFECYCLE_CONFLICT
+                      message: only a ready proposal can be approved; nothing was changed
+                      details:
+                      - path: ''
+                        reason: the proposal is needs_input
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                risk_changed:
+                  summary: The server now computes another risk than the one the person reviewed (D-069 PROPOSED)
+                  value:
+                    error:
+                      code: LIFECYCLE_CONFLICT
+                      message: the server's risk of this proposal is not the one it was reviewed with; nothing was
+                        changed (ask for a new proposal)
+                      details:
+                      - path: /risk_level
+                        reason: the server now computes medium, not low
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '413':
           $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
-          $ref: '#/components/responses/Error422'
+          description: 'The request body does not match Approve, or the proposal does not pass the server''s review
+            again (the proposal stays ready; its issues hold fixed sentences and schema paths only, D-061 (f)). Codes:
+            MODEL_VALIDATION_FAILED, REQUEST_VALIDATION_FAILED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                revalidation:
+                  summary: A dataset snapshot the base binds no longer verifies
+                  value:
+                    error:
+                      code: MODEL_VALIDATION_FAILED
+                      message: the proposal does not pass the server's review again; nothing was changed
+                      details:
+                      - path: /dataset_bindings/0/content_hash
+                        reason: the dataset binding is missing, not allowed or does not match its stored snapshot
+                        code: DATASET_BINDING_INVALID
+                        severity: error
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '429':
           $ref: '#/components/responses/Error429'
         '500':
@@ -1007,7 +1184,13 @@ paths:
     post:
       operationId: rejectProposal
       summary: Reject without model mutation
-      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      description: 'Core route from report pp.29–35. T-026 (AI_SPEC §6, D-011, D-030; D-068, D-069 PROPOSED): an
+        editor or owner rejects a ready or needs_input proposal. It becomes rejected with the decider, the time and the
+        comment, with its audit event (never the comment) and the idempotency response (fingerprint: the proposal ID
+        and the canonical body), in one transaction that takes the model row before the proposal, as approveProposal
+        does, so an approval and a rejection of one proposal run one after the other. Nothing else changes: no model,
+        draft, version or scenario (TEST-006). approved, rejected or conflicted: 409 PROPOSAL_ALREADY_DECIDED;
+        generating, invalid or failed: 409 LIFECYCLE_CONFLICT. The answer is the proposal as getProposal shows it.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -1030,6 +1213,26 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/proposal.schema.json
+              examples:
+                rejected:
+                  summary: A proposal that asked for input, rejected with a comment
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZA
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: edit
+                    status: rejected
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-20T08:30:00Z'
+                    requires_confirmation: true
+                    summary: The request does not say which step to change.
+                    assumptions: []
+                    questions:
+                    - Which step should get more capacity, and how much?
+                    decided_by: usr_01M4YDQK0016KTK4JM6KAHZ6BS
+                    decided_at: '2026-10-20T09:15:00Z'
+                    decision_comment: Asked again with the step named.
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1039,7 +1242,36 @@ paths:
         '404':
           $ref: '#/components/responses/Error404'
         '409':
-          $ref: '#/components/responses/Error409'
+          description: 'The proposal was decided, is not one a person can reject yet or any more, or the key was used
+            for another request. Codes: IDEMPOTENCY_KEY_CONFLICT, LIFECYCLE_CONFLICT, PROPOSAL_ALREADY_DECIDED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                already_decided:
+                  summary: The proposal was approved first
+                  value:
+                    error:
+                      code: PROPOSAL_ALREADY_DECIDED
+                      message: the proposal is already approved; nothing was changed
+                      details:
+                      - path: ''
+                        reason: the proposal is approved
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                still_generating:
+                  summary: The proposal is still being generated
+                  value:
+                    error:
+                      code: LIFECYCLE_CONFLICT
+                      message: only a ready or needs_input proposal can be rejected; nothing was changed
+                      details:
+                      - path: ''
+                        reason: the proposal is generating
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '413':
           $ref: '#/components/responses/Error413'
         '415':

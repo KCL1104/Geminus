@@ -240,7 +240,7 @@
           "maxItems": 1000
         },
         "comment": {
-          "$comment": "D-041: Publish.comment as given; null when there was none (or it was empty), and for the first version.",
+          "$comment": "D-041: Publish.comment as given; null when there was none (or it was empty), and for the first version. T-026 (D-068 PROPOSED): a version an approved edit proposal created keeps Approve.comment the same way.",
           "anyOf": [
             {
               "type": "string",
@@ -434,7 +434,8 @@
       "required": [
         "expected_base_version_id"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "$comment": "T-026 (AI_SPEC §6, D-003, D-030; D-068, D-069 PROPOSED): expected_base_version_id must be the proposal's base, which must still be the model's latest version; comment is kept as the proposal's decision_comment and, for an edit proposal, as the new version's comment (empty: none)."
     },
     "Approval": {
       "oneOf": [
@@ -510,7 +511,8 @@
           ],
           "additionalProperties": false
         }
-      ]
+      ],
+      "$comment": "T-026 (AI_SPEC §6, D-004): the discriminated effect of an approval. edit: the one new version, its number, the patch hash and whether the model's draft was kept as it was (dirty, now out of date) rather than moved to the new version. scenario: the one immutable scenario; no version, no run."
     },
     "Reject": {
       "type": "object",
@@ -522,7 +524,8 @@
         }
       },
       "required": [],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "$comment": "T-026 (D-068 PROPOSED): comment is kept as the proposal's decision_comment (empty: none)."
     },
     "CreateScenario": {
       "type": "object",

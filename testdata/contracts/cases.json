@@ -1701,6 +1701,128 @@
       "schema": "schemas/simulation.schema.json#/$defs/Run",
       "valid": true,
       "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-approved",
+      "instance": "testdata/contracts/valid-proposal-approved.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-conflicted",
+      "instance": "testdata/contracts/valid-proposal-conflicted.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-rejected",
+      "instance": "testdata/contracts/valid-proposal-rejected.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-approved-without-decider",
+      "instance": "testdata/contracts/invalid-proposal-approved-without-decider.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-ready-with-decision",
+      "instance": "testdata/contracts/invalid-proposal-ready-with-decision.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-conflicted-with-comment",
+      "instance": "testdata/contracts/invalid-proposal-conflicted-with-comment.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-empty-decision-comment",
+      "instance": "testdata/contracts/invalid-proposal-empty-decision-comment.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/decision_comment"
+      ]
+    },
+    {
+      "id": "valid-approval-edit",
+      "instance": "testdata/contracts/valid-approval-edit.json",
+      "schema": "schemas/http.schema.json#/$defs/Approval",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-approval-edit-without-draft-state",
+      "instance": "testdata/contracts/invalid-approval-edit-without-draft-state.json",
+      "schema": "schemas/http.schema.json#/$defs/Approval",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-approve",
+      "instance": "testdata/contracts/valid-approve.json",
+      "schema": "schemas/http.schema.json#/$defs/Approve",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-approve-without-base",
+      "instance": "testdata/contracts/invalid-approve-without-base.json",
+      "schema": "schemas/http.schema.json#/$defs/Approve",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-approve-approver",
+      "instance": "testdata/contracts/invalid-approve-approver.json",
+      "schema": "schemas/http.schema.json#/$defs/Approve",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-reject",
+      "instance": "testdata/contracts/valid-reject.json",
+      "schema": "schemas/http.schema.json#/$defs/Reject",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-reject-comment-2001",
+      "instance": "testdata/contracts/invalid-reject-comment-2001.json",
+      "schema": "schemas/http.schema.json#/$defs/Reject",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/comment"
+      ]
     }
   ]
 }

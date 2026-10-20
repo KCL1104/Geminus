@@ -1,0 +1,5 @@
+--- FAIL: TestPublicMatchesTheContract (0.02s)
+    proposals_test.go:175: {"proposal_id":"aip_01M4YDQK00ADN261CME3WV5HZ6","organization_id":"org_01M4YDQK00Y5H2929M9WWZWTVH","model_id":"mdl_01M4YDQK004AGVNEGJQJ1NMM0N","base_version_id":"mv_01M4YDQK00FRYWV7GS7X1QCXZR","mode":"edit","status":"conflicted","created_by":"usr_01M4YDQK0016KTK4JM6KAHZ6BR","created_at":"2026-10-20T07:30:00Z","requires_confirmation":true,"summary":"Raise a capacity.","assumptions":["Nothing else changes."],"risk_level":"medium","confidence":0.9,"changes":[{"op":"test","path":"/resources/1/id","value":"x"},{"op":"replace","path":"/resources/1/capacity","value":6}],"expected_effects":["Waiting may fall."],"validation":{"issues":[],"valid":true},"patch_hash":"sha256:0000000000000000000000000000000000000000000000000000000000000000","dataset_bindings":[],"server_risk_level":"low","provider_risk_claim":"medium"} does not match proposal.schema.json: [{RESPONSE  missing required members: decided_at, decided_by error}] <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals	0.028s
+FAIL

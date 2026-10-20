@@ -32,4 +32,10 @@ export type Proposal = {
   server_risk_level?: RiskLevel;
   /** The provider output's risk_level, kept as an untrusted claim. */
   provider_risk_claim?: RiskLevel;
+  /** T-026 (D-068 PROPOSED): the person whose approve or reject request decided the proposal, or whose approve request found that its base was no longer the model's latest (conflicted). Bound by the server from the verified caller. */
+  decided_by?: UserID;
+  /** T-026 (D-068 PROPOSED): when the decision committed (the database's time). */
+  decided_at?: string;
+  /** T-026 (D-068 PROPOSED): the Approve or Reject comment as given; absent when there was none (or it was empty). The person's text: never in audit metadata. */
+  decision_comment?: string;
 };
