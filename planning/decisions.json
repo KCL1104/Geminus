@@ -885,9 +885,9 @@
     },
     {
       "id": "D-064",
-      "title": "有限緩衝與阻塞的實作細節（T-047）：B1 的檢查時點、R1 的範圍、解除的順序、ErrDeadlock 回報的 entity",
-      "source_gap": "D-050 B1 只寫「每次 dispatch 結束時檢查」，但被擋的 SERVICE_COMPLETE 不排 dispatch，該 tick 沒有其他 dispatch 時循環等待不會被偵測（G-D2 要求在那個 tick 回 ErrDeadlock）；R1 未限定 source 到得了的 node；解除相對於授予 observation 的順序、ErrDeadlock 回報哪個 entity 未寫明。",
-      "proposal": "(a) 建議 A（已實作）：有有限 buffer 時，每個事件結束、且本 tick 沒有待執行的 dispatch 時做 B1 檢查（dispatch 結束時即屬此情形）；B 只在 dispatch 結束時檢查（會漏掉 G-D2）。(b) 建議 A（已實作）：R1 照字面也檢查 source 到不了的 node；B 只檢查到得了的。(c) 解除在該次授予的 ObsResource、ServiceStart 與 service 抽樣之後（G-B8 固定；只影響 observation 順序）。(d) 建議 A（已實作）：ErrDeadlock 回報最早的 blocked entity（含 source backlog）；B 優先回報最早被擋的 holder。",
+      "title": "有限緩衝與阻塞的實作細節（T-047）：B1 的檢查時點、R1 的範圍、解除的順序、ErrDeadlock 回報的 entity、長度 0 的阻塞、解除後的 queue wait",
+      "source_gap": "D-050 B1 只寫「每次 dispatch 結束時檢查」，但被擋的 SERVICE_COMPLETE 不排 dispatch，該 tick 沒有其他 dispatch 時循環等待不會被偵測（G-D2 要求在那個 tick 回 ErrDeadlock）；R1 未限定 source 到得了的 node；解除相對於授予 observation 的順序、ErrDeadlock 回報哪個 entity、長度 0 的阻塞是否計入、解除後的 queue wait 從何時起算未寫明（後兩項由 T-047 review 第 1 輪補列）。",
+      "proposal": "(a) 建議 A（已實作）：有有限 buffer 時，每個事件結束、且本 tick 沒有待執行的 dispatch 時做 B1 檢查（dispatch 結束時即屬此情形）；B 只在 dispatch 結束時檢查（會漏掉 G-D2）。(b) 建議 A（已實作）：R1 照字面也檢查 source 到不了的 node；B 只檢查到得了的。(c) 解除在該次授予的 ObsResource、ServiceStart 與 service 抽樣之後（G-B8 固定；只影響 observation 順序）。(d) 建議 A（已實作）：ErrDeadlock 回報最早被擋的 entity（含 source backlog；依被擋的處理順序，不依 tick 或 buffer 的 node 順序，G-D3）；B 優先回報最早被擋的 holder。(e) 建議 A（已實作）：同一 tick 的 dispatch 中就解除的阻塞記為一次長度 0 的阻塞（G-B4 的 e3）；B 不計。(f) 建議 A（已實作）：解除後的 queue wait 從解除起算；B 從被擋起算。說明（不需選擇）：(g) B1 依批准文字只偵測全域的循環等待，循環旁有一直服務中的 process 時停到 horizon（只在 R1 被繞過時）；(h) SIMULATION_DEADLOCK 不重試，多個 replication deadlock 時回報哪一個取決於排程。",
       "source_pages": "N/A（ADR-026 D-049、D-050；實作見 internal/simulation/engine/kernel.go、internal/model/validate/blocking.go）",
       "owner_role": "Simulation",
       "gate": "T-047 驗收前；T-048–T-050 延伸 B1／B2 時沿用 (a)",
