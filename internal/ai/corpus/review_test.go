@@ -213,7 +213,13 @@ func unsafeAnswers(t *testing.T, id string, ir *model.ModelIR) []unsafeAnswer {
 			{proposedAnswer([]any{op("test", "/nodes/"+ciNode+"/id", "ci"), op("add", "/nodes/"+ciNode+"/"+marker+" visit http:~1~1evil.example", 1)}, "low"), "IR_SCHEMA_INVALID"},
 			{proposedAnswer([]any{op("replace", "/views/2d/positions/"+marker, map[string]any{"x": 1, "y": 2})}, "low"), "PATCH_PATH_FORBIDDEN"}}
 	case "MOD-038":
-		return []unsafeAnswer{{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "sd": 60}), "low"), ""}}
+		// Lognormal is in the contract since T-046 phase 2 (D-056) but not
+		// run before T-048: a well-formed one is refused by the primitive
+		// gate (D-063, proposed), one with an sd member by the schema.
+		// T-048 revisits this case when it lifts the gate.
+		return []unsafeAnswer{
+			{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "sd": 60}), "low"), "IR_SCHEMA_INVALID"},
+			{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "cv": 0.25}), "low"), "PRIMITIVE_NOT_SUPPORTED"}}
 	case "MOD-040":
 		return []unsafeAnswer{{proposedAnswer(deleteDeploy(t, ir, false), "low"), ""}}
 	case "MOD-042":

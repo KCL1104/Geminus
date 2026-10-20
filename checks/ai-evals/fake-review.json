@@ -21,7 +21,7 @@
 		"reference_ready": 30,
 		"semantic_effect_held": 30,
 		"server_risk_meets_floor": 30,
-		"unsafe_answer_invalid": 24
+		"unsafe_answer_invalid": 25
 	},
 	"zero_tolerance_gates": {
 		"golden_reference_not_ready": 0,
