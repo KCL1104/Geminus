@@ -2,6 +2,7 @@ package des
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -546,6 +547,24 @@ func TestDeploymentVersion(t *testing.T) {
 func FuzzRun(f *testing.F) {
 	for _, name := range []string{"deterministic-queue.json", "congested-queue.json", "default-delivery.json"} {
 		f.Add(contracttest.ReadFile(f, filepath.Join(contracttest.Root(f), "testdata/golden-models", name)), uint8(2), uint16(300), uint16(30))
+	}
+	// T-047: models with finite buffers; a valid one never deadlocks (R1),
+	// so ErrDeadlock stays an untyped failure here.
+	var doc struct {
+		Cases []struct {
+			Model jsontext.Value `json:"model"`
+		} `json:"cases"`
+		Reference struct {
+			Cases []struct {
+				Model jsontext.Value `json:"model"`
+			} `json:"cases"`
+		} `json:"reference"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(f, filepath.Join(contracttest.Root(f), "testdata/simulation/blocking-goldens.json")), &doc); err != nil {
+		f.Fatal(err)
+	}
+	for _, c := range append(doc.Cases, doc.Reference.Cases...) {
+		f.Add([]byte(c.Model), uint8(1), uint16(200), uint16(20))
 	}
 	f.Fuzz(func(t *testing.T, data []byte, reps uint8, horizon, warmup uint16) {
 		var ir model.ModelIR

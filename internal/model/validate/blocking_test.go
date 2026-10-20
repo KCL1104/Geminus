@@ -134,6 +134,11 @@ func TestBlockingCycles(t *testing.T) {
 			process("p", "rp").node("d", model.NodeDecision).node("end", model.NodeSink).
 			to("src", "qp").to("qp", "p").to("p", "a").to("a", "d").to("d", "p", 0.5, "end", 0.5),
 			nil}, // a -> p is a blocking edge, p -> a is not (a's buffer is unlimited): no cycle
+		// A holder routed straight into the finite buffer of a process it
+		// shares a resource with: a component's edge to itself.
+		{"a direct route into the same component", new(lineModel).res("r").source("src").queue("qp", 1).process("p", "r").node("end", model.NodeSink).
+			source("src2").process("a", "r").to("src", "qp").to("qp", "p").to("p", "end").to("src2", "a").to("a", "p"),
+			[]string{"/nodes/1/capacity"}},
 		{"a route straight into the process of a shared resource", new(lineModel).res("r").source("src").queue("qp", 1).process("a", "r").
 			process("p", "r").node("d", model.NodeDecision).node("end", model.NodeSink).
 			to("src", "qp").to("qp", "p").to("p", "a").to("a", "d").to("d", "p", 0.5, "end", 0.5),

@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 63,
-    "proposed": 6,
+    "proposed": 7,
     "rejected": 0,
     "superseded": 0
   },
@@ -609,6 +609,11 @@
         "T-050",
         "T-051"
       ]
+    },
+    "D-064": {
+      "status": "proposed",
+      "gate": "T-047 驗收前；T-048–T-050 延伸 B1／B2 時沿用 (a)",
+      "gates_tasks": []
     },
     "D-067": {
       "status": "proposed",

@@ -60,6 +60,8 @@ range 003 等指 REQ-003。planning/traceability.csv 提供完整 ID 對照；te
 
 T-046 phase 2（ADR-026 的 contract）對 TEST-001／002／034 的延伸：產線流動成員的 schema 正反例（每個反例釘在它的 path）；16 個 `layer: semantic` 的手推 fixture 固定 R1–R4、班表、投入、批次、換線規則的 code 與 path；kernel 支援前，用到任何新成員的模型只回 `PRIMITIVE_NOT_SUPPORTED`（validator 與 engine Compile 各自檢查，D-063 APPROVED，H-019），沒有新成員的模型的 model_hash、validator 結果、Result bytes 與鎖定的 digest 都不變（D-047）。這些不是 TEST-034 的 kernel 驗收；T-047–T-050 解除 gate 時要讓同一批 fixture 回期望的 code，並加上各自的 golden、differential 與 SimPy reference。
 
+T-047（有限緩衝與阻塞，des-go-0.2.0）是 TEST-034 的第一部分：手推 golden G-B1–G-B9 與 G-D2（`testdata/simulation/blocking-goldens.json`，observation 與 Result 成員兩層）；凍結的 des-go-0.1.0 kernel 對 50,000 個沒有有限 buffer 的隨機模型與中性 buffer 的 differential；只看 observation 的阻塞檢查器（含 R1 被繞過時 ErrDeadlock 不誤報、不漏報）；SimPy reference（`make simulation-reference-test`）；GOLDEN-001／002（TEST-015、TEST-016）在新 kernel 上依 D-047 的判準等於鎖定 digest；同 seed 的 digest 與 worker 數無關（TEST-019）。故障、班表、投入、批次與換線的部分屬 T-048–T-050。證據見 checks/T-047_VALIDATION.md。
+
 ## 3. AI eval corpus / scoring
 
 modeler.jsonl 初始50個有不同語義的 intents，mapper/analyst 另有 adversarial cases。每例包含 context fixture、mode、expected outcome/effects、forbidden effects、risk floor。比較 semantic patch effect，不要求所有 legitimate JSON Patch 使用同一 array index 編碼；允許额外安全 test op，但 business mutation 數量仍要符合要求。

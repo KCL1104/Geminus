@@ -426,6 +426,10 @@ func FuzzKernel(f *testing.F) {
 	for _, name := range []string{"deterministic-queue.json", "congested-queue.json", "default-delivery.json", "report-example.json"} {
 		f.Add(contracttest.ReadFile(f, filepath.Join(contracttest.Root(f), "testdata/golden-models", name)), uint32(0))
 	}
+	// T-047: models with finite buffers (blocking-goldens.json).
+	for _, m := range blockingSeeds(f) {
+		f.Add([]byte(m), uint32(0))
+	}
 	f.Fuzz(func(t *testing.T, data []byte, index uint32) {
 		var ir model.ModelIR
 		if model.Decode(data, &ir) != nil {

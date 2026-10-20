@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -61,6 +62,32 @@ func blockingGoldens(t *testing.T) map[string]blockingCase {
 	out := map[string]blockingCase{}
 	for _, c := range doc.Cases {
 		out[c.ID] = c
+	}
+	return out
+}
+
+// blockingSeeds are the models of blocking-goldens.json, for the fuzzers.
+func blockingSeeds(tb testing.TB) []jsontext.Value {
+	tb.Helper()
+	var doc struct {
+		Cases []struct {
+			Model jsontext.Value `json:"model"`
+		} `json:"cases"`
+		Reference struct {
+			Cases []struct {
+				Model jsontext.Value `json:"model"`
+			} `json:"cases"`
+		} `json:"reference"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(tb, filepath.Join(contracttest.Root(tb), "testdata/simulation/blocking-goldens.json")), &doc); err != nil {
+		tb.Fatal(err)
+	}
+	var out []jsontext.Value
+	for _, c := range doc.Cases {
+		out = append(out, c.Model)
+	}
+	for _, c := range doc.Reference.Cases {
+		out = append(out, c.Model)
 	}
 	return out
 }
@@ -173,7 +200,7 @@ func compareFacts(t *testing.T, id string, got, want facts) {
 // interval, by entity, against the hand derivation.
 func TestBlockingGoldens(t *testing.T) {
 	cases := blockingGoldens(t)
-	for _, id := range []string{"G-B1", "G-B2", "G-B3", "G-B4", "G-B7", "G-B8", "G-B9"} {
+	for _, id := range []string{"G-B1", "G-B1W", "G-B2", "G-B3", "G-B4", "G-B7", "G-B8", "G-B9"} {
 		t.Run(id, func(t *testing.T) {
 			c, ok := cases[id]
 			if !ok {
@@ -390,4 +417,51 @@ func sameSet(a, b [][2]string) bool {
 		}
 	}
 	return true
+}
+
+// The observation stream of every finite-buffer golden and reference case
+// (replication 0) is pinned (testdata/simulation/kernel-observation-
+// digests-0.2.0.json, a regression lock taken from des-go-0.2.0, not an
+// oracle: the semantics are the hand-derived goldens' and the
+// observation-only checker's). Any change to the order of blocking,
+// unblocking and dispatch, or to their sequence numbers, shows up here.
+func TestBlockingObservationDigests(t *testing.T) {
+	var lock struct {
+		EngineVersion string `json:"engine_version"`
+		Cases         []struct {
+			ID           string `json:"id"`
+			Observations int    `json:"observations"`
+			Digest       string `json:"sha256"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/kernel-observation-digests-0.2.0.json")), &lock); err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Cases     []blockingCase `json:"cases"`
+		Reference struct {
+			Cases []blockingCase `json:"cases"`
+		} `json:"reference"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/blocking-goldens.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, c := range append(doc.Cases, doc.Reference.Cases...) {
+		if c.ID == "G-D2" {
+			continue // refused by the validator; its observations are TestDeadlockIsATypedError's
+		}
+		col := &collect{}
+		if _, err := RunReplication(context.Background(), compile(t, c.input(t)), 0, NewBudget(10_000_000), col); err != nil {
+			t.Fatalf("%s: %v", c.ID, err)
+		}
+		got[c.ID] = fmt.Sprintf("%d %s", len(col.all), observationDigest(col.all))
+	}
+	want := map[string]string{}
+	for _, c := range lock.Cases {
+		want[c.ID] = fmt.Sprintf("%d %s", c.Observations, c.Digest)
+	}
+	if lock.EngineVersion != "des-go-0.2.0" || !maps.Equal(got, want) {
+		t.Errorf("observation digests\n got  %v\n want %v", got, want)
+	}
 }

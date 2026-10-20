@@ -1,6 +1,6 @@
 # ADR-026 — 產線流動的核心 primitive：有限緩衝與阻塞、故障、班表、投入排程、批次
 
-狀態：**ACCEPTED**（2026-10-20，owner H-018：「全都照建議」；D-050 採 A）。2026-10-19 由 T-046 phase 1 提出。Schema 與 fixtures 的變更在 T-046 phase 2，kernel 在 T-047–T-050；實作前 TWIN_IR_SPEC 與 SIMULATION_SPEC 現行的 P0 語義照舊。日期：2026-10-19。依據：H-016、[ADR-025](ADR-025-p0-domain-electronics-line.md)、[ADR-006](ADR-006-native-go-des.md)、[ADR-010](ADR-010-domain-pack-architecture.md)、TWIN_IR_SPEC §8、REQ-024、TEST-034。語義細節為 D-047–D-057（APPROVED，H-018，[登記](../DECISIONS_AND_TBD.md)）；domain 規格與 D-058–D-060 見 [ELECTRONICS_LINE.md](../domains/ELECTRONICS_LINE.md)。
+狀態：**ACCEPTED**（2026-10-20，owner H-018：「全都照建議」；D-050 採 A）。2026-10-19 由 T-046 phase 1 提出。Schema 與 fixtures 的變更在 T-046 phase 2，kernel 在 T-047–T-050；實作前 TWIN_IR_SPEC 與 SIMULATION_SPEC 現行的 P0 語義照舊。**實作進度：有限緩衝與阻塞（D-049）、D-050 的 R1 與 B1、queue `capacity` 的 D-057 risk 已由 T-047 實作（des-go-0.2.0，2026-10-20，待獨立 review；checks/T-047_VALIDATION.md）**；其他 primitive 仍被 D-063 的 gate 擋住。日期：2026-10-19。依據：H-016、[ADR-025](ADR-025-p0-domain-electronics-line.md)、[ADR-006](ADR-006-native-go-des.md)、[ADR-010](ADR-010-domain-pack-architecture.md)、TWIN_IR_SPEC §8、REQ-024、TEST-034。語義細節為 D-047–D-057（APPROVED，H-018，[登記](../DECISIONS_AND_TBD.md)）；domain 規格與 D-058–D-060 見 [ELECTRONICS_LINE.md](../domains/ELECTRONICS_LINE.md)。
 
 ## Context
 
@@ -24,7 +24,7 @@
 |---|---|---|---|---|
 | 相容性與驗證方法 | — | optional 欄位、schema_version 維持 0.1、Result 新成員只在用到時出現、每個 kernel 任務升 engine_version minor、凍結舊 kernel 做 differential | D-047 | T-047–T-050 |
 | 同 tick 順序 | — | 新增 priority 15（故障、修復、班表容量變化、批次逾時）；解除阻塞在 dispatch 內 | D-048 | T-047–T-050 |
-| 有限緩衝與阻塞 | queue node `capacity` | blocking after service；被擋的 entity 留在出發 node、保留整個 bundle；FIFO 解除 | D-049 | T-047 |
+| 有限緩衝與阻塞 | queue node `capacity` | blocking after service；被擋的 entity 留在出發 node、保留整個 bundle；FIFO 解除 | D-049 | T-047（已實作，des-go-0.2.0） |
 | 死結與停滯 | — | validator（全為 error）：`BLOCKING_CYCLE`、bundle 的班表交集（`CALENDAR_INVALID`）、故障 resource 的 bundle 形狀、故障 resource 與夥伴的上班時間（`STALL_RISK`）；runtime：`ErrDeadlock`（循環等待，精確）與 `ErrStalled`（湊不齊，期限 next_fit(max(t_q, X_end)＋TTRmax)；不誤報）；保證涵蓋每個 valid 模型 | D-050 | T-047–T-050 |
 | 故障 | resource `breakdowns` | 每個 unit 一組故障時鐘，只在該 resource 上班時前進；finish-first；stream (resource ID, `ttf/<u>`／`ttr/<u>`) | D-051 | T-048 |
 | 班表 | 根層 `calendars[]`（含 `exceptions`）、resource `calendar_id` 與 `shift_capacity` | 週期性上班區間、每班容量、以絕對 model 時間表示的例外日；交班時 finish-first；新增 scheduled utilization，原 utilization 不變 | D-052 | T-049 |
@@ -159,7 +159,7 @@
 **Golden vectors。**
 - Invalid：(1) process 經 decision 回到自己的有限 queue；(2) 兩個有限 buffer 構成迴圈；(3) A 與 P 共用 resource 且 A 可能被 P 的有限 buffer 擋住（沒有 flow cycle 也拒絕）；(4) 第一個反例 → `CALENDAR_INVALID` 於 X 的 `/requires`；(5) period 300 天與 7 天（最小公倍數 > 365 天）→ `CALENDAR_INVALID`；(6) 第二個反例（故障 resource 上 units＝2）→ `RESOURCE_REQUIREMENT_INVALID`；(7) 同一 bundle 兩個故障 resource → 同上；(8) 機台（無 calendar、有故障）＋作業員（有 calendar）在同一 bundle → `STALL_RISK`，message 建議給機台作業員的 calendar；改正後 valid。Valid：template。
 - G-D1（test-only，繞過 R4，確認 B2 會觸發）：機台沒有 calendar、TTF 960／TTR 480 為 constant，作業員 shift 為每天 [960, 1440)，只有一個 arrival 在 t=10 分鐘。deadline＝next_fit(10＋480)＝960；960 時機台在 dispatch 之前故障，q 未授予 → 在 960 分鐘回 `ErrStalled`。
-- G-D2（B1）：test-only 的 Program 繞過 R1，兩站各 1 unit、capacity 1 的 queue 互相回流，另有一個無關 resource 帶班表（使 heap 永不為空），在最後一個服務中的 entity 完成並被擋的那個 tick 回 `ErrDeadlock`（tick 於 T-047 手算後固定）。
+- G-D2（B1）：test-only 的 Program 繞過 R1，兩站各 1 unit、capacity 1 的 queue 互相回流，另有一個無關 resource 帶班表（使 heap 永不為空），在最後一個服務中的 entity 完成並被擋的那個 tick 回 `ErrDeadlock`（tick 於 T-047 手算後固定）。T-047 的版本（班表在 T-049 才有）以一個直接進 sink 的無關 source 使 heap 永不為空：src 每 1 分鐘 → q1（1）→ s1（2 分鐘）→ q2（1）→ s2（3 分鐘）→ q1；7 分鐘時 e3 在 s1 完成並被擋，沒有服務中的 entity，回 `ErrDeadlock`，回報最早仍被擋的 r0/src/5（src，自 5 分鐘）（`testdata/simulation/blocking-goldens.json`）。
 - G-D3（review N1 (a)，不得觸發）：R capacity 2、`shift_capacity` 為 day [360, 840)＝2、evening [840, 1320)＝1、其餘 0（period 1440）；X 需要 R×2；一件在 900 到達，此時沒有 unit 在使用中。唯一待處理的班表事件是 1320 的 1→0；next_fit(900)＝次日 360 → 不回報，X 在次日 360 被授予。
 - G-D4（review N1 (b)，不得觸發）：R1 shift [0, 600)、R2 shift [540, 1440)、period 1440，X 需要 R1＋R2；R1 有 100 段 open＝false 的例外 [540＋1440k, 600＋1440k)（k＝0..99）。X_end＝99·1440＋600，deadline＝next_fit(X_end)＝第 100 天的 540 → 不回報，X 在該 tick 被授予。
 - G-D5（review N6 (b)，不得觸發）：M 與 O 的 shift 都是 [0, 480)、period 1440；O 有 open＝false 的例外 [1440, 1920)；M 的 TTF 960、TTR 1500（constant）；X 需要 M＋O；一件在 1450 到達。M 在 1920 故障、停機到 3420；X_end＝1920，deadline＝next_fit(1920＋1500)＝next_fit(3420)＝4320；3420 的 REPAIR dispatch 不回報，X 在第 3 天的 4320 被授予。
@@ -352,7 +352,7 @@ Owner 的方向同 D-055（H-017 把 lognormal／Weibull 列為 P0 提案）：�
 ## Consequences
 
 - **批准後的 contract 變更（T-046 phase 2；已完成並通過 review，見 checks/T-046_PHASE2_VALIDATION.md）**：`model-ir.schema.json`（queue `capacity`；resource `breakdowns`、`calendar_id`、`shift_capacity`、`setups`；根層 `calendars`（含 shift `label` 與 `exceptions`）；source `arrival.schedule`（rate 型與 table 型）；process `batch`；distribution 的 `lognormal` 與 `weibull`；`metrics[]` 的 `system_wip`、`flow_count`、`sink_count`、`period_throughput`，D-058）；`canonical-event.schema.json`（D-059）；`simulation.schema.json`（Result 的 optional 新成員與每個 replication 的 resource 狀態積分（D-058）、trace 的新事件類型、run failure 的 `SIMULATION_DEADLOCK`／`SIMULATION_STALLED`）；validator codes（`BLOCKING_CYCLE`、`CALENDAR_INVALID`、`RELEASE_SCHEDULE_INVALID`、`BATCH_INVALID`、`SETUP_INVALID`、`STALL_RISK`（error；A′ 時為 warning），以及 `RESOURCE_REQUIREMENT_INVALID` 的 D-050 R3 規則）與 D-023 的排序；patch allowlist（D-057）；valid／invalid fixtures；`make ts-contracts`。Phase 2 的做法：上述 codes 進入 ValidationCode 目錄（含 en／zh-Hant 字串），規則本身與它們在 D-023 中的位置寫在 TWIN_IR_SPEC §4（R1 在 graph rules 階段；R2–R4 在 distribution／domain semantics 之後新設的 bundle feasibility 階段），由 T-047–T-050 實作；`testdata/contracts/semantic-*.json` 的 16 個手推 fixture 先固定它們的 code 與 path。Kernel 支援前的 fail closed 需要新的 code `PRIMITIVE_NOT_SUPPORTED` 與 schema 之後的 primitive support 階段，另立 D-063（APPROVED，H-019）；phase 2 中其他由 agent 選定、批准文字沒有寫到的 contract 細節也列在 D-063。
-- **Engine**：T-047–T-050 各升一次 engine_version minor（des-go-0.2.0 起）；鎖定檔不重新產生；凍結的舊 kernel 保留在 test 中；`make simulation-reference-test` 由 SimPy reference 取代（SimPy 的版本與授權在引入時固定並記入 THIRD_PARTY_NOTICES，不用 floating latest）。
+- **Engine**：T-047–T-050 各升一次 engine_version minor（des-go-0.2.0 起；T-047 為 des-go-0.2.0）；鎖定檔不重新產生；凍結的舊 kernel 保留在 test 中；`make simulation-reference-test` 由 SimPy reference 取代（SimPy 的版本與授權在引入時固定並記入 THIRD_PARTY_NOTICES，不用 floating latest）。
 - **效能**：解除阻塞在 dispatch 內連鎖、每個 unit 的故障事件與班表事件增加事件數，D-050 的檢查與 held candidate 數成正比；全部計入 event budget，T-037 的 benchmark 需涵蓋代表性的產線模型。
 - **PRD 已列為 P1、維持 P1**：preemption（故障、交班與換線的中斷）、優先權與派工規則（含依產品分組的換線排序）、進階 routing、connectors（MES／CFX 等）。
 - **風險**：finish-first 在長 service（燒機、機櫃測試）下低估故障與交班的影響，UI 與文件須標示；D-050 的 R1 是保守條件，可能拒絕實際不會卡住的模型，錯誤訊息要指出 cycle 上的 buffer 與共用 resource，並說明兩種修正（cycle 上至少一個 buffer 改為無限，或讓被擋的 process 不與擋住它的 process 共用 resource）；R4（`STALL_RISK`）為 error 時會拒絕「會故障的機台沒有班表、作業員有班表」這類寫法，錯誤訊息要指出改法（給機台作業員的 calendar）；若 owner 改採 D-050 的 A′（warning），有 warning 的模型可能在殘餘情形下只表現為 backlog 增長。

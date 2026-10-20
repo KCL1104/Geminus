@@ -190,7 +190,7 @@ func TestDecisionRoutesInFlowIDOrder(t *testing.T) {
 	}
 }
 
-func minimal(t *testing.T) model.ModelIR {
+func minimal(t testing.TB) model.ModelIR {
 	t.Helper()
 	var ir model.ModelIR
 	if err := model.Decode(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/contracts/valid-minimal-ir.json")), &ir); err != nil {

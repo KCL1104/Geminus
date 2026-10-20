@@ -515,3 +515,81 @@ func findEntity(t *testing.T, c *bchecker, id string) uint64 {
 	t.Fatalf("no active entity %s", id)
 	return 0
 }
+
+// FuzzBlocking (T-047): a random model (the generator's seed), with a
+// capacity of 1–3 on the queues the bits of caps select, validated in
+// full (R1 holds: no run may deadlock) or, with bypass, compiled past the
+// validator (deadlocks are allowed but must be real); every run must agree
+// with the observation-only model of blocking.
+func FuzzBlocking(f *testing.F) {
+	for _, s := range []struct {
+		seed   uint64
+		caps   uint32
+		bypass bool
+	}{{1, 0xffffffff, false}, {7, 0x5555, true}, {42, 0, false}, {99, 0xf0f0, true}, {1234, 0x3, false}} {
+		f.Add(s.seed, s.caps, s.bypass)
+	}
+	base := minimal(f)
+	f.Fuzz(func(t *testing.T, seed uint64, caps uint32, bypass bool) {
+		rng := rand.New(rand.NewPCG(seed, 4705))
+		ir := randomModelFrom(base, rng)
+		in := input(ir)
+		if _, err := Compile(in); err != nil {
+			return
+		}
+		ir.Nodes = slices.Clone(ir.Nodes)
+		bit := 0
+		for i := range ir.Nodes {
+			if ir.Nodes[i].Type == model.NodeQueue {
+				if caps>>(bit%32)&1 == 1 {
+					ir.Nodes[i].Capacity = 1 + int(caps>>((bit+7)%32))%3
+				}
+				bit++
+			}
+		}
+		in.Model = ir
+		in.Config = config(float64(60+rng.IntN(600)), model.Minute)
+		in.Config.Replications = 2
+		var p *Program
+		var err error
+		if bypass {
+			withoutValidator(t, func() { p, err = Compile(in) })
+		} else {
+			p, err = Compile(in)
+			var ie *InputError
+			if errors.As(err, &ie) {
+				for _, is := range ie.Issues {
+					if is.Code != validate.BlockingCycle && is.Severity == model.SeverityError {
+						t.Fatalf("a capacity made the model invalid with %v", is)
+					}
+				}
+				return
+			}
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := newBChecker(p, &ir, uint32(seed%2))
+		_, err = RunReplication(context.Background(), p, uint32(seed%2), NewBudget(100_000), c)
+		var de *DeadlockError
+		switch {
+		case errors.As(err, &de):
+			if !bypass {
+				t.Fatalf("a valid model deadlocked: %v", err)
+			}
+			if len(c.group) > 0 {
+				c.finishGroup()
+			}
+			if !c.deadlocked() || de.Tick != c.lastTick {
+				t.Fatalf("ErrDeadlock without a circular wait: %v %v", err, c.errs)
+			}
+		case err == nil || errors.Is(err, ErrEventBudget) || errors.Is(err, ErrEntityVisits):
+			c.finish()
+		default:
+			t.Fatal(err)
+		}
+		if len(c.errs) > 0 {
+			t.Fatalf("%d problems, first: %v", len(c.errs), c.errs)
+		}
+	})
+}

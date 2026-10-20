@@ -358,6 +358,344 @@
       "simpy": "compare"
     },
     {
+      "id": "G-B1W",
+      "title": "G-B1 measured from a warmup of 5",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B1W",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "ra",
+            "type": "machine",
+            "name": "ra",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "rb",
+            "type": "machine",
+            "name": "rb",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "a",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ra",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qb",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "b",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rb",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__a",
+            "from": "src",
+            "to": "a",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "a__qb",
+            "from": "a",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qb__b",
+            "from": "qb",
+            "to": "b",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b__done",
+            "from": "b",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 20,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 5,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "a": [
+            [
+              "r0/src/1",
+              1
+            ],
+            [
+              "r0/src/2",
+              2
+            ],
+            [
+              "r0/src/3",
+              3
+            ],
+            [
+              "r0/src/4",
+              5
+            ],
+            [
+              "r0/src/5",
+              8
+            ],
+            [
+              "r0/src/6",
+              11
+            ],
+            [
+              "r0/src/7",
+              14
+            ],
+            [
+              "r0/src/8",
+              17
+            ],
+            [
+              "r0/src/9",
+              20
+            ]
+          ],
+          "b": [
+            [
+              "r0/src/1",
+              2
+            ],
+            [
+              "r0/src/2",
+              5
+            ],
+            [
+              "r0/src/3",
+              8
+            ],
+            [
+              "r0/src/4",
+              11
+            ],
+            [
+              "r0/src/5",
+              14
+            ],
+            [
+              "r0/src/6",
+              17
+            ],
+            [
+              "r0/src/7",
+              20
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            5
+          ],
+          [
+            "r0/src/2",
+            8
+          ],
+          [
+            "r0/src/3",
+            11
+          ],
+          [
+            "r0/src/4",
+            14
+          ],
+          [
+            "r0/src/5",
+            17
+          ],
+          [
+            "r0/src/6",
+            20
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/src/3",
+            "a",
+            4,
+            5
+          ],
+          [
+            "r0/src/4",
+            "a",
+            6,
+            8
+          ],
+          [
+            "r0/src/5",
+            "a",
+            9,
+            11
+          ],
+          [
+            "r0/src/6",
+            "a",
+            12,
+            14
+          ],
+          [
+            "r0/src/7",
+            "a",
+            15,
+            17
+          ],
+          [
+            "r0/src/8",
+            "a",
+            18,
+            20
+          ]
+        ],
+        "result": {
+          "completed_count": 6,
+          "censored_entities": 14,
+          "lead_times_minutes": [
+            12,
+            14
+          ],
+          "queue_waits_minutes": {
+            "qb": [
+              3,
+              3,
+              3,
+              3,
+              3
+            ],
+            "a": [
+              3,
+              5,
+              7,
+              9,
+              11
+            ]
+          },
+          "resource_utilization": {
+            "ra": 1.0,
+            "rb": 1.0
+          },
+          "blocking": {
+            "a": {
+              "blocks_started": 5,
+              "blocks_completed": 5,
+              "completed_block_ticks": 600000,
+              "blocked_entity_ticks": 600000
+            }
+          },
+          "buffers": {
+            "qb": {
+              "full_ticks": 900000
+            }
+          },
+          "resource_states": {
+            "ra": {
+              "in_use_ticks": 900000,
+              "blocked_ticks": 600000,
+              "scheduled_processing_ticks": 300000
+            },
+            "rb": {
+              "in_use_ticks": 900000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 900000
+            }
+          }
+        }
+      },
+      "simpy": "compare"
+    },
+    {
       "id": "G-B2",
       "title": "G-B1 with b's buffer unlimited",
       "model": {
@@ -1599,7 +1937,21 @@
         "trace_level": "none"
       },
       "expected": {
-        "routing_draws": "one per completion at a; checked against the d/routing stream in the test"
+        "routing_draws": "one per completion at a; checked against the d/routing stream in the test",
+        "member_keys": {
+          "blocking": [
+            "a"
+          ],
+          "buffers": [
+            "q1",
+            "q2"
+          ],
+          "resource_states": [
+            "r1",
+            "r2",
+            "ra"
+          ]
+        }
       },
       "simpy": "not compared: the property is the kernel's use of its routing stream"
     },

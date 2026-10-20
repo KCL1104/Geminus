@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"maps"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -137,7 +138,7 @@ func TestBlockingGoldenResults(t *testing.T) {
 			}
 		})
 	}
-	if checked < 7 {
+	if checked < 8 {
 		t.Fatalf("%d cases with an expected result", checked)
 	}
 }
@@ -262,4 +263,45 @@ func TestBlockedEntitiesInTheTrace(t *testing.T) {
 
 func engineEntityID(source string, n int) string {
 	return "r0/" + source + "/" + strconv.Itoa(n)
+}
+
+// G-B5: which finite-buffer members a Result has does not depend on the
+// routing draws: every resource, the nodes whose route can reach a finite
+// buffer (a, through the decision; not src, before a's unlimited buffer)
+// and the finite buffers (hand-derived in blocking-goldens.json).
+func TestBlockingMemberKeys(t *testing.T) {
+	var doc struct {
+		Cases []struct {
+			ID       string               `json:"id"`
+			Model    jsontext.Value       `json:"model"`
+			Config   simulation.RunConfig `json:"config"`
+			Expected struct {
+				Keys map[string][]string `json:"member_keys"`
+			} `json:"expected"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/blocking-goldens.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	checked := 0
+	for _, c := range doc.Cases {
+		if c.Expected.Keys == nil {
+			continue
+		}
+		checked++
+		res := run(t, &Engine{}, caseInput(t, goldenCase{ID: c.ID, Model: c.Model, Config: c.Config})).Result
+		validResult(t, res)
+		s := res.ReplicationSummaries[0]
+		for member, keys := range map[string][]string{
+			"blocking": slices.Sorted(maps.Keys(s.Blocking)), "buffers": slices.Sorted(maps.Keys(s.Buffers)),
+			"resource_states": slices.Sorted(maps.Keys(s.ResourceStates)),
+		} {
+			if !slices.Equal(keys, c.Expected.Keys[member]) {
+				t.Errorf("%s: %s keys %v, hand-derived %v", c.ID, member, keys, c.Expected.Keys[member])
+			}
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no case lists member keys")
+	}
 }
