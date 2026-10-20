@@ -1,0 +1,29 @@
+validator checks finite_buffer, kernel list intact: exit 0
+    zz_probe_kernel_test.go:34: refused: [{PRIMITIVE_NOT_SUPPORTED /model/nodes/3/capacity this build does not support finite queue capacity (ADR-026 D-049) yet; remove it to publish or run the model error}]
+    --- PASS: TestZZProbeFiniteQueueCompile (0.05s)
+validator checks finite_buffer, Compile kernel-list call removed: exit 1
+    zz_probe_kernel_test.go:43: COMPILED a finite-buffer model the kernel does not execute: 4 nodes
+    --- FAIL: TestZZProbeFiniteQueueCompile (0.06s)
+M10 alone, repository tests exit 1
+    ok  	github.com/kcl1104/geminus/internal/simulation	0.821s
+    ok  	github.com/kcl1104/geminus/internal/simulation/des	2.905s
+    --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun (0.01s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/finite_buffer (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/breakdowns (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/lognormal (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/weibull (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/calendars (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/release_schedule (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/batch (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/setups (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/system_wip (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/flow_count (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/sink_count (0.00s)
+        --- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun/period_throughput (0.00s)
+    FAIL
+    FAIL	github.com/kcl1104/geminus/internal/simulation/engine	4.247s
+    ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.178s
+    ok  	github.com/kcl1104/geminus/internal/runs	0.029s
+    ok  	github.com/kcl1104/geminus/internal/runs/runner	0.020s
+    FAIL
+restored

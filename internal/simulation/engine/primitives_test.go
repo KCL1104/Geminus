@@ -39,6 +39,112 @@ func TestCompileRefusesLineFlowPrimitives(t *testing.T) {
 	issueExactly(t, err, "/model/resources/1/breakdowns", validate.PrimitiveNotSupported)
 }
 
+// primitiveModels puts each line-flow primitive alone into
+// deterministic-queue.json (arrival -> service -> done, resource server),
+// with the path of its use.
+var primitiveModels = map[validate.Primitive]struct {
+	edit func(ir *model.ModelIR)
+	path string
+}{
+	validate.FiniteBuffer: {func(ir *model.ModelIR) {
+		ir.Nodes = append(ir.Nodes, model.Node{ID: "buf", Type: model.NodeQueue, Capacity: 1})
+		ir.Flows[0].To = "buf"
+		ir.Flows = append(ir.Flows, model.Flow{ID: "b_s", From: "buf", To: "service", Routing: model.Routing{Type: model.RoutingProbability, Probability: 1}})
+	}, "/nodes/3/capacity"},
+	validate.Breakdowns: {func(ir *model.ModelIR) {
+		ir.Resources[0].Breakdowns = &model.Breakdowns{TimeToFailure: model.TimedDistribution{Distribution: constant(100)},
+			TimeToRepair: model.TimedDistribution{Distribution: constant(5)}}
+	}, "/resources/0/breakdowns"},
+	validate.Lognormal: {func(ir *model.ModelIR) {
+		mean, cv := 4.0, 0.5
+		ir.Nodes[1].ServiceTime.Distribution = model.Distribution{Type: model.DistLognormal, Mean: &mean, CV: &cv}
+	}, "/nodes/1/service_time/distribution"},
+	validate.Weibull: {func(ir *model.ModelIR) {
+		shape, scale := 1.5, 4.0
+		ir.Nodes[1].ServiceTime.Distribution = model.Distribution{Type: model.DistWeibull, Shape: &shape, Scale: &scale}
+	}, "/nodes/1/service_time/distribution"},
+	validate.Calendars: {func(ir *model.ModelIR) {
+		ir.Calendars = []model.Calendar{{ID: "day", Period: 1440, Shifts: []model.Shift{{Start: 0, End: 480}}}}
+	}, "/calendars"},
+	validate.ReleaseSchedule: {func(ir *model.ModelIR) {
+		ir.Nodes[0].Arrival = &model.Arrival{Schedule: &model.ReleaseSchedule{Process: model.ReleaseTable, Period: 60,
+			Releases: []model.Release{{At: 0, Quantity: 3}}}}
+	}, "/nodes/0/arrival/schedule"},
+	validate.Batch: {func(ir *model.ModelIR) {
+		ir.Nodes[1].Batch = &model.Batch{MinSize: 2, MaxSize: 2}
+	}, "/nodes/1/batch"},
+	validate.Setups: {func(ir *model.ModelIR) {
+		d := constant(1)
+		ir.Resources[0].Setups = &model.Setups{Default: &d}
+	}, "/resources/0/setups"},
+	validate.SystemWIP: {func(ir *model.ModelIR) {
+		ir.Metrics = append(ir.Metrics, model.Metric{ID: "wip", Type: model.MetricSystemWIP})
+	}, "/metrics/2/type"},
+	validate.FlowCount: {func(ir *model.ModelIR) {
+		ir.Metrics = append(ir.Metrics, model.Metric{ID: "passes", Type: model.MetricFlowCount, FlowID: "s_d"})
+	}, "/metrics/2/type"},
+	validate.SinkCount: {func(ir *model.ModelIR) {
+		ir.Metrics = append(ir.Metrics, model.Metric{ID: "done_count", Type: model.MetricSinkCount, SinkID: "done"})
+	}, "/metrics/2/type"},
+	validate.PeriodThroughput: {func(ir *model.ModelIR) {
+		period := 60.0
+		ir.Metrics = append(ir.Metrics, model.Metric{ID: "hourly", Type: model.MetricPeriodThroughput, Period: &period})
+	}, "/metrics/2/type"},
+}
+
+// M2 (T-046 review round 1): with a validator that checks every primitive
+// (a rule landing before its kernel), Compile itself still refuses each
+// primitive the kernel does not execute, at its use, so no such model is
+// ever simulated as if the member were absent. The validator Compile calls
+// is replaced for this test only.
+func TestCompileRefusesWhatTheKernelDoesNotRun(t *testing.T) {
+	defer func(v func([]byte) (validate.Result, error)) { validateIR = v }(validateIR)
+	validateIR = func(data []byte) (validate.Result, error) {
+		var ir model.ModelIR
+		if err := model.Decode(data, &ir); err != nil {
+			return validate.Result{}, err
+		}
+		return validate.Result{IR: &ir}, nil // valid: no issue at all
+	}
+	if len(primitiveModels) != len(validate.Primitives) {
+		t.Fatalf("%d models for %d primitives", len(primitiveModels), len(validate.Primitives))
+	}
+	for _, p := range validate.Primitives {
+		t.Run(string(p), func(t *testing.T) {
+			c, ok := primitiveModels[p]
+			if !ok {
+				t.Fatalf("no model for %s", p)
+			}
+			ir := golden(t, "deterministic-queue.json")
+			c.edit(&ir)
+			_, err := Compile(input(ir))
+			var ie *InputError
+			if kernelExecutes[p] {
+				// The kernel runs it: Compile must not refuse it as unsupported.
+				if errors.As(err, &ie) && slices.ContainsFunc(ie.Issues, func(i model.ValidationIssue) bool { return i.Code == validate.PrimitiveNotSupported }) {
+					t.Errorf("%s is executed but refused: %v", p, ie.Issues)
+				}
+				return
+			}
+			if !errors.As(err, &ie) || len(ie.Issues) != 1 || ie.Issues[0].Code != validate.PrimitiveNotSupported ||
+				ie.Issues[0].Path != "/model"+c.path {
+				t.Fatalf("want only PRIMITIVE_NOT_SUPPORTED at /model%s, got %v", c.path, err)
+			}
+		})
+	}
+	// The same models, through the real validator, are refused there first.
+	validateIR = validate.IR
+	for _, p := range validate.Primitives {
+		ir := golden(t, "deterministic-queue.json")
+		primitiveModels[p].edit(&ir)
+		_, err := Compile(input(ir))
+		var ie *InputError
+		if !errors.As(err, &ie) || len(ie.Issues) != 1 || ie.Issues[0].Path != "/model"+primitiveModels[p].path {
+			t.Errorf("%s through the validator: %v", p, err)
+		}
+	}
+}
+
 // The kernel keeps its own list of what it executes, apart from what the
 // validator checks: should a validator rule land before its kernel, Compile
 // still refuses the model. Checked on a decoded model, past the validator.

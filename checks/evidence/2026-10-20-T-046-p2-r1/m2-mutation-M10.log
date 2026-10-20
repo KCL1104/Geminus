@@ -1,0 +1,1 @@
+{"mutation": "M10 Compile: drop the kernel list check", "exit": 1, "caught": true, "fails": ["--- FAIL: TestCompileRefusesWhatTheKernelDoesNotRun (0.01s)", "FAIL", "FAIL\tgithub.com/kcl1104/geminus/internal/simulation/engine\t5.089s", "FAIL"], "build": []}

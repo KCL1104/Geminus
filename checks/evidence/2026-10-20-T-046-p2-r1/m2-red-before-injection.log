@@ -1,0 +1,5 @@
+# github.com/kcl1104/geminus/internal/simulation/engine [github.com/kcl1104/geminus/internal/simulation/engine.test]
+internal/simulation/engine/primitives_test.go:101:73: undefined: validateIR
+internal/simulation/engine/primitives_test.go:102:2: undefined: validateIR
+internal/simulation/engine/primitives_test.go:136:2: undefined: validateIR
+exit 1

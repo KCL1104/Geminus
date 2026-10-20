@@ -88,7 +88,7 @@ func Compile(in simulation.RunInput) (*Program, error) {
 	if err != nil {
 		return nil, fmt.Errorf("engine: encoding the model: %w", err)
 	}
-	res, err := validate.IR(data)
+	res, err := validateIR(data)
 	if err != nil {
 		return nil, fmt.Errorf("engine: validating the model: %w", err)
 	}
@@ -122,6 +122,11 @@ func Compile(in simulation.RunInput) (*Program, error) {
 	}
 	return p, nil
 }
+
+// validateIR is the validator Compile runs: always validate.IR, except in a
+// test of this package that stands in a validator checking every primitive
+// to show that the kernel list below refuses on its own (T-046 review M2).
+var validateIR = validate.IR
 
 // kernelExecutes holds the line-flow primitives (ADR-026, D-058;
 // validate.Primitives) this kernel executes: none in des-go-0.1.0. Each of
