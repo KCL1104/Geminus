@@ -226,18 +226,31 @@ SELECT pg_temp.must_fail($q$INSERT INTO twin.run_datasets(organization_id,run_id
 
 -- D-027: risk_level is max(server_risk_level, provider_risk_claim); the
 -- provider can only raise it and the server value is required with it.
-SELECT pg_temp.must_fail(format($q$INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,mode,status,intent,created_by,server_risk_level,provider_risk_claim,risk_level,id_pool) VALUES ('aip_01M4YDQK00TA00000000000009','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','t','{{USR_A}}',%L,%L,%L,'{{POOL_1}}')$q$, s, c, r),'23514')
-  FROM (VALUES ('low','high','medium'), ('high','low','low'), (NULL,'high','high'), (NULL,NULL,'low'), ('low',NULL,NULL),
-               ('low','low',NULL), ('medium','low','high'), ('critical','low','critical')) AS t(s, c, r);
-INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,mode,status,intent,created_by,server_risk_level,provider_risk_claim,risk_level,id_pool) VALUES
-  ('{{AIP_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','raise capacity','{{USR_A}}','low','high','high','{{POOL_1}}'),
-  ('{{AIP_A2}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','claim only','{{USR_A}}',NULL,'low',NULL,'{{POOL_1}}'),
-  ('aip_01M4YDQK00TA00000000000003','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','server wins','{{USR_A}}','medium','low','medium','{{POOL_1}}'),
-  ('aip_01M4YDQK00TA00000000000004','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','not classified yet','{{USR_A}}',NULL,NULL,NULL,'{{POOL_1}}');
+-- T-025 (0012): a proposal starts with nothing generated, so the worker
+-- writes the levels, and a proposal leaves generating in the transaction
+-- that completes its job (proposal_jobs.sql tests both rules).
+INSERT INTO twin.ai_proposals(id,organization_id,model_id,base_version_id,mode,status,intent,created_by,id_pool) VALUES
+  ('{{AIP_A1}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','raise capacity','{{USR_A}}','{{POOL_1}}'),
+  ('{{AIP_A2}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','claim only','{{USR_A}}','{{POOL_1}}'),
+  ('aip_01M4YDQK00TA00000000000003','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','server wins','{{USR_A}}','{{POOL_1}}'),
+  ('aip_01M4YDQK00TA00000000000004','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','edit','generating','not classified yet','{{USR_A}}','{{POOL_1}}');
+INSERT INTO twin.jobs(id,organization_id,type,status,payload,ai_proposal_id) VALUES
+  ('{{JOB_A41}}','{{ORG_A}}','model_proposal','queued','{}','{{AIP_A1}}'),
+  ('{{JOB_A42}}','{{ORG_A}}','model_proposal','queued','{}','aip_01M4YDQK00TA00000000000003');
 SELECT pg_temp.check(has_column_privilege('twin_worker','twin.ai_proposals','server_risk_level','UPDATE') AND
                      has_column_privilege('twin_worker','twin.ai_proposals','provider_risk_claim','UPDATE'),
   'the worker records server risk and the provider claim');
 SET LOCAL ROLE twin_worker;
+SELECT pg_temp.must_fail(format($q$UPDATE twin.ai_proposals SET server_risk_level=%L, provider_risk_claim=%L, risk_level=%L WHERE organization_id='{{ORG_A}}' AND id='aip_01M4YDQK00TA00000000000004'$q$, s, c, r),'23514')
+  FROM (VALUES ('low','high','medium'), ('high','low','low'), (NULL,'high','high'), (NULL,NULL,'low'), ('low',NULL,NULL),
+               ('low','low',NULL), ('medium','low','high'), ('critical','low','critical')) AS t(s, c, r);
+UPDATE twin.ai_proposals SET server_risk_level='low', provider_risk_claim='high', risk_level='high' WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A1}}';
+UPDATE twin.ai_proposals SET provider_risk_claim='low' WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A2}}';
+UPDATE twin.ai_proposals SET server_risk_level='medium', provider_risk_claim='low', risk_level='medium'
+  WHERE organization_id='{{ORG_A}}' AND id='aip_01M4YDQK00TA00000000000003';
+UPDATE twin.jobs SET status='running', attempt=attempt+1, lease_token=lease_token+1, locked_at=now(), locked_by='w',
+    lease_expires_at=now()+interval '30 seconds'
+  WHERE organization_id='{{ORG_A}}' AND id IN ('{{JOB_A41}}','{{JOB_A42}}');
 UPDATE twin.ai_proposals SET status='ready', patch='[{"op":"test","path":"/name","value":"Model A v1"}]', patch_hash='{{H1}}',
     validation='{"valid":true,"issues":[]}', confidence=0.9
   WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A1}}';
@@ -245,6 +258,8 @@ SELECT pg_temp.must_fail($q$UPDATE twin.ai_proposals SET status='ready', patch='
 UPDATE twin.ai_proposals SET status='ready', patch='[{"op":"test","path":"/name","value":"Model A v2"}]', patch_hash='{{H2}}',
     validation='{"valid":true,"issues":[]}', confidence=0.8
   WHERE organization_id='{{ORG_A}}' AND id='aip_01M4YDQK00TA00000000000003';
+UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL
+  WHERE organization_id='{{ORG_A}}' AND id IN ('{{JOB_A41}}','{{JOB_A42}}');
 SET LOCAL ROLE twin_api;
 -- Reviewed risk is frozen for everyone (the worker is refused even earlier, roles.sql).
 SELECT pg_temp.must_fail($q$UPDATE twin.ai_proposals SET server_risk_level='high', risk_level='high' WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A1}}'$q$,'55000');

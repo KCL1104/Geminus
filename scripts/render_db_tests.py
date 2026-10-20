@@ -61,6 +61,12 @@ IDS = {
     "JOB_A23": ("job", "A", 23), "JOB_A24": ("job", "A", 24), "JOB_A25": ("job", "A", 25), "JOB_A26": ("job", "A", 26),
     # T-024 (proposals.sql, pool_rows.sql): proposals and their ID allocation pools (D-046).
     "AIP_A3": ("aip", "A", 3), "AIP_A4": ("aip", "A", 4), "AIP_B1": ("aip", "B", 1),
+    # T-025 (proposal_jobs.sql, constraints.sql): proposals that follow their model_proposal jobs.
+    "AIP_A5": ("aip", "A", 5), "AIP_A6": ("aip", "A", 6), "AIP_A7": ("aip", "A", 7), "AIP_A8": ("aip", "A", 8),
+    "AIP_A10": ("aip", "A", 10), "AIP_A11": ("aip", "A", 11),
+    "JOB_A31": ("job", "A", 31), "JOB_A32": ("job", "A", 32), "JOB_A33": ("job", "A", 33), "JOB_A34": ("job", "A", 34),
+    "JOB_A35": ("job", "A", 35), "JOB_A36": ("job", "A", 36), "JOB_A37": ("job", "A", 37), "JOB_A38": ("job", "A", 38),
+    "JOB_A41": ("job", "A", 41), "JOB_A42": ("job", "A", 42),
 }
 
 

@@ -24,6 +24,7 @@ run migrations/0008_me.up.sql
 run migrations/0009_simulation_runs.up.sql
 run migrations/0010_import_uploads.up.sql
 run migrations/0011_ai_id_pool.up.sql
+run migrations/0012_proposal_jobs.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
@@ -31,6 +32,8 @@ run db/tests/self.sql
 run db/tests/runs.sql
 run db/tests/imports.sql
 run db/tests/proposals.sql
+run db/tests/proposal_jobs.sql
+run migrations/0012_proposal_jobs.down.sql
 run migrations/0011_ai_id_pool.down.sql
 # D-046: 0011 stores the pool each proposal is created with, which cannot be
 # made up afterwards. On a database with proposals it stops and changes nothing.
@@ -75,6 +78,7 @@ run migrations/0008_me.up.sql
 run migrations/0009_simulation_runs.up.sql
 run migrations/0010_import_uploads.up.sql
 run migrations/0011_ai_id_pool.up.sql
+run migrations/0012_proposal_jobs.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
@@ -82,4 +86,5 @@ run db/tests/self.sql
 run db/tests/runs.sql
 run db/tests/imports.sql
 run db/tests/proposals.sql
+run db/tests/proposal_jobs.sql
 echo 'DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.'
