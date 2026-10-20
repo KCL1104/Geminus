@@ -10,16 +10,39 @@ import (
 )
 
 // pattern is an allowlist entry over decoded tokens; "*" matches one array
-// index. A path is allowed when its tokens start with a pattern (D-020).
+// index and "+" any one member name. A path is allowed when its tokens start
+// with a pattern (D-020).
 type pattern []string
 
 var allow = map[Mode][]pattern{
 	ManualDraft: {{"name"}, {"nodes"}, {"flows"}, {"resources"}, {"entity_types"}, {"constraints"},
-		{"metrics"}, {"views"}, {"metadata"}},
-	AIEdit: {{"name"}, {"nodes"}, {"flows"}, {"resources"}, {"entity_types"}, {"constraints"}, {"metrics"}},
+		{"metrics"}, {"calendars"}, {"views"}, {"metadata"}},
+	AIEdit: {{"name"}, {"nodes"}, {"flows"}, {"resources"}, {"entity_types"}, {"constraints"}, {"metrics"}, {"calendars"}},
 	Scenario: {{"resources", "*", "capacity"}, {"nodes", "*", "arrival", "distribution"},
 		{"nodes", "*", "service_time", "distribution"}, {"nodes", "*", "delay_time", "distribution"},
-		{"flows", "*", "routing", "probability"}},
+		{"flows", "*", "routing", "probability"},
+		// D-057: a queue's capacity may change, be added (unlimited to
+		// finite) or be removed (back to unlimited).
+		{"nodes", "*", "capacity"}},
+}
+
+// replaceOnly are the D-057 scenario parameters that take only "replace": a
+// scenario changes the value of what the version has and never adds or
+// removes a breakdown, changeover, calendar, schedule or batch (those go
+// through draft and publish). Every distribution under them may become any
+// distribution, including lognormal and Weibull (D-056).
+var replaceOnly = map[Mode][]pattern{
+	Scenario: {
+		{"resources", "*", "breakdowns", "time_to_failure", "distribution"},
+		{"resources", "*", "breakdowns", "time_to_repair", "distribution"},
+		{"nodes", "*", "arrival", "schedule", "segments", "*", "rate"},
+		{"nodes", "*", "arrival", "schedule", "releases", "*", "quantity"},
+		{"nodes", "*", "batch", "min_size"}, {"nodes", "*", "batch", "max_size"}, {"nodes", "*", "batch", "max_wait"},
+		{"resources", "*", "setups", "transitions", "*", "distribution"}, {"resources", "*", "setups", "default"},
+		{"resources", "*", "calendar_id"}, // the candidate must name an existing calendar
+		{"resources", "*", "shift_capacity", "+"},
+		{"calendars", "*", "shifts"}, {"calendars", "*", "exceptions"},
+	},
 }
 
 func (p pattern) matches(tokens []string) bool {
@@ -27,12 +50,16 @@ func (p pattern) matches(tokens []string) bool {
 		return false
 	}
 	for i, want := range p {
-		if want == "*" {
+		switch want {
+		case "*":
 			if _, err := arrayIndex(tokens[i]); err != nil {
 				return false
 			}
-		} else if tokens[i] != want {
-			return false
+		case "+":
+		default:
+			if tokens[i] != want {
+				return false
+			}
 		}
 	}
 	return true
@@ -41,7 +68,7 @@ func (p pattern) matches(tokens []string) bool {
 // identity is the member that identifies an element of each top-level array.
 // Constraints have no id; their node_id identifies them (T-004 interpretation).
 var identity = map[string]string{"nodes": "id", "flows": "id", "resources": "id", "entity_types": "id",
-	"metrics": "id", "constraints": "node_id"}
+	"metrics": "id", "constraints": "node_id", "calendars": "id"}
 
 // check enforces the static rules: decodable pointers, the mode allowlist and
 // the test-before-modify rule. It needs no base document; apply then verifies
@@ -115,6 +142,9 @@ func check(ops model.Patch, mode Mode) []model.ValidationIssue {
 
 func allowed(mode Mode, op model.PatchOp, tokens []string, removedNodes []string) bool {
 	if slices.ContainsFunc(allow[mode], func(p pattern) bool { return p.matches(tokens) }) {
+		return true
+	}
+	if op.Op == model.PatchReplace && slices.ContainsFunc(replaceOnly[mode], func(p pattern) bool { return p.matches(tokens) }) {
 		return true
 	}
 	// D-022: an AI edit may drop the 2D position of a node the same patch deletes.
@@ -220,13 +250,16 @@ func nodeIDs(tree any) map[string]bool {
 	return out
 }
 
-// samplesRefs returns every empirical samples_ref the nodes of tree use.
+// samplesRefs returns every empirical samples_ref the nodes and resources of
+// tree use (resources hold distributions since ADR-026: breakdowns, setups).
 func samplesRefs(tree any) map[string]bool {
 	out := map[string]bool{}
 	root, _ := tree.(map[string]any)
-	nodes, _ := root["nodes"].([]any)
-	for _, n := range nodes {
-		collectRefs(n, out)
+	for _, catalog := range []string{"nodes", "resources"} {
+		items, _ := root[catalog].([]any)
+		for _, n := range items {
+			collectRefs(n, out)
+		}
 	}
 	return out
 }
