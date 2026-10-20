@@ -86,10 +86,12 @@ func timestamp(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 var failureCode = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
 
 // envelope shows a stored failure as the contract's error, under the
-// request that uploaded the file (requestID only if that is unknown). The
-// closed ErrorCode list has no import codes (CB-39, a question for the
-// owner); until it has, the failure's own code is details[0].code and the
-// error's code is:
+// request behind the step that failed: the upload, or the save of the
+// mapping revision whose validation failed (requestID only if that is
+// unknown). Its job's failure (profile or validation) is shown the same
+// way. The closed ErrorCode list has no import codes (CB-39, a question
+// for the owner); until it has, the failure's own code is details[0].code
+// and the error's code is:
 //   - PAYLOAD_TOO_LARGE for a file beyond a limit (IMPORT_LIMIT_EXCEEDED);
 //   - REQUEST_VALIDATION_FAILED for any other problem with the file
 //     (encoding, CSV or JSON syntax, columns, shape, empty);
@@ -97,20 +99,21 @@ var failureCode = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
 //     attempts were spent (LEASE_EXPIRED, WORKER_STOPPED,
 //     OBJECT_STORAGE_FAILED, OBJECT_STORAGE_UNAVAILABLE): upload again;
 //   - INTERNAL_ERROR otherwise (the stored upload does not match its
-//     record, a cancelled job, an internal failure).
+//     record or no longer reads as profiled, a cancelled job, an internal
+//     failure).
 func envelope(stored []byte, requestID string) (*ErrorEnvelope, error) {
 	var f store.Failure
 	if err := json.Unmarshal(stored, &f); err != nil || !failureCode.MatchString(f.Code) {
 		return nil, fmt.Errorf("the stored failure is not a failure")
 	}
-	code, message := "INTERNAL_ERROR", "the file could not be profiled"
+	code, message := "INTERNAL_ERROR", "the file could not be processed"
 	switch {
 	case f.Code == "IMPORT_LIMIT_EXCEEDED":
 		code, message = "PAYLOAD_TOO_LARGE", "the file is larger than an import may be"
 	case strings.HasPrefix(f.Code, "IMPORT_") || strings.HasPrefix(f.Code, "CSV_") || strings.HasPrefix(f.Code, "JSON_"):
 		code, message = "REQUEST_VALIDATION_FAILED", "the file cannot be read as uploaded"
 	case f.Code == jobs.LeaseExpired || f.Code == "WORKER_STOPPED" || f.Code == store.ObjectStorageFailed || f.Code == store.ObjectStorageUnavailable:
-		code, message = "SERVICE_UNAVAILABLE", "the file could not be profiled; upload it again"
+		code, message = "SERVICE_UNAVAILABLE", "the file could not be processed; upload it again"
 	}
 	reason := f.Message
 	if reason == "" {
@@ -122,8 +125,8 @@ func envelope(stored []byte, requestID string) (*ErrorEnvelope, error) {
 }
 
 // public is the import resource of i, as stored: an import whose profile
-// job failed or was cancelled is FAILED with the job's error in its own row
-// (0010: the import follows its job).
+// or validation job failed or was cancelled is FAILED with the job's error
+// in its own row (0010, 0014: the import follows its job).
 func public(i store.Import, requestID string) (Import, error) {
 	p := Import{ID: i.ID, OrganizationID: i.OrganizationID, ProjectID: i.ProjectID, ModelID: i.ModelID, BaseVersionID: i.BaseVersionID,
 		Kind: i.Kind, Filename: i.Filename, Status: string(i.Status), MappingRevision: i.MappingRevision, TotalRows: i.TotalRows,

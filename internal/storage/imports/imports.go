@@ -30,6 +30,7 @@ const (
 	Uploaded        Status = "UPLOADED"
 	Profiling       Status = "PROFILING"
 	AwaitingMapping Status = "AWAITING_MAPPING"
+	Validating      Status = "VALIDATING"
 	Validated       Status = "VALIDATED"
 	Committed       Status = "COMMITTED"
 	Failed          Status = "FAILED"
@@ -52,9 +53,12 @@ type Import struct {
 	TotalRows, InvalidRows                                int
 	// The JSON columns as stored; nil for SQL NULL.
 	Profile, Preview, Mapping, Validation, MappingSuggestion []byte
-	// CanonicalPreview is the validation's canonical preview (migration
-	// 0014; T-017); nil until the store reads it.
-	CanonicalPreview        []byte
+	// CanonicalPreview is the canonical preview of the current mapping
+	// revision's validation (migration 0014; T-017).
+	CanonicalPreview []byte
+	// Canonical names the canonical dataset of a VALIDATED import (T-017):
+	// the object a commit freezes (T-018); nil otherwise.
+	Canonical               *Report
 	MappingSuggestionStatus string
 	// Failure is why the import FAILED (the stored failure JSON); nil
 	// otherwise.
@@ -63,8 +67,10 @@ type Import struct {
 	DatasetVersionID, ProposalID *string
 	CreatedBy                    string
 	CreatedAt                    time.Time
-	// RequestID is the request that uploaded the file (its profile job's
-	// payload).
+	// RequestID is the request behind the import's current step: the save
+	// of its current mapping revision (that revision's validation job's
+	// payload) once a mapping is saved, the upload (its profile job's)
+	// before.
 	RequestID string
 }
 
@@ -129,22 +135,26 @@ const columns = `i.id, i.project_id, i.model_id, i.base_version_id, i.kind, i.fi
 	i.size_bytes, i.status, i.mapping_revision, i.total_rows, i.invalid_rows, i.profile, i.preview, i.mapping, i.validation,
 	i.mapping_suggestion_status, i.mapping_suggestion, i.error, i.error_report_object_key, i.error_report_content_hash,
 	i.error_report_size_bytes, i.dataset_version_id, i.proposal_id, i.created_by, i.created_at,
-	coalesce(j.payload->>'request_id', '')`
+	coalesce(v.payload->>'request_id', j.payload->>'request_id', ''), i.canonical_preview, i.canonical_object_key, i.canonical_content_hash, i.canonical_size_bytes`
 
 // from joins each import with its profile job (one at most, 0010; the API
-// queues it with the import).
+// queues it with the import) and with the validation job of its current
+// mapping revision (one at most, 0014; the API queues it with the save).
 const from = ` FROM twin.imports i LEFT JOIN twin.jobs j
-	  ON j.organization_id=i.organization_id AND j.import_id=i.id AND j.type='import_profile'`
+	  ON j.organization_id=i.organization_id AND j.import_id=i.id AND j.type='import_profile'
+	LEFT JOIN twin.jobs v
+	  ON v.organization_id=i.organization_id AND v.import_id=i.id AND v.type='import_validate'
+	  AND v.payload->>'mapping_revision' = i.mapping_revision::text`
 
 func scan(row pgx.Row, org string) (Import, error) {
 	i := Import{OrganizationID: org}
 	var status string
-	var key, hash *string
-	var size *int64
+	var key, hash, ckey, chash *string
+	var size, csize *int64
 	err := row.Scan(&i.ID, &i.ProjectID, &i.ModelID, &i.BaseVersionID, &i.Kind, &i.Filename, &i.UploadKey, &i.UploadSHA256,
 		&i.Size, &status, &i.MappingRevision, &i.TotalRows, &i.InvalidRows, &i.Profile, &i.Preview, &i.Mapping, &i.Validation,
 		&i.MappingSuggestionStatus, &i.MappingSuggestion, &i.Failure, &key, &hash, &size, &i.DatasetVersionID, &i.ProposalID,
-		&i.CreatedBy, &i.CreatedAt, &i.RequestID)
+		&i.CreatedBy, &i.CreatedAt, &i.RequestID, &i.CanonicalPreview, &ckey, &chash, &csize)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Import{}, ErrNotFound
 	}
@@ -154,6 +164,9 @@ func scan(row pgx.Row, org string) (Import, error) {
 	i.Status = Status(status)
 	if key != nil && hash != nil && size != nil {
 		i.Report = &Report{Key: *key, SHA256: *hash, Size: *size}
+	}
+	if ckey != nil && chash != nil && csize != nil {
+		i.Canonical = &Report{Key: *ckey, SHA256: *chash, Size: *csize}
 	}
 	return i, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/import/profiler"
+	"github.com/kcl1104/geminus/internal/import/validator"
 	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
@@ -79,16 +80,19 @@ func TestRunRefusesToStartWithoutHandlers(t *testing.T) {
 	}
 }
 
-// This build runs simulation jobs (T-023), import profiling (T-016) and AI
-// proposals (T-025); nothing else yet (import validation is T-017's,
-// analyses T-030's).
+// This build runs simulation jobs (T-023), import profiling (T-016),
+// import validation (T-017) and AI proposals (T-025); nothing else yet
+// (analyses are T-030's).
 func TestTheBuildRunsSimulations(t *testing.T) {
 	hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
-	if err != nil || len(hs) != 3 || hs[jobs.Simulation] == nil {
+	if err != nil || len(hs) != 4 || hs[jobs.Simulation] == nil {
 		t.Fatalf("%v %v", hs, err)
 	}
 	if _, ok := hs[jobs.ImportProfile].(*profiler.Handler); !ok {
 		t.Errorf("the import_profile handler is a %T", hs[jobs.ImportProfile])
+	}
+	if _, ok := hs[jobs.ImportValidate].(*validator.Handler); !ok {
+		t.Errorf("the import_validate handler is a %T", hs[jobs.ImportValidate])
 	}
 	if _, ok := hs[jobs.ModelProposal].(*generator.Handler); !ok {
 		t.Errorf("the model_proposal handler is a %T", hs[jobs.ModelProposal])

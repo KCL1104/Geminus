@@ -27,13 +27,14 @@ type Route struct {
 	Roles                     []tenant.Role // x-required-roles
 }
 
-// Routes are the import operations this package serves (T-016). A contract
-// test compares them with planning/api-operations.json. The mapping,
-// suggestion and commit operations are T-017's, T-027's and T-018's.
+// Routes are the import operations this package serves (T-016, T-017). A
+// contract test compares them with planning/api-operations.json. The
+// suggestion and commit operations are T-027's and T-018's.
 var Routes = []Route{
 	{"POST", "/v1/imports", "uploadImport", writeRoles},
 	{"GET", "/v1/imports/{id}", "getImport", readRoles},
 	{"GET", "/v1/imports/{id}/errors", "downloadImportErrors", readRoles},
+	{"POST", "/v1/imports/{id}/mapping", "saveImportMapping", writeRoles},
 }
 
 // Options are the HTTP adapter's (zero values: the defaults).
@@ -59,6 +60,8 @@ func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpa
 			f = h.get
 		case "downloadImportErrors":
 			f = h.report
+		case "saveImportMapping":
+			f = h.saveMapping
 		}
 		mux.Handle(r.Method+" "+r.Path, httpapi.Handler(log, httpapi.Scoped(v, users, f)))
 	}
@@ -67,6 +70,15 @@ func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpa
 type handlers struct {
 	s    *Service
 	opts Options
+}
+
+// coded is issues as details that carry each issue's code (T-017).
+func coded(issues []model.ValidationIssue) []httpapi.Detail {
+	out := make([]httpapi.Detail, len(issues))
+	for i, is := range issues {
+		out[i] = httpapi.Detail{Path: is.Path, Reason: is.Message, Code: is.Code, Severity: string(is.Severity)}
+	}
+	return out
 }
 
 func details(issues []model.ValidationIssue) []httpapi.Detail {
@@ -81,12 +93,19 @@ func details(issues []model.ValidationIssue) []httpapi.Detail {
 // codes); tenant and transport errors pass to httpapi.
 func Refused(err error) error {
 	var re *RequestError
+	var me *MappingError
+	var ce *ConflictError
 	var fe *FormatError
 	var tooLarge *http.MaxBytesError
 	var se *SourceError
 	switch {
 	case errors.As(err, &re):
 		return &httpapi.Error{Code: httpapi.RequestValidationFailed, Message: "the upload is not acceptable", Details: details(re.Issues)}
+	case errors.As(err, &me):
+		return &httpapi.Error{Code: httpapi.RequestValidationFailed, Message: "the mapping is not acceptable", Details: coded(me.Issues)}
+	case errors.As(err, &ce):
+		return &httpapi.Error{Code: httpapi.LifecycleConflict, Message: ce.Message,
+			Details: []httpapi.Detail{{Path: ce.Path, Reason: ce.Reason, Code: ce.Code}}}
 	case errors.As(err, &fe):
 		return &httpapi.Error{Code: httpapi.UnsupportedMediaType, Message: "archives and executables cannot be imported: upload CSV or JSON",
 			Details: []httpapi.Detail{{Path: "/file", Reason: "the file is " + fe.Format, Code: FormatRejected}}}
@@ -284,6 +303,30 @@ func (h handlers) get(w http.ResponseWriter, r *http.Request, sc tenant.Scope) e
 		return Refused(err)
 	}
 	httpapi.WriteJSON(w, 200, imp)
+	return nil
+}
+
+// saveMapping is saveImportMapping (T-017): the Idempotency-Key, then the
+// body (SaveMapping), then the service.
+func (h handlers) saveMapping(w http.ResponseWriter, r *http.Request, sc tenant.Scope) error {
+	id, err := pathID(r)
+	if err != nil {
+		return err
+	}
+	key, err := httpapi.IdempotencyKey(r)
+	if err != nil {
+		return err
+	}
+	var req SaveRequest
+	body, err := httpapi.DecodeJSON(r, httpapi.MaxBodyBytes, "http.schema.json#/$defs/SaveMapping", &req)
+	if err != nil {
+		return err
+	}
+	status, out, err := h.s.SaveMapping(r.Context(), sc, httpapi.RequestID(r.Context()), key, id, body, req)
+	if err != nil {
+		return Refused(err)
+	}
+	httpapi.WriteBody(w, status, out)
 	return nil
 }
 

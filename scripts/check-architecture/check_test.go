@@ -176,6 +176,13 @@ func TestProbesAreCaught(t *testing.T) {
 		{"the-parser-reads-the-tenant", "internal/import/profile/zz_probe.go", module + "/internal/tenant", "import-parsing-is-pure", "./internal/import/profile", "./internal/tenant", false},
 		{"the-report-serves-http", "internal/import/report/zz_probe.go", "net/http", "import-parsing-is-pure", "./internal/import/report", "net/http", false},
 		{"the-report-opens-files", "internal/import/report/zz_probe.go", "os", "import-parsing-is-pure", "./internal/import/report", "os", false},
+		// T-017: the mapper and the validation are pure; only the worker
+		// links the validation job.
+		{"the-mapper-reads-the-tenant", "internal/import/mapping/zz_probe.go", module + "/internal/tenant", "import-parsing-is-pure", "./internal/import/mapping", "./internal/tenant", false},
+		{"the-validation-reads-object-storage", "internal/import/validation/zz_probe.go", module + "/internal/storage/objects", "import-parsing-is-pure", "./internal/import/validation", "./internal/storage/objects", false},
+		{"the-validation-opens-files", "internal/import/validation/zz_probe.go", "os", "import-parsing-is-pure", "./internal/import/validation", "os", false},
+		{"api-links-the-import-validator", "cmd/api/zz_probe.go", module + "/internal/import/validator", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/import/validator", false},
+		{"the-upload-service-links-the-validator", "internal/import/upload/zz_probe.go", module + "/internal/import/validator", "job-handlers-only-in-the-worker", "./internal/import/upload", "./internal/import/validator", false},
 		{"the-worker-names-a-pack", "cmd/worker/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "packs-named-in-one-place", "./cmd/worker", "./internal/domainpack/softwaredelivery", false},
 		{"a-service-names-a-pack", "internal/runs/zz_probe.go", module + "/internal/domainpack/softwaredelivery", "packs-named-in-one-place", "./internal/runs", "./internal/domainpack/softwaredelivery", false},
 		// T-024: the provider adapter has no DB handle or storage, and only it

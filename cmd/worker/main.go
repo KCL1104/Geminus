@@ -5,14 +5,14 @@
 // deployment's organizations until SIGINT or SIGTERM.
 //
 // The handlers this build registers: simulation runs (T-023,
-// internal/runs/runner), import profiling (T-016, internal/import/profiler)
-// and AI proposals (T-025, internal/proposals/generator), which ask the
-// provider of the configured mode: disabled (the default; every proposal
-// fails AI_PROVIDER_NOT_CONFIGURED), the deterministic fake (development
-// and tests) or the live adapter, which config enables only with the
-// owner's recorded approval (none is recorded: H-001, H-017). Import
-// validation (T-017) and analyses (T-030) are not built yet; their jobs
-// stay queued.
+// internal/runs/runner), import profiling (T-016, internal/import/profiler),
+// import validation (T-017, internal/import/validator) and AI proposals
+// (T-025, internal/proposals/generator), which ask the provider of the
+// configured mode: disabled (the default; every proposal fails
+// AI_PROVIDER_NOT_CONFIGURED), the deterministic fake (development and
+// tests) or the live adapter, which config enables only with the owner's
+// recorded approval (none is recorded: H-001, H-017). Analyses (T-030) are
+// not built yet; their jobs stay queued.
 package main
 
 import (
@@ -32,6 +32,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/import/profiler"
+	"github.com/kcl1104/geminus/internal/import/validator"
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/runs/runner"
@@ -109,6 +110,10 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	validate, err := validator.New(validator.Config{Objects: d.objects, Actor: d.worker.ID, Log: d.log})
+	if err != nil {
+		return nil, err
+	}
 	client, budget, err := aiClient(d.ai)
 	if err != nil {
 		return nil, err
@@ -118,7 +123,8 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[jobs.Type]handler.Handler{jobs.Simulation: sim, jobs.ImportProfile: profile, jobs.ModelProposal: proposals}, nil
+	return map[jobs.Type]handler.Handler{jobs.Simulation: sim, jobs.ImportProfile: profile, jobs.ImportValidate: validate,
+		jobs.ModelProposal: proposals}, nil
 }
 
 // aiClient is the checked provider client of the configured mode (T-024,

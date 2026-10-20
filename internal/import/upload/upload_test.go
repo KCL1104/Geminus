@@ -57,7 +57,7 @@ func TestRoutesMatchContract(t *testing.T) {
 			t.Errorf("%s: route %s %s %v, contract %s %s %v", r.OperationID, r.Method, r.Path, roles, o.Method, o.Path, o.Roles)
 		}
 	}
-	if want := []string{"uploadImport", "getImport", "downloadImportErrors"}; !slices.Equal(got, want) {
+	if want := []string{"uploadImport", "getImport", "downloadImportErrors", "saveImportMapping"}; !slices.Equal(got, want) { // T-017 adds the mapping
 		t.Errorf("routes %v, want %v", got, want)
 	}
 }

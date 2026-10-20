@@ -243,8 +243,8 @@ var rules = []rule{
 		name:    "job-handlers-only-in-the-worker",
 		why:     "job handlers run claimed jobs under the worker's lease: only the worker binary registers them, never the API or a service it shares (ADR-024)",
 		applies: []string{"./..."},
-		except:  []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/proposals/generator/..."},
-		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/proposals/generator/..."}, // T-023, T-016, T-025
+		except:  []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/..."},
+		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/..."}, // T-023, T-016, T-017, T-025
 	},
 	{
 		// T-026: a person decides a proposal, through the API's routes and

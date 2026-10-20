@@ -1,0 +1,15 @@
+--- FAIL: TestProbesAreCaught (3.20s)
+    --- FAIL: TestProbesAreCaught/the-mapper-reads-the-tenant (0.59s)
+        check_test.go:220: no import-parsing-is-pure violation of ./internal/import/mapping on ./internal/tenant; got []
+    --- FAIL: TestProbesAreCaught/the-validation-reads-object-storage (0.71s)
+        check_test.go:220: no import-parsing-is-pure violation of ./internal/import/validation on ./internal/storage/objects; got []
+    --- FAIL: TestProbesAreCaught/the-validation-opens-files (0.67s)
+        check_test.go:220: no import-parsing-is-pure violation of ./internal/import/validation on os; got []
+    --- FAIL: TestProbesAreCaught/api-links-the-import-validator (0.68s)
+        check_test.go:220: no job-handlers-only-in-the-worker violation of ./cmd/api on ./internal/import/validator; got []
+    --- FAIL: TestProbesAreCaught/the-upload-service-links-the-validator (0.55s)
+        check_test.go:220: no job-handlers-only-in-the-worker violation of ./internal/import/upload on ./internal/import/validator; got []
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	3.205s
+FAIL
+exit 1
