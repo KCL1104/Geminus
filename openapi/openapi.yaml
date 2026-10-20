@@ -641,7 +641,19 @@ paths:
     post:
       operationId: createProposal
       summary: Queue edit or scenario proposal generation
-      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      description: 'Core route from report pp.29–35. T-025 (D-002, D-016, D-046, D-061 PROPOSED): an editor or owner
+        asks for a proposal on base_version_id, which must be a version of this model (another organization''s or no
+        such version or model is 404; another model''s version is 422 at /base_version_id) and its latest (409
+        MODEL_VERSION_CONFLICT otherwise: approval needs the latest base, AI_SPEC §6). An intent of only white space is
+        422 at /intent. When this deployment''s AI is off the request is refused with 503 AI_PROVIDER_NOT_CONFIGURED
+        or AI_POLICY_NOT_APPROVED and nothing is stored. Otherwise the proposal (generating, with the server''s ID
+        allocation pool and the request''s output_locale and selected IDs, none of which changes later), its one
+        model_proposal job, the proposal.create audit event (IDs and counts, never the intent) and the idempotency
+        response commit together, then 202. The Idempotency-Key fingerprint is the model ID and the canonical body.
+        The worker builds the sanitized context, asks the provider, and the server reviews the answer (patch profile,
+        full candidate validation, ID pool, domain rules, dataset bindings, qualitative expected effects) and computes
+        the risk; the proposal becomes ready, needs_input or invalid with the job''s completion, or failed when the job
+        fails or is cancelled (getProposal). No AI tool writes anything; approval is approveProposal (T-026).'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -664,6 +676,12 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/http.schema.json#/$defs/ProposalAccepted
+              examples:
+                accepted:
+                  summary: Stored and queued for generation
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ7
+                    status: generating
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -695,8 +713,9 @@ paths:
     get:
       operationId: listProposals
       summary: List model proposals
-      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table.
+      description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table. T-025: any member; the model''s proposals oldest first (created_at, then ID), each as getProposal shows
+        it; the cursor is bound to the organization, the model and this list.'
       tags:
       - Proposals
       x-origin: PROPOSED
@@ -745,7 +764,17 @@ paths:
     get:
       operationId: getProposal
       summary: Get proposal and deterministic validation
-      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      description: 'Core route from report pp.29–35. T-025 (D-002, D-027, D-061 PROPOSED): any member. While generating,
+        only the server-bound fields. needs_input has the provider''s summary, assumptions and questions, never
+        changes. ready has the canonical changes and their patch_hash (D-019), the validation (valid, with any
+        warnings), the dataset_bindings the candidate uses, server_risk_level, the provider''s provider_risk_claim and
+        risk_level, their maximum. invalid has only its validation: issue paths point into changes (/changes/...), into
+        the candidate model or into the provider''s answer (AI_OUTPUT_INVALID), and nothing the provider wrote is kept.
+        failed has error, the job''s failure in the error envelope: details[0].code is the failure''s own code (for
+        example AI_RATE_LIMITED, AI_TIMEOUT, LEASE_EXPIRED, JOB_CANCELLED) and error.code maps it (D-061):
+        AI_PROVIDER_NOT_CONFIGURED and AI_POLICY_NOT_APPROVED as they are, rate limits RATE_LIMITED, an unavailable
+        provider or worker SERVICE_UNAVAILABLE, a context over budget PAYLOAD_TOO_LARGE, anything else INTERNAL_ERROR;
+        error.request_id is the creating request''s. ready, needs_input, invalid and failed content never changes.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -770,6 +799,108 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/proposal.schema.json
+              examples:
+                generating:
+                  summary: Queued; the provider has not answered
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ7
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: edit
+                    status: generating
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-20T08:30:00Z'
+                    requires_confirmation: true
+                ready:
+                  summary: Reviewed by the server; the provider claimed low risk and the server agrees
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ6
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: edit
+                    status: ready
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-20T08:30:00Z'
+                    requires_confirmation: true
+                    summary: Raise the tester capacity from 2 to 3.
+                    assumptions:
+                    - Service times stay as they are.
+                    risk_level: low
+                    server_risk_level: low
+                    provider_risk_claim: low
+                    confidence: 0.9
+                    changes:
+                    - op: test
+                      path: /resources/1/id
+                      value: tester
+                    - op: replace
+                      path: /resources/1/capacity
+                      value: 3
+                    patch_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+                    expected_effects:
+                    - Waiting before the test step may fall; a simulation will tell by how much.
+                    validation:
+                      valid: true
+                      issues: []
+                    dataset_bindings: []
+                needs_input:
+                  summary: The provider needs to know what to change
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZA
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: edit
+                    status: needs_input
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-20T08:30:00Z'
+                    requires_confirmation: true
+                    summary: The request does not say which step to change.
+                    assumptions: []
+                    questions:
+                    - Which step should get more capacity, and how much?
+                invalid:
+                  summary: The provider named a new node with an ID outside the proposal's pool
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ8
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: edit
+                    status: invalid
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-20T08:30:00Z'
+                    requires_confirmation: true
+                    validation:
+                      valid: false
+                      issues:
+                      - code: ID_POOL_VIOLATION
+                        path: /nodes/9/id
+                        message: a new entity's ID is not one of this proposal's allocated IDs (D-046)
+                        severity: error
+                failed:
+                  summary: The provider's rate limit outlasted the job's attempts
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ9
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: scenario
+                    status: failed
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-20T08:30:00Z'
+                    requires_confirmation: true
+                    error:
+                      error:
+                        code: RATE_LIMITED
+                        message: the AI provider kept refusing the request for its rate limit
+                        details:
+                        - path: ''
+                          reason: the AI provider kept refusing the request for its rate limit
+                          code: AI_RATE_LIMITED
+                        request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '400':
           $ref: '#/components/responses/Error400'
         '401':

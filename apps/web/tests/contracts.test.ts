@@ -16,8 +16,11 @@ import type {
   MappingSuggestionRequest,
   ModelIR,
   ProfileColumn,
+  Proposal,
+  ProposalAccepted,
   ProposalOutput,
   ProposalRequest,
+  ValidationCode,
 } from "../lib/contracts";
 
 const fixture = (name: string): unknown =>
@@ -138,6 +141,31 @@ const proposalRequest: ProposalRequest = {
   context: { selected_entity_ids: ["ict_tester"] },
   output_locale: "zh-Hant",
 };
+// T-025: what createProposal answers, and a proposal the server's review
+// refused (its validation only, nothing the provider wrote).
+const proposalAccepted: ProposalAccepted = { proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZ7", status: "generating" };
+const invalidProposal: Proposal = {
+  proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZ8",
+  organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  mode: "edit",
+  status: "invalid",
+  created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+  created_at: "2026-10-20T08:30:00Z",
+  requires_confirmation: true,
+  validation: {
+    valid: false,
+    issues: [
+      {
+        code: "ID_POOL_VIOLATION" satisfies ValidationCode,
+        path: "/nodes/9/id",
+        message: "a new entity's ID is not one of this proposal's allocated IDs (D-046)",
+        severity: "error",
+      },
+    ],
+  },
+};
 const analysisRequest: AnalysisRequest = {
   baseline_run_id: "sim_01M4YDQK00TA00000000000001",
   question: "Which station is the bottleneck?",
@@ -160,6 +188,8 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-analysis-request-locale.json", analysisRequest],
     ["valid-mapping-suggestion-request.json", mappingRequest],
     ["valid-id-allocation-pool.json", idPool],
+    ["valid-proposal-accepted.json", proposalAccepted],
+    ["valid-proposal-invalid.json", invalidProposal],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
   });
@@ -191,4 +221,10 @@ export const rejected = {
   mappingColumns: { columns: ["case_id"] } satisfies MappingSuggestionRequest,
   // @ts-expect-error the pool has exactly the node, flow and resource kinds (D-046)
   poolExtraKind: { ...idPool, entity_type: [] } satisfies IdAllocationPool,
+  // @ts-expect-error createProposal answers generating, never a later state (T-025)
+  acceptedReady: { ...proposalAccepted, status: "ready" } satisfies ProposalAccepted,
+  // @ts-expect-error a proposal's status is one of the contract's (T-025)
+  proposalStatus: { ...invalidProposal, status: "publishing" } satisfies Proposal,
+  // @ts-expect-error an issue code outside the ValidationCode catalogue is not one (T-025)
+  unknownIssueCode: "ID_POOL_OVERFLOW" satisfies ValidationCode,
 };

@@ -205,6 +205,62 @@
       }
     },
     {
+      "$comment": "T-025 (D-061 PROPOSED): an invalid proposal keeps its failed validation and nothing the provider wrote that could be approved; only a failed one has an error.",
+      "if": {
+        "properties": {
+          "status": {
+            "const": "invalid"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "validation"
+        ],
+        "properties": {
+          "validation": {
+            "properties": {
+              "valid": {
+                "const": false
+              }
+            }
+          }
+        },
+        "not": {
+          "required": [
+            "changes"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "error"
+          ]
+        }
+      }
+    },
+    {
       "if": {
         "properties": {
           "status": {

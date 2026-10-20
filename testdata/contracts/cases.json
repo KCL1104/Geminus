@@ -960,6 +960,75 @@
       ]
     },
     {
+      "id": "valid-proposal-generating",
+      "instance": "testdata/contracts/valid-proposal-generating.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-invalid",
+      "instance": "testdata/contracts/valid-proposal-invalid.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-failed",
+      "instance": "testdata/contracts/valid-proposal-failed.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-accepted",
+      "instance": "testdata/contracts/valid-proposal-accepted.json",
+      "schema": "schemas/http.schema.json#/$defs/ProposalAccepted",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-invalid-without-validation",
+      "instance": "testdata/contracts/invalid-proposal-invalid-without-validation.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-invalid-with-changes",
+      "instance": "testdata/contracts/invalid-proposal-invalid-with-changes.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "",
+        "/validation/valid"
+      ]
+    },
+    {
+      "id": "invalid-proposal-failed-without-error",
+      "instance": "testdata/contracts/invalid-proposal-failed-without-error.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-error-when-not-failed",
+      "instance": "testdata/contracts/invalid-proposal-error-when-not-failed.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
       "id": "valid-analysis-request-locale",
       "instance": "testdata/contracts/valid-analysis-request-locale.json",
       "schema": "schemas/http.schema.json#/$defs/AnalysisRequest",
