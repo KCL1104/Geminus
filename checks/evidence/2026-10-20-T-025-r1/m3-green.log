@@ -1,0 +1,15 @@
+=== RUN   TestExpectedEffectsAreQualitative
+--- PASS: TestExpectedEffectsAreQualitative (0.08s)
+=== RUN   TestNamesDoNotSupplyNumbers
+=== RUN   TestNamesDoNotSupplyNumbers/the_model's_name
+=== RUN   TestNamesDoNotSupplyNumbers/a_resource's_name
+=== RUN   TestNamesDoNotSupplyNumbers/an_added_node's_name
+--- PASS: TestNamesDoNotSupplyNumbers (0.04s)
+    --- PASS: TestNamesDoNotSupplyNumbers/the_model's_name (0.00s)
+    --- PASS: TestNamesDoNotSupplyNumbers/a_resource's_name (0.01s)
+    --- PASS: TestNamesDoNotSupplyNumbers/an_added_node's_name (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.139s
+exit 0
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	0.820s
+exit 0

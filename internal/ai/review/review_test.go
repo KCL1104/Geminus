@@ -414,6 +414,44 @@ func TestExpectedEffectsAreQualitative(t *testing.T) {
 	}
 }
 
+// H-003 review M3: the numbers in names count only as the base has them. A
+// name is the provider's own text when its patch writes it, so a number
+// written into a name the patch adds or renames is no value of the model:
+// the effect that states it is still a fabricated prediction. A number in a
+// name of the base, and every numeric parameter of the candidate, count.
+func TestNamesDoNotSupplyNumbers(t *testing.T) {
+	raise := `{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}`
+	doc := base(t)
+	p := pool(t, doc)
+	for _, c := range []struct {
+		name, changes, effect string
+	}{
+		{"the model's name", `[{"op":"replace","path":"/name","value":"Pipeline 11"},` + raise + `]`, "Lead time drops 11%."},
+		{"a resource's name", `[` + raise + `,{"op":"replace","path":"/resources/1/name","value":"Runner pool 12"}]`, "Waiting falls by 12 minutes."},
+		{"an added node's name", `[{"op":"add","path":"/nodes/-","value":{"id":"` + p.Node[0] + `","type":"queue","name":"Queue 37"}},` +
+			`{"op":"add","path":"/flows/-","value":{"id":"` + p.Flow[0] + `","from":"` + p.Node[0] + `","to":"test","routing":{"type":"probability","probability":1}}}]`,
+			"Throughput rises by 37 a day."},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out := proposed(ops(t, c.changes), "low")
+			out.ExpectedEffects = []string{c.effect}
+			wantInvalid(t, run(t, Input{Mode: provider.ModeEdit, Base: doc, Pool: p, Pack: softwaredelivery.Pack{}, Output: out}),
+				OutputInvalid, "/expected_effects/0")
+		})
+	}
+	// A base whose resource name holds a number: an effect may name it,
+	// and the candidate's new capacity.
+	named, err := patch.Apply(doc, []byte(`[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/name","value":"Runner pool 4"}]`), patch.ManualDraft)
+	if err != nil || !named.Valid() {
+		t.Fatalf("%v %v", err, named.PatchIssues)
+	}
+	out := proposed(ops(t, `[`+raise+`]`), "low")
+	out.ExpectedEffects = []string{"Runner pool 4 waits less with 6 runners."}
+	if o := run(t, Input{Mode: provider.ModeEdit, Base: named.Candidate, Pool: pool(t, named.Candidate), Pack: softwaredelivery.Pack{}, Output: out}); o.Status != Ready {
+		t.Fatalf("a base name's number: %q %v", o.Status, codes(o))
+	}
+}
+
 func TestNeedsInput(t *testing.T) {
 	out := provider.ProposalOutput{Status: "needs_input", Summary: "Which step?", Assumptions: []string{}, Questions: []string{"Which step should change?"},
 		RequiresConfirmation: true}

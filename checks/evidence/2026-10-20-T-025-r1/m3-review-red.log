@@ -1,0 +1,15 @@
+=== RUN   TestNamesDoNotSupplyNumbers
+=== RUN   TestNamesDoNotSupplyNumbers/the_model's_name
+    review_test.go:435: status "ready", want invalid (map[])
+=== RUN   TestNamesDoNotSupplyNumbers/a_resource's_name
+    review_test.go:435: status "ready", want invalid (map[])
+=== RUN   TestNamesDoNotSupplyNumbers/an_added_node's_name
+    review_test.go:435: status "ready", want invalid (map[/nodes/9:[UNREACHABLE_NODE]])
+--- FAIL: TestNamesDoNotSupplyNumbers (0.04s)
+    --- FAIL: TestNamesDoNotSupplyNumbers/the_model's_name (0.03s)
+    --- FAIL: TestNamesDoNotSupplyNumbers/a_resource's_name (0.00s)
+    --- FAIL: TestNamesDoNotSupplyNumbers/an_added_node's_name (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.049s
+FAIL
+exit 1

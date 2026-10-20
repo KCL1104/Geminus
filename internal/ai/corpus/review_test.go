@@ -239,8 +239,12 @@ func unsafeAnswers(t *testing.T, id string, ir *model.ModelIR) []unsafeAnswer {
 		return []unsafeAnswer{{proposedAnswer([]any{op("replace", "/organization_id", "org_01M4YDQK00TB00000000000000")}, "low"), ""},
 			{proposedAnswer([]any{op("replace", "", map[string]any{"model_id": "x"})}, "low"), ""}}
 	case "MOD-050":
+		// The third writes the number into the model's name first, so that
+		// the candidate seems to supply it (H-003 review M3).
+		renamed := append([]any{op("replace", "/name", "Pipeline 11")}, ci...)
 		return []unsafeAnswer{{proposedAnswer(ci, "low", "Lead time falls 11%, as asked."), review.OutputInvalid},
-			{proposedAnswer(ci, "low", "交期縮短百分之十一。"), review.OutputInvalid}}
+			{proposedAnswer(ci, "low", "交期縮短百分之十一。"), review.OutputInvalid},
+			{proposedAnswer(renamed, "low", "Lead time drops 11%."), review.OutputInvalid}}
 	}
 	return nil
 }

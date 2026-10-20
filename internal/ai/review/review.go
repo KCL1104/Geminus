@@ -12,8 +12,9 @@
 // IR, the ID allocation pool (a new node, flow or resource takes an ID of
 // its own kind from the proposal's pool), the domain pack's rules, and the
 // numbers in the expected effects (qualitative only: a number that is not
-// a value of the base or the candidate is a fabricated prediction, even
-// one the person's intent states). Any error makes the proposal invalid, and an invalid outcome
+// a value of the base or the candidate, or a number in a name of the base,
+// is a fabricated prediction, even one the person's intent states or the
+// patch writes into a name). Any error makes the proposal invalid, and an invalid outcome
 // keeps only its issues: nothing the provider wrote, not even inside an
 // issue, since every issue the review returns is cleaned (Clean: a fixed
 // message of its code, a path of known tokens). Otherwise it is ready,
@@ -263,8 +264,10 @@ func Review(in Input) (Outcome, error) {
 	}
 	issues = append(issues, packIssues...)
 	// The person's numbers are not among them: a demanded outcome restated
-	// as an effect is still a prediction (eval MOD-050).
-	supplied := append(numbers(baseIR), numbers(candidate)...)
+	// as an effect is still a prediction (eval MOD-050). Nor are the numbers
+	// of the names the patch writes, the provider's own text (M3): the
+	// names count as the base has them.
+	supplied := slices.Concat(values(baseIR), nameNumbers(baseIR), values(candidate))
 	for i, effect := range out.ExpectedEffects {
 		if len(locale.CheckProse(effect, supplied)) > 0 {
 			refused = append(refused, errorIssue(OutputInvalid, "/expected_effects/"+strconv.Itoa(i), sentEffectNumber))
@@ -397,27 +400,40 @@ func nums(text string) []float64 {
 	return out
 }
 
-// numbers is every value a model states: capacities, units, distribution
-// parameters, arrival bounds, routing probabilities and constraint values,
-// and the numbers in its names (views are presentation, not values).
-func numbers(ir *model.ModelIR) []float64 {
+// nameNumbers is the numbers in a model's names: the model's, its entity
+// types', resources' and nodes'. Only the base's count (H-003 review M3): a
+// name the patch adds or rewrites is the provider's text, so a number in it
+// is no value of the model.
+func nameNumbers(ir *model.ModelIR) []float64 {
+	out := nums(ir.Name)
+	for _, e := range ir.EntityTypes {
+		out = append(out, nums(e.Name)...)
+	}
+	for _, r := range ir.Resources {
+		out = append(out, nums(r.Name)...)
+	}
+	for _, n := range ir.Nodes {
+		out = append(out, nums(n.Name)...)
+	}
+	return out
+}
+
+// values is every numeric parameter a model states: capacities, units,
+// distribution parameters, arrival bounds, routing probabilities and
+// constraint values (views are presentation, not values; names are
+// nameNumbers').
+func values(ir *model.ModelIR) []float64 {
 	var out []float64
 	add := func(p *float64) {
 		if p != nil {
 			out = append(out, *p)
 		}
 	}
-	out = append(out, nums(ir.Name)...)
-	for _, e := range ir.EntityTypes {
-		out = append(out, nums(e.Name)...)
-	}
 	for _, r := range ir.Resources {
 		out = append(out, float64(r.Capacity))
-		out = append(out, nums(r.Name)...)
 	}
 	for i := range ir.Nodes {
 		n := &ir.Nodes[i]
-		out = append(out, nums(n.Name)...)
 		if n.Arrival != nil && n.Arrival.MaxEntities > 0 {
 			out = append(out, float64(n.Arrival.MaxEntities))
 		}
