@@ -31,7 +31,7 @@ IGNORED = {'$schema', '$id', '$comment', '$defs', 'title', 'description', 'minim
            'dependentRequired', 'if', 'then', 'not', 'x-http-status'}
 ROOT_NAMES = {'ai-mapping': 'AiMapping', 'analysis-output': 'AnalysisOutput',
               'canonical-event': 'CanonicalEvent', 'dataset-snapshot': 'DatasetSnapshot',
-              'import': 'Import', 'json-patch': 'JsonPatch', 'model-ir': 'ModelIR',
+              'import': 'Import', 'import-mapping': 'ImportMapping', 'json-patch': 'JsonPatch', 'model-ir': 'ModelIR',
               'proposal': 'Proposal', 'proposal-output': 'ProposalOutput', 'scenario': 'Scenario'}
 IDENT = re.compile(r'^[A-Za-z_$][A-Za-z0-9_$]*$')
 

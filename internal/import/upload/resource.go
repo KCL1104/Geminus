@@ -34,6 +34,7 @@ type Import struct {
 	InvalidRows             int            `json:"invalid_rows"`
 	Profile                 jsontext.Value `json:"profile"`
 	Preview                 jsontext.Value `json:"preview"`
+	CanonicalPreview        jsontext.Value `json:"canonical_preview"`
 	Mapping                 jsontext.Value `json:"mapping"`
 	Validation              jsontext.Value `json:"validation"`
 	DatasetVersionID        *string        `json:"dataset_version_id"`
@@ -68,6 +69,14 @@ type ErrorDetail struct {
 func raw(b []byte) jsontext.Value {
 	if b == nil {
 		return jsontext.Value("null")
+	}
+	return jsontext.Value(b)
+}
+
+// rawArray is b, or an empty array when nothing is stored.
+func rawArray(b []byte) jsontext.Value {
+	if b == nil {
+		return jsontext.Value("[]")
 	}
 	return jsontext.Value(b)
 }
@@ -118,7 +127,8 @@ func envelope(stored []byte, requestID string) (*ErrorEnvelope, error) {
 func public(i store.Import, requestID string) (Import, error) {
 	p := Import{ID: i.ID, OrganizationID: i.OrganizationID, ProjectID: i.ProjectID, ModelID: i.ModelID, BaseVersionID: i.BaseVersionID,
 		Kind: i.Kind, Filename: i.Filename, Status: string(i.Status), MappingRevision: i.MappingRevision, TotalRows: i.TotalRows,
-		InvalidRows: i.InvalidRows, Profile: raw(i.Profile), Preview: raw(i.Preview), Mapping: raw(i.Mapping), Validation: raw(i.Validation),
+		InvalidRows: i.InvalidRows, Profile: raw(i.Profile), Preview: raw(i.Preview), CanonicalPreview: rawArray(i.CanonicalPreview),
+		Mapping: raw(i.Mapping), Validation: raw(i.Validation),
 		DatasetVersionID: i.DatasetVersionID, ProposalID: i.ProposalID, CreatedAt: timestamp(i.CreatedAt),
 		MappingSuggestionStatus: i.MappingSuggestionStatus, MappingSuggestion: raw(i.MappingSuggestion)}
 	if i.RequestID != "" {

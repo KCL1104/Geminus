@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/import.schema.json",
   "title": "import",
-  "$comment": "SOURCE pp. 6–7,30,35–36. APPROVED D-009: commit freezes dataset and queues inference proposal, never mutates canonical Twin before human approval. APPROVED D-043 (T-016): profile is null until profiling completes; preview holds the first rows' raw values keyed by source column name.",
+  "$comment": "SOURCE pp. 6–7,30,35–36. APPROVED D-009: commit freezes dataset and queues inference proposal, never mutates canonical Twin before human approval. APPROVED D-043 (T-016): profile is null until profiling completes; preview holds the first rows' raw values keyed by source column name. T-017 (D-043 (c) APPROVED; D-070, D-071, D-072 PROPOSED): mapping is the mapping a person confirmed (import-mapping.schema.json); saving one makes the next mapping_revision and the import VALIDATING until the import_validate job of that revision has read every row: VALIDATED when every row maps to a valid canonical event, AWAITING_MAPPING with validation.valid false, invalid_rows and an error report otherwise; validation, invalid_rows, canonical_preview and the error report always describe the current mapping_revision.",
   "type": "object",
   "properties": {
     "id": {
@@ -39,15 +39,18 @@
         "UPLOADED",
         "PROFILING",
         "AWAITING_MAPPING",
+        "VALIDATING",
         "VALIDATED",
         "COMMITTED",
         "FAILED"
-      ]
+      ],
+      "description": "UPLOADED, PROFILING (the import_profile job), AWAITING_MAPPING (profiled, or validated with invalid rows), VALIDATING (the import_validate job of mapping_revision is reading every row), VALIDATED (every row is valid under the current mapping; the canonical dataset is stored for commit), COMMITTED (T-018) or FAILED (final)."
     },
     "mapping_revision": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 9007199254740991
+      "maximum": 9007199254740991,
+      "description": "How many mappings a person has saved: 0 before the first (D-071). Each saveImportMapping names the revision it expects and makes the next; validation results are only ever those of the current revision."
     },
     "total_rows": {
       "type": "integer",
@@ -57,7 +60,8 @@
     "invalid_rows": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 100000
+      "maximum": 100000,
+      "description": "Rows that are not valid: after profiling, CSV rows whose field count differs from the header's; after validation, the rows that do not map to a valid canonical event under the current mapping (D-072). 0 while VALIDATING."
     },
     "profile": {
       "anyOf": [
@@ -80,15 +84,32 @@
       "minItems": 0,
       "maxItems": 100
     },
+    "canonical_preview": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "canonical-event.schema.json"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "minItems": 0,
+      "maxItems": 100,
+      "description": "UNTRUSTED_DATA (D-043 (b), D-072): the canonical events of the preview's rows under the current mapping, one per preview row in order (null for a row that is not valid), written with the validation; empty before it is done. Metadata strings are cut like the preview's (at most 256 characters), and the whole is bounded to 1 MiB, so it may hold fewer rows than the preview."
+    },
     "mapping": {
       "anyOf": [
         {
-          "$ref": "ai-mapping.schema.json"
+          "$ref": "import-mapping.schema.json"
         },
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "The mapping of the current mapping_revision, as a person confirmed it (D-043 (c)); null before the first save."
     },
     "validation": {
       "anyOf": [
@@ -98,7 +119,8 @@
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "The validation of the current mapping_revision (D-072), null before it is done: valid, and up to 100 issues, each with a typed code, a fixed message that never quotes the file, and a JSON Pointer into the file seen as an array of rows (/<row>/<source column>, or /<row> for the whole row, \"\" for the dataset). Every invalid row is in the error report."
     },
     "dataset_version_id": {
       "anyOf": [
@@ -168,6 +190,7 @@
     "invalid_rows",
     "profile",
     "preview",
+    "canonical_preview",
     "mapping",
     "validation",
     "dataset_version_id",
@@ -286,5 +309,68 @@
       ],
       "additionalProperties": false
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "VALIDATING"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mapping": {
+            "type": "object"
+          },
+          "validation": {
+            "type": "null"
+          },
+          "invalid_rows": {
+            "const": 0
+          },
+          "canonical_preview": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "VALIDATED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mapping": {
+            "type": "object"
+          },
+          "invalid_rows": {
+            "const": 0
+          },
+          "validation": {
+            "type": "object",
+            "properties": {
+              "valid": {
+                "const": true
+              }
+            },
+            "required": [
+              "valid"
+            ]
+          }
+        }
+      }
+    }
+  ]
 }

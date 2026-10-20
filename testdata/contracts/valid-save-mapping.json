@@ -1,0 +1,71 @@
+{
+  "expected_mapping_revision": 0,
+  "mapping": {
+    "mappings": [
+      {
+        "source_column": "序號",
+        "target_field": "case_id",
+        "transform": "identity"
+      },
+      {
+        "source_column": "紀錄類型",
+        "target_field": "event_type",
+        "transform": "identity"
+      },
+      {
+        "source_column": "站別",
+        "target_field": "stage",
+        "transform": "identity"
+      },
+      {
+        "source_column": "開始",
+        "target_field": "timestamp",
+        "transform": "rfc3339"
+      },
+      {
+        "source_column": "結束",
+        "target_field": "end_timestamp",
+        "transform": "rfc3339"
+      },
+      {
+        "source_column": "結果",
+        "target_field": "outcome",
+        "transform": "identity"
+      },
+      {
+        "source_column": "班別",
+        "target_field": "shift",
+        "transform": "identity"
+      },
+      {
+        "source_column": "機種",
+        "target_field": "product",
+        "transform": "identity"
+      },
+      {
+        "source_column": "耗時毫秒",
+        "target_field": "duration_ms",
+        "transform": "integer_ms"
+      },
+      {
+        "source_column": "重測",
+        "target_field": "is_rework",
+        "transform": "boolean_literal"
+      },
+      {
+        "source_column": "批號",
+        "target_field": "metadata",
+        "transform": "identity"
+      },
+      {
+        "source_column": "作業員",
+        "target_field": null,
+        "transform": "identity"
+      }
+    ]
+  },
+  "confirmed": true,
+  "confirmed_low_confidence": [
+    "開始"
+  ]
+}

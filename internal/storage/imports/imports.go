@@ -52,7 +52,10 @@ type Import struct {
 	TotalRows, InvalidRows                                int
 	// The JSON columns as stored; nil for SQL NULL.
 	Profile, Preview, Mapping, Validation, MappingSuggestion []byte
-	MappingSuggestionStatus                                  string
+	// CanonicalPreview is the validation's canonical preview (migration
+	// 0014; T-017); nil until the store reads it.
+	CanonicalPreview        []byte
+	MappingSuggestionStatus string
 	// Failure is why the import FAILED (the stored failure JSON); nil
 	// otherwise.
 	Failure                      []byte

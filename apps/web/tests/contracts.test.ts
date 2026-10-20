@@ -13,10 +13,12 @@ import type {
   Calendar,
   CancelSimulation,
   CanonicalEvent,
+  ColumnMapping,
   Distribution,
   Error,
   IdAllocationPool,
   Import,
+  ImportMapping,
   JsonPatch,
   MappingSuggestionRequest,
   ModelIR,
@@ -27,6 +29,9 @@ import type {
   ProposalRequest,
   Reject,
   ReleaseSchedule,
+  SaveMapping,
+  TargetField,
+  Transform,
   ValidationCode,
 } from "../lib/contracts";
 
@@ -112,6 +117,7 @@ const profiledImport: Import = {
     { 案件編號: "CASE-01", 階段: "檢驗", 開始時間: "2026-10-15T08:30:00+08:00", 耗時毫秒: "7200000", 備註: "" },
     { 案件編號: "CASE-02", 階段: "組裝", 開始時間: "2026-10-15T08:31:00+08:00", 耗時毫秒: "", 備註: "" },
   ],
+  canonical_preview: [],
   mapping: null,
   validation: null,
   dataset_version_id: null,
@@ -244,6 +250,99 @@ const stationEvent: CanonicalEvent = {
   duration_ms: 190000,
   metadata: { synthetic: true },
 };
+// T-017 (D-043 (c), D-070): the mapping a person confirms holds only the
+// source column, the target field and one of the four transforms; the D-059
+// station fields are target fields; the operator column is not imported.
+const stationMapping: ImportMapping = {
+  mappings: [
+    { source_column: "序號", target_field: "case_id", transform: "identity" },
+    { source_column: "紀錄類型", target_field: "event_type", transform: "identity" },
+    { source_column: "站別", target_field: "stage", transform: "identity" },
+    { source_column: "開始", target_field: "timestamp", transform: "rfc3339" },
+    { source_column: "結束", target_field: "end_timestamp", transform: "rfc3339" },
+    { source_column: "結果", target_field: "outcome", transform: "identity" },
+    { source_column: "班別", target_field: "shift", transform: "identity" },
+    { source_column: "機種", target_field: "product", transform: "identity" },
+    { source_column: "耗時毫秒", target_field: "duration_ms", transform: "integer_ms" },
+    { source_column: "重測", target_field: "is_rework", transform: "boolean_literal" },
+    { source_column: "批號", target_field: "metadata", transform: "identity" },
+    { source_column: "作業員", target_field: null, transform: "identity" },
+  ],
+};
+// saveImportMapping (D-071): a compare-and-set on the revision, the person's
+// confirmation, and the low-confidence suggestions confirmed by name.
+const saveMapping: SaveMapping = {
+  expected_mapping_revision: 0,
+  mapping: stationMapping,
+  confirmed: true,
+  confirmed_low_confidence: ["開始"],
+};
+const stationEvents: CanonicalEvent[] = [
+  {
+    case_id: "SN-000123",
+    event_type: "operation",
+    timestamp: "2026-10-13T06:12:00+08:00",
+    end_timestamp: "2026-10-13T06:15:10+08:00",
+    stage: "fct",
+  },
+  {
+    case_id: "SN-000124",
+    event_type: "operation",
+    timestamp: "2026-10-13T06:16:00+08:00",
+    end_timestamp: "2026-10-13T06:19:02+08:00",
+    stage: "fct",
+  },
+];
+// A validated import (D-071, D-072): every row maps, and the canonical
+// preview holds the preview rows' events.
+const validatedImport: Import = {
+  ...profiledImport,
+  id: "imp_01M4YDQK0001HSSAXJ76PRHJ5A",
+  filename: "synthetic-station-log.csv",
+  status: "VALIDATED",
+  mapping_revision: 2,
+  profile: {
+    format: "csv",
+    encoding: "utf-8",
+    rows: 2,
+    columns: [
+      { name: "序號", index: 0, inferred: "string", non_empty: 2, max_length: 9 },
+      { name: "紀錄類型", index: 1, inferred: "string", non_empty: 2, max_length: 9 },
+      { name: "站別", index: 2, inferred: "string", non_empty: 2, max_length: 3 },
+      { name: "開始", index: 3, inferred: "timestamp", non_empty: 2, max_length: 25 },
+      { name: "結束", index: 4, inferred: "timestamp", non_empty: 2, max_length: 25 },
+      { name: "作業員", index: 5, inferred: "string", non_empty: 2, max_length: 4 },
+    ],
+  },
+  preview: [
+    {
+      序號: "SN-000123",
+      紀錄類型: "operation",
+      站別: "fct",
+      開始: "2026-10-13T06:12:00+08:00",
+      結束: "2026-10-13T06:15:10+08:00",
+      作業員: "op-7",
+    },
+    {
+      序號: "SN-000124",
+      紀錄類型: "operation",
+      站別: "fct",
+      開始: "2026-10-13T06:16:00+08:00",
+      結束: "2026-10-13T06:19:02+08:00",
+      作業員: "op-7",
+    },
+  ],
+  canonical_preview: stationEvents,
+  mapping: {
+    mappings: [
+      ...stationMapping.mappings.slice(0, 5),
+      { source_column: "作業員", target_field: null, transform: "identity" },
+    ],
+  },
+  validation: { valid: true, issues: [] },
+  mapping_suggestion_status: "none",
+  mapping_suggestion: null,
+};
 // ADR-026 members are optional parts of the IR types (D-047).
 const lineFlowParts = {
   calendar: {
@@ -275,6 +374,9 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-approve.json", approveBody],
     ["valid-reject.json", rejectBody],
     ["valid-proposal-approved.json", approvedProposal],
+    ["valid-import-mapping.json", stationMapping],
+    ["valid-save-mapping.json", saveMapping],
+    ["valid-import-validated.json", validatedImport],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
   });
@@ -333,4 +435,14 @@ export const rejected = {
   tableSegments: { process: "table", period: 60, segments: [{ start: 0, rate: 1 }] } satisfies ReleaseSchedule,
   // @ts-expect-error a calendar exception says whether the line is open (D-052)
   exceptionOpen: { id: "c", period: 1440, shifts: [{ start: 0, end: 60 }], exceptions: [{ start: 0, end: 60 }] } satisfies Calendar,
+  // @ts-expect-error a confirmed mapping carries no AI confidence (D-043 (c))
+  mappingConfidence: { source_column: "a", target_field: "case_id", transform: "identity", confidence: 0.9 } satisfies ColumnMapping,
+  // @ts-expect-error a transform is one of the four, never an expression (D-009, D-070)
+  expressionTransform: "split(',')[0]" satisfies Transform,
+  // @ts-expect-error the operator ID is not a canonical field (ELECTRONICS_LINE §6)
+  operatorTarget: "operator_id" satisfies TargetField,
+  // @ts-expect-error saving a mapping is the person's confirmation (D-071)
+  unconfirmedSave: { ...saveMapping, confirmed: false } satisfies SaveMapping,
+  // @ts-expect-error an import's status is one of the contract's (T-017 adds VALIDATING only)
+  importStatus: { ...validatedImport, status: "MAPPING" } satisfies Import,
 };

@@ -1548,7 +1548,14 @@ paths:
         written, a JSON model at most 2 MiB (IMPORT_LIMIT_EXCEEDED). An import whose import_profile job fails for good or
         is cancelled before the file is profiled is FAILED with the job''s error (for example OBJECT_STORAGE_UNAVAILABLE
         or JOB_CANCELLED). invalid_rows counts CSV rows whose field count differs from the header; they are listed in the
-        error report (downloadImportErrors).'
+        error report (downloadImportErrors). T-017 (D-071, D-072 PROPOSED): after a person saves a mapping
+        (saveImportMapping) the import is VALIDATING, with no validation, invalid rows, canonical preview or error report,
+        until the import_validate job of the current mapping_revision has read every row; then it is VALIDATED (every row
+        maps to a valid canonical event; validation.valid true, invalid_rows 0, canonical_preview the preview rows'' events)
+        or AWAITING_MAPPING with validation.valid false, the first 100 issues, invalid_rows and an error report of every
+        invalid row, ready to be mapped again. These results always describe the current mapping_revision: a job of an
+        older revision never writes them. An import whose import_validate job of the current revision fails for good or is
+        cancelled is FAILED with the job''s error.'
       tags:
       - Imports
       x-origin: SOURCE
@@ -1590,6 +1597,7 @@ paths:
                     invalid_rows: 0
                     profile: null
                     preview: []
+                    canonical_preview: []
                     mapping: null
                     validation: null
                     dataset_version_id: null
@@ -1614,6 +1622,7 @@ paths:
                     invalid_rows: 0
                     profile: null
                     preview: []
+                    canonical_preview: []
                     mapping: null
                     validation: null
                     dataset_version_id: null
@@ -1629,6 +1638,108 @@ paths:
                           code: JSON_DUPLICATE_KEY
                           severity: error
                         request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                    mapping_suggestion_status: none
+                    mapping_suggestion: null
+                remap:
+                  summary: Validated with one invalid row; the person maps again (synthetic station log)
+                  value:
+                    id: imp_01M4YDQK0001HSSAXJ76PRHJ5A
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    project_id: prj_01M4YDQK00K9HVKK0GQKY0MHSA
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    kind: csv_events
+                    filename: synthetic-station-log.csv
+                    status: AWAITING_MAPPING
+                    mapping_revision: 1
+                    total_rows: 2
+                    invalid_rows: 1
+                    profile:
+                      format: csv
+                      encoding: utf-8
+                      rows: 2
+                      columns:
+                      - name: 序號
+                        index: 0
+                        inferred: string
+                        non_empty: 2
+                        max_length: 9
+                      - name: 紀錄類型
+                        index: 1
+                        inferred: string
+                        non_empty: 2
+                        max_length: 9
+                      - name: 站別
+                        index: 2
+                        inferred: string
+                        non_empty: 2
+                        max_length: 3
+                      - name: 開始
+                        index: 3
+                        inferred: mixed
+                        non_empty: 2
+                        max_length: 25
+                      - name: 結束
+                        index: 4
+                        inferred: timestamp
+                        non_empty: 2
+                        max_length: 25
+                      - name: 作業員
+                        index: 5
+                        inferred: string
+                        non_empty: 2
+                        max_length: 4
+                    preview:
+                    - 序號: SN-000123
+                      紀錄類型: operation
+                      站別: fct
+                      開始: '2026-10-13T06:12:00+08:00'
+                      結束: '2026-10-13T06:15:10+08:00'
+                      作業員: op-7
+                    - 序號: SN-000124
+                      紀錄類型: operation
+                      站別: fct
+                      開始: 2026/10/13 06:16
+                      結束: '2026-10-13T06:19:02+08:00'
+                      作業員: op-7
+                    canonical_preview:
+                    - case_id: SN-000123
+                      event_type: operation
+                      timestamp: '2026-10-13T06:12:00+08:00'
+                      end_timestamp: '2026-10-13T06:15:10+08:00'
+                      stage: fct
+                    - null
+                    mapping:
+                      mappings:
+                      - source_column: 序號
+                        target_field: case_id
+                        transform: identity
+                      - source_column: 紀錄類型
+                        target_field: event_type
+                        transform: identity
+                      - source_column: 站別
+                        target_field: stage
+                        transform: identity
+                      - source_column: 開始
+                        target_field: timestamp
+                        transform: rfc3339
+                      - source_column: 結束
+                        target_field: end_timestamp
+                        transform: rfc3339
+                      - source_column: 作業員
+                        target_field: null
+                        transform: identity
+                    validation:
+                      valid: false
+                      issues:
+                      - code: MAPPING_VALUE_INVALID
+                        path: /1/開始
+                        message: 'timestamp: the value is not an RFC 3339 date-time with an offset'
+                        severity: error
+                    dataset_version_id: null
+                    proposal_id: null
+                    created_at: '2026-10-15T08:30:00Z'
+                    error: null
                     mapping_suggestion_status: none
                     mapping_suggestion: null
         '400':
@@ -1653,7 +1764,26 @@ paths:
     post:
       operationId: saveImportMapping
       summary: Confirm mapping and queue deterministic validation
-      description: Core route from report pp.29–35; detailed contract is a proposed engineering draft.
+      description: 'Core route from report pp.29–35. T-017 (APPROVED D-009, D-043 (c); D-070, D-071, D-072 PROPOSED): a
+        person (owner or editor) confirms how the columns of a profiled csv_events or json_events import map to canonical
+        event fields (import-mapping.schema.json: source_column, target_field, transform; one of the four bounded
+        transforms, never an expression). The mapping must map case_id, event_type and timestamp; every source_column is a
+        column of the import''s profile, named once; no target other than metadata (at most 64 columns, each kept under its
+        own name) is filled twice; a column whose target_field is null is not imported. expected_mapping_revision is a
+        compare-and-set on the import''s mapping_revision: any other value is 409 LIFECYCLE_CONFLICT
+        (details[0].code MAPPING_REVISION_CONFLICT at /expected_mapping_revision), never an overwrite or a merge. An import
+        that is UPLOADED or PROFILING (IMPORT_NOT_PROFILED), FAILED or COMMITTED (IMPORT_FINAL) is 409 too; a json_model
+        import has no columns to map (422 MAPPING_NOT_APPLICABLE; T-018 validates it). AWAITING_MAPPING, VALIDATING and
+        VALIDATED imports may be mapped again. When the import has an AI suggestion (mapping_suggestion_status ready), every
+        entry that imports a column exactly as a suggestion entry with requires_confirmation true said must be named in
+        confirmed_low_confidence (422 MAPPING_CONFIRMATION_REQUIRED); the suggestion itself is never applied. Saving, in one
+        transaction with the import.map audit event and the idempotency response: the import takes the next
+        mapping_revision and the mapping and becomes VALIDATING, with its earlier validation, invalid rows, canonical
+        preview and error report cleared; one import_validate job is queued for that revision; queued jobs of older
+        revisions are cancelled, and a running one completes without writing anything (the stale-job fence, which the
+        database also enforces). 202 returns the import. The job reads every row of the stored upload (checking its
+        SHA-256 and size): see getImport. The Twin never changes (D-009). The Idempotency-Key fingerprint is the import ID
+        and the body; a retry with the same key and body replays the first response.'
       tags:
       - Imports
       x-origin: SOURCE
@@ -1665,6 +1795,7 @@ paths:
         required: true
         schema:
           $ref: ../schemas/common.schema.json#/$defs/ImportID
+      - $ref: '#/components/parameters/IdempotencyKey'
       responses:
         '202':
           description: Accepted and durably queued.
@@ -1675,6 +1806,67 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/import.schema.json
+              examples:
+                validating:
+                  summary: The mapping is saved as revision 1 and the import_validate job is queued
+                  value:
+                    id: imp_01M4YDQK0001HSSAXJ76PRHJ5A
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    project_id: prj_01M4YDQK00K9HVKK0GQKY0MHSA
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    kind: csv_events
+                    filename: synthetic-station-log.csv
+                    status: VALIDATING
+                    mapping_revision: 1
+                    total_rows: 2
+                    invalid_rows: 0
+                    profile:
+                      format: csv
+                      encoding: utf-8
+                      rows: 2
+                      columns:
+                      - name: 序號
+                        index: 0
+                        inferred: string
+                        non_empty: 2
+                        max_length: 9
+                      - name: 紀錄類型
+                        index: 1
+                        inferred: string
+                        non_empty: 2
+                        max_length: 9
+                      - name: 開始
+                        index: 2
+                        inferred: timestamp
+                        non_empty: 2
+                        max_length: 25
+                    preview:
+                    - 序號: SN-000123
+                      紀錄類型: operation
+                      開始: '2026-10-13T06:12:00+08:00'
+                    - 序號: SN-000124
+                      紀錄類型: operation
+                      開始: '2026-10-13T06:16:00+08:00'
+                    canonical_preview: []
+                    mapping:
+                      mappings:
+                      - source_column: 序號
+                        target_field: case_id
+                        transform: identity
+                      - source_column: 紀錄類型
+                        target_field: event_type
+                        transform: identity
+                      - source_column: 開始
+                        target_field: timestamp
+                        transform: rfc3339
+                    validation: null
+                    dataset_version_id: null
+                    proposal_id: null
+                    created_at: '2026-10-15T08:30:00Z'
+                    error: null
+                    mapping_suggestion_status: none
+                    mapping_suggestion: null
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1684,13 +1876,59 @@ paths:
         '404':
           $ref: '#/components/responses/Error404'
         '409':
-          $ref: '#/components/responses/Error409'
+          description: 'Stale mapping revision (details[0].code MAPPING_REVISION_CONFLICT), an import that is not profiled
+            yet (IMPORT_NOT_PROFILED) or is final (IMPORT_FINAL), or an Idempotency-Key used for another request. Codes:
+            LIFECYCLE_CONFLICT, IDEMPOTENCY_KEY_CONFLICT.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                stale_revision:
+                  summary: Another person saved revision 2 after this one loaded revision 1
+                  value:
+                    error:
+                      code: LIFECYCLE_CONFLICT
+                      message: the import's mapping changed since it was read; reload it and map again
+                      details:
+                      - path: /expected_mapping_revision
+                        reason: the import's mapping is at another revision
+                        code: MAPPING_REVISION_CONFLICT
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '413':
           $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
-          $ref: '#/components/responses/Error422'
+          description: 'The body does not match SaveMapping (one detail per JSON Pointer), or the mapping is not one the
+            import can take: each detail carries its code (MAPPING_UNKNOWN_COLUMN, MAPPING_DUPLICATE_COLUMN,
+            MAPPING_DUPLICATE_TARGET, MAPPING_REQUIRED_TARGET_MISSING, MAPPING_METADATA_LIMIT, MAPPING_NOT_APPLICABLE,
+            MAPPING_CONFIRMATION_REQUIRED, MAPPING_CONFIRMATION_UNKNOWN) and a JSON Pointer into the body; a reason never
+            quotes a column name. Codes: REQUEST_VALIDATION_FAILED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                unconfirmed:
+                  summary: An AI suggestion below 0.80 confidence is saved as suggested without the person confirming it
+                  value:
+                    error:
+                      code: REQUEST_VALIDATION_FAILED
+                      message: the mapping is not acceptable
+                      details:
+                      - path: /mapping/mappings/2
+                        reason: this entry is the AI's suggestion that needs a person's confirmation; name its source
+                          column in confirmed_low_confidence
+                        code: MAPPING_CONFIRMATION_REQUIRED
+                        severity: error
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '429':
           $ref: '#/components/responses/Error429'
         '500':
@@ -1703,6 +1941,26 @@ paths:
           application/json:
             schema:
               $ref: ../schemas/http.schema.json#/$defs/SaveMapping
+            examples:
+              station_log:
+                summary: A station log's columns; the operator column is not imported (ELECTRONICS_LINE §6)
+                value:
+                  expected_mapping_revision: 0
+                  confirmed: true
+                  mapping:
+                    mappings:
+                    - source_column: 序號
+                      target_field: case_id
+                      transform: identity
+                    - source_column: 紀錄類型
+                      target_field: event_type
+                      transform: identity
+                    - source_column: 開始
+                      target_field: timestamp
+                      transform: rfc3339
+                    - source_column: 作業員
+                      target_field: null
+                      transform: identity
   /imports/{id}/mapping-suggestions:
     post:
       operationId: suggestImportMapping

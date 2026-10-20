@@ -1,0 +1,20 @@
+{
+  "mappings": [
+    {
+      "source_column": "結束",
+      "target_field": "end_timestamp",
+      "confidence": 0.91,
+      "evidence": "RFC 3339 values after the start column in every sample row.",
+      "transform": "rfc3339",
+      "requires_confirmation": false
+    },
+    {
+      "source_column": "班別",
+      "target_field": "shift",
+      "confidence": 0.62,
+      "evidence": "Short labels that repeat; could be a shift or a line.",
+      "transform": "identity",
+      "requires_confirmation": true
+    }
+  ]
+}

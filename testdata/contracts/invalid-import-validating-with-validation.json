@@ -1,0 +1,125 @@
+{
+  "id": "imp_01M4YDQK0001HSSAXJ76PRHJ5A",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "project_id": "prj_01M4YDQK00K9HVKK0GQKY0MHSA",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "kind": "csv_events",
+  "filename": "synthetic-station-log.csv",
+  "status": "VALIDATING",
+  "mapping_revision": 1,
+  "total_rows": 2,
+  "invalid_rows": 0,
+  "profile": {
+    "format": "csv",
+    "encoding": "utf-8",
+    "rows": 2,
+    "columns": [
+      {
+        "name": "序號",
+        "index": 0,
+        "inferred": "string",
+        "non_empty": 2,
+        "max_length": 9
+      },
+      {
+        "name": "紀錄類型",
+        "index": 1,
+        "inferred": "string",
+        "non_empty": 2,
+        "max_length": 9
+      },
+      {
+        "name": "站別",
+        "index": 2,
+        "inferred": "string",
+        "non_empty": 2,
+        "max_length": 3
+      },
+      {
+        "name": "開始",
+        "index": 3,
+        "inferred": "timestamp",
+        "non_empty": 2,
+        "max_length": 25
+      },
+      {
+        "name": "結束",
+        "index": 4,
+        "inferred": "timestamp",
+        "non_empty": 2,
+        "max_length": 25
+      },
+      {
+        "name": "作業員",
+        "index": 5,
+        "inferred": "string",
+        "non_empty": 2,
+        "max_length": 4
+      }
+    ]
+  },
+  "preview": [
+    {
+      "序號": "SN-000123",
+      "紀錄類型": "operation",
+      "站別": "fct",
+      "開始": "2026-10-13T06:12:00+08:00",
+      "結束": "2026-10-13T06:15:10+08:00",
+      "作業員": "op-7"
+    },
+    {
+      "序號": "SN-000124",
+      "紀錄類型": "operation",
+      "站別": "fct",
+      "開始": "2026-10-13T06:16:00+08:00",
+      "結束": "2026-10-13T06:19:02+08:00",
+      "作業員": "op-7"
+    }
+  ],
+  "canonical_preview": [],
+  "mapping": {
+    "mappings": [
+      {
+        "source_column": "序號",
+        "target_field": "case_id",
+        "transform": "identity"
+      },
+      {
+        "source_column": "紀錄類型",
+        "target_field": "event_type",
+        "transform": "identity"
+      },
+      {
+        "source_column": "站別",
+        "target_field": "stage",
+        "transform": "identity"
+      },
+      {
+        "source_column": "開始",
+        "target_field": "timestamp",
+        "transform": "rfc3339"
+      },
+      {
+        "source_column": "結束",
+        "target_field": "end_timestamp",
+        "transform": "rfc3339"
+      },
+      {
+        "source_column": "作業員",
+        "target_field": null,
+        "transform": "identity"
+      }
+    ]
+  },
+  "validation": {
+    "valid": true,
+    "issues": []
+  },
+  "dataset_version_id": null,
+  "proposal_id": null,
+  "created_at": "2026-10-15T08:30:00Z",
+  "error": null,
+  "mapping_suggestion_status": "none",
+  "mapping_suggestion": null
+}

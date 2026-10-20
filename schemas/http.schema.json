@@ -546,18 +546,32 @@
       "additionalProperties": false
     },
     "SaveMapping": {
+      "$comment": "T-017 (APPROVED D-043 (c); D-070, D-071 PROPOSED): the saveImportMapping body. confirmed is the person's confirmation of the whole mapping; the AI never sends it (it has no route, and the worker cannot write a mapping).",
       "type": "object",
       "properties": {
         "expected_mapping_revision": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 9007199254740991
+          "maximum": 9007199254740991,
+          "description": "The import's mapping_revision the person saw (D-071 compare-and-set): another one is 409 LIFECYCLE_CONFLICT with details[0].code MAPPING_REVISION_CONFLICT, never an overwrite."
         },
         "mapping": {
-          "$ref": "ai-mapping.schema.json"
+          "$ref": "import-mapping.schema.json"
         },
         "confirmed": {
           "const": true
+        },
+        "confirmed_low_confidence": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "minItems": 0,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "description": "D-070: the source columns whose AI suggestion required confirmation (confidence below 0.80) and that the person confirmed one by one. A mapping entry that imports a column exactly as such a suggestion said must be named here (otherwise 422, details[0].code MAPPING_CONFIRMATION_REQUIRED); a name that is not such an entry of the mapping is 422 MAPPING_CONFIRMATION_UNKNOWN. Absent: none."
         }
       },
       "required": [

@@ -1,0 +1,6 @@
+--- FAIL: TestContractParity (0.00s)
+    upload_test.go:69: import.schema.json: Go upload.Import has members [base_version_id created_at dataset_version_id error filename id invalid_rows kind mapping mapping_revision mapping_suggestion mapping_suggestion_status model_id organization_id preview profile project_id proposal_id status total_rows validation], schema has [base_version_id canonical_preview created_at dataset_version_id error filename id invalid_rows kind mapping mapping_revision mapping_suggestion mapping_suggestion_status model_id organization_id preview profile project_id proposal_id status total_rows validation]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/import/upload	0.013s
+FAIL
+exit 1

@@ -117,18 +117,31 @@ func TestMappingRefusals(t *testing.T) {
 	}
 }
 
-// The target fields and transforms in the rules are the schema's enums.
+// The target fields and transforms in the rules are the schema's enums:
+// ai-mapping.schema.json takes them from import-mapping.schema.json, the
+// mapping a person confirms (T-017), so both name the same fields.
 func TestMappingVocabularyIsTheSchemas(t *testing.T) {
 	s := contracttest.LoadSchemas(t)
 	item := s.At("ai-mapping.schema.json#/properties/mappings/items").Value["properties"].(map[string]any)
+	if ref := item["target_field"].(map[string]any)["anyOf"].([]any)[0].(map[string]any)["$ref"]; ref != "import-mapping.schema.json#/$defs/TargetField" {
+		t.Errorf("ai-mapping's target_field is %v", ref)
+	}
+	if ref := item["transform"].(map[string]any)["$ref"]; ref != "import-mapping.schema.json#/$defs/Transform" {
+		t.Errorf("ai-mapping's transform is %v", ref)
+	}
 	var fields, transforms []string
-	for _, v := range item["target_field"].(map[string]any)["anyOf"].([]any)[0].(map[string]any)["enum"].([]any) {
+	for _, v := range s.At("import-mapping.schema.json#/$defs/TargetField").Value["enum"].([]any) {
 		fields = append(fields, v.(string))
 	}
-	for _, v := range item["transform"].(map[string]any)["enum"].([]any) {
+	for _, v := range s.At("import-mapping.schema.json#/$defs/Transform").Value["enum"].([]any) {
 		transforms = append(transforms, v.(string))
 	}
 	if !slices.Equal(fields, TargetFields) || !slices.Equal(transforms, Transforms) {
 		t.Errorf("fields %v transforms %v", fields, transforms)
+	}
+	for _, f := range []string{"end_timestamp", "shift", "product"} { // D-059
+		if !slices.Contains(TargetFields, f) {
+			t.Errorf("%s is not a target field", f)
+		}
 	}
 }

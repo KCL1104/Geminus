@@ -28,11 +28,14 @@ type MappingInput struct {
 	Budget       provider.Budget
 }
 
-// TargetFields and Transforms are ai-mapping.schema.json's enums (a test
-// keeps them equal); the mapper may use nothing else (D-009).
+// TargetFields and Transforms are the enums ai-mapping.schema.json takes
+// from import-mapping.schema.json (a test keeps them equal); the mapper may
+// use nothing else (D-009). T-017 added D-059's end_timestamp, shift and
+// product, so that a suggestion and the mapping a person confirms name the
+// same canonical fields.
 var (
-	TargetFields = []string{"case_id", "event_type", "timestamp", "stage", "duration_ms", "resource_id", "outcome",
-		"deployment_id", "is_failure", "is_rework", "metadata"}
+	TargetFields = []string{"case_id", "event_type", "timestamp", "end_timestamp", "stage", "duration_ms", "resource_id",
+		"outcome", "shift", "product", "deployment_id", "is_failure", "is_rework", "metadata"}
 	Transforms = []string{"identity", "rfc3339", "integer_ms", "boolean_literal"}
 )
 

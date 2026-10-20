@@ -12,6 +12,7 @@
   "invalid_rows": 0,
   "profile": null,
   "preview": [],
+  "canonical_preview": [],
   "mapping": null,
   "validation": null,
   "dataset_version_id": null,

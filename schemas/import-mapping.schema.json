@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/import-mapping.schema.json",
+  "title": "import-mapping",
+  "$comment": "APPROVED D-043 (c): the mapping a person confirms (saveImportMapping, T-017) holds only source_column, target_field and transform; the AI's suggestion keeps ai-mapping.schema.json (confidence, evidence, requires_confirmation). Both use the target fields and transforms defined here. The target fields are canonical-event.schema.json's members (with D-059's end_timestamp, shift and product, APPROVED H-018). D-070 (PROPOSED, T-017): the four transforms of D-009 only (no constant, unit or expression transform; CB-28), each allowed for the target fields named in allOf below; a column whose target_field is null is not imported. Which target a column may take, that every source column is a column of the import, that no source column and no target other than metadata repeats, that case_id, event_type and timestamp are mapped and that at most 64 columns go to metadata are the server's checks (D-070).",
+  "type": "object",
+  "properties": {
+    "mappings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ColumnMapping"
+      },
+      "minItems": 1,
+      "maxItems": 256
+    }
+  },
+  "required": [
+    "mappings"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "ColumnMapping": {
+      "type": "object",
+      "description": "One source column (a profile column name: the CSV header or a JSON events member name, D-043) and the canonical-event field it fills, through transform. target_field null: the column is not imported (for example an operator ID, ELECTRONICS_LINE §6).",
+      "properties": {
+        "source_column": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "target_field": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TargetField"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transform": {
+          "$ref": "#/$defs/Transform"
+        }
+      },
+      "required": [
+        "source_column",
+        "target_field",
+        "transform"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "target_field": {
+                "enum": [
+                  "case_id",
+                  "event_type",
+                  "stage",
+                  "resource_id",
+                  "outcome",
+                  "shift",
+                  "product",
+                  "deployment_id",
+                  "metadata",
+                  null
+                ]
+              }
+            },
+            "required": [
+              "target_field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "transform": {
+                "const": "identity"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "target_field": {
+                "enum": [
+                  "timestamp",
+                  "end_timestamp"
+                ]
+              }
+            },
+            "required": [
+              "target_field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "transform": {
+                "const": "rfc3339"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "target_field": {
+                "const": "duration_ms"
+              }
+            },
+            "required": [
+              "target_field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "transform": {
+                "const": "integer_ms"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "target_field": {
+                "enum": [
+                  "is_failure",
+                  "is_rework"
+                ]
+              }
+            },
+            "required": [
+              "target_field"
+            ]
+          },
+          "then": {
+            "properties": {
+              "transform": {
+                "const": "boolean_literal"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "TargetField": {
+      "type": "string",
+      "description": "A canonical-event.schema.json member a column can fill. metadata takes any number of columns (at most 64), each under its source column's name; every other field takes at most one.",
+      "enum": [
+        "case_id",
+        "event_type",
+        "timestamp",
+        "end_timestamp",
+        "stage",
+        "duration_ms",
+        "resource_id",
+        "outcome",
+        "shift",
+        "product",
+        "deployment_id",
+        "is_failure",
+        "is_rework",
+        "metadata"
+      ]
+    },
+    "Transform": {
+      "type": "string",
+      "description": "D-009 / D-070: how a source value becomes the field's value; never an expression, script or code. identity: the text as it is (a JSON events value: a string, or a number's literal as written; any JSON value for metadata). rfc3339: an RFC 3339 date-time with an offset (Z or ±hh:mm), kept as written; no time zone is ever assumed. integer_ms: a whole number of milliseconds written in JSON's integer grammar without a sign (0 to 9007199254740991). boolean_literal: true or false (ASCII letters in any case, or a JSON boolean). An empty value (an empty CSV field, a JSON null, an empty string or a missing member) leaves the field out.",
+      "enum": [
+        "identity",
+        "rfc3339",
+        "integer_ms",
+        "boolean_literal"
+      ]
+    }
+  }
+}

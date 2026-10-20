@@ -2,7 +2,9 @@
 // Value shapes only: ranges, patterns and cross-field rules are enforced by the
 // schema and semantic validators, not by these types.
 import type { AiMapping } from "./ai-mapping";
+import type { CanonicalEvent } from "./canonical-event";
 import type { DatasetVersionID, Error, ImportID, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, Validation } from "./common";
+import type { ImportMapping } from "./import-mapping";
 
 export type Import = {
   id: ImportID;
@@ -12,13 +14,20 @@ export type Import = {
   base_version_id: ModelVersionID;
   kind: "csv_events" | "json_events" | "json_model";
   filename: string;
-  status: "UPLOADED" | "PROFILING" | "AWAITING_MAPPING" | "VALIDATED" | "COMMITTED" | "FAILED";
+  /** UPLOADED, PROFILING (the import_profile job), AWAITING_MAPPING (profiled, or validated with invalid rows), VALIDATING (the import_validate job of mapping_revision is reading every row), VALIDATED (every row is valid under the current mapping; the canonical dataset is stored for commit), COMMITTED (T-018) or FAILED (final). */
+  status: "UPLOADED" | "PROFILING" | "AWAITING_MAPPING" | "VALIDATING" | "VALIDATED" | "COMMITTED" | "FAILED";
+  /** How many mappings a person has saved: 0 before the first (D-071). Each saveImportMapping names the revision it expects and makes the next; validation results are only ever those of the current revision. */
   mapping_revision: number;
   total_rows: number;
+  /** Rows that are not valid: after profiling, CSV rows whose field count differs from the header's; after validation, the rows that do not map to a valid canonical event under the current mapping (D-072). 0 while VALIDATING. */
   invalid_rows: number;
   profile: Profile | null;
   preview: Record<string, unknown>[];
-  mapping: AiMapping | null;
+  /** UNTRUSTED_DATA (D-043 (b), D-072): the canonical events of the preview's rows under the current mapping, one per preview row in order (null for a row that is not valid), written with the validation; empty before it is done. Metadata strings are cut like the preview's (at most 256 characters), and the whole is bounded to 1 MiB, so it may hold fewer rows than the preview. */
+  canonical_preview: (CanonicalEvent | null)[];
+  /** The mapping of the current mapping_revision, as a person confirmed it (D-043 (c)); null before the first save. */
+  mapping: ImportMapping | null;
+  /** The validation of the current mapping_revision (D-072), null before it is done: valid, and up to 100 issues, each with a typed code, a fixed message that never quotes the file, and a JSON Pointer into the file seen as an array of rows (/<row>/<source column>, or /<row> for the whole row, "" for the dataset). Every invalid row is in the error report. */
   validation: Validation | null;
   dataset_version_id: DatasetVersionID | null;
   proposal_id: ProposalID | null;

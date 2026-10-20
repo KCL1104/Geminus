@@ -1823,6 +1823,198 @@
       "expected_error_paths": [
         "/comment"
       ]
+    },
+    {
+      "id": "valid-import-mapping",
+      "instance": "testdata/contracts/valid-import-mapping.json",
+      "schema": "schemas/import-mapping.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-import-mapping-timestamp-identity",
+      "instance": "testdata/contracts/invalid-import-mapping-timestamp-identity.json",
+      "schema": "schemas/import-mapping.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mappings/3/transform"
+      ]
+    },
+    {
+      "id": "invalid-import-mapping-unmapped-transform",
+      "instance": "testdata/contracts/invalid-import-mapping-unmapped-transform.json",
+      "schema": "schemas/import-mapping.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mappings/11/transform"
+      ]
+    },
+    {
+      "id": "invalid-import-mapping-unknown-target",
+      "instance": "testdata/contracts/invalid-import-mapping-unknown-target.json",
+      "schema": "schemas/import-mapping.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mappings/11/target_field"
+      ]
+    },
+    {
+      "id": "invalid-import-mapping-expression",
+      "instance": "testdata/contracts/invalid-import-mapping-expression.json",
+      "schema": "schemas/import-mapping.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mappings/0/transform"
+      ]
+    },
+    {
+      "id": "invalid-import-mapping-ai-member",
+      "instance": "testdata/contracts/invalid-import-mapping-ai-member.json",
+      "schema": "schemas/import-mapping.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mappings/0"
+      ]
+    },
+    {
+      "id": "invalid-import-mapping-empty",
+      "instance": "testdata/contracts/invalid-import-mapping-empty.json",
+      "schema": "schemas/import-mapping.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mappings"
+      ]
+    },
+    {
+      "id": "valid-save-mapping",
+      "instance": "testdata/contracts/valid-save-mapping.json",
+      "schema": "schemas/http.schema.json#/$defs/SaveMapping",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-save-mapping-unconfirmed",
+      "instance": "testdata/contracts/invalid-save-mapping-unconfirmed.json",
+      "schema": "schemas/http.schema.json#/$defs/SaveMapping",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/confirmed"
+      ]
+    },
+    {
+      "id": "invalid-save-mapping-ai-suggestion",
+      "instance": "testdata/contracts/invalid-save-mapping-ai-suggestion.json",
+      "schema": "schemas/http.schema.json#/$defs/SaveMapping",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mapping/mappings/0"
+      ]
+    },
+    {
+      "id": "valid-mapping-station",
+      "instance": "testdata/contracts/valid-mapping-station.json",
+      "schema": "schemas/ai-mapping.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-import-validating",
+      "instance": "testdata/contracts/valid-import-validating.json",
+      "schema": "schemas/import.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-import-validated",
+      "instance": "testdata/contracts/valid-import-validated.json",
+      "schema": "schemas/import.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-import-remap",
+      "instance": "testdata/contracts/valid-import-remap.json",
+      "schema": "schemas/import.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-import-validating-with-validation",
+      "instance": "testdata/contracts/invalid-import-validating-with-validation.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/validation"
+      ]
+    },
+    {
+      "id": "invalid-import-validating-with-preview",
+      "instance": "testdata/contracts/invalid-import-validating-with-preview.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/canonical_preview"
+      ]
+    },
+    {
+      "id": "invalid-import-validated-invalid-rows",
+      "instance": "testdata/contracts/invalid-import-validated-invalid-rows.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/invalid_rows"
+      ]
+    },
+    {
+      "id": "invalid-import-validated-not-valid",
+      "instance": "testdata/contracts/invalid-import-validated-not-valid.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/validation/valid"
+      ]
+    },
+    {
+      "id": "invalid-import-validated-without-mapping",
+      "instance": "testdata/contracts/invalid-import-validated-without-mapping.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mapping"
+      ]
+    },
+    {
+      "id": "invalid-import-ai-mapping-as-mapping",
+      "instance": "testdata/contracts/invalid-import-ai-mapping-as-mapping.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mapping/mappings/0"
+      ]
+    },
+    {
+      "id": "invalid-import-canonical-preview-member",
+      "instance": "testdata/contracts/invalid-import-canonical-preview-member.json",
+      "schema": "schemas/import.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/canonical_preview/0"
+      ]
     }
   ]
 }
