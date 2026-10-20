@@ -1,0 +1,13 @@
+--- FAIL: TestEveryCodeHasASentence (0.00s)
+    clean_test.go:175: BLOCKING_CYCLE has no sentence
+    clean_test.go:175: CALENDAR_INVALID has no sentence
+    clean_test.go:175: RELEASE_SCHEDULE_INVALID has no sentence
+    clean_test.go:175: BATCH_INVALID has no sentence
+    clean_test.go:175: SETUP_INVALID has no sentence
+    clean_test.go:175: STALL_RISK has no sentence
+    clean_test.go:175: PRIMITIVE_NOT_SUPPORTED has no sentence
+    clean_test.go:179: 23 sentences for 30 codes
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.555s
+FAIL
+exit 1

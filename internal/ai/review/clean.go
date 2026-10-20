@@ -80,17 +80,30 @@ var sentences = map[string][]string{
 	patch.TestRequired:                  {"the change must first test the ID of the entity it edits (D-020)"},
 	patch.TargetMissing:                 {"the change's target does not exist"},
 	patch.TestFailed:                    {"a test operation does not match the base model"},
-	validate.BlockingCycle:              {"full buffers could block each other in a loop (D-050)"},
-	validate.CalendarInvalid:            {"a shift calendar is not valid, or a step's resources are never on shift together (D-050, D-052)"},
-	validate.ReleaseScheduleInvalid:     {"the release schedule is not valid (D-053)"},
-	validate.BatchInvalid:               {"the batch sizes or the waiting limit are not valid (D-054)"},
-	validate.SetupInvalid:               {"the changeover settings are not valid (D-055)"},
-	validate.StallRisk:                  {"a resource that breaks down can be on shift while the resources it works with are not (D-050)"},
-	validate.PrimitiveNotSupported:      {"the model uses a line-flow feature this build cannot check or run yet (D-063)"},
 	IDPoolViolation: {poolReasons[idpool.NotInPool], poolReasons[idpool.WrongKind], poolReasons[idpool.UsedInBase],
 		poolReasons[idpool.Missing]},
 	OutputInvalid: {sentNotAProposal, sentConfirmation, sentChanges, sentConfidence, sentRiskClaim, sentNoQuestions,
 		sentQuestions, sentInputNoChanges, sentStatus, sentEmpty, sentNUL, sentNoOp, sentEffectNumber},
+	// The line-flow codes (ADR-026, T-046 phase 2). Their rules land in
+	// T-047–T-051; the primitive gate's messages are fixed and quote
+	// nothing, so they are kept (D-063, proposed).
+	validate.BlockingCycle:          {"full buffers could block each other in a cycle"},
+	validate.CalendarInvalid:        {"a shift calendar is not valid, or a bundle's resources are never on shift together"},
+	validate.ReleaseScheduleInvalid: {"the release schedule is not valid"},
+	validate.BatchInvalid:           {"the batch sizes or the waiting limit are not valid"},
+	validate.SetupInvalid:           {"the changeover settings are not valid"},
+	validate.StallRisk:              {"a resource that breaks down can be on shift while a partner in its bundle is not"},
+	validate.PrimitiveNotSupported:  gateSentences(),
+}
+
+// gateSentences are the primitive gate's own fixed messages, after a
+// sentence for any other.
+func gateSentences() []string {
+	out := []string{"the model uses a line-flow member this build does not run yet"}
+	for _, p := range validate.Primitives {
+		out = append(out, validate.NotSupported(validate.Use{Primitive: p}).Message)
+	}
+	return out
 }
 
 // moreIssues is capped's message: a count the server made.
