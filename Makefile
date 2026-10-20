@@ -42,9 +42,12 @@ backend-test:
 backend-numeric:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	bash scripts/check_no_fma.sh
+# -timeout 30m: under the race detector the engine package's D-047 differential (50,000 random models on
+# the frozen and the current kernel) and the blocking checks of T-047 take over go test's default 10m on a
+# 4-CPU machine; the same tests, at full size, take about a minute without -race (make backend-test).
 backend-race:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
-	go test -race $(GO_PKGS)
+	go test -race -timeout 30m $(GO_PKGS)
 backend-build:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/ ./cmd/...
