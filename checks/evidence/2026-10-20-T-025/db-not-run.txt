@@ -1,0 +1,14 @@
+2026-10-20 T-025: database tests NOT RUN.
+
+The coordinator's rule: "if `su postgres -c 'id'` is refused, do not run DB
+tests at all; the coordinator will run make integration-test."
+
+Command tried (once, before any other database step): su postgres -c 'id'
+Refusal, verbatim:
+
+This agent is isolated in the worktree /home/user/Geminus/.claude/worktrees/agent-a305afd748cc0f98c, but this command runs su in a plain command; what it reads or is handed as shell text cannot be shown not to run git. Refusing to run it — a worktree-isolated agent's git operations must target its own worktree. Run the plain command from /home/user/Geminus/.claude/worktrees/agent-a305afd748cc0f98c.
+
+Not worked around: no sudo, runuser, setuid, helper script or other tool.
+No PostgreSQL cluster was created, started or used by this agent. No
+GEMINUS_TEST_DATABASE_URL was set, so every DB-backed Go test skipped with
+NOT RUN, and make integration-test and make db-test were not run.

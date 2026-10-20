@@ -1,0 +1,142 @@
+--- FAIL: TestRefusesUnsafeChanges (0.01s)
+    --- FAIL: TestRefusesUnsafeChanges/root (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/move (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/copy (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/identity (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/schema_version (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/domain (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/views (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/escape_confusion (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/no_test_first (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/wrong_test (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/missing_target (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/second_op_fails (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/whole_catalog (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/zero_capacity (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/fractional_capacity (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/probability_over_one (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/probabilities_do_not_sum (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/negative_time (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/triangular_out_of_order (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/P1_distribution (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+    --- FAIL: TestRefusesUnsafeChanges/dangling_reference (0.00s)
+        review_test.go:163: status "", want invalid (map[])
+--- FAIL: TestScenarioScope (0.00s)
+    --- FAIL: TestScenarioScope/add_a_resource (0.00s)
+        review_test.go:179: status "", want invalid (map[])
+    --- FAIL: TestScenarioScope/rewire_a_flow (0.00s)
+        review_test.go:179: status "", want invalid (map[])
+    --- FAIL: TestScenarioScope/change_metadata (0.00s)
+        review_test.go:179: status "", want invalid (map[])
+    --- FAIL: TestScenarioScope/remove_a_node (0.00s)
+        review_test.go:179: status "", want invalid (map[])
+    --- FAIL: TestScenarioScope/rename (0.00s)
+        review_test.go:179: status "", want invalid (map[])
+    review_test.go:185: a capacity scenario: "" "" map[]
+--- FAIL: TestNewIDsComeFromThePool (0.00s)
+    review_test.go:210: pool IDs: "" map[]
+--- FAIL: TestRiskIsTheServers (0.00s)
+    --- FAIL: TestRiskIsTheServers/low_claimed,_low_computed (0.00s)
+        review_test.go:258: status "" server "" claim "" risk "", want ready "low" "low" "low" (map[])
+    --- FAIL: TestRiskIsTheServers/the_claim_raises (0.00s)
+        review_test.go:258: status "" server "" claim "" risk "", want ready "low" "high" "high" (map[])
+    --- FAIL: TestRiskIsTheServers/a_deletion_claimed_low (0.00s)
+        review_test.go:258: status "" server "" claim "" risk "", want ready "high" "low" "high" (map[])
+    --- FAIL: TestRiskIsTheServers/a_deletion_claimed_medium (0.00s)
+        review_test.go:258: status "" server "" claim "" risk "", want ready "high" "medium" "high" (map[])
+--- FAIL: TestServerRisk (0.04s)
+    --- FAIL: TestServerRisk/raise_a_capacity (0.02s)
+        review_test.go:296: risk "", want "low"
+    --- FAIL: TestServerRisk/lower_a_capacity (0.00s)
+        review_test.go:296: risk "", want "medium"
+    --- FAIL: TestServerRisk/rename (0.00s)
+        review_test.go:296: risk "", want "low"
+    --- FAIL: TestServerRisk/another_distribution (0.00s)
+        review_test.go:296: risk "", want "low"
+    --- FAIL: TestServerRisk/less_failure_routing (0.00s)
+        review_test.go:296: risk "", want "low"
+    --- FAIL: TestServerRisk/more_failure_routing (0.00s)
+        review_test.go:296: risk "", want "medium"
+    --- FAIL: TestServerRisk/more_units_per_job (0.00s)
+        review_test.go:296: risk "", want "medium"
+    --- FAIL: TestServerRisk/a_new_cycle (0.00s)
+        review_test.go:293: test patch does not apply: <nil> [] [{ROUTING_INVALID /nodes/6 a process needs exactly one outgoing flow, has 2 error} {ROUTING_INVALID /nodes/7 a process needs exactly one outgoing flow, has 0 error} {UNREACHABLE_NODE /nodes/7 no source reaches this node warning}]
+    --- FAIL: TestServerRisk/remove_a_resource (0.00s)
+        review_test.go:296: risk "", want "high"
+    --- FAIL: TestServerRisk/add_a_resource (0.00s)
+        review_test.go:296: risk "", want "medium"
+    --- FAIL: TestServerRisk/remove_a_metric (0.00s)
+        review_test.go:296: risk "", want "medium"
+--- FAIL: TestReady (0.00s)
+    review_test.go:308: not ready: "" map[]
+--- FAIL: TestWarningsStay (0.00s)
+    review_test.go:346: "" map[]
+--- FAIL: TestNoChange (0.00s)
+    review_test.go:353: status "", want invalid (map[])
+--- FAIL: TestExpectedEffectsAreQualitative (0.00s)
+    review_test.go:383: ["Waiting at the step may fall; simulate to know by how much."]: "" map[]
+    review_test.go:383: ["Capacity goes from 3 to 6."]: "" map[]
+    review_test.go:383: ["Arrivals stay at a mean of 48 minutes."]: "" map[]
+    review_test.go:383: ["The failure share stays at 20%."]: "" map[]
+    review_test.go:383: ["Fits the 30 changes a day the intent states."]: "" map[]
+    review_test.go:385: status "", want invalid (map[])
+--- FAIL: TestNeedsInput (0.00s)
+    review_test.go:395: {Status: Summary: Assumptions:[] ExpectedEffects:[] Questions:[] Confidence:<nil> Changes:[] PatchHash: Candidate:<nil> ServerRisk: ProviderRisk: Risk: Validation:<nil>}
+--- FAIL: TestRefusesWhatTheSchemaRefuses (0.00s)
+    --- FAIL: TestRefusesWhatTheSchemaRefuses/approved (0.00s)
+        review_test.go:423: status "", want invalid (map[])
+    --- FAIL: TestRefusesWhatTheSchemaRefuses/ready (0.00s)
+        review_test.go:423: status "", want invalid (map[])
+    --- FAIL: TestRefusesWhatTheSchemaRefuses/no_changes (0.00s)
+        review_test.go:423: status "", want invalid (map[])
+    --- FAIL: TestRefusesWhatTheSchemaRefuses/no_confidence (0.00s)
+        review_test.go:423: status "", want invalid (map[])
+    --- FAIL: TestRefusesWhatTheSchemaRefuses/unknown_risk (0.00s)
+        review_test.go:423: status "", want invalid (map[])
+    --- FAIL: TestRefusesWhatTheSchemaRefuses/questions_on_a_proposal (0.00s)
+        review_test.go:423: status "", want invalid (map[])
+    --- FAIL: TestRefusesWhatTheSchemaRefuses/no_confirmation (0.00s)
+        review_test.go:423: status "", want invalid (map[])
+--- FAIL: TestInvalidOutput (0.00s)
+    review_test.go:432: status "", want invalid (map[])
+--- FAIL: TestRefuse (0.00s)
+    review_test.go:444: a warning alone keeps the outcome ready: <nil>
+--- FAIL: TestIssuesAreCapped (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x10 pc=0x639d25]
+
+goroutine 78 [running]:
+testing.tRunner.func1.2({0x8af838, 0x903cc0})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2125 +0x232
+testing.tRunner.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2128 +0x329
+panic({0x8af838?, 0x903cc0?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/runtime/panic.go:859 +0x125
+github.com/kcl1104/geminus/internal/ai/review.TestIssuesAreCapped(0x1ddcfaf87208)
+	/home/user/Geminus/.claude/worktrees/agent-a305afd748cc0f98c/internal/ai/review/review_test.go:458 +0x265
+testing.tRunner(0x1ddcfaf87208, 0x8e0500)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2260 +0x4d4
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.085s
+FAIL

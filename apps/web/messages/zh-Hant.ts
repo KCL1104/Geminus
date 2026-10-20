@@ -122,6 +122,8 @@ export const zhHant: Catalog = {
   "validation.PATCH_TEST_REQUIRED": "此變更必須先確認要編輯的是哪個項目。",
   "validation.PATCH_TARGET_MISSING": "要修改的項目已不存在。",
   "validation.PATCH_TEST_FAILED": "此項目在載入後已被修改。",
+  "validation.ID_POOL_VIOLATION": "新項目使用了未分配給此提案的 ID。",
+  "validation.AI_OUTPUT_INVALID": "AI 的回答不是可供審閱的提案。",
 
   "table.selectAll": "全選",
   "table.selectRow": "選取",

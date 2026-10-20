@@ -129,6 +129,8 @@ export const en = {
   "validation.PATCH_TEST_REQUIRED": "The change must first confirm which item it edits.",
   "validation.PATCH_TARGET_MISSING": "The item to change no longer exists.",
   "validation.PATCH_TEST_FAILED": "The item changed after it was loaded.",
+  "validation.ID_POOL_VIOLATION": "A new item uses an ID that was not set aside for this proposal.",
+  "validation.AI_OUTPUT_INVALID": "The AI's answer is not a proposal that can be reviewed.",
 
   "table.selectAll": "Select all",
   "table.selectRow": "Select",

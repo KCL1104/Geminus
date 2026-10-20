@@ -1,0 +1,154 @@
+=== RUN   TestRefusesUnsafeChanges
+=== RUN   TestRefusesUnsafeChanges/root
+=== RUN   TestRefusesUnsafeChanges/move
+=== RUN   TestRefusesUnsafeChanges/copy
+=== RUN   TestRefusesUnsafeChanges/identity
+=== RUN   TestRefusesUnsafeChanges/schema_version
+=== RUN   TestRefusesUnsafeChanges/domain
+=== RUN   TestRefusesUnsafeChanges/views
+=== RUN   TestRefusesUnsafeChanges/escape_confusion
+=== RUN   TestRefusesUnsafeChanges/no_test_first
+=== RUN   TestRefusesUnsafeChanges/wrong_test
+=== RUN   TestRefusesUnsafeChanges/missing_target
+=== RUN   TestRefusesUnsafeChanges/second_op_fails
+=== RUN   TestRefusesUnsafeChanges/whole_catalog
+=== RUN   TestRefusesUnsafeChanges/zero_capacity
+=== RUN   TestRefusesUnsafeChanges/fractional_capacity
+=== RUN   TestRefusesUnsafeChanges/probability_over_one
+=== RUN   TestRefusesUnsafeChanges/probabilities_do_not_sum
+=== RUN   TestRefusesUnsafeChanges/negative_time
+=== RUN   TestRefusesUnsafeChanges/triangular_out_of_order
+=== RUN   TestRefusesUnsafeChanges/P1_distribution
+=== RUN   TestRefusesUnsafeChanges/dangling_reference
+--- PASS: TestRefusesUnsafeChanges (0.08s)
+    --- PASS: TestRefusesUnsafeChanges/root (0.02s)
+    --- PASS: TestRefusesUnsafeChanges/move (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/copy (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/identity (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/schema_version (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/domain (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/views (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/escape_confusion (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/no_test_first (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/wrong_test (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/missing_target (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/second_op_fails (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/whole_catalog (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/zero_capacity (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/fractional_capacity (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/probability_over_one (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/probabilities_do_not_sum (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/negative_time (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/triangular_out_of_order (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/P1_distribution (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/dangling_reference (0.00s)
+=== RUN   TestScenarioScope
+=== RUN   TestScenarioScope/rename
+=== RUN   TestScenarioScope/add_a_resource
+=== RUN   TestScenarioScope/rewire_a_flow
+=== RUN   TestScenarioScope/change_metadata
+=== RUN   TestScenarioScope/remove_a_node
+--- PASS: TestScenarioScope (0.01s)
+    --- PASS: TestScenarioScope/rename (0.00s)
+    --- PASS: TestScenarioScope/add_a_resource (0.00s)
+    --- PASS: TestScenarioScope/rewire_a_flow (0.00s)
+    --- PASS: TestScenarioScope/change_metadata (0.00s)
+    --- PASS: TestScenarioScope/remove_a_node (0.00s)
+=== RUN   TestNewIDsComeFromThePool
+=== RUN   TestNewIDsComeFromThePool/a_server-like_ID
+=== RUN   TestNewIDsComeFromThePool/invented_node_ID
+=== RUN   TestNewIDsComeFromThePool/invented_flow_ID
+=== RUN   TestNewIDsComeFromThePool/another_kind's
+--- PASS: TestNewIDsComeFromThePool (0.02s)
+    --- PASS: TestNewIDsComeFromThePool/a_server-like_ID (0.00s)
+    --- PASS: TestNewIDsComeFromThePool/invented_node_ID (0.00s)
+    --- PASS: TestNewIDsComeFromThePool/invented_flow_ID (0.00s)
+    --- PASS: TestNewIDsComeFromThePool/another_kind's (0.00s)
+=== RUN   TestRiskIsTheServers
+=== RUN   TestRiskIsTheServers/low_claimed,_low_computed
+=== RUN   TestRiskIsTheServers/the_claim_raises
+=== RUN   TestRiskIsTheServers/a_deletion_claimed_low
+=== RUN   TestRiskIsTheServers/a_deletion_claimed_medium
+--- PASS: TestRiskIsTheServers (0.02s)
+    --- PASS: TestRiskIsTheServers/low_claimed,_low_computed (0.00s)
+    --- PASS: TestRiskIsTheServers/the_claim_raises (0.00s)
+    --- PASS: TestRiskIsTheServers/a_deletion_claimed_low (0.00s)
+    --- PASS: TestRiskIsTheServers/a_deletion_claimed_medium (0.00s)
+=== RUN   TestServerRisk
+=== RUN   TestServerRisk/raise_a_capacity
+=== RUN   TestServerRisk/lower_a_capacity
+=== RUN   TestServerRisk/rename
+=== RUN   TestServerRisk/another_distribution
+=== RUN   TestServerRisk/less_failure_routing
+=== RUN   TestServerRisk/more_failure_routing
+=== RUN   TestServerRisk/more_units_per_job
+=== RUN   TestServerRisk/a_new_cycle
+=== RUN   TestServerRisk/remove_a_resource
+=== RUN   TestServerRisk/add_a_resource
+=== RUN   TestServerRisk/reorder
+=== RUN   TestServerRisk/remove_a_metric
+--- PASS: TestServerRisk (0.02s)
+    --- PASS: TestServerRisk/raise_a_capacity (0.00s)
+    --- PASS: TestServerRisk/lower_a_capacity (0.00s)
+    --- PASS: TestServerRisk/rename (0.00s)
+    --- PASS: TestServerRisk/another_distribution (0.00s)
+    --- PASS: TestServerRisk/less_failure_routing (0.00s)
+    --- PASS: TestServerRisk/more_failure_routing (0.00s)
+    --- PASS: TestServerRisk/more_units_per_job (0.00s)
+    --- PASS: TestServerRisk/a_new_cycle (0.00s)
+    --- PASS: TestServerRisk/remove_a_resource (0.00s)
+    --- PASS: TestServerRisk/add_a_resource (0.00s)
+    --- PASS: TestServerRisk/reorder (0.00s)
+    --- PASS: TestServerRisk/remove_a_metric (0.00s)
+=== RUN   TestReady
+--- PASS: TestReady (0.01s)
+=== RUN   TestWarningsStay
+--- PASS: TestWarningsStay (0.00s)
+=== RUN   TestNoChange
+--- PASS: TestNoChange (0.00s)
+=== RUN   TestExpectedEffectsAreQualitative
+--- PASS: TestExpectedEffectsAreQualitative (0.04s)
+=== RUN   TestNeedsInput
+--- PASS: TestNeedsInput (0.00s)
+=== RUN   TestRefusesWhatTheSchemaRefuses
+=== RUN   TestRefusesWhatTheSchemaRefuses/approved
+=== RUN   TestRefusesWhatTheSchemaRefuses/ready
+=== RUN   TestRefusesWhatTheSchemaRefuses/no_changes
+=== RUN   TestRefusesWhatTheSchemaRefuses/no_confidence
+=== RUN   TestRefusesWhatTheSchemaRefuses/unknown_risk
+=== RUN   TestRefusesWhatTheSchemaRefuses/questions_on_a_proposal
+=== RUN   TestRefusesWhatTheSchemaRefuses/no_confirmation
+--- PASS: TestRefusesWhatTheSchemaRefuses (0.01s)
+    --- PASS: TestRefusesWhatTheSchemaRefuses/approved (0.00s)
+    --- PASS: TestRefusesWhatTheSchemaRefuses/ready (0.00s)
+    --- PASS: TestRefusesWhatTheSchemaRefuses/no_changes (0.00s)
+    --- PASS: TestRefusesWhatTheSchemaRefuses/no_confidence (0.00s)
+    --- PASS: TestRefusesWhatTheSchemaRefuses/unknown_risk (0.00s)
+    --- PASS: TestRefusesWhatTheSchemaRefuses/questions_on_a_proposal (0.00s)
+    --- PASS: TestRefusesWhatTheSchemaRefuses/no_confirmation (0.00s)
+=== RUN   TestInvalidOutput
+--- PASS: TestInvalidOutput (0.00s)
+=== RUN   TestRefuse
+--- PASS: TestRefuse (0.00s)
+=== RUN   TestIssuesAreCapped
+--- PASS: TestIssuesAreCapped (0.00s)
+=== RUN   TestInputRefused
+=== RUN   TestInputRefused/no_pack
+=== RUN   TestInputRefused/no_base
+=== RUN   TestInputRefused/invalid_base
+=== RUN   TestInputRefused/bad_pool
+=== RUN   TestInputRefused/pool_in_base
+=== RUN   TestInputRefused/unknown_mode
+--- PASS: TestInputRefused (0.00s)
+    --- PASS: TestInputRefused/no_pack (0.00s)
+    --- PASS: TestInputRefused/no_base (0.00s)
+    --- PASS: TestInputRefused/invalid_base (0.00s)
+    --- PASS: TestInputRefused/bad_pool (0.00s)
+    --- PASS: TestInputRefused/pool_in_base (0.00s)
+    --- PASS: TestInputRefused/unknown_mode (0.00s)
+=== RUN   TestCodes
+--- PASS: TestCodes (0.00s)
+=== RUN   TestOutcomeJSON
+--- PASS: TestOutcomeJSON (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.239s
