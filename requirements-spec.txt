@@ -9,3 +9,8 @@ rfc3986-validator==0.1.1
 # Independent RFC 8785 (JCS) implementation (Trail of Bits, Apache-2.0) used by
 # scripts/check_hashes.py to cross-check internal/model/hashing.
 rfc8785==0.1.4
+# Independent DES reference for `make simulation-reference-test` (T-047, TEST-034; ADR-006 and
+# AGENTS.md §7: a reference test only, never imported or called by the Go engine). MIT,
+# Copyright 2013 Ontje Lünsdorf and Stefan Scherfke; 4.1.2 was published on PyPI on 2026-05-24
+# (wheel sha256 43071f84b6512c9b4fcb33ef057f240ccb1d1f3b263f9b4f9229d072e310b372).
+simpy==4.1.2

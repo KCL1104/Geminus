@@ -12,7 +12,8 @@ natural logarithm is the pinned algorithm below, not the platform's log, so
 equality is bit-exact on every input rather than on the few draws stored; the
 large-sample digests check that over 10^6 log inputs and 10^5 draws per
 sampler. Agreement shows both implement the same profile; it is not evidence
-that the profile is statistically right (that is the SimPy differential's job).
+that the profile is statistically right (that is the SimPy reference's job,
+scripts/simpy_reference.py, from T-047).
 
     python scripts/engine_reference.py          # check the stored vectors
     python scripts/engine_reference.py --write  # regenerate them

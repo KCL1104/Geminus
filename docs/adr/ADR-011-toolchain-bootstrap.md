@@ -15,6 +15,7 @@
 | ESLint | 10.12.0 + eslint-config-next 16.4.1 | MIT | ESLint 9 已被標為 unsupported。`eslint-plugin-react`/`-import`/`-jsx-a11y` 的 peer range 尚未宣告 v10；以 `tests/lint-guards.test.ts` 驗證三者規則實際執行，相容性失效時測試會失敗 |
 | Vitest | 5.0.4 | MIT | 需 Node ^22.12 或 ^24 |
 | Python（spec checks） | 3.13；`requirements-spec.txt` 精確 pin | PSF | 新增 `rfc3339-validator`、`rfc3986-validator`（見 CB-34） |
+| SimPy（T-047，`make simulation-reference-test`） | 4.1.2（`requirements-spec.txt`；2026-05-24 發布，滿兩週；wheel sha256 `43071f84…2b372` 與 PyPI 公布值相同） | MIT（Copyright 2013 Ontje Lünsdorf and Stefan Scherfke） | 只作獨立 reference（ADR-006、AGENTS §7）：`scripts/simpy_reference.py` 讀共用 fixture 與 Go engine 寫出的結果比對；Go engine 不 import、不呼叫它，production image 不含它 |
 | PostgreSQL（CI smoke） | 16.15（`postgres:16.15` service） | PostgreSQL | **只用於草案 migration smoke**；production DB major 仍是 TBD，不構成選型 |
 | GitHub Actions | checkout v7.0.1、setup-go v7.0.0、setup-node v7.1.0、setup-python v7.0.0、upload-artifact v7.0.1（T-045；v7.0.2 於 2026-10-07 發布，未滿兩週），以 commit SHA pin | MIT | 防止 tag 被移動 |
 | OIDC client（T-043） | `openid-client` 6.8.8，帶入 `oauth4webapi` 3.8.8 與 `jose` 6.2.12（三者皆 2026-09-05 發布，滿兩週） | MIT | ADR-018 指定通用 OIDC／OAuth client。只在伺服器端使用（`apps/web/lib/session`，`tests/server-only.test.ts` 檢查沒有 client module 能引用）；ID token 另以 `enableNonRepudiationChecks` 驗簽 |

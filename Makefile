@@ -94,6 +94,16 @@ ai-eval:
 	GEMINUS_AI_EVAL_REPORT=$(CURDIR)/checks/ai-evals/fake-provider.json GEMINUS_AI_EVAL_REVIEW_REPORT=$(CURDIR)/checks/ai-evals/fake-review.json \
 		go test -count=1 -run '^(TestFakeProviderEval|TestReviewEval)$$' -v ./internal/ai/corpus/
 	@echo 'ai-eval: fake-provider context and review suites only. Scoring the answers of a real model (golden >=90%, T-038), database effects (T-025 make integration-test, T-026), the analyst output checks (T-030) and the live provider eval (make ai-eval-live) are NOT RUN.' >&2
-ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test:
+# The independent SimPy reference of finite buffers and blocking (T-047, TEST-034; SimPy pinned in
+# requirements-spec.txt): the Go engine's per-replication results of the reference cases, then
+# scripts/simpy_reference.py, which checks the hand-derived goldens with SimPy and compares the stochastic
+# cases within the tolerance fixed in testdata/simulation/blocking-goldens.json. The engine never calls it.
+simulation-reference-test:
+	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
+	@mkdir -p bin
+	GEMINUS_SIMPY_REFERENCE_OUT=$(CURDIR)/bin/simpy-reference-go.json go test -count=1 -run '^TestSimPyReferenceExport$$' ./internal/simulation/des/
+	$(PYTHON) scripts/simpy_reference.py --go-results bin/simpy-reference-go.json --report bin/simpy-reference-report.json
+	@echo 'simulation-reference-test: finite buffers and blocking (T-047) only; breakdowns, calendars, release schedules, batches and changeovers come with T-048–T-050.' >&2
+ai-eval-live security-scan benchmark-test build-containers staging-smoke db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2
