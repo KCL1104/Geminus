@@ -59,4 +59,25 @@ func TestEveryEventGoesThroughTheSchema(t *testing.T) {
 	}
 }
 
+// Review round 1, L4 (R21): Write maps every row again on its own, not
+// only through the schema check: with a schema that takes anything, a row
+// that no longer maps still stops it.
+func TestWriteMapsEveryRowAgain(t *testing.T) {
+	plan, err := mapping.Compile(mapping.Mapping{Mappings: []mapping.Entry{
+		{SourceColumn: "c", TargetField: ptr(mapping.CaseID), Transform: mapping.Identity},
+		{SourceColumn: "e", TargetField: ptr(mapping.EventType), Transform: mapping.Identity},
+		{SourceColumn: "t", TargetField: ptr(mapping.Timestamp), Transform: mapping.RFC3339},
+	}}, []string{"c", "e", "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	real := canonical
+	defer func() { canonical = real }()
+	canonical = func([]byte) bool { return true }
+	data := "c,e,t\nSN-1,op,2026-10-13T06:12:00Z\nSN-2,op,yesterday\n"
+	if _, err := Write(context.Background(), strings.NewReader(data), importprofile.CSV, plan, DefaultLimits, &bytes.Buffer{}); !errors.Is(err, ErrChanged) {
+		t.Errorf("a row that does not map was written: %v", err)
+	}
+}
+
 func ptr(f mapping.Field) *mapping.Field { return &f }
