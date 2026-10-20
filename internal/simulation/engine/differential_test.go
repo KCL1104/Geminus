@@ -7,6 +7,7 @@ import (
 	"math/rand/v2"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -45,6 +46,24 @@ var frozenDifferentialModels = func() int {
 		return differentialModels / 10
 	}
 	return differentialModels
+}()
+
+// raceEnabled: this test binary was built with the race detector (go test
+// -race), as its build settings say. Not a //go:build race file: such a
+// file compiles on no platform of the architecture checker's matrix, which
+// refuses it (every-file-built, T-042). Without build information the
+// full count runs.
+var raceEnabled = func() bool {
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return false
+	}
+	for _, s := range bi.Settings {
+		if s.Key == "-race" {
+			return s.Value == "true"
+		}
+	}
+	return false
 }()
 
 type kernelRun struct {
