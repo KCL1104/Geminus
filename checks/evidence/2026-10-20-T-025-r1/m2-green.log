@@ -1,0 +1,56 @@
+=== RUN   TestFinishFailures
+--- PASS: TestFinishFailures (0.00s)
+=== RUN   TestUnstorableAnswersAreInvalid
+    loop_test.go:386: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestUnstorableAnswersAreInvalid (0.00s)
+=== RUN   TestUnstorableAnswers
+=== RUN   TestUnstorableAnswers/patch_value
+=== RUN   TestUnstorableAnswers/summary
+=== RUN   TestUnstorableAnswers/assumption
+--- PASS: TestUnstorableAnswers (0.04s)
+    --- PASS: TestUnstorableAnswers/patch_value (0.03s)
+    --- PASS: TestUnstorableAnswers/summary (0.00s)
+    --- PASS: TestUnstorableAnswers/assumption (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.052s
+=== RUN   TestUnstorable
+--- PASS: TestUnstorable (0.00s)
+=== RUN   TestGenerateRefusesUnstorable
+    proposals_test.go:138: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestGenerateRefusesUnstorable (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/proposals	0.006s
+exit 0
+=== RUN   TestUnstorableText
+=== RUN   TestUnstorableText/NUL_in_the_summary
+=== RUN   TestUnstorableText/empty_expected_effect
+=== RUN   TestUnstorableText/NUL_in_a_patch_value
+=== RUN   TestUnstorableText/NUL_deep_in_a_patch_value
+=== RUN   TestUnstorableText/NUL_in_a_member_name
+=== RUN   TestUnstorableText/NUL_in_a_patch_path
+=== RUN   TestUnstorableText/empty_summary
+=== RUN   TestUnstorableText/NUL_in_an_assumption
+=== RUN   TestUnstorableText/empty_assumption
+=== RUN   TestUnstorableText/NUL_in_an_expected_effect
+=== RUN   TestUnstorableText/empty_needs_input_summary
+=== RUN   TestUnstorableText/NUL_in_its_summary
+=== RUN   TestUnstorableText/NUL_in_a_question
+=== RUN   TestUnstorableText/empty_question
+--- PASS: TestUnstorableText (0.05s)
+    --- PASS: TestUnstorableText/NUL_in_the_summary (0.02s)
+    --- PASS: TestUnstorableText/empty_expected_effect (0.00s)
+    --- PASS: TestUnstorableText/NUL_in_a_patch_value (0.00s)
+    --- PASS: TestUnstorableText/NUL_deep_in_a_patch_value (0.00s)
+    --- PASS: TestUnstorableText/NUL_in_a_member_name (0.00s)
+    --- PASS: TestUnstorableText/NUL_in_a_patch_path (0.00s)
+    --- PASS: TestUnstorableText/empty_summary (0.00s)
+    --- PASS: TestUnstorableText/NUL_in_an_assumption (0.00s)
+    --- PASS: TestUnstorableText/empty_assumption (0.00s)
+    --- PASS: TestUnstorableText/NUL_in_an_expected_effect (0.00s)
+    --- PASS: TestUnstorableText/empty_needs_input_summary (0.00s)
+    --- PASS: TestUnstorableText/NUL_in_its_summary (0.00s)
+    --- PASS: TestUnstorableText/NUL_in_a_question (0.00s)
+    --- PASS: TestUnstorableText/empty_question (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.062s
+exit 0

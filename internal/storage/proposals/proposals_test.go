@@ -130,3 +130,37 @@ func TestOrganizationFilter(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// H-003 review M2: what PostgreSQL refuses to store in a generated row
+// (text with U+0000, jsonb with \u0000, 0012's content checks) is
+// ErrUnstorable, which the generator ends the attempt with for good.
+func TestGenerateRefusesUnstorable(t *testing.T) {
+	pool := dbtest.Admin(t)
+	admin := postgres.OpenPool(pool)
+	org := dbtest.NewOrg(t, pool, "https://test.invalid", tenant.Owner)
+	mdl, mv, idPool := version(t, admin, org)
+	ctx := context.Background()
+	rollback := errors.New("roll back")
+	which := "Which step?"
+	nul := "a\x00b"
+	for name, g := range map[string]proposals.Generated{
+		"text with U+0000":   {Status: proposals.NeedsInput, Summary: &nul, Questions: []string{"Which step?"}},
+		"jsonb with \\u0000": {Status: proposals.NeedsInput, Summary: &which, Questions: []string{nul}},
+		"a content check":    {Status: proposals.NeedsInput, Questions: []string{"Which step?"}},
+	} {
+		err := admin.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+			p, err := proposals.Insert(ctx, tx, proposals.Proposal{ID: ids.New("aip"), OrganizationID: org.ID, ModelID: mdl, BaseVersionID: mv,
+				Mode: "edit", Intent: "which?", OutputLocale: "en", IDPool: idPool, CreatedBy: org.Members[tenant.Owner].UserID})
+			if err != nil {
+				return err
+			}
+			if err := proposals.Generate(ctx, tx, org.ID, p.ID, g); !errors.Is(err, proposals.ErrUnstorable) {
+				t.Errorf("%s: %v", name, err)
+			}
+			return rollback
+		})
+		if !errors.Is(err, rollback) {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+}

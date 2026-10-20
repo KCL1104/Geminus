@@ -34,6 +34,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/kcl1104/geminus/internal/ai/idpool"
 	"github.com/kcl1104/geminus/internal/ai/locale"
@@ -304,10 +305,37 @@ func nonNilIssues(s []model.ValidationIssue) []model.ValidationIssue {
 // from it whatever the caller checked: the status is proposed or
 // needs_input, requires_confirmation is true, a proposal has changes, a
 // confidence and a risk claim and no questions, a request for input has
-// questions and no changes.
+// questions and no changes, and no text is empty. It also refuses U+0000
+// anywhere in the text and the changes, which PostgreSQL text (22021) and
+// jsonb (22P05) cannot store: such an answer is invalid here rather than an
+// outcome whose write fails (H-003 review M2).
 func outputIssues(o provider.ProposalOutput) []model.ValidationIssue {
 	var out []model.ValidationIssue
 	bad := func(path, message string) { out = append(out, errorIssue(OutputInvalid, path, message)) }
+	text := func(path, s string) {
+		switch {
+		case s == "":
+			bad(path, sentEmpty)
+		case strings.ContainsRune(s, 0):
+			bad(path, sentNUL)
+		}
+	}
+	text("/summary", o.Summary)
+	for _, l := range []struct {
+		member string
+		list   []string
+	}{{"assumptions", o.Assumptions}, {"expected_effects", o.ExpectedEffects}, {"questions", o.Questions}} {
+		for i, s := range l.list {
+			text("/"+l.member+"/"+strconv.Itoa(i), s)
+		}
+	}
+	// A patch that does not encode is the server's error (Review's own
+	// encoding returns it).
+	if encoded, err := json.Marshal(o.Changes); err == nil {
+		if at, ok := nulAt(encoded); ok {
+			bad("/changes"+at, sentNUL)
+		}
+	}
 	if !o.RequiresConfirmation {
 		bad("/requires_confirmation", sentConfirmation)
 	}

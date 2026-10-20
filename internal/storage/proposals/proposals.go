@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/kcl1104/geminus/internal/model"
 )
@@ -79,6 +80,25 @@ var ErrNotFound = errors.New("proposals: not found")
 // ErrNotGenerating: the proposal is not generating any more; nothing was
 // written.
 var ErrNotGenerating = errors.New("proposals: the proposal is not generating")
+
+// ErrUnstorable: the database refused what the generated row would hold:
+// text with U+0000 (SQLSTATE 22021), jsonb with \u0000 (22P05) or a content
+// check of 0001 or 0012 (23514). Nothing was written, and the transaction
+// is aborted. The server's message, which may quote the value, is not kept.
+var ErrUnstorable = errors.New("proposals: the database cannot store the generated content")
+
+// unstorable is err as ErrUnstorable when the database refused the row's
+// content, else err.
+func unstorable(err error) error {
+	var pg *pgconn.PgError
+	if errors.As(err, &pg) {
+		switch pg.Code {
+		case "22021", "22P05", "23514":
+			return fmt.Errorf("%w (SQLSTATE %s, constraint %q)", ErrUnstorable, pg.Code, pg.ConstraintName)
+		}
+	}
+	return err
+}
 
 // Insert stores p generating, with its request and pool.
 func Insert(ctx context.Context, tx pgx.Tx, p Proposal) (Proposal, error) {
@@ -221,6 +241,7 @@ func nullableJSON(b []byte) *string {
 
 // Generate writes g to the generating proposal id (the worker, in the
 // transaction that completes the proposal's job; 0012 refuses any other).
+// Content the database refuses is ErrUnstorable.
 func Generate(ctx context.Context, tx pgx.Tx, org, id string, g Generated) error {
 	switch g.Status {
 	case Ready, NeedsInput, Invalid:
@@ -254,7 +275,7 @@ func Generate(ctx context.Context, tx pgx.Tx, org, id string, g Generated) error
 		org, id, string(g.Status), g.Summary, assumptions, effects, questions, nullableJSON(g.Patch), g.PatchHash, bindings,
 		g.ServerRisk, g.ProviderRisk, g.Risk, g.Confidence, nullableJSON(g.Validation), string(metadata))
 	if err != nil {
-		return err
+		return unstorable(err)
 	}
 	if tag.RowsAffected() != 1 {
 		return ErrNotGenerating

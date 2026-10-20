@@ -107,10 +107,26 @@ const (
 	// DatasetStorageFailed: the dataset snapshots the candidate uses could
 	// not be read.
 	DatasetStorageFailed = "DATASET_STORAGE_FAILED"
+	// OutputUnstorable: the database refused the generated row's content
+	// (store.ErrUnstorable). The review refuses what it knows the database
+	// cannot store, so this is a gap in the review; never retried, since a
+	// retry would ask the provider again for the same answer (H-003 review
+	// M2).
+	OutputUnstorable = "PROPOSAL_OUTPUT_UNSTORABLE"
 )
 
 func failure(code, message string, retryable bool) error {
 	return &jobs.Failure{Code: code, Message: message, Retryable: retryable}
+}
+
+// finishFailure is the job failure of an error writing the outcome: content
+// the database refuses ends the attempt for good; any other error stays the
+// worker's to classify.
+func finishFailure(err error) error {
+	if errors.Is(err, store.ErrUnstorable) {
+		return failure(OutputUnstorable, "the database refused the generated proposal's content", false)
+	}
+	return err
 }
 
 // providerMessages are the fixed messages of provider failures: never the
@@ -178,13 +194,12 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	}); err != nil {
 		return err
 	}
-	outcome, meta, err := h.generate(ctx, org, st)
-	if err != nil {
+	// failed ends an attempt that asked the provider and generated nothing:
+	// what the call cost is audited all the same (best effort; the worker
+	// records the failure either way).
+	failed := func(err error, meta *provider.Metadata) error {
 		var f *jobs.Failure
 		if errors.As(err, &f) && ctx.Err() == nil && meta != nil {
-			// The attempt asked the provider: what it cost is audited even
-			// though nothing is generated (best effort; the failure is
-			// recorded by the worker either way).
 			if aerr := hr.Checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
 				m := auditMeta(*meta)
 				m["code"], m["retryable"] = f.Code, f.Retryable
@@ -195,11 +210,15 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		return err
 	}
+	outcome, meta, err := h.generate(ctx, org, st)
+	if err != nil {
+		return failed(err, meta)
+	}
 	var call provider.Metadata
 	if meta != nil {
 		call = *meta
 	}
-	return hr.Finish(ctx, jobs.Completed, func(ctx context.Context, tx tenant.Tx) error {
+	err = hr.Finish(ctx, jobs.Completed, func(ctx context.Context, tx tenant.Tx) error {
 		now, err := store.Lock(ctx, tx, org, p.ProposalID)
 		if err != nil {
 			return err
@@ -212,7 +231,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 			return err
 		}
 		if err := store.Generate(ctx, tx, org, p.ProposalID, g); err != nil {
-			return err
+			return finishFailure(err)
 		}
 		m := auditMeta(call)
 		m["status"] = string(outcome.Status)
@@ -225,6 +244,10 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		return audit(ctx, tx, "proposal.generate", m)
 	})
+	if err != nil {
+		return failed(err, meta)
+	}
+	return nil
 }
 
 // start checks the proposal as the attempt begins and reads its base.

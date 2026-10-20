@@ -162,7 +162,8 @@ var errorCodes = map[string]string{
 // failureError shows a stored job failure as the contract's error. A code
 // the table does not name (AI_REFUSED, AI_OUTPUT_TRUNCATED,
 // AI_REQUEST_REJECTED, AI_INVALID_REQUEST, PROPOSAL_INPUT_INVALID,
-// INTERNAL, NO_RESULT, JOB_CANCELLED...) is INTERNAL_ERROR.
+// PROPOSAL_OUTPUT_UNSTORABLE, INTERNAL, NO_RESULT, JOB_CANCELLED...) is
+// INTERNAL_ERROR.
 func failureError(failure []byte, requestID string) (*ErrorEnvelope, error) {
 	var f jobs.Failure
 	if err := json.Unmarshal(failure, &f); err != nil || !failureCode.MatchString(f.Code) {

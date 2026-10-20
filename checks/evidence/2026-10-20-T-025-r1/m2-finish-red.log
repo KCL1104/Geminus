@@ -1,0 +1,15 @@
+# github.com/kcl1104/geminus/internal/storage/proposals [github.com/kcl1104/geminus/internal/storage/proposals.test]
+internal/storage/proposals/unstorable_test.go:18:10: undefined: unstorable
+internal/storage/proposals/unstorable_test.go:19:22: undefined: ErrUnstorable
+internal/storage/proposals/unstorable_test.go:28:13: undefined: unstorable
+# github.com/kcl1104/geminus/internal/proposals/generator [github.com/kcl1104/geminus/internal/proposals/generator.test]
+internal/proposals/generator/finish_test.go:18:41: undefined: store.ErrUnstorable
+internal/proposals/generator/finish_test.go:19:16: undefined: finishFailure
+internal/proposals/generator/finish_test.go:19:53: undefined: OutputUnstorable
+internal/proposals/generator/finish_test.go:20:27: undefined: finishFailure
+internal/proposals/generator/finish_test.go:23:5: undefined: finishFailure
+internal/proposals/generator/finish_test.go:26:5: undefined: finishFailure
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/proposals [build failed]
+FAIL
+exit 1

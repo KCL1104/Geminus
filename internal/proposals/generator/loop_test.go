@@ -377,3 +377,48 @@ func TestProviderFailuresFailTheProposal(t *testing.T) {
 		t.Error("a failed proposal holds generated content")
 	}
 }
+
+// H-003 review M2: an answer holding U+0000 (in its text, a patch value or
+// a member name), which PostgreSQL text and jsonb cannot store, becomes
+// invalid in one attempt: the provider is asked once, the job completes,
+// and nothing of the answer is stored.
+func TestUnstorableAnswersAreInvalid(t *testing.T) {
+	e := setup(t)
+	mdl, mv := e.model(t)
+	for name, c := range map[string]struct {
+		edit func(map[string]any)
+		path string
+	}{
+		"summary": {func(a map[string]any) { a["summary"] = "a\x00b" }, "/summary"},
+		"patch value": {func(a map[string]any) {
+			var ops any
+			_ = json.Unmarshal([]byte(`[{"op":"replace","path":"/name","value":"x\u0000y"}]`), &ops)
+			a["changes"] = ops
+		}, "/changes/0/value"},
+		"member name": {func(a map[string]any) {
+			var ops any
+			_ = json.Unmarshal([]byte(`[{"op":"test","path":"/nodes/2/id","value":"ci"},`+
+				`{"op":"replace","path":"/nodes/2/service_time/distribution","value":{"type":"constant","value":1,"a\u0000b":1}}]`), &ops)
+			a["changes"] = ops
+		}, "/changes/1/value"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			a := proposedAnswer(raiseRunners)
+			c.edit(a)
+			f := fake.New()
+			intent := "Store this " + name + "."
+			f.Script(provider.RoleModeler, intent, answer(t, a))
+			id := e.create(t, mdl, mv, "edit", intent)
+			p := e.until(t, e.loop(t, f), id)
+			if p.Status != "invalid" || !slices.Contains(issueCodes(t, p)[c.path], review.OutputInvalid) || p.Summary != nil || p.Changes != nil {
+				t.Fatalf("%+v %s", p, p.Validation)
+			}
+			if n := len(f.Requests()); n != 1 {
+				t.Errorf("the provider was asked %d times", n)
+			}
+			if n := e.count(t, `SELECT count(*) FROM twin.jobs WHERE ai_proposal_id=$1 AND status='completed' AND attempt=1`, id); n != 1 {
+				t.Error("the job did not complete in its first attempt")
+			}
+		})
+	}
+}

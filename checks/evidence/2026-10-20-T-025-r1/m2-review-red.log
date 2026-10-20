@@ -1,0 +1,48 @@
+=== RUN   TestUnstorableText
+=== RUN   TestUnstorableText/NUL_deep_in_a_patch_value
+    storable_test.go:44: want AI_OUTPUT_INVALID at "/changes/1/value", got map[/nodes/2/service_time/distribution:[IR_SCHEMA_INVALID]]
+=== RUN   TestUnstorableText/NUL_in_a_member_name
+    storable_test.go:44: want AI_OUTPUT_INVALID at "/changes/0/value", got map[/changes/0/path:[PATCH_PATH_FORBIDDEN]]
+=== RUN   TestUnstorableText/empty_assumption
+    storable_test.go:44: status "ready", want invalid (map[])
+=== RUN   TestUnstorableText/NUL_in_an_expected_effect
+    storable_test.go:44: status "ready", want invalid (map[])
+=== RUN   TestUnstorableText/NUL_in_a_patch_value
+    storable_test.go:44: status "ready", want invalid (map[])
+=== RUN   TestUnstorableText/NUL_in_a_patch_path
+    storable_test.go:44: want AI_OUTPUT_INVALID at "/changes/0/path", got map[/changes/0/path:[PATCH_PATH_FORBIDDEN]]
+=== RUN   TestUnstorableText/NUL_in_the_summary
+    storable_test.go:44: status "ready", want invalid (map[])
+=== RUN   TestUnstorableText/empty_summary
+    storable_test.go:44: status "ready", want invalid (map[])
+=== RUN   TestUnstorableText/NUL_in_an_assumption
+    storable_test.go:44: status "ready", want invalid (map[])
+=== RUN   TestUnstorableText/empty_expected_effect
+    storable_test.go:44: status "ready", want invalid (map[])
+=== RUN   TestUnstorableText/NUL_in_a_question
+    storable_test.go:60: status "needs_input", want invalid (map[])
+=== RUN   TestUnstorableText/empty_question
+    storable_test.go:60: status "needs_input", want invalid (map[])
+=== RUN   TestUnstorableText/empty_needs_input_summary
+    storable_test.go:60: status "needs_input", want invalid (map[])
+=== RUN   TestUnstorableText/NUL_in_its_summary
+    storable_test.go:60: status "needs_input", want invalid (map[])
+--- FAIL: TestUnstorableText (0.07s)
+    --- FAIL: TestUnstorableText/NUL_deep_in_a_patch_value (0.02s)
+    --- FAIL: TestUnstorableText/NUL_in_a_member_name (0.00s)
+    --- FAIL: TestUnstorableText/empty_assumption (0.01s)
+    --- FAIL: TestUnstorableText/NUL_in_an_expected_effect (0.00s)
+    --- FAIL: TestUnstorableText/NUL_in_a_patch_value (0.00s)
+    --- FAIL: TestUnstorableText/NUL_in_a_patch_path (0.00s)
+    --- FAIL: TestUnstorableText/NUL_in_the_summary (0.00s)
+    --- FAIL: TestUnstorableText/empty_summary (0.01s)
+    --- FAIL: TestUnstorableText/NUL_in_an_assumption (0.00s)
+    --- FAIL: TestUnstorableText/empty_expected_effect (0.00s)
+    --- FAIL: TestUnstorableText/NUL_in_a_question (0.00s)
+    --- FAIL: TestUnstorableText/empty_question (0.00s)
+    --- FAIL: TestUnstorableText/empty_needs_input_summary (0.00s)
+    --- FAIL: TestUnstorableText/NUL_in_its_summary (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.075s
+FAIL
+exit 1

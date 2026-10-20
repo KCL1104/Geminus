@@ -1,6 +1,8 @@
 package review
 
 import (
+	"bytes"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
 	"regexp"
@@ -168,6 +170,29 @@ func Clean(is model.ValidationIssue) model.ValidationIssue {
 		message = otherSentence
 	}
 	return model.NewIssue(is.Code, knownPath(is.Path), message, is.Severity)
+}
+
+// nulAt is the JSON Pointer of the first string of doc, a valid JSON
+// document, that holds U+0000: the value's, or for a member name the
+// object's (so that the pointer never holds the name).
+func nulAt(doc []byte) (string, bool) {
+	if !bytes.Contains(doc, []byte(`\u0000`)) {
+		return "", false
+	}
+	dec := jsontext.NewDecoder(bytes.NewReader(doc))
+	for {
+		tok, err := dec.ReadToken()
+		if err != nil {
+			return "", false
+		}
+		if tok.Kind() == '"' && strings.ContainsRune(tok.String(), 0) {
+			p := dec.StackPointer()
+			if kind, n := dec.StackIndex(dec.StackDepth()); kind == '{' && n%2 == 1 {
+				p = p.Parent()
+			}
+			return string(p), true
+		}
+	}
 }
 
 func cleaned(issues []model.ValidationIssue) []model.ValidationIssue {
