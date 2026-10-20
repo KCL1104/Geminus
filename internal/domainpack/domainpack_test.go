@@ -95,12 +95,21 @@ func TestLayeredLayout(t *testing.T) {
 	}
 }
 
-// TEST-001: the canonical event type matches its schema and fixture.
+// TEST-001: the canonical event type matches its schema and every positive
+// fixture, including the station operation and downtime records (D-059).
 func TestCanonicalEventContract(t *testing.T) {
 	s := contracttest.LoadSchemas(t)
 	s.Parity(t, reflect.TypeFor[domainpack.CanonicalEvent](), "canonical-event.schema.json#")
-	contracttest.RoundTrip[domainpack.CanonicalEvent](t, "valid-canonical-event",
-		contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/contracts/valid-canonical-event.json")))
+	n := 0
+	for _, c := range contracttest.Cases(t) {
+		if c.Schema == "schemas/canonical-event.schema.json" && c.Valid {
+			contracttest.RoundTrip[domainpack.CanonicalEvent](t, c.ID, contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), c.Instance)))
+			n++
+		}
+	}
+	if n < 3 {
+		t.Fatalf("only %d canonical event fixtures", n)
+	}
 }
 
 // The generic boundary knows no domain, HTTP, database or LLM.

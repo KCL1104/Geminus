@@ -120,11 +120,14 @@ type ViewDefinitions struct {
 type CanonicalEvent struct {
 	CaseID       string         `json:"case_id"`
 	EventType    string         `json:"event_type"`
-	Timestamp    string         `json:"timestamp"` // RFC 3339
+	Timestamp    string         `json:"timestamp"`              // RFC 3339
+	EndTimestamp string         `json:"end_timestamp,omitzero"` // RFC 3339; >= Timestamp (D-059, a data-quality rule)
 	Stage        string         `json:"stage,omitzero"`
 	DurationMS   *int64         `json:"duration_ms,omitzero"`
 	ResourceID   string         `json:"resource_id,omitzero"`
 	Outcome      string         `json:"outcome,omitzero"`
+	Shift        string         `json:"shift,omitzero"`   // shift label (D-059)
+	Product      string         `json:"product,omitzero"` // entity type; required for multi-product logs (D-059, D-055)
 	DeploymentID string         `json:"deployment_id,omitzero"`
 	IsFailure    *bool          `json:"is_failure,omitzero"`
 	IsRework     *bool          `json:"is_rework,omitzero"`

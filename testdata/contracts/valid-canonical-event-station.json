@@ -1,0 +1,15 @@
+{
+  "case_id": "SN-000123",
+  "event_type": "operation",
+  "timestamp": "2026-10-13T06:12:00+08:00",
+  "end_timestamp": "2026-10-13T06:15:10+08:00",
+  "stage": "fct",
+  "resource_id": "fct-02",
+  "outcome": "pass",
+  "shift": "day",
+  "product": "board_a",
+  "duration_ms": 190000,
+  "metadata": {
+    "synthetic": true
+  }
+}

@@ -1576,6 +1576,101 @@
       "primitives": [
         "system_wip"
       ]
+    },
+    {
+      "id": "valid-canonical-event-station",
+      "instance": "testdata/contracts/valid-canonical-event-station.json",
+      "schema": "schemas/canonical-event.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-canonical-event-downtime",
+      "instance": "testdata/contracts/valid-canonical-event-downtime.json",
+      "schema": "schemas/canonical-event.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-canonical-event-end-timestamp",
+      "instance": "testdata/contracts/invalid-canonical-event-end-timestamp.json",
+      "schema": "schemas/canonical-event.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/end_timestamp"
+      ]
+    },
+    {
+      "id": "invalid-canonical-event-long-shift",
+      "instance": "testdata/contracts/invalid-canonical-event-long-shift.json",
+      "schema": "schemas/canonical-event.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/shift"
+      ]
+    },
+    {
+      "id": "valid-result-line-flow",
+      "instance": "testdata/contracts/valid-result-line-flow.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-resource-state-partial",
+      "instance": "testdata/contracts/invalid-resource-state-partial.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/replication_summaries/0/resource_states/line"
+      ]
+    },
+    {
+      "id": "invalid-resource-state-without-feature",
+      "instance": "testdata/contracts/invalid-resource-state-without-feature.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/replication_summaries/0/resource_states/chamber"
+      ]
+    },
+    {
+      "id": "valid-trace-line-flow",
+      "instance": "testdata/contracts/valid-trace-line-flow.json",
+      "schema": "schemas/simulation.schema.json#/$defs/TraceArtifact",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-trace-setup-without-resource",
+      "instance": "testdata/contracts/invalid-trace-setup-without-resource.json",
+      "schema": "schemas/simulation.schema.json#/$defs/TraceArtifact",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/events/2"
+      ]
+    },
+    {
+      "id": "invalid-trace-batch-id-on-arrival",
+      "instance": "testdata/contracts/invalid-trace-batch-id-on-arrival.json",
+      "schema": "schemas/simulation.schema.json#/$defs/TraceArtifact",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/events/0"
+      ]
+    },
+    {
+      "id": "valid-run-failed-deadlock",
+      "instance": "testdata/contracts/valid-run-failed-deadlock.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Run",
+      "valid": true,
+      "layer": "schema"
     }
   ]
 }

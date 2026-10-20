@@ -100,6 +100,7 @@ export type Result = {
     rework_count: MetricSummary;
     dora: Record<string, MetricSummary>;
     additional_metrics: Record<string, MetricSummary>;
+    domain?: Record<string, MetricSummary>;
   };
   replication_summaries: {
     replication_index: number;
@@ -109,6 +110,11 @@ export type Result = {
     failures: number;
     reworks: number;
     censored_entities: number;
+    resource_states?: Record<string, ResourceState>;
+    blocking?: Record<string, NodeBlocking>;
+    buffers?: Record<string, BufferState>;
+    batches?: Record<string, BatchCounts>;
+    declared?: Record<string, number | number[] | null>;
   }[];
   measurement_window: {
     tick_unit: "millisecond";
@@ -135,9 +141,11 @@ export type Result = {
 export type TraceEvent = {
   time_tick: number;
   sequence: number;
-  type: "arrival" | "queue_enter" | "service_start" | "service_end" | "delay_start" | "delay_end" | "failure" | "rework" | "complete" | "abandon";
+  type: "arrival" | "queue_enter" | "service_start" | "service_end" | "delay_start" | "delay_end" | "failure" | "rework" | "complete" | "abandon" | "blocked" | "unblocked" | "setup_start";
   entity_id: string;
   node_id: string;
+  resource_id?: string;
+  batch_id?: string;
 };
 
 export type TraceArtifact = {
@@ -151,4 +159,39 @@ export type TraceArtifact = {
   };
   truncated: boolean;
   events: TraceEvent[];
+};
+
+export type ResourceState = {
+  in_use_ticks: number;
+  blocked_ticks?: number;
+  setup_ticks?: number;
+  setups_started?: number;
+  setups_completed?: number;
+  completed_setup_ticks?: number;
+  down_ticks?: number;
+  breakdowns_started?: number;
+  repairs_completed?: number;
+  completed_repair_ticks?: number;
+  scheduled_ticks?: number;
+  scheduled_in_use_ticks?: number;
+  overtime_ticks?: number;
+  available_ticks?: number;
+  idle_ticks?: number;
+  scheduled_processing_ticks: number;
+};
+
+export type NodeBlocking = {
+  blocks_started: number;
+  blocks_completed: number;
+  completed_block_ticks: number;
+  blocked_entity_ticks: number;
+};
+
+export type BufferState = {
+  full_ticks: number;
+};
+
+export type BatchCounts = {
+  batches_started: number;
+  members_started: number;
 };

@@ -8,7 +8,10 @@ import { describe, expect, it } from "vitest";
 import type {
   AnalysisOutput,
   AnalysisRequest,
+  Calendar,
   CancelSimulation,
+  CanonicalEvent,
+  Distribution,
   Error,
   IdAllocationPool,
   Import,
@@ -20,6 +23,7 @@ import type {
   ProposalAccepted,
   ProposalOutput,
   ProposalRequest,
+  ReleaseSchedule,
   ValidationCode,
 } from "../lib/contracts";
 
@@ -176,6 +180,32 @@ const poolIDs = (kind: string): string[] =>
   Array.from({ length: 16 }, (_, i) => `${kind}_01m4ydqk00ta${String(i + 1).padStart(14, "0")}`);
 // D-046: the server's ID allocation pool, 16 IDs of each kind.
 const idPool: IdAllocationPool = { node: poolIDs("node"), flow: poolIDs("flow"), resource: poolIDs("resource") };
+// T-046 phase 2 (D-059): a station operation record with its end, shift and product.
+const stationEvent: CanonicalEvent = {
+  case_id: "SN-000123",
+  event_type: "operation",
+  timestamp: "2026-10-13T06:12:00+08:00",
+  end_timestamp: "2026-10-13T06:15:10+08:00",
+  stage: "fct",
+  resource_id: "fct-02",
+  outcome: "pass",
+  shift: "day",
+  product: "board_a",
+  duration_ms: 190000,
+  metadata: { synthetic: true },
+};
+// ADR-026 members are optional parts of the IR types (D-047).
+const lineFlowParts = {
+  calendar: {
+    id: "two_shift",
+    period: 1440,
+    shifts: [{ start: 360, end: 840, label: "day" }],
+    exceptions: [{ start: 7200, end: 8640, open: false }],
+  } satisfies Calendar,
+  lognormal: { type: "lognormal", mean: 25, cv: 0.8 } satisfies Distribution,
+  table: { process: "table", period: 1440, releases: [{ at: 360, quantity: 20 }] } satisfies ReleaseSchedule,
+  gated: "PRIMITIVE_NOT_SUPPORTED" satisfies ValidationCode,
+};
 
 describe("generated contract types match the shared fixtures", () => {
   it.each([
@@ -190,8 +220,16 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-id-allocation-pool.json", idPool],
     ["valid-proposal-accepted.json", proposalAccepted],
     ["valid-proposal-invalid.json", invalidProposal],
+    ["valid-canonical-event-station.json", stationEvent],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
+  });
+
+  it("valid-line-flow-ir.json carries the ADR-026 members", () => {
+    const ir = fixture("valid-line-flow-ir.json") as ModelIR;
+    expect(ir.calendars?.[0]?.shifts[0]).toEqual({ start: 360, end: 840, label: "day" });
+    expect(ir.resources[1]?.breakdowns?.time_to_repair.distribution).toEqual(lineFlowParts.lognormal);
+    expect(lineFlowParts.gated).toBe("PRIMITIVE_NOT_SUPPORTED");
   });
 });
 
@@ -227,4 +265,12 @@ export const rejected = {
   proposalStatus: { ...invalidProposal, status: "publishing" } satisfies Proposal,
   // @ts-expect-error an issue code outside the ValidationCode catalogue is not one (T-025)
   unknownIssueCode: "ID_POOL_OVERFLOW" satisfies ValidationCode,
+  // @ts-expect-error mixtures are still P1 (TWIN_IR_SPEC §3); lognormal and Weibull are P0 (D-056)
+  p1Distribution: { type: "mixture", mean: 3 } satisfies Distribution,
+  // @ts-expect-error a lognormal is parameterized by mean and cv, not sd (D-056)
+  lognormalSd: { type: "lognormal", mean: 3, sd: 1 } satisfies Distribution,
+  // @ts-expect-error a release table has releases, a rate schedule has segments (D-053)
+  tableSegments: { process: "table", period: 60, segments: [{ start: 0, rate: 1 }] } satisfies ReleaseSchedule,
+  // @ts-expect-error a calendar exception says whether the line is open (D-052)
+  exceptionOpen: { id: "c", period: 1440, shifts: [{ start: 0, end: 60 }], exceptions: [{ start: 0, end: 60 }] } satisfies Calendar,
 };

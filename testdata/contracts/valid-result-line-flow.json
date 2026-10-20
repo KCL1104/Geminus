@@ -1,0 +1,323 @@
+{
+  "run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFA",
+  "status": "completed",
+  "engine_version": "des-go-0.2.0",
+  "metrics": {
+    "throughput": {
+      "status": "available",
+      "mean": 211.5,
+      "p50": 211.5,
+      "p95": 211.5,
+      "sample_count": 2,
+      "population": "replication",
+      "unit": "entities",
+      "confidence_interval_mean": {
+        "level": 0.95,
+        "lower": 210.5,
+        "upper": 212.5,
+        "method": "student_t_replication_means"
+      },
+      "reason": null
+    },
+    "lead_time_minutes": {
+      "status": "available",
+      "mean": 95.5,
+      "p50": 95.5,
+      "p95": 95.5,
+      "sample_count": 2,
+      "population": "entity",
+      "unit": "minute",
+      "confidence_interval_mean": null,
+      "reason": null
+    },
+    "resources": {
+      "chamber": {
+        "utilization_mean": 0.4,
+        "observation_ticks": 17280000,
+        "capacity": 2,
+        "reason": null
+      },
+      "line": {
+        "utilization_mean": 0.52,
+        "observation_ticks": 17280000,
+        "capacity": 2,
+        "reason": null
+      },
+      "operator": {
+        "utilization_mean": 0.3,
+        "observation_ticks": 17280000,
+        "capacity": 2,
+        "reason": null
+      }
+    },
+    "queues": {},
+    "failure_count": {
+      "status": "available",
+      "mean": 11,
+      "p50": 11,
+      "p95": 11,
+      "sample_count": 2,
+      "population": "replication",
+      "unit": "events",
+      "confidence_interval_mean": {
+        "level": 0.95,
+        "lower": 10,
+        "upper": 12,
+        "method": "student_t_replication_means"
+      },
+      "reason": null
+    },
+    "rework_count": {
+      "status": "available",
+      "mean": 0,
+      "p50": 0,
+      "p95": 0,
+      "sample_count": 2,
+      "population": "replication",
+      "unit": "events",
+      "confidence_interval_mean": {
+        "level": 0.95,
+        "lower": -1,
+        "upper": 1,
+        "method": "student_t_replication_means"
+      },
+      "reason": null
+    },
+    "dora": {},
+    "additional_metrics": {
+      "line_wip": {
+        "status": "available",
+        "mean": 41.25,
+        "p50": 41.25,
+        "p95": 41.25,
+        "sample_count": 2,
+        "population": "replication",
+        "unit": "entities",
+        "confidence_interval_mean": {
+          "level": 0.95,
+          "lower": 40.25,
+          "upper": 42.25,
+          "method": "student_t_replication_means"
+        },
+        "reason": null
+      },
+      "daily_output": {
+        "status": "unavailable",
+        "mean": null,
+        "p50": null,
+        "p95": null,
+        "sample_count": 0,
+        "population": "replication",
+        "unit": "count",
+        "confidence_interval_mean": null,
+        "reason": "WINDOW_NOT_WHOLE_PERIODS"
+      }
+    },
+    "domain": {
+      "uph_calendar": {
+        "status": "available",
+        "mean": 44.06,
+        "p50": 44.06,
+        "p95": 44.06,
+        "sample_count": 2,
+        "population": "replication",
+        "unit": "units_per_hour",
+        "confidence_interval_mean": {
+          "level": 0.95,
+          "lower": 43.06,
+          "upper": 45.06,
+          "method": "student_t_replication_means"
+        },
+        "reason": null
+      }
+    }
+  },
+  "replication_summaries": [
+    {
+      "replication_index": 0,
+      "completed_count": 210,
+      "mean_lead_time_minutes": 95.5,
+      "resource_utilization": {
+        "chamber": 0.4,
+        "line": 0.52,
+        "operator": 0.3
+      },
+      "failures": 11,
+      "reworks": 0,
+      "censored_entities": 30,
+      "resource_states": {
+        "chamber": {
+          "in_use_ticks": 6912000,
+          "blocked_ticks": 0,
+          "scheduled_processing_ticks": 6912000
+        },
+        "line": {
+          "in_use_ticks": 9000000,
+          "blocked_ticks": 600000,
+          "setup_ticks": 300000,
+          "setups_started": 4,
+          "setups_completed": 4,
+          "completed_setup_ticks": 300000,
+          "down_ticks": 240000,
+          "breakdowns_started": 2,
+          "repairs_completed": 2,
+          "completed_repair_ticks": 240000,
+          "scheduled_ticks": 10800000,
+          "scheduled_in_use_ticks": 8700000,
+          "overtime_ticks": 300000,
+          "available_ticks": 10560000,
+          "idle_ticks": 1860000,
+          "scheduled_processing_ticks": 7800000
+        },
+        "operator": {
+          "in_use_ticks": 5184000,
+          "blocked_ticks": 600000,
+          "scheduled_ticks": 21600000,
+          "scheduled_in_use_ticks": 5184000,
+          "overtime_ticks": 0,
+          "available_ticks": 21600000,
+          "idle_ticks": 16416000,
+          "scheduled_processing_ticks": 4584000
+        }
+      },
+      "blocking": {
+        "assemble": {
+          "blocks_started": 12,
+          "blocks_completed": 11,
+          "completed_block_ticks": 540000,
+          "blocked_entity_ticks": 600000
+        },
+        "release_b": {
+          "blocks_started": 3,
+          "blocks_completed": 3,
+          "completed_block_ticks": 90000,
+          "blocked_entity_ticks": 150000
+        }
+      },
+      "buffers": {
+        "q_burn_in": {
+          "full_ticks": 0
+        },
+        "q_line": {
+          "full_ticks": 420000
+        }
+      },
+      "batches": {
+        "burn_in": {
+          "batches_started": 27,
+          "members_started": 205
+        }
+      },
+      "declared": {
+        "line_wip": 41.25,
+        "first_pass": 198,
+        "first_fail": 11,
+        "scrapped": 11,
+        "daily_output": null
+      }
+    },
+    {
+      "replication_index": 1,
+      "completed_count": 211,
+      "mean_lead_time_minutes": 96.5,
+      "resource_utilization": {
+        "chamber": 0.4,
+        "line": 0.52,
+        "operator": 0.3
+      },
+      "failures": 11,
+      "reworks": 0,
+      "censored_entities": 30,
+      "resource_states": {
+        "chamber": {
+          "in_use_ticks": 6912000,
+          "blocked_ticks": 0,
+          "scheduled_processing_ticks": 6912000
+        },
+        "line": {
+          "in_use_ticks": 9000000,
+          "blocked_ticks": 600000,
+          "setup_ticks": 300000,
+          "setups_started": 4,
+          "setups_completed": 4,
+          "completed_setup_ticks": 300000,
+          "down_ticks": 240000,
+          "breakdowns_started": 2,
+          "repairs_completed": 2,
+          "completed_repair_ticks": 240000,
+          "scheduled_ticks": 10800000,
+          "scheduled_in_use_ticks": 8700000,
+          "overtime_ticks": 300000,
+          "available_ticks": 10560000,
+          "idle_ticks": 1860000,
+          "scheduled_processing_ticks": 7800000
+        },
+        "operator": {
+          "in_use_ticks": 5184000,
+          "blocked_ticks": 600000,
+          "scheduled_ticks": 21600000,
+          "scheduled_in_use_ticks": 5184000,
+          "overtime_ticks": 0,
+          "available_ticks": 21600000,
+          "idle_ticks": 16416000,
+          "scheduled_processing_ticks": 4584000
+        }
+      },
+      "blocking": {
+        "assemble": {
+          "blocks_started": 12,
+          "blocks_completed": 11,
+          "completed_block_ticks": 540000,
+          "blocked_entity_ticks": 600000
+        },
+        "release_b": {
+          "blocks_started": 3,
+          "blocks_completed": 3,
+          "completed_block_ticks": 90000,
+          "blocked_entity_ticks": 150000
+        }
+      },
+      "buffers": {
+        "q_burn_in": {
+          "full_ticks": 0
+        },
+        "q_line": {
+          "full_ticks": 420000
+        }
+      },
+      "batches": {
+        "burn_in": {
+          "batches_started": 27,
+          "members_started": 205
+        }
+      },
+      "declared": {
+        "line_wip": 41.25,
+        "first_pass": 198,
+        "first_fail": 11,
+        "scrapped": 11,
+        "daily_output": null
+      }
+    }
+  ],
+  "measurement_window": {
+    "tick_unit": "millisecond",
+    "warmup_ticks": 0,
+    "horizon_ticks": 17280000,
+    "time_boundary": "warmup <= t <= horizon"
+  },
+  "reproducibility": {
+    "seed": 7,
+    "replications": 2,
+    "model_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "effective_model_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "config_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "dataset_manifest_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "result_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "trace": {
+    "available": false,
+    "sampled_events": 0,
+    "artifact_id": null
+  }
+}

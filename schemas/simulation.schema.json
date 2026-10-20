@@ -278,7 +278,8 @@
             {
               "type": "null"
             }
-          ]
+          ],
+          "$comment": "details[0].code is the job failure code (CB-38(a): no catalogue yet; internal/storage/runs). ADR-026 D-050 adds SIMULATION_DEADLOCK (B1, circular wait) and SIMULATION_STALLED (B2, a bundle that can never be filled), recorded from T-047–T-050 and shown, like the execution limits, as MODEL_VALIDATION_FAILED (T-023 interim mapping; D-063 PROPOSED)."
         }
       },
       "required": [
@@ -752,6 +753,14 @@
               "additionalProperties": {
                 "$ref": "#/$defs/MetricSummary"
               }
+            },
+            "domain": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/MetricSummary"
+              },
+              "minProperties": 1,
+              "$comment": "D-058: a DomainPack ModelMetricsProvider’s metrics; absent when the pack has none. metrics.dora is unchanged."
             }
           },
           "required": [
@@ -815,6 +824,64 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 9007199254740991
+              },
+              "resource_states": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/ResourceState"
+                },
+                "minProperties": 1,
+                "$comment": "D-058: per resource, only for resources a line-flow feature applies to."
+              },
+              "blocking": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/NodeBlocking"
+                },
+                "minProperties": 1,
+                "$comment": "D-049/D-058: per node that can be blocked, when the model has a finite buffer."
+              },
+              "buffers": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/BufferState"
+                },
+                "minProperties": 1,
+                "$comment": "D-049: per finite buffer (the explicit queue that declares capacity)."
+              },
+              "batches": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/$defs/BatchCounts"
+                },
+                "minProperties": 1,
+                "$comment": "D-054/D-058: per batch process."
+              },
+              "declared": {
+                "type": "object",
+                "minProperties": 1,
+                "$comment": "D-058: the value of each declared metric (IR metrics[] system_wip, flow_count, sink_count, period_throughput) in this replication; null when unavailable (period_throughput over a window that is not whole periods).",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1000000000000000.0
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "maxItems": 1000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
               }
             },
             "required": [
@@ -958,7 +1025,7 @@
     },
     "TraceEvent": {
       "type": "object",
-      "$comment": "T-022: one fact about a sampled entity, in engine event order (SIMULATION_SPEC §9). sequence is the engine event during which it happened; several trace events can share one.",
+      "$comment": "T-022: one fact about a sampled entity, in engine event order (SIMULATION_SPEC §9). sequence is the engine event during which it happened; several trace events can share one. ADR-026: blocked/unblocked (D-049, at the node the entity is blocked in), setup_start (D-055, with the resource changing over) and batch_id on a batch member’s service_start/service_end (D-054, r<rep>/<process>/b<n>).",
       "properties": {
         "time_tick": {
           "type": "integer",
@@ -982,7 +1049,10 @@
             "failure",
             "rework",
             "complete",
-            "abandon"
+            "abandon",
+            "blocked",
+            "unblocked",
+            "setup_start"
           ]
         },
         "entity_id": {
@@ -996,6 +1066,18 @@
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "resource_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "batch_id": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 151,
+          "pattern": "^r(0|[1-9][0-9]{0,2})/[A-Za-z][A-Za-z0-9_.:-]{0,127}/b[1-9][0-9]{0,15}$"
         }
       },
       "required": [
@@ -1005,7 +1087,62 @@
         "entity_id",
         "node_id"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "setup_start"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "resource_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "not": {
+                  "const": "setup_start"
+                }
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "resource_id"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "not": {
+                  "enum": [
+                    "service_start",
+                    "service_end"
+                  ]
+                }
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "batch_id"
+              ]
+            }
+          }
+        }
+      ]
     },
     "TraceArtifact": {
       "type": "object",
@@ -1069,6 +1206,273 @@
         "events"
       ],
       "additionalProperties": false
+    },
+    "ResourceState": {
+      "type": "object",
+      "properties": {
+        "in_use_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "blocked_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "setup_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "setups_started": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "setups_completed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completed_setup_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "down_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "breakdowns_started": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "repairs_completed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completed_repair_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "scheduled_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "scheduled_in_use_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "overtime_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "available_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "idle_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "scheduled_processing_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "in_use_ticks",
+        "scheduled_processing_ticks"
+      ],
+      "additionalProperties": false,
+      "$comment": "D-058 (ELECTRONICS_LINE §5): integer-tick integrals and counts over [W, H] of one resource in one replication. A member group is present when its feature applies to the resource: blocked_ticks (the model has a finite buffer), setup_* (setups), down_ticks and the breakdown counts (breakdowns), scheduled_* and overtime_ticks (a calendar), available_ticks and idle_ticks (breakdowns or a calendar); in_use_ticks and scheduled_processing_ticks always. A resource no feature applies to is not listed.",
+      "dependentRequired": {
+        "setup_ticks": [
+          "setups_started",
+          "setups_completed",
+          "completed_setup_ticks"
+        ],
+        "setups_started": [
+          "setup_ticks",
+          "setups_completed",
+          "completed_setup_ticks"
+        ],
+        "setups_completed": [
+          "setup_ticks",
+          "setups_started",
+          "completed_setup_ticks"
+        ],
+        "completed_setup_ticks": [
+          "setup_ticks",
+          "setups_started",
+          "setups_completed"
+        ],
+        "down_ticks": [
+          "breakdowns_started",
+          "repairs_completed",
+          "completed_repair_ticks",
+          "available_ticks"
+        ],
+        "breakdowns_started": [
+          "down_ticks",
+          "repairs_completed",
+          "completed_repair_ticks"
+        ],
+        "repairs_completed": [
+          "down_ticks",
+          "breakdowns_started",
+          "completed_repair_ticks"
+        ],
+        "completed_repair_ticks": [
+          "down_ticks",
+          "breakdowns_started",
+          "repairs_completed"
+        ],
+        "scheduled_ticks": [
+          "scheduled_in_use_ticks",
+          "overtime_ticks",
+          "available_ticks"
+        ],
+        "scheduled_in_use_ticks": [
+          "scheduled_ticks",
+          "overtime_ticks"
+        ],
+        "overtime_ticks": [
+          "scheduled_ticks",
+          "scheduled_in_use_ticks"
+        ],
+        "available_ticks": [
+          "idle_ticks"
+        ],
+        "idle_ticks": [
+          "available_ticks"
+        ]
+      },
+      "anyOf": [
+        {
+          "required": [
+            "blocked_ticks"
+          ]
+        },
+        {
+          "required": [
+            "setup_ticks"
+          ]
+        },
+        {
+          "required": [
+            "down_ticks"
+          ]
+        },
+        {
+          "required": [
+            "scheduled_ticks"
+          ]
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "available_ticks"
+            ]
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "down_ticks"
+                ]
+              },
+              {
+                "required": [
+                  "scheduled_ticks"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "NodeBlocking": {
+      "type": "object",
+      "properties": {
+        "blocks_started": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "blocks_completed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completed_block_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "blocked_entity_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "blocks_started",
+        "blocks_completed",
+        "completed_block_ticks",
+        "blocked_entity_ticks"
+      ],
+      "additionalProperties": false,
+      "$comment": "D-049/D-058: blocks that started in [W, H], complete blocks (start >= W, end <= H) and their ticks, and the integral of the number of blocked entities."
+    },
+    "BufferState": {
+      "type": "object",
+      "properties": {
+        "full_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "full_ticks"
+      ],
+      "additionalProperties": false,
+      "$comment": "D-049: ticks in [W, H] at which the buffer held capacity waiting entities."
+    },
+    "BatchCounts": {
+      "type": "object",
+      "properties": {
+        "batches_started": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "members_started": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "batches_started",
+        "members_started"
+      ],
+      "additionalProperties": false,
+      "$comment": "D-054/D-058: batches started in [W, H] and their members."
     }
   }
 }

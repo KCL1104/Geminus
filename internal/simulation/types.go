@@ -9,6 +9,7 @@ package simulation
 
 import (
 	"context"
+	"encoding/json/jsontext"
 
 	"github.com/kcl1104/geminus/internal/model"
 )
@@ -119,6 +120,9 @@ type Metrics struct {
 	ReworkCount       MetricSummary            `json:"rework_count"`
 	DORA              map[string]MetricSummary `json:"dora"`
 	AdditionalMetrics map[string]MetricSummary `json:"additional_metrics"`
+	// Domain holds a DomainPack's model metrics (D-058); absent when none,
+	// so a result without them keeps its digest (D-047).
+	Domain map[string]MetricSummary `json:"domain,omitzero"`
 }
 
 // MetricSummary carries its own evidence: status, population and sample count (D-010).
@@ -182,6 +186,59 @@ type ReplicationSummary struct {
 	Failures            int64              `json:"failures"`
 	Reworks             int64              `json:"reworks"`
 	CensoredEntities    int64              `json:"censored_entities"`
+
+	// Line-flow members (ADR-026, D-058): each appears only when the model
+	// uses the feature it measures, so older results keep their bytes and
+	// digest (D-047). Keys are resource, node, queue, process and metric IDs.
+	ResourceStates map[string]ResourceState `json:"resource_states,omitzero"`
+	Blocking       map[string]NodeBlocking  `json:"blocking,omitzero"`
+	Buffers        map[string]BufferState   `json:"buffers,omitzero"`
+	Batches        map[string]BatchCounts   `json:"batches,omitzero"`
+	// Declared holds each declared metric's value in this replication: a
+	// number (system_wip), a count (flow_count, sink_count), counts per
+	// period (period_throughput) or null when unavailable.
+	Declared map[string]jsontext.Value `json:"declared,omitzero"`
+}
+
+// ResourceState is one resource's integer-tick integrals and counts over
+// [W, H] in one replication (D-058, ELECTRONICS_LINE §5). A group of
+// members is present when its feature applies to the resource.
+type ResourceState struct {
+	InUseTicks               int64  `json:"in_use_ticks"`
+	BlockedTicks             *int64 `json:"blocked_ticks,omitzero"` // the model has a finite buffer
+	SetupTicks               *int64 `json:"setup_ticks,omitzero"`   // setups
+	SetupsStarted            *int64 `json:"setups_started,omitzero"`
+	SetupsCompleted          *int64 `json:"setups_completed,omitzero"`
+	CompletedSetupTicks      *int64 `json:"completed_setup_ticks,omitzero"`
+	DownTicks                *int64 `json:"down_ticks,omitzero"` // breakdowns
+	BreakdownsStarted        *int64 `json:"breakdowns_started,omitzero"`
+	RepairsCompleted         *int64 `json:"repairs_completed,omitzero"`
+	CompletedRepairTicks     *int64 `json:"completed_repair_ticks,omitzero"`
+	ScheduledTicks           *int64 `json:"scheduled_ticks,omitzero"` // a calendar
+	ScheduledInUseTicks      *int64 `json:"scheduled_in_use_ticks,omitzero"`
+	OvertimeTicks            *int64 `json:"overtime_ticks,omitzero"`
+	AvailableTicks           *int64 `json:"available_ticks,omitzero"` // breakdowns or a calendar
+	IdleTicks                *int64 `json:"idle_ticks,omitzero"`
+	ScheduledProcessingTicks int64  `json:"scheduled_processing_ticks"`
+}
+
+// NodeBlocking counts a node's blocked entities over [W, H] (D-049, D-058).
+type NodeBlocking struct {
+	BlocksStarted       int64 `json:"blocks_started"`
+	BlocksCompleted     int64 `json:"blocks_completed"`
+	CompletedBlockTicks int64 `json:"completed_block_ticks"`
+	BlockedEntityTicks  int64 `json:"blocked_entity_ticks"`
+}
+
+// BufferState is a finite buffer's full time over [W, H] (D-049).
+type BufferState struct {
+	FullTicks int64 `json:"full_ticks"`
+}
+
+// BatchCounts are a batch process's batches over [W, H] (D-054, D-058).
+type BatchCounts struct {
+	BatchesStarted int64 `json:"batches_started"`
+	MembersStarted int64 `json:"members_started"`
 }
 
 type MeasurementWindow struct {
@@ -239,6 +296,11 @@ type TraceEvent struct {
 	Type     TraceEventType `json:"type"`
 	EntityID string         `json:"entity_id"`
 	NodeID   string         `json:"node_id"`
+	// ResourceID is the resource changing over, only on setup_start (D-055).
+	ResourceID string `json:"resource_id,omitzero"`
+	// BatchID is r<rep>/<process>/b<n> on a batch member's service_start and
+	// service_end (D-054).
+	BatchID string `json:"batch_id,omitzero"`
 }
 
 type TraceEventType string
@@ -254,4 +316,12 @@ const (
 	TraceRework       TraceEventType = "rework"
 	TraceComplete     TraceEventType = "complete"
 	TraceAbandon      TraceEventType = "abandon"
+	// ADR-026 (recorded from T-047 and T-050; des-go-0.1.0 writes none).
+	TraceBlocked    TraceEventType = "blocked"     // D-049, at the node the entity is blocked in
+	TraceUnblocked  TraceEventType = "unblocked"   // D-049
+	TraceSetupStart TraceEventType = "setup_start" // D-055, with ResourceID
 )
+
+// TraceEventTypes lists every trace event type, in schema order.
+var TraceEventTypes = []TraceEventType{TraceArrival, TraceQueueEnter, TraceServiceStart, TraceServiceEnd, TraceDelayStart,
+	TraceDelayEnd, TraceFailure, TraceRework, TraceComplete, TraceAbandon, TraceBlocked, TraceUnblocked, TraceSetupStart}

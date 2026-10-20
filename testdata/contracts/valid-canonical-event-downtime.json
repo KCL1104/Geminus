@@ -1,0 +1,12 @@
+{
+  "case_id": "fct-02",
+  "event_type": "downtime",
+  "timestamp": "2026-10-13T09:40:00+08:00",
+  "end_timestamp": "2026-10-13T10:05:00+08:00",
+  "stage": "fct",
+  "resource_id": "fct-02",
+  "outcome": "fixture_fault",
+  "metadata": {
+    "synthetic": true
+  }
+}

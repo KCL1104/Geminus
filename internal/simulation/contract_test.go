@@ -5,6 +5,8 @@ import (
 	"encoding/json/v2"
 	"path/filepath"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
@@ -22,6 +24,44 @@ func TestSchemaParity(t *testing.T) {
 		reflect.TypeFor[simulation.Duration]():        "common.schema.json#/$defs/Duration",
 	} {
 		s.Parity(t, typ, ref)
+	}
+}
+
+// The trace event types are the schema's enum, in order (ADR-026 added
+// blocked, unblocked and setup_start).
+func TestTraceEventTypesMatchSchema(t *testing.T) {
+	s := contracttest.LoadSchemas(t)
+	var want []string
+	for _, v := range s.At("simulation.schema.json#/$defs/TraceEvent").Value["properties"].(map[string]any)["type"].(map[string]any)["enum"].([]any) {
+		want = append(want, v.(string))
+	}
+	var got []string
+	for _, v := range simulation.TraceEventTypes {
+		got = append(got, string(v))
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("Go %v, schema %v", got, want)
+	}
+}
+
+// D-047: a Result without line-flow members encodes none of them, so the
+// digest of every older result is unchanged; one with them keeps them all.
+func TestLineFlowResultMembersOnlyWhenPresent(t *testing.T) {
+	root := contracttest.Root(t)
+	for name, want := range map[string]bool{"valid-result.json": false, "valid-result-line-flow.json": true} {
+		var r simulation.Result
+		if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(root, "testdata", "contracts", name)), &r); err != nil {
+			t.Fatal(err)
+		}
+		out, err := json.Marshal(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, member := range []string{`"domain"`, `"resource_states"`, `"blocking"`, `"buffers"`, `"batches"`, `"declared"`} {
+			if strings.Contains(string(out), member) != want {
+				t.Errorf("%s: %s present = %v", name, member, !want)
+			}
+		}
 	}
 }
 

@@ -6,10 +6,13 @@ export type CanonicalEvent = {
   case_id: string;
   event_type: string;
   timestamp: string;
+  end_timestamp?: string;
   stage?: string;
   duration_ms?: number;
   resource_id?: string;
   outcome?: string;
+  shift?: string;
+  product?: string;
   deployment_id?: string;
   is_failure?: boolean;
   is_rework?: boolean;
