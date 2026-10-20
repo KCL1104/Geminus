@@ -1,5 +1,5 @@
 {
-  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.2.0, T-047) on the cases of expected-cases.json and on the cases of blocking-goldens.json that have an expected result; NOT an independent oracle. Their values are checked against the hand-derived expectations of those files (internal/simulation/des TestBlockingGoldenResults, internal/simulation/engine TestBlockingGoldens); these digests only make any later numerical change visible. des-go-0.1.0's lock (engine-golden-digests.json) is kept as it was (ADR-026 D-047): GOLDEN-001/002 still match it with engine_version set back to des-go-0.1.0.",
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.2.0, T-047) on the cases of expected-cases.json and on the cases of blocking-goldens.json that have an expected result; NOT an independent oracle. Their values are checked against the hand-derived expectations of those files (internal/simulation/des TestBlockingGoldenResults, internal/simulation/engine TestBlockingGoldens); these digests only make any later numerical change visible. G-B4W and G-B10–G-B13 (T-047 review round 1) were added after their hand-derived values passed, from the same unchanged engine. des-go-0.1.0's lock (engine-golden-digests.json) is kept as it was (ADR-026 D-047): GOLDEN-001/002 still match it with engine_version set back to des-go-0.1.0.",
   "engine_version": "des-go-0.2.0",
   "inputs": {
     "cases": "expected-cases.json (with the dora stand-in) and blocking-goldens.json (model and config as given, no domain metrics)",
@@ -16,8 +16,13 @@
     "G-B2": "sha256:f966f1aa5e327f3c8aa09a7a9b4f06479c1d9c7bf601d9e5aa7bc955c8024598",
     "G-B3": "sha256:3e64510f9e6f87f69d37c3044792eafbce16a6e7c3f25397991b5b61372c59aa",
     "G-B4": "sha256:a36f1c547d852f40519274a18ab09194ede8070f34dc07c88bc71f772533fca8",
+    "G-B4W": "sha256:8a95d74e8648556ab37f57e2c021e817e2307c5a9d26bc0f5d503e9d903fbbaf",
     "G-B7": "sha256:a14f4546457f244f33f003a52e2c3bdde4d5c098ec35de0893549cfe9ca4bb57",
     "G-B8": "sha256:e4d541b8a6090e0991ba52e8333f85a2497fe4ae0b46866bbcd9e2ee385806eb",
-    "G-B9": "sha256:c1920773985e1ae2a93137f4247b49713afa61758efcaf47136257f8adfc36c5"
+    "G-B9": "sha256:c1920773985e1ae2a93137f4247b49713afa61758efcaf47136257f8adfc36c5",
+    "G-B10": "sha256:596e5da178853ae582b62964398fbd530bea84c3a90f29ded8b26a3f47904137",
+    "G-B11": "sha256:9b7860020138df5944522c9448368a0ce6302924156ca6cee7006a1ec9d7ae11",
+    "G-B12": "sha256:cf01100da4ea35264932157e72614cd17b0ee24fedb99c0ada015b8bda7f86a5",
+    "G-B13": "sha256:da08bc7824207826cd01eef633814cf87d88d3d2cbf989ce66b83e0b7bf8cc9e"
   }
 }

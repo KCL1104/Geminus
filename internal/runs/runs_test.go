@@ -157,6 +157,7 @@ func TestDeadlockError(t *testing.T) {
 	root := filepath.Join("..", "..")
 	var golden struct {
 		Cases []struct {
+			ID       string `json:"id"`
 			Expected struct {
 				Deadlock *struct {
 					Reason string `json:"reason"`
@@ -173,7 +174,7 @@ func TestDeadlockError(t *testing.T) {
 	}
 	reason := ""
 	for _, c := range golden.Cases {
-		if c.Expected.Deadlock != nil {
+		if c.Expected.Deadlock != nil && c.ID == "G-D2" {
 			reason = c.Expected.Deadlock.Reason
 		}
 	}

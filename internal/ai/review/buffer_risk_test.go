@@ -66,6 +66,10 @@ func TestBufferCapacityRisk(t *testing.T) {
 		{"a smaller buffer", finite, `[` + testQ + `,{"op":"replace","path":"/nodes/9/capacity","value":2}]`, Medium},
 		{"a larger buffer", finite, `[` + testQ + `,{"op":"replace","path":"/nodes/9/capacity","value":8}]`, Low},
 		{"the buffer made unlimited", finite, `[` + testQ + `,{"op":"remove","path":"/nodes/9/capacity"}]`, Low},
+		// T-047 review round 1 (L3): a finite buffer the scenario leaves as it
+		// is, beside another low change, is no smaller buffer.
+		{"an unchanged buffer beside another change", finite,
+			`[{"op":"test","path":"/nodes/6/id","value":"test"},{"op":"replace","path":"/nodes/6/service_time/distribution","value":{"type":"constant","value":12}}]`, Low},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			in := Input{Mode: provider.ModeScenario, Base: c.base, Pool: pool(t, c.base), Pack: input(t, provider.ModeScenario, proposed(nil, "low")).Pack,

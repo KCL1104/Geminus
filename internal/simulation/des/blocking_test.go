@@ -27,6 +27,7 @@ import (
 type goldenResult struct {
 	CompletedCount      int64                               `json:"completed_count"`
 	Censored            int64                               `json:"censored_entities"`
+	Failures            *int64                              `json:"failures"`
 	LeadTimes           []float64                           `json:"lead_times_minutes"`
 	QueueWaits          map[string][]float64                `json:"queue_waits_minutes"`
 	ResourceUtilization map[string]float64                  `json:"resource_utilization"`
@@ -103,6 +104,9 @@ func TestBlockingGoldenResults(t *testing.T) {
 			if s.CompletedCount != w.CompletedCount || s.CensoredEntities != w.Censored {
 				t.Errorf("completed %d, censored %d; hand-derived %d, %d", s.CompletedCount, s.CensoredEntities, w.CompletedCount, w.Censored)
 			}
+			if w.Failures != nil && s.Failures != *w.Failures {
+				t.Errorf("failures %d, hand-derived %d", s.Failures, *w.Failures)
+			}
 			if !reflect.DeepEqual(s.Blocking, w.Blocking) {
 				t.Errorf("blocking %+v\n hand-derived %+v", s.Blocking, w.Blocking)
 			}
@@ -138,7 +142,7 @@ func TestBlockingGoldenResults(t *testing.T) {
 			}
 		})
 	}
-	if checked < 8 {
+	if checked < 13 {
 		t.Fatalf("%d cases with an expected result", checked)
 	}
 }
@@ -265,10 +269,14 @@ func engineEntityID(source string, n int) string {
 	return "r0/" + source + "/" + strconv.Itoa(n)
 }
 
-// G-B5: which finite-buffer members a Result has does not depend on the
-// routing draws: every resource, the nodes whose route can reach a finite
-// buffer (a, through the decision; not src, before a's unlimited buffer)
-// and the finite buffers (hand-derived in blocking-goldens.json).
+// Which finite-buffer members a Result has (hand-derived in
+// blocking-goldens.json): every resource, the finite buffers and the nodes
+// whose route can reach a finite buffer through decisions, failure and
+// rework nodes (SIMULATION_SPEC §5). G-B5: it does not depend on the
+// routing draws (a, through the decision; not src, before a's unlimited
+// buffer). G-B11: a route through a failure node counts (A). G-B12: a
+// delay ends a route (dly is a key, src before it is not). T-047 review
+// round 1 (M3) added the last two.
 func TestBlockingMemberKeys(t *testing.T) {
 	var doc struct {
 		Cases []struct {
@@ -301,8 +309,8 @@ func TestBlockingMemberKeys(t *testing.T) {
 			}
 		}
 	}
-	if checked == 0 {
-		t.Fatal("no case lists member keys")
+	if checked < 3 {
+		t.Fatalf("%d cases list member keys", checked)
 	}
 }
 

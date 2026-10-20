@@ -196,11 +196,12 @@ func compareFacts(t *testing.T, id string, got, want facts) {
 	}
 }
 
-// G-B1–G-B4, G-B7–G-B9: service starts, completions and every block
-// interval, by entity, against the hand derivation.
+// G-B1–G-B4, G-B7–G-B13: service starts, completions and every block
+// interval, by entity, against the hand derivation (G-B4W, G-B10–G-B13:
+// T-047 review round 1).
 func TestBlockingGoldens(t *testing.T) {
 	cases := blockingGoldens(t)
-	for _, id := range []string{"G-B1", "G-B1W", "G-B2", "G-B3", "G-B4", "G-B7", "G-B8", "G-B9"} {
+	for _, id := range []string{"G-B1", "G-B1W", "G-B2", "G-B3", "G-B4", "G-B4W", "G-B7", "G-B8", "G-B9", "G-B10", "G-B11", "G-B12", "G-B13"} {
 		t.Run(id, func(t *testing.T) {
 			c, ok := cases[id]
 			if !ok {
@@ -407,6 +408,51 @@ func TestDeadlockIsATypedError(t *testing.T) {
 	}
 }
 
+// G-D3 (D-050 B1, D-064 (d); T-047 review round 1, L2): the report names
+// the entity blocked first. Both blocks start in the same tick, and the
+// later one waits for the buffer that comes first by node order, so
+// neither the smallest block start nor the first buffer would name it.
+func TestDeadlockNamesTheEntityBlockedFirst(t *testing.T) {
+	c := blockingGoldens(t)["G-D3"]
+	in := c.input(t)
+	_, err := Compile(in)
+	var ie *InputError
+	if !errors.As(err, &ie) {
+		t.Fatalf("the validator accepted G-D3: %v", err)
+	}
+	var got, want [][2]string
+	for _, is := range ie.Issues {
+		got = append(got, [2]string{is.Code, is.Path})
+	}
+	for _, w := range c.Validator.CodesAt {
+		want = append(want, [2]string{w[0], "/model" + w[1]})
+	}
+	if !sameSet(got, want) {
+		t.Errorf("validator: %v, want %v", got, want)
+	}
+	var p *Program
+	withoutValidator(t, func() { p, err = Compile(in) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	col := &collect{}
+	_, _, err = runKernel(context.Background(), p, 0, NewBudget(1_000_000), col)
+	var de *DeadlockError
+	if !errors.As(err, &de) {
+		t.Fatalf("want ErrDeadlock, got %v", err)
+	}
+	w := c.Expected.Deadlock
+	if de.Tick != w.Tick || de.Entity != w.Entity || de.Node != w.Node || de.Since != w.Since || de.Queued || de.Reason() != w.Reason {
+		t.Errorf("deadlock %+v (%q), hand-derived %+v", *de, de.Reason(), *w)
+	}
+	compareFacts(t, c.ID, observedFacts(p, col.all), expectedFacts(t, c))
+	// The two blocked entities wait in different buffers: the one blocked
+	// first in Y's (later by node order), the other in X's.
+	if x, y := p.index["X"], p.index["Y"]; x >= y {
+		t.Fatalf("X (%d) must come before Y (%d) for this case to mean anything", x, y)
+	}
+}
+
 func sameSet(a, b [][2]string) bool {
 	if len(a) != len(b) {
 		return false
@@ -448,8 +494,8 @@ func TestBlockingObservationDigests(t *testing.T) {
 	}
 	got := map[string]string{}
 	for _, c := range append(doc.Cases, doc.Reference.Cases...) {
-		if c.ID == "G-D2" {
-			continue // refused by the validator; its observations are TestDeadlockIsATypedError's
+		if c.Expected.Deadlock != nil {
+			continue // G-D2, G-D3: refused by the validator; their observations are checked by the deadlock tests
 		}
 		col := &collect{}
 		if _, err := RunReplication(context.Background(), compile(t, c.input(t)), 0, NewBudget(10_000_000), col); err != nil {

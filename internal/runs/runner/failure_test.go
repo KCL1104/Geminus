@@ -38,7 +38,7 @@ func TestEngineFailures(t *testing.T) {
 	var de *engine.DeadlockError
 	reason := ""
 	for _, c := range doc.Cases {
-		if d := c.Expected.Deadlock; d != nil {
+		if d := c.Expected.Deadlock; d != nil && c.ID == "G-D2" {
 			de, reason = &engine.DeadlockError{Tick: d.Tick, Entity: d.Entity, Node: d.Node, Since: d.Since}, d.Reason
 		}
 	}
