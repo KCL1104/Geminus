@@ -1,0 +1,3 @@
+.venv/bin/python scripts/gen_ts_contracts.py
+wrote 14 files, 102 types to apps/web/lib/contracts
+ts-contracts exit 0

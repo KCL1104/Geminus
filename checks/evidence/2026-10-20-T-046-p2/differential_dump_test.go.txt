@@ -1,0 +1,77 @@
+package des
+
+// Throwaway T-046 phase 2 differential: dumps the full Result and trace of
+// every golden model and expected case, encoded, to GEMINUS_DIFF_OUT. Run at
+// the base commit and at the branch head; the two files must be identical.
+// Not committed.
+
+import (
+	"encoding/json/v2"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/simulation"
+)
+
+func TestZZDifferentialDump(t *testing.T) {
+	out := os.Getenv("GEMINUS_DIFF_OUT")
+	if out == "" {
+		t.Skip("GEMINUS_DIFF_OUT not set")
+	}
+	review := simulation.ResolvedDataset{
+		Binding: model.DatasetBinding{LogicalRef: "dataset:review_duration", DatasetVersionID: "dsv_01M4YDQK00NMKD3J34KSJZVY40",
+			ContentHash: "sha256:" + strings.Repeat("0", 64), Unit: model.Minute, SampleCount: 3},
+		Samples: []float64{120, 240, 360},
+	}
+	var lines []string
+	for _, name := range []string{"deterministic-queue.json", "congested-queue.json", "default-delivery.json", "report-example.json"} {
+		for _, cfg := range []struct {
+			h, w float64
+			reps int
+		}{{5 * 24 * 60, 24 * 60, 4}, {14 * 24 * 60, 0, 3}, {30 * 24 * 60, 24 * 60, 2}} {
+			in := input(t, golden(t, name), cfg.h, cfg.w, cfg.reps, simulation.TraceSampled)
+			in.Datasets = map[string]simulation.ResolvedDataset{review.Binding.LogicalRef: review}
+			in.Manifest = []model.DatasetBinding{review.Binding}
+			o := run(t, &Engine{DomainMetrics: dora}, in)
+			r, err := json.Marshal(o.Result, json.Deterministic(true))
+			if err != nil {
+				t.Fatal(err)
+			}
+			tr, err := json.Marshal(o.Trace, json.Deterministic(true))
+			if err != nil {
+				t.Fatal(err)
+			}
+			lines = append(lines, name+" result "+string(r), name+" trace "+string(tr))
+		}
+	}
+	root := contracttest.Root(t)
+	var cases struct {
+		Cases []struct {
+			ID     string               `json:"id"`
+			Model  string               `json:"model"`
+			Config simulation.RunConfig `json:"config"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(root, "testdata/simulation/expected-cases.json")), &cases,
+		json.RejectUnknownMembers(false)); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range cases.Cases {
+		in := input(t, golden(t, filepath.Base(c.Model)), 0, 0, 1, simulation.TraceNone)
+		in.Config = c.Config
+		o := run(t, &Engine{DomainMetrics: dora}, in)
+		r, err := json.Marshal(o.Result, json.Deterministic(true))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines = append(lines, c.ID+" result "+string(r))
+	}
+	if err := os.WriteFile(out, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("%d results written to %s", len(lines), out)
+}

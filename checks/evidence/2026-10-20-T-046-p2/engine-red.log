@@ -1,0 +1,5 @@
+# github.com/kcl1104/geminus/internal/simulation/engine [github.com/kcl1104/geminus/internal/simulation/engine.test]
+internal/simulation/engine/primitives_test.go:47:6: undefined: kernelExecutes
+internal/simulation/engine/primitives_test.go:52:12: undefined: unsupported
+internal/simulation/engine/primitives_test.go:66:13: undefined: unsupported
+internal/simulation/engine/primitives_test.go:70:19: undefined: unsupported

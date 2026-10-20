@@ -1,0 +1,45 @@
+--- FAIL: TestScenarioLineFlowAllowlist (0.03s)
+    --- FAIL: TestScenarioLineFlowAllowlist/buffer_to_unlimited (0.01s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /nodes/4/capacity error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/time_to_failure (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /resources/1/breakdowns/time_to_failure/distribution error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/time_to_repair_weibull (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /resources/1/breakdowns/time_to_repair/distribution error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/batch_max_wait (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /nodes/1/batch/max_wait error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/calendar_reference (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /resources/2/calendar_id error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/buffer_capacity (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /nodes/4/capacity error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/time_to_repair_mean (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /resources/1/breakdowns/time_to_repair/distribution/mean error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/release_rate (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /nodes/5/arrival/schedule/segments/1/rate error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/batch_max_size (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /nodes/1/batch/max_size error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/changeover_transition (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /resources/1/setups/transitions/0/distribution error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/shifts (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /calendars/0/shifts error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/release_quantity (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /nodes/6/arrival/schedule/releases/0/quantity error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/changeover_default (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /resources/1/setups/default error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/exceptions (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /calendars/0/exceptions error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/batch_min_size (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /nodes/1/batch/min_size error}], candidate []
+    --- FAIL: TestScenarioLineFlowAllowlist/units_on_shift (0.00s)
+        lineflow_test.go:67: patch [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /resources/1/shift_capacity/evening error}], candidate []
+--- FAIL: TestScenarioAddsABuffer (0.00s)
+    lineflow_test.go:151: want PRIMITIVE_NOT_SUPPORTED at /nodes/3/capacity: [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /nodes/3/capacity error}] []
+--- FAIL: TestCalendarsNeedTheirIDTested (0.00s)
+    lineflow_test.go:163: want PATCH_TEST_REQUIRED at "/0/path", got [{PATCH_PATH_FORBIDDEN /0/path the scenario allowlist does not include /calendars/0/exceptions error}]
+--- FAIL: TestEditsMayAddCalendars (0.00s)
+    lineflow_test.go:175: manual draft: [{PATCH_PATH_FORBIDDEN /0/path the manual draft allowlist does not include /calendars error}] []
+    lineflow_test.go:175: AI edit: [{PATCH_PATH_FORBIDDEN /0/path the AI edit allowlist does not include /calendars error}] []
+--- FAIL: TestScenarioCannotBindADatasetInAResource (0.00s)
+    lineflow_test.go:188: want PATCH_PATH_FORBIDDEN at "/1/value", got [{PATCH_PATH_FORBIDDEN /1/path the scenario allowlist does not include /resources/1/breakdowns/time_to_repair/distribution error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.088s
+FAIL

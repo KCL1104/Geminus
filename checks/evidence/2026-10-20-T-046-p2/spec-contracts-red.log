@@ -1,0 +1,14 @@
+CONTRACT CHECK FAILED: Unexpected outcome for valid-line-flow-ir
+$.resources[1]: Additional properties are not allowed ('breakdowns', 'calendar_id', 'setups', 'shift_capacity' were unexpected)
+$.resources[2]: Additional properties are not allowed ('calendar_id' was unexpected)
+$.nodes[1]: {'id': 'burn_in', 'type': 'process', 'service_time': {'distribution': {'type': 'constant', 'value': 240}}, 'requires': [{'resource_id': 'chamber', 'units': 1}], 'batch': {'min_size': 4, 'max_size': 8, 'max_wait': 60}} is not valid under any of the given schemas
+Traceback (most recent call last):
+  File "/home/user/Geminus/.claude/worktrees/agent-a8d524b537a302407/scripts/check_contracts.py", line 269, in <module>
+    try: main()
+         ~~~~^^
+  File "/home/user/Geminus/.claude/worktrees/agent-a8d524b537a302407/scripts/check_contracts.py", line 138, in main
+    raise AssertionError(f"Unexpected outcome for {case['id']}\n{detail}")
+AssertionError: Unexpected outcome for valid-line-flow-ir
+$.resources[1]: Additional properties are not allowed ('breakdowns', 'calendar_id', 'setups', 'shift_capacity' were unexpected)
+$.resources[2]: Additional properties are not allowed ('calendar_id' was unexpected)
+$.nodes[1]: {'id': 'burn_in', 'type': 'process', 'service_time': {'distribution': {'type': 'constant', 'value': 240}}, 'requires': [{'resource_id': 'chamber', 'units': 1}], 'batch': {'min_size': 4, 'max_size': 8, 'max_wait': 60}} is not valid under any of the given schemas

@@ -1,0 +1,218 @@
+=== RUN   TestReencodingKeepsTheModelHash
+--- PASS: TestReencodingKeepsTheModelHash (0.02s)
+=== RUN   TestScheduleSourceHasNoArrivalDistribution
+--- PASS: TestScheduleSourceHasNoArrivalDistribution (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model	0.023s
+testing: warning: no tests to run
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.010s [no tests to run]
+=== RUN   TestScenarioLineFlowAllowlist
+=== RUN   TestScenarioLineFlowAllowlist/service_time_lognormal
+=== RUN   TestScenarioLineFlowAllowlist/existing_capacity_still
+=== RUN   TestScenarioLineFlowAllowlist/batch_min_size
+=== RUN   TestScenarioLineFlowAllowlist/changeover_default
+=== RUN   TestScenarioLineFlowAllowlist/units_on_shift
+=== RUN   TestScenarioLineFlowAllowlist/buffer_capacity
+=== RUN   TestScenarioLineFlowAllowlist/time_to_failure
+=== RUN   TestScenarioLineFlowAllowlist/time_to_repair_weibull
+=== RUN   TestScenarioLineFlowAllowlist/batch_max_wait
+=== RUN   TestScenarioLineFlowAllowlist/exceptions
+=== RUN   TestScenarioLineFlowAllowlist/buffer_to_unlimited
+=== RUN   TestScenarioLineFlowAllowlist/time_to_repair_mean
+=== RUN   TestScenarioLineFlowAllowlist/release_rate
+=== RUN   TestScenarioLineFlowAllowlist/release_quantity
+=== RUN   TestScenarioLineFlowAllowlist/changeover_transition
+=== RUN   TestScenarioLineFlowAllowlist/calendar_reference
+=== RUN   TestScenarioLineFlowAllowlist/batch_max_size
+=== RUN   TestScenarioLineFlowAllowlist/shifts
+=== RUN   TestScenarioLineFlowAllowlist/change_a_release_time
+=== RUN   TestScenarioLineFlowAllowlist/add_a_transition
+=== RUN   TestScenarioLineFlowAllowlist/add_a_calendar
+=== RUN   TestScenarioLineFlowAllowlist/rename_a_calendar
+=== RUN   TestScenarioLineFlowAllowlist/remove_a_batch
+=== RUN   TestScenarioLineFlowAllowlist/add_a_declared_metric
+=== RUN   TestScenarioLineFlowAllowlist/add_breakdowns
+=== RUN   TestScenarioLineFlowAllowlist/add_setups
+=== RUN   TestScenarioLineFlowAllowlist/add_a_shift_label
+=== RUN   TestScenarioLineFlowAllowlist/add_a_batch
+=== RUN   TestScenarioLineFlowAllowlist/change_a_calendar_period
+=== RUN   TestScenarioLineFlowAllowlist/remove_breakdowns
+=== RUN   TestScenarioLineFlowAllowlist/remove_a_calendar
+=== RUN   TestScenarioLineFlowAllowlist/give_a_calendar
+=== RUN   TestScenarioLineFlowAllowlist/remove_a_schedule
+=== RUN   TestScenarioLineFlowAllowlist/change_the_period
+=== RUN   TestScenarioLineFlowAllowlist/remove_setups
+=== RUN   TestScenarioLineFlowAllowlist/drop_a_calendar
+=== RUN   TestScenarioLineFlowAllowlist/add_a_rate_segment
+=== RUN   TestScenarioLineFlowAllowlist/change_a_segment_start
+--- PASS: TestScenarioLineFlowAllowlist (0.11s)
+    --- PASS: TestScenarioLineFlowAllowlist/service_time_lognormal (0.03s)
+    --- PASS: TestScenarioLineFlowAllowlist/existing_capacity_still (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/batch_min_size (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/changeover_default (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/units_on_shift (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/buffer_capacity (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/time_to_failure (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/time_to_repair_weibull (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/batch_max_wait (0.01s)
+    --- PASS: TestScenarioLineFlowAllowlist/exceptions (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/buffer_to_unlimited (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/time_to_repair_mean (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/release_rate (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/release_quantity (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/changeover_transition (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/calendar_reference (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/batch_max_size (0.01s)
+    --- PASS: TestScenarioLineFlowAllowlist/shifts (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/change_a_release_time (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/add_a_transition (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/add_a_calendar (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/rename_a_calendar (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/remove_a_batch (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/add_a_declared_metric (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/add_breakdowns (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/add_setups (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/add_a_shift_label (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/add_a_batch (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/change_a_calendar_period (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/remove_breakdowns (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/remove_a_calendar (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/give_a_calendar (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/remove_a_schedule (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/change_the_period (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/remove_setups (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/drop_a_calendar (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/add_a_rate_segment (0.00s)
+    --- PASS: TestScenarioLineFlowAllowlist/change_a_segment_start (0.00s)
+=== RUN   TestScenarioAddsABuffer
+--- PASS: TestScenarioAddsABuffer (0.00s)
+=== RUN   TestCalendarsNeedTheirIDTested
+--- PASS: TestCalendarsNeedTheirIDTested (0.00s)
+=== RUN   TestEditsMayAddCalendars
+--- PASS: TestEditsMayAddCalendars (0.00s)
+=== RUN   TestScenarioCannotBindADatasetInAResource
+--- PASS: TestScenarioCannotBindADatasetInAResource (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.125s
+=== RUN   TestCodesMatchContract
+--- PASS: TestCodesMatchContract (0.00s)
+=== RUN   TestAgreesWithSharedFixtures
+    ir_test.go:143: 58 IR fixtures, 17 refused by the primitive gate
+--- PASS: TestAgreesWithSharedFixtures (0.11s)
+=== RUN   TestPrimitiveCatalog
+--- PASS: TestPrimitiveCatalog (0.00s)
+=== RUN   TestPrimitiveGate
+--- PASS: TestPrimitiveGate (0.01s)
+=== RUN   TestPrimitiveGateStopsTheStages
+=== RUN   TestPrimitiveGateStopsTheStages/finite_buffer
+=== RUN   TestPrimitiveGateStopsTheStages/breakdowns
+=== RUN   TestPrimitiveGateStopsTheStages/weibull_interarrival
+=== RUN   TestPrimitiveGateStopsTheStages/calendar
+=== RUN   TestPrimitiveGateStopsTheStages/batch
+=== RUN   TestPrimitiveGateStopsTheStages/setups
+=== RUN   TestPrimitiveGateStopsTheStages/period_throughput
+=== RUN   TestPrimitiveGateStopsTheStages/lognormal_service
+=== RUN   TestPrimitiveGateStopsTheStages/release_table
+=== RUN   TestPrimitiveGateStopsTheStages/system_wip
+--- PASS: TestPrimitiveGateStopsTheStages (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/finite_buffer (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/breakdowns (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/weibull_interarrival (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/calendar (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/batch (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/setups (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/period_throughput (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/lognormal_service (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/release_table (0.00s)
+    --- PASS: TestPrimitiveGateStopsTheStages/system_wip (0.00s)
+=== RUN   TestPrimitiveGateMessagesAreFixed
+--- PASS: TestPrimitiveGateMessagesAreFixed (0.00s)
+=== RUN   TestNoPrimitiveNoUse
+--- PASS: TestNoPrimitiveNoUse (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.149s
+testing: warning: no tests to run
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	0.010s [no tests to run]
+=== RUN   TestTraceEventTypesMatchSchema
+--- PASS: TestTraceEventTypesMatchSchema (0.00s)
+=== RUN   TestLineFlowResultMembersOnlyWhenPresent
+--- PASS: TestLineFlowResultMembersOnlyWhenPresent (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation	0.011s
+=== RUN   TestGoldenDigests
+--- PASS: TestGoldenDigests (0.07s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.082s
+=== RUN   TestCompileRefusesLineFlowPrimitives
+--- PASS: TestCompileRefusesLineFlowPrimitives (0.05s)
+=== RUN   TestKernelRefusesWhatItDoesNotExecute
+--- PASS: TestKernelRefusesWhatItDoesNotExecute (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.066s
+testing: warning: no tests to run
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.015s [no tests to run]
+=== RUN   TestCanonicalEventContract
+--- PASS: TestCanonicalEventContract (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.010s
+=== RUN   TestInvalidVariantsBreakTheirRule
+--- PASS: TestInvalidVariantsBreakTheirRule (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	0.048s
+testing: warning: no tests to run
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.017s [no tests to run]
+=== RUN   TestRefusesUnsafeChanges
+=== RUN   TestRefusesUnsafeChanges/root
+=== RUN   TestRefusesUnsafeChanges/move
+=== RUN   TestRefusesUnsafeChanges/copy
+=== RUN   TestRefusesUnsafeChanges/identity
+=== RUN   TestRefusesUnsafeChanges/schema_version
+=== RUN   TestRefusesUnsafeChanges/domain
+=== RUN   TestRefusesUnsafeChanges/views
+=== RUN   TestRefusesUnsafeChanges/escape_confusion
+=== RUN   TestRefusesUnsafeChanges/no_test_first
+=== RUN   TestRefusesUnsafeChanges/wrong_test
+=== RUN   TestRefusesUnsafeChanges/missing_target
+=== RUN   TestRefusesUnsafeChanges/second_op_fails
+=== RUN   TestRefusesUnsafeChanges/whole_catalog
+=== RUN   TestRefusesUnsafeChanges/zero_capacity
+=== RUN   TestRefusesUnsafeChanges/fractional_capacity
+=== RUN   TestRefusesUnsafeChanges/probability_over_one
+=== RUN   TestRefusesUnsafeChanges/probabilities_do_not_sum
+=== RUN   TestRefusesUnsafeChanges/negative_time
+=== RUN   TestRefusesUnsafeChanges/triangular_out_of_order
+=== RUN   TestRefusesUnsafeChanges/P1_distribution
+=== RUN   TestRefusesUnsafeChanges/lognormal_before_its_kernel
+=== RUN   TestRefusesUnsafeChanges/calendars_before_their_kernel
+=== RUN   TestRefusesUnsafeChanges/dangling_reference
+--- PASS: TestRefusesUnsafeChanges (0.08s)
+    --- PASS: TestRefusesUnsafeChanges/root (0.03s)
+    --- PASS: TestRefusesUnsafeChanges/move (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/copy (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/identity (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/schema_version (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/domain (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/views (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/escape_confusion (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/no_test_first (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/wrong_test (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/missing_target (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/second_op_fails (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/whole_catalog (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/zero_capacity (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/fractional_capacity (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/probability_over_one (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/probabilities_do_not_sum (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/negative_time (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/triangular_out_of_order (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/P1_distribution (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/lognormal_before_its_kernel (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/calendars_before_their_kernel (0.00s)
+    --- PASS: TestRefusesUnsafeChanges/dangling_reference (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.086s
+exit 0

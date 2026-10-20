@@ -1,0 +1,92 @@
+--- FAIL: TestAgreesWithSharedFixtures (0.03s)
+    ir_test.go:83: valid-line-flow-ir: uses [], the case lists [batch breakdowns calendars finite_buffer flow_count lognormal period_throughput release_schedule setups sink_count system_wip weibull]
+    ir_test.go:83: semantic-blocking-cycle-retest: uses [], the case lists [finite_buffer]
+    ir_test.go:96: semantic-blocking-cycle-retest: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-blocking-cycle-retest: no BLOCKING_CYCLE at "/nodes/1/capacity"; got []
+    ir_test.go:83: semantic-blocking-cycle-shared-resource: uses [], the case lists [finite_buffer]
+    ir_test.go:96: semantic-blocking-cycle-shared-resource: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-blocking-cycle-shared-resource: no BLOCKING_CYCLE at "/nodes/2/capacity"; got []
+    ir_test.go:83: semantic-calendar-shifts-overlap: uses [], the case lists [calendars]
+    ir_test.go:96: semantic-calendar-shifts-overlap: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-calendar-shifts-overlap: no CALENDAR_INVALID at "/calendars/0/shifts/1"; got []
+    ir_test.go:83: semantic-shift-capacity-unknown-label: uses [], the case lists [calendars]
+    ir_test.go:96: semantic-shift-capacity-unknown-label: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-shift-capacity-unknown-label: no CALENDAR_INVALID at "/resources/0/shift_capacity/night"; got []
+    ir_test.go:83: semantic-calendar-unknown: uses [], the case lists [calendars]
+    ir_test.go:96: semantic-calendar-unknown: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-calendar-unknown: no UNKNOWN_REFERENCE at "/resources/0/calendar_id"; got []
+    ir_test.go:83: semantic-calendar-bundle-never-fits: uses [], the case lists [calendars]
+    ir_test.go:96: semantic-calendar-bundle-never-fits: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-calendar-bundle-never-fits: no CALENDAR_INVALID at "/nodes/1/requires"; got []
+    ir_test.go:83: semantic-calendar-periods-too-long: uses [], the case lists [calendars]
+    ir_test.go:96: semantic-calendar-periods-too-long: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-calendar-periods-too-long: no CALENDAR_INVALID at "/calendars"; got []
+    ir_test.go:83: semantic-release-schedule-first-segment: uses [], the case lists [release_schedule]
+    ir_test.go:96: semantic-release-schedule-first-segment: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-release-schedule-first-segment: no RELEASE_SCHEDULE_INVALID at "/nodes/0/arrival/schedule/segments/0/start"; got []
+    ir_test.go:83: semantic-batch-sizes: uses [], the case lists [batch]
+    ir_test.go:96: semantic-batch-sizes: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-batch-sizes: no BATCH_INVALID at "/nodes/1/batch"; got []
+    ir_test.go:83: semantic-setup-self-transition: uses [], the case lists [setups]
+    ir_test.go:96: semantic-setup-self-transition: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-setup-self-transition: no SETUP_INVALID at "/resources/0/setups/transitions/0"; got []
+    ir_test.go:83: semantic-breakdown-units: uses [], the case lists [breakdowns]
+    ir_test.go:96: semantic-breakdown-units: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-breakdown-units: no RESOURCE_REQUIREMENT_INVALID at "/nodes/1/requires/0/units"; got []
+    ir_test.go:83: semantic-two-breakdown-resources: uses [], the case lists [breakdowns]
+    ir_test.go:96: semantic-two-breakdown-resources: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-two-breakdown-resources: no RESOURCE_REQUIREMENT_INVALID at "/nodes/1/requires"; got []
+    ir_test.go:83: semantic-stall-risk: uses [], the case lists [breakdowns calendars]
+    ir_test.go:96: semantic-stall-risk: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-stall-risk: no STALL_RISK at "/nodes/1/requires"; got []
+    ir_test.go:83: semantic-breakdown-zero-time-to-failure: uses [], the case lists [breakdowns]
+    ir_test.go:96: semantic-breakdown-zero-time-to-failure: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-breakdown-zero-time-to-failure: no DISTRIBUTION_INVALID at "/resources/0/breakdowns/time_to_failure/distribution"; got []
+    ir_test.go:83: semantic-lognormal-cv-range: uses [], the case lists [lognormal]
+    ir_test.go:96: semantic-lognormal-cv-range: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-lognormal-cv-range: no DISTRIBUTION_INVALID at "/nodes/1/service_time/distribution"; got []
+    ir_test.go:83: semantic-declared-metric-builtin-id: uses [], the case lists [system_wip]
+    ir_test.go:96: semantic-declared-metric-builtin-id: semantic negative accepted or malformed case: []
+    ir_test.go:101: semantic-declared-metric-builtin-id: no DUPLICATE_ID at "/metrics/0/id"; got []
+    ir_test.go:143: 58 IR fixtures, 0 refused by the primitive gate
+--- FAIL: TestPrimitiveCatalog (0.00s)
+    primitives_test.go:34: finite_buffer is checked before T-047 implemented it
+    primitives_test.go:34: breakdowns is checked before T-048 implemented it
+    primitives_test.go:34: lognormal is checked before T-048 implemented it
+    primitives_test.go:34: weibull is checked before T-048 implemented it
+    primitives_test.go:34: calendars is checked before T-049 implemented it
+    primitives_test.go:34: release_schedule is checked before T-049 implemented it
+    primitives_test.go:34: batch is checked before T-050 implemented it
+    primitives_test.go:34: setups is checked before T-050 implemented it
+    primitives_test.go:34: system_wip is checked before T-051 implemented it
+    primitives_test.go:34: flow_count is checked before T-051 implemented it
+    primitives_test.go:34: sink_count is checked before T-051 implemented it
+    primitives_test.go:34: period_throughput is checked before T-051 implemented it
+--- FAIL: TestPrimitiveGate (0.00s)
+    primitives_test.go:67: got 0 issues []
+--- FAIL: TestPrimitiveGateStopsTheStages (0.00s)
+    --- FAIL: TestPrimitiveGateStopsTheStages/finite_buffer (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /nodes/3/capacity
+    --- FAIL: TestPrimitiveGateStopsTheStages/breakdowns (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /resources/0/breakdowns
+    --- FAIL: TestPrimitiveGateStopsTheStages/calendar (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /calendars
+    --- FAIL: TestPrimitiveGateStopsTheStages/setups (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /resources/0/setups
+    --- FAIL: TestPrimitiveGateStopsTheStages/system_wip (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /metrics/0/type
+    --- FAIL: TestPrimitiveGateStopsTheStages/period_throughput (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /metrics/0/type
+    --- FAIL: TestPrimitiveGateStopsTheStages/lognormal_service (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /nodes/1/service_time/distribution
+    --- FAIL: TestPrimitiveGateStopsTheStages/weibull_interarrival (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /nodes/0/arrival/distribution
+    --- FAIL: TestPrimitiveGateStopsTheStages/release_table (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /nodes/0/arrival/schedule
+    --- FAIL: TestPrimitiveGateStopsTheStages/batch (0.00s)
+        primitives_test.go:128: got [{UNKNOWN_REFERENCE /flows/0/to no node "nowhere" error}], want only PRIMITIVE_NOT_SUPPORTED at /nodes/1/batch
+--- FAIL: TestPrimitiveGateMessagesAreFixed (0.00s)
+    primitives_test.go:163: no issues
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.164s
+FAIL

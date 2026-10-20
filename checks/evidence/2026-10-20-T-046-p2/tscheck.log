@@ -1,0 +1,7 @@
+$ /opt/node22/bin/tsc --version
+Version 6.0.2
+$ tsc -p tsconfig.json   (check.ts: generated contracts, en/zh-Hant catalogs via lib/i18n/translate, the new TS snippets and 6 @ts-expect-error lines)
+exit 0
+$ tsc -p tsconfig.control.json   (control: the mixture line replaced by a valid lognormal, so its @ts-expect-error must be reported)
+control.ts(50,3): error TS2578: Unused '@ts-expect-error' directive.
+exit 2

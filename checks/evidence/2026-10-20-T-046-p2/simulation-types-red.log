@@ -1,0 +1,13 @@
+--- FAIL: TestSchemaParity (0.00s)
+    contract_test.go:24: simulation.schema.json#/$defs/Result/metrics: Go simulation.Metrics has members [additional_metrics dora failure_count lead_time_minutes queues resources rework_count throughput], schema has [additional_metrics domain dora failure_count lead_time_minutes queues resources rework_count throughput]
+    contract_test.go:24: simulation.schema.json#/$defs/Result/replication_summaries/[]: Go simulation.ReplicationSummary has members [censored_entities completed_count failures mean_lead_time_minutes replication_index resource_utilization reworks], schema has [batches blocking buffers censored_entities completed_count declared failures mean_lead_time_minutes replication_index resource_states resource_utilization reworks]
+    contract_test.go:24: simulation.schema.json#/$defs/TraceArtifact/events/[]: Go simulation.TraceEvent has members [entity_id node_id sequence time_tick type], schema has [batch_id entity_id node_id resource_id sequence time_tick type]
+--- FAIL: TestFixturesRoundTrip (0.00s)
+    contract_test.go:38: valid-result-line-flow: strict decode into simulation.Result: json: cannot unmarshal JSON string into Go simulation.Metrics: unknown object member name "domain" within "/metrics"
+    contract_test.go:40: valid-trace-line-flow: strict decode into simulation.TraceArtifact: json: cannot unmarshal JSON string into Go simulation.TraceEvent: unknown object member name "resource_id" within "/events/2"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation	0.144s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.772s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	1.602s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.059s
+FAIL

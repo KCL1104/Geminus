@@ -1,0 +1,18 @@
+T-046 phase 2 differential (D-047): no kernel change, older models byte-identical.
+
+What: the full Result and TraceArtifact JSON (encoding/json/v2, Deterministic) of every golden model
+(deterministic-queue, congested-queue, default-delivery, report-example with dataset:review_duration)
+under 3 configs (5 d / 1 d warmup / 4 reps, 14 d / 0 / 3 reps, 30 d / 1 d / 2 reps, seed 7, trace sampled),
+plus GOLDEN-001 and GOLDEN-002 with their expected-cases.json configs: 26 lines.
+
+How: differential_dump_test.go.txt (this directory) was copied into internal/simulation/des only while
+it ran, then deleted; it is not committed. Run once at the base commit 175e1ae before any change, and
+once at the branch head after all changes.
+
+base 175e1ae : sha256 f438c201a94d72b654316ed295d31ea5be715c44684f31d10e8eb5fb17119e17  26 lines  415871 bytes
+branch head  : sha256 f438c201a94d72b654316ed295d31ea5be715c44684f31d10e8eb5fb17119e17  26 lines  415871 bytes
+cmp          : identical (exit 0)
+
+The locked digests (testdata/simulation/engine-golden-digests.json, kernel-observation-digests.json)
+were not regenerated; TestGoldenDigests and the kernel observation digest tests pass unchanged in
+make backend-test (backend-test.log).

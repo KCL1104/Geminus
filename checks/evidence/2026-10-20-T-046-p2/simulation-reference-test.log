@@ -1,0 +1,3 @@
+NOT IMPLEMENTED: simulation-reference-test must be replaced by real product checks in the assigned task; no fake PASS.
+make: *** [Makefile:99: simulation-reference-test] Error 2
+simulation-reference-test exit 2

@@ -1,0 +1,62 @@
+// T-046 phase 2: a standalone typecheck of the generated contracts, the two
+// message catalogs and the TS snippets added to apps/web/tests/contracts.test.ts
+// (the full `make frontend-test` cannot run here: no node_modules, Node 22).
+import type {
+  Calendar,
+  CanonicalEvent,
+  Distribution,
+  ModelIR,
+  ReleaseSchedule,
+  ResourceState,
+  TraceEvent,
+  ValidationCode,
+} from "/home/user/Geminus/.claude/worktrees/agent-a8d524b537a302407/apps/web/lib/contracts";
+import { catalogs } from "/home/user/Geminus/.claude/worktrees/agent-a8d524b537a302407/apps/web/lib/i18n/translate";
+
+export const stationEvent: CanonicalEvent = {
+  case_id: "SN-000123",
+  event_type: "operation",
+  timestamp: "2026-10-13T06:12:00+08:00",
+  end_timestamp: "2026-10-13T06:15:10+08:00",
+  stage: "fct",
+  resource_id: "fct-02",
+  outcome: "pass",
+  shift: "day",
+  product: "board_a",
+  duration_ms: 190000,
+  metadata: { synthetic: true },
+};
+export const lineFlowParts = {
+  calendar: {
+    id: "two_shift",
+    period: 1440,
+    shifts: [{ start: 360, end: 840, label: "day" }],
+    exceptions: [{ start: 7200, end: 8640, open: false }],
+  } satisfies Calendar,
+  lognormal: { type: "lognormal", mean: 25, cv: 0.8 } satisfies Distribution,
+  table: { process: "table", period: 1440, releases: [{ at: 360, quantity: 20 }] } satisfies ReleaseSchedule,
+  gated: "PRIMITIVE_NOT_SUPPORTED" satisfies ValidationCode,
+};
+export function read(ir: ModelIR): unknown {
+  return [ir.calendars?.[0]?.shifts[0], ir.resources[1]?.breakdowns?.time_to_repair.distribution];
+}
+export const state: ResourceState = { in_use_ticks: 1, blocked_ticks: 0, scheduled_processing_ticks: 1 };
+export const setup: TraceEvent = { time_tick: 1, sequence: 1, type: "setup_start", entity_id: "r0/a/1", node_id: "p", resource_id: "r" };
+export const codes: ValidationCode[] = ["BLOCKING_CYCLE", "CALENDAR_INVALID", "RELEASE_SCHEDULE_INVALID", "BATCH_INVALID",
+  "SETUP_INVALID", "STALL_RISK", "PRIMITIVE_NOT_SUPPORTED"];
+export const messages = codes.map((c) => [catalogs.en[`validation.${c}`], catalogs["zh-Hant"][`validation.${c}`]]);
+
+export const rejected = {
+  // @ts-expect-error mixtures are still P1 (TWIN_IR_SPEC §3); lognormal and Weibull are P0 (D-056)
+  p1Distribution: { type: "mixture", mean: 3 } satisfies Distribution,
+  // @ts-expect-error a lognormal is parameterized by mean and cv, not sd (D-056)
+  lognormalSd: { type: "lognormal", mean: 3, sd: 1 } satisfies Distribution,
+  // @ts-expect-error a release table has releases, a rate schedule has segments (D-053)
+  tableSegments: { process: "table", period: 60, segments: [{ start: 0, rate: 1 }] } satisfies ReleaseSchedule,
+  // @ts-expect-error a calendar exception says whether the line is open (D-052)
+  exceptionOpen: { id: "c", period: 1440, shifts: [{ start: 0, end: 60 }], exceptions: [{ start: 0, end: 60 }] } satisfies Calendar,
+  // @ts-expect-error an issue code outside the catalogue
+  unknownIssueCode: "LINE_FLOW_INVALID" satisfies ValidationCode,
+  // @ts-expect-error a trace event type outside the schema enum
+  traceType: "batch_start" satisfies TraceEvent["type"],
+};
