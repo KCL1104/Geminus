@@ -16,6 +16,11 @@ var genericKernel = []string{
 	"./schemas",
 }
 
+// importPure are the import packages that only read and write bytes
+// (T-016, T-017).
+var importPure = []string{"./internal/import/profile/...", "./internal/import/report/...", "./internal/import/mapping/...",
+	"./internal/import/validation/..."}
+
 // Application layers that the kernel and the packs never reach.
 var appLayers = []string{
 	"./cmd/...",
@@ -257,14 +262,17 @@ var rules = []rule{
 		// upload service and the profile job own storage, tenants and
 		// transport (T-016), so the file's handling can be tested, and
 		// reasoned about, on its own.
+		// T-017: the mapper and the full-rows validation are pure too; the
+		// job that runs them over the stored upload is
+		// internal/import/validator.
 		name:       "import-parsing-is-pure",
-		why:        "internal/import/profile and internal/import/report only read and write bytes: no storage, tenant, HTTP, database, file, process or LLM access (T-016)",
-		applies:    []string{"./internal/import/profile/...", "./internal/import/report/..."},
+		why:        "internal/import/profile, report, mapping and validation only read and write bytes: no storage, tenant, HTTP, database, file, process or LLM access (T-016, T-017)",
+		applies:    importPure,
 		forbid:     cat(appLayers, testInfra, ioStd, dbDrivers, llmSDKs, []string{"testing"}),
-		allow:      []string{"./internal/import/profile/...", "./internal/import/report/..."},
+		allow:      importPure,
 		thirdParty: kernelThirdParty,
 		stdOnly:    cat(kernelStd, []string{"encoding/csv"}),
-		moduleOnly: cat(genericKernel, []string{"./internal/import/profile/...", "./internal/import/report/..."}),
+		moduleOnly: cat(genericKernel, importPure),
 		goOnly:     true,
 	},
 	{

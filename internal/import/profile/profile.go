@@ -212,6 +212,54 @@ type Result struct {
 // the file breaks a rule, ctx's error when ctx ends, or r's own error
 // (passed on as it is) when reading fails.
 func Read(ctx context.Context, r io.Reader, f Format, lim Limits) (Result, error) {
+	return read(ctx, r, f, lim, nil)
+}
+
+// Row is one data row of a CSV or JSON events file, as Scan hands it to
+// its visitor; nothing in it may be kept after the call returns.
+type Row struct {
+	// Index is the data row, from 0 (its JSON Pointer is "/<Index>").
+	Index int
+	// Line is the 1-based line where a CSV record starts; 0 for JSON.
+	Line int
+	// Header is a CSV file's column names (the same slice for every row);
+	// Fields are the record's fields, at most one more than the header,
+	// and FieldCount how many it has (a row whose count differs from the
+	// header's is an invalid row, CodeFieldCount).
+	Header     []string
+	Fields     []string
+	FieldCount int
+	// Event is a JSON events row: an object whose members the profile has
+	// checked (no repeated name, finite numbers, no U+0000, the depth and
+	// value limits).
+	Event jsontext.Value
+}
+
+// Scan reads the file r holds, CSV or JSON events, exactly as Read does
+// (the same rules, limits and failures; T-017 validates every row of the
+// file that was profiled), calling visit with each data row as it is read.
+// visit's error stops the scan and is returned as it is.
+func Scan(ctx context.Context, r io.Reader, f Format, lim Limits, visit func(Row) error) (Result, error) {
+	if f == JSONModel {
+		return Result{}, errors.New("profile: a JSON model has no rows to scan")
+	}
+	if visit == nil {
+		return Result{}, errors.New("profile: Scan needs a visitor")
+	}
+	return read(ctx, r, f, lim, visit)
+}
+
+// IsTimestamp reports whether s is an RFC 3339 date-time with an offset,
+// as profiling infers a timestamp (and as the rfc3339 transform takes one,
+// T-017).
+func IsTimestamp(s string) bool { return isTimestamp(s) }
+
+// IsBoolean reports whether s is true or false in ASCII letters of any
+// case, as profiling infers a boolean (and as the boolean_literal
+// transform takes one, T-017).
+func IsBoolean(s string) bool { return isBoolean(s) }
+
+func read(ctx context.Context, r io.Reader, f Format, lim Limits, visit func(Row) error) (Result, error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
@@ -223,9 +271,9 @@ func Read(ctx context.Context, r io.Reader, f Format, lim Limits) (Result, error
 	var err error
 	switch f {
 	case CSV:
-		res, err = readCSV(ctx, tr, lim)
+		res, err = readCSV(ctx, tr, lim, visit)
 	case JSONEvents:
-		res, err = readEvents(ctx, tr, lim)
+		res, err = readEvents(ctx, tr, lim, visit)
 	case JSONModel:
 		res, err = readModel(tr, lim)
 	default:

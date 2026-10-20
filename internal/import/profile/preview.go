@@ -85,40 +85,54 @@ func (p *preview) addJSON(event jsontext.Value) error {
 	if !p.wants() {
 		return nil
 	}
-	dec := reread(nil, event)
+	v, extra, err := PreviewJSON(event, p.lim.PreviewStringChars)
+	if err != nil {
+		return err
+	}
+	p.push(v, extra)
+	return nil
+}
+
+// PreviewJSON is the JSON value v (one the profile has checked: valid,
+// finite numbers) as a preview keeps it: string values (not member names),
+// at any depth, cut to chars characters, and a number the database would
+// print longer than storedNumberMax characters in its shortest binary64
+// form. extra is how many more bytes the database prints it with than the
+// result has (its numbers' digits), for bounding a stored preview (D-043;
+// T-017's canonical preview, too).
+func PreviewJSON(v jsontext.Value, chars int) (out jsontext.Value, extra int, err error) {
+	dec := reread(nil, v)
 	var b bytes.Buffer
 	enc := jsontext.NewEncoder(&b)
-	extra := 0
 	for {
 		tok, err := dec.ReadToken()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return err
+			return nil, 0, err
 		}
 		switch tok.Kind() {
 		case '"':
 			if kind, n := dec.StackIndex(dec.StackDepth()); !(kind == '{' && n%2 == 1) {
-				tok = jsontext.String(cut(tok.String(), p.lim.PreviewStringChars))
+				tok = jsontext.String(cut(tok.String(), chars))
 			}
 		case '0':
 			lit := tok.String()
 			if n := storedNumberLen(lit); n > storedNumberMax {
 				f, err := strconv.ParseFloat(lit, 64)
 				if err != nil {
-					return err // checked finite before
+					return nil, 0, err // checked finite before
 				}
 				lit, tok = strconv.FormatFloat(f, 'g', -1, 64), jsontext.Float(f)
 			}
 			extra += storedNumberLen(lit) - len(lit)
 		}
 		if err := enc.WriteToken(tok); err != nil {
-			return err
+			return nil, 0, err
 		}
 	}
-	p.push(bytes.TrimSpace(b.Bytes()), extra)
-	return nil
+	return jsontext.Value(bytes.TrimSpace(b.Bytes())), extra, nil
 }
 
 // storedNumberMax bounds a number's printed length in the preview: every

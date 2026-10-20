@@ -1,0 +1,166 @@
+--- FAIL: TestVocabularyIsTheSchemas (0.01s)
+    mapping_test.go:98: case_id: 0 characters, schema 256
+    mapping_test.go:98: event_type: 0 characters, schema 128
+    mapping_test.go:98: stage: 0 characters, schema 128
+    mapping_test.go:98: resource_id: 0 characters, schema 256
+    mapping_test.go:98: outcome: 0 characters, schema 128
+    mapping_test.go:98: shift: 0 characters, schema 64
+    mapping_test.go:98: product: 0 characters, schema 128
+    mapping_test.go:98: deployment_id: 0 characters, schema 256
+    mapping_test.go:122: {"source_column":"c","target_field":"case_id","transform":"identity"} with identity: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"event_type","transform":"identity"} with identity: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"timestamp","transform":"rfc3339"} with rfc3339: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"end_timestamp","transform":"rfc3339"} with rfc3339: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"stage","transform":"identity"} with identity: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"duration_ms","transform":"integer_ms"} with integer_ms: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"resource_id","transform":"identity"} with identity: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"outcome","transform":"identity"} with identity: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"shift","transform":"identity"} with identity: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"product","transform":"identity"} with identity: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"deployment_id","transform":"identity"} with identity: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"is_failure","transform":"boolean_literal"} with boolean_literal: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"is_rework","transform":"boolean_literal"} with boolean_literal: schema issues [], want accepted false
+    mapping_test.go:122: {"source_column":"c","target_field":"metadata","transform":"identity"} with identity: schema issues [], want accepted false
+--- FAIL: TestCheck (0.00s)
+    mapping_test.go:182: a column the import does not have: [], want [{MAPPING_UNKNOWN_COLUMN /mapping/mappings/2/source_column}]
+    mapping_test.go:182: a column named twice: [], want [{MAPPING_DUPLICATE_COLUMN /mapping/mappings/11/source_column}]
+    mapping_test.go:182: a field filled twice: [], want [{MAPPING_DUPLICATE_TARGET /mapping/mappings/11/target_field}]
+    mapping_test.go:182: no timestamp: [], want [{MAPPING_REQUIRED_TARGET_MISSING /mapping/mappings}]
+    mapping_test.go:182: no required field at all: [], want [{MAPPING_REQUIRED_TARGET_MISSING /mapping/mappings} {MAPPING_REQUIRED_TARGET_MISSING /mapping/mappings} {MAPPING_REQUIRED_TARGET_MISSING /mapping/mappings}]
+    mapping_test.go:182: a time without rfc3339: [], want [{MAPPING_TRANSFORM_INVALID /mapping/mappings/3/transform}]
+    mapping_test.go:182: an unmapped column with a transform: [], want [{MAPPING_TRANSFORM_INVALID /mapping/mappings/11/transform}]
+    mapping_test.go:182: an unknown transform: [], want [{MAPPING_TRANSFORM_INVALID /mapping/mappings/0/transform}]
+    mapping_test.go:182: an unknown field: [], want [{MAPPING_TRANSFORM_INVALID /mapping/mappings/11/target_field}]
+    mapping_test.go:200: required: []
+    mapping_test.go:213: 65 metadata columns: []
+--- FAIL: TestLowConfidenceNeedsAPerson (0.00s)
+    mapping_test.go:256: two unconfirmed: [], want [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/3} {MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/6}]
+    mapping_test.go:256: one confirmed: [], want [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/3}]
+    mapping_test.go:256: a confident suggestion needs nothing: [], want [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/2}]
+    mapping_test.go:256: a column the person did not import: [], want [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/2}]
+    mapping_test.go:256: a column of no suggestion: [], want [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/2}]
+    mapping_test.go:262: no suggestion: []
+--- FAIL: TestCompile (0.00s)
+    mapping_test.go:280: plan of 0 entries
+    mapping_test.go:285: a mapping Check refuses was compiled
+    mapping_test.go:288: a mapping of other columns was compiled
+--- FAIL: TestTransforms (0.00s)
+    mapping_test.go:416: case_id {kind:1 text:SN-000123 raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "case_id":"SN-000123"
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: case_id {kind:1 text: SN 1  raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "case_id":" SN 1 "
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: case_id {kind:2 text: raw:[34 83 78 45 49 34]}: {"case_id":"","event_type":"","timestamp":""}, want "case_id":"SN-1"
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: case_id {kind:2 text: raw:[49 50 51 52 53]}: {"case_id":"","event_type":"","timestamp":""}, want "case_id":"12345"
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: case_id {kind:2 text: raw:[49 46 53 48 101 50]}: {"case_id":"","event_type":"","timestamp":""}, want "case_id":"1.50e2"
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: case_id {kind:1 text:字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字 raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "case_id":"字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字"
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:400: case_id {kind:1 text:字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字字x raw:[]}: issues , want MAPPING_VALUE_TOO_LONG
+    mapping_test.go:400: shift {kind:1 text:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa raw:[]}: issues , want MAPPING_VALUE_TOO_LONG
+    mapping_test.go:400: case_id {kind:2 text: raw:[116 114 117 101]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: case_id {kind:2 text: raw:[123 34 97 34 58 49 125]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: case_id {kind:2 text: raw:[91 34 97 34 93]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: case_id {kind:1 text: raw:[]}: issues , want MAPPING_REQUIRED_VALUE_MISSING
+    mapping_test.go:400: case_id {kind:2 text: raw:[110 117 108 108]}: issues , want MAPPING_REQUIRED_VALUE_MISSING
+    mapping_test.go:400: case_id {kind:2 text: raw:[34 34]}: issues , want MAPPING_REQUIRED_VALUE_MISSING
+    mapping_test.go:400: case_id {kind:0 text: raw:[]}: issues , want MAPPING_REQUIRED_VALUE_MISSING
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: timestamp {kind:1 text:2026-10-13T06:12:00+08:00 raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "timestamp":"2026-10-13T06:12:00+08:00"
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: timestamp {kind:1 text:2026-10-13t06:12:00.5z raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "timestamp":"2026-10-13t06:12:00.5z"
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: timestamp {kind:2 text: raw:[34 50 48 50 54 45 49 48 45 49 51 84 48 54 58 49 50 58 48 48 90 34]}: {"case_id":"","event_type":"","timestamp":""}, want "timestamp":"2026-10-13T06:12:00Z"
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:400: timestamp {kind:1 text:2026-10-13T06:12:00 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: timestamp {kind:1 text:2026/10/13 06:12 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: timestamp {kind:1 text:2026-02-30T06:12:00Z raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: timestamp {kind:2 text: raw:[49 55 54 48 48 48 48 48 48 48]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: timestamp {kind:1 text: raw:[]}: issues , want MAPPING_REQUIRED_VALUE_MISSING
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: duration_ms {kind:1 text:0 raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "duration_ms":0
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: duration_ms {kind:1 text:190000 raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "duration_ms":190000
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: duration_ms {kind:1 text:9007199254740991 raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "duration_ms":9007199254740991
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: duration_ms {kind:2 text: raw:[49 53 48 48]}: {"case_id":"","event_type":"","timestamp":""}, want "duration_ms":1500
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: duration_ms {kind:2 text: raw:[34 49 53 48 48 34]}: {"case_id":"","event_type":"","timestamp":""}, want "duration_ms":1500
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:400: duration_ms {kind:1 text:9007199254740992 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:1 text:99999999999999999999999 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:1 text:-1 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:1 text:+1 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:1 text:007 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:1 text:1.0 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:1 text:1e3 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:1 text: 1 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:2 text: raw:[49 46 53 101 51]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: duration_ms {kind:2 text: raw:[116 114 117 101]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: is_failure {kind:1 text:true raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "is_failure":true
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: is_failure {kind:1 text:FALSE raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "is_failure":false
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: is_failure {kind:2 text: raw:[116 114 117 101]}: {"case_id":"","event_type":"","timestamp":""}, want "is_failure":true
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: is_failure {kind:2 text: raw:[34 70 97 108 115 101 34]}: {"case_id":"","event_type":"","timestamp":""}, want "is_failure":false
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:400: is_rework {kind:1 text:yes raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: is_rework {kind:1 text:1 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: is_rework {kind:1 text:falſe raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:400: is_rework {kind:2 text: raw:[48]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: metadata {kind:1 text:L-7 raw:[]}: {"case_id":"","event_type":"","timestamp":""}, want "metadata":{"x":"L-7"}
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: metadata {kind:2 text: raw:[123 34 108 105 110 101 34 58 32 91 49 44 32 50 46 53 48 44 32 34 97 34 93 125]}: {"case_id":"","event_type":"","timestamp":""}, want "metadata":{"x":{"line":[1,2.50,"a"]}}
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:416: metadata {kind:2 text: raw:[102 97 108 115 101]}: {"case_id":"","event_type":"","timestamp":""}, want "metadata":{"x":false}
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:418: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+--- FAIL: TestMetadata (0.00s)
+    mapping_test.go:452: {"case_id":"","event_type":"","timestamp":""} 
+    mapping_test.go:455: {"case_id":"","event_type":"","timestamp":""} 
+    mapping_test.go:469: metadata over the limit: 
+    mapping_test.go:477: depth 9: 
+--- FAIL: TestRowRules (0.00s)
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:515: 2026-10-13T06:12:00+08:00..2026-10-13T06:11:59+08:00 (): , want 4:EVENT_END_BEFORE_START
+    mapping_test.go:515: 2026-10-12T23:30:00Z..2026-10-13T06:00:00+08:00 (): , want 4:EVENT_END_BEFORE_START
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:515: 2026-10-13T06:12:00+08:00..2026-10-13T06:11:00+08:00 (60000): , want 4:EVENT_END_BEFORE_START
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:515: 2026-10-13T06:12:00+08:00..2026-10-13T06:15:10+08:00 (191000): , want 8:EVENT_DURATION_INCONSISTENT
+    mapping_test.go:515: 2026-10-13T06:12:00+08:00..2026-10-13T06:15:10+08:00 (189000): , want 8:EVENT_DURATION_INCONSISTENT
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:519: {"case_id":"","event_type":"","timestamp":""} is not a canonical event: [{SCHEMA /case_id minLength: got 0, want 1 error} {SCHEMA /event_type minLength: got 0, want 1 error} {SCHEMA /timestamp '' is not valid date-time: less than 20 characters long error}]
+    mapping_test.go:521: times 0001-01-01 00:00:00 +0000 UTC 0001-01-01 00:00:00 +0000 UTC
+    mapping_test.go:515: 2026-10-13T06:12:00.0005Z..2026-10-13T06:12:01Z (998): , want 8:EVENT_DURATION_INCONSISTENT
+    mapping_test.go:515: 2026-10-13T06:12:00.0005Z..2026-10-13T06:12:01Z (1001): , want 8:EVENT_DURATION_INCONSISTENT
+    mapping_test.go:532: 315537897599998 ms over 9999 years: , want 8:EVENT_DURATION_INCONSISTENT
+    mapping_test.go:532: 315537897600001 ms over 9999 years: , want 8:EVENT_DURATION_INCONSISTENT
+--- FAIL: TestApplyAll (0.00s)
+    mapping_test.go:559: {"case_id":"","event_type":"","timestamp":""}
+        want {"case_id":"SN-000123","event_type":"operation","timestamp":"2026-10-13T06:12:00+08:00","end_timestamp":"2026-10-13T06:15:10+08:00","stage":"fct","duration_ms":190000,"outcome":"pass","shift":"day","product":"board_a","is_rework":false,"metadata":{"批號":"L-7"}}
+    mapping_test.go:565: issues 
+    mapping_test.go:568: a row with fewer values than the plan was mapped
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.020s
+FAIL
+exit 1

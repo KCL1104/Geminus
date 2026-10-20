@@ -50,7 +50,7 @@ func csvError(err error, row int) error {
 		pe.StartLine, pe.Err, pe.Line, pe.Column)
 }
 
-func readCSV(ctx context.Context, tr *text, lim Limits) (Result, error) {
+func readCSV(ctx context.Context, tr *text, lim Limits, visit func(Row) error) (Result, error) {
 	// The header keeps at most MaxColumns names; a row keeps its columns'
 	// fields and the first one beyond them (an invalid row's value).
 	cr := newRecords(tr, lim.MaxColumns, lim.MaxFieldChars, lim.MaxRecordBytes)
@@ -129,6 +129,11 @@ func readCSV(ctx context.Context, tr *text, lim Limits) (Result, error) {
 				res.RowErrors = append(res.RowErrors, e)
 			} else {
 				res.MoreRowErrors++
+			}
+		}
+		if visit != nil {
+			if err := visit(Row{Index: row, Line: line, Header: names, Fields: rec, FieldCount: cr.fields}); err != nil {
+				return Result{}, err
 			}
 		}
 		if err := pv.addCSV(names, rec); err != nil {

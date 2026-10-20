@@ -190,7 +190,7 @@ type columns struct {
 	walk, check *jsontext.Decoder
 }
 
-func readEvents(ctx context.Context, tr *text, lim Limits) (Result, error) {
+func readEvents(ctx context.Context, tr *text, lim Limits, visit func(Row) error) (Result, error) {
 	win := &window{r: tr, max: lim.MaxRecordBytes}
 	win.at(0, beforeArray)
 	dec := jsontext.NewDecoder(win)
@@ -235,6 +235,11 @@ func readEvents(ctx context.Context, tr *text, lim Limits) (Result, error) {
 		}
 		if err := cols.add(event, row, lim); err != nil {
 			return Result{}, err
+		}
+		if visit != nil {
+			if err := visit(Row{Index: row, Event: event}); err != nil {
+				return Result{}, err
+			}
 		}
 		if err := pv.addJSON(event); err != nil {
 			return Result{}, err

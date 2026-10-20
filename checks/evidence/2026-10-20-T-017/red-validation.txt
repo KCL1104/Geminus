@@ -1,0 +1,26 @@
+--- FAIL: TestAValidLog (0.00s)
+    validation_test.go:96: {Rows:0 InvalidRows:0 Issues:[] Errors:[] MoreErrors:0 Preview:[] DatasetBytes:0 tooLarge:false}
+--- FAIL: TestInvalidRows (0.00s)
+    validation_test.go:144: {Rows:0 InvalidRows:0 Issues:[] Errors:[] MoreErrors:0 Preview:[] DatasetBytes:0 tooLarge:false}
+--- FAIL: TestJSONEvents (0.00s)
+    validation_test.go:203: {Rows:0 InvalidRows:0 Issues:[] Errors:[] MoreErrors:0 Preview:[] DatasetBytes:0 tooLarge:false}
+--- FAIL: TestBounds (0.00s)
+    validation_test.go:228: 0 invalid, 0 issues, 0 errors, 0 more, 0 preview
+panic: runtime error: index out of range [0] with length 0 [recovered, repanicked]
+
+goroutine 11 [running]:
+testing.tRunner.func1.2({0x8a30f0, 0x1d63bc8b5290})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2125 +0x232
+testing.tRunner.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2128 +0x329
+panic({0x8a30f0?, 0x1d63bc8b5290?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/runtime/panic.go:859 +0x125
+github.com/kcl1104/geminus/internal/import/validation_test.TestBounds(0x1d63bc8f98c8)
+	/home/user/Geminus/.claude/worktrees/agent-a4dd381c83ba5c83b/internal/import/validation/validation_test.go:235 +0x135c
+testing.tRunner(0x1d63bc8f98c8, 0x8b3180)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2260 +0x4d4
+FAIL	github.com/kcl1104/geminus/internal/import/validation	0.011s
+FAIL
+exit 1
