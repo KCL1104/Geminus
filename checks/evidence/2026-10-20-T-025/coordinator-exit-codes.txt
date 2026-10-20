@@ -1,0 +1,9 @@
+Coordinator runs on 1f6ff31 (T-025 cherry-picked onto claude/lucid-meitner-vq1awo), 2026-10-20.
+Each log was written by "make <target> > log 2>&1; echo exit $?"; the exit code below is that echo.
+
+make spec-check PYTHON=.venv/bin/python   0   coordinator-spec-check.log
+make backend-test                          0   coordinator-backend-test.log
+make architecture-check                    0   coordinator-architecture-check.log
+make ai-eval                               0   coordinator-ai-eval.log
+make frontend-test                         0   coordinator-frontend-test.log
+make integration-test (dt_test_t025_main)  0   coordinator-integration-test.log
