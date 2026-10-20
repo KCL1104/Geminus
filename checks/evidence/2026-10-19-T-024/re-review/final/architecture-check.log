@@ -1,0 +1,7 @@
+$ make architecture-check
+# extra environment: none
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 65 packages, 15 rules, 16 build configurations
+
+# exit 0 after 6s

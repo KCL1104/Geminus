@@ -119,6 +119,28 @@ Coordinator 的後續指示：rebase 到 `claude/lucid-meitner-vq1awo`（ee92d2b
 | `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（`final/spec-check.log`） | 0 | TS contracts、9 個 db/tests 檔皆為最新；沒有任何 `checks/*.json` 改變（本輪沒有新增契約、fixture 或 markdown 檔） |
 | `python3 -I t024_mutate.py`（`review/mutations.txt`） | 0 | 36/36 killed |
 
+## 複核後的修正（re-review：ACCEPT，另有一個 low）
+
+複核結論 ACCEPT，另確認一個新的 low（L-new，過度遮蔽）。先 rebase 到 c911e4c（T-016 的 review 修正，本任務的 commit 已在其中，沒有衝突），再先紅後綠修正；紅與綠的 log 在 `checks/evidence/2026-10-19-T-024/re-review/`。
+
+| 項目 | 問題 | 修正 | 先紅後綠 |
+|---|---|---|---|
+| L-new（confirmed） | 大小寫混合 base64 規則（≥40 字）把合法的長 camel-case 名稱（`AssemblyLineStation12ThroughputCalibrationV2Final`、`Line1Station2Tester3Buffer4Robot5Feeder6Oven7`）換成 `[REDACTED:credential]`；IR ID 最長 128 字，ENTITY_INDEX 與 IR 都經 sanitizer，這種 ID 與指向它的 reference 送到 model 時被遮蔽，model 無法在 test op 中引用。key=value 規則也吃掉 prose（`the tokenizer: whitespace`、`secretary: Johnson`、`max_tokens: 8192000`、`token_bucket_rate: 150000`），名稱規則遮蔽 `secret_stage`、`pwd_station`、`rate_token`、`credentials_required` | base64 規則在 free text 要求含 `+`、`/`、`=` 或至少 64 字，而且 base IR 自己的 entity ID（entity type、resource、node、flow、metric；reference 都是它們）出現之處一律不套用（proposal 與 analysis context 都設定）；key=value 與 member／欄位名稱只在名稱以完整 credential 字結尾時才算（password、passphrase、secret、credentials、authorization、API／access／account／private／secret key、connection string），token 要單獨或接在 access、refresh、github 等限定詞之後。Review 確認過的形狀全部保留；ai-eval 的 PEM body 改為實際的 64 字以上一行 | `l-new-red.log`：`TestSanitizerKeeps` 8 例、`TestSanitizerRedactsByMemberName` 4 個名稱、新的 `TestSanitizerKeepsModelIDs` 與 `TestLongModelIDsReachTheProvider` 失敗；`l-new-green.log` 通過（含 `spring.datasource.password=`、`refresh_token:` 兩個新的正例）；mutation M37–M39，M27、M36 改到新程式 |
+
+先 `go clean -testcache`，沒有任何 DB。Log 與 exit code 在 `re-review/final/`（`exit-codes.txt`）。
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `go test -count=1 -v ./internal/ai/...`（`final/go-test-ai.log`） | 0 | 66 個 top-level test，0 FAIL、0 SKIP |
+| `make backend-test` | 0 | 53 個 package ok；DB-backed 測試 skip（NOT RUN） |
+| `make backend-race` | 0 | 53 個 package ok |
+| `make architecture-check` | 0 | 65 packages、15 rules、16 build configurations |
+| `make ai-eval` | 0 | fake；10 個 gate 皆為 0；scorecard 未改變 |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（`final/spec-check.log`） | 0 | TS contracts、9 個 db/tests 檔皆為最新；沒有任何 `checks/*.json` 改變 |
+| `python3 -I t024_mutate.py`（`re-review/mutations.txt`） | 0 | 39/39 killed，所有檔案逐 byte 還原 |
+
+殘餘：不是 model ID、64 字以上的大小寫混合長識別字仍會被遮蔽；free text 中 camelCase 接在其他字後的 key（`dbPassword=`）不被 key=value 規則辨識（JSON member 與欄位名稱以 case change 拆字，仍會辨識）。
+
 ## 驗收測試
 
 | 驗收 | T-024 涵蓋 | 其餘 |

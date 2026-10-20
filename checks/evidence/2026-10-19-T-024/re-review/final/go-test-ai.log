@@ -1,0 +1,204 @@
+$ go test -count=1 -v ./internal/ai/...
+# extra environment: none
+=== RUN   TestAnalysisContext
+--- PASS: TestAnalysisContext (0.01s)
+=== RUN   TestAnalysisWithBaseline
+--- PASS: TestAnalysisWithBaseline (0.01s)
+=== RUN   TestAnalysisRefusals
+--- PASS: TestAnalysisRefusals (0.00s)
+=== RUN   TestAnalysisInjection
+--- PASS: TestAnalysisInjection (0.00s)
+=== RUN   TestMappingContext
+--- PASS: TestMappingContext (0.00s)
+=== RUN   TestMappingRefusals
+--- PASS: TestMappingRefusals (0.00s)
+=== RUN   TestMappingVocabularyIsTheSchemas
+--- PASS: TestMappingVocabularyIsTheSchemas (0.01s)
+=== RUN   TestProposalContext
+--- PASS: TestProposalContext (0.01s)
+=== RUN   TestInjectionStaysData
+--- PASS: TestInjectionStaysData (0.04s)
+=== RUN   TestRedaction
+--- PASS: TestRedaction (0.01s)
+=== RUN   TestLongModelIDsReachTheProvider
+--- PASS: TestLongModelIDsReachTheProvider (0.00s)
+=== RUN   TestCrossTenantInputsAreRefused
+--- PASS: TestCrossTenantInputsAreRefused (0.00s)
+=== RUN   TestInvalidInputs
+--- PASS: TestInvalidInputs (0.01s)
+=== RUN   TestOutputLocale
+--- PASS: TestOutputLocale (0.01s)
+=== RUN   TestOmissionsAreVisible
+--- PASS: TestOmissionsAreVisible (0.70s)
+=== RUN   TestScenarioMode
+--- PASS: TestScenarioMode (0.01s)
+=== RUN   TestDomainNeutral
+--- PASS: TestDomainNeutral (0.00s)
+=== RUN   TestNoDomainVocabulary
+--- PASS: TestNoDomainVocabulary (0.26s)
+=== RUN   TestSanitizerRedacts
+--- PASS: TestSanitizerRedacts (0.00s)
+=== RUN   TestSanitizerKeeps
+--- PASS: TestSanitizerKeeps (0.00s)
+=== RUN   TestSanitizerBoundsAndKeys
+--- PASS: TestSanitizerBoundsAndKeys (0.00s)
+=== RUN   TestSanitizerRedactsByMemberName
+--- PASS: TestSanitizerRedactsByMemberName (0.00s)
+=== RUN   TestSanitizerKeepsModelIDs
+--- PASS: TestSanitizerKeepsModelIDs (0.00s)
+=== RUN   TestSanitizerFoldsLookAlikeDelimiters
+--- PASS: TestSanitizerFoldsLookAlikeDelimiters (0.00s)
+=== RUN   TestSanitizerCountsCollisions
+--- PASS: TestSanitizerCountsCollisions (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	1.160s
+=== RUN   TestFakeProviderEval
+    corpus_test.go:383: {
+        	"suite": "T-024 fake-provider context suite",
+        	"provider": "fake (deterministic, internal/ai/provider/fake)",
+        	"live_provider": "NOT RUN (no approved model, quota or data policy: H-001, H-017)",
+        	"cases": {
+        		"analyst": 10,
+        		"import-mapper": 10,
+        		"modeler": 50
+        	},
+        	"checks_passed": {
+        		"analysis_context_built": 10,
+        		"analysis_situation_checked": 10,
+        		"fake_answer_schema_valid": 120,
+        		"id_pool_by_mode": 100,
+        		"mapping_context_built": 10,
+        		"output_locale_instruction": 100,
+        		"prompt_sealed_and_bounded": 120,
+        		"proposal_context_built": 100
+        	},
+        	"zero_tolerance_gates": {
+        		"cross_tenant_context_leakage": 0,
+        		"executable_transform_accepted": 0,
+        		"forged_blocks": 0,
+        		"prompt_not_sealed": 0,
+        		"provider_trusted_fields_accepted": 0,
+        		"secrets_sent": 0,
+        		"server_ids_sent": 0,
+        		"unavailable_metric_citable": 0,
+        		"unconfirmed_mapping_suggested": 0,
+        		"untrusted_text_in_system_rules": 0
+        	},
+        	"not_run": [
+        		"golden_edit patch correctness and the >=90% target (needs a live provider: T-038)",
+        		"server validation, risk floors and needs_input/invalid states of proposals (T-025)",
+        		"database effects: unapproved mutation=0, invalid patch committed=0 (T-025, T-026, T-038)",
+        		"analyst output checks: evidence paths, deltas, prose numbers, certainty (T-030)",
+        		"mapper confidence and evidence quality (T-027)",
+        		"live provider eval (make ai-eval-live)"
+        	]
+        }
+--- PASS: TestFakeProviderEval (1.75s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	1.788s
+=== RUN   TestSchemaParity
+--- PASS: TestSchemaParity (0.00s)
+=== RUN   TestNew
+--- PASS: TestNew (0.01s)
+=== RUN   TestNewSkipsUsedIDs
+--- PASS: TestNewSkipsUsedIDs (0.00s)
+=== RUN   TestValidate
+--- PASS: TestValidate (0.00s)
+=== RUN   TestCheck
+--- PASS: TestCheck (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	0.037s
+=== RUN   TestParse
+--- PASS: TestParse (0.00s)
+=== RUN   TestLocalesMatchTheContract
+--- PASS: TestLocalesMatchTheContract (0.01s)
+=== RUN   TestInstruction
+--- PASS: TestInstruction (0.00s)
+=== RUN   TestNumbers
+--- PASS: TestNumbers (0.00s)
+=== RUN   TestUnverifiableWritings
+--- PASS: TestUnverifiableWritings (0.00s)
+=== RUN   TestCheckProse
+--- PASS: TestCheckProse (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.017s
+=== RUN   TestValidAnswers
+--- PASS: TestValidAnswers (0.04s)
+=== RUN   TestAdversarialAnswersAreRefused
+--- PASS: TestAdversarialAnswersAreRefused (0.02s)
+=== RUN   TestRequestsTheClientRefuses
+--- PASS: TestRequestsTheClientRefuses (0.00s)
+=== RUN   TestDisabled
+--- PASS: TestDisabled (0.00s)
+=== RUN   TestCancellationAndTimeout
+--- PASS: TestCancellationAndTimeout (0.05s)
+=== RUN   TestBackendErrors
+--- PASS: TestBackendErrors (0.00s)
+=== RUN   TestConcurrencyPerOrganization
+--- PASS: TestConcurrencyPerOrganization (0.00s)
+=== RUN   TestBudget
+--- PASS: TestBudget (0.00s)
+=== RUN   TestRequestCarriesTheBudget
+--- PASS: TestRequestCarriesTheBudget (0.00s)
+=== RUN   TestSchemaParity
+--- PASS: TestSchemaParity (0.01s)
+=== RUN   TestSealBindsTheOrganization
+--- PASS: TestSealBindsTheOrganization (0.00s)
+=== RUN   TestBlocksCannotBeForged
+--- PASS: TestBlocksCannotBeForged (0.00s)
+=== RUN   TestSealRefuses
+--- PASS: TestSealRefuses (0.00s)
+=== RUN   TestVerify
+--- PASS: TestVerify (0.00s)
+=== RUN   TestParseUserRefuses
+--- PASS: TestParseUserRefuses (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.168s
+=== RUN   TestProjection
+--- PASS: TestProjection (0.10s)
+=== RUN   TestProjectionRefuses
+--- PASS: TestProjectionRefuses (0.00s)
+=== RUN   TestRequestShape
+=== RUN   TestRequestShape/custom_headers
+=== RUN   TestRequestShape/none
+=== RUN   TestRequestShape/all
+=== RUN   TestRequestShape/auth_token
+--- PASS: TestRequestShape (0.13s)
+    --- PASS: TestRequestShape/custom_headers (0.05s)
+    --- PASS: TestRequestShape/none (0.03s)
+    --- PASS: TestRequestShape/all (0.03s)
+    --- PASS: TestRequestShape/auth_token (0.02s)
+=== RUN   TestFailover
+=== RUN   TestFailover/402
+=== RUN   TestFailover/401
+=== RUN   TestFailover/403
+--- PASS: TestFailover (0.04s)
+    --- PASS: TestFailover/402 (0.00s)
+    --- PASS: TestFailover/401 (0.01s)
+    --- PASS: TestFailover/403 (0.01s)
+=== RUN   TestBillingCooldown
+--- PASS: TestBillingCooldown (0.06s)
+=== RUN   TestSameCredentialRetries
+--- PASS: TestSameCredentialRetries (0.07s)
+=== RUN   TestErrorsAreSanitized
+--- PASS: TestErrorsAreSanitized (0.03s)
+=== RUN   TestStopReasons
+--- PASS: TestStopReasons (0.08s)
+=== RUN   TestTimeoutsAndCancellation
+--- PASS: TestTimeoutsAndCancellation (0.55s)
+=== RUN   TestNoRedirects
+--- PASS: TestNoRedirects (0.01s)
+=== RUN   TestNewRefuses
+--- PASS: TestNewRefuses (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	1.100s
+=== RUN   TestDefaultAnswers
+--- PASS: TestDefaultAnswers (0.01s)
+=== RUN   TestScript
+--- PASS: TestScript (0.00s)
+=== RUN   TestCancelled
+--- PASS: TestCancelled (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.031s
+
+# exit 0 after 3s
