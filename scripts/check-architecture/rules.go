@@ -242,6 +242,17 @@ var rules = []rule{
 		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/proposals/generator/..."}, // T-023, T-016, T-025
 	},
 	{
+		// T-026: a person decides a proposal, through the API's routes and
+		// for the authenticated caller. Only the API links the decision
+		// service, so the worker binary, its job handlers, the other
+		// services and the AI packages can never approve or reject.
+		name:    "decisions-only-in-the-api",
+		why:     "AI only suggests and approval is a person's: only the API links the approval service, never the worker, a job handler, another service or internal/ai (AGENTS.md §2, AI_SPEC §1)",
+		applies: []string{"./..."},
+		except:  []string{"./cmd/api/...", "./internal/api/...", "./internal/proposals/approval/..."},
+		forbid:  []string{"./internal/proposals/approval/..."},
+	},
+	{
 		// The parser and the report writer read and write bytes: the
 		// upload service and the profile job own storage, tenants and
 		// transport (T-016), so the file's handling can be tested, and

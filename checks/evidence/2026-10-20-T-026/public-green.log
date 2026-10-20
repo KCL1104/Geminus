@@ -1,0 +1,4 @@
+=== RUN   TestPublicMatchesTheContract
+--- PASS: TestPublicMatchesTheContract (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals	0.023s

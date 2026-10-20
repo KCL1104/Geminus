@@ -594,10 +594,22 @@ func (s *Service) Publish(ctx context.Context, sc tenant.Scope, requestID, key, 
 // draft rule of ADR-022 (D-003): a clean draft follows the new version; a
 // dirty one is kept as it is and is then out of date. Publishing from the
 // draft creates v from the draft's own content, so the draft follows it.
-// Later approval paths (T-026) call this too.
 func (s *Service) advance(ctx context.Context, tx tenant.Tx, m tenant.Membership, mdl store.Model, d store.Draft, base, v store.Version, name string) error {
+	_, err := s.Advance(ctx, tx, m, mdl, d, base, v, name)
+	return err
+}
+
+// Advance is the version step of ADR-022 for a version another service
+// created in tx from base, the model's latest (T-026's approval of an edit
+// proposal): the model's latest becomes v and its name name; a clean draft
+// (its content is its own base's, or v's) follows v one revision later, a
+// dirty one is kept byte for byte and is out of date from then on (D-003:
+// no rebase). It returns the draft as it is afterwards. The caller holds
+// the model row (store.LockModel) and read d after taking it; s.Datasets
+// must open v's manifest when it has one (the synced draft's issues).
+func (s *Service) Advance(ctx context.Context, tx tenant.Tx, m tenant.Membership, mdl store.Model, d store.Draft, base, v store.Version, name string) (store.Draft, error) {
 	if err := store.SetLatest(ctx, tx, m.OrganizationID, mdl.ID, v.ID, name); err != nil {
-		return err
+		return store.Draft{}, err
 	}
 	// Clean is against the draft's own base, which is not base when the
 	// draft is already behind (T-012 review L3).
@@ -605,14 +617,13 @@ func (s *Service) advance(ctx context.Context, tx tenant.Tx, m tenant.Membership
 	if d.BaseVersionID != base.ID {
 		var err error
 		if own, err = store.GetVersion(ctx, tx, m.OrganizationID, d.BaseVersionID); err != nil {
-			return err
+			return store.Draft{}, err
 		}
 	}
 	if d.Hash != own.Hash && d.Hash != v.Hash {
-		return nil // dirty: kept, and out of date from now on
+		return d, nil // dirty: kept, and out of date from now on
 	}
-	_, err := s.syncDraft(ctx, tx, m, d, v)
-	return err
+	return s.syncDraft(ctx, tx, m, d, v)
 }
 
 // syncDraft makes the draft version v's content, one revision later.

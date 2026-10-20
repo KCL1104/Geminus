@@ -4,7 +4,8 @@
 // Each operation is one tenant.DB.Run transaction that checks the caller's
 // membership and role first (D-008); SQL lives in internal/storage. The job
 // that asks the provider and reviews its answer is
-// internal/proposals/generator's; deciding a proposal is T-026's.
+// internal/proposals/generator's; a person's decision (approve, reject) is
+// internal/proposals/approval's (T-026).
 //
 // The server binds every identity, validation and approval field: the
 // client names the base, the mode, the intent, the selected entities and

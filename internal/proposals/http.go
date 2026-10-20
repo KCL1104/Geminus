@@ -21,7 +21,8 @@ type Route struct {
 
 // Routes are the proposal operations this package serves. A contract test
 // compares them with planning/api-operations.json; their roles are the ones
-// the service requires. approveProposal and rejectProposal are T-026's.
+// the service requires. approveProposal and rejectProposal are
+// internal/proposals/approval's (T-026).
 var Routes = []Route{
 	{"POST", "/v1/models/{id}/ai-proposals", "createProposal", writeRoles},
 	{"GET", "/v1/models/{id}/ai-proposals", "listProposals", readRoles},

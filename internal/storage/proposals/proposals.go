@@ -10,7 +10,11 @@
 // the generated content once, moving it to ready, needs_input or invalid
 // in the transaction that completes the job (Generate); when the job fails
 // or is cancelled first, the proposal follows it to failed with the job's
-// error (0012). Deciding a proposal is T-026's.
+// error (0012). A person decides it through the API (T-026, 0013): Approve
+// (with its one effect, created first in the same transaction), Reject, or
+// Conflict when an approval finds that its base is no longer the model's
+// latest version; each records the deciding user, whom 0001 holds to the
+// transaction's scoped user, and the database's time.
 package proposals
 
 import (
@@ -67,8 +71,13 @@ type Proposal struct {
 	// recorded, 0012); nil otherwise.
 	Failure                  []byte
 	NewVersionID, ScenarioID *string
-	CreatedBy                string
-	CreatedAt                time.Time
+	// The decision record (T-026): who decided (or found the conflict),
+	// when, and the person's comment; nil before a decision.
+	DecidedBy       *string
+	DecidedAt       *time.Time
+	DecisionComment *string
+	CreatedBy       string
+	CreatedAt       time.Time
 	// RequestID is the request that created the proposal (its job's
 	// payload).
 	RequestID string
@@ -125,8 +134,8 @@ func Insert(ctx context.Context, tx pgx.Tx, p Proposal) (Proposal, error) {
 const columns = `p.id, p.model_id, p.base_version_id, p.source_import_id, p.mode, p.status, p.intent, p.output_locale,
 	p.selected_entity_ids, p.id_pool, p.summary, p.assumptions, p.expected_effects, p.questions, p.patch, p.patch_hash,
 	p.candidate_dataset_bindings, p.server_risk_level, p.provider_risk_claim, p.risk_level, p.confidence, p.validation,
-	p.provider_metadata, p.error, p.new_version_id, p.scenario_id, p.created_by, p.created_at,
-	coalesce(j.payload->>'request_id', '')`
+	p.provider_metadata, p.error, p.new_version_id, p.scenario_id, p.decided_by, p.decided_at, p.decision_comment,
+	p.created_by, p.created_at, coalesce(j.payload->>'request_id', '')`
 
 // from joins each proposal with its job (one at most, 0001), whose payload
 // holds the request that created it.
@@ -140,7 +149,8 @@ func scan(row pgx.Row, org string) (Proposal, error) {
 	err := row.Scan(&p.ID, &p.ModelID, &p.BaseVersionID, &p.SourceImportID, &p.Mode, &status, &p.Intent, &p.OutputLocale,
 		&selected, &p.IDPool, &p.Summary, &assumptions, &effects, &questions, &p.Patch, &p.PatchHash,
 		&bindings, &p.ServerRisk, &p.ProviderRisk, &p.Risk, &p.Confidence, &p.Validation,
-		&p.ProviderMetadata, &p.Failure, &p.NewVersionID, &p.ScenarioID, &p.CreatedBy, &p.CreatedAt, &p.RequestID)
+		&p.ProviderMetadata, &p.Failure, &p.NewVersionID, &p.ScenarioID, &p.DecidedBy, &p.DecidedAt, &p.DecisionComment,
+		&p.CreatedBy, &p.CreatedAt, &p.RequestID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Proposal{}, ErrNotFound
 	}
@@ -281,4 +291,47 @@ func Generate(ctx context.Context, tx pgx.Tx, org, id string, g Generated) error
 		return ErrNotGenerating
 	}
 	return nil
+}
+
+// ErrNotDecidable: the proposal is not in a state the decision may leave
+// (approving and conflicting need ready; rejecting needs ready or
+// needs_input); nothing was written. The caller holds the proposal's row
+// (Lock) and checked its state first, so this is a second line of defence.
+var ErrNotDecidable = errors.New("proposals: the proposal is not in a state this decision may leave")
+
+// decided is nil for one decided row, else ErrNotDecidable or err.
+func decided(tag pgconn.CommandTag, err error) error {
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrNotDecidable
+	}
+	return nil
+}
+
+// Approve records the ready proposal id as approved by user, with its one
+// effect, newVersionID (edit) or scenarioID (scenario), which the caller
+// created from this proposal earlier in the same transaction (0001 checks
+// that the effect names this proposal; 0013 checks the effect when the
+// transaction ends), and the person's comment (nil for none).
+func Approve(ctx context.Context, tx pgx.Tx, org, id, user string, newVersionID, scenarioID, comment *string) error {
+	return decided(tx.Exec(ctx, `UPDATE twin.ai_proposals SET status='approved', decided_by=$3, new_version_id=$4, scenario_id=$5,
+		  decision_comment=$6
+		WHERE organization_id=$1 AND id=$2 AND status='ready'`, org, id, user, newVersionID, scenarioID, comment))
+}
+
+// Reject records the ready or needs_input proposal id as rejected by user,
+// with the person's comment (nil for none).
+func Reject(ctx context.Context, tx pgx.Tx, org, id, user string, comment *string) error {
+	return decided(tx.Exec(ctx, `UPDATE twin.ai_proposals SET status='rejected', decided_by=$3, decision_comment=$4
+		WHERE organization_id=$1 AND id=$2 AND status IN ('ready','needs_input')`, org, id, user, comment))
+}
+
+// Conflict records that user's approval found the ready proposal id's base
+// no longer the model's latest version: the proposal is conflicted for
+// good (AI_SPEC §4, §6: no rebase).
+func Conflict(ctx context.Context, tx pgx.Tx, org, id, user string) error {
+	return decided(tx.Exec(ctx, `UPDATE twin.ai_proposals SET status='conflicted', decided_by=$3
+		WHERE organization_id=$1 AND id=$2 AND status='ready'`, org, id, user))
 }

@@ -164,3 +164,48 @@ func TestGenerateRefusesUnstorable(t *testing.T) {
 		}
 	}
 }
+
+// T-026: a decision writes only the state it may leave, in the
+// organization it names: approving or conflicting needs ready, rejecting
+// ready or needs_input; anything else writes nothing (ErrNotDecidable), as
+// the provisioning superuser, whom RLS does not restrict, sees too.
+func TestDecisionsNeedTheirState(t *testing.T) {
+	pool := dbtest.Admin(t)
+	admin := postgres.OpenPool(pool)
+	org := dbtest.NewOrg(t, pool, "https://test.invalid", tenant.Owner)
+	other := dbtest.NewOrg(t, pool, "https://test.invalid", tenant.Owner)
+	mdl, mv, idPool := version(t, admin, org)
+	user := org.Members[tenant.Owner].UserID
+	ctx := context.Background()
+	if err := admin.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		p, err := proposals.Insert(ctx, tx, proposals.Proposal{ID: ids.New("aip"), OrganizationID: org.ID, ModelID: mdl, BaseVersionID: mv,
+			Mode: "edit", Intent: "raise", OutputLocale: "en", IDPool: idPool, CreatedBy: user})
+		if err != nil {
+			return err
+		}
+		version := ids.New("mv")
+		comment := "no"
+		for name, decide := range map[string]func() error{
+			"approve":  func() error { return proposals.Approve(ctx, tx, org.ID, p.ID, user, &version, nil, nil) },
+			"conflict": func() error { return proposals.Conflict(ctx, tx, org.ID, p.ID, user) },
+			"reject":   func() error { return proposals.Reject(ctx, tx, org.ID, p.ID, user, &comment) },
+			"reject in another organization": func() error {
+				return proposals.Reject(ctx, tx, other.ID, p.ID, other.Members[tenant.Owner].UserID, nil)
+			},
+		} {
+			if err := decide(); !errors.Is(err, proposals.ErrNotDecidable) {
+				t.Errorf("%s a generating proposal: %v", name, err)
+			}
+		}
+		got, err := proposals.Get(ctx, tx, org.ID, p.ID)
+		if err != nil {
+			return err
+		}
+		if got.Status != proposals.Generating || got.DecidedBy != nil || got.DecidedAt != nil || got.DecisionComment != nil || got.NewVersionID != nil {
+			t.Errorf("a refused decision wrote: %+v", got)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}

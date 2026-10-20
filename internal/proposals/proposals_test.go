@@ -100,6 +100,9 @@ func str(s string) *string { return &s }
 
 func f64(v float64) *float64 { return &v }
 
+// decidedAt is when row's decision took effect, in a zone that is not UTC.
+var decidedAt = time.Date(2026, 10, 20, 10, 15, 0, 0, time.FixedZone("x", 3600))
+
 // row is a stored proposal in status, with every column a state might
 // hold, so Public's choice of what to show is tested.
 func row(status store.Status) store.Proposal {
@@ -114,7 +117,8 @@ func row(status store.Status) store.Proposal {
 		ProviderMetadata: []byte(`{"provider":"fake"}`),
 		Failure:          []byte(`{"code":"AI_RATE_LIMITED","message":"the AI provider kept refusing the request for its rate limit","retryable":true}`),
 		NewVersionID:     str("mv_01M4YDQK00FRYWV7GS7X1QCXZS"),
-		CreatedBy:        "usr_01M4YDQK0016KTK4JM6KAHZ6BR", CreatedAt: time.Date(2026, 10, 20, 8, 30, 0, 0, time.FixedZone("x", 3600)),
+		DecidedBy:        str("usr_01M4YDQK0016KTK4JM6KAHZ6BS"), DecidedAt: &decidedAt, DecisionComment: str("Reviewed."),
+		CreatedBy: "usr_01M4YDQK0016KTK4JM6KAHZ6BR", CreatedAt: time.Date(2026, 10, 20, 8, 30, 0, 0, time.FixedZone("x", 3600)),
 		RequestID: "req_01M4YDQK00V6H8S0ST4F7510KR"}
 }
 
@@ -141,23 +145,26 @@ func members(t *testing.T, p Proposal) map[string]bool {
 // Every state's resource matches proposal.schema.json and holds what the
 // state does, nothing more: a generating proposal only the server-bound
 // fields, needs_input no changes, invalid only its validation (nothing the
-// provider wrote), failed only its error (AI_SPEC §4).
+// provider wrote), failed only its error (AI_SPEC §4); only a decided one
+// its decision record, and a conflicted one no comment (T-026, D-068).
 func TestPublicMatchesTheContract(t *testing.T) {
 	base := []string{"proposal_id", "organization_id", "model_id", "base_version_id", "mode", "status", "created_by", "created_at", "requires_confirmation"}
 	reviewed := append(slices.Clone(base), "summary", "assumptions", "risk_level", "confidence", "changes", "expected_effects", "validation",
 		"patch_hash", "dataset_bindings", "server_risk_level", "provider_risk_claim")
+	asked := append(slices.Clone(base), "summary", "assumptions", "questions")
+	decided := []string{"decided_by", "decided_at", "decision_comment"}
 	for _, c := range []struct {
 		status store.Status
 		patch  bool
 		want   []string
 	}{
 		{store.Generating, true, base},
-		{store.NeedsInput, false, append(slices.Clone(base), "summary", "assumptions", "questions")},
+		{store.NeedsInput, false, asked},
 		{store.Ready, true, reviewed},
-		{store.Conflicted, true, reviewed},
-		{store.Approved, true, append(slices.Clone(reviewed), "new_version_id")},
-		{store.Rejected, true, reviewed},
-		{store.Rejected, false, append(slices.Clone(base), "summary", "assumptions", "questions")},
+		{store.Conflicted, true, append(slices.Clone(reviewed), "decided_by", "decided_at")},
+		{store.Approved, true, slices.Concat(reviewed, []string{"new_version_id"}, decided)},
+		{store.Rejected, true, slices.Concat(reviewed, decided)},
+		{store.Rejected, false, slices.Concat(asked, decided)},
 		{store.Invalid, false, append(slices.Clone(base), "validation")},
 		{store.Failed, false, append(slices.Clone(base), "error")},
 	} {
@@ -183,6 +190,31 @@ func TestPublicMatchesTheContract(t *testing.T) {
 		if p.CreatedAt != "2026-10-20T07:30:00Z" {
 			t.Errorf("created_at %s is not UTC", p.CreatedAt)
 		}
+		if p.DecidedAt != nil && *p.DecidedAt != "2026-10-20T09:15:00Z" {
+			t.Errorf("decided_at %s is not UTC", *p.DecidedAt)
+		}
+	}
+	// A decided proposal without its decision record is the server's
+	// fault, never served without one (0001, 0013 require it).
+	for _, s := range []store.Status{store.Approved, store.Rejected, store.Conflicted} {
+		r := row(s)
+		r.DecidedBy = nil
+		if _, err := Public(r, ""); err == nil {
+			t.Errorf("%s without its decider was served", s)
+		}
+		r = row(s)
+		r.DecidedAt = nil
+		if _, err := Public(r, ""); err == nil {
+			t.Errorf("%s without its time was served", s)
+		}
+	}
+	// Without a comment, a decision shows none.
+	r0 := row(store.Rejected)
+	r0.DecisionComment = nil
+	if p, err := Public(r0, ""); err != nil || p.DecisionComment != nil {
+		t.Errorf("%+v %v", p.DecisionComment, err)
+	} else {
+		members(t, p)
 	}
 	// The stored patch is served canonical (RFC 8785): jsonb's spacing and
 	// member order never reach the client.

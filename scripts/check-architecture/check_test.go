@@ -157,6 +157,17 @@ func TestProbesAreCaught(t *testing.T) {
 		// Another service, not internal/proposals: the generator's tests
 		// import that one, so linking it back does not even compile.
 		{"a-service-links-the-proposal-generator", "internal/runs/zz_probe.go", module + "/internal/proposals/generator", "job-handlers-only-in-the-worker", "./internal/runs", "./internal/proposals/generator", false},
+		// T-026: only the API links the decision service: not the worker,
+		// a job handler, another service or the AI.
+		{"the-worker-links-the-approval", "cmd/worker/zz_probe.go", module + "/internal/proposals/approval", "decisions-only-in-the-api", "./cmd/worker", "./internal/proposals/approval", false},
+		{"a-job-handler-links-the-approval", "internal/runs/runner/zz_probe.go", module + "/internal/proposals/approval", "decisions-only-in-the-api", "./internal/runs/runner", "./internal/proposals/approval", false},
+		// Another service, not internal/proposals or internal/models: the
+		// approval imports both, so linking it back does not even compile.
+		{"a-service-links-the-approval", "internal/runs/zz_probe.go", module + "/internal/proposals/approval", "decisions-only-in-the-api", "./internal/runs", "./internal/proposals/approval", false},
+		// An AI package that the approval does not import (it imports the
+		// review, so a review probe would not compile).
+		{"the-context-links-the-approval", "internal/ai/aicontext/zz_probe.go", module + "/internal/proposals/approval", "decisions-only-in-the-api", "./internal/ai/aicontext", "./internal/proposals/approval", false},
+		{"the-context-links-the-approval-service", "internal/ai/aicontext/zz_probe.go", module + "/internal/proposals/approval", "ai-suggests-only", "./internal/ai/aicontext", "./internal/proposals/approval", false},
 		{"the-review-imports-the-proposal-service", "internal/ai/review/zz_probe.go", module + "/internal/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/proposals", false},
 		{"the-review-imports-storage", "internal/ai/review/zz_probe.go", module + "/internal/storage/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/storage/proposals", false},
 		{"the-review-reads-files", "internal/ai/review/zz_probe.go", "os", "ai-is-pure-but-the-adapter", "./internal/ai/review", "os", false},

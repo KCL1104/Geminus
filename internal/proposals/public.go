@@ -39,6 +39,11 @@ type Proposal struct {
 	DatasetBindings      []model.DatasetBinding `json:"dataset_bindings,omitzero"`
 	ServerRiskLevel      *string                `json:"server_risk_level,omitzero"`
 	ProviderRiskClaim    *string                `json:"provider_risk_claim,omitzero"`
+	// The decision record (T-026, D-068 PROPOSED): approved, rejected and
+	// conflicted only.
+	DecidedBy       *string `json:"decided_by,omitzero"`
+	DecidedAt       *string `json:"decided_at,omitzero"`
+	DecisionComment *string `json:"decision_comment,omitzero"`
 }
 
 func nonNil[T any](s []T) []T {
@@ -73,16 +78,40 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 		out.DatasetBindings = nonNil(p.DatasetBindings)
 		return nil
 	}
+	// decision is the record of who decided and when (0001 and 0013 require
+	// both of every decided proposal), with the comment unless the decision
+	// was a conflict, which has none.
+	decision := func(comment bool) error {
+		if p.DecidedBy == nil || p.DecidedAt == nil {
+			return fmt.Errorf("proposal %s: %s without its decision record", p.ID, p.Status)
+		}
+		at := timestamp(*p.DecidedAt)
+		out.DecidedBy, out.DecidedAt = p.DecidedBy, &at
+		if comment {
+			out.DecisionComment = p.DecisionComment
+		}
+		return nil
+	}
 	switch p.Status {
 	case store.Generating:
 	case store.NeedsInput:
 		needsInput()
-	case store.Ready, store.Conflicted:
+	case store.Ready:
 		if err := reviewed(); err != nil {
+			return Proposal{}, err
+		}
+	case store.Conflicted:
+		if err := reviewed(); err != nil {
+			return Proposal{}, err
+		}
+		if err := decision(false); err != nil {
 			return Proposal{}, err
 		}
 	case store.Approved:
 		if err := reviewed(); err != nil {
+			return Proposal{}, err
+		}
+		if err := decision(true); err != nil {
 			return Proposal{}, err
 		}
 		out.NewVersionID, out.ScenarioID = p.NewVersionID, p.ScenarioID
@@ -95,6 +124,9 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 			}
 		} else {
 			needsInput()
+		}
+		if err := decision(true); err != nil {
+			return Proposal{}, err
 		}
 	case store.Invalid:
 		validation, err := hashing.Canonical(p.Validation)

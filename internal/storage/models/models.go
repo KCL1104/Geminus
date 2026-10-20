@@ -229,10 +229,21 @@ func InsertDraft(ctx context.Context, tx pgx.Tx, d Draft) (Draft, error) {
 
 // GetDraft returns the draft of the model.
 func GetDraft(ctx context.Context, tx pgx.Tx, org, modelID string) (Draft, error) {
+	return getDraft(ctx, tx, org, modelID, "")
+}
+
+// LockDraft returns the draft of the model and holds its row until the
+// transaction ends: an approval takes the model row, then the draft, then
+// the proposal (ADR-022, D-003's lock order; T-026).
+func LockDraft(ctx context.Context, tx pgx.Tx, org, modelID string) (Draft, error) {
+	return getDraft(ctx, tx, org, modelID, " FOR UPDATE")
+}
+
+func getDraft(ctx context.Context, tx pgx.Tx, org, modelID, lock string) (Draft, error) {
 	d := Draft{OrganizationID: org, ModelID: modelID}
 	var issues []byte
 	err := tx.QueryRow(ctx, `SELECT base_version_id, revision, ir, hash, issues, updated_by, updated_at FROM twin.model_drafts
-		WHERE organization_id=$1 AND model_id=$2`, org, modelID).Scan(&d.BaseVersionID, &d.Revision, &d.IR, &d.Hash, &issues, &d.UpdatedBy, &d.UpdatedAt)
+		WHERE organization_id=$1 AND model_id=$2`+lock, org, modelID).Scan(&d.BaseVersionID, &d.Revision, &d.IR, &d.Hash, &issues, &d.UpdatedBy, &d.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Draft{}, ErrNotFound
 	}

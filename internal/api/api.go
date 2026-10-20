@@ -16,6 +16,7 @@ import (
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/project"
 	"github.com/kcl1104/geminus/internal/proposals"
+	"github.com/kcl1104/geminus/internal/proposals/approval"
 	"github.com/kcl1104/geminus/internal/runs"
 	"github.com/kcl1104/geminus/internal/simulation"
 	"github.com/kcl1104/geminus/internal/storage/objects"
@@ -101,6 +102,10 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	runs.Register(mux, log, v, db, &runs.Service{DB: db, Packs: served, Objects: o.objects, Limits: o.limits}, o.stream)
 	upload.Register(mux, log, v, db, &upload.Service{DB: db, Objects: o.objects, MaxBytes: o.maxUpload}, o.upload)
 	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai})
+	// A person's decision (T-026): it calls no provider, so it does not
+	// depend on whether AI is available; it reads dataset snapshots again
+	// from the object storage given.
+	approval.Register(mux, log, v, db, &approval.Service{DB: db, Packs: served, Objects: o.objects})
 	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")
 	})
