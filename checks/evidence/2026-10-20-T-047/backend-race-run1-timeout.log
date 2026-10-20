@@ -1,0 +1,128 @@
+go test -race ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
+ok  	github.com/kcl1104/geminus/cmd/api	1.085s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.030s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.386s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	14.066s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	34.575s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	1.234s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	1.064s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	2.211s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	4.837s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	1.511s
+ok  	github.com/kcl1104/geminus/internal/ai/review	9.328s
+ok  	github.com/kcl1104/geminus/internal/api	1.496s
+ok  	github.com/kcl1104/geminus/internal/auth	22.590s
+?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/config	1.105s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	1.028s
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	2.286s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	58.154s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	3.808s
+ok  	github.com/kcl1104/geminus/internal/httpapi	1.464s
+ok  	github.com/kcl1104/geminus/internal/ids	1.195s
+ok  	github.com/kcl1104/geminus/internal/import/profile	133.199s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/report	1.085s
+ok  	github.com/kcl1104/geminus/internal/import/upload	1.409s
+ok  	github.com/kcl1104/geminus/internal/model	2.264s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	4.532s
+ok  	github.com/kcl1104/geminus/internal/model/patch	3.974s
+ok  	github.com/kcl1104/geminus/internal/model/validate	5.367s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	1.868s
+ok  	github.com/kcl1104/geminus/internal/models	1.569s
+ok  	github.com/kcl1104/geminus/internal/packs	1.553s
+ok  	github.com/kcl1104/geminus/internal/project	1.429s
+ok  	github.com/kcl1104/geminus/internal/proposals	1.774s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	5.376s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	3.147s
+ok  	github.com/kcl1104/geminus/internal/runs	1.647s
+ok  	github.com/kcl1104/geminus/internal/runs/runner	1.775s
+ok  	github.com/kcl1104/geminus/internal/secret	1.151s
+ok  	github.com/kcl1104/geminus/internal/simulation	2.336s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	164.544s
+panic: test timed out after 10m0s
+	running tests:
+		TestRandomCircularWaitsAreDetected (8s)
+
+goroutine 1434 [running]:
+testing.(*M).startAlarm.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2961 +0x605
+created by time.goFunc
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/time/sleep.go:182 +0x45
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0xc000151b08, {0x93a26c, 0x22}, 0xccee30)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2268 +0xb3e
+testing.runTests.func1(0xc000151b08)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2744 +0x85
+testing.tRunner(0xc000151b08, 0xc000037a40)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2195 +0x21d
+testing.runTests({0x935624, 0x1a}, {0x942163, 0x35}, 0xc000016c30, {0xd028f8, 0x4d, 0x4d}, {0xc2ade15bb9e73ede, 0x8bb5d32420, ...})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2742 +0x9ea
+testing.(*M).Run(0xc00009ea00)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2602 +0xf45
+main.main()
+	_testmain.go:206 +0x165
+
+goroutine 1470 [runnable]:
+reflect.Value.SetLen({0xc60188?, 0xc0006fbe30?, 0x197?}, 0x1)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/reflect/value.go:2270 +0x16e
+encoding/json/v2.makeSliceArshaler.func3(0xc0006d0640, {{0xc60188?, 0xc0006fbe30?, 0x54a2d7?}, 0x7f?}, 0xc0006d0700)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/encoding/json/v2/arshal_default.go:1581 +0x75b
+encoding/json/v2.makeInterfaceArshaler.func2(0xc0006d0640, {{0xc8c0d0?, 0xc0006e6ed0?, 0xc86fc0?}, 0xc0?}, 0xc0006d0700)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/encoding/json/v2/arshal_default.go:1957 +0xc8f
+encoding/json/v2.makeMapArshaler.func3(0xc0006d0640, {{0xc69050?, 0xc000583128?, 0xc0000a704f?}, 0x58?}, 0xc0006d0700)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/encoding/json/v2/arshal_default.go:1062 +0xe03
+encoding/json/v2.makeInterfaceArshaler.func2(0xc0006d0640, {{0xc8c0d0?, 0xc0006e6eb0?, 0x1?}, 0x34?}, 0xc0006d0700)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/encoding/json/v2/arshal_default.go:1957 +0xc8f
+encoding/json/v2.unmarshalDecode(0xc0006d0640, {0xc44338, 0xc0006e6eb0}, 0xc0006d0700, 0x1)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/encoding/json/v2/arshal.go:471 +0x4a3
+encoding/json/v2.Unmarshal({0xc000675800, 0x68a, 0x68a}, {0xc44338, 0xc0006e6eb0}, {0xc000244de8, 0x1, 0x1})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/encoding/json/v2/arshal.go:390 +0x138
+encoding/json.(*Decoder).Decode(0xc000714690, {0xc44338, 0xc0006e6eb0})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/encoding/json/v2_stream.go:90 +0x2c7
+github.com/santhosh-tekuri/jsonschema/v6.UnmarshalJSON({0xccbe68, 0xc000714660})
+	/root/go/pkg/mod/github.com/santhosh-tekuri/jsonschema/v6@v6.0.3/loader.go:259 +0xa5
+github.com/kcl1104/geminus/internal/model/validate.Document({0xc0001c2700, 0x68a, 0x700}, {0x932723, 0x14}, {0x930729, 0x11})
+	/home/user/Geminus/.claude/worktrees/agent-a4a2d6cda564af243/internal/model/validate/ir.go:56 +0x1a5
+github.com/kcl1104/geminus/internal/model/validate.IR({0xc0001c2700, 0x68a, 0x700})
+	/home/user/Geminus/.claude/worktrees/agent-a4a2d6cda564af243/internal/model/validate/ir.go:37 +0x307
+github.com/kcl1104/geminus/internal/simulation/engine.Compile({{{0xc00021f02d, 0x3}, {0xc0004f92e0, 0x1e}, {0xc00066f518, 0x11}, {0xc00066f530, 0x13}, {0xc00021e20a, 0x6}, ...}, ...})
+	/home/user/Geminus/.claude/worktrees/agent-a4a2d6cda564af243/internal/simulation/engine/compile.go:94 +0x245
+github.com/kcl1104/geminus/internal/simulation/engine.TestRandomCircularWaitsAreDetected(0xc000901448)
+	/home/user/Geminus/.claude/worktrees/agent-a4a2d6cda564af243/internal/simulation/engine/kernel_check_blocking_test.go:454 +0x5fe
+testing.tRunner(0xc000901448, 0xccee30)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2195 +0x21d
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.2.linux-amd64/src/testing/testing.go:2260 +0xb13
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	600.099s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	2.145s
+?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	6.650s
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/imports	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	1.258s
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	1.281s
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.166s
+ok  	github.com/kcl1104/geminus/internal/storage/objects	1.669s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.169s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	1.146s
+ok  	github.com/kcl1104/geminus/internal/storage/proposals	1.350s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.035s
+?   	github.com/kcl1104/geminus/internal/storage/runs	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/snapshots	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant	1.438s
+?   	github.com/kcl1104/geminus/internal/tenant/internal/scope	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant/me	1.598s
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	1.382s
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	1.104s
+ok  	github.com/kcl1104/geminus/internal/worker	1.057s
+?   	github.com/kcl1104/geminus/internal/worker/handler	[no test files]
+?   	github.com/kcl1104/geminus/schemas	[no test files]
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	486.187s
+ok  	github.com/kcl1104/geminus/prompts	1.038s
+FAIL
+make: *** [Makefile:47: backend-race] Error 1
+exit 2

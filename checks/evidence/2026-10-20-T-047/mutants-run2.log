@@ -1,0 +1,8 @@
+enqueue-capacity-unchecked	EQUIVALENT 
+deadlock-ignores-fitting-held	EQUIVALENT 
+resolve-counts-no-visits	KILLED --- FAIL: TestDifferentialAgainstFrozenKernel (18.58s)
+r1-no-components	KILLED --- FAIL: TestBlockingCycles (0.01s)
+deadlock-unmapped	KILLED --- FAIL: TestEngineFailures (0.00s)
+deadlock-details-dropped	KILLED --- FAIL: TestEngineFailures (0.00s)
+4/4 killed, 2 equivalent
+exit 0

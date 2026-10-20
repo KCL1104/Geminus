@@ -1,0 +1,10 @@
+T-047 verification environment (2026-10-20)
+
+worktree: /home/user/Geminus/.claude/worktrees/agent-a4a2d6cda564af243, branch t047 (from 0ee3d2a)
+go version go1.27.2 linux/amd64
+Python 3.13.16 (.venv of the worktree, requirements-spec.txt; simpy 4.1.2)
+node v22.22.0 (apps/web/package.json requires >=24.21.0 <25)
+Linux 6.18.44-fc-v139, 4 CPU, shared with two other agent sessions (T-017, T-026) that were running their own
+`go test -race` at the same time; wall-clock times in these logs are therefore slower than on an idle machine.
+No PostgreSQL server; no DB URL set: DB-backed Go tests skip (NOT RUN), make integration-test not run.
+No live AI provider, no API key read or set.

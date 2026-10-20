@@ -1,0 +1,49 @@
+--- FAIL: TestBlockingGoldenResults (0.05s)
+    --- FAIL: TestBlockingGoldenResults/G-B1 (0.04s)
+        blocking_test.go:106: blocking map[]
+             hand-derived map[a:{BlocksStarted:6 BlocksCompleted:6 CompletedBlockTicks:660000 BlockedEntityTicks:660000}]
+        blocking_test.go:109: buffers map[]
+             hand-derived map[qb:{FullTicks:1020000}]
+        blocking_test.go:112: resource states map[]
+             hand-derived map[ra:[1140000 660000 480000] rb:[1080000 0 1080000]]
+    --- FAIL: TestBlockingGoldenResults/G-B3 (0.00s)
+        blocking_test.go:106: blocking map[]
+             hand-derived map[py:{BlocksStarted:1 BlocksCompleted:1 CompletedBlockTicks:960000 BlockedEntityTicks:960000} pz:{BlocksStarted:1 BlocksCompleted:1 CompletedBlockTicks:360000 BlockedEntityTicks:360000} s0:{BlocksStarted:0 BlocksCompleted:0 CompletedBlockTicks:0 BlockedEntityTicks:0}]
+        blocking_test.go:109: buffers map[]
+             hand-derived map[qb:{FullTicks:1740000}]
+        blocking_test.go:112: resource states map[]
+             hand-derived map[rb:[2400000 0 2400000] ry:[1080000 960000 120000] rz:[480000 360000 120000]]
+    --- FAIL: TestBlockingGoldenResults/G-B4 (0.00s)
+        blocking_test.go:106: blocking map[]
+             hand-derived map[src:{BlocksStarted:18 BlocksCompleted:9 CompletedBlockTicks:2160000 BlockedEntityTicks:4320000}]
+        blocking_test.go:109: buffers map[]
+             hand-derived map[qw:{FullTicks:1080000}]
+        blocking_test.go:112: resource states map[]
+             hand-derived map[rw:[1140000 0 1140000]]
+    --- FAIL: TestBlockingGoldenResults/G-B7 (0.00s)
+        blocking_test.go:106: blocking map[]
+             hand-derived map[a:{BlocksStarted:1 BlocksCompleted:1 CompletedBlockTicks:480000 BlockedEntityTicks:480000}]
+        blocking_test.go:109: buffers map[]
+             hand-derived map[qb:{FullTicks:1140000}]
+        blocking_test.go:112: resource states map[]
+             hand-derived map[op:[720000 480000 240000] ra:[660000 480000 180000] rb:[1800000 0 1800000]]
+    --- FAIL: TestBlockingGoldenResults/G-B8 (0.00s)
+        blocking_test.go:106: blocking map[]
+             hand-derived map[a:{BlocksStarted:2 BlocksCompleted:2 CompletedBlockTicks:960000 BlockedEntityTicks:960000} b:{BlocksStarted:4 BlocksCompleted:4 CompletedBlockTicks:2100000 BlockedEntityTicks:2100000}]
+        blocking_test.go:109: buffers map[]
+             hand-derived map[qb:{FullTicks:1680000} qc:{FullTicks:2940000}]
+        blocking_test.go:112: resource states map[]
+             hand-derived map[ra:[1320000 960000 360000] rb:[2460000 2100000 360000] rc:[3600000 0 3600000]]
+    --- FAIL: TestBlockingGoldenResults/G-B9 (0.00s)
+        blocking_test.go:106: blocking map[]
+             hand-derived map[A:{BlocksStarted:1 BlocksCompleted:1 CompletedBlockTicks:180000 BlockedEntityTicks:180000} s_f:{BlocksStarted:0 BlocksCompleted:0 CompletedBlockTicks:0 BlockedEntityTicks:0}]
+        blocking_test.go:109: buffers map[]
+             hand-derived map[qp:{FullTicks:660000}]
+        blocking_test.go:112: resource states map[]
+             hand-derived map[ra:[240000 180000 60000] rp:[1020000 0 1020000]]
+--- FAIL: TestBlockedEntitiesInTheTrace (0.00s)
+    blocking_test.go:219: simulation.schema.json#/$defs/TraceArtifact: <nil> [{IR_SCHEMA_INVALID /events/1/type value must be one of 'arrival', 'queue_enter', 'service_start', 'service_end', 'delay_start', 'delay_end', 'failure', 'rework', 'complete', 'abandon', 'blocked', 'unblocked', 'setup_start' error} {IR_SCHEMA_INVALID /events/3/type value must be one of 'arrival', 'queue_enter', 'service_start', 'service_end', 'delay_start', 'delay_end', 'failure', 'rework', 'complete', 'abandon', 'blocked', 'unblocked', 'setup_start' error} {IR_SCHEMA_INVALID /events/5/type value must be one of 'arrival', 'queue_enter', 'service_start', 'service_end', 'delay_start', 'delay_end', 'failure', 'rework', 'complete', 'abandon', 'blocked', 'unblocked', 'setup_start' error} {IR_SCHEMA_INVALID /events/6/type value must be one of 'arrival', 'queue_enter', 'service_start', 'service_end', 'delay_start', 'delay_end', 'failure', 'rework', 'complete', 'abandon', 'blocked', 'unblocked', 'setup_start' error} {IR_SCHEMA_INVALID /events/9/type value must be one of 'arrival', 'queue_enter', 'service_start', 'service_end', 'delay_start', 'delay_end', 'failure', 'rework', 'complete', 'abandon', 'blocked', 'unblocked', 'setup_start' error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.635s
+FAIL
+exit 1

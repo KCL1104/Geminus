@@ -1,0 +1,65 @@
+package des
+
+// T-047 differential dump (not committed; run on 0ee3d2a and on the T-047
+// branch through -overlay): the full Result and trace JSON of the golden
+// models, with engine_version set to des-go-0.1.0 and the digest recomputed
+// (ADR-026 D-047: a model without a new member is the same bit for bit).
+
+import (
+	"context"
+	"encoding/json/v2"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/simulation"
+)
+
+func TestDumpDifferential(t *testing.T) {
+	out := os.Getenv("DUMP_OUT")
+	if out == "" {
+		t.Skip("DUMP_OUT not set")
+	}
+	review := simulation.ResolvedDataset{
+		Binding: model.DatasetBinding{LogicalRef: "dataset:review_duration", DatasetVersionID: "dsv_01M4YDQK00NMKD3J34KSJZVY40",
+			ContentHash: "sha256:" + strings.Repeat("0", 64), Unit: model.Minute, SampleCount: 3},
+		Samples: []float64{120, 240, 360},
+	}
+	var lines []string
+	for _, name := range []string{"deterministic-queue.json", "congested-queue.json", "default-delivery.json", "report-example.json"} {
+		for _, c := range []struct {
+			horizon, warmup float64
+			reps            int
+		}{{1010, 0, 1}, {5 * 24 * 60, 24 * 60, 4}, {14 * 24 * 60, 0, 3}} {
+			in := input(t, golden(t, name), c.horizon, c.warmup, c.reps, simulation.TraceSampled)
+			in.Datasets = map[string]simulation.ResolvedDataset{review.Binding.LogicalRef: review}
+			in.Manifest = []model.DatasetBinding{review.Binding}
+			o, err := (&Engine{Workers: 3, DomainMetrics: dora}).RunWithTrace(context.Background(), in, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res := *o.Result
+			res.EngineVersion, res.Reproducibility.ResultDigest = "des-go-0.1.0", ""
+			d, err := hashing.Result(res)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res.Reproducibility.ResultDigest = d
+			data, _ := json.Marshal(res, json.Deterministic(true))
+			lines = append(lines, string(data))
+			if o.Trace != nil {
+				tr := *o.Trace
+				tr.EngineVersion = "des-go-0.1.0"
+				data, _ := json.Marshal(tr, json.Deterministic(true))
+				lines = append(lines, string(data))
+			}
+		}
+	}
+	if err := os.WriteFile(out, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_ = filepath.Join
+}

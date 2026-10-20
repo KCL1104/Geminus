@@ -36,7 +36,6 @@
   },
   "ready_tasks": [
     "T-035",
-    "T-047",
     "T-048",
     "T-049",
     "T-050",
@@ -59,6 +58,13 @@
         "D-067",
         "D-068",
         "D-069"
+      ]
+    },
+    {
+      "id": "T-047",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-064"
       ]
     }
   ],
@@ -613,7 +619,9 @@
     "D-064": {
       "status": "proposed",
       "gate": "T-047 驗收前；T-048–T-050 延伸 B1／B2 時沿用 (a)",
-      "gates_tasks": []
+      "gates_tasks": [
+        "T-047"
+      ]
     },
     "D-067": {
       "status": "proposed",

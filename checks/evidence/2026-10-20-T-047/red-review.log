@@ -1,0 +1,12 @@
+--- FAIL: TestBufferCapacityRisk (0.04s)
+    --- FAIL: TestBufferCapacityRisk/an_unlimited_buffer_made_finite (0.00s)
+        buffer_risk_test.go:75: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestBufferCapacityRisk/a_smaller_buffer (0.00s)
+        buffer_risk_test.go:75: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+--- FAIL: TestLiftedPrimitivesHaveRiskCases (0.00s)
+    lineflow_risk_test.go:65: finite_buffer, a smaller buffer: server risk low, want at least medium
+    lineflow_risk_test.go:65: finite_buffer, a buffer of one: server risk low, want at least medium
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.273s
+FAIL
+exit 1

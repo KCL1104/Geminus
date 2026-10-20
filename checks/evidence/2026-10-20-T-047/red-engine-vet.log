@@ -1,0 +1,13 @@
+# github.com/kcl1104/geminus/internal/simulation/engine [github.com/kcl1104/geminus/internal/simulation/engine.test]
+internal/simulation/engine/blocking_test.go:103:8: undefined: ObsBlocked
+internal/simulation/engine/blocking_test.go:107:8: undefined: ObsUnblocked
+internal/simulation/engine/blocking_test.go:184:36: p.HasFiniteBuffers undefined (type *Program has no field or method HasFiniteBuffers)
+internal/simulation/engine/blocking_test.go:185:39: p.HasFiniteBuffers undefined (type *Program has no field or method HasFiniteBuffers)
+internal/simulation/engine/blocking_test.go:232:8: undefined: ObsUnblocked
+internal/simulation/engine/blocking_test.go:282:16: undefined: ObsBlocked
+internal/simulation/engine/blocking_test.go:321:9: np.HasFiniteBuffers undefined (type *Program has no field or method HasFiniteBuffers)
+internal/simulation/engine/blocking_test.go:359:10: undefined: DeadlockError
+internal/simulation/engine/blocking_test.go:360:21: undefined: ErrDeadlock
+internal/simulation/engine/blocking_test.go:367:51: undefined: ObsBlocked
+internal/simulation/engine/blocking_test.go:367:51: too many errors
+exit 1

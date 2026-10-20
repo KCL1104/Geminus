@@ -1,0 +1,36 @@
+T-047 exit codes (worktree, branch t047). Each log ends with its own "exit N" line unless noted.
+
+baseline (0ee3d2a, before T-047)
+  make backend-test                                     0   baseline-backend-test.log
+
+red (tests written before the implementation)
+  go test ./internal/model/validate/ (R1 tests)         1   red-validate.log
+  go vet ./internal/simulation/engine/ (new tests)      1   red-engine-vet.log
+  go test ./internal/simulation/des/ (Result members)   1   red-des.log
+  go test ./internal/ai/review/ (D-057 risk)            1   red-review.log
+  go test ./internal/runs/... (SIMULATION_DEADLOCK)     1   red-runs.log
+
+fuzz
+  go test -fuzz FuzzBlocking -fuzztime 3m (engine)      0   fuzz-blocking.log
+  go test -fuzz FuzzKernel -fuzztime 90s (engine)       0   fuzz-kernel.log
+  go test -fuzz FuzzRun -fuzztime 90s (des)             0   fuzz-run.log
+
+mutation
+  t047-mutants.py (run 1, 61 mutants)                   1   mutants-run1.log  (55 killed, 1 equivalent, 1 survived -> equivalent, 4 mutants did not compile -> fixed)
+  t047-mutants.py (run 2, the 6 re-run)                 0   mutants-run2.log  (4 killed, 2 equivalent)
+
+verification
+  make spec-check PYTHON=.venv/bin/python               0   spec-check.log
+  make backend-test GOFLAGS=-count=1                    0   backend-test.log
+  make backend-race GOFLAGS=-count=1 (default 10m)      2   backend-race-run1-timeout.log  (engine package timed out, not a race)
+  make backend-race GOFLAGS=-count=1 (-timeout 30m)     0   backend-race.log
+  make architecture-check                               0   architecture-check.log
+  make ai-eval                                          0   ai-eval.log  (checks/ai-evals unchanged)
+  make simulation-reference-test PYTHON=.venv/bin/python 0  simulation-reference-test.log, simpy-reference-report.json
+  make frontend-test                                    2   frontend-test.log  (NOT RUN: no node_modules, Node 22.22.0 < 24.21.0)
+  go test -count=1 -v ./internal/simulation/engine/     0   engine-tests-verbose.log (filtered to --- and statistics lines)
+  external differential 0ee3d2a vs t047 (dump test)     -   differential-base-vs-head.txt: IDENTICAL
+
+NOT RUN
+  make integration-test / make db-test / make db-go-test (no PostgreSQL; for the coordinator)
+  make e2e-test, make benchmark-test (placeholder), make ai-eval-live (live AI not approved)

@@ -1,0 +1,7 @@
+Diagnostic (temporary FuzzDiag = FuzzKernel's body with a per-worker call counter, not committed), go test -fuzz 25 s:
+coordinator display: execs: 13
+calls-1001.txt: 308750 2026-10-20 05:58:35.945068735 +0000 UTC m=+24.092394895
+calls-1002.txt: 221359 2026-10-20 05:58:36.187356833 +0000 UTC m=+24.334462708
+calls-1003.txt: 357830 2026-10-20 05:58:35.944871325 +0000 UTC m=+24.089964663
+calls-1004.txt: 279150 2026-10-20 05:58:35.945187978 +0000 UTC m=+24.090849258
+calls-986.txt: 0 2026-10-20 05:58:35.90434481 +0000 UTC m=+24.066467793

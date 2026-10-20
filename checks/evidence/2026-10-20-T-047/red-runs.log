@@ -1,0 +1,10 @@
+# github.com/kcl1104/geminus/internal/runs [github.com/kcl1104/geminus/internal/runs.test]
+internal/runs/runs_test.go:117:9: undefined: store.SimulationDeadlock
+internal/runs/runs_test.go:191:50: undefined: store.SimulationDeadlock
+FAIL	github.com/kcl1104/geminus/internal/runs [build failed]
+# github.com/kcl1104/geminus/internal/runs/runner [github.com/kcl1104/geminus/internal/runs/runner.test]
+internal/runs/runner/failure_test.go:53:47: undefined: store.SimulationDeadlock
+internal/runs/runner/failure_test.go:64:110: undefined: store.SimulationDeadlock
+FAIL	github.com/kcl1104/geminus/internal/runs/runner [build failed]
+FAIL
+exit 1

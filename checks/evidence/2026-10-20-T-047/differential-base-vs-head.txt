@@ -1,0 +1,7 @@
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.333s
+    24 201023 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/diff-base.jsonl
+    24 201023 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/diff-head.jsonl
+    48 402046 total
+0dcb6d050982c611a1a96727ecb27fc5d679eb41f676654e8487e60e63b82e01  /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/diff-base.jsonl
+0dcb6d050982c611a1a96727ecb27fc5d679eb41f676654e8487e60e63b82e01  /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/diff-head.jsonl
+IDENTICAL
