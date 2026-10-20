@@ -527,7 +527,30 @@ paths:
         '415':
           $ref: '#/components/responses/Error415'
         '422':
-          $ref: '#/components/responses/Error422'
+          description: 'Schema, semantic, dataset or constraint validation failed. A draft that uses a line-flow member
+            (ADR-026) this build does not implement yet is refused with PRIMITIVE_NOT_SUPPORTED at each such member (D-063
+            PROPOSED). Codes: MODEL_VALIDATION_FAILED, REQUEST_VALIDATION_FAILED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                primitive_not_supported:
+                  summary: The draft gives a queue a finite capacity, which the engine does not run before T-047
+                  value:
+                    error:
+                      code: MODEL_VALIDATION_FAILED
+                      message: the model is not valid
+                      details:
+                      - path: /nodes/4/capacity
+                        reason: this build does not support finite queue capacity (ADR-026 D-049) yet; remove it to
+                          publish or run the model
+                        code: PRIMITIVE_NOT_SUPPORTED
+                        severity: error
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '429':
           $ref: '#/components/responses/Error429'
         '500':
@@ -1670,7 +1693,32 @@ paths:
         '415':
           $ref: '#/components/responses/Error415'
         '422':
-          $ref: '#/components/responses/Error422'
+          description: 'Schema, semantic, dataset or constraint validation failed. The effective model (version plus
+            scenario patch) must compile: a line-flow member (ADR-026) the engine does not run yet is refused with
+            PRIMITIVE_NOT_SUPPORTED before anything is queued (D-063 PROPOSED). Codes: MODEL_VALIDATION_FAILED,
+            REQUEST_VALIDATION_FAILED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                primitive_not_supported:
+                  summary: The scenario patch adds a finite capacity to an unlimited queue (D-057), which the engine
+                    does not run before T-047
+                  value:
+                    error:
+                      code: MODEL_VALIDATION_FAILED
+                      message: the run's effective model is not valid
+                      details:
+                      - path: /nodes/3/capacity
+                        reason: this build does not support finite queue capacity (ADR-026 D-049) yet; remove it to
+                          publish or run the model
+                        code: PRIMITIVE_NOT_SUPPORTED
+                        severity: error
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '429':
           $ref: '#/components/responses/Error429'
         '500':
