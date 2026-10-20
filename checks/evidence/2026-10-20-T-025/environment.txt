@@ -1,0 +1,14 @@
+2026-10-20 T-025 environment
+
+Worktree: /home/user/Geminus/.claude/worktrees/agent-a305afd748cc0f98c
+Branch base: claude/lucid-meitner-vq1awo at ec0612f
+Code under test: 579706d. The final runs of make backend-test, backend-race
+and architecture-check started from 45a46df with the probe fix of 579706d
+in the working tree, which is the same code.
+Go: go1.27.2 linux/amd64
+Node: v22.22.0, npm 10.9.4 (apps/web requires node >=24.21.0 <25)
+CPUs: 4
+PostgreSQL: none used (see db-not-run.txt)
+AI provider: the deterministic fake only (internal/ai/provider/fake); no
+live AI call, no API key read or set.
+go clean -testcache ran before the final go test runs.

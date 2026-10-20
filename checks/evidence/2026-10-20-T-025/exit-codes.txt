@@ -1,0 +1,20 @@
+2026-10-20 T-025 exit codes. The make, go-test-ai, t025-go-tests and npm
+logs end with their "exit N" line. The red and green go test logs end with
+go test's own FAIL or ok line; their exit codes were read from the shell.
+
+go test -count=1 ./internal/ai/...                            0  go-test-ai.log
+make backend-test (first run)                                 2  backend-test-run1-fail.log (architecture probe import cycle; fixed in 579706d)
+make backend-test                                             0  backend-test.log
+make backend-race                                             0  backend-race.log
+make architecture-check                                       0  architecture-check.log
+make ai-eval                                                  0  ai-eval.log
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python    0  spec-check.log (final run: spec-check-final.log)
+go test -count=1 -v (T-025 packages, no DB)                   0  t025-go-tests.log (47 PASS, 0 FAIL; DB-backed tests SKIP)
+go test review (red, before the review fix)                   1  review-red.log
+go test review (green)                                        0  review-green.log
+go test TestExpectedEffectsAreQualitative (red)               1  effects-red.log
+go test TestExpectedEffectsAreQualitative (green)             0  effects-green.log
+npm --prefix apps/web ci                                      1  npm-ci.log (EBADENGINE: node 22.22.0, needs >=24.21.0; not bypassed)
+make frontend-test                                            2  frontend-test.log (no dependencies installed; NOT RUN)
+su postgres -c 'id'                                           refused by the tool, db-not-run.txt
+make integration-test / make db-test                          NOT RUN (DB rule)

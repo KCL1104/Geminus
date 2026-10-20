@@ -41,7 +41,7 @@ GEMINUS_AI_EVAL_REPORT=/home/user/Geminus/.claude/worktrees/agent-a305afd748cc0f
         		"live provider eval (make ai-eval-live)"
         	]
         }
---- PASS: TestFakeProviderEval (0.61s)
+--- PASS: TestFakeProviderEval (0.65s)
 === RUN   TestReviewEval
     review_test.go:444: {
         	"suite": "T-025 fake-provider review suite (hand-written reference and unsafe answers)",
@@ -85,6 +85,6 @@ GEMINUS_AI_EVAL_REPORT=/home/user/Geminus/.claude/worktrees/agent-a305afd748cc0f
         }
 --- PASS: TestReviewEval (0.61s)
 PASS
-ok  	github.com/kcl1104/geminus/internal/ai/corpus	1.237s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	1.273s
 ai-eval: fake-provider context and review suites only. Scoring the answers of a real model (golden >=90%, T-038), database effects (T-025 make integration-test, T-026), the analyst output checks (T-030) and the live provider eval (make ai-eval-live) are NOT RUN.
 exit 0
