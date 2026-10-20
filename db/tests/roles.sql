@@ -120,6 +120,18 @@ SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
   $q$UPDATE twin.ai_proposals SET expected_effects='[{"metric":"x"}]' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$,
   $q$UPDATE twin.ai_proposals SET error='{"code":"x"}' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='aip_01M4YDQK00TA00000000000001'$q$
 ]) AS s;
+-- T-017 (0014): only a VALIDATED import is committed (review round 1,
+-- L1): the worker validates the saved revision with its job first.
+UPDATE twin.jobs SET status='running', attempt=attempt+1, locked_at=now(), locked_by='worker-1', lease_token=lease_token+1,
+    lease_expires_at=now()+interval '30 seconds', heartbeat_at=now(), available_at=now(), error=NULL
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000067';
+UPDATE twin.imports SET status='VALIDATED', validation='{"valid":true,"issues":[]}', canonical_preview='[]',
+    canonical_object_key='tenant/org_01M4YDQK00TA00000000000000/imports/imp_01M4YDQK00TA00000000000001/canonical-r1-a1.json', canonical_content_hash='sha256:3333333333333333333333333333333333333333333333333333333333333333', canonical_size_bytes=2
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';
+UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL
+  WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000067';
+SET CONSTRAINTS ALL IMMEDIATE; -- validated with its job
+SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE twin_api;
 UPDATE twin.imports SET status='COMMITTED', invalid_rows=0, dataset_version_id='dsv_01M4YDQK00TA00000000000001', proposal_id='aip_01M4YDQK00TA00000000000001'
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';

@@ -1,0 +1,85 @@
+# github.com/kcl1104/geminus/internal/import/validation
+internal/import/validation/validation_test.go:309:16: string literal not terminated
+FAIL	github.com/kcl1104/geminus/internal/import/validation [setup failed]
+# github.com/kcl1104/geminus/internal/import/validator [github.com/kcl1104/geminus/internal/import/validator.test]
+internal/import/validator/validate_test.go:109:71: too many arguments in call to f.h.validate
+	have (context.Context, string, number, imports.Import, number, func(context.Context) (bool, error))
+	want (context.Context, string, int, imports.Import, int64)
+internal/import/validator/validate_test.go:110:59: out.stale undefined (type outcome has no field or method stale)
+internal/import/validator/validate_test.go:137:71: too many arguments in call to f.h.validate
+	have (context.Context, string, number, imports.Import, number, func(context.Context) (bool, error))
+	want (context.Context, string, int, imports.Import, int64)
+internal/import/validator/validate_test.go:172:72: too many arguments in call to f.h.validate
+	have (context.Context, string, number, imports.Import, number, func(context.Context) (bool, error))
+	want (context.Context, string, int, imports.Import, int64)
+internal/import/validator/validate_test.go:187:71: too many arguments in call to f.h.validate
+	have (context.Context, string, number, imports.Import, number, func(context.Context) (bool, error))
+	want (context.Context, string, int, imports.Import, int64)
+internal/import/validator/validate_test.go:188:24: out.stale undefined (type outcome has no field or method stale)
+internal/import/validator/validate_test.go:195:72: too many arguments in call to f.h.validate
+	have (context.Context, string, number, imports.Import, number, func(context.Context) (bool, error))
+	want (context.Context, string, int, imports.Import, int64)
+internal/import/validator/validate_test.go:202:74: too many arguments in call to bad.h.validate
+	have (context.Context, string, number, imports.Import, number, func(context.Context) (bool, error))
+	want (context.Context, string, int, imports.Import, int64)
+internal/import/validator/validate_test.go:218:66: too many arguments in call to h.validate
+	have (context.Context, string, number, imports.Import, number, func(context.Context) (bool, error))
+	want (context.Context, string, int, imports.Import, int64)
+# github.com/kcl1104/geminus/internal/import/upload [github.com/kcl1104/geminus/internal/import/upload.test]
+internal/import/upload/upload_test.go:302:51: undefined: ErrSuggestionInvalid
+internal/import/upload/upload_test.go:303:47: undefined: CodeSuggestionInvalid
+internal/import/upload/upload_test.go:334:132: undefined: ErrSuggestionInvalid
+--- FAIL: TestLowConfidenceNeedsAPerson (0.00s)
+    mapping_test.go:277: three unconfirmed: [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/3} {MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/6}], want [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/3} {MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/6} {MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/11}]
+    mapping_test.go:277: one confirmed: [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/3}], want [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/3} {MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/11}]
+    mapping_test.go:277: all confirmed: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/2}], want []
+    mapping_test.go:277: the person chose otherwise: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/1}], want []
+    mapping_test.go:277: a column the AI left out and the mapping does not list: [], want [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings}]
+    mapping_test.go:277: ...confirmed by name: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/2}], want []
+    mapping_test.go:277: a confident suggestion needs nothing: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/2} {MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/3}], want [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/3}]
+    mapping_test.go:277: a column of no suggestion: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/2} {MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/3}], want [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/3}]
+--- FAIL: TestTheServerDecidesWhatNeedsAPerson (0.00s)
+    mapping_test.go:322: 0.1 without the flag: []
+    mapping_test.go:326: 0.1 without the flag: confirmed by name: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/0}]
+    mapping_test.go:322: 0.7999 without the flag: []
+    mapping_test.go:326: 0.7999 without the flag: confirmed by name: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/0}]
+    mapping_test.go:322: a column left out at 0.95 without the flag: []
+    mapping_test.go:326: a column left out at 0.95 without the flag: confirmed by name: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/0}]
+    mapping_test.go:322: a column left out, whatever transform the AI named: []
+    mapping_test.go:326: a column left out, whatever transform the AI named: confirmed by name: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/0}]
+    mapping_test.go:322: a low-confidence end the person leaves out: []
+    mapping_test.go:326: a low-confidence end the person leaves out: confirmed by name: [{MAPPING_CONFIRMATION_UNKNOWN /confirmed_low_confidence/0}]
+--- FAIL: TestTransforms (0.02s)
+    mapping_test.go:479: timestamp {kind:1 text:2026-10-13T06:12:00+24:00 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:479: timestamp {kind:1 text:2026-10-13T06:12:00-24:00 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:479: timestamp {kind:1 text:2026-10-13T06:12:00+05:60 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:479: timestamp {kind:1 text:2026-10-13T06:12:00-00:00 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:479: timestamp {kind:1 text:2026-10-13T06:12:00.5-00:00 raw:[]}: issues , want MAPPING_VALUE_INVALID
+    mapping_test.go:479: end_timestamp {kind:1 text:2026-10-13T06:12:00+24:00 raw:[]}: issues 0:EVENT_END_BEFORE_START, want MAPPING_VALUE_INVALID
+    mapping_test.go:479: end_timestamp {kind:1 text:2026-10-13T06:12:00-00:00 raw:[]}: issues , want MAPPING_VALUE_INVALID
+--- FAIL: FuzzApply (0.00s)
+    --- FAIL: FuzzApply/seed#11 (0.00s)
+        fuzz_test.go:132: {"case_id":"SN-3","event_type":"operation","timestamp":"2026-10-13T06:12:00+24:00","stage":"fct"} is not a canonical event: [{SCHEMA /timestamp '2026-10-13T06:12:00+24:00' is not valid date-time: invalid time element: hour/min in offset out of range error}]
+    --- FAIL: FuzzApply/seed#12 (0.00s)
+        fuzz_test.go:132: {"case_id":"SN-3","event_type":"operation","timestamp":"2026-10-13T06:12:00+24:00","stage":"fct"} is not a canonical event: [{SCHEMA /timestamp '2026-10-13T06:12:00+24:00' is not valid date-time: invalid time element: hour/min in offset out of range error}]
+    --- FAIL: FuzzApply/seed#13 (0.00s)
+        fuzz_test.go:132: {"case_id":"SN-4","event_type":"operation","timestamp":"2026-10-13T06:12:00+05:60","stage":"fct"} is not a canonical event: [{SCHEMA /timestamp '2026-10-13T06:12:00+05:60' is not valid date-time: invalid time element: hour/min in offset out of range error}]
+    --- FAIL: FuzzApply/seed#14 (0.00s)
+        fuzz_test.go:132: {"case_id":"SN-4","event_type":"operation","timestamp":"2026-10-13T06:12:00+05:60","stage":"fct"} is not a canonical event: [{SCHEMA /timestamp '2026-10-13T06:12:00+05:60' is not valid date-time: invalid time element: hour/min in offset out of range error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.083s
+--- FAIL: TestInference (0.00s)
+    profile_test.go:296: ["2026-10-15T08:30:00+24:00"]: timestamp, want string
+    profile_test.go:296: ["2026-10-15T08:30:00+05:60"]: timestamp, want string
+    profile_test.go:296: ["2026-10-15T08:30:00-00:00"]: timestamp, want string
+--- FAIL: TestShapesAreTheInferences (0.00s)
+    scan_test.go:108: IsTimestamp("2026-10-13T06:12:00+05:60") = true
+    scan_test.go:108: IsTimestamp("2026-10-13T06:12:00+24:00") = true
+    scan_test.go:108: IsTimestamp("2026-10-13T06:12:00-00:00") = true
+    scan_test.go:108: IsTimestamp("2026-10-13T06:12:00.25-00:00") = true
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/import/profile	4.462s
+FAIL	github.com/kcl1104/geminus/internal/import/validator [build failed]
+FAIL	github.com/kcl1104/geminus/internal/import/upload [build failed]
+FAIL
+exit 1

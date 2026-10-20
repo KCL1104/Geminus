@@ -35,6 +35,7 @@ import (
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
 	"github.com/kcl1104/geminus/internal/import/report"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
 // Limits bound what a validation keeps and what a dataset may be.
@@ -69,6 +70,23 @@ func (l Limits) valid() bool {
 // larger than MaxDatasetBytes (mapping fewer columns to metadata makes it
 // smaller).
 const CodeDatasetTooLarge = "DATASET_TOO_LARGE"
+
+// CodeEventNotCanonical: a row mapped without an issue, yet its event is
+// not a canonical-event.schema.json instance. The mapping's rules are meant
+// to be the schema's, so this is a defect of the server; the row is
+// invalid and never part of a dataset (T-017 review round 1, M3: fail
+// closed).
+const CodeEventNotCanonical = "EVENT_NOT_CANONICAL"
+
+const notCanonical = "the row's canonical event does not match canonical-event.schema.json"
+
+// canonical reports whether doc, an event as encode wrote it, is a
+// canonical-event.schema.json instance: the last check of every event
+// before it may be part of a dataset (a variable for the package's tests).
+var canonical = func(doc []byte) bool {
+	issues, err := validate.Document(doc, "canonical-event.schema.json", CodeEventNotCanonical)
+	return err == nil && len(issues) == 0
+}
 
 // ErrChanged: the file Write reads is not the file Validate accepted (a
 // row no longer maps, its columns differ, or it grew past the dataset's
@@ -290,6 +308,13 @@ func Validate(ctx context.Context, r io.Reader, f importprofile.Format, plan *ma
 		if err != nil {
 			return err
 		}
+		if !canonical(data) {
+			out.InvalidRows++
+			path := pointer(row.Index, "")
+			keep(model.NewIssue(CodeEventNotCanonical, path, notCanonical, model.SeverityError),
+				report.Entry{Path: path, Line: row.Line, Code: CodeEventNotCanonical, Message: notCanonical})
+			return pv.add(nil)
+		}
 		out.DatasetBytes += int64(len(data))
 		valid++
 		return pv.add(&e)
@@ -355,6 +380,9 @@ func Write(ctx context.Context, r io.Reader, f importprofile.Format, plan *mappi
 		data, err := encode(e)
 		if err != nil {
 			return err
+		}
+		if !canonical(data) {
+			return ErrChanged
 		}
 		sep := []byte(",")
 		if rows == 0 {

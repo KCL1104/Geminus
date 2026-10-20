@@ -46,8 +46,8 @@
 --     as the API only once its profile job has failed or been cancelled,
 --     and from VALIDATING only once its current revision's job has ended,
 --     from a trigger or not.
---   * What leads to COMMITTED (D-009's commit) is T-018's; 0001's check
---     still holds it.
+--   * COMMITTED only from VALIDATED, for every role; what else a commit
+--     (D-009) needs is T-018's, and 0001's check still holds it.
 BEGIN;
 SET LOCAL ROLE twin_owner;
 
@@ -118,6 +118,11 @@ BEGIN
   END IF;
   IF OLD.status IN ('FAILED', 'COMMITTED') THEN
     RAISE EXCEPTION 'a % import is final', OLD.status USING ERRCODE = '55000';
+  END IF;
+  -- D-009's commit takes a VALIDATED import only (D-071 (g); T-018 adds
+  -- what else a commit needs; T-017 review round 1, L1).
+  IF NEW.status = 'COMMITTED' AND OLD.status <> 'VALIDATED' THEN
+    RAISE EXCEPTION 'an import is committed only once it is VALIDATED, not %', OLD.status USING ERRCODE = '55000';
   END IF;
   IF OLD.profile IS NOT NULL AND NEW.profile IS DISTINCT FROM OLD.profile THEN
     RAISE EXCEPTION 'an import''s profile never changes once written' USING ERRCODE = '55000';
@@ -240,12 +245,19 @@ REVOKE ALL ON FUNCTION twin.protect_import() FROM PUBLIC; -- runs as a trigger, 
 
 -- A mapping revision is saved with its validation job, for every role:
 -- otherwise the import would stay VALIDATING with no job to validate it.
+-- At commit (or SET CONSTRAINTS), an import still VALIDATING has a live
+-- (queued or running) job of its current revision: a job inserted for the
+-- revision and ended before the save, which no import followed, does not
+-- count (T-017 review round 1, L2). The import's state is read again, so
+-- several saves in one transaction are judged by the last.
 CREATE FUNCTION twin.check_import_validating_with_its_job() RETURNS trigger LANGUAGE plpgsql
   SET search_path = pg_catalog, pg_temp AS $$
+DECLARE s text; r bigint;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM twin.jobs j
+  SELECT status, mapping_revision INTO s, r FROM twin.imports WHERE organization_id = NEW.organization_id AND id = NEW.id;
+  IF s = 'VALIDATING' AND NOT EXISTS (SELECT 1 FROM twin.jobs j
                  WHERE j.organization_id = NEW.organization_id AND j.import_id = NEW.id AND j.type = 'import_validate'
-                   AND j.payload->>'mapping_revision' = NEW.mapping_revision::text) THEN
+                   AND j.payload->>'mapping_revision' = r::text AND j.status IN ('queued', 'running')) THEN
     RAISE EXCEPTION 'a mapping revision is saved with its validation job' USING ERRCODE = '55000';
   END IF;
   RETURN NULL;

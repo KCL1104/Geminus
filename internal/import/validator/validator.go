@@ -16,6 +16,9 @@
 // outcome only while the import is still VALIDATING at that revision; a
 // person who saved a newer mapping meanwhile makes the job complete
 // without writing anything (migration 0014 refuses such a write anyway).
+// The job also checks, under the lease, before the second read that would
+// store the dataset, and stops there when a newer mapping was saved (T-017
+// review round 1, L5: no dataset of up to 256 MiB for a stale revision).
 //
 // Rows that do not map are an outcome, not a job failure. The job fails,
 // and is retried while attempts remain, when object storage fails; when it
@@ -112,6 +115,7 @@ type Validation struct {
 type outcome struct {
 	failure            *store.Failure
 	valid              bool
+	stale              bool // a newer mapping was saved before the dataset was written
 	validation         []byte
 	preview            []byte
 	rows, invalid, max int
@@ -140,10 +144,24 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	}); err != nil {
 		return err
 	}
+	// still checks, under the lease, that the import is still VALIDATING at
+	// the job's revision.
+	still := func(ctx context.Context) (bool, error) {
+		ok := false
+		err := hr.Checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
+			cur, err := store.Get(ctx, tx, org, p.ImportID)
+			if err != nil {
+				return err
+			}
+			ok = cur.Status == store.Validating && cur.MappingRevision == p.MappingRevision
+			return nil
+		})
+		return ok, err
+	}
 	var out outcome
 	if current {
 		var err error
-		if out, err = h.validate(ctx, org, job.Attempt, imp, p.MappingRevision); err != nil {
+		if out, err = h.validate(ctx, org, job.Attempt, imp, p.MappingRevision, still); err != nil {
 			return err
 		}
 	}
@@ -154,7 +172,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		meta := map[string]any{"attempt": job.Attempt, "mapping_revision": p.MappingRevision}
 		switch {
-		case !current || cur.Status != store.Validating || cur.MappingRevision != p.MappingRevision:
+		case !current || out.stale || cur.Status != store.Validating || cur.MappingRevision != p.MappingRevision:
 			// A newer mapping, or the import ended: this revision's job
 			// writes nothing (the stale-job fence).
 			meta["outcome"] = "stale"
@@ -261,9 +279,11 @@ func (h *Handler) read(ctx context.Context, imp store.Import, pass func(io.Reade
 }
 
 // validate validates every row of imp's upload under its mapping of
-// revision rev, outside any transaction, and stores the error report or
-// the canonical dataset.
-func (h *Handler) validate(ctx context.Context, org string, attempt int, imp store.Import, rev int64) (outcome, error) {
+// revision rev, outside any transaction, and stores the error report or,
+// once still has found the import still at rev under the lease, the
+// canonical dataset.
+func (h *Handler) validate(ctx context.Context, org string, attempt int, imp store.Import, rev int64,
+	still func(context.Context) (bool, error)) (outcome, error) {
 	if !store.OwnKey(org, imp.ID, imp.UploadKey) {
 		return outcome{failure: &store.Failure{Code: store.UploadCorrupt, Message: "the import names an object outside its own key prefix"}}, nil
 	}
@@ -336,6 +356,12 @@ func (h *Handler) validate(ctx context.Context, org string, attempt int, imp sto
 		}
 		out.report = &store.Report{Key: obj.Key, SHA256: obj.SHA256, Size: obj.Size}
 		return out, nil
+	}
+	// The second read only for the current revision (L5).
+	if ok, err := still(ctx); err != nil {
+		return outcome{}, err
+	} else if !ok {
+		return outcome{stale: true}, nil
 	}
 	dataset, fail, err := h.write(ctx, org, attempt, imp, rev, format, plan, lim)
 	if err != nil {

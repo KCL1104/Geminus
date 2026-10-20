@@ -1,0 +1,13 @@
+=== RUN   TestProbeOffset2400
+    zz_probe_test.go:30: valid=false invalid=1 issues=[{MAPPING_VALUE_INVALID /0/開始 timestamp: the value is not an RFC 3339 date-time with an offset error} {MAPPING_VALUE_INVALID /0/結束 end_timestamp: the value is not an RFC 3339 date-time with an offset error}]
+--- PASS: TestProbeOffset2400 (0.00s)
+=== RUN   TestProbePointerEscape
+    zz_probe_test.go:54: issues [{MAPPING_REQUIRED_VALUE_MISSING /0/type~01 event_type: the value is empty, but every canonical event has one error}]
+--- PASS: TestProbePointerEscape (0.00s)
+=== RUN   TestProbeReportCells
+    zz_probe_test.go:73: issues [{MAPPING_VALUE_TOO_LONG /0/=cmd|' ~1C calc'!A0 case_id: the value is longer than 256 characters error} {MAPPING_VALUE_INVALID /0/at timestamp: the value is not an RFC 3339 date-time with an offset error}]
+        report "\ufeff\"path\",\"line\",\"column\",\"code\",\"message\",\"value\"\r\n\"/0/=cmd|' ~1C calc'!A0\",\"2\",\"'=cmd|' /C calc'!A0\",\"MAPPING_VALUE_TOO_LONG\",\"case_id: the value is longer than 256 characters\",\"\"\r\n\"/0/at\",\"2\",\"at\",\"MAPPING_VALUE_INVALID\",\"timestamp: the value is not an RFC 3339 date-time with an offset\",\"\"\r\n"
+--- PASS: TestProbeReportCells (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/validation	0.019s
+exit 0

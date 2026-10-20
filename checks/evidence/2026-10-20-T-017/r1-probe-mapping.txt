@@ -1,0 +1,35 @@
+=== RUN   TestProbeOffsetsBeyondRFC3339
+    zz_probe_test.go:25: "2026-10-13T06:12:00+24:00" -> timestamp "" apply-issues [{2 MAPPING_VALUE_INVALID timestamp: the value is not an RFC 3339 date-time with an offset}]; schema issues [{EVENT /timestamp '2026-10-13T06:12:00+24:00' is not valid date-time: invalid time element: hour/min in offset out of range error}] <nil>
+    zz_probe_test.go:25: "2026-10-13T06:12:00+99:00" -> timestamp "" apply-issues [{2 MAPPING_VALUE_INVALID timestamp: the value is not an RFC 3339 date-time with an offset}]; schema issues [{EVENT /timestamp '2026-10-13T06:12:00+99:00' is not valid date-time: invalid time element: hour/min in offset out of range error}] <nil>
+    zz_probe_test.go:25: "2026-10-13T06:12:00+05:60" -> timestamp "" apply-issues [{2 MAPPING_VALUE_INVALID timestamp: the value is not an RFC 3339 date-time with an offset}]; schema issues [{EVENT /timestamp '2026-10-13T06:12:00+05:60' is not valid date-time: invalid time element: hour/min in offset out of range error}] <nil>
+    zz_probe_test.go:25: "2026-10-13T24:00:00Z" -> timestamp "" apply-issues [{2 MAPPING_VALUE_INVALID timestamp: the value is not an RFC 3339 date-time with an offset}]; schema issues [{EVENT /timestamp '2026-10-13T24:00:00Z' is not valid date-time: invalid time element: hour/min/sec out of range error}] <nil>
+    zz_probe_test.go:25: "2026-10-13T23:59:60Z" -> timestamp "" apply-issues [{2 MAPPING_VALUE_INVALID timestamp: the value is not an RFC 3339 date-time with an offset}]; schema issues [] <nil>
+--- PASS: TestProbeOffsetsBeyondRFC3339 (0.01s)
+=== RUN   TestProbeLowConfidenceWithoutTheFlag
+    zz_probe_test.go:38: confidence 0.1, requires_confirmation false: issues [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/3}]
+--- PASS: TestProbeLowConfidenceWithoutTheFlag (0.00s)
+=== RUN   TestProbeNullSuggestionNeedsConfirmation
+    zz_probe_test.go:53: null suggestion taken as is, nothing confirmed: issues [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/4}]
+    zz_probe_test.go:58: null suggestion taken as is, confirmed by name: issues []
+--- PASS: TestProbeNullSuggestionNeedsConfirmation (0.00s)
+=== RUN   TestProbeFuzzApplyNeverReachesAValidRow
+    zz_probe_test.go:73: entry 3 timestamp, entry 9 is_rework
+    zz_probe_test.go:89: a="2026-10-13T06:12:00Z" json=false: 2 issue(s), first [{Entry:4 Code:MAPPING_VALUE_INVALID Message:end_timestamp: the value is not an RFC 3339 date-time with an offset}]
+    zz_probe_test.go:89: a="2026-10-13T06:12:00Z" json=true: 2 issue(s), first [{Entry:4 Code:MAPPING_VALUE_INVALID Message:end_timestamp: the value is not an RFC 3339 date-time with an offset}]
+    zz_probe_test.go:89: a="true" json=false: 2 issue(s), first [{Entry:3 Code:MAPPING_VALUE_INVALID Message:timestamp: the value is not an RFC 3339 date-time with an offset}]
+    zz_probe_test.go:89: a="true" json=true: 4 issue(s), first [{Entry:0 Code:MAPPING_VALUE_INVALID Message:case_id: the value is not text}]
+    zz_probe_test.go:89: a="" json=false: 3 issue(s), first [{Entry:0 Code:MAPPING_REQUIRED_VALUE_MISSING Message:case_id: the value is empty, but every canonical event has one}]
+    zz_probe_test.go:89: a="" json=true: 5 issue(s), first [{Entry:0 Code:MAPPING_VALUE_INVALID Message:case_id: the value is not text}]
+    zz_probe_test.go:89: a="\"2026-10-13T06:12:00Z\"" json=false: 3 issue(s), first [{Entry:3 Code:MAPPING_VALUE_INVALID Message:timestamp: the value is not an RFC 3339 date-time with an offset}]
+    zz_probe_test.go:89: a="\"2026-10-13T06:12:00Z\"" json=true: 5 issue(s), first [{Entry:0 Code:MAPPING_VALUE_INVALID Message:case_id: the value is not text}]
+--- PASS: TestProbeFuzzApplyNeverReachesAValidRow (0.00s)
+=== RUN   TestProbeTimestamps
+    zz_probe_test.go:108: "2026-10-13T06:12:00-00:00" -> timestamp "" issues [{2 MAPPING_VALUE_INVALID timestamp: the value is not an RFC 3339 date-time with an offset}]
+    zz_probe_test.go:108: "2026-10-13T06:12:00+24:00" -> timestamp "" issues [{2 MAPPING_VALUE_INVALID timestamp: the value is not an RFC 3339 date-time with an offset}]
+    zz_probe_test.go:108: "2026-10-13T06:12:00.1234567891234Z" -> timestamp "2026-10-13T06:12:00.1234567891234Z" issues []
+    zz_probe_test.go:108: "2026-10-13t06:12:00z" -> timestamp "2026-10-13t06:12:00z" issues []
+    zz_probe_test.go:108: "2026-10-13T06:12:00+23:59" -> timestamp "2026-10-13T06:12:00+23:59" issues []
+--- PASS: TestProbeTimestamps (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/import/mapping	0.023s
+exit 0

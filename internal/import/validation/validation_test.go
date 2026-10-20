@@ -266,6 +266,98 @@ func TestBounds(t *testing.T) {
 	}
 }
 
+// Review round 1, M3: an offset RFC 3339 does not have (+24:00, +05:60)
+// or the unknown offset (-00:00, L6) is an invalid row, never an event of
+// a dataset; the offsets RFC 3339 has are kept as written.
+func TestOffsets(t *testing.T) {
+	p := plan(t, stationMapping(), stationColumns)
+	for _, c := range []struct {
+		start, end string
+		column     string
+	}{
+		{"2026-10-13T06:12:00+24:00", "2026-10-13T06:15:10+24:00", "開始"},
+		{"2026-10-13T06:12:00+05:60", "", "開始"},
+		{"2026-10-13T06:12:00-00:00", "", "開始"},
+		{"2026-10-13T06:12:00Z", "2026-10-13T06:15:10-24:00", "結束"},
+	} {
+		data := header + row("SN-1", c.start, c.end, "pass", "", "L-7")
+		out := run(t, data, importprofile.CSV, p, validation.DefaultLimits)
+		if out.Valid() || out.InvalidRows != 1 || len(out.Issues) < 1 || out.Issues[0].Path != "/0/"+c.column ||
+			out.Issues[0].Code != mapping.CodeValueInvalid {
+			t.Errorf("%s %s: %+v", c.start, c.end, out)
+		}
+		if _, err := validation.Write(context.Background(), strings.NewReader(data), importprofile.CSV, p, validation.DefaultLimits, &bytes.Buffer{}); !errors.Is(err, validation.ErrChanged) {
+			t.Errorf("%s: written: %v", c.start, err)
+		}
+	}
+	data := header + row("SN-1", "2026-10-13T06:12:00+23:59", "2026-10-13T06:15:10-23:59", "pass", "", "L-7")
+	if out := run(t, data, importprofile.CSV, p, validation.DefaultLimits); !out.Valid() {
+		t.Fatalf("+23:59: %+v", out.Issues)
+	}
+	dataset, _ := write(t, data, importprofile.CSV, p, validation.DefaultLimits)
+	if !strings.Contains(string(dataset), `"timestamp":"2026-10-13T06:12:00+23:59"`) {
+		t.Errorf("%s", dataset)
+	}
+}
+
+// Review round 1, L4 (R17): a column name's '~' and '/' are escaped in an
+// issue's path as JSON Pointer says (~0 and ~1).
+func TestPointersEscapeColumnNames(t *testing.T) {
+	cols := []string{"case/id", "type~1", "at"}
+	m := mapping.Mapping{Mappings: []mapping.Entry{entry("case/id", mapping.CaseID), entry("type~1", mapping.EventType), entry("at", mapping.Timestamp)}}
+	p := plan(t, m, cols)
+	out := run(t, "case/id,type~1,at\n,,2026-10-13T06:12:00Z\n", importprofile.CSV, p, validation.DefaultLimits)
+	var paths []string
+	for _, is := range out.Issues {
+		paths = append(paths, is.Path)
+	}
+	if fmt.Sprint(paths) != "[/0/case~1id /0/type~01]" {
+		t.Errorf("paths %v", paths)
+	}
+	if len(out.Errors) != 2 || out.Errors[0].Path != "/0/case~1id" || out.Errors[0].Column != "case/id" || out.Errors[1].Column != "type~1" {
+		t.Errorf("report entries %+v", out.Errors)
+	}
+}
+
+// Review round 1, L4 (R19): the canonical preview takes a row only while
+// the whole preview fits PreviewBytes, the brackets and commas counted.
+func TestPreviewByteBoundary(t *testing.T) {
+	p := plan(t, stationMapping(), stationColumns)
+	data := header + row("SN-1", "2026-10-13T06:12:00Z", "", "pass", "", "L-7") + row("SN-2", "2026-10-13T06:13:00Z", "", "pass", "", "")
+	all := run(t, data, importprofile.CSV, p, validation.DefaultLimits)
+	if len(all.Preview) != 2 {
+		t.Fatalf("%d preview rows", len(all.Preview))
+	}
+	exact := 2 + len(all.Preview[0]) + 1 + len(all.Preview[1]) // [a,b]
+	lim := validation.DefaultLimits
+	lim.PreviewBytes = exact
+	if out := run(t, data, importprofile.CSV, p, lim); len(out.Preview) != 2 {
+		t.Errorf("at the limit: %d rows", len(out.Preview))
+	}
+	lim.PreviewBytes = exact - 1
+	if out := run(t, data, importprofile.CSV, p, lim); len(out.Preview) != 1 {
+		t.Errorf("one byte short: %d rows", len(out.Preview))
+	}
+	lim.PreviewBytes = 2 + len(all.Preview[0]) - 1
+	if out := run(t, data, importprofile.CSV, p, lim); len(out.Preview) != 0 {
+		t.Errorf("no room for the first row: %d rows", len(out.Preview))
+	}
+}
+
+// Review round 1, L4 (R21): Write maps every row again and refuses a file
+// in which a row no longer maps, whatever Validate said before.
+func TestWriteRefusesARowThatDoesNotMap(t *testing.T) {
+	p := plan(t, stationMapping(), stationColumns)
+	data := validLog + row("SN-000125", "yesterday", "", "pass", "", "")
+	if _, err := validation.Write(context.Background(), strings.NewReader(data), importprofile.CSV, p, validation.DefaultLimits, &bytes.Buffer{}); !errors.Is(err, validation.ErrChanged) {
+		t.Errorf("a row that does not map was written: %v", err)
+	}
+	data = validLog + row("SN-000125", "2026-10-13T06:12:00Z", "2026-10-13T06:11:00Z", "pass", "", "")
+	if _, err := validation.Write(context.Background(), strings.NewReader(data), importprofile.CSV, p, validation.DefaultLimits, &bytes.Buffer{}); !errors.Is(err, validation.ErrChanged) {
+		t.Errorf("an end before its start was written: %v", err)
+	}
+}
+
 // The file must be the one the plan was made for, and the profile's rules
 // still hold: other columns are ErrChanged, a broken file the profile's
 // failure, an ended context its error.

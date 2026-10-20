@@ -87,7 +87,7 @@ type Mapping struct {
 
 // SuggestedEntry is an entry of an AI suggestion (ai-mapping.schema.json),
 // of which the confirmation rule reads the column, the target, the
-// transform and whether it requires a person's confirmation.
+// transform, the confidence and the flag (NeedsPerson).
 type SuggestedEntry struct {
 	SourceColumn         string    `json:"source_column"`
 	TargetField          *Field    `json:"target_field"`
@@ -100,6 +100,19 @@ type SuggestedEntry struct {
 // Suggestion is ai-mapping.schema.json.
 type Suggestion struct {
 	Mappings []SuggestedEntry `json:"mappings"`
+}
+
+// ConfirmBelow is AI_SPEC §8's confidence threshold: an entry below it needs
+// a person's confirmation.
+const ConfirmBelow = 0.80
+
+// NeedsPerson reports whether a person must confirm the entry before a
+// mapping takes it (AI_SPEC §8): its confidence is below 0.80, it leaves
+// the column out (a null target), or it says so. The server decides from
+// the confidence and the target; the flag is the AI's own claim and can
+// only add to them (T-017 review round 1, M1, M2).
+func (e SuggestedEntry) NeedsPerson() bool {
+	return e.RequiresConfirmation || e.Confidence < ConfirmBelow || e.TargetField == nil
 }
 
 // The codes of a mapping a person may not save (the details of a 422).
@@ -188,10 +201,12 @@ func (is *issues) add(code, path, message string) {
 // named once; no field but metadata is filled twice; case_id, event_type
 // and timestamp are filled; at most 64 columns go to metadata; each
 // field's transform is its own. When the import has an AI suggestion s,
-// every entry that imports a column exactly as an entry of s that requires
-// confirmation said is named in confirmed, and confirmed names only such
-// entries (D-070: a person confirms each low-confidence suggestion; the AI
-// never confirms). No issue means m may be saved.
+// a person names in confirmed every column the mapping takes as an entry of
+// s that needs a person said (SuggestedEntry.NeedsPerson): imported with
+// the same target and transform, or, for an entry that leaves the column
+// out, not imported (by a null entry or by not listing it); confirmed
+// names only such columns (D-070 (d): a person confirms each such
+// suggestion; the AI never confirms). No issue means m may be saved.
 func Check(m Mapping, columns []string, s *Suggestion, confirmed []string) []model.ValidationIssue {
 	var out issues
 	known := make(map[string]bool, len(columns))
@@ -245,34 +260,52 @@ func Check(m Mapping, columns []string, s *Suggestion, confirmed []string) []mod
 	return out
 }
 
-// confirmations is D-070's rule for a suggestion's low-confidence entries:
-// the mapping entries that import a column exactly as such an entry said
-// must be named in confirmed, and confirmed names nothing else.
+// confirmations is D-070 (d)'s rule for the entries of a suggestion that
+// need a person: each column the mapping takes as such an entry said is
+// named in confirmed, and confirmed names nothing else. A column such an
+// entry leaves out is taken as it said when the mapping does not import it
+// either: by a null entry (whose issue points at it) or by not listing it
+// (whose issue points at /mapping/mappings). Issues follow the mapping's
+// entries, then the suggestion's.
 func confirmations(m Mapping, s *Suggestion, confirmed []string) issues {
 	var out issues
 	needs := map[string]bool{}
+	required := func(column, at string) {
+		if needs[column] {
+			return // one issue per column
+		}
+		needs[column] = true
+		if !slices.Contains(confirmed, column) {
+			out.add(CodeConfirmationRequired, at,
+				"this column is taken as the AI suggested, which needs a person's confirmation; name it in confirmed_low_confidence")
+		}
+	}
 	if s != nil {
+		listed := map[string]bool{}
 		for i, e := range m.Mappings {
-			if e.TargetField == nil {
-				continue
-			}
+			listed[e.SourceColumn] = true
 			for _, se := range s.Mappings {
-				if se.RequiresConfirmation && se.SourceColumn == e.SourceColumn && se.TargetField != nil &&
-					*se.TargetField == *e.TargetField && se.Transform == e.Transform {
-					needs[e.SourceColumn] = true
-					if !slices.Contains(confirmed, e.SourceColumn) {
-						out.add(CodeConfirmationRequired, "/mapping/mappings/"+strconv.Itoa(i),
-							"this entry is the AI's suggestion that needs a person's confirmation; name its source column in confirmed_low_confidence")
-					}
+				if !se.NeedsPerson() || se.SourceColumn != e.SourceColumn {
+					continue
+				}
+				left := se.TargetField == nil && e.TargetField == nil
+				same := se.TargetField != nil && e.TargetField != nil && *se.TargetField == *e.TargetField && se.Transform == e.Transform
+				if left || same {
+					required(e.SourceColumn, "/mapping/mappings/"+strconv.Itoa(i))
 					break
 				}
+			}
+		}
+		for _, se := range s.Mappings {
+			if se.NeedsPerson() && se.TargetField == nil && !listed[se.SourceColumn] {
+				required(se.SourceColumn, "/mapping/mappings")
 			}
 		}
 	}
 	for j, c := range confirmed {
 		if !needs[c] {
 			out.add(CodeConfirmationUnknown, "/confirmed_low_confidence/"+strconv.Itoa(j),
-				"this is not a column the mapping imports as a suggestion that needs confirmation said")
+				"this is not a column the mapping takes as a suggestion that needs a person said")
 		}
 	}
 	return out

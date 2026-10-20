@@ -3,6 +3,7 @@ package upload
 import (
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -177,19 +178,29 @@ func TestFieldsCheck(t *testing.T) {
 // mapping of failure codes to the closed ErrorCode list), the failure's
 // own code and JSON Pointer in details[0], under the upload's request.
 func TestEnvelope(t *testing.T) {
+	// The message names no step (T-017: a validation's failure is shown
+	// the same way as a profile's; review round 1, L4).
+	const processed, again = "the file could not be processed", "the file could not be processed; upload it again"
 	cases := []struct {
 		stored, code string
 		path         string
+		message      string
 	}{
-		{`{"code":"IMPORT_LIMIT_EXCEEDED","message":"the file has more than 100000 rows","path":"/100000","retryable":false}`, "PAYLOAD_TOO_LARGE", "/100000"},
-		{`{"code":"JSON_DUPLICATE_KEY","message":"a member name repeats within one JSON object","path":"/41/case_id","retryable":false}`, "REQUEST_VALIDATION_FAILED", "/41/case_id"},
-		{`{"code":"CSV_SYNTAX_INVALID","message":"m","path":"/2","retryable":false}`, "REQUEST_VALIDATION_FAILED", "/2"},
-		{`{"code":"IMPORT_ENCODING_INVALID","message":"line 2: not UTF-8","retryable":false}`, "REQUEST_VALIDATION_FAILED", ""},
-		{`{"code":"OBJECT_STORAGE_FAILED","message":"object storage failed","retryable":true}`, "SERVICE_UNAVAILABLE", ""},
-		{`{"code":"LEASE_EXPIRED","message":"the lease expired","retryable":true}`, "SERVICE_UNAVAILABLE", ""},
-		{`{"code":"WORKER_STOPPED","message":"stopped","retryable":true}`, "SERVICE_UNAVAILABLE", ""},
-		{`{"code":"UPLOAD_CORRUPT","message":"m","retryable":false}`, "INTERNAL_ERROR", ""},
-		{`{"code":"INTERNAL","message":"","retryable":true}`, "INTERNAL_ERROR", ""},
+		{`{"code":"IMPORT_LIMIT_EXCEEDED","message":"the file has more than 100000 rows","path":"/100000","retryable":false}`, "PAYLOAD_TOO_LARGE", "/100000", "the file is larger than an import may be"},
+		{`{"code":"JSON_DUPLICATE_KEY","message":"a member name repeats within one JSON object","path":"/41/case_id","retryable":false}`, "REQUEST_VALIDATION_FAILED", "/41/case_id", "the file cannot be read as uploaded"},
+		{`{"code":"CSV_SYNTAX_INVALID","message":"m","path":"/2","retryable":false}`, "REQUEST_VALIDATION_FAILED", "/2", "the file cannot be read as uploaded"},
+		{`{"code":"IMPORT_ENCODING_INVALID","message":"line 2: not UTF-8","retryable":false}`, "REQUEST_VALIDATION_FAILED", "", "the file cannot be read as uploaded"},
+		{`{"code":"OBJECT_STORAGE_FAILED","message":"object storage failed","retryable":true}`, "SERVICE_UNAVAILABLE", "", again},
+		{`{"code":"OBJECT_STORAGE_UNAVAILABLE","message":"this worker has no object storage","retryable":true}`, "SERVICE_UNAVAILABLE", "", again},
+		{`{"code":"LEASE_EXPIRED","message":"the lease expired","retryable":true}`, "SERVICE_UNAVAILABLE", "", again},
+		{`{"code":"WORKER_STOPPED","message":"stopped","retryable":true}`, "SERVICE_UNAVAILABLE", "", again},
+		{`{"code":"UPLOAD_CORRUPT","message":"m","retryable":false}`, "INTERNAL_ERROR", "", processed},
+		{`{"code":"UPLOAD_CHANGED","message":"m","retryable":false}`, "INTERNAL_ERROR", "", processed},
+		{`{"code":"JOB_CANCELLED","message":"m","retryable":false}`, "INTERNAL_ERROR", "", processed},
+		{`{"code":"INTERNAL","message":"","retryable":true}`, "INTERNAL_ERROR", "", processed},
+		// Review round 1, L3: the server could not read what it stored
+		// (CB-39(a)): not a problem with the file, whatever its prefix.
+		{`{"code":"IMPORT_INPUT_INVALID","message":"the import's mapping cannot be read","retryable":false}`, "INTERNAL_ERROR", "", processed},
 	}
 	for _, c := range cases {
 		e, err := envelope([]byte(c.stored), "req_01M4YDQK00V6H8S0ST4F7510KR")
@@ -199,7 +210,8 @@ func TestEnvelope(t *testing.T) {
 		var f store.Failure
 		_ = json.Unmarshal([]byte(c.stored), &f)
 		d := e.Error.Details
-		if e.Error.Code != c.code || len(d) != 1 || d[0].Code != f.Code || d[0].Path != c.path || d[0].Reason == "" || e.Error.RequestID != "req_01M4YDQK00V6H8S0ST4F7510KR" {
+		if e.Error.Code != c.code || e.Error.Message != c.message || len(d) != 1 || d[0].Code != f.Code || d[0].Path != c.path || d[0].Reason == "" ||
+			e.Error.RequestID != "req_01M4YDQK00V6H8S0ST4F7510KR" {
 			t.Errorf("%s: %+v", c.stored, e.Error)
 		}
 		data, _ := json.Marshal(e)
@@ -284,6 +296,49 @@ func TestRefused(t *testing.T) {
 	}
 	if errors.As(Refused(ErrReportCorrupt), &e) {
 		t.Error("a corrupt report is shown to the client")
+	}
+	// Review round 1, M1: a stored suggestion that does not match its
+	// schema is the server's fault: 500, with its code, and nothing saved.
+	if !errors.As(Refused(fmt.Errorf("import x: %w", ErrSuggestionInvalid)), &e) || e.Code != httpapi.InternalError ||
+		len(e.Details) != 1 || e.Details[0].Code != CodeSuggestionInvalid || e.Details[0].Path != "" {
+		t.Errorf("a malformed suggestion: %+v", e)
+	}
+}
+
+// Review round 1, M1: the stored suggestion is the worker's (the AI's)
+// writing, so it is checked against ai-mapping.schema.json each time a
+// save reads it: one that does not match (a confidence below 0.80 that is
+// not flagged, a null target that is not flagged, another member, a ready
+// status with no suggestion) fails closed; a suggestion that is not ready
+// is not read at all.
+func TestStoredSuggestion(t *testing.T) {
+	good := `{"mappings":[{"source_column":"a","target_field":"case_id","confidence":0.9,"evidence":"e","transform":"identity","requires_confirmation":false},` +
+		`{"source_column":"b","target_field":null,"confidence":0.3,"evidence":"e","transform":"identity","requires_confirmation":true}]}`
+	s, err := suggestion(store.Import{ID: "imp_x", MappingSuggestionStatus: "ready", MappingSuggestion: []byte(good)})
+	if err != nil || s == nil || len(s.Mappings) != 2 || s.Mappings[1].TargetField != nil || s.Mappings[0].Confidence != 0.9 {
+		t.Fatalf("%+v %v", s, err)
+	}
+	for name, doc := range map[string]string{
+		"a low confidence not flagged": `{"mappings":[{"source_column":"a","target_field":"case_id","confidence":0.1,"evidence":"e","transform":"identity","requires_confirmation":false}]}`,
+		"a null target not flagged":    `{"mappings":[{"source_column":"a","target_field":null,"confidence":0.9,"evidence":"e","transform":"identity","requires_confirmation":false}]}`,
+		"another member":               `{"mappings":[{"source_column":"a","target_field":"case_id","confidence":0.9,"evidence":"e","transform":"identity","requires_confirmation":false,"approved":true}]}`,
+		"an expression":                `{"mappings":[{"source_column":"a","target_field":"case_id","confidence":0.9,"evidence":"e","transform":"=A1","requires_confirmation":false}]}`,
+		"a confidence above 1":         `{"mappings":[{"source_column":"a","target_field":"case_id","confidence":1.5,"evidence":"e","transform":"identity","requires_confirmation":false}]}`,
+		"not an object":                `[]`,
+		"no suggestion":                ``,
+	} {
+		var stored []byte
+		if doc != "" {
+			stored = []byte(doc)
+		}
+		if s, err := suggestion(store.Import{ID: "imp_x", MappingSuggestionStatus: "ready", MappingSuggestion: stored}); !errors.Is(err, ErrSuggestionInvalid) || s != nil {
+			t.Errorf("%s: %+v %v", name, s, err)
+		}
+	}
+	for _, status := range []string{"none", "generating", "failed"} {
+		if s, err := suggestion(store.Import{ID: "imp_x", MappingSuggestionStatus: status, MappingSuggestion: []byte(`not json`)}); err != nil || s != nil {
+			t.Errorf("%s: %+v %v", status, s, err)
+		}
 	}
 }
 

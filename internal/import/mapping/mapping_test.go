@@ -218,9 +218,19 @@ func TestCheck(t *testing.T) {
 	}
 }
 
-// D-070: an AI suggestion is never applied, and an entry the person saves
-// exactly as a suggestion that requires confirmation (confidence below
-// 0.80) is confirmed by name; a name that is not such an entry is refused.
+// D-070 (d), AI_SPEC §8: an AI suggestion is never applied. The server
+// decides which of its entries need a person: confidence below 0.80, a
+// null target (the column left out) or the flag, whatever the stored flag
+// says (review round 1, M1, M2). An entry the person saves exactly as such
+// an entry said, and a column such a null entry leaves out that the
+// mapping does not import either, is confirmed by name; a name that is
+// not such a column is refused.
+//
+// Review round 1 (M2) corrected this test: it used to pin that a column the
+// AI left out with confidence 0.2 needed no confirmation and could not be
+// confirmed ("a column the person did not import"), which AI_SPEC §8
+// forbids; such a column now needs the person's confirmation like any
+// other low-confidence entry.
 func TestLowConfidenceNeedsAPerson(t *testing.T) {
 	s := &mapping.Suggestion{Mappings: []mapping.SuggestedEntry{
 		{SourceColumn: "序號", TargetField: field(mapping.CaseID), Confidence: 0.96, Transform: mapping.Identity},
@@ -234,20 +244,31 @@ func TestLowConfidenceNeedsAPerson(t *testing.T) {
 		confirmed []string
 		issues    []issue
 	}{
-		{"two unconfirmed", func(*mapping.Mapping) {}, nil,
-			[]issue{{mapping.CodeConfirmationRequired, "/mapping/mappings/3"}, {mapping.CodeConfirmationRequired, "/mapping/mappings/6"}}},
+		{"three unconfirmed", func(*mapping.Mapping) {}, nil,
+			[]issue{{mapping.CodeConfirmationRequired, "/mapping/mappings/3"}, {mapping.CodeConfirmationRequired, "/mapping/mappings/6"},
+				{mapping.CodeConfirmationRequired, "/mapping/mappings/11"}}},
 		{"one confirmed", func(*mapping.Mapping) {}, []string{"班別"},
-			[]issue{{mapping.CodeConfirmationRequired, "/mapping/mappings/3"}}},
-		{"both confirmed", func(*mapping.Mapping) {}, []string{"開始", "班別"}, nil},
+			[]issue{{mapping.CodeConfirmationRequired, "/mapping/mappings/3"}, {mapping.CodeConfirmationRequired, "/mapping/mappings/11"}}},
+		{"all confirmed", func(*mapping.Mapping) {}, []string{"開始", "班別", "作業員"}, nil},
 		{"the person chose otherwise", func(m *mapping.Mapping) {
 			m.Mappings[6] = entry("班別", mapping.Metadata, mapping.Identity)
-		}, []string{"開始"}, nil},
-		{"a confident suggestion needs nothing", func(*mapping.Mapping) {}, []string{"開始", "班別", "序號"},
-			[]issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/2"}}},
-		{"a column the person did not import", func(*mapping.Mapping) {}, []string{"開始", "班別", "作業員"},
-			[]issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/2"}}},
-		{"a column of no suggestion", func(*mapping.Mapping) {}, []string{"開始", "班別", "批號"},
-			[]issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/2"}}},
+		}, []string{"開始", "作業員"}, nil},
+		{"the person imports the column the AI left out", func(m *mapping.Mapping) {
+			m.Mappings[11] = entry("作業員", mapping.Metadata, mapping.Identity)
+		}, []string{"開始", "班別"}, nil},
+		{"...and so it is not confirmed", func(m *mapping.Mapping) {
+			m.Mappings[11] = entry("作業員", mapping.Metadata, mapping.Identity)
+		}, []string{"開始", "班別", "作業員"}, []issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/2"}}},
+		{"a column the AI left out and the mapping does not list", func(m *mapping.Mapping) {
+			m.Mappings = m.Mappings[:11]
+		}, []string{"開始", "班別"}, []issue{{mapping.CodeConfirmationRequired, "/mapping/mappings"}}},
+		{"...confirmed by name", func(m *mapping.Mapping) {
+			m.Mappings = m.Mappings[:11]
+		}, []string{"開始", "班別", "作業員"}, nil},
+		{"a confident suggestion needs nothing", func(*mapping.Mapping) {}, []string{"開始", "班別", "作業員", "序號"},
+			[]issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/3"}}},
+		{"a column of no suggestion", func(*mapping.Mapping) {}, []string{"開始", "班別", "作業員", "批號"},
+			[]issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/3"}}},
 	}
 	for _, c := range cases {
 		m := station()
@@ -260,6 +281,51 @@ func TestLowConfidenceNeedsAPerson(t *testing.T) {
 	if got := issuesOf(mapping.Check(station(), stationColumns, nil, []string{"開始"})); fmt.Sprint(got) !=
 		fmt.Sprint([]issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/0"}}) {
 		t.Errorf("no suggestion: %v", got)
+	}
+}
+
+// M1 of review round 1: the stored flag is the AI's claim; the server
+// decides from the confidence and the target. An entry below 0.80 or one
+// that leaves a column out needs a person even when it says it does not;
+// 0.80 and above, with a target and no flag, does not.
+func TestTheServerDecidesWhatNeedsAPerson(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		entry mapping.SuggestedEntry
+		edit  func(*mapping.Mapping)
+		needs bool
+	}{
+		{"0.1 without the flag", mapping.SuggestedEntry{SourceColumn: "開始", TargetField: field(mapping.Timestamp), Confidence: 0.1,
+			Transform: mapping.RFC3339}, nil, true},
+		{"0.7999 without the flag", mapping.SuggestedEntry{SourceColumn: "開始", TargetField: field(mapping.Timestamp), Confidence: 0.7999,
+			Transform: mapping.RFC3339}, nil, true},
+		{"0.80 without the flag", mapping.SuggestedEntry{SourceColumn: "開始", TargetField: field(mapping.Timestamp), Confidence: 0.80,
+			Transform: mapping.RFC3339}, nil, false},
+		{"0.99 with the flag", mapping.SuggestedEntry{SourceColumn: "開始", TargetField: field(mapping.Timestamp), Confidence: 0.99,
+			Transform: mapping.RFC3339, RequiresConfirmation: true}, nil, true},
+		{"a column left out at 0.95 without the flag", mapping.SuggestedEntry{SourceColumn: "作業員", Confidence: 0.95,
+			Transform: mapping.Identity}, nil, true},
+		{"a column left out, whatever transform the AI named", mapping.SuggestedEntry{SourceColumn: "作業員", Confidence: 0.95,
+			Transform: mapping.RFC3339}, nil, true},
+		{"a low-confidence end the person leaves out", mapping.SuggestedEntry{SourceColumn: "結束", Confidence: 0.3, Transform: mapping.Identity,
+			RequiresConfirmation: true}, func(m *mapping.Mapping) { m.Mappings[4] = unmapped("結束") }, true},
+		{"another transform than the suggestion's", mapping.SuggestedEntry{SourceColumn: "開始", TargetField: field(mapping.Timestamp),
+			Confidence: 0.1, Transform: mapping.Identity}, nil, false},
+	} {
+		s := &mapping.Suggestion{Mappings: []mapping.SuggestedEntry{c.entry}}
+		m := station()
+		if c.edit != nil {
+			c.edit(&m)
+		}
+		got := issuesOf(mapping.Check(m, stationColumns, s, nil))
+		if (len(got) == 1 && got[0].code == mapping.CodeConfirmationRequired) != c.needs || (!c.needs && len(got) > 0) {
+			t.Errorf("%s: %v", c.name, got)
+		}
+		if c.needs {
+			if got := issuesOf(mapping.Check(m, stationColumns, s, []string{c.entry.SourceColumn})); len(got) > 0 {
+				t.Errorf("%s: confirmed by name: %v", c.name, got)
+			}
+		}
 	}
 }
 
@@ -353,6 +419,19 @@ func TestTransforms(t *testing.T) {
 		{mapping.Timestamp, mapping.Text("2026-10-13t06:12:00.5z"), `"timestamp":"2026-10-13t06:12:00.5z"`},
 		{mapping.Timestamp, js(`"2026-10-13T06:12:00Z"`), `"timestamp":"2026-10-13T06:12:00Z"`},
 		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00"), mapping.CodeValueInvalid}, // no time zone is assumed
+		// RFC 3339's offsets are 00:00 to 23:59 (review round 1, M3), and
+		// "-00:00" says the offset is unknown (L6): no time zone is assumed.
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00+23:59"), `"timestamp":"2026-10-13T06:12:00+23:59"`},
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00-23:59"), `"timestamp":"2026-10-13T06:12:00-23:59"`},
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00+00:00"), `"timestamp":"2026-10-13T06:12:00+00:00"`},
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00+24:00"), mapping.CodeValueInvalid},
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00-24:00"), mapping.CodeValueInvalid},
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00+05:60"), mapping.CodeValueInvalid},
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00+99:00"), mapping.CodeValueInvalid},
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00-00:00"), mapping.CodeValueInvalid},
+		{mapping.Timestamp, mapping.Text("2026-10-13T06:12:00.5-00:00"), mapping.CodeValueInvalid},
+		{mapping.EndTimestamp, mapping.Text("2026-10-13T06:12:00+24:00"), mapping.CodeValueInvalid},
+		{mapping.EndTimestamp, mapping.Text("2026-10-13T06:12:00-00:00"), mapping.CodeValueInvalid},
 		{mapping.Timestamp, mapping.Text("2026/10/13 06:12"), mapping.CodeValueInvalid},
 		{mapping.Timestamp, mapping.Text("2026-02-30T06:12:00Z"), mapping.CodeValueInvalid},
 		{mapping.Timestamp, js(`1760000000`), mapping.CodeValueInvalid},

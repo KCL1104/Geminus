@@ -98,7 +98,12 @@ func TestScanRefusals(t *testing.T) {
 // profile's inferred types predict what a mapping accepts.
 func TestShapesAreTheInferences(t *testing.T) {
 	for s, want := range map[string]bool{"2026-10-13T06:12:00+08:00": true, "2026-10-13t06:12:00z": true, "2026-10-13T06:12:00": false,
-		"2026/10/13 06:12": false, "2026-13-01T00:00:00Z": false, "": false} {
+		"2026/10/13 06:12": false, "2026-13-01T00:00:00Z": false, "": false,
+		// Review round 1: RFC 3339's offsets only (M3), and "-00:00", whose
+		// offset is unknown, is not a time with an offset (L6).
+		"2026-10-13T06:12:00+23:59": true, "2026-10-13T06:12:00-23:59": true, "2026-10-13T06:12:00+00:00": true,
+		"2026-10-13T06:12:00+24:00": false, "2026-10-13T06:12:00+05:60": false, "2026-10-13T06:12:00+99:00": false,
+		"2026-10-13T06:12:00-00:00": false, "2026-10-13T06:12:00.25-00:00": false} {
 		if importprofile.IsTimestamp(s) != want {
 			t.Errorf("IsTimestamp(%q) = %v", s, !want)
 		}

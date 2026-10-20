@@ -12,15 +12,19 @@ import (
 // The value shapes a type is inferred from, exactly as written: JSON's
 // number grammar (so "007", "+5" and " 5" are strings) and RFC 3339
 // date-times with an offset (JSON Schema's date-time; a time without an
-// offset is a string).
+// offset is a string). An offset is RFC 3339's time-numoffset, 00:00 to
+// 23:59, as canonical-event.schema.json's date-time checks it (T-017
+// review round 1, M3: Go's time.Parse also takes +24:00 and +05:60).
+// "-00:00" is RFC 3339's "the offset is unknown" (section 4.3): no time
+// zone is assumed for it (D-072 (a); review round 1, L6).
 var (
 	integerText   = regexp.MustCompile(`^-?(0|[1-9][0-9]*)$`)
 	numberText    = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$`)
-	timestampText = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?([Zz]|[+-][0-9]{2}:[0-9]{2})$`)
+	timestampText = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?([Zz]|[+-]([01][0-9]|2[0-3]):[0-5][0-9])$`)
 )
 
 func isTimestamp(s string) bool {
-	if !timestampText.MatchString(s) {
+	if !timestampText.MatchString(s) || strings.HasSuffix(s, "-00:00") {
 		return false
 	}
 	_, err := time.Parse(time.RFC3339Nano, strings.ToUpper(s)) // the pattern is ASCII

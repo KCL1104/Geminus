@@ -498,12 +498,27 @@ func (b *beforeFinish) Finish(ctx context.Context, end jobs.Status, fn func(ctx 
 	return b.Run.Finish(ctx, end, fn)
 }
 
+// beforeCheckpoint is a run that calls hook before its n-th checkpoint.
+type beforeCheckpoint struct {
+	handler.Run
+	n, seen int
+	hook    func()
+}
+
+func (b *beforeCheckpoint) Checkpoint(ctx context.Context, fn func(ctx context.Context, tx tenant.Tx) error) error {
+	if b.seen++; b.seen == b.n {
+		b.hook()
+	}
+	return b.Run.Checkpoint(ctx, fn)
+}
+
 // The stale-job fence (migration 0014): a save cancels the queued
 // validation of an older revision, which never runs and which the import
 // does not follow; a running one completes without writing, whether the
-// newer mapping was saved before it read the import or after it
-// validated every row (its dataset is then an orphan no row names, D-044);
-// only the current revision's outcome is recorded.
+// newer mapping was saved before it read the import, after it validated
+// every row and before the second read (which it then does not do: no
+// dataset, review round 1 L5), or after it wrote the dataset (an orphan no
+// row names, D-044); only the current revision's outcome is recorded.
 func TestStaleValidationJobs(t *testing.T) {
 	e := setupRuns(t)
 	m := e.newModel(t)
@@ -547,23 +562,25 @@ func TestStaleValidationJobs(t *testing.T) {
 			switch calls {
 			case 1: // revision 3, saved over before it reads the import
 				save("key-fence-4", 3, "開始UTC")
-			case 2: // revision 4, saved over after it validated every row
-				run = &beforeFinish{Run: run, hook: func() { save("key-fence-5", 4, "開始") }}
+			case 2: // revision 4, saved over after it validated every row, before the second read
+				run = &beforeCheckpoint{Run: run, n: 2, hook: func() { save("key-fence-5", 4, "開始UTC") }}
+			case 3: // revision 5, saved over after it wrote the dataset
+				run = &beforeFinish{Run: run, hook: func() { save("key-fence-6", 5, "開始") }}
 			}
 			return h.Handle(ctx, run)
 		})
 	})
 	drain(t, w, 20*time.Second)
-	if calls != 3 {
+	if calls != 4 {
 		t.Errorf("%d attempts", calls)
 	}
-	if s := jobsByRevision(); s != "1:cancelled,2:completed,3:completed,4:completed,5:completed" {
+	if s := jobsByRevision(); s != "1:cancelled,2:completed,3:completed,4:completed,5:completed,6:completed" {
 		t.Errorf("jobs %s", s)
 	}
-	// Revision 4 would have been VALIDATED; revision 5 is what the import
-	// records.
+	// Revisions 4 and 5 would have been VALIDATED; revision 6 is what the
+	// import records.
 	got := e.getMapped(t, editor.Subject, id)
-	if got.Status != "AWAITING_MAPPING" || got.MappingRevision != 5 || got.InvalidRows != 1 || got.Validation.Issues[0].Path != "/1/開始" {
+	if got.Status != "AWAITING_MAPPING" || got.MappingRevision != 6 || got.InvalidRows != 1 || got.Validation.Issues[0].Path != "/1/開始" {
 		t.Errorf("after the fence: %+v", got)
 	}
 	var outcomes string
@@ -571,16 +588,18 @@ func TestStaleValidationJobs(t *testing.T) {
 		  ORDER BY (metadata->>'mapping_revision')::int) FROM twin.audit_events WHERE target_id=$1 AND action='import.validate'`, id).Scan(&outcomes); err != nil {
 		t.Fatal(err)
 	}
-	if outcomes != "2:VALIDATED,3:stale,4:stale,5:AWAITING_MAPPING" {
+	if outcomes != "2:VALIDATED,3:stale,4:stale,5:stale,6:AWAITING_MAPPING" {
 		t.Errorf("outcomes %s", outcomes)
 	}
 	prefix := "tenant/" + e.a.ID + "/imports/" + id + "/"
 	if n := e.count(`SELECT count(*) FROM twin.imports WHERE id=$1 AND canonical_object_key IS NULL AND error_report_object_key=$2`, id,
-		prefix+"validation-errors-r5-a1.csv"); n != 1 {
+		prefix+"validation-errors-r6-a1.csv"); n != 1 {
 		t.Errorf("the import names another revision's objects")
 	}
 	objs := e.objectsUnder(t, e.a.ID)
-	if !slices.Contains(objs, prefix+"canonical-r4-a1.json") || slices.ContainsFunc(objs, func(o string) bool { return strings.Contains(o, "-r3-") }) {
+	if !slices.Contains(objs, prefix+"canonical-r5-a1.json") || slices.ContainsFunc(objs, func(o string) bool {
+		return strings.Contains(o, "-r3-") || strings.Contains(o, "-r4-")
+	}) {
 		t.Errorf("objects %v", objs)
 	}
 }
@@ -906,5 +925,58 @@ func TestJSONEventsMapping(t *testing.T) {
 	var gotEvents, wantEvents []map[string]any
 	if json.Unmarshal(data, &gotEvents) != nil || json.Unmarshal([]byte(want), &wantEvents) != nil || fmt.Sprint(gotEvents) != fmt.Sprint(wantEvents) {
 		t.Errorf("dataset %s, want %s", data, want)
+	}
+}
+
+// Review round 1, M1, M2: the server, not the stored flag, decides which
+// suggestion entries need a person. A stored suggestion that does not
+// match ai-mapping.schema.json (here a 0.1 confidence the AI did not flag)
+// fails the save closed: 500 with its code, nothing committed. A column
+// the AI would leave out with low confidence is left out only with the
+// person's confirmation, whether the mapping lists it as not imported or
+// does not list it.
+func TestTheServerJudgesTheSuggestion(t *testing.T) {
+	e := setupRuns(t)
+	m := e.newModel(t)
+	editor := e.a.Members[tenant.Editor]
+	id := e.profiled(t, m, "key-sj-upload", "csv_events", "a.csv", "case,type,at,end\nC-1,step,2026-10-13T06:12:00Z,2026-10-13T06:13:00Z\n")
+	suggest := func(doc string) {
+		e.ownerTx(t, e.a.ID, func(ctx context.Context, tx pgx.Tx) error {
+			_, err := tx.Exec(ctx, `UPDATE twin.imports SET mapping_suggestion_status='ready', mapping_suggestion=$2 WHERE id=$1`, id, doc)
+			return err
+		})
+	}
+	suggest(`{"mappings":[{"source_column":"at","target_field":"timestamp","confidence":0.1,"evidence":"e","transform":"rfc3339","requires_confirmation":false}]}`)
+	r := e.saveMapping(editor.Subject, id, "key-sj-malformed", mappingBody(t, 0, nil, simple...))
+	if r.status != 500 || code(t, r) != "INTERNAL_ERROR" {
+		t.Fatalf("a malformed suggestion: %d %s", r.status, r.body)
+	}
+	if _, c := firstDetail(t, r); c != importupload.CodeSuggestionInvalid {
+		t.Errorf("detail %s", c)
+	}
+	if n := e.count(`SELECT (SELECT mapping_revision FROM twin.imports WHERE id=$1) + (SELECT count(*) FROM twin.jobs WHERE import_id=$1 AND type='import_validate')
+		+ (SELECT count(*) FROM twin.audit_events WHERE target_id=$1 AND action='import.map')`, id); n != 0 {
+		t.Errorf("a refused save left %d rows", n)
+	}
+	suggest(`{"mappings":[{"source_column":"end","target_field":null,"confidence":0.3,"evidence":"e","transform":"identity","requires_confirmation":true}]}`)
+	for name, body := range map[string]string{
+		"left out by a null entry": mappingBody(t, 0, nil, append(append([]col(nil), simple...), col{"end", "", ""})...),
+		"left out by not listing":  mappingBody(t, 0, nil, simple...),
+	} {
+		r := e.saveMapping(editor.Subject, id, "key-sj-"+strings.ReplaceAll(name, " ", "-"), body)
+		if r.status != 422 || code(t, r) != "REQUEST_VALIDATION_FAILED" {
+			t.Errorf("%s: %d %s", name, r.status, r.body)
+			continue
+		}
+		want := "/mapping/mappings/3"
+		if name == "left out by not listing" {
+			want = "/mapping/mappings"
+		}
+		if path, c := firstDetail(t, r); path != want || c != mapping.CodeConfirmationRequired {
+			t.Errorf("%s: %s %s", name, path, c)
+		}
+	}
+	if r := e.saveMapping(editor.Subject, id, "key-sj-confirmed", mappingBody(t, 0, []string{"end"}, simple...)); r.status != 202 {
+		t.Errorf("confirmed: %d %s", r.status, r.body)
 	}
 }

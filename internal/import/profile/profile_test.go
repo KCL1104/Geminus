@@ -278,6 +278,9 @@ func TestInference(t *testing.T) {
 		{[]string{"2026-13-01T00:00:00Z"}, importprofile.String},
 		{[]string{"2026-10-15 08:30:00"}, importprofile.String},
 		{[]string{"2026-10-15T08:30:60Z"}, importprofile.String},
+		{[]string{"2026-10-15T08:30:00+24:00"}, importprofile.String}, // review round 1, M3
+		{[]string{"2026-10-15T08:30:00+05:60"}, importprofile.String},
+		{[]string{"2026-10-15T08:30:00-00:00"}, importprofile.String}, // L6: the offset is unknown
 		{[]string{"yes"}, importprofile.String},
 		{[]string{"falſe"}, importprofile.String}, // a Unicode fold of "false" is not a boolean
 		{[]string{"1", "true"}, importprofile.Mixed},

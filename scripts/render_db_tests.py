@@ -82,7 +82,7 @@ IDS = {
     "JOB_A58": ("job", "A", 58),
     "JOB_A59": ("job", "A", 59), "JOB_A60": ("job", "A", 60), "JOB_A61": ("job", "A", 61), "JOB_A62": ("job", "A", 62),
     "JOB_A63": ("job", "A", 63), "JOB_A64": ("job", "A", 64), "JOB_A65": ("job", "A", 65), "JOB_A66": ("job", "A", 66),
-    "JOB_A67": ("job", "A", 67),
+    "JOB_A67": ("job", "A", 67), "JOB_A68": ("job", "A", 68),
 }
 
 

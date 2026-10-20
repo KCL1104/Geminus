@@ -99,7 +99,8 @@ var failureCode = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
 //     attempts were spent (LEASE_EXPIRED, WORKER_STOPPED,
 //     OBJECT_STORAGE_FAILED, OBJECT_STORAGE_UNAVAILABLE): upload again;
 //   - INTERNAL_ERROR otherwise (the stored upload does not match its
-//     record or no longer reads as profiled, a cancelled job, an internal
+//     record or no longer reads as profiled, IMPORT_INPUT_INVALID: the
+//     server cannot read what it stored, a cancelled job, an internal
 //     failure).
 func envelope(stored []byte, requestID string) (*ErrorEnvelope, error) {
 	var f store.Failure
@@ -110,7 +111,9 @@ func envelope(stored []byte, requestID string) (*ErrorEnvelope, error) {
 	switch {
 	case f.Code == "IMPORT_LIMIT_EXCEEDED":
 		code, message = "PAYLOAD_TOO_LARGE", "the file is larger than an import may be"
-	case strings.HasPrefix(f.Code, "IMPORT_") || strings.HasPrefix(f.Code, "CSV_") || strings.HasPrefix(f.Code, "JSON_"):
+	// IMPORT_INPUT_INVALID is the server not reading what it stored, not a
+	// problem with the file (CB-39(a): INTERNAL_ERROR; T-017 review round 1, L3).
+	case f.Code != store.InputInvalid && (strings.HasPrefix(f.Code, "IMPORT_") || strings.HasPrefix(f.Code, "CSV_") || strings.HasPrefix(f.Code, "JSON_")):
 		code, message = "REQUEST_VALIDATION_FAILED", "the file cannot be read as uploaded"
 	case f.Code == jobs.LeaseExpired || f.Code == "WORKER_STOPPED" || f.Code == store.ObjectStorageFailed || f.Code == store.ObjectStorageUnavailable:
 		code, message = "SERVICE_UNAVAILABLE", "the file could not be processed; upload it again"

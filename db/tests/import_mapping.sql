@@ -176,6 +176,12 @@ SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
 ]) AS s;
 -- ...and in the transaction that queues the revision's validation job.
 SELECT pg_temp.must_fail_at_commit(ARRAY[pg_temp.save('imp_01M4YDQK00TA00000000000011', 1)], '55000');
+-- ...a live one: a job queued for the revision and cancelled before the
+-- save (no import followed it then) leaves no job to validate it (review
+-- round 1, L2).
+SELECT pg_temp.must_fail_at_commit(ARRAY[pg_temp.job('job_01M4YDQK00TA00000000000068', 'imp_01M4YDQK00TA00000000000011', 1),
+  $q$UPDATE twin.jobs SET status='cancelled' WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000068'$q$,
+  pg_temp.save('imp_01M4YDQK00TA00000000000011', 1)], '55000');
 SELECT pg_temp.check(status = 'AWAITING_MAPPING' AND mapping_revision = 0 AND mapping IS NULL, 'a refused save left its mark: ' || status)
   FROM twin.imports WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000011';
 SELECT pg_temp.save('imp_01M4YDQK00TA00000000000011', 1) \gexec
@@ -188,6 +194,19 @@ SELECT pg_temp.check(status = 'VALIDATING' AND mapping_revision = 1 AND mapping-
   FROM twin.imports WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000011';
 -- One validation job per revision.
 SELECT pg_temp.must_fail(pg_temp.job('job_01M4YDQK00TA00000000000065', 'imp_01M4YDQK00TA00000000000011', 1), '23505');
+-- D-009's commit takes only a VALIDATED import (D-071 (g); review round
+-- 1, L1): not one still VALIDATING, nor one AWAITING_MAPPING, whatever it
+-- names, for the API and the owner alike.
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  pg_temp.upd('imp_01M4YDQK00TA00000000000011', $q$status='COMMITTED', dataset_version_id='dsv_01M4YDQK00TA00000000000001', proposal_id='aip_01M4YDQK00TA00000000000001'$q$),
+  pg_temp.upd('imp_01M4YDQK00TA00000000000015', $q$status='COMMITTED', dataset_version_id='dsv_01M4YDQK00TA00000000000001', proposal_id='aip_01M4YDQK00TA00000000000001'$q$)
+]) AS s;
+SET LOCAL ROLE twin_owner;
+SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[
+  pg_temp.upd('imp_01M4YDQK00TA00000000000011', $q$status='COMMITTED', dataset_version_id='dsv_01M4YDQK00TA00000000000001', proposal_id='aip_01M4YDQK00TA00000000000001'$q$),
+  pg_temp.upd('imp_01M4YDQK00TA00000000000015', $q$status='COMMITTED', dataset_version_id='dsv_01M4YDQK00TA00000000000001', proposal_id='aip_01M4YDQK00TA00000000000001'$q$)
+]) AS s;
+SET LOCAL ROLE twin_api;
 -- The API never writes a validation, nor fails the import while its job
 -- is queued.
 SELECT pg_temp.must_fail(s, '55000') FROM unnest(ARRAY[

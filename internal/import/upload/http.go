@@ -122,6 +122,10 @@ func Refused(err error) error {
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "object storage is not configured for this deployment")
 	case errors.Is(err, ErrRetry):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "the request could not be completed; retry it with the same Idempotency-Key")
+	case errors.Is(err, ErrSuggestionInvalid):
+		// The server's own data: logged as an internal error, with its code.
+		return &httpapi.Error{Code: httpapi.InternalError, Message: "the import's mapping suggestion cannot be read; nothing was saved",
+			Details: []httpapi.Detail{{Path: "", Reason: "the stored mapping suggestion does not match ai-mapping.schema.json", Code: CodeSuggestionInvalid}}}
 	case errors.Is(err, idempotency.ErrConflict), errors.Is(err, idempotency.ErrInProgress):
 		return httpapi.Errorf(httpapi.IdempotencyKeyConflict, "this Idempotency-Key was used for a different request")
 	}

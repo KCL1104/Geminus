@@ -23,6 +23,7 @@ import (
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	store "github.com/kcl1104/geminus/internal/storage/imports"
@@ -77,15 +78,32 @@ func mapFingerprint(id string, body []byte) (string, error) {
 	return hashing.Of(data)
 }
 
+// CodeSuggestionInvalid is details[0].code of the 500 a save gets when the
+// import's stored AI suggestion does not match ai-mapping.schema.json.
+const CodeSuggestionInvalid = "MAPPING_SUGGESTION_INVALID"
+
+// ErrSuggestionInvalid: the import's ready AI suggestion is missing or does
+// not match ai-mapping.schema.json, so which of its entries need a person
+// cannot be told; the save fails closed (500, nothing saved).
+var ErrSuggestionInvalid = errors.New("upload: the import's stored mapping suggestion does not match ai-mapping.schema.json")
+
 // suggestion is the import's AI suggestion when it is ready (T-027), for
-// D-070's confirmation rule; nil otherwise.
+// D-070's confirmation rule; nil otherwise. The worker (the AI's side)
+// writes it and the database does not check its shape, so it is checked
+// against its schema here, every time (T-017 review round 1, M1).
 func suggestion(i store.Import) (*mapping.Suggestion, error) {
-	if i.MappingSuggestionStatus != "ready" || i.MappingSuggestion == nil {
+	if i.MappingSuggestionStatus != "ready" {
 		return nil, nil
+	}
+	if i.MappingSuggestion == nil {
+		return nil, fmt.Errorf("import %s: a ready suggestion that is not there: %w", i.ID, ErrSuggestionInvalid)
+	}
+	if issues, err := validate.Document(i.MappingSuggestion, "ai-mapping.schema.json", CodeSuggestionInvalid); err != nil || len(issues) > 0 {
+		return nil, fmt.Errorf("import %s: %w", i.ID, ErrSuggestionInvalid)
 	}
 	var s mapping.Suggestion
 	if err := json.Unmarshal(i.MappingSuggestion, &s); err != nil {
-		return nil, fmt.Errorf("import %s: the stored mapping suggestion: %w", i.ID, err)
+		return nil, fmt.Errorf("import %s: %w", i.ID, ErrSuggestionInvalid)
 	}
 	return &s, nil
 }
