@@ -139,6 +139,43 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 	}
 }
 
+// L1 (T-046 review round 1): the primitive support stage runs right after
+// the schema, before limits, IDs and references (D-023, TWIN_IR_SPEC §4).
+// A model that breaks a rule of each later stage and also uses a primitive
+// reports only the gate; without the primitive it reports that stage's
+// error, so each control shows the break is real.
+func TestPrimitiveGateRunsBeforeEveryLaterStage(t *testing.T) {
+	deep := map[string]any{"a": map[string]any{"b": map[string]any{"c": map[string]any{"d": map[string]any{"e": map[string]any{
+		"f": map[string]any{"g": map[string]any{"h": map[string]any{"i": 1}}}}}}}}}
+	breaks := map[string]struct {
+		edit func(ir map[string]any)
+		code string
+	}{
+		"limits: metadata nested too deep": {func(ir map[string]any) { ir["metadata"] = deep }, validate.LimitExceeded},
+		"limits: a duration over 365 days": {func(ir map[string]any) {
+			obj(obj(nodes(ir)[1])["service_time"])["distribution"] = map[string]any{"type": "constant", "value": 366 * 24 * 60}
+		}, validate.LimitExceeded},
+		"ids: a repeated node ID":      {func(ir map[string]any) { ir["nodes"] = append(nodes(ir), nodes(ir)[2]) }, validate.DuplicateID},
+		"refs: an unknown flow target": {func(ir map[string]any) { obj(flows(ir)[0])["to"] = "nowhere" }, validate.UnknownReference},
+	}
+	primitive := func(ir map[string]any) {
+		ir["metrics"] = []any{map[string]any{"id": "wip", "type": "system_wip"}}
+	}
+	for name, b := range breaks {
+		t.Run(name, func(t *testing.T) {
+			r := run(t, edit(t, func(ir map[string]any) { b.edit(ir); primitive(ir) }))
+			if len(r.Issues) != 1 || r.Issues[0].Code != validate.PrimitiveNotSupported || r.Issues[0].Path != "/metrics/0/type" {
+				t.Errorf("with the primitive: %v, want only the gate at /metrics/0/type", r.Issues)
+			}
+			r = run(t, edit(t, b.edit))
+			if r.Valid() || !slices.ContainsFunc(r.Issues, func(i model.ValidationIssue) bool { return i.Code == b.code }) ||
+				slices.ContainsFunc(r.Issues, func(i model.ValidationIssue) bool { return i.Code == validate.PrimitiveNotSupported }) {
+				t.Errorf("control: %v, want %s", r.Issues, b.code)
+			}
+		})
+	}
+}
+
 // The gate's messages are fixed: no ID, name or value from the model.
 func TestPrimitiveGateMessagesAreFixed(t *testing.T) {
 	const sentinel = "Zq9Sentinel"
