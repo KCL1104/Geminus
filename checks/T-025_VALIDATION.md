@@ -192,4 +192,4 @@ T-016 的同一個 pattern：`migrations/0009_simulation_runs.up.sql`（`followe
 - Ready proposal 的 warning 也換成固定句，人看到的細節變少；UI 本來就依 code 顯示在地化的文字。
 - 一個 attempt 在 provider 呼叫期間把 base 的 snapshot 放在記憶體中（每個至多 4 MiB，與 run 預載 sample 相同的量級）。
 - Review 只檢查 provider 回答的文字；provider metadata（例如 live provider 回傳的 model 名稱）若帶 U+0000，會由 DB 拒絕並以不重試的 `PROPOSAL_OUTPUT_UNSTORABLE` 結束，不會重試。
-- Worker 中斷（`LEASE_EXPIRED`、`WORKER_STOPPED`）發生在 provider 呼叫之後時，重試仍會再呼叫一次 provider；這無法在 worker 內避免。
+- Worker 中斷（`LEASE_EXPIRED`、`WORKER_STOPPED`）發生在 provider 呼叫之後時，重試仍會再呼叫一次 provider；這無法在 worker 內避免。寫入結果時 DB 的暫時錯誤（連線中斷、serialization failure，worker 記為可重試的 `INTERNAL`）也一樣會重試並再呼叫一次 provider；本輪只把 DB 拒絕內容（22021、22P05、23514）改為不重試，暫時錯誤保留重試（D-061 (c) 已寫明）。

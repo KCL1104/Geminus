@@ -9,10 +9,12 @@
 // the lease (handler.Run.Finish): ready, needs_input or invalid. A provider
 // failure is the job's failure: retried while the provider may recover and
 // attempts remain, and when the job fails for good the proposal follows it
-// to failed with the failure (migration 0012). Nothing retried comes after
-// the provider call but the provider's own failures (D-061 (c)): storage
-// is read before it, and what the database refuses to store fails for
-// good. Provider calls and long work run outside every transaction.
+// to failed with the failure (migration 0012). After the provider call only
+// the provider's own recoverable failures, the worker's interruptions and
+// a transient database error writing the outcome (INTERNAL) are retried
+// (D-061 (c)): dataset storage is read before the call, and what the
+// database refuses to store fails for good. Provider calls and long work
+// run outside every transaction.
 //
 // The AI only suggests (AGENTS.md §2): the provider gets a sealed context
 // and returns untrusted JSON; nothing it says is written but through the
