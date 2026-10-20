@@ -954,7 +954,7 @@
       "id": "T-016",
       "title": "CSV/JSON upload、profile、private storage",
       "priority": "P0",
-      "status": "not_started",
+      "status": "done",
       "owner_role": "AI / Full-stack",
       "planning_window": "Week 4–5",
       "depends_on": [
@@ -1008,16 +1008,18 @@
       ],
       "completion_evidence": [
         {
-          "date": "2026-10-19",
+          "date": "2026-10-20",
           "branch": "claude/lucid-meitner-vq1awo",
+          "reviewer": "agent independent review at owner's request (H-003); owner did not review line by line",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/39342366970 (c911e4c: success)",
+          "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/39345820645 (74ef131: success)",
+          "accepted_at": "2026-10-20",
           "report": "checks/T-016_VALIDATION.md",
-          "summary": "契約：import.schema.json 依 D-043 加 profile 與原始值 preview（≤256 欄），valid-import.json 修正；uploadImport／getImport 的規則與範例；downloadImportErrors 依 D-044 改為授權後串流 CSV（CB-38(b)）。Migration 0010：profile 與 error report 的 hash、大小，upload 不可改、profile 恰在 profiling 之後且只寫一次、API 不寫 profile／preview／report、FAILED 與 COMMITTED 為終態（db/tests/imports.sql）。internal/import/profile（純粹、串流、有界的 CSV／JSON profile，UTF-8 含／不含 BOM、中文，不猜編碼，typed failure 與 JSON Pointer）、internal/import/report（formula-safe CSV）、internal/import/upload（先授權再讀 body，串流寫入、SHA-256、50 MB 上限不依賴 Content-Length、拒絕壓縮檔與執行檔、idempotent，與 job、audit 同一 transaction）、internal/import/profiler（worker 才連結，核對 upload 的 hash 後 profile，結果與 job 一起 commit）。未改 Twin（D-009）。驗證見報告；狀態未改，由 reviewer 決定。"
-        },
-        {
-          "date": "2026-10-19",
-          "branch": "claude/lucid-meitner-vq1awo",
-          "report": "checks/T-016_VALIDATION.md",
-          "summary": "獨立 review 第 1 輪 CHANGES REQUESTED 的修正：H1 profile 的記憶體不隨檔案成長（自有、與 encoding/csv 對照 fuzz 的 CSV 掃描器，record 與 JSON 一列至多 1 MiB，一列只保留 header 欄數加一，JSON decoder 以 1 MiB 視窗讀取）；L1 failure path 至多 2,048 字元；M2 error report 每個 cell 加引號、分隔字元後的公式字元也中和；M1 migration 0010 的 import 跟隨唯一的 profile job（partial unique index、follow_import_profile_job），移除讀取時推導；M3 import 建立時不帶任何推導值、API 在 UPLOADED／PROFILING 時不改任何欄位、report key 不得是 upload key；L2 OpenAPI 範例與程式一致。DB 測試在本 session 無法執行（su postgres 被拒），列為 NOT RUN。狀態未改，由 reviewer 決定。"
+          "summary": "Bounded streaming upload（bytes、rows、columns、field length、JSON depth，不依賴 Content-Length），SHA-256 只算實際存下的 bytes，tenant 前綴的 server key、不覆寫，讀取驗 key／大小／hash 並 fail closed；完整 profile 與 bounded preview（D-043）；CSV 行號與 JSON Pointer 錯誤、重複 key 與非有限數字失敗、壓縮檔與執行檔以 magic bytes 與副檔名拒收；UTF-8 有無 BOM 與中文；錯誤報表先授權再串流、每格加引號並中和分隔符後的公式（D-044、TEST-029）；commit 前不改 Twin（D-009）。Migration 0010：profile job 失敗或取消時 import 同一 transaction 變 FAILED、每個 import 一個 profile job、API 不能寫衍生欄位。驗證：backend-test、backend-race、architecture-check、spec-check、frontend-test、integration-test（coordinator 在新的 dt_test_* 資料庫重跑，23 個套件、0 fail、0 skip）皆 exit 0；首輪 agent 的 DB 結果是在繞過 runuser 阻擋的方式下取得（違規，已刪除 helper 並由 coordinator 重跑）；e2e、mutation harness、T-037 performance、production object storage NOT RUN。",
+          "review": "independent reviewer agent (H-003): CHANGES REQUESTED — H1 profiling memory unbounded（40M-comma row 6.3 GB）、M1 FAILED only at read time、M2 formulas after separators、M3 API could write derived columns、L1、L2；all fixed red-first（147ecce..c911e4c），the first combined integration run failed TestAJobEndsCancelled and was fixed without weakening it（c911e4c）",
+          "review_evidence": "checks/evidence/2026-10-19-T-016/, checks/evidence/2026-10-19-T-016-r1/, checks/evidence/2026-10-19-T-016-r2/",
+          "re_review": "same reviewer: ACCEPT — every probe re-run (40M-comma row now ~0 MB, refused), 180 s differential fuzz against encoding/csv with no difference, DB probes P1–P3 refused, changed T-019 tests as strict as before; its low (deep JSON reported as JSON_INVALID) fixed red-first in 78e068b; T-017/T-018 follow-up on protect_import recorded",
+          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；CHANGES REQUESTED 的發現先紅後綠修正，同一 reviewer 複核 ACCEPT，其 low 已修正"
         }
       ]
     },
@@ -1500,7 +1502,7 @@
       "id": "T-024",
       "title": "Sanitized AI context / provider adapter",
       "priority": "P0",
-      "status": "not_started",
+      "status": "done",
       "owner_role": "AI / Full-stack",
       "planning_window": "Week 6–8",
       "depends_on": [
@@ -1561,7 +1563,22 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-20",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "reviewer": "agent independent review at owner's request (H-003); owner did not review line by line",
+          "ci": "https://github.com/KCL1104/Geminus/actions/runs/39342366970 (c911e4c: success)",
+          "ci_after_review": "https://github.com/KCL1104/Geminus/actions/runs/39345820645 (74ef131: success)",
+          "accepted_at": "2026-10-20",
+          "report": "checks/T-024_VALIDATION.md",
+          "summary": "Provider interface 的 fake、disabled（預設）、live 三種模式；live 需要 internal/config/aiapproval 中 owner 記錄的批准（目前為空），預設設定無法開啟；key 只由 GEMINUS_ANTHROPIC_API_KEY_A／_B 明確注入、只以 org-a／org-b 標籤出現、從不讀 ANTHROPIC_*；D-018 failover（只有 401／402／403 切換，402 於 15 分鐘後重試）；tenant-safe context builder（跨租戶輸入拒絕、憑證遮蔽、不可偽造的 UNTRUSTED_DATA 區塊、可見的省略、D-046 ID pool）；token／timeout／retry budgets 與 schema projection；output_locale（en／zh-Hant）與阿拉伯數字核對；migration 0011（id_pool）；Anthropic Go SDK v1.78.0（MIT）。沒有任何 live AI 呼叫。驗證：go test ./internal/ai/...、backend-test、backend-race、architecture-check、ai-eval（fake）、spec-check、frontend-test（418）、integration-test（coordinator 在新的 dt_test_* 資料庫跑，含 0011 up／down／guard，23 個套件）皆 exit 0；agent 曾以 sudo 繞過 runuser 阻擋並據實回報、未宣稱 DB 結果；live provider、ai-eval-live、e2e NOT RUN。",
+          "review": "independent reviewer agent (H-003): CHANGES REQUESTED — H1 zh-Hant numerals next to Han characters never checked、M2 credential shapes passed redaction、L3–L8；all fixed red-first（7fade46..0908ec1）",
+          "review_evidence": "checks/evidence/2026-10-19-T-024/",
+          "re_review": "same reviewer: ACCEPT — every probe re-run; the approval token cannot be forged outside aiapproval; 402 re-probe keeps D-018; its new low (over-redaction of long camel-case model IDs and credential-word prose) fixed red-first in 6594b65",
+          "acceptance": "owner 指示「你自己進行 review 驗收吧」（H-003）；CHANGES REQUESTED 的發現先紅後綠修正，同一 reviewer 複核 ACCEPT，其 low 已修正；live AI 仍受 H-001／H-017 gate"
+        }
+      ]
     },
     {
       "id": "T-025",

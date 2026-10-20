@@ -27,14 +27,13 @@
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 21,
+    "done": 23,
     "in_progress": 3,
-    "not_started": 28,
+    "not_started": 26,
     "review": 0
   },
   "ready_tasks": [
-    "T-016",
-    "T-024",
+    "T-025",
     "T-035"
   ],
   "next_after_review": [],
