@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -28,7 +27,7 @@ func (e *env) decide(subject, org, id, action, key, body string) resp {
 func (e *proposalEnv) readyOver(t *testing.T, modelID, base, mode, intent, answer string) proposalView {
 	t.Helper()
 	editor := e.a.Members[tenant.Editor]
-	e.fake.Script(provider.RoleModeler, intent, []byte(answer))
+	scriptProposal(e.fake, mode, intent, []byte(answer))
 	r := e.propose(editor.Subject, e.a.ID, modelID, "key-"+t.Name()+"-"+strings.ReplaceAll(intent, " ", "-"), proposalBody(base, mode, intent))
 	if r.status != 202 {
 		t.Fatalf("propose: %d %s", r.status, r.body)
@@ -90,10 +89,7 @@ func TestApprovalClosedLoop(t *testing.T) {
 	}
 
 	// A scenario on the new latest version: one scenario, no version, no run.
-	s := e.readyOver(t, m.ID, a.NewVersionID, "scenario", "What if there were 8 runners?",
-		`{"status":"proposed","summary":"Try 8 CI runners.","assumptions":[],"risk_level":"low","confidence":0.8,`+
-			`"changes":[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":8}],`+
-			`"expected_effects":["Waiting may fall; a simulation will tell."],"requires_confirmation":true}`)
+	s := e.readyOver(t, m.ID, a.NewVersionID, "scenario", "What if there were 8 runners?", eightRunners)
 	versionsBefore := e.count(`SELECT count(*) FROM twin.model_versions WHERE model_id=$1`, m.ID)
 	r = e.decide(editor.Subject, e.a.ID, s.ProposalID, "approve", "appr-loop-0002", `{"expected_base_version_id":"`+a.NewVersionID+`"}`)
 	if r.status != 201 {

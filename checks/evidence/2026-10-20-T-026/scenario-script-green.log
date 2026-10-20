@@ -1,0 +1,11 @@
+=== RUN   TestScriptedAnswersReachEachMode
+--- PASS: TestScriptedAnswersReachEachMode (0.13s)
+=== RUN   TestTheDBTestsAnswersAreReady
+--- PASS: TestTheDBTestsAnswersAreReady (0.45s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.618s
+=== RUN   TestTheClosedLoopsAnswersAreReady
+--- PASS: TestTheClosedLoopsAnswersAreReady (0.43s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	0.514s
+exit 0

@@ -1,0 +1,27 @@
+Excerpt of the coordinator's make integration-test run (exit 2) on a fresh dt_test_* database,
+T-026 commits cherry-picked onto claude/lucid-meitner-vq1awo (f595f07); the full log is the coordinator's.
+Lines with --- FAIL and the line that follows each, then the FAIL and make lines, verbatim:
+
+5966:--- FAIL: TestApproveScenario (0.19s)
+5967-    db_test.go:431: not ready: {ProposalID:aip_01M5BXRKV0BH30RV32M859S4QM OrganizationID:org_01M5BXRKRH0CFCPP1N5XK3RFW9 ModelID:mdl_01M5BXRKSPTZF9P7A1PA16KVKH BaseVersionID:mv_01M5BXRKSP7XEK2G7XVFG9H0KW Mode:scenario Status:needs_input CreatedBy:usr_01M5BXRKRP9AA9JKCY68WJ06YF CreatedAt:2026-10-20T05:50:18.456203Z RequiresConfirmation:true Summary:0xc000114510 Assumptions:[] RiskLevel:<nil> Confidence:<nil> Changes:null ExpectedEffects:[] Questions:[Which change should the proposal make?] Validation:null NewVersionID:<nil> ScenarioID:<nil> PatchHash:<nil> Error:<nil> DatasetBindings:[] ServerRiskLevel:<nil> ProviderRiskClaim:<nil> DecidedBy:<nil> DecidedAt:<nil> DecisionComment:<nil>}
+5968:--- FAIL: TestApprovalOnAMovedBase (0.40s)
+5969-    db_test.go:591: not ready: {ProposalID:aip_01M5BXRN57NPZGF9W8V17ABA12 OrganizationID:org_01M5BXRMVRW57CSA5J7X8C53T7 ModelID:mdl_01M5BXRMWRNHV5059ZAN82CWGA BaseVersionID:mv_01M5BXRMWR2T0CJGWY5EM0G443 Mode:scenario Status:needs_input CreatedBy:usr_01M5BXRMVWCE8QBF4F8RJ2W47W CreatedAt:2026-10-20T05:50:19.812803Z RequiresConfirmation:true Summary:0xc000458090 Assumptions:[] RiskLevel:<nil> Confidence:<nil> Changes:null ExpectedEffects:[] Questions:[Which change should the proposal make?] Validation:null NewVersionID:<nil> ScenarioID:<nil> PatchHash:<nil> Error:<nil> DatasetBindings:[] ServerRiskLevel:<nil> ProviderRiskClaim:<nil> DecidedBy:<nil> DecidedAt:<nil> DecisionComment:<nil>}
+5970:--- FAIL: TestDecisionsWaitForTheModelRow (0.20s)
+5971-    db_test.go:760: not ready: {ProposalID:aip_01M5BXRP2KRKRCGW5858P6GK8D OrganizationID:org_01M5BXRNZWEEYX2KTEY4THQ4DD ModelID:mdl_01M5BXRP12YJ3YR410TRQYDXTW BaseVersionID:mv_01M5BXRP12H5RZ7AE5XQJT330A Mode:scenario Status:needs_input CreatedBy:usr_01M5BXRP02283W4Q00YVZJ1R5M CreatedAt:2026-10-20T05:50:20.744035Z RequiresConfirmation:true Summary:0xc0000d2bf0 Assumptions:[] RiskLevel:<nil> Confidence:<nil> Changes:null ExpectedEffects:[] Questions:[Which change should the proposal make?] Validation:null NewVersionID:<nil> ScenarioID:<nil> PatchHash:<nil> Error:<nil> DatasetBindings:[] ServerRiskLevel:<nil> ProviderRiskClaim:<nil> DecidedBy:<nil> DecidedAt:<nil> DecisionComment:<nil>}
+--
+5975:--- FAIL: TestApprovalClosedLoop (0.61s)
+5976-    approvals_test.go:93: not ready: {ProposalID:aip_01M5BXS1J7R6YJ0NCNRTSG096Q Status:needs_input Mode:scenario CreatedBy:usr_01M5BXS13Q3ECMJ1VPQTHR4AN8 ServerRiskLevel:<nil> RiskLevel:<nil> PatchHash:<nil> Changes:null Questions:[Which change should the proposal make?] Error:<nil>}
+
+1:make db-test
+2:make[1]: Entering directory '/home/user/Geminus'
+5933:make[1]: Leaving directory '/home/user/Geminus'
+5934:make db-go-test
+5935:make[1]: Entering directory '/home/user/Geminus'
+5972:FAIL
+5973:FAIL	github.com/kcl1104/geminus/internal/proposals/approval	5.375s
+5977:FAIL
+5978:FAIL	github.com/kcl1104/geminus/internal/api	39.550s
+5984:FAIL
+5985:make[1]: *** [Makefile:74: db-go-test] Error 1
+5986:make[1]: Leaving directory '/home/user/Geminus'
+5987:make: *** [Makefile:86: integration-test] Error 2

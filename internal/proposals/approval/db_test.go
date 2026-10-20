@@ -243,7 +243,7 @@ func (e *env) get(t *testing.T, id string) proposals.Proposal {
 func (e *env) ready(t *testing.T, modelID, base, mode, changes string) proposals.Proposal {
 	t.Helper()
 	intent := "Change it " + ids.New("k")
-	e.fake.Script(provider.RoleModeler, intent, answer(t, "Raise the CI runner capacity.", changes))
+	scriptAnswer(e.fake, mode, intent, answer(t, "Raise the CI runner capacity.", changes))
 	p := e.generated(t, e.queue(t, modelID, base, mode, intent))
 	if p.Status != "ready" {
 		t.Fatalf("not ready: %+v", p)
@@ -652,7 +652,9 @@ func TestApprovalOnAMovedBase(t *testing.T) {
 	// The request must name the proposal's base: another one is refused
 	// and nothing changes, not even the proposal's state.
 	latest := e.snap(t, m.ID)
-	fourth := e.ready(t, m.ID, latest.latest, "edit", raiseCI)
+	// The latest version already has raiseCI's capacity (the first
+	// approval), and a patch that leaves the model as it is is invalid.
+	fourth := e.ready(t, m.ID, latest.latest, "edit", lowerCI)
 	for _, wrong := range []string{m.LatestVersion.ID, ids.New("mv")} {
 		if _, _, err := e.approve(tenant.Editor, fourth.ProposalID, wrong, key(), ""); !errors.Is(err, approval.ErrOtherBase) {
 			t.Errorf("naming %s: %v", wrong, err)

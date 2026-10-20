@@ -1,0 +1,17 @@
+=== RUN   TestScriptedAnswersReachEachMode
+    script_test.go:141: scenario: the scripted answer was not read: needs_input needs_input, questions [Which change should the proposal make?]
+--- FAIL: TestScriptedAnswersReachEachMode (0.11s)
+=== RUN   TestTheDBTestsAnswersAreReady
+    script_test.go:172: TestApproveScenario, TestDecisionsWaitForTheModelRow: needs_input (answer needs_input) []
+    script_test.go:172: TestApprovalOnAMovedBase scenario: needs_input (answer needs_input) []
+    script_test.go:172: TestApprovalOnAMovedBase fourth: invalid (answer proposed) [{Code:AI_OUTPUT_INVALID Path:/changes Message:the changes leave the model as it is Severity:error}]
+--- FAIL: TestTheDBTestsAnswersAreReady (0.09s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.236s
+=== RUN   TestTheClosedLoopsAnswersAreReady
+    script_test.go:143: What if there were 8 runners? (scenario): asked as "scenario", answered needs_input, reviewed needs_input
+--- FAIL: TestTheClosedLoopsAnswersAreReady (0.05s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/api	0.073s
+FAIL
+exit 1
