@@ -130,7 +130,7 @@ UPDATE twin.imports SET status='VALIDATED', validation='{"valid":true,"issues":[
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='imp_01M4YDQK00TA00000000000001';
 UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL
   WHERE organization_id='org_01M4YDQK00TA00000000000000' AND id='job_01M4YDQK00TA00000000000067';
-SET CONSTRAINTS ALL IMMEDIATE; -- validated with its job
+SET CONSTRAINTS twin.import_validated_with_its_job IMMEDIATE; -- validated with its job; only this check: the proposal made ready above has no completed job (0012)
 SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE twin_api;
 UPDATE twin.imports SET status='COMMITTED', invalid_rows=0, dataset_version_id='dsv_01M4YDQK00TA00000000000001', proposal_id='aip_01M4YDQK00TA00000000000001'

@@ -1,0 +1,24 @@
+Coordinator runs after cherry-picking T-017 review round 1 onto claude/lucid-meitner-vq1awo after T-026's 8413288,
+2026-10-20. The worktree's e9a2b10 left an unescaped quote in openapi.yaml that f83c409 fixed; on the branch that fix
+is folded into e4ba32a, so no commit fails make spec-check. Each log was written by "make <target> > log 2>&1; echo
+exit $?".
+
+On 0016bf3:
+make spec-check PYTHON=.venv/bin/python    0   coordinator-r1-spec-check.log
+make backend-test                           0   coordinator-r1-backend-test.log
+make architecture-check                     0   coordinator-r1-architecture-check.log
+make ai-eval                                0   coordinator-r1-ai-eval.log
+make frontend-test                          0   coordinator-r1-frontend-test.log (429 tests)
+make backend-race                           0   coordinator-r1-backend-race.log
+make integration-test (dt_test_t017_r1)     2   coordinator-r1-integration-red.log: db/tests/roles.sql:133 "a proposal
+                                                is generated in the transaction that completes its job". Round 1's L1
+                                                change added SET CONSTRAINTS ALL IMMEDIATE, which also fired the
+                                                deferred 0012 check of a proposal the same test made ready earlier
+                                                without completing its job (a check that otherwise waits until the
+                                                file's ROLLBACK). Fix: name only T-017's constraint,
+                                                SET CONSTRAINTS twin.import_validated_with_its_job IMMEDIATE (as
+                                                runs.sql does for its own); nothing else changed.
+After the fix:
+make spec-check PYTHON=.venv/bin/python    0
+make integration-test (dt_test_t017_r1b)    0   coordinator-r1-integration.log (0013/0014 up/down/up, every SQL suite;
+                                                30 packages ok, no FAIL or SKIP)
