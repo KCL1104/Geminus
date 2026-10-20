@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
@@ -41,6 +42,7 @@ import (
 	"github.com/kcl1104/geminus/internal/proposals/approval"
 	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
+	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/storage/postgres"
@@ -611,9 +613,14 @@ func TestApprovalOnAMovedBase(t *testing.T) {
 		if s := e.snap(t, m.ID); s != moved {
 			t.Errorf("%s: the conflict changed the model: %+v", p.Mode, s)
 		}
-		// The key's answer is stored: a retry gets it again.
-		if again, out2, err := e.approve(tenant.Owner, p.ProposalID, m.LatestVersion.ID, k, "too late"); err != nil || again != 409 || !bytes.Equal(out, out2) {
-			t.Errorf("%s: the conflict's replay: %d %v", p.Mode, again, err)
+		// The key's answer is stored: a retry gets it again, naming the
+		// retry's own request (D-069 (a), review L1).
+		retry := ids.New("req")
+		retryReq := approval.ApproveRequest{ExpectedBaseVersionID: m.LatestVersion.ID, Comment: "too late"}
+		retryBody, _ := json.Marshal(retryReq)
+		again, out2, err := e.svc.Approve(ctx, e.scope(tenant.Owner), retry, k, p.ProposalID, retryBody, retryReq)
+		if err != nil || again != 409 || !bytes.Equal(out2, renamed(t, out, retry)) || bytes.Equal(out2, out) {
+			t.Errorf("%s: the conflict's replay: %d %v\n%s\n%s", p.Mode, again, err, out, out2)
 		}
 		var decided *approval.DecidedError
 		if _, _, err := e.approve(tenant.Owner, p.ProposalID, moved.latest, key(), ""); !errors.As(err, &decided) || decided.Status != "conflicted" {
@@ -799,6 +806,136 @@ func TestDecisionsWaitForTheModelRow(t *testing.T) {
 	}
 }
 
+// Review L3, D-003's lock order: a decision takes the model row before the
+// draft, as a publish and a draft edit do, so it never holds the draft
+// while it waits for the model (which would deadlock with them). While
+// another transaction holds the draft row, the decision waiting for it
+// already holds the model row: the holder cannot take it (55P03).
+func TestDecisionsTakeTheModelRowFirst(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	m := e.model(t)
+	approveMe := e.ready(t, m.ID, m.LatestVersion.ID, "edit", raiseCI)
+	rejectMe := e.ready(t, m.ID, m.LatestVersion.ID, "edit", moreQA)
+	for _, w := range []struct {
+		name  string
+		write func() error
+	}{
+		{"approve", func() error {
+			_, _, err := e.approve(tenant.Editor, approveMe.ProposalID, m.LatestVersion.ID, key(), "")
+			return err
+		}},
+		{"reject", func() error { _, _, err := e.reject(tenant.Editor, rejectMe.ProposalID, key(), ""); return err }},
+	} {
+		holder, err := e.admin.Begin(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := holder.Exec(ctx, `SELECT 1 FROM twin.model_drafts WHERE model_id=$1 FOR UPDATE`, m.ID); err != nil {
+			t.Fatal(err)
+		}
+		done := make(chan error, 1)
+		go func() { done <- w.write() }()
+		e.waitsForALock(t, done, "twin.model_drafts")
+		_, err = holder.Exec(ctx, `SELECT 1 FROM twin.models WHERE id=$1 FOR UPDATE NOWAIT`, m.ID)
+		var pe *pgconn.PgError
+		if !errors.As(err, &pe) || pe.Code != "55P03" {
+			t.Errorf("%s: the model row is free while the decision waits for the draft: %v", w.name, err)
+		}
+		if err := holder.Rollback(ctx); err != nil {
+			t.Fatal(err)
+		}
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("%s after the draft was released: %v", w.name, err)
+			}
+		case <-time.After(30 * time.Second):
+			t.Fatalf("%s still waiting", w.name)
+		}
+	}
+}
+
+// waitsForALock returns once a backend waits for a row lock in a
+// statement that locks table, and fails the test if the decision ends
+// first or none does within 10 s.
+func (e *env) waitsForALock(t *testing.T, done <-chan error, table string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		var n int
+		if err := e.admin.QueryRow(context.Background(), `SELECT count(*) FROM pg_stat_activity
+			WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%FROM '||$1::text||'%FOR UPDATE%'`, table).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n > 0 {
+			return
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("the decision did not wait for the held row: %v", err)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no statement on %s waits for a lock", table)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// Review M1, D-069 (a), API_DATABASE §7: a key is scoped to the
+// organization, the actor and the operation, not the proposal, so the
+// fingerprint (the proposal and the normalized body) is what tells the
+// same key with the same body on another proposal of the same model and
+// base apart: 409 IDEMPOTENCY_KEY_CONFLICT, never the first proposal's
+// answer, and the second proposal stays as it was. {} and {"comment":""}
+// are one request (D-068, review I3).
+func TestTheKeyNamesTheProposal(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	m := e.model(t)
+	base := m.LatestVersion.ID
+	first := e.ready(t, m.ID, base, "edit", raiseCI)
+	second := e.ready(t, m.ID, base, "edit", moreQA)
+	k := key()
+	if status, out, err := e.approve(tenant.Editor, first.ProposalID, base, k, "Same."); err != nil || status != 201 {
+		t.Fatalf("approve the first: %d %v %s", status, err, out)
+	}
+	moved := e.snap(t, m.ID)
+	if status, out, err := e.approve(tenant.Editor, second.ProposalID, base, k, "Same."); !errors.Is(err, idempotency.ErrConflict) {
+		t.Errorf("the key on the second proposal: %d %v %s", status, err, out)
+	}
+	if got := e.get(t, second.ProposalID); got.Status != "ready" || got.DecidedBy != nil {
+		t.Errorf("the second proposal changed: %+v", got)
+	}
+	if s := e.snap(t, m.ID); s != moved {
+		t.Errorf("the refused approval changed %+v into %+v", moved, s)
+	}
+
+	// Two rejections with an empty body.
+	third := e.ready(t, m.ID, moved.latest, "edit", lowerCI)
+	fourth := e.ready(t, m.ID, moved.latest, "edit", moreQA)
+	k = key()
+	rejected, out, err := e.svc.Reject(ctx, e.scope(tenant.Editor), ids.New("req"), k, third.ProposalID, []byte(`{}`), approval.RejectRequest{})
+	if err != nil || rejected != 200 {
+		t.Fatalf("reject the third: %d %v", rejected, err)
+	}
+	if status, again, err := e.svc.Reject(ctx, e.scope(tenant.Editor), ids.New("req"), k, fourth.ProposalID, []byte(`{}`), approval.RejectRequest{}); !errors.Is(err, idempotency.ErrConflict) {
+		t.Errorf("the key on the fourth proposal: %d %v %s", status, err, again)
+	}
+	if got := e.get(t, fourth.ProposalID); got.Status != "ready" || got.DecidedBy != nil {
+		t.Errorf("the fourth proposal changed: %+v", got)
+	}
+	// The same rejection with an empty comment replays the first answer.
+	if status, again, err := e.svc.Reject(ctx, e.scope(tenant.Editor), ids.New("req"), k, third.ProposalID, []byte(`{"comment":""}`), approval.RejectRequest{}); err != nil ||
+		status != 200 || !bytes.Equal(again, out) {
+		t.Errorf(`{"comment":""} after {}: %d %v %s`, status, err, again)
+	}
+	if n := e.count(t, `SELECT count(*) FROM twin.audit_events WHERE action='proposal.reject' AND organization_id=$1`, e.org.ID); n != 1 {
+		t.Errorf("%d rejections audited", n)
+	}
+}
+
 // TEST-006: a rejection changes no model, draft, version or scenario; a
 // proposal that asked for input can be rejected; the answer is the
 // proposal; the key replays it; generating, invalid and failed proposals
@@ -886,18 +1023,7 @@ func TestApprovalReviewsAgain(t *testing.T) {
 	e := setup(t)
 	m := e.model(t)
 	before := e.snap(t, m.ID)
-	tamper := func(id, set string) {
-		e.owner(t, func(ctx context.Context, tx pgx.Tx) error {
-			if _, err := tx.Exec(ctx, `ALTER TABLE twin.ai_proposals DISABLE TRIGGER USER`); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(ctx, `UPDATE twin.ai_proposals SET `+set+` WHERE id=$1`, id); err != nil {
-				return err
-			}
-			_, err := tx.Exec(ctx, `ALTER TABLE twin.ai_proposals ENABLE TRIGGER USER`)
-			return err
-		})
-	}
+	tamper := e.tamper(t)
 	var ie *approval.InvalidError
 	var re *approval.RiskChangedError
 	var decided *approval.DecidedError
@@ -939,6 +1065,40 @@ func TestApprovalReviewsAgain(t *testing.T) {
 	if n := e.count(t, `SELECT count(*) FROM twin.audit_events WHERE action='proposal.approve' AND organization_id=$1`, e.org.ID); n != 0 {
 		t.Errorf("%d approvals audited", n)
 	}
+}
+
+// tamper rewrites a stored proposal behind the API's back, as the schema
+// owner with the user triggers off for the statement: what an approval
+// must not trust.
+func (e *env) tamper(t *testing.T) func(id, set string) {
+	return func(id, set string) {
+		t.Helper()
+		e.owner(t, func(ctx context.Context, tx pgx.Tx) error {
+			if _, err := tx.Exec(ctx, `ALTER TABLE twin.ai_proposals DISABLE TRIGGER USER`); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `UPDATE twin.ai_proposals SET `+set+` WHERE id=$1`, id); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, `ALTER TABLE twin.ai_proposals ENABLE TRIGGER USER`)
+			return err
+		})
+	}
+}
+
+// typed reports whether err is one of the refusals the service names
+// (each its own status and code); anything else is a server error (500).
+func typed(err error) bool {
+	var decided *approval.DecidedError
+	var state *approval.StateError
+	var risk *approval.RiskChangedError
+	var invalid *approval.InvalidError
+	var storage *approval.DatasetStorageError
+	return errors.As(err, &decided) || errors.As(err, &state) || errors.As(err, &risk) || errors.As(err, &invalid) ||
+		errors.As(err, &storage) || errors.Is(err, approval.ErrNotFound) || errors.Is(err, approval.ErrOtherBase) ||
+		errors.Is(err, approval.ErrInvalidComment) || errors.Is(err, approval.ErrDatasetsUnavailable) ||
+		errors.Is(err, idempotency.ErrConflict) || errors.Is(err, idempotency.ErrInProgress) ||
+		errors.Is(err, tenant.ErrForbidden) || errors.Is(err, tenant.ErrNoMembership)
 }
 
 // strictLookup serves a pack that refuses a capacity above 5: a rule the
@@ -984,6 +1144,28 @@ func TestApprovalFreezesTheManifest(t *testing.T) {
 	if _, _, err := noStorage.Approve(context.Background(), e.scope(tenant.Editor), ids.New("req"), key(), p.ProposalID, body, req); !errors.Is(err, approval.ErrDatasetsUnavailable) {
 		t.Errorf("without object storage: %v", err)
 	}
+	// Review I2: object storage that cannot be read is 503
+	// DATASET_STORAGE_FAILED, as in the generator (D-061 (c)), not 500.
+	broken := *e.svc
+	broken.Objects = brokenObjects{e.objects}
+	var storage *approval.DatasetStorageError
+	if _, _, err := broken.Approve(context.Background(), e.scope(tenant.Editor), ids.New("req"), key(), p.ProposalID, body, req); !errors.As(err, &storage) {
+		t.Errorf("object storage that fails: %v", err)
+	}
+	// Review L2, D-069 (b): a proposal that holds another manifest than
+	// its base's whole manifest is the server's fault: a server error,
+	// never approved, nothing changed.
+	other := e.ready(t, m.ID, base, "edit", moreQA)
+	e.tamper(t)(other.ProposalID, `candidate_dataset_bindings='[]'`)
+	if _, _, err := e.approve(tenant.Editor, other.ProposalID, base, key(), ""); err == nil || typed(err) {
+		t.Errorf("a proposal without its base's manifest: %v", err)
+	}
+	if got := e.get(t, other.ProposalID); got.Status != "ready" || got.DecidedBy != nil {
+		t.Errorf("a refused approval moved the proposal: %+v", got)
+	}
+	if s := e.snap(t, m.ID); s != before {
+		t.Errorf("refused approvals changed %+v into %+v", before, s)
+	}
 
 	key0, _ := objects.NewKey(e.org.ID, objects.Datasets, binding.DatasetVersionID+".json")
 	path := filepath.Join(e.root, filepath.FromSlash(key0))
@@ -1027,6 +1209,32 @@ func TestApprovalFreezesTheManifest(t *testing.T) {
 	if s := e.snap(t, m.ID); s.draftBase != a.NewVersionID || a.DraftOutOfDate {
 		t.Errorf("the draft %+v, out of date %v", s, a.DraftOutOfDate)
 	}
+}
+
+// renamed is the error answer out as request requestID gets it.
+func renamed(t *testing.T, out []byte, requestID string) []byte {
+	t.Helper()
+	var e proposals.ErrorEnvelope
+	if err := json.Unmarshal(out, &e, json.RejectUnknownMembers(true)); err != nil {
+		t.Fatalf("%s: %v", out, err)
+	}
+	e.Error.RequestID = requestID
+	data, err := json.Marshal(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := hashing.Canonical(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return canonical
+}
+
+// brokenObjects is object storage whose reads fail.
+type brokenObjects struct{ objects.Store }
+
+func (brokenObjects) Get(context.Context, string) (io.ReadCloser, error) {
+	return nil, errors.New("the object store did not answer")
 }
 
 func mustJSON(t *testing.T, v any) []byte {

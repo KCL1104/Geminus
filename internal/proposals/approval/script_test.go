@@ -165,6 +165,9 @@ func TestTheDBTestsAnswersAreReady(t *testing.T) {
 		{"TestApprovalOnAMovedBase fourth", "edit", published, lowerCI},
 		{"TestDecisionRaces q", "edit", approved, moreQA},
 		{"TestApprovalReviewsAgain lowered", "edit", v1, lowerCI},
+		{"TestDecisionsTakeTheModelRowFirst, TestTheKeyNamesTheProposal second", "edit", v1, moreQA},
+		{"TestTheKeyNamesTheProposal third", "edit", approved, lowerCI},
+		{"TestTheKeyNamesTheProposal fourth", "edit", approved, moreQA},
 	} {
 		f := fake.New()
 		scriptAnswer(f, c.mode, c.name, answer(t, "Raise the CI runner capacity.", c.changes))

@@ -113,9 +113,10 @@ func changesOf(t *testing.T, answer string) []byte {
 	return a.Changes
 }
 
-// Each answer TestApprovalClosedLoop expects ready, on the base it is
-// asked on: version 1 of the delivery template, then version 2, its
-// approved raiseCI.
+// Each answer TestApprovalClosedLoop and TestApprovalRefusals expect
+// ready, on the base it is asked on: version 1 of the delivery template,
+// version 2 (its approved raiseCI), then version 3 (version 2 with the
+// approved lowerRunners).
 func TestTheClosedLoopsAnswersAreReady(t *testing.T) {
 	var doc map[string]any
 	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata", "golden-models", "default-delivery.json")), &doc); err != nil {
@@ -135,6 +136,14 @@ func TestTheClosedLoopsAnswersAreReady(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	res, err = patch.Apply(v2, changesOf(t, lowerRunners), patch.ManualDraft)
+	if err != nil || !res.Valid() {
+		t.Fatalf("%v %+v", err, res.Validation)
+	}
+	v3, err := hashing.Canonical(res.Candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, c := range []struct {
 		mode, intent, answer string
 		base                 []byte
@@ -142,6 +151,7 @@ func TestTheClosedLoopsAnswersAreReady(t *testing.T) {
 		{"edit", "Raise the CI runners to 6.", raiseCI, v1},
 		{"scenario", "What if there were 8 runners?", eightRunners, v2},
 		{"edit", "Lower the runners.", lowerRunners, v2},
+		{"edit", "Raise them back.", raiseCI, v3},
 	} {
 		role, answered, o := askedAsTheGenerator(t, c.mode, c.base, c.intent, c.answer)
 		if role != provider.Mode(c.mode).Role() || answered != "proposed" || o.Status != review.Ready {

@@ -4,13 +4,16 @@
 // of the proposal's organization, approves a ready proposal, which then has
 // exactly one effect, or rejects it, which has none. The AI never decides:
 // this package calls no provider, the worker cannot link it (architecture
-// rule approval-only-in-the-api) and cannot write a version, a scenario or
+// rule decisions-only-in-the-api) and cannot write a version, a scenario or
 // a ready proposal (0002), and nothing a provider said grants anything: the
 // server reviews the stored content again before it applies it.
 //
-// Each decision is one tenant.DB.Run transaction: the caller's membership
-// and role first (D-008), then the Idempotency-Key (D-011: the same key and
-// body replay the stored answer, a replay still needs the role), then the
+// The HTTP adapter checks the request itself first (path, media type,
+// body, the Idempotency-Key header). Each decision is then one
+// tenant.DB.Run transaction: the caller's membership and role first
+// (D-008), then the Idempotency-Key (D-011: the same key and body replay
+// the stored answer, a replay still needs the role; the fingerprint holds
+// the proposal, since the key's scope does not), then the
 // model row, its draft and the proposal, locked in that order (D-003, the
 // lock order of a publish, ADR-022), then the checks, the one effect, the
 // proposal's decision, the audit event and the idempotency response,
@@ -103,6 +106,28 @@ func (e *InvalidError) Error() string {
 	return fmt.Sprintf("approval: the proposal does not pass the review again (%d issue(s))", len(e.Issues))
 }
 
+// DatasetStorageError: the dataset binding stage could not read or verify
+// the base's snapshots (an infrastructure failure, not a problem of the
+// data, which is an issue).
+type DatasetStorageError struct{ Err error }
+
+func (e *DatasetStorageError) Error() string {
+	return "approval: the dataset snapshots could not be read: " + e.Err.Error()
+}
+
+func (e *DatasetStorageError) Unwrap() error { return e.Err }
+
+// bindingFailure is what an approval answers when the dataset binding
+// stage fails with err rather than with issues: a storage failure (503
+// DATASET_STORAGE_FAILED, as the generator's, D-061 (c); review I2),
+// unless the request itself ended.
+func bindingFailure(ctx context.Context, err error) error {
+	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return &DatasetStorageError{Err: err}
+}
+
 // PackLookup finds a model's domain pack; *domainpack.Registry is one.
 type PackLookup interface {
 	Lookup(domain string) (domainpack.DomainPack, error)
@@ -176,10 +201,30 @@ func decisionComment(c string) (*string, error) {
 	return &c, nil
 }
 
-// fingerprint is a decision's idempotency hash: the proposal and the
-// canonical body (D-011).
+// decisionBody is the body of either decision (Approve, Reject) as the
+// fingerprint reads it: an empty comment is no comment (D-068), so it is
+// left out.
+type decisionBody struct {
+	ExpectedBaseVersionID string `json:"expected_base_version_id,omitzero"`
+	Comment               string `json:"comment,omitzero"`
+}
+
+// fingerprint is a decision's idempotency hash (D-011, D-069 (a)): the
+// proposal of the URL and the normalized parsed body (API_DATABASE §7).
+// The key's scope does not hold the proposal, so this is what tells the
+// same key used on another proposal apart; bodies that differ only in
+// member order, spacing or an empty comment are one request. A member the
+// schemas do not have is an error, never left out.
 func fingerprint(proposalID string, body []byte) (string, error) {
-	canonical, err := hashing.Canonical(body)
+	var parsed decisionBody
+	if err := json.Unmarshal(body, &parsed, json.RejectUnknownMembers(true)); err != nil {
+		return "", err
+	}
+	normalized, err := json.Marshal(parsed, json.Deterministic(true))
+	if err != nil {
+		return "", err
+	}
+	canonical, err := hashing.Canonical(normalized)
 	if err != nil {
 		return "", err
 	}
@@ -188,6 +233,28 @@ func fingerprint(proposalID string, body []byte) (string, error) {
 		return "", err
 	}
 	return hashing.Of(data)
+}
+
+// replayed is the stored answer r as request requestID, with the same key
+// and body, gets it again: byte for byte, except that an error answer (the
+// 409 of a conflict, the only one a decision stores) names this request,
+// as every error answer does: error.request_id is the response's
+// X-Request-ID (D-069 (a), review L1). The first request is in the audit
+// event of the conflict.
+func replayed(r idempotency.Response, requestID string) ([]byte, error) {
+	if r.Status < 400 {
+		return hashing.Canonical(r.Body)
+	}
+	var e proposals.ErrorEnvelope
+	if err := json.Unmarshal(r.Body, &e, json.RejectUnknownMembers(true)); err != nil {
+		return nil, fmt.Errorf("approval: a stored %d is not an error envelope: %w", r.Status, err)
+	}
+	e.Error.RequestID = requestID
+	data, err := json.Marshal(e)
+	if err != nil {
+		return nil, err
+	}
+	return hashing.Canonical(data)
 }
 
 // locked is what a decision holds: the model row, its draft and the
@@ -256,7 +323,7 @@ func (s *Service) Approve(ctx context.Context, sc tenant.Scope, requestID, key, 
 		}
 		if replay != nil {
 			status = replay.Status
-			out, err = hashing.Canonical(replay.Body)
+			out, err = replayed(*replay, requestID)
 			return err
 		}
 		l, err := lock(ctx, tx, m.OrganizationID, id)
@@ -359,7 +426,7 @@ func (s *Service) apply(ctx context.Context, tx tenant.Tx, m tenant.Membership, 
 	snaps := snapshots.Store{Keys: keys, Objects: s.Objects}
 	resolution, err := datasets.Resolve(ctx, snaps, org, r.ir, manifest)
 	if err != nil {
-		return nil, err
+		return nil, bindingFailure(ctx, err)
 	}
 	if o := r.outcome.Refuse(withoutIR(resolution.Issues)); o.Status != r.outcome.Status {
 		return nil, &InvalidError{Issues: o.Validation.Issues}
@@ -470,7 +537,7 @@ func (s *Service) Reject(ctx context.Context, sc tenant.Scope, requestID, key, i
 		}
 		if replay != nil {
 			status = replay.Status
-			out, err = hashing.Canonical(replay.Body)
+			out, err = replayed(*replay, requestID)
 			return err
 		}
 		// The approval's lock order, so that an approval and a rejection

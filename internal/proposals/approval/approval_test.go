@@ -6,8 +6,10 @@ package approval
 // none of the stored results (AI_SPEC §6, SECURITY §5; D-069 (b)).
 
 import (
+	"context"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -26,6 +28,7 @@ import (
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/patch"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	store "github.com/kcl1104/geminus/internal/storage/proposals"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -119,6 +122,14 @@ func TestRefused(t *testing.T) {
 	if errors.As(Refused(&InvalidError{Issues: []model.ValidationIssue{issue}}), &he); he.Details[0].Code != validate.DatasetBindingInvalid {
 		t.Errorf("an issue's code is lost: %+v", he.Details)
 	}
+	// I2, D-069 (b): a snapshot that cannot be read is 503 with the
+	// generator's code (D-061 (c)), never the cause's text.
+	he = nil
+	storage := &DatasetStorageError{Err: errors.New("open /srv/objects/tenant/secret: input/output error")}
+	if !errors.As(Refused(storage), &he) || he.Code != httpapi.ServiceUnavailable || len(he.Details) != 1 ||
+		he.Details[0].Code != "DATASET_STORAGE_FAILED" || strings.Contains(fmt.Sprint(he), "secret") {
+		t.Errorf("a storage failure: %+v", he)
+	}
 	// Tenant and other errors pass through for httpapi to classify.
 	for _, err := range []error{tenant.ErrForbidden, tenant.ErrNoMembership, errors.New("a server fault")} {
 		if Refused(err) != err {
@@ -147,6 +158,101 @@ func TestScenarioName(t *testing.T) {
 		if n := utf8.RuneCountInString(got); n < 1 || n > maxName {
 			t.Errorf("%q: %d characters", c.summary, n)
 		}
+	}
+}
+
+// The idempotency fingerprint (D-011, D-069 (a), API_DATABASE §7) is the
+// proposal of the URL and the normalized parsed body. A key's scope
+// (organization, actor, operation, key) does not hold the proposal, so
+// the fingerprint alone tells the same key used on another proposal apart
+// (review M1); an empty comment is no comment (D-068), so {} and
+// {"comment":""} are one request (review I3).
+func TestFingerprint(t *testing.T) {
+	const (
+		a, b  = "aip_01M4YDQK00ADN261CME3WV5HZ6", "aip_01M4YDQK00TA00000000000003"
+		base  = `{"expected_base_version_id":"mv_01M4YDQK00ADN261CME3WV5HZ6"}`
+		other = `{"expected_base_version_id":"mv_01M4YDQK00TA00000000000002"}`
+	)
+	fp := func(id, body string) string {
+		t.Helper()
+		h, err := fingerprint(id, []byte(body))
+		if err != nil {
+			t.Fatalf("%s: %v", body, err)
+		}
+		return h
+	}
+	for _, body := range []string{base, `{}`, `{"comment":"No."}`} {
+		if fp(a, body) == fp(b, body) {
+			t.Errorf("%s: another proposal has the same fingerprint", body)
+		}
+	}
+	for _, same := range [][2]string{
+		{base, `{ "expected_base_version_id" : "mv_01M4YDQK00ADN261CME3WV5HZ6" }`},
+		{base, `{"comment":"","expected_base_version_id":"mv_01M4YDQK00ADN261CME3WV5HZ6"}`},
+		{`{}`, `{"comment":""}`},
+		{`{"comment":"No.","expected_base_version_id":"mv_01M4YDQK00ADN261CME3WV5HZ6"}`,
+			`{"expected_base_version_id":"mv_01M4YDQK00ADN261CME3WV5HZ6","comment":"No."}`},
+	} {
+		if fp(a, same[0]) != fp(a, same[1]) {
+			t.Errorf("%s and %s are one request", same[0], same[1])
+		}
+	}
+	for _, differ := range [][2]string{
+		{base, other},
+		{base, `{"expected_base_version_id":"mv_01M4YDQK00ADN261CME3WV5HZ6","comment":"x"}`},
+		{`{}`, `{"comment":"No."}`},
+		{`{"comment":"No."}`, `{"comment":"no."}`},
+	} {
+		if fp(a, differ[0]) == fp(a, differ[1]) {
+			t.Errorf("%s and %s are two requests", differ[0], differ[1])
+		}
+	}
+	// A member the schemas do not have is refused, not left out.
+	if _, err := fingerprint(a, []byte(`{"comment":"","approved_by":"usr_01M4YDQK00ADN261CME3WV5HZ6"}`)); err == nil {
+		t.Error("an unknown member was fingerprinted")
+	}
+}
+
+// Review L1, D-069 (a): a replay is the stored answer byte for byte,
+// except that an error answer names the request that gets it, as every
+// error answer does (error.request_id is the response's X-Request-ID).
+func TestReplayed(t *testing.T) {
+	const first, again = "req_01M4YDQK00TA00000000000001", "req_01M4YDQK00TA00000000000002"
+	created, _ := hashing.Canonical([]byte(`{"proposal_id":"aip_01M4YDQK00ADN261CME3WV5HZ6","status":"approved","mode":"scenario",` +
+		`"scenario_id":"scn_01M4YDQK00ADN261CME3WV5HZ6","patch_hash":"sha256:` + strings.Repeat("a", 64) + `"}`))
+	if out, err := replayed(idempotency.Response{Status: 201, Body: created}, again); err != nil || string(out) != string(created) {
+		t.Errorf("a 201 replays as %s %v", out, err)
+	}
+	stored, _ := json.Marshal(proposals.ErrorEnvelope{Error: proposals.ErrorBody{Code: "MODEL_VERSION_CONFLICT", RequestID: first,
+		Message: "the model's latest version is no longer this proposal's base",
+		Details: []proposals.ErrorDetail{{Path: "/expected_base_version_id", Reason: "the proposal's base is not the model's latest version"}}}})
+	stored, _ = hashing.Canonical(stored)
+	out, err := replayed(idempotency.Response{Status: 409, Body: stored}, again)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var e proposals.ErrorEnvelope
+	if err := json.Unmarshal(out, &e, json.RejectUnknownMembers(true)); err != nil || e.Error.RequestID != again {
+		t.Fatalf("the replayed 409 names %q: %s %v", e.Error.RequestID, out, err)
+	}
+	if want := strings.Replace(string(stored), first, again, 1); string(out) != want {
+		t.Errorf("the replayed 409 is\n%s\nwant\n%s", out, want)
+	}
+}
+
+// Review I2: a dataset binding stage that cannot read the snapshots is a
+// storage failure (503 DATASET_STORAGE_FAILED); a request that ended is
+// not.
+func TestBindingFailure(t *testing.T) {
+	cause := errors.New("the object store did not answer")
+	var se *DatasetStorageError
+	if err := bindingFailure(context.Background(), cause); !errors.As(err, &se) || !errors.Is(err, cause) {
+		t.Errorf("a read failure: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := bindingFailure(ctx, fmt.Errorf("reading: %w", context.Canceled)); errors.As(err, &se) || !errors.Is(err, context.Canceled) {
+		t.Errorf("a cancelled request: %v", err)
 	}
 }
 

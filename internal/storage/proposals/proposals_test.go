@@ -6,6 +6,7 @@ import (
 	"errors"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -206,6 +207,69 @@ func TestDecisionsNeedTheirState(t *testing.T) {
 		}
 		return nil
 	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Review L4: each decision's organization filter holds by itself. As the
+// provisioning superuser, whom RLS does not restrict, a decision that
+// names another organization writes nothing on a ready and on a
+// needs_input proposal, states its status filter alone would let through
+// (ErrNotDecidable). Everything runs in one transaction that is rolled
+// back: a proposal generated without its job never commits (0012).
+func TestDecisionsStayInTheirOrganization(t *testing.T) {
+	pool := dbtest.Admin(t)
+	admin := postgres.OpenPool(pool)
+	org := dbtest.NewOrg(t, pool, "https://test.invalid", tenant.Owner)
+	other := dbtest.NewOrg(t, pool, "https://test.invalid", tenant.Owner)
+	mdl, mv, idPool := version(t, admin, org)
+	user, stranger := org.Members[tenant.Owner].UserID, other.Members[tenant.Owner].UserID
+	ctx := context.Background()
+	rollback := errors.New("roll back")
+	err := admin.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		generated := func(g proposals.Generated) proposals.Proposal {
+			t.Helper()
+			p, err := proposals.Insert(ctx, tx, proposals.Proposal{ID: ids.New("aip"), OrganizationID: org.ID, ModelID: mdl, BaseVersionID: mv,
+				Mode: "edit", Intent: "raise", OutputLocale: "en", IDPool: idPool, CreatedBy: user})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := proposals.Generate(ctx, tx, org.ID, p.ID, g); err != nil {
+				t.Fatal(err)
+			}
+			return p
+		}
+		summary, which, low, hash, confidence := "Rename it.", "Which step?", "low", "sha256:"+strings.Repeat("a", 64), 0.9
+		ready := generated(proposals.Generated{Status: proposals.Ready, Summary: &summary, ExpectedEffects: []string{"A simulation will tell."},
+			Patch: []byte(`[{"op":"replace","path":"/name","value":"N"}]`), PatchHash: &hash, ServerRisk: &low, ProviderRisk: &low, Risk: &low,
+			Confidence: &confidence, Validation: []byte(`{"valid":true,"issues":[]}`)})
+		asked := generated(proposals.Generated{Status: proposals.NeedsInput, Summary: &which, Questions: []string{which}})
+		version := ids.New("mv")
+		for _, c := range []struct {
+			name   string
+			decide func() error
+		}{
+			{"approve the ready proposal", func() error { return proposals.Approve(ctx, tx, other.ID, ready.ID, stranger, &version, nil, nil) }},
+			{"conflict the ready proposal", func() error { return proposals.Conflict(ctx, tx, other.ID, ready.ID, stranger) }},
+			{"reject the ready proposal", func() error { return proposals.Reject(ctx, tx, other.ID, ready.ID, stranger, nil) }},
+			{"reject the needs_input proposal", func() error { return proposals.Reject(ctx, tx, other.ID, asked.ID, stranger, nil) }},
+		} {
+			if err := c.decide(); !errors.Is(err, proposals.ErrNotDecidable) {
+				t.Errorf("%s in another organization: %v", c.name, err)
+			}
+		}
+		for p, want := range map[string]proposals.Status{ready.ID: proposals.Ready, asked.ID: proposals.NeedsInput} {
+			got, err := proposals.Get(ctx, tx, org.ID, p)
+			if err != nil {
+				return err
+			}
+			if got.Status != want || got.DecidedBy != nil || got.DecidedAt != nil || got.NewVersionID != nil {
+				t.Errorf("a decision in another organization wrote: %+v", got)
+			}
+		}
+		return rollback
+	})
+	if !errors.Is(err, rollback) {
 		t.Fatal(err)
 	}
 }

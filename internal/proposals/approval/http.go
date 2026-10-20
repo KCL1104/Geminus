@@ -29,7 +29,7 @@ var Routes = []Route{
 
 // Register adds the decision routes to mux.
 func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpapi.Resolver, s *Service) {
-	h := handlers{s: s}
+	h := handlers{s: s, log: log}
 	for _, r := range Routes {
 		var f func(http.ResponseWriter, *http.Request, tenant.Scope) error
 		switch r.OperationID {
@@ -42,7 +42,10 @@ func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpa
 	}
 }
 
-type handlers struct{ s *Service }
+type handlers struct {
+	s   *Service
+	log *slog.Logger
+}
 
 var proposalIDs = regexp.MustCompile(`^aip_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
 
@@ -64,6 +67,7 @@ func Refused(err error) error {
 	var state *StateError
 	var risk *RiskChangedError
 	var invalid *InvalidError
+	var storage *DatasetStorageError
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return httpapi.Errorf(httpapi.NotFound, "not found")
@@ -95,6 +99,10 @@ func Refused(err error) error {
 			Details: []httpapi.Detail{{Path: "/comment", Reason: "at most 2000 characters, without U+0000", Severity: "error"}}}
 	case errors.Is(err, ErrDatasetsUnavailable):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "the proposal's base binds datasets and dataset storage is not available")
+	case errors.As(err, &storage):
+		// The cause is logged by the handler, never sent.
+		return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was changed (retry later)",
+			Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}}
 	case errors.Is(err, idempotency.ErrConflict), errors.Is(err, idempotency.ErrInProgress):
 		return httpapi.Errorf(httpapi.IdempotencyKeyConflict, "this Idempotency-Key was used for a different request")
 	}
@@ -117,6 +125,11 @@ func (h handlers) approve(w http.ResponseWriter, r *http.Request, sc tenant.Scop
 	}
 	status, out, err := h.s.Approve(r.Context(), sc, httpapi.RequestID(r.Context()), key, id, body, req)
 	if err != nil {
+		var storage *DatasetStorageError
+		if errors.As(err, &storage) {
+			h.log.WarnContext(r.Context(), "reading an approval's dataset snapshots failed", "request_id", httpapi.RequestID(r.Context()),
+				"organization_id", sc.OrganizationID, "proposal_id", id, "error", storage.Err.Error())
+		}
 		return Refused(err)
 	}
 	httpapi.WriteBody(w, status, out) // 201, or the 409 of a conflict this key already answered

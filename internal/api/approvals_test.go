@@ -206,9 +206,28 @@ func TestApprovalRefusals(t *testing.T) {
 	if r := e.decide(owner.Subject, e.a.ID, q.ProposalID, "approve", "appr-ref-0200", `{"expected_base_version_id":"`+base2+`"}`); r.status != 201 {
 		t.Fatalf("approve: %d %s", r.status, r.body)
 	}
+	// Review M1: the same key and body on another proposal of the same
+	// model and base is a key conflict, never q's answer; stale is
+	// untouched.
+	if r := e.decide(owner.Subject, e.a.ID, stale.ProposalID, "approve", "appr-ref-0200", `{"expected_base_version_id":"`+base2+`"}`); r.status != 409 ||
+		code(t, r) != "IDEMPOTENCY_KEY_CONFLICT" {
+		t.Errorf("the key on another proposal: %d %s", r.status, r.body)
+	}
+	if got := e.proposal(t, viewer.Subject, e.a.ID, stale.ProposalID); got.Status != "ready" {
+		t.Errorf("the key on another proposal moved it to %s", got.Status)
+	}
 	r := e.decide(editor.Subject, e.a.ID, stale.ProposalID, "approve", "appr-ref-0201", `{"expected_base_version_id":"`+base2+`"}`)
 	if r.status != 409 || code(t, r) != "MODEL_VERSION_CONFLICT" || !strings.Contains(string(r.body), `"path":"/expected_base_version_id"`) {
 		t.Errorf("a moved base: %d %s", r.status, r.body)
+	}
+	// Review L1, D-069 (a): the key's replay of that 409 is the same answer
+	// naming its own request (code checks error.request_id against the
+	// response's X-Request-ID).
+	again := e.decide(editor.Subject, e.a.ID, stale.ProposalID, "approve", "appr-ref-0201", `{"expected_base_version_id":"`+base2+`"}`)
+	firstID, againID := r.header.Get("X-Request-ID"), again.header.Get("X-Request-ID")
+	if again.status != 409 || code(t, again) != "MODEL_VERSION_CONFLICT" || firstID == againID ||
+		strings.Replace(string(r.body), `"request_id":"`+firstID+`"`, `"request_id":"`+againID+`"`, 1) != string(again.body) {
+		t.Errorf("the conflict's replay: %d %s, first %s", again.status, again.body, r.body)
 	}
 	if got := e.proposal(t, viewer.Subject, e.a.ID, stale.ProposalID); got.Status != "conflicted" {
 		t.Errorf("after a moved base: %s", got.Status)
@@ -221,6 +240,25 @@ func TestApprovalRefusals(t *testing.T) {
 	}
 	if r := e.decide(editor.Subject, e.a.ID, id, "approve", "appr-ref-0301", `{"expected_base_version_id":"`+e.latest(t, m.ID)+`"}`); r.status != 409 || code(t, r) != "LIFECYCLE_CONFLICT" {
 		t.Errorf("approving needs_input: %d %s", r.status, r.body)
+	}
+
+	// Review M1 for rejections: {} on two proposals with one key; and I3:
+	// {"comment":""} is the same request as {} (D-068), so it replays.
+	base3 := e.latest(t, m.ID)
+	j1 := e.readyOver(t, m.ID, base3, "edit", "Raise them back.", raiseCI)
+	j2 := e.readyOver(t, m.ID, base3, "edit", "Raise them back again.", raiseCI)
+	first := e.decide(editor.Subject, e.a.ID, j1.ProposalID, "reject", "appr-ref-0400", `{}`)
+	if first.status != 200 {
+		t.Fatalf("reject: %d %s", first.status, first.body)
+	}
+	if r := e.decide(editor.Subject, e.a.ID, j2.ProposalID, "reject", "appr-ref-0400", `{}`); r.status != 409 || code(t, r) != "IDEMPOTENCY_KEY_CONFLICT" {
+		t.Errorf("the key on another proposal: %d %s", r.status, r.body)
+	}
+	if got := e.proposal(t, viewer.Subject, e.a.ID, j2.ProposalID); got.Status != "ready" {
+		t.Errorf("the key on another proposal moved it to %s", got.Status)
+	}
+	if r := e.decide(editor.Subject, e.a.ID, j1.ProposalID, "reject", "appr-ref-0400", `{"comment":""}`); r.status != 200 || string(r.body) != string(first.body) {
+		t.Errorf(`{"comment":""} after {}: %d %s`, r.status, r.body)
 	}
 }
 
