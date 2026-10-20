@@ -1,0 +1,11 @@
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestFingerprint
+--- PASS: TestFingerprint (0.00s)
+=== RUN   TestReplayed
+--- PASS: TestReplayed (0.00s)
+=== RUN   TestBindingFailure
+--- PASS: TestBindingFailure (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.017s
+exit 0

@@ -1,0 +1,26 @@
+conflict-check-removed: SURVIVED 
+other-base-check-removed: SURVIVED 
+approve-allows-viewer: SURVIVED 
+reject-allows-viewer: SURVIVED 
+approve-replay-before-role: SURVIVED 
+fingerprint-ignores-proposal: KILLED --- FAIL: TestFingerprint (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.482s | FAIL
+fingerprint-ignores-body: KILLED --- FAIL: TestFingerprint (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.532s | FAIL
+conflicted-not-decided: SURVIVED 
+reject-any-state: SURVIVED 
+conflict-answer-not-stored: SURVIVED 
+conflict-audited-as-approve: SURVIVED 
+manifest-equality-removed: SURVIVED 
+no-storage-check-removed: SURVIVED 
+binding-stage-ignored: SURVIVED 
+version-comment-dropped: SURVIVED 
+clean-draft-not-advanced: SURVIVED 
+edit-approval-not-audited: SURVIVED 
+lock-draft-before-model: SURVIVED 
+proposal-not-relocked: SURVIVED 
+reject-answers-stale-proposal: SURVIVED 
+empty-comment-kept: KILLED --- FAIL: TestDecisionComment (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.452s | FAIL
+claim-is-stored-effective-risk: SURVIVED 
+pool-not-rechecked: KILLED --- FAIL: TestRecheckAppliesTheReviewedChanges (0.07s) | --- FAIL: TestRecheckTrustsNoStoredResult (0.02s) | --- FAIL: TestRecheckAppliesTodaysRules (0.01s) | FAIL
+storage-approve-any-state: SURVIVED 
+storage-reject-other-org: SURVIVED 
+TOTAL 25: {'KILLED': 4, 'SURVIVED': 21, 'INVALID': 0}

@@ -1,0 +1,8 @@
+date: 2026-10-20T07:10:30Z
+commit: 00e962a (branch t026-r1, from 534c9ba)
+go version go1.27.2 linux/amd64
+node v22.22.0
+cpus: 4
+python: Python 3.13.16
+PostgreSQL server: none in this worktree; GEMINUS_TEST_DATABASE_URL is unset
+apps/web/node_modules: absent

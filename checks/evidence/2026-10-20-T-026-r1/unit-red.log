@@ -1,0 +1,18 @@
+=== RUN   TestRefused
+    approval_test.go:131: a storage failure: <nil>
+--- FAIL: TestRefused (0.00s)
+=== RUN   TestFingerprint
+    approval_test.go:197: {"expected_base_version_id":"mv_01M4YDQK00ADN261CME3WV5HZ6"} and {"comment":"","expected_base_version_id":"mv_01M4YDQK00ADN261CME3WV5HZ6"} are one request
+    approval_test.go:197: {} and {"comment":""} are one request
+    approval_test.go:212: an unknown member was fingerprinted
+--- FAIL: TestFingerprint (0.00s)
+=== RUN   TestReplayed
+    approval_test.go:236: the replayed 409 names "req_01M4YDQK00TA00000000000001": {"error":{"code":"MODEL_VERSION_CONFLICT","details":[{"path":"/expected_base_version_id","reason":"the proposal's base is not the model's latest version"}],"message":"the model's latest version is no longer this proposal's base","request_id":"req_01M4YDQK00TA00000000000001"}} <nil>
+--- FAIL: TestReplayed (0.00s)
+=== RUN   TestBindingFailure
+    approval_test.go:250: a read failure: the object store did not answer
+--- FAIL: TestBindingFailure (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.313s
+FAIL
+exit 1

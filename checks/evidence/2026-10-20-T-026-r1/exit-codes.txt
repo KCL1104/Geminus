@@ -1,0 +1,10 @@
+spec-check: exit 0 (make spec-check PYTHON=.venv/bin/python)
+backend-test: exit 0 (make backend-test)
+backend-race: exit 0 (make backend-race)
+architecture-check: exit 0 (make architecture-check)
+ai-eval: exit 0 (make ai-eval)
+ts-contracts: exit 0 (make ts-contracts PYTHON=.venv/bin/python)
+frontend-test: exit 2 (make frontend-test)
+t026-go-tests: exit 0 (go test -count=1 -v ./internal/proposals/... ./internal/storage/proposals/ ./internal/storage/scenarios/ ./internal/storage/models/ ./internal/models/ ./internal/api/)
+done
+spec-check (with the report): exit 0

@@ -1,0 +1,43 @@
+T-026 review round 1: database tests NOT RUN in this worktree (2026-10-20)
+
+Why: the worktree has no PostgreSQL server and GEMINUS_TEST_DATABASE_URL is
+unset. Per the coordinator's instruction, su, runuser and any other way to
+start a database as another user were not attempted. Every DB-backed Go test
+printed SKIP ("NOT RUN: set GEMINUS_TEST_DATABASE_URL ...") in
+t026-go-tests.log.
+
+For the coordinator, on a fresh disposable dt_test_* database, the whole
+suite (0001-0014 up, every SQL suite, down, up again, then db-go-test with
+-race, -p 1, a skip being a failure):
+
+  DT_ALLOW_DB_TESTS=yes DATABASE_URL=... GEMINUS_TEST_DATABASE_URL=... make integration-test
+
+New DB-backed Go tests (round 1):
+  internal/proposals/approval  TestTheKeyNamesTheProposal          (M1, I3)
+  internal/proposals/approval  TestDecisionsTakeTheModelRowFirst   (L3)
+  internal/storage/proposals   TestDecisionsStayInTheirOrganization (L4)
+
+Changed DB-backed Go tests (round 1):
+  internal/proposals/approval  TestApprovalOnAMovedBase       (L1: the replayed 409 names the retry's request)
+  internal/proposals/approval  TestApprovalFreezesTheManifest (I2: storage that fails; L2: a tampered manifest)
+  internal/proposals/approval  TestApprovalReviewsAgain       (the tamper helper moved to env.tamper)
+  internal/api                 TestApprovalRefusals           (M1, L1, I3 over HTTP)
+
+Every other DB-backed test of ./internal/proposals/approval/ and
+./internal/api/ that approves or rejects must pass again: Approve and Reject
+now fingerprint the normalized parsed body and rewrite the request_id of a
+replayed error answer.
+
+SQL: db/tests/proposal_decisions.sql was re-rendered; only two comments of
+its template changed (no statement). No migration changed in round 1.
+
+Mutants that only a DB-backed test can kill (r1-mutants.log, "db-only";
+they survive without a database, as expected). With the database URL set:
+
+  GEMINUS_TEST_DATABASE_URL=... python3 -I r1-mutate.py <repo root> <log>
+
+  apply-ignores-binding-failure  -> TestApprovalFreezesTheManifest
+  manifest-equality-removed      -> TestApprovalFreezesTheManifest
+  lock-draft-before-model        -> TestDecisionsTakeTheModelRowFirst
+  storage-reject-other-org       -> TestDecisionsStayInTheirOrganization
+  storage-approve-other-org      -> TestDecisionsStayInTheirOrganization

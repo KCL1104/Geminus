@@ -1,0 +1,17 @@
+T-026 review round 1 mutants, without a database
+fingerprint-ignores-proposal: KILLED --- FAIL: TestFingerprint (0.01s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	1.026s | FAIL
+fingerprint-ignores-body: KILLED --- FAIL: TestFingerprint (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	1.192s | FAIL
+fingerprint-not-normalized: KILLED --- FAIL: TestFingerprint (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.601s | FAIL
+fingerprint-ignores-unknown-members: KILLED --- FAIL: TestFingerprint (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.590s | FAIL
+replay-keeps-request-id: KILLED --- FAIL: TestReplayed (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.625s | FAIL
+replay-rewrites-nothing: KILLED --- FAIL: TestReplayed (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.641s | FAIL
+storage-failure-is-500: KILLED --- FAIL: TestBindingFailure (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.887s | FAIL
+cancel-is-storage-failure: KILLED --- FAIL: TestBindingFailure (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.784s | FAIL
+storage-failure-unmapped: KILLED --- FAIL: TestRefused (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	2.480s | FAIL
+storage-detail-code-dropped: KILLED --- FAIL: TestRefused (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.488s | FAIL
+apply-ignores-binding-failure (db-only): SURVIVED 
+manifest-equality-removed (db-only): SURVIVED 
+lock-draft-before-model (db-only): SURVIVED 
+storage-reject-other-org (db-only): SURVIVED 
+storage-approve-other-org (db-only): SURVIVED 
+TOTAL 15: {'KILLED': 10, 'SURVIVED': 5}

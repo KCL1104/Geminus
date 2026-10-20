@@ -1,0 +1,10 @@
+ M checks/T-026_VALIDATION.md
+ M db/tests/proposal_decisions.sql
+ M db/tests/templates/proposal_decisions.sql.tmpl
+ M docs/AI_SPEC.md
+ M docs/API_DATABASE.md
+ M docs/CONTRACT_BLOCKERS.md
+ M docs/DECISIONS_AND_TBD.md
+ M docs/SECURITY.md
+ M planning/decisions.json
+?? checks/evidence/2026-10-20-T-026-r1/
