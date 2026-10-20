@@ -154,7 +154,9 @@ func TestProbesAreCaught(t *testing.T) {
 		// T-025: only the worker links the proposal job handler; the AI
 		// packages never reach the proposal service or its handler.
 		{"api-links-the-proposal-generator", "cmd/api/zz_probe.go", module + "/internal/proposals/generator", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/proposals/generator", false},
-		{"the-proposal-service-links-the-generator", "internal/proposals/zz_probe.go", module + "/internal/proposals/generator", "job-handlers-only-in-the-worker", "./internal/proposals", "./internal/proposals/generator", false},
+		// Another service, not internal/proposals: the generator's tests
+		// import that one, so linking it back does not even compile.
+		{"a-service-links-the-proposal-generator", "internal/runs/zz_probe.go", module + "/internal/proposals/generator", "job-handlers-only-in-the-worker", "./internal/runs", "./internal/proposals/generator", false},
 		{"the-review-imports-the-proposal-service", "internal/ai/review/zz_probe.go", module + "/internal/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/proposals", false},
 		{"the-review-imports-storage", "internal/ai/review/zz_probe.go", module + "/internal/storage/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/storage/proposals", false},
 		{"the-review-reads-files", "internal/ai/review/zz_probe.go", "os", "ai-is-pure-but-the-adapter", "./internal/ai/review", "os", false},
