@@ -114,15 +114,15 @@ T-006 起 schema 另強制（`db/tests/constraints.sql` 驗證）：每種 ID �
 
 T-024（migration 0011，接在 T-016 的 0010 之後，D-046 APPROVED）：`ai_proposals.id_pool` 是 proposal 建立時由 server 產生的 ID allocation pool（`common.schema.json#/$defs/IdAllocationPool`：node、flow、resource 各 16 個 `<kind>_<小寫 ULID>`，不重複）。欄位 NOT NULL；`twin.id_pool_ok(jsonb)`（IMMUTABLE STRICT，只授予 twin_api、twin_worker）的 CHECK 檢查 key 恰為三種、每種 16 個符合格式的字串、整個 pool 沒有重複；`protect_proposal_id_pool` trigger 拒絕任何 role（含 owner）修改它（55000），worker 本來就沒有該欄位的 UPDATE。已有 proposal 的資料庫拒絕套用 0011（要先清空 proposal；否則舊列沒有可回推的 pool）。`db/tests/proposals.sql` 驗證以上，`db/tests/pool_rows.sql` 驗證有資料時 0011 失敗且不留下半套改變。API 的 `Proposal` 不回傳 pool（CB-40(e)）。
 
-T-025（migration 0012，接在 0011 之後，D-062 PROPOSED）：`ai_proposals` 新增兩個建立後不可改的欄位：`output_locale`（en 或 zh-Hant，預設 en）與 `selected_entity_ids`（jsonb 字串陣列，至多 500 個）。新增 CHECK：只有 failed 帶 error；needs_input 有 questions，沒有 patch 與 risk；invalid 有 `validation.valid=false`，沒有 summary、patch 與 risk；provider_metadata 是 object。`protect_proposal_lifecycle` 的規則如下。
+T-025（migration 0012，接在 0011 之後，D-062 PROPOSED）：`ai_proposals` 新增兩個建立後不可改的欄位：`output_locale`（en 或 zh-Hant，預設 en）與 `selected_entity_ids`（jsonb 字串陣列，至多 500 個）。新增 CHECK：只有 failed 帶 error；needs_input 有 questions，沒有 patch 與 risk；invalid 有 `validation.valid=false`，其他產生的內容都沒有（summary、assumptions、patch、patch_hash、expected_effects、questions、candidate_dataset_bindings、三個 risk 欄位、confidence）；failed 除 error 外沒有任何產生的內容，也沒有 provider_metadata（H-003 review L2）；provider_metadata 是 object。`protect_proposal_lifecycle` 的規則如下。
 
 - 只有 API、worker 與 owner 能寫入。
-- INSERT 只能是沒有任何產生內容的 generating（否則 55000）；API 的 created_by 必須等於 `app.user_id`（否則 42501）。
+- INSERT 只能是沒有任何產生內容、也沒有 decided_by／decided_at 的 generating（否則 55000）；API 的 created_by 必須等於 `app.user_id`（否則 42501）。
 - ID、output_locale、selected_entity_ids、created_by、created_at 不可改。
 - API 不能改 generating 的 proposal。
-- generating → failed 只能由 trigger 跟隨 job。
+- generating → failed 只在這個 proposal 的 job 已 failed 或 cancelled 時允許（AFTER trigger 看得到 job 的新狀態；不再以 `pg_trigger_depth()` 判斷，H-003 review I1）。Job 一律以 queued 建立（0007），所以只有 `follow_proposal_job` 的那個 statement 會遇到這個情況。
 
-Deferred constraint trigger `proposal_generated_with_its_job` 要求 generating → ready／needs_input／invalid 時，job 在 commit 前 completed。`follow_proposal_job`（jobs 的 AFTER UPDATE OF status）的規則：job completed 時 proposal 仍是 generating → 55000；job failed 或 cancelled 時 proposal 仍是 generating → proposal 轉為 failed，並帶 job 的 failure（預設 `JOB_CANCELLED` 或 `INTERNAL`）。三個 function 都固定 `search_path`，並撤銷 PUBLIC 權限。測試在 `db/tests/proposal_jobs.sql`，`constraints.sql` 的 D-027 risk 組合改為由 worker 以 UPDATE 寫入。HTTP（`internal/proposals`）：stale base 回 409 `MODEL_VERSION_CONFLICT`，AI 關閉時回 503；failed 的 `error` 依 D-061 (c) 對應。
+Deferred constraint trigger `proposal_generated_with_its_job` 要求 generating → ready／needs_input／invalid 時，job 在 commit 前 completed。`follow_proposal_job`（jobs 的 AFTER UPDATE OF status）的規則：job completed 時 proposal 仍是 generating → 55000；job failed 或 cancelled 時 proposal 仍是 generating → proposal 轉為 failed，並帶 job 的 failure（預設 `JOB_CANCELLED` 或 `INTERNAL`），同時清空 generating 期間寫入的內容，讓 failed 的 CHECK 不會擋下 job 的結束。三個 function 都固定 `search_path`，並撤銷 PUBLIC 權限。測試在 `db/tests/proposal_jobs.sql`，`constraints.sql` 的 D-027 risk 組合改為由 worker 以 UPDATE 寫入。HTTP（`internal/proposals`）：stale base 回 409 `MODEL_VERSION_CONFLICT`，AI 關閉時回 503；failed 的 `error` 依 D-061 (c) 對應。
 
 SQL 不宣稱 DB 本身已強制 human approval、last Owner、full graph validity、JCS hash equality、same scenario patch snapshot 或 metric evidence；這些仍是 application transaction / worker tests 的責任。不要把 RLS 當完整 RBAC 或 SQL injection sandbox。
 

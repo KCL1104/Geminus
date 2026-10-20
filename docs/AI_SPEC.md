@@ -66,11 +66,11 @@ T-025 實作（D-061、D-062 PROPOSED）的流程如下。
    - domain pack；
    - expected effects 的數字（`AI_OUTPUT_INVALID`）；
    - server risk。
-5. Review 之後是 dataset binding stage。
-6. 結果與 job 的完成同一 transaction 寫入：`ready`（canonical patch、server 計算的 `patch_hash`、server risk、provider claim、max）、`needs_input`（questions，沒有 changes 與 risk）或 `invalid`（只有 issues 與 provider metadata，不存回答的任何文字）。
-7. Provider 錯誤是 job failure（`AI_<CODE>`，固定訊息）。Job 最終失敗時，proposal 轉為 `failed` 並帶 `error`。
+5. Review 之後是 dataset binding stage。Base version 的 dataset snapshot 在呼叫 provider 之前讀取並驗證，呼叫之後的 binding stage 只讀這些副本，所以 storage 的錯誤不會發生在付費呼叫之後（D-061 (c)）。
+6. 結果與 job 的完成同一 transaction 寫入：`ready`（canonical patch、server 計算的 `patch_hash`、server risk、provider claim、max、base version 的整份 dataset manifest，D-062 (g)）、`needs_input`（questions，沒有 changes 與 risk）或 `invalid`（只有 issues 與 provider metadata，不存回答的任何文字；issue 的 message 是固定句，path 只留 array index 與 schema 的 member 名稱，D-061 (f)）。含 U+0000 或空字串的回答判為 `invalid`，不會在寫入時失敗後重試。
+7. Provider 錯誤是 job failure（`AI_<CODE>`，固定訊息）。Job 最終失敗時，proposal 轉為 `failed` 並帶 `error`，沒有其他內容。
 
-Ready 的內容不可改（migration 0012）。Server 綁定 identity、validation 與 approval 欄位；provider 回答中的這些欄位不符合 output schema，因此判為 `invalid`。Review 不讀 intent，所以 expected effects 中的數字只能是 base 或 candidate 的值（D-062 (e)）。Analysis 的 job handler 屬 T-030（依賴 T-029），本任務沒有做。
+Ready 的內容不可改（migration 0012）。Server 綁定 identity、validation 與 approval 欄位；provider 回答中的這些欄位不符合 output schema，因此判為 `invalid`。Review 不讀 intent，所以 expected effects 中的數字只能是 base 或 candidate 的數值參數，或 base 名稱中的數字；patch 寫入的名稱中的數字不算（D-062 (e)）。Analysis 的 job handler 屬 T-030（依賴 T-029），本任務沒有做。
 
 ## 5. Model editing / initial modeling
 

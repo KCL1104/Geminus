@@ -81,13 +81,15 @@ T-024 實作（[ADR-027](adr/ADR-027-ai-provider-adapter.md)，PROPOSED；只用
 - **未涵蓋（NOT RUN／後續任務）**：真實 API 呼叫與 projection 被 API 接受；production log／audit 的實際寫入（T-025）；偽造已批准語句與 wrong metric／wrong run 的內容檢查（T-025、T-030；T-024 只保證不可用的 metric 不在可引用清單、prose 數字可用 `locale.CheckProse` 檢查）。
 
 T-025 實作（D-061、D-062 PROPOSED；只用 fake provider，**沒有任何 live AI 呼叫**）：
-- **AI 只建議**：provider 回答只經 review 寫進 proposal 列，沒有 write tool；model、draft、version 不因 proposal 改變（`TestProposalClosedLoop` 比對 draft，DB 測試 NOT RUN）。
+- **AI 只建議**：provider 回答只經 review 寫進 proposal 列，沒有 write tool；model、draft、version 不因 proposal 改變（`TestProposalClosedLoop` 比對 draft；DB 測試的執行狀態見本節最後一項）。
 - **Server 綁定欄位**：proposal ID、base、mode、organization、created_by、ID pool、patch_hash、validation 與 risk 都由 server 綁定或計算。回答中帶 `approved`、`approved_by`、`requires_confirmation=false`、root 或 identity patch，都判為 `invalid`；`make ai-eval` 的 `unsafe_answer_ready` 為 0。
-- **偽造的預測**：expected effects 中不是 base 或 candidate 的數字，判為 `AI_OUTPUT_INVALID`。
-- **Invalid 不留內容**：`invalid` 只存 issues（固定 message、JSON Pointer）與 provider metadata，不存回答的文字。
+- **偽造的預測**：expected effects 中不是 base 或 candidate 數值參數、也不是 base 名稱中的數字，判為 `AI_OUTPUT_INVALID`；provider 先把數字寫進名稱也不算（H-003 review M3）。
+- **Invalid 不留內容**：`invalid` 只存 issues 與 provider metadata，不存回答的文字。各階段（patch、candidate validation、domain pack、dataset binding、T-024 client）的 issue 原本會引用回答中的 ID、member 名稱、值與 path（H-003 review M1）；現在 review 回傳的每個 issue 都經 `review.Clean`：message 換成該 code 的固定句，path 只留 array index 與 contract schema 宣告的 member 名稱（D-061 (f)）。DB 的 CHECK 與 `proposal.schema.json` 也禁止 invalid 與 failed 帶任何產生的內容（L2）。
+- **存不下的回答**：含 U+0000 的文字或 patch、空字串，由 review 判為 `invalid`，不會在寫入時失敗後被當成 INTERNAL 重試、重複呼叫 provider；DB 仍拒絕的內容為不重試的 `PROPOSAL_OUTPUT_UNSTORABLE`（M2）。
 - **Audit 只記 metadata**：`proposal.create`（user）、`proposal.generate`、`proposal.attempt_failed`（worker）只記 provider、model、credential label、template、schema、hash、tokens、latency、狀態與 risk，不記 prompt、回答或 key（`TestAuditMeta`）。
 - **錯誤不洩漏**：provider 錯誤以固定訊息作為 job failure，HTTP 只顯示對應的 ErrorCode 與原 code（D-061 (c)），不顯示 provider 原文、HTTP status 或 credential label。
-- **未涵蓋**：回答文字（summary、assumptions、questions）不掃描 secret，依賴 context 本來就不含 secret（T-024 的 `secrets_sent` gate）；token quota（T-036）；DB 測試（RLS、trigger、role matrix）在此環境 NOT RUN。
+- **未涵蓋**：回答文字（summary、assumptions、questions）不掃描 secret，依賴 context 本來就不含 secret（T-024 的 `secrets_sent` gate）；token quota（T-036）。
+- **DB 測試**：coordinator 在 1f6ff31 以一次性 database 執行 `make integration-test`，exit 0：0012 up／down、`proposal_jobs.sql` 與所有 DB-backed Go 測試（含 RLS、trigger、role matrix），`--- SKIP` 為 0（`checks/evidence/2026-10-20-T-025/coordinator-integration-test.log`、`coordinator-exit-codes.txt`）。Review 第 1 輪修改了 0012 並新增 SQL 與 Go 的 DB 測試，這些尚未在 PostgreSQL 上執行（NOT RUN，待 coordinator；`checks/evidence/2026-10-20-T-025-r1/db-not-run.txt`）。
 
 ## 8. Resource / job safety
 
