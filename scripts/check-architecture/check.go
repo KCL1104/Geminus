@@ -22,6 +22,7 @@ type pkg struct {
 	Standard       bool
 	ForTest        string
 	Imports        []string
+	GoFiles        []string // production Go files (source rules)
 	TestImports    []string
 	XTestImports   []string
 	IgnoredGoFiles []string
@@ -85,6 +86,9 @@ type graph struct {
 	// whole: the graph was read for the whole module (./...), so every
 	// module package in it should be a root.
 	whole bool
+	// overlay: the -overlay replacements (absolute path -> file), which the
+	// source rules read instead of the files they replace.
+	overlay map[string]string
 }
 
 // load runs `go list -e -deps -test -json` in dir for each configuration
@@ -93,6 +97,11 @@ type graph struct {
 // whose files a platform excludes entirely is simply absent there.
 func load(dir string, goflags []string, configs []buildConfig, patterns ...string) (*graph, error) {
 	g := &graph{pkgs: map[string]*pkg{}, unbuilt: map[string][]string{}}
+	ov, err := readOverlay(goflags)
+	if err != nil {
+		return nil, err
+	}
+	g.overlay = ov
 	rootSet := map[string]bool{}
 	ignored := map[string]map[string]int{} // root -> file -> configurations that ignore it
 	for _, c := range configs {
@@ -100,7 +109,7 @@ func load(dir string, goflags []string, configs []buildConfig, patterns ...strin
 		if err != nil {
 			return nil, err
 		}
-		out, err := goList(dir, c, append(append([]string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,Standard,ForTest,Imports,TestImports,XTestImports,IgnoredGoFiles,Module,CgoFiles,CFiles,CXXFiles,MFiles,HFiles,FFiles,SFiles,SwigFiles,SwigCXXFiles,SysoFiles,IgnoredOtherFiles,Error,DepsErrors"}, goflags...), patterns...))
+		out, err := goList(dir, c, append(append([]string{"list", "-e", "-deps", "-test", "-json=ImportPath,Dir,Standard,ForTest,Imports,GoFiles,TestImports,XTestImports,IgnoredGoFiles,Module,CgoFiles,CFiles,CXXFiles,MFiles,HFiles,FFiles,SFiles,SwigFiles,SwigCXXFiles,SysoFiles,IgnoredOtherFiles,Error,DepsErrors"}, goflags...), patterns...))
 		if err != nil {
 			return nil, err
 		}
@@ -147,6 +156,7 @@ func load(dir string, goflags []string, configs []buildConfig, patterns ...strin
 			}
 			if q := g.pkgs[p.ImportPath]; q != nil {
 				q.Imports = union(q.Imports, p.Imports)
+				q.GoFiles = union(q.GoFiles, p.GoFiles)
 				q.TestImports = union(q.TestImports, p.TestImports)
 				q.XTestImports = union(q.XTestImports, p.XTestImports)
 			} else {
@@ -361,6 +371,11 @@ func sameUnit(a, b string, depth int) bool {
 // cannot silently guard nothing.
 func check(g *graph, rules []rule) (violations []violation, errs []error) {
 	violations = structure(g)
+	if sv, err := sourceViolations(g); err != nil {
+		errs = append(errs, err)
+	} else {
+		violations = append(violations, sv...)
+	}
 	for _, r := range rules {
 		matched := 0
 		for _, root := range g.roots {

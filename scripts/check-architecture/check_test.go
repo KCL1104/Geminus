@@ -116,6 +116,59 @@ func TestBrokenBuildIsAnError(t *testing.T) {
 	}
 }
 
+// T-047 (T-046 phase 2 review I2): a production file of the engine that
+// replaces Compile's validator is a guarded-variables violation, an
+// assignment and an address alike; the same lines in a test file are not.
+func TestGuardedVariables(t *testing.T) {
+	root := repoRoot(t)
+	for name, c := range map[string]struct {
+		file, src string
+		want      bool
+	}{
+		"an assignment": {"internal/simulation/engine/zz_probe.go", "package engine\n\nfunc init() { validateIR = nil }\n", true},
+		"an address":    {"internal/simulation/engine/zz_probe.go", "package engine\n\nvar zzProbe = &validateIR\n", true},
+		"in a test":     {"internal/simulation/engine/zz_probe_test.go", "package engine\n\nfunc init() { validateIR = nil }\n", false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ov := overlay(t, root, map[string]string{c.file: c.src})
+			g, err := load(root, []string{"-overlay=" + ov}, host, "./internal/simulation/engine")
+			if err != nil {
+				t.Fatal(err)
+			}
+			violations, errs := check(g, rules)
+			got := slices.ContainsFunc(violations, func(v violation) bool {
+				return v.rule == "guarded-variables" && rel(v.pkg) == "./internal/simulation/engine" && strings.Contains(v.detail, "zz_probe.go:3")
+			})
+			if got != c.want {
+				t.Errorf("guarded-variables violation %v, want %v (%v %v)", got, c.want, violations, errs)
+			}
+		})
+	}
+}
+
+// A guarded variable that is no longer a package variable (here a function
+// of the same name) makes the rule stale: an error, not a silent pass.
+func TestGuardedVariableMustExist(t *testing.T) {
+	root := repoRoot(t)
+	src, err := os.ReadFile(filepath.Join(root, "internal/simulation/engine/compile.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const decl = "var validateIR = validate.IR\n"
+	if !strings.Contains(string(src), decl) {
+		t.Fatalf("compile.go no longer declares %q", decl)
+	}
+	changed := strings.Replace(string(src), decl, "func validateIR(data []byte) (validate.Result, error) { return validate.IR(data) }\n", 1)
+	g, err := load(root, []string{"-overlay=" + overlay(t, root, map[string]string{"internal/simulation/engine/compile.go": changed})}, host, "./internal/simulation/engine")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, errs := check(g, rules)
+	if !slices.ContainsFunc(errs, func(e error) bool { return strings.Contains(e.Error(), "validateIR is declared 0 times") }) {
+		t.Errorf("errors %v, want the stale source rule", errs)
+	}
+}
+
 // Each probe adds one file through a go build overlay (the tree is never
 // changed) and must produce a violation of the named rule for the named
 // dependency, with the chain from the package to it.
