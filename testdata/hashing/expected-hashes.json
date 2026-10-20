@@ -8,7 +8,8 @@
     "testdata/contracts/valid-model-ir.json": "sha256:04dc2e7265b6ee636c2ce0a05a30cce80677390e4a2ad14a61bae61bc2ad03f2",
     "testdata/contracts/valid-report-ir.json": "sha256:a6a69ea99bca58e98c102169f86f15efb751ab833ecd6cfd1b77f58349cf0279",
     "testdata/contracts/valid-deterministic-ir.json": "sha256:8f633449e9d9e55bc32cded67ce7875aebadf5849d600bf32c20cacfb888093c",
-    "testdata/contracts/valid-minimal-ir.json": "sha256:6dffb5a704be0ce22012afd5ac14efa2d5d1df6cbf553e6354614f1754852d56"
+    "testdata/contracts/valid-minimal-ir.json": "sha256:6dffb5a704be0ce22012afd5ac14efa2d5d1df6cbf553e6354614f1754852d56",
+    "testdata/contracts/valid-line-flow-ir.json": "sha256:5bcb9c37f02923947896d7cea22263a8940808adfc400e4d75c959d6bf04c899"
   },
   "patch_hash": {
     "[]": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",

@@ -11,6 +11,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
 )
 
 // Go type <-> schema location. Every exported contract type is listed so a new
@@ -43,6 +44,7 @@ func TestDiscriminatorsMatchSchema(t *testing.T) {
 		{"node types", strs(model.NodeTypes), "model-ir.schema.json#/properties/nodes/items", "type"},
 		{"distributions", strs(model.DistributionTypes), "model-ir.schema.json#/$defs/Distribution", "type"},
 		{"metric types", strs(model.MetricTypes), "model-ir.schema.json#/properties/metrics/items", "type"},
+		{"release processes", strs(model.ReleaseProcesses), "model-ir.schema.json#/$defs/ReleaseSchedule", "process"},
 		{"patch ops", strs(model.PatchOpKinds), "json-patch.schema.json#/items", "op"},
 	}
 	for _, c := range checks {
@@ -98,6 +100,100 @@ func TestPositiveFixturesRoundTrip(t *testing.T) {
 	contracttest.RoundTrip[[]model.DatasetBinding](t, "valid-model-version.dataset_bindings", version.Bindings)
 	if n < 10 {
 		t.Fatalf("only %d fixtures exercised; cases.json or golden-models moved?", n)
+	}
+}
+
+// D-047: the Go types write none of the optional line-flow members a model
+// does not have, and keep every one it has, so decoding and re-encoding any
+// IR fixture or golden model leaves its model_hash unchanged. The engine and
+// the run service hash the re-encoded form (T-022), so an older model's
+// stored hash and results stay valid.
+func TestReencodingKeepsTheModelHash(t *testing.T) {
+	root := contracttest.Root(t)
+	paths, _ := filepath.Glob(filepath.Join(root, "testdata", "golden-models", "*.json"))
+	for _, c := range contracttest.Cases(t) {
+		if c.Schema == "schemas/model-ir.schema.json" && (c.Valid || c.Layer != "schema") {
+			paths = append(paths, filepath.Join(root, c.Instance))
+		}
+	}
+	lineFlow := 0
+	for _, path := range paths {
+		data := contracttest.ReadFile(t, path)
+		var ir model.ModelIR
+		if err := model.Decode(data, &ir); err != nil {
+			t.Errorf("%s: %v", filepath.Base(path), err)
+			continue
+		}
+		again, err := model.Encode(&ir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want, err1 := hashing.Model(data)
+		got, err2 := hashing.Model(again)
+		if err1 != nil || err2 != nil || got != want {
+			t.Errorf("%s: model_hash %s after re-encoding, %s before (%v, %v)", filepath.Base(path), got, want, err1, err2)
+		}
+		if usesLineFlow(&ir) {
+			lineFlow++
+		}
+	}
+	if len(paths) < 30 || lineFlow < 10 {
+		t.Fatalf("%d models, %d with line-flow members; cases.json or golden-models moved?", len(paths), lineFlow)
+	}
+}
+
+func usesLineFlow(ir *model.ModelIR) bool {
+	if len(ir.Calendars) > 0 {
+		return true
+	}
+	for _, r := range ir.Resources {
+		if r.CalendarID != "" || r.ShiftCapacity != nil || r.Breakdowns != nil || r.Setups != nil {
+			return true
+		}
+	}
+	for i, n := range ir.Nodes {
+		if n.Capacity > 0 || n.Batch != nil || n.Arrival != nil && n.Arrival.Schedule != nil {
+			return true
+		}
+		for _, d := range ir.Nodes[i].Distributions() {
+			if d.Distribution.Type == model.DistLognormal || d.Distribution.Type == model.DistWeibull {
+				return true
+			}
+		}
+	}
+	for _, m := range ir.Metrics {
+		if slices.Contains(model.MetricTypes[6:], m.Type) {
+			return true
+		}
+	}
+	return false
+}
+
+// A source with a release schedule has no arrival distribution to visit,
+// and its zero Distribution is not written back (D-053).
+func TestScheduleSourceHasNoArrivalDistribution(t *testing.T) {
+	var ir model.ModelIR
+	if err := model.Decode(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata", "contracts",
+		"valid-line-flow-ir.json")), &ir); err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for i := range ir.Nodes {
+		node := &ir.Nodes[i]
+		if node.Arrival == nil || node.Arrival.Schedule == nil {
+			continue
+		}
+		n++
+		if d := node.Distributions(); len(d) != 0 || node.Arrival.Distribution != (model.Distribution{}) {
+			t.Errorf("%s: distributions %v", node.ID, d)
+		}
+		out, err := model.Encode(node.Arrival)
+		if err != nil || strings.Contains(string(out), "distribution") {
+			t.Errorf("%s: arrival encodes as %s (%v)", node.ID, out, err)
+		}
+	}
+	if n != 3 {
+		t.Fatalf("%d sources with a schedule, want 3", n)
 	}
 }
 

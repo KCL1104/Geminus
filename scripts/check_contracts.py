@@ -128,7 +128,7 @@ def main() -> dict[str, Any]:
         return Draft202012Validator({'$schema':DIALECT,'$ref':uri},registry=registry,
                                     format_checker=FormatChecker())
     cases = load(ROOT/'testdata/contracts/cases.json')['cases']
-    positive = negative = semantic = exact_paths = 0
+    positive = negative = semantic = go_semantic = exact_paths = 0
     for case in cases:
         instance = load(ROOT/case['instance'])
         errors = list(validator(case['schema']).iter_errors(instance))
@@ -143,6 +143,15 @@ def main() -> dict[str, Any]:
                                      f"got {sorted(error_pointers(errors))}")
             positive += case['valid']; negative += not case['valid']
             exact_paths += bool(case.get('expected_error_paths'))
+        elif case['layer']=='semantic':
+            # T-046 phase 2: rules this lint does not implement (ADR-026). The
+            # instance must be schema-valid; the Go validator checks its codes
+            # and paths, or PRIMITIVE_NOT_SUPPORTED while a primitive is gated.
+            if errors or case['valid']:
+                raise AssertionError(f"Semantic fixture must be a schema-valid negative: {case['id']}")
+            if not (case['expected_codes'] and len(case['expected_codes'])==len(case['expected_paths']) and case['primitives']):
+                raise AssertionError(f"{case['id']}: expected_codes, expected_paths and primitives are required")
+            go_semantic += 1
         else:
             if errors: raise AssertionError(f"Semantic fixture must first be schema-valid: {case['id']}")
             issues = lint_model(instance)
@@ -248,7 +257,7 @@ def main() -> dict[str, Any]:
     report={'status':'PASS_LIMITED_SPEC_CHECKS','schema_metaschemas':len(paths),
             'schema_positive_fixtures':positive,'schema_negative_fixtures':negative,
             'negative_fixtures_with_exact_error_path':exact_paths,
-            'limited_semantic_negative_fixtures':semantic,'resolved_local_ref_occurrences':ref_count,
+            'limited_semantic_negative_fixtures':semantic,'schema_valid_semantic_fixtures_for_go':go_semantic,'resolved_local_ref_occurrences':ref_count,
             'openapi_operations':len(operations),'optional_fastapi_openapi_model':fastapi_status,
             'independent_complete_openapi_validator':'NOT_RUN_UNAVAILABLE',
             'ai_corpus_records':corpus,'live_ai_eval':'NOT_RUN','go_engine_tests':'NOT_RUN'}

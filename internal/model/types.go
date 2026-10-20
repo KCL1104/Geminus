@@ -32,7 +32,10 @@ type ModelIR struct {
 	Flows         []Flow        `json:"flows"`
 	Constraints   []Constraint  `json:"constraints"`
 	Metrics       []Metric      `json:"metrics"`
-	Views         Views         `json:"views"`
+	// Calendars are the shared shift calendars resources refer to (D-052);
+	// absent in a model without calendars.
+	Calendars []Calendar `json:"calendars,omitzero"`
+	Views     Views      `json:"views"`
 	// Metadata is an untrusted data container, never code or expressions.
 	Metadata jsontext.Value `json:"metadata,omitzero"`
 }
@@ -72,6 +75,60 @@ type Resource struct {
 	Name            string          `json:"name"`
 	Capacity        int             `json:"capacity"`
 	QueueDiscipline QueueDiscipline `json:"queue_discipline"`
+
+	// The line-flow members (ADR-026) are all optional; a resource without
+	// them behaves as before (D-047).
+	CalendarID    string         `json:"calendar_id,omitzero"`    // D-052
+	ShiftCapacity map[string]int `json:"shift_capacity,omitzero"` // D-052: shift label -> units on shift
+	Breakdowns    *Breakdowns    `json:"breakdowns,omitzero"`     // D-051
+	Setups        *Setups        `json:"setups,omitzero"`         // D-055
+}
+
+// Breakdowns are a resource's failures and repairs, per unit (D-051).
+type Breakdowns struct {
+	TimeToFailure TimedDistribution `json:"time_to_failure"`
+	TimeToRepair  TimedDistribution `json:"time_to_repair"`
+}
+
+// Setups are a resource's sequence-dependent changeovers between entity
+// types (D-055). A changeover takes its transition's time, else Default,
+// else none.
+type Setups struct {
+	Initial     string            `json:"initial,omitzero"` // entity type every unit starts in
+	Default     *Distribution     `json:"default,omitzero"`
+	Transitions []SetupTransition `json:"transitions,omitzero"`
+}
+
+// SetupTransition is the changeover time from one entity type to another.
+type SetupTransition struct {
+	From         string       `json:"from"`
+	To           string       `json:"to"`
+	Distribution Distribution `json:"distribution"`
+}
+
+// Calendar is a periodic shift pattern in the model time unit from t=0,
+// with exceptions at absolute model times (D-052). There is no time zone.
+type Calendar struct {
+	ID         string              `json:"id"`
+	Name       string              `json:"name,omitzero"`
+	Period     float64             `json:"period"`
+	Shifts     []Shift             `json:"shifts"`
+	Exceptions []CalendarException `json:"exceptions,omitzero"`
+}
+
+// Shift is one [Start, End) on-shift interval of a calendar period.
+type Shift struct {
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+	Label string  `json:"label,omitzero"` // Resource.ShiftCapacity key
+}
+
+// CalendarException closes (Open false) or opens [Start, End) in absolute
+// model time.
+type CalendarException struct {
+	Start float64 `json:"start"`
+	End   float64 `json:"end"`
+	Open  bool    `json:"open"`
 }
 
 type ResourceType string
@@ -102,6 +159,16 @@ type Node struct {
 	DelayTime   *TimedDistribution    `json:"delay_time,omitzero"`   // delay
 	Outcome     SinkOutcome           `json:"outcome,omitzero"`      // sink
 	Reason      string                `json:"reason,omitzero"`       // failure
+	Capacity    int                   `json:"capacity,omitzero"`     // queue: finite buffer (D-049); absent is unlimited
+	Batch       *Batch                `json:"batch,omitzero"`        // process: batch service (D-054)
+}
+
+// Batch makes a process serve up to MaxSize waiting entities together
+// (D-054). MaxWait is in the model time unit; 0 is a meaningful value.
+type Batch struct {
+	MinSize int      `json:"min_size"`
+	MaxSize int      `json:"max_size"`
+	MaxWait *float64 `json:"max_wait,omitzero"`
 }
 
 type NodeType string
@@ -127,10 +194,47 @@ const (
 	SinkAbandoned SinkOutcome = "abandoned"
 )
 
-// Arrival configures a source's interarrival distribution.
+// Arrival configures a source: an interarrival distribution, or a release
+// schedule (D-053), never both. A source with a schedule has a zero
+// Distribution (Type ""), which encodes as absent.
 type Arrival struct {
-	Distribution Distribution `json:"distribution"`
-	MaxEntities  int          `json:"max_entities,omitzero"`
+	Distribution Distribution     `json:"distribution,omitzero"`
+	Schedule     *ReleaseSchedule `json:"schedule,omitzero"`
+	MaxEntities  int              `json:"max_entities,omitzero"`
+}
+
+// ReleaseSchedule is a periodic piecewise-constant release rate (Segments,
+// for the poisson and deterministic processes) or a release table
+// (Releases, for table), repeating every Period model time units (D-053).
+type ReleaseSchedule struct {
+	Process  ReleaseProcess `json:"process"`
+	Period   float64        `json:"period"`
+	Segments []RateSegment  `json:"segments,omitzero"`
+	Releases []Release      `json:"releases,omitzero"`
+}
+
+type ReleaseProcess string
+
+const (
+	ReleasePoisson       ReleaseProcess = "poisson"
+	ReleaseDeterministic ReleaseProcess = "deterministic"
+	ReleaseTable         ReleaseProcess = "table"
+)
+
+// ReleaseProcesses lists every release process, in schema order.
+var ReleaseProcesses = []ReleaseProcess{ReleasePoisson, ReleaseDeterministic, ReleaseTable}
+
+// RateSegment holds Rate (expected entities per model time unit) from
+// Start until the next segment's start or the end of the period.
+type RateSegment struct {
+	Start float64 `json:"start"`
+	Rate  float64 `json:"rate"`
+}
+
+// Release starts Quantity entities at At within each period.
+type Release struct {
+	At       float64 `json:"at"`
+	Quantity int     `json:"quantity"`
 }
 
 // TimedDistribution wraps the service or delay time distribution of a node.
@@ -145,10 +249,11 @@ type NodeDistribution struct {
 }
 
 // Distributions returns n's arrival, service and delay distributions that are
-// set, in that order. The pointers alias n.
+// set, in that order. The pointers alias n. A source with a release schedule
+// has no arrival distribution.
 func (n *Node) Distributions() []NodeDistribution {
 	var out []NodeDistribution
-	if n.Arrival != nil {
+	if n.Arrival != nil && n.Arrival.Distribution.Type != "" {
 		out = append(out, NodeDistribution{"arrival", &n.Arrival.Distribution})
 	}
 	if n.ServiceTime != nil {
@@ -171,11 +276,14 @@ type ResourceRequirement struct {
 type Distribution struct {
 	Type       DistributionType `json:"type"`
 	Value      *float64         `json:"value,omitzero"`       // constant
-	Mean       *float64         `json:"mean,omitzero"`        // exponential
+	Mean       *float64         `json:"mean,omitzero"`        // exponential, lognormal
 	Min        *float64         `json:"min,omitzero"`         // triangular
 	Mode       *float64         `json:"mode,omitzero"`        // triangular
 	Max        *float64         `json:"max,omitzero"`         // triangular
 	SamplesRef string           `json:"samples_ref,omitzero"` // empirical, "dataset:<logical ref>"
+	CV         *float64         `json:"cv,omitzero"`          // lognormal (D-056)
+	Shape      *float64         `json:"shape,omitzero"`       // weibull (D-056)
+	Scale      *float64         `json:"scale,omitzero"`       // weibull (D-056)
 }
 
 type DistributionType string
@@ -185,10 +293,12 @@ const (
 	DistExponential DistributionType = "exponential"
 	DistTriangular  DistributionType = "triangular"
 	DistEmpirical   DistributionType = "empirical"
+	DistLognormal   DistributionType = "lognormal" // D-056, P0 from T-048
+	DistWeibull     DistributionType = "weibull"   // D-056, P0 from T-048
 )
 
 // DistributionTypes lists every P0 distribution, in schema order.
-var DistributionTypes = []DistributionType{DistConstant, DistExponential, DistTriangular, DistEmpirical}
+var DistributionTypes = []DistributionType{DistConstant, DistExponential, DistTriangular, DistEmpirical, DistLognormal, DistWeibull}
 
 // Flow is a directed edge between nodes with its routing rule.
 type Flow struct {
@@ -222,9 +332,11 @@ const ConstraintOutgoingProbabilitySum ConstraintType = "outgoing_probability_su
 type Metric struct {
 	ID         string     `json:"id"`
 	Type       MetricType `json:"type"`
-	SinkID     string     `json:"sink_id,omitzero"`     // sink_throughput (optional)
+	SinkID     string     `json:"sink_id,omitzero"`     // sink_throughput (optional), sink_count
 	ResourceID string     `json:"resource_id,omitzero"` // resource_utilization
 	NodeID     string     `json:"node_id,omitzero"`     // queue_wait
+	FlowID     string     `json:"flow_id,omitzero"`     // flow_count
+	Period     *float64   `json:"period,omitzero"`      // period_throughput, in the model time unit
 }
 
 type MetricType string
@@ -236,11 +348,16 @@ const (
 	MetricQueueWait           MetricType = "queue_wait"
 	MetricFailureCount        MetricType = "failure_count"
 	MetricReworkCount         MetricType = "rework_count"
+	// Declared generic metrics (D-058): computed only when declared.
+	MetricSystemWIP        MetricType = "system_wip"
+	MetricFlowCount        MetricType = "flow_count"
+	MetricSinkCount        MetricType = "sink_count"
+	MetricPeriodThroughput MetricType = "period_throughput"
 )
 
 // MetricTypes lists every metric type, in schema order.
 var MetricTypes = []MetricType{MetricEntityCycleTime, MetricSinkThroughput, MetricResourceUtilization,
-	MetricQueueWait, MetricFailureCount, MetricReworkCount}
+	MetricQueueWait, MetricFailureCount, MetricReworkCount, MetricSystemWIP, MetricFlowCount, MetricSinkCount, MetricPeriodThroughput}
 
 // Views holds renderer data. Positions are presentation, not domain semantics,
 // and views never carry a second topology (2D authors, 3D only projects).

@@ -96,6 +96,9 @@ func Compile(in simulation.RunInput) (*Program, error) {
 		return nil, &InputError{Issues: prefix("/model", res.Issues)}
 	}
 	ir := res.IR // a fresh copy: nothing the caller holds aliases the program
+	if issues := unsupported(ir); len(issues) > 0 {
+		return nil, &InputError{Issues: prefix("/model", issues)}
+	}
 
 	if issues, err := checkManifest(ir, in.Manifest, in.Datasets); err != nil || len(issues) > 0 {
 		if err != nil {
@@ -118,6 +121,26 @@ func Compile(in simulation.RunInput) (*Program, error) {
 		return nil, err
 	}
 	return p, nil
+}
+
+// kernelExecutes holds the line-flow primitives (ADR-026, D-058;
+// validate.Primitives) this kernel executes: none in des-go-0.1.0. Each of
+// T-047–T-051 adds its own together with the kernel change and a new
+// engine_version. It is kept apart from the validator's list so that a
+// primitive whose rules are checked but whose kernel is not there yet is
+// still refused. Only read, never iterated.
+var kernelExecutes = map[validate.Primitive]bool{}
+
+// unsupported refuses every use of a primitive the kernel does not execute,
+// so no model is ever run as if such a member were absent (D-063 PROPOSED).
+func unsupported(ir *model.ModelIR) []model.ValidationIssue {
+	var out []model.ValidationIssue
+	for _, u := range validate.Uses(ir) {
+		if !kernelExecutes[u.Primitive] {
+			out = append(out, validate.NotSupported(u))
+		}
+	}
+	return out
 }
 
 func prefix(root string, issues []model.ValidationIssue) []model.ValidationIssue {

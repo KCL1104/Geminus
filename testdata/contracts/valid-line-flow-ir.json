@@ -1,0 +1,408 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+  "domain": "synthetic_line",
+  "name": "Synthetic line with every line-flow primitive",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "board_a",
+      "name": "Board A"
+    },
+    {
+      "id": "board_b",
+      "name": "Board B"
+    }
+  ],
+  "resources": [
+    {
+      "id": "chamber",
+      "type": "machine",
+      "name": "Burn-in chamber",
+      "capacity": 2,
+      "queue_discipline": "fifo"
+    },
+    {
+      "id": "line",
+      "type": "machine",
+      "name": "Assembly line",
+      "capacity": 2,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift",
+      "shift_capacity": {
+        "day": 2,
+        "evening": 1
+      },
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 600
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "lognormal",
+            "mean": 25,
+            "cv": 0.8
+          }
+        }
+      },
+      "setups": {
+        "initial": "board_a",
+        "default": {
+          "type": "constant",
+          "value": 5
+        },
+        "transitions": [
+          {
+            "from": "board_a",
+            "to": "board_b",
+            "distribution": {
+              "type": "weibull",
+              "shape": 2,
+              "scale": 20
+            }
+          },
+          {
+            "from": "board_b",
+            "to": "board_a",
+            "distribution": {
+              "type": "triangular",
+              "min": 15,
+              "mode": 25,
+              "max": 45
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "operator",
+      "type": "human",
+      "name": "Operator",
+      "capacity": 2,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "assemble",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.9,
+          "mode": 1,
+          "max": 1.4
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "line",
+          "units": 1
+        },
+        {
+          "resource_id": "operator",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "burn_in",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 240
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "chamber",
+          "units": 1
+        }
+      ],
+      "batch": {
+        "min_size": 4,
+        "max_size": 8,
+        "max_wait": 60
+      }
+    },
+    {
+      "id": "defect",
+      "type": "failure",
+      "reason": "test failed"
+    },
+    {
+      "id": "q_burn_in",
+      "type": "queue",
+      "capacity": 80
+    },
+    {
+      "id": "q_line",
+      "type": "queue",
+      "capacity": 20
+    },
+    {
+      "id": "release_a",
+      "type": "source",
+      "entity_type": "board_a",
+      "arrival": {
+        "schedule": {
+          "process": "deterministic",
+          "period": 1440,
+          "segments": [
+            {
+              "start": 0,
+              "rate": 0
+            },
+            {
+              "start": 360,
+              "rate": 0.5
+            },
+            {
+              "start": 1320,
+              "rate": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "release_b",
+      "type": "source",
+      "entity_type": "board_b",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 1440,
+          "releases": [
+            {
+              "at": 360,
+              "quantity": 20
+            },
+            {
+              "at": 840,
+              "quantity": 20
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "rush_b",
+      "type": "source",
+      "entity_type": "board_b",
+      "arrival": {
+        "schedule": {
+          "process": "poisson",
+          "period": 1440,
+          "segments": [
+            {
+              "start": 0,
+              "rate": 0.05
+            }
+          ]
+        },
+        "max_entities": 500
+      }
+    },
+    {
+      "id": "scrap",
+      "type": "sink",
+      "outcome": "abandoned"
+    },
+    {
+      "id": "shipped",
+      "type": "sink",
+      "outcome": "completed"
+    },
+    {
+      "id": "test",
+      "type": "decision"
+    }
+  ],
+  "flows": [
+    {
+      "id": "assemble_test",
+      "from": "assemble",
+      "to": "test",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "burn_in_shipped",
+      "from": "burn_in",
+      "to": "shipped",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "defect_scrap",
+      "from": "defect",
+      "to": "scrap",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_burn_in_burn_in",
+      "from": "q_burn_in",
+      "to": "burn_in",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_line_assemble",
+      "from": "q_line",
+      "to": "assemble",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "release_a_q_line",
+      "from": "release_a",
+      "to": "q_line",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "release_b_q_line",
+      "from": "release_b",
+      "to": "q_line",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "rush_b_q_line",
+      "from": "rush_b",
+      "to": "q_line",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "test_fail",
+      "from": "test",
+      "to": "defect",
+      "routing": {
+        "type": "probability",
+        "probability": 0.05
+      }
+    },
+    {
+      "id": "test_pass",
+      "from": "test",
+      "to": "q_burn_in",
+      "routing": {
+        "type": "probability",
+        "probability": 0.95
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "test",
+      "equals": 1
+    }
+  ],
+  "metrics": [
+    {
+      "id": "line_wip",
+      "type": "system_wip"
+    },
+    {
+      "id": "first_pass",
+      "type": "flow_count",
+      "flow_id": "test_pass"
+    },
+    {
+      "id": "first_fail",
+      "type": "flow_count",
+      "flow_id": "test_fail"
+    },
+    {
+      "id": "scrapped",
+      "type": "sink_count",
+      "sink_id": "scrap"
+    },
+    {
+      "id": "daily_output",
+      "type": "period_throughput",
+      "period": 1440
+    }
+  ],
+  "calendars": [
+    {
+      "id": "two_shift",
+      "name": "Two shifts",
+      "period": 1440,
+      "shifts": [
+        {
+          "start": 360,
+          "end": 840,
+          "label": "day"
+        },
+        {
+          "start": 840,
+          "end": 1320,
+          "label": "evening"
+        }
+      ],
+      "exceptions": [
+        {
+          "start": 7200,
+          "end": 8640,
+          "open": false
+        },
+        {
+          "start": 9000,
+          "end": 9300,
+          "open": true
+        }
+      ]
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "release_a": {
+          "x": 0,
+          "y": 0
+        },
+        "q_line": {
+          "x": 200,
+          "y": 0
+        },
+        "assemble": {
+          "x": 400,
+          "y": 0
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "synthetic": true,
+    "note": "T-046 phase 2 contract fixture: every ADR-026 and D-058 member; all numbers are synthetic"
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+  "domain": "synthetic_line",
+  "name": "Synthetic line-flow case",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "board",
+      "name": "Board"
+    }
+  ],
+  "resources": [
+    {
+      "id": "worker",
+      "type": "machine",
+      "name": "Worker",
+      "capacity": 1,
+      "queue_discipline": "fifo"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "source",
+      "entity_type": "board",
+      "arrival": {
+        "distribution": {
+          "type": "constant",
+          "value": 10
+        }
+      }
+    },
+    {
+      "id": "a",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 2
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "worker",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "q_p",
+      "type": "queue",
+      "capacity": 2
+    },
+    {
+      "id": "p",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 3
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "worker",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "end",
+      "type": "sink",
+      "outcome": "completed"
+    }
+  ],
+  "flows": [
+    {
+      "id": "start_a",
+      "from": "start",
+      "to": "a",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "a_q_p",
+      "from": "a",
+      "to": "q_p",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_p_p",
+      "from": "q_p",
+      "to": "p",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "p_end",
+      "from": "p",
+      "to": "end",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [],
+  "metrics": [],
+  "views": {
+    "2d": {},
+    "3d": {}
+  },
+  "metadata": {
+    "synthetic": true
+  }
+}

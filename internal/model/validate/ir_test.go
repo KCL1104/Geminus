@@ -37,6 +37,13 @@ func codesAt(r validate.Result) map[string][]string {
 // The Go validator and the Python spec checks must agree on every shared
 // fixture: positives are valid, schema negatives fail at their pinned paths,
 // semantic negatives report their expected codes (TEST-001, TEST-002).
+//
+// A fixture that uses line-flow primitives (ADR-026) lists them; Uses must
+// find exactly those. While any of them is not yet checked by this build
+// (D-063 PROPOSED), the only issues are PRIMITIVE_NOT_SUPPORTED, one at each
+// use of an unchecked primitive. Once all are checked, a positive must be
+// valid and a "semantic" negative must report each expected code at its
+// expected path (TWIN_IR_SPEC §4).
 func TestAgreesWithSharedFixtures(t *testing.T) {
 	root := contracttest.Root(t)
 	var idx struct {
@@ -45,19 +52,57 @@ func TestAgreesWithSharedFixtures(t *testing.T) {
 			Valid                       bool
 			ExpectedErrorPaths          []string `json:"expected_error_paths"`
 			ExpectedCodes               []string `json:"expected_codes"`
+			ExpectedPaths               []string `json:"expected_paths"`
+			Primitives                  []string `json:"primitives"`
 		} `json:"cases"`
 	}
 	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(root, "testdata/contracts/cases.json")), &idx,
 		json.MatchCaseInsensitiveNames(true)); err != nil {
 		t.Fatal(err)
 	}
-	n := 0
+	n, gated := 0, 0
 	for _, c := range idx.Cases {
 		if c.Schema != "schemas/model-ir.schema.json" {
 			continue
 		}
 		n++
 		r := run(t, contracttest.ReadFile(t, filepath.Join(root, c.Instance)))
+		if len(c.Primitives) > 0 || c.Layer == "semantic" {
+			if r.IR == nil {
+				t.Errorf("%s: not schema-valid: %v", c.ID, r.Issues)
+				continue
+			}
+			var found []string
+			for _, u := range validate.Uses(r.IR) {
+				if !slices.Contains(found, string(u.Primitive)) {
+					found = append(found, string(u.Primitive))
+				}
+			}
+			slices.Sort(found)
+			if want := slices.Sorted(slices.Values(c.Primitives)); !slices.Equal(found, want) {
+				t.Errorf("%s: uses %v, the case lists %v", c.ID, found, want)
+			}
+			if want := gateIssues(r.IR); len(want) > 0 {
+				gated++
+				if !slices.Equal(r.Issues, want) {
+					t.Errorf("%s: want only the gate's issues %v, got %v", c.ID, want, r.Issues)
+				}
+				continue
+			}
+		}
+		switch {
+		case c.Layer == "semantic":
+			if r.Valid() || len(c.ExpectedCodes) == 0 || len(c.ExpectedCodes) != len(c.ExpectedPaths) {
+				t.Errorf("%s: semantic negative accepted or malformed case: %v", c.ID, r.Issues)
+			}
+			at := codesAt(r)
+			for i, code := range c.ExpectedCodes {
+				if !slices.Contains(at[c.ExpectedPaths[i]], code) {
+					t.Errorf("%s: no %s at %q; got %v", c.ID, code, c.ExpectedPaths[i], r.Issues)
+				}
+			}
+			continue
+		}
 		switch {
 		case c.Valid:
 			if !r.Valid() {
@@ -95,6 +140,20 @@ func TestAgreesWithSharedFixtures(t *testing.T) {
 	if n < 20 {
 		t.Fatalf("only %d IR fixtures exercised", n)
 	}
+	t.Logf("%d IR fixtures, %d refused by the primitive gate", n, gated)
+}
+
+// gateIssues is what the primitive support stage must report for ir: one
+// PRIMITIVE_NOT_SUPPORTED error at each use of a primitive this build does
+// not check yet, in D-023 order.
+func gateIssues(ir *model.ModelIR) []model.ValidationIssue {
+	var out []model.ValidationIssue
+	for _, u := range validate.Uses(ir) {
+		if !validate.Checked(u.Primitive) {
+			out = append(out, validate.NotSupported(u))
+		}
+	}
+	return validate.Sort(out)
 }
 
 // edit returns the minimal valid IR changed by f.

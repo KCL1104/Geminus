@@ -131,6 +131,13 @@ export const en = {
   "validation.PATCH_TEST_FAILED": "The item changed after it was loaded.",
   "validation.ID_POOL_VIOLATION": "A new item uses an ID that was not set aside for this proposal.",
   "validation.AI_OUTPUT_INVALID": "The AI's answer is not a proposal that can be reviewed.",
+  "validation.BLOCKING_CYCLE": "Full buffers could block each other in a loop, so work could stop for good.",
+  "validation.CALENDAR_INVALID": "A shift calendar is not valid, or a step's resources are never on shift together.",
+  "validation.RELEASE_SCHEDULE_INVALID": "The release schedule is not valid.",
+  "validation.BATCH_INVALID": "The batch sizes or the waiting limit are not valid.",
+  "validation.SETUP_INVALID": "The changeover settings are not valid.",
+  "validation.STALL_RISK": "A machine that breaks down can be on shift while the resources it works with are not, so work could wait forever.",
+  "validation.PRIMITIVE_NOT_SUPPORTED": "This version cannot check or run this feature yet.",
 
   "table.selectAll": "Select all",
   "table.selectRow": "Select",

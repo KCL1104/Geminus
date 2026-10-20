@@ -20,6 +20,17 @@ export type ModelIR = {
     name: string;
     capacity: number;
     queue_discipline: "fifo";
+    calendar_id?: string;
+    shift_capacity?: Record<string, number>;
+    breakdowns?: {
+      time_to_failure: {
+        distribution: Distribution;
+      };
+      time_to_repair: {
+        distribution: Distribution;
+      };
+    };
+    setups?: Setups;
   }[];
   nodes: ({
     id: string;
@@ -29,7 +40,8 @@ export type ModelIR = {
     domain_attributes?: Record<string, unknown>;
     entity_type: string;
     arrival: {
-      distribution: Distribution;
+      distribution?: Distribution;
+      schedule?: ReleaseSchedule;
       max_entities?: number;
     };
   } | {
@@ -38,6 +50,7 @@ export type ModelIR = {
     name?: string;
     /** UNTRUSTED_DATA；server 另外限制深度、字串長度及總 bytes。 */
     domain_attributes?: Record<string, unknown>;
+    capacity?: number;
   } | {
     id: string;
     type: "process";
@@ -51,6 +64,11 @@ export type ModelIR = {
       resource_id: string;
       units: number;
     }[];
+    batch?: {
+      min_size: number;
+      max_size: number;
+      max_wait?: number;
+    };
   } | {
     id: string;
     type: "decision";
@@ -122,7 +140,23 @@ export type ModelIR = {
   } | {
     id: string;
     type: "rework_count";
+  } | {
+    id: string;
+    type: "system_wip";
+  } | {
+    id: string;
+    type: "flow_count";
+    flow_id: string;
+  } | {
+    id: string;
+    type: "sink_count";
+    sink_id: string;
+  } | {
+    id: string;
+    type: "period_throughput";
+    period: number;
   })[];
+  calendars?: Calendar[];
   views: {
     "2d": {
       positions?: Record<string, {
@@ -152,4 +186,61 @@ export type Distribution = {
 } | {
   type: "empirical";
   samples_ref: string;
+} | {
+  type: "lognormal";
+  mean: number;
+  cv: number;
+} | {
+  type: "weibull";
+  shape: number;
+  scale: number;
+};
+
+export type ReleaseSchedule = {
+  process: "poisson";
+  period: number;
+  segments: {
+    start: number;
+    rate: number;
+  }[];
+} | {
+  process: "deterministic";
+  period: number;
+  segments: {
+    start: number;
+    rate: number;
+  }[];
+} | {
+  process: "table";
+  period: number;
+  releases: {
+    at: number;
+    quantity: number;
+  }[];
+};
+
+export type Setups = {
+  initial?: string;
+  default?: Distribution;
+  transitions?: {
+    from: string;
+    to: string;
+    distribution: Distribution;
+  }[];
+};
+
+export type Calendar = {
+  id: string;
+  name?: string;
+  period: number;
+  shifts: {
+    start: number;
+    end: number;
+    label?: string;
+  }[];
+  exceptions?: {
+    start: number;
+    end: number;
+    open: boolean;
+  }[];
 };

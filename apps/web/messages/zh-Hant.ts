@@ -124,6 +124,13 @@ export const zhHant: Catalog = {
   "validation.PATCH_TEST_FAILED": "此項目在載入後已被修改。",
   "validation.ID_POOL_VIOLATION": "新項目使用了未分配給此提案的 ID。",
   "validation.AI_OUTPUT_INVALID": "AI 的回答不是可供審閱的提案。",
+  "validation.BLOCKING_CYCLE": "已滿的緩衝可能在迴圈中互相阻塞，使工作永久停止。",
+  "validation.CALENDAR_INVALID": "班表無效，或某個步驟需要的資源從不同時上班。",
+  "validation.RELEASE_SCHEDULE_INVALID": "投入排程無效。",
+  "validation.BATCH_INVALID": "批量或等待上限無效。",
+  "validation.SETUP_INVALID": "換線設定無效。",
+  "validation.STALL_RISK": "會故障的機台上班時，與它一起作業的資源可能不在班，工作可能永遠等下去。",
+  "validation.PRIMITIVE_NOT_SUPPORTED": "此版本尚無法檢查或執行這項功能。",
 
   "table.selectAll": "全選",
   "table.selectRow": "選取",

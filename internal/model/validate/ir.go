@@ -80,7 +80,7 @@ func parse(data []byte) (model.ValidationIssue, bool) {
 func Semantic(ir *model.ModelIR) []model.ValidationIssue {
 	g := newGraph(ir)
 	var all issues
-	for _, stage := range []func(*model.ModelIR, *graph) issues{limits, ids, refs, routing, distributions, constraints} {
+	for _, stage := range []func(*model.ModelIR, *graph) issues{support, limits, ids, refs, routing, distributions, constraints} {
 		found := stage(ir, g)
 		all = append(all, found...)
 		if found.hasError() {

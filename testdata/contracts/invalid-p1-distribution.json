@@ -57,7 +57,7 @@
       "type": "process",
       "service_time": {
         "distribution": {
-          "type": "lognormal",
+          "type": "mixture",
           "mean": 10
         }
       },

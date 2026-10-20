@@ -1118,6 +1118,464 @@
       "expected_error_paths": [
         ""
       ]
+    },
+    {
+      "id": "valid-line-flow-ir",
+      "instance": "testdata/contracts/valid-line-flow-ir.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": true,
+      "layer": "schema",
+      "primitives": [
+        "finite_buffer",
+        "breakdowns",
+        "lognormal",
+        "weibull",
+        "calendars",
+        "release_schedule",
+        "batch",
+        "setups",
+        "system_wip",
+        "flow_count",
+        "sink_count",
+        "period_throughput"
+      ]
+    },
+    {
+      "id": "invalid-queue-capacity-zero",
+      "instance": "testdata/contracts/invalid-queue-capacity-zero.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/1/capacity"
+      ]
+    },
+    {
+      "id": "invalid-capacity-on-process",
+      "instance": "testdata/contracts/invalid-capacity-on-process.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/1"
+      ]
+    },
+    {
+      "id": "invalid-arrival-distribution-and-schedule",
+      "instance": "testdata/contracts/invalid-arrival-distribution-and-schedule.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/0/arrival"
+      ]
+    },
+    {
+      "id": "invalid-arrival-without-times",
+      "instance": "testdata/contracts/invalid-arrival-without-times.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/0/arrival"
+      ]
+    },
+    {
+      "id": "invalid-release-table-with-segments",
+      "instance": "testdata/contracts/invalid-release-table-with-segments.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/0/arrival/schedule"
+      ]
+    },
+    {
+      "id": "invalid-release-quantity-zero",
+      "instance": "testdata/contracts/invalid-release-quantity-zero.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/0/arrival/schedule/releases/0/quantity"
+      ]
+    },
+    {
+      "id": "invalid-batch-min-size-zero",
+      "instance": "testdata/contracts/invalid-batch-min-size-zero.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/1/batch/min_size"
+      ]
+    },
+    {
+      "id": "invalid-breakdowns-without-repair",
+      "instance": "testdata/contracts/invalid-breakdowns-without-repair.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/resources/0/breakdowns"
+      ]
+    },
+    {
+      "id": "invalid-shift-capacity-negative",
+      "instance": "testdata/contracts/invalid-shift-capacity-negative.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/resources/0/shift_capacity/day"
+      ]
+    },
+    {
+      "id": "invalid-shift-capacity-without-calendar",
+      "instance": "testdata/contracts/invalid-shift-capacity-without-calendar.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/resources/0"
+      ]
+    },
+    {
+      "id": "invalid-calendars-empty",
+      "instance": "testdata/contracts/invalid-calendars-empty.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/calendars"
+      ]
+    },
+    {
+      "id": "invalid-calendar-without-shifts",
+      "instance": "testdata/contracts/invalid-calendar-without-shifts.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/calendars/0/shifts"
+      ]
+    },
+    {
+      "id": "invalid-calendar-exception-without-open",
+      "instance": "testdata/contracts/invalid-calendar-exception-without-open.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/calendars/0/exceptions/0"
+      ]
+    },
+    {
+      "id": "invalid-lognormal-without-cv",
+      "instance": "testdata/contracts/invalid-lognormal-without-cv.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/1/service_time/distribution"
+      ]
+    },
+    {
+      "id": "invalid-weibull-zero-shape",
+      "instance": "testdata/contracts/invalid-weibull-zero-shape.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/nodes/1/service_time/distribution/shape"
+      ]
+    },
+    {
+      "id": "invalid-setups-without-times",
+      "instance": "testdata/contracts/invalid-setups-without-times.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/resources/0/setups"
+      ]
+    },
+    {
+      "id": "invalid-flow-count-without-flow",
+      "instance": "testdata/contracts/invalid-flow-count-without-flow.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0"
+      ]
+    },
+    {
+      "id": "invalid-period-throughput-zero-period",
+      "instance": "testdata/contracts/invalid-period-throughput-zero-period.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/period"
+      ]
+    },
+    {
+      "id": "semantic-blocking-cycle-retest",
+      "instance": "testdata/contracts/semantic-blocking-cycle-retest.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "BLOCKING_CYCLE"
+      ],
+      "expected_paths": [
+        "/nodes/1/capacity"
+      ],
+      "primitives": [
+        "finite_buffer"
+      ]
+    },
+    {
+      "id": "semantic-blocking-cycle-shared-resource",
+      "instance": "testdata/contracts/semantic-blocking-cycle-shared-resource.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "BLOCKING_CYCLE"
+      ],
+      "expected_paths": [
+        "/nodes/2/capacity"
+      ],
+      "primitives": [
+        "finite_buffer"
+      ]
+    },
+    {
+      "id": "semantic-calendar-shifts-overlap",
+      "instance": "testdata/contracts/semantic-calendar-shifts-overlap.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "CALENDAR_INVALID"
+      ],
+      "expected_paths": [
+        "/calendars/0/shifts/1"
+      ],
+      "primitives": [
+        "calendars"
+      ]
+    },
+    {
+      "id": "semantic-shift-capacity-unknown-label",
+      "instance": "testdata/contracts/semantic-shift-capacity-unknown-label.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "CALENDAR_INVALID"
+      ],
+      "expected_paths": [
+        "/resources/0/shift_capacity/night"
+      ],
+      "primitives": [
+        "calendars"
+      ]
+    },
+    {
+      "id": "semantic-calendar-unknown",
+      "instance": "testdata/contracts/semantic-calendar-unknown.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "UNKNOWN_REFERENCE"
+      ],
+      "expected_paths": [
+        "/resources/0/calendar_id"
+      ],
+      "primitives": [
+        "calendars"
+      ]
+    },
+    {
+      "id": "semantic-calendar-bundle-never-fits",
+      "instance": "testdata/contracts/semantic-calendar-bundle-never-fits.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "CALENDAR_INVALID"
+      ],
+      "expected_paths": [
+        "/nodes/1/requires"
+      ],
+      "primitives": [
+        "calendars"
+      ]
+    },
+    {
+      "id": "semantic-calendar-periods-too-long",
+      "instance": "testdata/contracts/semantic-calendar-periods-too-long.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "CALENDAR_INVALID"
+      ],
+      "expected_paths": [
+        "/calendars"
+      ],
+      "primitives": [
+        "calendars"
+      ]
+    },
+    {
+      "id": "semantic-release-schedule-first-segment",
+      "instance": "testdata/contracts/semantic-release-schedule-first-segment.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "RELEASE_SCHEDULE_INVALID"
+      ],
+      "expected_paths": [
+        "/nodes/0/arrival/schedule/segments/0/start"
+      ],
+      "primitives": [
+        "release_schedule"
+      ]
+    },
+    {
+      "id": "semantic-batch-sizes",
+      "instance": "testdata/contracts/semantic-batch-sizes.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "BATCH_INVALID"
+      ],
+      "expected_paths": [
+        "/nodes/1/batch"
+      ],
+      "primitives": [
+        "batch"
+      ]
+    },
+    {
+      "id": "semantic-setup-self-transition",
+      "instance": "testdata/contracts/semantic-setup-self-transition.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "SETUP_INVALID"
+      ],
+      "expected_paths": [
+        "/resources/0/setups/transitions/0"
+      ],
+      "primitives": [
+        "setups"
+      ]
+    },
+    {
+      "id": "semantic-breakdown-units",
+      "instance": "testdata/contracts/semantic-breakdown-units.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "RESOURCE_REQUIREMENT_INVALID"
+      ],
+      "expected_paths": [
+        "/nodes/1/requires/0/units"
+      ],
+      "primitives": [
+        "breakdowns"
+      ]
+    },
+    {
+      "id": "semantic-two-breakdown-resources",
+      "instance": "testdata/contracts/semantic-two-breakdown-resources.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "RESOURCE_REQUIREMENT_INVALID"
+      ],
+      "expected_paths": [
+        "/nodes/1/requires"
+      ],
+      "primitives": [
+        "breakdowns"
+      ]
+    },
+    {
+      "id": "semantic-stall-risk",
+      "instance": "testdata/contracts/semantic-stall-risk.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "STALL_RISK"
+      ],
+      "expected_paths": [
+        "/nodes/1/requires"
+      ],
+      "primitives": [
+        "breakdowns",
+        "calendars"
+      ]
+    },
+    {
+      "id": "semantic-breakdown-zero-time-to-failure",
+      "instance": "testdata/contracts/semantic-breakdown-zero-time-to-failure.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "DISTRIBUTION_INVALID"
+      ],
+      "expected_paths": [
+        "/resources/0/breakdowns/time_to_failure/distribution"
+      ],
+      "primitives": [
+        "breakdowns"
+      ]
+    },
+    {
+      "id": "semantic-lognormal-cv-range",
+      "instance": "testdata/contracts/semantic-lognormal-cv-range.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "DISTRIBUTION_INVALID"
+      ],
+      "expected_paths": [
+        "/nodes/1/service_time/distribution"
+      ],
+      "primitives": [
+        "lognormal"
+      ]
+    },
+    {
+      "id": "semantic-declared-metric-builtin-id",
+      "instance": "testdata/contracts/semantic-declared-metric-builtin-id.json",
+      "schema": "schemas/model-ir.schema.json",
+      "valid": false,
+      "layer": "semantic",
+      "expected_codes": [
+        "DUPLICATE_ID"
+      ],
+      "expected_paths": [
+        "/metrics/0/id"
+      ],
+      "primitives": [
+        "system_wip"
+      ]
     }
   ]
 }

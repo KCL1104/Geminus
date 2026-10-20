@@ -216,17 +216,19 @@ func allIssues(ir *model.ModelIR) []model.ValidationIssue {
 }
 
 // variantCodes is the error each invalid variant must produce: one per
-// validator stage after the schema (limits, ids, refs, routing,
-// distributions, constraints) and the zero-time cycle of TEST-002.
+// validator stage after the schema (primitive support, limits, ids, refs,
+// routing, distributions, constraints) and the zero-time cycle of TEST-002.
 var variantCodes = map[string]string{
-	"unknown flow target":            validate.UnknownReference,
-	"probabilities not summing to 1": validate.RoutingInvalid,
-	"duplicate node ID":              validate.DuplicateID,
-	"no sink":                        validate.NoReachableSink,
-	"bad triangular distribution":    validate.DistributionInvalid,
-	"metadata nested too deep":       validate.LimitExceeded,
-	"constraint not met":             validate.ConstraintFailed,
-	"zero-time cycle":                validate.ZeroTimeCycle,
+	// D-063 (PROPOSED): a declared system_wip metric, gated until T-051.
+	"line-flow primitive not implemented": validate.PrimitiveNotSupported,
+	"unknown flow target":                 validate.UnknownReference,
+	"probabilities not summing to 1":      validate.RoutingInvalid,
+	"duplicate node ID":                   validate.DuplicateID,
+	"no sink":                             validate.NoReachableSink,
+	"bad triangular distribution":         validate.DistributionInvalid,
+	"metadata nested too deep":            validate.LimitExceeded,
+	"constraint not met":                  validate.ConstraintFailed,
+	"zero-time cycle":                     validate.ZeroTimeCycle,
 }
 
 // invalidVariants are copies of ir that break one rule each (variantCodes,
@@ -234,6 +236,9 @@ var variantCodes = map[string]string{
 // error rules, not only an empty issue list.
 func invalidVariants(ir *model.ModelIR) map[string]model.ModelIR {
 	out := map[string]model.ModelIR{}
+	gated := clone(ir)
+	gated.Metrics = append(gated.Metrics, model.Metric{ID: "zz_conformance_wip", Type: model.MetricSystemWIP})
+	out["line-flow primitive not implemented"] = gated
 	deep := clone(ir)
 	deep.Metadata = jsontext.Value(strings.Repeat(`{"a":`, validate.MaxContainerDepth+1) + "1" + strings.Repeat("}", validate.MaxContainerDepth+1))
 	out["metadata nested too deep"] = deep

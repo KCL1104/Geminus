@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/model-ir.schema.json",
   "title": "model-ir",
-  "$comment": "SOURCE pp. 14–18 node/flow/resource arrays preserved. PROPOSED D-005,D-014,D-017 complete closed-object P0 profile, delay_time, max_entities, optional domain attributes. JSON Schema does not enforce graph references or probability sums.",
+  "$comment": "SOURCE pp. 14–18 node/flow/resource arrays preserved. PROPOSED D-005,D-014,D-017 complete closed-object P0 profile, delay_time, max_entities, optional domain attributes. JSON Schema does not enforce graph references or probability sums. T-046 phase 2 (ADR-026; D-047–D-058 APPROVED, H-018): optional line-flow members — queue capacity, resource calendar_id/shift_capacity/breakdowns/setups, root calendars, arrival.schedule, process batch, lognormal and Weibull, metrics system_wip/flow_count/sink_count/period_throughput. schema_version stays 0.1 (D-047): a model without them is unchanged. Semantic rules are TWIN_IR_SPEC §4; until a primitive is implemented the validator refuses it with PRIMITIVE_NOT_SUPPORTED (D-063 PROPOSED).",
   "type": "object",
   "properties": {
     "schema_version": {
@@ -88,6 +88,65 @@
           },
           "queue_discipline": {
             "const": "fifo"
+          },
+          "calendar_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+          },
+          "shift_capacity": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+            },
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000
+            },
+            "minProperties": 1,
+            "maxProperties": 100
+          },
+          "breakdowns": {
+            "type": "object",
+            "properties": {
+              "time_to_failure": {
+                "type": "object",
+                "properties": {
+                  "distribution": {
+                    "$ref": "#/$defs/Distribution"
+                  }
+                },
+                "required": [
+                  "distribution"
+                ],
+                "additionalProperties": false
+              },
+              "time_to_repair": {
+                "type": "object",
+                "properties": {
+                  "distribution": {
+                    "$ref": "#/$defs/Distribution"
+                  }
+                },
+                "required": [
+                  "distribution"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "time_to_failure",
+              "time_to_repair"
+            ],
+            "additionalProperties": false
+          },
+          "setups": {
+            "$ref": "#/$defs/Setups"
           }
         },
         "required": [
@@ -97,7 +156,12 @@
           "capacity",
           "queue_discipline"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "dependentRequired": {
+          "shift_capacity": [
+            "calendar_id"
+          ]
+        }
       },
       "minItems": 0,
       "maxItems": 1000
@@ -141,16 +205,29 @@
                   "distribution": {
                     "$ref": "#/$defs/Distribution"
                   },
+                  "schedule": {
+                    "$ref": "#/$defs/ReleaseSchedule"
+                  },
                   "max_entities": {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 100000
                   }
                 },
-                "required": [
-                  "distribution"
+                "additionalProperties": false,
+                "oneOf": [
+                  {
+                    "required": [
+                      "distribution"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "schedule"
+                    ]
+                  }
                 ],
-                "additionalProperties": false
+                "$comment": "D-053: an interarrival distribution or a release schedule, not both."
               }
             },
             "required": [
@@ -183,6 +260,11 @@
                 "maxProperties": 64,
                 "additionalProperties": true,
                 "description": "UNTRUSTED_DATA；server 另外限制深度、字串長度及總 bytes。"
+              },
+              "capacity": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
               }
             },
             "required": [
@@ -251,6 +333,31 @@
                 },
                 "minItems": 0,
                 "maxItems": 100
+              },
+              "batch": {
+                "type": "object",
+                "properties": {
+                  "min_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                  },
+                  "max_size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                  },
+                  "max_wait": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000.0
+                  }
+                },
+                "required": [
+                  "min_size",
+                  "max_size"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -659,11 +766,115 @@
               "type"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              },
+              "type": {
+                "const": "system_wip"
+              }
+            },
+            "required": [
+              "id",
+              "type"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              },
+              "type": {
+                "const": "flow_count"
+              },
+              "flow_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "flow_id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              },
+              "type": {
+                "const": "sink_count"
+              },
+              "sink_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "sink_id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              },
+              "type": {
+                "const": "period_throughput"
+              },
+              "period": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1000000000000.0
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "period"
+            ],
+            "additionalProperties": false
           }
         ]
       },
       "minItems": 0,
       "maxItems": 1000
+    },
+    "calendars": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Calendar"
+      },
+      "minItems": 1,
+      "maxItems": 100
     },
     "views": {
       "type": "object",
@@ -825,8 +1036,341 @@
             "samples_ref"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "lognormal"
+            },
+            "mean": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000000000000.0
+            },
+            "cv": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000000000000.0
+            }
+          },
+          "required": [
+            "type",
+            "mean",
+            "cv"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "weibull"
+            },
+            "shape": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000000000000.0
+            },
+            "scale": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000000000000.0
+            }
+          },
+          "required": [
+            "type",
+            "shape",
+            "scale"
+          ],
+          "additionalProperties": false
         }
       ]
+    },
+    "ReleaseSchedule": {
+      "$comment": "D-053: a periodic piecewise-constant rate (poisson or deterministic, one draw per arrival) or a release table.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "process": {
+              "const": "poisson"
+            },
+            "period": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000000000000.0
+            },
+            "segments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000.0
+                  },
+                  "rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000.0
+                  }
+                },
+                "required": [
+                  "start",
+                  "rate"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 1000
+            }
+          },
+          "required": [
+            "process",
+            "period",
+            "segments"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "process": {
+              "const": "deterministic"
+            },
+            "period": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000000000000.0
+            },
+            "segments": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "start": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000.0
+                  },
+                  "rate": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000.0
+                  }
+                },
+                "required": [
+                  "start",
+                  "rate"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 1000
+            }
+          },
+          "required": [
+            "process",
+            "period",
+            "segments"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "process": {
+              "const": "table"
+            },
+            "period": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1000000000000.0
+            },
+            "releases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1000000000000.0
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                  }
+                },
+                "required": [
+                  "at",
+                  "quantity"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 1000
+            }
+          },
+          "required": [
+            "process",
+            "period",
+            "releases"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Setups": {
+      "type": "object",
+      "properties": {
+        "initial": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "default": {
+          "$ref": "#/$defs/Distribution"
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              },
+              "distribution": {
+                "$ref": "#/$defs/Distribution"
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "distribution"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 9900
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "$comment": "D-055: sequence-dependent changeover; a changeover time comes from a transition or the default.",
+      "anyOf": [
+        {
+          "required": [
+            "default"
+          ]
+        },
+        {
+          "required": [
+            "transitions"
+          ]
+        }
+      ]
+    },
+    "Calendar": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "period": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1000000000000.0
+        },
+        "shifts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000.0
+              },
+              "end": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1000000000000.0
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1000000000000.0
+              },
+              "end": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1000000000000.0
+              },
+              "open": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "start",
+              "end",
+              "open"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "id",
+        "period",
+        "shifts"
+      ],
+      "additionalProperties": false,
+      "$comment": "D-052: periodic shifts in the model time unit from t=0 (no time zone), exceptions in absolute model time."
     }
   }
 }

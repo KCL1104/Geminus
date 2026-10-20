@@ -50,7 +50,7 @@ describe("catalogs", () => {
     for (const c of common.$defs.ErrorCode?.enum ?? []) expect(keys, c).toContain(`error.${c}`);
     for (const c of common.$defs.ValidationCode?.enum ?? []) expect(keys, c).toContain(`validation.${c}`);
     expect(common.$defs.ErrorCode?.enum.length).toBe(20);
-    expect(common.$defs.ValidationCode?.enum.length).toBe(23);
+    expect(common.$defs.ValidationCode?.enum.length).toBe(30);
     const kinds = { unauthenticated: 1, forbidden: 1, not_found: 1, conflict: 1, invalid: 1, precondition: 1, rate_limited: 1, unavailable: 1, internal: 1, network: 1, protocol: 1 } satisfies Record<ProblemKind, 1>;
     for (const k of Object.keys(kinds)) expect(keys, k).toContain(`problem.heading.${k}`);
     // No code is in a catalog that the contract does not have.
