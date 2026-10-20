@@ -1,0 +1,15 @@
+--- FAIL: TestScenarioKeepsTheShiftLabels (0.02s)
+    --- FAIL: TestScenarioKeepsTheShiftLabels/a_new_label (0.00s)
+        lineflow_test.go:188: want PATCH_PATH_FORBIDDEN at "/1/path", got []
+    --- FAIL: TestScenarioKeepsTheShiftLabels/a_dropped_label (0.00s)
+        lineflow_test.go:188: want PATCH_PATH_FORBIDDEN at "/1/path", got []
+    --- FAIL: TestScenarioKeepsTheShiftLabels/a_renamed_label (0.00s)
+        lineflow_test.go:188: want PATCH_PATH_FORBIDDEN at "/1/path", got []
+    --- FAIL: TestScenarioKeepsTheShiftLabels/one_label_renamed (0.00s)
+        lineflow_test.go:188: want PATCH_PATH_FORBIDDEN at "/1/path", got []
+    --- FAIL: TestScenarioKeepsTheShiftLabels/labels_removed (0.00s)
+        lineflow_test.go:188: want PATCH_PATH_FORBIDDEN at "/1/path", got []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.176s
+FAIL
+exit 1

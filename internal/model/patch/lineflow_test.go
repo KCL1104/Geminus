@@ -55,7 +55,7 @@ func TestScenarioLineFlowAllowlist(t *testing.T) {
 		"changeover default":      testLine + `{"op":"replace","path":"/resources/1/setups/default","value":{"type":"lognormal","mean":5,"cv":0.5}}`,
 		"calendar reference":      testOperator + `{"op":"replace","path":"/resources/2/calendar_id","value":"two_shift"}`,
 		"units on shift":          testLine + `{"op":"replace","path":"/resources/1/shift_capacity/evening","value":2}`,
-		"shifts":                  testCalendar + `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320,"label":"day"}]}`,
+		"shifts":                  testCalendar + `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"day"},{"start":840,"end":1400,"label":"evening"}]}`,
 		"exceptions":              testCalendar + `{"op":"replace","path":"/calendars/0/exceptions","value":[{"start":7200,"end":8640,"open":false}]}`,
 		"service time lognormal":  testAssemble + `{"op":"replace","path":"/nodes/0/service_time/distribution","value":{"type":"lognormal","mean":1,"cv":0.3}}`,
 		"existing capacity still": testChamber + `{"op":"replace","path":"/resources/0/capacity","value":3}`,
@@ -154,6 +154,45 @@ func TestScenarioAddsABuffer(t *testing.T) {
 
 func flow(id, from, to string, p float64) map[string]any {
 	return map[string]any{"id": id, "from": from, "to": to, "routing": map[string]any{"type": "probability", "probability": p}}
+}
+
+// T-046 review round 1, L3/L5: a scenario may move, add or remove shifts
+// ("add a shift", D-057), but not change a calendar's set of shift labels:
+// a label is what shift_capacity refers to, so a new, dropped or renamed
+// label changes the model's structure, not a parameter (TWIN_IR_SPEC §6;
+// the reading is listed in D-063 (b) for the owner).
+func TestScenarioKeepsTheShiftLabels(t *testing.T) {
+	allowed := map[string]string{
+		"move both shifts":            `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":300,"end":780,"label":"day"},{"start":780,"end":1260,"label":"evening"}]}`,
+		"add a shift, existing label": `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":0,"end":120,"label":"evening"},{"start":360,"end":840,"label":"day"},{"start":840,"end":1320,"label":"evening"}]}`,
+		"add an unlabeled shift":      `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":0,"end":120},{"start":360,"end":840,"label":"day"},{"start":840,"end":1320,"label":"evening"}]}`,
+		"move one shift's end":        `{"op":"replace","path":"/calendars/0/shifts/1/end","value":1380}`,
+	}
+	for name, op := range allowed {
+		t.Run(name, func(t *testing.T) {
+			r := mustApply(t, lineFlow(t), "["+testCalendar+op+"]", Scenario)
+			if !r.Applied() || !gated(r) {
+				t.Fatalf("patch %v, candidate %v", r.PatchIssues, r.Validation.Issues)
+			}
+		})
+	}
+	forbidden := map[string]string{
+		"a new label":       `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"day"},{"start":840,"end":1320,"label":"evening"},{"start":1320,"end":1440,"label":"night"}]}`,
+		"a dropped label":   `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320,"label":"day"}]}`,
+		"a renamed label":   `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"morning"},{"start":840,"end":1320,"label":"evening"}]}`,
+		"one label renamed": `{"op":"replace","path":"/calendars/0/shifts/0/label","value":"morning"}`,
+		"labels removed":    `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320}]}`,
+	}
+	for name, op := range forbidden {
+		t.Run(name, func(t *testing.T) {
+			wantIssue(t, mustApply(t, lineFlow(t), "["+testCalendar+op+"]", Scenario), PathForbidden, "/1/path")
+		})
+	}
+	// A draft edit may change labels; the candidate is validated in full.
+	r := mustApply(t, lineFlow(t), "["+testCalendar+forbidden["a renamed label"]+"]", ManualDraft)
+	if !r.Applied() || !gated(r) {
+		t.Errorf("manual draft: %v %v", r.PatchIssues, r.Validation.Issues)
+	}
 }
 
 // D-020 covers calendars like every catalog: change an element only after
