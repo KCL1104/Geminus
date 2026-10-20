@@ -241,7 +241,7 @@ func TestGenerateOutsideTheDatabase(t *testing.T) {
 		return h
 	}
 	run := func(b provider.Backend, st started) (review.Outcome, *provider.Metadata, error) {
-		return handler(b).generate(ctx, st.proposal.OrganizationID, st)
+		return outcomeOf(handler(b).generate(ctx, st.proposal.OrganizationID, st))
 	}
 	raise := `[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}]`
 	o, meta, err := run(scripted(t, "Six runners.", reference(raise)), stored(t, "edit", "Six runners."))
@@ -289,7 +289,7 @@ func TestGenerateOutsideTheDatabase(t *testing.T) {
 	cancel()
 	st := stored(t, "edit", "Six runners.")
 	jf = nil
-	if _, _, err = handler(fake.New()).generate(cctx, st.proposal.OrganizationID, st); !errors.Is(err, context.Canceled) || errors.As(err, &jf) {
+	if _, _, err = outcomeOf(handler(fake.New()).generate(cctx, st.proposal.OrganizationID, st)); !errors.Is(err, context.Canceled) || errors.As(err, &jf) {
 		t.Fatalf("cancelled: %v", err)
 	}
 }

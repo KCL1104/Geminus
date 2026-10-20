@@ -1,0 +1,22 @@
+=== RUN   TestSnapshotsAreReadBeforeTheProvider
+=== RUN   TestSnapshotsAreReadBeforeTheProvider/a_snapshot_changed
+    datasets_test.go:121: <nil> &{fake fake  [] modeler modeler-0.2.0 proposal-output.schema.json en sha256:0b8104bdfc245d8f701d37d6c74dfee69c4964c3bc8c668313c956f124d502a6 sha256:c1fc5c553d88c7e035ce6549a973b4bc7f8c0fe1da30225bcb26118a61fd17d1 {0 0 0 0} 0  {map[model_ir.model_id:server_bound:1 model_ir.views:presentation:1] map[]}}
+    datasets_test.go:124: the provider was asked 1 times
+=== RUN   TestSnapshotsAreReadBeforeTheProvider/no_object_storage
+    datasets_test.go:121: DATASET_STORAGE_FAILED: the base version binds datasets and this worker has no object storage &{fake fake  [] modeler modeler-0.2.0 proposal-output.schema.json en sha256:a8ea99310d772e7619ab139fdabb97184356bdf6bfd1bfea40cf28701c9277d9 sha256:c1fc5c553d88c7e035ce6549a973b4bc7f8c0fe1da30225bcb26118a61fd17d1 {0 0 0 0} 0  {map[model_ir.model_id:server_bound:1 model_ir.views:presentation:1] map[]}}
+    datasets_test.go:124: the provider was asked 1 times
+=== RUN   TestSnapshotsAreReadBeforeTheProvider/storage_fails
+    datasets_test.go:121: DATASET_STORAGE_FAILED: the dataset snapshots could not be read &{fake fake  [] modeler modeler-0.2.0 proposal-output.schema.json en sha256:84b44ae53027099cbbabc4bce517fed351d986e8a9f993a51d72022067e91781 sha256:c1fc5c553d88c7e035ce6549a973b4bc7f8c0fe1da30225bcb26118a61fd17d1 {0 0 0 0} 0  {map[model_ir.model_id:server_bound:1 model_ir.views:presentation:1] map[]}}
+    datasets_test.go:124: the provider was asked 1 times
+=== NAME  TestSnapshotsAreReadBeforeTheProvider
+    datasets_test.go:136: reads at provider requests [1 1], 1 requests
+--- FAIL: TestSnapshotsAreReadBeforeTheProvider (0.06s)
+    --- FAIL: TestSnapshotsAreReadBeforeTheProvider/a_snapshot_changed (0.03s)
+    --- FAIL: TestSnapshotsAreReadBeforeTheProvider/no_object_storage (0.01s)
+    --- FAIL: TestSnapshotsAreReadBeforeTheProvider/storage_fails (0.01s)
+=== RUN   TestAReadyProposalBindsTheBasesManifest
+--- PASS: TestAReadyProposalBindsTheBasesManifest (0.01s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator	0.082s
+FAIL
+exit 1

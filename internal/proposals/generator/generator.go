@@ -1,15 +1,18 @@
 // Package generator is the model_proposal job handler (T-025, ADR-024):
 // the adapter between the worker loop and internal/ai. For one claimed job
 // it reads the generating proposal and its base version under the lease,
-// builds the sanitized provider context (internal/ai/aicontext), asks the
-// provider through the checked client (internal/ai/provider), has the
-// server review the answer (internal/ai/review, then the dataset binding
-// stage) and writes the outcome with the job's completion, under the lease
-// (handler.Run.Finish): ready, needs_input or invalid. A provider failure
-// is the job's failure: retried while the provider may recover and
+// builds the sanitized provider context (internal/ai/aicontext), reads and
+// verifies the base's dataset snapshots, asks the provider through the
+// checked client (internal/ai/provider), has the server review the answer
+// (internal/ai/review, then the dataset binding stage over the snapshots
+// already read) and writes the outcome with the job's completion, under
+// the lease (handler.Run.Finish): ready, needs_input or invalid. A provider
+// failure is the job's failure: retried while the provider may recover and
 // attempts remain, and when the job fails for good the proposal follows it
-// to failed with the failure (migration 0012). Provider calls and long
-// work run outside every transaction.
+// to failed with the failure (migration 0012). Nothing retried comes after
+// the provider call but the provider's own failures (D-061 (c)): storage
+// is read before it, and what the database refuses to store fails for
+// good. Provider calls and long work run outside every transaction.
 //
 // The AI only suggests (AGENTS.md §2): the provider gets a sealed context
 // and returns untrusted JSON; nothing it says is written but through the
@@ -104,8 +107,11 @@ const (
 	// the proposal is not generating, or what the server stored cannot be
 	// built into a context (never retried).
 	InputInvalid = "PROPOSAL_INPUT_INVALID"
-	// DatasetStorageFailed: the dataset snapshots the candidate uses could
-	// not be read.
+	// DatasetStorageFailed: the base version's dataset snapshots could not
+	// be read (retried: no provider call was made yet), or do not verify,
+	// or this worker has no object storage (not retried). Raised before
+	// the provider is asked, but for a fault of the server's own in the
+	// binding stage after the call (not retried).
 	DatasetStorageFailed = "DATASET_STORAGE_FAILED"
 	// OutputUnstorable: the database refused the generated row's content
 	// (store.ErrUnstorable). The review refuses what it knows the database
@@ -210,10 +216,11 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		return err
 	}
-	outcome, meta, err := h.generate(ctx, org, st)
+	gen, err := h.generate(ctx, org, st)
 	if err != nil {
-		return failed(err, meta)
+		return failed(err, gen.meta)
 	}
+	outcome, meta := gen.outcome, gen.meta
 	var call provider.Metadata
 	if meta != nil {
 		call = *meta
@@ -226,7 +233,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		if now.Status != store.Generating {
 			return failure(InputInvalid, "the proposal is "+string(now.Status)+", not generating", false)
 		}
-		g, err := generated(outcome, call, st.version.DatasetBindings)
+		g, err := generated(outcome, call, gen.manifest)
 		if err != nil {
 			return err
 		}
@@ -276,22 +283,37 @@ func (h *Handler) start(ctx context.Context, tx tenant.Tx, org, id string) (star
 	return started{proposal: pr, version: v, keys: keys}, nil
 }
 
-// generate builds the context, asks the provider and reviews the answer,
-// outside any transaction. meta is the provider call's, nil when there was
-// none.
-func (h *Handler) generate(ctx context.Context, org string, st started) (review.Outcome, *provider.Metadata, error) {
+// generation is what an attempt produced between its two transactions.
+type generation struct {
+	outcome review.Outcome
+	// meta is the provider call's; nil when there was none.
+	meta *provider.Metadata
+	// manifest is the base version's whole dataset manifest as the binding
+	// stage verified it, in D-034 order: what a ready proposal binds, used
+	// or not, as a version published from a draft does (TWIN_IR_SPEC §5.2,
+	// D-062 (g)).
+	manifest []model.DatasetBinding
+}
+
+// generate builds the context, reads and verifies the base's dataset
+// snapshots, asks the provider, reviews the answer and runs the dataset
+// binding stage on the candidate, outside any transaction. The snapshots
+// are read before the provider is asked, so a storage failure never comes
+// after a paid call (D-061 (c)); the binding stage after the call reads
+// the copies, never storage.
+func (h *Handler) generate(ctx context.Context, org string, st started) (generation, error) {
 	pr, v := st.proposal, st.version
 	var ir model.ModelIR
 	if err := model.Decode(v.IR, &ir); err != nil {
-		return review.Outcome{}, nil, failure(InputInvalid, "the base version does not decode", false)
+		return generation{}, failure(InputInvalid, "the base version does not decode", false)
 	}
 	pack, err := h.cfg.Packs.Lookup(ir.Domain)
 	if err != nil {
-		return review.Outcome{}, nil, failure(InputInvalid, "the model's domain is not served by this worker", false)
+		return generation{}, failure(InputInvalid, "the model's domain is not served by this worker", false)
 	}
 	var pool idpool.Pool
 	if err := json.Unmarshal(pr.IDPool, &pool); err != nil {
-		return review.Outcome{}, nil, failure(InputInvalid, "the stored ID pool does not decode", false)
+		return generation{}, failure(InputInvalid, "the stored ID pool does not decode", false)
 	}
 	mode := provider.Mode(pr.Mode)
 	pc, err := aicontext.Proposal(aicontext.ProposalInput{
@@ -307,49 +329,56 @@ func (h *Handler) generate(ctx context.Context, org string, st started) (review.
 	})
 	if err != nil {
 		if aicontext.CodeOf(err) == aicontext.TooLarge {
-			return review.Outcome{}, nil, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
+			return generation{}, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
 		}
 		h.cfg.Log.WarnContext(ctx, "building a proposal context failed", "organization_id", org, "proposal_id", pr.ID, "code", string(aicontext.CodeOf(err)))
-		return review.Outcome{}, nil, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
+		return generation{}, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
 	}
+	snaps, err := h.preload(ctx, org, st)
+	if err != nil {
+		return generation{}, err
+	}
+	manifest, err := h.verify(ctx, org, pr.ID, snaps, &ir, v.DatasetBindings)
+	if err != nil {
+		return generation{}, err
+	}
+
 	res, err := h.cfg.Provider.GenerateModelProposal(ctx, pc)
 	meta := res.Metadata
 	if err != nil {
 		if ctx.Err() != nil {
-			return review.Outcome{}, nil, err // the attempt is stopping: the worker records it, or nothing
+			return generation{}, err // the attempt is stopping: the worker records it, or nothing
 		}
 		var pe *provider.Error
 		if errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput {
 			// Not a proposal: invalid, with where the answer is wrong
 			// and nothing of what it says (AI_SPEC §4).
-			return review.InvalidOutput(pe.Issues), &meta, nil
+			return generation{outcome: review.InvalidOutput(pe.Issues), meta: &meta, manifest: manifest}, nil
 		}
-		return review.Outcome{}, &meta, providerFailure(err)
+		return generation{meta: &meta}, providerFailure(err)
 	}
 	outcome, err := review.Review(review.Input{Mode: mode, Base: v.IR, Pool: pool, Pack: pack, Output: res.Output})
 	if err != nil {
 		h.cfg.Log.ErrorContext(ctx, "reviewing a proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-		return review.Outcome{}, &meta, failure(InputInvalid, "the server could not review the answer against the stored base", false)
+		return generation{meta: &meta}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
 	}
 	if outcome.Status != review.Ready {
-		return outcome, &meta, nil
+		return generation{outcome: outcome, meta: &meta, manifest: manifest}, nil
 	}
 	// The dataset binding stage: every empirical distribution of the
-	// candidate is bound in the base version's manifest, and the stored
-	// snapshots verify (D-006, D-033). It reads object storage only when
-	// the manifest binds datasets.
-	if len(v.DatasetBindings) > 0 && h.cfg.Objects == nil {
-		return review.Outcome{}, &meta, failure(DatasetStorageFailed, "the base version binds datasets and this worker has no object storage", false)
-	}
-	resolution, err := datasets.Resolve(ctx, snapshots.Store{Keys: st.keys, Objects: h.cfg.Objects}, org, outcome.Candidate, v.DatasetBindings)
+	// candidate is bound in the base version's manifest, and the snapshots
+	// verify (D-006, D-033), read from the copies made before the call.
+	resolution, err := datasets.Resolve(ctx, snaps, org, outcome.Candidate, v.DatasetBindings)
 	if err != nil {
 		if ctx.Err() != nil {
-			return review.Outcome{}, nil, err
+			return generation{}, err
 		}
-		h.cfg.Log.WarnContext(ctx, "reading a proposal's dataset snapshots failed", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-		return review.Outcome{}, &meta, failure(DatasetStorageFailed, "the dataset snapshots could not be read", true)
+		// No storage is read here, so this is the server's own fault; a
+		// retry would ask the provider again, so the attempt fails for good.
+		h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
+		return generation{meta: &meta}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
 	}
-	return outcome.Refuse(withoutIR(resolution.Issues)), &meta, nil
+	return generation{outcome: outcome.Refuse(withoutIR(resolution.Issues)), meta: &meta, manifest: manifest}, nil
 }
 
 // withoutIR rewrites the binding stage's /ir/... paths as paths into the

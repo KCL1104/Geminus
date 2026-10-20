@@ -790,9 +790,12 @@ paths:
       description: 'Core route from report pp.29–35. T-025 (D-002, D-027, D-061 PROPOSED): any member. While generating,
         only the server-bound fields. needs_input has the provider''s summary, assumptions and questions, never
         changes. ready has the canonical changes and their patch_hash (D-019), the validation (valid, with any
-        warnings), the dataset_bindings the candidate uses, server_risk_level, the provider''s provider_risk_claim and
-        risk_level, their maximum. invalid has only its validation: issue paths point into changes (/changes/...), into
-        the candidate model or into the provider''s answer (AI_OUTPUT_INVALID), and nothing the provider wrote is kept.
+        warnings), dataset_bindings (the base version''s whole dataset manifest in logical_ref byte order, every binding
+        whether the candidate uses it or not, as a version published from a draft keeps its base''s; TWIN_IR_SPEC §5.2,
+        D-062 (g) PROPOSED), server_risk_level, the provider''s provider_risk_claim and risk_level, their maximum.
+        invalid has only its validation: issue paths point into changes (/changes/...), into the candidate model or into
+        the provider''s answer (AI_OUTPUT_INVALID), cut at the first member the schemas do not declare, and each message
+        is a fixed sentence of its code, so nothing the provider wrote is kept.
         failed has error, the job''s failure in the error envelope: details[0].code is the failure''s own code (for
         example AI_RATE_LIMITED, AI_TIMEOUT, LEASE_EXPIRED, JOB_CANCELLED) and error.code maps it (D-061):
         AI_PROVIDER_NOT_CONFIGURED and AI_POLICY_NOT_APPROVED as they are, rate limits RATE_LIMITED, an unavailable

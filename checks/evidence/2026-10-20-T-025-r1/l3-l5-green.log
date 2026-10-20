@@ -1,0 +1,15 @@
+=== RUN   TestSnapshotsAreReadBeforeTheProvider
+=== RUN   TestSnapshotsAreReadBeforeTheProvider/a_snapshot_changed
+=== RUN   TestSnapshotsAreReadBeforeTheProvider/no_object_storage
+=== RUN   TestSnapshotsAreReadBeforeTheProvider/storage_fails
+--- PASS: TestSnapshotsAreReadBeforeTheProvider (0.04s)
+    --- PASS: TestSnapshotsAreReadBeforeTheProvider/a_snapshot_changed (0.01s)
+    --- PASS: TestSnapshotsAreReadBeforeTheProvider/no_object_storage (0.00s)
+    --- PASS: TestSnapshotsAreReadBeforeTheProvider/storage_fails (0.00s)
+=== RUN   TestAReadyProposalBindsTheBasesManifest
+--- PASS: TestAReadyProposalBindsTheBasesManifest (0.01s)
+=== RUN   TestGenerateOutsideTheDatabase
+--- PASS: TestGenerateOutsideTheDatabase (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.108s
+exit 0
