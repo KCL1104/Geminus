@@ -1,0 +1,9 @@
+Coordinator runs on e0944c4 (T-046 phase 2 cherry-picked onto claude/lucid-meitner-vq1awo after fcf824d), 2026-10-20.
+Each log was written by "make <target> > log 2>&1; echo exit $?"; the exit code below is that echo.
+
+make spec-check PYTHON=.venv/bin/python   0   coordinator-spec-check.log
+make backend-test                          0   coordinator-backend-test.log
+make architecture-check                    0   coordinator-architecture-check.log
+make ai-eval                               0   coordinator-ai-eval.log
+make frontend-test                         0   coordinator-frontend-test.log (18 files, 422 tests)
+make integration-test (dt_test_t046_p2)    0   coordinator-integration.log (26 packages ok, no FAIL or SKIP)

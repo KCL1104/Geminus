@@ -106,3 +106,7 @@
 - Mapping 的 target field 尚未包含 `end_timestamp`、`shift`、`product`，在 T-052 之前 station log 的這三欄無法由 mapping 寫入。
 - `declared` 以 raw JSON 表示（number、陣列或 null），Go 端不做形狀檢查，依賴 runner 存入前的 schema 驗證；T-051 可改為具名型別。
 - Engine Compile 多了一個輸入檢查。對沒有新成員的模型它不產生 issue，differential 證明結果不變，但這仍是 `internal/simulation/engine` 的程式變更（不是 kernel 行為）。
+
+## Coordinator 的執行（e0944c4）
+
+Coordinator 把六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（fcf824d 之後，沒有衝突），在 e0944c4 上執行 `make spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test` 與 `integration-test`（新的一次性資料庫 `dt_test_t046_p2`），全部 exit 0。`make frontend-test`：18 個 test file、422 個 test 通過，所以上方 NOT RUN 中的 `make frontend-test` 已由 coordinator 執行；`integration-test`：26 個 package ok，沒有 FAIL 或 SKIP。Log 與 exit code 在 `checks/evidence/2026-10-20-T-046-p2/coordinator-*`。`make simulation-reference-test` 仍為 NOT RUN（目標尚未實作）。
