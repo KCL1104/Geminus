@@ -28,6 +28,25 @@ import (
 // T-021 re-review ran about 50,000).
 const differentialModels = 50_000
 
+// frozenDifferentialModels is how many of them TestDifferentialAgainstFrozenKernel
+// runs: all 50,000 in a normal build (make backend-test), the first 5,000
+// under the race detector (make backend-race; T-047 review round 1, I5).
+// The race detector looks for unsynchronized memory access: a replication
+// is one goroutine and the kernel shares nothing between replications, so
+// the only concurrency here is the test's own worker pool (parallelSeeds),
+// which 5,000 models exercise as well as 50,000; with the full count the
+// package took about 607 s under -race, almost all of it here, at the edge
+// of backend-race's timeout. Every check is the same in both builds: the
+// floors of the endings (at least 100 on max_entity_visits, 100 on
+// max_active_entities, 1,000 without a limit) are absolute, and a quarter
+// of the models run must compile.
+var frozenDifferentialModels = func() int {
+	if raceEnabled {
+		return differentialModels / 10
+	}
+	return differentialModels
+}()
+
 type kernelRun struct {
 	obs []Observation
 	out ReplicationOutcome
@@ -103,7 +122,7 @@ func TestDifferentialAgainstFrozenKernel(t *testing.T) {
 		obs      int
 		err      error
 	}
-	results := parallelSeeds(differentialModels, func(seed int) result {
+	results := parallelSeeds(frozenDifferentialModels, func(seed int) result {
 		rng := rand.New(rand.NewPCG(uint64(seed), 4701))
 		in := input(randomModelFrom(base, rng))
 		in.Config = config(float64(30+rng.IntN(240)), model.Minute)
@@ -139,8 +158,8 @@ func TestDifferentialAgainstFrozenKernel(t *testing.T) {
 			t.Fatalf("seed %d: unexpected error %v", seed, r.err)
 		}
 	}
-	t.Logf("%d of %d random models compiled; %d observations identical; endings %v", compiled, differentialModels, observations, failures)
-	if compiled < differentialModels/4 || failures["visits"] < 100 || failures["active"] < 100 || failures["none"] < 1000 {
+	t.Logf("%d of %d random models compiled (race detector: %v); %d observations identical; endings %v", compiled, frozenDifferentialModels, raceEnabled, observations, failures)
+	if compiled < frozenDifferentialModels/4 || failures["visits"] < 100 || failures["active"] < 100 || failures["none"] < 1000 {
 		t.Fatalf("differential too weak: %d compiled, endings %v", compiled, failures)
 	}
 	// The golden models, over long horizons and every replication of three.
