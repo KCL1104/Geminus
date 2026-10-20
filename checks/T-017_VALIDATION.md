@@ -134,3 +134,85 @@
 Coordinator 把六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-026 的 4abeb96 之後）。與 T-026 的衝突：contract fixtures、`cases.json`、`contracts.test.ts` 兩邊都保留；`run_db_tests.sh` 依序套用 0013、0014，回退時先 0014 再 0013；`render_db_tests.py` 中兩邊共用 JOB_A51–A57（每個 SQL suite 都 rollback，所以可共用）；決策登記、CONTRACT_BLOCKERS（T-026 為 K 節、T-017 改為 L 節）、API_DATABASE、db/README、Makefile 訊息與 traceability（每個需求的 task 取聯集）都保留兩邊。
 
 之後 `spec-check`、`backend-test`、`backend-race`、`architecture-check`、`ai-eval`、`frontend-test`（429 個 test）與 `integration-test`（新的 `dt_test_t017`：0013 與 0014 的 up／down／up、所有 SQL suite 含 `import_mapping.sql`；30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0。上方 NOT RUN 中的 migration 0014、SQL suite 與 DB-backed Go 測試已由 coordinator 執行並通過。Log 與 exit code 在 `checks/evidence/2026-10-20-T-017/coordinator-*`。
+
+## Review 第 1 輪的修正（2026-10-20）
+
+獨立 review 第 1 輪：CHANGES REQUESTED，沒有 High，5 個 Medium（M1–M5）、6 個 Low（L1–L6）與 I2、I4、I5。修正在 worktree 的分支 `t017-r1`（自整合分支的 534c9ba 起），先寫測試、跑紅燈，再修正。Reviewer 的 probe（`probe_mapping_test.go`、`probe_validation_test.go`）以 `go test -overlay` 加入，不寫進 worktree。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| e9a2b10 | 契約先行：M5 的 `getImport` 描述與 `validation_failed` 範例、API_DATABASE §5；M1、M2 的 `saveImportMapping` 描述與 `SaveMapping.confirmed_low_confidence`；TS 重產 |
+| a726a9e | 先紅後綠的修正：M1–M4、L1–L6 的程式與測試，SQL 測試（L1、L2），DB-backed 測試的擴充 |
+| 36864e4 | 文件：D-070–D-072（仍為 PROPOSED，只改這三列）、SECURITY §6（I5、M4）、API_DATABASE、AI_SPEC §8、TWIN_IR_SPEC §7、CB-43、db/README |
+| e9ff0ed | R21 的獨立測試、mutation 結果、報告的 commit 表（I4）與 FuzzApply 的更正（M4） |
+| f83c409 | e9a2b10 在 OpenAPI 的單引號字串中留了未跳脫的 `'`，`make spec-check` 因此失敗（`r1-spec-check-first-run.txt`）；修正 |
+| 本報告（下一個 commit） | 本節、evidence、`make spec-check` 重產的 `checks/*.json` |
+
+### 逐條
+
+| Finding | 修正 | 證據 |
+|---|---|---|
+| M1 低信心確認只信任 AI 自己的旗標 | `SuggestedEntry.NeedsPerson()`：confidence < 0.80、target 為 null 或旗標，由 server 判定，旗標只能增加確認；`internal/import/upload` 每次讀取儲存的 suggestion 都先以 `ai-mapping.schema.json` 驗證（ready 卻沒有 suggestion 也算），不符時存檔 fail closed：500 `INTERNAL_ERROR`、`details[0].code` `MAPPING_SUGGESTION_INVALID`，什麼都不寫；D-070 (d) 改寫 | `TestTheServerDecidesWhatNeedsAPerson`（0.1 與 0.7999 沒有旗標仍要確認、0.80 不用、0.99 有旗標要、不匯入的欄一律要）、`TestStoredSuggestion`（7 種不符 schema 的 suggestion、非 ready 不讀）、`TestRefused`；reviewer 的 `TestProbeLowConfidenceWithoutTheFlag` 由紅轉綠；DB-backed `TestTheServerJudgesTheSuggestion`（500、沒有任何 row，NOT RUN） |
+| M2 target 為 null 的建議不需確認、也無法確認 | AI 建議不匯入的欄（需要人確認時），mapping 也不匯入時——寫成 null 的條目（issue 指向該條）或根本沒列（issue 指向 `/mapping/mappings`）——要由人列在 `confirmed_low_confidence`，列了就通過；人匯入該欄則不需要、也不能確認。**測試的更正（不是降低斷言）**：`TestLowConfidenceNeedsAPerson` 原本的 case「a column the person did not import」釘住的是 AI_SPEC §8 禁止的行為（0.2 confidence 的「不匯入」不需確認、確認它反而 422），改為要求確認，並新增「人匯入了 AI 建議不匯入的欄」「沒列的欄」「沒列的欄以名稱確認」的 case；其他 case 因同一條 null 建議而多了一個需要確認的欄，期望值一併更新 | `TestLowConfidenceNeedsAPerson`、`TestTheServerDecidesWhatNeedsAPerson`；reviewer 的 `TestProbeNullSuggestionNeedsConfirmation` 由紅轉綠；DB-backed `TestTheServerJudgesTheSuggestion`（NOT RUN） |
+| M3 `+24:00`、`+05:60` 的 event 進入 VALIDATED 的 dataset | profile 的 timestamp pattern 的 offset 改為 `([01][0-9]|2[0-3]):[0-5][0-9]`，與 canonical-event schema 的 date-time 相同（rfc3339 transform 沿用同一個 `IsTimestamp`，三者一致）；每個 event 在可能成為 dataset 的一部分之前，最後以 `canonical-event.schema.json` 驗證：不符為 invalid row（`EVENT_NOT_CANONICAL`，path 指向整列），Write 拒絕檔案 | `TestTransforms`（+23:59、−23:59、+00:00 接受；+24:00、−24:00、+05:60、+99:00 拒絕，start 與 end 皆然）、`TestInference`、`TestShapesAreTheInferences`、`TestOffsets`、`TestTheSchemaIsTheLastWord`、`TestEveryEventGoesThroughTheSchema`（以只拒絕某一列的 schema 證明每列都經過它）、兩個 fuzz 的 corpus；reviewer 的 `TestProbeOffset2400` 由紅轉綠 |
+| M4 FuzzApply 的正向不變式從未執行 | 每個 plan entry 有自己的 cell（以 `\x1f` 分隔的一列），seed 從三列必須 valid 的列開始，fuzz 開始前先確認它們沒有 issue（否則 `f.Fatal`），所以 schema 的檢查確實執行；SECURITY §6 與本報告前面的說法已更正 | `FuzzApply` 的 seed 檢查；reviewer 的 `TestProbeFuzzApplyNeverReachesAValidRow` 仍通過（它證明的是舊的 `i%3` 設計，與新的 fuzz 無關） |
+| M5 OpenAPI 與 API_DATABASE 說 `error.request_id` 是上傳的 | 契約先行：`getImport` 改為「失敗那一步的 request」，新增 `validation_failed` 範例（revision 2 的 validation 讀不到 object storage，request_id 為該次存檔）；API_DATABASE §5 同步 | `check_contracts.py`（範例依 schema 驗證）；DB-backed `TestValidationJobFailures` 早已斷言存檔的 request（coordinator 於 16dec30 執行通過） |
+| L1 0014 允許 VALIDATING／AWAITING_MAPPING → COMMITTED | `protect_import` 對所有 role：COMMITTED 只能從 VALIDATED 來（0014 尚未部署，直接修改）；`roles.sql` 的 commit 改為先由 worker 以其 job 寫成 VALIDATED | `import_mapping.sql` 新增 API 與 owner 的 4 個反例（55000）、`roles.sql`（NOT RUN） |
+| L2 存檔的 deferred check 不看 job 的狀態 | `check_import_validating_with_its_job` 改為重讀 import：仍是 VALIDATING 時，目前 revision 必須有 queued 或 running 的 job（同一個 transaction 中多次存檔以最後一次判斷） | `import_mapping.sql`：在存檔之前插入並取消的 job 不算數（commit 時 55000）（NOT RUN） |
+| L3 `IMPORT_INPUT_INVALID` 顯示為 `REQUEST_VALIDATION_FAILED` | 依 CB-39(a) 改為 `INTERNAL_ERROR`（它表示 server 讀不懂自己存的東西） | `TestEnvelope`（新增 `IMPORT_INPUT_INVALID`、`UPLOAD_CHANGED`、`JOB_CANCELLED`、`OBJECT_STORAGE_UNAVAILABLE`，每個 case 也檢查 message） |
+| L4 未被測試涵蓋的保證 | 新增測試：pointer 的 `~0`／`~1`（`TestPointersEscapeColumnNames`）、preview 的 byte 邊界（`TestPreviewByteBoundary`：恰好、少一 byte、放不下第一列）、Write 的逐列重查（`TestWriteRefusesARowThatDoesNotMap`；schema 檢查加入後它也會擋下，所以另以 `TestWriteMapsEveryRowAgain` 把 schema 換成全部接受來單獨要求重查）、validator 的 preview 上限與列數比對（`internal/import/validator` 的新測試直接呼叫 `validate`，用 filesystem object store：`TestTheCanonicalPreviewFollowsTheRawPreview`、`TestTheUploadIsTheProfiled`）、envelope 的「could not be processed」（`TestEnvelope`） | reviewer 存活的 R17、R19、R21、R24、R26、R27 在新的 mutation 中全部被擋下 |
+| L5 stale 但仍在跑的 job 會寫出至多 256 MiB 的孤兒 dataset | 第一次讀完、全部合法時，於 lease 下（`Checkpoint`）再確認 import 仍是 VALIDATING 且 revision 相同，否則停止、不寫 dataset，Finish 記 `stale` | `TestTheSecondReadIsForTheCurrentRevisionOnly`（stale 時沒有任何 object、checkpoint 失敗時回其錯誤、有不合法列時不做第二次讀取也不 checkpoint）、`TestAValidImport`；DB-backed `TestStaleValidationJobs` 新增「第一次讀完、第二次讀取前被蓋過」的情況（不留下該 revision 的 object，NOT RUN） |
+| L6 `-00:00` 被當成 UTC | 建議拒絕（RFC 3339 §4.3：offset 不明；D-072 「不假設時區」），已實作：profile 推斷為 string，rfc3339 transform 拒絕；列入 D-072 (a) 由 owner 決定（選項 B：照 schema 接受） | `TestTransforms`、`TestInference`、`TestShapesAreTheInferences`、`TestOffsets` |
+| I2 D-072 (b) 與 TWIN_IR_SPEC §7 的說法不同 | 不改行為；D-072 (b) 列出選項：A（建議，現狀）invalid row；B 改為 warning，留給 inference 的 data-quality；TWIN_IR_SPEC §7 註明此差異 | 文件 |
+| I4 commit 表用的是 cherry-pick 前的 hash | 本報告的 commit 表改列分支 hash（22ee1aa、539f48e、c2ec688、e1da99c、8acfe37、16dec30、534c9ba），worktree 的 hash 並列 | 本報告 |
+| I5 canonical preview 與 dataset 帶原始 cell 文字 | SECURITY §6：T-031 只能以文字顯示，T-027 的 AI context 必須遮蔽並標為 UNTRUSTED_DATA | 文件 |
+
+### 實際執行結果（第 1 輪）
+
+在 worktree 的 `t017-r1` 執行，HEAD f83c409（`r1-exit-codes.txt`），Go 1.27.2、Node 22.22.0、4 CPU；同一台機器上另有其他 agent 的 `go test` 同時在跑。沒有 `GEMINUS_TEST_DATABASE_URL`，DB-backed 測試以 repo 既有的 `dbtest` 機制 skip 並印出 NOT RUN。
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make spec-check PYTHON=.venv/bin/python` | 0 | `r1-spec-check.txt`；第 1 輪第一次執行時因 e9a2b10 的 YAML 引號而失敗（exit 2，`r1-spec-check-first-run.txt`），f83c409 修正後通過 |
+| `make backend-test` | 0 | gofmt、go vet、61 個 package ok；其中 46 個是 Go 的 test cache（輸入與先前相同的 package），沒有 FAIL |
+| `make backend-race` | 0 | 61 個 package ok，沒有 cached 結果 |
+| `make architecture-check` | 0 | 74 packages、16 rules、16 build configurations（`validation` 新 import 的 `internal/model/validate` 在 kernel 的允許範圍內） |
+| `make ai-eval` | 0 | 只有 fake provider 的結果 |
+| `make ts-contracts PYTHON=.venv/bin/python` | 0 | 重產後與 commit 的內容相同 |
+| `make frontend-test` | 0 | 429 個 test；Node 22.22.0（`package.json` 要求 ≥24.21.0） |
+| `go test -fuzz` 三個 target，各 60 秒 | 0 | `FuzzApply` 1,135,413 次（新設計，seed 必須 valid）、`FuzzValidate` 1,046,555 次、`FuzzRead` 71,002 次（每次執行都多了 schema 的檢查或與其他 agent 共用 CPU，次數較少），都沒有 crash |
+| reviewer 的 probe（`-overlay`） | 0 | `r1-probe-mapping.txt`、`r1-probe-validation.txt`：8 個全部通過（第 0 輪時 `TestProbeLowConfidenceWithoutTheFlag`、`TestProbeNullSuggestionNeedsConfirmation`、`TestProbeOffset2400` 失敗） |
+| `go test -count=1 -v ./internal/import/... ./internal/ai/aicontext/ ./cmd/worker/` | 0 | `r1-go-tests.txt`：106 個 top-level test、221 個 subtest 通過；`TestRunWorksAndStops` 需要 DB（NOT RUN） |
+| 34 個 targeted mutation | 0 | 34/34 被擋下（`r1-mutations.txt`） |
+| pglast 靜態解析與 `bash -n scripts/run_db_tests.sh` | 0 | `r1-sql-parse.txt`；只是語法 |
+| `make integration-test` | NOT RUN | 沒有 DB（依指示不嘗試），見下方 NOT RUN |
+
+### 先紅後綠與 mutation
+
+- 紅燈：`r1-red.txt`（mapping：`TestLowConfidenceNeedsAPerson`、`TestTheServerDecidesWhatNeedsAPerson`、`TestTransforms`、`FuzzApply` 的 seed；profile：`TestInference`、`TestShapesAreTheInferences`；validator 與 upload 的新測試因新程式尚不存在而無法編譯）、`r1-red-validation.txt`（`TestOffsets` 與 `FuzzValidate` 的 seed；需要新程式才能編譯的 internal test 以 `-overlay` 換成空檔）；reviewer 的 probe 在第 0 輪的紅燈見 reviewer 的 log，修正後 `r1-probe-*.txt` 全部通過。L4 的測試多半是針對既有行為（第 0 輪就是對的，只是沒有測試），所以它們不會先紅；它們擋不擋得下缺陷以 mutation 證明。
+- Mutation（`r1-mutations.txt`、`r1-mutations-harness.py`，`go test -overlay`，worktree 從未被修改）：34 個——第 0 輪的 17 個（M4 依新的程式重新定位）、reviewer 存活的 R17、R19、R21、R24、R26、R27，與第 1 輪的 N1–N11（confidence 與 null target 不再由 server 判定、沒列的欄不需確認、null 條目不算採用、offset 超過 23:59、`-00:00`、Validate 與 Write 不查 schema、不驗證儲存的 suggestion、`IMPORT_INPUT_INVALID` 的對應、第二次讀取前不 checkpoint）。第一次執行 33 個被擋、R21 存活（schema 檢查也擋下了有 issue 的列的零值 event，所以拿掉 Write 自己的重查看不出差別），加了 `TestWriteMapsEveryRowAgain` 後 34/34。
+- SQL：沒有 DB，無法先紅後綠；`sql-parse.txt` 的 pglast 靜態解析在第 1 輪重跑（`r1-sql-parse.txt`）。
+- 仍只由 DB-backed 測試涵蓋、沒有 mutation 的：存檔的 CAS、idempotency、stale-job fence 在 Finish 中的判斷（reviewer 的 R25、R28–R30），coordinator 的 integration run 會執行這些測試。
+
+### NOT RUN（第 1 輪；全部要由 coordinator 在新的 `dt_test_*` 資料庫以 `make integration-test` 執行）
+
+- Migration 0014（up、down、up，兩輪；0013 之後）：本輪改了 `protect_import`（L1）與 `check_import_validating_with_its_job`（L2）。
+- SQL suite：`db/tests/import_mapping.sql`（L1 的 4 個反例、L2 的反例）、`db/tests/roles.sql`（commit 前先 VALIDATED），以及其餘全部 suite 的回歸：`imports.sql`、`constraints.sql`、`invariants.sql`、`runs.sql`、`proposals.sql`、`proposal_jobs.sql`、`proposal_decisions.sql`、`self.sql`、`ir_rows.sql`、`pool_rows.sql`。
+- DB-backed Go 測試（`internal/api`）：`TestImportMappingClosedLoop`、`TestMappingRevisionConflicts`、`TestStaleValidationJobs`（新增 L5 的情況）、`TestValidationJobFailures`、`TestMappingRefusals`、`TestLowConfidenceSuggestion`、`TestJSONEventsMapping`、`TestTheServerJudgesTheSuggestion`（新）；T-016 的 import 測試（`TestImportClosedLoop`、`TestImportRoleMatrix`、`TestUploadRefusals`、`TestUploadIdempotency`、`TestProfileFailures`、`TestProfileIntegrity`、`TestProfileJobFailures`、`TestErrorReportAuthorization`、`TestASlowUploadHasItsOwnDeadline`）因 profile 的 timestamp 規則與 envelope 的對應改變而要重跑；`cmd/worker` 的 `TestRunWorksAndStops`；`internal/worker`、`internal/storage/jobs` 的 DB 測試。
+- `make e2e-test`、正式 object storage adapter、T-037 的效能（第 1 輪每個 event 多一次 JSON Schema 驗證，沒有量測）。
+
+### 需要 owner 決定（第 1 輪新增或改變）
+
+- D-070 (d)：需要人確認的條目改由 server 判定；不匯入的欄的確認規則；儲存的 suggestion 不符 schema 時 500。
+- D-072 (a)：拒絕 `-00:00`（建議，已實作）或照 schema 接受（L6）。
+- D-072 (b)：end 早於 start、duration 不一致為 invalid row（建議 A，現狀）或 warning（B）（I2）。
+- D-071 (g)：COMMITTED 只能從 VALIDATED 來，0014 已強制（L1）。
+
+### 殘餘風險（第 1 輪後）
+
+- 第 1 輪的 SQL 與 DB-backed 測試尚未在 DB 上執行。
+- 每個 event 多一次 JSON Schema 驗證，100,000 列的 validation 時間沒有量測（T-037）。
+- `-00:00` 與 I2 的行為是 agent 的建議，owner 若選 B 需改程式與測試。
+- 在 dataset 寫完之後才被新存檔蓋過的 job，仍留下一份孤兒 dataset（L5 只擋下寫之前的情況；D-044 的 maintenance 未做）。

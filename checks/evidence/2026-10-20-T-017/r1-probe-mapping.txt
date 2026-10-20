@@ -31,5 +31,4 @@
     zz_probe_test.go:108: "2026-10-13T06:12:00+23:59" -> timestamp "2026-10-13T06:12:00+23:59" issues []
 --- PASS: TestProbeTimestamps (0.00s)
 PASS
-ok  	github.com/kcl1104/geminus/internal/import/mapping	0.023s
-exit 0
+ok  	github.com/kcl1104/geminus/internal/import/mapping	0.021s

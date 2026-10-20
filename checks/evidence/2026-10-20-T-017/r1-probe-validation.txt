@@ -9,5 +9,4 @@
         report "\ufeff\"path\",\"line\",\"column\",\"code\",\"message\",\"value\"\r\n\"/0/=cmd|' ~1C calc'!A0\",\"2\",\"'=cmd|' /C calc'!A0\",\"MAPPING_VALUE_TOO_LONG\",\"case_id: the value is longer than 256 characters\",\"\"\r\n\"/0/at\",\"2\",\"at\",\"MAPPING_VALUE_INVALID\",\"timestamp: the value is not an RFC 3339 date-time with an offset\",\"\"\r\n"
 --- PASS: TestProbeReportCells (0.00s)
 PASS
-ok  	github.com/kcl1104/geminus/internal/import/validation	0.019s
-exit 0
+ok  	github.com/kcl1104/geminus/internal/import/validation	0.041s
