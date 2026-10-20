@@ -125,3 +125,9 @@
 - D-059 的「operator ID 不匯入」只靠詞彙沒有 operator 欄位；人可以把 operator 欄放進 metadata（CB-43 (f)）。
 - JSON model import 的 validation 尚未實作（T-018）；目前它無法 mapping，也無法 VALIDATED。
 - 0014 的 down 會把 VALIDATING／VALIDATED 的 import 留在 0010 不認得的狀態（down 的 CHECK 會失敗）：只適用於一次性 DB；已部署的環境不得 down（AGENTS §3）。
+
+## Coordinator 的執行（16dec30）
+
+Coordinator 把六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-026 的 4abeb96 之後）。與 T-026 的衝突：contract fixtures、`cases.json`、`contracts.test.ts` 兩邊都保留；`run_db_tests.sh` 依序套用 0013、0014，回退時先 0014 再 0013；`render_db_tests.py` 中兩邊共用 JOB_A51–A57（每個 SQL suite 都 rollback，所以可共用）；決策登記、CONTRACT_BLOCKERS（T-026 為 K 節、T-017 改為 L 節）、API_DATABASE、db/README、Makefile 訊息與 traceability（每個需求的 task 取聯集）都保留兩邊。
+
+之後 `spec-check`、`backend-test`、`backend-race`、`architecture-check`、`ai-eval`、`frontend-test`（429 個 test）與 `integration-test`（新的 `dt_test_t017`：0013 與 0014 的 up／down／up、所有 SQL suite 含 `import_mapping.sql`；30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0。上方 NOT RUN 中的 migration 0014、SQL suite 與 DB-backed Go 測試已由 coordinator 執行並通過。Log 與 exit code 在 `checks/evidence/2026-10-20-T-017/coordinator-*`。

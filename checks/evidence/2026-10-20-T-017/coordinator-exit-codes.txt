@@ -1,0 +1,15 @@
+Coordinator runs on 16dec30 (T-017 cherry-picked onto claude/lucid-meitner-vq1awo after T-026's 4abeb96), 2026-10-20.
+Conflicts with T-026 were resolved: contract fixtures, cases.json and contracts.test.ts keep both sides; run_db_tests.sh
+applies 0013 then 0014 and reverts 0014 then 0013; render_db_tests.py keeps one set of shared IDs (each SQL suite rolls
+back); the decision register, CONTRACT_BLOCKERS (T-026 is section K, T-017 section L), API_DATABASE, db/README, the
+Makefile message and traceability (union of tasks per requirement) keep both.
+Each log was written by "make <target> > log 2>&1; echo exit $?".
+
+make spec-check PYTHON=.venv/bin/python   0   coordinator-spec-check.log
+make backend-test                          0   coordinator-backend-test.log
+make backend-race                          0   coordinator-backend-race.log
+make architecture-check                    0   coordinator-architecture-check.log
+make ai-eval                               0   coordinator-ai-eval.log
+make frontend-test                         0   coordinator-frontend-test.log (429 tests)
+make integration-test (dt_test_t017)       0   coordinator-integration.log (0013 and 0014 up/down/up, every SQL suite
+                                               including import_mapping.sql; 30 packages ok, no FAIL or SKIP)
