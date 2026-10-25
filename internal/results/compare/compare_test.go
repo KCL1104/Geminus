@@ -795,6 +795,21 @@ func TestInconsistent(t *testing.T) {
 			q.WaitP50Minutes = ptr(math.Inf(1))
 			r.Metrics.Queues["service"] = q
 		}, "/metrics/queues/service/wait_p50_minutes"},
+		// Review round 2 R2-L1: the reviewer's probes, values in the finite
+		// range that only the metrics contract (simulation.schema.json)
+		// refuses, as Compare does (I2 above).
+		"a utilization above 1": {func(r *simulation.Result) {
+			r.Metrics.Resources["server"] = simulation.ResourceStats{UtilizationMean: ptr(7), ObservationTicks: horizonTicks, Capacity: 1}
+		}, "/metrics/resources/server/utilization_mean"},
+		"a null utilization without a reason": {func(r *simulation.Result) {
+			r.Metrics.Resources["server"] = simulation.ResourceStats{ObservationTicks: horizonTicks, Capacity: 1}
+		}, "/metrics/resources/server/utilization_mean"},
+		"a wait above the contract's maximum": {func(r *simulation.Result) {
+			q := r.Metrics.Queues["service"]
+			q.WaitMeanMinutes = ptr(5e12)
+			r.Metrics.Queues["service"] = q
+		}, "/metrics/queues/service/wait_mean_minutes"},
+		"an available summary of no sample": {func(r *simulation.Result) { r.Metrics.Throughput.SampleCount = 0 }, "/metrics/throughput/mean"},
 	} {
 		r := result(baseID)
 		c.mutate(r)
@@ -804,6 +819,15 @@ func TestInconsistent(t *testing.T) {
 		if _, err := compare.Resolve(r, c.path); !errors.Is(err, compare.ErrInconsistent) {
 			t.Errorf("%s: Resolve %v", name, err)
 		}
+		// The whole metrics, not only the statistic asked for: a path to
+		// another, valid statistic of the same result is refused too.
+		if _, err := compare.Resolve(r, "/metrics/failure_count/mean"); !errors.Is(err, compare.ErrInconsistent) {
+			t.Errorf("%s: Resolve of another statistic %v", name, err)
+		}
+	}
+	// The valid result the probes start from resolves.
+	if v, err := compare.Resolve(result(baseID), "/metrics/failure_count/mean"); err != nil || v == nil || *v != 0 {
+		t.Errorf("valid result: %v %v", show(v), err)
 	}
 }
 

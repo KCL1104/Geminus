@@ -378,10 +378,15 @@ type Statistic struct {
 }
 
 // Statistics lists every statistic of r's metrics in the comparison's
-// order: the metric paths an analysis may cite as evidence of r.
+// order: the metric paths an analysis may cite as evidence of r. Metrics
+// that break the contract Compare checks them against (metricsRef) are
+// ErrInconsistent: nothing is listed from them (review round 2 R2-L1).
 func Statistics(r *simulation.Result) ([]Statistic, error) {
 	if r == nil {
 		return nil, inconsistent("no result")
+	}
+	if err := validMetrics(r.RunID, r.Metrics); err != nil {
+		return nil, err
 	}
 	var out []Statistic
 	for _, g := range groups {
@@ -414,10 +419,15 @@ func statPath(g group, key, stat string) string {
 // statistics (Statistics) is ErrUnknownPath: a summary rather than one of
 // its statistics, a member that is not a statistic (sample_count, the CI,
 // unit, reason, capacity), a key r lacks, a malformed or differently
-// spelled pointer, anything outside /metrics.
+// spelled pointer, anything outside /metrics. Metrics that break the
+// contract Compare checks them against (metricsRef) are ErrInconsistent,
+// whatever the path (review round 2 R2-L1).
 func Resolve(r *simulation.Result, path string) (*float64, error) {
 	if r == nil {
 		return nil, inconsistent("no result")
+	}
+	if err := validMetrics(r.RunID, r.Metrics); err != nil {
+		return nil, err
 	}
 	t, ok := tokens(path)
 	if !ok || len(t) < 3 || t[0] != "metrics" {
@@ -469,6 +479,28 @@ func emptyPatch(id string, patch []byte) (bool, error) {
 // value of.
 const metricsRef = "simulation.schema.json#/$defs/Result/properties/metrics"
 
+// validMetrics checks the metrics of run id's Result against metricsRef:
+// the one check Compare (check), Statistics and Resolve each make before
+// reading a value (review round 1 I2, round 2 R2-L1; D-090 (a)).
+func validMetrics(id string, m simulation.Metrics) error {
+	// The Go types hold exactly the schema's members (contract tests), and
+	// a stored Result is decoded strictly, so its metrics re-encode to what
+	// was stored, as far as the schema can tell.
+	data, err := json.Marshal(m)
+	if err != nil {
+		return inconsistent("run %q: the result's metrics do not encode (a number that is not finite)", id)
+	}
+	issues, err := validate.Document(data, metricsRef, "RESULT_INCONSISTENT")
+	if err != nil {
+		return err
+	}
+	if len(issues) > 0 {
+		// The path only: the message may quote a value.
+		return inconsistent("run %q: the result's metrics break the contract at %q (%d issue(s))", id, "/metrics"+issues[0].Path, len(issues))
+	}
+	return nil
+}
+
 // check returns a run's measurement window in ticks after checking that
 // its Result is the run's own and keeps its contract where the comparison
 // reads it (D-089 (b)): its ID, status and engine; its seed, replication
@@ -500,20 +532,8 @@ func check(r Run) (warmup, horizon int64, err error) {
 		mw.WarmupTicks != w {
 		return 0, 0, inconsistent("run %s: the result's window is not the run's configuration", r.ID)
 	}
-	// The Go types hold exactly the schema's members (contract tests), and
-	// a stored Result is decoded strictly, so its metrics re-encode to what
-	// was stored, as far as the schema can tell.
-	data, err := json.Marshal(res.Metrics)
-	if err != nil {
-		return 0, 0, inconsistent("run %s: the result's metrics do not encode (a number that is not finite)", r.ID)
-	}
-	issues, err := validate.Document(data, metricsRef, "RESULT_INCONSISTENT")
-	if err != nil {
+	if err := validMetrics(r.ID, res.Metrics); err != nil {
 		return 0, 0, err
-	}
-	if len(issues) > 0 {
-		// The path only: the message may quote a value.
-		return 0, 0, inconsistent("run %s: the result's metrics break the contract at %q (%d issue(s))", r.ID, "/metrics"+issues[0].Path, len(issues))
 	}
 	return w, h, nil
 }

@@ -60,6 +60,10 @@ var readRoles = tenant.Members
 // observe that transaction's mode from outside the service (review round 1
 // L6; tenant's own TestReadSnapshot shows what the mode does). It is nil
 // in production and unexported, so nothing outside the package can set it.
+// It is one package-level variable that every Compare reads without a
+// lock: a test that sets it must not run in parallel (t.Parallel) with any
+// other test of this package that calls Compare, or the write and those
+// reads are a data race (review round 2).
 var inTransaction func(ctx context.Context, tx tenant.Tx) error
 
 // Service compares runs for a verified scope.

@@ -24,6 +24,7 @@ func TestCompareReadsOneReadOnlySnapshot(t *testing.T) {
 	}
 	var isolation, readOnly string
 	calls := 0
+	// Never t.Parallel: inTransaction is package state (its comment).
 	inTransaction = func(ctx context.Context, tx tenant.Tx) error {
 		calls++
 		return tx.QueryRow(ctx, `SELECT current_setting('transaction_isolation'), current_setting('transaction_read_only')`).Scan(&isolation, &readOnly)
