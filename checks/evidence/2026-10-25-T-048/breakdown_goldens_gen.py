@@ -5,6 +5,9 @@ It only builds JSON: every expected value below is typed in by hand from
 the derivation written next to it (each case's "derivation"), following
 ADR-026 D-048, D-050, D-051 and the T-048 interpretations (D-074, D-075,
 PROPOSED). No engine, SimPy run or other program produced any of them.
+Review round 1: D-074 (a) is option B (a repaired unit goes to the waiting
+failures first); G-F3 was re-derived under it, and G-F9 (a repair satisfies
+a waiting failure) and G-F1W10 (a downtime starting exactly at W) added.
 
     python checks/evidence/2026-10-25-T-048/breakdown_goldens_gen.py
 """
@@ -156,6 +159,40 @@ cases.append({
     "simpy": "not compared: G-F1's same-tick arrival and failure (D-048 tie-break)",
 })
 
+# ---------------------------------------------------------------- G-F1W10 (review round 1, M2)
+cases.append({
+    "id": "G-F1W10",
+    "title": "G-F1 measured over [10, 30]: a downtime that starts exactly at W counts (D-074 (e); T-048 review round 1, M2)",
+    "model": copy.deepcopy(gf1["model"]),
+    "config": config(30, warmup=10),
+    "derivation": [
+        "G-F1's run (same model, horizon and seed): the warm-up changes no event, only the window [W, H] = [10, 30], T = 20 min. The first downtime starts at 10 = W.",
+        "Downtimes [10,13] and [23,26]: down_ticks = 3 + 3 = 6 min; breakdowns_started counts the downtimes that start in [W, H] (W included): 10 and 23, so 2;",
+        "a complete repair starts at or after W and ends by H: both, 2 repairs of 6 min. A strict lower bound (> W) would count 1 of each.",
+        "In use in [10, 30]: e5 [13,14], e6 [14,15], e7 [15,16], e8 [16,17], e9 [18,19], e10 [20,21], e11 [22,23], e12 [26,27], e13 [27,28], e14 [28,29] (e4 ended at 9, e15 starts at 30): 10 min; utilization 10/20.",
+        "available = C*T - down = 20 - 6 = 14 min; idle = 14 - 10 = 4 min.",
+        "Completed in [10, 30]: e5–e14 (14, 15, 16, 17, 19, 21, 23, 27, 28, 29), 10; censored e15.",
+        "Lead-time cohort (arrival >= 10, completion <= 30): e5 4 (10 to 14), e6 3, e7 2, e8 1, e9 1, e10 1, e11 1, e12 3, e13 2, e14 1.",
+        "Queue waits (queue enter >= 10, start <= 30): e5 3 (10 to 13), e6 2, e7 1, e8 0, e9 0, e10 0, e11 0, e12 2, e13 1, e14 0, e15 0.",
+    ],
+    "expected": {
+        "starts": gf1["expected"]["starts"],
+        "completions": gf1["expected"]["completions"],
+        "blocks": [],
+        "downs": gf1["expected"]["downs"],
+        "pending": [],
+        "result": {
+            "completed_count": 10, "censored_entities": 1,
+            "lead_times_minutes": [4, 3, 2, 1, 1, 1, 1, 3, 2, 1],
+            "queue_waits_minutes": {"work": [3, 2, 1, 0, 0, 0, 0, 2, 1, 0, 0]},
+            "resource_utilization": {"m": 10 / 20},
+            "resource_states": {"m": state(10, 6, 2, 2, 6, 14, 4)},
+            "blocking": None, "buffers": None,
+        },
+    },
+    "simpy": "not compared: G-F1's same-tick arrival and failure (D-048 tie-break)",
+})
+
 # ---------------------------------------------------------------- G-F2
 cases.append({
     "id": "G-F2",
@@ -197,36 +234,76 @@ cases.append({
 g_f3_sources = [("s1", 8), ("s2", 18), ("s3", 19), ("s4", 23), ("s5", 28)]
 cases.append({
     "id": "G-F3",
-    "title": "two units, one waiting failure, two releases; a repair does not satisfy a waiting failure (ADR-026 D-051 G-F3, D-074 (a))",
+    "title": "two units, waiting failures, releases and repairs; a unit that becomes available goes to the waiting failures first (ADR-026 D-051 G-F3, D-074 (a) B; review round 1, M1)",
     "model": model("G-F3", [resource("m", 2, const(10), const(2))],
                    [source(s, const(t), 1) for s, t in g_f3_sources] + [process("work", const(7), ("m", 1)), sink()],
                    [(s, "work") for s, _ in g_f3_sources] + [("work", "done")]),
     "config": config(40),
     "derivation": [
+        "Re-derived in T-048 review round 1 under D-074 (a) option B: a unit that becomes available, released by a job or repaired, goes to the waiting failures first, in the order they fired; only a unit no failure waits for wakes the held front.",
         "m has capacity 2: two failure clocks, units 0 and 1, both TTF 10 and TTR 2. Five one-off sources: s1 at 8, s2 at 18, s3 at 19, s4 at 23, s5 at 28; service 7.",
         "t=0: the five first arrivals (source ID order), then FAILURE(0) at 10 and FAILURE(1) at 10 (unit order, so 0's has the smaller sequence).",
         "t=8: s1/1 [8,15]. t=10: FAILURE(0): idle = 2 - 0 - 1 = 1: unit down (D=1), REPAIR(0) at 12; FAILURE(1): idle = 2 - 1 - 1 = 0: waits.",
-        "t=12: REPAIR(0): D=0, FAILURE(0) at 22. t=15: s1/1 completes: its released unit satisfies the waiting failure 1 (D=1), REPAIR(1) at 17. t=17: REPAIR(1): D=0, FAILURE(1) at 27.",
-        "t=18: s2/1 [18,25]. t=19: s3/1 [19,26] (both units in use). t=22: FAILURE(0): idle 0, waits. t=23: s4/1 held (in use 2).",
-        "t=25: s2/1 completes: the first released unit goes down for the waiting failure 0 (D=1), REPAIR(0) at 27; s4/1 wakes but 1 + 1 > C - D = 1: held.",
-        "t=26: s3/1 completes: the second release finds no waiting failure, the unit is available: s4/1 [26,33].",
-        "t=27: FAILURE(1) (scheduled at 17) runs before REPAIR(0) (scheduled at 25): idle = 2 - 1 - 1 = 0, waits; REPAIR(0): D=0, FAILURE(0) at 37. The waiting failure 1 is not satisfied by the repaired unit (D-074 (a): only a released unit is), so one unit is idle.",
-        "t=28: s5/1 [28,35] on that idle unit (under the other reading it would wait for s4/1's release at 33).",
-        "t=33: s4/1 completes: its unit goes down for failure 1 (D=1), REPAIR(1) at 35. t=35: s5/1 completes (0), then REPAIR(1) (15): D=0, FAILURE(1) at 45 (> horizon). t=37: FAILURE(0): idle 2, down, REPAIR(0) at 39. t=39: REPAIR(0), FAILURE(0) at 49 (> horizon).",
-        "Result over [0, 40]: 5 completed, lead times 7,7,7,10,7, waits 0,0,0,3,0; in use 5 x 7 = 35 min, utilization 35/80; down [10,12], [15,17], [25,27], [33,35], [37,39]: 10 min, 5 started, 5 complete repairs of 10 min; available = 2*40 - 10 = 70 min; idle = 70 - 35 = 35 min.",
+        "t=12: REPAIR(0): D=0, FAILURE(0) at 22; the repaired unit goes to the waiting failure 1: down (D=1), REPAIR(1) at 14. (Under option A it would wait for s1/1's release at 15.)",
+        "t=14: REPAIR(1): D=0, FAILURE(1) at 24; no failure waits, no request is held. t=15: s1/1 completes; nothing waits.",
+        "t=18: s2/1 [18,25]. t=19: s3/1 [19,26] (both units in use). t=22: FAILURE(0): idle 0, waits. t=23: s4/1 held (in use 2). t=24: FAILURE(1): idle 0, waits behind failure 0.",
+        "t=25: s2/1 completes (0): its unit goes down for the first waiting failure, 0 (D=1), REPAIR(0) at 27; s4/1 wakes, but in use 1 (s3/1) + 1 > C - D = 2 - 1: held.",
+        "t=26: s3/1 completes: its unit goes down for failure 1 (D=2), REPAIR(1) at 28; s4/1 wakes, in use 0 + 1 > 2 - 2: held.",
+        "t=27: REPAIR(0): D=1, FAILURE(0) at 37; no failure waits, so the unit wakes s4/1: 0 + 1 <= 2 - 1: s4/1 [27,34].",
+        "t=28: ARRIVAL s5/1 (10) queues and is a candidate; REPAIR(1) (15): D=0, FAILURE(1) at 38, wakes nothing (s5/1 is not held); DISPATCH (20): s5/1 [28,35].",
+        "t=34: s4/1 completes; t=35: s5/1 completes; nothing waits. t=37: FAILURE(0): idle 2, down, REPAIR(0) at 39. t=38: FAILURE(1): idle 1, down, REPAIR(1) at 40. t=39: REPAIR(0), FAILURE(0) at 49 (> horizon). t=40: REPAIR(1) (at the horizon), FAILURE(1) at 50 (> horizon).",
+        "Result over [0, 40]: 5 completed, lead times 7,7,7,11,7, waits 0,0,0,4,0; in use 5 x 7 = 35 min, utilization 35/80; down [10,12], [12,14], [25,27], [26,28], [37,39], [38,40]: 12 min (both units down on [26,27]), 6 started, 6 complete repairs of 12 min; available = 2*40 - 12 = 68 min; idle = 68 - 35 = 33 min.",
     ],
     "expected": {
-        "starts": {"work": [["r0/s1/1", 8], ["r0/s2/1", 18], ["r0/s3/1", 19], ["r0/s4/1", 26], ["r0/s5/1", 28]]},
-        "completions": [["r0/s1/1", 15], ["r0/s2/1", 25], ["r0/s3/1", 26], ["r0/s4/1", 33], ["r0/s5/1", 35]],
+        "starts": {"work": [["r0/s1/1", 8], ["r0/s2/1", 18], ["r0/s3/1", 19], ["r0/s4/1", 27], ["r0/s5/1", 28]]},
+        "completions": [["r0/s1/1", 15], ["r0/s2/1", 25], ["r0/s3/1", 26], ["r0/s4/1", 34], ["r0/s5/1", 35]],
         "blocks": [],
-        "downs": [["m", 0, 10, 12], ["m", 1, 15, 17], ["m", 0, 25, 27], ["m", 1, 33, 35], ["m", 0, 37, 39]],
-        "pending": [["m", 1, 10], ["m", 0, 22], ["m", 1, 27]],
+        "downs": [["m", 0, 10, 12], ["m", 1, 12, 14], ["m", 0, 25, 27], ["m", 1, 26, 28], ["m", 0, 37, 39], ["m", 1, 38, 40]],
+        "pending": [["m", 1, 10], ["m", 0, 22], ["m", 1, 24]],
         "result": {
             "completed_count": 5, "censored_entities": 0,
-            "lead_times_minutes": [7, 7, 7, 10, 7],
-            "queue_waits_minutes": {"work": [0, 0, 0, 3, 0]},
+            "lead_times_minutes": [7, 7, 7, 11, 7],
+            "queue_waits_minutes": {"work": [0, 0, 0, 4, 0]},
             "resource_utilization": {"m": 35 / 80},
-            "resource_states": {"m": state(35, 10, 5, 5, 10, 70, 35)},
+            "resource_states": {"m": state(35, 12, 6, 6, 12, 68, 33)},
+            "blocking": None, "buffers": None,
+        },
+    },
+    "simpy": "compare",
+})
+
+# ---------------------------------------------------------------- G-F9 (review round 1, N8)
+cases.append({
+    "id": "G-F9",
+    "title": "a repair satisfies a waiting failure (D-074 (a) B; the reviewer's N8, T-048 review round 1, M1)",
+    "model": model("G-F9", [resource("m", 2, const(10), const(5))],
+                   [source("s1", const(1), 1), process("work", const(100), ("m", 1)), sink()],
+                   [("s1", "work"), ("work", "done")]),
+    "config": config(60),
+    "derivation": [
+        "m has capacity 2, both clocks TTF 10 and TTR 5; one entity arrives at 1 and is served for 100 min, so it holds one unit to the horizon (its completion at 101 is not scheduled). Option B: a repaired unit goes to the waiting failures first.",
+        "t=0: s1's arrival at 1, then FAILURE(0) and FAILURE(1) at 10. t=1: s1/1 queues, the dispatch grants it: in use 1.",
+        "t=10: FAILURE(0): idle = 2 - 0 - 1 = 1: down (D=1), REPAIR(0) at 15; FAILURE(1): idle = 2 - 1 - 1 = 0: waits.",
+        "t=15: REPAIR(0): D=0, FAILURE(0) at 25; the repaired unit goes to the waiting failure 1: down (D=1), REPAIR(1) at 20.",
+        "t=20: REPAIR(1): D=0, FAILURE(1) at 30. t=25: FAILURE(0): idle 1: down, REPAIR(0) at 30.",
+        "t=30: FAILURE(1) (scheduled at 20) runs before REPAIR(0) (scheduled at 25): idle = 2 - 1 - 1 = 0, waits; REPAIR(0): D=0, FAILURE(0) at 40, the unit goes to failure 1: down, REPAIR(1) at 35.",
+        "The pattern repeats every 15 min: t=35 REPAIR(1), FAILURE(1) at 45; t=40 FAILURE(0) down, REPAIR(0) at 45; t=45 FAILURE(1) waits, REPAIR(0) gives it the unit (REPAIR(1) at 50), FAILURE(0) at 55; t=50 REPAIR(1), FAILURE(1) at 60; t=55 FAILURE(0) down, REPAIR(0) at 60; t=60 FAILURE(1) waits, REPAIR(0) (FAILURE(0) at 70, not scheduled) gives it the unit, whose REPAIR(1) at 65 is after the horizon.",
+        "Downs: [0,10,15], [1,15,20], [0,25,30], [1,30,35], [0,40,45], [1,45,50], [0,55,60], [1,60,-]; waiting failures: clock 1 at 10, 30, 45, 60 (the last three wait 0 minutes: the repair comes later in the same tick).",
+        "Result over [0, 60] (T = 60, C = 2): in use 59 min (s1/1 from 1); D = 1 on [10,20], [25,35], [40,50], [55,60]: down 35 min; 8 downtimes started (the one at 60 too); 7 complete repairs of 35 min (the one from 60 is not repaired by H); available = 120 - 35 = 85 min; idle = 85 - 59 = 26 min; utilization 59/120. Nothing completes: no lead time; s1/1's queue wait 0.",
+        "Under option A (the repaired unit does not go to the waiting failure, review N8): failure 1 waits from 10 to the horizon while clock 0 fails at 10, 25, 40, 55: down 20 min, 4 started, idle 41 min.",
+    ],
+    "expected": {
+        "starts": {"work": [["r0/s1/1", 1]]},
+        "completions": [],
+        "blocks": [],
+        "downs": [["m", 0, 10, 15], ["m", 1, 15, 20], ["m", 0, 25, 30], ["m", 1, 30, 35], ["m", 0, 40, 45], ["m", 1, 45, 50], ["m", 0, 55, 60], ["m", 1, 60, None]],
+        "pending": [["m", 1, 10], ["m", 1, 30], ["m", 1, 45], ["m", 1, 60]],
+        "result": {
+            "completed_count": 0, "censored_entities": 1,
+            "lead_times_minutes": [],
+            "queue_waits_minutes": {"work": [0]},
+            "resource_utilization": {"m": 59 / 120},
+            "resource_states": {"m": state(59, 35, 8, 7, 35, 85, 26)},
             "blocking": None, "buffers": None,
         },
     },

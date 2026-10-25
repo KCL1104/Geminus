@@ -66,7 +66,13 @@ func TestBreakdownGoldenResults(t *testing.T) {
 				t.Errorf("utilization %v, hand-derived %v", s.ResourceUtilization, w.ResourceUtilization)
 			}
 			lt := res.Metrics.LeadTimeMinutes
-			if lt.SampleCount != int64(len(w.LeadTimes)) || !near(*lt.Mean, average(w.LeadTimes)) || !near(*lt.P95, quantile7(w.LeadTimes, 0.95)) {
+			switch {
+			case len(w.LeadTimes) == 0:
+				// Nothing completes in the window (G-F9): unavailable, never 0.
+				if lt.SampleCount != 0 || lt.Status != simulation.Unavailable || lt.Mean != nil || s.MeanLeadTimeMinutes != nil {
+					t.Errorf("lead time %+v, hand-derived: none", lt)
+				}
+			case lt.SampleCount != int64(len(w.LeadTimes)) || !near(*lt.Mean, average(w.LeadTimes)) || !near(*lt.P95, quantile7(w.LeadTimes, 0.95)):
 				t.Errorf("lead time %+v, hand-derived %v", lt, w.LeadTimes)
 			}
 			for q, waits := range w.QueueWaits {
