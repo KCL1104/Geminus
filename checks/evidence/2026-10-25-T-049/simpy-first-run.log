@@ -1,0 +1,28 @@
+$ make simulation-reference-test PYTHON=/home/user/Geminus/.venv/bin/python   (first complete run of the T-049 extension)
+...
+(T-047 and T-048 comparisons: all ok, as before)
+...
+C-S1 completed_count                    go 653.733      simpy 571.367      bound 29.8       FAIL
+C-S1 mean_lead_time_minutes             go 319.942      simpy 312.603      bound 27.1       ok
+C-S1 reworks                            go 0            simpy 0            bound 1e-09      ok
+C-S1 utilization/m                      go 0.362921     simpy 0.31985      bound 0.0163     FAIL
+C-S1 scheduled_utilization/m            go 0.678142     simpy 0.582255     bound 0.0297     FAIL
+C-S1 overtime_fraction/m                go 0.00124516   simpy 0.00931401   bound 0.00241    FAIL
+C-S1 available_fraction/m               go 0.533333     simpy 0.533333     bound 0.00267    ok
+C-S1 idle_fraction/m                    go 0.171658     simpy 0.222798     bound 0.0152     FAIL
+C-S2 ... C-S4: every comparison ok
+FAIL simulation reference: 5 difference(s)
+make: *** [Makefile:112: simulation-reference-test] Error 1
+
+# Diagnosis (checks/evidence/2026-10-25-T-049, scratch debugging of one
+# SimPy replication): the script's own bug, not the kernel's. C-S1's
+# calendar starts off shift (S(0) = 0 until 360) and the script asked for
+# blockers only at a change of S, never for S(0): its machine served the
+# jobs that arrived before the first shift (overtime in [W, 360) and less
+# backlog later). The kernel's numbers agree with a back-of-the-envelope
+# count (day 0: about 330 jobs x 3 min = 990 unit-minutes; day 1 fully busy
+# on [2280, 2760): 960; in use about 1956 vs Go's 1960). The fix blocks the
+# units off shift at t=0 before anything runs, without recording a change
+# (S(0) is the program's value, D-047). After it every comparison passes,
+# 140 of 140 (simulation-reference-test.log). G-C2 (S(0) = 0) was not
+# affected: its first arrival is at the first shift start.

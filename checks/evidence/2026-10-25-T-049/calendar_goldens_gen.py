@@ -478,7 +478,7 @@ cases.append({
             "resource_states": {"m": state(1, 1, scheduled=8, scheduled_in_use=1, overtime=0, available=8, idle=7,
                                            down=1, started=1, repairs=1, repair_ticks=1)},
             "blocking": None, "buffers": None}},
-    "simpy": "not compared: the failure is due exactly at the shift's end (a same-tick tie of the kernel's D-048 order; SimPy's continuous clock has no such tick)",
+    "simpy": "not compared: the failure is due exactly at the shift's end; in the script the change's blocker takes the off-shift unit first, which the kernel counts as idle for a failure (D-051), so the script's failure would wait",
 })
 
 # ---------------------------------------------------------------- G-K2

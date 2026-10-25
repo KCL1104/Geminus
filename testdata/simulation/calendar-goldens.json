@@ -2995,7 +2995,7 @@
      "buffers": null
     }
    },
-   "simpy": "not compared: the failure is due exactly at the shift's end (a same-tick tie of the kernel's D-048 order; SimPy's continuous clock has no such tick)"
+   "simpy": "not compared: the failure is due exactly at the shift's end; in the script the change's blocker takes the off-shift unit first, which the kernel counts as idle for a failure (D-051), so the script's failure would wait"
   },
   {
    "id": "G-K2",
