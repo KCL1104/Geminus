@@ -331,3 +331,9 @@ Go 1.27.2、Python 3.13.16（SimPy 4.1.2）、4 CPU（與其他 session 共用�
 - G-B14 的期望值是我與 coordinator 各自推導、結果相同，reviewer 的 N7 也給出相同的 engine 輸出；它仍不是由第三方獨立實作產生的。
 - `GEMINUS_FULL_DIFFERENTIAL` 依賴 Makefile：直接執行 `go test ./internal/simulation/engine/` 不設這個變數，此時件數只由 `raceEnabled` 決定（一般 build 為 50,000）。
 - I3、I4 的內容我沒有看到，本節沒有對它們做任何判斷。
+
+### Coordinator 的執行（第 2 輪修正，76c3521）
+
+Coordinator 把第 2 輪的四個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（c80dd75 之後，沒有衝突）：1f9a909 → 3b5f063、0638a0d → 541f98f、4cb708d → c29bf10、5b25aaa → 76c3521。Reviewer 第 2 輪的 I3（SimPy harness 的「refused case 不檢查」mutant 不會失敗，屬測試的測試）與 I4（報告與文件誠實、與程式一致）不需要修改；I1（`deadlock-bound-ge` 為 equivalent）的提醒已記入 T-048、T-049 的 scope（c80dd75）。Reviewer 的判定為 ACCEPT，第 2 輪的修正（一個 Low、一個 Info）依 T-026 的前例由 coordinator 驗證後接受，不另開一輪 review。
+
+之後 `spec-check`、`backend-test`（含 `GEMINUS_FULL_DIFFERENTIAL=1` 的斷言）、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`（確定性 case 含 G-B14，G-B13 被拒絕，45/45）、`backend-race`（engine package 190 s）與新的 `dt_test_t047r2` 上的 `integration-test`（所有 migration 與 SQL suite，30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0（`checks/evidence/2026-10-25-T-047-r2/coordinator-*`）。D-064 仍是 PROPOSED，它的 gate 是 T-047 驗收前，所以 T-047 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。CI 上的 `GEMINUS_FULL_DIFFERENTIAL` 檢查在本次 push 後第一次執行。

@@ -2949,7 +2949,7 @@
       "id": "T-047",
       "title": "DES 有限緩衝與阻塞（H-016）",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Simulation",
       "planning_window": "H-016 re-plan（未重估週數）",
       "depends_on": [
@@ -3015,7 +3015,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-25",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-047_VALIDATION.md",
+          "summary": "有限緩衝與阻塞：queue capacity 的 gate 解除（validator 的 D-050 R1 BLOCKING_CYCLE、engine des-go-0.2.0 執行 D-049 的阻塞、B1 的 ErrDeadlock → SIMULATION_DEADLOCK），Result 的 blocking、buffers 與 resource_states；手推 golden G-B1–G-B14、G-D2、G-D3（engine 與 Result 兩層），D-047 對 frozen des-go-0.1.0 的 differential（50,000 個隨機模型，race 下 5,000 個，make backend-test 以 GEMINUS_FULL_DIFFERENTIAL 斷言全數），獨立的 SimPy 4.1.2 reference（make simulation-reference-test：確定性 case 與 45 個隨機比對）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（78d0549、4aae188、76c3521 之後的 tree），spec-check、backend-test、backend-race、architecture-check、ai-eval、simulation-reference-test、frontend-test 都 exit 0（checks/evidence/2026-10-2*-T-047*/coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 CHANGES REQUESTED (M1–M3, L1–L3, I2, I3, I5); round 2 on 4aae188 ACCEPT (L1′ and I2 fixed by the implementer in 3b5f063..76c3521; I1's equivalence accepted, its note recorded for T-048/T-049)",
+          "decisions_pending": "D-064 待 owner 批准；批准後 T-047 才標為 done"
+        }
+      ]
     },
     {
       "id": "T-048",
