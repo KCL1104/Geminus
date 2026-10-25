@@ -252,6 +252,11 @@ func TestBundleFeasibility(t *testing.T) {
 			cal("o", day, []any{shift(0, 600)})), helper("o", nil)), nil},
 		{"R4: the exceptions do not count", both(breaks, onCalendar("m", nil, cal("m", day, []any{shift(0, 480)}),
 			cal("o", day, []any{shift(0, 480)}, exception(day, day+480, false))), helper("o", nil)), nil},
+		// (mutation run 1: the case above did not tell R4 with exceptions
+		// from without, its exception being past the periods' LCM, one day;
+		// this one is inside it: o is off at 100-200 while m is on.)
+		{"R4: a closed exception in the first period does not count either", both(breaks, onCalendar("m", nil, cal("m", day, []any{shift(0, 480)}),
+			cal("o", day, []any{shift(0, 480)}, exception(100, 200, false))), helper("o", nil)), nil},
 		{"R4: a partner's units on shift too few", both(breaks, onCalendar("c", nil, cal("c", day, []any{shift(0, 480, "a"), shift(480, 960, "b")})),
 			helper("c", map[string]any{"capacity": 2, "shift_capacity": map[string]any{"b": 1}}), func(ir map[string]any) {
 				obj(obj(nodes(ir)[1])["requires"].([]any)[1])["units"] = 2

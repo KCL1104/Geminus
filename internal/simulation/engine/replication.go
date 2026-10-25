@@ -184,7 +184,7 @@ func newReplication(p *Program, index uint32) *replication {
 			r.acc, r.last, r.row, r.cycle = make([]float64, n), make([]int64, n), make([]int, n), make([]int64, n)
 			for i := range r.last {
 				// No arrival yet: the first one's floor is tick 0, so it is
-				// at Λ⁻¹(X_1) exactly (tick 0 only when X_1 = 0, D-082 (a)).
+				// at tick(Λ⁻¹(X_1)) exactly, at least tick 1: X_1 > 0, D-082 (a).
 				r.last[i] = -1
 			}
 			break

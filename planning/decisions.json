@@ -1092,7 +1092,7 @@
       "id": "D-082",
       "title": "投入排程的 kernel 解讀（T-049）",
       "source_gap": "D-053 沒有寫：第一件的「上一件＋1 tick」下限；投入表的 period 與 at 何時量化；列的事件中排下一列與建立 entity 的先後、達到 max_entities 時是否還排列；poisson 用哪個 stream。",
-      "proposal": "(a) 第一件的下限為 tick 0（恰在 Λ⁻¹(X₁)），晚於 horizon 的 arrival 不排程、抽樣已消耗；(b) 投入表的 period 與 at 先各自以 model.Ticks 量化，列在 k·period_ticks＋at_ticks（G-R7）；(c) 每列一個 ARRIVAL：先排下一列（這一列使 source 達到 max_entities 時不排），再依序建立並路由這一列的 entity（列中達到 max_entities 即停），B1／B2 在整個事件後檢查一次（G-R7）；(d) poisson 每件從 source 的 arrival stream 抽一次，deterministic 不抽樣；U 在 1−U 之前明確捨入（FMA）。建議 A，已實作；engine-vectors.json 的 release_schedules 由 Python reference 逐 bit 固定。",
+      "proposal": "(a) 第一件的下限為 tick 0（恰在 tick(Λ⁻¹(X₁))；U 嚴格在 (0, 1) 內，所以 τ > 0、至少 1 tick，下限不會用到），晚於 horizon 的 arrival 不排程、抽樣已消耗；(b) 投入表的 period 與 at 先各自以 model.Ticks 量化，列在 k·period_ticks＋at_ticks（G-R7）；(c) 每列一個 ARRIVAL：先排下一列（這一列使 source 達到 max_entities 時不排），再依序建立並路由這一列的 entity（列中達到 max_entities 即停），B1／B2 在整個事件後檢查一次（G-R7）；(d) poisson 每件從 source 的 arrival stream 抽一次，deterministic 不抽樣；U 在 1−U 之前明確捨入（FMA）。建議 A，已實作；engine-vectors.json 的 release_schedules 由 Python reference 逐 bit 固定。",
       "gate": "T-049 驗收前",
       "resolves": [],
       "source_pages": "N/A（T-049 實作；ADR-026 D-053、D-038）",

@@ -29,6 +29,8 @@ type releaseVectors struct {
 	ReleaseSchedules struct {
 		Correction releaseSteps `json:"correction"`
 		Profile    releaseSteps `json:"profile"`
+		Boundary   releaseSteps `json:"boundary"`
+		Clamp      releaseSteps `json:"clamp"`
 		Runs       []struct {
 			ID               string                `json:"id"`
 			Source           string                `json:"source"`
@@ -72,7 +74,15 @@ func loadReleaseVectors(t *testing.T) releaseVectors {
 func TestReleaseProfileVectors(t *testing.T) {
 	v := loadReleaseVectors(t)
 	corrected := 0
-	for _, set := range []releaseSteps{v.ReleaseSchedules.Correction, v.ReleaseSchedules.Profile} {
+	// Boundary: G-R1's rule with a rate-0 segment between two positive
+	// ones; a = cumEnd_0 is released at the first segment's end (3, 9, 15),
+	// never at the third's start.
+	// Clamp: P = 0.1 x 3 rounds up, so a = P computes τ past the segment's
+	// end; τ is clamped to it (3, not 3.0000000000000004).
+	if len(v.ReleaseSchedules.Boundary.Steps) == 0 || len(v.ReleaseSchedules.Clamp.Steps) == 0 {
+		t.Fatal("no boundary or clamp vectors")
+	}
+	for _, set := range []releaseSteps{v.ReleaseSchedules.Correction, v.ReleaseSchedules.Profile, v.ReleaseSchedules.Boundary, v.ReleaseSchedules.Clamp} {
 		s, err := newReleaser(set.Schedule, model.TimeUnit(set.Unit))
 		if err != nil {
 			t.Fatal(err)

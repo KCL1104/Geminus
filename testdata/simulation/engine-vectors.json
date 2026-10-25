@@ -1611,6 +1611,145 @@
         }
       ]
     },
+    "boundary": {
+      "schedule": {
+        "process": "deterministic",
+        "period": 6,
+        "segments": [
+          {
+            "start": 0,
+            "rate": 1
+          },
+          {
+            "start": 3,
+            "rate": 0
+          },
+          {
+            "start": 4,
+            "rate": 1
+          }
+        ]
+      },
+      "unit": "minute",
+      "total_bits": "4014000000000000",
+      "steps": [
+        {
+          "a_bits": "3ff0000000000000",
+          "k": 0.0,
+          "r_bits": "3ff0000000000000",
+          "corrected": 0,
+          "segment": 0,
+          "tau_bits": "3ff0000000000000",
+          "tick": 60000
+        },
+        {
+          "a_bits": "4008000000000000",
+          "k": 0.0,
+          "r_bits": "4008000000000000",
+          "corrected": 0,
+          "segment": 0,
+          "tau_bits": "4008000000000000",
+          "tick": 180000
+        },
+        {
+          "a_bits": "400c000000000000",
+          "k": 0.0,
+          "r_bits": "400c000000000000",
+          "corrected": 0,
+          "segment": 2,
+          "tau_bits": "4012000000000000",
+          "tick": 270000
+        },
+        {
+          "a_bits": "4014000000000000",
+          "k": 0.0,
+          "r_bits": "4014000000000000",
+          "corrected": 0,
+          "segment": 2,
+          "tau_bits": "4018000000000000",
+          "tick": 360000
+        },
+        {
+          "a_bits": "4020000000000000",
+          "k": 1.0,
+          "r_bits": "4008000000000000",
+          "corrected": 0,
+          "segment": 0,
+          "tau_bits": "4022000000000000",
+          "tick": 540000
+        },
+        {
+          "a_bits": "4024000000000000",
+          "k": 1.0,
+          "r_bits": "4014000000000000",
+          "corrected": 0,
+          "segment": 2,
+          "tau_bits": "4028000000000000",
+          "tick": 720000
+        },
+        {
+          "a_bits": "402a000000000000",
+          "k": 2.0,
+          "r_bits": "4008000000000000",
+          "corrected": 0,
+          "segment": 0,
+          "tau_bits": "402e000000000000",
+          "tick": 900000
+        }
+      ]
+    },
+    "clamp": {
+      "schedule": {
+        "process": "deterministic",
+        "period": 3,
+        "segments": [
+          {
+            "start": 0,
+            "rate": 0.1
+          }
+        ]
+      },
+      "unit": "minute",
+      "total_bits": "3fd3333333333334",
+      "steps": [
+        {
+          "a_bits": "3fb999999999999a",
+          "k": 0.0,
+          "r_bits": "3fb999999999999a",
+          "corrected": 0,
+          "segment": 0,
+          "tau_bits": "3ff0000000000000",
+          "tick": 60000
+        },
+        {
+          "a_bits": "3fc999999999999a",
+          "k": 0.0,
+          "r_bits": "3fc999999999999a",
+          "corrected": 0,
+          "segment": 0,
+          "tau_bits": "4000000000000000",
+          "tick": 120000
+        },
+        {
+          "a_bits": "3fd3333333333334",
+          "k": 0.0,
+          "r_bits": "3fd3333333333334",
+          "corrected": 0,
+          "segment": 0,
+          "tau_bits": "4008000000000000",
+          "tick": 180000
+        },
+        {
+          "a_bits": "3fe3333333333334",
+          "k": 1.0,
+          "r_bits": "3fd3333333333334",
+          "corrected": 0,
+          "segment": 0,
+          "tau_bits": "4018000000000000",
+          "tick": 360000
+        }
+      ]
+    },
     "runs": [
       {
         "id": "G-R2",

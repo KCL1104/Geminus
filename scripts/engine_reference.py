@@ -569,6 +569,15 @@ RELEASE_CORRECTION_A = [0.3, 0.6, 0.9, 1.2, 3.0, 30.0, 300.0, 502.5, 502.6, 1000
 RELEASE_PROFILE = {"process": "deterministic", "period": 1440,
                    "segments": [{"start": 0, "rate": 0.3}, {"start": 333.3, "rate": 0}, {"start": 480, "rate": 0.7}, {"start": 1000.1, "rate": 0.1}]}
 RELEASE_PROFILE_A = [0.5, 99.99, 99.990000000001, 100.0, 100.01, 300.0, 400.0, 400.5, 663.2, 707.5, 707.6, 1e4, 123456.789]
+# G-R1's boundary rule with a rate-0 segment between two positive ones: a
+# that ends the first segment exactly (r = cumEnd_0) is released at the
+# first segment's end (the ceiling), not at the start of the third.
+RELEASE_BOUNDARY = {"process": "deterministic", "period": 6, "segments": [{"start": 0, "rate": 1}, {"start": 3, "rate": 0}, {"start": 4, "rate": 1}]}
+RELEASE_BOUNDARY_A = [1.0, 3.0, 3.5, 5.0, 8.0, 10.0, 13.0]
+# The clamp: P = 0.1 x 3 rounds to 0.30000000000000004, so a = P gives
+# r / rate = 3.0000000000000004, past the segment's end; τ is clamped to 3.
+RELEASE_CLAMP = {"process": "deterministic", "period": 3, "segments": [{"start": 0, "rate": 0.1}]}
+RELEASE_CLAMP_A = [0.1, 0.2, 0.30000000000000004, 0.6000000000000001]
 RELEASE_RUNS = [
     {"id": "G-R2", "source": "src", "schedule": {"process": "poisson", "period": 1440,
                                                  "segments": [{"start": 0, "rate": 0.5}, {"start": 480, "rate": 0.4}, {"start": 960, "rate": 0.2}]},
@@ -617,6 +626,10 @@ def release_vectors() -> dict:
                        "steps": steps(RELEASE_CORRECTION, "minute", RELEASE_CORRECTION_A)},
         "profile": {"schedule": RELEASE_PROFILE, "unit": "minute", "total_bits": f"{bits(RateSchedule(RELEASE_PROFILE, 'minute').total):016x}",
                     "steps": steps(RELEASE_PROFILE, "minute", RELEASE_PROFILE_A)},
+        "boundary": {"schedule": RELEASE_BOUNDARY, "unit": "minute", "total_bits": f"{bits(RateSchedule(RELEASE_BOUNDARY, 'minute').total):016x}",
+                     "steps": steps(RELEASE_BOUNDARY, "minute", RELEASE_BOUNDARY_A)},
+        "clamp": {"schedule": RELEASE_CLAMP, "unit": "minute", "total_bits": f"{bits(RateSchedule(RELEASE_CLAMP, 'minute').total):016x}",
+                  "steps": steps(RELEASE_CLAMP, "minute", RELEASE_CLAMP_A)},
         "runs": [release_run(r) for r in RELEASE_RUNS],
     }
 
@@ -680,7 +693,7 @@ def main() -> int:
                       "log_inputs": LOG_INPUTS, "digest_draws_per_sampler": DIGEST_DRAWS,
                       "exp_inputs": EXP_INPUTS, "ndtri_inputs": NDTRI_INPUTS,
                       "breakdown_stream_units": len(data["breakdown_streams"]["units"]),
-                      "release_steps": len(data["release_schedules"]["correction"]["steps"]) + len(data["release_schedules"]["profile"]["steps"]),
+                      "release_steps": sum(len(data["release_schedules"][k]["steps"]) for k in ("correction", "profile", "boundary", "clamp")),
                       "release_arrivals": sum(len(r["arrival_ticks"]) for r in data["release_schedules"]["runs"])}))
     return 0
 

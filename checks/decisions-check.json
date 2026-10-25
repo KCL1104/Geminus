@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 76,
-    "proposed": 1,
+    "approved": 75,
+    "proposed": 6,
     "rejected": 0,
     "superseded": 0
   },
@@ -28,24 +28,35 @@
     "H-019",
     "H-020",
     "H-021",
-    "H-022",
-    "H-023"
+    "H-022"
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 31,
+    "done": 30,
     "in_progress": 2,
-    "not_started": 21,
+    "not_started": 22,
     "review": 0
   },
   "ready_tasks": [
     "T-029",
     "T-035",
-    "T-049",
     "T-050",
-    "T-053"
+    "T-053",
+    "T-054"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-049",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-081",
+        "D-082",
+        "D-083",
+        "D-084",
+        "D-085"
+      ]
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -484,7 +495,8 @@
       "gate": "T-048 實作前",
       "gates_tasks": [
         "T-046",
-        "T-048"
+        "T-048",
+        "T-049"
       ]
     },
     "D-052": {
@@ -600,7 +612,8 @@
       "gate": "T-047 驗收前；T-048–T-050 延伸 B1／B2 時沿用 (a)",
       "gates_tasks": [
         "T-047",
-        "T-048"
+        "T-048",
+        "T-049"
       ]
     },
     "D-067": {
@@ -659,7 +672,8 @@
       "status": "approved",
       "gate": "T-048 驗收前；T-049 延伸 B2 與故障時鐘時沿用",
       "gates_tasks": [
-        "T-048"
+        "T-048",
+        "T-049"
       ]
     },
     "D-075": {
@@ -690,11 +704,39 @@
         "T-028"
       ]
     },
-    "D-087": {
-      "status": "approved",
-      "gate": "T-054 驗收前",
+    "D-081": {
+      "status": "proposed",
+      "gate": "T-049 驗收前",
       "gates_tasks": [
-        "T-054"
+        "T-049"
+      ]
+    },
+    "D-082": {
+      "status": "proposed",
+      "gate": "T-049 驗收前",
+      "gates_tasks": [
+        "T-049"
+      ]
+    },
+    "D-083": {
+      "status": "proposed",
+      "gate": "T-049 驗收前",
+      "gates_tasks": [
+        "T-049"
+      ]
+    },
+    "D-084": {
+      "status": "proposed",
+      "gate": "T-049 驗收前",
+      "gates_tasks": [
+        "T-049"
+      ]
+    },
+    "D-085": {
+      "status": "proposed",
+      "gate": "T-049 驗收前",
+      "gates_tasks": [
+        "T-049"
       ]
     }
   },
