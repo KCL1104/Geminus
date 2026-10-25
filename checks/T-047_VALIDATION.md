@@ -117,7 +117,7 @@ SimPy 4.1.2（MIT；2026-05-24 發布，滿兩週；wheel sha256 與 PyPI 公布
 - 確定性：G-B1、G-B1W、G-B2、G-B4、G-B7、G-B8、G-B9 逐值等於手推的 service 開始、完成、每段阻塞與 Result 成員；G-D2 為示意（SimPy 不偵測 deadlock：最後一個 service 開始於 5 分鐘、7 分鐘起無法前進，與 engine 的 7 分鐘相同）。
 - 不比：G-B3（同 tick 的 tie-break 是 kernel 的 D-048，SimPy 不重現）、G-B5（kernel 的 routing stream）。
 - 隨機：S1–S4 各 30 replications，45 個指標的平均都在 fixture 中預先固定的容差內（|Δ| ≤ 4·√(s²_go/n＋s²_simpy/n)＋0.5%·max(|平均|)），45/45。
-- 限制：units 必須為 1；bundle 依「共用 resource 先、自己的後」逐一取得，只在一個 bundle 至多一個共用 resource 時等於 all-or-nothing，腳本對其他模型拒絕執行。**更正（review 第 1 輪 L1）**：這個條件不夠，還要自己的每個 resource 的 capacity 不小於共用的那個；反例 G-B13（engine 在 11 讓 Y 開始，腳本會在 3）。腳本已改為拒絕這種模型，fixture 中標為 refused 的 case 每次都必須被拒絕。這是 reference，不是 oracle：兩邊同樣誤解 D-049 的地方它看不出來，手推 golden 才是語義的依據。
+- 限制：units 必須為 1；bundle 依「共用 resource 先、自己的後」逐一取得，只在一個 bundle 至多一個共用 resource 時等於 all-or-nothing，腳本對其他模型拒絕執行。**更正（review 第 1 輪 L1）**：這個條件不夠，還要自己的每個 resource 的 capacity 不小於共用的那個；反例 G-B13（engine 在 11 讓 Y 開始，腳本會在 3）。腳本已改為拒絕這種模型，fixture 中標為 refused 的 case 每次都必須被拒絕。**再更正（review 第 2 輪 L1′）**：只有自己的 resource 的 bundle 原依 ID 取得，capacity 遞減時（G-B14）也與 engine 不同；改為自己的 resource 依 capacity 由小到大取得，見文末「Review 第 2 輪」。這是 reference，不是 oracle：兩邊同樣誤解 D-049 的地方它看不出來，手推 golden 才是語義的依據。
 
 ## Mutation
 
@@ -173,7 +173,7 @@ Equivalent 的理由（寫在 harness 的註解）：
 - **B1 只在 R1 被繞過時才會觸發**：production 中它是第二道防線；它的正確性由 `TestRandomCircularWaitsAreDetected`（R1 繞過時 1,059 個 run、123 個 deadlock，依全域定義不誤報、不漏報；review 第 1 輪 I3）、G-D2 與 G-D3 支撐，沒有端對端的 DB 測試（見 NOT RUN）。
 - **Regression lock 不是 oracle**：`engine-golden-digests-0.2.0.json`、`kernel-observation-digests-0.2.0.json` 由 des-go-0.2.0 產生，只讓之後的任何改變被看到；它們本身的正確性靠手推 golden、阻塞檢查器與 SimPy。
 - **Result 成員的解讀**：`blocking` 的 key 是「路由到得了有限 buffer 的 node」（G-B5 固定，不隨抽樣改變），`buffers` 只列有限 buffer，`resource_states` 列所有 resource；這些是 D-058 表的實作解讀，T-048–T-050 會再擴充同一組成員。
-- **SimPy reference 的範圍**：units 必須為 1，bundle 至多一個共用 resource，且自己的 resource 的 capacity 不小於共用的那個（review 第 1 輪 L1 更正）；四個隨機 case、每個 30 replications；容差 z=4 加 0.5% 相對誤差，小於容差的系統性差異（約 0.5% 加上統計誤差）看不出來。
+- **SimPy reference 的範圍**：units 必須為 1，bundle 至多一個共用 resource，且自己的 resource 的 capacity 不小於共用的那個（review 第 1 輪 L1 更正）；自己的 resource 依 capacity 由小到大取得（第 2 輪 L1′ 更正）；四個隨機 case、每個 30 replications；容差 z=4 加 0.5% 相對誤差，小於容差的系統性差異（約 0.5% 加上統計誤差）看不出來。
 - **Fuzz 的次數**：Go fuzzing 顯示的 execs 會少算，FuzzRun 實際執行次數沒有量測；fuzz 時間各為 90 秒到 3 分鐘。
 - **部署時的 engine_version**：run 凍結 engine_version，升到 des-go-0.2.0 後，部署前以 des-go-0.1.0 入列、尚未執行的 run 會以不重試的 `ENGINE_VERSION_MISMATCH` 失敗（T-023 的既有行為，`TestRefusedAttempts`，DB NOT RUN）；目前沒有任何部署。
 - **效能**：有有限 buffer 的程式在每個事件後做 B1 檢查（服務中或 delay 中有 entity 時立即返回，否則掃描 resource FIFO 與 blocked FIFO）；沒有 benchmark。沒有有限 buffer 的程式不檢查（D-047），differential 證明其 observation 不變。
@@ -277,3 +277,57 @@ D-064 仍是 PROPOSED，本輪補上：(d) 的「最早」是被擋的處理順�
 Coordinator 把第 1 輪的六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-017 第 2 輪的 6ed6b71 之後），沒有衝突；本節之前的 commit 表改為整合分支上的 hash。I5 的偏離（以 test binary 的 `-race` build setting 取代 build tag）由 coordinator 接受：效果與指示相同，也不必放寬 architecture checker 的 every-file-built。Coordinator 另以 `-v` 確認兩種 build 的件數：`go test -race -run '^TestDifferentialAgainstFrozenKernel$'` 為 5,000 個中 3,632 個 compile（race detector: true；結局 visits 292、active 234、none 3,106），不帶 `-race` 為 50,000 個中 36,643 個（race detector: false；3,190／2,380／31,073）。
 
 之後 `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`（確定性 case 與 45 個隨機比對都 ok）、`backend-race`（engine package 185 s）與新的 `dt_test_t047r1` 上的 `integration-test`（所有 migration 與 SQL suite，30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0。本輪的 NOT RUN 中的 DB 測試因此已執行；`make e2e-test` 與第 0 輪的 62 個 mutant 的重跑仍為 NOT RUN。Log 與 exit code 在 `checks/evidence/2026-10-20-T-047-r1/coordinator-*`。
+
+## Review 第 2 輪（H-003，2026-10-25）：ACCEPT
+
+同一位獨立 reviewer 在整合後的 branch 上複審第 1 輪的修正，結論是 **ACCEPT**，另有一個 Low（L1′）與 Info。Reviewer 重跑自己的 14 個 mutant，13 個被擋下，`deadlock-bound-ge` 存活（第 1 輪已說明為 equivalent）。這只是程式審查的結論；D-064 仍是 PROPOSED，`approved_by`／`approved_at` 為 null，本輪沒有批准任何東西，也沒有改 `planning/tasks.json` 或決策登記。修正在 branch `t047-r2`（從 ff11908 開出，沒有 push），evidence 在 `checks/evidence/2026-10-25-T-047-r2/`。本輪沒有改任何 production 的 Go code，只改 SimPy 腳本、測試、golden、Makefile 與文件。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 1f9a909 | G-B14（reviewer 的 N7）：手推的 engine golden，加入 engine 的 golden 清單、Result golden（至少 14 個 case）、SimPy 比對與兩個 regression lock（既有的值都沒變） |
+| 0638a0d | L1′：SimPy 腳本的自己的 resource 依 capacity 由小到大取得；docstring 與 SIMULATION_SPEC §10 寫明腳本接受哪些模型與理由；red／green log |
+| 4cb708d | I2：`make backend-test` 設 `GEMINUS_FULL_DIFFERENTIAL=1`，differential 在少於 50,000 個模型時失敗；mutant 的 red log |
+| （本節的 commit） | 本節、報告中的更正、evidence |
+
+### 各項
+
+| 項目 | 內容 | 處理 | Red | Green |
+|---|---|---|---|---|
+| L1′（Low） | 第 1 輪的拒絕條件只在 bundle 有共用 resource 時比較 capacity。只有自己的 resource、且依 ID 取得時 capacity 遞減的 bundle 仍被接受，但讀法與 engine 的 all-or-nothing 不同。Reviewer 的 N7：X 需要 O1（capacity 2）與 O2（capacity 1），engine 中 O1 in_use 1,200,000（utilization 1/3），腳本讓 x2 先取 O1 再等 O2，O1 in_use 29 分（0.483） | 依 coordinator 的決定：共用的之後，自己的 resource 依 capacity 由小到大取得（同 capacity 依 ID），保留「自己的 ≥ 共用的」的拒絕。理由（寫在腳本的註解與 docstring、SIMULATION_SPEC §10）：一起釋放、依序取得時，持有某個 resource 的 unit 的 entity 一定也持有排在它前面的每個 resource 的 unit；某個 entity 持有前一個 R、要下一個 N 時，至多 capacity(R)−1 個其他 entity 持有 N，capacity(N) ≥ capacity(R) 時 N 一定有空。所以第一個取得之後其他都立即取得，整個 bundle 在第一個 resource（共用的，或沒有共用時最小的自己的）對 FIFO 最前面的 request 有空 unit 時取得，正是 engine 授予的時刻。G-B14 先手推再進 golden（推導寫在 fixture 的註解）：x1 X [1,11]；x2 在 2 被 held，不取任何 resource，O1 的第二個 unit 閒置；11 時授予 x2，X [11,21]；完成 11、21；沒有阻塞；lead time 10、19；qX 的 queue wait 0、9；utilization O1 20/60、O2 20/30；`blocking` 只有 sx（全 0）；qX full_ticks 0；O1、O2 各 in_use 1,200,000、blocked 0、processing 1,200,000，與 coordinator 的推導相同 | `l1p-simpy-red.log`：腳本修正前，G-B14 的 O1 utilization 0.48333 ≠ 1/3、in_use 1,740,000 ≠ 1,200,000，exit 2 | `l1p-simpy-green.log`：G-B14 比對通過、G-B13 照樣被拒絕、隨機 45/45，exit 0 |
+| I1（Info） | `deadlock-bound-ge` 存活 | 依第 1 輪的說明視為 equivalent，reviewer 接受。Reviewer 對 T-048／T-049 的提醒由 coordinator 記錄，本輪不改 | — | — |
+| I2（Info） | 沒有任何 assertion 確認非 race build 跑完整件數：`raceEnabled` 判斷錯時，`make backend-test` 會默默只跑 5,000 個模型 | `make backend-test` 設 `GEMINUS_FULL_DIFFERENTIAL=1`（`make backend-race` 不設），`TestDifferentialAgainstFrozenKernel` 在設了這個變數、且要跑的件數少於 50,000 時失敗。CI 的 backend job 執行 `make backend-test`（`.github/workflows/ci.yml`），所以 CI 也有這個檢查。以兩個 mutant 證明：`frozenDifferentialModels` 改用 `!raceEnabled`，以及沒有 `-race` build setting 時當成 race build | `i2-mutant-before.log`：加入檢查前，兩個 mutant 在一般 build 下都通過，只跑 5,000 個模型（3,632 個 compile）。`i2-red-inverted-backend-test.log`、`i2-red-default-true-backend-test.log`：加入檢查後，以 `-overlay` 套用 mutant 的 `make backend-test` 都 exit 2，60 個 package ok，只有 engine 的 `TestDifferentialAgainstFrozenKernel` 失敗（`GEMINUS_FULL_DIFFERENTIAL=1 (make backend-test) but 5000 of 50000 models would run`） | `backend-test.log`：沒有 mutant 時 exit 0；`simulation-race.log`：race build 不設這個變數，照樣只跑 5,000 個並通過 |
+| I3、I4（Info） | Coordinator 轉來的指示只列出編號，沒有附內容，也沒有要求修改 | 本輪沒有修改；內容以 reviewer 的報告為準，本報告不轉述 | — | — |
+
+### 實際執行（本輪）
+
+Go 1.27.2、Python 3.13.16（SimPy 4.1.2）、4 CPU（與其他 session 共用），沒有 PostgreSQL；Go 測試都以 `-count=1`。Exit code 在 `exit-codes.txt`。
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `make simulation-reference-test PYTHON=.venv/bin/python`（L1′ 修正前） | 2 | `l1p-simpy-red.log`：G-B14 的 O1 不符 |
+| `make simulation-reference-test PYTHON=.venv/bin/python`（L1′ 修正後） | 0 | `l1p-simpy-green.log` |
+| `go test -run TestDifferentialAgainstFrozenKernel`，兩個 race-detection mutant，加入檢查前 | 0、0 | `i2-mutant-before.log`：兩者都只跑 5,000 個模型並通過（缺口） |
+| `make backend-test`，`-overlay` 套用 mutant `inverted` | 2 | `i2-red-inverted-backend-test.log` |
+| `make backend-test`，`-overlay` 套用 mutant `default-true` | 2 | `i2-red-default-true-backend-test.log` |
+| `make spec-check PYTHON=.venv/bin/python` | 0 | `spec-check.log`；重產的 `checks/*.json` 沒有變化 |
+| `make backend-test GOFLAGS=-count=1` | 0 | `backend-test.log`：61 個 package ok，沒有 `(cached)`；engine 53 s（跑完 50,000 個）、check-architecture 120 s；DB-backed 測試 skip（NOT RUN） |
+| `make architecture-check` | 0 | `architecture-check.log`：74 個 package、16 條規則、16 種 build configuration |
+| `make simulation-reference-test PYTHON=.venv/bin/python` | 0 | `simulation-reference-test.log`、`simpy-reference-report.json`：確定性 G-B1、G-B1W、G-B2、G-B4、G-B4W、G-B7、G-B8、G-B9、G-B11、G-B12、G-B14 與 G-D2（示意）；G-B13 被拒絕；45/45 |
+| `go test -race -count=1 -timeout 30m ./internal/simulation/...` | 0 | `simulation-race.log`：4 個 package ok；engine 147 s、des 44 s |
+
+### NOT RUN（本輪）
+
+- **DB 測試與 `make integration-test`**（`make db-test`、`make db-go-test`）：這裡沒有 PostgreSQL，交給 coordinator 執行。本輪沒有 migration，也沒有改 production code，DB-backed 的測試（例如 `internal/runs/runner` 的 `TestEventBudgetAcrossRetries`、`TestRefusedAttempts`，`internal/api` 的 `TestRunClosedLoop`、`TestRunRoleMatrix`、`TestRunRequestRefusals`、`TestRunIdempotency`、`TestARevokedMemberGetsNoReplay`）在本 worktree 中都是 skip。
+- 完整的 `make backend-race`：只依指示跑了 `./internal/simulation/...` 的 race。
+- `make ai-eval`、`make frontend-test`：本輪沒有改 AI context、prompt、schema、TS 或 `apps/web`，沒有執行。
+- Reviewer 的 mutant 與第 0 輪自己的 62 個 mutant：本輪沒有重跑（production code 沒有改；本輪的兩個 race-detection mutant 見上表）。
+- CI：`GEMINUS_FULL_DIFFERENTIAL` 的檢查只在本機的 `make backend-test` 中執行過，沒有在 GitHub Actions 上跑過。
+
+### 殘餘風險（本輪的變化）
+
+- SimPy reference 現在接受的模型：units 1、每個 bundle 至多一個共用 resource、有共用時自己的每個 resource 的 capacity 不小於共用的；自己的 resource 依 capacity 由小到大取得。這個等價是對 units 1 的論證；units > 1 仍一律拒絕，G-B10 這類模型只有手推 golden。
+- G-B14 的期望值是我與 coordinator 各自推導、結果相同，reviewer 的 N7 也給出相同的 engine 輸出；它仍不是由第三方獨立實作產生的。
+- `GEMINUS_FULL_DIFFERENTIAL` 依賴 Makefile：直接執行 `go test ./internal/simulation/engine/` 不設這個變數，此時件數只由 `raceEnabled` 決定（一般 build 為 50,000）。
+- I3、I4 的內容我沒有看到，本節沒有對它們做任何判斷。

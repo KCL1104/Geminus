@@ -1,0 +1,9 @@
+T-047 review round 2 environment (2026-10-25)
+
+worktree: /home/user/Geminus/.claude/worktrees/agent-a4a2d6cda564af243, branch t047-r2 (from ff11908 on claude/lucid-meitner-vq1awo)
+go version go1.27.2 linux/amd64
+Python 3.13.16 (.venv of the worktree; simpy 4.1.2)
+Linux, 4 CPU, shared with other agent sessions; wall-clock times vary with their load.
+No PostgreSQL server, no DB URL: DB-backed Go tests skip (NOT RUN). No live AI provider, no API key read or set.
+The two race-detection mutants were applied with go build -overlay from the scratchpad; the working tree was never mutated.
+The reviewer's N7 model and engine output (scratchpad t047-review-tools/n7.json, t047-review-r2-logs/n7-engine.log) were only read.

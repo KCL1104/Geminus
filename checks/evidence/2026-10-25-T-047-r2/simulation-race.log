@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/simulation	1.151s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	43.566s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	146.855s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	1.268s
+exit 0

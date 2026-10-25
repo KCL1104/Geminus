@@ -1,0 +1,20 @@
+T-047 review round 2 (branch t047-r2 from ff11908). Each log ends with its own "exit N" line.
+
+red / green
+  make simulation-reference-test PYTHON=.venv/bin/python (before the L1' fix)   2   l1p-simpy-red.log (G-B14: O1 0.48333 != 1/3)
+  make simulation-reference-test PYTHON=.venv/bin/python (after the L1' fix)    0   l1p-simpy-green.log
+  go test -run TestDifferentialAgainstFrozenKernel, mutants inverted and
+    default-true, before the I2 check                                          0,0 i2-mutant-before.log (both run 5,000 models and pass)
+  make backend-test GOFLAGS="-count=1 -overlay=<inverted>"                       2   i2-red-inverted-backend-test.log
+  make backend-test GOFLAGS="-count=1 -overlay=<default-true>"                   2   i2-red-default-true-backend-test.log
+
+verification (4cb708d and later)
+  make spec-check PYTHON=.venv/bin/python                                       0   spec-check.log
+  make backend-test GOFLAGS=-count=1                                            0   backend-test.log
+  make architecture-check                                                       0   architecture-check.log
+  make simulation-reference-test PYTHON=.venv/bin/python                        0   simulation-reference-test.log, simpy-reference-report.json
+  go test -race -count=1 -timeout 30m ./internal/simulation/...                 0   simulation-race.log
+
+NOT RUN
+  make integration-test / db-test / db-go-test (no PostgreSQL; for the coordinator)
+  make backend-race (only ./internal/simulation/... under -race, as asked), make ai-eval, make frontend-test
