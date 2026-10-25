@@ -348,3 +348,20 @@ Coordinator 把 `t049-r1` 的五個 commit cherry-pick 到 `claude/lucid-meitner
 | `make integration-test`（新的 `dt_test_t049r1`） | 0 | 32 個 package ok，沒有 FAIL |
 
 本輪沒有新的 DB 測試或 DB mutant，整合測試是為了確認整合後的 tree 沒有 regression。Log 與 exit code 在 `checks/evidence/2026-10-25-T-049-r1/coordinator-*`。D-081–D-085 仍是 PROPOSED，T-049 在 tasks.json 仍為 `not_started`。
+
+## Review 第 2 輪（c1c027c）：ACCEPT
+
+獨立 reviewer（H-003）在 c1c027c 重審：第 1 輪的 M1、M2、L1、L2 都已解決，Info 也都已處理；本輪沒有新的 High、Medium 或 Low。
+- 三個第 1 輪存活的 Go mutant（`rv-table-period-in-model-time`、`rv-r4-first-period-only`、`rv-lcm-limit-strict`）現在都被擋下。
+- 新的 SimPy mutant `simpy-table-unquantized` 被 G-R8 擋下。
+- G-R8、G-R9 的推導由 reviewer 手推確認。
+- I2 的等價論證成立：validator 讓 rate ≤ 每 tick 1 件，Λ⁻¹ 相鄰至少差 1 tick，round half up 單調，第一件也至少在 1 tick。
+- `calendar_reference.py` 確認與 engine 獨立，並擋下 M2、L1 的 mutant。
+- 本輪沒有改任何非測試的 Go 程式碼；0.4.0 的鎖只新增 G-R8、G-R9 兩筆。
+
+三個 Info：
+- I-a：reviewer 環境的 `GOTOOLCHAIN=local` 指向 go1.24.7，改用 go1.27.3 執行；coordinator 的環境本來就是 go1.27.3（`coordinator-environment.txt`），不是 T-049 的缺陷。
+- I-b：隨機比對沒有涵蓋半 tick 附近的 duration 捨入，Python 與 Go 對 empirical TTR 的上界讀法不同（產生器不產生 empirical，目前沒有差異）；已加入 T-037 的 scope 作為擴充獨立比對時的項目。
+- I-c：`r4_past_larger_period` 的實際值 20 接近下限 15；seed 固定，結果穩定。
+
+Reviewer 同意 D-081–D-085 的建議，D-084 也同意依 D-058 細化後的 A，只剩 B（Result 實例中的分母標示）要 owner 決定。D-081–D-085 仍是 PROPOSED，它們的 gate 是 T-049 驗收前，所以 T-049 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。

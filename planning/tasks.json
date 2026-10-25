@@ -2331,7 +2331,8 @@
         "DES events/time/RSS/cancel benchmarks，固定hardware/image。",
         "2D/3D graph/render/FPS 與 API/validation load targets；記錄不足而非捏造。",
         "Import validation 的成本：每個 canonical event 的 schema 檢查讓 mapping.Validate 慢約 2.2–2.5 倍（T-017 review 第 2 輪 N3：10 萬列 9.5 MB 1.66 s 對 0.66 s；49.8 MB、32 個 metadata 欄 5.9 s 對 2.7 s，Write 再讀一次），列入 benchmark 並固定 hardware/image。",
-        "ADR-026 D-050 原訂的 reference 中 T-049 沒有做的部分（T-049 review round 1 L2，見 checks/T-049_VALIDATION.md）：R1（BLOCKING_CYCLE，T-047 的 graph rule）的獨立 Python 實作與 Go 在隨機輸入上的比對（R2、R3、R4、next_fit、X_end、TTRmax 已由 scripts/calendar_reference.py 在 make simulation-reference-test 比對）；以 SimPy 跑 D-050 的兩個反例與 G-D1（示意）；對隨機的 valid 模型確認 SimPy 與 Go 在每個 L 內都有授予（現行 SimPy 腳本拒絕有 calendar 的 resource 與他者同 bundle、及 0 < S < C 的故障 resource）。"
+        "ADR-026 D-050 原訂的 reference 中 T-049 沒有做的部分（T-049 review round 1 L2，見 checks/T-049_VALIDATION.md）：R1（BLOCKING_CYCLE，T-047 的 graph rule）的獨立 Python 實作與 Go 在隨機輸入上的比對（R2、R3、R4、next_fit、X_end、TTRmax 已由 scripts/calendar_reference.py 在 make simulation-reference-test 比對）；以 SimPy 跑 D-050 的兩個反例與 G-D1（示意）；對隨機的 valid 模型確認 SimPy 與 Go 在每個 L 內都有授予（現行 SimPy 腳本拒絕有 calendar 的 resource 與他者同 bundle、及 0 < S < C 的故障 resource）。",
+        "T-049 review 第 2 輪（I-b）：`TestCalendarRulesExport` 的隨機模型都是整數分鐘或整數天，Python `ticks()` 與 Go `model.Ticks` 在半 tick 附近的捨入沒有被比對（投入表的量化另由 G-R8 固定）；`scripts/calendar_reference.py` 的 `repair_bound` 把 empirical TTR 當成沒有上界，Go 用最大樣本（產生器不產生 empirical，目前沒有差異）。擴充獨立比對時，加入非整數 tick 的 duration 與 empirical TTR。"
       ],
       "planned_outputs": [
         "testdata/simulation/",
@@ -3143,7 +3144,7 @@
       "id": "T-049",
       "title": "DES 班表與隨時間變化的投入（H-016）",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Simulation",
       "planning_window": "H-016 re-plan（未重估週數）",
       "depends_on": [
@@ -3222,7 +3223,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-25",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-049_VALIDATION.md",
+          "summary": "Resource 班表與隨時間變化的投入：calendars、calendar_id、shift_capacity 與 release_schedule 的 gate 解除（validator：形狀規則、UNKNOWN_REFERENCE、DUPLICATE_ID、RELEASE_SCHEDULE_INVALID、D-050 R2／R4 與 365 天的 LCM 上限（D-085）；engine des-go-0.4.0：每個 calendar 一個 CAPACITY_CHANGE、上班喚醒 held front、finish-first 與 overtime、授予條件 in_use＋units ≤ min(S, C−D)、故障時鐘只在上班時前進、B2 的 next_fit 與 X_end、分段 rate 與投入表（D-053、D-082）；Result 的 resource_states 班表與 available 組（D-058，分母的標示 D-084）；D-057 的 calendar 與投入排程 risk、D-083 禁止 AI 新增 calendar、D-063 (b) B 的 shift label、MOD-039 重新判定）；手推 golden 24 個（含 G-R8 非整數 tick 的投入表、G-R9 rate 上限）；對凍結的 des-go-0.3.0 的 differential（50,000 個模型）、中性班表與中性排程；只看 observation 的班表檢查器；SimPy reference（34 個確定性 case、140 個隨機比對）；Python 獨立實作的 R2、R3、R4、next_fit、X_end、TTRmax 對 5,000 個隨機模型與 Go 比對（0 個差異）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（3e56705、96f96de 的 tree），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test、simulation-reference-test、backend-numeric 都 exit 0（checks/evidence/2026-10-25-T-049*/coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 on 3e56705 CHANGES REQUESTED (M1 D-082 (b) table quantization untested, M2 R4 past the larger period, L1 365-day LCM, L2 ADR-026's Python cross-check); round 2 on c1c027c ACCEPT (all fixed in dacc73a..96f96de; I-a–I-c Info)",
+          "decisions_pending": "D-081、D-082、D-083、D-084、D-085 待 owner 批准；批准後 T-049 才標為 done"
+        }
+      ]
     },
     {
       "id": "T-050",

@@ -34,8 +34,8 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 31,
-    "in_progress": 2,
-    "not_started": 21,
+    "in_progress": 3,
+    "not_started": 20,
     "review": 0
   },
   "ready_tasks": [
@@ -51,17 +51,6 @@
         "D-088",
         "D-089",
         "D-090"
-      ]
-    },
-    {
-      "id": "T-049",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-081",
-        "D-082",
-        "D-083",
-        "D-084",
-        "D-085"
       ]
     }
   ],
