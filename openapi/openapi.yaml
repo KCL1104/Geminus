@@ -413,7 +413,38 @@ paths:
         '500':
           $ref: '#/components/responses/Error500'
         '503':
-          $ref: '#/components/responses/Error503'
+          description: 'Infrastructure unavailable; the draft was not changed (no new revision, no audit event), so the same
+            patch with the same If-Match may be sent again. The draft''s base binds datasets and this deployment gives
+            the model service no dataset storage; or the dataset binding stage, which checks the patched draft against
+            the base''s manifest, could not read or verify a snapshot (details[0].code DATASET_STORAGE_FAILED, as
+            publishVersion and approveProposal answer: H-022, which the coordinator extended to the draft routes; the
+            cause is logged, never sent); or the request could not complete (no details). Codes: SERVICE_UNAVAILABLE.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                no_storage:
+                  summary: The base binds datasets and dataset storage is not configured
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the version binds datasets and dataset storage is not available
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                storage_failed:
+                  summary: The dataset snapshots the base binds could not be read (H-022)
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the dataset snapshots could not be read; nothing was changed (retry later)
+                      details:
+                      - path: ''
+                        reason: the dataset storage failed
+                        code: DATASET_STORAGE_FAILED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '428':
           $ref: '#/components/responses/Error428'
       requestBody:
@@ -475,7 +506,39 @@ paths:
         '500':
           $ref: '#/components/responses/Error500'
         '503':
-          $ref: '#/components/responses/Error503'
+          description: 'Infrastructure unavailable; the draft was not changed (no new revision, no audit event), so the same
+            reset with the same If-Match may be sent again. The latest version binds datasets and this deployment gives
+            the model service no dataset storage; or the dataset binding stage, which checks the latest version''s
+            content, the draft''s new content, against that version''s manifest, could not read or verify a snapshot
+            (details[0].code DATASET_STORAGE_FAILED, as publishVersion and approveProposal answer: H-022, which the
+            coordinator extended to the draft routes; the cause is logged, never sent); or the request could not complete
+            (no details). Codes: SERVICE_UNAVAILABLE.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                no_storage:
+                  summary: The base binds datasets and dataset storage is not configured
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the version binds datasets and dataset storage is not available
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                storage_failed:
+                  summary: The dataset snapshots the base binds could not be read (H-022)
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the dataset snapshots could not be read; nothing was changed (retry later)
+                      details:
+                      - path: ''
+                        reason: the dataset storage failed
+                        code: DATASET_STORAGE_FAILED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '428':
           $ref: '#/components/responses/Error428'
       requestBody:
@@ -583,7 +646,7 @@ paths:
                   value:
                     error:
                       code: SERVICE_UNAVAILABLE
-                      message: the dataset snapshots could not be read; nothing was published (retry later)
+                      message: the dataset snapshots could not be read; nothing was changed (retry later)
                       details:
                       - path: ''
                         reason: the dataset storage failed
@@ -1046,7 +1109,9 @@ paths:
         in the proposal''s generation, D-061 (c)), is 503 and nothing changes. edit: exactly one new immutable ModelVersion, the model''s latest: its parent
         is the base and its number the base''s plus one, its IR the base with the reviewed changes, its dataset
         manifest the proposal''s dataset_bindings (D-062 (g)) and its comment the request''s; a clean draft moves to
-        it, a dirty one is kept as it is and draft_out_of_date is true (D-003). scenario: exactly one immutable
+        it, a dirty one is kept as it is and draft_out_of_date is true (D-003). The clean draft''s move checks its
+        dataset bindings again with the snapshots read once more: if they cannot be read then, the approval is 503
+        DATASET_STORAGE_FAILED as well and nothing is committed (H-022, extended by the coordinator to this read). scenario: exactly one immutable
         Scenario on the base with the reviewed changes and their hash, named after the proposal''s summary (D-067
         APPROVED), and no new version; nothing is queued, a run is the person''s own request (AI_SPEC §7). The
         Approval''s mode tells the two effects apart: new_version_id names the version (getModelVersion), scenario_id
@@ -1221,8 +1286,9 @@ paths:
           $ref: '#/components/responses/Error500'
         '503':
           description: 'The base binds datasets and this deployment has no dataset storage, or the dataset snapshots
-            could not be read (details[0].code DATASET_STORAGE_FAILED); nothing changed, retry later. Codes:
-            SERVICE_UNAVAILABLE.'
+            could not be read, in the revalidation or when the clean draft moves to the new version (details[0].code
+            DATASET_STORAGE_FAILED; the cause is logged, never sent); nothing changed (no version, the proposal stays
+            ready, no audit event, the Idempotency-Key keeps no answer), retry later. Codes: SERVICE_UNAVAILABLE.'
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'
