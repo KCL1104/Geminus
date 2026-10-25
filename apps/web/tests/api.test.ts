@@ -285,6 +285,29 @@ describe("model writes and versions (T-013)", () => {
     expect(f.calls[1]!.url.pathname).toBe(`/api/v1/model-versions/${VERSION}`);
   });
 
+  it("keeps why a publish was unavailable: snapshots that could not be read (H-022, T-054)", async () => {
+    // publishVersion's 503 storage_failed example (openapi.yaml), as the API sends it.
+    const storageFailed = {
+      error: {
+        code: "SERVICE_UNAVAILABLE",
+        message: "the dataset snapshots could not be read; nothing was published (retry later)",
+        details: [{ path: "", reason: "the dataset storage failed", code: "DATASET_STORAGE_FAILED" }],
+        request_id: REQ,
+      },
+    };
+    const f = fakeFetch(json(503, storageFailed, { "X-Request-ID": REQ }));
+    const r = await api(f).publishVersion(MODEL, 3, { expected_base_version_id: VERSION }, "key-publish-3");
+    expect(!r.ok && r.problem).toEqual({
+      kind: "unavailable",
+      code: "SERVICE_UNAVAILABLE",
+      status: 503,
+      message: "the dataset snapshots could not be read; nothing was published (retry later)",
+      requestId: REQ,
+      details: [{ path: "", reason: "the dataset storage failed", code: "DATASET_STORAGE_FAILED" }],
+      retryAfterSeconds: null,
+    });
+  });
+
   it("resets with If-Match and requires the matching ETag back", async () => {
     const good = fakeFetch(json(200, draft(5), { ETag: draftETag(5) }));
     const r = await api(good).resetDraft(MODEL, 4, { expected_latest_version_id: VERSION, confirm_discard: true });

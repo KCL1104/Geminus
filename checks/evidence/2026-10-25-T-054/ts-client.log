@@ -1,0 +1,56 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-ab6db6925bffd2a8d/apps/web
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 30 skipped (31)
+   Start at  15:22:19
+   Duration  569ms (transform 81%, tests 10%, import 7%, worker 1%)
+
+exit=0
+
+--- mutant: problemFromResponse drops each detail's code (apps/web/lib/api/problem.ts; restored after, cmp identical) ---
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-ab6db6925bffd2a8d/apps/web
+
+ ❯ tests/api.test.ts (31 tests | 1 failed | 30 skipped) 50ms
+   ❯ model writes and versions (T-013) (8)
+     × keeps why a publish was unavailable: snapshots that could not be read (H-022, T-054) 48ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/api.test.ts > model writes and versions (T-013) > keeps why a publish was unavailable: snapshots that could not be read (H-022, T-054)
+AssertionError: expected { kind: 'unavailable', …(6) } to deeply equal { kind: 'unavailable', …(6) }
+
+- Expected
++ Received
+
+@@ -1,10 +1,9 @@
+  {
+    "code": "SERVICE_UNAVAILABLE",
+    "details": [
+      {
+-       "code": "DATASET_STORAGE_FAILED",
+        "path": "",
+        "reason": "the dataset storage failed",
+      },
+    ],
+    "kind": "unavailable",
+
+ ❯ tests/api.test.ts:300:32
+    298|     const f = fakeFetch(json(503, storageFailed, { "X-Request-ID": REQ…
+    299|     const r = await api(f).publishVersion(MODEL, 3, { expected_base_ve…
+    300|     expect(!r.ok && r.problem).toEqual({
+       |                                ^
+    301|       kind: "unavailable",
+    302|       code: "SERVICE_UNAVAILABLE",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 30 skipped (31)
+   Start at  15:22:38
+   Duration  287ms (transform 43%, tests 37%, import 16%, worker 3%)
+
+mutant exit=1 (KILLED)

@@ -39,7 +39,7 @@ var Routes = []Route{
 
 // Register adds the model routes to mux.
 func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpapi.Resolver, s *Service) {
-	h := handlers{s: s}
+	h := handlers{s: s, log: log}
 	for _, r := range Routes {
 		var f func(http.ResponseWriter, *http.Request, tenant.Scope) error
 		switch r.OperationID {
@@ -66,7 +66,10 @@ func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpa
 	}
 }
 
-type handlers struct{ s *Service }
+type handlers struct {
+	s   *Service
+	log *slog.Logger
+}
 
 // D-001 IDs of the path parameters.
 var (
@@ -149,6 +152,22 @@ func refused(err error) error {
 		return e
 	}
 	return err
+}
+
+// publishRefused is refused for publishVersion, which also answers a
+// dataset binding stage that cannot read or verify the snapshots the base
+// binds (in the candidate's check or in that of the draft that follows the
+// new version): 503 DATASET_STORAGE_FAILED, as approveProposal and
+// createManualScenario do (D-069 (b), H-022; T-054). The cause is logged
+// by the handler, never sent. H-022 decided publishVersion only: patchDraft
+// and resetDraft run the same stage and keep refused's answer.
+func publishRefused(err error) error {
+	var storage *DatasetStorageError
+	if errors.As(err, &storage) {
+		return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was published (retry later)",
+			Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}}
+	}
+	return refused(err)
 }
 
 func (h handlers) create(w http.ResponseWriter, r *http.Request, sc tenant.Scope) error {
@@ -290,7 +309,12 @@ func (h handlers) publish(w http.ResponseWriter, r *http.Request, sc tenant.Scop
 	}
 	status, out, err := h.s.Publish(r.Context(), sc, httpapi.RequestID(r.Context()), key, id, expected, body, req)
 	if err != nil {
-		return refused(err)
+		var storage *DatasetStorageError
+		if errors.As(err, &storage) {
+			h.log.WarnContext(r.Context(), "reading a publish's dataset snapshots failed", "request_id", httpapi.RequestID(r.Context()),
+				"organization_id", sc.OrganizationID, "model_id", id, "error", storage.Err.Error())
+		}
+		return publishRefused(err)
 	}
 	httpapi.WriteBody(w, status, out)
 	return nil

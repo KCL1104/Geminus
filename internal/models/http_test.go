@@ -1,17 +1,21 @@
 package models_test
 
 import (
+	"context"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/models"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -139,5 +143,46 @@ func TestRefused(t *testing.T) {
 		if got := models.Refused(err); got != err {
 			t.Errorf("%v became %v", err, got)
 		}
+	}
+}
+
+// H-022, D-069 (b): publishVersion answers a binding stage that cannot
+// read or verify the snapshots with 503 DATASET_STORAGE_FAILED, as
+// approveProposal and createManualScenario do, never with the cause; any
+// other error as every model route does, and an ended request, a tenant
+// or a transport error pass to httpapi.
+func TestPublishRefused(t *testing.T) {
+	storage := &models.DatasetStorageError{Err: errors.New("open /srv/objects/tenant/secret: input/output error")}
+	for _, err := range []error{storage, fmt.Errorf("publish: %w", storage)} {
+		var e *httpapi.Error
+		if !errors.As(models.PublishRefused(err), &e) || e.Code != httpapi.ServiceUnavailable ||
+			e.Message != "the dataset snapshots could not be read; nothing was published (retry later)" ||
+			!slices.Equal(e.Details, []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}) {
+			t.Errorf("%v: %+v", err, models.PublishRefused(err))
+			continue
+		}
+		// What the client is sent: the code, the message and the details.
+		if sent := fmt.Sprintf("%s %s %+v", e.Code, e.Message, e.Details); strings.Contains(sent, "secret") {
+			t.Errorf("the cause is sent: %s", sent)
+		}
+	}
+	issue := model.NewIssue(validate.DatasetBindingInvalid, "/dataset_bindings/0/content_hash", "does not match", model.SeverityError)
+	for _, err := range []error{models.ErrNotFound, models.ErrConflict, models.ErrNoChanges, models.ErrDatasetsUnavailable,
+		models.ErrInvalidComment, idempotency.ErrConflict, idempotency.ErrInProgress, &models.InvalidError{Issues: []model.ValidationIssue{issue}}} {
+		if want, got := models.Refused(err), models.PublishRefused(err); !reflect.DeepEqual(got, want) {
+			t.Errorf("%v: %+v, not refused's %+v", err, got, want)
+		}
+	}
+	for _, err := range []error{context.Canceled, fmt.Errorf("reading: %w", context.DeadlineExceeded), tenant.ErrForbidden,
+		tenant.ErrRetryable, errors.New("database down")} {
+		if got := models.PublishRefused(err); got != err {
+			t.Errorf("%v became %v", err, got)
+		}
+	}
+	// H-022 decided publishVersion (and createSimulation): patchDraft and
+	// resetDraft run the same binding stage and keep their answer, a server
+	// error, until the owner decides otherwise.
+	if got := models.Refused(storage); got != error(storage) {
+		t.Errorf("refused maps the storage failure of every model route: %v", got)
 	}
 }

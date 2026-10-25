@@ -1,0 +1,10 @@
+date: 2026-10-25T15:16:32Z (verification runs start here)
+worktree branch: t054, from 2f4c33f
+go: go1.27.3 linux/amd64 (go.mod toolchain)
+node: v22.22.0, npm 10.9.4 (apps/web/.nvmrc and package.json engines want 24.21.0; see frontend-test.log)
+python: 3.13.16 (/home/user/Geminus/.venv/bin/python)
+cpus: 4 (shared with other agents running go test)
+kernel: Linux 6.18.44-fc-v153
+postgresql: none: /usr/bin/psql (the client) is installed, but there is no server and GEMINUS_TEST_DATABASE_URL is
+      unset, so every DB-backed Go test skips ("NOT RUN: set GEMINUS_TEST_DATABASE_URL ...") and no SQL ran
+live AI: none; no API key read or set

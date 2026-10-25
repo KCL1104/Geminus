@@ -91,6 +91,30 @@ func (e *InvalidError) Error() string {
 	return fmt.Sprintf("runs: invalid run (%d issue(s))", len(e.Issues))
 }
 
+// DatasetStorageError: the dataset binding stage could not read or verify
+// a snapshot the version binds (an infrastructure failure, not a problem
+// of the data, which is an issue; 503 DATASET_STORAGE_FAILED, as
+// approveProposal and createManualScenario answer, D-069 (b), H-022;
+// T-054). Nothing was queued.
+type DatasetStorageError struct{ Err error }
+
+func (e *DatasetStorageError) Error() string {
+	return "runs: the dataset snapshots could not be read: " + e.Err.Error()
+}
+
+func (e *DatasetStorageError) Unwrap() error { return e.Err }
+
+// bindingFailure is what a create answers when the dataset binding stage
+// fails with err rather than with issues: a storage failure, unless the
+// request itself ended (then the context's error, which httpapi answers as
+// it answers any ended request). The approval's and the scenarios' rule.
+func bindingFailure(ctx context.Context, err error) error {
+	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return &DatasetStorageError{Err: err}
+}
+
 // PackLookup finds a model's domain pack; *domainpack.Registry is one.
 type PackLookup interface {
 	Lookup(domain string) (domainpack.DomainPack, error)
@@ -345,7 +369,7 @@ func (s *Service) freeze(ctx context.Context, tx tenant.Tx, org string, req Crea
 	}
 	resolution, err := datasets.Resolve(ctx, snapshots.Store{Keys: keys, Objects: s.Objects}, org, ir, v.DatasetBindings)
 	if err != nil {
-		return store.Run{}, err
+		return store.Run{}, bindingFailure(ctx, err)
 	}
 	if !resolution.Valid() {
 		return store.Run{}, &InvalidError{Issues: capped(withoutIR(resolution.Issues))}

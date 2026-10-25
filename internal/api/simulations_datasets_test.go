@@ -4,14 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/objects"
@@ -133,6 +139,143 @@ func TestRunDatasets(t *testing.T) {
 		map[string]any{"op": "replace", "path": "/nodes/1/service_time/distribution", "value": map[string]any{"type": "empirical", "samples_ref": "dataset:service_minutes"}},
 	}})); r.status != 422 || code(t, r) != "MODEL_VALIDATION_FAILED" || !strings.Contains(string(r.body), "/scenario_patch/") {
 		t.Errorf("an unbound dataset through a patch: %d %s", r.status, r.body)
+	}
+}
+
+// flakyObjects is object storage whose reads fail with err while fail has
+// set one.
+type flakyObjects struct {
+	objects.Store
+	mu    sync.Mutex
+	err   error
+	reads int
+}
+
+func (f *flakyObjects) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+	f.mu.Lock()
+	f.reads++
+	err := f.err
+	f.mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	return f.Store.Get(ctx, key)
+}
+
+func (f *flakyObjects) fail(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.err, f.reads = err, 0
+}
+
+func (f *flakyObjects) count() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.reads
+}
+
+// H-022, D-069 (b) (T-054), TEST-009: object storage that cannot read a
+// snapshot the version binds, through the handler cmd/api serves. 503
+// SERVICE_UNAVAILABLE with details[0].code DATASET_STORAGE_FAILED, as
+// approveProposal and createManualScenario answer; the cause is logged,
+// never sent; a read that says the request ended is the context's 503,
+// without details; nothing is written either way (no run, job, binding
+// row, audit event or answer kept for the key), so the same request with
+// the same key is queued once storage answers again.
+func TestRunSnapshotStorageFailure(t *testing.T) {
+	root := t.TempDir()
+	fs, err := objects.NewFS(root, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	flaky := &flakyObjects{Store: fs}
+	e := setupRuns(t, api.WithObjects(flaky))
+	e.objects, e.root = fs, root // the snapshots are written here; the API reads them through flaky
+	editor := e.a.Members[tenant.Editor]
+	org := datasetOwner{e.a.ID, e.a.Members[tenant.Owner].UserID}
+	e.version(t, e.a, golden(t, "deterministic-queue.json"), nil) // the organization's project
+	ir := golden(t, "deterministic-queue.json")
+	ir["nodes"].([]any)[1].(map[string]any)["service_time"] = map[string]any{"distribution": map[string]any{"type": "empirical", "samples_ref": "dataset:service_minutes"}}
+	b1 := e.dataset(t, org, ids.New("ds"), 1, []float64{3, 5, 7})
+	_, mv := e.version(t, e.a, ir, []map[string]any{b1})
+	const key = "run-storage-0001"
+	nothing := func(when string) {
+		t.Helper()
+		for q, args := range map[string][]any{
+			`SELECT count(*) FROM twin.simulation_runs WHERE organization_id=$1`:                                         {e.a.ID},
+			`SELECT count(*) FROM twin.jobs WHERE organization_id=$1`:                                                    {e.a.ID},
+			`SELECT count(*) FROM twin.run_datasets WHERE organization_id=$1`:                                            {e.a.ID},
+			`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1 AND action='simulation.create'`:             {e.a.ID},
+			`SELECT count(*) FROM twin.idempotency_keys WHERE organization_id=$1 AND operation_scope='createSimulation'`: {e.a.ID},
+		} {
+			if n := e.count(q, args...); n != 0 {
+				t.Errorf("%s: %s is %d", when, q, n)
+			}
+		}
+	}
+
+	const cause = "open /srv/objects/tenant/secret: input/output error"
+	flaky.fail(errors.New(cause))
+	r := e.createRun(editor.Subject, e.a.ID, key, runRequest(mv, 1, "none", nil))
+	if r.status != 503 || code(t, r) != "SERVICE_UNAVAILABLE" {
+		t.Fatalf("storage that fails: %d %s", r.status, r.body)
+	}
+	got := decode[struct {
+		Error struct {
+			Message string `json:"message"`
+			Details []struct {
+				Path   string `json:"path"`
+				Reason string `json:"reason"`
+				Code   string `json:"code"`
+			} `json:"details"`
+		} `json:"error"`
+	}](t, r)
+	if got.Error.Message != "the dataset snapshots could not be read; nothing was queued (retry later)" || len(got.Error.Details) != 1 ||
+		got.Error.Details[0].Path != "" || got.Error.Details[0].Reason != "the dataset storage failed" || got.Error.Details[0].Code != "DATASET_STORAGE_FAILED" {
+		t.Errorf("storage that fails: %s", r.body)
+	}
+	if flaky.count() == 0 {
+		t.Error("the snapshot was not read")
+	}
+	if strings.Contains(string(r.body), "secret") {
+		t.Errorf("the cause is sent: %s", r.body)
+	}
+	e.logsMu.Lock()
+	logs := e.logs.String()
+	e.logsMu.Unlock()
+	if !slices.ContainsFunc(strings.Split(strings.TrimSpace(logs), "\n"), func(line string) bool {
+		var entry map[string]any
+		return json.Unmarshal([]byte(line), &entry) == nil && entry["level"] == "WARN" && entry["request_id"] == r.header.Get("X-Request-ID") &&
+			entry["model_version_id"] == mv && strings.Contains(fmt.Sprint(entry["error"]), cause)
+	}) {
+		t.Errorf("the cause is not logged with the request: %s", logs)
+	}
+	nothing("storage that fails")
+
+	// A read that says the request ended: the context's error, which
+	// httpapi answers as it answers any ended request.
+	flaky.fail(fmt.Errorf("reading: %w", context.DeadlineExceeded))
+	r = e.createRun(editor.Subject, e.a.ID, key, runRequest(mv, 1, "none", nil))
+	if r.status != 503 || code(t, r) != "SERVICE_UNAVAILABLE" || strings.Contains(string(r.body), "DATASET_STORAGE_FAILED") {
+		t.Errorf("a read past its deadline: %d %s", r.status, r.body)
+	}
+	nothing("a read past its deadline")
+
+	// Storage answers again: the same request with the same key is queued.
+	flaky.fail(nil)
+	r = e.createRun(editor.Subject, e.a.ID, key, runRequest(mv, 1, "none", nil))
+	if r.status != 202 {
+		t.Fatalf("after storage recovers: %d %s", r.status, r.body)
+	}
+	id := decode[runBody](t, r).ID
+	if n := e.count(`SELECT count(*) FROM twin.simulation_runs WHERE organization_id=$1`, e.a.ID); n != 1 {
+		t.Errorf("%d runs after recovery", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.jobs WHERE simulation_run_id=$1 AND status='queued'`, id); n != 1 {
+		t.Errorf("%d queued jobs after recovery", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.run_datasets WHERE run_id=$1 AND dataset_version_id=$2`, id, b1["dataset_version_id"]); n != 1 {
+		t.Errorf("%d binding rows after recovery", n)
 	}
 }
 

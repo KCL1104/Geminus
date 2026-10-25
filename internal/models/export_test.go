@@ -19,11 +19,23 @@ var Capped = capped
 var StoredIR = storedIR
 
 // IfMatch and Refused are the HTTP adapter's precondition and error
-// mapping, for their tests without a database.
+// mapping, PublishRefused publishVersion's, for their tests without a
+// database.
 var (
-	IfMatch = ifMatch
-	Refused = refused
+	IfMatch        = ifMatch
+	Refused        = refused
+	PublishRefused = publishRefused
 )
+
+// BindingFailure is bindingFailure, for its test without a database.
+var BindingFailure = bindingFailure
+
+// Check is check (the pack's rules and the dataset binding stage), for its
+// test without a database.
+func (s *Service) Check(ctx context.Context, org string, ir *model.ModelIR, manifest []model.DatasetBinding) ([]model.ValidationIssue, error) {
+	_, issues, err := s.check(ctx, org, ir, nil, manifest)
+	return issues, err
+}
 
 // CommitVersion creates the model's next version from ir and manifest the
 // way an approval will (T-026): not from the draft, then the draft rule of
