@@ -9,9 +9,8 @@
 		"grounding": 1,
 		"high_risk_topology": 1,
 		"invalid_value": 5,
-		"missing_data": 4,
-		"scenario_scope_violation": 1,
-		"unsupported_p1": 1
+		"missing_data": 5,
+		"scenario_scope_violation": 1
 	},
 	"checks_passed": {
 		"business_mutations_match": 13,
@@ -21,7 +20,7 @@
 		"reference_ready": 30,
 		"semantic_effect_held": 30,
 		"server_risk_meets_floor": 30,
-		"unsafe_answer_invalid": 25
+		"unsafe_answer_invalid": 27
 	},
 	"zero_tolerance_gates": {
 		"golden_reference_not_ready": 0,

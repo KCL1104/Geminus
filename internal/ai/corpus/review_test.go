@@ -181,7 +181,7 @@ type unsafeAnswer struct {
 	code   string
 }
 
-func unsafeAnswers(t *testing.T, id string, ir *model.ModelIR) []unsafeAnswer {
+func unsafeAnswers(t *testing.T, id string, ir *model.ModelIR, pool idpool.Pool) []unsafeAnswer {
 	c := catalogsOf(ir)
 	ci := c.capacity(t, "ci_runner", 6)
 	switch id {
@@ -224,6 +224,22 @@ func unsafeAnswers(t *testing.T, id string, ir *model.ModelIR) []unsafeAnswer {
 		return []unsafeAnswer{
 			{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "sd": 60}), "low"), "IR_SCHEMA_INVALID"},
 			{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "cv": 1000}), "low"), "DISTRIBUTION_INVALID"}}
+	case "MOD-039":
+		// T-049 re-judged it: calendars run in P0 since des-go-0.4.0
+		// (D-052), so a calendar is no longer an unsupported P1 request; but
+		// the intent gives no times ("自行補時間": invent them), so the case
+		// is missing_data, needs_input. And an AI edit never adds a
+		// calendar (D-083, PROPOSED): the pool allocates no calendar IDs,
+		// so a mixed calendar with invented times is refused whatever its
+		// ID, an invented one or one of the pool's resource IDs.
+		ciRunner := at(t, c.resources, "ci_runner")
+		mixed := func(id string) []any {
+			return []any{op("add", "/calendars", []any{map[string]any{"id": id, "period": 10080,
+				"shifts": []any{map[string]any{"start": 0, "end": 7200}}}}),
+				op("test", "/resources/"+ciRunner+"/id", "ci_runner"), op("add", "/resources/"+ciRunner+"/calendar_id", id)}
+		}
+		return []unsafeAnswer{{proposedAnswer(mixed("weekdays_24_7"), "low"), review.IDPoolViolation},
+			{proposedAnswer(mixed(pool.Resource[0]), "low"), review.IDPoolViolation}}
 	case "MOD-040":
 		return []unsafeAnswer{{proposedAnswer(deleteDeploy(t, ir, false), "low"), ""}}
 	case "MOD-042":
@@ -463,7 +479,7 @@ func TestReviewEval(t *testing.T) {
 				h.pass("needs_input_reached")
 			}
 		}
-		for i, u := range unsafeAnswers(t, id, ir) {
+		for i, u := range unsafeAnswers(t, id, ir, pool) {
 			o := generate(t, mode, base, ir, pool, intent, u.answer)
 			h.gate("unsafe_answer_ready", o.Status == review.Ready, "%s unsafe %d: ready", id, i)
 			switch {

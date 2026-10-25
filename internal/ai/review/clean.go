@@ -81,7 +81,7 @@ var sentences = map[string][]string{
 	patch.TargetMissing:                 {"the change's target does not exist"},
 	patch.TestFailed:                    {"a test operation does not match the base model"},
 	IDPoolViolation: {poolReasons[idpool.NotInPool], poolReasons[idpool.WrongKind], poolReasons[idpool.UsedInBase],
-		poolReasons[idpool.Missing]},
+		poolReasons[idpool.Missing], poolReasons[idpool.NoCalendarIDs]},
 	OutputInvalid: {sentNotAProposal, sentConfirmation, sentChanges, sentConfidence, sentRiskClaim, sentNoQuestions,
 		sentQuestions, sentInputNoChanges, sentStatus, sentEmpty, sentNUL, sentNoOp, sentEffectNumber},
 	// The line-flow codes (ADR-026, T-046 phase 2). Their rules land in

@@ -224,3 +224,41 @@ func TestCheck(t *testing.T) {
 		t.Errorf("no base: %+v", v)
 	}
 }
+
+// D-083 (T-049; T-046 review I3): the pool allocates no calendar IDs. A
+// candidate may change the base's calendars, but a calendar the base does
+// not have is refused whatever its ID: invented, from the resource list,
+// or a base calendar's renamed.
+func TestNoNewCalendars(t *testing.T) {
+	base := golden(t)
+	base.Calendars = []model.Calendar{{ID: "two_shift", Period: 1440, Shifts: []model.Shift{{Start: 360, End: 840}}}}
+	p, err := New(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := *base
+	changed.Calendars = []model.Calendar{{ID: "two_shift", Period: 1440, Shifts: []model.Shift{{Start: 360, End: 1320}}}}
+	if v := p.Check(base, &changed); len(v) != 0 {
+		t.Errorf("a changed calendar: %+v", v)
+	}
+	added := *base
+	added.Calendars = []model.Calendar{base.Calendars[0], {ID: "night", Period: 1440, Shifts: []model.Shift{{Start: 0, End: 360}}},
+		{ID: p.Resource[0], Period: 60, Shifts: []model.Shift{{Start: 0, End: 30}}}}
+	renamed := *base
+	renamed.Calendars = []model.Calendar{{ID: "two_shift_v2", Period: 1440, Shifts: []model.Shift{{Start: 360, End: 840}}}}
+	for name, c := range map[string]struct {
+		ir   *model.ModelIR
+		want []Violation
+	}{
+		"added": {&added, []Violation{{Kind: Calendar, ID: "night", Path: "/calendars/1/id", Reason: NoCalendarIDs},
+			{Kind: Calendar, ID: p.Resource[0], Path: "/calendars/2/id", Reason: NoCalendarIDs}}},
+		"renamed": {&renamed, []Violation{{Kind: Calendar, ID: "two_shift_v2", Path: "/calendars/0/id", Reason: NoCalendarIDs}}},
+	} {
+		if got := p.Check(base, c.ir); !slices.Equal(got, c.want) {
+			t.Errorf("%s: %+v, want %+v", name, got, c.want)
+		}
+	}
+	if slices.Contains(Kinds, Calendar) {
+		t.Error("the pool lists a calendar kind")
+	}
+}

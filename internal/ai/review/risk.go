@@ -1,6 +1,11 @@
 package review
 
-import "github.com/kcl1104/geminus/internal/model"
+import (
+	"maps"
+	"slices"
+
+	"github.com/kcl1104/geminus/internal/model"
+)
 
 // Risk is a proposal's risk level (common.schema.json#/$defs/RiskLevel).
 type Risk string
@@ -42,7 +47,13 @@ func Max(a, b Risk) Risk {
 //     or removed; a constraint was added, removed or changed; a queue's
 //     buffer is smaller, or finite where it was unlimited (D-057); a
 //     resource's breakdowns were added or removed, or its time to failure
-//     or to repair changed, either way (D-057, T-048);
+//     or to repair changed, either way (D-057, T-048); a calendar was added
+//     or removed or its period, shifts (their times and labels) or
+//     exceptions changed, a resource is on another calendar or on none, or
+//     its units on shift (shift_capacity) changed; a source's release
+//     schedule was added or removed, or anything of it changed (a rate, a
+//     quantity, its period, a segment or a release), either way (D-057,
+//     T-049);
 //   - low: anything else (a name, an arrival, service or delay
 //     distribution, lognormal and Weibull included, a higher capacity, a
 //     larger or an unlimited buffer, less failure routing).
@@ -53,7 +64,10 @@ func Max(a, b Risk) Risk {
 // buffers are D-057 (H-018), from T-047, which lifted their gate, and the
 // breakdowns D-057 too, from T-048. A buffer that closes a blocking cycle,
 // or a bundle R3 refuses, never gets here: the candidate is invalid (D-050
-// R1, R3). Confidence plays no part.
+// R1, R3); the calendars and schedules D-057 lists, from T-049, which
+// lifted their gates: a candidate whose bundle never fits (R2) or whose
+// breakdown resource is on shift without its partners (R4) is invalid.
+// Confidence plays no part.
 func ServerRisk(base, candidate *model.ModelIR) Risk {
 	level := Low
 	raise := func(r Risk) { level = Max(level, r) }
@@ -74,6 +88,11 @@ func ServerRisk(base, candidate *model.ModelIR) Risk {
 		if ok && c.Type == n.Type && c.Capacity != 0 && (n.Capacity == 0 || c.Capacity < n.Capacity) {
 			raise(Medium)
 		}
+		// D-057 (T-049): any change to a release schedule, either way (a
+		// higher rate is as much an assumption as a lower one).
+		if ok && c.Type == n.Type && !sameSchedule(arrivalSchedule(n), arrivalSchedule(c)) {
+			raise(Medium)
+		}
 	}
 	baseRes, candRes := byID(base.Resources, func(r model.Resource) string { return r.ID }), byID(candidate.Resources, func(r model.Resource) string { return r.ID })
 	for id, r := range baseRes {
@@ -88,6 +107,21 @@ func ServerRisk(base, candidate *model.ModelIR) Risk {
 		// failure or to repair, in either direction (a faster repair is
 		// as much an assumption about the line as a slower one).
 		if ok && !sameBreakdowns(r.Breakdowns, c.Breakdowns) {
+			raise(Medium)
+		}
+		// D-057 (T-049): another calendar, or none, or other units on shift.
+		if ok && (c.CalendarID != r.CalendarID || !sameShiftCapacity(r.ShiftCapacity, c.ShiftCapacity)) {
+			raise(Medium)
+		}
+	}
+	// D-057 (T-049): a calendar added, removed or changed (period, shifts
+	// with their labels, exceptions); its name is presentation.
+	baseCals, candCals := byID(base.Calendars, func(c model.Calendar) string { return c.ID }), byID(candidate.Calendars, func(c model.Calendar) string { return c.ID })
+	if added(baseCals, candCals) || added(candCals, baseCals) {
+		raise(Medium)
+	}
+	for id, c := range baseCals {
+		if d, ok := candCals[id]; ok && !sameCalendar(c, d) {
 			raise(Medium)
 		}
 	}
@@ -188,6 +222,32 @@ func sameBreakdowns(a, b *model.Breakdowns) bool {
 	}
 	return sameDistribution(a.TimeToFailure.Distribution, b.TimeToFailure.Distribution) &&
 		sameDistribution(a.TimeToRepair.Distribution, b.TimeToRepair.Distribution)
+}
+
+// arrivalSchedule is a node's release schedule, nil without one.
+func arrivalSchedule(n model.Node) *model.ReleaseSchedule {
+	if n.Arrival == nil {
+		return nil
+	}
+	return n.Arrival.Schedule
+}
+
+// sameSchedule reports whether two release schedules are both absent or
+// equal in every member.
+func sameSchedule(a, b *model.ReleaseSchedule) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Process == b.Process && a.Period == b.Period && slices.Equal(a.Segments, b.Segments) && slices.Equal(a.Releases, b.Releases)
+}
+
+// sameShiftCapacity compares two shift_capacity maps (nil and empty alike).
+func sameShiftCapacity(a, b map[string]int) bool { return maps.Equal(a, b) }
+
+// sameCalendar compares two calendars' period, shifts (labels included)
+// and exceptions; the name is not compared.
+func sameCalendar(a, b model.Calendar) bool {
+	return a.Period == b.Period && slices.Equal(a.Shifts, b.Shifts) && slices.Equal(a.Exceptions, b.Exceptions)
 }
 
 // sameDistribution compares two distributions by value.

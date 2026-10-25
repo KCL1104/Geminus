@@ -53,7 +53,17 @@ func modeRules(mode provider.Mode) string {
 			"after a test of the element's id. A smaller buffer, or a finite one where there was none, is at least medium risk; a buffer that lets " +
 			"full buffers block each other in a cycle is refused (BLOCKING_CYCLE). For a resource that already has breakdowns it may replace " +
 			"/resources/<i>/breakdowns/time_to_failure/distribution and /resources/<i>/breakdowns/time_to_repair/distribution (replace only: a scenario " +
-			"never adds or removes breakdowns); any change to them, either way, is at least medium risk. Every distribution a scenario may replace can be " +
+			"never adds or removes breakdowns); any change to them, either way, is at least medium risk. For a resource on a calendar it may replace " +
+			"/resources/<i>/calendar_id (only with the id of a calendar the model has) and /resources/<i>/shift_capacity/<label> (the units on shift " +
+			"during that label's shifts, 0 to the capacity), and for a calendar /calendars/<i>/shifts and /calendars/<i>/exceptions (each a whole " +
+			"array: shifts [start, end) within the period, in order, optionally labelled; exceptions [start, end) in absolute model time, open or " +
+			"closed). For a source with a release schedule it may replace /nodes/<i>/arrival/schedule/segments/<j>/rate (expected releases per " +
+			"model time unit, at least 0) and /nodes/<i>/arrival/schedule/releases/<j>/quantity (whole entities, at least 1). All of these are " +
+			"replace only: a scenario never adds or removes a calendar, a resource's calendar, a shift_capacity label, a schedule, a segment or a " +
+			"release, and never changes a period, a segment start or a release time. Any change to a calendar, its shifts or exceptions, a " +
+			"resource's calendar or units on shift, a release rate or a quantity, either way, is at least medium risk; one after which a bundle's " +
+			"resources are never on shift together is refused (CALENDAR_INVALID), and so is one that puts a resource that breaks down on shift " +
+			"while a partner in its bundle is not (STALL_RISK). Every distribution a scenario may replace can be " +
 			"constant, exponential, triangular, empirical (an existing samples_ref), lognormal (mean, cv with 0 < cv <= 10) or weibull (shape, scale " +
 			"with 0.1 <= shape <= 20). It never adds or removes entities and never changes IDs, names, views or metadata.\n"
 	}

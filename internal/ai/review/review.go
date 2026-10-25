@@ -10,7 +10,8 @@
 // decoded-pointer allowlist of the mode, test before modify, atomic
 // application: internal/model/patch), the full validation of the candidate
 // IR, the ID allocation pool (a new node, flow or resource takes an ID of
-// its own kind from the proposal's pool), the domain pack's rules, and the
+// its own kind from the proposal's pool; a new calendar has none, D-083),
+// the domain pack's rules, and the
 // numbers in the expected effects (qualitative only: a number that is not
 // a value of the base or the candidate, or a number in a name of the base,
 // is a fabricated prediction, even one the person's intent states or the
@@ -33,6 +34,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -180,6 +182,8 @@ var poolReasons = map[idpool.Reason]string{
 	idpool.WrongKind:  "a new entity's ID is allocated for another kind of entity (D-046)",
 	idpool.UsedInBase: "a new entity's ID belongs to another entity of the base model (D-046)",
 	idpool.Missing:    "the pool check has no model to compare",
+	// D-083 (T-049): the pool allocates no calendar IDs.
+	idpool.NoCalendarIDs: "a proposal cannot add a calendar: no ID is allocated for one; a person adds calendars in the draft (D-083)",
 }
 
 // Review reviews in.Output. The error is for the server's own input only;
@@ -420,9 +424,11 @@ func nameNumbers(ir *model.ModelIR) []float64 {
 
 // values is every numeric parameter a model states: capacities, units,
 // distribution parameters (the breakdowns' and the lognormal and Weibull
-// ones included, T-048), arrival bounds, routing probabilities and
-// constraint values (views are presentation, not values; names are
-// nameNumbers').
+// ones included, T-048), arrival bounds, routing probabilities, constraint
+// values, and the calendars' periods, shift and exception times, the units
+// on shift and the release schedules' periods, segment starts, rates,
+// release times and quantities (T-049) (views are presentation, not
+// values; names are nameNumbers').
 func values(ir *model.ModelIR) []float64 {
 	var out []float64
 	add := func(p *float64) {
@@ -440,11 +446,33 @@ func values(ir *model.ModelIR) []float64 {
 		for _, d := range ir.Resources[i].Distributions() {
 			params(d.Distribution)
 		}
+		for _, label := range slices.Sorted(maps.Keys(ir.Resources[i].ShiftCapacity)) {
+			out = append(out, float64(ir.Resources[i].ShiftCapacity[label]))
+		}
+	}
+	for _, c := range ir.Calendars {
+		out = append(out, c.Period)
+		for _, s := range c.Shifts {
+			out = append(out, s.Start, s.End)
+		}
+		for _, e := range c.Exceptions {
+			out = append(out, e.Start, e.End)
+		}
 	}
 	for i := range ir.Nodes {
 		n := &ir.Nodes[i]
 		if n.Arrival != nil && n.Arrival.MaxEntities > 0 {
 			out = append(out, float64(n.Arrival.MaxEntities))
+		}
+		if n.Arrival != nil && n.Arrival.Schedule != nil {
+			s := n.Arrival.Schedule
+			out = append(out, s.Period)
+			for _, seg := range s.Segments {
+				out = append(out, seg.Start, seg.Rate)
+			}
+			for _, r := range s.Releases {
+				out = append(out, r.At, float64(r.Quantity))
+			}
 		}
 		for _, d := range n.Distributions() {
 			params(d.Distribution)

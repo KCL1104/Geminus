@@ -10,6 +10,12 @@
 // Lowercase ULIDs match the IR's ID pattern and never look like a server
 // resource ID (uppercase, D-001), so the context builder's server-ID
 // redaction leaves them alone.
+//
+// The pool holds no calendar IDs (T-049, D-083 PROPOSED; T-046 review I3):
+// a proposal may change the base's calendars (an edit, or a scenario's
+// shifts and exceptions) and point resources at them, but a calendar the
+// base does not have is refused, like a new entity without a pool ID; a
+// person adds calendars in the draft.
 package idpool
 
 import (
@@ -32,6 +38,9 @@ const (
 	Node     Kind = "node"
 	Flow     Kind = "flow"
 	Resource Kind = "resource"
+	// Calendar is a calendar's kind, which the pool allocates no IDs for
+	// (D-083): never in Kinds.
+	Calendar Kind = "calendar"
 )
 
 // Kinds lists the kinds in the schema's member order.
@@ -153,6 +162,9 @@ const (
 	UsedInBase Reason = "used_in_base"
 	// Missing: no base or candidate IR to compare.
 	Missing Reason = "missing_ir"
+	// NoCalendarIDs: a calendar the base does not have; the pool allocates
+	// no calendar IDs, so a proposal never adds one (D-083).
+	NoCalendarIDs Reason = "calendar_not_allocated"
 )
 
 // Violation is a new node, flow or resource whose ID the pool does not
@@ -209,8 +221,10 @@ func entityIDs(ir *model.ModelIR) map[string]bool {
 // applied) with its base: every node, flow and resource of the candidate
 // whose ID no entity of that kind has in the base is new, and must take an
 // ID from the pool's list of its kind that the base does not use. A changed
-// ID counts as a new entity. Violations are sorted by path. Check does not
-// validate the candidate otherwise; duplicate IDs are the validator's.
+// ID counts as a new entity. A calendar whose ID no calendar of the base
+// has is refused whatever its ID (NoCalendarIDs, D-083). Violations are
+// sorted by path. Check does not validate the candidate otherwise;
+// duplicate IDs are the validator's.
 func (p Pool) Check(base, candidate *model.ModelIR) []Violation {
 	if base == nil || candidate == nil {
 		return []Violation{{Reason: Missing}}
@@ -236,6 +250,15 @@ func (p Pool) Check(base, candidate *model.ModelIR) []Violation {
 				v.Reason = NotInPool
 			}
 			out = append(out, v)
+		}
+	}
+	baseCalendars := map[string]bool{}
+	for _, c := range base.Calendars {
+		baseCalendars[c.ID] = true
+	}
+	for i, c := range candidate.Calendars {
+		if !baseCalendars[c.ID] {
+			out = append(out, Violation{Kind: Calendar, ID: c.ID, Path: "/calendars/" + strconv.Itoa(i) + "/id", Reason: NoCalendarIDs})
 		}
 	}
 	slices.SortFunc(out, func(a, b Violation) int { return strings.Compare(a.Path, b.Path) })

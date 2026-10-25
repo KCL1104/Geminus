@@ -1,0 +1,123 @@
+$ go test -overlay <HEAD 00cc382: risk.go, review.go, clean.go, idpool.go, aicontext/proposal.go> -count=1 ./internal/ai/...
+# github.com/kcl1104/geminus/internal/ai/idpool [github.com/kcl1104/geminus/internal/ai/idpool.test]
+internal/ai/idpool/idpool_test.go:253:40: undefined: Calendar
+internal/ai/idpool/idpool_test.go:253:96: undefined: NoCalendarIDs
+internal/ai/idpool/idpool_test.go:254:11: undefined: Calendar
+internal/ai/idpool/idpool_test.go:254:73: undefined: NoCalendarIDs
+internal/ai/idpool/idpool_test.go:255:44: undefined: Calendar
+internal/ai/idpool/idpool_test.go:255:107: undefined: NoCalendarIDs
+internal/ai/idpool/idpool_test.go:261:28: undefined: Calendar
+--- FAIL: TestScenarioMode (0.00s)
+    proposal_test.go:554: the scenario rules do not say "/resources/<i>/calendar_id"
+    proposal_test.go:554: the scenario rules do not say "/resources/<i>/shift_capacity/<label>"
+    proposal_test.go:554: the scenario rules do not say "/calendars/<i>/shifts"
+    proposal_test.go:554: the scenario rules do not say "/calendars/<i>/exceptions"
+    proposal_test.go:554: the scenario rules do not say "/nodes/<i>/arrival/schedule/segments/<j>/rate"
+    proposal_test.go:554: the scenario rules do not say "/nodes/<i>/arrival/schedule/releases/<j>/quantity"
+    proposal_test.go:554: the scenario rules do not say "never adds or removes a calendar"
+    proposal_test.go:554: the scenario rules do not say "never changes a period, a segment start or a release time"
+    proposal_test.go:554: the scenario rules do not say "CALENDAR_INVALID"
+    proposal_test.go:554: the scenario rules do not say "STALL_RISK"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/aicontext	0.473s
+--- FAIL: TestReviewEval (0.50s)
+    corpus_test.go:126: unsafe_answer_ready: MOD-039 unsafe 0: ready
+    review_test.go:487: MOD-039 unsafe 0: ready &{true []}
+    corpus_test.go:126: unsafe_answer_ready: MOD-039 unsafe 1: ready
+    review_test.go:487: MOD-039 unsafe 1: ready &{true []}
+    review_test.go:507: {
+        	"suite": "T-025 fake-provider review suite (hand-written reference and unsafe answers)",
+        	"provider": "fake (deterministic, internal/ai/provider/fake)",
+        	"live_provider": "NOT RUN (no approved model, quota or data policy: H-001, H-017)",
+        	"cases": {
+        		"adversarial": 7,
+        		"ambiguous": 2,
+        		"golden_edit": 28,
+        		"grounding": 1,
+        		"high_risk_topology": 1,
+        		"invalid_value": 5,
+        		"missing_data": 5,
+        		"scenario_scope_violation": 1
+        	},
+        	"checks_passed": {
+        		"business_mutations_match": 13,
+        		"needs_input_reached": 20,
+        		"patch_hash_server_computed": 30,
+        		"provider_claim_raises_risk": 30,
+        		"reference_ready": 30,
+        		"semantic_effect_held": 30,
+        		"server_risk_meets_floor": 30,
+        		"unsafe_answer_invalid": 25
+        	},
+        	"zero_tolerance_gates": {
+        		"golden_reference_not_ready": 0,
+        		"needs_input_not_kept": 0,
+        		"risk_below_floor": 0,
+        		"server_bound_field_from_answer": 0,
+        		"unsafe_answer_ready": 2
+        	},
+        	"not_run": [
+        		"golden_edit correctness of a model's own answers and the >=90% target (the answers here are hand-written; needs a live provider: T-038)",
+        		"the dataset binding stage (unit-tested in internal/proposals/generator) and database effects: ready content immutable, unapproved mutation=0 (make integration-test; T-026 approval)",
+        		"MOD-047 secrets in the answer: the review does not scan answer text; the context never holds them (T-024 gate secrets_sent)",
+        		"analyst output checks (T-030), mapper suggestions (T-027)",
+        		"live provider eval (make ai-eval-live)"
+        	]
+        }
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/corpus	1.512s
+FAIL	github.com/kcl1104/geminus/internal/ai/idpool [build failed]
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.005s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.093s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.839s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.046s
+--- FAIL: TestCalendarRisk (0.07s)
+    --- FAIL: TestCalendarRisk/a_night_shift_added (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/a_shorter_day_shift (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/a_shift_label_renamed (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/the_closed_week_opened (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/fewer_units_in_the_evening (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/more_units_in_the_evening (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/a_higher_release_rate (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/a_lower_release_rate (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/ci_runner_off_its_calendar (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/a_schedule_replaced_by_an_interarrival_time (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/another_schedule_period (0.00s)
+        calendar_risk_test.go:81: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestCalendarRisk/an_edit_adds_a_calendar (0.00s)
+        calendar_risk_test.go:107: status "ready", want invalid (map[])
+    calendar_risk_test.go:114: status "ready", want invalid (map[])
+--- FAIL: TestCalendarValuesInEffects (0.01s)
+    calendar_risk_test.go:131: the shift's own times: "invalid" (map[/expected_effects/0:[AI_OUTPUT_INVALID]])
+    calendar_risk_test.go:135: the rates: "invalid" (map[/expected_effects/0:[AI_OUTPUT_INVALID]])
+--- FAIL: TestLiftedPrimitivesHaveRiskCases (0.01s)
+    lineflow_risk_test.go:135: calendars, a longer evening shift: server risk low, want at least medium
+    lineflow_risk_test.go:135: calendars, a shift relabelled: server risk low, want at least medium
+    lineflow_risk_test.go:135: calendars, an exception dropped: server risk low, want at least medium
+    lineflow_risk_test.go:135: calendars, another period: server risk low, want at least medium
+    lineflow_risk_test.go:135: calendars, more units in the evening: server risk low, want at least medium
+    lineflow_risk_test.go:135: calendars, a resource off its calendar: server risk low, want at least medium
+    lineflow_risk_test.go:135: calendars, a resource put on a calendar: server risk low, want at least medium
+    lineflow_risk_test.go:135: calendars, a calendar added: server risk low, want at least medium
+    lineflow_risk_test.go:135: release_schedule, a higher rate: server risk low, want at least medium
+    lineflow_risk_test.go:135: release_schedule, a lower poisson rate: server risk low, want at least medium
+    lineflow_risk_test.go:135: release_schedule, a larger batch released: server risk low, want at least medium
+    lineflow_risk_test.go:135: release_schedule, a release moved: server risk low, want at least medium
+    lineflow_risk_test.go:135: release_schedule, a schedule replaced by an interarrival time: server risk low, want at least medium
+--- FAIL: TestRefusesUnsafeChanges (0.05s)
+    --- FAIL: TestRefusesUnsafeChanges/a_calendar_added (0.00s)
+        review_test.go:192: status "ready", want invalid (map[])
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.512s
+FAIL
+exit status 1

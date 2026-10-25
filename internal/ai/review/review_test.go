@@ -181,7 +181,9 @@ func TestRefusesUnsafeChanges(t *testing.T) {
 		// is a proposal like any distribution (TestBreakdownRisk), one out of
 		// range (cv > 10, D-075) is invalid.
 		{"lognormal cv out of range", `[{"op":"test","path":"/nodes/1/id","value":"code_review"},{"op":"replace","path":"/nodes/1/service_time/distribution","value":{"type":"lognormal","mean":3,"cv":11}}]`, validate.DistributionInvalid, "/nodes/1/service_time/distribution"},
-		{"calendars before their kernel", `[{"op":"add","path":"/calendars","value":[{"id":"c","period":1440,"shifts":[{"start":0,"end":480}]}]}]`, validate.PrimitiveNotSupported, "/calendars"},
+		// T-049 lifted the calendars' gate; an AI proposal still never adds
+		// one: the pool allocates no calendar IDs (D-083).
+		{"a calendar added", `[{"op":"add","path":"/calendars","value":[{"id":"c","period":1440,"shifts":[{"start":0,"end":480}]}]}]`, IDPoolViolation, "/calendars/0/id"},
 		{"dangling reference", `[{"op":"test","path":"/flows/0/id","value":"f1"},{"op":"replace","path":"/flows/0/to","value":"nowhere"}]`, validate.UnknownReference, "/flows/0/to"},
 	}
 	for _, c := range cases {

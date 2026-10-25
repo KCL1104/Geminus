@@ -13,8 +13,9 @@ import (
 // D-057's server risk for the line-flow parameters (TWIN_IR_SPEC §6):
 // shrinking a buffer or making it finite, and any breakdown, changeover,
 // calendar, release or batch parameter, is at least medium; a larger or an
-// unlimited buffer is low. ServerRisk does not read those members yet: the
-// rules come with the task that lifts each primitive's gate (T-047–T-051).
+// unlimited buffer is low. ServerRisk reads each member from the task that
+// lifts its primitive's gate (T-047 buffers, T-048 breakdowns, T-049
+// calendars and release schedules; changeovers and batches with T-050).
 // Until then the primitive gate refuses the candidate and the review never
 // computes its risk (T-046 review round 1, L2).
 //
@@ -73,6 +74,37 @@ var lineFlowRiskCases = map[validate.Primitive][]lineFlowRiskCase{
 			shape, scale := 3.0, 250.0
 			c.Nodes[1].ServiceTime.Distribution = model.Distribution{Type: model.DistWeibull, Shape: &shape, Scale: &scale}
 		}, Low},
+	},
+	// T-049 (D-057): any calendar parameter, either way. Calendar two_shift
+	// has day [360, 840) and evening [840, 1320) and two exceptions;
+	// resources 1 (line: day 2, evening 1) and 2 (operator) are on it.
+	validate.Calendars: {
+		{"a longer evening shift", func(c *model.ModelIR) { c.Calendars[0].Shifts[1].End = 1380 }, Medium},
+		{"a shift relabelled", func(c *model.ModelIR) { c.Calendars[0].Shifts[0].Label = "early" }, Medium},
+		{"an exception dropped", func(c *model.ModelIR) { c.Calendars[0].Exceptions = c.Calendars[0].Exceptions[:1] }, Medium},
+		{"another period", func(c *model.ModelIR) { c.Calendars[0].Period = 2880 }, Medium},
+		{"more units in the evening", func(c *model.ModelIR) { c.Resources[1].ShiftCapacity = map[string]int{"day": 2, "evening": 2} }, Medium},
+		{"a resource off its calendar", func(c *model.ModelIR) { c.Resources[2].CalendarID = "" }, Medium},
+		{"a resource put on a calendar", func(c *model.ModelIR) { c.Resources[0].CalendarID = "two_shift" }, Medium},
+		{"a calendar added", func(c *model.ModelIR) {
+			c.Calendars = append(c.Calendars, model.Calendar{ID: "night", Period: 1440, Shifts: []model.Shift{{Start: 0, End: 360}}})
+		}, Medium},
+		{"the calendar renamed", func(c *model.ModelIR) { c.Calendars[0].Name = "Day and evening" }, Low},
+	},
+	// T-049 (D-057): any release-schedule parameter, either way. Nodes 5
+	// (release_a, deterministic 0.5 on [360, 1320)), 6 (release_b, a table
+	// of 20 at 360 and 840) and 7 (rush_b, poisson 0.05).
+	validate.ReleaseSchedule: {
+		{"a higher rate", func(c *model.ModelIR) { c.Nodes[5].Arrival.Schedule.Segments[1].Rate = 0.6 }, Medium},
+		{"a lower poisson rate", func(c *model.ModelIR) { c.Nodes[7].Arrival.Schedule.Segments[0].Rate = 0.04 }, Medium},
+		{"a larger batch released", func(c *model.ModelIR) { c.Nodes[6].Arrival.Schedule.Releases[0].Quantity = 25 }, Medium},
+		{"a release moved", func(c *model.ModelIR) { c.Nodes[6].Arrival.Schedule.Releases[1].At = 900 }, Medium},
+		{"a schedule replaced by an interarrival time", func(c *model.ModelIR) {
+			mean := 30.0
+			a := *c.Nodes[7].Arrival
+			a.Schedule, a.Distribution = nil, model.Distribution{Type: model.DistExponential, Mean: &mean}
+			c.Nodes[7].Arrival = &a
+		}, Medium},
 	},
 }
 
