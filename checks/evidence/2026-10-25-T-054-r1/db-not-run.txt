@@ -1,0 +1,34 @@
+NOT RUN in this worktree (T-054 review round 1, branch t054-r1): there is no PostgreSQL server and no
+GEMINUS_TEST_DATABASE_URL (environment.txt), so no SQL ran and every DB-backed Go test skipped with
+"NOT RUN: set GEMINUS_TEST_DATABASE_URL ...". The coordinator runs them on a disposable dt_test_* database.
+
+Targets
+  make integration-test   (make db-test, then make db-go-test; no migration or SQL suite changed)
+
+DB-backed Go tests changed in this round (each gains a request that ends while the store fails on its own: review L2)
+  internal/models:              TestPublishSnapshotStorageFailure  (ended while the candidate's read fails: 503 without
+                                details, nothing written)
+                                TestDraftSnapshotStorageFailure    (patchDraft and resetDraft, the same)
+  internal/proposals/approval:  TestApprovalDraftSyncStorageFailure (ended while the draft sync's read fails, and while
+                                the revalidation's read fails: 503 without details, nothing committed)
+  internal/api:                 TestRunSnapshotStorageFailure      (ended while the snapshot read fails, through the
+                                handler cmd/api serves, called in process so the test can end the request)
+  internal/scenarios:           TestScenarioDatasets               (a store that ends the request and fails: the error is
+                                the context's, no storage failure, Refused passes it to httpapi; the storage failure is
+                                now checked with datasets.StorageFailure)
+
+DB-backed Go tests whose assertions moved to the shared rule (same meaning)
+  internal/proposals/approval:  TestApprovalFreezesTheManifest (storage failure via datasets.StorageFailure), and every
+                                test that uses typed() (TestApprovalFreezesTheManifest's server-error case among them)
+
+Existing DB-backed Go tests whose code path changed (rerun with the rest of make db-go-test)
+  internal/models, internal/runs, internal/api, internal/proposals/approval, internal/scenarios: every test that reaches
+  the dataset binding stage (datasets.Resolve now returns *datasets.ReadError for a read failure; each route's mapping
+  and log use datasets.StorageFailure); internal/runs/runner and internal/proposals/generator (worker side) call
+  Resolve too: their handling is unchanged (same error text, same errors.Is), their DB tests rerun with db-go-test.
+
+DB mutants (checks/evidence/2026-10-25-T-054-r1/mutate.py db; refuses to run without GEMINUS_TEST_DATABASE_URL)
+  db-runs-freeze-ignores-the-request, db-approval-revalidation-ignores-the-request, db-scenarios-ignore-the-request,
+  db-models-not-logged, db-runs-not-logged, db-approval-not-logged, db-models-draft-check-ignored,
+  db-approval-draft-sync-ignored
+  (each compiles: mutate.py compile, mutants-db-compile.log; files restored)

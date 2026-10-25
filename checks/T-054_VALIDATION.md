@@ -2,7 +2,7 @@
 
 **日期：2026-10-25｜狀態：兩輪的實作與 unit 測試完成；本 worktree 沒有 PostgreSQL，新增與受影響的 DB-backed 測試、DB mutant 與 `make integration-test` 都是 NOT RUN（由 coordinator 執行）；T-054 在 tasks.json 仍為 `not_started`（agent 不改狀態）。｜需求：REQ-003、REQ-011｜Gate：D-061、D-069 都已 APPROVED（H-019、H-021），本任務實作的是 H-022（決策頁 Q4）對 D-069 (b) 的補充，第 2 輪是 coordinator 依 Q4 的「一律」所做的延伸；沒有新的決策，也沒有改任何決策的狀態。｜驗收測試：TEST-009（route 的錯誤回答；另見「差異」）**
 
-**本報告分兩輪。** 第 1 輪（fdb6cd2–2360c37）：publishVersion 與 createSimulation。第 2 輪（8fea25b 起，見最後的「第 2 輪」一節）：coordinator 決定依 owner 的 Q4「一律改為 503 … 讓 client 知道可以稍後重試」，在本任務中延伸到 patchDraft、resetDraft 與 approveProposal 的 draft 同步。第 1 輪各節保留當時的紀錄；被第 2 輪取代的敘述標有「（第 2 輪已改）」。
+**本報告分兩輪，另加 review 第 1 輪的修正（見最後的「Review 第 1 輪」一節：只把讀取失敗當成 503、request 結束時保留 context 錯誤、共用的規則；patchDraft 與 resetDraft 由 D-087（H-023）批准）。** 第 1 輪（fdb6cd2–2360c37）：publishVersion 與 createSimulation。第 2 輪（8fea25b 起，見最後的「第 2 輪」一節）：coordinator 決定依 owner 的 Q4「一律改為 503 … 讓 client 知道可以稍後重試」，在本任務中延伸到 patchDraft、resetDraft 與 approveProposal 的 draft 同步。第 1 輪各節保留當時的紀錄；被第 2 輪取代的敘述標有「（第 2 輪已改）」。
 
 範圍依 tasks.json 與 coordinator 的指示：`publishVersion` 與 `createSimulation` 的 dataset binding stage 讀不到或無法驗證 snapshot（infrastructure 錯誤，不是資料的 issue）時，與 `approveProposal`、`createManualScenario` 相同回 503 `SERVICE_UNAVAILABLE`，`details[0].code` 為 `DATASET_STORAGE_FAILED`；原因只寫入 log；request 本身被取消或逾時照一般的 context 錯誤處理；什麼都不寫入。Contract first（OpenAPI 的 503 與範例），測試先紅後綠，沿用 approval 與 scenarios 既有的 `bindingFailure`／`DatasetStorageError` 模式。
 
@@ -212,3 +212,79 @@ Branch `t054`，從 2f4c33f 開出，沒有 push。
 Coordinator 把八個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（H-022 的 2f4c33f 之後，沒有衝突）：fdb6cd2 → 042ad4f、3093ebb → b859054、d347aec → 127506d、2360c37 → 9cd50d9、8fea25b → 9575125、e87067a → 5f1d1b6、98d233a → 07f1217、063018b → dfe9723。第 2 輪把 503 延伸到 patchDraft、resetDraft 與批准時的 draft 同步，是 coordinator 依 H-022 Q4 的選項文字（「一律改為 503，讓 client 知道可以稍後重試」）所做的決定，已記在 D-069 的 H-022 補充。
 
 之後在 dfe9723 的 tree 上（`coordinator-environment.txt`），`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`backend-race` 與新的 `dt_test_t054` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP；含 `TestPublishSnapshotStorageFailure`、`TestDraftSnapshotStorageFailure`、`TestApprovalDraftSyncStorageFailure`、`TestRunSnapshotStorageFailure` 與受影響的既有 DB 測試）都是 exit 0。10 個 DB mutant 在匯出的副本上以同一個 database 執行：10 個都被測試失敗擋下（`coordinator-mutants-db.log`、`coordinator-mutants-db-run.txt`）。本報告 NOT RUN 中的 DB 項目因此都已執行；OpenAPI 官方 validator 仍為 NOT RUN。Log 與 exit code 在 `checks/evidence/2026-10-25-T-054/coordinator-*`。
+
+## Review 第 1 輪（在 272aa3d 上；修正在 branch `t054-r1`，從 79262a5 開出）
+
+**結果**：CHANGES REQUESTED 只因 M1（決策紀錄），coordinator 已自行處理：owner 以 D-087（H-023，79262a5）批准 patchDraft 與 resetDraft 的 503；D-069 的補充與 T-054 的 title、scope、planned_outputs 由 coordinator 更新，本輪沒有改它們。程式碼判定可接受；本輪修正 L1–L3 與 I1（I2、I3 不需處理）。Reviewer 的 probe（`zz_review_probe_test.go`）以 `go test -overlay` 執行，從未加進 tree：修正前 `probe-before.log`（79262a5），修正後 `probe-after.log`（probe 中的 `models.BindingFailure` 已不存在，改呼叫共用的 `datasets.Failure`，其餘相同）。
+
+### Commit（接在 79262a5 之後，沒有 push）
+
+| Commit | 內容 |
+|---|---|
+| 41c8417 | L1–L3 的程式與測試：`internal/storage/datasets` 的 `ReadError`、`Failure`、`StorageFailure`（`failure.go`）與 `load` 只對讀取失敗回 `ReadError`；`httpapi.DatasetStorageFailed`；models、runs、approval、scenarios 改用共用的規則（刪除四份 `DatasetStorageError`／`bindingFailure` 與 approval 的 `storageCause`）；測試（先紅後綠）；evidence：`environment.txt`、probe 前後、red／green log、`mutate.py`、mutant log |
+| 2415aaa | 文件與契約說明：API_DATABASE §4（分類、涵蓋的讀取、D-087、I1 的不涵蓋）、§6；OpenAPI 的 503 說明（只限從 storage 讀不到 snapshot；不再驗證的 snapshot 是 422 或 issue；binding stage 其他失敗為 500；以 D-087／D-069 (b) 取代「coordinator 延伸」）。只改說明，回應與範例不變 |
+| （本 commit） | 本節、各指令的 log、`exit-codes.txt`、`db-not-run.txt`、`make spec-check` 重產的 `checks/*.json` |
+
+### 逐項處理
+
+- **L1（server 錯誤被當成可重試的 503）**：`datasets.Resolve` 的 `load` 只在 storage 讀取失敗（Open、Read 或 Close，`ErrNotFound` 以外）時回 `*datasets.ReadError{DatasetVersionID, Err}`（文字與之前相同，`Unwrap` 讓 `errors.Is`／`errors.As` 找到 storage 的原因）。`datasets.StorageFailure(err)` 只認 request 仍在時的 `ReadError`（`errors.Is` 為 `Canceled`／`DeadlineExceeded` 的不算）。`Resolve` 其他的 error（`datasets.go` 的 manifest 排序與 hash、binding 的編碼與 schema、snapshot 的 schema 驗證與 decode）都不是 `ReadError`，各 route 不再對應，交給 httpapi：500 `INTERNAL_ERROR`，以 ERROR 記下原因。六個 route（publishVersion、patchDraft、resetDraft、approveProposal、createManualScenario、createSimulation）都經這個規則。與 worker 的 generator 一致：可重試的只有讀取失敗（`snapshots.go` 的 preload），其餘為不重試的錯誤。Worker 端（runner、generator）呼叫同一個 `Resolve`，只多了型別，錯誤文字與 `errors.Is` 不變，處理沒有改。
+- **L2（request 已結束但 storage 回自己的錯誤 → 500）**：`datasets.Failure(ctx, err)`：request 已結束（`ctx.Err() != nil`）而 `err` 不是那個 context 錯誤時，回 `errors.Join(ctx.Err(), err)`；否則原樣（`err` 為 nil 時為 nil）。各 route 在呼叫 `Resolve` 處使用它（models 的 `check`、runs 的 `freeze`、approval 的 revalidation、scenarios 的 `Create`；approval 的 draft 同步經 models 的 `check`），所以 request 結束時一律是 context 錯誤：httpapi 回 503 `the request did not complete in time`，沒有 details，不記成 storage 失敗，原 error 仍在 `errors.Is` 中。Reviewer 的 mutant `models-binding-returns-ctx-err` 對應的行為（只回 store 的錯誤）現在由 `TestFailure`（`datasets-ended-request-keeps-the-store-error`）、`TestCheckStorageFailure` 與各 route 的 `TestBindingFailure` 殺掉。T-028 的 scenarios 同樣修正。
+- **L3（四份副本）**：四個 package 原本就 import `internal/storage/datasets` 與 `internal/httpapi`，所以把型別與分類規則放在 `internal/storage/datasets`（`ReadError`、`Failure`、`StorageFailure`），503 的建構放在 `internal/httpapi`（`DatasetStorageFailed(message)`，每次回新的 `*Error`）。各 route 只剩一個 `_, storage := datasets.StorageFailure(err)` 的 case 與 handler 的 `if read, ok := datasets.StorageFailure(err); ok { log }`；approval 的 `storageCause` 刪除，revalidation 與 draft 同步是同一個 `ReadError`。沒有新的 package 依賴：`make architecture-check` PASS（75 packages、17 rules）；`internal/storage/datasets` 的 `TestDependencies` 仍通過（只多了標準庫的 `context`、`errors`）。每個 package 保留 `TestBindingFailure`，現在是該 route 的對應表（經 httpapi 寫出），共用的規則表是 `internal/storage/datasets` 的 `TestFailure`。
+- **I1**：API_DATABASE §4 記下 run trace 下載（`internal/runs/runs.go` 讀 trace artifact，約 684 行）與 import error report 下載（`internal/import/upload/resource.go:205`）的 object storage 讀取失敗不在範圍內，仍是 500（D-087 已記）。
+- **I2、I3**：不處理（reviewer 判定）。
+- **另外**：OpenAPI 的 503 說明原本寫「could not read or verify」與「the coordinator extended」；改為只限從 storage 讀不到（不再驗證的 snapshot 是 422 或 draft 的 issue）並引用 D-087／D-069 (b)。**D-069 的補充**（coordinator 的，本輪不改）仍寫著 `internal/models` 的 `bindingFailure`、`internal/runs` 的 `bindingFailure` 與 approval 的 `storageCause`；這些已由 `internal/storage/datasets` 的 `Failure`／`StorageFailure` 取代，請 coordinator 更新那一句。
+
+### 測試（本輪）
+
+| 測試 | 種類 | 驗證 |
+|---|---|---|
+| `internal/storage/datasets` `TestReadError`（新） | unit | Open、Read、Close 失敗都是 `ReadError`，帶 dataset version、`errors.Is` 找到原因、文字不變、`StorageFailure` 回同一個；不存在是 issue；讀取的 deadline 是 `ReadError` 但不是 storage 失敗 |
+| `internal/storage/datasets` `TestFailure`（新，共用的規則表） | unit | 11 種（request 仍在／取消／逾時 × 讀取失敗、server 錯誤、decode 失敗、取消或逾時的讀取）：`Failure` 是否原樣、`errors.Is` 的 context 與原因、`StorageFailure`；nil 在三種 context 下仍是 nil |
+| `internal/httpapi` `TestDatasetStorageFailed`（新） | unit | code、status 503、message、details；寫出時沒有 log；每次是新的 `*Error` |
+| `TestBindingFailure`（models、runs、approval、scenarios，改寫） | unit | 該 route 的 `Refused(datasets.Failure(ctx, err))` 經 httpapi 寫出：讀取失敗 503 `DATASET_STORAGE_FAILED`、沒有 ERROR log；server 錯誤與 decode 失敗 500 `INTERNAL_ERROR`、有 ERROR log（models 另檢查 log 有原因）；讀取的 deadline、取消或逾時的 request（store 自己的錯誤或 server 錯誤）503、沒有 details、沒有 ERROR log；body 不含原因（approval 另有 draft 同步的讀取失敗） |
+| `TestRefused`／`TestRefusedDatasetStorage`／`TestRefusedDraftSyncStorage`（更新） | unit | 輸入改為 `datasets.ReadError`；server 錯誤與 `errors.Join(context.Canceled, ReadError)` 原樣交給 httpapi；scenarios 另檢查 503 的 message（mutant 第 1 次執行時存活，見下） |
+| `internal/models` `TestCheckStorageFailure`（更新） | unit | `check` 回 `ReadError`（dataset version 正確）；request 在 store 失敗時結束 → `Canceled` 與原因都在、不是 storage 失敗 |
+| `TestPublishSnapshotStorageFailure`、`TestDraftSnapshotStorageFailure`（models）、`TestApprovalDraftSyncStorageFailure`（approval：draft 同步與 revalidation 兩次）、`TestRunSnapshotStorageFailure`（`internal/api`，in-process 呼叫 cmd/api 的 handler）、`TestScenarioDatasets`（scenarios，service 層） | DB；**NOT RUN** | 加上「store 失敗時 request 結束」：503 沒有 details（scenarios：error 是 context 的、`Refused` 原樣交給 httpapi）、不記成 storage 失敗、什麼都沒寫；`TestApprovalFreezesTheManifest`、`typed()` 改用 `datasets.StorageFailure`（同義） |
+
+### 先紅後綠（本輪）
+
+- **紅**（`unit-red.log`，exit 1）：先加入 `internal/storage/datasets` 的 stub，編碼 reviewer 指出的行為：`ReadError` 型別存在但 `load` 不回它、`Failure` 原樣回傳（不 join）、`StorageFailure` 把所有非 context 的 error 當成 storage 失敗；`httpapi.DatasetStorageFailed` 直接實作。四個 package 先改用這組 API（行為等於 stub），再寫測試：`TestReadError`、`TestFailure`、models 的 `TestRefused`／`TestRefusedDatasetStorage`／`TestBindingFailure`／`TestCheckStorageFailure`、runs 的 `TestRefused`／`TestBindingFailure`／`TestRefusedDatasetStorage`、approval 的 `TestRefused`／`TestBindingFailure`／`TestRefusedDraftSyncStorage`、scenarios 的 `TestBindingFailure`／`TestRefused` 失敗；`TestDatasetStorageFailed`（實作已在）與既有的 `TestResolveErrors`、`TestStoreReadErrors` 通過。
+- **綠**（`unit-green.log`，exit 0）：實作 `load` 的 `ReadError`、`Failure` 的 join、`StorageFailure` 只認 `ReadError` 之後全部通過。
+- **Probe**：修正前 P1（request 已結束、store 自己的錯誤）500 + ERROR、P2（server 錯誤）503 `DATASET_STORAGE_FAILED` 沒有 ERROR log（`probe-before.log`）；修正後 P1 為 503 `the request did not complete in time`、P2 為 500 + ERROR log（`probe-after.log`）。
+
+### Mutation（本輪）
+
+`checks/evidence/2026-10-25-T-054-r1/mutate.py`（針對本輪後的程式；第 1、2 輪的 harness 在 `checks/evidence/2026-10-25-T-054/`）。
+
+- **unit（27 個，全部 KILLED，`mutants-unit.log`）**：datasets：讀取失敗不帶型別、不帶 dataset version、server 錯誤當成讀取失敗、`StorageFailure` 忽略取消或逾時、request 結束時只回 store 的錯誤（reviewer 的 mutant）、只回 context 的錯誤、重複 join、request 仍在也 join、nil 被 join；httpapi：別的 code、別的 reason、500、固定的 message；models：`check` 不用 `Failure`、不對應、所有 error 都當成 storage、message；runs、approval、scenarios：不對應、所有 error 都當成 storage、message。第 1 次執行（`mutants-unit-run1.log`）26／27，`scenarios-says-changed` 存活：scenarios 的測試沒有檢查 503 的 message；在 `TestRefused` 加上 message 的斷言（加強，不是放寬）後第 2 次 27／27。
+- **DB（8 個，NOT RUN，都能編譯，`mutants-db-compile.log`）**：runs 的 `freeze`、approval 的 revalidation、scenarios 的 `Create` 不用 `Failure`（→ request 結束時 500 或不是 context 錯誤）；models、runs、approval 的 handler 不記 log；`syncDraft` 吞掉 draft 檢查的錯誤；approval 吞掉 `Advance` 的錯誤。
+
+### 實際執行結果（本輪，在 41c8417／2415aaa 上）
+
+| 指令 | Exit | 結果 |
+|---|---|---|
+| `go test -overlay <probe> -run '^TestReviewProbe' ./internal/models/`（修正前，79262a5） | 0 | P1：request 已結束、store 自己的錯誤 → 500 + ERROR log；P2：兩種 server 錯誤 → 503 `DATASET_STORAGE_FAILED`、沒有 ERROR log（`probe-before.log`） |
+| `go test -count=1 -v -run '^(TestReadError\|TestFailure\|TestDatasetStorageFailed\|TestBindingFailure\|TestCheckStorageFailure\|TestRefusedDatasetStorage\|TestRefusedDraftSyncStorage\|TestRefused\|TestResolveErrors\|TestStoreReadErrors)$'`（datasets、httpapi、models、runs、approval、scenarios） | 1 → 0 | 紅（stub）：datasets 2、models 4、runs 3、approval 3、scenarios 2 個失敗；綠：全部 PASS，DB 測試 SKIP（`unit-red.log`、`unit-green.log`） |
+| 同一個 probe（修正後，`BindingFailure` 改為 `datasets.Failure`） | 0 | P1 → 503 `the request did not complete in time`、沒有 log；P2 → 500 `INTERNAL_ERROR` + ERROR log（`probe-after.log`） |
+| `mutate.py … unit` | 0 | 第 1 次 26／27（`mutants-unit-run1.log`），加強 scenarios 的斷言後第 2 次 27／27 KILLED（`mutants-unit.log`） |
+| `mutate.py … compile` | 0 | 8 個 DB mutant 都能編譯，檔案已還原（`mutants-db-compile.log`） |
+| `make backend-test` | 0 | 先 `go clean -testcache`；gofmt、`go vet`、`go test`（`GEMINUS_FULL_DIFFERENTIAL=1`）：63 個 package `ok`，沒有 FAIL；DB-backed 測試 SKIP（`backend-test.log`） |
+| `go test -race -count=1 ./internal/storage/datasets/... ./internal/httpapi/... ./internal/models/... ./internal/runs/... ./internal/proposals/... ./internal/scenarios/... ./internal/api/...` | 0 | 10 個 package `ok`，沒有 data race 報告（`race-touched.log`） |
+| `make architecture-check` | 0 | `PASS architecture: 75 packages, 17 rules, 16 build configurations`（`architecture-check.log`） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | 最後執行（本節寫好之後）：`PASS_LIMITED_SPEC_CHECKS`（42 個 operation，inline 範例依 schema 驗證，resolved local ref 843）；planning、decisions、TS 契約、hash、db tests 都 PASS（`spec-check.log`）；`checks/*.json` 沒有變動 |
+| `make frontend-test` | — | NOT RUN（本輪沒有改 TS） |
+| `make integration-test`、`mutate.py … db` | — | **NOT RUN**（沒有 PostgreSQL） |
+
+### NOT RUN（本輪）
+
+- `make integration-test`（`db-test`、`db-go-test`；沒有改 migration 或 SQL suite）。
+- 改過的 DB-backed 測試：`internal/models` 的 **`TestPublishSnapshotStorageFailure`**、**`TestDraftSnapshotStorageFailure`**；`internal/proposals/approval` 的 **`TestApprovalDraftSyncStorageFailure`**、**`TestApprovalFreezesTheManifest`**（及所有用 `typed()` 的測試）；`internal/api` 的 **`TestRunSnapshotStorageFailure`**；`internal/scenarios` 的 **`TestScenarioDatasets`**。
+- 程式路徑受影響、應隨 `db-go-test` 重跑的既有 DB 測試：models、runs、api、approval、scenarios 中所有經過 dataset binding stage 的測試；worker 端的 runner 與 generator（`Resolve` 的錯誤型別改變，處理不變）。
+- 8 個 DB mutant（`db-not-run.txt`）；`make frontend-test`（本輪沒有改 TS）；完整的 `make backend-race`（只跑受影響的 package）；OpenAPI 官方 validator。
+
+### 殘留風險（本輪）
+
+- **DB 測試只確認能編譯**：「store 失敗時 request 結束」的案例在 store 的讀取中取消 request 的 context；transaction 之後的 rollback 用 `context.WithoutCancel`，錯誤經 `tenant.DB.Run` 與 `postgres.Classify` 原樣回傳（不是 pg error），但這要由 coordinator 實際執行確認。`TestRunSnapshotStorageFailure` 的這個案例直接呼叫 `e.srv.Config.Handler.ServeHTTP`（同一個 handler，不經網路），因為經 HTTP client 取消的 request 收不到回答。
+- **分類的邊界**：`ReadError` 包含 Store 回的所有錯誤（`ErrNotFound` 以外），所以 Store 實作自己的 bug（例如 generator 的 `copies` 回的 `errNotCopied`）也是「讀取失敗」；API 的 Store（`snapshots.Store`）只回 object storage 的錯誤與 `ErrNotFound`，所以 API route 上這個邊界不會把 server 錯誤當成可重試；generator 不經 `StorageFailure`，它自己的 `verify` 對 `Resolve` 的任何 error 都不重試（不變）。
+- **D-069 補充的舊名稱**：見「逐項處理」的「另外」，留給 coordinator。
+- **其餘**：與前兩輪相同（DB 測試、T-018 之前部署的 model route 碰不到這條路徑、worker 端有自己的 failure code）。

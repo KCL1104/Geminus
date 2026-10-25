@@ -1,0 +1,11 @@
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	6.576s
+ok  	github.com/kcl1104/geminus/internal/httpapi	2.387s
+ok  	github.com/kcl1104/geminus/internal/models	1.432s
+ok  	github.com/kcl1104/geminus/internal/runs	1.280s
+ok  	github.com/kcl1104/geminus/internal/runs/runner	1.077s
+ok  	github.com/kcl1104/geminus/internal/proposals	2.019s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	4.837s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	3.895s
+ok  	github.com/kcl1104/geminus/internal/scenarios	2.917s
+ok  	github.com/kcl1104/geminus/internal/api	1.747s
+go test -race (touched packages) exit=0
