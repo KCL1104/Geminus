@@ -101,6 +101,8 @@ Reject：ready 或 needs_input 轉 rejected（決定者、時間、comment），
 
 mode=scenario 的 patch 限於既有 capacity、arrival/service/delay distribution、routing probability 等參數。批准只建立 what-if 描述，**不會 enqueue run**。必須由 authenticated human 另 POST simulations，引用 scenario_id；run 再凍結 base + patch/config/datasets。
 
+T-028 實作（`internal/scenarios`；D-078–D-080 PROPOSED）：人工 scenario（createManualScenario）與 AI scenario 用同一套 patch 規則（D-021），不同的只有 provider 回答才有的規則（ID pool、expected effects、risk、必須改變模型）；`TestTheAIScenarioModeTakesTheSameRules` 對同一組 patch 比較兩者。批准建立的 scenario 以 getScenario、listScenarios 讀取，`source_proposal_id` 指回該 proposal；Approval 以 `mode` 區分 effect（edit 的 `new_version_id`、scenario 的 `scenario_id`），client 須先依 `mode` 判斷再讀（TS 契約測試）。建立或批准 scenario 都不建立 version、不入列 run（TEST-008）。
+
 AI analyst 建議「下一個 experiment」也只是文字 hypothesis；使用者選擇後才建立新 Scenario Proposal。不能把 analyst 建議直接當已批准 patch，亦不能批次自主搜尋最佳參數（P1 experiment sweeps）。
 
 ## 8. Import Mapper / inferred model

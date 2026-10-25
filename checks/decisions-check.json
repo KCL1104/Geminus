@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 70,
-    "proposed": 1,
+    "proposed": 4,
     "rejected": 0,
     "superseded": 0
   },
@@ -37,14 +37,23 @@
     "review": 0
   },
   "ready_tasks": [
-    "T-028",
     "T-035",
     "T-048",
     "T-049",
     "T-050",
     "T-053"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-028",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-078",
+        "D-079",
+        "D-080"
+      ]
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -649,6 +658,27 @@
       "gate": "T-052 前（或第一次以真實 station log 展示匯入前，以先到者為準）",
       "gates_tasks": [
         "T-052"
+      ]
+    },
+    "D-078": {
+      "status": "proposed",
+      "gate": "T-028 驗收前",
+      "gates_tasks": [
+        "T-028"
+      ]
+    },
+    "D-079": {
+      "status": "proposed",
+      "gate": "T-028 驗收前",
+      "gates_tasks": [
+        "T-028"
+      ]
+    },
+    "D-080": {
+      "status": "proposed",
+      "gate": "T-028 驗收前",
+      "gates_tasks": [
+        "T-028"
       ]
     }
   },

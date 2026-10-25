@@ -1818,16 +1818,21 @@
         "D-014",
         "D-020",
         "D-021",
-        "D-067"
+        "D-067",
+        "D-078",
+        "D-079",
+        "D-080"
       ],
       "scope": [
         "manual Scenario create/read/list；AI mode=scenario。",
         "parameter allowlist、immutable base/patch；approved response discriminant。",
-        "assert版本數不變、無autonomous run。"
+        "assert版本數不變、無autonomous run。",
+        "package 名稱由本任務決定（T-028，2026-10-25）：原規劃的 internal/model/scenarios/ 會落在 generic kernel 之下，而建立 scenario 讀寫 DB、呼叫 storage 與 HTTP，是 adapter（ARCHITECTURE §2 kernel 規則、§6），所以改為 internal/scenarios（service 與 HTTP adapter，與 internal/runs、internal/proposals 相同）；純粹的 scenario patch 規則已在 internal/model/patch 的 Scenario mode（runs 與 AI review 共用），本任務只在 internal/scenarios/check.go 組合它們。原規劃的 internal/ai/scenario/ 不需要：AI scenario mode 是 T-025 的 aicontext／review 與 T-026 的 approval，本任務沒有新增 AI 程式，只以 TestTheAIScenarioModeTakesTheSameRules 證明兩者用同一套規則。SQL 在 internal/storage/scenarios（List）；migration 0015；architecture 規則 scenarios-only-in-the-api 只讓 cmd/api 與 internal/api 連結它。"
       ],
       "planned_outputs": [
-        "internal/model/scenarios/",
-        "internal/ai/scenario/"
+        "internal/scenarios/",
+        "internal/storage/scenarios/",
+        "migrations/0015_scenarios.up.sql"
       ],
       "spec_refs": [
         "docs/AI_SPEC.md",

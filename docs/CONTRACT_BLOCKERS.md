@@ -72,7 +72,7 @@
 | CB-30 | Prose 中數字與確定性語句的驗證規則未定（P0 是否驗證或禁止數字、違規時 failed 或剝除欄位） | AI_SPEC.md:53、:83；TEST_PLAN.md TEST-024；analysis.schema.json:19-49、121-124 | T-025、T-030 | NEW | 審查回報 |
 | CB-31 | Server-issued ID allocation pool 無格式、範圍與儲存位置，approval 時無法 revalidate | AI_SPEC.md:33；proposal.schema.json；0001_core.up.sql:190-234 | T-024–T-026 | D-016；細節見 D-046（PROPOSED，2026-10-19） | 審查回報 |
 | CB-32 | Eval corpus 無 context fixtures；expected labels（`reject_context_reference` 等）無對應 status／error code | TEST_PLAN.md:57；analyst.jsonl、import-mapper.jsonl、modeler.jsonl | T-025、T-027、T-030 的 `make ai-eval` | NEW | 審查回報 |
-| CB-33 | AI scenario approval 沒有 scenario name 來源；「latest=base」規則套用於 scenario 使舊版本上的 AI scenario 永遠無法批准 | scenario.schema.json:32-36；0001_core.up.sql:247；http.schema.json:447-466；AI_SPEC.md:57、:61 | T-026、T-028 | D-004（部分）；T-026：名稱見 D-067（APPROVED，H-021；建議 A 已實作：取自 proposal summary）；latest=base 由 D-062 (b)（APPROVED）與 AI_SPEC §6 決定，兩種 mode 都要求，舊版本上的 scenario 由人工建立（T-028） | 審查回報 |
+| CB-33 | AI scenario approval 沒有 scenario name 來源；「latest=base」規則套用於 scenario 使舊版本上的 AI scenario 永遠無法批准 | scenario.schema.json:32-36；0001_core.up.sql:247；http.schema.json:447-466；AI_SPEC.md:57、:61 | T-026、T-028 | D-004（部分）；T-026：名稱見 D-067（APPROVED，H-021；建議 A 已實作：取自 proposal summary）；latest=base 由 D-062 (b)（APPROVED）與 AI_SPEC §6 決定，兩種 mode 都要求，舊版本上的 scenario 由人工建立（T-028：createManualScenario 接受本 organization 的任何 version，D-078 (c) PROPOSED） | 審查回報 |
 
 ## F. 本次 bootstrap 發現並已修正的重現性問題
 
