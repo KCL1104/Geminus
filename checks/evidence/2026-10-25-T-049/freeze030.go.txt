@@ -1,0 +1,184 @@
+// Command freeze copies the des-go-0.3.0 kernel (kernel.go, replication.go
+// and events.go of internal/simulation/engine at 2f4c33f) into one test-only
+// file with the kernel's own identifiers renamed (suffix "030"), for the
+// D-047 differential of T-049. It changes nothing but those names: the
+// declarations that the current engine shares with the frozen copy (the
+// Program, samplers, streams, Budget, the errors and the Observation types)
+// are dropped, everything else is printed as it was, comments included.
+//
+//	go run . <dir with the three files> <out file>
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"go/ast"
+	"go/format"
+	"go/parser"
+	"go/printer"
+	"go/token"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+// local are the kernel's own types and functions: renamed and kept.
+var localTypes = map[string]bool{"request": true, "resourceQueue": true, "candidates": true, "blockedEntity": true,
+	"blockedQueue": true, "kernel": true, "clockStreams": true, "entity": true, "streamKey": true, "replication": true,
+	"event": true, "eventQueue": true}
+var localFuncs = map[string]bool{"runKernel": true, "newReplication": true}
+
+const suffix = "030"
+
+func main() {
+	dir, out := os.Args[1], os.Args[2]
+	fset := token.NewFileSet()
+	files := map[string]*ast.File{}
+	var order []string
+	for _, name := range []string{"kernel.go", "replication.go", "events.go"} {
+		f, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, parser.ParseComments)
+		if err != nil {
+			panic(err)
+		}
+		files[name] = f
+		order = append(order, name)
+	}
+	// Resolve identifiers across the three files (the kernel's own
+	// declarations are all in them).
+	_, _ = ast.NewPackage(fset, files, func(imports map[string]*ast.Object, path string) (*ast.Object, error) {
+		return ast.NewObj(ast.Pkg, path), nil
+	}, ast.NewScope(nil))
+
+	// The objects of the kernel's own declarations, collected before any
+	// identifier is renamed.
+	objs := map[*ast.Object]bool{}
+	for _, f := range files {
+		for _, d := range f.Decls {
+			switch d := d.(type) {
+			case *ast.GenDecl:
+				for _, s := range d.Specs {
+					if ts, ok := s.(*ast.TypeSpec); ok && localTypes[ts.Name.Name] && ts.Name.Obj != nil {
+						objs[ts.Name.Obj] = true
+					}
+				}
+			case *ast.FuncDecl:
+				if d.Recv == nil && localFuncs[d.Name.Name] && d.Name.Obj != nil {
+					objs[d.Name.Obj] = true
+				}
+			}
+		}
+	}
+	isLocal := func(obj *ast.Object) bool { return obj != nil && objs[obj] }
+	var body bytes.Buffer
+	imports := map[string]bool{}
+	for _, name := range order {
+		f := files[name]
+		cmap := ast.NewCommentMap(fset, f, f.Comments)
+		var kept []ast.Decl
+		for _, d := range f.Decls {
+			switch d := d.(type) {
+			case *ast.GenDecl:
+				if d.Tok == token.IMPORT {
+					for _, s := range d.Specs {
+						imports[s.(*ast.ImportSpec).Path.Value] = true
+					}
+					continue
+				}
+				if d.Tok != token.TYPE {
+					continue // vars and consts are shared (errors, kinds, priorities)
+				}
+				var specs []ast.Spec
+				for _, s := range d.Specs {
+					if localTypes[s.(*ast.TypeSpec).Name.Name] {
+						specs = append(specs, s)
+					}
+				}
+				if len(specs) == 0 {
+					continue
+				}
+				d.Specs = specs
+				kept = append(kept, d)
+			case *ast.FuncDecl:
+				if d.Recv != nil {
+					recv := d.Recv.List[0].Type
+					if st, ok := recv.(*ast.StarExpr); ok {
+						recv = st.X
+					}
+					if id, ok := recv.(*ast.Ident); ok && localTypes[id.Name] {
+						kept = append(kept, d)
+					}
+					continue
+				}
+				if localFuncs[d.Name.Name] {
+					kept = append(kept, d)
+				}
+			}
+		}
+		// Rename every identifier that names a local type or function.
+		for _, d := range kept {
+			ast.Inspect(d, func(n ast.Node) bool {
+				id, ok := n.(*ast.Ident)
+				if !ok {
+					return true
+				}
+				if isLocal(id.Obj) {
+					id.Name += suffix
+				}
+				return true
+			})
+		}
+		f.Decls = kept
+		f.Comments = cmap.Filter(f).Comments()
+		for _, d := range kept {
+			var b bytes.Buffer
+			cfg := &printer.CommentedNode{Node: d, Comments: f.Comments}
+			if err := format.Node(&b, fset, cfg); err != nil {
+				panic(err)
+			}
+			body.Write(b.Bytes())
+			body.WriteString("\n\n")
+		}
+	}
+	var paths []string
+	for p := range imports {
+		paths = append(paths, p)
+	}
+	sort.Strings(paths)
+	var head strings.Builder
+	head.WriteString(header)
+	head.WriteString("import (\n")
+	for _, p := range paths {
+		// Only the imports the kept declarations use.
+		name := strings.Trim(p, `"`)
+		name = name[strings.LastIndex(name, "/")+1:]
+		if strings.Contains(body.String(), name+".") {
+			head.WriteString("\t" + p + "\n")
+		}
+	}
+	head.WriteString(")\n\n")
+	src, err := format.Source([]byte(head.String() + body.String()))
+	if err != nil {
+		os.WriteFile(out, []byte(head.String()+body.String()), 0o644)
+		panic(fmt.Errorf("format: %w", err))
+	}
+	if err := os.WriteFile(out, src, 0o644); err != nil {
+		panic(err)
+	}
+}
+
+const header = `package engine
+
+// The des-go-0.3.0 kernel, frozen for the D-047 differential of T-049
+// (ADR-026 D-047 step 1): kernel.go, replication.go and events.go as they
+// were at 2f4c33f, with their identifiers renamed (kernel030,
+// replication030, ...), test-only, generated mechanically (go/ast, the
+// renames only; checks/evidence/2026-10-25-T-049/freeze030.go.txt). The
+// shared pieces are the compiled Program, the samplers and streams (the
+// numerical profile of the existing distributions, unchanged by T-049),
+// Budget, the errors and the Observation types; a model without calendars
+// or release schedules must produce exactly the same observations, outcome
+// and error on both kernels. Never edit this file to make a differential
+// pass: a difference is a finding.
+
+`
