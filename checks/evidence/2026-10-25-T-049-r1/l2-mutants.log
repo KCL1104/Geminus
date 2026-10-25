@@ -1,0 +1,21 @@
+$ env PYTHON=/home/user/Geminus/.venv/bin/python python3 checks/evidence/2026-10-25-T-049-r1/t049-r1-l2-mutants.py
+rv-r4-first-period-only	KILLED-BY-REFERENCE	seed 1002: issues [('STALL_RISK', '/nodes/1/requires'), ('STALL_RISK', '/nodes/2/requires')] != Go []
+rv-lcm-limit-strict	KILLED-BY-REFERENCE	seed 17: issues [] != Go [('CALENDAR_INVALID', '/calendars')]
+rv-r2-bundle-period-max	KILLED-BY-REFERENCE	seed 47: issues [('STALL_RISK', '/nodes/1/requires')] != Go [('CALENDAR_INVALID', '/nodes/1/requires')]
+rv-r2-reads-exceptions	KILLED-BY-REFERENCE	seed 27: issues [('CALENDAR_INVALID', '/nodes/1/requires'), ('RESOURCE_REQUIREMENT_INVALID', '/nodes/1/requires/1/units')] != Go [('RESOURCE_REQUIREMENT_INVALID
+r2-off	KILLED-BY-REFERENCE	seed 2: issues [('CALENDAR_INVALID', '/nodes/1/requires')] != Go []
+lcm-unbounded	KILLED-BY-REFERENCE	seed 1: issues [('CALENDAR_INVALID', '/calendars')] != Go []
+r3-allows-two-units	KILLED-BY-REFERENCE	seed 22: issues [('RESOURCE_REQUIREMENT_INVALID', '/nodes/2/requires'), ('RESOURCE_REQUIREMENT_INVALID', '/nodes/3/requires/0/units')] != Go [('RESOURCE_REQUIRE
+r3-allows-two-resources	KILLED-BY-REFERENCE	seed 3: issues [('RESOURCE_REQUIREMENT_INVALID', '/nodes/1/requires'), ('RESOURCE_REQUIREMENT_INVALID', '/nodes/2/requires'), ('RESOURCE_REQUIREMENT_INVALID', '
+r4-off	KILLED-BY-REFERENCE	seed 12: issues [('STALL_RISK', '/nodes/1/requires'), ('STALL_RISK', '/nodes/2/requires')] != Go []
+r4-reads-exceptions	KILLED-BY-REFERENCE	seed 156: issues [] != Go [('STALL_RISK', '/nodes/1/requires')]
+rv-r4-partner-one-unit	KILLED-BY-REFERENCE	seed 1075: issues [('STALL_RISK', '/nodes/2/requires')] != Go []
+rv-r4-skips-uncalendared-breakdown	KILLED-BY-REFERENCE	seed 12: issues [('STALL_RISK', '/nodes/1/requires'), ('STALL_RISK', '/nodes/2/requires')] != Go []
+r4-after-r3-refusal	KILLED-BY-REFERENCE	seed 3: issues [('RESOURCE_REQUIREMENT_INVALID', '/nodes/1/requires'), ('RESOURCE_REQUIREMENT_INVALID', '/nodes/2/requires'), ('RESOURCE_REQUIREMENT_INVALID', '
+rv-xend-last-resource-only	KILLED-BY-REFERENCE	seed 21 p0: X_end, TTRmax Go 0, 1860000 != 12480000, 1860000
+rv-xend-exception-start	KILLED-BY-REFERENCE	seed 0 p0: X_end, TTRmax Go 6840000, 0 != 13800000, 0
+next-fit-skips-an-exception-end	KILLED-BY-REFERENCE	seed 23 p0: next_fit(13276589) Go 13800001 != 13800000
+next-fit-open-exception-is-off	KILLED-BY-REFERENCE	seed 6 p0: next_fit(21600000) Go 21780000 != 21600000
+ttr-bound-of-triangular-is-mode	KILLED-BY-REFERENCE	seed 21 p0: X_end, TTRmax Go 12480000, 300000 != 12480000, 1860000
+18/18 killed
+exit status 0

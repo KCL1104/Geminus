@@ -103,14 +103,18 @@ ai-eval:
 # of resource calendars and release schedules (T-049), TEST-034 (SimPy pinned in requirements-spec.txt): the Go
 # engine's per-replication results of the reference cases, then scripts/simpy_reference.py, which checks the
 # hand-derived goldens with SimPy and compares the stochastic cases within the tolerance fixed in
-# testdata/simulation/blocking-goldens.json, breakdown-goldens.json and calendar-goldens.json. The engine never
-# calls it.
+# testdata/simulation/blocking-goldens.json, breakdown-goldens.json and calendar-goldens.json. Then ADR-026
+# D-050's planned cross-check (T-049 review round 1 L2): scripts/calendar_reference.py, an independent Python
+# implementation of R2, R3, R4, next_fit, X_end and TTRmax, against the Go validator and compiler on random
+# models. The engine never calls either script.
 simulation-reference-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	@mkdir -p bin
 	GEMINUS_SIMPY_REFERENCE_OUT=$(CURDIR)/bin/simpy-reference-go.json go test -count=1 -run '^TestSimPyReferenceExport$$' ./internal/simulation/des/
 	$(PYTHON) scripts/simpy_reference.py --go-results bin/simpy-reference-go.json --report bin/simpy-reference-report.json
-	@echo 'simulation-reference-test: finite buffers and blocking (T-047), breakdowns (T-048), calendars and release schedules (T-049) only, on the models the script accepts (see its docstring); batches and changeovers come with T-050.' >&2
+	GEMINUS_CALENDAR_REFERENCE_OUT=$(CURDIR)/bin/calendar-reference-go.json go test -count=1 -run '^TestCalendarRulesExport$$' ./internal/simulation/engine/
+	$(PYTHON) scripts/calendar_reference.py --go-results bin/calendar-reference-go.json
+	@echo 'simulation-reference-test: finite buffers and blocking (T-047), breakdowns (T-048), calendars and release schedules (T-049) only, on the models the script accepts (see its docstring); D-050 R2, R3, R4, next_fit, X_end and TTRmax against an independent Python implementation (R1 is not, see checks/T-049_VALIDATION.md); batches and changeovers come with T-050.' >&2
 ai-eval-live security-scan benchmark-test build-containers staging-smoke db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

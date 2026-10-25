@@ -2330,7 +2330,8 @@
         "實作independent SimPy cases與預先固定stochastic tolerance。",
         "DES events/time/RSS/cancel benchmarks，固定hardware/image。",
         "2D/3D graph/render/FPS 與 API/validation load targets；記錄不足而非捏造。",
-        "Import validation 的成本：每個 canonical event 的 schema 檢查讓 mapping.Validate 慢約 2.2–2.5 倍（T-017 review 第 2 輪 N3：10 萬列 9.5 MB 1.66 s 對 0.66 s；49.8 MB、32 個 metadata 欄 5.9 s 對 2.7 s，Write 再讀一次），列入 benchmark 並固定 hardware/image。"
+        "Import validation 的成本：每個 canonical event 的 schema 檢查讓 mapping.Validate 慢約 2.2–2.5 倍（T-017 review 第 2 輪 N3：10 萬列 9.5 MB 1.66 s 對 0.66 s；49.8 MB、32 個 metadata 欄 5.9 s 對 2.7 s，Write 再讀一次），列入 benchmark 並固定 hardware/image。",
+        "ADR-026 D-050 原訂的 reference 中 T-049 沒有做的部分（T-049 review round 1 L2，見 checks/T-049_VALIDATION.md）：R1（BLOCKING_CYCLE，T-047 的 graph rule）的獨立 Python 實作與 Go 在隨機輸入上的比對（R2、R3、R4、next_fit、X_end、TTRmax 已由 scripts/calendar_reference.py 在 make simulation-reference-test 比對）；以 SimPy 跑 D-050 的兩個反例與 G-D1（示意）；對隨機的 valid 模型確認 SimPy 與 Go 在每個 L 內都有授予（現行 SimPy 腳本拒絕有 calendar 的 resource 與他者同 bundle、及 0 < S < C 的故障 resource）。"
       ],
       "planned_outputs": [
         "testdata/simulation/",
