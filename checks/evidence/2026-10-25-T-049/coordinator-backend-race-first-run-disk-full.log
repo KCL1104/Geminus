@@ -1,0 +1,115 @@
+go test -race -timeout 30m ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
+# github.com/kcl1104/geminus/internal/auth.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+# github.com/kcl1104/geminus/cmd/provision-tenant.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+github.com/kcl1104/geminus/internal/httpapi: write /tmp/go-build1277764236/b235/importcfg: no space left on device
+# github.com/kcl1104/geminus/internal/config.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+# github.com/kcl1104/geminus/internal/config/aiapproval.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+# github.com/kcl1104/geminus/internal/domainpack/softwaredelivery
+compile: writing output: write $WORK/b315/_pkg_.a: no space left on device
+github.com/kcl1104/geminus/internal/simulation/engine: mkdir /tmp/go-build1277764236/b325/: no space left on device
+github.com/kcl1104/geminus/internal/model/validate: write /tmp/go-build1277764236/b236/vet.cfg: no space left on device
+github.com/kcl1104/geminus/internal/import/profile: write /tmp/go-build1277764236/b306/vet.cfg: no space left on device
+github.com/kcl1104/geminus/internal/model/patch: write /tmp/go-build1277764236/b311/vet.cfg: no space left on device
+github.com/kcl1104/geminus/internal/storage/datasets: write /tmp/go-build1277764236/b312/vet.cfg: no space left on device
+github.com/kcl1104/geminus/internal/import/profiler: mkdir /tmp/go-build1277764236/b338/: no space left on device
+github.com/kcl1104/geminus/internal/ai/idpool: mkdir /tmp/go-build1277764236/b393/: no space left on device
+github.com/kcl1104/geminus/internal/ai/provider: mkdir /tmp/go-build1277764236/b397/: no space left on device
+github.com/kcl1104/geminus/internal/domainpack/softwaredelivery: mkdir /tmp/go-build1277764236/b430/: no space left on device
+github.com/kcl1104/geminus/internal/httpapi: mkdir /tmp/go-build1277764236/b434/: no space left on device
+github.com/kcl1104/geminus/internal/ids: mkdir /tmp/go-build1277764236/b436/: no space left on device
+testing/iotest: mkdir /tmp/go-build1277764236/b441/: no space left on device
+github.com/kcl1104/geminus/internal/import/report_test: mkdir /tmp/go-build1277764236/b446/: no space left on device
+github.com/kcl1104/geminus/internal/model_test: mkdir /tmp/go-build1277764236/b455/: no space left on device
+github.com/kcl1104/geminus/internal/model/calendar: mkdir /tmp/go-build1277764236/b456/: no space left on device
+github.com/kcl1104/geminus/internal/model/hashing_test: mkdir /tmp/go-build1277764236/b459/: no space left on device
+github.com/kcl1104/geminus/internal/model/patch: mkdir /tmp/go-build1277764236/b460/: no space left on device
+github.com/kcl1104/geminus/internal/model/validate/coldstart: mkdir /tmp/go-build1277764236/b465/: no space left on device
+github.com/kcl1104/geminus/internal/secret: mkdir /tmp/go-build1277764236/b489/: no space left on device
+github.com/kcl1104/geminus/internal/simulation_test: mkdir /tmp/go-build1277764236/b492/: no space left on device
+github.com/kcl1104/geminus/internal/simulation/engine: mkdir /tmp/go-build1277764236/b495/: no space left on device
+github.com/kcl1104/geminus/internal/storage/datasets_test: mkdir /tmp/go-build1277764236/b502/: no space left on device
+github.com/kcl1104/geminus/internal/storage/jobs_test: mkdir /tmp/go-build1277764236/b507/: no space left on device
+github.com/kcl1104/geminus/internal/storage/memberships_test: mkdir /tmp/go-build1277764236/b509/: no space left on device
+github.com/kcl1104/geminus/internal/storage/models_test: mkdir /tmp/go-build1277764236/b511/: no space left on device
+github.com/kcl1104/geminus/internal/storage/objects_test: mkdir /tmp/go-build1277764236/b513/: no space left on dFAIL	github.com/kcl1104/geminus/cmd/api [build failed]
+FAIL	github.com/kcl1104/geminus/cmd/provision-tenant [build failed]
+FAIL	github.com/kcl1104/geminus/cmd/worker [build failed]
+FAIL	github.com/kcl1104/geminus/internal/ai/aicontext [build failed]
+FAIL	github.com/kcl1104/geminus/internal/ai/corpus [build failed]
+FAIL	github.com/kcl1104/geminus/internal/ai/idpool [build failed]
+ok  	github.com/kcl1104/geminus/internal/ai/locale	1.037s
+FAIL	github.com/kcl1104/geminus/internal/ai/provider [build failed]
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/anthropic [build failed]
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/fake [build failed]
+FAIL	github.com/kcl1104/geminus/internal/ai/review [build failed]
+FAIL	github.com/kcl1104/geminus/internal/api [build failed]
+FAIL	github.com/kcl1104/geminus/internal/auth [build failed]
+?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
+FAIL	github.com/kcl1104/geminus/internal/config [build failed]
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval [build failed]
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.142s
+FAIL	github.com/kcl1104/geminus/internal/domainpack/conformance [build failed]
+FAIL	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery [build failed]
+FAIL	github.com/kcl1104/geminus/internal/httpapi [build failed]
+FAIL	github.com/kcl1104/geminus/internal/ids [build failed]
+FAIL	github.com/kcl1104/geminus/internal/import/mapping [build failed]
+FAIL	github.com/kcl1104/geminus/internal/import/profile [build failed]
+FAIL	github.com/kcl1104/geminus/internal/import/profiler [build failed]
+FAIL	github.com/kcl1104/geminus/internal/import/report [build failed]
+FAIL	github.com/kcl1104/geminus/internal/import/upload [build failed]
+FAIL	github.com/kcl1104/geminus/internal/import/validation [build failed]
+FAIL	github.com/kcl1104/geminus/internal/import/validator [build failed]
+FAIL	github.com/kcl1104/geminus/internal/model [build failed]
+FAIL	github.com/kcl1104/geminus/internal/model/calendar [build failed]
+FAIL	github.com/kcl1104/geminus/internal/model/hashing [build failed]
+FAIL	github.com/kcl1104/geminus/internal/model/patch [build failed]
+FAIL	github.com/kcl1104/geminus/internal/model/validate [build failed]
+FAIL	github.com/kcl1104/geminus/internal/model/validate/coldstart [build failed]
+FAIL	github.com/kcl1104/geminus/internal/models [build failed]
+FAIL	github.com/kcl1104/geminus/internal/packs [build failed]
+FAIL	github.com/kcl1104/geminus/internal/project [build failed]
+FAIL	github.com/kcl1104/geminus/internal/proposals [build failed]
+FAIL	github.com/kcl1104/geminus/internal/proposals/approval [build failed]
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator [build failed]
+FAIL	github.com/kcl1104/geminus/internal/results/metrics [build failed]
+FAIL	github.com/kcl1104/geminus/internal/runs [build failed]
+FAIL	github.com/kcl1104/geminus/internal/runs/runner [build failed]
+FAIL	github.com/kcl1104/geminus/internal/scenarios [build failed]
+FAIL	github.com/kcl1104/geminus/internal/secret [build failed]
+FAIL	github.com/kcl1104/geminus/internal/simulation [build failed]
+FAIL	github.com/kcl1104/geminus/internal/simulation/des [build failed]
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine [build failed]
+FAIL	github.com/kcl1104/geminus/internal/simulation/trace [build failed]
+?   	github.com/kcl1104/geminus/internal/storage/auditlog	[no test files]
+FAIL	github.com/kcl1104/geminus/internal/storage/datasets [build failed]
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/imports	[no test files]
+FAIL	github.com/kcl1104/geminus/internal/storage/jobs [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/memberships [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/models [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/objects [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/postgres [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/projects [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/proposals [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/provisioning [build failed]
+?   	github.com/kcl1104/geminus/internal/storage/runs	[no test files]
+FAIL	github.com/kcl1104/geminus/internal/storage/scenarios [build failed]
+FAIL	github.com/kcl1104/geminus/internal/storage/snapshots [build failed]
+FAIL	github.com/kcl1104/geminus/internal/tenant [build failed]
+?   	github.com/kcl1104/geminus/internal/tenant/internal/scope	[no test files]
+FAIL	github.com/kcl1104/geminus/internal/tenant/me [build failed]
+FAIL	github.com/kcl1104/geminus/internal/tenant/memberships [build failed]
+FAIL	github.com/kcl1104/geminus/internal/tenant/workerscope [build failed]
+FAIL	github.com/kcl1104/geminus/internal/worker [build failed]
+?   	github.com/kcl1104/geminus/internal/worker/handler	[no test files]
+?   	github.com/kcl1104/geminus/schemas	[no test files]
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture [build failed]
+FAIL	github.com/kcl1104/geminus/prompts [build failed]
+FAIL
+make: *** [Makefile:52: backend-race] Error 1

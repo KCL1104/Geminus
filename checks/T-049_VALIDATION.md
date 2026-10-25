@@ -229,3 +229,9 @@ Exec 數包括很快就 decode 或 compile 失敗的輸入（`FuzzKernel`、`Fuz
 - **Mutation 是抽樣**：54 個 mutant 中有兩個（`shift-end-wakes-too`、`processing-ignores-blocked`）原本只被 0.4.0 的鎖擋下，已補手推的 G-C9、G-C10；harness 沒有涵蓋的規則仍可能只有鎖（engine 自己的輸出）在保護。
 - **Regression lock 不是 oracle**：`engine-golden-digests-0.4.0.json`、`kernel-observation-digests-0.4.0.json` 是 engine 的輸出；語義由手推 golden、檢查器與 SimPy 驗證。
 - **中間的 commit 沒有各自驗證**：只有 e9ad4a9 與最後的 tree 跑過全部的指令；完整的 mutation 第 3 次在 e9ad4a9 上。
+
+## Coordinator 的執行（b4ef811）
+
+Coordinator 把十三個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-054 完成的 7357b8d 之後）。衝突只在 `planning/decisions.json`（本任務的 D-081–D-085 與 H-023 的 D-087 都是新增，兩邊都保留，依 ID 排列；決策登記檔自動合併）與 `make spec-check` 重產的 `checks/*.json`（取本任務的版本後重產）。T-054 在同一段時間改了 `internal/storage/datasets` 與各 route 的 binding failure 對應，本任務沒有碰那些程式，cherry-pick 沒有衝突；兩者合在一起的行為由下面的整合執行驗證。
+
+第一次執行（`coordinator-exit-codes-first-run.txt`）：`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test` 都是 exit 0；`backend-numeric`、`backend-race` 與 `integration-test` exit 2，原因是磁碟已滿（log 為 `no space left on device`，`*-first-run-disk-full.log`），不是測試失敗。Coordinator 清除 Go 的 build cache（15 GB）並移除四個已整合任務的乾淨 worktree 後，在同一個 tree 上重跑這三項：`backend-numeric`、`backend-race`（engine package 434 s）與新的 `dt_test_t049b` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0（`coordinator-environment.txt` 記錄 HEAD b4ef811、go1.27.3、PostgreSQL 16.15）。本報告 NOT RUN 中的 DB 測試因此都已執行；`make e2e-test`、benchmark 仍為 NOT RUN。D-081–D-085 仍是 PROPOSED。Log 與 exit code 在 `checks/evidence/2026-10-25-T-049/coordinator-*`。

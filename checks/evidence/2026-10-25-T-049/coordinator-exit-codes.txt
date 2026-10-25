@@ -1,0 +1,3 @@
+backend-numeric exit 0
+backend-race exit 0
+integration exit 0

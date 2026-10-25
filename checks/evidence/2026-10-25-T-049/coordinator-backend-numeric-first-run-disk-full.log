@@ -1,0 +1,18 @@
+bash scripts/check_no_fma.sh
+PASS no fused multiply-add or platform math call: amd64 v3
+PASS no fused multiply-add or platform math call: arm64
+PASS no fused multiply-add or platform math call: ppc64le
+PASS no fused multiply-add or platform math call: s390x
+PASS no fused multiply-add or platform math call: riscv64
+PASS no fused multiply-add or platform math call: loong64
+ok  	github.com/kcl1104/geminus/internal/simulation	0.141s
+# github.com/kcl1104/geminus/internal/simulation/des.test
+/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/pkg/tool/linux_amd64/link: mapping output file failed: no space left on device
+FAIL	github.com/kcl1104/geminus/internal/simulation/des [build failed]
+# github.com/kcl1104/geminus/internal/simulation/engine [github.com/kcl1104/geminus/internal/simulation/engine.test]
+compile: writing output: write $WORK/b170/_pkg_.a: no space left on device
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine [build failed]
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.058s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.139s
+FAIL
+make: *** [Makefile:44: backend-numeric] Error 1
