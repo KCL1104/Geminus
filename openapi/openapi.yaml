@@ -416,9 +416,10 @@ paths:
           description: 'Infrastructure unavailable; the draft was not changed (no new revision, no audit event), so the same
             patch with the same If-Match may be sent again. The draft''s base binds datasets and this deployment gives
             the model service no dataset storage; or the dataset binding stage, which checks the patched draft against
-            the base''s manifest, could not read or verify a snapshot (details[0].code DATASET_STORAGE_FAILED, as
-            publishVersion and approveProposal answer: H-022, which the coordinator extended to the draft routes; the
-            cause is logged, never sent); or the request could not complete (no details). Codes: SERVICE_UNAVAILABLE.'
+            the base''s manifest, could not read a snapshot from storage (details[0].code DATASET_STORAGE_FAILED, as
+            publishVersion and approveProposal answer: D-087, H-023; the cause is logged, never sent); or the request
+            could not complete (no details). A snapshot that no longer verifies is an issue of the draft, and any other
+            failure of the binding stage is 500. Codes: SERVICE_UNAVAILABLE.'
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'
@@ -509,10 +510,10 @@ paths:
           description: 'Infrastructure unavailable; the draft was not changed (no new revision, no audit event), so the same
             reset with the same If-Match may be sent again. The latest version binds datasets and this deployment gives
             the model service no dataset storage; or the dataset binding stage, which checks the latest version''s
-            content, the draft''s new content, against that version''s manifest, could not read or verify a snapshot
-            (details[0].code DATASET_STORAGE_FAILED, as publishVersion and approveProposal answer: H-022, which the
-            coordinator extended to the draft routes; the cause is logged, never sent); or the request could not complete
-            (no details). Codes: SERVICE_UNAVAILABLE.'
+            content, the draft''s new content, against that version''s manifest, could not read a snapshot from storage
+            (details[0].code DATASET_STORAGE_FAILED, as publishVersion and approveProposal answer: D-087, H-023; the
+            cause is logged, never sent); or the request could not complete (no details). Any other failure of the
+            binding stage is 500. Codes: SERVICE_UNAVAILABLE.'
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'
@@ -621,11 +622,12 @@ paths:
         '503':
           description: 'Infrastructure unavailable; nothing was published (no version, no audit event, and the
             Idempotency-Key keeps no answer, so the same request may be sent again). The base binds datasets and this
-            deployment gives the model service no dataset storage; or the dataset binding stage could not read or verify
-            a snapshot the base binds, either while it checks the candidate or while it checks the draft that follows
-            the new version (details[0].code DATASET_STORAGE_FAILED, as approveProposal and createManualScenario
+            deployment gives the model service no dataset storage; or the dataset binding stage could not read a
+            snapshot the base binds from storage, either while it checks the candidate or while it checks the draft that
+            follows the new version (details[0].code DATASET_STORAGE_FAILED, as approveProposal and createManualScenario
             answer, D-069 (b), H-022; the cause is logged, never sent); or the request could not complete (no details).
-            Codes: SERVICE_UNAVAILABLE.'
+            A snapshot that no longer verifies is 422; any other failure of the binding stage is 500. Codes:
+            SERVICE_UNAVAILABLE.'
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'
@@ -1111,7 +1113,7 @@ paths:
         manifest the proposal''s dataset_bindings (D-062 (g)) and its comment the request''s; a clean draft moves to
         it, a dirty one is kept as it is and draft_out_of_date is true (D-003). The clean draft''s move checks its
         dataset bindings again with the snapshots read once more: if they cannot be read then, the approval is 503
-        DATASET_STORAGE_FAILED as well and nothing is committed (H-022, extended by the coordinator to this read). scenario: exactly one immutable
+        DATASET_STORAGE_FAILED as well and nothing is committed (part of the approval''s own binding stage, D-069 (b)). scenario: exactly one immutable
         Scenario on the base with the reviewed changes and their hash, named after the proposal''s summary (D-067
         APPROVED), and no new version; nothing is queued, a run is the person''s own request (AI_SPEC §7). The
         Approval''s mode tells the two effects apart: new_version_id names the version (getModelVersion), scenario_id
@@ -2718,9 +2720,10 @@ paths:
           description: 'Infrastructure unavailable; nothing was queued (no run, no job, no audit event, and the
             Idempotency-Key keeps no answer, so the same request may be sent again). The run needs object storage (its
             version binds datasets, or trace_level is sampled) and this deployment has none; or the dataset binding
-            stage could not read or verify a snapshot the version binds (details[0].code DATASET_STORAGE_FAILED, as
+            stage could not read a snapshot the version binds from storage (details[0].code DATASET_STORAGE_FAILED, as
             approveProposal and createManualScenario answer, D-069 (b), H-022; the cause is logged, never sent); or the
-            request could not complete (no details). Codes: SERVICE_UNAVAILABLE.'
+            request could not complete (no details). A snapshot that no longer verifies is 422; any other failure of the
+            binding stage is 500. Codes: SERVICE_UNAVAILABLE.'
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'
