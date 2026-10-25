@@ -538,6 +538,7 @@
                 "type": "object",
                 "properties": {
                   "utilization_mean": {
+                    "$comment": "D-052 (i), D-084 (T-049): the denominator is C·T over the window, off-shift and down time included, for every resource; a resource on a calendar has its scheduled utilization in replication_summaries[].resource_states (scheduled_in_use_ticks / scheduled_ticks) and its overtime there (overtime_ticks).",
                     "anyOf": [
                       {
                         "type": "number",
@@ -803,6 +804,7 @@
                 ]
               },
               "resource_utilization": {
+                "$comment": "∫in_use / (C·T) of each resource over the window, off-shift and down time included (D-052 (i), D-084); the scheduled utilization of a resource on a calendar is resource_states' scheduled_in_use_ticks / scheduled_ticks.",
                 "type": "object",
                 "additionalProperties": {
                   "type": "number",

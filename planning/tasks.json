@@ -3150,10 +3150,18 @@
         "D-047",
         "D-048",
         "D-050",
+        "D-051",
         "D-052",
         "D-053",
         "D-057",
-        "D-063"
+        "D-063",
+        "D-064",
+        "D-074",
+        "D-081",
+        "D-082",
+        "D-083",
+        "D-084",
+        "D-085"
       ],
       "scope": [
         "依批准的 decision 實作 resource 班表（可用時段、交班時服務中工件的處理）與 source 的 release schedule（分時段投入率或投入表）；時間以 tick 表示，不用 wall clock 或時區函式庫。decision gates：D-047、D-048、D-050、D-052、D-053、D-057（APPROVED，H-018）與 D-063（APPROVED，H-019）。",
@@ -3166,11 +3174,23 @@
       "planned_outputs": [
         "internal/simulation/engine/",
         "internal/results/metrics/",
-        "testdata/simulation/"
+        "testdata/simulation/",
+        "internal/model/calendar/",
+        "internal/model/validate/",
+        "internal/ai/review/",
+        "internal/ai/idpool/",
+        "internal/ai/aicontext/",
+        "prompts/scenario/",
+        "scripts/simpy_reference.py",
+        "scripts/engine_reference.py",
+        "checks/T-049_VALIDATION.md"
       ],
       "spec_refs": [
         "docs/SIMULATION_SPEC.md",
-        "testdata/simulation/expected-cases.json"
+        "testdata/simulation/expected-cases.json",
+        "docs/TWIN_IR_SPEC.md",
+        "docs/adr/ADR-026-line-flow-primitives.md",
+        "testdata/simulation/calendar-goldens.json"
       ],
       "acceptance_tests": [
         "TEST-015",
@@ -3180,7 +3200,13 @@
       "verification_commands": [
         "go test ./internal/simulation/... ./internal/results/...",
         "go test -race ./internal/simulation/...",
-        "make simulation-reference-test"
+        "make simulation-reference-test",
+        "make spec-check",
+        "make backend-test",
+        "make backend-race",
+        "make architecture-check",
+        "make ai-eval",
+        "make backend-numeric"
       ],
       "definition_of_done": [
         "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
