@@ -1,0 +1,12 @@
+spec-check exit 0
+backend-test exit 0
+architecture-check exit 0
+ai-eval exit 0
+frontend-test exit 0
+simulation-reference-test exit 0
+backend-race exit 0
+integration exit 0
+db-test (prepare dt_test_t029r1m) exit 0
+TestComparison* + TestCompareReadsOneReadOnlySnapshot -v (DB) exit 0
+round-0 mutate.py db exit 0
+round-1 mutate-r1.py db exit 0

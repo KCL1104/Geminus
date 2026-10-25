@@ -236,3 +236,24 @@ Reviewer 另外兩個存活的 mutant 不在發現清單中，維持不改：R31
 - **I3**：`metric_path` 的 pattern `^/metrics/.*$` 在 JSON Schema（ECMA-262）中 `.` 不含換行，maxLength 為 2048，而 Result 的 map 沒有限制 key：一個含換行或很長的 key 會讓 comparison 本身不符 contract。今天到不了（IR 的 ID 有 pattern 與 128 字元的上限，DORA 與 domain 的 key 由 pack 定義）；若之後 pack 允許任意 key，需在 pack 或 Result 的 schema 加上 `propertyNames`，或在 `compare` 中拒絕。
 - **L6 的 seam**：`inTransaction` 是 package 內的可變變數，只有本 package 的測試會設定；若有人在 production code 中設定它（同一個 package 內），比較會多執行一段程式。目前沒有這樣的程式碼。
 - **I2 的範圍**：`replication_summaries` 中除了 `censored_entities` 之外的值與 trace 不檢查（比較不讀它們）；若之後比較開始讀它們，需要一起驗證。
+
+### Coordinator 的執行（第 1 輪，5bb7e95）
+
+Coordinator 把 `t029-r1` 的兩個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`，接在 T-049 的 311a801 之後，沒有衝突：004bc01 → 7de9d67、50773c9 → 5bb7e95。之後在同一個 tree 上執行以下指令，全部 exit 0（`coordinator-environment.txt`：HEAD 5bb7e95、沒有其他變更、go1.27.3、Node 22.22.0、PostgreSQL 16.15）：
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `make spec-check` | 0 | |
+| `make backend-test` | 0 | |
+| `make architecture-check` | 0 | |
+| `make ai-eval` | 0 | |
+| `make frontend-test` | 0 | Node 22.22.0；Node 24 由 CI 執行 |
+| `make simulation-reference-test` | 0 | |
+| `make backend-race` | 0 | |
+| `make integration-test`（新的 `dt_test_t029r1`） | 0 | 33 個 package ok（`db-go-test` 新增 `./internal/comparisons/...`），沒有 FAIL |
+| `make db-test`（另一個新的 `dt_test_t029r1m`，供下面三項） | 0 | |
+| `go test -count=1 -v -run 'TestComparison\|TestCompareReadsOneReadOnlySnapshot' ./internal/api/ ./internal/comparisons/`（`GEMINUS_REQUIRE_DB_TESTS=1`） | 0 | 四個比較的 DB 測試在 `check` 多比對三個 hash 並驗證 metrics 的 schema 之後仍 PASS；L6 的 `TestCompareReadsOneReadOnlySnapshot` PASS（repeatable read、read only） |
+| 第 0 輪的 `mutate.py <git archive 副本> <log> db` | 0 | 5 個全部被測試擋下 |
+| 第 1 輪的 `mutate-r1.py <git archive 副本> <log> db` | 0 | 3 個全部被 `TestCompareReadsOneReadOnlySnapshot` 擋下：`db-read-write-transaction`（reviewer 的 R30）、`db-read-committed-transaction`、`db-hook-not-called` |
+
+Log 與 exit code 在 `checks/evidence/2026-10-25-T-029-r1/coordinator-*`。仍為 NOT RUN：`make e2e-test`、live AI、OpenAPI 官方 validator、Node 24 上的 `frontend-test`（CI 執行）。D-088–D-090 仍是 PROPOSED，T-029 在 tasks.json 仍為 `not_started`。
