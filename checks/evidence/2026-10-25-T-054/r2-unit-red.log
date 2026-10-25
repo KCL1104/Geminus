@@ -1,0 +1,38 @@
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestRefusedDatasetStorage
+    http_test.go:161: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error
+    http_test.go:161: publish: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error: publish: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error
+    http_test.go:161: sync the draft: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error: sync the draft: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error
+--- FAIL: TestRefusedDatasetStorage (0.00s)
+=== RUN   TestBindingFailure
+--- PASS: TestBindingFailure (0.00s)
+=== RUN   TestCheckStorageFailure
+--- PASS: TestCheckStorageFailure (0.05s)
+=== RUN   TestPublishSnapshotStorageFailure
+    storage_failure_test.go:344: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestPublishSnapshotStorageFailure (0.00s)
+=== RUN   TestDraftSnapshotStorageFailure
+    storage_failure_test.go:421: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestDraftSnapshotStorageFailure (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/models	0.057s
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestBindingFailure
+--- PASS: TestBindingFailure (0.00s)
+=== RUN   TestRefusedDraftSyncStorage
+    storage_failure_test.go:38: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error, not the revalidation's SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    storage_failure_test.go:41: the cause is sent: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error
+    storage_failure_test.go:45: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error: the logged cause is <nil> false
+    storage_failure_test.go:38: advance: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error: advance: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error, not the revalidation's SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    storage_failure_test.go:41: the cause is sent: advance: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error
+    storage_failure_test.go:45: advance: models: the dataset snapshots could not be read: open /srv/objects/tenant/secret: input/output error: the logged cause is <nil> false
+--- FAIL: TestRefusedDraftSyncStorage (0.00s)
+=== RUN   TestApprovalDraftSyncStorageFailure
+    draft_sync_test.go:81: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestApprovalDraftSyncStorageFailure (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.020s
+FAIL
+exit=1

@@ -67,7 +67,7 @@ func Refused(err error) error {
 	var state *StateError
 	var risk *RiskChangedError
 	var invalid *InvalidError
-	var storage *DatasetStorageError
+	_, storage := storageCause(err)
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return httpapi.Errorf(httpapi.NotFound, "not found")
@@ -99,8 +99,9 @@ func Refused(err error) error {
 			Details: []httpapi.Detail{{Path: "/comment", Reason: "at most 2000 characters, without U+0000", Severity: "error"}}}
 	case errors.Is(err, ErrDatasetsUnavailable):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "the proposal's base binds datasets and dataset storage is not available")
-	case errors.As(err, &storage):
-		// The cause is logged by the handler, never sent.
+	case storage:
+		// The revalidation's or the draft sync's; the cause is logged by
+		// the handler, never sent.
 		return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was changed (retry later)",
 			Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}}
 	case errors.Is(err, idempotency.ErrConflict), errors.Is(err, idempotency.ErrInProgress):
@@ -125,10 +126,9 @@ func (h handlers) approve(w http.ResponseWriter, r *http.Request, sc tenant.Scop
 	}
 	status, out, err := h.s.Approve(r.Context(), sc, httpapi.RequestID(r.Context()), key, id, body, req)
 	if err != nil {
-		var storage *DatasetStorageError
-		if errors.As(err, &storage) {
+		if cause, ok := storageCause(err); ok {
 			h.log.WarnContext(r.Context(), "reading an approval's dataset snapshots failed", "request_id", httpapi.RequestID(r.Context()),
-				"organization_id", sc.OrganizationID, "proposal_id", id, "error", storage.Err.Error())
+				"organization_id", sc.OrganizationID, "proposal_id", id, "error", cause.Error())
 		}
 		return Refused(err)
 	}

@@ -8,14 +8,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/model"
-	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/models"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -146,19 +144,21 @@ func TestRefused(t *testing.T) {
 	}
 }
 
-// H-022, D-069 (b): publishVersion answers a binding stage that cannot
-// read or verify the snapshots with 503 DATASET_STORAGE_FAILED, as
-// approveProposal and createManualScenario do, never with the cause; any
-// other error as every model route does, and an ended request, a tenant
-// or a transport error pass to httpapi.
-func TestPublishRefused(t *testing.T) {
+// H-022, D-069 (b), extended by the coordinator to every model route whose
+// dataset binding stage reads snapshots (publishVersion, patchDraft,
+// resetDraft): one mapping, refused, answers snapshots that cannot be read
+// or verified with 503 DATASET_STORAGE_FAILED, as approveProposal and
+// createManualScenario do, never with the cause; a request that ended, a
+// tenant or a transport error pass to httpapi, which answers them as on
+// every route.
+func TestRefusedDatasetStorage(t *testing.T) {
 	storage := &models.DatasetStorageError{Err: errors.New("open /srv/objects/tenant/secret: input/output error")}
-	for _, err := range []error{storage, fmt.Errorf("publish: %w", storage)} {
+	for _, err := range []error{storage, fmt.Errorf("publish: %w", storage), fmt.Errorf("sync the draft: %w", storage)} {
 		var e *httpapi.Error
-		if !errors.As(models.PublishRefused(err), &e) || e.Code != httpapi.ServiceUnavailable ||
-			e.Message != "the dataset snapshots could not be read; nothing was published (retry later)" ||
+		if !errors.As(models.Refused(err), &e) || e.Code != httpapi.ServiceUnavailable ||
+			e.Message != "the dataset snapshots could not be read; nothing was changed (retry later)" ||
 			!slices.Equal(e.Details, []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}) {
-			t.Errorf("%v: %+v", err, models.PublishRefused(err))
+			t.Errorf("%v: %+v", err, models.Refused(err))
 			continue
 		}
 		// What the client is sent: the code, the message and the details.
@@ -166,23 +166,15 @@ func TestPublishRefused(t *testing.T) {
 			t.Errorf("the cause is sent: %s", sent)
 		}
 	}
-	issue := model.NewIssue(validate.DatasetBindingInvalid, "/dataset_bindings/0/content_hash", "does not match", model.SeverityError)
-	for _, err := range []error{models.ErrNotFound, models.ErrConflict, models.ErrNoChanges, models.ErrDatasetsUnavailable,
-		models.ErrInvalidComment, idempotency.ErrConflict, idempotency.ErrInProgress, &models.InvalidError{Issues: []model.ValidationIssue{issue}}} {
-		if want, got := models.Refused(err), models.PublishRefused(err); !reflect.DeepEqual(got, want) {
-			t.Errorf("%v: %+v, not refused's %+v", err, got, want)
-		}
+	// Without dataset storage it is the other 503, without details.
+	var e *httpapi.Error
+	if !errors.As(models.Refused(models.ErrDatasetsUnavailable), &e) || e.Code != httpapi.ServiceUnavailable || len(e.Details) != 0 {
+		t.Errorf("without dataset storage: %+v", models.Refused(models.ErrDatasetsUnavailable))
 	}
 	for _, err := range []error{context.Canceled, fmt.Errorf("reading: %w", context.DeadlineExceeded), tenant.ErrForbidden,
 		tenant.ErrRetryable, errors.New("database down")} {
-		if got := models.PublishRefused(err); got != err {
+		if got := models.Refused(err); got != err {
 			t.Errorf("%v became %v", err, got)
 		}
-	}
-	// H-022 decided publishVersion (and createSimulation): patchDraft and
-	// resetDraft run the same binding stage and keep their answer, a server
-	// error, until the owner decides otherwise.
-	if got := models.Refused(storage); got != error(storage) {
-		t.Errorf("refused maps the storage failure of every model route: %v", got)
 	}
 }

@@ -72,9 +72,11 @@ func (e *InvalidError) Error() string {
 
 // DatasetStorageError: the dataset binding stage could not read or verify
 // a snapshot the manifest binds (an infrastructure failure, not a problem
-// of the data, which is an issue). Nothing was stored. publishVersion
-// answers it with 503 DATASET_STORAGE_FAILED, as approveProposal and
-// createManualScenario do (D-069 (b), H-022; T-054).
+// of the data, which is an issue). Nothing was stored. publishVersion,
+// patchDraft and resetDraft answer it with 503 DATASET_STORAGE_FAILED, as
+// approveProposal does for its draft sync (Advance) and createManualScenario
+// for its own binding stage (D-069 (b); H-022 Q4, which the coordinator
+// extended to the draft routes and the draft sync; T-054).
 type DatasetStorageError struct{ Err error }
 
 func (e *DatasetStorageError) Error() string {

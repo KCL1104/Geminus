@@ -183,19 +183,20 @@ func (f *flaky) count() int {
 	return f.reads
 }
 
-// published is what a publish writes: the model's versions and latest
-// version, its draft, the organization's model.publish audit events and
-// the Idempotency-Key's row.
-type published struct {
-	versions, audits, keys int
-	latest, hash           string
-	revision               int64
+// written is what a model write can change: the model's versions and
+// latest version, its draft, the organization's audit events of the three
+// writes that read snapshots, and the publish Idempotency-Key's row.
+type written struct {
+	versions, publishes, updates, resets, keys int
+	latest, hash                               string
+	revision                                   int64
 }
 
-func (e *env) published(t *testing.T, modelID, key string) published {
+func (e *env) written(t *testing.T, modelID, key string) written {
 	t.Helper()
 	ctx := context.Background()
-	var p published
+	var p written
+	audits := `SELECT count(*) FROM twin.audit_events WHERE organization_id=$1 AND action=$2`
 	for _, q := range []struct {
 		sql  string
 		args []any
@@ -204,7 +205,9 @@ func (e *env) published(t *testing.T, modelID, key string) published {
 		{`SELECT count(*) FROM twin.model_versions WHERE organization_id=$1 AND model_id=$2`, []any{e.org.ID, modelID}, []any{&p.versions}},
 		{`SELECT latest_version_id FROM twin.models WHERE organization_id=$1 AND id=$2`, []any{e.org.ID, modelID}, []any{&p.latest}},
 		{`SELECT revision, hash FROM twin.model_drafts WHERE organization_id=$1 AND model_id=$2`, []any{e.org.ID, modelID}, []any{&p.revision, &p.hash}},
-		{`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1 AND action='model.publish'`, []any{e.org.ID}, []any{&p.audits}},
+		{audits, []any{e.org.ID, "model.publish"}, []any{&p.publishes}},
+		{audits, []any{e.org.ID, "model.draft.update"}, []any{&p.updates}},
+		{audits, []any{e.org.ID, "model.draft.reset"}, []any{&p.resets}},
 		{`SELECT count(*) FROM twin.idempotency_keys WHERE organization_id=$1 AND operation_scope='publishVersion' AND key=$2`, []any{e.org.ID, key}, []any{&p.keys}},
 	} {
 		if err := e.admin.QueryRow(ctx, q.sql, q.args...).Scan(q.dst...); err != nil {
@@ -230,6 +233,99 @@ type errorDetail struct {
 	Code   string `json:"code"`
 }
 
+// handler is the model routes' HTTP handler, models.Register's (the one
+// api.Handler mounts), over e.svc, logging into logs.
+func (e *env) handler(logs *bytes.Buffer) http.Handler {
+	mux := http.NewServeMux()
+	models.Register(mux, slog.New(slog.NewJSONHandler(logs, nil)), subjects{}, e.svc.DB, e.svc)
+	return mux
+}
+
+// call sends one request to h as the editor; an error answer must be the
+// contract's envelope, its request_id the X-Request-ID.
+func (e *env) call(t *testing.T, h http.Handler, method, path, contentType string, headers map[string]string, body string) (*httptest.ResponseRecorder, errorEnvelope) {
+	t.Helper()
+	r := httptest.NewRequest(method, path, strings.NewReader(body))
+	r.Header.Set("Authorization", "Bearer "+e.org.Members[tenant.Editor].Subject)
+	r.Header.Set("X-Organization-ID", e.org.ID)
+	r.Header.Set("Content-Type", contentType)
+	for k, v := range headers {
+		r.Header.Set(k, v)
+	}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	var env errorEnvelope
+	if w.Code >= 400 {
+		if issues, err := validate.Document(w.Body.Bytes(), "common.schema.json#/$defs/Error", "RESPONSE"); err != nil || len(issues) > 0 {
+			t.Errorf("%s is not a contract error: %v %v", w.Body, issues, err)
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &env); err != nil {
+			t.Fatal(err)
+		}
+		if env.Error.RequestID != w.Header().Get("X-Request-ID") || env.Error.RequestID == "" {
+			t.Errorf("request_id %q, X-Request-ID %q", env.Error.RequestID, w.Header().Get("X-Request-ID"))
+		}
+	}
+	return w, env
+}
+
+// storageFailed checks a 503 DATASET_STORAGE_FAILED answer: the code, the
+// message and the details; the cause is not sent but is in the log, with
+// the request and the model.
+func storageFailed(t *testing.T, what string, w *httptest.ResponseRecorder, env errorEnvelope, logs, modelID string) {
+	t.Helper()
+	if w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" ||
+		!slices.Equal(env.Error.Details, []errorDetail{{"", "the dataset storage failed", "DATASET_STORAGE_FAILED"}}) ||
+		env.Error.Message != "the dataset snapshots could not be read; nothing was changed (retry later)" {
+		t.Errorf("%s: %d %s", what, w.Code, w.Body)
+	}
+	if strings.Contains(w.Body.String(), "secret") {
+		t.Errorf("%s: the cause is sent: %s", what, w.Body)
+	}
+	if !slices.ContainsFunc(strings.Split(strings.TrimSpace(logs), "\n"), func(line string) bool {
+		var entry map[string]any
+		return json.Unmarshal([]byte(line), &entry) == nil && entry["level"] == "WARN" && entry["request_id"] == env.Error.RequestID &&
+			entry["model_id"] == modelID && strings.Contains(fmt.Sprint(entry["error"]), storageCause)
+	}) {
+		t.Errorf("%s: the cause is not logged with the request: %s", what, logs)
+	}
+}
+
+// ended checks the 503 of a read that says the request ended: httpapi's
+// answer to any ended request, without details, and no storage failure in
+// the log.
+func ended(t *testing.T, what string, w *httptest.ResponseRecorder, env errorEnvelope, logs string) {
+	t.Helper()
+	if w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" || len(env.Error.Details) != 0 {
+		t.Errorf("%s, a read past its deadline: %d %s", what, w.Code, w.Body)
+	}
+	if strings.Contains(logs, "DATASET_STORAGE_FAILED") || strings.Contains(logs, "dataset snapshots failed") {
+		t.Errorf("%s: an ended request is logged as a storage failure: %s", what, logs)
+	}
+}
+
+// boundModel is a model on whose base a dataset is bound (as an approved
+// import will bind one, T-018), its clean draft following that base at
+// revision 2; the dataset storage is f.
+func (e *env) boundModel(t *testing.T) (m models.Model, base string, snap snapshotFixture, f *flaky) {
+	t.Helper()
+	ctx := context.Background()
+	sc := e.scope(tenant.Editor)
+	m = e.create(t, sc, createBody)
+	snap = e.dataset(t, "dataset:review_duration")
+	f = &flaky{snapshots: snapshots{e.org.ID + "/" + snap.binding.DatasetVersionID: snap.data}}
+	e.svc.Datasets = f
+	v1, err := e.svc.GetVersion(ctx, sc, m.LatestVersion.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err = e.svc.CommitVersion(ctx, sc, m.ID, bytes.Replace(v1.IR, []byte(`"name":"Pipeline"`), []byte(`"name":"With data"`), 1), []model.DatasetBinding{snap.binding})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m, base, snap, f
+}
+
 // H-022, D-069 (b), TEST-009: publishVersion through its HTTP handler, on
 // a base that binds a dataset, when the binding stage cannot read the
 // snapshot: in the candidate's check, or in the check of the draft that
@@ -246,57 +342,21 @@ type errorDetail struct {
 // not give it yet (T-018), so the route is exercised as it will run then.
 func TestPublishSnapshotStorageFailure(t *testing.T) {
 	e := setup(t)
-	ctx := context.Background()
-	sc := e.scope(tenant.Editor)
-	editor := e.org.Members[tenant.Editor]
-	m := e.create(t, sc, createBody)
-	snap := e.dataset(t, "dataset:review_duration")
-	store := &flaky{snapshots: snapshots{e.org.ID + "/" + snap.binding.DatasetVersionID: snap.data}}
-	e.svc.Datasets = store
-	// A base that binds the dataset, as an approved import will (T-018);
-	// the clean draft follows it. Then a change to publish.
-	v1, err := e.svc.GetVersion(ctx, sc, m.LatestVersion.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	base, err := e.svc.CommitVersion(ctx, sc, m.ID, bytes.Replace(v1.IR, []byte(`"name":"Pipeline"`), []byte(`"name":"With data"`), 1), []model.DatasetBinding{snap.binding})
-	if err != nil {
-		t.Fatal(err)
-	}
-	d, err := e.svc.PatchDraft(ctx, sc, requestID(), m.ID, 2, rename("Renamed"))
+	m, base, snap, store := e.boundModel(t)
+	d, err := e.svc.PatchDraft(context.Background(), e.scope(tenant.Editor), requestID(), m.ID, 2, rename("Renamed"))
 	if err != nil || d.Revision != 3 || d.BaseVersionID != base {
 		t.Fatalf("the draft to publish: %+v %v", d, err)
 	}
-
 	var logs bytes.Buffer
-	mux := http.NewServeMux()
-	models.Register(mux, slog.New(slog.NewJSONHandler(&logs, nil)), subjects{}, e.svc.DB, e.svc)
+	h := e.handler(&logs)
 	publish := func(k string) (*httptest.ResponseRecorder, errorEnvelope) {
 		t.Helper()
-		r := httptest.NewRequest("POST", "/v1/models/"+m.ID+"/versions", strings.NewReader(fmt.Sprintf(`{"expected_base_version_id":%q}`, base)))
-		r.Header.Set("Authorization", "Bearer "+editor.Subject)
-		r.Header.Set("X-Organization-ID", e.org.ID)
-		r.Header.Set("Idempotency-Key", k)
-		r.Header.Set("If-Match", `"draft-revision-3"`)
-		r.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, r)
-		var env errorEnvelope
-		if w.Code >= 400 {
-			if issues, err := validate.Document(w.Body.Bytes(), "common.schema.json#/$defs/Error", "RESPONSE"); err != nil || len(issues) > 0 {
-				t.Errorf("%s is not a contract error: %v %v", w.Body, issues, err)
-			}
-			if err := json.Unmarshal(w.Body.Bytes(), &env); err != nil {
-				t.Fatal(err)
-			}
-			if env.Error.RequestID != w.Header().Get("X-Request-ID") || env.Error.RequestID == "" {
-				t.Errorf("request_id %q, X-Request-ID %q", env.Error.RequestID, w.Header().Get("X-Request-ID"))
-			}
-		}
-		return w, env
+		logs.Reset()
+		return e.call(t, h, "POST", "/v1/models/"+m.ID+"/versions", "application/json",
+			map[string]string{"Idempotency-Key": k, "If-Match": `"draft-revision-3"`}, fmt.Sprintf(`{"expected_base_version_id":%q}`, base))
 	}
 	k := key()
-	before := e.published(t, m.ID, k)
+	before := e.written(t, m.ID, k)
 	if before.versions != 2 || before.latest != base || before.revision != 3 || before.keys != 0 {
 		t.Fatalf("before: %+v", before)
 	}
@@ -310,28 +370,12 @@ func TestPublishSnapshotStorageFailure(t *testing.T) {
 		{"the check of the draft that follows the new version", 2, 2},
 	} {
 		store.fail(c.from, errors.New(storageCause))
-		logs.Reset()
 		w, env := publish(k)
-		if w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" ||
-			!slices.Equal(env.Error.Details, []errorDetail{{"", "the dataset storage failed", "DATASET_STORAGE_FAILED"}}) ||
-			env.Error.Message != "the dataset snapshots could not be read; nothing was published (retry later)" {
-			t.Errorf("%s: %d %s", c.name, w.Code, w.Body)
-		}
+		storageFailed(t, c.name, w, env, logs.String(), m.ID)
 		if n := store.count(); n != c.reads {
 			t.Errorf("%s: %d reads, want %d", c.name, n, c.reads)
 		}
-		if strings.Contains(w.Body.String(), "secret") {
-			t.Errorf("%s: the cause is sent: %s", c.name, w.Body)
-		}
-		// The cause, with the request, is in the log.
-		if !slices.ContainsFunc(strings.Split(strings.TrimSpace(logs.String()), "\n"), func(line string) bool {
-			var entry map[string]any
-			return json.Unmarshal([]byte(line), &entry) == nil && entry["level"] == "WARN" && entry["request_id"] == env.Error.RequestID &&
-				entry["model_id"] == m.ID && strings.Contains(fmt.Sprint(entry["error"]), storageCause)
-		}) {
-			t.Errorf("%s: the cause is not logged with the request: %s", c.name, logs.String())
-		}
-		if after := e.published(t, m.ID, k); after != before {
+		if after := e.written(t, m.ID, k); after != before {
 			t.Errorf("%s: a refused publish wrote %+v (before %+v)", c.name, after, before)
 		}
 	}
@@ -339,20 +383,15 @@ func TestPublishSnapshotStorageFailure(t *testing.T) {
 	// A read that says the request ended: the context's error, which
 	// httpapi answers as it answers any ended request.
 	store.fail(1, fmt.Errorf("reading: %w", context.DeadlineExceeded))
-	logs.Reset()
-	if w, env := publish(k); w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" || len(env.Error.Details) != 0 {
-		t.Errorf("a read past its deadline: %d %s", w.Code, w.Body)
-	}
-	if strings.Contains(logs.String(), "DATASET_STORAGE_FAILED") || strings.Contains(logs.String(), "dataset snapshots failed") {
-		t.Errorf("an ended request is logged as a storage failure: %s", logs.String())
-	}
-	if after := e.published(t, m.ID, k); after != before {
+	w, env := publish(k)
+	ended(t, "publishVersion", w, env, logs.String())
+	if after := e.written(t, m.ID, k); after != before {
 		t.Errorf("a publish past its deadline wrote %+v (before %+v)", after, before)
 	}
 
 	// Storage answers again: the same request with the same key publishes.
 	store.fail(0, nil)
-	w, _ := publish(k)
+	w, _ = publish(k)
 	if w.Code != 201 {
 		t.Fatalf("after storage recovers: %d %s", w.Code, w.Body)
 	}
@@ -361,9 +400,88 @@ func TestPublishSnapshotStorageFailure(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &v); err != nil {
 		t.Fatal(err)
 	}
-	after := e.published(t, m.ID, k)
-	if after.versions != 3 || after.latest != v.ID || v.Version != 3 || after.audits != before.audits+1 || after.keys != 1 ||
+	after := e.written(t, m.ID, k)
+	if after.versions != 3 || after.latest != v.ID || v.Version != 3 || after.publishes != before.publishes+1 || after.keys != 1 ||
 		!slices.Equal(v.DatasetBindings, []model.DatasetBinding{snap.binding}) {
 		t.Errorf("the publish after recovery: %+v %+v", after, v)
+	}
+}
+
+// H-022 Q4, which the coordinator extended to the draft routes: patchDraft
+// and resetDraft through their HTTP handler, on a base that binds a
+// dataset, when the binding stage cannot read the snapshot (the patched
+// draft's issues against the base's manifest; the latest version's
+// content, which a reset makes the draft, against that version's). 503
+// DATASET_STORAGE_FAILED, the cause logged and not sent; a read that says
+// the request ended is the context's 503 without details; nothing is
+// written either way (no new draft revision, no audit event, no version),
+// so the same request with the same If-Match succeeds once storage
+// answers again. Neither route takes an Idempotency-Key.
+func TestDraftSnapshotStorageFailure(t *testing.T) {
+	e := setup(t)
+	m, base, _, store := e.boundModel(t)
+	baseVersion, err := e.svc.GetVersion(context.Background(), e.scope(tenant.Viewer), base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var logs bytes.Buffer
+	h := e.handler(&logs)
+	patchDraft := func() (*httptest.ResponseRecorder, errorEnvelope) {
+		t.Helper()
+		logs.Reset()
+		return e.call(t, h, "PATCH", "/v1/models/"+m.ID+"/draft", "application/json-patch+json",
+			map[string]string{"If-Match": `"draft-revision-2"`}, string(rename("Renamed")))
+	}
+	resetDraft := func() (*httptest.ResponseRecorder, errorEnvelope) {
+		t.Helper()
+		logs.Reset()
+		return e.call(t, h, "POST", "/v1/models/"+m.ID+"/draft/reset", "application/json",
+			map[string]string{"If-Match": `"draft-revision-3"`}, fmt.Sprintf(`{"expected_latest_version_id":%q,"confirm_discard":true}`, base))
+	}
+	before := e.written(t, m.ID, "")
+	if before.versions != 2 || before.latest != base || before.revision != 2 || before.hash != baseVersion.Hash {
+		t.Fatalf("before: %+v", before)
+	}
+
+	for _, route := range []struct {
+		name  string
+		send  func() (*httptest.ResponseRecorder, errorEnvelope)
+		etag  string
+		check func(before, after written) bool
+	}{
+		{"patchDraft", patchDraft, `"draft-revision-3"`, func(before, after written) bool {
+			return after.updates == before.updates+1 && after.resets == before.resets && after.hash != baseVersion.Hash
+		}},
+		{"resetDraft", resetDraft, `"draft-revision-4"`, func(before, after written) bool {
+			return after.resets == before.resets+1 && after.updates == before.updates && after.hash == baseVersion.Hash
+		}},
+	} {
+		store.fail(1, errors.New(storageCause))
+		w, env := route.send()
+		storageFailed(t, route.name, w, env, logs.String(), m.ID)
+		if n := store.count(); n != 1 {
+			t.Errorf("%s: %d reads, want 1", route.name, n)
+		}
+		if after := e.written(t, m.ID, ""); after != before {
+			t.Errorf("%s: a refused write wrote %+v (before %+v)", route.name, after, before)
+		}
+		store.fail(1, fmt.Errorf("reading: %w", context.DeadlineExceeded))
+		w, env = route.send()
+		ended(t, route.name, w, env, logs.String())
+		if after := e.written(t, m.ID, ""); after != before {
+			t.Errorf("%s past its deadline wrote %+v (before %+v)", route.name, after, before)
+		}
+		// Storage answers again: the same request succeeds, one revision later.
+		store.fail(0, nil)
+		w, _ = route.send()
+		if w.Code != 200 || w.Header().Get("ETag") != route.etag {
+			t.Fatalf("%s after storage recovers: %d %s %s", route.name, w.Code, w.Header().Get("ETag"), w.Body)
+		}
+		matches(t, "Draft", w.Body.Bytes())
+		after := e.written(t, m.ID, "")
+		if after.revision != before.revision+1 || after.versions != before.versions || after.latest != base || !route.check(before, after) {
+			t.Errorf("%s after recovery: %+v (before %+v)", route.name, after, before)
+		}
+		before = after
 	}
 }

@@ -1,0 +1,11 @@
+db-models-publish-not-logged: COMPILES (TestPublishSnapshotStorageFailure) 
+db-models-patch-not-logged: COMPILES (TestDraftSnapshotStorageFailure) 
+db-models-reset-not-logged: COMPILES (TestDraftSnapshotStorageFailure) 
+db-models-cause-not-logged: COMPILES (TestPublishSnapshotStorageFailure|TestDraftSnapshotStorageFailure) 
+db-models-draft-check-ignored: COMPILES (TestPublishSnapshotStorageFailure|TestDraftSnapshotStorageFailure) 
+db-models-patch-check-ignored: COMPILES (TestDraftSnapshotStorageFailure) 
+db-approval-draft-sync-ignored: COMPILES (TestApprovalDraftSyncStorageFailure) 
+db-approval-log-skipped: COMPILES (TestApprovalDraftSyncStorageFailure) 
+db-runs-freeze-unwrapped: COMPILES (TestRunSnapshotStorageFailure) 
+db-runs-cause-not-logged: COMPILES (TestRunSnapshotStorageFailure) 
+TOTAL 10 (db mutants, compile only): 10 compile, 0 do not

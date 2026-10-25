@@ -128,6 +128,24 @@ func bindingFailure(ctx context.Context, err error) error {
 	return &DatasetStorageError{Err: err}
 }
 
+// storageCause reports whether err is a dataset binding stage that could
+// not read or verify the snapshots, and its cause (which is logged, never
+// sent): the revalidation's (DatasetStorageError), or the one an edit's
+// clean draft runs when it moves to the new version (models.Service.Advance:
+// a modelsvc.DatasetStorageError; H-022 Q4, which the coordinator extended
+// to this read; T-054). Both are the same 503 DATASET_STORAGE_FAILED.
+func storageCause(err error) (error, bool) {
+	var own *DatasetStorageError
+	if errors.As(err, &own) {
+		return own.Err, true
+	}
+	var draft *modelsvc.DatasetStorageError
+	if errors.As(err, &draft) {
+		return draft.Err, true
+	}
+	return nil, false
+}
+
 // PackLookup finds a model's domain pack; *domainpack.Registry is one.
 type PackLookup interface {
 	Lookup(domain string) (domainpack.DomainPack, error)
@@ -448,7 +466,10 @@ func (s *Service) apply(ctx context.Context, tx tenant.Tx, m tenant.Membership, 
 			return nil, err
 		}
 		// The draft rule of ADR-022 (D-003): a clean draft moves to the new
-		// version, a dirty one is kept as it is and is out of date.
+		// version, a dirty one is kept as it is and is out of date. The move
+		// checks the draft's bindings with the snapshots read again; one that
+		// cannot be read is a modelsvc.DatasetStorageError, the same 503 as
+		// the revalidation's (storageCause), and nothing is committed.
 		svc := modelsvc.Service{DB: s.DB, Packs: s.Packs, Datasets: snaps}
 		d, err := svc.Advance(ctx, tx, m, l.model, l.draft, base, v, r.ir.Name)
 		if err != nil {

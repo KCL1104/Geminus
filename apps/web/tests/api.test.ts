@@ -290,7 +290,7 @@ describe("model writes and versions (T-013)", () => {
     const storageFailed = {
       error: {
         code: "SERVICE_UNAVAILABLE",
-        message: "the dataset snapshots could not be read; nothing was published (retry later)",
+        message: "the dataset snapshots could not be read; nothing was changed (retry later)",
         details: [{ path: "", reason: "the dataset storage failed", code: "DATASET_STORAGE_FAILED" }],
         request_id: REQ,
       },
@@ -301,7 +301,7 @@ describe("model writes and versions (T-013)", () => {
       kind: "unavailable",
       code: "SERVICE_UNAVAILABLE",
       status: 503,
-      message: "the dataset snapshots could not be read; nothing was published (retry later)",
+      message: "the dataset snapshots could not be read; nothing was changed (retry later)",
       requestId: REQ,
       details: [{ path: "", reason: "the dataset storage failed", code: "DATASET_STORAGE_FAILED" }],
       retryAfterSeconds: null,

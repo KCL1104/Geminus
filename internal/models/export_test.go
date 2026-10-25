@@ -19,12 +19,10 @@ var Capped = capped
 var StoredIR = storedIR
 
 // IfMatch and Refused are the HTTP adapter's precondition and error
-// mapping, PublishRefused publishVersion's, for their tests without a
-// database.
+// mapping, for their tests without a database.
 var (
-	IfMatch        = ifMatch
-	Refused        = refused
-	PublishRefused = publishRefused
+	IfMatch = ifMatch
+	Refused = refused
 )
 
 // BindingFailure is bindingFailure, for its test without a database.

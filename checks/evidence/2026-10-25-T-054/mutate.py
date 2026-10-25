@@ -1,6 +1,15 @@
-"""Targeted mutants of T-054's mapping (publishVersion and createSimulation
-answer a dataset binding stage that cannot read or verify the snapshots
-with 503 DATASET_STORAGE_FAILED).
+"""Targeted mutants of T-054's mapping: a dataset binding stage that cannot
+read or verify the snapshots is 503 DATASET_STORAGE_FAILED on
+publishVersion and createSimulation (round 1), and on patchDraft,
+resetDraft and the draft sync of an edit approval (round 2, the
+coordinator's extension of H-022 Q4).
+
+Round 2 (this version) targets the code as it is after round 2: models
+has one mapping (refused) and one logging helper (refuse); approval's
+storageCause recognizes the draft sync's models.DatasetStorageError. The
+round 1 harness, with its mutants of the then publishRefused, is in git at
+3093ebb (logs: mutants-unit.log, mutants-db-compile.log); round 2's logs
+are r2-mutants-unit.log and r2-mutants-db-compile.log.
 
 Each mutant replaces one exact snippet, runs the named tests, expects a
 failure, and restores the file. The "unit" set must be killed by the tests
@@ -19,14 +28,16 @@ import sys
 
 root, log = sys.argv[1], sys.argv[2]
 which = sys.argv[3] if len(sys.argv) > 3 else 'unit'
-M, R = 'internal/models/', 'internal/runs/'
-MP, RP, AP = './internal/models/', './internal/runs/', './internal/api/'
+M, R, A = 'internal/models/', 'internal/runs/', 'internal/proposals/approval/'
+MP, RP, AP, PP = './internal/models/', './internal/runs/', './internal/api/', './internal/proposals/approval/'
 
 BF_IF = 'if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {'
 STORAGE_DETAIL = 'Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}}'
+MODELS_503 = 'return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was changed (retry later)",'
+RUNS_503 = 'return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was queued (retry later)",'
 
 unit = [
-    # models: the binding stage inside check.
+    # models: the binding stage inside check (publish, patch, reset, the draft sync).
     ("models-check-unwrapped", M + 'models.go',
      'return datasets.Resolution{}, nil, bindingFailure(ctx, err)', 'return datasets.Resolution{}, nil, err',
      MP, 'TestCheckStorageFailure'),
@@ -46,33 +57,45 @@ unit = [
     ("models-binding-never-storage", M + 'models.go',
      BF_IF, 'if true {',
      MP, 'TestBindingFailure|TestCheckStorageFailure'),
-    # models: publishRefused.
-    ("models-publish-not-mapped", M + 'http.go',
-     '\tif errors.As(err, &storage) {\n\t\treturn &httpapi.Error{', '\tif false && errors.As(err, &storage) {\n\t\treturn &httpapi.Error{',
-     MP, 'TestPublishRefused'),
-    ("models-publish-cause-sent", M + 'http.go',
+    # models: refused, the one mapping of every model route.
+    ("models-not-mapped", M + 'http.go',
+     '\tcase errors.As(err, &storage):\n', '\tcase false && errors.As(err, &storage):\n',
+     MP, 'TestRefusedDatasetStorage'),
+    ("models-cause-sent", M + 'http.go',
      STORAGE_DETAIL, 'Details: []httpapi.Detail{{Path: "", Reason: storage.Err.Error(), Code: "DATASET_STORAGE_FAILED"}}}',
-     MP, 'TestPublishRefused'),
-    ("models-publish-other-code", M + 'http.go',
+     MP, 'TestRefusedDatasetStorage'),
+    ("models-other-code", M + 'http.go',
      STORAGE_DETAIL, 'Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "OBJECT_STORAGE_FAILED"}}}',
-     MP, 'TestPublishRefused'),
-    ("models-publish-no-details", M + 'http.go',
+     MP, 'TestRefusedDatasetStorage'),
+    ("models-no-details", M + 'http.go',
      ',\n\t\t\t' + STORAGE_DETAIL, '}',
-     MP, 'TestPublishRefused'),
-    ("models-publish-500", M + 'http.go',
-     'return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was published (retry later)",',
-     'return &httpapi.Error{Code: httpapi.InternalError, Message: "the dataset snapshots could not be read; nothing was published (retry later)",',
-     MP, 'TestPublishRefused'),
-    ("models-publish-says-saved", M + 'http.go',
-     'nothing was published (retry later)', 'nothing was saved (retry later)',
-     MP, 'TestPublishRefused'),
-    # H-022 decided publishVersion only: refused (patchDraft, resetDraft)
-    # must not map the storage failure.
-    ("models-refused-maps-storage-for-every-route", M + 'http.go',
-     '\tswitch {\n\tcase errors.Is(err, ErrNotFound):\n\t\treturn httpapi.Errorf(httpapi.NotFound, "not found")\n\tcase errors.Is(err, ErrConflict):',
-     '\tswitch {\n\tcase errors.As(err, new(*DatasetStorageError)):\n\t\treturn httpapi.Errorf(httpapi.ServiceUnavailable, "storage")\n'
-     '\tcase errors.Is(err, ErrNotFound):\n\t\treturn httpapi.Errorf(httpapi.NotFound, "not found")\n\tcase errors.Is(err, ErrConflict):',
-     MP, 'TestPublishRefused'),
+     MP, 'TestRefusedDatasetStorage'),
+    ("models-500", M + 'http.go',
+     MODELS_503, MODELS_503.replace('httpapi.ServiceUnavailable', 'httpapi.InternalError'),
+     MP, 'TestRefusedDatasetStorage'),
+    ("models-says-published", M + 'http.go',
+     'nothing was changed (retry later)', 'nothing was published (retry later)',
+     MP, 'TestRefusedDatasetStorage'),
+    ("models-no-storage-gets-details", M + 'http.go',
+     'return httpapi.Errorf(httpapi.ServiceUnavailable, "the version binds datasets and dataset storage is not available")',
+     'return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the version binds datasets and dataset storage is not available", ' + STORAGE_DETAIL,
+     MP, 'TestRefusedDatasetStorage'),
+    # approval: the draft sync's storage failure is the revalidation's 503.
+    ("approval-draft-sync-not-recognized", A + 'approval.go',
+     '\tif errors.As(err, &draft) {\n', '\tif false && errors.As(err, &draft) {\n',
+     PP, 'TestRefusedDraftSyncStorage'),
+    ("approval-draft-sync-logs-the-wrapper", A + 'approval.go',
+     '\t\treturn draft.Err, true\n', '\t\treturn err, true\n',
+     PP, 'TestRefusedDraftSyncStorage'),
+    ("approval-revalidation-not-recognized", A + 'approval.go',
+     '\tif errors.As(err, &own) {\n', '\tif false && errors.As(err, &own) {\n',
+     PP, 'TestRefused|TestRefusedDraftSyncStorage'),
+    ("approval-not-mapped", A + 'http.go',
+     '\tcase storage:\n', '\tcase storage && false:\n',
+     PP, 'TestRefused|TestRefusedDraftSyncStorage'),
+    ("approval-everything-is-storage", A + 'http.go',
+     '\t_, storage := storageCause(err)\n', '\t_, storage := storageCause(err)\n\tstorage = storage || err != nil\n',
+     PP, 'TestRefused|TestRefusedDraftSyncStorage'),
     # runs: bindingFailure.
     ("runs-binding-ignores-the-request", R + 'runs.go',
      BF_IF, 'if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {',
@@ -100,8 +123,7 @@ unit = [
      STORAGE_DETAIL, 'Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "OBJECT_STORAGE_FAILED"}}}',
      RP, 'TestRefusedDatasetStorage'),
     ("runs-500", R + 'http.go',
-     'return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was queued (retry later)",',
-     'return &httpapi.Error{Code: httpapi.InternalError, Message: "the dataset snapshots could not be read; nothing was queued (retry later)",',
+     RUNS_503, RUNS_503.replace('httpapi.ServiceUnavailable', 'httpapi.InternalError'),
      RP, 'TestRefusedDatasetStorage'),
     ("runs-says-saved", R + 'http.go',
      'nothing was queued (retry later)', 'nothing was saved (retry later)',
@@ -114,17 +136,39 @@ unit = [
 
 # Killed only with a database (the DB-backed tests through the handlers).
 db = [
-    ("db-models-handler-maps-like-every-route", M + 'http.go',
-     '\t\treturn publishRefused(err)\n', '\t\treturn refused(err)\n',
+    # models: each write that reads snapshots logs the cause (refuse).
+    ("db-models-publish-not-logged", M + 'http.go',
+     'return h.refuse(r, sc, "publishVersion", id, err)', 'return refused(err)',
      MP, 'TestPublishSnapshotStorageFailure'),
+    ("db-models-patch-not-logged", M + 'http.go',
+     'return h.refuse(r, sc, "patchDraft", id, err)', 'return refused(err)',
+     MP, 'TestDraftSnapshotStorageFailure'),
+    ("db-models-reset-not-logged", M + 'http.go',
+     'return h.refuse(r, sc, "resetDraft", id, err)', 'return refused(err)',
+     MP, 'TestDraftSnapshotStorageFailure'),
     ("db-models-cause-not-logged", M + 'http.go',
-     '\t\t\th.log.WarnContext(r.Context(), "reading a publish\'s dataset snapshots failed"',
-     '\t\t\t_ = storage\n\t\t\tif false {\n\t\t\t\th.log.WarnContext(r.Context(), "reading a publish\'s dataset snapshots failed"',
-     MP, 'TestPublishSnapshotStorageFailure'),
+     '\t\th.log.WarnContext(r.Context(), "reading a model write\'s dataset snapshots failed"',
+     '\t\t_ = storage\n\t\tif false {\n\t\t\th.log.WarnContext(r.Context(), "reading a model write\'s dataset snapshots failed"',
+     MP, 'TestPublishSnapshotStorageFailure|TestDraftSnapshotStorageFailure'),
+    # models: the draft that follows a new version swallows its failure.
     ("db-models-draft-check-ignored", M + 'models.go',
      '\tissues, err := s.issues(ctx, m.OrganizationID, res.IR, res.Issues, v.DatasetBindings)\n\tif err != nil {\n\t\treturn store.Draft{}, err\n\t}',
      '\tissues, err := s.issues(ctx, m.OrganizationID, res.IR, res.Issues, v.DatasetBindings)\n\tif err != nil {\n\t\tissues = []model.ValidationIssue{}\n\t}',
-     MP, 'TestPublishSnapshotStorageFailure'),
+     MP, 'TestPublishSnapshotStorageFailure|TestDraftSnapshotStorageFailure'),
+    # models: a patched draft whose binding stage failed is saved anyway.
+    ("db-models-patch-check-ignored", M + 'models.go',
+     '\t\tissues, err := s.issues(ctx, m.OrganizationID, res.Validation.IR, res.Validation.Issues, base.DatasetBindings)\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}',
+     '\t\tissues, err := s.issues(ctx, m.OrganizationID, res.Validation.IR, res.Validation.Issues, base.DatasetBindings)\n\t\tif err != nil {\n\t\t\tissues = []model.ValidationIssue{}\n\t\t}',
+     MP, 'TestDraftSnapshotStorageFailure'),
+    # approval: the draft sync's failure is swallowed, or not logged.
+    ("db-approval-draft-sync-ignored", A + 'approval.go',
+     '\t\td, err := svc.Advance(ctx, tx, m, l.model, l.draft, base, v, r.ir.Name)\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}',
+     '\t\td, err := svc.Advance(ctx, tx, m, l.model, l.draft, base, v, r.ir.Name)\n\t\tif err != nil {\n\t\t\td = l.draft\n\t\t}',
+     PP, 'TestApprovalDraftSyncStorageFailure'),
+    ("db-approval-log-skipped", A + 'http.go',
+     'if cause, ok := storageCause(err); ok {', 'if cause, ok := storageCause(err); ok && false {',
+     PP, 'TestApprovalDraftSyncStorageFailure'),
+    # runs.
     ("db-runs-freeze-unwrapped", R + 'runs.go',
      'return store.Run{}, bindingFailure(ctx, err)', 'return store.Run{}, err',
      AP, 'TestRunSnapshotStorageFailure'),
@@ -140,12 +184,12 @@ if which == 'db' and not os.environ.get('GEMINUS_TEST_DATABASE_URL'):
 
 
 def close_blocks(name, text):
-    # The two "cause-not-logged" mutants open an `if false {` around the log
+    # The "cause-not-logged" mutants open an `if false {` around the log
     # call; close it after the call's last line.
     if 'cause-not-logged' not in name:
         return text
     marker = '"error", storage.Err.Error())\n'
-    return text.replace(marker, marker + '\t\t\t}\n', 1)
+    return text.replace(marker, marker + '\t\t}\n', 1)
 
 
 out = open(log, 'w')
@@ -179,7 +223,7 @@ for name, path, old, new, pkg, run in mutants:
         killed += 1
     else:
         survived += 1
-    first = [l for l in (r.stdout + r.stderr).splitlines() if 'FAIL' in l or 'error' in l.lower() or 'storage_failure_test' in l][:3]
+    first = [l for l in (r.stdout + r.stderr).splitlines() if 'FAIL' in l or 'error' in l.lower() or '_test.go' in l][:3]
     out.write(f'{name}: {status} ({run}) {" | ".join(first)}\n')
 if which == 'compile':
     out.write(f'TOTAL {len(mutants)} (db mutants, compile only): {killed} compile, {survived} do not\n')
