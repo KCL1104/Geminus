@@ -1,0 +1,6 @@
+$ PYTHON=/home/user/Geminus/.venv/bin/python python3 checks/evidence/2026-10-25-T-049/t049-mutants.py shift-end-wakes-too processing-ignores-blocked release-extra-draw   (the final tree's code and test data, after G-C10)
+shift-end-wakes-too	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+release-extra-draw	KILLED --- FAIL: TestCalendarObservationDigests (0.02s)
+processing-ignores-blocked	KILLED --- FAIL: TestCalendarGoldenResults (0.02s)
+3/3 killed, 0 equivalent
+exit status 0

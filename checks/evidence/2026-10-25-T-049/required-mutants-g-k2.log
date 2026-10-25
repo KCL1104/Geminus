@@ -1,0 +1,22 @@
+$ the two mutants the task names, applied alone (t049-mutants.py's patterns, by overlay) against G-K2 only: go test -count=1 -overlay <deadlock-bound-ge, then shift-start-no-wake> -run 'TestCalendarGoldens/G-K2|TestShiftBoundIsNoDeadlock' ./internal/simulation/engine/  (e9ad4a9)
+--- FAIL: TestCalendarGoldens (0.10s)
+    --- FAIL: TestCalendarGoldens/G-K2 (0.10s)
+        calendar_test.go:317: engine: the replication deadlocked at tick 60000: r0/src/1 waits for node work since tick 60000
+--- FAIL: TestShiftBoundIsNoDeadlock (0.00s)
+    calendar_test.go:385: G-K2 failed: engine: the replication deadlocked at tick 60000: r0/src/1 waits for node work since tick 60000
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.123s
+FAIL
+ 
+exit 1
+--- FAIL: TestCalendarGoldens (0.07s)
+    --- FAIL: TestCalendarGoldens/G-K2 (0.07s)
+        calendar_test.go:317: engine: the replication stalled at tick 300000: r0/src/1 waits for node work since tick 60000 with none of its bundle in use; it was due by tick 300000
+--- FAIL: TestShiftBoundIsNoDeadlock (0.00s)
+    calendar_test.go:385: G-K2 failed: engine: the replication stalled at tick 300000: r0/src/1 waits for node work since tick 60000 with none of its bundle in use; it was due by tick 300000
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.085s
+FAIL
+ 
+exit 1
+exit status 0

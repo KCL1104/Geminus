@@ -1,5 +1,5 @@
 {
-  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.4.0, T-049) on the cases of calendar-goldens.json that have an expected result (20) and on its four stochastic reference cases C-S1–C-S4; NOT an independent oracle. It was taken only after the hand-derived expectations of those cases passed (internal/simulation/des TestCalendarGoldenResults; internal/simulation/engine TestCalendarGoldens) and after the SimPy reference agreed on C-S1–C-S4; these digests only make any later numerical change visible. The locks of des-go-0.1.0, des-go-0.2.0 and des-go-0.3.0 are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back. G-C9 was added when mutation run 2 found a mutant killed only by the locks; its digest was taken after its hand-derived expectations passed, the other digests are unchanged.",
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.4.0, T-049) on the cases of calendar-goldens.json that have an expected result (21) and on its four stochastic reference cases C-S1–C-S4; NOT an independent oracle. It was taken only after the hand-derived expectations of those cases passed (internal/simulation/des TestCalendarGoldenResults; internal/simulation/engine TestCalendarGoldens) and after the SimPy reference agreed on C-S1–C-S4; these digests only make any later numerical change visible. The locks of des-go-0.1.0, des-go-0.2.0 and des-go-0.3.0 are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back. G-C9 and G-C10 were added when mutation runs 2 and 3 found a mutant killed only by the 0.4.0 locks; each digest was taken after the case's hand-derived expectations passed, the other digests are unchanged.",
   "engine_version": "des-go-0.4.0",
   "inputs": {
     "cases": "calendar-goldens.json (model and config as given, no domain metrics)",
@@ -20,6 +20,7 @@
     "C-S3": "sha256:2d3d1746bab15cafe73fe012c9ce014e8724a4ba791b7243dbaae395f98b5852",
     "C-S4": "sha256:27523f6fe3d2595ed052eb7b0af69607c0ca3f2c27ab6c31715b5640e6cfdf31",
     "G-C1": "sha256:4fdec795ffaca54e94f36980020c5ced7f2331d711b84e2dccddf5fb1fc205d3",
+    "G-C10": "sha256:d0f678cafc2eaf164d3769c564cf7241f7b79947f77bbb2d38639609822be239",
     "G-C1W": "sha256:a57197b13804dc57ba01e77c13a35356763ec09cec4fe0b161e9b1a0a51e5a4e",
     "G-C1W10": "sha256:374a7f780a2be5a13a9b1b9e450eff5b15a8352c81b07fe69a9be5d180b33576",
     "G-C2": "sha256:d723377f0e291414a4745fabd17b63021cf411b1297e3d02f252d566e29afbb6",

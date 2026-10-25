@@ -1,0 +1,19 @@
+$ e9ad4a9, before G-C10: the two mutants run 3 saw killed first by a 0.4.0 lock, applied alone with the locks skipped: go test -count=1 -overlay <processing-ignores-blocked> -skip Digests ./internal/simulation/... ./internal/results/... (nothing else kills it: G-C10 added), then <release-extra-draw> -skip Digests ./internal/simulation/engine/ (TestReleaseRunVectors kills it)
+ok  	github.com/kcl1104/geminus/internal/simulation	0.183s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	8.167s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	81.998s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.086s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.210s
+ 
+exit 0
+--- FAIL: TestReleaseRunVectors (0.00s)
+    --- FAIL: TestReleaseRunVectors/G-R2 (0.00s)
+        release_test.go:134: 1038 arrivals, reference 1056; first difference at 0
+        release_test.go:141: a after the run 4090815fce841792 (1056.343561233462), reference 409081857f836344 (1056.3803692368829)
+        release_test.go:144: arrival stream state &{16878465173320335123}, reference e6fbe1d5857e9f52 (wrong number of draws)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	74.367s
+FAIL
+ 
+exit 1
+exit status 0

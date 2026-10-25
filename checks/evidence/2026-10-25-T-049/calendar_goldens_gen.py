@@ -426,6 +426,52 @@ cases.append({
     "simpy": "compare",
 })
 
+# ---------------------------------------------------------------- G-C10
+# (Added after mutation run 3: processing-ignores-blocked, ∫min(U, S) in
+# place of ∫min(U - K, S), was killed only by the 0.4.0 Result lock; no
+# golden had a resource on a calendar holding a blocked entity. Hand-derived
+# before the engine ran it.)
+cases.append({
+    "id": "G-C10",
+    "title": "a blocked entity holds a unit on a calendar across the shift end: blocked on shift is not processing, overtime counts the held unit (D-049, D-052, D-058)",
+    "model": model("G-C10", [resource("m", 1, "c"), resource("n", 1)],
+                   [source("src", const(1), max_entities=3), process("work", const(2), ("m", 1)), queue("q", 1),
+                    process("pack", const(10), ("n", 1)), sink()],
+                   [("src", "work"), ("work", "q"), ("q", "pack"), ("pack", "done")], [calendar("c", 20, [(0, 10)])]),
+    "config": config(25),
+    "derivation": [
+        "S(t) of m: 1 on [0,10), 0 on [10,20), 1 on [20,25] (period 20, shift [0,10)); n has no calendar (S = C = 1). pack's buffer q holds 1 waiting entity. The source stops after 3 entities (arrivals at 1, 2, 3).",
+        "t=0: src's first arrival at 1; calendar c's first change at 10.",
+        "t=1: e1 arrives (next at 2) and is granted m: work [1,3].",
+        "t=2: e2 arrives (next at 3); m in use: e2 held at work.",
+        "t=3: SERVICE_COMPLETE e1 (priority 0): q is empty (0 waiting < 1), so e1 moves on: the release of m wakes e2; e1 enters q (pack's buffer). ARRIVAL e3 (10): the source has its 3, no next; e3 queues at work behind e2. DISPATCH (20): e2 granted m: work [3,5]; e1 granted n: pack [3,13]; e3, now the front of m, held.",
+        "t=5: SERVICE_COMPLETE e2: q has 0 waiting (e1 is in service), so e2 moves on: the release of m wakes e3; e2 enters q and is held (n in use). DISPATCH: e3 granted m: work [5,7]. q is full (1 waiting) from 5.",
+        "t=7: SERVICE_COMPLETE e3: q is full, so e3 is blocked at work (D-049) and keeps its unit of m: no release, no dispatch. K of m (units held by a blocked entity) 1 from 7.",
+        "t=10: CAPACITY_CHANGE: next change at 20; S of m 1 -> 0. A decrease wakes nothing and interrupts nothing: the blocked e3 keeps m (finish-first, D-052 (a)); U - S = 1 from 10: overtime.",
+        "t=13: SERVICE_COMPLETE e1 at pack: e1 completes (sink); the release of n wakes e2. DISPATCH: e2 granted n: pack [13,23]; its grant frees a place in q, so the blocked e3 moves in (unblocked at 13, block [7,13]), releasing m (U of m 0 from 13), and queues for n, held (n in use). q stays full.",
+        "t=20: CAPACITY_CHANGE: its next, 30, is after the horizon; S of m 0 -> 1; nothing waits at m.",
+        "t=23: SERVICE_COMPLETE e2 at pack: e2 completes; the release of n wakes e3; DISPATCH: e3 granted n: pack [23,33] (its completion is after the horizon). q is empty from 23.",
+        "Result over [0,25] (T = 25 min): completed e1, e2 (2), censored e3 (in service); lead times 12 (1 -> 13), 21 (2 -> 23); waits at work 0, 1, 2 (e3 queued at 3, started at 5); waits at q 0 (e1 entered at 3, started at 3), 8 (e2: 5 -> 13), 10 (e3 entered q at 13 when unblocked, started at 23).",
+        "m: U = 1 on [1,13) (e1 [1,3), e2 [3,5), e3 [5,7) in service and [7,13) blocked) = 12 min, utilization 12/25; K = 1 on [7,13) = 6 min blocked; S on [0,10) and [20,25] = 15 min scheduled; min(U,S): [1,10) = 9 min; overtime max(U-S,0): [10,13) = 3 min (9 + 3 = 12); available min(S, C-D) = S = 15 min; idle max(0, A-U): [0,1) and [20,25) = 6 min (15 - 9); scheduled processing min(U - K, S): U - K = 1 on [1,7) only, all on shift: 6 min (the blocked [7,10) on shift is not processing: min(U, S) would give 9).",
+        "n: in use [3,25] (e1 [3,13), e2 [13,23), e3 [23,25]) = 22 min, utilization 22/25; blocked 0; processing 22 min (no calendar). Blocking at work: 1 block started and completed, 6 min, 6 entity-minutes. q full on [5,23) = 18 min (at 13 e2 leaves and e3 enters in the same tick).",
+    ],
+    "expected": {
+        "arrivals": ids("src", [1, 2, 3]),
+        "starts": {"work": ids("src", [1, 3, 5]), "pack": ids("src", [3, 13, 23])},
+        "completions": ids("src", [13, 23]),
+        "blocks": [["r0/src/3", "work", 7, 13]], "downs": [], "pending": [],
+        "capacities": [["m", 10, 0], ["m", 20, 1]],
+        "result": {
+            "completed_count": 2, "censored_entities": 1, "lead_times_minutes": [12, 21],
+            "queue_waits_minutes": {"work": [0, 1, 2], "q": [0, 8, 10]},
+            "resource_utilization": {"m": 12 / 25, "n": 22 / 25},
+            "resource_states": {"m": state(12, 6, blocked=6, scheduled=15, scheduled_in_use=9, overtime=3, available=15, idle=6),
+                                "n": state(22, 22, blocked=0)},
+            "blocking": {"work": {"blocks_started": 1, "blocks_completed": 1, "completed_block_ticks": 6 * MIN, "blocked_entity_ticks": 6 * MIN}},
+            "buffers": {"q": {"full_ticks": 18 * MIN}}}},
+    "simpy": "compare",
+})
+
 # ---------------------------------------------------------------- G-F6
 cases.append({
     "id": "G-F6",

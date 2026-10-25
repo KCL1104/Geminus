@@ -334,8 +334,8 @@ func TestCalendarGoldens(t *testing.T) {
 			}
 		})
 	}
-	if ran != 20 {
-		t.Errorf("%d calendar goldens ran, want 20", ran)
+	if ran != 21 {
+		t.Errorf("%d calendar goldens ran, want 21", ran)
 	}
 }
 
@@ -525,7 +525,7 @@ func TestCalendarObservationDigests(t *testing.T) {
 	for _, c := range lock.Cases {
 		want[c.ID] = fmt.Sprintf("%d %s", c.Observations, c.Digest)
 	}
-	if lock.EngineVersion != "des-go-0.4.0" || len(got) != 24 || !maps.Equal(got, want) {
+	if lock.EngineVersion != "des-go-0.4.0" || len(got) != 25 || !maps.Equal(got, want) {
 		var rows []string
 		for _, id := range order {
 			rows = append(rows, fmt.Sprintf("%s=%s", id, got[id]))

@@ -2518,6 +2518,317 @@
    "simpy": "compare"
   },
   {
+   "id": "G-C10",
+   "title": "a blocked entity holds a unit on a calendar across the shift end: blocked on shift is not processing, overtime counts the held unit (D-049, D-052, D-058)",
+   "model": {
+    "schema_version": "0.1",
+    "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+    "domain": "synthetic_line",
+    "name": "G-C10",
+    "time_unit": "minute",
+    "entity_types": [
+     {
+      "id": "board",
+      "name": "Board"
+     }
+    ],
+    "resources": [
+     {
+      "id": "m",
+      "type": "machine",
+      "name": "m",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "c"
+     },
+     {
+      "id": "n",
+      "type": "machine",
+      "name": "n",
+      "capacity": 1,
+      "queue_discipline": "fifo"
+     }
+    ],
+    "nodes": [
+     {
+      "id": "src",
+      "type": "source",
+      "entity_type": "board",
+      "arrival": {
+       "distribution": {
+        "type": "constant",
+        "value": 1
+       },
+       "max_entities": 3
+      }
+     },
+     {
+      "id": "work",
+      "type": "process",
+      "service_time": {
+       "distribution": {
+        "type": "constant",
+        "value": 2
+       }
+      },
+      "requires": [
+       {
+        "resource_id": "m",
+        "units": 1
+       }
+      ]
+     },
+     {
+      "id": "q",
+      "type": "queue",
+      "capacity": 1
+     },
+     {
+      "id": "pack",
+      "type": "process",
+      "service_time": {
+       "distribution": {
+        "type": "constant",
+        "value": 10
+       }
+      },
+      "requires": [
+       {
+        "resource_id": "n",
+        "units": 1
+       }
+      ]
+     },
+     {
+      "id": "done",
+      "type": "sink",
+      "outcome": "completed"
+     }
+    ],
+    "flows": [
+     {
+      "id": "src__work",
+      "from": "src",
+      "to": "work",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     },
+     {
+      "id": "work__q",
+      "from": "work",
+      "to": "q",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     },
+     {
+      "id": "q__pack",
+      "from": "q",
+      "to": "pack",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     },
+     {
+      "id": "pack__done",
+      "from": "pack",
+      "to": "done",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     }
+    ],
+    "constraints": [],
+    "metrics": [],
+    "views": {
+     "2d": {},
+     "3d": {}
+    },
+    "metadata": {
+     "synthetic": true
+    },
+    "calendars": [
+     {
+      "id": "c",
+      "period": 20,
+      "shifts": [
+       {
+        "start": 0,
+        "end": 10
+       }
+      ]
+     }
+    ]
+   },
+   "config": {
+    "horizon": {
+     "value": 25,
+     "unit": "minute"
+    },
+    "warmup": {
+     "value": 0,
+     "unit": "minute"
+    },
+    "replications": 1,
+    "seed": 7,
+    "trace_level": "none"
+   },
+   "derivation": [
+    "S(t) of m: 1 on [0,10), 0 on [10,20), 1 on [20,25] (period 20, shift [0,10)); n has no calendar (S = C = 1). pack's buffer q holds 1 waiting entity. The source stops after 3 entities (arrivals at 1, 2, 3).",
+    "t=0: src's first arrival at 1; calendar c's first change at 10.",
+    "t=1: e1 arrives (next at 2) and is granted m: work [1,3].",
+    "t=2: e2 arrives (next at 3); m in use: e2 held at work.",
+    "t=3: SERVICE_COMPLETE e1 (priority 0): q is empty (0 waiting < 1), so e1 moves on: the release of m wakes e2; e1 enters q (pack's buffer). ARRIVAL e3 (10): the source has its 3, no next; e3 queues at work behind e2. DISPATCH (20): e2 granted m: work [3,5]; e1 granted n: pack [3,13]; e3, now the front of m, held.",
+    "t=5: SERVICE_COMPLETE e2: q has 0 waiting (e1 is in service), so e2 moves on: the release of m wakes e3; e2 enters q and is held (n in use). DISPATCH: e3 granted m: work [5,7]. q is full (1 waiting) from 5.",
+    "t=7: SERVICE_COMPLETE e3: q is full, so e3 is blocked at work (D-049) and keeps its unit of m: no release, no dispatch. K of m (units held by a blocked entity) 1 from 7.",
+    "t=10: CAPACITY_CHANGE: next change at 20; S of m 1 -> 0. A decrease wakes nothing and interrupts nothing: the blocked e3 keeps m (finish-first, D-052 (a)); U - S = 1 from 10: overtime.",
+    "t=13: SERVICE_COMPLETE e1 at pack: e1 completes (sink); the release of n wakes e2. DISPATCH: e2 granted n: pack [13,23]; its grant frees a place in q, so the blocked e3 moves in (unblocked at 13, block [7,13]), releasing m (U of m 0 from 13), and queues for n, held (n in use). q stays full.",
+    "t=20: CAPACITY_CHANGE: its next, 30, is after the horizon; S of m 0 -> 1; nothing waits at m.",
+    "t=23: SERVICE_COMPLETE e2 at pack: e2 completes; the release of n wakes e3; DISPATCH: e3 granted n: pack [23,33] (its completion is after the horizon). q is empty from 23.",
+    "Result over [0,25] (T = 25 min): completed e1, e2 (2), censored e3 (in service); lead times 12 (1 -> 13), 21 (2 -> 23); waits at work 0, 1, 2 (e3 queued at 3, started at 5); waits at q 0 (e1 entered at 3, started at 3), 8 (e2: 5 -> 13), 10 (e3 entered q at 13 when unblocked, started at 23).",
+    "m: U = 1 on [1,13) (e1 [1,3), e2 [3,5), e3 [5,7) in service and [7,13) blocked) = 12 min, utilization 12/25; K = 1 on [7,13) = 6 min blocked; S on [0,10) and [20,25] = 15 min scheduled; min(U,S): [1,10) = 9 min; overtime max(U-S,0): [10,13) = 3 min (9 + 3 = 12); available min(S, C-D) = S = 15 min; idle max(0, A-U): [0,1) and [20,25) = 6 min (15 - 9); scheduled processing min(U - K, S): U - K = 1 on [1,7) only, all on shift: 6 min (the blocked [7,10) on shift is not processing: min(U, S) would give 9).",
+    "n: in use [3,25] (e1 [3,13), e2 [13,23), e3 [23,25]) = 22 min, utilization 22/25; blocked 0; processing 22 min (no calendar). Blocking at work: 1 block started and completed, 6 min, 6 entity-minutes. q full on [5,23) = 18 min (at 13 e2 leaves and e3 enters in the same tick)."
+   ],
+   "expected": {
+    "arrivals": [
+     [
+      "r0/src/1",
+      1
+     ],
+     [
+      "r0/src/2",
+      2
+     ],
+     [
+      "r0/src/3",
+      3
+     ]
+    ],
+    "starts": {
+     "work": [
+      [
+       "r0/src/1",
+       1
+      ],
+      [
+       "r0/src/2",
+       3
+      ],
+      [
+       "r0/src/3",
+       5
+      ]
+     ],
+     "pack": [
+      [
+       "r0/src/1",
+       3
+      ],
+      [
+       "r0/src/2",
+       13
+      ],
+      [
+       "r0/src/3",
+       23
+      ]
+     ]
+    },
+    "completions": [
+     [
+      "r0/src/1",
+      13
+     ],
+     [
+      "r0/src/2",
+      23
+     ]
+    ],
+    "blocks": [
+     [
+      "r0/src/3",
+      "work",
+      7,
+      13
+     ]
+    ],
+    "downs": [],
+    "pending": [],
+    "capacities": [
+     [
+      "m",
+      10,
+      0
+     ],
+     [
+      "m",
+      20,
+      1
+     ]
+    ],
+    "result": {
+     "completed_count": 2,
+     "censored_entities": 1,
+     "lead_times_minutes": [
+      12,
+      21
+     ],
+     "queue_waits_minutes": {
+      "work": [
+       0,
+       1,
+       2
+      ],
+      "q": [
+       0,
+       8,
+       10
+      ]
+     },
+     "resource_utilization": {
+      "m": 0.48,
+      "n": 0.88
+     },
+     "resource_states": {
+      "m": {
+       "in_use_ticks": 720000,
+       "blocked_ticks": 360000,
+       "scheduled_ticks": 900000,
+       "scheduled_in_use_ticks": 540000,
+       "overtime_ticks": 180000,
+       "available_ticks": 900000,
+       "idle_ticks": 360000,
+       "scheduled_processing_ticks": 360000
+      },
+      "n": {
+       "in_use_ticks": 1320000,
+       "blocked_ticks": 0,
+       "scheduled_processing_ticks": 1320000
+      }
+     },
+     "blocking": {
+      "work": {
+       "blocks_started": 1,
+       "blocks_completed": 1,
+       "completed_block_ticks": 360000,
+       "blocked_entity_ticks": 360000
+      }
+     },
+     "buffers": {
+      "q": {
+       "full_ticks": 1080000
+      }
+     }
+    }
+   },
+   "simpy": "compare"
+  },
+  {
    "id": "G-F6",
    "title": "the scheduled failure clock pauses across the off-shift hours (ADR-026 D-051 G-F6)",
    "model": {

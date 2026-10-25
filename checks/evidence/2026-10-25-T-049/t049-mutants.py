@@ -117,7 +117,9 @@ MUT = [
     # Result members (D-058)
     ("overtime-zero", M, "\tc.overtime[i].set(max(u-s, 0), t, c.w, c.h)\n", "\tc.overtime[i].set(0, t, c.w, c.h)\n", SIM),
     ("available-ignores-shift", M, "\ta := min(s, int64(c.p.ResourceCapacity(i))-d)\n", "\ta := int64(c.p.ResourceCapacity(i)) - d\n", SIM),
-    # (run 1: BUILD-FAILED, `k` unused; it keeps it now)
+    # (run 1: BUILD-FAILED, `k` unused; it keeps it now. Run 3: killed only
+    # by the 0.4.0 Result lock; the hand-derived G-C10 kills it now:
+    # scheduled processing 9 minutes, not 6)
     ("processing-ignores-blocked", M, "\tc.processing[i].set(min(u-k, s), t, c.w, c.h)\n", "\tc.processing[i].set(min(u+0*k, s), t, c.w, c.h)\n", SIM),
     ("down-does-not-update-shift-members", M, "\t\tc.down[o.Resource].set(o.Value, o.Tick, c.w, c.h)\n\t\tc.shift(o.Resource, o.Tick)\n\t\tc.downSince",
      "\t\tc.down[o.Resource].set(o.Value, o.Tick, c.w, c.h)\n\t\tc.downSince", SIM),
