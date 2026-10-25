@@ -1,0 +1,11 @@
+go vet ./internal/scenarios/ ./internal/api/ exit 0
+go test -count=1 -v -run '^(TestCheckAcceptsWarnings|TestBindingFailure|TestCapped|TestCorruptScenarioIsNotShown)$' ./internal/scenarios/ ./internal/api/ exit 0 (TestCorruptScenarioIsNotShown SKIP: NOT RUN)
+mutate.py unit exit 0 (13 of 13 killed by the new tests; 13 of 13 survived the earlier tests)
+mutate.py db-compile exit 0 (4 of 4 build; tests NOT RUN)
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python exit 0
+go clean -testcache && make backend-test exit 0
+go test -race -count=1 ./internal/scenarios/ ./internal/api/ exit 0
+make architecture-check exit 0
+make frontend-test NOT RUN (no TypeScript change)
+mutate.py db NOT RUN (no database)
+make integration-test / db-test / db-go-test NOT RUN (no database)

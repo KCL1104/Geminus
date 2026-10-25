@@ -1,0 +1,9 @@
+date: 2026-10-25T10:24:28Z
+worktree: /home/user/Geminus/.claude/worktrees/agent-ad9f060dfb4cc960e
+branch: t028-r1, from 19f676b; code and tests as in 3a1c460 (b31f160 and the report commit change docs and evidence only)
+go: go1.27.3 linux/amd64
+python: 3.13.16 (/home/user/Geminus/.venv/bin/python)
+cpus: 4, shared with other agents (another worktree's go test -race ran during make backend-test)
+postgresql: the psql 16.15 client is installed; no server was started, as the coordinator instructed (no database in this worktree); GEMINUS_TEST_DATABASE_URL is not set, so every DB-backed Go test skips (NOT RUN)
+node: not used this round (no TypeScript change; make frontend-test NOT RUN)
+live AI: not used; no API key read or set
