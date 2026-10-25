@@ -1,0 +1,11 @@
+T-049 review round 1: worktree /home/user/Geminus/.claude/worktrees/agent-a4c0b51cad5eeb42d, branch t049-r1 from 3e56705
+(the integrated head of claude/lucid-meitner-vq1awo); not pushed
+go version go1.27.3 linux/amd64
+Python 3.13.16 (/home/user/Geminus/.venv/bin/python), SimPy 4.1.2; scripts/calendar_reference.py uses the standard library only
+4 CPU (x86_64), shared with other agent sessions; no PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+Go tests run with -count=1 (GOFLAGS=-count=1 for the make targets)
+No live AI; ANTHROPIC_API_KEY and GEMINUS_ANTHROPIC_* were never read
+The verification commands ran on 534de30's code and test data (the last commit adds only the report section and
+evidence); mutation run 4 ran at the same time as the verification chain.
+The reviewer's tools in the scratchpad (t049-review-tools/) were read only: review_mutants_049.py's mutant patterns
+were applied by overlay (r1mut.py, a helper in the scratchpad, not committed) for the red checks.

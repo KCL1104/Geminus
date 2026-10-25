@@ -1,0 +1,63 @@
+$ PYTHON=/home/user/Geminus/.venv/bin/python python3 checks/evidence/2026-10-25-T-049/t049-mutants.py
+# run 4, complete, on t049-r1 (534de30's code and test data), at the same time as the r1 verification chain
+deadlock-bound-ge	KILLED --- FAIL: TestBreakdownGoldens (0.01s)
+deadlock-bound-uses-shift	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+shift-start-no-wake	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+shift-start-wakes-without-dispatch	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+shift-end-wakes-too	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+dispatch-ignores-shift	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+capacity-observes-unchanged	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+capacity-next-change-last	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+capacity-resources-reversed	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+calendars-reverse-id-order	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+clocks-before-calendars	KILLED --- FAIL: TestShiftEndBeforeFailure (0.00s)
+failure-clock-calendar-time	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+failure-at-end-is-next-on	KILLED --- FAIL: TestPatternAgainstTheDefinition (0.00s)
+shift-start-satisfies-waiting-failure	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+b2-deadline-ignores-xend	KILLED --- FAIL: TestCalendarGoldens (0.02s)
+b2-deadline-no-ttrmax	KILLED --- FAIL: TestBreakdownGoldens (0.00s)
+b2-deadline-no-next-fit	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+b2-next-fit-ignores-exceptions	EQUIVALENT 
+b2-off-with-calendars-only	EQUIVALENT 
+b2-since-reset-by-shift-wake	KILLED --- FAIL: TestStallWithCalendar (0.00s)
+release-no-floor	KILLED --- FAIL: TestReleaseRunVectors (0.01s)
+release-first-floor-one-tick	EQUIVALENT 
+release-no-correction	KILLED --- FAIL: TestReleaseProfileVectors (0.00s)
+release-segment-strictly-after	KILLED --- FAIL: TestRandomCalendarModelsAgainstSpec (1.09s)
+release-no-clamp	KILLED --- FAIL: TestReleaseProfileVectors (0.00s)
+release-extra-draw	KILLED --- FAIL: TestCalendarObservationDigests (0.04s)
+table-rows-after-entities	KILLED --- FAIL: TestCalendarGoldens (0.02s)
+table-schedules-an-empty-row	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+table-quantity-not-clipped	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+overtime-zero	KILLED --- FAIL: TestCalendarGoldenResults (0.00s)
+available-ignores-shift	KILLED --- FAIL: TestCalendarGoldenResults (0.00s)
+processing-ignores-blocked	KILLED --- FAIL: TestCalendarGoldenResults (0.03s)
+down-does-not-update-shift-members	KILLED --- FAIL: TestCalendarGoldenResults (0.04s)
+calendar-resources-not-listed	KILLED --- FAIL: TestCalendarGoldenResults (0.00s)
+r2-off	KILLED --- FAIL: TestBundleFeasibility (0.00s)
+r4-off	KILLED --- FAIL: TestBundleFeasibility (0.01s)
+r4-reads-exceptions	KILLED --- FAIL: TestBundleFeasibility (0.00s)
+lcm-unbounded	KILLED --- FAIL: TestBundleFeasibility (0.00s)
+risk-resource-calendar-off	KILLED --- FAIL: TestCalendarRisk (0.04s)
+risk-ignores-shift-capacity	KILLED --- FAIL: TestCalendarRisk (0.02s)
+risk-calendars-added-low	KILLED --- FAIL: TestLiftedPrimitivesHaveRiskCases (0.01s)
+risk-calendar-ignores-exceptions	KILLED --- FAIL: TestCalendarRisk (0.02s)
+risk-calendar-ignores-shifts	KILLED --- FAIL: TestCalendarRisk (0.01s)
+risk-schedule-off	KILLED --- FAIL: TestCalendarRisk (0.04s)
+risk-schedule-ignores-releases	KILLED --- FAIL: TestLiftedPrimitivesHaveRiskCases (0.01s)
+idpool-allows-new-calendars	KILLED --- FAIL: TestReviewEval (0.71s)
+effects-without-calendar-values	KILLED --- FAIL: TestCalendarValuesInEffects (0.01s)
+effects-without-schedule-values	KILLED --- FAIL: TestCalendarValuesInEffects (0.03s)
+simpy-no-blockers	KILLED "G-C1: starts {'work': [['r0/src/1', 2.0], ['r0/src/2', 5.0], ['r0/src/3', 8.0], ['r0/src/4', 11.0], ['r0/src/
+simpy-no-initial-blockers	KILLED "G-C1: resource_states[m] {'in_use_ticks': 720000, 'scheduled_ticks': 600000, 'scheduled_in_use_ticks': 600000
+simpy-failure-clock-calendar-time	KILLED "G-C6: starts {'work': [['r0/src/1', 4.0], ['r0/src/2', 8.0], ['r0/src/3', 15], ['r0/src/4', 18.0], ['r0/src/5
+simpy-calendar-events-normal	KILLED "G-C2: starts {'work': [['r0/src/1', 5], ['r0/src/2', 10.0], ['r0/src/3', 15], ['r0/src/4', 20.0]]} != {'work'
+simpy-thinning-keeps-all	KILLED FAIL simulation reference: 7 difference(s)
+simpy-shift-start-releases-nothing	KILLED "G-C1: starts {'work': [['r0/src/1', 2.0], ['r0/src/2', 5.0]]} != {'work': [['r0/src/1', 2], ['r0/src/2', 5], 
+rv-table-period-in-model-time	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+rv-r4-first-period-only	KILLED --- FAIL: TestBundleFeasibility (0.01s)
+rv-lcm-limit-strict	KILLED --- FAIL: TestHandCases (0.00s)
+simpy-table-model-time	KILLED "G-R8: arrivals [['r0/src/1', 0.0], ['r0/src/2', 0.001], ['r0/src/3', 0.003], ['r0/src/4', 0.004], ['r0/src/5'
+simpy-deterministic-no-floor	EQUIVALENT 
+55/55 killed, 4 equivalent
+exit status 0

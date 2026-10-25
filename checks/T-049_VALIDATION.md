@@ -43,7 +43,7 @@
 | 1b. 交班 finish-first（overtime） | 已完成 | `kernel.capacityChange`：S 減少不喚醒、不排 dispatch、不中斷，服務中與被擋的 entity 照常（G-C9：下班時 held 在最前面的 e2 不被喚醒，13 個事件）；`aggregate.go` 的 `overtime_ticks`＝∫max(U − S, 0)。Golden G-C1（e2 在 6 下班時繼續到 8，overtime 2 分）、G-C5（夜班換班時兩件在服務，overtime 2 分）、G-CF1（overtime 5 分） |
 | 1c. Utilization 的分母（D-052 (i)）與在 Result 中的標示 | 已完成（標示方式為 D-084 A，PROPOSED） | `utilization_mean`／`resource_utilization` 不變：∫U／(C·T)，含下班與停機（`TestCalendarGoldenResults` 檢查每個 case 的 utilization 等於 `in_use_ticks`／(C·T)；G-C1 0.6、G-C1W 8/14）；scheduled utilization＝`scheduled_in_use_ticks`／`scheduled_ticks`（G-C1 第一個 period 4/6 在推導中）。標示在 contract：`simulation.schema.json` 兩個 utilization 成員的 `$comment` 與 SIMULATION_SPEC §5（Result 與 digest、TS 型別不變）；不另加 Result 成員（D-084 的 B、C 列為選項） |
 | 1d. Result 的 scheduled 與 available 組 | 已完成 | `internal/results/metrics/aggregate.go`：有 calendar 的 resource 以 U、S、D、K 同時的值積分 `scheduled_ticks`、`scheduled_in_use_ticks`、`overtime_ticks`、`available_ticks`（∫min(S, C − D)）、`idle_ticks`（∫max(0, A − U)）、`scheduled_processing_ticks`（∫min(U − K, S)：上班時被擋不算 processing，G-C10：6 分而不是 9）；沒有有限 buffer 時列有故障或有 calendar 的 resource（G-C7：沒有被使用的 r_b、r_c 也列）。`TestCalendarGoldenResults`（21 個 case 的 `resource_states`、utilization、lead time、queue wait、blocking、buffers 逐值，Result 依 schema 驗證）、`TestCalendarStateIdentities`（C-S1–C-S4 的 30 replications：scheduled_in_use＋overtime＝in_use、available ≤ scheduled ≤ C·T、沒有停機時 available＝scheduled 且 idle＝available − scheduled_in_use、沒有有限 buffer 時 processing＝scheduled_in_use）、`TestNeutralCalendarKeepsTheResult` |
-| 1e. 投入排程（poisson、deterministic、table） | 已完成 | `internal/simulation/engine/release.go`（`releaser`：D-053 的 numerical profile）、`replication.go`（`scheduleArrival`、`scheduleRow`、`startSource`；table 的一列一個 ARRIVAL）。Golden G-R1、G-R5、G-R7；`TestReleaseProfileVectors`、`TestReleaseRunVectors`（對 Python port 逐 bit：38 個 Λ⁻¹ 步驟（含 rate 0 的段與段的累積邊界、clamp 的情形）、4 個 arrival run 共 4,799 個 tick 與 a、stream 的最後狀態）、`TestReleaseScheduleCommonRandomNumbers`（G-R3）、`TestNeutralSchedulesChangeNothing`、`TestNeutralScheduleKeepsTheResult`（G-R4）；細節 D-082（PROPOSED） |
+| 1e. 投入排程（poisson、deterministic、table） | 已完成 | `internal/simulation/engine/release.go`（`releaser`：D-053 的 numerical profile）、`replication.go`（`scheduleArrival`、`scheduleRow`、`startSource`；table 的一列一個 ARRIVAL）。Golden G-R1、G-R5、G-R7，以及 review 第 1 輪新增的 G-R8（投入表的 period 與 at 不是整數 tick，D-082 (b) A 的證據；G-R7 的 period 是整數 tick，分不出 A 與 B）、G-R9（rate 在上限）；`TestReleaseProfileVectors`、`TestReleaseRunVectors`（對 Python port 逐 bit：38 個 Λ⁻¹ 步驟（含 rate 0 的段與段的累積邊界、clamp 的情形）、4 個 arrival run 共 4,799 個 tick 與 a、stream 的最後狀態）、`TestReleaseScheduleCommonRandomNumbers`（G-R3）、`TestNeutralSchedulesChangeNothing`、`TestNeutralScheduleKeepsTheResult`（G-R4）；細節 D-082（PROPOSED） |
 | 2a. `CALENDAR_INVALID` 的形狀規則 | 已完成 | `internal/model/validate/calendars.go` 的 `calendarShapes`（distribution/domain semantics 階段）：period ≤ 365 天、shift 在 period 內、排序、不重疊、至少 1 tick（量化後）、例外排序、不重疊、在 365 天內、`shift_capacity` 的 label 存在且 ≤ capacity（label 依排序檢查）。`TestCalendarRules`（20 個 case）、semantic fixtures `calendar-shifts-overlap`、`shift-capacity-unknown-label` |
 | 2b. R2（LCM ≤ 365 天、bundle feasibility） | 已完成 | `calendarFeasibility`（bundle feasibility 階段）：所有 calendar 的 period 的 LCM ≤ 365 天，否則 `/calendars`；每個 bundle 在其 resource 的 period 的 LCM 內（不計例外）至少一個 tick 湊得齊，否則 `/nodes/<i>/requires`。`TestBundleFeasibility`、`calendar-bundle-never-fits`、`calendar-periods-too-long`；scenario 的 candidate（review 的 `TestCalendarRisk` 的「no unit on any shift」） |
 | 2c. `UNKNOWN_REFERENCE`（calendar_id）、`DUPLICATE_ID`（calendar ID） | 已完成 | `ir.go` 的 `refs` 與 `ids`；`TestCalendarRules` 的最後兩個 case、`calendar-unknown`；engine 的 Compile 也拒絕未知的 calendar（防護） |
@@ -132,7 +132,7 @@
 
 ## SimPy reference（`make simulation-reference-test`）
 
-`scripts/simpy_reference.py`（SimPy 4.1.2，沒有新 dependency）以 SimPy 自己的 primitive 解讀班表：有 calendar 的 resource 是 `simpy.PriorityResource`，下班的 unit 由 priority −0.5 的 blocker request 持有（在故障的 −1 之後、job 的 0 之前）；S(t) 由腳本自己從 IR 計算（不用 engine 的 calendar package）；t=0 先擋住 C − S(0) 個 unit；S 減少時 request C − S 個 blocker（服務中的 job 先做完），增加時先取消還在等的 blocker、再釋放已取得的；calendar 的事件與有 calendar 的 resource 的故障時鐘、修復以 SimPy 的 URGENT priority 排程（kernel 的 priority 15 先於 dispatch）；故障時鐘在上班時間上累積 TTF。投入表在 k·period＋at 投入；deterministic 以 `fractions.Fraction` 精確計算 Λ⁻¹ 再依 D-053 量化；poisson 以 Lewis–Shedler thinning（Python 的 random）產生，是與 engine 的累積 rate 反函數不同的演算法。
+`scripts/simpy_reference.py`（SimPy 4.1.2，沒有新 dependency）以 SimPy 自己的 primitive 解讀班表：有 calendar 的 resource 是 `simpy.PriorityResource`，下班的 unit 由 priority −0.5 的 blocker request 持有（在故障的 −1 之後、job 的 0 之前）；S(t) 由腳本自己從 IR 計算（不用 engine 的 calendar package）；t=0 先擋住 C − S(0) 個 unit；S 減少時 request C − S 個 blocker（服務中的 job 先做完），增加時先取消還在等的 blocker、再釋放已取得的；calendar 的事件與有 calendar 的 resource 的故障時鐘、修復以 SimPy 的 URGENT priority 排程（kernel 的 priority 15 先於 dispatch）；故障時鐘在上班時間上累積 TTF。投入表在 k·P＋A_j tick 投入（P、A_j 是 period 與 at 各自量化後的 tick，D-082 (b) A；review 第 1 輪 M1 之前腳本誤以連續時間的 k·period＋at 投入，見「Review 第 1 輪」）；deterministic 以 `fractions.Fraction` 精確計算 Λ⁻¹ 再依 D-053 量化；poisson 以 Lewis–Shedler thinning（Python 的 random）產生，是與 engine 的累積 rate 反函數不同的演算法。
 
 - **接受的模型**（執行前檢查，其餘一律拒絕）：T-047、T-048 的條件；有 calendar 的 resource 必須是每個需要它的 bundle 中唯一的 resource；有 calendar 又會故障的 resource 每班人數只能是 0 或 C；每個需求 1 unit。拒絕：G-C4、G-D4C（兩個有 calendar 的 resource 的 bundle）、G-D3C（units 2）、G-D5（會故障的 m 與夥伴 o 同一 bundle）。
 - **確定性**：G-C1、G-C1W、G-C1W10、G-C2、G-C5、G-C6、G-C7、G-C8、G-C9、G-C10、G-F6、G-CF1、G-R1、G-R5、G-R7 逐值比對 arrival、service 開始、完成、停機、等待中的故障、S 的每次改變與 Result 成員（含 `resource_states` 的班表組），與 T-047、T-048 的 case 一起通過。G-T5（故障恰在下班的 tick：腳本的 blocker 先取得下班的 unit，kernel 把它算作閒置）、G-K2（kernel 的 B1）、G-D1（SimPy 不偵測 stall）不比，原因寫在 fixture 的 `simpy` 欄位。
@@ -203,14 +203,15 @@ Exec 數包括很快就 decode 或 compile 失敗的輸入（`FuzzKernel`、`Fuz
 五項都是 **PROPOSED**（docs/DECISIONS_AND_TBD.md 的「T-049 的提案」與 planning/decisions.json；`approved_by`／`approved_at` 為 null）。建議都已實作，可以回退；不採用時要改的地方寫在各項最後。T-049 以它們為 gate，所以 `make spec-decisions` 把 T-049 列在 `next_after_review`、等 D-081–D-085。
 
 - **D-081 — 班表的 kernel 解讀**。建議：(a) 一個 calendar 一個 CAPACITY_CHANGE，先排下一個再改 S，只記改變的 resource（A；B 先改 S 只改 sequence；C 每個 resource 一個事件）；(b) S 增加喚醒 held front 並排 dispatch、減少不喚醒（照 D-052）；(c) 上班不滿足等待中的故障（A；B 會讓故障搶走服務中的 unit）；(d) t=0：sources、calendars（依 ID）、故障時鐘；(e) 故障時鐘依 Θ 只在上班時前進，目標恰在下班時為該 tick，0 tick 的 TTF 立即故障；(f) B2 在有故障或班表的程式中都檢查，期限 next_fit(max(since, X_end)＋TTRmax) 在進入狀態時算一次，沒有故障時不會觸發（只是防護）；B1 的 bound 仍是 C；(g) 授予 in_use＋units ≤ min(S, C − D)。
-- **D-082 — 投入排程的 kernel 解讀**。建議：(a) 第一件的下限 tick 0（不會用到：U 在 (0, 1) 內，第一件至少在 tick 1）、晚於 horizon 不排程；(b) 投入表的 period 與 at 先各自量化（A；B 以 model 時間計算會漂移）；(c) 先排下一列再建立 entity，達到 max_entities 的列不再排下一列（A；B 只改 sequence；C 多一個空事件）；(d) poisson 用 arrival stream、U 先捨入（FMA）。
+- **D-082 — 投入排程的 kernel 解讀**。建議：(a) 第一件的下限 tick 0（不會用到：U 在 (0, 1) 內，第一件至少在 tick 1）、晚於 horizon 不排程；(b) 投入表的 period 與 at 先各自量化（A，證據是 review 第 1 輪新增的 G-R8；B 以 model 時間計算會漂移）；(c) 先排下一列再建立 entity，達到 max_entities 的列不再排下一列（A；B 只改 sequence；C 多一個空事件）；(d) poisson 用 arrival stream、U 先捨入（FMA）。
 - **D-083 — AI proposal 新增的 calendar 的 ID（T-046 review I3）**。建議 A：禁止（pool 不配發 calendar ID，`ID_POOL_VIOLATION`）；B：pool 加 calendar 種類（schema、migration、generator、context、review 都要改）；C：任意 ID（違反 D-016）。另：edit 的 prompt 沒有在 T-049 改，告訴 model 這條規則列為後續（modeler-0.3.0）。
-- **D-084 — utilization 分母的標示**。建議 A：不新增 Result 成員，在 schema 的 `$comment` 與 SIMULATION_SPEC 標示 C·T 與 scheduled utilization 的算法（Result、digest、TS 不變）；B：加標示成員；C：加 scheduled_utilization 的 MetricSummary。若 owner 認為「在 Result 中標示」必須是 Result 實例中的成員，應選 B 或 C（見「偏離」）。
+- **D-084 — utilization 分母的標示**。建議 A：不新增 Result 成員，在 schema 的 `$comment` 與 SIMULATION_SPEC 標示 C·T 與 scheduled utilization 的算法（Result、digest、TS 不變）；B：加標示成員；C：加 scheduled_utilization 的 MetricSummary。依據（review 第 1 輪更新）：APPROVED 的 D-058（H-018）與 ELECTRONICS_LINE §5 已把 ADR-026 D-052 (i) 分開：generic 的積分在 `resource_states`（本任務已實作），Scheduled utilization 與 Overtime 的比例是 `metrics.domain` 的 pack 指標（T-051），所以 C 會與 D-058 的指標重複。留給 owner 的問題只剩：除了 contract 的 `$comment`，Result 實例本身是否必須帶分母的標示（B）（見「偏離」）。
 - **D-085 — validator 細節**。建議照列：LCM 涵蓋所有 calendar、報在 `/calendars`；R2 報在 `/nodes/<i>/requires`；R4 只看週期部分、R2／R3 失敗的 bundle 不再檢查；沒有被參照的 calendar 允許；投入表時刻量化後檢查；calendar ID 自己的 namespace。
 
 ## 偏離與原因
 
-- **Utilization 分母的「在 Result 中標示」**：以 contract（`simulation.schema.json` 的 `$comment`）與 SIMULATION_SPEC 標示，不是每個 Result 實例中的成員（D-084 A）。原因：加成員是 contract、TS 與所有 Result digest 的變更，D-052 (i) 已批准的形狀是 `resource_states` 的積分（T-046 phase 2），scheduled utilization 由它們直接得出；owner 不同意時改採 D-084 B 或 C。
+- **Utilization 分母的「在 Result 中標示」**：以 contract（`simulation.schema.json` 的 `$comment`）與 SIMULATION_SPEC 標示，不是每個 Result 實例中的成員（D-084 A）。原因：加成員是 contract、TS 與所有 Result digest 的變更；之後 APPROVED 的 D-058（H-018；ELECTRONICS_LINE §5 的指標表與 resource_states 表）已把 ADR-026 D-052 (i) 分成 generic 的 `resource_states` 積分（本任務已實作）與 `metrics.domain` 中的 pack 指標 Scheduled utilization、Overtime（T-051），所以 ADR-026 (i) 的 `scheduled_utilization` 由 D-058 的 pack 指標提供，C 會與它重複。Reviewer 指出 A 沒有字面上做到「在 Result 中標明」：owner 若認為 Result 實例本身必須帶分母標示，改採 D-084 B（review 第 1 輪更新）。
+- **ADR-026 D-050 原訂的 reference 只做了一部分**（review 第 1 輪 L2 指出原本沒有列出）：R2、R3、R4、next_fit、X_end（與 TTRmax）的獨立 Python 實作已在 review 第 1 輪與 Go 比對（`scripts/calendar_reference.py`，`make simulation-reference-test`）；R1 的獨立 Python 實作、以 SimPy 跑 D-050 的兩個反例與 G-D1（示意）、對隨機 valid 模型以 SimPy 確認每個 L 內都有授予，三者都沒有做（ADR-026 D-050 的「SimPy」段與「Property」），列為 T-037 scope 的後續（`planning/tasks.json`）；原因見「Review 第 1 輪」的 L2。
 - **Edit mode 的 prompt 沒有改**：D-083 的規則由 server 強制（review 與 approval 的 revalidation），但 modeler-0.2.0 的 prompt 沒有告訴 model；scope 只到 scenario allowlist 的文字（coordinator 的「proposals beyond the scenario allowlist text」不碰）。後果：live model 若嘗試新增 calendar，proposal 會是 invalid（安全），而不是事先回 needs_input。
 - **Engine 的紅以 overlay 重現**：kernel 的程式在本 session 中先於 engine 測試的程式碼寫成（手推 golden 先寫好）；engine 與 des 的紅是把測試對 e173ee1 的 kernel 以 `go test -overlay`／`go vet -overlay` 執行而得（`red-engine-vet.log`、`red-des.log`），行為層面由 mutation 補足。
 - **G-C1 的事件數**：推導總結的 29 改為 30（推導本身的計數錯誤，逐 tick 的推導與其 sequence number 給 30；改正寫在推導中，見「先紅後綠」）。
@@ -235,3 +236,95 @@ Exec 數包括很快就 decode 或 compile 失敗的輸入（`FuzzKernel`、`Fuz
 Coordinator 把十三個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-054 完成的 7357b8d 之後）。衝突只在 `planning/decisions.json`（本任務的 D-081–D-085 與 H-023 的 D-087 都是新增，兩邊都保留，依 ID 排列；決策登記檔自動合併）與 `make spec-check` 重產的 `checks/*.json`（取本任務的版本後重產）。T-054 在同一段時間改了 `internal/storage/datasets` 與各 route 的 binding failure 對應，本任務沒有碰那些程式，cherry-pick 沒有衝突；兩者合在一起的行為由下面的整合執行驗證。
 
 第一次執行（`coordinator-exit-codes-first-run.txt`）：`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test` 都是 exit 0；`backend-numeric`、`backend-race` 與 `integration-test` exit 2，原因是磁碟已滿（log 為 `no space left on device`，`*-first-run-disk-full.log`），不是測試失敗。Coordinator 清除 Go 的 build cache（15 GB）並移除四個已整合任務的乾淨 worktree 後，在同一個 tree 上重跑這三項：`backend-numeric`、`backend-race`（engine package 434 s）與新的 `dt_test_t049b` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0（`coordinator-environment.txt` 記錄 HEAD b4ef811、go1.27.3、PostgreSQL 16.15）。本報告 NOT RUN 中的 DB 測試因此都已執行；`make e2e-test`、benchmark 仍為 NOT RUN。D-081–D-085 仍是 PROPOSED。Log 與 exit code 在 `checks/evidence/2026-10-25-T-049/coordinator-*`。
+
+## Review 第 1 輪（2026-10-25）：CHANGES REQUESTED（兩個 Medium、兩個 Low、Info）
+
+在 `t049-r1`（從整合後的 3e56705 開出，不 push）修正；每個修正都先寫測試，確認新測試在 mutant 或舊程式上失敗（red），再確認通過；沒有降低任何 assertion 或加 skip，沒有改程式碼的行為（只有測試、fixture、SimPy 腳本、新的 Python reference 與文件）。Reviewer 的 probe 與工具（`t049-review-tools/`）只讀取使用。Evidence 在 `checks/evidence/2026-10-25-T-049-r1/`。D-081–D-085 仍是 PROPOSED（`approved_by`／`approved_at` 為 null），建議不變；T-049 在 tasks.json 的狀態未改。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 2fa48e6 | M2、L1：`TestBundleFeasibility` 加 R4 只在較大 period 之後衝突的 case、LCM 恰為 365 天與 730 天的 case；`TestCalendarRules` 加 period 恰為 365 天（valid）與 365 天＋1 tick（invalid）；`TestHandCases` 加 LCM 的上限；red／green log |
+| 9101a72 | M1、I1、I2：手推 golden G-R8（投入表的 period 與 at 不是整數 tick）、G-R9（rate 在上限）；`scripts/simpy_reference.py` 自己量化投入表；G-F6 推導的文字；兩個 0.4.0 鎖加入 G-R8、G-R9（其他不變）；測試中的數量（23 個 golden、27 個鎖定 case）；mutation harness 加入 reviewer 的三個 mutant 與兩個 SimPy mutant；red／green log |
+| b6781e3 | L2：`TestCalendarRulesExport`（Go 端）、`scripts/calendar_reference.py`（獨立的 Python R2、R3、R4、next_fit、X_end、TTRmax）、`make simulation-reference-test` 執行兩者；L2 的 mutant harness 與 log；T-037 scope 的後續註記 |
+| 534de30 | D-081 (e)（I5）、D-082 (b)（M1 的證據）、D-084（依據 D-058 與 ELECTRONICS_LINE §5）的文字；SIMULATION_SPEC、TEST_PLAN；`docs-check.json` |
+| （最後一個） | 本節、本報告前面引用 G-R7 為 D-082 (b) 證據之處與 D-084 的「偏離」改正；驗證 log、`mutants-run4.log`、`exit-codes.txt`、`environment.txt` |
+
+### M1（Medium）：D-082 (b) 的投入表量化沒有測試；SimPy 錯讀 period 不是整數 tick 的投入表
+
+- **發現**：mutant `rv-table-period-in-model-time`（選項 B：以 model 時間算 k·period＋at 再量化）通過所有測試：G-R7 的 period 是整數 tick，A 與 B 相同，所以 D-082 (b) 與本報告以 G-R7 為 A 的證據是錯的。`scripts/simpy_reference.py` 在連續時間 k·period＋at 投入，沒有量化，也沒有拒絕這種模型。
+- **修正**：手推 golden **G-R8**（`calendar-goldens.json`，推導在 `calendar_goldens_gen.py`）：秒為單位，period 0.0026 s＝2.6 ms → 3 tick，兩列 at 0 → 0、0.0012 s＝1.2 ms → 1 tick（都不在半 tick 附近，binary64 動不了）；A 在 0、1、3、4、6、7、9、10、12、13 ms 投入（horizon 13 ms，10 個事件），B 在 0、1、3、4、5、6、8、9、10、12、13 ms（11 件，第三個 period 起不同）。SimPy 腳本改為自己由 IR 把 period 與每列的 at 各自量化（round half up、正值至少 1 tick），在 k·P＋A_j tick 投入，並逐值比對 G-R8。D-082 (b)（DECISIONS_AND_TBD 與 decisions.json）、本報告 scope 1e、「需要 owner 決定」與 SimPy 一節改為引用 G-R8。
+- **先紅後綠**：`first-engine-run-gr8-gr9.log`：G-R8 的 engine 與 Result 子測試第一次就與手推一致（只有尚未更新的數量與鎖失敗），之後才把 engine 輸出加入兩個鎖；`red-simpy-gr8.log`：改腳本之前 `make simulation-reference-test` exit 2（G-R8 的 arrival 在 0.0012、0.0026、0.0038…，11 件）；`green-simpy-gr8.log`：exit 0。
+- **擋下的測試**：`rv-table-period-in-model-time` 被 `TestCalendarGoldens`／G-R8 擋下（11 個事件，arrival 正是推導中 B 的時刻）；SimPy 的 mutant `simpy-table-model-time`（腳本改回 B）被 G-R8 擋下（`mutants-run4.log`）。
+
+### M2（Medium）：R4 只在較大 period 之後才衝突的情形沒有測試
+
+- **發現**：mutant `rv-r4-first-period-only`（`calendars.go` 的 span 取兩個 period 的較大者而不是 LCM）通過所有測試。
+- **修正**：`TestBundleFeasibility` 加入 reviewer 的 probe：會故障的 worker 在每 4 分鐘的 [2, 3) 上班，helper 每 6 分鐘在 [4, 5) 下班；兩者在 2、6 同時上班（R2 成立），worker 上班而 helper 下班只在 [10, 11)：在較大的 period（6）之後、LCM（12）之內 → `STALL_RISK` 於 `/nodes/1/requires`。
+- **擋下**：`red-m2-l1-validator.log`：mutant 下該 case 回 0 個 issue（FAIL）；`green-m2-l1-validator.log`：通過；`mutants-run4.log`：`rv-r4-first-period-only` 被 `TestBundleFeasibility` 擋下；L2 的 Python 比對也擋下它（seed 1002）。
+
+### L1（Low）：LCM 恰為 365 天
+
+- **發現**：mutant `rv-lcm-limit-strict`（`calendar.go` 的 `<=` → `<`）通過所有測試；D-050 的 L ≤ 365 天包含等號。
+- **修正**：`TestCalendarRules`：period 恰為 365 天 valid、365 天＋1 tick（1/60000 分鐘）invalid（`/calendars/0/period`）；`TestBundleFeasibility`：73 天與 5 天（LCM 恰為 365 天）valid、73 天與 10 天（730 天）`CALENDAR_INVALID` 於 `/calendars`；`TestHandCases`：LCM(73 天, 5 天)、LCM(1 tick, 365 天) 等於上限，LCM(365 天, 7 tick) 超過。
+- **擋下**：`red-m2-l1-validator.log`、`red-l1-calendar-lcm.log`：mutant 下三個新 case 失敗；`mutants-run4.log`：`rv-lcm-limit-strict` 被 `TestHandCases` 擋下；L2 的 Python 比對也擋下（seed 17）。
+
+### L2（Low）：ADR-026 D-050 原訂的驗證沒有做，也沒有列為偏離
+
+ADR-026 D-050 的「SimPy」段原訂三件事：(1) Python 獨立實作 R1–R4、next_fit 與 X_end 並與 Go 在隨機輸入上比對；(2) 以 SimPy 跑兩個反例與 G-D1（示意）；(3) 對隨機的 valid 模型，確認 SimPy 與 Go 每個 L 都有授予。
+
+- **(1) 做了 R2、R3、R4、next_fit、X_end（與 TTRmax）**：`internal/simulation/engine/calendar_rules_export_test.go` 的 `TestCalendarRulesExport` 產生 5,000 個隨機的產線模型（2–4 個 resource、capacity 1–3；1–3 個 calendar，多數 period 為幾分鐘的整數、1–3 段 shift，五分之一為以天計的 period（1、5、7、10、73、146、365 天），label、`shift_capacity`、open／closed 例外；1–3 個 process 需要 1–3 個 resource，部分 resource 會故障、不刻意滿足 R3），跑 `validate.IR`，valid 的再 `Compile`；設定 `GEMINUS_CALENDAR_REFERENCE_OUT` 時寫出每個模型的 IR、issue（code 與 path），以及每個 process 的 X_end、TTRmax 與從數個 tick 起的 next_fit（含例外、到 horizon）。`scripts/calendar_reference.py` 只讀 IR，依 D-052 的 S(t) 與 D-050 的文字重算（沒有 import engine，沒有用 validator、calendar package 或 leapfrog：對 S 的所有改變點暴力搜尋），比對所有 issue 與數值，並要求每條規則都被涵蓋到最低數量（R2、R3、R4 各至少 200 個、R4 衝突只在較大 period 之後至少 15 個、LCM 超過 365 天至少 100 個、恰為 365 天至少 50 個、next_fit 至少 10,000 次…；下限低於目前產生器的數量，產生器變弱就失敗）。`make simulation-reference-test` 執行兩者（Makefile）。結果：5,000 個模型、2,774 個 valid；R2 拒絕 738 個 bundle、R3 拒絕 1,447 個、R4 826 個（其中 20 個衝突只在較大的 period 之後）、LCM 超過 365 天 298 個、恰為 365 天 152 個；23,604 次 next_fit（20,703 次找到、2,901 次 horizon 前沒有）、X_end > 0 的 process 2,778 個、TTRmax 有上界（> 0）1,005 個、沒有上界 497 個，0 個差異。**能否擋下錯誤的規則**（`t049-r1-l2-mutants.py`，`l2-mutants.log`）：18 個 Go mutant（M2 的 `rv-r4-first-period-only`、L1 的 `rv-lcm-limit-strict`，以及 R2 的 bundle period、讀例外、關閉、LCM 無上限；R3 的兩條；R4 的關閉、讀例外、夥伴只看 1 unit、略過沒有 calendar 的故障 resource、R3 拒絕後仍檢查；X_end 只取最後一個 resource、取例外的開始；next_fit 跳過例外結束的 tick、open 例外當下班；TTRmax 取 triangular 的 mode）在 export 執行時以 overlay 套用，**18 個都被 Python 比對擋下**。
+- **沒有做的部分（偏離）**：R1（`BLOCKING_CYCLE`，T-047 的 graph rule：沿 p>0 的 flow 經 decision／failure／rework 與 queue 找阻塞邊、以共用 resource 做 union-find 再找 cycle）需要另一個產生隨機圖形拓樸與有限 buffer 的產生器與一份 union-find 的實作，與本 harness（只有直線的產線）不合；(2) 兩個反例與 G-D1 都是「有 calendar 的 resource 與別的 resource 在同一 bundle」或「會故障又 0 < S < C」，現行 SimPy 腳本依設計拒絕這些模型（逐一取得 resource 的解讀不成立），要先擴充腳本的接受範圍；(3) 同樣受限於腳本接受的模型（有 calendar 的 resource 必須獨佔 bundle），而且需要另一套「每個 L 內都有授予」的觀測。三者都列為 T-037 scope 的後續（`planning/tasks.json` 的 T-037 scope 最後一項），在此列為偏離（ADR-026 D-050「SimPy」段）。
+
+### Info
+
+- **I1**：G-F6 的推導寫下一次故障在 38；Θ(26)＝18（[0,6)、[10,16)、[20,26) 各 6），目標 26 在 [30,36) 到 24、[40,42) 到 26：42。只改推導文字（38 與 42 都在 horizon 30 之後，沒有任何期望值改變），並註明是 review 第 1 輪的更正。
+- **I2**：ADR-026 原訂的 G-R5 是「高 rate：tick 嚴格遞增」，fixture 的 G-R5 是另一個 case（rate 在 tick 中改變）。不改既有編號，以新的 **G-R9** 加入 ADR 的 case：rate 1000/s（validator 的上限，每 tick 一件），arrival 在 1、2、…、12 ms，SimPy 也逐值比對。**指定的「floor 會作用的手推 golden」做不到**：對任何 valid 的 deterministic 排程，每段 rate ≤ 每 tick 1 件，所以 Λ(t＋1 tick) − Λ(t) ≤ 1、Λ⁻¹(n＋1) − Λ⁻¹(n) ≥ 1 tick（精確），且第一件 Λ⁻¹(1) ≥ 1 tick；SimPy 以 Fraction 精確計算再 round half up，相差至少 1 的兩個值捨入後仍相差至少 1，所以 `max(·, last＋1)` 永遠不會改變結果。SimPy 的 mutant `simpy-deterministic-no-floor` 因此是等價的（在 harness 中標為 equivalent 並寫出這個推理；`mutants-run4.log`：EQUIVALENT）。Engine 的 floor 只在 binary64 的捨入誤差與 poisson 的抽樣時會作用，由 `TestReleaseRunVectors`（G-R-fast、G-R2）逐 bit 固定（mutant `release-no-floor` 被它擋下）。
+- **I5**：D-081 (e) 補上後果：Θ 計的是 S > 0 的 tick，所以部分人力的班（0 < S < C）中 C 個故障時鐘都前進（D-051 不需要 unit 的身分；下班的 unit 也算閒置，可以停機，G-T5），只有 S＝0 時一起暫停。只改文字，D-081 仍為 PROPOSED。
+- **D-084**（仍為 PROPOSED，建議仍為 A）：依 coordinator 的解讀改寫依據：之後 APPROVED 的 D-058（H-018）與 ELECTRONICS_LINE §5 已把 ADR-026 D-052 (i) 分開，generic 的積分在 `resource_states`（本任務已實作），Scheduled utilization 與 Overtime 的比例是 `metrics.domain` 的 pack 指標（T-051）；C 會與 D-058 的指標重複；留給 owner 的問題只剩：除了 contract 的 `$comment`，Result 實例本身是否必須帶分母標示（B）。B、C 都沒有實作。本報告的「需要 owner 決定」與「偏離」一併改寫。
+- **Reviewer 的另外兩個存活的 Go mutant**（`rv-overtime-vs-available`：overtime 以 A 代替 S；`rv-sched-inuse-vs-available`：min(U, A) 代替 min(U, S)）是等價的：kernel 永遠維持 U＋D ≤ C（授予時 in_use＋units ≤ min(S, C − D)，故障只取閒置的 unit 或等待），A＝min(S, C − D)；S ≤ C − D 時 A＝S，兩式相同；否則 A＝C − D < S 且 U ≤ C − D＝A，max(U − A, 0)＝0＝max(U − S, 0)、min(U, A)＝U＝min(U, S)。Reviewer 沒有要求修正，這裡只記錄理由。
+
+### Mutation（第 4 次，`mutants-run4.log`）
+
+`t049-mutants.py` 在 t049-r1 的程式與測試資料上完整執行（與本輪的驗證同時）：**59 個 mutant 中 55 個被擋下、4 個 equivalent（原有的三個與 `simpy-deterministic-no-floor`）**，exit 0。新增的五個：`rv-table-period-in-model-time`（M1，`TestCalendarGoldens`）、`rv-r4-first-period-only`（M2，`TestBundleFeasibility`）、`rv-lcm-limit-strict`（L1，`TestHandCases`）、`simpy-table-model-time`（G-R8 不符）都被擋下，`simpy-deterministic-no-floor` 為 equivalent（I2 的推理）。第一個失敗的測試是 0.4.0 鎖的只剩 `release-extra-draw`（`TestCalendarObservationDigests`），它也被 `TestReleaseRunVectors` 與 G-R3 擋下（`checks/evidence/2026-10-25-T-049/release-vector-mutants.log`；`release.go` 本輪沒有改）。其他 54 個被擋下的 mutant，第一個失敗的都是手推 golden、檢查器、向量、validator 或 AI 的測試，或 SimPy 的比對。
+
+### 實際執行（本輪，t049-r1 的 tree：534de30 的程式與測試資料）
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `make simulation-reference-test PYTHON=…` | 0 | `simulation-reference-test.log`、`simpy-reference-report.json`：SimPy 確定性 34 個 case（T-049 的 17 個，含 G-R8、G-R9）逐值相同，140 個隨機比對都在容差內；`calendar_reference.py`：上述 L2 的數量，0 個差異 |
+| `make backend-test GOFLAGS=-count=1` | 0 | `backend-test.log`：gofmt、go vet、64 個 package ok，沒有 `(cached)`；`GEMINUS_FULL_DIFFERENTIAL=1`；engine 230 s、des 15 s、check-architecture 217 s；DB-backed 測試 skip |
+| `make backend-race GOFLAGS=-count=1` | 0 | `backend-race.log`：完整的 race（不只 internal/simulation、internal/results、internal/model/calendar），64 個 package ok，沒有 `(cached)`；engine 605 s、des 160 s |
+| `make architecture-check` | 0 | `architecture-check.log`：76 packages、17 rules、16 build configurations |
+| `make ai-eval` | 0 | `ai-eval.log`：`TestFakeProviderEval`、`TestReviewEval` PASS；`checks/ai-evals/*.json` 沒有改變 |
+| `make backend-numeric` | 0 | `backend-numeric.log`：六個 target 沒有 FMA 與平台 math call，GOAMD64=v3 的數值測試通過 |
+| `go test -v`（重點測試） | 0 | `engine-tests-verbose.log`：`TestCalendarRulesExport`（5,000 個模型）、differential、中性班表與排程、隨機檢查器的計數與上一輪相同 |
+| Fuzz（以次數為準） | 0 | `fuzz-kernel-count.log`（FuzzKernel 500,000 execs）、`fuzz-run-count.log`（FuzzRun 200,000）、`fuzz-calendars-count.log`（FuzzCalendars 20,000）：seed 含 G-R8、G-R9 |
+| `make spec-check PYTHON=…` | 0 | `spec-check.log`（本節寫好之後）：`PASS_TS_CONTRACTS_FRESH`（15 檔、106 types）、`PASS_INDEPENDENT_HASHES`、`PASS_DB_TESTS_FRESH`、`PASS_ENGINE_REFERENCE_VECTORS`（release_steps 38）；`docs-check.json` 在 534de30 重產（多一個相對連結），`decisions-check.json`、`planning-check.json` 沒有改變（D-081、D-082、D-084 仍為 proposed） |
+| Mutation harness 第 4 次（完整） | 0 | `mutants-run4.log`：59 個 mutant 中 55 個被擋下、4 個 equivalent（原有的三個與 `simpy-deterministic-no-floor`） |
+| L2 的 mutant（`t049-r1-l2-mutants.py`） | 0 | `l2-mutants.log`：18/18 被 Python 比對擋下 |
+| 新 case 對 reviewer 的 mutant（red） | 1 | `red-m2-l1-validator.log`、`red-l1-calendar-lcm.log`：每個 `go test` 都 exit 1；`green-m2-l1-validator.log`：exit 0 |
+| SimPy 改腳本前（red） | 2 | `red-simpy-gr8.log`：G-R8 的四個差異；`green-simpy-gr8.log`：exit 0 |
+| G-R8、G-R9 的第一次執行 | 1 | `first-engine-run-gr8-gr9.log`：兩個 case 的 engine 與 Result 子測試 PASS；只有尚未更新的數量與鎖失敗 |
+
+### NOT RUN（本輪）
+
+- `make integration-test` 與所有 DB-backed 測試：本輪沒有 PostgreSQL，依指示沒有執行（只在 `dt_test_*` 上執行，由 coordinator 進行）；本輪只改測試、fixture、SimPy 腳本、新的 Python reference 與文件，沒有改經過 DB 的程式（`db-tests-skipped` 的清單與上一輪相同，沒有重產）。Coordinator 在 b4ef811 的整合執行見上一節。
+- `make frontend-test`：沒有 TS、schema 或 `apps/web` 的變更（`PASS_TS_CONTRACTS_FRESH`）。
+- `make e2e-test`、`make benchmark-test`、`make ai-eval-live`、CI。
+- L2 的 R1、ADR-026 D-050 的 SimPy (2)、(3)：見 L2，列為 T-037 的後續。
+- I2 的「floor 會作用的 deterministic 手推 golden」：見 I2，對 valid 的模型不可能。
+
+### 需要 owner 決定（本輪的變化）
+
+- D-081 (e)：補上部分人力時所有故障時鐘都前進的後果（文字）。
+- D-082 (b)：A 的證據改為 G-R8（G-R7 分不出 A 與 B）。
+- D-084：A 的依據改為 D-058 與 ELECTRONICS_LINE §5；留給 owner 的問題是 Result 實例是否必須帶分母標示（B）。
+- 其他不變；五項仍是 PROPOSED，T-049 仍以它們為 gate。
+
+### 殘餘風險（本輪的變化）
+
+- **Python 比對只涵蓋直線產線**：`calendar_reference.py` 的隨機模型都是 start → p0 → … → end，沒有 decision、rework、有限 buffer；R2–R4 只看 bundle，與拓樸無關，但 R1 沒有獨立實作（T-037）。
+- **SimPy 的投入表量化**：腳本以 Fraction 精確值 round half up，engine 以 binary64 的乘積再 round；兩者只在某個值與半 tick 的距離小於 binary64 的捨入時可能不同，G-R8 的值都遠離半 tick。
+- **Mutation 仍是抽樣**：本輪 reviewer 的 29 個 mutant 中有 5 個存活，3 個已補測試、2 個等價；harness 沒有涵蓋的規則仍可能只有鎖在保護。

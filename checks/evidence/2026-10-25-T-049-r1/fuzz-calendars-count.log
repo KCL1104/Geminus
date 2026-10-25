@@ -1,0 +1,16 @@
+$ go test -run ^$ -fuzz ^FuzzCalendars$ -fuzztime 20000x -parallel 2 ./internal/simulation/engine/
+fuzz: elapsed: 0s, gathering baseline coverage: 0/801 completed
+fuzz: elapsed: 3s, gathering baseline coverage: 747/801 completed
+fuzz: elapsed: 3s, gathering baseline coverage: 801/801 completed, now fuzzing with 2 workers
+fuzz: elapsed: 6s, execs: 3121 (791/sec), new interesting: 11 (total: 812)
+fuzz: elapsed: 9s, execs: 5847 (908/sec), new interesting: 13 (total: 814)
+fuzz: elapsed: 12s, execs: 7957 (703/sec), new interesting: 15 (total: 816)
+fuzz: elapsed: 15s, execs: 10268 (770/sec), new interesting: 16 (total: 817)
+fuzz: elapsed: 18s, execs: 13019 (917/sec), new interesting: 16 (total: 817)
+fuzz: elapsed: 21s, execs: 15417 (799/sec), new interesting: 18 (total: 819)
+fuzz: elapsed: 24s, execs: 17841 (808/sec), new interesting: 18 (total: 819)
+fuzz: elapsed: 27s, execs: 19820 (660/sec), new interesting: 19 (total: 820)
+fuzz: elapsed: 27s, execs: 20000 (500/sec), new interesting: 19 (total: 820)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	27.407s
+exit status 0

@@ -1,0 +1,32 @@
+T-049 review round 1 exit codes (each log ends with "exit status N"; seconds are wall time on the shared machine)
+
+t049-r1 tree (534de30's code and test data; the last commit adds the report section and this evidence):
+make simulation-reference-test PYTHON=/home/user/Geminus/.venv/bin/python: 0 (22 s; simulation-reference-test.log,
+  simpy-reference-report.json; SimPy 34 deterministic cases, 140 stochastic comparisons; calendar_reference.py 5000
+  models, 0 differences)
+make backend-test GOFLAGS=-count=1: 0 (263 s; backend-test.log; 64 packages ok, none cached)
+make backend-race GOFLAGS=-count=1: 0 (706 s; backend-race.log; the full race target, 64 packages ok, none cached)
+make architecture-check: 0 (11 s; architecture-check.log)
+make ai-eval: 0 (2 s; ai-eval.log; checks/ai-evals unchanged)
+make backend-numeric: 0 (171 s; backend-numeric.log)
+go test -v (key engine tests incl. TestCalendarRulesExport, GEMINUS_FULL_DIFFERENTIAL=1): 0 (44 s; engine-tests-verbose.log)
+FuzzKernel -fuzztime 500000x: 0 (32 s; fuzz-kernel-count.log)
+FuzzRun -fuzztime 200000x: 0 (29 s; fuzz-run-count.log)
+FuzzCalendars -fuzztime 20000x: 0 (28 s; fuzz-calendars-count.log)
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python: 0 (spec-check.log, after the report section was written)
+mutation harness run 4 (59 mutants): 0 (mutants-run4.log; 55/55 killed, 4 equivalent)
+L2 mutants against the Python cross-check: 0 (l2-mutants.log; 18/18 killed by the reference)
+
+Red first (expected failures, kept as evidence):
+the new validator cases on rv-r4-first-period-only and rv-lcm-limit-strict: each go test 1 (red-m2-l1-validator.log)
+the new LCM hand cases on rv-lcm-limit-strict: go test 1 (red-l1-calendar-lcm.log)
+make simulation-reference-test before the SimPy table fix: 2 (red-simpy-gr8.log)
+G-R8, G-R9 first engine run, counts and locks not yet updated: 1 (first-engine-run-gr8-gr9.log)
+green after each: green-m2-l1-validator.log 0, green-simpy-gr8.log 0
+
+NOT RUN:
+make integration-test and every DB-backed Go test (no PostgreSQL in this session; DB tests only on dt_test_* by the
+  coordinator); make frontend-test (no TypeScript, schema or apps/web change); make e2e-test, make benchmark-test,
+  make ai-eval-live, CI
+ADR-026 D-050 reference items not done: R1 in Python; SimPy runs of the two counterexamples and G-D1; SimPy grants
+  within every L on random valid models (T-037 follow-up)

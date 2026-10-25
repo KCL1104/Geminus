@@ -1,0 +1,15 @@
+$ go test -run ^$ -fuzz ^FuzzRun$ -fuzztime 200000x -parallel 2 ./internal/simulation/des/
+fuzz: elapsed: 0s, gathering baseline coverage: 0/87 completed
+fuzz: elapsed: 1s, gathering baseline coverage: 87/87 completed, now fuzzing with 2 workers
+fuzz: elapsed: 3s, execs: 95 (32/sec), new interesting: 0 (total: 87)
+fuzz: elapsed: 6s, execs: 95 (0/sec), new interesting: 0 (total: 87)
+fuzz: elapsed: 9s, execs: 95 (0/sec), new interesting: 0 (total: 87)
+fuzz: elapsed: 12s, execs: 95 (0/sec), new interesting: 0 (total: 87)
+fuzz: elapsed: 15s, execs: 100094 (33333/sec), new interesting: 1 (total: 88)
+fuzz: elapsed: 18s, execs: 100094 (0/sec), new interesting: 1 (total: 88)
+fuzz: elapsed: 21s, execs: 100094 (0/sec), new interesting: 1 (total: 88)
+fuzz: elapsed: 24s, execs: 100094 (0/sec), new interesting: 1 (total: 88)
+fuzz: elapsed: 26s, execs: 200000 (41312/sec), new interesting: 2 (total: 89)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	26.461s
+exit status 0
