@@ -1,0 +1,12 @@
+=== RUN   TestDifferentialAgainstFrozenKernel
+    differential_test.go:180: 3632 of 5000 random models compiled (race detector: false); 1724346 observations identical; endings map[active:234 none:3106 visits:292]
+--- PASS: TestDifferentialAgainstFrozenKernel (1.59s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	1.596s
+exit 0
+=== RUN   TestDifferentialAgainstFrozenKernel
+    differential_test.go:180: 3632 of 5000 random models compiled (race detector: true); 1724346 observations identical; endings map[active:234 none:3106 visits:292]
+--- PASS: TestDifferentialAgainstFrozenKernel (1.84s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	1.847s
+exit 0

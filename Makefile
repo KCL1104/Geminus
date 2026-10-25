@@ -37,7 +37,7 @@ backend-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included in this spec pack.' >&2; exit 2; }
 	@unformatted=$$(gofmt -l cmd internal schemas scripts prompts); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
 	go vet $(GO_PKGS)
-	go test $(GO_PKGS)
+	GEMINUS_FULL_DIFFERENTIAL=1 go test $(GO_PKGS)
 # No fused multiply-add in engine/statistics code on any GOARCH, and the numeric tests as an FMA-capable build.
 backend-numeric:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
@@ -45,7 +45,8 @@ backend-numeric:
 # -timeout 30m: with the race detector the engine package's D-047 differential (random models on the frozen
 # and the current kernel) and the blocking checks of T-047 once took over go test's default 10m on a shared
 # 4-CPU machine. Under -race the differential now runs 5,000 of its 50,000 models (raceEnabled in
-# internal/simulation/engine; the kernel has no concurrency of its own); make backend-test runs them all.
+# internal/simulation/engine; the kernel has no concurrency of its own); make backend-test runs them all and
+# says so with GEMINUS_FULL_DIFFERENTIAL=1 (the test fails if fewer would run), which this target does not set.
 backend-race:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go test -race -timeout 30m $(GO_PKGS)

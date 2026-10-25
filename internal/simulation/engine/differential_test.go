@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -65,6 +66,13 @@ var raceEnabled = func() bool {
 	}
 	return false
 }()
+
+// fullDifferentialEnv is set to 1 by make backend-test, which builds
+// without the race detector (make backend-race does not set it): a signal
+// independent of raceEnabled that the full count must run, so a wrong
+// race detection cannot silently weaken the differential of
+// make backend-test and CI's backend job (T-047 review round 2, I2).
+const fullDifferentialEnv = "GEMINUS_FULL_DIFFERENTIAL"
 
 type kernelRun struct {
 	obs []Observation
@@ -134,6 +142,9 @@ var differentialLimits = []simulation.ExecutionLimits{
 }
 
 func TestDifferentialAgainstFrozenKernel(t *testing.T) {
+	if os.Getenv(fullDifferentialEnv) == "1" && frozenDifferentialModels != differentialModels {
+		t.Fatalf("%s=1 (make backend-test) but %d of %d models would run (raceEnabled %v)", fullDifferentialEnv, frozenDifferentialModels, differentialModels, raceEnabled)
+	}
 	base := minimal(t)
 	type result struct {
 		compiled bool
