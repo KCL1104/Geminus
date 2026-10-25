@@ -78,6 +78,13 @@ func TestRunQuery(t *testing.T) {
 		{"baseline_run_id=" + a + "&scenario_run_id=sim_01m4ydqk00fgzzwh0pp15xpnfb", ScenarioParam},
 		{"baseline_run_id=" + a + "&scenario_run_id=sim_81M4YDQK00FGZZWH0PP15XPNFB", ScenarioParam},
 		{"baseline_run_id=" + a + "&scenario_run_id=" + a, ScenarioParam},
+		// Review round 1 L4: the ID is the whole value (RunID has 30
+		// characters), nothing after it, not even a newline.
+		{"baseline_run_id=" + a + "&scenario_run_id=" + b + "X", ScenarioParam},
+		{"baseline_run_id=" + a + "0&scenario_run_id=" + b, BaselineParam},
+		{"baseline_run_id=" + a + "%0A&scenario_run_id=" + b, BaselineParam},
+		{"baseline_run_id=" + a + "&scenario_run_id=" + b + "%0A", ScenarioParam},
+		{"baseline_run_id=%20" + a + "&scenario_run_id=" + b, BaselineParam},
 		{"baseline_run_id=" + a + "&scenario_run_id=" + b + "&x=%zz", "query string"},
 	} {
 		r := httptest.NewRequest("GET", "/v1/simulation-comparisons?"+c.query, nil)
@@ -129,14 +136,19 @@ func TestInput(t *testing.T) {
 	r := store.Run{ID: "sim_01M4YDQK00FGZZWH0PP15XPNFA", ModelID: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N", ModelVersionID: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
 		ScenarioID: &scn, ScenarioPatch: []byte(`[{"op":"test","path":"/name","value":"x"}]`), EngineVersion: "des-go-0.4.0",
 		DatasetManifestHash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+		ModelHash:           "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+		EffectiveModelHash:  "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+		ConfigHash:          "sha256:4444444444444444444444444444444444444444444444444444444444444444",
 		Config: simulation.RunConfig{Horizon: simulation.Duration{Value: 2, Unit: model.Day}, Warmup: simulation.Duration{Value: 1, Unit: model.Hour},
 			Replications: 3, Seed: 11, TraceLevel: simulation.TraceSampled}, Status: store.Completed}
 	res := &simulation.Result{RunID: r.ID}
 	got := input(r, res)
 	want := compare.Run{ID: r.ID, ModelVersionID: r.ModelVersionID, EngineVersion: r.EngineVersion, DatasetManifestHash: r.DatasetManifestHash,
+		ModelHash: r.ModelHash, EffectiveModelHash: r.EffectiveModelHash, ConfigHash: r.ConfigHash,
 		ScenarioPatch: r.ScenarioPatch, Config: r.Config, Result: res}
 	if got.ID != want.ID || got.ModelVersionID != want.ModelVersionID || got.EngineVersion != want.EngineVersion ||
 		got.DatasetManifestHash != want.DatasetManifestHash || string(got.ScenarioPatch) != string(want.ScenarioPatch) || got.Config != want.Config ||
+		got.ModelHash != want.ModelHash || got.EffectiveModelHash != want.EffectiveModelHash || got.ConfigHash != want.ConfigHash ||
 		got.Result != res {
 		t.Errorf("input %+v, want %+v", got, want)
 	}

@@ -27,6 +27,7 @@
 package compare
 
 import (
+	"bytes"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -37,6 +38,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/simulation"
 )
 
@@ -48,6 +50,9 @@ type Run struct {
 	ModelVersionID      string
 	EngineVersion       string
 	DatasetManifestHash string
+	ModelHash           string // the pinned version's
+	EffectiveModelHash  string // the patched model's
+	ConfigHash          string
 	ScenarioPatch       []byte // the frozen JSON Patch array; [] for a baseline
 	Config              simulation.RunConfig
 	Result              *simulation.Result
@@ -446,17 +451,32 @@ func Resolve(r *simulation.Result, path string) (*float64, error) {
 }
 
 // emptyPatch reports whether a frozen patch is the baseline's [].
+// A JSON null decodes to an empty slice too, so the value's kind is
+// checked first: only an array is a patch (review round 1 L5; 0001's CHECK
+// keeps a stored run's patch an array, but Compare is shared).
 func emptyPatch(id string, patch []byte) (bool, error) {
 	var ops []jsontext.Value
+	if t := bytes.TrimLeft(patch, " \t\r\n"); len(t) == 0 || t[0] != '[' {
+		return false, inconsistent("run %s: the frozen patch is not a JSON array", id)
+	}
 	if err := json.Unmarshal(patch, &ops); err != nil {
 		return false, inconsistent("run %s: the frozen patch is not a JSON array", id)
 	}
 	return len(ops) == 0, nil
 }
 
+// metricsRef is the part of the Result contract the comparison reads every
+// value of.
+const metricsRef = "simulation.schema.json#/$defs/Result/properties/metrics"
+
 // check returns a run's measurement window in ticks after checking that
-// its Result is the run's own: its ID, status and engine, its seed,
-// replications and manifest, and the window of its frozen configuration.
+// its Result is the run's own and keeps its contract where the comparison
+// reads it (D-089 (b)): its ID, status and engine; its seed, replication
+// count (and summaries), dataset manifest, model, effective model and
+// config hashes; its window's unit, boundary and ticks against the run's
+// frozen configuration; and its metrics against simulation.schema.json
+// (review round 1 I1, I2). The other members (each replication's values
+// but its censored count, the trace) are not read, so not checked.
 func check(r Run) (warmup, horizon int64, err error) {
 	res := r.Result
 	if res == nil {
@@ -470,10 +490,30 @@ func check(r Run) (warmup, horizon int64, err error) {
 		rep.DatasetManifestHash != r.DatasetManifestHash {
 		return 0, 0, inconsistent("run %s: the result's seed, replications or manifest are not the run's", r.ID)
 	}
+	if rep.ModelHash != r.ModelHash || rep.EffectiveModelHash != r.EffectiveModelHash || rep.ConfigHash != r.ConfigHash {
+		return 0, 0, inconsistent("run %s: the result's model, effective model or config hash is not the run's", r.ID)
+	}
+	mw := res.MeasurementWindow
 	h, herr := model.Ticks(r.Config.Horizon.Value, r.Config.Horizon.Unit)
 	w, werr := model.Ticks(r.Config.Warmup.Value, r.Config.Warmup.Unit)
-	if herr != nil || werr != nil || res.MeasurementWindow.HorizonTicks != h || res.MeasurementWindow.WarmupTicks != w {
+	if herr != nil || werr != nil || mw.TickUnit != "millisecond" || mw.TimeBoundary != "warmup <= t <= horizon" || mw.HorizonTicks != h ||
+		mw.WarmupTicks != w {
 		return 0, 0, inconsistent("run %s: the result's window is not the run's configuration", r.ID)
+	}
+	// The Go types hold exactly the schema's members (contract tests), and
+	// a stored Result is decoded strictly, so its metrics re-encode to what
+	// was stored, as far as the schema can tell.
+	data, err := json.Marshal(res.Metrics)
+	if err != nil {
+		return 0, 0, inconsistent("run %s: the result's metrics do not encode (a number that is not finite)", r.ID)
+	}
+	issues, err := validate.Document(data, metricsRef, "RESULT_INCONSISTENT")
+	if err != nil {
+		return 0, 0, err
+	}
+	if len(issues) > 0 {
+		// The path only: the message may quote a value.
+		return 0, 0, inconsistent("run %s: the result's metrics break the contract at %q (%d issue(s))", r.ID, "/metrics"+issues[0].Path, len(issues))
 	}
 	return w, h, nil
 }

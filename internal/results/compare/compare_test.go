@@ -76,6 +76,7 @@ func result(id string) *simulation.Result {
 
 func run(id, patch string, r *simulation.Result) compare.Run {
 	return compare.Run{ID: id, ModelVersionID: versionID, EngineVersion: engineV, DatasetManifestHash: zeroHash, ScenarioPatch: []byte(patch),
+		ModelHash: zeroHash, EffectiveModelHash: zeroHash, ConfigHash: zeroHash,
 		Config: simulation.RunConfig{Horizon: simulation.Duration{Value: 1010, Unit: model.Minute}, Warmup: simulation.Duration{Value: 0, Unit: model.Minute},
 			Replications: 1, Seed: 7, TraceLevel: simulation.TraceNone}, Result: r}
 }
@@ -353,6 +354,9 @@ func TestComparableAcrossSpellings(t *testing.T) {
 		r.Result.MeasurementWindow.HorizonTicks, r.Result.MeasurementWindow.WarmupTicks = 86_400_000, 3_600_000
 	}
 	s.Config.TraceLevel = simulation.TraceSampled
+	// An empty array spelled with white space is still [] (review round 1
+	// L5 checks the kind, not the bytes).
+	b.ScenarioPatch = []byte(" \n[ ]\t")
 	c := mustCompare(t, b, s)
 	if !c.Comparable || len(c.IncomparableReasons) != 0 {
 		t.Errorf("comparable %v %v", c.Comparable, c.IncomparableReasons)
@@ -381,6 +385,79 @@ func TestWarnings(t *testing.T) {
 	s.Result.ReplicationSummaries[0].CensoredEntities = 1
 	if c := mustCompare(t, b, s); !slices.Equal(c.Warnings, []string{compare.WarningScenarioPatchEmpty, compare.WarningCensoredEntities}) {
 		t.Errorf("censored scenario: %v", c.Warnings)
+	}
+	// Review round 1 L3. Either run with one replication warns, the
+	// scenario's too (D-088 (d): "有一個 run"), even when the runs are not
+	// comparable.
+	b, s = pair()
+	replications(&b, 3)
+	if c := mustCompare(t, b, s); !slices.Equal(c.Warnings, []string{compare.WarningSingleReplication}) || c.Comparable {
+		t.Errorf("one replication in the scenario only: %v %v", c.Warnings, c.Comparable)
+	}
+	// All four at once, in the contract's order.
+	b, s = pair()
+	s.ScenarioPatch = []byte("[]")
+	b.Result.ReplicationSummaries[0].CensoredEntities = 1
+	for i := range compare.MaxMetrics / 4 {
+		q := simulation.QueueStats{Status: simulation.Available, WaitMeanMinutes: ptr(1), WaitP50Minutes: ptr(1), WaitP95Minutes: ptr(1), SampleCount: 1}
+		b.Result.Metrics.Queues[fmt.Sprintf("q%05d", i)], s.Result.Metrics.Queues[fmt.Sprintf("q%05d", i)] = q, q
+	}
+	all := []string{compare.WarningScenarioPatchEmpty, compare.WarningSingleReplication, compare.WarningCensoredEntities, compare.WarningMetricsTruncated}
+	if c := mustCompare(t, b, s); !slices.Equal(c.Warnings, all) {
+		t.Errorf("all four: %v, want %v", c.Warnings, all)
+	}
+}
+
+// The contract's ±1e15 bound is inclusive (review round 1 L2): a value of
+// exactly ±1e15 is a Result's and is compared, a delta of exactly 1e15 (or
+// a relative delta of exactly 1e15) is kept; the next binary64 above is not
+// a Result's value (fail closed) and is not a delta (null, with its reason).
+func TestRangeBounds(t *testing.T) {
+	above := math.Nextafter(compare.MaxValue, math.Inf(1))
+	spanLow, spanHigh := math.Nextafter(-5e14, math.Inf(-1)), math.Nextafter(5e14, math.Inf(1))
+	relAbove := math.Nextafter(5e14, math.Inf(1)) + 0.5
+	// The arithmetic the cases rely on, so a change of the cases cannot pass
+	// silently.
+	if spanHigh-spanLow != above || 1e15-0 != compare.MaxValue || (5e14+0.5-0.5)/0.5 != compare.MaxValue || (relAbove-0.5)/0.5 != above {
+		t.Fatalf("the fixed points moved: %v %v %v", spanHigh-spanLow, (5e14+0.5-0.5)/0.5, (relAbove-0.5)/0.5)
+	}
+	cases := []struct {
+		key      string
+		b, s     float64
+		abs, rel *float64
+		reason   string
+	}{
+		{"max", compare.MaxValue, compare.MaxValue, ptr(0), ptr(0), ""},
+		{"min", -compare.MaxValue, -compare.MaxValue, ptr(0), ptr(0), ""},
+		{"zero-to-max", 0, compare.MaxValue, ptr(compare.MaxValue), nil, compare.ReasonBaselineZero},
+		{"span", -5e14, 5e14, ptr(compare.MaxValue), ptr(-2), ""},
+		{"span-above", spanLow, spanHigh, nil, nil, compare.ReasonDeltaOutOfRange},
+		{"relative-max", 0.5, 5e14 + 0.5, ptr(5e14), ptr(compare.MaxValue), ""},
+		{"relative-above", 0.5, relAbove, ptr(relAbove - 0.5), nil, compare.ReasonRelativeDeltaOutOfRange},
+	}
+	b, s := pair()
+	b.Result.Metrics.Domain, s.Result.Metrics.Domain = map[string]simulation.MetricSummary{}, map[string]simulation.MetricSummary{}
+	for _, c := range cases {
+		b.Result.Metrics.Domain[c.key] = summary(c.b, simulation.PopulationReplication, "count")
+		s.Result.Metrics.Domain[c.key] = summary(c.s, simulation.PopulationReplication, "count")
+	}
+	cmp := mustCompare(t, b, s)
+	for _, c := range cases {
+		want(t, metricOf(t, cmp, "/metrics/domain/"+c.key+"/mean"), ptr(c.b), ptr(c.s), c.abs, c.rel, compare.Available, c.reason)
+	}
+	data, err := cmp.JSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if issues, err := validate.Document(data, "http.schema.json#/$defs/Comparison", "COMPARISON"); err != nil || len(issues) > 0 {
+		t.Errorf("the bounds are not the contract's: %v %v", issues, err)
+	}
+	for _, v := range []float64{above, -above} {
+		b, s := pair()
+		b.Result.Metrics.Domain = map[string]simulation.MetricSummary{"x": summary(v, simulation.PopulationReplication, "count")}
+		if _, err := compare.Compare(b, s); !errors.Is(err, compare.ErrInconsistent) {
+			t.Errorf("a value %v: %v, want ErrInconsistent", v, err)
+		}
 	}
 }
 
@@ -482,6 +559,29 @@ func TestPathEscaping(t *testing.T) {
 	for _, p := range []string{"/metrics/resources/x~2/utilization_mean", "/metrics/resources/x~/utilization_mean", "/metrics/resources/a/b~c/utilization_mean"} {
 		if _, err := compare.Resolve(b.Result, p); !errors.Is(err, compare.ErrUnknownPath) {
 			t.Errorf("%s: %v, want ErrUnknownPath", p, err)
+		}
+	}
+	// RFC 6901 decodes "~1" before "~0" (review round 1 L1): a key "~1" is
+	// the path …/~01/… and a key "/" is …/~1/…, two different statistics.
+	r := result(baseID)
+	r.Metrics.Resources["~1"] = simulation.ResourceStats{UtilizationMean: ptr(0.125), ObservationTicks: horizonTicks, Capacity: 1}
+	r.Metrics.Resources["/"] = simulation.ResourceStats{UtilizationMean: ptr(0.375), ObservationTicks: horizonTicks, Capacity: 1}
+	for key, want := range map[string]float64{"~1": 0.125, "/": 0.375} {
+		p := compare.Path("metrics", "resources", key, "utilization_mean")
+		if v, err := compare.Resolve(r, p); err != nil || v == nil || *v != want {
+			t.Errorf("key %q (path %s): %v %v, want %v", key, p, show(v), err, want)
+		}
+	}
+	if compare.Path("metrics", "resources", "~1", "x") != "/metrics/resources/~01/x" || compare.Path("metrics", "resources", "/", "x") != "/metrics/resources/~1/x" {
+		t.Errorf("Path of ~1 and /: %s %s", compare.Path("metrics", "resources", "~1", "x"), compare.Path("metrics", "resources", "/", "x"))
+	}
+	stats, err := compare.Statistics(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, st := range stats {
+		if v, err := compare.Resolve(r, st.Path); err != nil || !same(v, st.Value) {
+			t.Errorf("%s: listed %s, resolves to %s (%v)", st.Path, show(st.Value), show(v), err)
 		}
 	}
 }
@@ -618,6 +718,47 @@ func TestInconsistent(t *testing.T) {
 			q.QueueLengthMean = math.NaN()
 			r.Result.Metrics.Queues["service"] = q
 		},
+		// Review round 1 L5: a JSON null is no patch, so no baseline either.
+		"a null patch": func(r *compare.Run) { r.ScenarioPatch = []byte("null") },
+		// Review round 1 I1: the Result's other hashes and its window's
+		// units are the run's too.
+		"another model hash": func(r *compare.Run) { r.Result.Reproducibility.ModelHash = "sha256:" + strings.Repeat("3", 64) },
+		"another effective model hash": func(r *compare.Run) {
+			r.Result.Reproducibility.EffectiveModelHash = "sha256:" + strings.Repeat("3", 64)
+		},
+		"another config hash":   func(r *compare.Run) { r.Result.Reproducibility.ConfigHash = "sha256:" + strings.Repeat("3", 64) },
+		"another tick unit":     func(r *compare.Run) { r.Result.MeasurementWindow.TickUnit = "second" },
+		"another time boundary": func(r *compare.Run) { r.Result.MeasurementWindow.TimeBoundary = "warmup < t <= horizon" },
+		// Review round 1 I2: the metrics break the Result contract
+		// (simulation.schema.json) in ways only the schema says.
+		"a utilization above 1": func(r *compare.Run) {
+			r.Result.Metrics.Resources["server"] = simulation.ResourceStats{UtilizationMean: ptr(7), ObservationTicks: horizonTicks, Capacity: 1}
+		},
+		"a null utilization without a reason": func(r *compare.Run) {
+			r.Result.Metrics.Resources["server"] = simulation.ResourceStats{ObservationTicks: horizonTicks, Capacity: 1}
+		},
+		"an unavailable summary with a CI": func(r *compare.Run) {
+			r.Result.Metrics.LeadTimeMinutes = unavailable(simulation.PopulationReplication, "minute", "NO_COMPLETED_ENTITY_IN_WINDOW")
+			r.Result.Metrics.LeadTimeMinutes.ConfidenceIntervalMean = &simulation.ConfidenceInterval{Level: 0.95, Lower: 1, Upper: 2, Method: "student_t_replication_means"}
+		},
+		"an entity population with a CI": func(r *compare.Run) {
+			r.Result.Metrics.LeadTimeMinutes.ConfidenceIntervalMean = &simulation.ConfidenceInterval{Level: 0.95, Lower: 1, Upper: 2, Method: "student_t_replication_means"}
+		},
+		"an unavailable summary without a reason": func(r *compare.Run) {
+			r.Result.Metrics.DORA["change_lead_time"] = simulation.MetricSummary{Status: simulation.Unavailable, Population: simulation.PopulationEntity, Unit: "minute"}
+		},
+		"an available summary of no sample": func(r *compare.Run) { r.Result.Metrics.Throughput.SampleCount = 0 },
+		"an available queue of no visit": func(r *compare.Run) {
+			q := r.Result.Metrics.Queues["service"]
+			q.SampleCount = 0
+			r.Result.Metrics.Queues["service"] = q
+		},
+		"a negative wait": func(r *compare.Run) {
+			q := r.Result.Metrics.Queues["service"]
+			q.WaitMeanMinutes = ptr(-1)
+			r.Result.Metrics.Queues["service"] = q
+		},
+		"an unknown population": func(r *compare.Run) { r.Result.Metrics.FailureCount.Population = "visits" },
 	} {
 		for _, side := range []string{"baseline", "scenario"} {
 			t.Run(name+"/"+side, func(t *testing.T) {
@@ -638,6 +779,31 @@ func TestInconsistent(t *testing.T) {
 	r.Metrics.Throughput.Mean = nil
 	if _, err := compare.Statistics(r); !errors.Is(err, compare.ErrInconsistent) {
 		t.Errorf("Statistics: %v", err)
+	}
+	// Statistics and Resolve (what T-030 cites) read no run row, so Compare's
+	// schema check does not stand between them and a value out of the
+	// contract's range: they refuse it themselves (review round 1, R13 of
+	// the reviewer survived once Compare validated the metrics).
+	for name, c := range map[string]struct {
+		mutate func(r *simulation.Result)
+		path   string
+	}{
+		"a mean beyond the range":  {func(r *simulation.Result) { r.Metrics.Throughput.Mean = ptr(2e15) }, "/metrics/throughput/mean"},
+		"a p95 that is not finite": {func(r *simulation.Result) { r.Metrics.LeadTimeMinutes.P95 = ptr(math.NaN()) }, "/metrics/lead_time_minutes/p95"},
+		"a wait beyond the range": {func(r *simulation.Result) {
+			q := r.Metrics.Queues["service"]
+			q.WaitP50Minutes = ptr(math.Inf(1))
+			r.Metrics.Queues["service"] = q
+		}, "/metrics/queues/service/wait_p50_minutes"},
+	} {
+		r := result(baseID)
+		c.mutate(r)
+		if _, err := compare.Statistics(r); !errors.Is(err, compare.ErrInconsistent) {
+			t.Errorf("%s: Statistics %v", name, err)
+		}
+		if _, err := compare.Resolve(r, c.path); !errors.Is(err, compare.ErrInconsistent) {
+			t.Errorf("%s: Resolve %v", name, err)
+		}
 	}
 }
 

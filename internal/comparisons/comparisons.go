@@ -55,6 +55,13 @@ func (e *RunError) Unwrap() error { return e.Err }
 // readRoles: any member compares (x-required-roles, planning/api-operations.json).
 var readRoles = tenant.Members
 
+// inTransaction, when this package's DB test sets it, runs inside the
+// comparison's transaction right after the role check: the only way to
+// observe that transaction's mode from outside the service (review round 1
+// L6; tenant's own TestReadSnapshot shows what the mode does). It is nil
+// in production and unexported, so nothing outside the package can set it.
+var inTransaction func(ctx context.Context, tx tenant.Tx) error
+
 // Service compares runs for a verified scope.
 type Service struct {
 	DB *tenant.DB
@@ -74,6 +81,11 @@ func (s *Service) Compare(ctx context.Context, sc tenant.Scope, baselineID, scen
 	err := s.DB.Run(ctx, sc, tenant.ReadSnapshot, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
 		if err := m.Require(readRoles...); err != nil {
 			return err
+		}
+		if inTransaction != nil {
+			if err := inTransaction(ctx, tx); err != nil {
+				return err
+			}
 		}
 		var rows [2]store.Run
 		for i, id := range ids {
@@ -122,6 +134,7 @@ func (s *Service) Compare(ctx context.Context, sc tenant.Scope, baselineID, scen
 // input is what the comparison reads of a run: its frozen input and result.
 func input(r store.Run, res *simulation.Result) compare.Run {
 	return compare.Run{ID: r.ID, ModelVersionID: r.ModelVersionID, EngineVersion: r.EngineVersion, DatasetManifestHash: r.DatasetManifestHash,
+		ModelHash: r.ModelHash, EffectiveModelHash: r.EffectiveModelHash, ConfigHash: r.ConfigHash,
 		ScenarioPatch: r.ScenarioPatch, Config: r.Config, Result: res}
 }
 
