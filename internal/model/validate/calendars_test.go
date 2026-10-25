@@ -112,6 +112,12 @@ func TestCalendarRules(t *testing.T) {
 		// D-052 shape, the distribution/domain semantics stage.
 		{"a period over 365 days", onCalendar("c", nil, cal("c", 366*day, []any{shift(0, 600)})),
 			[][3]string{{validate.CalendarInvalid, "/calendars/0/period", "error"}}},
+		// Review round 1 L1: D-050's L <= 365 days is inclusive. A period of
+		// exactly 365 days (31,536,000,000 ticks) is valid; one tick more
+		// (1/60000 minute) is not.
+		{"a period of exactly 365 days", onCalendar("c", nil, cal("c", 365*day, []any{shift(0, 600)})), nil},
+		{"a period of 365 days and one tick", onCalendar("c", nil, cal("c", 365*day+1.0/60000, []any{shift(0, 600)})),
+			[][3]string{{validate.CalendarInvalid, "/calendars/0/period", "error"}}},
 		{"overlapping shifts", onCalendar("c", nil, cal("c", day, []any{shift(0, 600), shift(500, 900)})),
 			[][3]string{{validate.CalendarInvalid, "/calendars/0/shifts/1", "error"}}},
 		{"shifts out of order", onCalendar("c", nil, cal("c", day, []any{shift(600, 900), shift(0, 500)})),
@@ -217,6 +223,13 @@ func TestBundleFeasibility(t *testing.T) {
 		{"R2: periods whose LCM is over 365 days", both(onCalendar("season", nil, cal("season", 300*day, []any{shift(0, 150*day)}),
 			cal("week", 7*day, []any{shift(0, 5*day)})), helper("week", nil)),
 			[][3]string{{validate.CalendarInvalid, "/calendars", "error"}}},
+		// Review round 1 L1: 73 days and 5 days have the LCM 365 days, the
+		// inclusive limit; 73 days and 10 days (730 days) are over it.
+		{"R2: periods whose LCM is exactly 365 days", both(onCalendar("a", nil, cal("a", 73*day, []any{shift(0, 600)}),
+			cal("b", 5*day, []any{shift(0, 600)})), helper("b", nil)), nil},
+		{"R2: periods whose LCM is 730 days", both(onCalendar("a", nil, cal("a", 73*day, []any{shift(0, 600)}),
+			cal("b", 10*day, []any{shift(0, 600)})), helper("b", nil)),
+			[][3]string{{validate.CalendarInvalid, "/calendars", "error"}}},
 		{"R2: an unused calendar counts in the LCM", func(ir map[string]any) {
 			ir["calendars"] = []any{cal("season", 300*day, []any{shift(0, 150*day)}), cal("week", 7*day, []any{shift(0, 5*day)})}
 		}, [][3]string{{validate.CalendarInvalid, "/calendars", "error"}}},
@@ -257,6 +270,14 @@ func TestBundleFeasibility(t *testing.T) {
 		// this one is inside it: o is off at 100-200 while m is on.)
 		{"R4: a closed exception in the first period does not count either", both(breaks, onCalendar("m", nil, cal("m", day, []any{shift(0, 480)}),
 			cal("o", day, []any{shift(0, 480)}, exception(100, 200, false))), helper("o", nil)), nil},
+		// Review round 1 M2: R4 reads the LCM of the two periods, not the
+		// larger one. worker (breaks down) is on at [2,3) of every 4 minutes,
+		// helper off at [4,5) of every 6; they meet on shift at 2 and 6, and
+		// worker is on while helper is off only at [10,11): past the larger
+		// period (6), inside the LCM (12).
+		{"R4: a conflict only past the larger period, inside the LCM", both(breaks, onCalendar("cm", nil, cal("cm", 4, []any{shift(2, 3)}),
+			cal("co", 6, []any{shift(0, 4), shift(5, 6)})), helper("co", nil)),
+			[][3]string{{validate.StallRisk, "/nodes/1/requires", "error"}}},
 		{"R4: a partner's units on shift too few", both(breaks, onCalendar("c", nil, cal("c", day, []any{shift(0, 480, "a"), shift(480, 960, "b")})),
 			helper("c", map[string]any{"capacity": 2, "shift_capacity": map[string]any{"b": 1}}), func(ir map[string]any) {
 				obj(obj(nodes(ir)[1])["requires"].([]any)[1])["units"] = 2

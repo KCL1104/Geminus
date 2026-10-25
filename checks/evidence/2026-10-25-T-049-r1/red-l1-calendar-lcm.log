@@ -1,0 +1,10 @@
+$ the new LCM hand cases of TestHandCases against the reviewer's rv-lcm-limit-strict (calendar.go: <= -> <), by overlay: go test -count=1 -overlay <mutant> -run TestHandCases ./internal/model/calendar/
+--- FAIL: TestHandCases (0.00s)
+    calendar_test.go:265: LCM(73, 5 days) 0 false, want 365 days
+    calendar_test.go:268: LCM(1 tick, 365 days) 0 false, want 365 days
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/calendar	0.003s
+FAIL
+
+exit 1
+exit status 0

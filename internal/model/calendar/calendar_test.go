@@ -257,6 +257,19 @@ func TestHandCases(t *testing.T) {
 	if l, ok := LCM(7*60000, 11*60000, model.MaxDurationTicks); !ok || l != 77*60000 {
 		t.Errorf("LCM(7, 11 min) %d %v", l, ok)
 	}
+	// Review round 1 L1: the limit is inclusive (D-050: L <= 365 days).
+	// 73 days and 5 days meet at exactly 365 days, as do 1 tick and 365
+	// days; 365 days and 7 ticks do not (7 does not divide 365 days in
+	// ticks, 2^10·3^3·5^6·73).
+	if l, ok := LCM(73*86_400_000, 5*86_400_000, model.MaxDurationTicks); !ok || l != model.MaxDurationTicks {
+		t.Errorf("LCM(73, 5 days) %d %v, want 365 days", l, ok)
+	}
+	if l, ok := LCM(1, model.MaxDurationTicks, model.MaxDurationTicks); !ok || l != model.MaxDurationTicks {
+		t.Errorf("LCM(1 tick, 365 days) %d %v, want 365 days", l, ok)
+	}
+	if l, ok := LCM(model.MaxDurationTicks, 7, model.MaxDurationTicks); ok {
+		t.Errorf("LCM(365 days, 7 ticks) %d, want over the limit", l)
+	}
 }
 
 // New refuses what the validator's shape rules refuse.

@@ -1,0 +1,92 @@
+$ go test -count=1 -v -run TestCalendarRules|TestBundleFeasibility ./internal/model/validate/
+=== RUN   TestCalendarRules
+=== RUN   TestCalendarRules/a_valid_calendar
+=== RUN   TestCalendarRules/a_calendar_no_resource_uses
+=== RUN   TestCalendarRules/adjacent_shifts,_one_covering_the_period
+=== RUN   TestCalendarRules/shift_capacity_within_capacity
+=== RUN   TestCalendarRules/exceptions_in_order
+=== RUN   TestCalendarRules/a_period_over_365_days
+=== RUN   TestCalendarRules/a_period_of_exactly_365_days
+=== RUN   TestCalendarRules/a_period_of_365_days_and_one_tick
+=== RUN   TestCalendarRules/overlapping_shifts
+=== RUN   TestCalendarRules/shifts_out_of_order
+=== RUN   TestCalendarRules/a_shift_past_the_period
+=== RUN   TestCalendarRules/a_shift_that_ends_where_it_starts
+=== RUN   TestCalendarRules/a_shift_empty_in_ticks
+=== RUN   TestCalendarRules/overlapping_exceptions
+=== RUN   TestCalendarRules/exceptions_out_of_order
+=== RUN   TestCalendarRules/an_exception_past_365_days
+=== RUN   TestCalendarRules/an_exception_that_ends_where_it_starts
+=== RUN   TestCalendarRules/a_shift_capacity_label_the_calendar_does_not_have
+=== RUN   TestCalendarRules/a_shift_capacity_over_the_capacity
+=== RUN   TestCalendarRules/two_calendars_with_one_ID
+=== RUN   TestCalendarRules/an_unknown_calendar
+--- PASS: TestCalendarRules (0.05s)
+    --- PASS: TestCalendarRules/a_valid_calendar (0.04s)
+    --- PASS: TestCalendarRules/a_calendar_no_resource_uses (0.00s)
+    --- PASS: TestCalendarRules/adjacent_shifts,_one_covering_the_period (0.00s)
+    --- PASS: TestCalendarRules/shift_capacity_within_capacity (0.00s)
+    --- PASS: TestCalendarRules/exceptions_in_order (0.00s)
+    --- PASS: TestCalendarRules/a_period_over_365_days (0.00s)
+    --- PASS: TestCalendarRules/a_period_of_exactly_365_days (0.00s)
+    --- PASS: TestCalendarRules/a_period_of_365_days_and_one_tick (0.00s)
+    --- PASS: TestCalendarRules/overlapping_shifts (0.00s)
+    --- PASS: TestCalendarRules/shifts_out_of_order (0.00s)
+    --- PASS: TestCalendarRules/a_shift_past_the_period (0.00s)
+    --- PASS: TestCalendarRules/a_shift_that_ends_where_it_starts (0.00s)
+    --- PASS: TestCalendarRules/a_shift_empty_in_ticks (0.00s)
+    --- PASS: TestCalendarRules/overlapping_exceptions (0.00s)
+    --- PASS: TestCalendarRules/exceptions_out_of_order (0.00s)
+    --- PASS: TestCalendarRules/an_exception_past_365_days (0.00s)
+    --- PASS: TestCalendarRules/an_exception_that_ends_where_it_starts (0.00s)
+    --- PASS: TestCalendarRules/a_shift_capacity_label_the_calendar_does_not_have (0.00s)
+    --- PASS: TestCalendarRules/a_shift_capacity_over_the_capacity (0.00s)
+    --- PASS: TestCalendarRules/two_calendars_with_one_ID (0.00s)
+    --- PASS: TestCalendarRules/an_unknown_calendar (0.00s)
+=== RUN   TestBundleFeasibility
+=== RUN   TestBundleFeasibility/R2:_calendars_that_never_meet
+=== RUN   TestBundleFeasibility/R2:_calendars_that_meet
+=== RUN   TestBundleFeasibility/R2:_periods_whose_LCM_is_over_365_days
+=== RUN   TestBundleFeasibility/R2:_periods_whose_LCM_is_exactly_365_days
+=== RUN   TestBundleFeasibility/R2:_periods_whose_LCM_is_730_days
+=== RUN   TestBundleFeasibility/R2:_an_unused_calendar_counts_in_the_LCM
+=== RUN   TestBundleFeasibility/R2:_coprime_periods_that_meet_late
+=== RUN   TestBundleFeasibility/R2:_coprime_periods_that_never_meet
+=== RUN   TestBundleFeasibility/R2:_two_units,_never_two_on_shift
+=== RUN   TestBundleFeasibility/R2:_two_units,_at_most_one_on_shift
+=== RUN   TestBundleFeasibility/R2:_only_an_open_exception_fits_(the_period_alone_counts)
+=== RUN   TestBundleFeasibility/R2:_a_closed_exception_over_the_only_fit_(the_period_alone_counts)
+=== RUN   TestBundleFeasibility/R4:_a_machine_without_a_calendar,_an_operator_with_one
+=== RUN   TestBundleFeasibility/R4:_the_machine_on_the_operator's_calendar
+=== RUN   TestBundleFeasibility/R4:_the_machine's_shift_longer_than_the_operator's
+=== RUN   TestBundleFeasibility/R4:_the_operator's_shift_longer_than_the_machine's
+=== RUN   TestBundleFeasibility/R4:_the_exceptions_do_not_count
+=== RUN   TestBundleFeasibility/R4:_a_closed_exception_in_the_first_period_does_not_count_either
+=== RUN   TestBundleFeasibility/R4:_a_conflict_only_past_the_larger_period,_inside_the_LCM
+=== RUN   TestBundleFeasibility/R4:_a_partner's_units_on_shift_too_few
+=== RUN   TestBundleFeasibility/R4_is_not_checked_where_R2_already_fails
+--- PASS: TestBundleFeasibility (0.01s)
+    --- PASS: TestBundleFeasibility/R2:_calendars_that_never_meet (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_calendars_that_meet (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_periods_whose_LCM_is_over_365_days (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_periods_whose_LCM_is_exactly_365_days (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_periods_whose_LCM_is_730_days (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_an_unused_calendar_counts_in_the_LCM (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_coprime_periods_that_meet_late (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_coprime_periods_that_never_meet (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_two_units,_never_two_on_shift (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_two_units,_at_most_one_on_shift (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_only_an_open_exception_fits_(the_period_alone_counts) (0.00s)
+    --- PASS: TestBundleFeasibility/R2:_a_closed_exception_over_the_only_fit_(the_period_alone_counts) (0.00s)
+    --- PASS: TestBundleFeasibility/R4:_a_machine_without_a_calendar,_an_operator_with_one (0.00s)
+    --- PASS: TestBundleFeasibility/R4:_the_machine_on_the_operator's_calendar (0.00s)
+    --- PASS: TestBundleFeasibility/R4:_the_machine's_shift_longer_than_the_operator's (0.00s)
+    --- PASS: TestBundleFeasibility/R4:_the_operator's_shift_longer_than_the_machine's (0.00s)
+    --- PASS: TestBundleFeasibility/R4:_the_exceptions_do_not_count (0.00s)
+    --- PASS: TestBundleFeasibility/R4:_a_closed_exception_in_the_first_period_does_not_count_either (0.00s)
+    --- PASS: TestBundleFeasibility/R4:_a_conflict_only_past_the_larger_period,_inside_the_LCM (0.00s)
+    --- PASS: TestBundleFeasibility/R4:_a_partner's_units_on_shift_too_few (0.00s)
+    --- PASS: TestBundleFeasibility/R4_is_not_checked_where_R2_already_fails (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.070s
+exit status 0

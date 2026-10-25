@@ -1,0 +1,21 @@
+$ the new TestCalendarRules / TestBundleFeasibility cases (M2, L1) against the reviewer's mutants, by overlay: rv-r4-first-period-only (calendars.go: span = the larger period), then rv-lcm-limit-strict (calendar.go LCM: <= -> <); go test -count=1 -overlay <mutant> -run ... ./internal/model/validate/  (t049-r1 from 3e56705, the new cases added, no code change)
+--- FAIL: TestBundleFeasibility (0.04s)
+    --- FAIL: TestBundleFeasibility/R4:_a_conflict_only_past_the_larger_period,_inside_the_LCM (0.00s)
+        calendars_test.go:84: issues [], want [[STALL_RISK /nodes/1/requires error]]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.044s
+FAIL
+
+exit 1
+--- FAIL: TestCalendarRules (0.04s)
+    --- FAIL: TestCalendarRules/a_period_of_exactly_365_days (0.00s)
+        calendars_test.go:84: issues [{CALENDAR_INVALID /calendars the least common multiple of the calendars' periods is over 365 days (D-050 R2) error}], want []
+--- FAIL: TestBundleFeasibility (0.02s)
+    --- FAIL: TestBundleFeasibility/R2:_periods_whose_LCM_is_exactly_365_days (0.00s)
+        calendars_test.go:84: issues [{CALENDAR_INVALID /calendars the least common multiple of the calendars' periods is over 365 days (D-050 R2) error}], want []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.072s
+FAIL
+
+exit 1
+exit status 0
