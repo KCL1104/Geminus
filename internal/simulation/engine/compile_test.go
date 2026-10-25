@@ -434,6 +434,7 @@ func TestCompileDoesNotAlias(t *testing.T) {
 func TestEngineDependencies(t *testing.T) {
 	contracttest.OnlyDeps(t,
 		"github.com/kcl1104/geminus/internal/model",
+		"github.com/kcl1104/geminus/internal/model/calendar",
 		"github.com/kcl1104/geminus/internal/model/hashing",
 		"github.com/kcl1104/geminus/internal/model/validate",
 		"github.com/kcl1104/geminus/internal/simulation",

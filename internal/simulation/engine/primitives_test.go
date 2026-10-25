@@ -20,32 +20,36 @@ func lineFlowModel(t *testing.T) model.ModelIR {
 	return ir
 }
 
-// des-go-0.3.0 executes finite buffers (T-047), breakdowns, lognormal and
-// Weibull (T-048) and no other line-flow primitive (ADR-026; T-049–T-051
-// add them). A model using another never compiles, so it is never
-// simulated as if the member were absent: the validator's primitive gate
-// refuses it first, with paths under /model (D-063).
-// valid-line-flow-ir.json has 19 uses: two finite buffers, the breakdowns,
-// a lognormal (their repair time) and a Weibull (a changeover time) are
-// executed; the other 14 are refused.
+// The validator checks finite buffers (T-047), breakdowns, lognormal and
+// Weibull (T-048), calendars and release schedules (T-049) and no other
+// line-flow primitive (ADR-026; T-050–T-051 add them). A model using
+// another never compiles, so it is never simulated as if the member were
+// absent: the validator's primitive gate refuses it first, with paths
+// under /model (D-063). valid-line-flow-ir.json has 19 uses: two finite
+// buffers, the breakdowns, a lognormal (their repair time), a Weibull (a
+// changeover time), the calendars (the root member, two calendar_id and a
+// shift_capacity) and three release schedules are checked; the other 7
+// (a batch, setups and five declared metrics) are refused.
 func TestCompileRefusesLineFlowPrimitives(t *testing.T) {
 	_, err := Compile(input(lineFlowModel(t)))
 	var ie *InputError
-	if !errors.As(err, &ie) || !errors.Is(err, ErrInvalidInput) || len(ie.Issues) != 14 {
-		t.Fatalf("want 14 PRIMITIVE_NOT_SUPPORTED issues, got %v", err)
+	if !errors.As(err, &ie) || !errors.Is(err, ErrInvalidInput) || len(ie.Issues) != 7 {
+		t.Fatalf("want 7 PRIMITIVE_NOT_SUPPORTED issues, got %v", err)
 	}
 	for _, is := range ie.Issues {
 		if is.Code != validate.PrimitiveNotSupported || is.Severity != model.SeverityError || is.Path[:7] != "/model/" {
 			t.Errorf("issue %+v", is)
 		}
 	}
-	issueExactly(t, err, "/model/nodes/5/arrival/schedule", validate.PrimitiveNotSupported)
+	issueExactly(t, err, "/model/nodes/1/batch", validate.PrimitiveNotSupported)
 	issueExactly(t, err, "/model/resources/1/setups", validate.PrimitiveNotSupported)
 	for _, is := range ie.Issues {
 		switch is.Path {
 		case "/model/nodes/3/capacity", "/model/nodes/4/capacity", "/model/resources/1/breakdowns",
-			"/model/resources/1/breakdowns/time_to_repair/distribution", "/model/resources/1/setups/transitions/0/distribution":
-			t.Errorf("an executed primitive is refused: %+v", is)
+			"/model/resources/1/breakdowns/time_to_repair/distribution", "/model/resources/1/setups/transitions/0/distribution",
+			"/model/calendars", "/model/resources/1/calendar_id", "/model/resources/1/shift_capacity", "/model/resources/2/calendar_id",
+			"/model/nodes/5/arrival/schedule", "/model/nodes/6/arrival/schedule", "/model/nodes/7/arrival/schedule":
+			t.Errorf("a checked primitive is refused: %+v", is)
 		}
 	}
 }

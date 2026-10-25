@@ -219,6 +219,7 @@ func ids(ir *model.ModelIR, _ *graph) issues {
 	seen("resources", len(ir.Resources), func(i int) string { return ir.Resources[i].ID })
 	seen("flows", len(ir.Flows), func(i int) string { return ir.Flows[i].ID })
 	seen("metrics", len(ir.Metrics), func(i int) string { return ir.Metrics[i].ID })
+	seen("calendars", len(ir.Calendars), func(i int) string { return ir.Calendars[i].ID }) // D-052 (T-049)
 	// Nodes and resources share one namespace so a selected entity ID is unambiguous (D-014).
 	for i, r := range ir.Resources {
 		if nodes[r.ID] {
@@ -250,6 +251,13 @@ func refs(ir *model.ModelIR, g *graph) issues {
 				out.add(UnknownReference, Pointer("nodes", idx(i), "requires", idx(k), "resource_id"),
 					fmt.Sprintf("no resource %q", r.ResourceID))
 			}
+		}
+	}
+	// D-052 (T-049): a resource's calendar_id names a calendar of the model.
+	calendars := set(ir.Calendars, func(c model.Calendar) string { return c.ID })
+	for i, r := range ir.Resources {
+		if r.CalendarID != "" && !calendars[r.CalendarID] {
+			out.add(UnknownReference, Pointer("resources", idx(i), "calendar_id"), fmt.Sprintf("no calendar %q", r.CalendarID))
 		}
 	}
 	for i, m := range ir.Metrics {
@@ -585,6 +593,9 @@ func distributions(ir *model.ModelIR, _ *graph) issues {
 			}
 		}
 	}
+	// The shapes of calendars (D-052) and release schedules (D-053), T-049.
+	calendarShapes(ir, &out)
+	releaseSchedules(ir, &out)
 	return out
 }
 
@@ -653,7 +664,8 @@ func canBeZero(d *model.Distribution) bool {
 // requested one unit at a time, and a bundle has at most one such
 // resource, so that a repair always lets the request at the front in
 // (D-050's guarantee); a group of devices that must work together is one
-// resource that breaks down as a whole. R2 and R4 need calendars (T-049).
+// resource that breaks down as a whole. R2 and R4 (T-049) read the
+// calendars: calendarFeasibility.
 func feasibility(ir *model.ModelIR, _ *graph) issues {
 	var out issues
 	breaks := map[string]bool{}
@@ -662,9 +674,7 @@ func feasibility(ir *model.ModelIR, _ *graph) issues {
 			breaks[r.ID] = true
 		}
 	}
-	if len(breaks) == 0 {
-		return nil
-	}
+	r3 := map[int]bool{} // the bundles R3 refuses, which R4 does not read
 	for i, n := range ir.Nodes {
 		var found []string
 		for k, q := range n.Requires {
@@ -675,9 +685,11 @@ func feasibility(ir *model.ModelIR, _ *graph) issues {
 			if q.Units != 1 {
 				out.add(ResourceRequirementInvalid, Pointer("nodes", idx(i), "requires", idx(k), "units"),
 					fmt.Sprintf("%q breaks down, so a process needs one unit of it at a time (D-050 R3), not %d; model a group that breaks down together as one resource", q.ResourceID, q.Units))
+				r3[i] = true
 			}
 		}
 		if len(found) > 1 {
+			r3[i] = true
 			slices.Sort(found)
 			quoted := make([]string, len(found))
 			for k, id := range found {
@@ -687,6 +699,7 @@ func feasibility(ir *model.ModelIR, _ *graph) issues {
 				fmt.Sprintf("a bundle may need at most one resource that breaks down (D-050 R3); it needs %s", strings.Join(quoted, ", ")))
 		}
 	}
+	calendarFeasibility(ir, r3, &out)
 	return out
 }
 

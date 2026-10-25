@@ -38,7 +38,8 @@ var Primitives = []Primitive{FiniteBuffer, Breakdowns, Lognormal, Weibull, Calen
 // parameter ranges of D-056 and D-075, the D-029 limits and the binding
 // stage of resource distributions). Each of T-049–T-051 adds its own with
 // the rules, never before. It is only read, never iterated.
-var checked = map[Primitive]bool{FiniteBuffer: true, Breakdowns: true, Lognormal: true, Weibull: true}
+var checked = map[Primitive]bool{FiniteBuffer: true, Breakdowns: true, Lognormal: true, Weibull: true,
+	Calendars: true, ReleaseSchedule: true}
 
 // Checked reports whether this validator implements p's semantic rules.
 func Checked(p Primitive) bool { return checked[p] }

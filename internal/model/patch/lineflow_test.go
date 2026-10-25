@@ -215,6 +215,67 @@ func TestScenarioMayChangeShiftLabels(t *testing.T) {
 	}
 }
 
+// D-063 (b) option B: the candidate of a scenario that drops or renames a
+// shift label shift_capacity refers to is invalid with CALENDAR_INVALID at
+// that shift_capacity member (D-052: a label the calendar does not have);
+// a label nothing refers to may come and go. On the minimal model with a
+// calendar (worker: capacity 2, day 2, evening 1; the night label is
+// unreferenced).
+func TestScenarioDropsAReferencedLabel(t *testing.T) {
+	var ir map[string]any
+	if err := json.Unmarshal(base(t), &ir); err != nil {
+		t.Fatal(err)
+	}
+	ir["calendars"] = []any{map[string]any{"id": "c", "period": 1440, "shifts": []any{
+		map[string]any{"start": 360, "end": 840, "label": "day"}, map[string]any{"start": 840, "end": 1320, "label": "evening"},
+		map[string]any{"start": 1320, "end": 1440, "label": "night"}}}}
+	w := ir["resources"].([]any)[0].(map[string]any)
+	w["capacity"], w["calendar_id"], w["shift_capacity"] = 2, "c", map[string]any{"day": 2, "evening": 1}
+	doc, err := json.Marshal(ir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := mustApply(t, doc, `[]`, Scenario); !r.Valid() {
+		t.Fatalf("base: %v", r.Validation.Issues)
+	}
+	shifts := func(labels ...string) string {
+		return testCalendar0 + `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"` + labels[0] +
+			`"},{"start":840,"end":1320,"label":"` + labels[1] + `"},{"start":1320,"end":1440,"label":"` + labels[2] + `"}]}`
+	}
+	for name, c := range map[string]struct {
+		ops  string
+		path string // "" valid
+	}{
+		"a referenced label renamed": {shifts("day", "late", "night"), "/resources/0/shift_capacity/evening"},
+		"a referenced label dropped": {testCalendar0 + `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320,"label":"evening"}]}`,
+			"/resources/0/shift_capacity/day"},
+		"both referenced labels gone":   {testCalendar0 + `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320}]}`, "/resources/0/shift_capacity/day"},
+		"an unreferenced label renamed": {shifts("day", "evening", "graveyard"), ""},
+		"an unreferenced label dropped": {testCalendar0 + `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"day"},{"start":840,"end":1320,"label":"evening"}]}`, ""},
+		"a new label":                   {shifts("day", "evening", "weekend"), ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := mustApply(t, doc, "["+c.ops+"]", Scenario)
+			if !r.Applied() || len(r.PatchIssues) > 0 {
+				t.Fatalf("the patch does not apply: %v", r.PatchIssues)
+			}
+			if c.path == "" {
+				if !r.Valid() {
+					t.Errorf("candidate %v", r.Validation.Issues)
+				}
+				return
+			}
+			if r.Valid() || !slices.ContainsFunc(r.Validation.Issues, func(i model.ValidationIssue) bool {
+				return i.Code == validate.CalendarInvalid && i.Path == c.path
+			}) {
+				t.Errorf("want %s at %s: %v", validate.CalendarInvalid, c.path, r.Validation.Issues)
+			}
+		})
+	}
+}
+
+const testCalendar0 = `{"op":"test","path":"/calendars/0/id","value":"c"},`
+
 // D-020 covers calendars like every catalog: change an element only after
 // testing its id; the whole catalog only while it is absent or empty.
 func TestCalendarsNeedTheirIDTested(t *testing.T) {
@@ -225,13 +286,21 @@ func TestCalendarsNeedTheirIDTested(t *testing.T) {
 }
 
 // D-057: the manual and AI edit allowlists include the root calendars; the
-// candidate is then validated in full (here: refused by the gate).
+// candidate is then validated in full: since T-049 a calendar no resource
+// uses is valid, and one that overlaps its shifts is CALENDAR_INVALID.
+// (Whether an AI edit may add a calendar, whose ID has no pool, is the
+// review's: internal/ai/idpool, D-083.)
 func TestEditsMayAddCalendars(t *testing.T) {
 	add := `[{"op":"add","path":"/calendars","value":[{"id":"c","period":1440,"shifts":[{"start":0,"end":480}]}]}]`
+	bad := `[{"op":"add","path":"/calendars","value":[{"id":"c","period":1440,"shifts":[{"start":0,"end":480},{"start":400,"end":500}]}]}]`
 	for _, mode := range []Mode{ManualDraft, AIEdit} {
 		r := mustApply(t, base(t), add, mode)
-		if !r.Applied() || !gated(r) {
+		if !r.Applied() || !r.Valid() {
 			t.Errorf("%s: %v %v", mode, r.PatchIssues, r.Validation.Issues)
+		}
+		r = mustApply(t, base(t), bad, mode)
+		if !r.Applied() || r.Valid() || r.Validation.Issues[0].Code != validate.CalendarInvalid || r.Validation.Issues[0].Path != "/calendars/0/shifts/1" {
+			t.Errorf("%s, overlapping shifts: %v %v", mode, r.PatchIssues, r.Validation.Issues)
 		}
 	}
 	if r := mustApply(t, base(t), add, Scenario); r.Applied() {

@@ -25,6 +25,7 @@ var primitiveTasks = map[validate.Primitive]string{
 var liftedPrimitives = map[validate.Primitive]bool{
 	validate.FiniteBuffer: true,                                                   // T-047
 	validate.Breakdowns:   true, validate.Lognormal: true, validate.Weibull: true, // T-048
+	validate.Calendars: true, validate.ReleaseSchedule: true, // T-049
 }
 
 func TestPrimitiveCatalog(t *testing.T) {
@@ -36,7 +37,7 @@ func TestPrimitiveCatalog(t *testing.T) {
 			t.Errorf("%s: no implementing task", p)
 		}
 		// T-047–T-051 turn each on with its rules and kernel, and update
-		// this list and the shared fixtures: so far T-047's and T-048's.
+		// this list and the shared fixtures: so far T-047's, T-048's and T-049's.
 		if want := liftedPrimitives[p]; validate.Checked(p) != want {
 			t.Errorf("%s: checked %v, want %v (%s)", p, validate.Checked(p), want, primitiveTasks[p])
 		}
@@ -50,25 +51,20 @@ func TestPrimitiveCatalog(t *testing.T) {
 func TestPrimitiveGate(t *testing.T) {
 	r := run(t, contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/contracts/valid-line-flow-ir.json")))
 	want := []struct{ path, what string }{
-		{"/calendars", "shift calendars"},
 		{"/metrics/0/type", "the system_wip metric"},
 		{"/metrics/1/type", "the flow_count metric"},
 		{"/metrics/2/type", "the flow_count metric"},
 		{"/metrics/3/type", "the sink_count metric"},
 		{"/metrics/4/type", "the period_throughput metric"},
 		{"/nodes/1/batch", "batch processes"},
-		{"/nodes/5/arrival/schedule", "release schedules"},
-		{"/nodes/6/arrival/schedule", "release schedules"},
-		{"/nodes/7/arrival/schedule", "release schedules"},
-		{"/resources/1/calendar_id", "shift calendars"},
 		{"/resources/1/setups", "changeovers"},
-		{"/resources/1/shift_capacity", "shift calendars"},
-		{"/resources/2/calendar_id", "shift calendars"},
 	}
 	// The finite buffers of nodes 3 and 4 are checked since T-047, the
 	// breakdowns of resource 1, their lognormal repair time and the Weibull
 	// changeover time since T-048 (inside setups, which are still refused),
-	// so they are no use of an unsupported primitive.
+	// the calendars (the root member, calendar_id and shift_capacity) and
+	// the release schedules of nodes 5–7 since T-049, so they are no use
+	// of an unsupported primitive.
 	if r.Valid() || len(r.Issues) != len(want) {
 		t.Fatalf("got %d issues %v", len(r.Issues), r.Issues)
 	}
@@ -89,13 +85,6 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 		edit func(ir map[string]any)
 		path string
 	}{
-		"calendar": {func(ir map[string]any) {
-			ir["calendars"] = []any{map[string]any{"id": "c", "period": 1440, "shifts": []any{map[string]any{"start": 0, "end": 480}}}}
-		}, "/calendars"},
-		"release table": {func(ir map[string]any) {
-			obj(nodes(ir)[0])["arrival"] = map[string]any{"schedule": map[string]any{"process": "table", "period": 60,
-				"releases": []any{map[string]any{"at": 0, "quantity": 2}}}}
-		}, "/nodes/0/arrival/schedule"},
 		"batch": {func(ir map[string]any) {
 			obj(nodes(ir)[1])["batch"] = map[string]any{"min_size": 2, "max_size": 2}
 		}, "/nodes/1/batch"},
@@ -129,8 +118,9 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 		t.Errorf("control: %v", r.Issues)
 	}
 	// So does a model with a primitive whose rules are checked (a finite
-	// buffer since T-047; breakdowns, lognormal and Weibull since T-048):
-	// no gate issue, the later stages run.
+	// buffer since T-047; breakdowns, lognormal and Weibull since T-048;
+	// calendars and release schedules since T-049): no gate issue, the
+	// later stages run.
 	for name, checked := range map[string]func(ir map[string]any){
 		"finite buffer": func(ir map[string]any) {
 			ir["nodes"] = append(nodes(ir), map[string]any{"id": "q", "type": "queue", "capacity": 3})
@@ -146,6 +136,14 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 		},
 		"weibull interarrival": func(ir map[string]any) {
 			obj(obj(nodes(ir)[0])["arrival"])["distribution"] = map[string]any{"type": "weibull", "shape": 1.5, "scale": 10}
+		},
+		"calendar": func(ir map[string]any) {
+			ir["calendars"] = []any{map[string]any{"id": "c", "period": 1440, "shifts": []any{map[string]any{"start": 0, "end": 480}}}}
+			obj(ir["resources"].([]any)[0])["calendar_id"] = "c"
+		},
+		"release table": func(ir map[string]any) {
+			obj(nodes(ir)[0])["arrival"] = map[string]any{"schedule": map[string]any{"process": "table", "period": 60,
+				"releases": []any{map[string]any{"at": 0, "quantity": 2}}}}
 		},
 	} {
 		r = run(t, edit(t, func(ir map[string]any) {
