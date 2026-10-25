@@ -121,6 +121,41 @@ cases.append({
     "simpy": "not compared: same-tick arrival and failure at 10 and 26 (D-048 tie-break; SimPy orders same-time events by scheduling)",
 })
 
+# ---------------------------------------------------------------- G-F1W
+gf1 = cases[0]
+cases.append({
+    "id": "G-F1W",
+    "title": "G-F1 measured over [12, 30]: the downtime members count in the window (D-074 (e))",
+    "model": copy.deepcopy(gf1["model"]),
+    "config": config(30, warmup=12),
+    "derivation": [
+        "G-F1's run (same model, horizon and seed): the warm-up changes no event, only the window [W, H] = [12, 30], T = 18 min.",
+        "Downtimes [10,13] and [23,26]: down_ticks = (13 - 12) + 3 = 4 min; breakdowns_started counts the downtimes that start in [12, 30]: only the one at 23, so 1;",
+        "a complete repair starts at or after W and ends by H: [23,26] only (the one at 10 started before W), 1 repair of 3 min.",
+        "In use in [12, 30]: e5 [13,14], e6 [14,15], e7 [15,16], e8 [16,17], e9 [18,19], e10 [20,21], e11 [22,23], e12 [26,27], e13 [27,28], e14 [28,29] (e15 starts at 30): 10 min; utilization 10/18.",
+        "available = C*T - down = 18 - 4 = 14 min; idle = 14 - 10 = 4 min.",
+        "Completed in [12, 30]: e5–e14 (14, 15, 16, 17, 19, 21, 23, 27, 28, 29), 10; censored e15.",
+        "Lead-time cohort (arrival >= 12, completion <= 30): e6 3, e7 2, e8 1, e9 1, e10 1, e11 1, e12 3, e13 2, e14 1 (e5 arrived at 10).",
+        "Queue waits (queue enter >= 12, start <= 30): e6 2 (12 to 14), e7 1, e8 0, e9 0, e10 0, e11 0, e12 2 (24 to 26), e13 1, e14 0, e15 0.",
+    ],
+    "expected": {
+        "starts": gf1["expected"]["starts"],
+        "completions": gf1["expected"]["completions"],
+        "blocks": [],
+        "downs": gf1["expected"]["downs"],
+        "pending": [],
+        "result": {
+            "completed_count": 10, "censored_entities": 1,
+            "lead_times_minutes": [3, 2, 1, 1, 1, 1, 3, 2, 1],
+            "queue_waits_minutes": {"work": [2, 1, 0, 0, 0, 0, 2, 1, 0, 0]},
+            "resource_utilization": {"m": 10 / 18},
+            "resource_states": {"m": state(10, 4, 1, 1, 3, 14, 4)},
+            "blocking": None, "buffers": None,
+        },
+    },
+    "simpy": "not compared: G-F1's same-tick arrival and failure (D-048 tie-break)",
+})
+
 # ---------------------------------------------------------------- G-F2
 cases.append({
     "id": "G-F2",

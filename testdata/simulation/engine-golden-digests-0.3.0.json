@@ -1,5 +1,5 @@
 {
-  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.3.0, T-048) on the cases of expected-cases.json, on the cases of blocking-goldens.json and breakdown-goldens.json that have an expected result, and on the four stochastic reference cases of breakdown-goldens.json (B-S1–B-S4); NOT an independent oracle. It was taken only after the hand-derived expectations of those files passed (internal/simulation/des TestBreakdownGoldenResults, TestBlockingGoldenResults; internal/simulation/engine TestBreakdownGoldens, TestBlockingGoldens); these digests only make any later numerical change visible. The locks of des-go-0.1.0 (engine-golden-digests.json) and des-go-0.2.0 (engine-golden-digests-0.2.0.json) are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back.",
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.3.0, T-048) on the cases of expected-cases.json, on the cases of blocking-goldens.json and breakdown-goldens.json that have an expected result, and on the four stochastic reference cases of breakdown-goldens.json (B-S1–B-S4); NOT an independent oracle. It was taken only after the hand-derived expectations of those files passed (internal/simulation/des TestBreakdownGoldenResults, TestBlockingGoldenResults; internal/simulation/engine TestBreakdownGoldens, TestBlockingGoldens); these digests only make any later numerical change visible. G-F1W was added after its hand-derived values passed, from the same unchanged engine (its run is G-F1's, only the window differs). The locks of des-go-0.1.0 (engine-golden-digests.json) and des-go-0.2.0 (engine-golden-digests-0.2.0.json) are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back.",
   "engine_version": "des-go-0.3.0",
   "inputs": {
     "cases": "expected-cases.json (with the dora stand-in), blocking-goldens.json and breakdown-goldens.json (model and config as given, no domain metrics)",
@@ -26,6 +26,7 @@
     "G-B13": "sha256:58b4a3d69eecc12a44e7c71b83e241f7b7e9f9dcc5149f2db7a241753dfe2480",
     "G-B14": "sha256:df27389fba34c9f16a79ea25a08f80c5fa454501533a9902276e1f7baad1966a",
     "G-F1": "sha256:15ff2715f14cf471cc5894ec7b84c3ad79d632d6d7a7f508a7bc129f4255768b",
+    "G-F1W": "sha256:d2710cbb0ce763e36866286775a2769ef9c1f16c2f1b1f55a181265e9893dcf6",
     "G-F2": "sha256:8083331478c892726403242a1f1ac47bb0933ee72391750e93265c4eb09300a7",
     "G-F3": "sha256:4fdbe9b146c278c9e82004d60da333a285209431c56672491a53fae1ba4f2ffa",
     "G-F7": "sha256:74a7c4e445713b394b7308fd4c8c1b11b97d59fd9e1af1228a8dbc699c58c0e9",

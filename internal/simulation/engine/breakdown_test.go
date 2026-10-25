@@ -212,12 +212,12 @@ func (c breakdownCase) wantBreakdowns() (downs, pending []string) {
 	return downs, pending
 }
 
-// G-F1–G-F3, G-F7, G-F8, G-T1, G-T2, G-T4, G-K1, G-S2: service starts,
-// completions, blocks, every downtime and every waiting failure, against
-// the hand derivation.
+// G-F1, G-F1W, G-F2, G-F3, G-F7, G-F8, G-T1, G-T2, G-T4, G-K1, G-S2:
+// service starts, completions, blocks, every downtime and every waiting
+// failure, against the hand derivation.
 func TestBreakdownGoldens(t *testing.T) {
 	cases := breakdownGoldens(t)
-	for _, id := range []string{"G-F1", "G-F2", "G-F3", "G-F7", "G-F8", "G-T1", "G-T2", "G-T4", "G-K1", "G-S2"} {
+	for _, id := range []string{"G-F1", "G-F1W", "G-F2", "G-F3", "G-F7", "G-F8", "G-T1", "G-T2", "G-T4", "G-K1", "G-S2"} {
 		t.Run(id, func(t *testing.T) {
 			c, ok := cases[id]
 			if !ok {
