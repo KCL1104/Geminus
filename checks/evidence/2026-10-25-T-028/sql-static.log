@@ -1,0 +1,15 @@
+bash -n scripts/run_db_tests.sh: exit 0
+{"status": "PASS_DB_TESTS_FRESH", "files": 13, "stale": []}
+render_db_tests.py --check: exit 0
+migrations/0015_scenarios.up.sql: 8 statements, OK
+migrations/0015_scenarios.down.sql: 7 statements, OK
+db/tests/scenarios.sql: 78 statements, OK
+sql_lint.py (T-028 files): exit 0
+control, known-good files:
+migrations/0013_proposal_decisions.up.sql: 8 statements, OK
+db/tests/proposal_decisions.sql: 81 statements, OK
+sql_lint.py (control): exit 0
+a copy of 0015 up with one ')' removed:
+/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/broken.sql: 8 statements, PROBLEMS
+  unbalanced parentheses in statement ending at offset 1778
+sql_lint.py (broken copy): exit 1

@@ -176,7 +176,7 @@ SELECT pg_temp.must_fail(pg_temp.scenario('{{SCN_A8}}', '{{MDL_A}}', '{{MV_A2}}'
 SET LOCAL ROLE twin_api;
 SELECT set_config('app.user_id','{{USR_A}}',true);
 SELECT pg_temp.scenario('{{SCN_A9}}', '{{MDL_A}}', '{{MV_A2}}', 'Nine CI runners', '{{USR_A}}') \gexec
-SELECT pg_temp.check(array_agg(id ORDER BY created_at, id) = ARRAY['{{SCN_A7}}','{{SCN_A4}}','{{SCN_A9}}']::text[],
+SELECT pg_temp.check(array_agg(id::text ORDER BY created_at, id) = ARRAY['{{SCN_A7}}','{{SCN_A4}}','{{SCN_A9}}']::text[],
   'the version''s scenarios in (created_at, id) order')
   FROM twin.scenarios WHERE organization_id='{{ORG_A}}' AND base_version_id='{{MV_A2}}';
 ROLLBACK;

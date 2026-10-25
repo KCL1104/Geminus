@@ -176,7 +176,7 @@ SELECT pg_temp.must_fail(pg_temp.scenario('scn_01M4YDQK00TA00000000000008', 'mdl
 SET LOCAL ROLE twin_api;
 SELECT set_config('app.user_id','usr_01M4YDQK00TA00000000000001',true);
 SELECT pg_temp.scenario('scn_01M4YDQK00TA00000000000009', 'mdl_01M4YDQK00TA00000000000001', 'mv_01M4YDQK00TA00000000000002', 'Nine CI runners', 'usr_01M4YDQK00TA00000000000001') \gexec
-SELECT pg_temp.check(array_agg(id ORDER BY created_at, id) = ARRAY['scn_01M4YDQK00TA00000000000007','scn_01M4YDQK00TA00000000000004','scn_01M4YDQK00TA00000000000009']::text[],
+SELECT pg_temp.check(array_agg(id::text ORDER BY created_at, id) = ARRAY['scn_01M4YDQK00TA00000000000007','scn_01M4YDQK00TA00000000000004','scn_01M4YDQK00TA00000000000009']::text[],
   'the version''s scenarios in (created_at, id) order')
   FROM twin.scenarios WHERE organization_id='org_01M4YDQK00TA00000000000000' AND base_version_id='mv_01M4YDQK00TA00000000000002';
 ROLLBACK;
