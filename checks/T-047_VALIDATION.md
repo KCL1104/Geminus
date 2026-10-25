@@ -190,14 +190,16 @@ Coordinator 把 11 個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-
 
 ### Commit
 
+下表是 `claude/lucid-meitner-vq1awo` 上的 hash（coordinator cherry-pick 到 T-017 的 6ed6b71 之後，沒有衝突）；括號中是 worktree branch `t047-r1` 上的 hash。
+
 | Commit | 內容 |
 |---|---|
-| ddf2f06 | 新的手推 golden：G-B4W（M1）、G-B10（M2）、G-B11、G-B12（M3）、G-B13（L1 的 engine 端）、G-D3（L2）；L3 的 risk case；runner 與 runs 的測試改為以 ID 取 G-D2；兩個 regression lock 加入新 case |
-| 46f5942 | L1：SimPy 腳本拒絕「自己的 resource 的 capacity 小於共用的」bundle；fixture 中標為 refused 的 case 每次都必須被拒絕 |
-| 2960fb1 | I5：race detector 下 frozen-kernel differential 只跑前 5,000 個模型 |
-| 16a4112 | I2、I3：D-064 (e)–(h)（PROPOSED）、SIMULATION_SPEC §3／§5／§9／§10、TEST_PLAN、Makefile 的註解 |
-| a2afc08 | I5 的修正：2960fb1 用 `//go:build race` 檔，被 architecture checker 的 every-file-built（T-042）擋下；改為讀 test binary 的 `-race` build setting |
-| （本節的 commit） | 本報告的本節與更正、evidence |
+| 6d6c5dd（ddf2f06） | 新的手推 golden：G-B4W（M1）、G-B10（M2）、G-B11、G-B12（M3）、G-B13（L1 的 engine 端）、G-D3（L2）；L3 的 risk case；runner 與 runs 的測試改為以 ID 取 G-D2；兩個 regression lock 加入新 case |
+| 6ffe1a1（46f5942） | L1：SimPy 腳本拒絕「自己的 resource 的 capacity 小於共用的」bundle；fixture 中標為 refused 的 case 每次都必須被拒絕 |
+| 4fdd524（2960fb1） | I5：race detector 下 frozen-kernel differential 只跑前 5,000 個模型 |
+| b159c7d（16a4112） | I2、I3：D-064 (e)–(h)（PROPOSED）、SIMULATION_SPEC §3／§5／§9／§10、TEST_PLAN、Makefile 的註解 |
+| a4cd3a0（a2afc08） | I5 的修正：2960fb1 用 `//go:build race` 檔，被 architecture checker 的 every-file-built（T-042）擋下；改為讀 test binary 的 `-race` build setting |
+| 9e62311（a15eef0） | 本報告的本節與更正、evidence |
 
 ### 發現、修正與證據
 
@@ -269,3 +271,9 @@ D-064 仍是 PROPOSED，本輪補上：(d) 的「最早」是被擋的處理順�
 - `deadlock-bound-ge` 與第 0 輪的 `deadlock-ignores-fitting-held`、`enqueue-capacity-unchecked` 一樣是 invariant 的分支；正確的 kernel 走不到，所以沒有測試能直接檢查它們。
 - race build 下的 differential 只跑 5,000 個模型；完整的 50,000 個只在非 race 的 build 中跑（`make backend-test`、CI 的 backend job）。判斷 race build 依賴 test binary 的 build information（Go 1.18 起提供）；沒有時跑全部，只會變慢、不會變弱。
 - B1 的全域定義（D-064 (g)）：R1 被繞過的模型中，局部的循環等待會停到 horizon；valid 的模型因 R1 不會有循環阻塞。
+
+### Coordinator 的執行（第 1 輪修正，9e62311）
+
+Coordinator 把第 1 輪的六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-017 第 2 輪的 6ed6b71 之後），沒有衝突；本節之前的 commit 表改為整合分支上的 hash。I5 的偏離（以 test binary 的 `-race` build setting 取代 build tag）由 coordinator 接受：效果與指示相同，也不必放寬 architecture checker 的 every-file-built。Coordinator 另以 `-v` 確認兩種 build 的件數：`go test -race -run '^TestDifferentialAgainstFrozenKernel$'` 為 5,000 個中 3,632 個 compile（race detector: true；結局 visits 292、active 234、none 3,106），不帶 `-race` 為 50,000 個中 36,643 個（race detector: false；3,190／2,380／31,073）。
+
+之後 `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`（確定性 case 與 45 個隨機比對都 ok）、`backend-race`（engine package 185 s）與新的 `dt_test_t047r1` 上的 `integration-test`（所有 migration 與 SQL suite，30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0。本輪的 NOT RUN 中的 DB 測試因此已執行；`make e2e-test` 與第 0 輪的 62 個 mutant 的重跑仍為 NOT RUN。Log 與 exit code 在 `checks/evidence/2026-10-20-T-047-r1/coordinator-*`。

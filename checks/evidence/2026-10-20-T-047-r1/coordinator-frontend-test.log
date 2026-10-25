@@ -1,0 +1,32 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm notice
+npm notice New major version of npm available! 10.9.4 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+
+ Test Files  18 passed (18)
+      Tests  429 passed (429)
+   Start at  07:04:35
+   Duration  17.12s (tests 65%, import 23%, transform 8%, environment 4%)
+
+    Isolate  18 workers spawned · ~204ms startup each (spawn + environment, per file)
+             at least ~1.02s faster with isolate: false — reuses workers across files instead of one per file
+
