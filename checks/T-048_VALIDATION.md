@@ -280,3 +280,111 @@ Coordinator 把九個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-0
 Coordinator 把四個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（b6f7c1c 之後，沒有衝突）：e574501 → 2b1a7fe、5787a2c → 0109f1d、84a361a → 3eae3b4、47dd212 → b1fceb2。D-074 (a) 的建議改為 B 是 coordinator 的決定：已批准的 D-051／ADR-026 寫「等待中的故障依時刻 FIFO」與「每個 unit 一組獨立的 alternating renewal」，reviewer 的 N8、N9 顯示 A 與之相違；A 留作 owner 的選項，D-074 仍是 PROPOSED。ADR-026 中規劃的 G-F3（「兩次釋放：第一個被釋放的 unit 停機、第二個變成可用」）只涉及 job 的釋放，A 與 B 都符合，所以不需要修改已 ACCEPTED 的 ADR。
 
 之後在 b1fceb2 的 tree 上（`coordinator-environment.txt`），`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`simulation-reference-test`（83/83）、`backend-numeric`、`backend-race` 與新的 `dt_test_t048r1` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP；本輪改了 kernel 的結果，所以重跑）都是 exit 0。本輪沒有 TS 變更，`frontend-test` 沿用 b6f7c1c 的執行。Log 與 exit code 在 `checks/evidence/2026-10-25-T-048-r1/coordinator-*`。
+
+## Review 第 2 輪（2026-10-25）：ACCEPT（兩個 Low、過時的文字）
+
+獨立 review（在 6a3b518 上）：ACCEPT，沒有 High 或 Medium；M1、M2 已解決，reviewer 獨立重推的 G-F9 與新的 G-F3 與本報告相符。本輪修正兩個 Low（L1、L2）與過時的文字（I3）；I1 照指示記為殘餘風險，I2 照指示不動作。修正在新的 branch `t048-r2`（從 6a3b518 開出），沒有 push。Evidence 在 `checks/evidence/2026-10-25-T-048-r2/`。**Kernel 程式碼沒有改**（`internal/simulation/engine/kernel.go` 與 6a3b518 相同）；改的只有手推 golden、`TestBreakdownGoldens` 的兩個新的比對項、兩個 0.3.0 鎖的新增項、註解與文件。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 5dedac2 | 手推 golden G-F3b（L1）、G-F9R10、G-F10（L2）；G-F3 改標題、推導註明 ADR-026 的情境在 G-F3b；`TestBreakdownGoldens` 加入三個 case 與兩個選用的期望（`service_start_seqs`、`events`）；兩個 0.3.0 鎖只新增這三個 case |
+| 6275702 | I3：本報告「需要 owner 決定」的 D-074 (a)、`scripts/simpy_reference.py` 的註解；SIMULATION_SPEC、TEST_PLAN 的 golden 清單；D-074 (a)「不採用時」的清單加上三個新 golden（仍 PROPOSED） |
+| （最後一個） | 本節、r2 的 mutation harness 與 evidence（`make spec-check` 重產的 `checks/*.json` 沒有變更） |
+
+### L1：ADR-026 原訂的 G-F3 情境不在任何 2-unit golden 中（G-F3b）
+
+- **發現**：ADR-026 §D-051 的 golden 清單（第 198 行）原訂「G-F3 2 unit、一個等待中的故障、兩次釋放：第一個被釋放的 unit 停機、第二個變成可用」。A 下 G-F3 的 22–26 正是這個情境；B 下 t=12 的修復把 unit 給時鐘 1，時鐘 1 的下一次故障提前到 24，26 的第二次釋放因此給了第二個等待中的故障，這個情境就不在 G-F3 裡了，fixture 的標題卻仍寫「ADR-026 D-051 G-F3」。
+- **G-F3b 的模型**：capacity 2、TTF 10、TTR 5（constant）；四個一次性 source：s1 在 8、s2 在 21、s3 在 22、s4 在 24；服務 5；horizon 40。8–18 只是讓時鐘 1 落後時鐘 0 三分鐘（一個等釋放的故障，與 G-F2 相同），讓 25 時只有一個時鐘故障、另一個正常。
+- **我的手推**（括號為 sequence）：t=0 依 source ID 排 s1@8 (1)、s2@21 (2)、s3@22 (3)、s4@24 (4)，再排 FAILURE(0)@10 (5)、FAILURE(1)@10 (6)。t=8 s1/1 [8,13]（DISPATCH 7，完成 8）。t=10 FAILURE(0)：idle＝2−0−1＝1，停機（D=1），REPAIR(0)@15 (9)；FAILURE(1)：idle 0，等待。t=13 s1/1 完成：釋放的 unit 給等待中的故障 1（D=2），REPAIR(1)@18 (10)；DISPATCH (11) 不授予。t=15 REPAIR(0)：D=1，FAILURE(0)@25 (12)。t=18 REPAIR(1)：D=0，FAILURE(1)@28 (13)。t=21 s2/1 [21,26]（14、15）；t=22 s3/1 [22,27]（16、17）；t=24 s4/1 排隊，DISPATCH (18)：2＋1 > 2，held。
+  - **ADR-026 的情境（25–27）**：t=25 FAILURE(0)：idle＝2−0−2＝0，等待；這是唯一等待中的故障（沒有 unit 停機，時鐘 1 正常到 28）。t=26 s2/1 完成（第一次釋放）：它的 unit 給故障 0 而停機（D=1），REPAIR(0)@31 (19)；s4/1 被喚醒，DISPATCH (20) 再判斷：1＋1 > 2−1，仍 held。t=27 s3/1 完成（第二次釋放）：沒有故障在等，unit 變成可用；s4/1 被喚醒，DISPATCH (21)：0＋1 ≤ 1，s4/1 [27,32]（完成 22）。兩次釋放之間沒有修復（REPAIR(0) 在 31，時鐘 1 在 28 才故障）。
+  - 之後：t=28 FAILURE(1)：idle＝2−1−1＝0，等待；t=31 REPAIR(0)：D=0，FAILURE(0)@41（晚於 horizon，不取 sequence），修復好的 unit 給故障 1（B），REPAIR(1)@36 (23)；t=32 s4/1 完成，DISPATCH (24)；t=36 REPAIR(1)，FAILURE(1)@46（晚於 horizon）。共 24 個事件。
+  - 停機：0@[10,15]、1@[13,18]、0@[26,31]、1@[31,36]；等待中的故障：1@10、0@25、1@28。
+
+| 成員（[0, 40]，C·T＝80 分） | 手推 | Engine |
+|---|---:|---:|
+| completed／censored | 4／0 | 4／0 |
+| lead time | 5,5,5,8 | 相同 |
+| queue wait | 0,0,0,3（s4/1：24 → 27） | 相同 |
+| in_use_ticks | 1,200,000（20 分） | 相同 |
+| down_ticks | 1,200,000（20 分；[13,15] 兩個 unit 同時停機） | 相同 |
+| breakdowns_started／repairs_completed | 4／4 | 相同 |
+| completed_repair_ticks | 1,200,000 | 相同 |
+| available_ticks | 3,600,000（80 − 20） | 相同 |
+| idle_ticks | 2,400,000（16＋2＋3＋6＋1＋4＋8 分） | 相同 |
+| utilization | 0.25 | 相同 |
+
+  Engine 與 Result 兩層都在第一次執行就與手推相同（`goldens-engine.log`、`goldens-des.log`），另外也比對每個 service 開始的 sequence（7、14、16、21）與事件數 24。SimPy reference 接受並逐值比對（確定性案例 G-F3、G-F3b、G-F7、G-F9、G-F9R10；三個等待中的故障的等待都為正，所以都比）。
+- **G-F3 改標題**：「two units: a repaired unit goes to a waiting failure (12), two waiting failures take the two next released units in the order they fired while a held request stays held (25, 26), the next repair with no failure waiting wakes it (27) (D-074 (a) B; review round 1, M1). ADR-026's planned G-F3 scenario is G-F3b」；推導第二行寫明 A 下這個情境在 G-F3 的 22–26、B 下為何不在了、現在在 G-F3b。
+- **ADR-026 的情境現在在哪裡**：`testdata/simulation/breakdown-goldens.json` 的 G-F3b，t=25–27。ADR-026（ACCEPTED）的文字沒有改：情境本身在 B 下仍然成立，只是需要另一個模型（coordinator 第 1 輪的說明也是如此）。
+
+### L2：兩個 `kernel.repair` mutant 只有 des-go-0.3.0 的 observation 鎖擋得下
+
+- **發現**：`repair-gives-the-unit-and-wakes-too`（把 unit 給等待中的故障之後仍喚醒 held front：多一個不授予任何東西的 DISPATCH，sequence＋1，對 budget 多一個事件）與 `repair-pending-before-clock`（先給等待中的故障、再抽下一個 TTF 並排 FAILURE(u)；SIMULATION_SPEC §3 的順序相反）只被 `kernel-observation-digests-0.3.0.json` 擋下。在加入新 golden 之前重現：兩個在 golden 測試（engine `TestBreakdownGoldens`、des `TestBreakdownGoldenResults`）上都 SURVIVED，在鎖上 KILLED（`l2-mutants-before.log`）。
+- **（1）G-F9R10**（reviewer 的 n8eq：G-F9 的模型、TTR 改為 10＝TTF，horizon 60）。TTR＝TTF 時，修復排的 FAILURE(u) 與它交出去的 unit 的 REPAIR 落在同一 tick，兩者的先後由 REPAIR 內的順序決定。我的手推：t=0 s1@1 (1)、FAILURE(0)@10 (2)、FAILURE(1)@10 (3)；t=1 s1/1 授予（DISPATCH 4），持有一個 unit 到 horizon。t=10 FAILURE(0) 停機、REPAIR(0)@20 (5)；FAILURE(1) 等待。t=20 REPAIR(0)：D=0，先排 FAILURE(0)@30 (6)，再把 unit 給故障 1：REPAIR(1)@30 (7)。t=30 FAILURE(0)（6）先執行：idle＝2−1−1＝0，等待；REPAIR(1)（7）：FAILURE(1)@40 (8)，unit 給故障 0：REPAIR(0)@40 (9)。之後每 10 分鐘兩個時鐘互換：40 時 FAILURE(1) 等待、REPAIR(0) 交出 unit；50 時 FAILURE(0) 等待；60 時 FAILURE(1) 等待、REPAIR(0) 交出 unit（FAILURE(0)@70、REPAIR(1)@70 晚於 horizon）。共 13 個事件。**Kernel 的等待中的故障：1@10、0@30、1@40、0@50、1@60**（與 reviewer 的清單相同）；停機 0@[10,20]、1@[20,30]、0@[30,40]、1@[40,50]、0@[50,60]、1@[60,–]。
+  - **Mutant 的手推**：t=20 先 goDown(1)：REPAIR(1)@30 取 6，FAILURE(0)@30 取 7；t=30 REPAIR(1) 先執行、沒有故障在等，FAILURE(0) 接著看到閒置的 unit 而直接停機；40 時 FAILURE(1)（REPAIR(1) 在 30 排的，序號較小）等待；50 時又是 REPAIR(1) 先；60 時 FAILURE(1) 等待。等待中的故障只有 **1@10、1@40、1@60**（與 reviewer 的相同）；停機與 Result 完全相同，所以只有逐筆比對等待中的故障（`TestBreakdownGoldens` 本來就逐筆比對）與 sequence 看得出差別。
+  - Result（[0, 60]，C·T＝120 分）：in use 59 分（3,540,000）、D 在 [10,60] 一直為 1（每次修復在同一 tick 交出 unit）：down 50 分（3,000,000）、6 次停機（10、20、30、40、50、60）、5 次完整修復共 50 分、available 70 分（4,200,000）、idle 11 分（660,000）、utilization 59/120；沒有完成（lead time unavailable）、s1/1 的 wait 0。Service 開始的 sequence 4、事件數 13。SimPy 也逐值比對（30、40、50、60 的等待都是 0 分鐘，兩邊都去掉後只比 1@10；停機逐筆相同）。
+- **（2）G-F10**（reviewer 的 N10：capacity 2、TTF 10、TTR 5；s1/1 在 1、s2/1 在 12 到達，各服務 100 分鐘；horizon 40）。我的手推：t=0 s1@1 (1)、s2@12 (2)、FAILURE(0)@10 (3)、FAILURE(1)@10 (4)；t=1 s1/1 授予（DISPATCH 5）。t=10 FAILURE(0) 停機、REPAIR(0)@15 (6)；FAILURE(1) 等待。t=12 s2/1 排隊，DISPATCH (7)：1＋1 > 2−1，held。t=15 REPAIR(0)：D=0，FAILURE(0)@25 (8)；unit 給故障 1：D=1，REPAIR(1)@20 (9)；capacity 沒有增加，所以不喚醒 s2/1、不排 dispatch。t=20 REPAIR(1)：D=0，FAILURE(1)@30 (10)；沒有故障在等，喚醒 s2/1，DISPATCH (11)：1＋1 ≤ 2，**s2/1 在 20 開始，sequence 11**。t=25、30 兩個故障依序等待到 horizon。**共 11 個事件**。
+  - **Mutant 的手推**：t=15 交出 unit 後仍喚醒 s2/1，多一個 DISPATCH@15 (10)，s2/1 再 held；之後 FAILURE(1)@30 取 11、DISPATCH@20 取 12：**s2/1 仍在 20 開始，但 sequence 12，事件數 12**。開始、停機、等待中的故障與 Result 都相同。
+  - Result（[0, 40]，C·T＝80 分）：in use 39＋20＝59 分（3,540,000）、down [10,15]、[15,20] 共 10 分（600,000）、2 次停機、2 次完整修復共 10 分、available 70 分（4,200,000）、idle 11 分（660,000）、utilization 59/80；沒有完成、censored 2、queue wait 0 與 8。SimPy 不比：兩個故障到 horizon 還在等，腳本不記錄這種故障（fixture 的 `simpy` 寫明，`simulation-reference-test.log` 列在 not_compared）。
+- **新的比對項**：`TestBreakdownGoldens` 讀兩個選用的期望：`service_start_seqs`（[entity, 分鐘, 授予該次服務的 dispatch 事件的 sequence]，逐筆比對）與 `events`（replication 處理的事件數，即 `ReplicationOutcome.Events`）。G-F3b、G-F9R10、G-F10 都有；其他 case 沒有，不受影響。
+- **結果（只跑 golden 測試，鎖不跑）**：`t048-r2-mutants.py`（每個 mutant 以 `go test -overlay` 套用，不改 working tree）：
+
+| Mutant | 新 golden 之前：golden 測試 | 之後：只跑 golden 測試 | 之後：只跑鎖 | 之後：只跑 Result 層 |
+|---|---|---|---|---|
+| `repair-gives-the-unit-and-wakes-too` | SURVIVED | **KILLED**：只有 G-F10 失敗（`12 events, hand-derived 11`；`r0/s2/1@20#12`，手推 `#11`） | KILLED | SURVIVED（如推導，Result 相同） |
+| `repair-pending-before-clock` | SURVIVED | **KILLED**：只有 G-F9R10 失敗（等待中的故障 `[m/1:10 m/1:40 m/1:60]`，手推 `[m/1:10 m/0:30 m/1:40 m/0:50 m/1:60]`） | KILLED | SURVIVED（如推導） |
+| `repair-ttr-from-repaired-clock-stream`（I1） | SURVIVED | SURVIVED（殘餘風險，見下） | KILLED | SURVIVED |
+
+  「只跑 golden 測試」＝engine `-run '^TestBreakdownGoldens$'` 與 des `-run '^TestBreakdownGoldenResults$'`；「只跑鎖」＝engine `^TestBreakdownObservationDigests$` 與 des `^TestGoldenDigests030$`；每一組都先以未改的程式跑 baseline（PASS）。Log：`l2-mutants-before.log`（新 golden 之前；當時 harness 只記第一行失敗）、`l2-mutants-goldens-only.log`（新 golden 之後、鎖更新之前）、`l2-mutants-after.log`（鎖更新之後，golden 與鎖兩組）、`l2-mutants-result-layer.log`（只跑 Result 層）。被擋下的子測試與失敗訊息完全是手推 mutant 時預期的差別。
+
+### 鎖
+
+三個新 case 只在它們的手推值通過之後加入兩個 des-go-0.3.0 鎖（`engine-golden-digests-0.3.0.json`、`kernel-observation-digests-0.3.0.json`），由同一個未改的 kernel 產生；加入前先確認每個已鎖定的項目與執行結果完全相同（沒有任何既有 digest 改變），以文字插入保留檔案格式後再解析比對。G-F10 的 15 個 observation 與手數相同（2 次 arrival、2 次 queue enter、2 次 resource level、2 次 service start、2 次停機、2 次修復、3 次等待中的故障）。0.1.0 與 0.2.0 的鎖、對 des-go-0.2.0 的 differential 沒有改。
+
+### I3：過時的文字
+
+- 本報告「需要 owner 決定」的 D-074 (a) 仍寫第一版的建議 A 與錯誤的「G-F3 的 s5 會等到 33」：改為自 review 第 1 輪起建議並實作 B（A 為第一版），註明那句是錯的（B 下 s5/1 仍在 28、s4/1 在 27），並指向「Review 第 1 輪」的 M1 與 DECISIONS 的 D-074 (a)。
+- `scripts/simpy_reference.py` 的註解「the failures waiting for a release」改為等待 job 釋放或修復的 unit（D-074 (a) B）；clock() 的 docstring 同步（「the next unit released or repaired」）。只改註解，第 1 輪 harness 的 SimPy mutant pattern 仍各只出現一次（`--patterns`：64 個，沒有壞的 pattern）。
+- 同類的過時註解：`internal/simulation/engine/breakdown_test.go` 的 `breakdownFacts`、fixture 的 `notes`（pending 的第三個值是分鐘，不是 tick；等待的是釋放或修復的 unit）一併更正（這兩處在 5dedac2）。
+- SIMULATION_SPEC（REPAIR 的 golden、SimPy 比對與不比的清單）、TEST_PLAN（golden 清單）加上 G-F3b、G-F9R10、G-F10；DECISIONS 的 D-074 (a)「不採用時」的清單加上這三個（A 下三個的期望都會變）。D-074 仍是 PROPOSED，沒有改任何 decision 的狀態。
+
+### I1、I2
+
+- **I1**（不動作，記為殘餘風險）：修復時給等待中的故障所抽的 TTR 應來自等待中的時鐘的 stream (resource ID, `ttr/<w>`)。所有手推 golden 的 TTR 都是 constant，用錯 stream 也抽到同一個值，所以 `repair-ttr-from-repaired-clock-stream` 只被鎖（B-S2、B-S4 的隨機 TTR）擋下；見本節的 mutation 表與下面的殘餘風險。
+- **I2**：照 coordinator 的指示不動作。
+
+### 實際執行（本輪，t048-r2 的 tree，6275702 的程式與 fixture）
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| r2 mutants，新 golden 之前（golden 與鎖） | 0 | `l2-mutants-before.log`：兩個 L2 mutant 在 golden 測試上 SURVIVED、在鎖上 KILLED（重現 review 的發現） |
+| engine 的 breakdown golden 測試（`-v`） | 0 | `goldens-engine.log`：16 個 case 都 PASS，含 G-F3b、G-F9R10、G-F10 |
+| des `TestBreakdownGoldenResults`（`-v`） | 0 | `goldens-des.log`：16 個 case 都 PASS |
+| r2 mutants，只跑 golden 測試 | 0 | `l2-mutants-goldens-only.log`：兩個 L2 mutant KILLED，I1 SURVIVED |
+| r2 mutants，golden 與鎖（鎖更新後） | 0 | `l2-mutants-after.log` |
+| r2 mutants，只跑 Result 層 | 0 | `l2-mutants-result-layer.log`：三個都 SURVIVED（如推導） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `spec-check.log`（在本節寫好之後的 tree 上）；重產的 `checks/*.json` 與 6a3b518 相同（沒有新的 decision、markdown 或 fixture 檔，新 case 在既有的 fixture 中），所以沒有可 stage 的變更 |
+| `make backend-test` | 0 | `backend-test.log`：63 個 package ok，沒有 `(cached)`；engine 103 s |
+| `go test -race ./internal/simulation/... ./internal/results/...` | 0 | `race-simulation-results.log`：5 個 package ok；engine 252 s |
+| `make simulation-reference-test PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `simulation-reference-test.log`、`simpy-reference-report.json`：故障的確定性案例 G-F3、G-F3b、G-F7、G-F9、G-F9R10 逐值相同（T-047 的 11 個與 G-D2 照舊），G-F10 列為 not compared，83/83 個隨機比對通過 |
+| `make backend-numeric` | 0 | `backend-numeric.log`：六個架構沒有 FMA 或平台 math，GOAMD64=v3 的 numeric 測試通過 |
+
+### NOT RUN（本輪）
+
+- `make integration-test` 與 DB-backed 測試：這裡沒有 PostgreSQL（`GEMINUS_TEST_DATABASE_URL` 未設，DB 測試 skip）。本輪沒有改 kernel、migration、SQL 或 runner，只有新的 golden 與鎖的新增項。
+- `make backend-race`（全部 package）：本輪只照指示跑 simulation 與 results 的 race。
+- `make architecture-check`、`make ai-eval`、`make frontend-test`：本輪沒有非測試的 Go 程式、AI 或 TS 的變更，沒有跑。
+- 第 1 輪的完整 mutation harness（64 個）沒有重跑；本輪只跑 `t048-r2-mutants.py` 的三個 mutant。只多了 golden，既有 mutant 的結果只可能更好，但沒有實際執行。
+- `FuzzBreakdowns`、`FuzzKernel`、`FuzzRun` 沒有重跑（新 case 的模型會成為 fuzz 的 seed）。
+- `SIMULATION_STALLED` 的端對端測試、`make e2e-test`、benchmark、`make ai-eval-live`、非 amd64 的實機、CI。
+
+### 需要 owner 決定（本輪的變化）
+
+- 沒有新的 decision。D-074、D-075 仍是 PROPOSED，`approved_by`／`approved_at` 為 null；D-074 (a) 只在「不採用時」的清單加上 G-F3b、G-F9R10、G-F10。ADR-026（ACCEPTED）沒有改。
+
+### 殘餘風險（本輪的變化）
+
+- **修復路徑上的 TTR stream 只由鎖涵蓋（I1）**：手推 golden 都用 constant TTR，修復時交給等待中的故障所抽的 TTR 用了哪個時鐘的 stream 看不出來；只有 0.3.0 的鎖（B-S2、B-S4）與 SimPy 的隨機比對（容差內）涵蓋，鎖不是 oracle。要以手推涵蓋需要一個非 constant 的 TTR 與 stream 的逐值向量（例如以 `engine-vectors.json` 的 Python 參考值手算），本輪沒有做。
+- G-F10 的 sequence 與事件數是 kernel 內部的計數：它們固定的是「把 unit 交出去的修復不排 dispatch」這個 SIMULATION_SPEC §3 的行為，若日後 kernel 合理地改變排程方式（例如 dispatch 的合併），這兩個期望要依新的推導重寫，而不是直接更新。

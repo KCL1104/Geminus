@@ -1,0 +1,4 @@
+baseline	golden	PASS
+repair-gives-the-unit-and-wakes-too	golden	KILLED ./internal/simulation/engine/ ^TestBreakdownGoldens$: --- FAIL: TestBreakdownGoldens (0.05s) | --- FAIL: TestBreakdownGoldens/G-F10 (0.00s) | breakdown_test.go:258: 12 events, hand-derived 11 | breakdown_test.go:266: service starts with their sequence numbers [r0/s1/1@1#5 r0/s2/1@20#12], hand-derived [r0/s1/1@1#5 r0/s2/1@20#11]
+repair-pending-before-clock	golden	KILLED ./internal/simulation/engine/ ^TestBreakdownGoldens$: --- FAIL: TestBreakdownGoldens (0.05s) | --- FAIL: TestBreakdownGoldens/G-F9R10 (0.00s) | breakdown_test.go:255: waiting failures [m/1:10 m/1:40 m/1:60], hand-derived [m/1:10 m/0:30 m/1:40 m/0:50 m/1:60]
+repair-ttr-from-repaired-clock-stream (I1, residual)	golden	SURVIVED 

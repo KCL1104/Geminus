@@ -1,0 +1,4 @@
+baseline	result	PASS
+repair-gives-the-unit-and-wakes-too	result	SURVIVED 
+repair-pending-before-clock	result	SURVIVED 
+repair-ttr-from-repaired-clock-stream (I1, residual)	result	SURVIVED 

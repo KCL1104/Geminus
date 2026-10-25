@@ -1,0 +1,8 @@
+baseline	golden	PASS
+baseline	locks	PASS
+repair-gives-the-unit-and-wakes-too	golden	SURVIVED 
+repair-gives-the-unit-and-wakes-too	locks	KILLED ./internal/simulation/engine/ ^TestBreakdownObservationDigests$: --- FAIL: TestBreakdownObservationDigests (0.07s) breakdown_test.go:718: observation digests
+repair-pending-before-clock	golden	SURVIVED 
+repair-pending-before-clock	locks	KILLED ./internal/simulation/engine/ ^TestBreakdownObservationDigests$: --- FAIL: TestBreakdownObservationDigests (0.07s) breakdown_test.go:718: observation digests
+repair-ttr-from-repaired-clock-stream (I1, residual)	golden	SURVIVED 
+repair-ttr-from-repaired-clock-stream (I1, residual)	locks	KILLED ./internal/simulation/engine/ ^TestBreakdownObservationDigests$: --- FAIL: TestBreakdownObservationDigests (0.07s) breakdown_test.go:718: observation digests
