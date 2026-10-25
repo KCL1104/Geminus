@@ -1,0 +1,12 @@
+go test (new unit tests, RED stubs) exit 1   (unit-red.log; expected: 5 tests fail)
+go test (new unit tests, GREEN) exit 0       (unit-green.log)
+mutate.py unit exit 0                         (mutants-unit.log: 24 killed, 0 survived)
+mutate.py compile exit 0                      (mutants-db-compile.log: 5 DB mutants compile)
+mutate.py db exit 1                           (refused: no GEMINUS_TEST_DATABASE_URL; NOT RUN)
+vitest (new TS test) exit 0; TS mutant exit 1 (ts-client.log)
+make backend-test exit 0
+go test -race (touched packages) exit 0       (race-touched.log)
+make architecture-check exit 0
+make frontend-test exit 0
+make spec-check exit 0                        (run last, after T-054_VALIDATION.md was added)
+make integration-test NOT RUN                 (no PostgreSQL; db-not-run.txt)

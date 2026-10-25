@@ -1,0 +1,31 @@
+NOT RUN in this worktree: there is no PostgreSQL server and no GEMINUS_TEST_DATABASE_URL (environment.txt),
+so no SQL ran and every DB-backed Go test skipped with "NOT RUN: set GEMINUS_TEST_DATABASE_URL ...".
+The coordinator runs them on a disposable dt_test_* database.
+
+Targets
+  make integration-test   (make db-test, then make db-go-test)
+  make db-test            (no migration or SQL suite changed by T-054; run as part of integration-test)
+  make db-go-test         (unchanged target; ./internal/models/..., ./internal/runs/... and ./internal/api/... are in it)
+
+New DB-backed Go tests (T-054)
+  internal/models:  TestPublishSnapshotStorageFailure  (publishVersion through models.Register's handler, with dataset
+                    storage that fails at the 1st read (the candidate) or the 2nd (the draft that follows the new
+                    version, after the version INSERT), or says the request ended; nothing written; the same key
+                    publishes after recovery)
+  internal/api:     TestRunSnapshotStorageFailure      (createSimulation through api.Handler with object storage whose
+                    reads fail, or say the request ended; nothing written; the same key is queued after recovery)
+
+Existing DB-backed Go tests whose code path T-054 changed (rerun with the rest of make db-go-test)
+  internal/models:              TestDatasets and the other publish, patch and reset tests (check now classifies the
+                                binding stage's error)
+  internal/api:                 TestRunDatasets, TestRunClosedLoop and the other createSimulation tests (freeze now
+                                classifies the binding stage's error), the model route tests in models_test.go
+                                (models.Register now keeps the logger)
+  internal/proposals/approval:  TestApprovalFreezesTheManifest and the edit approvals (models.Service.Advance: the
+                                draft sync's binding stage error is now a models.DatasetStorageError; approval still
+                                answers it 500, unchanged)
+
+DB mutants (checks/evidence/2026-10-25-T-054/mutate.py db; refuses to run without GEMINUS_TEST_DATABASE_URL)
+  db-models-handler-maps-like-every-route, db-models-cause-not-logged, db-models-draft-check-ignored,
+  db-runs-freeze-unwrapped, db-runs-cause-not-logged
+  (each compiles: mutate.py compile, mutants-db-compile.log; files restored)

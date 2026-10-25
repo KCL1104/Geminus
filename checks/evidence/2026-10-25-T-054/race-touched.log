@@ -1,0 +1,7 @@
+ok  	github.com/kcl1104/geminus/internal/models	1.233s
+ok  	github.com/kcl1104/geminus/internal/runs	1.120s
+ok  	github.com/kcl1104/geminus/internal/runs/runner	1.088s
+ok  	github.com/kcl1104/geminus/internal/api	1.518s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	2.438s
+ok  	github.com/kcl1104/geminus/internal/scenarios	1.600s
+go test -race (touched packages) exit=0
