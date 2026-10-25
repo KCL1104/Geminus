@@ -32,8 +32,8 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 28,
-    "in_progress": 3,
-    "not_started": 22,
+    "in_progress": 4,
+    "not_started": 21,
     "review": 0
   },
   "ready_tasks": [
@@ -42,16 +42,7 @@
     "T-050",
     "T-053"
   ],
-  "next_after_review": [
-    {
-      "id": "T-048",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-074",
-        "D-075"
-      ]
-    }
-  ],
+  "next_after_review": [],
   "gates": {
     "D-001": {
       "status": "approved",

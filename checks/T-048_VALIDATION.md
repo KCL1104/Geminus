@@ -388,3 +388,7 @@ Coordinator 把四個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（b6f
 
 - **修復路徑上的 TTR stream 只由鎖涵蓋（I1）**：手推 golden 都用 constant TTR，修復時交給等待中的故障所抽的 TTR 用了哪個時鐘的 stream 看不出來；只有 0.3.0 的鎖（B-S2、B-S4）與 SimPy 的隨機比對（容差內）涵蓋，鎖不是 oracle。要以手推涵蓋需要一個非 constant 的 TTR 與 stream 的逐值向量（例如以 `engine-vectors.json` 的 Python 參考值手算），本輪沒有做。
 - G-F10 的 sequence 與事件數是 kernel 內部的計數：它們固定的是「把 unit 交出去的修復不排 dispatch」這個 SIMULATION_SPEC §3 的行為，若日後 kernel 合理地改變排程方式（例如 dispatch 的合併），這兩個期望要依新的推導重寫，而不是直接更新。
+
+### Coordinator 的執行（第 2 輪修正，3868975）
+
+Coordinator 把三個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（6a3b518 之後，沒有衝突）：5dedac2 → 014217f、6275702 → 348c402、d34298b → 3868975；kernel 程式碼與 6a3b518 相同。之後在 3868975 的 tree 上（`coordinator-environment.txt`），`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`simulation-reference-test`、`backend-numeric`、`backend-race` 與新的 `dt_test_t048r2` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0（`checks/evidence/2026-10-25-T-048-r2/coordinator-*`）。Reviewer 第 2 輪的判定為 ACCEPT，本輪的修正（兩個 Low 與 I3）依前例由 coordinator 驗證後接受。D-074、D-075 仍是 PROPOSED，它們的 gate 是 T-048 驗收前，所以 T-048 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done；決策頁 https://claude.ai/artifact/2VEE9wK2WmnqXQdir8EeUq。
