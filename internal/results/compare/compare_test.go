@@ -440,6 +440,21 @@ func TestOrder(t *testing.T) {
 		} else if string(data) != string(first) {
 			t.Fatalf("iteration %d: the comparison changed with the map order", i)
 		}
+		// One run's citable statistics are in the same order (mutation
+		// round 1: keys-in-map-order survived, Compare re-sorts the union).
+		stats, err := compare.Statistics(b.Result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var resources []string
+		for _, st := range stats {
+			if strings.HasPrefix(st.Path, "/metrics/resources/") {
+				resources = append(resources, st.Path)
+			}
+		}
+		if len(resources) != 61 || !slices.IsSorted(resources) {
+			t.Fatalf("iteration %d: Statistics lists the resources in map order: %v", i, resources[:min(5, len(resources))])
+		}
 	}
 }
 
