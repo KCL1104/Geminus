@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Independent SimPy reference for finite buffers and blocking (T-047, TEST-034).
+"""Independent SimPy reference for finite buffers and blocking (T-047) and
+resource breakdowns (T-048), TEST-034.
 
 AGENTS.md §7 and ADR-006: SimPy is only an independent reference. Nothing in
 the Go engine imports, calls or embeds this script or SimPy; the script reads
-the shared fixture (testdata/simulation/blocking-goldens.json) and, for the
-stochastic cases, a JSON file of the Go engine's per-replication results that
-`make simulation-reference-test` writes first.
+the shared fixtures (testdata/simulation/blocking-goldens.json and
+breakdown-goldens.json) and, for the stochastic cases, a JSON file of the Go
+engine's per-replication results that `make simulation-reference-test`
+writes first.
 
 The models are interpreted with SimPy's own primitives, as ADR-026 D-049 plans
 it ("SimPy"): every resource is a simpy.Resource; a finite buffer of capacity
@@ -47,6 +49,33 @@ request at the front of its FIFO. Own resources taken in ID order instead
 could hold a larger own resource while waiting for a smaller one (G-B14;
 T-047 review round 2, L1').
 
+Breakdowns (T-048; ADR-026 D-051, D-074 PROPOSED) with SimPy's own
+primitives: a resource that breaks down is a simpy.PriorityResource; jobs
+request it at priority 0 (FIFO among themselves), and each unit u has a
+failure clock process that alternates TTF and TTR. When its TTF ends and a
+unit is neither in use nor down (len(users) < capacity), the clock requests
+a unit at priority -1, which SimPy grants at once (a request ahead of every
+waiting job), and holds it for one TTR; otherwise the failure waits, in
+FIFO order, for the next unit a job releases: the job hands its request
+over to the failure process instead of releasing it (finish-first). A
+repair releases the unit to SimPy's queue, so a waiting job, never a waiting
+failure, gets it (D-074 (a): only a released unit satisfies a waiting
+failure). Samples come from Python's random: expovariate, triangular,
+lognormvariate (sigma^2 = ln(1 + cv^2), mu = ln(mean) - sigma^2/2, D-056)
+and weibullvariate(scale, shape), never the engine's streams or samplers.
+
+Limits of the breakdown interpretation, checked before use. Besides the
+rules above, a resource that breaks down must be the only resource of every
+bundle that needs it: taken one resource at a time, a unit held while the
+entity waits for the rest of its bundle could not fail, whereas the engine
+grants all or nothing and the idle unit can (G-F8, refused). Every
+distribution must be constant, exponential, triangular, lognormal or
+Weibull (no empirical). Same-tick ties between a failure or a repair and
+another event are the kernel's D-048 order, which SimPy (scheduling order)
+does not reproduce: the deterministic cases with such ties are marked "not
+compared"; in the stochastic ones, in continuous time, they have probability
+0 in SimPy and are rare on the engine's 1 ms ticks, within the tolerance.
+
     python scripts/simpy_reference.py --go-results bin/simpy-reference-go.json
 """
 import argparse
@@ -59,8 +88,9 @@ from pathlib import Path
 import simpy
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = ROOT / "testdata/simulation/blocking-goldens.json"
+FIXTURES = [ROOT / "testdata/simulation/blocking-goldens.json", ROOT / "testdata/simulation/breakdown-goldens.json"]
 SIMPY_VERSION = "4.1.2"
+DISTRIBUTIONS = ("constant", "exponential", "triangular", "lognormal", "weibull")
 TICK = 60_000  # ticks per model minute (the fixtures are in minutes)
 
 
@@ -142,6 +172,26 @@ class Model:
                     raise SystemExit(f"unsupported: {n['id']}'s own {r} (capacity {self.capacity[r]}) is smaller than its shared "
                                      f"{shared[0]} (capacity {self.capacity[shared[0]]}): one at a time would not be all-or-nothing")
             self.order[n["id"]] = shared + sorted(own, key=lambda r: (self.capacity[r], r))
+        # Breakdowns (T-048): a resource that breaks down is the whole
+        # bundle of every process that needs it (see the module docstring).
+        self.breaks = {}
+        for r in sorted(ir["resources"], key=lambda r: r["id"]):
+            if r.get("breakdowns"):
+                self.breaks[r["id"]] = (r["breakdowns"]["time_to_failure"]["distribution"], r["breakdowns"]["time_to_repair"]["distribution"])
+        for n in ir["nodes"]:
+            req = [r["resource_id"] for r in n.get("requires", [])]
+            for r in req:
+                if r in self.breaks and len(req) > 1:
+                    raise SystemExit(f"unsupported: {n['id']}'s bundle {sorted(req)} has {r}, which breaks down, and other resources: "
+                                     "taken one at a time, a unit of it held while waiting for the rest could not fail")
+        dists = [d for ttf, ttr in self.breaks.values() for d in (ttf, ttr)]
+        for n in ir["nodes"]:
+            for member in ("arrival", "service_time", "delay_time"):
+                if n.get(member):
+                    dists.append(n[member]["distribution"])
+        for d in dists:
+            if d["type"] not in DISTRIBUTIONS:
+                raise SystemExit(f"unsupported distribution {d['type']}")
 
     def requires(self, node):
         return self.order[node]
@@ -152,6 +202,13 @@ def sample(dist, rng):
         return float(dist["value"])
     if dist["type"] == "exponential":
         return rng.expovariate(1.0 / dist["mean"])
+    if dist["type"] == "triangular":
+        return rng.triangular(dist["min"], dist["max"], dist["mode"])
+    if dist["type"] == "lognormal":
+        s2 = math.log(1 + dist["cv"] ** 2)
+        return rng.lognormvariate(math.log(dist["mean"]) - s2 / 2, math.sqrt(s2))
+    if dist["type"] == "weibull":
+        return rng.weibullvariate(dist["scale"], dist["shape"])
     raise SystemExit(f"unsupported distribution {dist['type']}")
 
 
@@ -163,7 +220,7 @@ def simulate(ir, config, rep, seed, record=False, until=None):
     w, h = config["warmup"]["value"], config["horizon"]["value"]
     if until is None:
         until = h
-    machines = {r: simpy.Resource(env, capacity=c) for r, c in m.capacity.items()}
+    machines = {r: (simpy.PriorityResource if r in m.breaks else simpy.Resource)(env, capacity=c) for r, c in m.capacity.items()}
     slots = {p: simpy.Resource(env, capacity=c) for p, c in m.finite.items()}
     in_use = {r: Step(w, h) for r in m.capacity}
     held = {r: Step(w, h) for r in m.capacity}
@@ -171,6 +228,51 @@ def simulate(ir, config, rep, seed, record=False, until=None):
     blocked_at = {}
     stats = {"completed": 0, "leads": [], "reworks": 0, "failures": 0, "blocks_started": {}, "blocks_done": {}, "block_minutes": {},
              "waits": {}, "starts": {}, "completions": [], "blocks": [], "last_start": None}
+    # Breakdowns (T-048): units down, the failures waiting for a release
+    # (FIFO), downtimes started in the window, complete repairs (started at
+    # or after W, ended by H) and their minutes.
+    down = {r: Step(w, h) for r in m.breaks}
+    waiting_failures = {r: [] for r in m.breaks}
+    bstats = {"started": {r: 0 for r in m.breaks}, "repairs": {r: 0 for r in m.breaks}, "repair_minutes": {r: 0.0 for r in m.breaks},
+              "downs": [], "pending": []}
+
+    def clock(r, u):
+        """Failure clock u of resource r: TTF, then down (at once on an idle
+        unit, else on the next released unit) for TTR, then up."""
+        ttf, ttr = m.breaks[r]
+        while True:
+            yield env.timeout(sample(ttf, rng))
+            res = machines[r]
+            if len(res.users) < res.capacity:
+                req = res.request(priority=-1)
+                if not req.triggered:
+                    raise RuntimeError(f"{r}/{u}: an idle unit was not granted at once")
+            else:
+                ev = env.event()
+                waiting_failures[r].append(ev)
+                fired = env.now
+                req = yield ev
+                # A failure that waited 0 minutes is SimPy's order of a
+                # failure and a release at the same time (scheduling order);
+                # the kernel releases first (priority 0 < 15) and the failure
+                # finds the unit idle. Both put the unit down at that time,
+                # so only a positive wait is a waiting failure.
+                if record and env.now > fired:
+                    bstats["pending"].append([r, u, fired])
+            since = env.now
+            down[r].add(1, since)
+            if w <= since <= h:
+                bstats["started"][r] += 1
+            entry = [r, u, since, None]
+            if record:
+                bstats["downs"].append(entry)
+            yield env.timeout(sample(ttr, rng))
+            res.release(req)
+            down[r].add(-1, env.now)
+            entry[3] = env.now
+            if since >= w and env.now <= h:
+                bstats["repairs"][r] += 1
+                bstats["repair_minutes"][r] += env.now - since
 
     def resolve(node):
         """Follows routes through decisions, failure and rework nodes."""
@@ -232,8 +334,13 @@ def simulate(ir, config, rep, seed, record=False, until=None):
                         stats["block_minutes"][here] = stats["block_minutes"].get(here, 0.0) + (env.now - since)
                 mark_full(p)
             for r, req in holding:
-                machines[r].release(req)
                 in_use[r].add(-1, env.now)
+                if waiting_failures.get(r):
+                    # Finish-first (D-051): the released unit goes down for
+                    # the first waiting failure; the job hands it over.
+                    waiting_failures[r].pop(0).succeed(req)
+                else:
+                    machines[r].release(req)
             holding.clear()
             if typ == "sink":
                 if m.nodes[to].get("outcome", "completed") == "completed":
@@ -282,9 +389,21 @@ def simulate(ir, config, rep, seed, record=False, until=None):
 
     for sid in sorted(n["id"] for n in ir["nodes"] if n["type"] == "source"):
         env.process(source(sid))
+    # Then the failure clocks, resources in ID order, units in index order
+    # (the kernel's t=0 order, D-048).
+    for r in m.breaks:
+        for u in range(m.capacity[r]):
+            env.process(clock(r, u))
     env.run(until=math.nextafter(until, math.inf))
     T = h - w
     out = {
+        "breaks": sorted(m.breaks),
+        "down": {r: down[r].total() for r in m.breaks},
+        "breakdowns_started": bstats["started"],
+        "repairs_completed": bstats["repairs"],
+        "repair_minutes": bstats["repair_minutes"],
+        "downs": bstats["downs"],
+        "pending": bstats["pending"],
         "completed_count": stats["completed"],
         "mean_lead_time_minutes": (sum(stats["leads"]) / len(stats["leads"])) if stats["leads"] else None,
         "leads": stats["leads"],
@@ -359,6 +478,16 @@ def deterministic(case):
     check(r["completions"] == [list(x) for x in exp["completions"]], f"{cid}: completions {r['completions']} != {exp['completions']}")
     want_blocks = [list(b) for b in exp["blocks"]]
     check(r["blocks"] == want_blocks, f"{cid}: blocks {r['blocks']} != {want_blocks}")
+    if "downs" in exp:
+        # [resource, unit, from, to or None] in start order; the failures
+        # that waited, in the order they fired. The script records only a
+        # positive wait (see clock), so a compared case may have no other.
+        check(r["downs"] == [list(d) for d in exp["downs"]], f"{cid}: downs {r['downs']} != {exp['downs']}")
+        for res_id, unit, t in exp["pending"]:
+            nxt = [d[2] for d in exp["downs"] if d[0] == res_id and d[1] == unit and d[2] >= t]
+            check(nxt and nxt[0] > t, f"{cid}: the waiting failure {res_id}/{unit} at {t} has no positive wait; the case cannot be compared")
+        got = sorted(r["pending"], key=lambda p: p[2])
+        check(got == [list(p) for p in exp["pending"]], f"{cid}: waiting failures {got} != {exp['pending']}")
     res = exp.get("result")
     if not res:
         return
@@ -373,19 +502,35 @@ def deterministic(case):
         check(sorted(r["waits"].get(q, [])) == sorted(waits), f"{cid}: waits at {q} {r['waits'].get(q)} != {waits}")
     if res.get("blocking") is None:
         check(not r["finite"], f"{cid}: finite buffers in a case without blocking members")
-        return
-    for node in possible_blockers(ir) | set(res["blocking"]):
-        want = res["blocking"].get(node)
-        got = {"blocks_started": r["blocks_started"].get(node, 0), "blocks_completed": r["blocks_done"].get(node, 0),
-               "completed_block_ticks": round(r["block_minutes"].get(node, 0.0) * TICK),
-               "blocked_entity_ticks": round(r["blocked_entities"].get(node, 0.0) * TICK)}
-        check(got == want, f"{cid}: blocking[{node}] {got} != {want}")
-    for q, want in res["buffers"].items():
-        got = round(r["full"].get(q, 0.0) * TICK)
-        check(got == want["full_ticks"], f"{cid}: buffers[{q}] {got} != {want['full_ticks']}")
-    for rid, want in res["resource_states"].items():
-        used, blocked = round(r["in_use"][rid] * TICK), round(r["blocked"][rid] * TICK)
-        got = {"in_use_ticks": used, "blocked_ticks": blocked, "scheduled_processing_ticks": used - blocked}
+    else:
+        for node in possible_blockers(ir) | set(res["blocking"]):
+            want = res["blocking"].get(node)
+            got = {"blocks_started": r["blocks_started"].get(node, 0), "blocks_completed": r["blocks_done"].get(node, 0),
+                   "completed_block_ticks": round(r["block_minutes"].get(node, 0.0) * TICK),
+                   "blocked_entity_ticks": round(r["blocked_entities"].get(node, 0.0) * TICK)}
+            check(got == want, f"{cid}: blocking[{node}] {got} != {want}")
+        for q, want in res["buffers"].items():
+            got = round(r["full"].get(q, 0.0) * TICK)
+            check(got == want["full_ticks"], f"{cid}: buffers[{q}] {got} != {want['full_ticks']}")
+    # resource_states (D-058): every resource with a finite buffer in the
+    # model, else only the resources that break down.
+    capacity = {x["id"]: x["capacity"] for x in ir["resources"]}
+    listed = sorted(capacity) if r["finite"] else r["breaks"]
+    check(sorted(res.get("resource_states") or {}) == listed, f"{cid}: resource_states lists {sorted(res.get('resource_states') or {})}, SimPy {listed}")
+    T = cfg["horizon"]["value"] - cfg["warmup"]["value"]
+    for rid, want in (res.get("resource_states") or {}).items():
+        used = round(r["in_use"][rid] * TICK)
+        got = {"in_use_ticks": used}
+        processing = used
+        if r["finite"]:
+            got["blocked_ticks"] = round(r["blocked"][rid] * TICK)
+            processing = used - got["blocked_ticks"]
+        if rid in r["breaks"]:
+            down = round(r["down"][rid] * TICK)
+            available = capacity[rid] * round(T * TICK) - down
+            got.update({"down_ticks": down, "breakdowns_started": r["breakdowns_started"][rid], "repairs_completed": r["repairs_completed"][rid],
+                        "completed_repair_ticks": round(r["repair_minutes"][rid] * TICK), "available_ticks": available, "idle_ticks": available - used})
+        got["scheduled_processing_ticks"] = processing
         check(got == want, f"{cid}: resource_states[{rid}] {got} != {want}")
 
 
@@ -432,7 +577,15 @@ def stochastic(ref, go):
                    "reworks": ([x["reworks"] for x in g], [s["reworks"] for s in sims])}
         for rid, c in m.capacity.items():
             metrics[f"utilization/{rid}"] = ([x["utilization"][rid] for x in g], [s["utilization"][rid] for s in sims])
-            metrics[f"blocked_fraction/{rid}"] = ([x["blocked_ticks"][rid] / TICK / (c * T) for x in g], [s["blocked"][rid] / (c * T) for s in sims])
+            if m.finite:
+                metrics[f"blocked_fraction/{rid}"] = ([x["blocked_ticks"][rid] / TICK / (c * T) for x in g], [s["blocked"][rid] / (c * T) for s in sims])
+        for rid in m.breaks:
+            c = m.capacity[rid]
+            metrics[f"down_fraction/{rid}"] = ([x["down_ticks"][rid] / TICK / (c * T) for x in g], [s["down"][rid] / (c * T) for s in sims])
+            metrics[f"available_fraction/{rid}"] = ([x["available_ticks"][rid] / TICK / (c * T) for x in g], [1 - s["down"][rid] / (c * T) for s in sims])
+            metrics[f"idle_fraction/{rid}"] = ([x["idle_ticks"][rid] / TICK / (c * T) for x in g],
+                                               [(c * T - s["down"][rid] - s["in_use"][rid]) / (c * T) for s in sims])
+            metrics[f"breakdowns_started/{rid}"] = ([x["breakdowns_started"][rid] for x in g], [s["breakdowns_started"][rid] for s in sims])
         for p in m.finite:
             q = m.label[p]
             metrics[f"full_fraction/{q}"] = ([x["full_ticks"][q] / TICK / T for x in g], [s["full"].get(q, 0.0) / T for s in sims])
@@ -462,28 +615,30 @@ def main():
     if simpy.__version__ != SIMPY_VERSION:
         print(f"SimPy {simpy.__version__}, the reference is pinned to {SIMPY_VERSION} (requirements-spec.txt)", file=sys.stderr)
         return 2
-    doc = json.loads(FIXTURE.read_text())
-    compared, skipped = [], []
-    last = None
-    for case in doc["cases"]:
-        mode = case.get("simpy", "")
-        if mode == "compare":
-            deterministic(case)
-            compared.append(case["id"])
-        elif mode.startswith("illustrative"):
-            last = deadlock(case)
-            compared.append(case["id"] + " (illustrative)")
-        elif mode.startswith("refused"):
-            why = refused(case)
-            skipped.append(f"{case['id']}: refused by the script: {why}")
-        else:
-            skipped.append(f"{case['id']}: {mode}")
     go = json.loads(Path(args.go_results).read_text())
-    report = stochastic(doc["reference"], go)
+    compared, skipped, report, tolerances = [], [], [], {}
+    last = None
+    for fixture in FIXTURES:
+        doc = json.loads(fixture.read_text())
+        for case in doc["cases"]:
+            mode = case.get("simpy", "")
+            if mode == "compare":
+                deterministic(case)
+                compared.append(case["id"])
+            elif mode.startswith("illustrative"):
+                last = deadlock(case)
+                compared.append(case["id"] + " (illustrative)")
+            elif mode.startswith("refused"):
+                why = refused(case)
+                skipped.append(f"{case['id']}: refused by the script: {why}")
+            else:
+                skipped.append(f"{case['id']}: {mode}")
+        report += stochastic(doc["reference"], go)
+        tolerances[fixture.name] = doc["reference"]["tolerance"]
     summary = {"simpy": simpy.__version__, "deterministic_cases": compared, "not_compared": skipped,
                "g_d2_last_service_start_minutes": last[0] if last else None, "g_d2_deadlock_minutes": last[1] if last else None,
                "stochastic_comparisons": len(report), "stochastic_passed": sum(1 for x in report if x["pass"]),
-               "tolerance": doc["reference"]["tolerance"], "failures": failures}
+               "tolerance": tolerances, "failures": failures}
     if args.report:
         Path(args.report).write_text(json.dumps({"summary": summary, "comparisons": report}, indent=2) + "\n")
     print(json.dumps(summary, indent=2))
