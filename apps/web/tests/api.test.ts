@@ -6,7 +6,7 @@ import { createApiClient, newIdempotencyKey, type Session } from "../lib/api/cli
 import { draftETag, parseDraftETag } from "../lib/api/etag";
 import { isID } from "../lib/api/ids";
 import { errorCodeStatus, problemFromResponse, validationIssues } from "../lib/api/problem";
-import type { CreateScenario, Draft, JsonPatch, ModelVersion, Scenario, Scenarios } from "../lib/contracts";
+import type { Comparison, CreateScenario, Draft, JsonPatch, ModelVersion, Scenario, Scenarios } from "../lib/contracts";
 
 const commonSchema = JSON.parse(readFileSync(new URL("../../../schemas/common.schema.json", import.meta.url), "utf8")) as {
   $defs: { ErrorCode: { enum: string[]; "x-http-status": Record<string, number> } };
@@ -19,6 +19,8 @@ const MODEL = "mdl_01M4YDQK004AGVNEGJQJ1NMM0N";
 const PROJECT = "prj_01M4YDQK00TA00000000000001";
 const REQ = "req_01M4YDQK00V6H8S0ST4F7510KR";
 const SCENARIO = "scn_01M4YDQK00J4MJS82YRG0PCEC1";
+const BASELINE_RUN = "sim_01M4YDQK00FGZZWH0PP15XPNFA";
+const SCENARIO_RUN = "sim_01M4YDQK00FGZZWH0PP15XPNFB";
 const session: Session = { organizationId: ORG };
 
 type Call = { url: URL; init: RequestInit };
@@ -358,7 +360,7 @@ describe("model writes and versions (T-013)", () => {
 
   it("calls each operation at the contract's method and path", async () => {
     const ok = () => json(200, { items: [], next_cursor: null });
-    const f = fakeFetch(...Array.from({ length: 14 }, ok));
+    const f = fakeFetch(...Array.from({ length: 15 }, ok));
     const client = api(f);
     const seen: Record<string, number> = {};
     const record = (id: string) => (seen[id] = f.calls.length - 1);
@@ -390,6 +392,8 @@ describe("model writes and versions (T-013)", () => {
     record("listScenarios");
     await client.getScenario(SCENARIO);
     record("getScenario");
+    await client.compareSimulations(BASELINE_RUN, SCENARIO_RUN);
+    record("compareSimulations");
     for (const [id, i] of Object.entries(seen)) {
       const op = operations.find((o) => o.operation_id === id);
       const call = f.calls[i]!;
@@ -454,6 +458,39 @@ describe("scenarios (T-028)", () => {
       await client.getScenario(`${SCENARIO}/../x`),
     ];
     expect(refused.map((r) => !r.ok && r.problem.kind)).toEqual(["not_found", "invalid", "not_found", "not_found", "not_found"]);
+    expect(f.calls).toHaveLength(0);
+  });
+});
+
+describe("comparisons (T-029)", () => {
+  const api = (f: ReturnType<typeof fakeFetch>) => createApiClient({ session: () => session, fetch: f.fetch });
+
+  it("asks for the server's comparison of two runs, by query, and shows it as given", async () => {
+    const golden = fixture("valid-comparison.json") as Comparison;
+    const f = fakeFetch(json(200, golden));
+    const r = await api(f).compareSimulations(BASELINE_RUN, SCENARIO_RUN);
+    expect(r.ok && r.data).toEqual(golden);
+    const call = f.calls[0]!;
+    expect([call.init.method, call.url.pathname, call.init.body]).toEqual(["GET", "/api/v1/simulation-comparisons", undefined]);
+    expect([call.url.searchParams.getAll("baseline_run_id"), call.url.searchParams.getAll("scenario_run_id")]).toEqual([[BASELINE_RUN], [SCENARIO_RUN]]);
+    expect((call.init.headers as Record<string, string>)["X-Organization-ID"]).toBe(ORG);
+  });
+
+  it("maps a run that has no result yet to the contract's conflict, naming the run", async () => {
+    const f = fakeFetch(json(409, errorBody("RESULT_NOT_READY", { details: [{ path: "", reason: "scenario_run_id" }] })));
+    const r = await api(f).compareSimulations(BASELINE_RUN, SCENARIO_RUN);
+    expect(!r.ok && [r.problem.kind, r.problem.code, r.problem.details[0]?.reason]).toEqual(["conflict", "RESULT_NOT_READY", "scenario_run_id"]);
+  });
+
+  it("refuses run IDs the server would refuse before sending anything", async () => {
+    const f = fakeFetch();
+    const client = api(f);
+    const refused = [
+      await client.compareSimulations(SCENARIO, SCENARIO_RUN),
+      await client.compareSimulations(BASELINE_RUN, `${SCENARIO_RUN}&baseline_run_id=${BASELINE_RUN}`),
+      await client.compareSimulations(BASELINE_RUN, BASELINE_RUN),
+    ];
+    expect(refused.map((r) => !r.ok && r.problem.kind)).toEqual(["not_found", "not_found", "invalid"]);
     expect(f.calls).toHaveLength(0);
   });
 });

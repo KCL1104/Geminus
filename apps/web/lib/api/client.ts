@@ -6,6 +6,7 @@
 // getMe (D-045), which selects no organization: it is how the UI learns the
 // organizations to choose from, and the BFF and API authenticate it.
 import type {
+  Comparison,
   CreateModel,
   CreateScenario,
   Draft,
@@ -270,6 +271,23 @@ export function createApiClient(cfg: ClientConfig) {
     async getScenario(scenarioId: string, opts: { signal?: AbortSignal } = {}) {
       if (!isID("scn", scenarioId)) return notFound("The scenario");
       return call<Scenario>({ method: "GET", path: `/scenarios/${scenarioId}`, signal: opts.signal });
+    },
+    /**
+     * The server's comparison of two completed runs (T-029, D-088): the
+     * baseline (patch []) and the scenario. Deltas, reasons and warnings are
+     * the server's; show them as given, never recomputed. A run that is not
+     * completed is a conflict (RESULT_NOT_READY) naming its parameter.
+     */
+    async compareSimulations(baselineRunId: string, scenarioRunId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Comparison>> {
+      if (!isID("sim", baselineRunId)) return notFound("The baseline run");
+      if (!isID("sim", scenarioRunId)) return notFound("The scenario run");
+      if (baselineRunId === scenarioRunId) return { ok: false, problem: invalidRequestProblem("The baseline and the scenario are two different runs.") };
+      return call<Comparison>({
+        method: "GET",
+        path: "/simulation-comparisons",
+        query: { baseline_run_id: baselineRunId, scenario_run_id: scenarioRunId },
+        signal: opts.signal,
+      });
     },
   };
 }
