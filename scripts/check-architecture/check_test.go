@@ -232,6 +232,15 @@ func TestProbesAreCaught(t *testing.T) {
 		{"the-context-links-the-scenario-service", "internal/ai/aicontext/zz_probe.go", module + "/internal/scenarios", "scenarios-only-in-the-api", "./internal/ai/aicontext", "./internal/scenarios", false},
 		{"the-context-links-a-scenario-write", "internal/ai/aicontext/zz_probe.go", module + "/internal/scenarios", "ai-suggests-only", "./internal/ai/aicontext", "./internal/scenarios", false},
 		{"the-kernel-imports-the-scenario-service", "internal/results/metrics/zz_probe.go", module + "/internal/scenarios", "generic-kernel", "./internal/results/metrics", "./internal/scenarios", false},
+		// T-029: the comparison is pure kernel code; its service and HTTP
+		// adapter are an application layer the kernel and the AI never
+		// reach (internal/comparisons imports compare, so the kernel probe
+		// goes in another kernel package).
+		{"the-comparison-reads-storage", "internal/results/compare/zz_probe.go", module + "/internal/storage/runs", "generic-kernel", "./internal/results/compare", "./internal/storage/runs", false},
+		{"the-comparison-reads-the-tenant", "internal/results/compare/zz_probe.go", module + "/internal/tenant", "generic-kernel", "./internal/results/compare", "./internal/tenant", false},
+		{"the-comparison-serves-http", "internal/results/compare/zz_probe.go", "net/http", "generic-kernel", "./internal/results/compare", "net/http", false},
+		{"the-kernel-imports-the-comparison-service", "internal/results/metrics/zz_probe.go", module + "/internal/comparisons", "generic-kernel", "./internal/results/metrics", "./internal/comparisons", false},
+		{"the-context-links-the-comparison-service", "internal/ai/aicontext/zz_probe.go", module + "/internal/comparisons", "ai-suggests-only", "./internal/ai/aicontext", "./internal/comparisons", false},
 		{"the-review-imports-the-proposal-service", "internal/ai/review/zz_probe.go", module + "/internal/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/proposals", false},
 		{"the-review-imports-storage", "internal/ai/review/zz_probe.go", module + "/internal/storage/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/storage/proposals", false},
 		{"the-review-reads-files", "internal/ai/review/zz_probe.go", "os", "ai-is-pure-but-the-adapter", "./internal/ai/review", "os", false},

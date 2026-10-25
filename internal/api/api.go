@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/kcl1104/geminus/internal/auth"
+	"github.com/kcl1104/geminus/internal/comparisons"
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/import/upload"
 	"github.com/kcl1104/geminus/internal/models"
@@ -111,6 +112,9 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	// is checked as an AI scenario's approval checks it, the dataset
 	// snapshots read again from the object storage given; nothing is run.
 	scenarios.Register(mux, log, v, db, &scenarios.Service{DB: db, Packs: served, Objects: o.objects})
+	// The comparison of two completed runs (T-029): it reads runs and
+	// results only, computes in internal/results/compare and writes nothing.
+	comparisons.Register(mux, log, v, db, &comparisons.Service{DB: db})
 	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")
 	})

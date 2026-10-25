@@ -27,7 +27,7 @@ import (
 
 // The simulation routes are the contract's: method, path and roles
 // (planning/api-operations.json, from openapi.yaml); compareSimulations is
-// T-029's.
+// internal/comparisons' (T-029).
 func TestRoutesMatchContract(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", "planning", "api-operations.json"))
 	if err != nil {

@@ -27,12 +27,13 @@ var appLayers = []string{
 	"./internal/auth/...",
 	"./internal/tenant/...",
 	"./internal/project/...",
-	"./internal/models/...",    // model, draft and version service (T-012, ADR-022)
-	"./internal/runs/...",      // simulation run service and its job handler (T-023)
-	"./internal/proposals/...", // AI proposal service and its job handler (T-025)
-	"./internal/scenarios/...", // scenario service: a person's scenarios, reads of both kinds (T-028)
-	"./internal/packs/...",     // the packs a deployment serves (T-023 review L2)
-	"./internal/worker/...",    // the job loop and its handler interface (T-019, ADR-024)
+	"./internal/models/...",      // model, draft and version service (T-012, ADR-022)
+	"./internal/runs/...",        // simulation run service and its job handler (T-023)
+	"./internal/proposals/...",   // AI proposal service and its job handler (T-025)
+	"./internal/scenarios/...",   // scenario service: a person's scenarios, reads of both kinds (T-028)
+	"./internal/comparisons/...", // baseline/scenario comparison service and HTTP adapter (T-029)
+	"./internal/packs/...",       // the packs a deployment serves (T-023 review L2)
+	"./internal/worker/...",      // the job loop and its handler interface (T-019, ADR-024)
 	"./internal/storage/...",
 	"./internal/import/...",
 	"./internal/ai/...",

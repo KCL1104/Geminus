@@ -28,7 +28,8 @@ type Route struct {
 
 // Routes are the simulation operations this package serves. A contract
 // test compares them with planning/api-operations.json; their roles are
-// the ones the service requires. compareSimulations is T-029's.
+// the ones the service requires. compareSimulations is internal/comparisons'
+// (T-029).
 var Routes = []Route{
 	{"POST", "/v1/simulations", "createSimulation", writeRoles},
 	{"GET", "/v1/models/{id}/simulations", "listSimulations", readRoles},
