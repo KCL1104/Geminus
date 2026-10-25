@@ -1,0 +1,12 @@
+db-no-role-check: KILLED (TestScenarioRoles) --- FAIL: TestScenarioRoles (0.16s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.176s
+db-no-binding-stage: KILLED (TestScenarioDatasets) --- FAIL: TestScenarioDatasets (0.19s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.210s
+db-storage-not-required: KILLED (TestScenarioDatasets) --- FAIL: TestScenarioDatasets (0.20s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.217s
+db-storage-failure-unwrapped: KILLED (TestScenarioDatasets) --- FAIL: TestScenarioDatasets (0.19s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.201s
+db-name-in-audit: KILLED (TestCreateManualScenario) --- FAIL: TestCreateManualScenario (0.18s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.199s
+db-no-audit: KILLED (TestCreateManualScenario) --- FAIL: TestCreateManualScenario (0.17s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.187s
+db-list-of-the-model: KILLED (TestCreateManualScenario) --- FAIL: TestCreateManualScenario (0.15s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.168s
+db-list-without-the-organization: KILLED (TestListAndGet) --- FAIL: TestListAndGet (0.05s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/storage/scenarios	0.058s
+db-next-cursor-lost: KILLED (TestListPages) --- FAIL: TestListPages (0.21s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.228s
+TOTAL 9 (db): 9 killed, 0 survived
+
+exit 0

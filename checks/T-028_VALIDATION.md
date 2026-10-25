@@ -126,3 +126,9 @@ Branch `t028`，從 21423aa 開出，沒有 push。
 - **建立時不鎖 model row**：scenario 不改 model、draft 或 version，所以與 publish、批准並行時沒有一致性的問題；但若之後加入「刪除 version」之類的操作，需要重新檢查。
 - **`publishVersion`／`createSimulation` 的 storage 錯誤仍回 500**（H-021 不在範圍），而 createManualScenario 與 approveProposal 回 503，三者不一致的狀態延續。
 - **前端在 Node 22 上通過**，未在 `.nvmrc` 的 Node 24 上執行。
+
+## Coordinator 的執行（615766c）
+
+Coordinator 把六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（H-021 的 21423aa 之後，沒有衝突）：c080577 → 17c17fd、7cf96d2 → 64c2de0、7977a44 → 0af723a、9dae2b5 → 35386ef、fb7ff84 → 9bc053d、b9b1c10 → 615766c。之後 `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`、`backend-race` 與新的 `dt_test_t028` 上的 `integration-test` 都是 exit 0：migration 0015 的 up／down／up（`run_db_tests.sh`）、所有 SQL suite（含新的 `db/tests/scenarios.sql`，兩輪），以及 32 個 package 的 DB-backed Go 測試（含 `internal/scenarios`、`internal/storage/scenarios`、`internal/api` 的新測試與 approval 的既有測試），沒有 FAIL 或 SKIP。本報告 NOT RUN 中的 DB 項目因此都已執行。
+
+DB mutant：coordinator 以同一個已 migrate 的 database，在 `git archive` 匯出的副本上執行 `mutate.py <副本> <log> db`（`GEMINUS_REQUIRE_DB_TESTS=1`）：9 個全部被擋下，每一個都是測試失敗而不是編譯錯誤（`coordinator-mutants-db.log`、`coordinator-mutants-db-run.txt`）。Log 與 exit code 在 `checks/evidence/2026-10-25-T-028/coordinator-*`。仍為 NOT RUN：`make e2e-test`、live AI、OpenAPI 官方 validator。D-078–D-080 仍是 PROPOSED。
