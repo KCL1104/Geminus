@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/results/compare	12.404s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	2.163s
+ok  	github.com/kcl1104/geminus/internal/comparisons	1.056s
+ok  	github.com/kcl1104/geminus/internal/api	1.557s
+exit=0

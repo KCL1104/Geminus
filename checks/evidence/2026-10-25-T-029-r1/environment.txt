@@ -1,0 +1,9 @@
+T-029 review round 1, agent worktree (2026-10-25)
+branch: t029-r1, from 5d96749 (integrated head with the coordinator section)
+go: go1.27.3 linux/amd64 (go.mod toolchain); the reviewer's harness uses the same toolchain binary with GOTOOLCHAIN=local
+node: v22.22.0, npm 10.9.4 (npm ci --engine-strict=false, lockfile unchanged)
+python: 3.13.16 (/home/user/Geminus/.venv)
+cpus: 4, shared; Linux x86_64
+PostgreSQL: none; GEMINUS_TEST_DATABASE_URL unset, DB-backed tests SKIP, integration-test NOT RUN
+live AI: none; no API key read or set
+whole-Result schema validation cost (temporary measurement, file not committed): 1000 replications x 50 resources (1.2 MB) 122 ms, metrics only 12 ms; 1000 x 500 (10.2 MB) 958 ms, metrics only 110 ms

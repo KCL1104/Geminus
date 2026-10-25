@@ -1,0 +1,23 @@
+T-029 review round 1, branch t029-r1 (commands run in this worktree; logs alongside)
+
+red first
+  go test ./internal/results/compare/ ./internal/comparisons/ (new tests, old code)   exit=1  unit-red.log (15 new TestInconsistent cases x 2 sides, TestInput)
+  reviewer harness before the fixes (reviewer's own run)                                       R01 R02 R03 R04 R06 R28 R30 SURVIVED (their logs/mutants.log)
+
+green and verification
+  go test -count=1 -v ./internal/results/compare/ ./internal/comparisons/                     exit=0  unit-green.log
+  make spec-check PYTHON=/home/user/Geminus/.venv/bin/python                                  exit=0  spec-check.log
+  make backend-test (go clean -testcache; tree 004bc01)                                       exit=0  backend-test.log (66 packages ok)
+  go test -race -count=1 ./internal/results/... ./internal/comparisons/... ./internal/api/...  exit=0  race-touched.log
+  go test -count=1 ./internal/results/... ./internal/comparisons/                              exit=0  results-test.log
+  make architecture-check                                                                      exit=0  architecture-check.log
+  make frontend-test                                                                           exit=0  frontend-test.log (445 tests)
+
+mutation
+  reviewer-mutants.py (after the fixes, before the R13 test)    exit=0  27 killed, R13 R30 R31 R32 survived, R12 not run (reviewer-mutants.log)
+  reviewer-mutants.py (final)                                   exit=0  28 killed, R30 R31 R32 survived, R12 not run (reviewer-mutants-final.log)
+  mutate-r1.py <root> mutants-r1-unit.log unit                  exit=0  13 killed, 0 survived, 0 did not build
+  mutate-r1.py <root> mutants-r1-db-build.log dbbuild           exit=0  3 DB mutants build; tests NOT RUN
+  ../2026-10-25-T-029/mutate.py <root> mutants-unit-rerun.log unit   exit=0  39 killed
+
+NOT RUN (no PostgreSQL): make integration-test, make db-test, make db-go-test, TestCompareReadsOneReadOnlySnapshot, R30 and the 3 DB mutants' tests

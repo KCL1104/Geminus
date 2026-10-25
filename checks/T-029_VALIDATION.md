@@ -166,3 +166,73 @@ Branch `t029`，從 3e56705 開出，沒有 push。
 | `mutate.py <git archive 副本> <log> db`（`GEMINUS_REQUIRE_DB_TESTS=1`） | 0 | 5 個 DB mutant 全部被測試擋下（不是編譯錯誤）：`db-status-not-checked`、`db-scenario-named-as-baseline`、`db-readiness-before-existence`、`db-results-swapped`、`db-route-not-registered` |
 
 Log 與 exit code 在 `checks/evidence/2026-10-25-T-029/coordinator-*`。仍為 NOT RUN：`make e2e-test`（比較的 UI 屬 T-032）、live AI、OpenAPI 官方 validator、Node 24 上的 `frontend-test`（CI 執行）。D-088、D-089、D-090 仍是 PROPOSED，T-029 在 tasks.json 仍為 `not_started`。
+
+## Review 第 1 輪
+
+獨立 reviewer（H-003）第 1 輪：程式碼 ACCEPT（沒有 High／Medium），6 個 Low 與 4 個 Info 須在驗收前處理。Branch `t029-r1`，從 5d96749（上一節的整合 head）開出，沒有 push。本 worktree 沒有 database：新增的 DB 測試與 DB mutant 為 NOT RUN。沒有 live AI，沒有讀取或設定任何 key。沒有新依賴、沒有 migration；D-088、D-089、D-090 的文字有補充，但仍是 PROPOSED（`approved_by`／`approved_at` 為 null），T-029 在 tasks.json 仍為 `not_started`。Log 在 `checks/evidence/2026-10-25-T-029-r1/`。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 004bc01 | L1–L6、I1、I2 的修正與測試；I4 的 OpenAPI 說明；D-088 (e)(f) 與 D-089 (b) 的文字（DECISIONS_AND_TBD、decisions.json）、SIMULATION_SPEC §7、API_DATABASE §6；Makefile 的 `db-go-test` 加入 `./internal/comparisons/...` |
+| （本 commit） | 本節與 evidence |
+
+### 發現 → 修正 → 證據
+
+| 發現 | 修正 | 擋下它的測試 | 先紅後綠 |
+|---|---|---|---|
+| L1：RFC 6901 的解碼順序沒有測試（reviewer 的 R04：先解 `~0` 再解 `~1` 存活） | 程式本來就是正確的單次 `strings.NewReplacer`；補測試 | `TestPathEscaping`：key `~1`（path `…/~01/…`）與 key `/`（`…/~1/…`）是兩個不同的統計值、`Path` 的拼法、`Statistics` 列出的每個 path 都以 `Resolve` 取回同一個值 | R04 在舊測試上 SURVIVED（reviewer 的 `mutants.log`），新測試上 KILLED（`reviewer-mutants.log`） |
+| L2：±1e15 是閉區間但沒有測試（R06：`<=`→`<` 存活） | 補測試 | 新的 `TestRangeBounds`：值恰為 ±1e15 可比較；delta 恰為 1e15（0 → 1e15、−5e14 → 5e14）與 relative 恰為 1e15（0.5 → 5e14＋0.5）保留；下一個 binary64 的 delta 為 null（`DELTA_OUT_OF_RANGE`）、relative 為 null（`RELATIVE_DELTA_OUT_OF_RANGE`）；Result 中下一個 binary64 的值為 `ErrInconsistent`；測試先核對這些浮點數的關係，避免案例在無意間失效 | R06 SURVIVED → KILLED |
+| L3：warning 的順序與「只有 scenario 是 1 個 replication」沒有測試（R01、R02、R03 存活） | 程式已依 D-088 (d) 的順序且兩個 run 都看；補測試 | `TestWarnings`：四種 warning 同時出現，以 `slices.Equal` 比對 contract 的順序；baseline 3 個、scenario 1 個 replication 時有 `SINGLE_REPLICATION`（即使不可比） | R01、R02、R03 SURVIVED → KILLED |
+| L4：run ID regex 的 `$` 沒有測試（R28 存活：31 字元的 ID 被接受、變成 404） | 補測試 | `TestRunQuery`：多一個字元、在 baseline 後接一個字元、結尾的 `%0A`（兩邊）、開頭的空白，都是 400 並指出參數 | R28 SURVIVED → KILLED |
+| L5：`null` patch 被當成 baseline 的 `[]` | `emptyPatch` 先確認值是 array（去掉 JSON 空白後第一個字元為 `[`），否則 `ErrInconsistent` | `TestInconsistent` 的 `a null patch`（兩邊）；`TestComparableAcrossSpellings` 的 `" \n[ ]\t"` 仍是 baseline | `unit-red.log`：舊程式上失敗；mutant `null-patch-is-a-baseline`、`padded-empty-array-refused` KILLED |
+| L6：transaction 的 mode 沒有測試（R30：ReadSnapshot → ReadWrite 存活） | 只有 transaction 內才看得到它的 mode，沒有 hook 無法觀察（tenant 的 `TestReadSnapshot` 只證明 mode 本身的效果）。最小的 seam：package 內未匯出的 `inTransaction`，在 role check 之後於比較的 transaction 中呼叫；production 為 nil，package 外無法設定（D-045 review I6 的考量：不讓其他 package 能改動它）。mode 仍用 `tenant.ReadSnapshot`，與 internal/runs、internal/import/upload 相同：寫成 literal 需要 pgx 的常數（本 package 不得 import pgx，規則 `db-only-in-storage`）或手寫它們的字串值，而 DB 測試無論 mode 從哪裡來都觀察得到 | 新的 DB 測試 `TestCompareReadsOneReadOnlySnapshot`（`internal/comparisons/db_test.go`）：以 API login 呼叫 `Service.Compare`，hook 讀 `current_setting('transaction_isolation')` 與 `transaction_read_only`，要求恰好一次、`repeatable read`、`on`，之後 baseline 為 404；Makefile 的 `db-go-test` 加入本 package | DB 測試 NOT RUN（能編譯、`go vet` 通過、在此 SKIP）；R30 與 `db-read-write-transaction`、`db-read-committed-transaction`、`db-hook-not-called` 能 build，測試 NOT RUN |
+| I1：沒有比對 Result 的 model hash、effective model hash、config hash 與 tick unit | `compare.Run` 加上三個 hash（`internal/comparisons` 從 run row 帶入）；`check` 比對它們、`tick_unit`（millisecond）與 `time_boundary`（contract 的常數）；D-089 (b) 的文字列出 | `TestInconsistent` 的 5 個新案例（兩邊）；`TestInput` 要求三個 hash 都帶入 | `unit-red.log`：舊程式上 6 個失敗；5 個 mutant KILLED |
+| I2：D-089 (b) 說違反 Result contract 就是 server 錯誤，實際只查了一部分 | 選擇以 repository 既有的 runtime validator（`internal/model/validate`，santhosh-tekuri/jsonschema，已是依賴）驗證 **`metrics`**（`simulation.schema.json#/$defs/Result/properties/metrics`），不是整份 Result：比較讀取並輸出的每個值都在 `metrics` 中，其他被讀的 member 由 `check` 逐一比對；整份 Result 的驗證在 1000 個 replication、500 個 resource（約 10 MB）時實測約 1 秒（每次比較兩份），`metrics` 約 0.1 秒（暫時的量測，沒有提交）。D-089 (b) 改寫為實際檢查的範圍，並寫明不檢查的 member（每個 replication 的值，除了 `censored_entities`；trace）與理由 | `TestInconsistent` 的 9 個新案例（兩邊）：utilization 大於 1、null utilization 沒有 reason、unavailable 帶 CI、entity population 帶 CI、unavailable 沒有 reason、available 沒有樣本、available 的 queue 沒有 visit、負的 wait、未知的 population | `unit-red.log`：舊程式上失敗；mutant `metrics-not-validated`、`metrics-validated-against-nothing` KILLED |
+| I2 的後續：reviewer 的 R13（available 但不是有限數的值被接受）在 Compare 加入 schema 驗證後變成存活 | `Statistics`／`Resolve` 不經過 `check`（T-030 直接用它們），所以補測試證明它們自己仍拒絕 | `TestInconsistent`：超出範圍的 mean、NaN 的 p95、Inf 的 wait，`Statistics` 與 `Resolve` 都是 `ErrInconsistent` | R13 SURVIVED（`reviewer-mutants.log`）→ KILLED（`reviewer-mutants-final.log`；同一個 snippet 的 `summary-not-finite-ok`、`wait-not-finite-ok` 也 KILLED） |
+| I3：`metric_path` 的 pattern 沒有 dotall、maxLength 2048，而 Result 的 map 沒有 `propertyNames` | 不改程式（reviewer：今天到不了）：IR 的 ID 為 `^[A-Za-z][A-Za-z0-9_.:-]{0,127}$`，DORA 與 domain 的 key 由 pack 定義；記入下面的殘餘風險 | — | — |
+| I4：OpenAPI 的 404 說明說 `details[0].reason` 指出參數，但非成員的 404 沒有 details | 改寫：非成員得到沒有 details 的 404（與所有 route 相同，D-008） | `make spec-check` | — |
+| D-088 的兩個說明 | (e) domain pack 沒有凍結的版本，pack 計算的 domain／DORA 指標不在可比條件中（§7 沒有列）；(f) 負的 baseline 時 relative 照公式（−2 → −1 為 −0.5），UI 顯示「−50%」會像方向相反，T-032 須小心顯示。只改文字（DECISIONS_AND_TBD、decisions.json、SIMULATION_SPEC §7），仍是 PROPOSED | — | — |
+
+Reviewer 另外兩個存活的 mutant 不在發現清單中，維持不改：R31（404 的 message 文字）只改字串，不改 code、details 或是否洩漏存在性（`TestComparisonRoleMatrix` 已要求其他 organization 的 run 與不存在的 run 回應完全相同）；R32（completed 卻沒有 result 時回 409 而不是 500）在 0009 的 trigger 下到不了（run 只在寫入 result 的同一個 transaction 中變成 completed）。
+
+### 指令與 exit code
+
+在本 worktree 執行（`environment.txt`）；`make backend-test` 在 004bc01 上、先 `go clean -testcache`。Exit code 也在 `exit-codes.txt`。
+
+| 指令 | Exit | 結果 |
+|---|---|---|
+| `go test ./internal/results/compare/ ./internal/comparisons/`（新測試、修正前的程式） | 1 | `unit-red.log`：`TestInconsistent` 的 15 個新案例（兩邊，共 30 個子測試）與 `TestInput` 失敗；L1–L4 的測試在舊程式上通過（程式本身正確，它們擋的是 mutant） |
+| 同上（修正後） | 0 | `unit-green.log`：兩個 package `ok`；`TestCompareReadsOneReadOnlySnapshot` SKIP（沒有 database） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `spec-check.log`（OpenAPI 範例與 404 說明、decisions 的 shape：proposed 仍為 9） |
+| `make backend-test` | 0 | 66 個 package `ok`，沒有 FAIL；DB-backed 測試 SKIP（`backend-test.log`） |
+| `go test -race -count=1 ./internal/results/... ./internal/comparisons/... ./internal/api/...` | 0 | 4 個 package `ok`，沒有 data race（`race-touched.log`） |
+| `go test -count=1 ./internal/results/... ./internal/comparisons/` | 0 | `results-test.log` |
+| `make architecture-check` | 0 | `PASS architecture: 78 packages, 17 rules, 16 build configurations`（`compare` 新 import 的 `internal/model/validate` 在 kernel 內） |
+| `make frontend-test` | 0 | 445 個測試（本輪沒有改 TS 或 schema，只改 OpenAPI 的說明；照跑）（`frontend-test.log`） |
+| `reviewer-mutants.py`（reviewer 的 harness，修正後、R13 的測試之前） | 0 | 27 KILLED、R13、R30、R31、R32 存活、R12 NOT RUN（`reviewer-mutants.log`） |
+| `reviewer-mutants.py`（加上 R13 的測試之後） | 0 | 28 KILLED、R30、R31、R32 存活、R12 NOT RUN（`reviewer-mutants-final.log`） |
+| `mutate-r1.py <root> mutants-r1-unit.log unit` | 0 | 13 KILLED、0 存活、0 不能 build |
+| `mutate-r1.py <root> mutants-r1-db-build.log dbbuild` | 0 | 3 個 DB mutant 能 build，測試 NOT RUN |
+| 第 0 輪的 `mutate.py <root> mutants-unit-rerun.log unit` | 0 | 39 KILLED |
+| `make integration-test`、`make db-go-test` | — | NOT RUN（沒有 PostgreSQL） |
+
+### Mutation
+
+- **Reviewer 的 harness**（`reviewer-mutants.py`，overlay，不寫 worktree；log 為 `reviewer-mutants.log` 與修正 R13 之後的 `reviewer-mutants-final.log`）：R01、R02、R03、R04、R06、R28 由 SURVIVED 變為 KILLED；R13 見上；R12 的 snippet 因 I1 改寫了 window 的檢查而找不到，以同義的 `warmup-window-not-checked` 代替（KILLED）；R30 需要 database（NOT RUN）；R31、R32 見上。最終（`reviewer-mutants-final.log`）：32 個中 28 個 KILLED，R12 NOT RUN（snippet 已改寫，見上），R30、R31、R32 存活（R30 需要 database）。
+- **本輪的 mutant**（`mutate-r1.py`，`mutants-r1-unit.log`）：13 個 unit mutant 全部 KILLED（L5 兩個、I1 六個、I2 兩個、R13 的兩個、hash 沒有帶入一個），0 存活、0 不能 build；3 個 DB mutant（`mutants-r1-db-build.log`）能 build，測試 NOT RUN。
+- **第 0 輪的 harness 重跑**（`mutants-unit-rerun.log`）：39 個 unit mutant 全部 KILLED。
+
+### NOT RUN
+
+- `make integration-test`、`make db-test`、`make db-go-test`（沒有 PostgreSQL）。
+- 新的 DB 測試 `internal/comparisons` 的 `TestCompareReadsOneReadOnlySnapshot`（能編譯、`go vet` 通過，在此 SKIP），以及 reviewer 的 R30 與本輪的 3 個 DB mutant 的測試。
+- 既有的 DB 測試在本輪的改動下（`internal/api` 的四個比較測試：`check` 現在多比對三個 hash、window 的 unit 與 boundary，並驗證 metrics 的 schema；engine 產生的 Result 符合 schema，hash 由 0009 保證相同）。
+- `make e2e-test`、live AI、OpenAPI 官方 validator、Node 24 上的 `frontend-test`。
+
+### 殘餘風險（本輪新增）
+
+- **I3**：`metric_path` 的 pattern `^/metrics/.*$` 在 JSON Schema（ECMA-262）中 `.` 不含換行，maxLength 為 2048，而 Result 的 map 沒有限制 key：一個含換行或很長的 key 會讓 comparison 本身不符 contract。今天到不了（IR 的 ID 有 pattern 與 128 字元的上限，DORA 與 domain 的 key 由 pack 定義）；若之後 pack 允許任意 key，需在 pack 或 Result 的 schema 加上 `propertyNames`，或在 `compare` 中拒絕。
+- **L6 的 seam**：`inTransaction` 是 package 內的可變變數，只有本 package 的測試會設定；若有人在 production code 中設定它（同一個 package 內），比較會多執行一段程式。目前沒有這樣的程式碼。
+- **I2 的範圍**：`replication_summaries` 中除了 `censored_entities` 之外的值與 trace 不檢查（比較不讀它們）；若之後比較開始讀它們，需要一起驗證。

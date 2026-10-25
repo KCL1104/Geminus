@@ -1,0 +1,69 @@
+--- FAIL: TestInconsistent (0.13s)
+    --- FAIL: TestInconsistent/another_time_boundary/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_time_boundary/scenario (0.02s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_unavailable_summary_with_a_CI/baseline (0.01s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_unavailable_summary_with_a_CI/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_null_patch/baseline (0.01s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_null_patch/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_config_hash/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_config_hash/scenario (0.01s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_tick_unit/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_tick_unit/scenario (0.01s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_utilization_above_1/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_utilization_above_1/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_negative_wait/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_negative_wait/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_model_hash/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_model_hash/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_effective_model_hash/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_effective_model_hash/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_entity_population_with_a_CI/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_entity_population_with_a_CI/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_available_summary_of_no_sample/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_available_summary_of_no_sample/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_available_queue_of_no_visit/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_available_queue_of_no_visit/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_unknown_population/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_unknown_population/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_null_utilization_without_a_reason/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_null_utilization_without_a_reason/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_unavailable_summary_without_a_reason/baseline (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/an_unavailable_summary_without_a_reason/scenario (0.00s)
+        compare_test.go:770: <nil>, want ErrInconsistent
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/results/compare	5.928s
+--- FAIL: TestInput (0.00s)
+    comparisons_test.go:153: input {ID:sim_01M4YDQK00FGZZWH0PP15XPNFA ModelVersionID:mv_01M4YDQK00FRYWV7GS7X1QCXZR EngineVersion:des-go-0.4.0 DatasetManifestHash:sha256:1111111111111111111111111111111111111111111111111111111111111111 ModelHash: EffectiveModelHash: ConfigHash: ScenarioPatch:[91 123 34 111 112 34 58 34 116 101 115 116 34 44 34 112 97 116 104 34 58 34 47 110 97 109 101 34 44 34 118 97 108 117 101 34 58 34 120 34 125 93] Config:{Horizon:{Value:2 Unit:day} Warmup:{Value:1 Unit:hour} Replications:3 Seed:11 TraceLevel:sampled} Result:0x25e97af01b88}, want {ID:sim_01M4YDQK00FGZZWH0PP15XPNFA ModelVersionID:mv_01M4YDQK00FRYWV7GS7X1QCXZR EngineVersion:des-go-0.4.0 DatasetManifestHash:sha256:1111111111111111111111111111111111111111111111111111111111111111 ModelHash:sha256:2222222222222222222222222222222222222222222222222222222222222222 EffectiveModelHash:sha256:3333333333333333333333333333333333333333333333333333333333333333 ConfigHash:sha256:4444444444444444444444444444444444444444444444444444444444444444 ScenarioPatch:[91 123 34 111 112 34 58 34 116 101 115 116 34 44 34 112 97 116 104 34 58 34 47 110 97 109 101 34 44 34 118 97 108 117 101 34 58 34 120 34 125 93] Config:{Horizon:{Value:2 Unit:day} Warmup:{Value:1 Unit:hour} Replications:3 Seed:11 TraceLevel:sampled} Result:0x25e97af01b88}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/comparisons	0.027s
+FAIL
+exit=1
