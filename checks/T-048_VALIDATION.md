@@ -274,3 +274,9 @@ Coordinator 把九個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-0
 
 - B 下等待中的時鐘仍要等一個 unit 變成可用（finish-first 的本意），所以停機比例仍低於各時鐘獨立 renewal 的值（N9：0.131 對 ≈ 0.143）；這是 D-051 的語義，不是誤差。
 - SimPy 比對等待中的故障時去掉等待 0 分鐘的紀錄（兩邊都去），同一時刻的先後仍只由 kernel 的 golden 驗證。
+
+### Coordinator 的執行（第 1 輪修正，b1fceb2）
+
+Coordinator 把四個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（b6f7c1c 之後，沒有衝突）：e574501 → 2b1a7fe、5787a2c → 0109f1d、84a361a → 3eae3b4、47dd212 → b1fceb2。D-074 (a) 的建議改為 B 是 coordinator 的決定：已批准的 D-051／ADR-026 寫「等待中的故障依時刻 FIFO」與「每個 unit 一組獨立的 alternating renewal」，reviewer 的 N8、N9 顯示 A 與之相違；A 留作 owner 的選項，D-074 仍是 PROPOSED。ADR-026 中規劃的 G-F3（「兩次釋放：第一個被釋放的 unit 停機、第二個變成可用」）只涉及 job 的釋放，A 與 B 都符合，所以不需要修改已 ACCEPTED 的 ADR。
+
+之後在 b1fceb2 的 tree 上（`coordinator-environment.txt`），`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`simulation-reference-test`（83/83）、`backend-numeric`、`backend-race` 與新的 `dt_test_t048r1` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP；本輪改了 kernel 的結果，所以重跑）都是 exit 0。本輪沒有 TS 變更，`frontend-test` 沿用 b6f7c1c 的執行。Log 與 exit code 在 `checks/evidence/2026-10-25-T-048-r1/coordinator-*`。
