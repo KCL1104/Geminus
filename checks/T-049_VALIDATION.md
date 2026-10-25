@@ -328,3 +328,23 @@ ADR-026 D-050 的「SimPy」段原訂三件事：(1) Python 獨立實作 R1–R4
 - **Python 比對只涵蓋直線產線**：`calendar_reference.py` 的隨機模型都是 start → p0 → … → end，沒有 decision、rework、有限 buffer；R2–R4 只看 bundle，與拓樸無關，但 R1 沒有獨立實作（T-037）。
 - **SimPy 的投入表量化**：腳本以 Fraction 精確值 round half up，engine 以 binary64 的乘積再 round；兩者只在某個值與半 tick 的距離小於 binary64 的捨入時可能不同，G-R8 的值都遠離半 tick。
 - **Mutation 仍是抽樣**：本輪 reviewer 的 29 個 mutant 中有 5 個存活，3 個已補測試、2 個等價；harness 沒有涵蓋的規則仍可能只有鎖在保護。
+
+### Coordinator 的執行（第 1 輪，96f96de）
+
+Coordinator 把 `t049-r1` 的五個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`，接在 T-029 的 5d96749 之後：2fa48e6 → dacc73a、9101a72 → e0faf02、b6781e3 → ba8a0f1、534de30 → aa60c9d、82d62d4 → 96f96de。唯一的衝突是產生的 `checks/docs-check.json`：取本輪的版本，由 spec-check 重新產生（Markdown 檔數 102 → 103）。`planning/decisions.json` 自動合併，D-081–D-085 的新文字與 T-029 的 D-088–D-090 都在，順序依 ID。
+
+之後在同一個 tree 上（`coordinator-environment.txt`：HEAD 96f96de、沒有其他變更、go1.27.3、Node 22.22.0、PostgreSQL 16.15）執行以下指令，全部 exit 0：
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `make spec-check` | 0 | 重新產生 `checks/docs-check.json` |
+| `make backend-test` | 0 | |
+| `make architecture-check` | 0 | |
+| `make ai-eval` | 0 | |
+| `make frontend-test` | 0 | Node 22.22.0；Node 24 由 CI 執行 |
+| `make simulation-reference-test` | 0 | SimPy 140/140 個隨機比對；確定性 case 含 G-R8、G-R9；`calendar_reference.py` 對 Go 的 R2、R3、R4、next_fit、X_end、TTRmax 為 0 個差異 |
+| `make backend-numeric` | 0 | |
+| `make backend-race` | 0 | |
+| `make integration-test`（新的 `dt_test_t049r1`） | 0 | 32 個 package ok，沒有 FAIL |
+
+本輪沒有新的 DB 測試或 DB mutant，整合測試是為了確認整合後的 tree 沒有 regression。Log 與 exit code 在 `checks/evidence/2026-10-25-T-049-r1/coordinator-*`。D-081–D-085 仍是 PROPOSED，T-049 在 tasks.json 仍為 `not_started`。
