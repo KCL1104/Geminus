@@ -1,0 +1,6 @@
+db-status-not-checked: KILLED (TestComparisonRefusals|TestComparisonClosedLoop) --- FAIL: TestComparisonClosedLoop (0.46s) | --- FAIL: TestComparisonRefusals (0.73s)
+db-scenario-named-as-baseline: KILLED (TestComparisonRoleMatrix|TestComparisonRefusals) --- FAIL: TestComparisonRoleMatrix (0.52s) | --- FAIL: TestComparisonRefusals (0.87s)
+db-readiness-before-existence: KILLED (TestComparisonRefusals) --- FAIL: TestComparisonRefusals (0.83s)
+db-results-swapped: KILLED (TestComparisonClosedLoop) --- FAIL: TestComparisonClosedLoop (0.39s)
+db-route-not-registered: KILLED (TestComparisonClosedLoop) --- FAIL: TestComparisonClosedLoop (0.35s)
+TOTAL 5 (db): 5 killed, 0 survived, 0 did not build

@@ -1,6 +1,6 @@
 # T-029 驗證報告：Results／baseline comparison API
 
-**日期：2026-10-25｜狀態：agent 實作完成，等 coordinator 在一次性 database 上執行 DB 測試與 `make integration-test`，以及獨立 review（H-003）；T-029 在 tasks.json 仍為 `not_started`（agent 不改狀態）。｜需求：REQ-013、REQ-014、REQ-015（另涵蓋 REQ-002、REQ-019 中比較的部分）｜Gate：D-010 已 APPROVED；本任務提出的 D-088、D-089、D-090 是 **PROPOSED**（`approved_by`／`approved_at` 為 null），依建議實作並加進 T-029 的 gate（D-090 另加進 T-030、T-032）。｜驗收測試：TEST-022、TEST-023、TEST-024（另寫了 TEST-009 中比較的部分）｜本 worktree 沒有 PostgreSQL：所有 DB-backed Go 測試都 SKIP，`make integration-test` 為 NOT RUN（見「NOT RUN」）。**
+**日期：2026-10-25｜狀態：agent 實作完成；DB 測試、DB mutant 與 `make integration-test` 已由 coordinator 在一次性 database 上執行（72e370d，全部 exit 0，見「Coordinator 的執行」）；等獨立 review（H-003）；T-029 在 tasks.json 仍為 `not_started`（agent 不改狀態）。｜需求：REQ-013、REQ-014、REQ-015（另涵蓋 REQ-002、REQ-019 中比較的部分）｜Gate：D-010 已 APPROVED；本任務提出的 D-088、D-089、D-090 是 **PROPOSED**（`approved_by`／`approved_at` 為 null），依建議實作並加進 T-029 的 gate（D-090 另加進 T-030、T-032）。｜驗收測試：TEST-022、TEST-023、TEST-024（另寫了 TEST-009 中比較的部分）｜本 worktree 沒有 PostgreSQL：所有 DB-backed Go 測試都 SKIP，`make integration-test` 為 NOT RUN（見「NOT RUN」）。**
 
 範圍依 tasks.json 與 coordinator 的指示：
 
@@ -146,3 +146,23 @@ Branch `t029`，從 3e56705 開出，沒有 push。
 - **每次比較讀兩個完整的 Result**（1000 個 replication 時可能數 MB），沒有快取；目前與 getSimulationResults 相同，benchmark 屬 T-037。
 - **UI 字串**：新的 code（9 個 reason、8 個不可比原因、4 個 warning）在 UI 的 message catalog 中還沒有兩語文案（T-032）；`apps/web` 的 i18n 測試只列舉 ErrorCode 與 ValidationCode，不會因此失敗。
 - **D-088–D-090 待 owner 決定**：選其他選項時依各項「不採用時」修改；特別是 D-088 (a) 改為 B 或不可比時改回 422，會改 schema、fixtures 與 golden。
+
+## Coordinator 的執行（72e370d）
+
+`t029` 是從 3e56705（整合後的 head）開出的，所以 coordinator 以 fast-forward 把七個 commit 接到 `claude/lucid-meitner-vq1awo`，hash 不變（bf3bd76 … 72e370d）。之後在同一個 tree 上（`coordinator-environment.txt`：HEAD 72e370d、沒有其他變更、go1.27.3、Node 22.22.0、PostgreSQL 16.15）：
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `make spec-check` | 0 | |
+| `make backend-test` | 0 | |
+| `make architecture-check` | 0 | |
+| `make ai-eval` | 0 | |
+| `make frontend-test` | 0 | Node 22.22.0；Node 24 由 CI 執行 |
+| `make simulation-reference-test` | 0 | |
+| `make backend-race` | 0 | |
+| `make integration-test`（新的 `dt_test_t029`） | 0 | 32 個 package ok，沒有 FAIL |
+| `make db-test`（另一個新的 `dt_test_t029m`，供下面兩項） | 0 | |
+| `go test -count=1 -v -run TestComparison ./internal/api/`（`GEMINUS_REQUIRE_DB_TESTS=1`） | 0 | 四個新的 DB 測試在 database 上執行並 PASS，不是 SKIP：`TestComparisonClosedLoop`、`TestComparisonIncomparable`、`TestComparisonRoleMatrix`、`TestComparisonRefusals`。agent 推論的期望值（例如 baseline wait mean 47.5 分）不需要修改 |
+| `mutate.py <git archive 副本> <log> db`（`GEMINUS_REQUIRE_DB_TESTS=1`） | 0 | 5 個 DB mutant 全部被測試擋下（不是編譯錯誤）：`db-status-not-checked`、`db-scenario-named-as-baseline`、`db-readiness-before-existence`、`db-results-swapped`、`db-route-not-registered` |
+
+Log 與 exit code 在 `checks/evidence/2026-10-25-T-029/coordinator-*`。仍為 NOT RUN：`make e2e-test`（比較的 UI 屬 T-032）、live AI、OpenAPI 官方 validator、Node 24 上的 `frontend-test`（CI 執行）。D-088、D-089、D-090 仍是 PROPOSED，T-029 在 tasks.json 仍為 `not_started`。
