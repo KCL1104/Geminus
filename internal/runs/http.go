@@ -15,6 +15,7 @@ import (
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -136,7 +137,7 @@ func details(issues []model.ValidationIssue) []httpapi.Detail {
 func Refused(err error) error {
 	var re *RequestError
 	var ie *InvalidError
-	var storage *DatasetStorageError
+	_, storage := datasets.StorageFailure(err)
 	switch {
 	case errors.As(err, &re):
 		return &httpapi.Error{Code: httpapi.RequestValidationFailed, Message: "the run request is not acceptable", Details: details(re.Issues)}
@@ -152,10 +153,10 @@ func Refused(err error) error {
 		return httpapi.Errorf(httpapi.NotFound, "the run has no sampled trace")
 	case errors.Is(err, ErrStorageUnavailable):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "object storage is not configured for this deployment")
-	case errors.As(err, &storage):
-		// The cause is logged by the handler, never sent (H-022).
-		return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was queued (retry later)",
-			Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}}
+	case storage:
+		// A snapshot that could not be read (datasets.StorageFailure); the
+		// cause is logged by the handler, never sent (H-022, T-054).
+		return httpapi.DatasetStorageFailed("the dataset snapshots could not be read; nothing was queued (retry later)")
 	case errors.Is(err, ErrInvalidCursor):
 		return httpapi.InvalidCursor()
 	case errors.Is(err, ErrInvalidLimit):
@@ -179,10 +180,9 @@ func (h handlers) create(w http.ResponseWriter, r *http.Request, sc tenant.Scope
 	}
 	status, out, err := h.s.Create(r.Context(), sc, httpapi.RequestID(r.Context()), key, body, req)
 	if err != nil {
-		var storage *DatasetStorageError
-		if errors.As(err, &storage) {
+		if read, ok := datasets.StorageFailure(err); ok {
 			h.log.WarnContext(r.Context(), "reading a run's dataset snapshots failed", "request_id", httpapi.RequestID(r.Context()),
-				"organization_id", sc.OrganizationID, "model_version_id", req.ModelVersionID, "error", storage.Err.Error())
+				"organization_id", sc.OrganizationID, "model_version_id", req.ModelVersionID, "error", read.Error())
 		}
 		return Refused(err)
 	}

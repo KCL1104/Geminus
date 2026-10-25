@@ -70,32 +70,6 @@ func (e *InvalidError) Error() string {
 	return fmt.Sprintf("models: invalid (%d issue(s))", len(e.Issues))
 }
 
-// DatasetStorageError: the dataset binding stage could not read or verify
-// a snapshot the manifest binds (an infrastructure failure, not a problem
-// of the data, which is an issue). Nothing was stored. publishVersion,
-// patchDraft and resetDraft answer it with 503 DATASET_STORAGE_FAILED, as
-// approveProposal does for its draft sync (Advance) and createManualScenario
-// for its own binding stage (D-069 (b); H-022 Q4, which the coordinator
-// extended to the draft routes and the draft sync; T-054).
-type DatasetStorageError struct{ Err error }
-
-func (e *DatasetStorageError) Error() string {
-	return "models: the dataset snapshots could not be read: " + e.Err.Error()
-}
-
-func (e *DatasetStorageError) Unwrap() error { return e.Err }
-
-// bindingFailure is what the dataset binding stage answers when it fails
-// with err rather than with issues: a storage failure, unless the request
-// itself ended (then the context's error, which httpapi answers as it
-// answers any ended request). The approval's and the scenarios' rule.
-func bindingFailure(ctx context.Context, err error) error {
-	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return err
-	}
-	return &DatasetStorageError{Err: err}
-}
-
 // PackLookup finds the domain pack of a model; *domainpack.Registry is one.
 type PackLookup interface {
 	Lookup(domain string) (domainpack.DomainPack, error)
@@ -520,10 +494,11 @@ func (s *Service) ResetDraft(ctx context.Context, sc tenant.Scope, requestID, mo
 // Publish makes the draft the model's next immutable version (API_DATABASE
 // §4): the draft must be at revision expected (If-Match), based on the
 // latest version, which req names, and have changes; the whole candidate
-// is validated, datasets included. Snapshots that cannot be read or
-// verified, for the candidate or for the draft that follows the new
-// version, are a DatasetStorageError, and the transaction stores nothing
-// (no version, audit event or idempotency response; H-022). Like Create
+// is validated, datasets included. A snapshot that cannot be read, for the
+// candidate or for the draft that follows the new version, is a
+// datasets.ReadError (datasets.StorageFailure: 503), and the transaction
+// stores nothing (no version, audit event or idempotency response; H-022,
+// T-054). Like Create
 // it is idempotent per key and returns the HTTP status and body.
 func (s *Service) Publish(ctx context.Context, sc tenant.Scope, requestID, key, modelID string, expected int64, body []byte, req PublishRequest) (int, []byte, error) {
 	comment, err := publishComment(req.Comment)
@@ -775,8 +750,11 @@ func (s *Service) issues(ctx context.Context, org string, ir *model.ModelIR, sem
 // manifest paths into manifest (TWIN_IR_SPEC §5.2). Each stage runs only if
 // the ones before it found no error (D-023). Every binding of manifest is
 // checked and frozen, used or not (§5.2: a run keeps the version's
-// manifest; T-012 review M3), so a manifest needs dataset storage, and a
-// snapshot that cannot be read is a DatasetStorageError (bindingFailure).
+// manifest; T-012 review M3), so a manifest needs dataset storage. The
+// binding stage's error is datasets.Failure's: a snapshot that cannot be
+// read is a datasets.ReadError (503 on every model route, D-069 (b),
+// H-022, D-087), a request that ended its context's error, anything else
+// a server fault (500).
 func (s *Service) check(ctx context.Context, org string, ir *model.ModelIR, semantic []model.ValidationIssue, manifest []model.DatasetBinding) (datasets.Resolution, []model.ValidationIssue, error) {
 	pack, err := s.Packs.Lookup(ir.Domain)
 	if err != nil {
@@ -793,7 +771,7 @@ func (s *Service) check(ctx context.Context, org string, ir *model.ModelIR, sema
 	if !slices.ContainsFunc(issues, isError) { // binding checks need a semantically valid IR
 		res, err = datasets.Resolve(ctx, s.Datasets, org, ir, manifest)
 		if err != nil {
-			return datasets.Resolution{}, nil, bindingFailure(ctx, err)
+			return datasets.Resolution{}, nil, datasets.Failure(ctx, err)
 		}
 		for _, i := range res.Issues {
 			if rest, ok := strings.CutPrefix(i.Path, "/ir"); ok && (rest == "" || rest[0] == '/') {

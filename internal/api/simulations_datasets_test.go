@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
@@ -146,26 +147,34 @@ func TestRunDatasets(t *testing.T) {
 // set one.
 type flakyObjects struct {
 	objects.Store
-	mu    sync.Mutex
-	err   error
-	reads int
+	mu     sync.Mutex
+	err    error
+	reads  int
+	cancel context.CancelFunc // with err: ends the request first
 }
 
 func (f *flakyObjects) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	f.mu.Lock()
 	f.reads++
-	err := f.err
+	err, cancel := f.err, f.cancel
 	f.mu.Unlock()
 	if err != nil {
+		if cancel != nil {
+			cancel()
+		}
 		return nil, err
 	}
 	return f.Store.Get(ctx, key)
 }
 
-func (f *flakyObjects) fail(err error) {
+func (f *flakyObjects) fail(err error) { f.failEnding(err, nil) }
+
+// failEnding makes reads fail with err after they end the request with
+// cancel (the request ends while the store fails on its own).
+func (f *flakyObjects) failEnding(err error, cancel context.CancelFunc) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.err, f.reads = err, 0
+	f.err, f.reads, f.cancel = err, 0, cancel
 }
 
 func (f *flakyObjects) count() int {
@@ -260,6 +269,27 @@ func TestRunSnapshotStorageFailure(t *testing.T) {
 		t.Errorf("a read past its deadline: %d %s", r.status, r.body)
 	}
 	nothing("a read past its deadline")
+
+	// The request ends while the store fails with its own error (T-054
+	// review L2): the ended request's 503, not a server error. The request
+	// goes straight to the handler cmd/api serves, so the test can end it.
+	ctx, end := context.WithCancel(context.Background())
+	flaky.failEnding(errors.New(cause), end)
+	req := httptest.NewRequestWithContext(ctx, "POST", "/v1/simulations", strings.NewReader(runRequest(mv, 1, "none", nil)))
+	req.Header.Set("Authorization", "Bearer "+e.token(editor.Subject))
+	req.Header.Set("X-Organization-ID", e.a.ID)
+	req.Header.Set("Idempotency-Key", key)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	e.srv.Config.Handler.ServeHTTP(rec, req)
+	r = resp{rec.Code, rec.Header(), rec.Body.Bytes()}
+	if r.status != 503 || code(t, r) != "SERVICE_UNAVAILABLE" || strings.Contains(string(r.body), "DATASET_STORAGE_FAILED") {
+		t.Errorf("the request ended while the store failed: %d %s", r.status, r.body)
+	}
+	if flaky.count() == 0 {
+		t.Error("the snapshot was not read")
+	}
+	nothing("the request ended while the store failed")
 
 	// Storage answers again: the same request with the same key is queued.
 	flaky.fail(nil)

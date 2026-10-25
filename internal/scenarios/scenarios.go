@@ -75,17 +75,6 @@ func (e *InvalidError) Error() string {
 	return fmt.Sprintf("scenarios: the patch is not acceptable (%d issue(s))", len(e.Issues))
 }
 
-// DatasetStorageError: the dataset binding stage could not read or verify
-// the base's snapshots (an infrastructure failure, 503
-// DATASET_STORAGE_FAILED, as an approval's, D-069 (b)); nothing was stored.
-type DatasetStorageError struct{ Err error }
-
-func (e *DatasetStorageError) Error() string {
-	return "scenarios: the dataset snapshots could not be read: " + e.Err.Error()
-}
-
-func (e *DatasetStorageError) Unwrap() error { return e.Err }
-
 // PackLookup finds a model's domain pack; *domainpack.Registry is one.
 type PackLookup interface {
 	Lookup(domain string) (domainpack.DomainPack, error)
@@ -135,16 +124,6 @@ func fingerprint(versionID string, body []byte) (string, error) {
 		return "", err
 	}
 	return hashing.Of(data)
-}
-
-// bindingFailure is what a create answers when the dataset binding stage
-// fails with err rather than with issues: a storage failure, unless the
-// request itself ended.
-func bindingFailure(ctx context.Context, err error) error {
-	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return err
-	}
-	return &DatasetStorageError{Err: err}
 }
 
 // Create saves the scenario req on version versionID for the scoped user,
@@ -203,7 +182,11 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, v
 		}
 		resolution, err := datasets.Resolve(ctx, snapshots.Store{Keys: keys, Objects: s.Objects}, org, c.ir, v.DatasetBindings)
 		if err != nil {
-			return bindingFailure(ctx, err)
+			// A snapshot that cannot be read is a datasets.ReadError (503
+			// DATASET_STORAGE_FAILED, as an approval's, D-069 (b)); the
+			// ended request's context error, or a server fault (500),
+			// otherwise (T-054 review L1, L2). Nothing is stored.
+			return datasets.Failure(ctx, err)
 		}
 		if !resolution.Valid() {
 			return &InvalidError{Issues: capped(withoutIR(resolution.Issues))}

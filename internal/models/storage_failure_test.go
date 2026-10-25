@@ -1,10 +1,12 @@
 package models_test
 
-// T-054 (H-022, D-069 (b)): publishVersion when the dataset binding stage
-// cannot read or verify a snapshot the base binds. It answers 503
-// SERVICE_UNAVAILABLE with details[0].code DATASET_STORAGE_FAILED, as
-// approveProposal and createManualScenario do; the cause is logged, never
-// sent; a request that ended keeps its context's error; nothing is written.
+// T-054 (H-022, D-069 (b), D-087): publishVersion, patchDraft and
+// resetDraft when the dataset binding stage cannot read a snapshot the
+// base binds. They answer 503 SERVICE_UNAVAILABLE with details[0].code
+// DATASET_STORAGE_FAILED, as approveProposal and createManualScenario do;
+// the cause is logged, never sent; a request that ended keeps its
+// context's error; any other error of the stage is a server fault (500);
+// nothing is written.
 
 import (
 	"bytes"
@@ -27,6 +29,7 @@ import (
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
+	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
@@ -39,54 +42,99 @@ import (
 // The cause a failing store gives: it must reach the log, never the client.
 const storageCause = "open /srv/objects/tenant/secret: input/output error"
 
-// A binding stage that fails with an error rather than with issues is a
-// storage failure (DatasetStorageError, 503 DATASET_STORAGE_FAILED on
-// publishVersion), unless the request ended or the error says it did:
-// then the context's error stays, and httpapi answers it as it answers any
-// ended request. The pattern of the approval's and the scenarios'
-// TestBindingFailure.
-func TestBindingFailure(t *testing.T) {
-	cause := errors.New(storageCause)
-	var se *models.DatasetStorageError
-	if err := models.BindingFailure(context.Background(), cause); !errors.As(err, &se) || !errors.Is(err, cause) {
-		t.Errorf("a read failure: %v", err)
+// mapped is what a model route answers for err, an error of its binding
+// stage as the route returns it (datasets.Failure): status, envelope and
+// httpapi's log.
+func mapped(t *testing.T, err error) (int, errorEnvelope, string) {
+	t.Helper()
+	var logs bytes.Buffer
+	w := httptest.NewRecorder()
+	httpapi.Handler(slog.New(slog.NewJSONHandler(&logs, nil)), func(http.ResponseWriter, *http.Request) error { return models.Refused(err) }).
+		ServeHTTP(w, httptest.NewRequest("POST", "/v1/models/x/versions", nil))
+	var env errorEnvelope
+	if issues, verr := validate.Document(w.Body.Bytes(), "common.schema.json#/$defs/Error", "RESPONSE"); verr != nil || len(issues) > 0 {
+		t.Errorf("%s is not a contract error: %v %v", w.Body, issues, verr)
 	}
+	if jerr := json.Unmarshal(w.Body.Bytes(), &env); jerr != nil {
+		t.Fatal(jerr)
+	}
+	if strings.Contains(w.Body.String(), "secret") || strings.Contains(w.Body.String(), "hashing") {
+		t.Errorf("the cause is sent: %s", w.Body)
+	}
+	return w.Code, env, logs.String()
+}
+
+// The model routes' answer to each kind of binding-stage error (T-054
+// review L1, L2; the shared rule is internal/storage/datasets'
+// TestFailure): a snapshot that could not be read while the request was
+// alive is 503 DATASET_STORAGE_FAILED; any other error of the stage is a
+// server fault, 500 INTERNAL_ERROR logged at ERROR by httpapi; a request
+// that ended, or a read that says it did, is the ended request's 503
+// without details, whatever the store said.
+func TestBindingFailure(t *testing.T) {
+	read := &datasets.ReadError{DatasetVersionID: ids.New("dsv"), Err: errors.New(storageCause)}
+	fault := fmt.Errorf("hashing a shape-checked manifest: %w", errors.New("invalid"))
+	decode := fmt.Errorf("schema-valid snapshot does not decode: %w", io.ErrUnexpectedEOF)
+	live := context.Background()
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
 	expired, stop := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer stop()
-	for name, c := range map[string]struct {
-		ctx  context.Context
-		err  error
-		want error
+	for _, c := range []struct {
+		name     string
+		ctx      context.Context
+		err      error
+		status   int
+		code     string
+		detail   string // details[0].code, or "" for none
+		errorLog bool
 	}{
-		"a cancelled request":                        {cancelled, fmt.Errorf("reading: %w", context.Canceled), context.Canceled},
-		"a cancelled request, the store's own error": {cancelled, cause, cause},
-		"a request past its deadline":                {expired, fmt.Errorf("reading: %w", context.DeadlineExceeded), context.DeadlineExceeded},
-		"a request past its deadline, the store's":   {expired, cause, cause},
-		// The request is alive, but the error says it ended: still the
-		// context's error, not the store's failure.
-		"a live request, a cancelled read": {context.Background(), fmt.Errorf("reading: %w", context.Canceled), context.Canceled},
-		"a live request, a read past its deadline": {context.Background(), fmt.Errorf("reading: %w", context.DeadlineExceeded),
-			context.DeadlineExceeded},
+		{"a read failure", live, read, 503, "SERVICE_UNAVAILABLE", "DATASET_STORAGE_FAILED", false},
+		{"a server fault", live, fault, 500, "INTERNAL_ERROR", "", true},
+		{"a snapshot that does not decode", live, decode, 500, "INTERNAL_ERROR", "", true},
+		{"a read past its deadline", live, &datasets.ReadError{Err: fmt.Errorf("get: %w", context.DeadlineExceeded)}, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a cancelled request, the store's own error", cancelled, read, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a cancelled request, a server fault", cancelled, fault, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a request past its deadline, the store's own error", expired, read, 503, "SERVICE_UNAVAILABLE", "", false},
 	} {
-		err := models.BindingFailure(c.ctx, c.err)
-		if errors.As(err, &se) || !errors.Is(err, c.want) {
-			t.Errorf("%s: %v", name, err)
+		status, env, logs := mapped(t, datasets.Failure(c.ctx, c.err))
+		detail := ""
+		if len(env.Error.Details) > 0 {
+			detail = env.Error.Details[0].Code
+		}
+		if status != c.status || env.Error.Code != c.code || detail != c.detail || len(env.Error.Details) > 1 {
+			t.Errorf("%s: %d %+v", c.name, status, env)
+		}
+		if got := strings.Contains(logs, `"level":"ERROR"`); got != c.errorLog {
+			t.Errorf("%s: ERROR log %v, want %v: %s", c.name, got, c.errorLog, logs)
+		}
+		if c.errorLog && !strings.Contains(logs, c.err.Error()) {
+			t.Errorf("%s: the server fault is not logged: %s", c.name, logs)
 		}
 	}
 }
 
-// unreadable is dataset storage whose every read fails with err.
-type unreadable struct{ err error }
+// unreadable is dataset storage whose every read fails with err, after
+// cancelling the request first when cancel is set (the request ends while
+// the store fails on its own).
+type unreadable struct {
+	err    error
+	cancel context.CancelFunc
+}
 
-func (u unreadable) Open(context.Context, string, string) (io.ReadCloser, error) { return nil, u.err }
+func (u unreadable) Open(context.Context, string, string) (io.ReadCloser, error) {
+	if u.cancel != nil {
+		u.cancel()
+	}
+	return nil, u.err
+}
 
 // The binding stage inside check, where publishVersion meets it twice (the
-// candidate, then the draft that follows the new version): storage that
-// cannot be read is a DatasetStorageError; a snapshot that is not there is
-// an issue of the data, not an error; a request that ended keeps the
-// context's error.
+// candidate, then the draft that follows the new version) and patchDraft
+// and resetDraft once: storage that cannot be read is a datasets.ReadError
+// for the bound version; a snapshot that is not there is an issue of the
+// data, not an error; a request that ended keeps the context's error, also
+// when the store gives its own (review L2).
 func TestCheckStorageFailure(t *testing.T) {
 	var doc map[string]any
 	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata", "golden-models", "default-delivery.json")), &doc); err != nil {
@@ -112,28 +160,41 @@ func TestCheckStorageFailure(t *testing.T) {
 		ContentHash: "sha256:" + strings.Repeat("0", 64), Unit: model.Minute, SampleCount: 3}}
 	svc := &models.Service{Packs: reg}
 	cause := errors.New(storageCause)
-	var se *models.DatasetStorageError
 
-	svc.Datasets = unreadable{cause}
-	if _, err := svc.Check(context.Background(), org, res.IR, manifest); !errors.As(err, &se) || !errors.Is(err, cause) {
+	svc.Datasets = unreadable{err: cause}
+	_, err = svc.Check(context.Background(), org, res.IR, manifest)
+	if read, ok := datasets.StorageFailure(err); !ok || read.DatasetVersionID != manifest[0].DatasetVersionID || !errors.Is(err, cause) {
 		t.Errorf("storage that fails: %v", err)
 	}
-	svc.Datasets = unreadable{datasets.ErrNotFound}
+	svc.Datasets = unreadable{err: datasets.ErrNotFound}
 	issues, err := svc.Check(context.Background(), org, res.IR, manifest)
 	if err != nil || !slices.ContainsFunc(issues, func(i model.ValidationIssue) bool {
 		return i.Code == validate.DatasetBindingInvalid && i.Path == "/dataset_bindings/0/dataset_version_id"
 	}) {
 		t.Errorf("a snapshot that is not there: %v %v", issues, err)
 	}
-	svc.Datasets = unreadable{fmt.Errorf("reading: %w", context.DeadlineExceeded)}
-	if _, err := svc.Check(context.Background(), org, res.IR, manifest); errors.As(err, &se) || !errors.Is(err, context.DeadlineExceeded) {
+	svc.Datasets = unreadable{err: fmt.Errorf("reading: %w", context.DeadlineExceeded)}
+	if _, err := svc.Check(context.Background(), org, res.IR, manifest); !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("a read past its deadline: %v", err)
+	} else if _, ok := datasets.StorageFailure(err); ok {
+		t.Errorf("a read past its deadline is a storage failure: %v", err)
 	}
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	svc.Datasets = unreadable{cause}
-	if _, err := svc.Check(cancelled, org, res.IR, manifest); errors.As(err, &se) || !errors.Is(err, context.Canceled) {
+	svc.Datasets = unreadable{err: cause}
+	if _, err := svc.Check(cancelled, org, res.IR, manifest); !errors.Is(err, context.Canceled) {
 		t.Errorf("a cancelled request: %v", err)
+	} else if _, ok := datasets.StorageFailure(err); ok {
+		t.Errorf("a cancelled request is a storage failure: %v", err)
+	}
+	// The request ends while the store fails with its own error.
+	ending, end := context.WithCancel(context.Background())
+	defer end()
+	svc.Datasets = unreadable{err: cause, cancel: end}
+	if _, err := svc.Check(ending, org, res.IR, manifest); !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+		t.Errorf("a request that ended while the store failed: %v", err)
+	} else if _, ok := datasets.StorageFailure(err); ok {
+		t.Errorf("a request that ended while the store failed is a storage failure: %v", err)
 	}
 	// Without a manifest nothing is read, so nothing can fail.
 	if issues, err := svc.Check(context.Background(), org, res.IR, nil); err != nil || slices.ContainsFunc(issues, func(i model.ValidationIssue) bool {
@@ -151,30 +212,37 @@ func (subjects) Verify(_ context.Context, token string) (auth.Identity, error) {
 }
 
 // flaky is dataset storage that serves snapshots, or fails with err from
-// its from-th read on (1 is the first) once fail sets it.
+// its from-th read on (1 is the first) once fail sets it; with cancel set
+// it ends the request first (the request ends while the store fails).
 type flaky struct {
 	snapshots
 	mu          sync.Mutex
 	reads, from int
 	err         error
+	cancel      context.CancelFunc
 }
 
 func (f *flaky) Open(ctx context.Context, org, dsv string) (io.ReadCloser, error) {
 	f.mu.Lock()
 	f.reads++
 	failing := f.err != nil && f.reads >= f.from
-	err := f.err
+	err, cancel := f.err, f.cancel
 	f.mu.Unlock()
 	if failing {
+		if cancel != nil {
+			cancel()
+		}
 		return nil, err
 	}
 	return f.snapshots.Open(ctx, org, dsv)
 }
 
-func (f *flaky) fail(from int, err error) {
+func (f *flaky) fail(from int, err error) { f.failEnding(from, err, nil) }
+
+func (f *flaky) failEnding(from int, err error, cancel context.CancelFunc) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.reads, f.from, f.err = 0, from, err
+	f.reads, f.from, f.err, f.cancel = 0, from, err, cancel
 }
 
 func (f *flaky) count() int {
@@ -245,7 +313,13 @@ func (e *env) handler(logs *bytes.Buffer) http.Handler {
 // contract's envelope, its request_id the X-Request-ID.
 func (e *env) call(t *testing.T, h http.Handler, method, path, contentType string, headers map[string]string, body string) (*httptest.ResponseRecorder, errorEnvelope) {
 	t.Helper()
-	r := httptest.NewRequest(method, path, strings.NewReader(body))
+	return e.callIn(t, context.Background(), h, method, path, contentType, headers, body)
+}
+
+// callIn is call with the request's context ctx (a test may end it).
+func (e *env) callIn(t *testing.T, ctx context.Context, h http.Handler, method, path, contentType string, headers map[string]string, body string) (*httptest.ResponseRecorder, errorEnvelope) {
+	t.Helper()
+	r := httptest.NewRequestWithContext(ctx, method, path, strings.NewReader(body))
 	r.Header.Set("Authorization", "Bearer "+e.org.Members[tenant.Editor].Subject)
 	r.Header.Set("X-Organization-ID", e.org.ID)
 	r.Header.Set("Content-Type", contentType)
@@ -349,10 +423,10 @@ func TestPublishSnapshotStorageFailure(t *testing.T) {
 	}
 	var logs bytes.Buffer
 	h := e.handler(&logs)
-	publish := func(k string) (*httptest.ResponseRecorder, errorEnvelope) {
+	publish := func(ctx context.Context, k string) (*httptest.ResponseRecorder, errorEnvelope) {
 		t.Helper()
 		logs.Reset()
-		return e.call(t, h, "POST", "/v1/models/"+m.ID+"/versions", "application/json",
+		return e.callIn(t, ctx, h, "POST", "/v1/models/"+m.ID+"/versions", "application/json",
 			map[string]string{"Idempotency-Key": k, "If-Match": `"draft-revision-3"`}, fmt.Sprintf(`{"expected_base_version_id":%q}`, base))
 	}
 	k := key()
@@ -370,7 +444,7 @@ func TestPublishSnapshotStorageFailure(t *testing.T) {
 		{"the check of the draft that follows the new version", 2, 2},
 	} {
 		store.fail(c.from, errors.New(storageCause))
-		w, env := publish(k)
+		w, env := publish(context.Background(), k)
 		storageFailed(t, c.name, w, env, logs.String(), m.ID)
 		if n := store.count(); n != c.reads {
 			t.Errorf("%s: %d reads, want %d", c.name, n, c.reads)
@@ -383,15 +457,24 @@ func TestPublishSnapshotStorageFailure(t *testing.T) {
 	// A read that says the request ended: the context's error, which
 	// httpapi answers as it answers any ended request.
 	store.fail(1, fmt.Errorf("reading: %w", context.DeadlineExceeded))
-	w, env := publish(k)
+	w, env := publish(context.Background(), k)
 	ended(t, "publishVersion", w, env, logs.String())
 	if after := e.written(t, m.ID, k); after != before {
 		t.Errorf("a publish past its deadline wrote %+v (before %+v)", after, before)
 	}
+	// The request ends while the store fails with its own error (review
+	// L2): the ended request's 503, not a server error.
+	ctx, end := context.WithCancel(context.Background())
+	store.failEnding(1, errors.New(storageCause), end)
+	w, env = publish(ctx, k)
+	ended(t, "publishVersion, the request ended while the store failed", w, env, logs.String())
+	if after := e.written(t, m.ID, k); after != before {
+		t.Errorf("a publish that ended while the store failed wrote %+v (before %+v)", after, before)
+	}
 
 	// Storage answers again: the same request with the same key publishes.
 	store.fail(0, nil)
-	w, _ = publish(k)
+	w, _ = publish(context.Background(), k)
 	if w.Code != 201 {
 		t.Fatalf("after storage recovers: %d %s", w.Code, w.Body)
 	}
@@ -407,13 +490,13 @@ func TestPublishSnapshotStorageFailure(t *testing.T) {
 	}
 }
 
-// H-022 Q4, which the coordinator extended to the draft routes: patchDraft
-// and resetDraft through their HTTP handler, on a base that binds a
-// dataset, when the binding stage cannot read the snapshot (the patched
-// draft's issues against the base's manifest; the latest version's
-// content, which a reset makes the draft, against that version's). 503
-// DATASET_STORAGE_FAILED, the cause logged and not sent; a read that says
-// the request ended is the context's 503 without details; nothing is
+// D-087 (H-023): patchDraft and resetDraft through their HTTP handler, on
+// a base that binds a dataset, when the binding stage cannot read the
+// snapshot (the patched draft's issues against the base's manifest; the
+// latest version's content, which a reset makes the draft, against that
+// version's). 503 DATASET_STORAGE_FAILED, the cause logged and not sent; a
+// read that says the request ended, or a request that ends while the store
+// fails, is the context's 503 without details (review L2); nothing is
 // written either way (no new draft revision, no audit event, no version),
 // so the same request with the same If-Match succeeds once storage
 // answers again. Neither route takes an Idempotency-Key.
@@ -426,16 +509,16 @@ func TestDraftSnapshotStorageFailure(t *testing.T) {
 	}
 	var logs bytes.Buffer
 	h := e.handler(&logs)
-	patchDraft := func() (*httptest.ResponseRecorder, errorEnvelope) {
+	patchDraft := func(ctx context.Context) (*httptest.ResponseRecorder, errorEnvelope) {
 		t.Helper()
 		logs.Reset()
-		return e.call(t, h, "PATCH", "/v1/models/"+m.ID+"/draft", "application/json-patch+json",
+		return e.callIn(t, ctx, h, "PATCH", "/v1/models/"+m.ID+"/draft", "application/json-patch+json",
 			map[string]string{"If-Match": `"draft-revision-2"`}, string(rename("Renamed")))
 	}
-	resetDraft := func() (*httptest.ResponseRecorder, errorEnvelope) {
+	resetDraft := func(ctx context.Context) (*httptest.ResponseRecorder, errorEnvelope) {
 		t.Helper()
 		logs.Reset()
-		return e.call(t, h, "POST", "/v1/models/"+m.ID+"/draft/reset", "application/json",
+		return e.callIn(t, ctx, h, "POST", "/v1/models/"+m.ID+"/draft/reset", "application/json",
 			map[string]string{"If-Match": `"draft-revision-3"`}, fmt.Sprintf(`{"expected_latest_version_id":%q,"confirm_discard":true}`, base))
 	}
 	before := e.written(t, m.ID, "")
@@ -445,7 +528,7 @@ func TestDraftSnapshotStorageFailure(t *testing.T) {
 
 	for _, route := range []struct {
 		name  string
-		send  func() (*httptest.ResponseRecorder, errorEnvelope)
+		send  func(context.Context) (*httptest.ResponseRecorder, errorEnvelope)
 		etag  string
 		check func(before, after written) bool
 	}{
@@ -457,7 +540,7 @@ func TestDraftSnapshotStorageFailure(t *testing.T) {
 		}},
 	} {
 		store.fail(1, errors.New(storageCause))
-		w, env := route.send()
+		w, env := route.send(context.Background())
 		storageFailed(t, route.name, w, env, logs.String(), m.ID)
 		if n := store.count(); n != 1 {
 			t.Errorf("%s: %d reads, want 1", route.name, n)
@@ -466,14 +549,21 @@ func TestDraftSnapshotStorageFailure(t *testing.T) {
 			t.Errorf("%s: a refused write wrote %+v (before %+v)", route.name, after, before)
 		}
 		store.fail(1, fmt.Errorf("reading: %w", context.DeadlineExceeded))
-		w, env = route.send()
+		w, env = route.send(context.Background())
 		ended(t, route.name, w, env, logs.String())
 		if after := e.written(t, m.ID, ""); after != before {
 			t.Errorf("%s past its deadline wrote %+v (before %+v)", route.name, after, before)
 		}
+		ctx, end := context.WithCancel(context.Background())
+		store.failEnding(1, errors.New(storageCause), end)
+		w, env = route.send(ctx)
+		ended(t, route.name+", the request ended while the store failed", w, env, logs.String())
+		if after := e.written(t, m.ID, ""); after != before {
+			t.Errorf("%s that ended while the store failed wrote %+v (before %+v)", route.name, after, before)
+		}
 		// Storage answers again: the same request succeeds, one revision later.
 		store.fail(0, nil)
-		w, _ = route.send()
+		w, _ = route.send(context.Background())
 		if w.Code != 200 || w.Header().Get("ETag") != route.etag {
 			t.Fatalf("%s after storage recovers: %d %s %s", route.name, w.Code, w.Header().Get("ETag"), w.Body)
 		}

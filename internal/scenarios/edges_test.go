@@ -5,18 +5,26 @@ package scenarios
 // the issue cap of Error.details (I1). Pure: no database.
 
 import (
+	"bytes"
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http/httptest"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
+	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/patch"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 )
 
 // warningPack is the delivery pack with one more rule, which only warns
@@ -58,39 +66,69 @@ func TestCheckAcceptsWarnings(t *testing.T) {
 	}
 }
 
-// Review L2: when the request itself ended (cancelled, or past its
-// deadline), the dataset binding stage's failure is the request's context
-// error, which httpapi answers as a request that did not complete, never
-// 503 DATASET_STORAGE_FAILED; a store that fails while the request is alive
-// is DatasetStorageError. The pattern of the approval's TestBindingFailure.
+// Review L2 (T-028), T-054 review round 1 (L1, L2): createManualScenario's
+// answer to each kind of binding-stage error, as Create returns it
+// (datasets.Failure): a snapshot that could not be read while the request
+// was alive is 503 DATASET_STORAGE_FAILED; any other error of the stage is
+// a server fault, 500 INTERNAL_ERROR logged at ERROR by httpapi; a request
+// that ended (cancelled, or past its deadline), or a read that says it
+// did, is the request's context error, which httpapi answers as a request
+// that did not complete (503, no details), whatever the store said. The
+// shared rule is internal/storage/datasets' TestFailure.
 func TestBindingFailure(t *testing.T) {
-	cause := errors.New("the object store did not answer")
-	var se *DatasetStorageError
-	if err := bindingFailure(context.Background(), cause); !errors.As(err, &se) || !errors.Is(err, cause) {
-		t.Errorf("a read failure: %v", err)
-	}
+	read := &datasets.ReadError{DatasetVersionID: "dsv_01M4YDQK00NMKD3J34KSJZVY40", Err: errors.New("the object store did not answer")}
+	fault := fmt.Errorf("hashing a shape-checked manifest: %w", errors.New("invalid"))
+	decode := fmt.Errorf("schema-valid snapshot does not decode: %w", io.ErrUnexpectedEOF)
+	live := context.Background()
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
 	expired, stop := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer stop()
-	for name, c := range map[string]struct {
-		ctx  context.Context
-		err  error
-		want error
+	for _, c := range []struct {
+		name     string
+		ctx      context.Context
+		err      error
+		status   int
+		code     string
+		detail   string
+		errorLog bool
 	}{
-		"a cancelled request":                        {cancelled, fmt.Errorf("reading: %w", context.Canceled), context.Canceled},
-		"a cancelled request, the store's own error": {cancelled, cause, cause},
-		"a request past its deadline":                {expired, fmt.Errorf("reading: %w", context.DeadlineExceeded), context.DeadlineExceeded},
-		"a request past its deadline, the store's":   {expired, cause, cause},
-		// The request is alive, but the error says it ended: still the
-		// context's error, not the store's failure.
-		"a live request, a cancelled read": {context.Background(), fmt.Errorf("reading: %w", context.Canceled), context.Canceled},
-		"a live request, a read past its deadline": {context.Background(), fmt.Errorf("reading: %w", context.DeadlineExceeded),
-			context.DeadlineExceeded},
+		{"a read failure", live, read, 503, "SERVICE_UNAVAILABLE", "DATASET_STORAGE_FAILED", false},
+		{"a server fault", live, fault, 500, "INTERNAL_ERROR", "", true},
+		{"a snapshot that does not decode", live, decode, 500, "INTERNAL_ERROR", "", true},
+		{"a live request, a cancelled read", live, &datasets.ReadError{Err: fmt.Errorf("get: %w", context.Canceled)}, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a live request, a read past its deadline", live, &datasets.ReadError{Err: fmt.Errorf("get: %w", context.DeadlineExceeded)}, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a cancelled request, the store's own error", cancelled, read, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a cancelled request, a server fault", cancelled, fault, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a request past its deadline, the store's own error", expired, read, 503, "SERVICE_UNAVAILABLE", "", false},
 	} {
-		err := bindingFailure(c.ctx, c.err)
-		if errors.As(err, &se) || !errors.Is(err, c.want) {
-			t.Errorf("%s: %v", name, err)
+		var logs bytes.Buffer
+		w := httptest.NewRecorder()
+		httpapi.WriteError(w, httptest.NewRequest("POST", "/v1/model-versions/x/scenarios", nil), slog.New(slog.NewJSONHandler(&logs, nil)),
+			Refused(datasets.Failure(c.ctx, c.err)))
+		var env struct {
+			Error struct {
+				Code    string `json:"code"`
+				Details []struct {
+					Code string `json:"code"`
+				} `json:"details"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &env); err != nil {
+			t.Fatal(err)
+		}
+		detail := ""
+		if len(env.Error.Details) > 0 {
+			detail = env.Error.Details[0].Code
+		}
+		if w.Code != c.status || env.Error.Code != c.code || detail != c.detail || len(env.Error.Details) > 1 {
+			t.Errorf("%s: %d %s", c.name, w.Code, w.Body)
+		}
+		if strings.Contains(w.Body.String(), "did not answer") || strings.Contains(w.Body.String(), "hashing") {
+			t.Errorf("%s: the cause is sent: %s", c.name, w.Body)
+		}
+		if got := strings.Contains(logs.String(), `"level":"ERROR"`); got != c.errorLog {
+			t.Errorf("%s: ERROR log %v, want %v: %s", c.name, got, c.errorLog, logs.String())
 		}
 	}
 }

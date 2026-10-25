@@ -1,0 +1,11 @@
+=== RUN   TestReviewProbeEndedRequestOwnError
+    zz_review_probe_test.go:37: ended request, store's own error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the request did not complete in time","request_id":""}} | log: 
+    zz_review_probe_test.go:39: ended request, context error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the request did not complete in time","request_id":""}}
+--- PASS: TestReviewProbeEndedRequestOwnError (0.00s)
+=== RUN   TestReviewProbeServerFaultIsRetryable
+    zz_review_probe_test.go:51: hashing a shape-checked manifest: invalid -> 500 {"error":{"code":"INTERNAL_ERROR","message":"internal error","request_id":""}} | ERROR log by httpapi: true
+    zz_review_probe_test.go:51: schema-valid snapshot does not decode: unexpected EOF -> 500 {"error":{"code":"INTERNAL_ERROR","message":"internal error","request_id":""}} | ERROR log by httpapi: true
+--- PASS: TestReviewProbeServerFaultIsRetryable (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/models	0.012s
+exit=0

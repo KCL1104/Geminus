@@ -1,0 +1,9 @@
+db-runs-freeze-ignores-the-request: COMPILES (TestRunSnapshotStorageFailure) 
+db-approval-revalidation-ignores-the-request: COMPILES (TestApprovalDraftSyncStorageFailure) 
+db-scenarios-ignore-the-request: COMPILES (TestScenarioDatasets) 
+db-models-not-logged: COMPILES (TestPublishSnapshotStorageFailure|TestDraftSnapshotStorageFailure) 
+db-runs-not-logged: COMPILES (TestRunSnapshotStorageFailure) 
+db-approval-not-logged: COMPILES (TestApprovalDraftSyncStorageFailure) 
+db-models-draft-check-ignored: COMPILES (TestPublishSnapshotStorageFailure|TestDraftSnapshotStorageFailure) 
+db-approval-draft-sync-ignored: COMPILES (TestApprovalDraftSyncStorageFailure) 
+TOTAL 8 (compile): 8 compile, 0 not

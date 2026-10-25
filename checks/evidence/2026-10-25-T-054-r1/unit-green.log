@@ -1,0 +1,47 @@
+=== RUN   TestStoreReadErrors
+--- PASS: TestStoreReadErrors (0.05s)
+=== RUN   TestResolveErrors
+--- PASS: TestResolveErrors (0.10s)
+=== RUN   TestReadError
+--- PASS: TestReadError (0.01s)
+=== RUN   TestFailure
+--- PASS: TestFailure (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	0.190s
+=== RUN   TestDatasetStorageFailed
+--- PASS: TestDatasetStorageFailed (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/httpapi	0.047s
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestRefusedDatasetStorage
+--- PASS: TestRefusedDatasetStorage (0.00s)
+=== RUN   TestBindingFailure
+--- PASS: TestBindingFailure (0.01s)
+=== RUN   TestCheckStorageFailure
+--- PASS: TestCheckStorageFailure (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/models	0.060s
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestBindingFailure
+--- PASS: TestBindingFailure (0.00s)
+=== RUN   TestRefusedDatasetStorage
+--- PASS: TestRefusedDatasetStorage (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/runs	0.019s
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestBindingFailure
+--- PASS: TestBindingFailure (0.00s)
+=== RUN   TestRefusedDraftSyncStorage
+--- PASS: TestRefusedDraftSyncStorage (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.020s
+=== RUN   TestBindingFailure
+--- PASS: TestBindingFailure (0.00s)
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/scenarios	0.014s
+exit=0

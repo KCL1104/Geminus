@@ -25,9 +25,6 @@ var (
 	Refused = refused
 )
 
-// BindingFailure is bindingFailure, for its test without a database.
-var BindingFailure = bindingFailure
-
 // Check is check (the pack's rules and the dataset binding stage), for its
 // test without a database.
 func (s *Service) Check(ctx context.Context, org string, ir *model.ModelIR, manifest []model.DatasetBinding) ([]model.ValidationIssue, error) {

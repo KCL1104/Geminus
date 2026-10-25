@@ -34,30 +34,37 @@ func (subjects) Verify(_ context.Context, token string) (auth.Identity, error) {
 }
 
 // failingFrom is object storage that serves objects, or, once fail sets
-// err, fails from its from-th read on (1 is the first).
+// err, fails from its from-th read on (1 is the first); with cancel set it
+// ends the request first (the request ends while the store fails).
 type failingFrom struct {
 	objects.Store
 	mu          sync.Mutex
 	reads, from int
 	err         error
+	cancel      context.CancelFunc
 }
 
 func (f *failingFrom) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	f.mu.Lock()
 	f.reads++
 	failing := f.err != nil && f.reads >= f.from
-	err := f.err
+	err, cancel := f.err, f.cancel
 	f.mu.Unlock()
 	if failing {
+		if cancel != nil {
+			cancel()
+		}
 		return nil, err
 	}
 	return f.Store.Get(ctx, key)
 }
 
-func (f *failingFrom) fail(from int, err error) {
+func (f *failingFrom) fail(from int, err error) { f.failEnding(from, err, nil) }
+
+func (f *failingFrom) failEnding(from int, err error, cancel context.CancelFunc) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.reads, f.from, f.err = 0, from, err
+	f.reads, f.from, f.err, f.cancel = 0, from, err, cancel
 }
 
 func (f *failingFrom) count() int {
@@ -66,7 +73,8 @@ func (f *failingFrom) count() int {
 	return f.reads
 }
 
-// H-022 Q4, extended by the coordinator to the draft sync: an editor
+// D-069 (b) (the draft sync is part of approveProposal's own binding
+// stage), T-054 round 2 and review round 1 (L2): an editor
 // approves, through the HTTP handler, an edit proposal on a base that
 // binds a dataset. The revalidation reads the snapshot (the 1st read);
 // the clean draft's move to the new version reads it again (the 2nd, after
@@ -74,8 +82,9 @@ func (f *failingFrom) count() int {
 // DATASET_STORAGE_FAILED as for the revalidation, the cause logged and not
 // sent; nothing is committed: no version, the model and its draft as they
 // were, the proposal still ready and undecided, no proposal.approve audit
-// event, no answer kept for the key. A read that says the request ended is
-// the context's 503, without details, and commits nothing either. Once
+// event, no answer kept for the key. A read that says the request ended,
+// or a request that ends while the store fails on its own, is the
+// context's 503, without details, and commits nothing either. Once
 // storage answers, the same request with the same key approves.
 func TestApprovalDraftSyncStorageFailure(t *testing.T) {
 	e := setup(t)
@@ -105,10 +114,10 @@ func TestApprovalDraftSyncStorageFailure(t *testing.T) {
 			RequestID string `json:"request_id"`
 		} `json:"error"`
 	}
-	approve := func() (*httptest.ResponseRecorder, envelope) {
+	approve := func(ctx context.Context) (*httptest.ResponseRecorder, envelope) {
 		t.Helper()
 		logs.Reset()
-		r := httptest.NewRequest("POST", "/v1/ai-proposals/"+p.ProposalID+"/approve", strings.NewReader(fmt.Sprintf(`{"expected_base_version_id":%q}`, base)))
+		r := httptest.NewRequestWithContext(ctx, "POST", "/v1/ai-proposals/"+p.ProposalID+"/approve", strings.NewReader(fmt.Sprintf(`{"expected_base_version_id":%q}`, base)))
 		r.Header.Set("Authorization", "Bearer "+e.org.Members[tenant.Editor].Subject)
 		r.Header.Set("X-Organization-ID", e.org.ID)
 		r.Header.Set("Idempotency-Key", k)
@@ -147,7 +156,7 @@ func TestApprovalDraftSyncStorageFailure(t *testing.T) {
 
 	const cause = "open /srv/objects/tenant/secret: input/output error"
 	store.fail(2, errors.New(cause))
-	w, env := approve()
+	w, env := approve(context.Background())
 	if w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" || len(env.Error.Details) != 1 ||
 		env.Error.Details[0].Path != "" || env.Error.Details[0].Reason != "the dataset storage failed" || env.Error.Details[0].Code != "DATASET_STORAGE_FAILED" ||
 		env.Error.Message != "the dataset snapshots could not be read; nothing was changed (retry later)" {
@@ -169,14 +178,38 @@ func TestApprovalDraftSyncStorageFailure(t *testing.T) {
 	nothing("the draft sync's read fails")
 
 	store.fail(2, fmt.Errorf("reading: %w", context.DeadlineExceeded))
-	if w, env := approve(); w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" || len(env.Error.Details) != 0 {
+	if w, env := approve(context.Background()); w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" || len(env.Error.Details) != 0 {
 		t.Errorf("the draft sync's read past its deadline: %d %s", w.Code, w.Body)
 	}
 	nothing("the draft sync's read past its deadline")
 
+	// The request ends while the draft sync's read fails with the store's
+	// own error (review L2): the ended request's 503, not a server error.
+	ctx, end := context.WithCancel(context.Background())
+	store.failEnding(2, errors.New(cause), end)
+	if w, env := approve(ctx); w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" || len(env.Error.Details) != 0 ||
+		strings.Contains(logs.String(), "dataset snapshots failed") {
+		t.Errorf("the request ended while the draft sync's read failed: %d %s %s", w.Code, w.Body, logs.String())
+	}
+	if n := store.count(); n != 2 {
+		t.Errorf("%d reads, want 2", n)
+	}
+	nothing("the request ended while the draft sync's read failed")
+	// The same in the revalidation's read (the 1st).
+	ctx, end = context.WithCancel(context.Background())
+	store.failEnding(1, errors.New(cause), end)
+	if w, env := approve(ctx); w.Code != 503 || env.Error.Code != "SERVICE_UNAVAILABLE" || len(env.Error.Details) != 0 ||
+		strings.Contains(logs.String(), "dataset snapshots failed") {
+		t.Errorf("the request ended while the revalidation's read failed: %d %s %s", w.Code, w.Body, logs.String())
+	}
+	if n := store.count(); n != 1 {
+		t.Errorf("%d reads, want 1", n)
+	}
+	nothing("the request ended while the revalidation's read failed")
+
 	// Storage answers again: the same request with the same key approves.
 	store.fail(0, nil)
-	w, _ = approve()
+	w, _ = approve(context.Background())
 	if w.Code != 201 {
 		t.Fatalf("after storage recovers: %d %s", w.Code, w.Body)
 	}

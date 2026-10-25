@@ -6,15 +6,20 @@ package approval
 // none of the stored results (AI_SPEC §6, SECURITY §5; D-069 (b)).
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/ai/idpool"
@@ -29,6 +34,7 @@ import (
 	"github.com/kcl1104/geminus/internal/model/patch"
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/proposals"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	store "github.com/kcl1104/geminus/internal/storage/proposals"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -125,13 +131,16 @@ func TestRefused(t *testing.T) {
 	// I2, D-069 (b): a snapshot that cannot be read is 503 with the
 	// generator's code (D-061 (c)), never the cause's text.
 	he = nil
-	storage := &DatasetStorageError{Err: errors.New("open /srv/objects/tenant/secret: input/output error")}
+	storage := &datasets.ReadError{DatasetVersionID: "dsv_01M4YDQK00NMKD3J34KSJZVY40", Err: errors.New("open /srv/objects/tenant/secret: input/output error")}
 	if !errors.As(Refused(storage), &he) || he.Code != httpapi.ServiceUnavailable || len(he.Details) != 1 ||
 		he.Details[0].Code != "DATASET_STORAGE_FAILED" || strings.Contains(fmt.Sprint(he), "secret") {
 		t.Errorf("a storage failure: %+v", he)
 	}
-	// Tenant and other errors pass through for httpapi to classify.
-	for _, err := range []error{tenant.ErrForbidden, tenant.ErrNoMembership, errors.New("a server fault")} {
+	// Tenant and other errors pass through for httpapi to classify; so do a
+	// server fault of the binding stage and an ended request (T-054 review
+	// L1, L2).
+	for _, err := range []error{tenant.ErrForbidden, tenant.ErrNoMembership, errors.New("a server fault"),
+		fmt.Errorf("hashing a shape-checked manifest: %w", errors.New("invalid")), errors.Join(context.Canceled, storage)} {
 		if Refused(err) != err {
 			t.Errorf("%v was mapped", err)
 		}
@@ -240,23 +249,71 @@ func TestReplayed(t *testing.T) {
 	}
 }
 
-// Review I2: a dataset binding stage that cannot read the snapshots is a
-// storage failure (503 DATASET_STORAGE_FAILED); a request that ended is
-// not.
+// Review I2 (T-026), T-054 review round 1 (L1, L2): approveProposal's
+// answer to each kind of binding-stage error, the revalidation's and the
+// draft sync's alike, as they return it (datasets.Failure): a snapshot
+// that could not be read while the request was alive is 503
+// DATASET_STORAGE_FAILED; any other error of the stage is a server fault,
+// 500 INTERNAL_ERROR logged at ERROR by httpapi; a request that ended, or
+// a read that says it did, is the ended request's 503 without details,
+// whatever the store said (review round 2 N3 kept the store's error; it is
+// still there, joined with the context's). The shared rule is
+// internal/storage/datasets' TestFailure.
 func TestBindingFailure(t *testing.T) {
-	cause := errors.New("the object store did not answer")
-	var se *DatasetStorageError
-	if err := bindingFailure(context.Background(), cause); !errors.As(err, &se) || !errors.Is(err, cause) {
-		t.Errorf("a read failure: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
+	read := &datasets.ReadError{DatasetVersionID: "dsv_01M4YDQK00NMKD3J34KSJZVY40", Err: errors.New("the object store did not answer")}
+	fault := fmt.Errorf("hashing a shape-checked manifest: %w", errors.New("invalid"))
+	decode := fmt.Errorf("schema-valid snapshot does not decode: %w", io.ErrUnexpectedEOF)
+	live := context.Background()
+	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if err := bindingFailure(ctx, fmt.Errorf("reading: %w", context.Canceled)); errors.As(err, &se) || !errors.Is(err, context.Canceled) {
-		t.Errorf("a cancelled request: %v", err)
-	}
-	// The request ended, whatever error the store gave (review round 2 N3).
-	if err := bindingFailure(ctx, cause); errors.As(err, &se) || !errors.Is(err, cause) {
-		t.Errorf("a cancelled request with the store's own error: %v", err)
+	expired, stop := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer stop()
+	for _, c := range []struct {
+		name     string
+		ctx      context.Context
+		err      error
+		status   int
+		code     string
+		detail   string
+		errorLog bool
+	}{
+		{"a read failure", live, read, 503, "SERVICE_UNAVAILABLE", "DATASET_STORAGE_FAILED", false},
+		{"the draft sync's read failure", live, fmt.Errorf("advance: %w", read), 503, "SERVICE_UNAVAILABLE", "DATASET_STORAGE_FAILED", false},
+		{"a server fault", live, fault, 500, "INTERNAL_ERROR", "", true},
+		{"a snapshot that does not decode", live, decode, 500, "INTERNAL_ERROR", "", true},
+		{"a read past its deadline", live, &datasets.ReadError{Err: fmt.Errorf("get: %w", context.DeadlineExceeded)}, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a cancelled request, the store's own error", cancelled, read, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a cancelled request, a server fault", cancelled, fault, 503, "SERVICE_UNAVAILABLE", "", false},
+		{"a request past its deadline, the store's own error", expired, read, 503, "SERVICE_UNAVAILABLE", "", false},
+	} {
+		var logs bytes.Buffer
+		w := httptest.NewRecorder()
+		httpapi.WriteError(w, httptest.NewRequest("POST", "/v1/ai-proposals/x/approve", nil), slog.New(slog.NewJSONHandler(&logs, nil)),
+			Refused(datasets.Failure(c.ctx, c.err)))
+		var env struct {
+			Error struct {
+				Code    string `json:"code"`
+				Details []struct {
+					Code string `json:"code"`
+				} `json:"details"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &env); err != nil {
+			t.Fatal(err)
+		}
+		detail := ""
+		if len(env.Error.Details) > 0 {
+			detail = env.Error.Details[0].Code
+		}
+		if w.Code != c.status || env.Error.Code != c.code || detail != c.detail || len(env.Error.Details) > 1 {
+			t.Errorf("%s: %d %s", c.name, w.Code, w.Body)
+		}
+		if strings.Contains(w.Body.String(), "did not answer") || strings.Contains(w.Body.String(), "hashing") {
+			t.Errorf("%s: the cause is sent: %s", c.name, w.Body)
+		}
+		if got := strings.Contains(logs.String(), `"level":"ERROR"`); got != c.errorLog {
+			t.Errorf("%s: ERROR log %v, want %v: %s", c.name, got, c.errorLog, logs.String())
+		}
 	}
 }
 

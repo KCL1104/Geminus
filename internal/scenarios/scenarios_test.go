@@ -8,6 +8,7 @@ package scenarios
 // db_test.go.
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json/v2"
 	"errors"
@@ -31,6 +32,7 @@ import (
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/patch"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	store "github.com/kcl1104/geminus/internal/storage/scenarios"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -572,7 +574,7 @@ func TestRefused(t *testing.T) {
 		{&RequestError{Issues: []model.ValidationIssue{name}}, httpapi.RequestValidationFailed, "/name"},
 		{&InvalidError{Issues: []model.ValidationIssue{issue}}, httpapi.ModelValidationFailed, "/patch/1/path"},
 		{ErrStorageUnavailable, httpapi.ServiceUnavailable, ""},
-		{&DatasetStorageError{Err: errors.New("open /srv/objects/tenant/secret: i/o error")}, httpapi.ServiceUnavailable, ""},
+		{&datasets.ReadError{DatasetVersionID: "dsv_01M4YDQK00NMKD3J34KSJZVY40", Err: errors.New("open /srv/objects/tenant/secret: i/o error")}, httpapi.ServiceUnavailable, ""},
 		{ErrInvalidCursor, httpapi.InvalidRequest, ""},
 		{ErrInvalidLimit, httpapi.InvalidRequest, ""},
 		{idempotency.ErrConflict, httpapi.IdempotencyKeyConflict, ""},
@@ -597,10 +599,13 @@ func TestRefused(t *testing.T) {
 		t.Errorf("an issue is lost: %+v", he.Details)
 	}
 	he = nil
-	if errors.As(Refused(&DatasetStorageError{Err: errors.New("x")}), &he); len(he.Details) != 1 || he.Details[0].Code != "DATASET_STORAGE_FAILED" {
+	if errors.As(Refused(&datasets.ReadError{Err: errors.New("x")}), &he); len(he.Details) != 1 || he.Details[0].Code != "DATASET_STORAGE_FAILED" ||
+		he.Message != "the dataset snapshots could not be read; nothing was saved (retry later)" {
 		t.Errorf("a storage failure: %+v", he)
 	}
-	for _, err := range []error{tenant.ErrForbidden, tenant.ErrNoMembership, ErrCorrupt, errors.New("a server fault")} {
+	for _, err := range []error{tenant.ErrForbidden, tenant.ErrNoMembership, ErrCorrupt, errors.New("a server fault"),
+		fmt.Errorf("hashing a shape-checked manifest: %w", errors.New("invalid")),
+		errors.Join(context.Canceled, &datasets.ReadError{Err: errors.New("x")})} {
 		if Refused(err) != err {
 			t.Errorf("%v was mapped", err)
 		}

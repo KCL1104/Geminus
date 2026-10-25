@@ -41,6 +41,7 @@ import (
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/proposals/approval"
 	"github.com/kcl1104/geminus/internal/proposals/generator"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
@@ -1097,12 +1098,18 @@ func typed(err error) bool {
 	var state *approval.StateError
 	var risk *approval.RiskChangedError
 	var invalid *approval.InvalidError
-	var storage *approval.DatasetStorageError
 	return errors.As(err, &decided) || errors.As(err, &state) || errors.As(err, &risk) || errors.As(err, &invalid) ||
-		errors.As(err, &storage) || errors.Is(err, approval.ErrNotFound) || errors.Is(err, approval.ErrOtherBase) ||
+		storageFailure(err) || errors.Is(err, approval.ErrNotFound) || errors.Is(err, approval.ErrOtherBase) ||
 		errors.Is(err, approval.ErrInvalidComment) || errors.Is(err, approval.ErrDatasetsUnavailable) ||
 		errors.Is(err, idempotency.ErrConflict) || errors.Is(err, idempotency.ErrInProgress) ||
 		errors.Is(err, tenant.ErrForbidden) || errors.Is(err, tenant.ErrNoMembership)
+}
+
+// storageFailure reports whether err is a snapshot that could not be read
+// (503 DATASET_STORAGE_FAILED; the shared rule, T-054 review L3).
+func storageFailure(err error) bool {
+	_, ok := datasets.StorageFailure(err)
+	return ok
 }
 
 // strictLookup serves a pack that refuses a capacity above 5: a rule the
@@ -1152,8 +1159,7 @@ func TestApprovalFreezesTheManifest(t *testing.T) {
 	// DATASET_STORAGE_FAILED, as in the generator (D-061 (c)), not 500.
 	broken := *e.svc
 	broken.Objects = brokenObjects{e.objects}
-	var storage *approval.DatasetStorageError
-	if _, _, err := broken.Approve(context.Background(), e.scope(tenant.Editor), ids.New("req"), key(), p.ProposalID, body, req); !errors.As(err, &storage) {
+	if _, _, err := broken.Approve(context.Background(), e.scope(tenant.Editor), ids.New("req"), key(), p.ProposalID, body, req); !storageFailure(err) {
 		t.Errorf("object storage that fails: %v", err)
 	}
 	// Review L2, D-069 (b): a proposal that holds another manifest than

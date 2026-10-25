@@ -1,0 +1,144 @@
+=== RUN   TestStoreReadErrors
+--- PASS: TestStoreReadErrors (0.07s)
+=== RUN   TestResolveErrors
+--- PASS: TestResolveErrors (0.07s)
+=== RUN   TestReadError
+    failure_test.go:38: close: &fmt.wrapError{msg:"reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: object storage unavailable", err:(*errors.errorString)(0x655a32ec080)}
+    failure_test.go:38: open: &fmt.wrapError{msg:"reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: object storage unavailable", err:(*errors.errorString)(0x655a32ec080)}
+    failure_test.go:38: read: &fmt.wrapError{msg:"reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: object storage unavailable", err:(*errors.errorString)(0x655a32ec080)}
+    failure_test.go:58: a read past its deadline: reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: get: context deadline exceeded
+--- FAIL: TestReadError (0.00s)
+=== RUN   TestFailure
+    failure_test.go:117: a live request, a server fault: StorageFailure reading dataset version : hashing a shape-checked manifest: invalid true, want false
+    failure_test.go:117: a live request, a snapshot that does not decode: StorageFailure reading dataset version : schema-valid snapshot does not decode: unexpected EOF true, want false
+    failure_test.go:109: a cancelled request, the store's own error: reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: read tcp 10.0.0.1: connection reset by peer (the same error: true, want false)
+    failure_test.go:113: a cancelled request, the store's own error: reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: read tcp 10.0.0.1: connection reset by peer is not context canceled
+    failure_test.go:117: a cancelled request, the store's own error: StorageFailure reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: read tcp 10.0.0.1: connection reset by peer true, want false
+    failure_test.go:109: a cancelled request, a server fault: hashing a shape-checked manifest: invalid (the same error: true, want false)
+    failure_test.go:113: a cancelled request, a server fault: hashing a shape-checked manifest: invalid is not context canceled
+    failure_test.go:117: a cancelled request, a server fault: StorageFailure reading dataset version : hashing a shape-checked manifest: invalid true, want false
+    failure_test.go:109: a request past its deadline, the store's own error: reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: read tcp 10.0.0.1: connection reset by peer (the same error: true, want false)
+    failure_test.go:113: a request past its deadline, the store's own error: reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: read tcp 10.0.0.1: connection reset by peer is not context deadline exceeded
+    failure_test.go:117: a request past its deadline, the store's own error: StorageFailure reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: read tcp 10.0.0.1: connection reset by peer true, want false
+    failure_test.go:109: a request past its deadline, a server fault: hashing a shape-checked manifest: invalid (the same error: true, want false)
+    failure_test.go:113: a request past its deadline, a server fault: hashing a shape-checked manifest: invalid is not context deadline exceeded
+    failure_test.go:117: a request past its deadline, a server fault: StorageFailure reading dataset version : hashing a shape-checked manifest: invalid true, want false
+--- FAIL: TestFailure (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/datasets	0.154s
+=== RUN   TestDatasetStorageFailed
+--- PASS: TestDatasetStorageFailed (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/httpapi	0.032s
+=== RUN   TestRefused
+    http_test.go:129: models: invalid publish comment: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later), want REQUEST_VALIDATION_FAILED
+    http_test.go:135: comment details [{Path: Reason:the dataset storage failed Code:DATASET_STORAGE_FAILED Severity:}]
+    http_test.go:129: models: invalid page size: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later), want INVALID_REQUEST
+    http_test.go:129: models: a reset must be confirmed: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later), want REQUEST_VALIDATION_FAILED
+    http_test.go:129: idempotency: key used for a different request: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later), want IDEMPOTENCY_KEY_CONFLICT
+    http_test.go:129: idempotency: key's first request has not completed: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later), want IDEMPOTENCY_KEY_CONFLICT
+    http_test.go:129: wrapped: models: invalid (1 issue(s)): SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later), want MODEL_VALIDATION_FAILED
+    http_test.go:132: details [{Path: Reason:the dataset storage failed Code:DATASET_STORAGE_FAILED Severity:}]
+    http_test.go:143: tenant: role does not allow this operation became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    http_test.go:143: tenant: no membership in the selected organization became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    http_test.go:143: database down became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+--- FAIL: TestRefused (0.00s)
+=== RUN   TestRefusedDatasetStorage
+    http_test.go:179: tenant: role does not allow this operation became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    http_test.go:179: serialization failure or deadlock became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    http_test.go:179: database down became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    http_test.go:179: hashing a shape-checked manifest: invalid became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+--- FAIL: TestRefusedDatasetStorage (0.00s)
+=== RUN   TestBindingFailure
+    storage_failure_test.go:106: a server fault: 503 {Error:{Code:SERVICE_UNAVAILABLE Message:the dataset snapshots could not be read; nothing was changed (retry later) Details:[{Path: Reason:the dataset storage failed Code:DATASET_STORAGE_FAILED}] RequestID:req_01M5SZ8BYPP07EWT78ZKMP0XBC}}
+    storage_failure_test.go:109: a server fault: ERROR log false, want true: 
+    storage_failure_test.go:112: a server fault: the server fault is not logged: 
+    storage_failure_test.go:106: a snapshot that does not decode: 503 {Error:{Code:SERVICE_UNAVAILABLE Message:the dataset snapshots could not be read; nothing was changed (retry later) Details:[{Path: Reason:the dataset storage failed Code:DATASET_STORAGE_FAILED}] RequestID:req_01M5SZ8BYPRRTPTE3629VD6C09}}
+    storage_failure_test.go:109: a snapshot that does not decode: ERROR log false, want true: 
+    storage_failure_test.go:112: a snapshot that does not decode: the server fault is not logged: 
+    storage_failure_test.go:106: a cancelled request, the store's own error: 503 {Error:{Code:SERVICE_UNAVAILABLE Message:the dataset snapshots could not be read; nothing was changed (retry later) Details:[{Path: Reason:the dataset storage failed Code:DATASET_STORAGE_FAILED}] RequestID:req_01M5SZ8BYPQFSEXF21062WKDG9}}
+    storage_failure_test.go:106: a cancelled request, a server fault: 503 {Error:{Code:SERVICE_UNAVAILABLE Message:the dataset snapshots could not be read; nothing was changed (retry later) Details:[{Path: Reason:the dataset storage failed Code:DATASET_STORAGE_FAILED}] RequestID:req_01M5SZ8BYQ4NZWE9P2K47XWX67}}
+    storage_failure_test.go:106: a request past its deadline, the store's own error: 503 {Error:{Code:SERVICE_UNAVAILABLE Message:the dataset snapshots could not be read; nothing was changed (retry later) Details:[{Path: Reason:the dataset storage failed Code:DATASET_STORAGE_FAILED}] RequestID:req_01M5SZ8BYQJ3RYW1DNEGEMT3Y0}}
+--- FAIL: TestBindingFailure (0.01s)
+=== RUN   TestCheckStorageFailure
+    storage_failure_test.go:167: storage that fails: reading dataset version dsv_01M5SZ8BZFJKQAZ8H9CS4FBN4Y: open /srv/objects/tenant/secret: input/output error
+    storage_failure_test.go:195: a request that ended while the store failed: reading dataset version dsv_01M5SZ8BZFJKQAZ8H9CS4FBN4Y: open /srv/objects/tenant/secret: input/output error
+--- FAIL: TestCheckStorageFailure (0.02s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/models	0.048s
+=== RUN   TestRefused
+    runs_test.go:90: runs: invalid cursor: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later), want INVALID_REQUEST
+    runs_test.go:90: runs: invalid page size: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later), want INVALID_REQUEST
+    runs_test.go:90: idempotency: key used for a different request: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later), want IDEMPOTENCY_KEY_CONFLICT
+    runs_test.go:90: idempotency: key's first request has not completed: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later), want IDEMPOTENCY_KEY_CONFLICT
+    runs_test.go:100: tenant: role does not allow this operation became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later)
+    runs_test.go:100: tenant: no membership in the selected organization became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later)
+    runs_test.go:100: runs: the stored trace does not match its record became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later)
+    runs_test.go:100: database down became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later)
+--- FAIL: TestRefused (0.00s)
+=== RUN   TestBindingFailure
+    storage_failure_test.go:82: a server fault: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was queued (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    storage_failure_test.go:88: a server fault: ERROR log false, want true: 
+    storage_failure_test.go:82: a snapshot that does not decode: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was queued (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    storage_failure_test.go:88: a snapshot that does not decode: ERROR log false, want true: 
+    storage_failure_test.go:82: a cancelled request, the store's own error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was queued (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    storage_failure_test.go:82: a cancelled request, a server fault: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was queued (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    storage_failure_test.go:82: a request past its deadline, the store's own error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was queued (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+--- FAIL: TestBindingFailure (0.00s)
+=== RUN   TestRefusedDatasetStorage
+    storage_failure_test.go:122: tenant: role does not allow this operation became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later)
+    storage_failure_test.go:122: serialization failure or deadlock became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later)
+    storage_failure_test.go:122: database down became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later)
+    storage_failure_test.go:122: hashing a shape-checked manifest: invalid became SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was queued (retry later)
+--- FAIL: TestRefusedDatasetStorage (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/runs	0.013s
+=== RUN   TestRefused
+    approval_test.go:117: idempotency: key used for a different request: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later), want IDEMPOTENCY_KEY_CONFLICT
+    approval_test.go:117: idempotency: key's first request has not completed: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later), want IDEMPOTENCY_KEY_CONFLICT
+    approval_test.go:145: tenant: role does not allow this operation was mapped
+    approval_test.go:145: tenant: no membership in the selected organization was mapped
+    approval_test.go:145: a server fault was mapped
+    approval_test.go:145: hashing a shape-checked manifest: invalid was mapped
+--- FAIL: TestRefused (0.00s)
+=== RUN   TestBindingFailure
+    approval_test.go:309: a server fault: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was changed (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    approval_test.go:315: a server fault: ERROR log false, want true: 
+    approval_test.go:309: a snapshot that does not decode: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was changed (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    approval_test.go:315: a snapshot that does not decode: ERROR log false, want true: 
+    approval_test.go:309: a cancelled request, the store's own error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was changed (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    approval_test.go:309: a cancelled request, a server fault: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was changed (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    approval_test.go:309: a request past its deadline, the store's own error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was changed (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+--- FAIL: TestBindingFailure (0.00s)
+=== RUN   TestRefusedDraftSyncStorage
+    storage_failure_test.go:56: a server fault was mapped: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    storage_failure_test.go:59: a server fault is not a storage failure
+    storage_failure_test.go:56: advance: reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: open /srv/objects/tenant/secret: input/output error was mapped: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was changed (retry later)
+    storage_failure_test.go:59: advance: reading dataset version dsv_01M4YDQK00NMKD3J34KSJZVY40: open /srv/objects/tenant/secret: input/output error is not a storage failure
+--- FAIL: TestRefusedDraftSyncStorage (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/approval	0.019s
+=== RUN   TestBindingFailure
+    edges_test.go:125: a server fault: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was saved (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    edges_test.go:131: a server fault: ERROR log false, want true: 
+    edges_test.go:125: a snapshot that does not decode: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was saved (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    edges_test.go:131: a snapshot that does not decode: ERROR log false, want true: 
+    edges_test.go:125: a cancelled request, the store's own error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was saved (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    edges_test.go:125: a cancelled request, a server fault: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was saved (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+    edges_test.go:125: a request past its deadline, the store's own error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was saved (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}}
+--- FAIL: TestBindingFailure (0.00s)
+=== RUN   TestRefused
+    scenarios_test.go:585: scenarios: invalid cursor: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was saved (retry later), want INVALID_REQUEST
+    scenarios_test.go:585: scenarios: invalid page size: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was saved (retry later), want INVALID_REQUEST
+    scenarios_test.go:585: idempotency: key used for a different request: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was saved (retry later), want IDEMPOTENCY_KEY_CONFLICT
+    scenarios_test.go:585: idempotency: key's first request has not completed: SERVICE_UNAVAILABLE: the dataset snapshots could not be read; nothing was saved (retry later), want IDEMPOTENCY_KEY_CONFLICT
+    scenarios_test.go:609: tenant: role does not allow this operation was mapped
+    scenarios_test.go:609: tenant: no membership in the selected organization was mapped
+    scenarios_test.go:609: scenarios: a stored scenario's patch does not match its patch_hash was mapped
+    scenarios_test.go:609: a server fault was mapped
+    scenarios_test.go:609: hashing a shape-checked manifest: invalid was mapped
+--- FAIL: TestRefused (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/scenarios	0.017s
+FAIL
+exit=1

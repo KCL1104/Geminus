@@ -76,7 +76,8 @@ func (r Resolution) Valid() bool {
 
 // Resolve checks manifest against ir and the stored snapshots of
 // organizationID. ir must have passed validate.IR. Problems with the data are
-// issues; only infrastructure failures and cancellation are errors.
+// issues; errors are a snapshot the Store could not read (*ReadError),
+// cancellation, or a server fault (see Failure and StorageFailure).
 //
 // Stages stop at the first one with errors (D-023): manifest shape and
 // coverage, then the stored snapshots, then the D-033 graph rules.
@@ -206,7 +207,9 @@ func load(ctx context.Context, store Store, org string, i int, b model.DatasetBi
 	case errors.Is(err, ErrNotFound):
 		return bad("dataset_version_id", "no immutable snapshot of this dataset version is visible to the organization")
 	case err != nil:
-		return nil, nil, fmt.Errorf("reading dataset version %s: %w", b.DatasetVersionID, err)
+		// The one infrastructure failure of the stage (ReadError); every
+		// other error below is the server's own.
+		return nil, nil, &ReadError{DatasetVersionID: b.DatasetVersionID, Err: err}
 	case len(raw) > MaxSnapshotBytes:
 		// Neither the size nor the hash of an object is reported before it is
 		// verified as this organization's frozen snapshot: with a Store that

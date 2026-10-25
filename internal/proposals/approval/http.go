@@ -9,6 +9,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/httpapi"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -67,7 +68,7 @@ func Refused(err error) error {
 	var state *StateError
 	var risk *RiskChangedError
 	var invalid *InvalidError
-	_, storage := storageCause(err)
+	_, storage := datasets.StorageFailure(err)
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return httpapi.Errorf(httpapi.NotFound, "not found")
@@ -100,10 +101,10 @@ func Refused(err error) error {
 	case errors.Is(err, ErrDatasetsUnavailable):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "the proposal's base binds datasets and dataset storage is not available")
 	case storage:
-		// The revalidation's or the draft sync's; the cause is logged by
-		// the handler, never sent.
-		return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was changed (retry later)",
-			Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}}
+		// A snapshot the revalidation or the draft sync could not read
+		// (datasets.StorageFailure); the cause is logged by the handler,
+		// never sent.
+		return httpapi.DatasetStorageFailed("the dataset snapshots could not be read; nothing was changed (retry later)")
 	case errors.Is(err, idempotency.ErrConflict), errors.Is(err, idempotency.ErrInProgress):
 		return httpapi.Errorf(httpapi.IdempotencyKeyConflict, "this Idempotency-Key was used for a different request")
 	}
@@ -126,9 +127,9 @@ func (h handlers) approve(w http.ResponseWriter, r *http.Request, sc tenant.Scop
 	}
 	status, out, err := h.s.Approve(r.Context(), sc, httpapi.RequestID(r.Context()), key, id, body, req)
 	if err != nil {
-		if cause, ok := storageCause(err); ok {
+		if read, ok := datasets.StorageFailure(err); ok {
 			h.log.WarnContext(r.Context(), "reading an approval's dataset snapshots failed", "request_id", httpapi.RequestID(r.Context()),
-				"organization_id", sc.OrganizationID, "proposal_id", id, "error", cause.Error())
+				"organization_id", sc.OrganizationID, "proposal_id", id, "error", read.Error())
 		}
 		return Refused(err)
 	}

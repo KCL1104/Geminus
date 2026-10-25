@@ -15,6 +15,7 @@ import (
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/models"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -144,15 +145,15 @@ func TestRefused(t *testing.T) {
 	}
 }
 
-// H-022, D-069 (b), extended by the coordinator to every model route whose
-// dataset binding stage reads snapshots (publishVersion, patchDraft,
-// resetDraft): one mapping, refused, answers snapshots that cannot be read
-// or verified with 503 DATASET_STORAGE_FAILED, as approveProposal and
-// createManualScenario do, never with the cause; a request that ended, a
-// tenant or a transport error pass to httpapi, which answers them as on
-// every route.
+// H-022, D-069 (b), D-087: every model route whose dataset binding stage
+// reads snapshots (publishVersion, patchDraft, resetDraft) has one mapping,
+// refused, which answers a snapshot that could not be read
+// (datasets.ReadError) with 503 DATASET_STORAGE_FAILED, as approveProposal
+// and createManualScenario do, never with the cause; a server fault of the
+// stage, a request that ended, a tenant or a transport error pass to
+// httpapi, which answers them as on every route (review L1).
 func TestRefusedDatasetStorage(t *testing.T) {
-	storage := &models.DatasetStorageError{Err: errors.New("open /srv/objects/tenant/secret: input/output error")}
+	storage := &datasets.ReadError{DatasetVersionID: "dsv_01M4YDQK00NMKD3J34KSJZVY40", Err: errors.New("open /srv/objects/tenant/secret: input/output error")}
 	for _, err := range []error{storage, fmt.Errorf("publish: %w", storage), fmt.Errorf("sync the draft: %w", storage)} {
 		var e *httpapi.Error
 		if !errors.As(models.Refused(err), &e) || e.Code != httpapi.ServiceUnavailable ||
@@ -172,7 +173,8 @@ func TestRefusedDatasetStorage(t *testing.T) {
 		t.Errorf("without dataset storage: %+v", models.Refused(models.ErrDatasetsUnavailable))
 	}
 	for _, err := range []error{context.Canceled, fmt.Errorf("reading: %w", context.DeadlineExceeded), tenant.ErrForbidden,
-		tenant.ErrRetryable, errors.New("database down")} {
+		tenant.ErrRetryable, errors.New("database down"), fmt.Errorf("hashing a shape-checked manifest: %w", errors.New("invalid")),
+		errors.Join(context.Canceled, storage)} {
 		if got := models.Refused(err); got != err {
 			t.Errorf("%v became %v", err, got)
 		}

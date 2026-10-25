@@ -141,6 +141,27 @@ func TestWriteError(t *testing.T) {
 }
 
 // The selector's ID format is the schema's (D-001), not a second copy.
+// T-054 review L3: the one 503 of a snapshot that could not be read, the
+// same on every route: SERVICE_UNAVAILABLE, the route's message and
+// details[0].code DATASET_STORAGE_FAILED; written like any typed error,
+// without an ERROR log.
+func TestDatasetStorageFailed(t *testing.T) {
+	e := DatasetStorageFailed("nothing was changed (retry later)")
+	if e.Code != ServiceUnavailable || Status[e.Code] != 503 || e.Message != "nothing was changed (retry later)" ||
+		!slices.Equal(e.Details, []Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}) {
+		t.Errorf("%+v", e)
+	}
+	var logs bytes.Buffer
+	w := serve(slog.New(slog.NewTextHandler(&logs, nil)), func(http.ResponseWriter, *http.Request) error { return fmt.Errorf("x: %w", e) },
+		httptest.NewRequest("POST", "/", nil))
+	if env := checkEnvelope(t, w); w.Code != 503 || env.Error.Code != ServiceUnavailable || logs.Len() != 0 {
+		t.Errorf("%d %s, log %q", w.Code, w.Body, logs.String())
+	}
+	if DatasetStorageFailed("a") == DatasetStorageFailed("a") {
+		t.Error("one shared *Error: a route could change another's")
+	}
+}
+
 func TestOrganizationIDMatchesSchema(t *testing.T) {
 	data, err := schemas.FS.ReadFile("common.schema.json")
 	if err != nil {

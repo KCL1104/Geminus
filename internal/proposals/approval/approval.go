@@ -106,46 +106,6 @@ func (e *InvalidError) Error() string {
 	return fmt.Sprintf("approval: the proposal does not pass the review again (%d issue(s))", len(e.Issues))
 }
 
-// DatasetStorageError: the dataset binding stage could not read or verify
-// the base's snapshots (an infrastructure failure, not a problem of the
-// data, which is an issue).
-type DatasetStorageError struct{ Err error }
-
-func (e *DatasetStorageError) Error() string {
-	return "approval: the dataset snapshots could not be read: " + e.Err.Error()
-}
-
-func (e *DatasetStorageError) Unwrap() error { return e.Err }
-
-// bindingFailure is what an approval answers when the dataset binding
-// stage fails with err rather than with issues: a storage failure (503
-// DATASET_STORAGE_FAILED, as the generator's, D-061 (c); review I2),
-// unless the request itself ended.
-func bindingFailure(ctx context.Context, err error) error {
-	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		return err
-	}
-	return &DatasetStorageError{Err: err}
-}
-
-// storageCause reports whether err is a dataset binding stage that could
-// not read or verify the snapshots, and its cause (which is logged, never
-// sent): the revalidation's (DatasetStorageError), or the one an edit's
-// clean draft runs when it moves to the new version (models.Service.Advance:
-// a modelsvc.DatasetStorageError; H-022 Q4, which the coordinator extended
-// to this read; T-054). Both are the same 503 DATASET_STORAGE_FAILED.
-func storageCause(err error) (error, bool) {
-	var own *DatasetStorageError
-	if errors.As(err, &own) {
-		return own.Err, true
-	}
-	var draft *modelsvc.DatasetStorageError
-	if errors.As(err, &draft) {
-		return draft.Err, true
-	}
-	return nil, false
-}
-
 // PackLookup finds a model's domain pack; *domainpack.Registry is one.
 type PackLookup interface {
 	Lookup(domain string) (domainpack.DomainPack, error)
@@ -444,7 +404,11 @@ func (s *Service) apply(ctx context.Context, tx tenant.Tx, m tenant.Membership, 
 	snaps := snapshots.Store{Keys: keys, Objects: s.Objects}
 	resolution, err := datasets.Resolve(ctx, snaps, org, r.ir, manifest)
 	if err != nil {
-		return nil, bindingFailure(ctx, err)
+		// A snapshot that cannot be read is a datasets.ReadError (503
+		// DATASET_STORAGE_FAILED, as the generator's, D-061 (c); review
+		// I2); the ended request's context error, or a server fault (500),
+		// otherwise (T-054 review L1, L2).
+		return nil, datasets.Failure(ctx, err)
 	}
 	if o := r.outcome.Refuse(withoutIR(resolution.Issues)); o.Status != r.outcome.Status {
 		return nil, &InvalidError{Issues: o.Validation.Issues}
@@ -468,8 +432,9 @@ func (s *Service) apply(ctx context.Context, tx tenant.Tx, m tenant.Membership, 
 		// The draft rule of ADR-022 (D-003): a clean draft moves to the new
 		// version, a dirty one is kept as it is and is out of date. The move
 		// checks the draft's bindings with the snapshots read again; one that
-		// cannot be read is a modelsvc.DatasetStorageError, the same 503 as
-		// the revalidation's (storageCause), and nothing is committed.
+		// cannot be read is a datasets.ReadError there too (models applies
+		// datasets.Failure), the same 503 as the revalidation's, and nothing
+		// is committed.
 		svc := modelsvc.Service{DB: s.DB, Packs: s.Packs, Datasets: snaps}
 		d, err := svc.Advance(ctx, tx, m, l.model, l.draft, base, v, r.ir.Name)
 		if err != nil {

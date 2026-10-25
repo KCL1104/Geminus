@@ -77,6 +77,15 @@ func (e *Error) Error() string { return string(e.Code) + ": " + e.Message }
 // Errorf is an *Error without details.
 func Errorf(code Code, message string) *Error { return &Error{Code: code, Message: message} }
 
+// DatasetStorageFailed is the 503 of a dataset binding stage that could
+// not read a snapshot, the same on every route (details[0].code
+// DATASET_STORAGE_FAILED; D-061 (c), D-069 (b), H-022, D-087): message
+// says what was not done. The cause is the route's to log, never sent.
+func DatasetStorageFailed(message string) *Error {
+	return &Error{Code: ServiceUnavailable, Message: message,
+		Details: []Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}}
+}
+
 type envelope struct {
 	Error body `json:"error"`
 }

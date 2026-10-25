@@ -30,6 +30,7 @@ import (
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/models"
 	"github.com/kcl1104/geminus/internal/scenarios"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/storage/objects"
@@ -543,10 +544,22 @@ func TestScenarioDatasets(t *testing.T) {
 		t.Errorf("without object storage: %v", err)
 	}
 	broken := *e.svc
-	broken.Objects = brokenObjects{e.objects}
-	var storage *scenarios.DatasetStorageError
-	if _, _, err := broken.Create(context.Background(), e.scope(tenant.Editor), ids.New("req"), key(), base, []byte(body), req); !errors.As(err, &storage) {
+	broken.Objects = brokenObjects{Store: e.objects}
+	if _, _, err := broken.Create(context.Background(), e.scope(tenant.Editor), ids.New("req"), key(), base, []byte(body), req); err == nil {
+		t.Error("object storage that fails: no error")
+	} else if _, ok := datasets.StorageFailure(err); !ok {
 		t.Errorf("object storage that fails: %v", err)
+	}
+	// T-054 review L2: the request ends while the store fails on its own:
+	// the request's context error (an ended request's 503), not a storage
+	// failure and not a server error.
+	ctx, end := context.WithCancel(context.Background())
+	ending := *e.svc
+	ending.Objects = brokenObjects{Store: e.objects, cancel: end}
+	if _, _, err := ending.Create(ctx, e.scope(tenant.Editor), ids.New("req"), key(), base, []byte(body), req); !errors.Is(err, context.Canceled) {
+		t.Errorf("the request ended while the store failed: %v", err)
+	} else if _, ok := datasets.StorageFailure(err); ok || scenarios.Refused(err) != err {
+		t.Errorf("the request ended while the store failed is mapped: %v", scenarios.Refused(err))
 	}
 	objKey, _ := objects.NewKey(e.org.ID, objects.Datasets, binding.DatasetVersionID+".json")
 	path := filepath.Join(e.root, filepath.FromSlash(objKey))
@@ -578,10 +591,17 @@ func TestScenarioDatasets(t *testing.T) {
 	}
 }
 
-// brokenObjects is object storage whose reads fail.
-type brokenObjects struct{ objects.Store }
+// brokenObjects is object storage whose reads fail; with cancel set, a read
+// ends the request first (the request ends while the store fails).
+type brokenObjects struct {
+	objects.Store
+	cancel context.CancelFunc
+}
 
-func (brokenObjects) Get(context.Context, string) (io.ReadCloser, error) {
+func (b brokenObjects) Get(context.Context, string) (io.ReadCloser, error) {
+	if b.cancel != nil {
+		b.cancel()
+	}
 	return nil, errors.New("the object store did not answer")
 }
 

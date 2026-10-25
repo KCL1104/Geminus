@@ -12,6 +12,7 @@ import (
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -120,14 +121,16 @@ func setETag(w http.ResponseWriter, d Draft) {
 
 // refused maps the service's errors to what the client sees (openapi
 // error codes); tenant and transport errors pass to httpapi. It is the
-// one mapping of every model route: a dataset binding stage that cannot
-// read or verify the snapshots (publishVersion, patchDraft, resetDraft) is
-// 503 DATASET_STORAGE_FAILED, as approveProposal and createManualScenario
-// answer (D-069 (b); H-022 Q4, which the coordinator extended to the draft
-// routes; T-054); its cause is logged by the handler (refuse), never sent.
+// one mapping of every model route: a snapshot the dataset binding stage
+// could not read (publishVersion, patchDraft, resetDraft;
+// datasets.StorageFailure) is 503 DATASET_STORAGE_FAILED, as on
+// approveProposal, createManualScenario and createSimulation (D-069 (b),
+// H-022, D-087; T-054); its cause is logged by the handler (refuse), never
+// sent. Any other error of the binding stage is a server fault (500,
+// logged by httpapi), or the ended request's (503).
 func refused(err error) error {
 	var invalid *InvalidError
-	var storage *DatasetStorageError
+	_, storage := datasets.StorageFailure(err)
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return httpapi.Errorf(httpapi.NotFound, "not found")
@@ -139,9 +142,8 @@ func refused(err error) error {
 		return httpapi.InvalidCursor()
 	case errors.Is(err, ErrDatasetsUnavailable):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "the version binds datasets and dataset storage is not available")
-	case errors.As(err, &storage):
-		return &httpapi.Error{Code: httpapi.ServiceUnavailable, Message: "the dataset snapshots could not be read; nothing was changed (retry later)",
-			Details: []httpapi.Detail{{Path: "", Reason: "the dataset storage failed", Code: "DATASET_STORAGE_FAILED"}}}
+	case storage:
+		return httpapi.DatasetStorageFailed("the dataset snapshots could not be read; nothing was changed (retry later)")
 	case errors.Is(err, ErrInvalidLimit): // PageQuery bounds it first
 		return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "limit must be one integer from 1 to 100",
 			Details: []httpapi.Detail{{Path: "", Reason: "limit"}}}
@@ -167,10 +169,9 @@ func refused(err error) error {
 // snapshots (operation, on model modelID): a storage failure's cause is
 // logged with the request, never sent.
 func (h handlers) refuse(r *http.Request, sc tenant.Scope, operation, modelID string, err error) error {
-	var storage *DatasetStorageError
-	if errors.As(err, &storage) {
+	if read, ok := datasets.StorageFailure(err); ok {
 		h.log.WarnContext(r.Context(), "reading a model write's dataset snapshots failed", "request_id", httpapi.RequestID(r.Context()),
-			"operation_id", operation, "organization_id", sc.OrganizationID, "model_id", modelID, "error", storage.Err.Error())
+			"operation_id", operation, "organization_id", sc.OrganizationID, "model_id", modelID, "error", read.Error())
 	}
 	return refused(err)
 }

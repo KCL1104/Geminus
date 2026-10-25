@@ -1,0 +1,11 @@
+=== RUN   TestReviewProbeEndedRequestOwnError
+    zz_review_probe_test.go:36: ended request, store's own error: 500 {"error":{"code":"INTERNAL_ERROR","message":"internal error","request_id":""}} | log: {"time":"2026-10-25T16:34:19.953883171Z","level":"ERROR","msg":"request failed","request_id":"","error":"read tcp 10.0.0.1: connection reset by peer"}
+    zz_review_probe_test.go:38: ended request, context error: 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the request did not complete in time","request_id":""}}
+--- PASS: TestReviewProbeEndedRequestOwnError (0.00s)
+=== RUN   TestReviewProbeServerFaultIsRetryable
+    zz_review_probe_test.go:50: hashing a shape-checked manifest: invalid -> 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was changed (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}} | ERROR log by httpapi: false
+    zz_review_probe_test.go:50: schema-valid snapshot does not decode: unexpected EOF -> 503 {"error":{"code":"SERVICE_UNAVAILABLE","message":"the dataset snapshots could not be read; nothing was changed (retry later)","details":[{"path":"","reason":"the dataset storage failed","code":"DATASET_STORAGE_FAILED"}],"request_id":""}} | ERROR log by httpapi: false
+--- PASS: TestReviewProbeServerFaultIsRetryable (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/models	0.011s
+exit=0

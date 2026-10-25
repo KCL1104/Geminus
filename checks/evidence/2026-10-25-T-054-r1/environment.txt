@@ -1,0 +1,10 @@
+date: 2026-10-25T16:35:23Z (review round 1 fixes start here)
+worktree branch: t054-r1, from 79262a5 (the coordinator's H-023 / D-087 record on top of 272aa3d)
+go: go1.27.3 linux/amd64 (go.mod toolchain)
+node: v22.22.0, npm 10.9.4 (apps/web wants 24.21.0; apps/web/node_modules from the committed lockfile, unchanged)
+python: 3.13.16 (/home/user/Geminus/.venv/bin/python)
+cpus: 4 (shared with other agents running go test)
+postgresql: none: GEMINUS_TEST_DATABASE_URL is unset, so every DB-backed Go test skips (NOT RUN) and no SQL ran
+live AI: none; no API key read or set
+reviewer probe: /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/t054-review-probes/zz_review_probe_test.go,
+      run through go test -overlay (never added to the tree): probe-before.log (79262a5), probe-after.log (the fix)
