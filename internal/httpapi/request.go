@@ -12,40 +12,46 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strconv"
 	"strings"
 
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/observability"
 )
 
-type requestIDKey struct{}
-
 // RequestID returns the ID Handler gave this request ("" outside one).
-func RequestID(ctx context.Context) string {
-	id, _ := ctx.Value(requestIDKey{}).(string)
-	return id
-}
+func RequestID(ctx context.Context) string { return observability.RequestID(ctx) }
 
 // HandlerFunc is a handler that returns its error instead of writing it.
 type HandlerFunc func(w http.ResponseWriter, r *http.Request) error
 
 // Handler is the outermost layer of every route: it gives the request a
 // server-issued ID ("req_" + ULID, echoed in X-Request-ID; a client value
-// is never used, since it would go into audit rows), recovers a panic as
-// INTERNAL_ERROR, and writes a returned error as the error envelope.
+// is never used, since it would go into audit rows), or keeps the one the
+// server's AccessLog gave it, recovers a panic as INTERNAL_ERROR, and
+// writes a returned error as the error envelope. Every line logged with the
+// request's context carries the ID (observability, T-035).
 func Handler(log *slog.Logger, next HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := ids.New("req")
+		id := observability.RequestID(r.Context()) // only server code sets it
+		if id == "" {
+			id = ids.New("req")
+			r = r.WithContext(observability.WithRequestID(r.Context(), id))
+		}
 		w.Header().Set("X-Request-ID", id)
-		r = r.WithContext(context.WithValue(r.Context(), requestIDKey{}, id))
 		defer func() {
 			if v := recover(); v != nil {
 				if v == http.ErrAbortHandler {
 					panic(v)
 				}
-				log.ErrorContext(r.Context(), "handler panicked", "request_id", id, "panic", fmt.Sprint(v))
+				// The value may hold the data the handler worked on: only
+				// its type, or a runtime error's own message, and the stack
+				// are logged (D-094 (d)), as the worker does.
+				log.ErrorContext(r.Context(), "handler panicked", "request_id", id, "panic", observability.PanicText(v),
+					"stack", string(debug.Stack()))
 				WriteError(w, r, log, errors.New("panic"))
 			}
 		}()

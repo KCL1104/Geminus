@@ -31,6 +31,7 @@ import (
 	"log/slog"
 	"regexp"
 	"strconv"
+	"time"
 
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
 	"github.com/kcl1104/geminus/internal/import/report"
@@ -128,10 +129,20 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	}); err != nil {
 		return err
 	}
+	began := time.Now()
 	out, err := h.profile(ctx, org, job.Attempt, imp)
 	if err != nil {
 		return err
 	}
+	// The import's operational metric (T-035, D-095): counts and the
+	// outcome, never a column name or value; the job's correlation comes
+	// with ctx.
+	result := "profiled"
+	if out.failure != nil {
+		result = "failed"
+	}
+	h.cfg.Log.InfoContext(ctx, "import profiled", "outcome", result, "rows", out.rows, "invalid_rows", out.invalid, "columns", out.columns,
+		"size_bytes", imp.Size, "duration_ms", time.Since(began).Milliseconds())
 	return hr.Finish(ctx, jobs.Completed, func(ctx context.Context, tx tenant.Tx) error {
 		if _, err := store.Lock(ctx, tx, org, imp.ID); err != nil {
 			return err

@@ -892,3 +892,63 @@ func TestReapTakesItsLimit(t *testing.T) {
 		}
 	}
 }
+
+// T-035: ReapJobs returns each job it took back as the reap left it, so
+// the worker can audit it in the same transaction (D-091 (b)); Reap's
+// counts are its summary.
+func TestReapJobsReturnsWhatItTook(t *testing.T) {
+	e := setup(t)
+	owner := e.org.Members[tenant.Owner]
+	var last jobs.Job
+	if err := e.api.Run(context.Background(), tenant.Scope{OrganizationID: e.org.ID, UserID: owner.UserID}, tenant.ReadWrite,
+		func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
+			imp, err := insertImport(ctx, tx, e.org.ID, e.prj, e.model, e.base, owner.UserID)
+			if err != nil {
+				return err
+			}
+			last, err = jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: e.org.ID, Type: jobs.ImportProfile,
+				Resource: jobs.Resource{ImportID: imp}, Payload: map[string]any{"import_id": imp}, MaxAttempts: 1}, fast)
+			return err
+		}); err != nil {
+		t.Fatal(err)
+	}
+	retried := e.enqueue(t, e.org, e.prj, e.model, e.base, 0)
+	for range 2 {
+		if _, _, ok := e.claim(t, e.org.ID, "worker-1"); !ok {
+			t.Fatal("nothing to claim")
+		}
+	}
+	e.expire(t, last.ID)
+	e.expire(t, retried.ID)
+	var reaped []jobs.Reaped
+	if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		reaped, err = jobs.ReapJobs(ctx, tx, e.org.ID, 10, fast)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(reaped) != 2 || reaped[0].Job.ID > reaped[1].Job.ID {
+		t.Fatalf("%+v", reaped)
+	}
+	for _, r := range reaped {
+		var f jobs.Failure
+		if err := json.Unmarshal(r.Job.Error, &f); err != nil || f != jobs.ReapFailure {
+			t.Errorf("%s: failure %+v %v", r.Job.ID, f, err)
+		}
+		want := r.Job.ID == retried.ID
+		if r.Requeued != want || r.Job.Attempt != 1 || r.Job.OrganizationID != e.org.ID || r.Job.Resource.ImportID == "" ||
+			r.Job.Type != jobs.ImportProfile || (want && r.Job.Status != jobs.Queued) || (!want && r.Job.Status != jobs.Failed) ||
+			(!want && r.Job.MaxAttempts != 1) || len(r.Job.Payload) == 0 {
+			t.Errorf("%+v", r)
+		}
+	}
+	// Nothing is left to take.
+	if err := e.as(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error {
+		var err error
+		reaped, err = jobs.ReapJobs(ctx, tx, e.org.ID, 10, fast)
+		return err
+	}); err != nil || len(reaped) != 0 {
+		t.Errorf("a second reap: %+v %v", reaped, err)
+	}
+}

@@ -2,7 +2,8 @@
 // §2). It owns configuration and lifecycle only, never business rules: it
 // validates configuration, connects to PostgreSQL as the API runtime login
 // (refusing an unsafe one), builds the token verifier and serves
-// internal/api's handler until SIGINT or SIGTERM.
+// internal/api's handler, behind the access log (httpapi.AccessLog), until
+// SIGINT or SIGTERM. Its log is observability's (T-035).
 package main
 
 import (
@@ -22,6 +23,8 @@ import (
 	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/httpapi"
+	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -42,7 +45,7 @@ func main() {
 // run serves until ctx ends. ready, if not nil, receives the listening
 // address once the server accepts connections (for tests).
 func run(ctx context.Context, getenv func(string) string, stderr io.Writer, ready chan<- string) int {
-	log := slog.New(slog.NewJSONHandler(stderr, nil)).With("component", "api")
+	log := newLogger(stderr)
 	cfg, err := config.Load(getenv)
 	authCfg, authErr := config.LoadAuth(getenv)
 	srvCfg, srvErr := config.LoadServer(getenv)
@@ -98,7 +101,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("cannot listen", "addr", srvCfg.Addr, "error", err.Error())
 		return exitServe
 	}
-	srv := newServer(handler, log)
+	srv := newServer(httpapi.AccessLog(log, handler), log)
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
 	log.Info("serving", "addr", ln.Addr().String())
@@ -137,6 +140,11 @@ func aiAvailability(cfg config.Config) proposals.Availability {
 	}
 	return proposals.NotConfigured
 }
+
+// newLogger is the API's log (T-035, D-093, D-094): JSON lines on stderr,
+// every attribute through the privacy filter, every line of a request with
+// its request ID.
+func newLogger(stderr io.Writer) *slog.Logger { return observability.NewLogger(stderr, "api") }
 
 // shutdownGrace is how long a shutdown waits for requests in progress.
 const shutdownGrace = 20 * time.Second

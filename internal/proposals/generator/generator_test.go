@@ -15,6 +15,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
 	"github.com/kcl1104/geminus/internal/ai/review"
+	"github.com/kcl1104/geminus/internal/audit"
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
@@ -150,9 +151,12 @@ func TestGenerated(t *testing.T) {
 func TestAuditMeta(t *testing.T) {
 	m := auditMeta(provider.Metadata{Provider: "anthropic", Model: "m-1", Credential: "org-b", FailedOver: []string{"org-a"},
 		Role: provider.RoleScenario, TemplateVersion: "scenario-0.2.0", OutputSchema: "proposal-output.schema.json", Locale: "zh-Hant",
-		InputHash: "sha256:1", OutputHash: "sha256:2", Usage: provider.Usage{InputTokens: 10, OutputTokens: 5}, LatencyMillis: 7})
+		InputHash: "sha256:1", OutputHash: "sha256:2", Usage: provider.Usage{InputTokens: 10, OutputTokens: 5}, LatencyMillis: 7,
+		ProviderRequestID: "req_011CUcvD2y5nA6z5tYt7aCb1"})
+	// T-035 (D-091 (d)): the provider's own request ID correlates the call
+	// with the provider's records.
 	want := []string{"credential_label", "failed_over_from", "input_hash", "input_tokens", "latency_ms", "model", "output_hash", "output_locale",
-		"output_tokens", "prompt_template_version", "provider", "role", "schema"}
+		"output_tokens", "prompt_template_version", "provider", "provider_request_id", "role", "schema"}
 	var keys []string
 	for k := range m {
 		keys = append(keys, k)
@@ -162,6 +166,23 @@ func TestAuditMeta(t *testing.T) {
 	}
 	if m["credential_label"] != "org-b" {
 		t.Errorf("%v", m)
+	}
+	// What the provider chooses (its model name, its request ID) is left
+	// out when it is no label the catalogue accepts, so an odd value never
+	// fails the write the event records (and never repeats a paid call).
+	odd := auditMeta(provider.Metadata{Provider: "anthropic", Model: "model <b>bold</b>", ProviderRequestID: "sk-ant-api03-SENTINELsentinel0123456789",
+		Role: provider.RoleModeler, TemplateVersion: "modeler-1", OutputSchema: "proposal-output.schema.json", Locale: "en",
+		InputHash: "sha256:" + strings.Repeat("a", 64), LatencyMillis: 3})
+	if _, ok := odd["model"]; ok {
+		t.Errorf("an odd model name is kept: %v", odd)
+	}
+	if _, ok := odd["provider_request_id"]; ok {
+		t.Errorf("an odd request ID is kept: %v", odd)
+	}
+	odd["attempt"], odd["code"], odd["retryable"] = 1, "AI_UNAVAILABLE", true
+	if err := audit.Check(audit.Event{ActorType: audit.Worker, ActorID: "worker-1", Action: "proposal.attempt_failed", TargetType: "ai_proposal",
+		TargetID: "aip_01M4YDQK00ADN261CME3WV5HZ6", RequestID: "req_01M4YDQK00ADN261CME3WV5HZ6", Metadata: odd}); err != nil {
+		t.Errorf("%v", err)
 	}
 }
 

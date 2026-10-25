@@ -33,6 +33,7 @@ import (
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/import/validator"
+	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/runs/runner"
@@ -195,7 +196,9 @@ func objectStore(cfg config.Config) (objects.Store, error) {
 
 // run runs the loop with the handlers build makes until ctx ends.
 func run(ctx context.Context, getenv func(string) string, stderr io.Writer, build builder) int {
-	log := slog.New(slog.NewJSONHandler(stderr, nil)).With("component", "worker")
+	// JSON lines through the privacy filter; a job's lines carry its
+	// correlation (T-035, D-093, D-094).
+	log := observability.NewLogger(stderr, "worker")
 	cfg, err := config.Load(getenv)
 	wcfg, werr := config.LoadWorker(getenv)
 	// Load checked the AI configuration with the rest; this is its whole

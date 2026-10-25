@@ -20,6 +20,8 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -357,12 +359,36 @@ func backoffs(p Policy) []int64 {
 // limit jobs per call; jobs a finalizing transaction holds are skipped.
 // The expired worker's token stays behind, so it can write nothing more.
 func Reap(ctx context.Context, tx pgx.Tx, org string, limit int, p Policy) (requeued, failed int, err error) {
-	if !p.valid() || limit < 1 {
-		return 0, 0, fmt.Errorf("jobs: invalid reap")
+	reaped, err := ReapJobs(ctx, tx, org, limit, p)
+	for _, r := range reaped {
+		if r.Requeued {
+			requeued++
+		} else {
+			failed++
+		}
 	}
-	detail, err := json.Marshal(Failure{Code: LeaseExpired, Message: "the worker's lease expired before the job finished", Retryable: true}, json.Deterministic(true))
+	return requeued, failed, err
+}
+
+// ReapFailure is the failure Reap records on each job it takes back.
+var ReapFailure = Failure{Code: LeaseExpired, Message: "the worker's lease expired before the job finished", Retryable: true}
+
+// Reaped is a job Reap took back, as the reap left it: queued again
+// (Requeued) or failed, with its attempt, payload and resource, so the
+// caller can audit it in the same transaction (T-035, D-091 (b)).
+type Reaped struct {
+	Job      Job
+	Requeued bool
+}
+
+// ReapJobs is Reap, returning the jobs it took back in job ID order.
+func ReapJobs(ctx context.Context, tx pgx.Tx, org string, limit int, p Policy) ([]Reaped, error) {
+	if !p.valid() || limit < 1 {
+		return nil, fmt.Errorf("jobs: invalid reap")
+	}
+	detail, err := json.Marshal(ReapFailure, json.Deterministic(true))
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	rows, err := tx.Query(ctx, `WITH expired AS (
 		  SELECT id FROM twin.jobs
@@ -375,19 +401,19 @@ func Reap(ctx context.Context, tx pgx.Tx, org string, limit int, p Policy) (requ
 		  available_at=CASE WHEN j.attempt<j.max_attempts THEN now()+(($3::bigint[])[j.attempt]*interval '1 millisecond') ELSE j.available_at END,
 		  locked_at=NULL, locked_by=NULL, lease_expires_at=NULL, error=$4
 		FROM expired e WHERE j.organization_id=$1 AND j.id=e.id
-		RETURNING j.status`, org, limit, backoffs(p), detail)
+		RETURNING `+qualified, org, limit, backoffs(p), detail)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
-	statuses, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	for _, s := range statuses {
-		if s == string(Queued) {
-			requeued++
-		} else {
-			failed++
-		}
+	reaped, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (Reaped, error) {
+		j, err := scan(r)
+		return Reaped{Job: j, Requeued: j.Status == Queued}, err
+	})
+	if err != nil {
+		return nil, err
 	}
-	return requeued, failed, err
+	slices.SortFunc(reaped, func(a, b Reaped) int { return strings.Compare(a.Job.ID, b.Job.ID) })
+	return reaped, nil
 }
 
 // Get returns the job id of org.

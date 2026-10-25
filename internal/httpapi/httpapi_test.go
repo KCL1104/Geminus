@@ -200,12 +200,32 @@ func TestRequestID(t *testing.T) {
 }
 
 // A panicking handler is a logged INTERNAL_ERROR; http.ErrAbortHandler
-// keeps its meaning (abort the response).
+// keeps its meaning (abort the response). T-035 (D-094 (d)): the panic's
+// value may hold the data the handler worked on, so the log keeps only that
+// it panicked, the value's type (a runtime error's own message, which the
+// runtime wrote) and the stack, as the worker does; before T-035 the value
+// itself was logged.
 func TestRecover(t *testing.T) {
 	var logs bytes.Buffer
-	w := serve(slog.New(slog.NewTextHandler(&logs, nil)), func(http.ResponseWriter, *http.Request) error { panic("boom") }, httptest.NewRequest("GET", "/", nil))
-	if e := checkEnvelope(t, w); w.Code != 500 || e.Error.Code != InternalError || !strings.Contains(logs.String(), "boom") {
+	w := serve(slog.New(slog.NewTextHandler(&logs, nil)), func(http.ResponseWriter, *http.Request) error { panic("boom: row CASE-SENTINEL") },
+		httptest.NewRequest("GET", "/", nil))
+	e := checkEnvelope(t, w)
+	if w.Code != 500 || e.Error.Code != InternalError || !strings.Contains(logs.String(), "handler panicked") ||
+		!strings.Contains(logs.String(), e.Error.RequestID) || !strings.Contains(logs.String(), "panic with a value of type string") ||
+		!strings.Contains(logs.String(), "stack=") {
 		t.Errorf("panic: %d %s %s", w.Code, w.Body, logs.String())
+	}
+	if strings.Contains(logs.String(), "SENTINEL") || strings.Contains(logs.String(), "boom") {
+		t.Errorf("the panic's value is logged: %s", logs.String())
+	}
+	logs.Reset()
+	serve(slog.New(slog.NewTextHandler(&logs, nil)), func(http.ResponseWriter, *http.Request) error {
+		var m map[string]int
+		m["x"]++ // a runtime error
+		return nil
+	}, httptest.NewRequest("GET", "/", nil))
+	if !strings.Contains(logs.String(), "assignment to entry in nil map") {
+		t.Errorf("a runtime error's message is lost: %s", logs.String())
 	}
 	defer func() {
 		if recover() != http.ErrAbortHandler {

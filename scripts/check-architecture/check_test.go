@@ -274,6 +274,19 @@ func TestProbesAreCaught(t *testing.T) {
 		{"the-pool-reads-files", "internal/ai/idpool/zz_probe.go", "os", "ai-is-pure-but-the-adapter", "./internal/ai/idpool", "os", false},
 		{"the-context-runs-a-process", "internal/ai/aicontext/zz_probe.go", "os/exec", "ai-suggests-only", "./internal/ai/aicontext", "os/exec", false},
 		{"a-service-links-the-adapter", "internal/models/zz_probe.go", module + "/internal/ai/provider/anthropic", "llm-sdks-only-in-ai", "./internal/models", "github.com/anthropics/anthropic-sdk-go", false},
+		// T-035: the log filter and the audit catalogue are leaves the
+		// kernel and the AI never reach, and they reach nothing that could
+		// write around them.
+		{"the-kernel-logs", "internal/results/metrics/zz_probe.go", module + "/internal/observability", "generic-kernel", "./internal/results/metrics", "./internal/observability", false},
+		{"the-engine-audits", "internal/simulation/engine/zz_probe.go", module + "/internal/audit", "generic-kernel", "./internal/simulation/engine", "./internal/audit", false},
+		{"the-context-logs", "internal/ai/aicontext/zz_probe.go", module + "/internal/observability", "ai-suggests-only", "./internal/ai/aicontext", "./internal/observability", false},
+		{"the-filter-reads-storage", "internal/observability/zz_probe.go", module + "/internal/storage/jobs", "observability-is-a-leaf", "./internal/observability", "./internal/storage/jobs", false},
+		{"the-filter-goes-online", "internal/observability/zz_probe.go", "net/http", "observability-is-a-leaf", "./internal/observability", "net/http", false},
+		{"the-filter-opens-files", "internal/observability/zz_probe.go", "os", "observability-is-a-leaf", "./internal/observability", "os", false},
+		{"the-filter-links-a-module", "internal/observability/zz_probe.go", "golang.org/x/sync/errgroup", "observability-is-a-leaf", "./internal/observability", "golang.org/x/sync/errgroup", false},
+		{"the-catalogue-reads-the-tenant", "internal/audit/zz_probe.go", module + "/internal/tenant", "audit-catalogue-is-pure", "./internal/audit", "./internal/tenant", false},
+		{"the-catalogue-imports-pgx", "internal/audit/zz_probe.go", "github.com/jackc/pgx/v5", "audit-catalogue-is-pure", "./internal/audit", "github.com/jackc/pgx/v5", false},
+		{"the-catalogue-opens-files", "internal/audit/zz_probe.go", "os", "audit-catalogue-is-pure", "./internal/audit", "os", false},
 	}
 	for _, p := range probes {
 		t.Run(p.name, func(t *testing.T) {

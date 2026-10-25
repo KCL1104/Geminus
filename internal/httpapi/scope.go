@@ -2,10 +2,12 @@ package httpapi
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"regexp"
 
 	"github.com/kcl1104/geminus/internal/auth"
+	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
@@ -40,6 +42,11 @@ func Scoped(v auth.Verifier, users Resolver, next func(w http.ResponseWriter, r 
 		if err != nil {
 			return err
 		}
+		// The selected organization and the user, opaque IDs only (never the
+		// issuer or subject), on the request's later log lines (D-093 (b)).
+		// The selection is not proof of membership: the handler's
+		// transaction checks that.
+		observability.Annotate(r.Context(), slog.String("organization_id", values[0]), slog.String("user_id", user))
 		ctx := auth.WithIdentity(r.Context(), id)
 		return next(w, r.WithContext(ctx), tenant.Scope{OrganizationID: values[0], UserID: user})
 	}
@@ -70,6 +77,7 @@ func Self(v auth.Verifier, users Resolver, next func(w http.ResponseWriter, r *h
 		if err != nil {
 			return err
 		}
+		observability.Annotate(r.Context(), slog.String("user_id", user))
 		return next(w, r.WithContext(auth.WithIdentity(r.Context(), id)), user)
 	}
 }

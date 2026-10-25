@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -122,6 +123,54 @@ type Org struct {
 func NewOrg(t testing.TB, admin *pgxpool.Pool, issuer string, roles ...tenant.Role) Org {
 	t.Helper()
 	return NewOrgNamed(t, admin, issuer, "Test org", roles...)
+}
+
+// RefuseAudit makes the database refuse every audit event of org, until
+// the function it returns (run at the test's cleanup as well) drops the
+// refusal: a BEFORE INSERT trigger on twin.audit_events, created as the
+// table's owner, that raises for org's rows only, so other tests' events
+// are untouched. T-035 (D-091 (c)): an action whose audit event cannot be
+// written must commit nothing.
+func RefuseAudit(t testing.TB, admin *pgxpool.Pool, org string) (stop func()) {
+	t.Helper()
+	if !strings.HasPrefix(org, "org_") || strings.ContainsFunc(org, func(r rune) bool {
+		return !(r == '_' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z')
+	}) {
+		t.Fatalf("not an organization ID: %q", org)
+	}
+	name := "twin.zz_test_refuse_audit_" + strings.ToLower(org)
+	owner := func(sql string) error {
+		return postgres.OpenPool(admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+			if _, err := tx.Exec(ctx, `SET LOCAL ROLE twin_owner`); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, sql)
+			return err
+		})
+	}
+	if err := owner(`CREATE FUNCTION ` + name + `() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS $$
+		BEGIN
+		  IF NEW.organization_id::text = '` + org + `' THEN
+		    RAISE EXCEPTION 'the test refuses this audit event' USING ERRCODE = 'P0001';
+		  END IF;
+		  RETURN NEW;
+		END $$`); err != nil {
+		t.Fatal(err)
+	}
+	trigger := strings.TrimPrefix(name, "twin.")
+	if err := owner(`CREATE TRIGGER ` + trigger + ` BEFORE INSERT ON twin.audit_events FOR EACH ROW EXECUTE FUNCTION ` + name + `()`); err != nil {
+		t.Fatal(err)
+	}
+	stop = sync.OnceFunc(func() {
+		if err := owner(`DROP TRIGGER IF EXISTS ` + trigger + ` ON twin.audit_events`); err != nil {
+			t.Error(err)
+		}
+		if err := owner(`DROP FUNCTION IF EXISTS ` + name + `()`); err != nil {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(stop)
+	return stop
 }
 
 // Join commits user's membership of org with role, as provisioning or an

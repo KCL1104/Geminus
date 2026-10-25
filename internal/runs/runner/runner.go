@@ -291,10 +291,20 @@ func (h *Handler) execute(ctx context.Context, hr handler.Run, org string, st st
 	polls.Go(func() { h.poll(run, hr, org, r.ID, sink, stop) })
 	credit := &credit{hr: hr, org: org, run: r.ID, base: st.attempt.Base, limit: in.Limits.MaxEvents, batch: h.cfg.Batch(r.Limits.MaxEvents)}
 	e := &des.Engine{Version: h.cfg.EngineVersion, Workers: h.cfg.Workers, DomainMetrics: pack.ComputeMetrics}
+	ran := time.Now()
 	out, err := e.RunWith(run, in, des.Options{Progress: sink, Credit: credit, Granted: st.attempt.Granted})
 	cause := context.Cause(run)
 	stop(nil)
 	polls.Wait()
+	// The simulation's operational metric (T-035, D-095): what this
+	// attempt's engine did and how long it took, whatever the outcome; the
+	// line carries the job's correlation from ctx.
+	events := sink.get().EventsProcessed
+	if out != nil {
+		events = out.Events
+	}
+	h.cfg.Log.InfoContext(ctx, "simulation engine ran", "events", events, "replications", in.Config.Replications,
+		"duration_ms", time.Since(ran).Milliseconds(), "outcome", engineOutcome(err, cause, ctx))
 
 	switch {
 	case err == nil:
@@ -345,6 +355,19 @@ func (h *Handler) execute(ctx context.Context, hr handler.Run, org string, st st
 		return h.cancelled(ctx, hr, audit)
 	}
 	return err
+}
+
+// engineOutcome names how an engine run ended, for its metric line.
+func engineOutcome(err, cause error, attempt context.Context) string {
+	switch {
+	case err == nil:
+		return "completed"
+	case errors.Is(cause, errCancelRequested) && attempt.Err() == nil:
+		return "cancelled"
+	case attempt.Err() != nil:
+		return "stopped"
+	}
+	return "failed"
 }
 
 // cancelled ends the job cancelled; the run follows it (0009).
@@ -411,7 +434,7 @@ func (h *Handler) storeTrace(ctx context.Context, org, runID string, t *simulati
 	case err != nil && ctx.Err() != nil:
 		return nil, err
 	case err != nil:
-		h.cfg.Log.Warn("storing a trace failed", "organization_id", org, "run_id", runID, "error", err.Error())
+		h.cfg.Log.WarnContext(ctx, "storing a trace failed", "organization_id", org, "run_id", runID, "error", err.Error())
 		return nil, failure(store.ArtifactStorageFailed, "the trace could not be stored", true)
 	}
 	return &store.Trace{ArtifactID: art, ObjectKey: key, SHA256: obj.SHA256, Size: obj.Size}, nil
@@ -454,7 +477,7 @@ func (h *Handler) poll(ctx context.Context, hr handler.Run, org, id string, sink
 		case errors.Is(err, jobs.ErrLeaseLost), errors.Is(err, handler.ErrStopped):
 			return
 		case err != nil:
-			h.cfg.Log.Warn("writing a run's progress failed", "organization_id", org, "run_id", id, "error", err.Error())
+			h.cfg.Log.WarnContext(ctx, "writing a run's progress failed", "organization_id", org, "run_id", id, "error", err.Error())
 		case cancel:
 			stop(errCancelRequested)
 			return

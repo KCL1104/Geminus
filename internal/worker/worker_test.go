@@ -68,14 +68,20 @@ func TestNewChecksTheConfig(t *testing.T) {
 		"no assigned organization":  {none, func(*worker.Config) {}},
 		"no ID":                     {scope, func(c *worker.Config) { c.ID = "" }},
 		"an ID over 200 characters": {scope, func(c *worker.Config) { c.ID = strings.Repeat("w", 201) }},
-		"no handler":                {scope, func(c *worker.Config) { c.Handlers = nil }},
-		"a nil handler":             {scope, func(c *worker.Config) { c.Handlers[jobs.Simulation] = nil }},
-		"no lease":                  {scope, func(c *worker.Config) { c.Policy.Lease = 0 }},
-		"no heartbeat":              {scope, func(c *worker.Config) { c.Heartbeat = 0 }},
-		"a heartbeat over a third":  {scope, func(c *worker.Config) { c.Heartbeat = c.Policy.Lease/3 + time.Millisecond }},
-		"no idle pause":             {scope, func(c *worker.Config) { c.Idle = 0 }},
-		"no reaping":                {scope, func(c *worker.Config) { c.ReapLimit = 0 }},
-		"no log":                    {scope, func(c *worker.Config) { c.Log = nil }},
+		// T-035 (D-092): the ID names the worker in the audit events the
+		// loop writes, so it is an actor reference (twin.actor_ref).
+		"an ID over 128 characters":      {scope, func(c *worker.Config) { c.ID = strings.Repeat("w", 129) }},
+		"an ID that starts with a digit": {scope, func(c *worker.Config) { c.ID = "1-worker" }},
+		"an ID with a slash":             {scope, func(c *worker.Config) { c.ID = "worker/1" }},
+		"an ID with a non-ASCII letter":  {scope, func(c *worker.Config) { c.ID = "wörker" }},
+		"no handler":                     {scope, func(c *worker.Config) { c.Handlers = nil }},
+		"a nil handler":                  {scope, func(c *worker.Config) { c.Handlers[jobs.Simulation] = nil }},
+		"no lease":                       {scope, func(c *worker.Config) { c.Policy.Lease = 0 }},
+		"no heartbeat":                   {scope, func(c *worker.Config) { c.Heartbeat = 0 }},
+		"a heartbeat over a third":       {scope, func(c *worker.Config) { c.Heartbeat = c.Policy.Lease/3 + time.Millisecond }},
+		"no idle pause":                  {scope, func(c *worker.Config) { c.Idle = 0 }},
+		"no reaping":                     {scope, func(c *worker.Config) { c.ReapLimit = 0 }},
+		"no log":                         {scope, func(c *worker.Config) { c.Log = nil }},
 	} {
 		cfg := config(noop, io.Discard)
 		c.edit(&cfg)
@@ -85,7 +91,7 @@ func TestNewChecksTheConfig(t *testing.T) {
 	}
 	cfg := config(noop, io.Discard)
 	cfg.Heartbeat = cfg.Policy.Lease / 3
-	cfg.ID = strings.Repeat("w", 200)
+	cfg.ID = "w" + strings.Repeat("0._:-", 25) + "ab" // 128 characters (T-035: it was 200 before the loop audited)
 	if _, err := worker.New(scope, cfg); err != nil {
 		t.Errorf("a valid config: %v", err)
 	}

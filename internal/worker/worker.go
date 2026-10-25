@@ -11,6 +11,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -24,6 +25,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/kcl1104/geminus/internal/audit"
+	"github.com/kcl1104/geminus/internal/ids"
+	"github.com/kcl1104/geminus/internal/observability"
+	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/internal/tenant/workerscope"
@@ -39,7 +44,8 @@ const (
 
 // Config is the worker's identity, timing and handlers.
 type Config struct {
-	// ID names this worker in the lease (twin.jobs.locked_by).
+	// ID names this worker in the lease (twin.jobs.locked_by) and in the
+	// audit events it writes: an actor reference (audit.ValidActor, D-092).
 	ID     string
 	Policy jobs.Policy
 	// Heartbeat renews the lease; at most a third of Policy.Lease. Each
@@ -68,8 +74,8 @@ func New(scope *workerscope.Worker, cfg Config) (*Worker, error) {
 	switch {
 	case scope == nil || len(scope.Assigned()) == 0:
 		return nil, errors.New("worker: no assigned organization")
-	case cfg.ID == "" || len(cfg.ID) > 200:
-		return nil, errors.New("worker: the worker ID must be 1-200 characters")
+	case !audit.ValidActor(cfg.ID):
+		return nil, errors.New("worker: the worker ID must start with a letter and use only letters, digits, '_', '.', ':' and '-' (at most 128): it names the worker in audit events (D-092)")
 	case len(cfg.Handlers) == 0:
 		return nil, errors.New("worker: no job handler")
 	case cfg.Policy.Lease <= 0 || cfg.Heartbeat <= 0 || cfg.Heartbeat*3 > cfg.Policy.Lease:
@@ -112,15 +118,33 @@ func (w *Worker) Pass(ctx context.Context) bool {
 			return worked
 		}
 		log := w.cfg.Log.With("organization_id", org)
+		// Each job taken back is audited in the reap's own transaction
+		// (D-091 (b)): when an event cannot be written, nothing is reaped
+		// and the next pass tries again.
+		var requeued, failed int
 		if err := w.scope.Run(ctx, org, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx) error {
-			requeued, failed, err := jobs.Reap(ctx, tx, org, w.cfg.ReapLimit, w.cfg.Policy)
-			if requeued+failed > 0 {
-				log.Warn("expired leases taken back", "requeued", requeued, "failed", failed)
+			requeued, failed = 0, 0
+			reaped, err := jobs.ReapJobs(ctx, tx, org, w.cfg.ReapLimit, w.cfg.Policy)
+			if err != nil {
+				return err
 			}
-			return err
+			for _, r := range reaped {
+				if err := w.audit(ctx, tx, r.Job, jobs.ReapFailure, r.Requeued); err != nil {
+					return err
+				}
+				if r.Requeued {
+					requeued++
+				} else {
+					failed++
+				}
+			}
+			return nil
 		}); err != nil {
 			log.Error("reaping failed", "error", err.Error())
 			continue
+		}
+		if requeued+failed > 0 {
+			log.Warn("expired leases taken back", "requeued", requeued, "failed", failed)
 		}
 		var job jobs.Job
 		var lease jobs.Lease
@@ -137,7 +161,7 @@ func (w *Worker) Pass(ctx context.Context) bool {
 			continue
 		}
 		if ok {
-			w.run(ctx, job, lease, claimed, log.With("job_id", job.ID, "type", string(job.Type), "attempt", job.Attempt))
+			w.run(ctx, job, lease, claimed, log.With(correlation(job)...))
 			worked = true
 		}
 	}
@@ -252,7 +276,11 @@ func (a *attempt) Finish(ctx context.Context, end jobs.Status, fn func(ctx conte
 
 // run runs one claimed job and ends its attempt.
 func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claimed time.Time, log *slog.Logger) {
-	hctx, stop := context.WithCancel(ctx)
+	// The handler's lines carry the job's correlation as the loop's do
+	// (D-093 (b)): observability adds them to every line logged with hctx,
+	// and the organization, which the loop's logger has from Pass.
+	hctx, stop := context.WithCancel(observability.With(ctx,
+		attrs(append([]any{"organization_id", job.OrganizationID}, correlation(job)...))...))
 	defer stop()
 	var mu sync.Mutex
 	lost := false
@@ -270,9 +298,10 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 	a.mu.Unlock()
 	v := read(err)
 
+	took := time.Since(claimed).Milliseconds()
 	switch {
 	case isFinished:
-		log.Info("job ended", "status", string(end))
+		log.Info("job ended", "status", string(end), "duration_ms", took)
 		return
 	case isLost():
 		log.Warn("lease lost; the attempt ends without writing")
@@ -309,10 +338,15 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 	fctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), w.cfg.Heartbeat)
 	defer cancel()
 	var retried bool
+	// The failure and its audit event commit together (D-091 (b)): when the
+	// event cannot be written, the failure is not recorded either, and the
+	// reaper takes the job back once its lease ends.
 	ferr := w.scope.Run(fctx, lease.OrganizationID, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx) error {
 		var err error
-		retried, err = jobs.Fail(ctx, tx, lease, failure, w.cfg.Policy)
-		return err
+		if retried, err = jobs.Fail(ctx, tx, lease, failure, w.cfg.Policy); err != nil {
+			return err
+		}
+		return w.audit(ctx, tx, job, failure, retried)
 	})
 	switch {
 	case errors.Is(ferr, jobs.ErrLeaseLost):
@@ -325,7 +359,91 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 		log.Error("recording the failure failed", "code", failure.Code, "error", ferr.Error())
 		return
 	}
-	log.Info("job attempt ended", "code", failure.Code, "retried", retried)
+	log.Info("job attempt ended", "code", failure.Code, "retried", retried, "duration_ms", took)
+}
+
+// audit records that an attempt of j ended without a result
+// (job.attempt_failed, D-091 (b)) in tx, the transaction that records the
+// failure: on the job's resource, under the request that queued the job
+// (its payload's request_id; a request ID of the worker's own, marked
+// uncorrelated, when the payload names none).
+func (w *Worker) audit(ctx context.Context, tx tenant.Tx, j jobs.Job, f jobs.Failure, requeued bool) error {
+	target, id := resource(j)
+	req, ok := requestID(j)
+	outcome := "failed"
+	if requeued {
+		outcome = "requeued"
+	}
+	meta := map[string]any{"job_id": j.ID, "job_type": string(j.Type), "attempt": j.Attempt, "max_attempts": j.MaxAttempts,
+		"code": f.Code, "retryable": f.Retryable, "outcome": outcome}
+	if !ok {
+		req = ids.New("req")
+		meta["uncorrelated"] = true
+	}
+	return auditlog.AppendWorker(ctx, tx, j.OrganizationID, w.cfg.ID, auditlog.Event{Action: "job.attempt_failed", TargetType: target,
+		TargetID: id, RequestID: req, Metadata: meta})
+}
+
+// resource is the audit target of j: the one row it works on.
+func resource(j jobs.Job) (targetType, id string) {
+	r := j.Resource
+	switch {
+	case r.SimulationRunID != "":
+		return "simulation", r.SimulationRunID
+	case r.AIProposalID != "":
+		return "ai_proposal", r.AIProposalID
+	case r.ImportID != "":
+		return "import", r.ImportID
+	}
+	return "ai_analysis", r.AIAnalysisID
+}
+
+// resourceKey is the log key of j's resource ID.
+func resourceKey(j jobs.Job) string {
+	switch t, _ := resource(j); t {
+	case "simulation":
+		return "run_id"
+	case "ai_proposal":
+		return "proposal_id"
+	case "import":
+		return "import_id"
+	}
+	return "analysis_id"
+}
+
+var reqIDs = regexp.MustCompile(`^req_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
+
+// requestID is the request_id j's payload names: the request that queued
+// it (every enqueue writes one: T-016, T-017, T-023, T-025).
+func requestID(j jobs.Job) (string, bool) {
+	var p struct {
+		RequestID string `json:"request_id"`
+	}
+	if json.Unmarshal(j.Payload, &p) != nil || !reqIDs.MatchString(p.RequestID) {
+		return "", false
+	}
+	return p.RequestID, true
+}
+
+// correlation is what every line about j carries besides its organization
+// (D-093 (b)): the job's ID, type and attempt, its resource's ID, and the
+// request that queued it.
+func correlation(j jobs.Job) []any {
+	_, id := resource(j)
+	out := []any{"job_id", j.ID, "job_type", string(j.Type), "attempt", j.Attempt, resourceKey(j), id}
+	if req, ok := requestID(j); ok {
+		out = append(out, "request_id", req)
+	}
+	return out
+}
+
+// attrs is kv (key, value pairs) as attributes.
+func attrs(kv []any) []slog.Attr {
+	out := make([]slog.Attr, 0, len(kv)/2)
+	for i := 0; i+1 < len(kv); i += 2 {
+		out = append(out, slog.Any(kv[i].(string), kv[i+1]))
+	}
+	return out
 }
 
 // verdict is what the loop reads of a handler's error.

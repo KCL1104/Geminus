@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json/v2"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -198,5 +201,34 @@ func TestRunServesAndStops(t *testing.T) {
 		}
 	case <-time.After(30 * time.Second):
 		t.Fatal("did not stop after its context ended")
+	}
+	// T-035 (D-093 (c)): the served handler is behind the access log: one
+	// line per request, with its route's pattern and the response's
+	// request ID.
+	routes := map[string]bool{}
+	for _, l := range strings.Split(strings.TrimSpace(stderr.String()), "\n") {
+		var line map[string]any
+		if json.Unmarshal([]byte(l), &line) == nil && line["msg"] == "request" && line["http_status"] == float64(401) &&
+			line["error_code"] == "UNAUTHENTICATED" && strings.HasPrefix(fmt.Sprint(line["request_id"]), "req_") {
+			routes[fmt.Sprint(line["route"])] = true
+		}
+	}
+	if !routes["GET /v1/projects"] || !routes["GET /v1/me"] {
+		t.Errorf("access lines %v: %s", routes, stderr.String())
+	}
+}
+
+// T-035: the API's log is observability's (D-093, D-094): JSON lines whose
+// attributes pass the privacy filter.
+func TestTheLogIsFiltered(t *testing.T) {
+	var b bytes.Buffer
+	newLogger(&b).Error("database unavailable", "error", `connect postgres://twin_api:pw-SENTINEL@db/twin: row "CASE-SENTINEL"`,
+		"prompt", "SENTINEL")
+	var line map[string]any
+	if err := json.Unmarshal(b.Bytes(), &line); err != nil || line["component"] != "api" || line["prompt"] != observability.Redacted {
+		t.Errorf("%v %s", err, b.String())
+	}
+	if strings.Contains(b.String(), "SENTINEL") {
+		t.Errorf("the log holds what it must not: %s", b.String())
 	}
 }

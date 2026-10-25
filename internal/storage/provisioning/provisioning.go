@@ -22,6 +22,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/ids"
+	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	"github.com/kcl1104/geminus/internal/storage/postgres"
 )
 
@@ -109,10 +110,12 @@ func Organization(ctx context.Context, db *postgres.DB, name, issuer, subject st
 		if _, err := tx.Exec(ctx, `INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ($1,$2,'owner')`, orgID, userID); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `INSERT INTO twin.audit_events(id,organization_id,actor_type,actor_id,action,target_type,target_id,request_id,metadata)
-			VALUES ($1,$2,'system',$3,'organization.provision','organization',$4,$5,jsonb_build_object('owner_user_id',$6::text))`,
-			ids.New("aud"), orgID, Actor, orgID, ids.New("req"), userID)
-		return err
+		// Through auditlog, the one path to twin.audit_events (T-035): the
+		// event is checked against internal/audit's catalogue first. An
+		// operator's run has no HTTP request, so it gets a request ID of its
+		// own.
+		return auditlog.AppendSystem(ctx, tx, orgID, Actor, auditlog.Event{Action: "organization.provision", TargetType: "organization",
+			TargetID: orgID, RequestID: ids.New("req"), Metadata: map[string]any{"owner_user_id": userID}})
 	})
 	if err != nil {
 		return "", "", err

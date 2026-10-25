@@ -39,6 +39,7 @@ import (
 	"io"
 	"log/slog"
 	"regexp"
+	"time"
 
 	"github.com/kcl1104/geminus/internal/import/mapping"
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
@@ -160,10 +161,24 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	}
 	var out outcome
 	if current {
+		began := time.Now()
 		var err error
 		if out, err = h.validate(ctx, org, job.Attempt, imp, p.MappingRevision, still); err != nil {
 			return err
 		}
+		// The import's operational metric (T-035, D-095): counts and the
+		// outcome only; the job's correlation comes with ctx.
+		result := "invalid"
+		switch {
+		case out.failure != nil:
+			result = "failed"
+		case out.stale:
+			result = "stale"
+		case out.valid:
+			result = "valid"
+		}
+		h.cfg.Log.InfoContext(ctx, "import validated", "outcome", result, "rows", out.rows, "invalid_rows", out.invalid,
+			"size_bytes", imp.Size, "duration_ms", time.Since(began).Milliseconds())
 	}
 	return hr.Finish(ctx, jobs.Completed, func(ctx context.Context, tx tenant.Tx) error {
 		cur, err := store.Lock(ctx, tx, org, p.ImportID)

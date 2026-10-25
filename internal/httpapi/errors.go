@@ -15,6 +15,7 @@ import (
 	"net/http"
 
 	"github.com/kcl1104/geminus/internal/auth"
+	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
@@ -135,6 +136,9 @@ func WriteError(w http.ResponseWriter, r *http.Request, log *slog.Logger, err er
 		e, status = Errorf(InternalError, "internal error"), 500
 		log.ErrorContext(r.Context(), "unknown error code", "request_id", id)
 	}
+	// The access log names the code the client got (T-035, D-093 (c)): the
+	// basis for alerting on, say, a run of UNAUTHENTICATED.
+	observability.Annotate(r.Context(), slog.String("error_code", string(e.Code)))
 	if e.Code == Unauthenticated {
 		if c := auth.Challenge(err); c != "" {
 			w.Header().Set("WWW-Authenticate", c)

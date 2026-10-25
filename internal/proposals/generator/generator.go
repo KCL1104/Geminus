@@ -37,6 +37,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/idpool"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/review"
+	"github.com/kcl1104/geminus/internal/audit"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
@@ -347,6 +348,7 @@ func (h *Handler) generate(ctx context.Context, org string, st started) (generat
 
 	res, err := h.cfg.Provider.GenerateModelProposal(ctx, pc)
 	meta := res.Metadata
+	h.logCall(ctx, meta, err)
 	if err != nil {
 		if ctx.Err() != nil {
 			return generation{}, err // the attempt is stopping: the worker records it, or nothing
@@ -431,6 +433,25 @@ func generated(o review.Outcome, meta provider.Metadata, manifest []model.Datase
 	return g, nil
 }
 
+// logCall is the AI provider call's operational metric (T-035, D-095):
+// the provider, model and credential labels, the role, latency, token
+// counts, the provider's request ID and the outcome code (OK, or AI_ and
+// the client's code); never the prompt, the answer or a key. The job's
+// correlation comes with ctx.
+func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
+	code := "OK"
+	switch c := provider.CodeOf(err); {
+	case err == nil:
+	case c == "":
+		code = "ERROR" // not the client's error
+	default:
+		code = "AI_" + strings.ToUpper(string(c))
+	}
+	h.cfg.Log.InfoContext(ctx, "ai provider call ended", "provider", m.Provider, "model", m.Model, "credential_label", m.Credential,
+		"role", string(m.Role), "latency_ms", m.LatencyMillis, "input_tokens", m.Usage.InputTokens, "output_tokens", m.Usage.OutputTokens,
+		"provider_request_id", m.ProviderRequestID, "code", code)
+}
+
 // auditMeta is what an audit event says of a provider call: the provider,
 // model, credential label, template, schema, language, hashes, token
 // counts and latency; never the prompt, the answer or a key (SECURITY §9).
@@ -438,7 +459,11 @@ func auditMeta(m provider.Metadata) map[string]any {
 	out := map[string]any{"provider": m.Provider, "role": string(m.Role), "prompt_template_version": m.TemplateVersion,
 		"schema": m.OutputSchema, "output_locale": m.Locale, "input_hash": m.InputHash,
 		"input_tokens": m.Usage.InputTokens, "output_tokens": m.Usage.OutputTokens, "latency_ms": m.LatencyMillis}
-	for k, v := range map[string]string{"model": m.Model, "credential_label": m.Credential, "output_hash": m.OutputHash} {
+	// The provider chooses its model name and its request ID (its own
+	// correlation, T-035, D-091 (d)): one that is no label the audit
+	// catalogue accepts is left out, so it can never fail the write.
+	for k, v := range map[string]string{"model": audit.Label(m.Model), "credential_label": m.Credential, "output_hash": m.OutputHash,
+		"provider_request_id": audit.Label(m.ProviderRequestID)} {
 		if v != "" {
 			out[k] = v
 		}

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json/v2"
 	"log/slog"
 	"slices"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/import/validator"
+	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/runs/runner"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
@@ -50,6 +52,24 @@ var someHandler = fixed(map[jobs.Type]handler.Handler{jobs.ImportProfile: handle
 // fixed is a build whose handlers are hs.
 func fixed(hs map[jobs.Type]handler.Handler) builder {
 	return func(deps) (map[jobs.Type]handler.Handler, error) { return hs, nil }
+}
+
+// T-035: the worker's log is observability's (D-093, D-094): JSON lines,
+// each with the component, through the privacy filter.
+func TestTheWorkersLogIsFiltered(t *testing.T) {
+	var stderr bytes.Buffer
+	if code := run(context.Background(), with("WORKER_ID", "worker-0"), &stderr, fixed(nil)); code != exitNotImplemented {
+		t.Fatalf("exit = %d: %s", code, stderr.String())
+	}
+	for _, l := range strings.Split(strings.TrimSpace(stderr.String()), "\n") {
+		var line map[string]any
+		if err := json.Unmarshal([]byte(l), &line); err != nil || line["component"] != "worker" {
+			t.Errorf("%v: %s", err, l)
+		}
+		if line["ai_provider"] == observability.Redacted {
+			t.Errorf("a registered field was redacted: %s", l)
+		}
+	}
 }
 
 func TestRunRejectsInvalidConfiguration(t *testing.T) {
