@@ -34,9 +34,11 @@ const maxIssues = 1000
 // point into the request (/patch/...), the others into the patched model;
 // warnings do not refuse. What only an AI answer needs (the ID pool, the
 // expected effects, the risk, and that the answer changes something) does
-// not apply to a person's request, so [] and a patch that changes nothing
-// are accepted: a saved baseline (D-078 (b)). It is pure: what the server
-// read goes in, nothing is read or written. Any other error is the
+// not apply to a person's request. Only [] is the baseline (REQ-010: the
+// baseline is the empty patch); a patch that is not empty but changes
+// nothing (only tests, or a value replaced by itself) is accepted as an
+// ordinary scenario and stored as given (D-078 (b)). It is pure: what the
+// server read goes in, nothing is read or written. Any other error is the
 // server's: a base that is not a valid model, a domain no pack serves.
 func check(base, doc []byte, packs PackLookup) (checked, error) {
 	// Issues of the patched model are refused like the patch's own, as

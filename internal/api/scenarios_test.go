@@ -8,8 +8,11 @@ package api_test
 // (NOT RUN).
 
 import (
+	"context"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -254,5 +257,93 @@ func TestScenarioRequestRefusals(t *testing.T) {
 	}
 	if n := e.count(`SELECT count(*) FROM twin.scenarios WHERE organization_id=$1`, e.a.ID); n != 1 {
 		t.Errorf("%d scenarios, want the one valid request's", n)
+	}
+}
+
+// D-079 (f), review L3: a stored scenario whose patch is not the one its
+// patch_hash covers (written past the API, as the owner role can) is never
+// shown. Reading it and listing a page that holds it answer 500
+// INTERNAL_ERROR with the request ID and nothing of the row; the log has
+// the request ID and why, never the patch or the name. Another scenario is
+// still read by its ID, and a page that ends before the row is still
+// listed.
+func TestCorruptScenarioIsNotShown(t *testing.T) {
+	e := setup(t)
+	editor, viewer := e.a.Members[tenant.Editor], e.a.Members[tenant.Viewer]
+	m := e.newModel(t)
+	v := m.LatestVersion.ID
+	r := e.saveScenario(editor.Subject, e.a.ID, v, "key-scn-corrupt-1", sixRunners)
+	if r.status != 201 {
+		t.Fatalf("save: %d %s", r.status, r.body)
+	}
+	good := decode[scenarioBodyView](t, r)
+	// Saved after the good one, with the good one's hash: a hash, but of
+	// another patch.
+	const name = "Corrupt marker name"
+	bad := ids.New("scn")
+	(&runEnv{env: e}).ownerTx(t, e.a.ID, func(ctx context.Context, tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `INSERT INTO twin.scenarios(id,organization_id,model_id,base_version_id,name,patch,patch_hash,created_by)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, bad, e.a.ID, m.ID, v, name,
+			`[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":97}]`,
+			good.PatchHash, editor.UserID)
+		return err
+	})
+	type refusal struct {
+		Error struct {
+			Message string `json:"message"`
+			Details []any  `json:"details"`
+		} `json:"error"`
+	}
+	var requests []string
+	for _, c := range []struct{ what, subject, path string }{
+		{"get, a viewer", viewer.Subject, "/v1/scenarios/" + bad},
+		{"get, an editor", editor.Subject, "/v1/scenarios/" + bad},
+		{"list, a viewer", viewer.Subject, "/v1/model-versions/" + v + "/scenarios"},
+		{"list of two, an editor", editor.Subject, "/v1/model-versions/" + v + "/scenarios?limit=2"},
+	} {
+		r := e.do("GET", c.path, c.subject, e.a.ID, nil, "")
+		if r.status != 500 || code(t, r) != "INTERNAL_ERROR" {
+			t.Errorf("%s: %d %s", c.what, r.status, r.body)
+			continue
+		}
+		if b := decode[refusal](t, r); b.Error.Message != "internal error" || b.Error.Details != nil {
+			t.Errorf("%s: %s", c.what, r.body)
+		}
+		for _, s := range []string{"capacity", "/resources/1", `"op"`, `"value"`, "patch", name, bad, good.ID, good.PatchHash} {
+			if strings.Contains(string(r.body), s) {
+				t.Errorf("%s: the body shows %q: %s", c.what, s, r.body)
+			}
+		}
+		requests = append(requests, r.header.Get("X-Request-ID"))
+	}
+	if r := e.do("GET", "/v1/scenarios/"+good.ID, viewer.Subject, e.a.ID, nil, ""); r.status != 200 {
+		t.Errorf("the good scenario: %d %s", r.status, r.body)
+	}
+	if r := e.do("GET", "/v1/model-versions/"+v+"/scenarios?limit=1", viewer.Subject, e.a.ID, nil, ""); r.status != 200 {
+		t.Errorf("a page that ends before the row: %d %s", r.status, r.body)
+	} else if p := decode[scenarioPage](t, r); len(p.Items) != 1 || p.Items[0].ID != good.ID || p.NextCursor == nil {
+		t.Errorf("a page that ends before the row: %s", r.body)
+	}
+	e.logsMu.Lock()
+	logs := e.logs.String()
+	e.logsMu.Unlock()
+	for _, id := range requests {
+		found := false
+		for l := range strings.Lines(logs) {
+			if strings.Contains(l, id) {
+				found = true
+				if !strings.Contains(l, "patch_hash") || !strings.Contains(l, bad) {
+					t.Errorf("request %s: the log does not say why: %s", id, l)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("request %s is not logged", id)
+		}
+	}
+	for _, s := range []string{"capacity", `"value":97`, `\"value\":97`, name} {
+		if strings.Contains(logs, s) {
+			t.Errorf("the log shows %q", s)
+		}
 	}
 }

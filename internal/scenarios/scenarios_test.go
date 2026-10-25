@@ -199,14 +199,16 @@ func TestCheckStoresTheCanonicalPatch(t *testing.T) {
 	}
 }
 
-// REQ-010, D-078 (b): [] saves a baseline, and a patch that changes
-// nothing is a scenario identical to its base; both are accepted.
+// REQ-010, D-078 (b): only [] is the baseline (the empty patch). A patch
+// that is not empty but changes nothing is accepted as an ordinary
+// scenario: its candidate is the base, but it is stored as given, never
+// as the baseline's [].
 func TestCheckKeepsABaseline(t *testing.T) {
 	b, reg := base(t), packs(t)
 	for name, doc := range map[string]string{
-		"baseline": `[]`,
-		"no-op":    `[` + testCI + `,{"op":"replace","path":"/resources/1/capacity","value":3}]`,
-		"tests":    `[` + testCI + `]`,
+		"the baseline":                           `[]`,
+		"an ordinary scenario, a value as it is": `[` + testCI + `,{"op":"replace","path":"/resources/1/capacity","value":3}]`,
+		"an ordinary scenario, only a test":      `[` + testCI + `]`,
 	} {
 		got, err := check(b, []byte(doc), reg)
 		if err != nil {
@@ -216,6 +218,10 @@ func TestCheckKeepsABaseline(t *testing.T) {
 		encoded, _ := model.Encode(got.ir)
 		if again, _ := hashing.Canonical(encoded); string(again) != string(b) {
 			t.Errorf("%s: the candidate is not the base", name)
+		}
+		want, _ := hashing.Canonical([]byte(doc))
+		if string(got.patch) != string(want) {
+			t.Errorf("%s: stored %s, want %s", name, got.patch, want)
 		}
 	}
 }
@@ -268,8 +274,8 @@ func (otherPack) ID() string { return "another_domain" }
 // D-021: a person's scenario and an AI scenario take one allowlist. Every
 // patch the AI scenario mode's review accepts, check accepts, and every
 // patch it refuses, check refuses with the same code; only the provider's
-// own rule differs: the AI must change something (AI_OUTPUT_INVALID),
-// a person may save a baseline (D-078 (b)).
+// own rule differs: the AI must change something (AI_OUTPUT_INVALID); a
+// person's patch that changes nothing is an ordinary scenario (D-078 (b)).
 func TestTheAIScenarioModeTakesTheSameRules(t *testing.T) {
 	b, reg := base(t), packs(t)
 	var ir model.ModelIR

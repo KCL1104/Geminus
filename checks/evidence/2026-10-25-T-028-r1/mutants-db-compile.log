@@ -1,0 +1,5 @@
+db-hash-not-checked-on-read: BUILDS
+db-list-skips-the-corrupt-row: BUILDS
+db-get-corrupt-is-not-found: BUILDS
+db-corrupt-cause-sent: BUILDS
+TOTAL 4 (db-compile): 4 build; the tests were NOT RUN (no database)
