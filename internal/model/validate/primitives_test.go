@@ -22,7 +22,10 @@ var primitiveTasks = map[validate.Primitive]string{
 
 // liftedPrimitives are the primitives whose gate is lifted in this build,
 // each by the task that implemented it.
-var liftedPrimitives = map[validate.Primitive]bool{validate.FiniteBuffer: true} // T-047
+var liftedPrimitives = map[validate.Primitive]bool{
+	validate.FiniteBuffer: true,                                                   // T-047
+	validate.Breakdowns:   true, validate.Lognormal: true, validate.Weibull: true, // T-048
+}
 
 func TestPrimitiveCatalog(t *testing.T) {
 	if len(validate.Primitives) != len(primitiveTasks) {
@@ -33,7 +36,7 @@ func TestPrimitiveCatalog(t *testing.T) {
 			t.Errorf("%s: no implementing task", p)
 		}
 		// T-047–T-051 turn each on with its rules and kernel, and update
-		// this list and the shared fixtures: so far only T-047's.
+		// this list and the shared fixtures: so far T-047's and T-048's.
 		if want := liftedPrimitives[p]; validate.Checked(p) != want {
 			t.Errorf("%s: checked %v, want %v (%s)", p, validate.Checked(p), want, primitiveTasks[p])
 		}
@@ -57,16 +60,15 @@ func TestPrimitiveGate(t *testing.T) {
 		{"/nodes/5/arrival/schedule", "release schedules"},
 		{"/nodes/6/arrival/schedule", "release schedules"},
 		{"/nodes/7/arrival/schedule", "release schedules"},
-		{"/resources/1/breakdowns", "resource breakdowns"},
-		{"/resources/1/breakdowns/time_to_repair/distribution", "the lognormal distribution"},
 		{"/resources/1/calendar_id", "shift calendars"},
 		{"/resources/1/setups", "changeovers"},
-		{"/resources/1/setups/transitions/0/distribution", "the Weibull distribution"},
 		{"/resources/1/shift_capacity", "shift calendars"},
 		{"/resources/2/calendar_id", "shift calendars"},
 	}
-	// The finite buffers of nodes 3 and 4 are checked since T-047, so they
-	// are no use of an unsupported primitive.
+	// The finite buffers of nodes 3 and 4 are checked since T-047, the
+	// breakdowns of resource 1, their lognormal repair time and the Weibull
+	// changeover time since T-048 (inside setups, which are still refused),
+	// so they are no use of an unsupported primitive.
 	if r.Valid() || len(r.Issues) != len(want) {
 		t.Fatalf("got %d issues %v", len(r.Issues), r.Issues)
 	}
@@ -87,17 +89,6 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 		edit func(ir map[string]any)
 		path string
 	}{
-		"breakdowns": {func(ir map[string]any) {
-			obj(ir["resources"].([]any)[0])["breakdowns"] = map[string]any{
-				"time_to_failure": map[string]any{"distribution": map[string]any{"type": "constant", "value": 100}},
-				"time_to_repair":  map[string]any{"distribution": map[string]any{"type": "constant", "value": 5}}}
-		}, "/resources/0/breakdowns"},
-		"lognormal service": {func(ir map[string]any) {
-			obj(obj(nodes(ir)[1])["service_time"])["distribution"] = map[string]any{"type": "lognormal", "mean": 3, "cv": 0.5}
-		}, "/nodes/1/service_time/distribution"},
-		"weibull interarrival": {func(ir map[string]any) {
-			obj(obj(nodes(ir)[0])["arrival"])["distribution"] = map[string]any{"type": "weibull", "shape": 1.5, "scale": 10}
-		}, "/nodes/0/arrival/distribution"},
 		"calendar": {func(ir map[string]any) {
 			ir["calendars"] = []any{map[string]any{"id": "c", "period": 1440, "shifts": []any{map[string]any{"start": 0, "end": 480}}}}
 		}, "/calendars"},
@@ -137,15 +128,33 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 	if len(r.Issues) != 1 || r.Issues[0].Code != validate.UnknownReference {
 		t.Errorf("control: %v", r.Issues)
 	}
-	// So does a model with a finite buffer, checked since T-047: no gate
-	// issue, the later stages run.
-	r = run(t, edit(t, func(ir map[string]any) {
-		ir["nodes"] = append(nodes(ir), map[string]any{"id": "q", "type": "queue", "capacity": 3})
-		ir["flows"] = append(flows(ir), flow("q_work", "q", "work", 1))
-		obj(flows(ir)[0])["to"] = "nowhere"
-	}))
-	if len(r.Issues) != 1 || r.Issues[0].Code != validate.UnknownReference {
-		t.Errorf("finite buffer: %v, want only the unknown reference", r.Issues)
+	// So does a model with a primitive whose rules are checked (a finite
+	// buffer since T-047; breakdowns, lognormal and Weibull since T-048):
+	// no gate issue, the later stages run.
+	for name, checked := range map[string]func(ir map[string]any){
+		"finite buffer": func(ir map[string]any) {
+			ir["nodes"] = append(nodes(ir), map[string]any{"id": "q", "type": "queue", "capacity": 3})
+			ir["flows"] = append(flows(ir), flow("q_work", "q", "work", 1))
+		},
+		"breakdowns": func(ir map[string]any) {
+			obj(ir["resources"].([]any)[0])["breakdowns"] = map[string]any{
+				"time_to_failure": map[string]any{"distribution": map[string]any{"type": "constant", "value": 100}},
+				"time_to_repair":  map[string]any{"distribution": map[string]any{"type": "constant", "value": 5}}}
+		},
+		"lognormal service": func(ir map[string]any) {
+			obj(obj(nodes(ir)[1])["service_time"])["distribution"] = map[string]any{"type": "lognormal", "mean": 3, "cv": 0.5}
+		},
+		"weibull interarrival": func(ir map[string]any) {
+			obj(obj(nodes(ir)[0])["arrival"])["distribution"] = map[string]any{"type": "weibull", "shape": 1.5, "scale": 10}
+		},
+	} {
+		r = run(t, edit(t, func(ir map[string]any) {
+			checked(ir)
+			obj(flows(ir)[0])["to"] = "nowhere"
+		}))
+		if len(r.Issues) != 1 || r.Issues[0].Code != validate.UnknownReference {
+			t.Errorf("%s: %v, want only the unknown reference", name, r.Issues)
+		}
 	}
 }
 

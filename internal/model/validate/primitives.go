@@ -33,9 +33,12 @@ var Primitives = []Primitive{FiniteBuffer, Breakdowns, Lognormal, Weibull, Calen
 
 // checked holds the primitives whose semantic rules (TWIN_IR_SPEC §4) this
 // validator implements: finite buffers (T-047: D-050 R1, BLOCKING_CYCLE, in
-// the graph stage). Each of T-048–T-051 adds its own with the rules, never
-// before. It is only read, never iterated.
-var checked = map[Primitive]bool{FiniteBuffer: true}
+// the graph stage); breakdowns, lognormal and Weibull (T-048: D-050 R3 in
+// the bundle feasibility stage, a time to failure that cannot be 0, the
+// parameter ranges of D-056 and D-075, the D-029 limits and the binding
+// stage of resource distributions). Each of T-049–T-051 adds its own with
+// the rules, never before. It is only read, never iterated.
+var checked = map[Primitive]bool{FiniteBuffer: true, Breakdowns: true, Lognormal: true, Weibull: true}
 
 // Checked reports whether this validator implements p's semantic rules.
 func Checked(p Primitive) bool { return checked[p] }

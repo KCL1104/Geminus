@@ -1,7 +1,8 @@
 // Package validate is the deterministic IR validator (docs/TWIN_IR_SPEC.md §4).
 //
 // Stages run in the order JSON parse → JSON Schema → primitive support →
-// limits → IDs → references → graph → distributions → constraints. Primitive
+// limits → IDs → references → graph → distributions → bundle feasibility
+// (D-050 R3 since T-048; R2 and R4 with calendars) → constraints. Primitive
 // support (D-063 PROPOSED) refuses each line-flow member (ADR-026, D-058)
 // whose rules this build does not implement yet, so the later stages only
 // ever see models they fully check. A stage reports every issue it finds;

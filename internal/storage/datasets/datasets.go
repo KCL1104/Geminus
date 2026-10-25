@@ -176,6 +176,16 @@ func shape(ir *model.ModelIR, manifest []model.DatasetBinding) ([]model.Validati
 			}
 		}
 	}
+	// A resource's distributions too (breakdowns, T-048).
+	for i := range ir.Resources {
+		for _, d := range ir.Resources[i].Distributions() {
+			if d.Distribution.Type == model.DistEmpirical && !bound[d.Distribution.SamplesRef] {
+				out = append(out, issue(validate.DatasetBindingInvalid,
+					validate.Pointer("ir", "resources", strconv.Itoa(i))+"/"+d.Member+"/distribution/samples_ref",
+					d.Distribution.SamplesRef+" has no dataset binding"))
+			}
+		}
+	}
 	return out, nil
 }
 

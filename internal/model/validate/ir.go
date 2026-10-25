@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -80,7 +82,7 @@ func parse(data []byte) (model.ValidationIssue, bool) {
 func Semantic(ir *model.ModelIR) []model.ValidationIssue {
 	g := newGraph(ir)
 	var all issues
-	for _, stage := range []func(*model.ModelIR, *graph) issues{support, limits, ids, refs, routing, distributions, constraints} {
+	for _, stage := range []func(*model.ModelIR, *graph) issues{support, limits, ids, refs, routing, distributions, feasibility, constraints} {
 		found := stage(ir, g)
 		all = append(all, found...)
 		if found.hasError() {
@@ -135,24 +137,35 @@ func limits(ir *model.ModelIR, _ *graph) issues {
 	}
 	container(ir.Metadata, "/metadata")
 	unit := model.TimeUnit(ir.TimeUnit)
+	durations := func(d *model.Distribution, path string) {
+		// The time parameters: a lognormal's mean and a Weibull's scale are
+		// durations too (D-063 (c)); cv and shape have no unit.
+		for _, p := range []struct {
+			name string
+			v    *float64
+		}{{"value", d.Value}, {"mean", d.Mean}, {"min", d.Min}, {"mode", d.Mode}, {"max", d.Max}, {"scale", d.Scale}} {
+			if p.v == nil {
+				continue
+			}
+			// The schema already guarantees a finite, non-negative value, so
+			// the only error left is the D-029 duration cap.
+			if _, err := model.Ticks(*p.v, unit); err != nil {
+				out.add(LimitExceeded, path+"/"+p.name, err.Error())
+			}
+		}
+	}
 	for i, n := range ir.Nodes {
 		base := Pointer("nodes", idx(i))
 		container(n.DomainAttributes, base+"/domain_attributes")
 		forEachDistribution(n, func(member string, d *model.Distribution) {
-			for _, p := range []struct {
-				name string
-				v    *float64
-			}{{"value", d.Value}, {"mean", d.Mean}, {"min", d.Min}, {"mode", d.Mode}, {"max", d.Max}} {
-				if p.v == nil {
-					continue
-				}
-				// The schema already guarantees a finite, non-negative value, so
-				// the only error left is the D-029 duration cap.
-				if _, err := model.Ticks(*p.v, unit); err != nil {
-					out.add(LimitExceeded, base+"/"+member+"/distribution/"+p.name, err.Error())
-				}
-			}
+			durations(d, base+"/"+member+"/distribution")
 		})
+	}
+	// D-029 covers every distribution parameter, a resource's too (T-048).
+	for i := range ir.Resources {
+		for _, d := range ir.Resources[i].Distributions() {
+			durations(d.Distribution, Pointer("resources", idx(i))+"/"+d.Member+"/distribution")
+		}
 	}
 	return out
 }
@@ -439,6 +452,16 @@ func Bindings(ir *model.ModelIR, zeroRefs map[string]bool) []model.ValidationIss
 				n.Arrival.Distribution.SamplesRef+" has a 0 sample; interarrival times must be strictly positive")
 		}
 	}
+	// D-051: a time to failure is strictly positive, as an interarrival is
+	// (D-033); a time to repair may be 0.
+	for i := range ir.Resources {
+		if b := ir.Resources[i].Breakdowns; b != nil {
+			if d := b.TimeToFailure.Distribution; d.Type == model.DistEmpirical && zeroRefs[d.SamplesRef] {
+				out.add(DistributionInvalid, Pointer("resources", idx(i), "breakdowns", "time_to_failure", "distribution"),
+					d.SamplesRef+" has a 0 sample; times to failure must be strictly positive")
+			}
+		}
+	}
 	g := newGraph(ir)
 	next := g.next(ir)
 	reached, _ := g.reached(ir, next)
@@ -530,22 +553,22 @@ func distributions(ir *model.ModelIR, _ *graph) issues {
 	for _, r := range ir.Resources {
 		capacity[r.ID] = r.Capacity
 	}
+	for i := range ir.Resources {
+		for _, d := range ir.Resources[i].Distributions() {
+			path := Pointer("resources", idx(i)) + "/" + d.Member + "/distribution"
+			// D-051: like an interarrival time (D-033), a time to failure
+			// that can be 0 ticks would fail a unit again in the tick it is
+			// repaired.
+			if distribution(&out, d.Distribution, path) && d.Member == "breakdowns/time_to_failure" && canBeZero(d.Distribution) {
+				out.add(DistributionInvalid, path, "times to failure must be strictly positive")
+			}
+		}
+	}
 	for i, n := range ir.Nodes {
 		base := Pointer("nodes", idx(i))
 		forEachDistribution(n, func(member string, d *model.Distribution) {
 			path := base + "/" + member + "/distribution"
-			if d.Type == model.DistTriangular && !(*d.Min <= *d.Mode && *d.Mode <= *d.Max) {
-				out.add(DistributionInvalid, path, fmt.Sprintf("triangular needs min ≤ mode ≤ max, got %g, %g, %g", *d.Min, *d.Mode, *d.Max))
-				return
-			}
-			// The schema checks mean > 0 on the exact decimal; a mean such as
-			// 1e-400 still decodes to binary64 0.
-			if d.Type == model.DistExponential && *d.Mean <= 0 {
-				out.add(DistributionInvalid, path, "exponential mean must be a positive binary64 number; it underflows to 0")
-				return
-			}
-			if member == "arrival" && ((d.Type == model.DistConstant && *d.Value <= 0) ||
-				(d.Type == model.DistTriangular && *d.Min <= 0)) {
+			if distribution(&out, d, path) && member == "arrival" && canBeZero(d) {
 				out.add(DistributionInvalid, path, "interarrival times must be strictly positive")
 			}
 		})
@@ -560,6 +583,108 @@ func distributions(ir *model.ModelIR, _ *graph) issues {
 				out.add(ResourceRequirementInvalid, path+"/units",
 					fmt.Sprintf("needs %d units of %q, capacity is %d", r.Units, r.ResourceID, capacity[r.ResourceID]))
 			}
+		}
+	}
+	return out
+}
+
+// Candidate ranges of D-056, kept by T-048 after the overflow analysis
+// (D-075): the parameters with no unit.
+const (
+	MaxLognormalCV  = 10.0
+	MinWeibullShape = 0.1
+	MaxWeibullShape = 20.0
+)
+
+// distribution checks one distribution's parameters and reports whether
+// it is well-formed (D-033, D-056, D-075).
+func distribution(out *issues, d *model.Distribution, path string) bool {
+	switch d.Type {
+	case model.DistTriangular:
+		if !(*d.Min <= *d.Mode && *d.Mode <= *d.Max) {
+			out.add(DistributionInvalid, path, fmt.Sprintf("triangular needs min ≤ mode ≤ max, got %g, %g, %g", *d.Min, *d.Mode, *d.Max))
+			return false
+		}
+	// The schema checks > 0 on the exact decimal; a value such as 1e-400
+	// still decodes to binary64 0.
+	case model.DistExponential:
+		if *d.Mean <= 0 {
+			out.add(DistributionInvalid, path, "exponential mean must be a positive binary64 number; it underflows to 0")
+			return false
+		}
+	case model.DistLognormal:
+		switch {
+		case *d.Mean <= 0:
+			out.add(DistributionInvalid, path, "lognormal mean must be a positive binary64 number; it underflows to 0")
+			return false
+		case !(*d.CV > 0 && *d.CV <= MaxLognormalCV):
+			out.add(DistributionInvalid, path, fmt.Sprintf("lognormal cv must be in (0, %g], got %g", MaxLognormalCV, *d.CV))
+			return false
+		}
+	case model.DistWeibull:
+		switch {
+		case *d.Scale <= 0:
+			out.add(DistributionInvalid, path, "Weibull scale must be a positive binary64 number; it underflows to 0")
+			return false
+		case !(*d.Shape >= MinWeibullShape && *d.Shape <= MaxWeibullShape):
+			out.add(DistributionInvalid, path, fmt.Sprintf("Weibull shape must be in [%g, %g], got %g", MinWeibullShape, MaxWeibullShape, *d.Shape))
+			return false
+		}
+	}
+	return true
+}
+
+// canBeZero reports whether a well-formed distribution can take 0 ticks
+// (D-033: its smallest possible tick; an empirical one is decided at the
+// binding stage). Exponential, lognormal and Weibull samples are at least
+// one tick (D-038 (a), D-056).
+func canBeZero(d *model.Distribution) bool {
+	switch d.Type {
+	case model.DistConstant:
+		return *d.Value <= 0
+	case model.DistTriangular:
+		return *d.Min <= 0
+	}
+	return false
+}
+
+// feasibility is the bundle feasibility stage (TWIN_IR_SPEC §4, D-063 (b)):
+// D-050's rules on bundles. R3 (T-048): a resource that breaks down is
+// requested one unit at a time, and a bundle has at most one such
+// resource, so that a repair always lets the request at the front in
+// (D-050's guarantee); a group of devices that must work together is one
+// resource that breaks down as a whole. R2 and R4 need calendars (T-049).
+func feasibility(ir *model.ModelIR, _ *graph) issues {
+	var out issues
+	breaks := map[string]bool{}
+	for _, r := range ir.Resources {
+		if r.Breakdowns != nil {
+			breaks[r.ID] = true
+		}
+	}
+	if len(breaks) == 0 {
+		return nil
+	}
+	for i, n := range ir.Nodes {
+		var found []string
+		for k, q := range n.Requires {
+			if !breaks[q.ResourceID] {
+				continue
+			}
+			found = append(found, q.ResourceID)
+			if q.Units != 1 {
+				out.add(ResourceRequirementInvalid, Pointer("nodes", idx(i), "requires", idx(k), "units"),
+					fmt.Sprintf("%q breaks down, so a process needs one unit of it at a time (D-050 R3), not %d; model a group that breaks down together as one resource", q.ResourceID, q.Units))
+			}
+		}
+		if len(found) > 1 {
+			slices.Sort(found)
+			quoted := make([]string, len(found))
+			for k, id := range found {
+				quoted[k] = strconv.Quote(id)
+			}
+			out.add(ResourceRequirementInvalid, Pointer("nodes", idx(i), "requires"),
+				fmt.Sprintf("a bundle may need at most one resource that breaks down (D-050 R3); it needs %s", strings.Join(quoted, ", ")))
 		}
 	}
 	return out

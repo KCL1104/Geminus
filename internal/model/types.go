@@ -90,6 +90,25 @@ type Breakdowns struct {
 	TimeToRepair  TimedDistribution `json:"time_to_repair"`
 }
 
+// ResourceDistribution is one distribution of a resource and the member
+// path holding it, relative to the resource ("breakdowns/time_to_failure";
+// the distribution itself is under it at "distribution").
+type ResourceDistribution struct {
+	Member       string
+	Distribution *Distribution
+}
+
+// Distributions returns r's breakdown distributions, time to failure then
+// time to repair; the pointers alias r. The changeover distributions of
+// setups (D-055) are T-050's to add, with their rules.
+func (r *Resource) Distributions() []ResourceDistribution {
+	if r.Breakdowns == nil {
+		return nil
+	}
+	return []ResourceDistribution{{"breakdowns/time_to_failure", &r.Breakdowns.TimeToFailure.Distribution},
+		{"breakdowns/time_to_repair", &r.Breakdowns.TimeToRepair.Distribution}}
+}
+
 // Setups are a resource's sequence-dependent changeovers between entity
 // types (D-055). A changeover takes its transition's time, else Default,
 // else none.
