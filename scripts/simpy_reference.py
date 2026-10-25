@@ -229,9 +229,10 @@ def simulate(ir, config, rep, seed, record=False, until=None):
     blocked_at = {}
     stats = {"completed": 0, "leads": [], "reworks": 0, "failures": 0, "blocks_started": {}, "blocks_done": {}, "block_minutes": {},
              "waits": {}, "starts": {}, "completions": [], "blocks": [], "last_start": None}
-    # Breakdowns (T-048): units down, the failures waiting for a release
-    # (FIFO), downtimes started in the window, complete repairs (started at
-    # or after W, ended by H) and their minutes.
+    # Breakdowns (T-048): units down, the failures waiting for a unit that
+    # a job releases or a repair frees (FIFO; D-074 (a) B), downtimes
+    # started in the window, complete repairs (started at or after W, ended
+    # by H) and their minutes.
     down = {r: Step(w, h) for r in m.breaks}
     waiting_failures = {r: [] for r in m.breaks}
     bstats = {"started": {r: 0 for r in m.breaks}, "repairs": {r: 0 for r in m.breaks}, "repair_minutes": {r: 0.0 for r in m.breaks},
@@ -239,7 +240,7 @@ def simulate(ir, config, rep, seed, record=False, until=None):
 
     def clock(r, u):
         """Failure clock u of resource r: TTF, then down (at once on an idle
-        unit, else on the next released unit) for TTR, then up."""
+        unit, else on the next unit released or repaired) for TTR, then up."""
         ttf, ttr = m.breaks[r]
         while True:
             yield env.timeout(sample(ttf, rng))
