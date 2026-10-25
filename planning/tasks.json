@@ -1802,7 +1802,7 @@
       "id": "T-028",
       "title": "Scenario persistence / parameter-only approval",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Platform + AI",
       "planning_window": "Week 9–11",
       "depends_on": [
@@ -1852,7 +1852,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-25",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-028_VALIDATION.md",
+          "summary": "人工 scenario 的 create／read／list（internal/scenarios、internal/storage/scenarios.List、createManualScenario／listScenarios／getScenario 與 TS client）：patch.Scenario allowlist、candidate 與 pack 驗證、dataset binding stage、role、Idempotency-Key、audit、tenant 過濾＋RLS＋composite FK；讀取與列表涵蓋人工與 AI 批准建立的 scenario（source_proposal_id），讀取時核對 patch_hash；不建立 version、不入列 run；migration 0015（名稱 1–200、建立者與時間的 guard、列表 index）；architecture 規則 scenarios-only-in-the-api。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（19f676b、fde2828 的 tree）與 13 個 DB mutant（全部擋下），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test、simulation-reference-test 都 exit 0（checks/evidence/2026-10-25-T-028*/coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 on 19f676b ACCEPT (L1–L5, I1, I3, I4 fixed by the implementer in 20f512a..fde2828; L6 by the coordinator's verification script)",
+          "decisions_pending": "D-078、D-079、D-080 待 owner 批准；批准後 T-028 才標為 done"
+        }
+      ]
     },
     {
       "id": "T-029",

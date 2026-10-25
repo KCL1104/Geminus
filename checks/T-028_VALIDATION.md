@@ -183,3 +183,7 @@ Branch `t028-r1`，從 19f676b（整合後的 head，含上一節）開出，沒
 - `make frontend-test`：本輪沒有改 TS、schema 或 OpenAPI（指示：只在 TS 有改時執行）。
 - `make ai-eval`、`make backend-race`（全部 package）：不在本輪要求的清單中，race 只對改到的 package 執行（見上）；本輪沒有 AI 程式的變更。
 - `make e2e-test`、live AI（T-053 之前一律關閉）、OpenAPI 官方 validator（`NOT_RUN_UNAVAILABLE`）。
+
+### Coordinator 的執行（第 1 輪修正，fde2828）
+
+Coordinator 把三個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（19f676b 之後，沒有衝突）：3a1c460 → 20f512a、b31f160 → cb420e5、b7fc822 → fde2828。之後 `spec-check`、`backend-test`、`architecture-check` 與新的 `dt_test_t028r1` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP，含新的 `TestCorruptScenarioIsNotShown`）都是 exit 0；本輪只改測試與文件，所以 `backend-race`、`ai-eval`、`frontend-test` 沿用 19f676b 的執行。4 個 DB mutant 在匯出的副本上以同一個 database 執行：4 個都被新測試擋下（其中 2 個在舊測試下存活）。L6：`coordinator-environment.txt` 記錄測試的 HEAD、Go、Node、PostgreSQL 版本與 database 名稱，之後的執行都照此記錄。Log 與 exit code 在 `checks/evidence/2026-10-25-T-028-r1/coordinator-*`。Reviewer 的判定為 ACCEPT，第 1 輪的修正（Low 與 Info）依 T-026 的前例由 coordinator 驗證後接受；D-078–D-080 仍是 PROPOSED，它們的 gate 是 T-028 驗收前，所以 T-028 記為 in_progress。
