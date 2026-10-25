@@ -3081,8 +3081,22 @@ paths:
     get:
       operationId: compareSimulations
       summary: Compare baseline and scenario aggregates
-      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table.
+      description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table. T-029 (SIMULATION_SPEC §7, D-010 APPROVED; D-088–D-090 PROPOSED): any member compares two completed runs
+        of the organization, a baseline (its frozen scenario_patch must be []) and a scenario. Each parameter must be
+        given once as a simulation run ID, and the two must differ; otherwise 400 (details[0].reason names the
+        parameter). Then, in one snapshot after the caller''s role: a run of another organization, or none, is 404, and a
+        run that is not completed (queued, running, failed or cancelled) is 409 RESULT_NOT_READY, both naming the
+        parameter in details[0].reason, the baseline before the scenario and 404 before 409. Runs that do not share the
+        model version, engine_version, dataset manifest, horizon and warmup (in ticks), replications and seed, or whose
+        baseline patch is not [], are not comparable: 200 with comparable=false and every incomparable_reasons code; each
+        metric is incomparable, with both values side by side and no delta. Otherwise every statistic of both results
+        (metric_path, an RFC 6901 pointer into a Result, the form analysis evidence cites) has absolute_delta = scenario
+        − baseline and relative_delta = absolute_delta / baseline; both are null when either value is unavailable or a
+        run lacks the metric, and relative_delta is null when the baseline is 0 (BASELINE_ZERO). Confidence intervals do
+        not enter the delta (no paired CI in P0); each run''s own CI and sample count stay in its Result. The order of
+        metrics is fixed, never map order. A stored result that does not match its run is a server fault (500), never
+        compared. The answer is RFC 8785 JSON; reading writes no audit event.'
       tags:
       - Simulations
       x-origin: PROPOSED
@@ -3112,16 +3126,119 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/http.schema.json#/$defs/Comparison
+              examples:
+                comparable:
+                  summary: Two servers instead of one (part of testdata/contracts/valid-comparison.json)
+                  value:
+                    baseline_run_id: sim_01M4YDQK00FGZZWH0PP15XPNFA
+                    scenario_run_id: sim_01M4YDQK00FGZZWH0PP15XPNFB
+                    comparable: true
+                    incomparable_reasons: []
+                    metrics:
+                    - metric_path: /metrics/throughput/mean
+                      baseline: 100
+                      scenario: 110
+                      absolute_delta: 10
+                      relative_delta: 0.1
+                      status: available
+                      reason: null
+                    - metric_path: /metrics/failure_count/mean
+                      baseline: 0
+                      scenario: 2
+                      absolute_delta: 2
+                      relative_delta: null
+                      status: available
+                      reason: BASELINE_ZERO
+                    - metric_path: /metrics/dora/change_lead_time/mean
+                      baseline: null
+                      scenario: null
+                      absolute_delta: null
+                      relative_delta: null
+                      status: unavailable
+                      reason: BOTH_UNAVAILABLE
+                    - metric_path: /metrics/resources/server/utilization_mean
+                      baseline: 0.49504950495049505
+                      scenario: 0.24752475247524752
+                      absolute_delta: -0.24752475247524752
+                      relative_delta: -0.5
+                      status: available
+                      reason: null
+                    warnings:
+                    - SINGLE_REPLICATION
+                incomparable:
+                  summary: Another seed and replication count (testdata/contracts/valid-comparison-incomparable.json)
+                  value:
+                    baseline_run_id: sim_01M4YDQK00FGZZWH0PP15XPNFA
+                    scenario_run_id: sim_01M4YDQK00FGZZWH0PP15XPNFC
+                    comparable: false
+                    incomparable_reasons:
+                    - REPLICATIONS_MISMATCH
+                    - SEED_MISMATCH
+                    metrics:
+                    - metric_path: /metrics/throughput/mean
+                      baseline: 100
+                      scenario: 104.5
+                      absolute_delta: null
+                      relative_delta: null
+                      status: incomparable
+                      reason: RUNS_NOT_COMPARABLE
+                    warnings: []
         '400':
-          $ref: '#/components/responses/Error400'
+          description: 'A parameter is missing, repeated or not a simulation run ID, or both name the same run
+            (details[0].reason names the parameter; D-089 (a) PROPOSED). Codes: INVALID_REQUEST.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                same_run:
+                  summary: The baseline and the scenario are the same run
+                  value:
+                    error:
+                      code: INVALID_REQUEST
+                      message: baseline_run_id and scenario_run_id must name two different runs
+                      details:
+                      - path: ''
+                        reason: scenario_run_id
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '401':
           $ref: '#/components/responses/Error401'
         '403':
           $ref: '#/components/responses/Error403'
         '404':
-          $ref: '#/components/responses/Error404'
+          description: 'A run is not one of the organization''s (another organization''s, or none; TEST-009);
+            details[0].reason names the parameter, the baseline checked first. Codes: NOT_FOUND.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
         '409':
-          $ref: '#/components/responses/Error409'
+          description: 'A run has no result: it is queued, running, failed or cancelled (API_DATABASE §6); details[0].reason
+            names the parameter. Codes: RESULT_NOT_READY.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                scenario_running:
+                  summary: The scenario run is still running
+                  value:
+                    error:
+                      code: RESULT_NOT_READY
+                      message: the run has no result yet; compare completed runs only
+                      details:
+                      - path: ''
+                        reason: scenario_run_id
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '422':
           $ref: '#/components/responses/Error422'
         '429':

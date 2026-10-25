@@ -920,13 +920,54 @@
       ],
       "additionalProperties": false
     },
+    "ComparisonReason": {
+      "type": "string",
+      "enum": [
+        "BASELINE_ZERO",
+        "DELTA_OUT_OF_RANGE",
+        "RELATIVE_DELTA_OUT_OF_RANGE",
+        "BASELINE_UNAVAILABLE",
+        "SCENARIO_UNAVAILABLE",
+        "BOTH_UNAVAILABLE",
+        "MISSING_IN_BASELINE",
+        "MISSING_IN_SCENARIO",
+        "RUNS_NOT_COMPARABLE"
+      ],
+      "$comment": "T-029 (SIMULATION_SPEC §7; D-088 PROPOSED): why a comparison metric has no delta, or no relative delta. BASELINE_ZERO: the baseline is 0, so relative_delta is null and absolute_delta stays (§7). DELTA_OUT_OF_RANGE / RELATIVE_DELTA_OUT_OF_RANGE: the delta is outside ±1e15 (never clipped). BASELINE_UNAVAILABLE / SCENARIO_UNAVAILABLE / BOTH_UNAVAILABLE: the statistic is unavailable in that run; the run's own reason is the reason member of the summary the metric path's parent names. MISSING_IN_BASELINE / MISSING_IN_SCENARIO: the metric is not in that run's result. RUNS_NOT_COMPARABLE: the comparison is not comparable (incomparable_reasons)."
+    },
+    "IncomparableReason": {
+      "type": "string",
+      "enum": [
+        "MODEL_VERSION_MISMATCH",
+        "ENGINE_VERSION_MISMATCH",
+        "DATASET_MANIFEST_MISMATCH",
+        "HORIZON_MISMATCH",
+        "WARMUP_MISMATCH",
+        "REPLICATIONS_MISMATCH",
+        "SEED_MISMATCH",
+        "BASELINE_PATCH_NOT_EMPTY"
+      ],
+      "$comment": "T-029 (SIMULATION_SPEC §7; D-088 (a) PROPOSED): a condition the two runs do not share. They must have the same model version, engine_version, dataset manifest hash, horizon and warmup (in ticks), replications and seed, and the baseline's frozen patch must be [] (REQ-010, D-078 (b)). Listed in this order. The organization is the tenant scope: another organization's run is 404, never a reason."
+    },
+    "ComparisonWarning": {
+      "type": "string",
+      "enum": [
+        "SCENARIO_PATCH_EMPTY",
+        "SINGLE_REPLICATION",
+        "CENSORED_ENTITIES",
+        "METRICS_TRUNCATED"
+      ],
+      "$comment": "T-029 (D-088 (d) PROPOSED), in this order. SCENARIO_PATCH_EMPTY: the scenario run's patch is [] too, so nothing was varied. SINGLE_REPLICATION: a run has one replication, so neither run has a confidence interval and a difference cannot be told from replication noise. CENSORED_ENTITIES: some replication of a run ended with active entities, so lead times and queue waits describe the completed cohort only (SIMULATION_SPEC §5). METRICS_TRUNCATED: the comparison has more statistics than metrics' maxItems; the first ones in its order are listed."
+    },
     "ComparisonMetric": {
       "type": "object",
+      "$comment": "T-029 (SIMULATION_SPEC §7, D-010; D-088 (b)(c) PROPOSED): one statistic of both runs. metric_path is an RFC 6901 JSON Pointer from a Result's root to one statistic (/metrics/throughput/mean, /metrics/queues/<queue>/wait_p95_minutes, ...), the form analysis-output cites. absolute_delta = scenario − baseline; relative_delta = absolute_delta / baseline; both only when both values are available; no -0.",
       "properties": {
         "metric_path": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 2048
+          "maxLength": 2048,
+          "pattern": "^/metrics/.*$"
         },
         "baseline": {
           "anyOf": [
@@ -987,9 +1028,7 @@
         "reason": {
           "anyOf": [
             {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 1000
+              "$ref": "#/$defs/ComparisonReason"
             },
             {
               "type": "null"
@@ -1006,10 +1045,261 @@
         "status",
         "reason"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "available"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "baseline": {
+                "type": "number"
+              },
+              "scenario": {
+                "type": "number"
+              },
+              "reason": {
+                "enum": [
+                  null,
+                  "BASELINE_ZERO",
+                  "DELTA_OUT_OF_RANGE",
+                  "RELATIVE_DELTA_OUT_OF_RANGE"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absolute_delta": {
+                "type": "null"
+              },
+              "relative_delta": {
+                "type": "null"
+              },
+              "reason": {
+                "enum": [
+                  "BASELINE_UNAVAILABLE",
+                  "SCENARIO_UNAVAILABLE",
+                  "BOTH_UNAVAILABLE",
+                  "MISSING_IN_BASELINE",
+                  "MISSING_IN_SCENARIO"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "incomparable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absolute_delta": {
+                "type": "null"
+              },
+              "relative_delta": {
+                "type": "null"
+              },
+              "reason": {
+                "const": "RUNS_NOT_COMPARABLE"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "available"
+              },
+              "reason": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absolute_delta": {
+                "type": "number"
+              },
+              "relative_delta": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "BASELINE_ZERO"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "baseline": {
+                "const": 0
+              },
+              "absolute_delta": {
+                "type": "number"
+              },
+              "relative_delta": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "DELTA_OUT_OF_RANGE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absolute_delta": {
+                "type": "null"
+              },
+              "relative_delta": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "RELATIVE_DELTA_OUT_OF_RANGE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "absolute_delta": {
+                "type": "number"
+              },
+              "relative_delta": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "BASELINE_UNAVAILABLE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "baseline": {
+                "type": "null"
+              },
+              "scenario": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "SCENARIO_UNAVAILABLE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "baseline": {
+                "type": "number"
+              },
+              "scenario": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "BOTH_UNAVAILABLE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "baseline": {
+                "type": "null"
+              },
+              "scenario": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "MISSING_IN_BASELINE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "baseline": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "MISSING_IN_SCENARIO"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "scenario": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     },
     "Comparison": {
       "type": "object",
+      "$comment": "T-029 (SIMULATION_SPEC §7, D-010; D-088, D-089 PROPOSED): a baseline run and a scenario run of the caller's organization, both completed. comparable=false lists every incomparable_reasons code, keeps both values of every metric side by side (status incomparable) and gives no delta. metrics are every statistic of both results in a fixed order (run-level metrics, additional_metrics, dora, domain, resources, queues; keys in byte order), never Go map order.",
       "properties": {
         "baseline_run_id": {
           "$ref": "common.schema.json#/$defs/RunID"
@@ -1020,21 +1310,29 @@
         "comparable": {
           "type": "boolean"
         },
+        "incomparable_reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/IncomparableReason"
+          },
+          "uniqueItems": true,
+          "minItems": 0,
+          "maxItems": 8
+        },
         "metrics": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/ComparisonMetric"
           },
           "minItems": 0,
-          "maxItems": 1000
+          "maxItems": 10000
         },
         "warnings": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2000
+            "$ref": "#/$defs/ComparisonWarning"
           },
+          "uniqueItems": true,
           "minItems": 0,
           "maxItems": 100
         }
@@ -1043,10 +1341,66 @@
         "baseline_run_id",
         "scenario_run_id",
         "comparable",
+        "incomparable_reasons",
         "metrics",
         "warnings"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "comparable": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "incomparable_reasons": {
+                "maxItems": 0
+              },
+              "metrics": {
+                "items": {
+                  "properties": {
+                    "status": {
+                      "enum": [
+                        "available",
+                        "unavailable"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "comparable": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "incomparable_reasons": {
+                "minItems": 1
+              },
+              "metrics": {
+                "items": {
+                  "properties": {
+                    "status": {
+                      "const": "incomparable"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "Projects": {
       "type": "object",

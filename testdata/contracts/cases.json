@@ -2110,6 +2110,159 @@
       "expected_error_paths": [
         ""
       ]
+    },
+    {
+      "id": "valid-comparison",
+      "instance": "testdata/contracts/valid-comparison.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-comparison-incomparable",
+      "instance": "testdata/contracts/valid-comparison-incomparable.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-result-scenario",
+      "instance": "testdata/contracts/valid-result-scenario.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Result",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-comparison-relative-at-zero-baseline",
+      "instance": "testdata/contracts/invalid-comparison-relative-at-zero-baseline.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/relative_delta"
+      ]
+    },
+    {
+      "id": "invalid-comparison-zero-reason-nonzero-baseline",
+      "instance": "testdata/contracts/invalid-comparison-zero-reason-nonzero-baseline.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/baseline"
+      ]
+    },
+    {
+      "id": "invalid-comparison-incomparable-delta",
+      "instance": "testdata/contracts/invalid-comparison-incomparable-delta.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/absolute_delta"
+      ]
+    },
+    {
+      "id": "invalid-comparison-comparable-with-reasons",
+      "instance": "testdata/contracts/invalid-comparison-comparable-with-reasons.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/incomparable_reasons"
+      ]
+    },
+    {
+      "id": "invalid-comparison-incomparable-without-reasons",
+      "instance": "testdata/contracts/invalid-comparison-incomparable-without-reasons.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/incomparable_reasons"
+      ]
+    },
+    {
+      "id": "invalid-comparison-incomparable-available-metric",
+      "instance": "testdata/contracts/invalid-comparison-incomparable-available-metric.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/status"
+      ]
+    },
+    {
+      "id": "invalid-comparison-unknown-reason",
+      "instance": "testdata/contracts/invalid-comparison-unknown-reason.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/reason"
+      ]
+    },
+    {
+      "id": "invalid-comparison-dotted-metric-path",
+      "instance": "testdata/contracts/invalid-comparison-dotted-metric-path.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/metric_path"
+      ]
+    },
+    {
+      "id": "invalid-comparison-unavailable-delta",
+      "instance": "testdata/contracts/invalid-comparison-unavailable-delta.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/absolute_delta"
+      ]
+    },
+    {
+      "id": "invalid-comparison-unavailable-without-reason",
+      "instance": "testdata/contracts/invalid-comparison-unavailable-without-reason.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/reason"
+      ]
+    },
+    {
+      "id": "invalid-comparison-available-without-value",
+      "instance": "testdata/contracts/invalid-comparison-available-without-value.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/metrics/0/baseline",
+        "/metrics/0/absolute_delta",
+        "/metrics/0/relative_delta"
+      ]
+    },
+    {
+      "id": "invalid-comparison-free-text-warning",
+      "instance": "testdata/contracts/invalid-comparison-free-text-warning.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/warnings/0"
+      ]
+    },
+    {
+      "id": "invalid-comparison-without-reasons-member",
+      "instance": "testdata/contracts/invalid-comparison-without-reasons-member.json",
+      "schema": "schemas/http.schema.json#/$defs/Comparison",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
     }
   ]
 }

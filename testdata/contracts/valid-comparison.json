@@ -1,0 +1,29 @@
+{
+  "baseline_run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFA",
+  "scenario_run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFB",
+  "comparable": true,
+  "incomparable_reasons": [],
+  "metrics": [
+    {"metric_path": "/metrics/throughput/mean", "baseline": 100, "scenario": 110, "absolute_delta": 10, "relative_delta": 0.1, "status": "available", "reason": null},
+    {"metric_path": "/metrics/throughput/p50", "baseline": 100, "scenario": 110, "absolute_delta": 10, "relative_delta": 0.1, "status": "available", "reason": null},
+    {"metric_path": "/metrics/throughput/p95", "baseline": 100, "scenario": 110, "absolute_delta": 10, "relative_delta": 0.1, "status": "available", "reason": null},
+    {"metric_path": "/metrics/lead_time_minutes/mean", "baseline": 5, "scenario": 6.5, "absolute_delta": 1.5, "relative_delta": 0.3, "status": "available", "reason": null},
+    {"metric_path": "/metrics/lead_time_minutes/p50", "baseline": 5, "scenario": 6.5, "absolute_delta": 1.5, "relative_delta": 0.3, "status": "available", "reason": null},
+    {"metric_path": "/metrics/lead_time_minutes/p95", "baseline": 5, "scenario": 6.5, "absolute_delta": 1.5, "relative_delta": 0.3, "status": "available", "reason": null},
+    {"metric_path": "/metrics/failure_count/mean", "baseline": 0, "scenario": 2, "absolute_delta": 2, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/failure_count/p50", "baseline": 0, "scenario": 2, "absolute_delta": 2, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/failure_count/p95", "baseline": 0, "scenario": 2, "absolute_delta": 2, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/rework_count/mean", "baseline": 0, "scenario": 0, "absolute_delta": 0, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/rework_count/p50", "baseline": 0, "scenario": 0, "absolute_delta": 0, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/rework_count/p95", "baseline": 0, "scenario": 0, "absolute_delta": 0, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/dora/change_lead_time/mean", "baseline": null, "scenario": null, "absolute_delta": null, "relative_delta": null, "status": "unavailable", "reason": "BOTH_UNAVAILABLE"},
+    {"metric_path": "/metrics/dora/change_lead_time/p50", "baseline": null, "scenario": null, "absolute_delta": null, "relative_delta": null, "status": "unavailable", "reason": "BOTH_UNAVAILABLE"},
+    {"metric_path": "/metrics/dora/change_lead_time/p95", "baseline": null, "scenario": null, "absolute_delta": null, "relative_delta": null, "status": "unavailable", "reason": "BOTH_UNAVAILABLE"},
+    {"metric_path": "/metrics/resources/server/utilization_mean", "baseline": 0.49504950495049505, "scenario": 0.24752475247524752, "absolute_delta": -0.24752475247524752, "relative_delta": -0.5, "status": "available", "reason": null},
+    {"metric_path": "/metrics/queues/service/wait_mean_minutes", "baseline": 0, "scenario": 0, "absolute_delta": 0, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/queues/service/wait_p50_minutes", "baseline": 0, "scenario": 0, "absolute_delta": 0, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/queues/service/wait_p95_minutes", "baseline": 0, "scenario": 0, "absolute_delta": 0, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"},
+    {"metric_path": "/metrics/queues/service/queue_length_mean", "baseline": 0, "scenario": 0, "absolute_delta": 0, "relative_delta": null, "status": "available", "reason": "BASELINE_ZERO"}
+  ],
+  "warnings": ["SINGLE_REPLICATION"]
+}

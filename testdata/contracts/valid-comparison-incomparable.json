@@ -1,0 +1,11 @@
+{
+  "baseline_run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFA",
+  "scenario_run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFC",
+  "comparable": false,
+  "incomparable_reasons": ["REPLICATIONS_MISMATCH", "SEED_MISMATCH"],
+  "metrics": [
+    {"metric_path": "/metrics/throughput/mean", "baseline": 100, "scenario": 104.5, "absolute_delta": null, "relative_delta": null, "status": "incomparable", "reason": "RUNS_NOT_COMPARABLE"},
+    {"metric_path": "/metrics/lead_time_minutes/mean", "baseline": null, "scenario": 5.25, "absolute_delta": null, "relative_delta": null, "status": "incomparable", "reason": "RUNS_NOT_COMPARABLE"}
+  ],
+  "warnings": ["SINGLE_REPLICATION", "CENSORED_ENTITIES"]
+}

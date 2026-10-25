@@ -14,12 +14,17 @@ import type {
   CancelSimulation,
   CanonicalEvent,
   ColumnMapping,
+  Comparison,
+  ComparisonMetric,
+  ComparisonReason,
+  ComparisonWarning,
   CreateScenario,
   Distribution,
   Error,
   IdAllocationPool,
   Import,
   ImportMapping,
+  IncomparableReason,
   JsonPatch,
   MappingSuggestionRequest,
   ModelIR,
@@ -262,6 +267,49 @@ const manualScenario: Scenario = {
 const createScenarioBody: CreateScenario = { name: "Eight CI runners", patch: eightRunners };
 const baselineScenarioBody: CreateScenario = { name: "Baseline", patch: [] };
 const scenariosPage: Scenarios = { items: [aiScenario, manualScenario], next_cursor: null };
+// T-029 (D-088, D-089): compareSimulations answers codes, never prose, so
+// the UI words them in both languages (REQ-022); deltas are the server's.
+// Two runs that do not share their seed and replications: both values side
+// by side, no delta.
+const incomparableComparison: Comparison = {
+  baseline_run_id: "sim_01M4YDQK00FGZZWH0PP15XPNFA",
+  scenario_run_id: "sim_01M4YDQK00FGZZWH0PP15XPNFC",
+  comparable: false,
+  incomparable_reasons: ["REPLICATIONS_MISMATCH", "SEED_MISMATCH"],
+  metrics: [
+    {
+      metric_path: "/metrics/throughput/mean",
+      baseline: 100,
+      scenario: 104.5,
+      absolute_delta: null,
+      relative_delta: null,
+      status: "incomparable",
+      reason: "RUNS_NOT_COMPARABLE",
+    },
+    {
+      metric_path: "/metrics/lead_time_minutes/mean",
+      baseline: null,
+      scenario: 5.25,
+      absolute_delta: null,
+      relative_delta: null,
+      status: "incomparable",
+      reason: "RUNS_NOT_COMPARABLE",
+    },
+  ],
+  warnings: ["SINGLE_REPLICATION", "CENSORED_ENTITIES"],
+};
+const comparisonReasons = [
+  "BASELINE_ZERO",
+  "DELTA_OUT_OF_RANGE",
+  "RELATIVE_DELTA_OUT_OF_RANGE",
+  "BASELINE_UNAVAILABLE",
+  "SCENARIO_UNAVAILABLE",
+  "BOTH_UNAVAILABLE",
+  "MISSING_IN_BASELINE",
+  "MISSING_IN_SCENARIO",
+  "RUNS_NOT_COMPARABLE",
+] as const satisfies readonly ComparisonReason[];
+const comparisonWarnings = ["SCENARIO_PATCH_EMPTY", "SINGLE_REPLICATION", "CENSORED_ENTITIES", "METRICS_TRUNCATED"] as const satisfies readonly ComparisonWarning[];
 // An approval names its effect by mode (API_DATABASE §4): a client reads
 // new_version_id or scenario_id only after narrowing on it.
 const effectOf = (a: Approval): string => (a.mode === "edit" ? a.new_version_id : a.scenario_id);
@@ -421,8 +469,22 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-create-scenario.json", createScenarioBody],
     ["valid-create-baseline-scenario.json", baselineScenarioBody],
     ["valid-scenarios-page.json", scenariosPage],
+    ["valid-comparison-incomparable.json", incomparableComparison],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
+  });
+
+  it("valid-comparison.json carries only the contract's codes (T-029)", () => {
+    const golden = fixture("valid-comparison.json") as Comparison;
+    expect(golden.comparable).toBe(true);
+    expect(golden.incomparable_reasons).toEqual([]);
+    for (const m of golden.metrics) {
+      expect(m.metric_path.startsWith("/metrics/")).toBe(true);
+      if (m.reason !== null) expect(comparisonReasons).toContain(m.reason);
+      // A zero baseline has no relative delta (TEST-022).
+      if (m.reason === "BASELINE_ZERO") expect([m.baseline, m.relative_delta]).toEqual([0, null]);
+    }
+    for (const w of golden.warnings) expect(comparisonWarnings).toContain(w);
   });
 
   it("an approval's mode names its effect (T-026, T-028)", () => {
@@ -506,4 +568,12 @@ export const rejected = {
   scenarioApprovalVersion: { proposal_id: "aip_01M4YDQK00Q10EM95Z6H4XK0Y8", status: "approved", mode: "scenario", scenario_id: aiScenario.id, new_version_id: "mv_01M4YDQK00C1B16WZGG1W8VQ84", patch_hash: zeroHash } satisfies Approval,
   // @ts-expect-error the effect's ID depends on the mode: narrow before reading it (API_DATABASE §4)
   unnarrowedEffect: (a: Approval): string => a.scenario_id,
+  // @ts-expect-error a comparison warning is a code the UI words, never prose (T-029)
+  comparisonProse: { ...incomparableComparison, warnings: ["the runs differ"] } satisfies Comparison,
+  // @ts-expect-error a comparison metric's reason is one of the contract's codes (T-029)
+  comparisonReasonText: { ...incomparableComparison.metrics[0]!, reason: "baseline is zero" } satisfies ComparisonMetric,
+  // @ts-expect-error a comparison always lists why it is not comparable, [] when it is (T-029)
+  comparisonWithoutReasons: { ...incomparableComparison, incomparable_reasons: undefined } satisfies Comparison,
+  // @ts-expect-error another trace level does not make runs incomparable (SIMULATION_SPEC §9)
+  traceMismatch: "TRACE_LEVEL_MISMATCH" satisfies IncomparableReason,
 };

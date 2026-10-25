@@ -1,0 +1,117 @@
+{
+  "run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFB",
+  "status": "completed",
+  "engine_version": "des-go-0.1.0-PROPOSED-fixture",
+  "metrics": {
+    "throughput": {
+      "status": "available",
+      "mean": 110,
+      "p50": 110,
+      "p95": 110,
+      "sample_count": 1,
+      "population": "replication",
+      "unit": "count",
+      "confidence_interval_mean": null,
+      "reason": null
+    },
+    "lead_time_minutes": {
+      "status": "available",
+      "mean": 6.5,
+      "p50": 6.5,
+      "p95": 6.5,
+      "sample_count": 110,
+      "population": "entity",
+      "unit": "minute",
+      "confidence_interval_mean": null,
+      "reason": null
+    },
+    "resources": {
+      "server": {
+        "utilization_mean": 0.24752475247524752,
+        "observation_ticks": 60600000,
+        "capacity": 2,
+        "reason": null
+      }
+    },
+    "queues": {
+      "service": {
+        "status": "available",
+        "wait_mean_minutes": 0,
+        "wait_p50_minutes": 0,
+        "wait_p95_minutes": 0,
+        "queue_length_mean": 0,
+        "sample_count": 110,
+        "reason": null
+      }
+    },
+    "failure_count": {
+      "status": "available",
+      "mean": 2,
+      "p50": 2,
+      "p95": 2,
+      "sample_count": 1,
+      "population": "replication",
+      "unit": "count",
+      "confidence_interval_mean": null,
+      "reason": null
+    },
+    "rework_count": {
+      "status": "available",
+      "mean": 0,
+      "p50": 0,
+      "p95": 0,
+      "sample_count": 1,
+      "population": "replication",
+      "unit": "count",
+      "confidence_interval_mean": null,
+      "reason": null
+    },
+    "dora": {
+      "change_lead_time": {
+        "status": "unavailable",
+        "mean": null,
+        "p50": null,
+        "p95": null,
+        "sample_count": 0,
+        "population": "entity",
+        "unit": "minute",
+        "confidence_interval_mean": null,
+        "reason": "MISSING_DORA_EVENT_MAPPING"
+      }
+    },
+    "additional_metrics": {}
+  },
+  "replication_summaries": [
+    {
+      "replication_index": 0,
+      "completed_count": 110,
+      "mean_lead_time_minutes": 6.5,
+      "resource_utilization": {
+        "server": 0.24752475247524752
+      },
+      "failures": 2,
+      "reworks": 0,
+      "censored_entities": 0
+    }
+  ],
+  "measurement_window": {
+    "tick_unit": "millisecond",
+    "warmup_ticks": 0,
+    "horizon_ticks": 60600000,
+    "time_boundary": "warmup <= t <= horizon"
+  },
+  "reproducibility": {
+    "seed": 7,
+    "replications": 1,
+    "model_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "effective_model_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "config_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "dataset_manifest_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "result_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "trace": {
+    "available": false,
+    "sampled_events": 0,
+    "artifact_id": null
+  }
+}

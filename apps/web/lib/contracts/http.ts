@@ -231,6 +231,12 @@ export type ProgressSnapshot = {
   cancellation_requested: boolean;
 };
 
+export type ComparisonReason = "BASELINE_ZERO" | "DELTA_OUT_OF_RANGE" | "RELATIVE_DELTA_OUT_OF_RANGE" | "BASELINE_UNAVAILABLE" | "SCENARIO_UNAVAILABLE" | "BOTH_UNAVAILABLE" | "MISSING_IN_BASELINE" | "MISSING_IN_SCENARIO" | "RUNS_NOT_COMPARABLE";
+
+export type IncomparableReason = "MODEL_VERSION_MISMATCH" | "ENGINE_VERSION_MISMATCH" | "DATASET_MANIFEST_MISMATCH" | "HORIZON_MISMATCH" | "WARMUP_MISMATCH" | "REPLICATIONS_MISMATCH" | "SEED_MISMATCH" | "BASELINE_PATCH_NOT_EMPTY";
+
+export type ComparisonWarning = "SCENARIO_PATCH_EMPTY" | "SINGLE_REPLICATION" | "CENSORED_ENTITIES" | "METRICS_TRUNCATED";
+
 export type ComparisonMetric = {
   metric_path: string;
   baseline: number | null;
@@ -238,15 +244,16 @@ export type ComparisonMetric = {
   absolute_delta: number | null;
   relative_delta: number | null;
   status: "available" | "unavailable" | "incomparable";
-  reason: string | null;
+  reason: ComparisonReason | null;
 };
 
 export type Comparison = {
   baseline_run_id: RunID;
   scenario_run_id: RunID;
   comparable: boolean;
+  incomparable_reasons: IncomparableReason[];
   metrics: ComparisonMetric[];
-  warnings: string[];
+  warnings: ComparisonWarning[];
 };
 
 export type Projects = {

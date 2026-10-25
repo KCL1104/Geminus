@@ -1,0 +1,20 @@
+{
+  "baseline_run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFA",
+  "scenario_run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFB",
+  "comparable": false,
+  "incomparable_reasons": [
+    "SEED_MISMATCH"
+  ],
+  "metrics": [
+    {
+      "metric_path": "/metrics/throughput/mean",
+      "baseline": 100,
+      "scenario": 110,
+      "absolute_delta": 10,
+      "relative_delta": 0.1,
+      "status": "available",
+      "reason": null
+    }
+  ],
+  "warnings": []
+}

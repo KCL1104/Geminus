@@ -1,0 +1,18 @@
+{
+  "baseline_run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFA",
+  "scenario_run_id": "sim_01M4YDQK00FGZZWH0PP15XPNFB",
+  "comparable": true,
+  "incomparable_reasons": [],
+  "metrics": [
+    {
+      "metric_path": "/metrics/throughput/mean",
+      "baseline": null,
+      "scenario": 1,
+      "absolute_delta": null,
+      "relative_delta": null,
+      "status": "available",
+      "reason": null
+    }
+  ],
+  "warnings": []
+}
