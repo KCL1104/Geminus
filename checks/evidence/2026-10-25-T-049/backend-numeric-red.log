@@ -1,0 +1,18 @@
+$ bash scripts/check_no_fma.sh   (on 0d1f4c8, before the fix in release.go's draw)
+PASS no fused multiply-add or platform math call: amd64 v3
+FAIL fused multiply-add in the arm64 build:
+	0x0088 00136 (/home/user/Geminus/.claude/worktrees/agent-a4c0b51cad5eeb42d/internal/simulation/engine/release.go:106)	FMSUBD	F1, F2, F3, F0
+PASS no fused multiply-add or platform math call: ppc64le
+PASS no fused multiply-add or platform math call: s390x
+FAIL fused multiply-add in the riscv64 build:
+	0x0080 00128 (/home/user/Geminus/.claude/worktrees/agent-a4c0b51cad5eeb42d/internal/simulation/engine/release.go:106)	FNMSUBD	F11, F9, F12, F10
+FAIL fused multiply-add in the loong64 build:
+	0x00a0 00160 (/home/user/Geminus/.claude/worktrees/agent-a4c0b51cad5eeb42d/internal/simulation/engine/release.go:106)	FNMSUBD	F3, F2, F1, F0
+exit status 1
+
+# release.go:106 was `return -ln(1 - rng.Uniform())`: inlined, Uniform's
+# division by 2^52 is a multiplication that arm64, riscv64 and loong64 fused
+# with `1 - U`. Fixed with `1 - float64(rng.Uniform())` (an explicit
+# conversion rounds, so no fusion); on amd64 v1, where the vectors and the
+# Python reference run, the value is unchanged (TestReleaseRunVectors still
+# passes bit for bit). After the fix every target PASSes (backend-numeric.log).

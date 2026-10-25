@@ -98,12 +98,14 @@ func newReleaser(s model.ReleaseSchedule, unit model.TimeUnit) (*releaser, error
 }
 
 // draw is X_k: 1 for a deterministic schedule, -ln(1 - U) for a poisson
-// one (one draw).
+// one (one draw). U is rounded before the subtraction: inlined, Uniform's
+// division by 2^52 becomes a product the compiler would otherwise fuse into
+// 1 - U on arm64, riscv64 and loong64 (found by scripts/check_no_fma.sh).
 func (s *releaser) draw(rng *SplitMix64) float64 {
 	if !s.poisson {
 		return 1
 	}
-	return -ln(1 - rng.Uniform())
+	return -ln(1 - float64(rng.Uniform()))
 }
 
 // tau is Λ⁻¹(a) in the model unit, D-053's profile.

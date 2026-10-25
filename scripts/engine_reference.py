@@ -4,8 +4,10 @@
 Re-implements, without sharing code with the Go engine, SplitMix64, seed
 derivation, tick quantization, the samplers (constant, exponential,
 triangular, empirical; lognormal and Weibull since T-048, D-056), the event
-order (with priority 15, D-048), the source-arrival process and the
-breakdown streams (D-051) (docs/SIMULATION_SPEC.md §2 and §4), and writes or
+order (with priority 15, D-048), the source-arrival process, the
+breakdown streams (D-051) and the release-schedule profile (D-053, T-049:
+Λ⁻¹ with the correction of r, whole poisson and deterministic arrival runs)
+(docs/SIMULATION_SPEC.md §2 and §4), and writes or
 checks testdata/simulation/engine-vectors.json. The Go tests must reproduce
 every vector exactly. This is NOT a DES engine or a SimPy differential test.
 
@@ -522,6 +524,103 @@ def arrivals() -> list[list]:
     return out, {s["id"]: f"{rngs[s['id']].state:016x}" for s in sources}
 
 
+# T-049 (D-053): release schedules. The rate profile of review L4, ported
+# operation for operation from its text, not from the Go code.
+class RateSchedule:
+    def __init__(self, sched: dict, unit: str) -> None:
+        self.unit, self.period, self.poisson = unit, float(sched["period"]), sched["process"] == "poisson"
+        segs = sched["segments"]
+        self.starts, self.ends, self.rates, self.cum_start, self.cum_end = [], [], [], [], []
+        cum = 0.0
+        for j, s in enumerate(segs):
+            end = float(segs[j + 1]["start"]) if j + 1 < len(segs) else self.period
+            self.starts.append(float(s["start"]))
+            self.ends.append(end)
+            self.rates.append(float(s["rate"]))
+            self.cum_start.append(cum)
+            cum = cum + self.rates[-1] * (end - self.starts[-1])  # one rounded product, then the sum
+            self.cum_end.append(cum)
+        self.total = cum  # P = Λ(period)
+
+    def x(self, rng: SplitMix64) -> float:
+        """X_k: 1 (deterministic, no draw) or -ln(1 - U) (poisson, one draw)."""
+        return -pinned_log(1 - rng.uniform()) if self.poisson else 1.0
+
+    def tau(self, a: float) -> dict:
+        """Λ⁻¹(a): k = ceil(a/P) - 1, r = a - kP, corrected once into (0, P];
+        the first segment with a positive rate and cumEnd >= r; τ clamped to
+        the segment. Returns the steps, for the vectors."""
+        k = float(math.ceil(a / self.total) - 1)
+        r = a - k * self.total
+        corrected = 0
+        if r <= 0:
+            k, r, corrected = k - 1, r + self.total, -1
+        elif r > self.total:
+            k, r, corrected = k + 1, r - self.total, 1
+        j = next(i for i in range(len(self.rates)) if self.rates[i] > 0 and self.cum_end[i] >= r)
+        base = k * self.period
+        lo, hi = base + self.starts[j], base + self.ends[j]
+        tau = min(max(lo + (r - self.cum_start[j]) / self.rates[j], lo), hi)
+        return {"k": k, "r": r, "corrected": corrected, "segment": j, "tau": tau, "tick": quantize(tau, self.unit)}
+
+
+RELEASE_CORRECTION = {"process": "deterministic", "period": 1, "segments": [{"start": 0, "rate": 0.3}]}
+RELEASE_CORRECTION_A = [0.3, 0.6, 0.9, 1.2, 3.0, 30.0, 300.0, 502.5, 502.6, 1000.2, 12345.6, 0.1 + 0.2, 7 * 0.3, 299.99999999999994]
+RELEASE_PROFILE = {"process": "deterministic", "period": 1440,
+                   "segments": [{"start": 0, "rate": 0.3}, {"start": 333.3, "rate": 0}, {"start": 480, "rate": 0.7}, {"start": 1000.1, "rate": 0.1}]}
+RELEASE_PROFILE_A = [0.5, 99.99, 99.990000000001, 100.0, 100.01, 300.0, 400.0, 400.5, 663.2, 707.5, 707.6, 1e4, 123456.789]
+RELEASE_RUNS = [
+    {"id": "G-R2", "source": "src", "schedule": {"process": "poisson", "period": 1440,
+                                                 "segments": [{"start": 0, "rate": 0.5}, {"start": 480, "rate": 0.4}, {"start": 960, "rate": 0.2}]},
+     "unit": "minute", "base_seed": 4902, "replication_index": 2, "horizon": {"value": 2880, "unit": "minute"}},
+    {"id": "G-R2-zero", "source": "line.b", "schedule": {"process": "poisson", "period": 60,
+                                                        "segments": [{"start": 0, "rate": 0}, {"start": 12.5, "rate": 3.75}, {"start": 30, "rate": 0}, {"start": 45, "rate": 0.125}]},
+     "unit": "minute", "base_seed": 7, "replication_index": 0, "horizon": {"value": 600, "unit": "minute"}},
+    {"id": "G-R-takt", "source": "src", "schedule": RELEASE_PROFILE, "unit": "minute", "base_seed": 1, "replication_index": 0,
+     "horizon": {"value": 4320, "unit": "minute"}},
+    {"id": "G-R-fast", "source": "src", "schedule": {"process": "poisson", "period": 0.5,
+                                                     "segments": [{"start": 0, "rate": 900}, {"start": 0.25, "rate": 100}]},
+     "unit": "second", "base_seed": 11, "replication_index": 1, "horizon": {"value": 3, "unit": "second"}},
+]
+
+
+def release_run(run: dict) -> dict:
+    """A source with a rate schedule alone: the k-th arrival at
+    max(tick(Λ⁻¹(a_k)), the last + 1) (the first's floor tick 0), a_k
+    unquantized; the draw of the arrival after the horizon is spent."""
+    s = RateSchedule(run["schedule"], run["unit"])
+    rng = stream(replication_seed(run["base_seed"], run["replication_index"]), run["source"], "arrival")
+    horizon = ticks(run["horizon"]["value"], run["horizon"]["unit"])
+    a, last, out = 0.0, -1, []
+    while True:
+        a += s.x(rng)
+        at = max(s.tau(a)["tick"], last + 1)
+        if at > horizon:
+            break
+        out.append(at)
+        last = at
+    return {**run, "total_bits": f"{bits(s.total):016x}", "arrival_ticks": out, "a_bits_after": f"{bits(a):016x}",
+            "stream_state_after": f"{rng.state:016x}"}
+
+
+def release_vectors() -> dict:
+    def steps(sched: dict, unit: str, values: list) -> list:
+        s = RateSchedule(sched, unit)
+        out = []
+        for a in values:
+            v = s.tau(a)
+            out.append({"a_bits": f"{bits(a):016x}", "k": v["k"], "r_bits": f"{bits(v['r']):016x}", "corrected": v["corrected"],
+                        "segment": v["segment"], "tau_bits": f"{bits(v['tau']):016x}", "tick": v["tick"]})
+        return out
+    return {
+        "correction": {"schedule": RELEASE_CORRECTION, "unit": "minute", "total_bits": f"{bits(RateSchedule(RELEASE_CORRECTION, 'minute').total):016x}",
+                       "steps": steps(RELEASE_CORRECTION, "minute", RELEASE_CORRECTION_A)},
+        "profile": {"schedule": RELEASE_PROFILE, "unit": "minute", "total_bits": f"{bits(RateSchedule(RELEASE_PROFILE, 'minute').total):016x}",
+                    "steps": steps(RELEASE_PROFILE, "minute", RELEASE_PROFILE_A)},
+        "runs": [release_run(r) for r in RELEASE_RUNS],
+    }
+
+
 TRACE_PREFIX = b"dt-trace-v1\0"
 TRACE_RATE = 0.125  # an entity is sampled when its hash < 2^64 / 8
 
@@ -561,6 +660,8 @@ def build() -> dict:
         "breakdown_streams": breakdown_streams(),
         "event_order_resource_state": {"pushes": [{"tick": t, "priority": p} for t, p in EVENT_PUSHES_15],
                                        "pop_sequence": event_order_15()},
+        # T-049 (D-053), after the vectors above, which are unchanged.
+        "release_schedules": release_vectors(),
     }
 
 
@@ -578,7 +679,9 @@ def main() -> int:
                       "event_pushes": len(EVENT_PUSHES), "arrivals": len(data["arrivals"]["expected"]),
                       "log_inputs": LOG_INPUTS, "digest_draws_per_sampler": DIGEST_DRAWS,
                       "exp_inputs": EXP_INPUTS, "ndtri_inputs": NDTRI_INPUTS,
-                      "breakdown_stream_units": len(data["breakdown_streams"]["units"])}))
+                      "breakdown_stream_units": len(data["breakdown_streams"]["units"]),
+                      "release_steps": len(data["release_schedules"]["correction"]["steps"]) + len(data["release_schedules"]["profile"]["steps"]),
+                      "release_arrivals": sum(len(r["arrival_ticks"]) for r in data["release_schedules"]["runs"])}))
     return 0
 
 
