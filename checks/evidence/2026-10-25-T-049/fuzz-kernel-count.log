@@ -1,0 +1,15 @@
+$ go test -run ^$ -fuzz ^FuzzKernel$ -fuzztime 500000x -parallel 2 ./internal/simulation/engine/
+fuzz: elapsed: 0s, gathering baseline coverage: 0/164 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 164/164 completed, now fuzzing with 2 workers
+fuzz: elapsed: 3s, execs: 201 (67/sec), new interesting: 0 (total: 164)
+fuzz: elapsed: 6s, execs: 201 (0/sec), new interesting: 0 (total: 164)
+fuzz: elapsed: 9s, execs: 201 (0/sec), new interesting: 0 (total: 164)
+fuzz: elapsed: 12s, execs: 201 (0/sec), new interesting: 0 (total: 164)
+fuzz: elapsed: 15s, execs: 201 (0/sec), new interesting: 0 (total: 164)
+fuzz: elapsed: 18s, execs: 201 (0/sec), new interesting: 0 (total: 164)
+fuzz: elapsed: 21s, execs: 250194 (83325/sec), new interesting: 1 (total: 165)
+fuzz: elapsed: 24s, execs: 250194 (0/sec), new interesting: 1 (total: 165)
+fuzz: elapsed: 25s, execs: 500000 (182179/sec), new interesting: 1 (total: 165)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	25.404s
+exit status 0

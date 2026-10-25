@@ -1,0 +1,27 @@
+$ go test -run ^$ -fuzz ^FuzzRun$ -fuzztime 60s -parallel 2 ./internal/simulation/des/
+fuzz: elapsed: 0s, gathering baseline coverage: 0/79 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 79/79 completed, now fuzzing with 2 workers
+fuzz: elapsed: 3s, execs: 84 (28/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 6s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 9s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 12s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 15s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 18s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 21s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 24s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 27s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 30s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 33s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 36s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 39s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 42s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 45s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 48s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 51s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 54s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 57s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 1m0s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+fuzz: elapsed: 1m1s, execs: 84 (0/sec), new interesting: 0 (total: 79)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	60.543s
+exit status 0

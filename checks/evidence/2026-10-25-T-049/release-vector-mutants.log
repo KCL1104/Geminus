@@ -1,0 +1,33 @@
+$ the release mutants of t049-mutants.py applied alone against the Python port's vectors only: go test -count=1 -overlay <mutant> -run TestRelease ./internal/simulation/engine/  for release-segment-strictly-after, release-no-clamp, release-no-correction, release-no-floor, release-extra-draw (f7fe9df)
+== release-segment-strictly-after
+--- FAIL: TestReleaseProfileVectors (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.091s
+FAIL
+exit 1
+== release-no-clamp
+--- FAIL: TestReleaseProfileVectors (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.065s
+FAIL
+exit 1
+== release-no-correction
+--- FAIL: TestReleaseProfileVectors (0.01s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.074s
+FAIL
+exit 1
+== release-no-floor
+--- FAIL: TestReleaseRunVectors (0.08s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.090s
+FAIL
+exit 1
+== release-extra-draw
+--- FAIL: TestReleaseRunVectors (0.06s)
+--- FAIL: TestReleaseScheduleCommonRandomNumbers (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.072s
+FAIL
+exit 1
+exit status 0

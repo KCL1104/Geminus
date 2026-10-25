@@ -1,0 +1,15 @@
+$ make backend-numeric
+bash scripts/check_no_fma.sh
+PASS no fused multiply-add or platform math call: amd64 v3
+PASS no fused multiply-add or platform math call: arm64
+PASS no fused multiply-add or platform math call: ppc64le
+PASS no fused multiply-add or platform math call: s390x
+PASS no fused multiply-add or platform math call: riscv64
+PASS no fused multiply-add or platform math call: loong64
+ok  	github.com/kcl1104/geminus/internal/simulation	0.189s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	8.973s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	84.516s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.089s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.277s
+PASS numeric tests as a GOAMD64=v3 build
+exit status 0

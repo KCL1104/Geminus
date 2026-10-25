@@ -1,0 +1,1353 @@
+{
+  "summary": {
+    "simpy": "4.1.2",
+    "deterministic_cases": [
+      "G-B1",
+      "G-B1W",
+      "G-B2",
+      "G-B4",
+      "G-B4W",
+      "G-B7",
+      "G-B8",
+      "G-B9",
+      "G-B11",
+      "G-B12",
+      "G-B14",
+      "G-D2 (illustrative)",
+      "G-F3",
+      "G-F3b",
+      "G-F9",
+      "G-F9R10",
+      "G-F7",
+      "G-C1",
+      "G-C1W",
+      "G-C1W10",
+      "G-C2",
+      "G-C5",
+      "G-C6",
+      "G-C7",
+      "G-C8",
+      "G-C9",
+      "G-C10",
+      "G-F6",
+      "G-CF1",
+      "G-R1",
+      "G-R5",
+      "G-R7"
+    ],
+    "not_compared": [
+      "G-B3: not compared: the order of two blocks in one tick is the kernel's tie-break (D-048), which SimPy does not reproduce",
+      "G-B5: not compared: the property is the kernel's use of its routing stream",
+      "G-B10: not compared: A needs two units of ra, which the script's slot interpretation does not support (units must be 1)",
+      "G-B13: refused by the script: unsupported: X's own O (capacity 1) is smaller than its shared S (capacity 3): one at a time would not be all-or-nothing",
+      "G-D3: not compared: a second deadlock case; G-D2 is the illustrative one",
+      "G-F1: not compared: same-tick arrival and failure at 10 and 26 (D-048 tie-break; SimPy orders same-time events by scheduling)",
+      "G-F1W: not compared: G-F1's same-tick arrival and failure (D-048 tie-break)",
+      "G-F1W10: not compared: G-F1's same-tick arrival and failure (D-048 tie-break)",
+      "G-F2: not compared: same-tick arrival and failure at 24 (D-048 tie-break)",
+      "G-F10: not compared: failures 0 (from 25) and 1 (from 30) still wait at the horizon, which the script does not record",
+      "G-F8: refused by the script: unsupported: work's bundle ['m', 'o'] has m, which breaks down, and other resources: taken one at a time, a unit of it held while waiting for the rest could not fail",
+      "G-T1: not compared: D-048 tie-break (release, failure and dispatch in one tick)",
+      "G-T2: not compared: D-048 tie-break",
+      "G-T4: not compared: D-048 tie-break (a 0-tick repair inside a tick)",
+      "G-K1: not compared: the point is the kernel's B1 check",
+      "G-D4: not compared: SimPy does not detect deadlocks (G-D2)",
+      "G-S1: not compared: SimPy does not detect stalls",
+      "G-S2: not compared: the point is the kernel's B2 check",
+      "G-C4: refused by the script: unsupported: work's bundle ['r1', 'r2'] has r1, on a calendar, and other resources: taken one at a time, a unit held while waiting for the rest would be held off its shift",
+      "G-T5: not compared: the failure is due exactly at the shift's end; in the script the change's blocker takes the off-shift unit first, which the kernel counts as idle for a failure (D-051), so the script's failure would wait",
+      "G-K2: not compared: the point is the kernel's B1 check",
+      "G-D1: not compared: SimPy does not detect stalls",
+      "G-D3C: refused by the script: unsupported: work needs 2 units",
+      "G-D4C: refused by the script: unsupported: work's bundle ['r1', 'r2'] has r1, on a calendar, and other resources: taken one at a time, a unit held while waiting for the rest would be held off its shift",
+      "G-D5: refused by the script: unsupported: work's bundle ['m', 'o'] has m, which breaks down, and other resources: taken one at a time, a unit of it held while waiting for the rest could not fail"
+    ],
+    "g_d2_last_service_start_minutes": 5.0,
+    "g_d2_deadlock_minutes": 7.0,
+    "stochastic_comparisons": 140,
+    "stochastic_passed": 140,
+    "tolerance": {
+      "blocking-goldens.json": {
+        "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+        "z": 4.0,
+        "rel": 0.005,
+        "abs": 1e-09
+      },
+      "breakdown-goldens.json": {
+        "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+        "z": 4.0,
+        "rel": 0.005,
+        "abs": 1e-09
+      },
+      "calendar-goldens.json": {
+        "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+        "z": 4.0,
+        "rel": 0.005,
+        "abs": 1e-09
+      }
+    },
+    "failures": []
+  },
+  "comparisons": [
+    {
+      "case": "S1",
+      "metric": "completed_count",
+      "go": 2493.5,
+      "simpy": 2485.3,
+      "difference": 8.199999999999818,
+      "bound": 44.37074453026775,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "mean_lead_time_minutes",
+      "go": 141.98544845534155,
+      "simpy": 131.18890731002213,
+      "difference": 10.796541145319424,
+      "bound": 40.468259862602544,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "utilization/m1",
+      "go": 0.9994219514403292,
+      "simpy": 0.9978896308770354,
+      "difference": 0.0015323205632937764,
+      "bound": 0.008371681123654988,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "blocked_fraction/m1",
+      "go": 0.3453100244855967,
+      "simpy": 0.35459267465961974,
+      "difference": -0.009282650174023022,
+      "bound": 0.015679153729916115,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "utilization/m2",
+      "go": 0.9270356440329218,
+      "simpy": 0.9323322151439843,
+      "difference": -0.00529657111106252,
+      "bound": 0.013976660623979443,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "blocked_fraction/m2",
+      "go": 0.19190843991769546,
+      "simpy": 0.19174861809875232,
+      "difference": 0.00015982181894313996,
+      "bound": 0.011638642762906453,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "utilization/m3",
+      "go": 0.6884837020576132,
+      "simpy": 0.6886267007964931,
+      "difference": -0.000142998738879907,
+      "bound": 0.014701677682097417,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "blocked_fraction/m3",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "full_fraction/q2",
+      "go": 0.6239430144032921,
+      "simpy": 0.6367930572312294,
+      "difference": -0.012850042827937225,
+      "bound": 0.021610500940914452,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "full_fraction/q3",
+      "go": 0.41946425699588474,
+      "simpy": 0.419383808867016,
+      "difference": 8.044812886875974e-05,
+      "bound": 0.016965994294357415,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "blocks_started/st1",
+      "go": 1060.9666666666667,
+      "simpy": 1087.8,
+      "difference": -26.833333333333258,
+      "bound": 43.07238372982813,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "blocked_entities_mean/st1",
+      "go": 0.3453100244855967,
+      "simpy": 0.35459267465961974,
+      "difference": -0.009282650174023022,
+      "bound": 0.015679153729916115,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "blocks_started/st2",
+      "go": 693.7333333333333,
+      "simpy": 692.3333333333334,
+      "difference": 1.3999999999999773,
+      "bound": 35.650487289627456,
+      "pass": true
+    },
+    {
+      "case": "S1",
+      "metric": "blocked_entities_mean/st2",
+      "go": 0.19190843991769546,
+      "simpy": 0.19174861809875232,
+      "difference": 0.00015982181894313996,
+      "bound": 0.011638642762906453,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "completed_count",
+      "go": 2250.266666666667,
+      "simpy": 2262.1666666666665,
+      "difference": -11.899999999999636,
+      "bound": 62.87327771489082,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "mean_lead_time_minutes",
+      "go": 22.57161172252949,
+      "simpy": 23.602823821381417,
+      "difference": -1.0312120988519275,
+      "bound": 12.93429724813725,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "reworks",
+      "go": 397.8,
+      "simpy": 394.43333333333334,
+      "difference": 3.3666666666666742,
+      "bound": 25.650275087041287,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "utilization/packer",
+      "go": 0.748303899382716,
+      "simpy": 0.7527257375021549,
+      "difference": -0.004421838119438859,
+      "bound": 0.026230686254193794,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "blocked_fraction/packer",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "utilization/tester",
+      "go": 0.941555854526749,
+      "simpy": 0.9452309520805319,
+      "difference": -0.0036750975537829245,
+      "bound": 0.04075593059828456,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "blocked_fraction/tester",
+      "go": 0.1576868621399177,
+      "simpy": 0.16219718076429757,
+      "difference": -0.0045103186243798665,
+      "bound": 0.019142041125827923,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "full_fraction/qp",
+      "go": 0.33198018353909464,
+      "simpy": 0.3373246043973383,
+      "difference": -0.005344420858243659,
+      "bound": 0.030460698352837174,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "blocks_started/test",
+      "go": 476.93333333333334,
+      "simpy": 484.06666666666666,
+      "difference": -7.133333333333326,
+      "bound": 46.14438617638888,
+      "pass": true
+    },
+    {
+      "case": "S2",
+      "metric": "blocked_entities_mean/test",
+      "go": 0.1576868621399177,
+      "simpy": 0.16219718076429757,
+      "difference": -0.0045103186243798665,
+      "bound": 0.019142041125827923,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "completed_count",
+      "go": 2412.0,
+      "simpy": 2424.4333333333334,
+      "difference": -12.433333333333394,
+      "bound": 55.750559124328305,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "mean_lead_time_minutes",
+      "go": 3.5524757570306886,
+      "simpy": 3.7644755389846485,
+      "difference": -0.21199978195395985,
+      "bound": 0.5571434871864205,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "utilization/m1",
+      "go": 0.4394036985596708,
+      "simpy": 0.45189813565523074,
+      "difference": -0.012494437095559918,
+      "bound": 0.024124730388317788,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "blocked_fraction/m1",
+      "go": 0.1409637878600823,
+      "simpy": 0.15011772834554232,
+      "difference": -0.009153940485460033,
+      "bound": 0.017867782868821003,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "utilization/m2",
+      "go": 0.5917896041152263,
+      "simpy": 0.595018036048318,
+      "difference": -0.0032284319330917466,
+      "bound": 0.024483512559737332,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "blocked_fraction/m2",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "utilization/op",
+      "go": 0.6376642761316873,
+      "simpy": 0.6534506071699258,
+      "difference": -0.015786331038238455,
+      "bound": 0.02689758294150434,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "blocked_fraction/op",
+      "go": 0.1409637878600823,
+      "simpy": 0.15011772834554232,
+      "difference": -0.009153940485460033,
+      "bound": 0.017867782868821003,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "full_fraction/q2",
+      "go": 0.3240774779835391,
+      "simpy": 0.3333573332024708,
+      "difference": -0.00927985521893171,
+      "bound": 0.02684194077814478,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "blocks_started/p1",
+      "go": 318.6,
+      "simpy": 335.6666666666667,
+      "difference": -17.066666666666663,
+      "bound": 33.23266281242968,
+      "pass": true
+    },
+    {
+      "case": "S3",
+      "metric": "blocked_entities_mean/p1",
+      "go": 0.1409637878600823,
+      "simpy": 0.15011772834554232,
+      "difference": -0.009153940485460033,
+      "bound": 0.017867782868821003,
+      "pass": true
+    },
+    {
+      "case": "S4",
+      "metric": "completed_count",
+      "go": 2700.9666666666667,
+      "simpy": 2694.9,
+      "difference": 6.066666666666606,
+      "bound": 58.1013471234805,
+      "pass": true
+    },
+    {
+      "case": "S4",
+      "metric": "mean_lead_time_minutes",
+      "go": 16.92759555826287,
+      "simpy": 16.449374472442848,
+      "difference": 0.4782210858200209,
+      "bound": 8.833709132544042,
+      "pass": true
+    },
+    {
+      "case": "S4",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "S4",
+      "metric": "utilization/m",
+      "go": 0.9524456940329219,
+      "simpy": 0.9484361952079713,
+      "difference": 0.004009498824950608,
+      "bound": 0.02645947993932773,
+      "pass": true
+    },
+    {
+      "case": "S4",
+      "metric": "blocked_fraction/m",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "S4",
+      "metric": "full_fraction/q1",
+      "go": 0.8207582240740741,
+      "simpy": 0.8036931619131938,
+      "difference": 0.017065062160880218,
+      "bound": 0.08170199857972597,
+      "pass": true
+    },
+    {
+      "case": "S4",
+      "metric": "blocks_started/src",
+      "go": 2222.133333333333,
+      "simpy": 2169.8333333333335,
+      "difference": 52.29999999999973,
+      "bound": 248.0887153463482,
+      "pass": true
+    },
+    {
+      "case": "S4",
+      "metric": "blocked_entities_mean/src",
+      "go": 13.515192440123457,
+      "simpy": 13.028900701493768,
+      "difference": 0.48629173862968855,
+      "bound": 8.877067434470446,
+      "pass": true
+    },
+    {
+      "case": "B-S1",
+      "metric": "completed_count",
+      "go": 545.9,
+      "simpy": 545.6,
+      "difference": 0.2999999999999545,
+      "bound": 28.93957966249796,
+      "pass": true
+    },
+    {
+      "case": "B-S1",
+      "metric": "mean_lead_time_minutes",
+      "go": 20.424265855283164,
+      "simpy": 20.94696354103402,
+      "difference": -0.5226976857508561,
+      "bound": 8.287112638053978,
+      "pass": true
+    },
+    {
+      "case": "B-S1",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "B-S1",
+      "metric": "utilization/m",
+      "go": 0.7113332722222222,
+      "simpy": 0.717154511708424,
+      "difference": -0.005821239486201835,
+      "bound": 0.04613459811227586,
+      "pass": true
+    },
+    {
+      "case": "B-S1",
+      "metric": "down_fraction/m",
+      "go": 0.083944629218107,
+      "simpy": 0.08568888925244231,
+      "difference": -0.0017442600343353099,
+      "bound": 0.016558379855670918,
+      "pass": true
+    },
+    {
+      "case": "B-S1",
+      "metric": "available_fraction/m",
+      "go": 0.9160553707818929,
+      "simpy": 0.9143111107475578,
+      "difference": 0.0017442600343351433,
+      "bound": 0.020710212263318175,
+      "pass": true
+    },
+    {
+      "case": "B-S1",
+      "metric": "idle_fraction/m",
+      "go": 0.2047220985596708,
+      "simpy": 0.1971565990391336,
+      "difference": 0.0075654995205372,
+      "bound": 0.049038837618292856,
+      "pass": true
+    },
+    {
+      "case": "B-S1",
+      "metric": "breakdowns_started/m",
+      "go": 38.46666666666667,
+      "simpy": 39.0,
+      "difference": -0.5333333333333314,
+      "bound": 5.4076577459784225,
+      "pass": true
+    },
+    {
+      "case": "B-S2",
+      "metric": "completed_count",
+      "go": 894.3333333333334,
+      "simpy": 901.5333333333333,
+      "difference": -7.199999999999932,
+      "bound": 35.90900153447805,
+      "pass": true
+    },
+    {
+      "case": "B-S2",
+      "metric": "mean_lead_time_minutes",
+      "go": 9.653861208269799,
+      "simpy": 9.732455573235915,
+      "difference": -0.07859436496611671,
+      "bound": 1.1414586844298629,
+      "pass": true
+    },
+    {
+      "case": "B-S2",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "B-S2",
+      "metric": "utilization/m",
+      "go": 0.662407751303155,
+      "simpy": 0.66825056081857,
+      "difference": -0.005842809515415048,
+      "bound": 0.03112777467493792,
+      "pass": true
+    },
+    {
+      "case": "B-S2",
+      "metric": "down_fraction/m",
+      "go": 0.07679116289437586,
+      "simpy": 0.07738286526453114,
+      "difference": -0.0005917023701552809,
+      "bound": 0.009384563608135048,
+      "pass": true
+    },
+    {
+      "case": "B-S2",
+      "metric": "available_fraction/m",
+      "go": 0.9232088371056242,
+      "simpy": 0.9226171347354689,
+      "difference": 0.0005917023701552671,
+      "bound": 0.01361369346734052,
+      "pass": true
+    },
+    {
+      "case": "B-S2",
+      "metric": "idle_fraction/m",
+      "go": 0.26080108580246913,
+      "simpy": 0.2543665739168988,
+      "difference": 0.006434511885570315,
+      "bound": 0.029166945432867616,
+      "pass": true
+    },
+    {
+      "case": "B-S2",
+      "metric": "breakdowns_started/m",
+      "go": 41.7,
+      "simpy": 41.3,
+      "difference": 0.4000000000000057,
+      "bound": 3.7671385111576434,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "completed_count",
+      "go": 868.6333333333333,
+      "simpy": 872.5666666666667,
+      "difference": -3.933333333333394,
+      "bound": 28.84922020055866,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "mean_lead_time_minutes",
+      "go": 93.95315680804758,
+      "simpy": 77.99204272004046,
+      "difference": 15.961114088007122,
+      "bound": 48.143916220798005,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "utilization/ma",
+      "go": 0.886761862962963,
+      "simpy": 0.8851308945666791,
+      "difference": 0.0016309683962838495,
+      "bound": 0.04065723422303086,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "blocked_fraction/ma",
+      "go": 0.24315537901234568,
+      "simpy": 0.2421867108051514,
+      "difference": 0.0009686682071942954,
+      "bound": 0.032690933820114475,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "utilization/rb",
+      "go": 0.8018729637860083,
+      "simpy": 0.8089662151188252,
+      "difference": -0.007093251332816908,
+      "bound": 0.03349730795197903,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "blocked_fraction/rb",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "down_fraction/ma",
+      "go": 0.08909930802469136,
+      "simpy": 0.08871538822866172,
+      "difference": 0.00038391979602964144,
+      "bound": 0.01930136073687857,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "available_fraction/ma",
+      "go": 0.9109006919753087,
+      "simpy": 0.9112846117713382,
+      "difference": -0.0003839197960295859,
+      "bound": 0.023412287255611803,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "idle_fraction/ma",
+      "go": 0.024138829012345677,
+      "simpy": 0.026153717204659133,
+      "difference": -0.0020148881923134562,
+      "bound": 0.03009131355342395,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "breakdowns_started/ma",
+      "go": 24.066666666666666,
+      "simpy": 23.966666666666665,
+      "difference": 0.10000000000000142,
+      "bound": 5.221306121130721,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "full_fraction/qb",
+      "go": 0.4464344074074074,
+      "simpy": 0.4518059242885612,
+      "difference": -0.005371516881153782,
+      "bound": 0.046205577173374354,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "blocks_started/a",
+      "go": 258.23333333333335,
+      "simpy": 263.6,
+      "difference": -5.366666666666674,
+      "bound": 30.449352678351953,
+      "pass": true
+    },
+    {
+      "case": "B-S3",
+      "metric": "blocked_entities_mean/a",
+      "go": 0.24315537901234568,
+      "simpy": 0.2421867108051514,
+      "difference": 0.0009686682071942954,
+      "bound": 0.032690933820114475,
+      "pass": true
+    },
+    {
+      "case": "B-S4",
+      "metric": "completed_count",
+      "go": 1355.9333333333334,
+      "simpy": 1351.5333333333333,
+      "difference": 4.400000000000091,
+      "bound": 48.256170656573,
+      "pass": true
+    },
+    {
+      "case": "B-S4",
+      "metric": "mean_lead_time_minutes",
+      "go": 4.457812010014952,
+      "simpy": 4.370040572198963,
+      "difference": 0.08777143781598884,
+      "bound": 0.40163853750537215,
+      "pass": true
+    },
+    {
+      "case": "B-S4",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "B-S4",
+      "metric": "utilization/m",
+      "go": 0.6273324200617284,
+      "simpy": 0.6240395240256132,
+      "difference": 0.003292896036115156,
+      "bound": 0.02413617162723374,
+      "pass": true
+    },
+    {
+      "case": "B-S4",
+      "metric": "down_fraction/m",
+      "go": 0.05537405246913581,
+      "simpy": 0.05544600878911301,
+      "difference": -7.195631997720248e-05,
+      "bound": 0.010511145213824312,
+      "pass": true
+    },
+    {
+      "case": "B-S4",
+      "metric": "available_fraction/m",
+      "go": 0.9446259475308643,
+      "simpy": 0.944553991210887,
+      "difference": 7.195631997725105e-05,
+      "bound": 0.014957044907533062,
+      "pass": true
+    },
+    {
+      "case": "B-S4",
+      "metric": "idle_fraction/m",
+      "go": 0.3172935274691358,
+      "simpy": 0.3205144671852738,
+      "difference": -0.003220939716138016,
+      "bound": 0.02459444232779299,
+      "pass": true
+    },
+    {
+      "case": "B-S4",
+      "metric": "breakdowns_started/m",
+      "go": 43.46666666666667,
+      "simpy": 41.733333333333334,
+      "difference": 1.7333333333333343,
+      "bound": 6.782071367234039,
+      "pass": true
+    },
+    {
+      "case": "C-S1",
+      "metric": "completed_count",
+      "go": 653.7333333333333,
+      "simpy": 648.4333333333333,
+      "difference": 5.300000000000068,
+      "bound": 31.526667941913324,
+      "pass": true
+    },
+    {
+      "case": "C-S1",
+      "metric": "mean_lead_time_minutes",
+      "go": 319.9416384792755,
+      "simpy": 321.4076080490009,
+      "difference": -1.4659695697253596,
+      "bound": 26.494110397031772,
+      "pass": true
+    },
+    {
+      "case": "C-S1",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "C-S1",
+      "metric": "utilization/m",
+      "go": 0.36292076820987657,
+      "simpy": 0.36033895800691645,
+      "difference": 0.002581810202960111,
+      "bound": 0.015762299717712754,
+      "pass": true
+    },
+    {
+      "case": "C-S1",
+      "metric": "scheduled_utilization/m",
+      "go": 0.6781417708333334,
+      "simpy": 0.6725072031857112,
+      "difference": 0.005634567647622157,
+      "bound": 0.029383681570043445,
+      "pass": true
+    },
+    {
+      "case": "C-S1",
+      "metric": "overtime_fraction/m",
+      "go": 0.0012451570987654322,
+      "simpy": 0.00166844964120381,
+      "difference": -0.00042329254243837766,
+      "bound": 0.0008999882960114962,
+      "pass": true
+    },
+    {
+      "case": "C-S1",
+      "metric": "available_fraction/m",
+      "go": 0.5333333333333333,
+      "simpy": 0.5333333333333333,
+      "difference": 0.0,
+      "bound": 0.0026666676666666665,
+      "pass": true
+    },
+    {
+      "case": "C-S1",
+      "metric": "idle_fraction/m",
+      "go": 0.17165772222222223,
+      "simpy": 0.17466282496762064,
+      "difference": -0.003005102745398419,
+      "bound": 0.014736233373305714,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "completed_count",
+      "go": 964.4333333333333,
+      "simpy": 965.1666666666666,
+      "difference": -0.7333333333333485,
+      "bound": 34.6191546050001,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "mean_lead_time_minutes",
+      "go": 3.093111828591486,
+      "simpy": 3.085152374987126,
+      "difference": 0.0079594536043599,
+      "bound": 0.13670415121909427,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "utilization/m",
+      "go": 0.29757392256515774,
+      "simpy": 0.2967016539235043,
+      "difference": 0.000872268641653462,
+      "bound": 0.012372140579330781,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "scheduled_utilization/m",
+      "go": 0.46164360355470413,
+      "simpy": 0.46028296365223104,
+      "difference": 0.001360639902473093,
+      "bound": 0.01918106739824396,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "overtime_fraction/m",
+      "go": 7.026694101508917e-05,
+      "simpy": 7.485512539983083e-05,
+      "difference": -4.588184384741664e-06,
+      "bound": 0.0001079499080694552,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "available_fraction/m",
+      "go": 0.6444444444444445,
+      "simpy": 0.6444444444444445,
+      "difference": 0.0,
+      "bound": 0.003222223222222866,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "idle_fraction/m",
+      "go": 0.34694078882030177,
+      "simpy": 0.34781764564634,
+      "difference": -0.0008768568260382192,
+      "bound": 0.01261270262897938,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "arrivals/src/0",
+      "go": 392.5,
+      "simpy": 391.23333333333335,
+      "difference": 1.2666666666666515,
+      "bound": 24.595145192238483,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "arrivals/src/1",
+      "go": 382.3,
+      "simpy": 386.6666666666667,
+      "difference": -4.366666666666674,
+      "bound": 21.251821491389762,
+      "pass": true
+    },
+    {
+      "case": "C-S2",
+      "metric": "arrivals/src/2",
+      "go": 189.43333333333334,
+      "simpy": 187.6,
+      "difference": 1.8333333333333428,
+      "bound": 12.547060972905845,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "completed_count",
+      "go": 878.3,
+      "simpy": 889.3,
+      "difference": -11.0,
+      "bound": 37.86797427322108,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "mean_lead_time_minutes",
+      "go": 36.584134333769185,
+      "simpy": 38.10058532996723,
+      "difference": -1.5164509961980457,
+      "bound": 5.526850018349353,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "utilization/u",
+      "go": 0.8016972991769548,
+      "simpy": 0.8173432399039744,
+      "difference": -0.015645940727019636,
+      "bound": 0.0375272900785994,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "blocked_fraction/u",
+      "go": 0.15542381748971193,
+      "simpy": 0.15657510406269237,
+      "difference": -0.0011512865729804422,
+      "bound": 0.006847629157644626,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "utilization/m",
+      "go": 0.37904169866255144,
+      "simpy": 0.38502856265671753,
+      "difference": -0.005986863994166092,
+      "bound": 0.017124833488921545,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "blocked_fraction/m",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "down_fraction/m",
+      "go": 0.057198182098765434,
+      "simpy": 0.054089442468065824,
+      "difference": 0.00310873963069961,
+      "bound": 0.012490352572532617,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "breakdowns_started/m",
+      "go": 15.233333333333333,
+      "simpy": 15.0,
+      "difference": 0.2333333333333325,
+      "bound": 2.8533037585312746,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "scheduled_utilization/m",
+      "go": 0.4602327695195195,
+      "simpy": 0.46754200983268424,
+      "difference": -0.007309240313164711,
+      "bound": 0.020845297351711256,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "overtime_fraction/m",
+      "go": 0.0006280881687242798,
+      "simpy": 0.0006051323498438151,
+      "difference": 2.2955818880464698e-05,
+      "bound": 0.00044305579359373845,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "available_fraction/m",
+      "go": 0.7660504043209876,
+      "simpy": 0.7691678494629149,
+      "difference": -0.0031174451419273552,
+      "bound": 0.015690900545037932,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "idle_fraction/m",
+      "go": 0.3876367938271605,
+      "simpy": 0.3847444191560412,
+      "difference": 0.002892374671119302,
+      "bound": 0.02118620964533298,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "full_fraction/q",
+      "go": 0.16901394115226337,
+      "simpy": 0.16851563406371564,
+      "difference": 0.0004983070885477281,
+      "bound": 0.009405893184332879,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "blocks_started/prep",
+      "go": 15.0,
+      "simpy": 13.333333333333334,
+      "difference": 1.666666666666666,
+      "bound": 6.719561052783724,
+      "pass": true
+    },
+    {
+      "case": "C-S3",
+      "metric": "blocked_entities_mean/prep",
+      "go": 0.15542381748971193,
+      "simpy": 0.15657510406269237,
+      "difference": -0.0011512865729804422,
+      "bound": 0.006847629157644626,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "completed_count",
+      "go": 554.6,
+      "simpy": 554.4333333333333,
+      "difference": 0.16666666666674246,
+      "bound": 11.643528932518358,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "mean_lead_time_minutes",
+      "go": 57.511047363478255,
+      "simpy": 55.92630728994165,
+      "difference": 1.584740073536608,
+      "bound": 4.781105379576113,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "reworks",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "utilization/r1",
+      "go": 0.4755820091563786,
+      "simpy": 0.47265049017727595,
+      "difference": 0.002931518979102654,
+      "bound": 0.018122323747585233,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "blocked_fraction/r1",
+      "go": 0.05848698467078189,
+      "simpy": 0.05894795968771453,
+      "difference": -0.00046097501693264514,
+      "bound": 0.004816361557505525,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "utilization/r2",
+      "go": 0.3052195841563786,
+      "simpy": 0.3104826576033887,
+      "difference": -0.005263073447010103,
+      "bound": 0.014746062695078428,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "blocked_fraction/r2",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "scheduled_utilization/r1",
+      "go": 0.5782016502752753,
+      "simpy": 0.5746758066142399,
+      "difference": 0.003525843661035366,
+      "bound": 0.022203819913444122,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "overtime_fraction/r1",
+      "go": 0.0001717633744855967,
+      "simpy": 0.00013927140556758933,
+      "difference": 3.2491968918007375e-05,
+      "bound": 0.0005648667373454051,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "available_fraction/r1",
+      "go": 0.8222222222222222,
+      "simpy": 0.8222222222222222,
+      "difference": 0.0,
+      "bound": 0.004111112111111112,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "idle_fraction/r1",
+      "go": 0.34681197644032924,
+      "simpy": 0.34971100345051387,
+      "difference": -0.0028990270101846294,
+      "bound": 0.017627978117174946,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "scheduled_utilization/r2",
+      "go": 0.3712130077577578,
+      "simpy": 0.3776140430311484,
+      "difference": -0.006401035273390643,
+      "bound": 0.01793440035887917,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "overtime_fraction/r2",
+      "go": 0.0,
+      "simpy": 0.0,
+      "difference": 0.0,
+      "bound": 1e-09,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "available_fraction/r2",
+      "go": 0.8222222222222222,
+      "simpy": 0.8222222222222222,
+      "difference": 0.0,
+      "bound": 0.004111112111111112,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "idle_fraction/r2",
+      "go": 0.5170026380658437,
+      "simpy": 0.5117395646188335,
+      "difference": 0.005263073447010158,
+      "bound": 0.01577866259739071,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "arrivals/src_a/0",
+      "go": 307.0,
+      "simpy": 307.0,
+      "difference": 0.0,
+      "bound": 1.5350000010000002,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "arrivals/src_a/1",
+      "go": 168.0,
+      "simpy": 168.0,
+      "difference": 0.0,
+      "bound": 0.8400000009999999,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "arrivals/src_b/0",
+      "go": 80.0,
+      "simpy": 80.0,
+      "difference": 0.0,
+      "bound": 0.40000000100000005,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "arrivals/src_b/1",
+      "go": 60.0,
+      "simpy": 60.0,
+      "difference": 0.0,
+      "bound": 0.300000001,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "full_fraction/q2",
+      "go": 0.067306391563786,
+      "simpy": 0.07064078150196224,
+      "difference": -0.003334389938176238,
+      "bound": 0.008056507265016388,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "blocks_started/s1",
+      "go": 12.566666666666666,
+      "simpy": 14.733333333333333,
+      "difference": -2.166666666666666,
+      "bound": 8.180123107772026,
+      "pass": true
+    },
+    {
+      "case": "C-S4",
+      "metric": "blocked_entities_mean/s1",
+      "go": 0.11697396934156377,
+      "simpy": 0.11789591937542906,
+      "difference": -0.0009219500338652903,
+      "bound": 0.009632722115011049,
+      "pass": true
+    }
+  ]
+}

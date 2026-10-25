@@ -1,0 +1,281 @@
+$ sh -c go test -count=1 -v ./... 2>&1 | grep -E '^(--- SKIP|ok|FAIL|--- FAIL)'
+--- SKIP: TestRunServesAndStops (0.00s)
+ok  	github.com/kcl1104/geminus/cmd/api	0.030s
+--- SKIP: TestProvision (0.00s)
+--- SKIP: TestRefusals (0.00s)
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.006s
+--- SKIP: TestRunWorksAndStops (0.00s)
+ok  	github.com/kcl1104/geminus/cmd/worker	0.071s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.440s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	1.671s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	0.038s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.017s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.116s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.840s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.029s
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.675s
+--- SKIP: TestRoleMatrix (0.00s)
+--- SKIP: TestCreate (0.00s)
+--- SKIP: TestIdempotency (0.00s)
+--- SKIP: TestExpiredKeyRace (0.00s)
+--- SKIP: TestOutsideTheContract (0.00s)
+--- SKIP: TestList (0.00s)
+--- SKIP: TestApprovalClosedLoop (0.00s)
+--- SKIP: TestApprovalRefusals (0.00s)
+--- SKIP: TestImportMappingClosedLoop (0.00s)
+--- SKIP: TestMappingRevisionConflicts (0.00s)
+--- SKIP: TestStaleValidationJobs (0.00s)
+--- SKIP: TestValidationJobFailures (0.00s)
+--- SKIP: TestMappingRefusals (0.00s)
+--- SKIP: TestLowConfidenceSuggestion (0.00s)
+--- SKIP: TestJSONEventsMapping (0.00s)
+--- SKIP: TestTheServerJudgesTheSuggestion (0.00s)
+--- SKIP: TestImportClosedLoop (0.00s)
+--- SKIP: TestImportRoleMatrix (0.00s)
+--- SKIP: TestUploadRefusals (0.00s)
+--- SKIP: TestUploadIdempotency (0.00s)
+--- SKIP: TestProfileFailures (0.00s)
+--- SKIP: TestProfileIntegrity (0.00s)
+--- SKIP: TestProfileJobFailures (0.00s)
+--- SKIP: TestErrorReportAuthorization (0.00s)
+--- SKIP: TestASlowUploadHasItsOwnDeadline (0.00s)
+--- SKIP: TestMe (0.00s)
+--- SKIP: TestMeTruncates (0.00s)
+--- SKIP: TestMembershipRoutes (0.00s)
+--- SKIP: TestModelRoutes (0.00s)
+--- SKIP: TestModelRoleMatrix (0.00s)
+--- SKIP: TestDraftPreconditions (0.00s)
+--- SKIP: TestPatchBody (0.00s)
+--- SKIP: TestPublishRefusals (0.00s)
+--- SKIP: TestModelLists (0.00s)
+--- SKIP: TestPatchResultsAreStoredCanonical (0.00s)
+--- SKIP: TestProposalClosedLoop (0.00s)
+--- SKIP: TestProposalRoleMatrix (0.00s)
+--- SKIP: TestProposalRequestRefusals (0.00s)
+--- SKIP: TestProposalsNeedAI (0.00s)
+--- SKIP: TestProposalIdempotency (0.00s)
+--- SKIP: TestScenarioClosedLoop (0.00s)
+--- SKIP: TestScenarioRoleMatrix (0.00s)
+--- SKIP: TestScenarioRequestRefusals (0.00s)
+--- SKIP: TestCorruptScenarioIsNotShown (0.00s)
+--- SKIP: TestCancelQueued (0.00s)
+--- SKIP: TestCancelRunning (0.00s)
+--- SKIP: TestCancelRacesCompletion (0.00s)
+--- SKIP: TestRunDatasets (0.00s)
+--- SKIP: TestRunDeterminism (0.00s)
+--- SKIP: TestScenarioRun (0.00s)
+--- SKIP: TestRunFailures (0.00s)
+--- SKIP: TestStreamFollowsTheRun (0.00s)
+--- SKIP: TestStreamEndsWhenTheMemberIsRemoved (0.00s)
+--- SKIP: TestAnIdleStreamEndsWhenTheMemberIsRemoved (0.00s)
+--- SKIP: TestAnIdleStreamOutlivesItsWriteTimeoutOverHTTP2 (0.00s)
+--- SKIP: TestStreamEndsWithItsToken (0.00s)
+--- SKIP: TestRunClosedLoop (0.00s)
+--- SKIP: TestRunRoleMatrix (0.00s)
+--- SKIP: TestRunRequestRefusals (0.00s)
+--- SKIP: TestRunIdempotency (0.00s)
+--- SKIP: TestARevokedMemberGetsNoReplay (0.00s)
+ok  	github.com/kcl1104/geminus/internal/api	0.134s
+ok  	github.com/kcl1104/geminus/internal/auth	7.644s
+ok  	github.com/kcl1104/geminus/internal/config	0.007s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.008s
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.148s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	3.039s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.359s
+ok  	github.com/kcl1104/geminus/internal/httpapi	0.087s
+ok  	github.com/kcl1104/geminus/internal/ids	0.015s
+ok  	github.com/kcl1104/geminus/internal/import/mapping	0.022s
+ok  	github.com/kcl1104/geminus/internal/import/profile	3.449s
+ok  	github.com/kcl1104/geminus/internal/import/report	0.005s
+ok  	github.com/kcl1104/geminus/internal/import/upload	0.037s
+ok  	github.com/kcl1104/geminus/internal/import/validation	0.036s
+ok  	github.com/kcl1104/geminus/internal/import/validator	0.104s
+ok  	github.com/kcl1104/geminus/internal/model	0.275s
+ok  	github.com/kcl1104/geminus/internal/model/calendar	11.150s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.164s
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.162s
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.254s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	0.063s
+--- SKIP: TestNumbersAreStoredAsWritten (0.00s)
+--- SKIP: TestMoreIssuesThanADraftHolds (0.00s)
+--- SKIP: TestPublishKeepsUnusedBindings (0.00s)
+--- SKIP: TestDatasetIssuePaths (0.00s)
+--- SKIP: TestReadsSeeOneSnapshot (0.00s)
+--- SKIP: TestCleanAgainstItsOwnBase (0.00s)
+--- SKIP: TestCreateChecksTheTemplate (0.00s)
+--- SKIP: TestIssueOrderAndStages (0.00s)
+--- SKIP: TestNULIsRefused (0.00s)
+--- SKIP: TestListLimits (0.00s)
+--- SKIP: TestWritesWaitForTheModelRow (0.00s)
+--- SKIP: TestPublishIdempotencyScope (0.00s)
+--- SKIP: TestCursorBindings (0.00s)
+--- SKIP: TestCreate (0.00s)
+--- SKIP: TestRolesAndTenancy (0.00s)
+--- SKIP: TestPatchDraft (0.00s)
+--- SKIP: TestConcurrentPatches (0.00s)
+--- SKIP: TestPublish (0.00s)
+--- SKIP: TestPublishKeepsTheComment (0.00s)
+--- SKIP: TestPublishRace (0.00s)
+--- SKIP: TestDraftWhenAnotherVersionArrives (0.00s)
+--- SKIP: TestVersionsAreImmutable (0.00s)
+--- SKIP: TestDatasets (0.00s)
+--- SKIP: TestLists (0.00s)
+--- SKIP: TestPackRules (0.00s)
+--- SKIP: TestStoredIRIsTheCanonicalBytes (0.00s)
+--- SKIP: TestPatchedDraftIsCanonical (0.00s)
+ok  	github.com/kcl1104/geminus/internal/models	0.013s
+ok  	github.com/kcl1104/geminus/internal/packs	0.008s
+ok  	github.com/kcl1104/geminus/internal/project	0.011s
+ok  	github.com/kcl1104/geminus/internal/proposals	0.036s
+--- SKIP: TestApproveEdit (0.00s)
+--- SKIP: TestApproveKeepsADirtyDraft (0.00s)
+--- SKIP: TestApproveScenario (0.00s)
+--- SKIP: TestApprovalIdempotency (0.00s)
+--- SKIP: TestDecisionRaces (0.00s)
+--- SKIP: TestApprovalOnAMovedBase (0.00s)
+--- SKIP: TestDecisionRoles (0.00s)
+--- SKIP: TestDecisionsWaitForTheModelRow (0.00s)
+--- SKIP: TestDecisionsTakeTheModelRowFirst (0.00s)
+--- SKIP: TestTheKeyNamesTheProposal (0.00s)
+--- SKIP: TestRejectAndStates (0.00s)
+--- SKIP: TestApprovalReviewsAgain (0.00s)
+--- SKIP: TestApprovalFreezesTheManifest (0.00s)
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.234s
+--- SKIP: TestAReadyProposal (0.00s)
+--- SKIP: TestStatesFromAnswers (0.00s)
+--- SKIP: TestProviderFailuresFailTheProposal (0.00s)
+--- SKIP: TestUnstorableAnswersAreInvalid (0.00s)
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.145s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.165s
+ok  	github.com/kcl1104/geminus/internal/runs	0.032s
+--- SKIP: TestEventBudgetAcrossRetries (0.00s)
+--- SKIP: TestWallClockAcrossRetries (0.00s)
+--- SKIP: TestACrashedAttemptIsRunAgain (0.00s)
+--- SKIP: TestNoResultAfterALostLease (0.00s)
+--- SKIP: TestALateCancellationWins (0.00s)
+--- SKIP: TestRefusedAttempts (0.00s)
+--- SKIP: TestOneJobPerRun (0.00s)
+--- SKIP: TestACancellationOutlivesACrash (0.00s)
+--- SKIP: TestTheWallClockEndsAnAttempt (0.00s)
+ok  	github.com/kcl1104/geminus/internal/runs/runner	0.014s
+--- SKIP: TestCreateManualScenario (0.00s)
+--- SKIP: TestCreateRefusals (0.00s)
+--- SKIP: TestScenarioRoles (0.00s)
+--- SKIP: TestScenarioIdempotency (0.00s)
+--- SKIP: TestListPages (0.00s)
+--- SKIP: TestScenarioDatasets (0.00s)
+ok  	github.com/kcl1104/geminus/internal/scenarios	0.133s
+ok  	github.com/kcl1104/geminus/internal/secret	0.005s
+ok  	github.com/kcl1104/geminus/internal/simulation	0.167s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	11.798s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	150.800s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.117s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	0.488s
+--- SKIP: TestEnqueueWithTheResource (0.00s)
+--- SKIP: TestClaimOrderAndScope (0.00s)
+--- SKIP: TestConcurrentClaims (0.00s)
+--- SKIP: TestTheLeaseFencesEveryWrite (0.00s)
+--- SKIP: TestReapAfterACrash (0.00s)
+--- SKIP: TestFailRetriesOnlyWhatMayBeRetried (0.00s)
+--- SKIP: TestReapSkipsAJobBeingFinalized (0.00s)
+--- SKIP: TestClaimSkipsAHeldJob (0.00s)
+--- SKIP: TestLockHoldsTheJob (0.00s)
+--- SKIP: TestCancellation (0.00s)
+--- SKIP: TestCancelRacesTheClaim (0.00s)
+--- SKIP: TestTheLeaseLastsOneLease (0.00s)
+--- SKIP: TestRetriesBackOffByAttempt (0.00s)
+--- SKIP: TestReapTakesItsLimit (0.00s)
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	0.010s
+--- SKIP: TestOrganizationFilter (0.00s)
+--- SKIP: TestOfUser (0.00s)
+--- SKIP: TestListAfter (0.00s)
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	0.011s
+--- SKIP: TestOrganizationFilter (0.00s)
+--- SKIP: TestUpdateDraftCAS (0.00s)
+--- SKIP: TestVersionManifest (0.00s)
+--- SKIP: TestListModelsKeyset (0.00s)
+ok  	github.com/kcl1104/geminus/internal/storage/models	0.017s
+ok  	github.com/kcl1104/geminus/internal/storage/objects	0.033s
+--- SKIP: TestTxCommitRollbackPanic (0.00s)
+--- SKIP: TestScopeIsTransactionLocal (0.00s)
+--- SKIP: TestGuardsAreClassified (0.00s)
+--- SKIP: TestCancellationReleasesLocks (0.00s)
+--- SKIP: TestTxGoexit (0.00s)
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	0.004s
+--- SKIP: TestOrganizationFilter (0.00s)
+--- SKIP: TestKeysetTies (0.00s)
+ok  	github.com/kcl1104/geminus/internal/storage/projects	0.004s
+--- SKIP: TestOrganizationFilter (0.00s)
+--- SKIP: TestGenerateRefusesUnstorable (0.00s)
+--- SKIP: TestDecisionsNeedTheirState (0.00s)
+--- SKIP: TestDecisionsStayInTheirOrganization (0.00s)
+ok  	github.com/kcl1104/geminus/internal/storage/proposals	0.017s
+--- SKIP: TestCheckOperator (0.00s)
+--- SKIP: TestProvisionerCannotChangeAnything (0.00s)
+--- SKIP: TestAPICannotProvision (0.00s)
+--- SKIP: TestProvision (0.00s)
+--- SKIP: TestUserOnceUnderConcurrency (0.00s)
+--- SKIP: TestProvisionerEntersOnlyTheOrganizationItCreates (0.00s)
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.007s
+--- SKIP: TestListAndGet (0.00s)
+ok  	github.com/kcl1104/geminus/internal/storage/scenarios	0.005s
+--- SKIP: TestRunSelf (0.00s)
+--- SKIP: TestRunSelfModeAndScope (0.00s)
+--- SKIP: TestRunSelfTakesNoLock (0.00s)
+--- SKIP: TestRuntimeRoles (0.00s)
+--- SKIP: TestRunScopes (0.00s)
+--- SKIP: TestRunModes (0.00s)
+--- SKIP: TestReadSnapshot (0.00s)
+--- SKIP: TestRunLocksMembership (0.00s)
+--- SKIP: TestPoolReuseLeavesNoScope (0.00s)
+--- SKIP: TestGuardDiscardsSessionState (0.00s)
+--- SKIP: TestUnsafeRuntimeLogins (0.00s)
+--- SKIP: TestRuntimeLoginCannotCreate (0.00s)
+--- SKIP: TestResolveUser (0.00s)
+ok  	github.com/kcl1104/geminus/internal/tenant	0.008s
+ok  	github.com/kcl1104/geminus/internal/tenant/me	0.050s
+--- SKIP: TestRoles (0.00s)
+--- SKIP: TestCreate (0.00s)
+--- SKIP: TestUpdate (0.00s)
+--- SKIP: TestDelete (0.00s)
+--- SKIP: TestRemovalWaitsForAWrite (0.00s)
+--- SKIP: TestOwnersChangeAtOnce (0.00s)
+--- SKIP: TestList (0.00s)
+--- SKIP: TestOwnerRowsLockedDuringAChange (0.00s)
+--- SKIP: TestMembershipChangesUnderLoad (0.00s)
+--- SKIP: TestOwnerLockAcrossPlans (0.00s)
+--- SKIP: TestReplayNeedsTheRole (0.00s)
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	0.020s
+--- SKIP: TestAssignment (0.00s)
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	0.006s
+--- SKIP: TestAJobRunsOnceWithItsResult (0.00s)
+--- SKIP: TestAJobEndsCancelled (0.00s)
+--- SKIP: TestCheckpointsUnderTheLease (0.00s)
+--- SKIP: TestFailedAttempts (0.00s)
+--- SKIP: TestTheHeartbeatKeepsALongJob (0.00s)
+--- SKIP: TestALostLeaseStopsTheHandler (0.00s)
+--- SKIP: TestFinishAfterTheLeaseExpired (0.00s)
+--- SKIP: TestAHungRenewalCannotOutliveTheLease (0.00s)
+--- SKIP: TestTheHeartbeatGivesUpWithoutTheDatabase (0.00s)
+--- SKIP: TestOneFailedRenewalIsSurvived (0.00s)
+--- SKIP: TestASlowRenewalCountsFromItsStart (0.00s)
+--- SKIP: TestAHungRenewalIsRetried (0.00s)
+--- SKIP: TestASlowClaimCountsFromBeforeIt (0.00s)
+--- SKIP: TestRenewalsAreDueFromTheClaim (0.00s)
+--- SKIP: TestNothingIsWrittenAfterTheAttemptStops (0.00s)
+--- SKIP: TestATransactionIsCancelledWhenTheAttemptStops (0.00s)
+--- SKIP: TestRunReturnsWhenStopped (0.00s)
+--- SKIP: TestStoppingRequeuesTheJob (0.00s)
+--- SKIP: TestAFailureReturnedWhileStoppingCounts (0.00s)
+--- SKIP: TestAFailureReturnedAfterTheLeaseIsLost (0.00s)
+--- SKIP: TestALostCommitAnswerIsNotReportedAsRolledBack (0.00s)
+--- SKIP: TestACheckpointEndsWithItsContext (0.00s)
+--- SKIP: TestTheFailureRecordIsBounded (0.00s)
+--- SKIP: TestAnIdleWorkerPauses (0.00s)
+--- SKIP: TestOrganizationsTakeTurns (0.00s)
+--- SKIP: TestAnUnhandledTypeStaysQueued (0.00s)
+--- SKIP: TestWorkersShareTheQueue (0.00s)
+ok  	github.com/kcl1104/geminus/internal/worker	0.018s
+ok  	github.com/kcl1104/geminus/prompts	0.003s
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	149.024s
+exit status 0

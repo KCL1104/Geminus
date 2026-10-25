@@ -1,0 +1,46 @@
+T-049 exit codes (each log ends with "exit status N"; seconds are wall time on the shared machine)
+
+baseline, 2f4c33f:
+make backend-test: 0 (baseline-backend-test.log)
+
+Final tree (f7fe9df's code and test data plus the report and evidence):
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python: 0 (spec-check.log, after the report was written)
+make simulation-reference-test PYTHON=/home/user/Geminus/.venv/bin/python: 0 (19 s; simulation-reference-test.log, simpy-reference-report.json)
+make backend-test GOFLAGS=-count=1: 0 (174 s; backend-test.log; 64 packages ok, none cached)
+make backend-race GOFLAGS=-count=1: 0 (458 s; backend-race.log; 64 packages ok, none cached)
+make architecture-check: 0 (7 s; architecture-check.log)
+make ai-eval: 0 (2 s; ai-eval.log; fake-review.json unchanged by this run)
+make backend-numeric: 0 (95 s; backend-numeric.log)
+go test -v (key engine tests, GEMINUS_FULL_DIFFERENTIAL=1): 0 (25 s; engine-tests-verbose.log)
+go test -count=1 -v ./... | grep (skips): 0 (167 s; db-tests-skipped.log; 216 SKIP, no FAIL)
+FuzzKernel -fuzztime 60s: 0 (fuzz-kernel.log; its exec count is not reliable, see the report)
+FuzzRun -fuzztime 60s: 0 (fuzz-run.log; likewise)
+FuzzKernel -fuzztime 500000x: 0 (25 s; fuzz-kernel-count.log)
+FuzzRun -fuzztime 200000x: 0 (24 s; fuzz-run-count.log)
+mutation harness, shift-end-wakes-too processing-ignores-blocked release-extra-draw: 0 (mutants-after-gc10.log; 3/3 killed)
+the five release mutants against the vectors only: each go test 1, killed (release-vector-mutants.log)
+
+e9ad4a9 (before G-C10), all 0:
+make simulation-reference-test: 0; make backend-test: 0; make backend-race: 0; make architecture-check: 0;
+make ai-eval: 0; make backend-numeric: 0; go test -v (key tests): 0; go test -v ./... (skips): 0;
+FuzzKernel 60 s: 0; FuzzRun 60 s: 0 (*-pre-gc10.log, simpy-reference-report-pre-gc10.json)
+mutation harness run 3 (complete): 0 (mutants-run3.log; 51/51 killed, 3 equivalent)
+the two named mutants against G-K2 alone: each go test 1, killed (required-mutants-g-k2.log)
+lock-only check: processing-ignores-blocked with the locks skipped 0 (survives: G-C10 added), release-extra-draw 1
+(killed by TestReleaseRunVectors) (lock-only-mutants-without-locks.log)
+
+Earlier, failing or stopped runs (kept as evidence):
+make simulation-reference-test, first run: 2 (simpy-first-run.log)
+make backend-numeric, first run: 2 (backend-numeric-red.log)
+mutation harness run 1: 1 (mutants-run1.log; 47 killed, 1 equivalent, 3 BUILD-FAILED, 3 SURVIVED)
+mutation harness run 2: stopped by hand after 18 mutants (mutants-run2-stopped.log)
+shift-end-wakes-too with the locks skipped, b6f856c: 0 (survives: G-C9 added) (shift-end-wakes-too-without-locks.log)
+G-C9 and G-C10 first runs: 1, only the counts and the locks not yet updated (first-engine-run-gc9.log, -gc10.log)
+FuzzCalendars 120 s, before b6f856c: 0 (fuzz-calendars.log)
+red logs before the implementation: red-patch-labels.log, red-validate.log, red-engine-vet.log, red-des.log, red-ai.log
+first engine run of the hand-derived goldens: first-engine-run-calendar-goldens.log (G-C1's event count, the derivation's own error)
+
+NOT RUN:
+make frontend-test (no TypeScript or apps/web change; PASS_TS_CONTRACTS_FRESH)
+make integration-test and every DB-backed Go test (no PostgreSQL; db-tests-skipped.log lists the 216 skips)
+make e2e-test, make benchmark-test, make ai-eval-live, CI

@@ -1,0 +1,10 @@
+T-049 worktree: /home/user/Geminus/.claude/worktrees/agent-a4c0b51cad5eeb42d, branch t049 from 2f4c33f
+go version go1.27.3 linux/amd64
+Python 3.13.16 (/home/user/Geminus/.venv/bin/python), SimPy 4.1.2
+Node v22.22.0 (apps/web requires >=24.21.0 <25; frontend-test not run, no TS change)
+4 CPU (x86_64), shared with other agent sessions; no PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+Go tests run with -count=1 (GOFLAGS=-count=1 for the make targets)
+No live AI; ANTHROPIC_API_KEY and GEMINUS_ANTHROPIC_* were never read
+Final verification: on f7fe9df's code and test data (the last commit adds only the report, evidence and logs), run
+one after another with nothing else of this session running. The first verification (*-pre-gc10.log) ran on e9ad4a9
+at the same time as mutation run 3.

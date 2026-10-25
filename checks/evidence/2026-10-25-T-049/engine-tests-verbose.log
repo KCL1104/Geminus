@@ -1,0 +1,77 @@
+$ GEMINUS_FULL_DIFFERENTIAL=1 go test -count=1 -v -run TestDifferentialAgainstFrozen030|TestNeutralCalendarsChangeNothing|TestNeutralSchedulesChangeNothing|TestRandomCalendarModelsAgainstSpec|TestRandomCalendarStallsAreInTheState|TestCalendarGoldens|TestStallDeadlines|TestReleaseRunVectors|TestReleaseProfileVectors ./internal/simulation/engine/
+=== RUN   TestCalendarGoldens
+=== RUN   TestCalendarGoldens/G-C1
+=== RUN   TestCalendarGoldens/G-C1W
+=== RUN   TestCalendarGoldens/G-C1W10
+=== RUN   TestCalendarGoldens/G-C2
+=== RUN   TestCalendarGoldens/G-C4
+=== RUN   TestCalendarGoldens/G-C5
+=== RUN   TestCalendarGoldens/G-C6
+=== RUN   TestCalendarGoldens/G-C7
+=== RUN   TestCalendarGoldens/G-C8
+=== RUN   TestCalendarGoldens/G-C9
+=== RUN   TestCalendarGoldens/G-C10
+=== RUN   TestCalendarGoldens/G-F6
+=== RUN   TestCalendarGoldens/G-CF1
+=== RUN   TestCalendarGoldens/G-T5
+=== RUN   TestCalendarGoldens/G-K2
+=== RUN   TestCalendarGoldens/G-D3C
+=== RUN   TestCalendarGoldens/G-D4C
+=== RUN   TestCalendarGoldens/G-D5
+=== RUN   TestCalendarGoldens/G-R1
+=== RUN   TestCalendarGoldens/G-R5
+=== RUN   TestCalendarGoldens/G-R7
+--- PASS: TestCalendarGoldens (0.06s)
+    --- PASS: TestCalendarGoldens/G-C1 (0.04s)
+    --- PASS: TestCalendarGoldens/G-C1W (0.00s)
+    --- PASS: TestCalendarGoldens/G-C1W10 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C2 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C4 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C5 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C6 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C7 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C8 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C9 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C10 (0.00s)
+    --- PASS: TestCalendarGoldens/G-F6 (0.00s)
+    --- PASS: TestCalendarGoldens/G-CF1 (0.00s)
+    --- PASS: TestCalendarGoldens/G-T5 (0.00s)
+    --- PASS: TestCalendarGoldens/G-K2 (0.00s)
+    --- PASS: TestCalendarGoldens/G-D3C (0.00s)
+    --- PASS: TestCalendarGoldens/G-D4C (0.00s)
+    --- PASS: TestCalendarGoldens/G-D5 (0.00s)
+    --- PASS: TestCalendarGoldens/G-R1 (0.00s)
+    --- PASS: TestCalendarGoldens/G-R5 (0.00s)
+    --- PASS: TestCalendarGoldens/G-R7 (0.00s)
+=== RUN   TestStallDeadlines
+--- PASS: TestStallDeadlines (0.02s)
+=== RUN   TestDifferentialAgainstFrozen030
+    differential030_test.go:125: 21501 of 50000 random models compiled (race detector: false), 4947 with finite buffers, 9553 with breakdowns; 10428435 observations identical to des-go-0.3.0, 45649 of them Blocked, 121862 ResourceDown; endings map[active:1602 none:17908 visits:1991]
+--- PASS: TestDifferentialAgainstFrozen030 (13.44s)
+=== RUN   TestRandomCalendarModelsAgainstSpec
+    kernel_check_calendar_test.go:784: 1201 of 3000 random models compiled: 763 with calendars (276 with breakdowns too), 732 with release schedules, 184 with finite buffers; {changes:100980 wakes:50784 timed:6620 tableArrivals:12838 rateArrivals:41589 exactArrivals:21363 inState:4574}
+--- PASS: TestRandomCalendarModelsAgainstSpec (2.67s)
+=== RUN   TestRandomCalendarStallsAreInTheState
+    kernel_check_calendar_test.go:849: 1931 runs with the validator bypassed, 69 ended in ErrStalled
+--- PASS: TestRandomCalendarStallsAreInTheState (4.48s)
+=== RUN   TestNeutralCalendarsChangeNothing
+    neutral_calendar_test.go:129: 2106 of 6000 random models with neutral calendars compiled, 948 with breakdowns; 1009495 observations (13134 ResourceDown) identical to des-go-0.3.0
+--- PASS: TestNeutralCalendarsChangeNothing (2.11s)
+=== RUN   TestNeutralSchedulesChangeNothing
+    neutral_calendar_test.go:202: 1433 of 4000 random models with neutral schedules compiled; 655134 observations identical to des-go-0.3.0 with the constant interarrival
+--- PASS: TestNeutralSchedulesChangeNothing (1.77s)
+=== RUN   TestReleaseProfileVectors
+--- PASS: TestReleaseProfileVectors (0.00s)
+=== RUN   TestReleaseRunVectors
+=== RUN   TestReleaseRunVectors/G-R2
+=== RUN   TestReleaseRunVectors/G-R2-zero
+=== RUN   TestReleaseRunVectors/G-R-takt
+=== RUN   TestReleaseRunVectors/G-R-fast
+--- PASS: TestReleaseRunVectors (0.01s)
+    --- PASS: TestReleaseRunVectors/G-R2 (0.00s)
+    --- PASS: TestReleaseRunVectors/G-R2-zero (0.00s)
+    --- PASS: TestReleaseRunVectors/G-R-takt (0.00s)
+    --- PASS: TestReleaseRunVectors/G-R-fast (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	24.573s
+exit status 0
