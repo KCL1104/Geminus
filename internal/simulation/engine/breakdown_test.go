@@ -41,6 +41,8 @@ type breakdownCase struct {
 		Blocks      []jsontext.Value            `json:"blocks"`
 		Downs       [][4]any                    `json:"downs"`
 		Pending     [][3]any                    `json:"pending"`
+		StartSeqs   [][3]any                    `json:"service_start_seqs"`
+		Events      *int64                      `json:"events"`
 		AtTick8     []jsontext.Value            `json:"at_tick_8"`
 		Deadlock    *struct {
 			Tick   int64  `json:"tick"`
@@ -168,7 +170,7 @@ func (c breakdownCase) compile(t *testing.T) *Program {
 // downs and pending rebuilt from the observations, in model minutes:
 // [resource, unit, from, to] in the order the downtimes started (to "-"
 // while still down) and [resource, unit, minute] of every failure that
-// waited for a release.
+// waited for a released or repaired unit.
 func breakdownFacts(p *Program, obs []Observation) (downs, pending []string) {
 	minute := func(tick int64) string { return fmt.Sprint(float64(tick) / 60_000) }
 	open := map[[2]int]int{}
@@ -212,14 +214,20 @@ func (c breakdownCase) wantBreakdowns() (downs, pending []string) {
 	return downs, pending
 }
 
-// G-F1, G-F1W, G-F1W10, G-F2, G-F3, G-F7, G-F8, G-F9, G-T1, G-T2, G-T4,
-// G-K1, G-S2: service starts, completions, blocks, every downtime and every
-// waiting failure, against the hand derivation. G-F3 and G-F9 fix D-074
-// (a) option B (review round 1, M1): a repaired unit goes to the waiting
-// failures first.
+// G-F1, G-F1W, G-F1W10, G-F2, G-F3, G-F3b, G-F7, G-F8, G-F9, G-F9R10,
+// G-F10, G-T1, G-T2, G-T4, G-K1, G-S2: service starts, completions, blocks,
+// every downtime and every waiting failure, against the hand derivation,
+// and where the case gives them the sequence number of each service start
+// and the replication's event count. G-F3 and G-F9 fix D-074 (a) option B
+// (review round 1, M1): a repaired unit goes to the waiting failures
+// first; G-F3b is ADR-026's planned G-F3 under it (review round 2, L1).
+// G-F9R10's waiting failures fix REPAIR's own order (its next FAILURE
+// before the waiting failure's REPAIR, SIMULATION_SPEC §3) and G-F10's
+// sequence numbers and event count that a repair handing its unit over
+// schedules no dispatch (review round 2, L2).
 func TestBreakdownGoldens(t *testing.T) {
 	cases := breakdownGoldens(t)
-	for _, id := range []string{"G-F1", "G-F1W", "G-F1W10", "G-F2", "G-F3", "G-F7", "G-F8", "G-F9", "G-T1", "G-T2", "G-T4", "G-K1", "G-S2"} {
+	for _, id := range []string{"G-F1", "G-F1W", "G-F1W10", "G-F2", "G-F3", "G-F3b", "G-F7", "G-F8", "G-F9", "G-F9R10", "G-F10", "G-T1", "G-T2", "G-T4", "G-K1", "G-S2"} {
 		t.Run(id, func(t *testing.T) {
 			c, ok := cases[id]
 			if !ok {
@@ -246,8 +254,36 @@ func TestBreakdownGoldens(t *testing.T) {
 			if !slices.Equal(pending, wp) {
 				t.Errorf("waiting failures %v, hand-derived %v", pending, wp)
 			}
+			if c.Expected.Events != nil && out.Events != *c.Expected.Events {
+				t.Errorf("%d events, hand-derived %d", out.Events, *c.Expected.Events)
+			}
+			if c.Expected.StartSeqs != nil {
+				got, want := startSeqs(p, col.all), []string{}
+				for _, s := range c.Expected.StartSeqs {
+					want = append(want, fmt.Sprintf("%v@%v#%v", s[0], s[1], s[2]))
+				}
+				if !slices.Equal(got, want) {
+					t.Errorf("service starts with their sequence numbers %v, hand-derived %v", got, want)
+				}
+			}
 		})
 	}
+}
+
+// startSeqs lists each service start as entity@minute#seq, seq being the
+// sequence number of the dispatch event that granted it.
+func startSeqs(p *Program, obs []Observation) []string {
+	ids := map[uint64]string{}
+	out := []string{}
+	for _, o := range obs {
+		switch o.Kind {
+		case ObsArrival:
+			ids[o.Entity] = FormatEntityID(0, p.nodes[o.Node].id, uint64(o.Value))
+		case ObsServiceStart:
+			out = append(out, fmt.Sprintf("%s@%v#%d", ids[o.Entity], float64(o.Tick)/60_000, o.Seq))
+		}
+	}
+	return out
 }
 
 // G-T4 (D-048 golden 4): at 8 the dispatch that unblocks e4 releases ma

@@ -10,7 +10,7 @@
     "D-075"
   ],
   "units": "starts, completions, blocks, downs and lead times in model minutes; Result members in ticks (1 ms)",
-  "notes": "downs are [resource, unit (failure clock), from, to] in the order the downtimes started, to null when still down at the horizon (or at the stall); pending are [resource, unit, tick] of the failures that found every unit in use and waited for a release (finish-first, D-051). Each case's derivation is the hand derivation of its expected values (assembled by checks/evidence/2026-10-25-T-048/breakdown_goldens_gen.py, which only builds the JSON).",
+  "notes": "downs are [resource, unit (failure clock), from, to] in the order the downtimes started, to null when still down at the horizon (or at the stall); pending are [resource, unit, minute] of the failures that found no idle unit and waited for a released or repaired unit (finish-first, D-051; D-074 (a) B); service_start_seqs, where given, are [entity, minute, sequence number of the dispatch event that started the service] and events the number of events the replication processed (T-048 review round 2, L2). Each case's derivation is the hand derivation of its expected values (assembled by checks/evidence/2026-10-25-T-048/breakdown_goldens_gen.py, which only builds the JSON).",
   "cases": [
     {
       "id": "G-F1",
@@ -1285,7 +1285,7 @@
     },
     {
       "id": "G-F3",
-      "title": "two units, waiting failures, releases and repairs; a unit that becomes available goes to the waiting failures first (ADR-026 D-051 G-F3, D-074 (a) B; review round 1, M1)",
+      "title": "two units: a repaired unit goes to a waiting failure (12), two waiting failures take the two next released units in the order they fired while a held request stays held (25, 26), the next repair with no failure waiting wakes it (27) (D-074 (a) B; review round 1, M1). ADR-026's planned G-F3 scenario is G-F3b",
       "model": {
         "schema_version": "0.1",
         "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
@@ -1485,6 +1485,7 @@
       },
       "derivation": [
         "Re-derived in T-048 review round 1 under D-074 (a) option B: a unit that becomes available, released by a job or repaired, goes to the waiting failures first, in the order they fired; only a unit no failure waits for wakes the held front.",
+        "Under option A this case held ADR-026 D-051's planned G-F3 ('2 unit、一個等待中的故障、兩次釋放：第一個被釋放的 unit 停機、第二個變成可用') at 22-26. Under B the repair at 12 gives failure 1 its unit, clock 1 next fails at 24, and at 26 the second release goes to that second waiting failure, so the scenario is no longer here; it is G-F3b (T-048 review round 2, L1). This case now covers a repair serving a waiting failure, two waiting failures served FIFO by two releases while a held request is decided again and stays held, and a repair with no failure waiting that wakes the held request.",
         "m has capacity 2: two failure clocks, units 0 and 1, both TTF 10 and TTR 2. Five one-off sources: s1 at 8, s2 at 18, s3 at 19, s4 at 23, s5 at 28; service 7.",
         "t=0: the five first arrivals (source ID order), then FAILURE(0) at 10 and FAILURE(1) at 10 (unit order, so 0's has the smaller sequence).",
         "t=8: s1/1 [8,15]. t=10: FAILURE(0): idle = 2 - 0 - 1 = 1: unit down (D=1), REPAIR(0) at 12; FAILURE(1): idle = 2 - 1 - 1 = 0: waits.",
@@ -1633,6 +1634,342 @@
               "available_ticks": 4080000,
               "idle_ticks": 1980000,
               "scheduled_processing_ticks": 2100000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-F3b",
+      "title": "ADR-026 D-051's planned G-F3 under D-074 (a) B: two units, one waiting failure, two releases with no repair between them; the first released unit goes down, the second becomes available (T-048 review round 2, L1)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-F3b",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 2,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 5
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "s1",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 8
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s2",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 21
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s3",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 22
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s4",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 24
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 5
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "s1__work",
+            "from": "s1",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s2__work",
+            "from": "s2",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s3__work",
+            "from": "s3",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s4__work",
+            "from": "s4",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 40,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "ADR-026 D-051's planned G-F3 ('2 unit、一個等待中的故障、兩次釋放：第一個被釋放的 unit 停機、第二個變成可用'), which G-F3 lost under option B (see G-F3). It is at 25-27: one failure waits while both units are in use and none is down; then two job releases with no repair between them; the first released unit goes down for the failure, the second becomes available and the held s4/1 starts on it.",
+        "m has capacity 2, both clocks TTF 10 and TTR 5; four one-off sources s1 at 8, s2 at 21, s3 at 22, s4 at 24; service 5. Ticks 8-18 only put clock 1 three minutes behind clock 0 (a failure that waits for a release, as in G-F2), so that at 25 one clock fails while the other is up. Sequence numbers in parentheses.",
+        "t=0: arrivals s1 at 8 (1), s2 at 21 (2), s3 at 22 (3), s4 at 24 (4) in source ID order; then FAILURE(0) at 10 (5), FAILURE(1) at 10 (6).",
+        "t=8: s1/1 queues, DISPATCH (7): s1/1 [8,13] (completion 8). t=10: FAILURE(0): idle = 2 - 0 - 1 = 1: down (D=1), REPAIR(0) at 15 (9); FAILURE(1): idle = 2 - 1 - 1 = 0: waits.",
+        "t=13: s1/1 completes: the released unit goes down for the waiting failure 1 (D=2), REPAIR(1) at 18 (10); DISPATCH (11) grants nothing. t=15: REPAIR(0): D=1, FAILURE(0) at 25 (12); no failure waits, nothing is held. t=18: REPAIR(1): D=0, FAILURE(1) at 28 (13).",
+        "t=21: s2/1 queues, DISPATCH (14): s2/1 [21,26] (completion 15). t=22: s3/1, DISPATCH (16): s3/1 [22,27] (completion 17). t=24: s4/1 queues, DISPATCH (18): in use 2 + 1 > C - D = 2: held.",
+        "t=25: FAILURE(0): idle = 2 - 0 - 2 = 0: waits. It is the only waiting failure: nothing is down and clock 1 is up until 28.",
+        "t=26: s2/1 completes, the first release: its unit goes down for failure 0 (D=1), REPAIR(0) at 31 (19); s4/1 wakes and DISPATCH (20) decides it again: in use 1 + 1 > 2 - 1: held.",
+        "t=27: s3/1 completes, the second release: no failure waits, so the unit becomes available; s4/1 wakes, DISPATCH (21): 0 + 1 <= 2 - 1: s4/1 [27,32] (completion 22). No repair came between the two releases (REPAIR(0) is at 31, clock 1 fails at 28).",
+        "t=28: FAILURE(1): idle = 2 - 1 - 1 = 0: waits. t=31: REPAIR(0): D=0, FAILURE(0) at 41 (> horizon, no sequence); the repaired unit goes to failure 1 (option B): D=1, REPAIR(1) at 36 (23). t=32: s4/1 completes, DISPATCH (24) grants nothing. t=36: REPAIR(1): D=0, FAILURE(1) at 46 (> horizon). 24 events.",
+        "Result over [0, 40] (T = 40, C = 2): 4 completed, lead times 5,5,5,8 (s4/1 from 24 to 32), waits 0,0,0,3; in use 4 x 5 = 20 min, utilization 20/80; down [10,15], [13,18], [26,31], [31,36]: 20 min (both units down on [13,15]), 4 started, 4 complete repairs of 20 min; available = 80 - 20 = 60 min; idle = 60 - 20 = 40 min (16 on [0,8], 2 on [8,10], 3 on [15,18], 6 on [18,21], 1 on [21,22], 4 on [32,36], 8 on [36,40])."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/s1/1",
+              8
+            ],
+            [
+              "r0/s2/1",
+              21
+            ],
+            [
+              "r0/s3/1",
+              22
+            ],
+            [
+              "r0/s4/1",
+              27
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/s1/1",
+            13
+          ],
+          [
+            "r0/s2/1",
+            26
+          ],
+          [
+            "r0/s3/1",
+            27
+          ],
+          [
+            "r0/s4/1",
+            32
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            10,
+            15
+          ],
+          [
+            "m",
+            1,
+            13,
+            18
+          ],
+          [
+            "m",
+            0,
+            26,
+            31
+          ],
+          [
+            "m",
+            1,
+            31,
+            36
+          ]
+        ],
+        "pending": [
+          [
+            "m",
+            1,
+            10
+          ],
+          [
+            "m",
+            0,
+            25
+          ],
+          [
+            "m",
+            1,
+            28
+          ]
+        ],
+        "service_start_seqs": [
+          [
+            "r0/s1/1",
+            8,
+            7
+          ],
+          [
+            "r0/s2/1",
+            21,
+            14
+          ],
+          [
+            "r0/s3/1",
+            22,
+            16
+          ],
+          [
+            "r0/s4/1",
+            27,
+            21
+          ]
+        ],
+        "events": 24,
+        "result": {
+          "completed_count": 4,
+          "censored_entities": 0,
+          "lead_times_minutes": [
+            5,
+            5,
+            5,
+            8
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              0,
+              0,
+              3
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.25
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 1200000,
+              "down_ticks": 1200000,
+              "breakdowns_started": 4,
+              "repairs_completed": 4,
+              "completed_repair_ticks": 1200000,
+              "available_ticks": 3600000,
+              "idle_ticks": 2400000,
+              "scheduled_processing_ticks": 1200000
             }
           },
           "blocking": null,
@@ -1881,6 +2218,485 @@
         }
       },
       "simpy": "compare"
+    },
+    {
+      "id": "G-F9R10",
+      "title": "G-F9 with TTR 10 = TTF: a repair schedules its own next failure before the repair of the failure it serves, so in each later tick that failure comes first and waits (SIMULATION_SPEC §3 REPAIR; T-048 review round 2, L2)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-F9R10",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 2,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "s1",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 100
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "s1__work",
+            "from": "s1",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 60,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "The reviewer's n8eq (T-048 review round 2, L2): G-F9's model with TTR 10. With TTR = TTF the FAILURE that a repair schedules and the REPAIR of the waiting failure it serves fall in the same tick, so their sequence numbers (the order SIMULATION_SPEC §3 gives REPAIR: draw the next TTF and schedule FAILURE(u) first, then serve the waiting failures) decide which runs first. Sequence numbers in parentheses.",
+        "t=0: s1's arrival at 1 (1), FAILURE(0) at 10 (2), FAILURE(1) at 10 (3). t=1: s1/1 queues, DISPATCH (4) grants it: one unit in use to the horizon (its completion at 101 is not scheduled).",
+        "t=10: FAILURE(0): idle = 2 - 0 - 1 = 1: down (D=1), REPAIR(0) at 20 (5); FAILURE(1): idle = 2 - 1 - 1 = 0: waits.",
+        "t=20: REPAIR(0): D=0, FAILURE(0) at 30 (6); then the unit goes to the waiting failure 1: D=1, REPAIR(1) at 30 (7).",
+        "t=30: FAILURE(0) (6) runs before REPAIR(1) (7): idle = 2 - 1 - 1 = 0: waits; REPAIR(1): D=0, FAILURE(1) at 40 (8), the unit goes to failure 0: D=1, REPAIR(0) at 40 (9).",
+        "The same every 10 min with the clocks swapped: t=40 FAILURE(1) (8) waits, REPAIR(0) (9): FAILURE(0) at 50 (10), REPAIR(1) at 50 (11); t=50 FAILURE(0) (10) waits, REPAIR(1) (11): FAILURE(1) at 60 (12), REPAIR(0) at 60 (13); t=60 FAILURE(1) (12) waits, REPAIR(0) (13): D=0, FAILURE(0) at 70 (> horizon, not scheduled), the unit goes to failure 1: D=1, REPAIR(1) at 70 (not scheduled). 13 events.",
+        "Waiting failures: clock 1 at 10, 0 at 30, 1 at 40, 0 at 50, 1 at 60 (the last four wait 0 minutes). Downs: [0,10,20], [1,20,30], [0,30,40], [1,40,50], [0,50,60], [1,60,-].",
+        "Had the repair served the waiting failure before scheduling its own next failure, at 20 REPAIR(1) at 30 would take 6 and FAILURE(0) at 30 7; at 30 the repair would run first and find no failure waiting, and FAILURE(0) would then find the unit idle: the waiting failures would be 1 at 10, 1 at 40 and 1 at 60 only. The downs and the Result would be the same; this list (compared entry by entry) and the sequence numbers tell the two orders apart.",
+        "Result over [0, 60] (T = 60, C = 2): in use 59 min (s1/1 from 1); D = 1 on [10,60] (each repair hands its unit over in its own tick): down 50 min; 6 downtimes started (10, 20, 30, 40, 50, 60); 5 complete repairs of 50 min (the one from 60 is not repaired by H); available = 120 - 50 = 70 min; idle = 70 - 59 = 11 min (2 on [0,1], 9 on [1,10]); utilization 59/120. Nothing completes: no lead time; s1/1's queue wait 0."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/s1/1",
+              1
+            ]
+          ]
+        },
+        "completions": [],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            10,
+            20
+          ],
+          [
+            "m",
+            1,
+            20,
+            30
+          ],
+          [
+            "m",
+            0,
+            30,
+            40
+          ],
+          [
+            "m",
+            1,
+            40,
+            50
+          ],
+          [
+            "m",
+            0,
+            50,
+            60
+          ],
+          [
+            "m",
+            1,
+            60,
+            null
+          ]
+        ],
+        "pending": [
+          [
+            "m",
+            1,
+            10
+          ],
+          [
+            "m",
+            0,
+            30
+          ],
+          [
+            "m",
+            1,
+            40
+          ],
+          [
+            "m",
+            0,
+            50
+          ],
+          [
+            "m",
+            1,
+            60
+          ]
+        ],
+        "service_start_seqs": [
+          [
+            "r0/s1/1",
+            1,
+            4
+          ]
+        ],
+        "events": 13,
+        "result": {
+          "completed_count": 0,
+          "censored_entities": 1,
+          "lead_times_minutes": [],
+          "queue_waits_minutes": {
+            "work": [
+              0
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.49166666666666664
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 3540000,
+              "down_ticks": 3000000,
+              "breakdowns_started": 6,
+              "repairs_completed": 5,
+              "completed_repair_ticks": 3000000,
+              "available_ticks": 4200000,
+              "idle_ticks": 660000,
+              "scheduled_processing_ticks": 3540000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-F10",
+      "title": "a repair that hands its unit to a waiting failure wakes no held request and schedules no dispatch (D-074 (a) B, SIMULATION_SPEC §3; T-048 review round 2, L2)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-F10",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 2,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 5
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "s1",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s2",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 12
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 100
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "s1__work",
+            "from": "s1",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s2__work",
+            "from": "s2",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 40,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "The reviewer's N10 (T-048 review round 2, L2): capacity 2, TTF 10, TTR 5; s1/1 arrives at 1 and s2/1 at 12, each served 100 min, so neither completes by the horizon 40. Sequence numbers in parentheses.",
+        "t=0: arrivals s1 at 1 (1), s2 at 12 (2); FAILURE(0) at 10 (3), FAILURE(1) at 10 (4). t=1: s1/1 queues, DISPATCH (5) grants it (completion at 101, not scheduled).",
+        "t=10: FAILURE(0): idle = 2 - 0 - 1 = 1: down (D=1), REPAIR(0) at 15 (6); FAILURE(1): idle = 2 - 1 - 1 = 0: waits.",
+        "t=12: s2/1 queues, DISPATCH (7): in use 1 + 1 > C - D = 1: held.",
+        "t=15: REPAIR(0): D=0, FAILURE(0) at 25 (8); the unit goes to the waiting failure 1: D=1, REPAIR(1) at 20 (9). The capacity did not rise, so the held s2/1 is not woken and no dispatch is scheduled (only a repair that no failure waits for wakes the held front).",
+        "t=20: REPAIR(1): D=0, FAILURE(1) at 30 (10); no failure waits: s2/1 wakes, DISPATCH (11): 1 + 1 <= 2: s2/1 [20, 120) (completion not scheduled). So s2/1's service starts at 20, in the event with sequence 11.",
+        "t=25: FAILURE(0): idle = 2 - 0 - 2 = 0: waits. t=30: FAILURE(1): idle 0: waits behind it; both wait to the horizon. 11 events.",
+        "A repair that also woke the held request after handing its unit over would add a DISPATCH at 15 (10) that holds s2/1 again: the same starts, downs, waiting failures and Result, but FAILURE(1) at 30 would take 11, s2/1 would start in the dispatch with sequence 12, and the run would process 12 events.",
+        "Result over [0, 40] (T = 40, C = 2): in use 39 (s1/1) + 20 (s2/1) = 59 min, utilization 59/80; down [10,15] and [15,20]: 10 min, 2 started, 2 complete repairs of 10 min; available = 80 - 10 = 70 min; idle = 70 - 59 = 11 min (2 on [0,1], 9 on [1,10]); nothing completes, 2 censored; queue waits 0 (s1/1) and 8 (s2/1, 12 to 20)."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/s1/1",
+              1
+            ],
+            [
+              "r0/s2/1",
+              20
+            ]
+          ]
+        },
+        "completions": [],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            10,
+            15
+          ],
+          [
+            "m",
+            1,
+            15,
+            20
+          ]
+        ],
+        "pending": [
+          [
+            "m",
+            1,
+            10
+          ],
+          [
+            "m",
+            0,
+            25
+          ],
+          [
+            "m",
+            1,
+            30
+          ]
+        ],
+        "service_start_seqs": [
+          [
+            "r0/s1/1",
+            1,
+            5
+          ],
+          [
+            "r0/s2/1",
+            20,
+            11
+          ]
+        ],
+        "events": 11,
+        "result": {
+          "completed_count": 0,
+          "censored_entities": 2,
+          "lead_times_minutes": [],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              8
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.7375
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 3540000,
+              "down_ticks": 600000,
+              "breakdowns_started": 2,
+              "repairs_completed": 2,
+              "completed_repair_ticks": 600000,
+              "available_ticks": 4200000,
+              "idle_ticks": 660000,
+              "scheduled_processing_ticks": 3540000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "not compared: failures 0 (from 25) and 1 (from 30) still wait at the horizon, which the script does not record"
     },
     {
       "id": "G-F7",
