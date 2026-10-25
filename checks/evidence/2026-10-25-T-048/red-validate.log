@@ -1,0 +1,103 @@
+--- FAIL: TestBreakdownRules (0.00s)
+    --- FAIL: TestBreakdownRules/a_resource_that_breaks_down,_one_unit (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want []
+        breakdowns_test.go:103: valid false
+    --- FAIL: TestBreakdownRules/breakdowns_on_a_resource_no_process_needs (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want []
+        breakdowns_test.go:103: valid false
+    --- FAIL: TestBreakdownRules/R3:_two_units_of_a_resource_that_breaks_down (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[RESOURCE_REQUIREMENT_INVALID /nodes/1/requires/1/units error]]
+    --- FAIL: TestBreakdownRules/R3:_two_resources_that_break_down_in_one_bundle (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/0/breakdowns error] [PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[RESOURCE_REQUIREMENT_INVALID /nodes/1/requires error]]
+    --- FAIL: TestBreakdownRules/R3:_both_at_once (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/0/breakdowns error] [PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[RESOURCE_REQUIREMENT_INVALID /nodes/1/requires error] [RESOURCE_REQUIREMENT_INVALID /nodes/1/requires/1/units error]]
+    --- FAIL: TestBreakdownRules/a_time_to_failure_of_0 (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[DISTRIBUTION_INVALID /resources/1/breakdowns/time_to_failure/distribution error]]
+    --- FAIL: TestBreakdownRules/a_triangular_time_to_failure_from_0 (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[DISTRIBUTION_INVALID /resources/1/breakdowns/time_to_failure/distribution error]]
+    --- FAIL: TestBreakdownRules/a_time_to_repair_of_0_is_allowed (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want []
+        breakdowns_test.go:103: valid false
+    --- FAIL: TestBreakdownRules/lognormal_and_Weibull_failure_clocks_are_never_0 (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error] [PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns/time_to_failure/distribution error] [PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns/time_to_repair/distribution error]], want []
+        breakdowns_test.go:103: valid false
+    --- FAIL: TestBreakdownRules/triangular_time_to_failure_out_of_order (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[DISTRIBUTION_INVALID /resources/1/breakdowns/time_to_failure/distribution error]]
+    --- FAIL: TestBreakdownRules/a_time_to_failure_over_365_days (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[LIMIT_EXCEEDED /resources/1/breakdowns/time_to_failure/distribution/value error]]
+    --- FAIL: TestBreakdownRules/a_repair_mean_over_365_days (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[LIMIT_EXCEEDED /resources/1/breakdowns/time_to_repair/distribution/mean error]]
+    --- FAIL: TestBreakdownRules/R3_runs_after_the_distribution_stage (0.00s)
+        breakdowns_test.go:100: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error]], want [[DISTRIBUTION_INVALID /nodes/1/service_time/distribution error]]
+    --- FAIL: TestBreakdownRules/R3_runs_before_the_constraint_stage (0.00s)
+        breakdowns_test.go:100: issues [[IR_SCHEMA_INVALID /constraints/0/equals error]], want [[RESOURCE_REQUIREMENT_INVALID /nodes/1/requires/1/units error]]
+--- FAIL: TestR3Message (0.00s)
+    breakdowns_test.go:120: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/breakdowns this build does not support resource breakdowns (ADR-026 D-051) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns this build does not support resource breakdowns (ADR-026 D-051) yet; remove it to publish or run the model error}]
+--- FAIL: TestLognormalWeibullRules (0.01s)
+    --- FAIL: TestLognormalWeibullRules/lognormal (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/lognormal_cv_10 (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/lognormal_cv_above_10 (0.01s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want [[DISTRIBUTION_INVALID /nodes/1/service_time/distribution error]]
+    --- FAIL: TestLognormalWeibullRules/lognormal_tiny_cv (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/lognormal_mean_of_365_days (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/lognormal_mean_over_365_days (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want [[LIMIT_EXCEEDED /nodes/1/service_time/distribution/mean error]]
+    --- FAIL: TestLognormalWeibullRules/lognormal_mean_over_365_days_and_cv_out_of_range:_limits_first (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want [[LIMIT_EXCEEDED /nodes/1/service_time/distribution/mean error]]
+    --- FAIL: TestLognormalWeibullRules/lognormal_interarrival (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/0/arrival/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/weibull (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/weibull_shape_0.1 (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/weibull_shape_20 (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/weibull_shape_below_0.1 (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want [[DISTRIBUTION_INVALID /nodes/1/service_time/distribution error]]
+    --- FAIL: TestLognormalWeibullRules/weibull_shape_above_20 (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want [[DISTRIBUTION_INVALID /nodes/1/service_time/distribution error]]
+    --- FAIL: TestLognormalWeibullRules/weibull_scale_over_365_days (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]], want [[LIMIT_EXCEEDED /nodes/1/service_time/distribution/scale error]]
+    --- FAIL: TestLognormalWeibullRules/weibull_interarrival (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/0/arrival/distribution error]], want []
+    --- FAIL: TestLognormalWeibullRules/weibull_repair_time (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error] [PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns/time_to_repair/distribution error]], want [[DISTRIBUTION_INVALID /resources/1/breakdowns/time_to_repair/distribution error]]
+    --- FAIL: TestLognormalWeibullRules/lognormal_time_to_failure (0.00s)
+        breakdowns_test.go:168: issues [[PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns error] [PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns/time_to_failure/distribution error]], want [[DISTRIBUTION_INVALID /resources/1/breakdowns/time_to_failure/distribution error]]
+--- FAIL: TestLognormalWeibullUnderflow (0.00s)
+    --- FAIL: TestLognormalWeibullUnderflow/lognormal_mean (0.00s)
+        breakdowns_test.go:194: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]]
+    --- FAIL: TestLognormalWeibullUnderflow/lognormal_cv (0.00s)
+        breakdowns_test.go:194: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]]
+    --- FAIL: TestLognormalWeibullUnderflow/weibull_scale (0.00s)
+        breakdowns_test.go:194: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]]
+    --- FAIL: TestLognormalWeibullUnderflow/weibull_shape (0.00s)
+        breakdowns_test.go:194: issues [[PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution error]]
+--- FAIL: TestBindingsOfBreakdowns (0.00s)
+    --- FAIL: TestBindingsOfBreakdowns/time_to_failure (0.00s)
+        breakdowns_test.go:216: not valid: [{PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns this build does not support resource breakdowns (ADR-026 D-051) yet; remove it to publish or run the model error}]
+    --- FAIL: TestBindingsOfBreakdowns/time_to_repair (0.00s)
+        breakdowns_test.go:216: not valid: [{PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns this build does not support resource breakdowns (ADR-026 D-051) yet; remove it to publish or run the model error}]
+--- FAIL: TestResourceDistributions (0.00s)
+    breakdowns_test.go:237: [{PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns this build does not support resource breakdowns (ADR-026 D-051) yet; remove it to publish or run the model error}]
+--- FAIL: TestPrimitiveCatalog (0.00s)
+    primitives_test.go:41: breakdowns: checked false, want true (T-048)
+    primitives_test.go:41: lognormal: checked false, want true (T-048)
+    primitives_test.go:41: weibull: checked false, want true (T-048)
+--- FAIL: TestPrimitiveGate (0.00s)
+    primitives_test.go:73: got 17 issues [{PRIMITIVE_NOT_SUPPORTED /calendars this build does not support shift calendars (ADR-026 D-052) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /metrics/0/type this build does not support the system_wip metric (D-058) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /metrics/1/type this build does not support the flow_count metric (D-058) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /metrics/2/type this build does not support the flow_count metric (D-058) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /metrics/3/type this build does not support the sink_count metric (D-058) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /metrics/4/type this build does not support the period_throughput metric (D-058) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /nodes/1/batch this build does not support batch processes (ADR-026 D-054) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /nodes/5/arrival/schedule this build does not support release schedules (ADR-026 D-053) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /nodes/6/arrival/schedule this build does not support release schedules (ADR-026 D-053) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /nodes/7/arrival/schedule this build does not support release schedules (ADR-026 D-053) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns this build does not support resource breakdowns (ADR-026 D-051) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/breakdowns/time_to_repair/distribution this build does not support the lognormal distribution (ADR-026 D-056) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/calendar_id this build does not support shift calendars (ADR-026 D-052) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/setups/transitions/0/distribution this build does not support the Weibull distribution (ADR-026 D-056) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/shift_capacity this build does not support shift calendars (ADR-026 D-052) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/2/calendar_id this build does not support shift calendars (ADR-026 D-052) yet; remove it to publish or run the model error}]
+--- FAIL: TestPrimitiveGateStopsTheStages (0.02s)
+    primitives_test.go:156: breakdowns: [{PRIMITIVE_NOT_SUPPORTED /resources/0/breakdowns this build does not support resource breakdowns (ADR-026 D-051) yet; remove it to publish or run the model error}], want only the unknown reference
+    primitives_test.go:156: lognormal service: [{PRIMITIVE_NOT_SUPPORTED /nodes/1/service_time/distribution this build does not support the lognormal distribution (ADR-026 D-056) yet; remove it to publish or run the model error}], want only the unknown reference
+    primitives_test.go:156: weibull interarrival: [{PRIMITIVE_NOT_SUPPORTED /nodes/0/arrival/distribution this build does not support the Weibull distribution (ADR-026 D-056) yet; remove it to publish or run the model error}], want only the unknown reference
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.425s
+--- FAIL: TestBreakdownDatasets (0.00s)
+    breakdowns_test.go:46: report example with breakdowns: <nil> [{PRIMITIVE_NOT_SUPPORTED /resources/0/breakdowns this build does not support resource breakdowns (ADR-026 D-051) yet; remove it to publish or run the model error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/datasets	0.560s
+FAIL

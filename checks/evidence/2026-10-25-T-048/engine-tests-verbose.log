@@ -1,0 +1,93 @@
+=== RUN   TestBreakdownGoldens
+=== RUN   TestBreakdownGoldens/G-F1
+=== RUN   TestBreakdownGoldens/G-F2
+=== RUN   TestBreakdownGoldens/G-F3
+=== RUN   TestBreakdownGoldens/G-F7
+=== RUN   TestBreakdownGoldens/G-F8
+=== RUN   TestBreakdownGoldens/G-T1
+=== RUN   TestBreakdownGoldens/G-T2
+=== RUN   TestBreakdownGoldens/G-T4
+=== RUN   TestBreakdownGoldens/G-K1
+=== RUN   TestBreakdownGoldens/G-S2
+--- PASS: TestBreakdownGoldens (0.10s)
+    --- PASS: TestBreakdownGoldens/G-F1 (0.08s)
+    --- PASS: TestBreakdownGoldens/G-F2 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-F3 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-F7 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-F8 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-T1 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-T2 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-T4 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-K1 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-S2 (0.00s)
+=== RUN   TestZeroTickRepairDispatchesAgain
+--- PASS: TestZeroTickRepairDispatchesAgain (0.00s)
+=== RUN   TestCapacityBoundIsNoDeadlock
+--- PASS: TestCapacityBoundIsNoDeadlock (0.00s)
+=== RUN   TestDeadlockBesideBreakdowns
+--- PASS: TestDeadlockBesideBreakdowns (0.00s)
+=== RUN   TestStallIsATypedError
+--- PASS: TestStallIsATypedError (0.00s)
+=== RUN   TestStallNamesTheEarliestRequest
+--- PASS: TestStallNamesTheEarliestRequest (0.00s)
+=== RUN   TestNoStallBeforeTheTickEnds
+--- PASS: TestNoStallBeforeTheTickEnds (0.00s)
+=== RUN   TestBreakdownStreams
+--- PASS: TestBreakdownStreams (0.00s)
+=== RUN   TestNeutralBreakdownsChangeNothing
+    breakdown_test.go:609: 2158 neutral models (4770 resources with breakdowns) identical to des-go-0.2.0
+--- PASS: TestNeutralBreakdownsChangeNothing (6.55s)
+=== RUN   TestCompileRefusesR3
+--- PASS: TestCompileRefusesR3 (0.00s)
+=== RUN   TestCompileBreakdownDatasets
+--- PASS: TestCompileBreakdownDatasets (0.00s)
+=== RUN   TestBreakdownObservationDigests
+--- PASS: TestBreakdownObservationDigests (0.03s)
+=== RUN   TestRepairBound
+--- PASS: TestRepairBound (0.00s)
+=== RUN   TestDifferentialAgainstFrozen020
+    differential020_test.go:137: 23746 of 50000 random models compiled (race detector: false), 5516 with finite buffers; 11698033 observations identical to des-go-0.2.0, 47742 of them Blocked; endings map[active:1559 none:20013 visits:2174]
+--- PASS: TestDifferentialAgainstFrozen020 (30.26s)
+=== RUN   TestDifferentialAgainstFrozenKernel
+    differential_test.go:191: 36643 of 50000 random models compiled (race detector: false); 17427661 observations identical; endings map[active:2380 none:31073 visits:3190]
+--- PASS: TestDifferentialAgainstFrozenKernel (26.42s)
+=== RUN   TestRandomBreakdownModelsAgainstSpec
+    kernel_check_breakdown_test.go:180: 1126 of 3000 random models compiled, 257 with finite buffers; 50289 downtimes (2190 after a waiting failure), 49656 repairs, 41684 failures checked against a constant TTF, 100723 grants, 5981 blocks
+--- PASS: TestRandomBreakdownModelsAgainstSpec (2.89s)
+=== RUN   TestRandomStallsAreInTheState
+    kernel_check_breakdown_test.go:239: 1962 runs with R3 bypassed, 269 ended in ErrStalled
+--- PASS: TestRandomStallsAreInTheState (3.18s)
+=== RUN   TestKernelRefusesWhatItDoesNotExecute
+--- PASS: TestKernelRefusesWhatItDoesNotExecute (0.00s)
+=== RUN   TestExpProfile
+--- PASS: TestExpProfile (0.04s)
+=== RUN   TestExpAccuracy
+--- PASS: TestExpAccuracy (4.31s)
+=== RUN   TestNdtriProfile
+--- PASS: TestNdtriProfile (0.07s)
+=== RUN   TestLognormalParameters
+--- PASS: TestLognormalParameters (0.00s)
+=== RUN   TestBreakdownStreamVectors
+--- PASS: TestBreakdownStreamVectors (0.00s)
+=== RUN   TestEventOrderWithResourceState
+--- PASS: TestEventOrderWithResourceState (0.00s)
+=== RUN   TestLognormalWeibullStatistics
+=== RUN   TestLognormalWeibullStatistics/lognormal_1,_0.05
+=== RUN   TestLognormalWeibullStatistics/weibull_1.5,_8
+=== RUN   TestLognormalWeibullStatistics/weibull_0.5,_3
+=== RUN   TestLognormalWeibullStatistics/weibull_20,_30
+=== RUN   TestLognormalWeibullStatistics/weibull_1,_48
+=== RUN   TestLognormalWeibullStatistics/lognormal_30,_0.5
+=== RUN   TestLognormalWeibullStatistics/lognormal_4,_2
+--- PASS: TestLognormalWeibullStatistics (0.16s)
+    --- PASS: TestLognormalWeibullStatistics/lognormal_1,_0.05 (0.02s)
+    --- PASS: TestLognormalWeibullStatistics/weibull_1.5,_8 (0.03s)
+    --- PASS: TestLognormalWeibullStatistics/weibull_0.5,_3 (0.02s)
+    --- PASS: TestLognormalWeibullStatistics/weibull_20,_30 (0.03s)
+    --- PASS: TestLognormalWeibullStatistics/weibull_1,_48 (0.02s)
+    --- PASS: TestLognormalWeibullStatistics/lognormal_30,_0.5 (0.02s)
+    --- PASS: TestLognormalWeibullStatistics/lognormal_4,_2 (0.01s)
+=== RUN   TestLognormalWeibullBounds
+--- PASS: TestLognormalWeibullBounds (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	74.078s

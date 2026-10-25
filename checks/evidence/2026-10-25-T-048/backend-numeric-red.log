@@ -1,0 +1,17 @@
+# make backend-numeric on the T-048 tree before the fix of sample.go:136
+# (s.mu = ln(mean)-s2/2; the compiler turned s2/2 into s2*0.5 and fused it
+# into the subtraction on arm64, riscv64 and loong64). Exit 2. The log file
+# itself was overwritten by the re-run; these lines are its output as the
+# terminal showed it. Fix: ln(mean)-float64(s2/2). After the fix:
+# backend-numeric.log (exit 0).
+bash scripts/check_no_fma.sh
+PASS no fused multiply-add or platform math call: amd64 v3
+FAIL fused multiply-add in the arm64 build:
+	0x07e0 02016 (/home/user/Geminus/.claude/worktrees/agent-aa0d465734420fc65/internal/simulation/engine/sample.go:136)	FMSUBD	F1, F0, F2, F1
+PASS no fused multiply-add or platform math call: ppc64le
+PASS no fused multiply-add or platform math call: s390x
+FAIL fused multiply-add in the riscv64 build:
+	0x0bcc 03020 (/home/user/Geminus/.claude/worktrees/agent-aa0d465734420fc65/internal/simulation/engine/sample.go:136)	FNMSUBD	F11, F9, F10, F9
+FAIL fused multiply-add in the loong64 build:
+	0x08f0 02288 (/home/user/Geminus/.claude/worktrees/agent-aa0d465734420fc65/internal/simulation/engine/sample.go:136)	FNMSUBD	F0, F2, F1, F1
+make: *** [Makefile:44: backend-numeric] Error 1

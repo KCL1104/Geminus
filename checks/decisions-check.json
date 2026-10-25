@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 70,
-    "proposed": 4,
+    "proposed": 6,
     "rejected": 0,
     "superseded": 0
   },
@@ -38,12 +38,20 @@
   },
   "ready_tasks": [
     "T-035",
-    "T-048",
     "T-049",
     "T-050",
     "T-053"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-048",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-074",
+        "D-075"
+      ]
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -596,7 +604,8 @@
       "status": "approved",
       "gate": "T-047 驗收前；T-048–T-050 延伸 B1／B2 時沿用 (a)",
       "gates_tasks": [
-        "T-047"
+        "T-047",
+        "T-048"
       ]
     },
     "D-067": {
@@ -648,6 +657,20 @@
       "gate": "T-052 前（或第一次以真實 station log 展示匯入前，以先到者為準）",
       "gates_tasks": [
         "T-052"
+      ]
+    },
+    "D-074": {
+      "status": "proposed",
+      "gate": "T-048 驗收前；T-049 延伸 B2 與故障時鐘時沿用",
+      "gates_tasks": [
+        "T-048"
+      ]
+    },
+    "D-075": {
+      "status": "proposed",
+      "gate": "T-048 驗收前",
+      "gates_tasks": [
+        "T-048"
       ]
     },
     "D-078": {

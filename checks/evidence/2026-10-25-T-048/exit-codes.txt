@@ -1,0 +1,33 @@
+baseline make backend-test (21423aa): 0 (baseline-backend-test.log)
+
+Final tree (0c8b1f0 plus the report and evidence):
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python: 0 (spec-check.log, after the report was written)
+make backend-test GOFLAGS=-count=1: 0 (backend-test.log; 61 packages ok, none cached)
+make backend-race GOFLAGS=-count=1: 0 (backend-race.log; 61 packages ok, none cached)
+make architecture-check: 0 (architecture-check.log)
+make ai-eval: 0 (ai-eval.log; fake-review.json unchanged by this run)
+make simulation-reference-test PYTHON=/home/user/Geminus/.venv/bin/python: 0 (simulation-reference-test.log, simpy-reference-report.json)
+make backend-numeric: 0 (backend-numeric.log)
+mutation harness, the two window mutants after G-F1W: 0 (mutants-gf1w.log; 2/2 killed)
+
+Before G-F1W (0c8b1f0's parent tree plus evidence), all also 0:
+make backend-test: 0 (backend-test-pre-gf1w.log); make backend-race: 0 (backend-race-pre-gf1w.log);
+make architecture-check: 0 (architecture-check-pre-gf1w.log); make ai-eval: 0 (ai-eval-pre-gf1w.log; regenerated
+checks/ai-evals/fake-review.json); make simulation-reference-test: 0 (simulation-reference-test-pre-gf1w.log);
+make backend-numeric: 0 (backend-numeric-pre-gf1w.log)
+mutation harness run 2: 0 (mutants-run2.log; 59/59 killed, 1 equivalent)
+go test -v of the key engine tests: 0 (engine-tests-verbose.log)
+fuzz: FuzzBreakdowns 120 s, FuzzKernel 60 s, FuzzRun 60 s: 0 each (fuzz-*.log)
+
+Earlier, failing runs (kept as evidence):
+make simulation-reference-test, first run: 2 (simpy-first-run.log)
+make backend-numeric, first run: 2 (backend-numeric-red.log)
+TestExpAccuracy as first written: FAIL (exp-accuracy-red.log)
+mutation harness run 1: 1 (mutants-run1.log; 57 killed, 1 equivalent, 1 BUILD-FAILED mutant, fixed; the three changed
+mutants re-run alone: 3/3 killed, seen in the terminal only)
+red logs before the implementation: red-validate.log, red-ai.log, red-engine-vet.log
+
+NOT RUN:
+make frontend-test (no TypeScript, schema or apps/web change; PASS_TS_CONTRACTS_FRESH)
+make integration-test and every DB-backed Go test (no PostgreSQL; db-tests-skipped.log lists the 212 skips)
+make e2e-test, make benchmark-test, make ai-eval-live, CI

@@ -1,0 +1,26 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/48 completed
+fuzz: elapsed: 0s, gathering baseline coverage: 48/48 completed, now fuzzing with 4 workers
+fuzz: elapsed: 3s, execs: 59 (20/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 6s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 9s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 12s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 15s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 18s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 21s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 24s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 27s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 30s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 33s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 36s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 39s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 42s, execs: 59 (0/sec), new interesting: 0 (total: 48)
+fuzz: elapsed: 45s, execs: 489205 (163044/sec), new interesting: 1 (total: 49)
+fuzz: elapsed: 48s, execs: 489205 (0/sec), new interesting: 1 (total: 49)
+fuzz: elapsed: 51s, execs: 489205 (0/sec), new interesting: 1 (total: 49)
+fuzz: elapsed: 54s, execs: 489205 (0/sec), new interesting: 1 (total: 49)
+fuzz: elapsed: 57s, execs: 489205 (0/sec), new interesting: 1 (total: 49)
+fuzz: elapsed: 1m0s, execs: 489205 (0/sec), new interesting: 1 (total: 49)
+fuzz: elapsed: 1m1s, execs: 489205 (0/sec), new interesting: 1 (total: 49)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	61.046s
+exit 0

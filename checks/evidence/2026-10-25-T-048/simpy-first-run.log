@@ -1,0 +1,18 @@
+# First run of make simulation-reference-test with the breakdown extension
+# (exit 2): 83 of 83 stochastic comparisons passed, one deterministic
+# difference. Output lines as the terminal showed them (the report file was
+# overwritten by the next run):
+"failures": [
+  "G-F7: waiting failures [['m', 0, 9.5], ['m', 0, 23.0], ['m', 0, 35.0]] != [['m', 0, 9.5]]"
+]
+FAIL simulation reference: 1 difference(s)
+make: *** [Makefile:110: simulation-reference-test] Error 1
+# The downs matched ([m,0,11,13.5], [m,0,23,25.5], [m,0,35,37.5]). At 23 and
+# 35 SimPy processed the failure before the same-time release (scheduling
+# order), so the failure "waited" 0 minutes and took the released unit; the
+# kernel releases first (priority 0 < 15) and the failure finds the unit
+# idle. Same downtime, different bookkeeping. The script now records a
+# waiting failure only for a positive wait, and a compared case whose
+# hand-derived waiting failures do not all have a positive wait fails as not
+# comparable (scripts/simpy_reference.py, deterministic). The hand-derived
+# golden was not changed. Second run: simulation-reference-test.log.

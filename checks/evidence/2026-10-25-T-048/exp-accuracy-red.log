@@ -1,0 +1,12 @@
+# TestExpAccuracy as first written (reference: math.Exp, at most one ulp
+# apart), on the implemented engine. Output as the terminal showed it:
+--- FAIL: TestExpAccuracy (0.00s)
+    sample_t048_test.go:149: exp(-493.8360700786439) = 3.386256097486198e-215, math.Exp 3.3862560974861967e-215
+FAIL
+# Diagnosis (scratchpad program, 256-bit big.Float reference): the true value
+# is 3.38625609748619731603771174298e-215, correctly rounded
+# 3.386256097486197e-215; engine.exp is 1 ulp above it and math.Exp (amd64
+# assembly) 1 ulp below, both less than one ulp from the truth, 2 ulps apart.
+# The test's reference was wrong, not exp: it now compares with the 256-bit
+# value and requires an error below one ulp (300,000 inputs, 30,000 under
+# -race), which exp passes. Recorded in checks/T-048_VALIDATION.md.

@@ -1,0 +1,19 @@
+# github.com/kcl1104/geminus/internal/simulation/engine [github.com/kcl1104/geminus/internal/simulation/engine.test]
+internal/simulation/engine/breakdown_test.go:174:8: undefined: ObsResourceDown
+internal/simulation/engine/breakdown_test.go:177:8: undefined: ObsResourceUp
+internal/simulation/engine/breakdown_test.go:185:8: undefined: ObsBreakdownPending
+internal/simulation/engine/breakdown_test.go:223:10: p.HasBreakdowns undefined (type *Program has no field or method HasBreakdowns)
+internal/simulation/engine/breakdown_test.go:268:49: undefined: ObsResourceUp
+internal/simulation/engine/breakdown_test.go:275:8: undefined: ObsResourceDown
+internal/simulation/engine/breakdown_test.go:277:8: undefined: ObsResourceUp
+internal/simulation/engine/breakdown_test.go:345:36: k.down undefined (type *kernel has no field or method down)
+internal/simulation/engine/breakdown_test.go:346:74: k.down undefined (type *kernel has no field or method down)
+internal/simulation/engine/breakdown_test.go:382:10: undefined: StalledError
+internal/simulation/engine/breakdown_test.go:382:10: too many errors
+# github.com/kcl1104/geminus/internal/runs
+# [github.com/kcl1104/geminus/internal/runs]
+vet: internal/runs/runs_test.go:118:9: undefined: store.SimulationStalled
+# github.com/kcl1104/geminus/internal/runs/runner
+# [github.com/kcl1104/geminus/internal/runs/runner]
+vet: internal/runs/runner/failure_test.go:91:17: undefined: engine.StalledError
+vet exit 1
