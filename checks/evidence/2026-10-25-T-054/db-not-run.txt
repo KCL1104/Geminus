@@ -22,10 +22,31 @@ Existing DB-backed Go tests whose code path T-054 changed (rerun with the rest o
                                 classifies the binding stage's error), the model route tests in models_test.go
                                 (models.Register now keeps the logger)
   internal/proposals/approval:  TestApprovalFreezesTheManifest and the edit approvals (models.Service.Advance: the
-                                draft sync's binding stage error is now a models.DatasetStorageError; approval still
-                                answers it 500, unchanged)
+                                draft sync's binding stage error is a models.DatasetStorageError; since round 2 the
+                                approval answers it 503 DATASET_STORAGE_FAILED through storageCause)
+  internal/models:              (round 2) every patchDraft and resetDraft test: their handlers now go through refuse
 
-DB mutants (checks/evidence/2026-10-25-T-054/mutate.py db; refuses to run without GEMINUS_TEST_DATABASE_URL)
+DB mutants of round 1 (mutate.py as of 3093ebb; superseded by round 2's, which target the code as it is now)
   db-models-handler-maps-like-every-route, db-models-cause-not-logged, db-models-draft-check-ignored,
   db-runs-freeze-unwrapped, db-runs-cause-not-logged
-  (each compiles: mutate.py compile, mutants-db-compile.log; files restored)
+  (each compiled: mutants-db-compile.log)
+
+Round 2 (the coordinator's extension of H-022 Q4 to patchDraft, resetDraft and the approval's draft sync)
+
+New DB-backed Go tests
+  internal/models:              TestDraftSnapshotStorageFailure  (patchDraft and resetDraft through models.Register's
+                                handler: the snapshot read fails, or says the request ended; no new draft revision, no
+                                audit event, no version; the same If-Match succeeds after recovery)
+  internal/proposals/approval:  TestApprovalDraftSyncStorageFailure  (an edit approval through approval.Register's
+                                handler whose revalidation read passes and whose draft-sync read fails, or says the
+                                request ended; no version, the model and draft unchanged, the proposal still ready and
+                                undecided, no proposal.approve audit, no key; the same key approves after recovery)
+Changed DB-backed Go test
+  internal/models:              TestPublishSnapshotStorageFailure  (on the shared helpers; the message is now
+                                "nothing was changed (retry later)")
+
+DB mutants (checks/evidence/2026-10-25-T-054/mutate.py db; refuses to run without GEMINUS_TEST_DATABASE_URL)
+  db-models-publish-not-logged, db-models-patch-not-logged, db-models-reset-not-logged, db-models-cause-not-logged,
+  db-models-draft-check-ignored, db-models-patch-check-ignored, db-approval-draft-sync-ignored, db-approval-log-skipped,
+  db-runs-freeze-unwrapped, db-runs-cause-not-logged
+  (each compiles: mutate.py compile, r2-mutants-db-compile.log; files restored)

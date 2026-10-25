@@ -10,3 +10,15 @@ make architecture-check exit 0
 make frontend-test exit 0
 make spec-check exit 0                        (run last, after T-054_VALIDATION.md was added)
 make integration-test NOT RUN                 (no PostgreSQL; db-not-run.txt)
+
+Round 2 (the coordinator's extension to patchDraft, resetDraft and the approval's draft sync), on e87067a/98d233a
+go test (round 2 unit tests, round 1 code) exit 1   (r2-unit-red.log; expected: 2 tests fail)
+go test (round 2 unit tests, GREEN) exit 0          (r2-unit-green.log)
+mutate.py unit exit 0                                (r2-mutants-unit.log: 29 killed, 0 survived)
+mutate.py compile exit 0                             (r2-mutants-db-compile.log: 10 DB mutants compile)
+make backend-test exit 0                             (r2-backend-test.log)
+go test -race (touched packages) exit 0              (r2-race-touched.log)
+make architecture-check exit 0                       (r2-architecture-check.log)
+make frontend-test exit 0                            (r2-frontend-test.log)
+make spec-check exit 0                               (r2-spec-check.log; run last, after the round 2 section was written)
+make integration-test NOT RUN                        (no PostgreSQL; db-not-run.txt)
