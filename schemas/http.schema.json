@@ -240,7 +240,7 @@
           "maxItems": 1000
         },
         "comment": {
-          "$comment": "D-041: Publish.comment as given; null when there was none (or it was empty), and for the first version. T-026 (D-068 PROPOSED): a version an approved edit proposal created keeps Approve.comment the same way.",
+          "$comment": "D-041: Publish.comment as given; null when there was none (or it was empty), and for the first version. T-026 (D-068 APPROVED): a version an approved edit proposal created keeps Approve.comment the same way.",
           "anyOf": [
             {
               "type": "string",
@@ -435,7 +435,7 @@
         "expected_base_version_id"
       ],
       "additionalProperties": false,
-      "$comment": "T-026 (AI_SPEC §6, D-003, D-030; D-068, D-069 PROPOSED): expected_base_version_id must be the proposal's base, which must still be the model's latest version; comment is kept as the proposal's decision_comment and, for an edit proposal, as the new version's comment (empty: none)."
+      "$comment": "T-026 (AI_SPEC §6, D-003, D-030; D-068, D-069 APPROVED): expected_base_version_id must be the proposal's base, which must still be the model's latest version; comment is kept as the proposal's decision_comment and, for an edit proposal, as the new version's comment (empty: none)."
     },
     "Approval": {
       "oneOf": [
@@ -525,7 +525,7 @@
       },
       "required": [],
       "additionalProperties": false,
-      "$comment": "T-026 (D-068 PROPOSED): comment is kept as the proposal's decision_comment (empty: none)."
+      "$comment": "T-026 (D-068 APPROVED): comment is kept as the proposal's decision_comment (empty: none)."
     },
     "CreateScenario": {
       "type": "object",
@@ -546,7 +546,7 @@
       "additionalProperties": false
     },
     "SaveMapping": {
-      "$comment": "T-017 (APPROVED D-043 (c); D-070, D-071 PROPOSED): the saveImportMapping body. confirmed is the person's confirmation of the whole mapping; the AI never sends it (it has no route, and the worker cannot write a mapping).",
+      "$comment": "T-017 (APPROVED D-043 (c); D-070, D-071 APPROVED): the saveImportMapping body. confirmed is the person's confirmation of the whole mapping; the AI never sends it (it has no route, and the worker cannot write a mapping).",
       "type": "object",
       "properties": {
         "expected_mapping_revision": {

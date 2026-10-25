@@ -891,11 +891,11 @@
       "source_pages": "N/A（ADR-026 D-049、D-050；實作見 internal/simulation/engine/kernel.go、internal/model/validate/blocking.go）",
       "owner_role": "Simulation",
       "gate": "T-047 驗收前；T-048–T-050 延伸 B1／B2 時沿用 (a)",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null,
-      "approval_notes": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-021)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-021）：(a)(b)(d)(e)(f) 採 A，(c) 照列，(g)(h) 為說明。"
     },
     {
       "id": "D-067",
@@ -905,12 +905,13 @@
       "source_pages": "N/A（CB-33；scenario.schema.json、http.schema.json Approve、AI_SPEC §6–§7；T-026）",
       "owner_role": "AI / Product",
       "gate": "T-026 驗收前；T-028 的 scenario 讀取與 UI 前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [
         "CB-33"
       ],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-021)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-021）：採 A，Scenario 名稱取自批准者審閱過的 proposal summary。"
     },
     {
       "id": "D-068",
@@ -920,12 +921,13 @@
       "source_pages": "N/A（http.schema.json Approve／Reject、D-041、SECURITY §9；T-026）",
       "owner_role": "Platform / Product",
       "gate": "T-026 驗收前；T-031 的 review UI 前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [
         "CB-42"
       ],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-021)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-021）：採 A，decision_comment 保存、不可改，Proposal 顯示 decided_by／decided_at。"
     },
     {
       "id": "D-069",
@@ -935,12 +937,13 @@
       "source_pages": "N/A（AI_SPEC §4、§6；API_DATABASE §4、§7；D-003、D-011、D-030；T-026）",
       "owner_role": "Platform / AI",
       "gate": "T-026 驗收前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [
         "CB-42"
       ],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-021)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-021）：照列；(b) server risk 或 effective risk 改變時 409 LIFECYCLE_CONFLICT、不批准（決策頁 Q3），revalidation 失敗的 proposal 維持 ready（B1）。publishVersion／createSimulation 的同類錯誤是否改回 503 不在這次批准範圍，仍待 owner 決定。"
     },
     {
       "id": "D-070",
@@ -951,9 +954,10 @@
       "resolves": [],
       "source_pages": "N/A（T-017 實作；D-009、D-043 (c)、D-059、AI_SPEC §8、CB-18、CB-28、CB-29、CB-43）",
       "owner_role": "Import / Product",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-021)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-021）：(a) 採 A；(b) 照列，CB-28 另立 D-073（Q4）；(c) 照列；(d) 採 A，逐欄確認（Q1），不另做人工清除 suggestion 的路徑（Q5）；(e) 照列。"
     },
     {
       "id": "D-071",
@@ -967,9 +971,10 @@
       ],
       "source_pages": "N/A（T-017 實作；D-009、D-043 (c)、D-059、AI_SPEC §8、CB-18、CB-28、CB-29、CB-43）",
       "owner_role": "Import / Product",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-021)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-021）：照列，(e) 採 A（validation 存 canonical dataset，T-018 凍結）。"
     },
     {
       "id": "D-072",
@@ -979,6 +984,22 @@
       "gate": "T-017 驗收前",
       "resolves": [],
       "source_pages": "N/A（T-017 實作；D-009、D-043 (c)、D-059、AI_SPEC §8、CB-18、CB-28、CB-29、CB-43）",
+      "owner_role": "Import / Product",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-021)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-021）：採 A（保留原 offset、拒絕 -00:00、報表不帶值）；(b) invalid row（Q2）；(g) 上限待 T-037。"
+    },
+    {
+      "id": "D-073",
+      "title": "常數與單位換算的 transform（CB-28）",
+      "source_gap": "D-009 只允許 identity／rfc3339／integer_ms／boolean_literal 且沒有參數（D-070 (b)）：沒有 event_type 欄的 station log 無法 mapping，以秒或分鐘記錄的 duration 與沒有 offset 的時間都是 invalid row。Owner 於 H-021（決策頁 Q4）決定另立 decision。",
+      "proposal": "草案（需修改 D-009 的允許清單）：(a) constant：沒有 source column 的 mapping 條目，對整份檔填入一個 DomainPack 詞彙中的值，只用於 event_type、outcome、stage、shift、product，case_id 與時間不能是常數，一個 field 仍只由一條填入；(b) seconds_to_ms、minutes_to_ms：十進位、整數精確計算，結果須為 0..2^53−1 的整數毫秒；(c) 沒有 offset 的時間建議仍拒絕（D-072），選項為 import 層級由人宣告 offset，絕不使用 server 時區。建議 A：(a)(b)，(c) 維持拒絕；B：(a)(b)(c)；C：都不做。",
+      "gate": "T-052 前（或第一次以真實 station log 展示匯入前，以先到者為準）",
+      "resolves": [
+        "CB-28"
+      ],
+      "source_pages": "N/A（H-021 Q4；D-009、D-059、D-070 (b)、D-072、CB-28、CB-43 (e)）",
       "owner_role": "Import / Product",
       "status": "proposed",
       "approved_by": null,
@@ -1246,6 +1267,19 @@
       "decided_at": "2026-10-25",
       "source": "Claude Code session：agent 以選擇題詢問（升級、暫時豁免、等滿兩週），owner 選擇升級",
       "still_open": []
+    },
+    {
+      "id": "H-021",
+      "subject": "批准 D-064、D-067–D-072（T-047、T-026、T-017 的提案）",
+      "decision": "Owner 對決策頁（https://claude.ai/artifact/T1xUsmk9ToV274qsPVRKqm）回覆「全都照建議」：D-064、D-067、D-068、D-069、D-070、D-071、D-072 依建議 APPROVED；Q1 逐欄確認（D-070 (d) A），Q2 invalid row（D-072 (b) A），Q3 risk 改變時拒絕批准（D-069 (b)），Q4 常數與單位換算另立 D-073（PROPOSED），Q5 不另做人工清除 suggestion 的路徑（D-070 (d)）。",
+      "quote": "全都照建議",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-25",
+      "source": "Claude Code session：owner 回覆決策頁，由 agent 記錄；回覆與決策頁上的範例句相同",
+      "still_open": [
+        "D-069：publishVersion／createSimulation 讀不到 dataset snapshot 時是否也改回 503（決策頁沒有列出）",
+        "D-073 的定案（T-052 前）"
+      ]
     }
   ]
 }

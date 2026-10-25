@@ -1,5 +1,5 @@
 // Package mapping is the canonical-event mapper (T-017; APPROVED D-009,
-// D-043 (c), D-059; D-070, D-072 PROPOSED): the mapping a person confirms
+// D-043 (c), D-059; D-070, D-072 APPROVED): the mapping a person confirms
 // from an import's source columns to canonical-event fields
 // (schemas/import-mapping.schema.json), checked against the import's
 // columns before it is saved (Check), and applied to one row at a time

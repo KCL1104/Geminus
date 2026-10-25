@@ -181,7 +181,7 @@ const invalidProposal: Proposal = {
 };
 // T-026: what approveProposal answers for an edit proposal (the one new
 // version, discriminated by mode), its request, a rejection's request, and
-// an approved proposal with its decision record (D-068 PROPOSED).
+// an approved proposal with its decision record (D-068 APPROVED).
 const zeroHash = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 const approvalEdit: Approval = {
   proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZ6",

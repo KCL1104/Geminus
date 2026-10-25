@@ -216,3 +216,7 @@ Round 1 的四個 commit 在 T-047 之後 cherry-pick，沒有衝突。`spec-che
 - **N3**：`TestBindingFailure` 加上「request 已取消、store 回普通錯誤」的案例（不是 `DatasetStorageError`）。紅：拿掉 `bindingFailure` 的 `ctx.Err()` 條件時 exit 1（`n3-red.log`）；綠：還原後 exit 0（`n3-green.log`）。
 
 Info（記錄，不修）：I-a request 仍有效而 object store 自己逾時時被當成 request 逾時（一般 503、沒有 `DATASET_STORAGE_FAILED`），`Resolve` 中 server 自己的錯誤也回 503，可在之後收窄分類；I-b 兩個 equivalent mutant；I-c 只有含空 comment 的 body，fingerprint 在部署前後不同（首次部署前沒有影響）；I-d L2 的測試只 assert 不是 typed 錯誤。T-019 的計時測試對 CPU 飢餓敏感，記為 T-019 的後續。
+
+## Owner 批准（H-021，2026-10-25）
+
+Owner 對決策頁（https://claude.ai/artifact/T1xUsmk9ToV274qsPVRKqm）回覆「全都照建議」：D-067、D-068、D-069 依建議 APPROVED（`planning/decisions.json`、`docs/DECISIONS_AND_TBD.md`）。本報告前文寫作時這些決策仍是 PROPOSED，前文保留原貌；T-026 因此標為 done。

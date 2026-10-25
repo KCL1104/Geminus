@@ -39,7 +39,7 @@ type Proposal struct {
 	DatasetBindings      []model.DatasetBinding `json:"dataset_bindings,omitzero"`
 	ServerRiskLevel      *string                `json:"server_risk_level,omitzero"`
 	ProviderRiskClaim    *string                `json:"provider_risk_claim,omitzero"`
-	// The decision record (T-026, D-068 PROPOSED): approved, rejected and
+	// The decision record (T-026, D-068 APPROVED): approved, rejected and
 	// conflicted only.
 	DecidedBy       *string `json:"decided_by,omitzero"`
 	DecidedAt       *string `json:"decided_at,omitzero"`

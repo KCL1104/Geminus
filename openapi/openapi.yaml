@@ -801,7 +801,7 @@ paths:
         AI_PROVIDER_NOT_CONFIGURED and AI_POLICY_NOT_APPROVED as they are, rate limits RATE_LIMITED, an unavailable
         provider or worker SERVICE_UNAVAILABLE, a context over budget PAYLOAD_TOO_LARGE, anything else INTERNAL_ERROR;
         error.request_id is the creating request''s. ready, needs_input, invalid and failed content never changes.
-        T-026 (D-068 PROPOSED): approved, rejected and conflicted have decided_by and decided_at (who decided, or
+        T-026 (D-068 APPROVED): approved, rejected and conflicted have decided_by and decided_at (who decided, or
         whose approval found that the base had moved, and when); approved and rejected have decision_comment when
         the person gave one; approved has new_version_id (edit) or scenario_id (scenario), and keeps the content
         that was reviewed, as rejected and conflicted do.'
@@ -991,7 +991,7 @@ paths:
       operationId: approveProposal
       summary: Approve after revalidation; effect depends on mode
       description: 'Core route from report pp.29–35. T-026 (AI_SPEC §6, D-003, D-004, D-011, D-027, D-030, D-046,
-        D-062; D-067, D-068, D-069 PROPOSED): a person, an editor or owner of the proposal''s organization, approves
+        D-062; D-067, D-068, D-069 APPROVED): a person, an editor or owner of the proposal''s organization, approves
         a ready proposal. The AI never approves: no provider, tool or job calls this route, and a worker cannot write
         a version or a scenario (0002). The request itself is checked first, as on every route (path ID 400, media
         type 415, body 400/422, Idempotency-Key header 400), then, in one transaction, the role (403) and the
@@ -1016,8 +1016,8 @@ paths:
         manifest the proposal''s dataset_bindings (D-062 (g)) and its comment the request''s; a clean draft moves to
         it, a dirty one is kept as it is and draft_out_of_date is true (D-003). scenario: exactly one immutable
         Scenario on the base with the reviewed changes and their hash, named after the proposal''s summary (D-067
-        PROPOSED), and no new version; nothing is queued, a run is the person''s own request (AI_SPEC §7). The
-        proposal becomes approved with the decider, the time and the comment (D-068 PROPOSED); the audit event (IDs,
+        APPROVED), and no new version; nothing is queued, a run is the person''s own request (AI_SPEC §7). The
+        proposal becomes approved with the decider, the time and the comment (D-068 APPROVED); the audit event (IDs,
         hashes and risk, never the comment) and the idempotency response commit with the effect. The database
         refuses a second effect of one proposal and an effect that is not the approved proposal''s own (0001, 0013).'
       tags:
@@ -1135,7 +1135,7 @@ paths:
                         reason: the proposal is needs_input
                       request_id: req_01M4YDQK00V6H8S0ST4F7510KR
                 risk_changed:
-                  summary: The server now computes another risk than the one the person reviewed (D-069 PROPOSED)
+                  summary: The server now computes another risk than the one the person reviewed (D-069 APPROVED)
                   value:
                     error:
                       code: LIFECYCLE_CONFLICT
@@ -1205,7 +1205,7 @@ paths:
                       message: the proposal's base binds datasets and dataset storage is not available
                       request_id: req_01M4YDQK00V6H8S0ST4F7510KR
                 storage_failed:
-                  summary: The dataset snapshots the base binds could not be read (D-069 PROPOSED)
+                  summary: The dataset snapshots the base binds could not be read (D-069 APPROVED)
                   value:
                     error:
                       code: SERVICE_UNAVAILABLE
@@ -1225,7 +1225,7 @@ paths:
     post:
       operationId: rejectProposal
       summary: Reject without model mutation
-      description: 'Core route from report pp.29–35. T-026 (AI_SPEC §6, D-011, D-030; D-068, D-069 PROPOSED): an
+      description: 'Core route from report pp.29–35. T-026 (AI_SPEC §6, D-011, D-030; D-068, D-069 APPROVED): an
         editor or owner rejects a ready or needs_input proposal. It becomes rejected with the decider, the time and the
         comment, with its audit event (never the comment) and the idempotency response (fingerprint: the proposal ID
         and the normalized parsed body, so {} and {"comment":""} are one request and the same key and body on another
@@ -1593,7 +1593,7 @@ paths:
         written, a JSON model at most 2 MiB (IMPORT_LIMIT_EXCEEDED). An import whose import_profile job fails for good or
         is cancelled before the file is profiled is FAILED with the job''s error (for example OBJECT_STORAGE_UNAVAILABLE
         or JOB_CANCELLED). invalid_rows counts CSV rows whose field count differs from the header; they are listed in the
-        error report (downloadImportErrors). T-017 (D-071, D-072 PROPOSED): after a person saves a mapping
+        error report (downloadImportErrors). T-017 (D-071, D-072 APPROVED): after a person saves a mapping
         (saveImportMapping) the import is VALIDATING, with no validation, invalid rows, canonical preview or error report,
         until the import_validate job of the current mapping_revision has read every row; then it is VALIDATED (every row
         maps to a valid canonical event; validation.valid true, invalid_rows 0, canonical_preview the preview rows'' events)
@@ -1908,7 +1908,7 @@ paths:
     post:
       operationId: saveImportMapping
       summary: Confirm mapping and queue deterministic validation
-      description: 'Core route from report pp.29–35. T-017 (APPROVED D-009, D-043 (c); D-070, D-071, D-072 PROPOSED): a
+      description: 'Core route from report pp.29–35. T-017 (APPROVED D-009, D-043 (c); D-070, D-071, D-072 APPROVED): a
         person (owner or editor) confirms how the columns of a profiled csv_events or json_events import map to canonical
         event fields (import-mapping.schema.json: source_column, target_field, transform; one of the four bounded
         transforms, never an expression). The mapping must map case_id, event_type and timestamp; every source_column is a

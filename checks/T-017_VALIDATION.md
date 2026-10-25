@@ -259,3 +259,7 @@ Exit code 在 `coordinator-exit-codes.txt`。沒有 NOT RUN 的新項目；`make
 | I1（Info）`confirmations` 的第一個迴圈不看欄位是否存在：mapping 列了 import 沒有的欄、且列法與需要確認的 suggestion 條目相同時，除了 `MAPPING_UNKNOWN_COLUMN` 還多一個 `MAPPING_CONFIRMATION_REQUIRED`（不會存進任何東西，只是與「不存在的欄不需確認」不一致） | Coordinator 修正：該迴圈略過不在 `known` 中的欄；以名稱確認這種欄為 `MAPPING_CONFIRMATION_UNKNOWN`。D-070 (d) 與 OpenAPI 的說法本來就涵蓋，不改 | `TestASuggestionOfOtherColumnsAsksNothing` 新增兩個斷言；紅燈 `checks/evidence/2026-10-20-T-017-r3/i1-red.log`（兩個都失敗）、綠燈 `i1-green.log` |
 
 I1 修正後，`make spec-check`、`make backend-test`、`go test -race ./internal/import/...` 與新的 `dt_test_t017r3` 上的 `make integration-test`（所有 migration 與 SQL suite，30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0（`checks/evidence/2026-10-20-T-017-r3/coordinator-*`）。`backend-race` 的其他 package、`architecture-check`、`ai-eval` 與 `frontend-test` 未在本次重跑：本次只改 `internal/import/mapping` 的一個純函式與其測試，它們在 6ed6b71 的 tree 上已通過。
+
+## Owner 批准（H-021，2026-10-25）
+
+Owner 對決策頁（https://claude.ai/artifact/T1xUsmk9ToV274qsPVRKqm）回覆「全都照建議」：D-070、D-071、D-072 依建議 APPROVED（`planning/decisions.json`、`docs/DECISIONS_AND_TBD.md`）。本報告前文寫作時這些決策仍是 PROPOSED，前文保留原貌；T-017 因此標為 done。

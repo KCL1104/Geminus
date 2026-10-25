@@ -1,5 +1,5 @@
 -- T-017 (migration 0014; TEST-012, TEST-013; APPROVED D-009, D-037, D-043
--- (c); D-071, D-072 PROPOSED): a mapping is saved as the next revision of
+-- (c); D-071, D-072 APPROVED): a mapping is saved as the next revision of
 -- a profiled import, which starts VALIDATING with the earlier validation
 -- cleared and its validation job queued in the same transaction; only the
 -- job of the current revision writes a validation, in the transaction

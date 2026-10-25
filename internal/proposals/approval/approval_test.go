@@ -138,7 +138,7 @@ func TestRefused(t *testing.T) {
 	}
 }
 
-// D-067 (proposed): the scenario is named after the summary the person
+// D-067 (approved): the scenario is named after the summary the person
 // reviewed, in one line, at most 200 characters.
 func TestScenarioName(t *testing.T) {
 	id := "aip_01M4YDQK00ADN261CME3WV5HZ6"

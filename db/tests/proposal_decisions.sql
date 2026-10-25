@@ -1,5 +1,5 @@
 -- T-026 (migration 0013; AI_SPEC §6, D-003, D-004, D-030; D-068, D-069
--- PROPOSED; TEST-006, TEST-007): a decision keeps the person's comment,
+-- APPROVED; TEST-006, TEST-007): a decision keeps the person's comment,
 -- only on an approved or rejected proposal, written by the decision; the
 -- worker cannot write the column (no UPDATE privilege; it reads it as it
 -- reads every column); a conflicted proposal names who found the

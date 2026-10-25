@@ -232,7 +232,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 |---|---|---|---|
 | serial | 是 | `case_id` | 板子或機櫃的序號 |
 | station | 是 | `stage` | 站別；mapping 時由使用者對應到 IR 的站 |
-| record type | 是 | `event_type` | pack 詞彙：`operation`；CSV 沒有此欄時需要常數 transform（CB-28）：T-017 沒有實作，待 owner 決定（D-070 (b)、CB-43 (e)） |
+| record type | 是 | `event_type` | pack 詞彙：`operation`；CSV 沒有此欄時需要常數 transform（CB-28）：T-017 沒有實作，owner 於 H-021 決定另立 D-073（PROPOSED，T-052 前；D-070 (b)、CB-43 (e)） |
 | equipment | 建議 | `resource_id` | 機台、測試機或 chamber 的 ID；用於推論 capacity 與停機對應 |
 | start | 是 | `timestamp` | RFC 3339 含 offset；沒有時區的時間一律拒絕（TWIN_IR_SPEC §7） |
 | end | 是（推論需要） | `end_timestamp`（新增） | ≥ start |

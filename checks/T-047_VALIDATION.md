@@ -337,3 +337,7 @@ Go 1.27.2、Python 3.13.16（SimPy 4.1.2）、4 CPU（與其他 session 共用�
 Coordinator 把第 2 輪的四個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（c80dd75 之後，沒有衝突）：1f9a909 → 3b5f063、0638a0d → 541f98f、4cb708d → c29bf10、5b25aaa → 76c3521。Reviewer 第 2 輪的 I3（SimPy harness 的「refused case 不檢查」mutant 不會失敗，屬測試的測試）與 I4（報告與文件誠實、與程式一致）不需要修改；I1（`deadlock-bound-ge` 為 equivalent）的提醒已記入 T-048、T-049 的 scope（c80dd75）。Reviewer 的判定為 ACCEPT，第 2 輪的修正（一個 Low、一個 Info）依 T-026 的前例由 coordinator 驗證後接受，不另開一輪 review。
 
 之後 `spec-check`、`backend-test`（含 `GEMINUS_FULL_DIFFERENTIAL=1` 的斷言）、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`（確定性 case 含 G-B14，G-B13 被拒絕，45/45）、`backend-race`（engine package 190 s）與新的 `dt_test_t047r2` 上的 `integration-test`（所有 migration 與 SQL suite，30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0（`checks/evidence/2026-10-25-T-047-r2/coordinator-*`）。D-064 仍是 PROPOSED，它的 gate 是 T-047 驗收前，所以 T-047 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。CI 上的 `GEMINUS_FULL_DIFFERENTIAL` 檢查在本次 push 後第一次執行。
+
+## Owner 批准（H-021，2026-10-25）
+
+Owner 對決策頁（https://claude.ai/artifact/T1xUsmk9ToV274qsPVRKqm）回覆「全都照建議」：D-064 依建議 APPROVED（`planning/decisions.json`、`docs/DECISIONS_AND_TBD.md`）。本報告前文寫作時這些決策仍是 PROPOSED，前文保留原貌；T-047 因此標為 done。

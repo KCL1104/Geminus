@@ -1,5 +1,5 @@
 // Package validator is the import_validate job handler (T-017, ADR-024;
-// APPROVED D-009, D-043; D-071, D-072 PROPOSED; TEST-012, TEST-013): the
+// APPROVED D-009, D-043; D-071, D-072 APPROVED; TEST-012, TEST-013): the
 // adapter between the worker loop and the pure internal/import/validation.
 // For one claimed job, the validation of one mapping revision, it reads
 // the import under the lease, reads the stored upload outside any

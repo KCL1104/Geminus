@@ -29,7 +29,7 @@ type rechecked struct {
 
 // recheck reviews ready proposal p again against its base version's IR,
 // as the server reviewed the provider's answer (AI_SPEC §6, SECURITY §5;
-// D-069 (b) PROPOSED): what the proposal holds is the answer as the review
+// D-069 (b) APPROVED): what the proposal holds is the answer as the review
 // kept it (its summary, assumptions, canonical changes, expected effects,
 // confidence and the provider's risk claim), so the same review runs every
 // server check again (patch profile and allowlist of the proposal's mode,

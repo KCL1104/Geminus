@@ -1027,7 +1027,7 @@
       "id": "T-017",
       "title": "Canonical mapping / full validation pipeline",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "AI / Full-stack",
       "planning_window": "Week 5–6",
       "depends_on": [
@@ -1090,7 +1090,7 @@
           "report": "checks/T-017_VALIDATION.md",
           "summary": "人工 canonical mapping 與全量 validation pipeline：import-mapping.schema.json 與 SaveMapping（confirmed_low_confidence）、internal/import/mapping（Check：欄位、target、transform、metadata 上限、AI suggestion 需要人確認的條目由 server 判定；Compile／Apply：每列轉換為 canonical event 並以 canonical-event.schema.json 最後驗證）、internal/import/validator（stale-job fence、第二次讀取前於 lease 下確認 revision、canonical dataset 與報表）、internal/import/upload 的 SaveMapping（CAS、Idempotency-Key、audit、儲存的 suggestion 每次以 ai-mapping.schema.json 驗證、fail closed）、migration 0014（VALIDATING／VALIDATED、COMMITTED 只能從 VALIDATED 來、兩個 deferred constraint trigger）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（534c9ba、4bdec75、6ed6b71 的 tree），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-20-T-017*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 CHANGES REQUESTED (M1–M5, L1–L6, I2, I4, I5); round 2 on 4bdec75 CHANGES REQUESTED (N1–N3); round 3 on 6ed6b71 ACCEPT (I1 fixed by the coordinator)",
-          "decisions_pending": "D-070、D-071、D-072 待 owner 批准；批准後 T-017 才標為 done"
+          "decisions": "D-070、D-071、D-072 於 2026-10-25 由 owner 依建議批准（H-021）"
         }
       ]
     },
@@ -1679,7 +1679,7 @@
       "id": "T-026",
       "title": "Human approve/reject / canonical effect",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "Platform + AI",
       "planning_window": "Week 8–10",
       "depends_on": [
@@ -1741,7 +1741,7 @@
           "report": "checks/T-026_VALIDATION.md",
           "summary": "人類批准與拒絕 AI proposal：internal/proposals/approval（role 與 base 的 revalidation、在 model row lock 下重新 review、重算 risk 與 ID pool、凍結 base 的 dataset manifest、一次 canonical effect：edit 產生一個新 version、scenario 產生一個 scenario；conflict 回 409 並存為 key 的回應；reject 不改任何 model 資料）、migration 0013（decision_comment 與兩個確保唯一 effect 的 deferred trigger）、internal/storage/scenarios、架構規則 decisions-only-in-the-api。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（4abeb96、5dd554c）與帶 DB 的 15 個 mutant（全部擋下），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-20-T-026*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 on 4abeb96 CHANGES REQUESTED (M1, L1–L5); round 2 on 5dd554c ACCEPT (N1–N3 fixed by the coordinator)",
-          "decisions_pending": "D-067、D-068、D-069 待 owner 批准；批准後 T-026 才標為 done"
+          "decisions": "D-067、D-068、D-069 於 2026-10-25 由 owner 依建議批准（H-021）"
         }
       ]
     },
@@ -2949,7 +2949,7 @@
       "id": "T-047",
       "title": "DES 有限緩衝與阻塞（H-016）",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "Simulation",
       "planning_window": "H-016 re-plan（未重估週數）",
       "depends_on": [
@@ -3022,7 +3022,7 @@
           "report": "checks/T-047_VALIDATION.md",
           "summary": "有限緩衝與阻塞：queue capacity 的 gate 解除（validator 的 D-050 R1 BLOCKING_CYCLE、engine des-go-0.2.0 執行 D-049 的阻塞、B1 的 ErrDeadlock → SIMULATION_DEADLOCK），Result 的 blocking、buffers 與 resource_states；手推 golden G-B1–G-B14、G-D2、G-D3（engine 與 Result 兩層），D-047 對 frozen des-go-0.1.0 的 differential（50,000 個隨機模型，race 下 5,000 個，make backend-test 以 GEMINUS_FULL_DIFFERENTIAL 斷言全數），獨立的 SimPy 4.1.2 reference（make simulation-reference-test：確定性 case 與 45 個隨機比對）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（78d0549、4aae188、76c3521 之後的 tree），spec-check、backend-test、backend-race、architecture-check、ai-eval、simulation-reference-test、frontend-test 都 exit 0（checks/evidence/2026-10-2*-T-047*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 CHANGES REQUESTED (M1–M3, L1–L3, I2, I3, I5); round 2 on 4aae188 ACCEPT (L1′ and I2 fixed by the implementer in 3b5f063..76c3521; I1's equivalence accepted, its note recorded for T-048/T-049)",
-          "decisions_pending": "D-064 待 owner 批准；批准後 T-047 才標為 done"
+          "decisions": "D-064 於 2026-10-25 由 owner 依建議批准（H-021）"
         }
       ]
     },
@@ -3282,13 +3282,15 @@
       "decision_gates": [
         "D-058",
         "D-059",
-        "D-060"
+        "D-060",
+        "D-073"
       ],
       "scope": [
         "以固定 seed 產生標為 synthetic 的 station event logs（含停機事件、測試失敗與重測），附產生它的 ground-truth 模型；不使用任何客戶資料。",
         "走一次 import→mapping→dataset，baseline run 並列模擬與觀測（例如每週產出、站別 cycle time）與誤差（REQ-025）；沒有觀測資料時回 unavailable。",
         "資料集與 ground truth 進 testdata，作為 T-027 inference、T-038 AI eval 與 T-040 E2E 的 fixture。",
-        "D-059 的 `end_timestamp`、`shift`、`product` 已在 canonical-event schema（T-046 phase 2）；station log 的 mapping 要把它們加入 mapping 的 target field（`ai-mapping.schema.json` 的 enum、`internal/ai/aicontext.TargetFields`）並實作 D-059 的 data-quality 規則。"
+        "D-059 的 `end_timestamp`、`shift`、`product` 已在 canonical-event schema（T-046 phase 2）；station log 的 mapping 要把它們加入 mapping 的 target field（`ai-mapping.schema.json` 的 enum、`internal/ai/aicontext.TargetFields`）並實作 D-059 的 data-quality 規則。",
+        "H-021（決策頁 Q4）：常數與單位換算的 transform（CB-28）另立 D-073（PROPOSED 草案：constant 只用於 event_type、outcome、stage、shift、product 且值須在 pack 詞彙中；seconds_to_ms、minutes_to_ms；沒有 offset 的時間建議仍拒絕）。本任務定案前由 owner 批准 D-073，再依批准的選項改 import-mapping／ai-mapping schema、mapping.Check／Compile、AI suggestion 的 prompt 與 eval；先寫測試。"
       ],
       "planned_outputs": [
         "testdata/datasets/electronics-line/",

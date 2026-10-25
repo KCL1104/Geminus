@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 63,
-    "proposed": 7,
+    "approved": 70,
+    "proposed": 1,
     "rejected": 0,
     "superseded": 0
   },
@@ -26,16 +26,18 @@
     "H-017",
     "H-018",
     "H-019",
-    "H-020"
+    "H-020",
+    "H-021"
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 25,
-    "in_progress": 5,
+    "done": 28,
+    "in_progress": 2,
     "not_started": 23,
     "review": 0
   },
   "ready_tasks": [
+    "T-028",
     "T-035",
     "T-048",
     "T-049",
@@ -592,14 +594,14 @@
       ]
     },
     "D-064": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-047 驗收前；T-048–T-050 延伸 B1／B2 時沿用 (a)",
       "gates_tasks": [
         "T-047"
       ]
     },
     "D-067": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-026 驗收前；T-028 的 scenario 讀取與 UI 前",
       "gates_tasks": [
         "T-026",
@@ -607,28 +609,28 @@
       ]
     },
     "D-068": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-026 驗收前；T-031 的 review UI 前",
       "gates_tasks": [
         "T-026"
       ]
     },
     "D-069": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-026 驗收前",
       "gates_tasks": [
         "T-026"
       ]
     },
     "D-070": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-017 驗收前；(d) 另為 T-027 與 mapping UI（T-031）前",
       "gates_tasks": [
         "T-017"
       ]
     },
     "D-071": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-017 驗收前；(e)(g) 另為 T-018 前",
       "gates_tasks": [
         "T-017",
@@ -636,10 +638,17 @@
       ]
     },
     "D-072": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-017 驗收前",
       "gates_tasks": [
         "T-017"
+      ]
+    },
+    "D-073": {
+      "status": "proposed",
+      "gate": "T-052 前（或第一次以真實 station log 展示匯入前，以先到者為準）",
+      "gates_tasks": [
+        "T-052"
       ]
     }
   },

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/ai-mapping.schema.json",
   "title": "ai-mapping",
-  "$comment": "SOURCE pp. 6,25. An AI's read-only mapping suggestion (T-027), kept apart from the mapping a person confirms (import-mapping.schema.json, APPROVED D-043 (c)); it is never applied without a person's saveImportMapping, and an entry that requires confirmation is confirmed there by name (D-070 PROPOSED). The target fields and transforms are import-mapping.schema.json's: D-009's bounded transform enum, never arbitrary expressions, scripts or shell.",
+  "$comment": "SOURCE pp. 6,25. An AI's read-only mapping suggestion (T-027), kept apart from the mapping a person confirms (import-mapping.schema.json, APPROVED D-043 (c)); it is never applied without a person's saveImportMapping, and an entry that requires confirmation is confirmed there by name (D-070 APPROVED). The target fields and transforms are import-mapping.schema.json's: D-009's bounded transform enum, never arbitrary expressions, scripts or shell.",
   "type": "object",
   "properties": {
     "mappings": {

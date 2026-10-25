@@ -86,7 +86,7 @@ confidence 僅為模型自評，不能作為 skip review 或授予權限的條�
 
 如果 latest base 已改，回 409 MODEL_VERSION_CONFLICT、原 proposal 轉 conflicted；不得自動 rebase。reject 不改 model/version/draft hash。角色在 review 後被撤銷，approve 時必須拒絕；之前看過 diff 不等於現在有權限。
 
-T-026 實作（`internal/proposals/approval`；D-067–D-069 PROPOSED，待 owner 決定）的流程如下。批准不呼叫 provider，所以不受 AI 是否開啟影響；AI 與 worker 都無法連結這個 package（architecture 規則 `decisions-only-in-the-api`），worker 也沒有 version、scenario 的 INSERT 與 ready proposal 的 UPDATE（0002）。
+T-026 實作（`internal/proposals/approval`；D-067–D-069 APPROVED，H-021）的流程如下。批准不呼叫 provider，所以不受 AI 是否開啟影響；AI 與 worker 都無法連結這個 package（architecture 規則 `decisions-only-in-the-api`），worker 也沒有 version、scenario 的 INSERT 與 ready proposal 的 UPDATE（0002）。
 
 1. Request 本身的檢查（path、media type、body、`Idempotency-Key` header：400／415／422）先於 role，與其他 route 相同。在 membership 與 role（editor／owner）之後檢查 Idempotency-Key：fingerprint 為 proposal ID 與 normalized parsed body（空 comment 即沒有），key 的 scope 不含 proposal，所以同 key 同 body 用在另一個 proposal 為 409 `IDEMPOTENCY_KEY_CONFLICT`；replay 前仍先查 role，重送的錯誤回答帶這次 request 的 ID（D-069 (a)）。
 2. 依序鎖 model row、draft、proposal。approved、rejected、conflicted 回 409 `PROPOSAL_ALREADY_DECIDED`（換了 key 也一樣，D-030）；其他非 ready 的狀態回 409 `LIFECYCLE_CONFLICT`。
@@ -107,7 +107,7 @@ AI analyst 建議「下一個 experiment」也只是文字 hypothesis；使用�
 
 mapper 僅依 COLUMN_NAMES、SAMPLE_ROWS、CANONICAL_SCHEMA 提案，每項 source_column、target_field、confidence、evidence、transform、requires_confirmation。confidence<0.80 或 target_field=null 必须確認；沒有語義證據時 null，不因名稱相似就猜 timestamp 等。
 
-APPROVED D-009：transforms 只允許 identity/rfc3339/integer_ms/boolean_literal。沒有 eval、SQL、JS/Python 或自由文字 expression。mapping suggestion 與已確認 mapping 分開保存；保存 mapping 增 revision、排 validation；stale validation job 不得把舊 revision 標 validated。T-017 實作（D-070、D-071 PROPOSED）：人工 mapping 用 `import-mapping.schema.json`（沒有 confidence、evidence、requires_confirmation），每個 target field 的 transform 固定；import 有 ready suggestion 時，哪些條目需要人確認由 server 依本節的規則判定（confidence < 0.80 或 target_field = null，或 AI 自己標了 `requires_confirmation`；儲存的旗標不能免除確認），mapping 照這種條目採用的每一欄（null 條目：mapping 也不匯入該欄）要由存檔的人在 `confirmed_low_confidence` 逐欄列出（suggestion 中不是此 import 欄位的條目不需確認，T-017 review 第 2 輪 N1）；儲存的 suggestion 每次讀取都以 `ai-mapping.schema.json` 驗證，不符時存檔 fail closed；AI 沒有寫 mapping 的路徑（worker 沒有 grant、0014 拒絕），suggestion 不會變成 mapping。Stale job 由 `mapping_revision` 與 0014 的 deferred trigger 擋下。
+APPROVED D-009：transforms 只允許 identity/rfc3339/integer_ms/boolean_literal。沒有 eval、SQL、JS/Python 或自由文字 expression。mapping suggestion 與已確認 mapping 分開保存；保存 mapping 增 revision、排 validation；stale validation job 不得把舊 revision 標 validated。T-017 實作（D-070、D-071 APPROVED，H-021）：人工 mapping 用 `import-mapping.schema.json`（沒有 confidence、evidence、requires_confirmation），每個 target field 的 transform 固定；import 有 ready suggestion 時，哪些條目需要人確認由 server 依本節的規則判定（confidence < 0.80 或 target_field = null，或 AI 自己標了 `requires_confirmation`；儲存的旗標不能免除確認），mapping 照這種條目採用的每一欄（null 條目：mapping 也不匯入該欄）要由存檔的人在 `confirmed_low_confidence` 逐欄列出（suggestion 中不是此 import 欄位的條目不需確認，T-017 review 第 2 輪 N1）；儲存的 suggestion 每次讀取都以 `ai-mapping.schema.json` 驗證，不符時存檔 fail closed；AI 沒有寫 mapping 的路徑（worker 沒有 grant、0014 拒絕），suggestion 不會變成 mapping。Stale job 由 `mapping_revision` 與 0014 的 deferred trigger 擋下。
 
 commit 凍結 dataset，inference 從資料提出 model proposal（含 assumptions/data quality），不能直接 publish。JSON model import 同樣 server-bind identity + validate + diff + review。invalid rows 不 silent drop；原報告沒有授權「只匯入合法部分」，候選 P0 採 all-or-nothing。
 

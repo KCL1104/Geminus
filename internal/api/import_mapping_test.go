@@ -5,7 +5,7 @@ package api_test
 // API login, and the job loop cmd/worker runs as the plain worker login
 // with the import profile and validation handlers, on the disposable
 // database and a filesystem object store (TEST-012, TEST-013; APPROVED
-// D-009, D-011, D-043 (c); D-070, D-071, D-072 PROPOSED). Every file here
+// D-009, D-011, D-043 (c); D-070, D-071, D-072 APPROVED). Every file here
 // is synthetic.
 
 import (

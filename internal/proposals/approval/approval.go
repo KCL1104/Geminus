@@ -1,6 +1,6 @@
 // Package approval is the human decision on an AI proposal (T-026; AI_SPEC
 // §6, API_DATABASE §4, SECURITY §5; D-003, D-004, D-011, D-027, D-030,
-// D-046, D-062; D-067, D-068, D-069 PROPOSED). A person, an editor or owner
+// D-046, D-062; D-067, D-068, D-069 APPROVED). A person, an editor or owner
 // of the proposal's organization, approves a ready proposal, which then has
 // exactly one effect, or rejects it, which has none. The AI never decides:
 // this package calls no provider, the worker cannot link it (architecture
@@ -90,7 +90,7 @@ func (e *StateError) Error() string {
 
 // RiskChangedError: the server's risk of the proposal, computed again, is
 // not the one the person reviewed (409 LIFECYCLE_CONFLICT at Path,
-// D-069 (b) PROPOSED): a new proposal is needed. Nothing changed.
+// D-069 (b) APPROVED): a new proposal is needed. Nothing changed.
 type RiskChangedError struct{ Path, Reviewed, Now string }
 
 func (e *RiskChangedError) Error() string {
@@ -187,7 +187,7 @@ type (
 	}
 )
 
-// decisionComment is the comment a decision keeps (D-068 PROPOSED): nil
+// decisionComment is the comment a decision keeps (D-068 APPROVED): nil
 // for none or an empty one; at most 2000 characters (code points, as JSON
 // Schema and PostgreSQL count them), without U+0000, which PostgreSQL text
 // cannot store.
@@ -497,7 +497,7 @@ func sorted(manifest []model.DatasetBinding) []model.DatasetBinding {
 }
 
 // scenarioName is the name of the scenario an approval creates (D-067
-// PROPOSED): the proposal's summary, which the person reviewed, each run
+// APPROVED): the proposal's summary, which the person reviewed, each run
 // of white space made one space, cut at maxName characters with "…"; the
 // proposal's ID when the summary is only white space.
 func scenarioName(summary, id string) string {

@@ -1,7 +1,7 @@
 package upload
 
 // T-017 (saveImportMapping; APPROVED D-009, D-011, D-043 (c); D-070, D-071
-// PROPOSED; TEST-012, TEST-013): a person confirms how a profiled import's
+// APPROVED; TEST-012, TEST-013): a person confirms how a profiled import's
 // columns map to canonical event fields. In one transaction, with its audit
 // event and idempotency response: the mapping becomes the next
 // mapping_revision (a compare-and-set on the revision the person saw; a

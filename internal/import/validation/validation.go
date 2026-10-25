@@ -1,6 +1,6 @@
 // Package validation reads every row of an uploaded CSV or JSON events
 // file through a person's confirmed mapping (T-017; APPROVED D-009, D-043;
-// D-071, D-072 PROPOSED; TEST-012, TEST-013): Validate counts the rows that
+// D-071, D-072 APPROVED; TEST-012, TEST-013): Validate counts the rows that
 // do not map to a valid canonical event, keeps the first issues for the
 // import's validation and the first errors for its error report, the
 // canonical events of the preview's rows and the size the canonical dataset
