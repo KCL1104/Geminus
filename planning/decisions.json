@@ -943,7 +943,7 @@
       ],
       "approved_by": "KCL1104 (repository owner; session decision, H-021)",
       "approved_at": "2026-10-25",
-      "approval_notes": "依建議批准（H-021）：照列；(b) server risk 或 effective risk 改變時 409 LIFECYCLE_CONFLICT、不批准（決策頁 Q3），revalidation 失敗的 proposal 維持 ready（B1）。publishVersion／createSimulation 的同類錯誤是否改回 503 不在這次批准範圍，仍待 owner 決定。 H-022（決策頁 Q4）：publishVersion 與 createSimulation 讀不到 dataset snapshot 時也回 503 SERVICE_UNAVAILABLE（DATASET_STORAGE_FAILED），由 T-054 實作。"
+      "approval_notes": "依建議批准（H-021）：照列；(b) server risk 或 effective risk 改變時 409 LIFECYCLE_CONFLICT、不批准（決策頁 Q3），revalidation 失敗的 proposal 維持 ready（B1）。publishVersion／createSimulation 的同類錯誤是否改回 503 不在這次批准範圍，仍待 owner 決定。 H-022（決策頁 Q4）：publishVersion 與 createSimulation 讀不到 dataset snapshot 時也回 503 SERVICE_UNAVAILABLE（DATASET_STORAGE_FAILED），由 T-054 實作；批准時的 draft 同步屬 (b) 的範圍；patchDraft、resetDraft 另見 D-087（H-023）。"
     },
     {
       "id": "D-070",
@@ -1074,6 +1074,20 @@
       "approved_by": "KCL1104 (repository owner; session decision, H-022)",
       "approved_at": "2026-10-25",
       "approval_notes": "依建議批准（H-022）：採 A。"
+    },
+    {
+      "id": "D-087",
+      "title": "patchDraft 與 resetDraft 讀不到 dataset snapshot 時的回應（T-054）",
+      "source_gap": "H-022 Q4 只批准 publishVersion 與 createSimulation 改回 503；patchDraft 與 resetDraft 也跑同一個 binding stage，讀不到 snapshot 時原本回 500。T-054 第 2 輪由 coordinator 自行延伸，review M1 指出這超出批准範圍。",
+      "proposal": "A：與其他讀 snapshot 的 route 相同，回 503 SERVICE_UNAVAILABLE（details[0].code DATASET_STORAGE_FAILED），原因只寫入 log，request 自己的 context 錯誤照一般處理，transaction rollback；B：維持 500。不涵蓋 run trace 下載與 import error report 的讀取失敗。",
+      "gate": "T-054 驗收前",
+      "resolves": [],
+      "source_pages": "N/A（H-022 Q4、D-069 (b)、T-054 review M1）",
+      "owner_role": "Platform",
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-023)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "Owner 以選擇題選「也改為 503 (Recommended)」（H-023）：採 A。"
     }
   ],
   "human_decisions": [
@@ -1362,6 +1376,16 @@
       "still_open": [
         "T-054：publishVersion／createSimulation 的 503 實作"
       ]
+    },
+    {
+      "id": "H-023",
+      "subject": "批准 D-087：patchDraft、resetDraft 讀不到 dataset snapshot 時也回 503",
+      "decision": "T-054 review M1 指出 coordinator 把 503 延伸到 patchDraft、resetDraft 超出 H-022 批准的兩個 endpoint；agent 以選擇題詢問，owner 選 A（也改為 503）。",
+      "quote": "也改為 503 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-25",
+      "source": "Claude Code session：AskUserQuestion，owner 選擇",
+      "still_open": []
     }
   ]
 }

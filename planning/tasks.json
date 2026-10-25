@@ -3420,7 +3420,7 @@
     },
     {
       "id": "T-054",
-      "title": "publishVersion 與 createSimulation 的 dataset snapshot 失敗回 503（H-022）",
+      "title": "dataset snapshot 讀取失敗回 503：publishVersion、createSimulation（H-022）、patchDraft、resetDraft（D-087）與批准時的 draft 同步",
       "priority": "P0",
       "status": "not_started",
       "owner_role": "Platform",
@@ -3436,15 +3436,18 @@
       ],
       "decision_gates": [
         "D-061",
-        "D-069"
+        "D-069",
+        "D-087"
       ],
       "scope": [
-        "publishVersion 與 createSimulation 在 dataset binding stage 讀不到或無法驗證 snapshot（infrastructure 錯誤）時，與 approveProposal、createManualScenario 相同回 503 SERVICE_UNAVAILABLE，details[0].code 為 DATASET_STORAGE_FAILED，原因只寫入 log；request 本身被取消或逾時照一般的 context 錯誤處理；什麼都不寫入。先寫測試（unit 與 DB-backed），更新 OpenAPI 的回應與範例、TS 契約測試。"
+        "publishVersion 與 createSimulation 在 dataset binding stage 讀不到或無法驗證 snapshot（infrastructure 錯誤）時，與 approveProposal、createManualScenario 相同回 503 SERVICE_UNAVAILABLE，details[0].code 為 DATASET_STORAGE_FAILED，原因只寫入 log；request 本身被取消或逾時照一般的 context 錯誤處理；什麼都不寫入。先寫測試（unit 與 DB-backed），更新 OpenAPI 的回應與範例、TS 契約測試。",
+        "第 2 輪（T-054 review L4）：patchDraft、resetDraft（D-087，H-023）與 approveProposal 的 draft 同步（D-069 (b)）也回 503 DATASET_STORAGE_FAILED；不涵蓋 run trace 下載與 import error report 的讀取失敗。"
       ],
       "planned_outputs": [
         "internal/models/",
         "internal/runs/",
-        "openapi/openapi.yaml"
+        "openapi/openapi.yaml",
+        "internal/proposals/approval/"
       ],
       "spec_refs": [
         "docs/API_DATABASE.md",

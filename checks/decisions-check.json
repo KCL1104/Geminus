@@ -1,7 +1,7 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 75,
+    "approved": 76,
     "proposed": 1,
     "rejected": 0,
     "superseded": 0
@@ -28,7 +28,8 @@
     "H-019",
     "H-020",
     "H-021",
-    "H-022"
+    "H-022",
+    "H-023"
   ],
   "tasks_by_status": {
     "blocked": 0,
@@ -688,6 +689,13 @@
       "gate": "T-028 驗收前",
       "gates_tasks": [
         "T-028"
+      ]
+    },
+    "D-087": {
+      "status": "approved",
+      "gate": "T-054 驗收前",
+      "gates_tasks": [
+        "T-054"
       ]
     }
   },
