@@ -4419,6 +4419,203 @@
       "simpy": "refused: X's bundle takes S (shared, capacity 3) before O (its own, capacity 1); one resource at a time would let y1 take S at 3"
     },
     {
+      "id": "G-B14",
+      "title": "a bundle of own resources is all or nothing whatever their capacities",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-B14",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "O1",
+            "type": "machine",
+            "name": "O1",
+            "capacity": 2,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "O2",
+            "type": "machine",
+            "name": "O2",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "sx",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              },
+              "max_entities": 2
+            }
+          },
+          {
+            "id": "qX",
+            "type": "queue",
+            "capacity": 2
+          },
+          {
+            "id": "X",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 10
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "O1",
+                "units": 1
+              },
+              {
+                "resource_id": "O2",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "sx__qX",
+            "from": "sx",
+            "to": "qX",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qX__X",
+            "from": "qX",
+            "to": "X",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "X__done",
+            "from": "X",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 30,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "expected": {
+        "starts": {
+          "X": [
+            [
+              "r0/sx/1",
+              1
+            ],
+            [
+              "r0/sx/2",
+              11
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/sx/1",
+            11
+          ],
+          [
+            "r0/sx/2",
+            21
+          ]
+        ],
+        "blocks": [],
+        "result": {
+          "completed_count": 2,
+          "censored_entities": 0,
+          "lead_times_minutes": [
+            10,
+            19
+          ],
+          "queue_waits_minutes": {
+            "qX": [
+              0,
+              9
+            ]
+          },
+          "resource_utilization": {
+            "O1": 0.3333333333333333,
+            "O2": 0.6666666666666666
+          },
+          "blocking": {
+            "sx": {
+              "blocks_started": 0,
+              "blocks_completed": 0,
+              "completed_block_ticks": 0,
+              "blocked_entity_ticks": 0
+            }
+          },
+          "buffers": {
+            "qX": {
+              "full_ticks": 0
+            }
+          },
+          "resource_states": {
+            "O1": {
+              "in_use_ticks": 1200000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 1200000
+            },
+            "O2": {
+              "in_use_ticks": 1200000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 1200000
+            }
+          }
+        }
+      },
+      "simpy": "compare"
+    },
+    {
       "id": "G-D2",
       "title": "a circular wait is a typed error at the tick it forms",
       "model": {

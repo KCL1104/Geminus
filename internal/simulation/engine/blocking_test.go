@@ -196,12 +196,12 @@ func compareFacts(t *testing.T, id string, got, want facts) {
 	}
 }
 
-// G-B1–G-B4, G-B7–G-B13: service starts, completions and every block
+// G-B1–G-B4, G-B7–G-B14: service starts, completions and every block
 // interval, by entity, against the hand derivation (G-B4W, G-B10–G-B13:
-// T-047 review round 1).
+// T-047 review round 1; G-B14: round 2).
 func TestBlockingGoldens(t *testing.T) {
 	cases := blockingGoldens(t)
-	for _, id := range []string{"G-B1", "G-B1W", "G-B2", "G-B3", "G-B4", "G-B4W", "G-B7", "G-B8", "G-B9", "G-B10", "G-B11", "G-B12", "G-B13"} {
+	for _, id := range []string{"G-B1", "G-B1W", "G-B2", "G-B3", "G-B4", "G-B4W", "G-B7", "G-B8", "G-B9", "G-B10", "G-B11", "G-B12", "G-B13", "G-B14"} {
 		t.Run(id, func(t *testing.T) {
 			c, ok := cases[id]
 			if !ok {

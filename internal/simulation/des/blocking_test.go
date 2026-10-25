@@ -142,7 +142,7 @@ func TestBlockingGoldenResults(t *testing.T) {
 			}
 		})
 	}
-	if checked < 13 {
+	if checked < 14 {
 		t.Fatalf("%d cases with an expected result", checked)
 	}
 }

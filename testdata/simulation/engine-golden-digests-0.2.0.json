@@ -1,5 +1,5 @@
 {
-  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.2.0, T-047) on the cases of expected-cases.json and on the cases of blocking-goldens.json that have an expected result; NOT an independent oracle. Their values are checked against the hand-derived expectations of those files (internal/simulation/des TestBlockingGoldenResults, internal/simulation/engine TestBlockingGoldens); these digests only make any later numerical change visible. G-B4W and G-B10–G-B13 (T-047 review round 1) were added after their hand-derived values passed, from the same unchanged engine. des-go-0.1.0's lock (engine-golden-digests.json) is kept as it was (ADR-026 D-047): GOLDEN-001/002 still match it with engine_version set back to des-go-0.1.0.",
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.2.0, T-047) on the cases of expected-cases.json and on the cases of blocking-goldens.json that have an expected result; NOT an independent oracle. Their values are checked against the hand-derived expectations of those files (internal/simulation/des TestBlockingGoldenResults, internal/simulation/engine TestBlockingGoldens); these digests only make any later numerical change visible. G-B4W and G-B10–G-B13 (T-047 review round 1) and G-B14 (round 2) were added after their hand-derived values passed, from the same unchanged engine. des-go-0.1.0's lock (engine-golden-digests.json) is kept as it was (ADR-026 D-047): GOLDEN-001/002 still match it with engine_version set back to des-go-0.1.0.",
   "engine_version": "des-go-0.2.0",
   "inputs": {
     "cases": "expected-cases.json (with the dora stand-in) and blocking-goldens.json (model and config as given, no domain metrics)",
@@ -23,6 +23,7 @@
     "G-B10": "sha256:596e5da178853ae582b62964398fbd530bea84c3a90f29ded8b26a3f47904137",
     "G-B11": "sha256:9b7860020138df5944522c9448368a0ce6302924156ca6cee7006a1ec9d7ae11",
     "G-B12": "sha256:cf01100da4ea35264932157e72614cd17b0ee24fedb99c0ada015b8bda7f86a5",
-    "G-B13": "sha256:da08bc7824207826cd01eef633814cf87d88d3d2cbf989ce66b83e0b7bf8cc9e"
+    "G-B13": "sha256:da08bc7824207826cd01eef633814cf87d88d3d2cbf989ce66b83e0b7bf8cc9e",
+    "G-B14": "sha256:ca224523d763ec887ceac3d5cc6562c1ec89590f84373d8e113aca3f33d8279a"
   }
 }
