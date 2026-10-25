@@ -67,6 +67,10 @@ type bchecker struct {
 	isDown    [][]bool
 	downSince [][]int64
 	due       [][]int64
+
+	// Calendars and release schedules (D-052, D-053, T-049;
+	// kernel_check_calendar_test.go): nil when the model has neither.
+	cal *calCheck
 }
 
 func newBChecker(p *Program, ir *model.ModelIR, rep uint32) *bchecker {
@@ -89,6 +93,7 @@ func newBChecker(p *Program, ir *model.ModelIR, rep uint32) *bchecker {
 		}
 		return t
 	}
+	c.cal = newCalCheck(p, ir)
 	for i, r := range p.resources {
 		c.ttf[i], c.ttr[i] = -1, -1
 		for _, x := range ir.Resources {
@@ -98,7 +103,7 @@ func newBChecker(p *Program, ir *model.ModelIR, rep uint32) *bchecker {
 			c.ttf[i], c.ttr[i] = constantTicks(x.Breakdowns.TimeToFailure.Distribution), constantTicks(x.Breakdowns.TimeToRepair.Distribution)
 			c.isDown[i], c.downSince[i], c.due[i] = make([]bool, r.capacity), make([]int64, r.capacity), make([]int64, r.capacity)
 			for u := range c.due[i] {
-				c.due[i][u] = c.ttf[i] // from t=0
+				c.due[i][u] = c.dueAfter(i, 0, c.ttf[i]) // from t=0
 			}
 		}
 	}
@@ -141,6 +146,7 @@ func (c *bchecker) finish() {
 		c.finishGroup()
 	}
 	c.tickBoundary()
+	c.calendarFinish()
 }
 
 // fits reports whether process's bundle fits the units neither in use nor
@@ -152,7 +158,8 @@ func (c *bchecker) fitsWith(process int, full bool) bool {
 	for _, q := range c.p.nodes[process].requires {
 		capacity := c.p.resources[q.resource].capacity
 		if !full {
-			capacity -= c.down[q.resource]
+			// D-052: no more than the units on shift either.
+			capacity = min(capacity-c.down[q.resource], c.onShift(q.resource))
 		}
 		if c.inUse[q.resource]+q.units > capacity {
 			return false
@@ -219,6 +226,7 @@ func (c *bchecker) tickBoundary() {
 			}
 		}
 	}
+	c.calendarBoundary()
 }
 
 // deadlocked reports whether the reconstruction is a circular wait.
@@ -320,7 +328,7 @@ func (c *bchecker) repair(o Observation) {
 	c.isDown[r][u] = false
 	c.stats.repairs++
 	if c.ttf[r] >= 0 {
-		c.due[r][u] = o.Tick + c.ttf[r]
+		c.due[r][u] = c.dueAfter(r, o.Tick, c.ttf[r])
 	}
 	if o.Value != int64(c.down[r]) {
 		c.fail("tick %d: %s down %d after a repair, reconstructed %d", o.Tick, c.p.resources[r].id, o.Value, c.down[r])
@@ -378,10 +386,19 @@ func (c *bchecker) finishGroup() {
 	u := &cursor{c: c, g: g}
 	switch first := g[0]; {
 	case first.Kind == ObsArrival:
-		u.at++
-		c.state[first.Entity] = "route"
-		c.ids[first.Entity] = FormatEntityID(c.rep, c.p.nodes[first.Node].id, uint64(first.Value))
-		c.route(u, first.Entity, first.Node)
+		// One entity, or a release table's row of several, one after
+		// another, each routed at once (D-053).
+		for u.at < len(g) && g[u.at].Kind == ObsArrival {
+			a := g[u.at]
+			u.at++
+			c.arrival(a)
+			c.state[a.Entity] = "route"
+			c.ids[a.Entity] = FormatEntityID(c.rep, c.p.nodes[a.Node].id, uint64(a.Value))
+			c.route(u, a.Entity, a.Node)
+		}
+	case first.Kind == ObsCapacity:
+		c.capacityChange(g)
+		u.at = len(g)
 	case first.Kind == ObsDelayEnd:
 		u.at++
 		if c.state[first.Entity] != "delay" {
@@ -483,6 +500,7 @@ func (c *bchecker) route(u *cursor, e uint64, from int) {
 }
 
 func (c *bchecker) enter(e uint64, p int) {
+	delete(c.cal.since, e) // a new request: B2's since is the request's (T-049)
 	c.waiting = append(c.waiting, wreq{e, p})
 	c.occupied[p]++
 	c.state[e] = "queue"

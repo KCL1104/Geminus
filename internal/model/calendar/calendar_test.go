@@ -133,7 +133,7 @@ func TestPatternAgainstTheDefinition(t *testing.T) {
 		}
 		// FailureAt: the least t with Θ(t) >= Θ(up) + ttf, by counting.
 		for range 20 {
-			up, ttf := rng.Int64N(span/2), 1+rng.Int64N(span/4)
+			up, ttf := rng.Int64N(span/2), rng.Int64N(span/4) // 0 included
 			want, count := int64(-1), int64(0)
 			for x := up; x < span; x++ {
 				if count >= ttf {
@@ -208,6 +208,9 @@ func TestHandCases(t *testing.T) {
 	}
 	if _, ok := p.FailureAt(0, 8, 11); ok {
 		t.Error("a failure after the limit was found")
+	}
+	if at, ok := p.FailureAt(7, 0, 100); !ok || at != 7 {
+		t.Errorf("a 0-tick time to failure off shift: %d %v, want 7 (at once)", at, ok)
 	}
 	if b, ok := p.NextChange(0); !ok || b != 6 {
 		t.Errorf("NextChange(0) %d %v", b, ok)

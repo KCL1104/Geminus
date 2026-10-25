@@ -390,16 +390,17 @@ func (p *Pattern) OnTicks(t int64) int64 {
 // up fails after ttf ticks of on-shift time: the least t with Θ(t) >=
 // Θ(up) + ttf (D-051 (ii)); a target reached at the end of a shift is that
 // end's tick. False when it is after limit (the horizon): the search stops
-// there. ttf is at least 1 tick (a time to failure is never 0, D-051).
+// there. A ttf of 0 ticks (a sample that quantizes to 0) fails at up, on
+// shift or not, as it does at calendar time.
 func (p *Pattern) FailureAt(up, ttf, limit int64) (int64, bool) {
-	if ttf < 1 {
+	if ttf < 0 {
 		return 0, false
 	}
 	lo := up + ttf // Θ grows by at most one a tick
 	if lo > limit {
 		return 0, false
 	}
-	if p.alwaysOn {
+	if p.alwaysOn || ttf == 0 {
 		return lo, true
 	}
 	target := p.OnTicks(up) + ttf

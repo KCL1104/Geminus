@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/calendar"
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/simulation"
@@ -49,6 +50,17 @@ type Program struct {
 	limits       simulation.ExecutionLimits
 	finite       bool // some process has a finite buffer (D-049)
 	breakdowns   bool // some resource breaks down (D-051)
+	// calendars (D-052, T-049): every calendar some resource refers to, in
+	// ID order, and whether there is one.
+	calendars  []ccalendar
+	calendared bool
+}
+
+// ccalendar is a calendar some resource refers to: its resources, in ID
+// order (a CAPACITY_CHANGE updates them in that order, D-052).
+type ccalendar struct {
+	id        string
+	resources []int
 }
 
 type cnode struct {
@@ -69,6 +81,13 @@ type cnode struct {
 	// resources of its bundle that break down, 0 without one, -1 when one
 	// has no bound (exponential, lognormal, Weibull: no deadline).
 	ttrMax int64
+	// release is a source's release schedule (D-053), instead of arrival.
+	release *releaser
+	// need is the bundle of a process with a resource on a calendar, for
+	// B2's next_fit, and xEnd the end of the last exception of their
+	// calendars (D-050's X_end); nil and 0 without one.
+	need []calendar.Need
+	xEnd int64
 }
 
 type requirement struct {
@@ -90,6 +109,10 @@ type cresource struct {
 	// sampler's bound (-1 for none).
 	ttf, ttr *sampler
 	ttrMax   int64
+	// pattern is the resource's S(t) on its calendar (D-052), nil without
+	// one (S = capacity); cal its calendar's index in Program.calendars.
+	pattern *calendar.Pattern
+	cal     int
 }
 
 // Compile checks a run input and builds its Program. The IR is validated
@@ -144,13 +167,15 @@ var validateIR = validate.IR
 // kernelExecutes holds the line-flow primitives (ADR-026, D-058;
 // validate.Primitives) this kernel executes: finite buffers since
 // des-go-0.2.0 (T-047, D-049); breakdowns, lognormal and Weibull since
-// des-go-0.3.0 (T-048, D-051, D-056). Each of T-049–T-051 adds its own
-// together with the kernel change and a new engine_version. It is kept
+// des-go-0.3.0 (T-048, D-051, D-056); calendars and release schedules
+// since des-go-0.4.0 (T-049, D-052, D-053). Each of T-050–T-051 adds its
+// own together with the kernel change and a new engine_version. It is kept
 // apart from the validator's list so that a primitive whose rules are
 // checked but whose kernel is not there yet is still refused. Only read,
 // never iterated.
 var kernelExecutes = map[validate.Primitive]bool{validate.FiniteBuffer: true,
-	validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true}
+	validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true,
+	validate.Calendars: true, validate.ReleaseSchedule: true}
 
 // unsupported refuses every use of a primitive the kernel does not execute,
 // so no model is ever run as if such a member were absent (D-063).
@@ -365,10 +390,38 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 	for i, n := range nodes {
 		p.index[n.ID] = i
 	}
+	// The calendars resources refer to, in ID order (D-048: their first
+	// changes are scheduled in that order at t=0).
+	calendars := slices.Clone(ir.Calendars)
+	slices.SortFunc(calendars, byID(func(c model.Calendar) string { return c.ID }))
+	calIndex := map[string]int{}
+	for _, c := range calendars {
+		for _, r := range resources {
+			if r.CalendarID == c.ID {
+				calIndex[c.ID] = len(p.calendars)
+				p.calendars = append(p.calendars, ccalendar{id: c.ID})
+				break
+			}
+		}
+	}
 	resIndex := make(map[string]int, len(resources))
 	for i, r := range resources {
 		resIndex[r.ID] = i
-		c := cresource{id: r.ID, capacity: r.Capacity}
+		c := cresource{id: r.ID, capacity: r.Capacity, cal: -1}
+		if r.CalendarID != "" {
+			ci, ok := calIndex[r.CalendarID]
+			if !ok {
+				return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.UnknownReference, "/model/resources", r.ID+": no calendar "+r.CalendarID, model.SeverityError)}}
+			}
+			cal := calendars[slices.IndexFunc(calendars, func(x model.Calendar) bool { return x.ID == r.CalendarID })]
+			pat, err := calendar.FromModel(cal, model.TimeUnit(ir.TimeUnit), r.Capacity, r.ShiftCapacity)
+			if err != nil {
+				return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.CalendarInvalid, "/model/resources", r.ID+": "+err.Error(), model.SeverityError)}}
+			}
+			c.pattern, c.cal = pat, ci
+			p.calendars[ci].resources = append(p.calendars[ci].resources, i)
+			p.calendared = true
+		}
 		if b := r.Breakdowns; b != nil {
 			var err error
 			ttf, ttr := b.TimeToFailure.Distribution, b.TimeToRepair.Distribution
@@ -400,7 +453,15 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 		}
 		switch n.Type {
 		case model.NodeSource:
-			c.arrival = sample(&n.Arrival.Distribution)
+			if s := n.Arrival.Schedule; s != nil {
+				// D-053 (T-049): a release schedule instead of an
+				// interarrival distribution (the schema allows one of them).
+				if c.release, err = newReleaser(*s, model.TimeUnit(ir.TimeUnit)); err != nil {
+					return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.ReleaseScheduleInvalid, "/model/nodes", n.ID+": "+err.Error(), model.SeverityError)}}
+				}
+			} else {
+				c.arrival = sample(&n.Arrival.Distribution)
+			}
 			c.maxEntities = n.Arrival.MaxEntities
 			p.sources = append(p.sources, i)
 		case model.NodeProcess:
@@ -419,6 +480,17 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 					} else {
 						c.ttrMax = max(c.ttrMax, r.ttrMax)
 					}
+				}
+			}
+			// D-050 B2 with calendars (T-049): next_fit's bundle and X_end.
+			if slices.ContainsFunc(c.requires, func(q requirement) bool { return p.resources[q.resource].pattern != nil }) {
+				for _, q := range c.requires {
+					pat := p.resources[q.resource].pattern
+					if pat == nil {
+						pat = calendar.Always(p.resources[q.resource].capacity)
+					}
+					c.need = append(c.need, calendar.Need{Pattern: pat, Units: q.units})
+					c.xEnd = max(c.xEnd, pat.ExceptionsEnd())
 				}
 			}
 		case model.NodeDelay:
@@ -537,6 +609,23 @@ func (p *Program) HasBreakdowns() bool { return p.breakdowns }
 
 // ResourceHasBreakdowns reports whether resource i breaks down.
 func (p *Program) ResourceHasBreakdowns(i int) bool { return p.resources[i].ttf != nil }
+
+// HasCalendars reports whether some resource is on a calendar (D-052):
+// only then do capacities change and a Result have scheduled members.
+func (p *Program) HasCalendars() bool { return p.calendared }
+
+// ResourceHasCalendar reports whether resource i is on a calendar.
+func (p *Program) ResourceHasCalendar(i int) bool { return p.resources[i].pattern != nil }
+
+// InitialCapacity is resource i's units on shift at t=0, S(0) (the
+// capacity without a calendar): the Program's, never an observation
+// (D-047).
+func (p *Program) InitialCapacity(i int) int {
+	if pat := p.resources[i].pattern; pat != nil {
+		return pat.At(0)
+	}
+	return p.resources[i].capacity
+}
 
 // BufferCapacity is process i's buffer capacity, 0 when unlimited.
 func (p *Program) BufferCapacity(i int) int { return p.nodes[i].capacity }

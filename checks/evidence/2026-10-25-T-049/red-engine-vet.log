@@ -1,0 +1,14 @@
+$ go vet -overlay <HEAD e173ee1 kernel, metrics, trace, des.Version, calendar> ./internal/simulation/engine/
+# github.com/kcl1104/geminus/internal/simulation/engine [github.com/kcl1104/geminus/internal/simulation/engine.test]
+internal/simulation/engine/calendar_test.go:178:8: undefined: ObsCapacity
+internal/simulation/engine/calendar_test.go:309:9: p.HasCalendars undefined (type *Program has no field or method HasCalendars)
+internal/simulation/engine/calendar_test.go:310:61: p.HasCalendars undefined (type *Program has no field or method HasCalendars)
+internal/simulation/engine/calendar_test.go:357:8: undefined: ObsCapacity
+internal/simulation/engine/calendar_test.go:378:33: p.HasCalendars undefined (type *Program has no field or method HasCalendars)
+internal/simulation/engine/calendar_test.go:398:74: k.capS undefined (type *kernel has no field or method capS)
+internal/simulation/engine/calendar_test.go:399:104: k.capS undefined (type *kernel has no field or method capS)
+internal/simulation/engine/calendar_test.go:453:13: k.deadlineOf undefined (type *kernel has no field or method deadlineOf)
+internal/simulation/engine/calendar_test.go:475:12: k.deadlineOf undefined (type *kernel has no field or method deadlineOf)
+internal/simulation/engine/kernel_check_blocking_test.go:399:21: undefined: ObsCapacity
+internal/simulation/engine/kernel_check_blocking_test.go:399:21: too many errors
+exit status 1

@@ -59,8 +59,8 @@ var kinds = map[engine.ObservationKind]simulation.TraceEventType{
 // Observe implements engine.Observer.
 func (r *Recorder) Observe(o engine.Observation) {
 	switch o.Kind {
-	case engine.ObsResource, engine.ObsResourceDown, engine.ObsResourceUp, engine.ObsBreakdownPending:
-		return // not an entity event (breakdowns: D-051, T-048)
+	case engine.ObsResource, engine.ObsResourceDown, engine.ObsResourceUp, engine.ObsBreakdownPending, engine.ObsCapacity:
+		return // not an entity event (breakdowns: D-051, T-048; shifts: D-052, T-049)
 	}
 	if o.Kind == engine.ObsArrival {
 		id := engine.FormatEntityID(r.index, r.p.NodeID(o.Node), uint64(o.Value))

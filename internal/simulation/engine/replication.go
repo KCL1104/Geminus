@@ -144,6 +144,13 @@ type replication struct {
 	// every entity a long run creates (T-020 review). Looked up, never iterated.
 	entities map[uint64]*entity
 	created  uint64 // the last entity handle
+	// Release schedules (D-053, T-049), per node, allocated only when the
+	// program has one: a rate schedule's cumulative a (unquantized) and its
+	// last arrival tick; a table's row and period of its pending ARRIVAL.
+	acc   []float64
+	last  []int64
+	row   []int
+	cycle []int64
 
 	// onStart, if set, runs at t=0 after the sources' first arrivals are
 	// scheduled (the kernel starts its failure clocks there, D-048).
@@ -153,6 +160,9 @@ type replication struct {
 	onArrival func(r *replication, entity uint64) error
 	// onEvent handles every event that is not an arrival.
 	onEvent func(r *replication, e event) error
+	// onAfter, if set, runs once at the end of every event with its error
+	// (a table's release creates several entities in one event, T-049).
+	onAfter func(error) error
 	// onProcessed, if set, is called once per processed event.
 	onProcessed func()
 	// cur is the event being processed.
@@ -160,7 +170,7 @@ type replication struct {
 }
 
 func newReplication(p *Program, index uint32) *replication {
-	return &replication{
+	r := &replication{
 		p:        p,
 		index:    index,
 		seed:     ReplicationSeed(p.seed, index),
@@ -168,6 +178,19 @@ func newReplication(p *Program, index uint32) *replication {
 		arrived:  make([]uint64, len(p.nodes)),
 		entities: map[uint64]*entity{},
 	}
+	for _, src := range p.sources {
+		if p.nodes[src].release != nil {
+			n := len(p.nodes)
+			r.acc, r.last, r.row, r.cycle = make([]float64, n), make([]int64, n), make([]int, n), make([]int64, n)
+			for i := range r.last {
+				// No arrival yet: the first one's floor is tick 0, so it is
+				// at Λ⁻¹(X_1) exactly (tick 0 only when X_1 = 0, D-082 (a)).
+				r.last[i] = -1
+			}
+			break
+		}
+	}
+	return r
 }
 
 // stream returns the (node, purpose) stream of this replication, created on
@@ -232,13 +255,60 @@ func (r *replication) scheduleClock(delay int64, kind EventKind, resource, unit 
 }
 
 // scheduleArrival draws the next interarrival of source src unless the
-// source has created max_entities already.
+// source has created max_entities already. A source with a rate schedule
+// (D-053) takes its next X from the same arrival stream (poisson) or none
+// (deterministic) and arrives at Λ⁻¹(a), at least one tick after the last.
 func (r *replication) scheduleArrival(src int) error {
 	n := &r.p.nodes[src]
 	if n.maxEntities > 0 && r.arrived[src] >= uint64(n.maxEntities) {
 		return nil
 	}
+	if s := n.release; s != nil {
+		r.acc[src] += s.draw(r.stream(src, PurposeArrival))
+		at := max(s.tick(r.acc[src]), r.last[src]+1)
+		if at > r.p.horizon {
+			return nil // never processed; the draw is spent
+		}
+		r.last[src] = at
+		return r.schedule(at-r.now, PriorityImmediate, EventArrival, src, 0)
+	}
 	return r.schedule(n.arrival.draw(r.stream(src, PurposeArrival)), PriorityImmediate, EventArrival, src, 0)
+}
+
+// scheduleRow schedules the ARRIVAL of a release table's next row, after
+// the row of the event being processed (quantity entities), unless they
+// bring the source to max_entities (D-053: no ARRIVAL that would release
+// nothing, D-082 (c)).
+func (r *replication) scheduleRow(src, quantity int) error {
+	n := &r.p.nodes[src]
+	s := n.release
+	if r.row[src]++; r.row[src] == len(s.at) {
+		r.row[src], r.cycle[src] = 0, r.cycle[src]+1
+	}
+	if n.maxEntities > 0 && r.arrived[src]+uint64(quantity) >= uint64(n.maxEntities) {
+		return nil
+	}
+	return r.scheduleTableRow(src)
+}
+
+// scheduleTableRow schedules the ARRIVAL of row r.row[src] in period
+// r.cycle[src], in ticks.
+func (r *replication) scheduleTableRow(src int) error {
+	s := r.p.nodes[src].release
+	at := r.cycle[src]*s.periodTicks + s.at[r.row[src]]
+	if at > r.p.horizon {
+		return nil
+	}
+	return r.schedule(at-r.now, PriorityImmediate, EventArrival, src, 0)
+}
+
+// startSource schedules a source's first arrival at t=0: one interarrival
+// (or Λ⁻¹(X_1)) after it, or a table's first row.
+func (r *replication) startSource(src int) error {
+	if s := r.p.nodes[src].release; s != nil && s.table {
+		return r.scheduleTableRow(src)
+	}
+	return r.scheduleArrival(src)
 }
 
 // run executes the replication up to and including the horizon tick.
@@ -247,7 +317,7 @@ func (r *replication) scheduleArrival(src int) error {
 // spends one event of the run's budget.
 func (r *replication) run(ctx context.Context, b *Budget) error {
 	for _, src := range r.p.sources {
-		if err := r.scheduleArrival(src); err != nil {
+		if err := r.startSource(src); err != nil {
 			return err
 		}
 	}
@@ -277,7 +347,11 @@ func (r *replication) run(ctx context.Context, b *Budget) error {
 		if r.onProcessed != nil {
 			r.onProcessed()
 		}
-		if err := r.handle(e); err != nil {
+		err := r.handle(e)
+		if r.onAfter != nil {
+			err = r.onAfter(err)
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -291,15 +365,48 @@ func (r *replication) handle(e event) error {
 		return r.onEvent(r, e)
 	}
 	src := e.Node
-	r.arrived[src]++
-	r.created++
-	id := r.created
-	r.entities[id] = &entity{source: src, n: r.arrived[src], created: r.now}
+	if s := r.p.nodes[src].release; s != nil && s.table {
+		// A release table's row (D-053): first the next row's ARRIVAL,
+		// then its entities one after another, each moving on at once,
+		// until max_entities.
+		quantity := s.quantity[r.row[src]]
+		if limit := r.p.nodes[src].maxEntities; limit > 0 {
+			quantity = min(quantity, limit-int(r.arrived[src]))
+		}
+		if err := r.scheduleRow(src, quantity); err != nil {
+			return err
+		}
+		for range quantity {
+			if err := r.arrive(src); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	id := r.create(src)
 	// The next arrival is scheduled before the new entity moves on; the order
 	// fixes sequence numbers and therefore same-tick ties.
 	if err := r.scheduleArrival(src); err != nil {
 		return err
 	}
+	if r.onArrival != nil {
+		return r.onArrival(r, id)
+	}
+	return nil
+}
+
+// create records a new entity of source src.
+func (r *replication) create(src int) uint64 {
+	r.arrived[src]++
+	r.created++
+	id := r.created
+	r.entities[id] = &entity{source: src, n: r.arrived[src], created: r.now}
+	return id
+}
+
+// arrive creates an entity of source src and moves it on.
+func (r *replication) arrive(src int) error {
+	id := r.create(src)
 	if r.onArrival != nil {
 		return r.onArrival(r, id)
 	}

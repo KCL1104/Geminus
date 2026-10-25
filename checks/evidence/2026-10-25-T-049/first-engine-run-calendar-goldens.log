@@ -1,0 +1,23 @@
+$ go test ./internal/simulation/engine/ -run 'TestCalendarGoldens|TestShiftEndBeforeFailure|TestShiftBoundIsNoDeadlock|TestStallWithCalendar|TestStallDeadlines'
+--- FAIL: TestCalendarGoldens (0.07s)
+    --- FAIL: TestCalendarGoldens/G-C1 (0.06s)
+        calendar_test.go:322: 30 events, hand-derived 29
+    --- FAIL: TestCalendarGoldens/G-C1W (0.00s)
+        calendar_test.go:322: 30 events, hand-derived 29
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.106s
+FAIL
+exit status 1
+
+# The first run of the des-go-0.4.0 kernel against calendar-goldens.json.
+# Every other fact of every case (arrivals, starts, completions, blocks,
+# downtimes, waiting failures, units-on-shift changes and their sequence
+# numbers, service-start sequence numbers, the other event counts, G-T5's
+# tick 6, G-K2's B1 state, G-D1's stall and the B2 deadlines) agreed at
+# once. The one mismatch is G-C1's (and G-C1W's, the same run) event count:
+# the derivation's summary line said 29, counting tick 16 as 3 events, but
+# its own per-tick text lists 4 at 16 (e4's SERVICE_COMPLETE, e8's ARRIVAL,
+# the CAPACITY_CHANGE and the DISPATCH) and its own sequence numbers end
+# with the dispatch at 20 as seq 30: 30 events. The summary line was
+# corrected in calendar_goldens_gen.py (the correction is written into the
+# derivation) and the JSON regenerated; nothing else changed.

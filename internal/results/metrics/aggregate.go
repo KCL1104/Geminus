@@ -104,6 +104,20 @@ type Collector struct {
 	repairsDone  []int64
 	repairTicks  []int64
 	downSince    [][]int64
+
+	// Calendars (D-052, D-058; T-049; only when the program has one): per
+	// resource on a calendar, its units on shift S and the integrals of
+	// S, min(U, S), max(U - S, 0), A = min(S, C - D), max(0, A - U) and
+	// min(P, S), P = U - K, kept as step functions of U, S, D and K
+	// together (they cannot be derived from the separate totals).
+	calendars  bool
+	onShift    []int64
+	scheduled  []integral
+	schedInUse []integral
+	overtime   []integral
+	available  []integral
+	idle       []integral
+	processing []integral
 }
 
 // NewCollector starts the collector of one replication of p.
@@ -132,7 +146,41 @@ func NewCollector(p *engine.Program) *Collector {
 			}
 		}
 	}
+	if p.HasCalendars() {
+		c.calendars = true
+		c.onShift = make([]int64, r)
+		c.scheduled, c.schedInUse, c.overtime = make([]integral, r), make([]integral, r), make([]integral, r)
+		c.available, c.idle, c.processing = make([]integral, r), make([]integral, r), make([]integral, r)
+		for i := range r {
+			if p.ResourceHasCalendar(i) {
+				c.onShift[i] = int64(p.InitialCapacity(i)) // S(0), from the program (no observation)
+				c.shift(i, 0)
+			}
+		}
+	}
 	return c
+}
+
+// shift keeps the calendar integrals of resource i (D-058) at tick t,
+// after U, S, D or K changed.
+func (c *Collector) shift(i int, t int64) {
+	if !c.calendars || !c.p.ResourceHasCalendar(i) {
+		return
+	}
+	u, s, d, k := c.busy[i].level, c.onShift[i], int64(0), int64(0)
+	if c.breakdowns {
+		d = c.down[i].level
+	}
+	if c.finite {
+		k = c.heldUnits[i]
+	}
+	a := min(s, int64(c.p.ResourceCapacity(i))-d)
+	c.scheduled[i].set(s, t, c.w, c.h)
+	c.schedInUse[i].set(min(u, s), t, c.w, c.h)
+	c.overtime[i].set(max(u-s, 0), t, c.w, c.h)
+	c.available[i].set(a, t, c.w, c.h)
+	c.idle[i].set(max(a-u, 0), t, c.w, c.h)
+	c.processing[i].set(min(u-k, s), t, c.w, c.h)
 }
 
 func (c *Collector) inWindow(t int64) bool { return c.w <= t && t <= c.h }
@@ -167,6 +215,11 @@ func (c *Collector) Observe(o engine.Observation) {
 		c.setFull(o.Node, o.Tick)
 	case engine.ObsResource:
 		c.busy[o.Resource].set(o.Value, o.Tick, c.w, c.h)
+		c.shift(o.Resource, o.Tick)
+	case engine.ObsCapacity:
+		// Value is the resource's units on shift (D-052).
+		c.onShift[o.Resource] = o.Value
+		c.shift(o.Resource, o.Tick)
 	case engine.ObsFailure:
 		if c.inWindow(o.Tick) {
 			c.failures++
@@ -193,12 +246,14 @@ func (c *Collector) Observe(o engine.Observation) {
 	case engine.ObsResourceDown:
 		// Value is the resource's units down (D); At the failure clock.
 		c.down[o.Resource].set(o.Value, o.Tick, c.w, c.h)
+		c.shift(o.Resource, o.Tick)
 		c.downSince[o.Resource][o.At] = o.Tick
 		if c.inWindow(o.Tick) {
 			c.downsStarted[o.Resource]++
 		}
 	case engine.ObsResourceUp:
 		c.down[o.Resource].set(o.Value, o.Tick, c.w, c.h)
+		c.shift(o.Resource, o.Tick)
 		// A complete repair: down at or after W, repaired by H (the kernel
 		// processes nothing after H); a 0-tick downtime counts (D-074 (d)).
 		if since := c.downSince[o.Resource][o.At]; since >= c.w && o.Tick <= c.h {
@@ -241,27 +296,32 @@ func (c *Collector) block(n int, t int64, sign int64) {
 	for _, q := range c.p.Requires(n) {
 		c.heldUnits[q.Resource] += sign * int64(q.Units)
 		c.held[q.Resource].set(c.heldUnits[q.Resource], t, c.w, c.h)
+		c.shift(q.Resource, t)
 	}
 }
 
 // lineFlow fills a replication summary's line-flow members (D-058),
 // present only when the model uses the feature (D-047). With a finite
 // buffer: every resource's in-use and blocked ticks (in_use_ticks −
-// blocked_ticks is the processing time, ∫min(P, S) with S = C, no calendar
-// or changeover yet), every node that can be blocked, every finite
-// buffer's full ticks. With breakdowns, every resource that breaks down
-// (listed even without a finite buffer) adds ∫D, its downtimes started,
-// its complete repairs and their ticks, ∫A = C·T − ∫D and ∫(A − U) (U + D
-// <= C at every tick, so A − U >= 0).
+// blocked_ticks is the processing time, ∫min(P, S) with S = C off a
+// calendar and no changeover yet), every node that can be blocked, every
+// finite buffer's full ticks. With breakdowns, every resource that breaks
+// down (listed even without a finite buffer) adds ∫D, its downtimes
+// started, its complete repairs and their ticks, ∫A = C·T − ∫D and
+// ∫(A − U) (U + D <= C at every tick, so A − U >= 0). With calendars,
+// every resource on one (listed even without a finite buffer, T-049) adds
+// ∫S, ∫min(U, S), ∫max(U − S, 0) (overtime), and its ∫A, ∫max(0, A − U)
+// and ∫min(P, S) are integrated as such, A = min(S, C − D).
 func (c *Collector) lineFlow(s *simulation.ReplicationSummary) {
-	if !c.finite && !c.breakdowns {
+	if !c.finite && !c.breakdowns && !c.calendars {
 		return
 	}
 	p, w, h := c.p, c.w, c.h
 	s.ResourceStates = make(map[string]simulation.ResourceState, p.ResourceCount())
 	for i := range p.ResourceCount() {
 		breaks := c.breakdowns && p.ResourceHasBreakdowns(i)
-		if !c.finite && !breaks {
+		onCalendar := c.calendars && p.ResourceHasCalendar(i)
+		if !c.finite && !breaks && !onCalendar {
 			continue // no line-flow feature applies to it
 		}
 		used := c.busy[i].total(w, h)
@@ -277,6 +337,13 @@ func (c *Collector) lineFlow(s *simulation.ReplicationSummary) {
 			started, repairs, repairTicks := c.downsStarted[i], c.repairsDone[i], c.repairTicks[i]
 			st.DownTicks, st.BreakdownsStarted, st.RepairsCompleted, st.CompletedRepairTicks = &down, &started, &repairs, &repairTicks
 			st.AvailableTicks, st.IdleTicks = &available, &idle
+		}
+		if onCalendar {
+			scheduled, inUse, overtime := c.scheduled[i].total(w, h), c.schedInUse[i].total(w, h), c.overtime[i].total(w, h)
+			available, idle := c.available[i].total(w, h), c.idle[i].total(w, h)
+			st.ScheduledTicks, st.ScheduledInUseTicks, st.OvertimeTicks = &scheduled, &inUse, &overtime
+			st.AvailableTicks, st.IdleTicks = &available, &idle
+			st.ScheduledProcessingTicks = c.processing[i].total(w, h)
 		}
 		s.ResourceStates[p.ResourceID(i)] = st
 	}

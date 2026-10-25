@@ -242,7 +242,10 @@ func TestBreakdownDeterminism(t *testing.T) {
 // 0.3.0.json): GOLDEN-001/002, the finite-buffer goldens, the breakdown
 // goldens with an expected result and the four stochastic breakdown
 // reference cases. The values are the hand-derived ones' (the tests above);
-// the lock only makes a later numerical change visible.
+// the lock only makes a later numerical change visible. Since des-go-0.4.0
+// (T-049) it is not regenerated: none of these models has a calendar or a
+// release schedule, so each Result with its engine_version set back to
+// des-go-0.3.0 has the locked digest (D-047).
 func TestGoldenDigests030(t *testing.T) {
 	root := contracttest.Root(t)
 	var lock struct {
@@ -252,8 +255,19 @@ func TestGoldenDigests030(t *testing.T) {
 	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(root, "testdata/simulation/engine-golden-digests-0.3.0.json")), &lock); err != nil {
 		t.Fatal(err)
 	}
-	if lock.EngineVersion != Version {
-		t.Fatalf("lock for %s, engine %s", lock.EngineVersion, Version)
+	if lock.EngineVersion != "des-go-0.3.0" {
+		t.Fatalf("lock for %s", lock.EngineVersion)
+	}
+	digest := func(res simulation.Result) string {
+		if res.EngineVersion != Version {
+			t.Errorf("engine_version %s", res.EngineVersion)
+		}
+		res.EngineVersion, res.Reproducibility.ResultDigest = lock.EngineVersion, ""
+		d, err := hashing.Result(res)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
 	}
 	var cases struct {
 		Cases []struct {
@@ -269,7 +283,7 @@ func TestGoldenDigests030(t *testing.T) {
 	for _, c := range cases.Cases {
 		in := input(t, golden(t, filepath.Base(c.Model)), 0, 0, 1, simulation.TraceNone)
 		in.Config = c.Config
-		got[c.ID] = run(t, &Engine{DomainMetrics: dora}, in).Result.Reproducibility.ResultDigest
+		got[c.ID] = digest(*run(t, &Engine{DomainMetrics: dora}, in).Result)
 	}
 	var doc struct {
 		Reference struct {
@@ -281,7 +295,7 @@ func TestGoldenDigests030(t *testing.T) {
 	}
 	for _, c := range append(append(blockingCases(t), breakdownCases(t)...), doc.Reference.Cases...) {
 		if c.Expected.Result != nil || strings.HasPrefix(c.ID, "B-S") {
-			got[c.ID] = run(t, &Engine{}, caseInput(t, c)).Result.Reproducibility.ResultDigest
+			got[c.ID] = digest(*run(t, &Engine{}, caseInput(t, c)).Result)
 		}
 	}
 	if !reflect.DeepEqual(got, lock.Digests) {

@@ -11,9 +11,9 @@ const (
 	// state transitions, each routing its entity in the same event.
 	PriorityImmediate uint8 = 10
 	// PriorityResourceState: a resource's failures and repairs (ADR-026
-	// D-048, T-048; calendars and batch timeouts later), after the
-	// arrivals of the tick and before its dispatch, so the dispatch sees
-	// the tick's last capacity.
+	// D-048, T-048), a calendar's capacity changes (D-052, T-049; batch
+	// timeouts later), after the arrivals of the tick and before its
+	// dispatch, so the dispatch sees the tick's last capacity.
 	PriorityResourceState uint8 = 15
 	// PriorityDispatch: the resource dispatcher, the last step of a tick.
 	PriorityDispatch uint8 = 20
@@ -30,6 +30,9 @@ const (
 	// D-051 (T-048), numbered after the existing kinds.
 	EventFailure // a failure clock of Resource, unit Unit, fires
 	EventRepair  // the unit down for failure clock Unit of Resource is repaired
+	// D-052 (T-049): the units on shift of the resources on calendar
+	// Resource (a calendar index) change.
+	EventCapacity
 )
 
 // event is one scheduled occurrence. Seq is unique and strictly increasing
@@ -41,7 +44,7 @@ type event struct {
 	Seq      uint64
 	Node     int    // compiled node index
 	Entity   uint64 // index into the replication's entity table; 0 when none
-	Resource int32  // EventFailure, EventRepair: the resource index
+	Resource int32  // EventFailure, EventRepair: the resource index; EventCapacity: the calendar index
 	Unit     int32  // EventFailure, EventRepair: the failure clock (unit index)
 	Priority uint8
 	Kind     EventKind

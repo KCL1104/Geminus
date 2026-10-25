@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/calendar"
 )
 
 // Typed limit failures (docs/SIMULATION_SPEC.md §8); like ErrEventBudget they
@@ -26,24 +27,26 @@ var (
 	ErrDeadlock = errors.New("engine: deadlock")
 	// ErrStalled: a bundle that can never be filled (ADR-026 D-050 B2): a
 	// waiting request at the front of every FIFO it is in, none of its
-	// bundle in use and not fitting the units that are up, has been so
-	// longer than the longest repair of its resources (TTRmax) at the end
-	// of a tick (D-074 (c)). A valid model never reaches it (D-050 R3); it
-	// fails the run with a *StalledError. A bundle whose repair time has no
-	// bound (exponential, lognormal, Weibull) is never checked.
+	// bundle in use and not fitting the units that are up and on shift, is
+	// still so at the end of a tick (D-074 (c)) at or after its deadline
+	// next_fit(max(since, X_end) + TTRmax) (T-049: the first tick from
+	// there at which its calendars have the units it needs on shift). A
+	// valid model never reaches it (D-050 R2–R4); it fails the run with a
+	// *StalledError. A bundle whose repair time has no bound (exponential,
+	// lognormal, Weibull) is never checked.
 	ErrStalled = errors.New("engine: stalled")
 )
 
 // StalledError is ErrStalled with what the run failed on (D-050 B2): the
 // tick it was found at, the earliest such request (by queue order), its
 // process, the tick it has been in that state since and the deadline
-// Since + TTRmax it passed.
+// it passed.
 type StalledError struct {
 	Tick     int64  // the end of the tick it was found at
 	Entity   string // r<replication>/<source>/<n>
 	Node     string // the process it waits for
 	Since    int64  // the first tick at whose end it was in the state
-	Deadline int64  // Since + TTRmax of its bundle
+	Deadline int64  // next_fit(max(Since, X_end) + TTRmax) of its bundle
 }
 
 func (e *StalledError) Error() string { return "engine: " + e.Reason() }
@@ -103,6 +106,9 @@ const (
 	ObsResourceDown     // a unit of Resource went down for failure clock At; Value is Resource's units down
 	ObsResourceUp       // the unit down for failure clock At was repaired; Value is Resource's units down
 	ObsBreakdownPending // failure clock At fired with no unit idle: it waits for the next unit released or repaired (finish-first, D-074 (a)); Value is the failures waiting
+	// ADR-026 D-052 (T-049): only ever observed in a model with a calendar,
+	// and only for a resource whose units on shift change (never at t=0).
+	ObsCapacity // Resource's units on shift S changed to Value
 )
 
 // Observation is one fact the kernel reports, in processing order: by tick,
@@ -150,10 +156,11 @@ type request struct {
 	seq     uint64
 	entered int64 // tick it queued at
 	heads   int   // how many of its resources' queues it is at the front of
-	held    bool  // a candidate whose bundle did not fit; waits for a release (or a repair)
+	held    bool  // a candidate whose bundle did not fit; waits for a release (or a repair, or a shift)
 	// stalled is the first tick at whose end the request was in D-050 B2's
-	// state (held, none of its bundle in use), -1 when it is not.
-	stalled int64
+	// state (held, none of its bundle in use), -1 when it is not; deadline
+	// its B2 deadline then, -1 for none.
+	stalled, deadline int64
 }
 
 // resourceQueue holds, in FIFO order, the waiting requests that need one
@@ -283,6 +290,10 @@ type kernel struct {
 	down    []int
 	pending [][]int
 	clocks  [][]clockStreams
+
+	// Calendars (D-052, T-049): each resource's units on shift S, its
+	// capacity without a calendar.
+	capS []int
 }
 
 // clockStreams are one failure clock's streams.
@@ -303,16 +314,22 @@ func runKernel(ctx context.Context, p *Program, index uint32, b *Budget, obs Obs
 	}
 	r := newReplication(p, index)
 	k := &kernel{r: r, obs: obs, inUse: make([]int, len(p.resources)), queues: make([]resourceQueue, len(p.resources)),
-		waiting: make([]int, len(p.nodes)), down: make([]int, len(p.resources))}
+		waiting: make([]int, len(p.nodes)), down: make([]int, len(p.resources)), capS: make([]int, len(p.resources))}
+	for i := range p.resources {
+		k.capS[i] = p.InitialCapacity(i) // S(0): never an observation (D-047)
+	}
 	if p.finite {
 		k.blocked = make([]blockedQueue, len(p.nodes))
 	}
 	if p.breakdowns {
 		k.pending, k.clocks = make([][]int, len(p.resources)), make([][]clockStreams, len(p.resources))
-		r.onStart = k.startClocks
 	}
-	r.onArrival = func(r *replication, e uint64) error { return k.after(k.arrived(r, e)) }
-	r.onEvent = func(r *replication, ev event) error { return k.after(k.handle(r, ev)) }
+	if p.breakdowns || p.calendared {
+		r.onStart = k.start
+	}
+	r.onArrival = func(r *replication, e uint64) error { return k.arrived(r, e) }
+	r.onEvent = func(r *replication, ev event) error { return k.handle(r, ev) }
+	r.onAfter = k.after // once an event, a table's release of several entities included
 	r.onProcessed = func() { k.events++ }
 	err := r.run(ctx, b)
 	if err == nil && int64(len(r.entities)) != k.active {
@@ -331,9 +348,9 @@ func (k *kernel) observe(o Observation) {
 
 // after runs at the end of every event. In a program with a finite buffer
 // it is the D-050 B1 check, unless a dispatch is still due in this tick (it
-// checks at its own end); in a program with breakdowns, at the end of a
-// tick with a held candidate, the B2 check (D-074 (c)). A program with
-// neither never checks, so it runs as des-go-0.1.0 did (D-047).
+// checks at its own end); in a program with breakdowns or calendars, at the
+// end of a tick with a held candidate, the B2 check (D-074 (c)). A program
+// with none of them never checks, so it runs as des-go-0.1.0 did (D-047).
 func (k *kernel) after(err error) error {
 	if err != nil {
 		return err
@@ -344,7 +361,7 @@ func (k *kernel) after(err error) error {
 			return err
 		}
 	}
-	if p.breakdowns && k.held > 0 && k.tickEnds() {
+	if (p.breakdowns || p.calendared) && k.held > 0 && k.tickEnds() {
 		return k.stall()
 	}
 	return nil
@@ -382,15 +399,91 @@ func (k *kernel) handle(r *replication, ev event) error {
 		return k.failure(int(ev.Resource), int(ev.Unit))
 	case EventRepair:
 		return k.repair(int(ev.Resource), int(ev.Unit))
+	case EventCapacity:
+		return k.capacityChange(int(ev.Resource))
 	}
 	return fmt.Errorf("%w: unknown event kind %d", ErrInternal, ev.Kind)
 }
 
+// start runs at t=0 after the sources' first arrivals (D-048): first each
+// calendar's first change, in calendar ID order, then the failure clocks.
+func (k *kernel) start(r *replication) error {
+	for c := range r.p.calendars {
+		if err := k.scheduleChange(c); err != nil {
+			return err
+		}
+	}
+	if r.p.breakdowns {
+		return k.startClocks(r)
+	}
+	return nil
+}
+
+// nextChange is the first tick after now at which the units on shift of
+// some resource on calendar c change, with false when none does.
+func (k *kernel) nextChange(c int) (int64, bool) {
+	next, found := int64(0), false
+	for _, i := range k.r.p.calendars[c].resources {
+		if b, ok := k.r.p.resources[i].pattern.NextChange(k.r.now); ok && (!found || b < next) {
+			next, found = b, true
+		}
+	}
+	return next, found
+}
+
+// scheduleChange schedules calendar c's next CAPACITY_CHANGE (priority 15,
+// D-048), one pending at a time; a calendar whose S never changes (a
+// neutral one, D-047), or changes only after the horizon, schedules none
+// and takes no sequence number.
+func (k *kernel) scheduleChange(c int) error {
+	b, ok := k.nextChange(c)
+	if !ok || b > k.r.p.horizon {
+		return nil
+	}
+	return k.r.scheduleClock(b-k.r.now, EventCapacity, c, 0)
+}
+
+// capacityChange is calendar c's CAPACITY_CHANGE (D-052, priority 15): it
+// first schedules the calendar's next one (D-081 (a)), then sets the units
+// on shift of its resources, in resource ID order, observing only those
+// that change. A resource whose S rises wakes the held front of its FIFO
+// (it may fit now: the capacity rose without a release), and then a
+// dispatch runs later in this tick. A fall wakes nothing: the units in
+// use stay in use (finish-first, D-052 (a); the overtime is the Result's).
+// A shift start gives a waiting failure nothing: a failure only waits
+// when every unit not down is in use (off-shift units count as idle,
+// D-051), which S does not change (D-081 (c)).
+func (k *kernel) capacityChange(c int) error {
+	if err := k.scheduleChange(c); err != nil {
+		return err
+	}
+	woke := false
+	for _, i := range k.r.p.calendars[c].resources {
+		s := k.r.p.resources[i].pattern.At(k.r.now)
+		if s == k.capS[i] {
+			continue
+		}
+		up := s > k.capS[i]
+		k.capS[i] = s
+		k.observe(Observation{Kind: ObsCapacity, Resource: i, Value: int64(s)})
+		if f := k.queues[i].front(); up && f != nil && f.held {
+			f.held = false
+			k.held--
+			heap.Push(&k.cands, f)
+			woke = true
+		}
+	}
+	if woke {
+		return k.needDispatch()
+	}
+	return nil
+}
+
 // startClocks starts every failure clock at t=0, after the sources' first
-// arrivals (D-048): resources in ID order, units in index order, each
-// failing one TTF from now. A failure after the horizon is never
-// scheduled (and takes no sequence number), so breakdowns whose first
-// failure is beyond it leave the run exactly as it was without them.
+// arrivals and the calendars (D-048): resources in ID order, units in
+// index order, each failing one TTF from now. A failure after the horizon
+// is never scheduled (and takes no sequence number), so breakdowns whose
+// first failure is beyond it leave the run exactly as it was without them.
 func (k *kernel) startClocks(r *replication) error {
 	for i := range r.p.resources {
 		res := &r.p.resources[i]
@@ -419,9 +512,21 @@ func (k *kernel) streams(i, u int) *clockStreams {
 }
 
 // scheduleFailure draws clock u's next time to failure and schedules it.
+// On a calendar the clock advances only while the resource is on shift
+// (D-051 (ii), T-049): the failure is at the least t with Θ(t) >=
+// Θ(now) + TTF, Θ the on-shift ticks (S > 0) since t=0; a target reached
+// at a shift's end is that end's tick. The search stops at the horizon.
 func (k *kernel) scheduleFailure(i, u int) error {
-	d := k.r.p.resources[i].ttf.draw(k.streams(i, u).ttf)
-	return k.r.scheduleClock(d, EventFailure, i, u)
+	res := &k.r.p.resources[i]
+	d := res.ttf.draw(k.streams(i, u).ttf)
+	if res.pattern == nil || res.pattern.AlwaysOn() {
+		return k.r.scheduleClock(d, EventFailure, i, u)
+	}
+	at, ok := res.pattern.FailureAt(k.r.now, d, k.r.p.horizon)
+	if !ok {
+		return nil // after the horizon: never scheduled, the draw is spent
+	}
+	return k.r.scheduleClock(at-k.r.now, EventFailure, i, u)
 }
 
 // failure is failure clock u of resource i firing (D-051, priority 15): a
@@ -694,7 +799,7 @@ func (k *kernel) enqueue(e uint64, process, at int) error {
 		return fmt.Errorf("%w: %s entered the full buffer of %s", ErrInternal, k.r.EntityID(e), k.r.p.nodes[process].id)
 	}
 	k.reqSeq++
-	req := &request{entity: e, process: process, seq: k.reqSeq, entered: k.r.now, stalled: -1}
+	req := &request{entity: e, process: process, seq: k.reqSeq, entered: k.r.now, stalled: -1, deadline: -1}
 	reqs := k.r.p.nodes[process].requires
 	for _, q := range reqs {
 		if k.queues[q.resource].push(req) {
@@ -756,8 +861,11 @@ func (k *kernel) dispatch() error {
 		reqs := p.nodes[req.process].requires
 		fits := true
 		for _, q := range reqs {
-			// D-051: only units neither in use nor down can be granted.
-			if k.inUse[q.resource]+q.units > p.resources[q.resource].capacity-k.down[q.resource] {
+			// D-051, D-052: only units neither in use nor down can be
+			// granted, and no more than are on shift:
+			// in_use + units <= min(S, C - D).
+			avail := min(k.capS[q.resource], p.resources[q.resource].capacity-k.down[q.resource])
+			if k.inUse[q.resource]+q.units > avail {
 				fits = false
 				break
 			}
@@ -866,15 +974,19 @@ func (k *kernel) deadlock() error {
 }
 
 // stall is the D-050 B2 backstop, run at the end of a tick with a held
-// candidate in a program with breakdowns (D-074 (c): the state of the
-// tick's last event, so a repair later in the deadline tick still counts).
-// A held candidate none of whose bundle is in use waits only for repairs;
-// from the first tick it ends in that state, every unit it needs is
-// repaired within its bundle's TTRmax, after which a dispatch grants it
-// (no other request can take those units: it is the front of each FIFO).
-// One still in the state at Since + TTRmax can never be filled: two clocks
-// keep its units down in turn (R3 refuses such a bundle). With no bound on
-// the repair time (TTRmax -1) it is not checked.
+// candidate in a program with breakdowns or calendars (D-074 (c): the
+// state of the tick's last event, so a repair or a shift start later in
+// the deadline tick still counts). A held candidate none of whose bundle
+// is in use waits only for repairs and shifts; from the first tick it
+// ends in that state (Since), after its calendars' last exception (X_end)
+// every unit it needs is repaired within TTRmax and stays up until the
+// next tick its calendars have the units it needs on shift (D-050 R4: the
+// clock does not run off shift), and there a dispatch grants it (no other
+// request can take those units: it is the front of each FIFO). So it is
+// due by next_fit(max(Since, X_end) + TTRmax); one still in the state
+// then can never be filled (R2–R4 refuse such a bundle). With no bound on
+// the repair time (TTRmax -1), or no such tick before the horizon, it is
+// not checked. Without calendars next_fit(t) = t: Since + TTRmax (T-048).
 func (k *kernel) stall() error {
 	p := k.r.p
 	var due *request
@@ -895,9 +1007,9 @@ func (k *kernel) stall() error {
 			continue
 		}
 		if f.stalled < 0 {
-			f.stalled = k.r.now
+			f.stalled, f.deadline = k.r.now, k.deadlineOf(f.process)
 		}
-		if m := p.nodes[f.process].ttrMax; m >= 0 && k.r.now >= f.stalled+m && (due == nil || f.seq < due.seq) {
+		if f.deadline >= 0 && k.r.now >= f.deadline && (due == nil || f.seq < due.seq) {
 			due = f
 		}
 	}
@@ -905,5 +1017,23 @@ func (k *kernel) stall() error {
 		return nil
 	}
 	return &StalledError{Tick: k.r.now, Entity: k.r.EntityID(due.entity), Node: p.nodes[due.process].id,
-		Since: due.stalled, Deadline: due.stalled + p.nodes[due.process].ttrMax}
+		Since: due.stalled, Deadline: due.deadline}
+}
+
+// deadlineOf is B2's deadline of a request of process n entering the
+// state now: next_fit(max(now, X_end) + TTRmax), -1 for none (D-050).
+func (k *kernel) deadlineOf(n int) int64 {
+	node := &k.r.p.nodes[n]
+	if node.ttrMax < 0 {
+		return -1
+	}
+	from := max(k.r.now, node.xEnd) + node.ttrMax
+	if node.need == nil {
+		return from // every resource on shift at every tick
+	}
+	at, ok := calendar.NextFit(node.need, from, k.r.p.horizon, true)
+	if !ok {
+		return -1 // after the horizon: it cannot be passed
+	}
+	return at
 }

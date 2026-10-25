@@ -173,8 +173,9 @@ func TestCompileRefusesWhatTheKernelDoesNotRun(t *testing.T) {
 // still refuses the model. Checked on a decoded model, past the validator.
 func TestKernelRefusesWhatItDoesNotExecute(t *testing.T) {
 	// Each kernel task adds its own primitive, with this list: so far
-	// T-047's and T-048's.
-	executed := map[validate.Primitive]bool{validate.FiniteBuffer: true, validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true}
+	// T-047's, T-048's and T-049's.
+	executed := map[validate.Primitive]bool{validate.FiniteBuffer: true, validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true,
+		validate.Calendars: true, validate.ReleaseSchedule: true}
 	for _, p := range validate.Primitives {
 		if kernelExecutes[p] != executed[p] {
 			t.Errorf("%s: executed %v, want %v; update this test with the kernel task that implements it", p, kernelExecutes[p], executed[p])
@@ -188,7 +189,7 @@ func TestKernelRefusesWhatItDoesNotExecute(t *testing.T) {
 			want = append(want, u)
 		}
 	}
-	if len(issues) != len(want) || len(want) != 14 {
+	if len(issues) != len(want) || len(want) != 7 {
 		t.Fatalf("%d issues for %d uses", len(issues), len(want))
 	}
 	for i, u := range want {
