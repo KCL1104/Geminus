@@ -58,7 +58,7 @@ type bchecker struct {
 
 	// Breakdowns (D-051, T-048), from the IR: each resource's constant TTF
 	// and TTR in ticks (-1 when not constant), and, rebuilt from the
-	// observations, the units down, the failures waiting for a release (in
+	// observations, the units down, the failures waiting for a unit (in
 	// FIFO order), each unit's state and, for a constant TTF, when its
 	// next failure is due (-1 while down or waiting).
 	ttf, ttr  []int64
@@ -268,7 +268,8 @@ func (c *bchecker) goDown(o Observation, r, u int) {
 
 // failure checks a failure event (D-051): a clock fires when due (for a
 // constant TTF), goes down at once when a unit is neither in use nor
-// down, and otherwise waits for the next release, finish-first.
+// down, and otherwise waits for the next unit released or repaired,
+// finish-first (D-074 (a) B).
 func (c *bchecker) failure(o Observation) {
 	r, u := o.Resource, o.At
 	if c.isDown[r] == nil || u < 0 || u >= len(c.due[r]) {
@@ -407,10 +408,21 @@ func (c *bchecker) finishGroup() {
 		u.at++
 		c.failure(first)
 	case first.Kind == ObsResourceUp:
-		// A REPAIR event: the up, nothing else (the dispatch it may ask
-		// for is an event of its own).
+		// A REPAIR event: the up; then the repaired unit goes down for the
+		// first waiting failure, if one waits (D-074 (a) option B, review
+		// round 1, M1), and nothing else (the dispatch it may ask for is
+		// an event of its own).
 		u.at++
 		c.repair(first)
+		if r := first.Resource; len(c.pending[r]) > 0 {
+			unit := c.pending[r][0]
+			c.pending[r] = c.pending[r][1:]
+			if o, ok := u.next(fmt.Sprintf("%s/%d down on the repaired unit for its waiting failure", c.p.resources[r].id, unit), func(o Observation) bool {
+				return o.Kind == ObsResourceDown && o.Resource == r && o.At == unit
+			}); ok {
+				c.goDown(o, r, unit)
+			}
+		}
 	default:
 		c.dispatch(u)
 	}
@@ -420,6 +432,11 @@ func (c *bchecker) finishGroup() {
 	for r, n := range c.inUse {
 		if n < 0 || n+c.down[r] > c.p.resources[r].capacity {
 			c.fail("resource %d in use %d, down %d", r, n, c.down[r])
+		}
+		// Every unit that becomes available goes to the waiting failures
+		// first, so a failure never waits beside an idle unit (D-074 (a) B).
+		if len(c.pending[r]) > 0 && n+c.down[r] != c.p.resources[r].capacity {
+			c.fail("tick %d: %s has %d waiting failures and %d idle units", g[0].Tick, c.p.resources[r].id, len(c.pending[r]), c.p.resources[r].capacity-n-c.down[r])
 		}
 	}
 }

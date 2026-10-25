@@ -1,21 +1,23 @@
 {
-  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.3.0, T-048) on the cases of breakdown-goldens.json the validator accepts and on its four stochastic reference cases B-S1–B-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestBreakdownGoldens, TestZeroTickRepairDispatchesAgain, TestCapacityBoundIsNoDeadlock, TestNoStallBeforeTheTickEnds) and is checked besides by the observation-only checker (kernel_check_breakdown_test.go) and the SimPy reference; these digests make any later change to the order or the sequence numbers of failures, repairs, waiting failures and dispatches visible. G-F1W was added after its hand-derived values passed (its run is G-F1's, only the window differs). The locks of des-go-0.1.0 (kernel-observation-digests.json) and des-go-0.2.0 (kernel-observation-digests-0.2.0.json) are kept as they were and still hold (ADR-026 D-047).",
+  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.3.0, T-048) on the cases of breakdown-goldens.json the validator accepts and on its four stochastic reference cases B-S1–B-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestBreakdownGoldens, TestZeroTickRepairDispatchesAgain, TestCapacityBoundIsNoDeadlock, TestNoStallBeforeTheTickEnds) and is checked besides by the observation-only checker (kernel_check_breakdown_test.go) and the SimPy reference; these digests make any later change to the order or the sequence numbers of failures, repairs, waiting failures and dispatches visible. G-F1W was added after its hand-derived values passed (its run is G-F1's, only the window differs). T-048 review round 1 (D-074 (a) option B) changed des-go-0.3.0 before any release: G-F3 and B-S2 were re-taken after the hand-derived G-F3 and G-F9 passed, G-F9 and G-F1W10 added; every other stream is unchanged. The locks of des-go-0.1.0 (kernel-observation-digests.json) and des-go-0.2.0 (kernel-observation-digests-0.2.0.json) are kept as they were and still hold (ADR-026 D-047).",
   "engine_version": "des-go-0.3.0",
   "encoding": "SHA-256 over each observation's kind, tick, seq, entity, node, resource, value and at as little-endian 64-bit words, in observation order (kernel-observation-digests.json's encoding plus at, the failure clock of a breakdown observation)",
   "cases": [
     {"id": "G-F1", "observations": 106, "sha256": "c25be59226a5fac43f9c474e48be654d3180329516ca626d89912c05674c4bcd"},
     {"id": "G-F1W", "observations": 106, "sha256": "c25be59226a5fac43f9c474e48be654d3180329516ca626d89912c05674c4bcd"},
+    {"id": "G-F1W10", "observations": 106, "sha256": "c25be59226a5fac43f9c474e48be654d3180329516ca626d89912c05674c4bcd"},
     {"id": "G-F2", "observations": 93, "sha256": "20bed518e8819a6b29413ccf3f347b1d680d83e7ff6ae9f6398bbf98e7c84aea"},
-    {"id": "G-F3", "observations": 48, "sha256": "990adb97704f8bc586537ac2a4b2a0aefd0114d0ae0b228bdd78aa5a24946cae"},
+    {"id": "G-F3", "observations": 50, "sha256": "2e59e4497ab69cfbe7594e64f53cbdf2e143818952bfee5e4925525766785aea"},
     {"id": "G-F7", "observations": 69, "sha256": "c2428b9a9f305bb45625b1ed99e0065498d6378a93f32b0b8bfac0be274edcf5"},
     {"id": "G-F8", "observations": 38, "sha256": "71bb134e9f3a44162ac71a15538bd15f638501c5a3f930b66fe3c016fa2767ad"},
+    {"id": "G-F9", "observations": 23, "sha256": "3ee34115b68444baaf1c5fc64f117d2931aaabe1b24c800fddcb50e6c5885cb6"},
     {"id": "G-T1", "observations": 16, "sha256": "26468a33d0584ec74da1eb7306add7319829cc546095bf4e084d6f26a003630c"},
     {"id": "G-T2", "observations": 11, "sha256": "d96826df31c4f0754dcde4b70465b3bf4cc92f8c79fa904735328e24e4eba260"},
     {"id": "G-T4", "observations": 143, "sha256": "73cd05a09e48e8dd4a5ce7efa2d2539c67d145cdd73ae91be311849a84827960"},
     {"id": "G-K1", "observations": 10, "sha256": "fd00008668162e21229464ca5917e7027ce88c302e467ef11a39c670844a6434"},
     {"id": "G-S2", "observations": 108, "sha256": "cbab0da33ed4e882c2109f711977b01a8cdd69fa827c4565441db218b060d938"},
     {"id": "B-S1", "observations": 4300, "sha256": "a219a27cb8abf8fcced3497ec86faf5fac7f1f20c22828c31238ad171b59949e"},
-    {"id": "B-S2", "observations": 6934, "sha256": "4e6315baee0e6c8db55557379cafdb6e9991e5346aab1f8c9b36a126d33a16e4"},
+    {"id": "B-S2", "observations": 6934, "sha256": "27ea9e0aad97f57e768247f03d4487d2810d7546b0e7326c17bf1294f113d235"},
     {"id": "B-S3", "observations": 12156, "sha256": "66319c7a47b4bbbfc4ea2a4697953b16628dca20923cfef1fe9faa13c8b7cbb6"},
     {"id": "B-S4", "observations": 17732, "sha256": "91d0c9053ec281d8e047f233a0a0e34c39275f3ee71d231bb15f0249a2678644"}
   ]

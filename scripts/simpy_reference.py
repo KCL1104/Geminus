@@ -58,9 +58,10 @@ a unit at priority -1, which SimPy grants at once (a request ahead of every
 waiting job), and holds it for one TTR; otherwise the failure waits, in
 FIFO order, for the next unit a job releases: the job hands its request
 over to the failure process instead of releasing it (finish-first). A
-repair releases the unit to SimPy's queue, so a waiting job, never a waiting
-failure, gets it (D-074 (a): only a released unit satisfies a waiting
-failure). Samples come from Python's random: expovariate, triangular,
+repair does the same (D-074 (a) option B, T-048 review round 1): the
+repaired unit goes to the first waiting failure, and only when none waits
+is it released to SimPy's queue, where a waiting job gets it. Samples come
+from Python's random: expovariate, triangular,
 lognormvariate (sigma^2 = ln(1 + cv^2), mu = ln(mean) - sigma^2/2, D-056)
 and weibullvariate(scale, shape), never the engine's streams or samplers.
 
@@ -267,7 +268,13 @@ def simulate(ir, config, rep, seed, record=False, until=None):
             if record:
                 bstats["downs"].append(entry)
             yield env.timeout(sample(ttr, rng))
-            res.release(req)
+            if waiting_failures[r]:
+                # D-074 (a) B: the repaired unit goes to the first waiting
+                # failure, as a released one does; only otherwise does it
+                # return to SimPy's queue (a waiting job).
+                waiting_failures[r].pop(0).succeed(req)
+            else:
+                res.release(req)
             down[r].add(-1, env.now)
             entry[3] = env.now
             if since >= w and env.now <= h:
@@ -479,15 +486,25 @@ def deterministic(case):
     want_blocks = [list(b) for b in exp["blocks"]]
     check(r["blocks"] == want_blocks, f"{cid}: blocks {r['blocks']} != {want_blocks}")
     if "downs" in exp:
-        # [resource, unit, from, to or None] in start order; the failures
-        # that waited, in the order they fired. The script records only a
-        # positive wait (see clock), so a compared case may have no other.
+        # [resource, unit, from, to or None] in start order, exactly; the
+        # failures that waited, in the order they fired. The script records
+        # only a positive wait (see clock): a 0-minute wait is the order of
+        # two events at one time, which SimPy and the kernel resolve
+        # differently but with the same downtime (compared above). So the
+        # hand-derived waiting failures are compared without their 0-minute
+        # waits (a failure that goes down in the tick it fired; G-F9 has
+        # three); one with no later downtime still waits at the horizon,
+        # which the script does not record, so such a case cannot be
+        # compared and fails here.
         check(r["downs"] == [list(d) for d in exp["downs"]], f"{cid}: downs {r['downs']} != {exp['downs']}")
+        want = []
         for res_id, unit, t in exp["pending"]:
             nxt = [d[2] for d in exp["downs"] if d[0] == res_id and d[1] == unit and d[2] >= t]
-            check(nxt and nxt[0] > t, f"{cid}: the waiting failure {res_id}/{unit} at {t} has no positive wait; the case cannot be compared")
+            check(bool(nxt), f"{cid}: the waiting failure {res_id}/{unit} at {t} still waits at the horizon; the case cannot be compared")
+            if nxt and nxt[0] > t:
+                want.append([res_id, unit, t])
         got = sorted(r["pending"], key=lambda p: p[2])
-        check(got == [list(p) for p in exp["pending"]], f"{cid}: waiting failures {got} != {exp['pending']}")
+        check(got == want, f"{cid}: waiting failures with a positive wait {got} != {want}")
     res = exp.get("result")
     if not res:
         return

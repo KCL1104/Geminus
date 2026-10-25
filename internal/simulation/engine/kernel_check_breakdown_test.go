@@ -3,10 +3,11 @@ package engine
 // Random models with breakdowns (D-051, T-048) against the observation-only
 // model of kernel_check_blocking_test.go, which rebuilds from the
 // Observations and the IR alone the units in use and down, the failures
-// waiting for a release and, for constant clocks, when each failure is
+// waiting for a unit and, for constant clocks, when each failure is
 // due, and checks: a failure goes down at once only with an idle unit and
-// otherwise waits (finish-first); a released unit goes to the waiting
-// failures first, in their order; a unit is down for exactly its TTR and
+// otherwise waits (finish-first); a released or repaired unit goes to the waiting
+// failures first, in their order (D-074 (a) B), so no failure waits beside
+// an idle unit; a unit is down for exactly its TTR and
 // fails again a TTF after its repair; in_use + down <= C; every dispatch
 // is the literal fixpoint with C - D; no tick ends with a grantable
 // request (so a repair never leaves a request it lets in waiting); valid

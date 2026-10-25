@@ -102,7 +102,7 @@ const (
 	// that breaks down. At is the failure clock (unit index) of Resource.
 	ObsResourceDown     // a unit of Resource went down for failure clock At; Value is Resource's units down
 	ObsResourceUp       // the unit down for failure clock At was repaired; Value is Resource's units down
-	ObsBreakdownPending // failure clock At fired with no unit idle: it waits for the next release (finish-first); Value is the failures waiting
+	ObsBreakdownPending // failure clock At fired with no unit idle: it waits for the next unit released or repaired (finish-first, D-074 (a)); Value is the failures waiting
 )
 
 // Observation is one fact the kernel reports, in processing order: by tick,
@@ -426,8 +426,8 @@ func (k *kernel) scheduleFailure(i, u int) error {
 
 // failure is failure clock u of resource i firing (D-051, priority 15): a
 // unit neither in use nor down goes down at once; with none, the failure
-// waits for the next release (finish-first), behind the failures already
-// waiting.
+// waits for the next unit released or repaired (finish-first, D-074 (a)),
+// behind the failures already waiting.
 func (k *kernel) failure(i, u int) error {
 	if k.r.p.resources[i].capacity-k.down[i]-k.inUse[i] > 0 {
 		return k.goDown(i, u)
@@ -446,11 +446,17 @@ func (k *kernel) goDown(i, u int) error {
 	return k.r.scheduleClock(d, EventRepair, i, u)
 }
 
-// repair ends clock u's downtime (priority 15): the unit is up, the clock
-// draws its next time to failure, and, since the capacity rose without a
-// release, the held front of the resource's FIFO is decided again at a
-// dispatch later in this tick. A waiting failure is not given the repaired
-// unit: only a released unit satisfies it (D-074 (a)).
+// repair ends clock u's downtime (priority 15): the unit is up and the
+// clock draws its next time to failure. The repaired unit, like a released
+// one, goes to the waiting failures first (D-074 (a) option B, T-048 review
+// round 1, M1: "等下一個被釋放的 unit" read as any unit that becomes
+// available, so a waiting clock is not frozen while others fail ahead of
+// it): the first one, in the order they fired, goes down on it at once.
+// Only when no failure waits does the capacity rise, and then the held
+// front of the resource's FIFO is decided again at a dispatch later in
+// this tick. A failure only ever waits when no unit is idle, and every unit
+// that becomes available goes to the waiting failures first, so a waiting
+// failure never sees an idle unit.
 func (k *kernel) repair(i, u int) error {
 	if k.down[i]--; k.down[i] < 0 {
 		return fmt.Errorf("%w: resource %s has %d units down", ErrInternal, k.r.p.resources[i].id, k.down[i])
@@ -458,6 +464,11 @@ func (k *kernel) repair(i, u int) error {
 	k.observe(Observation{Kind: ObsResourceUp, Resource: i, At: u, Value: int64(k.down[i])})
 	if err := k.scheduleFailure(i, u); err != nil {
 		return err
+	}
+	if len(k.pending[i]) > 0 {
+		w := k.pending[i][0]
+		k.pending[i] = k.pending[i][1:]
+		return k.goDown(i, w)
 	}
 	if f := k.queues[i].front(); f != nil && f.held {
 		f.held = false

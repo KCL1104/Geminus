@@ -1,5 +1,5 @@
 {
-  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.3.0, T-048) on the cases of expected-cases.json, on the cases of blocking-goldens.json and breakdown-goldens.json that have an expected result, and on the four stochastic reference cases of breakdown-goldens.json (B-S1–B-S4); NOT an independent oracle. It was taken only after the hand-derived expectations of those files passed (internal/simulation/des TestBreakdownGoldenResults, TestBlockingGoldenResults; internal/simulation/engine TestBreakdownGoldens, TestBlockingGoldens); these digests only make any later numerical change visible. G-F1W was added after its hand-derived values passed, from the same unchanged engine (its run is G-F1's, only the window differs). The locks of des-go-0.1.0 (engine-golden-digests.json) and des-go-0.2.0 (engine-golden-digests-0.2.0.json) are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back.",
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.3.0, T-048) on the cases of expected-cases.json, on the cases of blocking-goldens.json and breakdown-goldens.json that have an expected result, and on the four stochastic reference cases of breakdown-goldens.json (B-S1–B-S4); NOT an independent oracle. It was taken only after the hand-derived expectations of those files passed (internal/simulation/des TestBreakdownGoldenResults, TestBlockingGoldenResults; internal/simulation/engine TestBreakdownGoldens, TestBlockingGoldens); these digests only make any later numerical change visible. G-F1W was added after its hand-derived values passed, from the same unchanged engine (its run is G-F1's, only the window differs). T-048 review round 1 (D-074 (a) option B: a repaired unit goes to the waiting failures first) changed des-go-0.3.0 before any release: G-F3 (re-derived by hand), B-S2 and B-S4 were re-taken after G-F3's and G-F9's hand-derived values passed, G-F9 and G-F1W10 added; every other digest is unchanged, and des-go-0.3.0 had produced no stored result. The locks of des-go-0.1.0 (engine-golden-digests.json) and des-go-0.2.0 (engine-golden-digests-0.2.0.json) are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back.",
   "engine_version": "des-go-0.3.0",
   "inputs": {
     "cases": "expected-cases.json (with the dora stand-in), blocking-goldens.json and breakdown-goldens.json (model and config as given, no domain metrics)",
@@ -27,18 +27,20 @@
     "G-B14": "sha256:df27389fba34c9f16a79ea25a08f80c5fa454501533a9902276e1f7baad1966a",
     "G-F1": "sha256:15ff2715f14cf471cc5894ec7b84c3ad79d632d6d7a7f508a7bc129f4255768b",
     "G-F1W": "sha256:d2710cbb0ce763e36866286775a2769ef9c1f16c2f1b1f55a181265e9893dcf6",
+    "G-F1W10": "sha256:6aa997fe29e5cf64ad5014a2c219fac7e93556b64463404d71da598b41632c17",
     "G-F2": "sha256:8083331478c892726403242a1f1ac47bb0933ee72391750e93265c4eb09300a7",
-    "G-F3": "sha256:4fdbe9b146c278c9e82004d60da333a285209431c56672491a53fae1ba4f2ffa",
+    "G-F3": "sha256:884fb22fb81e9440b90fc335a6ba4592cae3922df317aa78e1ef0b4e2402db6f",
     "G-F7": "sha256:74a7c4e445713b394b7308fd4c8c1b11b97d59fd9e1af1228a8dbc699c58c0e9",
     "G-F8": "sha256:2c95dab77e59a81b30fe91fcc36509ef3a44951fbd2452ca704f2551d7060209",
+    "G-F9": "sha256:f1b07216b05fb81fa78396d17a1fafedcb36472bf65db52b65ff0aa505e98f38",
     "G-T1": "sha256:6e5ad2c9c50804e182fda50746a6c40666ee0c6fdd2461c570514282977efbfe",
     "G-T2": "sha256:2cc811def6de3323f3329c85d5168d59867fce27644190e2af642d48c9c588f5",
     "G-T4": "sha256:0eac4695da6ed96b4912cdaaf1902ae0e2623e6e461a3ddcc5cf49df602426d7",
     "G-K1": "sha256:41edf1caed8a80710e12a361bd9f29a0c090e1817602ca491bd31b28d4a87e10",
     "G-S2": "sha256:c23806944889bbcf425c083d6c44c02ed88df90955c97d69791bfee4f4323229",
     "B-S1": "sha256:cc19b49b0db156e6d741a40f577babfae414031d4bc5aca5dc95091ed5b02214",
-    "B-S2": "sha256:dbadf923f18bb10a3b14dd22baac03298750025562d91aeb004f90466d8b6f2b",
+    "B-S2": "sha256:eab44bca194eed3328bf1116873fe63d5785c1778c102431feec6ad8bd7dd5fc",
     "B-S3": "sha256:7237268b3b66affc77e9233ba94b0b52865b8f7191616c02ace476ec01e9ec37",
-    "B-S4": "sha256:cd205d24fc58511b17e6e47124d3a12c9597e9faf7f3a4b0f5fdcba3e3dead14"
+    "B-S4": "sha256:f7f6dab4aa104826dd2c04547b326c2c29d999205debad27a328bc2b3c9dd359"
   }
 }
