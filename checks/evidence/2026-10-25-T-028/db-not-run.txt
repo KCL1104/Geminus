@@ -1,0 +1,34 @@
+NOT RUN in this worktree: there is no PostgreSQL server and no GEMINUS_TEST_DATABASE_URL (environment.txt),
+so no SQL ran and every DB-backed Go test skipped with "NOT RUN: set GEMINUS_TEST_DATABASE_URL ...".
+The coordinator runs them on a disposable dt_test_* database.
+
+Targets
+  make integration-test   (make db-test, then make db-go-test)
+  make db-test            (scripts/run_db_tests.sh: migrations 0001-0015 up, every SQL suite, downs, up again, suites again)
+  make db-go-test         (now includes ./internal/scenarios/...)
+
+Migration 0015 (new)
+  migrations/0015_scenarios.up.sql, migrations/0015_scenarios.down.sql: up, down, up (run_db_tests.sh, both rounds)
+
+SQL suites
+  db/tests/scenarios.sql (new, T-028)
+  and every existing suite again, now with 0015 applied: invariants.sql, constraints.sql, roles.sql, self.sql, runs.sql,
+  imports.sql, proposals.sql, proposal_jobs.sql, proposal_decisions.sql (inserts scenarios as twin_api: must pass the
+  0015 guard), import_mapping.sql; pool_rows.sql and ir_rows.sql (the down/up checks)
+
+New DB-backed Go tests (T-028)
+  internal/scenarios:          TestCreateManualScenario, TestCreateRefusals, TestScenarioRoles, TestScenarioIdempotency,
+                               TestListPages, TestScenarioDatasets
+  internal/storage/scenarios:  TestListAndGet
+  internal/api:                TestScenarioClosedLoop, TestScenarioRoleMatrix, TestScenarioRequestRefusals
+
+Existing DB-backed Go tests that 0015 or the new route can affect (rerun with the rest of make db-go-test)
+  internal/proposals/approval: TestApproveScenario, TestApprovalOnAMovedBase, TestDecisionsWaitForTheModelRow,
+                               TestApprovalIdempotency, TestDecisionRaces (scenario inserts as twin_api)
+  internal/api:                TestApprovalClosedLoop (scenario approval), TestRunRequestRefusals and the saved-scenario
+                               run in simulations_results_test.go (scenarios inserted as twin_owner: exempt from the guard)
+
+DB mutants (checks/evidence/2026-10-25-T-028/mutate.py db; refuses to run without GEMINUS_TEST_DATABASE_URL)
+  db-no-role-check, db-no-binding-stage, db-storage-not-required, db-storage-failure-unwrapped, db-name-in-audit,
+  db-no-audit, db-list-of-the-model, db-list-without-the-organization, db-next-cursor-lost
+  (each compiles: checked with go vet, files restored)
