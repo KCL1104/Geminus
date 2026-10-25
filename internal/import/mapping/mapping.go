@@ -206,7 +206,8 @@ func (is *issues) add(code, path, message string) {
 // the same target and transform, or, for an entry that leaves the column
 // out, not imported (by a null entry or by not listing it); confirmed
 // names only such columns (D-070 (d): a person confirms each such
-// suggestion; the AI never confirms). No issue means m may be saved.
+// suggestion; the AI never confirms). An entry of s for a column the import
+// does not have needs no one. No issue means m may be saved.
 func Check(m Mapping, columns []string, s *Suggestion, confirmed []string) []model.ValidationIssue {
 	var out issues
 	known := make(map[string]bool, len(columns))
@@ -256,7 +257,7 @@ func Check(m Mapping, columns []string, s *Suggestion, confirmed []string) []mod
 			out.add(CodeRequiredTarget, "/mapping/mappings", fmt.Sprintf("no column is mapped to %s, which every canonical event has", f))
 		}
 	}
-	out = append(out, confirmations(m, s, confirmed)...)
+	out = append(out, confirmations(m, known, s, confirmed)...)
 	return out
 }
 
@@ -266,8 +267,10 @@ func Check(m Mapping, columns []string, s *Suggestion, confirmed []string) []mod
 // entry leaves out is taken as it said when the mapping does not import it
 // either: by a null entry (whose issue points at it) or by not listing it
 // (whose issue points at /mapping/mappings). Issues follow the mapping's
-// entries, then the suggestion's.
-func confirmations(m Mapping, s *Suggestion, confirmed []string) issues {
+// entries, then the suggestion's. An entry for a column the import does not
+// have (known) needs no one: it neither blocks the mapping nor may be named
+// (review round 2 N1).
+func confirmations(m Mapping, known map[string]bool, s *Suggestion, confirmed []string) issues {
 	var out issues
 	needs := map[string]bool{}
 	required := func(column, at string) {
@@ -297,7 +300,7 @@ func confirmations(m Mapping, s *Suggestion, confirmed []string) issues {
 			}
 		}
 		for _, se := range s.Mappings {
-			if se.NeedsPerson() && se.TargetField == nil && !listed[se.SourceColumn] {
+			if se.NeedsPerson() && se.TargetField == nil && known[se.SourceColumn] && !listed[se.SourceColumn] {
 				required(se.SourceColumn, "/mapping/mappings")
 			}
 		}

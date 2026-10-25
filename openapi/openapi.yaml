@@ -1924,7 +1924,8 @@ paths:
         flag says. Every mapping entry that imports a column exactly as such an entry said, and every column such a
         null entry leaves out that the mapping does not import either, must be named in confirmed_low_confidence (422
         MAPPING_CONFIRMATION_REQUIRED at the entry, or at /mapping/mappings for a column the mapping does not list); a
-        name that is not such a column is 422 MAPPING_CONFIRMATION_UNKNOWN. The stored suggestion is checked against
+        name that is not such a column is 422 MAPPING_CONFIRMATION_UNKNOWN. An entry for a column the import does not
+        have needs no one and is not such a column. The stored suggestion is checked against
         ai-mapping.schema.json first: one that does not match is 500 INTERNAL_ERROR (details[0].code
         MAPPING_SUGGESTION_INVALID) and nothing is saved. The suggestion itself is never applied. Saving, in one
         transaction with the import.map audit event and the idempotency response: the import takes the next

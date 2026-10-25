@@ -284,6 +284,40 @@ func TestLowConfidenceNeedsAPerson(t *testing.T) {
 	}
 }
 
+// N1 of review round 2: a suggestion entry for a column the import does not
+// have needs no one, so it neither blocks the mapping nor may be confirmed;
+// with more such entries than confirmed_low_confidence holds (256), the
+// mapping could otherwise never be saved.
+func TestASuggestionOfOtherColumnsAsksNothing(t *testing.T) {
+	ghost := func(n int) *mapping.Suggestion {
+		s := &mapping.Suggestion{}
+		for i := range n {
+			s.Mappings = append(s.Mappings, mapping.SuggestedEntry{SourceColumn: fmt.Sprintf("幽靈%d", i), Confidence: 0.2,
+				Transform: mapping.Identity, RequiresConfirmation: true})
+		}
+		return s
+	}
+	if got := issuesOf(mapping.Check(station(), stationColumns, ghost(1), nil)); len(got) > 0 {
+		t.Errorf("one column of no import: %v", got)
+	}
+	if got := issuesOf(mapping.Check(station(), stationColumns, ghost(300), nil)); len(got) > 0 {
+		t.Errorf("300 columns of no import: %d issues, first %v", len(got), got[0])
+	}
+	if got := issuesOf(mapping.Check(station(), stationColumns, ghost(1), []string{"幽靈0"})); fmt.Sprint(got) !=
+		fmt.Sprint([]issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/0"}}) {
+		t.Errorf("confirmed by name: %v", got)
+	}
+	// A column the import has, beside them, still needs its person.
+	s := ghost(300)
+	s.Mappings = append(s.Mappings, mapping.SuggestedEntry{SourceColumn: "作業員", Confidence: 0.2, Transform: mapping.Identity})
+	m := station()
+	m.Mappings = m.Mappings[:11]
+	if got := issuesOf(mapping.Check(m, stationColumns, s, nil)); fmt.Sprint(got) !=
+		fmt.Sprint([]issue{{mapping.CodeConfirmationRequired, "/mapping/mappings"}}) {
+		t.Errorf("a column of the import beside them: %d issues, first %v", len(got), got[:min(len(got), 2)])
+	}
+}
+
 // M1 of review round 1: the stored flag is the AI's claim; the server
 // decides from the confidence and the target. An entry below 0.80 or one
 // that leaves a column out needs a person even when it says it does not;

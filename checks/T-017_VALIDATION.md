@@ -216,3 +216,36 @@ Coordinator 把六個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-0
 - 每個 event 多一次 JSON Schema 驗證，100,000 列的 validation 時間沒有量測（T-037）。
 - `-00:00` 與 I2 的行為是 agent 的建議，owner 若選 B 需改程式與測試。
 - 在 dataset 寫完之後才被新存檔蓋過的 job，仍留下一份孤兒 dataset（L5 只擋下寫之前的情況；D-044 的 maintenance 未做）。
+
+## Coordinator 的執行（第 1 輪，4bdec75）
+
+第 1 輪的 commit 套到整合分支後（worktree 後來的 OpenAPI 引號修正併入第一個 commit），第一次 `integration-test` 在 `roles.sql:133` 失敗（`coordinator-r1-integration-red.log`）：L1 的修改以 `SET CONSTRAINTS ALL IMMEDIATE` 檢查 VALIDATED 的 import 有其 job，也觸發了同一個測試先前讓 proposal ready、卻沒有完成 job 的 0012 deferred check。4bdec75 改為只指名 T-017 的 `twin.import_validated_with_its_job`（與 `runs.sql` 的做法相同），要檢查的事不變。之後 `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`（429 個 test）、`backend-race` 與新的 `dt_test_*` 上的 `integration-test`（30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0；第 1 輪 NOT RUN 中的 SQL 與 DB-backed 測試都已執行並通過。Log 與 exit code 在 `checks/evidence/2026-10-20-T-017/coordinator-r1-*`。
+
+## Review 第 2 輪（2026-10-20）
+
+獨立 review 第 2 輪（審查 4bdec75）：CHANGES REQUESTED，第 1 輪的項目都已修正；新的 N1（Medium）、N2（Low）、N3（Info），沒有 High。由 coordinator 直接修正（N1）或記入後續 task（N2、N3），先紅後綠。Evidence 在 `checks/evidence/2026-10-20-T-017-r2/`。
+
+### 逐條
+
+| Finding | 處理 | 證據 |
+|---|---|---|
+| N1 AI suggestion 中不是此 import 欄位的條目也被要求確認：AI 建議不匯入（target null）的欄，mapping 自然不會列，於是每個這種條目都要求列在 `confirmed_low_confidence`；超過 256 個（`maxItems`）時 mapping 永遠無法存檔 | `confirmations` 改為接收 `Check` 已有的 `known`（profile 的欄名），沒列的 null 條目只有在是此 import 的欄時才需要確認；這種條目也不能列出（列了是 `MAPPING_CONFIRMATION_UNKNOWN`）。D-070 (d)、OpenAPI 的 `saveImportMapping`、`SaveMapping.confirmed_low_confidence`（TS 重產）與 AI_SPEC §8 寫明；T-027 寫入 suggestion 時丟掉或拒絕這種條目（T-027 的 scope） | 新的 `TestASuggestionOfOtherColumnsAsksNothing`：一個與 300 個不屬於 import 的低信心 null 條目不產生 issue、以名稱確認為 `MAPPING_CONFIRMATION_UNKNOWN`、旁邊屬於 import 的欄仍要確認；紅燈 `n1-red.log`（4 個斷言都失敗，300 個條目產生 300 個 issue）、綠燈 `n1-green.log` |
+| N2 不符 schema 的 suggestion 讓該 import 每次存 mapping 都是 500，T-017 沒有清掉它的路徑 | 不改行為（fail closed 是 D-070 (d) 的建議）；T-027 的 scope 新增：寫入 suggestion 前先以 `ai-mapping.schema.json` 驗證，不合就把 `mapping_suggestion_status` 標 failed、不存；D-070 (d) 加入「是否另需人工解除的路徑請 owner 決定」 | `planning/tasks.json`（T-027）、D-070 (d) |
+| N3 每個 event 的 schema 檢查讓 `Validate` 慢約 2.2–2.5 倍（reviewer 實測 10 萬列 9.5 MB：1.66 s 對 0.66 s；49.8 MB、32 個 metadata 欄：5.9 s 對 2.7 s；`Write` 再讀一次） | 不改行為；列入 T-037 的 benchmark scope | `planning/tasks.json`（T-037） |
+
+### 實際執行結果（第 2 輪，coordinator 在整合分支上）
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `go test -run TestASuggestionOfOtherColumnsAsksNothing ./internal/import/mapping/`（修正前） | 1 | 紅燈 `n1-red.log` |
+| `go test ./internal/import/mapping/`（修正後） | 0 | `n1-green.log` |
+| `make spec-check PYTHON=.venv/bin/python` | 0 | 第一次因 `http.ts` 過期而失敗（schema 描述改了），`make ts-contracts` 重產後通過；本節寫完後再跑一次（`coordinator-spec-check-final.log`） |
+| `make backend-test` | 0 | 寫完本節後再跑一次（`coordinator-backend-test-final.log`） |
+| `make architecture-check`、`make ai-eval`、`make frontend-test`、`make backend-race` | 0 | `coordinator-*.log` |
+| `make integration-test`（新的 `dt_test_t017r2`） | 0 | 所有 migration 與 SQL suite，30 個 package ok，沒有 FAIL 或 SKIP（`coordinator-integration.log`） |
+
+Exit code 在 `coordinator-exit-codes.txt`。沒有 NOT RUN 的新項目；`make e2e-test`、正式 object storage adapter 與 T-037 的效能仍如前述。
+
+### 需要 owner 決定（第 2 輪新增）
+
+- D-070 (d)：suggestion 中不是此 import 欄位的條目不需確認（N1，已實作）；不符 schema 的 suggestion 是否需要人工解除的路徑（N2，T-027 先在寫入時擋下）。

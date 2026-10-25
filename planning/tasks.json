@@ -1761,7 +1761,8 @@
       "scope": [
         "read-only mapping suggestion獨立於confirmed mapping。",
         "domain event inference產生proposal與frozen empirical bindings。",
-        "低confidence/unknown stage/data不足明確needs_input。"
+        "低confidence/unknown stage/data不足明確needs_input。",
+        "寫入 mapping suggestion 前先以 ai-mapping.schema.json 驗證，不合就把 mapping_suggestion_status 標 failed、不存（T-017 review 第 2 輪 N2：不符的 suggestion 會讓該 import 每次存 mapping 都是 500，T-017 沒有清除路徑）；並丟掉或拒絕 import profile 中沒有的欄位的條目（N1）。"
       ],
       "planned_outputs": [
         "internal/ai/importer/",
@@ -2298,7 +2299,8 @@
       "scope": [
         "實作independent SimPy cases與預先固定stochastic tolerance。",
         "DES events/time/RSS/cancel benchmarks，固定hardware/image。",
-        "2D/3D graph/render/FPS 與 API/validation load targets；記錄不足而非捏造。"
+        "2D/3D graph/render/FPS 與 API/validation load targets；記錄不足而非捏造。",
+        "Import validation 的成本：每個 canonical event 的 schema 檢查讓 mapping.Validate 慢約 2.2–2.5 倍（T-017 review 第 2 輪 N3：10 萬列 9.5 MB 1.66 s 對 0.66 s；49.8 MB、32 個 metadata 欄 5.9 s 對 2.7 s，Write 再讀一次），列入 benchmark 並固定 hardware/image。"
       ],
       "planned_outputs": [
         "testdata/simulation/",

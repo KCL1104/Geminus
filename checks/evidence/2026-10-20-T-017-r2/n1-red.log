@@ -1,0 +1,9 @@
+--- FAIL: TestASuggestionOfOtherColumnsAsksNothing (0.00s)
+    mapping_test.go:301: one column of no import: [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings}]
+    mapping_test.go:304: 300 columns of no import: 300 issues, first {MAPPING_CONFIRMATION_REQUIRED /mapping/mappings}
+    mapping_test.go:308: confirmed by name: []
+    mapping_test.go:317: a column of the import beside them: 301 issues, first [{MAPPING_CONFIRMATION_REQUIRED /mapping/mappings} {MAPPING_CONFIRMATION_REQUIRED /mapping/mappings}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.011s
+FAIL
+exit 1
