@@ -1017,6 +1017,8 @@ paths:
         it, a dirty one is kept as it is and draft_out_of_date is true (D-003). scenario: exactly one immutable
         Scenario on the base with the reviewed changes and their hash, named after the proposal''s summary (D-067
         APPROVED), and no new version; nothing is queued, a run is the person''s own request (AI_SPEC §7). The
+        Approval''s mode tells the two effects apart: new_version_id names the version (getModelVersion), scenario_id
+        the scenario, which getScenario and listScenarios show with source_proposal_id this proposal (T-028). The
         proposal becomes approved with the decider, the time and the comment (D-068 APPROVED); the audit event (IDs,
         hashes and risk, never the comment) and the idempotency response commit with the effect. The database
         refuses a second effect of one proposal and an effect that is not the approved proposal''s own (0001, 0013).'
@@ -1337,8 +1339,28 @@ paths:
     post:
       operationId: createManualScenario
       summary: Create manually confirmed immutable scenario
-      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table.
+      description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table. T-028 (REQ-010; D-004, D-014, D-020, D-021, D-057, D-067 APPROVED; D-078, D-079, D-080 PROPOSED): an
+        editor or owner saves a what-if on an immutable version of the organization, any of the model''s versions, not
+        only the latest (D-067): a name and a JSON Patch under the scenario allowlist that the AI scenario mode takes too
+        (D-021: existing capacities, distribution parameters and routing probabilities, and D-057''s line parameters; no
+        topology change and no new dataset binding; a test before an array element is changed, D-020). [] saves a
+        baseline. The request itself is checked first, as on every route (path ID 400, Idempotency-Key header 400,
+        media type 415, body 400/413/422; a name of only white space is 422 at /name), then, in one transaction, the
+        role (403) and the Idempotency-Key: the fingerprint is the version ID and the RFC 8785 form of the body, so the
+        same key and body on another version is 409 IDEMPOTENCY_KEY_CONFLICT, and a replay still needs the role. A
+        version of another organization, or none, is 404. The server checks the patch as it checks an AI scenario''s,
+        trusting nothing the client says about it: the patch profile and allowlist (issues at /patch/<op>/...), the
+        full validation of the base with the patch applied (issues at the candidate''s paths; warnings do not refuse),
+        the domain pack''s rules, and the dataset binding stage against the base''s whole manifest with the snapshots
+        read again (issues at /dataset_bindings/<i>/...). Any error is 422 MODEL_VALIDATION_FAILED and nothing is
+        stored; a base that binds datasets without dataset storage, or snapshots that cannot be read (details[0].code
+        DATASET_STORAGE_FAILED), is 503. Then exactly one immutable Scenario (source_proposal_id null, created_by the
+        caller), its audit event scenario.create (IDs, the patch hash and the number of operations; never the name or
+        the patch) and the idempotency response commit together, and 201 answers the Scenario as getScenario shows it.
+        No version is created, the model and its draft are untouched and nothing is queued: a run is the person''s
+        own createSimulation with this scenario_id (AI_SPEC §7, TEST-008). A scenario is never changed or deleted
+        (0001).'
       tags:
       - Scenarios
       x-origin: PROPOSED
@@ -1361,6 +1383,39 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/scenario.schema.json
+              examples:
+                manual:
+                  summary: A person's scenario on version 1, which is no longer the latest; no version, no run
+                  value:
+                    id: scn_01M4YDQK00J4MJS82YRG0PCEC1
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    name: Eight CI runners
+                    patch:
+                    - op: test
+                      path: /resources/1/id
+                      value: ci_runner
+                    - op: replace
+                      path: /resources/1/capacity
+                      value: 8
+                    patch_hash: sha256:b53fb1b85f008ecc70f56dcbfe23909e48a77e4304b36b575d16d2ce6bf52fb3
+                    source_proposal_id: null
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BS
+                    created_at: '2026-10-25T09:00:00Z'
+                baseline:
+                  summary: An empty patch saves a baseline
+                  value:
+                    id: scn_01M4YDQK00J4MJS82YRG0PCEC2
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    name: Baseline
+                    patch: []
+                    patch_hash: sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945
+                    source_proposal_id: null
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BS
+                    created_at: '2026-10-25T09:00:00Z'
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1370,19 +1425,125 @@ paths:
         '404':
           $ref: '#/components/responses/Error404'
         '409':
-          $ref: '#/components/responses/Error409'
+          description: 'The Idempotency-Key was used for another request (another body, or the same body on another
+            version). Codes: IDEMPOTENCY_KEY_CONFLICT.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                key_reused:
+                  summary: The key was used before for another scenario
+                  value:
+                    error:
+                      code: IDEMPOTENCY_KEY_CONFLICT
+                      message: this Idempotency-Key was used for a different request
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '413':
           $ref: '#/components/responses/Error413'
         '415':
           $ref: '#/components/responses/Error415'
         '422':
-          $ref: '#/components/responses/Error422'
+          description: 'The request body does not match CreateScenario or its name is only white space
+            (REQUEST_VALIDATION_FAILED), or the patch does not apply to the base under the scenario allowlist, the
+            patched model is not valid, or its dataset bindings do not verify (MODEL_VALIDATION_FAILED); nothing was
+            stored. Codes: MODEL_VALIDATION_FAILED, REQUEST_VALIDATION_FAILED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                topology:
+                  summary: A scenario does not remove a node (D-021); the structure changes through draft and publish
+                  value:
+                    error:
+                      code: MODEL_VALIDATION_FAILED
+                      message: the scenario's patch does not apply to its base or the result is not valid; nothing was
+                        saved
+                      details:
+                      - path: /patch/1/path
+                        reason: the scenario allowlist does not include /nodes/5
+                        code: PATCH_PATH_FORBIDDEN
+                        severity: error
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                stale_test:
+                  summary: The patch's test does not hold on this version (another resource is at index 1)
+                  value:
+                    error:
+                      code: MODEL_VALIDATION_FAILED
+                      message: the scenario's patch does not apply to its base or the result is not valid; nothing was
+                        saved
+                      details:
+                      - path: /patch/0/value
+                        reason: the value at /resources/1/id differs
+                        code: PATCH_TEST_FAILED
+                        severity: error
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                invalid_candidate:
+                  summary: The patched model is not valid (a decision's probabilities must sum to 1)
+                  value:
+                    error:
+                      code: MODEL_VALIDATION_FAILED
+                      message: the scenario's patch does not apply to its base or the result is not valid; nothing was
+                        saved
+                      details:
+                      - path: /nodes/3
+                        reason: outgoing probabilities sum to 0.7, not 1
+                        code: ROUTING_INVALID
+                        severity: error
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                blank_name:
+                  summary: The name is only white space
+                  value:
+                    error:
+                      code: REQUEST_VALIDATION_FAILED
+                      message: the scenario request is not acceptable
+                      details:
+                      - path: /name
+                        reason: 'the name says nothing: it is only white space'
+                        code: CONSTRAINT_FAILED
+                        severity: error
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '429':
           $ref: '#/components/responses/Error429'
         '500':
           $ref: '#/components/responses/Error500'
         '503':
-          $ref: '#/components/responses/Error503'
+          description: 'The base binds datasets and this deployment has no dataset storage, or the dataset snapshots
+            could not be read (details[0].code DATASET_STORAGE_FAILED); nothing was stored, retry later. Codes:
+            SERVICE_UNAVAILABLE.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                no_storage:
+                  summary: The base binds datasets and dataset storage is not configured
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the version binds datasets and dataset storage is not available
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                storage_failed:
+                  summary: The dataset snapshots the base binds could not be read
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the dataset snapshots could not be read; nothing was saved (retry later)
+                      details:
+                      - path: ''
+                        reason: the dataset storage failed
+                        code: DATASET_STORAGE_FAILED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
       requestBody:
         required: true
         content:
@@ -1392,8 +1553,14 @@ paths:
     get:
       operationId: listScenarios
       summary: List scenarios for immutable version
-      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table.
+      description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table. T-028 (D-004, D-067 APPROVED; D-079 PROPOSED): any member reads the scenarios on an immutable version of
+        the organization (a version of another organization, or none, is 404): those a person saved
+        (createManualScenario; source_proposal_id null) and those approved scenario proposals created
+        (source_proposal_id the proposal; its Approval''s scenario_id), oldest first (created_at, then ID), each as
+        getScenario shows it. A page holds at most limit scenarios (1–100, 50 when absent); next_cursor continues the
+        list and is bound to the organization, the version and this list (any other cursor is 400). Reading changes
+        nothing and writes no audit event.'
       tags:
       - Scenarios
       x-origin: PROPOSED
@@ -1420,6 +1587,44 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/http.schema.json#/$defs/Scenarios
+              examples:
+                both_kinds:
+                  summary: An approved AI scenario and a person's scenario on version 1
+                  value:
+                    items:
+                    - id: scn_01M4YDQK00J4MJS82YRG0PCEC0
+                      organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                      model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                      base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                      name: Double CI Capacity
+                      patch:
+                      - op: test
+                        path: /resources/1/id
+                        value: ci_runner
+                      - op: replace
+                        path: /resources/1/capacity
+                        value: 6
+                      patch_hash: sha256:9986280e38a861a2ca7eef1a03ca94a02b1ee066019b65d7fb5003b431884205
+                      source_proposal_id: aip_01M4YDQK00Q10EM95Z6H4XK0Y8
+                      created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                      created_at: '2026-10-15T08:30:00Z'
+                    - id: scn_01M4YDQK00J4MJS82YRG0PCEC1
+                      organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                      model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                      base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                      name: Eight CI runners
+                      patch:
+                      - op: test
+                        path: /resources/1/id
+                        value: ci_runner
+                      - op: replace
+                        path: /resources/1/capacity
+                        value: 8
+                      patch_hash: sha256:b53fb1b85f008ecc70f56dcbfe23909e48a77e4304b36b575d16d2ce6bf52fb3
+                      source_proposal_id: null
+                      created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BS
+                      created_at: '2026-10-25T09:00:00Z'
+                    next_cursor: null
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1442,8 +1647,13 @@ paths:
     get:
       operationId: getScenario
       summary: Get immutable scenario
-      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table.
+      description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table. T-028 (D-004, D-067 APPROVED; D-079 PROPOSED): any member reads a scenario of the organization (another
+        organization''s, or none, is 404), whether a person saved it (source_proposal_id null) or an approved scenario
+        proposal created it (source_proposal_id the proposal, whose Approval''s scenario_id names it). patch is the
+        stored patch in RFC 8785 form; the server checks that patch_hash is its D-019 hash before answering, and a
+        stored scenario that does not match is a server fault (500), never shown. A scenario never changes, so the
+        answer is the same every time; reading writes no audit event.'
       tags:
       - Scenarios
       x-origin: PROPOSED
@@ -1468,6 +1678,45 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/scenario.schema.json
+              examples:
+                from_a_proposal:
+                  summary: The scenario an approved scenario proposal created (T-026)
+                  value:
+                    id: scn_01M4YDQK00J4MJS82YRG0PCEC0
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    name: Double CI Capacity
+                    patch:
+                    - op: test
+                      path: /resources/1/id
+                      value: ci_runner
+                    - op: replace
+                      path: /resources/1/capacity
+                      value: 6
+                    patch_hash: sha256:9986280e38a861a2ca7eef1a03ca94a02b1ee066019b65d7fb5003b431884205
+                    source_proposal_id: aip_01M4YDQK00Q10EM95Z6H4XK0Y8
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-15T08:30:00Z'
+                manual:
+                  summary: A scenario a person saved (createManualScenario)
+                  value:
+                    id: scn_01M4YDQK00J4MJS82YRG0PCEC1
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    name: Eight CI runners
+                    patch:
+                    - op: test
+                      path: /resources/1/id
+                      value: ci_runner
+                    - op: replace
+                      path: /resources/1/capacity
+                      value: 8
+                    patch_hash: sha256:b53fb1b85f008ecc70f56dcbfe23909e48a77e4304b36b575d16d2ce6bf52fb3
+                    source_proposal_id: null
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BS
+                    created_at: '2026-10-25T09:00:00Z'
         '400':
           $ref: '#/components/responses/Error400'
         '401':

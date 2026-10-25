@@ -1,0 +1,23 @@
+{
+  "id": "scn_01M4YDQK00J4MJS82YRG0PCEC1",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "name": "Eight CI runners",
+  "patch": [
+    {
+      "op": "test",
+      "path": "/resources/1/id",
+      "value": "ci_runner"
+    },
+    {
+      "op": "replace",
+      "path": "/resources/1/capacity",
+      "value": 8
+    }
+  ],
+  "patch_hash": "sha256:b53fb1b85f008ecc70f56dcbfe23909e48a77e4304b36b575d16d2ce6bf52fb3",
+  "source_proposal_id": null,
+  "created_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BS",
+  "created_at": "2026-10-25T09:00:00Z"
+}

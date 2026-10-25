@@ -1,0 +1,10 @@
+{
+  "name": "Move the CI runners",
+  "patch": [
+    {
+      "op": "move",
+      "from": "/resources/1",
+      "path": "/resources/0"
+    }
+  ]
+}

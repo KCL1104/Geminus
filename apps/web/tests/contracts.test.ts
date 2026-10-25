@@ -14,6 +14,7 @@ import type {
   CancelSimulation,
   CanonicalEvent,
   ColumnMapping,
+  CreateScenario,
   Distribution,
   Error,
   IdAllocationPool,
@@ -30,6 +31,8 @@ import type {
   Reject,
   ReleaseSchedule,
   SaveMapping,
+  Scenario,
+  Scenarios,
   TargetField,
   Transform,
   ValidationCode,
@@ -226,6 +229,42 @@ const approvedProposal: Proposal = {
   decided_at: "2026-10-20T09:15:00Z",
   decision_comment: "檢閱過差異與風險後批准。",
 };
+// T-028: a scenario an approved scenario proposal created and one a person
+// saved, told apart by source_proposal_id; createManualScenario's body (a
+// name and a patch, [] for a baseline: the server binds everything else);
+// listScenarios' page holds both kinds.
+const aiScenario: Scenario = {
+  id: "scn_01M4YDQK00J4MJS82YRG0PCEC0",
+  organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  name: "Double CI Capacity",
+  patch: scenarioPatch,
+  patch_hash: "sha256:9986280e38a861a2ca7eef1a03ca94a02b1ee066019b65d7fb5003b431884205",
+  source_proposal_id: "aip_01M4YDQK00Q10EM95Z6H4XK0Y8",
+  created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+  created_at: "2026-10-15T08:30:00Z",
+};
+const eightRunners: JsonPatch = [
+  { op: "test", path: "/resources/1/id", value: "ci_runner" },
+  { op: "replace", path: "/resources/1/capacity", value: 8 },
+];
+const manualScenario: Scenario = {
+  ...aiScenario,
+  id: "scn_01M4YDQK00J4MJS82YRG0PCEC1",
+  name: "Eight CI runners",
+  patch: eightRunners,
+  patch_hash: "sha256:b53fb1b85f008ecc70f56dcbfe23909e48a77e4304b36b575d16d2ce6bf52fb3",
+  source_proposal_id: null,
+  created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BS",
+  created_at: "2026-10-25T09:00:00Z",
+};
+const createScenarioBody: CreateScenario = { name: "Eight CI runners", patch: eightRunners };
+const baselineScenarioBody: CreateScenario = { name: "Baseline", patch: [] };
+const scenariosPage: Scenarios = { items: [aiScenario, manualScenario], next_cursor: null };
+// An approval names its effect by mode (API_DATABASE §4): a client reads
+// new_version_id or scenario_id only after narrowing on it.
+const effectOf = (a: Approval): string => (a.mode === "edit" ? a.new_version_id : a.scenario_id);
 const analysisRequest: AnalysisRequest = {
   baseline_run_id: "sim_01M4YDQK00TA00000000000001",
   question: "Which station is the bottleneck?",
@@ -377,8 +416,18 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-import-mapping.json", stationMapping],
     ["valid-save-mapping.json", saveMapping],
     ["valid-import-validated.json", validatedImport],
+    ["valid-scenario.json", aiScenario],
+    ["valid-manual-scenario.json", manualScenario],
+    ["valid-create-scenario.json", createScenarioBody],
+    ["valid-create-baseline-scenario.json", baselineScenarioBody],
+    ["valid-scenarios-page.json", scenariosPage],
   ])("%s", (name, typed) => {
     expect(typed).toEqual(fixture(name));
+  });
+
+  it("an approval's mode names its effect (T-026, T-028)", () => {
+    expect(effectOf(approvalEdit)).toBe("mv_01M4YDQK00FRYWV7GS7X1QCXZS");
+    expect(effectOf(fixture("valid-scenario-approval.json") as Approval)).toBe(aiScenario.id);
   });
 
   it("valid-line-flow-ir.json carries the ADR-026 members", () => {
@@ -445,4 +494,16 @@ export const rejected = {
   unconfirmedSave: { ...saveMapping, confirmed: false } satisfies SaveMapping,
   // @ts-expect-error an import's status is one of the contract's (T-017 adds VALIDATING only)
   importStatus: { ...validatedImport, status: "MAPPING" } satisfies Import,
+  // @ts-expect-error a scenario's base is the version of the URL, never a member of the body (T-028)
+  scenarioBase: { ...createScenarioBody, base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZS" } satisfies CreateScenario,
+  // @ts-expect-error a person's scenario has no source proposal; only an approval creates one (T-026, T-028)
+  scenarioSource: { ...createScenarioBody, source_proposal_id: "aip_01M4YDQK00Q10EM95Z6H4XK0Y8" } satisfies CreateScenario,
+  // @ts-expect-error a scenario patch is the P0 profile too: no move (D-014)
+  scenarioMove: { name: "Move", patch: [{ op: "move", from: "/resources/1", path: "/resources/0" }] } satisfies CreateScenario,
+  // @ts-expect-error every scenario says where it came from: null for a person's (T-028)
+  scenarioWithoutSource: { ...manualScenario, source_proposal_id: undefined } satisfies Scenario,
+  // @ts-expect-error a scenario approval creates no version (D-004)
+  scenarioApprovalVersion: { proposal_id: "aip_01M4YDQK00Q10EM95Z6H4XK0Y8", status: "approved", mode: "scenario", scenario_id: aiScenario.id, new_version_id: "mv_01M4YDQK00C1B16WZGG1W8VQ84", patch_hash: zeroHash } satisfies Approval,
+  // @ts-expect-error the effect's ID depends on the mode: narrow before reading it (API_DATABASE §4)
+  unnarrowedEffect: (a: Approval): string => a.scenario_id,
 };

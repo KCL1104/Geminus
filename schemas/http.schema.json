@@ -528,6 +528,7 @@
       "$comment": "T-026 (D-068 APPROVED): comment is kept as the proposal's decision_comment (empty: none)."
     },
     "CreateScenario": {
+      "$comment": "T-028 (D-004, D-021, D-057 APPROVED; D-078, D-079 PROPOSED): the createManualScenario body. The base is the version of the URL, any immutable version of the organization; the server binds the organization, the model, the creator, the hash and the time, so the body names none of them, and a scenario a person saves has no source proposal. patch takes the scenario allowlist that the AI scenario mode takes too (D-021): existing capacities, distribution parameters and routing probabilities, and D-057's line parameters, with a test before an array element is changed (D-020); [] saves a baseline. name is the person's text, kept as given; only white space is refused.",
       "type": "object",
       "properties": {
         "name": {
@@ -1258,6 +1259,7 @@
       "additionalProperties": false
     },
     "Scenarios": {
+      "$comment": "T-028 (D-079 PROPOSED): listScenarios' page: the scenarios on one version, those a person saved (source_proposal_id null) and those approved scenario proposals created, oldest first (created_at, then ID).",
       "type": "object",
       "properties": {
         "items": {

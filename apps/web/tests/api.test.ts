@@ -6,7 +6,7 @@ import { createApiClient, newIdempotencyKey, type Session } from "../lib/api/cli
 import { draftETag, parseDraftETag } from "../lib/api/etag";
 import { isID } from "../lib/api/ids";
 import { errorCodeStatus, problemFromResponse, validationIssues } from "../lib/api/problem";
-import type { Draft, JsonPatch, ModelVersion } from "../lib/contracts";
+import type { CreateScenario, Draft, JsonPatch, ModelVersion, Scenario, Scenarios } from "../lib/contracts";
 
 const commonSchema = JSON.parse(readFileSync(new URL("../../../schemas/common.schema.json", import.meta.url), "utf8")) as {
   $defs: { ErrorCode: { enum: string[]; "x-http-status": Record<string, number> } };
@@ -18,6 +18,7 @@ const ORG = "org_01M4YDQK00Y5H2929M9WWZWTVH";
 const MODEL = "mdl_01M4YDQK004AGVNEGJQJ1NMM0N";
 const PROJECT = "prj_01M4YDQK00TA00000000000001";
 const REQ = "req_01M4YDQK00V6H8S0ST4F7510KR";
+const SCENARIO = "scn_01M4YDQK00J4MJS82YRG0PCEC1";
 const session: Session = { organizationId: ORG };
 
 type Call = { url: URL; init: RequestInit };
@@ -334,7 +335,7 @@ describe("model writes and versions (T-013)", () => {
 
   it("calls each operation at the contract's method and path", async () => {
     const ok = () => json(200, { items: [], next_cursor: null });
-    const f = fakeFetch(...Array.from({ length: 11 }, ok));
+    const f = fakeFetch(...Array.from({ length: 14 }, ok));
     const client = api(f);
     const seen: Record<string, number> = {};
     const record = (id: string) => (seen[id] = f.calls.length - 1);
@@ -360,16 +361,76 @@ describe("model writes and versions (T-013)", () => {
     record("listVersions");
     await client.getModelVersion(VERSION);
     record("getModelVersion");
+    await client.createScenario(VERSION, { name: "Baseline", patch: [] }, "key-contract-3");
+    record("createManualScenario");
+    await client.listScenarios(VERSION);
+    record("listScenarios");
+    await client.getScenario(SCENARIO);
+    record("getScenario");
     for (const [id, i] of Object.entries(seen)) {
       const op = operations.find((o) => o.operation_id === id);
       const call = f.calls[i]!;
       // The BFF's /api prefix in front of the contract's /v1 path (ADR-018).
       expect(call.url.pathname.startsWith("/api/v1/")).toBe(true);
-      const template = call.url.pathname.slice("/api".length).replace(/\/(prj|mdl|mv)_[0-9A-Z]{26}/g, "/{id}");
+      const template = call.url.pathname.slice("/api".length).replace(/\/(prj|mdl|mv|scn)_[0-9A-Z]{26}/g, "/{id}");
       expect([id, call.init.method, template]).toEqual([id, op?.method, op?.path]);
       // The tenant selector goes with every operation in an organization, and only with those (D-045).
       const selector = (call.init.headers as Record<string, string>)["X-Organization-ID"];
       expect([id, selector]).toEqual([id, op?.scope === "user" ? undefined : ORG]);
     }
+  });
+});
+
+describe("scenarios (T-028)", () => {
+  const VERSION = "mv_01M4YDQK00FRYWV7GS7X1QCXZR";
+  const manual = fixture("valid-manual-scenario.json") as Scenario;
+  const api = (f: ReturnType<typeof fakeFetch>) => createApiClient({ session: () => session, fetch: f.fetch });
+
+  it("saves a scenario on a version with its Idempotency-Key and the body as given", async () => {
+    const body = fixture("valid-create-scenario.json") as CreateScenario;
+    const f = fakeFetch(json(201, manual));
+    const r = await api(f).createScenario(VERSION, body, "key-scenario-1");
+    expect(r.ok && r.data.source_proposal_id).toBe(null);
+    const call = f.calls[0]!;
+    const headers = call.init.headers as Record<string, string>;
+    expect([call.init.method, call.url.pathname]).toEqual(["POST", `/api/v1/model-versions/${VERSION}/scenarios`]);
+    expect([headers["Idempotency-Key"], headers["Content-Type"], headers["If-Match"]]).toEqual(["key-scenario-1", "application/json", undefined]);
+    expect(JSON.parse(String(call.init.body))).toEqual(body);
+  });
+
+  it("lists a version's scenarios with the cursor and reads one", async () => {
+    const page = fixture("valid-scenarios-page.json") as Scenarios;
+    const f = fakeFetch(json(200, page), json(200, manual));
+    const client = api(f);
+    const listed = await client.listScenarios(VERSION, { cursor: "next-page" });
+    expect(listed.ok && listed.data.items.map((s) => s.source_proposal_id)).toEqual(["aip_01M4YDQK00Q10EM95Z6H4XK0Y8", null]);
+    expect([f.calls[0]!.url.pathname, f.calls[0]!.url.searchParams.get("cursor")]).toEqual([`/api/v1/model-versions/${VERSION}/scenarios`, "next-page"]);
+    expect((await client.getScenario(SCENARIO)).ok).toBe(true);
+    expect([f.calls[1]!.init.method, f.calls[1]!.url.pathname]).toEqual(["GET", `/api/v1/scenarios/${SCENARIO}`]);
+  });
+
+  it("maps a refused patch to its issues, nothing else", async () => {
+    const f = fakeFetch(json(422, errorBody("MODEL_VALIDATION_FAILED", {
+      details: [{ path: "/patch/1/path", reason: "the scenario allowlist does not include /nodes/5", code: "PATCH_PATH_FORBIDDEN", severity: "error" }],
+    })));
+    const r = await api(f).createScenario(VERSION, { name: "Remove a step", patch: [] }, "key-scenario-2");
+    expect(!r.ok && validationIssues(r.problem)).toEqual([
+      { code: "PATCH_PATH_FORBIDDEN", path: "/patch/1/path", message: "the scenario allowlist does not include /nodes/5", severity: "error" },
+    ]);
+  });
+
+  it("refuses bad IDs and keys before sending anything", async () => {
+    const f = fakeFetch();
+    const client = api(f);
+    const body = { name: "Baseline", patch: [] };
+    const refused = [
+      await client.createScenario(MODEL, body, "key-scenario-3"),
+      await client.createScenario(VERSION, body, "short"),
+      await client.listScenarios(MODEL),
+      await client.getScenario(VERSION),
+      await client.getScenario(`${SCENARIO}/../x`),
+    ];
+    expect(refused.map((r) => !r.ok && r.problem.kind)).toEqual(["not_found", "invalid", "not_found", "not_found", "not_found"]);
+    expect(f.calls).toHaveLength(0);
   });
 });

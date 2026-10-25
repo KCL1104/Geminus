@@ -1,0 +1,11 @@
+{
+  "id": "scn_01M4YDQK00J4MJS82YRG0PCEC1",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "name": "Baseline",
+  "patch": [],
+  "patch_hash": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "created_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BS",
+  "created_at": "2026-10-25T09:00:00Z"
+}

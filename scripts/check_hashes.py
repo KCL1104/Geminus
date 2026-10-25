@@ -207,9 +207,10 @@ def fixture_consistency(expected: dict) -> list[str]:
         errors.append("valid-model-version.json: hash is not model_hash(ir)")
     if version["dataset_bindings"] and manifest_hash(version["dataset_bindings"])[1] != [b["logical_ref"] for b in version["dataset_bindings"]]:
         errors.append("valid-model-version.json: dataset_bindings are not in byte order")
-    scenario = strict_load(ROOT / "testdata/contracts/valid-scenario.json")
-    if scenario["patch_hash"] != jcs_hash(scenario["patch"]):
-        errors.append("valid-scenario.json: patch_hash is not patch_hash(patch)")
+    for name in ("valid-scenario.json", "valid-manual-scenario.json"):  # T-028: a person's scenario too
+        scenario = strict_load(ROOT / "testdata/contracts" / name)
+        if scenario["patch_hash"] != jcs_hash(scenario["patch"]):
+            errors.append(f"{name}: patch_hash is not patch_hash(patch)")
     result = strict_load(ROOT / "testdata/contracts/valid-result.json")
     if result["reproducibility"]["result_digest"] != result_digest(result):
         errors.append("valid-result.json: result_digest does not match its payload")

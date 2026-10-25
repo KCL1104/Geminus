@@ -1,0 +1,11 @@
+tsc exit 0
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-ad9f060dfb4cc960e/apps/web
+
+
+ Test Files  2 passed (2)
+      Tests  56 passed (56)
+   Start at  08:55:24
+   Duration  268ms (tests 47%, import 25%, transform 23%, worker 6%)
+
+vitest exit 0

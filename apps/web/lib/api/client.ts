@@ -5,7 +5,23 @@
 // the UI can never show data the server did not return. The one exception is
 // getMe (D-045), which selects no organization: it is how the UI learns the
 // organizations to choose from, and the BFF and API authenticate it.
-import type { CreateModel, Draft, JsonPatch, Me, Model, Models, ModelVersion, OrganizationID, Projects, Publish, ResetDraft, Versions } from "../contracts";
+import type {
+  CreateModel,
+  CreateScenario,
+  Draft,
+  JsonPatch,
+  Me,
+  Model,
+  Models,
+  ModelVersion,
+  OrganizationID,
+  Projects,
+  Publish,
+  ResetDraft,
+  Scenario,
+  Scenarios,
+  Versions,
+} from "../contracts";
 import { draftETag, parseDraftETag } from "./etag";
 import { isID } from "./ids";
 import {
@@ -228,6 +244,32 @@ export function createApiClient(cfg: ClientConfig) {
     async getModelVersion(versionId: string, opts: { signal?: AbortSignal } = {}) {
       if (!isID("mv", versionId)) return notFound("The version");
       return call<ModelVersion>({ method: "GET", path: `/model-versions/${versionId}`, signal: opts.signal });
+    },
+    /**
+     * Saves a what-if on an immutable version, any of the model's (T-028): a
+     * name and a patch under the scenario allowlist, [] for a baseline. It
+     * creates no version and queues no run; reuse `key` to retry.
+     */
+    async createScenario(versionId: string, body: CreateScenario, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Scenario>> {
+      if (!isID("mv", versionId)) return notFound("The version");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<Scenario>({
+        method: "POST",
+        path: `/model-versions/${versionId}/scenarios`,
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    /** The scenarios on a version: a person's (source_proposal_id null) and those approved scenario proposals created. */
+    async listScenarios(versionId: string, opts: { cursor?: string; signal?: AbortSignal } = {}) {
+      if (!isID("mv", versionId)) return notFound("The version");
+      return call<Scenarios>({ method: "GET", path: `/model-versions/${versionId}/scenarios`, query: { cursor: opts.cursor }, signal: opts.signal });
+    },
+    async getScenario(scenarioId: string, opts: { signal?: AbortSignal } = {}) {
+      if (!isID("scn", scenarioId)) return notFound("The scenario");
+      return call<Scenario>({ method: "GET", path: `/scenarios/${scenarioId}`, signal: opts.signal });
     },
   };
 }

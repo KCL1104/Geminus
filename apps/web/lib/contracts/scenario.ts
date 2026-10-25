@@ -12,6 +12,7 @@ export type Scenario = {
   name: string;
   patch: JsonPatch;
   patch_hash: string;
+  /** The approved scenario proposal whose one effect this scenario is (T-026; its Approval's scenario_id), or null for a scenario a person saved with createManualScenario (T-028). */
   source_proposal_id: ProposalID | null;
   created_by: UserID;
   created_at: string;

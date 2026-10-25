@@ -2015,6 +2015,94 @@
       "expected_error_paths": [
         "/canonical_preview/0"
       ]
+    },
+    {
+      "id": "valid-manual-scenario",
+      "instance": "testdata/contracts/valid-manual-scenario.json",
+      "schema": "schemas/scenario.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-create-scenario",
+      "instance": "testdata/contracts/valid-create-scenario.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateScenario",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-create-baseline-scenario",
+      "instance": "testdata/contracts/valid-create-baseline-scenario.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateScenario",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-scenarios-page",
+      "instance": "testdata/contracts/valid-scenarios-page.json",
+      "schema": "schemas/http.schema.json#/$defs/Scenarios",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-create-scenario-base",
+      "instance": "testdata/contracts/invalid-create-scenario-base.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateScenario",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-create-scenario-source-proposal",
+      "instance": "testdata/contracts/invalid-create-scenario-source-proposal.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateScenario",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-create-scenario-empty-name",
+      "instance": "testdata/contracts/invalid-create-scenario-empty-name.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateScenario",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/name"
+      ]
+    },
+    {
+      "id": "invalid-create-scenario-move",
+      "instance": "testdata/contracts/invalid-create-scenario-move.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateScenario",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/patch/0"
+      ]
+    },
+    {
+      "id": "invalid-create-scenario-without-patch",
+      "instance": "testdata/contracts/invalid-create-scenario-without-patch.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateScenario",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-manual-scenario-without-source",
+      "instance": "testdata/contracts/invalid-manual-scenario-without-source.json",
+      "schema": "schemas/scenario.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
     }
   ]
 }

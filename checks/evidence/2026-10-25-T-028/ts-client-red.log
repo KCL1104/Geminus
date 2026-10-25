@@ -1,0 +1,95 @@
+tests/api.test.ts(364,18): error TS2339: Property 'createScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(366,18): error TS2339: Property 'listScenarios' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(368,18): error TS2339: Property 'getScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(392,28): error TS2339: Property 'createScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(405,33): error TS2339: Property 'listScenarios' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(406,48): error TS7006: Parameter 's' implicitly has an 'any' type.
+tests/api.test.ts(408,26): error TS2339: Property 'getScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(416,28): error TS2339: Property 'createScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(427,20): error TS2339: Property 'createScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(428,20): error TS2339: Property 'createScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(429,20): error TS2339: Property 'listScenarios' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(430,20): error TS2339: Property 'getScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(431,20): error TS2339: Property 'getScenario' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 8 more ...; getModelVersion(versionId: string, opts?: { ...; }): Promise<...>; }'.
+tsc exit 2
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-ad9f060dfb4cc960e/apps/web
+
+ ❯ tests/api.test.ts (30 tests | 5 failed) 60ms
+   ❯ model writes and versions (T-013) (7)
+     × calls each operation at the contract's method and path 6ms
+   ❯ scenarios (T-028) (4)
+     × saves a scenario on a version with its Idempotency-Key and the body as given 1ms
+     × lists a version's scenarios with the cursor and reads one 1ms
+     × maps a refused patch to its issues, nothing else 1ms
+     × refuses bad IDs and keys before sending anything 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/api.test.ts > model writes and versions (T-013) > calls each operation at the contract's method and path
+TypeError: client.createScenario is not a function
+ ❯ tests/api.test.ts:364:18
+    362|     await client.getModelVersion(VERSION);
+    363|     record("getModelVersion");
+    364|     await client.createScenario(VERSION, { name: "Baseline", patch: []…
+       |                  ^
+    365|     record("createManualScenario");
+    366|     await client.listScenarios(VERSION);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/api.test.ts > scenarios (T-028) > saves a scenario on a version with its Idempotency-Key and the body as given
+TypeError: api(...).createScenario is not a function
+ ❯ tests/api.test.ts:392:28
+    390|     const body = fixture("valid-create-scenario.json") as CreateScenar…
+    391|     const f = fakeFetch(json(201, manual));
+    392|     const r = await api(f).createScenario(VERSION, body, "key-scenario…
+       |                            ^
+    393|     expect(r.ok && r.data.source_proposal_id).toBe(null);
+    394|     const call = f.calls[0]!;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/api.test.ts > scenarios (T-028) > lists a version's scenarios with the cursor and reads one
+TypeError: client.listScenarios is not a function
+ ❯ tests/api.test.ts:405:33
+    403|     const f = fakeFetch(json(200, page), json(200, manual));
+    404|     const client = api(f);
+    405|     const listed = await client.listScenarios(VERSION, { cursor: "next…
+       |                                 ^
+    406|     expect(listed.ok && listed.data.items.map((s) => s.source_proposal…
+    407|     expect([f.calls[0]!.url.pathname, f.calls[0]!.url.searchParams.get…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/api.test.ts > scenarios (T-028) > maps a refused patch to its issues, nothing else
+TypeError: api(...).createScenario is not a function
+ ❯ tests/api.test.ts:416:28
+    414|       details: [{ path: "/patch/1/path", reason: "the scenario allowli…
+    415|     })));
+    416|     const r = await api(f).createScenario(VERSION, { name: "Remove a s…
+       |                            ^
+    417|     expect(!r.ok && validationIssues(r.problem)).toEqual([
+    418|       { code: "PATCH_PATH_FORBIDDEN", path: "/patch/1/path", message: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/api.test.ts > scenarios (T-028) > refuses bad IDs and keys before sending anything
+TypeError: client.createScenario is not a function
+ ❯ tests/api.test.ts:427:20
+    425|     const body = { name: "Baseline", patch: [] };
+    426|     const refused = [
+    427|       await client.createScenario(MODEL, body, "key-scenario-3"),
+       |                    ^
+    428|       await client.createScenario(VERSION, body, "short"),
+    429|       await client.listScenarios(MODEL),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 25 passed (30)
+   Start at  08:55:05
+   Duration  337ms (transform 50%, tests 36%, import 12%, worker 2%)
+
+vitest exit 1

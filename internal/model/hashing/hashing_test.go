@@ -394,9 +394,11 @@ func TestFixtureHashMembers(t *testing.T) {
 	if got, err := hashing.Model(version["ir"]); err != nil || `"`+got+`"` != string(version["hash"]) {
 		t.Errorf("valid-model-version.json: hash %s, model_hash(ir) %s (%v)", version["hash"], got, err)
 	}
-	scenario := decode[map[string]jsontext.Value](t, read(t, "testdata/contracts/valid-scenario.json"))
-	if got, err := hashing.Patch(scenario["patch"]); err != nil || `"`+got+`"` != string(scenario["patch_hash"]) {
-		t.Errorf("valid-scenario.json: patch_hash %s, computed %s (%v)", scenario["patch_hash"], got, err)
+	for _, name := range []string{"valid-scenario.json", "valid-manual-scenario.json"} { // T-028: a person's scenario too
+		scenario := decode[map[string]jsontext.Value](t, read(t, "testdata/contracts/"+name))
+		if got, err := hashing.Patch(scenario["patch"]); err != nil || `"`+got+`"` != string(scenario["patch_hash"]) {
+			t.Errorf("%s: patch_hash %s, computed %s (%v)", name, scenario["patch_hash"], got, err)
+		}
 	}
 	result := decode[simulation.Result](t, read(t, "testdata/contracts/valid-result.json"))
 	if got, err := hashing.Result(result); err != nil || got != result.Reproducibility.ResultDigest {
