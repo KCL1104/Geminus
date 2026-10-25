@@ -556,7 +556,39 @@ paths:
         '500':
           $ref: '#/components/responses/Error500'
         '503':
-          $ref: '#/components/responses/Error503'
+          description: 'Infrastructure unavailable; nothing was published (no version, no audit event, and the
+            Idempotency-Key keeps no answer, so the same request may be sent again). The base binds datasets and this
+            deployment gives the model service no dataset storage; or the dataset binding stage could not read or verify
+            a snapshot the base binds, either while it checks the candidate or while it checks the draft that follows
+            the new version (details[0].code DATASET_STORAGE_FAILED, as approveProposal and createManualScenario
+            answer, D-069 (b), H-022; the cause is logged, never sent); or the request could not complete (no details).
+            Codes: SERVICE_UNAVAILABLE.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                no_storage:
+                  summary: The base binds datasets and dataset storage is not configured
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the version binds datasets and dataset storage is not available
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                storage_failed:
+                  summary: The dataset snapshots the base binds could not be read (H-022)
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the dataset snapshots could not be read; nothing was published (retry later)
+                      details:
+                      - path: ''
+                        reason: the dataset storage failed
+                        code: DATASET_STORAGE_FAILED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '428':
           $ref: '#/components/responses/Error428'
       requestBody:
@@ -2617,7 +2649,39 @@ paths:
         '500':
           $ref: '#/components/responses/Error500'
         '503':
-          $ref: '#/components/responses/Error503'
+          description: 'Infrastructure unavailable; nothing was queued (no run, no job, no audit event, and the
+            Idempotency-Key keeps no answer, so the same request may be sent again). The run needs object storage (its
+            version binds datasets, or trace_level is sampled) and this deployment has none; or the dataset binding
+            stage could not read or verify a snapshot the version binds (details[0].code DATASET_STORAGE_FAILED, as
+            approveProposal and createManualScenario answer, D-069 (b), H-022; the cause is logged, never sent); or the
+            request could not complete (no details). Codes: SERVICE_UNAVAILABLE.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                no_storage:
+                  summary: The version binds datasets (or the run asks for a sampled trace) and object storage is not
+                    configured
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: object storage is not configured for this deployment
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                storage_failed:
+                  summary: The dataset snapshots the version binds could not be read (H-022)
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: the dataset snapshots could not be read; nothing was queued (retry later)
+                      details:
+                      - path: ''
+                        reason: the dataset storage failed
+                        code: DATASET_STORAGE_FAILED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
       requestBody:
         required: true
         content:
