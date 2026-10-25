@@ -358,6 +358,7 @@ func (h *Handler) cancelled(ctx context.Context, hr handler.Run, audit func(cont
 func (h *Handler) failed(err error) error {
 	var ie *engine.InputError
 	var de *engine.DeadlockError
+	var se *engine.StalledError
 	var f *jobs.Failure
 	switch {
 	case errors.As(err, &f):
@@ -374,6 +375,10 @@ func (h *Handler) failed(err error) error {
 		return failure(store.SimulationDeadlock, de.Reason(), false)
 	case errors.Is(err, engine.ErrDeadlock):
 		return failure(store.SimulationDeadlock, "the replication deadlocked", false)
+	case errors.As(err, &se):
+		return failure(store.SimulationStalled, se.Reason(), false)
+	case errors.Is(err, engine.ErrStalled):
+		return failure(store.SimulationStalled, "the replication stalled: a bundle can never be filled", false)
 	case errors.As(err, &ie):
 		first := ie.Issues[0]
 		return failure(store.RunInputInvalid, fmt.Sprintf("the engine refused the frozen input: %s at %s", first.Code, first.Path), false)

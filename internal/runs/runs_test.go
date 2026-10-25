@@ -115,6 +115,7 @@ func TestRunError(t *testing.T) {
 		store.EntityVisitsExceeded:   {"MODEL_VALIDATION_FAILED", "/execution_limits/max_entity_visits"},
 		store.RunInputInvalid:        {"MODEL_VALIDATION_FAILED", ""},
 		store.SimulationDeadlock:     {"MODEL_VALIDATION_FAILED", ""},
+		store.SimulationStalled:      {"MODEL_VALIDATION_FAILED", ""},
 		jobs.LeaseExpired:            {"SERVICE_UNAVAILABLE", ""},
 		"WORKER_STOPPED":             {"SERVICE_UNAVAILABLE", ""},
 		store.ArtifactStorageFailed:  {"SERVICE_UNAVAILABLE", ""},
@@ -190,6 +191,60 @@ func TestDeadlockError(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw, _ := json.Marshal(jobs.Failure{Code: store.SimulationDeadlock, Message: reason, Retryable: false})
+	e, err := runError(raw, fixture.Error.Error.RequestID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reason == "" || !reflect.DeepEqual(*e, fixture.Error) {
+		t.Errorf("runError %+v\n fixture %+v", *e, fixture.Error)
+	}
+	if fixture.EngineVersion != des.Version {
+		t.Errorf("the fixture's engine_version %s is not this engine's %s", fixture.EngineVersion, des.Version)
+	}
+}
+
+// D-050 B2 (T-048): a stalled run's error is the contract example
+// testdata/contracts/valid-run-failed-stalled.json, whose message is the
+// runner's for the hand-derived G-S1 stall (breakdown-goldens.json):
+// MODEL_VALIDATION_FAILED like a deadlock, the failure's own code and
+// severity in details[0].
+func TestStalledError(t *testing.T) {
+	root := filepath.Join("..", "..")
+	var golden struct {
+		Cases []struct {
+			ID       string `json:"id"`
+			Expected struct {
+				Stalled *struct {
+					Reason string `json:"reason"`
+				} `json:"stalled"`
+			} `json:"expected"`
+		} `json:"cases"`
+	}
+	data, err := os.ReadFile(filepath.Join(root, "testdata/simulation/breakdown-goldens.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &golden); err != nil {
+		t.Fatal(err)
+	}
+	reason := ""
+	for _, c := range golden.Cases {
+		if c.Expected.Stalled != nil && c.ID == "G-S1" {
+			reason = c.Expected.Stalled.Reason
+		}
+	}
+	var fixture struct {
+		EngineVersion string        `json:"engine_version"`
+		Error         ErrorEnvelope `json:"error"`
+	}
+	data, err = os.ReadFile(filepath.Join(root, "testdata/contracts/valid-run-failed-stalled.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(jobs.Failure{Code: store.SimulationStalled, Message: reason, Retryable: false})
 	e, err := runError(raw, fixture.Error.Error.RequestID)
 	if err != nil {
 		t.Fatal(err)

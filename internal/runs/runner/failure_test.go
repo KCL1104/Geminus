@@ -65,3 +65,45 @@ func TestEngineFailures(t *testing.T) {
 		t.Errorf("bare ErrDeadlock: %+v", err)
 	}
 }
+
+// D-050 B2 (T-048): ErrStalled is SIMULATION_STALLED, never retried (the
+// frozen input stalls again), with the engine's reason, here the
+// hand-derived G-S1 one (testdata/simulation/breakdown-goldens.json).
+func TestStalledFailure(t *testing.T) {
+	var doc struct {
+		Cases []struct {
+			ID       string `json:"id"`
+			Expected struct {
+				Stalled *struct {
+					Tick     int64  `json:"tick"`
+					Entity   string `json:"entity"`
+					Node     string `json:"node"`
+					Since    int64  `json:"since"`
+					Deadline int64  `json:"deadline"`
+					Reason   string `json:"reason"`
+				} `json:"stalled"`
+			} `json:"expected"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/breakdown-goldens.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	var se *engine.StalledError
+	reason := ""
+	for _, c := range doc.Cases {
+		if s := c.Expected.Stalled; s != nil && c.ID == "G-S1" {
+			se, reason = &engine.StalledError{Tick: s.Tick, Entity: s.Entity, Node: s.Node, Since: s.Since, Deadline: s.Deadline}, s.Reason
+		}
+	}
+	if se == nil {
+		t.Fatal("no stall golden")
+	}
+	h := &Handler{}
+	var f *jobs.Failure
+	if err := h.failed(fmt.Errorf("replication 2: %w", se)); !errors.As(err, &f) || f.Code != store.SimulationStalled || f.Message != reason || f.Retryable {
+		t.Errorf("stall: %+v, want %s %q", err, store.SimulationStalled, reason)
+	}
+	if err := h.failed(fmt.Errorf("%w: somewhere", engine.ErrStalled)); !errors.As(err, &f) || f.Code != store.SimulationStalled || f.Retryable || f.Message == "" {
+		t.Errorf("bare ErrStalled: %+v", err)
+	}
+}

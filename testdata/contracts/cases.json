@@ -1703,6 +1703,13 @@
       "layer": "schema"
     },
     {
+      "id": "valid-run-failed-stalled",
+      "instance": "testdata/contracts/valid-run-failed-stalled.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Run",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
       "id": "valid-proposal-approved",
       "instance": "testdata/contracts/valid-proposal-approved.json",
       "schema": "schemas/proposal.schema.json",

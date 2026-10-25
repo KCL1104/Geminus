@@ -828,7 +828,7 @@ func runError(failure []byte, requestID string) (*ErrorEnvelope, error) {
 		body.Details[0].Path, body.Details[0].Severity = path, string(model.SeverityError)
 	case f.Code == store.RunInputInvalid:
 		body.Code = "MODEL_VALIDATION_FAILED"
-	case f.Code == store.SimulationDeadlock:
+	case f.Code == store.SimulationDeadlock || f.Code == store.SimulationStalled:
 		body.Code = "MODEL_VALIDATION_FAILED"
 		body.Details[0].Severity = string(model.SeverityError)
 	case f.Code == jobs.LeaseExpired || f.Code == "WORKER_STOPPED" || f.Code == store.ArtifactStorageFailed:
