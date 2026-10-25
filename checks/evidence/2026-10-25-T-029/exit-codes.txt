@@ -1,0 +1,28 @@
+T-029 agent worktree, branch t029 (commands run in this worktree; logs alongside)
+
+red first
+  go test ./internal/results/compare/ (stub)                         exit=1  compare-unit-red.log (18 of 18 tests fail)
+  go test ./internal/comparisons/ (stub)                             exit=1  comparisons-unit-red.log (5 of 5 fail)
+  npm run typecheck with the pre-T-029 http.ts                       exit=2  ts-contracts-red.log (8 errors)
+  tsc + vitest api.test.ts without compareSimulations                exit=2 / exit=1  ts-client-red.log (6 errors; 4 of 34 fail)
+
+green and verification
+  go test -count=1 -v ./internal/results/compare/                    exit=0  compare-unit-green.log
+  go test -count=1 -v ./internal/comparisons/                        exit=0  comparisons-unit-green.log
+  tsc + vitest api.test.ts contracts.test.ts                         exit=0  ts-client-green.log (62 tests)
+  make spec-check PYTHON=/home/user/Geminus/.venv/bin/python         exit=0  spec-check.log
+  make backend-test (after go clean -testcache; tree 0378204)        exit=0  backend-test.log (66 packages ok)
+  go test -race ./internal/results/... ./internal/comparisons/... ./internal/api/... ./internal/runs/   exit=0  race-touched.log
+  make backend-race                                                  exit=0  backend-race.log (66 packages ok, no data race)
+  make architecture-check                                            exit=0  architecture-check.log
+  go test -count=1 -v ./internal/results/... ./internal/comparisons/ exit=0  results-test.log
+  make frontend-test                                                 exit=0  frontend-test.log (445 tests)
+  make ai-eval                                                       exit=0  ai-eval.log
+  make backend-numeric                                               exit=0  backend-numeric.log
+
+mutation
+  mutate.py <root> mutants-unit-r1.log unit (round 1)               exit=0  34 killed, 1 survived, 4 did not build
+  mutate.py <root> mutants-unit.log unit (round 2)                  exit=0  39 killed, 0 survived, 0 did not build
+  mutate.py <root> mutants-db-build.log dbbuild                     exit=0  5 DB mutants apply and build; tests NOT RUN
+
+NOT RUN (no PostgreSQL): make integration-test, make db-test, make db-go-test, the DB mutants' tests (db-not-run.txt)

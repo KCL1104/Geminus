@@ -1,0 +1,5 @@
+db-status-not-checked: BUILDS; tests NOT RUN (TestComparisonRefusals|TestComparisonClosedLoop) 
+db-scenario-named-as-baseline: BUILDS; tests NOT RUN (TestComparisonRoleMatrix|TestComparisonRefusals) 
+db-readiness-before-existence: BUILDS; tests NOT RUN (TestComparisonRefusals) 
+db-results-swapped: BUILDS; tests NOT RUN (TestComparisonClosedLoop) 
+db-route-not-registered: BUILDS; tests NOT RUN (TestComparisonClosedLoop) 

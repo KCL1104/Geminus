@@ -1,0 +1,13 @@
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+tests/contracts.test.ts(19,3): error TS2305: Module '"../lib/contracts"' has no exported member 'ComparisonReason'.
+tests/contracts.test.ts(20,3): error TS2305: Module '"../lib/contracts"' has no exported member 'ComparisonWarning'.
+tests/contracts.test.ts(27,3): error TS2305: Module '"../lib/contracts"' has no exported member 'IncomparableReason'.
+tests/contracts.test.ts(278,3): error TS2353: Object literal may only specify known properties, and 'incomparable_reasons' does not exist in type 'Comparison'.
+tests/contracts.test.ts(480,19): error TS2339: Property 'incomparable_reasons' does not exist on type 'Comparison'.
+tests/contracts.test.ts(571,3): error TS2578: Unused '@ts-expect-error' directive.
+tests/contracts.test.ts(573,3): error TS2578: Unused '@ts-expect-error' directive.
+tests/contracts.test.ts(577,3): error TS2578: Unused '@ts-expect-error' directive.
+typecheck exit=2

@@ -1,0 +1,188 @@
+--- FAIL: TestDeltas (0.00s)
+    compare_test.go:167: comparison {BaselineRunID: ScenarioRunID: Comparable:false IncomparableReasons:[] Metrics:[] Warnings:[]}
+--- FAIL: TestBaselineZero (0.00s)
+    compare_test.go:193: no metric /metrics/failure_count/mean in []
+--- FAIL: TestUnavailable (0.00s)
+    compare_test.go:216: no metric /metrics/lead_time_minutes/mean in []
+--- FAIL: TestDORAStaysUnavailable (0.00s)
+    compare_test.go:252: 0 DORA statistics, want 5 metrics × 3
+    compare_test.go:254: no metric /metrics/failure_count/mean in []
+--- FAIL: TestMissing (0.00s)
+    compare_test.go:269: no metric /metrics/resources/tester/utilization_mean in []
+--- FAIL: TestIncomparable (0.00s)
+    --- FAIL: TestIncomparable/model_version (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [MODEL_VERSION_MISMATCH]
+    --- FAIL: TestIncomparable/dataset_manifest (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [DATASET_MANIFEST_MISMATCH]
+    --- FAIL: TestIncomparable/seed (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [SEED_MISMATCH]
+    --- FAIL: TestIncomparable/baseline_patch (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [BASELINE_PATCH_NOT_EMPTY]
+    --- FAIL: TestIncomparable/no-op_baseline_patch (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [BASELINE_PATCH_NOT_EMPTY]
+    --- FAIL: TestIncomparable/engine (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [ENGINE_VERSION_MISMATCH]
+    --- FAIL: TestIncomparable/horizon (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [HORIZON_MISMATCH]
+    --- FAIL: TestIncomparable/warmup (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [WARMUP_MISMATCH]
+    --- FAIL: TestIncomparable/replications (0.00s)
+        compare_test.go:312: comparable false, reasons []; want false, [REPLICATIONS_MISMATCH]
+    compare_test.go:339: reasons [], want [MODEL_VERSION_MISMATCH ENGINE_VERSION_MISMATCH DATASET_MANIFEST_MISMATCH HORIZON_MISMATCH WARMUP_MISMATCH REPLICATIONS_MISMATCH SEED_MISMATCH BASELINE_PATCH_NOT_EMPTY]
+--- FAIL: TestComparableAcrossSpellings (0.00s)
+    compare_test.go:356: comparable false []
+--- FAIL: TestWarnings (0.00s)
+    compare_test.go:366: one replication: []
+    compare_test.go:371: five replications: []string(nil)
+    compare_test.go:376: warnings []
+    compare_test.go:381: censored scenario: []
+--- FAIL: TestOrder (0.00s)
+    compare_test.go:414: order
+         got []
+        want [/metrics/throughput/mean /metrics/throughput/p50 /metrics/throughput/p95 /metrics/lead_time_minutes/mean /metrics/lead_time_minutes/p50 /metrics/lead_time_minutes/p95 /metrics/failure_count/mean /metrics/failure_count/p50 /metrics/failure_count/p95 /metrics/rework_count/mean /metrics/rework_count/p50 /metrics/rework_count/p95 /metrics/additional_metrics/wip/mean /metrics/additional_metrics/wip/p50 /metrics/additional_metrics/wip/p95 /metrics/dora/change_lead_time/mean /metrics/dora/change_lead_time/p50 /metrics/dora/change_lead_time/p95 /metrics/domain/fpy/mean /metrics/domain/fpy/p50 /metrics/domain/fpy/p95 /metrics/domain/uph/mean /metrics/domain/uph/p50 /metrics/domain/uph/p95 /metrics/resources/Zulu/utilization_mean /metrics/resources/alpha/utilization_mean /metrics/resources/server/utilization_mean /metrics/queues/service/wait_mean_minutes /metrics/queues/service/wait_p50_minutes /metrics/queues/service/wait_p95_minutes /metrics/queues/service/queue_length_mean]
+--- FAIL: TestPathEscaping (0.00s)
+    compare_test.go:448: Path: 
+    compare_test.go:455: no metric /metrics/resources/a~1b~0c/utilization_mean in []
+--- FAIL: TestResolve (0.00s)
+    compare_test.go:474: 0 statistics: []
+    compare_test.go:486: an available 0: null <nil>
+    compare_test.go:500: "": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "metrics/throughput/mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/throughput": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/throughput/": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/throughput/mean/": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/throughput/sample_count": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/throughput/confidence_interval_mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/throughput/unit": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/throughput/reason": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/throughput/mean/x": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/resources/server": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/resources/server/capacity": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/resources/server/observation_ticks": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/resources/nope/utilization_mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/queues/service/sample_count": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/queues/service/reason": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/queues/service/status": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/dora/change_lead_time": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/dora/nope/mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/additional_metrics/replication_mean_lead_time_minutes/mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/domain/fpy/population": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/domain/nope/mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/run_id": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/reproducibility/seed": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/replication_summaries/0/completed_count": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/nope/mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/resources/server~2/utilization_mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/resources/server~/utilization_mean": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/metrics/dora/change_lead_time/mean ": null <nil>, want ErrUnknownPath
+    compare_test.go:500: "/Metrics/throughput/mean": null <nil>, want ErrUnknownPath
+    compare_test.go:505: a result without metrics.domain: <nil>
+    compare_test.go:508: a nil result resolved
+--- FAIL: TestOutOfRange (0.00s)
+    compare_test.go:525: no metric /metrics/domain/tiny/mean in []
+--- FAIL: TestNoNegativeZero (0.00s)
+    compare_test.go:542: no metric /metrics/domain/neg/mean in []
+--- FAIL: TestInconsistent (0.00s)
+    --- FAIL: TestInconsistent/a_value_beyond_the_range/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_value_beyond_the_range/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/not_completed/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/not_completed/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_engine/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_engine/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_horizon/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_horizon/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_config_without_ticks/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_config_without_ticks/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/unknown_status/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/unknown_status/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_non-finite_value/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_non-finite_value/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_non-finite_queue_length/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_non-finite_queue_length/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/no_result/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/no_result/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_replication_count/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_replication_count/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/missing_replication/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/missing_replication/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_run's_result/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_run's_result/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_seed/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_seed/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_warmup/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_warmup/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_manifest/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/another_manifest/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_patch_that_is_not_JSON/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_patch_that_is_not_JSON/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_patch_that_is_no_array/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/a_patch_that_is_no_array/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/available_without_a_mean/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/available_without_a_mean/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/unavailable_with_a_mean/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/unavailable_with_a_mean/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/available_queue,_no_wait/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/available_queue,_no_wait/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/unavailable_queue,_a_wait/baseline (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    --- FAIL: TestInconsistent/unavailable_queue,_a_wait/scenario (0.00s)
+        compare_test.go:587: <nil>, want ErrInconsistent
+    compare_test.go:596: Statistics: <nil>
+--- FAIL: TestSameRun (0.00s)
+    compare_test.go:605: <nil>, want ErrSameRun
+--- FAIL: TestTruncation (0.00s)
+    compare_test.go:621: 0 metrics, warnings []
+--- FAIL: TestContract (0.01s)
+    compare_test.go:644: http.schema.json#/$defs/Comparison: Go compare.Comparison has members [baseline_run_id comparable incomparable_reasons metrics scenario_run_id warnings], schema has [baseline_run_id comparable metrics scenario_run_id warnings]
+    compare_test.go:660: mixed: {} does not match the contract: [{COMPARISON  missing required members: baseline_run_id, comparable, metrics, scenario_run_id, warnings error}] <nil>
+    compare_test.go:660: incomparable: {} does not match the contract: [{COMPARISON  missing required members: baseline_run_id, comparable, metrics, scenario_run_id, warnings error}] <nil>
+--- FAIL: TestGolden (0.00s)
+    compare_test.go:695: golden
+         got {}
+        want {"baseline_run_id":"sim_01M4YDQK00FGZZWH0PP15XPNFA","comparable":true,"incomparable_reasons":[],"metrics":[{"absolute_delta":10,"baseline":100,"metric_path":"/metrics/throughput/mean","reason":null,"relative_delta":0.1,"scenario":110,"status":"available"},{"absolute_delta":10,"baseline":100,"metric_path":"/metrics/throughput/p50","reason":null,"relative_delta":0.1,"scenario":110,"status":"available"},{"absolute_delta":10,"baseline":100,"metric_path":"/metrics/throughput/p95","reason":null,"relative_delta":0.1,"scenario":110,"status":"available"},{"absolute_delta":1.5,"baseline":5,"metric_path":"/metrics/lead_time_minutes/mean","reason":null,"relative_delta":0.3,"scenario":6.5,"status":"available"},{"absolute_delta":1.5,"baseline":5,"metric_path":"/metrics/lead_time_minutes/p50","reason":null,"relative_delta":0.3,"scenario":6.5,"status":"available"},{"absolute_delta":1.5,"baseline":5,"metric_path":"/metrics/lead_time_minutes/p95","reason":null,"relative_delta":0.3,"scenario":6.5,"status":"available"},{"absolute_delta":2,"baseline":0,"metric_path":"/metrics/failure_count/mean","reason":"BASELINE_ZERO","relative_delta":null,"scenario":2,"status":"available"},{"absolute_delta":2,"baseline":0,"metric_path":"/metrics/failure_count/p50","reason":"BASELINE_ZERO","relative_delta":null,"scenario":2,"status":"available"},{"absolute_delta":2,"baseline":0,"metric_path":"/metrics/failure_count/p95","reason":"BASELINE_ZERO","relative_delta":null,"scenario":2,"status":"available"},{"absolute_delta":0,"baseline":0,"metric_path":"/metrics/rework_count/mean","reason":"BASELINE_ZERO","relative_delta":null,"scenario":0,"status":"available"},{"absolute_delta":0,"baseline":0,"metric_path":"/metrics/rework_count/p50","reason":"BASELINE_ZERO","relative_delta":null,"scenario":0,"status":"available"},{"absolute_delta":0,"baseline":0,"metric_path":"/metrics/rework_count/p95","reason":"BASELINE_ZERO","relative_delta":null,"scenario":0,"status":"available"},{"absolute_delta":null,"baseline":null,"metric_path":"/metrics/dora/change_lead_time/mean","reason":"BOTH_UNAVAILABLE","relative_delta":null,"scenario":null,"status":"unavailable"},{"absolute_delta":null,"baseline":null,"metric_path":"/metrics/dora/change_lead_time/p50","reason":"BOTH_UNAVAILABLE","relative_delta":null,"scenario":null,"status":"unavailable"},{"absolute_delta":null,"baseline":null,"metric_path":"/metrics/dora/change_lead_time/p95","reason":"BOTH_UNAVAILABLE","relative_delta":null,"scenario":null,"status":"unavailable"},{"absolute_delta":-0.24752475247524752,"baseline":0.49504950495049505,"metric_path":"/metrics/resources/server/utilization_mean","reason":null,"relative_delta":-0.5,"scenario":0.24752475247524752,"status":"available"},{"absolute_delta":0,"baseline":0,"metric_path":"/metrics/queues/service/wait_mean_minutes","reason":"BASELINE_ZERO","relative_delta":null,"scenario":0,"status":"available"},{"absolute_delta":0,"baseline":0,"metric_path":"/metrics/queues/service/wait_p50_minutes","reason":"BASELINE_ZERO","relative_delta":null,"scenario":0,"status":"available"},{"absolute_delta":0,"baseline":0,"metric_path":"/metrics/queues/service/wait_p95_minutes","reason":"BASELINE_ZERO","relative_delta":null,"scenario":0,"status":"available"},{"absolute_delta":0,"baseline":0,"metric_path":"/metrics/queues/service/queue_length_mean","reason":"BASELINE_ZERO","relative_delta":null,"scenario":0,"status":"available"}],"scenario_run_id":"sim_01M4YDQK00FGZZWH0PP15XPNFB","warnings":["SINGLE_REPLICATION"]}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/results/compare	0.032s
+FAIL
+exit=1

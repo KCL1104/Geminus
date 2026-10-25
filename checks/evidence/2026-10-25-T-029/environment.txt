@@ -1,0 +1,9 @@
+T-029 agent worktree (2026-10-25)
+branch: t029, from 3e56705 (claude/lucid-meitner-vq1awo)
+date (UTC) when the final commands started: 2026-10-25T20:38Z
+go: go1.27.3 linux/amd64 (go.mod toolchain)
+node: v22.22.0, npm 10.9.4 (apps/web/package.json wants node >=24.21.0 <25; `npm ci --prefix apps/web --engine-strict=false`, lockfile unchanged)
+python: 3.13.16 (/home/user/Geminus/.venv, requirements-spec.txt), passed as PYTHON= to make
+cpus: 4, shared with other agents; Linux x86_64
+PostgreSQL: none in this worktree; GEMINUS_TEST_DATABASE_URL unset, so every DB-backed Go test SKIPs and make integration-test / db-test / db-go-test are NOT RUN
+live AI: none; no API key read or set

@@ -1,0 +1,11 @@
+typecheck exit=0
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a453e6a31caa31249/apps/web
+
+
+ Test Files  2 passed (2)
+      Tests  62 passed (62)
+   Start at  20:42:08
+   Duration  453ms (tests 43%, transform 30%, import 22%, worker 5%)
+
+vitest exit=0

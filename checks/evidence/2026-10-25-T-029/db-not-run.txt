@@ -1,0 +1,25 @@
+NOT RUN in the T-029 agent worktree (no PostgreSQL; GEMINUS_TEST_DATABASE_URL unset).
+The coordinator runs them on a disposable dt_test_* database (make integration-test).
+
+make targets
+- make integration-test (make db-test + make db-go-test)
+- make db-test (SQL suites; T-029 adds no migration and no SQL suite, so they only re-run)
+- make db-go-test
+
+New DB-backed Go tests (they compile and pass go vet; here they SKIP with "NOT RUN: set GEMINUS_TEST_DATABASE_URL ...")
+- internal/api TestComparisonClosedLoop: baseline and two-server scenario of the congested-queue golden through the API and the job loop; 409 before completion (baseline named); every compared value equals compare.Resolve on both served Results; every delta recomputed in the test; baseline 0 -> BASELINE_ZERO; DORA BOTH_UNAVAILABLE (TEST-023); the same bytes for viewer, editor and owner; no audit event; roles swapped -> BASELINE_PATCH_NOT_EMPTY, SCENARIO_PATCH_EMPTY, values side by side
+- internal/api TestComparisonIncomparable: another seed, replication count, warmup, model version -> exactly that reason, every metric incomparable; another trace level -> comparable
+- internal/api TestComparisonRoleMatrix: owner, editor, viewer 200; member of another organization 404; another organization's run 404 naming the parameter, byte-identical to a run that does not exist; unknown identity 403; no token 401
+- internal/api TestComparisonRefusals: 400 for missing, repeated, wrong-kind and identical parameters (naming each); queued 409 (baseline first); a missing scenario 404 before a not-ready baseline 409; cancelled 409 on either side; failed runs (event budget) 409
+
+Existing DB tests that the change could affect (route assembly in internal/api; nothing else changed in a DB path)
+- every internal/api test (internal/api/api.go registers one more route)
+
+DB mutants (checks/evidence/2026-10-25-T-029/mutate.py <root> <log> db; refused without GEMINUS_TEST_DATABASE_URL)
+- db-status-not-checked, db-scenario-named-as-baseline, db-readiness-before-existence, db-results-swapped, db-route-not-registered
+- each applies once and builds (mutants-db-build.log); their tests are NOT RUN
+
+Also NOT RUN
+- make e2e-test (the comparison UI is T-032; no browser flow uses compareSimulations yet)
+- live AI (no key, T-053 gate); make ai-eval-live
+- the full official OpenAPI validator (NOT_RUN_UNAVAILABLE in make spec-check)

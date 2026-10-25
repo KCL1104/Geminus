@@ -1,0 +1,30 @@
+--- FAIL: TestRoutesMatchContract (0.00s)
+    comparisons_test.go:41: routes [], want compareSimulations only
+--- FAIL: TestRunQuery (0.00s)
+    comparisons_test.go:87: "baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB":   <nil>
+    comparisons_test.go:87: "scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB&baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&other=1":   <nil>
+    comparisons_test.go:93: "scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB": <nil>, want 400 naming baseline_run_id
+    comparisons_test.go:93: "baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA": <nil>, want 400 naming scenario_run_id
+    comparisons_test.go:93: "": <nil>, want 400 naming baseline_run_id
+    comparisons_test.go:93: "baseline_run_id=&scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB": <nil>, want 400 naming baseline_run_id
+    comparisons_test.go:93: "baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB": <nil>, want 400 naming baseline_run_id
+    comparisons_test.go:93: "baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB&scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB": <nil>, want 400 naming scenario_run_id
+    comparisons_test.go:93: "baseline_run_id=mdl_01M4YDQK00FGZZWH0PP15XPNFA&scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB": <nil>, want 400 naming baseline_run_id
+    comparisons_test.go:93: "baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&scenario_run_id=sim_01m4ydqk00fgzzwh0pp15xpnfb": <nil>, want 400 naming scenario_run_id
+    comparisons_test.go:93: "baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&scenario_run_id=sim_81M4YDQK00FGZZWH0PP15XPNFB": <nil>, want 400 naming scenario_run_id
+    comparisons_test.go:93: "baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA": <nil>, want 400 naming scenario_run_id
+    comparisons_test.go:93: "baseline_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFA&scenario_run_id=sim_01M4YDQK00FGZZWH0PP15XPNFB&x=%zz": <nil>, want 400 naming query string
+--- FAIL: TestRefused (0.00s)
+    comparisons_test.go:115: comparisons: baseline_run_id: comparisons: no such run: comparisons: baseline_run_id: comparisons: no such run, want NOT_FOUND naming baseline_run_id
+    comparisons_test.go:115: comparisons: scenario_run_id: comparisons: no such run: comparisons: scenario_run_id: comparisons: no such run, want NOT_FOUND naming scenario_run_id
+    comparisons_test.go:115: wrapped: comparisons: scenario_run_id: comparisons: the run has no result: wrapped: comparisons: scenario_run_id: comparisons: the run has no result, want RESULT_NOT_READY naming scenario_run_id
+    comparisons_test.go:115: comparisons: baseline_run_id: comparisons: the run has no result: comparisons: baseline_run_id: comparisons: the run has no result, want RESULT_NOT_READY naming baseline_run_id
+    comparisons_test.go:115: compare: the baseline and the scenario are the same run: compare: the baseline and the scenario are the same run, want INVALID_REQUEST naming scenario_run_id
+--- FAIL: TestInput (0.00s)
+    comparisons_test.go:141: input {ID: ModelVersionID: EngineVersion: DatasetManifestHash: ScenarioPatch:[] Config:{Horizon:{Value:0 Unit:} Warmup:{Value:0 Unit:} Replications:0 Seed:0 TraceLevel:} Result:<nil>}, want {ID:sim_01M4YDQK00FGZZWH0PP15XPNFA ModelVersionID:mv_01M4YDQK00FRYWV7GS7X1QCXZR EngineVersion:des-go-0.4.0 DatasetManifestHash:sha256:1111111111111111111111111111111111111111111111111111111111111111 ScenarioPatch:[91 123 34 111 112 34 58 34 116 101 115 116 34 44 34 112 97 116 104 34 58 34 47 110 97 109 101 34 44 34 118 97 108 117 101 34 58 34 120 34 125 93] Config:{Horizon:{Value:2 Unit:day} Warmup:{Value:1 Unit:hour} Replications:3 Seed:11 TraceLevel:sampled} Result:0x3224641d98c8}
+--- FAIL: TestDecodeResult (0.00s)
+    comparisons_test.go:154: &{RunID: Status: EngineVersion: Metrics:{Throughput:{Status: Mean:<nil> P50:<nil> P95:<nil> SampleCount:0 Population: Unit: ConfidenceIntervalMean:<nil> Reason:<nil>} LeadTimeMinutes:{Status: Mean:<nil> P50:<nil> P95:<nil> SampleCount:0 Population: Unit: ConfidenceIntervalMean:<nil> Reason:<nil>} Resources:map[] Queues:map[] FailureCount:{Status: Mean:<nil> P50:<nil> P95:<nil> SampleCount:0 Population: Unit: ConfidenceIntervalMean:<nil> Reason:<nil>} ReworkCount:{Status: Mean:<nil> P50:<nil> P95:<nil> SampleCount:0 Population: Unit: ConfidenceIntervalMean:<nil> Reason:<nil>} DORA:map[] AdditionalMetrics:map[] Domain:map[]} ReplicationSummaries:[] MeasurementWindow:{TickUnit: WarmupTicks:0 HorizonTicks:0 TimeBoundary:} Reproducibility:{Seed:0 Replications:0 ModelHash: EffectiveModelHash: ConfigHash: DatasetManifestHash: ResultDigest:} Trace:{Available:false SampledEvents:0 ArtifactID:<nil>}} <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/comparisons	0.022s
+FAIL
+exit=1

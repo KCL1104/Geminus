@@ -1,0 +1,141 @@
+=== RUN   TestDeltas
+--- PASS: TestDeltas (0.01s)
+=== RUN   TestBaselineZero
+--- PASS: TestBaselineZero (0.00s)
+=== RUN   TestUnavailable
+--- PASS: TestUnavailable (0.01s)
+=== RUN   TestDORAStaysUnavailable
+--- PASS: TestDORAStaysUnavailable (0.01s)
+=== RUN   TestMissing
+--- PASS: TestMissing (0.00s)
+=== RUN   TestIncomparable
+=== RUN   TestIncomparable/engine
+=== RUN   TestIncomparable/horizon
+=== RUN   TestIncomparable/replications
+=== RUN   TestIncomparable/seed
+=== RUN   TestIncomparable/no-op_baseline_patch
+=== RUN   TestIncomparable/model_version
+=== RUN   TestIncomparable/dataset_manifest
+=== RUN   TestIncomparable/warmup
+=== RUN   TestIncomparable/baseline_patch
+--- PASS: TestIncomparable (0.02s)
+    --- PASS: TestIncomparable/engine (0.00s)
+    --- PASS: TestIncomparable/horizon (0.00s)
+    --- PASS: TestIncomparable/replications (0.00s)
+    --- PASS: TestIncomparable/seed (0.00s)
+    --- PASS: TestIncomparable/no-op_baseline_patch (0.00s)
+    --- PASS: TestIncomparable/model_version (0.00s)
+    --- PASS: TestIncomparable/dataset_manifest (0.00s)
+    --- PASS: TestIncomparable/warmup (0.00s)
+    --- PASS: TestIncomparable/baseline_patch (0.00s)
+=== RUN   TestComparableAcrossSpellings
+--- PASS: TestComparableAcrossSpellings (0.00s)
+=== RUN   TestWarnings
+--- PASS: TestWarnings (0.01s)
+=== RUN   TestOrder
+--- PASS: TestOrder (2.19s)
+=== RUN   TestPathEscaping
+--- PASS: TestPathEscaping (0.00s)
+=== RUN   TestResolve
+--- PASS: TestResolve (0.01s)
+=== RUN   TestOutOfRange
+--- PASS: TestOutOfRange (0.03s)
+=== RUN   TestNoNegativeZero
+--- PASS: TestNoNegativeZero (0.01s)
+=== RUN   TestInconsistent
+=== RUN   TestInconsistent/a_patch_that_is_not_JSON/baseline
+=== RUN   TestInconsistent/a_patch_that_is_not_JSON/scenario
+=== RUN   TestInconsistent/a_patch_that_is_no_array/baseline
+=== RUN   TestInconsistent/a_patch_that_is_no_array/scenario
+=== RUN   TestInconsistent/unavailable_queue,_a_wait/baseline
+=== RUN   TestInconsistent/unavailable_queue,_a_wait/scenario
+=== RUN   TestInconsistent/missing_replication/baseline
+=== RUN   TestInconsistent/missing_replication/scenario
+=== RUN   TestInconsistent/another_warmup/baseline
+=== RUN   TestInconsistent/another_warmup/scenario
+=== RUN   TestInconsistent/available_without_a_mean/baseline
+=== RUN   TestInconsistent/available_without_a_mean/scenario
+=== RUN   TestInconsistent/no_result/baseline
+=== RUN   TestInconsistent/no_result/scenario
+=== RUN   TestInconsistent/another_run's_result/baseline
+=== RUN   TestInconsistent/another_run's_result/scenario
+=== RUN   TestInconsistent/not_completed/baseline
+=== RUN   TestInconsistent/not_completed/scenario
+=== RUN   TestInconsistent/another_engine/baseline
+=== RUN   TestInconsistent/another_engine/scenario
+=== RUN   TestInconsistent/another_horizon/baseline
+=== RUN   TestInconsistent/another_horizon/scenario
+=== RUN   TestInconsistent/unknown_status/baseline
+=== RUN   TestInconsistent/unknown_status/scenario
+=== RUN   TestInconsistent/available_queue,_no_wait/baseline
+=== RUN   TestInconsistent/available_queue,_no_wait/scenario
+=== RUN   TestInconsistent/a_non-finite_value/baseline
+=== RUN   TestInconsistent/a_non-finite_value/scenario
+=== RUN   TestInconsistent/another_seed/baseline
+=== RUN   TestInconsistent/another_seed/scenario
+=== RUN   TestInconsistent/another_replication_count/baseline
+=== RUN   TestInconsistent/another_replication_count/scenario
+=== RUN   TestInconsistent/another_manifest/baseline
+=== RUN   TestInconsistent/another_manifest/scenario
+=== RUN   TestInconsistent/a_config_without_ticks/baseline
+=== RUN   TestInconsistent/a_config_without_ticks/scenario
+=== RUN   TestInconsistent/unavailable_with_a_mean/baseline
+=== RUN   TestInconsistent/unavailable_with_a_mean/scenario
+=== RUN   TestInconsistent/a_value_beyond_the_range/baseline
+=== RUN   TestInconsistent/a_value_beyond_the_range/scenario
+=== RUN   TestInconsistent/a_non-finite_queue_length/baseline
+=== RUN   TestInconsistent/a_non-finite_queue_length/scenario
+--- PASS: TestInconsistent (0.06s)
+    --- PASS: TestInconsistent/a_patch_that_is_not_JSON/baseline (0.00s)
+    --- PASS: TestInconsistent/a_patch_that_is_not_JSON/scenario (0.00s)
+    --- PASS: TestInconsistent/a_patch_that_is_no_array/baseline (0.00s)
+    --- PASS: TestInconsistent/a_patch_that_is_no_array/scenario (0.00s)
+    --- PASS: TestInconsistent/unavailable_queue,_a_wait/baseline (0.01s)
+    --- PASS: TestInconsistent/unavailable_queue,_a_wait/scenario (0.00s)
+    --- PASS: TestInconsistent/missing_replication/baseline (0.00s)
+    --- PASS: TestInconsistent/missing_replication/scenario (0.00s)
+    --- PASS: TestInconsistent/another_warmup/baseline (0.00s)
+    --- PASS: TestInconsistent/another_warmup/scenario (0.00s)
+    --- PASS: TestInconsistent/available_without_a_mean/baseline (0.00s)
+    --- PASS: TestInconsistent/available_without_a_mean/scenario (0.00s)
+    --- PASS: TestInconsistent/no_result/baseline (0.00s)
+    --- PASS: TestInconsistent/no_result/scenario (0.00s)
+    --- PASS: TestInconsistent/another_run's_result/baseline (0.00s)
+    --- PASS: TestInconsistent/another_run's_result/scenario (0.00s)
+    --- PASS: TestInconsistent/not_completed/baseline (0.00s)
+    --- PASS: TestInconsistent/not_completed/scenario (0.00s)
+    --- PASS: TestInconsistent/another_engine/baseline (0.00s)
+    --- PASS: TestInconsistent/another_engine/scenario (0.00s)
+    --- PASS: TestInconsistent/another_horizon/baseline (0.00s)
+    --- PASS: TestInconsistent/another_horizon/scenario (0.00s)
+    --- PASS: TestInconsistent/unknown_status/baseline (0.00s)
+    --- PASS: TestInconsistent/unknown_status/scenario (0.01s)
+    --- PASS: TestInconsistent/available_queue,_no_wait/baseline (0.01s)
+    --- PASS: TestInconsistent/available_queue,_no_wait/scenario (0.01s)
+    --- PASS: TestInconsistent/a_non-finite_value/baseline (0.01s)
+    --- PASS: TestInconsistent/a_non-finite_value/scenario (0.00s)
+    --- PASS: TestInconsistent/another_seed/baseline (0.00s)
+    --- PASS: TestInconsistent/another_seed/scenario (0.00s)
+    --- PASS: TestInconsistent/another_replication_count/baseline (0.00s)
+    --- PASS: TestInconsistent/another_replication_count/scenario (0.00s)
+    --- PASS: TestInconsistent/another_manifest/baseline (0.00s)
+    --- PASS: TestInconsistent/another_manifest/scenario (0.00s)
+    --- PASS: TestInconsistent/a_config_without_ticks/baseline (0.00s)
+    --- PASS: TestInconsistent/a_config_without_ticks/scenario (0.00s)
+    --- PASS: TestInconsistent/unavailable_with_a_mean/baseline (0.00s)
+    --- PASS: TestInconsistent/unavailable_with_a_mean/scenario (0.00s)
+    --- PASS: TestInconsistent/a_value_beyond_the_range/baseline (0.00s)
+    --- PASS: TestInconsistent/a_value_beyond_the_range/scenario (0.00s)
+    --- PASS: TestInconsistent/a_non-finite_queue_length/baseline (0.01s)
+    --- PASS: TestInconsistent/a_non-finite_queue_length/scenario (0.00s)
+=== RUN   TestSameRun
+--- PASS: TestSameRun (0.00s)
+=== RUN   TestTruncation
+--- PASS: TestTruncation (1.94s)
+=== RUN   TestContract
+--- PASS: TestContract (0.01s)
+=== RUN   TestGolden
+--- PASS: TestGolden (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/results/compare	4.349s
+exit=0

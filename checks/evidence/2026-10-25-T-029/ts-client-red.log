@@ -1,0 +1,75 @@
+tests/api.test.ts(395,18): error TS2339: Property 'compareSimulations' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 11 more ...; getScenario(scenarioId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(471,28): error TS2339: Property 'compareSimulations' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 11 more ...; getScenario(scenarioId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(481,28): error TS2339: Property 'compareSimulations' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 11 more ...; getScenario(scenarioId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(489,20): error TS2339: Property 'compareSimulations' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 11 more ...; getScenario(scenarioId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(490,20): error TS2339: Property 'compareSimulations' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 11 more ...; getScenario(scenarioId: string, opts?: { ...; }): Promise<...>; }'.
+tests/api.test.ts(491,20): error TS2339: Property 'compareSimulations' does not exist on type '{ getMe(opts?: { signal?: AbortSignal | undefined; }): Promise<Result<Me>>; listProjects(opts?: { cursor?: string | undefined; signal?: AbortSignal | undefined; }): Promise<...>; ... 11 more ...; getScenario(scenarioId: string, opts?: { ...; }): Promise<...>; }'.
+typecheck exit=2
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a453e6a31caa31249/apps/web
+
+ ❯ tests/api.test.ts (34 tests | 4 failed) 88ms
+   ❯ model writes and versions (T-013) (8)
+     × calls each operation at the contract's method and path 10ms
+   ❯ comparisons (T-029) (3)
+     × asks for the server's comparison of two runs, by query, and shows it as given 1ms
+     × maps a run that has no result yet to the contract's conflict, naming the run 1ms
+     × refuses run IDs the server would refuse before sending anything 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/api.test.ts > model writes and versions (T-013) > calls each operation at the contract's method and path
+TypeError: client.compareSimulations is not a function
+ ❯ tests/api.test.ts:395:18
+    393|     await client.getScenario(SCENARIO);
+    394|     record("getScenario");
+    395|     await client.compareSimulations(BASELINE_RUN, SCENARIO_RUN);
+       |                  ^
+    396|     record("compareSimulations");
+    397|     for (const [id, i] of Object.entries(seen)) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/api.test.ts > comparisons (T-029) > asks for the server's comparison of two runs, by query, and shows it as given
+TypeError: api(...).compareSimulations is not a function
+ ❯ tests/api.test.ts:471:28
+    469|     const golden = fixture("valid-comparison.json") as Comparison;
+    470|     const f = fakeFetch(json(200, golden));
+    471|     const r = await api(f).compareSimulations(BASELINE_RUN, SCENARIO_R…
+       |                            ^
+    472|     expect(r.ok && r.data).toEqual(golden);
+    473|     const call = f.calls[0]!;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/api.test.ts > comparisons (T-029) > maps a run that has no result yet to the contract's conflict, naming the run
+TypeError: api(...).compareSimulations is not a function
+ ❯ tests/api.test.ts:481:28
+    479|   it("maps a run that has no result yet to the contract's conflict, na…
+    480|     const f = fakeFetch(json(409, errorBody("RESULT_NOT_READY", { deta…
+    481|     const r = await api(f).compareSimulations(BASELINE_RUN, SCENARIO_R…
+       |                            ^
+    482|     expect(!r.ok && [r.problem.kind, r.problem.code, r.problem.details…
+    483|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/api.test.ts > comparisons (T-029) > refuses run IDs the server would refuse before sending anything
+TypeError: client.compareSimulations is not a function
+ ❯ tests/api.test.ts:489:20
+    487|     const client = api(f);
+    488|     const refused = [
+    489|       await client.compareSimulations(SCENARIO, SCENARIO_RUN),
+       |                    ^
+    490|       await client.compareSimulations(BASELINE_RUN, `${SCENARIO_RUN}&b…
+    491|       await client.compareSimulations(BASELINE_RUN, BASELINE_RUN),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 30 passed (34)
+   Start at  20:41:45
+   Duration  487ms (transform 62%, tests 29%, import 7%, worker 1%)
+
+vitest exit=1

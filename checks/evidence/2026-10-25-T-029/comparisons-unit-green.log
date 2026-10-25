@@ -1,0 +1,13 @@
+=== RUN   TestRoutesMatchContract
+--- PASS: TestRoutesMatchContract (0.00s)
+=== RUN   TestRunQuery
+--- PASS: TestRunQuery (0.00s)
+=== RUN   TestRefused
+--- PASS: TestRefused (0.00s)
+=== RUN   TestInput
+--- PASS: TestInput (0.00s)
+=== RUN   TestDecodeResult
+--- PASS: TestDecodeResult (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/comparisons	0.014s
+exit=0
