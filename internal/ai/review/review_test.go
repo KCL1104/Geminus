@@ -177,8 +177,10 @@ func TestRefusesUnsafeChanges(t *testing.T) {
 		{"negative time", `[{"op":"test","path":"/nodes/2/id","value":"ci"},{"op":"replace","path":"/nodes/2/service_time/distribution","value":{"type":"constant","value":-5}}]`, validate.IRSchemaInvalid, "/nodes/2/service_time/distribution/value"},
 		{"triangular out of order", `[{"op":"test","path":"/nodes/2/id","value":"ci"},{"op":"replace","path":"/nodes/2/service_time/distribution","value":{"type":"triangular","min":30,"mode":10,"max":20}}]`, validate.DistributionInvalid, "/nodes/2/service_time/distribution"},
 		{"P1 distribution", `[{"op":"test","path":"/nodes/1/id","value":"code_review"},{"op":"replace","path":"/nodes/1/service_time/distribution","value":{"type":"mixture","mean":3,"cv":1}}]`, validate.IRSchemaInvalid, "/nodes/1/service_time/distribution/type"},
-		// D-056 moved lognormal to P0; until T-048 runs it the primitive gate refuses it (D-063 PROPOSED).
-		{"lognormal before its kernel", `[{"op":"test","path":"/nodes/1/id","value":"code_review"},{"op":"replace","path":"/nodes/1/service_time/distribution","value":{"type":"lognormal","mean":3,"cv":1}}]`, validate.PrimitiveNotSupported, "/nodes/1/service_time/distribution"},
+		// D-056 moved lognormal to P0 and T-048 runs it: a lognormal in range
+		// is a proposal like any distribution (TestBreakdownRisk), one out of
+		// range (cv > 10, D-075) is invalid.
+		{"lognormal cv out of range", `[{"op":"test","path":"/nodes/1/id","value":"code_review"},{"op":"replace","path":"/nodes/1/service_time/distribution","value":{"type":"lognormal","mean":3,"cv":11}}]`, validate.DistributionInvalid, "/nodes/1/service_time/distribution"},
 		{"calendars before their kernel", `[{"op":"add","path":"/calendars","value":[{"id":"c","period":1440,"shifts":[{"start":0,"end":480}]}]}]`, validate.PrimitiveNotSupported, "/calendars"},
 		{"dangling reference", `[{"op":"test","path":"/flows/0/id","value":"f1"},{"op":"replace","path":"/flows/0/to","value":"nowhere"}]`, validate.UnknownReference, "/flows/0/to"},
 	}

@@ -526,7 +526,7 @@ func TestScenarioMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ctx.Prompt.Role != provider.RoleScenario || ctx.Prompt.TemplateVersion != "scenario-0.3.0" || ctx.Mode != provider.ModeScenario {
+	if ctx.Prompt.Role != provider.RoleScenario || ctx.Prompt.TemplateVersion != "scenario-0.4.0" || ctx.Mode != provider.ModeScenario {
 		t.Errorf("%+v", ctx)
 	}
 	if _, ok := blocks(t, ctx.Prompt)["ID_ALLOCATION_POOL"]; ok {
@@ -536,16 +536,27 @@ func TestScenarioMode(t *testing.T) {
 		t.Error("no scenario allowlist in the rules")
 	}
 	// D-057 (T-047): a queue's buffer capacity is a scenario parameter now,
-	// with its risk and the blocking-cycle refusal; the other line-flow
+	// with its risk and the blocking-cycle refusal; (T-048) so are the
+	// breakdowns' time-to-failure and time-to-repair distributions, replace
+	// only and at least medium, and every distribution a scenario may change
+	// can be lognormal or Weibull, in their ranges. The other line-flow
 	// parameters are not (their gates are still on).
-	for _, w := range []string{"queue's buffer capacity", "D-057", "BLOCKING_CYCLE", "at least medium"} {
+	for _, w := range []string{"queue's buffer capacity", "D-057", "BLOCKING_CYCLE", "at least medium",
+		"/resources/<i>/breakdowns/time_to_failure/distribution", "/resources/<i>/breakdowns/time_to_repair/distribution",
+		"never adds or removes breakdowns", "lognormal (mean, cv", "weibull (shape", "cv <= 10", "0.1 <= shape <= 20"} {
 		if !strings.Contains(ctx.Prompt.System, w) {
 			t.Errorf("the scenario rules do not say %q", w)
 		}
 	}
-	for _, w := range []string{"breakdowns", "calendar", "setups", "batch"} {
+	for _, w := range []string{"calendar", "setups", "batch", "shift"} {
 		if strings.Contains(modeRules(provider.ModeScenario), w) {
 			t.Errorf("the scenario rules offer %q, whose gate is still on", w)
+		}
+	}
+	// The scenario template says the same (prompts/scenario, scenario-0.4.0).
+	for _, w := range []string{"breakdowns", "time_to_failure", "time_to_repair", "lognormal", "Weibull"} {
+		if !strings.Contains(ctx.Prompt.System, w) {
+			t.Errorf("the scenario template does not say %q", w)
 		}
 	}
 }

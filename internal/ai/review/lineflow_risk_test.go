@@ -36,6 +36,44 @@ var lineFlowRiskCases = map[validate.Primitive][]lineFlowRiskCase{
 		{"a larger buffer", func(c *model.ModelIR) { c.Nodes[4].Capacity = 40 }, Low},
 		{"an unlimited buffer", func(c *model.ModelIR) { c.Nodes[3].Capacity = 0 }, Low},
 	},
+	// T-048 (D-057): any breakdown parameter is at least medium. Resource 1
+	// (line) breaks down: TTF exponential 600, TTR lognormal 25, cv 0.8.
+	validate.Breakdowns: {
+		{"a longer time to failure", func(c *model.ModelIR) {
+			mean := 900.0
+			c.Resources[1].Breakdowns.TimeToFailure.Distribution.Mean = &mean
+		}, Medium},
+		{"a faster repair", func(c *model.ModelIR) {
+			mean := 10.0
+			c.Resources[1].Breakdowns.TimeToRepair.Distribution.Mean = &mean
+		}, Medium},
+		{"breakdowns removed", func(c *model.ModelIR) { c.Resources[1].Breakdowns = nil }, Medium},
+		{"breakdowns added", func(c *model.ModelIR) {
+			b := *c.Resources[1].Breakdowns
+			c.Resources[0].Breakdowns = &b
+		}, Medium},
+	},
+	// Lognormal and Weibull take the risk of the member they are in.
+	validate.Lognormal: {
+		{"a lognormal repair with another cv", func(c *model.ModelIR) {
+			cv := 0.3
+			c.Resources[1].Breakdowns.TimeToRepair.Distribution.CV = &cv
+		}, Medium},
+		{"a lognormal service time", func(c *model.ModelIR) {
+			mean, cv := 240.0, 0.2
+			c.Nodes[1].ServiceTime.Distribution = model.Distribution{Type: model.DistLognormal, Mean: &mean, CV: &cv}
+		}, Low},
+	},
+	validate.Weibull: {
+		{"a Weibull time to failure", func(c *model.ModelIR) {
+			shape, scale := 1.2, 640.0
+			c.Resources[1].Breakdowns.TimeToFailure.Distribution = model.Distribution{Type: model.DistWeibull, Shape: &shape, Scale: &scale}
+		}, Medium},
+		{"a Weibull service time", func(c *model.ModelIR) {
+			shape, scale := 3.0, 250.0
+			c.Nodes[1].ServiceTime.Distribution = model.Distribution{Type: model.DistWeibull, Shape: &shape, Scale: &scale}
+		}, Low},
+	},
 }
 
 // A primitive the validator checks (its gate lifted) must have server-risk

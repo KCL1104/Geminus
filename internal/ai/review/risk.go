@@ -40,16 +40,20 @@ func Max(a, b Risk) Risk {
 //     on a cycle (rework, retest); the candidate has a cycle the base does
 //     not; an entity (node, flow, resource, entity type, metric) was added
 //     or removed; a constraint was added, removed or changed; a queue's
-//     buffer is smaller, or finite where it was unlimited (D-057);
-//   - low: anything else (a name, a distribution, a higher capacity, a
+//     buffer is smaller, or finite where it was unlimited (D-057); a
+//     resource's breakdowns were added or removed, or its time to failure
+//     or to repair changed, either way (D-057, T-048);
+//   - low: anything else (a name, an arrival, service or delay
+//     distribution, lognormal and Weibull included, a higher capacity, a
 //     larger or an unlimited buffer, less failure routing).
 //
 // D-016 fixes the first two lines' deletions, lower capacity, new cycles
 // and higher failure probability; the rest is D-062 (d), and the cut-off
 // node is D-062 (i) option B, both approved by the owner (H-019); the
-// buffers are D-057 (H-018), from T-047, which lifted their gate. A
-// buffer that closes a blocking cycle never gets here: the candidate is
-// invalid (D-050 R1). Confidence plays no part.
+// buffers are D-057 (H-018), from T-047, which lifted their gate, and the
+// breakdowns D-057 too, from T-048. A buffer that closes a blocking cycle,
+// or a bundle R3 refuses, never gets here: the candidate is invalid (D-050
+// R1, R3). Confidence plays no part.
 func ServerRisk(base, candidate *model.ModelIR) Risk {
 	level := Low
 	raise := func(r Risk) { level = Max(level, r) }
@@ -78,6 +82,12 @@ func ServerRisk(base, candidate *model.ModelIR) Risk {
 		case !ok:
 			raise(High)
 		case c.Capacity < r.Capacity:
+			raise(Medium)
+		}
+		// D-057 (T-048): breakdowns added or removed, or another time to
+		// failure or to repair, in either direction (a faster repair is
+		// as much an assumption about the line as a slower one).
+		if ok && !sameBreakdowns(r.Breakdowns, c.Breakdowns) {
 			raise(Medium)
 		}
 	}
@@ -168,6 +178,23 @@ func sameRequirements(base, cand []model.ResourceRequirement) bool {
 		}
 	}
 	return true
+}
+
+// sameBreakdowns reports whether a resource has breakdowns in both or in
+// neither, with the same distributions.
+func sameBreakdowns(a, b *model.Breakdowns) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return sameDistribution(a.TimeToFailure.Distribution, b.TimeToFailure.Distribution) &&
+		sameDistribution(a.TimeToRepair.Distribution, b.TimeToRepair.Distribution)
+}
+
+// sameDistribution compares two distributions by value.
+func sameDistribution(a, b model.Distribution) bool {
+	same := func(x, y *float64) bool { return (x == nil) == (y == nil) && (x == nil || *x == *y) }
+	return a.Type == b.Type && a.SamplesRef == b.SamplesRef && same(a.Value, b.Value) && same(a.Mean, b.Mean) &&
+		same(a.Min, b.Min) && same(a.Mode, b.Mode) && same(a.Max, b.Max) && same(a.CV, b.CV) && same(a.Shape, b.Shape) && same(a.Scale, b.Scale)
 }
 
 func sameConstraints(a, b []model.Constraint) bool {

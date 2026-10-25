@@ -419,7 +419,8 @@ func nameNumbers(ir *model.ModelIR) []float64 {
 }
 
 // values is every numeric parameter a model states: capacities, units,
-// distribution parameters, arrival bounds, routing probabilities and
+// distribution parameters (the breakdowns' and the lognormal and Weibull
+// ones included, T-048), arrival bounds, routing probabilities and
 // constraint values (views are presentation, not values; names are
 // nameNumbers').
 func values(ir *model.ModelIR) []float64 {
@@ -429,8 +430,16 @@ func values(ir *model.ModelIR) []float64 {
 			out = append(out, *p)
 		}
 	}
-	for _, r := range ir.Resources {
-		out = append(out, float64(r.Capacity))
+	params := func(d *model.Distribution) {
+		for _, p := range []*float64{d.Value, d.Mean, d.Min, d.Mode, d.Max, d.CV, d.Shape, d.Scale} {
+			add(p)
+		}
+	}
+	for i := range ir.Resources {
+		out = append(out, float64(ir.Resources[i].Capacity))
+		for _, d := range ir.Resources[i].Distributions() {
+			params(d.Distribution)
+		}
 	}
 	for i := range ir.Nodes {
 		n := &ir.Nodes[i]
@@ -438,11 +447,7 @@ func values(ir *model.ModelIR) []float64 {
 			out = append(out, float64(n.Arrival.MaxEntities))
 		}
 		for _, d := range n.Distributions() {
-			add(d.Distribution.Value)
-			add(d.Distribution.Mean)
-			add(d.Distribution.Min)
-			add(d.Distribution.Mode)
-			add(d.Distribution.Max)
+			params(d.Distribution)
 		}
 		for _, r := range n.Requires {
 			out = append(out, float64(r.Units))

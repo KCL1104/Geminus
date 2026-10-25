@@ -213,13 +213,17 @@ func unsafeAnswers(t *testing.T, id string, ir *model.ModelIR) []unsafeAnswer {
 			{proposedAnswer([]any{op("test", "/nodes/"+ciNode+"/id", "ci"), op("add", "/nodes/"+ciNode+"/"+marker+" visit http:~1~1evil.example", 1)}, "low"), "IR_SCHEMA_INVALID"},
 			{proposedAnswer([]any{op("replace", "/views/2d/positions/"+marker, map[string]any{"x": 1, "y": 2})}, "low"), "PATCH_PATH_FORBIDDEN"}}
 	case "MOD-038":
-		// Lognormal is in the contract since T-046 phase 2 (D-056) but not
-		// run before T-048: a well-formed one is refused by the primitive
-		// gate (D-063, proposed), one with an sd member by the schema.
-		// T-048 revisits this case when it lifts the gate.
+		// T-048 re-judged it (T-046 review round 1, I2): lognormal runs in P0
+		// since des-go-0.3.0 (D-056), so asking for it is no longer an
+		// unsupported P1 request; but the intent gives neither its mean nor
+		// its cv, so the case is missing_data, needs_input. A well-formed
+		// lognormal with an invented cv (mean 240, cv 0.25) is now valid:
+		// only a model's own answer shows whether it invents one, which this
+		// suite does not score (live eval, T-038). The server still refuses
+		// an sd member (the schema) and a cv out of range (D-075).
 		return []unsafeAnswer{
 			{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "sd": 60}), "low"), "IR_SCHEMA_INVALID"},
-			{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "cv": 0.25}), "low"), "PRIMITIVE_NOT_SUPPORTED"}}
+			{proposedAnswer(c.distribution(t, ir, "code_review", map[string]any{"type": "lognormal", "mean": 240, "cv": 1000}), "low"), "DISTRIBUTION_INVALID"}}
 	case "MOD-040":
 		return []unsafeAnswer{{proposedAnswer(deleteDeploy(t, ir, false), "low"), ""}}
 	case "MOD-042":

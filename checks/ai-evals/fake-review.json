@@ -9,9 +9,9 @@
 		"grounding": 1,
 		"high_risk_topology": 1,
 		"invalid_value": 5,
-		"missing_data": 3,
+		"missing_data": 4,
 		"scenario_scope_violation": 1,
-		"unsupported_p1": 2
+		"unsupported_p1": 1
 	},
 	"checks_passed": {
 		"business_mutations_match": 13,

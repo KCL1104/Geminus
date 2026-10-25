@@ -51,7 +51,11 @@ func modeRules(mode provider.Mode) string {
 		return "- SCENARIO_PATCH_ALLOWLIST (D-021, D-057): a scenario patch only replaces existing resource capacities, arrival, service and delay distributions " +
 			"and routing probabilities, and sets, replaces or removes a queue's buffer capacity (/nodes/<i>/capacity: absent means unlimited), " +
 			"after a test of the element's id. A smaller buffer, or a finite one where there was none, is at least medium risk; a buffer that lets " +
-			"full buffers block each other in a cycle is refused (BLOCKING_CYCLE). It never adds or removes entities and never changes IDs, names, views or metadata.\n"
+			"full buffers block each other in a cycle is refused (BLOCKING_CYCLE). For a resource that already has breakdowns it may replace " +
+			"/resources/<i>/breakdowns/time_to_failure/distribution and /resources/<i>/breakdowns/time_to_repair/distribution (replace only: a scenario " +
+			"never adds or removes breakdowns); any change to them, either way, is at least medium risk. Every distribution a scenario may replace can be " +
+			"constant, exponential, triangular, empirical (an existing samples_ref), lognormal (mean, cv with 0 < cv <= 10) or weibull (shape, scale " +
+			"with 0.1 <= shape <= 20). It never adds or removes entities and never changes IDs, names, views or metadata.\n"
 	}
 	return "- New nodes, flows and resources take their IDs from ID_ALLOCATION_POOL, from the list of their own kind, each ID at most once; " +
 		"never invent an ID. When the pool has too few IDs, answer needs_input.\n"
