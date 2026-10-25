@@ -30,6 +30,7 @@ var appLayers = []string{
 	"./internal/models/...",    // model, draft and version service (T-012, ADR-022)
 	"./internal/runs/...",      // simulation run service and its job handler (T-023)
 	"./internal/proposals/...", // AI proposal service and its job handler (T-025)
+	"./internal/scenarios/...", // scenario service: a person's scenarios, reads of both kinds (T-028)
 	"./internal/packs/...",     // the packs a deployment serves (T-023 review L2)
 	"./internal/worker/...",    // the job loop and its handler interface (T-019, ADR-024)
 	"./internal/storage/...",
@@ -256,6 +257,19 @@ var rules = []rule{
 		applies: []string{"./..."},
 		except:  []string{"./cmd/api/...", "./internal/api/...", "./internal/proposals/approval/..."},
 		forbid:  []string{"./internal/proposals/approval/..."},
+	},
+	{
+		// T-028: a person saves a scenario through the API's route, for the
+		// authenticated caller. Only the API links the scenario service, so
+		// the worker binary, its job handlers, the other services and the
+		// AI packages can never create one; the AI's scenario is an
+		// approval's effect (decisions-only-in-the-api), and the worker has
+		// no INSERT on scenarios (0002).
+		name:    "scenarios-only-in-the-api",
+		why:     "a scenario is a person's request or a person's approval: only the API links the scenario service, never the worker, a job handler, another service or internal/ai (AGENTS.md §2, AI_SPEC §7)",
+		applies: []string{"./..."},
+		except:  []string{"./cmd/api/...", "./internal/api/...", "./internal/scenarios/..."},
+		forbid:  []string{"./internal/scenarios/..."},
 	},
 	{
 		// The parser and the report writer read and write bytes: the

@@ -1,0 +1,21 @@
+manual-draft-allowlist: KILLED (TestCheck|TestTheAIScenarioModeTakesTheSameRules) --- FAIL: TestCheck (0.05s) |     --- FAIL: TestCheck/removing_a_node (0.00s) |         scenarios_test.go:178: issues [{Code:UNKNOWN_REFERENCE Path:/flows/5/to Message:no node "ci_rework" Severity:error} {Code:UNKNOWN_REFERENCE Path:/flows/6/from Message:no node "ci_rework" Severity:error} {Code:VIEW_REFERENCE_INVALID Path:/views/2d/positions/ci_rework Message:no node "ci_rework" Severity:error}], want PATCH_PATH_FORBIDDEN at /patch/1/path
+ai-edit-allowlist: KILLED (TestCheck|TestTheAIScenarioModeTakesTheSameRules) --- FAIL: TestCheck (0.05s) |     --- FAIL: TestCheck/removing_a_node (0.00s) |         scenarios_test.go:178: issues [{Code:UNKNOWN_REFERENCE Path:/flows/5/to Message:no node "ci_rework" Severity:error} {Code:UNKNOWN_REFERENCE Path:/flows/6/from Message:no node "ci_rework" Severity:error} {Code:VIEW_REFERENCE_INVALID Path:/views/2d/positions/ci_rework Message:no node "ci_rework" Severity:error}], want PATCH_PATH_FORBIDDEN at /patch/1/path
+patch-issues-not-in-the-request: KILLED (TestCheck|TestCheckRefusals) --- FAIL: TestCheck (0.04s) |     --- FAIL: TestCheck/removing_a_node (0.00s) |         scenarios_test.go:178: issues [{Code:PATCH_PATH_FORBIDDEN Path:/1/path Message:the scenario allowlist does not include /nodes/5 Severity:error}], want PATCH_PATH_FORBIDDEN at /patch/1/path
+invalid-candidate-accepted: KILLED (TestCheck|TestCheckRefusals) --- FAIL: TestCheck (0.04s) |     --- FAIL: TestCheck/probabilities_that_do_not_sum_to_1 (0.00s) |     --- FAIL: TestCheck/no_capacity (0.00s)
+pack-not-asked: KILLED (TestCheckRefusals) --- FAIL: TestCheckRefusals (0.05s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.067s
+raw-patch-stored: KILLED (TestCheckStoresTheCanonicalPatch) --- FAIL: TestCheckStoresTheCanonicalPatch (0.03s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.044s
+unknown-domain-is-invalid: KILLED (TestCheckRefusals) --- FAIL: TestCheckRefusals (0.07s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.080s
+blank-name-accepted: KILLED (TestNameIssues) FAIL	github.com/kcl1104/geminus/internal/scenarios [build failed] | FAIL
+hash-not-checked-on-read: KILLED (TestPublic) FAIL	github.com/kcl1104/geminus/internal/scenarios [build failed] | FAIL
+jsonb-spelling-shown: KILLED (TestPublic) --- FAIL: TestPublic (0.02s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.034s
+created-at-not-utc: KILLED (TestPublic) --- FAIL: TestPublic (0.02s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.028s
+source-not-checked: KILLED (TestPublic) --- FAIL: TestPublic (0.02s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.032s
+fingerprint-ignores-version: KILLED (TestFingerprint) --- FAIL: TestFingerprint (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.012s
+fingerprint-of-the-spelling: SURVIVED (TestFingerprint) 
+cursor-of-any-version: KILLED (TestCursor) --- FAIL: TestCursor (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.012s
+cursor-of-any-organization: KILLED (TestCursor) --- FAIL: TestCursor (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.013s
+viewer-creates: KILLED (TestRoutesMatchContract) --- FAIL: TestRoutesMatchContract (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.029s
+invalid-patch-is-a-request-error: KILLED (TestRefused) --- FAIL: TestRefused (0.00s) |     scenarios_test.go:577: scenarios: the patch is not acceptable (1 issue(s)): REQUEST_VALIDATION_FAILED: the scenario's patch does not apply to its base or the result is not valid; nothing was saved, want MODEL_VALIDATION_FAILED | FAIL
+storage-cause-sent: SURVIVED (TestRefused) 
+no-storage-is-not-found: KILLED (TestRefused) --- FAIL: TestRefused (0.00s) | FAIL | FAIL	github.com/kcl1104/geminus/internal/scenarios	0.014s
+TOTAL 20 (unit): 18 killed, 2 survived

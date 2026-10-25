@@ -1,0 +1,128 @@
+--- FAIL: TestCheck (0.00s)
+    --- FAIL: TestCheck/a_capacity (0.00s)
+        scenarios_test.go:160: checked  , want [{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}] sha256:9986280e38a861a2ca7eef1a03ca94a02b1ee066019b65d7fb5003b431884205
+        scenarios_test.go:167: /resources/1/capacity is <nil>, want 6
+    --- FAIL: TestCheck/routing_probabilities (0.00s)
+        scenarios_test.go:160: checked  , want [{"op":"test","path":"/flows/3/id","value":"f_pass"},{"op":"replace","path":"/flows/3/routing/probability","value":0.75},{"op":"test","path":"/flows/4/id","value":"f_retry"},{"op":"replace","path":"/flows/4/routing/probability","value":0.25}] sha256:3f9c5708d48512c21aef7bdaac0834e2fa95ecca9077a483545e2dc4be16e403
+        scenarios_test.go:167: /flows/4/routing/probability is <nil>, want 0.25
+    --- FAIL: TestCheck/a_service_time (0.00s)
+        scenarios_test.go:160: checked  , want [{"op":"test","path":"/nodes/2/id","value":"ci"},{"op":"replace","path":"/nodes/2/service_time/distribution","value":{"type":"constant","value":9}}] sha256:47650da55d33b924a136e14405ee5e15102949d16200ad37620702b365bb2707
+        scenarios_test.go:167: /nodes/2/service_time/distribution/value is <nil>, want 9
+    --- FAIL: TestCheck/removing_a_node (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/adding_a_resource (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/renaming_the_model (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/a_flow's_target (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/no_test_before_the_change (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/a_stale_test (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/a_resource_the_base_does_not_have (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/a_new_dataset (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/probabilities_that_do_not_sum_to_1 (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+    --- FAIL: TestCheck/no_capacity (0.00s)
+        scenarios_test.go:173: not refused as invalid: <nil>
+--- FAIL: TestCheckKeepsABaseline (0.00s)
+    scenarios_test.go:200: baseline: the candidate is not the base
+    scenarios_test.go:200: no-op: the candidate is not the base
+    scenarios_test.go:200: tests: the candidate is not the base
+--- FAIL: TestCheckRefusals (0.01s)
+    scenarios_test.go:214: move: <nil>
+    scenarios_test.go:218: a patch over the limit: <nil>
+    scenarios_test.go:222: the pack's rules: <nil>
+    scenarios_test.go:225: no pack serves the domain: <nil>
+    scenarios_test.go:228: a base that is not a model: <nil>
+--- FAIL: TestTheAIScenarioModeTakesTheSameRules (0.05s)
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/removing_a_node (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/adding_a_resource (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/renaming_the_model (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/a_flow's_target (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/no_test_before_the_change (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/a_stale_test (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/a_resource_the_base_does_not_have (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/a_new_dataset (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/probabilities_that_do_not_sum_to_1 (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+    --- FAIL: TestTheAIScenarioModeTakesTheSameRules/no_capacity (0.00s)
+        scenarios_test.go:282: AI invalid, manual <nil>
+--- FAIL: TestNameIssues (0.00s)
+    scenarios_test.go:315: " ": []
+    scenarios_test.go:315: "\t\n": []
+    scenarios_test.go:315: "\u3000": []
+    scenarios_test.go:315: "                                                                                                                                                                                                        ": []
+--- FAIL: TestPublic (0.01s)
+    scenarios_test.go:375: {"base_version_id":"","created_at":"","created_by":"","id":"","model_id":"","name":"","organization_id":"","patch":null,"patch_hash":"","source_proposal_id":null}
+        want {"base_version_id":"mv_01M4YDQK00FRYWV7GS7X1QCXZR","created_at":"2026-10-25T09:00:00Z","created_by":"usr_01M4YDQK0016KTK4JM6KAHZ6BS","id":"scn_01M4YDQK00J4MJS82YRG0PCEC1","model_id":"mdl_01M4YDQK004AGVNEGJQJ1NMM0N","name":"Eight CI runners","organization_id":"org_01M4YDQK00Y5H2929M9WWZWTVH","patch":[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":8}],"patch_hash":"sha256:b53fb1b85f008ecc70f56dcbfe23909e48a77e4304b36b575d16d2ce6bf52fb3","source_proposal_id":null}
+    scenarios_test.go:378: valid-manual-scenario.json: [{RESPONSE /base_version_id '' does not match pattern '^mv_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /base_version_id minLength: got 0, want 29 error} {RESPONSE /created_at '' is not valid date-time: less than 20 characters long error} {RESPONSE /created_by '' does not match pattern '^usr_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /created_by minLength: got 0, want 30 error} {RESPONSE /id '' does not match pattern '^scn_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /id minLength: got 0, want 30 error} {RESPONSE /model_id '' does not match pattern '^mdl_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /model_id minLength: got 0, want 30 error} {RESPONSE /name minLength: got 0, want 1 error} {RESPONSE /organization_id '' does not match pattern '^org_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /organization_id minLength: got 0, want 30 error} {RESPONSE /patch got null, want array error} {RESPONSE /patch_hash '' does not match pattern '^sha256:[0-9a-f]{64}$' error} {RESPONSE /patch_hash minLength: got 0, want 71 error}] <nil>
+    scenarios_test.go:375: {"base_version_id":"","created_at":"","created_by":"","id":"","model_id":"","name":"","organization_id":"","patch":null,"patch_hash":"","source_proposal_id":null}
+        want {"base_version_id":"mv_01M4YDQK00FRYWV7GS7X1QCXZR","created_at":"2026-10-15T08:30:00Z","created_by":"usr_01M4YDQK0016KTK4JM6KAHZ6BR","id":"scn_01M4YDQK00J4MJS82YRG0PCEC0","model_id":"mdl_01M4YDQK004AGVNEGJQJ1NMM0N","name":"Double CI Capacity","organization_id":"org_01M4YDQK00Y5H2929M9WWZWTVH","patch":[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}],"patch_hash":"sha256:9986280e38a861a2ca7eef1a03ca94a02b1ee066019b65d7fb5003b431884205","source_proposal_id":"aip_01M4YDQK00Q10EM95Z6H4XK0Y8"}
+    scenarios_test.go:378: valid-scenario.json: [{RESPONSE /base_version_id '' does not match pattern '^mv_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /base_version_id minLength: got 0, want 29 error} {RESPONSE /created_at '' is not valid date-time: less than 20 characters long error} {RESPONSE /created_by '' does not match pattern '^usr_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /created_by minLength: got 0, want 30 error} {RESPONSE /id '' does not match pattern '^scn_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /id minLength: got 0, want 30 error} {RESPONSE /model_id '' does not match pattern '^mdl_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /model_id minLength: got 0, want 30 error} {RESPONSE /name minLength: got 0, want 1 error} {RESPONSE /organization_id '' does not match pattern '^org_[0-7][0-9A-HJKMNP-TV-Z]{25}$' error} {RESPONSE /organization_id minLength: got 0, want 30 error} {RESPONSE /patch got null, want array error} {RESPONSE /patch_hash '' does not match pattern '^sha256:[0-9a-f]{64}$' error} {RESPONSE /patch_hash minLength: got 0, want 71 error}] <nil>
+    scenarios_test.go:386: {"items":[{"base_version_id":"","created_at":"","created_by":"","id":"","model_id":"","name":"","organization_id":"","patch":null,"patch_hash":"","source_proposal_id":null},{"base_version_id":"","created_at":"","created_by":"","id":"","model_id":"","name":"","organization_id":"","patch":null,"patch_hash":"","source_proposal_id":null}],"next_cursor":null}
+        want {"items":[{"base_version_id":"mv_01M4YDQK00FRYWV7GS7X1QCXZR","created_at":"2026-10-15T08:30:00Z","created_by":"usr_01M4YDQK0016KTK4JM6KAHZ6BR","id":"scn_01M4YDQK00J4MJS82YRG0PCEC0","model_id":"mdl_01M4YDQK004AGVNEGJQJ1NMM0N","name":"Double CI Capacity","organization_id":"org_01M4YDQK00Y5H2929M9WWZWTVH","patch":[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}],"patch_hash":"sha256:9986280e38a861a2ca7eef1a03ca94a02b1ee066019b65d7fb5003b431884205","source_proposal_id":"aip_01M4YDQK00Q10EM95Z6H4XK0Y8"},{"base_version_id":"mv_01M4YDQK00FRYWV7GS7X1QCXZR","created_at":"2026-10-25T09:00:00Z","created_by":"usr_01M4YDQK0016KTK4JM6KAHZ6BS","id":"scn_01M4YDQK00J4MJS82YRG0PCEC1","model_id":"mdl_01M4YDQK004AGVNEGJQJ1NMM0N","name":"Eight CI runners","organization_id":"org_01M4YDQK00Y5H2929M9WWZWTVH","patch":[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":8}],"patch_hash":"sha256:b53fb1b85f008ecc70f56dcbfe23909e48a77e4304b36b575d16d2ce6bf52fb3","source_proposal_id":null}],"next_cursor":null}
+    scenarios_test.go:405: not JSON: shown
+    scenarios_test.go:405: not an array: shown
+    scenarios_test.go:405: a duplicate name: shown
+    scenarios_test.go:405: a malformed hash: shown
+    scenarios_test.go:405: an empty source: shown
+    scenarios_test.go:405: a missing creator: shown
+    scenarios_test.go:405: another patch: shown
+    scenarios_test.go:405: another hash: shown
+--- FAIL: TestFingerprint (0.00s)
+    scenarios_test.go:437: another version:  vs  (<nil>)
+    scenarios_test.go:437: another name:  vs  (<nil>)
+    scenarios_test.go:437: another patch:  vs  (<nil>)
+    scenarios_test.go:437: another white space:  vs  (<nil>)
+    scenarios_test.go:441: a body that is not JSON has a fingerprint
+--- FAIL: TestCursor (0.00s)
+    scenarios_test.go:453: round trip: {CreatedAt:0001-01-01 00:00:00 +0000 UTC ID:} <nil>
+    scenarios_test.go:463: not base64: <nil>
+    scenarios_test.go:463: not JSON: <nil>
+    scenarios_test.go:463: another organization: <nil>
+    scenarios_test.go:463: another version: <nil>
+    scenarios_test.go:463: a proposal ID: <nil>
+    scenarios_test.go:469: another list's cursor: <nil>
+--- FAIL: TestRoutesMatchContract (0.00s)
+    scenarios_test.go:510: routes [], want [createManualScenario listScenarios getScenario]
+--- FAIL: TestRefused (0.00s)
+    scenarios_test.go:539: scenarios: not found: scenarios: not found, want NOT_FOUND
+    scenarios_test.go:539: request: request, want REQUEST_VALIDATION_FAILED
+    scenarios_test.go:539: invalid: invalid, want MODEL_VALIDATION_FAILED
+    scenarios_test.go:539: scenarios: dataset storage is not configured: scenarios: dataset storage is not configured, want SERVICE_UNAVAILABLE
+    scenarios_test.go:539: storage: storage, want SERVICE_UNAVAILABLE
+    scenarios_test.go:539: scenarios: invalid cursor: scenarios: invalid cursor, want INVALID_REQUEST
+    scenarios_test.go:539: scenarios: invalid page size: scenarios: invalid page size, want INVALID_REQUEST
+    scenarios_test.go:539: idempotency: key used for a different request: idempotency: key used for a different request, want IDEMPOTENCY_KEY_CONFLICT
+    scenarios_test.go:539: idempotency: key's first request has not completed: idempotency: key's first request has not completed, want IDEMPOTENCY_KEY_CONFLICT
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x28 pc=0x6bd7dc]
+
+goroutine 58 [running]:
+testing.tRunner.func1.2({0xa377b0, 0xae3240})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2125 +0x232
+testing.tRunner.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2128 +0x329
+panic({0xa377b0?, 0xae3240?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/runtime/panic.go:859 +0x125
+github.com/kcl1104/geminus/internal/scenarios.TestRefused(0x2845cd948488)
+	/home/user/Geminus/.claude/worktrees/agent-ad9f060dfb4cc960e/internal/scenarios/scenarios_test.go:550 +0x99c
+testing.tRunner(0x2845cd948488, 0xa796d0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2260 +0x4d4
+FAIL	github.com/kcl1104/geminus/internal/scenarios	0.091s
+FAIL
+exit 1

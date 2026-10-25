@@ -76,7 +76,7 @@ db-test:
 # schema public in tenant.TestRuntimeLoginCannotCreate), so they run one package at a time (-p 1).
 db-go-test:
 	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL to the disposable dt_test_* database used by make db-test.' >&2; exit 2; }
-	GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/runs/... ./internal/import/... ./internal/proposals/... ./internal/api/... ./internal/worker/... ./cmd/api/... ./cmd/worker/... ./cmd/provision-tenant/...
+	GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/runs/... ./internal/import/... ./internal/proposals/... ./internal/scenarios/... ./internal/api/... ./internal/worker/... ./cmd/api/... ./cmd/worker/... ./cmd/provision-tenant/...
 # Package dependency rules of docs/ARCHITECTURE.md §2 (T-042), read from the build graph.
 architecture-check:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
@@ -89,7 +89,7 @@ integration-test:
 	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL (and DATABASE_URL, DT_ALLOW_DB_TESTS=yes for make db-test) to a fresh dt_test_* database.' >&2; exit 2; }
 	$(MAKE) db-test
 	$(MAKE) db-go-test
-	@echo 'integration-test: API, job loop, simulation (T-023), import profile (T-016), import validation (T-017) and AI proposal (T-025, fake provider) handlers, the proposal decisions (T-026) and database covered; the AI analysis (T-030) job handler is NOT RUN until that task adds it.'
+	@echo 'integration-test: API, job loop, simulation (T-023), import profile (T-016), import validation (T-017) and AI proposal (T-025, fake provider) handlers, the proposal decisions (T-026), the scenarios (T-028) and database covered; the AI analysis (T-030) job handler is NOT RUN until that task adds it.'
 # The AI eval corpus through the context builder and the deterministic fake provider: the context-side
 # zero-tolerance gates for every case (T-024, checks/ai-evals/fake-provider.json) and the server's review of
 # hand-written reference and unsafe answers (T-025, checks/ai-evals/fake-review.json). Fake results only.

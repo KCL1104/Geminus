@@ -18,6 +18,7 @@ import (
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/proposals/approval"
 	"github.com/kcl1104/geminus/internal/runs"
+	"github.com/kcl1104/geminus/internal/scenarios"
 	"github.com/kcl1104/geminus/internal/simulation"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -106,6 +107,10 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	// depend on whether AI is available; it reads dataset snapshots again
 	// from the object storage given.
 	approval.Register(mux, log, v, db, &approval.Service{DB: db, Packs: served, Objects: o.objects})
+	// A person's scenarios, and the reads of both kinds (T-028): the patch
+	// is checked as an AI scenario's approval checks it, the dataset
+	// snapshots read again from the object storage given; nothing is run.
+	scenarios.Register(mux, log, v, db, &scenarios.Service{DB: db, Packs: served, Objects: o.objects})
 	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")
 	})

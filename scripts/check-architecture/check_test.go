@@ -221,6 +221,17 @@ func TestProbesAreCaught(t *testing.T) {
 		// review, so a review probe would not compile).
 		{"the-context-links-the-approval", "internal/ai/aicontext/zz_probe.go", module + "/internal/proposals/approval", "decisions-only-in-the-api", "./internal/ai/aicontext", "./internal/proposals/approval", false},
 		{"the-context-links-the-approval-service", "internal/ai/aicontext/zz_probe.go", module + "/internal/proposals/approval", "ai-suggests-only", "./internal/ai/aicontext", "./internal/proposals/approval", false},
+		// T-028: only the API links the scenario service: not the worker, a
+		// job handler, another service (the approval included) or the AI.
+		{"the-worker-links-the-scenario-service", "cmd/worker/zz_probe.go", module + "/internal/scenarios", "scenarios-only-in-the-api", "./cmd/worker", "./internal/scenarios", false},
+		{"a-job-handler-links-the-scenario-service", "internal/proposals/generator/zz_probe.go", module + "/internal/scenarios", "scenarios-only-in-the-api", "./internal/proposals/generator", "./internal/scenarios", false},
+		{"a-service-links-the-scenario-service", "internal/runs/zz_probe.go", module + "/internal/scenarios", "scenarios-only-in-the-api", "./internal/runs", "./internal/scenarios", false},
+		{"the-approval-links-the-scenario-service", "internal/proposals/approval/zz_probe.go", module + "/internal/scenarios", "scenarios-only-in-the-api", "./internal/proposals/approval", "./internal/scenarios", false},
+		// An AI package the scenario service's tests do not import (they
+		// import the review, so a review probe would not compile).
+		{"the-context-links-the-scenario-service", "internal/ai/aicontext/zz_probe.go", module + "/internal/scenarios", "scenarios-only-in-the-api", "./internal/ai/aicontext", "./internal/scenarios", false},
+		{"the-context-links-a-scenario-write", "internal/ai/aicontext/zz_probe.go", module + "/internal/scenarios", "ai-suggests-only", "./internal/ai/aicontext", "./internal/scenarios", false},
+		{"the-kernel-imports-the-scenario-service", "internal/results/metrics/zz_probe.go", module + "/internal/scenarios", "generic-kernel", "./internal/results/metrics", "./internal/scenarios", false},
 		{"the-review-imports-the-proposal-service", "internal/ai/review/zz_probe.go", module + "/internal/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/proposals", false},
 		{"the-review-imports-storage", "internal/ai/review/zz_probe.go", module + "/internal/storage/proposals", "ai-suggests-only", "./internal/ai/review", "./internal/storage/proposals", false},
 		{"the-review-reads-files", "internal/ai/review/zz_probe.go", "os", "ai-is-pure-but-the-adapter", "./internal/ai/review", "os", false},
