@@ -1,0 +1,14 @@
+--- FAIL: TestScenarioMayChangeShiftLabels (0.04s)
+    --- FAIL: TestScenarioMayChangeShiftLabels/a_dropped_label (0.00s)
+        lineflow_test.go:185: patch [{PATCH_PATH_FORBIDDEN /1/path a scenario keeps each calendar's shift labels; adding, dropping or renaming one is a draft change (D-057) error}], candidate []
+    --- FAIL: TestScenarioMayChangeShiftLabels/labels_removed (0.00s)
+        lineflow_test.go:185: patch [{PATCH_PATH_FORBIDDEN /1/path a scenario keeps each calendar's shift labels; adding, dropping or renaming one is a draft change (D-057) error}], candidate []
+    --- FAIL: TestScenarioMayChangeShiftLabels/a_new_label (0.00s)
+        lineflow_test.go:185: patch [{PATCH_PATH_FORBIDDEN /1/path a scenario keeps each calendar's shift labels; adding, dropping or renaming one is a draft change (D-057) error}], candidate []
+    --- FAIL: TestScenarioMayChangeShiftLabels/a_renamed_label (0.00s)
+        lineflow_test.go:185: patch [{PATCH_PATH_FORBIDDEN /1/path a scenario keeps each calendar's shift labels; adding, dropping or renaming one is a draft change (D-057) error}], candidate []
+    --- FAIL: TestScenarioMayChangeShiftLabels/one_label_renamed (0.00s)
+        lineflow_test.go:185: patch [{PATCH_PATH_FORBIDDEN /1/path a scenario keeps each calendar's shift labels; adding, dropping or renaming one is a draft change (D-057) error}], candidate []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.047s
+FAIL

@@ -4,7 +4,6 @@ import (
 	"encoding/json/v2"
 	"maps"
 	"slices"
-	"strconv"
 
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
@@ -209,11 +208,13 @@ func wholeCatalog(tree any, op model.PatchOp, i int) *model.ValidationIssue {
 //   - D-022: an AI edit may drop the position of a node only if no node with
 //     that id exists afterwards (a removed and re-added id keeps its position);
 //   - D-021: a scenario may not bind a dataset the base model does not
-//     already bind (TWIN_IR_SPEC §6);
-//   - D-057 (the restrictive reading, D-063 (b)): a scenario may move, add or
-//     remove shifts, but each calendar keeps its set of shift labels, which
-//     shift_capacity refers to.
-func afterApply(tree any, baseRefs map[string]bool, baseLabels map[string][]string, ops model.Patch, mode Mode) []model.ValidationIssue {
+//     already bind (TWIN_IR_SPEC §6).
+//
+// A scenario's shift labels are no rule here (D-063 (b) option B, H-019;
+// T-049): it may add, drop or rename them, and a label that shift_capacity
+// refers to and the candidate no longer has is the candidate validation's
+// CALENDAR_INVALID (D-052). Phase 2 kept each calendar's set of labels.
+func afterApply(tree any, baseRefs map[string]bool, ops model.Patch, mode Mode) []model.ValidationIssue {
 	var out []model.ValidationIssue
 	switch mode {
 	case AIEdit:
@@ -236,41 +237,6 @@ func afterApply(tree any, baseRefs map[string]bool, baseLabels map[string][]stri
 				}
 			}
 		}
-		afterLabels := shiftLabels(tree)
-		reported := map[string]bool{}
-		for i, op := range ops {
-			t, _ := parsePointer(op.Path)
-			if op.Op == model.PatchTest || len(t) < 3 || t[0] != "calendars" || t[2] != "shifts" || reported[t[1]] {
-				continue
-			}
-			if !slices.Equal(baseLabels[t[1]], afterLabels[t[1]]) {
-				reported[t[1]] = true
-				out = append(out, issue(PathForbidden, i, "path",
-					"a scenario keeps each calendar's shift labels; adding, dropping or renaming one is a draft change (D-057)"))
-			}
-		}
-	}
-	return out
-}
-
-// shiftLabels returns, for each calendar by array index, the distinct labels
-// of its shifts in byte order (unlabeled shifts add none).
-func shiftLabels(tree any) map[string][]string {
-	out := map[string][]string{}
-	root, _ := tree.(map[string]any)
-	calendars, _ := root["calendars"].([]any)
-	for i, c := range calendars {
-		cal, _ := c.(map[string]any)
-		shifts, _ := cal["shifts"].([]any)
-		var labels []string
-		for _, s := range shifts {
-			sh, _ := s.(map[string]any)
-			if l, ok := sh["label"].(string); ok {
-				labels = append(labels, l)
-			}
-		}
-		slices.Sort(labels)
-		out[strconv.Itoa(i)] = slices.Compact(labels)
 	}
 	return out
 }

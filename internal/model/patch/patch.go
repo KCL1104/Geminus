@@ -88,7 +88,7 @@ func Apply(base, patchDoc []byte, mode Mode) (Result, error) {
 	if err := json.Unmarshal(base, &tree); err != nil {
 		return Result{}, fmt.Errorf("base document: %w", err)
 	}
-	baseRefs, baseLabels := samplesRefs(tree), shiftLabels(tree)
+	baseRefs := samplesRefs(tree)
 	for i, op := range ops {
 		if issue := wholeCatalog(tree, op, i); issue != nil {
 			return Result{PatchIssues: []model.ValidationIssue{*issue}}, nil
@@ -97,7 +97,7 @@ func Apply(base, patchDoc []byte, mode Mode) (Result, error) {
 			return Result{PatchIssues: []model.ValidationIssue{*issue}}, nil
 		}
 	}
-	if issues := afterApply(tree, baseRefs, baseLabels, ops, mode); len(issues) > 0 {
+	if issues := afterApply(tree, baseRefs, ops, mode); len(issues) > 0 {
 		return Result{PatchIssues: validate.Sort(issues)}, nil
 	}
 	// Go's deterministic encoding is not RFC 8785: it writes -0 and sorts

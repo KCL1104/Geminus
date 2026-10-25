@@ -156,42 +156,62 @@ func flow(id, from, to string, p float64) map[string]any {
 	return map[string]any{"id": id, "from": from, "to": to, "routing": map[string]any{"type": "probability", "probability": p}}
 }
 
-// T-046 review round 1, L3/L5: a scenario may move, add or remove shifts
-// ("add a shift", D-057), but not change a calendar's set of shift labels:
-// a label is what shift_capacity refers to, so a new, dropped or renamed
-// label changes the model's structure, not a parameter (TWIN_IR_SPEC §6;
-// the reading is listed in D-063 (b) for the owner).
-func TestScenarioKeepsTheShiftLabels(t *testing.T) {
+// D-063 (b) option B (H-019; T-046 review round 1, L3/L5): a scenario may
+// move, add or remove shifts ("add a shift", D-057) and add, drop or rename
+// shift labels. A label shift_capacity refers to that the candidate drops
+// or renames is the candidate validation's CALENDAR_INVALID (D-052, at the
+// shift_capacity member; TestScenarioDropsAReferencedLabel), not a patch
+// rule. Until T-049 the scenario kept each calendar's set of labels (phase
+// 2's provisional reading, PATCH_PATH_FORBIDDEN).
+func TestScenarioMayChangeShiftLabels(t *testing.T) {
 	allowed := map[string]string{
 		"move both shifts":            `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":300,"end":780,"label":"day"},{"start":780,"end":1260,"label":"evening"}]}`,
 		"add a shift, existing label": `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":0,"end":120,"label":"evening"},{"start":360,"end":840,"label":"day"},{"start":840,"end":1320,"label":"evening"}]}`,
 		"add an unlabeled shift":      `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":0,"end":120},{"start":360,"end":840,"label":"day"},{"start":840,"end":1320,"label":"evening"}]}`,
 		"move one shift's end":        `{"op":"replace","path":"/calendars/0/shifts/1/end","value":1380}`,
+		"a new label":                 `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"day"},{"start":840,"end":1320,"label":"evening"},{"start":1320,"end":1440,"label":"night"}]}`,
+		"a dropped label":             `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320,"label":"day"}]}`,
+		"a renamed label":             `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"morning"},{"start":840,"end":1320,"label":"evening"}]}`,
+		"one label renamed":           `{"op":"replace","path":"/calendars/0/shifts/0/label","value":"morning"}`,
+		"labels removed":              `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320}]}`,
 	}
 	for name, op := range allowed {
 		t.Run(name, func(t *testing.T) {
 			r := mustApply(t, lineFlow(t), "["+testCalendar+op+"]", Scenario)
-			if !r.Applied() || !gated(r) {
+			// valid-line-flow-ir.json also uses primitives whose gate is
+			// still on (batch, setups, declared metrics), so the
+			// candidate is refused by the gate alone.
+			if !r.Applied() || len(r.PatchIssues) > 0 || !gated(r) {
 				t.Fatalf("patch %v, candidate %v", r.PatchIssues, r.Validation.Issues)
 			}
 		})
 	}
-	forbidden := map[string]string{
-		"a new label":       `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"day"},{"start":840,"end":1320,"label":"evening"},{"start":1320,"end":1440,"label":"night"}]}`,
-		"a dropped label":   `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320,"label":"day"}]}`,
-		"a renamed label":   `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":840,"label":"morning"},{"start":840,"end":1320,"label":"evening"}]}`,
-		"one label renamed": `{"op":"replace","path":"/calendars/0/shifts/0/label","value":"morning"}`,
-		"labels removed":    `{"op":"replace","path":"/calendars/0/shifts","value":[{"start":360,"end":1320}]}`,
-	}
-	for name, op := range forbidden {
-		t.Run(name, func(t *testing.T) {
-			wantIssue(t, mustApply(t, lineFlow(t), "["+testCalendar+op+"]", Scenario), PathForbidden, "/1/path")
-		})
-	}
-	// A draft edit may change labels; the candidate is validated in full.
-	r := mustApply(t, lineFlow(t), "["+testCalendar+forbidden["a renamed label"]+"]", ManualDraft)
+	// A draft edit may change labels too; the candidate is validated in full.
+	r := mustApply(t, lineFlow(t), "["+testCalendar+allowed["a renamed label"]+"]", ManualDraft)
 	if !r.Applied() || !gated(r) {
 		t.Errorf("manual draft: %v %v", r.PatchIssues, r.Validation.Issues)
+	}
+	// The rest of D-057 is unchanged: a calendar's period and name, the
+	// shift_capacity keys and the calendars themselves are draft changes,
+	// and the shifts and exceptions take only replace (D-063 (b)), so a
+	// label is added to or removed from one shift by replacing the shift
+	// or the shifts, not by an add or a remove under them.
+	for name, ops := range map[string]string{
+		"a label added by an add":   testCalendar + `{"op":"add","path":"/calendars/0/shifts/0/label","value":"night"}`,
+		"a label dropped by remove": testCalendar + `{"op":"remove","path":"/calendars/0/shifts/1/label"}`,
+		"a calendar's period":       testCalendar + `{"op":"replace","path":"/calendars/0/period","value":720}`,
+		"a calendar's name":         testCalendar + `{"op":"replace","path":"/calendars/0/name","value":"x"}`,
+		"a new shift_capacity key":  testLine + `{"op":"add","path":"/resources/1/shift_capacity/night","value":1}`,
+		"a dropped shift_capacity":  testLine + `{"op":"remove","path":"/resources/1/shift_capacity/day"}`,
+		"a calendar added":          `{"op":"add","path":"/calendars/-","value":{"id":"night","period":1440,"shifts":[{"start":0,"end":360}]}}`,
+		"the shifts by a wrong op":  testCalendar + `{"op":"add","path":"/calendars/0/shifts/-","value":{"start":0,"end":60}}`,
+		"the exceptions by an add":  testCalendar + `{"op":"add","path":"/calendars/0/exceptions/-","value":{"start":9600,"end":9700,"open":true}}`,
+		"one exception by a remove": testCalendar + `{"op":"remove","path":"/calendars/0/exceptions/0"}`,
+	} {
+		t.Run("still forbidden: "+name, func(t *testing.T) {
+			last := len(mustOps(t, "["+ops+"]")) - 1
+			wantIssue(t, mustApply(t, lineFlow(t), "["+ops+"]", Scenario), PathForbidden, validate.Pointer(itoa(last), "path"))
+		})
 	}
 }
 
