@@ -49,6 +49,26 @@ is preserved.
 ====================================================
 ```
 
+## Go `math.exp` (pinned exponential, T-048)
+
+`internal/simulation/engine/sample.go` (`exp`) and `scripts/engine_reference.py` (`pinned_exp`) implement the algorithm and constants of the pure-Go exponential in the Go standard library (`src/math/exp.go`), adapted to round every product explicitly (D-056; D-075 PROPOSED). License: BSD-3-Clause, under the same copyright and notice as the logarithm above (Copyright 2009 The Go Authors).
+
+The Go code is in turn derived from FreeBSD's `/usr/src/lib/msun/src/e_exp.c`, which came with this notice:
+
+```text
+====================================================
+Copyright (C) 2004 by Sun Microsystems, Inc. All rights reserved.
+
+Permission to use, copy, modify, and distribute this
+software is freely granted, provided that this notice
+is preserved.
+====================================================
+```
+
+## Algorithm AS 241 (normal quantile, T-048)
+
+`internal/simulation/engine/sample.go` (`ndtri`) and `scripts/engine_reference.py` implement Wichura's algorithm AS 241, PPND16 (M. J. Wichura, "Algorithm AS 241: The Percentage Points of the Normal Distribution", Applied Statistics 37(3), 1988, 477–484), from its published description and its 48 published coefficients; no code from the journal, StatLib or another implementation was copied. The coefficients are numerical constants of a published method; they are listed with their bit patterns in `testdata/simulation/engine-vectors.json`.
+
 ## Go modules linked by the live AI adapter (T-024)
 
 T-024 adds the official Anthropic Go SDK for the live provider adapter (`internal/ai/provider/anthropic`, ADR-027 ACCEPTED (H-019); ADR-011 records the pin). Only that package links it (architecture rule `llm-sdks-only-in-ai`). Versions are pinned in `go.mod` and `go.sum`; each module's own license file ships in its module and applies to it.
@@ -80,9 +100,9 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-## SimPy (independent simulation reference, T-047)
+## SimPy (independent simulation reference, T-047, T-048)
 
-`scripts/simpy_reference.py` uses SimPy 4.1.2 (`requirements-spec.txt`, ADR-011) as an independent reference for `make simulation-reference-test`; it is a test dependency only, installed with the spec checks, never imported or called by the Go engine, and not part of any build. No SimPy code is copied into this repository. Its license, as the wheel's `LICENSE.rst` states it:
+`scripts/simpy_reference.py` uses SimPy 4.1.2 (`requirements-spec.txt`, ADR-011) as an independent reference for `make simulation-reference-test` (finite buffers since T-047, breakdowns since T-048; no new dependency); it is a test dependency only, installed with the spec checks, never imported or called by the Go engine, and not part of any build. No SimPy code is copied into this repository. Its license, as the wheel's `LICENSE.rst` states it:
 
 ```text
 The MIT License (MIT)

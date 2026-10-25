@@ -3062,7 +3062,10 @@
         "D-051",
         "D-056",
         "D-057",
-        "D-063"
+        "D-063",
+        "D-064",
+        "D-074",
+        "D-075"
       ],
       "scope": [
         "依批准的 decision 實作 resource 故障：故障間隔與修復時間各用獨立 RNG stream，不改變其他 stream；服務中工件的處理（中斷後續作或做完再停）依 decision。decision gates：D-047、D-048、D-050、D-051、D-056、D-057（APPROVED，H-018）與 D-063（APPROVED，H-019）。",
@@ -3074,12 +3077,31 @@
       ],
       "planned_outputs": [
         "internal/simulation/engine/",
+        "internal/simulation/des/",
+        "internal/simulation/trace/",
+        "internal/model/",
+        "internal/model/validate/",
+        "internal/storage/datasets/",
         "internal/results/metrics/",
-        "testdata/simulation/"
+        "internal/runs/",
+        "internal/storage/runs/",
+        "internal/ai/review/",
+        "internal/ai/aicontext/",
+        "prompts/scenario/",
+        "testdata/simulation/",
+        "testdata/contracts/valid-run-failed-stalled.json",
+        "testdata/ai-evals/modeler.jsonl",
+        "scripts/engine_reference.py",
+        "scripts/simpy_reference.py",
+        "scripts/check_no_fma.sh",
+        "checks/T-048_VALIDATION.md"
       ],
       "spec_refs": [
         "docs/SIMULATION_SPEC.md",
-        "testdata/simulation/expected-cases.json"
+        "docs/TWIN_IR_SPEC.md",
+        "docs/adr/ADR-026-line-flow-primitives.md",
+        "testdata/simulation/expected-cases.json",
+        "testdata/simulation/breakdown-goldens.json"
       ],
       "acceptance_tests": [
         "TEST-015",

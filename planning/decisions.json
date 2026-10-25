@@ -1006,6 +1006,32 @@
       "approved_at": null
     },
     {
+      "id": "D-074",
+      "title": "Resource 故障的 kernel 解讀（T-048）",
+      "source_gap": "D-048、D-050、D-051 沒有寫：修復好的 unit 是否滿足等待中的故障；釋放、停機與喚醒在同一事件內的順序；B2 何時檢查、since 與 TTRmax 的定義、同時有幾個時回報哪一個；長度 0 的停機與故障成員怎麼計數；故障的 observation、stream 建立與 t=0 的順序。",
+      "proposal": "(a) 等待中的故障只由 job 釋放的 unit 滿足，修復好的 unit 回到可用並喚醒 held front（G-F3）；(b) 釋放時先回報 in_use，被釋放的 unit 依 FIFO 給等待中的故障（立即停機、抽 TTR），之後才喚醒 held front（G-T4 的 tick 8）；(c) B2 在每個 tick 的最後一個事件之後檢查，since 為第一次在 tick 結束時處於狀態的 tick，tick ≥ since＋TTRmax 時 ErrStalled，TTRmax 為 bundle 中故障 resource 的 TTR 上界最大值（constant 值、triangular max、empirical 最大樣本；exponential、lognormal、Weibull 不檢查），回報依 queue 順序最早的 request（G-S1、G-S2）；(d) TTR 0 的停機算一次開始與一次長度 0 的完整修復，dispatch 之後才修復時再排 dispatch（G-T4）；(e) breakdowns_started 為 [W,H] 內開始的停機，完整修復為開始 ≥ W 且修復 ≤ H，available＝C·T − down，idle＝available − in_use，沒有有限 buffer 時 resource_states 只列有故障的 resource（G-F8）；(f) ObsResourceDown／ObsResourceUp／ObsBreakdownPending（At＝unit），不進 trace；stream (resource ID, ttf/<u>)、(resource ID, ttr/<u>) 首次使用時建立；t=0 先 sources 後故障時鐘；晚於 horizon 的事件不排程、不取 sequence；REPAIR 只在喚醒時排 dispatch；B1 以全部 capacity 判斷 release-bound（G-K1）。建議 A，已實作。",
+      "gate": "T-048 驗收前；T-049 延伸 B2 與故障時鐘時沿用",
+      "resolves": [],
+      "source_pages": "N/A（T-048 實作；ADR-026、D-047、D-048、D-050、D-051、D-058、D-064）",
+      "owner_role": "Simulation",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-075",
+      "title": "Lognormal 與 Weibull 的參數範圍與 numerical profile（T-048）",
+      "source_gap": "D-056 定了公式，ADR-026 把 cv ≤ 10、0.1 ≤ shape ≤ 20 列為候選範圍（T-048 定案）；溢位界限、exp 與 AS241 的固定實作與 σ²、μ 的捨入順序沒有寫。",
+      "proposal": "(a) 保留候選範圍：0 < cv ≤ 10、0.1 ≤ shape ≤ 20，超出或 mean／scale 下溢為 0 為 DISTRIBUTION_INVALID（validator 與 Compile），mean／scale 超過 365 天為 LIMIT_EXCEEDED（D-063 (c)）；U ∈ [2^-53, 1−2^-53] 使 |Φ⁻¹(U)| ≤ 8.2095、σ ≤ 2.148，exp 不溢位，Weibull 超過 365 天的樣本照 D-038 (b)；(b) exp 為 Go math.exp 的 pure-Go 移植（乘積明確捨入、Ldexp 縮放），Φ⁻¹ 為 AS241 PPND16（48 個常數以 bit pattern 固定），σ²、μ 在 compile 時各算一次且乘積先捨入，Weibull 為 scale·exp(ln(−ln(1−U))/shape)，樣本至少 1 tick；Python port 與 engine-vectors.json 逐 bit 固定。建議 A，已實作。",
+      "gate": "T-048 驗收前",
+      "resolves": [],
+      "source_pages": "N/A（T-048 實作；ADR-026、D-029、D-038、D-056、D-063 (c)）",
+      "owner_role": "Simulation",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
       "id": "D-078",
       "title": "人工 scenario 的檢查範圍、baseline、base 與名稱（T-028）",
       "source_gap": "D-021 只說人工與 AI scenario 用同一個 allowlist；D-004、D-067 定了 AI scenario 批准的 effect 與名稱，但沒有寫人工建立時還檢查什麼、[] 或不改變模型的 patch 可否存、base 是否須為 latest、名稱的規則",
