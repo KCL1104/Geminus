@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -475,4 +476,66 @@ func TestStallDeadlines(t *testing.T) {
 	if d := k.deadlineOf(slices.IndexFunc(p.nodes, func(n cnode) bool { return n.id == "work" })); d != -1 {
 		t.Errorf("an unbounded repair time has the deadline %d", d)
 	}
+}
+
+// The observation stream of every calendar golden the validator accepts
+// and of the four stochastic reference cases (replication 0) is pinned
+// (testdata/simulation/kernel-observation-digests-0.4.0.json, a regression
+// lock taken from des-go-0.4.0 after the hand-derived goldens passed, not
+// an oracle). Any change to the order of capacity changes, failures,
+// repairs, arrivals and dispatches, or to their sequence numbers, shows up
+// here. The older locks hold unchanged (TestBlockingObservationDigests,
+// TestBreakdownObservationDigests).
+func TestCalendarObservationDigests(t *testing.T) {
+	var lock struct {
+		EngineVersion string `json:"engine_version"`
+		Cases         []struct {
+			ID           string `json:"id"`
+			Observations int    `json:"observations"`
+			Digest       string `json:"sha256"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/kernel-observation-digests-0.4.0.json")), &lock); err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Cases     []calendarCase `json:"cases"`
+		Reference struct {
+			Cases []calendarCase `json:"cases"`
+		} `json:"reference"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/calendar-goldens.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	var order []string
+	for _, c := range append(doc.Cases, doc.Reference.Cases...) {
+		if c.Validator != nil {
+			continue // G-D1: refused by the validator; TestStallWithCalendar checks its observations
+		}
+		col := &collect{}
+		if _, err := RunReplication(context.Background(), compile(t, c.input(t)), 0, NewBudget(10_000_000), col); err != nil {
+			t.Fatalf("%s: %v", c.ID, err)
+		}
+		got[c.ID] = fmt.Sprintf("%d %s", len(col.all), observationDigestAt(col.all))
+		order = append(order, c.ID)
+	}
+	want := map[string]string{}
+	for _, c := range lock.Cases {
+		want[c.ID] = fmt.Sprintf("%d %s", c.Observations, c.Digest)
+	}
+	if lock.EngineVersion != "des-go-0.4.0" || len(got) != 23 || !maps.Equal(got, want) {
+		var rows []string
+		for _, id := range order {
+			rows = append(rows, fmt.Sprintf("%s=%s", id, got[id]))
+		}
+		t.Errorf("observation digests\n got  %v\n want %v", rows, want)
+	}
+}
+
+func (c calendarCase) input(t *testing.T) simulation.RunInput {
+	t.Helper()
+	in := input(c.ir(t))
+	in.Config = c.Config
+	return in
 }

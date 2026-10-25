@@ -314,3 +314,35 @@ func TestCalendarDeterminism(t *testing.T) {
 		}
 	}
 }
+
+// des-go-0.4.0's own regression lock (engine output, not an oracle; ADR-026
+// D-047 "新版本另立自己的鎖"; testdata/simulation/engine-golden-digests-
+// 0.4.0.json): the calendar goldens with an expected result and the four
+// stochastic reference cases C-S1–C-S4. The values are the hand-derived
+// ones' (TestCalendarGoldenResults) and the SimPy reference's; the lock
+// only makes a later numerical change visible. The cases of the older
+// locks are checked against them with engine_version set back
+// (TestGoldenDigests, TestGoldenDigests020, TestGoldenDigests030).
+func TestGoldenDigests040(t *testing.T) {
+	var lock struct {
+		EngineVersion string            `json:"engine_version"`
+		Digests       map[string]string `json:"digests"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/engine-golden-digests-0.4.0.json")), &lock); err != nil {
+		t.Fatal(err)
+	}
+	if lock.EngineVersion != Version {
+		t.Fatalf("lock for %s, engine %s", lock.EngineVersion, Version)
+	}
+	cases, reference := calendarDoc(t)
+	got := map[string]string{}
+	for _, c := range append(cases, reference...) {
+		if c.Expected.Result != nil || strings.HasPrefix(c.ID, "C-S") {
+			got[c.ID] = run(t, &Engine{}, caseInput(t, c)).Result.Reproducibility.ResultDigest
+		}
+	}
+	if len(got) != 23 || !reflect.DeepEqual(got, lock.Digests) {
+		data, _ := json.Marshal(got, json.Deterministic(true))
+		t.Errorf("digests %s\n locked %v", data, lock.Digests)
+	}
+}
