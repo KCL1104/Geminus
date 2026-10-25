@@ -150,15 +150,50 @@ MUT = [
     ("simpy-calendar-events-normal", SP, "    env.schedule(ev, URGENT, delay)\n", "    env.schedule(ev, 1, delay)\n", "py"),
     ("simpy-thinning-keeps-all", SP, "            if rng.random() * rmax < seg[\"rate\"]:\n", "            if True:\n", "py"),
     ("simpy-shift-start-releases-nothing", SP, "        while len(blockers[r]) > want:\n", "        while False and len(blockers[r]) > want:\n", "py"),
+    # Review round 1: the reviewer's three surviving Go mutants (M1, M2, L1),
+    # killed now by G-R8, the R4 case past the larger period and the
+    # 365-day cases; and the SimPy side of M1 and I2.
+    ("rv-table-period-in-model-time", R, "\tat := r.cycle[src]*s.periodTicks + s.at[r.row[src]]\n",
+     "\tat := quantize(float64(r.cycle[src])*s.period+s.atModel[r.row[src]], s.unitMs)\n", ENG),
+    ("rv-r4-first-period-only", VC, "\t\t\t\tspan, _ := calendar.LCM(p.Period(), partner.Period(), model.MaxDurationTicks)\n",
+     "\t\t\t\tspan := max(p.Period(), partner.Period())\n", VAL),
+    ("rv-lcm-limit-strict", CAL, "\tif l := q * b; l <= limit {\n", "\tif l := q * b; l < limit {\n", ["./internal/model/calendar/", "./internal/model/validate/"]),
+    ("simpy-table-model-time", SP, "                    at = k * period + ats[j]\n",
+     "                    at = quantize(k * sched[\"period\"] + row[\"at\"], tick)\n", "py"),
+    # Equivalent (review round 1 I2): every rate is at most one a tick (the
+    # validator, D-085 (d)), so Λ(t + 1 tick) - Λ(t) <= 1 and Λ⁻¹(n+1) -
+    # Λ⁻¹(n) >= 1 tick exactly; the script computes Λ⁻¹ exactly
+    # (Fraction) and rounds half up, which keeps a gap of at least 1 a gap
+    # of at least one tick, and the first release is at Λ⁻¹(1) >= 1 tick
+    # (Λ(t) <= t in ticks): the floor max(·, last + 1) never binds for a
+    # deterministic schedule in exact arithmetic. (The engine's floor can
+    # bind there only through binary64 rounding, and for poisson draws;
+    # TestReleaseRunVectors pins it.)
+    ("simpy-deterministic-no-floor", SP, "                at = max(exact_release(sched, n + 1, tick), last + 1)\n",
+     "                at = exact_release(sched, n + 1, tick)\n", "py", "equivalent"),
 ]
+# A mutant spanning more than one file: the other files' replacements.
+EXTRA = {
+    "rv-table-period-in-model-time": [
+        (RL, "\t\tr.periodTicks = p\n", "\t\tr.periodTicks = p\n\t\tr.atModel = nil\n"),
+        (RL, "\t\t\tr.at, r.quantity, last = append(r.at, at), append(r.quantity, rel.Quantity), at\n",
+         "\t\t\tr.at, r.quantity, last = append(r.at, at), append(r.quantity, rel.Quantity), at\n\t\t\tr.atModel = append(r.atModel, rel.At)\n"),
+        (RL, "\tat          []int64\n", "\tat          []int64\n\tatModel     []float64\n"),
+    ],
+}
 
 
-def run_go(i, tmp, f, old, new, pkgs):
-    src = (REPO / f).read_text()
-    m = pathlib.Path(tmp) / f"m{i}.go"
-    m.write_text(src.replace(old, new))
+def run_go(i, tmp, f, old, new, pkgs, extra=()):
+    edits = {}
+    for path, o, n in [(f, old, new), *extra]:
+        edits[path] = edits.get(path, (REPO / path).read_text()).replace(o, n)
+    replace = {}
+    for k, (path, src) in enumerate(edits.items()):
+        m = pathlib.Path(tmp) / f"m{i}-{k}.go"
+        m.write_text(src)
+        replace[str(REPO / path)] = str(m)
     ov = pathlib.Path(tmp) / f"m{i}.json"
-    ov.write_text(json.dumps({"Replace": {str(REPO / f): str(m)}}))
+    ov.write_text(json.dumps({"Replace": replace}))
     # -failfast: a package stops at its first failing test (a killed
     # mutant needs only one); a survivor runs every test.
     p = subprocess.run(["go", "test", "-count=1", "-failfast", "-timeout", "900s", "-overlay", str(ov), *pkgs],
@@ -181,6 +216,8 @@ def run_py(i, tmp, f, old, new):
 def main() -> int:
     if "--patterns" in ONLY:  # only check that every pattern is found exactly once
         bad = [(name, (REPO / f).read_text().count(old)) for name, f, old, *_ in MUT if (REPO / f).read_text().count(old) != 1]
+        bad += [(name, (REPO / f).read_text().count(old)) for name, extra in EXTRA.items() for f, old, _ in extra
+                if (REPO / f).read_text().count(old) != 1]
         print(f"{len(MUT)} mutants, bad patterns: {bad}")
         return 1 if bad else 0
     results = []
@@ -189,15 +226,16 @@ def main() -> int:
             if ONLY and name not in ONLY:
                 continue
             src = (REPO / f).read_text()
-            if src.count(old) != 1:
-                results.append((name, f"BAD-MUTANT (pattern found {src.count(old)} times)"))
+            counts = [src.count(old)] + [(REPO / p).read_text().count(o) for p, o, _ in EXTRA.get(name, [])]
+            if counts != [1] * len(counts):
+                results.append((name, f"BAD-MUTANT (patterns found {counts} times)"))
                 print("\t".join(results[-1]), flush=True)
                 continue
             if pkgs == "py":
                 code, o = run_py(i, tmp, f, old, new)
                 first = next((l.strip() for l in o.splitlines() if l.startswith(("FAIL", "Traceback")) or "!=" in l), "")
             else:
-                code, o = run_go(i, tmp, f, old, new, pkgs)
+                code, o = run_go(i, tmp, f, old, new, pkgs, EXTRA.get(name, []))
                 first = next((l.strip() for l in o.splitlines() if l.strip().startswith(("--- FAIL", "panic:"))), "")
             if code == 0:
                 status = "SURVIVED"

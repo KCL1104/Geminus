@@ -1,5 +1,5 @@
 {
-  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.4.0, T-049) on the cases of calendar-goldens.json the validator accepts (all but G-D1) and on its four stochastic reference cases C-S1–C-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestCalendarGoldens, TestShiftEndBeforeFailure, TestShiftBoundIsNoDeadlock, TestStallWithCalendar, TestStallDeadlines) and is checked besides by the observation-only checker (kernel_check_calendar_test.go) and the SimPy reference (15 of the goldens and C-S1–C-S4); these digests make any later change to the order or the sequence numbers of capacity changes, failures, repairs, arrivals and dispatches visible. The locks of des-go-0.1.0, des-go-0.2.0 and des-go-0.3.0 (kernel-observation-digests.json, -0.2.0.json, -0.3.0.json) are kept as they were and still hold (ADR-026 D-047). G-C9 and G-C10 were added when mutation runs 2 and 3 found a mutant killed only by the 0.4.0 locks (shift-end-wakes-too, processing-ignores-blocked); each entry was taken after the case's hand-derived expectation passed, the other entries are unchanged.",
+  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.4.0, T-049) on the cases of calendar-goldens.json the validator accepts (all but G-D1) and on its four stochastic reference cases C-S1–C-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestCalendarGoldens, TestShiftEndBeforeFailure, TestShiftBoundIsNoDeadlock, TestStallWithCalendar, TestStallDeadlines) and is checked besides by the observation-only checker (kernel_check_calendar_test.go) and the SimPy reference (17 of the goldens and C-S1–C-S4); these digests make any later change to the order or the sequence numbers of capacity changes, failures, repairs, arrivals and dispatches visible. The locks of des-go-0.1.0, des-go-0.2.0 and des-go-0.3.0 (kernel-observation-digests.json, -0.2.0.json, -0.3.0.json) are kept as they were and still hold (ADR-026 D-047). G-C9 and G-C10 were added when mutation runs 2 and 3 found a mutant killed only by the 0.4.0 locks (shift-end-wakes-too, processing-ignores-blocked); each entry was taken after the case's hand-derived expectation passed, the other entries are unchanged. G-R8 and G-R9 were added in review round 1 (a table period off the tick, D-082 (b); the rate cap), each entry after the case's hand-derived expectation passed; the other entries are unchanged.",
   "engine_version": "des-go-0.4.0",
   "encoding": "SHA-256 over each observation's kind, tick, seq, entity, node, resource, value and at as little-endian 64-bit words, in observation order (kernel-observation-digests-0.3.0.json's encoding; ObsCapacity is kind 16, its value the units on shift)",
   "cases": [
@@ -107,6 +107,16 @@
       "id": "G-R7",
       "observations": 63,
       "sha256": "4a800e6ce6892bd73c5e2277a6d71c136bd92e496a1f41a0b0ae7730cf8598be"
+    },
+    {
+      "id": "G-R8",
+      "observations": 20,
+      "sha256": "860fc6f24fa8224c01651d310e79a172ddc705f26cd14056e6261d9e14fd5152"
+    },
+    {
+      "id": "G-R9",
+      "observations": 24,
+      "sha256": "de85d8cd59e5accd94fa26c8ae1dd40a44c5d7284bd313cadc3d2ac5bb04d6a3"
     },
     {
       "id": "C-S1",

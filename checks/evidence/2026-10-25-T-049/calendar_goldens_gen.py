@@ -487,7 +487,7 @@ cases.append({
         "t=12: FAILURE: the unit is idle, down at once; TTR 1: REPAIR at 13. t=13: REPAIR; Θ(13) = 9, the next failure at Θ = 17: 3 more on [13,16), 5 on [20,25): at 25.",
         "e3 [15,16]. t=16: e3 completes (0); CAPACITY_CHANGE: next at 20; S 1 -> 0. t=20: e4 arrives; CAPACITY_CHANGE: next at 26; S 0 -> 1; e4 [20,21].",
         "t=25: ARRIVAL e5 (10; next at 30) queues; FAILURE (15): the unit is idle, down, REPAIR at 26; DISPATCH: e5 held (0+1 > min(S=1, C-D=0)).",
-        "t=26: two priority-15 events: the CAPACITY_CHANGE (scheduled at 20) before the REPAIR (scheduled at 25). The change: next at 30; S 1 -> 0. The repair: Θ(26) = 18, the next failure at Θ = 26 is at 38, after the horizon; no failure waits, so it wakes e5; DISPATCH: e5 held (S = 0).",
+        "t=26: two priority-15 events: the CAPACITY_CHANGE (scheduled at 20) before the REPAIR (scheduled at 25). The change: next at 30; S 1 -> 0. The repair: Θ(26) = 18 (6 on each of [0,6), [10,16), [20,26)), the next failure at Θ = 26 is at 42 ([30,36) brings Θ to 24, [40,42) to 26), after the horizon; no failure waits, so it wakes e5; DISPATCH: e5 held (S = 0). (Review round 1 I1: this line said 38; the arithmetic gives 42. Text only: 38 and 42 are both after the horizon, nothing expected changes.)",
         "t=30: ARRIVAL e6 (the next, 35, is not scheduled); CAPACITY_CHANGE (its next, 36, is not): S 0 -> 1 wakes e5; DISPATCH grants e5 at 30; e6 held.",
         "Result over [0,30]: S 18 min; in use 4 min, all on shift; down [12,13) and [25,26) inside shifts: 2 min; available = 18 - 2 = 16; idle = 16 - 4 = 12; 2 breakdowns, 2 complete repairs (2 min); utilization 4/30. Completed 4, censored 2; lead times 1, 1, 1, 1; waits 0, 0, 0, 0 and e5's 5.",
     ],
@@ -807,6 +807,57 @@ cases.append({
         "result": {"completed_count": 9, "censored_entities": 0, "lead_times_minutes": [10, 20, 10, 20, 30, 10, 20, 10, 20],
                    "queue_waits_minutes": {"work": [0, 10, 0, 10, 20, 0, 10, 0, 10]}, "resource_utilization": {"m": 0.6},
                    "resource_states": None, "blocking": None, "buffers": None}},
+    "simpy": "compare",
+})
+
+# ---------------------------------------------------------------- G-R8
+# (Review round 1 M1: G-R7's period is a whole number of ticks, so it cannot
+# tell D-082 (b) A from B. Hand-derived before the engine and SimPy ran it.)
+gr8 = [0, 0.001, 0.003, 0.004, 0.006, 0.007, 0.009, 0.01, 0.012, 0.013]
+cases.append({
+    "id": "G-R8",
+    "title": "a release table whose period and release time are not whole ticks: each is quantized first, then k x period + at in ticks (D-082 (b) A)",
+    "model": model("G-R8", [], [source("src", schedule={"process": "table", "period": 0.0026,
+                                                         "releases": [{"at": 0, "quantity": 1}, {"at": 0.0012, "quantity": 1}]}), sink()],
+                   [("src", "done")], unit="second"),
+    "config": config(0.013, unit="second"),
+    "derivation": [
+        "Seconds, 1000 ticks a second (model.Ticks: round half up, a positive value at least 1 tick). The period 0.0026 s is 2.6 ms -> 3 ticks; the rows' at 0 -> 0 ticks and 0.0012 s = 1.2 ms -> 1 tick (neither is near a half, so binary64 cannot move them).",
+        "D-082 (b) A: row j of period k is released at k x 3 + at_j ticks: 0, 1; 3, 4; 6, 7; 9, 10; 12, 13. The next, period 5's first row at 15, is after the horizon (13 ticks) and never scheduled.",
+        "One ARRIVAL a row (D-082 (c)), each creating one entity that goes straight to the sink in the same event: 10 events, 10 completions at the arrival ticks, lead time 0.",
+        "Option B (k x 2.6 ms + at in model time, then quantized) would release at round(0, 1.2, 2.6, 3.8, 5.2, 6.4, 7.8, 9.0, 10.4, 11.6, 13.0) = 0, 1, 3, 4, 5, 6, 8, 9, 10, 12, 13: 11 arrivals, apart from A from the third period on (the drift of 0.4 ms a period).",
+    ],
+    "expected": {
+        "arrivals": ids("src", gr8), "starts": {}, "completions": ids("src", gr8),
+        "blocks": [], "downs": [], "pending": [], "capacities": [], "events": 10,
+        "result": {"completed_count": 10, "censored_entities": 0, "lead_times_minutes": [0] * 10, "queue_waits_minutes": {},
+                   "resource_utilization": {}, "resource_states": None, "blocking": None, "buffers": None}},
+    "simpy": "compare",
+})
+
+# ---------------------------------------------------------------- G-R9
+# (Review round 1 I2: ADR-026's planned G-R5 was "high rate: ticks strictly
+# increase"; the fixture's G-R5 is the rate change inside a tick. This is the
+# ADR's case under a new ID: the rate at the validator's cap.)
+gr9 = [0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.011, 0.012]
+cases.append({
+    "id": "G-R9",
+    "title": "a deterministic schedule at the rate cap, one release a tick: the ticks strictly increase (ADR-026 D-053's planned G-R5, high rate)",
+    "model": model("G-R9", [], [source("src", schedule={"process": "deterministic", "period": 0.01,
+                                                         "segments": [{"start": 0, "rate": 1000}]}), sink()],
+                   [("src", "done")], unit="second"),
+    "config": config(0.012, unit="second"),
+    "derivation": [
+        "Seconds, 1000 ticks a second. Rate 1000/s, the most the validator accepts (one release a tick, D-085 (d)); period 0.01 s, P = 1000 x 0.01 = 10.",
+        "a = n: k = ceil(n/10) - 1, r = n - 10k, τ = k x 0.01 s + r/1000 s = n ms exactly; every τ is a whole tick, so binary64's error (well under half a tick) cannot move the rounding: arrivals at 1, 2, ..., 12 ms; a = 13 (13 ms) is after the horizon (12) and never scheduled.",
+        "Each arrival is exactly one tick after the last: the one-tick floor (D-053) is met but never raises a tick. With every rate at most one a tick, Λ⁻¹(n+1) - Λ⁻¹(n) >= 1 tick exactly, so round half up gives strictly increasing ticks and the floor cannot bind for a deterministic schedule in exact arithmetic; it can only correct binary64's rounding (and bind for poisson draws, TestReleaseRunVectors).",
+        "Straight to the sink: 12 events, 12 completions at the arrival ticks, lead time 0.",
+    ],
+    "expected": {
+        "arrivals": ids("src", gr9), "starts": {}, "completions": ids("src", gr9),
+        "blocks": [], "downs": [], "pending": [], "capacities": [], "events": 12,
+        "result": {"completed_count": 12, "censored_entities": 0, "lead_times_minutes": [0] * 12, "queue_waits_minutes": {},
+                   "resource_utilization": {}, "resource_states": None, "blocking": None, "buffers": None}},
     "simpy": "compare",
 })
 

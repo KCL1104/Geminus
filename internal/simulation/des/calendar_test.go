@@ -99,8 +99,8 @@ func TestCalendarGoldenResults(t *testing.T) {
 			}
 		})
 	}
-	if checked != 21 {
-		t.Fatalf("%d cases with an expected result, want 21", checked)
+	if checked != 23 {
+		t.Fatalf("%d cases with an expected result, want 23", checked)
 	}
 }
 
@@ -341,7 +341,7 @@ func TestGoldenDigests040(t *testing.T) {
 			got[c.ID] = run(t, &Engine{}, caseInput(t, c)).Result.Reproducibility.ResultDigest
 		}
 	}
-	if len(got) != 25 || !reflect.DeepEqual(got, lock.Digests) {
+	if len(got) != 27 || !reflect.DeepEqual(got, lock.Digests) {
 		data, _ := json.Marshal(got, json.Deterministic(true))
 		t.Errorf("digests %s\n locked %v", data, lock.Digests)
 	}
