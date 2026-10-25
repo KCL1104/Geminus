@@ -307,10 +307,23 @@ func TestASuggestionOfOtherColumnsAsksNothing(t *testing.T) {
 		fmt.Sprint([]issue{{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/0"}}) {
 		t.Errorf("confirmed by name: %v", got)
 	}
+	// I1 of review round 3: a mapping that lists such a column as the
+	// suggestion said is refused for the column alone, and the column is
+	// still not one to confirm.
+	m := station()
+	m.Mappings = append(m.Mappings, unmapped("幽靈0"))
+	unknown := []issue{{mapping.CodeUnknownColumn, "/mapping/mappings/12/source_column"}}
+	if got := issuesOf(mapping.Check(m, stationColumns, ghost(1), nil)); fmt.Sprint(got) != fmt.Sprint(unknown) {
+		t.Errorf("listed in the mapping: %v", got)
+	}
+	if got := issuesOf(mapping.Check(m, stationColumns, ghost(1), []string{"幽靈0"})); fmt.Sprint(got) !=
+		fmt.Sprint(append(unknown, issue{mapping.CodeConfirmationUnknown, "/confirmed_low_confidence/0"})) {
+		t.Errorf("listed in the mapping, confirmed by name: %v", got)
+	}
 	// A column the import has, beside them, still needs its person.
 	s := ghost(300)
 	s.Mappings = append(s.Mappings, mapping.SuggestedEntry{SourceColumn: "作業員", Confidence: 0.2, Transform: mapping.Identity})
-	m := station()
+	m = station()
 	m.Mappings = m.Mappings[:11]
 	if got := issuesOf(mapping.Check(m, stationColumns, s, nil)); fmt.Sprint(got) !=
 		fmt.Sprint([]issue{{mapping.CodeConfirmationRequired, "/mapping/mappings"}}) {

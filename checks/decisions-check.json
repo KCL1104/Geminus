@@ -30,8 +30,8 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 25,
-    "in_progress": 3,
-    "not_started": 25,
+    "in_progress": 4,
+    "not_started": 24,
     "review": 0
   },
   "ready_tasks": [
@@ -42,15 +42,6 @@
     "T-053"
   ],
   "next_after_review": [
-    {
-      "id": "T-017",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-070",
-        "D-071",
-        "D-072"
-      ]
-    },
     {
       "id": "T-047",
       "awaiting_task_review": [],

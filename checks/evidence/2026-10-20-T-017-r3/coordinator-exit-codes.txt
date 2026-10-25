@@ -1,0 +1,4 @@
+spec-check exit 0
+backend-test exit 0
+import-race exit 0
+integration exit 0

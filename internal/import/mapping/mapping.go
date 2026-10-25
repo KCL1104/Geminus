@@ -267,9 +267,9 @@ func Check(m Mapping, columns []string, s *Suggestion, confirmed []string) []mod
 // entry leaves out is taken as it said when the mapping does not import it
 // either: by a null entry (whose issue points at it) or by not listing it
 // (whose issue points at /mapping/mappings). Issues follow the mapping's
-// entries, then the suggestion's. An entry for a column the import does not
-// have (known) needs no one: it neither blocks the mapping nor may be named
-// (review round 2 N1).
+// entries, then the suggestion's. A column the import does not have (known)
+// needs no one, whether the mapping lists it or not: it neither blocks the
+// mapping nor may be named (review round 2 N1, round 3 I1).
 func confirmations(m Mapping, known map[string]bool, s *Suggestion, confirmed []string) issues {
 	var out issues
 	needs := map[string]bool{}
@@ -287,6 +287,9 @@ func confirmations(m Mapping, known map[string]bool, s *Suggestion, confirmed []
 		listed := map[string]bool{}
 		for i, e := range m.Mappings {
 			listed[e.SourceColumn] = true
+			if !known[e.SourceColumn] {
+				continue // refused as MAPPING_UNKNOWN_COLUMN; nothing to confirm (review round 3 I1)
+			}
 			for _, se := range s.Mappings {
 				if !se.NeedsPerson() || se.SourceColumn != e.SourceColumn {
 					continue

@@ -1,0 +1,7 @@
+--- FAIL: TestASuggestionOfOtherColumnsAsksNothing (0.00s)
+    mapping_test.go:317: listed in the mapping: [{MAPPING_UNKNOWN_COLUMN /mapping/mappings/12/source_column} {MAPPING_CONFIRMATION_REQUIRED /mapping/mappings/12}]
+    mapping_test.go:321: listed in the mapping, confirmed by name: [{MAPPING_UNKNOWN_COLUMN /mapping/mappings/12/source_column}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/import/mapping	0.007s
+FAIL
+exit 1

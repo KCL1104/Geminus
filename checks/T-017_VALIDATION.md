@@ -249,3 +249,13 @@ Exit code 在 `coordinator-exit-codes.txt`。沒有 NOT RUN 的新項目；`make
 ### 需要 owner 決定（第 2 輪新增）
 
 - D-070 (d)：suggestion 中不是此 import 欄位的條目不需確認（N1，已實作）；不符 schema 的 suggestion 是否需要人工解除的路徑（N2，T-027 先在寫入時擋下）。
+
+## Review 第 3 輪（2026-10-25）
+
+獨立 review 第 3 輪（審查 6ed6b71）：**ACCEPT**，沒有 High 或 Medium。N1 已修（reviewer 的 probe `TestProbeGhostColumns` 通過，拿掉 `known` 條件與把它反過來的兩個 mutation 都被擋下）；N2、N3 的處理（T-027 與 T-037 的 scope、D-070 (d) 請 owner 決定）reviewer 同意；第 1 輪 M1–M3 的 probe 仍通過。這是對程式的判定：D-070–D-072 仍是 PROPOSED，它們的 gate 是 T-017 驗收前，所以 T-017 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。
+
+| Finding | 處理 | 證據 |
+|---|---|---|
+| I1（Info）`confirmations` 的第一個迴圈不看欄位是否存在：mapping 列了 import 沒有的欄、且列法與需要確認的 suggestion 條目相同時，除了 `MAPPING_UNKNOWN_COLUMN` 還多一個 `MAPPING_CONFIRMATION_REQUIRED`（不會存進任何東西，只是與「不存在的欄不需確認」不一致） | Coordinator 修正：該迴圈略過不在 `known` 中的欄；以名稱確認這種欄為 `MAPPING_CONFIRMATION_UNKNOWN`。D-070 (d) 與 OpenAPI 的說法本來就涵蓋，不改 | `TestASuggestionOfOtherColumnsAsksNothing` 新增兩個斷言；紅燈 `checks/evidence/2026-10-20-T-017-r3/i1-red.log`（兩個都失敗）、綠燈 `i1-green.log` |
+
+I1 修正後，`make spec-check`、`make backend-test`、`go test -race ./internal/import/...` 與新的 `dt_test_t017r3` 上的 `make integration-test`（所有 migration 與 SQL suite，30 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0（`checks/evidence/2026-10-20-T-017-r3/coordinator-*`）。`backend-race` 的其他 package、`architecture-check`、`ai-eval` 與 `frontend-test` 未在本次重跑：本次只改 `internal/import/mapping` 的一個純函式與其測試，它們在 6ed6b71 的 tree 上已通過。

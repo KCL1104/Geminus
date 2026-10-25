@@ -1027,7 +1027,7 @@
       "id": "T-017",
       "title": "Canonical mapping / full validation pipeline",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "AI / Full-stack",
       "planning_window": "Week 5–6",
       "depends_on": [
@@ -1083,7 +1083,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-25",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-017_VALIDATION.md",
+          "summary": "人工 canonical mapping 與全量 validation pipeline：import-mapping.schema.json 與 SaveMapping（confirmed_low_confidence）、internal/import/mapping（Check：欄位、target、transform、metadata 上限、AI suggestion 需要人確認的條目由 server 判定；Compile／Apply：每列轉換為 canonical event 並以 canonical-event.schema.json 最後驗證）、internal/import/validator（stale-job fence、第二次讀取前於 lease 下確認 revision、canonical dataset 與報表）、internal/import/upload 的 SaveMapping（CAS、Idempotency-Key、audit、儲存的 suggestion 每次以 ai-mapping.schema.json 驗證、fail closed）、migration 0014（VALIDATING／VALIDATED、COMMITTED 只能從 VALIDATED 來、兩個 deferred constraint trigger）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（534c9ba、4bdec75、6ed6b71 的 tree），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-20-T-017*/coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 CHANGES REQUESTED (M1–M5, L1–L6, I2, I4, I5); round 2 on 4bdec75 CHANGES REQUESTED (N1–N3); round 3 on 6ed6b71 ACCEPT (I1 fixed by the coordinator)",
+          "decisions_pending": "D-070、D-071、D-072 待 owner 批准；批准後 T-017 才標為 done"
+        }
+      ]
     },
     {
       "id": "T-018",

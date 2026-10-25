@@ -1,0 +1,7 @@
+ok  	github.com/kcl1104/geminus/internal/import/mapping	1.119s
+ok  	github.com/kcl1104/geminus/internal/import/profile	43.485s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/report	1.016s
+ok  	github.com/kcl1104/geminus/internal/import/upload	1.148s
+ok  	github.com/kcl1104/geminus/internal/import/validation	1.282s
+ok  	github.com/kcl1104/geminus/internal/import/validator	1.315s
