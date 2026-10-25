@@ -182,3 +182,9 @@ Exec 數包括很快就 decode 或 compile 失敗的輸入（`FuzzKernel`、`Fuz
 - **效能**：每個 unit 一個故障時鐘，capacity 很大（例如 10,000）的會故障的 resource 每個 TTF 都有一個事件；B2 在每個有 held candidate 的 tick 結束時逐 resource 檢查 FIFO 前端（O(resources)）。沒有 benchmark（T-037）。
 - **Regression lock 不是 oracle**：`engine-golden-digests-0.3.0.json`、`kernel-observation-digests-0.3.0.json` 是 engine 的輸出；語義由手推 golden、檢查器與 SimPy 驗證。
 - **中間的 commit 沒有各自驗證**：只有最後的 tree 跑過全部的指令。
+
+## Coordinator 的執行（415341e）
+
+Coordinator 把九個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-028 的 0697fb2 之後）：ffc141c → 6fc44b5、60fb361 → 83120ff、7a22c5a → b556d1e、2eac291 → 03071d3、e70c855 → 379af53、bcb2463 → 065791e、5d641da → b720165、0c8b1f0 → ad0eb89、105ede5 → 415341e。衝突只在決策登記與 `planning/decisions.json`（T-028 的 D-078–D-080 與本任務的 D-074、D-075 都是新增，兩邊都保留，依 ID 排列；登記檔開頭的說明合併為一句），以及 `make spec-check` 重產的 `checks/*.json`（取本任務的版本後重產）。
+
+之後在 415341e 的 tree 上（`coordinator-environment.txt`：HEAD、go1.27.3、Node 22.22.0、PostgreSQL 16.15、`dt_test_t048`），`spec-check`、`backend-test`（50,000 個 differential 模型）、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`（83/83 個隨機比對）、`backend-numeric`、`backend-race`（engine package 309 s）與 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0。本報告 NOT RUN 中的 DB-backed 測試（runner、runs、api 的 run 測試等）因此都已執行。仍為 NOT RUN：`SIMULATION_STALLED` 的端對端測試（valid 的模型因 R3 不會 stall）、`make e2e-test`、benchmark、非 amd64 的實機。D-074、D-075 仍是 PROPOSED。Log 與 exit code 在 `checks/evidence/2026-10-25-T-048/coordinator-*`。
