@@ -2436,7 +2436,8 @@
         "web/api/worker分開containers，managed DB/object/OTLP adapters。",
         "non-root/runtime roles、secret injection、readiness、graceful shutdown。",
         "cloud/provider不進domaincode，production人工gate。",
-        "web container 為 Node server（BFF，ADR-018），session key 與 OIDC client secret 由 secret store 注入。"
+        "web container 為 Node server（BFF，ADR-018），session key 與 OIDC client secret 由 secret store 注入。",
+        "T-054 review 第 2 輪（I1、I2）：正式的 object storage adapter 若有自己的單次操作 timeout（store 自己逾時而 request 仍在），datasets.Failure 要標記「request 已結束」而 StorageFailure 只排除這個標記，使 store 自己的逾時成為 503 DATASET_STORAGE_FAILED 並記 WARN（目前會是沒有 details、沒有 log 的 503）；若 worker（generator、runner）也改用 StorageFailure，要先排除 generator copies.Open 的 errNotCopied（server bug，型別上也是 ReadError）。先寫測試。"
       ],
       "planned_outputs": [
         "deploy/",
@@ -3422,7 +3423,7 @@
       "id": "T-054",
       "title": "dataset snapshot 讀取失敗回 503：publishVersion、createSimulation（H-022）、patchDraft、resetDraft（D-087）與批准時的 draft 同步",
       "priority": "P0",
-      "status": "not_started",
+      "status": "done",
       "owner_role": "Platform",
       "planning_window": "H-022（未重估週數）",
       "depends_on": [
@@ -3466,7 +3467,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-25",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-054_VALIDATION.md",
+          "summary": "publishVersion、createSimulation（H-022）、patchDraft、resetDraft（D-087，H-023）與 approveProposal 的 draft 同步（D-069 (b)）在 storage 讀不到 dataset snapshot 時回 503 SERVICE_UNAVAILABLE（details[0].code DATASET_STORAGE_FAILED），原因只寫入 log、什麼都不寫入，恢復後同一 key 重送成功；只有 datasets.ReadError 是 503，binding stage 的其他錯誤仍為 500 並記 ERROR；request 已結束時保留 context 錯誤；規則只有一份（internal/storage/datasets 的 Failure／StorageFailure、httpapi.DatasetStorageFailed）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（dfe9723、a38fe86 的 tree）與 18 個 DB mutant（全部擋下），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test 都 exit 0（checks/evidence/2026-10-25-T-054*/coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 on 272aa3d CHANGES REQUESTED (M1 decision record → D-087, H-023; L1–L4); round 2 on 4e67747 ACCEPT (I1, I2 recorded in T-039's scope)",
+          "decisions": "D-061、D-069、D-087 已批准（H-019、H-021、H-022、H-023）"
+        }
+      ]
     }
   ]
 }

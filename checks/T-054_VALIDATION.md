@@ -294,3 +294,7 @@ Coordinator 把八個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（H-0
 Review 第 1 輪的 M1（patchDraft、resetDraft 的延伸超出 H-022 批准的兩個 endpoint）由 coordinator 處理：owner 以選擇題批准延伸，記為 D-087（H-023，79262a5）；批准時的 draft 同步屬 D-069 (b) 的範圍。Coordinator 把本輪三個 commit cherry-pick 到 79262a5 之後（沒有衝突）：41c8417 → 4dcbe61、2415aaa → ebeac7b、9028ff2 → a38fe86，並把 D-069 補充中已不存在的 `bindingFailure`／`storageCause` 改為 `datasets.Failure`／`StorageFailure` 與 `httpapi.DatasetStorageFailed`（本節的 commit）。
 
 在 a38fe86 加上該文字修改的 tree 上（`coordinator-environment.txt`），`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`backend-race` 與新的 `dt_test_t054r1` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP；含本輪改過的 DB 測試與「request 剛好結束」的案例）都是 exit 0。8 個 DB mutant 在匯出的副本上以同一個 database 執行：8 個都被測試失敗擋下（`coordinator-mutants-db.log`、`coordinator-mutants-db-run.txt`）。Log 與 exit code 在 `checks/evidence/2026-10-25-T-054-r1/coordinator-*`。
+
+## Review 第 2 輪（2026-10-25）與驗收
+
+獨立 review 第 2 輪（審查 4e67747）：**ACCEPT**，第 1 輪的 M1（以 D-087、H-023 處理）與 L1–L4 都已解決，沒有新的 High、Medium 或 Low。Reviewer 確認 API 路徑上的 `ReadError` 只包住 infrastructure 錯誤、worker 端行為不變、四個 Refused 對同一組情況的回應完全一致；它自己的 12 個 unit mutant 全部擋下，3 個只有 DB 能擋的 mutant 與 coordinator 的同類 DB mutant 一致。兩個 Info（正式 object storage adapter 自己逾時時的 503 沒有 details 與 log；generator 的 `errNotCopied` 型別上也是 `ReadError`）記入 T-039 的 scope。T-054 的 decision gate（D-061、D-069、D-087）都已批准，所以 T-054 標為 done（`planning/tasks.json` 的 completion_evidence）。
