@@ -1,0 +1,5 @@
+db-read-write-transaction: KILLED (TestCompareReadsOneReadOnlySnapshot) --- FAIL: TestCompareReadsOneReadOnlySnapshot (0.03s)
+db-read-committed-transaction: KILLED (TestCompareReadsOneReadOnlySnapshot) --- FAIL: TestCompareReadsOneReadOnlySnapshot (0.04s)
+db-hook-not-called: KILLED (TestCompareReadsOneReadOnlySnapshot) --- FAIL: TestCompareReadsOneReadOnlySnapshot (0.05s)
+TOTAL 3 (db): 3 killed, 0 survived, 0 did not build
+

@@ -1,0 +1,260 @@
+GEMINUS_SIMPY_REFERENCE_OUT=/home/user/Geminus/bin/simpy-reference-go.json go test -count=1 -run '^TestSimPyReferenceExport$' ./internal/simulation/des/
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.941s
+.venv/bin/python scripts/simpy_reference.py --go-results bin/simpy-reference-go.json --report bin/simpy-reference-report.json
+{
+  "simpy": "4.1.2",
+  "deterministic_cases": [
+    "G-B1",
+    "G-B1W",
+    "G-B2",
+    "G-B4",
+    "G-B4W",
+    "G-B7",
+    "G-B8",
+    "G-B9",
+    "G-B11",
+    "G-B12",
+    "G-B14",
+    "G-D2 (illustrative)",
+    "G-F3",
+    "G-F3b",
+    "G-F9",
+    "G-F9R10",
+    "G-F7",
+    "G-C1",
+    "G-C1W",
+    "G-C1W10",
+    "G-C2",
+    "G-C5",
+    "G-C6",
+    "G-C7",
+    "G-C8",
+    "G-C9",
+    "G-C10",
+    "G-F6",
+    "G-CF1",
+    "G-R1",
+    "G-R5",
+    "G-R7",
+    "G-R8",
+    "G-R9"
+  ],
+  "not_compared": [
+    "G-B3: not compared: the order of two blocks in one tick is the kernel's tie-break (D-048), which SimPy does not reproduce",
+    "G-B5: not compared: the property is the kernel's use of its routing stream",
+    "G-B10: not compared: A needs two units of ra, which the script's slot interpretation does not support (units must be 1)",
+    "G-B13: refused by the script: unsupported: X's own O (capacity 1) is smaller than its shared S (capacity 3): one at a time would not be all-or-nothing",
+    "G-D3: not compared: a second deadlock case; G-D2 is the illustrative one",
+    "G-F1: not compared: same-tick arrival and failure at 10 and 26 (D-048 tie-break; SimPy orders same-time events by scheduling)",
+    "G-F1W: not compared: G-F1's same-tick arrival and failure (D-048 tie-break)",
+    "G-F1W10: not compared: G-F1's same-tick arrival and failure (D-048 tie-break)",
+    "G-F2: not compared: same-tick arrival and failure at 24 (D-048 tie-break)",
+    "G-F10: not compared: failures 0 (from 25) and 1 (from 30) still wait at the horizon, which the script does not record",
+    "G-F8: refused by the script: unsupported: work's bundle ['m', 'o'] has m, which breaks down, and other resources: taken one at a time, a unit of it held while waiting for the rest could not fail",
+    "G-T1: not compared: D-048 tie-break (release, failure and dispatch in one tick)",
+    "G-T2: not compared: D-048 tie-break",
+    "G-T4: not compared: D-048 tie-break (a 0-tick repair inside a tick)",
+    "G-K1: not compared: the point is the kernel's B1 check",
+    "G-D4: not compared: SimPy does not detect deadlocks (G-D2)",
+    "G-S1: not compared: SimPy does not detect stalls",
+    "G-S2: not compared: the point is the kernel's B2 check",
+    "G-C4: refused by the script: unsupported: work's bundle ['r1', 'r2'] has r1, on a calendar, and other resources: taken one at a time, a unit held while waiting for the rest would be held off its shift",
+    "G-T5: not compared: the failure is due exactly at the shift's end; in the script the change's blocker takes the off-shift unit first, which the kernel counts as idle for a failure (D-051), so the script's failure would wait",
+    "G-K2: not compared: the point is the kernel's B1 check",
+    "G-D1: not compared: SimPy does not detect stalls",
+    "G-D3C: refused by the script: unsupported: work needs 2 units",
+    "G-D4C: refused by the script: unsupported: work's bundle ['r1', 'r2'] has r1, on a calendar, and other resources: taken one at a time, a unit held while waiting for the rest would be held off its shift",
+    "G-D5: refused by the script: unsupported: work's bundle ['m', 'o'] has m, which breaks down, and other resources: taken one at a time, a unit of it held while waiting for the rest could not fail"
+  ],
+  "g_d2_last_service_start_minutes": 5.0,
+  "g_d2_deadlock_minutes": 7.0,
+  "stochastic_comparisons": 140,
+  "stochastic_passed": 140,
+  "tolerance": {
+    "blocking-goldens.json": {
+      "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+      "z": 4.0,
+      "rel": 0.005,
+      "abs": 1e-09
+    },
+    "breakdown-goldens.json": {
+      "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+      "z": 4.0,
+      "rel": 0.005,
+      "abs": 1e-09
+    },
+    "calendar-goldens.json": {
+      "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+      "z": 4.0,
+      "rel": 0.005,
+      "abs": 1e-09
+    }
+  },
+  "failures": []
+}
+ S1 completed_count                    go 2493.5       simpy 2485.3       bound 44.4       ok
+ S1 mean_lead_time_minutes             go 141.985      simpy 131.189      bound 40.5       ok
+ S1 reworks                            go 0            simpy 0            bound 1e-09      ok
+ S1 utilization/m1                     go 0.999422     simpy 0.99789      bound 0.00837    ok
+ S1 blocked_fraction/m1                go 0.34531      simpy 0.354593     bound 0.0157     ok
+ S1 utilization/m2                     go 0.927036     simpy 0.932332     bound 0.014      ok
+ S1 blocked_fraction/m2                go 0.191908     simpy 0.191749     bound 0.0116     ok
+ S1 utilization/m3                     go 0.688484     simpy 0.688627     bound 0.0147     ok
+ S1 blocked_fraction/m3                go 0            simpy 0            bound 1e-09      ok
+ S1 full_fraction/q2                   go 0.623943     simpy 0.636793     bound 0.0216     ok
+ S1 full_fraction/q3                   go 0.419464     simpy 0.419384     bound 0.017      ok
+ S1 blocks_started/st1                 go 1060.97      simpy 1087.8       bound 43.1       ok
+ S1 blocked_entities_mean/st1          go 0.34531      simpy 0.354593     bound 0.0157     ok
+ S1 blocks_started/st2                 go 693.733      simpy 692.333      bound 35.7       ok
+ S1 blocked_entities_mean/st2          go 0.191908     simpy 0.191749     bound 0.0116     ok
+ S2 completed_count                    go 2250.27      simpy 2262.17      bound 62.9       ok
+ S2 mean_lead_time_minutes             go 22.5716      simpy 23.6028      bound 12.9       ok
+ S2 reworks                            go 397.8        simpy 394.433      bound 25.7       ok
+ S2 utilization/packer                 go 0.748304     simpy 0.752726     bound 0.0262     ok
+ S2 blocked_fraction/packer            go 0            simpy 0            bound 1e-09      ok
+ S2 utilization/tester                 go 0.941556     simpy 0.945231     bound 0.0408     ok
+ S2 blocked_fraction/tester            go 0.157687     simpy 0.162197     bound 0.0191     ok
+ S2 full_fraction/qp                   go 0.33198      simpy 0.337325     bound 0.0305     ok
+ S2 blocks_started/test                go 476.933      simpy 484.067      bound 46.1       ok
+ S2 blocked_entities_mean/test         go 0.157687     simpy 0.162197     bound 0.0191     ok
+ S3 completed_count                    go 2412         simpy 2424.43      bound 55.8       ok
+ S3 mean_lead_time_minutes             go 3.55248      simpy 3.76448      bound 0.557      ok
+ S3 reworks                            go 0            simpy 0            bound 1e-09      ok
+ S3 utilization/m1                     go 0.439404     simpy 0.451898     bound 0.0241     ok
+ S3 blocked_fraction/m1                go 0.140964     simpy 0.150118     bound 0.0179     ok
+ S3 utilization/m2                     go 0.59179      simpy 0.595018     bound 0.0245     ok
+ S3 blocked_fraction/m2                go 0            simpy 0            bound 1e-09      ok
+ S3 utilization/op                     go 0.637664     simpy 0.653451     bound 0.0269     ok
+ S3 blocked_fraction/op                go 0.140964     simpy 0.150118     bound 0.0179     ok
+ S3 full_fraction/q2                   go 0.324077     simpy 0.333357     bound 0.0268     ok
+ S3 blocks_started/p1                  go 318.6        simpy 335.667      bound 33.2       ok
+ S3 blocked_entities_mean/p1           go 0.140964     simpy 0.150118     bound 0.0179     ok
+ S4 completed_count                    go 2700.97      simpy 2694.9       bound 58.1       ok
+ S4 mean_lead_time_minutes             go 16.9276      simpy 16.4494      bound 8.83       ok
+ S4 reworks                            go 0            simpy 0            bound 1e-09      ok
+ S4 utilization/m                      go 0.952446     simpy 0.948436     bound 0.0265     ok
+ S4 blocked_fraction/m                 go 0            simpy 0            bound 1e-09      ok
+ S4 full_fraction/q1                   go 0.820758     simpy 0.803693     bound 0.0817     ok
+ S4 blocks_started/src                 go 2222.13      simpy 2169.83      bound 248        ok
+ S4 blocked_entities_mean/src          go 13.5152      simpy 13.0289      bound 8.88       ok
+B-S1 completed_count                    go 545.9        simpy 545.6        bound 28.9       ok
+B-S1 mean_lead_time_minutes             go 20.4243      simpy 20.947       bound 8.29       ok
+B-S1 reworks                            go 0            simpy 0            bound 1e-09      ok
+B-S1 utilization/m                      go 0.711333     simpy 0.717155     bound 0.0461     ok
+B-S1 down_fraction/m                    go 0.0839446    simpy 0.0856889    bound 0.0166     ok
+B-S1 available_fraction/m               go 0.916055     simpy 0.914311     bound 0.0207     ok
+B-S1 idle_fraction/m                    go 0.204722     simpy 0.197157     bound 0.049      ok
+B-S1 breakdowns_started/m               go 38.4667      simpy 39           bound 5.41       ok
+B-S2 completed_count                    go 894.333      simpy 901.533      bound 35.9       ok
+B-S2 mean_lead_time_minutes             go 9.65386      simpy 9.73246      bound 1.14       ok
+B-S2 reworks                            go 0            simpy 0            bound 1e-09      ok
+B-S2 utilization/m                      go 0.662408     simpy 0.668251     bound 0.0311     ok
+B-S2 down_fraction/m                    go 0.0767912    simpy 0.0773829    bound 0.00938    ok
+B-S2 available_fraction/m               go 0.923209     simpy 0.922617     bound 0.0136     ok
+B-S2 idle_fraction/m                    go 0.260801     simpy 0.254367     bound 0.0292     ok
+B-S2 breakdowns_started/m               go 41.7         simpy 41.3         bound 3.77       ok
+B-S3 completed_count                    go 868.633      simpy 872.567      bound 28.8       ok
+B-S3 mean_lead_time_minutes             go 93.9532      simpy 77.992       bound 48.1       ok
+B-S3 reworks                            go 0            simpy 0            bound 1e-09      ok
+B-S3 utilization/ma                     go 0.886762     simpy 0.885131     bound 0.0407     ok
+B-S3 blocked_fraction/ma                go 0.243155     simpy 0.242187     bound 0.0327     ok
+B-S3 utilization/rb                     go 0.801873     simpy 0.808966     bound 0.0335     ok
+B-S3 blocked_fraction/rb                go 0            simpy 0            bound 1e-09      ok
+B-S3 down_fraction/ma                   go 0.0890993    simpy 0.0887154    bound 0.0193     ok
+B-S3 available_fraction/ma              go 0.910901     simpy 0.911285     bound 0.0234     ok
+B-S3 idle_fraction/ma                   go 0.0241388    simpy 0.0261537    bound 0.0301     ok
+B-S3 breakdowns_started/ma              go 24.0667      simpy 23.9667      bound 5.22       ok
+B-S3 full_fraction/qb                   go 0.446434     simpy 0.451806     bound 0.0462     ok
+B-S3 blocks_started/a                   go 258.233      simpy 263.6        bound 30.4       ok
+B-S3 blocked_entities_mean/a            go 0.243155     simpy 0.242187     bound 0.0327     ok
+B-S4 completed_count                    go 1355.93      simpy 1351.53      bound 48.3       ok
+B-S4 mean_lead_time_minutes             go 4.45781      simpy 4.37004      bound 0.402      ok
+B-S4 reworks                            go 0            simpy 0            bound 1e-09      ok
+B-S4 utilization/m                      go 0.627332     simpy 0.62404      bound 0.0241     ok
+B-S4 down_fraction/m                    go 0.0553741    simpy 0.055446     bound 0.0105     ok
+B-S4 available_fraction/m               go 0.944626     simpy 0.944554     bound 0.015      ok
+B-S4 idle_fraction/m                    go 0.317294     simpy 0.320514     bound 0.0246     ok
+B-S4 breakdowns_started/m               go 43.4667      simpy 41.7333      bound 6.78       ok
+C-S1 completed_count                    go 653.733      simpy 648.433      bound 31.5       ok
+C-S1 mean_lead_time_minutes             go 319.942      simpy 321.408      bound 26.5       ok
+C-S1 reworks                            go 0            simpy 0            bound 1e-09      ok
+C-S1 utilization/m                      go 0.362921     simpy 0.360339     bound 0.0158     ok
+C-S1 scheduled_utilization/m            go 0.678142     simpy 0.672507     bound 0.0294     ok
+C-S1 overtime_fraction/m                go 0.00124516   simpy 0.00166845   bound 0.0009     ok
+C-S1 available_fraction/m               go 0.533333     simpy 0.533333     bound 0.00267    ok
+C-S1 idle_fraction/m                    go 0.171658     simpy 0.174663     bound 0.0147     ok
+C-S2 completed_count                    go 964.433      simpy 965.167      bound 34.6       ok
+C-S2 mean_lead_time_minutes             go 3.09311      simpy 3.08515      bound 0.137      ok
+C-S2 reworks                            go 0            simpy 0            bound 1e-09      ok
+C-S2 utilization/m                      go 0.297574     simpy 0.296702     bound 0.0124     ok
+C-S2 scheduled_utilization/m            go 0.461644     simpy 0.460283     bound 0.0192     ok
+C-S2 overtime_fraction/m                go 7.02669e-05  simpy 7.48551e-05  bound 0.000108   ok
+C-S2 available_fraction/m               go 0.644444     simpy 0.644444     bound 0.00322    ok
+C-S2 idle_fraction/m                    go 0.346941     simpy 0.347818     bound 0.0126     ok
+C-S2 arrivals/src/0                     go 392.5        simpy 391.233      bound 24.6       ok
+C-S2 arrivals/src/1                     go 382.3        simpy 386.667      bound 21.3       ok
+C-S2 arrivals/src/2                     go 189.433      simpy 187.6        bound 12.5       ok
+C-S3 completed_count                    go 878.3        simpy 889.3        bound 37.9       ok
+C-S3 mean_lead_time_minutes             go 36.5841      simpy 38.1006      bound 5.53       ok
+C-S3 reworks                            go 0            simpy 0            bound 1e-09      ok
+C-S3 utilization/u                      go 0.801697     simpy 0.817343     bound 0.0375     ok
+C-S3 blocked_fraction/u                 go 0.155424     simpy 0.156575     bound 0.00685    ok
+C-S3 utilization/m                      go 0.379042     simpy 0.385029     bound 0.0171     ok
+C-S3 blocked_fraction/m                 go 0            simpy 0            bound 1e-09      ok
+C-S3 down_fraction/m                    go 0.0571982    simpy 0.0540894    bound 0.0125     ok
+C-S3 breakdowns_started/m               go 15.2333      simpy 15           bound 2.85       ok
+C-S3 scheduled_utilization/m            go 0.460233     simpy 0.467542     bound 0.0208     ok
+C-S3 overtime_fraction/m                go 0.000628088  simpy 0.000605132  bound 0.000443   ok
+C-S3 available_fraction/m               go 0.76605      simpy 0.769168     bound 0.0157     ok
+C-S3 idle_fraction/m                    go 0.387637     simpy 0.384744     bound 0.0212     ok
+C-S3 full_fraction/q                    go 0.169014     simpy 0.168516     bound 0.00941    ok
+C-S3 blocks_started/prep                go 15           simpy 13.3333      bound 6.72       ok
+C-S3 blocked_entities_mean/prep         go 0.155424     simpy 0.156575     bound 0.00685    ok
+C-S4 completed_count                    go 554.6        simpy 554.433      bound 11.6       ok
+C-S4 mean_lead_time_minutes             go 57.511       simpy 55.9263      bound 4.78       ok
+C-S4 reworks                            go 0            simpy 0            bound 1e-09      ok
+C-S4 utilization/r1                     go 0.475582     simpy 0.47265      bound 0.0181     ok
+C-S4 blocked_fraction/r1                go 0.058487     simpy 0.058948     bound 0.00482    ok
+C-S4 utilization/r2                     go 0.30522      simpy 0.310483     bound 0.0147     ok
+C-S4 blocked_fraction/r2                go 0            simpy 0            bound 1e-09      ok
+C-S4 scheduled_utilization/r1           go 0.578202     simpy 0.574676     bound 0.0222     ok
+C-S4 overtime_fraction/r1               go 0.000171763  simpy 0.000139271  bound 0.000565   ok
+C-S4 available_fraction/r1              go 0.822222     simpy 0.822222     bound 0.00411    ok
+C-S4 idle_fraction/r1                   go 0.346812     simpy 0.349711     bound 0.0176     ok
+C-S4 scheduled_utilization/r2           go 0.371213     simpy 0.377614     bound 0.0179     ok
+C-S4 overtime_fraction/r2               go 0            simpy 0            bound 1e-09      ok
+C-S4 available_fraction/r2              go 0.822222     simpy 0.822222     bound 0.00411    ok
+C-S4 idle_fraction/r2                   go 0.517003     simpy 0.51174      bound 0.0158     ok
+C-S4 arrivals/src_a/0                   go 307          simpy 307          bound 1.54       ok
+C-S4 arrivals/src_a/1                   go 168          simpy 168          bound 0.84       ok
+C-S4 arrivals/src_b/0                   go 80           simpy 80           bound 0.4        ok
+C-S4 arrivals/src_b/1                   go 60           simpy 60           bound 0.3        ok
+C-S4 full_fraction/q2                   go 0.0673064    simpy 0.0706408    bound 0.00806    ok
+C-S4 blocks_started/s1                  go 12.5667      simpy 14.7333      bound 8.18       ok
+C-S4 blocked_entities_mean/s1           go 0.116974     simpy 0.117896     bound 0.00963    ok
+PASS simulation reference
+GEMINUS_CALENDAR_REFERENCE_OUT=/home/user/Geminus/bin/calendar-reference-go.json go test -count=1 -run '^TestCalendarRulesExport$' ./internal/simulation/engine/
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	3.175s
+.venv/bin/python scripts/calendar_reference.py --go-results bin/calendar-reference-go.json
+{
+ "stats": {
+  "models": 5000,
+  "valid": 2774,
+  "r2": 738,
+  "r3": 1447,
+  "r4": 826,
+  "r4_past_larger_period": 20,
+  "lcm_over": 298,
+  "lcm_exactly_365_days": 152,
+  "next_fit": 23604,
+  "next_fit_found": 20703,
+  "next_fit_none": 2901,
+  "x_end_positive": 2778,
+  "ttr_bounded": 1005,
+  "ttr_unbounded": 497
+ },
+ "differences": 0,
+ "too_weak": []
+}
+PASS calendar rules reference (R2, R3, R4, next_fit, X_end, TTRmax)
+simulation-reference-test: finite buffers and blocking (T-047), breakdowns (T-048), calendars and release schedules (T-049) only, on the models the script accepts (see its docstring); D-050 R2, R3, R4, next_fit, X_end and TTRmax against an independent Python implementation (R1 is not, see checks/T-049_VALIDATION.md); batches and changeovers come with T-050.

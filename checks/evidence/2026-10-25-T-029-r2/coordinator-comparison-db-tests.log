@@ -1,0 +1,14 @@
+=== RUN   TestComparisonClosedLoop
+--- PASS: TestComparisonClosedLoop (0.49s)
+=== RUN   TestComparisonIncomparable
+--- PASS: TestComparisonIncomparable (0.97s)
+=== RUN   TestComparisonRoleMatrix
+--- PASS: TestComparisonRoleMatrix (0.43s)
+=== RUN   TestComparisonRefusals
+--- PASS: TestComparisonRefusals (0.76s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	2.662s
+=== RUN   TestCompareReadsOneReadOnlySnapshot
+--- PASS: TestCompareReadsOneReadOnlySnapshot (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/comparisons	0.052s

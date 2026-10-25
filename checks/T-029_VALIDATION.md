@@ -319,3 +319,20 @@ Log 與 exit code 在 `checks/evidence/2026-10-25-T-029-r1/coordinator-*`。仍�
 
 - **`Resolve` 每次都驗證**：T-030 若對一個很大的 Result 逐一 `Resolve` 許多 path，每個 path 都付一次驗證（500 個 resource 約 110 ms）。`Statistics` 一次驗證就列出所有統計值與值，引用多個 path 時可以呼叫它一次再以 path 查表；若之後需要，可以加一個只能由驗證取得的型別，讓同一個 Result 只驗證一次。
 - **第二道防線只有白箱測試**：`lookup` 的範圍檢查只能從 package 內測試；若之後有人把它當作死碼刪除，`TestLookupKeepsTheComparisonRange` 會失敗，該測試的說明寫了保留的理由。
+
+### Coordinator 的執行（第 2 輪，f8738db）與驗收
+
+`t029-r2` 從 4b12950（推送後的 head）開出，所以兩個 commit 以 fast-forward 接上，hash 不變（b655f42、f8738db）。之後在 f8738db 的 tree 上執行以下指令，全部 exit 0（`coordinator-environment.txt`：沒有其他變更、go1.27.3、Node 22.22.0、PostgreSQL 16.15）：
+
+- `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`、`backend-race`；
+- 新的 `dt_test_t029r2` 上的 `integration-test`：33 個 package ok，沒有 FAIL；
+- 另一個新的 `dt_test_t029r2m` 上，`GEMINUS_REQUIRE_DB_TESTS=1`：
+  - 四個比較的 DB 測試 PASS，其中一個以 `Statistics`／`Resolve` 讀已儲存的 Result，現在會先驗證 metrics；
+  - `TestCompareReadsOneReadOnlySnapshot` PASS；
+  - DB mutant：第 0 輪的 5 個、第 1 輪的 3 個都被擋下。
+
+Log 與 exit code 在 `checks/evidence/2026-10-25-T-029-r2/coordinator-*`。
+
+獨立 reviewer（H-003）第 2 輪在 4b12950 的判定為 ACCEPT，本輪修正的是它提出的 R2-L1 與一個 Info。依 T-048 的前例，這類修正由 coordinator 驗證後接受，不再另開審查輪次。
+
+D-088、D-089、D-090 仍是 PROPOSED，它們的 gate 是 T-029 驗收前，所以 T-029 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。決策頁：https://claude.ai/artifact/VohVqHYNNQSTNR9PRMMzt8

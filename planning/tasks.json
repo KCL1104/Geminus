@@ -1867,7 +1867,7 @@
       "id": "T-029",
       "title": "Results / baseline comparison API",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Simulation + Platform",
       "planning_window": "Week 9–11",
       "depends_on": [
@@ -1915,7 +1915,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-25",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-029_VALIDATION.md",
+          "summary": "compareSimulations（GET /v1/simulation-comparisons）：純粹的比較在 internal/results/compare（kernel：SIMULATION_SPEC §7 的可比條件逐項比對，不可比時 200、comparable=false、列出原因、值並排、沒有 delta；absolute／relative delta、baseline 為 0 時 relative 為 null、unavailable 與缺值不當 0、±1e15 的範圍；固定順序；Statistics／Resolve 的 RFC 6901 metric path；存下的 Result 與 run 不符或 metrics 違反 contract 時 fail closed），service 與 HTTP adapter 在 internal/comparisons（query 400 → role → 404 → 409、唯讀 REPEATABLE READ 的 tenant transaction、organization 過濾＋RLS、其他 organization 的 run 與不存在的相同、RFC 8785 回應）；Comparison contract（封閉的 reason／warning code、incomparable_reasons、metric_path pattern、if/then）、OpenAPI、fixtures、TS 型別與 client。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（72e370d、5bb7e95、f8738db 的 tree）、比較的 DB 測試（GEMINUS_REQUIRE_DB_TESTS=1）與 DB mutant（全部擋下），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test、simulation-reference-test 都 exit 0（checks/evidence/2026-10-25-T-029*/coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 on 5d96749 ACCEPT with L1–L6 (fixed in 7de9d67..5bb7e95); round 2 on 4b12950 ACCEPT with R2-L1 (fixed in b655f42..f8738db, verified by the coordinator per the T-048 precedent)",
+          "decisions_pending": "D-088、D-089、D-090 待 owner 批准；批准後 T-029 才標為 done"
+        }
+      ]
     },
     {
       "id": "T-030",
