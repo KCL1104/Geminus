@@ -3,7 +3,7 @@ module github.com/kcl1104/geminus
 go 1.27.0
 
 // Pinned per docs/adr/ADR-011-toolchain-bootstrap.md; GOTOOLCHAIN=auto fetches it.
-toolchain go1.27.2
+toolchain go1.27.3
 
 // Go code vendored by npm is not part of the module: keep it out of ./... (CB-35).
 ignore ./apps/web/node_modules

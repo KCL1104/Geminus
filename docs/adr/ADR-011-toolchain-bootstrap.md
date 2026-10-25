@@ -6,7 +6,7 @@
 
 | 工具 | 版本 | License | 選擇理由／查核 |
 |---|---|---|---|
-| Go | 1.27.2（`go.mod`：`go 1.27.0`、`toolchain go1.27.2`） | BSD-3-Clause | go.dev/dl 目前只列 1.27.x、1.26.x 為受支援版本；環境預裝 1.24.7 已 EOL。1.27 支援期涵蓋 16–20 週計畫 |
+| Go | 1.27.3（`go.mod`：`go 1.27.0`、`toolchain go1.27.3`） | BSD-3-Clause | go.dev/dl 目前只列 1.27.x、1.26.x 為受支援版本；環境預裝 1.24.7 已 EOL。1.27 支援期涵蓋 16–20 週計畫。**滿兩週規則的例外（H-020，2026-10-25）**：1.27.3（2026-10-19 發布）修正 GO-2026-6809（crypto/x509 對已不受信任的中繼憑證的 denylist，2026-10-21 公布），CI 的 govulncheck 在 1.27.2 上因此失敗；owner 核准不等滿兩週即升級（同一發布者的安全修正版，toolchain 經 sum.golang.org 驗證）。之後的 Go 版本仍依兩週規則 |
 | Node.js | 24.21.0 LTS (Krypton)；`apps/web/.nvmrc`、`engines >=24.21.0 <25`、`engine-strict` | MIT | 22.x 於 2027-04-30 EOL，接近 Beta 時程；24.22.0 為前一日發布且非 security release，故取 24.21.0 |
 | npm | 隨 Node 24.21.0（11.19.0）；lockfile `apps/web/package-lock.json` | Artistic-2.0 | `npm ci` 重現 |
 | Next.js | 16.4.1 | MIT | 16.4.1 與 15.5.28、React 四條線同日修補，推定為 security backport；`npm audit` 對 16.4.0 與 16.4.1 當下皆 0 advisory。**風險：發布僅 1 天** |

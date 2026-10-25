@@ -1236,6 +1236,16 @@
       "still_open": [
         "live AI 開啟前（T-053）：程式內每日 token 上限、在 internal/config/aiapproval 記錄 H-018 的批准、owner 提供兩個 key 與 Console spend limit、查證 Anthropic 的資料保留規則"
       ]
+    },
+    {
+      "id": "H-020",
+      "subject": "Go toolchain 升到 go1.27.3（GO-2026-6809），不受依賴兩週規則限制",
+      "decision": "CI 的 govulncheck 在 go1.27.2 上因 GO-2026-6809（crypto/x509 Certificate.Verify 對已不受信任的中繼憑證，2026-10-21 公布）失敗；修正版 go1.27.3 於 2026-10-19 發布，未滿兩週。Owner 核准例外升級：go.mod 的 toolchain 改為 go1.27.3（ADR-011）；其他依賴與之後的 Go 版本仍依兩週規則。",
+      "quote": "升到 go1.27.3 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-25",
+      "source": "Claude Code session：agent 以選擇題詢問（升級、暫時豁免、等滿兩週），owner 選擇升級",
+      "still_open": []
     }
   ]
 }

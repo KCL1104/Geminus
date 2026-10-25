@@ -20,7 +20,7 @@ make spec-check
 Bootstrap（T-002）後的 toolchain 版本見 [ADR-011](docs/adr/ADR-011-toolchain-bootstrap.md)；實際執行結果見 [BOOTSTRAP_VALIDATION.md](checks/BOOTSTRAP_VALIDATION.md)：
 
 ```sh
-make backend-test backend-race backend-build   # Go 1.27.2 (go.mod toolchain)
+make backend-test backend-race backend-build   # Go 1.27.3 (go.mod toolchain)
 npm ci --prefix apps/web                       # Node 24.21.0 (apps/web/.nvmrc)
 make frontend-test frontend-build
 ```
