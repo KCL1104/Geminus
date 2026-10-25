@@ -1,0 +1,23 @@
+T-029 review round 2, branch t029-r2 from 4b12950 (commands run in this worktree; logs alongside; run-status.txt is the runner's own record)
+
+red first
+  go test -count=1 ./internal/results/compare/ -run TestInconsistent (new tests, old code)       exit=1  unit-red.log (15 failures: 4 probes x Statistics, Resolve, Resolve of another statistic; round 1's 3 range cases x Resolve of another statistic)
+  mutate-r2.py <root> mutants-r2-blackbox.out blackbox (before the white-box test counts)         exit=0  4 range mutants SURVIVED (expected; red evidence for TestLookupKeepsTheComparisonRange)
+
+green and verification (tree of b655f42)
+  go test -count=1 -v -run 'TestInconsistent|TestLookupKeepsTheComparisonRange|TestResolve|TestPathEscaping' ./internal/results/compare/   exit=0  unit-green.log
+  go test -count=1 ./internal/results/compare/ ./internal/comparisons/                           exit=0  unit-packages.log
+  make spec-check PYTHON=/home/user/Geminus/.venv/bin/python (after the report section)          exit=0  spec-check.log
+  make architecture-check                                                                        exit=0  architecture-check.log
+  go test -race -count=1 ./internal/results/... ./internal/comparisons/... ./internal/api/...    exit=0  race-touched.log (4 packages ok)
+  make backend-test (go clean -testcache first)                                                  exit=0  backend-test.log (66 packages ok, no FAIL)
+
+mutation
+  mutate-r2.py <root> mutants-r2-unit.out unit                    exit=0  6 killed, 0 survived, 0 did not build
+  ../2026-10-25-T-029/mutate.py <root> mutants-r0-unit.out unit   exit=0  39 killed
+  ../2026-10-25-T-029-r1/mutate-r1.py <root> mutants-r1-unit.out unit   exit=0  11 killed; summary-not-finite-ok, wait-not-finite-ok survived (run regex TestInconsistent only; equivalent from outside the package since R2-L1; killed in mutate-r2.py)
+  ../2026-10-25-T-029-r1/reviewer-mutants.py <root> <scratch> reviewer-mutants.out   exit=0  28 killed, R12 not run (snippet rewritten in round 1), R30 R31 R32 survived (as in round 1)
+  git status --short after the mutants                            exit=0  tree-after-mutants.log (only this round's changes)
+
+NOT RUN (no PostgreSQL): make integration-test, make db-test, make db-go-test, TestCompareReadsOneReadOnlySnapshot, internal/api's comparison DB tests, the DB mutants, R30
+NOT RUN (not asked, nothing changed for them): make backend-race (only the touched packages with -race), make frontend-test, make ai-eval, make e2e-test, live AI, OpenAPI official validator

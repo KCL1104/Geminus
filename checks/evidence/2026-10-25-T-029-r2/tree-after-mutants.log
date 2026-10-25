@@ -1,0 +1,9 @@
+ M docs/AI_SPEC.md
+ M docs/DECISIONS_AND_TBD.md
+ M internal/comparisons/comparisons.go
+ M internal/comparisons/db_test.go
+ M internal/results/compare/compare.go
+ M internal/results/compare/compare_test.go
+ M planning/decisions.json
+?? checks/evidence/2026-10-25-T-029-r2/
+?? internal/results/compare/range_internal_test.go

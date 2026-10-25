@@ -1,0 +1,9 @@
+T-029 review round 2, agent worktree (2026-10-25)
+branch: t029-r2, from 4b12950 (pushed head: 7de9d67, 5bb7e95 and the coordinator section); not pushed
+go: go1.27.3 linux/amd64 (go.mod toolchain)
+python: 3.13.16 (/home/user/Geminus/.venv)
+cpus: 4, shared; Linux x86_64
+PostgreSQL: none; GEMINUS_TEST_DATABASE_URL unset, DB-backed tests SKIP, integration-test NOT RUN
+live AI: none; no API key read or set
+frontend: no TS, schema or fixture changed in this round; make frontend-test not rerun (NOT RUN)
+metrics validation cost: the round-1 measurement (round 1 environment.txt) is metrics only 12 ms at 50 resources x 1000 replications, 110 ms at 500 x 1000; Statistics pays it once per call, Resolve once per path

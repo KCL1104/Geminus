@@ -1,0 +1,20 @@
+--- FAIL: TestInconsistent (0.04s)
+    compare_test.go:825: a p95 that is not finite: Resolve of another statistic <nil>
+    compare_test.go:825: a wait beyond the range: Resolve of another statistic <nil>
+    compare_test.go:817: a utilization above 1: Statistics <nil>
+    compare_test.go:820: a utilization above 1: Resolve <nil>
+    compare_test.go:825: a utilization above 1: Resolve of another statistic <nil>
+    compare_test.go:817: a null utilization without a reason: Statistics <nil>
+    compare_test.go:820: a null utilization without a reason: Resolve <nil>
+    compare_test.go:825: a null utilization without a reason: Resolve of another statistic <nil>
+    compare_test.go:817: a wait above the contract's maximum: Statistics <nil>
+    compare_test.go:820: a wait above the contract's maximum: Resolve <nil>
+    compare_test.go:825: a wait above the contract's maximum: Resolve of another statistic <nil>
+    compare_test.go:817: an available summary of no sample: Statistics <nil>
+    compare_test.go:820: an available summary of no sample: Resolve <nil>
+    compare_test.go:825: an available summary of no sample: Resolve of another statistic <nil>
+    compare_test.go:825: a mean beyond the range: Resolve of another statistic <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/results/compare	0.049s
+FAIL
+exit 1

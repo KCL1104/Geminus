@@ -1,0 +1,5 @@
+summary-not-finite-ok: SURVIVED (all but TestLookupKeepsTheComparisonRange) 
+wait-not-finite-ok: SURVIVED (all but TestLookupKeepsTheComparisonRange) 
+queue-length-not-finite-ok: SURVIVED (all but TestLookupKeepsTheComparisonRange) 
+utilization-not-finite-ok: SURVIVED (all but TestLookupKeepsTheComparisonRange) 
+TOTAL 4 (blackbox): 0 killed, 4 survived, 0 did not build

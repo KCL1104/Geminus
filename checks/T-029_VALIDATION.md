@@ -257,3 +257,65 @@ Coordinator 把 `t029-r1` 的兩個 commit cherry-pick 到 `claude/lucid-meitner
 | 第 1 輪的 `mutate-r1.py <git archive 副本> <log> db` | 0 | 3 個全部被 `TestCompareReadsOneReadOnlySnapshot` 擋下：`db-read-write-transaction`（reviewer 的 R30）、`db-read-committed-transaction`、`db-hook-not-called` |
 
 Log 與 exit code 在 `checks/evidence/2026-10-25-T-029-r1/coordinator-*`。仍為 NOT RUN：`make e2e-test`、live AI、OpenAPI 官方 validator、Node 24 上的 `frontend-test`（CI 執行）。D-088–D-090 仍是 PROPOSED，T-029 在 tasks.json 仍為 `not_started`。
+
+## Review 第 2 輪
+
+獨立 reviewer（H-003）在 4b12950 上的第 2 輪 re-review：**ACCEPT**，另有 1 個 Low（R2-L1）與 1 個 Info，須在驗收前處理。Branch `t029-r2`，從 4b12950（已 push 的 head：7de9d67、5bb7e95 與 coordinator 的一節）開出，沒有 push。本 worktree 沒有 database：DB 測試與 DB mutant 為 NOT RUN。沒有 live AI，沒有讀取或設定任何 key。沒有新依賴、沒有 migration、沒有改 schema、OpenAPI、fixture 或 TS；D-090 的文字有補充，仍是 PROPOSED（`approved_by`／`approved_at` 為 null），T-029 在 tasks.json 仍為 `not_started`。Log 在 `checks/evidence/2026-10-25-T-029-r2/`。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| b655f42 | R2-L1 的修正與測試（`compare.go`、`compare_test.go`、新的 `range_internal_test.go`）；Info 的註解（`internal/comparisons`）；D-090 (a) 的文字（DECISIONS_AND_TBD、decisions.json）與 AI_SPEC §9 |
+| （本 commit） | 本節與 evidence |
+
+### 發現 → 修正 → 證據
+
+| 發現 | 修正 | 擋下它的測試 | 先紅後綠 |
+|---|---|---|---|
+| R2-L1：`Statistics` 與 `Resolve` 不經過 `check()`，所以第 1 輪 I2 的 schema 驗證擋不到它們：utilization 7、null utilization 沒有 reason、wait 5e12（schema 的上限 1e12）、available 但沒有樣本，都被列出或取值 | 第 1 輪的驗證從 `check` 抽成 `validMetrics(id, metrics)`（同一個 `metricsRef`、同一個 validator，違反時 `ErrInconsistent`，訊息只帶 path）。`check`（Compare）、`Statistics`、`Resolve` 在讀任何值之前各呼叫一次，所以沒有驗證過的 metrics 到不了取值的程式；`Resolve` 不論 path 指向哪個統計值（或 path 是否 malformed）都先驗證整份 `metrics`。選擇每次呼叫都驗證，不另設「已驗證的 Result」型別：最簡單，且 reviewer 接受這個成本（第 1 輪量測：只驗證 metrics 時 50 個 resource 約 12 ms、500 個約 110 ms；見殘餘風險） | `TestInconsistent` 的 4 個新案例（reviewer 的 probe），每個都要求 `Statistics`、`Resolve`（該值的 path）與 `Resolve`（同一個 Result 中另一個有效的統計值 `/metrics/failure_count/mean`）三者都是 `ErrInconsistent`；第 1 輪的 3 個範圍案例也加上第三項；起點的有效 Result 仍能取值 | `unit-red.log`：舊程式上 15 個失敗（4 個 probe × 3，加上第 1 輪 3 個案例的「另一個統計值」）；`unit-green.log`；mutant `statistics-metrics-not-validated`、`resolve-metrics-not-validated` KILLED |
+| R2-L1 的後果：`lookup` 中的範圍檢查（有限、\|v\| ≤ 1e15）從外部到不了了 | 三個 exported function 都先驗證 schema，而 schema 對這些值的界限不比 1e15 寬（NaN／Inf 無法 encode），所以第 1 輪的 `summary-not-finite-ok`、`wait-not-finite-ok` 與 reviewer 的 R13 對任何黑箱測試都存活（等價 mutant）。保留這些檢查作為第二道防線：Result 的 schema 若放寬，comparison 與 evidence 的值仍不會超出 Comparison contract 的範圍；以白箱測試固定它們 | 新的 `TestLookupKeepsTheComparisonRange`（`range_internal_test.go`，package 內）：NaN、±Inf、±2e15、1e15 的下一個 binary64，對 summary 的三個統計值、queue 的三個 wait 與 queue length、resource utilization 都是 `ErrInconsistent`；±1e15 與 0 照常取值 | `mutants-r2-blackbox.out`：4 個範圍 mutant 在整個 package（除了新測試）上 SURVIVED；`mutants-r2-unit.out`：加上新測試後 KILLED |
+| Info：`inTransaction` 是 package 層級的變數，設定它的測試若與其他呼叫 Compare 的測試平行執行，會是 data race | `comparisons.go` 的註解寫明：設定它的測試不得與本 package 中其他呼叫 Compare 的測試平行執行（`t.Parallel`）；`db_test.go` 設定 hook 的地方加上一行說明。目前 package 中沒有 `t.Parallel` | — | `go test -race` 見下 |
+| D-090 (a) 的文字 | DECISIONS_AND_TBD.md 與 decisions.json：`Statistics`／`Resolve` 讀值之前與 `Compare` 以同一份 metrics contract 驗證整份 `metrics`，違反時 fail closed 為 `ErrInconsistent`（不論 path）；AI_SPEC §9 的同一段一併補上。仍是 PROPOSED | `make spec-check` | — |
+
+另一個小改變：`validMetrics` 的訊息以 `%q` 引用 run ID（`Statistics`／`Resolve` 的 ID 來自 Result 本身，沒有驗證過格式），Compare 的這兩個訊息因此由 `run sim_…` 變成 `run "sim_…"`；沒有測試或 client 依賴訊息文字（HTTP 的 500 不帶它，只記在 log）。
+
+### 指令與 exit code
+
+在本 worktree 執行（`environment.txt`）；`make backend-test` 之前先 `go clean -testcache`。Exit code 也在 `exit-codes.txt` 與 `run-status.txt`。
+
+| 指令 | Exit | 結果 |
+|---|---:|---|
+| `go test -count=1 ./internal/results/compare/ -run TestInconsistent`（新測試、修正前的程式） | 1 | `unit-red.log`：15 個失敗（見上） |
+| `go test -count=1 -v -run 'TestInconsistent\|TestLookupKeepsTheComparisonRange\|TestResolve\|TestPathEscaping' ./internal/results/compare/`（修正後） | 0 | `unit-green.log` |
+| `go test -count=1 ./internal/results/compare/ ./internal/comparisons/` | 0 | 兩個 package `ok`；`TestCompareReadsOneReadOnlySnapshot` SKIP（沒有 database）（`unit-packages.log`） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `spec-check.log`（decisions 的 shape：D-090 仍為 proposed） |
+| `make architecture-check` | 0 | `PASS architecture: 78 packages, 17 rules, 16 build configurations`（新的白箱測試在 kernel 內，沒有新 import）（`architecture-check.log`） |
+| `go test -race -count=1 ./internal/results/... ./internal/comparisons/... ./internal/api/...` | 0 | 4 個 package `ok`，沒有 data race（`race-touched.log`） |
+| `make backend-test`（先 `go clean -testcache`） | 0 | b655f42 的 tree：66 個 package `ok`，沒有 FAIL；DB-backed 測試 SKIP（`backend-test.log`） |
+| `mutate-r2.py <root> mutants-r2-blackbox.out blackbox` | 0 | 4 個範圍 mutant 全部 SURVIVED（預期：新白箱測試的紅燈證據） |
+| `mutate-r2.py <root> mutants-r2-unit.out unit` | 0 | 6 個全部 KILLED、0 存活、0 不能 build |
+| 第 0 輪的 `mutate.py <root> mutants-r0-unit.out unit` | 0 | 39 個全部 KILLED |
+| 第 1 輪的 `mutate-r1.py <root> mutants-r1-unit.out unit` | 0 | 11 KILLED；`summary-not-finite-ok`、`wait-not-finite-ok` SURVIVED（它們的 run regex 只有 `TestInconsistent`，見「Mutation」） |
+| reviewer 的 `reviewer-mutants.py <root> <scratch> reviewer-mutants.out` | 0 | 32 個中 28 KILLED（R13 現在由 `TestLookupKeepsTheComparisonRange` 擋下）、R12 NOT RUN、R30、R31、R32 存活（與第 1 輪相同） |
+| `git status --short`（所有 mutant 之後） | 0 | 只有本輪的改動，mutant 都已還原（`tree-after-mutants.log`） |
+| `make integration-test`、`make db-go-test` | — | NOT RUN（沒有 PostgreSQL） |
+
+### Mutation
+
+- **本輪的 mutant**（`mutate-r2.py`）：`statistics-metrics-not-validated`（移除 `Statistics` 中的驗證）與 `resolve-metrics-not-validated`（移除 `Resolve` 中的驗證）都被 `TestInconsistent` 擋下，證明兩處的驗證各自是 load-bearing；4 個範圍 mutant（summary、wait、queue length、utilization 的有限檢查）在 blackbox 模式（整個 package，除了新測試）SURVIVED，unit 模式（加上 `TestLookupKeepsTheComparisonRange`）全部 KILLED。合計 6 個 KILLED、0 存活、0 不能 build。
+- **第 1 輪的 harness 重跑**（`mutants-r1-unit.out`）：13 個中 11 個 KILLED。`summary-not-finite-ok`、`wait-not-finite-ok` 存活：R2-L1 讓三個 exported function 都先驗證 schema 後，它們對任何黑箱測試都是等價 mutant，而這份 harness 的 run regex 只跑 `TestInconsistent`；同一個 snippet 在 `mutate-r2.py` 中以新的白箱測試重跑，KILLED。第 1 輪的 harness 是第 1 輪的證據，沒有修改。
+- **第 0 輪的 harness 重跑**（`mutants-r0-unit.out`）：39 個全部 KILLED。
+- **Reviewer 的 harness**（overlay，不寫 worktree，跑整個 package）：28 KILLED，與第 1 輪最終結果相同；R13 由新的白箱測試擋下（第 1 輪由 `TestInconsistent` 擋下，R2-L1 之後那些案例在 schema 驗證時就被拒絕）。R12 的 snippet 在第 1 輪已改寫（以 `warmup-window-not-checked` 代替，KILLED）；R30 需要 database；R31、R32 的理由見第 1 輪。
+- DB mutant：NOT RUN（沒有 database；本輪沒有新增 DB mutant）。
+
+### NOT RUN
+
+- `make integration-test`、`make db-test`、`make db-go-test`（沒有 PostgreSQL）。
+- DB 測試在本輪的改動下：`internal/comparisons` 的 `TestCompareReadsOneReadOnlySnapshot`、`internal/api` 的四個比較測試（其中一個以 `Statistics`／`Resolve` 讀已儲存的 Result，現在會先驗證 metrics；engine 產生的 Result 符合 schema，但這在此沒有執行）；第 0、1 輪的 DB mutant 與 reviewer 的 R30。
+- `make backend-race`（只對本輪改動的 package 執行 `-race`，見上）、`make frontend-test`（本輪沒有改 TS、schema、OpenAPI 或 fixture）、`make ai-eval`、`make e2e-test`、live AI、OpenAPI 官方 validator。
+
+### 殘餘風險（本輪新增）
+
+- **`Resolve` 每次都驗證**：T-030 若對一個很大的 Result 逐一 `Resolve` 許多 path，每個 path 都付一次驗證（500 個 resource 約 110 ms）。`Statistics` 一次驗證就列出所有統計值與值，引用多個 path 時可以呼叫它一次再以 path 查表；若之後需要，可以加一個只能由驗證取得的型別，讓同一個 Result 只驗證一次。
+- **第二道防線只有白箱測試**：`lookup` 的範圍檢查只能從 package 內測試；若之後有人把它當作死碼刪除，`TestLookupKeepsTheComparisonRange` 會失敗，該測試的說明寫了保留的理由。

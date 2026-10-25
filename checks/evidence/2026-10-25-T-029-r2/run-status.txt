@@ -1,0 +1,12 @@
+unit-green exit=0
+unit-packages exit=0
+mutants-r2-blackbox exit=0
+mutants-r2-unit exit=0
+mutants-r0-unit exit=0
+mutants-r1-unit exit=0
+reviewer-mutants exit=0
+tree-after-mutants exit=0
+architecture-check exit=0
+race-touched exit=0
+backend-test exit=0
+done
