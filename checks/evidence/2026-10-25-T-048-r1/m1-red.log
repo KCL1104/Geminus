@@ -1,0 +1,74 @@
+=== RUN   TestBreakdownGoldens
+=== RUN   TestBreakdownGoldens/G-F1
+=== RUN   TestBreakdownGoldens/G-F1W
+=== RUN   TestBreakdownGoldens/G-F1W10
+=== RUN   TestBreakdownGoldens/G-F2
+=== RUN   TestBreakdownGoldens/G-F3
+    breakdown_test.go:240: G-F3: starts at work [r0/s1/1@8 r0/s2/1@18 r0/s3/1@19 r0/s4/1@26 r0/s5/1@28], hand-derived [r0/s1/1@8 r0/s2/1@18 r0/s3/1@19 r0/s4/1@27 r0/s5/1@28]
+    breakdown_test.go:240: G-F3: completions [r0/s1/1@15 r0/s2/1@25 r0/s3/1@26 r0/s4/1@33 r0/s5/1@35], hand-derived [r0/s1/1@15 r0/s2/1@25 r0/s3/1@26 r0/s4/1@34 r0/s5/1@35]
+    breakdown_test.go:244: downs [m/0:10-12 m/1:15-17 m/0:25-27 m/1:33-35 m/0:37-39], hand-derived [m/0:10-12 m/1:12-14 m/0:25-27 m/1:26-28 m/0:37-39 m/1:38-40]
+    breakdown_test.go:247: waiting failures [m/1:10 m/0:22 m/1:27], hand-derived [m/1:10 m/0:22 m/1:24]
+=== RUN   TestBreakdownGoldens/G-F7
+=== RUN   TestBreakdownGoldens/G-F8
+=== RUN   TestBreakdownGoldens/G-F9
+    breakdown_test.go:244: downs [m/0:10-15 m/0:25-30 m/0:40-45 m/0:55-60], hand-derived [m/0:10-15 m/1:15-20 m/0:25-30 m/1:30-35 m/0:40-45 m/1:45-50 m/0:55-60 m/1:60--]
+    breakdown_test.go:247: waiting failures [m/1:10], hand-derived [m/1:10 m/1:30 m/1:45 m/1:60]
+=== RUN   TestBreakdownGoldens/G-T1
+=== RUN   TestBreakdownGoldens/G-T2
+=== RUN   TestBreakdownGoldens/G-T4
+=== RUN   TestBreakdownGoldens/G-K1
+=== RUN   TestBreakdownGoldens/G-S2
+--- FAIL: TestBreakdownGoldens (0.06s)
+    --- PASS: TestBreakdownGoldens/G-F1 (0.05s)
+    --- PASS: TestBreakdownGoldens/G-F1W (0.00s)
+    --- PASS: TestBreakdownGoldens/G-F1W10 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-F2 (0.00s)
+    --- FAIL: TestBreakdownGoldens/G-F3 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-F7 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-F8 (0.00s)
+    --- FAIL: TestBreakdownGoldens/G-F9 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-T1 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-T2 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-T4 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-K1 (0.00s)
+    --- PASS: TestBreakdownGoldens/G-S2 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.067s
+=== RUN   TestBreakdownGoldenResults
+=== RUN   TestBreakdownGoldenResults/G-F1
+=== RUN   TestBreakdownGoldenResults/G-F1W
+=== RUN   TestBreakdownGoldenResults/G-F1W10
+=== RUN   TestBreakdownGoldenResults/G-F2
+=== RUN   TestBreakdownGoldenResults/G-F3
+    breakdown_test.go:55: resource states {"m":{"in_use_ticks":2100000,"down_ticks":600000,"breakdowns_started":5,"repairs_completed":5,"completed_repair_ticks":600000,"available_ticks":4200000,"idle_ticks":2100000,"scheduled_processing_ticks":2100000}}
+         hand-derived {"m":{"in_use_ticks":2100000,"down_ticks":720000,"breakdowns_started":6,"repairs_completed":6,"completed_repair_ticks":720000,"available_ticks":4080000,"idle_ticks":1980000,"scheduled_processing_ticks":2100000}}
+    breakdown_test.go:76: lead time {Status:available Mean:0x17b67bcb21a8 P50:0x17b67bcb21b0 P95:0x17b67bcb21b8 SampleCount:5 Population:entity Unit:minute ConfidenceIntervalMean:<nil> Reason:<nil>}, hand-derived [7 7 7 11 7]
+    breakdown_test.go:81: queue work {Status:available WaitMeanMinutes:0x17b67bcb22a0 WaitP50Minutes:0x17b67bcb22a8 WaitP95Minutes:0x17b67bcb22b0 QueueLengthMean:0.075 SampleCount:5 Reason:<nil>}, hand-derived waits [0 0 0 4 0]
+=== RUN   TestBreakdownGoldenResults/G-F9
+    breakdown_test.go:55: resource states {"m":{"in_use_ticks":3540000,"down_ticks":1200000,"breakdowns_started":4,"repairs_completed":4,"completed_repair_ticks":1200000,"available_ticks":6000000,"idle_ticks":2460000,"scheduled_processing_ticks":3540000}}
+         hand-derived {"m":{"in_use_ticks":3540000,"down_ticks":2100000,"breakdowns_started":8,"repairs_completed":7,"completed_repair_ticks":2100000,"available_ticks":5100000,"idle_ticks":1560000,"scheduled_processing_ticks":3540000}}
+=== RUN   TestBreakdownGoldenResults/G-F7
+=== RUN   TestBreakdownGoldenResults/G-F8
+=== RUN   TestBreakdownGoldenResults/G-T1
+=== RUN   TestBreakdownGoldenResults/G-T2
+=== RUN   TestBreakdownGoldenResults/G-T4
+=== RUN   TestBreakdownGoldenResults/G-K1
+=== RUN   TestBreakdownGoldenResults/G-S2
+--- FAIL: TestBreakdownGoldenResults (0.08s)
+    --- PASS: TestBreakdownGoldenResults/G-F1 (0.06s)
+    --- PASS: TestBreakdownGoldenResults/G-F1W (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-F1W10 (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-F2 (0.00s)
+    --- FAIL: TestBreakdownGoldenResults/G-F3 (0.00s)
+    --- FAIL: TestBreakdownGoldenResults/G-F9 (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-F7 (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-F8 (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-T1 (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-T2 (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-T4 (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-K1 (0.00s)
+    --- PASS: TestBreakdownGoldenResults/G-S2 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.095s
+FAIL
+exit 1

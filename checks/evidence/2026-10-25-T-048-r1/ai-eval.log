@@ -1,0 +1,90 @@
+GEMINUS_AI_EVAL_REPORT=/home/user/Geminus/.claude/worktrees/agent-aa0d465734420fc65/checks/ai-evals/fake-provider.json GEMINUS_AI_EVAL_REVIEW_REPORT=/home/user/Geminus/.claude/worktrees/agent-aa0d465734420fc65/checks/ai-evals/fake-review.json \
+	go test -count=1 -run '^(TestFakeProviderEval|TestReviewEval)$' -v ./internal/ai/corpus/
+=== RUN   TestFakeProviderEval
+    corpus_test.go:383: {
+        	"suite": "T-024 fake-provider context suite",
+        	"provider": "fake (deterministic, internal/ai/provider/fake)",
+        	"live_provider": "NOT RUN (no approved model, quota or data policy: H-001, H-017)",
+        	"cases": {
+        		"analyst": 10,
+        		"import-mapper": 10,
+        		"modeler": 50
+        	},
+        	"checks_passed": {
+        		"analysis_context_built": 10,
+        		"analysis_situation_checked": 10,
+        		"fake_answer_schema_valid": 120,
+        		"id_pool_by_mode": 100,
+        		"mapping_context_built": 10,
+        		"output_locale_instruction": 100,
+        		"prompt_sealed_and_bounded": 120,
+        		"proposal_context_built": 100
+        	},
+        	"zero_tolerance_gates": {
+        		"cross_tenant_context_leakage": 0,
+        		"executable_transform_accepted": 0,
+        		"forged_blocks": 0,
+        		"prompt_not_sealed": 0,
+        		"provider_trusted_fields_accepted": 0,
+        		"secrets_sent": 0,
+        		"server_ids_sent": 0,
+        		"unavailable_metric_citable": 0,
+        		"unconfirmed_mapping_suggested": 0,
+        		"untrusted_text_in_system_rules": 0
+        	},
+        	"not_run": [
+        		"golden_edit patch correctness and the >=90% target (needs a live provider: T-038)",
+        		"server validation, risk floors and needs_input/invalid states of proposals (T-025)",
+        		"database effects: unapproved mutation=0, invalid patch committed=0 (T-025, T-026, T-038)",
+        		"analyst output checks: evidence paths, deltas, prose numbers, certainty (T-030)",
+        		"mapper confidence and evidence quality (T-027)",
+        		"live provider eval (make ai-eval-live)"
+        	]
+        }
+--- PASS: TestFakeProviderEval (0.68s)
+=== RUN   TestReviewEval
+    review_test.go:491: {
+        	"suite": "T-025 fake-provider review suite (hand-written reference and unsafe answers)",
+        	"provider": "fake (deterministic, internal/ai/provider/fake)",
+        	"live_provider": "NOT RUN (no approved model, quota or data policy: H-001, H-017)",
+        	"cases": {
+        		"adversarial": 7,
+        		"ambiguous": 2,
+        		"golden_edit": 28,
+        		"grounding": 1,
+        		"high_risk_topology": 1,
+        		"invalid_value": 5,
+        		"missing_data": 4,
+        		"scenario_scope_violation": 1,
+        		"unsupported_p1": 1
+        	},
+        	"checks_passed": {
+        		"business_mutations_match": 13,
+        		"needs_input_reached": 20,
+        		"patch_hash_server_computed": 30,
+        		"provider_claim_raises_risk": 30,
+        		"reference_ready": 30,
+        		"semantic_effect_held": 30,
+        		"server_risk_meets_floor": 30,
+        		"unsafe_answer_invalid": 25
+        	},
+        	"zero_tolerance_gates": {
+        		"golden_reference_not_ready": 0,
+        		"needs_input_not_kept": 0,
+        		"risk_below_floor": 0,
+        		"server_bound_field_from_answer": 0,
+        		"unsafe_answer_ready": 0
+        	},
+        	"not_run": [
+        		"golden_edit correctness of a model's own answers and the >=90% target (the answers here are hand-written; needs a live provider: T-038)",
+        		"the dataset binding stage (unit-tested in internal/proposals/generator) and database effects: ready content immutable, unapproved mutation=0 (make integration-test; T-026 approval)",
+        		"MOD-047 secrets in the answer: the review does not scan answer text; the context never holds them (T-024 gate secrets_sent)",
+        		"analyst output checks (T-030), mapper suggestions (T-027)",
+        		"live provider eval (make ai-eval-live)"
+        	]
+        }
+--- PASS: TestReviewEval (0.55s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	1.245s
+ai-eval: fake-provider context and review suites only. Scoring the answers of a real model (golden >=90%, T-038), database effects (T-025 make integration-test, T-026), the analyst output checks (T-030) and the live provider eval (make ai-eval-live) are NOT RUN.
+ai-eval exit 0

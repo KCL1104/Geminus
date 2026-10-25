@@ -1,6 +1,6 @@
 # T-048 驗證報告：DES resource 故障與停機（MTBF/MTTR，H-016）
 
-**日期：2026-10-25｜狀態：待獨立 review；`planning/tasks.json` 的狀態未改（仍為 not_started），由 coordinator／reviewer 決定。｜需求：REQ-011、REQ-013、REQ-024｜Gate：D-047、D-048、D-050、D-051、D-056、D-057 已 APPROVED（H-018），D-063 已 APPROVED（H-019），D-064 已 APPROVED（H-021）；本任務提出的 D-074、D-075 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-048 依建議實作並以它們為 gate（tasks.json 的 `decision_gates` 加入 D-064、D-074、D-075）。｜驗收測試：TEST-015、TEST-019、TEST-034（第二部分）｜DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」）。**
+**日期：2026-10-25｜狀態：獨立 review 第 1 輪 CHANGES REQUESTED（兩個 Medium），修正與證據見文末「Review 第 1 輪」：D-074 (a) 的建議與實作已改為 B，下文描述 A 的段落是第一版的狀態；`planning/tasks.json` 的狀態未改（仍為 not_started），由 coordinator／reviewer 決定。｜需求：REQ-011、REQ-013、REQ-024｜Gate：D-047、D-048、D-050、D-051、D-056、D-057 已 APPROVED（H-018），D-063 已 APPROVED（H-019），D-064 已 APPROVED（H-021）；本任務提出的 D-074、D-075 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-048 依建議實作並以它們為 gate（tasks.json 的 `decision_gates` 加入 D-064、D-074、D-075）。｜驗收測試：TEST-015、TEST-019、TEST-034（第二部分）｜DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」）。**
 
 範圍依 tasks.json 與 coordinator 的指示（每一條都要做）：
 
@@ -188,3 +188,89 @@ Exec 數包括很快就 decode 或 compile 失敗的輸入（`FuzzKernel`、`Fuz
 Coordinator 把九個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（T-028 的 0697fb2 之後）：ffc141c → 6fc44b5、60fb361 → 83120ff、7a22c5a → b556d1e、2eac291 → 03071d3、e70c855 → 379af53、bcb2463 → 065791e、5d641da → b720165、0c8b1f0 → ad0eb89、105ede5 → 415341e。衝突只在決策登記與 `planning/decisions.json`（T-028 的 D-078–D-080 與本任務的 D-074、D-075 都是新增，兩邊都保留，依 ID 排列；登記檔開頭的說明合併為一句），以及 `make spec-check` 重產的 `checks/*.json`（取本任務的版本後重產）。
 
 之後在 415341e 的 tree 上（`coordinator-environment.txt`：HEAD、go1.27.3、Node 22.22.0、PostgreSQL 16.15、`dt_test_t048`），`spec-check`、`backend-test`（50,000 個 differential 模型）、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`（83/83 個隨機比對）、`backend-numeric`、`backend-race`（engine package 309 s）與 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0。本報告 NOT RUN 中的 DB-backed 測試（runner、runs、api 的 run 測試等）因此都已執行。仍為 NOT RUN：`SIMULATION_STALLED` 的端對端測試（valid 的模型因 R3 不會 stall）、`make e2e-test`、benchmark、非 amd64 的實機。D-074、D-075 仍是 PROPOSED。Log 與 exit code 在 `checks/evidence/2026-10-25-T-048/coordinator-*`。
+
+## Review 第 1 輪（2026-10-25）：CHANGES REQUESTED（兩個 Medium）
+
+獨立 review（在 b6f7c1c 上）：兩個 Medium，沒有 High 或 Low；kernel、validator、Result、stream、對 des-go-0.2.0 的 differential、SimPy 的接受條件、B1／B2、numerics 經獨立重推確認，`TestExpAccuracy`、FMA 與 `TestBreakdownRisk` 的修改被接受。修正在新的 branch `t048-r1`（從 b6f7c1c 開出），沒有 push。Evidence 在 `checks/evidence/2026-10-25-T-048-r1/`。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| e574501 | 先寫手推 golden（在修正前的 kernel 上為紅，`m1-red.log`）：G-F9（reviewer 的 N8，依 B 手推）、依 B 重推的 G-F3、G-F1W10（M2）；`TestBreakdownGoldenResults` 接受沒有任何完成的 case（lead time unavailable，不是 0） |
+| 5787a2c | `kernel.repair`：修復好的 unit 先給第一個等待中的故障（D-074 (a) B）；只看 observation 的檢查器、SimPy reference 改讀 B；0.3.0 的鎖只在 B 改變結果處重取 |
+| 84a361a | D-074 (a) 的建議改為 B（仍 PROPOSED）、D-075 的上界、SIMULATION_SPEC、TEST_PLAN |
+| （最後一個） | 本節與 evidence（`make spec-check` 重產的 `checks/*.json` 沒有變更） |
+
+### M1：修復好的 unit 不給等待中的故障（D-074 (a)、kernel.go 的 `repair`）
+
+- **發現**：第一版採 A（只有 job 釋放的 unit 滿足等待中的故障），修復留下閒置的 unit 時，等待中的故障繼續等、它的時鐘停住，其他時鐘之後的故障卻先看到閒置的 unit 而停機；與 D-051／ADR-026 §(A) 的「等待中的故障依時刻 FIFO」與「每個 unit 一組獨立的 alternating renewal」不符。Reviewer 的 N8：A 下 4 次停機、down 20 分、idle 41 分；N9（300 replications）：停機 245.4 對 B 的 254.9 次（z −9.5），down_fraction 0.1263 對 0.1313（z −6.9），獨立 renewal ≈ 0.143。
+- **Coordinator 的決定**：建議與實作改為 B：變成可用的 unit（job 釋放的或修復好的）先依故障時刻 FIFO 給等待中的故障，沒有故障在等時才喚醒 held front。A 留在 D-074 (a) 作為選項，後果寫明；D-074 仍是 PROPOSED。
+- **先紅**：e574501 的 golden 在第一版 kernel 上失敗（`m1-red.log`）：G-F3 與 G-F9 在 `TestBreakdownGoldens` 與 `TestBreakdownGoldenResults` 失敗，其他 case 通過。第一版對 G-F9 的輸出正是 reviewer 的 N8（down 1,200,000 ticks、4 次停機、idle 2,460,000 ticks）。
+- **我依 B 手推的 N8（G-F9；model 為 reviewer 的 n8.json：capacity 2、TTF 10、TTR 5、一件從 1 起服務 100 分鐘的 job、horizon 60）**：t=10 時鐘 0 停機（修復於 15），時鐘 1 等待；t=15 修復好的 unit 給時鐘 1（修復於 20），時鐘 0 的下一次故障在 25；t=30、45、60 時鐘 1 的故障先到（序號較小）而等待、同 tick 的時鐘 0 修復把 unit 給它（等待 0 分鐘）。停機：0@[10,15]、1@[15,20]、0@[25,30]、1@[30,35]、0@[40,45]、1@[45,50]、0@[55,60]、1@[60,–]。Result（[0, 60]，C·T＝120 分）：in use 59 分（3,540,000）、down 35 分（2,100,000）、breakdowns_started 8、repairs_completed 7、completed_repair_ticks 2,100,000、available 85 分（5,100,000）、idle 26 分（1,560,000）、utilization 59/120。Reviewer 提供的是 A 的數字（4、20 分、41 分），B 的數字是我獨立手推；第一版 kernel 對同一模型的輸出等於 reviewer 的 A。推導寫在 fixture 的 `derivation`。
+- **G-F3 依 B 重推**：t=12 修復好的 unit 給時鐘 1（A 下要等到 15 的釋放）；t=25、26 兩次釋放各給一個等待中的故障，兩個 unit 在 [26,27] 同時停機；s4/1 在 27 開始（A 為 26）、s5/1 仍在 28；停機 6 次共 12 分、available 68 分、idle 33 分、s4/1 的 lead time 11、wait 4。第一版 D-074 寫的「B 下 s5 要等到 33」是錯的，已更正。
+- **修正**：`kernel.repair`：D−1、Up、排下一個 TTF；有等待中的故障時把 unit 給第一個（立即停機、抽 TTR），否則才喚醒 held front。只看 observation 的檢查器：REPAIR 的 Up 之後必須是第一個等待中的故障的 Down，並在每個事件後檢查「有等待中的故障時沒有閒置的 unit」。`scripts/simpy_reference.py` 的 clock()：修復時有故障在等就把 request 交給它，否則才釋放給 SimPy 的 queue；等待中的故障的比較去掉兩邊等待 0 分鐘的（同一時刻的先後，停機本身逐筆比對），到 horizon 還在等的使該 case 不可比對而失敗；G-F9 也逐值比對。
+- **交叉檢查**：以 reviewer 的 N9 probe（`zz_t048review_many_test.go`，以 `go test -overlay` 加入、不寫進 repository）在新 kernel 上跑 300 replications，輸出與 reviewer 的 option-B overlay 結果 byte 相同（`n9-option-B.json`：停機 254.93 次、down_fraction 0.13128）。
+- **鎖**：des-go-0.3.0 還沒有 release，也沒有任何儲存的結果用到它（coordinator 確認），所以只在 B 改變結果處重取，且在 G-F3、G-F9 的手推值通過之後：`engine-golden-digests-0.3.0.json` 的 G-F3、B-S2、B-S4，`kernel-observation-digests-0.3.0.json` 的 G-F3、B-S2；新增 G-F9、G-F1W10。其他 digest 不變（B-S1、B-S3 是 capacity 1，修復時不可能有故障在等；其他 golden 沒有「修復時有故障在等」的情形）。0.1.0 與 0.2.0 的鎖（`TestGoldenDigests`、`TestGoldenDigests020`、`TestBlockingObservationDigests`）與對 des-go-0.2.0 的 differential 都沒有改、照舊通過。
+- **SimPy**：確定性 G-F3、G-F7、G-F9 逐值相同；83/83 個隨機比對通過（B-S2、B-S4 的 Go 值隨 B 改變）。
+
+### M2：視窗下界「開始於 W 的停機也算」沒有測試（aggregate.go 的 `breakdowns_started` 與完整修復）
+
+- **發現**：把兩處改成嚴格的 `>` 時所有測試都通過（G-F1W 的 W＝12，沒有停機開始於 12）。
+- **先紅**：把兩個 mutant 加進 harness，在加入新 golden 之前執行：兩個都 SURVIVED（`m2-mutants-before.log`）。
+- **G-F1W10**（G-F1 在 [10, 30]，第一次停機恰好開始於 10）。我手推的值與 reviewer 的完全相同：
+
+| 成員 | 我 | Reviewer |
+|---|---:|---:|
+| breakdowns_started | 2 | 2 |
+| repairs_completed | 2 | 2 |
+| completed_repair_ticks | 360,000 | 360,000 |
+| down_ticks | 360,000 | 360,000 |
+| available_ticks | 840,000 | 840,000 |
+| idle_ticks | 240,000 | 240,000 |
+| in_use_ticks | 600,000 | 600,000 |
+
+  另有 completed 10、censored 1、lead time 4,3,2,1,1,1,1,3,2,1、queue wait 3,2,1,0,0,0,0,2,1,0,0、utilization 0.5（推導在 fixture 中）。
+- **結果**：`downs-started-strict-warmup`、`repairs-strict-warmup` 都由 `TestBreakdownGoldenResults` 擋下（`mutants-r1.log`）。
+
+### Info（文件）
+
+- D-075 的溢位說明改為上界：exp 的引數 μ＋σz 至多 ln(mean) − 2.148²/2＋2.148·8.2095 ≈ ln(mean)＋15.33（第一版的 ＋17.7 略去了 −σ²/2）；SIMULATION_SPEC §4 同步。
+- `TestExpAccuracy` 跳過結果為 subnormal（< 2⁻¹⁰²²）的輸入：subnormal 的結果只由 Python port 的逐 bit 向量涵蓋（`TestExpProfile` 的 edges），沒有與 256-bit 真值比較。
+
+### Mutation（`t048-r1-mutants.py`，`mutants-r1.log`）
+
+64 個 mutant：**63 個被擋下、1 個 equivalent**（`trace-sees-breakdowns`，理由同前），exit 0。相對於第 2 次：`repair-satisfies-waiting-failure`（B 的行為）成為程式本身，改為它的反面 `repair-ignores-waiting-failures`（A，被 `TestBreakdownGoldens` 的 G-F3、G-F9 擋下）；新增 `repair-gives-the-last-waiting-failure`（被只看 observation 的檢查器擋下）、`repair-gives-the-unit-and-wakes-too`（把 unit 給等待中的故障之後仍喚醒 held front：它在 dispatch 中再被判斷、再 held，只多一個不授予任何東西的 dispatch 事件，所以只有 observation 的鎖看得出來）、M2 的兩個；`repair-draws-no-next-failure` 的 pattern 隨程式更新；SimPy 的 `simpy-repair-satisfies-waiting-failure` 改為 `simpy-repair-releases-to-jobs`（A，G-F3 不符而被擋下）。B1 的 `deadlock-bound-ge` 仍被 G-K1 擋下。
+
+### 實際執行（本輪，t048-r1 最後的 tree）
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| 新 golden 在第一版 kernel 上 | 1 | `m1-red.log`：G-F3、G-F9 失敗 |
+| M2 的兩個 mutant（新 golden 之前） | 1 | `m2-mutants-before.log`：兩個都 SURVIVED |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `spec-check.log`；重產的 `checks/*.json` 與 b6f7c1c 相同（沒有新的 decision、markdown 或 fixture），所以沒有變更 |
+| `make backend-test GOFLAGS=-count=1` | 0 | `backend-test.log`：63 個 package ok，沒有 `(cached)`；engine 104 s |
+| `make backend-race GOFLAGS=-count=1` | 0 | `backend-race.log`：63 個 package ok，沒有 `(cached)`；engine 299 s |
+| `make architecture-check` | 0 | `architecture-check.log`：75 packages、17 rules、16 build configurations |
+| `make ai-eval` | 0 | `ai-eval.log`；`fake-review.json`、`fake-provider.json` 沒有變 |
+| `make simulation-reference-test PYTHON=…` | 0 | `simulation-reference-test.log`、`simpy-reference-report.json`：確定性 G-F3、G-F7、G-F9 與 T-047 的 11 個逐值相同，83/83 個隨機比對通過 |
+| `make backend-numeric` | 0 | `backend-numeric.log` |
+| Mutation harness | 0 | `mutants-r1.log`：63/63 擋下、1 個 equivalent |
+| `FuzzBreakdowns`（90 s） | 0 | `fuzz-breakdowns.log`：134,265 execs，PASS |
+| N9 probe（reviewer 的測試，overlay） | 0 | `n9-option-B.json`：與 reviewer 的 option-B 結果 byte 相同 |
+
+### NOT RUN（本輪）
+
+- `make integration-test` 與 DB-backed 測試：這裡沒有 PostgreSQL。Coordinator 在 415341e 上執行過；本輪改了 kernel 的結果（G-F3、B-S2、B-S4 與有等待中故障的模型），請在 t048-r1 的 tree 上重跑。
+- `make frontend-test`：沒有 TS、schema 或 `apps/web` 的變更。
+- `SIMULATION_STALLED` 的端對端測試、`make e2e-test`、benchmark、`make ai-eval-live`、非 amd64 的實機、CI。
+- `FuzzKernel`、`FuzzRun` 本輪沒有重跑（`FuzzBreakdowns` 以改讀 B 的檢查器重跑 90 s、134,265 execs，PASS，`fuzz-breakdowns.log`）。
+
+### 需要 owner 決定（本輪的變化）
+
+- D-074 (a) 的建議由 A 改為 B（coordinator 的決定），A 留作選項並寫明後果；D-074、D-075 仍是 PROPOSED，`approved_by`／`approved_at` 為 null。ADR-026（ACCEPTED）中原本規劃的 G-F3 文字沒有改。
+
+### 殘餘風險（本輪的變化）
+
+- B 下等待中的時鐘仍要等一個 unit 變成可用（finish-first 的本意），所以停機比例仍低於各時鐘獨立 renewal 的值（N9：0.131 對 ≈ 0.143）；這是 D-051 的語義，不是誤差。
+- SimPy 比對等待中的故障時去掉等待 0 分鐘的紀錄（兩邊都去），同一時刻的先後仍只由 kernel 的 golden 驗證。
