@@ -1,0 +1,7 @@
+HEAD dfe972336b1243a276a95b8f247fae9b2608b74c
+tree-clean-except-evidence: 0 other changes
+go version go1.27.3 linux/amd64
+v22.22.0
+2026-10-25T15:47:06Z
+PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+dt_test_t054

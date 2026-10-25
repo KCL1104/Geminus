@@ -206,3 +206,9 @@ Branch `t054`，從 2f4c33f 開出，沒有 push。
 - **message 改變**：publishVersion 的 `storage_failed` message 從第 1 輪的 `nothing was published` 改為共用的 `nothing was changed`；第 1 輪尚未整合，client 只依 code 與 details（TS 測試已更新）。
 - **分類的範圍與四份副本**：同第 1 輪（`bindingFailure` 把 `datasets.Resolve` 所有非 context 的 error 當成 storage 失敗；四個 package 各一份）。
 - **未涵蓋**：worker 端（`internal/runs/runner`、`internal/proposals/generator`）有自己的 failure code，不在本任務範圍；`createModel` 的 `check` 沒有 manifest，不讀 snapshot。
+
+## Coordinator 的執行（dfe9723）
+
+Coordinator 把八個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（H-022 的 2f4c33f 之後，沒有衝突）：fdb6cd2 → 042ad4f、3093ebb → b859054、d347aec → 127506d、2360c37 → 9cd50d9、8fea25b → 9575125、e87067a → 5f1d1b6、98d233a → 07f1217、063018b → dfe9723。第 2 輪把 503 延伸到 patchDraft、resetDraft 與批准時的 draft 同步，是 coordinator 依 H-022 Q4 的選項文字（「一律改為 503，讓 client 知道可以稍後重試」）所做的決定，已記在 D-069 的 H-022 補充。
+
+之後在 dfe9723 的 tree 上（`coordinator-environment.txt`），`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`backend-race` 與新的 `dt_test_t054` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP；含 `TestPublishSnapshotStorageFailure`、`TestDraftSnapshotStorageFailure`、`TestApprovalDraftSyncStorageFailure`、`TestRunSnapshotStorageFailure` 與受影響的既有 DB 測試）都是 exit 0。10 個 DB mutant 在匯出的副本上以同一個 database 執行：10 個都被測試失敗擋下（`coordinator-mutants-db.log`、`coordinator-mutants-db-run.txt`）。本報告 NOT RUN 中的 DB 項目因此都已執行；OpenAPI 官方 validator 仍為 NOT RUN。Log 與 exit code 在 `checks/evidence/2026-10-25-T-054/coordinator-*`。
