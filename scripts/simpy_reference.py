@@ -29,13 +29,23 @@ Checks:
   * stochastic cases (reference.cases): per metric, |mean_go - mean_simpy| <=
     z*sqrt(var_go/n + var_simpy/n) + rel*max(|means|) + abs.
 
-Limits of the interpretation, checked before use: units are 1; a bundle is
-taken one resource at a time while holding the earlier ones, the one it
-shares with other processes first, which equals the engine's all-or-nothing
-grant only when at most one resource of the bundle is shared and each of
-its own resources has at least the shared one's capacity (then its own
-units are free whenever the shared one is); the script refuses any other
-model, and the cases marked "refused" must be refused (G-B13).
+Limits of the interpretation, checked before use. The script accepts a
+model only if every requirement is of 1 unit and at most one resource of
+each bundle is shared with another process; if a bundle has a shared
+resource, each of its own resources must have at least the shared one's
+capacity. It refuses every other model, and the cases marked "refused"
+must be refused (G-B13). A bundle is taken one resource at a time while
+holding the earlier ones: the shared one first, then its own ones in
+ascending capacity (ties by ID), all released together. An entity holding
+a unit of a resource then holds a unit of every resource taken before it,
+so when it is granted its first resource the next ones always have a free
+unit (each has at least the capacity of the one before, of whose units the
+entity holds one); the bundle is granted exactly when the engine's
+all-or-nothing, resource-wise FIFO grant would grant it: when the first
+resource (the shared one, or the smallest own one) has a free unit for the
+request at the front of its FIFO. Own resources taken in ID order instead
+could hold a larger own resource while waiting for a smaller one (G-B14;
+T-047 review round 2, L1').
 
     python scripts/simpy_reference.py --go-results bin/simpy-reference-go.json
 """
@@ -106,15 +116,20 @@ class Model:
                     raise SystemExit(f"unsupported: {n['id']} needs {r['units']} units")
                 users.setdefault(r["resource_id"], set()).add(n["id"])
         # A bundle is taken one resource at a time: the one it shares with
-        # other processes first, then its own. That is the engine's
-        # all-or-nothing grant only if an own resource is free whenever the
-        # shared one is: a unit of an own resource O is only ever held
-        # together with a unit of the shared S, by this process's entities,
-        # so at most capacity(S) - 1 others hold O while one more takes S;
-        # with capacity(O) >= capacity(S) a unit of O is then always free.
-        # Otherwise an entity holding S would wait for O and let later
-        # requests take S's other units, which the engine's resource-wise
-        # FIFO does not (G-B13; T-047 review round 1, L1).
+        # other processes first, then its own in ascending capacity (ties
+        # by ID). That is the engine's all-or-nothing grant only if, once
+        # the first is granted, the next ones always have a free unit. A
+        # unit of a resource is only held together with a unit of every
+        # resource taken before it, by this process's entities; while one
+        # entity holding the previous resource R asks for the next one N,
+        # at most capacity(R) - 1 others hold N, so with capacity(N) >=
+        # capacity(R) a unit of N is free. Hence the refusal of an own
+        # resource smaller than the shared one (an entity holding S would
+        # wait for O and let later requests take S's other units, which the
+        # engine's resource-wise FIFO does not: G-B13, review round 1, L1)
+        # and the ascending order of the own ones (in ID order a larger own
+        # resource could be held while waiting for a smaller: G-B14, review
+        # round 2, L1').
         self.order = {}
         for n in ir["nodes"]:
             req = sorted(r["resource_id"] for r in n.get("requires", []))
@@ -126,7 +141,7 @@ class Model:
                 if shared and self.capacity[r] < self.capacity[shared[0]]:
                     raise SystemExit(f"unsupported: {n['id']}'s own {r} (capacity {self.capacity[r]}) is smaller than its shared "
                                      f"{shared[0]} (capacity {self.capacity[shared[0]]}): one at a time would not be all-or-nothing")
-            self.order[n["id"]] = shared + own
+            self.order[n["id"]] = shared + sorted(own, key=lambda r: (self.capacity[r], r))
 
     def requires(self, node):
         return self.order[node]
