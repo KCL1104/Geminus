@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/scenario.schema.json",
   "title": "scenario",
-  "$comment": "SOURCE p.19 immutable base+patch semantics. D-004, D-012 (APPROVED): an immutable persisted Scenario; no canonical ModelVersion is created by a scenario approval or a manual scenario, and neither queues a run. T-028 (D-021, D-067 APPROVED; D-078, D-079 PROPOSED): getScenario, listScenarios and createManualScenario's 201 answer this shape for both kinds of scenario, told apart by source_proposal_id; patch is the stored patch in RFC 8785 form and patch_hash its D-019 hash.",
+  "$comment": "SOURCE p.19 immutable base+patch semantics. D-004, D-012 (APPROVED): an immutable persisted Scenario; no canonical ModelVersion is created by a scenario approval or a manual scenario, and neither queues a run. T-028 (D-021, D-067 APPROVED; D-078, D-079 APPROVED): getScenario, listScenarios and createManualScenario's 201 answer this shape for both kinds of scenario, told apart by source_proposal_id; patch is the stored patch in RFC 8785 form and patch_hash its D-019 hash.",
   "type": "object",
   "properties": {
     "id": {

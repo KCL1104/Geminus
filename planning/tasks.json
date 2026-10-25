@@ -1802,7 +1802,7 @@
       "id": "T-028",
       "title": "Scenario persistence / parameter-only approval",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "Platform + AI",
       "planning_window": "Week 9–11",
       "depends_on": [
@@ -1859,7 +1859,7 @@
           "report": "checks/T-028_VALIDATION.md",
           "summary": "人工 scenario 的 create／read／list（internal/scenarios、internal/storage/scenarios.List、createManualScenario／listScenarios／getScenario 與 TS client）：patch.Scenario allowlist、candidate 與 pack 驗證、dataset binding stage、role、Idempotency-Key、audit、tenant 過濾＋RLS＋composite FK；讀取與列表涵蓋人工與 AI 批准建立的 scenario（source_proposal_id），讀取時核對 patch_hash；不建立 version、不入列 run；migration 0015（名稱 1–200、建立者與時間的 guard、列表 index）；architecture 規則 scenarios-only-in-the-api。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（19f676b、fde2828 的 tree）與 13 個 DB mutant（全部擋下），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test、simulation-reference-test 都 exit 0（checks/evidence/2026-10-25-T-028*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 on 19f676b ACCEPT (L1–L5, I1, I3, I4 fixed by the implementer in 20f512a..fde2828; L6 by the coordinator's verification script)",
-          "decisions_pending": "D-078、D-079、D-080 待 owner 批准；批准後 T-028 才標為 done"
+          "decisions": "D-078、D-079、D-080 於 2026-10-25 由 owner 依建議批准（H-022）"
         }
       ]
     },
@@ -3044,7 +3044,7 @@
       "id": "T-048",
       "title": "DES resource 故障與停機（MTBF/MTTR，H-016）",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "Simulation",
       "planning_window": "H-016 re-plan（未重估週數）",
       "depends_on": [
@@ -3126,7 +3126,7 @@
           "report": "checks/T-048_VALIDATION.md",
           "summary": "Resource 故障與停機：breakdowns、lognormal、Weibull 的 gate 解除（validator：D-050 R3 bundle feasibility、D-075 範圍、resource 分布的 limits／binding／D-033；engine des-go-0.3.0：每個 unit 一組故障時鐘、finish-first、變成可用的 unit 依故障時刻 FIFO 先給等待中的故障（D-074 (a) B）、修復喚醒 held front、B1 區分 capacity-bound／release-bound、B2 ErrStalled → SIMULATION_STALLED）；Result 的停機成員；D-057 的 breakdowns risk、scenario-0.4.0、MOD-038 重新判定；手推 golden 18 個（G-F1、G-F1W、G-F1W10、G-F2、G-F3、G-F3b、G-F7、G-F8、G-F9、G-F9R10、G-F10、G-T1、G-T2、G-T4、G-K1、G-D4、G-S1、G-S2）；對 frozen des-go-0.2.0 的 differential（50,000 個模型）；SimPy reference（83 個隨機比對）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（415341e、b1fceb2、3868975 的 tree），spec-check、backend-test、backend-race、architecture-check、ai-eval、simulation-reference-test、backend-numeric、frontend-test 都 exit 0（checks/evidence/2026-10-25-T-048*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 on b6f7c1c CHANGES REQUESTED (M1 D-074 (a), M2 the warm-up bound); round 2 on 6a3b518 ACCEPT (L1, L2, I3 fixed by the implementer in 014217f..3868975)",
-          "decisions_pending": "D-074、D-075 待 owner 批准；批准後 T-048 才標為 done"
+          "decisions": "D-074、D-075 於 2026-10-25 由 owner 依建議批准（H-022）"
         }
       ]
     },
@@ -3409,6 +3409,53 @@
         "go test ./internal/ai/... ./internal/config/...",
         "make integration-test",
         "make ai-eval-live"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-054",
+      "title": "publishVersion 與 createSimulation 的 dataset snapshot 失敗回 503（H-022）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Platform",
+      "planning_window": "H-022（未重估週數）",
+      "depends_on": [
+        "T-013",
+        "T-023",
+        "T-026"
+      ],
+      "requirement_ids": [
+        "REQ-003",
+        "REQ-011"
+      ],
+      "decision_gates": [
+        "D-061",
+        "D-069"
+      ],
+      "scope": [
+        "publishVersion 與 createSimulation 在 dataset binding stage 讀不到或無法驗證 snapshot（infrastructure 錯誤）時，與 approveProposal、createManualScenario 相同回 503 SERVICE_UNAVAILABLE，details[0].code 為 DATASET_STORAGE_FAILED，原因只寫入 log；request 本身被取消或逾時照一般的 context 錯誤處理；什麼都不寫入。先寫測試（unit 與 DB-backed），更新 OpenAPI 的回應與範例、TS 契約測試。"
+      ],
+      "planned_outputs": [
+        "internal/models/",
+        "internal/runs/",
+        "openapi/openapi.yaml"
+      ],
+      "spec_refs": [
+        "docs/API_DATABASE.md",
+        "docs/DECISIONS_AND_TBD.md"
+      ],
+      "acceptance_tests": [
+        "TEST-009"
+      ],
+      "verification_commands": [
+        "make backend-test",
+        "make integration-test"
       ],
       "definition_of_done": [
         "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",

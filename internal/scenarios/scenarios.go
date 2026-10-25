@@ -1,5 +1,5 @@
 // Package scenarios is the scenario service (T-028; REQ-010, AI_SPEC §7,
-// API_DATABASE §4, D-004, D-021, D-067; D-078–D-080 PROPOSED): a person
+// API_DATABASE §4, D-004, D-021, D-067; D-078–D-080 APPROVED): a person
 // saves a what-if on an immutable version, and any member reads and lists
 // the scenarios of the organization, those people saved and those approved
 // scenario proposals created (internal/proposals/approval, T-026) alike.

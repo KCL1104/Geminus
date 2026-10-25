@@ -867,7 +867,7 @@
       "resolves": [],
       "approved_by": "KCL1104 (repository owner; session decision, H-019)",
       "approved_at": "2026-10-20",
-      "approval_notes": "依建議批准，(i) 選 B（H-019，Q2）：base 中有 source 到得了、candidate 中仍存在但沒有 source 到得了的 node，與刪除同為 high；刪除 flow 造成的不可達也算（internal/ai/review/risk.go）。(e) 依建議：預期效果只能定性（Q1）。"
+      "approval_notes": "依建議批准，(i) 選 B（H-019，Q2）：base 中有 source 到得了、candidate 中仍存在但沒有 source 到得了的 node，與刪除同為 high；刪除 flow 造成的不可達也算（internal/ai/review/risk.go）。(e) 依建議：預期效果只能定性（Q1）。 2026-10-25 owner 確認 (i) 選 B 是本意（H-022 Q5）。"
     },
     {
       "id": "D-063",
@@ -943,7 +943,7 @@
       ],
       "approved_by": "KCL1104 (repository owner; session decision, H-021)",
       "approved_at": "2026-10-25",
-      "approval_notes": "依建議批准（H-021）：照列；(b) server risk 或 effective risk 改變時 409 LIFECYCLE_CONFLICT、不批准（決策頁 Q3），revalidation 失敗的 proposal 維持 ready（B1）。publishVersion／createSimulation 的同類錯誤是否改回 503 不在這次批准範圍，仍待 owner 決定。"
+      "approval_notes": "依建議批准（H-021）：照列；(b) server risk 或 effective risk 改變時 409 LIFECYCLE_CONFLICT、不批准（決策頁 Q3），revalidation 失敗的 proposal 維持 ready（B1）。publishVersion／createSimulation 的同類錯誤是否改回 503 不在這次批准範圍，仍待 owner 決定。 H-022（決策頁 Q4）：publishVersion 與 createSimulation 讀不到 dataset snapshot 時也回 503 SERVICE_UNAVAILABLE（DATASET_STORAGE_FAILED），由 T-054 實作。"
     },
     {
       "id": "D-070",
@@ -1014,9 +1014,10 @@
       "resolves": [],
       "source_pages": "N/A（T-048 實作；ADR-026、D-047、D-048、D-050、D-051、D-058、D-064）",
       "owner_role": "Simulation",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-022)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-022）：(a) 採 B，job 釋放或修復好的 unit 先依故障時刻 FIFO 給等待中的故障，之後才喚醒 held front（決策頁 Q1）；(b)–(f) 照列。"
     },
     {
       "id": "D-075",
@@ -1027,9 +1028,10 @@
       "resolves": [],
       "source_pages": "N/A（T-048 實作；ADR-026、D-029、D-038、D-056、D-063 (c)）",
       "owner_role": "Simulation",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-022)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-022）：(a)(b) 採 A。"
     },
     {
       "id": "D-078",
@@ -1039,10 +1041,11 @@
       "source_pages": "N/A（REQ-010；AI_SPEC §7；D-004、D-021、D-067；T-028）",
       "owner_role": "Platform / AI",
       "gate": "T-028 驗收前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-022)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-022）：(a)(b) 採 A（只有 [] 是 baseline）；(c) 本 organization 的任何 version 都可當 base（決策頁 Q2）；(d) 採 A，名稱照原樣保存、由 UI escape（Q3）。"
     },
     {
       "id": "D-079",
@@ -1052,10 +1055,11 @@
       "source_pages": "N/A（API_DATABASE §3、§4、§7；D-011、D-012、D-069；T-028）",
       "owner_role": "Platform",
       "gate": "T-028 驗收前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-022)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-022）：照列；(e) 的 keyset 已知限制照記，修正屬跨列表的決策。"
     },
     {
       "id": "D-080",
@@ -1065,10 +1069,11 @@
       "source_pages": "N/A（API_DATABASE §8；D-013；T-028）",
       "owner_role": "Security / Platform",
       "gate": "T-028 驗收前",
-      "status": "proposed",
+      "status": "approved",
       "resolves": [],
-      "approved_by": null,
-      "approved_at": null
+      "approved_by": "KCL1104 (repository owner; session decision, H-022)",
+      "approved_at": "2026-10-25",
+      "approval_notes": "依建議批准（H-022）：採 A。"
     }
   ],
   "human_decisions": [
@@ -1344,6 +1349,18 @@
       "still_open": [
         "D-069：publishVersion／createSimulation 讀不到 dataset snapshot 時是否也改回 503（決策頁沒有列出）",
         "D-073 的定案（T-052 前）"
+      ]
+    },
+    {
+      "id": "H-022",
+      "subject": "批准 D-074、D-075、D-078–D-080；D-069 的 503 補充；確認 D-062 (i) B",
+      "decision": "Owner 對決策頁（https://claude.ai/artifact/2VEE9wK2WmnqXQdir8EeUq）回覆「全都照建議」：D-074、D-075、D-078、D-079、D-080 依建議 APPROVED（Q1 D-074 (a) B；Q2 D-078 (c) 任何 version 可當 base；Q3 D-078 (d) A）；Q4 publishVersion 與 createSimulation 讀不到 dataset snapshot 時也回 503（T-054 實作）；Q5 H-019 的 D-062 (i) 選 B 是本意。",
+      "quote": "全都照建議",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-25",
+      "source": "Claude Code session：owner 回覆決策頁，由 agent 記錄；回覆與決策頁上的範例句相同",
+      "still_open": [
+        "T-054：publishVersion／createSimulation 的 503 實作"
       ]
     }
   ]

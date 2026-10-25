@@ -392,3 +392,7 @@ Coordinator 把四個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（b6f
 ### Coordinator 的執行（第 2 輪修正，3868975）
 
 Coordinator 把三個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（6a3b518 之後，沒有衝突）：5dedac2 → 014217f、6275702 → 348c402、d34298b → 3868975；kernel 程式碼與 6a3b518 相同。之後在 3868975 的 tree 上（`coordinator-environment.txt`），`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`simulation-reference-test`、`backend-numeric`、`backend-race` 與新的 `dt_test_t048r2` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP）都是 exit 0（`checks/evidence/2026-10-25-T-048-r2/coordinator-*`）。Reviewer 第 2 輪的判定為 ACCEPT，本輪的修正（兩個 Low 與 I3）依前例由 coordinator 驗證後接受。D-074、D-075 仍是 PROPOSED，它們的 gate 是 T-048 驗收前，所以 T-048 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done；決策頁 https://claude.ai/artifact/2VEE9wK2WmnqXQdir8EeUq。
+
+## Owner 批准（H-022，2026-10-25）
+
+Owner 對決策頁（https://claude.ai/artifact/2VEE9wK2WmnqXQdir8EeUq）回覆「全都照建議」：D-074、D-075 依建議 APPROVED（`planning/decisions.json`、`docs/DECISIONS_AND_TBD.md`）。本報告前文寫作時這些決策仍是 PROPOSED，前文保留原貌；T-048 因此標為 done。

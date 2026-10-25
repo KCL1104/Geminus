@@ -1,4 +1,4 @@
--- T-028 (migration 0015; REQ-010, D-004, D-021, D-067; D-080 PROPOSED;
+-- T-028 (migration 0015; REQ-010, D-004, D-021, D-067; D-080 APPROVED;
 -- TEST-004, TEST-008, TEST-010): a scenario a person saves through the API
 -- is an immutable row of its own organization, on a version of the same
 -- model (any version, not only the latest: D-067), for the scoped user, at

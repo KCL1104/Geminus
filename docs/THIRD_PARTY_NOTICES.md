@@ -51,7 +51,7 @@ is preserved.
 
 ## Go `math.exp` (pinned exponential, T-048)
 
-`internal/simulation/engine/sample.go` (`exp`) and `scripts/engine_reference.py` (`pinned_exp`) implement the algorithm and constants of the pure-Go exponential in the Go standard library (`src/math/exp.go`), adapted to round every product explicitly (D-056; D-075 PROPOSED). License: BSD-3-Clause, under the same copyright and notice as the logarithm above (Copyright 2009 The Go Authors).
+`internal/simulation/engine/sample.go` (`exp`) and `scripts/engine_reference.py` (`pinned_exp`) implement the algorithm and constants of the pure-Go exponential in the Go standard library (`src/math/exp.go`), adapted to round every product explicitly (D-056; D-075 APPROVED，H-022). License: BSD-3-Clause, under the same copyright and notice as the logarithm above (Copyright 2009 The Go Authors).
 
 The Go code is in turn derived from FreeBSD's `/usr/src/lib/msun/src/e_exp.c`, which came with this notice:
 

@@ -57,7 +57,7 @@ Schema 已接受下列成員，全部 optional；沒有它們的模型與上面�
 |---|---|---|---|
 | `capacity` | queue node；整數 1–100000；缺＝無限 | D-049 | T-047（已實作、gate 已解除：validator 的 R1 與 des-go-0.2.0 的 kernel） |
 | `breakdowns` | resource：`{time_to_failure: {distribution}, time_to_repair: {distribution}}` | D-051 | T-048（已實作、gate 已解除：validator 的 R3 與 TTF 的零時間檢查、des-go-0.3.0 的 kernel） |
-| `lognormal`、`weibull` | distribution：`{type: lognormal, mean, cv}`、`{type: weibull, shape, scale}`；schema 只要求 > 0，候選範圍（0 < cv ≤ 10、0.1 ≤ shape ≤ 20，T-048 保留，D-075 PROPOSED）屬 DISTRIBUTION_INVALID | D-056 | T-048（已實作、gate 已解除：任何分布位置，des-go-0.3.0） |
+| `lognormal`、`weibull` | distribution：`{type: lognormal, mean, cv}`、`{type: weibull, shape, scale}`；schema 只要求 > 0，候選範圍（0 < cv ≤ 10、0.1 ≤ shape ≤ 20，T-048 保留，D-075 APPROVED，H-022）屬 DISTRIBUTION_INVALID | D-056 | T-048（已實作、gate 已解除：任何分布位置，des-go-0.3.0） |
 | `calendars` | 根層 array（1–100 個）：`{id, name?, period, shifts: [{start, end, label?}] (1–100), exceptions?: [{start, end, open}] (1–100)}`，時間以 model time_unit 表示、從 t=0 起、沒有時區 | D-052 | T-049 |
 | `calendar_id`、`shift_capacity` | resource：calendar 的 ID；`shift_capacity` 為 shift label → 0..100000 的 object（1–100 個 label），只能與 `calendar_id` 一起出現 | D-052 | T-049 |
 | `arrival.schedule` | source：與 `arrival.distribution` 二擇一；`{process: poisson｜deterministic, period, segments: [{start, rate}] (1–1000)}` 或 `{process: table, period, releases: [{at, quantity 1–10000}] (1–1000)}` | D-053 | T-049 |
@@ -67,7 +67,7 @@ Schema 已接受下列成員，全部 optional；沒有它們的模型與上面�
 
 ## 3. Distributions / units
 
-P0 僅 constant(value)、exponential(mean)、triangular(min,mode,max)、empirical(samples_ref)。lognormal、calendar-dependent、mixtures 為 P1（lognormal 與 Weibull 依 D-056 提前到 P0：APPROVED，H-018，實作於 T-048；schema 自 T-046 phase 2 起接受 `lognormal(mean, cv)` 與 `weibull(shape, scale)`，T-048 之前以 PRIMITIVE_NOT_SUPPORTED 拒絕，§2.1）。自 T-048（des-go-0.3.0）起兩者在任何分布位置都可用（arrival、service、delay 與 resource 的 breakdowns）；semantic validator 另驗 lognormal 的 mean 解碼後 > 0 且 0 < cv ≤ 10、Weibull 的 scale 解碼後 > 0 且 0.1 ≤ shape ≤ 20（DISTRIBUTION_INVALID，D-075 PROPOSED）；mean 與 scale 是時間參數，照 D-029 換算後超過 365 天為 LIMIT_EXCEEDED（D-063 (c)），cv 與 shape 沒有單位。兩者的樣本至少 1 tick（與 exponential 相同，D-033 視為恆 > 0）；抽樣公式見 SIMULATION_SPEC §4。
+P0 僅 constant(value)、exponential(mean)、triangular(min,mode,max)、empirical(samples_ref)。lognormal、calendar-dependent、mixtures 為 P1（lognormal 與 Weibull 依 D-056 提前到 P0：APPROVED，H-018，實作於 T-048；schema 自 T-046 phase 2 起接受 `lognormal(mean, cv)` 與 `weibull(shape, scale)`，T-048 之前以 PRIMITIVE_NOT_SUPPORTED 拒絕，§2.1）。自 T-048（des-go-0.3.0）起兩者在任何分布位置都可用（arrival、service、delay 與 resource 的 breakdowns）；semantic validator 另驗 lognormal 的 mean 解碼後 > 0 且 0 < cv ≤ 10、Weibull 的 scale 解碼後 > 0 且 0.1 ≤ shape ≤ 20（DISTRIBUTION_INVALID，D-075 APPROVED，H-022）；mean 與 scale 是時間參數，照 D-029 換算後超過 365 天為 LIMIT_EXCEEDED（D-063 (c)），cv 與 shape 沒有單位。兩者的樣本至少 1 tick（與 exponential 相同，D-033 視為恆 > 0）；抽樣公式見 SIMULATION_SPEC §4。
 
 Schema 驗型別與非負值；semantic validator 另驗 min≤mode≤max、finite numbers、empirical 可解析且非空、unit 可轉換。interarrival 必須嚴格正值；zero service/delay 可以存在，但可達的 zero-time cycle 不能執行。時間換算和 rounding 由 SIMULATION_SPEC 固定。
 

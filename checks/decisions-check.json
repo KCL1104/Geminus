@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 70,
-    "proposed": 6,
+    "approved": 75,
+    "proposed": 1,
     "rejected": 0,
     "superseded": 0
   },
@@ -27,20 +27,23 @@
     "H-018",
     "H-019",
     "H-020",
-    "H-021"
+    "H-021",
+    "H-022"
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 28,
-    "in_progress": 4,
-    "not_started": 21,
+    "done": 30,
+    "in_progress": 2,
+    "not_started": 22,
     "review": 0
   },
   "ready_tasks": [
+    "T-029",
     "T-035",
     "T-049",
     "T-050",
-    "T-053"
+    "T-053",
+    "T-054"
   ],
   "next_after_review": [],
   "gates": {
@@ -568,7 +571,8 @@
       "gate": "T-026 approval revalidation 前；T-027、T-030 沿用 (c) 前",
       "gates_tasks": [
         "T-025",
-        "T-026"
+        "T-026",
+        "T-054"
       ]
     },
     "D-062": {
@@ -618,7 +622,8 @@
       "status": "approved",
       "gate": "T-026 驗收前",
       "gates_tasks": [
-        "T-026"
+        "T-026",
+        "T-054"
       ]
     },
     "D-070": {
@@ -651,35 +656,35 @@
       ]
     },
     "D-074": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-048 驗收前；T-049 延伸 B2 與故障時鐘時沿用",
       "gates_tasks": [
         "T-048"
       ]
     },
     "D-075": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-048 驗收前",
       "gates_tasks": [
         "T-048"
       ]
     },
     "D-078": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-028 驗收前",
       "gates_tasks": [
         "T-028"
       ]
     },
     "D-079": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-028 驗收前",
       "gates_tasks": [
         "T-028"
       ]
     },
     "D-080": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-028 驗收前",
       "gates_tasks": [
         "T-028"

@@ -1340,7 +1340,7 @@ paths:
       operationId: createManualScenario
       summary: Create manually confirmed immutable scenario
       description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table. T-028 (REQ-010; D-004, D-014, D-020, D-021, D-057, D-067 APPROVED; D-078, D-079, D-080 PROPOSED): an
+        table. T-028 (REQ-010; D-004, D-014, D-020, D-021, D-057, D-067 APPROVED; D-078, D-079, D-080 APPROVED): an
         editor or owner saves a what-if on an immutable version of the organization, any of the model''s versions, not
         only the latest (D-067): a name and a JSON Patch under the scenario allowlist that the AI scenario mode takes too
         (D-021: existing capacities, distribution parameters and routing probabilities, and D-057''s line parameters; no
@@ -1554,7 +1554,7 @@ paths:
       operationId: listScenarios
       summary: List scenarios for immutable version
       description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table. T-028 (D-004, D-067 APPROVED; D-079 PROPOSED): any member reads the scenarios on an immutable version of
+        table. T-028 (D-004, D-067 APPROVED; D-079 APPROVED): any member reads the scenarios on an immutable version of
         the organization (a version of another organization, or none, is 404): those a person saved
         (createManualScenario; source_proposal_id null) and those approved scenario proposals created
         (source_proposal_id the proposal; its Approval''s scenario_id), oldest first (created_at, then ID), each as
@@ -1648,7 +1648,7 @@ paths:
       operationId: getScenario
       summary: Get immutable scenario
       description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table. T-028 (D-004, D-067 APPROVED; D-079 PROPOSED): any member reads a scenario of the organization (another
+        table. T-028 (D-004, D-067 APPROVED; D-079 APPROVED): any member reads a scenario of the organization (another
         organization''s, or none, is 404), whether a person saved it (source_proposal_id null) or an approved scenario
         proposal created it (source_proposal_id the proposal, whose Approval''s scenario_id names it). patch is the
         stored patch in RFC 8785 form; the server checks that patch_hash is its D-019 hash before answering, and a

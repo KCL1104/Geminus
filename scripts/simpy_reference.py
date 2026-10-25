@@ -49,7 +49,7 @@ request at the front of its FIFO. Own resources taken in ID order instead
 could hold a larger own resource while waiting for a smaller one (G-B14;
 T-047 review round 2, L1').
 
-Breakdowns (T-048; ADR-026 D-051, D-074 PROPOSED) with SimPy's own
+Breakdowns (T-048; ADR-026 D-051, D-074 APPROVED) with SimPy's own
 primitives: a resource that breaks down is a simpy.PriorityResource; jobs
 request it at priority 0 (FIFO among themselves), and each unit u has a
 failure clock process that alternates TTF and TTR. When its TTF ends and a
