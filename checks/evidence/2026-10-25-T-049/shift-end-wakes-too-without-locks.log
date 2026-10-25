@@ -1,0 +1,6 @@
+$ go test -count=1 -overlay <shift-end-wakes-too> -skip Digests ./internal/simulation/engine/ ./internal/simulation/des/
+# b6f856c, before G-C9: the mutant of t049-mutants.py with the regression locks skipped; nothing else kills it
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	159.708s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	28.415s
+ 
+exit status 0

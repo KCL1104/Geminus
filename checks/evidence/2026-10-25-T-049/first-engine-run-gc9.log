@@ -1,0 +1,104 @@
+$ go test -count=1 -v -run "TestCalendarGoldens|TestCalendarGoldenResults|TestCalendarObservationDigests|TestGoldenDigests040" ./internal/simulation/engine/ ./internal/simulation/des/   (G-C9 added to calendar-goldens.json; the counts 19 and 23 and the 0.4.0 locks not yet updated)
+=== RUN   TestCalendarGoldens
+=== RUN   TestCalendarGoldens/G-C1
+=== RUN   TestCalendarGoldens/G-C1W
+=== RUN   TestCalendarGoldens/G-C1W10
+=== RUN   TestCalendarGoldens/G-C2
+=== RUN   TestCalendarGoldens/G-C4
+=== RUN   TestCalendarGoldens/G-C5
+=== RUN   TestCalendarGoldens/G-C6
+=== RUN   TestCalendarGoldens/G-C7
+=== RUN   TestCalendarGoldens/G-C8
+=== RUN   TestCalendarGoldens/G-C9
+=== RUN   TestCalendarGoldens/G-F6
+=== RUN   TestCalendarGoldens/G-CF1
+=== RUN   TestCalendarGoldens/G-T5
+=== RUN   TestCalendarGoldens/G-K2
+=== RUN   TestCalendarGoldens/G-D3C
+=== RUN   TestCalendarGoldens/G-D4C
+=== RUN   TestCalendarGoldens/G-D5
+=== RUN   TestCalendarGoldens/G-R1
+=== RUN   TestCalendarGoldens/G-R5
+=== RUN   TestCalendarGoldens/G-R7
+=== NAME  TestCalendarGoldens
+    calendar_test.go:337: 20 calendar goldens ran, want 19
+--- FAIL: TestCalendarGoldens (0.09s)
+    --- PASS: TestCalendarGoldens/G-C1 (0.07s)
+    --- PASS: TestCalendarGoldens/G-C1W (0.00s)
+    --- PASS: TestCalendarGoldens/G-C1W10 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C2 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C4 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C5 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C6 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C7 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C8 (0.00s)
+    --- PASS: TestCalendarGoldens/G-C9 (0.00s)
+    --- PASS: TestCalendarGoldens/G-F6 (0.00s)
+    --- PASS: TestCalendarGoldens/G-CF1 (0.00s)
+    --- PASS: TestCalendarGoldens/G-T5 (0.00s)
+    --- PASS: TestCalendarGoldens/G-K2 (0.00s)
+    --- PASS: TestCalendarGoldens/G-D3C (0.00s)
+    --- PASS: TestCalendarGoldens/G-D4C (0.00s)
+    --- PASS: TestCalendarGoldens/G-D5 (0.00s)
+    --- PASS: TestCalendarGoldens/G-R1 (0.00s)
+    --- PASS: TestCalendarGoldens/G-R5 (0.00s)
+    --- PASS: TestCalendarGoldens/G-R7 (0.00s)
+=== RUN   TestCalendarObservationDigests
+    calendar_test.go:532: observation digests
+         got  [G-C1=46 c9cc9a17e6a31f3e3b7c1c9fa7421a65809820fcbc926342d30d3914042f2786 G-C1W=46 c9cc9a17e6a31f3e3b7c1c9fa7421a65809820fcbc926342d30d3914042f2786 G-C1W10=39 72ae99f8ea894bad48b324a93d37c04c446768f72dd2ca6b5e8e7ce558dc91d5 G-C2=27 c6dd9cdd3858e778573d0f3fec71972f64d35bf55e052bf1fd09da41c471f267 G-C4=43 cc7299b43ed2148a355b9647529c5e5de775715a65eaf55c1aaede1afb2e7f10 G-C5=60 f425d426cd74c3f8b0ab096457953a30dbe312713905ee1bcaa235b2caa6a2ce G-C6=53 316d427766d8817af4fcd29bfc0869801c6c1870c6bad652c928b33f0e7f96d2 G-C7=10 8338f5cae51afe4bb496ce9367992f3e3bcbc2949911acc4e6fb6bb5ca5ed22a G-C8=33 731560196def49f617572fba31ecd43dc8a74f55edc845a6579c20ae473d0e51 G-C9=18 2eb5b3d2f235dbdd0992780acf37a960a65f9ce4c949cd12a4955683aa9d283c G-F6=44 81da369f08d76e78e8b78d3393cfd679a4b5525248cd8c216c98a9ac3ba9b705 G-CF1=18 eecac9bb5a718d9d5fd0bad28718cf321d6fcb7330e618482a2c8378b047fd70 G-T5=11 4f70ab373f21b88630cb04780d4b470d5dc3291d06ebd44f131b82048dcfe4b0 G-K2=18 ef7d1cbc3acc7269c12cb77714912525b5be5e2acaa23679d7e79d97287725b1 G-D3C=11 3dadd01a8b6445102a5a9b21041d8c4019c2b6bdc084d2b6fd97b678cd133f0c G-D4C=411 468cd05ebcc0a7fed9958bd225fc78d4f70b02fbaea44ddb63d9789ee7142855 G-D5=21 ef208dc325476c4801142aa96c859b10e0c24f20f38e69ad2e235c44f40f7324 G-R1=18 2b50904fc178140c5f1834b8cb32fa0d57bd1f4dd55be870bb3801e8bdc1f370 G-R5=28 53a771afd7fe0c296665a5741dbacabc94923121129e5c128caf2f09168f6ba9 G-R7=63 4a800e6ce6892bd73c5e2277a6d71c136bd92e496a1f41a0b0ae7730cf8598be C-S1=4582 23edf49bb72a497bc2a2696d4ce3f30265066d90984be18fad0dd6c0f56e1d1c C-S2=7955 928f1fa4e639d6d4eb953900f64f1eed2a40585db05f6f5231ea3d34f39759f5 C-S3=11640 5efc18ddde4f266958c3281d5b0a36f2ce3f1b52c332acd91673d94447e69e61 C-S4=8072 6f3f3039bc513fb151271f7ddc149d5935ecaeb21256cfaf9105401363cbaea2]
+         want map[C-S1:4582 23edf49bb72a497bc2a2696d4ce3f30265066d90984be18fad0dd6c0f56e1d1c C-S2:7955 928f1fa4e639d6d4eb953900f64f1eed2a40585db05f6f5231ea3d34f39759f5 C-S3:11640 5efc18ddde4f266958c3281d5b0a36f2ce3f1b52c332acd91673d94447e69e61 C-S4:8072 6f3f3039bc513fb151271f7ddc149d5935ecaeb21256cfaf9105401363cbaea2 G-C1:46 c9cc9a17e6a31f3e3b7c1c9fa7421a65809820fcbc926342d30d3914042f2786 G-C1W:46 c9cc9a17e6a31f3e3b7c1c9fa7421a65809820fcbc926342d30d3914042f2786 G-C1W10:39 72ae99f8ea894bad48b324a93d37c04c446768f72dd2ca6b5e8e7ce558dc91d5 G-C2:27 c6dd9cdd3858e778573d0f3fec71972f64d35bf55e052bf1fd09da41c471f267 G-C4:43 cc7299b43ed2148a355b9647529c5e5de775715a65eaf55c1aaede1afb2e7f10 G-C5:60 f425d426cd74c3f8b0ab096457953a30dbe312713905ee1bcaa235b2caa6a2ce G-C6:53 316d427766d8817af4fcd29bfc0869801c6c1870c6bad652c928b33f0e7f96d2 G-C7:10 8338f5cae51afe4bb496ce9367992f3e3bcbc2949911acc4e6fb6bb5ca5ed22a G-C8:33 731560196def49f617572fba31ecd43dc8a74f55edc845a6579c20ae473d0e51 G-CF1:18 eecac9bb5a718d9d5fd0bad28718cf321d6fcb7330e618482a2c8378b047fd70 G-D3C:11 3dadd01a8b6445102a5a9b21041d8c4019c2b6bdc084d2b6fd97b678cd133f0c G-D4C:411 468cd05ebcc0a7fed9958bd225fc78d4f70b02fbaea44ddb63d9789ee7142855 G-D5:21 ef208dc325476c4801142aa96c859b10e0c24f20f38e69ad2e235c44f40f7324 G-F6:44 81da369f08d76e78e8b78d3393cfd679a4b5525248cd8c216c98a9ac3ba9b705 G-K2:18 ef7d1cbc3acc7269c12cb77714912525b5be5e2acaa23679d7e79d97287725b1 G-R1:18 2b50904fc178140c5f1834b8cb32fa0d57bd1f4dd55be870bb3801e8bdc1f370 G-R5:28 53a771afd7fe0c296665a5741dbacabc94923121129e5c128caf2f09168f6ba9 G-R7:63 4a800e6ce6892bd73c5e2277a6d71c136bd92e496a1f41a0b0ae7730cf8598be G-T5:11 4f70ab373f21b88630cb04780d4b470d5dc3291d06ebd44f131b82048dcfe4b0]
+--- FAIL: TestCalendarObservationDigests (0.05s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.153s
+=== RUN   TestCalendarGoldenResults
+=== RUN   TestCalendarGoldenResults/G-C1
+=== RUN   TestCalendarGoldenResults/G-C1W
+=== RUN   TestCalendarGoldenResults/G-C1W10
+=== RUN   TestCalendarGoldenResults/G-C2
+=== RUN   TestCalendarGoldenResults/G-C4
+=== RUN   TestCalendarGoldenResults/G-C5
+=== RUN   TestCalendarGoldenResults/G-C6
+=== RUN   TestCalendarGoldenResults/G-C7
+=== RUN   TestCalendarGoldenResults/G-C8
+=== RUN   TestCalendarGoldenResults/G-C9
+=== RUN   TestCalendarGoldenResults/G-F6
+=== RUN   TestCalendarGoldenResults/G-CF1
+=== RUN   TestCalendarGoldenResults/G-T5
+=== RUN   TestCalendarGoldenResults/G-K2
+=== RUN   TestCalendarGoldenResults/G-D3C
+=== RUN   TestCalendarGoldenResults/G-D4C
+=== RUN   TestCalendarGoldenResults/G-D5
+=== RUN   TestCalendarGoldenResults/G-R1
+=== RUN   TestCalendarGoldenResults/G-R5
+=== RUN   TestCalendarGoldenResults/G-R7
+=== NAME  TestCalendarGoldenResults
+    calendar_test.go:103: 20 cases with an expected result, want 19
+--- FAIL: TestCalendarGoldenResults (0.11s)
+    --- PASS: TestCalendarGoldenResults/G-C1 (0.06s)
+    --- PASS: TestCalendarGoldenResults/G-C1W (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-C1W10 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-C2 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-C4 (0.01s)
+    --- PASS: TestCalendarGoldenResults/G-C5 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-C6 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-C7 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-C8 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-C9 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-F6 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-CF1 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-T5 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-K2 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-D3C (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-D4C (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-D5 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-R1 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-R5 (0.00s)
+    --- PASS: TestCalendarGoldenResults/G-R7 (0.00s)
+=== RUN   TestGoldenDigests040
+    calendar_test.go:346: digests {"C-S1":"sha256:bad76e2253c3cd635e08f633d9be01e2d84571b22312f10a69993dc23bea0c5a","C-S2":"sha256:4d3de75b5af66287b551b7697ec750ac8417cd17079c8370e23c39853acc4a7e","C-S3":"sha256:2d3d1746bab15cafe73fe012c9ce014e8724a4ba791b7243dbaae395f98b5852","C-S4":"sha256:27523f6fe3d2595ed052eb7b0af69607c0ca3f2c27ab6c31715b5640e6cfdf31","G-C1":"sha256:4fdec795ffaca54e94f36980020c5ced7f2331d711b84e2dccddf5fb1fc205d3","G-C1W":"sha256:a57197b13804dc57ba01e77c13a35356763ec09cec4fe0b161e9b1a0a51e5a4e","G-C1W10":"sha256:374a7f780a2be5a13a9b1b9e450eff5b15a8352c81b07fe69a9be5d180b33576","G-C2":"sha256:d723377f0e291414a4745fabd17b63021cf411b1297e3d02f252d566e29afbb6","G-C4":"sha256:12f0077229e67fe7f1520e2bb8126cc1b9bb7587edff1a738f971668e7768d33","G-C5":"sha256:386589f8c8e406c13d91990394ff0e9d14b5d8b9c293ad2d2e8489e9bb125283","G-C6":"sha256:b9611219938eb7226add3f5fe25e2d54a908ae3c73c8712cd2a2c8ccd337d65b","G-C7":"sha256:12ab1cc527fec4053d60f050a45229f0ddd9e615294c3843442dbba54a036dd0","G-C8":"sha256:1f426b481f996e8e8869ca344f8e995b363d3f35449c3cf5002d9bebee626b8c","G-C9":"sha256:615b8a5125c3ecd6e479a1a1b87d203126924de12c784d4582d79ba861be6234","G-CF1":"sha256:2e17340253082089caa155d3142e63d61d441d8e13625053793fd6c6c09242ab","G-D3C":"sha256:b6c7e5d3bbcfc72ecd26b1a7c89b485521504b90b333304861dc7852967dcaff","G-D4C":"sha256:fda569095fd3c67cf4536c6f36e0d77414d32742ad2f40455eb51a0c0450a900","G-D5":"sha256:40f86efbe52ecbe9d8b397eb6be24acfdbb1f4e1d92710d3f689938ca3cf8df9","G-F6":"sha256:05152a81a93812f52b4cdb4687ef6e2e6375fb562c644acc111fa33e7daa54ff","G-K2":"sha256:2528a088f4ff29cb835b4757122f22e05b288e17bb0dd0cf842e6f1527cd3eba","G-R1":"sha256:ab146d80d70039d3b7dda8179c18a252e5ae7e5a1e5268626a109d9b9085a479","G-R5":"sha256:0d7d28c68f5d3196a8982eab4d20be12803a344ad9cbee252d324ce31d222010","G-R7":"sha256:0b225b588b644a428393d41f41908acfedd7adb2772e1aa8aa77900cb60c7ec2","G-T5":"sha256:f59a8bea93fe24e961198f1098c2d230dfa817195909aedd290ad8c1994d7c31"}
+         locked map[C-S1:sha256:bad76e2253c3cd635e08f633d9be01e2d84571b22312f10a69993dc23bea0c5a C-S2:sha256:4d3de75b5af66287b551b7697ec750ac8417cd17079c8370e23c39853acc4a7e C-S3:sha256:2d3d1746bab15cafe73fe012c9ce014e8724a4ba791b7243dbaae395f98b5852 C-S4:sha256:27523f6fe3d2595ed052eb7b0af69607c0ca3f2c27ab6c31715b5640e6cfdf31 G-C1:sha256:4fdec795ffaca54e94f36980020c5ced7f2331d711b84e2dccddf5fb1fc205d3 G-C1W:sha256:a57197b13804dc57ba01e77c13a35356763ec09cec4fe0b161e9b1a0a51e5a4e G-C1W10:sha256:374a7f780a2be5a13a9b1b9e450eff5b15a8352c81b07fe69a9be5d180b33576 G-C2:sha256:d723377f0e291414a4745fabd17b63021cf411b1297e3d02f252d566e29afbb6 G-C4:sha256:12f0077229e67fe7f1520e2bb8126cc1b9bb7587edff1a738f971668e7768d33 G-C5:sha256:386589f8c8e406c13d91990394ff0e9d14b5d8b9c293ad2d2e8489e9bb125283 G-C6:sha256:b9611219938eb7226add3f5fe25e2d54a908ae3c73c8712cd2a2c8ccd337d65b G-C7:sha256:12ab1cc527fec4053d60f050a45229f0ddd9e615294c3843442dbba54a036dd0 G-C8:sha256:1f426b481f996e8e8869ca344f8e995b363d3f35449c3cf5002d9bebee626b8c G-CF1:sha256:2e17340253082089caa155d3142e63d61d441d8e13625053793fd6c6c09242ab G-D3C:sha256:b6c7e5d3bbcfc72ecd26b1a7c89b485521504b90b333304861dc7852967dcaff G-D4C:sha256:fda569095fd3c67cf4536c6f36e0d77414d32742ad2f40455eb51a0c0450a900 G-D5:sha256:40f86efbe52ecbe9d8b397eb6be24acfdbb1f4e1d92710d3f689938ca3cf8df9 G-F6:sha256:05152a81a93812f52b4cdb4687ef6e2e6375fb562c644acc111fa33e7daa54ff G-K2:sha256:2528a088f4ff29cb835b4757122f22e05b288e17bb0dd0cf842e6f1527cd3eba G-R1:sha256:ab146d80d70039d3b7dda8179c18a252e5ae7e5a1e5268626a109d9b9085a479 G-R5:sha256:0d7d28c68f5d3196a8982eab4d20be12803a344ad9cbee252d324ce31d222010 G-R7:sha256:0b225b588b644a428393d41f41908acfedd7adb2772e1aa8aa77900cb60c7ec2 G-T5:sha256:f59a8bea93fe24e961198f1098c2d230dfa817195909aedd290ad8c1994d7c31]
+--- FAIL: TestGoldenDigests040 (0.19s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.325s
+FAIL
+exit status 1

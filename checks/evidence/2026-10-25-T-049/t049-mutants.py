@@ -55,7 +55,9 @@ MUT = [
     # change is scheduled first, resources in ID order, calendars in ID order.
     ("shift-start-no-wake", K, "if f := k.queues[i].front(); up && f != nil && f.held {", "if f := k.queues[i].front(); false && up && f != nil && f.held {", ENG),
     ("shift-start-wakes-without-dispatch", K, "\tif woke {\n\t\treturn k.needDispatch()\n\t}\n", "\tif false && woke {\n\t\treturn k.needDispatch()\n\t}\n", ENG),
-    # (run 1: BUILD-FAILED, the mutant left `up` unused; it keeps it now)
+    # (run 1: BUILD-FAILED, the mutant left `up` unused; it keeps it now.
+    # Run 2: killed only by the 0.4.0 observation lock; the hand-derived
+    # G-C9 kills it now: its extra DISPATCH makes 14 events, not 13)
     ("shift-end-wakes-too", K, "if f := k.queues[i].front(); up && f != nil && f.held {", "if f := k.queues[i].front(); (up || true) && f != nil && f.held {", ENG),
     ("dispatch-ignores-shift", K, "\t\t\tavail := min(k.capS[q.resource], p.resources[q.resource].capacity-k.down[q.resource])\n",
      "\t\t\tavail := p.resources[q.resource].capacity - k.down[q.resource]\n", ENG),

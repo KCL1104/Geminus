@@ -290,8 +290,9 @@ func startSeqsIn(p *Program, obs []Observation) []string {
 // derivation, and where the case gives them the sequence numbers of the
 // Capacity observations and of the service starts and the replication's
 // event count. These fix D-052 (a shift end lets the service in progress
-// finish, a start wakes the held front without a release, one
-// CAPACITY_CHANGE per calendar observing only the resources that change),
+// finish and wakes nothing, G-C9; a start wakes the held front without a
+// release; one CAPACITY_CHANGE per calendar observing only the resources
+// that change),
 // D-051 (ii) (the failure clock runs on shift only, G-C6, G-F6, G-D5,
 // G-T5), D-074 (a) B with a calendar (G-CF1, D-081 (c)), D-050 B1 with a
 // shift (G-K2) and B2's next_fit and X_end (G-D3C, G-D4C, G-D5), and
@@ -333,8 +334,8 @@ func TestCalendarGoldens(t *testing.T) {
 			}
 		})
 	}
-	if ran != 19 {
-		t.Errorf("%d calendar goldens ran, want 19", ran)
+	if ran != 20 {
+		t.Errorf("%d calendar goldens ran, want 20", ran)
 	}
 }
 
@@ -524,7 +525,7 @@ func TestCalendarObservationDigests(t *testing.T) {
 	for _, c := range lock.Cases {
 		want[c.ID] = fmt.Sprintf("%d %s", c.Observations, c.Digest)
 	}
-	if lock.EngineVersion != "des-go-0.4.0" || len(got) != 23 || !maps.Equal(got, want) {
+	if lock.EngineVersion != "des-go-0.4.0" || len(got) != 24 || !maps.Equal(got, want) {
 		var rows []string
 		for _, id := range order {
 			rows = append(rows, fmt.Sprintf("%s=%s", id, got[id]))

@@ -382,6 +382,50 @@ cases.append({
     "simpy": "compare",
 })
 
+# ---------------------------------------------------------------- G-C9
+# (Added after mutation run 2 began: the mutant shift-end-wakes-too, a fall
+# of S that also wakes the held front, was killed only by the 0.4.0
+# observation lock; no golden had a request held at the front when S falls
+# with nothing else waking it in that tick. Hand-derived like the others,
+# before the engine ran it.)
+cases.append({
+    "id": "G-C9",
+    "title": "a shift end while a request is held at the front wakes nothing and asks for no dispatch (D-052 (a), D-081 (b))",
+    "model": model("G-C9", [resource("m", 1, "c")], [source("src", const(1), max_entities=2), process("work", const(6), ("m", 1)), sink()],
+                   [("src", "work"), ("work", "done")], [calendar("c", 10, [(0, 5)])]),
+    "config": config(20),
+    "derivation": [
+        "S(t) of m: 1 on [0,5), 0 on [5,10), 1 on [10,15), 0 on [15,20), 1 at 20 (period 10, shift [0,5)); one unit. The source stops after 2 entities.",
+        "t=0: src's first arrival at 1 (seq 1); calendar c's first change at 5 (seq 2; D-048: sources, then calendars).",
+        "t=1: ARRIVAL e1 (seq 1): the next arrival at 2 (seq 3); e1 queues, DISPATCH asked (seq 4). DISPATCH (seq 4): 0+1 <= min(S=1, C-D=1): e1 granted, service [1,7], completion seq 5.",
+        "t=2: ARRIVAL e2 (seq 3): the source has created 2 = max_entities, no next arrival; e2 queues at the front of m's FIFO, DISPATCH (seq 6): 1+1 > 1, e2 held.",
+        "t=5: CAPACITY_CHANGE (seq 2): first the next change, at 10 (seq 7); S 1 -> 0 (Capacity m 0). A decrease wakes nothing: e2 stays held and no DISPATCH is asked (D-052 (a), D-081 (b)); the tick has this one event. e1 keeps its unit (finish-first): overtime [5,7).",
+        "t=7: SERVICE_COMPLETE e1 (seq 5): the release wakes the held front e2; DISPATCH asked (seq 8); e1 completes. DISPATCH (seq 8): 0+1 > min(S=0, 1): e2 held again.",
+        "t=10: CAPACITY_CHANGE (seq 7): next change at 15 (seq 9); S 0 -> 1 (Capacity m 1) wakes the held front e2; DISPATCH (seq 10) grants e2: service [10,16], completion seq 11.",
+        "t=15: CAPACITY_CHANGE (seq 9): next at 20 (seq 12); S 1 -> 0; m's FIFO is empty (e2 in service): nothing to wake. e2 keeps its unit: overtime [15,16).",
+        "t=16: SERVICE_COMPLETE e2 (seq 11): release, nothing held; DISPATCH (seq 13) grants nothing; e2 completes.",
+        "t=20: CAPACITY_CHANGE (seq 12): its next, 25, is after the horizon (not scheduled); S 0 -> 1; nothing to wake.",
+        "13 events: 2 at each of 1, 2, 7, 10, 16 and 1 at each of 5, 15, 20; the last sequence number, the dispatch at 16, is 13. A shift end that woke the held front (the mutant) would add a DISPATCH at 5 (seq 8) and shift every later sequence number by one: 14 events, e2's service started by the dispatch of seq 11.",
+        "Result over [0,20] (T = 20 min): completed e1, e2 (2), censored 0; lead times 6 (1 -> 7), 14 (2 -> 16); waits 0, 8 (e2 queued at 2, started at 10).",
+        "in use [1,7) and [10,16) = 12 min, utilization 12/20 = 0.6; S on [0,5) and [10,15) = 10 min scheduled (and a zero-length [20,20]); min(U,S): [1,5) and [10,15) = 9 min; overtime [5,7) and [15,16) = 3 min (9 + 3 = 12 in use); available min(S, C-D) = S = 10 min; idle max(0, A-U): [0,1) = 1 min (10 - 9); scheduled processing min(P,S), P = U (no finite buffer) = 9 min.",
+    ],
+    "expected": {
+        "arrivals": ids("src", [1, 2]),
+        "starts": {"work": ids("src", [1, 10])},
+        "completions": ids("src", [7, 16]),
+        "blocks": [], "downs": [], "pending": [],
+        "capacities": [["m", 5, 0], ["m", 10, 1], ["m", 15, 0], ["m", 20, 1]],
+        "capacity_seqs": [2, 7, 9, 12],
+        "service_start_seqs": [["r0/src/1", 1, 4], ["r0/src/2", 10, 10]],
+        "events": 13,
+        "result": {
+            "completed_count": 2, "censored_entities": 0, "lead_times_minutes": [6, 14],
+            "queue_waits_minutes": {"work": [0, 8]}, "resource_utilization": {"m": 0.6},
+            "resource_states": {"m": state(12, 9, scheduled=10, scheduled_in_use=9, overtime=3, available=10, idle=1)},
+            "blocking": None, "buffers": None}},
+    "simpy": "compare",
+})
+
 # ---------------------------------------------------------------- G-F6
 cases.append({
     "id": "G-F6",

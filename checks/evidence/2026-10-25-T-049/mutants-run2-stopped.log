@@ -1,0 +1,23 @@
+$ PYTHON=/home/user/Geminus/.venv/bin/python python3 checks/evidence/2026-10-25-T-049/t049-mutants.py
+# run 2, on b6f856c: stopped by hand after 18 mutants, when shift-end-wakes-too was seen killed only by the
+# 0.4.0 observation lock (shift-end-wakes-too-without-locks.log: nothing else kills it); G-C9 was added, and
+# run 3 (mutants-run3.log) is the full run on the final tree
+deadlock-bound-ge	KILLED --- FAIL: TestBreakdownGoldens (0.01s)
+deadlock-bound-uses-shift	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+shift-start-no-wake	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+shift-start-wakes-without-dispatch	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+shift-end-wakes-too	KILLED --- FAIL: TestCalendarObservationDigests (0.03s)
+dispatch-ignores-shift	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+capacity-observes-unchanged	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+capacity-next-change-last	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+capacity-resources-reversed	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+calendars-reverse-id-order	KILLED --- FAIL: TestCalendarGoldens (0.02s)
+clocks-before-calendars	KILLED --- FAIL: TestShiftEndBeforeFailure (0.00s)
+failure-clock-calendar-time	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+failure-at-end-is-next-on	KILLED --- FAIL: TestPatternAgainstTheDefinition (0.00s)
+shift-start-satisfies-waiting-failure	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+b2-deadline-ignores-xend	KILLED --- FAIL: TestCalendarGoldens (0.01s)
+b2-deadline-no-ttrmax	KILLED --- FAIL: TestBreakdownGoldens (0.00s)
+b2-deadline-no-next-fit	KILLED --- FAIL: TestCalendarGoldens (0.00s)
+b2-next-fit-ignores-exceptions	EQUIVALENT 
+(stopped)
