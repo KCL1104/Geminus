@@ -288,3 +288,9 @@ Coordinator 把八個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（H-0
 - **分類的邊界**：`ReadError` 包含 Store 回的所有錯誤（`ErrNotFound` 以外），所以 Store 實作自己的 bug（例如 generator 的 `copies` 回的 `errNotCopied`）也是「讀取失敗」；API 的 Store（`snapshots.Store`）只回 object storage 的錯誤與 `ErrNotFound`，所以 API route 上這個邊界不會把 server 錯誤當成可重試；generator 不經 `StorageFailure`，它自己的 `verify` 對 `Resolve` 的任何 error 都不重試（不變）。
 - **D-069 補充的舊名稱**：見「逐項處理」的「另外」，留給 coordinator。
 - **其餘**：與前兩輪相同（DB 測試、T-018 之前部署的 model route 碰不到這條路徑、worker 端有自己的 failure code）。
+
+### Coordinator 的執行（第 1 輪修正，a38fe86）
+
+Review 第 1 輪的 M1（patchDraft、resetDraft 的延伸超出 H-022 批准的兩個 endpoint）由 coordinator 處理：owner 以選擇題批准延伸，記為 D-087（H-023，79262a5）；批准時的 draft 同步屬 D-069 (b) 的範圍。Coordinator 把本輪三個 commit cherry-pick 到 79262a5 之後（沒有衝突）：41c8417 → 4dcbe61、2415aaa → ebeac7b、9028ff2 → a38fe86，並把 D-069 補充中已不存在的 `bindingFailure`／`storageCause` 改為 `datasets.Failure`／`StorageFailure` 與 `httpapi.DatasetStorageFailed`（本節的 commit）。
+
+在 a38fe86 加上該文字修改的 tree 上（`coordinator-environment.txt`），`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`backend-race` 與新的 `dt_test_t054r1` 上的 `integration-test`（所有 migration 與 SQL suite，32 個 package ok，沒有 FAIL 或 SKIP；含本輪改過的 DB 測試與「request 剛好結束」的案例）都是 exit 0。8 個 DB mutant 在匯出的副本上以同一個 database 執行：8 個都被測試失敗擋下（`coordinator-mutants-db.log`、`coordinator-mutants-db-run.txt`）。Log 與 exit code 在 `checks/evidence/2026-10-25-T-054-r1/coordinator-*`。
