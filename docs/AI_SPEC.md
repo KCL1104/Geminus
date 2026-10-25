@@ -117,6 +117,8 @@ commit 凍結 dataset，inference 從資料提出 model proposal（含 assumptio
 
 只在 completed run 上分析；若有 baseline，先由 server 建可比性與 delta。輸出保留原報告 baseline、scenario、delta、bottleneck、assumptions、uncertainty、suggested_next_experiments。major conclusions 的 evidence={run,metric_path}（D-026：provider 輸出 `analysis-output.schema.json` 不含 run ID，run 以 baseline／scenario 角色引用，server 在 AnalysisRecord 綁定 run_id／baseline_run_id）必須落在供應的 `/metrics/...`，指向 available metric；不能只檢查名稱存在。
 
+T-029 提供比較與核對的基礎（D-088–D-090 PROPOSED）：`internal/results/compare` 的 `Compare` 是 API 與 analysis job 共用的唯一 delta 計算；metric path 是從 Result 根開始、指到單一統計值的 RFC 6901 pointer（例如 `/metrics/queues/<queue>/wait_p95_minutes`），`Statistics` 列出可引用的統計值，`Resolve` 取值（unavailable 為 nil；不存在、malformed 或不是統計值為 `ErrUnknownPath`）；comparison 的每個 metric 以同一個 path 對應 analysis 的 delta。T-024 的 ALLOWED_METRIC_REFERENCES 是 summary 層級的 pointer，兩者的對應由 T-030 決定（D-090 (a)）。
+
 server 驗：evidence 的 run 角色有對應 run（baseline=null 時不得引用 baseline）、metric path 存在且不跨 tenant、值可用、所有數值 delta 与已計算 comparison 相等、baseline=0 的 relative_delta 必須 null。不存在的 metric、錯值或錯 run 使 analysis failed，不儲存為 completed。不把合法 JSON 當 grounded answer。缺 baseline 時 baseline=null、delta=[]，不創造比較。
 
 observation/inference 分開。文字中的重大数值也要能對 supplied values 核對；不能只驗 structured delta 而放過 prose 中的虚構數字。T-024 提供核對的基礎（接到 analysis 的 completed／failed 屬 T-030）：analysis context 回傳可引用的 metric（只有 available 的，依 run 角色）與供應的數字（結果、比較、config、容量與機率，不含 array index）；`locale.CheckProse` 在兩種語言下找出與供應值不符的阿拉伯數字、數字詞（中文數字串、百分之、數字＋量詞或單位；英文 two…trillion、dozen、twice、half）與非 ASCII 數字。uncertainty 需反映 low replications、missing data、censoring、assumptions；不得把模擬結果稱為必然未來。P0 無足夠自動 verifier 時，禁止無 evidence 的 numeric prose，改以 server-rendered metric blocks + qualitative explanation。

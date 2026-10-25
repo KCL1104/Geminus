@@ -129,6 +129,8 @@ absolute_delta=scenario-baseline；relative_delta=absolute_delta/baseline。base
 
 matching seed/node streams 可用於 paired experiments，但 scenario topology 變更、不同 replication cohort 或不相容 config 時，不預設 paired CI 有效。P0 先只輸出已定義的 absolute/relative delta；paired difference CI 可在專門測試/評審後新增。
 
+實作（`internal/results/compare`，T-029；以下細節為 **D-088**，PROPOSED）：「engine numerical profile」以 `engine_version` 相同判定，horizon 與 warmup 以 measurement window 的 tick 比，baseline 的凍結 patch 必須是 `[]`（D-078 (b)）；`trace_level` 不比（§9）。不可比時 `comparable=false`、`incomparable_reasons` 依上列順序列出，每個 metric 為 `incomparable`（`RUNS_NOT_COMPARABLE`），兩邊的值並排、沒有 delta。比較兩個 Result 中每個統計值（summary 的 mean、p50、p95；resource 的 utilization_mean；queue 的三個 wait 與 queue_length_mean），key 取聯集，順序固定（run 層級、additional_metrics、dora、domain、resources、queues；key 依 byte 順序），metric path 為 RFC 6901 pointer（D-090）。任一邊 unavailable 時沒有 delta（`BASELINE_UNAVAILABLE`、`SCENARIO_UNAVAILABLE`、`BOTH_UNAVAILABLE`），一個 run 沒有的 metric 為 `MISSING_IN_BASELINE`／`MISSING_IN_SCENARIO`，超出 ±1e15 的 delta 為 null 並帶原因，沒有 -0；CI 不進入 delta。Warnings：`SCENARIO_PATCH_EMPTY`、`SINGLE_REPLICATION`、`CENSORED_ENTITIES`、`METRICS_TRUNCATED`（超過 10000 筆）。手推的 golden 為 `testdata/contracts/valid-comparison.json`（推導見該目錄的 README）。
+
 ## 8. Execution budgets、progress、cancellation
 
 初始候選：≤1000 replications；≤300s wall timeout/run；≤10M processed events/run（所有 replications 合計）；≤100k active entities/replication；≤10k node visits/entity；sampled trace≤100k events/run。warmup 事件同樣消耗 budget。API 不能接受使用者把上限調高；effective execution limits 在 enqueue 時保存。CPU/memory container limits 與 admission quotas 仍需獨立配置。

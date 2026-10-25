@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 76,
-    "proposed": 6,
+    "proposed": 9,
     "rejected": 0,
     "superseded": 0
   },
@@ -39,12 +39,20 @@
     "review": 0
   },
   "ready_tasks": [
-    "T-029",
     "T-035",
     "T-050",
     "T-053"
   ],
   "next_after_review": [
+    {
+      "id": "T-029",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-088",
+        "D-089",
+        "D-090"
+      ]
+    },
     {
       "id": "T-049",
       "awaiting_task_review": [],
@@ -744,6 +752,29 @@
       "gate": "T-054 驗收前",
       "gates_tasks": [
         "T-054"
+      ]
+    },
+    "D-088": {
+      "status": "proposed",
+      "gate": "T-029 驗收前",
+      "gates_tasks": [
+        "T-029"
+      ]
+    },
+    "D-089": {
+      "status": "proposed",
+      "gate": "T-029 驗收前",
+      "gates_tasks": [
+        "T-029"
+      ]
+    },
+    "D-090": {
+      "status": "proposed",
+      "gate": "T-029 驗收前；T-030、T-032 實作前",
+      "gates_tasks": [
+        "T-029",
+        "T-030",
+        "T-032"
       ]
     }
   },

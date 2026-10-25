@@ -1881,16 +1881,20 @@
         "REQ-015"
       ],
       "decision_gates": [
-        "D-010"
+        "D-010",
+        "D-088",
+        "D-089",
+        "D-090"
       ],
       "scope": [
         "result/read readiness、same-context comparison。",
         "absolute/relative delta、baseline-zero、missing/incomparable handling。",
-        "metric evidence paths可供analyst安全引用。"
+        "metric evidence paths可供analyst安全引用。",
+        "package 名稱由本任務決定（T-029，2026-10-25）：原規劃的 internal/results/http/ 會落在 generic kernel（./internal/results/...，architecture 規則 generic-kernel 禁止 HTTP、tenant scope 與 storage），所以純粹的比較在 internal/results/compare（kernel，T-030 的 analysis job 可直接呼叫同一個函式），service 與 HTTP adapter 在 internal/comparisons（application layer，與 internal/runs、internal/scenarios 相同；列入 scripts/check-architecture 的 appLayers）；沒有新 SQL（internal/storage/runs 的 Get、GetResult）也沒有 migration。可比性、metric 範圍、delta、warning、HTTP binding 與 metric path 為 D-088–D-090（PROPOSED）。"
       ],
       "planned_outputs": [
-        "internal/results/http/",
-        "internal/results/compare/"
+        "internal/results/compare/",
+        "internal/comparisons/"
       ],
       "spec_refs": [
         "docs/SIMULATION_SPEC.md",
@@ -1932,7 +1936,8 @@
       "decision_gates": [
         "D-010",
         "D-016",
-        "D-026"
+        "D-026",
+        "D-090"
       ],
       "scope": [
         "從completed suppliedresults/context做async analysis。",
@@ -2049,7 +2054,9 @@
         "REQ-022",
         "REQ-023"
       ],
-      "decision_gates": [],
+      "decision_gates": [
+        "D-090"
+      ],
       "scope": [
         "explicit run config、queued/running/cancelled/progress。",
         "metrics population/uncertainty/absolute & percent deltas。",

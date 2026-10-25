@@ -65,6 +65,8 @@ Schema 已接受下列成員，全部 optional；沒有它們的模型與上面�
 | `setups` | resource：`{initial?, default?, transitions?: [{from, to, distribution}] (1–9900)}`，`default` 與 `transitions` 至少一個 | D-055 | T-050 |
 | `metrics[]` 的 `system_wip`、`flow_count`（`flow_id`）、`sink_count`（`sink_id`）、`period_throughput`（`period`） | 宣告式 generic 指標，只在宣告時計算 | D-058 | T-051 |
 
+`metrics[]` 的每種宣告在 Result 中的位置（CB-22 剩餘部分；D-090 (b)，PROPOSED，T-029）：`entity_cycle_time` → `/metrics/lead_time_minutes`；`sink_throughput` 沒有 `sink_id` → `/metrics/throughput`，有 `sink_id` 時 generic Result 沒有對應成員（unavailable；每個 sink 的件數是宣告式的 `sink_count`）；`resource_utilization` → `/metrics/resources/<resource_id>/utilization_mean`；`queue_wait` → `/metrics/queues/<key>`（key 為 process 的顯式 queue 的 ID，沒有時為 process 的 ID）；`failure_count`、`rework_count` → 同名的 generic 計數（不是 DORA）；上表的四種 → `/metrics/additional_metrics/<metric id>` 與 `replication_summaries[i].declared[<metric id>]`。宣告不決定 baseline／scenario 比較的範圍：比較涵蓋 Result 中所有的統計值（D-088 (b)）。
+
 ## 3. Distributions / units
 
 P0 僅 constant(value)、exponential(mean)、triangular(min,mode,max)、empirical(samples_ref)。lognormal、calendar-dependent、mixtures 為 P1（lognormal 與 Weibull 依 D-056 提前到 P0：APPROVED，H-018，實作於 T-048；schema 自 T-046 phase 2 起接受 `lognormal(mean, cv)` 與 `weibull(shape, scale)`，T-048 之前以 PRIMITIVE_NOT_SUPPORTED 拒絕，§2.1）。自 T-048（des-go-0.3.0）起兩者在任何分布位置都可用（arrival、service、delay 與 resource 的 breakdowns）；semantic validator 另驗 lognormal 的 mean 解碼後 > 0 且 0 < cv ≤ 10、Weibull 的 scale 解碼後 > 0 且 0.1 ≤ shape ≤ 20（DISTRIBUTION_INVALID，D-075 APPROVED，H-022）；mean 與 scale 是時間參數，照 D-029 換算後超過 365 天為 LIMIT_EXCEEDED（D-063 (c)），cv 與 shape 沒有單位。兩者的樣本至少 1 tick（與 exponential 相同，D-033 視為恆 > 0）；抽樣公式見 SIMULATION_SPEC §4。
