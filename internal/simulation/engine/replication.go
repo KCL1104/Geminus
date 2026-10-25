@@ -145,6 +145,9 @@ type replication struct {
 	entities map[uint64]*entity
 	created  uint64 // the last entity handle
 
+	// onStart, if set, runs at t=0 after the sources' first arrivals are
+	// scheduled (the kernel starts its failure clocks there, D-048).
+	onStart func(r *replication) error
 	// onArrival receives each new entity after its source has scheduled the
 	// next arrival.
 	onArrival func(r *replication, entity uint64) error
@@ -214,6 +217,20 @@ func (r *replication) schedule(delay int64, priority uint8, kind EventKind, node
 	return nil
 }
 
+// scheduleClock adds a failure or repair of failure clock unit of
+// resource at now+delay, priority 15 (D-048), under the same rules.
+func (r *replication) scheduleClock(delay int64, kind EventKind, resource, unit int) error {
+	if delay < 0 || delay > beyondCap {
+		return fmt.Errorf("%w: delay %d ticks", ErrInternal, delay)
+	}
+	at := r.now + delay
+	if at > r.p.horizon {
+		return nil
+	}
+	r.q.schedule(event{Tick: at, Priority: PriorityResourceState, Kind: kind, Node: -1, Resource: int32(resource), Unit: int32(unit)})
+	return nil
+}
+
 // scheduleArrival draws the next interarrival of source src unless the
 // source has created max_entities already.
 func (r *replication) scheduleArrival(src int) error {
@@ -226,11 +243,16 @@ func (r *replication) scheduleArrival(src int) error {
 
 // run executes the replication up to and including the horizon tick.
 // Sources start in node-ID order; the first arrival comes one interarrival
-// after t=0. Every pop is a cancellation checkpoint and spends one event of
-// the run's budget.
+// after t=0; then onStart. Every pop is a cancellation checkpoint and
+// spends one event of the run's budget.
 func (r *replication) run(ctx context.Context, b *Budget) error {
 	for _, src := range r.p.sources {
 		if err := r.scheduleArrival(src); err != nil {
+			return err
+		}
+	}
+	if r.onStart != nil {
+		if err := r.onStart(r); err != nil {
 			return err
 		}
 	}

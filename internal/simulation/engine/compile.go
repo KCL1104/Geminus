@@ -48,6 +48,7 @@ type Program struct {
 	traceLevel   simulation.TraceLevel
 	limits       simulation.ExecutionLimits
 	finite       bool // some process has a finite buffer (D-049)
+	breakdowns   bool // some resource breaks down (D-051)
 }
 
 type cnode struct {
@@ -64,6 +65,10 @@ type cnode struct {
 	outcome     model.SinkOutcome
 	capacity    int  // process: its buffer's capacity from its explicit queue (D-049); 0 unlimited
 	canBlock    bool // source, process or delay whose route can reach a finite buffer
+	// ttrMax is a process's TTRmax (D-050 B2): the longest repair of the
+	// resources of its bundle that break down, 0 without one, -1 when one
+	// has no bound (exponential, lognormal, Weibull: no deadline).
+	ttrMax int64
 }
 
 type requirement struct {
@@ -80,6 +85,11 @@ type route struct {
 type cresource struct {
 	id       string
 	capacity int
+	// Breakdowns (D-051): each unit's time to failure and time to repair,
+	// nil when the resource does not break down; ttrMax is the repair
+	// sampler's bound (-1 for none).
+	ttf, ttr *sampler
+	ttrMax   int64
 }
 
 // Compile checks a run input and builds its Program. The IR is validated
@@ -133,12 +143,14 @@ var validateIR = validate.IR
 
 // kernelExecutes holds the line-flow primitives (ADR-026, D-058;
 // validate.Primitives) this kernel executes: finite buffers since
-// des-go-0.2.0 (T-047, D-049). Each of T-048–T-051 adds its own together
-// with the kernel change and a new engine_version. It is kept apart from
-// the validator's list so that a primitive whose rules are checked but
-// whose kernel is not there yet is still refused. Only read, never
-// iterated.
-var kernelExecutes = map[validate.Primitive]bool{validate.FiniteBuffer: true}
+// des-go-0.2.0 (T-047, D-049); breakdowns, lognormal and Weibull since
+// des-go-0.3.0 (T-048, D-051, D-056). Each of T-049–T-051 adds its own
+// together with the kernel change and a new engine_version. It is kept
+// apart from the validator's list so that a primitive whose rules are
+// checked but whose kernel is not there yet is still refused. Only read,
+// never iterated.
+var kernelExecutes = map[validate.Primitive]bool{validate.FiniteBuffer: true,
+	validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true}
 
 // unsupported refuses every use of a primitive the kernel does not execute,
 // so no model is ever run as if such a member were absent (D-063).
@@ -204,15 +216,35 @@ func checkManifest(ir *model.ModelIR, manifest []model.DatasetBinding, datasets 
 			issues = append(issues, invalid("/datasets/"+ref, "a resolved dataset that is not in the manifest"))
 		}
 	}
-	for i := range ir.Nodes {
-		for _, d := range ir.Nodes[i].Distributions() {
-			if d.Distribution.Type == model.DistEmpirical && !bound[d.Distribution.SamplesRef] {
-				issues = append(issues, invalid(validate.Pointer("model", "nodes", strconv.Itoa(i), d.Member, "distribution", "samples_ref"),
-					d.Distribution.SamplesRef+" has no binding in the manifest"))
-			}
+	for _, d := range distributions(ir) {
+		if d.Distribution.Type == model.DistEmpirical && !bound[d.Distribution.SamplesRef] {
+			issues = append(issues, invalid(d.path+"/samples_ref", d.Distribution.SamplesRef+" has no binding in the manifest"))
 		}
 	}
 	return issues, nil
+}
+
+// located is a distribution of the IR and its pointer under /model.
+type located struct {
+	*model.Distribution
+	path string
+}
+
+// distributions lists every distribution of ir, the nodes' then the
+// resources' (breakdowns, T-048), in IR order.
+func distributions(ir *model.ModelIR) []located {
+	var out []located
+	for i := range ir.Nodes {
+		for _, d := range ir.Nodes[i].Distributions() {
+			out = append(out, located{d.Distribution, validate.Pointer("model", "nodes", strconv.Itoa(i), d.Member, "distribution")})
+		}
+	}
+	for i := range ir.Resources {
+		for _, d := range ir.Resources[i].Distributions() {
+			out = append(out, located{d.Distribution, validate.Pointer("model", "resources", strconv.Itoa(i)) + "/" + d.Member + "/distribution"})
+		}
+	}
+	return out
 }
 
 // resolveDatasets quantizes every empirical distribution's samples and
@@ -220,41 +252,39 @@ func checkManifest(ir *model.ModelIR, manifest []model.DatasetBinding, datasets 
 func resolveDatasets(ir *model.ModelIR, datasets map[string]simulation.ResolvedDataset) (map[string][]int64, map[string]bool, []model.ValidationIssue) {
 	out, zero, seen := map[string][]int64{}, map[string]bool{}, map[string]bool{}
 	var issues []model.ValidationIssue
-	for i := range ir.Nodes {
-		for _, d := range ir.Nodes[i].Distributions() {
-			ref := d.Distribution.SamplesRef
-			if d.Distribution.Type != model.DistEmpirical || seen[ref] {
-				continue
+	for _, d := range distributions(ir) {
+		ref := d.Distribution.SamplesRef
+		if d.Distribution.Type != model.DistEmpirical || seen[ref] {
+			continue
+		}
+		seen[ref] = true
+		path := "/datasets/" + ref
+		ds, ok := datasets[ref]
+		switch {
+		case !ok:
+			issues = append(issues, invalid(path, "no resolved dataset for "+ref))
+			continue
+		case ds.Binding.LogicalRef != ref:
+			issues = append(issues, invalid(path, "the resolved dataset is bound to another logical_ref"))
+			continue
+		case len(ds.Samples) == 0 || len(ds.Samples) != ds.Binding.SampleCount:
+			issues = append(issues, invalid(path, fmt.Sprintf("%d samples, the binding says %d", len(ds.Samples), ds.Binding.SampleCount)))
+			continue
+		}
+		ticks := make([]int64, len(ds.Samples))
+		ok = true
+		for k, s := range ds.Samples {
+			t, err := model.Ticks(s, ds.Binding.Unit)
+			if err != nil {
+				issues = append(issues, invalid(path, fmt.Sprintf("sample %d: %v", k, err)))
+				ok = false
+				break
 			}
-			seen[ref] = true
-			path := "/datasets/" + ref
-			ds, ok := datasets[ref]
-			switch {
-			case !ok:
-				issues = append(issues, invalid(path, "no resolved dataset for "+ref))
-				continue
-			case ds.Binding.LogicalRef != ref:
-				issues = append(issues, invalid(path, "the resolved dataset is bound to another logical_ref"))
-				continue
-			case len(ds.Samples) == 0 || len(ds.Samples) != ds.Binding.SampleCount:
-				issues = append(issues, invalid(path, fmt.Sprintf("%d samples, the binding says %d", len(ds.Samples), ds.Binding.SampleCount)))
-				continue
-			}
-			ticks := make([]int64, len(ds.Samples))
-			ok = true
-			for k, s := range ds.Samples {
-				t, err := model.Ticks(s, ds.Binding.Unit)
-				if err != nil {
-					issues = append(issues, invalid(path, fmt.Sprintf("sample %d: %v", k, err)))
-					ok = false
-					break
-				}
-				ticks[k] = t
-				zero[ref] = zero[ref] || t == 0
-			}
-			if ok {
-				out[ref] = ticks
-			}
+			ticks[k] = t
+			zero[ref] = zero[ref] || t == 0
+		}
+		if ok {
+			out[ref] = ticks
 		}
 	}
 	return out, zero, issues
@@ -338,7 +368,20 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 	resIndex := make(map[string]int, len(resources))
 	for i, r := range resources {
 		resIndex[r.ID] = i
-		p.resources = append(p.resources, cresource{id: r.ID, capacity: r.Capacity})
+		c := cresource{id: r.ID, capacity: r.Capacity}
+		if b := r.Breakdowns; b != nil {
+			var err error
+			ttf, ttr := b.TimeToFailure.Distribution, b.TimeToRepair.Distribution
+			if c.ttf, err = newSampler(ttf, model.TimeUnit(ir.TimeUnit), empirical[ttf.SamplesRef]); err == nil {
+				c.ttr, err = newSampler(ttr, model.TimeUnit(ir.TimeUnit), empirical[ttr.SamplesRef])
+			}
+			if err != nil {
+				return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.DistributionInvalid, "/model/resources", r.ID+": "+err.Error(), model.SeverityError)}}
+			}
+			c.ttrMax = c.ttr.bound()
+			p.breakdowns = true
+		}
+		p.resources = append(p.resources, c)
 	}
 	flows := slices.Clone(ir.Flows)
 	slices.SortFunc(flows, byID(func(f model.Flow) string { return f.ID }))
@@ -367,6 +410,17 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 				c.requires = append(c.requires, requirement{resource: resIndex[r.ResourceID], units: r.Units})
 			}
 			slices.SortFunc(c.requires, func(a, b requirement) int { return cmp.Compare(a.resource, b.resource) })
+			// D-050 B2: the bundle's TTRmax is its resources' longest
+			// repair, none (-1) when one has no bound.
+			for _, q := range c.requires {
+				if r := &p.resources[q.resource]; r.ttr != nil {
+					if r.ttrMax < 0 || c.ttrMax < 0 {
+						c.ttrMax = -1
+					} else {
+						c.ttrMax = max(c.ttrMax, r.ttrMax)
+					}
+				}
+			}
 		case model.NodeDelay:
 			c.delay = sample(&n.DelayTime.Distribution)
 		}
@@ -476,6 +530,13 @@ func (p *Program) QueueLabel(i int) string { return p.nodes[i].label }
 // HasFiniteBuffers reports whether some process has a finite buffer
 // (D-049): only then does a run record blocking and its Result members.
 func (p *Program) HasFiniteBuffers() bool { return p.finite }
+
+// HasBreakdowns reports whether some resource breaks down (D-051): only
+// then do failure clocks run and a Result have downtime members.
+func (p *Program) HasBreakdowns() bool { return p.breakdowns }
+
+// ResourceHasBreakdowns reports whether resource i breaks down.
+func (p *Program) ResourceHasBreakdowns(i int) bool { return p.resources[i].ttf != nil }
 
 // BufferCapacity is process i's buffer capacity, 0 when unlimited.
 func (p *Program) BufferCapacity(i int) int { return p.nodes[i].capacity }

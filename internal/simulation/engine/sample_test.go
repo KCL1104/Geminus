@@ -352,8 +352,20 @@ func TestSamplerRejects(t *testing.T) {
 		"triangular negative": {model.Distribution{Type: model.DistTriangular, Min: &neg, Mode: &one, Max: &two}, model.Minute, nil},
 		"triangular over cap": {model.Distribution{Type: model.DistTriangular, Min: &one, Mode: &one, Max: &big}, model.Day, nil},
 		"empirical empty":     {model.Distribution{Type: model.DistEmpirical, SamplesRef: "dataset:x"}, model.Minute, nil},
-		"unknown type":        {model.Distribution{Type: "lognormal"}, model.Minute, nil},
-		"unknown unit":        {model.Distribution{Type: model.DistConstant, Value: &one}, "week", nil},
+		"unknown type":        {model.Distribution{Type: "gamma"}, model.Minute, nil},
+		// T-048 (D-056, D-075): the validator's ranges, again.
+		"lognormal without cv":    {model.Distribution{Type: model.DistLognormal, Mean: &two}, model.Minute, nil},
+		"lognormal zero mean":     {model.Distribution{Type: model.DistLognormal, Mean: &zero, CV: &one}, model.Minute, nil},
+		"lognormal cv 0":          {model.Distribution{Type: model.DistLognormal, Mean: &two, CV: &zero}, model.Minute, nil},
+		"lognormal cv over 10":    {model.Distribution{Type: model.DistLognormal, Mean: &two, CV: &big}, model.Minute, nil},
+		"lognormal mean over cap": {model.Distribution{Type: model.DistLognormal, Mean: &big, CV: &one}, model.Day, nil},
+		"lognormal infinite mean": {model.Distribution{Type: model.DistLognormal, Mean: &inf, CV: &one}, model.Minute, nil},
+		"weibull without scale":   {model.Distribution{Type: model.DistWeibull, Shape: &two}, model.Minute, nil},
+		"weibull zero scale":      {model.Distribution{Type: model.DistWeibull, Shape: &two, Scale: &zero}, model.Minute, nil},
+		"weibull shape 0":         {model.Distribution{Type: model.DistWeibull, Shape: &zero, Scale: &two}, model.Minute, nil},
+		"weibull shape over 20":   {model.Distribution{Type: model.DistWeibull, Shape: &big, Scale: &two}, model.Minute, nil},
+		"weibull scale over cap":  {model.Distribution{Type: model.DistWeibull, Shape: &two, Scale: &big}, model.Day, nil},
+		"unknown unit":            {model.Distribution{Type: model.DistConstant, Value: &one}, "week", nil},
 	} {
 		if _, err := newSampler(c.d, c.unit, c.vals); err == nil {
 			t.Errorf("%s accepted", name)

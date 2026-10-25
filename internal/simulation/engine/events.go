@@ -2,7 +2,7 @@ package engine
 
 import "container/heap"
 
-// Event priorities within one tick (D-005, D-032). Lower runs first.
+// Event priorities within one tick (D-005, D-032, D-048). Lower runs first.
 const (
 	// PriorityServiceComplete: release every unit of the bundle, then route
 	// the entity onward in the same event.
@@ -10,6 +10,11 @@ const (
 	// PriorityImmediate: arrivals, delay completions and other immediate
 	// state transitions, each routing its entity in the same event.
 	PriorityImmediate uint8 = 10
+	// PriorityResourceState: a resource's failures and repairs (ADR-026
+	// D-048, T-048; calendars and batch timeouts later), after the
+	// arrivals of the tick and before its dispatch, so the dispatch sees
+	// the tick's last capacity.
+	PriorityResourceState uint8 = 15
 	// PriorityDispatch: the resource dispatcher, the last step of a tick.
 	PriorityDispatch uint8 = 20
 )
@@ -22,6 +27,9 @@ const (
 	EventServiceComplete
 	EventDelayComplete
 	EventDispatch
+	// D-051 (T-048), numbered after the existing kinds.
+	EventFailure // a failure clock of Resource, unit Unit, fires
+	EventRepair  // the unit down for failure clock Unit of Resource is repaired
 )
 
 // event is one scheduled occurrence. Seq is unique and strictly increasing
@@ -30,11 +38,13 @@ const (
 // goroutine scheduling.
 type event struct {
 	Tick     int64
-	Priority uint8
 	Seq      uint64
-	Kind     EventKind
 	Node     int    // compiled node index
 	Entity   uint64 // index into the replication's entity table; 0 when none
+	Resource int32  // EventFailure, EventRepair: the resource index
+	Unit     int32  // EventFailure, EventRepair: the failure clock (unit index)
+	Priority uint8
+	Kind     EventKind
 }
 
 func (a event) before(b event) bool {

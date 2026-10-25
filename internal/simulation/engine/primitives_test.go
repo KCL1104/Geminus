@@ -20,16 +20,19 @@ func lineFlowModel(t *testing.T) model.ModelIR {
 	return ir
 }
 
-// des-go-0.2.0 executes finite buffers (T-047) and no other line-flow
-// primitive (ADR-026; T-048–T-051 add them). A model using another never
-// compiles, so it is never simulated as if the member were absent: the
-// validator's primitive gate refuses it first, with paths under /model
-// (D-063). valid-line-flow-ir.json has 19 uses, two of them finite buffers.
+// des-go-0.3.0 executes finite buffers (T-047), breakdowns, lognormal and
+// Weibull (T-048) and no other line-flow primitive (ADR-026; T-049–T-051
+// add them). A model using another never compiles, so it is never
+// simulated as if the member were absent: the validator's primitive gate
+// refuses it first, with paths under /model (D-063).
+// valid-line-flow-ir.json has 19 uses: two finite buffers, the breakdowns,
+// a lognormal (their repair time) and a Weibull (a changeover time) are
+// executed; the other 14 are refused.
 func TestCompileRefusesLineFlowPrimitives(t *testing.T) {
 	_, err := Compile(input(lineFlowModel(t)))
 	var ie *InputError
-	if !errors.As(err, &ie) || !errors.Is(err, ErrInvalidInput) || len(ie.Issues) != 17 {
-		t.Fatalf("want 17 PRIMITIVE_NOT_SUPPORTED issues, got %v", err)
+	if !errors.As(err, &ie) || !errors.Is(err, ErrInvalidInput) || len(ie.Issues) != 14 {
+		t.Fatalf("want 14 PRIMITIVE_NOT_SUPPORTED issues, got %v", err)
 	}
 	for _, is := range ie.Issues {
 		if is.Code != validate.PrimitiveNotSupported || is.Severity != model.SeverityError || is.Path[:7] != "/model/" {
@@ -37,10 +40,12 @@ func TestCompileRefusesLineFlowPrimitives(t *testing.T) {
 		}
 	}
 	issueExactly(t, err, "/model/nodes/5/arrival/schedule", validate.PrimitiveNotSupported)
-	issueExactly(t, err, "/model/resources/1/breakdowns", validate.PrimitiveNotSupported)
+	issueExactly(t, err, "/model/resources/1/setups", validate.PrimitiveNotSupported)
 	for _, is := range ie.Issues {
-		if is.Path == "/model/nodes/3/capacity" || is.Path == "/model/nodes/4/capacity" {
-			t.Errorf("a finite buffer is refused: %+v", is)
+		switch is.Path {
+		case "/model/nodes/3/capacity", "/model/nodes/4/capacity", "/model/resources/1/breakdowns",
+			"/model/resources/1/breakdowns/time_to_repair/distribution", "/model/resources/1/setups/transitions/0/distribution":
+			t.Errorf("an executed primitive is refused: %+v", is)
 		}
 	}
 }
@@ -139,7 +144,8 @@ func TestCompileRefusesWhatTheKernelDoesNotRun(t *testing.T) {
 		})
 	}
 	// The same models, through the real validator, are refused there first;
-	// a primitive both checked and executed (T-047: finite_buffer) compiles.
+	// a primitive both checked and executed (T-047: finite_buffer; T-048:
+	// breakdowns, lognormal, weibull) compiles.
 	validateIR = validate.IR
 	for _, p := range validate.Primitives {
 		ir := golden(t, "deterministic-queue.json")
@@ -162,8 +168,9 @@ func TestCompileRefusesWhatTheKernelDoesNotRun(t *testing.T) {
 // validator checks: should a validator rule land before its kernel, Compile
 // still refuses the model. Checked on a decoded model, past the validator.
 func TestKernelRefusesWhatItDoesNotExecute(t *testing.T) {
-	// Each kernel task adds its own primitive, with this list: so far T-047's.
-	executed := map[validate.Primitive]bool{validate.FiniteBuffer: true}
+	// Each kernel task adds its own primitive, with this list: so far
+	// T-047's and T-048's.
+	executed := map[validate.Primitive]bool{validate.FiniteBuffer: true, validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true}
 	for _, p := range validate.Primitives {
 		if kernelExecutes[p] != executed[p] {
 			t.Errorf("%s: executed %v, want %v; update this test with the kernel task that implements it", p, kernelExecutes[p], executed[p])
@@ -177,7 +184,7 @@ func TestKernelRefusesWhatItDoesNotExecute(t *testing.T) {
 			want = append(want, u)
 		}
 	}
-	if len(issues) != len(want) || len(want) != 17 {
+	if len(issues) != len(want) || len(want) != 14 {
 		t.Fatalf("%d issues for %d uses", len(issues), len(want))
 	}
 	for i, u := range want {

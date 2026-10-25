@@ -2,18 +2,22 @@
 """Independent reference for the engine's numerical profile (T-020).
 
 Re-implements, without sharing code with the Go engine, SplitMix64, seed
-derivation, tick quantization, the four samplers, the event order and the
-source-arrival process (docs/SIMULATION_SPEC.md §2 and §4), and writes or
+derivation, tick quantization, the samplers (constant, exponential,
+triangular, empirical; lognormal and Weibull since T-048, D-056), the event
+order (with priority 15, D-048), the source-arrival process and the
+breakdown streams (D-051) (docs/SIMULATION_SPEC.md §2 and §4), and writes or
 checks testdata/simulation/engine-vectors.json. The Go tests must reproduce
 every vector exactly. This is NOT a DES engine or a SimPy differential test.
 
 It shares one thing with the engine by design: the numerical profile. The
-natural logarithm is the pinned algorithm below, not the platform's log, so
-equality is bit-exact on every input rather than on the few draws stored; the
-large-sample digests check that over 10^6 log inputs and 10^5 draws per
+natural logarithm, the exponential and AS241's inverse normal CDF are the
+pinned algorithms below, not the platform's functions, so equality is
+bit-exact on every input rather than on the few draws stored; the
+large-sample digests check that over 10^6 inputs each and 10^5 draws per
 sampler. Agreement shows both implement the same profile; it is not evidence
 that the profile is statistically right (that is the SimPy reference's job,
-scripts/simpy_reference.py, from T-047).
+scripts/simpy_reference.py, from T-047, and the Go tests of the lognormal
+and Weibull samplers against their CDFs, T-048).
 
     python scripts/engine_reference.py          # check the stored vectors
     python scripts/engine_reference.py --write  # regenerate them
@@ -115,6 +119,97 @@ def pinned_log(x: float) -> float:
     return k * LN2_HI - ((hfsq - (s * (hfsq + r) + k * LN2_LO)) - f)
 
 
+# pinned_exp is Go's pure-Go math.exp (src/math/exp.go, BSD-3-Clause, see
+# docs/THIRD_PARTY_NOTICES.md, Copyright 2009 The Go Authors), a simplified
+# version of FreeBSD's /usr/src/lib/msun/src/e_exp.c, which came with this
+# notice:
+#
+# ====================================================
+# Copyright (C) 2004 by Sun Microsystems, Inc. All rights reserved.
+#
+# Permission to use, copy, modify, and distribute this
+# software is freely granted, provided that this notice
+# is preserved.
+# ====================================================
+#
+# Every operation is one binary64 rounding (the Go engine rounds each
+# product explicitly, so no fused multiply-add); ldexp is exact or, for a
+# subnormal result, one correct rounding in both languages (D-056, D-075).
+EXP_LN2_HI, EXP_LN2_LO = 6.93147180369123816490e-01, 1.90821492927058770002e-10
+EXP_LOG2E = 1.44269504088896338700e+00
+EXP_OVERFLOW, EXP_UNDERFLOW = 7.09782712893383973096e+02, -7.45133219101941108420e+02
+EXP_NEAR_ZERO = 2.0**-28
+EXP_P = (1.66666666666666657415e-01, -2.77777777770155933842e-03, 6.61375632143793436117e-05,
+         -1.65339022054652515390e-06, 4.13813679705723846039e-08)
+
+
+def pinned_exp(x: float) -> float:
+    if math.isnan(x):
+        return x
+    if x > EXP_OVERFLOW:
+        return math.inf
+    if x < EXP_UNDERFLOW:
+        return 0.0
+    if -EXP_NEAR_ZERO < x < EXP_NEAR_ZERO:
+        return 1 + x
+    k = int(EXP_LOG2E * x - 0.5) if x < 0 else int(EXP_LOG2E * x + 0.5)
+    hi = x - k * EXP_LN2_HI
+    lo = k * EXP_LN2_LO
+    r = hi - lo
+    t = r * r
+    p1, p2, p3, p4, p5 = EXP_P
+    c = r - t * (p1 + t * (p2 + t * (p3 + t * (p4 + t * p5))))
+    y = 1 - ((lo - (r * c) / (2 - c)) - hi)
+    return math.ldexp(y, k)
+
+
+# ndtri is Wichura's algorithm AS241 (PPND16, Applied Statistics 37 (1988)
+# 477-484), the inverse of the standard normal CDF, as R's qnorm writes it:
+# Horner from the highest coefficient, one binary64 rounding per operation.
+AS241_A = (3.3871328727963666080e0, 1.3314166789178437745e+2, 1.9715909503065514427e+3, 1.3731693765509461125e+4,
+           4.5921953931549871457e+4, 6.7265770927008700853e+4, 3.3430575583588128105e+4, 2.5090809287301226727e+3)
+AS241_B = (1.0, 4.2313330701600911252e+1, 6.8718700749205790830e+2, 5.3941960214247511077e+3,
+           2.1213794301586595867e+4, 3.9307895800092710610e+4, 2.8729085735721942674e+4, 5.2264952788528545610e+3)
+AS241_C = (1.42343711074968357734e0, 4.63033784615654529590e0, 5.76949722146069140550e0, 3.64784832476320460504e0,
+           1.27045825245236838258e0, 2.41780725177450611770e-1, 2.27238449892691845833e-2, 7.74545014278341407640e-4)
+AS241_D = (1.0, 2.05319162663775882187e0, 1.67638483018380384940e0, 6.89767334985100004550e-1,
+           1.48103976427480074590e-1, 1.51986665636164571966e-2, 5.47593808499534494600e-4, 1.05075007164441684324e-9)
+AS241_E = (6.65790464350110377720e0, 5.46378491116411436990e0, 1.78482653991729133580e0, 2.96560571828504891230e-1,
+           2.65321895265761230930e-2, 1.24266094738807843860e-3, 2.71155556874348757815e-5, 2.01033439929228813265e-7)
+AS241_F = (1.0, 5.99832206555887937690e-1, 1.36929880922735805310e-1, 1.48753612908506148525e-2,
+           7.86869131145613259100e-4, 1.84631831751005468180e-5, 1.42151175831644588870e-7, 2.04426310338993978564e-15)
+
+
+def horner(coefficients: tuple, r: float) -> float:
+    v = coefficients[-1]
+    for c in reversed(coefficients[:-1]):
+        v = v * r + c
+    return v
+
+
+def ndtri(p: float) -> float:
+    q = p - 0.5
+    if abs(q) <= 0.425:
+        r = 0.180625 - q * q
+        return q * horner(AS241_A, r) / horner(AS241_B, r)
+    r = p if q < 0 else 1 - p
+    r = math.sqrt(-pinned_log(r))
+    if r <= 5:
+        r = r - 1.6
+        v = horner(AS241_C, r) / horner(AS241_D, r)
+    else:
+        r = r - 5
+        v = horner(AS241_E, r) / horner(AS241_F, r)
+    return -v if q < 0 else v
+
+
+def lognormal_params(mean: float, cv: float) -> tuple[float, float]:
+    """D-056: sigma^2 = ln(1 + cv^2), mu = ln(mean) - sigma^2/2, with the
+    pinned logarithm."""
+    s2 = pinned_log(1 + cv * cv)
+    return pinned_log(mean) - s2 / 2, math.sqrt(s2)
+
+
 def round_half_up(x: float) -> int:
     # Exact for x >= 0 at these magnitudes: x - floor(x) has no rounding error.
     f = math.floor(x)
@@ -163,12 +258,19 @@ class Sampler:
                 self.value = tri
         elif self.kind == "empirical":
             self.values = [ticks(s, empirical_unit) for s in dist["samples"]]
+        elif self.kind == "lognormal":  # D-056: inverse CDF, one draw per sample
+            mu, sigma = lognormal_params(dist["mean"], dist["cv"])
+            self.value = lambda u: pinned_exp(mu + sigma * ndtri(u))
+        elif self.kind == "weibull":  # D-056: scale * (-ln(1-U))^(1/shape) as exp(ln(y)/shape)
+            shape, scale = dist["shape"], dist["scale"]
+            self.value = lambda u: scale * pinned_exp(pinned_log(-pinned_log(1 - u)) / shape)
         else:
             raise ValueError(self.kind)
 
     def ticks_of(self, v: float) -> int:
+        # D-033, D-056: an exponential, lognormal or Weibull sample is never 0 ticks.
         t = quantize(v, self.unit)
-        return max(t, 1) if self.kind == "exponential" else t
+        return max(t, 1) if self.kind in ("exponential", "lognormal", "weibull") else t
 
     def draw(self, rng: SplitMix64) -> int:
         if self.fixed is not None:
@@ -195,6 +297,17 @@ SAMPLER_CASES = [
     {"name": "triangular degenerate draws nothing", "unit": "minute", "distribution": {"type": "triangular", "min": 3, "mode": 3, "max": 3}},
     {"name": "empirical", "unit": "minute", "distribution": {"type": "empirical", "samples_ref": "dataset:review_duration"},
      "samples": [0, 240, 360.5], "samples_unit": "minute"},
+    # T-048 (D-056): appended, so the cases above keep their node IDs and vectors.
+    {"name": "lognormal repair time", "unit": "minute", "distribution": {"type": "lognormal", "mean": 30, "cv": 0.5}},
+    {"name": "lognormal cv 10", "unit": "minute", "distribution": {"type": "lognormal", "mean": 4, "cv": 10}},
+    {"name": "lognormal tiny mean is still 1 tick", "unit": "millisecond", "distribution": {"type": "lognormal", "mean": 1e-300, "cv": 1}},
+    {"name": "lognormal tail beyond the cap", "unit": "day", "distribution": {"type": "lognormal", "mean": 300, "cv": 3}},
+    {"name": "lognormal tiny cv", "unit": "second", "distribution": {"type": "lognormal", "mean": 90, "cv": 1e-9}},
+    {"name": "weibull failure clock", "unit": "hour", "distribution": {"type": "weibull", "shape": 1.5, "scale": 8}},
+    {"name": "weibull shape 0.1", "unit": "minute", "distribution": {"type": "weibull", "shape": 0.1, "scale": 2}},
+    {"name": "weibull shape 20", "unit": "second", "distribution": {"type": "weibull", "shape": 20, "scale": 30}},
+    {"name": "weibull shape 1", "unit": "minute", "distribution": {"type": "weibull", "shape": 1, "scale": 48}},
+    {"name": "weibull tiny scale is still 1 tick", "unit": "millisecond", "distribution": {"type": "weibull", "shape": 3, "scale": 1e-300}},
 ]
 DRAWS = 12
 DIGEST_DRAWS = 100_000
@@ -258,10 +371,105 @@ def log_profile() -> dict:
             "edges": [{"x": f"{bits(x):016x}", "log": f"{bits(pinned_log(x)):016x}"} for x in LOG_EDGES]}
 
 
+# T-048 (D-056): the pinned exp and AS241 like the logarithm above, bit for
+# bit on 10^6 inputs each and on edge inputs: overflow and underflow, the
+# near-zero shortcut, subnormal results, the reduction's rounding of k;
+# AS241 near 0, 0.5 and 1 and at its two branch boundaries.
+EXP_INPUTS = 1_000_000
+EXP_SEED = 0x20261025
+SUBNORMAL_EXP = -708.3964185322641  # exp is about 2^-1022 here
+EXP_EDGES = [0.0, -0.0, 1.0, -1.0, 0.5, -0.5, 10.0, -10.0, 2.0**-28, -(2.0**-28), from_bits(bits(2.0**-28) - 1),
+             -from_bits(bits(2.0**-28) - 1), EXP_OVERFLOW, from_bits(bits(EXP_OVERFLOW) + 1), from_bits(bits(EXP_OVERFLOW) - 1),
+             EXP_UNDERFLOW, -from_bits(bits(-EXP_UNDERFLOW) + 1), SUBNORMAL_EXP, -720.0, -740.0, -745.0,
+             0.34657359027997264, -0.34657359027997264, 1.5 * 0.6931471805599453, -2.5 * 0.6931471805599453, 1e-300,
+             36.04365338911715, -36.7368005696771]
+EXP_CONSTANTS = {"ln2_hi": EXP_LN2_HI, "ln2_lo": EXP_LN2_LO, "log2e": EXP_LOG2E, "overflow": EXP_OVERFLOW,
+                 "underflow": EXP_UNDERFLOW, "near_zero": EXP_NEAR_ZERO, "p1": EXP_P[0], "p2": EXP_P[1], "p3": EXP_P[2],
+                 "p4": EXP_P[3], "p5": EXP_P[4]}
+
+
+def exp_profile() -> dict:
+    """pinned_exp on EXP_INPUTS values (U - 0.5) * 2^(i mod 11), so from
+    near 0 to +-512, hashed as binary64 bits (LE), plus the edges."""
+    rng = SplitMix64(EXP_SEED)
+    h = hashlib.sha256()
+    for i in range(EXP_INPUTS):
+        h.update(bits(pinned_exp((rng.uniform() - 0.5) * 2.0 ** (i % 11))).to_bytes(8, "little"))
+    return {"seed": f"{EXP_SEED:016x}", "inputs": EXP_INPUTS, "digest": h.hexdigest(),
+            "constants": {k: f"{bits(v):016x}" for k, v in EXP_CONSTANTS.items()},
+            "edges": [{"x": f"{bits(x):016x}", "exp": f"{bits(pinned_exp(x)):016x}"} for x in EXP_EDGES]}
+
+
+NDTRI_INPUTS = 1_000_000
+NDTRI_SEED = 0x20261026
+U_MIN, U_MAX = 2.0**-53, 1 - 2.0**-53  # SplitMix64's (0, 1) mapping, both ends
+NDTRI_EDGES = [U_MIN, U_MAX, 0.5, from_bits(bits(0.5) + 1), from_bits(bits(0.5) - 1), 0.075, from_bits(bits(0.075) + 1),
+               from_bits(bits(0.075) - 1), 0.925, from_bits(bits(0.925) + 1), from_bits(bits(0.925) - 1),
+               math.exp(-25.0), from_bits(bits(math.exp(-25.0)) + 1), 1 - math.exp(-25.0), 1e-10, 1 - 1e-10, 0.3, 0.9, 0.975, 0.025,
+               1e-300, 2.0**-1074]
+AS241_CONSTANTS = {f"{name}{i}": v for name, cs in (("a", AS241_A), ("b", AS241_B), ("c", AS241_C), ("d", AS241_D),
+                                                     ("e", AS241_E), ("f", AS241_F)) for i, v in enumerate(cs)}
+
+
+def ndtri_profile() -> dict:
+    rng = SplitMix64(NDTRI_SEED)
+    h = hashlib.sha256()
+    for _ in range(NDTRI_INPUTS):
+        h.update(bits(ndtri(rng.uniform())).to_bytes(8, "little"))
+    return {"seed": f"{NDTRI_SEED:016x}", "inputs": NDTRI_INPUTS, "digest": h.hexdigest(),
+            "constants": {k: f"{bits(v):016x}" for k, v in AS241_CONSTANTS.items()},
+            "edges": [{"p": f"{bits(p):016x}", "ndtri": f"{bits(ndtri(p)):016x}"} for p in NDTRI_EDGES]}
+
+
+def lognormal_vectors() -> list[dict]:
+    """mu and sigma of every lognormal sampler case, by bit pattern."""
+    out = []
+    for case in SAMPLER_CASES:
+        d = case["distribution"]
+        if d["type"] == "lognormal":
+            mu, sigma = lognormal_params(d["mean"], d["cv"])
+            out.append({"mean": d["mean"], "cv": d["cv"], "mu": f"{bits(mu):016x}", "sigma": f"{bits(sigma):016x}"})
+    return out
+
+
+# D-051: unit u of a resource draws its times to failure and to repair from
+# its own streams (resource ID, "ttf/<u>") and (resource ID, "ttr/<u>").
+BREAKDOWN_STREAMS = {"resource_id": "press", "capacity": 3, "unit": "minute",
+                     "time_to_failure": {"type": "weibull", "shape": 1.5, "scale": 600},
+                     "time_to_repair": {"type": "lognormal", "mean": 30, "cv": 0.5}}
+
+
+def breakdown_streams() -> dict:
+    rep = replication_seed(*REP_SEED_INDEX)
+    b = BREAKDOWN_STREAMS
+    units = []
+    for u in range(b["capacity"]):
+        entry = {"unit": u}
+        for purpose, member in (("ttf", "time_to_failure"), ("ttr", "time_to_repair")):
+            rng = stream(rep, b["resource_id"], f"{purpose}/{u}")
+            draw = sampler(b[member], b["unit"])
+            entry[purpose] = [draw(rng) for _ in range(DRAWS)]
+            entry[purpose + "_state_after"] = f"{rng.state:016x}"
+        units.append(entry)
+    return {**b, "draws": DRAWS, "units": units}
+
+
 EVENT_PUSHES = [
     (5, "immediate"), (5, "dispatch"), (3, "immediate"), (5, "service_complete"), (5, "immediate"),
     (3, "dispatch"), (0, "immediate"), (5, "service_complete"), (3, "service_complete"), (5, "dispatch"),
 ]
+
+
+# D-048: failures and repairs run at priority 15, after arrivals and delay
+# completions (10), before the dispatch (20).
+EVENT_PUSHES_15 = [(5, 15), (5, 20), (5, 10), (3, 15), (5, 0), (5, 15), (3, 20), (3, 10), (0, 15), (5, 10)]
+
+
+def event_order_15() -> list[int]:
+    h = []
+    for seq, (tick, pri) in enumerate(EVENT_PUSHES_15, start=1):
+        heapq.heappush(h, (tick, pri, seq))
+    return [heapq.heappop(h)[2] for _ in range(len(h))]
 
 
 def event_order() -> list[int]:
@@ -346,6 +554,13 @@ def build() -> dict:
         "trace_selection": trace_selection(),
         "event_order": {"pushes": [{"tick": t, "priority": PRIORITY[p]} for t, p in EVENT_PUSHES], "pop_sequence": event_order()},
         "arrivals": {"run": ARRIVAL_RUN, "sources": ARRIVAL_SOURCES, "expected": expected, "stream_states_after": states},
+        # T-048 (D-048, D-051, D-056), after the vectors above, which are unchanged.
+        "exp_profile": exp_profile(),
+        "ndtri_profile": ndtri_profile(),
+        "lognormal_params": lognormal_vectors(),
+        "breakdown_streams": breakdown_streams(),
+        "event_order_resource_state": {"pushes": [{"tick": t, "priority": p} for t, p in EVENT_PUSHES_15],
+                                       "pop_sequence": event_order_15()},
     }
 
 
@@ -361,7 +576,9 @@ def main() -> int:
         return 1
     print(json.dumps({"status": "PASS_ENGINE_REFERENCE_VECTORS", "sampler_cases": len(data["sampler_vectors"]),
                       "event_pushes": len(EVENT_PUSHES), "arrivals": len(data["arrivals"]["expected"]),
-                      "log_inputs": LOG_INPUTS, "digest_draws_per_sampler": DIGEST_DRAWS}))
+                      "log_inputs": LOG_INPUTS, "digest_draws_per_sampler": DIGEST_DRAWS,
+                      "exp_inputs": EXP_INPUTS, "ndtri_inputs": NDTRI_INPUTS,
+                      "breakdown_stream_units": len(data["breakdown_streams"]["units"])}))
     return 0
 
 

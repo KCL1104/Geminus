@@ -1,0 +1,4126 @@
+{
+  "status": "HAND_DERIVED_EXPECTATION_NOT_ENGINE_RUN",
+  "semantics_decisions": [
+    "D-047",
+    "D-048",
+    "D-050",
+    "D-051",
+    "D-056",
+    "D-074",
+    "D-075"
+  ],
+  "units": "starts, completions, blocks, downs and lead times in model minutes; Result members in ticks (1 ms)",
+  "notes": "downs are [resource, unit (failure clock), from, to] in the order the downtimes started, to null when still down at the horizon (or at the stall); pending are [resource, unit, tick] of the failures that found every unit in use and waited for a release (finish-first, D-051). Each case's derivation is the hand derivation of its expected values (assembled by checks/evidence/2026-10-25-T-048/breakdown_goldens_gen.py, which only builds the JSON).",
+  "cases": [
+    {
+      "id": "G-F1",
+      "title": "a failure while the unit is idle (ADR-026 D-051 G-F1)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-F1",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 3
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__work",
+            "from": "src",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 30,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "t=0: src schedules its first arrival at 2; then m's unit 0 draws TTF 10: FAILURE at 10 (D-048: sources, then failure clocks).",
+        "Arrivals every 2 min (e_k at 2k), each served 1 min: e1–e4 run [2,3], [4,5], [6,7], [8,9].",
+        "t=10: ARRIVAL e5 (priority 10) queues and asks for a dispatch; FAILURE (15): idle = C - D - in_use = 1 - 0 - 0 = 1, so the unit goes down at once (D=1), TTR 3: REPAIR at 13; DISPATCH (20): e5 needs 1 > C - D = 0, held.",
+        "t=12: e6 queues behind e5 (not a candidate); the dispatch grants nothing.",
+        "t=13: REPAIR: D=0, next TTF 10: FAILURE at 23; the held front e5 wakes and the dispatch grants it: e5 [13,14]; e6 is the next candidate and is held (in use).",
+        "t=14: e5 completes (0), releasing m and waking e6; ARRIVAL e7 (10) queues; DISPATCH: e6 [14,15], e7 held. t=15: e7 [15,16]. t=16: e7 done (0), e8 arrives (10): e8 [16,17].",
+        "e9–e11 run [18,19], [20,21], [22,23].",
+        "t=23: e11 completes (0); FAILURE (15): the unit is idle, down at once, REPAIR at 26.",
+        "t=24: e12 held. t=26: ARRIVAL e13 (10) queues behind e12; REPAIR (15): D=0, FAILURE at 36 (> horizon, never scheduled); DISPATCH: e12 [26,27], e13 held. t=27: e13 [27,28]. t=28: e13 done, e14 [28,29]. t=30: e15 starts; its completion at 31 is after the horizon.",
+        "Result over [0, 30] (T = 30 min): completed 14, censored 1 (e15); lead times 1,1,1,1,4,3,2,1,1,1,1,3,2,1; waits 0,0,0,0,3,2,1,0,0,0,0,2,1,0,0 (e15's 0 counts: it starts at 30);",
+        "in use 14 min (e15's service has no length inside [0,30]): 840000 ticks, utilization 14/30; down [10,13] and [23,26]: 6 min; 2 breakdowns started, 2 complete repairs of 6 min; available = C*T - down = 24 min; idle = available - in use = 10 min (A - U >= 0 at every tick, U + D <= C).",
+        "No finite buffer: m is the only resource and has breakdowns, so it is the only resource_states entry; no blocking or buffers members."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/src/1",
+              2
+            ],
+            [
+              "r0/src/2",
+              4
+            ],
+            [
+              "r0/src/3",
+              6
+            ],
+            [
+              "r0/src/4",
+              8
+            ],
+            [
+              "r0/src/5",
+              13
+            ],
+            [
+              "r0/src/6",
+              14
+            ],
+            [
+              "r0/src/7",
+              15
+            ],
+            [
+              "r0/src/8",
+              16
+            ],
+            [
+              "r0/src/9",
+              18
+            ],
+            [
+              "r0/src/10",
+              20
+            ],
+            [
+              "r0/src/11",
+              22
+            ],
+            [
+              "r0/src/12",
+              26
+            ],
+            [
+              "r0/src/13",
+              27
+            ],
+            [
+              "r0/src/14",
+              28
+            ],
+            [
+              "r0/src/15",
+              30
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            3
+          ],
+          [
+            "r0/src/2",
+            5
+          ],
+          [
+            "r0/src/3",
+            7
+          ],
+          [
+            "r0/src/4",
+            9
+          ],
+          [
+            "r0/src/5",
+            14
+          ],
+          [
+            "r0/src/6",
+            15
+          ],
+          [
+            "r0/src/7",
+            16
+          ],
+          [
+            "r0/src/8",
+            17
+          ],
+          [
+            "r0/src/9",
+            19
+          ],
+          [
+            "r0/src/10",
+            21
+          ],
+          [
+            "r0/src/11",
+            23
+          ],
+          [
+            "r0/src/12",
+            27
+          ],
+          [
+            "r0/src/13",
+            28
+          ],
+          [
+            "r0/src/14",
+            29
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            10,
+            13
+          ],
+          [
+            "m",
+            0,
+            23,
+            26
+          ]
+        ],
+        "pending": [],
+        "result": {
+          "completed_count": 14,
+          "censored_entities": 1,
+          "lead_times_minutes": [
+            1,
+            1,
+            1,
+            1,
+            4,
+            3,
+            2,
+            1,
+            1,
+            1,
+            1,
+            3,
+            2,
+            1
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              0,
+              0,
+              0,
+              3,
+              2,
+              1,
+              0,
+              0,
+              0,
+              0,
+              2,
+              1,
+              0,
+              0
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.4666666666666667
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 840000,
+              "down_ticks": 360000,
+              "breakdowns_started": 2,
+              "repairs_completed": 2,
+              "completed_repair_ticks": 360000,
+              "available_ticks": 1440000,
+              "idle_ticks": 600000,
+              "scheduled_processing_ticks": 840000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "not compared: same-tick arrival and failure at 10 and 26 (D-048 tie-break; SimPy orders same-time events by scheduling)"
+    },
+    {
+      "id": "G-F2",
+      "title": "a failure during service waits for the release (finish-first, ADR-026 D-051 G-F2)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-F2",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 3
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__work",
+            "from": "src",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 40,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "t=0: src's first arrival at 3; m unit 0: FAILURE at 10. Arrivals every 3 min, service 2: e1 [3,5], e2 [6,8], e3 [9,11].",
+        "t=10: FAILURE: idle = 1 - 0 - 1 = 0, every unit in use: the failure waits (BreakdownPending), nothing goes down.",
+        "t=11: e3 completes: the released unit satisfies the waiting failure first and goes down (D=1), TTR 3 from now: REPAIR at 14.",
+        "t=12: e4 held (C - D = 0). t=14: REPAIR: D=0, FAILURE at 24; e4 wakes: e4 [14,16]. t=15: e5 held (in use). t=16: e5 [16,18]. t=18: e5 done (0), e6 arrives (10): e6 [18,20]. t=21: e7 [21,23].",
+        "t=24: ARRIVAL e8 (10) queues; FAILURE (15): the unit is idle, down at once, REPAIR at 27; DISPATCH: e8 held.",
+        "t=27: ARRIVAL e9 (10) queues; REPAIR (15): D=0, FAILURE at 37; DISPATCH: e8 [27,29], e9 held. t=29: e9 [29,31]. t=30: e10 held. t=31: e10 [31,33]. t=33: e10 done, e11 [33,35]. t=36: e12 [36,38].",
+        "t=37: FAILURE: busy, waits. t=38: e12 completes, the unit goes down until 41 (REPAIR at 41 > horizon 40, never scheduled). t=39: e13 held to the horizon.",
+        "Result over [0, 40]: 13 created, 12 completed, 1 censored (e13); lead times 2,2,2,4,3,2,2,5,4,3,2,2; waits 0,0,0,2,1,0,0,3,2,1,0,0;",
+        "in use 12 x 2 = 24 min, utilization 0.6; down [11,14] 3 + [24,27] 3 + [38,40] 2 = 8 min; 3 breakdowns started, 2 complete repairs of 6 min (the third has not ended); available 32 min; idle 8 min."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/src/1",
+              3
+            ],
+            [
+              "r0/src/2",
+              6
+            ],
+            [
+              "r0/src/3",
+              9
+            ],
+            [
+              "r0/src/4",
+              14
+            ],
+            [
+              "r0/src/5",
+              16
+            ],
+            [
+              "r0/src/6",
+              18
+            ],
+            [
+              "r0/src/7",
+              21
+            ],
+            [
+              "r0/src/8",
+              27
+            ],
+            [
+              "r0/src/9",
+              29
+            ],
+            [
+              "r0/src/10",
+              31
+            ],
+            [
+              "r0/src/11",
+              33
+            ],
+            [
+              "r0/src/12",
+              36
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            5
+          ],
+          [
+            "r0/src/2",
+            8
+          ],
+          [
+            "r0/src/3",
+            11
+          ],
+          [
+            "r0/src/4",
+            16
+          ],
+          [
+            "r0/src/5",
+            18
+          ],
+          [
+            "r0/src/6",
+            20
+          ],
+          [
+            "r0/src/7",
+            23
+          ],
+          [
+            "r0/src/8",
+            29
+          ],
+          [
+            "r0/src/9",
+            31
+          ],
+          [
+            "r0/src/10",
+            33
+          ],
+          [
+            "r0/src/11",
+            35
+          ],
+          [
+            "r0/src/12",
+            38
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            11,
+            14
+          ],
+          [
+            "m",
+            0,
+            24,
+            27
+          ],
+          [
+            "m",
+            0,
+            38,
+            null
+          ]
+        ],
+        "pending": [
+          [
+            "m",
+            0,
+            10
+          ],
+          [
+            "m",
+            0,
+            37
+          ]
+        ],
+        "result": {
+          "completed_count": 12,
+          "censored_entities": 1,
+          "lead_times_minutes": [
+            2,
+            2,
+            2,
+            4,
+            3,
+            2,
+            2,
+            5,
+            4,
+            3,
+            2,
+            2
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              0,
+              0,
+              2,
+              1,
+              0,
+              0,
+              3,
+              2,
+              1,
+              0,
+              0
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.6
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 1440000,
+              "down_ticks": 480000,
+              "breakdowns_started": 3,
+              "repairs_completed": 2,
+              "completed_repair_ticks": 360000,
+              "available_ticks": 1920000,
+              "idle_ticks": 480000,
+              "scheduled_processing_ticks": 1440000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "not compared: same-tick arrival and failure at 24 (D-048 tie-break)"
+    },
+    {
+      "id": "G-F3",
+      "title": "two units, one waiting failure, two releases; a repair does not satisfy a waiting failure (ADR-026 D-051 G-F3, D-074 (a))",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-F3",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 2,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 2
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "s1",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 8
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s2",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 18
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s3",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 19
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s4",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 23
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s5",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 28
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 7
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "s1__work",
+            "from": "s1",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s2__work",
+            "from": "s2",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s3__work",
+            "from": "s3",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s4__work",
+            "from": "s4",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s5__work",
+            "from": "s5",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 40,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "m has capacity 2: two failure clocks, units 0 and 1, both TTF 10 and TTR 2. Five one-off sources: s1 at 8, s2 at 18, s3 at 19, s4 at 23, s5 at 28; service 7.",
+        "t=0: the five first arrivals (source ID order), then FAILURE(0) at 10 and FAILURE(1) at 10 (unit order, so 0's has the smaller sequence).",
+        "t=8: s1/1 [8,15]. t=10: FAILURE(0): idle = 2 - 0 - 1 = 1: unit down (D=1), REPAIR(0) at 12; FAILURE(1): idle = 2 - 1 - 1 = 0: waits.",
+        "t=12: REPAIR(0): D=0, FAILURE(0) at 22. t=15: s1/1 completes: its released unit satisfies the waiting failure 1 (D=1), REPAIR(1) at 17. t=17: REPAIR(1): D=0, FAILURE(1) at 27.",
+        "t=18: s2/1 [18,25]. t=19: s3/1 [19,26] (both units in use). t=22: FAILURE(0): idle 0, waits. t=23: s4/1 held (in use 2).",
+        "t=25: s2/1 completes: the first released unit goes down for the waiting failure 0 (D=1), REPAIR(0) at 27; s4/1 wakes but 1 + 1 > C - D = 1: held.",
+        "t=26: s3/1 completes: the second release finds no waiting failure, the unit is available: s4/1 [26,33].",
+        "t=27: FAILURE(1) (scheduled at 17) runs before REPAIR(0) (scheduled at 25): idle = 2 - 1 - 1 = 0, waits; REPAIR(0): D=0, FAILURE(0) at 37. The waiting failure 1 is not satisfied by the repaired unit (D-074 (a): only a released unit is), so one unit is idle.",
+        "t=28: s5/1 [28,35] on that idle unit (under the other reading it would wait for s4/1's release at 33).",
+        "t=33: s4/1 completes: its unit goes down for failure 1 (D=1), REPAIR(1) at 35. t=35: s5/1 completes (0), then REPAIR(1) (15): D=0, FAILURE(1) at 45 (> horizon). t=37: FAILURE(0): idle 2, down, REPAIR(0) at 39. t=39: REPAIR(0), FAILURE(0) at 49 (> horizon).",
+        "Result over [0, 40]: 5 completed, lead times 7,7,7,10,7, waits 0,0,0,3,0; in use 5 x 7 = 35 min, utilization 35/80; down [10,12], [15,17], [25,27], [33,35], [37,39]: 10 min, 5 started, 5 complete repairs of 10 min; available = 2*40 - 10 = 70 min; idle = 70 - 35 = 35 min."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/s1/1",
+              8
+            ],
+            [
+              "r0/s2/1",
+              18
+            ],
+            [
+              "r0/s3/1",
+              19
+            ],
+            [
+              "r0/s4/1",
+              26
+            ],
+            [
+              "r0/s5/1",
+              28
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/s1/1",
+            15
+          ],
+          [
+            "r0/s2/1",
+            25
+          ],
+          [
+            "r0/s3/1",
+            26
+          ],
+          [
+            "r0/s4/1",
+            33
+          ],
+          [
+            "r0/s5/1",
+            35
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            10,
+            12
+          ],
+          [
+            "m",
+            1,
+            15,
+            17
+          ],
+          [
+            "m",
+            0,
+            25,
+            27
+          ],
+          [
+            "m",
+            1,
+            33,
+            35
+          ],
+          [
+            "m",
+            0,
+            37,
+            39
+          ]
+        ],
+        "pending": [
+          [
+            "m",
+            1,
+            10
+          ],
+          [
+            "m",
+            0,
+            22
+          ],
+          [
+            "m",
+            1,
+            27
+          ]
+        ],
+        "result": {
+          "completed_count": 5,
+          "censored_entities": 0,
+          "lead_times_minutes": [
+            7,
+            7,
+            7,
+            10,
+            7
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              0,
+              0,
+              3,
+              0
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.4375
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 2100000,
+              "down_ticks": 600000,
+              "breakdowns_started": 5,
+              "repairs_completed": 5,
+              "completed_repair_ticks": 600000,
+              "available_ticks": 4200000,
+              "idle_ticks": 2100000,
+              "scheduled_processing_ticks": 2100000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-F7",
+      "title": "finish-first and idle failures without a same-tick arrival (for SimPy)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-F7",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 9.5
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 2.5
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 4
+              }
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__work",
+            "from": "src",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 40,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "Arrivals every 4 min (e_k at 4k), service 3, m: TTF 9.5, TTR 2.5. t=0: first arrival at 4, FAILURE at 9.5.",
+        "e1 [4,7], e2 [8,11]. t=9.5: FAILURE: busy, waits. t=11: e2's release: down until 13.5. t=12: e3 held. t=13.5: REPAIR, FAILURE at 23; e3 [13.5,16.5].",
+        "t=16: e4 held (busy). t=16.5: e4 [16.5,19.5]. t=20: e5 [20,23].",
+        "t=23: e5 completes (0); FAILURE (15): the unit is idle, down until 25.5. t=24: e6 held. t=25.5: REPAIR, FAILURE at 35; e6 [25.5,28.5]. t=28: e7 held; t=28.5: e7 [28.5,31.5]. t=32: e8 [32,35].",
+        "t=35: e8 completes; FAILURE: idle, down until 37.5. t=36: e9 held. t=37.5: REPAIR, FAILURE at 47 (> horizon); e9 [37.5,40.5]. t=40: e10 held.",
+        "Result over [0, 40]: 10 created, 8 completed, 2 censored; lead times 3,3,4.5,3.5,3,4.5,3.5,3; waits 0,0,1.5,0.5,0,1.5,0.5,0,1.5 (e9 starts by 40);",
+        "in use 8 x 3 + 2.5 (e9's part) = 26.5 min, utilization 26.5/40; down 3 x 2.5 = 7.5 min, 3 started, 3 complete; available 32.5 min; idle 6 min.",
+        "The only same-tick pairs are a release and a failure (23, 35), which SimPy and the kernel resolve alike (the failure takes the released unit either way)."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/src/1",
+              4
+            ],
+            [
+              "r0/src/2",
+              8
+            ],
+            [
+              "r0/src/3",
+              13.5
+            ],
+            [
+              "r0/src/4",
+              16.5
+            ],
+            [
+              "r0/src/5",
+              20
+            ],
+            [
+              "r0/src/6",
+              25.5
+            ],
+            [
+              "r0/src/7",
+              28.5
+            ],
+            [
+              "r0/src/8",
+              32
+            ],
+            [
+              "r0/src/9",
+              37.5
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            7
+          ],
+          [
+            "r0/src/2",
+            11
+          ],
+          [
+            "r0/src/3",
+            16.5
+          ],
+          [
+            "r0/src/4",
+            19.5
+          ],
+          [
+            "r0/src/5",
+            23
+          ],
+          [
+            "r0/src/6",
+            28.5
+          ],
+          [
+            "r0/src/7",
+            31.5
+          ],
+          [
+            "r0/src/8",
+            35
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            11,
+            13.5
+          ],
+          [
+            "m",
+            0,
+            23,
+            25.5
+          ],
+          [
+            "m",
+            0,
+            35,
+            37.5
+          ]
+        ],
+        "pending": [
+          [
+            "m",
+            0,
+            9.5
+          ]
+        ],
+        "result": {
+          "completed_count": 8,
+          "censored_entities": 2,
+          "lead_times_minutes": [
+            3,
+            3,
+            4.5,
+            3.5,
+            3,
+            4.5,
+            3.5,
+            3
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              0,
+              1.5,
+              0.5,
+              0,
+              1.5,
+              0.5,
+              0,
+              1.5
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.6625
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 1590000,
+              "down_ticks": 450000,
+              "breakdowns_started": 3,
+              "repairs_completed": 3,
+              "completed_repair_ticks": 450000,
+              "available_ticks": 1950000,
+              "idle_ticks": 360000,
+              "scheduled_processing_ticks": 1590000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "compare"
+    },
+    {
+      "id": "G-F8",
+      "title": "a bundle with a resource that breaks down and one that does not; only the first is in resource_states",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-F8",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 5
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 2
+                }
+              }
+            }
+          },
+          {
+            "id": "o",
+            "type": "machine",
+            "name": "o",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              },
+              {
+                "resource_id": "o",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__work",
+            "from": "src",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 15,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "work needs m (breaks down: TTF 5, TTR 2) and o; arrivals every 3, service 2. t=0: first arrival at 3, FAILURE(m) at 5.",
+        "t=3: e1 [3,5]. t=5: e1 completes (0), releasing m and o; FAILURE (15): m is idle, down until 7.",
+        "t=6: e2 is the candidate at the front of m and o; m has C - D = 0: held (all or nothing: o is not taken). t=7: REPAIR: FAILURE at 12; e2 [7,9].",
+        "t=9: e2 completes (0), e3 arrives (10): e3 [9,11]. t=12: ARRIVAL e4 (10) queues, FAILURE (15) takes the idle m until 14, the dispatch holds e4. t=14: REPAIR, FAILURE at 19; e4 [14,16]. t=15: e5 held.",
+        "Result over [0, 15]: 5 created, 3 completed, 2 censored; lead times 2, 3, 2; waits 0, 1, 0, 2; in use of m and of o 2+2+2+1 = 7 min each, utilization 7/15;",
+        "m: down 2 + 2 = 4 min, 2 started, 2 complete; available 11 min; idle 4 min. o has no line-flow feature (no breakdowns, no finite buffer in the model): no resource_states entry (D-058)."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/src/1",
+              3
+            ],
+            [
+              "r0/src/2",
+              7
+            ],
+            [
+              "r0/src/3",
+              9
+            ],
+            [
+              "r0/src/4",
+              14
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            5
+          ],
+          [
+            "r0/src/2",
+            9
+          ],
+          [
+            "r0/src/3",
+            11
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            5,
+            7
+          ],
+          [
+            "m",
+            0,
+            12,
+            14
+          ]
+        ],
+        "pending": [],
+        "result": {
+          "completed_count": 3,
+          "censored_entities": 2,
+          "lead_times_minutes": [
+            2,
+            3,
+            2
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              1,
+              0,
+              2
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.4666666666666667,
+            "o": 0.4666666666666667
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 420000,
+              "down_ticks": 240000,
+              "breakdowns_started": 2,
+              "repairs_completed": 2,
+              "completed_repair_ticks": 240000,
+              "available_ticks": 660000,
+              "idle_ticks": 240000,
+              "scheduled_processing_ticks": 420000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "refused: work's bundle has m, which breaks down, and o; taken one resource at a time it would not be all or nothing"
+    },
+    {
+      "id": "G-T1",
+      "title": "a unit released at t is taken by a failure at t; the waiting request is not granted at t (D-048 golden 1)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-T1",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 2
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "s1",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 5
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "s2",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 7
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 5
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "s1__work",
+            "from": "s1",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s2__work",
+            "from": "s2",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 20,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "s1/1 arrives at 5 and runs [5,10]; s2/1 arrives at 7 and is held. m: FAILURE at 10, TTR 2.",
+        "t=10: SERVICE_COMPLETE (0) releases m (no waiting failure yet) and wakes s2/1; FAILURE (15) finds the unit idle and takes it (down until 12); DISPATCH (20): s2/1 needs 1 > C - D = 0: not granted at 10.",
+        "t=12: REPAIR, FAILURE at 22 (> horizon); s2/1 [12,17].",
+        "Result over [0, 20]: 2 completed, lead times 5, 10, waits 0, 5; in use 10 min, utilization 0.5; down 2 min, 1 started, 1 complete; available 18 min; idle 8 min."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/s1/1",
+              5
+            ],
+            [
+              "r0/s2/1",
+              12
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/s1/1",
+            10
+          ],
+          [
+            "r0/s2/1",
+            17
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            10,
+            12
+          ]
+        ],
+        "pending": [],
+        "result": {
+          "completed_count": 2,
+          "censored_entities": 0,
+          "lead_times_minutes": [
+            5,
+            10
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              5
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.5
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 600000,
+              "down_ticks": 120000,
+              "breakdowns_started": 1,
+              "repairs_completed": 1,
+              "completed_repair_ticks": 120000,
+              "available_ticks": 1080000,
+              "idle_ticks": 480000,
+              "scheduled_processing_ticks": 600000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "not compared: D-048 tie-break (release, failure and dispatch in one tick)"
+    },
+    {
+      "id": "G-T2",
+      "title": "an arrival and a repair in the same tick: the dispatch grants the arrival (D-048 golden 2)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-T2",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 3
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 2
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "s1",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 5
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "s1__work",
+            "from": "s1",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 10,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "m: FAILURE at 3 (idle: down until 5). s1/1 arrives at 5.",
+        "t=5: ARRIVAL (10) queues and asks for a dispatch; REPAIR (15): D=0, FAILURE at 8; s1/1 is a candidate, not held, so the repair wakes nothing; DISPATCH (20): s1/1 [5,6].",
+        "t=8: FAILURE: idle, down until 10. t=10: REPAIR (at the horizon, processed), FAILURE at 13 (> horizon).",
+        "Result over [0, 10]: 1 completed, lead time 1, wait 0; in use 1 min, utilization 0.1; down [3,5] and [8,10]: 4 min, 2 started, 2 complete; available 6 min; idle 5 min."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/s1/1",
+              5
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/s1/1",
+            6
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            3,
+            5
+          ],
+          [
+            "m",
+            0,
+            8,
+            10
+          ]
+        ],
+        "pending": [],
+        "result": {
+          "completed_count": 1,
+          "censored_entities": 0,
+          "lead_times_minutes": [
+            1
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.1
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 60000,
+              "down_ticks": 240000,
+              "breakdowns_started": 2,
+              "repairs_completed": 2,
+              "completed_repair_ticks": 240000,
+              "available_ticks": 360000,
+              "idle_ticks": 300000,
+              "scheduled_processing_ticks": 60000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "not compared: D-048 tie-break"
+    },
+    {
+      "id": "G-T4",
+      "title": "a 0-tick repair scheduled during a dispatch runs after it and dispatches again in the same tick (D-048 golden 4)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-T4",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "ma",
+            "type": "machine",
+            "name": "ma",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 3
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 0
+                }
+              }
+            }
+          },
+          {
+            "id": "rb",
+            "type": "machine",
+            "name": "rb",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "a",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "ma",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "qb",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "b",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "rb",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__a",
+            "from": "src",
+            "to": "a",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "a__qb",
+            "from": "a",
+            "to": "qb",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "qb__b",
+            "from": "qb",
+            "to": "b",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "b__done",
+            "from": "b",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 20,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "G-B1 (src every 1, a 1 min, qb capacity 1, b 3 min) with breakdowns on a's resource ma: TTF 3, TTR 0. Without breakdowns G-B1's facts hold: a starts 1,2,3,5,8,11,14,17,20; b starts 2,5,8,11,14,17,20; blocks at a [4,5], [6,8], [9,11], [12,14], [15,17], [18,20].",
+        "t=3: e2 leaves a (0) for qb, e3 arrives (10); FAILURE (15): ma is idle, down with TTR 0: REPAIR at 3 (15, later sequence), which runs before the dispatch (20): ma is up again, e3 [3,4]. A 0-length downtime [3,3].",
+        "t=4: e3 is blocked at a (qb full), keeping ma; e4 held. t=5: b grants e2, unblocking e3 (ma released, nothing waiting) and e4 [5,6].",
+        "t=6: e4 is blocked at a holding ma; FAILURE (15): idle = 1 - 0 - 1 = 0: waits (pending).",
+        "t=8: e2 leaves b (0); e8 arrives (10); DISPATCH (20): b grants e3 [8,11]; qb has room: e4 is unblocked and releases ma, whose unit goes down for the waiting failure (D=1) with TTR 0: REPAIR at 8, priority 15, scheduled during the dispatch; e5, the front of ma, wakes and is held (C - D = 0); the dispatch ends.",
+        "t=8, after it: REPAIR (15): D=0, FAILURE at 11; it wakes e5 and schedules a second DISPATCH at 8 (20), which grants e5 [8,9]: the tick does not go back, and e5 starts at 8 as in G-B1.",
+        "The same at 11, 14, 17 and 20: the failure is due while ma is held by the blocked entity, waits, takes ma when b's grant unblocks it, and is repaired in the same tick, followed by a second dispatch. The 20 one is at the horizon (its next FAILURE at 23 is not scheduled).",
+        "So starts, completions, blocks and every G-B1 Result member are G-B1's; ma adds 6 downtimes of 0 ticks (3, 8, 11, 14, 17, 20), 6 started and 6 complete (D-074 (d)), down 0, available C*T = 20 min, idle 20 - 19 = 1 min; rb has no breakdowns: only its blocked group, as in G-B1."
+      ],
+      "expected": {
+        "starts": {
+          "a": [
+            [
+              "r0/src/1",
+              1
+            ],
+            [
+              "r0/src/2",
+              2
+            ],
+            [
+              "r0/src/3",
+              3
+            ],
+            [
+              "r0/src/4",
+              5
+            ],
+            [
+              "r0/src/5",
+              8
+            ],
+            [
+              "r0/src/6",
+              11
+            ],
+            [
+              "r0/src/7",
+              14
+            ],
+            [
+              "r0/src/8",
+              17
+            ],
+            [
+              "r0/src/9",
+              20
+            ]
+          ],
+          "b": [
+            [
+              "r0/src/1",
+              2
+            ],
+            [
+              "r0/src/2",
+              5
+            ],
+            [
+              "r0/src/3",
+              8
+            ],
+            [
+              "r0/src/4",
+              11
+            ],
+            [
+              "r0/src/5",
+              14
+            ],
+            [
+              "r0/src/6",
+              17
+            ],
+            [
+              "r0/src/7",
+              20
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            5
+          ],
+          [
+            "r0/src/2",
+            8
+          ],
+          [
+            "r0/src/3",
+            11
+          ],
+          [
+            "r0/src/4",
+            14
+          ],
+          [
+            "r0/src/5",
+            17
+          ],
+          [
+            "r0/src/6",
+            20
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/src/3",
+            "a",
+            4,
+            5
+          ],
+          [
+            "r0/src/4",
+            "a",
+            6,
+            8
+          ],
+          [
+            "r0/src/5",
+            "a",
+            9,
+            11
+          ],
+          [
+            "r0/src/6",
+            "a",
+            12,
+            14
+          ],
+          [
+            "r0/src/7",
+            "a",
+            15,
+            17
+          ],
+          [
+            "r0/src/8",
+            "a",
+            18,
+            20
+          ]
+        ],
+        "downs": [
+          [
+            "ma",
+            0,
+            3,
+            3
+          ],
+          [
+            "ma",
+            0,
+            8,
+            8
+          ],
+          [
+            "ma",
+            0,
+            11,
+            11
+          ],
+          [
+            "ma",
+            0,
+            14,
+            14
+          ],
+          [
+            "ma",
+            0,
+            17,
+            17
+          ],
+          [
+            "ma",
+            0,
+            20,
+            20
+          ]
+        ],
+        "pending": [
+          [
+            "ma",
+            0,
+            6
+          ],
+          [
+            "ma",
+            0,
+            11
+          ],
+          [
+            "ma",
+            0,
+            14
+          ],
+          [
+            "ma",
+            0,
+            17
+          ],
+          [
+            "ma",
+            0,
+            20
+          ]
+        ],
+        "at_tick_8": [
+          [
+            "resource",
+            "rb",
+            0
+          ],
+          [
+            "service_end",
+            "r0/src/2",
+            "b"
+          ],
+          [
+            "complete",
+            "r0/src/2",
+            "done"
+          ],
+          [
+            "arrival",
+            "r0/src/8",
+            "src"
+          ],
+          [
+            "queue_enter",
+            "r0/src/8",
+            "a"
+          ],
+          [
+            "resource",
+            "rb",
+            1
+          ],
+          [
+            "service_start",
+            "r0/src/3",
+            "b"
+          ],
+          [
+            "resource",
+            "ma",
+            0
+          ],
+          [
+            "down",
+            "ma",
+            0
+          ],
+          [
+            "unblocked",
+            "r0/src/4",
+            "a"
+          ],
+          [
+            "queue_enter",
+            "r0/src/4",
+            "b"
+          ],
+          "next event",
+          [
+            "up",
+            "ma",
+            0
+          ],
+          "next event",
+          [
+            "resource",
+            "ma",
+            1
+          ],
+          [
+            "service_start",
+            "r0/src/5",
+            "a"
+          ]
+        ],
+        "result": {
+          "completed_count": 6,
+          "censored_entities": 14,
+          "lead_times_minutes": [
+            4,
+            6,
+            8,
+            10,
+            12,
+            14
+          ],
+          "queue_waits_minutes": {
+            "qb": [
+              0,
+              2,
+              3,
+              3,
+              3,
+              3,
+              3
+            ],
+            "a": [
+              0,
+              0,
+              0,
+              1,
+              3,
+              5,
+              7,
+              9,
+              11
+            ]
+          },
+          "resource_utilization": {
+            "ma": 0.95,
+            "rb": 0.9
+          },
+          "blocking": {
+            "a": {
+              "blocks_started": 6,
+              "blocks_completed": 6,
+              "completed_block_ticks": 660000,
+              "blocked_entity_ticks": 660000
+            }
+          },
+          "buffers": {
+            "qb": {
+              "full_ticks": 1020000
+            }
+          },
+          "resource_states": {
+            "ma": {
+              "in_use_ticks": 1140000,
+              "blocked_ticks": 660000,
+              "down_ticks": 0,
+              "breakdowns_started": 6,
+              "repairs_completed": 6,
+              "completed_repair_ticks": 0,
+              "available_ticks": 1200000,
+              "idle_ticks": 60000,
+              "scheduled_processing_ticks": 480000
+            },
+            "rb": {
+              "in_use_ticks": 1080000,
+              "blocked_ticks": 0,
+              "scheduled_processing_ticks": 1080000
+            }
+          }
+        }
+      },
+      "simpy": "not compared: D-048 tie-break (a 0-tick repair inside a tick)"
+    },
+    {
+      "id": "G-K1",
+      "title": "a held request that only a repair can let in is not a deadlock (B1 tells capacity-bound from release-bound; T-047 review round 2, I1)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-K1",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 1
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "q",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__q",
+            "from": "src",
+            "to": "q",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "q__work",
+            "from": "q",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 15,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "The finite buffer q makes the kernel run the D-050 B1 check; m breaks down at 1 (idle: down until 11).",
+        "t=2: the only entity arrives and queues; the dispatch holds it (1 > C - D = 0). After the dispatch: nothing in service or in a delay, one held candidate: B1 asks whether it is release-bound, in_use + units > C, with the full capacity C: 0 + 1 > 1 is false, so it is capacity-bound (only a repair can let it in) and this is no deadlock. (With >= it would be reported as one: the mutant this golden kills.)",
+        "B2 at the end of tick 2: held, none of its bundle in use: in that state since 2, TTRmax 10 (constant): due by 12.",
+        "t=11: REPAIR: D=0, FAILURE at 12; the repair wakes the held request (capacity rose without a release) and dispatches: work [11,12].",
+        "t=12: it completes (0); FAILURE (15): idle, down until 22 (REPAIR > horizon, not scheduled).",
+        "Result over [0, 15]: 1 completed, lead time 10, q's wait 9; in use 1 min, utilization 1/15; m (the model has a finite buffer, so it lists blocked_ticks too): blocked 0, down 10 + 3 = 13 min, 2 started, 1 complete of 10 min, available 2 min, idle 1 min;",
+        "blocking: src can reach the finite buffer q: 0 blocks; q full (its one place taken) [2,11]: 9 min."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/src/1",
+              11
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            12
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            1,
+            11
+          ],
+          [
+            "m",
+            0,
+            12,
+            null
+          ]
+        ],
+        "pending": [],
+        "result": {
+          "completed_count": 1,
+          "censored_entities": 0,
+          "lead_times_minutes": [
+            10
+          ],
+          "queue_waits_minutes": {
+            "q": [
+              9
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.06666666666666667
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 60000,
+              "blocked_ticks": 0,
+              "down_ticks": 780000,
+              "breakdowns_started": 2,
+              "repairs_completed": 1,
+              "completed_repair_ticks": 600000,
+              "available_ticks": 120000,
+              "idle_ticks": 60000,
+              "scheduled_processing_ticks": 60000
+            }
+          },
+          "blocking": {
+            "src": {
+              "blocks_started": 0,
+              "blocks_completed": 0,
+              "completed_block_ticks": 0,
+              "blocked_entity_ticks": 0
+            }
+          },
+          "buffers": {
+            "q": {
+              "full_ticks": 540000
+            }
+          }
+        }
+      },
+      "simpy": "not compared: the point is the kernel's B1 check"
+    },
+    {
+      "id": "G-D4",
+      "title": "G-D2 with a resource that breaks down beside the cycle: B1 still finds the circular wait at 7 (R1 bypassed, test-only)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-D4",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "r1",
+            "type": "machine",
+            "name": "r1",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "r2",
+            "type": "machine",
+            "name": "r2",
+            "capacity": 1,
+            "queue_discipline": "fifo"
+          },
+          {
+            "id": "x",
+            "type": "machine",
+            "name": "x",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 2
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 1
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "q1",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "s1",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "r1",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "q2",
+            "type": "queue",
+            "capacity": 1
+          },
+          {
+            "id": "s2",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 3
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "r2",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "z",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            }
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__q1",
+            "from": "src",
+            "to": "q1",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "q1__s1",
+            "from": "q1",
+            "to": "s1",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s1__q2",
+            "from": "s1",
+            "to": "q2",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "q2__s2",
+            "from": "q2",
+            "to": "s2",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "s2__q1",
+            "from": "s2",
+            "to": "q1",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "z__done",
+            "from": "z",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 60,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "validator": {
+        "codes_at": [
+          [
+            "BLOCKING_CYCLE",
+            "/nodes/1/capacity"
+          ],
+          [
+            "BLOCKING_CYCLE",
+            "/nodes/3/capacity"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/0"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/1"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/2"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/3"
+          ],
+          [
+            "NO_REACHABLE_SINK",
+            "/nodes/4"
+          ]
+        ]
+      },
+      "derivation": [
+        "G-D2's model and timeline (R1 bypassed in the test only), plus resource x (TTF 2, TTR 1) that no process needs: x's FAILURE and REPAIR events (2, 3, 5, 6; next failure at 8) touch no queue and wake nothing.",
+        "x's events at 2 and 5 come after the same tick's arrivals, which have a dispatch pending, so no check runs after them; at 3 and 6 the check runs and finds entities in service.",
+        "t=7: the SERVICE_COMPLETE of r0/src/3 at s1 blocks it; nothing is in service or in a delay; B1 reports the same deadlock as G-D2: tick 420000, r0/src/5 blocked at src since 300000."
+      ],
+      "expected": {
+        "starts": {
+          "s1": [
+            [
+              "r0/src/1",
+              1
+            ],
+            [
+              "r0/src/2",
+              3
+            ],
+            [
+              "r0/src/3",
+              5
+            ]
+          ],
+          "s2": [
+            [
+              "r0/src/1",
+              3
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/z/1",
+            1
+          ],
+          [
+            "r0/z/2",
+            2
+          ],
+          [
+            "r0/z/3",
+            3
+          ],
+          [
+            "r0/z/4",
+            4
+          ],
+          [
+            "r0/z/5",
+            5
+          ],
+          [
+            "r0/z/6",
+            6
+          ]
+        ],
+        "blocks": [
+          [
+            "r0/src/3",
+            "src",
+            3,
+            3
+          ],
+          [
+            "r0/src/4",
+            "src",
+            4,
+            5
+          ],
+          [
+            "r0/src/5",
+            "src",
+            5,
+            null
+          ],
+          [
+            "r0/src/1",
+            "s2",
+            6,
+            null
+          ],
+          [
+            "r0/src/6",
+            "src",
+            6,
+            null
+          ],
+          [
+            "r0/src/3",
+            "s1",
+            7,
+            null
+          ]
+        ],
+        "downs": [
+          [
+            "x",
+            0,
+            2,
+            3
+          ],
+          [
+            "x",
+            0,
+            5,
+            6
+          ]
+        ],
+        "pending": [],
+        "deadlock": {
+          "tick": 420000,
+          "entity": "r0/src/5",
+          "node": "src",
+          "since": 300000,
+          "reason": "the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000"
+        }
+      },
+      "simpy": "not compared: SimPy does not detect deadlocks (G-D2)"
+    },
+    {
+      "id": "G-S1",
+      "title": "B2: a bundle that can never be filled (R3 bypassed, test-only: 2 units of a resource that breaks down; ADR-026 D-050's second counterexample)",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-S1",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "r",
+            "type": "machine",
+            "name": "r",
+            "capacity": 2,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "sx",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 6
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "x",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "r",
+                "units": 2
+              }
+            ]
+          },
+          {
+            "id": "sy",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 5
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "y",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 15
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "r",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "sx__x",
+            "from": "sx",
+            "to": "x",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "sy__y",
+            "from": "sy",
+            "to": "y",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "x__done",
+            "from": "x",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "y__done",
+            "from": "y",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 60,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "validator": {
+        "codes_at": [
+          [
+            "RESOURCE_REQUIREMENT_INVALID",
+            "/nodes/1/requires/0/units"
+          ]
+        ]
+      },
+      "derivation": [
+        "r has capacity 2, TTF 10 and TTR 10 per unit; x needs both units (R3 refuses it; the test bypasses the validator), y one. sx/1 arrives at 6, sy/1 at 5. t=0: arrivals of sx (6) and sy (5) in ID order, then FAILURE(0) and FAILURE(1) at 10.",
+        "t=5: sy/1 [5,20]. t=6: sx/1 is the front of r's FIFO and is held (1 + 2 > 2).",
+        "t=10: FAILURE(0): idle = 2 - 0 - 1 = 1: down until 20; FAILURE(1): idle 0: waits.",
+        "t=20: sy/1 completes (0): its unit goes down for failure 1 (D=2), REPAIR(1) at 30; sx/1 wakes. REPAIR(0) (15): D=1, FAILURE(0) at 30. DISPATCH: 0 + 2 > 2 - 1: held. End of tick 20: sx/1 is held with no unit of its bundle in use: the B2 state since 20; TTRmax = 10: due by 30.",
+        "t=30: REPAIR(1) (scheduled at 20 before FAILURE(0)) runs first: D=0, FAILURE(1) at 40, sx/1 wakes; FAILURE(0): idle 2: down (D=1) until 40; DISPATCH: held again. The two clocks are now 10 apart: one unit is always down, for ever.",
+        "End of tick 30 (no other event at 30): sx/1 is still in the state and 30 >= 30: ErrStalled at 30 min (1800000), r0/sx/1 at x, since 1200000, due by 1800000."
+      ],
+      "expected": {
+        "starts": {
+          "y": [
+            [
+              "r0/sy/1",
+              5
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/sy/1",
+            20
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "r",
+            0,
+            10,
+            20
+          ],
+          [
+            "r",
+            1,
+            20,
+            30
+          ],
+          [
+            "r",
+            0,
+            30,
+            null
+          ]
+        ],
+        "pending": [
+          [
+            "r",
+            1,
+            10
+          ]
+        ],
+        "stalled": {
+          "tick": 1800000,
+          "entity": "r0/sx/1",
+          "node": "x",
+          "since": 1200000,
+          "deadline": 1800000,
+          "reason": "the replication stalled at tick 1800000: r0/sx/1 waits for node x since tick 1200000 with none of its bundle in use; it was due by tick 1800000"
+        }
+      },
+      "simpy": "not compared: SimPy does not detect stalls"
+    },
+    {
+      "id": "G-S2",
+      "title": "no stall at the deadline tick when the repair comes later in that tick (B2 at the end of a tick, D-074 (c))",
+      "model": {
+        "schema_version": "0.1",
+        "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+        "domain": "synthetic_line",
+        "name": "G-S2",
+        "time_unit": "minute",
+        "entity_types": [
+          {
+            "id": "board",
+            "name": "Board"
+          }
+        ],
+        "resources": [
+          {
+            "id": "m",
+            "type": "machine",
+            "name": "m",
+            "capacity": 1,
+            "queue_discipline": "fifo",
+            "breakdowns": {
+              "time_to_failure": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 10
+                }
+              },
+              "time_to_repair": {
+                "distribution": {
+                  "type": "constant",
+                  "value": 3
+                }
+              }
+            }
+          }
+        ],
+        "nodes": [
+          {
+            "id": "sd",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 13
+              },
+              "max_entities": 1
+            }
+          },
+          {
+            "id": "src",
+            "type": "source",
+            "entity_type": "board",
+            "arrival": {
+              "distribution": {
+                "type": "constant",
+                "value": 2
+              }
+            }
+          },
+          {
+            "id": "work",
+            "type": "process",
+            "service_time": {
+              "distribution": {
+                "type": "constant",
+                "value": 1
+              }
+            },
+            "requires": [
+              {
+                "resource_id": "m",
+                "units": 1
+              }
+            ]
+          },
+          {
+            "id": "done",
+            "type": "sink",
+            "outcome": "completed"
+          }
+        ],
+        "flows": [
+          {
+            "id": "src__work",
+            "from": "src",
+            "to": "work",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "work__done",
+            "from": "work",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          },
+          {
+            "id": "sd__done",
+            "from": "sd",
+            "to": "done",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        ],
+        "constraints": [],
+        "metrics": [],
+        "views": {
+          "2d": {},
+          "3d": {}
+        },
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      "config": {
+        "horizon": {
+          "value": 30,
+          "unit": "minute"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "minute"
+        },
+        "replications": 1,
+        "seed": 7,
+        "trace_level": "none"
+      },
+      "derivation": [
+        "G-F1 plus a one-off source sd at 13 that goes straight to done (no queue, no dispatch). sd sorts before src, so the first arrivals are scheduled sd, src, then m's FAILURE at 10; G-F1's timeline is unchanged.",
+        "e5 (r0/src/5) is held from 10 with nothing of its bundle in use: the B2 state since 10, TTRmax 3, due by 13.",
+        "t=13: ARRIVAL sd/1 (10) completes at once, without a dispatch. A B2 check right after it would see 13 >= 13 and report a stall; but REPAIR (15) is still due in tick 13: it wakes e5 and the dispatch grants it [13,14]. B2 checks only at the end of a tick, so nothing is reported.",
+        "Facts and Result: G-F1's, plus sd/1 completed at 13 with lead time 0 (15 completed, 16 created, 1 censored)."
+      ],
+      "expected": {
+        "starts": {
+          "work": [
+            [
+              "r0/src/1",
+              2
+            ],
+            [
+              "r0/src/2",
+              4
+            ],
+            [
+              "r0/src/3",
+              6
+            ],
+            [
+              "r0/src/4",
+              8
+            ],
+            [
+              "r0/src/5",
+              13
+            ],
+            [
+              "r0/src/6",
+              14
+            ],
+            [
+              "r0/src/7",
+              15
+            ],
+            [
+              "r0/src/8",
+              16
+            ],
+            [
+              "r0/src/9",
+              18
+            ],
+            [
+              "r0/src/10",
+              20
+            ],
+            [
+              "r0/src/11",
+              22
+            ],
+            [
+              "r0/src/12",
+              26
+            ],
+            [
+              "r0/src/13",
+              27
+            ],
+            [
+              "r0/src/14",
+              28
+            ],
+            [
+              "r0/src/15",
+              30
+            ]
+          ]
+        },
+        "completions": [
+          [
+            "r0/src/1",
+            3
+          ],
+          [
+            "r0/src/2",
+            5
+          ],
+          [
+            "r0/src/3",
+            7
+          ],
+          [
+            "r0/src/4",
+            9
+          ],
+          [
+            "r0/sd/1",
+            13
+          ],
+          [
+            "r0/src/5",
+            14
+          ],
+          [
+            "r0/src/6",
+            15
+          ],
+          [
+            "r0/src/7",
+            16
+          ],
+          [
+            "r0/src/8",
+            17
+          ],
+          [
+            "r0/src/9",
+            19
+          ],
+          [
+            "r0/src/10",
+            21
+          ],
+          [
+            "r0/src/11",
+            23
+          ],
+          [
+            "r0/src/12",
+            27
+          ],
+          [
+            "r0/src/13",
+            28
+          ],
+          [
+            "r0/src/14",
+            29
+          ]
+        ],
+        "blocks": [],
+        "downs": [
+          [
+            "m",
+            0,
+            10,
+            13
+          ],
+          [
+            "m",
+            0,
+            23,
+            26
+          ]
+        ],
+        "pending": [],
+        "result": {
+          "completed_count": 15,
+          "censored_entities": 1,
+          "lead_times_minutes": [
+            1,
+            1,
+            1,
+            1,
+            0,
+            4,
+            3,
+            2,
+            1,
+            1,
+            1,
+            1,
+            3,
+            2,
+            1
+          ],
+          "queue_waits_minutes": {
+            "work": [
+              0,
+              0,
+              0,
+              0,
+              3,
+              2,
+              1,
+              0,
+              0,
+              0,
+              0,
+              2,
+              1,
+              0,
+              0
+            ]
+          },
+          "resource_utilization": {
+            "m": 0.4666666666666667
+          },
+          "resource_states": {
+            "m": {
+              "in_use_ticks": 840000,
+              "down_ticks": 360000,
+              "breakdowns_started": 2,
+              "repairs_completed": 2,
+              "completed_repair_ticks": 360000,
+              "available_ticks": 1440000,
+              "idle_ticks": 600000,
+              "scheduled_processing_ticks": 840000
+            }
+          },
+          "blocking": null,
+          "buffers": null
+        }
+      },
+      "simpy": "not compared: the point is the kernel's B2 check"
+    }
+  ],
+  "reference": {
+    "tolerance": {
+      "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+      "z": 4.0,
+      "rel": 0.005,
+      "abs": 1e-09
+    },
+    "metrics": [
+      "completed_count",
+      "mean_lead_time_minutes",
+      "utilization/<resource>",
+      "down_fraction/<resource with breakdowns>",
+      "available_fraction/<resource with breakdowns>",
+      "idle_fraction/<resource with breakdowns>",
+      "breakdowns_started/<resource with breakdowns>",
+      "blocked_fraction/<resource> (finite buffers)",
+      "full_fraction/<finite queue>",
+      "blocks_started/<node>"
+    ],
+    "cases": [
+      {
+        "id": "B-S1",
+        "title": "one station, exponential arrivals, service, TTF and TTR",
+        "model": {
+          "schema_version": "0.1",
+          "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+          "domain": "synthetic_line",
+          "name": "B-S1",
+          "time_unit": "minute",
+          "entity_types": [
+            {
+              "id": "board",
+              "name": "Board"
+            }
+          ],
+          "resources": [
+            {
+              "id": "m",
+              "type": "machine",
+              "name": "m",
+              "capacity": 1,
+              "queue_discipline": "fifo",
+              "breakdowns": {
+                "time_to_failure": {
+                  "distribution": {
+                    "type": "exponential",
+                    "mean": 60
+                  }
+                },
+                "time_to_repair": {
+                  "distribution": {
+                    "type": "exponential",
+                    "mean": 6
+                  }
+                }
+              }
+            }
+          ],
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 5
+                }
+              }
+            },
+            {
+              "id": "work",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 3.5
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "type": "sink",
+              "outcome": "completed"
+            }
+          ],
+          "flows": [
+            {
+              "id": "src__work",
+              "from": "src",
+              "to": "work",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "work__done",
+              "from": "work",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            }
+          ],
+          "constraints": [],
+          "metrics": [],
+          "views": {
+            "2d": {},
+            "3d": {}
+          },
+          "metadata": {
+            "synthetic": true
+          }
+        },
+        "config": {
+          "horizon": {
+            "value": 3000,
+            "unit": "minute"
+          },
+          "warmup": {
+            "value": 300,
+            "unit": "minute"
+          },
+          "replications": 30,
+          "seed": 4801,
+          "trace_level": "none"
+        }
+      },
+      {
+        "id": "B-S2",
+        "title": "three units, Weibull TTF, lognormal TTR and lognormal service",
+        "model": {
+          "schema_version": "0.1",
+          "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+          "domain": "synthetic_line",
+          "name": "B-S2",
+          "time_unit": "minute",
+          "entity_types": [
+            {
+              "id": "board",
+              "name": "Board"
+            }
+          ],
+          "resources": [
+            {
+              "id": "m",
+              "type": "machine",
+              "name": "m",
+              "capacity": 3,
+              "queue_discipline": "fifo",
+              "breakdowns": {
+                "time_to_failure": {
+                  "distribution": {
+                    "type": "weibull",
+                    "shape": 1.5,
+                    "scale": 200
+                  }
+                },
+                "time_to_repair": {
+                  "distribution": {
+                    "type": "lognormal",
+                    "mean": 15,
+                    "cv": 0.5
+                  }
+                }
+              }
+            }
+          ],
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 3
+                }
+              }
+            },
+            {
+              "id": "work",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "lognormal",
+                  "mean": 6,
+                  "cv": 0.8
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "type": "sink",
+              "outcome": "completed"
+            }
+          ],
+          "flows": [
+            {
+              "id": "src__work",
+              "from": "src",
+              "to": "work",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "work__done",
+              "from": "work",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            }
+          ],
+          "constraints": [],
+          "metrics": [],
+          "views": {
+            "2d": {},
+            "3d": {}
+          },
+          "metadata": {
+            "synthetic": true
+          }
+        },
+        "config": {
+          "horizon": {
+            "value": 3000,
+            "unit": "minute"
+          },
+          "warmup": {
+            "value": 300,
+            "unit": "minute"
+          },
+          "replications": 30,
+          "seed": 4802,
+          "trace_level": "none"
+        }
+      },
+      {
+        "id": "B-S3",
+        "title": "breakdowns before a finite buffer: failures wait while a blocked entity holds the unit",
+        "model": {
+          "schema_version": "0.1",
+          "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+          "domain": "synthetic_line",
+          "name": "B-S3",
+          "time_unit": "minute",
+          "entity_types": [
+            {
+              "id": "board",
+              "name": "Board"
+            }
+          ],
+          "resources": [
+            {
+              "id": "ma",
+              "type": "machine",
+              "name": "ma",
+              "capacity": 1,
+              "queue_discipline": "fifo",
+              "breakdowns": {
+                "time_to_failure": {
+                  "distribution": {
+                    "type": "exponential",
+                    "mean": 100
+                  }
+                },
+                "time_to_repair": {
+                  "distribution": {
+                    "type": "constant",
+                    "value": 10
+                  }
+                }
+              }
+            },
+            {
+              "id": "rb",
+              "type": "machine",
+              "name": "rb",
+              "capacity": 1,
+              "queue_discipline": "fifo"
+            }
+          ],
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 3
+                }
+              }
+            },
+            {
+              "id": "a",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 2
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "ma",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "qb",
+              "type": "queue",
+              "capacity": 2
+            },
+            {
+              "id": "b",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 2.5
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "rb",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "type": "sink",
+              "outcome": "completed"
+            }
+          ],
+          "flows": [
+            {
+              "id": "src__a",
+              "from": "src",
+              "to": "a",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "a__qb",
+              "from": "a",
+              "to": "qb",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "qb__b",
+              "from": "qb",
+              "to": "b",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "b__done",
+              "from": "b",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            }
+          ],
+          "constraints": [],
+          "metrics": [],
+          "views": {
+            "2d": {},
+            "3d": {}
+          },
+          "metadata": {
+            "synthetic": true
+          }
+        },
+        "config": {
+          "horizon": {
+            "value": 3000,
+            "unit": "minute"
+          },
+          "warmup": {
+            "value": 300,
+            "unit": "minute"
+          },
+          "replications": 30,
+          "seed": 4803,
+          "trace_level": "none"
+        }
+      },
+      {
+        "id": "B-S4",
+        "title": "a resource that breaks down, shared by two processes; lognormal TTF, Weibull TTR and service",
+        "model": {
+          "schema_version": "0.1",
+          "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+          "domain": "synthetic_line",
+          "name": "B-S4",
+          "time_unit": "minute",
+          "entity_types": [
+            {
+              "id": "board",
+              "name": "Board"
+            }
+          ],
+          "resources": [
+            {
+              "id": "m",
+              "type": "machine",
+              "name": "m",
+              "capacity": 2,
+              "queue_discipline": "fifo",
+              "breakdowns": {
+                "time_to_failure": {
+                  "distribution": {
+                    "type": "lognormal",
+                    "mean": 120,
+                    "cv": 1
+                  }
+                },
+                "time_to_repair": {
+                  "distribution": {
+                    "type": "weibull",
+                    "shape": 2,
+                    "scale": 8
+                  }
+                }
+              }
+            }
+          ],
+          "nodes": [
+            {
+              "id": "src",
+              "type": "source",
+              "entity_type": "board",
+              "arrival": {
+                "distribution": {
+                  "type": "exponential",
+                  "mean": 2
+                }
+              }
+            },
+            {
+              "id": "p1",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "weibull",
+                  "shape": 2,
+                  "scale": 1.5
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "p2",
+              "type": "process",
+              "service_time": {
+                "distribution": {
+                  "type": "triangular",
+                  "min": 0.5,
+                  "mode": 1,
+                  "max": 2
+                }
+              },
+              "requires": [
+                {
+                  "resource_id": "m",
+                  "units": 1
+                }
+              ]
+            },
+            {
+              "id": "done",
+              "type": "sink",
+              "outcome": "completed"
+            }
+          ],
+          "flows": [
+            {
+              "id": "src__p1",
+              "from": "src",
+              "to": "p1",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "p1__p2",
+              "from": "p1",
+              "to": "p2",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            },
+            {
+              "id": "p2__done",
+              "from": "p2",
+              "to": "done",
+              "routing": {
+                "type": "probability",
+                "probability": 1
+              }
+            }
+          ],
+          "constraints": [],
+          "metrics": [],
+          "views": {
+            "2d": {},
+            "3d": {}
+          },
+          "metadata": {
+            "synthetic": true
+          }
+        },
+        "config": {
+          "horizon": {
+            "value": 3000,
+            "unit": "minute"
+          },
+          "warmup": {
+            "value": 300,
+            "unit": "minute"
+          },
+          "replications": 30,
+          "seed": 4804,
+          "trace_level": "none"
+        }
+      }
+    ]
+  }
+}

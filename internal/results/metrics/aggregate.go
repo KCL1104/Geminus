@@ -92,6 +92,18 @@ type Collector struct {
 	blocksDone    []int64    // per node: complete blocks (start >= W, end <= H)
 	blockTicks    []int64    // per node: their total length
 	full          []integral // per process node with a finite buffer: 1 while full
+
+	// Breakdowns (D-051, D-058; only when the program has them): per
+	// resource ∫D, the downtimes that started in [W, H], the complete ones
+	// (started at or after W, repaired by H) and their total length; and
+	// per resource that breaks down and per failure clock, the tick its
+	// current downtime started.
+	breakdowns   bool
+	down         []integral
+	downsStarted []int64
+	repairsDone  []int64
+	repairTicks  []int64
+	downSince    [][]int64
 }
 
 // NewCollector starts the collector of one replication of p.
@@ -109,6 +121,16 @@ func NewCollector(p *engine.Program) *Collector {
 		c.nodeBlocked, c.blockedAt = make([]int64, n), make([]integral, n)
 		c.blocksStarted, c.blocksDone, c.blockTicks = make([]int64, n), make([]int64, n), make([]int64, n)
 		c.full = make([]integral, n)
+	}
+	if p.HasBreakdowns() {
+		c.breakdowns = true
+		c.down, c.downsStarted, c.repairsDone, c.repairTicks = make([]integral, r), make([]int64, r), make([]int64, r), make([]int64, r)
+		c.downSince = make([][]int64, r)
+		for i := range r {
+			if p.ResourceHasBreakdowns(i) {
+				c.downSince[i] = make([]int64, p.ResourceCapacity(i))
+			}
+		}
 	}
 	return c
 }
@@ -168,6 +190,21 @@ func (c *Collector) Observe(o engine.Observation) {
 		}
 		delete(c.since, o.Entity)
 		c.block(o.Node, o.Tick, -1)
+	case engine.ObsResourceDown:
+		// Value is the resource's units down (D); At the failure clock.
+		c.down[o.Resource].set(o.Value, o.Tick, c.w, c.h)
+		c.downSince[o.Resource][o.At] = o.Tick
+		if c.inWindow(o.Tick) {
+			c.downsStarted[o.Resource]++
+		}
+	case engine.ObsResourceUp:
+		c.down[o.Resource].set(o.Value, o.Tick, c.w, c.h)
+		// A complete repair: down at or after W, repaired by H (the kernel
+		// processes nothing after H); a 0-tick downtime counts (D-074 (d)).
+		if since := c.downSince[o.Resource][o.At]; since >= c.w && o.Tick <= c.h {
+			c.repairsDone[o.Resource]++
+			c.repairTicks[o.Resource] += o.Tick - since
+		}
 	case engine.ObsComplete:
 		arrived := c.arrived[o.Entity]
 		delete(c.arrived, o.Entity)
@@ -207,20 +244,44 @@ func (c *Collector) block(n int, t int64, sign int64) {
 	}
 }
 
-// lineFlow fills a replication summary's finite-buffer members (D-058),
-// present only when the program has a finite buffer (D-047): every
-// resource's in-use and blocked ticks (in_use_ticks − blocked_ticks is the
-// processing time, ∫min(P, S) with S = C, no calendar or changeover yet),
-// every node that can be blocked, every finite buffer's full ticks.
+// lineFlow fills a replication summary's line-flow members (D-058),
+// present only when the model uses the feature (D-047). With a finite
+// buffer: every resource's in-use and blocked ticks (in_use_ticks −
+// blocked_ticks is the processing time, ∫min(P, S) with S = C, no calendar
+// or changeover yet), every node that can be blocked, every finite
+// buffer's full ticks. With breakdowns, every resource that breaks down
+// (listed even without a finite buffer) adds ∫D, its downtimes started,
+// its complete repairs and their ticks, ∫A = C·T − ∫D and ∫(A − U) (U + D
+// <= C at every tick, so A − U >= 0).
 func (c *Collector) lineFlow(s *simulation.ReplicationSummary) {
-	if !c.finite {
+	if !c.finite && !c.breakdowns {
 		return
 	}
 	p, w, h := c.p, c.w, c.h
 	s.ResourceStates = make(map[string]simulation.ResourceState, p.ResourceCount())
 	for i := range p.ResourceCount() {
-		used, held := c.busy[i].total(w, h), c.held[i].total(w, h)
-		s.ResourceStates[p.ResourceID(i)] = simulation.ResourceState{InUseTicks: used, BlockedTicks: &held, ScheduledProcessingTicks: used - held}
+		breaks := c.breakdowns && p.ResourceHasBreakdowns(i)
+		if !c.finite && !breaks {
+			continue // no line-flow feature applies to it
+		}
+		used := c.busy[i].total(w, h)
+		st := simulation.ResourceState{InUseTicks: used, ScheduledProcessingTicks: used}
+		if c.finite {
+			held := c.held[i].total(w, h)
+			st.BlockedTicks, st.ScheduledProcessingTicks = &held, used-held
+		}
+		if breaks {
+			down := c.down[i].total(w, h)
+			available := int64(p.ResourceCapacity(i))*(h-w) - down
+			idle := available - used
+			started, repairs, repairTicks := c.downsStarted[i], c.repairsDone[i], c.repairTicks[i]
+			st.DownTicks, st.BreakdownsStarted, st.RepairsCompleted, st.CompletedRepairTicks = &down, &started, &repairs, &repairTicks
+			st.AvailableTicks, st.IdleTicks = &available, &idle
+		}
+		s.ResourceStates[p.ResourceID(i)] = st
+	}
+	if !c.finite {
+		return
 	}
 	s.Blocking = map[string]simulation.NodeBlocking{}
 	s.Buffers = map[string]simulation.BufferState{}

@@ -299,6 +299,296 @@
       "digest_draws": 100000,
       "digest": "9dad8c3b97eb4ef82692860f3c064319a863638adada216f7cd1e585829e2aa4",
       "digest_state_after": "a7aaec727af08313"
+    },
+    {
+      "name": "lognormal repair time",
+      "unit": "minute",
+      "distribution": {
+        "type": "lognormal",
+        "mean": 30,
+        "cv": 0.5
+      },
+      "node_id": "node_10",
+      "purpose": "service",
+      "expected_ticks": [
+        1332910,
+        1492183,
+        2055806,
+        1172870,
+        1732049,
+        1255200,
+        1482685,
+        2536760,
+        460688,
+        1221200,
+        1453056,
+        3096676
+      ],
+      "state_after": "de9f4296cbcc2514",
+      "digest_draws": 100000,
+      "digest": "50f7e3c6ec75f38459c852c7af3acfd5a3f6e4cd2aa20e89182dd35df718c7be",
+      "digest_state_after": "da2239bfdbe3df38"
+    },
+    {
+      "name": "lognormal cv 10",
+      "unit": "minute",
+      "distribution": {
+        "type": "lognormal",
+        "mean": 4,
+        "cv": 10
+      },
+      "node_id": "node_11",
+      "purpose": "service",
+      "expected_ticks": [
+        5293,
+        24876,
+        5981,
+        292531,
+        2919,
+        4617,
+        18150,
+        73953,
+        40185,
+        33537,
+        395,
+        9435
+      ],
+      "state_after": "14c131b6adcca983",
+      "digest_draws": 100000,
+      "digest": "2fce139ac0804981e5e1de7b580cdfae7d5188994f7d2e41810f26c3ec1eb17b",
+      "digest_state_after": "104428dfbde463a7"
+    },
+    {
+      "name": "lognormal tiny mean is still 1 tick",
+      "unit": "millisecond",
+      "distribution": {
+        "type": "lognormal",
+        "mean": 1e-300,
+        "cv": 1
+      },
+      "node_id": "node_12",
+      "purpose": "service",
+      "expected_ticks": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "state_after": "53d5f42f588f5577",
+      "digest_draws": 100000,
+      "digest": "36a1e9a05f2b1322474ccd4fe30ab008cc261d2ada808b0824b63d82a7a85322",
+      "digest_state_after": "4f58eb5868a70f9b"
+    },
+    {
+      "name": "lognormal tail beyond the cap",
+      "unit": "day",
+      "distribution": {
+        "type": "lognormal",
+        "mean": 300,
+        "cv": 3
+      },
+      "node_id": "node_13",
+      "purpose": "service",
+      "expected_ticks": [
+        11412664717,
+        4575539556,
+        5619954764,
+        12463299708,
+        31536000001,
+        1815610072,
+        31536000001,
+        1510508073,
+        3336020372,
+        14693839472,
+        2432841603,
+        15963049095
+      ],
+      "state_after": "e2bfa008f900e47c",
+      "digest_draws": 100000,
+      "digest": "8ea4929ec28200fd964c00822a98284f8641d8d0d2cdccc236e8999dd3b5223a",
+      "digest_state_after": "de42973209189ea0"
+    },
+    {
+      "name": "lognormal tiny cv",
+      "unit": "second",
+      "distribution": {
+        "type": "lognormal",
+        "mean": 90,
+        "cv": 1e-09
+      },
+      "node_id": "node_14",
+      "purpose": "service",
+      "expected_ticks": [
+        90000,
+        90000,
+        90000,
+        90000,
+        90000,
+        90000,
+        90000,
+        90000,
+        90000,
+        90000,
+        90000,
+        90000
+      ],
+      "state_after": "ac2ac4d2f888dada",
+      "digest_draws": 100000,
+      "digest": "432915ad7b71d60f0ebe37b5fbffb23829aa3397bda6febb5cf14826020ad782",
+      "digest_state_after": "a7adbbfc08a094fe"
+    },
+    {
+      "name": "weibull failure clock",
+      "unit": "hour",
+      "distribution": {
+        "type": "weibull",
+        "shape": 1.5,
+        "scale": 8
+      },
+      "node_id": "node_15",
+      "purpose": "service",
+      "expected_ticks": [
+        10577693,
+        25615497,
+        53152646,
+        24120752,
+        26151032,
+        18229090,
+        16401988,
+        8144496,
+        8259006,
+        31628680,
+        71762082,
+        15154733
+      ],
+      "state_after": "0893ca81a33541c1",
+      "digest_draws": 100000,
+      "digest": "5ed04a7ed88ea3345dbcbd97acf33e7370440b6b0864bef9365d89dd7504acb8",
+      "digest_state_after": "0416c1aab34cfbe5"
+    },
+    {
+      "name": "weibull shape 0.1",
+      "unit": "minute",
+      "distribution": {
+        "type": "weibull",
+        "shape": 0.1,
+        "scale": 2
+      },
+      "node_id": "node_16",
+      "purpose": "service",
+      "expected_ticks": [
+        39072007,
+        1,
+        1,
+        17218420,
+        1236892,
+        7573039,
+        558651754,
+        2678,
+        182156,
+        24,
+        74053646,
+        321441
+      ],
+      "state_after": "d6a8d9bfea0c6f49",
+      "digest_draws": 100000,
+      "digest": "9b119efc7a0ee20aec8a120b971125f42f322a0b93ab36ef4f5260d15170cfa5",
+      "digest_state_after": "d22bd0e8fa24296d"
+    },
+    {
+      "name": "weibull shape 20",
+      "unit": "second",
+      "distribution": {
+        "type": "weibull",
+        "shape": 20,
+        "scale": 30
+      },
+      "node_id": "node_17",
+      "purpose": "service",
+      "expected_ticks": [
+        26105,
+        29124,
+        29198,
+        31365,
+        28933,
+        29590,
+        30151,
+        27983,
+        30080,
+        27749,
+        29755,
+        29505
+      ],
+      "state_after": "1530478bca941884",
+      "digest_draws": 100000,
+      "digest": "cc9afbe5590af621e4ad7a443c60a76dfa01a8dab1d77c57a4032a24ec699300",
+      "digest_state_after": "10b33eb4daabd2a8"
+    },
+    {
+      "name": "weibull shape 1",
+      "unit": "minute",
+      "distribution": {
+        "type": "weibull",
+        "shape": 1,
+        "scale": 48
+      },
+      "node_id": "node_18",
+      "purpose": "service",
+      "expected_ticks": [
+        384863,
+        4987760,
+        1305265,
+        384432,
+        257538,
+        3921819,
+        212123,
+        9209502,
+        2177526,
+        1395564,
+        2284357,
+        3234274
+      ],
+      "state_after": "1c9cae5afa666e09",
+      "digest_draws": 100000,
+      "digest": "bb8b461e8ad9ce7f7eff2486ddf9aefff233eefc315a5780b39957030c6bede8",
+      "digest_state_after": "181fa5840a7e282d"
+    },
+    {
+      "name": "weibull tiny scale is still 1 tick",
+      "unit": "millisecond",
+      "distribution": {
+        "type": "weibull",
+        "shape": 3,
+        "scale": 1e-300
+      },
+      "node_id": "node_19",
+      "purpose": "service",
+      "expected_ticks": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "state_after": "eaa4313c45661975",
+      "digest_draws": 100000,
+      "digest": "15b1b665276e95c8e8b3f931e14bc9a5d64adfc3a9d08e0fd195a4e02914904b",
+      "digest_state_after": "e6272865557dd399"
     }
   ],
   "log_profile": {
@@ -550,5 +840,487 @@
       "b_src": "00b5746b53a72d07",
       "c_src": "dd38597080017f16"
     }
+  },
+  "exp_profile": {
+    "seed": "0000000020261025",
+    "inputs": 1000000,
+    "digest": "368f6366aef933d0cceaba48e68c713d6c7688da6fdf5956317e9d71a6c52f01",
+    "constants": {
+      "ln2_hi": "3fe62e42fee00000",
+      "ln2_lo": "3dea39ef35793c76",
+      "log2e": "3ff71547652b82fe",
+      "overflow": "40862e42fefa39ef",
+      "underflow": "c0874910d52d3051",
+      "near_zero": "3e30000000000000",
+      "p1": "3fc5555555555555",
+      "p2": "bf66c16c16bebd93",
+      "p3": "3f11566aaf25de2c",
+      "p4": "bebbbd41c5d26bf1",
+      "p5": "3e66376972bea4d0"
+    },
+    "edges": [
+      {
+        "x": "0000000000000000",
+        "exp": "3ff0000000000000"
+      },
+      {
+        "x": "8000000000000000",
+        "exp": "3ff0000000000000"
+      },
+      {
+        "x": "3ff0000000000000",
+        "exp": "4005bf0a8b145769"
+      },
+      {
+        "x": "bff0000000000000",
+        "exp": "3fd78b56362cef38"
+      },
+      {
+        "x": "3fe0000000000000",
+        "exp": "3ffa61298e1e069c"
+      },
+      {
+        "x": "bfe0000000000000",
+        "exp": "3fe368b2fc6f960a"
+      },
+      {
+        "x": "4024000000000000",
+        "exp": "40d5829dcf950560"
+      },
+      {
+        "x": "c024000000000000",
+        "exp": "3f07cd79b5647c9a"
+      },
+      {
+        "x": "3e30000000000000",
+        "exp": "3ff0000001000000"
+      },
+      {
+        "x": "be30000000000000",
+        "exp": "3feffffffe000000"
+      },
+      {
+        "x": "3e2fffffffffffff",
+        "exp": "3ff0000001000000"
+      },
+      {
+        "x": "be2fffffffffffff",
+        "exp": "3feffffffe000000"
+      },
+      {
+        "x": "40862e42fefa39ef",
+        "exp": "7fefffffffffff2a"
+      },
+      {
+        "x": "40862e42fefa39f0",
+        "exp": "7ff0000000000000"
+      },
+      {
+        "x": "40862e42fefa39ee",
+        "exp": "7feffffffffffb2a"
+      },
+      {
+        "x": "c0874910d52d3051",
+        "exp": "0000000000000001"
+      },
+      {
+        "x": "c0874910d52d3052",
+        "exp": "0000000000000000"
+      },
+      {
+        "x": "c086232bdd7abcd2",
+        "exp": "001000000000007c"
+      },
+      {
+        "x": "c086800000000000",
+        "exp": "0000000993b4dc95"
+      },
+      {
+        "x": "c087200000000000",
+        "exp": "0000000000000055"
+      },
+      {
+        "x": "c087480000000000",
+        "exp": "0000000000000001"
+      },
+      {
+        "x": "3fd62e42fefa39ef",
+        "exp": "3ff6a09e667f3bcc"
+      },
+      {
+        "x": "bfd62e42fefa39ef",
+        "exp": "3fe6a09e667f3bcc"
+      },
+      {
+        "x": "3ff0a2b23f3bab73",
+        "exp": "4006a09e667f3bcc"
+      },
+      {
+        "x": "bffbb9d3beb8c86b",
+        "exp": "3fc6a09e667f3bcc"
+      },
+      {
+        "x": "01a56e1fc2f8f359",
+        "exp": "3ff0000000000000"
+      },
+      {
+        "x": "404205966f2b4f12",
+        "exp": "432fffffffffffe9"
+      },
+      {
+        "x": "c0425e4f7b2737fa",
+        "exp": "3ca0000000000003"
+      }
+    ]
+  },
+  "ndtri_profile": {
+    "seed": "0000000020261026",
+    "inputs": 1000000,
+    "digest": "f69257869d509f27f9ca5839a4c12d82637ba1e038e11783c7a659505ebe112d",
+    "constants": {
+      "a0": "400b18d91e9eef75",
+      "a1": "4060a4888b1a436e",
+      "a2": "409ece5d2213c0cc",
+      "a3": "40cad1d8cd4ee71d",
+      "a4": "40e66c3e869b752a",
+      "a5": "40f06c1c55b78f20",
+      "a6": "40e052d26b2e45e4",
+      "a7": "40a39a296f7d925e",
+      "b0": "3ff0000000000000",
+      "b1": "4045281b386e1ab5",
+      "b2": "4085797efdc8b3f7",
+      "b3": "40b512322e75c89f",
+      "b4": "40d4b772d5d65266",
+      "b5": "40e3317caa64f4be",
+      "b6": "40dc0e457cb1ae76",
+      "b7": "40b46a7eca984b69",
+      "c0": "3ff6c665fde9526a",
+      "c1": "4012857748cab19b",
+      "c2": "401713f71462256a",
+      "c3": "400d2ecb1a3d02c4",
+      "c4": "3ff453cc085375b2",
+      "c5": "3fcef2abb9b85c37",
+      "c6": "3f9744eb6c45ec67",
+      "c7": "3f49615ac0b7ace9",
+      "d0": "3ff0000000000000",
+      "d1": "40006cefbb46a449",
+      "d2": "3ffad278e6526633",
+      "d3": "3fe61292f23385c9",
+      "d4": "3fc2f5123394f040",
+      "d5": "3f8f207a7eab17bf",
+      "d6": "3f41f18cbfdf2728",
+      "d7": "3e120d3f686439e4",
+      "e0": "401aa1b1c13ee526",
+      "e1": "4015daea6e875003",
+      "e2": "3ffc8ea6461fa445",
+      "e3": "3fd2fad9315255cf",
+      "e4": "3f9b2b41193b4ee7",
+      "e5": "3f545c1908425345",
+      "e6": "3efc6ec6cc59e02a",
+      "e7": "3e8afb74d693bf93",
+      "f0": "3ff0000000000000",
+      "f1": "3fe331d34fc7d77f",
+      "f2": "3fc186eb183443fb",
+      "f3": "3f8e76f93215462a",
+      "f4": "3f49c8bc979dc5d7",
+      "f5": "3ef35c2c496374bf",
+      "f6": "3e831446f740b9e0",
+      "f7": "3ce269bff1f8c190"
+    },
+    "edges": [
+      {
+        "p": "3ca0000000000000",
+        "ndtri": "c0206b48528cea51"
+      },
+      {
+        "p": "3fefffffffffffff",
+        "ndtri": "40206b48528cea51"
+      },
+      {
+        "p": "3fe0000000000000",
+        "ndtri": "0000000000000000"
+      },
+      {
+        "p": "3fe0000000000001",
+        "ndtri": "3cb40d931ff62707"
+      },
+      {
+        "p": "3fdfffffffffffff",
+        "ndtri": "bca40d931ff62707"
+      },
+      {
+        "p": "3fb3333333333333",
+        "ndtri": "bff7085226d3e523"
+      },
+      {
+        "p": "3fb3333333333334",
+        "ndtri": "bff7085226d3e523"
+      },
+      {
+        "p": "3fb3333333333332",
+        "ndtri": "bff7085226d3e522"
+      },
+      {
+        "p": "3fed99999999999a",
+        "ndtri": "3ff7085226d3e524"
+      },
+      {
+        "p": "3fed99999999999b",
+        "ndtri": "3ff7085226d3e528"
+      },
+      {
+        "p": "3fed999999999999",
+        "ndtri": "3ff7085226d3e521"
+      },
+      {
+        "p": "3dae8a37a45fc32e",
+        "ndtri": "c01aa1b1c13ee525"
+      },
+      {
+        "p": "3dae8a37a45fc32f",
+        "ndtri": "c01aa1b1c13ee525"
+      },
+      {
+        "p": "3feffffffffe175d",
+        "ndtri": "401aa1b1e6eab81f"
+      },
+      {
+        "p": "3ddb7cdfd9d7bdbb",
+        "ndtri": "c0197203597a2154"
+      },
+      {
+        "p": "3feffffffff24190",
+        "ndtri": "40197203589fd4f5"
+      },
+      {
+        "p": "3fd3333333333333",
+        "ndtri": "bfe0c7e39582c5fa"
+      },
+      {
+        "p": "3feccccccccccccd",
+        "ndtri": "3ff4813c36e26d34"
+      },
+      {
+        "p": "3fef333333333333",
+        "ndtri": "3fff5c0331eeff82"
+      },
+      {
+        "p": "3f9999999999999a",
+        "ndtri": "bfff5c0331eeff83"
+      },
+      {
+        "p": "01a56e1fc2f8f359",
+        "ndtri": "c04286074064c26e"
+      },
+      {
+        "p": "0000000000000001",
+        "ndtri": "c0433bd3f27fcd02"
+      }
+    ]
+  },
+  "lognormal_params": [
+    {
+      "mean": 30,
+      "cv": 0.5,
+      "mu": "400a51273acf01ca",
+      "sigma": "3fde3b7c5f83bb36"
+    },
+    {
+      "mean": 4,
+      "cv": 10,
+      "mu": "bfed7b029e7a74e6",
+      "sigma": "40012faf14407308"
+    },
+    {
+      "mean": 1e-300,
+      "cv": 1,
+      "mu": "c08598fa10585efc",
+      "sigma": "3feaa4499161cd47"
+    },
+    {
+      "mean": 300,
+      "cv": 3,
+      "mu": "401235bfeb734092",
+      "sigma": "3ff84761ab6c5b9b"
+    },
+    {
+      "mean": 90,
+      "cv": 1e-09,
+      "mu": "4011ffce1b312c10",
+      "sigma": "0000000000000000"
+    }
+  ],
+  "breakdown_streams": {
+    "resource_id": "press",
+    "capacity": 3,
+    "unit": "minute",
+    "time_to_failure": {
+      "type": "weibull",
+      "shape": 1.5,
+      "scale": 600
+    },
+    "time_to_repair": {
+      "type": "lognormal",
+      "mean": 30,
+      "cv": 0.5
+    },
+    "draws": 12,
+    "units": [
+      {
+        "unit": 0,
+        "ttf": [
+          2606454,
+          49484163,
+          16841258,
+          72162812,
+          33934814,
+          39465314,
+          84315132,
+          10113718,
+          46763703,
+          2855343,
+          28412618,
+          21472924
+        ],
+        "ttf_state_after": "b357833acb6819a1",
+        "ttr": [
+          1172411,
+          1463172,
+          1843175,
+          1490275,
+          2091847,
+          1112400,
+          2134842,
+          2123261,
+          5260275,
+          1570708,
+          1525049,
+          2484142
+        ],
+        "ttr_state_after": "db6b0274ef0fe723"
+      },
+      {
+        "unit": 1,
+        "ttf": [
+          17814732,
+          27764714,
+          20351860,
+          1969349,
+          22883097,
+          46213448,
+          48788783,
+          35208354,
+          10240765,
+          42524180,
+          25484862,
+          34351695
+        ],
+        "ttf_state_after": "54ec0bd9abb60433",
+        "ttr": [
+          898381,
+          662478,
+          2547625,
+          819212,
+          1346196,
+          2583115,
+          1267040,
+          1955145,
+          1508258,
+          1488921,
+          1769922,
+          1980545
+        ],
+        "ttr_state_after": "3395f337b339f5d6"
+      },
+      {
+        "unit": 2,
+        "ttf": [
+          13500106,
+          30591540,
+          5168330,
+          23163851,
+          32639947,
+          25287462,
+          35578790,
+          14585594,
+          26229428,
+          6310589,
+          19762835,
+          23771562
+        ],
+        "ttf_state_after": "4350cabd80d351a0",
+        "ttr": [
+          1059829,
+          1253515,
+          1754667,
+          1636498,
+          726391,
+          1657915,
+          597810,
+          1403898,
+          1679978,
+          1588248,
+          1091997,
+          3654436
+        ],
+        "ttr_state_after": "fd0a894202667e97"
+      }
+    ]
+  },
+  "event_order_resource_state": {
+    "pushes": [
+      {
+        "tick": 5,
+        "priority": 15
+      },
+      {
+        "tick": 5,
+        "priority": 20
+      },
+      {
+        "tick": 5,
+        "priority": 10
+      },
+      {
+        "tick": 3,
+        "priority": 15
+      },
+      {
+        "tick": 5,
+        "priority": 0
+      },
+      {
+        "tick": 5,
+        "priority": 15
+      },
+      {
+        "tick": 3,
+        "priority": 20
+      },
+      {
+        "tick": 3,
+        "priority": 10
+      },
+      {
+        "tick": 0,
+        "priority": 15
+      },
+      {
+        "tick": 5,
+        "priority": 10
+      }
+    ],
+    "pop_sequence": [
+      9,
+      8,
+      4,
+      7,
+      5,
+      3,
+      10,
+      1,
+      6,
+      2
+    ]
   }
 }

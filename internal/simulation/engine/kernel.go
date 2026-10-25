@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/kcl1104/geminus/internal/model"
 )
@@ -23,7 +24,36 @@ var (
 	// nothing in service or in a delay can ever release one. A valid model
 	// never reaches it (D-050 R1); it fails the run with a *DeadlockError.
 	ErrDeadlock = errors.New("engine: deadlock")
+	// ErrStalled: a bundle that can never be filled (ADR-026 D-050 B2): a
+	// waiting request at the front of every FIFO it is in, none of its
+	// bundle in use and not fitting the units that are up, has been so
+	// longer than the longest repair of its resources (TTRmax) at the end
+	// of a tick (D-074 (c)). A valid model never reaches it (D-050 R3); it
+	// fails the run with a *StalledError. A bundle whose repair time has no
+	// bound (exponential, lognormal, Weibull) is never checked.
+	ErrStalled = errors.New("engine: stalled")
 )
+
+// StalledError is ErrStalled with what the run failed on (D-050 B2): the
+// tick it was found at, the earliest such request (by queue order), its
+// process, the tick it has been in that state since and the deadline
+// Since + TTRmax it passed.
+type StalledError struct {
+	Tick     int64  // the end of the tick it was found at
+	Entity   string // r<replication>/<source>/<n>
+	Node     string // the process it waits for
+	Since    int64  // the first tick at whose end it was in the state
+	Deadline int64  // Since + TTRmax of its bundle
+}
+
+func (e *StalledError) Error() string { return "engine: " + e.Reason() }
+func (e *StalledError) Unwrap() error { return ErrStalled }
+
+// Reason is the failure's message (internal/runs/runner records it).
+func (e *StalledError) Reason() string {
+	return fmt.Sprintf("the replication stalled at tick %d: %s waits for node %s since tick %d with none of its bundle in use; it was due by tick %d",
+		e.Tick, e.Entity, e.Node, e.Since, e.Deadline)
+}
 
 // DeadlockError is ErrDeadlock with what the run failed on (D-050 B1): the
 // tick it was found at and the earliest entity still blocked (or, without
@@ -68,6 +98,11 @@ const (
 	// buffer.
 	ObsBlocked   // Entity's route from Node (a source, process or delay) reached the full buffer of At's process; it stays at Node
 	ObsUnblocked // Entity, blocked at Node, moves into the buffer it was blocked by (an ObsQueueEnter follows)
+	// ADR-026 D-051 (T-048): only ever observed in a model with a resource
+	// that breaks down. At is the failure clock (unit index) of Resource.
+	ObsResourceDown     // a unit of Resource went down for failure clock At; Value is Resource's units down
+	ObsResourceUp       // the unit down for failure clock At was repaired; Value is Resource's units down
+	ObsBreakdownPending // failure clock At fired with no unit idle: it waits for the next release (finish-first); Value is the failures waiting
 )
 
 // Observation is one fact the kernel reports, in processing order: by tick,
@@ -87,7 +122,8 @@ type Observation struct {
 	// queue, or the process itself when routed straight into it (Node is
 	// always the process whose buffer it waits in). For ObsBlocked and
 	// ObsUnblocked it is the node its route reached (that queue or that
-	// process). Unused otherwise.
+	// process). For ObsResourceDown, ObsResourceUp and ObsBreakdownPending
+	// it is the failure clock. Unused otherwise.
 	At int
 }
 
@@ -114,7 +150,10 @@ type request struct {
 	seq     uint64
 	entered int64 // tick it queued at
 	heads   int   // how many of its resources' queues it is at the front of
-	held    bool  // a candidate whose bundle did not fit; waits for a release
+	held    bool  // a candidate whose bundle did not fit; waits for a release (or a repair)
+	// stalled is the first tick at whose end the request was in D-050 B2's
+	// state (held, none of its bundle in use), -1 when it is not.
+	stalled int64
 }
 
 // resourceQueue holds, in FIFO order, the waiting requests that need one
@@ -234,7 +273,20 @@ type kernel struct {
 	inDelay    int64
 	inDispatch bool
 	path       []int // the failure and rework nodes of the route being resolved
+
+	// Breakdowns (D-051, T-048). down counts each resource's units down
+	// (all 0 without breakdowns); pending, allocated only when the program
+	// has breakdowns, holds per resource the failure clocks waiting for a
+	// release, in the order they fired; clocks holds per resource that
+	// breaks down and per unit its TTF and TTR streams, created on first
+	// use.
+	down    []int
+	pending [][]int
+	clocks  [][]clockStreams
 }
+
+// clockStreams are one failure clock's streams.
+type clockStreams struct{ ttf, ttr *SplitMix64 }
 
 // RunReplication executes replication index of p up to and including the
 // horizon, reporting every observation to obs (nil for none). It spends the
@@ -251,9 +303,13 @@ func runKernel(ctx context.Context, p *Program, index uint32, b *Budget, obs Obs
 	}
 	r := newReplication(p, index)
 	k := &kernel{r: r, obs: obs, inUse: make([]int, len(p.resources)), queues: make([]resourceQueue, len(p.resources)),
-		waiting: make([]int, len(p.nodes))}
+		waiting: make([]int, len(p.nodes)), down: make([]int, len(p.resources))}
 	if p.finite {
 		k.blocked = make([]blockedQueue, len(p.nodes))
+	}
+	if p.breakdowns {
+		k.pending, k.clocks = make([][]int, len(p.resources)), make([][]clockStreams, len(p.resources))
+		r.onStart = k.startClocks
 	}
 	r.onArrival = func(r *replication, e uint64) error { return k.after(k.arrived(r, e)) }
 	r.onEvent = func(r *replication, ev event) error { return k.after(k.handle(r, ev)) }
@@ -273,15 +329,31 @@ func (k *kernel) observe(o Observation) {
 	}
 }
 
-// after runs at the end of every event of a program with a finite buffer:
-// the D-050 B1 check, unless a dispatch is still due in this tick (it
-// checks at its own end). A program without one never checks, so it runs
-// as des-go-0.1.0 did (D-047).
+// after runs at the end of every event. In a program with a finite buffer
+// it is the D-050 B1 check, unless a dispatch is still due in this tick (it
+// checks at its own end); in a program with breakdowns, at the end of a
+// tick with a held candidate, the B2 check (D-074 (c)). A program with
+// neither never checks, so it runs as des-go-0.1.0 did (D-047).
 func (k *kernel) after(err error) error {
-	if err != nil || !k.r.p.finite || k.dispatchPending {
+	if err != nil {
 		return err
 	}
-	return k.deadlock()
+	p := k.r.p
+	if p.finite && !k.dispatchPending {
+		if err := k.deadlock(); err != nil {
+			return err
+		}
+	}
+	if p.breakdowns && k.held > 0 && k.tickEnds() {
+		return k.stall()
+	}
+	return nil
+}
+
+// tickEnds reports whether the event just processed is the last of its tick.
+func (k *kernel) tickEnds() bool {
+	next, ok := k.r.q.peek()
+	return !ok || next.Tick > k.r.now
 }
 
 func (k *kernel) arrived(r *replication, e uint64) error {
@@ -306,8 +378,94 @@ func (k *kernel) handle(r *replication, ev event) error {
 		return k.depart(ev.Entity, ev.Node)
 	case EventDispatch:
 		return k.dispatch()
+	case EventFailure:
+		return k.failure(int(ev.Resource), int(ev.Unit))
+	case EventRepair:
+		return k.repair(int(ev.Resource), int(ev.Unit))
 	}
 	return fmt.Errorf("%w: unknown event kind %d", ErrInternal, ev.Kind)
+}
+
+// startClocks starts every failure clock at t=0, after the sources' first
+// arrivals (D-048): resources in ID order, units in index order, each
+// failing one TTF from now. A failure after the horizon is never
+// scheduled (and takes no sequence number), so breakdowns whose first
+// failure is beyond it leave the run exactly as it was without them.
+func (k *kernel) startClocks(r *replication) error {
+	for i := range r.p.resources {
+		res := &r.p.resources[i]
+		if res.ttf == nil {
+			continue
+		}
+		k.clocks[i] = make([]clockStreams, res.capacity)
+		for u := range res.capacity {
+			if err := k.scheduleFailure(i, u); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// streams returns failure clock u of resource i's streams, creating them
+// on first use.
+func (k *kernel) streams(i, u int) *clockStreams {
+	c := &k.clocks[i][u]
+	if c.ttf == nil {
+		id, unit := k.r.p.resources[i].id, strconv.Itoa(u)
+		c.ttf, c.ttr = Stream(k.r.seed, id, PurposeFailurePrefix+unit), Stream(k.r.seed, id, PurposeRepairPrefix+unit)
+	}
+	return c
+}
+
+// scheduleFailure draws clock u's next time to failure and schedules it.
+func (k *kernel) scheduleFailure(i, u int) error {
+	d := k.r.p.resources[i].ttf.draw(k.streams(i, u).ttf)
+	return k.r.scheduleClock(d, EventFailure, i, u)
+}
+
+// failure is failure clock u of resource i firing (D-051, priority 15): a
+// unit neither in use nor down goes down at once; with none, the failure
+// waits for the next release (finish-first), behind the failures already
+// waiting.
+func (k *kernel) failure(i, u int) error {
+	if k.r.p.resources[i].capacity-k.down[i]-k.inUse[i] > 0 {
+		return k.goDown(i, u)
+	}
+	k.pending[i] = append(k.pending[i], u)
+	k.observe(Observation{Kind: ObsBreakdownPending, Resource: i, At: u, Value: int64(len(k.pending[i]))})
+	return nil
+}
+
+// goDown takes a unit of resource i down for clock u and schedules its
+// repair one TTR (drawn now) later.
+func (k *kernel) goDown(i, u int) error {
+	k.down[i]++
+	k.observe(Observation{Kind: ObsResourceDown, Resource: i, At: u, Value: int64(k.down[i])})
+	d := k.r.p.resources[i].ttr.draw(k.streams(i, u).ttr)
+	return k.r.scheduleClock(d, EventRepair, i, u)
+}
+
+// repair ends clock u's downtime (priority 15): the unit is up, the clock
+// draws its next time to failure, and, since the capacity rose without a
+// release, the held front of the resource's FIFO is decided again at a
+// dispatch later in this tick. A waiting failure is not given the repaired
+// unit: only a released unit satisfies it (D-074 (a)).
+func (k *kernel) repair(i, u int) error {
+	if k.down[i]--; k.down[i] < 0 {
+		return fmt.Errorf("%w: resource %s has %d units down", ErrInternal, k.r.p.resources[i].id, k.down[i])
+	}
+	k.observe(Observation{Kind: ObsResourceUp, Resource: i, At: u, Value: int64(k.down[i])})
+	if err := k.scheduleFailure(i, u); err != nil {
+		return err
+	}
+	if f := k.queues[i].front(); f != nil && f.held {
+		f.held = false
+		k.held--
+		heap.Push(&k.cands, f)
+		return k.needDispatch()
+	}
+	return nil
 }
 
 // serviceComplete ends entity e's service at process n. The route is
@@ -325,7 +483,9 @@ func (k *kernel) serviceComplete(e uint64, n int) error {
 	block := err == nil && k.full(to)
 	reqs := k.r.p.nodes[n].requires
 	if !block {
-		k.release(reqs)
+		if rerr := k.release(reqs); rerr != nil {
+			return rerr
+		}
 	}
 	for _, q := range reqs {
 		if k.inUse[q.resource] < 0 {
@@ -349,18 +509,30 @@ func (k *kernel) serviceComplete(e uint64, n int) error {
 	return k.enter(e, to)
 }
 
-// release frees a bundle's units, reporting each level; a held candidate
-// at the front of one of these resources may fit now.
-func (k *kernel) release(reqs []requirement) {
+// release frees a bundle's units, reporting each level; the released units
+// of a resource with waiting failures go down for them first, one unit per
+// failure in the order they fired (D-051 finish-first, before any grant);
+// a held candidate at the front of one of these resources may fit now.
+func (k *kernel) release(reqs []requirement) error {
 	for _, q := range reqs {
 		k.inUse[q.resource] -= q.units
 		k.observe(Observation{Kind: ObsResource, Resource: q.resource, Value: int64(k.inUse[q.resource])})
+		if k.pending != nil {
+			for n := min(q.units, len(k.pending[q.resource])); n > 0; n-- {
+				u := k.pending[q.resource][0]
+				k.pending[q.resource] = k.pending[q.resource][1:]
+				if err := k.goDown(q.resource, u); err != nil {
+					return err
+				}
+			}
+		}
 		if f := k.queues[q.resource].front(); f != nil && f.held {
 			f.held = false
 			k.held--
 			heap.Push(&k.cands, f)
 		}
 	}
+	return nil
 }
 
 // depart moves entity e on from a source (after its arrival) or a delay
@@ -511,7 +683,7 @@ func (k *kernel) enqueue(e uint64, process, at int) error {
 		return fmt.Errorf("%w: %s entered the full buffer of %s", ErrInternal, k.r.EntityID(e), k.r.p.nodes[process].id)
 	}
 	k.reqSeq++
-	req := &request{entity: e, process: process, seq: k.reqSeq, entered: k.r.now}
+	req := &request{entity: e, process: process, seq: k.reqSeq, entered: k.r.now, stalled: -1}
 	reqs := k.r.p.nodes[process].requires
 	for _, q := range reqs {
 		if k.queues[q.resource].push(req) {
@@ -549,10 +721,11 @@ func (k *kernel) needDispatch() error {
 // seq order. A grant pops the request from its queues; the requests that
 // move to the front have larger seqs and join the candidates, so the order
 // in which requests are decided is exactly the literal scan's. A candidate
-// whose bundle does not fit stays at the front, holding its resources back;
-// only a release of one of its resources can make it fit (grants only take
-// units), so it is set aside as held and decided again after such a
-// release. Each grant reports its bundle's new levels and starts its
+// whose bundle does not fit (in use + units > C - D, D the units down,
+// D-051) stays at the front, holding its resources back; only a release or
+// a repair of one of its resources can make it fit (grants and failures
+// only take units), so it is set aside as held and decided again after
+// such a release or repair. Each grant reports its bundle's new levels and starts its
 // service, sampling its process's service stream, in grant order.
 //
 // A grant at a full buffer with blocked entities makes room for the first
@@ -572,7 +745,8 @@ func (k *kernel) dispatch() error {
 		reqs := p.nodes[req.process].requires
 		fits := true
 		for _, q := range reqs {
-			if k.inUse[q.resource]+q.units > p.resources[q.resource].capacity {
+			// D-051: only units neither in use nor down can be granted.
+			if k.inUse[q.resource]+q.units > p.resources[q.resource].capacity-k.down[q.resource] {
 				fits = false
 				break
 			}
@@ -616,7 +790,9 @@ func (k *kernel) unblock(process int) error {
 	b := k.blocked[process].pop()
 	k.nBlocked--
 	if from := &k.r.p.nodes[b.from]; from.typ == model.NodeProcess {
-		k.release(from.requires)
+		if err := k.release(from.requires); err != nil {
+			return err
+		}
 	}
 	k.observe(Observation{Kind: ObsUnblocked, Entity: b.entity, Node: b.from, At: b.at})
 	return k.enqueue(b.entity, process, b.at)
@@ -627,7 +803,10 @@ func (k *kernel) unblock(process int) error {
 // delay (the events that release units, counted whether or not they fall
 // within the horizon), and every held candidate release-bound (some unit
 // it needs is in use; nothing but a release frees one, and no release can
-// come). A valid model never reaches it (D-050 R1).
+// come). The bound is the full capacity C, units down or not: a candidate
+// that fits C but not C - D is capacity-bound, a repair lets it in, and it
+// is no circular wait (T-048, G-K1). A valid model never reaches it (D-050
+// R1).
 func (k *kernel) deadlock() error {
 	if k.inService > 0 || k.inDelay > 0 || (k.nBlocked == 0 && k.held == 0) {
 		return nil
@@ -646,7 +825,11 @@ func (k *kernel) deadlock() error {
 			}
 		}
 		if !bound {
-			return nil // it fits: a dispatch will grant it
+			// It fits the full capacity: units down keep it out, and their
+			// repair will let it in (capacity-bound, G-K1). Without
+			// breakdowns every held candidate is bound here: each release
+			// wakes the held fronts it frees and asks for a dispatch.
+			return nil
 		}
 		if first == nil || f.seq < first.seq {
 			first = f
@@ -669,4 +852,47 @@ func (k *kernel) deadlock() error {
 		de.Entity, de.Node, de.Since, de.Queued = k.r.EntityID(first.entity), p.nodes[first.process].id, first.entered, true
 	}
 	return de
+}
+
+// stall is the D-050 B2 backstop, run at the end of a tick with a held
+// candidate in a program with breakdowns (D-074 (c): the state of the
+// tick's last event, so a repair later in the deadline tick still counts).
+// A held candidate none of whose bundle is in use waits only for repairs;
+// from the first tick it ends in that state, every unit it needs is
+// repaired within its bundle's TTRmax, after which a dispatch grants it
+// (no other request can take those units: it is the front of each FIFO).
+// One still in the state at Since + TTRmax can never be filled: two clocks
+// keep its units down in turn (R3 refuses such a bundle). With no bound on
+// the repair time (TTRmax -1) it is not checked.
+func (k *kernel) stall() error {
+	p := k.r.p
+	var due *request
+	for i := range k.queues {
+		f := k.queues[i].front()
+		if f == nil || !f.held {
+			continue
+		}
+		idle := true
+		for _, q := range p.nodes[f.process].requires {
+			if k.inUse[q.resource] > 0 {
+				idle = false
+				break
+			}
+		}
+		if !idle {
+			f.stalled = -1
+			continue
+		}
+		if f.stalled < 0 {
+			f.stalled = k.r.now
+		}
+		if m := p.nodes[f.process].ttrMax; m >= 0 && k.r.now >= f.stalled+m && (due == nil || f.seq < due.seq) {
+			due = f
+		}
+	}
+	if due == nil {
+		return nil
+	}
+	return &StalledError{Tick: k.r.now, Entity: k.r.EntityID(due.entity), Node: p.nodes[due.process].id,
+		Since: due.stalled, Deadline: due.stalled + p.nodes[due.process].ttrMax}
 }

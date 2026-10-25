@@ -41,6 +41,17 @@ const (
 	PurposeTrace   = "trace" // trace sampling; never consumes the streams above
 )
 
+// Breakdown stream purposes (ADR-026 D-051, T-048): failure clock u of a
+// resource draws its times to failure from (resource ID, "ttf/<u>") and its
+// times to repair from (resource ID, "ttr/<u>"), so one more unit of
+// capacity, or another resource's clocks, never shift a unit's draws. Node
+// purposes never contain "/", so a resource and a node with the same ID
+// never share a stream.
+const (
+	PurposeFailurePrefix = "ttf/"
+	PurposeRepairPrefix  = "ttr/"
+)
+
 // ReplicationSeed is the first 8 bytes, little-endian, of
 // SHA256("dt-rep-v1\x00" || uint64LE(baseSeed) || uint32LE(index)).
 func ReplicationSeed(baseSeed uint64, index uint32) uint64 {

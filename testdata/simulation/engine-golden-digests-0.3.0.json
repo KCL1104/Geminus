@@ -1,0 +1,43 @@
+{
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.3.0, T-048) on the cases of expected-cases.json, on the cases of blocking-goldens.json and breakdown-goldens.json that have an expected result, and on the four stochastic reference cases of breakdown-goldens.json (B-S1–B-S4); NOT an independent oracle. It was taken only after the hand-derived expectations of those files passed (internal/simulation/des TestBreakdownGoldenResults, TestBlockingGoldenResults; internal/simulation/engine TestBreakdownGoldens, TestBlockingGoldens); these digests only make any later numerical change visible. The locks of des-go-0.1.0 (engine-golden-digests.json) and des-go-0.2.0 (engine-golden-digests-0.2.0.json) are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back.",
+  "engine_version": "des-go-0.3.0",
+  "inputs": {
+    "cases": "expected-cases.json (with the dora stand-in), blocking-goldens.json and breakdown-goldens.json (model and config as given, no domain metrics)",
+    "model_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "effective_model_hash": "hashing.Model(model.Encode(model))",
+    "limits": {"wall_timeout_seconds": 300, "max_events": 10000000, "max_active_entities": 100000, "max_entity_visits": 10000, "max_trace_events": 100000},
+    "dataset_manifest": []
+  },
+  "digests": {
+    "GOLDEN-001": "sha256:0024125766a221558835d9f935fba8d87ee62c98d71b4b42f2faf5350c838090",
+    "GOLDEN-002": "sha256:65523405d0d40430495939e0375caa1c3fb9fd493e6b01b60c96e6562debf5a5",
+    "G-B1": "sha256:542c6b501787375c17f054797a69989be16e38ed5577ea47abcd263fc8181f83",
+    "G-B1W": "sha256:310e70a06f5ea542b3a1b8c43030f6c34fa8272f9ea637bfe983ebc149c1b2be",
+    "G-B2": "sha256:77531c00293965a458a56a968a1591ada2c00668749768149d2b1bad6e77645a",
+    "G-B3": "sha256:e4002d1db48a436566d57e44bfa4deab058d31e655739f300e747426ec25349e",
+    "G-B4": "sha256:ae16304ea49d3e0284ad9d63bee7bca44ef8e9a2e6ec2358a0622c504b0f4d82",
+    "G-B4W": "sha256:e2a6db1bb4879abf4dc37893b80766495d2574e564c5cb36ac848daff8f3ba9f",
+    "G-B7": "sha256:7202c3061b36c263e58aa57ea7364e2baad37a9abc99e62ae54379e3b52a94c0",
+    "G-B8": "sha256:262d84a09b611eac6b59f84f1121d2b6bb32a6ca2ef8091bcf953117fd4966e6",
+    "G-B9": "sha256:f6cb57aecb72a0424f25547cebbd6e80f0a1867954231b9ce400a32f8b51bfde",
+    "G-B10": "sha256:2fb22b07f1531736c242d60b6148110cb4d67fd6f726815f9284cd2842504662",
+    "G-B11": "sha256:63f76f12dae18014100cb14beaa80a3b973fae2aab9ac9a1394031de38e7c42f",
+    "G-B12": "sha256:97c31000936dc774cc0c398c640f00b5bd2fd63d87d3bb70d6be5a9cd7f1352a",
+    "G-B13": "sha256:58b4a3d69eecc12a44e7c71b83e241f7b7e9f9dcc5149f2db7a241753dfe2480",
+    "G-B14": "sha256:df27389fba34c9f16a79ea25a08f80c5fa454501533a9902276e1f7baad1966a",
+    "G-F1": "sha256:15ff2715f14cf471cc5894ec7b84c3ad79d632d6d7a7f508a7bc129f4255768b",
+    "G-F2": "sha256:8083331478c892726403242a1f1ac47bb0933ee72391750e93265c4eb09300a7",
+    "G-F3": "sha256:4fdbe9b146c278c9e82004d60da333a285209431c56672491a53fae1ba4f2ffa",
+    "G-F7": "sha256:74a7c4e445713b394b7308fd4c8c1b11b97d59fd9e1af1228a8dbc699c58c0e9",
+    "G-F8": "sha256:2c95dab77e59a81b30fe91fcc36509ef3a44951fbd2452ca704f2551d7060209",
+    "G-T1": "sha256:6e5ad2c9c50804e182fda50746a6c40666ee0c6fdd2461c570514282977efbfe",
+    "G-T2": "sha256:2cc811def6de3323f3329c85d5168d59867fce27644190e2af642d48c9c588f5",
+    "G-T4": "sha256:0eac4695da6ed96b4912cdaaf1902ae0e2623e6e461a3ddcc5cf49df602426d7",
+    "G-K1": "sha256:41edf1caed8a80710e12a361bd9f29a0c090e1817602ca491bd31b28d4a87e10",
+    "G-S2": "sha256:c23806944889bbcf425c083d6c44c02ed88df90955c97d69791bfee4f4323229",
+    "B-S1": "sha256:cc19b49b0db156e6d741a40f577babfae414031d4bc5aca5dc95091ed5b02214",
+    "B-S2": "sha256:dbadf923f18bb10a3b14dd22baac03298750025562d91aeb004f90466d8b6f2b",
+    "B-S3": "sha256:7237268b3b66affc77e9233ba94b0b52865b8f7191616c02ace476ec01e9ec37",
+    "B-S4": "sha256:cd205d24fc58511b17e6e47124d3a12c9597e9faf7f3a4b0f5fdcba3e3dead14"
+  }
+}

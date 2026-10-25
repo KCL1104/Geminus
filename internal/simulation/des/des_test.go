@@ -438,8 +438,9 @@ func TestDependencies(t *testing.T) {
 // engine_version. The lock is not regenerated (ADR-026 D-047): a model
 // without a line-flow member gives the same Result bit for bit, which is
 // checked as the Result with its engine_version set back to the lock's
-// having the locked digest. The new version's own lock is
-// engine-golden-digests-0.2.0.json (TestGoldenDigests020).
+// having the locked digest. Each later version has its own lock:
+// engine-golden-digests-0.2.0.json (TestGoldenDigests020) and
+// engine-golden-digests-0.3.0.json (TestGoldenDigests030).
 func TestGoldenDigests(t *testing.T) {
 	root := contracttest.Root(t)
 	var cases struct {
@@ -478,6 +479,9 @@ func TestGoldenDigests(t *testing.T) {
 
 // des-go-0.2.0's own regression lock (engine output, not an oracle; ADR-026
 // D-047 "新版本另立自己的鎖"): GOLDEN-001/002 and the finite-buffer goldens.
+// Since des-go-0.3.0 (T-048) it is not regenerated either: none of these
+// models has breakdowns, lognormal or Weibull, so each Result with its
+// engine_version set back to des-go-0.2.0 has the locked digest.
 func TestGoldenDigests020(t *testing.T) {
 	root := contracttest.Root(t)
 	var lock struct {
@@ -487,8 +491,19 @@ func TestGoldenDigests020(t *testing.T) {
 	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(root, "testdata/simulation/engine-golden-digests-0.2.0.json")), &lock); err != nil {
 		t.Fatal(err)
 	}
-	if lock.EngineVersion != Version {
-		t.Fatalf("lock for %s, engine %s", lock.EngineVersion, Version)
+	if lock.EngineVersion != "des-go-0.2.0" {
+		t.Fatalf("lock for %s", lock.EngineVersion)
+	}
+	digest := func(res simulation.Result) string {
+		if res.EngineVersion != Version {
+			t.Errorf("engine_version %s", res.EngineVersion)
+		}
+		res.EngineVersion, res.Reproducibility.ResultDigest = lock.EngineVersion, ""
+		d, err := hashing.Result(res)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return d
 	}
 	var cases struct {
 		Cases []struct {
@@ -504,11 +519,11 @@ func TestGoldenDigests020(t *testing.T) {
 	for _, c := range cases.Cases {
 		in := input(t, golden(t, filepath.Base(c.Model)), 0, 0, 1, simulation.TraceNone)
 		in.Config = c.Config
-		got[c.ID] = run(t, &Engine{DomainMetrics: dora}, in).Result.Reproducibility.ResultDigest
+		got[c.ID] = digest(*run(t, &Engine{DomainMetrics: dora}, in).Result)
 	}
 	for _, c := range blockingCases(t) {
 		if c.Expected.Result != nil {
-			got[c.ID] = run(t, &Engine{}, caseInput(t, c)).Result.Reproducibility.ResultDigest
+			got[c.ID] = digest(*run(t, &Engine{}, caseInput(t, c)).Result)
 		}
 	}
 	if !reflect.DeepEqual(got, lock.Digests) {
@@ -560,11 +575,15 @@ func FuzzRun(f *testing.F) {
 			} `json:"cases"`
 		} `json:"reference"`
 	}
-	if err := json.Unmarshal(contracttest.ReadFile(f, filepath.Join(contracttest.Root(f), "testdata/simulation/blocking-goldens.json")), &doc); err != nil {
-		f.Fatal(err)
-	}
-	for _, c := range append(doc.Cases, doc.Reference.Cases...) {
-		f.Add([]byte(c.Model), uint8(1), uint16(200), uint16(20))
+	// T-048: models with breakdowns, lognormal and Weibull; a valid one
+	// never stalls (R3), so ErrStalled stays an untyped failure too.
+	for _, file := range []string{"blocking-goldens.json", "breakdown-goldens.json"} {
+		if err := json.Unmarshal(contracttest.ReadFile(f, filepath.Join(contracttest.Root(f), "testdata/simulation", file)), &doc); err != nil {
+			f.Fatal(err)
+		}
+		for _, c := range append(doc.Cases, doc.Reference.Cases...) {
+			f.Add([]byte(c.Model), uint8(1), uint16(200), uint16(20))
+		}
 	}
 	f.Fuzz(func(t *testing.T, data []byte, reps uint8, horizon, warmup uint16) {
 		var ir model.ModelIR

@@ -23,8 +23,11 @@ status=0
 for spec in "${TARGETS[@]}"; do
   read -r arch level <<<"$spec"
   listing=$(GOARCH="$arch" GOAMD64="${level:-v1}" go build -gcflags=-S "${PKGS[@]}" 2>&1) || { echo "$listing" >&2; exit 1; }
-  # A listing without the pinned logarithm would make this check vacuous.
-  grep -q 'engine\.ln STEXT' <<<"$listing" || { echo "FAIL the $arch listing has no engine.ln" >&2; exit 1; }
+  # A listing without the pinned logarithm, exponential and AS241 normal
+  # quantile (D-056, T-048) would make this check vacuous for them.
+  for fn in ln exp ndtri; do
+    grep -q "engine\.$fn STEXT" <<<"$listing" || { echo "FAIL the $arch listing has no engine.$fn" >&2; exit 1; }
+  done
   if fused=$(grep -E "$FUSED" <<<"$listing"); then
     echo "FAIL fused multiply-add in the $arch${level:+ $level} build:" >&2
     echo "$fused" >&2

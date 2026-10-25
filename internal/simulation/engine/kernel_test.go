@@ -54,6 +54,8 @@ func (r *recorder) Observe(o Observation) {
 		}
 		r.inUse[o.Resource] = o.Value
 		return
+	case ObsResourceDown, ObsResourceUp, ObsBreakdownPending:
+		return // resource events (D-051), not an entity's
 	case ObsArrival:
 		if _, seen := r.state[o.Entity]; seen {
 			r.t.Fatalf("entity %d arrived twice", o.Entity)
@@ -428,6 +430,10 @@ func FuzzKernel(f *testing.F) {
 	}
 	// T-047: models with finite buffers (blocking-goldens.json).
 	for _, m := range blockingSeeds(f) {
+		f.Add([]byte(m), uint32(0))
+	}
+	// T-048: models with breakdowns (breakdown-goldens.json).
+	for _, m := range breakdownSeeds(f) {
 		f.Add([]byte(m), uint32(0))
 	}
 	f.Fuzz(func(t *testing.T, data []byte, index uint32) {
