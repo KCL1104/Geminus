@@ -6,8 +6,9 @@
 // Control endpoints for the tests: POST /__subject (body: the subject the
 // next sign-in gets), POST /__access-seconds (body: the lifetime of the next
 // access tokens), POST /__api-cut (body "headers": the API's next answers
-// send their headers and then drop the connection; empty: normal), GET
-// /__state (counts and what the API saw).
+// send their headers and then drop the connection; empty: normal), POST
+// /__reset (the tenant data as it starts: version 1, its draft, no AI
+// proposals), GET /__state (counts and what the API saw).
 import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -115,6 +116,10 @@ createServer(async (req, res) => {
     state.apiCut = (await body(req)).trim();
     return json(res, 200, { apiCut: state.apiCut });
   }
+  if (req.method === "POST" && url.pathname === "/__reset") {
+    live = fresh();
+    return json(res, 200, { reset: true });
+  }
   if (req.method === "POST" && url.pathname === "/__access-seconds") {
     state.accessSeconds = Number((await body(req)).trim());
     return json(res, 200, { accessSeconds: state.accessSeconds });
@@ -163,15 +168,123 @@ const version = {
   id: fixture.base_version_id, organization_id: LINE, model_id: fixture.model_id, version: 1, schema_version: fixture.ir.schema_version,
   parent_version_id: null, ir: fixture.ir, hash: fixture.hash, dataset_bindings: [], comment: null, created_by: USER, created_at: created,
 };
+
+// The model's AI proposals (T-031 review round 1, L5), in Line Works like
+// the rest of its data: createProposal, getProposal, approveProposal and
+// rejectProposal as openapi has them. A request on the latest version is
+// answered 202 generating; the proposal's first read is generating and the
+// next ones are ready with the fixed answer in proposal-answer.json, its
+// words in the request's output_locale. That answer is written for the
+// test: no AI is called, and nothing here is the server's review (nothing
+// is validated, the risk is given). Approving an edit makes the next
+// version from the latest one and the patch, and moves the draft (clean
+// here) onto it; approving a scenario gives a scenario ID and no version;
+// rejecting keeps the model. A key used again with the same request gets
+// the first answer (D-011), with another request 409. A viewer is 403.
+const answer = JSON.parse(readFileSync(new URL("./proposal-answer.json", import.meta.url), "utf8"));
+const jcs = (v) =>
+  Array.isArray(v) ? `[${v.map(jcs).join(",")}]` : v !== null && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${jcs(v[k])}`).join(",")}}` : JSON.stringify(v);
+const sha = (v) => `sha256:${createHash("sha256").update(jcs(v)).digest("hex")}`;
+const serial = (prefix, tag, n) => `${prefix}_01M4YDQK00TA0000000000${tag}${String(n).padStart(3, "0")}`;
+const ASKED = "2026-10-26T00:05:00Z";
+const DECIDED = "2026-10-26T00:10:00Z";
+/** The answer's test and replace ops on a copy of ir (all the fixed answer has). */
+function applied(ir, ops) {
+  const out = structuredClone(ir);
+  for (const op of ops) {
+    const tokens = op.path.split("/").slice(1).map((t) => t.replace(/~1/g, "/").replace(/~0/g, "~"));
+    const last = tokens.pop();
+    let at = out;
+    for (const t of tokens) at = at[t];
+    if (op.op === "test" && JSON.stringify(at[last]) !== JSON.stringify(op.value)) throw new Error(`test failed at ${op.path}`);
+    else if (op.op === "replace") at[last] = op.value;
+    else if (op.op !== "test") throw new Error(`the fake applies test and replace only, not ${op.op}`);
+  }
+  return out;
+}
+/** Line Works' model as it starts: version 1 and its draft, no proposals, no keys. */
+const fresh = () => ({ versions: [version], draft: structuredClone(fixture), proposals: new Map(), keys: new Map(), scenarios: 0 });
+let live = fresh();
+const latest = () => live.versions[live.versions.length - 1];
+const modelNow = () => ({
+  ...model,
+  draft: { revision: live.draft.revision, base_version_id: live.draft.base_version_id, out_of_date: live.draft.base_version_id !== latest().id },
+  latest_version: { id: latest().id, version: latest().version },
+});
+
 /** What a member of org may GET: path → [body, extra headers]. */
 function tenantGet(org, path) {
   if (path === "/v1/projects") return [{ items: projects[org] ?? [], next_cursor: null }, org === ORG ? { "set-cookie": "api_cookie=1" } : {}];
   if (org !== LINE) return null;
-  if (path === `/v1/projects/${PRJ_LINE}/models`) return [{ items: [model], next_cursor: null }, {}];
-  if (path === `/v1/models/${model.id}`) return [model, {}];
-  if (path === `/v1/models/${model.id}/draft`) return [fixture, { etag: `"draft-revision-${fixture.revision}"` }];
-  if (path === `/v1/model-versions/${version.id}`) return [version, {}];
+  if (path === `/v1/projects/${PRJ_LINE}/models`) return [{ items: [modelNow()], next_cursor: null }, {}];
+  if (path === `/v1/models/${model.id}`) return [modelNow(), {}];
+  if (path === `/v1/models/${model.id}/draft`) return [live.draft, { etag: `"draft-revision-${live.draft.revision}"` }];
+  const v = live.versions.find((x) => path === `/v1/model-versions/${x.id}`);
+  if (v) return [v, {}];
+  const s = path.startsWith("/v1/ai-proposals/") ? live.proposals.get(path.slice("/v1/ai-proposals/".length)) : undefined;
+  if (s) {
+    if (s.proposal.status === "generating" && s.reads++ >= 1) s.proposal = s.answer;
+    return [s.proposal, {}];
+  }
   return null;
+}
+
+const refusal = (status, code, message, details) => ({ status, body: { error: { code, message, request_id: "req_01M4YDQK00V6H8S0ST4F7510KR", ...(details ? { details } : {}) } } });
+
+/** A member of org with role POSTs body to path: [status, body], or null (not found). */
+function tenantPost(org, role, path, key, payload) {
+  if (org !== LINE) return null;
+  const create = path === `/v1/models/${model.id}/ai-proposals`;
+  const decision = path.match(/^\/v1\/ai-proposals\/([^/]+)\/(approve|reject)$/);
+  const s = decision ? live.proposals.get(decision[1]) : undefined;
+  if (!create && !s) return null;
+  if (role !== "editor" && role !== "owner") return refusal(403, "FORBIDDEN", "this role cannot ask for or decide a proposal");
+  if (!key) return refusal(400, "IDEMPOTENCY_KEY_REQUIRED", "the Idempotency-Key header is required");
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema");
+  const fingerprint = `${path} ${jcs(payload)}`;
+  const seen = live.keys.get(key);
+  if (seen) return seen.fingerprint === fingerprint ? seen.answer : refusal(409, "IDEMPOTENCY_KEY_CONFLICT", "this Idempotency-Key was used for a different request");
+  const kept = (a) => (live.keys.set(key, { fingerprint, answer: a }), a);
+  if (create) {
+    if (!["edit", "scenario"].includes(payload.mode) || typeof payload.intent !== "string" || payload.intent.trim() === "") return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema");
+    if (payload.base_version_id !== latest().id) return refusal(409, "MODEL_VERSION_CONFLICT", "base_version_id is not the model's latest version", [{ path: "/base_version_id", reason: "not the model's latest version" }]);
+    const id = serial("aip", "P", live.proposals.size + 1);
+    const server = { proposal_id: id, organization_id: LINE, model_id: model.id, base_version_id: payload.base_version_id, mode: payload.mode, created_by: USER, created_at: ASKED, requires_confirmation: true };
+    const words = answer[payload.output_locale === "zh-Hant" ? "zh-Hant" : "en"];
+    const ready = {
+      ...server, status: "ready", ...words, changes: answer.changes, patch_hash: sha(answer.changes),
+      risk_level: answer.risk_level, server_risk_level: answer.server_risk_level, provider_risk_claim: answer.provider_risk_claim, confidence: answer.confidence,
+      validation: { valid: true, issues: [] }, dataset_bindings: [],
+    };
+    live.proposals.set(id, { proposal: { ...server, status: "generating" }, answer: ready, reads: 0, request: payload });
+    return kept({ status: 202, body: { proposal_id: id, status: "generating" } });
+  }
+  const id = s.proposal.proposal_id;
+  const decide = (change) => (s.proposal = { ...s.proposal, ...change, decided_by: USER, decided_at: DECIDED });
+  if (["approved", "rejected", "conflicted"].includes(s.proposal.status)) return kept(refusal(409, "PROPOSAL_ALREADY_DECIDED", `the proposal is already ${s.proposal.status}; nothing was changed`));
+  if (decision[2] === "reject") {
+    if (!["ready", "needs_input"].includes(s.proposal.status)) return kept(refusal(409, "LIFECYCLE_CONFLICT", "only a ready or needs_input proposal can be rejected; nothing was changed"));
+    decide({ status: "rejected", ...(typeof payload.comment === "string" && payload.comment !== "" ? { decision_comment: payload.comment } : {}) });
+    return kept({ status: 200, body: s.proposal });
+  }
+  if (s.proposal.status !== "ready") return kept(refusal(409, "LIFECYCLE_CONFLICT", "only a ready proposal can be approved; nothing was changed"));
+  if (s.proposal.base_version_id !== latest().id) {
+    decide({ status: "conflicted" });
+    return kept(refusal(409, "MODEL_VERSION_CONFLICT", "the model's latest version is no longer this proposal's base; nothing was applied", [{ path: "/expected_base_version_id", reason: "the proposal's base is not the model's latest version" }]));
+  }
+  if (payload.expected_base_version_id !== s.proposal.base_version_id) return kept(refusal(409, "MODEL_VERSION_CONFLICT", "expected_base_version_id is not this proposal's base; nothing was changed", [{ path: "/expected_base_version_id", reason: "not this proposal's base" }]));
+  if (s.proposal.mode === "scenario") {
+    const scenario = serial("scn", "S", ++live.scenarios);
+    decide({ status: "approved", scenario_id: scenario });
+    return kept({ status: 201, body: { proposal_id: id, status: "approved", mode: "scenario", scenario_id: scenario, patch_hash: s.proposal.patch_hash } });
+  }
+  const ir = applied(latest().ir, s.proposal.changes);
+  const n = live.versions.length + 1;
+  const v = { ...version, id: serial("mv", "V", n), version: n, parent_version_id: latest().id, ir, hash: sha(ir), created_at: DECIDED };
+  live.versions.push(v);
+  live.draft = { ...live.draft, base_version_id: v.id, revision: live.draft.revision + 1, ir, hash: v.hash, out_of_date: false };
+  decide({ status: "approved", new_version_id: v.id });
+  return kept({ status: 201, body: { proposal_id: id, status: "approved", mode: "edit", new_version_id: v.id, version: n, patch_hash: s.proposal.patch_hash, draft_out_of_date: false } });
 }
 
 // The API stand-in: tokens from the provider only; an unknown subject is 403
@@ -182,7 +295,15 @@ createServer(async (req, res) => {
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   const known = access.get(token);
   const org = req.headers["x-organization-id"] ?? null;
-  state.apiCalls.push({ method: req.method, path: url.pathname, query: url.search, cookie: req.headers.cookie ?? null, org, hasAuth: auth !== "" });
+  const raw = await body(req);
+  const key = req.headers["idempotency-key"] ?? null;
+  let payload;
+  try {
+    payload = raw === "" ? undefined : JSON.parse(raw);
+  } catch {
+    payload = null;
+  }
+  state.apiCalls.push({ method: req.method, path: url.pathname, query: url.search, cookie: req.headers.cookie ?? null, org, hasAuth: auth !== "", ...(req.method === "POST" ? { key, body: payload ?? null } : {}) });
   const rid = "req_01M4YDQK00V6H8S0ST4F7510KR";
   const fail = (status, code, message) => json(res, status, { error: { code, message, request_id: rid } }, { "x-request-id": rid });
   if (!known || known.exp <= Math.floor(Date.now() / 1000)) return fail(401, "UNAUTHENTICATED", "invalid token");
@@ -200,10 +321,11 @@ createServer(async (req, res) => {
     setTimeout(() => res.destroy(), 50);
     return;
   }
-  const member = typeof org === "string" && memberships.some((m) => m.organization_id === org);
-  const found = req.method === "GET" && member ? tenantGet(org, url.pathname) : null;
+  const membership = typeof org === "string" ? memberships.find((m) => m.organization_id === org) : undefined;
+  const found = req.method === "GET" && membership ? tenantGet(org, url.pathname) : null;
   if (found !== null) return json(res, 200, found[0], { "x-request-id": rid, ...found[1] });
-  await body(req);
+  const answered = req.method === "POST" && membership ? tenantPost(org, membership.role, url.pathname, key, payload) : null;
+  if (answered !== null) return json(res, answered.status, answered.body, { "x-request-id": rid });
   fail(404, "NOT_FOUND", "not found");
 }).listen(3102, "127.0.0.1");
 

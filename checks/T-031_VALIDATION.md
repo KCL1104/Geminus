@@ -141,7 +141,7 @@ API 本身足夠，沒有改 contract。觀察到、影響畫面但不在本切�
 | `proposals-api.test.ts` | 7 | 4 個方法的 method、path、header、body、key；與 `planning/api-operations.json` 一致；409／422／503 的對應（code、request ID、details）；不合格的 ID 與 key 不送出 |
 | `proposal-changes.test.ts` | 10 | 批次（兩個值、略過 test）、資源容量、機率（百分比）、等待上限（時間單位、移除＝缺）、時間參數與整個分布（shape 無單位）、佇列容量移除、名稱、模型名稱；新增步驟（含位置與持有的值：時間、資源依 patch 之後的名稱、批次）、新增連接（判斷的機率）、新增資源、新增佇列（不限）、既有步驟的位置；移除依移除前的名稱、之後的 index 依位移後的模型、已移除步驟的名稱取 base；沒有字的路徑；惡意的名稱照原樣是文字；套不上 base、`__proto__`、`constructor` 不猜；base 不被改變 |
 | `proposal-view.test.tsx`（happy-dom，真 client＋替身 API） | 27 | ready：兩格標明誰是誰、伺服器 medium／AI low／信心 90%／計入 medium、通過檢查、axe；差異的人話與 JSON Patch／hash 的 disclosure；假設與預期；批准只在確認後、body 為 base、有 key、結果、重新讀取、焦點、axe；Cancel 不送出且焦點回原按鈕；連按兩次只送一次；草稿過時的說明；503 後重試同一 key；422 details；scenario：AI 的 claim 較高時計入 AI 的（D-027）、確認問句、連結為 API 的 `scenario_id`、沒有新 version、axe；拒絕附原因與空 body；409：頁面保留、說明版本 1→2 與其 comment、沒有錯誤 alert、焦點、沒有重送；過時：不顯示 Approve、警告 note、沒有 aria-disabled；已 conflicted；generating→ready（只有 GET，不決定）；needs_input；invalid；failed（problem 與 request ID）；approved（建立的版本）；rejected（原因）；檢視者；新增步驟（T-056）的行與持有的值；zh-Hant；不存在時只讀一次；惡意文字（不成為 img／script／iframe／連結，只有返回連結，不決定，伺服器 high 仍在）；值的格式（分鐘、百分比、不限，en 與 zh-Hant；套不上時只給 patch） |
-| `proposal-ask.test.tsx`（真 `ModelView`＋替身） | 8 | 表單的元件、Publish 仍是唯一 primary、axe；空白不送出；送出的 body（最新版本、去空白、output_locale）與 key、前往 API 回的 ID；選 scenario、zh-Hant 的 output_locale、axe；AI 未設定的 503、文字保留、重試同一 key；409、只在要求時重新載入、以新版本與新 key 再送；有未存編輯時 blocked 且原因在旁、按下不送出；檢視者／角色未知不出現；**閉環**：模型頁送出 → 提案頁 ready → 批准 → 再開模型頁：版本 2、步驟 ID 與 base 相同、燒機的最小／最大批量為 48（編輯器的屬性面板，伺服器的 IR） |
+| `proposal-ask.test.tsx`（真 `ModelView`＋替身） | 9（原寫 8，review 第 1 輪 I2 更正：含閉環） | 表單的元件、Publish 仍是唯一 primary、axe；空白不送出；送出的 body（最新版本、去空白、output_locale）與 key、前往 API 回的 ID；選 scenario、zh-Hant 的 output_locale、axe；AI 未設定的 503、文字保留、重試同一 key；409、只在要求時重新載入、以新版本與新 key 再送；有未存編輯時 blocked 且原因在旁、按下不送出；檢視者／角色未知不出現；**閉環**：模型頁送出 → 提案頁 ready → 批准 → 再開模型頁：版本 2、步驟 ID 與 base 相同、燒機的最小／最大批量為 48（編輯器的屬性面板，伺服器的 IR） |
 | `proposal-simplicity.test.tsx` | 33 | 兩語 × 14 個狀態（含 app shell）：沒有同名按鈕／連結、沒有兩個連到同處、至多一個 primary、沒有未說明原因的停用控制項，**審閱頁沒有任何停用的控制項**；確認、三種結果、409、503 之後；模型頁：乾淨、AI 被拒、409、未存編輯（Send blocked 且有原因）；檢查本身能失敗 |
 | `proposal-preview.test.tsx` | 19 | 審閱頁預設 404、只接受自己的狀態；範例合乎 contract（每個狀態都有、patch 套得上版本 1、risk＝max、needs_input 沒有 changes、invalid／failed 沒有內容、只有已決定的有 decided_at）；每個 patch_hash 是 RFC 8785 形式的 SHA-256；14 個狀態與兩個 zh-Hant 狀態 axe |
 | `design-rules`、`tokens`、`server-only`、`i18n`、`lint-guards`（既有） | — | 自動涵蓋 `features/ai-proposals` 的 CSS 與原始碼、兩語 catalog 的鍵與 placeholder |
@@ -173,7 +173,7 @@ API 本身足夠，沒有改 contract。觀察到、影響畫面但不在本切�
 | `make e2e-test`（完整） | 實作中的 tree | **被我停止**（為了在最後的 commit 上重跑）：停止前 231 passed、0 failed（`e2e-test-1-stopped.log`）；之後 port 被另一個 agent 的 e2e 佔用，**0a27426 上的完整 `make e2e-test`：NOT RUN** |
 | `npm audit --prefix apps/web --omit=dev` | — | exit 0，0 vulnerabilities（`npm-audit.log`） |
 | `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | T-031 維持 `not_started` | exit 0；重產的 `checks/docs-check.json` |
-| Mutation（`scripts/mutants.py`） | — | 21 個：第一輪 20 killed、1 survived（M6）→ 補測試後 M6 killed（`mutants.txt`、`mutants-M6-rerun.txt`） |
+| Mutation（`scripts/mutants.py`） | — | 21 個：第一輪 20 killed、1 survived（M6）→ 補測試後 M6 killed（`mutants.txt`、`mutants-M6-rerun.txt`；後者只重跑 M6，結尾的「total 21」是腳本 mutant 表的大小，不是那次執行的數量：那次執行 1 個、1 killed，review 第 1 輪 I2） |
 | 範例的 JSON Schema（`scripts/validate_samples.py`） | — | exit 0（`sample-schema-check.log`） |
 | 範例的伺服器 review（暫時的 Go 測試，已移除） | — | exit 0（`sample-server-review.log`） |
 

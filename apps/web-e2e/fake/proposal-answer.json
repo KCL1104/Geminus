@@ -1,0 +1,20 @@
+{
+  "en": {
+    "summary": "Add a third reviewer: the reviewers' capacity goes from 2 to 3.",
+    "assumptions": ["The third reviewer works the same hours as the other two.", "A review still takes 240 minutes."],
+    "expected_effects": ["Changes may wait less before code review; a simulation will tell by how much."]
+  },
+  "zh-Hant": {
+    "summary": "增加第三位審查者：審查者的容量從 2 變為 3。",
+    "assumptions": ["第三位審查者的工作時間與另外兩位相同。", "每次審查仍需 240 分鐘。"],
+    "expected_effects": ["變更在程式碼審查前的等待可能減少；模擬會說明減少多少。"]
+  },
+  "changes": [
+    { "op": "test", "path": "/resources/0/id", "value": "reviewer" },
+    { "op": "replace", "path": "/resources/0/capacity", "value": 3 }
+  ],
+  "risk_level": "low",
+  "server_risk_level": "low",
+  "provider_risk_claim": "low",
+  "confidence": 0.8
+}

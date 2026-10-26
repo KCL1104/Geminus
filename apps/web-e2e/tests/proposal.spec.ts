@@ -1,19 +1,26 @@
-// T-031 (hackathon slice): the AI proposal review in a real browser, on its
-// review page (the app mounts no session yet, so the signed-in page cannot
-// render here; app/ui-gallery/proposal: the real page and client against an
-// in-page stand-in, no AI). The decision with the keyboard only, a visible
-// focus at each stop and the outcome announced and focused; a reason for a
-// rejection; a base that moved keeps the page; a proposal being written
-// becomes ready; the AI's hostile words stay text; the model page's request
-// goes to the proposal; every string is the catalog's or data. axe, the
-// phone width and the simplicity rules run on the samples with every route
-// (a11y.spec.ts, simplicity.spec.ts).
-import { expect, type Page, test } from "@playwright/test";
+// T-031 (hackathon slice): the AI proposal review in a real browser. On its
+// review page (app/ui-gallery/proposal: the real page and client against an
+// in-page stand-in, no AI, every state and the hostile cases): the decision
+// with the keyboard only, a visible focus at each stop and the outcome
+// announced and focused; a reason for a rejection; a base that moved keeps
+// the page; a proposal being written becomes ready; the AI's hostile words
+// and names stay text, isolated, nothing hidden; the model page's request
+// goes to the proposal; every string is the catalog's or data. And the
+// signed-in demo path (review round 1, L5): through the BFF and the test
+// provider, against the e2e fake API's proposal routes (fake/servers.mjs,
+// a fixed answer, no AI): ask on the model page, review, approve the edit
+// with the keyboard and see the new version, in both languages; reject.
+// axe, the phone width and the simplicity rules run on the samples with
+// every route (a11y.spec.ts, simplicity.spec.ts).
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { type APIRequestContext, expect, type Locator, type Page, test } from "@playwright/test";
 import { sampleLine } from "../../web/app/ui-gallery/editor/sample-line";
-import { sampleFor, states } from "../../web/app/ui-gallery/proposal/samples";
+import { HOSTILE_TESTER, hostileNames, sampleFor, states } from "../../web/app/ui-gallery/proposal/samples";
+import { visible } from "../../web/features/ai-proposals/shown";
 import { en } from "../../web/messages/en";
 import { zhHant } from "../../web/messages/zh-Hant";
-import { focusIsVisible, locales, open, violations } from "./helpers";
+import { APP, focusIsVisible, locales, open, PROVIDER, settled, signInAs, tenant, violations } from "./helpers";
 
 const catalogs = { en, "zh-Hant": zhHant } as const;
 const fill = (m: string, params: Record<string, string>) => m.replace(/\{(\w+)\}/g, (_, k: string) => params[k] ?? `{${k}}`);
@@ -121,6 +128,14 @@ test("shows hostile words from the AI as text: no markup, no link, no decision",
   expect(await article.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")))).toEqual(["/ui-gallery/editor"]);
   await expect(article.locator("[data-proposal-status]")).toHaveText(en["proposal.status.ready"]);
   await expect(article.locator("[data-cell=server]")).toContainText(en["proposal.risk.level.high"]);
+  // The names in its patch (review round 1, M1, L1): text, each in its own
+  // <bdi>, with what hides or reorders text shown; no raw format or control
+  // character anywhere in the proposal; the look-alike tester with its ID.
+  const changes = article.locator("[data-section=changes]");
+  const isolated = await changes.locator("bdi").evaluateAll((bs) => bs.map((b) => b.textContent));
+  for (const name of Object.values(hostileNames)) expect(isolated, name).toContain(visible(name));
+  expect(isolated).toContain(HOSTILE_TESTER);
+  expect(await article.evaluate((a) => /[\p{Cf}\p{Cs}\p{Zl}\p{Zp}\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u.test(a.textContent ?? "")), "no raw hidden character").toBe(false);
   expect(await violations(page)).toEqual([]);
 });
 
@@ -147,7 +162,10 @@ const words = states.flatMap((s) => {
   const p = sampleFor(s).proposal;
   return [p.summary, ...(p.assumptions ?? []), ...(p.expected_effects ?? []), ...(p.questions ?? []), p.decision_comment];
 });
-const data = [sampleLine.name, ...sampleLine.nodes.map((n) => n.name ?? n.id), ...sampleLine.resources.map((r) => r.name), "X-ray inspection", "Before X-ray", "X-ray machine", "Raised the AOI buffer to 30 boards.", ...words].filter((x): x is string => typeof x === "string");
+// The names the samples' patches write, as shown (shown.ts), and the IDs of what they add (shown beside a new entity's name).
+const patchNames = Object.values(hostileNames).map((n) => visible(n));
+const addedIds = states.flatMap((s) => (sampleFor(s).proposal.changes ?? []).flatMap((op) => (op.op === "add" && typeof (op.value as { id?: unknown })?.id === "string" ? [(op.value as { id: string }).id] : [])));
+const data = [sampleLine.name, ...sampleLine.nodes.map((n) => n.name ?? n.id), ...sampleLine.resources.map((r) => r.name), "X-ray inspection", "Before X-ray", "X-ray machine", "Raised the AOI buffer to 30 boards.", ...words, ...patchNames, ...addedIds].filter((x): x is string => typeof x === "string");
 
 for (const locale of locales) {
   test(`${locale}: every string on the proposal pages is the catalog's or data`, async ({ page }) => {
@@ -174,3 +192,125 @@ for (const locale of locales) {
     expect([...unknown]).toEqual([]);
   });
 }
+
+// The signed-in demo path (H-029 item 4; T-031 review round 1, L5): the
+// product's routes /models/<id> and /proposals/<id> in the browser, signed
+// in through the BFF and the test provider as an editor of Line Works,
+// against the fake API's proposal routes (fake/servers.mjs). Its answer is
+// fixed (fake/proposal-answer.json): no AI is called, and the fake does not
+// do the server's review. The fake's tenant data is put back before and
+// after each test (POST /__reset), so the other specs see version 1.
+type ApiCall = { method: string; path: string; org: string | null; cookie: string | null; hasAuth: boolean; key?: string | null; body?: unknown };
+const apiCalls = async (request: APIRequestContext): Promise<ApiCall[]> => ((await (await request.get(`${PROVIDER}/__state`)).json()) as { apiCalls: ApiCall[] }).apiCalls;
+const fixedAnswer = JSON.parse(readFileSync(join(import.meta.dirname, "../fake/proposal-answer.json"), "utf8")) as Record<"en" | "zh-Hant", { summary: string; assumptions: string[] }>;
+const fixture = JSON.parse(readFileSync(join(import.meta.dirname, "../../../testdata/contracts/valid-draft-with-issues.json"), "utf8")) as { base_version_id: string; revision: number; ir: { domain: string } };
+
+/** Moves focus with Tab (or Shift+Tab) until target has it, the focus visible at every stop. */
+async function keyTo(page: Page, target: Locator, key: "Tab" | "Shift+Tab" = "Tab") {
+  for (let i = 0; i < 60; i++) {
+    await page.keyboard.press(key);
+    if (await target.evaluate((el) => el === document.activeElement)) {
+      expect(await focusIsVisible(page), "focus is visible").toBe(true);
+      return;
+    }
+  }
+  throw new Error(`${key} never reached ${await target.evaluate((el) => el.outerHTML.slice(0, 120))}`);
+}
+
+test.describe("signed in, through the BFF, on the fake API's proposals", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+  test.beforeEach(async ({ request }) => {
+    await request.post(`${PROVIDER}/__reset`);
+    await request.post(`${PROVIDER}/__access-seconds`, { data: "600" });
+  });
+  test.afterEach(async ({ request }) => {
+    await request.post(`${PROVIDER}/__reset`);
+  });
+
+  for (const locale of locales) {
+    test(`${locale}: asks on the model page, reviews the proposal, approves the edit with the keyboard and sees version 2`, async ({ page, request }) => {
+      const t = catalogs[locale];
+      await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, locale);
+      await expect(page.getByText(fill(t["model.summary"], { version: "1", domain: fixture.ir.domain }))).toBeVisible();
+      expect(await violations(page), "the model page").toEqual([]);
+      const before = (await apiCalls(request)).length;
+
+      // The request: the person's words and Send, from the keyboard.
+      const ask = page.locator("[data-ask]");
+      await page.locator("main").focus();
+      await keyTo(page, ask.getByLabel(t["ask.intent"]));
+      await page.keyboard.type("Add a third reviewer");
+      await keyTo(page, ask.getByRole("button", { name: t["ask.send"] }));
+      await page.keyboard.press("Enter");
+      await page.waitForURL(new RegExp(`^${APP}/proposals/aip_[0-9A-Z]{26}$`));
+      const proposalId = new URL(page.url()).pathname.split("/").at(-1)!;
+
+      // The proposal, read until the fake's answer is there: what it changes, the AI's words, the risk.
+      const status = page.locator("[data-proposal-status]");
+      await expect(status).toHaveAttribute("data-proposal-status", "ready", { timeout: 15_000 });
+      await settled(page, locale);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText(fill(t["proposal.title.edit"], { model: tenant.modelName }));
+      await expect(page.locator("[data-section=changes] [data-change]")).toHaveText([`Reviewer ${fill(t["proposal.change.value"], { field: t["proposal.field.capacity"], before: "2", after: "3" })}`]);
+      await expect(page.locator("[data-section=summary]")).toContainText(fixedAnswer[locale].summary);
+      await expect(page.locator("[data-section=assumptions] li")).toHaveText(fixedAnswer[locale].assumptions);
+      await expect(page.locator("[data-cell=server]")).toContainText(t["proposal.risk.level.low"]);
+      expect(await violations(page), "the proposal").toEqual([]);
+
+      // Approve, confirmed in place, from the keyboard.
+      const approve = page.getByRole("button", { name: fill(t["proposal.approve.edit"], { version: "2" }) });
+      await keyTo(page, approve);
+      await page.keyboard.press("Enter");
+      await expect(page.getByText(fill(t["proposal.approve.question.edit"], { version: "2", base: "1" }))).toBeVisible();
+      await expect(approve).toBeFocused();
+      expect(await focusIsVisible(page)).toBe(true);
+      expect(await violations(page), "the confirmation").toEqual([]);
+      await page.keyboard.press("Enter");
+      const outcome = page.locator("[data-outcome=approved]");
+      await expect(outcome).toBeFocused();
+      await expect(outcome.getByRole("heading")).toHaveText(fill(t["proposal.outcome.edit"], { version: "2" }));
+      await expect(status).toHaveText(pattern(t["proposal.status.approved"]));
+      await expect(approve).toHaveCount(0);
+      expect(await violations(page), "the outcome").toEqual([]);
+
+      // What reached the API, through the BFF: the request on version 1 and one approval of the reviewed base, each with its key, in Line Works.
+      const posts = (await apiCalls(request)).slice(before).filter((c) => c.method === "POST");
+      expect(posts.map((c) => [c.path, c.body])).toEqual([
+        [`/v1/models/${tenant.MODEL}/ai-proposals`, { base_version_id: fixture.base_version_id, mode: "edit", intent: "Add a third reviewer", output_locale: locale }],
+        [`/v1/ai-proposals/${proposalId}/approve`, { expected_base_version_id: fixture.base_version_id }],
+      ]);
+      for (const c of posts) expect(c, c.path).toMatchObject({ org: tenant.LINE, cookie: null, hasAuth: true, key: expect.stringMatching(/^[\x21-\x7e]{8,128}$/) });
+
+      // Back to the model, from the keyboard: version 2 is the latest, and the draft moved onto it.
+      await keyTo(page, page.getByRole("link", { name: t["proposal.back"] }), "Shift+Tab");
+      await page.keyboard.press("Enter");
+      await page.waitForURL(`${APP}/models/${tenant.MODEL}`);
+      await settled(page, locale);
+      await expect(page.getByText(fill(t["model.summary"], { version: "2", domain: fixture.ir.domain }))).toBeVisible();
+      await expect(page.locator("[data-draft-status]")).toContainText(fill(t["draft.revision"], { revision: String(fixture.revision + 1) }));
+      expect(await violations(page), "the model on version 2").toEqual([]);
+    });
+  }
+
+  test("en: rejects with a reason through the BFF, and the model stays on version 1", async ({ page, request }) => {
+    await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, "en");
+    const before = (await apiCalls(request)).length;
+    const ask = page.locator("[data-ask]");
+    await ask.getByLabel(en["ask.intent"]).fill("Add a third reviewer");
+    await ask.getByRole("button", { name: en["ask.send"] }).click();
+    await page.waitForURL(/\/proposals\/aip_/);
+    await expect(page.locator("[data-proposal-status]")).toHaveAttribute("data-proposal-status", "ready", { timeout: 15_000 });
+    await page.getByRole("button", { name: en["proposal.reject"] }).click();
+    await page.getByLabel(en["proposal.reject.reason"]).fill("Not this quarter.");
+    await page.getByRole("button", { name: en["proposal.reject.confirm"] }).press("Enter");
+    const outcome = page.locator("[data-outcome=rejected]");
+    await expect(outcome).toBeFocused();
+    await expect(outcome).toContainText("Not this quarter.");
+    expect(await violations(page)).toEqual([]);
+    const posts = (await apiCalls(request)).slice(before).filter((c) => c.method === "POST");
+    expect(posts.map((c) => c.path.replace(/aip_\w+/, "<id>"))).toEqual([`/v1/models/${tenant.MODEL}/ai-proposals`, "/v1/ai-proposals/<id>/reject"]);
+    expect(posts[1]!.body).toEqual({ comment: "Not this quarter." });
+    await page.getByRole("link", { name: en["proposal.back"] }).click();
+    await settled(page, "en");
+    await expect(page.getByText(fill(en["model.summary"], { version: "1", domain: fixture.ir.domain }))).toBeVisible();
+  });
+});

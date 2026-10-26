@@ -1,0 +1,19 @@
+make: Entering directory '/home/user/Geminus/.claude/worktrees/agent-a758cdd6d77dba352'
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a758cdd6d77dba352/apps/web
+

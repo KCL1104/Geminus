@@ -103,8 +103,9 @@ mutants = [
 
 
 def summary(out: str) -> str:
-    m = re.findall(r"Tests\s+(.*)", out)
-    return m[-1].strip() if m else out.strip().splitlines()[-1] if out.strip() else ""
+    """vitest's totals line ("Tests  3 failed | 70 passed (73)")."""
+    m = re.findall(r"^\s*Tests\s+(\d+ (?:failed|passed).*)$", out, re.M)
+    return m[-1].strip() if m else "no totals line"
 
 
 results = []
