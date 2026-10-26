@@ -1,0 +1,222 @@
+/* The AI proposal review (T-031, DESIGN.md Proposal risk, Chips, Notes and
+   Outcomes, In-place confirmation): sections on the sheet divided by space,
+   the server's check in a Graphite Ink frame (the authority) beside the AI's
+   claim in a hairline frame, the changes as hairline rows with Added and
+   Removed tags, the decision under a Control Edge rule. */
+.page {
+  max-width: 960px;
+}
+
+.meta {
+  color: var(--gm-color-ink-2);
+}
+
+.state {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.section {
+  margin: 0 0 var(--gm-space-xl);
+}
+
+/* The AI's words and a person's comment: text as written, long words and addresses wrap. */
+.words {
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+ol.words,
+ul.words {
+  padding-inline-start: var(--gm-space-section);
+}
+
+.hint {
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.claims {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--gm-space-gutter);
+  margin: 0 0 var(--gm-space-lg);
+}
+
+.authority,
+.claim {
+  padding: var(--gm-space-cell) var(--gm-space-lg);
+  border-radius: var(--gm-radius-md);
+}
+
+.authority > :last-child,
+.claim > :last-child {
+  margin-bottom: 0;
+}
+
+/* Geminus's own check is the authority: a Graphite Ink frame. */
+.authority {
+  border: 1px solid var(--gm-color-ink);
+}
+
+/* The AI's claim: a hairline frame. */
+.claim {
+  border: 1px solid var(--gm-color-rule);
+}
+
+.authority h3,
+.claim h3 {
+  margin-bottom: var(--gm-space-xs);
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* Claim values at 18 px 600 (DESIGN.md Proposal risk). */
+.level {
+  margin-bottom: var(--gm-space-sm);
+  font-size: var(--gm-font-size-headline);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-headline);
+}
+
+.issues {
+  padding-inline-start: var(--gm-space-section);
+}
+
+.issues code {
+  color: var(--gm-color-ink-3);
+}
+
+/* One change per row, divided by hairlines. */
+.changes {
+  margin: 0 0 var(--gm-space-lg);
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.changes > li {
+  padding: var(--gm-space-sm) 0;
+  border-bottom: 1px solid var(--gm-color-rule);
+  overflow-wrap: anywhere;
+}
+
+/* What a new step, resource or connection holds: a short list under its line. */
+.holds {
+  margin: var(--gm-space-xs) 0 0;
+  padding-inline-start: var(--gm-space-section);
+  color: var(--gm-color-ink-2);
+}
+
+/* Added: a Graphite Ink tag; removed: Error Red on the default chrome (DESIGN.md Chips). */
+.tag {
+  padding: 0 var(--gm-space-sm);
+  border: 1px solid var(--gm-color-ink);
+  border-radius: var(--gm-radius-sm);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-label);
+}
+
+.tag[data-tag="added"] {
+  background: var(--gm-color-ink);
+  color: var(--gm-color-on-ink);
+}
+
+.tag[data-tag="removed"] {
+  border-color: var(--gm-color-error);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-error);
+}
+
+/* The exact patch: Archivo like every other text (no monospace), wrapped so the page never scrolls sideways. */
+.patch pre {
+  margin: 0 0 var(--gm-space-md);
+  padding: var(--gm-space-cell) var(--gm-space-lg);
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-well);
+  font-family: inherit;
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.patch code {
+  overflow-wrap: anywhere;
+}
+
+/* The model changed before the approval: a warning note, where the decision was. */
+.conflict {
+  margin: 0 0 var(--gm-space-xl);
+  padding: var(--gm-space-cell) var(--gm-space-lg);
+  border: 1px solid var(--gm-color-warning-edge);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-warning-wash);
+}
+
+/* An action's outcome (DESIGN.md Outcome): a Graphite Ink frame, ink text, no colour. */
+.outcome {
+  margin: 0 0 var(--gm-space-xl);
+  padding: var(--gm-space-group);
+  border: 1px solid var(--gm-color-ink);
+  border-radius: var(--gm-radius-md);
+}
+
+.conflict > :last-child,
+.outcome > :last-child {
+  margin-bottom: 0;
+}
+
+.decision {
+  margin: 0 0 var(--gm-space-xl);
+  padding-top: var(--gm-space-gutter);
+  border-top: 1px solid var(--gm-color-edge);
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gm-space-md);
+}
+
+.question {
+  margin: 0;
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-md);
+  margin: 0 0 var(--gm-space-md);
+}
+
+/* A blocked action's 12 px reason beside it. */
+.reason {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* The model page's entry point: one form, its field, what to make and the send button. */
+.ask {
+  margin: 0 0 var(--gm-space-xl);
+}
+
+.askRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-md) var(--gm-space-gutter);
+  margin: 0 0 var(--gm-space-md);
+}
+
+.askRow p {
+  margin: 0;
+}

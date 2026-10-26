@@ -53,8 +53,12 @@ export type Field =
   | { key: "releaseRate" | "releaseQuantity"; n: number }
   | { key: "path"; path: string };
 
+/** One value an added entity holds, as its field reads it. */
+export type Holds = { field: Field; value: Value };
+
 export type Change =
-  | { kind: "added"; subject: Subject; placed: boolean }
+  /** placed: a new step with its canvas position; holds: what the new entity holds (a step's own time, the resources it uses, its batch or capacity; a resource's capacity; a decision's probability). */
+  | { kind: "added"; subject: Subject; placed: boolean; holds: Holds[] }
   | { kind: "removed"; subject: Subject }
   | { kind: "changed"; subject: Subject; field: Field; before: Value; after: Value }
   | { kind: "layout"; steps: string[] }
@@ -107,6 +111,7 @@ function namer(...docs: ModelIR[]) {
       const n = find((d) => d.nodes, id);
       return n ? stepName(n) : id;
     },
+    type: (id: string): string | undefined => find((d) => d.nodes, id)?.type,
     resource: (id: string) => find((d) => d.resources, id)?.name ?? id,
     entity: (id: string) => find((d) => d.entity_types, id)?.name ?? id,
     calendar: (id: string) => {
@@ -212,6 +217,32 @@ function named(field: Field, v: unknown, names: Namer): unknown {
 
 const CATALOGS = new Set(["nodes", "flows", "resources", "calendars", "entity_types", "metrics", "constraints"]);
 
+/** What a new step, resource or connection holds, read as the fields of a change read. */
+function holdsOf(catalog: string, element: unknown, names: Namer): Holds[] {
+  if (!isRecord(element)) return [];
+  const out: Holds[] = [];
+  if (catalog === "nodes") {
+    for (const [token, of] of Object.entries(timeTokens)) {
+      const timing = element[token];
+      if (isRecord(timing) && timing.distribution !== undefined) out.push({ field: { key: "time", of, param: null }, value: read(timing.distribution, "time") });
+    }
+    if (element.type === "queue") out.push({ field: { key: "capacity" }, value: read(element.capacity) });
+    for (const req of Array.isArray(element.requires) ? element.requires : []) {
+      if (isRecord(req) && typeof req.resource_id === "string") out.push({ field: { key: "uses", resource: names.resource(req.resource_id) }, value: read(req.units) });
+    }
+    if (isRecord(element.batch)) {
+      for (const which of ["min_size", "max_size", "max_wait"] as const) {
+        if (element.batch[which] !== undefined) out.push({ field: { key: "batch", which }, value: read(element.batch[which], which === "max_wait" ? "time" : "plain") });
+      }
+    }
+  }
+  if (catalog === "resources") out.push({ field: { key: "capacity" }, value: read(element.capacity) });
+  if (catalog === "flows" && names.type(String(element.from)) === "decision" && isRecord(element.routing)) {
+    out.push({ field: { key: "probability" }, value: read(element.routing.probability, "percent") });
+  }
+  return out;
+}
+
 /**
  * The changes a JSON Patch makes to base, in order, without its tests; or
  * not ok when it cannot be read safely (the caller then shows the exact
@@ -284,7 +315,7 @@ function describeOp(
       if (op.op === "add") {
         const subject = subjectOf(catalog, after, names);
         if (subject === null) return void out.push({ kind: "other", path: op.path, before: read(before), after: read(after) });
-        const change = { kind: "added" as const, subject, placed: false };
+        const change = { kind: "added" as const, subject, placed: false, holds: holdsOf(catalog, after, names) };
         if (subject.kind === "step") added.set(subject.id, change);
         out.push(change);
         return;

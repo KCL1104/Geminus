@@ -87,18 +87,32 @@ describe("a proposal's changes in human terms", () => {
     ]);
   });
 
-  it("reads new steps with their canvas positions (a T-056 proposal) and their connections by name", () => {
+  it("reads new steps with their canvas positions (a T-056 proposal), what each holds, and their connections by name", () => {
     const changes: JsonPatch = [
-      { op: "add", path: "/nodes/-", value: { id: "node_01xray", type: "process", name: "X-ray", service_time: { distribution: { type: "constant", value: 2 } }, requires: [] } },
+      { op: "add", path: "/nodes/-", value: { id: "node_01xray", type: "process", name: "X-ray", service_time: { distribution: { type: "constant", value: 2 } }, requires: [{ resource_id: "res_01xray", units: 1 }], batch: { min_size: 2, max_size: 4 } } },
       { op: "add", path: "/views/2d/positions/node_01xray", value: { x: 640, y: 240 } },
       { op: "add", path: "/flows/-", value: { id: "flow_01a", from: "aoi", to: "node_01xray", routing: { type: "probability", probability: 1 } } },
       { op: "add", path: "/resources/-", value: { id: "res_01xray", type: "machine", name: "X-ray machine", capacity: 1, queue_discipline: "fifo" } },
+      { op: "add", path: "/nodes/-", value: { id: "node_01q", type: "queue", name: "Before X-ray" } },
+      { op: "add", path: "/flows/-", value: { id: "flow_01b", from: "aoi_result", to: "node_01q", routing: { type: "probability", probability: 0 } } },
       { op: "add", path: "/views/2d/positions/smt", value: { x: 10, y: 20 } },
     ];
     expect(described(changes)).toEqual([
-      { kind: "added", subject: step("node_01xray", "X-ray", "process"), placed: true },
-      { kind: "added", subject: { kind: "connection", id: "flow_01a", from: "AOI", to: "X-ray" }, placed: false },
-      { kind: "added", subject: { kind: "resource", id: "res_01xray", name: "X-ray machine" }, placed: false },
+      {
+        kind: "added", subject: step("node_01xray", "X-ray", "process"), placed: true,
+        holds: [
+          { field: { key: "time", of: "process", param: null }, value: { kind: "distribution", value: { type: "constant", value: 2 }, time: true } },
+          // Named as the patch leaves the model: the resource is added after the step.
+          { field: { key: "uses", resource: "X-ray machine" }, value: num(1) },
+          { field: { key: "batch", which: "min_size" }, value: num(2) },
+          { field: { key: "batch", which: "max_size" }, value: num(4) },
+        ],
+      },
+      { kind: "added", subject: { kind: "connection", id: "flow_01a", from: "AOI", to: "X-ray" }, placed: false, holds: [] },
+      { kind: "added", subject: { kind: "resource", id: "res_01xray", name: "X-ray machine" }, placed: false, holds: [{ field: { key: "capacity" }, value: num(1) }] },
+      // A queue without a capacity holds no limit; a decision's way out says its probability.
+      { kind: "added", subject: step("node_01q", "Before X-ray", "queue"), placed: false, holds: [{ field: { key: "capacity" }, value: { kind: "absent" } }] },
+      { kind: "added", subject: { kind: "connection", id: "flow_01b", from: "AOI result", to: "Before X-ray" }, placed: false, holds: [{ field: { key: "probability" }, value: num(0, "percent") }] },
       { kind: "layout", steps: ["SMT"] },
     ]);
   });
@@ -135,7 +149,7 @@ describe("a proposal's changes in human terms", () => {
   it("shows a name as the text it is, markup and all", () => {
     const hostile = '<img src=x onerror="alert(1)"> [approve](https://evil.example)';
     const [c] = described([{ op: "add", path: "/nodes/-", value: { id: "node_01h", type: "delay", name: hostile, delay_time: { distribution: { type: "constant", value: 1 } } } }]);
-    expect(c).toEqual({ kind: "added", subject: step("node_01h", hostile, "delay"), placed: false });
+    expect(c).toEqual({ kind: "added", subject: step("node_01h", hostile, "delay"), placed: false, holds: [{ field: { key: "time", of: "delay", param: null }, value: { kind: "distribution", value: { type: "constant", value: 1 }, time: true } }] });
   });
 
   it("does not guess when the patch does not apply to the base, or names a prototype member", () => {

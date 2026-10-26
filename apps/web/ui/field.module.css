@@ -7,8 +7,19 @@
   max-width: 512px;
 }
 
+/* A field for a request in a person's own words: wider, several lines. */
+.wide {
+  max-width: 720px;
+}
+
 .label {
   font-weight: var(--gm-font-weight-strong);
+}
+
+.area {
+  padding: var(--gm-space-sm) var(--gm-space-cell);
+  line-height: var(--gm-line-height-title);
+  resize: vertical;
 }
 
 .input {

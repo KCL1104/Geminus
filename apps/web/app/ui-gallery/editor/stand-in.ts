@@ -11,6 +11,7 @@
 import { draftETag, parseDraftETag } from "../../../lib/api/etag";
 import type { Draft, JsonPatch, Model, ModelIR, ModelVersion, ValidationIssue } from "../../../lib/contracts";
 import { applyPatch, parsePointer, pointer } from "../../../features/model-editor/patch";
+import { SAMPLE_PROPOSAL_ID } from "../proposal/samples";
 
 const ORG = "org_01M4YDQK00Y5H2929M9WWZWTVH";
 const PROJECT = "prj_01M4YDQK00E1ECTR0N1C500000";
@@ -131,6 +132,12 @@ export function createStandIn(opts: StandInOptions) {
       revision++;
       anchored = anchored.filter((i) => i.severity !== "warning" || !("node" in i) || ir.nodes.some((n) => n.id === i.node));
       return json(201, modelVersion());
+    }
+    // Asking the AI (T-031): stored as generating, as the API answers; the
+    // proposal review page's sample being written is that proposal. No AI.
+    if (method === "POST" && path === `${base}/ai-proposals`) {
+      if ((body as { base_version_id?: string }).base_version_id !== versionId(version)) return error(409, "MODEL_VERSION_CONFLICT", "base_version_id is not the model's latest version");
+      return json(202, { proposal_id: SAMPLE_PROPOSAL_ID, status: "generating" });
     }
     return error(404, "NOT_FOUND", "not found");
   }

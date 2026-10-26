@@ -5,6 +5,11 @@ export type Locale = "en" | "zh-Hant";
 
 /** The results view's review page (T-032, gallery only), one address per state. */
 export const resultsPreviews = ["/ui-gallery/results", "/ui-gallery/results?state=incomparable", "/ui-gallery/results?state=running", "/ui-gallery/results?state=failed"];
+/** The AI proposal review's review page (T-031, gallery only): the samples whose look differs (the others are in proposal.spec.ts). */
+export const proposalPreviews = [
+  "/ui-gallery/proposal", "/ui-gallery/proposal?state=scenario", "/ui-gallery/proposal?state=new-steps", "/ui-gallery/proposal?state=needs_input",
+  "/ui-gallery/proposal?state=invalid", "/ui-gallery/proposal?state=failed", "/ui-gallery/proposal?state=stale", "/ui-gallery/proposal?state=conflicted",
+];
 export const locales: Locale[] = ["en", "zh-Hant"];
 
 /** The system colour schemes the app follows when the reader chose no theme (H-013). */
@@ -20,6 +25,9 @@ export const routes = [
   "/scenarios/scn_01M4YDQK00TA00000000000001",
   "/scenarios/scn_01M4YDQK00TA00000000000001/results?baseline=sim_01M4YDQK00TA00000000000001&scenario=sim_01M4YDQK00TA00000000000002",
   ...resultsPreviews,
+  // T-031: a proposal (signed out), and the proposal review's review page in its samples.
+  "/proposals/aip_01M4YDQK00TA00000000000001",
+  ...proposalPreviews,
 ];
 
 /** Opens a route in a language, and in a remembered theme if one is given (else the system's). */

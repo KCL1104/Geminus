@@ -1,6 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
-import { FieldError, Input, Label, Text, TextField as AriaTextField, type TextFieldProps as AriaTextFieldProps } from "react-aria-components";
+import { FieldError, Input, Label, Text, TextArea, TextField as AriaTextField, type TextFieldProps as AriaTextFieldProps } from "react-aria-components";
+import { cx } from "./cx";
 import styles from "./field.module.css";
 
 export type TextFieldProps = Omit<AriaTextFieldProps, "className" | "validationBehavior" | "children"> & {
@@ -8,6 +9,8 @@ export type TextFieldProps = Omit<AriaTextFieldProps, "className" | "validationB
   description?: ReactNode;
   /** The server's message for this field (a ValidationIssue), shown when isInvalid. */
   errorMessage?: ReactNode;
+  /** Several lines of text (a request in a person's own words), in a text area that grows with the window's width. */
+  multiline?: boolean;
 };
 
 /**
@@ -15,11 +18,11 @@ export type TextFieldProps = Omit<AriaTextFieldProps, "className" | "validationB
  * field only shows it, and never runs the browser's own validation, whose
  * messages would come in the browser's language (validationBehavior "aria").
  */
-export function TextField({ label, description, errorMessage, ...props }: TextFieldProps) {
+export function TextField({ label, description, errorMessage, multiline = false, ...props }: TextFieldProps) {
   return (
-    <AriaTextField {...props} validationBehavior="aria" className={styles.field}>
+    <AriaTextField {...props} validationBehavior="aria" className={cx(styles.field, multiline && styles.wide)}>
       <Label className={styles.label}>{label}</Label>
-      <Input className={styles.input} />
+      {multiline ? <TextArea className={cx(styles.input, styles.area)} rows={3} /> : <Input className={styles.input} />}
       {description && (
         <Text slot="description" className={styles.description}>
           {description}

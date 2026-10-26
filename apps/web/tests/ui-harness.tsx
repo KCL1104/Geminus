@@ -13,11 +13,13 @@ import { UiProvider } from "../ui/provider";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let roots: Root[] = [];
-afterEach(() => {
+/** Unmounts everything mounted so far and empties the page (also after each test). */
+export function unmountAll(): void {
   for (const r of roots) act(() => r.unmount());
   roots = [];
   document.body.innerHTML = "";
-});
+}
+afterEach(unmountAll);
 
 export async function mount(node: ReactNode, locale: Locale = "en"): Promise<HTMLElement> {
   document.documentElement.lang = locale;

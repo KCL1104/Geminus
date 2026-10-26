@@ -2,8 +2,11 @@
 // The model page with the 2D editor on sample data, for review and the
 // browser checks (T-015): the real ModelView, API client and draft session,
 // signed in as an editor (a viewer in "viewer"), talking to the in-page
-// stand-in (stand-in.ts) instead of the Go API. Not part of the product.
+// stand-in (stand-in.ts) instead of the Go API. Asking the AI for a change
+// (T-031) goes to the proposal review page's sample being written: the
+// stand-in calls no AI. Not part of the product.
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createApiClient } from "../../../lib/api/client";
 import { ApiProvider } from "../../../lib/api/provider";
@@ -18,6 +21,7 @@ import { createStandIn } from "./stand-in";
 
 export function Preview({ state }: { state: SampleState }) {
   const { t } = useI18n();
+  const router = useRouter();
   const [standIn] = useState(() => createStandIn({ modelId: SAMPLE_MODEL_ID, ...standInFor(state) }));
   const client = useMemo(() => createApiClient({ session: () => ({ organizationId: standIn.organizationId }), fetch: standIn.fetch }), [standIn]);
   const auth = useMemo(() => ({ session: { organizationId: standIn.organizationId }, role: state === "viewer" ? ("viewer" as const) : ("editor" as const) }), [standIn, state]);
@@ -33,7 +37,7 @@ export function Preview({ state }: { state: SampleState }) {
       </nav>
       <AuthProvider value={auth}>
         <ApiProvider client={client}>
-          <ModelView modelId={SAMPLE_MODEL_ID} />
+          <ModelView modelId={SAMPLE_MODEL_ID} onProposal={() => router.push("/ui-gallery/proposal?state=generating")} />
         </ApiProvider>
       </AuthProvider>
     </>
