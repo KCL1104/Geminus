@@ -526,7 +526,7 @@ func TestScenarioMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ctx.Prompt.Role != provider.RoleScenario || ctx.Prompt.TemplateVersion != "scenario-0.6.0" || ctx.Mode != provider.ModeScenario {
+	if ctx.Prompt.Role != provider.RoleScenario || ctx.Prompt.TemplateVersion != "scenario-0.7.0" || ctx.Mode != provider.ModeScenario {
 		t.Errorf("%+v", ctx)
 	}
 	if _, ok := blocks(t, ctx.Prompt)["ID_ALLOCATION_POOL"]; ok {
@@ -544,9 +544,10 @@ func TestScenarioMode(t *testing.T) {
 	// shift, and a schedule's rates and a table's quantities, replace only,
 	// at least medium, with R2's and R4's refusals; (T-050) so are a
 	// batch's sizes and wait limit, replace only, at least medium, with
-	// BATCH_INVALID's refusal, and a changeover's default and transition
-	// times, replace only, at least medium. The declared metrics are not
-	// scenario parameters at all.
+	// BATCH_INVALID's refusal (every condition of it, the wait limit's
+	// 365 days included: review round 1 L3), and a changeover's default and
+	// transition times, replace only, at least medium. The declared metrics
+	// are not scenario parameters at all.
 	for _, w := range []string{"queue's buffer capacity", "D-057", "BLOCKING_CYCLE", "at least medium",
 		"/resources/<i>/breakdowns/time_to_failure/distribution", "/resources/<i>/breakdowns/time_to_repair/distribution",
 		"never adds or removes breakdowns", "lognormal (mean, cv", "weibull (shape", "cv <= 10", "0.1 <= shape <= 20",
@@ -554,6 +555,7 @@ func TestScenarioMode(t *testing.T) {
 		"/nodes/<i>/arrival/schedule/segments/<j>/rate", "/nodes/<i>/arrival/schedule/releases/<j>/quantity",
 		"never adds or removes a calendar", "never changes a period, a segment start or a release time", "CALENDAR_INVALID", "STALL_RISK",
 		"/nodes/<i>/batch/min_size", "/nodes/<i>/batch/max_size", "/nodes/<i>/batch/max_wait", "never adds or removes a batch", "BATCH_INVALID",
+		"max_wait is at most 365 days",
 		"/resources/<i>/setups/default", "/resources/<i>/setups/transitions/<j>/distribution", "never adds or removes setups",
 		"never changes initial or a transition's from or to", "changeover time"} {
 		if !strings.Contains(ctx.Prompt.System, w) {
@@ -565,9 +567,11 @@ func TestScenarioMode(t *testing.T) {
 			t.Errorf("the scenario rules offer %q, whose gate is still on", w)
 		}
 	}
-	// The scenario template says the same (prompts/scenario, scenario-0.6.0).
+	// The scenario template says the same (prompts/scenario, scenario-0.7.0;
+	// T-050 review round 1 L3 added max_wait's 365-day bound, D-096 (i)).
 	for _, w := range []string{"breakdowns", "time_to_failure", "time_to_repair", "lognormal", "Weibull", "calendar_id", "shift_capacity",
-		"shifts", "exceptions", "segment rate", "quantity", "batch", "min_size", "max_size", "max_wait", "setups", "transitions/*/distribution", "換線"} {
+		"shifts", "exceptions", "segment rate", "quantity", "batch", "min_size", "max_size", "max_wait", "setups", "transitions/*/distribution", "換線",
+		"max_wait 量化為 1 ms tick 後至多 365 天"} {
 		if !strings.Contains(ctx.Prompt.System, w) {
 			t.Errorf("the scenario template does not say %q", w)
 		}

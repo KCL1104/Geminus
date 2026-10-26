@@ -1,0 +1,9 @@
+# 2026-10-26T10:29:42Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: checks/evidence/2026-10-26-T-050-r1/scripts/ai-scenario.sh
+=== RUN   TestScenarioMode
+--- PASS: TestScenarioMode (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.016s
+ok  	github.com/kcl1104/geminus/prompts	0.004s
+# aicontext exit=0 prompts exit=0
+# exit=0 elapsed=1s

@@ -65,8 +65,9 @@ func modeRules(mode provider.Mode) string {
 			"resources are never on shift together is refused (CALENDAR_INVALID), and so is one that puts a resource that breaks down on shift " +
 			"while a partner in its bundle is not (STALL_RISK). For a batch process it may replace /nodes/<i>/batch/min_size, " +
 			"/nodes/<i>/batch/max_size and /nodes/<i>/batch/max_wait (replace only: a scenario never adds or removes a batch or a max_wait); " +
-			"1 <= min_size <= max_size <= 10000, a batch that may start below max_size needs max_wait (in model time units), and a finite " +
-			"buffer in front of it must hold max_size, or the candidate is refused (BATCH_INVALID); any change to a batch, either way, is at " +
+			"1 <= min_size <= max_size <= 10000, a batch that may start below max_size needs max_wait (in model time units), max_wait is at " +
+			"most 365 days once quantized to 1 ms ticks, and a finite buffer in front of it must hold max_size, or the candidate is refused " +
+			"(BATCH_INVALID); any change to a batch, either way, is at " +
 			"least medium risk. For a resource with changeovers (setups) it may replace /resources/<i>/setups/default (when it has one) and " +
 			"/resources/<i>/setups/transitions/<j>/distribution (replace only: a scenario never adds or removes setups, a default or a " +
 			"transition, and never changes initial or a transition's from or to); any change to a changeover time, either way, is at least " +
