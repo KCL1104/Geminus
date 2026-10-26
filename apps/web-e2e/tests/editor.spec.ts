@@ -116,6 +116,11 @@ test.describe("the editor with a mouse", () => {
 
   test("dragging a step moves it, dragging between handles connects two steps", async ({ page }) => {
     await open(page, preview("clean"), "en");
+    // In a 900 px window the canvas starts low on the page (the ask form
+    // above it has its data notice since T-057, and the blocked actions'
+    // reason appears after the first edit): the person scrolls to it before
+    // using the mouse on it.
+    await page.locator(".react-flow").scrollIntoViewIfNeeded();
     const smt = node(page, "smt");
     const box = (await smt.boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + 10);
