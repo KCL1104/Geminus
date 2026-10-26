@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 91,
-    "proposed": 13,
+    "proposed": 14,
     "rejected": 0,
     "superseded": 0
   },
@@ -905,6 +905,11 @@
       "gates_tasks": [
         "T-055"
       ]
+    },
+    "D-124": {
+      "status": "proposed",
+      "gate": "T-055 live 前",
+      "gates_tasks": []
     }
   },
   "note": "Shape checks only; whether a recorded approval is genuine is for human review."

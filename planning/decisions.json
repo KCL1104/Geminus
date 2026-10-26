@@ -1441,6 +1441,19 @@
       "proposal": "(a) 圖片只接受 PNG、JPEG、WebP（signature 相符），至多 5 MiB、每邊 8000 px、每個 prompt 4 張，送出前檢查，hash 含 media type、sha256、尺寸；(b) segmentation 一張圖至多 8 個 concept（64 bytes 內的小寫名詞片語，每個一個 SAM request），每個 concept 至多 100 個結果，box 在圖片內、confidence 0..1，mask 不解碼不存；(c) AI_VISION_PROVIDER（不設＝AI_PROVIDER）、AI_VISION_POLICY_APPROVAL、AI_VISION_MODEL；批准的資料政策沒有圖片（H-018）時照片路徑關閉（images_not_approved），Claude 作為照片備援需要 owner 擴充 H-018；(d) SAM 的呼叫以 proposal 的角色計費與 audit。建議照列，已實作。",
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-124",
+      "title": "API 不讀 AI key 也能判斷是否接受 proposal（T-053 I5、T-055 follow-up）",
+      "status": "proposed",
+      "owner_role": "AI / Security",
+      "gate": "T-055 live 前",
+      "resolves": [],
+      "source_gap": "T-053 review I5：開關 on 時 API 也會經 config.Load 讀兩把 key，但 API 從不呼叫 provider；不給 API key 時，部署後的 API 對每個 proposal 回 503。",
+      "source_pages": "N/A（coordinator 決定，2026-10-26；checks/T-055_VALIDATION.md §10；ADR-027 addendum）",
+      "proposal": "API 以與 worker 相同的檢查（liveGate）只依 AI_PROVIDER、AI_POLICY_APPROVAL、AI_MODEL、GEMINUS_AI_LIVE 判斷：開關 off 時照常啟動、proposal 回 503（AI_POLICY_NOT_APPROVED 或 AI_PROVIDER_NOT_CONFIGURED）；開關 on 而設定不符時拒絕啟動；環境中出現任何 AI key 變數（internal/config/apiai.go 的 apiKeyVars，非空值）就拒絕啟動（key_forbidden，只寫變數名稱）。API 與 worker 的四個設定在 variables.json 宣告相同、由 owner 設相同的值。選項 B：API 照舊讀 key（secret 多放一處）；選項 C：API 一律接受、由 worker 失敗（使用者要等 job 失敗才知道）。照片路徑的設定（AI_VISION_*）由後續切片加入。建議 A，已實作。",
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

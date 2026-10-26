@@ -369,7 +369,7 @@ Coordinator 把本任務的五個 commit（4bfb8f2–8948b70）cherry-pick 到 `
 - **I1**：讀不了的 2xx 回答：adapter 記錄最後一個 body 的結束方式（讀完、截斷）；非 API error 而 raw response 是 2xx、body 不是截斷的，就計為一個沒有回答的 attempt 並標 `Undecoded`，結算至少為整個預留（coordinator 的決定）。`TestAnUndecodableAnswerSettlesAtTheReservation`（MaxRetries 0 與 2：結算＝預留；紅：結算 0）、`TestSettlement` 的 case；截斷的 body 不會被算兩次（`TestACutBodyOnTheLastAttemptCountsOnce`）。Probe P5 原樣執行：PASS。Mutant R2、R3、R4。
 - **I2**（未結算的預留沒有 operator 介面）、**I4**（限額是每個 process 的設定）：沒有改程式；寫入 D-111 的已知限制，並列入 T-039（部署）的 scope：每個 worker 以相同的限額部署或把限額移到資料庫、列出未結算預留的介面。
 - **I3**：F3 是等價的 mutant（見 M1）。
-- **I5**：API 在開關 on 時也會讀兩把 key（`config.Load` → `LoadAI`）：寫入 SECURITY §7（部署 API 時不設 key 的變數與開關）與 T-039 的 scope。
+- **I5**：API 在開關 on 時也會讀兩把 key（`config.Load` → `LoadAI`）：寫入 SECURITY §7（部署 API 時不設 key 的變數與開關）與 T-039 的 scope。（2026-10-26 後續：API 改為不讀 key，環境中有 key 就拒絕啟動，見 `checks/T-055_VALIDATION.md` §10 與 D-124。）
 - **I6**：`MemoryMeter.Settle` 只在荒謬的 usage（約 4.6e14 token）下才會溢位；沒有改。
 
 ### 改變的期望值（依 coordinator 的決定，沒有降低）
