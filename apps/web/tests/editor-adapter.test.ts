@@ -27,7 +27,7 @@ import {
 import { toFlow } from "../features/model-editor/flow";
 import { claim, locate, locateIssues, stepOf } from "../features/model-editor/issues";
 import { LAYER_SPACING, layeredLayout, ROW_SPACING } from "../features/model-editor/layout";
-import { applyPatch, type Op, parsePointer } from "../features/model-editor/patch";
+import { applyPatch, type Op, parsePointer, reapplyPatch } from "../features/model-editor/patch";
 
 const fixture = (name: string): ModelIR => JSON.parse(readFileSync(join(process.cwd(), "../../testdata/contracts", name), "utf8")) as ModelIR;
 const minimal = () => fixture("valid-minimal-ir.json");
@@ -150,10 +150,10 @@ describe("IR to React Flow", () => {
 });
 
 describe("edits are JSON Patch ops on the IR", () => {
-  it("move: one replace for a placed node; an unplaced layout is written down first so nothing else jumps", () => {
+  it("move: a test of the old position and one replace for a placed node; an unplaced layout is written down first so nothing else jumps", () => {
     const p = placed();
     const move = moveStep(p, "smt", { x: 10.4, y: -3.6 });
-    expect(ops(move)).toEqual([{ op: "replace", path: "/views/2d/positions/smt", value: { x: 10, y: -4 } }]);
+    expect(ops(move)).toEqual([{ op: "test", path: "/views/2d/positions/smt", value: p.views["2d"].positions!.smt }, { op: "replace", path: "/views/2d/positions/smt", value: { x: 10, y: -4 } }]);
     const m = minimal();
     const first = ops(moveStep(m, "work", { x: 5, y: 5 }));
     expect(first).toEqual([
@@ -169,10 +169,10 @@ describe("edits are JSON Patch ops on the IR", () => {
     expect(moveStep(p, "nope", { x: 0, y: 0 })).toEqual({ ok: false, refusal: "unknown_step" });
   });
 
-  it("rename: test then replace or add; an empty name removes it; the same name is no change", () => {
+  it("rename: test the step and its old name, then replace or add; an empty name removes it; the same name is no change", () => {
     const ir = sample();
-    expect(ops(renameStep(ir, "smt", "  SMT line 1 "))).toEqual([{ op: "test", path: "/nodes/3/id", value: "smt" }, { op: "replace", path: "/nodes/3/name", value: "SMT line 1" }]);
-    expect(ops(renameStep(ir, "smt", "   "))).toEqual([{ op: "test", path: "/nodes/3/id", value: "smt" }, { op: "remove", path: "/nodes/3/name" }]);
+    expect(ops(renameStep(ir, "smt", "  SMT line 1 "))).toEqual([{ op: "test", path: "/nodes/3/id", value: "smt" }, { op: "test", path: "/nodes/3/name", value: "SMT" }, { op: "replace", path: "/nodes/3/name", value: "SMT line 1" }]);
+    expect(ops(renameStep(ir, "smt", "   "))).toEqual([{ op: "test", path: "/nodes/3/id", value: "smt" }, { op: "test", path: "/nodes/3/name", value: "SMT" }, { op: "remove", path: "/nodes/3/name" }]);
     expect(ops(renameStep(ir, "smt", "SMT"))).toEqual([]);
     expect(ops(renameStep(minimal(), "work", "Work"))).toEqual([{ op: "test", path: "/nodes/1/id", value: "work" }, { op: "add", path: "/nodes/1/name", value: "Work" }]);
     expect(ops(renameStep(minimal(), "work", ""))).toEqual([]);
@@ -221,11 +221,19 @@ describe("edits are JSON Patch ops on the IR", () => {
     expect(next.metrics.map((m) => m.id)).toEqual(["lead_time", "throughput", "ict_utilization"]);
     expect(next.views["2d"].positions!.q_ict).toBeUndefined();
     expect(Object.keys(next.views["2d"].positions!).length).toBe(ir.nodes.length - 1);
-    // Every removal sits right after the test of the element it removes.
+    // Every removal sits right after the test of the element it removes, and that after a test of its whole old value.
+    let doc: unknown = ir;
     patch.forEach((op, i) => {
       const t = parsePointer(op.path)!;
-      if (op.op === "remove" && t.length === 2) expect(patch[i - 1]).toMatchObject({ op: "test", path: `/${t[0]}/${t[1]}/${catalogs[t[0]!]}` });
+      if (op.op === "remove" && t.length === 2) {
+        expect(patch[i - 1]).toMatchObject({ op: "test", path: `/${t[0]}/${t[1]}/${catalogs[t[0]!]}` });
+        expect(patch[i - 2]).toEqual({ op: "test", path: op.path, value: (doc as Record<string, unknown[]>)[t[0]!]![Number(t[1])] });
+      }
+      const a = applyPatch(doc, [op]);
+      if (!a.ok) throw new Error(`op ${i}: ${a.reason}`);
+      doc = a.doc;
     });
+    expect(patch.slice(-2)).toEqual([{ op: "test", path: "/views/2d/positions/q_ict", value: ir.views["2d"].positions!.q_ict }, { op: "remove", path: "/views/2d/positions/q_ict" }]);
     const decision = deleteStep(ir, "ict_result");
     expect(after(ir, decision).constraints.map((c) => c.node_id)).toEqual(["aoi_result", "debug_result"]);
     const counted = lineFlow();
@@ -266,20 +274,99 @@ describe("edits are JSON Patch ops on the IR", () => {
     expect(disconnect(counted, "nope")).toEqual({ ok: false, refusal: "unknown_connection" });
   });
 
-  it("properties: probability, queue capacity, the step's own time and batch sizes, each after a test", () => {
+  it("properties: probability, queue capacity, the step's own time and batch sizes, each after a test of the element and of the value it replaces or removes", () => {
     const ir = placed();
-    expect(ops(setProbability(ir, "aoi_result_q_ict", 0.9))).toEqual([{ op: "test", path: "/flows/6/id", value: "aoi_result_q_ict" }, { op: "replace", path: "/flows/6/routing/probability", value: 0.9 }]);
-    expect(ops(setQueueCapacity(ir, "q_aoi", 25))).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "replace", path: "/nodes/4/capacity", value: 25 }]);
-    expect(ops(setQueueCapacity(ir, "q_aoi", null))).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "remove", path: "/nodes/4/capacity" }]);
+    const at = (id: string) => ir.nodes.find((n) => n.id === id) as Record<string, unknown> & ModelIR["nodes"][number];
+    const old = {
+      probability: ir.flows[6]!.routing.probability,
+      smtMax: (at("smt") as unknown as { service_time: { distribution: { max: number } } }).service_time.distribution.max,
+      releaseMean: (at("release_a") as unknown as { arrival: { distribution: { mean: number } } }).arrival.distribution.mean,
+      batch: (at("burn_in") as unknown as { batch: { max_size: number; max_wait: number } }).batch,
+    };
+    expect(ops(setProbability(ir, "aoi_result_q_ict", 0.9))).toEqual([{ op: "test", path: "/flows/6/id", value: "aoi_result_q_ict" }, { op: "test", path: "/flows/6/routing/probability", value: old.probability }, { op: "replace", path: "/flows/6/routing/probability", value: 0.9 }]);
+    expect(ops(setQueueCapacity(ir, "q_aoi", 25))).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "test", path: "/nodes/4/capacity", value: 20 }, { op: "replace", path: "/nodes/4/capacity", value: 25 }]);
+    expect(ops(setQueueCapacity(ir, "q_aoi", null))).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "test", path: "/nodes/4/capacity", value: 20 }, { op: "remove", path: "/nodes/4/capacity" }]);
+    // A member that is not there has no value to test; reapplying checks that it is still absent (reapplyPatch).
     expect(ops(setQueueCapacity(ir, "q_smt", 5))).toEqual([{ op: "test", path: "/nodes/2/id", value: "q_smt" }, { op: "add", path: "/nodes/2/capacity", value: 5 }]);
     expect(ops(setQueueCapacity(ir, "q_smt", null))).toEqual([]);
-    expect(ops(setTiming(ir, "smt", "max", 1.6))).toEqual([{ op: "test", path: "/nodes/3/id", value: "smt" }, { op: "replace", path: "/nodes/3/service_time/distribution/max", value: 1.6 }]);
-    expect(ops(setTiming(ir, "release_a", "mean", 2.5))).toEqual([{ op: "test", path: "/nodes/0/id", value: "release_a" }, { op: "replace", path: "/nodes/0/arrival/distribution/mean", value: 2.5 }]);
+    expect(ops(setTiming(ir, "smt", "max", 1.6))).toEqual([{ op: "test", path: "/nodes/3/id", value: "smt" }, { op: "test", path: "/nodes/3/service_time/distribution/max", value: old.smtMax }, { op: "replace", path: "/nodes/3/service_time/distribution/max", value: 1.6 }]);
+    expect(ops(setTiming(ir, "release_a", "mean", 2.5))).toEqual([{ op: "test", path: "/nodes/0/id", value: "release_a" }, { op: "test", path: "/nodes/0/arrival/distribution/mean", value: old.releaseMean }, { op: "replace", path: "/nodes/0/arrival/distribution/mean", value: 2.5 }]);
     expect(setTiming(ir, "smt", "mean", 1)).toEqual({ ok: false, refusal: "unknown_field" });
     expect(setTiming(ir, "q_smt", "value", 1)).toEqual({ ok: false, refusal: "unknown_field" });
-    expect(ops(setBatch(ir, "burn_in", "max_size", 48))).toEqual([{ op: "test", path: "/nodes/20/id", value: "burn_in" }, { op: "replace", path: "/nodes/20/batch/max_size", value: 48 }]);
-    expect(ops(setBatch(ir, "burn_in", "max_wait", null))).toEqual([{ op: "test", path: "/nodes/20/id", value: "burn_in" }, { op: "remove", path: "/nodes/20/batch/max_wait" }]);
+    expect(ops(setBatch(ir, "burn_in", "max_size", 48))).toEqual([{ op: "test", path: "/nodes/20/id", value: "burn_in" }, { op: "test", path: "/nodes/20/batch/max_size", value: old.batch.max_size }, { op: "replace", path: "/nodes/20/batch/max_size", value: 48 }]);
+    expect(ops(setBatch(ir, "burn_in", "max_wait", null))).toEqual([{ op: "test", path: "/nodes/20/id", value: "burn_in" }, { op: "test", path: "/nodes/20/batch/max_wait", value: old.batch.max_wait }, { op: "remove", path: "/nodes/20/batch/max_wait" }]);
     expect(setBatch(ir, "smt", "min_size", 2)).toEqual({ ok: false, refusal: "unknown_field" });
+  });
+
+  it("every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1)", () => {
+    const ir = placed();
+    const counted = lineFlow();
+    counted.views["2d"].positions = layeredLayout(counted);
+    const edits: [ModelIR, EditResult][] = [
+      [ir, moveStep(ir, "aoi", { x: 1, y: 2 })],
+      [ir, renameStep(ir, "smt", "X")],
+      [ir, renameStep(ir, "smt", "")],
+      [ir, deleteStep(ir, "q_ict")],
+      [ir, deleteStep(ir, "ict_result")],
+      [counted, deleteStep(counted, "test")],
+      [counted, disconnect(counted, "test_pass")],
+      [ir, setProbability(ir, "aoi_result_q_ict", 0.5)],
+      [ir, setQueueCapacity(ir, "q_aoi", 3)],
+      [ir, setQueueCapacity(ir, "q_aoi", null)],
+      [ir, setTiming(ir, "smt", "max", 2)],
+      [ir, setBatch(ir, "burn_in", "min_size", 2)],
+      [ir, setBatch(ir, "burn_in", "max_wait", null)],
+    ];
+    for (const [base, r] of edits) {
+      const patch = ops(r);
+      let doc: unknown = base;
+      patch.forEach((op, i) => {
+        if (op.op === "replace" || op.op === "remove") {
+          // Among the tests right before it is one of this path; it passed on the document as it was then.
+          let j = i - 1;
+          while (j >= 0 && patch[j]!.op === "test" && patch[j]!.path !== op.path) j--;
+          expect(patch[j], `${op.op} ${op.path}`).toMatchObject({ op: "test", path: op.path });
+        }
+        const a = applyPatch(doc, [op]);
+        if (!a.ok) throw new Error(`op ${i}: ${a.reason}`);
+        doc = a.doc;
+      });
+    }
+  });
+
+  // What reapplying after a 409 does with each edit when someone else's
+  // newer revision changed the same thing (it fails: only discarding is
+  // left, REQ-006) or something else (it applies).
+  it("written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not", () => {
+    const ir = placed();
+    const unplaced = sample();
+    const cases: { name: string; base: ModelIR; mine: (x: ModelIR) => EditResult; same: (x: ModelIR) => EditResult; other: (x: ModelIR) => EditResult }[] = [
+      { name: "rename", base: ir, mine: (x) => renameStep(x, "smt", "Mine"), same: (x) => renameStep(x, "smt", "Theirs"), other: (x) => renameStep(x, "aoi", "Theirs") },
+      { name: "remove a name", base: ir, mine: (x) => renameStep(x, "smt", ""), same: (x) => renameStep(x, "smt", "Theirs"), other: (x) => setTiming(x, "smt", "max", 2) },
+      { name: "name an unnamed step", base: minimal(), mine: (x) => renameStep(x, "work", "Mine"), same: (x) => renameStep(x, "work", "Theirs"), other: (x) => renameStep(x, "start", "Theirs") },
+      { name: "capacity", base: ir, mine: (x) => setQueueCapacity(x, "q_aoi", 25), same: (x) => setQueueCapacity(x, "q_aoi", 12), other: (x) => renameStep(x, "q_aoi", "Theirs") },
+      { name: "remove a capacity", base: ir, mine: (x) => setQueueCapacity(x, "q_aoi", null), same: (x) => setQueueCapacity(x, "q_aoi", 12), other: (x) => setQueueCapacity(x, "q_ict", 3) },
+      { name: "set a capacity", base: ir, mine: (x) => setQueueCapacity(x, "q_smt", 50), same: (x) => setQueueCapacity(x, "q_smt", 40), other: (x) => setQueueCapacity(x, "q_aoi", 12) },
+      { name: "time", base: ir, mine: (x) => setTiming(x, "smt", "max", 1.6), same: (x) => setTiming(x, "smt", "max", 1.5), other: (x) => setTiming(x, "smt", "min", 0.8) },
+      { name: "batch", base: ir, mine: (x) => setBatch(x, "burn_in", "max_size", 48), same: (x) => setBatch(x, "burn_in", "max_size", 30), other: (x) => setBatch(x, "burn_in", "min_size", 10) },
+      { name: "remove a batch limit", base: ir, mine: (x) => setBatch(x, "burn_in", "max_wait", null), same: (x) => setBatch(x, "burn_in", "max_wait", 60), other: (x) => setBatch(x, "burn_in", "min_size", 10) },
+      { name: "probability", base: ir, mine: (x) => setProbability(x, "aoi_result_q_ict", 0.9), same: (x) => setProbability(x, "aoi_result_q_ict", 0.8), other: (x) => setProbability(x, "aoi_result_aoi_defect", 0.1) },
+      { name: "move", base: ir, mine: (x) => moveStep(x, "aoi", { x: 1, y: 2 }), same: (x) => moveStep(x, "aoi", { x: 5, y: 5 }), other: (x) => moveStep(x, "smt", { x: 5, y: 5 }) },
+      { name: "the first move writes the layout down", base: unplaced, mine: (x) => moveStep(x, "aoi", { x: 1, y: 2 }), same: (x) => moveStep(x, "smt", { x: 5, y: 5 }), other: (x) => renameStep(x, "aoi", "Theirs") },
+      { name: "delete a step", base: ir, mine: (x) => deleteStep(x, "q_ict"), same: (x) => setQueueCapacity(x, "q_ict", 3), other: (x) => setQueueCapacity(x, "q_aoi", 3) },
+      { name: "delete a step whose flow changed", base: ir, mine: (x) => deleteStep(x, "aoi_result"), same: (x) => setProbability(x, "aoi_result_q_ict", 0.5), other: (x) => setQueueCapacity(x, "q_aoi", 3) },
+      { name: "delete a moved step", base: ir, mine: (x) => deleteStep(x, "q_ict"), same: (x) => moveStep(x, "q_ict", { x: 5, y: 5 }), other: (x) => moveStep(x, "smt", { x: 5, y: 5 }) },
+      { name: "disconnect", base: ir, mine: (x) => disconnect(x, "aoi_result_q_ict"), same: (x) => setProbability(x, "aoi_result_q_ict", 0.5), other: (x) => setProbability(x, "aoi_result_aoi_defect", 0.5) },
+      { name: "add a step", base: ir, mine: (x) => addStep(x, "process"), same: (x) => addStep(x, "process"), other: (x) => setQueueCapacity(x, "q_aoi", 3) },
+      { name: "connect", base: ir, mine: (x) => connectSteps(x, "q_pack", "scrap"), same: (x) => connectSteps(x, "q_pack", "scrap"), other: (x) => setQueueCapacity(x, "q_aoi", 3) },
+    ];
+    for (const c of cases) {
+      const mine = ops(c.mine(c.base));
+      expect(applyPatch(c.base, mine).ok, `${c.name}: on its own draft`).toBe(true);
+      expect(reapplyPatch(c.base, mine).ok, `${c.name}: reapplied on its own draft`).toBe(true);
+      expect(reapplyPatch(after(c.base, c.same(c.base)), mine).ok, `${c.name}: someone changed the same`).toBe(false);
+      expect(reapplyPatch(after(c.base, c.other(c.base)), mine).ok, `${c.name}: someone changed something else`).toBe(true);
+    }
   });
 
   it("round trip: an edit and its opposite give the IR back; the projection follows the IR", () => {

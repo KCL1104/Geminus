@@ -1997,6 +1997,14 @@
       "base": "sample_placed",
       "ops": [
         {
+          "op": "test",
+          "path": "/views/2d/positions/smt",
+          "value": {
+            "x": 480,
+            "y": 0
+          }
+        },
+        {
           "op": "replace",
           "path": "/views/2d/positions/smt",
           "value": {
@@ -2253,6 +2261,11 @@
           "value": "smt"
         },
         {
+          "op": "test",
+          "path": "/nodes/3/name",
+          "value": "SMT"
+        },
+        {
           "op": "replace",
           "path": "/nodes/3/name",
           "value": "SMT line 1"
@@ -2285,6 +2298,11 @@
           "op": "test",
           "path": "/nodes/2/id",
           "value": "q_smt"
+        },
+        {
+          "op": "test",
+          "path": "/nodes/2/name",
+          "value": "Before SMT"
         },
         {
           "op": "remove",
@@ -2462,12 +2480,38 @@
       "ops": [
         {
           "op": "test",
+          "path": "/flows/21",
+          "value": {
+            "id": "debug_rework_q_ict",
+            "from": "debug_rework",
+            "to": "q_ict",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/21/id",
           "value": "debug_rework_q_ict"
         },
         {
           "op": "remove",
           "path": "/flows/21"
+        },
+        {
+          "op": "test",
+          "path": "/flows/12",
+          "value": {
+            "id": "q_ict_ict",
+            "from": "q_ict",
+            "to": "ict",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
         },
         {
           "op": "test",
@@ -2480,12 +2524,38 @@
         },
         {
           "op": "test",
+          "path": "/flows/11",
+          "value": {
+            "id": "touchup_rework_q_ict",
+            "from": "touchup_rework",
+            "to": "q_ict",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/11/id",
           "value": "touchup_rework_q_ict"
         },
         {
           "op": "remove",
           "path": "/flows/11"
+        },
+        {
+          "op": "test",
+          "path": "/flows/6",
+          "value": {
+            "id": "aoi_result_q_ict",
+            "from": "aoi_result",
+            "to": "q_ict",
+            "routing": {
+              "type": "probability",
+              "probability": 0.97
+            }
+          }
         },
         {
           "op": "test",
@@ -2498,6 +2568,15 @@
         },
         {
           "op": "test",
+          "path": "/metrics/3",
+          "value": {
+            "id": "ict_wait",
+            "type": "queue_wait",
+            "node_id": "q_ict"
+          }
+        },
+        {
+          "op": "test",
           "path": "/metrics/3/id",
           "value": "ict_wait"
         },
@@ -2507,12 +2586,30 @@
         },
         {
           "op": "test",
+          "path": "/nodes/11",
+          "value": {
+            "id": "q_ict",
+            "type": "queue",
+            "name": "Before ICT",
+            "capacity": 10
+          }
+        },
+        {
+          "op": "test",
           "path": "/nodes/11/id",
           "value": "q_ict"
         },
         {
           "op": "remove",
           "path": "/nodes/11"
+        },
+        {
+          "op": "test",
+          "path": "/views/2d/positions/q_ict",
+          "value": {
+            "x": 1440,
+            "y": 120
+          }
         },
         {
           "op": "remove",
@@ -2527,12 +2624,38 @@
       "ops": [
         {
           "op": "test",
+          "path": "/flows/15",
+          "value": {
+            "id": "ict_result_ict_fail",
+            "from": "ict_result",
+            "to": "ict_fail",
+            "routing": {
+              "type": "probability",
+              "probability": 0.05
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/15/id",
           "value": "ict_result_ict_fail"
         },
         {
           "op": "remove",
           "path": "/flows/15"
+        },
+        {
+          "op": "test",
+          "path": "/flows/14",
+          "value": {
+            "id": "ict_result_q_burn_in",
+            "from": "ict_result",
+            "to": "q_burn_in",
+            "routing": {
+              "type": "probability",
+              "probability": 0.95
+            }
+          }
         },
         {
           "op": "test",
@@ -2545,12 +2668,34 @@
         },
         {
           "op": "test",
+          "path": "/flows/13",
+          "value": {
+            "id": "ict_ict_result",
+            "from": "ict",
+            "to": "ict_result",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/13/id",
           "value": "ict_ict_result"
         },
         {
           "op": "remove",
           "path": "/flows/13"
+        },
+        {
+          "op": "test",
+          "path": "/constraints/1",
+          "value": {
+            "type": "outgoing_probability_sum",
+            "node_id": "ict_result",
+            "equals": 1
+          }
         },
         {
           "op": "test",
@@ -2563,12 +2708,29 @@
         },
         {
           "op": "test",
+          "path": "/nodes/13",
+          "value": {
+            "id": "ict_result",
+            "type": "decision",
+            "name": "ICT result"
+          }
+        },
+        {
+          "op": "test",
           "path": "/nodes/13/id",
           "value": "ict_result"
         },
         {
           "op": "remove",
           "path": "/nodes/13"
+        },
+        {
+          "op": "test",
+          "path": "/views/2d/positions/ict_result",
+          "value": {
+            "x": 1920,
+            "y": 120
+          }
         },
         {
           "op": "remove",
@@ -2775,6 +2937,19 @@
         },
         {
           "op": "test",
+          "path": "/flows/11",
+          "value": {
+            "id": "touchup_rework_q_ict",
+            "from": "touchup_rework",
+            "to": "q_ict",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/11/id",
           "value": "touchup_rework_q_ict"
         },
@@ -2784,12 +2959,34 @@
         },
         {
           "op": "test",
+          "path": "/flows/10",
+          "value": {
+            "id": "touchup_touchup_rework",
+            "from": "touchup",
+            "to": "touchup_rework",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/10/id",
           "value": "touchup_touchup_rework"
         },
         {
           "op": "remove",
           "path": "/flows/10"
+        },
+        {
+          "op": "test",
+          "path": "/nodes/10",
+          "value": {
+            "id": "touchup_rework",
+            "type": "rework",
+            "name": "Touched up"
+          }
         },
         {
           "op": "test",
@@ -2809,12 +3006,38 @@
       "ops": [
         {
           "op": "test",
+          "path": "/flows/9",
+          "value": {
+            "id": "test_pass",
+            "from": "test",
+            "to": "q_burn_in",
+            "routing": {
+              "type": "probability",
+              "probability": 0.95
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/9/id",
           "value": "test_pass"
         },
         {
           "op": "remove",
           "path": "/flows/9"
+        },
+        {
+          "op": "test",
+          "path": "/flows/8",
+          "value": {
+            "id": "test_fail",
+            "from": "test",
+            "to": "defect",
+            "routing": {
+              "type": "probability",
+              "probability": 0.05
+            }
+          }
         },
         {
           "op": "test",
@@ -2827,12 +3050,34 @@
         },
         {
           "op": "test",
+          "path": "/flows/0",
+          "value": {
+            "id": "assemble_test",
+            "from": "assemble",
+            "to": "test",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/0/id",
           "value": "assemble_test"
         },
         {
           "op": "remove",
           "path": "/flows/0"
+        },
+        {
+          "op": "test",
+          "path": "/metrics/2",
+          "value": {
+            "id": "first_fail",
+            "type": "flow_count",
+            "flow_id": "test_fail"
+          }
         },
         {
           "op": "test",
@@ -2845,12 +3090,30 @@
         },
         {
           "op": "test",
+          "path": "/metrics/1",
+          "value": {
+            "id": "first_pass",
+            "type": "flow_count",
+            "flow_id": "test_pass"
+          }
+        },
+        {
+          "op": "test",
           "path": "/metrics/1/id",
           "value": "first_pass"
         },
         {
           "op": "remove",
           "path": "/metrics/1"
+        },
+        {
+          "op": "test",
+          "path": "/constraints/0",
+          "value": {
+            "type": "outgoing_probability_sum",
+            "node_id": "test",
+            "equals": 1
+          }
         },
         {
           "op": "test",
@@ -2863,12 +3126,28 @@
         },
         {
           "op": "test",
+          "path": "/nodes/10",
+          "value": {
+            "id": "test",
+            "type": "decision"
+          }
+        },
+        {
+          "op": "test",
           "path": "/nodes/10/id",
           "value": "test"
         },
         {
           "op": "remove",
           "path": "/nodes/10"
+        },
+        {
+          "op": "test",
+          "path": "/views/2d/positions/test",
+          "value": {
+            "x": 720,
+            "y": 0
+          }
         },
         {
           "op": "remove",
@@ -2883,12 +3162,34 @@
       "ops": [
         {
           "op": "test",
+          "path": "/flows/2",
+          "value": {
+            "id": "defect_scrap",
+            "from": "defect",
+            "to": "scrap",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/2/id",
           "value": "defect_scrap"
         },
         {
           "op": "remove",
           "path": "/flows/2"
+        },
+        {
+          "op": "test",
+          "path": "/metrics/3",
+          "value": {
+            "id": "scrapped",
+            "type": "sink_count",
+            "sink_id": "scrap"
+          }
         },
         {
           "op": "test",
@@ -2901,12 +3202,29 @@
         },
         {
           "op": "test",
+          "path": "/nodes/8",
+          "value": {
+            "id": "scrap",
+            "type": "sink",
+            "outcome": "abandoned"
+          }
+        },
+        {
+          "op": "test",
           "path": "/nodes/8/id",
           "value": "scrap"
         },
         {
           "op": "remove",
           "path": "/nodes/8"
+        },
+        {
+          "op": "test",
+          "path": "/views/2d/positions/scrap",
+          "value": {
+            "x": 1200,
+            "y": 120
+          }
         },
         {
           "op": "remove",
@@ -2961,6 +3279,19 @@
       "ops": [
         {
           "op": "test",
+          "path": "/flows/7",
+          "value": {
+            "id": "aoi_result_aoi_defect",
+            "from": "aoi_result",
+            "to": "aoi_defect",
+            "routing": {
+              "type": "probability",
+              "probability": 0.03
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/7/id",
           "value": "aoi_result_aoi_defect"
         },
@@ -2977,12 +3308,34 @@
       "ops": [
         {
           "op": "test",
+          "path": "/metrics/1",
+          "value": {
+            "id": "first_pass",
+            "type": "flow_count",
+            "flow_id": "test_pass"
+          }
+        },
+        {
+          "op": "test",
           "path": "/metrics/1/id",
           "value": "first_pass"
         },
         {
           "op": "remove",
           "path": "/metrics/1"
+        },
+        {
+          "op": "test",
+          "path": "/flows/9",
+          "value": {
+            "id": "test_pass",
+            "from": "test",
+            "to": "q_burn_in",
+            "routing": {
+              "type": "probability",
+              "probability": 0.95
+            }
+          }
         },
         {
           "op": "test",
@@ -3006,6 +3359,11 @@
           "value": "aoi_result_q_ict"
         },
         {
+          "op": "test",
+          "path": "/flows/6/routing/probability",
+          "value": 0.97
+        },
+        {
           "op": "replace",
           "path": "/flows/6/routing/probability",
           "value": 0.9
@@ -3014,6 +3372,11 @@
           "op": "test",
           "path": "/flows/7/id",
           "value": "aoi_result_aoi_defect"
+        },
+        {
+          "op": "test",
+          "path": "/flows/7/routing/probability",
+          "value": 0.03
         },
         {
           "op": "replace",
@@ -3031,6 +3394,11 @@
           "op": "test",
           "path": "/nodes/4/id",
           "value": "q_aoi"
+        },
+        {
+          "op": "test",
+          "path": "/nodes/4/capacity",
+          "value": 20
         },
         {
           "op": "replace",
@@ -3053,6 +3421,11 @@
           "value": "q_burn_in"
         },
         {
+          "op": "test",
+          "path": "/nodes/19/capacity",
+          "value": 120
+        },
+        {
           "op": "remove",
           "path": "/nodes/19/capacity"
         }
@@ -3069,6 +3442,11 @@
           "value": "smt"
         },
         {
+          "op": "test",
+          "path": "/nodes/3/service_time/distribution/max",
+          "value": 1.4
+        },
+        {
           "op": "replace",
           "path": "/nodes/3/service_time/distribution/max",
           "value": 1.6
@@ -3079,6 +3457,11 @@
           "value": "release_a"
         },
         {
+          "op": "test",
+          "path": "/nodes/0/arrival/distribution/mean",
+          "value": 3
+        },
+        {
           "op": "replace",
           "path": "/nodes/0/arrival/distribution/mean",
           "value": 2.5
@@ -3087,6 +3470,11 @@
           "op": "test",
           "path": "/nodes/20/id",
           "value": "burn_in"
+        },
+        {
+          "op": "test",
+          "path": "/nodes/20/service_time/distribution/value",
+          "value": 240
         },
         {
           "op": "replace",
@@ -3106,6 +3494,11 @@
           "value": "burn_in"
         },
         {
+          "op": "test",
+          "path": "/nodes/20/batch/max_size",
+          "value": 40
+        },
+        {
           "op": "replace",
           "path": "/nodes/20/batch/max_size",
           "value": 48
@@ -3116,6 +3509,11 @@
           "value": "burn_in"
         },
         {
+          "op": "test",
+          "path": "/nodes/20/batch/min_size",
+          "value": 20
+        },
+        {
           "op": "replace",
           "path": "/nodes/20/batch/min_size",
           "value": 24
@@ -3124,6 +3522,11 @@
           "op": "test",
           "path": "/nodes/20/id",
           "value": "burn_in"
+        },
+        {
+          "op": "test",
+          "path": "/nodes/20/batch/max_wait",
+          "value": 120
         },
         {
           "op": "remove",
@@ -3396,11 +3799,32 @@
           }
         },
         {
+          "op": "test",
+          "path": "/views/2d/positions/process_1",
+          "value": {
+            "x": 3360,
+            "y": 0
+          }
+        },
+        {
           "op": "replace",
           "path": "/views/2d/positions/process_1",
           "value": {
             "x": 2600,
             "y": 240
+          }
+        },
+        {
+          "op": "test",
+          "path": "/flows/11",
+          "value": {
+            "id": "touchup_rework_q_ict",
+            "from": "touchup_rework",
+            "to": "q_ict",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
           }
         },
         {
@@ -3414,6 +3838,19 @@
         },
         {
           "op": "test",
+          "path": "/flows/10",
+          "value": {
+            "id": "touchup_touchup_rework",
+            "from": "touchup",
+            "to": "touchup_rework",
+            "routing": {
+              "type": "probability",
+              "probability": 1
+            }
+          }
+        },
+        {
+          "op": "test",
           "path": "/flows/10/id",
           "value": "touchup_touchup_rework"
         },
@@ -3423,12 +3860,29 @@
         },
         {
           "op": "test",
+          "path": "/nodes/10",
+          "value": {
+            "id": "touchup_rework",
+            "type": "rework",
+            "name": "Touched up"
+          }
+        },
+        {
+          "op": "test",
           "path": "/nodes/10/id",
           "value": "touchup_rework"
         },
         {
           "op": "remove",
           "path": "/nodes/10"
+        },
+        {
+          "op": "test",
+          "path": "/views/2d/positions/touchup_rework",
+          "value": {
+            "x": 2160,
+            "y": 0
+          }
         },
         {
           "op": "remove",

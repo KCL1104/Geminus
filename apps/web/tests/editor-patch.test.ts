@@ -4,7 +4,7 @@
 // the same document (internal/model/patch), so the two must agree: atomic,
 // one decode of each pointer, "-" only to append, test by JSON value.
 import { describe, expect, it } from "vitest";
-import { applyPatch, jsonEqual, parsePointer, pointer } from "../features/model-editor/patch";
+import { applyPatch, jsonEqual, parsePointer, pointer, reapplyPatch } from "../features/model-editor/patch";
 
 describe("JSON Pointer (RFC 6901)", () => {
   it("escapes ~ and / once each, and decodes them back", () => {
@@ -75,5 +75,47 @@ describe("applyPatch", () => {
     const r = applyPatch(doc(), [{ op: "add", path: "/views/2d/positions/b", value }]);
     value.x = 99;
     expect(r.ok && (r.doc as ReturnType<typeof doc>).views["2d"].positions).toEqual({ a: { x: 0, y: 0 }, b: { x: 1, y: 1 } });
+  });
+});
+
+// T-015 review round 1, M1: ops reapplied on a newer draft after a 409. A
+// change or removal carries a test of the old value (edits.ts), so it fails
+// where someone else changed that value; an add cannot test that its
+// member is absent, so reapplying checks that the member is still absent.
+describe("reapplyPatch (the person's reapply after a 409)", () => {
+  const doc = () => ({ name: "m", nodes: [{ id: "a" }, { id: "b", capacity: 5 }], views: { "2d": { positions: { a: { x: 0, y: 0 } } } } });
+
+  it("applies like applyPatch where every member it adds is still absent", () => {
+    const ops = [
+      { op: "test", path: "/nodes/1/capacity", value: 5 },
+      { op: "replace", path: "/nodes/1/capacity", value: 6 },
+      { op: "add", path: "/nodes/0/name", value: "A" },
+      { op: "add", path: "/views/2d/positions/b", value: { x: 1, y: 1 } },
+      { op: "add", path: "/nodes/-", value: { id: "c" } },
+      { op: "add", path: "/views/2d/positions/c", value: { x: 2, y: 2 } },
+    ] as const;
+    expect(reapplyPatch(doc(), [...ops])).toEqual(applyPatch(doc(), [...ops]));
+    expect(reapplyPatch(doc(), [...ops]).ok).toBe(true);
+  });
+
+  it("fails where an add would overwrite a member that is there now", () => {
+    expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/1/capacity", value: 9 }])).toEqual({ ok: false, index: 0, reason: "test_failed" });
+    expect(reapplyPatch(doc(), [{ op: "add", path: "/views/2d/positions/a", value: { x: 0, y: 0 } }])).toEqual({ ok: false, index: 0, reason: "test_failed" });
+    expect(reapplyPatch(doc(), [{ op: "add", path: "/views/2d/positions", value: {} }])).toEqual({ ok: false, index: 0, reason: "test_failed" });
+    // Its own earlier op may add the member first; then the second add finds it.
+    expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/0/name", value: "A" }, { op: "add", path: "/nodes/0/name", value: "B" }])).toEqual({ ok: false, index: 1, reason: "test_failed" });
+    // applyPatch itself follows RFC 6902 (add replaces a member), as the server does.
+    expect(applyPatch(doc(), [{ op: "add", path: "/nodes/1/capacity", value: 9 }]).ok).toBe(true);
+  });
+
+  it("fails where it appends an element whose ID the array has now", () => {
+    expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/-", value: { id: "b" } }])).toEqual({ ok: false, index: 0, reason: "test_failed" });
+    expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/-", value: { id: "c" } }, { op: "add", path: "/nodes/-", value: { id: "c" } }])).toEqual({ ok: false, index: 1, reason: "test_failed" });
+  });
+
+  it("fails like applyPatch where a test fails, atomically", () => {
+    const before = doc();
+    expect(reapplyPatch(before, [{ op: "replace", path: "/name", value: "x" }, { op: "test", path: "/nodes/1/capacity", value: 4 }, { op: "replace", path: "/nodes/1/capacity", value: 6 }])).toEqual({ ok: false, index: 1, reason: "test_failed" });
+    expect(before).toEqual(doc());
   });
 });

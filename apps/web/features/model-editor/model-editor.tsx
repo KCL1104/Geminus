@@ -3,7 +3,8 @@
 // Simplicity). The server is the source of truth: the page shows the saved
 // draft with the pending edits applied (one IR, the draft session's ops),
 // Save sends them as JSON Patch with If-Match, a 409 keeps them and offers
-// to reload and reapply them (only when asked), and Publish stays blocked,
+// to reload and reapply them (only when asked, and only where the newer
+// revision did not change what they change), and Publish stays blocked,
 // with its reason beside it, while the saved draft has errors or anything
 // is unsaved. One primary action (Publish); the step panel is the Add step
 // menu over the canvas; the properties panel is the one secondary panel.
@@ -30,7 +31,7 @@ import { addStep, connectionsOf, connectSteps, deleteStep, disconnect, type Edit
 import styles from "./editor.module.css";
 import { IssueList } from "./issue-list";
 import { locateIssues, type StepIssue, worst } from "./issues";
-import { applyPatch, type Op } from "./patch";
+import { applyPatch, type Op, reapplyPatch } from "./patch";
 import { Properties } from "./properties";
 
 const WIDE = "(min-width: 721px)";
@@ -86,7 +87,9 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
   const remote = session.remote;
   const pending = pendingOps(session);
   // The session changes only on an event, so the working IR is computed once per change.
-  const applied = useMemo(() => applyPatch(session.remote.ir, pendingOps(session)), [session]);
+  // In a conflict the edits are shown as reapplying would put them (reapplyPatch: nothing
+  // someone else changed is overwritten, T-015 review r1 M1).
+  const applied = useMemo(() => (session.status === "conflict" ? reapplyPatch : applyPatch)(session.remote.ir, pendingOps(session)), [session]);
   // After a reload in a conflict the edits may no longer apply: the page then shows the server's draft.
   const working = applied.ok ? applied.doc : remote.ir;
   const editable = canEdit(role) && session.status !== "conflict";
@@ -196,7 +199,10 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
       return;
     }
     dispatch({ type: "remoteLoaded", draft: r.data });
-    if (applyPatch(r.data.ir, pending).ok) {
+    // Each change tests the value it replaces and each add needs its member
+    // still absent, so edits to anything changed in the newer revision do not
+    // apply: then only discarding them is offered (REQ-006, no silent overwrite).
+    if (reapplyPatch(r.data.ir, pending).ok) {
       dispatch({ type: "reapplyLocal" });
       setOutcome(t("editor.reapplied", { revision: String(r.data.revision) }));
       requestAnimationFrame(() => saveRef.current?.focus());

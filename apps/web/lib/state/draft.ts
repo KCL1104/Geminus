@@ -35,7 +35,10 @@ export type DraftEvent =
   /**
    * The person chose to keep their edits on the draft they reloaded after a
    * conflict (T-015): the edits become unsaved on that revision. Only their
-   * choice does this; a reload alone never does.
+   * choice does this; a reload alone never does. The editor offers it only
+   * when the edits change nothing that revision changed (each tests the
+   * value it replaces; features/model-editor/patch.ts reapplyPatch), so
+   * nobody's change is overwritten silently (T-015 review r1 M1).
    */
   | { type: "reapplyLocal" }
   | { type: "discardLocal" };

@@ -5,10 +5,16 @@
 // before an element of a catalog (nodes, flows, metrics, constraints) is
 // changed or removed, the same patch tests its identity right there
 // (D-020), so ops written against an older IR fail instead of changing the
-// wrong element. Removing a step repairs what refers to it (its flows, the
-// constraints and metrics that name them, its position) in the same edit.
-// A layout the IR does not hold yet is written down first, so the nodes
-// the person sees stay where they are.
+// wrong element. Every replace and remove also follows a test of the value
+// it replaces or removes (a whole element, before its identity test), so
+// the same ops reapplied on a newer revision after a 409 fail where someone
+// else changed that value, instead of overwriting it silently (T-015 review
+// r1 M1; REQ-006). An add has no old value to test; the editor adds only
+// what is absent, and reapplying checks it still is (patch.ts reapplyPatch).
+// Removing a step repairs what refers to it (its flows, the constraints and
+// metrics that name them, its position) in the same edit. A layout the IR
+// does not hold yet is written down first, so the nodes the person sees
+// stay where they are.
 import type { Distribution, ModelIR } from "../../lib/contracts";
 import { layeredLayout, type Position } from "./layout";
 import { type Op, pointer } from "./patch";
@@ -37,6 +43,19 @@ const nodeAt = (ir: ModelIR, id: string) => ir.nodes.findIndex((n) => n.id === i
 const flowAt = (ir: ModelIR, id: string) => ir.flows.findIndex((f) => f.id === id);
 const testNode = (i: number, id: string): Op => ({ op: "test", path: pointer("nodes", i, "id"), value: id });
 const has = (o: object, k: string) => Object.hasOwn(o, k);
+/** An old value for a test, as JSON (the ops never share objects with the IR they were written on). */
+const snapshot = <T,>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+/**
+ * Sets (value), adds (no old value) or removes (value undefined) one member
+ * at path, after the given tests (the element's identity) and a test of the
+ * old value when there is one. Nothing to remove is no change.
+ */
+function setAt(tests: Op[], path: string, old: unknown, value: unknown): Op[] {
+  if (old === undefined) return value === undefined ? [] : [...tests, { op: "add", path, value }];
+  const checked: Op[] = [...tests, { op: "test", path, value: snapshot(old) }];
+  return value === undefined ? [...checked, { op: "remove", path }] : [...checked, { op: "replace", path, value }];
+}
 
 /** The step's name for people: its name, else its ID. */
 export function stepLabel(n: IRNode): string {
@@ -60,10 +79,8 @@ const round = (p: Position): Position => ({ x: Math.round(p.x), y: Math.round(p.
 export function moveStep(ir: ModelIR, id: string, to: Position): EditResult {
   if (nodeAt(ir, id) < 0) return refuse("unknown_step");
   const positions = ir.views["2d"].positions;
-  const placed = positions !== undefined && has(positions, id);
-  const ops = materialize(ir, id);
-  ops.push({ op: placed ? "replace" : "add", path: pointer("views", "2d", "positions", id), value: round(to) });
-  return done(ops);
+  const old = positions !== undefined && has(positions, id) ? positions[id] : undefined;
+  return done([...materialize(ir, id), ...setAt([], pointer("views", "2d", "positions", id), old, round(to))]);
 }
 
 /** Names a step; an empty name removes it (the ID is shown instead). */
@@ -73,8 +90,7 @@ export function renameStep(ir: ModelIR, id: string, name: string): EditResult {
   const node = ir.nodes[i]!;
   const next = name.trim();
   if (next === (node.name ?? "")) return done([]);
-  if (next === "") return done([testNode(i, id), { op: "remove", path: pointer("nodes", i, "name") }]);
-  return done([testNode(i, id), { op: node.name === undefined ? "add" : "replace", path: pointer("nodes", i, "name"), value: next }]);
+  return done(setAt([testNode(i, id)], pointer("nodes", i, "name"), node.name, next === "" ? undefined : next));
 }
 
 /** The IDs one selection store may hold: nodes, resources and flows share one space (TEST-025). */
@@ -130,12 +146,13 @@ export function addStep(ir: ModelIR, type: NodeType): EditResult {
 type Catalog = "nodes" | "flows" | "metrics" | "constraints";
 const identity: Record<Catalog, string> = { nodes: "id", flows: "id", metrics: "id", constraints: "node_id" };
 
-/** Removes the elements of a catalog that match, last first, each right after the test of its identity. */
+/** Removes the elements of a catalog that match, last first, each after a test of its whole old value and right after the test of its identity. */
 function removeWhere<T extends object>(list: readonly T[], catalog: Catalog, match: (x: T) => boolean): Op[] {
   const out: Op[] = [];
   for (let i = list.length - 1; i >= 0; i--) {
     const x = list[i]!;
     if (!match(x)) continue;
+    out.push({ op: "test", path: pointer(catalog, i), value: snapshot(x) });
     out.push({ op: "test", path: pointer(catalog, i, identity[catalog]), value: (x as Record<string, unknown>)[identity[catalog]] });
     out.push({ op: "remove", path: pointer(catalog, i) });
   }
@@ -161,9 +178,9 @@ export function deleteStep(ir: ModelIR, id: string): EditResult {
   ops.push(...removeWhere(ir.flows, "flows", (f) => flows.has(f.id)));
   ops.push(...removeWhere(ir.metrics, "metrics", (m) => metricNames(m, nodes, flows)));
   ops.push(...removeWhere(ir.constraints, "constraints", (c) => c.node_id === id));
-  ops.push(testNode(i, id), { op: "remove", path: pointer("nodes", i) });
+  ops.push({ op: "test", path: pointer("nodes", i), value: snapshot(ir.nodes[i]!) }, testNode(i, id), { op: "remove", path: pointer("nodes", i) });
   const positions = ir.views["2d"].positions;
-  if (positions !== undefined && has(positions, id)) ops.push({ op: "remove", path: pointer("views", "2d", "positions", id) });
+  if (positions !== undefined && has(positions, id)) ops.push(...setAt([], pointer("views", "2d", "positions", id), positions[id], undefined));
   return done(ops);
 }
 
@@ -206,15 +223,12 @@ export function disconnect(ir: ModelIR, flowId: string): EditResult {
 export function setProbability(ir: ModelIR, flowId: string, p: number): EditResult {
   const j = flowAt(ir, flowId);
   if (j < 0) return refuse("unknown_connection");
-  return done([{ op: "test", path: pointer("flows", j, "id"), value: flowId }, { op: "replace", path: pointer("flows", j, "routing", "probability"), value: p }]);
+  return done(setAt([{ op: "test", path: pointer("flows", j, "id"), value: flowId }], pointer("flows", j, "routing", "probability"), ir.flows[j]!.routing.probability, p));
 }
 
-/** Sets, adds or (null) removes an optional member of a step, after testing the step. */
-function setMember(ir: ModelIR, i: number, tokens: string[], value: number | null, present: boolean): EditResult {
-  const id = ir.nodes[i]!.id;
-  const path = pointer("nodes", i, ...tokens);
-  if (value === null) return done(present ? [testNode(i, id), { op: "remove", path }] : []);
-  return done([testNode(i, id), { op: present ? "replace" : "add", path, value }]);
+/** Sets, adds or (null) removes an optional member of a step whose old value is `old`, after testing the step. */
+function setMember(ir: ModelIR, i: number, tokens: string[], value: number | null, old: number | undefined): EditResult {
+  return done(setAt([testNode(i, ir.nodes[i]!.id)], pointer("nodes", i, ...tokens), old, value ?? undefined));
 }
 
 /** A queue's capacity (the finite buffer of D-049); null is no limit. */
@@ -223,7 +237,7 @@ export function setQueueCapacity(ir: ModelIR, id: string, capacity: number | nul
   const node = ir.nodes[i];
   if (node === undefined) return refuse("unknown_step");
   if (node.type !== "queue") return refuse("unknown_field");
-  return setMember(ir, i, ["capacity"], capacity, node.capacity !== undefined);
+  return setMember(ir, i, ["capacity"], capacity, node.capacity);
 }
 
 /** Where a step keeps its own time: a process's service, a delay's wait, a source's time between arrivals. */
@@ -246,8 +260,9 @@ export function setTiming(ir: ModelIR, id: string, param: string, value: number)
   const node = ir.nodes[i];
   if (node === undefined) return refuse("unknown_step");
   const timing = timingOf(node);
-  if (timing === null || param === "type" || typeof (timing.distribution as Record<string, unknown>)[param] !== "number") return refuse("unknown_field");
-  return setMember(ir, i, [...timing.tokens, param], value, true);
+  const old = timing === null || param === "type" ? undefined : (timing.distribution as Record<string, unknown>)[param];
+  if (timing === null || typeof old !== "number") return refuse("unknown_field");
+  return setMember(ir, i, [...timing.tokens, param], value, old);
 }
 
 /** A batch process's sizes (D-054); max_wait may be removed (null). The batch itself is not added or removed here. */
@@ -256,5 +271,5 @@ export function setBatch(ir: ModelIR, id: string, field: "min_size" | "max_size"
   const node = ir.nodes[i];
   if (node === undefined) return refuse("unknown_step");
   if (node.type !== "process" || node.batch === undefined || (value === null && field !== "max_wait")) return refuse("unknown_field");
-  return setMember(ir, i, ["batch", field], value, node.batch[field] !== undefined);
+  return setMember(ir, i, ["batch", field], value, node.batch[field]);
 }

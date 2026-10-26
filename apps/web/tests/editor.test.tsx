@@ -118,7 +118,8 @@ describe("the editor on the model page", () => {
     await settle();
     const [p] = patches(api);
     expect(p).toMatchObject({ path: `/api/v1/models/${SAMPLE_MODEL_ID}/draft`, ifMatch: '"draft-revision-3"' });
-    expect(p!.body).toEqual([{ op: "test", path: "/nodes/3/id", value: "smt" }, { op: "replace", path: "/nodes/3/name", value: "SMT line 1" }]);
+    // The step's identity (D-020), then the value the edit replaces (T-015 review r1 M1).
+    expect(p!.body).toEqual([{ op: "test", path: "/nodes/3/id", value: "smt" }, { op: "test", path: "/nodes/3/name", value: "SMT" }, { op: "replace", path: "/nodes/3/name", value: "SMT line 1" }]);
     expect(status(el).textContent).toBe("All changes saved. Draft revision 4.");
     expect(outcome(el)).toBe("Draft saved as revision 4.");
     expect(api.ir.nodes[3]!.name).toBe("SMT line 1");
@@ -139,7 +140,7 @@ describe("the editor on the model page", () => {
     await settle();
     expect(status(el).textContent).toBe("Unsaved changes. Draft revision 4.");
     expect(patches(api)).toHaveLength(1);
-    expect(patches(api)[0]!.body).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "replace", path: "/nodes/4/capacity", value: 25 }]);
+    expect(patches(api)[0]!.body).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "test", path: "/nodes/4/capacity", value: 20 }, { op: "replace", path: "/nodes/4/capacity", value: 25 }]);
   });
 
   it("on a 409 keeps the edits, and reapplies them on the current draft only when asked", async () => {
@@ -187,6 +188,72 @@ describe("the editor on the model page", () => {
     expect(status(el).textContent).toBe("All changes saved. Draft revision 4.");
     expect(stepNode(el, "release_b")).toBeNull();
     expect(patches(api)).toHaveLength(1);
+  });
+
+  // T-015 review round 1, M1 (REQ-006, AGENTS §2): reapplying never overwrites
+  // what someone else changed in the newer revision. The reviewer's case:
+  // A saved Before AOI's capacity as 12 (revision 4); B, still on revision 3,
+  // set the same capacity to 25, got a 409 and asked to reapply.
+  it("does not reapply a change to a field someone else changed: their value stays, and only discarding is offered", async () => {
+    const theirs: JsonPatch = [{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "test", path: "/nodes/4/capacity", value: 20 }, { op: "replace", path: "/nodes/4/capacity", value: 12 }];
+    const { el, api } = await open({ otherSave: theirs });
+    await selectStep(el, "q_aoi");
+    await type(field(el, en["editor.field.capacity"]), "25");
+    await press(button(en["editor.save"]));
+    await settle();
+    expect(status(el).getAttribute("data-draft-status")).toBe("conflict");
+    await press(button(en["editor.reapply"]));
+    await settle();
+    expect(el.textContent).toContain(en["editor.reapplyFailed"]);
+    expect(status(el).textContent).toBe("Not saved: the draft changed on the server. Draft revision 4.");
+    expect(() => button(en["editor.reapply"])).toThrow();
+    expect(button(en["editor.save"]).getAttribute("aria-disabled")).toBe("true");
+    // The page shows the server's draft, with their 12, not my 25 over it.
+    expect(field(el, en["editor.field.capacity"]).value).toBe("12");
+    await press(button(en["draft.discard"]));
+    await confirm(en["editor.discard.confirm"]);
+    expect(status(el).textContent).toBe("All changes saved. Draft revision 4.");
+    expect(field(el, en["editor.field.capacity"]).value).toBe("12");
+    expect(patches(api)).toHaveLength(1);
+    expect(api.ir.nodes[4]).toMatchObject({ id: "q_aoi", capacity: 12 });
+  });
+
+  it("does not reapply a member I added that someone else added too (JSON Patch cannot test for absence)", async () => {
+    // Before SMT has no limit; they set one (40), I set one (50).
+    const theirs: JsonPatch = [{ op: "test", path: "/nodes/2/id", value: "q_smt" }, { op: "add", path: "/nodes/2/capacity", value: 40 }];
+    const { el, api } = await open({ otherSave: theirs });
+    await selectStep(el, "q_smt");
+    await type(field(el, en["editor.field.capacity"]), "50");
+    await press(button(en["editor.save"]));
+    await settle();
+    await press(button(en["editor.reapply"]));
+    await settle();
+    expect(el.textContent).toContain(en["editor.reapplyFailed"]);
+    expect(status(el).getAttribute("data-draft-status")).toBe("conflict");
+    expect(field(el, en["editor.field.capacity"]).value).toBe("40");
+    expect(patches(api)).toHaveLength(1);
+    expect(api.ir.nodes[2]).toMatchObject({ id: "q_smt", capacity: 40 });
+  });
+
+  it("reapplies a change to another field of the same step, and both changes are saved", async () => {
+    const theirs: JsonPatch = [{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "test", path: "/nodes/4/name", value: "Before AOI" }, { op: "replace", path: "/nodes/4/name", value: "AOI buffer" }];
+    const { el, api } = await open({ otherSave: theirs });
+    await selectStep(el, "q_aoi");
+    await type(field(el, en["editor.field.capacity"]), "25");
+    await press(button(en["editor.save"]));
+    await settle();
+    await press(button(en["editor.reapply"]));
+    await settle();
+    expect(el.textContent).not.toContain(en["editor.reapplyFailed"]);
+    expect(status(el).textContent).toBe("Unsaved changes. Draft revision 4.");
+    expect(outcome(el)).toBe("Your changes are on draft revision 4 now. Check them, then save.");
+    await press(button(en["editor.save"]));
+    await settle();
+    expect(patches(api).map((p) => p.ifMatch)).toEqual(['"draft-revision-3"', '"draft-revision-4"']);
+    // What was saved tests the value it replaces, on the revision it was reapplied to.
+    expect(patches(api)[1]!.body).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "test", path: "/nodes/4/capacity", value: 20 }, { op: "replace", path: "/nodes/4/capacity", value: 25 }]);
+    expect(status(el).textContent).toBe("All changes saved. Draft revision 5.");
+    expect(api.ir.nodes[4]).toMatchObject({ id: "q_aoi", name: "AOI buffer", capacity: 25 });
   });
 
   it("blocks Publish while the saved draft has errors, says why, and sends nothing", async () => {
@@ -274,7 +341,7 @@ describe("the editor on the model page", () => {
     expect(status(el).textContent).toBe("Unsaved changes. Draft revision 3.");
     await press(button(en["editor.save"]));
     await settle();
-    expect(patches(api)[0]!.body).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "remove", path: "/nodes/4/capacity" }]);
+    expect(patches(api)[0]!.body).toEqual([{ op: "test", path: "/nodes/4/id", value: "q_aoi" }, { op: "test", path: "/nodes/4/capacity", value: 20 }, { op: "remove", path: "/nodes/4/capacity" }]);
   });
 
   it("adds a step from the step menu, selects it and puts the focus on its name", async () => {

@@ -47,15 +47,36 @@ const copy = <T,>(v: T): T => (v === undefined ? v : (JSON.parse(JSON.stringify(
 
 /** Applies ops to a copy of doc; the first op that fails names itself and nothing is applied. */
 export function applyPatch<T>(doc: T, ops: readonly Op[]): ApplyResult<T> {
+  return run(doc, ops, false);
+}
+
+/**
+ * Applies ops written on an older revision of the draft to a newer one, as
+ * the person's reapply after a 409 does (T-015 review r1 M1; REQ-006: never
+ * overwrite silently). A replace or remove carries a test of the value it
+ * replaces (edits.ts), so it fails where someone else changed that value.
+ * An add cannot test that what it adds is absent, and the editor only adds
+ * what is absent, so here an add also fails (as "test_failed") where the
+ * member is there now, or where an appended element's ID is in its array
+ * now: someone else added it in the newer revision. Otherwise the same as
+ * applyPatch, which follows RFC 6902 as the server does.
+ */
+export function reapplyPatch<T>(doc: T, ops: readonly Op[]): ApplyResult<T> {
+  return run(doc, ops, true);
+}
+
+function run<T>(doc: T, ops: readonly Op[], addsAbsent: boolean): ApplyResult<T> {
   const root = copy(doc);
   for (const [index, op] of ops.entries()) {
-    const reason = applyOne(root, op);
+    const reason = applyOne(root, op, addsAbsent);
     if (reason !== null) return { ok: false, index, reason };
   }
   return { ok: true, doc: root };
 }
 
-function applyOne(root: unknown, op: Op): ApplyFailure["reason"] | null {
+const idOf = (v: unknown): unknown => (isRecord(v) && typeof v.id === "string" ? v.id : undefined);
+
+function applyOne(root: unknown, op: Op, addsAbsent: boolean): ApplyFailure["reason"] | null {
   const tokens = parsePointer(op.path);
   // The root is not a target in the P0 profile.
   if (tokens === null || tokens.length === 0) return "invalid_path";
@@ -77,6 +98,8 @@ function applyOne(root: unknown, op: Op): ApplyFailure["reason"] | null {
   if (Array.isArray(parent)) {
     if (key === "-") {
       if (op.op !== "add") return "invalid_path";
+      const id = idOf(value);
+      if (addsAbsent && id !== undefined && parent.some((x) => idOf(x) === id)) return "test_failed";
       parent.push(value);
       return null;
     }
@@ -100,6 +123,7 @@ function applyOne(root: unknown, op: Op): ApplyFailure["reason"] | null {
   if (!isRecord(parent)) return "target_missing";
   const exists = Object.hasOwn(parent, key);
   if (!exists && op.op !== "add") return "target_missing";
+  if (exists && op.op === "add" && addsAbsent) return "test_failed";
   switch (op.op) {
     case "add":
     case "replace":
