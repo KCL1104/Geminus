@@ -2482,7 +2482,8 @@
         "non-root/runtime roles、secret injection、readiness、graceful shutdown。",
         "cloud/provider不進domaincode，production人工gate。",
         "web container 為 Node server（BFF，ADR-018），session key 與 OIDC client secret 由 secret store 注入。",
-        "T-054 review 第 2 輪（I1、I2）：正式的 object storage adapter 若有自己的單次操作 timeout（store 自己逾時而 request 仍在），datasets.Failure 要標記「request 已結束」而 StorageFailure 只排除這個標記，使 store 自己的逾時成為 503 DATASET_STORAGE_FAILED 並記 WARN（目前會是沒有 details、沒有 log 的 503）；若 worker（generator、runner）也改用 StorageFailure，要先排除 generator copies.Open 的 errNotCopied（server bug，型別上也是 ReadError）。先寫測試。"
+        "T-054 review 第 2 輪（I1、I2）：正式的 object storage adapter 若有自己的單次操作 timeout（store 自己逾時而 request 仍在），datasets.Failure 要標記「request 已結束」而 StorageFailure 只排除這個標記，使 store 自己的逾時成為 503 DATASET_STORAGE_FAILED 並記 WARN（目前會是沒有 details、沒有 log 的 503）；若 worker（generator、runner）也改用 StorageFailure，要先排除 generator copies.Open 的 errNotCopied（server bug，型別上也是 ReadError）。先寫測試。",
+        "T-053 review 第 1 輪（I2、I4、I5、D-114 (b)）：部署開啟 live AI 的 worker 時，(1) 每個 worker 以相同的 AI_MONTHLY_LIMIT_USD、AI_DAILY_LIMIT_USD、AI_ORGANIZATION_DAILY_LIMIT_USD 部署（限額是每個 process 的設定、不在資料庫，設定不同的 worker 對同一個總數執行不同的上限），或把限額移到資料庫；(2) 提供列出未結算的花費預留（twin.ai_spend_reservations state=reserved，worker 中途結束時留下、佔著上限到該日或該月結束）的 operator 介面；(3) API 的部署不設 GEMINUS_ANTHROPIC_API_KEY_A／_B（開關 on 時 config 會讀它們，API 從不使用）；(4) 由 owner 選擇 live eval 的花費保持記在 checks/ai-evals/live-spend.jsonl（與 worker 的 DB ledger 分開，合計由 Console spend limit 限制）或改為經 DB ledger（D-114 選項 B）。"
       ],
       "planned_outputs": [
         "deploy/",
@@ -3492,7 +3493,8 @@
         "D-112",
         "D-113",
         "D-114",
-        "D-115"
+        "D-115",
+        "D-116"
       ],
       "scope": [
         "程式內的 token 上限：每個 organization 每日上限與兩個 provider organization 合計的每月上限（H-018：開發期每月 100 美元），超過即拒絕並回 typed error；計數持久化、跨 process 一致、計入 audit，不記 prompt 或回應內容。",

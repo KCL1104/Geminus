@@ -3,6 +3,7 @@ package aispend_test
 import (
 	"context"
 	"errors"
+	"math/rand/v2"
 	"testing"
 	"time"
 
@@ -50,11 +51,16 @@ func TestOrganizationFilter(t *testing.T) {
 	}
 	aispend.PinDay(super, at)
 	// Both organizations hold a reservation, and a day row, on the day.
-	rA, err := worker.Reserve(ctx, charge(e.a.ID, e.impA, 1000))
+	// The amounts are this run's own: earlier runs' organizations hold rows
+	// on the same day, and a statement without the filter must not find one
+	// that happens to hold the same amount (mutation run 1: F4 survived on
+	// fixed amounts).
+	nA, nB := 1000+rand.Int64N(1_000_000_000), 100+rand.Int64N(1_000_000)
+	rA, err := worker.Reserve(ctx, charge(e.a.ID, e.impA, nA))
 	if err != nil {
 		t.Fatal(err)
 	}
-	rB, err := worker.Reserve(ctx, charge(e.b.ID, e.impB, 10))
+	rB, err := worker.Reserve(ctx, charge(e.b.ID, e.impB, nB))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +117,7 @@ func TestOrganizationFilter(t *testing.T) {
 		t.Fatalf("B's own settlement: %v", err)
 	}
 	if a, b := e.totals(t, e.a.ID, at), e.totals(t, e.b.ID, at); a.OrganizationDay != beforeA.OrganizationDay+7 ||
-		b.OrganizationDay != beforeB.OrganizationDay-6 || state(rB.ID) != "settled" || state(rA.ID) != "reserved" {
+		b.OrganizationDay != beforeB.OrganizationDay-(nB-4) || state(rB.ID) != "settled" || state(rA.ID) != "reserved" {
 		t.Errorf("B's settlement: A %+v B %+v (was %+v), states %s %s", a, b, beforeB, state(rA.ID), state(rB.ID))
 	}
 }
