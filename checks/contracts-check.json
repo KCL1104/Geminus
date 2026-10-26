@@ -6,7 +6,7 @@
   "negative_fixtures_with_exact_error_path": 143,
   "limited_semantic_negative_fixtures": 7,
   "schema_valid_semantic_fixtures_for_go": 16,
-  "resolved_local_ref_occurrences": 870,
+  "resolved_local_ref_occurrences": 871,
   "openapi_operations": 43,
   "openapi_request_examples": 3,
   "optional_fastapi_openapi_model": "NOT_RUN_NOT_INSTALLED",

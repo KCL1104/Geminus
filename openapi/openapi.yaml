@@ -905,20 +905,28 @@ paths:
         decides whether it takes a photo, never from a key; D-124) and object storage (503 SERVICE_UNAVAILABLE) are checked
         before any of the body is read. The
         parts base_version_id and, optionally, output_locale (en or zh-Hant; en when absent) come first, each once, and file is
-        the last part; another or a repeated part, or a part after file, is refused. The file is a PNG or a JPEG, told by its
-        first bytes (its name and the part''s Content-Type are not trusted); anything else (GIF, WebP, HEIC, SVG, PDF, an archive
-        or an executable...) is 415 UNSUPPORTED_MEDIA_TYPE with details[0].code IMAGE_FORMAT_REJECTED. At most 5,242,880 bytes (5 MiB)
-        are read whether or not Content-Length is sent (413 PAYLOAD_TOO_LARGE, nothing kept); an empty file, one that does not
-        decode, or one less than 32 or more than 4096 pixels wide or high is 422 at /file (details[0].code IMAGE_INVALID or
-        IMAGE_PIXELS_EXCEEDED). The server decodes the image and encodes the pixels again in the same format, so none of the
-        upload''s metadata (EXIF, GPS, ICC profile, comments, appended bytes) is stored or ever sent to a provider, and stores that
-        in private object storage under a key it makes (tenant/<organization>/assets/proposal-images/<proposal>/image). Then, as
-        createProposal does, base_version_id must be a version of this model (404 for another organization''s, 422 at
-        /base_version_id for another model''s) and its latest (409 MODEL_VERSION_CONFLICT); the proposal (generating, mode edit,
-        with the server''s ID allocation pool and source_image), its one model_proposal job, the proposal.create audit event
-        (IDs, the image''s SHA-256 and size, never the file name or its content) and the idempotency response commit together,
-        then 202. The Idempotency-Key fingerprint is the model ID, the two fields and the uploaded file''s SHA-256 and size; a
-        retry with the same key and file replays the first response. The worker reads the stored image, asks a segmenter for
+        the last part; another or a repeated part, or a part after file, is refused. The Idempotency-Key fingerprint is the
+        model ID, the two fields and the uploaded file''s SHA-256 and size: a key used before is decided first, as createProposal
+        does (D-011), so a retry with the same key and file replays the first response even when base_version_id is no longer
+        the model''s latest, and the same key with another request is 409 IDEMPOTENCY_KEY_CONFLICT; such a file is only hashed,
+        never decoded or stored again. For a key not used yet, base_version_id is checked first, as createProposal does: a
+        version of this model (404 for another organization''s, 422 at /base_version_id for another model''s) and its latest
+        (409 MODEL_VERSION_CONFLICT); then the file. The file is a PNG or a JPEG, told by its first bytes (its name and the
+        part''s Content-Type are not trusted); anything else (GIF, WebP, HEIC, SVG, PDF, an archive or an executable...) is 415
+        UNSUPPORTED_MEDIA_TYPE with details[0].code IMAGE_FORMAT_REJECTED. So is, told from its headers before any pixel is
+        decoded, a PNG or JPEG of a kind whose decoding takes several times the image (T-056 review round 1, M2): a
+        progressive, lossless or arithmetic-coded JPEG, a CMYK, YCCK or RGB one, one of another precision than 8 bits or with
+        a component in more than one scan, and a 16-bit or an interlaced PNG; an 8-bit PNG that is not interlaced and a
+        baseline (or extended sequential) 8-bit JPEG, grey or YCbCr, are taken. At most 5,242,880 bytes (5 MiB) are read
+        whether or not Content-Length is sent (413 PAYLOAD_TOO_LARGE, nothing kept; so is an image whose re-encoding would be
+        larger); an empty file, one that does not decode, or one less than 32 or more than 4096 pixels wide or high is 422 at
+        /file (details[0].code IMAGE_INVALID or IMAGE_PIXELS_EXCEEDED). The server decodes the image and encodes the pixels
+        again in the same format, so none of the upload''s metadata (EXIF, GPS, ICC profile, comments, appended bytes) is
+        stored or ever sent to a provider, and stores that in private object storage under a key it makes
+        (tenant/<organization>/assets/proposal-images/<proposal>/image). The proposal (generating, mode edit, with the
+        server''s ID allocation pool and source_image), its one model_proposal job, the proposal.create audit event (IDs, the
+        image''s SHA-256 and size, never the file name or its content) and the idempotency response commit together, then
+        202. The worker reads the stored image, asks a segmenter for
         the boxes of the machines, conveyors and workstations the domain pack names (SAM 3.1 in the H-033 deployment), checks
         them (inside the image, finite, at most 64), and asks a vision model for the proposal with the image and the boxes
         (Muse Spark, or Claude''s image input as the fallback), through the spend meter. The server then reviews the answer as
@@ -968,7 +976,41 @@ paths:
         '413':
           $ref: '#/components/responses/Error413'
         '415':
-          $ref: '#/components/responses/Error415'
+          description: 'Nothing was stored. The body is not multipart/form-data (no details), or the file is not a PNG or a
+            JPEG, or is one of a kind the server does not decode because its decoding takes several times the image (a
+            progressive, lossless, arithmetic-coded, CMYK, YCCK or RGB JPEG, a 16-bit or an interlaced PNG; told from its
+            headers before any pixel is decoded: T-056 review round 1, M2), with details[0] at /file and the code
+            IMAGE_FORMAT_REJECTED. Codes: UNSUPPORTED_MEDIA_TYPE.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                not_png_or_jpeg:
+                  summary: The file is neither a PNG nor a JPEG (here a GIF)
+                  value:
+                    error:
+                      code: UNSUPPORTED_MEDIA_TYPE
+                      message: a photo or floor plan is a PNG or a JPEG
+                      details:
+                      - path: /file
+                        reason: the file is not a PNG or a JPEG
+                        code: IMAGE_FORMAT_REJECTED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                expensive_to_decode:
+                  summary: A JPEG of a kind the server does not decode (here a progressive one)
+                  value:
+                    error:
+                      code: UNSUPPORTED_MEDIA_TYPE
+                      message: a photo or floor plan is an 8-bit PNG that is not interlaced or a baseline JPEG
+                      details:
+                      - path: /file
+                        reason: the image is a progressive, lossless, CMYK or RGB JPEG or a 16-bit or interlaced PNG, whose decoding takes several times the image; save it as a baseline JPEG or an 8-bit PNG
+                        code: IMAGE_FORMAT_REJECTED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '422':
           $ref: '#/components/responses/Error422'
         '429':
