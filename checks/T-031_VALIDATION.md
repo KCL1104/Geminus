@@ -360,3 +360,34 @@ hostile 範例的 patch 改為：原本移除 scrap 的 6 個 op，加上新增�
 3. **D-069 (b) B1 之後的提示**：本輪在 422／風險改變的 409 之後只提供 Reject 並說明，但伺服器不記錄這次拒絕，所以重新整理後 Approve 會再出現。若要頁面一開就知道（B2：轉為 conflicted 並記原因，需要 migration 與 API 變更），需要 owner 決定。
 4. **新增的 entity 一律附 ID**（依本輪指示）會讓 T-056 的照片提案每個新步驟都帶一個長 ID。可以嗎？或只在名稱與其他 entity 相同時才附？
 
+
+## Coordinator 驗證：review 第 1 輪修正（2026-10-26）
+
+`t031-r1` 的五個 commit（18d1ca6..420af9e）cherry-pick 到主線。第一個 commit 在 `apps/web/app/ui-gallery/proposal/samples.ts` 與 T-056 衝突：保留 T-056 的 `xrayFromPhoto`（照片產生的 X-ray 範例與它的 hash），並以本輪的 `hostilePatch`（含惡意名稱）取代舊的 `noScrap`；兩者的 ID 不重複（X-ray 用 `node_…0001`、`node_…0002`、`resource_…0001`，惡意的第二台 ICT tester 用 `resource_…0002`）。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-039r1-T-031r1-apiavail-coordinator/`，`exit-codes.txt` 依執行順序；HEAD 1425e3a；go1.27.3、Node 22，`--engine-strict=false`；Railway 的指令全部以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN` 執行）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `scripts/check_deploy.py` | 0 | |
+| `scripts/rehearse_railway_deploy.py` | 0 | `rehearsal: PASS`（替身；Railway 本身 NOT RUN） |
+| `deploy/railway/deploy.sh --dry-run` | 0 | |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 83 個 package ok（`scripts/check-architecture` 252 s） |
+| `make architecture-check` | 0 | 95 packages、25 rules、16 build configurations |
+| `make ai-eval` | 0 | fake provider |
+| `go test -race -count=1 -timeout 30m ./cmd/... ./internal/config/... ./internal/proposals/...` | 0 | 11 個 package ok |
+| `make integration-test`（共用 cluster） | 2 | 沒有執行任何測試：container 重啟後共用的 PostgreSQL（port 55440）沒有在跑，連線被拒（`integration-shared-cluster-down.log`）；依規則不啟動它 |
+| `make integration-test`（暫時的 cluster：`/var/lib/postgresql/geminus-throwaway-hkb6`，port 55450，PostgreSQL 16.15，新的 dt_test_hkb6c，跑完刪除） | 0 | 38 個 package ok，沒有 FAIL 或 SKIP（`integration.log`） |
+| `npm ci`（apps/web、apps/web-e2e） | 0、0 | |
+| `make frontend-test` | 0 | 47 個檔案、1037 個測試 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（3100–3102 沒有其他執行時才開始） | 0 | 507 passed、32 skipped（只在 CI 比對的 screenshot） |
+
+NOT RUN：任何 live 呼叫；Railway 與 Auth0 上的任何操作；完整的 `make backend-race`；CI 的 screenshot 比對（push 後由 CI 執行）。
+
+Coordinator 的處理：
+- M1 與 L1–L5、I1–I3 已修正並驗證；依 H-029，本切片完成。
+- 給 owner 的問題 1–4（server 是否拒絕或正規化不可見字元、同類名稱是否必須唯一、D-069 (b) B2 是否在 server 記錄批准時的拒絕、新增的 entity 一律顯示 ID）都不阻擋 demo，比賽後放進決策頁；在那之前照本輪的做法（UI 顯示可見的 escape 與 ID、拒絕只在頁面上）。
+- 延後的 I4–I7 比賽後處理。

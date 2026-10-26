@@ -2062,6 +2062,14 @@
           "summary": "Hackathon 切片（H-029、H-031），不是 T-031 全部：模型頁以自然語言提出修改（createProposal，mode 以 Select 選 edit／scenario，output_locale 依介面語言，重試沿用 key，未存編輯時 blocked 並說明，409 只在要求時重新載入）；提案頁 /proposals/<id>（generating 輪詢、needs_input 問題、invalid issue、failed problem；差異以人話逐 op 對 base 讀出、JSON Patch 與 hash 在 disclosure；AI 的假設與預期；伺服器的 validation 與 risk 與 AI 的 claim、信心並列標明；edit 與 scenario 批准分開、原處確認、拒絕可附原因；409 保留頁面並說明變了什麼、不 rebase；決定後重新讀取，scenario 連到 /scenarios/<scenario_id>；過時的 ready 提案不顯示 Approve；AI 文字一律為文字）；/ui-gallery/proposal 審閱頁（14 個範例、替身 API，不呼叫 AI）。沒有改 contract、Go 或 migration；匯入與欄位對應、proposal 列表、畫布上的 Review 模式未做，見報告。",
           "reviewer": null,
           "accepted_at": null
+        },
+        {
+          "date": "2026-10-26",
+          "branch": "t031-r1",
+          "report": "checks/T-031_VALIDATION.md",
+          "summary": "Review 第 1 輪的修正：diff 中同名的 entity 顯示 ID、不可見與方向字元以可見的 escape 顯示、每個名稱在自己的 bdi 中、看起來相同的變更明說；批准時被拒（422、風險改變的 409）只提供 Reject；signed-in 的 e2e（en、zh-Hant）經 BFF 與 fake API。Coordinator 合併並驗證：frontend-test 1037 個測試、build、audit、e2e 507 passed 皆 exit 0。",
+          "reviewer": "independent review round 1 (checks/T-031_REVIEW_r1.md); fixes verified by the coordinator (H-029 (4))",
+          "decisions": "D-069 (b) B1；owner 問題 1–4 比賽後"
         }
       ]
     },
@@ -2542,6 +2550,14 @@
           "summary": "Hackathon 切片（H-029 (3)；雲端為 owner 選的 Railway，H-030）：Dockerfile.api、Dockerfile.worker、apps/web/Dockerfile（digest pin、非 root、無 ARG 與 credential、HEALTHCHECK、SIGTERM）；migration step（cmd/migrate、internal/storage/migrations：只用 migration login，紀錄與 migration 同一 transaction，規則 migrations-only-in-their-command）與 deploy/sql/create_logins.sql；API 的 /healthz、/readyz 與 geminus-api -probe；S3 相容的 object storage adapter（SigV4 自行實作並以 AWS test suite 驗證、條件式 PUT、private；bucket 自己的 timeout 不是 context error，T-054 I1）；本機 staging composition（deploy/local，含測試 OIDC provider，只給本機）與 make build-containers、make staging-smoke（無 Docker 時 NOT RUN、exit 2）；CI 的 containers job；deploy/railway（config-as-code、variables.json）與 deploy/railway/deploy.sh（H-032：以 pin 住的 Railway CLI 5.64.2 非互動套用，--dry-run 不連網；產生的 secret 經 stdin 並 sealed，owner 的 secret 不設不讀；scripts/rehearse_railway_deploy.py 以替身離線演練）；docs/runbooks/deploy.md；ADR-029 PROPOSED。本機沒有 Docker daemon，image build 與 compose smoke 為 NOT RUN；以 Docker build context 建置的 binaries 在一次性 database 上跑 process-level smoke（全部通過）。未部署（deploy.sh --apply NOT RUN，由 coordinator 執行）。Status 保持 not_started：依賴的 T-043 仍為 in_progress，scripts/check_decisions.py 規定 in_progress 的任務其 dependencies 必須是 review 或 done，所以未依指示改為 in_progress（由 coordinator 決定）；T-039 其餘 scope（T-053 I4 (2)(4)、I5 的程式修改、T-054 I1 的一般做法與 I2、container scan）未完成。",
           "reviewer": "NOT YET (hackathon: one independent review round, H-029 (4))",
           "decisions": "ADR-029 PROPOSED；H-030、H-032 待 coordinator 記錄"
+        },
+        {
+          "date": "2026-10-26",
+          "branch": "t039-r1",
+          "report": "checks/T-039_VALIDATION.md",
+          "summary": "Review 第 1 輪（CHANGES REQUESTED M1、M2）的修正：TCP proxy 不會被默默留著（移除失敗、執行前就有、SIGTERM／SIGHUP 都回報或移除）；owner 的變數值收到即丟棄、只以名稱提醒沒有 sealed 的 secret（H-036：owner 填完即 sealed）；rehearsal 涵蓋失敗的步驟與信號。Coordinator 合併時修正 rehearsal 的 migration 數（T-056 的 0017）並驗證：check_deploy、rehearsal、dry run、backend-test、integration（暫時的 cluster）、frontend、e2e 皆 exit 0。deploy.sh --apply 仍 NOT RUN。",
+          "reviewer": "independent review round 1 (checks/T-039_REVIEW_r1.md); fixes verified by the coordinator (H-029 (4))",
+          "decisions": "ADR-029 PROPOSED；H-031、H-032、H-036"
         }
       ]
     },

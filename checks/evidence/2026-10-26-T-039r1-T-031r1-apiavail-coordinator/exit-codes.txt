@@ -1,0 +1,16 @@
+spec-check exit 0
+check-deploy exit 0
+rehearsal exit 0
+deploy-dry-run exit 0
+backend-test exit 0
+architecture-check exit 0
+ai-eval exit 0
+race-changed exit 0
+integration exit 2
+npm-ci-web exit 0
+npm-ci-e2e exit 0
+frontend-test exit 0
+frontend-build exit 0
+npm-audit exit 0
+e2e-test exit 0
+integration (throwaway cluster) exit 0

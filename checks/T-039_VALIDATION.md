@@ -253,3 +253,39 @@ Equivalent 的兩個：R13（成功的執行在 verify 之後再列一次 proxy�
 
 （H-034 之後由 agent 經 stdin 寫入並 sealed 的 Auth0 client secret 不受影響：sealed 的值 CLI 只回傳 `null`。）
 
+
+## Coordinator 驗證：review 第 1 輪修正（2026-10-26）
+
+`t039-r1` 的五個 commit（f1855bb..d52b2b1）cherry-pick 到已整合 T-055、T-056 與 API key-free availability（D-124）的主線。第一個 commit 與 D-124 的部署變更在 5 個檔案衝突，處理方式：
+- `deploy/railway/variables.json`：`about` 用本輪的文字（owner 填完即 sealed、腳本收到即丟棄），保留「API 不設 AI key，AI 設定與 worker 相同」；api 的 `forbidden` 用 D-124 的清單（不再禁止 `GEMINUS_AI_LIVE`，加上其他 key 名稱）；`GEMINUS_MUSE_API_KEY` 拿掉「T-055 新增中」的註記。
+- `scripts/check_deploy.py`：保留兩邊的檢查（D-124 的 API key 與四個設定、本輪的 public domain 與 healthcheck）；`PENDING` 為空。
+- `deploy/railway/deploy.sh` 的開頭說明、`docs/runbooks/deploy.md` 的兩張表：合併兩邊的內容。
+
+另外修正一個合併後才出現的問題（71dff87）：rehearsal 的替身 psql 回答固定的 16 個 migration，T-056 新增 0017 之後，部署腳本會等滿 900 s 才失敗，rehearsal 不可能通過。替身改為讀 checkout 的 `migrations/*.up.sql` 數目；rehearsal 也檢查部署腳本不設 owner 的 `AI_POLICY_APPROVAL`、`AI_MODEL`（D-124 之後的 owner 設定）。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-039r1-T-031r1-apiavail-coordinator/`，`exit-codes.txt` 依執行順序；HEAD 1425e3a；go1.27.3、Node 22，`--engine-strict=false`；Railway 的指令全部以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN` 執行）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `scripts/check_deploy.py` | 0 | |
+| `scripts/rehearse_railway_deploy.py` | 0 | `rehearsal: PASS`（替身；Railway 本身 NOT RUN） |
+| `deploy/railway/deploy.sh --dry-run` | 0 | |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 83 個 package ok（`scripts/check-architecture` 252 s） |
+| `make architecture-check` | 0 | 95 packages、25 rules、16 build configurations |
+| `make ai-eval` | 0 | fake provider |
+| `go test -race -count=1 -timeout 30m ./cmd/... ./internal/config/... ./internal/proposals/...` | 0 | 11 個 package ok |
+| `make integration-test`（共用 cluster） | 2 | 沒有執行任何測試：container 重啟後共用的 PostgreSQL（port 55440）沒有在跑，連線被拒（`integration-shared-cluster-down.log`）；依規則不啟動它 |
+| `make integration-test`（暫時的 cluster：`/var/lib/postgresql/geminus-throwaway-hkb6`，port 55450，PostgreSQL 16.15，新的 dt_test_hkb6c，跑完刪除） | 0 | 38 個 package ok，沒有 FAIL 或 SKIP（`integration.log`） |
+| `npm ci`（apps/web、apps/web-e2e） | 0、0 | |
+| `make frontend-test` | 0 | 47 個檔案、1037 個測試 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（3100–3102 沒有其他執行時才開始） | 0 | 507 passed、32 skipped（只在 CI 比對的 screenshot） |
+
+NOT RUN：任何 live 呼叫；Railway 與 Auth0 上的任何操作；完整的 `make backend-race`；CI 的 screenshot 比對（push 後由 CI 執行）。
+
+Coordinator 的處理：
+- M1、M2 已修正並驗證；M2 給 owner 的問題由 owner 選 A（H-036：填完立刻 sealed）。依 H-029，本切片（hackathon 部署準備）完成；`deploy.sh --apply` 仍未執行，在部署 session 由 coordinator 執行。
+- 延後的 L4、L5(a)、L6、L7、I1–I3、I7 比賽後處理；I5 已過時（CI run 206 之後 containers job 全綠）；I6 屬於 T-057。
+- planning 中 T-039 的 completion_evidence 新增本輪的紀錄（舊紀錄保留原文）；`planning/decisions.json` 中 H-029 的未決事項保留當時的名稱 `GEMINUS_META_API_KEY`（歷史紀錄；H-033 之後為 `GEMINUS_MUSE_API_KEY`）。

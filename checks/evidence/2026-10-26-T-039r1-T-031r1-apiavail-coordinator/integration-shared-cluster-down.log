@@ -1,0 +1,8 @@
+make db-test
+make[1]: Entering directory '/home/user/Geminus'
+bash scripts/run_db_tests.sh
+psql: error: connection to server on socket "/var/lib/postgresql/geminus-t009-fresh/.s.PGSQL.55440" failed: Connection refused
+	Is the server running locally and accepting connections on that socket?
+make[1]: *** [Makefile:77: db-test] Error 2
+make[1]: Leaving directory '/home/user/Geminus'
+make: *** [Makefile:94: integration-test] Error 2

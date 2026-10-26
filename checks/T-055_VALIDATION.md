@@ -324,3 +324,14 @@ PostgreSQL 是共用的 cluster（socket `/var/lib/postgresql/geminus-t009-fresh
 4. **空字串**：key 變數以「有值」判斷（`getenv` 無法分辨未設與設為空字串）；設為空字串的變數不視為 key。
 5. **照片路徑**：API 不讀 `AI_VISION_*`；T-056 若需要 API 知道照片路徑是否可用，另行決定（同樣的方法可以延伸）。
 6. **Planning 與舊報告**：`planning/tasks.json` T-039 scope (3)（「API 的部署不設 key，開關 on 時 config 會讀它們」）與 `checks/T-053_VALIDATION.md` 的 I5 是當時的描述，我沒有改（coordinator 的紀錄）。
+
+## Coordinator 驗證：§10 的 API key-free availability（2026-10-26）
+
+`t055-apiavail` 的四個 commit（65a61c3..1e893be）cherry-pick 到已合併 T-056 的主線；只有本報告衝突（兩邊都在最後加了一節，兩節都保留）。合併後與 T-039 review 第 1 輪修正的部署檔衝突，處理見 `checks/T-039_VALIDATION.md` 最後一節。驗證結果與 T-039、T-031 的修正一起記錄在該節（evidence：`checks/evidence/2026-10-26-T-039r1-T-031r1-apiavail-coordinator/`；backend-test、race（cmd、config、proposals）、integration、部署檢查、rehearsal 都是 exit 0）。
+
+Coordinator 對 §10 問題的處理：
+1. 決策編號：D-124（PROPOSED，coordinator 的決定，待獨立審查；與 API 的照片可用性一起在 T-056 的審查中看）。
+2. Worker 開關 on 而沒有 key 時 proposal 停在 `generating`：demo 可以接受；部署驗證會看到 worker 沒有執行，比賽後再考慮逾時。
+3. 空字串的 key 變數不算存在：接受（空值無法呼叫 provider，API 也不會用到）。
+4. T-039 scope (3) 與 T-053 報告的 I5 已更新（1425e3a）。
+5. 多拒絕的 `GEMINUS_META_API_KEY`（舊名稱）與 `ANTHROPIC_AUTH_TOKEN`：接受，只會讓 API 在多一種 key 出現時拒絕啟動。
