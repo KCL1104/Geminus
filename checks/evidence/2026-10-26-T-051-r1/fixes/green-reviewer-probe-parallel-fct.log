@@ -1,0 +1,9 @@
+# code: 6547935 (the fix); the reviewer's probe zz_review_probe2_test.go through go test -overlay; tree unchanged
+$ go test -count=1 -overlay <scratch>/probe2.json -run TestZZReviewParallelFCT -v ./internal/domainpack/electronicsline/
+=== RUN   TestZZReviewParallelFCT
+pack issues: []
+fpy_input.fct 0.9300 fpy_input.fct_b 0.9300 rolled 0.852710 (serial 0.852710, with FCT twice 0.793020)
+--- PASS: TestZZReviewParallelFCT (0.09s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	0.101s
+exit 0

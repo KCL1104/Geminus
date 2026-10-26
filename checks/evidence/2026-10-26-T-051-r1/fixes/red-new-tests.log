@@ -1,0 +1,16 @@
+# red: the new tests of metrics_test.go (final version) against metrics.go of d229225 (before the fix),
+# loaded with go test -overlay (sha256 of the overlaid file: 3db8f4b76d3334ef93c77c90e63015f02c8f151fd1171d091391136b329c2530)
+$ go test -count=1 -overlay <scratch>/overlay.json -run 'TestRolledYieldTakesEachTestTypeOnce|TestParallelFirstTestsHandDerived' -v ./internal/domainpack/electronicsline/
+=== RUN   TestRolledYieldTakesEachTestTypeOnce
+    metrics_test.go:486: the same FPY: rolled_throughput_yield_input = 0.79302032325, want 0.852710025
+    metrics_test.go:486: the same FPY in two pass flows: rolled_throughput_yield_input = 0.7930203232499999, want 0.852710025
+    metrics_test.go:486: an FPY within the routing tolerance: rolled_throughput_yield_input = 0.793020323676355, want 0.852710025
+    metrics_test.go:486: another FPY: rolled_throughput_yield_input = {Status:available Mean:0x2b57556ab3d8 P50:0x2b57556ab3e0 P95:0x2b57556ab3f0 SampleCount:1 Population:replication Unit:ratio ConfidenceIntervalMean:<nil> Reason:<nil>}, want unavailable PARALLEL_TEST_YIELDS_DIFFER
+    metrics_test.go:486: an FPY 1e-6 away: rolled_throughput_yield_input = {Status:available Mean:0x2b575573f548 P50:0x2b575573f550 P95:0x2b575573f560 SampleCount:1 Population:replication Unit:ratio ConfidenceIntervalMean:<nil> Reason:<nil>}, want unavailable PARALLEL_TEST_YIELDS_DIFFER
+--- FAIL: TestRolledYieldTakesEachTestTypeOnce (0.38s)
+=== RUN   TestParallelFirstTestsHandDerived
+--- PASS: TestParallelFirstTestsHandDerived (0.01s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline	0.405s
+FAIL
+exit 1

@@ -1,0 +1,10 @@
+gofmt.log: `gofmt -l cmd internal schemas scripts prompts` exit 0 (2026-10-26T15:43:44Z)
+vet.log: `go vet ./internal/domainpack/... ./internal/results/... ./internal/packs/...` exit 0 (2026-10-26T15:43:45Z)
+unit.log: `go test -count=1 -v ./internal/domainpack/... ./internal/results/... ./internal/packs/...` exit 0 (2026-10-26T15:43:45Z)
+race.log: `go test -race -count=1 ./internal/domainpack/... ./internal/results/... ./internal/packs/...` exit 0 (2026-10-26T15:50:44Z)
+architecture-check.log: `make architecture-check` exit 0 (2026-10-26T15:52:23Z)
+backend-test.log: `env GOFLAGS=-count=1 make backend-test` exit 0 (2026-10-26T15:52:50Z)
+integration-test.log: `make integration-test` (fresh dt_test_t051m1a, dropped afterwards) exit 0
+backend-numeric.log: `make backend-numeric` exit 0 (2026-10-26T16:10:31Z)
+spec-check-1.log: `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` exit 0 (2026-10-26T16:19:11Z)
+spec-check-2.log: `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` exit 0 (2026-10-26T16:20:08Z)

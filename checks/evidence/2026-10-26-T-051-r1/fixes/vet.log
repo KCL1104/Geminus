@@ -1,0 +1,4 @@
+# 2026-10-26T15:43:45Z  go version go1.27.3 linux/amd64  load: 7.37 10.25 10.89
+$ go vet ./internal/domainpack/... ./internal/results/... ./internal/packs/...
+exit 0
+# end 2026-10-26T15:43:45Z

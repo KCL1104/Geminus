@@ -1,0 +1,9 @@
+# green: the same tests on the fix commit 6547935
+$ go test -count=1 -run 'TestRolledYieldTakesEachTestTypeOnce|TestParallelFirstTestsHandDerived' -v ./internal/domainpack/electronicsline/
+=== RUN   TestRolledYieldTakesEachTestTypeOnce
+--- PASS: TestRolledYieldTakesEachTestTypeOnce (0.33s)
+=== RUN   TestParallelFirstTestsHandDerived
+--- PASS: TestParallelFirstTestsHandDerived (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	0.353s
+exit 0

@@ -1,0 +1,650 @@
+# 2026-10-26T15:43:45Z  go version go1.27.3 linux/amd64  load: 7.37 10.25 10.89
+$ go test -count=1 -v ./internal/domainpack/... ./internal/results/... ./internal/packs/...
+=== RUN   TestRegistry
+--- PASS: TestRegistry (0.00s)
+=== RUN   TestLayeredLayout
+--- PASS: TestLayeredLayout (0.00s)
+=== RUN   TestCanonicalEventContract
+--- PASS: TestCanonicalEventContract (0.01s)
+=== RUN   TestDependencies
+--- PASS: TestDependencies (0.41s)
+=== RUN   TestNilInputs
+--- PASS: TestNilInputs (0.00s)
+=== RUN   TestLayoutAvoidsKeptPositions
+--- PASS: TestLayoutAvoidsKeptPositions (0.00s)
+=== RUN   TestLayoutRoundsHalfAwayFromZero
+--- PASS: TestLayoutRoundsHalfAwayFromZero (0.00s)
+=== RUN   TestLayoutTolerance
+--- PASS: TestLayoutTolerance (0.00s)
+=== RUN   TestRegistryPackages
+--- PASS: TestRegistryPackages (0.00s)
+=== RUN   TestLocalesMatchContract
+--- PASS: TestLocalesMatchContract (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.425s
+=== RUN   TestBrokenPacksAreCaught
+=== RUN   TestBrokenPacksAreCaught/badID/identity/id
+=== RUN   TestBrokenPacksAreCaught/otherID/identity/models
+=== RUN   TestBrokenPacksAreCaught/dupKind/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/nonGenericType/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/badRequirement/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/sharedCatalog/catalog/copies
+=== RUN   TestBrokenPacksAreCaught/badResourceType/catalog/resources
+=== RUN   TestBrokenPacksAreCaught/acceptsAnything/validate/fail-closed
+=== RUN   TestBrokenPacksAreCaught/acceptsAnything/validate/nil
+=== RUN   TestBrokenPacksAreCaught/rejectsValid/validate/valid-models
+=== RUN   TestBrokenPacksAreCaught/mutatingValidate/validate/read-only
+=== RUN   TestBrokenPacksAreCaught/flakyValidate/validate/deterministic
+=== RUN   TestBrokenPacksAreCaught/panicsOnNil/validate/nil
+=== RUN   TestBrokenPacksAreCaught/missingNode/views/covers-nodes
+=== RUN   TestBrokenPacksAreCaught/ghostNode/views/same-ids
+=== RUN   TestBrokenPacksAreCaught/movesSaved/views/keeps-saved
+=== RUN   TestBrokenPacksAreCaught/overlapping/views/no-overlap
+=== RUN   TestBrokenPacksAreCaught/mutatingViews/views/read-only
+=== RUN   TestBrokenPacksAreCaught/mutatingMetrics/metrics/read-only
+=== RUN   TestBrokenPacksAreCaught/mutatingMetrics/metrics/generic-unchanged
+=== RUN   TestBrokenPacksAreCaught/invalidMetric/metrics/schema
+=== RUN   TestBrokenPacksAreCaught/emptyKey/metrics/keys
+=== RUN   TestBrokenPacksAreCaught/flakyMetrics/metrics/deterministic
+=== RUN   TestBrokenPacksAreCaught/nilNil/inference/answer
+=== RUN   TestBrokenPacksAreCaught/ignoresCancel/inference/cancel
+=== RUN   TestBrokenPacksAreCaught/proposesForeign/inference/answer
+=== RUN   TestBrokenPacksAreCaught/unavailableWithResult/inference/answer
+=== RUN   TestBrokenPacksAreCaught/proposesInvalid/inference/answer
+=== RUN   TestBrokenPacksAreCaught/promptOtherDomain/prompt/context
+=== RUN   TestBrokenPacksAreCaught/promptDropsNodes/prompt/catalogs
+=== RUN   TestBrokenPacksAreCaught/promptChanges/prompt/static
+=== RUN   TestBrokenPacksAreCaught/panicsEverywhere/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/flakyIDPack/identity/id
+=== RUN   TestBrokenPacksAreCaught/emptyCatalog/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/noLabel/catalog/nodes
+=== RUN   TestBrokenPacksAreCaught/dupResource/catalog/resources
+=== RUN   TestBrokenPacksAreCaught/flakyViews/views/deterministic
+=== RUN   TestBrokenPacksAreCaught/unencodableViews/views/valid-ir
+=== RUN   TestBrokenPacksAreCaught/emptySummary/prompt/context
+=== RUN   TestBrokenPacksAreCaught/emptyRule/prompt/context
+=== RUN   TestBrokenPacksAreCaught/nanMetric/metrics/run
+=== RUN   TestBrokenPacksAreCaught/panicsOnEnginePath/metrics/run
+=== RUN   TestBrokenPacksAreCaught/rewritesSeed/metrics/generic-unchanged
+=== RUN   TestBrokenPacksAreCaught/rewritesQueues/metrics/generic-unchanged
+=== RUN   TestBrokenPacksAreCaught/rewritesAdditional/metrics/generic-unchanged
+=== RUN   TestBrokenPacksAreCaught/leaksIntoPrompt/prompt/static
+=== RUN   TestBrokenPacksAreCaught/infersFromNothing/inference/needs-input
+=== RUN   TestBrokenPacksAreCaught/sharedResourceTypes/catalog/copies
+=== RUN   TestBrokenPacksAreCaught/sharedResources/catalog/copies
+=== RUN   TestBrokenPacksAreCaught/mismatchWithoutPath/validate/fail-closed
+=== RUN   TestBrokenPacksAreCaught/mismatchAsWarning/validate/fail-closed
+=== RUN   TestBrokenPacksAreCaught/layoutOnlyWithSavedPositions/views/covers-nodes
+=== RUN   TestBrokenPacksAreCaught/ignoresSavedWhenPlacing/views/no-overlap
+=== RUN   TestBrokenPacksAreCaught/promptDropsResources/prompt/catalogs
+=== RUN   TestBrokenPacksAreCaught/countsIntoPrompt/prompt/static
+=== RUN   TestBrokenPacksAreCaught/leaksIntoPrompt/prompt/static#01
+=== RUN   TestBrokenPacksAreCaught/leaksViewsIntoPrompt/prompt/static
+=== RUN   TestBrokenPacksAreCaught/leaksIDsIntoPrompt/prompt/static
+=== RUN   TestBrokenPacksAreCaught/leaksEventsIntoPrompt/prompt/static
+=== RUN   TestBrokenPacksAreCaught/remembersLastModel/stateless
+=== RUN   TestBrokenPacksAreCaught/remembersLastNodeIDs/stateless
+=== RUN   TestBrokenPacksAreCaught/noTemplates/templates/list
+=== RUN   TestBrokenPacksAreCaught/templateAnyLocale/templates/unknown-locale
+=== RUN   TestBrokenPacksAreCaught/templateAnyName/templates/unknown-template
+=== RUN   TestBrokenPacksAreCaught/templateTopologyByLocale/templates/locales
+=== RUN   TestBrokenPacksAreCaught/templateInvalid/templates/valid
+=== RUN   TestBrokenPacksAreCaught/templateKeepsName/templates/valid
+=== RUN   TestBrokenPacksAreCaught/templateBlankName/templates/list
+=== RUN   TestBrokenPacksAreCaught/templateTwice/templates/list
+=== RUN   TestBrokenPacksAreCaught/templatesPanic/templates/list
+=== RUN   TestBrokenPacksAreCaught/templatePanics/templates/valid
+=== RUN   TestBrokenPacksAreCaught/templateNilModel/templates/valid
+=== RUN   TestBrokenPacksAreCaught/templateErrorAndModel/templates/valid
+=== RUN   TestBrokenPacksAreCaught/templateCached/templates/copies
+=== RUN   TestBrokenPacksAreCaught/templateSharesResources/templates/copies
+=== RUN   TestBrokenPacksAreCaught/templateSharesFlows/templates/copies
+=== RUN   TestBrokenPacksAreCaught/templateSharesPositions/templates/copies
+=== RUN   TestBrokenPacksAreCaught/templateSharesPositions/templates/copies#01
+=== RUN   TestBrokenPacksAreCaught/templateSharesMetadata/templates/copies
+=== RUN   TestBrokenPacksAreCaught/templateSharesEntityTypes/templates/copies
+=== RUN   TestBrokenPacksAreCaught/templateSharesNumbers/templates/copies
+=== RUN   TestBrokenPacksAreCaught/templateCounts/concurrent
+=== RUN   TestBrokenPacksAreCaught/templateLocaleFallback/templates/unknown-locale
+=== RUN   TestBrokenPacksAreCaught/templateAnyCase/templates/unknown-template
+=== RUN   TestBrokenPacksAreCaught/templateOtherDomain/templates/valid
+=== RUN   TestBrokenPacksAreCaught/templateKeepsModelID/templates/valid
+=== RUN   TestBrokenPacksAreCaught/templateAgainstOwnRules/templates/valid
+=== RUN   TestBrokenPacksAreCaught/localeErrorWithModel/templates/unknown-locale
+=== RUN   TestBrokenPacksAreCaught/templateErrorWithModel/templates/unknown-template
+=== RUN   TestBrokenPacksAreCaught/templateFlaky/templates/deterministic
+=== RUN   TestBrokenPacksAreCaught/templateFails/templates/valid
+=== RUN   TestBrokenPacksAreCaught/countsIntoIssues/stateless
+=== RUN   TestBrokenPacksAreCaught/viewsRememberLastModel/stateless
+=== RUN   TestBrokenPacksAreCaught/countsMetrics/stateless
+=== RUN   TestBrokenPacksAreCaught/mintsModelIDs/inference/deterministic
+=== RUN   TestBrokenPacksAreCaught/countsInference/inference/deterministic
+=== RUN   TestBrokenPacksAreCaught/modelAndErrorWhenEmpty/inference/needs-input
+=== RUN   TestBrokenPacksAreCaught/modelAndError/inference/answer
+=== RUN   TestBrokenPacksAreCaught/modelAndErrorWhenCancelled/inference/cancel
+--- PASS: TestBrokenPacksAreCaught (4.67s)
+    --- PASS: TestBrokenPacksAreCaught/badID/identity/id (0.24s)
+    --- PASS: TestBrokenPacksAreCaught/otherID/identity/models (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/dupKind/catalog/nodes (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/nonGenericType/catalog/nodes (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/badRequirement/catalog/nodes (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/sharedCatalog/catalog/copies (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/badResourceType/catalog/resources (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/acceptsAnything/validate/fail-closed (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/acceptsAnything/validate/nil (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/rejectsValid/validate/valid-models (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/mutatingValidate/validate/read-only (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/flakyValidate/validate/deterministic (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/panicsOnNil/validate/nil (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/missingNode/views/covers-nodes (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/ghostNode/views/same-ids (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/movesSaved/views/keeps-saved (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/overlapping/views/no-overlap (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/mutatingViews/views/read-only (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/mutatingMetrics/metrics/read-only (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/mutatingMetrics/metrics/generic-unchanged (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/invalidMetric/metrics/schema (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/emptyKey/metrics/keys (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/flakyMetrics/metrics/deterministic (0.08s)
+    --- PASS: TestBrokenPacksAreCaught/nilNil/inference/answer (0.10s)
+    --- PASS: TestBrokenPacksAreCaught/ignoresCancel/inference/cancel (0.07s)
+    --- PASS: TestBrokenPacksAreCaught/proposesForeign/inference/answer (0.13s)
+    --- PASS: TestBrokenPacksAreCaught/unavailableWithResult/inference/answer (0.05s)
+    --- PASS: TestBrokenPacksAreCaught/proposesInvalid/inference/answer (0.11s)
+    --- PASS: TestBrokenPacksAreCaught/promptOtherDomain/prompt/context (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/promptDropsNodes/prompt/catalogs (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/promptChanges/prompt/static (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/panicsEverywhere/catalog/nodes (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/flakyIDPack/identity/id (0.10s)
+    --- PASS: TestBrokenPacksAreCaught/emptyCatalog/catalog/nodes (0.07s)
+    --- PASS: TestBrokenPacksAreCaught/noLabel/catalog/nodes (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/dupResource/catalog/resources (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/flakyViews/views/deterministic (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/unencodableViews/views/valid-ir (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/emptySummary/prompt/context (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/emptyRule/prompt/context (0.12s)
+    --- PASS: TestBrokenPacksAreCaught/nanMetric/metrics/run (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/panicsOnEnginePath/metrics/run (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/rewritesSeed/metrics/generic-unchanged (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/rewritesQueues/metrics/generic-unchanged (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/rewritesAdditional/metrics/generic-unchanged (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/leaksIntoPrompt/prompt/static (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/infersFromNothing/inference/needs-input (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/sharedResourceTypes/catalog/copies (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/sharedResources/catalog/copies (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/mismatchWithoutPath/validate/fail-closed (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/mismatchAsWarning/validate/fail-closed (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/layoutOnlyWithSavedPositions/views/covers-nodes (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/ignoresSavedWhenPlacing/views/no-overlap (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/promptDropsResources/prompt/catalogs (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/countsIntoPrompt/prompt/static (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/leaksIntoPrompt/prompt/static#01 (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/leaksViewsIntoPrompt/prompt/static (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/leaksIDsIntoPrompt/prompt/static (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/leaksEventsIntoPrompt/prompt/static (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/remembersLastModel/stateless (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/remembersLastNodeIDs/stateless (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/noTemplates/templates/list (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateAnyLocale/templates/unknown-locale (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateAnyName/templates/unknown-template (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/templateTopologyByLocale/templates/locales (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/templateInvalid/templates/valid (0.02s)
+    --- PASS: TestBrokenPacksAreCaught/templateKeepsName/templates/valid (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateBlankName/templates/list (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateTwice/templates/list (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/templatesPanic/templates/list (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/templatePanics/templates/valid (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/templateNilModel/templates/valid (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/templateErrorAndModel/templates/valid (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateCached/templates/copies (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesResources/templates/copies (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesFlows/templates/copies (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesPositions/templates/copies (0.05s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesPositions/templates/copies#01 (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesMetadata/templates/copies (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesEntityTypes/templates/copies (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateSharesNumbers/templates/copies (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateCounts/concurrent (0.05s)
+    --- PASS: TestBrokenPacksAreCaught/templateLocaleFallback/templates/unknown-locale (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateAnyCase/templates/unknown-template (0.04s)
+    --- PASS: TestBrokenPacksAreCaught/templateOtherDomain/templates/valid (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/templateKeepsModelID/templates/valid (0.09s)
+    --- PASS: TestBrokenPacksAreCaught/templateAgainstOwnRules/templates/valid (0.08s)
+    --- PASS: TestBrokenPacksAreCaught/localeErrorWithModel/templates/unknown-locale (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/templateErrorWithModel/templates/unknown-template (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/templateFlaky/templates/deterministic (0.07s)
+    --- PASS: TestBrokenPacksAreCaught/templateFails/templates/valid (0.09s)
+    --- PASS: TestBrokenPacksAreCaught/countsIntoIssues/stateless (0.05s)
+    --- PASS: TestBrokenPacksAreCaught/viewsRememberLastModel/stateless (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/countsMetrics/stateless (0.08s)
+    --- PASS: TestBrokenPacksAreCaught/mintsModelIDs/inference/deterministic (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/countsInference/inference/deterministic (0.05s)
+    --- PASS: TestBrokenPacksAreCaught/modelAndErrorWhenEmpty/inference/needs-input (0.06s)
+    --- PASS: TestBrokenPacksAreCaught/modelAndError/inference/answer (0.03s)
+    --- PASS: TestBrokenPacksAreCaught/modelAndErrorWhenCancelled/inference/cancel (0.06s)
+=== RUN   TestUnrunnableModel
+--- PASS: TestUnrunnableModel (0.04s)
+=== RUN   TestRunReportsFindings
+--- PASS: TestRunReportsFindings (0.22s)
+=== RUN   TestHelperRunBrokenPack
+--- PASS: TestHelperRunBrokenPack (0.00s)
+=== RUN   TestRunFailsInvalidSuites
+--- PASS: TestRunFailsInvalidSuites (0.02s)
+=== RUN   TestHelperRunInvalidSuite
+--- PASS: TestHelperRunInvalidSuite (0.00s)
+=== RUN   TestInvalidSuites
+--- PASS: TestInvalidSuites (0.00s)
+=== RUN   TestConcurrentDisagreement
+--- PASS: TestConcurrentDisagreement (0.05s)
+=== RUN   TestModelMetricsChecks
+=== RUN   TestModelMetricsChecks/modelMetricsMutateIR/model-metrics/read-only
+=== RUN   TestModelMetricsChecks/modelMetricsMutateResult/model-metrics/read-only
+=== RUN   TestModelMetricsChecks/modelMetricsMutateResult/model-metrics/generic-unchanged
+=== RUN   TestModelMetricsChecks/modelMetricInvalid/model-metrics/schema
+=== RUN   TestModelMetricsChecks/modelMetricEmptyKey/model-metrics/keys
+=== RUN   TestModelMetricsChecks/modelMetricsCount/model-metrics/deterministic
+=== RUN   TestModelMetricsChecks/modelMetricsCount/concurrent
+=== RUN   TestModelMetricsChecks/modelMetricsPanic/model-metrics/compute
+=== RUN   TestModelMetricsChecks/modelMetricsReadDigest/model-metrics/engine-agrees
+=== RUN   TestModelMetricsChecks/remembersModel/stateless
+--- PASS: TestModelMetricsChecks (0.92s)
+    --- PASS: TestModelMetricsChecks/modelMetricsMutateIR/model-metrics/read-only (0.05s)
+    --- PASS: TestModelMetricsChecks/modelMetricsMutateResult/model-metrics/read-only (0.10s)
+    --- PASS: TestModelMetricsChecks/modelMetricsMutateResult/model-metrics/generic-unchanged (0.06s)
+    --- PASS: TestModelMetricsChecks/modelMetricInvalid/model-metrics/schema (0.15s)
+    --- PASS: TestModelMetricsChecks/modelMetricEmptyKey/model-metrics/keys (0.07s)
+    --- PASS: TestModelMetricsChecks/modelMetricsCount/model-metrics/deterministic (0.03s)
+    --- PASS: TestModelMetricsChecks/modelMetricsCount/concurrent (0.03s)
+    --- PASS: TestModelMetricsChecks/modelMetricsPanic/model-metrics/compute (0.33s)
+    --- PASS: TestModelMetricsChecks/modelMetricsReadDigest/model-metrics/engine-agrees (0.04s)
+    --- PASS: TestModelMetricsChecks/remembersModel/stateless (0.03s)
+=== RUN   TestGenericQueuePackConforms
+--- PASS: TestGenericQueuePackConforms (0.06s)
+=== RUN   TestGenericQueuePackHasAnAvailableMetric
+--- PASS: TestGenericQueuePackHasAnAvailableMetric (0.00s)
+=== RUN   TestInvalidVariantsBreakTheirRule
+--- PASS: TestInvalidVariantsBreakTheirRule (0.01s)
+=== RUN   TestSentinelModel
+--- PASS: TestSentinelModel (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	6.004s
+=== RUN   TestRegistration
+--- PASS: TestRegistration (0.00s)
+=== RUN   TestConformance
+--- PASS: TestConformance (3.12s)
+=== RUN   TestTemplateThroughTheEngine
+--- PASS: TestTemplateThroughTheEngine (3.99s)
+=== RUN   TestTemplateLocalesRunAlike
+--- PASS: TestTemplateLocalesRunAlike (0.46s)
+=== RUN   TestModelMetricsHandDerived
+--- PASS: TestModelMetricsHandDerived (0.01s)
+=== RUN   TestModelMetricsAcrossReplications
+--- PASS: TestModelMetricsAcrossReplications (0.01s)
+=== RUN   TestModelMetricsUnavailable
+--- PASS: TestModelMetricsUnavailable (0.18s)
+=== RUN   TestRolledYieldTakesEachTestTypeOnce
+--- PASS: TestRolledYieldTakesEachTestTypeOnce (0.61s)
+=== RUN   TestParallelFirstTestsHandDerived
+--- PASS: TestParallelFirstTestsHandDerived (0.01s)
+=== RUN   TestModelMetricsWithoutInput
+--- PASS: TestModelMetricsWithoutInput (0.00s)
+=== RUN   TestCataloguesHaveUILabels
+--- PASS: TestCataloguesHaveUILabels (0.00s)
+=== RUN   TestCatalogsMatchSpec
+--- PASS: TestCatalogsMatchSpec (0.00s)
+=== RUN   TestCatalogCopies
+--- PASS: TestCatalogCopies (0.00s)
+=== RUN   TestValidateRejectsOtherDomains
+--- PASS: TestValidateRejectsOtherDomains (0.00s)
+=== RUN   TestTemplatePassesThePackRules
+--- PASS: TestTemplatePassesThePackRules (0.00s)
+=== RUN   TestRuleStationResource
+--- PASS: TestRuleStationResource (0.01s)
+=== RUN   TestRuleRetestResource
+--- PASS: TestRuleRetestResource (0.01s)
+=== RUN   TestRuleTestResult
+--- PASS: TestRuleTestResult (0.01s)
+=== RUN   TestRuleDomainAttributes
+--- PASS: TestRuleDomainAttributes (0.01s)
+=== RUN   TestValidationCodesInContract
+--- PASS: TestValidationCodesInContract (0.00s)
+=== RUN   TestInferenceIsUnavailable
+--- PASS: TestInferenceIsUnavailable (0.00s)
+=== RUN   TestPromptContext
+--- PASS: TestPromptContext (0.00s)
+=== RUN   TestDefaultViews
+--- PASS: TestDefaultViews (0.00s)
+=== RUN   TestTemplate
+--- PASS: TestTemplate (0.02s)
+=== RUN   TestTemplateParameters
+--- PASS: TestTemplateParameters (0.01s)
+=== RUN   TestTemplateMetadata
+--- PASS: TestTemplateMetadata (0.00s)
+=== RUN   TestTemplateLocales
+--- PASS: TestTemplateLocales (0.03s)
+=== RUN   TestTemplateErrors
+--- PASS: TestTemplateErrors (0.01s)
+=== RUN   TestNamesFileStrict
+--- PASS: TestNamesFileStrict (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	8.578s
+=== RUN   TestRegistration
+--- PASS: TestRegistration (0.00s)
+=== RUN   TestConformance
+--- PASS: TestConformance (0.50s)
+=== RUN   TestDORAThroughTheEngine
+--- PASS: TestDORAThroughTheEngine (0.02s)
+=== RUN   TestCatalogs
+--- PASS: TestCatalogs (0.00s)
+=== RUN   TestTemplateMatchesGoldenFixture
+--- PASS: TestTemplateMatchesGoldenFixture (0.00s)
+=== RUN   TestTemplate
+--- PASS: TestTemplate (0.01s)
+=== RUN   TestValidateRejectsOtherDomains
+--- PASS: TestValidateRejectsOtherDomains (0.00s)
+=== RUN   TestDORAUnavailable
+--- PASS: TestDORAUnavailable (0.01s)
+=== RUN   TestInferenceIsUnavailable
+--- PASS: TestInferenceIsUnavailable (0.00s)
+=== RUN   TestDefaultViewsAndPrompt
+--- PASS: TestDefaultViewsAndPrompt (0.00s)
+=== RUN   TestResourceCatalogMatchesSpec
+--- PASS: TestResourceCatalogMatchesSpec (0.00s)
+=== RUN   TestCatalogCopies
+--- PASS: TestCatalogCopies (0.00s)
+=== RUN   TestDORAUnavailableWithFailuresObserved
+--- PASS: TestDORAUnavailableWithFailuresObserved (0.00s)
+=== RUN   TestTemplateErrors
+--- PASS: TestTemplateErrors (0.00s)
+=== RUN   TestTemplateMetadataForUserModels
+--- PASS: TestTemplateMetadataForUserModels (0.00s)
+=== RUN   TestValidateUnvalidatedInput
+--- PASS: TestValidateUnvalidatedInput (0.00s)
+=== RUN   TestTemplateLocales
+--- PASS: TestTemplateLocales (0.02s)
+=== RUN   TestNamesFileStrict
+--- PASS: TestNamesFileStrict (0.02s)
+=== RUN   TestTemplateNamesFailure
+--- PASS: TestTemplateNamesFailure (0.00s)
+=== RUN   TestValidationCodeInContract
+--- PASS: TestValidationCodeInContract (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.588s
+=== RUN   TestLookupKeepsTheComparisonRange
+--- PASS: TestLookupKeepsTheComparisonRange (0.00s)
+=== RUN   TestDeltas
+--- PASS: TestDeltas (0.14s)
+=== RUN   TestBaselineZero
+--- PASS: TestBaselineZero (0.03s)
+=== RUN   TestUnavailable
+--- PASS: TestUnavailable (0.03s)
+=== RUN   TestDORAStaysUnavailable
+--- PASS: TestDORAStaysUnavailable (0.03s)
+=== RUN   TestMissing
+--- PASS: TestMissing (0.05s)
+=== RUN   TestIncomparable
+=== RUN   TestIncomparable/replications
+=== RUN   TestIncomparable/seed
+=== RUN   TestIncomparable/baseline_patch
+=== RUN   TestIncomparable/engine
+=== RUN   TestIncomparable/horizon
+=== RUN   TestIncomparable/no-op_baseline_patch
+=== RUN   TestIncomparable/model_version
+=== RUN   TestIncomparable/dataset_manifest
+=== RUN   TestIncomparable/warmup
+--- PASS: TestIncomparable (0.38s)
+    --- PASS: TestIncomparable/replications (0.06s)
+    --- PASS: TestIncomparable/seed (0.09s)
+    --- PASS: TestIncomparable/baseline_patch (0.03s)
+    --- PASS: TestIncomparable/engine (0.03s)
+    --- PASS: TestIncomparable/horizon (0.05s)
+    --- PASS: TestIncomparable/no-op_baseline_patch (0.01s)
+    --- PASS: TestIncomparable/model_version (0.03s)
+    --- PASS: TestIncomparable/dataset_manifest (0.02s)
+    --- PASS: TestIncomparable/warmup (0.01s)
+=== RUN   TestComparableAcrossSpellings
+--- PASS: TestComparableAcrossSpellings (0.01s)
+=== RUN   TestWarnings
+--- PASS: TestWarnings (2.48s)
+=== RUN   TestRangeBounds
+--- PASS: TestRangeBounds (0.05s)
+=== RUN   TestOrder
+--- PASS: TestOrder (3.64s)
+=== RUN   TestPathEscaping
+--- PASS: TestPathEscaping (0.02s)
+=== RUN   TestResolve
+--- PASS: TestResolve (0.03s)
+=== RUN   TestOutOfRange
+--- PASS: TestOutOfRange (0.01s)
+=== RUN   TestNoNegativeZero
+--- PASS: TestNoNegativeZero (0.00s)
+=== RUN   TestInconsistent
+=== RUN   TestInconsistent/unknown_status/baseline
+=== RUN   TestInconsistent/unknown_status/scenario
+=== RUN   TestInconsistent/unavailable_queue,_a_wait/baseline
+=== RUN   TestInconsistent/unavailable_queue,_a_wait/scenario
+=== RUN   TestInconsistent/a_non-finite_value/baseline
+=== RUN   TestInconsistent/a_non-finite_value/scenario
+=== RUN   TestInconsistent/another_model_hash/baseline
+=== RUN   TestInconsistent/another_model_hash/scenario
+=== RUN   TestInconsistent/another_horizon/baseline
+=== RUN   TestInconsistent/another_horizon/scenario
+=== RUN   TestInconsistent/a_value_beyond_the_range/baseline
+=== RUN   TestInconsistent/a_value_beyond_the_range/scenario
+=== RUN   TestInconsistent/another_tick_unit/baseline
+=== RUN   TestInconsistent/another_tick_unit/scenario
+=== RUN   TestInconsistent/an_unavailable_summary_without_a_reason/baseline
+=== RUN   TestInconsistent/an_unavailable_summary_without_a_reason/scenario
+=== RUN   TestInconsistent/another_manifest/baseline
+=== RUN   TestInconsistent/another_manifest/scenario
+=== RUN   TestInconsistent/another_config_hash/baseline
+=== RUN   TestInconsistent/another_config_hash/scenario
+=== RUN   TestInconsistent/an_available_summary_of_no_sample/baseline
+=== RUN   TestInconsistent/an_available_summary_of_no_sample/scenario
+=== RUN   TestInconsistent/another_run's_result/baseline
+=== RUN   TestInconsistent/another_run's_result/scenario
+=== RUN   TestInconsistent/another_engine/baseline
+=== RUN   TestInconsistent/another_engine/scenario
+=== RUN   TestInconsistent/a_null_utilization_without_a_reason/baseline
+=== RUN   TestInconsistent/a_null_utilization_without_a_reason/scenario
+=== RUN   TestInconsistent/an_unavailable_summary_with_a_CI/baseline
+=== RUN   TestInconsistent/an_unavailable_summary_with_a_CI/scenario
+=== RUN   TestInconsistent/another_replication_count/baseline
+=== RUN   TestInconsistent/another_replication_count/scenario
+=== RUN   TestInconsistent/missing_replication/baseline
+=== RUN   TestInconsistent/missing_replication/scenario
+=== RUN   TestInconsistent/a_non-finite_queue_length/baseline
+=== RUN   TestInconsistent/a_non-finite_queue_length/scenario
+=== RUN   TestInconsistent/a_null_patch/baseline
+=== RUN   TestInconsistent/a_null_patch/scenario
+=== RUN   TestInconsistent/another_effective_model_hash/baseline
+=== RUN   TestInconsistent/another_effective_model_hash/scenario
+=== RUN   TestInconsistent/not_completed/baseline
+=== RUN   TestInconsistent/not_completed/scenario
+=== RUN   TestInconsistent/another_warmup/baseline
+=== RUN   TestInconsistent/another_warmup/scenario
+=== RUN   TestInconsistent/a_config_without_ticks/baseline
+=== RUN   TestInconsistent/a_config_without_ticks/scenario
+=== RUN   TestInconsistent/a_patch_that_is_not_JSON/baseline
+=== RUN   TestInconsistent/a_patch_that_is_not_JSON/scenario
+=== RUN   TestInconsistent/another_time_boundary/baseline
+=== RUN   TestInconsistent/another_time_boundary/scenario
+=== RUN   TestInconsistent/a_utilization_above_1/baseline
+=== RUN   TestInconsistent/a_utilization_above_1/scenario
+=== RUN   TestInconsistent/an_entity_population_with_a_CI/baseline
+=== RUN   TestInconsistent/an_entity_population_with_a_CI/scenario
+=== RUN   TestInconsistent/an_unknown_population/baseline
+=== RUN   TestInconsistent/an_unknown_population/scenario
+=== RUN   TestInconsistent/available_without_a_mean/baseline
+=== RUN   TestInconsistent/available_without_a_mean/scenario
+=== RUN   TestInconsistent/available_queue,_no_wait/baseline
+=== RUN   TestInconsistent/available_queue,_no_wait/scenario
+=== RUN   TestInconsistent/an_available_queue_of_no_visit/baseline
+=== RUN   TestInconsistent/an_available_queue_of_no_visit/scenario
+=== RUN   TestInconsistent/a_negative_wait/baseline
+=== RUN   TestInconsistent/a_negative_wait/scenario
+=== RUN   TestInconsistent/no_result/baseline
+=== RUN   TestInconsistent/no_result/scenario
+=== RUN   TestInconsistent/another_seed/baseline
+=== RUN   TestInconsistent/another_seed/scenario
+=== RUN   TestInconsistent/a_patch_that_is_no_array/baseline
+=== RUN   TestInconsistent/a_patch_that_is_no_array/scenario
+=== RUN   TestInconsistent/unavailable_with_a_mean/baseline
+=== RUN   TestInconsistent/unavailable_with_a_mean/scenario
+--- PASS: TestInconsistent (0.16s)
+    --- PASS: TestInconsistent/unknown_status/baseline (0.00s)
+    --- PASS: TestInconsistent/unknown_status/scenario (0.00s)
+    --- PASS: TestInconsistent/unavailable_queue,_a_wait/baseline (0.00s)
+    --- PASS: TestInconsistent/unavailable_queue,_a_wait/scenario (0.00s)
+    --- PASS: TestInconsistent/a_non-finite_value/baseline (0.00s)
+    --- PASS: TestInconsistent/a_non-finite_value/scenario (0.00s)
+    --- PASS: TestInconsistent/another_model_hash/baseline (0.00s)
+    --- PASS: TestInconsistent/another_model_hash/scenario (0.01s)
+    --- PASS: TestInconsistent/another_horizon/baseline (0.00s)
+    --- PASS: TestInconsistent/another_horizon/scenario (0.00s)
+    --- PASS: TestInconsistent/a_value_beyond_the_range/baseline (0.00s)
+    --- PASS: TestInconsistent/a_value_beyond_the_range/scenario (0.00s)
+    --- PASS: TestInconsistent/another_tick_unit/baseline (0.00s)
+    --- PASS: TestInconsistent/another_tick_unit/scenario (0.00s)
+    --- PASS: TestInconsistent/an_unavailable_summary_without_a_reason/baseline (0.00s)
+    --- PASS: TestInconsistent/an_unavailable_summary_without_a_reason/scenario (0.00s)
+    --- PASS: TestInconsistent/another_manifest/baseline (0.00s)
+    --- PASS: TestInconsistent/another_manifest/scenario (0.00s)
+    --- PASS: TestInconsistent/another_config_hash/baseline (0.00s)
+    --- PASS: TestInconsistent/another_config_hash/scenario (0.00s)
+    --- PASS: TestInconsistent/an_available_summary_of_no_sample/baseline (0.00s)
+    --- PASS: TestInconsistent/an_available_summary_of_no_sample/scenario (0.00s)
+    --- PASS: TestInconsistent/another_run's_result/baseline (0.00s)
+    --- PASS: TestInconsistent/another_run's_result/scenario (0.00s)
+    --- PASS: TestInconsistent/another_engine/baseline (0.00s)
+    --- PASS: TestInconsistent/another_engine/scenario (0.00s)
+    --- PASS: TestInconsistent/a_null_utilization_without_a_reason/baseline (0.00s)
+    --- PASS: TestInconsistent/a_null_utilization_without_a_reason/scenario (0.00s)
+    --- PASS: TestInconsistent/an_unavailable_summary_with_a_CI/baseline (0.00s)
+    --- PASS: TestInconsistent/an_unavailable_summary_with_a_CI/scenario (0.00s)
+    --- PASS: TestInconsistent/another_replication_count/baseline (0.00s)
+    --- PASS: TestInconsistent/another_replication_count/scenario (0.00s)
+    --- PASS: TestInconsistent/missing_replication/baseline (0.00s)
+    --- PASS: TestInconsistent/missing_replication/scenario (0.00s)
+    --- PASS: TestInconsistent/a_non-finite_queue_length/baseline (0.00s)
+    --- PASS: TestInconsistent/a_non-finite_queue_length/scenario (0.00s)
+    --- PASS: TestInconsistent/a_null_patch/baseline (0.00s)
+    --- PASS: TestInconsistent/a_null_patch/scenario (0.00s)
+    --- PASS: TestInconsistent/another_effective_model_hash/baseline (0.00s)
+    --- PASS: TestInconsistent/another_effective_model_hash/scenario (0.00s)
+    --- PASS: TestInconsistent/not_completed/baseline (0.00s)
+    --- PASS: TestInconsistent/not_completed/scenario (0.00s)
+    --- PASS: TestInconsistent/another_warmup/baseline (0.00s)
+    --- PASS: TestInconsistent/another_warmup/scenario (0.00s)
+    --- PASS: TestInconsistent/a_config_without_ticks/baseline (0.00s)
+    --- PASS: TestInconsistent/a_config_without_ticks/scenario (0.00s)
+    --- PASS: TestInconsistent/a_patch_that_is_not_JSON/baseline (0.00s)
+    --- PASS: TestInconsistent/a_patch_that_is_not_JSON/scenario (0.01s)
+    --- PASS: TestInconsistent/another_time_boundary/baseline (0.00s)
+    --- PASS: TestInconsistent/another_time_boundary/scenario (0.00s)
+    --- PASS: TestInconsistent/a_utilization_above_1/baseline (0.00s)
+    --- PASS: TestInconsistent/a_utilization_above_1/scenario (0.00s)
+    --- PASS: TestInconsistent/an_entity_population_with_a_CI/baseline (0.00s)
+    --- PASS: TestInconsistent/an_entity_population_with_a_CI/scenario (0.00s)
+    --- PASS: TestInconsistent/an_unknown_population/baseline (0.00s)
+    --- PASS: TestInconsistent/an_unknown_population/scenario (0.00s)
+    --- PASS: TestInconsistent/available_without_a_mean/baseline (0.00s)
+    --- PASS: TestInconsistent/available_without_a_mean/scenario (0.01s)
+    --- PASS: TestInconsistent/available_queue,_no_wait/baseline (0.00s)
+    --- PASS: TestInconsistent/available_queue,_no_wait/scenario (0.00s)
+    --- PASS: TestInconsistent/an_available_queue_of_no_visit/baseline (0.00s)
+    --- PASS: TestInconsistent/an_available_queue_of_no_visit/scenario (0.00s)
+    --- PASS: TestInconsistent/a_negative_wait/baseline (0.00s)
+    --- PASS: TestInconsistent/a_negative_wait/scenario (0.00s)
+    --- PASS: TestInconsistent/no_result/baseline (0.00s)
+    --- PASS: TestInconsistent/no_result/scenario (0.00s)
+    --- PASS: TestInconsistent/another_seed/baseline (0.00s)
+    --- PASS: TestInconsistent/another_seed/scenario (0.00s)
+    --- PASS: TestInconsistent/a_patch_that_is_no_array/baseline (0.01s)
+    --- PASS: TestInconsistent/a_patch_that_is_no_array/scenario (0.00s)
+    --- PASS: TestInconsistent/unavailable_with_a_mean/baseline (0.00s)
+    --- PASS: TestInconsistent/unavailable_with_a_mean/scenario (0.09s)
+=== RUN   TestSameRun
+--- PASS: TestSameRun (0.00s)
+=== RUN   TestTruncation
+--- PASS: TestTruncation (2.48s)
+=== RUN   TestContract
+--- PASS: TestContract (0.01s)
+=== RUN   TestGolden
+--- PASS: TestGolden (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/results/compare	9.595s
+=== RUN   TestQuantile7
+--- PASS: TestQuantile7 (0.00s)
+=== RUN   TestStudentTTable
+--- PASS: TestStudentTTable (0.00s)
+=== RUN   TestCI95
+--- PASS: TestCI95 (0.00s)
+=== RUN   TestGoldenResultMetrics
+--- PASS: TestGoldenResultMetrics (0.13s)
+=== RUN   TestCongestedMetrics
+--- PASS: TestCongestedMetrics (0.00s)
+=== RUN   TestMeasurementWindow
+--- PASS: TestMeasurementWindow (0.00s)
+=== RUN   TestPartialIntervals
+--- PASS: TestPartialIntervals (0.00s)
+=== RUN   TestNothingCompleted
+--- PASS: TestNothingCompleted (0.00s)
+=== RUN   TestReplicationStatistics
+--- PASS: TestReplicationStatistics (0.00s)
+=== RUN   TestOutcomesAndCounts
+--- PASS: TestOutcomesAndCounts (0.00s)
+=== RUN   TestExplicitQueueOwnsMetrics
+--- PASS: TestExplicitQueueOwnsMetrics (0.02s)
+=== RUN   TestBuildRejects
+--- PASS: TestBuildRejects (0.00s)
+=== RUN   TestFinishReleasesEntityState
+--- PASS: TestFinishReleasesEntityState (0.00s)
+=== RUN   TestOracleAgreement
+=== RUN   TestOracleAgreement/default-delivery
+=== RUN   TestOracleAgreement/default-delivery-w0
+=== RUN   TestOracleAgreement/congested-W45-H204
+=== RUN   TestOracleAgreement/congested-unavailable-queue
+=== RUN   TestOracleAgreement/deterministic-W12
+=== RUN   TestOracleAgreement/multi-0
+=== RUN   TestOracleAgreement/multi-1
+=== RUN   TestOracleAgreement/multi-2
+=== RUN   TestOracleAgreement/multi-3
+=== RUN   TestOracleAgreement/multi-4
+=== RUN   TestOracleAgreement/multi-5
+=== RUN   TestOracleAgreement/multi-6
+=== RUN   TestOracleAgreement/multi-7
+=== RUN   TestOracleAgreement/multi-8
+=== RUN   TestOracleAgreement/multi-9
+=== RUN   TestOracleAgreement/multi-10
+=== RUN   TestOracleAgreement/multi-11
+--- PASS: TestOracleAgreement (0.51s)
+    --- PASS: TestOracleAgreement/default-delivery (0.05s)
+    --- PASS: TestOracleAgreement/default-delivery-w0 (0.01s)
+    --- PASS: TestOracleAgreement/congested-W45-H204 (0.00s)
+    --- PASS: TestOracleAgreement/congested-unavailable-queue (0.00s)
+    --- PASS: TestOracleAgreement/deterministic-W12 (0.00s)
+    --- PASS: TestOracleAgreement/multi-0 (0.00s)
+    --- PASS: TestOracleAgreement/multi-1 (0.02s)
+    --- PASS: TestOracleAgreement/multi-2 (0.04s)
+    --- PASS: TestOracleAgreement/multi-3 (0.03s)
+    --- PASS: TestOracleAgreement/multi-4 (0.02s)
+    --- PASS: TestOracleAgreement/multi-5 (0.01s)
+    --- PASS: TestOracleAgreement/multi-6 (0.03s)
+    --- PASS: TestOracleAgreement/multi-7 (0.04s)
+    --- PASS: TestOracleAgreement/multi-8 (0.09s)
+    --- PASS: TestOracleAgreement/multi-9 (0.09s)
+    --- PASS: TestOracleAgreement/multi-10 (0.02s)
+    --- PASS: TestOracleAgreement/multi-11 (0.01s)
+=== RUN   TestSummarize
+--- PASS: TestSummarize (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.720s
+=== RUN   TestRegistry
+--- PASS: TestRegistry (0.00s)
+=== RUN   TestCreateModelContractNamesTheTemplates
+--- PASS: TestCreateModelContractNamesTheTemplates (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/packs	0.030s
+exit 0
+# end 2026-10-26T15:43:57Z

@@ -1,0 +1,11 @@
+# 2026-10-26T15:50:44Z  go version go1.27.3 linux/amd64  load: 19.26 16.13 13.33
+$ go test -race -count=1 ./internal/domainpack/... ./internal/results/... ./internal/packs/...
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.310s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	66.666s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	86.338s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	6.014s
+ok  	github.com/kcl1104/geminus/internal/results/compare	53.437s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	4.804s
+ok  	github.com/kcl1104/geminus/internal/packs	1.098s
+exit 0
+# end 2026-10-26T15:52:23Z

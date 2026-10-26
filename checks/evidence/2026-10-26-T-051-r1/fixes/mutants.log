@@ -1,0 +1,25 @@
+# mutants in a git archive copy of the fix commit (go test -count=1 -overlay ... ./internal/domainpack/electronicsline/ ./internal/domainpack/conformance/)
+| mutant | finding | file | result | failing tests |
+|---|---|---|---|---|
+| rv-featureless-idle-wrong | L1 | internal/domainpack/electronicsline/metrics.go | SURVIVED |  |
+| rv-featureless-processing-zero | L1 | internal/domainpack/electronicsline/metrics.go | SURVIVED |  |
+| rv-line-balance-no-dedupe | L4 | internal/domainpack/electronicsline/metrics.go | KILLED | TestParallelFirstTestsHandDerived, TestRolledYieldTakesEachTestTypeOnce |
+| rv-blocking-first-test-only | - | internal/domainpack/electronicsline/metrics.go | KILLED | TestParallelFirstTestsHandDerived, TestTemplateThroughTheEngine |
+| rv-retest-any-primary | L4 | internal/domainpack/electronicsline/stations.go | KILLED | TestParallelFirstTestsHandDerived |
+| rv-missing-member-accepted | L2 | internal/domainpack/electronicsline/metrics.go | SURVIVED |  |
+| rv-rty-without-tests-is-1 | L3 | internal/domainpack/electronicsline/metrics.go | KILLED | TestModelMetricsUnavailable |
+| rv-overtime-missing-accepted | L2 | internal/domainpack/electronicsline/metrics.go | SURVIVED |  |
+| rv-fpy-last-pass-flow-only | L3 | internal/domainpack/electronicsline/stations.go | KILLED | TestRolledYieldTakesEachTestTypeOnce |
+| rv-uph-scheduled-calendar-any-resource | - | internal/domainpack/electronicsline/metrics.go | KILLED | TestModelMetricsHandDerived, TestModelMetricsUnavailable, TestTemplateThroughTheEngine |
+| rv-starved-own-ignored (rewritten) | - | internal/domainpack/electronicsline/metrics.go | KILLED | TestModelMetricsUnavailable, TestParallelFirstTestsHandDerived |
+| rv-rule3-skip-retest-without-primary | - | internal/domainpack/electronicsline/rules.go | SURVIVED |  |
+| rv-batch-fill-over-min | - | internal/domainpack/electronicsline/metrics.go | KILLED | TestModelMetricsHandDerived, TestTemplateThroughTheEngine |
+| m1-one-factor-per-first-test | M1 | internal/domainpack/electronicsline/metrics.go | KILLED | TestRolledYieldTakesEachTestTypeOnce |
+| m1-exact-comparison | M1 | internal/domainpack/electronicsline/metrics.go | KILLED | TestRolledYieldTakesEachTestTypeOnce |
+| m1-wide-tolerance | M1 | internal/domainpack/electronicsline/metrics.go | KILLED | TestRolledYieldTakesEachTestTypeOnce |
+| m1-differing-yields-accepted | M1 | internal/domainpack/electronicsline/metrics.go | KILLED | TestRolledYieldTakesEachTestTypeOnce |
+| m1-type-yield-last-cell | M1 | internal/domainpack/electronicsline/metrics.go | KILLED | TestRolledYieldTakesEachTestTypeOnce |
+| m1-missing-cell-skipped | M1 | internal/domainpack/electronicsline/metrics.go | KILLED | TestModelMetricsHandDerived, TestRolledYieldTakesEachTestTypeOnce |
+| m1-empty-type-counted | M1 | internal/domainpack/electronicsline/metrics.go | KILLED | TestModelMetricsUnavailable |
+
+15/20 killed

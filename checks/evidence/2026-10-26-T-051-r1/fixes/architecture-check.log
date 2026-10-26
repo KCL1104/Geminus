@@ -1,0 +1,7 @@
+# 2026-10-26T15:52:23Z  go version go1.27.3 linux/amd64  load: 23.98 18.51 14.46
+$ make architecture-check
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 89 packages, 24 rules, 16 build configurations
+exit 0
+# end 2026-10-26T15:52:49Z

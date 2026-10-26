@@ -184,3 +184,90 @@ Coordinator 對 T-051 問題的處理（例行事項；需要 owner 的另列）
 5. D-117 的編號沒有衝突（`make spec-check` 的 decisions 檢查通過）。
 
 下一步：一輪獨立審查（H-029）。
+
+## Review round 1 fixes（M1 與 L4，2026-10-26）
+
+**審查：** 獨立審查第 1 輪（`checks/T-051_REVIEW_r1.md`，在 reviewer 的 branch 上；結論 CHANGES REQUESTED：1 個 Medium、沒有 High、7 個 Low）。**範圍：** 只修 M1，並依審查的建議在同一個測試檔補上 L4 的測試；其餘 Low 為比賽後的後續（見最後一小節）。**Branch：** `t051-m1`（從 d229225 開出），commit、不 push。**Evidence：** [`checks/evidence/2026-10-26-T-051-r1/fixes/`](evidence/2026-10-26-T-051-r1/fixes/)，`exit-codes.txt` 依執行順序記錄每個指令的 exit code。D-117 仍為 **PROPOSED**（`approved_by`／`approved_at` 為 null，agent 沒有批准）；ELECTRONICS_LINE §5（APPROVED）沒有改。
+
+| Commit | 內容 |
+|---|---|
+| 6547935 | `metrics.go` 的 `rolledYield` 與 reason `PARALLEL_TEST_YIELDS_DIFFER`；`metrics_test.go` 的 `TestRolledYieldTakesEachTestTypeOnce`、`TestParallelFirstTestsHandDerived` 與「one station」變體的一個新斷言 |
+| （本節所在的 commit） | D-117 (c)(d)（DECISIONS_AND_TBD、`planning/decisions.json`）、ELECTRONICS_LINE §11、本節、evidence、`make spec-check` 重產的 `checks/*.json` |
+
+### Finding → 修改 → 測試 → mutant
+
+| Finding | 修改 | 測試 | Mutant（在 `git archive` 的副本中，見下） |
+|---|---|---|---|
+| **M1**（Medium）：直通率對每個 `pass: first` 的測試 process 各乘一次 FPY；並聯的 FCT cell 使 FCT 的 FPY 被乘兩次（0.79302032325，應為 0.852710025），pack 的規則沒有任何 issue | `rolledYield` 依線的順序（`stationKinds`：AOI、ICT、FCT、燒機）對模型中有首測的每個**測試站別**乘一次 FPY。同一站別的多個首測是並聯的 cell：FPY 在 IR 的 routing 容差內（`validate.ProbabilityEpsilon`＝1e-9，TWIN_IR_SPEC §4）相同時，該站別取 node 順序第一個首測的值；不同時，該站別的 FPY 要以各 cell 的 routing 份額加權，pack 不推導份額，直通率 unavailable，reason **`PARALLEL_TEST_YIELDS_DIFFER`**（pack 自己的 reason，與 `NO_BATCH_MODEL` 等同列，如 §5 的其他 reason 為暫定）；任一 cell 沒有 FPY 時該站別也沒有（`TEST_RESULT_NOT_IDENTIFIED`，先於比較）；reason 取線的順序中第一個沒有單一 FPY 的站別；沒有任何測試站時仍為 `TEST_RESULT_NOT_IDENTIFIED`。`fpy_input.<站>` 不變（每個首測一個） | `TestRolledYieldTakesEachTestTypeOnce`：範本加 `fct_split`（ICT 首測與重測的通過件各 0.5 分到 `q_fct` 與新的 `q_fct_b`）、`fct_b`（FCT 首測，共用 `fct_tester`）與 `fct_b_result`（`result_of: fct_b`），先經 `validate.IR`（valid）與 `pack.Validate`，再經 engine（7 天、warmup 1 天、1 個 replication、seed 3）。6 個變體：同為 0.93 → **0.852710025**；pass 分成 0.6＋0.33（float64 為 0.9299999999999999，容差內相同）→ 0.852710025；相差 5e-10（容差內）→ 0.852710025（取 `fct` 的 0.93，不是 `fct_b` 的）；0.92 → `PARALLEL_TEST_YIELDS_DIFFER`；相差 1e-6 → `PARALLEL_TEST_YIELDS_DIFFER`；`fct_b_result` 的不良繞過 failure node（規則 2 的 warning）→ `fpy_input.fct_b` 與直通率 `TEST_RESULT_NOT_IDENTIFIED`。每個變體都斷言 AOI 0.97、ICT 0.95、FCT 0.93、燒機 0.995 的 `fpy_input` 與 `fpy_input.fct_b`。`TestModelMetricsUnavailable` 的「one station」變體加一個斷言：沒有測試站時直通率為 `TEST_RESULT_NOT_IDENTIFIED`（不是 1；改寫後的計數方式不同，需要這個防護） | 本次的 7 個 M1 mutant 全部 KILLED：`m1-one-factor-per-first-test`（還原為修正前的函式）、`m1-exact-comparison`、`m1-wide-tolerance`（1e-5）、`m1-differing-yields-accepted`、`m1-type-yield-last-cell`、`m1-missing-cell-skipped`、`m1-empty-type-counted` |
+| **L4**（Low，依審查併入 M1 的測試）：line balance 每個 resource 一次、重測歸 primary 相同的首測，沒有測試 | 沒有程式變更（行為原本就正確，是測試缺口） | `TestParallelFirstTestsHandDerived`（手推，手寫 line 加第二個 FCT cell）：**共用測試機**時 line balance 仍為 57/96（w＝4/6、5/12、6/24、3/12；重複計算會得到 mean(4/6, 5/12, 5/12, 6/24, 3/12)／(4/6)＝3/5），重測歸 node 順序第一個 primary 相同的首測（`fct`：平均阻塞 4 分；`fct_b` 自己的 2 分），兩站的 starved 為 `STARVATION_UNDEFINED_SHARED_RESOURCE`；**自己的測試機 `tester_b`**（C 1、手選的積分）時 line balance 為 5/8（w＝4/6、5/12、3/6、6/24、3/12，mean 25/60 除以 2/3），重測歸 `fct_b`（雖然 `fct` 在 node 順序上是第一個 FCT 首測）：`retest_ratio.fct_b` 有、`retest_ratio.fct` 沒有，`mean_blocking_minutes.fct_b`＝(120,000＋240,000)／2 tick＝3 分，`starved_ratio.fct_b`＝2.8e6／12e6，以及 `tester_b` 的處理、阻塞、閒置、下班、scheduled utilization、overtime、work ratio。`TestRolledYieldTakesEachTestTypeOnce` 另以 engine 的 Result 確認共用測試機的兩個 cell 在 line balance 中只算一次（六項的 mean／max） | `rv-line-balance-no-dedupe` **KILLED**（兩個測試）、`rv-retest-any-primary` **KILLED**（`TestParallelFirstTestsHandDerived`） |
+
+手算：0.97·0.95＝0.9215，·0.93＝0.856995，·0.995＝**0.852710025**；修正前的 0.97·0.95·0.93·0.93·0.995＝0.79302032325（reviewer 的 probe 印出的 0.793020）。
+
+**設計上的限制（寫入 D-117 (c)）：** pack 不分析 routing，所以同一站別的兩個首測若其實是串聯（不是 ELECTRONICS_LINE §2 的結構），也當作並聯 cell：FPY 相同時只乘一次（偏高），不同時 unavailable。並聯 cell 的 FPY 不同時 `pack.Validate` 沒有 warning（要新增 `ValidationCode`、contract、UI 兩語訊息與 AI review 的固定句，與 L6 同類），只有指標的 reason；列為後續。
+
+### 範本與 regression lock
+
+`internal/domainpack/electronicsline/testdata/template-run-lock.json` **沒有改**，digest 仍為 `sha256:f5fee84c…7f904`（des-go-0.5.0）。原因：範本每個測試站別只有一個首測，且首測的 node 順序（`aoi`、`ict`、`fct`、`burn_in`）就是線的順序，所以乘積的運算順序 ((((1·0.97)·0.95)·0.93)·0.995) 與修正前相同、逐位元相同；`TestTemplateThroughTheEngine` 以未改的 lock 通過（`unit.log`、`race.log`、`backend-test.log`）。`metrics.domain` 在 digest 中，所以範本的任何指標若改變，lock 測試會失敗。
+
+### 先紅後綠
+
+- `red-reviewer-probe-parallel-fct.log`：reviewer 的 probe（`TestZZReviewParallelFCT`，以 `go test -overlay` 載入，tree 不變）在修正前的程式（d229225）上重現：`pack issues: []`，`fpy_input.fct`＝`fpy_input.fct_b`＝0.9300，直通率 **0.793020**（串聯值 0.852710）。
+- `red-new-tests.log`：最終版本的新測試對修正前的 `metrics.go`（以 overlay 換回 d229225 的檔案，log 中有其 sha256）：`TestRolledYieldTakesEachTestTypeOnce` 的 5 個變體失敗（0.79302032325、0.7930203232499999、0.793020323676355 而不是 0.852710025；0.92 與 1e-6 的變體是 available 而不是 `PARALLEL_TEST_YIELDS_DIFFER`），exit 1。「沒有可用 test result 的 cell」變體與 `TestParallelFirstTestsHandDerived` 在修正前就通過：前者在舊程式中也是 `TEST_RESULT_NOT_IDENTIFIED`，後者是 L4 的特性測試（行為原本正確）；它們能抓到錯誤由下面的 mutant 證明。
+- `green-new-tests.log`、`green-reviewer-probe-parallel-fct.log`：修正後同樣的測試 exit 0；reviewer 的 probe 印出直通率 0.852710。
+
+### Mutation
+
+`r1-mutants.py`（evidence 中有一份）：在 `git archive 6547935` 解開到 scratch 的副本中執行，每個 mutant 以 `go test -count=1 -overlay` 改一處，跑 `./internal/domainpack/electronicsline/`、`./internal/domainpack/conformance/`；worktree 沒有被改。Build failed 不算 killed。第 1 次（`mutants-run1.log`）有 3 個 M1 mutant 因為 `validate` 的 import 沒有被使用而無法 build；改寫使其可 build 後第 2 次（`mutants.log`）：
+
+| Mutant | Finding | 結果 |
+|---|---|---|
+| `rv-line-balance-no-dedupe` | L4 | **KILLED** |
+| `rv-retest-any-primary` | L4 | **KILLED** |
+| `m1-one-factor-per-first-test`、`m1-exact-comparison`、`m1-wide-tolerance`、`m1-differing-yields-accepted`、`m1-type-yield-last-cell`、`m1-missing-cell-skipped`、`m1-empty-type-counted` | M1 | 7 個 **KILLED** |
+| `rv-rty-without-tests-is-1` | L3 | KILLED（「one station」的新斷言） |
+| `rv-fpy-last-pass-flow-only` | L3 | KILLED（0.6＋0.33 的變體：只取最後一條 pass flow 時 `fpy_input.fct_b` 為 0.33） |
+| `rv-blocking-first-test-only`、`rv-uph-scheduled-calendar-any-resource`、`rv-starved-own-ignored`（reviewer 改寫後的版本）、`rv-batch-fill-over-min` | — | KILLED（審查時已 KILLED） |
+| `rv-featureless-idle-wrong`、`rv-featureless-processing-zero` | L1 | SURVIVED（延後） |
+| `rv-missing-member-accepted`、`rv-overtime-missing-accepted` | L2 | SURVIVED（延後） |
+| `rv-rule3-skip-retest-without-primary` | — | SURVIVED（審查記錄為不列 finding：只會多報一個連鎖的 issue） |
+
+合計 15/20 KILLED；存活的 5 個都是延後的 L1、L2 與審查不列為 finding 的那一個。
+
+### 執行的指令
+
+環境：go1.27.3 linux/amd64（`GOTOOLCHAIN=local`）、Python 3.13（`.venv`）、PostgreSQL 16.15（共用的 cluster，socket `/var/lib/postgresql/geminus-t009-fresh`、port 55440；沒有啟動或停止它）、4 CPU（其他 agent 同時在跑）。除 mutation 外都在 worktree 中、6547935 的程式碼上執行（之後只改了文件、planning、本報告與 evidence）。
+
+| # | 指令 | exit | 結果 | Log |
+|---|---|---|---|---|
+| 1 | reviewer 的 probe，修正前（d229225，`go test -overlay`） | 0 | 重現 M1：直通率 0.793020、`pack issues: []` | `red-reviewer-probe-parallel-fct.log` |
+| 2 | 新測試對修正前的 `metrics.go`（`go test -overlay`，`-run 'TestRolledYieldTakesEachTestTypeOnce\|TestParallelFirstTestsHandDerived'`） | 1 | 紅：M1 的 5 個變體失敗（見「先紅後綠」） | `red-new-tests.log` |
+| 3 | 同上，6547935 | 0 | 綠 | `green-new-tests.log` |
+| 4 | reviewer 的 probe，6547935 | 0 | 直通率 0.852710 | `green-reviewer-probe-parallel-fct.log` |
+| 5 | `gofmt -l cmd internal schemas scripts prompts` | 0 | 沒有輸出 | `gofmt.log` |
+| 6 | `go vet ./internal/domainpack/... ./internal/results/... ./internal/packs/...` | 0 | 沒有輸出 | `vet.log` |
+| 7 | `go test -count=1 -v ./internal/domainpack/... ./internal/results/... ./internal/packs/...` | 0 | 7 個 package ok，沒有 skip（含 `TestTemplateThroughTheEngine` 以未改的 lock 通過），12 s | `unit.log` |
+| 8 | `go test -race -count=1`（同上 3 組） | 0 | 7 個 package ok（electronicsline 86.3 s、conformance 66.7 s），1 分 39 秒 | `race.log` |
+| 9 | `make architecture-check` | 0 | `PASS architecture: 89 packages, 24 rules, 16 build configurations`；pack 只多 import `internal/model/validate`（本來就在 `stations.go` 中），generic engine 沒有變 | `architecture-check.log` |
+| 10 | `env GOFLAGS=-count=1 make backend-test` | 0 | gofmt、`go vet`、`GEMINUS_FULL_DIFFERENTIAL=1 go test`：77 個 package ok，10 分 49 秒（load 18–24） | `backend-test.log` |
+| 11 | `make integration-test`（新建的 `dt_test_t051m1a`；`DATABASE_URL`＝`GEMINUS_TEST_DATABASE_URL`、`DT_ALLOW_DB_TESTS=yes`；跑完 `DROP DATABASE`，確認沒有留下 `dt_test_t051m1*`） | 0 | migration 與 SQL 測試、`db-go-test`（`-race`、`GEMINUS_REQUIRE_DB_TESTS=1`）37 個 package ok（含 `internal/api` 的 `TestElectronicsLineTemplateClosedLoop`、`internal/runs/runner`、`internal/worker`），沒有 skip，6 分鐘 | `integration-test.log` |
+| 12 | `make backend-numeric` | 0 | 6 個 GOARCH 沒有 FMA 與平台相依的 math 呼叫（涵蓋 `internal/domainpack`），GOAMD64=v3 的 numeric 測試 ok，8 分鐘 | `backend-numeric.log` |
+| 13 | mutation（`r1-mutants.py`，`git archive` 的副本） | — | 第 1 次 3 個 BUILD-ERROR；第 2 次 15/20 KILLED（見上表） | `mutants-run1.log`、`mutants.log` |
+| 14 | `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（文件與本節之後） | 0 | contract、planning、docs、decisions（D-117 仍為 proposed、沒有 approver）等全部通過；重產的 `checks/docs-check.json` 由 115 個 markdown／106 個連結變為 121／114：base（d229225）的樹本身就是 121／112（T-039 的 commit 沒有重產這個檔），本節與 §11 各多一個連結 | `spec-check-1.log`、`spec-check-2.log` |
+
+### NOT RUN
+
+- 完整的 `make backend-race`：只對 `./internal/domainpack/... ./internal/results/... ./internal/packs/...` 跑 `-race`（`race.log`）；`make integration-test` 的 `db-go-test` 另以 `-race` 跑 DB 的 package。
+- `make simulation-reference-test`、`make ai-eval`：本次只改 pack 的直通率，沒有改 engine、reference 或 AI 的程式，沒有重跑。
+- `make frontend-test`、`make e2e-test`：依指示不執行（沒有改 UI 或 message catalog；新的 reason 跟其他 pack 的 reason 一樣只是 Result 的資料，T-032 的結果頁以原文顯示）。
+- Live AI provider：沒有呼叫，沒有讀任何 key 或 secret。
+- 範本組合的 SimPy 獨立對照、amd64 以外的硬體（與原報告相同）。
+
+### 延後的 Low（比賽後，H-029）
+
+- **L1**：沒有任何功能的 resource（不在 `resource_states`）的分支沒有測試；`rv-featureless-*` 兩個 mutant 仍 SURVIVED。
+- **L2**：`resource_states` 缺單一成員（`blocked_ticks`、`overtime_ticks`）時的 `RESULT_MEMBER_MISSING` 沒有測試；兩個 mutant 仍 SURVIVED。
+- **L3**：沒有作為獨立項目修。M1 需要的兩個斷言（「one station」沒有測試站時直通率 unavailable；pass 分成兩條 flow 時 `fpy_input`＝0.93）正好是審查建議的內容，兩個 L3 mutant 因此都 KILLED；是否視為已涵蓋由下一輪審查判斷。
+- **L5**：規則 1 允許任何額外的 resource（D-117 (b) 要二擇一並寫明）。
+- **L6**：首測站沒有 test result decision 時沒有 warning（並聯 cell 的 FPY 不同時沒有 validation warning 屬同一類）。
+- **L7**：報告與 §11 的範本數字沒有 evidence log。
+- Info I1–I6 沒有處理。

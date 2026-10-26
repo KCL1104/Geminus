@@ -1,0 +1,22 @@
+# 2026-10-26T16:10:31Z  go version go1.27.3 linux/amd64  load: 11.44 10.73 13.13
+$ make backend-numeric
+bash scripts/check_no_fma.sh
+PASS no fused multiply-add or platform math call: amd64 v3
+PASS no fused multiply-add or platform math call: arm64
+PASS no fused multiply-add or platform math call: ppc64le
+PASS no fused multiply-add or platform math call: s390x
+PASS no fused multiply-add or platform math call: riscv64
+PASS no fused multiply-add or platform math call: loong64
+ok  	github.com/kcl1104/geminus/internal/simulation	0.621s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	37.877s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	440.695s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.379s
+ok  	github.com/kcl1104/geminus/internal/results/compare	19.127s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.800s
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.724s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	8.395s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	12.559s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	1.084s
+PASS numeric tests as a GOAMD64=v3 build
+exit 0
+# end 2026-10-26T16:18:49Z

@@ -368,8 +368,8 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 | 指標 | 範圍 | 單位 | 本 build |
 |---|---|---|---|
 | `uph`、`uph_scheduled` | 線 | entity_per_hour | 可用（沒有 completed sink、沒有共用的線班表或視窗內沒有上班時間時 unavailable） |
-| `rolled_throughput_yield_input`、`fpy_input` | 線、測試站 | ratio | 可用（模型輸入；找不到測試結果時 `TEST_RESULT_NOT_IDENTIFIED`） |
-| `line_balance`、`work_ratio` | 線、站 | ratio | 可用 |
+| `rolled_throughput_yield_input`、`fpy_input` | 線、測試站 | ratio | 可用（模型輸入；找不到測試結果時 `TEST_RESULT_NOT_IDENTIFIED`）。直通率依線的順序（AOI、ICT、FCT、燒機）每個測試站別乘一次 FPY；同一站別的多個首測是並聯的 cell，只算一次：FPY 在 routing 容差 1e-9 內相同時取 node 順序第一個首測的值，不同時 `PARALLEL_TEST_YIELDS_DIFFER`（D-117 (c)，PROPOSED；review r1 M1）。`fpy_input` 每個首測一個 |
+| `line_balance`、`work_ratio` | 線、站 | ratio | 可用；line balance 每個 primary resource 一次（並聯 cell 共用測試機時只算一次） |
 | `processing_ratio`、`setup_ratio`、`blocking_ratio`、`down_ratio`、`idle_ratio`、`off_shift_ratio` | 站 | ratio | 可用；模型沒有換線、有限緩衝、故障時分別為 `NO_SETUP_MODEL`、`NO_FINITE_BUFFERS`、`NO_BREAKDOWN_MODEL` |
 | `starved_ratio` | 站 | ratio | 專用、單一 resource、units 1、非批次的站可用，否則為 §5 的 `STARVATION_UNDEFINED_*`（以 `idle_ratio` 顯示同一公式） |
 | `availability`、`setups_started`、`mean_blocking_minutes` | 站 | ratio、count、minute | 可用（同上的條件；沒有完整阻塞時 `NO_COMPLETED_BLOCK_IN_WINDOW`） |
@@ -378,3 +378,5 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 | `line_wip`、`scrap_rate`、`simulated_first_pass_ratio`、`retest_ratio` | 線、測試站 | entity、ratio | **unavailable**（`WIP_NOT_DECLARED`、`SINK_COUNT_NOT_DECLARED`、`FLOW_COUNT_NOT_DECLARED`）：需要 D-058 的宣告式 metrics，本 build 仍以 `PRIMITIVE_NOT_SUPPORTED` 拒絕宣告 |
 
 UI 的標籤（kind 與指標名稱，en 與 zh-Hant）在 `apps/web/messages` 的 `domain.electronics_line.*`。P0 不計算 OEE，任何指標都不稱 OEE。
+
+**Review r1 的修正（M1，2026-10-26）。** 原本的直通率對每個 `pass: first` 的測試 process 各乘一次 FPY：範本加一個並聯的 FCT cell（兩個 cell 的 FPY 都是 0.93）時得到 0.97·0.95·0.93·0.93·0.995＝0.79302032325，而不是 §5 的串聯值 0.97·0.95·0.93·0.995＝0.852710025，且 pack 的規則沒有任何 issue。現在依上表的規則每個站別一次；並聯 cell 的 FPY 不同時，該站別沒有單一 FPY（要以 routing 份額加權，pack 不推導），直通率 unavailable。Pack 不分析 routing：同一站別的兩個首測若其實是串聯（不是 §2 的結構），也當作並聯 cell。範本每個測試站別只有一個首測，且首測的 node 順序就是線的順序，乘積與修正前逐位元相同，`testdata/template-run-lock.json` 的 digest 不變。驗證見 [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md) 的「Review round 1 fixes」。
