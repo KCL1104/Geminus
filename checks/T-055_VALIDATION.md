@@ -461,3 +461,11 @@ output 的部分固定為 104,448,000（USD 0.10）。count 達 window 時與修
 3. **count 是否計費**：文件沒有直接寫「免費」；本修正以不計費處理（沒有價格、不記錄 usage）。live 時在 Meta dashboard 確認；若會計費，count 也需要預留（目前的設計在預留之前呼叫它）。
 4. **FailedOver**：count 被拒時 metadata 沒有 `FailedOver`（錯誤本身帶 label）。需要的話另做。
 5. **D-121 的狀態**：維持 PROPOSED；(b) 帶圖片的部分是 H-037 的決定，其餘（5xx 算可能計費、Retry-After 的新規則等）仍待 owner。
+
+### R1.10 Commit（branch `t055-r1`，自 1425e3a，沒有 push）
+
+| Commit | 內容 |
+|---|---|
+| 4ac9a76 | 程式與測試：`Billable.Quote(ctx, …)`、呼叫的 deadline 包含 quote、typed 的 quote 錯誤；Meta 的 count（H-037）；L2；L1 與 L3 的測試；L4 的 record；L5 的 rule |
+| a9abd99 | ADR-030、D-121 (b)／(d)、D-122 (b) 的註、`planning/decisions.json`、AI_SPEC、ARCHITECTURE；本報告 §5、§9 與本節；evidence |
+| （本表的 commit） | 本表與最後一次 `spec-check-final.log` |
