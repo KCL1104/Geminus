@@ -18,6 +18,21 @@
   border-collapse: collapse;
 }
 
+/* A figure is never broken across lines. */
+.table data {
+  white-space: nowrap;
+}
+
+/* The metrics table's own scroll region (a phone): the table keeps a
+   readable width and the page itself never scrolls sideways. */
+.scroll {
+  overflow-x: auto;
+}
+
+.scroll > .table {
+  min-width: 600px;
+}
+
 .table caption {
   padding-top: var(--gm-space-md);
   caption-side: bottom;

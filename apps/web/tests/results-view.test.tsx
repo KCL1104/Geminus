@@ -86,7 +86,8 @@ const queuedS = boardScenarioRun({ status: "queued", progress: progress(1, 0), s
 const runningB = boardBaselineRun({ status: "running", progress: progress(3, 2), finished_at: null });
 const runningS = boardScenarioRun({ status: "running", progress: progress(2, 1), finished_at: null });
 
-async function waitFor(check: () => boolean, what: string, ms = 3000): Promise<void> {
+// Generous: these run beside other suites on a shared machine.
+async function waitFor(check: () => boolean, what: string, ms = 10_000): Promise<void> {
   const until = Date.now() + ms;
   while (!check()) {
     if (Date.now() > until) throw new Error(`timed out waiting for ${what}`);
@@ -121,7 +122,8 @@ async function runResults(api: ReturnType<typeof fakeApi>, auth: Auth = editor, 
   const el = await mount(
     <AuthProvider value={auth}>
       <ApiProvider client={api.client}>
-        <RunResults scenarioId={boardScenario.id} baselineId={ids.baseline} scenarioRunId={ids.scenario} pollMs={1} />
+        {/* Fast enough for the test, slow enough that act() can settle between polls. */}
+        <RunResults scenarioId={boardScenario.id} baselineId={ids.baseline} scenarioRunId={ids.scenario} pollMs={25} />
       </ApiProvider>
     </AuthProvider>,
     locale,

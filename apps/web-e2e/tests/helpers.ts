@@ -2,6 +2,9 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 
 export type Locale = "en" | "zh-Hant";
+
+/** The results view's review page (T-032, gallery only), one address per state. */
+export const resultsPreviews = ["/ui-gallery/results", "/ui-gallery/results?state=incomparable", "/ui-gallery/results?state=running", "/ui-gallery/results?state=failed"];
 export const locales: Locale[] = ["en", "zh-Hant"];
 
 /** The system colour schemes the app follows when the reader chose no theme (H-013). */
@@ -11,7 +14,13 @@ export type Scheme = (typeof schemes)[number];
 export const sheet = { light: "rgb(255, 255, 255)", dark: "rgb(23, 23, 23)" } as const;
 
 /** The routes there are; pages that need a session show their signed-out state. */
-export const routes = ["/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/ui-gallery/editor", "/auth/error?reason=expired"];
+export const routes = [
+  "/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/ui-gallery/editor", "/auth/error?reason=expired",
+  // T-032: a scenario and its runs' results (signed out), and the results view's review page in each state.
+  "/scenarios/scn_01M4YDQK00TA00000000000001",
+  "/scenarios/scn_01M4YDQK00TA00000000000001/results?baseline=sim_01M4YDQK00TA00000000000001&scenario=sim_01M4YDQK00TA00000000000002",
+  ...resultsPreviews,
+];
 
 /** Opens a route in a language, and in a remembered theme if one is given (else the system's). */
 export async function open(page: Page, path: string, locale: Locale, theme?: Scheme): Promise<void> {

@@ -85,10 +85,14 @@ export function ResultsView({ data }: { data: ResultsData }) {
           {t(`compare.warning.${w}`)}
         </Callout>
       ))}
-      <section aria-labelledby="metrics-heading" className={styles.section}>
+      <section className={styles.section}>
         <h2 id="metrics-heading">{t("compare.title")}</h2>
         {leadText && <p className={styles.summary}>{leadText}</p>}
-        <MetricsTable rows={rows} />
+        {/* On a phone the table keeps its figures whole and scrolls in its
+            own region, reachable from the keyboard; the page does not scroll sideways. */}
+        <div role="region" aria-labelledby="metrics-heading" tabIndex={0} className={styles.scroll}>
+          <MetricsTable rows={rows} />
+        </div>
       </section>
       <MareyChart
         ir={version.ir}

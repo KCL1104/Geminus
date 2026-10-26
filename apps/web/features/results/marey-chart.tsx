@@ -7,7 +7,7 @@
 // content as a table one click away (WCAG 1.1.1, H-027 progressive
 // disclosure). Nothing in it is interactive, so nothing in it takes focus.
 // The geometry is marey.ts's, for the width the chart actually has.
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ModelIR, TraceArtifact } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { ProblemView } from "../../app/_components/problem-view";
@@ -143,45 +143,61 @@ export function MareyChart({ ir, baseline, scenario }: { ir: ModelIR; baseline: 
 }
 
 function TraceTable({ rows, summaries }: { rows: string[]; summaries: Record<RunSide, StepSummary[] | null> }) {
-  const { t, number } = useI18n();
   const i18n = useI18n();
+  const { t, number } = i18n;
+  const id = useId();
   const sides = (["baseline", "scenario"] as const).filter((s) => summaries[s] !== null);
   const wait = (ticks: number | null) => (ticks === null ? t("marey.table.none") : <data value={String(ticks / 60_000)}>{formatValue(i18n, ticks / 60_000, "minute")}</data>);
+  // One row per step; each run's three columns under its name, so every
+  // cell has a row header and two column headers (WCAG 1.3.1). Like the
+  // metrics, it scrolls in its own region on a phone.
   return (
     <details className={styles.details}>
       <summary>{t("marey.table")}</summary>
-      <table className={styles.table}>
-        <caption>{t("marey.table.caption")}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t("marey.table.step")}</th>
-            <th scope="col">{t("runs.title")}</th>
-            <th scope="col">{t("marey.table.items")}</th>
-            <th scope="col">{t("marey.table.longest")}</th>
-            <th scope="col">{t("marey.table.atEnd")}</th>
-          </tr>
-        </thead>
-        {rows.map((name, r) => (
-          <tbody key={r}>
-            {sides.map((side, i) => {
-              const s = summaries[side]![r]!;
-              return (
-                <tr key={side}>
-                  {i === 0 && (
-                    <th scope="rowgroup" rowSpan={sides.length}>
-                      {name}
-                    </th>
-                  )}
-                  <td>{t(`runs.${side}`)}</td>
-                  <td>{number(s.items)}</td>
-                  <td>{wait(s.longestWait)}</td>
-                  <td>{number(s.waitingAtEnd)}</td>
-                </tr>
-              );
-            })}
+      <div role="region" aria-labelledby={`${id}-c`} tabIndex={0} className={styles.scroll}>
+        <table className={styles.table}>
+          <caption id={`${id}-c`}>{t("marey.table.caption")}</caption>
+          <thead>
+            <tr>
+              <th scope="col" rowSpan={2}>
+                {t("marey.table.step")}
+              </th>
+              {sides.map((side) => (
+                <th key={side} scope="colgroup" colSpan={3}>
+                  <LineKey side={side} />
+                  {t(`runs.${side}`)}
+                </th>
+              ))}
+            </tr>
+            <tr>
+              {sides.map((side) => (
+                <Fragment key={side}>
+                  <th scope="col">{t("marey.table.items")}</th>
+                  <th scope="col">{t("marey.table.longest")}</th>
+                  <th scope="col">{t("marey.table.atEnd")}</th>
+                </Fragment>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((name, r) => (
+              <tr key={r}>
+                <th scope="row">{name}</th>
+                {sides.map((side) => {
+                  const s = summaries[side]![r]!;
+                  return (
+                    <Fragment key={side}>
+                      <td>{number(s.items)}</td>
+                      <td>{wait(s.longestWait)}</td>
+                      <td>{number(s.waitingAtEnd)}</td>
+                    </Fragment>
+                  );
+                })}
+              </tr>
+            ))}
           </tbody>
-        ))}
-      </table>
+        </table>
+      </div>
     </details>
   );
 }
