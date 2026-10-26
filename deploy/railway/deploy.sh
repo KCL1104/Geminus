@@ -30,8 +30,10 @@
 # The owner fills in Railway's UI, never this script, and seals what is secret
 # (H-036): BFF_OIDC_CLIENT_SECRET (web), and only to turn live AI on, the same
 # AI_PROVIDER, AI_POLICY_APPROVAL, AI_MODEL and GEMINUS_AI_LIVE on the API and
-# the worker (the API holds no key: T-053 I5) and the worker's keys
-# (GEMINUS_ANTHROPIC_API_KEY_A and _B, or the Meta key GEMINUS_MUSE_API_KEY).
+# the worker, and for the photo path the same AI_VISION_PROVIDER,
+# AI_VISION_POLICY_APPROVAL and AI_VISION_MODEL on both (the API holds no
+# key: T-053 I5, D-124) and the worker's keys (GEMINUS_ANTHROPIC_API_KEY_A
+# and _B, or the Meta key GEMINUS_MUSE_API_KEY).
 # The CLI's variable listing returns unsealed values: the script drops the
 # owner's on receipt and names the unsealed secrets. Live AI stays off until
 # then (AI_PROVIDER=disabled).

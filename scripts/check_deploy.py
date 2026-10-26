@@ -23,8 +23,9 @@ without Docker (make spec-deploy, part of make spec-check):
   gives every variable each service requires, holds no secret value, keeps
   every AI key variable the API refuses to start with off the API (the list
   in internal/config/apiai.go) and the live adapters' keys off the web, gives
-  the API the worker's four AI settings and no other (T-053 I5), keeps the
-  database off the web, and never selects the fake provider or the
+  the API the worker's seven AI settings, declared alike (the proposals'
+  four, T-053 I5, and the photo path's three, D-124), and no other, keeps
+  the database off the web, and never selects the fake provider or the
   filesystem adapter;
 - docs/runbooks/deploy.md names every variable the code reads.
 
@@ -262,8 +263,9 @@ def railway(known: set) -> dict:
             fail(f"variables.json: {svc}: the fake provider and the filesystem adapter are for development and tests only")
         summary[svc] = {"variables": len(names), "secrets": sorted(n for n, e in spec["variables"].items() if e.get("secret"))}
     # T-053 I5: the API never holds an AI key (it refuses to start with one)
-    # and decides whether it accepts proposals from the worker's four AI
-    # settings, declared alike on both (the owner sets the same values).
+    # and decides whether it accepts proposals, and photos (D-124), from the
+    # worker's AI settings that are not secret, declared alike on both (the
+    # owner sets the same values).
     api, worker = v["services"]["api"], v["services"]["worker"]
     keys = api_key_variables()
     if keys - set(api["forbidden"]):
@@ -300,8 +302,10 @@ def railway(known: set) -> dict:
             "api_ai": {"settings": list(API_AI_SETTINGS), "refused_keys": sorted(keys)}}
 
 
-# The API's AI settings (internal/config.LoadAPIAI), the worker's too (T-053 I5).
-API_AI_SETTINGS = ("AI_PROVIDER", "AI_POLICY_APPROVAL", "AI_MODEL", "GEMINUS_AI_LIVE")
+# The API's AI settings (internal/config.LoadAPIAI), the worker's too: the
+# proposals' (T-053 I5) and the photo path's (the T-056 follow-up, D-124).
+API_AI_SETTINGS = ("AI_PROVIDER", "AI_POLICY_APPROVAL", "AI_MODEL", "GEMINUS_AI_LIVE",
+                   "AI_VISION_PROVIDER", "AI_VISION_POLICY_APPROVAL", "AI_VISION_MODEL")
 # The live adapters' keys (internal/config/ai.go), which only the worker holds.
 LIVE_KEYS = {"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY"}
 

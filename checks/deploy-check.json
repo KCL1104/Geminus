@@ -43,7 +43,7 @@
         ]
       },
       "api": {
-        "variables": 20,
+        "variables": 23,
         "secrets": [
           "GEMINUS_API_DB_PASSWORD",
           "OBJECT_STORAGE_S3_ACCESS_KEY_ID",
@@ -51,7 +51,7 @@
         ]
       },
       "worker": {
-        "variables": 19,
+        "variables": 22,
         "secrets": [
           "GEMINUS_ANTHROPIC_API_KEY_A",
           "GEMINUS_ANTHROPIC_API_KEY_B",
@@ -78,7 +78,10 @@
         "AI_PROVIDER",
         "AI_POLICY_APPROVAL",
         "AI_MODEL",
-        "GEMINUS_AI_LIVE"
+        "GEMINUS_AI_LIVE",
+        "AI_VISION_PROVIDER",
+        "AI_VISION_POLICY_APPROVAL",
+        "AI_VISION_MODEL"
       ],
       "refused_keys": [
         "AI_API_KEY",
