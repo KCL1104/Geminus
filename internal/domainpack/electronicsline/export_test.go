@@ -1,0 +1,7 @@
+package electronicsline
+
+// ApplyNames is applyNames for tests that need a names file the pack does not embed.
+var ApplyNames = applyNames
+
+// TemplateFrom is Template reading its files with read.
+var TemplateFrom = templateFrom

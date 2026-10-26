@@ -94,6 +94,12 @@ var sentences = map[string][]string{
 	validate.SetupInvalid:           {"the changeover settings are not valid"},
 	validate.StallRisk:              {"a resource that breaks down can be on shift while a partner in its bundle is not"},
 	validate.PrimitiveNotSupported:  gateSentences(),
+	// The electronics line pack's codes (ELECTRONICS_LINE §3.4, T-051);
+	// like DOMAIN_MISMATCH they are a pack's, so named here, not imported.
+	"STATION_RESOURCE_INVALID":   {"a station process needs exactly one resource of its station's role"},
+	"RETEST_RESOURCE_MISMATCH":   {"a retest needs the primary resource of its station's first test"},
+	"TEST_RESULT_NOT_IDENTIFIED": {"a test result decision has no single flow to a failure node, so the station's first-pass yield is unavailable"},
+	"DOMAIN_ATTRIBUTES_INVALID":  {"a station, pass or result_of attribute is not one the domain pack can use"},
 }
 
 // gateSentences are the primitive gate's own fixed messages, after a

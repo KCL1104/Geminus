@@ -15,13 +15,19 @@ import (
 // server's review of AI proposals (internal/ai/review, T-025) are the
 // contract's catalogue (common.schema.json#/$defs/ValidationCode), which the
 // UI localizes (REQ-022): a new code without an entry fails here. The
-// catalogue's only other code is the P0 pack's DOMAIN_MISMATCH, checked by
-// that pack's tests. The review's file is read, not imported: the kernel's
-// tests depend on no application layer.
+// catalogue's other codes are the domain packs': DOMAIN_MISMATCH, every
+// pack's, checked by the packs' tests, and the codes a pack declares in
+// its codes.go (the electronics line's, T-051). The review's and the
+// packs' files are read, not imported: the kernel's tests depend on no
+// application layer or concrete pack.
 func TestCodesMatchContract(t *testing.T) {
 	constant := regexp.MustCompile(`(?m)^\t\w+\s*=\s*"([A-Z][A-Z0-9_]+)"`)
 	var declared []string
-	for _, f := range []string{"codes.go", filepath.Join("..", "patch", "patch.go"), filepath.Join("..", "..", "ai", "review", "codes.go")} {
+	packs, err := filepath.Glob(filepath.Join("..", "..", "domainpack", "*", "codes.go"))
+	if err != nil || len(packs) == 0 {
+		t.Fatalf("no pack declares codes in codes.go: %v", err)
+	}
+	for _, f := range append([]string{"codes.go", filepath.Join("..", "patch", "patch.go"), filepath.Join("..", "..", "ai", "review", "codes.go")}, packs...) {
 		src, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatal(err)
@@ -43,7 +49,7 @@ func TestCodesMatchContract(t *testing.T) {
 	want := slices.DeleteFunc(slices.Clone(doc.Defs.ValidationCode.Enum), func(c string) bool { return c == "DOMAIN_MISMATCH" })
 	slices.Sort(declared)
 	slices.Sort(want)
-	if len(declared) < 22 || !slices.Equal(declared, want) {
+	if len(declared) < 26 || !slices.Equal(declared, want) {
 		t.Errorf("declared codes %v, contract %v", declared, want)
 	}
 }

@@ -1,0 +1,9 @@
+{
+  "note": "Regression lock of the electronics line template's run through des.Engine with the pack's metrics (T-051): the engine's own output for this config, taken after TestTemplateThroughTheEngine's checks passed. Not an independent oracle (SIMULATION_SPEC §9); a change needs review, never a silent update.",
+  "engine_version": "des-go-0.5.0",
+  "horizon_days": 28,
+  "warmup_days": 7,
+  "replications": 5,
+  "seed": 2026,
+  "result_digest": "sha256:f5fee84c5a62ecf9eb43222a6511a4b579c0f67ba83ad5bf379076883157f904"
+}
