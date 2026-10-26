@@ -13,8 +13,11 @@
 // deployment that sets AI_MODEL, both keys and GEMINUS_AI_LIVE=on gets a
 // valid Approval. The first live smoke (2026-10-26) was refused with 400
 // invalid_request_error for the projected schema's empty schemas (no
-// tokens billed); the fix (projection.go's encoded values) has been
-// exercised against a local test server only.
+// tokens billed). With the fix (projection.go's encoded values) the
+// coordinator's free count_tokens request (2026-10-26, no message created)
+// was answered 200 with input_tokens 1682: the API takes the projected
+// schema. Whether the model writes the JSON texts it asks for only the
+// live smoke and eval can show; neither has run since the fix.
 //
 // T-053: the backend costs money, so it is provider.Billable: only a
 // metered client (provider.NewMetered) calls it, it refuses a request
@@ -458,7 +461,8 @@ func errorType(e *sdk.Error) string {
 // answer takes the text of a complete message; thinking blocks are
 // dropped unread. The text's encoded places (the projection's JSON texts)
 // are decoded; one that does not decode makes the answer invalid_output,
-// with the place and a fixed message.
+// with the place and a fixed message, and so does an answer Decode cannot
+// decode at all (it fails closed: never the undecoded text).
 func answer(msg *sdk.Message, resp provider.Response, proj Projection) (provider.Response, error) {
 	if msg.Model != "" {
 		resp.Model = string(msg.Model)

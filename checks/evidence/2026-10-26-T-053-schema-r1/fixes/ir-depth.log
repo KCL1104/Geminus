@@ -1,0 +1,6 @@
+model-ir.schema.json: deepest level of its own structure: 7
+  open container /metadata at level 2: with MaxContainerDepth 8 it reaches level 9
+  open container /nodes/*/domain_attributes at level 4: with MaxContainerDepth 8 it reaches level 11
+deepest IR: 11 levels
+9 valid model-ir fixtures and golden models; the deepest: 7 levels (testdata/contracts/valid-line-flow-ir.json)
+exit 0

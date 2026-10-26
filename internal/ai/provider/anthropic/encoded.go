@@ -1,8 +1,11 @@
 package anthropic
 
 import (
+	"bytes"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
+	"io"
 	"reflect"
 	"strconv"
 
@@ -17,7 +20,21 @@ import (
 const MaxEncodedValueBytes = 64 << 10
 
 // MaxEncodedValueDepth bounds how deeply the JSON text in one encoded
-// string nests arrays and objects (review round 1, M1).
+// string nests arrays and objects ([] and {} are one level, as
+// validate.MaxContainerDepth counts them). Deeper is an invalid answer.
+//
+// Why 64 (review round 1, M1): a JSON Patch value is a part of a model IR,
+// and a valid IR is at most 11 levels deep: 7 for its own structure, and
+// a node's domain_attributes (an object at level 4) may itself be
+// validate.MaxContainerDepth = 8 levels deep (measured from
+// schemas/model-ir.schema.json: checks/evidence/2026-10-26-T-053-schema-r1/
+// fixes/ir-depth.log). A patch value sits below the root, so none is deeper
+// than 10. 64 leaves room for the IR to grow and is far below jsontext's
+// own limit of 10000. That limit is the point: Decode puts the value back
+// into the answer (at /changes/i/value, three levels down) and re-encodes
+// it, and before the bound a JSON text valid on its own at 9998 levels was
+// deeper than the encoder takes once placed there. With the bound the
+// rewritten proposal answer is at most 3 + 64 levels deep.
 const MaxEncodedValueDepth = 64
 
 // maxIssues bounds the issues of one answer, as provider.Client does.
@@ -38,16 +55,26 @@ var asWritten = jsontext.PreserveRawStrings(true)
 // schema. The places are matched by their path and the const members of
 // the alternatives on the way, never by what a string looks like.
 //
-// An answer without an encoded place that applies comes back byte for
-// byte; so does one that is not a single strict JSON document, which the
-// client's check refuses. At an encoded place, a value that is not a
-// string, or a string that is not exactly one JSON text (strict, at most
-// MaxEncodedValueBytes, nothing but white space after it), makes the
-// answer invalid: Decode returns no answer and an issue per place, with
-// the place's JSON Pointer and a fixed message, never the text.
+// A strict JSON answer without an encoded place that applies comes back
+// byte for byte. At an encoded place, a value that is not a string, or a
+// string that is not exactly one JSON text (strict, at most
+// MaxEncodedValueBytes, nested at most MaxEncodedValueDepth levels,
+// nothing but white space after it), makes the answer invalid: Decode
+// returns no answer and an issue per place (at most maxIssues), with the
+// place's JSON Pointer and a fixed message, never the text.
+//
+// Decode fails closed (review round 1, M1). An answer that is not one
+// strict JSON document, and one it cannot rewrite, give no answer and an
+// issue at the root (after the issues already found at the places), never
+// the undecoded text: the full schema could take that text as it is, since
+// a patch value accepts any JSON value, a string the model did not encode
+// included.
 func (p Projection) Decode(text []byte) ([]byte, []model.ValidationIssue) {
-	if len(p.Encoded) == 0 || !jsontext.Value(text).IsValid(strict) {
-		return text, nil
+	if len(p.Encoded) == 0 {
+		return text, nil // nothing to decode: the client checks the answer
+	}
+	if !jsontext.Value(text).IsValid(strict) {
+		return nil, []model.ValidationIssue{model.NewIssue(provider.OutputInvalid, "", "the answer is not one strict JSON document", model.SeverityError)}
 	}
 	doc := jsontext.Value(text)
 	changed := false
@@ -55,7 +82,10 @@ func (p Projection) Decode(text []byte) ([]byte, []model.ValidationIssue) {
 	for _, loc := range p.Encoded {
 		out, ch, err := rewrite(doc, loc.Steps, "", &issues)
 		if err != nil {
-			return text, nil // cannot happen for a valid document; the client's check decides
+			// With MaxEncodedValueDepth no output schema's place reaches
+			// this; whatever the cause, nothing undecoded goes on.
+			cannot := model.NewIssue(provider.OutputInvalid, "", "the answer cannot be decoded", model.SeverityError)
+			return nil, append(issues[:min(len(issues), maxIssues-1)], cannot)
 		}
 		if ch {
 			doc, changed = out, true
@@ -153,5 +183,23 @@ func decodeText(v jsontext.Value) (jsontext.Value, string) {
 	if err := inner.Compact(); err != nil {
 		return nil, "the string is not exactly one JSON text"
 	}
+	if deeper(inner, MaxEncodedValueDepth) {
+		return nil, "the JSON text is nested deeper than " + strconv.Itoa(MaxEncodedValueDepth) + " levels"
+	}
 	return inner, ""
+}
+
+// deeper reports whether the valid JSON text v nests arrays and objects
+// more than limit levels. A read error other than the end, which cannot
+// happen for a valid text, counts as deeper: fail closed.
+func deeper(v jsontext.Value, limit int) bool {
+	dec := jsontext.NewDecoder(bytes.NewReader(v), strict)
+	for {
+		if _, err := dec.ReadToken(); err != nil {
+			return !errors.Is(err, io.EOF)
+		}
+		if dec.StackDepth() > limit {
+			return true
+		}
+	}
 }

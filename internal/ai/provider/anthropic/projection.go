@@ -33,14 +33,17 @@ import (
 // supported", the live smoke's count_tokens diagnosis), and an object
 // schema must be closed, so an open one cannot be spelled out either. The
 // adapter decodes exactly those places (Decode: strict, at most
-// MaxEncodedValueBytes, no trailing data) before the answer goes to
-// provider.Client and its full-schema check, and an answer that does not
-// decode is invalid_output. The places are found structurally: by their
-// path of members and array items, and by the const member that tells the
-// alternatives of each oneOf or anyOf on the way apart (status, op), never
-// by what a string looks like. An open value whose place no const member
-// tells apart, and a schema left with no constraint the subset takes, are
-// refused, never sent as an empty schema.
+// MaxEncodedValueBytes and MaxEncodedValueDepth levels, no trailing data)
+// before the answer goes to provider.Client and its full-schema check, and
+// an answer that does not decode is invalid_output; Decode fails closed, so
+// an answer it cannot decode at all is invalid_output too, never passed on
+// undecoded (review round 1, M1). The coordinator's free count_tokens
+// request with this projection was answered 200 (2026-10-26). The places
+// are found structurally: by their path of members and array items, and by
+// the const member that tells the alternatives of each oneOf or anyOf on
+// the way apart (status, op), never by what a string looks like. An open
+// value whose place no const member tells apart, and a schema left with no
+// constraint the subset takes, are refused, never sent as an empty schema.
 type Projection struct {
 	Schema map[string]any
 	// Dropped lists the removed keywords as "file#/pointer", sorted.
