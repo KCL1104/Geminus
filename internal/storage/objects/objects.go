@@ -16,10 +16,11 @@
 //     failed commit, ARCHITECTURE §8): it is a separate interface no
 //     request path holds.
 //
-// The only adapter is FS, for development and tests. A production adapter
-// (cloud, bucket, region, encryption keys, retention) waits for the owner's
-// cloud choice and its ADR; until then no real customer data is stored
-// (SECURITY §6).
+// Two adapters: FS, for development and tests only, and S3 (T-039,
+// ADR-029), a private S3-compatible bucket signed with SigV4, for the
+// hackathon deployment's Railway bucket (H-030; synthetic data only). Its
+// encryption keys, retention and residency are the bucket provider's and
+// still open, so no real customer data is stored (SECURITY §6).
 package objects
 
 import (

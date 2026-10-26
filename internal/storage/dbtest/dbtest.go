@@ -300,3 +300,59 @@ func NewImport(t testing.TB, admin *pgxpool.Pool, o Org) string {
 	}
 	return imp
 }
+
+// MigratorLogin is a migration login as docs/runbooks/deploy.md makes one
+// (T-039): a plain login in twin_owner and nothing else (no password: the
+// disposable clusters use trust authentication).
+const MigratorLogin = "dt_test_migrator_login"
+
+// EmptyDatabase creates an empty dt_test_* database in the cluster of the
+// disposable database (which has the twin roles; Admin creates the runtime
+// logins), creates MigratorLogin, grants twin_owner CREATE on the new
+// database as the runbook does, and drops the database when the test ends.
+// urlFor is the new database's URL as login ("" for the provisioning
+// login).
+func EmptyDatabase(t testing.TB) (urlFor func(login string) string) {
+	t.Helper()
+	admin := Admin(t)
+	ctx := context.Background()
+	if _, err := admin.Exec(ctx, `DO $$ BEGIN
+		IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '`+MigratorLogin+`') THEN
+			CREATE ROLE `+MigratorLogin+` LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB IN ROLE twin_owner;
+		END IF;
+		EXCEPTION WHEN duplicate_object OR unique_violation THEN NULL;
+		END $$`); err != nil {
+		t.Fatal(err)
+	}
+	db := "dt_test_mig_" + strings.ToLower(strings.TrimPrefix(ids.New("job"), "job_"))
+	if _, err := admin.Exec(ctx, `CREATE DATABASE `+db); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = admin.Exec(context.Background(), `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, db)
+		if _, err := admin.Exec(context.Background(), `DROP DATABASE IF EXISTS `+db); err != nil {
+			t.Errorf("dropping %s: %v", db, err)
+		}
+	})
+	base, err := url.Parse(AdminURL(t))
+	if err != nil {
+		t.Fatal("invalid GEMINUS_TEST_DATABASE_URL")
+	}
+	urlFor = func(login string) string {
+		u := *base
+		u.Path = "/" + db
+		if login != "" {
+			u.User = url.User(login)
+		}
+		return u.String()
+	}
+	c, err := pgx.Connect(ctx, urlFor(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close(ctx)
+	if _, err := c.Exec(ctx, `GRANT CREATE ON DATABASE `+db+` TO twin_owner`); err != nil {
+		t.Fatal(err)
+	}
+	return urlFor
+}

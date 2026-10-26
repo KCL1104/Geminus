@@ -11,6 +11,9 @@ import (
 	"errors"
 	"net/url"
 	"path/filepath"
+
+	"github.com/kcl1104/geminus/internal/secret"
+	"github.com/kcl1104/geminus/internal/storage/objects"
 )
 
 // AIProvider selects the LLM provider adapter.
@@ -52,13 +55,34 @@ const (
 	// test and is refused for production (and when APP_ENV is unset, so a
 	// deployment that forgot it fails closed).
 	ObjectStorageFilesystem ObjectStorageProvider = "filesystem"
+	// ObjectStorageS3 is a private S3-compatible bucket (T-039, ADR-029):
+	// the deployment's object storage, in any APP_ENV.
+	ObjectStorageS3 ObjectStorageProvider = "s3"
 )
 
-// ObjectStorage is where private artifacts and uploads are kept. A
-// production adapter waits for the owner's cloud choice (D-044).
+// ObjectStorage is where private artifacts and uploads are kept (D-044).
 type ObjectStorage struct {
 	Provider ObjectStorageProvider
 	Root     string // filesystem: an absolute directory
+	S3       S3Storage
+}
+
+// S3Storage is the bucket of OBJECT_STORAGE_PROVIDER=s3: the
+// OBJECT_STORAGE_S3_* variables (internal/storage/objects.S3Config checks
+// the same rules). The secret prints as [redacted].
+type S3Storage struct {
+	Endpoint        string // OBJECT_STORAGE_S3_ENDPOINT: an https origin
+	Bucket          string // OBJECT_STORAGE_S3_BUCKET
+	Region          string // OBJECT_STORAGE_S3_REGION ("auto" for Railway's buckets)
+	AccessKeyID     string // OBJECT_STORAGE_S3_ACCESS_KEY_ID
+	SecretAccessKey secret.Secret
+	PathStyle       bool // OBJECT_STORAGE_S3_URL_STYLE=path (default virtual-hosted)
+}
+
+// s3Vars are the bucket's variables, in the order problems are reported.
+var s3Vars = []string{
+	"OBJECT_STORAGE_S3_ENDPOINT", "OBJECT_STORAGE_S3_BUCKET", "OBJECT_STORAGE_S3_REGION",
+	"OBJECT_STORAGE_S3_ACCESS_KEY_ID", "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY", "OBJECT_STORAGE_S3_URL_STYLE",
 }
 
 // Error codes returned in Error.Code.
@@ -106,7 +130,24 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 
 	cfg.ObjectStorage.Provider = ObjectStorageDisabled
-	switch p := ObjectStorageProvider(getenv("OBJECT_STORAGE_PROVIDER")); p {
+	p := ObjectStorageProvider(getenv("OBJECT_STORAGE_PROVIDER"))
+	if p != ObjectStorageS3 {
+		// A bucket's variables without its provider are a half-made
+		// configuration (T-039): refused, never ignored.
+		for _, name := range s3Vars {
+			if getenv(name) != "" {
+				errs = append(errs, &Error{name, CodeInvalid, "must be empty unless OBJECT_STORAGE_PROVIDER is s3"})
+			}
+		}
+	}
+	switch p {
+	case ObjectStorageS3:
+		s3, s3errs := loadS3(getenv)
+		cfg.ObjectStorage = ObjectStorage{Provider: p, S3: s3}
+		errs = append(errs, s3errs...)
+		if getenv("OBJECT_STORAGE_ROOT") != "" {
+			errs = append(errs, &Error{"OBJECT_STORAGE_ROOT", CodeInvalid, "must be empty with the s3 provider"})
+		}
 	case "", ObjectStorageDisabled:
 		if getenv("OBJECT_STORAGE_ROOT") != "" {
 			errs = append(errs, &Error{"OBJECT_STORAGE_ROOT", CodeInvalid, "must be empty while object storage is disabled"})
@@ -124,13 +165,47 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 	default:
 		errs = append(errs, &Error{"OBJECT_STORAGE_PROVIDER", CodeNotImplemented,
-			`the production object storage provider waits for the owner's cloud choice (D-044); allowed: "disabled", "filesystem"`})
+			`no such object storage adapter (D-044); allowed: "disabled", "filesystem", "s3"`})
 	}
 
 	if len(errs) > 0 {
 		return Config{}, errors.Join(errs...)
 	}
 	return cfg, nil
+}
+
+// loadS3 reads the bucket of OBJECT_STORAGE_PROVIDER=s3 with the adapter's
+// rules (internal/storage/objects); messages name the variable only.
+func loadS3(getenv func(string) string) (S3Storage, []error) {
+	var errs []error
+	s := S3Storage{Endpoint: getenv("OBJECT_STORAGE_S3_ENDPOINT"), Bucket: getenv("OBJECT_STORAGE_S3_BUCKET"),
+		Region: getenv("OBJECT_STORAGE_S3_REGION"), AccessKeyID: getenv("OBJECT_STORAGE_S3_ACCESS_KEY_ID"),
+		SecretAccessKey: secret.Secret(getenv("OBJECT_STORAGE_S3_SECRET_ACCESS_KEY"))}
+	check := func(name, value string, ok bool, why string) {
+		switch {
+		case value == "":
+			errs = append(errs, &Error{name, CodeRequired, "the s3 object storage needs it"})
+		case !ok:
+			errs = append(errs, &Error{name, CodeInvalid, why})
+		}
+	}
+	check("OBJECT_STORAGE_S3_ENDPOINT", s.Endpoint, objects.CheckS3Endpoint(s.Endpoint) == nil,
+		"must be an https origin (scheme and host, no path, credentials, query or fragment); plain http only on loopback")
+	check("OBJECT_STORAGE_S3_BUCKET", s.Bucket, objects.ValidS3Bucket(s.Bucket),
+		"must be the bucket's S3 name: 3-63 lowercase letters, digits and '-', starting and ending with a letter or digit")
+	check("OBJECT_STORAGE_S3_REGION", s.Region, objects.ValidS3Region(s.Region), "must be lowercase letters, digits and '-'")
+	check("OBJECT_STORAGE_S3_ACCESS_KEY_ID", s.AccessKeyID, cleanKey(s.AccessKeyID) && len(s.AccessKeyID) <= 256,
+		"has white space around it or a control character in it, or is longer than 256 bytes; set it exactly")
+	check("OBJECT_STORAGE_S3_SECRET_ACCESS_KEY", s.SecretAccessKey.Reveal(), cleanKey(s.SecretAccessKey.Reveal()) && len(s.SecretAccessKey.Reveal()) <= 256,
+		"has white space around it or a control character in it, or is longer than 256 bytes; set it exactly")
+	switch getenv("OBJECT_STORAGE_S3_URL_STYLE") {
+	case "", "virtual-hosted":
+	case "path":
+		s.PathStyle = true
+	default:
+		errs = append(errs, &Error{"OBJECT_STORAGE_S3_URL_STYLE", CodeInvalid, `allowed: "virtual-hosted" (the default) or "path"`})
+	}
+	return s, errs
 }
 
 func checkDatabaseURL(raw string) error {

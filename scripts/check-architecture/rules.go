@@ -247,6 +247,15 @@ var rules = []rule{
 		forbid:  []string{"./internal/aievals/..."},
 	},
 	{
+		// T-039: migrations run as their own step with their own login;
+		// the API and the worker (runtime logins) never link the runner.
+		name:    "migrations-only-in-their-command",
+		why:     "internal/storage/migrations applies migrations/ as the migration login; only cmd/migrate links it (T-039)",
+		applies: []string{"./..."},
+		except:  []string{"./internal/storage/migrations/...", "./cmd/migrate/..."},
+		forbid:  []string{"./internal/storage/migrations/..."},
+	},
+	{
 		name:    "db-only-in-storage",
 		why:     "SQL handles live in storage and the tenant transaction scope; other packages go through them",
 		applies: []string{"./..."},

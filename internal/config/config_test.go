@@ -85,7 +85,7 @@ func TestLoadRejects(t *testing.T) {
 		{"unknown provider", map[string]string{"DATABASE_URL": validDB, "AI_PROVIDER": "openai"}, []string{"AI_PROVIDER:invalid"}},
 		{"provider is case-sensitive", map[string]string{"DATABASE_URL": validDB, "AI_PROVIDER": "Disabled"}, []string{"AI_PROVIDER:invalid"}},
 		{"key while disabled", map[string]string{"DATABASE_URL": validDB, "AI_API_KEY": "k"}, []string{"AI_API_KEY:invalid"}},
-		{"object storage TBD", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "s3"},
+		{"an unknown object storage provider", map[string]string{"DATABASE_URL": validDB, "OBJECT_STORAGE_PROVIDER": "gcs"},
 			[]string{"OBJECT_STORAGE_PROVIDER:not_implemented"}},
 		// D-044: the filesystem adapter only for development and tests; an
 		// unset APP_ENV fails closed.

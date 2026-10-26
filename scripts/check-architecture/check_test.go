@@ -320,6 +320,13 @@ func TestProbesAreCaught(t *testing.T) {
 			"./cmd/worker", "./internal/aievals", false},
 		{"a-service-links-the-live-eval", "internal/models/zz_probe.go", module + "/internal/aievals", "live-eval-only-in-its-command",
 			"./internal/models", "./internal/aievals", false},
+		// T-039: the migration runner only in its command.
+		{"api-links-the-migrations", "cmd/api/zz_probe.go", module + "/internal/storage/migrations", "migrations-only-in-their-command",
+			"./cmd/api", "./internal/storage/migrations", false},
+		{"the-worker-links-the-migrations", "cmd/worker/zz_probe.go", module + "/internal/storage/migrations", "migrations-only-in-their-command",
+			"./cmd/worker", "./internal/storage/migrations", false},
+		{"storage-links-the-migrations", "internal/storage/jobs/zz_probe.go", module + "/internal/storage/migrations", "migrations-only-in-their-command",
+			"./internal/storage/jobs", "./internal/storage/migrations", false},
 	}
 	for _, p := range probes {
 		t.Run(p.name, func(t *testing.T) {

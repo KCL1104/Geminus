@@ -38,6 +38,11 @@ const (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "-probe" {
+		// The container image's health check (T-039): the image has no
+		// shell or HTTP client of its own.
+		os.Exit(probe(os.Getenv))
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	os.Exit(run(ctx, os.Getenv, os.Stderr, nil))
@@ -69,13 +74,13 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		return exitConfig
 	}
 	opts := []api.Option{api.WithAI(aiAvailability(cfg))}
-	if cfg.ObjectStorage.Provider == config.ObjectStorageFilesystem {
-		fs, err := objects.NewFS(cfg.ObjectStorage.Root, cfg.Env)
-		if err != nil {
-			log.Error("invalid configuration", "error", "OBJECT_STORAGE_ROOT cannot be used: "+err.Error())
-			return exitConfig
-		}
-		opts = append(opts, api.WithObjects(fs))
+	store, err := objectStore(cfg)
+	if err != nil {
+		log.Error("invalid configuration", "error", "the object storage cannot be used: "+err.Error())
+		return exitConfig
+	}
+	if store != nil {
+		opts = append(opts, api.WithObjects(store))
 	}
 	poolCfg, err := poolConfig(cfg.DatabaseURL)
 	if err != nil {
@@ -111,7 +116,9 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("cannot listen", "addr", srvCfg.Addr, "error", err.Error())
 		return exitServe
 	}
-	srv := newServer(httpapi.AccessLog(log, handler), log)
+	// The platform's probes (T-039) sit outside the access log: a platform
+	// polls them, and they carry no request of a user.
+	srv := newServer(withProbes(httpapi.AccessLog(log, handler), pool.Ping), log)
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
 	log.Info("serving", "addr", ln.Addr().String())
@@ -149,6 +156,94 @@ func aiAvailability(cfg config.Config) proposals.Availability {
 		return proposals.PolicyNotApproved
 	}
 	return proposals.NotConfigured
+}
+
+// objectStore opens the configured object storage (D-044): nil when it is
+// disabled; the filesystem adapter only for development and tests; the
+// S3-compatible bucket of a deployment (T-039).
+func objectStore(cfg config.Config) (objects.Store, error) {
+	switch o := cfg.ObjectStorage; o.Provider {
+	case config.ObjectStorageFilesystem:
+		fs, err := objects.NewFS(o.Root, cfg.Env)
+		if err != nil {
+			return nil, err
+		}
+		return fs, nil
+	case config.ObjectStorageS3:
+		s3, err := objects.NewS3(objects.S3Config{Endpoint: o.S3.Endpoint, Bucket: o.S3.Bucket, Region: o.S3.Region,
+			AccessKeyID: o.S3.AccessKeyID, SecretAccessKey: o.S3.SecretAccessKey, PathStyle: o.S3.PathStyle})
+		if err != nil {
+			return nil, err
+		}
+		return s3, nil
+	}
+	return nil, nil
+}
+
+// probe asks this machine's API whether it is ready (GET /readyz on
+// API_LISTEN_ADDR's port, loopback unless the address names a host),
+// within 3 s: 0 when it answers 200, 1 otherwise. It prints nothing.
+func probe(getenv func(string) string) int {
+	srv, err := config.LoadServer(getenv)
+	if err != nil {
+		return 1
+	}
+	host, port, err := net.SplitHostPort(srv.Addr)
+	if err != nil {
+		return 1
+	}
+	if ip := net.ParseIP(host); host == "" || ip != nil && ip.IsUnspecified() {
+		host = "127.0.0.1"
+	}
+	client := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	res, err := client.Get("http://" + net.JoinHostPort(host, port) + "/readyz")
+	if err != nil {
+		return 1
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return 1
+	}
+	return 0
+}
+
+// readyTimeout bounds the readiness probe's database check.
+const readyTimeout = 2 * time.Second
+
+// withProbes serves the platform's probes (T-039) and passes every other
+// request to next: GET /healthz is 200 while the process serves (liveness);
+// GET /readyz is 200 while ready answers within readyTimeout and 503
+// otherwise (readiness: the API's database). Neither needs a token; they
+// say only "ok", "ready" or "unavailable", never why. They are not /v1
+// operations (the contract's operations run in an organization), so they
+// are not in openapi/openapi.yaml.
+func withProbes(next http.Handler, ready func(context.Context) error) http.Handler {
+	answer := func(w http.ResponseWriter, status int, body string) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(status)
+		_, _ = io.WriteString(w, body)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Only these two exact GETs are probes; everything else (another
+		// method or path) is the API's, as before.
+		switch {
+		case r.Method != http.MethodGet:
+			next.ServeHTTP(w, r)
+		case r.URL.Path == "/healthz":
+			answer(w, http.StatusOK, `{"status":"ok"}`)
+		case r.URL.Path == "/readyz":
+			ctx, cancel := context.WithTimeout(r.Context(), readyTimeout)
+			defer cancel()
+			if err := ready(ctx); err != nil {
+				answer(w, http.StatusServiceUnavailable, `{"status":"unavailable"}`)
+				return
+			}
+			answer(w, http.StatusOK, `{"status":"ready"}`)
+		default:
+			next.ServeHTTP(w, r)
+		}
+	})
 }
 
 // flush flushes and stops the telemetry, within telemetryGrace.

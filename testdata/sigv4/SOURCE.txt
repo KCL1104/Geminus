@@ -1,0 +1,68 @@
+AWS Signature Version 4 test suite (aws4_testsuite), as mirrored in botocore
+(Apache License 2.0, see docs/THIRD_PARTY_NOTICES.md). Fetched 2026-10-26 from
+https://raw.githubusercontent.com/boto/botocore/develop/tests/unit/auth/aws4_testsuite/<name>/<name>.<ext>
+for internal/storage/objects/sigv4_test.go (T-039). Files are unmodified.
+Credentials of the suite: AKIDEXAMPLE / wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY,
+region us-east-1, service "service" (published example values, not secrets).
+SHA-256 of each file:
+
+2702900729aa057cd46545da188dc8a44c035795509b57ed09b17068527208c1  get-header-key-duplicate/get-header-key-duplicate.authz
+dc7f04a3abfde8d472b0ab1a418b741b7c67174dad1551b4117b15527fbe966c  get-header-key-duplicate/get-header-key-duplicate.creq
+36ef759ae0182931c8b543263dd56259a3d45f5be1d28bd3fbde0bb028693727  get-header-key-duplicate/get-header-key-duplicate.req
+c6242de698f8b40fc6d4a849e41e8d5662aff6c1a8f411575f522ed53c45c2c1  get-header-key-duplicate/get-header-key-duplicate.sts
+c462a3a2d431097d82a8d79f33377d573b44f6e1cd6f971aab63ca9f407df9a8  get-header-value-multiline/get-header-value-multiline.authz
+e99419459a677bc11de234014be3c4e72c1ea5b454ceb58b613061f5d7a162e8  get-header-value-multiline/get-header-value-multiline.creq
+fae477dd1189a08df405404cd0b79a52ea11017e9736358ca379272cf77d4362  get-header-value-multiline/get-header-value-multiline.req
+9ffef6b6145321aa60b195a54e16d56e57d249e97867372818b6be0c43eb2fc1  get-header-value-multiline/get-header-value-multiline.sts
+4fe5a63189af9a819464b28857b43bd2feeb85aa3115b6be2cb75316f05acb2a  get-header-value-trim/get-header-value-trim.authz
+a726db9b0df21c14f559d0a978e563112acb1b9e05476f0a6a1c7d68f28605c7  get-header-value-trim/get-header-value-trim.creq
+83f5b26f5caf8b91f998228789091b4ddf62a1bdbe7e78c50c513c8c727a29c2  get-header-value-trim/get-header-value-trim.req
+0108d35bd09f7f117e2101d06677ebccd51df2015fdd7284edc8ca49afab994b  get-header-value-trim/get-header-value-trim.sts
+f9d9f0d99aece8847b2a342dd41b6ffc166243ff84d9bf25f9739d5ababef04b  get-unreserved/get-unreserved.authz
+6a968768eefaa713e2a6b16b589a8ea192661f098f37349f4e2c0082757446f9  get-unreserved/get-unreserved.creq
+b4b9262cd09f60ffbf47781a3b908007b4e198c62e3b9289a0639c8c0fa60f6b  get-unreserved/get-unreserved.req
+5aa8c0aeac75b71539d7554e880d53c6ea412ddc36543183f1672e7ad8a14dbe  get-unreserved/get-unreserved.sts
+dbbd8d99863de9b7960a646a564c6ab0a3f26e0eb2e3b82633505d449f3c6a6b  get-vanilla-empty-query-key/get-vanilla-empty-query-key.authz
+1e24db194ed7d0eec2de28d7369675a243488e08526e8c1c73571282f7c517ab  get-vanilla-empty-query-key/get-vanilla-empty-query-key.creq
+7f7dc8a867ed66cbf7f53f3b1cf58570e22211d43cfd3239391263e48f61f40f  get-vanilla-empty-query-key/get-vanilla-empty-query-key.req
+793f582392d7ebc0e329de45693ab2679c4b036a1637fd09816030f4619a235a  get-vanilla-empty-query-key/get-vanilla-empty-query-key.sts
+fe6f49f1d92951d185f6b66cd76cf18de51dbab547163954c40b3efe795fd555  get-vanilla-query-order-key-case/get-vanilla-query-order-key-case.authz
+816cd5b414d056048ba4f7c5386d6e0533120fb1fcfa93762cf0fc39e2cf19e0  get-vanilla-query-order-key-case/get-vanilla-query-order-key-case.creq
+64d4b86be62c3d78f6ba37ef1bc9ab89ba1e3b621ebc94dba3e7a178398c3703  get-vanilla-query-order-key-case/get-vanilla-query-order-key-case.req
+003cbc3b1170b64f9cb91b6f5d8bc34c8880f68aa7aaccda1c8c89784685d75b  get-vanilla-query-order-key-case/get-vanilla-query-order-key-case.sts
+2a2126215831df4305140ec9b81e62fe490b21481bc5316099db2fb9c776ffe6  get-vanilla-query-unreserved/get-vanilla-query-unreserved.authz
+c30d4703d9f799439be92736156d47ccfb2d879ddf56f5befa6d1d6aab979177  get-vanilla-query-unreserved/get-vanilla-query-unreserved.creq
+02f9dd4d04d90b3d7aa78c2ca2d54f1cabaca48a6572010cbf9317001f99265d  get-vanilla-query-unreserved/get-vanilla-query-unreserved.req
+1e07a253b77c390af5524f8703b469939d1022a98e97de879f4a2ed14812f24c  get-vanilla-query-unreserved/get-vanilla-query-unreserved.sts
+ac00b2338dafc370cb18f2cd25477a28f41c4bbba4696ced42fdf078c6e139f5  get-vanilla-query/get-vanilla-query.authz
+bb579772317eb040ac9ed261061d46c1f17a8133879d6129b6e1c25292927e63  get-vanilla-query/get-vanilla-query.creq
+509955df496ae2f4fdc25af95ccf5406099e4a2556523b7ed80f4fab21ac1869  get-vanilla-query/get-vanilla-query.req
+9fea9fcbf5a67a7393fb14fd3c1b6e80d4f55dbbddad4302bb6905c0decd5570  get-vanilla-query/get-vanilla-query.sts
+38bb2c688ceb4229c559a76d34d3f4279b2203d25528b46b582dc827f56bde04  get-vanilla-utf8-query/get-vanilla-utf8-query.authz
+eb30c5bed55734080471a834cc727ae56beb50e5f39d1bff6d0d38cb192a7073  get-vanilla-utf8-query/get-vanilla-utf8-query.creq
+38f37f70a65efd68242eddcac8f2deb9f25c8fb0a20cea6ff50059c536a6f379  get-vanilla-utf8-query/get-vanilla-utf8-query.req
+df36326ee12b27c17280905db80c552f94e9f4869ca845de5f7aba1004513f73  get-vanilla-utf8-query/get-vanilla-utf8-query.sts
+ac00b2338dafc370cb18f2cd25477a28f41c4bbba4696ced42fdf078c6e139f5  get-vanilla/get-vanilla.authz
+bb579772317eb040ac9ed261061d46c1f17a8133879d6129b6e1c25292927e63  get-vanilla/get-vanilla.creq
+509955df496ae2f4fdc25af95ccf5406099e4a2556523b7ed80f4fab21ac1869  get-vanilla/get-vanilla.req
+9fea9fcbf5a67a7393fb14fd3c1b6e80d4f55dbbddad4302bb6905c0decd5570  get-vanilla/get-vanilla.sts
+7a43256234f30d900cee9641b2064d731d5e2be4c310a894637713dd7c6df535  post-header-key-case/post-header-key-case.authz
+553f88c9e4d10fc9e109e2aeb65f030801b70c2f6468faca261d401ae622fc87  post-header-key-case/post-header-key-case.creq
+f6602fd96bc24fe964d47550456e8e117ccade2d639e16b14507b19e2c48aca6  post-header-key-case/post-header-key-case.req
+73fd75fb7e71e1e9be6b5982cfe16f79f2a2ab9c33518a12183b481f28d25206  post-header-key-case/post-header-key-case.sts
+aa30c51c6944572247f49cd0fddf9fb32286258921d5e8dd32b18d3217741a4c  post-header-value-case/post-header-value-case.authz
+d51ced243e649e3de6ef63afbbdcbca03131a21a7103a1583706a64618606a93  post-header-value-case/post-header-value-case.creq
+65d3f084e05d9d7a7ec91778c0b8f808f063a53fff08685f86fe1851f7773b8d  post-header-value-case/post-header-value-case.req
+c574383bb4efd4f125554c6bfa24f89e0eb655b09b2d72d1ddfd9728c7f2a243  post-header-value-case/post-header-value-case.sts
+eba2330aede9b06a9894156fb4b917ae07b2cf638ecd16a80a5e6569eecf2eed  post-vanilla-query/post-vanilla-query.authz
+9d659678c1756bb3113e2ce898845a0a79dbbc57b740555917687f1b3340fbbd  post-vanilla-query/post-vanilla-query.creq
+a2ee016974ea1928a038472cc70588b54014dbb983590b96611ba7e47b8e6af0  post-vanilla-query/post-vanilla-query.req
+13275c2dab349dbf6475d0edf1566e296001bb62ba7a9d9d9128d7ca1b945190  post-vanilla-query/post-vanilla-query.sts
+7a43256234f30d900cee9641b2064d731d5e2be4c310a894637713dd7c6df535  post-vanilla/post-vanilla.authz
+553f88c9e4d10fc9e109e2aeb65f030801b70c2f6468faca261d401ae622fc87  post-vanilla/post-vanilla.creq
+f6602fd96bc24fe964d47550456e8e117ccade2d639e16b14507b19e2c48aca6  post-vanilla/post-vanilla.req
+73fd75fb7e71e1e9be6b5982cfe16f79f2a2ab9c33518a12183b481f28d25206  post-vanilla/post-vanilla.sts
+29b6ae9c5c23974d525e67e4687d560328a25d762cc95637ed41366f5944016a  post-x-www-form-urlencoded/post-x-www-form-urlencoded.authz
+42a5e5bb34198acb3e84da4f085bb7927f2bc277ca766e6d19c73c2154021281  post-x-www-form-urlencoded/post-x-www-form-urlencoded.creq
+3168a2c3b23e8d012052896debad562dc46676e8881fb6b5d4b36fd9d97e8fba  post-x-www-form-urlencoded/post-x-www-form-urlencoded.req
+fedb5ec5dd53c464911b1336547143cbedcd85977740bd63b2a622489f5fc246  post-x-www-form-urlencoded/post-x-www-form-urlencoded.sts

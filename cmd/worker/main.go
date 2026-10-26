@@ -205,16 +205,25 @@ func aiClient(ai config.AI, spendRun aispend.Runner, actor string) (*provider.Cl
 }
 
 // objectStore opens the configured object storage (D-044): nil when it is
-// disabled; the filesystem adapter only for development and tests.
+// disabled; the filesystem adapter only for development and tests; the
+// S3-compatible bucket of a deployment (T-039).
 func objectStore(cfg config.Config) (objects.Store, error) {
-	if cfg.ObjectStorage.Provider != config.ObjectStorageFilesystem {
-		return nil, nil
+	switch o := cfg.ObjectStorage; o.Provider {
+	case config.ObjectStorageFilesystem:
+		fs, err := objects.NewFS(o.Root, cfg.Env)
+		if err != nil {
+			return nil, err
+		}
+		return fs, nil
+	case config.ObjectStorageS3:
+		s3, err := objects.NewS3(objects.S3Config{Endpoint: o.S3.Endpoint, Bucket: o.S3.Bucket, Region: o.S3.Region,
+			AccessKeyID: o.S3.AccessKeyID, SecretAccessKey: o.S3.SecretAccessKey, PathStyle: o.S3.PathStyle})
+		if err != nil {
+			return nil, err
+		}
+		return s3, nil
 	}
-	fs, err := objects.NewFS(cfg.ObjectStorage.Root, cfg.Env)
-	if err != nil {
-		return nil, err
-	}
-	return fs, nil
+	return nil, nil
 }
 
 // run runs the loop with the handlers build makes until ctx ends.
@@ -247,7 +256,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 	}
 	store, err := objectStore(cfg)
 	if err != nil {
-		log.Error("invalid configuration", "error", "OBJECT_STORAGE_ROOT cannot be used: "+err.Error())
+		log.Error("invalid configuration", "error", "the object storage cannot be used: "+err.Error())
 		return exitConfig
 	}
 	// The pool connects lazily: nothing is dialled before the handlers are

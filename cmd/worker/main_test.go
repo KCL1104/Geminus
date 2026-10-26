@@ -269,6 +269,36 @@ func TestRunRefusesWhatTheHandlersCannotUse(t *testing.T) {
 	}
 }
 
+// T-039: the worker opens the same object storage as the API: the
+// S3-compatible bucket of a deployment (production included), none when
+// disabled; a half-configured bucket stops it before any connection.
+func TestTheObjectStoreIsTheConfigured(t *testing.T) {
+	bucket := []string{"APP_ENV", "production", "OBJECT_STORAGE_PROVIDER", "s3", "OBJECT_STORAGE_S3_ENDPOINT", "https://storage.example",
+		"OBJECT_STORAGE_S3_BUCKET", "geminus-demo-1a2b", "OBJECT_STORAGE_S3_REGION", "auto", "OBJECT_STORAGE_S3_ACCESS_KEY_ID", "AKID",
+		"OBJECT_STORAGE_S3_SECRET_ACCESS_KEY", "SECRET-SENTINEL"}
+	cfg, err := config.Load(with(bucket...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s, err := objectStore(cfg); s == nil || err != nil {
+		t.Errorf("s3: %v %v", s, err)
+	}
+	cfg, err = config.Load(with())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s, err := objectStore(cfg); s != nil || err != nil {
+		t.Errorf("disabled: %v %v", s, err)
+	}
+	var stderr bytes.Buffer
+	half := append(slices.Clone(bucket), "OBJECT_STORAGE_S3_BUCKET", "")
+	if code := run(context.Background(), with(half...), &stderr, handlers); code != exitConfig ||
+		!strings.Contains(stderr.String(), "OBJECT_STORAGE_S3_BUCKET") || strings.Contains(stderr.String(), "SECRET-SENTINEL") ||
+		strings.Contains(stderr.String(), "database") {
+		t.Errorf("a bucket without its name: exit %d: %s", code, stderr.String())
+	}
+}
+
 // The allowlist is checked with the rest of the configuration, before the
 // handlers and before any connection (T-019 review L4).
 func TestRunRefusesABadAllowlist(t *testing.T) {

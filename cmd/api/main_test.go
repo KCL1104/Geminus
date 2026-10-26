@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"sync"
@@ -18,6 +20,7 @@ import (
 	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
+	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
@@ -148,6 +151,127 @@ func TestServerSettings(t *testing.T) {
 	}
 }
 
+// T-039: the platform's probes beside the /v1 handler. GET /healthz is
+// 200 while the process serves; GET /readyz is 200 only while the database
+// answers, within readyTimeout, and 503 otherwise, without the reason.
+// Neither needs a token, and both say nothing else; every other request
+// (another method, another path) is the API's.
+func TestProbes(t *testing.T) {
+	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+		io.WriteString(w, "api "+r.Method+" "+r.URL.Path)
+	})
+	var readyErr error
+	h := withProbes(api, func(context.Context) error { return readyErr })
+	get := func(method, path string) (int, string, http.Header) {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(method, path, nil))
+		return rec.Code, rec.Body.String(), rec.Header()
+	}
+	for _, path := range []string{"/healthz", "/readyz"} {
+		code, body, hdr := get(http.MethodGet, path)
+		if code != 200 || hdr.Get("Cache-Control") != "no-store" || hdr.Get("Content-Type") != "application/json" ||
+			(path == "/healthz" && body != `{"status":"ok"}`) || (path == "/readyz" && body != `{"status":"ready"}`) {
+			t.Errorf("%s: %d %q %v", path, code, body, hdr)
+		}
+	}
+	readyErr = errors.New("dial tcp db.internal: connection refused SENTINEL")
+	if code, body, _ := get(http.MethodGet, "/readyz"); code != 503 || body != `{"status":"unavailable"}` {
+		t.Errorf("not ready: %d %q", code, body)
+	}
+	if code, _, _ := get(http.MethodGet, "/healthz"); code != 200 {
+		t.Errorf("live while the database is down: %d", code)
+	}
+	for _, c := range [][2]string{{http.MethodPost, "/healthz"}, {http.MethodDelete, "/readyz"}, {http.MethodGet, "/healthz/x"},
+		{http.MethodGet, "/v1/me"}, {http.MethodGet, "/"}, {http.MethodGet, "/v1/healthz"}} {
+		if code, body, _ := get(c[0], c[1]); code != http.StatusTeapot || body != "api "+c[0]+" "+c[1] {
+			t.Errorf("%s %s did not reach the API: %d %q", c[0], c[1], code, body)
+		}
+	}
+	// A database that does not answer is not ready once readyTimeout has
+	// passed: the probe does not hang with it.
+	hang := withProbes(api, func(ctx context.Context) error { <-ctx.Done(); return ctx.Err() })
+	start := time.Now()
+	rec := httptest.NewRecorder()
+	hang.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	if rec.Code != 503 || time.Since(start) > readyTimeout+3*time.Second {
+		t.Errorf("a hanging database: %d after %v", rec.Code, time.Since(start))
+	}
+}
+
+// T-039: the image's health check (geminus-api -probe) is 0 only when this
+// machine's API answers GET /readyz with 200.
+func TestProbeCommand(t *testing.T) {
+	status := http.StatusOK
+	var paths []string
+	var mu sync.Mutex
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		paths = append(paths, r.Method+" "+r.URL.Path)
+		s := status
+		mu.Unlock()
+		w.WriteHeader(s)
+	}))
+	defer srv.Close()
+	_, port, _ := strings.Cut(srv.Listener.Addr().String(), ":")
+	for addr, want := range map[string]int{":" + port: 0, "0.0.0.0:" + port: 0, "127.0.0.1:" + port: 0} {
+		if got := probe(with("API_LISTEN_ADDR", addr)); got != want {
+			t.Errorf("%s: %d", addr, got)
+		}
+	}
+	mu.Lock()
+	status = http.StatusServiceUnavailable
+	mu.Unlock()
+	if got := probe(with("API_LISTEN_ADDR", ":"+port)); got != 1 {
+		t.Errorf("not ready: %d", got)
+	}
+	srv.Close()
+	if got := probe(with("API_LISTEN_ADDR", ":"+port)); got != 1 {
+		t.Errorf("nothing listening: %d", got)
+	}
+	if got := probe(with("API_LISTEN_ADDR", "bad")); got != 1 {
+		t.Errorf("a bad address: %d", got)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, p := range paths {
+		if p != "GET /readyz" {
+			t.Errorf("asked %s", p)
+		}
+	}
+}
+
+// T-039: the API opens the configured object storage: none when disabled,
+// the S3-compatible bucket of a deployment, the filesystem only outside
+// production (config refuses it there).
+func TestObjectStore(t *testing.T) {
+	cfg, err := config.Load(with())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s, err := objectStore(cfg); s != nil || err != nil {
+		t.Errorf("disabled: %v %v", s, err)
+	}
+	cfg, err = config.Load(with("APP_ENV", "production", "OBJECT_STORAGE_PROVIDER", "s3", "OBJECT_STORAGE_S3_ENDPOINT", "https://storage.example",
+		"OBJECT_STORAGE_S3_BUCKET", "geminus-demo-1a2b", "OBJECT_STORAGE_S3_REGION", "auto", "OBJECT_STORAGE_S3_ACCESS_KEY_ID", "AKID",
+		"OBJECT_STORAGE_S3_SECRET_ACCESS_KEY", "SECRET-SENTINEL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := objectStore(cfg)
+	if _, ok := s.(*objects.S3); !ok || err != nil {
+		t.Errorf("s3: %T %v", s, err)
+	}
+	cfg, err = config.Load(with("APP_ENV", "test", "OBJECT_STORAGE_PROVIDER", "filesystem", "OBJECT_STORAGE_ROOT", t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s, err := objectStore(cfg); s == nil || err != nil {
+		t.Errorf("filesystem: %v %v", s, err)
+	}
+}
+
 type syncBuffer struct {
 	mu sync.Mutex
 	b  bytes.Buffer
@@ -193,6 +317,19 @@ func TestRunServesAndStops(t *testing.T) {
 			t.Errorf("unauthenticated request to %s: %d %s", path, res.StatusCode, body)
 		}
 	}
+	// T-039: the probes, without a token: live, and ready while the
+	// database answers.
+	for path, want := range map[string]string{"/healthz": `{"status":"ok"}`, "/readyz": `{"status":"ready"}`} {
+		res, err := http.Get("http://" + addr + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode != 200 || string(body) != want {
+			t.Errorf("%s: %d %s", path, res.StatusCode, body)
+		}
+	}
 	cancel()
 	select {
 	case code := <-done:
@@ -205,9 +342,12 @@ func TestRunServesAndStops(t *testing.T) {
 	// T-035 (D-093 (c)): the served handler is behind the access log: one
 	// line per request, with its route's pattern and the response's
 	// request ID.
-	routes := map[string]bool{}
+	routes, requests := map[string]bool{}, 0
 	for _, l := range strings.Split(strings.TrimSpace(stderr.String()), "\n") {
 		var line map[string]any
+		if json.Unmarshal([]byte(l), &line) == nil && line["msg"] == "request" {
+			requests++
+		}
 		if json.Unmarshal([]byte(l), &line) == nil && line["msg"] == "request" && line["http_status"] == float64(401) &&
 			line["error_code"] == "UNAUTHENTICATED" && strings.HasPrefix(fmt.Sprint(line["request_id"]), "req_") {
 			routes[fmt.Sprint(line["route"])] = true
@@ -215,6 +355,11 @@ func TestRunServesAndStops(t *testing.T) {
 	}
 	if !routes["GET /v1/projects"] || !routes["GET /v1/me"] {
 		t.Errorf("access lines %v: %s", routes, stderr.String())
+	}
+	// The probes are outside the access log (a platform polls them): the
+	// two /v1 requests are its only lines.
+	if requests != 2 || strings.Contains(stderr.String(), "healthz") || strings.Contains(stderr.String(), "readyz") {
+		t.Errorf("the probes are logged (%d access lines): %s", requests, stderr.String())
 	}
 }
 
