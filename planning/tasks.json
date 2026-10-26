@@ -3722,7 +3722,7 @@
       ],
       "scope": [
         "在既有的 provider 介面下新增 Meta Model API adapter（https://api.meta.ai/v1，Bearer key；優先使用與 Anthropic 相容的 Messages 介面以沿用既有的 structured output 與 tool 處理，先以官方文件確認相容範圍），模型 muse-spark-1.3（Standard mode，不用 contributor 版本）。",
-        "價格表（官方 pricing 頁，取得日期與原文記在報告）與 T-053 的花費 ledger、上限、開關共用；開關條件：批准紀錄（H-029）＋AI_PROVIDER=meta＋GEMINUS_AI_LIVE=on＋GEMINUS_META_API_KEY；缺任一項即拒絕，fake provider 仍是預設。",
+        "價格表（官方 pricing 頁，取得日期與原文記在報告）與 T-053 的花費 ledger、上限、開關共用；開關條件：批准紀錄（H-029）＋AI_PROVIDER=meta＋GEMINUS_AI_LIVE=on＋GEMINUS_MUSE_API_KEY（H-033 之後 owner 的變數名稱）；缺任一項即拒絕，fake provider 仍是預設。",
         "Key 不進 log、錯誤、報告、audit 或測試輸出；只送 synthetic 資料、demo 圖片與使用者輸入的文字；log 不存原始 prompt 與回應。",
         "Fake 與錄製的 Meta 回應做 contract 測試；live smoke 由有 key 的 session 執行（owner 授權 H-029），結果另外記錄。",
         "H-031（2026-10-26）：暫停，先用 Claude API 驗證；owner 決定接上 Meta 後再進行。",
