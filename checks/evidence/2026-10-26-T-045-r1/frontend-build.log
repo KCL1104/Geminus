@@ -1,0 +1,38 @@
+npm --prefix apps/web run build
+
+> @geminus/web@0.0.0 build
+> next build
+
+▲ Next.js 16.4.1 (Turbopack)
+✓ Running next.config.ts took 31ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 346ms
+  Running TypeScript ...
+  Finished TypeScript in 4.6s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/6) ...
+  Generating static pages using 3 workers (1/6) 
+  Generating static pages using 3 workers (2/6) 
+  Generating static pages using 3 workers (4/6) 
+✓ Generating static pages using 3 workers (6/6) in 252ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /api/v1/[...path]
+├ ƒ /auth/callback
+├ ƒ /auth/error
+├ ƒ /auth/login
+├ ƒ /auth/logout
+├ ○ /icon.svg
+├ ƒ /models/[modelId]
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+└ ƒ /ui-gallery
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

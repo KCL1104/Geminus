@@ -255,3 +255,184 @@ Coordinator 把 `t045-reskin` 的三個 commit cherry-pick 到 `claude/lucid-mei
 - Coordinator 把 32 張做成審閱頁（https://claude.ai/artifact/BMscCLGDCXh9HHbjZZsFpB），owner 回覆「可以，就先這樣吧」（H-028）：32 張確認為 baseline；首頁的「Go to projects」維持現狀（coordinator 的解讀，選項 C）。
 - 提交到 `apps/web-e2e/tests/__screenshots__/screenshots.spec.ts/` 的 32 個檔案與 artifact 逐 byte 相同（`cmp`）；覆蓋 16 張、新增 16 張 `-dark`。提交後的 CI 結果見下一點。
 - 提交 baseline 後的 CI run 40309207437（245a375）：spec-check、backend、frontend、db + integration、browser checks 五個 job 全過；browser checks **148 passed、0 skipped**（截圖比對實際執行，32 張都與 baseline 相同）。之後 T-045 交給獨立 reviewer（H-003）。
+
+## Review 第 1 輪（2026-10-26）：CHANGES REQUESTED（一個 Medium、五個 Low、Info）
+
+獨立 reviewer（H-003）審查 df7c091（re-skin 與先前的 T-045 工作）：沒有 High；M1 為 Medium；L1–L5 為 Low；I1–I5 為 Info。報告、probe 與 log 在 `checks/evidence/2026-10-26-T-045-r1/reviewer/`（`REVIEW.md`）。在 `t045-r1`（自 d150918，先 cherry-pick reviewer 的 11846e9 → 2dabf25；不 push）修正。每個修正都先寫測試，確認它在舊程式或 mutant 上失敗（red），再修正並確認通過；沒有降低任何 assertion，也沒有加 skip。本輪的 log 在 `checks/evidence/2026-10-26-T-045-r1/`（reviewer 的在 `reviewer/` 子目錄）。
+
+**畫面沒有改變**：`apps/web-e2e/tests/__screenshots__/` 沒有動；產品程式只改了兩處，都不影響 render：I2（登入錯誤頁查 reason 的方式，只影響不認得的 reason）與 I3（瀏覽器讀 cookie 的方式，只影響 app 自己不會寫出的 percent-encoded 值）。L1 拿掉的 config 行從來沒有生效，瀏覽器檢查的環境不變（新的 180 ms 測試證明這一點，見 L1）。會改變像素的只有 L5 的建議，依指示沒有做。32 張 baseline 是否仍全部相符，要等 coordinator push 後的 CI 截圖比對確認（本機依設計不比對）。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 2dabf25 | Reviewer 的報告與 evidence（cherry-pick 11846e9，沒有衝突） |
+| 65980dd | 測試與修正：M1（`simplicity.test.tsx`）、L1（`playwright.config.ts`、`simplicity.spec.ts`）、L4（`tokens.test.ts`）、I2（`app/auth/error/page.tsx`、`layout.test.tsx`、`session.spec.ts`）、I3（`lib/cookie.ts`、`lib/theme/theme.ts`、`lib/i18n/locale.ts`、`theme.test.tsx`、`i18n.test.ts`）、I5（`a11y.spec.ts`）、`apps/web-e2e/README.md` |
+| e9dff9e | 文字：DESIGN.md（M1、L1、L2、L4）、`.impeccable/design.json`（L2）、DECISIONS_AND_TBD 的 H-027 待辦（L2）、ADR-011（I4）、T-043 報告的後續（I2）、本報告前面過時的狀態與 Simplicity 表（L2、M1） |
+| （最後一個） | 本節、evidence、`exit-codes.txt`、`environment.txt`、`checks/docs-check.json` |
+
+### M1（Medium）：「同一動作不放兩個控制項」在有產品控制項的畫面沒有測試
+
+- **發現**：DESIGN.md:434 與本報告的 Simplicity 表寫「沒有兩個連到同一處的連結、沒有同名按鈕」已檢查，但 unit test 只對首頁、找不到頁面與登入錯誤頁檢查共用的 href，完全沒有檢查同名按鈕；瀏覽器的 `simplicity.spec.ts` 只看得到未登入的 route，看不到模型列表、`DraftStatus`（Reload／Discard）、「Back to project」與 Try again。Reviewer 的 mutant M2（`DraftStatus` 有兩個「Discard my changes」）與 M4（每個模型列多一個連到同一模型的連結）在 547 個 test 下都存活；M3（加回「All projects」）只被瀏覽器擋下。
+- **修正**（`apps/web/tests/simplicity.test.tsx`）：
+  - 控制項是看得見、聽得到的 `a[href]`、`[role=link]`、`button`、`[role=button]`（`[hidden]`、`aria-hidden`、`inert` 之內的不算）。名稱依 `aria-labelledby`、`aria-label`、文字的順序取得（strip 的 Select 因此是「English Language」）。重複的定義：同 role 且同名，或兩個連結連到同一處（頁內 `#` 錨點不算）。
+  - 每個畫面都與 root layout render 的 app shell 的控制項一起比較（skip link、Projects、Language、Theme），因為讀者是一起遇到它們的。兩種語言各跑一次，因為兩個不同的英文字串可能有相同的中文。
+  - 畫面：首頁、找不到頁面、登入錯誤頁；每種草稿狀態（clean、dirty、saving、conflict、error、out of date）與重新載入失敗的衝突；`RemoteView` 對 projects、models、model 的載入失敗；以 fake API（app 自己的 `createApiClient`，fetch 依路徑回答）與 `AuthProvider`（editor 與 viewer）render 的已登入專案列表、專案頁、模型頁，各有載入成功與 503 失敗。已登入的頁面另外檢查沒有停用的控制項、至多一個 primary，並確認預期的控制項真的在（列表的連結、Back to project、草稿狀態、恰好一個 Try again），讓規則不會在空頁面上空轉。
+  - 另有一個檢查 `duplicates()` 本身會回報重複的 case。
+  - `<summary>`（Problem 的「Details」）與瀏覽器的規則一樣不算按鈕：重新載入失敗的衝突有兩個 Problem，各有自己的 Details，展開的是不同的內容。
+- **瀏覽器中的已登入頁面：NOT RUN**。現有的 e2e 環境做不到，除非加新的 infrastructure：app 沒有掛 `AuthProvider`（`app/layout.tsx`：等 T-008／T-043 的 UI bootstrap、D-045），所以即使經 BFF 登入（`session.spec.ts`），每頁仍是未登入的樣子；fake API（`fake/servers.mjs`）的專案列表是空的，其他路徑回 404。要做到需要改產品程式與 fake API，不在本輪範圍。
+- **先紅後綠**（`mutants.py.txt`：套用 mutant、跑完整的 `npx vitest run`、逐 byte 還原）：
+  - 舊測試（2dabf25 的 `simplicity.test.tsx` 與 `tokens.test.ts`，`mutants-head-tests.log`）：R-M2、R-M3、R-M4 與新增的 A-back-twice（模型頁兩個「Back to project」）**都存活**（550 passed：547 加上本輪 I2、I3 的 3 個）；A-retry-twice（失敗時兩個 Try again）原本就被「只有一個按鈕」擋下。
+  - 新測試（`mutants-new-tests.log`）：七個 mutant 全部被擋下。R-M2 擋在 conflict、error 與重新載入失敗的衝突（兩種語言，6 個）；R-M3 擋在專案頁的載入成功與失敗（4 個，現在 unit test 也擋得下，不只瀏覽器）；R-M4 擋在專案頁的載入成功（2 個）；A-back-twice 擋在模型頁（2 個）；A-retry-twice 擋在 13 個。
+- **文字**：DESIGN.md 的 rule 2（原 434 行）改為分別寫出瀏覽器與 unit test 各檢查什麼、在哪些畫面，並寫明已登入的頁面在瀏覽器中沒有檢查；rule 1 補上已登入的頁面。本報告 Simplicity 表的第 1、2 列同樣改寫，每個畫面的控制項表中「Back to project 沒有專門的測試」改為由 `simplicity.test.tsx` 檢查。
+
+### L1（Low）：`reducedMotion: "reduce"` 在 Playwright Test 中無效，reduced motion 的規則沒有測試
+
+- **發現**：`apps/web-e2e/playwright.config.ts:49` 把 `reducedMotion` 放在 `use` 的頂層。Playwright Test 1.56 只在 `contextOptions` 中接受它，所以這一行從 dd9dc34 起都沒有生效；`base.css` 的 reduced-motion 規則也沒有任何測試。
+- **修正**：
+  - 依 coordinator 的決定，拿掉這一行，**不**改成全域的 `contextOptions`，因為那會改變被接受的 baseline 產生時的環境。改為留一段註解說明。
+  - `simplicity.spec.ts` 新增兩個 case：
+    - 一般情況（motion 開著）：gallery 上每個有轉換的元素都是 `0.18s`、`cubic-bezier(0.2, 0.8, 0.2, 1)`，且 `matchMedia("(prefers-reduced-motion: reduce)")` 為 false。這一點把瀏覽器檢查的環境固定為 baseline 產生時的樣子。
+    - `page.emulateMedia({ reducedMotion: "reduce" })` 時：每個轉換與動畫都不超過 0.01 ms（Chromium 回報 `1e-05s`）。
+- **先紅後綠**：
+  - `red-e2e-run1.log`（config 仍保留那一行）：180 ms 的 case **通過**，證明那一行沒有傳到頁面。拿掉 `base.css` 的 reduced-motion 區塊後，reduce 的 case 失敗（`0.18s`）。
+  - `red-e2e-run2-context-options.log`（改為 `use: { contextOptions: { reducedMotion: "reduce" } }`）：180 ms 的 case 失敗（「these checks run with motion on」）。若之後有人把 reduced motion 加回全域，這個 case 會擋下。
+  - 我自己的兩個錯誤也保留了 log：
+    - `red-e2e-run1-test-bug.log`：新測試把每個屬性各一個的 easing 當成一個值，先修正測試再重跑。
+    - `red-e2e-run2-option-misplaced.log`：mutant 誤把 `contextOptions` 放在 config 的頂層，同樣無效，所以 180 ms 的 case 通過。這次 run 也顯示新測試原本期望的 `1e-05s, 1e-05s, 1e-05s` 不對：規則對所有屬性只設一個值，Chromium 回報 `1e-05s`，測試已改為這個值。
+- **環境**：本輪 133 個、之前 116 個瀏覽器檢查，以及 CI 的截圖，都在 motion 開著的情況下執行，和 baseline 產生時相同（`toHaveScreenshot` 另有 `animations: "disabled"`）。
+- **型別檢查**：用 apps/web 的 `tsc` 臨時檢查 2dabf25 的 config，會得到 TS2769「'reducedMotion' does not exist in type 'UseOptions<…>'」（`tsc-e2e-reviewed-config.log`）；新的 config 與所有 spec 都通過（`tsc-e2e.log`，exit 0）。`apps/web-e2e` 沒有 tsconfig 也沒有 `@types/node`，所以沒有加進 make（見殘餘風險）。
+
+### L2（Low）：H-028 之後過時的狀態文字
+
+- **修正**：
+  - DESIGN.md:418：改為 owner 已確認 32 張 baseline（H-028）。
+  - `.impeccable/design.json` 的 overview（原 1196 行）：狀態與 app tokens 的描述改為與 DESIGN.md 一致。
+  - DECISIONS_AND_TBD 的 H-027 待辦欄：「16 張」改為「32 張（淺色、深色各 16 張）」，並以刪除線加「H-028：已確認」標示；只改數量與狀態，owner 的原話不變。
+  - 本報告第 3、5、23 行；re-skin 一節的狀態（原 98 行）改為「撰寫時」並加一段更新；同節 NOT RUN 的「Owner 對新外觀的視覺審閱」與風險「CI 在 baseline 重新產生前會紅」補上 H-028 的結果；原 254 行改為「見下一點」。
+- **CI 結果**：run 40309207437 已記在「新的截圖 baseline（H-028）」的最後一點：5 個 job 全過，browser checks 148 passed、0 skipped，32 張都比對過。
+- **run 40307255504 為什麼顯示 cancelled**：`update_screenshots` 的 run 40307255504 整體結論是 **cancelled**。原因是 coordinator 的下一次 push 觸發了 workflow 的 concurrency group（`.github/workflows/ci.yml`：`group: ci-${{ github.ref }}`、`cancel-in-progress: true`），取消了這個 run 中還在執行的 backend job。在那之前，它的 browser checks job 已經成功，並上傳了 artifact `screenshots`（reviewer 下載的 12643138154，sha256 與報告相同，32 張與提交的檔案逐 byte 相同）。所以 baseline 的來源沒有問題。
+- **沒有改的地方**：H-013 那一列的待辦欄同樣寫著「換裝後的截圖 baseline 待 owner 確認」。依指示這次只改 H-027 那一列，H-013 留給 coordinator。
+
+### L3（Low）：re-skin agent 的部分結果沒有 log
+
+re-skin 的四個結果的**原始 log 都沒有保留**：strip 按鍵防護的 mutation、第一次 e2e run、本機預覽截圖的 run、first-load 大小表。以下是本輪的重現，reviewer 也重現過前兩項中的兩個結果（`reviewer/mutations.log` M1、`reviewer/first-load-probe.log`）。
+
+- **按鍵防護的 mutation**（重現）：`mutants.py.txt` 的 `L3-strip-guard-removed`（`<div onKeyDownCapture={onlyByChoice}>` → `<div>`）在舊、新測試下都讓 `ui-components.test.tsx` 失敗 4 個 case，與報告的「4 個 case 失敗」及 reviewer 的 M1 相同：ArrowLeft、ArrowRight、「繁」、「e」。
+- **First-load 大小**（重現）：`first-load.py.txt` 與 `first-load.log`，先 `next build` 再 `next start`，取 HTML 中的 script 與 stylesheet。re-skin 之前是 f4db5d6 的 apps/web 封存副本；re-skin 是 2dabf25 的封存副本，它的 apps/web 與 df7c091、245a375 相同；兩份都用同一份 node_modules，兩者只差兩個字型套件。另外量了本輪 worktree 的 build，結果與 2dabf25 相差在 0.1 KiB 以內。數字為 gzip 後的 KiB：
+
+| Route | 量法 | re-skin 前 JS／CSS | re-skin 後 JS／CSS |
+|---|---|---|---|
+| `/` | 原報告 | 183.9／1.4 | 247.7／38.7 |
+| `/` | 本輪 gzip-6 | 183.4／1.4 | 246.9／38.0 |
+| `/` | 本輪 gzip-9 | 183.0／1.4 | 246.3／37.8 |
+| `/` | reviewer（gzip-9） | 未量 | 246.3／37.8 |
+| `/projects` | 原報告 | 203.3／3.0 | 253.0／38.7 |
+| `/projects` | 本輪 gzip-6 | 202.9／3.0 | 252.2／38.0 |
+| `/projects` | 本輪 gzip-9 | 202.4／3.0 | 251.6／37.8 |
+| `/projects` | reviewer（gzip-9） | 未量 | 251.6／37.8 |
+| `/ui-gallery` | 原報告 | 282.9／3.0 | 293.4／38.7 |
+| `/ui-gallery` | 本輪 gzip-6 | 282.2／3.0 | 292.5／38.0 |
+| `/ui-gallery` | 本輪 gzip-9 | 281.5／3.0 | 291.8／37.8 |
+| `/ui-gallery` | reviewer（gzip-9） | 未量 | 291.8／37.8 |
+
+  - 本輪的 gzip-9 與 reviewer 完全相同。gzip 等級只解釋約 0.6 KiB 的差距；原報告與本輪 gzip-6 之間還有 0.4–0.9 KiB，原因不明，因為原始的量法與 log 沒有保留。
+  - 結論不變。`/` 的 JS 多了約 63 KiB，`/projects` 多了約 49 KiB；gallery 原本就用 Select，只多 10 KiB。每頁的 CSS 多了約 35–37 KiB。原「風險」中「每頁多約 50–64 KiB」指的是 `/` 與 `/projects`。
+  - Next 16 的 `next build` 不印出每個 route 的大小（`first-load-build-*.log`），所以只看 `make frontend-build` 無法確認這些數字。
+- **沒有重現**：
+  - 第一次 `npm --prefix apps/web-e2e test`（114 passed、2 failed）：那兩個失敗是新測試本身的錯，在提交前已修正，無法以提交的程式重現。之後的結果（116 passed）由 coordinator、reviewer 重現，本輪為 133 passed。
+  - 本機預覽截圖的 run：32 張輸出圖檔已提交在 `checks/evidence/2026-10-26-T-045-reskin/local-shots/`，run 的 log 沒有保留。它們不是 baseline，baseline 已由 H-028 取代。
+
+### L4（Low）：一組使用中的非文字對比沒有測試；DESIGN.md 的數字
+
+- **發現**：表格中被選取的列，選取 checkbox 的 Control Edge 邊框畫在 Selected Row Tint 上，對比為淺色 3.31:1、深色 3.06:1。`tokens.test.ts` 沒有這一組。DESIGN.md:471 寫 Control Edge「至少 3.17:1」，那是 prototype 的數字，app 中最低的是 3.06:1。
+- **修正**：
+  - `tokens.test.ts` 的 `nonTextPairs` 加入 `--gm-color-edge` 對 `--gm-color-selection-tint`，兩個主題都以 3:1 檢查。
+  - DESIGN.md:471 改為：3.17:1 是 prototype 的數字；app 中最低的是 3.06:1（深色，被選取列的 checkbox 在 Selected Row Tint 上；淺色為 3.31:1）；並列出 `tokens.test.ts` 檢查的五個表面。
+  - 沒有改任何顏色。
+- **先紅後綠**：mutant `L4-selection-tint-dark-lighter` 把深色的 Selected Row Tint 調亮一階（#262626 → #2A2A2A），DESIGN.md 的 front matter 與 `tokens.css` 的兩個深色區塊一起改，讓逐值比對仍通過，此時 Control Edge 對它是 2.90:1。這個 mutant 在舊測試下存活（`mutants-head-tests.log`），在新測試下被「dark: --gm-color-edge against --gm-color-selection-tint is at least 3:1」擋下（`mutants-new-tests.log`）。
+
+### L5（Low，判斷）：手機上主題控制項只看得到值
+
+- **不修改**：owner 已接受這些截圖（H-028），所以這一項記錄給 owner。
+- **Reviewer 的理由**：
+  - ≤ 720 px 時，strip 的標籤只在視覺上隱藏。主題控制項只顯示「System」或「跟隨系統」等值與一個箭頭（baseline `home-en-390.png`）。
+  - 它的 accessible name 仍包含標籤（「System Theme」），所以 WCAG 2.5.3 成立，axe 也通過。
+  - 但看得見的人無法從畫面知道這是主題的選擇。WCAG 3.3.2 只能說是透過打開後的選項清單勉強符合。
+  - 語言控制項沒有這個問題，因為「English」與「繁體中文」本身就說明了它是什麼。
+- **可能的修改**（都會改變 390 px 的截圖，需要 owner 另行同意）：在手機上保留短的可見標籤，或加上主題圖示（DESIGN.md：圖示隨正式的 icon set 一起加入）。
+
+### Info
+
+- **I1：已知行為，不修改**。關閉的 strip Select 上按可列印的鍵，什麼都不會發生：不換值，也不打開清單。APG 的 select-only combobox 會打開清單並移到相符的選項。
+  - 不修改的理由：要做到需要在 `Select` 裡控制開關狀態，並在清單中把焦點移到相符的選項，不是一行就能完成的修改；而且它會改變 `ui-components.test.tsx` 與 `keyboard.spec.ts` 檢查的鍵盤行為。
+  - 目前的行為：ArrowUp、ArrowDown、Enter、Space 會打開清單；清單打開後 type-ahead 正常（reviewer 的 P1–P3）。
+  - 這不違反 WCAG。若之後的畫面需要，再依 APG 加入。
+- **I2（T-043 的程式）：已修正**。
+  - 發現：`/auth/error?reason=toString`（以及 `constructor`、`__proto__`、`hasOwnProperty`、`valueOf`）回 500，因為 `reason in reasons` 也找得到 `Object.prototype` 的名稱。
+  - 修正：改為 `Object.hasOwn(reasons, reason)`。
+  - 先紅後綠：`layout.test.tsx` 的新 case 涵蓋這些名稱、`isPrototypeOf` 等、不認得的字、空字串、沒有 reason、兩個 reason，每一種都必須顯示一般的失敗文字與「Sign in again」。它在修正前失敗（`red-i2-i3.log`：「message function toString() … needs a numeric count」）。
+  - 瀏覽器：`session.spec.ts` 的新 case 在修正前得到 500（`red-e2e-run1.log`），修正後為 200。
+  - `checks/T-043_VALIDATION.md` 已加上後續一節。
+- **I3：已修正，瀏覽器改為和伺服器一樣解碼**。伺服器以 Next.js 的 `cookies().get` 讀 cookie，會 percent-decode 值；瀏覽器端的 `cookieTheme` 與 `cookieLocale` 原本不解碼。語言 cookie 也有同樣的差異，所以兩者一起改用新的 `lib/cookie.ts`，它照 `@edge-runtime/cookies` 的 `parseCookie` 讀：以「; 」分開、值 percent-decode、無法解碼的那一對略過、沒有「=」的讀成 "true"、同名的取最後一個。
+  - 為什麼不改成伺服器不解碼：那需要兩個 server helper 放棄 `cookies().get`，改讀原始的 Cookie header。
+  - 測試：`theme.test.tsx` 與 `i18n.test.ts` 各以 20 個 header（含 `%64ark`、`zh%2DHant`、最後一個無法解碼、`%2564ark` 雙重編碼、沒有 `=`、空白、引號）與已安裝的 Next.js `RequestCookies` 逐一比對。它們在修正前失敗（`red-i2-i3.log`）；Next.js 日後若改變解析方式，這兩個測試也會失敗。
+  - app 自己只寫出 `light`、`dark`、`en`、`zh-Hant`，所以畫面不變。
+- **I4：已修正**。ADR-011 原本寫「5.3.1 為 2026-10-11 發布」，這只對 `noto-sans-tc` 成立；`archivo` 的最新版是 5.3.0。兩者都固定在 5.3.0。發布時間見 `npm-view-archivo-time.json`、`npm-view-noto-sans-tc-time.json`。
+- **I5**：
+  - **主題由讀者明確選擇時的 axe**：已加入。`a11y.spec.ts` 新增 14 個 case：深色選在淺色系統上、淺色選在深色系統上，en、1280 px，每個 route，確認 `data-theme` 與背景色，0 violation。這些 case 不截圖，所以 baseline 不受影響。
+  - **之後的 strict CSP**：React Aria 與虛擬化表格會在 SSR 的 HTML 中輸出 `style="…"` 屬性。之後加入 CSP 的任務需要處理 `style-src-attr`（例如允許 inline style 屬性），或改變這些元件的作法。DESIGN.md「Tokens in the app」寫的「nothing for a CSP to allow」只指主題與字型，這一點仍正確。目前 app 不送 CSP。
+  - **320 px 的 reflow**：reviewer 的 probe P12 顯示兩種語言都沒有橫向捲動，strip 換成兩列（81 px）；48 px 一列的說法只針對 390 px。不需要修改。
+
+### 實際執行（本輪，e9dff9e 的 tree；Node 22.22.0、npm 10.9.4、Chromium build 1194）
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `npm ci --prefix apps/web --engine-strict=false`、`npm ci --prefix apps/web-e2e --engine-strict=false` | 0、0 | `npm-ci-web.log`、`npm-ci-e2e.log`；EBADENGINE 警告來自 Node 22（要求 24） |
+| `make frontend-test` | 0 | `frontend-test.log`：lint、typecheck、vitest 21 個檔案、589 個 test。之前是 547 個；新增 42 個：simplicity 11 → 48、tokens 2、theme 1、i18n 1、layout 1 |
+| `make frontend-build` | 0 | `frontend-build.log` |
+| `npm audit --prefix apps/web --omit=dev` | 0 | `npm-audit-omit-dev.log`：0 vulnerabilities；沒有新增依賴 |
+| `make e2e-test`（本機 Chromium） | 0 | `e2e-test.log`：133 passed、32 skipped（截圖依設計在本機 NOT RUN）。a11y 78（64＋14 個明確主題）、keyboard 8、simplicity 30（28＋2 個 motion）、theme 5、strings 2、session 10（9＋1 個 I2）；`failed to pipe response` 與之前相同，來自 session 測試刻意切斷的回應 |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `spec-check.log`（本節寫好之後執行）；重新產生 `checks/docs-check.json` |
+| Mutation harness，舊測試（`mutants.py.txt --tests head`） | 1 | `mutants-head-tests.log`：預期的結果，R-M2、R-M3、R-M4、A-back-twice、L4 存活；A-retry-twice、L3 被擋下 |
+| Mutation harness，新測試（`--tests new`，最後版本的測試） | 0 | `mutants-new-tests.log`：7／7 被擋下 |
+| I2、I3 的新 unit test，修正前（red） | 1 | `red-i2-i3.log`：3 個失敗 |
+| 新的瀏覽器測試，I2 修正還原、reduced-motion 區塊拿掉（red） | 1 | `red-e2e-run1.log`：I2 與 reduce 2 個失敗，180 ms 與 14 個明確主題通過；`red-e2e-run1-test-bug.log` 是先前有測試錯誤的那一次 |
+| `use: { contextOptions: { reducedMotion } }`（red） | 1 | `red-e2e-run2-context-options.log`：180 ms 的 case 失敗；`red-e2e-run2-option-misplaced.log` 是放錯位置的那一次 |
+| First-load 量測（f4db5d6、2dabf25、本輪） | 0、0、0 | `first-load.log`；build log 為 `first-load-build-*.log` |
+| 臨時的 `tsc`（apps/web-e2e） | 0；2 | `tsc-e2e.log`（新的 config 與 spec）；`tsc-e2e-reviewed-config.log`（2dabf25 的 config：TS2769） |
+| `npm view … time --json`（兩個字型套件） | 0 | `npm-view-*.json` |
+
+Exit code 也列在 `exit-codes.txt`，環境在 `environment.txt`。
+
+### NOT RUN（本輪）
+
+| 項目 | 原因 |
+|---|---|
+| 本機的截圖比對 | 依設計只在 CI 的固定容器執行；由 coordinator push 後確認 32 張 baseline 仍全部相符 |
+| 瀏覽器中的已登入頁面（專案列表、專案頁、模型頁、409） | app 沒有掛 `AuthProvider`，fake API 不回資料（見 M1）；這些畫面只在 unit test 檢查 |
+| L3 的第一次 e2e run 與預覽截圖 run | 原始 log 沒有保留，無法以提交的程式重現（見 L3） |
+| `apps/web-e2e` 的型別檢查加入 make | 沒有 tsconfig 與 `@types/node`（加入會是新依賴）；只有臨時的 `tsc` |
+| Node 24 | 本機只有 Node 22.22.0 |
+| Firefox、Safari、螢幕報讀器 | P0 只跑 Chromium；報讀器需要人執行 |
+| `global-error` 在瀏覽器中 | 沒有不改程式就讓 root layout 失敗的方法（同 reviewer） |
+| 真實的 CSP header | app 不送 CSP；I5 只依 SSR 的 HTML 推論 |
+| Push、CI、baseline 變更 | 依指示不做；`__screenshots__/` 沒有改動 |
+
+### 需要 owner 知悉
+
+- **L5**：手機上的主題控制項只看得到值（見 L5）。要加可見標籤或圖示，需要 owner 同意新的 390 px 截圖。
+- **I1**：關閉的 strip Select 不處理可列印的鍵（已知行為，見 I1）。
+
+### 殘餘風險
+
+- **Unit test 中的控制項規則是近似的**：
+  - 名稱只依 `aria-labelledby`、`aria-label`、文字取得，不是完整的 accname 演算法。
+  - 是否隱藏只看 `hidden`、`aria-hidden`、`inert`，因為 happy-dom 沒有 layout。
+  - `<summary>` 不算按鈕。
+  - 已登入頁面的瀏覽器檢查要等 app 掛上 session。
+- **Motion 的瀏覽器檢查只在 gallery**：gallery 有每一種元件，但之後新增的畫面若有自己的轉換，只有 `design-rules.test.ts`（只允許 `--gm-motion`）擋得下。
+- **`apps/web-e2e` 沒有型別檢查**：這正是 L1 的成因。建議之後加入，需要在 apps/web-e2e 加 tsconfig 與 `@types/node`。
+- **Cookie 的解析綁定 Next.js 16.4.1 的 `@edge-runtime/cookies`**：差異測試直接比對已安裝的版本，升級 Next.js 時若解析方式改變，測試會失敗。
+- **CSP 的 `style` 屬性**：見 I5。
+- **H-013 的待辦欄**：仍寫著 baseline 待確認，留給 coordinator。

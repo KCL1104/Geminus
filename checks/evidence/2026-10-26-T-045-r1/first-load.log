@@ -1,0 +1,15 @@
+# before the re-skin: apps/web at f4db5d6 (archived copy), next build + next start (http://127.0.0.1:3201)
+/            JS  9 files: raw   588.7, gzip-6  183.4, gzip-9  183.0 KiB  |  CSS  1 files: raw     4.7, gzip-6    1.4, gzip-9    1.4 KiB
+/projects    JS 11 files: raw   644.7, gzip-6  202.9, gzip-9  202.4 KiB  |  CSS  2 files: raw    13.0, gzip-6    3.0, gzip-9    3.0 KiB
+/ui-gallery  JS 12 files: raw   917.8, gzip-6  282.2, gzip-9  281.5 KiB  |  CSS  2 files: raw    13.0, gzip-6    3.0, gzip-9    3.0 KiB
+exit=0
+# re-skin as reviewed: apps/web at 2dabf25 (archived copy; apps/web equal to df7c091 and 245a375), next build + next start (http://127.0.0.1:3200)
+/            JS 10 files: raw   789.1, gzip-6  246.9, gzip-9  246.3 KiB  |  CSS  3 files: raw   119.2, gzip-6   38.0, gzip-9   37.8 KiB
+/projects    JS 11 files: raw   804.1, gzip-6  252.2, gzip-9  251.6 KiB  |  CSS  3 files: raw   119.2, gzip-6   38.0, gzip-9   37.8 KiB
+/ui-gallery  JS 12 files: raw   946.9, gzip-6  292.5, gzip-9  291.8 KiB  |  CSS  3 files: raw   119.2, gzip-6   38.0, gzip-9   37.8 KiB
+exit=0
+# this round: apps/web at e9dff9e (t045-r1 worktree, make frontend-build), next start (http://127.0.0.1:3200)
+/            JS 10 files: raw   789.1, gzip-6  246.9, gzip-9  246.3 KiB  |  CSS  3 files: raw   119.2, gzip-6   38.0, gzip-9   37.8 KiB
+/projects    JS 11 files: raw   804.0, gzip-6  252.2, gzip-9  251.6 KiB  |  CSS  3 files: raw   119.2, gzip-6   38.0, gzip-9   37.8 KiB
+/ui-gallery  JS 12 files: raw   946.9, gzip-6  292.5, gzip-9  291.8 KiB  |  CSS  3 files: raw   119.2, gzip-6   38.0, gzip-9   37.8 KiB
+exit=0

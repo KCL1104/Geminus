@@ -1,0 +1,123 @@
+# T-045 review 1 fixes: mutation harness (M1, L3, L4). Each mutant edits
+# product files (exact string replacements), runs the whole unit suite
+# (`npx vitest run` in apps/web), records the summary and the failing tests,
+# and restores the files byte for byte. With --tests head, the tests of the
+# reviewed tree (HEAD's simplicity.test.tsx and tokens.test.ts, from a
+# directory given by --head-tests) replace the new ones for the run, to show
+# what survived before the fix; the new tests are restored afterwards.
+# Run: python3 -I <this file> <apps/web> --tests {head,new} [--head-tests DIR] [ids...]
+import argparse
+import pathlib
+import re
+import subprocess
+import sys
+
+MUTANTS = {
+    # Reviewer M2: DraftStatus renders "Discard my changes" twice.
+    "R-M2-discard-twice": [(
+        "app/_components/states.tsx",
+        """          <Button variant="danger" onPress={onDiscard}>
+            {t("draft.discard")}
+          </Button>""",
+        """          <Button variant="danger" onPress={onDiscard}>
+            {t("draft.discard")}
+          </Button>
+          <Button variant="danger" onPress={onDiscard}>
+            {t("draft.discard")}
+          </Button>""",
+    )],
+    # Reviewer M3: the removed "All projects" link is back, under the h1, outside RequireSession.
+    "R-M3-all-projects-back": [(
+        "app/projects/[projectId]/page.tsx",
+        """      <h1>{t("models.title")}</h1>
+""",
+        """      <h1>{t("models.title")}</h1>
+      <p><Link href="/projects">All projects</Link></p>
+""",
+    )],
+    # Reviewer M4: each model row gets a second link to the same model.
+    "R-M4-second-model-link": [(
+        "app/projects/[projectId]/page.tsx",
+        """<span className={list.meta}>{t("models.version", { version: String(m.latest_version.version) })}</span>""",
+        """<Link href={`/models/${m.id}`} className={list.meta}>{t("models.version", { version: String(m.latest_version.version) })}</Link>""",
+    )],
+    # Also: a failed load shows Try again twice.
+    "A-retry-twice": [(
+        "app/_components/states.tsx",
+        """          <Button onPress={onRetry}>{t("retry")}</Button>""",
+        """          <><Button onPress={onRetry}>{t("retry")}</Button><Button onPress={onRetry}>{t("retry")}</Button></>""",
+    )],
+    # Also: the model page gets a second "Back to project" link (same name and place).
+    "A-back-twice": [(
+        "app/models/[modelId]/page.tsx",
+        """          <p>{t("model.summary",""",
+        """          <p><Link href={`/projects/${page.model.project_id}`}>{t("model.back")}</Link></p>
+          <p>{t("model.summary",""",
+    )],
+    # L3: the re-skin's strip key guard removed (the reviewer's M1).
+    "L3-strip-guard-removed": [(
+        "ui/select.tsx",
+        """<div onKeyDownCapture={onlyByChoice}>{select}</div>""",
+        """<div>{select}</div>""",
+    )],
+    # L4: Selected Row Tint (dark) one step lighter, in DESIGN.md and in both
+    # dark blocks of tokens.css, so the values still agree: Control Edge on
+    # it is then 2.90:1, under the 3:1 a selected row's checkbox needs.
+    "L4-selection-tint-dark-lighter": [
+        ("../../DESIGN.md", '  selection-tint-dark: "#262626"', '  selection-tint-dark: "#2A2A2A"'),
+        ("ui/tokens.css", "    --gm-color-selection-tint: #262626;", "    --gm-color-selection-tint: #2a2a2a;"),
+        ("ui/tokens.css", "  --gm-color-selection-tint: #262626;", "  --gm-color-selection-tint: #2a2a2a;"),
+    ],
+}
+
+
+def run(web: pathlib.Path) -> tuple[int, str]:
+    p = subprocess.run(["npx", "vitest", "run"], cwd=web, capture_output=True, text=True, timeout=900)
+    out = re.sub(r"\x1b\[[0-9;]*m", "", p.stdout + p.stderr)
+    summary = [l.strip() for l in out.splitlines() if re.match(r"\s*(Test Files|Tests)\s", l)]
+    fails = sorted({l.strip() for l in out.splitlines() if l.strip().startswith("FAIL ")})
+    return p.returncode, "\n".join(["   " + s for s in summary] + ["   " + f for f in fails[:12]] + ([f"   … {len(fails) - 12} more"] if len(fails) > 12 else []))
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("web")
+    ap.add_argument("--tests", choices=["head", "new"], required=True)
+    ap.add_argument("--head-tests")
+    ap.add_argument("ids", nargs="*")
+    a = ap.parse_args()
+    web = pathlib.Path(a.web).resolve()
+    swapped: dict[pathlib.Path, bytes] = {}
+    if a.tests == "head":
+        for name in ("simplicity.test.tsx", "tokens.test.ts"):
+            target = web / "tests" / name
+            swapped[target] = target.read_bytes()
+            target.write_bytes((pathlib.Path(a.head_tests) / name).read_bytes())
+    worst = 0
+    try:
+        for mid in a.ids or list(MUTANTS):
+            originals: dict[pathlib.Path, bytes] = {}
+            try:
+                for rel, old, new in MUTANTS[mid]:
+                    f = (web / rel).resolve()
+                    originals.setdefault(f, f.read_bytes())
+                    text = f.read_text()
+                    if text.count(old) != 1:
+                        raise SystemExit(f"{mid}: pattern not found exactly once in {rel}")
+                    f.write_text(text.replace(old, new))
+                code, report = run(web)
+            finally:
+                for f, b in originals.items():
+                    f.write_bytes(b)
+            verdict = "KILLED" if code != 0 else "SURVIVED"
+            if code == 0:
+                worst = 1
+            print(f"{mid} (tests: {a.tests}) -> vitest exit {code}: {verdict}\n{report}\n", flush=True)
+    finally:
+        for f, b in swapped.items():
+            f.write_bytes(b)
+    return worst
+
+
+if __name__ == "__main__":
+    sys.exit(main())

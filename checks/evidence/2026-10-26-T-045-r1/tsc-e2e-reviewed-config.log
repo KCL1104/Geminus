@@ -1,0 +1,4 @@
+head-probe.config.ts(49,5): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'reducedMotion' does not exist in type 'UseOptions<PlaywrightTestOptions & CustomProperties<unknown>, PlaywrightWorkerOptions & CustomProperties<unknown>>'.
+exit=2 (playwright.config.ts of 2dabf25, copied to apps/web-e2e/head-probe.config.ts for the run, then removed)

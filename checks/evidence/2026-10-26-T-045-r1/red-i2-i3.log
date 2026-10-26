@@ -1,0 +1,69 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-ac4c6dfe5fd03daaa/apps/web
+
+ ❯ tests/i18n.test.ts (18 tests | 1 failed) 46ms
+   ❯ locale choice (4)
+     × reads the cookie as the server does: percent-decoded, a value that does not decode skipped 7ms
+ ❯ tests/layout.test.tsx (21 tests | 1 failed) 235ms
+   ❯ pages for what failed (T-044 review M2) (3)
+     × says a sign-in failed for a reason it does not know, even one named like an object's own property 13ms
+ ❯ tests/theme.test.tsx (8 tests | 1 failed) 337ms
+   ❯ theme values (5)
+     × read the cookie as the server does: percent-decoded, a value that does not decode skipped 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/i18n.test.ts > locale choice > reads the cookie as the server does: percent-decoded, a value that does not decode skipped
+AssertionError: expected 'en' to be 'zh-Hant' // Object.is equality
+
+Expected: "zh-Hant"
+Received: "en"
+
+ ❯ tests/i18n.test.ts:115:54
+    113|   // skips a pair that does not decode, so the browser reads it that w…
+    114|   it("reads the cookie as the server does: percent-decoded, a value th…
+    115|     expect(cookieLocale("geminus_locale=zh%2DHant")).toBe("zh-Hant");
+       |                                                      ^
+    116|     expect(cookieLocale("geminus_locale=zh-Hant; geminus_locale=en%"))…
+    117|     const headers = [
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/layout.test.tsx > pages for what failed (T-044 review M2) > says a sign-in failed for a reason it does not know, even one named like an object's own property
+Error: message function toString() { [native code] } needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ AuthError app/auth/error/page.tsx:21:11
+ ❯ page tests/layout.test.tsx:121:28
+ ❯ tests/layout.test.tsx:126:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/theme.test.tsx > theme values > read the cookie as the server does: percent-decoded, a value that does not decode skipped
+AssertionError: expected 'system' to be 'dark' // Object.is equality
+
+Expected: "dark"
+Received: "system"
+
+ ❯ tests/theme.test.tsx:45:49
+     43|   // does not decode; the browser (global-error) must read it the same…
+     44|   it("read the cookie as the server does: percent-decoded, a value tha…
+     45|     expect(cookieTheme("geminus_theme=%64ark")).toBe("dark");
+       |                                                 ^
+     46|     expect(cookieTheme("geminus_theme=light; geminus_theme=dark%")).to…
+     47|     const headers = [
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  3 failed | 44 passed (47)
+   Start at  11:45:46
+   Duration  1.71s (import 53%, tests 23%, environment 17%, transform 6%, worker 1%)
+
+exit=1

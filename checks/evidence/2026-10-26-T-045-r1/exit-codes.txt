@@ -1,0 +1,19 @@
+# T-045 review 1 fixes (t045-r1). Tree e9dff9e unless noted; Node 22.22.0, npm 10.9.4.
+npm-ci-web (--engine-strict=false) exit=0
+npm-ci-e2e (--engine-strict=false) exit=0
+frontend-test exit=0 (21 files, 589 tests)
+frontend-build exit=0
+npm-audit-omit-dev exit=0 (0 vulnerabilities)
+e2e-test exit=0 (133 passed, 32 skipped: screenshots NOT RUN locally by design)
+spec-check exit=0 (after the report section; regenerated checks/docs-check.json, 109 -> 110 Markdown files)
+mutants --tests head exit=1 (expected: R-M2, R-M3, R-M4, A-back-twice, L4 survive the reviewed tests)
+mutants --tests new exit=0 (7/7 killed)
+red-i2-i3 (new unit tests on the old code) exit=1 (3 failed, expected)
+red-e2e-run1-test-bug exit=1 (3 failed; one is a bug in my new test, fixed before run1)
+red-e2e-run1 (I2 fix reverted, reduced-motion block removed; config still with use.reducedMotion) exit=1 (2 failed, expected; 15 passed)
+red-e2e-run2-option-misplaced (contextOptions at the config's top level: ignored) exit=1 (1 failed: the test's own wrong expectation, fixed)
+red-e2e-run2-context-options (use.contextOptions.reducedMotion) exit=1 (1 failed, expected: the 180 ms case)
+first-load f4db5d6 / 2dabf25 / e9dff9e exit=0 / 0 / 0
+first-load builds (f4db5d6, 2dabf25) exit=0 / 0
+tsc-e2e (new config and specs, ad hoc) exit=0
+tsc-e2e-reviewed-config (2dabf25's playwright.config.ts) exit=2 (TS2769: reducedMotion is not a use option)

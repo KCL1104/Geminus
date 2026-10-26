@@ -1,0 +1,34 @@
+R-M2-discard-twice (tests: head) -> vitest exit 0: SURVIVED
+   Test Files  21 passed (21)
+   Tests  550 passed (550)
+
+R-M3-all-projects-back (tests: head) -> vitest exit 0: SURVIVED
+   Test Files  21 passed (21)
+   Tests  550 passed (550)
+
+R-M4-second-model-link (tests: head) -> vitest exit 0: SURVIVED
+   Test Files  21 passed (21)
+   Tests  550 passed (550)
+
+A-retry-twice (tests: head) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  1 failed | 549 passed (550)
+   FAIL  tests/simplicity.test.tsx > one primary action per view (H-027) > holds for a failed load and a crashed page, whose retry is the only action and not primary
+
+A-back-twice (tests: head) -> vitest exit 0: SURVIVED
+   Test Files  21 passed (21)
+   Tests  550 passed (550)
+
+L3-strip-guard-removed (tests: head) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  4 failed | 546 passed (550)
+   FAIL  tests/ui-components.test.tsx > Select in the app strip > ignores ArrowLeft on the closed control (from zh-Hant), where a form's select takes it
+   FAIL  tests/ui-components.test.tsx > Select in the app strip > ignores ArrowRight on the closed control (from en), where a form's select takes it
+   FAIL  tests/ui-components.test.tsx > Select in the app strip > ignores e on the closed control (from zh-Hant), where a form's select takes it
+   FAIL  tests/ui-components.test.tsx > Select in the app strip > ignores 繁 on the closed control (from en), where a form's select takes it
+
+L4-selection-tint-dark-lighter (tests: head) -> vitest exit 0: SURVIVED
+   Test Files  21 passed (21)
+   Tests  550 passed (550)
+
+harness exit=1

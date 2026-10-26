@@ -1,0 +1,26 @@
+# T-045 review 1 L3: first-load JS and CSS of a route, measured as the
+# re-skin report describes it: the <script src> and <link rel=stylesheet>
+# of the HTML that `next start` serves, each fetched and gzip'd, summed in
+# KiB. Gzip at level 6 (zlib's and Node's default) and at level 9 (the
+# reviewer's probe), to show where the reviewer's 1.6 KiB lower figures come from.
+# Run: python3 -I <this file> <label> http://127.0.0.1:<port> / /projects /ui-gallery
+import gzip
+import re
+import sys
+import urllib.request
+
+label, base, routes = sys.argv[1], sys.argv[2], sys.argv[3:]
+print(f"# {label} ({base})")
+for route in routes:
+    req = urllib.request.Request(base + route, headers={"Cookie": "geminus_locale=en"})
+    html = urllib.request.urlopen(req).read().decode()
+    scripts = sorted(set(re.findall(r'<script[^>]*\bsrc="([^"]+)"', html)))
+    sheets = sorted(set(re.findall(r'<link rel="stylesheet" href="([^"]+)"', html)))
+    out = []
+    for kind, urls in (("JS", scripts), ("CSS", sheets)):
+        bodies = [urllib.request.urlopen(base + u).read() for u in urls]
+        raw = sum(len(b) for b in bodies) / 1024
+        g6 = sum(len(gzip.compress(b, 6)) for b in bodies) / 1024
+        g9 = sum(len(gzip.compress(b, 9)) for b in bodies) / 1024
+        out.append(f"{kind} {len(urls):2d} files: raw {raw:7.1f}, gzip-6 {g6:6.1f}, gzip-9 {g9:6.1f} KiB")
+    print(f"{route:<12} " + "  |  ".join(out))

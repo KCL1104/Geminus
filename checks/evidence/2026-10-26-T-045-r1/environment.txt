@@ -1,0 +1,6 @@
+T-045 review 1 fixes (branch t045-r1), local runs
+node v22.22.0, npm 10.9.4 (package.json asks for Node 24: npm ci with --engine-strict=false)
+Playwright browsers: /opt/pw-browsers chromium-1194, chromium_headless_shell-1194 (preinstalled; matches Playwright 1.56.1; not reinstalled)
+Tree of the verification runs: e9dff9e (code and tests of 65980dd, texts of e9dff9e); spec-check rerun after the report section
+npm ci --prefix apps/web --engine-strict=false: exit 0 (npm-ci-web.log)
+npm ci --prefix apps/web-e2e --engine-strict=false: exit 0 (npm-ci-e2e.log)

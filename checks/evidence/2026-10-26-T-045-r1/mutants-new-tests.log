@@ -1,0 +1,61 @@
+R-M2-discard-twice (tests: new) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  6 failed | 583 passed (589)
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > en > holds for a conflict whose reload failed: two problems, still one of each choice
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > en > holds for a draft that is conflict, inside the app shell
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > en > holds for a draft that is error, inside the app shell
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > zh-Hant > holds for a conflict whose reload failed: two problems, still one of each choice
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > zh-Hant > holds for a draft that is conflict, inside the app shell
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > zh-Hant > holds for a draft that is error, inside the app shell
+
+R-M3-all-projects-back (tests: new) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  4 failed | 585 passed (589)
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /projects/prj_01M4YDQK00TA00000000000001, failed to load, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /projects/prj_01M4YDQK00TA00000000000001, loaded, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > zh-Hant: /projects/prj_01M4YDQK00TA00000000000001, failed to load, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > zh-Hant: /projects/prj_01M4YDQK00TA00000000000001, loaded, inside the app shell
+
+R-M4-second-model-link (tests: new) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  2 failed | 587 passed (589)
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /projects/prj_01M4YDQK00TA00000000000001, loaded, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > zh-Hant: /projects/prj_01M4YDQK00TA00000000000001, loaded, inside the app shell
+
+A-retry-twice (tests: new) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  13 failed | 576 passed (589)
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > en > holds for a failed load of model, whose retry is its one button
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > en > holds for a failed load of models, whose retry is its one button
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > en > holds for a failed load of projects, whose retry is its one button
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > zh-Hant > holds for a failed load of model, whose retry is its one button
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > zh-Hant > holds for a failed load of models, whose retry is its one button
+   FAIL  tests/simplicity.test.tsx > no two controls for one action in a view (H-027) > zh-Hant > holds for a failed load of projects, whose retry is its one button
+   FAIL  tests/simplicity.test.tsx > one primary action per view (H-027) > holds for a failed load and a crashed page, whose retry is the only action and not primary
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, failed to load, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /projects, failed to load, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /projects/prj_01M4YDQK00TA00000000000001, failed to load, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > zh-Hant: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, failed to load, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > zh-Hant: /projects, failed to load, inside the app shell
+   … 1 more
+
+A-back-twice (tests: new) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  2 failed | 587 passed (589)
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell
+   FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > zh-Hant: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell
+
+L3-strip-guard-removed (tests: new) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  4 failed | 585 passed (589)
+   FAIL  tests/ui-components.test.tsx > Select in the app strip > ignores ArrowLeft on the closed control (from zh-Hant), where a form's select takes it
+   FAIL  tests/ui-components.test.tsx > Select in the app strip > ignores ArrowRight on the closed control (from en), where a form's select takes it
+   FAIL  tests/ui-components.test.tsx > Select in the app strip > ignores e on the closed control (from zh-Hant), where a form's select takes it
+   FAIL  tests/ui-components.test.tsx > Select in the app strip > ignores 繁 on the closed control (from en), where a form's select takes it
+
+L4-selection-tint-dark-lighter (tests: new) -> vitest exit 1: KILLED
+   Test Files  1 failed | 20 passed (21)
+   Tests  1 failed | 588 passed (589)
+   FAIL  tests/tokens.test.ts > design tokens > dark: --gm-color-edge against --gm-color-selection-tint is at least 3:1
+
+harness exit=0

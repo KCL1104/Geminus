@@ -1,0 +1,74 @@
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test -g motion|chosen on a|unknown reason
+
+
+Running 17 tests using 1 worker
+
+  ✓   1 [chromium] › tests/a11y.spec.ts:49:7 › dark chosen on a light system, en at 1280px › / has no violation (1.7s)
+  ✓   2 [chromium] › tests/a11y.spec.ts:49:7 › dark chosen on a light system, en at 1280px › /projects has no violation (1.7s)
+  ✓   3 [chromium] › tests/a11y.spec.ts:49:7 › dark chosen on a light system, en at 1280px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓   4 [chromium] › tests/a11y.spec.ts:49:7 › dark chosen on a light system, en at 1280px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓   5 [chromium] › tests/a11y.spec.ts:49:7 › dark chosen on a light system, en at 1280px › /no-such-page has no violation (1.6s)
+  ✓   6 [chromium] › tests/a11y.spec.ts:49:7 › dark chosen on a light system, en at 1280px › /ui-gallery has no violation (4.8s)
+  ✓   7 [chromium] › tests/a11y.spec.ts:49:7 › dark chosen on a light system, en at 1280px › /auth/error?reason=expired has no violation (1.7s)
+  ✓   8 [chromium] › tests/a11y.spec.ts:49:7 › light chosen on a dark system, en at 1280px › / has no violation (1.7s)
+  ✓   9 [chromium] › tests/a11y.spec.ts:49:7 › light chosen on a dark system, en at 1280px › /projects has no violation (1.5s)
+  ✓  10 [chromium] › tests/a11y.spec.ts:49:7 › light chosen on a dark system, en at 1280px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.6s)
+  ✓  11 [chromium] › tests/a11y.spec.ts:49:7 › light chosen on a dark system, en at 1280px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓  12 [chromium] › tests/a11y.spec.ts:49:7 › light chosen on a dark system, en at 1280px › /no-such-page has no violation (1.6s)
+  ✓  13 [chromium] › tests/a11y.spec.ts:49:7 › light chosen on a dark system, en at 1280px › /ui-gallery has no violation (3.5s)
+  ✓  14 [chromium] › tests/a11y.spec.ts:49:7 › light chosen on a dark system, en at 1280px › /auth/error?reason=expired has no violation (1.8s)
+[2m[WebServer] [22m[31m[1m⨯[22m[39m Error: message function toString() { [native code] } needs a numeric count
+[2m[WebServer] [22m    at <unknown> (.next/server/chunks/ssr/_0pn38koqt-e2x._.js:1:16583)
+[2m[WebServer] [22m    at g (.next/server/chunks/ssr/[root-of-the-server]__0dc6dwjivlyjt._.js:1:1146) {
+[2m[WebServer] [22m  digest: [32m'3346093369'[39m
+[2m[WebServer] [22m}
+  ✘  15 [chromium] › tests/session.spec.ts:97:1 › a sign-in error page with an unknown reason says the sign-in failed, never a 500 (55ms)
+  ✓  16 [chromium] › tests/simplicity.spec.ts:77:3 › motion › is only the 180 ms state-colour change of a control (1.5s)
+  ✘  17 [chromium] › tests/simplicity.spec.ts:86:3 › motion › stops for a reader who asks for reduced motion (1.3s)
+
+
+  1) [chromium] › tests/session.spec.ts:97:1 › a sign-in error page with an unknown reason says the sign-in failed, never a 500 
+
+    Error: toString
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      73 |   for (const reason of ["toString", "constructor", "__proto__", "hasOwnProperty", "valueOf", "nonsense"]) {
+      74 |     const r = await request.get(`/auth/error?reason=${reason}`);
+    > 75 |     expect(r.status(), reason).toBe(200);
+         |                                ^
+      76 |     expect(await r.text(), reason).toContain("The identity provider&#x27;s answer could not be verified.");
+      77 |   }
+      78 |   expect(await (await request.get("/auth/error?reason=expired")).text()).toContain("The sign-in took too long or was started in another browser.");
+        at /home/user/Geminus/.claude/worktrees/agent-ac4c6dfe5fd03daaa/apps/web-e2e/tests/session.spec.ts:75:32
+
+  2) [chromium] › tests/simplicity.spec.ts:86:3 › motion › stops for a reader who asks for reduced motion 
+
+    Error: 0.18s
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBeLessThanOrEqual[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected: <= [32m0.00001[39m
+    Received:    [31m0.18[39m
+
+      91 |     expect(m.moving).toBeGreaterThan(5);
+      92 |     // base.css: 0.01 ms, which Chromium reports as 1e-05s.
+    > 93 |     for (const d of m.durations) expect(parseFloat(d), d).toBeLessThanOrEqual(0.00001);
+         |                                                           ^
+      94 |     const save = page.getByRole("button", { name: "Save", exact: true });
+      95 |     await expect(save).toHaveCSS("transition-duration", "1e-05s, 1e-05s, 1e-05s");
+      96 |   });
+        at /home/user/Geminus/.claude/worktrees/agent-ac4c6dfe5fd03daaa/apps/web-e2e/tests/simplicity.spec.ts:93:59
+
+    Error Context: test-results/simplicity-motion-stops-fo-325d6-who-asks-for-reduced-motion-chromium/error-context.md
+
+  2 failed
+    [chromium] › tests/session.spec.ts:97:1 › a sign-in error page with an unknown reason says the sign-in failed, never a 500 
+    [chromium] › tests/simplicity.spec.ts:86:3 › motion › stops for a reader who asks for reduced motion 
+  15 passed (42.8s)
+exit=1

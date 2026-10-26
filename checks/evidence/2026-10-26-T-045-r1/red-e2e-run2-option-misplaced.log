@@ -1,0 +1,42 @@
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test -g motion
+
+
+Running 2 tests using 1 worker
+
+  ✓  1 [chromium] › tests/simplicity.spec.ts:77:3 › motion › is only the 180 ms state-colour change of a control (1.2s)
+  ✘  2 [chromium] › tests/simplicity.spec.ts:86:3 › motion › stops for a reader who asks for reduced motion (16.2s)
+
+
+  1) [chromium] › tests/simplicity.spec.ts:86:3 › motion › stops for a reader who asks for reduced motion 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCSS[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  getByRole('button', { name: 'Save', exact: true })
+    Expected: [32m"1e-05s[7m, 1e-05s, 1e-05s[27m"[39m
+    Received: [31m"1e-05s"[39m
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toHaveCSS" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('button', { name: 'Save', exact: true })[22m
+    [2m    19 × locator resolved to <button data-rac="" tabindex="0" type="button" class="cX8Ebq_button" data-variant="primary" id="react-aria-_R_68lubvb_" data-react-aria-pressable="true">Save</button>[22m
+    [2m       - unexpected value "1e-05s"[22m
+
+
+      93 |     for (const d of m.durations) expect(parseFloat(d), d).toBeLessThanOrEqual(0.00001);
+      94 |     const save = page.getByRole("button", { name: "Save", exact: true });
+    > 95 |     await expect(save).toHaveCSS("transition-duration", "1e-05s, 1e-05s, 1e-05s");
+         |                        ^
+      96 |   });
+      97 | });
+      98 |
+        at /home/user/Geminus/.claude/worktrees/agent-ac4c6dfe5fd03daaa/apps/web-e2e/tests/simplicity.spec.ts:95:24
+
+    Error Context: test-results/simplicity-motion-stops-fo-325d6-who-asks-for-reduced-motion-chromium/error-context.md
+
+  1 failed
+    [chromium] › tests/simplicity.spec.ts:86:3 › motion › stops for a reader who asks for reduced motion 
+  1 passed (29.2s)
+exit=1

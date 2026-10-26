@@ -1,0 +1,35 @@
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test -g motion
+
+
+Running 2 tests using 1 worker
+
+  ✘  1 [chromium] › tests/simplicity.spec.ts:77:3 › motion › is only the 180 ms state-colour change of a control (1.4s)
+  ✓  2 [chromium] › tests/simplicity.spec.ts:86:3 › motion › stops for a reader who asks for reduced motion (1.3s)
+
+
+  1) [chromium] › tests/simplicity.spec.ts:77:3 › motion › is only the 180 ms state-colour change of a control 
+
+    Error: these checks run with motion on
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mfalse[39m
+    Received: [31mtrue[39m
+
+      78 |     await open(page, "/ui-gallery", "en");
+      79 |     const m = await motion(page);
+    > 80 |     expect(m.reduce, "these checks run with motion on").toBe(false);
+         |                                                         ^
+      81 |     expect(m.moving, "controls with a transition").toBeGreaterThan(5);
+      82 |     expect(m.durations).toEqual(["0.18s"]);
+      83 |     expect(m.easings).toEqual(["cubic-bezier(0.2, 0.8, 0.2, 1)"]);
+        at /home/user/Geminus/.claude/worktrees/agent-ac4c6dfe5fd03daaa/apps/web-e2e/tests/simplicity.spec.ts:80:57
+
+    Error Context: test-results/simplicity-motion-is-only--25aad--colour-change-of-a-control-chromium/error-context.md
+
+  1 failed
+    [chromium] › tests/simplicity.spec.ts:77:3 › motion › is only the 180 ms state-colour change of a control 
+  1 passed (12.9s)
+exit=1
