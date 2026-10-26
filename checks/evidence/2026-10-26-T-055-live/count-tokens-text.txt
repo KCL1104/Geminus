@@ -1,0 +1,20 @@
+count_tokens（文字；文件沒有它的價格，見 checks/T-055_VALIDATION.md「Live 執行（Meta）」）
+日期時間（UTC）: 2026-10-26T21:52:08Z（回答的 date: Mon, 26 Oct 2026 21:52:10 GMT）
+Endpoint: POST https://api.meta.ai/v1/messages/count_tokens（curl --max-redirs 0 --max-time 60）
+Key: GEMINUS_MUSE_API_KEY（只在 curl 的 header 中以 process substitution 展開，不在 argv；值、長度、前綴都沒有印出或記錄）
+Model: muse-spark-1.3
+Body 的來源：HEAD 9374173 的 git archive 複本，scratch 測試 zz_body_test.go.txt（沒有改 tree）。
+  以 provider.NewMetered(meta.NewForTest(...)) 對本機 server 送一個 synthetic modeler proposal（role modeler、mode edit、
+  system "Synthetic test."、USER_INTENT 為 "Synthetic test: line L1 has one station S1. Propose no changes."），
+  取得 adapter 送出的 POST /v1/messages body（3238 bytes，sha256 8a463cb4546f9cf0785f4226f850a52dfb7c4c2cabd84e630b5e0c50e53ce536），
+  去掉唯一的 "max_tokens":8192,（= countBody；同一個 scratch 測試以照片 request 確認 adapter 的 count body 正是 message body 去掉這一段）。
+Schema: output_config.format = {"type":"json_schema","schema": proposal-output 的投影}
+  compact 2623 bytes，sha256 71bb98bf763fa35fed501eabd697909e997bc9f1e079ed2fd7ece485f70ff254
+  （與 T-053 的投影 byte for byte 相同：checks/evidence/2026-10-26-T-053-live-r2/count-tokens.txt）
+Request body: 3220 bytes，sha256 009732fce750d6eff169573b4c098d98cc20519eb908153183123c05e8a9be90
+HTTP status: 200
+Response: {"input_tokens":899}
+其他回答 header（沒有 cookie 或 credential）：content-type application/json；x-ratelimit-limit-requests 3000；
+  x-ratelimit-remaining-requests 3000；x-ratelimit-limit-tokens 4000000；x-ratelimit-remaining-tokens 4000000；
+  x-request-id cbb9b904-9b12-40ea-bfd0-a4b84fa13ce8；x-route model-api-rust；content-length 20
+結論：key 有效、model 名稱 muse-spark-1.3 被接受、投影後的 schema 被接受（200，沒有 400）。

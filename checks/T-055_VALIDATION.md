@@ -496,3 +496,43 @@ Coordinator 對本輪問題的處理：
 5. D-121 維持 PROPOSED；H-037 只決定帶圖片時的 (b)。
 
 結論：review 第 1 輪的 M1 與 L1–L5 已修正並由 coordinator 驗證；依 H-029，T-055 可以進行第一批 live 步驟（count_tokens → `AI_PROVIDER=meta` 的 smoke → eval），由有 key 的新 session 執行。照片（SAM 3.1）的 live 呼叫要等 T-056 的獨立審查。
+
+## Live 執行（Meta）（2026-10-26）
+
+依 H-029、H-033、H-035、H-037，在 coordinator 驗證過的 review 第 1 輪程式（HEAD 9374173，branch `claude/lucid-meitner-vq1awo`）上，由有 key 的新 session 執行 §9 問題 10 的第一批 live 步驟。證據在 `checks/evidence/2026-10-26-T-055-live/`（`environment.txt`、兩個 count 紀錄、`smoke.log`、`eval.log`、產生 body 的 scratch 測試 `zz_body_test.go.txt` 與其輸出 `request-bodies.log`）。
+
+- **Key**：`GEMINUS_MUSE_API_KEY` 只檢查名稱存在；值、長度、前綴沒有印出、記錄或 grep，也沒有出現在任何 argv（curl 以 `-H @<(printf 'Authorization: Bearer %s\n' "$GEMINUS_MUSE_API_KEY")` 帶入）。沒有讀取任何 Anthropic key。
+- **工具**：Go 1.27.3（`GOTOOLCHAIN=local`；toolchain 目錄在 session 開始時不存在，由 `/usr/local/go` 依 `go.mod` 的 `toolchain go1.27.3` 自動下載後使用）。
+- **沒有 commit 任何 prompt 或 model 的回答**：request body 只記 sha256 與大小；smoke 的報告只有 ID、狀態、token 與花費。
+
+### 執行的步驟
+
+| # | 指令 | exit | 結果 |
+|---|---|---|---|
+| 1 | `POST https://api.meta.ai/v1/messages/count_tokens`（文字；body 為 adapter 對一個小的 synthetic modeler request 送出的 Messages body 去掉 `max_tokens`，3,220 bytes，sha256 `009732fc…9be90`） | curl 0 | **HTTP 200**，`{"input_tokens":899}`。key 有效、`muse-spark-1.3` 被接受、投影後的 proposal-output schema（2,623 bytes，sha256 `71bb98bf…f254`，與 T-053 的投影相同）被接受 |
+| 2 | 同上，照片 judge 對 `testdata/photos/electronics-line-demo.png` 的 count body（`aicontext.ImageProposal` → adapter 的 Quote；40,861 bytes，sha256 `221aa4ce…f962b`） | curl 0 | **HTTP 200**，`{"input_tokens":6661}` |
+| 3 | `AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on make ai-smoke-live` | **0** | run `01M5X37ZBG0JCJAYB1WBK59DMW`：MOD-002 **ready**（golden 1/1，server risk low，`semantic_effect_held` true），input 4,701、output 2,515 tokens，**USD 0.016565**（cap 2.00），latency 15.7 s；四個 zero-tolerance gate 皆 0；`over_reservation` 0；`served_models` 只有 **`muse-spark-1.3`**（回答的 `model` 與 request 完全相同） |
+| 4 | 同樣的設定 `make ai-eval-live`（預設 cap USD 10） | **2** | **REFUSED，沒有任何 provider 呼叫**：「the run's cap (USD 10.00) is more than the UTC day has left (the spend record holds USD 2.363289 of the daily limit USD 10.00)」 |
+
+報告與 ledger：`checks/ai-evals/live-smoke-2026-10-26T215310Z-01M5X37ZBG0JCJAYB1WBK59DMW-muse-spark-1.3.json`；`checks/ai-evals/live-spend.jsonl` 新增兩行（`open` kind smoke、approval H-029、cap 2,000,000,000；`close` settled＝committed 16,565,000 nano-USD、result complete）。步驟 4 被拒在開 run 之前，ledger 沒有新增任何行。
+
+### 照片 count 與預留（H-037）
+
+實際的 count 6,661（coordinator 刻意悲觀的假設 40,147 的 16.6%）。預設 `MaxRetries` 2、`max_tokens` 8192 下：每個 attempt 預留 input 6,661 + ⌈666.1⌉ = 7,328 tokens；7,328 × 1,250 + 8,192 × 4,250 = 43,976,000 nano-USD；一次照片 proposal 的 judge 3 × 43,976,000 = **131,928,000 nano-USD（約 USD 0.132）**，假設下為 270,055,500（約 USD 0.270）。連同 SAM 8 個 concept 的預留（60,000,000），organization 日上限 USD 5 下可容 **26** 次（假設下 15 次）。count_tokens 接受圖片（H-037 的未決事項之一），所以 H-037 的設計可行。
+
+### 意外的結果（依指示在此停止）
+
+1. **Eval 被當天的剩餘額度拒絕**（步驟 4）。ledger 是兩個 provider 共用的（D-122 (a)）：今天（UTC 2026-10-26）已有 T-053 的 Anthropic smoke 與 eval（USD 0.04244＋2.304284）與本次 Meta smoke（0.016565），共 **USD 2.363289**，部署日上限 USD 10 只剩約 USD 7.64，而 eval 的預設 cap 是 USD 10，所以 `ai-eval-live` 在任何呼叫之前拒絕（設計上的行為，不是錯誤）。照指示停止，沒有以較小的 cap 重試。可選的下一步（owner／coordinator 決定）：(a) 以 `AI_EVAL_LIVE_MAX_USD`（例如 7.50；Anthropic 的 50 個案例花了 USD 2.30，Meta 的價格較低）在同一天執行；(b) 等 UTC 2026-10-27 再以預設 cap 執行。
+2. **Rate-limit header 的觀察**（記錄，不是錯誤）：第一個 count 的回答 `x-ratelimit-remaining-requests` 為 3000，第二個為 2998；`x-ratelimit-remaining-tokens` 兩次都是 4,000,000。看來 count 計入 RPM（R1.1 的 3：文件沒有寫），是否計入 TPM 看不出來。
+
+### NOT RUN
+
+- `make ai-eval-live`（50 個 modeler 案例）：被拒（上面 1），沒有任何案例執行；所以沒有 pass 數、golden 比例與 eval 的 gate 數字。
+- SAM 3.1 的任何呼叫、照片 proposal（count 之後的 Messages 呼叫）、count 與實際計費 `usage.input_tokens` 的比較（R1.9 問題 2）：依指示等 T-056 的審查。
+- count_tokens 是否計費：Meta dashboard 的確認（owner）。
+- Railway 上的任何操作。
+- Anthropic 的任何呼叫。
+
+### 指令（本節之後）
+
+`make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本節之後、commit 之前）：**exit 0**（`spec-check.log`）；`checks/*-check.json` 沒有變。

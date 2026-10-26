@@ -1,0 +1,363 @@
+/home/user/Geminus/.venv/bin/python scripts/check_contracts.py
+{
+  "status": "PASS_LIMITED_SPEC_CHECKS",
+  "schema_metaschemas": 14,
+  "schema_positive_fixtures": 76,
+  "schema_negative_fixtures": 148,
+  "negative_fixtures_with_exact_error_path": 143,
+  "limited_semantic_negative_fixtures": 7,
+  "schema_valid_semantic_fixtures_for_go": 16,
+  "resolved_local_ref_occurrences": 869,
+  "openapi_operations": 43,
+  "openapi_request_examples": 3,
+  "optional_fastapi_openapi_model": "NOT_RUN_NOT_INSTALLED",
+  "independent_complete_openapi_validator": "NOT_RUN_UNAVAILABLE",
+  "ai_corpus_records": {
+    "analyst": 10,
+    "import-mapper": 10,
+    "modeler": 50
+  },
+  "live_ai_eval": "NOT_RUN",
+  "go_engine_tests": "NOT_RUN"
+}
+/home/user/Geminus/.venv/bin/python scripts/check_planning.py
+{
+  "status": "PASS",
+  "tasks": 57,
+  "dependency_graph": "ACYCLIC",
+  "topological_order": [
+    "T-001",
+    "T-002",
+    "T-003",
+    "T-004",
+    "T-005",
+    "T-006",
+    "T-007",
+    "T-008",
+    "T-009",
+    "T-010",
+    "T-011",
+    "T-012",
+    "T-013",
+    "T-014",
+    "T-044",
+    "T-045",
+    "T-020",
+    "T-021",
+    "T-022",
+    "T-046",
+    "T-015",
+    "T-019",
+    "T-016",
+    "T-017",
+    "T-024",
+    "T-025",
+    "T-047",
+    "T-048",
+    "T-049",
+    "T-050",
+    "T-042",
+    "T-051",
+    "T-027",
+    "T-018",
+    "T-023",
+    "T-026",
+    "T-028",
+    "T-029",
+    "T-030",
+    "T-031",
+    "T-032",
+    "T-033",
+    "T-034",
+    "T-035",
+    "T-043",
+    "T-036",
+    "T-037",
+    "T-052",
+    "T-038",
+    "T-039",
+    "T-040",
+    "T-041",
+    "T-053",
+    "T-054",
+    "T-055",
+    "T-056",
+    "T-057"
+  ],
+  "requirements_with_traceability": 25,
+  "proposed_decisions": 14,
+  "completed_tasks": 35
+}
+/home/user/Geminus/.venv/bin/python scripts/check_docs.py
+{
+  "status": "PASS",
+  "markdown_files": 136,
+  "relative_links_checked": 128
+}
+/home/user/Geminus/.venv/bin/python scripts/check_sql_inventory.py
+{
+  "status": "PASS_STATIC_INVENTORY_ONLY",
+  "tables": 20,
+  "tenant_owned_tables": 19,
+  "postgresql_parse": "NOT_RUN_NO_PARSER",
+  "postgresql_migration_execution": "NOT_RUN_NO_SERVER_CLIENT",
+  "rls_runtime_tests": "NOT_RUN",
+  "note": "Keyword/inventory checks do not prove SQL syntax, policies, privileges or execution correctness; execution evidence comes from make db-test / make db-go-test on a disposable database (CI db job)."
+}
+/home/user/Geminus/.venv/bin/python scripts/check_reference_math.py
+{
+  "status": "PASS_REFERENCE_ARITHMETIC_ONLY",
+  "deterministic_fixture_cases": 2,
+  "expected_value_comparisons": 20,
+  "splitmix64_vectors": 5,
+  "replication_seed_vectors": 3,
+  "stream_seed_vectors": 7,
+  "go_des_engine": "NOT_RUN",
+  "simpy_differential": "NOT_RUN",
+  "jcs_hash_verification": "NOT_RUN"
+}
+/home/user/Geminus/.venv/bin/python scripts/engine_reference.py
+{"status": "PASS_ENGINE_REFERENCE_VECTORS", "sampler_cases": 20, "event_pushes": 10, "arrivals": 9, "log_inputs": 1000000, "digest_draws_per_sampler": 100000, "exp_inputs": 1000000, "ndtri_inputs": 1000000, "breakdown_stream_units": 3, "setup_stream_units": 3, "release_steps": 38, "release_arrivals": 4799}
+/home/user/Geminus/.venv/bin/python scripts/check_decisions.py
+{
+  "status": "PASS_REGISTER_SHAPE_ONLY",
+  "decisions_by_status": {
+    "approved": 91,
+    "proposed": 14,
+    "rejected": 0,
+    "superseded": 0
+  },
+  "human_decisions_recorded": [
+    "H-001",
+    "H-002",
+    "H-003",
+    "H-004",
+    "H-005",
+    "H-006",
+    "H-007",
+    "H-008",
+    "H-009",
+    "H-010",
+    "H-011",
+    "H-012",
+    "H-013",
+    "H-014",
+    "H-015",
+    "H-016",
+    "H-017",
+    "H-018",
+    "H-019",
+    "H-020",
+    "H-021",
+    "H-022",
+    "H-023",
+    "H-024",
+    "H-025",
+    "H-026",
+    "H-027",
+    "H-028",
+    "H-029",
+    "H-030",
+    "H-031",
+    "H-032",
+    "H-033",
+    "H-034",
+    "H-035",
+    "H-036",
+    "H-037"
+  ],
+  "tasks_by_status": {
+    "blocked": 0,
+    "done": 35,
+    "in_progress": 4,
+    "not_started": 18,
+    "review": 0
+  },
+  "ready_tasks": [
+    "T-030"
+  ],
+  "next_after_review": [],
+  "note": "Shape checks only; whether a recorded approval is genuine is for human review."
+}
+/home/user/Geminus/.venv/bin/python scripts/gen_ts_contracts.py --check
+{"status": "PASS_TS_CONTRACTS_FRESH", "files": 15, "types": 109}
+/home/user/Geminus/.venv/bin/python scripts/check_hashes.py
+{
+  "status": "PASS_INDEPENDENT_HASHES",
+  "hashes": 28,
+  "errors": []
+}
+/home/user/Geminus/.venv/bin/python scripts/render_db_tests.py --check
+{"status": "PASS_DB_TESTS_FRESH", "files": 15, "stale": []}
+/home/user/Geminus/.venv/bin/python scripts/check_deploy.py
+{
+  "status": "PASS_STATIC_DEPLOY_CHECKS",
+  "dockerfiles": {
+    "Dockerfile.api": {
+      "stages": 2,
+      "user": "65532:65532",
+      "healthcheck": true
+    },
+    "Dockerfile.worker": {
+      "stages": 2,
+      "user": "65532:65532",
+      "healthcheck": false
+    },
+    "apps/web/Dockerfile": {
+      "stages": 2,
+      "user": "node",
+      "healthcheck": true
+    }
+  },
+  "compose": {
+    "services": [
+      "api",
+      "migrate",
+      "oidc-test",
+      "postgres",
+      "seed",
+      "web",
+      "worker"
+    ]
+  },
+  "railway": {
+    "configs": [
+      "api.railway.json",
+      "migrate.railway.json",
+      "web.railway.json",
+      "worker.railway.json"
+    ],
+    "services": {
+      "migrate": {
+        "variables": 2,
+        "secrets": [
+          "GEMINUS_MIGRATOR_DB_PASSWORD"
+        ]
+      },
+      "api": {
+        "variables": 20,
+        "secrets": [
+          "GEMINUS_API_DB_PASSWORD",
+          "OBJECT_STORAGE_S3_ACCESS_KEY_ID",
+          "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY"
+        ]
+      },
+      "worker": {
+        "variables": 19,
+        "secrets": [
+          "GEMINUS_ANTHROPIC_API_KEY_A",
+          "GEMINUS_ANTHROPIC_API_KEY_B",
+          "GEMINUS_MUSE_API_KEY",
+          "GEMINUS_WORKER_DB_PASSWORD",
+          "OBJECT_STORAGE_S3_ACCESS_KEY_ID",
+          "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY"
+        ]
+      },
+      "web": {
+        "variables": 14,
+        "secrets": [
+          "BFF_OIDC_CLIENT_SECRET",
+          "SESSION_KEYS"
+        ]
+      }
+    },
+    "public_domains": [
+      "api",
+      "web"
+    ],
+    "api_ai": {
+      "settings": [
+        "AI_PROVIDER",
+        "AI_POLICY_APPROVAL",
+        "AI_MODEL",
+        "GEMINUS_AI_LIVE"
+      ],
+      "refused_keys": [
+        "AI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "GEMINUS_ANTHROPIC_API_KEY_A",
+        "GEMINUS_ANTHROPIC_API_KEY_B",
+        "GEMINUS_META_API_KEY",
+        "GEMINUS_MUSE_API_KEY",
+        "MODEL_API_KEY"
+      ]
+    }
+  },
+  "runbook": {
+    "variables_named": 68
+  },
+  "code_variables": [
+    "AI_API_KEY",
+    "AI_ATTEMPT_TIMEOUT_SECONDS",
+    "AI_DAILY_LIMIT_USD",
+    "AI_MAX_CONCURRENT_PER_ORGANIZATION",
+    "AI_MAX_OUTPUT_TOKENS",
+    "AI_MAX_PROMPT_BYTES",
+    "AI_MAX_RETRIES",
+    "AI_MODEL",
+    "AI_MONTHLY_LIMIT_USD",
+    "AI_ORGANIZATION_DAILY_LIMIT_USD",
+    "AI_POLICY_APPROVAL",
+    "AI_PROVIDER",
+    "AI_TIMEOUT_SECONDS",
+    "AI_VISION_MODEL",
+    "AI_VISION_POLICY_APPROVAL",
+    "AI_VISION_PROVIDER",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "API_LISTEN_ADDR",
+    "APP_ENV",
+    "AUTH_OIDC_ALGORITHMS",
+    "AUTH_OIDC_AUDIENCE",
+    "AUTH_OIDC_ISSUER",
+    "AUTH_OIDC_JWKS_URL",
+    "AUTH_OIDC_REQUIRE_AT_JWT",
+    "BFF_API_URL",
+    "BFF_APP_ORIGIN",
+    "BFF_OIDC_AUDIENCE",
+    "BFF_OIDC_AUTHORIZATION_URL",
+    "BFF_OIDC_CLIENT_ID",
+    "BFF_OIDC_CLIENT_SECRET",
+    "BFF_OIDC_END_SESSION_URL",
+    "BFF_OIDC_ISSUER",
+    "BFF_OIDC_JWKS_URL",
+    "BFF_OIDC_REVOCATION_URL",
+    "BFF_OIDC_SCOPES",
+    "BFF_OIDC_TOKEN_URL",
+    "DATABASE_URL",
+    "GEMINUS_AI_LIVE",
+    "GEMINUS_ANTHROPIC_API_KEY_A",
+    "GEMINUS_ANTHROPIC_API_KEY_B",
+    "GEMINUS_META_API_KEY",
+    "GEMINUS_MIGRATE_DATABASE_URL",
+    "GEMINUS_MUSE_API_KEY",
+    "GEMINUS_PROVISION_DATABASE_URL",
+    "GEMINUS_UI_GALLERY",
+    "MODEL_API_KEY",
+    "OBJECT_STORAGE_PROVIDER",
+    "OBJECT_STORAGE_ROOT",
+    "OBJECT_STORAGE_S3_ACCESS_KEY_ID",
+    "OBJECT_STORAGE_S3_BUCKET",
+    "OBJECT_STORAGE_S3_ENDPOINT",
+    "OBJECT_STORAGE_S3_REGION",
+    "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY",
+    "OBJECT_STORAGE_S3_URL_STYLE",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_HEADERS",
+    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_METRICS_HEADERS",
+    "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_TRACES_HEADERS",
+    "OTEL_METRICS_EXPORTER",
+    "OTEL_SDK_DISABLED",
+    "OTEL_TRACES_EXPORTER",
+    "SESSION_KEYS",
+    "WORKER_ID",
+    "WORKER_ORGANIZATION_IDS"
+  ],
+  "container_build": "NOT_RUN_HERE (make build-containers)",
+  "container_scan": "NOT_RUN (no scanner chosen)"
+}
+exit 0

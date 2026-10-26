@@ -1,0 +1,24 @@
+count_tokens（demo 照片；H-035 允許 demo 圖片；文件沒有它的價格）
+日期時間（UTC）: 2026-10-26T21:52:17Z（回答的 date: Mon, 26 Oct 2026 21:52:19 GMT）
+Endpoint: POST https://api.meta.ai/v1/messages/count_tokens（curl --max-redirs 0 --max-time 60）
+Key: GEMINUS_MUSE_API_KEY（同上；值沒有印出或記錄）
+Model: muse-spark-1.3
+Body 的來源：同一個 scratch 測試。aicontext.ImageProposal（照片 judge 的 context，與 internal/ai/aicontext/photo_test.go 的
+  photoInput 同樣建立：base 為 testdata/photos/bare-line.json、electronics-line pack 的 PromptContext、idpool、
+  testdata/photos/electronics-line-demo.png（PNG 1200x520，14,197 bytes）與它的 .segments.json 的 concept 與 10 個 segment），
+  經 provider.NewMetered(meta.NewForTest(...)) 送到本機 server；adapter 的 Quote 送出的 POST /v1/messages/count_tokens body
+  原樣記錄（prompt：system 12,207 bytes、user text 5,967 bytes，與 count_test.go 註解中 2026-10-26 的量測相同）。
+  內容：一個 image block（base64、image/png）、一個 text block、同一個投影 schema（sha256 71bb98bf…f254）。
+Request body: 40861 bytes，sha256 221aa4ce1e6a3e5a42c80f9480940975393ff4a0bb415df7ce4cbe9a2f3f962b
+HTTP status: 200
+Response: {"input_tokens":6661}
+其他回答 header：x-ratelimit-remaining-requests 2998（第一個 count 之後的回答是 3000）；x-ratelimit-remaining-tokens 4000000；
+  x-request-id 3b3a1d3c-fb03-44e1-b3f2-d2335a030762
+
+預留（D-121 (b)／H-037，預設 MaxRetries 2、max_tokens 8192；input 1,250、output 4,250 nano-USD／token）：
+  每個 attempt 的 input 預留 6,661 + ⌈6,661 / 10⌉ = 7,328 tokens
+  每個 attempt 7,328 × 1,250 + 8,192 × 4,250 = 9,160,000 + 34,816,000 = 43,976,000 nano-USD
+  一次照片 proposal 的 judge 3 × 43,976,000 = 131,928,000 nano-USD（約 USD 0.132）
+  coordinator 刻意悲觀的假設 count 40,147（R1.3）：270,055,500 nano-USD（約 USD 0.270）；實際 count 是假設的 16.6%，預留約 48.9%
+  連同 SAM 8 個 concept 的預留 60,000,000：191,928,000，organization 日上限 USD 5 下可容 26 次（假設下 15 次）；只算 judge 37 次
+  （實際的照片 proposal 沒有執行：count 與實際計費的 usage.input_tokens 的比較仍 NOT RUN，見報告）

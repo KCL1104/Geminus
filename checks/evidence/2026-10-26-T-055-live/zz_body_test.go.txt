@@ -1,0 +1,140 @@
+// Scratch test used to build the count_tokens bodies (not part of the tree;
+// run in a git archive copy of HEAD 9374173, internal/ai/provider/meta).
+package meta_test
+
+import (
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+
+	"encoding/json/jsontext"
+
+	"github.com/kcl1104/geminus/internal/ai/aicontext"
+	"github.com/kcl1104/geminus/internal/ai/idpool"
+	"github.com/kcl1104/geminus/internal/ai/locale"
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/provider/meta"
+	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
+	irmodel "github.com/kcl1104/geminus/internal/model"
+)
+
+// Scratch only (not committed): the bodies the adapter sends, captured by a
+// local server; the count answer is fixed, the message gets a 400 so nothing else runs.
+type capture struct {
+	mu     sync.Mutex
+	bodies map[string][]byte
+}
+
+func capServer(t *testing.T) (*httptest.Server, *capture) {
+	c := &capture{bodies: map[string][]byte{}}
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		c.mu.Lock()
+		c.bodies[r.URL.Path] = b
+		c.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/v1/messages/count_tokens" {
+			w.Write([]byte(`{"input_tokens":40147}`))
+			return
+		}
+		w.WriteHeader(400)
+		w.Write([]byte(`{"type":"error","error":{"type":"invalid_request_error","message":"scratch"}}`))
+	}))
+	t.Cleanup(s.Close)
+	return s, c
+}
+
+func run(t *testing.T, pc provider.ProposalContext) *capture {
+	s, c := capServer(t)
+	b, err := meta.NewForTest(meta.Config{Model: "muse-spark-1.3", Credential: config().Credential}, s.URL+"/", s.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl, err := provider.NewMetered(b, provider.DefaultBudget(), provider.NewMemoryMeter(1000*spendUSD))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = cl.GenerateModelProposal(context.Background(), pc)
+	return c
+}
+
+func write(t *testing.T, name string, b []byte) {
+	if err := os.WriteFile(filepath.Join(os.Getenv("BODY_OUT"), name), b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(b)
+	t.Logf("%s: %d bytes sha256 %s", name, len(b), hex.EncodeToString(sum[:]))
+}
+
+func strip(t *testing.T, msg []byte) []byte {
+	cut := []byte(`"max_tokens":8192,`)
+	if bytes.Count(msg, cut) != 1 {
+		t.Fatal("max_tokens not found once")
+	}
+	return bytes.Replace(msg, cut, nil, 1)
+}
+
+func TestZZBodies(t *testing.T) {
+	// Text: a small synthetic modeler request.
+	intent, _ := jsontext.AppendQuote(nil, "Synthetic test: line L1 has one station S1. Propose no changes.")
+	p, err := provider.Seal(provider.Prompt{OrganizationID: org, Role: provider.RoleModeler, TemplateVersion: "modeler-synthetic", Locale: locale.English,
+		System: "Synthetic test.", Blocks: []provider.Block{{Kind: provider.UntrustedData, Name: "USER_INTENT", Content: intent}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := run(t, provider.ProposalContext{OrganizationID: org, Mode: provider.ModeEdit, Prompt: p, Attribution: attribution})
+	if _, ok := c.bodies["/v1/messages/count_tokens"]; ok {
+		t.Fatal("text was counted")
+	}
+	write(t, "text-messages.json", c.bodies["/v1/messages"])
+	write(t, "text-count.json", strip(t, c.bodies["/v1/messages"]))
+
+	// Photo: aicontext.ImageProposal of the demo, as aicontext's photoInput builds it.
+	var ir irmodel.ModelIR
+	if err := irmodel.Decode(contracttest.BareLine(t), &ir); err != nil {
+		t.Fatal(err)
+	}
+	ir.ModelID = "mdl_01M4YDQK00TA00000000000001"
+	pool, err := idpool.New(&ir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	demo := contracttest.LoadPhotoDemo(t, "electronics-line-demo")
+	im, err := provider.NewImage(demo.Segments.MediaType, demo.Image)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var segs []provider.Segment
+	for _, s := range demo.Segments.Segments {
+		segs = append(segs, provider.Segment{Concept: s.Concept, ObjectID: s.ObjectID, Confidence: s.Confidence,
+			Box: provider.Box{X1: s.Box.X1, Y1: s.Box.Y1, X2: s.Box.X2, Y2: s.Box.Y2}})
+	}
+	pc, err := aicontext.ImageProposal(aicontext.ImageProposalInput{
+		Scope:  aicontext.Scope{OrganizationID: org, ModelID: ir.ModelID},
+		Base:   aicontext.Version{OrganizationID: org, ModelID: ir.ModelID, VersionID: "mv_01M4YDQK00TA00000000000001", IR: &ir},
+		Domain: electronicsline.Pack{}.PromptContext(),
+		Pool:   aicontext.Pool{OrganizationID: org, ProposalID: "aip_01M4YDQK00TA00000000000001", IDs: pool},
+		Photo:  aicontext.Photo{OrganizationID: org, Image: im, Concepts: demo.Segments.Concepts, Segments: segs},
+		Budget: provider.DefaultBudget(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pc.Attribution = attribution
+	t.Logf("photo prompt: system %d bytes, user %d bytes, image %dx%d %d bytes", len(pc.Prompt.System), len(pc.Prompt.User()), im.Width, im.Height, len(im.Data))
+	c = run(t, pc)
+	cnt, msg := c.bodies["/v1/messages/count_tokens"], c.bodies["/v1/messages"]
+	if !bytes.Equal(cnt, strip(t, msg)) {
+		t.Fatal("the photo count body is not the message body minus max_tokens")
+	}
+	write(t, "photo-count.json", cnt)
+}

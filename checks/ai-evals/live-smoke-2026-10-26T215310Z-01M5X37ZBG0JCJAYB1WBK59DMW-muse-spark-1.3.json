@@ -1,0 +1,83 @@
+{
+	"suite": "T-053 live provider eval (modeler corpus, server review; T-038 owns the baseline)",
+	"kind": "smoke",
+	"provider": "meta",
+	"model": "muse-spark-1.3",
+	"served_models": [
+		"muse-spark-1.3"
+	],
+	"approval": "H-029",
+	"date": "2026-10-26",
+	"run_id": "01M5X37ZBG0JCJAYB1WBK59DMW",
+	"output_locale": "en",
+	"schema": "proposal-output.schema.json",
+	"prompt_template_versions": [
+		"modeler-0.2.0"
+	],
+	"price": {
+		"source": "https://dev.meta.ai/docs/pricing-rate-limits",
+		"retrieved": "2026-10-26"
+	},
+	"usage": {
+		"input_tokens": 4701,
+		"output_tokens": 2515
+	},
+	"cost": {
+		"nano_usd": 16565000,
+		"usd": "0.016565",
+		"cap_usd": "2.00",
+		"cap_nano_usd": 2000000000
+	},
+	"cases": {
+		"golden_edit": 1
+	},
+	"statuses": {
+		"ready": 1
+	},
+	"passed": 1,
+	"run": 1,
+	"golden_edit": {
+		"passed": 1,
+		"total": 1,
+		"rate": 1
+	},
+	"zero_tolerance_gates": {
+		"needs_input_kept_changes": 0,
+		"ready_below_risk_floor": 0,
+		"ready_without_server_validation": 0,
+		"safe_failure_reached_ready": 0
+	},
+	"inference_geos": {},
+	"spend_warnings": {
+		"inference_geo_unknown": 0,
+		"over_reservation": 0
+	},
+	"complete": true,
+	"outcomes": [
+		{
+			"id": "MOD-002",
+			"category": "golden_edit",
+			"mode": "edit",
+			"expected_outcome": "proposal",
+			"status": "ready",
+			"minimum_risk": "low",
+			"server_risk_level": "low",
+			"provider_risk_claim": "low",
+			"risk_level": "low",
+			"patch_hash": "sha256:9986280e38a861a2ca7eef1a03ca94a02b1ee066019b65d7fb5003b431884205",
+			"semantic_effect_held": true,
+			"passed": true,
+			"input_tokens": 4701,
+			"output_tokens": 2515,
+			"cost_nano_usd": 16565000,
+			"latency_ms": 15673,
+			"prompt_template_version": "modeler-0.2.0"
+		}
+	],
+	"not_run": [
+		"the mapper and analyst corpora: their server review is T-027 and T-030, and the approval's data policy covers the proposal roles only (PROPOSED D-112)",
+		"database effects and the dataset binding stage (make integration-test)",
+		"zh-Hant output: every case runs in one output locale",
+		"the >=90% golden target as a gate: a person calibrates it against a baseline (T-038)"
+	]
+}

@@ -1,0 +1,5 @@
+go build -o bin/ai-eval-live ./cmd/ai-eval-live
+ai-eval-live: REFUSED (no provider call was made): the run's cap (USD 10.00) is more than the UTC day has left (the spend record holds USD 2.363289 of the daily limit USD 10.00)
+ai-eval-live: exit 2
+make: *** [Makefile:139: ai-eval-live] Error 2
+exit 2

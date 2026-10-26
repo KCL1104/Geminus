@@ -1,0 +1,8 @@
+=== RUN   TestZZBodies
+    zz_body_test.go:73: text-messages.json: 3238 bytes sha256 8a463cb4546f9cf0785f4226f850a52dfb7c4c2cabd84e630b5e0c50e53ce536
+    zz_body_test.go:73: text-count.json: 3220 bytes sha256 009732fce750d6eff169573b4c098d98cc20519eb908153183123c05e8a9be90
+    zz_body_test.go:131: photo prompt: system 12207 bytes, user 5967 bytes, image 1200x520 14197 bytes
+    zz_body_test.go:73: photo-count.json: 40861 bytes sha256 221aa4ce1e6a3e5a42c80f9480940975393ff4a0bb415df7ce4cbe9a2f3f962b
+--- PASS: TestZZBodies (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider/meta	0.039s

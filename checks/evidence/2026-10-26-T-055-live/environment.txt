@@ -1,0 +1,8 @@
+HEAD at start 937417388664b27b36d27c9323b4f2b30b399484
+branch claude/lucid-meitner-vq1awo
+go version go1.27.3 linux/amd64
+GOTOOLCHAIN=local, PATH 前置 /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/bin（session 開始時不存在，go.mod 的 toolchain go1.27.3 由 /usr/local/go 的 GOTOOLCHAIN=auto 下載後才有）
+GEMINUS_MUSE_API_KEY: present（只檢查名稱；值沒有讀出）
+count_tokens text 2026-10-26T21:52:08Z; photo 2026-10-26T21:52:17Z
+ai-smoke-live 2026-10-26T21:52:39Z .. 2026-10-26T21:53:25Z, exit 0
+ai-eval-live 2026-10-26T21:53:42Z .. 2026-10-26T21:53:44Z, exit 2 (REFUSED before any provider call)
