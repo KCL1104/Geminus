@@ -1,0 +1,5 @@
+BASELINE rehearsal: exit 0 rehearsal: PASS (the deployer against stand-ins; Railway itself NOT RUN)
+EQUIVALENT R5 device_code not among the dropped fields (equivalent: the 1.37.0 CLI's agent-mode login prints only verification_uri, user_code, expires_in and interval (internal/cli/login.go); the stand-in adds a device_code decoy, but a0_login shows only verification_uri and user_code and its parsed lines stay local, never returned, stored or printed, so the decoy is unobservable either way; the field is dropped as defence in depth)
+0/0 killed, 1 equivalent (expected to survive), 0 invalid
+restored files: PASS
+exit 0

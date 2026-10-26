@@ -1,0 +1,11 @@
+psql -X -v ON_ERROR_STOP=1 -h /var/lib/postgresql/geminus-throwaway-hkb6 -p 55450 -U postgres -d postgres -f drop-dbs.sql
+(drop-dbs.sql: DROP DATABASE dt_test_t057a1; DROP DATABASE dt_test_t057a2; SELECT count(*) AS t057_databases_left FROM pg_database WHERE datname LIKE 'dt_test_t057%';)
+
+DROP DATABASE
+DROP DATABASE
+ t057_databases_left
+---------------------
+                   0
+(1 row)
+
+exit 0

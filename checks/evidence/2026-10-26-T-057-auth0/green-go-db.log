@@ -1,0 +1,25 @@
+=== RUN   TestCheckOperator
+--- PASS: TestCheckOperator (0.16s)
+=== RUN   TestProvisionerCannotChangeAnything
+--- PASS: TestProvisionerCannotChangeAnything (0.02s)
+=== RUN   TestAPICannotProvision
+--- PASS: TestAPICannotProvision (0.01s)
+=== RUN   TestProvision
+--- PASS: TestProvision (0.03s)
+=== RUN   TestUserOnceUnderConcurrency
+--- PASS: TestUserOnceUnderConcurrency (0.03s)
+=== RUN   TestProvisionerEntersOnlyTheOrganizationItCreates
+--- PASS: TestProvisionerEntersOnlyTheOrganizationItCreates (0.03s)
+=== RUN   TestOrganizationWithMember
+--- PASS: TestOrganizationWithMember (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.320s
+=== RUN   TestProvision
+--- PASS: TestProvision (0.04s)
+=== RUN   TestRefusals
+--- PASS: TestRefusals (0.03s)
+=== RUN   TestProvisionWithMember
+--- PASS: TestProvisionWithMember (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.114s
+exit 0

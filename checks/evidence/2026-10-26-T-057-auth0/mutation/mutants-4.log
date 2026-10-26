@@ -1,0 +1,14 @@
+BASELINE go: exit 0 ok  	github.com/kcl1104/geminus/internal/audit	0.162s
+BASELINE rehearsal: exit 0 rehearsal: PASS (the deployer against stand-ins; Railway itself NOT RUN)
+EQUIVALENT R5 device_code not among the dropped fields (equivalent: the 1.37.0 CLI's agent-mode login prints verification_uri, user_code, expires_in and interval only, and the stand-in mirrors it; the parsed lines stay local to a0_login and are never returned, stored or printed; the field is dropped as defence in depth)
+KILLED G1 a member may be a second owner :: --- FAIL: TestOrganizationWithMember (0.04s) provisioning_test.go:418: a second owner: audit: organization.provision: member_role: not one of the field's values, want ErrInvalidInput provisioning_test.go:418: an unknown role: postgres: check constraint violated (SQLSTATE 23514): constraint memberships_role_check: new row for relation "memberships" violates check constraint "memberships_role_check"
+KILLED G2 the member may be the owner again :: --- FAIL: TestOrganizationWithMember (0.04s) provisioning_test.go:418: the owner again: postgres: unique constraint violated (SQLSTATE 23505): constraint memberships_pkey: duplicate key value violates unique constraint "memberships_pkey", want ErrInvalidInput FAIL
+KILLED G3 the member's identity not checked :: --- FAIL: TestOrganizationWithMember (0.05s) provisioning_test.go:418: an http issuer: <nil>, want ErrInvalidInput provisioning_test.go:428: an http issuer wrote 1 organizations, 1 owners and 1 members as users
+KILLED G4 the member inserted as an owner :: --- FAIL: TestOrganizationWithMember (0.05s) provisioning_test.go:371: memberships map[judge-x_01M5X8Y7ZE4C42D177195B1QXF:owner owner-x_01M5X8Y7ZEB3JEBJHATMPDZBQC:owner], want the owner as owner and the member as editor FAIL
+KILLED G5 the member not in the audit event :: --- FAIL: TestOrganizationWithMember (0.04s) provisioning_test.go:386: audit: 1 events, metadata {"owner_user_id": "usr_01M5X8Y9FJVHFPSVKTMXY0GJER"} FAIL
+KILLED G6 the catalogue lets a member be an owner :: --- FAIL: TestRefused (0.00s) audit_test.go:309: a member as a second owner: <nil> FAIL
+EQUIVALENT G7 the command accepts partial member flags (equivalent: provisioning refuses the incomplete identity or role with ErrInvalidInput, which the command also maps to exit 2; the command's own check only refuses before connecting)
+KILLED G8 the command ignores the member flags :: --- FAIL: TestProvisionWithMember (0.02s) main_test.go:101: organization with a member: 0 "{\"organization_id\":\"org_01M5X8YD8AKJ92Z3P7H9WY129S\",\"owner_user_id\":\"usr_01M5X8YD8AVSERARGC60ECP8BS\"}\n" "" FAIL
+7/7 killed, 2 equivalent (expected to survive), 0 invalid
+restored files: PASS
+exit 0

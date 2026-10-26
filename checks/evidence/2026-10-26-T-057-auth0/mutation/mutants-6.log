@@ -1,0 +1,6 @@
+BASELINE rehearsal: exit 0 rehearsal: PASS (the deployer against stand-ins; Railway itself NOT RUN)
+EQUIVALENT R39 every list compared in any order, not only the grant types (equivalent: every other list H-034 wants -- callbacks, allowed_logout_urls, web_origins, allowed_origins -- has at most one element, so two lists of the same elements in another order cannot exist; Auth0's answers have no list where a scalar is wanted)
+KILLED R46 the grant types compared in order (Auth0 listing them in another order is drift) :: REHEARSAL FAILED: - A2 (a rerun) wrote to Auth0 [['apps update', ['a0rehearsalclient000000000000001'], {'name': 'Geminus demo web', 'app_type': 'regular_web', 'oidc_conformant': True, 'token_endpoint_auth_method': 'client_secret_post', 'grant_types': ['authorization_code', 'refresh_token'], 'callbacks': ['https://web-production-1a2b.up.railway.app/auth/callback'], 'allowed_logout_urls': ['https://
+1/1 killed, 1 equivalent (expected to survive), 0 invalid
+restored files: PASS
+exit 0

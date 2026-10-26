@@ -1,0 +1,116 @@
+Sources read for the T-057 Auth0 slice (H-034, H-035 (2)), 2026-10-26. Public pages and release
+files only, over HTTPS, without a token, a login or any call to an Auth0 tenant. The code host's
+REST API answered 403 from this session, so release metadata comes from the release files and the
+CHANGELOG at the tags. Re-read before relying on them.
+
+== The pinned CLI: auth0/auth0-cli v1.37.0 ==
+
+- CHANGELOG.md (main): "v1.37.0 (September 30, 2026)"; "v1.38.0 (October 19, 2026)" (7 days before
+  2026-10-26, under the two-week rule), "v1.36.0 (September 18, 2026)". So v1.37.0, 26 days old.
+  v1.37.0 adds AUTH0_CLI_AUTH_MODE=env; v1.38.0 adds `--reveal-secrets` to `auth0 api` ("client_secret
+  and signing_keys are now masked in responses by default"): in 1.37.0 `auth0 api` does not mask them,
+  which is why the step does not use `auth0 api`.
+- https://github.com/auth0/auth0-cli/releases/download/v1.37.0/checksums.txt (checksums-v1.37.0.txt
+  here, as downloaded): auth0-cli_1.37.0_Linux_x86_64.tar.gz
+  277e8fa32b9e4f4feb8e30717892139251821c0c66cd3ad5f326ba759ec6ac4f.
+- The archive downloaded from the same release (30736843 bytes) has that SHA-256; it holds one file,
+  `auth0` (84086044 bytes, dated 2026-09-30 12:46), SHA-256
+  2bc2ef7c1ab3c340a50bebb2c6bfd9692ea23dfee539bf7a2e1aac3debb3491c. It was extracted without the
+  executable bit into its own directory and never run.
+- LICENSE at v1.37.0: "The MIT License (MIT) Copyright (c) 2021 Auth0, Inc." (same as on main).
+- .goreleaser.yml at v1.37.0: archive name `{{ .ProjectName }}_{{ .Version }}_{{ title .Os }}_x86_64`,
+  `files: none*` (the binary alone), checksum `checksums.txt`, sha256.
+- go.mod at v1.37.0: github.com/zalando/go-keyring v0.2.8, github.com/godbus/dbus/v5 v5.2.2,
+  github.com/auth0/go-auth0 v1.50.0 and /v3 v3.6.0.
+
+== The CLI's source at v1.37.0 (raw files of the tag) ==
+
+- internal/cli/login.go: with --no-input and --domain alone, a user (device code) login on that
+  tenant's audience (ensureAuth0URL: only an auth0.com domain); in agent mode it prints one JSON
+  object {"verification_uri", "user_code", "expires_in", "interval"} on stdout, waits, then prints
+  {"logged_in": true, "tenant", "domain", "expires_at"}; the access token is stored in the keyring,
+  or, when that fails, in the config file (tenant.AccessToken).
+- internal/auth/auth.go: the device code comes from Auth0's own CLI application
+  (auth0.auth0.com/oauth/device/code); State.VerificationURI is `verification_uri_complete`;
+  RequiredScopes include create/read/update:clients, create/read/update:resource_servers,
+  create/read/update:users, read/update:connections, read/update:connections_options,
+  read:client_keys.
+- internal/config/config.go: the config file is $HOME/.config/auth0/config.json (0600, directory
+  0700). internal/config/tenant.go: the token is read from the keyring, then from the config file.
+- internal/keyring/keyring.go, internal/cli/logout.go: `auth0 logout <tenant>` removes the tenant from
+  the config, then deletes its keyring entries; a keyring error other than "not found" fails the
+  command after the config was rewritten (hence the step checks `auth0 tenants list` afterwards).
+- internal/cli/tenants.go, internal/display/tenants.go: `tenants list --json` prints
+  [{"name": <domain>, "active": bool}] from the config file (no authentication needed).
+- internal/cli/root.go: `--agent-mode` (or AUTH0_AGENT_MODE=true) forces agent mode: JSON on stdout,
+  no prompts, no colors, stderr only a JSON error envelope {"error": {"code", "reason", "message",
+  "status", "details"}}, exit 0, 130 when interrupted, 1 otherwise; `--tenant` is a persistent flag.
+- internal/analytics/analytics.go: events go to heapanalytics.com with the tenant among their
+  properties unless AUTH0_CLI_ANALYTICS=false.
+- internal/cli/data_json.go: `--data @-` (or `-`) reads the JSON payload from stdin (iostream
+  PipedInput); the payload is validated against the Management API's OpenAPI document when it can be
+  loaded, then sent as is (runJSONWrite).
+- internal/cli/api.go: `auth0 api` takes --data inline, @file or @-, prints the response unmasked.
+- internal/cli/apis.go, internal/display/apis.go: `apis list --number N` (1-1000), `apis show <id or
+  audience>`, `apis create --data`, `apis update <id> --data` (PATCH /resource-servers/{id}); the JSON
+  is the management.ResourceServer (go-auth0 v1.50.0 management/resource_server.go: identifier,
+  signing_alg, signing_secret, token_lifetime, allow_offline_access, token_dialect,
+  skip_consent_for_verifiable_first_party_clients).
+- internal/cli/apps.go, internal/display/apps.go: `apps list --number N`, `apps show <id>
+  [--reveal-secrets]`, `apps create --data`, `apps update <id> --data` (PATCH /clients/{id}); without
+  --reveal-secrets client_secret and signing_keys are removed from the JSON (safeRaw); the JSON is the
+  management.Client (go-auth0 management/client.go: client_id, name, app_type, oidc_conformant,
+  callbacks, allowed_logout_urls, web_origins, allowed_origins, grant_types,
+  token_endpoint_auth_method, jwt_configuration.alg, refresh_token {rotation_type, expiration_type,
+  leeway, token_lifetime, infinite_token_lifetime, idle_token_lifetime,
+  infinite_idle_token_lifetime}).
+- internal/cli/connections.go, internal/display/connections.go: `connections list`, `connections show
+  <id>` (the raw GET /connections/{id}), `connections update <id> --data` ("the entire 'options'
+  object is overridden on update"), `connections enabled-clients show <id>` and `update <id> --data
+  '[{"client_id", "status"}]'` (PATCH /connections/{id}/clients).
+- internal/cli/users.go, internal/display/users.go: `users search-by-email <email>` (a JSON list of
+  management.User), `users show <id>`, `users create --data`, `users update <id> --data`.
+- go-auth0 v1.50.0 management/connection.go: ConnectionOptions.DisableSignup `disable_signup`,
+  CustomScripts `customScripts`, Configuration `configuration`, ConnectionEnabledClient {client_id,
+  status}.
+
+== Auth0 documentation (auth0.com/docs) ==
+
+- secure/tokens/refresh-tokens/configure-refresh-token-rotation: Dashboard > Applications > Settings >
+  Refresh Token Rotation: "Allow Refresh Token Rotation", "Rotation Overlap Period (in seconds)";
+  PATCH /api/v2/clients/{client_id} {"refresh_token": {"rotation_type": "rotating",
+  "expiration_type": "expiring", "token_lifetime": ..., "leeway": ...}}; rotation only for
+  OIDC-conformant applications with the Refresh Token grant.
+- secure/tokens/refresh-tokens/configure-refresh-token-expiration: "Set Idle Refresh Token Lifetime",
+  "Idle Refresh Token Lifetime", "Set Maximum Refresh Token Lifetime", "Maximum Refresh Token
+  Lifetime"; the API fields idle_token_lifetime, infinite_idle_token_lifetime, token_lifetime,
+  infinite_token_lifetime; "If rotation is enabled, an expiration lifetime must be set".
+- secure/tokens/access-tokens/access-token-profiles: token dialects access_token,
+  access_token_authz, rfc9068_profile, rfc9068_profile_authz.
+- get-started/apis/api-settings: "Maximum Access Token Lifetime (Seconds)", "JSON Web Token (JWT)
+  Profile" (Auth0 or RFC 9068), "JSON Web Token (JWT) Signing Algorithm", "Allow Skipping User
+  Consent", "Allow Offline Access"; the Identifier cannot be modified.
+- get-started/applications/application-settings: Application URIs ("Allowed Callback URLs", ...),
+  Refresh Token Rotation, Refresh Token Expiration, Advanced Settings > OAuth ("OIDC Conformant"),
+  Grant Types.
+- get-started/applications/credentials: Authentication Methods "Client Secret (Basic)", "Client
+  Secret (Post)" (request body parameters).
+- get-started/applications/update-application-connections: Applications > the application >
+  Connections tab, enable or disable connections.
+- api/management/v2/connections/patch-connections-by-id: "If you use the options parameter, the
+  entire options object is overridden"; "If display_name is not included in the request, the field
+  will be overwritten with the name value"; options need update:connections_options.
+- api/management/v2/connections/patch-clients: the enabled clients of a connection, a list of
+  {client_id, status}.
+- No page on the dashboard's "Disable Sign Ups" switch was found (two guessed URLs answered 404);
+  the runbook's dashboard name for it is not taken from a fetched page.
+
+== The repository ==
+
+- apps/web/lib/session/oidc.ts: redirectUri `${cfg.appOrigin}/auth/callback`, postLogoutRedirectUri
+  `${cfg.appOrigin}/`; client.ClientSecretPost; id_token_signed_response_alg RS256.
+- apps/web/lib/session/config.ts: BFF_OIDC_CLIENT_SECRET 1-512 visible ASCII characters.
+- openapi/openapi.yaml x-required-roles: createProposal, createImageProposal, approveProposal,
+  createSimulation, createModel: owner, editor; listMemberships..., listAuditEvents: owner.
+- migrations/0004_provisioner.up.sql: guard_provisioner_target: provisioning adds members and audit
+  events only to the organization its own transaction created.

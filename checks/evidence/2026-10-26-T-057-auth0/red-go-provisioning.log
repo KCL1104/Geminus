@@ -1,0 +1,14 @@
+# github.com/kcl1104/geminus/internal/storage/provisioning_test [github.com/kcl1104/geminus/internal/storage/provisioning.test]
+internal/storage/provisioning/provisioning_test.go:352:46: undefined: provisioning.OrganizationWithMember
+internal/storage/provisioning/provisioning_test.go:353:16: undefined: provisioning.Member
+internal/storage/provisioning/provisioning_test.go:395:34: undefined: provisioning.OrganizationWithMember
+internal/storage/provisioning/provisioning_test.go:396:16: undefined: provisioning.Member
+internal/storage/provisioning/provisioning_test.go:400:47: undefined: provisioning.Member
+internal/storage/provisioning/provisioning_test.go:410:32: undefined: provisioning.OrganizationWithMember
+FAIL	github.com/kcl1104/geminus/internal/storage/provisioning [build failed]
+--- FAIL: TestProvisionWithMember (0.00s)
+    main_test.go:101: organization with a member: 2 "" "flag provided but not defined: -member-issuer\nUsage of organization:\n  -name string\n    \torganization name\n  -owner-issuer string\n    \tthe first owner's OIDC issuer\n  -owner-subject string\n    \tthe first owner's OIDC subject\n"
+FAIL
+FAIL	github.com/kcl1104/geminus/cmd/provision-tenant	0.072s
+FAIL
+exit 1

@@ -2,9 +2,9 @@
 
 依據：T-039（hackathon 切片，H-029 (3)）、[ADR-029](../adr/ADR-029-containers-and-staging-deployment.md)（PROPOSED）、[ADR-018](../adr/ADR-018-browser-session-and-oidc-provider.md)、[ADR-017](../adr/ADR-017-oidc-token-verification.md)、[ADR-024](../adr/ADR-024-job-queue-and-worker.md)、[ADR-028](../adr/ADR-028-opentelemetry.md)、[Auth0 runbook](auth0.md)、AGENTS.md §2、§6。雲端廠商：owner 的選擇為 **Railway**（H-030 先為「railway + cloudflare」，H-031 改為「純用 railway」，不接 Cloudflare）。
 
-**誰執行。** Railway 的部署由 coordinator 在有 Railway token 的 session 中以 `deploy/railway/deploy.sh --apply` 執行（H-032，§7.7），或由 owner 照 §7.1–§7.6 手動執行。撰寫本 runbook 與腳本的 agent 沒有執行 `--apply`、沒有呼叫 Railway 的 API、沒有建立任何東西（只執行了不連網的 `--dry-run` 與以替身進行的 rehearsal）。Repository 與 image 中沒有任何 credential；腳本產生的 secret 只經 stdin 交給 Railway CLI，不印出、不寫檔；owner 的 secret（§7.3：Auth0 client secret、AI key、live 開關）只由 owner 在 Railway 的 UI 填入（並 sealed），腳本不設；Railway CLI 列出變數時會回傳沒有 sealed 的值，腳本收到即丟棄（§7.3）。只放 synthetic 資料。Production 的批准（把網址公開、開啟 live AI）是人的決定（AGENTS.md §6）。
+**誰執行。** Railway 的部署由 coordinator 在有 Railway token 的 session 中以 `deploy/railway/deploy.sh --apply` 執行（H-032，§7.7），或由 owner 照 §7.1–§7.6 手動執行。撰寫本 runbook 與腳本的 agent 沒有執行 `--apply`、沒有呼叫 Railway 的 API、沒有建立任何東西（只執行了不連網的 `--dry-run` 與以替身進行的 rehearsal）。Repository 與 image 中沒有任何 credential；腳本產生的 secret 只經 stdin 交給 Railway CLI，不印出、不寫檔；owner 的 secret（§7.3：AI key、live 開關；`GEMINUS_AUTH0_SETUP=manual` 時還有 Auth0 client secret）只由 owner 在 Railway 的 UI 填入（並 sealed），腳本不設；Railway CLI 列出變數時會回傳沒有 sealed 的值，腳本收到即丟棄（§7.3）。H-034 之後 Auth0 由 `deploy.sh` 的 Auth0 步驟以 Auth0 CLI 設定（owner 在自己的瀏覽器核准 CLI 的登入；client secret 只經 stdin 交給 Railway CLI 並 sealed；結束時登出），並建立評審帳號（H-035 (2)，§7.8）。只放 synthetic 資料。Production 的批准（把網址公開、開啟 live AI）是人的決定（AGENTS.md §6）。
 
-§1–§6 與廠商無關；§7 是 Railway 的步驟（§7.7 是自動化的 `deploy.sh`）；§8 是上線前由人執行的檢查；§9 是本機的 `make staging-smoke`。
+§1–§6 與廠商無關；§7 是 Railway 的步驟（§7.7 是自動化的 `deploy.sh`，§7.8 是它的 Auth0 步驟與評審帳號）；§8 是上線前由人執行的檢查；§9 是本機的 `make staging-smoke`。
 
 ## 1. 組成
 
@@ -175,7 +175,7 @@ BFF 的 URL 必須全部是 https（只有全部在 loopback 時才可 http）�
 
 ## 6. Auth0（owner 的 tenant，最終網域）
 
-照 [Auth0 runbook](auth0.md) §2–§4 建立 API 與 Regular Web Application，網域用 web service 的公開網域（§7.6，例如 `<web>.up.railway.app`）：
+H-034 之後由 `deploy.sh` 的 Auth0 步驟（§7.8）以 Auth0 CLI 設定；手動時照 [Auth0 runbook](auth0.md) §2–§4（步驟見其 §6）建立 API 與 Regular Web Application，網域用 web service 的公開網域（§7.6，例如 `<web>.up.railway.app`）：
 
 | 設定 | 值 |
 |---|---|
@@ -230,14 +230,14 @@ BFF 的 URL 必須全部是 https（只有全部在 loopback 時才可 http）�
 | `GEMINUS_PROVISIONER_DB_PASSWORD` | 不放 Railway | `deploy.sh` 每次執行新產生，只在該次 seed 的環境中，不存任何地方 | §3.3 |
 | `SESSION_KEYS` | web | `deploy.sh`（`generated`，`format: session-key`） | `k1:` 加 32 bytes 的 base64url（[Auth0 runbook](auth0.md) §4 的格式） |
 | `OBJECT_STORAGE_S3_ACCESS_KEY_ID`、`OBJECT_STORAGE_S3_SECRET_ACCESS_KEY` | api、worker | `deploy.sh`（`bucket:…`） | `railway bucket credentials --json` 的值，經 stdin 複製（不印出） |
-| `BFF_OIDC_CLIENT_SECRET` | web | **owner**（必填） | Auth0 Application 的 Client Secret |
+| `BFF_OIDC_CLIENT_SECRET` | web | `deploy.sh` 的 Auth0 步驟（`auth0`，H-034；必填）；`GEMINUS_AUTH0_SETUP=manual` 時為 **owner** | Auth0 Application 的 Client Secret：Auth0 CLI 的 JSON 在部署腳本的 process 內讀出，只經 stdin 交給 `railway variable set --stdin`，立刻 sealed（§7.8） |
 | `GEMINUS_ANTHROPIC_API_KEY_A`、`GEMINUS_ANTHROPIC_API_KEY_B` | **只 worker** | **owner**（選填；只在開 live AI 時） | D-018 的兩把 key |
 | `GEMINUS_MUSE_API_KEY` | **只 worker** | **owner**（選填；只在開 Meta live AI 時） | Meta Model API（Standard mode，H-029） |
 | `GEMINUS_AI_LIVE`（不是 secret，但是 owner 的開關） | api、worker（**兩者相同**） | **owner**（選填，預設關） | §4.4 |
 | `AI_POLICY_APPROVAL`、`AI_MODEL`（不是 secret，owner 的設定） | api、worker（**兩者相同**） | **owner**（選填；只在開 live AI 時） | §4.4（`AI_PROVIDER` 由 `deploy.sh` 只在沒有時設為 `disabled`，owner 改為 `anthropic` 或 `meta` 時兩個 service 一起改） |
 | `AI_VISION_PROVIDER`、`AI_VISION_POLICY_APPROVAL`、`AI_VISION_MODEL`（不是 secret，owner 的設定） | api、worker（**兩者相同**） | **owner**（選填；不設＝照片路徑跟 `AI_PROVIDER`） | §4.4（API 以這三個設定與上面四個決定是否接受照片，D-124） |
 
-Owner 的變數：`deploy.sh` 不設，只在最後檢查必填的 `BFF_OIDC_CLIENT_SECRET` 已存在；沒有時 verification 失敗並寫出要在哪個 service 填（§7.7）。Live AI 預設關（`AI_PROVIDER=disabled`、沒有 `GEMINUS_AI_LIVE`）。
+Owner 的變數：`deploy.sh` 不設，只在最後檢查必填者已存在；沒有時 verification 失敗並寫出要在哪個 service 填（§7.7）。`BFF_OIDC_CLIENT_SECRET`（`source: auth0`）由 §7.8 的 Auth0 步驟設定並 sealed；`GEMINUS_AUTH0_SETUP=manual` 時改由 owner 填，與 owner 的變數相同（值收到即丟棄、沒有時 verification 寫出要在哪裡填）。Live AI 預設關（`AI_PROVIDER=disabled`、沒有 `GEMINUS_AI_LIVE`）。
 
 **腳本實際收到什麼（review 第 1 輪 M2）。** 要知道哪些變數已存在，唯一的方法是 `railway variable list --service <service> --json`，而 CLI 5.64.2 會在其中回傳**每個沒有 sealed 的變數的值**（sealed 的為 `null`；CLI 原始碼 `src/commands/variable.rs`：「JSON and KV output include raw variable values」，沒有只列名稱的選項）。所以 owner 沒有 sealed 的 `BFF_OIDC_CLIENT_SECRET`、AI key 的值會經 CLI 的輸出進入執行 `deploy.sh` 的 process。腳本的處理：在解析 JSON 的當下（`json.loads` 的 `object_pairs_hook`）只保留它需要的值，也就是自己產生的密碼（對齊 login 用）與 Postgres 的 `DATABASE_PUBLIC_URL`，並登記為 secret（輸出中遮蔽為 `[redacted]`、不得出現在引數中）；其他每個值（owner 的全部、Railway 自己的、沒有列在 `variables.json` 的）在解析時就換成「已設」或「sealed」的標記，不進任何 dict、輸出、錯誤訊息或 exception，也不寫入任何地方。Python 不能抹除記憶體：CLI 的原始輸出在 process 中短暫存在，直到被回收。**Owner 應該在新增變數後立刻 sealed**（service → Variables → 變數右側的 3-dot 選單 → Seal；Railway 文件：sealed 後不能解除，但值仍可以修改），之後 CLI 只回傳 `null`，值不會到達腳本。Verification 會以名稱列出還沒有 sealed 的 owner secret（`BFF_OIDC_CLIENT_SECRET`、`GEMINUS_ANTHROPIC_API_KEY_A`／`_B`、`GEMINUS_MUSE_API_KEY`），提醒 sealed；`GEMINUS_AI_LIVE` 不是 secret，不提醒（它的值同樣丟棄）。這與 H-033「只看變數名稱、不讀值」的字面仍有差距（沒有 sealed 時值會短暫經過腳本），由 coordinator 轉給 owner 決定。
 
@@ -283,14 +283,17 @@ Railway 文件（2026-10-26）：Buckets 是 private、S3 相容的 object stora
 由 coordinator（或 owner）在有 token 的機器上執行；本 repository 的 agent 沒有執行 `--apply`。
 
 ```sh
-deploy/railway/deploy.sh --install-cli "$HOME/.local/railway-5.64.2"   # 一次：安裝 pin 住的 CLI
-export PATH="$HOME/.local/railway-5.64.2:$PATH"
+deploy/railway/deploy.sh --install-cli "$HOME/.local/railway-5.64.2"       # 一次：安裝 pin 住的 Railway CLI
+deploy/railway/deploy.sh --install-auth0-cli "$HOME/.local/auth0-1.37.0"   # 一次：安裝 pin 住的 Auth0 CLI（§7.8）
+export PATH="$HOME/.local/railway-5.64.2:$HOME/.local/auth0-1.37.0:$PATH"
 export RAILWAY_API_TOKEN=…      # 或 RAILWAY_TOKEN=…（見下）；不要放進 shell history 或任何檔案
 export GEMINUS_AUTH0_ISSUER='https://<tenant>.<region>.auth0.com/' GEMINUS_AUTH0_AUDIENCE='https://api.geminus-demo.invalid' \
-       GEMINUS_AUTH0_CLIENT_ID='<Client ID>' GEMINUS_SEED_OWNER_SUBJECT='auth0|<owner 的 user_id>' GEMINUS_RAILWAY_BUCKET_REGION=sjc
+       GEMINUS_SEED_OWNER_SUBJECT='auth0|<owner 的 user_id>' GEMINUS_RAILWAY_BUCKET_REGION=sjc
 deploy/railway/deploy.sh --dry-run     # 不連網：檢查輸入、工具與部署檔，印出 --apply 的每個命令
-deploy/railway/deploy.sh --apply
+deploy/railway/deploy.sh --apply       # 步驟 2b 等 owner 在自己的瀏覽器核准 Auth0 CLI 的登入（§7.8）
 ```
+
+`GEMINUS_AUTH0_SETUP=manual`（Auth0 CLI 的路徑不能用時，§7.8 的手動備援）：不執行 Auth0 步驟，另外需要 `GEMINUS_AUTH0_CLIENT_ID='<Client ID>'`，`BFF_OIDC_CLIENT_SECRET` 由 owner 在 Railway 填並 sealed（T-039 原本的流程）；設 `GEMINUS_JUDGE_SUBJECT='auth0|<評審帳號的 user_id>'` 時 seed 把評審帳號設為 demo 組織的 editor。
 
 - **Token**（[CLI 文件](https://docs.railway.com/guides/cli)，2026-10-26；CLI v5.64.2 的 `src/config.rs`）：`RAILWAY_TOKEN` 是 project token，project 與 environment 是 token 自己的、必須已存在，腳本不加 `--environment`；`RAILWAY_API_TOKEN` 是 account／workspace token，腳本以名稱找 `GEMINUS_RAILWAY_PROJECT`（預設 `geminus-demo`），沒有就 `railway init`（`GEMINUS_RAILWAY_WORKSPACE` 選 workspace），再 link `GEMINUS_RAILWAY_ENVIRONMENT`（預設 `production`）。兩個都設時 CLI 以 `RAILWAY_TOKEN` 決定 project。Token 只由 CLI 從環境讀：不在任何引數、輸出或 log 中；腳本把 token 登記為 secret（CLI 的錯誤訊息引用它時印成 `[redacted]`），並從其他每個程式（psql、`go run`、git、`check_deploy.py`）的環境中移除；`deploy.sh` 在 xtrace 開著時（`bash -x`、`set -x` 或 `SHELLOPTS=xtrace`）在執行任何命令之前拒絕（exit 2）。
 - **CLI 的版本**：pin 在 5.64.2。`--install-cli` 下載 GitHub release 的 `railway-v5.64.2-x86_64-unknown-linux-musl.tar.gz` 並核對 SHA-256 `a154c3ff5ac3e2ece99bdca9d8d5505fc7f85a949689346bd934fb425246e229`（2026-10-26 計算；release 沒有 checksum 檔，npm 的 `@railway/cli@5.64.2` 也下載同一個檔而不核對）；只支援 Linux x86_64，其他平台自行安裝同一版本。`--apply` 檢查 `railway --version` 為 5.64.2，並以 `CI=true`、`RAILWAY_NO_AUTO_UPDATE=1` 執行，CLI 不會自行更新。
@@ -298,17 +301,50 @@ deploy/railway/deploy.sh --apply
 - **步驟**（`railway_deploy.py` 的 docstring；每步都先查、只在缺少時建立，所以可以重跑）：
   1. project 與 environment；
   2. PostgreSQL、bucket（`geminus-objects`，region 建立後不能改）、四個 service、各自的 config-as-code 檔（`railway environment edit --service-config <service> configFile /deploy/railway/<service>.railway.json`）、api 與 web 的公開網域；
+  2b. Auth0（H-034，`GEMINUS_AUTH0_SETUP=cli`，預設）：§7.8；完成時 Auth0 CLI 已登出、它的 home 已刪除，`GEMINUS_AUTH0_CLIENT_ID` 是這一步的輸出（給步驟 3 的 `BFF_OIDC_CLIENT_ID`），web 的 `BFF_OIDC_CLIENT_SECRET` 已設定並 sealed；
   3. `variables.json` 的變數（`--skip-deploys`）：產生的 secret 只在缺少時以 Python 的 `secrets` 產生，經 `railway variable set KEY --stdin` 設定；bucket 的 key 以同樣方式複製；owner 的變數不設（列出變數時收到的值即丟棄，§7.3）；
   4. 為本次執行開 Postgres 的 TCP proxy（已經有一個時沿用它而不移除：腳本無法分辨它是別人開的，還是被中斷的執行留下的；結束時會回報，見下方「TCP proxy」），以 administrator 的 `DATABASE_PUBLIC_URL`（`sslmode=require`，只放在 psql 的環境）執行 `db/bootstrap_roles.sql` 與 `deploy/sql/create_logins.sql`；login 已存在而 Railway 的密碼還讀得到時以 `ALTER ROLE … PASSWORD` 對齊；然後把產生與複製的 secret 設為 sealed（`variables.<KEY>.isSealed`）；
   5. 部署 `migrate`，等到 `geminus_migrations.applied` 的筆數等於這個 checkout 的 migration 數；
-  6. worker 還沒有 `WORKER_ORGANIZATION_IDS` 時 seed 一個 synthetic organization（`GEMINUS_SEED_ORG_NAME`，owner 為 `GEMINUS_SEED_OWNER_SUBJECT`），把 `organization_id` 設給 worker；移除本次開的 TCP proxy（步驟 4–6 失敗時、收到 SIGTERM 或 SIGHUP 時也移除）；
+  6. worker 還沒有 `WORKER_ORGANIZATION_IDS` 時 seed 一個 synthetic organization（`GEMINUS_SEED_ORG_NAME`，owner 為 `GEMINUS_SEED_OWNER_SUBJECT`，評審帳號以 `-member-issuer`／`-member-subject`／`-member-role editor` 在同一個 transaction 成為 editor：§7.8），把 `organization_id` 設給 worker；再以 administrator 列出評審帳號的 membership：必須只有 demo 組織的 editor，否則 verification 失敗並寫出怎麼做；移除本次開的 TCP proxy（步驟 4–6 失敗時、收到 SIGTERM 或 SIGHUP 時也移除）；
   7. `railway up` api、worker、web，等每個成功（api、web 有 Railway 的 healthcheck）；
   8. verify：api 的 `/healthz`、`/readyz` 200、`/v1/me` 401，web 的 `/` 200、`/auth/login` 302／303 到 `<issuer>authorize`，worker 仍為 SUCCESS，owner 的必填變數存在（只看名稱）、沒有 sealed 的 owner secret 以名稱列出並提醒 sealed（不算失敗）、Postgres 沒有任何 TCP proxy 開著；印出 Auth0 要填的 callback 與 logout URL。
 - **TCP proxy（review 第 1 輪 M1）**：Postgres 的公開 TCP proxy 讓 administrator（template 的 `postgres` superuser）可從公開網路登入，所以不得無聲地留著。(a) 本次開的 proxy 在步驟 4–6 結束時移除，失敗時、收到 SIGTERM 或 SIGHUP 時也一樣（兩者轉成 exit，讓清理執行；第二個訊號在清理期間被忽略）；SIGKILL 無法攔截，留下的 proxy 由下一次執行回報。(b) `railway tcp-proxy delete` 的 exit code 非 0 時，腳本寫出 proxy 的 id 與手動移除的命令，整次執行以 exit 1 結束。(c) 每次 `--apply` 結束前（不論成功、失敗或被訊號中斷；在 verification 中，或 verification 之前就停下時於結束時）都列出 Postgres 的 TCP proxy：還有任何 proxy 開著，包括執行前就存在、被本次沿用的，就寫出它的 id 與移除命令（`railway tcp-proxy delete <id> --yes --service Postgres --environment <environment>`）並以 exit 1 結束；列不出來也是 exit 1。只有明確設了 `GEMINUS_KEEP_DB_PROXY=1` 時，開著的 proxy 只以警告列出（仍寫 id）、不算失敗；它不豁免 (b)。執行前就存在的 proxy 腳本不移除（可能是 owner 依 §7.5 手動開的），但每次執行都回報，直到有人移除它或設了 `GEMINUS_KEEP_DB_PROXY=1`。
 - **結果**：exit 0 完成；exit 1 某一步失敗或 TCP proxy 還開著（訊息寫是哪一步與怎麼做，例如 `the owner has not set BFF_OIDC_CLIENT_SECRET on web (Railway → web → Variables)`，owner 填好後重跑即可）；exit 2 用法錯誤或 xtrace 開著；exit 128+N 被訊號 N 中斷（SIGTERM 143、SIGHUP 129；清理已執行，重跑即可）。第一次執行在 owner 填 `BFF_OIDC_CLIENT_SECRET` 之前必定停在 verification：這是預期的。
 - **Secret 的產生**：H-032 希望用 Railway 的 `${{secret(...)}}`。Railway 文件只把它寫成 **template** 的函式（[templates/create](https://docs.railway.com/templates/create)：「When a template is deployed, all template variable functions are executed」）；[variables](https://docs.railway.com/guides/variables) 與 [variables reference](https://docs.railway.com/variables/reference) 沒有說一般 service variable 可以用；社群的回答（[station](https://station.railway.com/questions/secret-generates-a-new-string-on-8523cc4d)）說在 service 層級它可能每次重新產生。所以腳本不用它，改在本機產生、經 stdin 設定、再 sealed；產生的值不出現在任何輸出、檔案或引數中（每次呼叫前檢查）。
 - **未查證：reference 到 sealed variable 時是否展開。** `DATABASE_URL` 與 `GEMINUS_MIGRATE_DATABASE_URL` 以 `${{GEMINUS_…_DB_PASSWORD}}` 引用 sealed 的密碼；Railway 文件沒有寫 reference 是否展開 sealed 的值（社群有一例 sealed 的 reference 仍可用，但不是文件）。若不展開，步驟 5 的 migrate 會以密碼錯誤失敗，腳本停在那裡並指向這裡。**復原**：在 Railway 的 UI 刪除 migrate、api、worker 的 `GEMINUS_*_DB_PASSWORD`（sealed 的可以刪），以 `GEMINUS_RAILWAY_SEAL=off deploy/railway/deploy.sh --apply` 重跑：腳本重新產生密碼、以 `ALTER ROLE` 對齊、不 sealed（保護較弱：可在 UI 與 `railway variable list` 看到），並回報 coordinator（§10 問題 5）。
-- **Rehearsal**：`scripts/rehearse_railway_deploy.py` 以 `railway`、`psql`、`go` 的替身（不連網）執行完整的 `--apply` 數次：secret 只經 stdin、不出現在引數與輸出（包括 CLI 錯誤訊息中引用的值與 token）、psql 與 go 的環境沒有 token、不設 owner 的變數、CLI 回傳 owner 沒有 sealed 的值時，這些值不出現在腳本的狀態、輸出、錯誤與任何 method 的回傳值中，且以名稱提醒 sealed、API 沒有 AI key、部署順序、只有 api 與 web 有網域、只 seed 一次、TCP proxy 被移除、產生與複製的 secret 都 sealed（`GEMINUS_RAILWAY_SEAL=off` 時都不）、第二次執行不建立任何東西也不換 secret、owner 未填時與登入導向錯誤時 verification 分別失敗；TCP proxy 的移除失敗、執行前就存在的 proxy、CLI 說移除了卻還在、create 沒有印出 id、最後列不出來、SIGTERM 與 SIGHUP（以獨立的 process 執行）都以非 0 結束並寫出 id 與移除命令（`GEMINUS_KEEP_DB_PROXY=1` 時成功但仍列出）；`deploy.sh` 在 xtrace 時拒絕。它證明腳本自身一致，不證明 Railway 接受每個呼叫（NOT RUN，直到 coordinator 的 `--apply`）。
+- **Rehearsal**：`scripts/rehearse_railway_deploy.py` 以 `railway`、`psql`、`go` 的替身（不連網）執行完整的 `--apply` 數次：secret 只經 stdin、不出現在引數與輸出（包括 CLI 錯誤訊息中引用的值與 token）、psql 與 go 的環境沒有 token、不設 owner 的變數、CLI 回傳 owner 沒有 sealed 的值時，這些值不出現在腳本的狀態、輸出、錯誤與任何 method 的回傳值中，且以名稱提醒 sealed、API 沒有 AI key、部署順序、只有 api 與 web 有網域、只 seed 一次、TCP proxy 被移除、產生與複製的 secret 都 sealed（`GEMINUS_RAILWAY_SEAL=off` 時都不）、第二次執行不建立任何東西也不換 secret、owner 未填時與登入導向錯誤時 verification 分別失敗；TCP proxy 的移除失敗、執行前就存在的 proxy、CLI 說移除了卻還在、create 沒有印出 id、最後列不出來、SIGTERM 與 SIGHUP（以獨立的 process 執行）都以非 0 結束並寫出 id 與移除命令（`GEMINUS_KEEP_DB_PROXY=1` 時成功但仍列出）；`deploy.sh` 在 xtrace 時拒絕。它證明腳本自身一致，不證明 Railway 接受每個呼叫（NOT RUN，直到 coordinator 的 `--apply`）。以上是 `GEMINUS_AUTH0_SETUP=manual` 的執行；Auth0 步驟另以 Auth0 CLI 的替身演練（§7.8 最後一條）。
+
+### 7.8 Auth0 步驟（H-034）與評審帳號（H-035 (2)）
+
+由 coordinator 在部署 session 中隨 `deploy.sh --apply` 執行（步驟 2b，web 的公開網域建立之後、步驟 3 的變數之前）；撰寫它的 agent 沒有登入、沒有呼叫任何 Auth0 tenant（只有替身與 `--dry-run`）。
+
+**部署當天 owner 要做的事。** (1) 事先：註冊 Auth0、建立 tenant（帳號與條款本人處理）、在 database connection（預設 `Username-Password-Authentication`）建立自己的使用者，告知 tenant 的網域與自己的 `user_id`（coordinator 以 `GEMINUS_AUTH0_ISSUER`、`GEMINUS_SEED_OWNER_SUBJECT` 傳入；`user_id` 不寫進 repo）。(2) `--apply` 跑到 2b 時，畫面出現一行 `Auth0 sign-in: open https://…auth0.com/activate?user_code=XXXX-XXXX …, check that it shows the code XXXX-XXXX, and approve`：在自己的瀏覽器打開，確認畫面上的 code 相同，以自己的 Auth0 帳號登入並核准（不交出任何密碼或 token；預設 15 分鐘內）。(3) 執行結束時 stderr 出現一次評審帳號的 email 與密碼：直接抄進提交說明，不要存到任何檔案或 evidence。其他都由腳本做。
+
+**CLI 的 pin。** [auth0/auth0-cli](https://github.com/auth0/auth0-cli) release [v1.37.0](https://github.com/auth0/auth0-cli/releases/tag/v1.37.0)（2026-09-30 發行，2026-10-26 時 26 天；v1.38.0 是 10-19，不到兩週）、MIT（tag 中的 `LICENSE`）。`--install-auth0-cli DIR` 下載 `auth0-cli_1.37.0_Linux_x86_64.tar.gz`，先核對 release 的 `checksums.txt` 列的 SHA-256 `277e8fa32b9e4f4feb8e30717892139251821c0c66cd3ad5f326ba759ec6ac4f`，再核對其中 `auth0` binary 的 SHA-256 `2bc2ef7c1ab3c340a50bebb2c6bfd9692ea23dfee539bf7a2e1aac3debb3491c`（2026-10-26 以下載的 archive 計算，archive 的 SHA-256 與 checksums.txt 相同），兩者都對才安裝。`--apply` 在執行 CLI（連 `--version` 也不跑）之前計算 PATH 上 `auth0` 的 SHA-256，不是 pin 住的就停在 preflight。`scripts/check_deploy.py` 檢查 `deploy.sh` 與 `railway_deploy.py` 的 pin 一致。只支援 Linux x86_64。
+
+**CLI 的執行環境。** 每次呼叫都加 `--agent-mode --no-input --no-color`（CLI 1.37.0 的 agent mode：結果是 stdout 上的 JSON，失敗時 stderr 只有 JSON error envelope，不提示、不開瀏覽器）。環境只有 `PATH`、語系、proxy 與 CA 設定、`HOME=<state>/geminus-deploy/auth0-cli`（`$XDG_STATE_HOME` 或 `~/.local/state`，權限 0700）、`AUTH0_CLI_ANALYTICS=false`（否則 CLI 會把 tenant 名稱等送到 Heap analytics）與 `DBUS_SESSION_BUS_ADDRESS=disabled:`（不碰桌面的 keyring：CLI 沒有 keyring 時把 access token 寫在 `HOME/.config/auth0/config.json`，這個 home 在結束時刪除）；沒有 Railway token。上一次執行被 SIGKILL 留下的 home，下一次執行先登出再刪除。
+
+**每一個動作**（CLI 1.37.0 的命令；先查，只在缺少時建立，只在與下表不同時更新，寫入後讀回比對，Auth0 沒有保留時以 exit 1 停下；寫入的 JSON 一律經 stdin `--data @-`）：
+
+| 對象 | 命令 | 設定 |
+|---|---|---|
+| 登入 | `auth0 login --domain <tenant>` | device code：只顯示 CLI 印出的 `verification_uri` 與 `user_code`；登入的 tenant 必須是 `GEMINUS_AUTH0_ISSUER` 的網域，否則什麼都不改並停下 |
+| Owner 的使用者 | `auth0 users show <GEMINUS_SEED_OWNER_SUBJECT>` | 必須在 `GEMINUS_AUTH0_CONNECTION` 中（應用程式只開這個 connection，否則 owner 無法登入）；在任何寫入之前檢查 |
+| API | `auth0 apis list --number 1000`、`apis create`／`apis update <id>`、`apis show <id>` | identifier `GEMINUS_AUTH0_AUDIENCE`、name `Geminus demo API`、`signing_alg` RS256、`token_dialect` `rfc9068_profile`、`token_lifetime` 600、`allow_offline_access` true、`skip_consent_for_verifiable_first_party_clients` true |
+| Regular Web Application | `auth0 apps list --number 1000`（以 name 找，必須至多一個）、`apps create`／`apps update <id>`、`apps show <id>` | name `Geminus demo web`、`app_type` `regular_web`、`oidc_conformant` true、`token_endpoint_auth_method` `client_secret_post`、`grant_types` 只有 `authorization_code`、`refresh_token`、`callbacks` 只有 `https://<web 網域>/auth/callback`、`allowed_logout_urls` 只有 `https://<web 網域>/`（BFF 的 `apps/web/lib/session/oidc.ts`）、`web_origins` 與 `allowed_origins` 空、`jwt_configuration.alg` RS256、`refresh_token`：`rotation_type` rotating、`expiration_type` expiring、`leeway` 30、`token_lifetime` 604800、`infinite_token_lifetime` false、`idle_token_lifetime` 43200、`infinite_idle_token_lifetime` false |
+| Sign-up | `auth0 connections list`、`connections show <id>`、`connections update <id>` | `options.disable_signup` true；PATCH 會取代整個 `options`、沒有 `display_name` 時會被改成 name（Management API 文件），所以送出現有的全部 options 加上 `disable_signup` 與現有的 `display_name`；options 中有腳本不保留的值（custom database 的 scripts 或 configuration）時不改、停下，改用手動備援 |
+| 只開 database connection | `auth0 connections enabled-clients show <id>`、`… update <id>` | 應用程式只在 `GEMINUS_AUTH0_CONNECTION` 啟用；其他 connection（新 tenant 預設的 Google 等）停用這個應用程式，否則任何人都能以社群登入在 Auth0 建立使用者（H-035 (2)：關閉自行註冊） |
+| 評審帳號 | `auth0 users search-by-email <GEMINUS_JUDGE_EMAIL>`、`users create`（或 `users update <id>`） | 在該 connection；`email_verified` true、`verify_email` false、name `Geminus demo judge`；密碼以 Python `secrets` 產生（24 字元，大小寫、數字、符號都有，沒有三個相同字元相連），經 stdin；已存在時不改密碼，`GEMINUS_JUDGE_RESET_PASSWORD=1` 時設新密碼 |
+| Client secret | `auth0 apps show <id> --reveal-secrets` → `railway variable set BFF_OIDC_CLIENT_SECRET --stdin --service web --skip-deploys` → `railway environment edit … variables.BFF_OIDC_CLIENT_SECRET.isSealed true` | 只在本次建立了應用程式、web 沒有這個變數、或 web 的 `BFF_OIDC_CLIENT_ID` 不是這個應用程式時讀取；不受 `GEMINUS_RAILWAY_SEAL=off` 影響（沒有別的變數 reference 它） |
+| 登出 | `auth0 logout <tenant>`（`auth0 tenants list` 列出的每一個）、刪除 CLI 的 home | 成功、失敗、SIGTERM、SIGHUP 都執行；沒有 keyring 時 CLI 在移除 tenant 之後刪 keyring 失敗、exit 1（CLI 原始碼），所以以 `tenants list` 判斷是否還有 session；還有時以 exit 1 結束（home 仍刪除） |
+
+**Secret。** Client secret、評審密碼與 Railway token 不出現在任何程式的引數、輸出、檔案、部署腳本的狀態、method 的回傳值或 exception 中（rehearsal 檢查）：CLI 的 JSON 在解析的當下把 `client_secret`、`signing_secret`、`signing_keys`、`device_code`、`password` 等欄位換成標記（別的應用程式的 secret、API 的 signing secret 也一樣）；需要的 client secret 只放進那一次呼叫自己的 list，交給 stdin 後清空；要遮蔽的值只以每次執行新產生 key 的 HMAC digest 保存；帶 secret 的 CLI 呼叫失敗時只顯示 error envelope 的類別，不顯示 CLI 的訊息。評審密碼只在執行結束時（不論成功、失敗或被訊號中斷）寫到 **stderr** 一次：`deploy.sh --apply > log` 的 stdout 不會有它；不要把 stderr 導到檔案（`2>&1 | tee` 會把它寫進檔案）。遺失時以 `GEMINUS_JUDGE_RESET_PASSWORD=1` 重跑（顯示新的一次），或在 dashboard 改。CLI 的 access token 在登出後仍在 Auth0 端有效到它過期為止（期限由 Auth0 決定，未查證；登出只刪除本機的副本），本機的副本隨 home 刪除。
+
+**評審帳號的 membership。** Role 是 `editor`：openapi 的 `x-required-roles` 中，提出 AI proposal（`createProposal`、`createImageProposal`）、核准（`approveProposal`）、建立模型與執行模擬都要 owner 或 editor；viewer 都不行；owner 另外能管理成員與讀 audit log，demo 不需要。Seed 以 `provision-tenant organization … -member-issuer <issuer> -member-subject <評審的 user_id> -member-role editor` 在建立 demo 組織的同一個 transaction 加入它（audit `organization.provision` 帶 `member_user_id`、`member_role`），之後以 administrator 列出評審帳號的 membership，必須只有 demo 組織的 editor。Provisioning 只能把成員加到它在同一個 transaction 建立的 organization（migration 0004），所以 **demo 組織在評審帳號存在之前就 seed 過時**（例如先以 manual 部署過），腳本只能把評審帳號建成 user（`provision-tenant user`），verification 失敗並寫出它的 `usr_…`：由 demo 組織的 owner 以 `POST /v1/organizations/<organization>/memberships`（`{"user_id": "usr_…", "role": "editor"}`，ADR-023；目前沒有 UI）加入。評審的 email 預設 `judge@geminus-demo.invalid`（不是真的信箱：無法以 email 重設密碼）。
+
+**手動備援**（CLI 拿不到、登入失敗、或上面任何一步停下而無法修正時）：照 [Auth0 runbook](auth0.md) §6 在 dashboard 做同樣的設定，再以 `GEMINUS_AUTH0_SETUP=manual`、`GEMINUS_AUTH0_CLIENT_ID`、`GEMINUS_JUDGE_SUBJECT` 執行 `--apply`，`BFF_OIDC_CLIENT_SECRET` 由 owner 在 Railway 填並 sealed。
+
+**Rehearsal**（`scripts/rehearse_railway_deploy.py`，Auth0 CLI 1.37.0 的替身，agent mode 的 JSON 形狀依 CLI 原始碼）：新的 tenant 與 project（設定值與上表完全相同、client secret 只經 stdin 並 sealed、評審帳號只是 demo 組織的 editor、密碼在 stderr 恰好一次）、重跑（替身以另一個順序列出 grant types；Auth0 沒有任何寫入、不再讀 client secret、不改密碼）、tenant 漂移（多的 callback、grant、overlap 0、web origin、API 的 dialect 與 lifetime、sign-up 又開、應用程式在 Google 上：全部改回）、密碼重設與被中斷的執行留下的 home、checksum 不符（CLI 一次都沒跑）、步驟失敗、登入到別的 tenant、Auth0 沒有保留 sign-up 關閉、CLI 在錯誤中引用密碼、登出沒有移除 session、owner 不在 database connection、demo 組織先 seed 過、評審帳號在別的組織、manual 的 `GEMINUS_JUDGE_SUBJECT`、dry run、評審帳號建立前與建立後的 SIGTERM（獨立的 process，exit 143、登出、密碼在 stderr 恰好一次）、`--install-auth0-cli` 拿到不是 pin 住的 archive。替身證明腳本自身一致，不證明 Auth0 接受每個呼叫（NOT RUN，直到部署 session）。
 
 ## 8. 上線前檢查（staging，由人執行；NOT RUN by agents）
 
@@ -328,4 +364,4 @@ deploy/railway/deploy.sh --apply
 ## 10. 未涵蓋與待 owner 回答
 
 - 未涵蓋：container scan、SBOM、image 簽章；部署後的 security header 實測（T-057 的 header 只在本機 `next start` 與 e2e 驗證過）；備份與還原演練（`make db-restore-test` 仍為 NOT IMPLEMENTED）；log／telemetry 的保存與存取；告警（T-036）；孤兒 object 的清理（D-044）；花費預留的 operator 介面（T-053 I4 (2)）；live eval 的花費紀錄要不要改經 DB ledger（T-053 I4 (4)，owner 選擇）；T-054 I1 的一般做法與 I2（S3 adapter 已不把自己的逾時包成 context 的錯誤，`TestS3OwnTimeoutIsNoContextError`；object storage 逾時時的 503 標記仍未區分）。
-- 問題：(1) 是否接受 ADR-029；(2) web → api 用公開網域還是 private network（需要放寬 BFF 的 http 規則）；(3) bucket 的 region 與資料保存期限；(4) API 的 key-free AI 可用性由 T-055 一併做，或另開任務；(5) Railway 是否展開 reference 到 sealed variable 的值（§7.7；第一次 `--apply` 會知道）；(6) `${{secret()}}` 不用於 service variable、改由腳本產生，是否接受（H-032 的偏好）；(7) PostgreSQL 的 major 版本（Railway 文件沒寫；migration 只在 16 上測過）；(8) owner 的變數沒有 sealed 時，CLI 的變數清單會把值交給腳本（收到即丟棄，§7.3），是否接受，或 owner 一律以 sealed 新增（H-033 的「只看變數名稱、不讀值」）。
+- 問題：(1) 是否接受 ADR-029；(2) web → api 用公開網域還是 private network（需要放寬 BFF 的 http 規則）；(3) bucket 的 region 與資料保存期限；(4) API 的 key-free AI 可用性由 T-055 一併做，或另開任務；(5) Railway 是否展開 reference 到 sealed variable 的值（§7.7；第一次 `--apply` 會知道）；(6) `${{secret()}}` 不用於 service variable、改由腳本產生，是否接受（H-032 的偏好）；(7) PostgreSQL 的 major 版本（Railway 文件沒寫；migration 只在 16 上測過）；(8) owner 的變數沒有 sealed 時，CLI 的變數清單會把值交給腳本（收到即丟棄，§7.3），是否接受，或 owner 一律以 sealed 新增（H-033 的「只看變數名稱、不讀值」）；(9) Auth0 步驟（§7.8）把應用程式在 database connection 以外的 connection 都停用（H-035 (2) 的「關閉自行註冊」也擋社群登入），是否接受；(10) 評審帳號的 email 用 `judge@geminus-demo.invalid` 或 owner 指定的信箱；(11) provision-tenant 只在建立組織時加入一個成員（不放寬 migration 0004），demo 組織先 seed 過時由 owner 以 API 加入評審帳號，是否接受。

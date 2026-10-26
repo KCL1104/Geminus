@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.433s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.178s
+ok  	github.com/kcl1104/geminus/internal/audit	0.165s
+ok  	github.com/kcl1104/geminus/internal/storage/auditlog	0.017s
+exit 0

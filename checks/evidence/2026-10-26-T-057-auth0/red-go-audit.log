@@ -1,0 +1,6 @@
+--- FAIL: TestEveryActionFits (0.00s)
+    audit_test.go:178: organization.provision: audit: organization.provision: member_user_id: not a field of this action
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/audit	0.089s
+FAIL
+exit 1

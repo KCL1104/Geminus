@@ -2,7 +2,7 @@
 
 依據：[ADR-018](../adr/ADR-018-browser-session-and-oidc-provider.md)（BFF、Auth0）、[ADR-017](../adr/ADR-017-oidc-token-verification.md)（API 驗 token）、T-043。
 
-**這些步驟由 owner 執行。** Agent 不建立帳號、不接受條款、不持有任何 credential；repo 與 CI 都沒有 Auth0 的設定或密鑰，測試只用 repo 內的測試 provider（`apps/web/tests/fake-oidc.ts`、`apps/web-e2e/fake/servers.mjs`）。
+**這些步驟由 owner 執行。** Agent 不建立帳號、不接受條款、不持有任何 credential；repo 與 CI 都沒有 Auth0 的設定或密鑰，測試只用 repo 內的測試 provider（`apps/web/tests/fake-oidc.ts`、`apps/web-e2e/fake/servers.mjs`）。H-034 之後（T-057）：tenant 與 owner 自己的使用者仍由 owner 建立；§2、§3 的設定、關閉 sign-up 與評審帳號（H-035 (2)）由部署 session 的 `deploy/railway/deploy.sh --apply` 以 Auth0 CLI 設定（owner 在自己的瀏覽器核准 CLI 的登入，[deploy runbook](deploy.md) §7.8）；§6 是同樣設定的手動備援。
 
 ## 1. 建立前要先決定的事
 
@@ -86,3 +86,21 @@ openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
 6. 登出時 BFF 不帶 `id_token_hint`（ID token 驗完即丟）：確認 Auth0 是否因此顯示登出確認畫面；若會，評估 Auth0 的 logout 設定或改為保留 ID token 的 hash 以外的方式（需另行決定）。
 
 自動化的對應測試是 `apps/web/tests/bff.test.ts`（單元）與 `apps/web-e2e/tests/session.spec.ts`（瀏覽器，TEST-032），兩者都只連測試 provider；連 Auth0 的檢查只能在 staging 由人執行（NOT RUN in CI）。
+
+## 6. 手動備援：在 dashboard 做 Auth0 步驟的設定（H-034）
+
+在 `deploy.sh` 的 Auth0 步驟（[deploy runbook](deploy.md) §7.8）無法使用時（拿不到 pin 住的 CLI、裝置登入失敗、或某一步停下而無法修正）由 owner 執行，設定值與 §7.8 的表完全相同。Dashboard 的名稱依 Auth0 文件（2026-10-26 取得：[API settings](https://auth0.com/docs/get-started/apis/api-settings)、[application settings](https://auth0.com/docs/get-started/applications/application-settings)、[credential settings](https://auth0.com/docs/get-started/applications/credentials)、[refresh token rotation](https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation)、[refresh token expiration](https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration)、[application connections](https://auth0.com/docs/get-started/applications/update-application-connections)、[access token profiles](https://auth0.com/docs/secure/tokens/access-tokens/access-token-profiles)）；「Disable Sign Ups」的文件頁沒有取得，名稱依 dashboard（API 欄位為 connection 的 `options.disable_signup`）。
+
+先要有 web 的公開網域（Railway → web → Settings → Networking；或先以 `GEMINUS_AUTH0_SETUP=manual` 跑一次 `--apply`，步驟 2 會建立它，verification 會印出 callback 與 logout URL）。
+
+1. **API**：Applications → APIs → **+ Create API**：Name `Geminus demo API`；Identifier 為 `GEMINUS_AUTH0_AUDIENCE`（例如 `https://api.geminus-demo.invalid`，之後不能改）；**JSON Web Token (JWT) Profile** 選 **RFC 9068**；**JSON Web Token (JWT) Signing Algorithm** 選 **RS256** → Create。該 API 的 **Settings**：Token Settings 的 **Maximum Access Token Lifetime** 填 `600`；Access Settings 的 **Allow Skipping User Consent** 開、**Allow Offline Access** 開 → Save。
+2. **Application**：Applications → Applications → **+ Create Application**：Name `Geminus demo web`，選 **Regular Web Applications** → Create。
+   - **Settings** → Application URIs：**Allowed Callback URLs** 只有 `https://<web 網域>/auth/callback`；**Allowed Logout URLs** 只有 `https://<web 網域>/`；**Allowed Web Origins**、**Allowed Origins (CORS)** 空白。
+   - **Settings** → **Refresh Token Rotation**：**Allow Refresh Token Rotation** 開，**Rotation Overlap Period** 填 `30`。**Refresh Token Expiration**：**Set Idle Refresh Token Lifetime** 開、**Idle Refresh Token Lifetime** 填 `43200`；**Set Maximum Refresh Token Lifetime** 開、**Maximum Refresh Token Lifetime** 填 `604800`。
+   - **Settings** → **Advanced Settings** → **OAuth**：**JSON Web Token (JWT) Signature Algorithm** 為 RS256、**OIDC Conformant** 開；**Grant Types**：只勾 **Authorization Code** 與 **Refresh Token**（其他全部取消）→ **Save Changes**。
+   - **Credentials**：**Authentication Method** 選 **Client Secret (Post)** → Save。**Client ID** 給 `GEMINUS_AUTH0_CLIENT_ID`；**Client Secret** 只貼到 Railway → web → Variables 的 `BFF_OIDC_CLIENT_SECRET`，立刻 Seal（變數右側的 3-dot 選單），不存到其他任何地方。
+   - **Connections**：只開 `Username-Password-Authentication`（database connection），其他（例如 Google）全部關閉。
+3. **關閉 sign-up**：Authentication → Database → `Username-Password-Authentication` → **Disable Sign Ups** 開 → Save。
+4. **評審帳號**（H-035 (2)）：User Management → Users → **+ Create User**：Email `judge@geminus-demo.invalid`（或與 coordinator 約定的地址），Password 以密碼管理器產生（20 字元以上，含大小寫、數字與符號），Connection `Username-Password-Authentication` → Create。在該使用者的頁面複製 **user_id**（`auth0|…`）給 `GEMINUS_JUDGE_SUBJECT`。密碼直接寫進提交說明，不存到其他地方。
+5. 執行 `GEMINUS_AUTH0_SETUP=manual GEMINUS_AUTH0_CLIENT_ID='<Client ID>' GEMINUS_JUDGE_SUBJECT='auth0|<評審的 user_id>' deploy/railway/deploy.sh --apply`（其他輸入同 deploy runbook §7.7）：seed 把評審帳號設為 demo 組織的 editor 並檢查它不是其他組織的成員；`BFF_OIDC_CLIENT_SECRET` 未填時停在 verification，填好並 Seal 後重跑。demo 組織若已經 seed 過，見 deploy runbook §7.8 的「評審帳號的 membership」。
+6. 對照 deploy runbook §7.8 的表逐項確認（例如 API 的 Settings 與 application 的 Settings、Credentials、Connections 三頁），再做 §5 的檢查。

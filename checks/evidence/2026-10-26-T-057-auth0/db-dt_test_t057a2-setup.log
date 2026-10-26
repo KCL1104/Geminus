@@ -1,0 +1,7 @@
+env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN DATABASE_URL=<dt_test_t057a2 on the throwaway cluster> DT_ALLOW_DB_TESTS=yes bash scripts/run_db_tests.sh
+(2026-10-26, on a new empty database created for the Go re-runs; the last 4 of 8450 lines; 0 lines with ERROR or FATAL)
+
+RESET
+ROLLBACK
+DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.
+exit 0

@@ -1,0 +1,22 @@
+BASELINE rehearsal: exit 0 rehearsal: PASS (the deployer against stand-ins; Railway itself NOT RUN)
+KILLED R1 the client secret as an argument of `railway variable set` :: REHEARSAL FAILED: - A1: FAIL: refusing to pass a secret as a command-line argument - A1: web's BFF_OIDC_CLIENT_SECRET is not the application's client secret, set once on stdin
+KILLED R2 the client secret kept in the deployer's state :: REHEARSAL FAILED: - A1: a secret is in its state: ['A0-REHEARSAL']
+KILLED R3 the captured client secret left in the parsed output (a return value) :: REHEARSAL FAILED: - A1: a secret is in what its methods returned or raised: ['A0-REHEARSAL']
+KILLED R4 client_secret not among the dropped fields (another application's secret kept) :: REHEARSAL FAILED: - A1: a secret is in what its methods returned or raised: ['DEFAULT-APP-', 'GOOGLE-CONNE'] - A2: a secret is in what its methods returned or raised: ['A0-REHEARSAL', 'DEFAULT-APP-', 'GOOGLE-CONNE']
+SURVIVED R5 device_code not among the dropped fields
+KILLED R6 the sign-in shows the CLI's whole line :: REHEARSAL FAILED: - A1: the sign-in URL and code are not shown once: ['   {"verification_uri": "https://auth0.auth0.com/activate?user_code=QWER-TYUI", "user_code": "QWER-TYUI", "expires_in": 900, "interval": 5, "device_code": "REHEARSAL-DEVICE-CODE-NOT-SHOWN"}', '   Auth0 sign-in: open https://auth0.auth0.com/activate?user_code=QWER-TYUI in your browser, check that it shows the code QWER-TYUI, and
+KILLED R7 the CLI's SHA-256 is not checked :: REHEARSAL FAILED: - A4 (checksum mismatch) must stop before running the CLI: done 22 calls
+KILLED R8 no sign-out when the step fails :: REHEARSAL FAILED: - A5: the Auth0 CLI was not signed out last, or its home /tmp/tmpprwm7n1a/xdg-state/geminus-deploy/auth0-cli is left: ['apis create', 'apis show', 'apps list', 'apps create'] - A5: the sign-out is not reported
+KILLED R9 the CLI's home is not removed :: Traceback (most recent call last): FileExistsError: [Errno 17] File exists: '/tmp/tmpnqis9vxx/xdg-state/geminus-deploy/auth0-cli'
+KILLED R10 a home left by an interrupted run is not signed out first :: REHEARSAL FAILED: - A12: the CLI home left by an interrupted run was not signed out and removed first
+KILLED R11 the judge's password is not registered for redaction :: REHEARSAL FAILED: - A1: the judge's password or the client secret is not registered for redaction
+KILLED R12 the judge's password shown on stdout :: REHEARSAL FAILED: - A1: Li8oyhPD… is in the output 1 times, want 1 (on stderr) - A1: the judge's email is not shown with the password
+KILLED R13 the judge's password shown twice :: REHEARSAL FAILED: - A1: poc5xKw!… is in the output 2 times, want 1 (on stderr) - A12: L5LND!nw… is in the output 2 times, want 1 (on stderr)
+KILLED R14 a call that carried a secret shows the CLI's message :: REHEARSAL FAILED: - A9: the error of a call that carried a secret is shown (it is redacted, but must not be shown at all)
+KILLED R15 the Railway token kept as a plain value (the registry) :: REHEARSAL FAILED: - A1: a secret is in its state: ['36Bz-SVV8MnZ', 'A0-REHEARSAL', 'REHEARSAL-TO'] - A2: a secret is in its state: ['REHEARSAL-TO']
+KILLED R16 child_env's own answer gets the Railway token (no copy) :: REHEARSAL FAILED: - A1: a secret is in what its methods returned or raised: ['REHEARSAL-TO'] - A2: a secret is in what its methods returned or raised: ['REHEARSAL-TO']
+KILLED R17 the Auth0 CLI gets the whole environment :: REHEARSAL FAILED: - A1: an Auth0 CLI call ran with another home, the Railway token, analytics, a session bus or without agent mode - A2: an Auth0 CLI call ran with another home, the Railway token, analytics, a session bus or without agent mode
+KILLED R18 the Auth0 CLI's analytics on :: REHEARSAL FAILED: - A1: an Auth0 CLI call ran with another home, the Railway token, analytics, a session bus or without agent mode - A2: an Auth0 CLI call ran with another home, the Railway token, analytics, a session bus or without agent mode
+17/18 killed, 0 equivalent (expected to survive), 0 invalid
+restored files: PASS
+exit 1

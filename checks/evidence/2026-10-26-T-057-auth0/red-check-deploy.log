@@ -1,0 +1,2 @@
+DEPLOY CHECK FAILED: variables.json: web: BFF_OIDC_CLIENT_SECRET: unknown source 'auth0'
+exit 1

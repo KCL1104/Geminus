@@ -58,3 +58,19 @@
 3. Bucket 的 region（建立後不能改）與資料保存的期限。
 4. Secret 由 `deploy.sh` 在本機產生並 sealed（不用 `${{secret()}}`），是否接受；若第一次 `--apply` 發現 Railway 不展開 reference 到 sealed variable 的值，是否接受 `GEMINUS_RAILWAY_SEAL=off`（密碼可在 Railway 的 UI 看到）或改為把整個 database URL 存成 sealed variable（需要修改腳本與檢查）。
 5. Owner 的變數沒有 sealed 時，CLI 的變數清單會把值交給腳本（收到即丟棄）：是否接受，或 owner 一律以 sealed 新增（H-033）。
+
+## Addendum（T-057，2026-10-26，PROPOSED）：`deploy.sh` 的 Auth0 步驟（H-034）與評審帳號（H-035 (2)）
+
+依 H-034（owner 選「裝置登入，由你設定」）與 H-035 (2)（owner 與一個評審帳號，只有 demo 組織的權限），本 ADR 的 Railway 自動化加上以下部分；PROPOSED，等獨立審查與 owner。細節與每個設定值在 [deploy runbook](../runbooks/deploy.md) §7.8，手動備援在 [Auth0 runbook](../runbooks/auth0.md) §6，驗證在 `checks/T-057_AUTH0_VALIDATION.md`。
+
+- **CLI 的 pin**：Auth0 CLI 1.37.0（2026-09-30，MIT）。`deploy.sh --install-auth0-cli DIR` 先核對 archive 的 SHA-256（release 的 `checksums.txt`）再核對其中 binary 的 SHA-256，兩者都對才安裝；`railway_deploy.py` 在執行 CLI 之前計算 PATH 上 binary 的 SHA-256，不是 pin 住的就不執行（連 `--version` 也不）。`check_deploy.py` 檢查兩處的 pin 一致。
+- **步驟 2b**（`GEMINUS_AUTH0_SETUP=cli`，預設；`manual` 時跳過，為 T-039 原本的 owner 手動流程）：CLI 以 agent mode（`--agent-mode --no-input --no-color`）在自己的 home（0700、結束時刪除、被中斷的執行留下的在下一次先登出再刪除）中執行，環境只有 PATH、語系、proxy 與 CA 設定，`AUTH0_CLI_ANALYTICS=false`，`DBUS_SESSION_BUS_ADDRESS=disabled:`（不碰 keyring，CLI 的 session 只在那個 home 中），沒有 Railway token。Owner 以 device code 在自己的瀏覽器核准登入（只顯示 CLI 印出的 URL 與 code），登入的 tenant 必須是 `GEMINUS_AUTH0_ISSUER` 的。之後 API、Regular Web Application、database connection 的 sign-up、應用程式啟用的 connection、評審帳號都是「找到就比對、不同才更新、沒有才建立」，寫入後讀回比對；寫入一律以 JSON 經 stdin（`--data @-`），用 CLI 自己的命令（`apis`、`apps`、`connections`、`connections enabled-clients`、`users`），不用 `auth0 api`（1.37.0 的 `auth0 api` 回應不遮蔽 `client_secret`）。結束時（成功、失敗、SIGTERM、SIGHUP）`auth0 logout` 每個 session 並刪除 home。
+- **Client secret**：只在本次建立了應用程式、web 沒有它、或 web 的 `BFF_OIDC_CLIENT_ID` 不是這個應用程式時，以 `auth0 apps show --reveal-secrets` 讀取；JSON 在解析的當下把它放進那一次呼叫自己的 list（其他所有 credential 欄位都換成標記），只經 stdin 交給 `railway variable set BFF_OIDC_CLIENT_SECRET --stdin`，立刻 sealed。`variables.json` 中它的 `source` 由 `owner` 改為 `auth0`（只有它可以是，`check_deploy.py` 檢查）。
+- **部署腳本的狀態中沒有 secret**：要遮蔽的值改為只保存每次執行新 key 的 HMAC digest（以 digest 比對文字的每個子字串），`secret()` 不回傳值，Railway token 只在 `run()` 中加到 Railway CLI 自己的環境（`child_env` 的回答不含它）；評審的新密碼只放在 `main()` 自己的 list，執行結束時寫到 stderr 一次。Rehearsal 掃描部署腳本的屬性、結果與每個 method 的回傳值和 exception（T-039 的 M2 做法），找出原本的 token 在狀態中（明文的遮蔽清單）與回傳值中（`child_env` 的 dict 在回傳後被加上 token）兩處，已修正。
+- **評審帳號的 membership**：`cmd/provision-tenant organization` 加 `-member-issuer`／`-member-subject`／`-member-role`（editor 或 viewer，三者一起），在建立組織的同一個 transaction 加入一個成員，audit `organization.provision` 多 `member_user_id`、`member_role`（catalogue 的新欄位；D-091 的「一個 business write 一筆 event」不變）。不放寬 migration 0004（provisioning 只能把成員加到它在同一個 transaction 建立的 organization）：demo 組織先 seed 過時，評審帳號只建成 user，verification 失敗並寫出由 owner 以 membership API（ADR-023）加入的方法。Seed 之後以 administrator 列出評審帳號的 membership，必須只有 demo 組織的 editor。Role 選 editor：提出與核准 AI proposal、執行模擬都需要 owner 或 editor（openapi 的 `x-required-roles`），viewer 不能；owner 多的成員管理與 audit log 不需要。
+- **應用程式只開 database connection**：H-035 (2) 要關閉自行註冊；新 tenant 預設的社群 connection（Google）會讓任何人在 Auth0 建立使用者，所以 Auth0 步驟把應用程式從其他 connection 停用；在任何寫入之前先確認 owner 自己的使用者在那個 database connection 中，否則停下。這一點超出 H-034 的字面，列為待決定。
+
+待 owner 或審查決定（本 addendum 新增）：
+6. 應用程式只開 database connection（停用其他 connection），是否接受。
+7. `provision-tenant` 只在建立組織時加入一個成員、不放寬 migration 0004；demo 組織先 seed 過時由 owner 以 API 加入評審帳號，是否接受；audit catalogue 的兩個新欄位是否需要另記一個 D 編號（D-091 的延伸）。
+8. 評審帳號的 email（預設 `judge@geminus-demo.invalid`，不是真的信箱）。

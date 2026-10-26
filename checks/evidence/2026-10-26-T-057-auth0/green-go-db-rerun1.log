@@ -1,0 +1,9 @@
+=== RUN   TestOrganizationWithMember
+--- PASS: TestOrganizationWithMember (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.049s
+=== RUN   TestProvisionWithMember
+--- PASS: TestProvisionWithMember (0.06s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.064s
+exit 0
