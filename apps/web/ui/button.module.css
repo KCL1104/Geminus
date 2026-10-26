@@ -41,6 +41,21 @@
   background: var(--gm-color-ink-2);
 }
 
+/* Runs a scenario (DESIGN.md Run): Deep Scenario Green with an On Scenario
+   label. Only for a scenario run; green means scenario (The Green Means
+   Scenario Rule). Not the view's primary: that stays Graphite Ink. */
+.button[data-variant="run"] {
+  border-color: var(--gm-color-scenario);
+  background: var(--gm-color-scenario);
+  color: var(--gm-color-on-scenario);
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.button[data-variant="run"][data-hovered],
+.button[data-variant="run"][data-pressed] {
+  border-color: var(--gm-color-ink);
+}
+
 /* Destroys or discards: an Error Red label on the default chrome. */
 .button[data-variant="danger"] {
   color: var(--gm-color-error);

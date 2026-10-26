@@ -5,8 +5,12 @@ import styles from "./button.module.css";
 import { cx } from "./cx";
 
 export type ButtonProps = Omit<AriaButtonProps, "className"> & {
-  /** primary: the page's main action; danger: destroys or discards; quiet: low emphasis. */
-  variant?: "primary" | "secondary" | "danger" | "quiet";
+  /**
+   * primary: the page's main action; danger: destroys or discards; quiet:
+   * low emphasis; run: runs a scenario, and nothing else (DESIGN.md Buttons,
+   * Deep Scenario Green: green means scenario).
+   */
+  variant?: "primary" | "secondary" | "danger" | "quiet" | "run";
   /**
    * A blocked action (DESIGN.md Buttons, Disabled): it looks disabled and
    * does nothing when pressed, but stays focusable as aria-disabled, so

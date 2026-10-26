@@ -10,7 +10,7 @@ import { Callout } from "../../ui/callout";
 import { ProblemView } from "./problem-view";
 
 /** What a page loads; each has its own sentence in the catalog. */
-export type Loadable = "projects" | "models" | "model";
+export type Loadable = "projects" | "models" | "model" | "scenario" | "runs" | "results";
 
 export function Loading({ what }: { what: Loadable }) {
   const { t } = useI18n();

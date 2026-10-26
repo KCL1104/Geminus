@@ -22,7 +22,7 @@ function files(dir: string, ext: RegExp): string[] {
 }
 
 const tokensFile = join(root, "ui/tokens.css");
-// features/ holds views built on ui/ (the 2D editor, T-015); the same rules apply there.
+// features/ holds views built on ui/ (the 2D editor T-015, the results views T-032); the same rules apply there.
 const roots = ["ui", "app", "features"].map((d) => join(root, d));
 const sheets = roots.flatMap((d) => files(d, /\.css$/)).filter((f) => f !== tokensFile);
 const sources = roots.flatMap((d) => files(d, /\.tsx?$/));
@@ -56,6 +56,7 @@ const tokenRef = (prefix: string) => new RegExp(`var\\(--gm-${prefix}[\\w-]*\\)`
 describe("simplicity rules (H-027) in the stylesheets", () => {
   it("has stylesheets to check", () => {
     expect(sheets.length).toBeGreaterThanOrEqual(10);
+    expect(sheets.map((f) => relative(root, f))).toEqual(expect.arrayContaining(["features/results/results.module.css", "features/simulations/simulations.module.css"]));
     expect(all.length).toBeGreaterThan(150);
   });
 

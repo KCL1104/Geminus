@@ -17,7 +17,7 @@ function files(dir: string): string[] {
   });
 }
 
-const sources = ["app", "lib", "ui", "messages"].flatMap((d) => files(join(root, d)));
+const sources = ["app", "lib", "ui", "messages", "features"].flatMap((d) => files(join(root, d)));
 
 /** The repository modules file imports (relative specifiers only). */
 function imports(file: string): string[] {

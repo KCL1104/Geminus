@@ -108,6 +108,10 @@ const textPairs: [string, string][] = [
   ["--gm-color-warning", "--gm-color-warning-wash"],
   ["--gm-color-scenario", "--gm-color-scenario-wash"],
   ["--gm-color-scenario", "--gm-color-sheet"],
+  // T-032: the run button's label, an interval in the scenario column, the chart's labels.
+  ["--gm-color-on-scenario", "--gm-color-scenario"],
+  ["--gm-color-ink-2", "--gm-color-scenario-wash"],
+  ["--gm-color-ink-3", "--gm-color-scenario-wash"],
 ];
 // Control boundaries against the surfaces controls sit on, the focus ring
 // and the checked box (WCAG 1.4.11, 3:1). A hovered control's own fill is
@@ -118,6 +122,10 @@ const nonTextPairs: [string, string][] = [
   ...["sheet", "ground", "raised", "panel", "selection-tint"].map((bg): [string, string] => ["--gm-color-edge", `--gm-color-${bg}`]),
   ...["sheet", "ground", "raised", "hover", "selection-tint", "well"].map((bg): [string, string] => ["--gm-color-ink", `--gm-color-${bg}`]),
   ["--gm-color-error", "--gm-color-raised"],
+  // T-032: the run button's edge, and the two data inks of the Marey chart and its keys on the sheet and in a table's scenario column.
+  ["--gm-color-scenario", "--gm-color-sheet"],
+  ["--gm-color-baseline", "--gm-color-sheet"],
+  ["--gm-color-scenario", "--gm-color-scenario-wash"],
 ];
 
 function cssFiles(dir: string): string[] {
@@ -127,7 +135,7 @@ function cssFiles(dir: string): string[] {
     return name.endsWith(".css") ? [p] : [];
   });
 }
-const ownCss = [...cssFiles(join(root, "ui")), ...cssFiles(join(root, "app"))];
+const ownCss = [...cssFiles(join(root, "ui")), ...cssFiles(join(root, "app")), ...cssFiles(join(root, "features"))];
 
 describe("design tokens", () => {
   for (const theme of ["light", "dark"] as const) {

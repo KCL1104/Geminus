@@ -1,0 +1,225 @@
+/* The results (T-032, DESIGN.md Compare Table and Marey Strip): a table
+   with the scenario column in its wash and result figures at 15 px, and the
+   timetable sheet: hairline rows, the minor and major time grid, dashed
+   graphite baseline and solid green scenario lines. */
+.section {
+  margin: 0 0 var(--gm-space-xl);
+}
+
+/* The spoken summary leads, in Figure size (DESIGN.md Words around it). */
+.summary {
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+}
+
+.table {
+  width: 100%;
+  margin: 0 0 var(--gm-space-md);
+  border-collapse: collapse;
+}
+
+.table caption {
+  padding-top: var(--gm-space-md);
+  caption-side: bottom;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: var(--gm-space-sm) var(--gm-space-xs);
+  border-bottom: 1px solid var(--gm-color-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  border-bottom-color: var(--gm-color-edge);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  vertical-align: bottom;
+}
+
+.table tbody th {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.table .num,
+.table .delta {
+  text-align: right;
+}
+
+.table .group {
+  padding-top: var(--gm-space-lg);
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* The scenario column: its wash, a green header and green figures at 600. */
+.table .scenarioCol {
+  background: var(--gm-color-scenario-wash);
+}
+
+.table thead .scenarioCol,
+.table tbody .scenarioCol .figure,
+.table tbody .scenarioCol .ci {
+  color: var(--gm-color-scenario);
+}
+
+.table tbody .scenarioCol .figure {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+/* A result number is never smaller than 15 px (The Fifteen-Pixel Figure Rule). */
+.figure,
+.delta {
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+}
+
+.figure {
+  display: block;
+}
+
+.delta {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+/* The interval beneath its mean, narrowed before it is made smaller. */
+.ci {
+  display: block;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+  font-stretch: 87.5%;
+}
+
+.reason,
+.missing {
+  color: var(--gm-color-ink-2);
+}
+
+.table .reason {
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  text-align: right;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-xs) var(--gm-space-gutter);
+  margin: 0 0 var(--gm-space-sm);
+  padding: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  list-style: none;
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+}
+
+.note {
+  margin: 0 0 var(--gm-space-sm);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* The timetable sheet under a Control Edge top rule (DESIGN.md Marey Strip). */
+.chart {
+  width: 100%;
+  margin: 0 0 var(--gm-space-md);
+  border-top: 1px solid var(--gm-color-edge);
+  background: var(--gm-color-sheet);
+}
+
+.marey {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.gridMinor {
+  stroke: var(--gm-color-time-grid);
+  stroke-width: 1;
+}
+
+.gridMajor,
+.station {
+  stroke: var(--gm-color-time-grid-major);
+  stroke-width: 1;
+}
+
+.rowRule {
+  stroke: var(--gm-color-rule);
+  stroke-width: 1;
+}
+
+.axis,
+.axisTitle {
+  fill: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  font-stretch: 87.5%;
+}
+
+.rowLabel {
+  fill: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-body);
+}
+
+.line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.line[data-run="baseline"] {
+  stroke: var(--gm-color-baseline);
+  stroke-width: 1.4;
+  stroke-dasharray: 5 3;
+}
+
+.line[data-run="scenario"] {
+  stroke: var(--gm-color-scenario);
+  stroke-width: 1.75;
+}
+
+/* Release dots: hollow for the baseline, filled green for the scenario. */
+.release[data-run="baseline"] {
+  fill: var(--gm-color-sheet);
+  stroke: var(--gm-color-baseline);
+  stroke-width: 1.25;
+}
+
+.release[data-run="scenario"] {
+  fill: var(--gm-color-scenario);
+}
+
+.details {
+  margin: 0 0 var(--gm-space-md);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+  gap: var(--gm-space-md) var(--gm-space-gutter);
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-body);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

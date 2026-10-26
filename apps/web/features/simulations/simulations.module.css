@@ -1,0 +1,111 @@
+/* Running a scenario and its baseline (T-032, DESIGN.md): one form, the
+   two runs as a list divided by hairlines, a progress track on Inset Well. */
+.section {
+  margin: 0 0 var(--gm-space-xl);
+}
+
+.intro {
+  max-width: 720px;
+  color: var(--gm-color-ink-2);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gm-space-md);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  column-gap: var(--gm-space-gutter);
+  width: 100%;
+  max-width: 960px;
+}
+
+/* The line key: dashed graphite for the baseline, solid green for the
+   scenario (The Two Inks Rule), the same strokes as the chart's lines. */
+.key {
+  flex: none;
+  margin-inline-end: var(--gm-space-sm);
+  vertical-align: middle;
+}
+
+.key line {
+  fill: none;
+}
+
+.key line[data-run="baseline"] {
+  stroke: var(--gm-color-baseline);
+  stroke-width: 1.4;
+  stroke-dasharray: 5 3;
+}
+
+.key line[data-run="scenario"] {
+  stroke: var(--gm-color-scenario);
+  stroke-width: 1.75;
+}
+
+.runs {
+  margin: 0 0 var(--gm-space-gutter);
+  padding: 0;
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-md);
+  list-style: none;
+}
+
+.run {
+  padding: var(--gm-space-md) var(--gm-space-lg);
+}
+
+.run + .run {
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.run > p {
+  margin: var(--gm-space-sm) 0;
+}
+
+.runHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-xs) var(--gm-space-lg);
+  min-height: var(--gm-row-height);
+}
+
+.runName {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.meta {
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  margin: var(--gm-space-xs) 0;
+}
+
+.track {
+  display: block;
+  width: 200px;
+  max-width: 100%;
+  height: var(--gm-space-sm);
+  overflow: hidden;
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-well);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--gm-color-ink);
+}
