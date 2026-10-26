@@ -1,0 +1,119 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/results-metrics.test.ts (13 tests | 1 failed) 108ms
+   ❯ the key metrics of a comparison (9)
+     × write a pack metric whose unit is ratio as a ratio (percent, difference in points), with no unit beside its name 47ms
+ ❯ tests/results-view.test.tsx (26 tests | 5 failed) 48777ms
+   ❯ the runs, from queued to the results (16)
+     × cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed 10117ms
+     × reads the runs again after a cancel even when following them had stopped on a failed read 10075ms
+     × shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other 10059ms
+     × names both runs when neither cancel went through 10034ms
+   ❯ a pack's ratio metric (T-032 review round 1, L4) (1)
+     × is a percentage with its difference in percentage points, in Traditional Chinese with no English unit, the server's values kept 317ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-metrics.test.ts > the key metrics of a comparison > write a pack metric whose unit is ratio as a ratio (percent, difference in points), with no unit beside its name
+AssertionError: expected [ 'run', …(2) ] to deeply equal [ 'run', …(2) ]
+
+- Expected
++ Received
+
+  [
+    "run",
+    {
+      "data": "scrap_rate",
+-     "unit": null,
++     "unit": "ratio",
+    },
+-   "ratio",
++   "number",
+  ]
+
+ ❯ tests/results-metrics.test.ts:124:52
+    122|     const rs = keyMetrics({ ...golden, metrics }, null, { baseline: wi…
+    123|     const scrap = rs.find((r) => r.path === "/metrics/domain/scrap_rat…
+    124|     expect([scrap.group, scrap.label, scrap.unit]).toEqual(["run", { d…
+       |                                                    ^
+    125|     // The server's values, unchanged.
+    126|     expect([scrap.baseline, scrap.scenario, scrap.absolute, scrap.rela…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed
+Error: timed out waiting for the scenario stopping
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:349:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > reads the runs again after a cancel even when following them had stopped on a failed read
+Error: timed out waiting for the baseline read again
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:378:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other
+Error: timed out waiting for the failure
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:399:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > names both runs when neither cancel went through
+Error: timed out waiting for the failure
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:425:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  tests/results-view.test.tsx > a pack's ratio metric (T-032 review round 1, L4) > is a percentage with its difference in percentage points, in Traditional Chinese with no English unit, the server's values kept
+AssertionError: expected 'scrap_rate (ratio)' to be 'scrap_rate' // Object.is equality
+
+Expected: "scrap_rate"
+Received: "scrap_rate (ratio)"
+
+ ❯ tests/results-view.test.tsx:567:44
+    565|     const row = [...el.querySelectorAll("tbody tr")].find((r) => r.que…
+    566|     expect(row).toBeDefined();
+    567|     expect(text(row.querySelector("th")!)).toBe("scrap_rate");
+       |                                            ^
+    568|     expect(text(row)).not.toContain("ratio");
+    569|     expect([...row.querySelectorAll("data")].map((d) => d.getAttribute…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  6 failed | 33 passed (39)
+   Start at  15:47:04
+   Duration  54.52s (tests 87%, transform 8%, import 3%, environment 2%)
+
+exit=1

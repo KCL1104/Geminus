@@ -1,0 +1,101 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/editor-patch.test.ts (11 tests | 1 failed) 86ms
+   ❯ reapplyPatch (the person's reapply after a 409) (4)
+     × fails where an add would overwrite a member that is there now 36ms
+ ❯ tests/editor-adapter.test.ts (19 tests | 1 failed) 150ms
+   ❯ edits are JSON Patch ops on the IR (10)
+     × written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 15ms
+ ❯ tests/editor.test.tsx (27 tests | 1 failed) 13633ms
+   ❯ the editor on the model page (23)
+     × does not reapply a member I added that someone else added too (JSON Patch cannot test for absence) 392ms
+
+ Test Files  3 failed (3)
+      Tests  3 failed | 54 passed (57)
+   Start at  15:55:32
+   Duration  16.49s (tests 83%, import 8%, environment 6%, transform 3%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not
+AssertionError: name an unnamed step: someone changed the same: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/editor-adapter.test.ts:367:107
+    365|       expect(applyPatch(c.base, mine).ok, `${c.name}: on its own draft…
+    366|       expect(reapplyPatch(c.base, mine).ok, `${c.name}: reapplied on i…
+    367|       expect(reapplyPatch(after(c.base, c.same(c.base)), mine).ok, `${…
+       |                                                                                                           ^
+    368|       expect(reapplyPatch(after(c.base, c.other(c.base)), mine).ok, `$…
+    369|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/editor-patch.test.ts > reapplyPatch (the person's reapply after a 409) > fails where an add would overwrite a member that is there now
+AssertionError: expected { ok: true, doc: { name: 'm', …(2) } } to deeply equal { ok: false, index: +0, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "index": 0,
+-   "ok": false,
+-   "reason": "test_failed",
++   "doc": {
++     "name": "m",
++     "nodes": [
++       {
++         "id": "a",
++       },
++       {
++         "capacity": 9,
++         "id": "b",
++       },
++     ],
++     "views": {
++       "2d": {
++         "positions": {
++           "a": {
++             "x": 0,
++             "y": 0,
++           },
++         },
++       },
++     },
++   },
++   "ok": true,
+  }
+
+ ❯ tests/editor-patch.test.ts:102:87
+    100|
+    101|   it("fails where an add would overwrite a member that is there now", …
+    102|     expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/1/capacity"…
+       |                                                                                       ^
+    103|     expect(reapplyPatch(doc(), [{ op: "add", path: "/views/2d/position…
+    104|     expect(reapplyPatch(doc(), [{ op: "add", path: "/views/2d/position…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > does not reapply a member I added that someone else added too (JSON Patch cannot test for absence)
+AssertionError: expected 'Board assembly and test line (sample)…' to contain 'Your changes no longer fit the curren…'
+
+Expected: "Your changes no longer fit the current draft: a step they change was changed or removed there. Discard them to work on the current draft."
+Received: "Board assembly and test line (sample)Back to projectLatest version 1; domain electronics_line.Unsaved changes. Draft revision 4.Save your changes before publishing.Discard my changesSave draftPublish versionYour changes are on draft revision 4 now. Check them, then save.Add stepShow all stepsBoard A releaseSourceBoard B releaseSourceBefore SMTQueueSMTProcessBefore AOIQueueAOIProcessAOI resultDecisionAOI defectFailureBefore ICTQueueBefore touch-upQueueICTProcessTouch-upProcessICT resultDecisionTouched upReworkICT failFailureBefore burn-inQueueBefore debugQueueBurn-inProcessICT debugProcessBefore packingQueueDebug resultDecisionPack and shipProcessRepairedReworkShippedEndScrapEndReact FlowPress Enter to select a step, then the arrow keys to move it (with Shift, farther) or Delete to remove it.Connections are changed in a step's properties.ProblemsYour unsaved changes are checked when you save.The saved draft has no problems.Before SMTIDq_smtTypeQueueNameEmpty: the ID is shown.CapacityItems it can hold. Empty: no limit.Next stepsSMTRemoveConnect toDelete step"
+
+ ❯ tests/editor.test.tsx:231:28
+    229|     await press(button(en["editor.reapply"]));
+    230|     await settle();
+    231|     expect(el.textContent).toContain(en["editor.reapplyFailed"]);
+       |                            ^
+    232|     expect(status(el).getAttribute("data-draft-status")).toBe("conflic…
+    233|     expect(field(el, en["editor.field.capacity"]).value).toBe("40");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+

@@ -1,0 +1,49 @@
+=== RUN   TestEditorVectors
+=== RUN   TestEditorVectors/move_a_placed_step
+=== RUN   TestEditorVectors/the_first_move_writes_the_layout_down
+=== RUN   TestEditorVectors/a_move_creates_the_positions_map
+=== RUN   TestEditorVectors/rename_a_step
+=== RUN   TestEditorVectors/name_an_unnamed_step
+=== RUN   TestEditorVectors/remove_a_name
+=== RUN   TestEditorVectors/add_a_process
+=== RUN   TestEditorVectors/add_a_source,_a_queue,_a_decision,_a_delay,_a_failure,_a_rework_and_a_sink
+=== RUN   TestEditorVectors/delete_a_buffer_with_its_flows_and_its_queue_metric
+=== RUN   TestEditorVectors/delete_a_decision_with_its_constraint
+=== RUN   TestEditorVectors/delete_a_step_of_an_unplaced_layout
+=== RUN   TestEditorVectors/delete_a_decision_whose_flows_are_counted
+=== RUN   TestEditorVectors/delete_a_counted_sink
+=== RUN   TestEditorVectors/connect_two_steps
+=== RUN   TestEditorVectors/a_decision's_next_way_out
+=== RUN   TestEditorVectors/disconnect
+=== RUN   TestEditorVectors/disconnect_a_counted_flow
+=== RUN   TestEditorVectors/decision_probabilities
+=== RUN   TestEditorVectors/queue_capacity:_change,_set,_remove
+=== RUN   TestEditorVectors/a_step's_own_time
+=== RUN   TestEditorVectors/batch_sizes_and_no_waiting_limit
+=== RUN   TestEditorVectors/one_save_of_several_edits
+--- PASS: TestEditorVectors (0.18s)
+    --- PASS: TestEditorVectors/move_a_placed_step (0.00s)
+    --- PASS: TestEditorVectors/the_first_move_writes_the_layout_down (0.01s)
+    --- PASS: TestEditorVectors/a_move_creates_the_positions_map (0.00s)
+    --- PASS: TestEditorVectors/rename_a_step (0.00s)
+    --- PASS: TestEditorVectors/name_an_unnamed_step (0.00s)
+    --- PASS: TestEditorVectors/remove_a_name (0.01s)
+    --- PASS: TestEditorVectors/add_a_process (0.00s)
+    --- PASS: TestEditorVectors/add_a_source,_a_queue,_a_decision,_a_delay,_a_failure,_a_rework_and_a_sink (0.00s)
+    --- PASS: TestEditorVectors/delete_a_buffer_with_its_flows_and_its_queue_metric (0.01s)
+    --- PASS: TestEditorVectors/delete_a_decision_with_its_constraint (0.00s)
+    --- PASS: TestEditorVectors/delete_a_step_of_an_unplaced_layout (0.00s)
+    --- PASS: TestEditorVectors/delete_a_decision_whose_flows_are_counted (0.00s)
+    --- PASS: TestEditorVectors/delete_a_counted_sink (0.00s)
+    --- PASS: TestEditorVectors/connect_two_steps (0.00s)
+    --- PASS: TestEditorVectors/a_decision's_next_way_out (0.00s)
+    --- PASS: TestEditorVectors/disconnect (0.00s)
+    --- PASS: TestEditorVectors/disconnect_a_counted_flow (0.00s)
+    --- PASS: TestEditorVectors/decision_probabilities (0.00s)
+    --- PASS: TestEditorVectors/queue_capacity:_change,_set,_remove (0.00s)
+    --- PASS: TestEditorVectors/a_step's_own_time (0.00s)
+    --- PASS: TestEditorVectors/batch_sizes_and_no_waiting_limit (0.00s)
+    --- PASS: TestEditorVectors/one_save_of_several_edits (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.190s
+exit=0

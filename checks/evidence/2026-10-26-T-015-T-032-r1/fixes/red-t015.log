@@ -1,0 +1,387 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/editor-patch.test.ts (11 tests | 4 failed) 41ms
+   ❯ reapplyPatch (the person's reapply after a 409) (4)
+     × applies like applyPatch where every member it adds is still absent 16ms
+     × fails where an add would overwrite a member that is there now 2ms
+     × fails where it appends an element whose ID the array has now 1ms
+     × fails like applyPatch where a test fails, atomically 1ms
+ ❯ tests/editor-adapter.test.ts (19 tests | 6 failed) 218ms
+   ❯ edits are JSON Patch ops on the IR (10)
+     × move: a test of the old position and one replace for a placed node; an unplaced layout is written down first so nothing else jumps 36ms
+     × rename: test the step and its old name, then replace or add; an empty name removes it; the same name is no change 2ms
+     × delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested 7ms
+     × properties: probability, queue capacity, the step's own time and batch sizes, each after a test of the element and of the value it replaces or removes 1ms
+     × every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1) 15ms
+     × written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 2ms
+ ❯ tests/editor.test.tsx (27 tests | 6 failed) 15892ms
+   ❯ the editor on the model page (23)
+     × saves the edits as one JSON Patch with If-Match and keeps no other model 746ms
+     × shows 'Saving…' while the save is out, and an edit made then waits for the next save 397ms
+     × does not reapply a change to a field someone else changed: their value stays, and only discarding is offered 1131ms
+     × does not reapply a member I added that someone else added too (JSON Patch cannot test for absence) 837ms
+     × reapplies a change to another field of the same step, and both changes are saved 969ms
+     × says when a number is needed before anything is sent 420ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > move: a test of the old position and one replace for a placed node; an unplaced layout is written down first so nothing else jumps
+AssertionError: expected [ { op: 'replace', …(2) } ] to deeply equal [ { op: 'test', …(2) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -1,15 +1,7 @@
+  [
+    {
+-     "op": "test",
+-     "path": "/views/2d/positions/smt",
+-     "value": {
+-       "x": 480,
+-       "y": 0,
+-     },
+-   },
+-   {
+      "op": "replace",
+      "path": "/views/2d/positions/smt",
+      "value": {
+        "x": 10,
+        "y": -4,
+
+ ❯ tests/editor-adapter.test.ts:156:23
+    154|     const p = placed();
+    155|     const move = moveStep(p, "smt", { x: 10.4, y: -3.6 });
+    156|     expect(ops(move)).toEqual([{ op: "test", path: "/views/2d/position…
+       |                       ^
+    157|     const m = minimal();
+    158|     const first = ops(moveStep(m, "work", { x: 5, y: 5 }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > rename: test the step and its old name, then replace or add; an empty name removes it; the same name is no change
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/nodes/3/id",
+      "value": "smt",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/3/name",
+-     "value": "SMT",
+-   },
+-   {
+      "op": "replace",
+      "path": "/nodes/3/name",
+      "value": "SMT line 1",
+    },
+  ]
+
+ ❯ tests/editor-adapter.test.ts:174:57
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested
+AssertionError: expected undefined to deeply equal { op: 'test', path: '/flows/21', …(1) }
+
+- Expected:
+{
+  "op": "test",
+  "path": "/flows/21",
+  "value": {
+    "from": "debug_rework",
+    "id": "debug_rework_q_ict",
+    "routing": {
+      "probability": 1,
+      "type": "probability",
+    },
+    "to": "q_ict",
+  },
+}
+
++ Received:
+undefined
+
+ ❯ tests/editor-adapter.test.ts:230:30
+    228|       if (op.op === "remove" && t.length === 2) {
+    229|         expect(patch[i - 1]).toMatchObject({ op: "test", path: `/${t[0…
+    230|         expect(patch[i - 2]).toEqual({ op: "test", path: op.path, valu…
+       |                              ^
+    231|       }
+    232|       const a = applyPatch(doc, [op]);
+ ❯ tests/editor-adapter.test.ts:226:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > properties: probability, queue capacity, the step's own time and batch sizes, each after a test of the element and of the value it replaces or removes
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/flows/6/id",
+      "value": "aoi_result_q_ict",
+    },
+    {
+-     "op": "test",
+-     "path": "/flows/6/routing/probability",
+-     "value": 0.97,
+-   },
+-   {
+      "op": "replace",
+      "path": "/flows/6/routing/probability",
+      "value": 0.9,
+    },
+  ]
+
+ ❯ tests/editor-adapter.test.ts:286:62
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1)
+AssertionError: replace /views/2d/positions/aoi: expected undefined to match object { op: 'test', …(1) }
+
+- Expected:
+{
+  "op": "test",
+  "path": "/views/2d/positions/aoi",
+}
+
++ Received:
+undefined
+
+ ❯ tests/editor-adapter.test.ts:328:51
+    326|           let j = i - 1;
+    327|           while (j >= 0 && patch[j]!.op === "test" && patch[j]!.path !…
+    328|           expect(patch[j], `${op.op} ${op.path}`).toMatchObject({ op: …
+       |                                                   ^
+    329|         }
+    330|         const a = applyPatch(doc, [op]);
+ ❯ tests/editor-adapter.test.ts:323:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not
+TypeError: reapplyPatch is not a function
+ ❯ tests/editor-adapter.test.ts:366:14
+    364|       const mine = ops(c.mine(c.base));
+    365|       expect(applyPatch(c.base, mine).ok, `${c.name}: on its own draft…
+    366|       expect(reapplyPatch(c.base, mine).ok, `${c.name}: reapplied on i…
+       |              ^
+    367|       expect(reapplyPatch(after(c.base, c.same(c.base)), mine).ok, `${…
+    368|       expect(reapplyPatch(after(c.base, c.other(c.base)), mine).ok, `$…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  tests/editor-patch.test.ts > reapplyPatch (the person's reapply after a 409) > applies like applyPatch where every member it adds is still absent
+TypeError: reapplyPatch is not a function
+ ❯ tests/editor-patch.test.ts:97:12
+     95|       { op: "add", path: "/views/2d/positions/c", value: { x: 2, y: 2 …
+     96|     ] as const;
+     97|     expect(reapplyPatch(doc(), [...ops])).toEqual(applyPatch(doc(), [.…
+       |            ^
+     98|     expect(reapplyPatch(doc(), [...ops]).ok).toBe(true);
+     99|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  tests/editor-patch.test.ts > reapplyPatch (the person's reapply after a 409) > fails where an add would overwrite a member that is there now
+TypeError: reapplyPatch is not a function
+ ❯ tests/editor-patch.test.ts:102:12
+    100|
+    101|   it("fails where an add would overwrite a member that is there now", …
+    102|     expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/1/capacity"…
+       |            ^
+    103|     expect(reapplyPatch(doc(), [{ op: "add", path: "/views/2d/position…
+    104|     expect(reapplyPatch(doc(), [{ op: "add", path: "/views/2d/position…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  tests/editor-patch.test.ts > reapplyPatch (the person's reapply after a 409) > fails where it appends an element whose ID the array has now
+TypeError: reapplyPatch is not a function
+ ❯ tests/editor-patch.test.ts:112:12
+    110|
+    111|   it("fails where it appends an element whose ID the array has now", (…
+    112|     expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/-", value: …
+       |            ^
+    113|     expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/-", value: …
+    114|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+ FAIL  tests/editor-patch.test.ts > reapplyPatch (the person's reapply after a 409) > fails like applyPatch where a test fails, atomically
+TypeError: reapplyPatch is not a function
+ ❯ tests/editor-patch.test.ts:118:12
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/16]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > saves the edits as one JSON Patch with If-Match and keeps no other model
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/nodes/3/id",
+      "value": "smt",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/3/name",
+-     "value": "SMT",
+-   },
+-   {
+      "op": "replace",
+      "path": "/nodes/3/name",
+      "value": "SMT line 1",
+    },
+  ]
+
+ ❯ tests/editor.test.tsx:122:21
+    120|     expect(p).toMatchObject({ path: `/api/v1/models/${SAMPLE_MODEL_ID}…
+    121|     // The step's identity (D-020), then the value the edit replaces (…
+    122|     expect(p!.body).toEqual([{ op: "test", path: "/nodes/3/id", value:…
+       |                     ^
+    123|     expect(status(el).textContent).toBe("All changes saved. Draft revi…
+    124|     expect(outcome(el)).toBe("Draft saved as revision 4.");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/16]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > shows 'Saving…' while the save is out, and an edit made then waits for the next save
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/nodes/4/id",
+      "value": "q_aoi",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/4/capacity",
+-     "value": 20,
+-   },
+-   {
+      "op": "replace",
+      "path": "/nodes/4/capacity",
+      "value": 25,
+    },
+  ]
+
+ ❯ tests/editor.test.tsx:143:35
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/16]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > does not reapply a change to a field someone else changed: their value stays, and only discarding is offered
+AssertionError: expected 'Board assembly and test line (sample)…' to contain 'Your changes no longer fit the curren…'
+
+Expected: "Your changes no longer fit the current draft: a step they change was changed or removed there. Discard them to work on the current draft."
+Received: "Board assembly and test line (sample)Back to projectLatest version 1; domain electronics_line.Unsaved changes. Draft revision 4.Save your changes before publishing.Discard my changesSave draftPublish versionYour changes are on draft revision 4 now. Check them, then save.Add stepShow all stepsBoard A releaseSourceBoard B releaseSourceBefore SMTQueueSMTProcessBefore AOIQueueAOIProcessAOI resultDecisionAOI defectFailureBefore ICTQueueBefore touch-upQueueICTProcessTouch-upProcessICT resultDecisionTouched upReworkICT failFailureBefore burn-inQueueBefore debugQueueBurn-inProcessICT debugProcessBefore packingQueueDebug resultDecisionPack and shipProcessRepairedReworkShippedEndScrapEndReact FlowPress Enter to select a step, then the arrow keys to move it (with Shift, farther) or Delete to remove it.Connections are changed in a step's properties.ProblemsYour unsaved changes are checked when you save.The saved draft has no problems.Before AOIIDq_aoiTypeQueueNameEmpty: the ID is shown.CapacityItems it can hold. Empty: no limit.Next stepsAOIRemoveConnect toDelete step"
+
+ ❯ tests/editor.test.tsx:207:28
+    205|     await press(button(en["editor.reapply"]));
+    206|     await settle();
+    207|     expect(el.textContent).toContain(en["editor.reapplyFailed"]);
+       |                            ^
+    208|     expect(status(el).textContent).toBe("Not saved: the draft changed …
+    209|     expect(() => button(en["editor.reapply"])).toThrow();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/16]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > does not reapply a member I added that someone else added too (JSON Patch cannot test for absence)
+AssertionError: expected 'Board assembly and test line (sample)…' to contain 'Your changes no longer fit the curren…'
+
+Expected: "Your changes no longer fit the current draft: a step they change was changed or removed there. Discard them to work on the current draft."
+Received: "Board assembly and test line (sample)Back to projectLatest version 1; domain electronics_line.Unsaved changes. Draft revision 4.Save your changes before publishing.Discard my changesSave draftPublish versionYour changes are on draft revision 4 now. Check them, then save.Add stepShow all stepsBoard A releaseSourceBoard B releaseSourceBefore SMTQueueSMTProcessBefore AOIQueueAOIProcessAOI resultDecisionAOI defectFailureBefore ICTQueueBefore touch-upQueueICTProcessTouch-upProcessICT resultDecisionTouched upReworkICT failFailureBefore burn-inQueueBefore debugQueueBurn-inProcessICT debugProcessBefore packingQueueDebug resultDecisionPack and shipProcessRepairedReworkShippedEndScrapEndReact FlowPress Enter to select a step, then the arrow keys to move it (with Shift, farther) or Delete to remove it.Connections are changed in a step's properties.ProblemsYour unsaved changes are checked when you save.The saved draft has no problems.Before SMTIDq_smtTypeQueueNameEmpty: the ID is shown.CapacityItems it can hold. Empty: no limit.Next stepsSMTRemoveConnect toDelete step"
+
+ ❯ tests/editor.test.tsx:231:28
+    229|     await press(button(en["editor.reapply"]));
+    230|     await settle();
+    231|     expect(el.textContent).toContain(en["editor.reapplyFailed"]);
+       |                            ^
+    232|     expect(status(el).getAttribute("data-draft-status")).toBe("conflic…
+    233|     expect(field(el, en["editor.field.capacity"]).value).toBe("40");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/16]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > reapplies a change to another field of the same step, and both changes are saved
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/nodes/4/id",
+      "value": "q_aoi",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/4/capacity",
+-     "value": 20,
+-   },
+-   {
+      "op": "replace",
+      "path": "/nodes/4/capacity",
+      "value": 25,
+    },
+  ]
+
+ ❯ tests/editor.test.tsx:254:35
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/16]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > says when a number is needed before anything is sent
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,14 +3,9 @@
+      "op": "test",
+      "path": "/nodes/4/id",
+      "value": "q_aoi",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/4/capacity",
+-     "value": 20,
+-   },
+-   {
+      "op": "remove",
+      "path": "/nodes/4/capacity",
+    },
+  ]
+
+ ❯ tests/editor.test.tsx:344:35
+    342|     await press(button(en["editor.save"]));
+    343|     await settle();
+    344|     expect(patches(api)[0]!.body).toEqual([{ op: "test", path: "/nodes…
+       |                                   ^
+    345|   });
+    346|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/16]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  16 failed | 41 passed (57)
+   Start at  15:46:23
+   Duration  22.28s (tests 64%, transform 25%, import 7%, environment 4%, worker 1%)
+
+exit=1

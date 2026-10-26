@@ -149,7 +149,7 @@ e2e 的 `[WebServer] Error: failed to pipe response` 來自 `session.spec.ts` �
 - SSE 進度、run 的列表與歷史（`listSimulations`）、trace level 的選擇；
 - 指標的 population、sample count 與不確定性的完整呈現（目前只有各 run 自己的 95% CI）、rug、全螢幕 Compare、可選的指標；
 - Marey 圖的 playhead／scrubber／播放、與 2D 畫布（T-015）同步的列選取；
-- domain pack 指標（T-051）的名稱與單位（目前以 key 原樣顯示）；有 calendar 的 resource 的 scheduled utilization（D-084）；
+- domain pack 指標（T-051）的名稱與單位（目前以 key 原樣顯示；review 第 1 輪後 `ratio` 已以百分比與百分點顯示，其他單位如 `entity_per_hour`、`entity` 仍在名稱旁原樣列出）；有 calendar 的 resource 的 scheduled utilization（D-084）；
 - 已登入頁面的瀏覽器 E2E 與閉環（T-040）、截圖 baseline；
 - 從模型頁進入 scenario 的入口（模型頁屬 T-015）。
 
@@ -206,3 +206,60 @@ Coordinator 對 T-032 問題的處理（例行事項；需要 owner 的另列）
 7. 新頁面的截圖 baseline：等已登入的 UI 穩定後（T-043 後續、T-031），在 T-057 加入 `screenshots.spec.ts`，由 CI 產生、owner 確認（H-028）。
 
 下一步：一輪獨立審查（H-029）。
+
+## Review round 1 fixes（2026-10-26，分支 `t015-t032-m1`，自 d229225）
+
+審查：`checks/T-032_REVIEW_r1.md`（CHANGES REQUESTED，M1；檔案在 reviewer 的 worktree，本分支未收錄）。本節修 M1（Medium）與 L4（Low，demo 看得到）；其他 Low 與 Info 依指示延到比賽之後（見下）。Commit：702607e。Evidence：`checks/evidence/2026-10-26-T-015-T-032-r1/fixes/`（`exit-codes.txt` 與各 log；指令表與 T-015 報告的同一節相同）。
+
+| 發現 | 變更 | 測試 | Mutant |
+|---|---|---|---|
+| **M1**：取消依序送出，第一個失敗就 `return`；剛完成的 baseline 回 409 時 scenario 不會被取消，畫面說取消失敗 | `features/simulations/use-run-pair.ts`：對每個仍在進行的 run 同時、各自送 cancel（`Promise.all`，每個 run 沿用自己的 Idempotency-Key，D-011）；409 `LIFECYCLE_CONFLICT`（run 在上次讀取後已結束）不算失敗；其他失敗（如 503）各自記下，不影響另一個；全部回來後一律 `cancelDone` 並重新讀取（`nextAttempt()`，poll 因讀取失敗停下時也一樣）。`run-pair.ts`：`cancelFailed` 帶 `runId`，狀態 `cancelProblem` 改為 `{ side: baseline｜scenario｜both, problem }`（兩個都失敗時保留第一個 problem）。`run-status.tsx`：說明是誰的取消沒有成功，再顯示 API 的 problem（含 request ID，在「Details」中）。catalog：`runs.cancelFailed` 改為 `runs.cancelFailed.both`／`.baseline`／`.scenario`（en 與 zh-Hant） | `results-view.test.tsx` 新增 4 個；`simulations.test.ts` 的 reducer 測試改為新事件並加上 side 與 both 的斷言 | T032-A–G，全部 killed |
+| **L4**：T-051 pack 的 `ratio` 指標以原始小數與英文「(ratio)」顯示，Δ 不是百分點 | `features/results/metrics.ts` `unitOf`：`ratio` 對到 MetricUnit `ratio`（既有的格式：百分比、Δ 為百分點），名稱旁不再列單位；`<data value>` 仍是伺服器的原值。其他未知單位（如 `entity_per_hour`）照舊在名稱旁原樣列出 | `results-metrics.test.ts` 新增 1 個；`results-view.test.tsx` 新增 1 個（zh-Hant） | T032-L4 killed |
+
+**現在的行為**
+
+- 兩個 run 都在執行，按「Cancel the runs」：baseline 在上次讀取後已完成，cancel 回 409 `LIFECYCLE_CONFLICT`；scenario 的 cancel 回 200（cancellation_requested）→ 兩個 POST 都送出，scenario 顯示「Stopping…」，重新讀取後 baseline 顯示「Completed」，沒有任何取消失敗的說明或 alert（審查者的重現）。
+- poll 因讀取失敗（503）停下、畫面有重試時按取消：取消後重新讀取，baseline 顯示「Completed」、scenario「Stopping…」。
+- baseline 的 cancel 回 503、scenario 的回 200：兩個都送出；「The baseline run could not be cancelled.」＋ problem（`unavailable`、`error.SERVICE_UNAVAILABLE` 的說明、request ID）；scenario 顯示「Stopping…」；baseline 仍在執行，所以取消仍在，再按一次以同一個 key 重送。
+- 兩個都失敗：「The runs could not be cancelled.」／「無法取消這兩個執行。」，一個 alert。
+- `ratio` 指標（以 scrap_rate 為例，zh-Hant）：名稱只有 `scrap_rate`，值「4%」「2.5%」、Δ「-1.5 個百分點」、Δ%「-37.5%」；`<data value>` 為 0.04、0.025、-0.015、-0.375。
+
+**測試（先寫，先紅後綠）**
+
+| 檔案 | 新增或改動 |
+|---|---|
+| `tests/results-view.test.tsx` | 新增 5 個：一個 409＋一個 200（兩個 POST、stopping、沒有失敗說明、axe）；poll 停下後取消會重新讀取；503 顯示 problem 與 request ID、指名 baseline、另一個仍取消、重按沿用同一 key（axe）；兩個都失敗時指名兩者（zh-Hant）；`ratio` 指標的百分比與百分點（zh-Hant、axe） |
+| `tests/results-metrics.test.ts` | 新增 1 個：`ratio` 的 domain 指標（line 與 station key）為 MetricUnit `ratio`、名稱旁沒有單位、值不變 |
+| `tests/simulations.test.ts` | reducer：一個 run 的 `cancelFailed` 指名該 run、不結束取消（`cancelDone` 才結束）；第二個失敗為 `both` 且保留第一個 problem；不屬於這組的 run 不改變狀態 |
+
+紅：在未修改的程式上執行 `results-view.test.tsx`、`results-metrics.test.ts`，6 failed／33 passed（`red-t032.log`，exit 1）。行為上的紅：409＋200 的測試等不到「Stopping…」（舊程式在 baseline 的 409 就停，scenario 的 POST 沒有送出）、poll 停下後的測試等不到重新讀取、`ratio` 的兩個測試看到「scrap_rate (ratio)」與 number 單位。503 與「兩個都失敗」兩個測試在舊程式上失敗的原因之一是新的 catalog 字串尚不存在（老實記錄）；它們的行為由 mutant T032-C、E、F、G 證明。綠：修正後 91／91（含 `simulations`、`results-simplicity`、`i18n`），完整 `make frontend-test` 785／785。
+
+**Mutant**（`mutants.py`、`mutants.json`、`mutants-T032-G.json`、`mutant-*.log`；逐一改一處、跑對應測試、還原，結束後 `git status` 乾淨）
+
+| ID | 改動 | 結果（擋下它的測試） |
+|---|---|---|
+| T032-A | 409 `LIFECYCLE_CONFLICT` 當作取消失敗 | killed（409＋200） |
+| T032-B | 取消後不重新讀取 | killed（poll 停下後的取消） |
+| T032-C | 只取消第一個仍在進行的 run | killed（5 個，含既有的「cancels the runs that are still going…」） |
+| T032-D | 第二個失敗取代第一個、不指名兩者 | killed（reducer、兩個都失敗） |
+| T032-E | 失敗說明不指名是誰的取消 | killed（503） |
+| T032-F | 不顯示取消的 problem | killed（503、兩個都失敗） |
+| T032-G | 取消失敗不回報（審查 L1 的 R2 在新位置） | killed（503、兩個都失敗）：L1 中 R2 的缺口因此補上 |
+| T032-L4 | `unitOf` 不認 `ratio` | killed（metrics、zh-Hant 元件） |
+
+**指令與結果**（同一棵 tree，與 T-015 報告的同名一節為同一次執行；Node 22.22.0，`--engine-strict=false`）
+
+| 指令 | exit | 結果 |
+|---|---|---|
+| `npx vitest run tests/results-view.test.tsx tests/results-metrics.test.ts`（修正前） | 1 | 6 failed／33 passed（`red-t032.log`） |
+| `make frontend-test` | 0 | 34 個檔案、785 個 test（`frontend-test.log`） |
+| `make frontend-build` | 0 | 含 `/scenarios/[scenarioId]`、`/scenarios/[scenarioId]/results`、`/ui-gallery/results` |
+| `make e2e-test`（單獨執行，先確認 3100／3101 空著、沒有其他 Playwright） | 0 | 257 passed、32 skipped（截圖，只在 CI）；`results.spec.ts` 的鍵盤取消與字串測試通過 |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | PASS；`checks/docs-check.json` 重產（121 個 Markdown 檔） |
+| `go test -count=1 ./internal/model/...` | 0 | （T-015 的 vectors；T-032 沒有改 Go） |
+| Mutant（`mutants.py`） | — | T032-A–G、T032-L4：8 個全部 killed |
+
+**NOT RUN**：截圖比對（只在 CI）；已登入、有真實 API／worker 的瀏覽器閉環（T-040；app 尚未掛 AuthProvider）；SSE；Node 24、Firefox／Safari、螢幕報讀器；Go 測試只跑了 `./internal/model/...`（本輪沒有改 Go）；沒有 live AI 呼叫，沒有讀任何 key 或 secret；沒有 push。
+
+**延到比賽之後（未修）**：L1（結果頁的反向路徑：比較 API 失敗 R6、trace 下載失敗 R3；R2 已由本輪的 503 測試涵蓋，mutant T032-G）、L2（結束時仍被擋的線位置是猜的、表格不計）、L3（`checkPair` 不檢查 baseline 的版本）、L5（`planning/tasks.json` 的 T-032 completion_evidence，由 coordinator 加入）；Info I1–I8（I3：取消請求進行中再按沒有說明，未變；I8 的 `checks/docs-check.json` 由 coordinator 在收錄 review 檔後重產）。

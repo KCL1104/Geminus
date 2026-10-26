@@ -1,0 +1,28 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/results-view.test.tsx (26 tests | 1 failed) 14726ms
+   ❯ the runs, from queued to the results (16)
+     × shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other 10178ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 25 passed (26)
+   Start at  15:58:07
+   Duration  16.36s (tests 91%, import 5%, environment 3%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other
+Error: timed out waiting for the failure
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:399:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

@@ -134,7 +134,7 @@
 - 撤銷／重做、資源池在畫布上、多選、複製貼上；pack catalog 的 kind（`smt_station` 等）與兩語標籤（ADR-020 的 follow-up）——目前只有 8 種 generic 類型。
 - 3D 的 adapter（T-017）：selection store 已共用 IR ID，3D 尚未實作。
 - 每個步驟一個 Tab stop：約 25 個步驟時，鍵盤使用者從畫布到屬性面板要經過其餘步驟；可改 roving tabindex 或加「跳到屬性」連結。
-- 「重新套用」只以元素識別（D-020 的 test）保護：別人改了同一個欄位時，重新套用後是「我的值」（使用者明確選擇後的 last-writer-wins）；欄位層級的衝突比對未做。
+- ~~「重新套用」只以元素識別（D-020 的 test）保護：別人改了同一個欄位時，重新套用後是「我的值」（使用者明確選擇後的 last-writer-wins）；欄位層級的衝突比對未做。~~ 已由 review 第 1 輪修正取代（文末「Review round 1 fixes」）：別人改過的欄位不再被重新套用覆寫，只能捨棄。
 - 第一次改拓樸或移動時把整個 layered 版面寫進 IR（patch 會多一些 `add /views/2d/positions/<id>`），讓其他步驟不跳動。
 - 新步驟的時間預設為 1 個時間單位（constant），等使用者在屬性中改；這是編輯器的初值，不是任何資料。
 - 截圖 baseline（TEST-033）在畫面定案後由 owner 確認。
@@ -152,7 +152,7 @@
 2. **T-015 狀態**：spec-check 要求 T-045 先到 `review` 或 `done`；T-045 送審時一併把 T-015 改為 `in_progress`？
 3. **簡化的選擇**（H-027）：步驟面板做成「新增步驟」選單（不是一排按鈕）；只有「顯示所有步驟」而沒有縮放按鈕組；儲存與發布在不能用時保持可見但 blocked（附原因），而不是隱藏；編輯器頁面用整個視窗寬度。是否接受？
 4. **鍵盤**：每個步驟一個 Tab stop（約 25 個）先接受，或本切片就加「跳到屬性」連結？
-5. **409 後的重新套用**：同一欄位兩人都改時，重新套用後保留使用者的值（使用者明確選擇後）。可以嗎，或要先做欄位層級的衝突顯示？
+5. **409 後的重新套用**：同一欄位兩人都改時，重新套用後保留使用者的值（使用者明確選擇後）。可以嗎，或要先做欄位層級的衝突顯示？（review 第 1 輪後不再需要決定：同一欄位兩人都改時重新套用不成立，只能捨棄，見文末「Review round 1 fixes」。）
 6. **新步驟的初值**（1 個時間單位）：可以，或要求使用者在新增時就輸入？
 
 ## Coordinator 的執行（hackathon 切片，74cb9ae 之後）
@@ -163,6 +163,74 @@ Coordinator 把 `t015-hk` 的五個 commit（9f5ef0c、2fb5838、11691c1、766d4
 
 在整合後的 tree 上（`checks/evidence/2026-10-26-T-015/coordinator/`，Node 22.22.0，`--engine-strict=false`）：`npm ci`（兩個專案）、`make spec-check`、`make frontend-build`、`npm audit --omit=dev`（0 vulnerabilities）、`go test -count=1 ./internal/model/... ./internal/domainpack/...` exit 0；`make frontend-test` 第一次 exit 2（上述衝突），修正後 `frontend-test-2` exit 0（642 個 test）；`make e2e-test` 第一次 exit 2（另一個 agent 同時執行 e2e，佔用 `127.0.0.1:3101`，不是測試失敗），單獨重跑 `e2e-test-2` exit 0（162 passed、32 skipped：截圖只在 CI 比對）。
 
-- **Coordinator 對切片問題的決定**（H-027 的簡潔原則之內，owner 可再改）：Add step 用選單、只有「顯示全部」不加縮放按鈕、被擋的 Save draft／Publish 保留並寫出原因、編輯器頁使用整個視窗寬度、每個步驟一個 Tab 停點（暫不加「跳到屬性」連結）、重新套用時同一欄位以使用者自己的值為準、新步驟的時間預設為 1 個時間單位。
+- **Coordinator 對切片問題的決定**（H-027 的簡潔原則之內，owner 可再改）：Add step 用選單、只有「顯示全部」不加縮放按鈕、被擋的 Save draft／Publish 保留並寫出原因、編輯器頁使用整個視窗寬度、每個步驟一個 Tab 停點（暫不加「跳到屬性」連結）、~~重新套用時同一欄位以使用者自己的值為準~~（**已撤回**：並行語意不在 H-027 委託的範圍內，review 第 1 輪 M1；見文末「Review round 1 fixes」）、新步驟的時間預設為 1 個時間單位。
 - **阻擋 demo 的缺口**：app 沒有掛上登入後的 bootstrap（`/me` → `AuthProvider`、選擇組織），部署後模型頁只會顯示「需要登入」；由 T-043 的後續處理（另一個 agent 進行中）。
 - **NOT RUN**：截圖比對（編輯器不在截圖 spec 中）；登入後在瀏覽器以真實 API 操作；T-051 的正式範本（尚未整合）；full backend-test／backend-race／integration-test；獨立 review（依 H-029，接下來進行一輪）。
+
+## Review round 1 fixes（2026-10-26，分支 `t015-t032-m1`，自 d229225）
+
+審查：`checks/T-015_REVIEW_r1.md`（CHANGES REQUESTED，M1；檔案在 reviewer 的 worktree，本分支未收錄）。本節只修 M1（Medium）；Low 與 Info 依指示延到比賽之後（見下）。Commit：036f60b（測試、修正、重產的 vectors）。Evidence：`checks/evidence/2026-10-26-T-015-T-032-r1/fixes/`（`exit-codes.txt` 與各 log）。
+
+**撤回 coordinator 的決定**：上方 coordinator 一節的「重新套用時同一欄位以使用者自己的值為準」撤回。H-027 委託 coordinator 的是介面的簡潔，不是並行語意；last-writer-wins 正是 REQ-006 與 AGENTS.md §2（不 silent overwrite、不 auto-rebase）要擋的 lost update。給 owner 的問題 5 不再需要決定：現在同一欄位兩人都改時，重新套用不成立，只能捨棄（審查者的選項 (a)）。
+
+| 發現 | 變更 | 測試 | Mutant |
+|---|---|---|---|
+| **M1**：409 後「重新套用」只靠 D-020 的識別 test，別人在新 revision 改過、本機也改過的欄位被本機的值覆寫，畫面不說 | (1) `features/model-editor/edits.ts`：每個 `replace`／`remove` 之前加上被取代或刪除的值的 `test`：欄位（名稱、佇列容量、時間參數、批次三欄、判斷機率、2D 位置）測舊值；刪除整個元素（node、flow、metric、constraint）時，在 D-020 的識別 test 之前先 test 整個元素的舊值；刪除步驟時其位置也先 test。舊值以 JSON 複製，ops 不與 IR 共用物件。(2) `patch.ts` 新增 `reapplyPatch`：與 `applyPatch` 相同，但 `add` 的物件成員已存在、或 append（`/-`）的元素 `id` 已在陣列中時失敗（`test_failed`）。JSON Patch 不能 test「不存在」，而編輯器只 add 不存在的成員，所以這等於在重新套用前比較 base 與新 revision 在該路徑的值。`applyPatch` 照舊依 RFC 6902（與伺服器相同）。(3) `model-editor.tsx`：「重新套用」改以 `reapplyPatch` 判斷；409 期間畫布也以 `reapplyPatch` 顯示（套不上時顯示伺服器的草稿，與訊息一致）。套不上時沿用既有的 `reapplyFailed` 路徑與訊息（「Your changes no longer fit the current draft…」，只能捨棄）。(4) `testdata/editor/patch-vectors.json` 重產（22 組） | 見下表 | 9 個，全部 killed（見下） |
+
+**現在的行為**
+
+- 審查者的情境（替身 API、真的 client 與 draft session）：A 把「Before AOI」的容量由 20 改為 12（revision 4）；B 仍在 revision 3，改為 25、儲存得 409，按「載入目前的草稿並重新套用我的變更」→ 訊息「Your changes no longer fit the current draft…」、狀態「Not saved: the draft changed on the server. Draft revision 4.」、重新套用按鈕消失、Save draft blocked、容量欄顯示 **12**（A 的值）；只能捨棄 →「All changes saved. Draft revision 4.」，伺服器仍是 12，全程只送過一次 PATCH。
+- 別人新增了我也新增的成員（「Before SMT」原本沒有上限，A 設 40、B 設 50）：同樣只能捨棄，欄位顯示 40。
+- 不衝突的照常重新套用：同一步驟的不同欄位（A 改名稱、B 改容量）→ 重新套用、儲存為 revision 5，兩者都在；第二次 PATCH 帶 `test /nodes/4/capacity 20`。既有的「別人改 SMT 的名稱、我改 Before AOI 的容量」與 e2e 的 409 流程不變。
+- 為了不覆寫而比原本嚴格的情況（都走「只能捨棄」，在目前的草稿上重做）：兩人移動同一步驟；我刪除的步驟（或隨它刪除的 flow、metric、constraint、位置）被別人改過；還沒有版面的模型兩人都做了第一次拓樸編輯或移動（兩邊都寫入整份版面）；兩人新增同一 ID 的步驟或連接。單元測試逐一列出這些情況與對應的不衝突情況。
+- 伺服器端：`test` 不受 allowlist 限制（D-020），`TestEditorVectors` 以 ManualDraft 接受重產後的 22 組 vectors；伺服器確實比較舊值（mutant GO-A：把一組的舊容量改為 21 → `PATCH_TEST_FAILED`）。
+
+**測試（先寫，先紅後綠）**
+
+| 檔案 | 新增或改動 |
+|---|---|
+| `tests/editor.test.tsx` | 新增 3 個：審查者的情境（同欄位 → 只能捨棄、顯示別人的值、伺服器不變）；同一成員兩人都 add → 只能捨棄；同一步驟不同欄位 → 照常重新套用並儲存。既有 3 個的 patch 內容斷言加上舊值的 `test`（更嚴格，不是放寬） |
+| `tests/editor-adapter.test.ts` | 新增 2 個：「每個 replace／remove 之前都有同一路徑的 test」（13 種編輯，逐 op 套用驗證）；18 種編輯 × 「別人改了同一處 → `reapplyPatch` 失敗／改了別處 → 成功／在自己的草稿上 → 成功」。既有的 move、rename、delete、properties 斷言改為含舊值 test |
+| `tests/editor-patch.test.ts` | 新增 4 個 `reapplyPatch`：成員仍不存在時與 `applyPatch` 相同；add 會覆寫既有成員時失敗；append 的 ID 已存在時失敗；test 失敗時全有或全無 |
+| `tests/editor-vectors.test.ts` | 未改；重產前執行失敗（`vectors-stale.log`，exit 1），重產後通過 |
+
+紅：在未修改的程式上執行上述三個檔案，16 failed／41 passed（`red-t015.log`，exit 1）；審查者的情境與 add 的情境失敗的原因正是舊程式靜默重新套用（畫面為「Your changes are on draft revision 4 now. Check them, then save.」）；「同一步驟不同欄位」在舊程式上失敗只因第二次 PATCH 沒有舊值的 test（它的重新套用在舊程式上也成立）。綠：60／60（含 `editor-draft.test.ts`）。
+
+**Mutant**（`mutants.py`、`mutants.json`、`mutant-*.log`；腳本逐一改一處、跑對應測試、從讀入的原文還原，結束後 `git status` 乾淨）
+
+| ID | 改動 | 結果（擋下它的測試） |
+|---|---|---|
+| T015-A | `setAt` 不加舊值的 test | killed（11 個：adapter 6、元件 5，含審查者的情境） |
+| T015-B | 重新套用改回以 `applyPatch` 判斷 | killed（元件：同一成員兩人都 add）；replace 的情境由 ops 中的舊值 test 擋下，兩道防線各自有效 |
+| T015-C | `reapplyPatch` 允許 add 覆寫既有成員 | killed（patch、adapter、元件各 1） |
+| T015-D | `reapplyPatch` 允許 append 重複的 ID | killed（patch、adapter） |
+| T015-E | 409 期間畫布改回以 `applyPatch` 顯示 | killed（元件：套不上時欄位應顯示別人的 40） |
+| T015-F | 刪除 catalog 元素前不 test 整個元素 | killed（adapter 3） |
+| T015-G | 刪除步驟前不 test 整個 node | killed（adapter 3） |
+| T015-H | 刪除步驟的位置前不 test | killed（adapter 3） |
+| GO-A | vectors 中一組的舊容量改為 21 | killed（`TestEditorVectors`：`PATCH_TEST_FAILED /1/value`） |
+
+**指令與結果**（Node 22.22.0、npm 10.9.4，`npm ci --engine-strict=false`；go1.27.3，`GOTOOLCHAIN=local`；共用機器 load average 約 15–20）
+
+| 指令 | exit | 結果 |
+|---|---|---|
+| `npm ci --prefix apps/web --engine-strict=false`、`npm ci --prefix apps/web-e2e --engine-strict=false` | 0／0 | |
+| `npx vitest run`（三個 T-015 測試檔，修正前） | 1 | 16 failed／41 passed（`red-t015.log`） |
+| `npx vitest run tests/editor-vectors.test.ts`（重產前） | 1 | 檔案與今天的 ops 不同（`vectors-stale.log`） |
+| `GEMINUS_WRITE_EDITOR_VECTORS=1 npx vitest run tests/editor-vectors.test.ts`，再不帶變數執行 | 0／0 | |
+| `go test -count=1 -v -run TestEditorVectors ./internal/model/patch/` | 0 | 22 個 subtest 都 PASS（`go-editor-vectors.log`、`go-editor-vectors-final.log`） |
+| `go test -count=1 ./internal/model/...` | 0 | model、calendar、hashing、patch、validate、coldstart 都 ok（`go-test-model.log`） |
+| `make frontend-test`（lint、typecheck、vitest） | 0 | 34 個檔案、785 個 test（審查時 770；本輪新增 15：T-015 9、T-032 6；`frontend-test.log`） |
+| `make frontend-build` | 0 | `frontend-build.log` |
+| `make e2e-test`（單獨執行；先確認 3100／3101 沒有人用、沒有其他 Playwright） | 0 | 257 passed、32 skipped（全部是 `screenshots.spec.ts`，只在 CI 比對），12.4 分鐘；`editor.spec.ts` 的 409 與重新套用流程通過（`e2e-test.log`）。與審查時 coordinator 的 257／32 相同 |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | 每個檢查都 PASS（`spec-check.log`）；重產的 `checks/docs-check.json` 為 121 個 Markdown 檔、112 個相對連結：本分支沒有新增 Markdown，原本記錄的 115 已過時（tree 中有 121 個 tracked `.md`） |
+| Mutant（`mutants.py`） | — | 9 個（含 GO-A）全部 killed |
+
+`apps/web-e2e/tests/__screenshots__/` 沒有改動。
+
+**風險**：每個欄位編輯多 1 個 op、每個刪除的元素多 1 個 op（方向鍵移動一次由 1 個變 2 個）；JSON Patch schema 的上限 1000 個 op（`schemas/json-patch.schema.json` 的 `maxItems`，既有）在一次儲存很多編輯時會較早碰到；超過時該次儲存會被伺服器的 patch schema 拒絕（本輪沒有實測這個情況），編輯仍保留在頁面上。比賽後可考慮合併同一路徑的連續編輯。
+
+**NOT RUN**：截圖比對（只在 CI）；登入後以真 API 在瀏覽器操作編輯器（app 尚未掛 AuthProvider）；`make backend-test`、`backend-race`、`integration-test`（本輪沒有改 Go 程式，只重產 testdata，跑了 `go test ./internal/model/...`）；Node 24、Firefox／Safari、螢幕報讀器；沒有 live AI 呼叫，沒有讀任何 key 或 secret；沒有 push。
+
+**延到比賽之後（未修）**：L1（畫布上 error／warning 只用邊框顏色）、L2（存活的 mutant F1 whole 欄位 2.5、F2 發布 Idempotency-Key 沿用、F7 發布失敗的 problem；報告對測試範圍的描述）、L3（簡潔規則的 unit 檢查不驗「看得見」）、L4（422 的欄位錯誤在改正後仍顯示）、L5（`planning/tasks.json` 的 T-015 進度紀錄，由 coordinator 更新）；Info I1–I6（I6 的 `checks/docs-check.json` 由 coordinator 在收錄 review 檔後重產）。

@@ -1,0 +1,84 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/results-view.test.tsx (26 tests | 5 failed) 54600ms
+   ❯ the runs, from queued to the results (16)
+     × cancels the runs that are still going, each with an empty body and its own key, and then has nothing to compare 10090ms
+     × cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed 10076ms
+     × reads the runs again after a cancel even when following them had stopped on a failed read 10084ms
+     × shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other 10068ms
+     × names both runs when neither cancel went through 10036ms
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 21 passed (26)
+   Start at  15:56:51
+   Duration  56.35s (tests 97%, import 2%, environment 1%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > cancels the runs that are still going, each with an empty body and its own key, and then has nothing to compare
+Error: timed out waiting for the scenario stopping
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:293:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed
+Error: timed out waiting for the scenario stopping
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:349:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > reads the runs again after a cancel even when following them had stopped on a failed read
+Error: timed out waiting for the baseline read again
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:378:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other
+Error: timed out waiting for the scenario stopping
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:404:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > names both runs when neither cancel went through
+Error: timed out waiting for the failure
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:425:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+

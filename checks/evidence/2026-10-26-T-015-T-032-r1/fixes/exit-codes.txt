@@ -1,0 +1,13 @@
+2026-10-26T16:07:46Z go-test-model exit=0 :: go test -count=1 ./internal/model/...
+2026-10-26T16:08:08Z go-editor-vectors-final exit=0 :: go test -count=1 -v -run TestEditorVectors ./internal/model/patch/
+2026-10-26T16:08:09Z npm-audit exit=0 :: npm audit --prefix apps/web --omit=dev
+2026-10-26T16:07:40Z frontend-test exit=0 :: make frontend-test
+2026-10-26T16:09:01Z frontend-build exit=0 :: make frontend-build
+2026-10-26T16:11:50Z spec-check exit=0 :: make spec-check PYTHON=/home/user/Geminus/.venv/bin/python
+2026-10-26T16:09:49Z e2e-test exit=0 :: make e2e-test
+# Start times above (UTC). Earlier steps, whose exit code is also the last line of each log:
+red-t015 exit=1 :: npx vitest run tests/editor-patch.test.ts tests/editor-adapter.test.ts tests/editor.test.tsx (before the fix: 16 failed, 41 passed)
+red-t032 exit=1 :: npx vitest run tests/results-view.test.tsx tests/results-metrics.test.ts (before the fix: 6 failed, 33 passed)
+vectors-stale exit=1 :: npx vitest run tests/editor-vectors.test.ts (fixed ops, vectors not yet regenerated)
+go-editor-vectors exit=0 :: go test -count=1 -v -run TestEditorVectors ./internal/model/patch/ (right after regenerating)
+mutants :: mutants.json (15 frontend mutants and GO-A) and mutants-T032-G.json: 17 killed, 0 survived

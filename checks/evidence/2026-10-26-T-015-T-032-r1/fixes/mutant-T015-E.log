@@ -1,0 +1,31 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/editor.test.tsx (27 tests | 1 failed) 14768ms
+   ❯ the editor on the model page (23)
+     × does not reapply a member I added that someone else added too (JSON Patch cannot test for absence) 473ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 26 passed (27)
+   Start at  15:55:55
+   Duration  19.52s (tests 77%, import 12%, transform 9%, environment 3%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > does not reapply a member I added that someone else added too (JSON Patch cannot test for absence)
+AssertionError: expected '50' to be '40' // Object.is equality
+
+Expected: "40"
+Received: "50"
+
+ ❯ tests/editor.test.tsx:233:58
+    231|     expect(el.textContent).toContain(en["editor.reapplyFailed"]);
+    232|     expect(status(el).getAttribute("data-draft-status")).toBe("conflic…
+    233|     expect(field(el, en["editor.field.capacity"]).value).toBe("40");
+       |                                                          ^
+    234|     expect(patches(api)).toHaveLength(1);
+    235|     expect(api.ir.nodes[2]).toMatchObject({ id: "q_smt", capacity: 40 …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

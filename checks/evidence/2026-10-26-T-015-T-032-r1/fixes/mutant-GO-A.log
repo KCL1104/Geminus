@@ -1,0 +1,6 @@
+--- FAIL: TestEditorVectors (0.17s)
+    --- FAIL: TestEditorVectors/queue_capacity:_change,_set,_remove (0.00s)
+        editor_vectors_test.go:57: the server refuses the editor's patch: [{PATCH_TEST_FAILED /1/value the value at /nodes/4/capacity differs error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.182s
+FAIL

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "T032-G",
+    "mutation": "use-run-pair.ts: a failed cancel is not reported (review r1 L1 R2 at the new place)",
+    "file": "apps/web/features/simulations/use-run-pair.ts",
+    "tests": [
+      "tests/results-view.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other 10048ms",
+      "× names both runs when neither cancel went through 10029ms"
+    ]
+  }
+]

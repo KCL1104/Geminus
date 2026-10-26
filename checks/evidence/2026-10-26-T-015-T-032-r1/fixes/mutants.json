@@ -1,0 +1,244 @@
+[
+  {
+    "id": "T015-A",
+    "mutation": "edits.ts setAt: no test of the old value before replace/remove",
+    "file": "apps/web/features/model-editor/edits.ts",
+    "tests": [
+      "tests/editor-adapter.test.ts",
+      "tests/editor.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× move: a test of the old position and one replace for a placed node; an unplaced layout is written down first so nothing else jumps 21ms",
+      "× rename: test the step and its old name, then replace or add; an empty name removes it; the same name is no change 6ms",
+      "× delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested 13ms",
+      "× properties: probability, queue capacity, the step's own time and batch sizes, each after a test of the element and of the value it replaces or removes 2ms",
+      "× every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1) 4ms",
+      "× written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 3ms",
+      "× saves the edits as one JSON Patch with If-Match and keeps no other model 541ms",
+      "× shows 'Saving…' while the save is out, and an edit made then waits for the next save 704ms",
+      "× does not reapply a change to a field someone else changed: their value stays, and only discarding is offered 659ms",
+      "× reapplies a change to another field of the same step, and both changes are saved 497ms",
+      "× says when a number is needed before anything is sent 324ms"
+    ]
+  },
+  {
+    "id": "T015-B",
+    "mutation": "model-editor.tsx: reapply decides with applyPatch (RFC add overwrites)",
+    "file": "apps/web/features/model-editor/model-editor.tsx",
+    "tests": [
+      "tests/editor.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× does not reapply a member I added that someone else added too (JSON Patch cannot test for absence) 523ms"
+    ]
+  },
+  {
+    "id": "T015-C",
+    "mutation": "patch.ts reapplyPatch: an add may overwrite a member that is there",
+    "file": "apps/web/features/model-editor/patch.ts",
+    "tests": [
+      "tests/editor-patch.test.ts",
+      "tests/editor-adapter.test.ts",
+      "tests/editor.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× fails where an add would overwrite a member that is there now 36ms",
+      "× written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 15ms",
+      "× does not reapply a member I added that someone else added too (JSON Patch cannot test for absence) 392ms"
+    ]
+  },
+  {
+    "id": "T015-D",
+    "mutation": "patch.ts reapplyPatch: an append may repeat an ID the array has",
+    "file": "apps/web/features/model-editor/patch.ts",
+    "tests": [
+      "tests/editor-patch.test.ts",
+      "tests/editor-adapter.test.ts"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× fails where it appends an element whose ID the array has now 10ms",
+      "× written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 59ms"
+    ]
+  },
+  {
+    "id": "T015-E",
+    "mutation": "model-editor.tsx: in a conflict the canvas applies the edits with applyPatch",
+    "file": "apps/web/features/model-editor/model-editor.tsx",
+    "tests": [
+      "tests/editor.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× does not reapply a member I added that someone else added too (JSON Patch cannot test for absence) 473ms"
+    ]
+  },
+  {
+    "id": "T015-F",
+    "mutation": "edits.ts removeWhere: no test of the whole element before its removal",
+    "file": "apps/web/features/model-editor/edits.ts",
+    "tests": [
+      "tests/editor-adapter.test.ts"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested 17ms",
+      "× every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1) 3ms",
+      "× written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 20ms"
+    ]
+  },
+  {
+    "id": "T015-G",
+    "mutation": "edits.ts deleteStep: no test of the whole node before its removal",
+    "file": "apps/web/features/model-editor/edits.ts",
+    "tests": [
+      "tests/editor-adapter.test.ts"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested 31ms",
+      "× every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1) 8ms",
+      "× written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 13ms"
+    ]
+  },
+  {
+    "id": "T015-H",
+    "mutation": "edits.ts deleteStep: the position is removed without a test of it",
+    "file": "apps/web/features/model-editor/edits.ts",
+    "tests": [
+      "tests/editor-adapter.test.ts"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested 18ms",
+      "× every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1) 8ms",
+      "× written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 12ms"
+    ]
+  },
+  {
+    "id": "T032-A",
+    "mutation": "use-run-pair.ts: a 409 LIFECYCLE_CONFLICT counts as a failed cancel",
+    "file": "apps/web/features/simulations/use-run-pair.ts",
+    "tests": [
+      "tests/results-view.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed 65ms"
+    ]
+  },
+  {
+    "id": "T032-B",
+    "mutation": "use-run-pair.ts: no read after the cancels",
+    "file": "apps/web/features/simulations/use-run-pair.ts",
+    "tests": [
+      "tests/results-view.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× reads the runs again after a cancel even when following them had stopped on a failed read 10073ms"
+    ]
+  },
+  {
+    "id": "T032-C",
+    "mutation": "use-run-pair.ts: only the first run still going is cancelled",
+    "file": "apps/web/features/simulations/use-run-pair.ts",
+    "tests": [
+      "tests/results-view.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× cancels the runs that are still going, each with an empty body and its own key, and then has nothing to compare 10090ms",
+      "× cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed 10076ms",
+      "× reads the runs again after a cancel even when following them had stopped on a failed read 10084ms",
+      "× shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other 10068ms",
+      "× names both runs when neither cancel went through 10036ms"
+    ]
+  },
+  {
+    "id": "T032-D",
+    "mutation": "run-pair.ts: a second failure replaces the first instead of naming both",
+    "file": "apps/web/features/simulations/run-pair.ts",
+    "tests": [
+      "tests/simulations.test.ts",
+      "tests/results-view.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× follows polls and cancel answers, and keeps each problem until the next try 20ms",
+      "× names both runs when neither cancel went through 10075ms"
+    ]
+  },
+  {
+    "id": "T032-E",
+    "mutation": "run-status.tsx: the failure does not name whose cancel failed",
+    "file": "apps/web/features/simulations/run-status.tsx",
+    "tests": [
+      "tests/results-view.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other 10178ms"
+    ]
+  },
+  {
+    "id": "T032-F",
+    "mutation": "run-status.tsx: the cancel's problem is not shown",
+    "file": "apps/web/features/simulations/run-status.tsx",
+    "tests": [
+      "tests/results-view.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other 38ms",
+      "× names both runs when neither cancel went through 40ms"
+    ]
+  },
+  {
+    "id": "T032-L4",
+    "mutation": "metrics.ts unitOf: ratio is a plain number again",
+    "file": "apps/web/features/results/metrics.ts",
+    "tests": [
+      "tests/results-metrics.test.ts",
+      "tests/results-view.test.tsx"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "× write a pack metric whose unit is ratio as a ratio (percent, difference in points), with no unit beside its name 26ms",
+      "× is a percentage with its difference in percentage points, in Traditional Chinese with no English unit, the server's values kept 104ms"
+    ]
+  },
+  {
+    "id": "GO-A",
+    "mutation": "patch-vectors.json: one vector tests a wrong old capacity (21, not 20)",
+    "file": "testdata/editor/patch-vectors.json",
+    "tests": [
+      "go test -run TestEditorVectors ./internal/model/patch/"
+    ],
+    "exit": 1,
+    "result": "killed",
+    "failing_tests": [
+      "--- FAIL: TestEditorVectors (0.17s)",
+      "--- FAIL: TestEditorVectors/queue_capacity:_change,_set,_remove (0.00s)",
+      "editor_vectors_test.go:57: the server refuses the editor's patch: [{PATCH_TEST_FAILED /1/value the value at /nodes/4/capacity differs error}]"
+    ]
+  }
+]

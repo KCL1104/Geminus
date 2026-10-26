@@ -1,0 +1,328 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/editor-adapter.test.ts (19 tests | 6 failed) 125ms
+   ❯ edits are JSON Patch ops on the IR (10)
+     × move: a test of the old position and one replace for a placed node; an unplaced layout is written down first so nothing else jumps 21ms
+     × rename: test the step and its old name, then replace or add; an empty name removes it; the same name is no change 6ms
+     × delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested 13ms
+     × properties: probability, queue capacity, the step's own time and batch sizes, each after a test of the element and of the value it replaces or removes 2ms
+     × every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1) 4ms
+     × written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 3ms
+ ❯ tests/editor.test.tsx (27 tests | 5 failed) 11165ms
+   ❯ the editor on the model page (23)
+     × saves the edits as one JSON Patch with If-Match and keeps no other model 541ms
+     × shows 'Saving…' while the save is out, and an edit made then waits for the next save 704ms
+     × does not reapply a change to a field someone else changed: their value stays, and only discarding is offered 659ms
+     × reapplies a change to another field of the same step, and both changes are saved 497ms
+     × says when a number is needed before anything is sent 324ms
+
+ Test Files  2 failed (2)
+      Tests  11 failed | 35 passed (46)
+   Start at  15:55:01
+   Duration  14.22s (tests 80%, import 10%, environment 6%, transform 4%)
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > move: a test of the old position and one replace for a placed node; an unplaced layout is written down first so nothing else jumps
+AssertionError: expected [ { op: 'replace', …(2) } ] to deeply equal [ { op: 'test', …(2) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -1,15 +1,7 @@
+  [
+    {
+-     "op": "test",
+-     "path": "/views/2d/positions/smt",
+-     "value": {
+-       "x": 480,
+-       "y": 0,
+-     },
+-   },
+-   {
+      "op": "replace",
+      "path": "/views/2d/positions/smt",
+      "value": {
+        "x": 10,
+        "y": -4,
+
+ ❯ tests/editor-adapter.test.ts:156:23
+    154|     const p = placed();
+    155|     const move = moveStep(p, "smt", { x: 10.4, y: -3.6 });
+    156|     expect(ops(move)).toEqual([{ op: "test", path: "/views/2d/position…
+       |                       ^
+    157|     const m = minimal();
+    158|     const first = ops(moveStep(m, "work", { x: 5, y: 5 }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > rename: test the step and its old name, then replace or add; an empty name removes it; the same name is no change
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/nodes/3/id",
+      "value": "smt",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/3/name",
+-     "value": "SMT",
+-   },
+-   {
+      "op": "replace",
+      "path": "/nodes/3/name",
+      "value": "SMT line 1",
+    },
+  ]
+
+ ❯ tests/editor-adapter.test.ts:174:57
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested
+AssertionError: expected [ { op: 'remove', …(1) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -1,13 +1,9 @@
+  [
+    {
+-     "op": "test",
+-     "path": "/views/2d/positions/q_ict",
+-     "value": {
+-       "x": 1440,
+-       "y": 120,
+-     },
++     "op": "remove",
++     "path": "/nodes/11",
+    },
+    {
+      "op": "remove",
+      "path": "/views/2d/positions/q_ict",
+    },
+
+ ❯ tests/editor-adapter.test.ts:236:29
+    234|       doc = a.doc;
+    235|     });
+    236|     expect(patch.slice(-2)).toEqual([{ op: "test", path: "/views/2d/po…
+       |                             ^
+    237|     const decision = deleteStep(ir, "ict_result");
+    238|     expect(after(ir, decision).constraints.map((c) => c.node_id)).toEq…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > properties: probability, queue capacity, the step's own time and batch sizes, each after a test of the element and of the value it replaces or removes
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/flows/6/id",
+      "value": "aoi_result_q_ict",
+    },
+    {
+-     "op": "test",
+-     "path": "/flows/6/routing/probability",
+-     "value": 0.97,
+-   },
+-   {
+      "op": "replace",
+      "path": "/flows/6/routing/probability",
+      "value": 0.9,
+    },
+  ]
+
+ ❯ tests/editor-adapter.test.ts:286:62
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1)
+AssertionError: replace /views/2d/positions/aoi: expected undefined to match object { op: 'test', …(1) }
+
+- Expected:
+{
+  "op": "test",
+  "path": "/views/2d/positions/aoi",
+}
+
++ Received:
+undefined
+
+ ❯ tests/editor-adapter.test.ts:328:51
+    326|           let j = i - 1;
+    327|           while (j >= 0 && patch[j]!.op === "test" && patch[j]!.path !…
+    328|           expect(patch[j], `${op.op} ${op.path}`).toMatchObject({ op: …
+       |                                                   ^
+    329|         }
+    330|         const a = applyPatch(doc, [op]);
+ ❯ tests/editor-adapter.test.ts:323:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not
+AssertionError: rename: someone changed the same: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/editor-adapter.test.ts:367:107
+    365|       expect(applyPatch(c.base, mine).ok, `${c.name}: on its own draft…
+    366|       expect(reapplyPatch(c.base, mine).ok, `${c.name}: reapplied on i…
+    367|       expect(reapplyPatch(after(c.base, c.same(c.base)), mine).ok, `${…
+       |                                                                                                           ^
+    368|       expect(reapplyPatch(after(c.base, c.other(c.base)), mine).ok, `$…
+    369|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > saves the edits as one JSON Patch with If-Match and keeps no other model
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/nodes/3/id",
+      "value": "smt",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/3/name",
+-     "value": "SMT",
+-   },
+-   {
+      "op": "replace",
+      "path": "/nodes/3/name",
+      "value": "SMT line 1",
+    },
+  ]
+
+ ❯ tests/editor.test.tsx:122:21
+    120|     expect(p).toMatchObject({ path: `/api/v1/models/${SAMPLE_MODEL_ID}…
+    121|     // The step's identity (D-020), then the value the edit replaces (…
+    122|     expect(p!.body).toEqual([{ op: "test", path: "/nodes/3/id", value:…
+       |                     ^
+    123|     expect(status(el).textContent).toBe("All changes saved. Draft revi…
+    124|     expect(outcome(el)).toBe("Draft saved as revision 4.");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > shows 'Saving…' while the save is out, and an edit made then waits for the next save
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/nodes/4/id",
+      "value": "q_aoi",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/4/capacity",
+-     "value": 20,
+-   },
+-   {
+      "op": "replace",
+      "path": "/nodes/4/capacity",
+      "value": 25,
+    },
+  ]
+
+ ❯ tests/editor.test.tsx:143:35
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > does not reapply a change to a field someone else changed: their value stays, and only discarding is offered
+AssertionError: expected 'Board assembly and test line (sample)…' to contain 'Your changes no longer fit the curren…'
+
+Expected: "Your changes no longer fit the current draft: a step they change was changed or removed there. Discard them to work on the current draft."
+Received: "Board assembly and test line (sample)Back to projectLatest version 1; domain electronics_line.Unsaved changes. Draft revision 4.Save your changes before publishing.Discard my changesSave draftPublish versionYour changes are on draft revision 4 now. Check them, then save.Add stepShow all stepsBoard A releaseSourceBoard B releaseSourceBefore SMTQueueSMTProcessBefore AOIQueueAOIProcessAOI resultDecisionAOI defectFailureBefore ICTQueueBefore touch-upQueueICTProcessTouch-upProcessICT resultDecisionTouched upReworkICT failFailureBefore burn-inQueueBefore debugQueueBurn-inProcessICT debugProcessBefore packingQueueDebug resultDecisionPack and shipProcessRepairedReworkShippedEndScrapEndReact FlowPress Enter to select a step, then the arrow keys to move it (with Shift, farther) or Delete to remove it.Connections are changed in a step's properties.ProblemsYour unsaved changes are checked when you save.The saved draft has no problems.Before AOIIDq_aoiTypeQueueNameEmpty: the ID is shown.CapacityItems it can hold. Empty: no limit.Next stepsAOIRemoveConnect toDelete step"
+
+ ❯ tests/editor.test.tsx:207:28
+    205|     await press(button(en["editor.reapply"]));
+    206|     await settle();
+    207|     expect(el.textContent).toContain(en["editor.reapplyFailed"]);
+       |                            ^
+    208|     expect(status(el).textContent).toBe("Not saved: the draft changed …
+    209|     expect(() => button(en["editor.reapply"])).toThrow();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > reapplies a change to another field of the same step, and both changes are saved
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,15 +3,10 @@
+      "op": "test",
+      "path": "/nodes/4/id",
+      "value": "q_aoi",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/4/capacity",
+-     "value": 20,
+-   },
+-   {
+      "op": "replace",
+      "path": "/nodes/4/capacity",
+      "value": 25,
+    },
+  ]
+
+ ❯ tests/editor.test.tsx:254:35
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > says when a number is needed before anything is sent
+AssertionError: expected [ { op: 'test', …(2) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -3,14 +3,9 @@
+      "op": "test",
+      "path": "/nodes/4/id",
+      "value": "q_aoi",
+    },
+    {
+-     "op": "test",
+-     "path": "/nodes/4/capacity",
+-     "value": 20,
+-   },
+-   {
+      "op": "remove",
+      "path": "/nodes/4/capacity",
+    },
+  ]
+
+ ❯ tests/editor.test.tsx:344:35
+    342|     await press(button(en["editor.save"]));
+    343|     await settle();
+    344|     expect(patches(api)[0]!.body).toEqual([{ op: "test", path: "/nodes…
+       |                                   ^
+    345|   });
+    346|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+

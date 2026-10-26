@@ -1,0 +1,31 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/results-view.test.tsx (26 tests | 1 failed) 5160ms
+   ❯ the runs, from queued to the results (16)
+     × cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed 65ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 25 passed (26)
+   Start at  15:56:22
+   Duration  7.63s (tests 72%, import 16%, environment 8%, transform 3%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed
+AssertionError: expected 'Second ICT fixtureBack to the scenari…' not to contain 'The baseline run could not be cancell…'
+
+Expected: "The baseline run could not be cancelled."
+Received: "Second ICT fixtureBack to the scenarioRunsBaselineCompleted5 of 5 replicationsScenarioStopping…1 of 5 replicationsThe baseline run could not be cancelled.This conflicts with the current stateThis is not possible in its current state.DetailsTechnical details: the run is completed; it cannot be cancelledRequest ID: req_01M4YDQK00V6H8S0ST4F7510KRCancel the runs"
+
+ ❯ tests/results-view.test.tsx:353:26
+    351|     expect(api.calls.filter((c) => c.method === "POST").map((c) => c.p…
+    352|     expect(text(el)).not.toContain(en["runs.cancelFailed.both"]);
+    353|     expect(text(el)).not.toContain(en["runs.cancelFailed.baseline"]);
+       |                          ^
+    354|     expect(el.querySelector('[role="alert"]')).toBeNull();
+    355|     expect(await violations()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

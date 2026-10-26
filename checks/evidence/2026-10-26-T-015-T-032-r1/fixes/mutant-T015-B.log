@@ -1,0 +1,31 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/editor.test.tsx (27 tests | 1 failed) 11331ms
+   ❯ the editor on the model page (23)
+     × does not reapply a member I added that someone else added too (JSON Patch cannot test for absence) 523ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 26 passed (27)
+   Start at  15:55:17
+   Duration  13.40s (tests 86%, import 7%, environment 4%, transform 2%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor.test.tsx > the editor on the model page > does not reapply a member I added that someone else added too (JSON Patch cannot test for absence)
+AssertionError: expected 'Board assembly and test line (sample)…' to contain 'Your changes no longer fit the curren…'
+
+Expected: "Your changes no longer fit the current draft: a step they change was changed or removed there. Discard them to work on the current draft."
+Received: "Board assembly and test line (sample)Back to projectLatest version 1; domain electronics_line.Unsaved changes. Draft revision 4.Save your changes before publishing.Discard my changesSave draftPublish versionYour changes are on draft revision 4 now. Check them, then save.Add stepShow all stepsBoard A releaseSourceBoard B releaseSourceBefore SMTQueueSMTProcessBefore AOIQueueAOIProcessAOI resultDecisionAOI defectFailureBefore ICTQueueBefore touch-upQueueICTProcessTouch-upProcessICT resultDecisionTouched upReworkICT failFailureBefore burn-inQueueBefore debugQueueBurn-inProcessICT debugProcessBefore packingQueueDebug resultDecisionPack and shipProcessRepairedReworkShippedEndScrapEndReact FlowPress Enter to select a step, then the arrow keys to move it (with Shift, farther) or Delete to remove it.Connections are changed in a step's properties.ProblemsYour unsaved changes are checked when you save.The saved draft has no problems.Before SMTIDq_smtTypeQueueNameEmpty: the ID is shown.CapacityItems it can hold. Empty: no limit.Next stepsSMTRemoveConnect toDelete step"
+
+ ❯ tests/editor.test.tsx:231:28
+    229|     await press(button(en["editor.reapply"]));
+    230|     await settle();
+    231|     expect(el.textContent).toContain(en["editor.reapplyFailed"]);
+       |                            ^
+    232|     expect(status(el).getAttribute("data-draft-status")).toBe("conflic…
+    233|     expect(field(el, en["editor.field.capacity"]).value).toBe("40");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

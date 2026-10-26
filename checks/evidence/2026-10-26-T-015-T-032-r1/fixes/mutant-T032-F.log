@@ -1,0 +1,47 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/results-view.test.tsx (26 tests | 2 failed) 4466ms
+   ❯ the runs, from queued to the results (16)
+     × shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other 38ms
+     × names both runs when neither cancel went through 40ms
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 24 passed (26)
+   Start at  15:58:24
+   Duration  6.30s (tests 73%, import 17%, environment 8%, transform 1%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other
+TypeError: Cannot read properties of null (reading 'getAttribute')
+ ❯ tests/results-view.test.tsx:401:18
+    399|     await waitFor(() => text(el).includes(en["runs.cancelFailed.baseli…
+    400|     const alert = el.querySelector('[role="alert"]')!;
+    401|     expect(alert.getAttribute("data-problem")).toBe("unavailable");
+       |                  ^
+    402|     expect(text(alert)).toContain(en["error.SERVICE_UNAVAILABLE"]);
+    403|     expect(text(alert)).toContain(REQ);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > names both runs when neither cancel went through
+AssertionError: expected  to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ tests/results-view.test.tsx:426:51
+    424|     await press(button(el, zhHant["runs.cancel"]));
+    425|     await waitFor(() => text(el).includes(zhHant["runs.cancelFailed.bo…
+    426|     expect(el.querySelectorAll('[role="alert"]')).toHaveLength(1);
+       |                                                   ^
+    427|     expect(api.calls.filter((c) => c.method === "POST")).toHaveLength(…
+    428|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+

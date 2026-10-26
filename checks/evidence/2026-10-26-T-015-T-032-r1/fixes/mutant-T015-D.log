@@ -1,0 +1,85 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/editor-patch.test.ts (11 tests | 1 failed) 22ms
+   ❯ reapplyPatch (the person's reapply after a 409) (4)
+     × fails where it appends an element whose ID the array has now 10ms
+ ❯ tests/editor-adapter.test.ts (19 tests | 1 failed) 428ms
+   ❯ edits are JSON Patch ops on the IR (10)
+     × written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 59ms
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 28 passed (30)
+   Start at  15:55:51
+   Duration  1.73s (tests 75%, import 14%, transform 10%, worker 1%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not
+AssertionError: connect: someone changed the same: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/editor-adapter.test.ts:367:107
+    365|       expect(applyPatch(c.base, mine).ok, `${c.name}: on its own draft…
+    366|       expect(reapplyPatch(c.base, mine).ok, `${c.name}: reapplied on i…
+    367|       expect(reapplyPatch(after(c.base, c.same(c.base)), mine).ok, `${…
+       |                                                                                                           ^
+    368|       expect(reapplyPatch(after(c.base, c.other(c.base)), mine).ok, `$…
+    369|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/editor-patch.test.ts > reapplyPatch (the person's reapply after a 409) > fails where it appends an element whose ID the array has now
+AssertionError: expected { ok: true, doc: { name: 'm', …(2) } } to deeply equal { ok: false, index: +0, …(1) }
+
+- Expected
++ Received
+
+  {
+-   "index": 0,
+-   "ok": false,
+-   "reason": "test_failed",
++   "doc": {
++     "name": "m",
++     "nodes": [
++       {
++         "id": "a",
++       },
++       {
++         "capacity": 5,
++         "id": "b",
++       },
++       {
++         "id": "b",
++       },
++     ],
++     "views": {
++       "2d": {
++         "positions": {
++           "a": {
++             "x": 0,
++             "y": 0,
++           },
++         },
++       },
++     },
++   },
++   "ok": true,
+  }
+
+ ❯ tests/editor-patch.test.ts:112:88
+    110|
+    111|   it("fails where it appends an element whose ID the array has now", (…
+    112|     expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/-", value: …
+       |                                                                                        ^
+    113|     expect(reapplyPatch(doc(), [{ op: "add", path: "/nodes/-", value: …
+    114|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+

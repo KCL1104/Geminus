@@ -1,0 +1,93 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/editor-adapter.test.ts (19 tests | 3 failed) 78ms
+   ❯ edits are JSON Patch ops on the IR (10)
+     × delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested 18ms
+     × every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1) 8ms
+     × written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not 12ms
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 16 passed (19)
+   Start at  15:56:20
+   Duration  457ms (transform 58%, tests 30%, import 11%, worker 1%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested
+AssertionError: expected [ { op: 'remove', …(1) }, …(1) ] to deeply equal [ { op: 'test', …(2) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -1,13 +1,9 @@
+  [
+    {
+-     "op": "test",
+-     "path": "/views/2d/positions/q_ict",
+-     "value": {
+-       "x": 1440,
+-       "y": 120,
+-     },
++     "op": "remove",
++     "path": "/nodes/11",
+    },
+    {
+      "op": "remove",
+      "path": "/views/2d/positions/q_ict",
+    },
+
+ ❯ tests/editor-adapter.test.ts:236:29
+    234|       doc = a.doc;
+    235|     });
+    236|     expect(patch.slice(-2)).toEqual([{ op: "test", path: "/views/2d/po…
+       |                             ^
+    237|     const decision = deleteStep(ir, "ict_result");
+    238|     expect(after(ir, decision).constraints.map((c) => c.node_id)).toEq…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > every replace and remove follows a test of the value it replaces or removes (T-015 review r1 M1)
+AssertionError: remove /views/2d/positions/q_ict: expected { op: 'remove', path: '/nodes/11' } to match object { op: 'test', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "op": "test",
+-   "path": "/views/2d/positions/q_ict",
++   "op": "remove",
++   "path": "/nodes/11",
+  }
+
+ ❯ tests/editor-adapter.test.ts:328:51
+    326|           let j = i - 1;
+    327|           while (j >= 0 && patch[j]!.op === "test" && patch[j]!.path !…
+    328|           expect(patch[j], `${op.op} ${op.path}`).toMatchObject({ op: …
+       |                                                   ^
+    329|         }
+    330|         const a = applyPatch(doc, [op]);
+ ❯ tests/editor-adapter.test.ts:323:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/editor-adapter.test.ts > edits are JSON Patch ops on the IR > written on an older draft, fail on a newer one where someone changed what they change, and apply where they did not
+AssertionError: delete a moved step: someone changed the same: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ tests/editor-adapter.test.ts:367:107
+    365|       expect(applyPatch(c.base, mine).ok, `${c.name}: on its own draft…
+    366|       expect(reapplyPatch(c.base, mine).ok, `${c.name}: reapplied on i…
+    367|       expect(reapplyPatch(after(c.base, c.same(c.base)), mine).ok, `${…
+       |                                                                                                           ^
+    368|       expect(reapplyPatch(after(c.base, c.other(c.base)), mine).ok, `$…
+    369|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+

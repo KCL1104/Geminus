@@ -1,0 +1,62 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8080aa404b59c34d/apps/web
+
+ ❯ tests/simulations.test.ts (11 tests | 1 failed) 80ms
+   ❯ a pair of runs (5)
+     × follows polls and cancel answers, and keeps each problem until the next try 20ms
+ ❯ tests/results-view.test.tsx (26 tests | 1 failed) 15145ms
+   ❯ the runs, from queued to the results (16)
+     × names both runs when neither cancel went through 10075ms
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 35 passed (37)
+   Start at  15:57:48
+   Duration  17.11s (tests 89%, import 7%, environment 3%, transform 2%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > names both runs when neither cancel went through
+Error: timed out waiting for the failure
+ ❯ waitFor tests/results-view.test.tsx:93:35
+     91|   const until = Date.now() + ms;
+     92|   while (!check()) {
+     93|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     94|     await act(async () => {
+     95|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/results-view.test.tsx:425:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/simulations.test.ts > a pair of runs > follows polls and cancel answers, and keeps each problem until the next try
+AssertionError: expected { side: 'baseline', problem: { …(7) } } to deeply equal { side: 'both', problem: { …(7) } }
+
+- Expected
++ Received
+
+  {
+    "problem": {
+      "code": null,
+      "details": [],
+      "kind": "network",
+-     "message": "x",
++     "message": "y",
+      "requestId": null,
+      "retryAfterSeconds": null,
+      "status": null,
+    },
+-   "side": "both",
++   "side": "baseline",
+  }
+
+ ❯ tests/simulations.test.ts:131:29
+    129|     // Both failed: both are named, with the first problem.
+    130|     s = reducePair(s, { type: "cancelFailed", runId: B, problem: other…
+    131|     expect(s.cancelProblem).toEqual({ side: "both", problem });
+       |                             ^
+    132|     // An answer about a run that is not one of the pair changes nothi…
+    133|     expect(reducePair(s, { type: "cancelFailed", runId: "sim_01M4YDQK0…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
