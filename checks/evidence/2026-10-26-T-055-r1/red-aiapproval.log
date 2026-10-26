@@ -1,0 +1,10 @@
+=== RUN   TestTheH029Record
+    meta_test.go:52: the H-029 record is
+        {ID:H-029 Provider:meta Model:muse-spark-1.3 SegmentationModel:sam-3.1 DataPolicy:{Inputs:synthetic_demo_images_and_user_typed_text Roles:[modeler scenario] LogsKeepRawText:false} MonthlyBudgetUSD:100 Credentials:[meta] ApprovedBy:KCL1104 (repository owner) ApprovedAt:2026-10-26 Source:H-029 (1), amended by H-033 (planning/decisions.json human_decisions; planning/HACKATHON_PLAN.md) SpendLimits:{By: At: Source:} Retention:{Arrangement:meta_standard_services Confirmation:{By:KCL1104 (repository owner) At:2026-10-26 Source:H-029 (1): Standard mode, never the Contributor variant that trains on the content; H-033 keeps it}}}
+        want
+        {ID:H-029 Provider:meta Model:muse-spark-1.3 SegmentationModel:sam-3.1 DataPolicy:{Inputs:synthetic_demo_images_and_user_typed_text Roles:[modeler scenario] LogsKeepRawText:false} MonthlyBudgetUSD:100 Credentials:[meta] ApprovedBy:KCL1104 (repository owner) ApprovedAt:2026-10-26 Source:H-029 (1), amended by H-033 (planning/decisions.json human_decisions; planning/HACKATHON_PLAN.md) SpendLimits:{By: At: Source:} Retention:{Arrangement:meta_standard_services Confirmation:{By:KCL1104 (repository owner) At:2026-10-26 Source:H-035 (1): the owner accepted the Meta Model API Terms of Service (2026-10-09 version, checked by the coordinator), its retention for safety, abuse and policy review (§4.1, §4.4) included; Standard Services are not trained on (§5.1); Standard mode per H-029 (1)}}}
+--- FAIL: TestTheH029Record (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.020s
+FAIL
+exit 1

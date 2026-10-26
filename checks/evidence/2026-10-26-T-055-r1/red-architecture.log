@@ -1,0 +1,14 @@
+=== RUN   TestProbesAreCaught
+=== RUN   TestProbesAreCaught/the-anthropic-adapter-links-meta
+    check_test.go:381: no live-adapters-apart-anthropic violation of ./internal/ai/provider/anthropic on ./internal/ai/provider/meta; got []
+--- FAIL: TestProbesAreCaught (0.92s)
+    --- FAIL: TestProbesAreCaught/the-anthropic-adapter-links-meta (0.92s)
+=== RUN   TestSyntheticGraph
+    check_test.go:542: missing violation "live-adapters-apart-anthropic ./internal/ai/provider/anthropic ./internal/ai/provider/anthropic>./internal/ai/provider/meta"
+--- FAIL: TestSyntheticGraph (0.00s)
+=== RUN   TestEveryRuleEntryIsEnforced
+--- PASS: TestEveryRuleEntryIsEnforced (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	0.934s
+FAIL
+exit 1

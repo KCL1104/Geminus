@@ -1,0 +1,5 @@
+=== RUN   TestTheH029Record
+--- PASS: TestTheH029Record (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.018s
+exit 0

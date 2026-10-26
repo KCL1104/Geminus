@@ -110,9 +110,9 @@ func NewMeteredSegmentClient(b BillableSegmenter, budget Budget, m Meter) (*Segm
 
 - **第一輪**（commit 339fea5 的副本，`mutation.log`）：118 個 mutant，**88 killed、30 survived**，0 個 invalid。範圍：conn.go 19、meta.go 18、sam.go 10、grammar.go 10、limits.go 12、segment.go 17、image／prompt／provider／meter 13、config 12、aiapproval 7。
 - 為存活的 mutant 補測試（commit c8a31fc，見 §4）；`meta.Backend` 的投影改為測試可替換的欄位（`project`，production 仍是 `structured.Project`），以測試 guard 自己的路徑。
-- **第二輪**（c8a31fc 的副本，只跑第一輪存活的 30 個，`mutation-2.log`）：**25 killed、5 survived**。
+- **第二輪**（c8a31fc 的副本，只跑第一輪存活的 30 個，`mutation-2.log`）：log 記為 25 killed、5 survived；**review 第 1 輪 L1 更正為 24 killed、6 survived**：log 中 G10 的「KILLED」是 `TestRetriesBackOff` 的隨機失敗（「an HTTP date」用牆上時鐘），G10 實際上存活且是等價 mutant（見下表）；S10 的「KILLED」（第一輪 `mutation.log`）同樣出自那次隨機失敗，但 reviewer 重跑後確認它確實被 `TestSAMRefusesBeforeAnyRequest` 殺死，所以 S10 維持 killed。原始的 log 不改，更正記在這裡與「Review round 1 fixes」。
 
-仍存活的 5 個，判斷為等價（不加 assertion 也無法區分，所以沒有降低或繞過測試）：
+仍存活的 6 個，判斷為等價（不加 assertion 也無法區分，所以沒有降低或繞過測試）：
 
 | Mutant | 為什麼等價 |
 |---|---|
@@ -120,6 +120,7 @@ func NewMeteredSegmentClient(b BillableSegmenter, budget Budget, m Meter) (*Segm
 | S8 `NewSegmenter` 不檢查 `AllowsImages()` | `aiapproval.metaGap` 對有 segmentation model 的 record 要求資料政策列出圖片，否則 record 不完整、`Recorded` 不產生 token；所以有效的批准一定 `AllowsImages()`（縱深防禦） |
 | G1 grammar 接受換行 | 之後的每個 token（ID、box 欄位、mask payload `[\x21-\x7e]`）都不接受換行，結尾的換行先被 `TrimSpace` 去掉 |
 | G8 box token 不檢查 `\|` | box 的欄位由 `boxRE` 嚴格比對（只有數字與固定名稱），`\|` 一定不符 |
+| G10 `grammar.go:117` 改為 `if false {`（review 第 1 輪 L1 更正） | `maskToken`（`grammar.go:151`）只在文字結尾或「`,<id><\|box;`」之前結束一個 mask，所以 `:117` 的分支到不了；SAM 與 grammar 的測試全部通過 |
 | F7 月上限取 max 而非 min | 本 build 的兩個 record（H-018、H-029）預算都是 USD 100，min 與 max 相同；config 的測試套件無法登記其他 record（`RecordForTest` 只在 aiapproval 的測試中）。預算不同時才可區分 |
 
 第一輪 killed 的例子：504 被重試（C1）、5xx 不計費（C2）、402 永久停用（C4）、跟隨 redirect（C6）、多一次重試（C7）、忽略 Retry-After（C8）、等待超過 deadline（C10）、任何 error type 都記（C11）、接受另一個 model 的回答（B1、S3）、沒有預留就呼叫（B3、S10）、沒有圖片政策也送圖片（B4、S6）、`store: true`（S1）、不要 confidence（S2）、box 在邊上（K3）、confidence > 1（K4）、只預留一次 attempt（K9）、可能計費的 attempt 免費（K11）、讀不了的回答低於預留（K12）、圖片給任何 backend（I9、I10）、每個 model 都乘 geo（I11）、圖片不算進 hash（I13）、另一個 provider 的批准（F1、B15）、key 形狀不檢查（F2）、照片路徑不要求圖片（F4、F6）、Contributor model 進 record（R1）、retention 不要求（R2）。完整清單在 `mutation.log`。
@@ -143,7 +144,7 @@ Go 1.27.3（`/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/b
 | `make integration-test`（再一個新建的 `dt_test_t055b`，在 1c0b309，含上一項的新測試） | **exit 0**（37 個 package ok，含 `internal/storage/aispend`） | `integration-test-final.log` |
 | `python3 scripts/check_deploy.py`、`python3 scripts/rehearse_railway_deploy.py` | exit 0、`rehearsal: PASS`（Railway 本身 NOT RUN） | （於改名後執行，輸出未存檔；`spec-check.log` 含 deploy check） |
 | Fuzz：`FuzzNewImage`（45 s）、`FuzzParseSegmentation`（60 s，約 175 萬次） | 沒有失敗 | `fuzz-newimage.log`、`fuzz-parsesegmentation.log` |
-| Mutation（§5） | 第一輪 118：88 killed／30 survived；第二輪 30：25 killed／5 survived（等價） | `mutation.log`、`mutation-2.log` |
+| Mutation（§5） | 第一輪 118：88 killed／30 survived；第二輪 30：24 killed／6 survived（等價；log 寫 25／5，G10 的 kill 是 `TestRetriesBackOff` 的隨機失敗，review 第 1 輪 L1 更正） | `mutation.log`、`mutation-2.log` |
 
 兩個 `dt_test_t055*` database 在最後都已 drop。
 
@@ -176,10 +177,10 @@ Branch `t055-meta`（自 d9b7f22，沒有 push）：
 
 ## 9. 給 owner／coordinator 的問題
 
-1. **ADR-030、D-121–D-123 是否接受**（全部 PROPOSED）。D-121 的兩個安全側選擇：每個 5xx 算可能計費（文件沒有說不計費）、有圖片的呼叫以整個 context window 預留（每個 attempt 約 1.35 美元；日上限 10 美元下約 7 次照片 proposal 的預留）。若要降低圖片的預留：以免費的 `POST /v1/messages/count_tokens` 先算（需要一次 live 驗證，由有 key 的 session 執行），或接受一個估算公式（可能少記）。
-2. **Meta 的資料保留條款**（D-122 (b)）：Standard Services 不以內容訓練，但 Meta 為提供服務、法律、被系統標記、安全與政策審查保留內容（ToS §4，沒有 ZDR 的選項）。H-029 選了 Standard mode；是否也接受這些保留條款？record 目前記為 `meta_standard_services`（H-029 (1)），若 owner 要求另一次確認，改為 `retention_unconfirmed` 直到確認。
+1. **ADR-030、D-121–D-123 是否接受**（全部 PROPOSED）。D-121 的兩個安全側選擇：每個 5xx 算可能計費（文件沒有說不計費）、有圖片的呼叫以整個 context window 預留。**數字更正（review 第 1 輪 M1）**：原本寫「每個 attempt 約 1.35 美元；日上限 10 美元下約 7 次照片 proposal 的預留」是錯的。預設 `MaxRetries` 2、`MaxOutputTokens` 8192 下，一次照片 proposal 預留 3 × (1,048,576 × 1,250 + 8,192 × 4,250) = 4,036,608,000 nano-USD（約 **USD 4.04**）；部署日上限 USD 10 下同時至多 **2** 個；實際的限制是 **organization 日上限 USD 5**：只容得下 **1** 個，而且只在該 organization 當天 committed ≤ 約 USD 0.96 時。可選的處理：以 `POST /v1/messages/count_tokens` 先算（D-121 選項 C）、估算公式（選項 B，可能少記），或把 `AI_ORGANIZATION_DAILY_LIMIT_USD` 提高到日上限。**之後：owner 選 count_tokens 加 10%（H-037），review 第 1 輪的修正實作**：demo 大小的照片 proposal 以悲觀的 count 估計預留約 USD 0.27（連同 SAM 的預留在 organization 日上限內 15 次）；細節見「Review round 1 fixes」。
+2. **Meta 的資料保留條款**（D-122 (b)）：Standard Services 不以內容訓練，但 Meta 為提供服務、法律、被系統標記、安全與政策審查保留內容（ToS §4，沒有 ZDR 的選項）。H-029 選了 Standard mode；是否也接受這些保留條款？record 目前記為 `meta_standard_services`（H-029 (1)），若 owner 要求另一次確認，改為 `retention_unconfirmed` 直到確認。（**已由 H-035 (1) 回答**：owner 接受 2026-10-09 版的 Terms of Service；review 第 1 輪 L4 把 record 的確認來源改為 H-035 (1)。）
 3. **Meta dashboard 的 spend limit**（D-122 (c)）：是否有、是否設定？目前只靠程式內的 ledger（月 100、日 10、organization 日 5 美元）。H-033 提到的 150 美元額度（10 天）不是上限。
-4. **Claude 作為照片路徑的備援**（D-123 (c)）：H-018 的資料政策只有 synthetic 資料與使用者文字，沒有圖片；照片路徑選 Claude 時維持關閉（`images_not_approved`）。是否擴充 H-018 到 demo 圖片？（Claude adapter 也還沒有實作圖片，屬 T-056 或之後。）
+4. **Claude 作為照片路徑的備援**（D-123 (c)）：H-018 的資料政策只有 synthetic 資料與使用者文字，沒有圖片；照片路徑選 Claude 時維持關閉（`images_not_approved`）。是否擴充 H-018 到 demo 圖片？（Claude adapter 也還沒有實作圖片，屬 T-056 或之後。）（**已由 H-035 (3) 回答**：先不要，照片只走 Meta。）
 5. **照片路徑的 role**：H-029 record 只服務 `modeler`、`scenario`；T-056 若要新的 role（例如 photo modeler），需要 reviewed change 擴充 record 的角色（與 migration 0016 的 role CHECK）。
 6. **API 的 key-free 可用性**（T-053 I5）：沒有在 T-055 處理。部署的 API 仍維持 `AI_PROVIDER=disabled`，所以 demo 的 proposal（文字與照片）無法經由部署的 API 使用；要做的話需要決定 API 是否讀開關（`variables.json` 目前禁止 API 有 `GEMINUS_AI_LIVE`，`check_deploy.py` 檢查）。這是安全設計的選擇，留給 coordinator／owner。（之後：coordinator 決定 API 讀這四個設定、不讀 key，見 §10。）
 7. **Geographic Use Policy**：Restricted Territories 包含中華人民共和國（含香港、澳門）等；「you may not … knowingly permit access by End Users located in」這些地區。公開 demo 以 owner 的 Auth0 登入保護，是否需要其他限制由 owner 決定。
@@ -335,3 +336,128 @@ Coordinator 對 §10 問題的處理：
 3. 空字串的 key 變數不算存在：接受（空值無法呼叫 provider，API 也不會用到）。
 4. T-039 scope (3) 與 T-053 報告的 I5 已更新（1425e3a）。
 5. 多拒絕的 `GEMINUS_META_API_KEY`（舊名稱）與 `ANTHROPIC_AUTH_TOKEN`：接受，只會讓 API 在多一種 key 出現時拒絕啟動。
+
+## Review round 1 fixes（2026-10-26）
+
+Branch `t055-r1`（自 1425e3a，本機，沒有 push、沒有 PR）。修正 `checks/T-055_REVIEW_r1.md` 的 M1、L1–L5，並實作 owner 的 H-037。證據在 `checks/evidence/2026-10-26-T-055-r1/`（`run.sh` 執行指令、以名稱移除所有 AI 與部署變數（不讀值）、log 最後一行是 exit code）。
+
+- **沒有任何 live 呼叫**：沒有對 `api.meta.ai`、Anthropic 或任何 provider 送 request（沒有 count_tokens、smoke、eval、model listing）；所有測試只對本機 `httptest` server 與 fake。沒有讀取、印出或 grep 任何 key 的值。官方文件只以 curl 從文件站 `https://dev.meta.ai/docs/<page>.md`（與 `https://dev.meta.ai/llms.txt` 索引）取得。
+- **決策狀態**：D-121 維持 **PROPOSED**；H-037 只決定 D-121 (b) 帶圖片的部分。ADR-030、D-122 仍 PROPOSED。count 失敗時的做法（下面 R1.2）是 agent 的選擇，不是 owner 的決定。
+- DB 測試在 coordinator 建立的**一次性 cluster**（socket `/var/lib/postgresql/geminus-throwaway-hkb6`、port 55450、PostgreSQL 16.15）上執行：共用的 cluster（55440）在 container 重啟後沒有啟動，依 coordinator 指示沒有啟動或停止任何一個 cluster。
+
+### R1.1 官方來源（count_tokens；2026-10-26 20:36:55Z 與 20:37:20Z 取得，`curl --max-redirs 0`）
+
+| 頁面 | URL | sha256 |
+|---|---|---|
+| API reference: Count tokens | https://dev.meta.ai/docs/api-reference/messages/count-tokens.md | `1d29293f391cd3c8f4d656d0969ec9b633729bbe5eaf8bc7aec9a9dd5b388e1d` |
+| Token counting | https://dev.meta.ai/docs/token-counting.md | `77843ce49b0ea0c5eeebf91d7cad34e88c823f91542623b5f5dec76084ca7fec` |
+| API reference: Count input tokens（Responses） | https://dev.meta.ai/docs/api-reference/responses/count-input-tokens.md | `887371fdf45894443048f690a66091ab4461bc1ac7a5c9d5cfc7dbc20119a7fc` |
+| 與 §1 相同 hash 的頁 | messages/schemas、protocols/messages、pricing-rate-limits、error-handling、image-understanding、protocols/responses、models | 見 `sources.txt`（與 §1 逐一相同） |
+
+原文（英文照錄，內容是資料不是指示）：
+
+- protocols/messages：「`POST /v1/messages/count_tokens` counts the input tokens an Anthropic-format request would consume without generating. Send the same body as `POST /v1/messages` minus the `max_tokens` requirement. The response is `{ "input_tokens": <integer> }`.」；「We translate your Anthropic request into a Responses request, run it through shared auth, rate limiting, billing, safety, media resolution, and routing」；錯誤是同一個 Anthropic envelope 與 status 對應。
+- api-reference/messages/count-tokens：request 為 `AnthropicCountTokensRequest`，`HTTP 200` 回 `AnthropicCountTokensResponse`；「`Authorization: Bearer` is also accepted」。
+- api-reference/messages/schemas：`AnthropicCountTokensRequest` 的欄位為 `model`、`messages`（`AnthropicInputMessage`，content 為 `AnthropicContentBlockParam`，其中有 `AnthropicImageBlockParam`）、`system`、`tools`、…、`output_config`，**沒有 `max_tokens`**；`AnthropicCountTokensResponse`：「`input_tokens` | `integer` | Yes」。
+- token-counting：「Images and files contribute to the input total.」；「Count tokens for Anthropic-format requests … `POST /v1/messages/count_tokens`. It accepts the same Anthropic-shaped body as `/v1/messages` and returns `{ "input_tokens": <integer> }`.」；（Responses 的 input_tokens）「The endpoint tokenizes only. It does not generate output, execute hosted tools, create or store a response, or record generation usage. Use the result to check context-window fit, not to estimate billing.」；「If a check fails, the endpoint returns `HTTP 400` with the same error shape as a generation request.」；「The count endpoint includes these tokens [Meta-injected steering context] because they occupy the model's context.」
+- image-understanding：「For an exact count of any request (including images and files), call `POST /v1/responses/input_tokens` … It returns the input token total without generating a response, and is the authoritative way to estimate cost.」
+- pricing-rate-limits：「Model API bills text models per token」；「those injected tokens are not billed and are excluded from the token counts reported in your `usage` and by the token-counting endpoints」；rate limit 以 team 計，`muse-spark-1.3` 3,000 RPM、4,000,000 TPM，沒有另列 count endpoint 的限制。
+
+結論：
+
+1. **count_tokens 接受圖片**：schema 的 messages 收 image block，且「Images and files contribute to the input total」。所以沒有 STOP 的理由。
+2. **是否計費**：文件**沒有一句話直接說「免費」**；它沒有 count 的價格，count endpoint「does not … record generation usage」，而計費依 usage。所以判斷為不計費：count 的 attempt 不記為可能計費、不預留（`meta.count` 丟棄它的 tally）。live 時確認（H-037 的未決事項）。
+3. **rate limit**：count 走「shared … rate limiting」，文件沒有寫它是否計入 RPM／TPM；adapter 對 count 的 429 照 Messages 的規則重試。每次照片 proposal 多一個 request（帶同一張圖片）。
+4. **文件之間的兩處不一致**（請 owner 知悉）：(a) token-counting 說「not to estimate billing」，image-understanding 說「the authoritative way to estimate cost」；(b) token-counting 說 count 包含 Meta 注入的 steering context，pricing 說 count 不包含。兩種情形下，沒有 hosted tool 的 request（本 adapter 不送 tool）其計費的 input 都不會多於 count（不包含時相等，包含時 count 較大），再加 10%。若 live 時結算仍超過預留，既有的 `spend_over_reservation`（metadata、audit、metric、WARN log）會標示，依 H-037 回報 owner。
+
+### R1.2 設計
+
+- **介面**（`internal/ai/provider`）：`Billable.Quote(ctx, req)`：quote 可能詢問 provider，所以拿到呼叫的 context。`Client.call` 把 budget 的 `Timeout` 移到 quote 之前開始：**count 與 Messages 呼叫共用一個 deadline**，取消也傳到 count。Quote 回傳 `*provider.Error` 時，該錯誤（code、status、credential、error type）就是呼叫的錯誤，不預留、不呼叫 backend；其他錯誤照舊為 `invalid_request`。Anthropic adapter 與測試用的 backend 只改簽名、忽略 ctx（行為不變）。
+- **Meta 的 Quote**：文字 request 照 D-111 (a)（bytes＋schema＋4096），**不呼叫 count**。有圖片的 request：`count` 先檢查 approval 的資料政策（角色與圖片；不合即 `policy_not_approved`，不送），以 `countBody`（與 `messagesBody` 同一個 `messagesOf`，只少 `max_tokens`）`POST v1/messages/count_tokens`，經 `conn.post`：key 只在 `Authorization: Bearer`（只在 attempt 中讀）、不跟隨 redirect、8 MiB 的回答上限、呼叫的 deadline 與每個 attempt 的逾時、同樣的重試（429、5xx 除 504、連線中斷）、401／403 停用 key、402 休息、封閉的 error type 清單、錯誤不含 provider 的文字或 URL。回答以 `decodeCount` 讀：一個嚴格的 JSON 物件（UTF-8、沒有重複欄位、大小寫正確），`input_tokens` 必須寫成 1 至 1,048,576 的整數（不接受小數、指數、字串、null、超過 int64）；其他欄位不讀、不存。預留的 input 為 count ＋ ⌈count / 10⌉，至多 context window（input + `max_tokens` 必須在 window 內，所以 window 仍是可計費 input 的上限）；output 上限與 attempt 數照 D-111。
+- **count 失敗或不合理時（agent 的選擇：讓呼叫失敗，不以 window 預留）**：以 typed code 結束（`unavailable`（可重試）、`rate_limited`、`credentials_exhausted`、`request_rejected`、`timeout`、`cancelled`、`policy_not_approved`），**不預留、不送 Messages**，所以預留永遠不會小於規則的數。理由：(1) 改以 context window 預留（USD 4.04）在 organization 日上限 USD 5 下多半被拒（`AI_QUOTA_EXCEEDED`），正是 M1 的問題，使用者看到的會是額度錯誤；(2) count 的失敗（key、429、5xx、400 的驗證）多半預示 Messages 呼叫也會失敗，照送只多用掉 D-121 (c) 算作可能計費的 attempt；(3) 不合理的 count 表示 provider 的行為與文件不同，依 AGENTS.md 回 unavailable、不猜；(4) count 不計費，失敗不花錢；可重試的 code 由 job 的重試處理（每次重試只多一個免費的 count）。
+- **不寫進 log、audit、DB 的東西**：count 的回答只取一個整數，不存；沒有新的 metadata、audit 欄位或 migration。預留的金額照舊記在 `ai_spend.reserve`。
+- **照片路徑**（T-056）：worker 的 judge 是同一個 metered client，所以照片 proposal 的 Muse Spark 呼叫自動先 count；SAM 3.1 的 segmentation 以每張圖片計價，不變。
+- **已知限制**：(a) count 被 401／403／402 拒絕或 key 已被停用時，錯誤帶 key 的 label（`Error.Credential`），但 metadata 的 `FailedOver` 是空的（Quote 沒有 Response 可以帶它；文字呼叫的 metadata 照舊有）。(b) 每次照片 proposal 圖片送兩次（count 與 Messages；每張至多 5 MiB）。(c) count 與 Messages 之間 provider 的 tokenizer 若改變，count 可能不準；超過時見 R1.1 的 4。
+
+### R1.3 預留的數字（M1；預設 `MaxRetries` 2、`MaxOutputTokens` 8192，`muse-spark-1.3` input 1,250、output 4,250 nano-USD／token）
+
+| | 一次照片 proposal 的 judge 預留 | organization 日上限 USD 5 下可容 |
+|---|---|---|
+| 修正前（context window） | 3 × (1,048,576 × 1,250 + 8,192 × 4,250) = **4,036,608,000 nano-USD（USD 4.04）**；部署日上限 USD 10 下同時至多 2 個 | **1**，且只在當天 committed ≤ 約 USD 0.96 時 |
+| 修正後（H-037），count 3,000 | 3 × (3,300 × 1,250 + 34,816,000) = 116,823,000（USD 0.12） | — |
+| 修正後，demo 大小（悲觀的 count 40,147：demo prompt 的大小 18,428 bytes 每 byte 一個 token、schema、4096，加上圖片 15,000 tokens＝文件 ~1280px 約 1,500 的十倍） | 3 × (44,162 × 1,250 + 34,816,000) = **270,055,500 nano-USD（USD 0.27）** | **15**（連同 SAM 8 個 concept 的整個預留 60,000,000；只算 judge 為 18） |
+
+output 的部分固定為 104,448,000（USD 0.10）。count 達 window 時與修正前相同（上限）。實際的 count 要 live 才知道（NOT RUN）；數字出自 `TestADemoPhotoProposalFitsTheOrganizationCap`（`green-meta.log` 的 log 行）。
+
+### R1.4 Review findings 的處理
+
+| Finding | 修正 |
+|---|---|
+| M1 | ADR-030「計量」與 Consequences（舊的 4.04 美元、同時 2 個、organization 日上限 1 個且 ≤ 0.96；新的 count 規則與數字）；Alternatives 記 count 失敗的兩種做法；ADR-030 的交叉引用改為 D-121 (b)（原「D-123」）；本報告 §9 問題 1；D-121 (b)（舊、新兩種預留）；`planning/decisions.json` D-121；AI_SPEC 的圖片段落 |
+| L1 | `TestRetriesBackOff` 以 `meta.SetClock` 固定時鐘，HTTP date 為 now+3 s，**期望正好 3 s**（其他案例也改為正好相等）；`go test -count=300 -run TestRetriesBackOff` 0 失敗。§5 的 mutation 紀錄改為第二輪 24 killed／6 survived，G10 列為等價（理由照 review），S10 維持 killed |
+| L2 | `conn.wait`：Retry-After 超過 60 s 不重試，以該 status 的 code 結束（429 → `rate_limited`，503 → `unavailable` 且該 attempt 算可能計費）；正好 60 s 仍等 60 s 後重試；註解與 D-121 (d)、ADR-030 改寫 |
+| L3 | `TestSpend` 加「no usage」（去掉 `usage` 的 200）：`unavailable`、1 個 request、至少整個預留 |
+| L4 | H-029 record 的 retention 確認來源改為 H-035 (1)（ToS 2026-10-09 版、§4.1／§4.4 的保留、§5.1、Standard mode 依 H-029 (1)）；`aiapproval/meta_test.go` 的期望同步；record 的註解、D-122 (b) 加註；§9 問題 2、4 標為已由 H-035 回答 |
+| L5 | 新 rule `live-adapters-apart-anthropic`（applies anthropic、forbid meta）；synthetic graph 加 anthropic → meta 並要求該 violation；rule 表加一項；真實 repository 的 probe `the-anthropic-adapter-links-meta`；ARCHITECTURE 與 ADR-030 的表；`make architecture-check` 為 26 rules |
+| I2–I9 | **沒有做**（review 列為 Info，不要求）：I2（`billing_error` 記為 `other`）、I3（live 時要看的事）、I4（SAM 回答的 8 MiB 與大圖）、I5（EXIF 與 demo 圖片的保證）、I6（`structured/doc.go` 的註解）、I7（報告 §6、§8 的 hash 與法律頁的 HTML hash）、I8（異常大的 usage）、I9（`HTTPS_PROXY` 的註記）。I1（SAM 的 live 步驟）不在本修正範圍 |
+
+### R1.5 測試（先紅後綠）
+
+步驟：先把 `Quote` 的簽名機械地改為帶 ctx（行為不變，`step-a-mechanical.log` 全綠），再寫測試、跑紅，再實作。
+
+| 範圍 | 測試 | 紅 → 綠 |
+|---|---|---|
+| provider | `quote_test.go`：`TestTheQuoteRunsWithinTheCall`（quote 的 deadline 是呼叫的、與 backend 的 deadline 相同；取消傳到 quote）、`TestATypedQuoteErrorIsTheCallsError`（6 種 typed 錯誤，code／status／credential／retryable 保留，不預留、不呼叫） | `red-provider.log`（quote 沒有 deadline、typed 錯誤變 `invalid_request`）→ `green-provider.log` |
+| meta：count | `count_test.go`：`TestAnImageRequestIsCountedFirst`（順序 count → message、count body 等於 message body 去掉 `max_tokens`、Bearer、預留 3 × bound(3,300)）、`TestTheCountsMargin`（1→2、9→10、10→11、11→13、3000→3300、3001→3302、953,250→1,048,575、953,251 與 1,048,576→window；其他欄位不讀）、`TestACountThatCannotBeTrustedSendsNothing`（35 種：0、負數、小數、指數、字串、null、true、物件、超過 window、超過 int64、缺欄位、大小寫、陣列、裸數字、非 JSON、兩個 document、重複欄位、無效 UTF-8、空、201、超過 8 MiB、斷線、body 中斷、400、404、413、401、402、403、429、500、503、504、未知 type、redirect（不跟隨）：每個都是 typed code、正確的 attempt 數、**0 個 message、0 預留、0 花費**、沒有 provider 文字與 URL）、`TestTheCountKeepsTheCallsDeadline`（逾時與取消，不送不預留）、`TestARefusedCountRefusesTheKey`、`TestTheCountIsRetried`、`TestTextIsNeverCounted`（0 個 count、D-111 的預留）、`TestTheCountSendsOnlyWhatTheApprovalNames`、`TestADemoPhotoProposalFitsTheOrganizationCap`（≥ 10 次，舊規則 1 次） | `red-meta.log`（沒有 count、預留 4,036,608,000）→ `green-meta.log` |
+| meta：既有 | `TestImageParts`（count 為 3000 時 quote 3300、預留依 count）、`TestRetriesBackOff`（L1、L2：固定時鐘、正好的等待、61 s／600 s／61 s 的 date／503 120 s 不重試與花費）、`TestSpend`（L3） | 同上（L2 的 4 個案例紅；L1、L3 的案例對現有程式本來就綠，由 mutant R4、U1 證明它們會抓到錯誤） |
+| aiapproval | `TestTheH029Record`（H-035 (1) 的來源） | `red-aiapproval.log` → `green-aiapproval.log` |
+| architecture | `TestSyntheticGraph`、`TestEveryRuleEntryIsEnforced`、`TestProbesAreCaught/the-anthropic-adapter-links-meta` | `red-architecture.log`（沒有 violation）→ `green-architecture-targeted.log` |
+
+沒有降低或刪除任何 assertion、沒有加 skip。改動的既有期望只有：`TestImageParts` 的 quote 與預留（context window → count＋10%，H-037 的規則變了）、`TestRetriesBackOff` 的「above the bound」（等 60 s 後重試 → 不重試，L2 的規則變了；HTTP date 由「2–3 s 之間」改為更嚴格的「正好 3 s」）、`TestTheH029Record` 的來源字串（L4）、synthetic graph 多一條 edge 與一個必須出現的 violation。
+
+### R1.6 Mutation（`mutate.py`、`mutation.log`；commit 4ac9a76 的 `git archive` 副本，在 session 的 scratch 自己的資料夾）
+
+每個 mutant 一處確切的替換（必須只出現一次），先 `go vet` 該 package（含測試；build 失敗記為 INVALID，不算 killed），再 `go test -count=1`；環境沒有任何 AI 變數，`GOPROXY=off`。**30 個：30 killed、0 survived、0 invalid**。
+
+- count 與預留（meta.go，21 個）：K1 圖片不 count、K2 沒有 10%、K3 10% 無條件捨去、K4 5%、K5 不以 window 為上限、K6 count 失敗改用文字的 quote（較小）、K7 count 失敗改以 window 預留（另一種做法）、K8 接受 0、K9 接受超過 window、K10 接受小數與指數、K11 接受字串、K12 欄位名不分大小寫、K13 接受重複欄位、K14 接受無效 UTF-8、K15 count body 帶 `max_tokens`、K16 不查角色、K17 不查圖片政策、K18 count 送到 `/v1/messages`、K19 count 不重試、K20 不合理的 count 記為 `invalid_output`（不可重試）、K21 count 不受呼叫的 deadline 與取消約束（`context.WithoutCancel`）。
+- client（meter.go）：P1 quote 拿呼叫者的 ctx（沒有呼叫的 deadline）、P2 typed 的 quote 錯誤變 `invalid_request`。
+- L2／L1（conn.go）：R1 超過 60 s 仍等、R2 正好 60 s 不重試、R3 舊的「截到 60 s 再重試」、R4 Retry-After 以牆上時鐘解析（L1 的固定時鐘抓到它）。
+- L3：U1 拿掉 `u == nil`（`TestSpend` 的「no usage」：nil dereference 的 panic，是測試失敗，不是 build 失敗）。L4：H1 來源改回 H-029 (1)。L5：A1 鏡像 rule 不禁止 meta（`check-architecture` 只跑相關的三個測試）。
+- 注意：第一次執行與另一個 agent 的 mutation runner 共用了 scratch 的同一個資料夾（coordinator 通知：21:07–21:09 UTC 對方刪除並重建了那裡的檔案），那次的結果已丟棄，在自己的新資料夾從新的 `git archive` 重跑；上面是重跑的結果。
+
+### R1.7 指令與結果（Go 1.27.3、`GOTOOLCHAIN=local`；Python `.venv/bin/python`）
+
+| 指令 | exit | 結果 | Log |
+|---|---|---|---|
+| `go test -count=1`（provider/...、spend、proposals/...、config/...、aievals、storage/aispend、cmd/worker、cmd/ai-eval-live、check-architecture；機械改動後） | 0 | 全部 ok | `step-a-mechanical.log` |
+| 紅：provider、meta、aiapproval、architecture 的新測試 | 1、1、1、1 | 預期的失敗 | `red-*.log` |
+| 綠：同上 | 0、0、0、0 | | `green-*.log` |
+| `go test -count=1 -timeout 30m`（provider/...、ai/spend、proposals/...、config/...、aievals、storage/aispend、cmd/worker、cmd/ai-eval-live、scripts/check-architecture） | 0 | 16 個 package ok（DB 測試在這裡 skip，由 integration-test 執行） | `changed-packages.log` |
+| `go test -race -count=1 -timeout 30m`（同上） | 0 | 16 個 package ok，沒有 data race | `changed-packages-race.log` |
+| `go test -count=300 -run TestRetriesBackOff ./internal/ai/provider/meta/` | 0 | **0 失敗**（300 次） | `retries-backoff-300.log` |
+| mutation（R1.6） | 0 | 30／30 killed | `mutation.log` |
+| `make backend-test GOFLAGS=-count=1`（gofmt、go vet、全部 Go 測試，`GEMINUS_FULL_DIFFERENTIAL=1`） | 0 | 83 個 package ok、12 個沒有測試檔、0 FAIL（DB 測試在這裡 skip，由 integration-test 執行） | `backend-test.log` |
+| `make architecture-check` | 0 | `PASS architecture: 95 packages, 26 rules, 16 build configurations` | `architecture-check.log` |
+| `make ai-eval` | 0 | fake provider 的 context 與 review suite；`checks/ai-evals/fake-*.json` 沒有變 | `ai-eval.log` |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | 全部 PASS（含 decisions、docs、DB tests fresh、deploy）；`checks/*-check.json` 沒有變 | `spec-check.log` |
+| `make integration-test`（新建的 `dt_test_t055r1a`，在一次性 cluster `/var/lib/postgresql/geminus-throwaway-hkb6`、port 55450，`GEMINUS_REQUIRE_DB_TESTS=1`） | 0 | db-test（0001–0017 up／down／up 與全部 SQL 測試）與 db-go-test：38 個 package ok，0 FAIL、0 SKIP；含 `internal/proposals/generator`（照片路徑的計量）、`internal/storage/aispend`、`internal/api`、`cmd/worker` | `integration-test.log` |
+| `dropdb dt_test_t055r1a`；`SELECT count(*) FROM pg_database WHERE datname='dt_test_t055r1a'` | 0 | 0（已刪）；沒有啟動或停止任何 cluster | — |
+| `make spec-check`（加上本節之後再一次） | 0 | 全部 PASS；`checks/*-check.json` 沒有變 | `spec-check-final.log` |
+
+### R1.8 NOT RUN
+
+- 任何 live 呼叫：`POST /v1/messages/count_tokens`（對圖片的實際行為、是否真的不計費、是否計入 RPM／TPM、實際的 count 值）、`POST /v1/messages`、SAM、`make ai-smoke-live`、`make ai-eval-live`。
+- `make e2e-test` 與 frontend 的測試：依指示不執行（另一個 run 使用 3100–3102）。
+- 整個 repository 的 `make backend-race`：只執行了改動的 package 的 `-race`（R1.7）。
+- Fuzz：沒有重跑（`FuzzNewImage`、`FuzzParseSegmentation` 的程式沒有改）。
+- govulncheck：`go.mod`、`go.sum` 沒有改。
+- Railway 上的任何操作；`scripts/check_deploy.py` 只經 `make spec-check` 執行。
+- I2–I9（Info）：見 R1.4。
+
+### R1.9 給 coordinator／owner 的問題
+
+1. **count 失敗時的做法**（agent 的選擇）：讓呼叫失敗、不預留不送（R1.2）。若 owner 想要「以整個 window 預留後照送」，是一處改動（mutant K7 的形狀），測試要跟著改。
+2. **文件的不一致**（R1.1 的 4）：count 是否包含注入的 steering context、count 能不能用來估計費用，兩頁說法相反。live 的第一次照片 proposal 請比較 count、預留與 `usage.input_tokens`（`spend_over_reservation` 不應出現）。
+3. **count 是否計費**：文件沒有直接寫「免費」；本修正以不計費處理（沒有價格、不記錄 usage）。live 時在 Meta dashboard 確認；若會計費，count 也需要預留（目前的設計在預留之前呼叫它）。
+4. **FailedOver**：count 被拒時 metadata 沒有 `FailedOver`（錯誤本身帶 label）。需要的話另做。
+5. **D-121 的狀態**：維持 PROPOSED；(b) 帶圖片的部分是 H-037 的決定，其餘（5xx 算可能計費、Retry-After 的新規則等）仍待 owner。

@@ -1,0 +1,18 @@
+ok  	github.com/kcl1104/geminus/internal/ai/provider	2.179s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	38.447s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	1.263s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/meta	9.521s
+?   	github.com/kcl1104/geminus/internal/ai/provider/structured	[no test files]
+ok  	github.com/kcl1104/geminus/internal/ai/spend	1.045s
+ok  	github.com/kcl1104/geminus/internal/proposals	1.357s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	2.940s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	3.414s
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	2.307s
+ok  	github.com/kcl1104/geminus/internal/config	1.064s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	2.894s
+ok  	github.com/kcl1104/geminus/internal/aievals	2.131s
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	1.165s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.548s
+ok  	github.com/kcl1104/geminus/cmd/ai-eval-live	1.100s
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	326.650s
+exit 0

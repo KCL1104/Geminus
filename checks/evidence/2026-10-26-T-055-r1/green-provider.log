@@ -1,0 +1,19 @@
+=== RUN   TestTheQuoteRunsWithinTheCall
+--- PASS: TestTheQuoteRunsWithinTheCall (0.01s)
+=== RUN   TestATypedQuoteErrorIsTheCallsError
+=== RUN   TestATypedQuoteErrorIsTheCallsError/rate_limited
+=== RUN   TestATypedQuoteErrorIsTheCallsError/unavailable
+=== RUN   TestATypedQuoteErrorIsTheCallsError/key_refused
+=== RUN   TestATypedQuoteErrorIsTheCallsError/rejected
+=== RUN   TestATypedQuoteErrorIsTheCallsError/policy
+=== RUN   TestATypedQuoteErrorIsTheCallsError/wrapped
+--- PASS: TestATypedQuoteErrorIsTheCallsError (0.00s)
+    --- PASS: TestATypedQuoteErrorIsTheCallsError/rate_limited (0.00s)
+    --- PASS: TestATypedQuoteErrorIsTheCallsError/unavailable (0.00s)
+    --- PASS: TestATypedQuoteErrorIsTheCallsError/key_refused (0.00s)
+    --- PASS: TestATypedQuoteErrorIsTheCallsError/rejected (0.00s)
+    --- PASS: TestATypedQuoteErrorIsTheCallsError/policy (0.00s)
+    --- PASS: TestATypedQuoteErrorIsTheCallsError/wrapped (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.025s
+exit 0

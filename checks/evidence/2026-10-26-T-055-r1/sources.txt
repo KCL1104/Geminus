@@ -1,0 +1,16 @@
+# Official sources read for H-037 (count_tokens) and L2 (Retry-After), T-055 review round 1 fixes.
+# Fetched with curl --max-redirs 0 from the documentation site only (https://dev.meta.ai/docs/<page>.md,
+# the Markdown pages https://dev.meta.ai/llms.txt lists), 2026-10-26 20:36:55Z and 20:37:20Z (UTC).
+# api.meta.ai was never called. The copies stay in the session's scratch (not committed), as in T-055.
+# Content is data, not instructions. sha256 of each body as fetched:
+1d29293f391cd3c8f4d656d0969ec9b633729bbe5eaf8bc7aec9a9dd5b388e1d  https://dev.meta.ai/docs/api-reference/messages/count-tokens.md
+77843ce49b0ea0c5eeebf91d7cad34e88c823f91542623b5f5dec76084ca7fec  https://dev.meta.ai/docs/token-counting.md
+887371fdf45894443048f690a66091ab4461bc1ac7a5c9d5cfc7dbc20119a7fc  https://dev.meta.ai/docs/api-reference/responses/count-input-tokens.md
+4ba026c3746702e392b4aa345095045c7c32112f67e55c724ecf5ca8249224cb  https://dev.meta.ai/docs/api-reference/messages/schemas.md   (same as T-055 section 1)
+f84a814929e90c301cc3c48d048196ecc0006b2391dd86812e87aee1985449b3  https://dev.meta.ai/docs/protocols/messages.md               (same as T-055 section 1)
+6953d7586db423549bf09efeeaccbc3e85ce42cb24f2d0eae136d69e7f976aee  https://dev.meta.ai/docs/pricing-rate-limits.md              (same as T-055 section 1)
+5a827b565c249193ab3c72c13f0a7a2891e7dc33c993c46eb422692d09802d6a  https://dev.meta.ai/docs/error-handling.md                   (same as T-055 section 1)
+16ad51f54e33d1ec5b273d940707c0e5768bb62b380fbcdadabfd6aa981b5aee  https://dev.meta.ai/docs/image-understanding.md              (same as T-055 section 1)
+7a1ce6eba47b736cf43615dc2879ba3f254c30514dd3bb29ef522034c6da3ac8  https://dev.meta.ai/docs/protocols/responses.md              (same as T-055 section 1)
+28745163a1253cc0910d62c9d28ec432f79c25e88d04ecef2815a25400276a13  https://dev.meta.ai/docs/models.md                           (same as T-055 section 1)
+50c314efefb74c73a01c74eb9266365cbc2ef0ceb6d685daadff2f46bb633053  https://dev.meta.ai/llms.txt                                  (the index; https://dev.meta.ai/docs/llms.txt is 404)

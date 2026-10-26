@@ -1,0 +1,29 @@
+=== RUN   TestTheQuoteRunsWithinTheCall
+    quote_test.go:44: the quote's deadline 0001-01-01 00:00:00 +0000 UTC (set: false), want the call's: 7 s from its start
+    quote_test.go:47: the call's deadline 2026-10-26 20:52:45.2142286 +0000 UTC m=+7.005539285, the quote's 0001-01-01 00:00:00 +0000 UTC: one deadline for both
+    quote_test.go:64: cancelled: ai provider: invalid_request, charges []
+--- FAIL: TestTheQuoteRunsWithinTheCall (0.01s)
+=== RUN   TestATypedQuoteErrorIsTheCallsError
+=== RUN   TestATypedQuoteErrorIsTheCallsError/rate_limited
+    quote_test.go:87: ai provider: invalid_request (ai provider: invalid_request), want ai provider: rate_limited (status 429) [credential meta]
+=== RUN   TestATypedQuoteErrorIsTheCallsError/unavailable
+    quote_test.go:87: ai provider: invalid_request (ai provider: invalid_request), want ai provider: unavailable [credential meta]
+=== RUN   TestATypedQuoteErrorIsTheCallsError/key_refused
+    quote_test.go:87: ai provider: invalid_request (ai provider: invalid_request), want ai provider: credentials_exhausted (status 401) [credential meta]
+=== RUN   TestATypedQuoteErrorIsTheCallsError/rejected
+    quote_test.go:87: ai provider: invalid_request (ai provider: invalid_request), want ai provider: request_rejected (status 400) [credential meta]
+=== RUN   TestATypedQuoteErrorIsTheCallsError/policy
+    quote_test.go:87: ai provider: invalid_request (ai provider: invalid_request), want ai provider: policy_not_approved
+=== RUN   TestATypedQuoteErrorIsTheCallsError/wrapped
+    quote_test.go:87: ai provider: invalid_request (ai provider: invalid_request), want ai provider: timeout [credential meta]
+--- FAIL: TestATypedQuoteErrorIsTheCallsError (0.00s)
+    --- FAIL: TestATypedQuoteErrorIsTheCallsError/rate_limited (0.00s)
+    --- FAIL: TestATypedQuoteErrorIsTheCallsError/unavailable (0.00s)
+    --- FAIL: TestATypedQuoteErrorIsTheCallsError/key_refused (0.00s)
+    --- FAIL: TestATypedQuoteErrorIsTheCallsError/rejected (0.00s)
+    --- FAIL: TestATypedQuoteErrorIsTheCallsError/policy (0.00s)
+    --- FAIL: TestATypedQuoteErrorIsTheCallsError/wrapped (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider	0.024s
+FAIL
+exit 1
