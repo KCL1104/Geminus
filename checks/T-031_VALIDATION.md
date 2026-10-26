@@ -261,3 +261,102 @@ H-033 之後 provider 為 Meta（Muse Spark，T-055），Claude 為備援；UI �
 
 下一步：一輪獨立審查（H-029）。
 
+## Review round 1 fixes（2026-10-26）
+
+依獨立審查第 1 輪（`checks/T-031_REVIEW_r1.md`，另一個 worktree，CHANGES REQUESTED：M1；L1–L5；I1–I7）修正。分支 `t031-r1`（自 5b66648），沒有 push。**沒有改 contract、OpenAPI、schema、Go 程式或 migration，沒有新依賴**（兩個 `package.json`／lock 未變；`apps/web/eslint.config.mjs` 多一條規則）。沒有任何 live AI 呼叫，沒有讀取 key 或 secret。T-031 在 `planning/tasks.json` 仍是 `not_started`（理由同上），本節沒有改它。Evidence：`checks/evidence/2026-10-26-T-031-r1/fixes/`。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 18d1ca6 | M1、L1–L4、I1、I3 的程式與測試：`shown.ts`、`words.tsx`（新）、`changes.ts`、`change-list.tsx`、`proposal-view.tsx`、CSS、兩語 catalog、`react/no-danger`；hostile 範例的 patch 帶惡意名稱；DESIGN.md；紅燈 log 與範例的重新核對 |
+| e8d7381 | I3 的測試（error code 為 `toString`／`constructor`／`__proto__`）與 mutant 腳本 |
+| db77bfe | L5：e2e fake API 的 proposal routes、`fake/proposal-answer.json`、`proposal.spec.ts` 已登入的流程與 hostile 名稱的瀏覽器檢查；e2e README、ARCHITECTURE；I2；mutant 結果 |
+| 06ec164 | `proposal.spec.ts` 的字串檢查把範例產線自己的 ID 算作資料（e2e 第 1 次的發現，見下） |
+| （本節最後的 commit） | 本節與最後的 evidence（frontend-test／build、兩次 e2e、audit、spec-check） |
+
+### 逐項：發現 → 變更 → 測試 → mutant
+
+| 發現 | 變更 | 測試 | Mutant |
+|---|---|---|---|
+| **M1 (a)** 同名的不同 entity 看起來一樣 | `changes.ts`：每個被提到的 entity 是 `Ref`（ID、名稱、`showId`）。在 base、每個 op 之後與 patch 最後的模型中，同類（步驟、資源、班表、物件類型）有兩個以上 entity 的名稱「讀起來相同」（`shown.ts` `nameKey`：NFKC、大小寫、空白與不可見字元不計），或這個 patch 新增的 entity，`showId` 為真；兩條連接的兩端相同時連接也帶 ID。`change-list.tsx` 以 catalog 新的 `proposal.named`「{name} ({id})」／「{name}（{id}）」顯示（與 `organization.named` 相同的規則），參照欄位（需要的資源、連接的兩端、班表、物件類型、使用量、換線）也一樣；沒有名稱的步驟本身就以 ID 顯示，不重複 | `proposal-changes.test.ts`（新 describe 6 個：審查者的 ICT tester 情境、結尾零寬空白、base 中兩個同名資源、改名造成同名、步驟與無名步驟、平行連接）；`proposal-names.test.tsx`（DOM：ICT tester 情境 en 與 zh-Hant、零寬空白、同名不同 ID）；`proposal-view.test.tsx` 的新增步驟（T-056）現在帶 ID | M1-no-ids、M1-new-not-shown、M1-exact-names、M1-flow-ids、M1-key-case：都 killed |
+| **M1 (b)** 雙向控制與不可見字元沒有顯示、沒有隔離 | `shown.ts` `visible()`：名稱與值中的控制字元（含 tab、換行）、`\p{Cf}`（U+061C、U+200B–U+200F、U+202A–U+202E、U+2060–U+2064、U+2066–U+2069、U+FEFF、U+00AD、tag 字元等）、孤立的 surrogate、U+2028／U+2029、default-ignorable（填充字元、variation selector、CGJ）、U+2800 與 U+0020 以外的空白，一律寫成看得見的「⟨U+202E⟩」；AI 的散文（摘要、假設、預期、問題）與人的 comment 用 prose 模式（保留換行、tab、空白，其餘相同）。`words.tsx`：每一行由 catalog 的文字與資料組成，資料（名稱、ID、路徑、文字與 JSON 值）各自是 `<bdi>` 中的文字節點；模型名稱在 h1 也一樣。JSON Patch disclosure 以 `patchJson()` 把字串中的這些字元寫成 `‮` 等 JSON escape（值不變，`JSON.parse` 相同） | `proposal-shown.test.ts`（8 個：每類字元、保留的字元、prose、`nameKey` 兩個、`readsAlike`、ASCII JSON、patch JSON）；`proposal-names.test.tsx`（11 個）：U+202E 改名、零寬空白、希伯來文名稱，斷言 DOM 中沒有任何原始的 `\p{Cf}`／`\p{Cs}`／`\p{Zl}`／`\p{Zp}`／控制字元，且每個名稱與值在自己的 `<bdi>` 中；hostile 範例在 vitest 與瀏覽器中同樣檢查 | M1-raw、M1-no-bdi、M1-patch-raw、M1-prose-raw：都 killed |
+| **M1 (c)** 兩側仍相同時讀成「X → X」 | `change-list.tsx`：一行變更的前後顯示（NFKC 後）相同時，值真的相同（canonical JSON 相等）→ `proposal.change.same`「{field}: stays {value}; the proposal sets the value it already has」；值不同 → `proposal.change.exact` 以確切的 JSON 顯示兩側，若仍讀起來相同（例如 é 與 e＋U+0301）則以 ASCII escape 的 JSON 顯示 | `proposal-names.test.tsx`：同值、四捨五入後相同的百分比（0.95 → 0.950001）、NFC／NFD 的改名 | M1-no-same、M1-no-ascii：killed |
+| **L1** patch 名稱以文字呈現沒有 DOM 測試 | 頁面層級測試；`eslint.config.mjs` 對 `**/*.tsx`（不含 tests）開 `react/no-danger` | `proposal-names.test.tsx`（`ProposalRoute`：diff 中帶 markup、`javascript:` 與 U+202E 的名稱、摘要、假設、預期；needs_input 的問題）；hostile 範例的 patch 現在帶這些名稱（`proposal-view.test.tsx`、`proposal.spec.ts`）；`lint-guards.test.ts` 證明規則會觸發 | 審查者的 MA（加在現在的對應位置：新增／移除行的 subject，`MA-subject`）、MA（共用的 `<bdi>`）、MA-assumptions、MA-questions：都 killed，四個的 eslint 也都 exit 1（`react/no-danger`） |
+| **L2** 409 之後不重送沒有斷言 | 測試 | `proposal-view.test.tsx` 的 409 測試：只有一個批准請求，body 是原本的 base，再等 100 ms 仍只有一個 | 審查者的 MB：killed |
+| **L3** 拒絕的重試沿用 key 沒有測試 | 測試 | 503 之後以同一原因再拒絕：同一個 key；改了原因：新 key | 審查者的 MC：killed |
+| **L4** 422 或風險改變的 409 之後仍提供 Approve | `proposal-view.tsx`：422 `MODEL_VALIDATION_FAILED`，或 409 `LIFECYCLE_CONFLICT` 且 details 的 path 是 `/risk_level`／`/server_risk_level`（`internal/proposals/approval/http.go` 的寫法），視為伺服器重新檢查後拒絕（D-069 (b) B1：proposal 維持 ready、這樣的批准永遠不會成功）：不再提供 Approve、不顯示「批准後…」與草稿提示，在 Approve 原本的位置顯示 warning note（`proposal.refused.checks`／`proposal.refused.risk`：為什麼，以及請拒絕後回模型再問一次），焦點移到它；Reject 保留；伺服器的 problem（含 details 與 request ID）照常顯示；503 仍可重試同一 key。DESIGN.md 的簡化一點同步 | `proposal-view.test.tsx`：422（原本斷言「仍有 Approve」改為不提供，並斷言 note、焦點、沒有停用的控制項、axe、之後可拒絕）、兩種 risk path 的 409（note、伺服器的理由、狀態仍 ready、重新讀取、只一個批准）；`proposal-simplicity.test.tsx` 兩語 × 兩種拒絕 | L4-never、L4-no-risk、L4-approve-shown、L4-focus：killed |
+| **L5** 已登入的頁面沒有在瀏覽器中走過 BFF | `apps/web-e2e/fake/servers.mjs`：Line Works 的 proposal routes（createProposal 202 generating；getProposal 第一次讀為 generating、之後為 ready；approveProposal：edit 從最新版本與 patch 建下一版並移動乾淨的草稿、scenario 給 scenario ID；rejectProposal；idempotency key 同請求重放、不同請求 409；viewer 403；其他 organization 404）；固定的回答在 `fake/proposal-answer.json`（依 `output_locale` 兩語；是為測試寫的，不是 AI 的回答，也不是伺服器的 review）；`POST /__reset`（:3101）還原租戶資料；API 收到的 POST 記下 key 與 body。新檔在 `apps/web-e2e/fake/` 之下，`deploy/local/compose.yaml` 已整個掛載 `/fake`，所以 compose 不必改（`make spec-check` 的 `check_deploy.py` 通過） | `proposal.spec.ts`「signed in, through the BFF, on the fake API's proposals」：en 與 zh-Hant 各一：以 editor 經 BFF 與測試 provider 登入、模型頁用鍵盤輸入並送出、到 `/proposals/<id>`、讀到 ready、差異「Reviewer Capacity: 2 → 3」、AI 的摘要與假設、伺服器格、鍵盤 Approve → 原處確認（焦點）→ 結果（焦點、版本 2）、API 收到的兩個 POST（body、key、`X-Organization-ID`、沒有 cookie）、Shift+Tab 回模型頁：最新版本 2、草稿 revision 4；每一步 axe；另一個以原因拒絕、模型仍是版本 1 | —（瀏覽器測試：兩次 e2e 都通過，見下） |
+| **I1** gallery 預覽的註解過時 | `preview.tsx` 註解改寫；同樣過時的 `proposal.spec.ts` 與 `proposal-simplicity.test.tsx` 開頭註解也改 | — | — |
+| **I2** 報告的小誤差 | 本報告測試表的 `proposal-ask.test.tsx` 改為 9；Mutation 一列註明 `mutants-M6-rerun.txt` 的「total 21」是 mutant 表的大小、那次只跑 M6（1 killed）。舊 evidence 檔案未改；本輪的腳本 `mutants_r1.py` 印出它實際執行的數量 | — | — |
+| **I3** `failureProblem` 以 `in` 查 code | `Object.hasOwn(errorCodeStatus, code)` | `proposal-view.test.tsx`：code 為 `toString`、`constructor`、`__proto__` 的 failed proposal 是 protocol problem，訊息是「The proposal failed without an API error.」 | I3（改回 `in`）：killed |
+
+Mutation：`fixes/mutants.txt`（`fixes/scripts/mutants_r1.py`，每個 mutant 只改一處、跑指定的測試檔、還原並以 `git diff --quiet` 確認）：**22 個，22 killed，0 survived**（審查者的 MA、MB、MC 都在其中；MA 的原位置 `change-list.tsx:111` 已重寫，對應到 `MA-subject` 與共用 `<bdi>` 的 `MA`）。
+
+### 現在的行為
+
+- 差異的每一行：catalog 的文字＋資料；資料是 `<bdi>` 中的文字節點，看不見或會重排文字的字元顯示為 ⟨U+XXXX⟩；DOM 中不會出現原始的雙向控制、零寬或其他格式字元。審查者的情境現在讀成「Added Resource ICT tester (resource_01m4ydqk00e1ectr0n1c5x0009)」（其下 Capacity: 9）與「ICT Resource it needs: “ICT tester” (ict_tester) → “ICT tester” (resource_01m4ydqk00e1ectr0n1c5x0009)」；U+202E 的改名讀成「“Burn-in” → “Burn-in⟨U+202E⟩84 → 02”」。
+- 同名（含只差大小寫、全形、空白或不可見字元）或新增的 entity 附 ID；新增的步驟、資源也因此附 ID（T-056 的照片提案會比較長）。
+- 兩側讀起來仍相同的變更明寫「維持原值」或以確切值（必要時 ASCII escape）顯示。
+- 伺服器在批准時重新檢查而拒絕（422、風險改變的 409）之後只剩 Reject，原因在原處；重新整理頁面後（伺服器仍是 ready）Approve 會再出現，再按一次會再得到同樣的拒絕與說明（伺服器沒有記錄這次拒絕，D-069 B1）。
+- 已登入的 demo 路徑（模型頁 → 提案頁 → 批准 → 版本 2）在瀏覽器中經 BFF 走過，fake API 是固定答案。
+
+### 先紅後綠
+
+- `fixes/red/red-first-run.log`：實作前，6 個測試檔 131 個 test 中 28 個失敗（`shown.ts` 不存在、`changes.ts` 的新形狀、ID、⟨U+…⟩、`<bdi>`、same／exact、L1 頁面測試、L4 的 simplicity、`react/no-danger`），`proposal-shown.test.ts` 與 `proposal-view.test.tsx` 在 import 就失敗。
+- `fixes/red/red-view-before-fix.log`：因為上一個 log 中 `proposal-view.test.tsx` 沒有執行，另以修正前的 `proposal-view.tsx`（`git show 5b66648:…`，跑完還原並以 `cmp` 確認）跑三個檔：76 個中 7 個失敗：L4 的三個、兩語 simplicity、L1 的兩個（散文中的 U+202E 原樣進入 DOM）。L2、L3 的測試在修正前就通過（程式本來就對），由 MB、MC 證明它們擋得下。
+- 測試本身的錯一處：希伯來文的 metadata 值是文字（引號＋`<bdi>`），我原本寫成 JSON，改正期望值。
+- `fixes/green-proposal-tests.log`：10 個相關檔 224 個 test 全過。
+
+### hostile 範例的重新核對
+
+hostile 範例的 patch 改為：原本移除 scrap 的 6 個 op，加上新增同名的 ICT tester（`HOSTILE_TESTER`）並把 ICT 移過去、Burn-in 改名為帶 U+202E 的名稱、AOI machine 改名為結尾零寬空白、Pack and ship 改名為 markup 與 `javascript:` 連結（`samples.ts` 的 `hostileNames`）；patch hash 重算。以與原 evidence 相同的方法核對：
+
+- 伺服器 review（暫時的 Go 測試，pool 多一個 resource ID，跑完移除；`fixes/scripts/zz_t031_samples_test.go.txt`、`fixes/sample-server-review.log`，exit 0）：hostile 為 ready、server risk high、計入 high，patch hash 與範例相同。第一次核對時伺服器回 invalid `PATCH_TEST_REQUIRED /changes/8`（D-020：移除步驟之後要先 test 該元素的 `id` 才能改它），範例改用 `id` 的 test 後通過。**伺服器接受這些名稱**（U+202E、U+200B、markup、與既有資源同名），這也是下面 owner 問題 1 的依據。其他範例的結果與原 evidence 相同。
+- JSON Schema（原 evidence 的 `validate_samples.py`，輸入由 `fixes/scripts/zz-dump-samples.test.ts.txt` 產生到 session 的暫存目錄，未保留；`fixes/sample-schema-check.log`，exit 0）：每個範例 proposal、批准之後的 proposal、三種 Approval、base 與每個 candidate IR 都通過。
+
+### 指令與結果（Node 22.22.0，`npm ci --engine-strict=false`；go1.27.3 只用於暫時的 Go 測試）
+
+| 指令 | Exit | 結果 |
+|---|---|---|
+| `npm ci --prefix apps/web --engine-strict=false`、`npm ci --prefix apps/web-e2e --engine-strict=false` | 0、0 | lock 未變 |
+| `env -C apps/web npx vitest run …`（實作前） | 1 | 紅燈，見上（`red/red-first-run.log`） |
+| 同上，以修正前的 `proposal-view.tsx` | 1 | 7 failed（`red/red-view-before-fix.log`） |
+| `env -C apps/web npx vitest run`（10 個相關檔） | 0 | 224 passed（`green-proposal-tests.log`） |
+| `python -I fixes/scripts/mutants_r1.py <repo>` | 0 | 22 killed、0 survived（`mutants.txt`） |
+| 暫時的 Go 測試（`go test -count=1 -run TestT031Samples -v ./internal/ai/review/`） | 0 | `sample-server-review.log` |
+| `.venv/bin/python -I …/validate_samples.py` | 0 | `sample-schema-check.log` |
+| `make frontend-test`（db77bfe；之後 `apps/web` 沒有再改） | 0 | lint 0 warning、typecheck、vitest 45 檔 1017 個全過（審查時 43 檔 985 個；`frontend-test.log`） |
+| `make frontend-build`（同上） | 0 | `/proposals/[proposalId]`、`/ui-gallery/proposal` 為動態 route（`frontend-build.log`） |
+| `make e2e-test` 第 1 次（等另一個 agent 的 e2e 結束、3100–3102 沒有人聽之後單獨執行；db77bfe） | 2 | 491 passed、2 failed、32 skipped（13.3 分）：失敗的是 gallery 的兩語「每個字串是 catalog 或資料」，它找到 `ict_tester`——hostile 範例中既有資源的 ID，因為與新資源同名而顯示在名稱旁（正確的行為）；spec 的資料清單只列了新增 entity 的 ID，是測試的遺漏。已登入的三個新測試（en、zh-Hant 批准，en 拒絕）通過。修正：資料清單加上範例產線自己的 ID（06ec164），斷言不變（`e2e-test-1.log`） |
+| `make e2e-test` 第 2 次（又等另一個 agent 的 e2e 結束後單獨執行；06ec164） | 0 | 493 passed、0 failed、32 skipped（全部是只在 CI 比對的截圖），18.3 分；coordinator 上一次是 490 passed，多的 3 個是本輪已登入的測試（`e2e-test-2.log`）。stderr 的一行「failed to pipe response」來自 `session.spec.ts` 刻意切斷 API 連線的測試，coordinator 的 log 也有 |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities（`npm-audit.log`） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | 沒有重產任何 tracked 檔（`spec-check.log`） |
+
+### NOT RUN
+
+| 項目 | 原因 |
+|---|---|
+| 截圖比對與新頁面的 baseline | 只在 CI 的固定容器（`E2E_SCREENSHOTS=1`）；沒有碰 `apps/web-e2e/tests/__screenshots__/` |
+| 雙向文字在瀏覽器中的「畫面」檢查（截圖或量位置） | DOM 中已沒有原始的雙向控制字元可以重排（vitest 與 Chromium 都斷言），每個名稱在 `<bdi>`；沒有另外拍圖 |
+| 與真的 Go API、worker、provider 的閉環 | e2e 的 fake API 只記帳、回固定答案，不 review、不驗證；屬 T-040 |
+| `make backend-test`、`backend-race`、`integration-test`、`ai-eval` | 沒有 Go、schema、OpenAPI 或 migration 的變更；只跑了一個暫時的 Go 測試（已移除）核對範例 |
+| live AI | 依指示不呼叫 |
+| Node 24、Firefox、Safari、螢幕報讀器 | 本機只有 Node 22；P0 只跑 Chromium；報讀器需要人 |
+| push、CI、獨立 review 第 2 輪 | 依指示不 push；H-029 一輪 |
+
+### 延後（審查的 Info，只記錄）
+
+- **I4**：輪詢 generating → ready 時只更新 proposal、不重讀 model；生成期間有人發布新版時，頁面仍提供 Approve，按下得到 409 並顯示 conflicted 的說明（安全，多一次必然失敗的請求）。
+- **I5**：決定時的 401 只顯示 problem，沒有 `SignInLink`（與 T-043 列的草稿儲存相同）。
+- **I6**：批准語意依據的決策狀態如審查所述；本輪沒有把任何 PROPOSED／TBD 當成 APPROVED，L4 依 D-069 (b) 的 B1（已實作的建議；B1 本身是否最終仍待 owner，見問題 3）。
+- **I7**：generating 每 1.5 秒輪詢，沒有上限。
+- 其他：`lib/api/problem.ts` 的 `problemFromResponse` 也以 `in` 查 code（與 I3 同類；審查已推算最後成為 protocol problem），本輪只依指示改 `failureProblem`；模型頁（`ModelView`）的 h1 與其他頁面上的名稱不在本切片，沒有加 `<bdi>`／⟨U+…⟩。
+
+### 給 owner 的問題
+
+1. **伺服器是否拒絕（或正規化）IR 名稱中的不可見與格式字元**（`\p{Cc}`、`\p{Cf}`、孤立 surrogate、U+2028／U+2029 等）？目前 schema 只有 1–200 字元，伺服器 review 接受本輪 hostile 範例的名稱（見上）。這是 contract 變更（`schemas/model-ir.schema.json`、`internal/model` 的驗證、AI review），本輪沒有做；畫面已能安全顯示。
+2. **同類 entity 的名稱是否要唯一**（或至少給 warning）？畫面以 ID 區分同名者，但 IR 沒有規則。另：跨文字系統的相似字（例如拉丁字母中混入西里爾字母的「е」）不是 NFKC 能合併的，兩個既有、名稱只差這類字元的 entity 不會被標上 ID（新增的 entity 一律帶 ID）；要完整處理需要 UTS #39 的 confusable 檢查，較適合放在伺服器。
+3. **D-069 (b) B1 之後的提示**：本輪在 422／風險改變的 409 之後只提供 Reject 並說明，但伺服器不記錄這次拒絕，所以重新整理後 Approve 會再出現。若要頁面一開就知道（B2：轉為 conflicted 並記原因，需要 migration 與 API 變更），需要 owner 決定。
+4. **新增的 entity 一律附 ID**（依本輪指示）會讓 T-056 的照片提案每個新步驟都帶一個長 ID。可以嗎？或只在名稱與其他 entity 相同時才附？
+

@@ -1,0 +1,9 @@
+date: 2026-10-26 (UTC)
+branch: t031-r1 (from 5b66648); fixes in 18d1ca6, e8d7381, db77bfe, 06ec164
+node: v22.22.0 (package.json asks for >=24.21.0 <25; npm ci --engine-strict=false, lockfiles unchanged)
+npm: 10.9.4
+chromium: the preinstalled Playwright build of apps/web-e2e's lock (not reinstalled)
+go: go1.27.3 (one temporary test only, removed after use)
+python: /home/user/Geminus/.venv/bin/python (spec-check, validate_samples.py, mutants_r1.py)
+e2e ports 3100-3102 are shared: each e2e run started only when no other playwright run was going and nothing listened on them (checked with a TCP connect); both times another agent's run was waited out, never stopped
+no live AI call; no key or secret read
