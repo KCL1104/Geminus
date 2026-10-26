@@ -1,0 +1,13 @@
+date: 2026-10-26T06:59:31Z
+worktree: /home/user/Geminus/.claude/worktrees/agent-afef414bfac403871
+branch: t050
+HEAD: b5467c02728f2b54d37571bdb0e890a9c3e34b30 (T-050: G-BT17 and Result identities after mutation run 2)
+uncommitted:  M checks/docs-check.json ?? checks/T-050_VALIDATION.md ?? checks/evidence/2026-10-26-T-050/backend-test.log ?? checks/evidence/2026-10-26-T-050/environment.txt ?? checks/evidence/2026-10-26-T-050/spec-check.log 
+go: go version go1.27.3 linux/amd64
+python: Python 3.13.16
+simpy: 4.1.2
+node: v22.22.0
+cpus: 4
+os: Linux 6.18.44-fc-v153 x86_64
+postgresql: none (GEMINUS_TEST_DATABASE_URL unset; the DB-backed tests skip)
+GOFLAGS for make: -count=1 (no test cache)

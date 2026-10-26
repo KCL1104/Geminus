@@ -1,0 +1,477 @@
+{
+  "summary": {
+    "simpy": "4.1.2",
+    "deterministic_cases": [
+      "G-BT1",
+      "G-BT2",
+      "G-BT3",
+      "G-BT6",
+      "G-BT7",
+      "G-BT8",
+      "G-BT10",
+      "G-BT11",
+      "G-BT14",
+      "G-BT15",
+      "G-SU1",
+      "G-SU2",
+      "G-SU3",
+      "G-SU6",
+      "G-SU7",
+      "G-SU8"
+    ],
+    "not_compared": [
+      "G-BT4: refused by the script: unsupported: q_pack is a finite buffer",
+      "G-BT5: not compared: the routing draws are the engine's stream (SimPy draws from Python's random)",
+      "G-BT9: refused by the script: unsupported: a calendar",
+      "G-BT12: refused by the script: unsupported: q_oven is a finite buffer",
+      "G-BT13: not compared: SimPy does not detect stalls",
+      "G-BT16: refused by the script: unsupported: r is needed by ['pa', 'pb']",
+      "G-BT17: refused by the script: unsupported: q_pack is a finite buffer",
+      "G-SU5: not compared: a stream identity test",
+      "G-SU9: refused by the script: unsupported: a calendar",
+      "G-SU10: refused by the script: unsupported: q_test is a finite buffer"
+    ],
+    "stochastic_comparisons": 47,
+    "stochastic_passed": 47,
+    "tolerance": {
+      "batch-goldens.json": {
+        "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+        "z": 4.0,
+        "rel": 0.005,
+        "abs": 1e-09
+      },
+      "setup-goldens.json": {
+        "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+        "z": 4.0,
+        "rel": 0.005,
+        "abs": 1e-09
+      }
+    },
+    "failures": []
+  },
+  "comparisons": [
+    {
+      "case": "BT-S1",
+      "metric": "completed_count",
+      "go": 176.6,
+      "simpy": 184.43333333333334,
+      "difference": -7.833333333333343,
+      "bound": 12.92260088714134,
+      "pass": true
+    },
+    {
+      "case": "BT-S1",
+      "metric": "mean_lead_time_minutes",
+      "go": 41.643676017245454,
+      "simpy": 42.08708096218562,
+      "difference": -0.4434049449401627,
+      "bound": 1.3115358380589808,
+      "pass": true
+    },
+    {
+      "case": "BT-S1",
+      "metric": "utilization/chamber",
+      "go": 0.66938804218107,
+      "simpy": 0.6845836976646763,
+      "difference": -0.015195655483606352,
+      "bound": 0.041351707129688005,
+      "pass": true
+    },
+    {
+      "case": "BT-S1",
+      "metric": "batches_started/work",
+      "go": 68.13333333333334,
+      "simpy": 69.36666666666666,
+      "difference": -1.23333333333332,
+      "bound": 4.3201543248256185,
+      "pass": true
+    },
+    {
+      "case": "BT-S1",
+      "metric": "members_started/work",
+      "go": 176.76666666666668,
+      "simpy": 184.1,
+      "difference": -7.333333333333314,
+      "bound": 13.066785875142699,
+      "pass": true
+    },
+    {
+      "case": "BT-S2",
+      "metric": "completed_count",
+      "go": 341.9,
+      "simpy": 335.7,
+      "difference": 6.199999999999989,
+      "bound": 21.4638535150642,
+      "pass": true
+    },
+    {
+      "case": "BT-S2",
+      "metric": "mean_lead_time_minutes",
+      "go": 46.41867190270948,
+      "simpy": 43.786199491575985,
+      "difference": 2.6324724111334916,
+      "bound": 8.265631822565796,
+      "pass": true
+    },
+    {
+      "case": "BT-S2",
+      "metric": "utilization/chamber",
+      "go": 0.6250822446502057,
+      "simpy": 0.6108314552086214,
+      "difference": 0.01425078944158431,
+      "bound": 0.07827550677581145,
+      "pass": true
+    },
+    {
+      "case": "BT-S2",
+      "metric": "batches_started/work",
+      "go": 114.06666666666666,
+      "simpy": 112.06666666666666,
+      "difference": 2.0,
+      "bound": 6.936527575697159,
+      "pass": true
+    },
+    {
+      "case": "BT-S2",
+      "metric": "members_started/work",
+      "go": 342.2,
+      "simpy": 336.2,
+      "difference": 6.0,
+      "bound": 20.809582725091477,
+      "pass": true
+    },
+    {
+      "case": "BT-S3",
+      "metric": "completed_count",
+      "go": 235.73333333333332,
+      "simpy": 242.63333333333333,
+      "difference": -6.900000000000006,
+      "bound": 18.07982879114977,
+      "pass": true
+    },
+    {
+      "case": "BT-S3",
+      "metric": "mean_lead_time_minutes",
+      "go": 56.76726168004891,
+      "simpy": 56.90392366763516,
+      "difference": -0.13666198758625114,
+      "bound": 3.4106048363954335,
+      "pass": true
+    },
+    {
+      "case": "BT-S3",
+      "metric": "utilization/prep_r",
+      "go": 0.5852974526748971,
+      "simpy": 0.5904194642396404,
+      "difference": -0.005122011564743345,
+      "bound": 0.051900792770531244,
+      "pass": true
+    },
+    {
+      "case": "BT-S3",
+      "metric": "utilization/oven_r",
+      "go": 0.7681070820987654,
+      "simpy": 0.7691714860311267,
+      "difference": -0.0010644039323612908,
+      "bound": 0.0328703344035949,
+      "pass": true
+    },
+    {
+      "case": "BT-S3",
+      "metric": "utilization/tester",
+      "go": 0.5174244818930042,
+      "simpy": 0.5290907206487665,
+      "difference": -0.011666238755762337,
+      "bound": 0.03701455943381714,
+      "pass": true
+    },
+    {
+      "case": "BT-S3",
+      "metric": "batches_started/oven",
+      "go": 103.86666666666666,
+      "simpy": 103.9,
+      "difference": -0.03333333333334565,
+      "bound": 4.389019360898378,
+      "pass": true
+    },
+    {
+      "case": "BT-S3",
+      "metric": "members_started/oven",
+      "go": 263.46666666666664,
+      "simpy": 267.96666666666664,
+      "difference": -4.5,
+      "bound": 19.007224340954625,
+      "pass": true
+    },
+    {
+      "case": "BT-S4",
+      "metric": "completed_count",
+      "go": 224.16666666666666,
+      "simpy": 223.16666666666666,
+      "difference": 1.0,
+      "bound": 17.083049257091393,
+      "pass": true
+    },
+    {
+      "case": "BT-S4",
+      "metric": "mean_lead_time_minutes",
+      "go": 59.535735855569875,
+      "simpy": 60.22861690758409,
+      "difference": -0.692881052014215,
+      "bound": 2.3742722118453012,
+      "pass": true
+    },
+    {
+      "case": "BT-S4",
+      "metric": "utilization/chamber",
+      "go": 0.7491791637860082,
+      "simpy": 0.7466930263668092,
+      "difference": 0.002486137419199008,
+      "bound": 0.041869743905597424,
+      "pass": true
+    },
+    {
+      "case": "BT-S4",
+      "metric": "down_fraction/chamber",
+      "go": 0.07398284855967079,
+      "simpy": 0.06647642446572316,
+      "difference": 0.007506424093947625,
+      "bound": 0.025188599257692658,
+      "pass": true
+    },
+    {
+      "case": "BT-S4",
+      "metric": "batches_started/work",
+      "go": 55.166666666666664,
+      "simpy": 54.96666666666667,
+      "difference": 0.19999999999999574,
+      "bound": 3.1305800033148916,
+      "pass": true
+    },
+    {
+      "case": "BT-S4",
+      "metric": "members_started/work",
+      "go": 225.43333333333334,
+      "simpy": 222.2,
+      "difference": 3.2333333333333485,
+      "bound": 17.752955618496877,
+      "pass": true
+    },
+    {
+      "case": "SU-S1",
+      "metric": "completed_count",
+      "go": 286.5,
+      "simpy": 285.06666666666666,
+      "difference": 1.4333333333333371,
+      "bound": 18.794827651863486,
+      "pass": true
+    },
+    {
+      "case": "SU-S1",
+      "metric": "mean_lead_time_minutes",
+      "go": 15.894146008120837,
+      "simpy": 15.194122222244324,
+      "difference": 0.7000237858765122,
+      "bound": 2.808359432495268,
+      "pass": true
+    },
+    {
+      "case": "SU-S1",
+      "metric": "utilization/smt",
+      "go": 0.7142358166666667,
+      "simpy": 0.7078288267658728,
+      "difference": 0.0064069899007939135,
+      "bound": 0.048521083575277846,
+      "pass": true
+    },
+    {
+      "case": "SU-S1",
+      "metric": "setup_fraction/smt",
+      "go": 0.1833466658436214,
+      "simpy": 0.18015980352356686,
+      "difference": 0.003186862320054523,
+      "bound": 0.017411956597134414,
+      "pass": true
+    },
+    {
+      "case": "SU-S1",
+      "metric": "setups_started/smt",
+      "go": 135.4,
+      "simpy": 132.23333333333332,
+      "difference": 3.1666666666666856,
+      "bound": 12.370060457324044,
+      "pass": true
+    },
+    {
+      "case": "SU-S2",
+      "metric": "completed_count",
+      "go": 585.3,
+      "simpy": 587.7,
+      "difference": -2.400000000000091,
+      "bound": 24.048218850029173,
+      "pass": true
+    },
+    {
+      "case": "SU-S2",
+      "metric": "mean_lead_time_minutes",
+      "go": 17.77173713979067,
+      "simpy": 18.12268411568913,
+      "difference": -0.35094697589845936,
+      "bound": 3.184175564528709,
+      "pass": true
+    },
+    {
+      "case": "SU-S2",
+      "metric": "utilization/smt",
+      "go": 0.759583155829904,
+      "simpy": 0.7592227739831074,
+      "difference": 0.0003603818467965425,
+      "bound": 0.04287913986907484,
+      "pass": true
+    },
+    {
+      "case": "SU-S2",
+      "metric": "setup_fraction/smt",
+      "go": 0.11031236399176955,
+      "simpy": 0.1106983873292475,
+      "difference": -0.0003860233374779476,
+      "bound": 0.009286390296256608,
+      "pass": true
+    },
+    {
+      "case": "SU-S2",
+      "metric": "setups_started/smt",
+      "go": 330.6666666666667,
+      "simpy": 333.4,
+      "difference": -2.7333333333332916,
+      "bound": 23.925612351162112,
+      "pass": true
+    },
+    {
+      "case": "SU-S3",
+      "metric": "completed_count",
+      "go": 457.53333333333336,
+      "simpy": 447.6333333333333,
+      "difference": 9.900000000000034,
+      "bound": 24.53907585288389,
+      "pass": true
+    },
+    {
+      "case": "SU-S3",
+      "metric": "mean_lead_time_minutes",
+      "go": 17.53077756455208,
+      "simpy": 17.45433287108266,
+      "difference": 0.07644469346941918,
+      "bound": 4.131504335666201,
+      "pass": true
+    },
+    {
+      "case": "SU-S3",
+      "metric": "utilization/smt",
+      "go": 0.7240122304526749,
+      "simpy": 0.7120522690033926,
+      "difference": 0.011959961449282352,
+      "bound": 0.0413912818900963,
+      "pass": true
+    },
+    {
+      "case": "SU-S3",
+      "metric": "setup_fraction/smt",
+      "go": 0.13308341378600824,
+      "simpy": 0.13147622941650655,
+      "difference": 0.0016071843695016907,
+      "bound": 0.011710339743447751,
+      "pass": true
+    },
+    {
+      "case": "SU-S3",
+      "metric": "setups_started/smt",
+      "go": 205.3,
+      "simpy": 202.8,
+      "difference": 2.5,
+      "bound": 18.14654941547375,
+      "pass": true
+    },
+    {
+      "case": "SU-S3",
+      "metric": "down_fraction/smt",
+      "go": 0.06853852510288067,
+      "simpy": 0.06473623419652993,
+      "difference": 0.0038022909063507304,
+      "bound": 0.020047693723513903,
+      "pass": true
+    },
+    {
+      "case": "SU-S4",
+      "metric": "completed_count",
+      "go": 369.53333333333336,
+      "simpy": 379.23333333333335,
+      "difference": -9.699999999999989,
+      "bound": 26.719156876581412,
+      "pass": true
+    },
+    {
+      "case": "SU-S4",
+      "metric": "mean_lead_time_minutes",
+      "go": 32.54877932406841,
+      "simpy": 32.02142168914205,
+      "difference": 0.5273576349263607,
+      "bound": 6.223724923489974,
+      "pass": true
+    },
+    {
+      "case": "SU-S4",
+      "metric": "utilization/m1",
+      "go": 0.6753894709876543,
+      "simpy": 0.6982710112862216,
+      "difference": -0.02288154029856726,
+      "bound": 0.05932239705563258,
+      "pass": true
+    },
+    {
+      "case": "SU-S4",
+      "metric": "setup_fraction/m1",
+      "go": 0.13098716049382716,
+      "simpy": 0.13699338124914018,
+      "difference": -0.006006220755313013,
+      "bound": 0.012184224375652553,
+      "pass": true
+    },
+    {
+      "case": "SU-S4",
+      "metric": "setups_started/m1",
+      "go": 177.56666666666666,
+      "simpy": 184.2,
+      "difference": -6.633333333333326,
+      "bound": 16.40828312933849,
+      "pass": true
+    },
+    {
+      "case": "SU-S4",
+      "metric": "utilization/m2",
+      "go": 0.7557216589506174,
+      "simpy": 0.7717342573838718,
+      "difference": -0.01601259843325442,
+      "bound": 0.05689783899484465,
+      "pass": true
+    },
+    {
+      "case": "SU-S4",
+      "metric": "setup_fraction/m2",
+      "go": 0.09325649763374486,
+      "simpy": 0.09452463838367607,
+      "difference": -0.0012681407499312153,
+      "bound": 0.009859205092955136,
+      "pass": true
+    },
+    {
+      "case": "SU-S4",
+      "metric": "setups_started/m2",
+      "go": 167.8,
+      "simpy": 170.16666666666666,
+      "difference": -2.366666666666646,
+      "bound": 17.69683857950367,
+      "pass": true
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 82 packages, 21 rules, 16 build configurations
+exit 0 elapsed 12s

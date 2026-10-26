@@ -1,0 +1,13 @@
+fuzz: elapsed: 1s, gathering baseline coverage: 0/194 completed
+fuzz: elapsed: 1s, gathering baseline coverage: 194/194 completed, now fuzzing with 2 workers
+fuzz: elapsed: 4s, execs: 5692 (1897/sec), new interesting: 0 (total: 194)
+fuzz: elapsed: 7s, execs: 5692 (0/sec), new interesting: 0 (total: 194)
+fuzz: elapsed: 10s, execs: 5692 (0/sec), new interesting: 0 (total: 194)
+fuzz: elapsed: 13s, execs: 5692 (0/sec), new interesting: 0 (total: 194)
+fuzz: elapsed: 16s, execs: 5692 (0/sec), new interesting: 0 (total: 194)
+fuzz: elapsed: 19s, execs: 5692 (0/sec), new interesting: 0 (total: 194)
+fuzz: elapsed: 22s, execs: 5692 (0/sec), new interesting: 0 (total: 194)
+fuzz: elapsed: 22s, execs: 500000 (774197/sec), new interesting: 1 (total: 195)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	22.323s
+exit 0 elapsed 23s

@@ -1,0 +1,53 @@
+ready-untimed-on-limit	EQUIVALENT 
+expired-limit-scheduled	KILLED --- FAIL: TestBatchGoldens (0.05s)
+stale-timeout-not-ignored	KILLED --- FAIL: TestBatchGoldens (0.05s)
+batch-second-draw	KILLED --- FAIL: TestBatchSetupObservationDigests (0.03s)
+routes-in-reverse	SURVIVED 
+release-with-members-blocked	KILLED --- FAIL: TestBatchGoldens (0.04s)
+release-at-first-unblock	KILLED --- FAIL: TestBatchGoldens (0.04s)
+deadlock-ignores-timeouts	KILLED --- FAIL: TestRandomBatchFailuresAreReal (0.11s)
+failure-names-no-member	KILLED --- FAIL: TestBatchStall (0.00s)
+7/8 killed, 1 equivalent
+chunk exit 1 elapsed 423s
+routes-in-reverse	KILLED --- FAIL: TestBatchVisitsChargedToTheirMember (0.00s)
+members-take-routes-in-reverse	KILLED --- FAIL: TestBatchGoldens (0.05s)
+unit-choice-ignores-state	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.04s)
+unit-choice-ignores-down	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.07s)
+transition-ignored	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.03s)
+default-ignored	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.07s)
+zero-changeover-not-observed	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.03s)
+first-piece-changes-over	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.02s)
+state-not-updated	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.02s)
+one-stream-for-all-units	KILLED --- FAIL: TestBatchSetupObservationDigests (0.02s)
+completion-ignores-changeover	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.04s)
+11/11 killed, 0 equivalent
+chunk exit 0 elapsed 1149s
+batch-second-draw	KILLED --- FAIL: TestBatchServiceDrawsOncePerBatch (0.00s)
+failure-takes-the-clock-unit	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.06s)
+release-frees-unit-0	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.28s)
+downtime-resets-the-state	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.03s)
+release-hands-over-least-idle	EQUIVALENT 
+repair-hands-over-least-idle	EQUIVALENT 
+compile-skips-setup-limits	KILLED --- FAIL: TestCompileChecksSetups (0.00s)
+batches-outside-window	KILLED --- FAIL: TestBatchGoldenResults (0.10s)
+batch-bundle-per-member	SURVIVED 
+setups-started-outside-window	KILLED --- FAIL: TestGoldenDigests050 (0.17s)
+setup-complete-ignores-end	KILLED --- FAIL: TestGoldenDigests050 (0.16s)
+setup-end-not-applied	KILLED --- FAIL: TestGoldenDigests050 (0.15s)
+processing-ignores-changeover-on-shift	KILLED --- FAIL: TestGoldenDigests050 (0.17s)
+processing-ignores-changeover	KILLED --- FAIL: TestGoldenDigests050 (0.16s)
+trace-no-batch-id	KILLED --- FAIL: TestBatchTrace (0.02s)
+trace-no-resource-id	KILLED --- FAIL: TestSetupTrace (0.01s)
+batch-capacity-unchecked	KILLED --- FAIL: TestBatchRules (0.05s)
+batch-wait-required-at-equal-sizes	KILLED --- FAIL: TestBatchRules (0.05s)
+setup-self-transition-allowed	KILLED --- FAIL: TestAgreesWithSharedFixtures (0.04s)
+setup-two-units-allowed	KILLED --- FAIL: TestSetupRules (0.01s)
+dataset-path-of-a-member	KILLED --- FAIL: TestSetupDatasets (0.00s)
+batch-risk-ignored	KILLED --- FAIL: TestBatchRisk (0.04s)
+setup-risk-ignored	KILLED --- FAIL: TestLiftedPrimitivesHaveRiskCases (0.01s)
+setup-risk-ignores-initial	KILLED --- FAIL: TestLiftedPrimitivesHaveRiskCases (0.01s)
+py-unit-choice-ignores-state	KILLED "G-SU2: starts {'place': [['r0/src_a/1', 10.0], ['r0/src_b/1', 12.0], ['r0/src_a/2', 20.0], ['r0/src_b/2', 24.
+py-ready-strictly-after-limit	KILLED "G-BT6: starts {} != {'work': [['r0/src/1', 40], ['r0/src/2', 40]]}",
+py-no-changeover-time	KILLED "G-SU1: starts {'place': [['r0/src_a/1', 10.0], ['r0/src_b/1', 20.0], ['r0/src_a/2', 22.0], ['r0/src_a/3', 30.
+24/25 killed, 2 equivalent
+chunk exit 1 elapsed 773s

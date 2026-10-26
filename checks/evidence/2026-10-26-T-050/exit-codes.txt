@@ -1,0 +1,25 @@
+2026-10-26T06:40:23Z make simulation-reference-test -> exit 0, 28 s (simulation-reference-test.log)
+2026-10-26T06:58:41Z make spec-check -> exit 0, 9 s (spec-check.log)
+2026-10-26T07:03:07Z make backend-test GOFLAGS=-count=1 -> exit 0, 253 s (backend-test.log)
+2026-10-26T07:04:41Z go test -v (T-050's tests) -> exit 0, 74 s (engine-tests-verbose.log)
+2026-10-26T07:07:06Z go test -v ./internal/simulation/engine/ -> exit 0, 123 s (engine-package-times.log)
+2026-10-26T07:08:01Z make simulation-reference-test -> exit 0, 30 s (simulation-reference-test.log)
+2026-10-26T07:13:15Z make backend-numeric GOFLAGS=-count=1 -> exit 0, 293 s (backend-numeric.log)
+2026-10-26T07:13:40Z make architecture-check -> exit 0, 12 s (architecture-check.log)
+2026-10-26T07:13:47Z make ai-eval -> exit 0, 2 s (ai-eval.log)
+2026-10-26T07:18:38Z go test -count=1 -v (all but internal/simulation) -> exit 0, 286 s (db-tests-skipped.log)
+2026-10-26T07:19:45Z go test -fuzz ^FuzzBatches$ -fuzztime 20000x -parallel 2 ./internal/simulation/engine/ -> exit 0, 34 s (fuzz-batches-count.log)
+2026-10-26T07:22:31Z make backend-race GOFLAGS=-count=1 -> exit 0, 909 s (backend-race.log)
+2026-10-26T07:22:54Z go test -fuzz ^FuzzBatches$ -fuzztime 100000x -parallel 2 ./internal/simulation/engine/ -> exit 0, 184 s (fuzz-batches-count.log)
+2026-10-26T07:26:50Z go test -fuzz ^FuzzSetups$ -fuzztime 100000x -parallel 2 ./internal/simulation/engine/ -> exit 0, 218 s (fuzz-setups-count.log)
+2026-10-26T07:27:31Z go test -fuzz ^FuzzKernel$ -fuzztime 500000x -parallel 2 ./internal/simulation/engine/ -> exit 0, 23 s (fuzz-kernel-count.log)
+2026-10-26T07:27:59Z go test -fuzz ^FuzzRun$ -fuzztime 200000x -parallel 2 ./internal/simulation/des/ -> exit 0, 24 s (fuzz-run-count.log)
+2026-10-26T08:19:10Z make spec-check -> exit 0, 10 s (spec-check.log)
+mutation harness (from the log) mutants-run1.log:chunk exit 0 elapsed 6s
+mutation harness (from the log) mutants-run1.log:chunk exit 1 elapsed 516s
+mutation harness (from the log) mutants-run2.log:chunk exit 1 elapsed 423s
+mutation harness (from the log) mutants-run2.log:chunk exit 0 elapsed 1149s
+mutation harness (from the log) mutants-run2.log:chunk exit 1 elapsed 773s
+mutation harness (from the log) mutants-run3.log:chunk exit 0 elapsed 2802s
+mutation harness (from the log) mutants-run3-lock-first-without-locks.log:chunk exit 0 elapsed 166s
+mutation harness (from the log) lock-first-mutants-without-locks.log:chunk exit 0 elapsed 49s

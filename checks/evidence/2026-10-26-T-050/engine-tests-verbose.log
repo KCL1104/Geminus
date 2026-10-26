@@ -1,0 +1,194 @@
+=== RUN   TestBatchGoldens
+=== RUN   TestBatchGoldens/G-BT1
+=== RUN   TestBatchGoldens/G-BT2
+=== RUN   TestBatchGoldens/G-BT3
+=== RUN   TestBatchGoldens/G-BT4
+=== RUN   TestBatchGoldens/G-BT6
+=== RUN   TestBatchGoldens/G-BT7
+=== RUN   TestBatchGoldens/G-BT8
+=== RUN   TestBatchGoldens/G-BT9
+=== RUN   TestBatchGoldens/G-BT10
+=== RUN   TestBatchGoldens/G-BT11
+=== RUN   TestBatchGoldens/G-BT12
+=== RUN   TestBatchGoldens/G-BT14
+=== RUN   TestBatchGoldens/G-BT15
+=== RUN   TestBatchGoldens/G-BT16
+=== RUN   TestBatchGoldens/G-BT17
+--- PASS: TestBatchGoldens (0.07s)
+    --- PASS: TestBatchGoldens/G-BT1 (0.06s)
+    --- PASS: TestBatchGoldens/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT14 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT15 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT16 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT17 (0.00s)
+=== RUN   TestBatchStall
+--- PASS: TestBatchStall (0.00s)
+=== RUN   TestBatchRoutingDrawsInMemberOrder
+--- PASS: TestBatchRoutingDrawsInMemberOrder (0.00s)
+=== RUN   TestBatchVisitsChargedToTheirMember
+--- PASS: TestBatchVisitsChargedToTheirMember (0.00s)
+=== RUN   TestBatchServiceDrawsOncePerBatch
+--- PASS: TestBatchServiceDrawsOncePerBatch (0.00s)
+=== RUN   TestNeutralBufferGolden
+--- PASS: TestNeutralBufferGolden (0.00s)
+=== RUN   TestNeutralBreakdownsChangeNothing
+    breakdown_test.go:647: 2158 neutral models (4770 resources with breakdowns) identical to des-go-0.2.0
+--- PASS: TestNeutralBreakdownsChangeNothing (4.34s)
+=== RUN   TestDifferentialAgainstFrozen020
+    differential020_test.go:137: 23746 of 50000 random models compiled (race detector: false), 5516 with finite buffers; 11698033 observations identical to des-go-0.2.0, 47742 of them Blocked; endings map[active:1559 none:20013 visits:2174]
+--- PASS: TestDifferentialAgainstFrozen020 (14.75s)
+=== RUN   TestDifferentialAgainstFrozen030
+    differential030_test.go:125: 21501 of 50000 random models compiled (race detector: false), 4947 with finite buffers, 9553 with breakdowns; 10428435 observations identical to des-go-0.3.0, 45649 of them Blocked, 121862 ResourceDown; endings map[active:1602 none:17908 visits:1991]
+--- PASS: TestDifferentialAgainstFrozen030 (14.12s)
+=== RUN   TestDifferentialAgainstFrozen040
+    differential040_test.go:132: 20213 of 50000 random models compiled (race detector: false), 4572 with finite buffers, 8602 with breakdowns, 5291 with calendars, 6270 with release schedules; 11773609 observations identical to des-go-0.4.0, 52461 of them Blocked, 219031 ResourceDown, 553303 Capacity; endings map[active:1569 none:16627 visits:2017]
+--- PASS: TestDifferentialAgainstFrozen040 (15.30s)
+=== RUN   TestRandomBatchModelsAgainstSpec
+    kernel_check_batch_test.go:505: 1629 of 3000 random models compiled: 418 with finite buffers, 294 with breakdowns, 258 with calendars; 58733 batches of 126309 members (37517 ready at an entry or a grant, 12091 at a wait limit), 28560 BATCH_TIMEOUTs, 13855 silent ticks, 1016 members blocked, 5270 unblocks
+--- PASS: TestRandomBatchModelsAgainstSpec (3.57s)
+=== RUN   TestRandomBatchFailuresAreReal
+    kernel_check_batch_test.go:589: 1667 runs with the validator bypassed, 70 ended in ErrDeadlock, 55 in ErrStalled
+--- PASS: TestRandomBatchFailuresAreReal (3.44s)
+=== RUN   TestRandomSetupModelsAgainstSpec
+    kernel_check_setup_test.go:428: 1590 of 3000 random models compiled: 303 with finite buffers, 662 with breakdowns, 252 with calendars, 108 with batches; 65486 grants on units that change over, 31904 changeovers (6965 of 0 ticks), 4360 to a unit set up for the type that was not the first free one, 472 first pieces; downs on such resources: 21003 at once, 964 on the released unit, 356 on the repaired unit; 79764 service ends timed
+--- PASS: TestRandomSetupModelsAgainstSpec (4.85s)
+=== RUN   TestBatchSetupObservationDigests
+--- PASS: TestBatchSetupObservationDigests (0.03s)
+=== RUN   TestNeutralCalendarsChangeNothing
+    neutral_calendar_test.go:129: 2106 of 6000 random models with neutral calendars compiled, 948 with breakdowns; 1009495 observations (13134 ResourceDown) identical to des-go-0.3.0
+--- PASS: TestNeutralCalendarsChangeNothing (2.13s)
+=== RUN   TestNeutralSchedulesChangeNothing
+    neutral_calendar_test.go:202: 1433 of 4000 random models with neutral schedules compiled; 655134 observations identical to des-go-0.3.0 with the constant interarrival
+--- PASS: TestNeutralSchedulesChangeNothing (1.70s)
+=== RUN   TestNeutralSetupsChangeNothing
+    neutral_setups_test.go:141: 1994 of 6000 random models with neutral setups compiled, 436 with finite buffers, 908 with breakdowns, 550 with calendars; 1169148 observations (25984 ResourceDown, 4506 Blocked) identical to des-go-0.4.0
+--- PASS: TestNeutralSetupsChangeNothing (2.07s)
+=== RUN   TestNeutralBuffersChangeNothing
+    neutral_test.go:90: 3728 neutral models (5000 buffers) identical to des-go-0.1.0
+--- PASS: TestNeutralBuffersChangeNothing (7.75s)
+=== RUN   TestSetupGoldens
+=== RUN   TestSetupGoldens/G-SU1
+=== RUN   TestSetupGoldens/G-SU2
+=== RUN   TestSetupGoldens/G-SU3
+=== RUN   TestSetupGoldens/G-SU6
+=== RUN   TestSetupGoldens/G-SU7
+=== RUN   TestSetupGoldens/G-SU8
+=== RUN   TestSetupGoldens/G-SU9
+=== RUN   TestSetupGoldens/G-SU10
+--- PASS: TestSetupGoldens (0.00s)
+    --- PASS: TestSetupGoldens/G-SU1 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU2 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU3 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU6 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU7 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU8 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU9 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU10 (0.00s)
+=== RUN   TestSetupStreamsPerUnit
+--- PASS: TestSetupStreamsPerUnit (0.00s)
+=== RUN   TestCompileChecksSetups
+=== RUN   TestCompileChecksSetups/two_units
+=== RUN   TestCompileChecksSetups/two_resources_with_setups
+=== RUN   TestCompileChecksSetups/a_batch_process
+=== RUN   TestCompileChecksSetups/a_transition_to_itself
+=== RUN   TestCompileChecksSetups/an_unknown_initial
+--- PASS: TestCompileChecksSetups (0.00s)
+    --- PASS: TestCompileChecksSetups/two_units (0.00s)
+    --- PASS: TestCompileChecksSetups/two_resources_with_setups (0.00s)
+    --- PASS: TestCompileChecksSetups/a_batch_process (0.00s)
+    --- PASS: TestCompileChecksSetups/a_transition_to_itself (0.00s)
+    --- PASS: TestCompileChecksSetups/an_unknown_initial (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	74.156s
+=== RUN   TestBatchGoldenResults
+=== RUN   TestBatchGoldenResults/G-BT1
+=== RUN   TestBatchGoldenResults/G-BT2
+=== RUN   TestBatchGoldenResults/G-BT3
+=== RUN   TestBatchGoldenResults/G-BT4
+=== RUN   TestBatchGoldenResults/G-BT6
+=== RUN   TestBatchGoldenResults/G-BT7
+=== RUN   TestBatchGoldenResults/G-BT8
+=== RUN   TestBatchGoldenResults/G-BT9
+=== RUN   TestBatchGoldenResults/G-BT10
+=== RUN   TestBatchGoldenResults/G-BT11
+=== RUN   TestBatchGoldenResults/G-BT12
+=== RUN   TestBatchGoldenResults/G-BT14
+=== RUN   TestBatchGoldenResults/G-BT15
+=== RUN   TestBatchGoldenResults/G-BT16
+=== RUN   TestBatchGoldenResults/G-BT17
+--- PASS: TestBatchGoldenResults (0.09s)
+    --- PASS: TestBatchGoldenResults/G-BT1 (0.07s)
+    --- PASS: TestBatchGoldenResults/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT14 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT15 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT16 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT17 (0.00s)
+=== RUN   TestBatchTrace
+    batch_test.go:152: 52 sampled members
+--- PASS: TestBatchTrace (0.01s)
+=== RUN   TestNeutralBreakdownsKeepTheResult
+--- PASS: TestNeutralBreakdownsKeepTheResult (0.02s)
+=== RUN   TestGoldenDigests030
+--- PASS: TestGoldenDigests030 (0.26s)
+=== RUN   TestNeutralCalendarKeepsTheResult
+--- PASS: TestNeutralCalendarKeepsTheResult (0.01s)
+=== RUN   TestNeutralScheduleKeepsTheResult
+--- PASS: TestNeutralScheduleKeepsTheResult (0.01s)
+=== RUN   TestGoldenDigests040
+--- PASS: TestGoldenDigests040 (0.22s)
+=== RUN   TestGoldenDigests
+--- PASS: TestGoldenDigests (0.00s)
+=== RUN   TestGoldenDigests020
+--- PASS: TestGoldenDigests020 (0.03s)
+=== RUN   TestGoldenDigests050
+--- PASS: TestGoldenDigests050 (0.19s)
+=== RUN   TestSetupGoldenResults
+=== RUN   TestSetupGoldenResults/G-SU1
+=== RUN   TestSetupGoldenResults/G-SU2
+=== RUN   TestSetupGoldenResults/G-SU3
+=== RUN   TestSetupGoldenResults/G-SU6
+=== RUN   TestSetupGoldenResults/G-SU7
+=== RUN   TestSetupGoldenResults/G-SU8
+=== RUN   TestSetupGoldenResults/G-SU9
+=== RUN   TestSetupGoldenResults/G-SU10
+--- PASS: TestSetupGoldenResults (0.01s)
+    --- PASS: TestSetupGoldenResults/G-SU1 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU2 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU3 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU6 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU7 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU8 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU9 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU10 (0.00s)
+=== RUN   TestSetupTrace
+    setup_test.go:103: 27 sampled changeovers
+--- PASS: TestSetupTrace (0.01s)
+=== RUN   TestNeutralSetupsKeepTheResult
+--- PASS: TestNeutralSetupsKeepTheResult (0.02s)
+=== RUN   TestBatchAndSetupIdentities
+--- PASS: TestBatchAndSetupIdentities (0.15s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	1.034s
+=== RUN   TestSetupDatasets
+--- PASS: TestSetupDatasets (0.04s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	0.050s
+exit 0 elapsed 74s

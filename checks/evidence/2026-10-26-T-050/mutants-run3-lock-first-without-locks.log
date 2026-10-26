@@ -1,0 +1,8 @@
+one-stream-for-all-units	KILLED --- FAIL: TestSetupStreamsPerUnit (0.00s)
+setups-started-outside-window	KILLED --- FAIL: TestSetupGoldenResults (0.01s)
+setup-complete-ignores-end	KILLED --- FAIL: TestSetupGoldenResults (0.01s)
+setup-end-not-applied	KILLED --- FAIL: TestSimPyReferenceExport (1.09s)
+processing-ignores-changeover-on-shift	KILLED --- FAIL: TestSetupGoldenResults (0.02s)
+processing-ignores-changeover	KILLED --- FAIL: TestSetupGoldenResults (0.00s)
+6/6 killed, 0 equivalent
+chunk exit 0 elapsed 166s

@@ -1,0 +1,13 @@
+fuzz: elapsed: 0s, gathering baseline coverage: 0/123 completed
+fuzz: elapsed: 1s, gathering baseline coverage: 123/123 completed, now fuzzing with 2 workers
+fuzz: elapsed: 3s, execs: 31421 (10473/sec), new interesting: 1 (total: 124)
+fuzz: elapsed: 6s, execs: 31421 (0/sec), new interesting: 1 (total: 124)
+fuzz: elapsed: 9s, execs: 31421 (0/sec), new interesting: 1 (total: 124)
+fuzz: elapsed: 12s, execs: 31421 (0/sec), new interesting: 1 (total: 124)
+fuzz: elapsed: 15s, execs: 31421 (0/sec), new interesting: 1 (total: 124)
+fuzz: elapsed: 18s, execs: 131420 (33348/sec), new interesting: 2 (total: 125)
+fuzz: elapsed: 21s, execs: 131420 (0/sec), new interesting: 2 (total: 125)
+fuzz: elapsed: 21s, execs: 200000 (355111/sec), new interesting: 3 (total: 126)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	21.371s
+exit 0 elapsed 24s

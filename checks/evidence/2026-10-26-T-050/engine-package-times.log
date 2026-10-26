@@ -1,0 +1,45 @@
+GEMINUS_FULL_DIFFERENTIAL=1 go test -count=1 -v ./internal/simulation/engine/ (alone on the machine)
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	122.298s
+top-level tests by time (seconds):
+16.34 PASS TestDifferentialAgainstFrozenKernel
+15.82 PASS TestDifferentialAgainstFrozen020
+15.28 PASS TestDifferentialAgainstFrozen040
+13.91 PASS TestDifferentialAgainstFrozen030
+8.27 PASS TestNeutralBuffersChangeNothing
+4.77 PASS TestRandomCalendarStallsAreInTheState
+4.35 PASS TestNeutralBreakdownsChangeNothing
+4.33 PASS TestRandomSetupModelsAgainstSpec
+4.16 PASS TestRandomBlockingModelsAgainstSpec
+4.15 PASS TestExpAccuracy
+3.86 PASS TestRandomBatchModelsAgainstSpec
+3.66 PASS TestRandomStallsAreInTheState
+3.50 PASS TestRandomBatchFailuresAreReal
+3.01 PASS TestCalendarRulesExport
+2.67 PASS TestRandomCircularWaitsAreDetected
+2.64 PASS TestRandomCalendarModelsAgainstSpec
+2.62 PASS TestRandomBreakdownModelsAgainstSpec
+2.32 PASS TestNeutralSetupsChangeNothing
+2.20 PASS TestNeutralCalendarsChangeNothing
+1.84 PASS TestNeutralSchedulesChangeNothing
+0.44 PASS TestResourceQueueStaysCompact
+0.34 PASS TestRandomModelsAgainstSpec
+0.27 PASS FuzzKernel
+0.14 PASS TestSamplerDigests
+0.13 PASS TestRoutingDelayObservations
+0.13 PASS TestLognormalWeibullStatistics
+0.12 PASS TestEngineDependencies
+0.11 PASS TestEntityRecordsAreReleased
+0.09 PASS TestBlockingObservationDigests
+0.07 PASS TestNdtriProfile
+0.07 PASS TestLogAccuracy
+0.07 PASS TestHeldCandidatesWaitForARelease
+0.06 PASS TestBatchGoldens
+0.04 PASS TestTriangularStaysInRange
+0.04 PASS TestExpProfile
+0.03 PASS TestLognormalWeibullBounds
+0.03 PASS TestLogProfile
+0.03 PASS TestCalendarObservationDigests
+0.03 PASS TestBreakdownObservationDigests
+0.03 PASS TestBatchSetupObservationDigests
+sum of all top-level test times: 122.20
+exit 0 elapsed 123s
