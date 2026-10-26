@@ -321,3 +321,27 @@ Reviewer harness（`reviewer/run.py`）中，不在要求的 8 個之內、修�
 - **Header 的檢查**沿用 OTel v1.47.0 envconfig 的規則；升級 OTel 時，若 SDK 的解析變了，兩者可能不一致。不過 M1 的修正 (1) 保證 SDK 的抱怨仍只經過過濾後的 log。
 - **其他 `OTEL_EXPORTER_OTLP_*` 變數**（TIMEOUT、COMPRESSION、CERTIFICATE…）沒有在 config 檢查；它們解析不了時的訊息現在也只經過濾後的 log（原始值所在的 key 是 redacted）。
 - **Group 名稱**：由資料組成的小寫 group 名稱仍會出現在 log 中（符合 key 的形狀）；production 程式沒有使用 `WithGroup`。
+
+### Coordinator 的執行（第 1 輪，d26767d）
+
+`t035-r1` 從 7cbde1e（推送後的 head）開出，所以六個 commit 以 fast-forward 接上，hash 不變（4ceb306 … d26767d）。之後在 d26767d 的 tree 上執行以下指令，全部 exit 0（`coordinator-environment.txt`：沒有其他變更、go1.27.3、Node 22.22.0、PostgreSQL 16.15）：
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `make spec-check` | 0 | |
+| `make backend-test` | 0 | |
+| `make architecture-check` | 0 | |
+| `make ai-eval` | 0 | |
+| `make frontend-test` | 0 | Node 22.22.0；Node 24 由 CI 執行 |
+| `make simulation-reference-test` | 0 | |
+| `make backend-numeric` | 0 | |
+| `make backend-race` | 0 | |
+| `make integration-test`（新的 `dt_test_t035r1`） | 0 | 34 個 package ok，沒有 FAIL |
+| `govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/... ./scripts/...` | 0 | module cache 中的 go1.27.3，`GOTOOLCHAIN=local`；No vulnerabilities found |
+| `make db-test`（另一個新的 `dt_test_t035r1m`，供下面兩項） | 0 | |
+| 新與改過的 DB 測試（`GEMINUS_REQUIRE_DB_TESTS=1`，`-v`） | 0 | 9 個都 PASS：`TestAnUnwritableAuditEventCommitsNothing`、`TestFailedAttemptsAreAudited`、`TestTheReaperAudits`、`TestAnAuditFailureCommitsNothing`、`TestTheHandlersLinesCarryTheJob`、`TestReapJobsReturnsWhatItTook`、`TestRunClosedLoop`、`TestImportMappingClosedLoop`、`TestRunServesAndStops` |
+| 本輪的 `mutate.py <git archive 副本> <log> db` | 0 | 12 個 DB mutant 全部被測試擋下 |
+
+Log 與 exit code 在 `checks/evidence/2026-10-26-T-035-r1/coordinator-*`。
+
+仍為 NOT RUN：`make e2e-test`、live AI、送到真的 OTLP collector、OpenAPI 官方 validator。D-091–D-095 與 ADR-028 仍是 PROPOSED，T-035 在 tasks.json 仍為 `not_started`。

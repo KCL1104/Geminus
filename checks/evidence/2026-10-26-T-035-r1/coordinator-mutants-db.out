@@ -1,0 +1,14 @@
+db-failure-not-audited: KILLED (TestFailedAttemptsAreAudited|TestAnAuditFailureCommitsNothing) --- FAIL: TestFailedAttemptsAreAudited (0.09s) | --- FAIL: TestAnAuditFailureCommitsNothing (0.07s)
+db-reap-not-audited: KILLED (TestTheReaperAudits|TestAnAuditFailureCommitsNothing) --- FAIL: TestTheReaperAudits (0.07s) | --- FAIL: TestAnAuditFailureCommitsNothing (0.08s)
+db-handler-lines-uncorrelated: KILLED (TestTheHandlersLinesCarryTheJob) --- FAIL: TestTheHandlersLinesCarryTheJob (0.06s)
+db-reaped-requeued-inverted: KILLED (TestReapJobsReturnsWhatItTook|TestTheReaperAudits) --- FAIL: TestReapJobsReturnsWhatItTook (0.11s) | --- FAIL: TestTheReaperAudits (0.08s)
+db-reaped-in-reverse: KILLED (TestReapJobsReturnsWhatItTook) --- FAIL: TestReapJobsReturnsWhatItTook (0.09s)
+db-project-not-audited: KILLED (TestAnUnwritableAuditEventCommitsNothing) --- FAIL: TestAnUnwritableAuditEventCommitsNothing (0.78s)
+db-run-not-audited: KILLED (TestAnUnwritableAuditEventCommitsNothing|TestRunClosedLoop) --- FAIL: TestAnUnwritableAuditEventCommitsNothing (0.95s) | --- FAIL: TestRunClosedLoop (0.32s)
+db-provision-as-worker: KILLED (TestProvision) --- FAIL: TestProvision (0.02s)
+db-engine-line-missing: KILLED (TestRunClosedLoop) --- FAIL: TestRunClosedLoop (0.35s)
+db-profile-line-missing: KILLED (TestImportMappingClosedLoop) --- FAIL: TestImportMappingClosedLoop (0.71s)
+db-validation-line-missing: KILLED (TestImportMappingClosedLoop) --- FAIL: TestImportMappingClosedLoop (0.67s)
+db-no-access-log: KILLED (TestRunServesAndStops) --- FAIL: TestRunServesAndStops (0.04s)
+TOTAL 12 (db): 12 killed, 0 survived, 0 did not build
+
