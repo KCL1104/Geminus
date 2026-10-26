@@ -177,7 +177,7 @@ func shape(ir *model.ModelIR, manifest []model.DatasetBinding) ([]model.Validati
 			}
 		}
 	}
-	// A resource's distributions too (breakdowns, T-048).
+	// A resource's distributions too (breakdowns, T-048; changeovers, T-050).
 	for i := range ir.Resources {
 		for _, d := range ir.Resources[i].Distributions() {
 			if d.Distribution.Type == model.DistEmpirical && !bound[d.Distribution.SamplesRef] {

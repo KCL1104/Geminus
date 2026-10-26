@@ -2362,7 +2362,8 @@
         "2D/3D graph/render/FPS 與 API/validation load targets；記錄不足而非捏造。",
         "Import validation 的成本：每個 canonical event 的 schema 檢查讓 mapping.Validate 慢約 2.2–2.5 倍（T-017 review 第 2 輪 N3：10 萬列 9.5 MB 1.66 s 對 0.66 s；49.8 MB、32 個 metadata 欄 5.9 s 對 2.7 s，Write 再讀一次），列入 benchmark 並固定 hardware/image。",
         "ADR-026 D-050 原訂的 reference 中 T-049 沒有做的部分（T-049 review round 1 L2，見 checks/T-049_VALIDATION.md）：R1（BLOCKING_CYCLE，T-047 的 graph rule）的獨立 Python 實作與 Go 在隨機輸入上的比對（R2、R3、R4、next_fit、X_end、TTRmax 已由 scripts/calendar_reference.py 在 make simulation-reference-test 比對）；以 SimPy 跑 D-050 的兩個反例與 G-D1（示意）；對隨機的 valid 模型確認 SimPy 與 Go 在每個 L 內都有授予（現行 SimPy 腳本拒絕有 calendar 的 resource 與他者同 bundle、及 0 < S < C 的故障 resource）。",
-        "T-049 review 第 2 輪（I-b）：`TestCalendarRulesExport` 的隨機模型都是整數分鐘或整數天，Python `ticks()` 與 Go `model.Ticks` 在半 tick 附近的捨入沒有被比對（投入表的量化另由 G-R8 固定）；`scripts/calendar_reference.py` 的 `repair_bound` 把 empirical TTR 當成沒有上界，Go 用最大樣本（產生器不產生 empirical，目前沒有差異）。擴充獨立比對時，加入非整數 tick 的 duration 與 empirical TTR。"
+        "T-049 review 第 2 輪（I-b）：`TestCalendarRulesExport` 的隨機模型都是整數分鐘或整數天，Python `ticks()` 與 Go `model.Ticks` 在半 tick 附近的捨入沒有被比對（投入表的量化另由 G-R8 固定）；`scripts/calendar_reference.py` 的 `repair_bound` 把 empirical TTR 當成沒有上界，Go 用最大樣本（產生器不產生 empirical，目前沒有差異）。擴充獨立比對時，加入非整數 tick 的 duration 與 empirical TTR。",
+        "T-050 沒有做的 ADR-026 驗證（見 checks/T-050_VALIDATION.md 的偏差）：(1) D-054 原訂的 SimPy 做法（`simpy.Store` 與 batcher process）沒有採用，scripts/simpy_batch_reference.py 以 Python 站點跑在 SimPy 的 event queue 上（明確的 D-048 priority）；(2) 該 reference 拒絕有限 buffer 與班表，所以批次或換線與阻塞、班表的組合（G-BT4、G-BT9、G-BT12、G-SU9、G-SU10）沒有獨立 reference，只有手推 golden 與檢查器；(3) benchmark 要涵蓋有批次與換線的產線模型（有 setups 的 resource 每次授予以線性掃描選 unit，O(C)；ADR-026 Consequences 的效能一項）。"
       ],
       "planned_outputs": [
         "testdata/simulation/",
@@ -3290,7 +3291,10 @@
         "D-054",
         "D-055",
         "D-057",
-        "D-063"
+        "D-063",
+        "D-074",
+        "D-096",
+        "D-097"
       ],
       "scope": [
         "依批准的 decision 實作批次 process（最小／最大批量、等待上限、批內工件一起開始與結束），工件 ID 與 trace 仍可追蹤；換線若經 decision 納入 P0 也在此任務。decision gates：D-047、D-048、D-049、D-050、D-054、D-055、D-057（APPROVED，H-018）與 D-063（APPROVED，H-019）。",
@@ -3300,11 +3304,24 @@
       ],
       "planned_outputs": [
         "internal/simulation/engine/",
-        "testdata/simulation/"
+        "internal/simulation/trace/",
+        "internal/results/metrics/",
+        "internal/model/validate/",
+        "internal/ai/review/",
+        "internal/ai/aicontext/",
+        "prompts/scenario/",
+        "testdata/simulation/",
+        "scripts/simpy_batch_reference.py",
+        "scripts/simpy_reference.py",
+        "checks/T-050_VALIDATION.md"
       ],
       "spec_refs": [
         "docs/SIMULATION_SPEC.md",
-        "testdata/simulation/expected-cases.json"
+        "testdata/simulation/expected-cases.json",
+        "docs/TWIN_IR_SPEC.md",
+        "docs/adr/ADR-026-line-flow-primitives.md",
+        "testdata/simulation/batch-goldens.json",
+        "testdata/simulation/setup-goldens.json"
       ],
       "acceptance_tests": [
         "TEST-015",
@@ -3312,9 +3329,15 @@
         "TEST-034"
       ],
       "verification_commands": [
-        "go test ./internal/simulation/...",
+        "go test ./internal/simulation/... ./internal/results/...",
         "go test -race ./internal/simulation/...",
-        "make simulation-reference-test"
+        "make simulation-reference-test",
+        "make spec-check",
+        "make backend-test",
+        "make backend-race",
+        "make architecture-check",
+        "make ai-eval",
+        "make backend-numeric"
       ],
       "definition_of_done": [
         "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
