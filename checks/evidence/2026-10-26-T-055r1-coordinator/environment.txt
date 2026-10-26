@@ -1,0 +1,6 @@
+HEAD d88fcb496acf6185e64db3f6cb38cbb68b7c0513
+uncommitted besides evidence: 
+go version go1.27.3 linux/amd64
+2026-10-26T21:29:55Z
+ 21:29:55 up  1:29,  0 user,  load average: 2.25, 7.67, 9.94
+DB: throwaway cluster /var/lib/postgresql/geminus-throwaway-hkb6 port 55450 (the shared one is down since the container restart)

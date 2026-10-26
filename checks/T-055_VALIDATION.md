@@ -469,3 +469,30 @@ output 的部分固定為 104,448,000（USD 0.10）。count 達 window 時與修
 | 4ac9a76 | 程式與測試：`Billable.Quote(ctx, …)`、呼叫的 deadline 包含 quote、typed 的 quote 錯誤；Meta 的 count（H-037）；L2；L1 與 L3 的測試；L4 的 record；L5 的 rule |
 | a9abd99 | ADR-030、D-121 (b)／(d)、D-122 (b) 的註、`planning/decisions.json`、AI_SPEC、ARCHITECTURE；本報告 §5、§9 與本節；evidence |
 | （本表的 commit） | 本表與最後一次 `spec-check-final.log` |
+
+## Coordinator 驗證：review 第 1 輪修正（2026-10-26）
+
+`t055-r1` 的三個 commit（4ac9a76..6e66c6c）cherry-pick 到主線；只有本報告衝突（兩邊都在最後加了一節，兩節都保留）。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-055r1-coordinator/`，`exit-codes.txt` 依執行順序；HEAD d88fcb4；go1.27.3；DB 測試在暫時的 cluster：`/var/lib/postgresql/geminus-throwaway-hkb6`，port 55450，因為共用的 cluster 在 container 重啟後沒有在跑，依規則不啟動它）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 83 個 package ok（`scripts/check-architecture` 323 s，load 約 8–10） |
+| `make architecture-check` | 0 | 95 packages、**26 rules**（L5 的鏡像 rule）、16 build configurations |
+| `make ai-eval` | 0 | fake provider |
+| `go test -count=300 -run TestRetriesBackOff ./internal/ai/provider/meta` | 0 | L1：固定時鐘後 300 次沒有失敗 |
+| `go test -race -count=1 -timeout 30m`（ai、aievals、config、proposals、storage/aispend、cmd、check-architecture） | 0 | 24 個 package ok |
+| `make integration-test`（新的 dt_test_hkb7c，跑完刪除） | 0 | 38 個 package ok，沒有 FAIL 或 SKIP |
+
+NOT RUN：任何 live 呼叫（count_tokens、Messages、SAM）；前端與 e2e（本輪沒有改 UI）；完整的 `make backend-race`。
+
+Coordinator 對本輪問題的處理：
+1. count 失敗時「呼叫失敗、不預留、不送出」：接受。H-037 允許兩種，這種不會少預留，也不會因為整個 context 的預留又碰到 M1 的上限問題。
+2. 文件對 count 是否包含 Meta 注入的 token 互相矛盾：第一個 live 照片 proposal 比對 count、預留與 `usage.input_tokens`，記錄在 live 的報告。
+3. Count 是否收費：live 後在 Meta dashboard 確認；若收費，count 本身也要先預留（改為 reviewed change）。
+4. Count 的 key 被拒時 `FailedOver` 為空：照舊（Meta 只有一把 key，沒有 failover）。
+5. D-121 維持 PROPOSED；H-037 只決定帶圖片時的 (b)。
+
+結論：review 第 1 輪的 M1 與 L1–L5 已修正並由 coordinator 驗證；依 H-029，T-055 可以進行第一批 live 步驟（count_tokens → `AI_PROVIDER=meta` 的 smoke → eval），由有 key 的新 session 執行。照片（SAM 3.1）的 live 呼叫要等 T-056 的獨立審查。
