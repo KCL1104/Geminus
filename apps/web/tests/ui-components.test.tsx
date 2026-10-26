@@ -130,6 +130,46 @@ describe("Select", () => {
   });
 });
 
+describe("Select in the app strip", () => {
+  const items = [{ id: "en", label: "English" }, { id: "zh-Hant", label: "繁體中文", lang: "zh-Hant" }];
+
+  // React Aria applies ArrowLeft, ArrowRight and type-ahead on a closed
+  // select at once; in the strip that would re-render the page without a
+  // choice (WCAG 3.2.2), so there only a choice in the open list changes it.
+  it.each([
+    ["ArrowRight", "en"],
+    ["ArrowLeft", "zh-Hant"],
+    ["繁", "en"],
+    ["e", "zh-Hant"],
+  ])("ignores %s on the closed control (from %s), where a form's select takes it", async (k, from) => {
+    const onChange = vi.fn();
+    const el = await mount(<Select variant="strip" label="Language" value={from} onChange={onChange} items={items} />);
+    await key(el.querySelector("button"), k);
+    await settle();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(document.querySelector("[role=listbox]")).toBeNull();
+    // The same key on a form's select changes the value: the guard is what stops it.
+    const field = vi.fn();
+    const form = await mount(<Select label="Unit" value={from} onChange={field} items={items} />);
+    await key(form.querySelector("button"), k);
+    await settle();
+    expect(field).toHaveBeenCalledWith(from === "en" ? "zh-Hant" : "en");
+  });
+
+  it("still opens with ArrowDown and changes on a choice", async () => {
+    const onChange = vi.fn();
+    const el = await mount(<Select variant="strip" label="Language" value="en" onChange={onChange} items={items} />);
+    await key(el.querySelector("button"), "ArrowDown");
+    await settle();
+    expect(document.querySelector("[role=listbox]")).not.toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+    await press([...document.querySelectorAll("[role=option]")][1]);
+    await settle();
+    expect(onChange).toHaveBeenCalledWith("zh-Hant");
+    expect(await violations()).toEqual([]);
+  });
+});
+
 describe("ConfirmDialog", () => {
   function Harness({ onConfirm }: { onConfirm: () => void }) {
     const [open, setOpen] = useState(true);

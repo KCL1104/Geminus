@@ -41,9 +41,6 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   return (
     <>
       <h1>{t("models.title")}</h1>
-      <p>
-        <Link href="/projects">{t("models.allProjects")}</Link>
-      </p>
       <RequireSession>
         <Models projectId={projectId} />
       </RequireSession>

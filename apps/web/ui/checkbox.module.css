@@ -1,9 +1,14 @@
 .checkbox {
   display: inline-flex;
   align-items: center;
-  gap: var(--gm-space-2);
+  gap: var(--gm-space-md);
   min-height: var(--gm-control-height);
   cursor: pointer;
+}
+
+/* One ring, around the box and its label (ui/base.css), not a second on the box. */
+.checkbox[data-focus-visible] {
+  border-radius: var(--gm-radius-sm);
 }
 
 .box {
@@ -13,24 +18,29 @@
   flex: none;
   width: 18px;
   height: 18px;
-  border: 1px solid var(--gm-color-border-strong);
+  border: 1px solid var(--gm-color-edge);
   border-radius: var(--gm-radius-sm);
-  background: var(--gm-color-bg);
-  color: var(--gm-color-on-accent);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-on-ink);
+  transition: background-color var(--gm-motion), border-color var(--gm-motion);
+}
+
+.checkbox[data-hovered] .box {
+  border-color: var(--gm-color-ink-2);
 }
 
 .checkbox[data-selected] .box,
 .checkbox[data-indeterminate] .box {
-  border-color: var(--gm-color-accent);
-  background: var(--gm-color-accent);
-}
-
-.checkbox[data-focus-visible] .box {
-  outline: var(--gm-focus-ring);
-  outline-offset: var(--gm-focus-offset);
+  border-color: var(--gm-color-ink);
+  background: var(--gm-color-ink);
 }
 
 .checkbox[data-disabled] {
+  color: var(--gm-color-ink-4);
   cursor: not-allowed;
-  opacity: 0.55;
+}
+
+.checkbox[data-disabled] .box {
+  border-color: var(--gm-color-rule);
+  background: var(--gm-color-well);
 }

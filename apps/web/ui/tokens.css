@@ -1,9 +1,16 @@
 /*
- * Design tokens (T-045, ADR-021). Light theme only in P0 (H-008 item 2):
- * components use the semantic --gm-color-* tokens, never the palette, so a
- * dark theme is one more block that redefines the semantic tokens; none is
- * defined yet. tests/tokens.test.ts checks every colour pair components use
- * against WCAG 2.2 AA.
+ * Design tokens (T-045, ADR-021): the Marey design system of DESIGN.md
+ * (H-013), kept simple (H-027). Every colour is DESIGN.md's, under its own
+ * key as --gm-color-<key>; tests/tokens.test.ts checks that both themes
+ * match DESIGN.md value for value, that every pair components use meets
+ * WCAG 2.2 AA, and that no other file names a colour.
+ *
+ * Themes: light, and a gray-black dark whose neutrals have no chroma
+ * (H-012). The theme follows the system unless the reader chose one; the
+ * choice is the cookie geminus_theme, which the root layout renders as
+ * <html data-theme>, so the first paint already has it (no script, no
+ * flash). The dark values are written twice, for the system preference
+ * and for the choice; the tokens test keeps the two blocks equal.
  *
  * Cascade layers: "base" holds element defaults (ui/base.css), "vendor" any
  * third-party stylesheet. CSS Modules are unlayered, so they win over both
@@ -12,88 +19,189 @@
 @layer base, vendor;
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 
-  /* Palette. Only this file names it. */
-  --gm-palette-white: #ffffff;
-  --gm-palette-neutral-50: #f6f7f9;
-  --gm-palette-neutral-100: #eceef2;
-  --gm-palette-neutral-200: #d9dde3;
-  --gm-palette-neutral-500: #6b7380;
-  --gm-palette-neutral-600: #545c68;
-  --gm-palette-neutral-900: #1b1f24;
-  --gm-palette-blue-50: #e8f0fc;
-  --gm-palette-blue-600: #1f5fbf;
-  --gm-palette-blue-700: #194f9f;
-  --gm-palette-blue-800: #143f80;
-  --gm-palette-red-50: #fdf0ef;
-  --gm-palette-red-700: #b42318;
-  --gm-palette-amber-50: #fff6e5;
-  --gm-palette-amber-800: #8a5300;
-  --gm-palette-green-50: #ebf7ef;
-  --gm-palette-green-800: #17663a;
+  /* Colours, light (DESIGN.md colors). */
+  --gm-color-ground: #ededea;
+  --gm-color-sheet: #ffffff;
+  --gm-color-panel: #ffffff;
+  --gm-color-raised: #ffffff;
+  --gm-color-well: #f3f3f1;
+  --gm-color-hover: #f0f0ed;
+  --gm-color-press: #e5e5e1;
+  --gm-color-time-grid: #ededea;
+  --gm-color-time-grid-major: #d9d9d4;
+  --gm-color-rule: #dadad6;
+  --gm-color-edge: #808387;
+  --gm-color-ink: #1b1d1f;
+  --gm-color-ink-2: #4d5155;
+  --gm-color-ink-3: #62666a;
+  --gm-color-ink-4: #9a9da0;
+  --gm-color-on-ink: #ffffff;
+  --gm-color-baseline: #3f4347;
+  --gm-color-scenario: #0b6b4b;
+  --gm-color-scenario-wash: #e8f2ed;
+  --gm-color-on-scenario: #ffffff;
+  --gm-color-warning: #8a4f00;
+  --gm-color-warning-mark: #b26b00;
+  --gm-color-warning-wash: #fdf3dd;
+  --gm-color-warning-edge: #d29a3a;
+  --gm-color-error: #b3261e;
+  --gm-color-error-wash: #fceeec;
+  --gm-color-error-edge: #d9837d;
+  --gm-color-selection-tint: #efefec;
+  --gm-color-text-selection: #d6d9db;
+  --gm-color-avatar: #3f4347;
+  --gm-color-on-avatar: #ffffff;
+  --gm-color-veil: rgba(27,29,31,.36);
 
-  /* Semantic colours: what a dark theme would redefine. */
-  --gm-color-bg: var(--gm-palette-white);
-  --gm-color-surface: var(--gm-palette-neutral-50);
-  --gm-color-surface-hover: var(--gm-palette-neutral-100);
-  --gm-color-border: var(--gm-palette-neutral-200);
-  --gm-color-border-strong: var(--gm-palette-neutral-500);
-  --gm-color-text: var(--gm-palette-neutral-900);
-  --gm-color-text-muted: var(--gm-palette-neutral-600);
-  --gm-color-accent: var(--gm-palette-blue-600);
-  --gm-color-accent-hover: var(--gm-palette-blue-700);
-  --gm-color-on-accent: var(--gm-palette-white);
-  --gm-color-selected: var(--gm-palette-blue-50);
-  --gm-color-danger: var(--gm-palette-red-700);
-  --gm-color-on-danger: var(--gm-palette-white);
-  --gm-color-danger-bg: var(--gm-palette-red-50);
-  --gm-color-warning: var(--gm-palette-amber-800);
-  --gm-color-warning-bg: var(--gm-palette-amber-50);
-  --gm-color-success: var(--gm-palette-green-800);
-  --gm-color-success-bg: var(--gm-palette-green-50);
-  --gm-color-info: var(--gm-palette-blue-800);
-  --gm-color-info-bg: var(--gm-palette-blue-50);
-  --gm-color-focus: var(--gm-palette-blue-600);
+  /* Only what floats over the work casts a shadow (DESIGN.md, Elevation). */
+  --gm-shadow-overlay: 0 1px 2px rgba(27,29,31,.10), 0 10px 28px rgba(27,29,31,.16);
 
-  /* Type: system fonts only, with Traditional Chinese fallbacks (H-008 item 3). */
-  --gm-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
-  --gm-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono CJK TC", monospace;
-  --gm-font-size-sm: 0.8125rem;
-  --gm-font-size-md: 0.875rem;
-  --gm-font-size-lg: 1rem;
-  --gm-font-size-xl: 1.25rem;
-  --gm-font-size-2xl: 1.5rem;
-  --gm-line-height: 1.5;
-  --gm-line-height-tight: 1.25;
+  /* Type: Archivo with tabular lining figures, Noto Sans TC for Chinese,
+     both self-hosted (OFL, docs/THIRD_PARTY_NOTICES.md), then the faces
+     each system already has. Five sizes only. */
+  --gm-font-sans: "Archivo Variable", Archivo, "Noto Sans TC Variable", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --gm-font-features: "tnum" 1, "lnum" 1;
+  --gm-font-size-label: 12px;
+  --gm-font-size-body: 13.5px;
+  --gm-font-size-title: 15px;
+  --gm-font-size-headline: 18px;
+  --gm-font-size-display: 22px;
+  --gm-line-height-label: 1.35;
+  --gm-line-height-body: 1.4;
+  --gm-line-height-title: 20px;
+  --gm-line-height-headline: 24px;
+  --gm-line-height-display: 28px;
+  --gm-font-weight-regular: 400;
+  --gm-font-weight-medium: 500;
   --gm-font-weight-strong: 600;
+  --gm-font-weight-brand: 700;
 
-  /* Spacing and radius. */
-  --gm-space-1: 4px;
-  --gm-space-2: 8px;
-  --gm-space-3: 12px;
-  --gm-space-4: 16px;
-  --gm-space-5: 24px;
-  --gm-space-6: 32px;
+  /* Spacing (DESIGN.md spacing): tight inside a group, open between groups. */
+  --gm-space-hair: 2px;
+  --gm-space-xs: 4px;
+  --gm-space-sm: 6px;
+  --gm-space-md: 8px;
+  --gm-space-cell: 10px;
+  --gm-space-lg: 12px;
+  --gm-space-group: 14px;
+  --gm-space-gutter: 16px;
+  --gm-space-section: 20px;
+  --gm-space-xl: 24px;
+  --gm-space-2xl: 32px;
+  --gm-space-split: 40px;
+
+  /* Corners: 4 px inside the sheet, 6 px controls and containers, 8 px dialogs. */
   --gm-radius-sm: 4px;
   --gm-radius-md: 6px;
-  --gm-content-width: 72rem;
+  --gm-radius-lg: 8px;
 
-  /* Density: 32 px controls by default, 24 px (the WCAG 2.2 2.5.8 minimum)
-     when <html data-density="compact">. On <html>, so it reaches React
-     Aria's portals (popovers, dialogs) too. */
+  --gm-content-width: 1152px;
+
+  /* Density: 32 px controls (34 px inputs) by default, 24 px (the WCAG 2.2
+     2.5.8 minimum) when <html data-density="compact">. On <html>, so it
+     reaches React Aria's portals (popovers, dialogs) too. */
   --gm-control-height: 32px;
+  --gm-input-height: 34px;
   --gm-row-height: 32px;
-  --gm-control-padding-x: var(--gm-space-3);
+  --gm-control-padding-x: var(--gm-space-lg);
 
-  /* Focus ring: 2 px, at least 3:1 against every background it sits on. */
+  /* Focus: a 2 px Graphite Ink outline, 2 px out. */
   --gm-focus-width: 2px;
   --gm-focus-offset: 2px;
-  --gm-focus-ring: var(--gm-focus-width) solid var(--gm-color-focus);
+  --gm-focus-ring: var(--gm-focus-width) solid var(--gm-color-ink);
+
+  /* State changes only, 180 ms (DESIGN.md Do's); off under reduced motion (ui/base.css). */
+  --gm-motion: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Dark, by the system's preference unless the reader chose light. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --gm-color-ground: #111111;
+    --gm-color-sheet: #171717;
+    --gm-color-panel: #1b1b1b;
+    --gm-color-raised: #232323;
+    --gm-color-well: #0d0d0d;
+    --gm-color-hover: #2a2a2a;
+    --gm-color-press: #323232;
+    --gm-color-time-grid: #1f1f1f;
+    --gm-color-time-grid-major: #2e2e2e;
+    --gm-color-rule: #2e2e2e;
+    --gm-color-edge: #707070;
+    --gm-color-ink: #ebebeb;
+    --gm-color-ink-2: #b5b5b5;
+    --gm-color-ink-3: #949494;
+    --gm-color-ink-4: #5e5e5e;
+    --gm-color-on-ink: #111111;
+    --gm-color-baseline: #c9c9c9;
+    --gm-color-scenario: #5cc79e;
+    --gm-color-scenario-wash: #242424;
+    --gm-color-on-scenario: #0f0f0f;
+    --gm-color-warning: #f0b44c;
+    --gm-color-warning-mark: #f0b44c;
+    --gm-color-warning-wash: #242424;
+    --gm-color-warning-edge: #b07a1e;
+    --gm-color-error: #f07a70;
+    --gm-color-error-wash: #242424;
+    --gm-color-error-edge: #b5534b;
+    --gm-color-selection-tint: #262626;
+    --gm-color-text-selection: #3b3b3b;
+    --gm-color-avatar: #3a3a3a;
+    --gm-color-on-avatar: #ffffff;
+    --gm-color-veil: rgba(0,0,0,.62);
+    --gm-shadow-overlay: 0 0 0 1px #3a3a3a, 0 12px 32px rgba(0,0,0,.6);
+  }
+}
+
+/* Dark, because the reader chose it (the same values as above). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --gm-color-ground: #111111;
+  --gm-color-sheet: #171717;
+  --gm-color-panel: #1b1b1b;
+  --gm-color-raised: #232323;
+  --gm-color-well: #0d0d0d;
+  --gm-color-hover: #2a2a2a;
+  --gm-color-press: #323232;
+  --gm-color-time-grid: #1f1f1f;
+  --gm-color-time-grid-major: #2e2e2e;
+  --gm-color-rule: #2e2e2e;
+  --gm-color-edge: #707070;
+  --gm-color-ink: #ebebeb;
+  --gm-color-ink-2: #b5b5b5;
+  --gm-color-ink-3: #949494;
+  --gm-color-ink-4: #5e5e5e;
+  --gm-color-on-ink: #111111;
+  --gm-color-baseline: #c9c9c9;
+  --gm-color-scenario: #5cc79e;
+  --gm-color-scenario-wash: #242424;
+  --gm-color-on-scenario: #0f0f0f;
+  --gm-color-warning: #f0b44c;
+  --gm-color-warning-mark: #f0b44c;
+  --gm-color-warning-wash: #242424;
+  --gm-color-warning-edge: #b07a1e;
+  --gm-color-error: #f07a70;
+  --gm-color-error-wash: #242424;
+  --gm-color-error-edge: #b5534b;
+  --gm-color-selection-tint: #262626;
+  --gm-color-text-selection: #3b3b3b;
+  --gm-color-avatar: #3a3a3a;
+  --gm-color-on-avatar: #ffffff;
+  --gm-color-veil: rgba(0,0,0,.62);
+  --gm-shadow-overlay: 0 0 0 1px #3a3a3a, 0 12px 32px rgba(0,0,0,.6);
+}
+
+/* Light, because the reader chose it on a dark system. */
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 :root[data-density="compact"] {
   --gm-control-height: 24px;
+  --gm-input-height: 24px;
   --gm-row-height: 24px;
-  --gm-control-padding-x: var(--gm-space-2);
+  --gm-control-padding-x: var(--gm-space-md);
 }

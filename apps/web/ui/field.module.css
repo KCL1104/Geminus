@@ -1,9 +1,10 @@
+/* A text field (DESIGN.md Inputs): label above, help and error below. */
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--gm-space-1);
-  margin: 0 0 var(--gm-space-4);
-  max-width: 32rem;
+  gap: var(--gm-space-sm);
+  margin: 0 0 var(--gm-space-gutter);
+  max-width: 512px;
 }
 
 .label {
@@ -11,35 +12,46 @@
 }
 
 .input {
-  min-height: var(--gm-control-height);
-  padding: 0 var(--gm-control-padding-x);
-  border: 1px solid var(--gm-color-border-strong);
+  min-height: var(--gm-input-height);
+  padding: 0 var(--gm-space-cell);
+  border: 1px solid var(--gm-color-edge);
   border-radius: var(--gm-radius-md);
-  background: var(--gm-color-bg);
-  color: var(--gm-color-text);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink);
   font: inherit;
+  font-size: var(--gm-font-size-title);
+  transition: border-color var(--gm-motion);
+}
+
+.input[data-hovered] {
+  border-color: var(--gm-color-ink-2);
 }
 
 .input[data-focus-visible] {
   outline: var(--gm-focus-ring);
-  outline-offset: 0;
+  outline-offset: 1px;
 }
 
+/* Invalid: a red border, doubled by an inset ring of the same red. */
 .input[data-invalid] {
-  border-color: var(--gm-color-danger);
+  border-color: var(--gm-color-error);
+  box-shadow: inset 0 0 0 1px var(--gm-color-error);
 }
 
 .input[data-disabled] {
-  background: var(--gm-color-surface);
-  color: var(--gm-color-text-muted);
+  border-color: var(--gm-color-rule);
+  background: var(--gm-color-well);
+  color: var(--gm-color-ink-4);
 }
 
 .description {
-  color: var(--gm-color-text-muted);
-  font-size: var(--gm-font-size-sm);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
 }
 
 .error {
-  color: var(--gm-color-danger);
-  font-size: var(--gm-font-size-sm);
+  color: var(--gm-color-error);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
 }

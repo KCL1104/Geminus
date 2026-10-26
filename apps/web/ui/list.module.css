@@ -1,8 +1,9 @@
-/* A list of things to open (projects, models): one row each, the name as the link. */
+/* A list of things to open (projects, models): one row each, the name as
+   the link, rows divided by hairlines. */
 .list {
-  margin: 0 0 var(--gm-space-4);
+  margin: 0 0 var(--gm-space-gutter);
   padding: 0;
-  border: 1px solid var(--gm-color-border);
+  border: 1px solid var(--gm-color-rule);
   border-radius: var(--gm-radius-md);
   list-style: none;
 }
@@ -11,13 +12,13 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--gm-space-1) var(--gm-space-3);
+  gap: var(--gm-space-xs) var(--gm-space-lg);
   min-height: var(--gm-row-height);
-  padding: var(--gm-space-2) var(--gm-space-3);
+  padding: var(--gm-space-md) var(--gm-space-lg);
 }
 
 .list > li + li {
-  border-top: 1px solid var(--gm-color-border);
+  border-top: 1px solid var(--gm-color-rule);
 }
 
 .list > li > a {
@@ -25,10 +26,11 @@
 }
 
 .meta {
-  color: var(--gm-color-text-muted);
-  font-size: var(--gm-font-size-sm);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
 }
 
 .empty {
-  color: var(--gm-color-text-muted);
+  color: var(--gm-color-ink-2);
 }

@@ -1,55 +1,66 @@
+/* Squared, quiet and exact (DESIGN.md Buttons): a button looks like a
+   control, not a call to action. One primary per view (H-027). */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--gm-space-2);
+  gap: var(--gm-space-md);
   min-height: var(--gm-control-height);
   min-width: var(--gm-control-height);
   padding: 0 var(--gm-control-padding-x);
-  border: 1px solid var(--gm-color-border-strong);
+  border: 1px solid var(--gm-color-edge);
   border-radius: var(--gm-radius-md);
-  background: var(--gm-color-bg);
-  color: var(--gm-color-text);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink);
   font: inherit;
-  font-weight: var(--gm-font-weight-strong);
+  font-weight: var(--gm-font-weight-medium);
+  white-space: nowrap;
   cursor: pointer;
+  transition: background-color var(--gm-motion), border-color var(--gm-motion), color var(--gm-motion);
 }
 
 .button[data-hovered] {
-  background: var(--gm-color-surface-hover);
+  background: var(--gm-color-hover);
 }
 
 .button[data-pressed] {
-  background: var(--gm-color-border);
+  background: var(--gm-color-press);
 }
 
+/* The view's one main action: Graphite Ink, never a colour. */
 .button[data-variant="primary"] {
-  border-color: var(--gm-color-accent);
-  background: var(--gm-color-accent);
-  color: var(--gm-color-on-accent);
+  border-color: var(--gm-color-ink);
+  background: var(--gm-color-ink);
+  color: var(--gm-color-on-ink);
+  font-weight: var(--gm-font-weight-strong);
 }
 
 .button[data-variant="primary"][data-hovered],
 .button[data-variant="primary"][data-pressed] {
-  border-color: var(--gm-color-accent-hover);
-  background: var(--gm-color-accent-hover);
+  border-color: var(--gm-color-ink-2);
+  background: var(--gm-color-ink-2);
 }
 
+/* Destroys or discards: an Error Red label on the default chrome. */
 .button[data-variant="danger"] {
-  border-color: var(--gm-color-danger);
-  background: var(--gm-color-danger);
-  color: var(--gm-color-on-danger);
+  color: var(--gm-color-error);
 }
 
+/* Low emphasis: no border or fill until hovered. */
 .button[data-variant="quiet"] {
   border-color: transparent;
   background: transparent;
-  color: var(--gm-color-accent);
+}
+
+.button[data-variant="quiet"][data-hovered] {
+  background: var(--gm-color-hover);
 }
 
 .button[data-disabled] {
+  border-color: var(--gm-color-rule);
+  background: var(--gm-color-well);
+  color: var(--gm-color-ink-4);
   cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .button[data-focus-visible] {

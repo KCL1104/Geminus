@@ -1,13 +1,18 @@
-/* The app shell (T-045): header with the product name, main navigation and
-   the language choice; one main region. */
+/* The app shell (T-045, DESIGN.md Navigation): a 48 px app strip on the
+   Pale Shell (the product, the main navigation, the language and theme
+   choices), then one main region on the white sheet. Nothing else is in
+   the frame: no secondary panel until a view needs one (H-027). */
 .skip {
   position: absolute;
-  top: var(--gm-space-2);
-  left: var(--gm-space-2);
+  top: var(--gm-space-md);
+  left: max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
   z-index: 200;
-  padding: var(--gm-space-2) var(--gm-space-3);
+  padding: var(--gm-space-md) var(--gm-space-lg);
   border-radius: var(--gm-radius-md);
-  background: var(--gm-color-bg);
+  background: var(--gm-color-ink);
+  color: var(--gm-color-on-ink);
+  font-weight: var(--gm-font-weight-strong);
+  text-decoration: none;
   transform: translateY(-200%);
 }
 
@@ -19,56 +24,68 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--gm-space-2) var(--gm-space-5);
+  gap: var(--gm-space-md) var(--gm-space-gutter);
   min-height: 48px;
-  padding: var(--gm-space-2) var(--gm-space-4);
-  border-bottom: 1px solid var(--gm-color-border);
-  background: var(--gm-color-surface);
+  padding: var(--gm-space-xs) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-xs) max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--gm-color-rule);
+  background: var(--gm-color-ground);
 }
 
 .brand {
-  font-size: var(--gm-font-size-lg);
-  font-weight: var(--gm-font-weight-strong);
+  padding-inline-end: var(--gm-space-gutter);
+  border-inline-end: 1px solid var(--gm-color-rule);
+  font-size: var(--gm-font-size-headline);
+  font-weight: var(--gm-font-weight-brand);
+  line-height: var(--gm-line-height-headline);
+  letter-spacing: -0.01em;
 }
 
 .nav {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--gm-space-4);
+  gap: var(--gm-space-gutter);
 }
 
 .nav a {
   display: inline-flex;
   align-items: center;
   min-height: var(--gm-control-height);
-  font-weight: var(--gm-font-weight-strong);
+  font-weight: var(--gm-font-weight-medium);
   text-decoration: none;
 }
 
 .nav a:hover {
   text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 .tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--gm-space-2);
+  gap: var(--gm-space-md) var(--gm-space-gutter);
   margin-inline-start: auto;
 }
 
-.tools select {
-  min-height: var(--gm-control-height);
-  padding: 0 var(--gm-space-2);
-  border: 1px solid var(--gm-color-border-strong);
-  border-radius: var(--gm-radius-md);
-  background: var(--gm-color-bg);
-  color: var(--gm-color-text);
-  font: inherit;
-}
-
+/* Left-aligned with the strip's product name: one edge for the whole frame. */
 .main {
   max-width: var(--gm-content-width);
-  margin: 0 auto;
-  padding: var(--gm-space-5) var(--gm-space-4);
+  margin: 0;
+  padding: var(--gm-space-xl) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
   outline: none;
+}
+
+/* At or below 720 px the strip tightens: the small labels hide (ui/select.module.css). */
+@media (max-width: 720px) {
+  .header {
+    column-gap: var(--gm-space-lg);
+  }
+
+  .brand {
+    padding-inline-end: var(--gm-space-lg);
+  }
+
+  .tools {
+    column-gap: var(--gm-space-md);
+  }
 }

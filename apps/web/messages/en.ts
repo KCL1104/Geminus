@@ -11,6 +11,10 @@ export const en = {
   "locale.label": "Language",
   "locale.en": "English",
   "locale.zh-Hant": "繁體中文",
+  "theme.label": "Theme",
+  "theme.system": "System",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
 
   "home.title": "Geminus",
   "home.toProjects": "Go to projects",
@@ -31,13 +35,12 @@ export const en = {
   "projects.empty": "No projects yet.",
   "projects.created": "created {date}",
   "models.title": "Models",
-  "models.allProjects": "All projects",
   "models.empty": "No models in this project.",
   "models.version": "version {version}",
   "models.outOfDate": "(draft out of date)",
   "model.back": "Back to project",
   "model.summary": "Latest version {version}; domain {domain}.",
-  "model.notInBuild": "The 2D editor and 3D viewer are not part of this build (T-015, T-017).",
+  "model.notInBuild": "The 2D editor and 3D view are not part of this build.",
 
   "loading.projects": "Loading projects…",
   "loading.models": "Loading models…",
@@ -85,6 +88,7 @@ export const en = {
   "problem.guidance.precondition": "The request did not say which version it changes.",
   "problem.technical": "Technical details:",
   "problem.requestId": "Request ID:",
+  "problem.details": "Details",
   "problem.retryAfter": { one: "Try again in {count} second.", other: "Try again in {count} seconds." },
 
   "error.INVALID_REQUEST": "The request is not valid.",
@@ -143,7 +147,7 @@ export const en = {
   "table.selectRow": "Select",
 
   "gallery.title": "Component gallery",
-  "gallery.intro": "Every shared component in each of its states, for review and for the automated checks. It is not part of the product and is off unless the deployment turns it on.",
+  "gallery.intro": "Each shared component in its states, for review and the automated checks. Not part of the product; off unless the deployment turns it on.",
   "gallery.buttons": "Buttons",
   "gallery.button.primary": "Save",
   "gallery.button.secondary": "Cancel",

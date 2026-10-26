@@ -1,17 +1,21 @@
-/* Positioned, so React Aria's hidden inputs stay inside the scroll box. */
+/* A data grid (DESIGN.md Compare table): small 600 headers over a Control
+   Edge rule, rows divided by hairlines, the selected row in Selected Row
+   Tint. The hairline frame marks the grid's own scroll area.
+   Positioned, so React Aria's hidden inputs stay inside the scroll box. */
 .scroll {
   position: relative;
   max-width: 100%;
   overflow: auto;
-  margin: 0 0 var(--gm-space-4);
-  border: 1px solid var(--gm-color-border);
+  margin: 0 0 var(--gm-space-gutter);
+  border: 1px solid var(--gm-color-rule);
   border-radius: var(--gm-radius-md);
+  scrollbar-width: thin;
 }
 
 .pending {
-  border: 1px solid var(--gm-color-border);
+  border: 1px solid var(--gm-color-rule);
   border-radius: var(--gm-radius-md);
-  background: var(--gm-color-surface);
+  background: var(--gm-color-well);
 }
 
 .table {
@@ -25,16 +29,14 @@
   overflow: auto;
 }
 
-.header {
-  background: var(--gm-color-surface);
-}
-
 .column {
   height: var(--gm-row-height);
-  padding: 0 var(--gm-space-3);
-  border-bottom: 1px solid var(--gm-color-border-strong);
-  text-align: start;
+  padding: 0 var(--gm-space-cell);
+  border-bottom: 1px solid var(--gm-color-edge);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
   font-weight: var(--gm-font-weight-strong);
+  text-align: start;
   white-space: nowrap;
   outline: none;
 }
@@ -43,48 +45,48 @@
   cursor: pointer;
 }
 
+.column[data-hovered] {
+  color: var(--gm-color-ink);
+}
+
 .columnInner {
   display: inline-flex;
   align-items: center;
-  gap: var(--gm-space-1);
+  gap: var(--gm-space-xs);
 }
 
 .row {
   outline: none;
 }
 
-.row[data-hovered] {
-  background: var(--gm-color-surface);
-}
-
 .row[data-selected] {
-  background: var(--gm-color-selected);
+  background: var(--gm-color-selection-tint);
 }
 
 .cell {
   height: var(--gm-row-height);
-  padding: 0 var(--gm-space-3);
-  border-bottom: 1px solid var(--gm-color-border);
+  padding: 0 var(--gm-space-cell);
+  border-bottom: 1px solid var(--gm-color-rule);
   outline: none;
 }
 
 /* The grid itself takes focus when it has no rows. */
 .table[data-focus-visible] {
   outline: var(--gm-focus-ring);
-  outline-offset: -2px;
+  outline-offset: calc(-1 * var(--gm-focus-width));
 }
 
 .row[data-focus-visible],
 .cell[data-focus-visible],
 .column[data-focus-visible] {
   outline: var(--gm-focus-ring);
-  outline-offset: -2px;
+  outline-offset: calc(-1 * var(--gm-focus-width));
 }
 
 .selectCell {
   width: 40px;
-  padding: 0 var(--gm-space-2);
-  border-bottom: 1px solid var(--gm-color-border);
+  padding: 0 var(--gm-space-md);
+  border-bottom: 1px solid var(--gm-color-rule);
 }
 
 /* A virtualized table's cells have the column's width, whatever their
@@ -98,6 +100,6 @@
 
 .empty {
   margin: 0;
-  padding: var(--gm-space-4);
-  color: var(--gm-color-text-muted);
+  padding: var(--gm-space-gutter);
+  color: var(--gm-color-ink-2);
 }

@@ -37,16 +37,13 @@ export function ProblemView({ problem, headingLevel = 2 }: { problem: Problem; h
   const { t, gap } = useI18n();
   const advice = guidanceFor(problem);
   const shown = problem.kind !== "not_found";
+  const technical = Boolean(problem.message) && shown;
+  // What a person needs to act stays in view; what only support or a
+  // developer reads (the technical message, the request ID) is one click
+  // away (H-027).
   return (
     <Callout tone="danger" heading={t(`problem.heading.${problem.kind}`)} headingLevel={headingLevel} data-problem={problem.kind}>
       {advice && <p>{t(advice)}</p>}
-      {problem.message && shown && (
-        <p>
-          {t("problem.technical")}
-          {gap}
-          <span lang="en">{problem.message}</span>
-        </p>
-      )}
       {problem.details.length > 0 && shown && (
         <ul>
           {problem.details.map((d, i) => {
@@ -60,12 +57,24 @@ export function ProblemView({ problem, headingLevel = 2 }: { problem: Problem; h
         </ul>
       )}
       {problem.retryAfterSeconds !== null && <p>{t("problem.retryAfter", { count: problem.retryAfterSeconds })}</p>}
-      {problem.requestId && (
-        <p>
-          {t("problem.requestId")}
-          {gap}
-          <code>{problem.requestId}</code>
-        </p>
+      {(technical || problem.requestId) && (
+        <details>
+          <summary>{t("problem.details")}</summary>
+          {technical && (
+            <p>
+              {t("problem.technical")}
+              {gap}
+              <span lang="en">{problem.message}</span>
+            </p>
+          )}
+          {problem.requestId && (
+            <p>
+              {t("problem.requestId")}
+              {gap}
+              <code>{problem.requestId}</code>
+            </p>
+          )}
+        </details>
       )}
     </Callout>
   );

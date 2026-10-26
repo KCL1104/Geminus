@@ -1,53 +1,45 @@
+/* A note (DESIGN.md Notes): text in Graphite Ink in every tone; the tone is
+   the edge and the wash, never a side stripe. */
 .callout {
-  margin: 0 0 var(--gm-space-4);
-  padding: var(--gm-space-3) var(--gm-space-4);
-  border: 1px solid var(--gm-color-border);
-  border-left-width: 4px;
+  margin: 0 0 var(--gm-space-gutter);
+  padding: var(--gm-space-cell) var(--gm-space-lg);
+  border: 1px solid var(--gm-color-rule);
   border-radius: var(--gm-radius-md);
-  background: var(--gm-color-surface);
+  background: var(--gm-color-well);
+  color: var(--gm-color-ink);
 }
 
 .callout > :last-child {
   margin-bottom: 0;
 }
 
-.heading {
-  margin-bottom: var(--gm-space-2);
-  font-size: var(--gm-font-size-lg);
+.callout p,
+.callout ul {
+  margin-bottom: var(--gm-space-sm);
 }
 
-.callout[data-tone="info"] {
-  border-color: var(--gm-color-info);
-  background: var(--gm-color-info-bg);
+.heading {
+  margin-bottom: var(--gm-space-sm);
+  font-size: var(--gm-font-size-body);
+  line-height: var(--gm-line-height-body);
+}
+
+/* A passed check (green means scenario or passed, nothing else). */
+.callout[data-tone="success"] {
+  border-color: var(--gm-color-scenario);
+  background: var(--gm-color-scenario-wash);
 }
 
 .callout[data-tone="warning"] {
-  border-color: var(--gm-color-warning);
-  background: var(--gm-color-warning-bg);
+  border-color: var(--gm-color-warning-edge);
+  background: var(--gm-color-warning-wash);
 }
 
 .callout[data-tone="danger"] {
-  border-color: var(--gm-color-danger);
-  background: var(--gm-color-danger-bg);
-}
-
-.callout[data-tone="success"] {
-  border-color: var(--gm-color-success);
-  background: var(--gm-color-success-bg);
-}
-
-.callout[data-tone="info"] .heading {
-  color: var(--gm-color-info);
-}
-
-.callout[data-tone="warning"] .heading {
-  color: var(--gm-color-warning);
+  border-color: var(--gm-color-error-edge);
+  background: var(--gm-color-error-wash);
 }
 
 .callout[data-tone="danger"] .heading {
-  color: var(--gm-color-danger);
-}
-
-.callout[data-tone="success"] .heading {
-  color: var(--gm-color-success);
+  color: var(--gm-color-error);
 }

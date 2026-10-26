@@ -21,6 +21,7 @@ import { openDraft, reduceDraft } from "../lib/state/draft";
 import { zhHant } from "../messages/zh-Hant";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { press } from "./ui-harness";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const router = vi.hoisted(() => ({ refreshed: 0 }));
@@ -49,6 +50,17 @@ async function mount(node: ReactNode, locale: Locale = "zh-Hant"): Promise<HTMLE
 const settle = () => act(async () => { for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0)); });
 
 const problem = (p: Partial<Problem>): Problem => ({ ...networkProblem(""), ...p });
+
+/** The text of the elements an aria-labelledby names, in order. */
+const nameOf = (el: Element) => (el.getAttribute("aria-labelledby") ?? "").split(" ").map((id) => document.getElementById(id)?.textContent).join(" ");
+
+/** Opens a Select (the design system's, T-045) and chooses the option with this text. */
+async function choose(el: HTMLElement, text: string): Promise<void> {
+  await press(el.querySelector("button"));
+  await settle();
+  await press([...document.querySelectorAll("[role=option]")].find((o) => o.textContent === text));
+  await settle();
+}
 
 describe("zh-Hant", () => {
   it("renders the projects page and its states in Chinese", async () => {
@@ -142,18 +154,25 @@ describe("zh-Hant", () => {
     expect(wait.textContent).toContain("請在 30 秒後重試。");
   });
 
+  // The switcher is the design system's Select since the re-skin (T-045):
+  // the arrow keys open it and only a choice changes the language.
   it("remembers a new choice in the language cookie only", async () => {
     let refreshed = 0;
     const el = await mount(<LocaleSwitcher onChanged={() => refreshed++} />, "en");
-    const select = el.querySelector("select")!;
-    expect(select.value).toBe("en");
-    expect([...select.options].map((o) => [o.value, o.textContent])).toEqual([["en", "English"], ["zh-Hant", "繁體中文"]]);
-    expect(el.querySelector("label")?.textContent).toBe("Language");
-    await act(async () => {
-      select.value = "zh-Hant";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    const trigger = el.querySelector("button")!;
+    expect(nameOf(trigger)).toBe("English Language");
+    await press(trigger);
+    await settle();
+    const options = [...document.querySelectorAll("[role=option]")];
+    expect(options.map((o) => [o.textContent, o.querySelector("[lang]")?.getAttribute("lang")])).toEqual([["English", "en"], ["繁體中文", "zh-Hant"]]);
+    await press(options[1]);
+    await settle();
     expect(document.cookie).toContain("geminus_locale=zh-Hant");
+    expect(refreshed).toBe(1);
+    // Shown at once, before the server has rendered the page again.
+    expect(trigger.textContent).toBe("繁體中文");
+    // Choosing the language already shown changes nothing.
+    await choose(el, "繁體中文");
     expect(refreshed).toBe(1);
   });
 
@@ -168,14 +187,9 @@ describe("zh-Hant", () => {
 
   it("re-renders the server components after a choice in the app shell", async () => {
     const el = await mount(<LocaleMenu />, "zh-Hant");
-    const select = el.querySelector("select")!;
-    expect(select.value).toBe("zh-Hant");
-    expect(el.querySelector("label")?.textContent).toBe("語言");
+    expect(nameOf(el.querySelector("button")!)).toBe("繁體中文 語言");
     const before = router.refreshed;
-    await act(async () => {
-      select.value = "en";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await choose(el, "English");
     expect(document.cookie).toContain("geminus_locale=en");
     expect(router.refreshed).toBe(before + 1);
   });

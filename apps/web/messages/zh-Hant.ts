@@ -10,6 +10,10 @@ export const zhHant: Catalog = {
   "locale.label": "語言",
   "locale.en": "English",
   "locale.zh-Hant": "繁體中文",
+  "theme.label": "主題",
+  "theme.system": "跟隨系統",
+  "theme.light": "淺色",
+  "theme.dark": "深色",
 
   "home.title": "Geminus",
   "home.toProjects": "前往專案",
@@ -30,13 +34,12 @@ export const zhHant: Catalog = {
   "projects.empty": "目前還沒有專案。",
   "projects.created": "建立於 {date}",
   "models.title": "模型",
-  "models.allProjects": "所有專案",
   "models.empty": "這個專案沒有模型。",
   "models.version": "版本 {version}",
   "models.outOfDate": "（草稿已過時）",
   "model.back": "返回專案",
   "model.summary": "最新版本 {version}；領域 {domain}。",
-  "model.notInBuild": "目前的應用程式尚未提供 2D 編輯器與 3D 檢視器（T-015、T-017）。",
+  "model.notInBuild": "此版本不含 2D 編輯器與 3D 檢視。",
 
   "loading.projects": "正在載入專案…",
   "loading.models": "正在載入模型…",
@@ -78,6 +81,7 @@ export const zhHant: Catalog = {
   "problem.guidance.precondition": "請求沒有指明要修改的是哪個版本。",
   "problem.technical": "技術細節：",
   "problem.requestId": "請求 ID：",
+  "problem.details": "詳細資料",
   "problem.retryAfter": { other: "請在 {count} 秒後重試。" },
 
   "error.INVALID_REQUEST": "請求無效。",
@@ -136,7 +140,7 @@ export const zhHant: Catalog = {
   "table.selectRow": "選取",
 
   "gallery.title": "元件樣式集",
-  "gallery.intro": "每個共用元件在各種狀態下的樣子，供審閱與自動檢查使用。它不屬於產品功能，除非部署時開啟，否則不會出現。",
+  "gallery.intro": "每個共用元件在各狀態下的樣子，供審閱與自動檢查使用。不屬於產品；部署時未開啟就不會出現。",
   "gallery.buttons": "按鈕",
   "gallery.button.primary": "儲存",
   "gallery.button.secondary": "取消",

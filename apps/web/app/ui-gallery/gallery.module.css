@@ -1,17 +1,17 @@
 .intro {
-  max-width: 48rem;
-  color: var(--gm-color-text-muted);
+  max-width: 768px;
+  color: var(--gm-color-ink-2);
 }
 
 .section {
-  margin: 0 0 var(--gm-space-6);
-  padding: 0 0 var(--gm-space-5);
-  border-bottom: 1px solid var(--gm-color-border);
+  margin: 0 0 var(--gm-space-2xl);
+  padding: 0 0 var(--gm-space-xl);
+  border-bottom: 1px solid var(--gm-color-rule);
 }
 
 .row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--gm-space-3);
+  gap: var(--gm-space-lg);
 }

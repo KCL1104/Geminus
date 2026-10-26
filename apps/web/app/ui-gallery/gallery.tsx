@@ -2,6 +2,7 @@
 // Every shared component in each state (T-045, REQ-023): what the owner
 // reviews and what the browser checks (apps/web-e2e) run axe, keyboard and
 // screenshot checks on. The data is made up; the text is the catalog's.
+// Like any view it has one primary button (H-027): the one in "Buttons".
 import { type ReactNode, useMemo, useState } from "react";
 import type { SortDescriptor } from "react-aria-components";
 import type { Problem } from "../../lib/api/problem";
@@ -76,9 +77,7 @@ export function Gallery() {
           <Button>{t("gallery.button.secondary")}</Button>
           <Button variant="danger">{t("gallery.button.danger")}</Button>
           <Button variant="quiet">{t("gallery.button.quiet")}</Button>
-          <Button variant="primary" isDisabled>
-            {t("gallery.button.disabled")}
-          </Button>
+          <Button isDisabled>{t("gallery.button.disabled")}</Button>
         </div>
       </Section>
 
@@ -106,9 +105,7 @@ export function Gallery() {
       </Section>
 
       <Section title={t("gallery.status")}>
-        <Button variant="primary" onPress={() => setStatus(t("gallery.status.saved"))}>
-          {t("gallery.status.action")}
-        </Button>
+        <Button onPress={() => setStatus(t("gallery.status.saved"))}>{t("gallery.status.action")}</Button>
       </Section>
 
       <Section title={t("gallery.dialog")}>

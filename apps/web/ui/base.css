@@ -1,4 +1,4 @@
-/* Element defaults (T-045). Layered, so component CSS Modules win. */
+/* Element defaults (T-045, DESIGN.md). Layered, so component CSS Modules win. */
 @layer base {
   *,
   *::before,
@@ -9,15 +9,21 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    scrollbar-color: var(--gm-color-edge) transparent;
   }
 
+  /* One white sheet; the app strip lays the pale shell over it (ui/shell.module.css). */
   body {
     margin: 0;
-    background: var(--gm-color-bg);
-    color: var(--gm-color-text);
+    background: var(--gm-color-sheet);
+    color: var(--gm-color-ink);
+    caret-color: var(--gm-color-ink);
+    accent-color: var(--gm-color-ink);
     font-family: var(--gm-font-sans);
-    font-size: var(--gm-font-size-md);
-    line-height: var(--gm-line-height);
+    font-size: var(--gm-font-size-body);
+    font-weight: var(--gm-font-weight-regular);
+    line-height: var(--gm-line-height-body);
+    font-feature-settings: var(--gm-font-features);
   }
 
   body:lang(zh-Hant) {
@@ -25,44 +31,75 @@
     line-height: 1.6;
   }
 
+  ::selection {
+    background: var(--gm-color-text-selection);
+    color: var(--gm-color-ink);
+  }
+
+  /* Headings: weight, not size, carries most of the hierarchy (the Five Sizes Rule). */
   h1,
   h2,
   h3 {
-    margin: 0 0 var(--gm-space-3);
-    line-height: var(--gm-line-height-tight);
+    margin: 0 0 var(--gm-space-lg);
     font-weight: var(--gm-font-weight-strong);
   }
 
   h1 {
-    font-size: var(--gm-font-size-2xl);
+    font-size: var(--gm-font-size-headline);
+    line-height: var(--gm-line-height-headline);
   }
 
   h2 {
-    font-size: var(--gm-font-size-xl);
+    font-size: var(--gm-font-size-title);
+    line-height: var(--gm-line-height-title);
   }
 
   h3 {
-    font-size: var(--gm-font-size-lg);
+    font-size: var(--gm-font-size-body);
+    line-height: var(--gm-line-height-body);
   }
 
-  p {
-    margin: 0 0 var(--gm-space-3);
+  p,
+  ul {
+    margin: 0 0 var(--gm-space-lg);
   }
 
+  /* Links are Graphite Ink with a 1 px underline 3 px below; 2 px on hover. */
   a {
-    color: var(--gm-color-accent);
-    text-underline-offset: 2px;
+    color: var(--gm-color-ink);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
   }
 
   a:hover {
-    color: var(--gm-color-accent-hover);
+    text-decoration-thickness: 2px;
   }
 
+  /* One family: identifiers and paths are Archivo too, never monospace. */
   code,
   kbd,
   samp {
-    font-family: var(--gm-font-mono);
-    font-size: 0.95em;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  /* A disclosure: what is not needed for the current step, one click away (H-027). */
+  summary {
+    width: fit-content;
+    color: var(--gm-color-ink-2);
+    cursor: pointer;
+  }
+
+  details[open] > summary {
+    margin-bottom: var(--gm-space-sm);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
   }
 
   /* One focus style for everything; React Aria sets data-focus-visible on its own elements. */

@@ -1,27 +1,62 @@
 .select {
   display: inline-flex;
   align-items: center;
-  gap: var(--gm-space-2);
+  gap: var(--gm-space-md);
 }
 
 .label {
   font-weight: var(--gm-font-weight-strong);
 }
 
+/* In the app strip: a small Label Graphite label, like the provenance labels. */
+.strip {
+  position: relative;
+  gap: var(--gm-space-sm);
+}
+
+.strip .label {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-regular);
+}
+
+/* A phone has no room for it: hidden from sight, still the control's name. */
+@media (max-width: 720px) {
+  .strip .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .trigger {
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--gm-space-2);
+  gap: var(--gm-space-sm);
   min-height: var(--gm-control-height);
-  min-width: 8rem;
-  padding: 0 var(--gm-space-2) 0 var(--gm-control-padding-x);
-  border: 1px solid var(--gm-color-border-strong);
+  padding: 0 var(--gm-space-md) 0 var(--gm-control-padding-x);
+  border: 1px solid var(--gm-color-edge);
   border-radius: var(--gm-radius-md);
-  background: var(--gm-color-bg);
-  color: var(--gm-color-text);
-  font: inherit;
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink);
   cursor: pointer;
+  transition: background-color var(--gm-motion);
+}
+
+.trigger svg {
+  color: var(--gm-color-ink-2);
+}
+
+.trigger[data-hovered] {
+  background: var(--gm-color-hover);
+}
+
+.trigger[data-pressed] {
+  background: var(--gm-color-press);
 }
 
 .trigger[data-focus-visible] {
@@ -30,21 +65,21 @@
 }
 
 .value[data-placeholder] {
-  color: var(--gm-color-text-muted);
+  color: var(--gm-color-ink-2);
 }
 
 .popover {
   min-width: var(--trigger-width);
-  border: 1px solid var(--gm-color-border-strong);
+  border: 1px solid var(--gm-color-rule);
   border-radius: var(--gm-radius-md);
-  background: var(--gm-color-bg);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+  background: var(--gm-color-raised);
+  box-shadow: var(--gm-shadow-overlay);
 }
 
 .listbox {
-  max-height: 20rem;
+  max-height: 320px;
   overflow: auto;
-  padding: var(--gm-space-1);
+  padding: var(--gm-space-xs);
   outline: none;
 }
 
@@ -52,21 +87,22 @@
   display: flex;
   align-items: center;
   min-height: var(--gm-control-height);
-  padding: 0 var(--gm-space-3);
+  padding: 0 var(--gm-space-cell);
   border-radius: var(--gm-radius-sm);
   cursor: pointer;
 }
 
 .option[data-focused] {
-  background: var(--gm-color-surface-hover);
+  background: var(--gm-color-hover);
 }
 
+/* The chosen option: Selected Row Tint and weight, never a stripe. */
 .option[data-selected] {
-  background: var(--gm-color-selected);
+  background: var(--gm-color-selection-tint);
   font-weight: var(--gm-font-weight-strong);
 }
 
 .option[data-focus-visible] {
   outline: var(--gm-focus-ring);
-  outline-offset: -2px;
+  outline-offset: calc(-1 * var(--gm-focus-width));
 }
