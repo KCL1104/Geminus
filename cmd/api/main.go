@@ -85,15 +85,12 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
-	opts := []api.Option{api.WithAI(aiAvailability(ai)), api.WithPhotoAI(photoAvailability(ai))}
 	store, err := objectStore(cfg)
 	if err != nil {
 		log.Error("invalid configuration", "error", "the object storage cannot be used: "+err.Error())
 		return exitConfig
 	}
-	if store != nil {
-		opts = append(opts, api.WithObjects(store))
-	}
+	opts := handlerOptions(ai, store)
 	poolCfg, err := poolConfig(cfg.DatabaseURL)
 	if err != nil {
 		log.Error("invalid configuration", "error", "DATABASE_URL is not a valid PostgreSQL connection string")
@@ -151,6 +148,18 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 	}
 	log.Info("stopped")
 	return 0
+}
+
+// handlerOptions are the served handler's options from the configuration:
+// whether it accepts proposals in words and photos (each path decided on
+// its own: T-053 I5, the T-056 follow-up) and the object storage, when one
+// is configured.
+func handlerOptions(ai config.APIAI, store objects.Store) []api.Option {
+	opts := []api.Option{api.WithAI(aiAvailability(ai)), api.WithPhotoAI(photoAvailability(ai))}
+	if store != nil {
+		opts = append(opts, api.WithObjects(store))
+	}
+	return opts
 }
 
 // aiAvailability is whether new AI proposals are accepted (T-025): with the
