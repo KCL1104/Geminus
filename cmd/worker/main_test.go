@@ -54,9 +54,10 @@ func fixed(hs map[jobs.Type]handler.Handler) builder {
 	return func(deps) (map[jobs.Type]handler.Handler, error) { return hs, nil }
 }
 
-// T-035: the worker's log is observability's (D-093, D-094): JSON lines,
-// each with the component, through the privacy filter.
-func TestTheWorkersLogIsFiltered(t *testing.T) {
+// T-035 (D-093 (a)): every line run writes is a JSON line with the
+// component, and the filter keeps a registered field (ai_provider). Before
+// T-035 this held too; TestTheWorkersLoggerIsFiltered is the filter's test.
+func TestTheWorkersLinesAreJSON(t *testing.T) {
 	var stderr bytes.Buffer
 	if code := run(context.Background(), with("WORKER_ID", "worker-0"), &stderr, fixed(nil)); code != exitNotImplemented {
 		t.Fatalf("exit = %d: %s", code, stderr.String())
@@ -69,6 +70,22 @@ func TestTheWorkersLogIsFiltered(t *testing.T) {
 		if line["ai_provider"] == observability.Redacted {
 			t.Errorf("a registered field was redacted: %s", l)
 		}
+	}
+}
+
+// T-035 (D-094): the worker's logger filters what a line carries: an
+// unregistered key, a credential, a URL's password and a quoted value.
+func TestTheWorkersLoggerIsFiltered(t *testing.T) {
+	var b bytes.Buffer
+	newLogger(&b).Error("recording the failure failed", "error", `connect postgres://twin_worker:pw-SENTINEL@db/twin: cell "CASE-SENTINEL"`,
+		"payload", `{"prompt":"SENTINEL"}`, "worker_id", "sk-ant-api03-SENTINELsentinel0123456789")
+	var line map[string]any
+	if err := json.Unmarshal(b.Bytes(), &line); err != nil || line["component"] != "worker" || line["payload"] != observability.Redacted ||
+		line["worker_id"] != observability.Redacted {
+		t.Errorf("%v %s", err, b.String())
+	}
+	if strings.Contains(b.String(), "SENTINEL") {
+		t.Errorf("the log holds what it must not: %s", b.String())
 	}
 }
 

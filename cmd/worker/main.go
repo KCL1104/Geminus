@@ -197,9 +197,7 @@ func objectStore(cfg config.Config) (objects.Store, error) {
 
 // run runs the loop with the handlers build makes until ctx ends.
 func run(ctx context.Context, getenv func(string) string, stderr io.Writer, build builder) int {
-	// JSON lines through the privacy filter; a job's lines carry its
-	// correlation (T-035, D-093, D-094).
-	log := observability.NewLogger(stderr, "worker")
+	log := newLogger(stderr)
 	cfg, err := config.Load(getenv)
 	wcfg, werr := config.LoadWorker(getenv)
 	// Load checked the AI configuration with the rest; this is its whole
@@ -293,6 +291,11 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 	log.Info("stopped")
 	return 0
 }
+
+// newLogger is the worker's log (T-035, D-093, D-094): JSON lines on
+// stderr, every attribute through the privacy filter, every line of a job
+// with its correlation.
+func newLogger(stderr io.Writer) *slog.Logger { return observability.NewLogger(stderr, "worker") }
 
 // poolConfig is the worker's connection pool: every connection released to
 // it is checked for leftover tenant scope (tenant.Guard).
