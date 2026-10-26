@@ -1,0 +1,13 @@
+=== RUN   TestSanitizeKeepsOnlyThePixels
+--- PASS: TestSanitizeKeepsOnlyThePixels (0.01s)
+=== RUN   TestFormatIsReadFromTheBytes
+--- PASS: TestFormatIsReadFromTheBytes (0.00s)
+=== RUN   TestSanitizeRefuses
+--- PASS: TestSanitizeRefuses (0.01s)
+=== RUN   TestRead
+--- PASS: TestRead (0.04s)
+=== RUN   TestVerify
+--- PASS: TestVerify (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	0.073s
+exit 0

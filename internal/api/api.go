@@ -41,8 +41,9 @@ type options struct {
 
 // WithObjects gives the API private object storage (D-044): dataset
 // snapshots for runs, the runs' trace artifacts, uploaded import files and
-// their error reports. Without it a run that needs either, and every
-// upload, fails closed with 503.
+// their error reports, and the photos proposals are asked for with
+// (T-056). Without it a run that needs either, every
+// upload and every photo fail closed with 503.
 func WithObjects(s objects.Store) Option { return func(o *options) { o.objects = s } }
 
 // WithRunLimits sets the execution limits new runs freeze (D-007's when
@@ -103,7 +104,7 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	models.Register(mux, log, v, db, &models.Service{DB: db, Packs: served})
 	runs.Register(mux, log, v, db, &runs.Service{DB: db, Packs: served, Objects: o.objects, Limits: o.limits}, o.stream)
 	upload.Register(mux, log, v, db, &upload.Service{DB: db, Objects: o.objects, MaxBytes: o.maxUpload}, o.upload)
-	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai})
+	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai, Objects: o.objects})
 	// A person's decision (T-026): it calls no provider, so it does not
 	// depend on whether AI is available; it reads dataset snapshots again
 	// from the object storage given.

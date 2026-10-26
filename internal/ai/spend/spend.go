@@ -59,6 +59,20 @@ func PriceOf(model string) (Price, bool) {
 	return p, ok
 }
 
+// imagePrices is every image model this build can price per image read
+// (T-056): a segmenter is billed per image, not by tokens. None is listed
+// yet: a segmenter's price comes with its adapter (T-055), from the
+// provider's pricing page and the date it was read, as a reviewed change
+// to this table. A model without a price cannot be reserved for, so a
+// billable segmenter cannot be called live until then.
+var imagePrices = map[string]NanoUSD{}
+
+// ImagePriceOf is model's price per image, if this build has one.
+func ImagePriceOf(model string) (NanoUSD, bool) {
+	p, ok := imagePrices[model]
+	return p, ok && p > 0
+}
+
 // Tokens are the tokens a call was billed for (the provider's usage).
 type Tokens struct {
 	Input      int64 // uncached input tokens

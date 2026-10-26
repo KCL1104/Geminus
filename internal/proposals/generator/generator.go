@@ -63,8 +63,13 @@ type PackLookup interface {
 // Config is the handler's setup.
 type Config struct {
 	// Provider is the checked provider client (provider.Client) of the
-	// deployment's mode: disabled, fake or an approved live adapter.
+	// deployment's mode: disabled, fake or an approved live adapter. A
+	// photo proposal (T-056) asks it as a provider.ImageProposer.
 	Provider provider.LLMProvider
+	// Segmenter finds the boxes in a photo proposal's image (T-056; a
+	// vision.Client of the deployment's mode); nil fails every photo
+	// proposal with AI_PROVIDER_NOT_CONFIGURED.
+	Segmenter Segmenter
 	// Budget bounds the context the handler builds; it is the client's.
 	Budget provider.Budget
 	Packs  PackLookup
@@ -159,6 +164,8 @@ var providerMessages = map[provider.Code]string{
 	// T-053: refused before any provider call.
 	provider.CodeQuotaExceeded:    "a live AI spend limit was reached; no provider call was made",
 	provider.CodeSpendUnavailable: "the live AI spend ledger could not reserve for the call; no provider call was made",
+	// T-056: refused before any call.
+	provider.CodeImageUnsupported: "the configured AI provider does not take images; no provider call was made",
 }
 
 // providerFailure is the job failure of a provider error.
@@ -209,14 +216,20 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	}); err != nil {
 		return err
 	}
-	// failed ends an attempt that asked the provider and generated nothing:
-	// what the call cost is audited all the same (best effort; the worker
-	// records the failure either way).
-	failed := func(err error, meta *provider.Metadata) error {
+	// failed ends an attempt that asked the provider (or, for a photo,
+	// the segmenter) and generated nothing: what the calls cost is audited
+	// all the same (best effort; the worker records the failure either
+	// way).
+	failed := func(err error, gen generation) error {
 		var f *jobs.Failure
-		if errors.As(err, &f) && ctx.Err() == nil && meta != nil {
+		asked := gen.meta != nil || (gen.photo != nil && gen.photo.segmenter != nil)
+		if errors.As(err, &f) && ctx.Err() == nil && asked {
+			var call provider.Metadata
+			if gen.meta != nil {
+				call = *gen.meta
+			}
 			if aerr := hr.Checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
-				m := auditMeta(*meta)
+				m := photoAuditMeta(call, gen.photo)
 				m["code"], m["retryable"] = f.Code, f.Retryable
 				return audit(ctx, tx, "proposal.attempt_failed", m)
 			}); aerr != nil {
@@ -225,9 +238,16 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		return err
 	}
-	gen, err := h.generate(ctx, org, st, provider.Attribution{TargetType: "ai_proposal", TargetID: p.ProposalID, RequestID: p.RequestID})
+	attr := provider.Attribution{TargetType: "ai_proposal", TargetID: p.ProposalID, RequestID: p.RequestID}
+	var gen generation
+	var err error
+	if st.proposal.Image != nil {
+		gen, err = h.generatePhoto(ctx, org, st, attr) // T-056: asked for with a photo
+	} else {
+		gen, err = h.generate(ctx, org, st, attr)
+	}
 	if err != nil {
-		return failed(err, gen.meta)
+		return failed(err, gen)
 	}
 	outcome, meta := gen.outcome, gen.meta
 	var call provider.Metadata
@@ -246,10 +266,15 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		if err != nil {
 			return err
 		}
+		// T-056: a photo proposal's metadata names its image and the
+		// segmenter's call too.
+		if g.ProviderMetadata, err = photoMetadata(g.ProviderMetadata, gen); err != nil {
+			return err
+		}
 		if err := store.Generate(ctx, tx, org, p.ProposalID, g); err != nil {
 			return finishFailure(err)
 		}
-		m := auditMeta(call)
+		m := photoAuditMeta(call, gen.photo)
 		m["status"] = string(outcome.Status)
 		if outcome.Validation != nil {
 			m["issues"] = len(outcome.Validation.Issues)
@@ -261,7 +286,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		return audit(ctx, tx, "proposal.generate", m)
 	})
 	if err != nil {
-		return failed(err, meta)
+		return failed(err, gen)
 	}
 	return nil
 }
@@ -302,6 +327,9 @@ type generation struct {
 	// or not, as a version published from a draft does (TWIN_IR_SPEC §5.2,
 	// D-062 (g)).
 	manifest []model.DatasetBinding
+	// photo is a photo proposal's image and segmenter call (T-056); nil
+	// for a proposal asked for in words.
+	photo *photoCall
 }
 
 // generate builds the context, reads and verifies the base's dataset

@@ -1,0 +1,4 @@
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.131s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	8.746s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.028s
+exit 0

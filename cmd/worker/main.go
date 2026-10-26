@@ -36,6 +36,8 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/anthropic"
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
+	"github.com/kcl1104/geminus/internal/ai/vision"
+	visionfake "github.com/kcl1104/geminus/internal/ai/vision/fake"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/import/validator"
@@ -129,7 +131,11 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	proposals, err := generator.New(generator.Config{Provider: client, Budget: budget, Packs: served, Objects: d.objects,
+	seg, err := segmenter(d.ai)
+	if err != nil {
+		return nil, err
+	}
+	proposals, err := generator.New(generator.Config{Provider: client, Segmenter: seg, Budget: budget, Packs: served, Objects: d.objects,
 		Actor: d.worker.ID, Log: d.log})
 	if err != nil {
 		return nil, err
@@ -202,6 +208,27 @@ func aiClient(ai config.AI, spendRun aispend.Runner, actor string) (*provider.Cl
 		return nil, provider.Budget{}, err
 	}
 	return client, budget, nil
+}
+
+// segmenter is the photo pipeline's checked segmentation client of the
+// configured mode (T-056): the deterministic fake for development and
+// tests (it finds nothing it has no script for, so a photo asks for
+// input); otherwise disabled, answering policy_not_approved for a live
+// provider whose switch is off and provider_not_configured for the rest.
+// This build has no live segmenter: SAM 3.1's adapter arrives with T-055,
+// metered by the spend ledger as the live provider client is, so with
+// live AI on a photo proposal fails with AI_PROVIDER_NOT_CONFIGURED.
+func segmenter(ai config.AI) (*vision.Client, error) {
+	var s vision.Segmenter
+	switch {
+	case ai.Provider == config.AIProviderFake:
+		s = visionfake.New()
+	case ai.Provider == config.AIProviderAnthropic && !ai.LiveEnabled():
+		s = vision.Disabled{Code: provider.CodePolicyNotApproved}
+	default:
+		s = vision.Disabled{Code: provider.CodeNotConfigured}
+	}
+	return vision.New(s, vision.DefaultBudget())
 }
 
 // objectStore opens the configured object storage (D-044): nil when it is

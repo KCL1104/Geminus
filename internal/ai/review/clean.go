@@ -82,8 +82,10 @@ var sentences = map[string][]string{
 	patch.TestFailed:                    {"a test operation does not match the base model"},
 	IDPoolViolation: {poolReasons[idpool.NotInPool], poolReasons[idpool.WrongKind], poolReasons[idpool.UsedInBase],
 		poolReasons[idpool.Missing], poolReasons[idpool.NoCalendarIDs]},
-	OutputInvalid: {sentNotAProposal, sentConfirmation, sentChanges, sentConfidence, sentRiskClaim, sentNoQuestions,
-		sentQuestions, sentInputNoChanges, sentStatus, sentEmpty, sentNUL, sentNoOp, sentEffectNumber},
+	// T-056: and the photo pipeline's, for the segmenter's boxes and the
+	// photo rules (photo.go).
+	OutputInvalid: append([]string{sentNotAProposal, sentConfirmation, sentChanges, sentConfidence, sentRiskClaim, sentNoQuestions,
+		sentQuestions, sentInputNoChanges, sentStatus, sentEmpty, sentNUL, sentNoOp, sentEffectNumber}, photoSentences...),
 	// The line-flow codes (ADR-026, T-046 phase 2). Their rules land in
 	// T-047–T-051; the primitive gate's messages are fixed and quote
 	// nothing, so they are kept (D-063, proposed).

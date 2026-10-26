@@ -27,6 +27,8 @@ var Routes = []Route{
 	{"POST", "/v1/models/{id}/ai-proposals", "createProposal", writeRoles},
 	{"GET", "/v1/models/{id}/ai-proposals", "listProposals", readRoles},
 	{"GET", "/v1/ai-proposals/{id}", "getProposal", readRoles},
+	// T-056: an edit proposal asked for with a photo (image_http.go).
+	{"POST", "/v1/models/{id}/ai-proposals/image", "createImageProposal", writeRoles},
 }
 
 // Register adds the proposal routes to mux.
@@ -41,6 +43,8 @@ func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpa
 			f = h.list
 		case "getProposal":
 			f = h.get
+		case "createImageProposal":
+			f = h.createImage
 		}
 		mux.Handle(r.Method+" "+r.Path, httpapi.Handler(log, httpapi.Scoped(v, users, f)))
 	}
@@ -75,6 +79,9 @@ func details(issues []model.ValidationIssue) []httpapi.Detail {
 // Refused maps the service's errors to what the client sees (openapi error
 // codes); tenant and transport errors pass to httpapi.
 func Refused(err error) error {
+	if he := refusedImage(err); he != nil {
+		return he
+	}
 	var re *RequestError
 	var ue *UnavailableError
 	switch {

@@ -92,6 +92,16 @@ type ModelMetricsProvider interface {
 	ComputeModelMetrics(ir *model.ModelIR, result *simulation.Result) map[string]simulation.MetricSummary
 }
 
+// PhotoVocabulary is implemented by a pack whose lines can be read from a
+// photo or floor plan (T-056, H-033): the short text prompts a segmenter
+// looks for, the pack's machines, conveyors and workstations in its own
+// words, in a fixed order (a box names its prompt by index). Static pack
+// data, never a tenant's; a pack without it takes no photo proposals. It
+// is a separate interface so DomainPack keeps the report's method set.
+type PhotoVocabulary interface {
+	PhotoPrompts() []string
+}
+
 // NodeDefinition is one palette entry: a domain kind built on a generic node type.
 type NodeDefinition struct {
 	Kind        string         // stable catalog key, e.g. "code_review"

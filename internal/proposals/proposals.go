@@ -37,6 +37,7 @@ import (
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	models "github.com/kcl1104/geminus/internal/storage/models"
+	"github.com/kcl1104/geminus/internal/storage/objects"
 	store "github.com/kcl1104/geminus/internal/storage/proposals"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -100,6 +101,10 @@ type Service struct {
 	AI Availability
 	// Policy is the queue's (jobs.DefaultPolicy when zero).
 	Policy jobs.Policy
+	// Objects stores the photos proposals are asked for with (T-056,
+	// D-044); nil when object storage is disabled, so a photo is refused
+	// (503) and a proposal in words is not affected.
+	Objects objects.Store
 }
 
 // The roles each operation requires (x-required-roles, planning/api-operations.json).
@@ -192,7 +197,7 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
 			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID,
 			Metadata: map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode,
-				"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs)}}); err != nil {
+				"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs), "source": "intent"}}); err != nil {
 			return err
 		}
 		data, err := json.Marshal(Accepted{ProposalID: p.ID, Status: string(store.Generating)})
@@ -229,27 +234,22 @@ func (s *Service) prepare(ctx context.Context, tx tenant.Tx, m tenant.Membership
 	// The model's row first, as every write about its versions takes it
 	// (ADR-022): a publish cannot slip in between the latest check and
 	// the commit.
-	mdl, err := models.LockModel(ctx, tx, m.OrganizationID, modelID)
-	if errors.Is(err, models.ErrNotFound) {
-		return store.Proposal{}, ErrNotFound
-	}
+	mdl, v, err := checkBase(ctx, tx, m.OrganizationID, modelID, req.BaseVersionID, true)
 	if err != nil {
 		return store.Proposal{}, err
 	}
-	v, err := models.GetVersion(ctx, tx, m.OrganizationID, req.BaseVersionID)
-	if errors.Is(err, models.ErrNotFound) {
-		return store.Proposal{}, ErrNotFound
+	var selected []string
+	if req.Context != nil {
+		selected = req.Context.SelectedEntityIDs
 	}
-	if err != nil {
-		return store.Proposal{}, err
-	}
-	if v.ModelID != mdl.ID {
-		return store.Proposal{}, &RequestError{Issues: []model.ValidationIssue{model.NewIssue(validate.ConstraintFailed, "/base_version_id",
-			"the version is not a version of this model", model.SeverityError)}}
-	}
-	if mdl.LatestVersionID != v.ID {
-		return store.Proposal{}, ErrStaleBase
-	}
+	return s.bind(m, mdl, v, store.Proposal{ID: ids.New("aip"), Mode: req.Mode, Intent: req.Intent, OutputLocale: string(loc),
+		SelectedEntityIDs: selected})
+}
+
+// bind binds what the server decides into p, a proposal on version v of
+// mdl, both checked in the caller's transaction: its organization, model,
+// base, creator and ID pool (D-046).
+func (s *Service) bind(m tenant.Membership, mdl models.Model, v models.Version, p store.Proposal) (store.Proposal, error) {
 	var ir model.ModelIR
 	if err := model.Decode(v.IR, &ir); err != nil {
 		return store.Proposal{}, fmt.Errorf("proposals: the stored version %s does not decode: %w", v.ID, err)
@@ -262,13 +262,8 @@ func (s *Service) prepare(ctx context.Context, tx tenant.Tx, m tenant.Membership
 	if err != nil {
 		return store.Proposal{}, err
 	}
-	var selected []string
-	if req.Context != nil {
-		selected = req.Context.SelectedEntityIDs
-	}
-	return store.Proposal{ID: ids.New("aip"), OrganizationID: m.OrganizationID, ModelID: mdl.ID, BaseVersionID: v.ID,
-		Mode: req.Mode, Intent: req.Intent, OutputLocale: string(loc), SelectedEntityIDs: selected, IDPool: poolJSON,
-		CreatedBy: m.UserID}, nil
+	p.OrganizationID, p.ModelID, p.BaseVersionID, p.IDPool, p.CreatedBy = m.OrganizationID, mdl.ID, v.ID, poolJSON, m.UserID
+	return p, nil
 }
 
 // Get returns proposal id.

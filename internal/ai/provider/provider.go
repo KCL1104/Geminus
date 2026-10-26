@@ -144,6 +144,10 @@ type Request struct {
 	// Reservation is the spend reservation a metered client made for the
 	// call (T-053); a billable backend refuses a request without one.
 	Reservation string
+	// Image is the image the prompt's IMAGE block names, sent with the
+	// user message (T-056); nil for a text request. Only an ImageBackend
+	// is given one, and a billable one bounds it in its Quote.
+	Image *Image
 }
 
 // Response is a Backend's answer: untrusted text and accounting.
@@ -246,8 +250,9 @@ func invalidRequest() *Error { return NewError(CodeInvalidRequest, 0, "") }
 
 // call runs one checked request and returns the schema-valid answer. A
 // metered client also reserves before the call and settles after it
-// (meter.go).
-func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, out any) (jsontext.Value, Metadata, error) {
+// (meter.go). image, when set, goes with the prompt that names it
+// (image.go, T-056).
+func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, image *Image, out any) (jsontext.Value, Metadata, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, Metadata{}, NewError(CodeCancelled, 0, "").WithCause(err)
 	}
@@ -256,6 +261,17 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	}
 	if role == "" || !organizationID.MatchString(org) || p.OrganizationID != org || p.Role != role || p.Verify() != nil {
 		return nil, Metadata{}, invalidRequest()
+	}
+	if image != nil {
+		// Never a dropped image: a backend that does not send images is
+		// never given one (T-056), and the image is the one the sealed
+		// prompt names.
+		if _, ok := c.backend.(ImageBackend); !ok {
+			return nil, Metadata{}, NewError(CodeImageUnsupported, 0, "")
+		}
+		if image.Check() != nil || !p.names(*image) {
+			return nil, Metadata{}, invalidRequest()
+		}
 	}
 	if c.meter != nil && !attr.complete() {
 		return nil, Metadata{}, invalidRequest()
@@ -271,7 +287,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	meta := Metadata{Provider: c.backend.Name(), Role: role, TemplateVersion: p.TemplateVersion, OutputSchema: role.OutputSchema(),
 		Locale: string(p.Locale), InputHash: p.InputHash, Context: p.Disclosure}
 	req := Request{Prompt: p, OutputSchema: role.OutputSchema(),
-		MaxOutputTokens: c.budget.MaxOutputTokens, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries}
+		MaxOutputTokens: c.budget.MaxOutputTokens, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries, Image: image}
 	var m *metering
 	if c.meter != nil {
 		var err error
@@ -337,7 +353,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 // GenerateModelProposal asks for an edit or scenario proposal.
 func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) (ProposalResult, error) {
 	var out ProposalOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, &out)
+	raw, meta, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, nil, &out)
 	if err != nil {
 		return ProposalResult{Metadata: meta}, err
 	}
@@ -347,7 +363,7 @@ func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) 
 // ProposeImportMapping asks for column mapping suggestions.
 func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (MappingResult, error) {
 	var out MappingOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, &out)
+	raw, meta, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, &out)
 	if err != nil {
 		return MappingResult{Metadata: meta}, err
 	}
@@ -357,7 +373,7 @@ func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (M
 // AnalyzeSimulation asks for an analysis of supplied results.
 func (c *Client) AnalyzeSimulation(ctx context.Context, in AnalysisContext) (AnalysisResult, error) {
 	var out AnalysisOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, &out)
+	raw, meta, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, &out)
 	if err != nil {
 		return AnalysisResult{Metadata: meta}, err
 	}

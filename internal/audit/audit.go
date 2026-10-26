@@ -140,6 +140,15 @@ var (
 		// charged to.
 		"cost_nano_usd": {shape: count}, "spend_reservation_id": idOf("asr"), "spend_unsettled": {shape: flag},
 	}
+	// photoCall is what the generator records of a photo proposal's image
+	// and segmenter call (T-056): the stored image's hash, the segmenter's
+	// labels, the number of boxes it found, its latency and cost; never
+	// the image, a box or a label.
+	photoCall = map[string]field{
+		"image_content_hash": {shape: hash}, "segmenter": {shape: label}, "segmenter_model": {shape: label},
+		"segmenter_boxes": {shape: count}, "segmenter_latency_ms": {shape: count}, "segmenter_cost_nano_usd": {shape: count},
+		"segmenter_spend_reservation_id": idOf("asr"),
+	}
 	aiRoles = oneOf("modeler", "scenario", "analyst", "importer")
 	// spendTargets are what a live AI call is for (provider.Attribution).
 	spendTargets = []string{"ai_proposal", "ai_analysis", "import"}
@@ -175,7 +184,10 @@ var catalogue = map[string]spec{
 		"columns_left_out": {shape: count}, "metadata_columns": {shape: count}, "confirmed_low_confidence": {shape: count},
 		"validations_cancelled": {shape: count}}},
 	"proposal.create": {User, []string{"ai_proposal"}, map[string]field{"model_id": idOf("mdl"), "base_version_id": idOf("mv"), "mode": modes,
-		"output_locale": locales, "selected_entities": {shape: count}}},
+		"output_locale": locales, "selected_entities": {shape: count},
+		// T-056: asked for in words or with a photo, by the stored image's
+		// hash and size.
+		"source": oneOf("intent", "image"), "image_content_hash": {shape: hash}, "image_size_bytes": {shape: count}}},
 	"proposal.conflict": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
 		"latest_version_id": idOf("mv")}},
 	"proposal.approve": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
@@ -196,10 +208,10 @@ var catalogue = map[string]spec{
 	"import.validate": {Worker, []string{"import"}, map[string]field{"attempt": {shape: count}, "mapping_revision": {shape: count},
 		"outcome": oneOf("stale", "FAILED", "VALIDATED", "AWAITING_MAPPING"), "code": {shape: code}, "rows": {shape: count},
 		"dataset_size_bytes": {shape: count}, "invalid_rows": {shape: count}, "issues": {shape: count}}},
-	"proposal.generate": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
+	"proposal.generate": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, photoCall, map[string]field{"attempt": {shape: count},
 		"status": oneOf("ready", "needs_input", "invalid"), "issues": {shape: count}, "patch_hash": {shape: hash},
 		"server_risk_level": risks, "provider_risk_claim": oneOf("low", "medium", "high", ""), "risk_level": risks})},
-	"proposal.attempt_failed": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
+	"proposal.attempt_failed": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, photoCall, map[string]field{"attempt": {shape: count},
 		"code": {shape: code}, "retryable": {shape: flag}})},
 	"simulation.complete":  {Worker, []string{"simulation"}, map[string]field{"attempt": {shape: count}, "result_digest": {shape: hash}, "events": {shape: count}}},
 	"simulation.cancelled": {Worker, []string{"simulation"}, map[string]field{"attempt": {shape: count}}},
