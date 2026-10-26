@@ -1,4 +1,4 @@
-package anthropic
+package structured
 
 import (
 	"bytes"
