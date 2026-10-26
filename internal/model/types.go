@@ -13,6 +13,7 @@ package model
 
 import (
 	"encoding/json/jsontext"
+	"strconv"
 	"strings"
 )
 
@@ -90,23 +91,36 @@ type Breakdowns struct {
 	TimeToRepair  TimedDistribution `json:"time_to_repair"`
 }
 
-// ResourceDistribution is one distribution of a resource and the member
-// path holding it, relative to the resource ("breakdowns/time_to_failure";
-// the distribution itself is under it at "distribution").
+// ResourceDistribution is one distribution of a resource: the member
+// holding it ("breakdowns/time_to_failure", "setups/default",
+// "setups/transitions/<k>") and the JSON Pointer of the distribution
+// itself, relative to the resource (Path: "breakdowns/time_to_failure/
+// distribution", "setups/default", "setups/transitions/<k>/distribution").
 type ResourceDistribution struct {
 	Member       string
+	Path         string
 	Distribution *Distribution
 }
 
-// Distributions returns r's breakdown distributions, time to failure then
-// time to repair; the pointers alias r. The changeover distributions of
-// setups (D-055) are T-050's to add, with their rules.
+// Distributions returns r's distributions: its breakdowns' time to failure
+// then time to repair (D-051), then its changeovers' default and each
+// transition's in document order (D-055, T-050); the pointers alias r.
 func (r *Resource) Distributions() []ResourceDistribution {
-	if r.Breakdowns == nil {
-		return nil
+	var out []ResourceDistribution
+	if b := r.Breakdowns; b != nil {
+		out = append(out, ResourceDistribution{"breakdowns/time_to_failure", "breakdowns/time_to_failure/distribution", &b.TimeToFailure.Distribution},
+			ResourceDistribution{"breakdowns/time_to_repair", "breakdowns/time_to_repair/distribution", &b.TimeToRepair.Distribution})
 	}
-	return []ResourceDistribution{{"breakdowns/time_to_failure", &r.Breakdowns.TimeToFailure.Distribution},
-		{"breakdowns/time_to_repair", &r.Breakdowns.TimeToRepair.Distribution}}
+	if s := r.Setups; s != nil {
+		if s.Default != nil {
+			out = append(out, ResourceDistribution{"setups/default", "setups/default", s.Default})
+		}
+		for k := range s.Transitions {
+			member := "setups/transitions/" + strconv.Itoa(k)
+			out = append(out, ResourceDistribution{member, member + "/distribution", &s.Transitions[k].Distribution})
+		}
+	}
+	return out
 }
 
 // Setups are a resource's sequence-dependent changeovers between entity

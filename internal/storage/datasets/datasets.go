@@ -182,7 +182,7 @@ func shape(ir *model.ModelIR, manifest []model.DatasetBinding) ([]model.Validati
 		for _, d := range ir.Resources[i].Distributions() {
 			if d.Distribution.Type == model.DistEmpirical && !bound[d.Distribution.SamplesRef] {
 				out = append(out, issue(validate.DatasetBindingInvalid,
-					validate.Pointer("ir", "resources", strconv.Itoa(i))+"/"+d.Member+"/distribution/samples_ref",
+					validate.Pointer("ir", "resources", strconv.Itoa(i))+"/"+d.Path+"/samples_ref",
 					d.Distribution.SamplesRef+" has no dataset binding"))
 			}
 		}

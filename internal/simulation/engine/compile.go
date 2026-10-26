@@ -266,7 +266,7 @@ func distributions(ir *model.ModelIR) []located {
 	}
 	for i := range ir.Resources {
 		for _, d := range ir.Resources[i].Distributions() {
-			out = append(out, located{d.Distribution, validate.Pointer("model", "resources", strconv.Itoa(i)) + "/" + d.Member + "/distribution"})
+			out = append(out, located{d.Distribution, validate.Pointer("model", "resources", strconv.Itoa(i)) + "/" + d.Path})
 		}
 	}
 	return out

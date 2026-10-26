@@ -164,7 +164,7 @@ func limits(ir *model.ModelIR, _ *graph) issues {
 	// D-029 covers every distribution parameter, a resource's too (T-048).
 	for i := range ir.Resources {
 		for _, d := range ir.Resources[i].Distributions() {
-			durations(d.Distribution, Pointer("resources", idx(i))+"/"+d.Member+"/distribution")
+			durations(d.Distribution, Pointer("resources", idx(i))+"/"+d.Path)
 		}
 	}
 	return out
@@ -260,6 +260,8 @@ func refs(ir *model.ModelIR, g *graph) issues {
 			out.add(UnknownReference, Pointer("resources", idx(i), "calendar_id"), fmt.Sprintf("no calendar %q", r.CalendarID))
 		}
 	}
+	// D-055 (T-050): the entity types a resource's setups name.
+	setupRefs(ir, entity, &out)
 	for i, m := range ir.Metrics {
 		base := Pointer("metrics", idx(i))
 		if m.SinkID != "" {
@@ -555,7 +557,7 @@ func components(n int, adj func(int) []int) [][]int {
 	return out
 }
 
-func distributions(ir *model.ModelIR, _ *graph) issues {
+func distributions(ir *model.ModelIR, g *graph) issues {
 	var out issues
 	capacity := map[string]int{}
 	for _, r := range ir.Resources {
@@ -563,7 +565,7 @@ func distributions(ir *model.ModelIR, _ *graph) issues {
 	}
 	for i := range ir.Resources {
 		for _, d := range ir.Resources[i].Distributions() {
-			path := Pointer("resources", idx(i)) + "/" + d.Member + "/distribution"
+			path := Pointer("resources", idx(i)) + "/" + d.Path
 			// D-051: like an interarrival time (D-033), a time to failure
 			// that can be 0 ticks would fail a unit again in the tick it is
 			// repaired.
@@ -593,9 +595,12 @@ func distributions(ir *model.ModelIR, _ *graph) issues {
 			}
 		}
 	}
-	// The shapes of calendars (D-052) and release schedules (D-053), T-049.
+	// The shapes of calendars (D-052) and release schedules (D-053), T-049;
+	// batch processes (D-054) and changeovers (D-055), T-050.
 	calendarShapes(ir, &out)
 	releaseSchedules(ir, &out)
+	batchRules(ir, g, &out)
+	setupRules(ir, &out)
 	return out
 }
 
