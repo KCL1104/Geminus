@@ -601,3 +601,7 @@ Log：`red-anthropic.log`、`red-aievals.log`、`red-generator.log`、`red-aiapp
 - **API 可能拒絕官方頁面沒有列出的其他東西**（這次的空 schema 就沒有列在頁面上）：guard 比官方更嚴，但只能檢查已知的限制；live 或 count_tokens 是唯一的確認。
 - **Error type 的清單可能增加**：新的 type 在更新清單之前記為 `other`（仍有 HTTP status）。
 - **被改寫的 object 的 member 依名稱排序**：值不變，hash 以 JCS 計算，不受影響。
+
+### Coordinator 的執行（schema 修正，f930f50）
+
+Coordinator 把 `t053-schema` 的三個 commit（3784d95、6c0e38d、20bb758）cherry-pick 到 9cf8e9a 之後（成為 51dbdb2、b188c51、f930f50），沒有衝突以外的修改。在整合後的 tree 上（`checks/evidence/2026-10-26-T-053-schema/coordinator/`）：`make spec-check`、`make backend-test GOFLAGS=-count=1`、`make architecture-check`、`make ai-eval`、govulncheck v1.9.0、`go test -race -count=1` 於 `internal/ai/...`、`internal/aievals/...`、`internal/proposals/...`、`cmd/ai-eval-live/...`，以及全新 `dt_test_t053sc` 上的 `make integration-test`，全部 exit 0。Mutation（23 個）由修正者執行，coordinator 沒有重跑。下一步：在有 key 的 session 先以不收費的 `count_tokens` 確認新的投影被接受，再重跑 live smoke（上一次被拒、花費 0）與 eval。

@@ -1,0 +1,7 @@
+spec-check exit 0
+backend-test exit 0
+architecture-check exit 0
+ai-eval exit 0
+govulncheck exit 0
+race-ai exit 0
+integration exit 0
