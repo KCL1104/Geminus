@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 90,
-    "proposed": 0,
+    "proposed": 6,
     "rejected": 0,
     "superseded": 0
   },
@@ -42,10 +42,22 @@
   },
   "ready_tasks": [
     "T-030",
-    "T-050",
-    "T-053"
+    "T-050"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-053",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-110",
+        "D-111",
+        "D-112",
+        "D-113",
+        "D-114",
+        "D-115"
+      ]
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -795,6 +807,48 @@
       "gates_tasks": [
         "T-035",
         "T-039"
+      ]
+    },
+    "D-110": {
+      "status": "proposed",
+      "gate": "T-053 驗收前",
+      "gates_tasks": [
+        "T-053"
+      ]
+    },
+    "D-111": {
+      "status": "proposed",
+      "gate": "T-053 驗收前",
+      "gates_tasks": [
+        "T-053"
+      ]
+    },
+    "D-112": {
+      "status": "proposed",
+      "gate": "T-053 驗收前；T-027、T-030 開啟 live 前",
+      "gates_tasks": [
+        "T-053"
+      ]
+    },
+    "D-113": {
+      "status": "proposed",
+      "gate": "任何 live AI 呼叫前；T-053 驗收前",
+      "gates_tasks": [
+        "T-053"
+      ]
+    },
+    "D-114": {
+      "status": "proposed",
+      "gate": "T-053 驗收前；T-038 前",
+      "gates_tasks": [
+        "T-053"
+      ]
+    },
+    "D-115": {
+      "status": "proposed",
+      "gate": "T-053 驗收前",
+      "gates_tasks": [
+        "T-053"
       ]
     }
   },

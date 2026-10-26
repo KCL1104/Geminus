@@ -3459,7 +3459,13 @@
         "REQ-020"
       ],
       "decision_gates": [
-        "D-018"
+        "D-018",
+        "D-110",
+        "D-111",
+        "D-112",
+        "D-113",
+        "D-114",
+        "D-115"
       ],
       "scope": [
         "程式內的 token 上限：每個 organization 每日上限與兩個 provider organization 合計的每月上限（H-018：開發期每月 100 美元），超過即拒絕並回 typed error；計數持久化、跨 process 一致、計入 audit，不記 prompt 或回應內容。",

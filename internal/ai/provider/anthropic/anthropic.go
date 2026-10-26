@@ -4,12 +4,21 @@
 // docs/THIRD_PARTY_NOTICES.md, ADR-027).
 //
 // It is built only from an approved live configuration: New requires a
-// valid aiapproval.Approval, which only a recorded approval yields
-// (internal/config/aiapproval; the composition root copies Approval, Model
-// and the credentials from internal/config's AI into Config), and this
-// build records none before the owner approves model, token quota and data
-// policy (H-017). It has been exercised against a local test server only;
-// no request has been sent to the real API.
+// valid aiapproval.Approval, which only a complete recorded approval
+// yields (internal/config/aiapproval; the composition root copies
+// Approval, Model and the credentials from internal/config's AI into
+// Config), for the approval's own model and credentials. This build
+// records H-018, which waits for the owner's confirmation of both provider
+// organizations' data retention arrangement (T-053, D-113), so no valid
+// Approval exists yet. It has been exercised against a local test server
+// only; no request has been sent to the real API.
+//
+// T-053: the backend costs money, so it is provider.Billable: only a
+// metered client (provider.NewMetered) calls it, it refuses a request
+// without a spend reservation and a prompt role the approval's data policy
+// does not name, before any I/O, it quotes each request's input bound, and
+// it counts the attempts that ended without an answer (the provider may
+// have billed them).
 //
 // D-018, as implemented:
 //   - Keys are handed in explicitly. The SDK's environment defaults are not
