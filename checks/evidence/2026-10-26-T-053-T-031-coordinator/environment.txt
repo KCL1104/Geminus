@@ -1,0 +1,6 @@
+HEAD d9b7f22cb102c5e2dc1e442bbc4cd3f7951cb0d5
+uncommitted besides evidence: 0
+v22.22.0
+go version go1.27.3 linux/amd64
+2026-10-26T16:08:06Z
+ports free: 16:27:33

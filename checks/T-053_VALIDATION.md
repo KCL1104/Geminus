@@ -767,3 +767,30 @@ Mutant 只在 scratch 中的 `git archive` 複本執行，tree 中沒有執行�
 - **govulncheck**：沒有新增或改變任何 dependency。
 - **Round 1 harness 的 21 個 DB mutant**：DB 的程式沒有改。
 - **Coordinator 送出的 count_tokens request 的 bytes 與 model**：本輪無法查證；只能確認本 tree 的投影與 schema follow-up 記錄的投影相同。
+
+### Coordinator 驗證（schema follow-up 的 review 第 1 輪修正，2026-10-26）
+
+`t053-m1` 的六個 commit（b861277..e55143a）cherry-pick 到 f276494 之後（6f4abfb..027a0b1），與 T-031 切片一起驗證；只有生成的 `checks/docs-check.json` 衝突（重產）。修正者把「不是一份 strict JSON 的回答」也在 `Decode` 拒絕（原本由 client 以同樣的嚴格度拒絕，結果同為 `invalid_output`），coordinator 接受：只更嚴格，沒有放寬。count_tokens 那一列的 model：當時沒有記錄，不補推測的值（見上表的更正）。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-053-T-031-coordinator/`，`exit-codes.txt` 依執行順序；HEAD f272ffc；Node 22.22.0，go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 2 | 只有 `scripts/check-architecture` 在 Go 預設的 10 分鐘逾時（`TestRunExitCodes` 執行中；共用的 4 CPU，load 15–20）；其餘 package 都 ok。這個 package 平常要 461–575 s（T-039、T-051／T-032 的 log），本次兩個切片都沒有改它 |
+| `go test -count=1 -timeout 30m ./scripts/check-architecture/...`（重跑） | 0（197 s，load 3.6） | `check-architecture-rerun.log` |
+| `make architecture-check` | 0 | |
+| `make ai-eval` | 0 | fake provider |
+| `go test -race -count=1`（ai、aievals、proposals、cmd/ai-eval-live） | 0 | |
+| `go test -fuzz FuzzDecode -fuzztime 60s`（anthropic） | 0 | 277,761 次，沒有失敗 |
+| `make integration-test`（新的 dt_test_hk531c，跑完刪除） | 0 | |
+| `npm ci`（web、web-e2e） | 0／0 | |
+| `make frontend-test` | 0 | 970／970 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（等 3100／3101 空出後單獨執行） | 0 | 490 passed、32 skipped（全部是只在 CI 比對的截圖） |
+
+NOT RUN：任何 live 呼叫；截圖比對（只在 CI）；完整的 `make backend-race`；Node 24。
+
+依 review 第 1 輪（REVIEW.md 的結論）：M1 修正並由 coordinator 驗證後，live smoke 與 eval 可依 H-025 重跑，不需要再一輪審查；照 round-2 的前提（一次一個 run、每次 commit 紀錄、先 smoke、eval 上限為 10 減 smoke 已 commit 的金額、之後 grep `sk-ant-`、任何花費警告即停）在有 key 的新 session 執行，第一步先做不收費的 `count_tokens` 並記錄 model。
+

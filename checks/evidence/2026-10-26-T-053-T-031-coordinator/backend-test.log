@@ -1,0 +1,218 @@
+go vet ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
+GEMINUS_FULL_DIFFERENTIAL=1 go test ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
+?   	github.com/kcl1104/geminus/cmd/ai-eval-live	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/api	2.072s
+ok  	github.com/kcl1104/geminus/cmd/migrate	0.038s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.010s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.345s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.749s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	2.841s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	0.030s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.023s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.230s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	12.498s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.089s
+ok  	github.com/kcl1104/geminus/internal/ai/review	1.431s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	0.009s
+ok  	github.com/kcl1104/geminus/internal/aievals	0.356s
+ok  	github.com/kcl1104/geminus/internal/api	0.310s
+ok  	github.com/kcl1104/geminus/internal/audit	0.159s
+ok  	github.com/kcl1104/geminus/internal/auth	12.857s
+?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/comparisons	0.033s
+ok  	github.com/kcl1104/geminus/internal/config	0.010s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.655s
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.270s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	4.718s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	6.693s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.314s
+ok  	github.com/kcl1104/geminus/internal/httpapi	0.237s
+ok  	github.com/kcl1104/geminus/internal/ids	0.029s
+ok  	github.com/kcl1104/geminus/internal/import/mapping	0.075s
+ok  	github.com/kcl1104/geminus/internal/import/profile	6.391s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/report	0.012s
+ok  	github.com/kcl1104/geminus/internal/import/upload	0.119s
+ok  	github.com/kcl1104/geminus/internal/import/validation	0.091s
+ok  	github.com/kcl1104/geminus/internal/import/validator	0.226s
+ok  	github.com/kcl1104/geminus/internal/model	0.552s
+ok  	github.com/kcl1104/geminus/internal/model/calendar	20.011s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.491s
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.401s
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.747s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	0.215s
+ok  	github.com/kcl1104/geminus/internal/models	0.140s
+ok  	github.com/kcl1104/geminus/internal/observability	0.232s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry	0.017s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry/export	0.184s
+ok  	github.com/kcl1104/geminus/internal/packs	0.052s
+ok  	github.com/kcl1104/geminus/internal/project	0.030s
+ok  	github.com/kcl1104/geminus/internal/proposals	0.277s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.557s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.482s
+ok  	github.com/kcl1104/geminus/internal/results/compare	12.334s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.530s
+ok  	github.com/kcl1104/geminus/internal/runs	0.064s
+ok  	github.com/kcl1104/geminus/internal/runs/runner	0.042s
+ok  	github.com/kcl1104/geminus/internal/scenarios	0.360s
+ok  	github.com/kcl1104/geminus/internal/secret	0.007s
+ok  	github.com/kcl1104/geminus/internal/simulation	0.250s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	24.499s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	589.521s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.171s
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	0.035s
+ok  	github.com/kcl1104/geminus/internal/storage/auditlog	0.023s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	1.048s
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/imports	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	0.122s
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	0.026s
+ok  	github.com/kcl1104/geminus/internal/storage/migrations	0.059s
+ok  	github.com/kcl1104/geminus/internal/storage/models	0.013s
+ok  	github.com/kcl1104/geminus/internal/storage/objects	0.532s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	0.016s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	0.037s
+ok  	github.com/kcl1104/geminus/internal/storage/proposals	0.017s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.007s
+?   	github.com/kcl1104/geminus/internal/storage/runs	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/scenarios	0.004s
+?   	github.com/kcl1104/geminus/internal/storage/snapshots	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant	0.013s
+?   	github.com/kcl1104/geminus/internal/tenant/internal/scope	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant/me	0.115s
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	0.029s
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	0.081s
+ok  	github.com/kcl1104/geminus/internal/worker	0.011s
+?   	github.com/kcl1104/geminus/internal/worker/handler	[no test files]
+?   	github.com/kcl1104/geminus/schemas	[no test files]
+panic: test timed out after 10m0s
+	running tests:
+		TestRunExitCodes (3s)
+
+goroutine 1924 [running]:
+testing.(*M).startAlarm.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2961 +0x34a
+created by time.goFunc
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/time/sleep.go:182 +0x2d
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0x227ca586a008, {0x618d92?, 0x227ca5853aa0?}, 0x8437e0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2268 +0x4f2
+testing.runTests.func1(0x227ca586a008)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2744 +0x37
+testing.tRunner(0x227ca586a008, 0x227ca5853bc8)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0xea
+testing.runTests({0x61db90, 0x1a}, {0x628a86, 0x35}, 0x227ca58220a8, {0x8662b0, 0x12, 0x12}, {0xc2affd40ddb5f56d, 0x8bb2cf0a0a, ...})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2742 +0x510
+testing.(*M).Run(0x227ca580c280)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2602 +0x6af
+main.main()
+	_testmain.go:80 +0x9b
+
+goroutine 1855 [syscall]:
+syscall.Syscall6(0xf7, 0x3, 0xe, 0x227ca5bdea40, 0x4, 0x227ca57423f0, 0x0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/syscall/syscall_linux.go:96 +0x39
+internal/syscall/unix.Waitid(0x227ca5bdea6e?, 0x227ca5bdeb98?, 0x54404b?, 0x18?, 0x828aa0?)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/internal/syscall/unix/waitid_linux.go:18 +0x39
+os.(*Process).pidfdWait.func1(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/pidfd_linux.go:108
+os.ignoringEINTR(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file_posix.go:263
+os.(*Process).pidfdWait(0x227ca58050c0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/pidfd_linux.go:107 +0x1cf
+os.(*Process).wait(0x48aac9?)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec_unix.go:25 +0x1a
+os.(*Process).Wait(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec.go:347
+os/exec.(*Cmd).Wait(0x227ca584c820)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:944 +0x45
+os/exec.(*Cmd).Run(0x227ca584c820)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:643 +0x2d
+os/exec.(*Cmd).Output(0x227ca584c820)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:1040 +0xca
+github.com/kcl1104/geminus/scripts/check-architecture.goList({0x227ca56bc580, 0x12}, {{0x616faf, 0x5}, {0x616fb5, 0x5}, {0x62e940, 0x1}}, {0x227ca572a280, 0x7, ...})
+	/home/user/Geminus/scripts/check-architecture/check.go:286 +0x2ba
+github.com/kcl1104/geminus/scripts/check-architecture.load({0x227ca56bc580, 0x12}, {0x227ca5bdf608, 0x1, 0x2}, {0x227ca5836708, 0x10, 0x7a?}, {0x85e110, 0x1, ...})
+	/home/user/Geminus/scripts/check-architecture/check.go:112 +0x6f7
+github.com/kcl1104/geminus/scripts/check-architecture.run({0x227ca5804dc0, 0x4, 0x4}, {0x841038, 0x227ca5728060}, {0x841038, 0x227ca5728090})
+	/home/user/Geminus/scripts/check-architecture/main.go:51 +0x305
+github.com/kcl1104/geminus/scripts/check-architecture.TestRunExitCodes(0x227ca5a14008)
+	/home/user/Geminus/scripts/check-architecture/check_test.go:861 +0x905
+testing.tRunner(0x227ca5a14008, 0x8437e0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2260 +0x4d4
+
+goroutine 1923 [IO wait]:
+internal/poll.runtime_pollWait(0x7f0c4ce15a00, 0x72)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/runtime/netpoll.go:351 +0x85
+internal/poll.(*pollDesc).wait(0x227ca58009c0?, 0x227ca5c42200?, 0x1)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/internal/poll/fd_poll_runtime.go:84 +0x27
+internal/poll.(*pollDesc).waitRead(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x227ca58009c0, {0x227ca5c42200, 0x200, 0x200})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/internal/poll/fd_unix.go:170 +0x2a8
+os.(*File).read(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file_posix.go:30
+os.(*File).Read(0x227ca56a2260, {0x227ca5c42200?, 0x639320?, 0x0?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file.go:144 +0x4f
+bytes.(*Buffer).ReadFrom(0x227ca5eba540, {0x840f18, 0x227ca56a2260})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/bytes/buffer.go:229 +0x98
+io.copyBuffer({0x841038, 0x227ca5eba540}, {0x840f18, 0x227ca56a2260}, {0x0, 0x0, 0x0})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/io/io.go:415 +0x151
+io.Copy(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/io/io.go:388
+os.genericWriteTo(0x227ca56a2260?, {0x841038?, 0x227ca5eba540?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file.go:295 +0x35
+os.(*File).WriteTo(0x227ca56a2260, {0x841038, 0x227ca5eba540})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file.go:273 +0x9c
+io.copyBuffer({0x841038, 0x227ca5eba540}, {0x840f98, 0x227ca56a2260}, {0x0, 0x0, 0x0})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/io/io.go:411 +0x9d
+io.Copy(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:613 +0x34
+os/exec.(*Cmd).Start.func2(0x227ca57982a0?)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:768 +0x2c
+created by os/exec.(*Cmd).Start in goroutine 1855
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:767 +0x92b
+
+goroutine 1922 [IO wait]:
+internal/poll.runtime_pollWait(0x7f0c06281c00, 0x72)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/runtime/netpoll.go:351 +0x85
+internal/poll.(*pollDesc).wait(0x227ca5800900?, 0x227ca5c42000?, 0x1)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/internal/poll/fd_poll_runtime.go:84 +0x27
+internal/poll.(*pollDesc).waitRead(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0x227ca5800900, {0x227ca5c42000, 0x200, 0x200})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/internal/poll/fd_unix.go:170 +0x2a8
+os.(*File).read(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file_posix.go:30
+os.(*File).Read(0x227ca56a2248, {0x227ca5c42000?, 0x7f100000004?, 0x0?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file.go:144 +0x4f
+bytes.(*Buffer).ReadFrom(0x227ca5eba570, {0x840f18, 0x227ca56a2248})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/bytes/buffer.go:229 +0x98
+io.copyBuffer({0x841038, 0x227ca5eba570}, {0x840f18, 0x227ca56a2248}, {0x0, 0x0, 0x0})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/io/io.go:415 +0x151
+io.Copy(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/io/io.go:388
+os.genericWriteTo(0x227ca56a2248?, {0x841038?, 0x227ca5eba570?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file.go:295 +0x35
+os.(*File).WriteTo(0x227ca56a2248, {0x841038, 0x227ca5eba570})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/file.go:273 +0x9c
+io.copyBuffer({0x841038, 0x227ca5eba570}, {0x840f98, 0x227ca56a2248}, {0x0, 0x0, 0x0})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/io/io.go:411 +0x9d
+io.Copy(...)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:613 +0x34
+os/exec.(*Cmd).Start.func2(0x843798?)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:768 +0x2c
+created by os/exec.(*Cmd).Start in goroutine 1855
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/os/exec/exec.go:767 +0x92b
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	600.031s
+ok  	github.com/kcl1104/geminus/prompts	0.019s
+FAIL
+make: *** [Makefile:44: backend-test] Error 1

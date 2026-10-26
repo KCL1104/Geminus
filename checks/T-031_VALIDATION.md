@@ -222,3 +222,42 @@ API 本身足夠，沒有改 contract。觀察到、影響畫面但不在本切�
 - `changes.ts` 對沒有字可說的路徑以路徑與 JSON 顯示（例如 `domain_attributes`、`metadata`）；新增的 schema 欄位需要補字。
 - AI 的散文語言依建立時的 `output_locale`，介面語言之後改變時，AI 的文字仍是原來的語言；Proposal 沒有回傳 `output_locale`，所以畫面無法標 `lang`。
 - 輪詢間隔固定 1.5 秒；長時間開著 generating 的頁面會一直讀。
+
+## Coordinator 驗證（2026-10-26）
+
+`t031-hk` 的三個 commit（81d56d4、0a27426、84a6143）cherry-pick 到 T-053 的修正之後（fb19e95、e7d9d2c、f272ffc）；衝突：`apps/web/app/_components/states.tsx` 的 `Loadable`（合併 T-043 的 `account` 與本切片的 `proposal`；catalog 兩邊的 key 都在）與生成的 `checks/docs-check.json`（重產）。提案頁用 T-043 後續的 `RequireSession` 與 `useAuth`，已登入的 app 會給它組織與角色。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-053-T-031-coordinator/`，`exit-codes.txt` 依執行順序；HEAD f272ffc；Node 22.22.0，go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 2 | 只有 `scripts/check-architecture` 在 Go 預設的 10 分鐘逾時（`TestRunExitCodes` 執行中；共用的 4 CPU，load 15–20）；其餘 package 都 ok。這個 package 平常要 461–575 s（T-039、T-051／T-032 的 log），本次兩個切片都沒有改它 |
+| `go test -count=1 -timeout 30m ./scripts/check-architecture/...`（重跑） | 0（197 s，load 3.6） | `check-architecture-rerun.log` |
+| `make architecture-check` | 0 | |
+| `make ai-eval` | 0 | fake provider |
+| `go test -race -count=1`（ai、aievals、proposals、cmd/ai-eval-live） | 0 | |
+| `go test -fuzz FuzzDecode -fuzztime 60s`（anthropic） | 0 | 277,761 次，沒有失敗 |
+| `make integration-test`（新的 dt_test_hk531c，跑完刪除） | 0 | |
+| `npm ci`（web、web-e2e） | 0／0 | |
+| `make frontend-test` | 0 | 970／970 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（等 3100／3101 空出後單獨執行） | 0 | 490 passed、32 skipped（全部是只在 CI 比對的截圖） |
+
+NOT RUN：任何 live 呼叫；截圖比對（只在 CI）；完整的 `make backend-race`；Node 24。
+
+Coordinator 對本切片問題的處理：
+1. 狀態維持 `not_started`，切片紀錄在 completion_evidence（與 T-015、T-032、T-051 一致）。
+2. 審閱是獨立頁面、提問表單在編輯器上方：接受（與 T-032 結果頁的做法一致，符合簡潔原則）。
+3. 過時的 proposal 隱藏 Approve 並寫出原因：接受（符合「沒有原因就不停用」）。
+4. 以一個 Select 選 edit／scenario，而不是兩個送出鈕：接受（控制項較少）。
+5. 審閱頁顯示使用者的原始請求需要 contract 與 Go 的改動：比賽後。
+6. T-056 的 proposal 不帶 2D 位置（AI 編輯的 allowlist 沒有 `views`），新步驟由編輯器的 layered 版面排列：不需要新的決定（已寫入 T-056 的 H-033 一行）。
+7. 請求欄位加一句「內容會送到 AI，只放 synthetic 資料」（H-018）：在 T-057 加入。
+8. 伺服器的風險理由：API 只給等級，比賽後。
+9. 新頁面的截圖 baseline：T-057。
+H-033 之後 provider 為 Meta（Muse Spark，T-055），Claude 為備援；UI 不依 provider 而變。
+
+下一步：一輪獨立審查（H-029）。
+
