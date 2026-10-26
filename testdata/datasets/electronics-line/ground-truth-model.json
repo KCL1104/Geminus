@@ -1,0 +1,1425 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00E1ECTR0N1CS00000",
+  "domain": "electronics_line",
+  "name": "Synthetic electronics assembly and test line (ground truth)",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "board_a",
+      "name": "Board family A"
+    },
+    {
+      "id": "board_b",
+      "name": "Board family B"
+    }
+  ],
+  "resources": [
+    {
+      "id": "smt_line",
+      "type": "machine",
+      "role": "smt_line",
+      "name": "SMT line",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 600
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 10,
+            "mode": 20,
+            "max": 90
+          }
+        }
+      },
+      "setups": {
+        "initial": "board_a",
+        "transitions": [
+          {
+            "from": "board_a",
+            "to": "board_b",
+            "distribution": {
+              "type": "triangular",
+              "min": 15,
+              "mode": 25,
+              "max": 45
+            }
+          },
+          {
+            "from": "board_b",
+            "to": "board_a",
+            "distribution": {
+              "type": "triangular",
+              "min": 15,
+              "mode": 25,
+              "max": 45
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "aoi_machine",
+      "type": "machine",
+      "role": "aoi",
+      "name": "AOI machine",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 1200
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 5,
+            "mode": 10,
+            "max": 30
+          }
+        }
+      }
+    },
+    {
+      "id": "ict_tester",
+      "type": "machine",
+      "role": "ict_tester",
+      "name": "ICT testers",
+      "capacity": 2,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 900
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 10,
+            "mode": 20,
+            "max": 60
+          }
+        }
+      }
+    },
+    {
+      "id": "fct_tester",
+      "type": "machine",
+      "role": "fct_tester",
+      "name": "FCT testers",
+      "capacity": 3,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 900
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 10,
+            "mode": 30,
+            "max": 90
+          }
+        }
+      }
+    },
+    {
+      "id": "burn_in_chamber",
+      "type": "machine",
+      "role": "burn_in_chamber",
+      "name": "Burn-in chambers",
+      "capacity": 6,
+      "queue_discipline": "fifo",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 10080
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 60,
+            "mode": 120,
+            "max": 480
+          }
+        }
+      }
+    },
+    {
+      "id": "debug_operator",
+      "type": "human",
+      "role": "debug_operator",
+      "name": "Debug and repair operators",
+      "capacity": 4,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "shift_capacity": {
+        "early": 4,
+        "late": 4
+      }
+    },
+    {
+      "id": "pack_station",
+      "type": "human",
+      "role": "pack_station",
+      "name": "Packing stations",
+      "capacity": 2,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "shift_capacity": {
+        "early": 2,
+        "late": 2
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "release_a",
+      "type": "source",
+      "name": "Release: board family A",
+      "entity_type": "board_a",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 360,
+              "quantity": 360
+            },
+            {
+              "at": 1800,
+              "quantity": 360
+            },
+            {
+              "at": 3240,
+              "quantity": 360
+            },
+            {
+              "at": 4680,
+              "quantity": 360
+            },
+            {
+              "at": 6120,
+              "quantity": 360
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "release_b",
+      "type": "source",
+      "name": "Release: board family B",
+      "entity_type": "board_b",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 840,
+              "quantity": 360
+            },
+            {
+              "at": 2280,
+              "quantity": 360
+            },
+            {
+              "at": 3720,
+              "quantity": 360
+            },
+            {
+              "at": 5160,
+              "quantity": 360
+            },
+            {
+              "at": 6600,
+              "quantity": 360
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "q_smt",
+      "type": "queue",
+      "name": "Buffer before SMT"
+    },
+    {
+      "id": "smt",
+      "type": "process",
+      "name": "SMT line (printer, SPI, placement, reflow)",
+      "domain_attributes": {
+        "station": "smt",
+        "pass": "first"
+      },
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.9,
+          "mode": 1,
+          "max": 1.4
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "smt_line",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "q_aoi",
+      "type": "queue",
+      "name": "Buffer before AOI",
+      "capacity": 20
+    },
+    {
+      "id": "aoi",
+      "type": "process",
+      "name": "AOI",
+      "domain_attributes": {
+        "station": "aoi",
+        "pass": "first"
+      },
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.8,
+          "mode": 0.9,
+          "max": 1.1
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "aoi_machine",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "aoi_result",
+      "type": "decision",
+      "name": "AOI result",
+      "domain_attributes": {
+        "result_of": "aoi"
+      }
+    },
+    {
+      "id": "aoi_defect",
+      "type": "failure",
+      "name": "AOI defect",
+      "reason": "AOI found a defect (synthetic test result)"
+    },
+    {
+      "id": "q_touchup",
+      "type": "queue",
+      "name": "Buffer before touch-up"
+    },
+    {
+      "id": "aoi_touchup",
+      "type": "process",
+      "name": "Touch-up",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 3,
+          "mode": 5,
+          "max": 10
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "debug_operator",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "aoi_rework",
+      "type": "rework",
+      "name": "Touched up"
+    },
+    {
+      "id": "q_ict",
+      "type": "queue",
+      "name": "Buffer before ICT",
+      "capacity": 10
+    },
+    {
+      "id": "ict",
+      "type": "process",
+      "name": "ICT",
+      "domain_attributes": {
+        "station": "ict",
+        "pass": "first"
+      },
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 1.8,
+          "mode": 2,
+          "max": 2.6
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "ict_tester",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "ict_result",
+      "type": "decision",
+      "name": "ICT result",
+      "domain_attributes": {
+        "result_of": "ict"
+      }
+    },
+    {
+      "id": "ict_fail",
+      "type": "failure",
+      "name": "ICT fail",
+      "reason": "ICT failed (synthetic test result)"
+    },
+    {
+      "id": "q_ict_debug",
+      "type": "queue",
+      "name": "Buffer before ICT debug"
+    },
+    {
+      "id": "ict_debug",
+      "type": "process",
+      "name": "ICT debug",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 5,
+          "mode": 10,
+          "max": 30
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "debug_operator",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "ict_debug_result",
+      "type": "decision",
+      "name": "ICT debug result"
+    },
+    {
+      "id": "ict_rework",
+      "type": "rework",
+      "name": "ICT repaired"
+    },
+    {
+      "id": "q_ict_retest",
+      "type": "queue",
+      "name": "Buffer before ICT retest"
+    },
+    {
+      "id": "ict_retest",
+      "type": "process",
+      "name": "ICT retest",
+      "domain_attributes": {
+        "station": "ict",
+        "pass": "retest"
+      },
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 1.8,
+          "mode": 2,
+          "max": 2.6
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "ict_tester",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "ict_retest_result",
+      "type": "decision",
+      "name": "ICT retest result",
+      "domain_attributes": {
+        "result_of": "ict_retest"
+      }
+    },
+    {
+      "id": "q_fct",
+      "type": "queue",
+      "name": "Buffer before FCT",
+      "capacity": 10
+    },
+    {
+      "id": "fct",
+      "type": "process",
+      "name": "FCT",
+      "domain_attributes": {
+        "station": "fct",
+        "pass": "first"
+      },
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 2.8,
+          "mode": 3.2,
+          "max": 4
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "fct_tester",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "fct_result",
+      "type": "decision",
+      "name": "FCT result",
+      "domain_attributes": {
+        "result_of": "fct"
+      }
+    },
+    {
+      "id": "fct_fail",
+      "type": "failure",
+      "name": "FCT fail",
+      "reason": "FCT failed (synthetic test result)"
+    },
+    {
+      "id": "q_fct_debug",
+      "type": "queue",
+      "name": "Buffer before FCT debug"
+    },
+    {
+      "id": "fct_debug",
+      "type": "process",
+      "name": "FCT debug",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 10,
+          "mode": 20,
+          "max": 60
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "debug_operator",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "fct_debug_result",
+      "type": "decision",
+      "name": "FCT debug result"
+    },
+    {
+      "id": "fct_rework",
+      "type": "rework",
+      "name": "FCT repaired"
+    },
+    {
+      "id": "q_fct_retest",
+      "type": "queue",
+      "name": "Buffer before FCT retest"
+    },
+    {
+      "id": "fct_retest",
+      "type": "process",
+      "name": "FCT retest",
+      "domain_attributes": {
+        "station": "fct",
+        "pass": "retest"
+      },
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 2.8,
+          "mode": 3.2,
+          "max": 4
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "fct_tester",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "fct_retest_result",
+      "type": "decision",
+      "name": "FCT retest result",
+      "domain_attributes": {
+        "result_of": "fct_retest"
+      }
+    },
+    {
+      "id": "q_burnin",
+      "type": "queue",
+      "name": "Buffer before burn-in",
+      "capacity": 120
+    },
+    {
+      "id": "burn_in",
+      "type": "process",
+      "name": "Burn-in",
+      "domain_attributes": {
+        "station": "burn_in",
+        "pass": "first"
+      },
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 240
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "burn_in_chamber",
+          "units": 1
+        }
+      ],
+      "batch": {
+        "min_size": 20,
+        "max_size": 40,
+        "max_wait": 120
+      }
+    },
+    {
+      "id": "burnin_result",
+      "type": "decision",
+      "name": "Burn-in result",
+      "domain_attributes": {
+        "result_of": "burn_in"
+      }
+    },
+    {
+      "id": "burnin_fail",
+      "type": "failure",
+      "name": "Burn-in fail",
+      "reason": "Burn-in failed (synthetic test result)"
+    },
+    {
+      "id": "q_pack",
+      "type": "queue",
+      "name": "Buffer before packing",
+      "capacity": 400
+    },
+    {
+      "id": "pack_ship",
+      "type": "process",
+      "name": "Pack and ship",
+      "domain_attributes": {
+        "station": "pack",
+        "pass": "first"
+      },
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.8,
+          "mode": 1,
+          "max": 1.5
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "pack_station",
+          "units": 1
+        }
+      ]
+    },
+    {
+      "id": "shipped",
+      "type": "sink",
+      "name": "Shipped",
+      "outcome": "completed"
+    },
+    {
+      "id": "scrap",
+      "type": "sink",
+      "name": "Scrap",
+      "outcome": "abandoned"
+    }
+  ],
+  "flows": [
+    {
+      "id": "release_a__q_smt",
+      "from": "release_a",
+      "to": "q_smt",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "release_b__q_smt",
+      "from": "release_b",
+      "to": "q_smt",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_smt__smt",
+      "from": "q_smt",
+      "to": "smt",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "smt__q_aoi",
+      "from": "smt",
+      "to": "q_aoi",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_aoi__aoi",
+      "from": "q_aoi",
+      "to": "aoi",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "aoi__aoi_result",
+      "from": "aoi",
+      "to": "aoi_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "aoi_result__q_ict",
+      "from": "aoi_result",
+      "to": "q_ict",
+      "routing": {
+        "type": "probability",
+        "probability": 0.97
+      }
+    },
+    {
+      "id": "aoi_result__aoi_defect",
+      "from": "aoi_result",
+      "to": "aoi_defect",
+      "routing": {
+        "type": "probability",
+        "probability": 0.03
+      }
+    },
+    {
+      "id": "aoi_defect__q_touchup",
+      "from": "aoi_defect",
+      "to": "q_touchup",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_touchup__aoi_touchup",
+      "from": "q_touchup",
+      "to": "aoi_touchup",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "aoi_touchup__aoi_rework",
+      "from": "aoi_touchup",
+      "to": "aoi_rework",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "aoi_rework__q_ict",
+      "from": "aoi_rework",
+      "to": "q_ict",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_ict__ict",
+      "from": "q_ict",
+      "to": "ict",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "ict__ict_result",
+      "from": "ict",
+      "to": "ict_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "ict_result__q_fct",
+      "from": "ict_result",
+      "to": "q_fct",
+      "routing": {
+        "type": "probability",
+        "probability": 0.95
+      }
+    },
+    {
+      "id": "ict_result__ict_fail",
+      "from": "ict_result",
+      "to": "ict_fail",
+      "routing": {
+        "type": "probability",
+        "probability": 0.05
+      }
+    },
+    {
+      "id": "ict_fail__q_ict_debug",
+      "from": "ict_fail",
+      "to": "q_ict_debug",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_ict_debug__ict_debug",
+      "from": "q_ict_debug",
+      "to": "ict_debug",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "ict_debug__ict_debug_result",
+      "from": "ict_debug",
+      "to": "ict_debug_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "ict_debug_result__ict_rework",
+      "from": "ict_debug_result",
+      "to": "ict_rework",
+      "routing": {
+        "type": "probability",
+        "probability": 0.97
+      }
+    },
+    {
+      "id": "ict_debug_result__scrap",
+      "from": "ict_debug_result",
+      "to": "scrap",
+      "routing": {
+        "type": "probability",
+        "probability": 0.03
+      }
+    },
+    {
+      "id": "ict_rework__q_ict_retest",
+      "from": "ict_rework",
+      "to": "q_ict_retest",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_ict_retest__ict_retest",
+      "from": "q_ict_retest",
+      "to": "ict_retest",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "ict_retest__ict_retest_result",
+      "from": "ict_retest",
+      "to": "ict_retest_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "ict_retest_result__q_fct",
+      "from": "ict_retest_result",
+      "to": "q_fct",
+      "routing": {
+        "type": "probability",
+        "probability": 0.9
+      }
+    },
+    {
+      "id": "ict_retest_result__ict_fail",
+      "from": "ict_retest_result",
+      "to": "ict_fail",
+      "routing": {
+        "type": "probability",
+        "probability": 0.1
+      }
+    },
+    {
+      "id": "q_fct__fct",
+      "from": "q_fct",
+      "to": "fct",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "fct__fct_result",
+      "from": "fct",
+      "to": "fct_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "fct_result__q_burnin",
+      "from": "fct_result",
+      "to": "q_burnin",
+      "routing": {
+        "type": "probability",
+        "probability": 0.93
+      }
+    },
+    {
+      "id": "fct_result__fct_fail",
+      "from": "fct_result",
+      "to": "fct_fail",
+      "routing": {
+        "type": "probability",
+        "probability": 0.07
+      }
+    },
+    {
+      "id": "fct_fail__q_fct_debug",
+      "from": "fct_fail",
+      "to": "q_fct_debug",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_fct_debug__fct_debug",
+      "from": "q_fct_debug",
+      "to": "fct_debug",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "fct_debug__fct_debug_result",
+      "from": "fct_debug",
+      "to": "fct_debug_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "fct_debug_result__fct_rework",
+      "from": "fct_debug_result",
+      "to": "fct_rework",
+      "routing": {
+        "type": "probability",
+        "probability": 0.95
+      }
+    },
+    {
+      "id": "fct_debug_result__scrap",
+      "from": "fct_debug_result",
+      "to": "scrap",
+      "routing": {
+        "type": "probability",
+        "probability": 0.05
+      }
+    },
+    {
+      "id": "fct_rework__q_fct_retest",
+      "from": "fct_rework",
+      "to": "q_fct_retest",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_fct_retest__fct_retest",
+      "from": "q_fct_retest",
+      "to": "fct_retest",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "fct_retest__fct_retest_result",
+      "from": "fct_retest",
+      "to": "fct_retest_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "fct_retest_result__q_burnin",
+      "from": "fct_retest_result",
+      "to": "q_burnin",
+      "routing": {
+        "type": "probability",
+        "probability": 0.9
+      }
+    },
+    {
+      "id": "fct_retest_result__fct_fail",
+      "from": "fct_retest_result",
+      "to": "fct_fail",
+      "routing": {
+        "type": "probability",
+        "probability": 0.1
+      }
+    },
+    {
+      "id": "q_burnin__burn_in",
+      "from": "q_burnin",
+      "to": "burn_in",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "burn_in__burnin_result",
+      "from": "burn_in",
+      "to": "burnin_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "burnin_result__q_pack",
+      "from": "burnin_result",
+      "to": "q_pack",
+      "routing": {
+        "type": "probability",
+        "probability": 0.995
+      }
+    },
+    {
+      "id": "burnin_result__burnin_fail",
+      "from": "burnin_result",
+      "to": "burnin_fail",
+      "routing": {
+        "type": "probability",
+        "probability": 0.005
+      }
+    },
+    {
+      "id": "burnin_fail__q_fct_debug",
+      "from": "burnin_fail",
+      "to": "q_fct_debug",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_pack__pack_ship",
+      "from": "q_pack",
+      "to": "pack_ship",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "pack_ship__shipped",
+      "from": "pack_ship",
+      "to": "shipped",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "aoi_result",
+      "equals": 1
+    },
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "ict_result",
+      "equals": 1
+    },
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "ict_debug_result",
+      "equals": 1
+    },
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "ict_retest_result",
+      "equals": 1
+    },
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "fct_result",
+      "equals": 1
+    },
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "fct_debug_result",
+      "equals": 1
+    },
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "fct_retest_result",
+      "equals": 1
+    },
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "burnin_result",
+      "equals": 1
+    }
+  ],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    },
+    {
+      "id": "fct_utilization",
+      "type": "resource_utilization",
+      "resource_id": "fct_tester"
+    },
+    {
+      "id": "smt_utilization",
+      "type": "resource_utilization",
+      "resource_id": "smt_line"
+    },
+    {
+      "id": "fct_queue_wait",
+      "type": "queue_wait",
+      "node_id": "q_fct"
+    },
+    {
+      "id": "test_failures",
+      "type": "failure_count"
+    },
+    {
+      "id": "repairs",
+      "type": "rework_count"
+    }
+  ],
+  "calendars": [
+    {
+      "id": "two_shift_weekdays",
+      "name": "Two shifts, Monday to Friday",
+      "period": 10080,
+      "shifts": [
+        {
+          "start": 360,
+          "end": 840,
+          "label": "early"
+        },
+        {
+          "start": 840,
+          "end": 1320,
+          "label": "late"
+        },
+        {
+          "start": 1800,
+          "end": 2280,
+          "label": "early"
+        },
+        {
+          "start": 2280,
+          "end": 2760,
+          "label": "late"
+        },
+        {
+          "start": 3240,
+          "end": 3720,
+          "label": "early"
+        },
+        {
+          "start": 3720,
+          "end": 4200,
+          "label": "late"
+        },
+        {
+          "start": 4680,
+          "end": 5160,
+          "label": "early"
+        },
+        {
+          "start": 5160,
+          "end": 5640,
+          "label": "late"
+        },
+        {
+          "start": 6120,
+          "end": 6600,
+          "label": "early"
+        },
+        {
+          "start": 6600,
+          "end": 7080,
+          "label": "late"
+        }
+      ]
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "aoi": {
+          "x": 960,
+          "y": 0
+        },
+        "aoi_defect": {
+          "x": 1200,
+          "y": 120
+        },
+        "aoi_result": {
+          "x": 1200,
+          "y": 0
+        },
+        "aoi_rework": {
+          "x": 1440,
+          "y": 120
+        },
+        "aoi_touchup": {
+          "x": 1440,
+          "y": 240
+        },
+        "burn_in": {
+          "x": 3120,
+          "y": 0
+        },
+        "burnin_fail": {
+          "x": 3360,
+          "y": 120
+        },
+        "burnin_result": {
+          "x": 3360,
+          "y": 0
+        },
+        "fct": {
+          "x": 2400,
+          "y": 0
+        },
+        "fct_debug": {
+          "x": 2400,
+          "y": 240
+        },
+        "fct_debug_result": {
+          "x": 2400,
+          "y": 360
+        },
+        "fct_fail": {
+          "x": 2640,
+          "y": 120
+        },
+        "fct_result": {
+          "x": 2640,
+          "y": 0
+        },
+        "fct_retest": {
+          "x": 2880,
+          "y": 240
+        },
+        "fct_retest_result": {
+          "x": 2880,
+          "y": 120
+        },
+        "fct_rework": {
+          "x": 2640,
+          "y": 360
+        },
+        "ict": {
+          "x": 1680,
+          "y": 0
+        },
+        "ict_debug": {
+          "x": 1680,
+          "y": 240
+        },
+        "ict_debug_result": {
+          "x": 1680,
+          "y": 360
+        },
+        "ict_fail": {
+          "x": 1920,
+          "y": 120
+        },
+        "ict_result": {
+          "x": 1920,
+          "y": 0
+        },
+        "ict_retest": {
+          "x": 2160,
+          "y": 240
+        },
+        "ict_retest_result": {
+          "x": 2160,
+          "y": 120
+        },
+        "ict_rework": {
+          "x": 1920,
+          "y": 360
+        },
+        "pack_ship": {
+          "x": 3840,
+          "y": 0
+        },
+        "q_aoi": {
+          "x": 720,
+          "y": 0
+        },
+        "q_burnin": {
+          "x": 2880,
+          "y": 0
+        },
+        "q_fct": {
+          "x": 2160,
+          "y": 0
+        },
+        "q_fct_debug": {
+          "x": 2400,
+          "y": 120
+        },
+        "q_fct_retest": {
+          "x": 2880,
+          "y": 360
+        },
+        "q_ict": {
+          "x": 1440,
+          "y": 0
+        },
+        "q_ict_debug": {
+          "x": 1680,
+          "y": 120
+        },
+        "q_ict_retest": {
+          "x": 2160,
+          "y": 360
+        },
+        "q_pack": {
+          "x": 3600,
+          "y": 0
+        },
+        "q_smt": {
+          "x": 240,
+          "y": 0
+        },
+        "q_touchup": {
+          "x": 1200,
+          "y": 240
+        },
+        "release_a": {
+          "x": 0,
+          "y": 0
+        },
+        "release_b": {
+          "x": 0,
+          "y": 120
+        },
+        "scrap": {
+          "x": 2160,
+          "y": 480
+        },
+        "shipped": {
+          "x": 4080,
+          "y": 0
+        },
+        "smt": {
+          "x": 480,
+          "y": 0
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "assumptions": [
+      "Time unit minute; t=0 is Monday 00:00 model time (no time zone, D-052).",
+      "Two shifts 06:00-14:00 and 14:00-22:00, Monday to Friday; burn-in chambers run 24/7.",
+      "Board family A: 360 boards released at 06:00 and board family B: 360 at 14:00 every weekday (720 a day).",
+      "The SMT line (printer, SPI, placement, reflow) is one server; the balance inside the line is not modelled.",
+      "Changeover between families on the SMT line tri(15, 25, 45) min; every unit starts set up for family A.",
+      "Breakdowns count on-shift time only; the time to failure and repair parameters are synthetic.",
+      "Test yields are model inputs (AOI 0.97, ICT 0.95, FCT 0.93, burn-in 0.995); retests pass 0.90; debug repairs 0.97 (ICT) and 0.95 (FCT), the rest is scrapped.",
+      "Burn-in batches 20 to 40 boards, at most 120 min wait to fill, 240 min per batch."
+    ],
+    "origin": "Synthetic demonstration values of docs/domains/ELECTRONICS_LINE.md §4.1, §4.2 and §4.4 (H-018); NOT customer data, plant measurements or typical values.",
+    "source": "synthetic, for demonstration",
+    "synthetic": true,
+    "template": "electronics_assembly_test_line"
+  }
+}

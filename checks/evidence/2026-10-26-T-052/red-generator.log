@@ -1,0 +1,15 @@
+# github.com/kcl1104/geminus/scripts/gen-electronics-line-data [github.com/kcl1104/geminus/scripts/gen-electronics-line-data.test]
+scripts/gen-electronics-line-data/generate_test.go:31:33: undefined: Config
+scripts/gen-electronics-line-data/generate_test.go:31:42: undefined: Output
+scripts/gen-electronics-line-data/generate_test.go:33:14: undefined: Generate
+scripts/gen-electronics-line-data/generate_test.go:40:20: undefined: Output
+scripts/gen-electronics-line-data/generate_test.go:43:25: undefined: Output
+scripts/gen-electronics-line-data/generate_test.go:46:31: undefined: DefaultConfig
+scripts/gen-electronics-line-data/generate_test.go:60:19: undefined: DefaultConfig
+scripts/gen-electronics-line-data/generate_test.go:69:11: undefined: DefaultConfig
+scripts/gen-electronics-line-data/generate_test.go:93:51: undefined: DataDir
+scripts/gen-electronics-line-data/generate_test.go:145:98: undefined: TemplateName
+scripts/gen-electronics-line-data/generate_test.go:145:98: too many errors
+FAIL	github.com/kcl1104/geminus/scripts/gen-electronics-line-data [build failed]
+FAIL
+exit 1

@@ -1,0 +1,11 @@
+--- PASS: TestGenerateIsDeterministic (0.56s)
+--- PASS: TestMoreWeeksExtendTheSameLog (0.24s)
+--- PASS: TestCommittedFilesAreTheGeneratorOutput (0.00s)
+--- PASS: TestGroundTruth (0.03s)
+--- PASS: TestLogShape (0.07s)
+--- PASS: TestEquipmentIsNeverDoubleBooked (0.08s)
+--- PASS: TestRoutesFollowTheLine (0.07s)
+--- PASS: TestChangeoversShowAsGaps (0.05s)
+--- PASS: TestTheLogIsTheEngineReplication (0.14s)
+--- PASS: TestNegativeFixtures (0.00s)
+ok  	github.com/kcl1104/geminus/scripts/gen-electronics-line-data	1.280s

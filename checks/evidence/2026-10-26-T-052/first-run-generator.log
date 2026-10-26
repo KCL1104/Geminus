@@ -1,0 +1,16 @@
+--- FAIL: TestGenerateIsDeterministic (0.38s)
+    generate_test.go:67: the CSV's SHA-256 is sha256:7ad4a396aa034c4b1538377dba593aa9e55b8a2e3d34e4be0f06378ce1214cc5, pinned sha256:0000000000000000000000000000000000000000000000000000000000000000
+--- FAIL: TestCommittedFilesAreTheGeneratorOutput (0.00s)
+    generate_test.go:98: station-log-synthetic.csv: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/station-log-synthetic.csv: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: ground-truth-model.json: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/ground-truth-model.json: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: negative/unknown-station.csv: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/negative/unknown-station.csv: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: negative/unknown-product.csv: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/negative/unknown-product.csv: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: negative/missing-product.csv: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/negative/missing-product.csv: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: ground-truth.json: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/ground-truth.json: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: negative/unknown-test-result.csv: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/negative/unknown-test-result.csv: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: negative/end-before-start.csv: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/negative/end-before-start.csv: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: negative/unknown-record-type.csv: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/negative/unknown-record-type.csv: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+    generate_test.go:98: negative/missing-test-result.csv: open /home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/testdata/datasets/electronics-line/negative/missing-test-result.csv: no such file or directory (run `go run ./scripts/gen-electronics-line-data` to regenerate)
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/gen-electronics-line-data	0.732s
+FAIL
