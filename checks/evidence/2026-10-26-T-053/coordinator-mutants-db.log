@@ -1,0 +1,13 @@
+D1	KILLED	the month limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestLimitsRefuse
+D2	KILLED	the deployment day limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestConcurrentReservationsNeverOvershoot, TestLimitsRefuse
+D3	KILLED	the organization day limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestLimitsRefuse
+D4	KILLED	settle moves the totals the wrong way	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestReserveAndSettle, TestSettleKeepsItsDayAndOrganization
+D5	KILLED	settle does not check the state	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestReserveAndSettle
+D6	KILLED	settle charges today instead of the reservation's day	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestSettleKeepsItsDayAndOrganization
+D7	KILLED	a reservation is not audited	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestFailClosed, TestReserveAndSettle
+D8	KILLED	the generator charges no target	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestAMeteredCallIsChargedToItsTarget, TestAMeteredProposal, TestASpendLimitRefusesTheProposal
+D9	SURVIVED	settle reads without the organization filter (RLS still filters)	internal/storage/aispend/aispend.go	./internal/storage/aispend/	tests pass
+summary	KILLED=8 SURVIVED=1
+sources restored (git status of internal/ and cmd/ against the last commit): CHANGED:
+fatal: not a git repository (or any of the parent directories): .git
+

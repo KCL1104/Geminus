@@ -1529,7 +1529,7 @@
       "decided_at": "2026-10-19",
       "source": "Claude Code session 中 impeccable 方向輪的問題卡回答，由 agent 記錄；比較頁為該 session 的 artifact，草稿在 .impeccable/mocks/decision/",
       "still_open": [
-        "依 Marey 方向建成的 design system（DESIGN.md、tokens、元件）待 owner 檢視"
+        "~~依 Marey 方向建成的 design system 待 owner 檢視~~ H-027：作為正式 app 的設計基礎；換裝後的截圖 baseline 待 owner 確認（TEST-033）"
       ]
     },
     {
@@ -1695,6 +1695,19 @@
       "source": "Claude Code session：AskUserQuestion，owner 選擇",
       "still_open": [
         "D-110–D-115（T-053）待 owner 批准"
+      ]
+    },
+    {
+      "id": "H-027",
+      "subject": "UI 方向確認：Marey 工作台為正式 app 的設計基礎；舊 prototype 的兩個流程為 T-015／T-031 的依據；介面簡潔",
+      "decision": "Q1 A：以 Marey 工作台（H-013，DESIGN.md）作為正式 app 的設計基礎，T-045 把 DESIGN.md 的 tokens 與元件套到 apps/web，維持 React Aria（ADR-021），無障礙與兩語測試照舊。Q2 A：10-19 舊 prototype 的模型編輯器（T-015）與匯入／AI 建議審閱（T-031）流程作為實作依據，外觀改用 Marey、內容改用產線範本，細節依之後批准的規則（例如 D-067–D-072）。附加要求：介面簡潔，每個畫面只保留應該要有的按鈕與功能。Coordinator 的執行方式：每個控制項對應已實作且有需求或測試依據的功能；同一動作不重複；次要動作收進選單或逐步顯示；規格或測試要求的控制項保留，認為多餘的列給 owner 決定。",
+      "quote": "UI 都照建議，但我希望介面要是簡潔的；只保留所有應該要包含的按鈕功能等",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆 UI 方向確認單（https://claude.ai/artifact/AQ6daQhFdvsBM2cS7hVq3k）",
+      "still_open": [
+        "換裝後的 16 張截圖 baseline 待 owner 確認（TEST-033）",
+        "T-045 獨立 review"
       ]
     }
   ]

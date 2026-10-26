@@ -298,3 +298,15 @@ Owner 也許想特別看的取捨：D-096 (a)（授予時決定成員：燒機�
 - **效能沒有量測**：unit 的線性掃描、BATCH_TIMEOUT 的事件數、`unitOf` map 與 collector 的 min-heap 的成本沒有 benchmark（T-037）；只有測試時間。
 - **DB／API 層沒有在本 worktree 執行**：有批次或換線的模型經 publish → scenario（含 AI scenario 改批量或換線時間）→ run → result 的 closed loop 只在 validator、patch、review、engine 與 des 層測過；`internal/storage/datasets` 的 binding path 改動只有 unit test（DB-backed 的部分 skip）。
 - **AI**：live model 對新的 scenario 規則（scenario-0.6.0）的回答沒有評分（T-038）；edit mode 的 prompt 沒有改（scope 只到 scenario allowlist 的文字）。
+
+## Coordinator 的執行（f4db5d6，與 T-053 一起整合）
+
+Coordinator 把本任務的十一個 commit（14b7000–79c9423）接在 T-053 的五個 commit 之後 cherry-pick 到 `claude/lucid-meitner-vq1awo`，之後是 T-053 的修正（fc0b277、4450490、921910f）與 H-026 的紀錄（f4db5d6）。衝突只在 `Makefile`（本任務改 `simulation-reference-test` 的說明，T-053 新增 live 的兩個 target，兩邊都保留）、`planning/decisions.json` 與決策登記檔（D-096、D-097 與 D-110–D-115 都是新增，兩邊都保留），以及重產的 `checks/*.json`。D-081–D-085 的狀態依 H-024 已在 main branch 上改為 APPROVED。
+
+**第一次執行（79c9423，`checks/evidence/2026-10-26-T-050-T-053/coordinator-*-first-run*`）**：`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`（`"differences": 0`）、`backend-numeric`、`backend-race` 都是 exit 0；`make integration-test` exit 2，原因是 T-053 的 migration 0016（`ai_spend_reservations.id` 沒有 D-001 domain），與本任務無關，由 T-053 的 4450490 修正。
+
+**第二次執行（f4db5d6，全新的 `dt_test_t050t053b`）**：`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`backend-race`、`integration-test` 都是 exit 0（`coordinator-exit-codes.txt`）。`frontend-test`、`simulation-reference-test`、`backend-numeric` 只在第一次執行：之後的 commit 沒有改 `apps/`、`internal/simulation/`、`internal/results/`、`schemas/`、`openapi/` 或 `scripts/`，結果仍適用。
+
+- 「殘餘風險」中「DB／API 層沒有在本 worktree 執行」：整合後的 tree 上 `make integration-test` 通過，表示既有的 run、scenario 與 comparison 路徑沒有被 0.5.0 弄壞；但整合測試沒有含批次或換線的模型，有批次或換線的模型經 publish → scenario → run → result 的 closed loop 仍未在 DB／API 層測過（列入 T-037 的後續）。
+- **NOT RUN**：`make e2e-test`（本任務沒有改 UI）；`make benchmark-test`（placeholder，T-037）；CI 在 push 之後確認。
+- 本任務仍待：獨立 review（H-003）；owner 決定 D-096、D-097（PROPOSED）。

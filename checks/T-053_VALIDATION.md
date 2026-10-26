@@ -256,3 +256,28 @@ D-110、D-111、D-112、D-113、D-114、D-115（docs/DECISIONS_AND_TBD.md「T-05
 - `max_tokens` 8192 同時限制 thinking 與輸出：live 的回答可能因 `max_tokens` 截斷而成為 invalid output（計費但沒有 proposal），live eval 會顯示比例。
 - DB 層（條件 UPDATE、RLS、trigger、grants、down／up）只經過編譯、vet 與閱讀檢查，沒有在 PostgreSQL 上執行；SQL 或 Go 的 DB 程式若有錯，要到 coordinator 的 DB 測試才會發現；`TestConcurrentReservationsNeverOvershoot` 是跨 process 一致的主要證據，NOT RUN。
 - H-025 不在本 branch：`aiapproval` 的 `SpendLimits.Source` 指向它，合併時需與 main 的 human_decisions 一致。
+
+## Coordinator 的執行（f4db5d6，與 T-050 一起整合）
+
+Coordinator 把本任務的五個 commit（4bfb8f2–8948b70）cherry-pick 到 `claude/lucid-meitner-vq1awo`（2e5a176 之後），接著是 T-050 的十一個 commit（14b7000–79c9423）、`t053-ret` 的三個 commit（fc0b277、4450490、921910f）與 coordinator 記錄 H-026 的 f4db5d6。衝突只在 `Makefile`（T-050 改了 `simulation-reference-test` 的說明，本任務新增 `ai-eval-live`、`ai-smoke-live`，兩邊都保留）、`planning/decisions.json` 與決策登記檔（D-096、D-097 與 D-110–D-115 都是新增，兩邊都保留，依 ID 排列），以及 `make spec-check` 重產的 `checks/*.json`（取一邊後重產）。
+
+**第一次執行（79c9423，`checks/evidence/2026-10-26-T-050-T-053/coordinator-*-first-run*` 與本任務 evidence 的 `coordinator-*-first-run*`）**：`spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`、`backend-numeric`、`backend-race` 都是 exit 0；`make integration-test` 與 DB mutant 用的 `make db-test` exit 2：`db/tests/constraints.sql:361` 的 `FAILED: ID columns without their D-001 domain: ai_spend_reservations.id=text`。這是本任務的錯誤（migration 0016 的 reservation ID 用了 `text`），由 `t053-ret` 的 4450490 修正（`twin.asr_id` domain；0016 從未 push 或部署，所以修改它而不是新增 migration）。
+
+**第二次執行（f4db5d6，全新的 `dt_test_t050t053b` 與 `dt_test_t053r1m`）**：
+
+| 項目 | 結果 | Log |
+|---|---|---|
+| `make spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`backend-race` | 全部 exit 0 | `2026-10-26-T-050-T-053/coordinator-*.log`、`coordinator-exit-codes.txt` |
+| `make integration-test`（全新 DB，PostgreSQL 16.15） | exit 0 | `2026-10-26-T-050-T-053/coordinator-integration.log` |
+| govulncheck v1.9.0（go1.27.3） | exit 0，No vulnerabilities found | `coordinator-govulncheck.log` |
+| `make db-test`（全新 DB，含 `db/tests/ai_spend.sql` 與 constraints） | exit 0 | `coordinator-db-mutants-prepare.log` |
+| 本任務的 DB 測試（`TestReserveAndSettle`、`TestLimitsRefuse`、`TestConcurrentReservationsNeverOvershoot`、`TestSettleKeepsItsDayAndOrganization`、`TestFailClosed`、`TestAMeteredProposal`、`TestASpendLimitRefusesTheProposal`；`-race -v`，`GEMINUS_REQUIRE_DB_TESTS=1`） | 全部 PASS | `coordinator-new-db-tests.log` |
+| DB mutant D1–D9（`mutants.py --only D1..D9`，在 `git archive HEAD` 的複本上） | 8 killed、D9 survived；exit 1 是因為有存活的 mutant | `coordinator-mutants-db.log` |
+
+- 本報告前面「DB 測試只編譯與 vet，NOT RUN」與「DB mutant 是否被擋下 NOT RUN」兩項，現在由 coordinator 在 PostgreSQL 上執行，結果如上。
+- **D9 存活**：與「Mutation」一節的預測相同：settle 的 SELECT 少了 organization 條件，RLS 仍然只讓 tenant 看到自己的列，沒有測試能分辨；application 的 organization 條件是 RLS 之外的 defense in depth（AGENTS.md §2）。交給 reviewer 判斷是否需要能分辨兩者的測試。
+- `mutants.py` 最後的還原檢查在 archive 複本上印出 `fatal: not a git repository`：複本沒有 `.git`，所以這一行沒有意義；mutant 只改複本，複本用完即刪，working tree 沒有被修改。
+- `frontend-test`、`simulation-reference-test` 與 `backend-numeric` 只在第一次（79c9423）執行：之後的五個 commit 沒有改 `apps/`、`internal/simulation/`、`internal/results/`、`schemas/`、`openapi/` 或 `scripts/`（`git diff --name-only 79c9423 f4db5d6`），所以結果仍適用。
+- 第二次執行開始時 `coordinator-environment.txt` 記錄「6 other changes」：是本任務 evidence 中尚未 commit 的六個 `coordinator-*-first-run*` 檔，不是程式的修改。
+- **NOT RUN**：`make ai-smoke-live` 與 `make ai-eval-live`（依 H-025，本任務通過獨立 review 之後才以 synthetic 資料執行）；`make e2e-test`（本任務沒有改 UI）；CI 在 push 之後確認。
+- 本任務仍待：獨立 review（H-003）；owner 批准 D-110–D-115（PROPOSED）。
