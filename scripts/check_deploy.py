@@ -105,6 +105,11 @@ def compose() -> dict:
                 fail(f"compose: {name}: {var} has a literal value")
             if re.search(r"://[^/:@]+:[^@${]+@", value):
                 fail(f"compose: {name}: {var} has a literal password in a URL")
+        # A long-running service that replaces its image's command would inherit
+        # the image's HEALTHCHECK, which probes the replaced server (the web
+        # image's probes 127.0.0.1:$PORT), so `up --wait` never sees it healthy.
+        if "command" in svc and "steps" not in (svc.get("profiles") or []) and "healthcheck" not in svc:
+            fail(f"compose: {name}: replaces its image's command without a healthcheck of its own")
     if "oidc-test" not in doc["services"]:
         fail("compose: the test provider service is expected only here")
     return {"services": sorted(doc["services"])}

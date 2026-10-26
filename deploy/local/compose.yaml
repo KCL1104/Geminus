@@ -100,6 +100,14 @@ services:
     network_mode: service:web
     depends_on: [web]
     command: ["node", "/fake/servers.mjs"]
+    # The web image's HEALTHCHECK probes the web server on $PORT; this
+    # container runs the test provider instead, on 127.0.0.1:3101.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3101/.well-known/jwks.json').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
     volumes:
       - ../../apps/web-e2e/fake:/fake:ro
 
