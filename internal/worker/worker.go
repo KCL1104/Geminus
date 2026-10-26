@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
-	"runtime"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -358,12 +357,11 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 		}
 		return w.audit(ctx, tx, job, failure, retried)
 	})
-	code = failure.Code
+	code, how = failure.Code, failureOutcome(ferr, retried)
 	switch {
 	case errors.Is(ferr, jobs.ErrLeaseLost):
 		// The job is no longer this attempt's: reaped, or ended by a COMMIT
 		// whose answer was lost (tenant.ErrOutcomeUnknown).
-		how = "lease_lost"
 		log.Warn("the job is no longer this attempt's; its end is not recorded", "code", failure.Code)
 		return
 	case ferr != nil:
@@ -371,11 +369,23 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 		log.Error("recording the failure failed", "code", failure.Code, "error", ferr.Error())
 		return
 	}
-	how = "failed"
-	if retried {
-		how = "requeued"
-	}
 	log.Info("job attempt ended", "code", failure.Code, "retried", retried, "duration_ms", took)
+}
+
+// failureOutcome is how an attempt ended whose failure the loop tried to
+// record (its span's and metric's outcome, D-095): requeued or failed when
+// the record committed; lease_lost when the job was no longer the
+// attempt's; not_recorded when the record failed otherwise.
+func failureOutcome(ferr error, retried bool) string {
+	switch {
+	case errors.Is(ferr, jobs.ErrLeaseLost):
+		return "lease_lost"
+	case ferr != nil:
+		return "not_recorded"
+	case retried:
+		return "requeued"
+	}
+	return "failed"
 }
 
 // audit records that an attempt of j ended without a result
@@ -615,8 +625,11 @@ type panicked struct {
 	stack string
 }
 
+// Error is the panic's message only when the Go runtime raised it
+// (observability.RuntimeError: a type of package runtime, not merely one
+// with a RuntimeError method, review L3), otherwise only the value's type.
 func (p panicked) Error() string {
-	if re, ok := p.value.(runtime.Error); ok {
+	if re, ok := observability.RuntimeError(p.value); ok {
 		return "handler panicked: " + re.Error()
 	}
 	return fmt.Sprintf("handler panicked with a %T", p.value)

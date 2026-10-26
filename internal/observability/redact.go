@@ -3,6 +3,7 @@ package observability
 import (
 	"fmt"
 	"log/slog"
+	"reflect"
 	"regexp"
 	"strings"
 	"unicode"
@@ -262,7 +263,7 @@ var credentials = []*regexp.Regexp{
 // word (DB_PASSWORD=, ?access_token=, AccountKey=, session=): the key
 // stays, the value goes.
 var keyValue = regexp.MustCompile(`(?i)(\b(?:(?:[A-Za-z0-9.]+[_.-])*?(?:password|passwd|passphrase|pwd|secrets?|credentials?|` +
-	`(?:api|access|account|private|secret)[_-]?key|client[_-]?secret|connection[_-]?string|session(?:[_-]?id)?|sid|` +
+	`(?:api|access|account|private|secret)[_-]?key|client[_-]?secret|connection[_-]?string|session(?:[_-]?id)?|sid|jsessionid|phpsessid|signature|sig|` +
 	`(?:access|refresh|id|auth|api|bearer|session|oauth|personal|secret|private|github|gh|gitlab|slack|npm|pypi|bot|csrf|xsrf|jwt)[_.-]?token)|` +
 	`token)\s*[:=]\s*)[^\s,;"'&]{6,}`)
 
@@ -280,7 +281,42 @@ var (
 	// closed (a value that holds a quote, text cut short) runs to the end:
 	// what follows it may be the value.
 	quoted = regexp.MustCompile(`"(?:[^"\\]|\\.)*(?:"|\\?$)`)
+	// backticked, curly and curlySingle are the other quotes a message can
+	// name a value in (review L2), closed or running to the end; single
+	// quotes are singleQuoted's.
+	backticked  = regexp.MustCompile("`[^`]*(?:`|$)")
+	curly       = regexp.MustCompile("\u201c[^\u201d]*(?:\u201d|$)")
+	curlySingle = regexp.MustCompile("\u2018[^\u2019]*(?:\u2019|$)")
 )
+
+// singleQuoted is s with every span 'like this' replaced (review L2). A
+// single quote is an apostrophe inside a word, so only a quote that starts
+// a word (at the start or after a character that is neither a letter nor a
+// digit, and before one that is not a space) opens a span, and only a quote
+// that ends a word (at the end or before a character that is neither a
+// letter nor a digit) closes it: contractions and possessives (don't, the
+// job's, the workers') stay. A span that is never closed runs to the end.
+func singleQuoted(s string) string {
+	if !strings.Contains(s, "'") {
+		return s
+	}
+	word := func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+	rs := []rune(s)
+	var b strings.Builder
+	for i := 0; i < len(rs); i++ {
+		if rs[i] != '\'' || i > 0 && (word(rs[i-1]) || rs[i-1] == '\'') || i+1 == len(rs) || unicode.IsSpace(rs[i+1]) {
+			b.WriteRune(rs[i])
+			continue
+		}
+		j := i + 1
+		for j < len(rs) && !(rs[j] == '\'' && (j+1 == len(rs) || !word(rs[j+1]))) {
+			j++
+		}
+		b.WriteString("'" + Redacted + "'")
+		i = j
+	}
+	return b.String()
+}
 
 func base64Like(m string) bool {
 	return strings.ContainsAny(m, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") && strings.ContainsAny(m, "abcdefghijklmnopqrstuvwxyz") &&
@@ -307,11 +343,12 @@ func Sensitive(s string) bool {
 }
 
 // sanitize is free text as a log keeps it (D-094 (c)): valid UTF-8;
-// credentials, a URL's user information, credential headers, e-mail
-// addresses and double-quoted values replaced by Redacted; control and
 // format characters (bidirectional overrides, zero-width characters)
-// replaced by a space, except a stack's line breaks and tabs; cut to the
-// kind's bound.
+// removed; credentials, a URL's user information, credential headers,
+// e-mail addresses and quoted values (double, single, backtick and
+// typographic quotes) replaced by Redacted; control characters and line
+// separators replaced by a space, except a stack's line breaks and tabs;
+// cut to the kind's bound.
 func sanitize(s string, kind Kind) string {
 	if s == "" {
 		return s
@@ -320,6 +357,14 @@ func sanitize(s string, kind Kind) string {
 		s = s[:preCut]
 	}
 	s = strings.ToValidUTF8(s, "�")
+	// Format characters (zero-width, bidirectional overrides) are invisible:
+	// they go first, so none can split a credential the patterns would see.
+	s = strings.Map(func(r rune) rune {
+		if unicode.Is(unicode.Cf, r) {
+			return -1
+		}
+		return r
+	}, s)
 	for _, re := range credentials {
 		s = re.ReplaceAllString(s, Redacted)
 	}
@@ -334,12 +379,16 @@ func sanitize(s string, kind Kind) string {
 		return m
 	})
 	s = quoted.ReplaceAllString(s, `"`+Redacted+`"`)
+	s = backticked.ReplaceAllString(s, "`"+Redacted+"`")
+	s = curly.ReplaceAllString(s, "\u201c"+Redacted+"\u201d")
+	s = curlySingle.ReplaceAllString(s, "\u2018"+Redacted+"\u2019")
+	s = singleQuoted(s)
 	lines := kind == KindStack
 	s = strings.Map(func(r rune) rune {
 		switch {
 		case lines && (r == '\n' || r == '\t'):
 			return r
-		case unicode.IsControl(r) || unicode.Is(unicode.Cf, r) || r == ' ' || r == ' ':
+		case unicode.IsControl(r) || r == '\u2028' || r == '\u2029':
 			return ' '
 		}
 		return r
@@ -357,16 +406,31 @@ func sanitize(s string, kind Kind) string {
 	return s
 }
 
-// PanicText is what a log keeps of a recovered panic's value: a runtime
-// error's own message (the runtime wrote it), otherwise only the value's
-// type, since the value may hold the data the code was working on (D-094
-// (d)).
+// PanicText is what a log keeps of a recovered panic's value: the message
+// of an error the Go runtime raised (RuntimeError), otherwise only the
+// value's type, since the value may hold the data the code was working on
+// (D-094 (d)).
 func PanicText(v any) string {
-	if re, ok := v.(interface {
-		error
-		RuntimeError()
-	}); ok {
-		return "panic: " + Text(errorString(re))
+	if err, ok := RuntimeError(v); ok {
+		return "panic: " + Text(errorString(err))
 	}
 	return fmt.Sprintf("panic with a value of type %T", v)
+}
+
+// RuntimeError is v as an error when the Go runtime raised it: an error of
+// a type declared in package runtime itself (an index out of range, a nil
+// map assignment, a failed type assertion), whose message the runtime
+// wrote. A value of any other type is not, even one with a RuntimeError
+// method or of a package that is also named runtime: its message is its
+// author's and may hold the data the code was working on (review L3).
+func RuntimeError(v any) (error, bool) {
+	err, ok := v.(error)
+	if !ok {
+		return nil, false
+	}
+	t := reflect.TypeOf(v)
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	return err, t.PkgPath() == "runtime"
 }

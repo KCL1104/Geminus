@@ -237,6 +237,42 @@ func TestRootsAndFailedWork(t *testing.T) {
 	}
 }
 
+// Review L5: an attempt's span is an Error unless the attempt completed or
+// was cancelled: a retry, a lost lease and an end the worker could not
+// record are failures of that attempt too; the outcome says which.
+func TestJobOutcomes(t *testing.T) {
+	r := install(t)
+	tel := telemetry.Current()
+	want := map[string]string{"completed": "Unset", "cancelled": "Unset", "failed": "Error", "requeued": "Error", "lease_lost": "Error",
+		"not_recorded": "Error"}
+	for how := range want {
+		_, span := tel.StartJob(context.Background(), "simulation", ids.New("job"), 1, "")
+		tel.EndJob(span, "simulation", how, "", time.Millisecond)
+	}
+	spans := r.spans.Ended()
+	if len(spans) != len(want) {
+		t.Fatalf("%s", r.dump(t))
+	}
+	for _, s := range spans {
+		var how string
+		for _, kv := range s.Attributes() {
+			if kv.Key == "geminus.outcome" {
+				how = kv.Value.Emit()
+			}
+		}
+		if code, ok := want[how]; !ok || s.Status().Code.String() != code {
+			t.Errorf("outcome %q: status %v", how, s.Status())
+		}
+	}
+	got := map[string]bool{}
+	for _, p := range find(r.points(t), "geminus.job.attempt.duration") {
+		got[p.attrs["geminus.outcome"]] = true
+	}
+	if len(got) != len(want) {
+		t.Errorf("duration points by outcome: %v", got)
+	}
+}
+
 func TestProviderCallsAndImports(t *testing.T) {
 	r := install(t)
 	tel := telemetry.Current()

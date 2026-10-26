@@ -189,10 +189,10 @@ func TestValuesOfTheWrongShapeAreRedacted(t *testing.T) {
 	log := logger(&s)
 	log.Info("shapes", "organization_id", csvCell, "run_id", email, "code", "free text "+csvCell, "status", header,
 		"attempt", "3; "+csvCell, "route", "/v1/"+csvCell, "job_type", apiKey, "model", apiKey, "worker_id", bearer,
-		"operation_id", jwt, "result_digest", csvCell, "method", "SENTINEL METHOD")
+		"operation_id", jwt, "result_digest", csvCell, "method", "SENTINEL METHOD", "type", apiKey)
 	l := s.lines(t)[0]
 	for _, k := range []string{"organization_id", "run_id", "code", "status", "attempt", "route", "job_type", "model", "worker_id",
-		"operation_id", "result_digest", "method"} {
+		"operation_id", "result_digest", "method", "type"} {
 		if l[k] != observability.Redacted {
 			t.Errorf("%s = %v", k, l[k])
 		}
@@ -251,6 +251,15 @@ func TestTextIsSanitized(t *testing.T) {
 		// A quote that is never closed (a value with a quote in it, text
 		// cut short) hides everything after it.
 		`cell "CASE-SENTINEL-7731 is invalid`, `value "a\"b CASE-SENTINEL\`,
+		// Review L2: single quotes that open and close a span, backticks
+		// and typographic quotes mark a value as well, closed or not.
+		"value 'QUOTE-SENTINEL' is invalid", "value `QUOTE-SENTINEL` is invalid", "value “QUOTE-SENTINEL” is invalid",
+		"value ‘QUOTE-SENTINEL’ is invalid", "invalid character 'Q' then 'QUOTE-SENTINEL'", "unclosed 'QUOTE-SENTINEL and more",
+		"unclosed `QUOTE-SENTINEL", "unclosed “QUOTE-SENTINEL", "it's 'don't QUOTE-SENTINEL' inside",
+		// A zero-width character does not split a credential; session
+		// cookies and URL signatures are credentials (review probes).
+		"key sk-ant-​api03-ZW-SENTINEL-abcdefgh", "JSESSIONID=ABCDEF0123456789SENTINEL",
+		"GET https://b.s3.amazonaws.com/k?X-Amz-Signature=0123456789abcdefSENTINEL", "https://a.blob.core.windows.net/c?sv=2024&sig=SIGSENTINEL0123",
 	} {
 		log.Error("failed", "error", text)
 	}
@@ -264,8 +273,29 @@ func TestTextIsSanitized(t *testing.T) {
 	s.clean(t)
 	if !strings.Contains(out, `cell \"[redacted]\" is invalid`) || !strings.Contains(out, "(SQLSTATE 22P02)") ||
 		!strings.Contains(out, "postgres://[redacted]@db.internal:5432/twin") || !strings.Contains(out, "request headers: Authorization: [redacted]") ||
-		!strings.Contains(out, "signature [redacted] rejected") {
+		!strings.Contains(out, "signature [redacted] rejected") || !strings.Contains(out, "value '[redacted]' is invalid") ||
+		!strings.Contains(out, "value `[redacted]` is invalid") || !strings.Contains(out, "value “[redacted]” is invalid") {
 		t.Errorf("the context around a redaction is lost: %s", out)
+	}
+}
+
+// Review L2: an apostrophe inside a word is not a quote, so contractions
+// and possessives stay readable; a span that a quote opens and closes is a
+// value. What the rule costs: a span in backticks is hidden even when it
+// holds only names (pgx names the user and database it connects as that
+// way); the address and the error after it stay.
+func TestQuotesKeepWords(t *testing.T) {
+	for in, want := range map[string]string{
+		"the worker's lease expired; don't retry":                                    "the worker's lease expired; don't retry",
+		"the workers' leases expired, so the job's attempts end":                     "the workers' leases expired, so the job's attempts end",
+		"it can't be the run's last attempt (it's the 2nd)":                          "it can't be the run's last attempt (it's the 2nd)",
+		"invalid character 'x' looking for beginning of value":                       "invalid character '[redacted]' looking for beginning of value",
+		"failed to connect to `user=twin_worker database=twin`: dial error":          "failed to connect to `[redacted]`: dial error",
+		"jobs: the lease of 'job_01M4YDQK00ADN261CME3WV5HZ6' was lost, so it's over": "jobs: the lease of '[redacted]' was lost, so it's over",
+	} {
+		if got := observability.Text(in); got != want {
+			t.Errorf("Text(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
@@ -276,6 +306,12 @@ func TestTextIsBounded(t *testing.T) {
 	l := s.lines(t)[0]
 	if n := len([]rune(l["error"].(string))); n > observability.MaxText+1 {
 		t.Errorf("error of %d runes", n)
+	}
+	// A JSON Pointer is cut at its own, shorter bound (review L4).
+	s.Reset()
+	log.Error("pointer", "path", "/"+strings.Repeat("p", 2*observability.MaxPointer))
+	if n := len([]rune(s.lines(t)[0]["path"].(string))); n != observability.MaxPointer+1 {
+		t.Errorf("a pointer of %d runes", n)
 	}
 	if n := len([]rune(l["stack"].(string))); n > observability.MaxStack+1 || !strings.Contains(l["stack"].(string), "\n\t") {
 		t.Errorf("stack of %d runes, lines kept: %v", n, strings.Contains(l["stack"].(string), "\n"))
@@ -296,6 +332,10 @@ func (valuer) LogValue() slog.Value { return slog.StringValue(csvRow) }
 type panicky struct{}
 
 func (panicky) LogValue() slog.Value { panic(csvRow) }
+
+type grouper struct{}
+
+func (grouper) LogValue() slog.Value { return slog.GroupValue(slog.String("stack", csvRow)) }
 
 // Values that are not text are logged only when they are numbers, times or
 // errors (as sanitized text); anything else is redacted, and an error
@@ -326,6 +366,17 @@ func TestOtherValues(t *testing.T) {
 		t.Errorf("%v", l)
 	}
 	s.clean(t)
+	// A group under a free-text key, given or resolved from a LogValuer, is
+	// Redacted, not a nested object of unfiltered text (review L1).
+	s.Reset()
+	log.Error("groups", slog.Group("error", slog.String("error", csvCell)), "stack", grouper{}, "panic", grouper{})
+	l = s.lines(t)[0]
+	for _, k := range []string{"error", "stack", "panic"} {
+		if l[k] != observability.Redacted {
+			t.Errorf("%s = %v", k, l[k])
+		}
+	}
+	s.clean(t)
 }
 
 type fakeRuntimeError struct{ msg string }
@@ -333,9 +384,10 @@ type fakeRuntimeError struct{ msg string }
 func (e fakeRuntimeError) Error() string { return e.msg }
 func (fakeRuntimeError) RuntimeError()   {}
 
-// D-094 (d): a panic's value is never logged, only its type; a runtime
-// error's own message is kept, sanitized like any text (any type can claim
-// to be a runtime error).
+// D-094 (d): a panic's value is never logged, only its type; the message
+// of an error the Go runtime raised (a type of package runtime) is kept,
+// sanitized like any text. A type of another package is logged by its type
+// only, even when it has a RuntimeError method (review L3).
 func TestPanicText(t *testing.T) {
 	if got := observability.PanicText("row " + csvRow); got != "panic with a value of type string" {
 		t.Errorf("%q", got)
@@ -352,8 +404,32 @@ func TestPanicText(t *testing.T) {
 		}()
 		m["x"] = 1
 	}()
-	got := observability.PanicText(fakeRuntimeError{fmt.Sprintf("index %q out of range; key %s", csvCell, apiKey)})
-	if !strings.HasPrefix(got, "panic: index ") || strings.Contains(got, "SENTINEL") || strings.Contains(got, "sk-ant") {
+	func() {
+		defer func() {
+			if got := observability.PanicText(recover()); !strings.HasPrefix(got, "panic: runtime error: index out of range [") {
+				t.Errorf("%q", got)
+			}
+		}()
+		var xs []int
+		_ = xs[len(m)+3]
+	}()
+	got := observability.PanicText(fakeRuntimeError{fmt.Sprintf("index %s out of range; key %s", csvCell, apiKey)})
+	if got != "panic with a value of type observability_test.fakeRuntimeError" {
+		t.Errorf("%q", got)
+	}
+	if got := observability.PanicText(&fakeRuntimeError{"x"}); got != "panic with a value of type *observability_test.fakeRuntimeError" {
+		t.Errorf("%q", got)
+	}
+	func() {
+		defer func() {
+			if got := observability.PanicText(recover()); got != "panic: interface conversion: interface {} is string, not int" {
+				t.Errorf("a failed type assertion (*runtime.TypeAssertionError): %q", got)
+			}
+		}()
+		var x any = csvCell
+		_ = x.(int)
+	}()
+	if got := observability.PanicText(nil); got != "panic with a value of type <nil>" {
 		t.Errorf("%q", got)
 	}
 }
@@ -386,6 +462,45 @@ func TestWithAttributesAreFiltered(t *testing.T) {
 	s.clean(t)
 	if !strings.Contains(s.String(), `"`+observability.InvalidKey+`":{"code":"SOME_CODE"}`) {
 		t.Errorf("grouped: %s", s.String())
+	}
+}
+
+// Review I7: a logger's groups hold its own attributes, never the
+// correlation: request_id, job_id and the other context IDs stay at the top
+// level of the line, once, whatever groups the logger has.
+func TestCorrelationStaysAtTheTop(t *testing.T) {
+	var s sink
+	req, job, org := ids.New("req"), ids.New("job"), ids.New("org")
+	ctx := observability.With(observability.WithRequestID(context.Background(), req), slog.String("job_id", job),
+		slog.String("organization_id", ids.New("org")))
+	logger(&s).With("organization_id", org).WithGroup("g").With("code", "WITH_CODE").WithGroup("h").InfoContext(ctx, "grouped",
+		"status", "ok", "prompt", prompt)
+	l := s.lines(t)[0]
+	g, _ := l["g"].(map[string]any)
+	h, _ := g["h"].(map[string]any)
+	if l["request_id"] != req || l["job_id"] != job || l["organization_id"] != org || g["code"] != "WITH_CODE" || h["status"] != "ok" ||
+		h["prompt"] != observability.Redacted || g["request_id"] != nil || h["request_id"] != nil || h["job_id"] != nil {
+		t.Errorf("%s", s.String())
+	}
+	for _, k := range []string{`"request_id"`, `"job_id"`, `"organization_id"`} {
+		if n := strings.Count(s.String(), k); n != 1 {
+			t.Errorf("%s %d times: %s", k, n, s.String())
+		}
+	}
+	s.clean(t)
+	// A key of the record inside a group is the group's: it does not take
+	// the context's value off the top level.
+	s.Reset()
+	other := ids.New("job")
+	logger(&s).WithGroup("g").InfoContext(ctx, "grouped", "job_id", other)
+	if l := s.lines(t)[0]; l["job_id"] != job || l["g"].(map[string]any)["job_id"] != other {
+		t.Errorf("%s", s.String())
+	}
+	// Without a group the line is as before: the record's own key wins.
+	s.Reset()
+	logger(&s).InfoContext(ctx, "flat", "status", "ok", "job_id", other)
+	if l := s.lines(t)[0]; l["request_id"] != req || l["status"] != "ok" || l["job_id"] != other || strings.Count(s.String(), `"job_id"`) != 1 {
+		t.Errorf("%v", l)
 	}
 }
 
@@ -427,6 +542,9 @@ func TestTextHelper(t *testing.T) {
 	got := observability.Text(fmt.Sprintf("x %q y\n%s", csvCell, apiKey))
 	if strings.Contains(got, "SENTINEL") || strings.Contains(got, "\n") || !strings.HasPrefix(got, `x "[redacted]" y`) {
 		t.Errorf("%q", got)
+	}
+	if got := observability.Text("a\xffb"); got != "a�b" {
+		t.Errorf("invalid UTF-8: %q", got)
 	}
 	if observability.Text("") != "" {
 		t.Error("empty text")

@@ -240,6 +240,7 @@ func TestShapes(t *testing.T) {
 		"a label list of text":      {"failed_over_from", []string{"org-a", thought}},
 		"a long label list":         {"failed_over_from", []string{"a", "b", "c", "d", "e", "f", "g", "h", "i"}},
 		"a label list of numbers":   {"failed_over_from", []int{1}},
+		"an empty label in a list":  {"failed_over_from", []string{"org-a", ""}}, // review L4
 		"a code of free text":       {"status", "SENTINEL done"},
 		"NUL in a label":            {"model", "claude\x00"},
 	} {

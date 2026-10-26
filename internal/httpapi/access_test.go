@@ -242,6 +242,17 @@ func TestAccessLogKeepsTheWriter(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Errorf("the write deadline is out of reach: %d", resp.StatusCode)
 	}
+	// The status is the first one written, the one the client got: a later
+	// WriteHeader is superfluous (review L4).
+	logs.Reset()
+	twice := httptest.NewRecorder()
+	AccessLog(log, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(http.StatusInternalServerError)
+	})).ServeHTTP(twice, httptest.NewRequest("POST", "/x", nil))
+	if l := lines(t, &logs)[0]; twice.Code != http.StatusCreated || l["http_status"] != float64(http.StatusCreated) || l["level"] != "INFO" {
+		t.Errorf("%d %v", twice.Code, l)
+	}
 	// A handler that writes nothing at all is a 200 of no bytes.
 	logs.Reset()
 	AccessLog(log, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/x", nil))
