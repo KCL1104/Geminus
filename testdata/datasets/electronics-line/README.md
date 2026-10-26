@@ -67,6 +67,6 @@ The warnings are D-072 (b)'s "pack quality rules stay warnings": the import is s
 ## Used by
 
 - `scripts/gen-electronics-line-data` tests (the golden and the checks above).
-- `internal/api` `TestSyntheticStationLogImport` (DB): upload → profile → mapping → validation of the log and of every fixture, and runs of the template.
-- `internal/domainpack/electronicsline` tests of the event rules and of the observed values; `internal/results/observed` golden tests (D-060).
-- Planned: T-027 inference, T-038 AI eval and T-040 E2E fixtures (T-052 scope).
+- `internal/api` (a disposable database, `make integration-test`): `TestSyntheticStationLogImport` (upload → profile → mapping → validation: VALIDATED, no warning, the canonical dataset; then compared with a 5-replication run of the template, D-060), `TestSyntheticStationLogRules` (every fixture), `TestSyntheticStationLogIsTheTemplatesRun` (the template's version is the ground truth; a run with seed 52 reproduces the log's counts; the run's frozen version, manifest and seed).
+- `internal/domainpack/electronicsline`: `TestTheSyntheticLogKeepsTheRules` (D-059's rules), `TestCompareObserved*` (ELECTRONICS_LINE §7 against independent counts of the log).
+- Planned: T-027 inference, T-038 AI eval and T-040 E2E fixtures (T-052 scope). The import's commit, which would freeze the validated dataset as a dataset version, is T-018's and not served yet.

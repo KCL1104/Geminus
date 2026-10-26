@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 91,
-    "proposed": 9,
+    "proposed": 10,
     "rejected": 0,
     "superseded": 0
   },
@@ -873,6 +873,13 @@
       "gate": "T-051 驗收前（指標 key 另為 T-032 的輸入）",
       "gates_tasks": [
         "T-051"
+      ]
+    },
+    "D-118": {
+      "status": "proposed",
+      "gate": "T-052 驗收前（(b)(c) 另為 T-031 的匯入畫面與 T-027 的 inference 前）",
+      "gates_tasks": [
+        "T-052"
       ]
     }
   },

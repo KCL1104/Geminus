@@ -244,7 +244,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 
 **停機紀錄**（一台設備的一段停機）：`case_id`＝設備 ID（canonical-event 要求 case_id），`event_type`＝`downtime`，`resource_id`＝設備 ID，`stage`＝站別，`timestamp`＝停機開始，`end_timestamp`＝恢復，`outcome`＝原因碼（選填）。計畫停機（休息、保養）若有原因碼可辨識，推論時排除於故障之外。
 
-**Data-quality 檢查（提案）**：end < start；同一 serial 的作業時間重疊；同一設備的作業數超過推論的 capacity；serial 的站別順序與拓樸不符；停機與作業在同一設備上重疊（停機中仍有作業）；觀測期間內的資料缺口。研究稿指出微小停機常未被記錄、彙總的 OEE 不足以建模故障（未驗證）；因此 P0 只用逐筆停機紀錄估計故障參數，缺少時 `breakdowns` 由使用者輸入或回 needs_input，不從 OEE 反推。
+**Data-quality 檢查（提案；T-052 實作了詞彙與必填欄位的規則，為 import validation 的 warning，見 §12 與 D-118）**：end < start；同一 serial 的作業時間重疊；同一設備的作業數超過推論的 capacity；serial 的站別順序與拓樸不符；停機與作業在同一設備上重疊（停機中仍有作業）；觀測期間內的資料缺口。研究稿指出微小停機常未被記錄、彙總的 OEE 不足以建模故障（未驗證）；因此 P0 只用逐筆停機紀錄估計故障參數，缺少時 `breakdowns` 由使用者輸入或回 needs_input，不從 OEE 反推。
 
 **可推導的量（T-027 的範圍，此處只作參考）**：各站 service time 樣本＝end−start（empirical dataset）；首測與重測以 serial＋station 依 start 排序區分；routing 機率與 FPY 由 result 計數；TTR＝恢復−停機開始（日曆時間）；TTF＝上次恢復到下次停機開始之間的上班時間（有班表的設備，對應 D-051 只在上班時前進的時鐘；以日曆間隔估計會把夜間與週末算進去，使上班時的故障率被低估，例如 `two_shift_weekdays` 下只有約 48%），沒有班表的設備為日曆時間（只在產線上班時運轉的設備，即使沒有作業員夥伴，也要給它產線的 calendar：否則 R4 不會提醒，而以日曆間隔估計的 TTF 又會低估上班時的故障率；review round 4 L1）；release rate 由第一站的 start 依時段計數；換線時間：同一設備上相鄰兩件的 product 不同時，前一件 end 到下一件 start 的間隔（含可能的閒置，只能當上限，需使用者確認）；設備並行數由同時進行的作業推估 capacity。推論結果一律經 proposal 與人類批准（D-009），不直接改 Twin。
 
@@ -380,3 +380,21 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 UI 的標籤（kind 與指標名稱，en 與 zh-Hant）在 `apps/web/messages` 的 `domain.electronics_line.*`。P0 不計算 OEE，任何指標都不稱 OEE。
 
 **Review r1 的修正（M1，2026-10-26）。** 原本的直通率對每個 `pass: first` 的測試 process 各乘一次 FPY：範本加一個並聯的 FCT cell（兩個 cell 的 FPY 都是 0.93）時得到 0.97·0.95·0.93·0.93·0.995＝0.79302032325，而不是 §5 的串聯值 0.97·0.95·0.93·0.995＝0.852710025，且 pack 的規則沒有任何 issue。現在依上表的規則每個站別一次；並聯 cell 的 FPY 不同時，該站別沒有單一 FPY（要以 routing 份額加權，pack 不推導），直通率 unavailable。Pack 不分析 routing：同一站別的兩個首測若其實是串聯（不是 §2 的結構），也當作並聯 cell。範本每個測試站別只有一個首測，且首測的 node 順序就是線的順序，乘積與修正前逐位元相同，`testdata/template-run-lock.json` 的 digest 不變。驗證見 [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md) 的「Review round 1 fixes」。
+
+## 12. T-052 的實作（hackathon 切片，2026-10-26，H-029）
+
+本節記錄 T-052 hackathon 切片已實作的部分；批准文字沒有寫到的細節為 D-118（**PROPOSED**），驗證見 [checks/T-052_VALIDATION.md](../../checks/T-052_VALIDATION.md)。T-052 的其餘範圍（D-073 的 transform、commit 之後的 dataset 與 run 的連結等）見該報告。
+
+**Synthetic 資料（§8 的第 1 步）。** [`testdata/datasets/electronics-line`](../../testdata/datasets/electronics-line/README.md)：一週的 station log（22,739 列，2,626,641 bytes，每列 `synthetic=true`）、ground-truth model（本 pack 的範本 §11）與產生方式、7 個負向 fixture。`scripts/gen-electronics-line-data` 以 engine 的 Observer 記錄範本的 replication 0（seed 52），不另寫一套模擬；同一 seed 得到同一 bytes（SHA-256 釘在測試），engine 對該 replication 在同一視窗自己的計數（出貨、測試失敗、修理、各機台的停機、SMT 換線）等於 log 的。時間以 2026-09-28T00:00+08:00 為 model time 0（§6 的 anchor）。
+
+**§6 的資料品質規則。** Import 的 validation 以 import 綁定的 base version 為詞彙，對每個合法的列檢查 D-059 的規則，結果為 warning（D-072 (b)），import 仍 VALIDATED：`EVENT_TYPE_UNKNOWN`、`EVENT_STAGE_MISSING`、`EVENT_STAGE_UNKNOWN`、`EVENT_END_MISSING`、`EVENT_OUTCOME_MISSING`（測試站）、`EVENT_OUTCOME_UNKNOWN`、`EVENT_PRODUCT_MISSING`（多產品）、`EVENT_PRODUCT_UNKNOWN`（D-118 (b)）。end 早於 start 仍是 D-072 (b) 的 invalid row。§6 列的跨列檢查（serial 的作業重疊、超過 capacity、站序、停機中仍有作業、資料缺口）尚未實作。
+
+**§7 的比對。** `electronicsline.CompareObserved`（以 `internal/results/observed` 計算）：線的每週與每日產出（輸出比對）、各測試站的 FPY 與各站的平均 cycle time（輸入一致性），D-060 的模擬平均、replication 範圍、絕對與相對誤差、是否在範圍內，資料不足時為 §7 的 reason（D-118 (d)）。對 synthetic 資料（hold-out：範本的參數不是由資料推論；但資料由同一 model 產生，這只檢查 pipeline）：
+
+| 量 | 觀測（log） | 模擬（seed 2026，5 個 replication，horizon 14 天、warmup 7 天） | 說明 |
+|---|---|---|---|
+| `line_output_per_week` | 3,588 | 平均 3,613，範圍（min–max）3,555–3,677，絕對誤差 25，相對 0.70%，在範圍內 | 以 generator 的 seed（52）、1 個 replication 時模擬即 log，誤差 0 |
+| `first_pass_yield.fct` | 0.9399 | 模型輸入 0.93 | 輸入一致性 |
+| `mean_cycle_minutes.fct` | 3.328 | 模型 tri(2.8, 3.2, 4.0) 的平均 3.333 | 輸入一致性；log 的時間截到整秒 |
+
+這些是 synthetic 模型與它自己產生的資料的數字，不是工廠的數字；不給通過判定，也不調整模型（D-060）。

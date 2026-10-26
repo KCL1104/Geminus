@@ -3514,7 +3514,8 @@
         "D-058",
         "D-059",
         "D-060",
-        "D-073"
+        "D-073",
+        "D-118"
       ],
       "scope": [
         "以固定 seed 產生標為 synthetic 的 station event logs（含停機事件、測試失敗與重測），附產生它的 ground-truth 模型；不使用任何客戶資料。",
@@ -3527,11 +3528,21 @@
       "planned_outputs": [
         "testdata/datasets/electronics-line/",
         "scripts/",
-        "internal/results/"
+        "internal/results/",
+        "scripts/gen-electronics-line-data/",
+        "internal/results/observed/",
+        "internal/domainpack/electronicsline/",
+        "internal/import/validation/",
+        "internal/import/validator/",
+        "internal/api/synthetic_line_test.go",
+        "checks/T-052_VALIDATION.md"
       ],
       "spec_refs": [
         "docs/PRD.md",
-        "docs/SIMULATION_SPEC.md"
+        "docs/SIMULATION_SPEC.md",
+        "docs/domains/ELECTRONICS_LINE.md",
+        "docs/API_DATABASE.md",
+        "docs/TWIN_IR_SPEC.md"
       ],
       "acceptance_tests": [
         "TEST-013",
@@ -3540,7 +3551,13 @@
       ],
       "verification_commands": [
         "go test ./internal/results/... ./internal/domainpack/...",
-        "make spec-check"
+        "make spec-check",
+        "go test ./scripts/gen-electronics-line-data/",
+        "go run ./scripts/gen-electronics-line-data -check",
+        "make architecture-check",
+        "make backend-test",
+        "make backend-numeric",
+        "make integration-test"
       ],
       "definition_of_done": [
         "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
@@ -3548,7 +3565,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-26",
+          "branch": "t052-hk",
+          "report": "checks/T-052_VALIDATION.md",
+          "summary": "Hackathon 切片（H-029），不是 T-052 全部：seed 52 的 synthetic station log（engine Observer 記錄範本的 replication 0，一週 22,739 列、2.6 MB，hash 釘在測試）與 ground truth、7 個負向 fixture（testdata/datasets/electronics-line）；D-059 的資料品質規則（pack 的 EventRulesProvider，import validation 的 warning）；log 經 upload→profile→mapping→validate 為 VALIDATED，範本 version 的 run 以 generator 的 seed 重現 log；D-060 的比對（internal/results/observed 與 electronicsline.CompareObserved，純函式）。commit 凍結 dataset（T-018）、D-073 的 transform 與其餘範圍未做，見報告；細節 D-118 PROPOSED。",
+          "reviewer": null,
+          "accepted_at": null
+        }
+      ]
     },
     {
       "id": "T-053",

@@ -1389,6 +1389,19 @@
       "proposal": "(a) domain electronics_line、範本 electronics_assembly_test_line、CreateModel 改為每個 pack 一個 oneOf 分支；(b) 規則 1 STATION_RESOURCE_INVALID 與規則 3 RETEST_RESOURCE_MISMATCH 為 error（/nodes/<i>/requires，規則 3 不連鎖），規則 2 TEST_RESULT_NOT_IDENTIFIED 與 DOMAIN_ATTRIBUTES_INVALID 為 warning；(c) 站＝首測加上共用 primary resource 的重測（多個時歸 node 順序第一個），key 為首測的 node ID，FPY 為首測 test result 非 fail flow 的機率和（fpy_input、rolled_throughput_yield_input）；直通率依線的順序（AOI、ICT、FCT、燒機）每個測試站別乘一次 FPY（review r1 M1），同站別的多個首測視為並聯 cell（pack 不分析 routing，不區分並聯與串聯）：FPY 在 routing 容差 1e-9 內相同時取 node 順序第一個，不同時 unavailable（PARALLEL_TEST_YIELDS_DIFFER），任一 cell 沒有 FPY 時 TEST_RESULT_NOT_IDENTIFIED；line balance 每個 primary resource 一次；(d) key <名稱> 或 <名稱>.<站>，單位 entity_per_hour／ratio／minute／count／entity，每個 replication 一個值以 metrics.Summarize 彙整，任一 replication 沒有值即 unavailable；另列 work_ratio、processing_ratio 與批次三項；沒有 calendar 的站不列 scheduled_utilization、overtime_minutes；pack 的 reason NO_BATCH_MODEL、NO_BATCH_IN_WINDOW、RESULT_MEMBER_MISSING、PARALLEL_TEST_YIELDS_DIFFER；(e) line_wip、scrap_rate、simulated_first_pass_ratio、retest_ratio 在宣告式 metrics 的 gate 解除前 unavailable；(f) des.Engine.ModelMetrics 在 DomainMetrics 之後、digest 之前呼叫，傳 effective IR 的副本，空的答案不寫 metrics.domain，panic 為 ErrInternal，conformance 與 FMA 檢查涵蓋；(g) 範本為 §4.1＋§4.2＋§4.4（兩個產品族 table 投入、SMT 換線），lognormal TTR 未採用，班表拆成 early／late 兩個 label 並列出中性的 shift_capacity，SMT 線為一個 server，2D 位置依 x 再依 y 即 Marey 的列順序；(h) UI 標籤在 apps/web/messages 的 domain.electronics_line.*。建議照列，已實作。",
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-118",
+      "title": "Synthetic station log、資料品質規則與觀測比對的細節（T-052 hackathon 切片）",
+      "status": "proposed",
+      "owner_role": "Domain / Import / Simulation",
+      "gate": "T-052 驗收前（(b)(c) 另為 T-031 的匯入畫面與 T-027 的 inference 前）",
+      "resolves": [],
+      "source_gap": "D-059 只寫了 pack 定義 event_type／outcome 詞彙、多產品時 product 必填，D-072 (b) 只寫了 pack 的品質規則為 warning，沒有寫規則的 code、範圍、詞彙從哪裡來、在哪一層檢查與如何回報；D-060 與 ELECTRONICS_LINE §7 沒有寫比對的 key、最後一站與第一站、視窗的對齊、範圍與誤差的數值細節；T-052 的 synthetic 資料如何產生（以 engine 或另一套模擬）、時間與 unit 的命名沒有寫。",
+      "source_pages": "N/A（T-052 hackathon 切片實作；D-058、D-059、D-060、D-072、D-073；ELECTRONICS_LINE §6、§7；H-029）",
+      "proposal": "(a) generator scripts/gen-electronics-line-data 以 engine Observer 記錄範本的 replication 0（seed 52、15 天、第 2 週為 log，以開始時間選列），不另寫模擬；anchor 2026-09-28T00:00+08:00，時間截到整秒；SMT 換線後的第一片在換線後開始；unit 以最小編號的閒置 unit 命名並與 engine 的 in-use／down 數對帳；人的步驟以 op-NN 記 operator（不匯入）；除錯 pass＝修好、fail＝報廢，停機原因碼 breakdown；shift 為線班表在 start 的 label；serial SYN-<A|B>-<n>；每列 synthetic=true；提交一週，負向 fixture 為前 40 列改一格。(b) 規則（warning，path 為 cell 或列）：EVENT_TYPE_UNKNOWN、EVENT_STAGE_MISSING／UNKNOWN、EVENT_END_MISSING、EVENT_OUTCOME_MISSING（測試站）／UNKNOWN（作業的 result 不是 pass、fail）、EVENT_PRODUCT_MISSING（兩個以上 entity type 的作業）／UNKNOWN；詞彙取自 import 綁定的 base version（站名與 process ID、測試站、entity types）；§6 的跨列檢查未做。(c) optional 的 domainpack.EventRulesProvider；validation.ValidateWith（warning 在 error 之後、合計至多 MaxIssues、計數、不進 error report，無法記錄的 issue 為 fail closed）；validator 以 Config.Packs 讀 base version 的 pack（cmd/worker 傳入，讀不到或 domain 不服務為不重試的 INPUT_INVALID）；import.validate audit 加 warnings 計數。(d) internal/results/observed：模擬平均、replication 範圍（<20 min–max，≥20 Type 7 2.5%／97.5%）、絕對誤差＝模擬−觀測、相對誤差（觀測 0 時 null，OBSERVED_ZERO）、是否在範圍內，輸入一致性無範圍，OBSERVED_VALUE_NOT_FINITE；electronicsline.CompareObserved：line_output_per_week／per_day（output）、first_pass_yield.<站>、mean_cycle_minutes.<站>（輸入一致性；Weibull、empirical 為 SIMULATED_METRIC_UNAVAILABLE；重測分布不同標近似），視窗為 lcm(期, model 循環) 的整數倍且同相位、單一 UTC offset，否則 D-060 的 reason；in-sample／hold-out 由呼叫者標示。建議照列，已實作。",
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

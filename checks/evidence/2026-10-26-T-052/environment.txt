@@ -1,0 +1,7 @@
+date: 2026-10-26T15:38:14Z
+go: go version go1.27.3 linux/amd64
+python: Python 3.13.16
+cpus: 4
+postgres: PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+base commit: 8eecee4 (HEAD of the worktree when the branch t052-hk was made)
+databases: dt_test_t052a (development and mutation runs), dt_test_t052b (make integration-test), both created fresh and dropped at the end

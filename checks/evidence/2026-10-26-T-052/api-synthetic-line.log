@@ -1,0 +1,11 @@
+=== RUN   TestElectronicsLineTemplateClosedLoop
+--- PASS: TestElectronicsLineTemplateClosedLoop (1.77s)
+=== RUN   TestSyntheticStationLogImport
+--- PASS: TestSyntheticStationLogImport (33.97s)
+=== RUN   TestSyntheticStationLogRules
+--- PASS: TestSyntheticStationLogRules (4.65s)
+=== RUN   TestSyntheticStationLogIsTheTemplatesRun
+--- PASS: TestSyntheticStationLogIsTheTemplatesRun (2.89s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	44.418s
+go test -v synthetic line tests (dt_test_t052b) exit 0 (46 s)

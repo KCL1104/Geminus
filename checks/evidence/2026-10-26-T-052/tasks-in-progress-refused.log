@@ -1,0 +1,10 @@
+$ (T-052 set to in_progress) /home/user/Geminus/.venv/bin/python scripts/check_decisions.py
+Traceback (most recent call last):
+  File "/home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/scripts/check_decisions.py", line 80, in <module>
+    main()
+    ~~~~^^
+  File "/home/user/Geminus/.claude/worktrees/agent-a45a9dfb74c868fa2/scripts/check_decisions.py", line 46, in main
+    assert all(s in ('review', 'done') for s in deps), f"{t['id']}: started before its dependencies"
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: T-052: started before its dependencies
+exit 1

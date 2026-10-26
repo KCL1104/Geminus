@@ -91,6 +91,8 @@ T-042 實作（boundary guard，test-only，不是第二個產品 domain）：`i
 
 T-051 hackathon 切片（H-029；細節 D-117，PROPOSED）：P0 的電子產線 pack `internal/domainpack/electronicsline`（domain `electronics_line`）與範例 pack 一起由 `internal/packs` 註冊；它讀 node 的 `domain_attributes`（`station`、`pass`、`result_of`，ELECTRONICS_LINE §3.3），generic kernel 照舊不讀。指標要用到模型（哪些 process 是站、resource 的 role、calendar、routing 機率），所以加上 optional 的 `domainpack.ModelMetricsProvider`（`ComputeModelMetrics(ir, result)`，D-058 選項 A；`DomainPack` 的 method set 不變）：`des.Engine.ModelMetrics` 在 `DomainMetrics` 之後、digest 之前以 effective IR 的副本呼叫它並寫入 `metrics.domain`（空的答案不寫，其他 pack 的 Result 與 digest 不變），runner 對有此介面的 pack 接上；conformance suite 的 `model-metrics/*` 步驟檢查它不改 IR 與 Result、key 非空、Result 通過 schema、generic 部分不變、經 engine 與直接呼叫的答案相同、可重現，並把它納入 stateless 與並行的檢查。Pack 以 `internal/results/metrics.Summarize` 彙整，與 Result 其他統計同一個 numerical profile；`make backend-numeric` 的 FMA 檢查涵蓋 `internal/domainpack`（pack 的指標在 digest 中）。
 
+T-052 hackathon 切片（H-029；細節 D-118，PROPOSED）：匯入的 station log 的詞彙是 pack 的（D-059），所以加上 optional 的 `domainpack.EventRulesProvider`（`EventRules(ir)` 回一個 canonical event 的資料品質檢查，issue 為 warning；`DomainPack` 的 method set 不變）。Import 的純 validation（`internal/import/validation.ValidateWith`）只拿到一個檢查函式，不認得 pack；validation job（`internal/import/validator`，只有 cmd/worker 連結）讀 import 綁定的 version、以 worker 服務的 packs 找出檢查。D-060 的比對分兩層：`internal/results/observed` 是 generic kernel 的純算術（模擬平均、replication 範圍、絕對與相對誤差，不給判定），哪些量、哪一站、哪個視窗是 pack 的（`electronicsline.CompareObserved`）。Synthetic 資料的 generator（`scripts/gen-electronics-line-data`）經由 `internal/packs` 取得範本、以 engine 的 Observer 記錄 replication，不是第二套模擬。
+
 **SimulationEngine**（原報告接口）：
 
 ```go

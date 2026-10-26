@@ -1,0 +1,9 @@
+15:43:46Z go run ./scripts/gen-electronics-line-data -check exit 0 (1 s) -> generator-check.log
+15:54:20Z make backend-test exit 2 (634 s) -> backend-test.log
+15:54:42Z make architecture-check exit 0 (22 s) -> architecture-check.log
+16:01:04Z make backend-numeric exit 0 (382 s) -> backend-numeric.log
+16:03:03Z go test -race (changed packages) exit 0 (119 s) -> race-changed-packages.log
+16:03:05Z make ai-eval exit 0 (2 s) -> ai-eval.log
+16:08:57Z make integration-test (dt_test_t052b) exit 0 (352 s) -> integration-test.log
+16:09:43Z go test -v synthetic line tests (dt_test_t052b) exit 0 (46 s) -> api-synthetic-line.log
+16:18:55Z make backend-test (run 2) exit 0 (528 s) -> backend-test.log
