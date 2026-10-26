@@ -202,6 +202,20 @@ func TestRefused(t *testing.T) {
 			t.Errorf("%s: the error repeats the value: %v", name, err)
 		}
 	}
+	// A worker or system actor is an actor reference (D-092): what
+	// twin.actor_ref allows, never free text.
+	for _, e := range []audit.Event{
+		{ActorType: audit.Worker, ActorID: "1 worker SENTINEL", Action: "simulation.cancelled", TargetType: "simulation", TargetID: sim,
+			RequestID: req, Metadata: map[string]any{"attempt": 1}},
+		{ActorType: audit.System, ActorID: "provision tenant", Action: "organization.provision", TargetType: "organization", TargetID: org,
+			RequestID: req, Metadata: map[string]any{"owner_user_id": user}},
+		{ActorType: audit.Worker, ActorID: "", Action: "simulation.cancelled", TargetType: "simulation", TargetID: sim, RequestID: req},
+	} {
+		var ie *audit.InvalidError
+		if err := audit.Check(e); !errors.As(err, &ie) || ie.Field != "actor_id" || strings.Contains(err.Error(), "SENTINEL") {
+			t.Errorf("%s by %q: %v", e.Action, e.ActorID, err)
+		}
+	}
 }
 
 // Value shapes beyond IDs and enumerations.
@@ -243,7 +257,9 @@ func TestShapes(t *testing.T) {
 	for i := range 33 {
 		e.Metadata["k"+strconv.Itoa(i)] = 1
 	}
-	if err := audit.Check(e); !errors.Is(err, audit.ErrInvalid) {
+	// The bound is checked before any field, so the refusal names it.
+	var ie *audit.InvalidError
+	if err := audit.Check(e); !errors.As(err, &ie) || ie.Field != "metadata" {
 		t.Errorf("33 fields: %v", err)
 	}
 }

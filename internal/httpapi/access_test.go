@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
@@ -223,6 +224,47 @@ func TestAccessLogKeepsTheWriter(t *testing.T) {
 		t.Errorf("flushed %v, %d", w.Flushed, w.Code)
 	}
 	if l := lines(t, &logs)[0]; l["http_status"] != float64(200) || l["response_bytes"] != float64(9) {
+		t.Errorf("%v", l)
+	}
+	// Through a real server the controller reaches the connection's write
+	// deadline (the progress stream sets one per event).
+	srv := httptest.NewServer(AccessLog(log, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(time.Minute)); err != nil {
+			w.WriteHeader(http.StatusTeapot)
+		}
+	})))
+	defer srv.Close()
+	resp, err := srv.Client().Get(srv.URL + "/stream")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		t.Errorf("the write deadline is out of reach: %d", resp.StatusCode)
+	}
+	// A handler that writes nothing at all is a 200 of no bytes.
+	logs.Reset()
+	AccessLog(log, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/x", nil))
+	if l := lines(t, &logs)[0]; l["http_status"] != float64(200) || l["response_bytes"] != float64(0) {
+		t.Errorf("%v", l)
+	}
+}
+
+// D-093 (b): a route of the caller's own (Self) puts the user on the
+// request's later lines, as Scoped does with the organization too.
+func TestSelfAnnotatesTheUser(t *testing.T) {
+	const user = "usr_01M4YDQK00TA00000000000001"
+	var logs bytes.Buffer
+	log := observability.NewLogger(&logs, "api")
+	h := AccessLog(log, Handler(log, Self(fakeVerifier{id: auth.Identity{Issuer: "https://id", Subject: "s"}}, &fakeResolver{user: user},
+		func(w http.ResponseWriter, r *http.Request, u string) error {
+			WriteJSON(w, 200, map[string]string{"ok": "yes"})
+			return nil
+		})))
+	r := httptest.NewRequest("GET", "/v1/me", nil)
+	r.Header.Set("Authorization", "Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJTRU5USU5FTCJ9.U0VOVElORUw")
+	h.ServeHTTP(httptest.NewRecorder(), r)
+	if l := lines(t, &logs)[0]; l["msg"] != "request" || l["user_id"] != user || l["organization_id"] != nil {
 		t.Errorf("%v", l)
 	}
 }

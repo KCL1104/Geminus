@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/observability"
@@ -198,6 +200,40 @@ func TestJobs(t *testing.T) {
 	}
 	if got := find(ps, "geminus.simulation.engine.events"); len(got) != 1 || got[0].value != 12345 || got[0].attrs["geminus.outcome"] != "completed" {
 		t.Errorf("%v", got)
+	}
+}
+
+// D-095 (c): a request and a job attempt are each a new root, whatever span
+// the context already carries (a client's or a library's); the work
+// recorded afterwards under them is an Error span when it failed.
+func TestRootsAndFailedWork(t *testing.T) {
+	r := install(t)
+	tel := telemetry.Current()
+	foreign := trace.TraceID{0x4b, 0xf9}
+	inherited := trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: foreign, SpanID: trace.SpanID{0x01}, TraceFlags: trace.FlagsSampled, Remote: true}))
+	ctx, span := tel.StartRequest(inherited, "GET")
+	tel.EndRequest(ctx, span, "GET", "GET /v1/projects", 200, time.Millisecond, ids.New("req"))
+	jctx, job := tel.StartJob(inherited, "simulation", ids.New("job"), 1, "")
+	tel.Engine(jctx, time.Now().Add(-time.Millisecond), "failed", 7)
+	tel.ProviderCall(jctx, time.Now(), "fake", "fake", "modeler", "AI_TIMEOUT", 0, 0)
+	tel.Import(jctx, time.Now(), "profile", "failed", 0)
+	tel.EndJob(job, "simulation", "failed", "ENGINE_FAILED", time.Second)
+	spans := r.spans.Ended()
+	if len(spans) != 5 {
+		t.Fatalf("%s", r.dump(t))
+	}
+	for _, s := range spans {
+		switch s.Name() {
+		case "GET /v1/projects", "job simulation":
+			if s.Parent().IsValid() || s.SpanContext().TraceID() == foreign {
+				t.Errorf("%s is not a new root: parent %v", s.Name(), s.Parent())
+			}
+		default:
+			if s.Status().Code != codes.Error || s.Parent().SpanID() != job.SpanContext().SpanID() {
+				t.Errorf("%s: %v, parent %v", s.Name(), s.Status(), s.Parent())
+			}
+		}
 	}
 }
 

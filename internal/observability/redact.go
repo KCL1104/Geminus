@@ -152,17 +152,10 @@ func filter(a slog.Attr) slog.Attr {
 	if !ok {
 		return slog.String(key, Redacted)
 	}
-	return slog.Attr{Key: key, Value: value(kind, resolve(a.Value))}
-}
-
-// resolve resolves a LogValuer, which may panic.
-func resolve(v slog.Value) (out slog.Value) {
-	defer func() {
-		if recover() != nil {
-			out = slog.StringValue(Redacted)
-		}
-	}()
-	return v.Resolve()
+	// Resolve calls a LogValuer's LogValue; when it panics, slog recovers
+	// and resolves to an error value (sanitized text under a text key,
+	// Redacted under any other).
+	return slog.Attr{Key: key, Value: value(kind, a.Value.Resolve())}
 }
 
 func value(kind Kind, v slog.Value) slog.Value {
@@ -283,8 +276,10 @@ var (
 	// with upper- and lowercase letters and digits (checked in base64Like).
 	longBase64 = regexp.MustCompile(`[A-Za-z0-9+/]{40,}={0,2}`)
 	// quoted is a double-quoted span, Go's %q or PostgreSQL's: where a
-	// server message names a value (D-094 (c)).
-	quoted = regexp.MustCompile(`"(?:[^"\\]|\\.)*"`)
+	// server message names a value (D-094 (c)). A quote that is never
+	// closed (a value that holds a quote, text cut short) runs to the end:
+	// what follows it may be the value.
+	quoted = regexp.MustCompile(`"(?:[^"\\]|\\.)*(?:"|\\?$)`)
 )
 
 func base64Like(m string) bool {

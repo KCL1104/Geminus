@@ -33,10 +33,15 @@ var (
 	thinking = "CHAIN-OF-THOUGHT-SENTINEL: first I will"
 	answer   = `{"summary":"PROVIDER-OUTPUT-SENTINEL"}`
 	comment  = "Approved by the night shift COMMENT-SENTINEL"
+	// A credential header whose value is no key=value secret, and a bare
+	// base64 secret (a signature, a key body).
+	negotiate = "Authorization: Negotiate TlRMTVNTUAABSENTINEL"
+	prefs     = "Cookie: prefs=COOKIE-SENTINEL; theme=dark"
+	blob      = "c2VjcmV0X2tleV9TRU5USU5FTF8wMTIzNDU2Nzg5X2FiY2RlZmdoaWprbG1ub3A="
 )
 
 // forbidden are the substrings no line may contain.
-var forbidden = []string{"SENTINEL", "sentinel.person", "hunter2", "dbpass", "MIIEvQIB", "eyJzdWIi", "Lötstelle", "U0VOVElORUw"}
+var forbidden = []string{"SENTINEL", "sentinel.person", "hunter2", "dbpass", "MIIEvQIB", "eyJzdWIi", "Lötstelle", "U0VOVElORUw", "c2VjcmV0X2tl"}
 
 type sink struct{ bytes.Buffer }
 
@@ -114,6 +119,15 @@ func TestWithDoesNotShare(t *testing.T) {
 		observability.Attrs(b)[1].Key != "import_id" {
 		t.Errorf("%v %v %v", observability.Attrs(base), observability.Attrs(a), observability.Attrs(b))
 	}
+	// Siblings of a context built in steps (where an appended slice would
+	// have room to spare) keep their own last attribute.
+	three := observability.With(context.Background(), slog.Int("attempt", 1), slog.Int("rows", 2), slog.Int("columns", 3))
+	four := observability.With(three, slog.Int("events", 4))
+	x := observability.With(four, slog.String("code", "FIRST"))
+	y := observability.With(four, slog.String("code", "SECOND"))
+	if got := observability.Attrs(x); len(got) != 5 || got[4].Value.String() != "FIRST" {
+		t.Errorf("a sibling overwrote it: %v (and %v)", got, observability.Attrs(y))
+	}
 }
 
 // What a request learns as it runs (the organization and user once
@@ -134,6 +148,13 @@ func TestAnnotations(t *testing.T) {
 	}
 	if got := observability.Annotations(ctx); len(got) != 2 || got[0].Value.String() == org {
 		t.Errorf("annotations: %v", got)
+	}
+	// What Annotations returned is a copy: a later annotation does not
+	// change it.
+	before := observability.Annotations(ctx)
+	observability.Annotate(ctx, slog.String("user_id", ids.New("usr")))
+	if before[1].Key != "user_id" || before[1].Value.String() != user {
+		t.Errorf("an earlier result changed: %v", before)
 	}
 	// Annotating a context that does not track is a no-op.
 	observability.Annotate(context.Background(), slog.String("user_id", user))
@@ -177,6 +198,17 @@ func TestValuesOfTheWrongShapeAreRedacted(t *testing.T) {
 		}
 	}
 	s.clean(t)
+	// A route pattern is a method and a pattern of path characters: a path
+	// with a query or a space is not one.
+	s.Reset()
+	log.Info("routes", "route", "GET /v1/projects?cursor=CURSOR-SENTINEL")
+	log.Info("routes", "route", "GET /v1/models/"+csvCell+" x")
+	for _, l := range s.lines(t) {
+		if l["route"] != observability.Redacted {
+			t.Errorf("route = %v", l["route"])
+		}
+	}
+	s.clean(t)
 }
 
 // Default deny: a key the registry does not list is redacted, whatever it
@@ -215,6 +247,10 @@ func TestTextIsSanitized(t *testing.T) {
 		fmt.Sprintf("row %q is invalid", csvRow), fmt.Sprintf("cell %q is invalid", csvCell), fmt.Sprintf("column %q unknown", header),
 		`ERROR: invalid input syntax for type integer: "CASE-SENTINEL-7731" (SQLSTATE 22P02)`,
 		"bidi \u202eevil\u202c text\r\nnext line\ttab",
+		"request headers: " + negotiate, "request headers: " + prefs, "signature " + blob + " rejected",
+		// A quote that is never closed (a value with a quote in it, text
+		// cut short) hides everything after it.
+		`cell "CASE-SENTINEL-7731 is invalid`, `value "a\"b CASE-SENTINEL\`,
 	} {
 		log.Error("failed", "error", text)
 	}
@@ -227,7 +263,8 @@ func TestTextIsSanitized(t *testing.T) {
 	}
 	s.clean(t)
 	if !strings.Contains(out, `cell \"[redacted]\" is invalid`) || !strings.Contains(out, "(SQLSTATE 22P02)") ||
-		!strings.Contains(out, "postgres://[redacted]@db.internal:5432/twin") {
+		!strings.Contains(out, "postgres://[redacted]@db.internal:5432/twin") || !strings.Contains(out, "request headers: Authorization: [redacted]") ||
+		!strings.Contains(out, "signature [redacted] rejected") {
 		t.Errorf("the context around a redaction is lost: %s", out)
 	}
 }
@@ -256,6 +293,10 @@ type valuer struct{}
 
 func (valuer) LogValue() slog.Value { return slog.StringValue(csvRow) }
 
+type panicky struct{}
+
+func (panicky) LogValue() slog.Value { panic(csvRow) }
+
 // Values that are not text are logged only when they are numbers, times or
 // errors (as sanitized text); anything else is redacted, and an error
 // whose method panics does not crash the logger.
@@ -275,6 +316,46 @@ func TestOtherValues(t *testing.T) {
 		}
 	}
 	s.clean(t)
+	// A LogValuer that panics (slog recovers it as an error value) is
+	// Redacted under a shaped key and the runtime's own words under a text
+	// key: never the panic's value.
+	s.Reset()
+	log.Error("valuers", "code", panicky{}, "error", panicky{})
+	l = s.lines(t)[0]
+	if e, _ := l["error"].(string); l["code"] != observability.Redacted || !strings.HasPrefix(e, "LogValue panicked") {
+		t.Errorf("%v", l)
+	}
+	s.clean(t)
+}
+
+type fakeRuntimeError struct{ msg string }
+
+func (e fakeRuntimeError) Error() string { return e.msg }
+func (fakeRuntimeError) RuntimeError()   {}
+
+// D-094 (d): a panic's value is never logged, only its type; a runtime
+// error's own message is kept, sanitized like any text (any type can claim
+// to be a runtime error).
+func TestPanicText(t *testing.T) {
+	if got := observability.PanicText("row " + csvRow); got != "panic with a value of type string" {
+		t.Errorf("%q", got)
+	}
+	if got := observability.PanicText(fmt.Errorf("cell %s", csvCell)); got != "panic with a value of type *errors.errorString" {
+		t.Errorf("%q", got)
+	}
+	var m map[string]int
+	func() {
+		defer func() {
+			if got := observability.PanicText(recover()); got != "panic: assignment to entry in nil map" {
+				t.Errorf("%q", got)
+			}
+		}()
+		m["x"] = 1
+	}()
+	got := observability.PanicText(fakeRuntimeError{fmt.Sprintf("index %q out of range; key %s", csvCell, apiKey)})
+	if !strings.HasPrefix(got, "panic: index ") || strings.Contains(got, "SENTINEL") || strings.Contains(got, "sk-ant") {
+		t.Errorf("%q", got)
+	}
 }
 
 // Attributes given to With are filtered as well, and a context's key that
@@ -297,6 +378,13 @@ func TestWithAttributesAreFiltered(t *testing.T) {
 	logger(&s).WithGroup("g").InfoContext(observability.WithRequestID(context.Background(), ids.New("req")), "grouped", "prompt", prompt)
 	s.clean(t)
 	if !strings.Contains(s.String(), `"request_id"`) {
+		t.Errorf("grouped: %s", s.String())
+	}
+	// A group's name built from data is not echoed.
+	s.Reset()
+	logger(&s).WithGroup(csvCell).Info("grouped", "code", "SOME_CODE")
+	s.clean(t)
+	if !strings.Contains(s.String(), `"`+observability.InvalidKey+`":{"code":"SOME_CODE"}`) {
 		t.Errorf("grouped: %s", s.String())
 	}
 }
