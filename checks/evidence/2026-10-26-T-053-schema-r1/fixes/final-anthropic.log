@@ -1,0 +1,4 @@
+2026-10-26T15:37:41Z commit 9c45ebd: bash /home/user/Geminus/.claude/worktrees/agent-a0a11ec7ab4ef5df4/checks/evidence/2026-10-26-T-053-schema-r1/fixes/verify.sh final-anthropic
+gofmt -l internal/ai/provider/anthropic: (nothing)
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	8.973s
+exit 0
