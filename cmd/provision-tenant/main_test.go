@@ -81,3 +81,43 @@ func TestRefusals(t *testing.T) {
 		}
 	}
 }
+
+// The demo organization of the hackathon deployment gets the judge's account
+// as an editor when it is created (T-057, H-035 (2)): the output names the
+// member's ID too; a member's three flags go together, and a member is never
+// an owner.
+func TestProvisionWithMember(t *testing.T) {
+	url := operatorURL(t)
+	owner, judge := "sub-"+ids.New("x"), "judge-"+ids.New("x")
+	code, out, errs := provision(t, url, "organization", "-name", "Demo line (synthetic)", "-owner-issuer", "https://test.invalid", "-owner-subject", owner,
+		"-member-issuer", "https://test.invalid", "-member-subject", judge, "-member-role", "editor")
+	var org struct {
+		OrganizationID string `json:"organization_id"`
+		Owner          string `json:"owner_user_id"`
+		Member         string `json:"member_user_id"`
+	}
+	if code != 0 || json.Unmarshal([]byte(out), &org, json.RejectUnknownMembers(true)) != nil || !strings.HasPrefix(org.OrganizationID, "org_") ||
+		!strings.HasPrefix(org.Owner, "usr_") || !strings.HasPrefix(org.Member, "usr_") || org.Owner == org.Member {
+		t.Fatalf("organization with a member: %d %q %q", code, out, errs)
+	}
+	code, out, _ = provision(t, url, "user", "-issuer", "https://test.invalid", "-subject", judge)
+	if code != 0 || !strings.Contains(out, `"user_id":"`+org.Member+`"`) || !strings.Contains(out, `"created":false`) {
+		t.Errorf("the member as a user: %d %q", code, out)
+	}
+	base := []string{"organization", "-name", "Refused", "-owner-issuer", "https://test.invalid", "-owner-subject", "sub-" + ids.New("x")}
+	for name, extra := range map[string][]string{
+		"a member without a role":    {"-member-issuer", "https://test.invalid", "-member-subject", "judge-" + ids.New("x")},
+		"a member without a subject": {"-member-issuer", "https://test.invalid", "-member-role", "editor"},
+		"a member without an issuer": {"-member-subject", "judge-" + ids.New("x"), "-member-role", "editor"},
+		"a role alone":               {"-member-role", "editor"},
+		"a member as a second owner": {"-member-issuer", "https://test.invalid", "-member-subject", "judge-" + ids.New("x"), "-member-role", "owner"},
+		"an unknown role":            {"-member-issuer", "https://test.invalid", "-member-subject", "judge-" + ids.New("x"), "-member-role", "admin"},
+	} {
+		if code, out, _ := provision(t, url, append(append([]string{}, base...), extra...)...); code != exitUsage || out != "" {
+			t.Errorf("%s: exit %d, output %q", name, code, out)
+		}
+	}
+	if code, out, _ := provision(t, url, "user", "-issuer", "https://test.invalid", "-subject", "s", "-member-role", "editor"); code != exitUsage || out != "" {
+		t.Errorf("a member flag on user: exit %d, output %q", code, out)
+	}
+}

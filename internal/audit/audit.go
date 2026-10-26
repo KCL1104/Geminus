@@ -248,7 +248,10 @@ var catalogue = map[string]spec{
 	"ai_spend.refuse": {Worker, spendTargets, map[string]field{"role": aiRoles, "model": {shape: label},
 		"charge_nano_usd": {shape: count}, "limit": oneOf("organization_day", "day", "month")}},
 	// Provisioning (cmd/provision-tenant, D-042).
-	"organization.provision": {System, []string{"organization"}, map[string]field{"owner_user_id": idOf("usr")}},
+	// T-057: and the one more member an organization may get when it is
+	// created (the judge's demo account, H-035 (2)), never a second owner.
+	"organization.provision": {System, []string{"organization"}, map[string]field{"owner_user_id": idOf("usr"),
+		"member_user_id": idOf("usr"), "member_role": oneOf("editor", "viewer")}},
 }
 
 // Actions is the catalogue's action names, sorted.

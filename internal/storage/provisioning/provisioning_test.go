@@ -336,3 +336,92 @@ func TestProvisionerEntersOnlyTheOrganizationItCreates(t *testing.T) {
 		t.Errorf("the victim organization has %d members, want its 2", members)
 	}
 }
+
+// An organization can get one more member when it is created, in the same
+// transaction as its owner (T-057, H-035 (2): the judge's demo account as an
+// editor of the demo organization). It is never a second owner, never the
+// owner again, and needs an identity a token can carry; a refused member
+// writes nothing at all. Migration 0004 still keeps provisioning out of
+// organizations it did not just create (above), so this is the only way it
+// adds anyone but the owner.
+func TestOrganizationWithMember(t *testing.T) {
+	ctx := context.Background()
+	db := operator(t)
+	admin := dbtest.Admin(t)
+	owner, judge := "owner-"+ids.New("x"), "judge-"+ids.New("x")
+	org, ownerID, memberID, err := provisioning.OrganizationWithMember(ctx, db, "Demo line (synthetic)", issuer, owner,
+		provisioning.Member{Issuer: issuer, Subject: judge, Role: "editor"})
+	if err != nil || !strings.HasPrefix(org, "org_") || !strings.HasPrefix(ownerID, "usr_") || !strings.HasPrefix(memberID, "usr_") || ownerID == memberID {
+		t.Fatalf("organization with a member: %q %q %q %v", org, ownerID, memberID, err)
+	}
+	rows, err := admin.Query(ctx, `SELECT u.oidc_subject, m.role FROM twin.memberships m JOIN twin.users u ON u.id = m.user_id
+		WHERE m.organization_id = $1 ORDER BY m.role`, org)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for rows.Next() {
+		var subject, role string
+		if err := rows.Scan(&subject, &role); err != nil {
+			t.Fatal(err)
+		}
+		got[subject] = role
+	}
+	if rows.Close(); len(got) != 2 || got[owner] != "owner" || got[judge] != "editor" {
+		t.Errorf("memberships %v, want the owner as owner and the member as editor", got)
+	}
+	var memberships int
+	if err := admin.QueryRow(ctx, `SELECT count(*) FROM twin.memberships m JOIN twin.users u ON u.id = m.user_id
+		WHERE u.oidc_issuer = $1 AND u.oidc_subject = $2`, issuer, judge).Scan(&memberships); err != nil || memberships != 1 {
+		t.Errorf("the member is in %d organizations (%v), want this one only", memberships, err)
+	}
+	var events int
+	var meta string
+	if err := admin.QueryRow(ctx, `SELECT count(*), max(metadata::text) FROM twin.audit_events WHERE organization_id = $1 AND action = 'organization.provision'`,
+		org).Scan(&events, &meta); err != nil {
+		t.Fatal(err)
+	}
+	if events != 1 || !strings.Contains(meta, `"member_role": "editor"`) || !strings.Contains(meta, `"member_user_id": "`+memberID+`"`) ||
+		!strings.Contains(meta, `"owner_user_id": "`+ownerID+`"`) {
+		t.Errorf("audit: %d events, metadata %s", events, meta)
+	}
+	// A user that already exists is reused, as for the owner.
+	again, created, err := provisioning.User(ctx, db, issuer, judge)
+	if err != nil || created || again != memberID {
+		t.Errorf("the member as a user: %q %v %v, want %q", again, created, err, memberID)
+	}
+
+	viewer := "viewer-" + ids.New("x")
+	if _, _, _, err := provisioning.OrganizationWithMember(ctx, db, "Viewer demo", issuer, "owner-"+ids.New("x"),
+		provisioning.Member{Issuer: issuer, Subject: viewer, Role: "viewer"}); err != nil {
+		t.Errorf("a viewer member: %v", err)
+	}
+
+	for name, m := range map[string]provisioning.Member{
+		"a second owner":           {Issuer: issuer, Subject: "judge-" + ids.New("x"), Role: "owner"},
+		"no role":                  {Issuer: issuer, Subject: "judge-" + ids.New("x"), Role: ""},
+		"an unknown role":          {Issuer: issuer, Subject: "judge-" + ids.New("x"), Role: "admin"},
+		"the owner again":          {Issuer: issuer, Subject: "owner-refused", Role: "editor"},
+		"an http issuer":           {Issuer: "http://test.invalid", Subject: "judge-" + ids.New("x"), Role: "editor"},
+		"no subject":               {Issuer: issuer, Subject: "", Role: "editor"},
+		"a subject with a newline": {Issuer: issuer, Subject: "judge\nx", Role: "editor"},
+	} {
+		orgName := "Refused " + ids.New("x")
+		_, _, _, err := provisioning.OrganizationWithMember(ctx, db, orgName, issuer, "owner-refused", m)
+		if !errors.Is(err, provisioning.ErrInvalidInput) {
+			t.Errorf("%s: %v, want ErrInvalidInput", name, err)
+		}
+		var orgs, users int
+		if err := admin.QueryRow(ctx, `SELECT (SELECT count(*) FROM twin.organizations WHERE name = $1),
+			(SELECT count(*) FROM twin.users WHERE oidc_issuer = $2 AND oidc_subject = $3)`, orgName, m.Issuer, m.Subject).Scan(&orgs, &users); err != nil {
+			t.Fatal(err)
+		}
+		if orgs != 0 || users != 0 {
+			t.Errorf("%s wrote %d organizations and %d users", name, orgs, users)
+		}
+	}
+	var owners int
+	if err := admin.QueryRow(ctx, `SELECT count(*) FROM twin.users WHERE oidc_issuer = $1 AND oidc_subject = 'owner-refused'`, issuer).Scan(&owners); err != nil || owners != 0 {
+		t.Errorf("a refused member left its owner as a user: %d %v", owners, err)
+	}
+}

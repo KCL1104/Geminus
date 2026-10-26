@@ -4,11 +4,16 @@
 //
 //	provision-tenant user -issuer ISSUER -subject SUBJECT
 //	provision-tenant organization -name NAME -owner-issuer ISSUER -owner-subject SUBJECT
+//	    [-member-issuer ISSUER -member-subject SUBJECT -member-role editor|viewer]
 //
 // The database comes from GEMINUS_PROVISION_DATABASE_URL: a login that may
 // SET ROLE twin_provisioner and is neither the schema owner, a runtime login
 // nor a superuser (D-042, db/README.md). The result is one JSON object on stdout with the IDs;
-// an owner then adds other users by ID through the membership API.
+// an owner then adds other users by ID through the membership API. The
+// -member-* flags (all three together) give the new organization one more
+// member in the same transaction, never a second owner (T-057: the judge's
+// demo account, H-035 (2)); provisioning cannot add members to an
+// organization that already exists (migration 0004).
 package main
 
 import (
@@ -41,19 +46,29 @@ func main() {
 
 func run(ctx context.Context, args []string, getenv func(string) string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || (args[0] != "user" && args[0] != "organization") {
-		fmt.Fprintln(stderr, "usage: provision-tenant user -issuer ISSUER -subject SUBJECT\n       provision-tenant organization -name NAME -owner-issuer ISSUER -owner-subject SUBJECT")
+		fmt.Fprintln(stderr, "usage: provision-tenant user -issuer ISSUER -subject SUBJECT\n       provision-tenant organization -name NAME -owner-issuer ISSUER -owner-subject SUBJECT"+
+			" [-member-issuer ISSUER -member-subject SUBJECT -member-role editor|viewer]")
 		return exitUsage
 	}
 	fs := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var issuer, subject, name *string
+	var member provisioning.Member
 	if args[0] == "user" {
 		issuer, subject = fs.String("issuer", "", "OIDC issuer"), fs.String("subject", "", "OIDC subject")
 	} else {
 		name = fs.String("name", "", "organization name")
 		issuer, subject = fs.String("owner-issuer", "", "the first owner's OIDC issuer"), fs.String("owner-subject", "", "the first owner's OIDC subject")
+		fs.StringVar(&member.Issuer, "member-issuer", "", "one more member's OIDC issuer")
+		fs.StringVar(&member.Subject, "member-subject", "", "one more member's OIDC subject")
+		fs.StringVar(&member.Role, "member-role", "", "one more member's role: editor or viewer")
 	}
 	if err := fs.Parse(args[1:]); err != nil || fs.NArg() > 0 {
+		return exitUsage
+	}
+	withMember := member != provisioning.Member{}
+	if withMember && (member.Issuer == "" || member.Subject == "" || member.Role == "") {
+		fmt.Fprintln(stderr, "-member-issuer, -member-subject and -member-role go together")
 		return exitUsage
 	}
 	url := getenv("GEMINUS_PROVISION_DATABASE_URL")
@@ -84,6 +99,12 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 			return fail(stderr, err)
 		}
 		out = map[string]any{"user_id": id, "created": created}
+	} else if withMember {
+		org, user, memberID, err := provisioning.OrganizationWithMember(ctx, db, *name, *issuer, *subject, member)
+		if err != nil {
+			return fail(stderr, err)
+		}
+		out = map[string]any{"organization_id": org, "owner_user_id": user, "member_user_id": memberID}
 	} else {
 		org, user, err := provisioning.Organization(ctx, db, *name, *issuer, *subject)
 		if err != nil {

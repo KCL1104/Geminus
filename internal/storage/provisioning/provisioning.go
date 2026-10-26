@@ -1,6 +1,7 @@
 // Package provisioning is the operator's controlled bootstrap of tenants
 // (D-008, T-010): it creates users and organizations with their first
-// owner. The API never does this: its role has no INSERT on twin.users or
+// owner (and, when an organization is created, one more member: T-057). The
+// API never does this: its role has no INSERT on twin.users or
 // twin.organizations, and no route exposes it. An operator runs it through
 // cmd/provision-tenant with a login that may act as twin_provisioner and is
 // neither the schema owner nor a runtime login. Each operation is one
@@ -86,11 +87,47 @@ func User(ctx context.Context, db *postgres.DB, issuer, subject string) (id stri
 // user with the issuer and subject (created if there is none), and records
 // the event in the organization's audit log.
 func Organization(ctx context.Context, db *postgres.DB, name, issuer, subject string) (orgID, userID string, err error) {
+	orgID, userID, _, err = organization(ctx, db, name, issuer, subject, nil)
+	return orgID, userID, err
+}
+
+// Member is one more person an organization gets when it is created, beside
+// its first owner (T-057: the judge's demo account of the hackathon
+// deployment, H-035 (2)). Role is "editor" or "viewer": more owners come
+// only from an owner, through the membership API (ADR-023). It is the only
+// way provisioning adds anyone but the owner: migration 0004 lets it insert
+// memberships only into the organization its own transaction created.
+type Member struct {
+	Issuer, Subject, Role string
+}
+
+// OrganizationWithMember is Organization with member added in the same
+// transaction (created as a user if there is none), recorded in the same
+// audit event. A member that is no editor or viewer, has an identity no
+// token can carry or is the owner again is ErrInvalidInput, and nothing is
+// written.
+func OrganizationWithMember(ctx context.Context, db *postgres.DB, name, issuer, subject string, member Member) (orgID, ownerID, memberID string, err error) {
+	return organization(ctx, db, name, issuer, subject, &member)
+}
+
+func organization(ctx context.Context, db *postgres.DB, name, issuer, subject string, member *Member) (orgID, userID, memberID string, err error) {
 	if err := identity(issuer, subject); err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	if !validName(name) {
-		return "", "", fmt.Errorf("%w: organization name", ErrInvalidInput)
+		return "", "", "", fmt.Errorf("%w: organization name", ErrInvalidInput)
+	}
+	meta := map[string]any{}
+	if member != nil {
+		if err := identity(member.Issuer, member.Subject); err != nil {
+			return "", "", "", err
+		}
+		if member.Role != "editor" && member.Role != "viewer" {
+			return "", "", "", fmt.Errorf("%w: a member is an editor or a viewer", ErrInvalidInput)
+		}
+		if member.Issuer == issuer && member.Subject == subject {
+			return "", "", "", fmt.Errorf("%w: the member is the owner", ErrInvalidInput)
+		}
 	}
 	orgID = ids.New("org")
 	err = db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
@@ -101,6 +138,13 @@ func Organization(ctx context.Context, db *postgres.DB, name, issuer, subject st
 		if userID, _, err = user(ctx, tx, issuer, subject); err != nil {
 			return err
 		}
+		meta["owner_user_id"] = userID
+		if member != nil {
+			if memberID, _, err = user(ctx, tx, member.Issuer, member.Subject); err != nil {
+				return err
+			}
+			meta["member_user_id"], meta["member_role"] = memberID, member.Role
+		}
 		if _, err := tx.Exec(ctx, `SELECT set_config('app.organization_id',$1,true)`, orgID); err != nil {
 			return err
 		}
@@ -110,17 +154,22 @@ func Organization(ctx context.Context, db *postgres.DB, name, issuer, subject st
 		if _, err := tx.Exec(ctx, `INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ($1,$2,'owner')`, orgID, userID); err != nil {
 			return err
 		}
+		if member != nil {
+			if _, err := tx.Exec(ctx, `INSERT INTO twin.memberships(organization_id,user_id,role) VALUES ($1,$2,$3)`, orgID, memberID, member.Role); err != nil {
+				return err
+			}
+		}
 		// Through auditlog, the one path to twin.audit_events (T-035): the
 		// event is checked against internal/audit's catalogue first. An
 		// operator's run has no HTTP request, so it gets a request ID of its
 		// own.
 		return auditlog.AppendSystem(ctx, tx, orgID, Actor, auditlog.Event{Action: "organization.provision", TargetType: "organization",
-			TargetID: orgID, RequestID: ids.New("req"), Metadata: map[string]any{"owner_user_id": userID}})
+			TargetID: orgID, RequestID: ids.New("req"), Metadata: meta})
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	return orgID, userID, nil
+	return orgID, userID, memberID, nil
 }
 
 func asProvisioner(ctx context.Context, tx pgx.Tx) error {

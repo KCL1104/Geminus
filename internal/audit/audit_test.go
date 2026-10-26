@@ -115,6 +115,10 @@ func valid() []audit.Event {
 		w("simulation.cancelled", "simulation", sim, map[string]any{"attempt": 2}),
 		{ActorType: audit.System, ActorID: "provision-tenant", Action: "organization.provision", TargetType: "organization", TargetID: org,
 			RequestID: req, Metadata: map[string]any{"owner_user_id": user}},
+		// T-057: an organization created with one more member (the judge's
+		// demo account, H-035 (2)), never a second owner.
+		{ActorType: audit.System, ActorID: "provision-tenant", Action: "organization.provision", TargetType: "organization", TargetID: org,
+			RequestID: req, Metadata: map[string]any{"owner_user_id": user, "member_user_id": ids.New("usr"), "member_role": "editor"}},
 		w("job.attempt_failed", "simulation", sim, map[string]any{"job_id": job, "job_type": "simulation", "attempt": 1, "max_attempts": 3,
 			"code": "WALL_TIMEOUT_EXCEEDED", "retryable": false, "outcome": "failed"}),
 		w("job.attempt_failed", "import", imp, map[string]any{"job_id": job, "job_type": "import_profile", "attempt": 1, "max_attempts": 3,
@@ -290,6 +294,19 @@ func TestRefused(t *testing.T) {
 			t.Errorf("%s: %v", name, err)
 		} else if strings.Contains(err.Error(), "SENTINEL") || strings.Contains(err.Error(), "sk-ant") {
 			t.Errorf("%s: the error repeats the value: %v", name, err)
+		}
+	}
+	// T-057: the member provisioned with an organization is an editor or a
+	// viewer, by ID; never a second owner and never free text.
+	for name, m := range map[string]map[string]any{
+		"a member as a second owner": {"owner_user_id": user, "member_user_id": ids.New("usr"), "member_role": "owner"},
+		"a member of no known role":  {"owner_user_id": user, "member_user_id": ids.New("usr"), "member_role": "admin"},
+		"a member not by user ID":    {"owner_user_id": user, "member_user_id": "judge@" + csvRow, "member_role": "editor"},
+	} {
+		e := audit.Event{ActorType: audit.System, ActorID: "provision-tenant", Action: "organization.provision", TargetType: "organization",
+			TargetID: org, RequestID: req, Metadata: m}
+		if err := audit.Check(e); err == nil || strings.Contains(err.Error(), "SENTINEL") {
+			t.Errorf("%s: %v", name, err)
 		}
 	}
 	// A worker or system actor is an actor reference (D-092): what
