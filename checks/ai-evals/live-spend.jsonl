@@ -1,0 +1,2 @@
+{"event":"open","run_id":"01M5W2SVM81J3AEM475YXPH3VX","kind":"smoke","started_at":"2026-10-26T12:26:13Z","day":"2026-10-26","month":"2026-10","model":"claude-opus-5-5","approval":"H-018","cap_nano_usd":2000000000,"report":"live-smoke-2026-10-26T122613Z-01M5W2SVM81J3AEM475YXPH3VX-claude-opus-5-5.json"}
+{"event":"close","run_id":"01M5W2SVM81J3AEM475YXPH3VX","closed_at":"2026-10-26T12:26:14Z","day":"2026-10-26","month":"2026-10","settled_nano_usd":0,"committed_nano_usd":0,"result":"complete"}

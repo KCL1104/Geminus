@@ -1,0 +1,79 @@
+{
+	"suite": "T-053 live provider eval (modeler corpus, server review; T-038 owns the baseline)",
+	"kind": "smoke",
+	"provider": "anthropic",
+	"model": "claude-opus-5-5",
+	"served_models": [
+		"claude-opus-5-5"
+	],
+	"approval": "H-018",
+	"date": "2026-10-26",
+	"run_id": "01M5W2SVM81J3AEM475YXPH3VX",
+	"output_locale": "en",
+	"schema": "proposal-output.schema.json",
+	"prompt_template_versions": [
+		"modeler-0.2.0"
+	],
+	"price": {
+		"source": "https://platform.claude.com/docs/en/about-claude/pricing",
+		"retrieved": "2026-10-26"
+	},
+	"usage": {
+		"input_tokens": 0,
+		"output_tokens": 0
+	},
+	"cost": {
+		"nano_usd": 0,
+		"usd": "0.00",
+		"cap_usd": "2.00",
+		"cap_nano_usd": 2000000000
+	},
+	"cases": {
+		"golden_edit": 1
+	},
+	"statuses": {
+		"failed": 1
+	},
+	"passed": 0,
+	"run": 1,
+	"golden_edit": {
+		"passed": 0,
+		"total": 1,
+		"rate": 0
+	},
+	"zero_tolerance_gates": {
+		"needs_input_kept_changes": 0,
+		"ready_below_risk_floor": 0,
+		"ready_without_server_validation": 0,
+		"safe_failure_reached_ready": 0
+	},
+	"inference_geos": {},
+	"spend_warnings": {
+		"inference_geo_unknown": 0,
+		"over_reservation": 0
+	},
+	"complete": true,
+	"outcomes": [
+		{
+			"id": "MOD-002",
+			"category": "golden_edit",
+			"mode": "edit",
+			"expected_outcome": "proposal",
+			"status": "failed",
+			"code": "AI_REQUEST_REJECTED",
+			"minimum_risk": "low",
+			"passed": false,
+			"input_tokens": 0,
+			"output_tokens": 0,
+			"cost_nano_usd": 0,
+			"latency_ms": 405,
+			"prompt_template_version": "modeler-0.2.0"
+		}
+	],
+	"not_run": [
+		"the mapper and analyst corpora: their server review is T-027 and T-030, and the approval's data policy covers the proposal roles only (PROPOSED D-112)",
+		"database effects and the dataset binding stage (make integration-test)",
+		"zh-Hant output: every case runs in one output locale",
+		"the >=90% golden target as a gate: a person calibrates it against a baseline (T-038)"
+	]
+}

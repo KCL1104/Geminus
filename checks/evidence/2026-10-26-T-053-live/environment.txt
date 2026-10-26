@@ -1,0 +1,7 @@
+date -u (smoke start): Mon Oct 26 12:25:27 UTC 2026
+date -u (smoke end): Mon Oct 26 12:26:14 UTC 2026
+git commit: 6e75b60 Record H-031: Railway only, Meta paused, Claude first; D-116 approved (A)
+go: go version go1.27.3 linux/amd64 (GOTOOLCHAIN=local)
+key names present: GEMINUS_ANTHROPIC_API_KEY_A, GEMINUS_ANTHROPIC_API_KEY_B (names only, values not read)
+smoke exit: 0; outcome MOD-002 failed AI_REQUEST_REJECTED, 0 tokens, committed 0.00
+eval: NOT RUN (smoke had an unanswered attempt)
