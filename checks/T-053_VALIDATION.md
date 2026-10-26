@@ -794,3 +794,20 @@ NOT RUN：任何 live 呼叫；截圖比對（只在 CI）；完整的 `make bac
 
 依 review 第 1 輪（REVIEW.md 的結論）：M1 修正並由 coordinator 驗證後，live smoke 與 eval 可依 H-025 重跑，不需要再一輪審查；照 round-2 的前提（一次一個 run、每次 commit 紀錄、先 smoke、eval 上限為 10 減 smoke 已 commit 的金額、之後 grep `sk-ant-`、任何花費警告即停）在有 key 的新 session 執行，第一步先做不收費的 `count_tokens` 並記錄 model。
 
+### Live 重跑（schema 修正與 review 第 1 輪修正之後，2026-10-26，H-025、H-031、H-033）
+
+由 coordinator 開的子 session（有 key 的環境）在 f60fedf 上依 round-2 的前提執行，紀錄由它 push（a09b185、48a0458、01363b7），evidence 在 `checks/evidence/2026-10-26-T-053-live-r2/`。Coordinator 核對了 commit 中的 report、spend record 與 key 掃描（下表的數字都取自 commit 中的檔案）。
+
+| 步驟 | 結果 |
+|---|---|
+| 變數（只看名稱） | `GEMINUS_ANTHROPIC_API_KEY_A`、`_B` 都在；沒有讀 `ANTHROPIC_API_KEY` |
+| `count_tokens`（不收費，16:47:17Z） | model `claude-opus-5-5`、key A、投影與 `projected-proposal-output.txt` byte for byte 相同（sha256 51933b88…）：HTTP 200，`input_tokens` 1704（`count-tokens.txt`）。先前那次沒有記錄 model 的 count_tokens 由這一筆補上可核對的紀錄 |
+| `make ai-smoke-live`（run 01M5WHRF20WZ3NHYKEGRC5G2FN） | exit 0；MOD-002 `ready`、通過（golden 1/1）；server 與 AI 的 risk 都是 low；8,250 input／472 output token；USD 0.04244（上限 2.00）；gate 都是 0；`inference_geo` global；沒有 spend warning |
+| `make ai-eval-live`（`AI_EVAL_LIVE_MAX_USD=9.95`，run 01M5WHSF98QSJ41RKWBZ0M3TED） | exit 0、complete；50 個 case 通過 49；status：ready 29、needs_input 20、invalid 1；golden edit 28/28（rate 1.0）；四個零容忍 gate（needs_input_kept_changes、ready_below_risk_floor、ready_without_server_validation、safe_failure_reached_ready）都是 0；50 個都在 global；只有 `claude-opus-5-5`；414,616 input／32,291 output token；USD 2.304284（上限 9.95）；沒有 spend warning |
+| 花費 | 今天合計約 USD 2.35（加上上午被拒的 0.00），低於每日上限 USD 10 |
+| Key 掃描 | `grep -r 'sk-ant-'` 在 `checks/ai-evals` 與 evidence 中沒有任何 key（coordinator 以 `sk-ant-[A-Za-z0-9_-]{8,}` 再掃一次：沒有） |
+
+**唯一沒通過的 case：MOD-050**（grounding，預期 `proposal_without_fabricated_effect`）以 `invalid`（`AI_OUTPUT_INVALID`）結束，8,317 input／1,020 output token，USD 0.053668。它**安全失敗**（沒有到 ready，沒有任何 gate），但 report 只記 issue code、沒有 JSON Pointer，無法判斷是已知的殘餘風險（模型沒有把 `/changes/<i>/value` 寫成 JSON text）還是其他 schema 問題。後續（比賽後，或 T-055 共用時一起）：eval report 記錄每個 issue 的 path（不含任何內容），讓失敗可以診斷。
+
+結論：修正後的投影被 API 接受，模型的回答可以解碼、通過 server review，Claude adapter 可作為 H-033 的備援。Exit 0 的意思是「完整且 gate 為 0」，不是「每個 case 都通過」。
+
