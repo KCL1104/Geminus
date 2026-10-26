@@ -2192,7 +2192,7 @@
       "id": "T-035",
       "title": "Audit / OpenTelemetry / structured logs",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Platform",
       "planning_window": "Baseline in each write task; integration Week 6–8; harden Week 12–14",
       "depends_on": [
@@ -2239,7 +2239,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-26",
+          "branch": "claude/lucid-meitner-vq1awo",
+          "report": "checks/T-035_VALIDATION.md",
+          "summary": "Audit：internal/audit 的封閉 catalogue（25 個 action、固定形狀的 metadata，fail closed），所有 business write 在同一 transaction 寫 audit（16 條 API route、worker 的 runner／profiler／validator／generator，以及 loop 與 reaper 的 job.attempt_failed），provisioning 經 AppendSystem；structured JSON log（internal/observability：default-deny 的 key 登記與值的形狀、自由文字的 credential／header／URL／e-mail／引號值過濾、長度上限、panic 只記 runtime 自己的訊息）；request 與 job 的 correlation；只記 route pattern 的 access log；OpenTelemetry（ADR-028：API 在 telemetry、SDK 只在 telemetry/export，預設不 export，OTLP endpoint 只接受 https 或本機 http，header 變數在啟動時檢查，SDK 的診斷經過濾後的 log）；job、simulation、AI provider、import 的營運指標。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（f9365b8＋一行測試修正、d26767d 的 tree）、新的與改過的 DB 測試（GEMINUS_REQUIRE_DB_TESTS=1）與 12 個 DB mutant（全部擋下），spec-check、backend-test、backend-race、backend-numeric、architecture-check、ai-eval、frontend-test、simulation-reference-test 與 govulncheck（go1.27.3）都 exit 0（checks/evidence/2026-10-2*-T-035*/coordinator-*）。",
+          "reviewer": "independent reviewer agent (H-003): round 1 on 7cbde1e CHANGES REQUESTED (M1 OTLP header values written raw to stderr before the filtered logger; L1–L7); round 2 on b5f3a7e ACCEPT (N1 fixed by the coordinator; N2–N5 Info)",
+          "decisions_pending": "D-091、D-092、D-093、D-094、D-095 與 ADR-028 待 owner 批准（D-092 另需 owner 修改 ADR-024 的 WORKER_ID 文字）；批准後 T-035 才標為 done"
+        }
+      ]
     },
     {
       "id": "T-036",

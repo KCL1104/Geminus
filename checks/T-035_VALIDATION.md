@@ -253,7 +253,7 @@ Reviewer 獨立確認了 audit 的完整性：16 個會寫入的 route 與每個
 | **I7**：`WithGroup` 讓 correlation 跑進 group 裡 | Handler 記住 group 與 group 中的 `WithAttrs`，Handle 時在 correlation 之後才開 group，所以 correlation 一律在最外層；沒有 group 時行為不變 | `TestCorrelationStaysAtTheTop`：兩層 group 與 group 中的 `With`；request_id、job_id、organization_id 各在最外層出現一次；group 中與 context 同名的 key 屬於 group。紅：`observability-red.log` | `r1-grouped-correlation-dropped`、`r1-correlation-inside-groups`、`r1-record-keys-suppress-grouped-correlation` |
 | **I8**：對 `github.com/google/uuid` 的豁免涵蓋它整個 closure | 規則引擎加上 `bring`：一個 package 只能帶進列出的 forbidden package，其他依賴照常檢查；`db-only-in-storage` 改用 `bring: {uuid: [database/sql/driver]}`（原本的 `through` 是精確到 package 的 gateway，但會跳過它全部的依賴） | `TestTheUUIDGatewayBringsOnlyTheDriver`：經由 uuid 連到 `database/sql`、pgx 都是 violation；直接 import driver 也是；只帶 driver 時不是。紅：`architecture-red.log` | `r1-uuid-brings-anything`；`make architecture-check` PASS |
 | **D-092** | 加一句給 owner：`WORKER_ID` 的唯一性沒有任何地方強制 | 文件 | DECISIONS_AND_TBD、decisions.json |
-| Reviewer 的 probe（`obs_probe_test.go`）另外顯示的洩漏 | 格式字元（zero-width、bidi）在 credential pattern 之前先移除；`JSESSIONID`、`PHPSESSID`、`X-Amz-Signature`、`sig` 參數視為 credential | `TestTextIsSanitized` | probe 修正前後：`reviewer-obs-probe-before.txt`、`reviewer-obs-probe-after.txt`（單引號、typographic、backtick、JSESSIONID、AWS 簽章、zero-width、假的 runtime error 由 leak 變為不 leak）。仍會 leak 的都是設計上的殘餘：沒有引號的值、符合形狀的名稱或 token、由資料組成的小寫 group 名稱、`?code=`、stack／pointer／addr 的自由文字 |
+| Reviewer 的 probe（`obs_probe_test.go.txt`）另外顯示的洩漏 | 格式字元（zero-width、bidi）在 credential pattern 之前先移除；`JSESSIONID`、`PHPSESSID`、`X-Amz-Signature`、`sig` 參數視為 credential | `TestTextIsSanitized` | probe 修正前後：`reviewer-obs-probe-before.txt`、`reviewer-obs-probe-after.txt`（單引號、typographic、backtick、JSESSIONID、AWS 簽章、zero-width、假的 runtime error 由 leak 變為不 leak）。仍會 leak 的都是設計上的殘餘：沒有引號的值、符合形狀的名稱或 token、由資料組成的小寫 group 名稱、`?code=`、stack／pointer／addr 的自由文字 |
 
 ### Mutation
 
@@ -345,3 +345,22 @@ Reviewer harness（`reviewer/run.py`）中，不在要求的 8 個之內、修�
 Log 與 exit code 在 `checks/evidence/2026-10-26-T-035-r1/coordinator-*`。
 
 仍為 NOT RUN：`make e2e-test`、live AI、送到真的 OTLP collector、OpenAPI 官方 validator。D-091–D-095 與 ADR-028 仍是 PROPOSED，T-035 在 tasks.json 仍為 `not_started`。
+
+## Review 第 2 輪（b5f3a7e）：ACCEPT
+
+獨立 reviewer（H-003）在 b5f3a7e 重審：
+- M1 已修正：以原 header probe 重跑，stderr 沒有任何原始值，四行都是過濾後的 JSON；`validHeaders` 與 OTel v1.47.0 envconfig 的規則一致；`TestTheSDKWritesNothingRawToStderr` 擋下三個專門的 mutant。
+- L1–L7、I6–I8 已修正或補上測試；第 1 輪 8 個會改變行為的存活 mutant 全部擋下。
+- 本輪 33 個有效 mutant 中 31 個被擋下；`diagnostics-all-levels` 是 equivalent。
+- 沒有 High、Medium。
+
+本輪的發現：
+- **N1（Low）**：r1 evidence 中的 probe 複本 `reviewer/obs_probe_test.go` 讓 `go list ./...` 多出一個 package（architecture-check 計數 82 → 83），`go test ./...` 也會編譯並執行它，但不影響 CI 的 `GO_PKGS`。依 T-048 的前例由 coordinator 修正：改名為 `obs_probe_test.go.txt`。之後 `go list ./...` 不再列出 `checks/` 下的 package，`make architecture-check` 回到「82 packages、21 rules、16 build configurations」，exit 0。
+- **N2（Info）**：新的引號規則會過度隱藏一些文字：OTel 的 `missing '=`、pgx 放在 backtick 中的 user／database、`'90s`。前兩項已寫入 `TestQuotesKeepWords` 與殘餘風險，reviewer 認為是可接受的取捨。
+- **N3（Info）**：mutant `runtime-by-package-suffix`（以 `HasSuffix(PkgPath, "runtime")` 取代精確比對）存活。程式是對的，但「名稱也叫 runtime 的其他 package 不被信任」沒有測試，要測需要一個路徑以 `/runtime` 結尾的 testdata package。列為殘餘風險。
+- **N4（Info）**：即使沒有設定 endpoint，環境中殘留一個格式錯的 `OTEL_EXPORTER_OTLP_HEADERS` 也會讓 process 拒絕啟動。這是 fail closed，與文件一致。
+- **N5（Info）**：效能沒有退步，64 KiB 惡意輸入的最壞情況新舊版大致相同。
+
+Reviewer 同意 D-091–D-095 與 ADR-028 的建議。D-092 方面，`worker.New` 的檢查合理：handler 的 constructor 與 DB 的 `twin.actor_ref` 自 T-023 起就要求同樣的格式；ADR-024 的文字應由 owner 修改，並採用 `d092-config-proposal.diff`。
+
+D-091–D-095 與 ADR-028 仍是 PROPOSED，它們的 gate 是 T-035 驗收前，所以 T-035 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。
