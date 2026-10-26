@@ -206,9 +206,11 @@ func TestPhotoRefusesNumbersOutsideTheTypedMembers(t *testing.T) {
 	}
 	// A number that does not fit a float64 is no base value, even copied
 	// from the base's own attributes.
-	b.Nodes[2].DomainAttributes = []byte(`{"station":"smt","pass":"first","serial":1e400}`)
-	cand.Nodes[2].DomainAttributes = b.Nodes[2].DomainAttributes
-	if issues := Photo(b, cand, 6); !slices.Equal(at(issues), []string{"/nodes/2/domain_attributes"}) {
+	huge := bareLine(t)
+	huge.Nodes[2].DomainAttributes = []byte(`{"station":"smt","pass":"first","serial":1e400}`)
+	copied := withStations(t)
+	copied.Nodes[2].DomainAttributes = huge.Nodes[2].DomainAttributes
+	if issues := Photo(huge, copied, 6); !slices.Equal(at(issues), []string{"/nodes/2/domain_attributes"}) {
 		t.Errorf("1e400 copied from the base: %v", at(issues))
 	}
 }
