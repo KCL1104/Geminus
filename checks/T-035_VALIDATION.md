@@ -26,7 +26,10 @@ Branch `t035`，從 38f0b7b 開出，沒有 push。
 | fdc4d38 | 營運 log 行的測試：`TestTheCallsLine`、`TestEngineOutcome`（unit）；`TestRunClosedLoop`、`TestImportMappingClosedLoop` 的 engine 與 import 行（DB） |
 | e2b0d2b | `cmd/worker` 的 `newLogger` 與 `TestTheWorkersLoggerIsFiltered`；原本的 run 測試改名 `TestTheWorkersLinesAreJSON`（它在 T-035 之前也成立，見「先紅後綠」） |
 | fc2b8b7 | Mutation 第 1 輪找到的缺口（17 個存活的 mutant，見「Mutation」）；沒有閉合的雙引號其後全部隱藏；拿掉多餘的 LogValuer recover（slog 自己會 recover） |
-| （本 commit） | 本報告與 evidence；D-094 文字對齊未閉合引號的規則 |
+| d4b2c49 | D-094 (c)(e)、decisions.json 與 SECURITY §9 的文字對齊未閉合引號的規則與 slog 的 LogValuer recover |
+| a42ecfd | 本報告與 evidence（第一版） |
+| 16fa72a | `redfirst.py` 檢查 tree 時忽略它自己的 log |
+| （本 commit） | `redfirst/` 重跑（加上 `httpapi-self-user`）；本報告的最終數字 |
 
 ## 改動前的缺口（`inventory.txt`）與處理
 
@@ -62,7 +65,7 @@ Branch `t035`，從 38f0b7b 開出，沒有 push。
 
 ## 實際執行結果
 
-在本 worktree 執行（`environment.txt`：Go 1.27.3、Python 3.13.16、Node 22.22.0、4 CPU 與其他 agent 共用、沒有 PostgreSQL server；先 `go clean -testcache`）。Exit code 也在 `exit-codes.txt`（`t035_verify.py` 依序執行，每個指令一個 log）。
+在本 worktree 執行（`environment.txt`：Go 1.27.3、Python 3.13.16、Node 22.22.0、4 CPU 與其他 agent 共用、沒有 PostgreSQL server；先 `go clean -testcache`）。Exit code 也在 `exit-codes.txt`（`verify.py` 依序執行，每個指令一個 log）。
 
 | 指令 | Exit | 結果 |
 |---|---|---|
@@ -84,8 +87,8 @@ Branch `t035`，從 38f0b7b 開出，沒有 push。
 ## 先紅後綠
 
 - **寫測試時先失敗的**（實作過程中保留的 log）：`observability-red.log`（套件還沒有程式）、`audit-red.log`（同上；之後 `TestTheCatalogueMatchesTheCode` 失敗在 `job.attempt_failed`、`organization.provision` 還沒有 production 程式寫它們）、`auditlog-red.log`（沒有 `AppendSystem`）、`config-telemetry-red.log`（沒有 `LoadTelemetry`）、`generator-auditmeta-red.log`（行為上的 red：metadata 沒有 `provider_request_id`；奇怪的 provider request ID 讓 `proposal.attempt_failed` 被 catalogue 拒絕）、`httpapi-red.log`（沒有 `AccessLog`）、`architecture-probes*.log`（新 probe 的結果）。
-- **事後對 base（38f0b7b）重跑的**（`redfirst.py`，`redfirst/summary.txt` 與每個 case 的 log）：不少測試與程式在同一段工作中一起寫成（telemetry、export、cmd、access log、worker 的 internal test），所以它們的 red 是事後把程式放回 T-035 之前的樣子再跑得到的。16 個 case 中 15 個 RED、1 個 NOT RED：
-  - 行為上的 RED：`httpapi-request-layer`（base 的 request 層加上新的 access log：`TestRecover` 看到 panic 值被記下、`TestAccessLog` 的 access 行沒有 error code、organization、user，response 的 request ID 也不是 access 行的）、`worker-id`（`1-worker`、`worker/1`、`wörker`、129 字元都被接受）、`cmd-api`（base 的 logger：`prompt` 沒有 redacted、sentinel 進了 log；`OTEL_EXPORTER_OTLP_ENDPOINT` 帶 credential 被忽略，以 exit 3（database）而不是 exit 2（config）結束）、`cmd-worker`（同樣兩種）、`audit-provisioning`（`provisioning.go writes twin.audit_events itself`）、`architecture-new-rules`（新規則的 12 個 probe 都沒有被擋下）。
+- **事後對 base（38f0b7b）重跑的**（`redfirst.py`，`redfirst/summary.txt` 與每個 case 的 log）：不少測試與程式在同一段工作中一起寫成（telemetry、export、cmd、access log、worker 的 internal test），所以它們的 red 是事後把程式放回 T-035 之前的樣子再跑得到的。17 個 case 中 16 個 RED、1 個 NOT RED：
+  - 行為上的 RED：`httpapi-request-layer`（base 的 request 層加上新的 access log：`TestRecover` 看到 panic 值被記下、`TestAccessLog` 的 access 行沒有 error code、organization、user，response 的 request ID 也不是 access 行的）、`httpapi-self-user`（base 的 `Self` 不把 user 放上 access 行）、`worker-id`（`1-worker`、`worker/1`、`wörker`、129 字元都被接受）、`cmd-api`（base 的 logger：`prompt` 沒有 redacted、sentinel 進了 log；`OTEL_EXPORTER_OTLP_ENDPOINT` 帶 credential 被忽略，以 exit 3（database）而不是 exit 1（config）結束）、`cmd-worker`（同樣兩種）、`audit-provisioning`（`provisioning.go writes twin.audit_events itself`）、`architecture-new-rules`（新規則的 12 個 probe 都沒有被擋下）。
   - 只是「程式還不存在」的 RED（build failed）：`observability`、`telemetry`、`export`、`config-telemetry`、`worker-attempt-event`、`generator-call-line`、`runner-engine-outcome`；DB 測試只能看 compile：`db-jobs-reapjobs`（沒有 `ReapJobs`）、`db-refuse-audit`（沒有 `dbtest.RefuseAudit`）。
   - NOT RED：`cmd-worker-json-lines`。原本名為 `TestTheWorkersLogIsFiltered` 的測試只檢查 JSON 行與 `component`，T-035 之前就成立；它的名字宣稱檢查 filter，所以改名 `TestTheWorkersLinesAreJSON`，另加真正檢查 filter 的 `TestTheWorkersLoggerIsFiltered`（e2b0d2b，RED 見 `cmd-worker`）。
 - **Mutation 第 1 輪之後加的測試**（fc2b8b7）：每個都是因為一個存活的 mutant 而寫，第 2、3 輪該 mutant 被擋下（即測試在那個錯誤上是紅的）；另外 `TestSelfAnnotatesTheUser` 對 base 的 `scope.go` 是 RED（`redfirst/httpapi-self-user.log`），`TestPanicText`、`TestRootsAndFailedWork` 所在的 package 在 base 不存在（`observability`、`telemetry` 兩個 case）。

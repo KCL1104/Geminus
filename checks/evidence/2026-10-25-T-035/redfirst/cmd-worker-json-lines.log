@@ -3,4 +3,4 @@
 # add cmd/worker/zz_redfirst_shim.go
 # $ go test -count=1 -run ^(TestTheWorkersLinesAreJSON)$ ./cmd/worker/
 # exit 0
-ok  	github.com/kcl1104/geminus/cmd/worker	0.022s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.029s

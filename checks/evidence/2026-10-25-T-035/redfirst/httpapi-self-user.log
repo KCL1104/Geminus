@@ -1,0 +1,9 @@
+# case httpapi-self-user: RED
+# base internal/httpapi/scope.go
+# $ go test -count=1 -run ^(TestSelfAnnotatesTheUser)$ ./internal/httpapi/
+# exit 1
+--- FAIL: TestSelfAnnotatesTheUser (0.00s)
+    access_test.go:268: map[component:api duration_ms:0 http_status:200 level:INFO method:GET msg:request request_id:req_01M5TW8P6325FTJS3WN7V38GQG response_bytes:12 route:unmatched time:2026-10-26T01:12:44.483279009Z]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/httpapi	0.011s
+FAIL

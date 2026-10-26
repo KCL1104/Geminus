@@ -9,5 +9,5 @@
     worker_test.go:89: an ID that starts with a digit: accepted
     worker_test.go:89: an ID over 128 characters: accepted
 FAIL
-FAIL	github.com/kcl1104/geminus/internal/worker	0.007s
+FAIL	github.com/kcl1104/geminus/internal/worker	0.006s
 FAIL

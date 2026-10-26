@@ -4,10 +4,10 @@
 # $ go test -count=1 -run ^(TestTheWorkersLoggerIsFiltered|TestRunRefusesABadTelemetrySetting)$ ./cmd/worker/
 # exit 1
 --- FAIL: TestTheWorkersLoggerIsFiltered (0.00s)
-    main_test.go:85: <nil> {"time":"2026-10-26T00:42:17.661173013Z","level":"ERROR","msg":"recording the failure failed","component":"worker","error":"connect postgres://twin_worker:pw-SENTINEL@db/twin: cell \"CASE-SENTINEL\"","payload":"{\"prompt\":\"SENTINEL\"}","worker_id":"sk-ant-api03-SENTINELsentinel0123456789"}
-    main_test.go:88: the log holds what it must not: {"time":"2026-10-26T00:42:17.661173013Z","level":"ERROR","msg":"recording the failure failed","component":"worker","error":"connect postgres://twin_worker:pw-SENTINEL@db/twin: cell \"CASE-SENTINEL\"","payload":"{\"prompt\":\"SENTINEL\"}","worker_id":"sk-ant-api03-SENTINELsentinel0123456789"}
+    main_test.go:85: <nil> {"time":"2026-10-26T01:12:47.957106478Z","level":"ERROR","msg":"recording the failure failed","component":"worker","error":"connect postgres://twin_worker:pw-SENTINEL@db/twin: cell \"CASE-SENTINEL\"","payload":"{\"prompt\":\"SENTINEL\"}","worker_id":"sk-ant-api03-SENTINELsentinel0123456789"}
+    main_test.go:88: the log holds what it must not: {"time":"2026-10-26T01:12:47.957106478Z","level":"ERROR","msg":"recording the failure failed","component":"worker","error":"connect postgres://twin_worker:pw-SENTINEL@db/twin: cell \"CASE-SENTINEL\"","payload":"{\"prompt\":\"SENTINEL\"}","worker_id":"sk-ant-api03-SENTINELsentinel0123456789"}
 --- FAIL: TestRunRefusesABadTelemetrySetting (0.00s)
-    main_test.go:98: exit = 3: {"time":"2026-10-26T00:42:17.66239412Z","level":"ERROR","msg":"database unavailable","component":"worker","error":"tenant: reading the runtime role: failed to connect to `user=twin_worker database=twin`: /nonexistent-geminus-socket/.s.PGSQL.5432 (/nonexistent-geminus-socket): dial error: dial unix /nonexistent-geminus-socket/.s.PGSQL.5432: connect: no such file or directory"}
+    main_test.go:98: exit = 3: {"time":"2026-10-26T01:12:47.957744546Z","level":"ERROR","msg":"database unavailable","component":"worker","error":"tenant: reading the runtime role: failed to connect to `user=twin_worker database=twin`: /nonexistent-geminus-socket/.s.PGSQL.5432 (/nonexistent-geminus-socket): dial error: dial unix /nonexistent-geminus-socket/.s.PGSQL.5432: connect: no such file or directory"}
 FAIL
-FAIL	github.com/kcl1104/geminus/cmd/worker	0.026s
+FAIL	github.com/kcl1104/geminus/cmd/worker	0.028s
 FAIL
