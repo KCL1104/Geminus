@@ -1,0 +1,5 @@
+HEAD 74cb9aea20c5009662d25d5e64b347f81df3cb76
+uncommitted besides evidence: planning/tasks.json 
+v22.22.0
+go version go1.27.3 linux/amd64
+2026-10-26T13:52:14Z

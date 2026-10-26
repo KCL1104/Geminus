@@ -1,0 +1,9 @@
+ok  	github.com/kcl1104/geminus/internal/model	0.591s
+ok  	github.com/kcl1104/geminus/internal/model/calendar	11.138s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.273s
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.439s
+ok  	github.com/kcl1104/geminus/internal/model/validate	0.551s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	0.189s
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.319s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	2.839s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.302s

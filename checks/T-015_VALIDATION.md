@@ -154,3 +154,15 @@
 4. **鍵盤**：每個步驟一個 Tab stop（約 25 個）先接受，或本切片就加「跳到屬性」連結？
 5. **409 後的重新套用**：同一欄位兩人都改時，重新套用後保留使用者的值（使用者明確選擇後）。可以嗎，或要先做欄位層級的衝突顯示？
 6. **新步驟的初值**（1 個時間單位）：可以，或要求使用者在新增時就輸入？
+
+## Coordinator 的執行（hackathon 切片，74cb9ae 之後）
+
+Coordinator 把 `t015-hk` 的五個 commit（9f5ef0c、2fb5838、11691c1、766d4a6、1a89ca2）cherry-pick 到 `claude/lucid-meitner-vq1awo`（09ed10e 之後，成為 df6a644、f70bec7、71ccdd8、0993814、74cb9ae）。衝突：`docs/adr/ADR-011` 的依賴表（T-045 review 1 更正了字型那一列，本切片新增 React Flow 一列；兩者都保留）與重產的 `checks/*.json`。T-045 已完成，T-015 改為 `in_progress`（spec-check 通過）。
+
+**整合時的衝突與處理**：T-045 review 1 新增的 `tests/simplicity.test.tsx` 規定登入後的頁面「沒有停用的控制項」，而本切片的編輯器在條件不符時讓「儲存草稿」與「發布」維持可聚焦的 `aria-disabled`，並以 `aria-describedby` 指向旁邊寫出的原因（DESIGN.md 的編輯器一節）。兩者衝突，模型頁的兩個 case 失敗（`coordinator/frontend-test.log`）。H-027 禁止的是佔位與永遠停用的按鈕，不是等待條件、已說明原因的真實動作，所以 coordinator 把規則細化為「沒有**未說明原因**的停用控制項」：每個停用的控制項都要以 `aria-describedby` 指向看得見、非空的文字；DESIGN.md Simplicity 第 2 條同步更新。這不是放寬：把「儲存草稿」的 `aria-describedby` 拿掉的 mutant 讓同兩個 case 失敗（`coordinator/simplicity-refined-red-mutant-no-reason.log`，exit 1），恢復後通過（`simplicity-refined-green.log`）。
+
+在整合後的 tree 上（`checks/evidence/2026-10-26-T-015/coordinator/`，Node 22.22.0，`--engine-strict=false`）：`npm ci`（兩個專案）、`make spec-check`、`make frontend-build`、`npm audit --omit=dev`（0 vulnerabilities）、`go test -count=1 ./internal/model/... ./internal/domainpack/...` exit 0；`make frontend-test` 第一次 exit 2（上述衝突），修正後 `frontend-test-2` exit 0（642 個 test）；`make e2e-test` 第一次 exit 2（另一個 agent 同時執行 e2e，佔用 `127.0.0.1:3101`，不是測試失敗），單獨重跑 `e2e-test-2` exit 0（162 passed、32 skipped：截圖只在 CI 比對）。
+
+- **Coordinator 對切片問題的決定**（H-027 的簡潔原則之內，owner 可再改）：Add step 用選單、只有「顯示全部」不加縮放按鈕、被擋的 Save draft／Publish 保留並寫出原因、編輯器頁使用整個視窗寬度、每個步驟一個 Tab 停點（暫不加「跳到屬性」連結）、重新套用時同一欄位以使用者自己的值為準、新步驟的時間預設為 1 個時間單位。
+- **阻擋 demo 的缺口**：app 沒有掛上登入後的 bootstrap（`/me` → `AuthProvider`、選擇組織），部署後模型頁只會顯示「需要登入」；由 T-043 的後續處理（另一個 agent 進行中）。
+- **NOT RUN**：截圖比對（編輯器不在截圖 spec 中）；登入後在瀏覽器以真實 API 操作；T-051 的正式範本（尚未整合）；full backend-test／backend-race／integration-test；獨立 review（依 H-029，接下來進行一輪）。

@@ -1,0 +1,36 @@
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+ ❯ tests/simplicity.test.tsx (48 tests | 2 failed) 1821ms
+   ❯ the signed-in pages keep only the controls they need (H-027) (12)
+     × en: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell 361ms
+     × zh-Hant: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell 56ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell
+ FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > zh-Hant: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell
+AssertionError: disabled controls without a stated reason: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/simplicity.test.tsx:307:78
+    305|         expect(duplicates(c), `${route} as ${auth.role}`).toEqual([]);
+    306|         expect(primaries(el), "primary actions").toBeLessThanOrEqual(1…
+    307|         expect(unexplained(el), "disabled controls without a stated re…
+       |                                                                              ^
+    308|       }
+    309|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 46 passed (48)
+   Start at  13:55:40
+   Duration  2.95s (tests 65%, import 21%, environment 11%, transform 3%)
+

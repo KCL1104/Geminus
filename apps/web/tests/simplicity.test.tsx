@@ -48,6 +48,16 @@ const catalogs = { en, "zh-Hant": zhHant } as const;
 const locales = Object.keys(catalogs) as Locale[];
 const primaries = (el: ParentNode) => el.querySelectorAll('[data-variant="primary"]').length;
 const disabled = (el: ParentNode) => el.querySelectorAll("[disabled], [aria-disabled=true], [data-disabled]").length;
+// A control blocked for now must say why: each one names, by
+// aria-describedby, visible text that is not empty (H-027 bars placeholder
+// and disabled-forever controls, not an action waiting on its condition,
+// e.g. the editor's Save draft and Publish).
+const unexplained = (el: ParentNode) =>
+  [...el.querySelectorAll("[disabled], [aria-disabled=true], [data-disabled]")].filter((c) => {
+    const ids = (c.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+    const doc = c.ownerDocument;
+    return !ids.some((id) => (doc.getElementById(id)?.textContent ?? "").trim() !== "");
+  }).length;
 
 /** Each draft state an editor can see. */
 function draftStates() {
@@ -294,7 +304,7 @@ describe("the signed-in pages keep only the controls they need (H-027)", () => {
         }
         expect(duplicates(c), `${route} as ${auth.role}`).toEqual([]);
         expect(primaries(el), "primary actions").toBeLessThanOrEqual(1);
-        expect(disabled(el), "disabled controls").toBe(0);
+        expect(unexplained(el), "disabled controls without a stated reason").toBe(0);
       }
     });
 

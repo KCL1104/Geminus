@@ -1,0 +1,55 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+ ❯ tests/simplicity.test.tsx (48 tests | 2 failed) 4552ms
+   ❯ the signed-in pages keep only the controls they need (H-027) (12)
+     × en: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell 535ms
+     × zh-Hant: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell 117ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > en: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell
+ FAIL  tests/simplicity.test.tsx > the signed-in pages keep only the controls they need (H-027) > zh-Hant: /models/mdl_01M4YDQK004AGVNEGJQJ1NMM0N, loaded, inside the app shell
+AssertionError: disabled controls: expected 2 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 2
+
+ ❯ tests/simplicity.test.tsx:297:51
+    295|         expect(duplicates(c), `${route} as ${auth.role}`).toEqual([]);
+    296|         expect(primaries(el), "primary actions").toBeLessThanOrEqual(1…
+    297|         expect(disabled(el), "disabled controls").toBe(0);
+       |                                                   ^
+    298|       }
+    299|     });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 25 passed (26)
+      Tests  2 failed | 640 passed (642)
+   Start at  13:53:19
+   Duration  35.86s (tests 71%, import 16%, transform 7%, environment 6%)
+
+    Isolate  26 workers spawned · ~470ms startup each (spawn + environment, per file)
+             at least ~3.61s faster with isolate: false — reuses workers across files instead of one per file
+
+make: *** [Makefile:60: frontend-test] Error 1

@@ -43,12 +43,11 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 35,
-    "in_progress": 3,
-    "not_started": 19,
+    "in_progress": 4,
+    "not_started": 18,
     "review": 0
   },
   "ready_tasks": [
-    "T-015",
     "T-030"
   ],
   "next_after_review": [],
