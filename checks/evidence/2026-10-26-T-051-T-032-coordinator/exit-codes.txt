@@ -1,0 +1,17 @@
+spec-check exit 0
+backend-test exit 0
+architecture-check exit 0
+backend-numeric exit 0
+simulation-reference-test exit 0
+ai-eval exit 0
+race-changed exit 1
+integration exit 0
+npm-ci-web exit 0
+npm-ci-e2e exit 0
+frontend-test exit 2
+frontend-build exit 0
+npm-audit exit 0
+e2e-test exit 2
+frontend-test-rerun exit 0
+race-engine-30m exit 0
+e2e-test-rerun exit 0

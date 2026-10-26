@@ -149,3 +149,38 @@
 3. T-051 的狀態：T-050 進入 `review`／`done` 後由 coordinator 設為 `in_progress`？
 4. 若 T-050 的審查使 `engine_version` 由 des-go-0.5.0 升級，`testdata/template-run-lock.json` 的 digest 要重新產生（它是 regression lock，不是 oracle）。
 5. D-117 的編號：其他並行的 agent 也可能提出新的 D 編號，合併時若衝突需重新編號（`planning/decisions.json`、DECISIONS_AND_TBD、ELECTRONICS_LINE §11、`planning/tasks.json` 與本報告都引用 D-117）。
+
+## Coordinator 驗證（T-051＋T-032 合併後，2026-10-26）
+
+T-051 的四個 commit（52a102b..cce4587）與 T-032 的五個 commit（f21b02a..cae974b）cherry-pick 到 T-015 已整合的分支上（55d0703 之後）。衝突：`apps/web-e2e/tests/helpers.ts` 的 routes（兩邊都保留：T-015 的 `/ui-gallery/editor` 與 T-032 的 scenario、results 與 review 頁）、`DESIGN.md`（T-015 與 T-032 各自新增的簡化條目都保留）、生成的 `checks/*.json`（以 `make spec-check` 重產）。
+
+合併後出現一個語意衝突：T-032 把 `tests/tokens.test.ts`「自家 CSS 不載入任何東西」的掃描擴大到 `features/`，掃到 T-015 的 `features/model-editor/vendor.css` 對 React Flow `base.css` 的一個 `@import`（由 node_modules 打包，不是遠端或字型載入）。規則維持一樣嚴格、改為精確：每個自家樣式表只能含列出的套件 import，而被 import 的套件檔本身不得有 `@font-face`、`@import` 或 `url(`（8eecee4）。Mutant：多加一個字型服務的 import、改 import 另一個套件檔，測試都失敗。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-051-T-032-coordinator/`，`exit-codes.txt` 依執行順序；Node 22.22.0，go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 0 | 75 個 package 都 ok |
+| `make architecture-check` | 0 | 87 packages、23 rules、16 build configurations |
+| `make backend-numeric` | 0 | |
+| `make simulation-reference-test` | 0 | |
+| `make ai-eval` | 0 | fake provider；live 為 NOT RUN |
+| `go test -race -count=1`（simulation、results、domainpack、model、cmd） | 1 → 0 | 第一次只有 `internal/simulation/engine` 在 Go 預設的 10 分鐘逾時（腳本漏了 `make backend-race` 的 `-timeout 30m`；共用的 4 CPU，load 9–11）；其餘 19 個 package ok。以 `-timeout 30m` 重跑 engine：ok，604.8 s（`race-engine-30m.log`） |
+| `make integration-test`（新的 dt_test_hk5132c，跑完刪除） | 0 | |
+| `npm ci`（web、web-e2e，`--engine-strict=false`） | 0／0 | |
+| `make frontend-test` | 2 → 0 | 第一次是上面的語意衝突（769／770）；修正後 770／770 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test` | 2 → 0 | 第一次是另一個 agent 的 e2e 占用 127.0.0.1:3101（本機沒有 `ss`，原本的 port 檢查沒有作用，改用 `/dev/tcp` 與 `pgrep`）；等 port 空出後單獨重跑：257 passed、32 skipped（全部是 `screenshots.spec.ts`，只在 CI 的固定環境比對） |
+
+NOT RUN：截圖比對（只在 CI）；完整的 `make backend-race`（只跑改動的 package）；live AI；Node 24。
+
+Coordinator 對 T-051 問題的處理（例行事項；需要 owner 的另列）：
+1. SMT 線維持 ELECTRONICS_LINE §2 的一個 server（照 spec；拆成四個 process 要改 spec，不在切片內）。
+2. D-117 維持 PROPOSED，比賽後放進決策頁（與 D-096、D-097、D-110–D-116 同一頁）；切片依各項的建議選項實作。
+3. T-051 維持 `not_started`：T-050 仍為 `in_progress`（等 D-096、D-097），checker 不允許相依未進 review／done 的任務 in_progress。
+4. `engine_version` 若因 T-050 的決定升級，重產 `testdata/template-run-lock.json`（regression lock）。
+5. D-117 的編號沒有衝突（`make spec-check` 的 decisions 檢查通過）。
+
+下一步：一輪獨立審查（H-029）。

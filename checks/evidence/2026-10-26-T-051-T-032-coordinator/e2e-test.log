@@ -1,0 +1,8 @@
+npm --prefix apps/web-e2e test
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test
+
+Error: http://127.0.0.1:3101/.well-known/jwks.json is already used, make sure that nothing is running on the port/url or set reuseExistingServer:true in config.webServer.
+
+make: *** [Makefile:69: e2e-test] Error 1

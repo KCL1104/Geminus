@@ -1,0 +1,84 @@
+ok  	github.com/kcl1104/geminus/internal/simulation	1.362s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	187.088s
+panic: test timed out after 10m0s
+	running tests:
+		TestRandomSetupModelsAgainstSpec (26s)
+
+goroutine 3147 [running]:
+testing.(*M).startAlarm.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2961 +0x605
+created by time.goFunc
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/time/sleep.go:182 +0x45
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0xc000264908, {0xa5924c, 0x20}, 0xe796e8)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2268 +0xb3e
+testing.runTests.func1(0xc000264908)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2744 +0x85
+testing.tRunner(0xc000264908, 0xc00003ba40)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0x21d
+testing.runTests({0xa55244, 0x1a}, {0xa63d59, 0x35}, 0xc000130dc8, {0xeae550, 0x85, 0x85}, {0xc2aff6e3fb24084b, 0x8bb5ed3b40, ...})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2742 +0x9ea
+testing.(*M).Run(0xc00011e8c0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2602 +0xf45
+main.main()
+	_testmain.go:326 +0x165
+
+goroutine 3222 [runnable]:
+github.com/kcl1104/geminus/internal/simulation/engine.(*bchecker).fitsWith(...)
+	/home/user/Geminus/internal/simulation/engine/kernel_check_blocking_test.go:172
+github.com/kcl1104/geminus/internal/simulation/engine.(*bchecker).fits(...)
+	/home/user/Geminus/internal/simulation/engine/kernel_check_blocking_test.go:169
+github.com/kcl1104/geminus/internal/simulation/engine.(*bchecker).stalled(0xc00018cc00, 0xee)
+	/home/user/Geminus/internal/simulation/engine/kernel_check_blocking_test.go:264 +0x21d
+github.com/kcl1104/geminus/internal/simulation/engine.(*bchecker).b2Update(0xc00018cc00)
+	/home/user/Geminus/internal/simulation/engine/kernel_check_calendar_test.go:413 +0x27c
+github.com/kcl1104/geminus/internal/simulation/engine.(*bchecker).calendarBoundary(0xc00018cc00)
+	/home/user/Geminus/internal/simulation/engine/kernel_check_calendar_test.go:476 +0x546
+github.com/kcl1104/geminus/internal/simulation/engine.(*bchecker).tickBoundary(0xc00018cc00)
+	/home/user/Geminus/internal/simulation/engine/kernel_check_blocking_test.go:245 +0x11b7
+github.com/kcl1104/geminus/internal/simulation/engine.(*bchecker).Observe(0xc00018cc00, {0x5, 0x19fe642, 0x32d, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0})
+	/home/user/Geminus/internal/simulation/engine/kernel_check_blocking_test.go:145 +0x156
+github.com/kcl1104/geminus/internal/simulation/engine.(*kernel).observe(...)
+	/home/user/Geminus/internal/simulation/engine/kernel.go:473
+github.com/kcl1104/geminus/internal/simulation/engine.(*kernel).release(0xc00017f408, {0xc001f29000, 0x3, 0x3?}, 0x59)
+	/home/user/Geminus/internal/simulation/engine/kernel.go:791 +0x337
+github.com/kcl1104/geminus/internal/simulation/engine.(*kernel).serviceComplete(0xc00017f408, 0x59, 0x1)
+	/home/user/Geminus/internal/simulation/engine/kernel.go:756 +0x3d5
+github.com/kcl1104/geminus/internal/simulation/engine.(*kernel).handle(0xc00017f408, 0xc0008d9b80, {0x19fe642, 0x32d, 0x1, 0x59, 0x0, 0x0, 0x0, 0x2})
+	/home/user/Geminus/internal/simulation/engine/kernel.go:522 +0x3bb
+github.com/kcl1104/geminus/internal/simulation/engine.runKernel.func2(0xc0008d9b80, {0x19fe642, 0x32d, 0x1, 0x59, 0x0, 0x0, 0x0, 0x2})
+	/home/user/Geminus/internal/simulation/engine/kernel.go:459 +0x98
+github.com/kcl1104/geminus/internal/simulation/engine.(*replication).handle(0xc0008d9b80, {0x19fe642, 0x32d, 0x1, 0x59, 0x0, 0x0, 0x0, 0x2})
+	/home/user/Geminus/internal/simulation/engine/replication.go:371 +0x2d7
+github.com/kcl1104/geminus/internal/simulation/engine.(*replication).run(0xc0008d9b80, {0xe786b0, 0xed3840}, 0xc000a7cf00)
+	/home/user/Geminus/internal/simulation/engine/replication.go:356 +0x508
+github.com/kcl1104/geminus/internal/simulation/engine.runKernel({0xe786b0, 0xed3840}, 0xc00085e460, 0x0, 0xc000a7cf00, {0xe76190, 0xc00018cc00})
+	/home/user/Geminus/internal/simulation/engine/kernel.go:462 +0x14c9
+github.com/kcl1104/geminus/internal/simulation/engine.RunReplication(...)
+	/home/user/Geminus/internal/simulation/engine/kernel.go:412
+github.com/kcl1104/geminus/internal/simulation/engine.TestRandomSetupModelsAgainstSpec(0xc0005218c8)
+	/home/user/Geminus/internal/simulation/engine/kernel_check_setup_test.go:405 +0xbae
+testing.tRunner(0xc0005218c8, 0xe796e8)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0x21d
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2260 +0xb13
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	600.094s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	1.852s
+ok  	github.com/kcl1104/geminus/internal/results/compare	36.387s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	2.864s
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.605s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	54.685s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	72.215s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	5.104s
+ok  	github.com/kcl1104/geminus/internal/model	3.670s
+ok  	github.com/kcl1104/geminus/internal/model/calendar	209.728s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	3.424s
+ok  	github.com/kcl1104/geminus/internal/model/patch	4.677s
+ok  	github.com/kcl1104/geminus/internal/model/validate	4.259s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	1.621s
+?   	github.com/kcl1104/geminus/cmd/ai-eval-live	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/api	1.430s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.030s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.554s
+FAIL

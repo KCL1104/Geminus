@@ -1,0 +1,8 @@
+HEAD cae974bff23931a1c4866ef3a7f1cc840c9e2357
+uncommitted besides evidence: 0
+v22.22.0
+go version go1.27.3 linux/amd64
+2026-10-26T14:05:41Z
+ports before e2e: 0
+rerun: 2026-10-26T14:38:10Z HEAD 50770c1; uncommitted: apps/web/tests/tokens.test.ts 
+ports free: 14:49:07

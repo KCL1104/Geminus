@@ -1,0 +1,58 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/apps/web
+
+ ❯ tests/tokens.test.ts (102 tests | 1 failed) 30ms
+   ❯ fonts (2)
+     × load only from the app's origin: the package CSS names local files, ours no font service 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/tokens.test.ts > fonts > load only from the app's origin: the package CSS names local files, ours no font service
+AssertionError: /home/user/Geminus/apps/web/features/model-editor/vendor.css: expected '/* React Flow\'s structural styles (p…' not to match /@font-face|@import|url\(|fonts\.googl…/
+
+- Expected:
+/@font-face|@import|url\(|fonts\.googleapis|fonts\.gstatic/
+
++ Received:
+"/* React Flow's structural styles (positions, layers, pointer events), in the
+   vendor layer so the editor's CSS Modules win whatever order the chunks
+   load in (ui/tokens.css declares the layers). React Flow's own look
+   (style.css) is not used: canvas.module.css draws it from the tokens. */
+@import \"@xyflow/react/dist/base.css\" layer(vendor);
+"
+
+ ❯ tests/tokens.test.ts:246:68
+    244|       expect(text, spec).toMatch(/font-display: swap/);
+    245|     }
+    246|     for (const f of ownCss) expect(readFileSync(f, "utf8"), f).not.toM…
+       |                                                                    ^
+    247|   });
+    248| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 33 passed (34)
+      Tests  1 failed | 769 passed (770)
+   Start at  14:36:15
+   Duration  22.15s (tests 74%, import 14%, transform 6%, environment 6%)
+
+    Isolate  34 workers spawned · ~220ms startup each (spawn + environment, per file)
+             at least ~2.28s faster with isolate: false — reuses workers across files instead of one per file
+
+make: *** [Makefile:60: frontend-test] Error 1

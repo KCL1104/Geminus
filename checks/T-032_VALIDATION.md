@@ -169,3 +169,40 @@ e2e 的 `[WebServer] Error: failed to pipe response` 來自 `session.spec.ts` �
 - 每個 run 最多畫 400 條線；長 horizon、大量取樣時圖會很密（仍有說明與表格）。
 - 一個既有測試（`bff.test.ts` 的 upload streaming）在高負載下曾逾時一次，重跑通過；不是本任務的程式。
 - 列標籤的寬度以字元寬度估算（純函式），極長的名稱以「…」截斷，完整名稱在表格中。
+
+## Coordinator 驗證（T-051＋T-032 合併後，2026-10-26）
+
+T-051 的四個 commit（52a102b..cce4587）與 T-032 的五個 commit（f21b02a..cae974b）cherry-pick 到 T-015 已整合的分支上（55d0703 之後）。衝突：`apps/web-e2e/tests/helpers.ts` 的 routes（兩邊都保留：T-015 的 `/ui-gallery/editor` 與 T-032 的 scenario、results 與 review 頁）、`DESIGN.md`（T-015 與 T-032 各自新增的簡化條目都保留）、生成的 `checks/*.json`（以 `make spec-check` 重產）。
+
+合併後出現一個語意衝突：T-032 把 `tests/tokens.test.ts`「自家 CSS 不載入任何東西」的掃描擴大到 `features/`，掃到 T-015 的 `features/model-editor/vendor.css` 對 React Flow `base.css` 的一個 `@import`（由 node_modules 打包，不是遠端或字型載入）。規則維持一樣嚴格、改為精確：每個自家樣式表只能含列出的套件 import，而被 import 的套件檔本身不得有 `@font-face`、`@import` 或 `url(`（8eecee4）。Mutant：多加一個字型服務的 import、改 import 另一個套件檔，測試都失敗。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-051-T-032-coordinator/`，`exit-codes.txt` 依執行順序；Node 22.22.0，go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 0 | 75 個 package 都 ok |
+| `make architecture-check` | 0 | 87 packages、23 rules、16 build configurations |
+| `make backend-numeric` | 0 | |
+| `make simulation-reference-test` | 0 | |
+| `make ai-eval` | 0 | fake provider；live 為 NOT RUN |
+| `go test -race -count=1`（simulation、results、domainpack、model、cmd） | 1 → 0 | 第一次只有 `internal/simulation/engine` 在 Go 預設的 10 分鐘逾時（腳本漏了 `make backend-race` 的 `-timeout 30m`；共用的 4 CPU，load 9–11）；其餘 19 個 package ok。以 `-timeout 30m` 重跑 engine：ok，604.8 s（`race-engine-30m.log`） |
+| `make integration-test`（新的 dt_test_hk5132c，跑完刪除） | 0 | |
+| `npm ci`（web、web-e2e，`--engine-strict=false`） | 0／0 | |
+| `make frontend-test` | 2 → 0 | 第一次是上面的語意衝突（769／770）；修正後 770／770 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test` | 2 → 0 | 第一次是另一個 agent 的 e2e 占用 127.0.0.1:3101（本機沒有 `ss`，原本的 port 檢查沒有作用，改用 `/dev/tcp` 與 `pgrep`）；等 port 空出後單獨重跑：257 passed、32 skipped（全部是 `screenshots.spec.ts`，只在 CI 的固定環境比對） |
+
+NOT RUN：截圖比對（只在 CI）；完整的 `make backend-race`（只跑改動的 package）；live AI；Node 24。
+
+Coordinator 對 T-032 問題的處理（例行事項；需要 owner 的另列）：
+1. 狀態採 (a)：維持 `not_started`，切片紀錄在 completion_evidence（與 T-015、T-051 一致）。
+2. 已登入的 app：由 T-043 的後續（AuthProvider 接 BFF session 與 `/v1/me`）處理，agent 執行中。
+3. 進入點：T-031 切片批准 scenario 後連到 `/scenarios/<id>`（已寫進 T-031 切片的指示）。
+4. 預設執行設定：先維持；demo 的設定在 T-057 的 demo 腳本決定。
+5. 手機上的表格在自己的捲動區橫向捲動：接受（DESIGN.md 允許表格在自己的 overflow 容器內）。
+6. DESIGN.md 的兩點簡化：符合 owner 的簡潔要求（H-027），coordinator 接受，列在給 owner 的報告中。
+7. 新頁面的截圖 baseline：等已登入的 UI 穩定後（T-043 後續、T-031），在 T-057 加入 `screenshots.spec.ts`，由 CI 產生、owner 確認（H-028）。
+
+下一步：一輪獨立審查（H-029）。
