@@ -505,7 +505,7 @@ export const zhHant: Catalog = {
   "photo.choose": "從照片提出…",
   "photo.sending": "正在將照片送給 AI…",
   "photo.problem.tooLarge": "影像大於 5 MB，請選擇較小的影像。",
-  "photo.problem.format": "請選擇 PNG 或 JPEG 影像。",
+  "photo.problem.format": "請選擇 PNG 或 JPEG 影像：非交錯式的 8 位元 PNG，或基線（baseline）JPEG（不接受漸進式、CMYK 或 RGB 的 JPEG）。",
   "photo.problem.invalid": "這個檔案不是可讀取的影像，請選擇其他 PNG 或 JPEG。",
   "photo.problem.pixels": "影像的寬與高必須介於 32 到 4096 像素。",
 

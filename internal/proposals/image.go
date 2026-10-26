@@ -8,6 +8,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"regexp"
+	"sync"
 
 	"github.com/kcl1104/geminus/internal/ai/locale"
 	"github.com/kcl1104/geminus/internal/ids"
@@ -34,20 +35,73 @@ import (
 //     or editor), that the photo path is on (Service.Photo, decided as the
 //     worker decides it: the T-056 follow-up) and that photos can be
 //     stored.
-//   - CreateFromImage checks the fields and the base (404, 422, 409) before
+//   - CreateFromImage checks the fields, then whether the Idempotency-Key
+//     was used before: a used key is only hashed, never decoded or stored
+//     again, and replays the first answer (or is a conflict) whatever has
+//     happened to the model since, as createProposal's (D-011; review
+//     round 1, M1). For a new key it checks the base (404, 422, 409) before
 //     anything is stored, then the image (internal/proposals/photo: PNG or
-//     JPEG, its size, its pixels; its pixels encoded again, no metadata),
-//     stores that under a key the server makes
+//     JPEG of the kinds it decodes, its size, its pixels; its pixels
+//     encoded again, no metadata), stores that under a key the server makes
 //     (tenant/<org>/assets/proposal-images/<proposal>/image), and commits
 //     the proposal, its image record (migration 0017), its one
 //     model_proposal job, its audit event and the idempotency response in
-//     one transaction (D-011). A retry with the same key is only hashed,
-//     never stored again.
+//     one transaction (D-011).
 //
 // An object stored by a request whose commit then fails is an orphan for
-// the controlled maintenance D-044 leaves for later, as uploads' are.
+// the controlled maintenance D-044 leaves for later, as uploads' are. So is
+// one stored by a request racing another with the same key in another API
+// process: within a process, requests with one key run one after the
+// other (imageKeys), so the later ones find the key used and store
+// nothing (review round 1, L4). A request never deletes an object (D-044:
+// only maintenance holds an objects.Maintainer).
 
 const createImageOperation = "createImageProposal"
+
+// keyLocks serialises, in this process, the photo requests of one
+// Idempotency-Key from their first read to their commit. A request waits
+// as long as its context allows; the map holds a key only while a request
+// of it is running or waiting.
+type keyLocks struct {
+	mu   sync.Mutex
+	held map[idempotency.Key]*keyLock
+}
+
+type keyLock struct {
+	slot    chan struct{}
+	waiting int
+}
+
+var imageKeys keyLocks
+
+// lock takes k's slot, or returns ctx's error; release gives it back.
+func (l *keyLocks) lock(ctx context.Context, k idempotency.Key) (release func(), err error) {
+	l.mu.Lock()
+	if l.held == nil {
+		l.held = map[idempotency.Key]*keyLock{}
+	}
+	e := l.held[k]
+	if e == nil {
+		e = &keyLock{slot: make(chan struct{}, 1)}
+		l.held[k] = e
+	}
+	e.waiting++
+	l.mu.Unlock()
+	done := func() {
+		l.mu.Lock()
+		if e.waiting--; e.waiting == 0 {
+			delete(l.held, k)
+		}
+		l.mu.Unlock()
+	}
+	select {
+	case e.slot <- struct{}{}:
+		return func() { <-e.slot; done() }, nil
+	case <-ctx.Done():
+		done()
+		return nil, ctx.Err()
+	}
+}
 
 var (
 	// ErrStorageUnavailable: no object storage is configured, so a photo
@@ -173,18 +227,28 @@ func (s *Service) CreateFromImage(ctx context.Context, sc tenant.Scope, requestI
 		return 0, nil, err
 	}
 	k := idempotency.Key{Org: sc.OrganizationID, Actor: sc.UserID, Operation: createImageOperation, Key: key}
-	// Before anything is stored: the caller, the base, and whether the key
-	// was used before (a replay or a conflict is decided from the hash).
+	// Requests with this key wait for each other here, in this process,
+	// until the one before has committed or failed: the next then finds
+	// the key used and only hashes the file (review round 1, L4).
+	release, err := imageKeys.lock(ctx, k)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer release()
+	// Before anything is stored: the caller, whether the key was used
+	// before (a replay or a conflict is decided from the hash, whatever has
+	// happened to the model since: review round 1, M1), and, for a key not
+	// used yet, the base.
 	var seen bool
 	if err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
 		if err := m.Require(writeRoles...); err != nil {
 			return err
 		}
-		if _, _, err := checkBase(ctx, tx, m.OrganizationID, modelID, f.BaseVersionID, false); err != nil {
+		var err error
+		if seen, err = idempotency.Seen(ctx, tx, k); err != nil || seen {
 			return err
 		}
-		var err error
-		seen, err = idempotency.Seen(ctx, tx, k)
+		_, _, err = checkBase(ctx, tx, m.OrganizationID, modelID, f.BaseVersionID, false)
 		return err
 	}); err != nil {
 		return 0, nil, err

@@ -1,17 +1,65 @@
 package proposals
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/proposals/photo"
+	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	store "github.com/kcl1104/geminus/internal/storage/proposals"
 )
+
+// Review round 1, L4: the photo requests of one key run one after the
+// other in this process (the later ones then find the key used and store
+// nothing); other keys do not wait; a request waits only as long as its
+// context allows, and the table keeps no key nobody holds or waits for.
+func TestImageKeysRunOneAfterTheOther(t *testing.T) {
+	var l keyLocks
+	k := idempotency.Key{Org: "org_a", Actor: "usr_a", Operation: createImageOperation, Key: "same"}
+	release, err := l.lock(context.Background(), k)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := l.lock(context.Background(), idempotency.Key{Org: "org_a", Actor: "usr_a", Operation: createImageOperation, Key: "other"})
+	if err != nil {
+		t.Fatalf("another key waited: %v", err)
+	}
+	other()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := l.lock(ctx, k); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("a second request with the key did not wait: %v", err)
+	}
+	got := make(chan error, 1)
+	go func() {
+		r, err := l.lock(context.Background(), k)
+		if err == nil {
+			r()
+		}
+		got <- err
+	}()
+	select {
+	case err := <-got:
+		t.Fatalf("the waiting request ran before the first released the key: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+	release()
+	if err := <-got; err != nil {
+		t.Fatal(err)
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if len(l.held) != 0 {
+		t.Errorf("keys kept: %v", l.held)
+	}
+}
 
 // T-056: a proposal asked for with a photo says so in every state, with
 // what the server stored of the image (type, pixels, size, hash) and
@@ -50,6 +98,7 @@ func TestRefusedPhoto(t *testing.T) {
 		detail string
 	}{
 		photo.ErrFormat:       {httpapi.UnsupportedMediaType, CodeImageFormatRejected},
+		photo.ErrEncoding:     {httpapi.UnsupportedMediaType, CodeImageFormatRejected},
 		photo.ErrTooLarge:     {httpapi.PayloadTooLarge, ""},
 		photo.ErrEmpty:        {httpapi.RequestValidationFailed, CodeImageInvalid},
 		photo.ErrInvalid:      {httpapi.RequestValidationFailed, CodeImageInvalid},
@@ -70,6 +119,34 @@ func TestRefusedPhoto(t *testing.T) {
 		return r.OperationID == "createImageProposal" && r.Method == "POST" && r.Path == "/v1/models/{id}/ai-proposals/image"
 	}) {
 		t.Error("no createImageProposal route")
+	}
+}
+
+// Review round 1, M2: a file that is no PNG or JPEG and one of a kind the
+// server does not decode are both 415 IMAGE_FORMAT_REJECTED at /file, each
+// with its own message and reason: openapi.yaml's createImageProposal 415
+// examples.
+func TestRefusedFormatsAreTheContracts(t *testing.T) {
+	spec, err := os.ReadFile(filepath.Join("..", "..", "openapi", "openapi.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reasons := map[string]bool{}
+	for _, err := range []error{photo.ErrFormat, photo.ErrEncoding} {
+		var he *httpapi.Error
+		if !errors.As(Refused(err), &he) || he.Code != httpapi.UnsupportedMediaType || len(he.Details) != 1 {
+			t.Fatalf("%v: %+v", err, Refused(err))
+		}
+		reasons[he.Details[0].Reason] = true
+		for _, line := range []string{"code: " + string(he.Code), "message: " + he.Message, "- path: " + he.Details[0].Path,
+			"reason: " + he.Details[0].Reason, "code: " + he.Details[0].Code} {
+			if !strings.Contains(string(spec), "\n                      "+line+"\n") && !strings.Contains(string(spec), "\n                        "+line+"\n") {
+				t.Errorf("%v: openapi.yaml's createImageProposal examples have no %q", err, line)
+			}
+		}
+	}
+	if len(reasons) != 2 {
+		t.Error("the two refusals give one reason")
 	}
 }
 

@@ -172,6 +172,11 @@ func refusedImage(err error) error {
 			Reason: "the photo path is off, so the worker would not take the photo", Code: CodeImageUnsupported}}}
 	case errors.Is(err, photo.ErrFormat):
 		return file(httpapi.UnsupportedMediaType, "a photo or floor plan is a PNG or a JPEG", "the file is not a PNG or a JPEG", CodeImageFormatRejected)
+	case errors.Is(err, photo.ErrEncoding):
+		// T-056 review round 1, M2: refused from its headers.
+		return file(httpapi.UnsupportedMediaType, "a photo or floor plan is an 8-bit PNG that is not interlaced or a baseline JPEG",
+			"the image is a progressive, lossless, CMYK or RGB JPEG or a 16-bit or interlaced PNG, whose decoding takes several times the image; save it as a baseline JPEG or an 8-bit PNG",
+			CodeImageFormatRejected)
 	case errors.Is(err, photo.ErrTooLarge):
 		return file(httpapi.PayloadTooLarge, "the photo is larger than a proposal may take", "the file is more than 5,242,880 bytes (5 MiB)", "")
 	case errors.Is(err, photo.ErrEmpty), errors.Is(err, photo.ErrInvalid):

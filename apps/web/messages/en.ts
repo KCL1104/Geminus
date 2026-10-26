@@ -519,7 +519,7 @@ export const en = {
   "photo.choose": "Propose from a photo…",
   "photo.sending": "Sending the photo to the AI…",
   "photo.problem.tooLarge": "The image is larger than 5 MB. Choose a smaller one.",
-  "photo.problem.format": "Choose a PNG or JPEG image.",
+  "photo.problem.format": "Choose a PNG or JPEG image: an 8-bit PNG that is not interlaced, or a baseline JPEG (not progressive, CMYK or RGB).",
   "photo.problem.invalid": "The file is not an image that can be read. Choose another PNG or JPEG.",
   "photo.problem.pixels": "The image must be 32 to 4096 pixels wide and high.",
 

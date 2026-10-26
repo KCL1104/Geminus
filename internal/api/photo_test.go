@@ -14,6 +14,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"image"
+	"image/jpeg"
 	"image/png"
 	"io"
 	"io/fs"
@@ -435,6 +436,32 @@ func gray(t *testing.T, w, h int) []byte {
 	return b.Bytes()
 }
 
+// gray16 is a w×h 16-bit grey PNG.
+func gray16(t *testing.T, w, h int) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	if err := png.Encode(&b, image.NewGray16(image.Rect(0, 0, w, h))); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
+// progressive is a w×h JPEG whose frame marker says progressive (SOF2).
+func progressive(t *testing.T, w, h int) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	if err := jpeg.Encode(&b, image.NewGray(image.Rect(0, 0, w, h)), nil); err != nil {
+		t.Fatal(err)
+	}
+	data := b.Bytes()
+	i := bytes.Index(data, []byte{0xff, 0xc0})
+	if i < 0 {
+		t.Fatal("no SOF0")
+	}
+	data[i+1] = 0xc2
+	return data
+}
+
 // Who may send a photo, and what is refused before anything is stored: a
 // viewer (before the body is read), AI off, no object storage; another
 // organization's model; a stale or foreign base; a file that is not a PNG
@@ -455,12 +482,15 @@ func TestPhotoRefusals(t *testing.T) {
 		status              int
 		code, detail, path  string
 	}{
-		"a viewer":                 {viewer.Subject, e.a.ID, mdl, photoParts(mv, "", demo.Image), 403, "FORBIDDEN", "", ""},
-		"another tenant's model":   {editor.Subject, e.a.ID, bMdl, photoParts(bMV, "", demo.Image), 404, "NOT_FOUND", "", ""},
-		"another model's version":  {editor.Subject, e.a.ID, mdl, photoParts(otherMV, "", demo.Image), 422, "REQUEST_VALIDATION_FAILED", "", "/base_version_id"},
-		"a GIF":                    {editor.Subject, e.a.ID, mdl, photoParts(mv, "", []byte("GIF89a\x01\x00\x01\x00")), 415, "UNSUPPORTED_MEDIA_TYPE", "IMAGE_FORMAT_REJECTED", "/file"},
-		"an SVG":                   {editor.Subject, e.a.ID, mdl, photoParts(mv, "", []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`)), 415, "UNSUPPORTED_MEDIA_TYPE", "IMAGE_FORMAT_REJECTED", "/file"},
-		"a CSV named .png":         {editor.Subject, e.a.ID, mdl, photoParts(mv, "", []byte("station\nSMT\n")), 415, "UNSUPPORTED_MEDIA_TYPE", "IMAGE_FORMAT_REJECTED", "/file"},
+		"a viewer":                {viewer.Subject, e.a.ID, mdl, photoParts(mv, "", demo.Image), 403, "FORBIDDEN", "", ""},
+		"another tenant's model":  {editor.Subject, e.a.ID, bMdl, photoParts(bMV, "", demo.Image), 404, "NOT_FOUND", "", ""},
+		"another model's version": {editor.Subject, e.a.ID, mdl, photoParts(otherMV, "", demo.Image), 422, "REQUEST_VALIDATION_FAILED", "", "/base_version_id"},
+		"a GIF":                   {editor.Subject, e.a.ID, mdl, photoParts(mv, "", []byte("GIF89a\x01\x00\x01\x00")), 415, "UNSUPPORTED_MEDIA_TYPE", "IMAGE_FORMAT_REJECTED", "/file"},
+		"an SVG":                  {editor.Subject, e.a.ID, mdl, photoParts(mv, "", []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`)), 415, "UNSUPPORTED_MEDIA_TYPE", "IMAGE_FORMAT_REJECTED", "/file"},
+		"a CSV named .png":        {editor.Subject, e.a.ID, mdl, photoParts(mv, "", []byte("station\nSMT\n")), 415, "UNSUPPORTED_MEDIA_TYPE", "IMAGE_FORMAT_REJECTED", "/file"},
+		// Review round 1, M2: refused from their headers.
+		"a 16-bit PNG":             {editor.Subject, e.a.ID, mdl, photoParts(mv, "", gray16(t, 64, 64)), 415, "UNSUPPORTED_MEDIA_TYPE", "IMAGE_FORMAT_REJECTED", "/file"},
+		"a progressive JPEG":       {editor.Subject, e.a.ID, mdl, photoParts(mv, "", progressive(t, 64, 64)), 415, "UNSUPPORTED_MEDIA_TYPE", "IMAGE_FORMAT_REJECTED", "/file"},
 		"an empty file":            {editor.Subject, e.a.ID, mdl, photoParts(mv, "", nil), 422, "REQUEST_VALIDATION_FAILED", "IMAGE_INVALID", "/file"},
 		"a cut PNG":                {editor.Subject, e.a.ID, mdl, photoParts(mv, "", demo.Image[:200]), 422, "REQUEST_VALIDATION_FAILED", "IMAGE_INVALID", "/file"},
 		"too small":                {editor.Subject, e.a.ID, mdl, photoParts(mv, "", gray(t, 20, 200)), 422, "REQUEST_VALIDATION_FAILED", "IMAGE_PIXELS_EXCEEDED", "/file"},
@@ -642,13 +672,23 @@ func TestPhotoIdempotency(t *testing.T) {
 	mdl, mv := e.bareLine(t, e.a)
 	demo := contracttest.LoadPhotoDemo(t, "electronics-line-demo")
 	first := e.photo(t, editor.Subject, e.a.ID, mdl, "photo-same", photoParts(mv, "zh-Hant", demo.Image))
+	if files := e.files(t); len(files) != 1 {
+		t.Fatalf("the first request stored %d objects", len(files))
+	}
 	again := e.photo(t, editor.Subject, e.a.ID, mdl, "photo-same", photoParts(mv, "zh-Hant", demo.Image))
 	if first.status != 202 || again.status != 202 || !bytes.Equal(first.body, again.body) {
 		t.Fatalf("%d %s / %d %s", first.status, first.body, again.status, again.body)
 	}
+	// Review round 1, L4: a replay is only hashed, never stored again.
+	if files := e.files(t); len(files) != 1 {
+		t.Errorf("the replay stored another object: %v", files)
+	}
 	other := e.photo(t, editor.Subject, e.a.ID, mdl, "photo-same", photoParts(mv, "zh-Hant", gray(t, 64, 64)))
 	if other.status != 409 || code(t, other) != "IDEMPOTENCY_KEY_CONFLICT" {
 		t.Errorf("another file: %d %s", other.status, other.body)
+	}
+	if files := e.files(t); len(files) != 1 {
+		t.Errorf("the conflict stored an object: %v", files)
 	}
 	if n := e.count(`SELECT count(*) FROM twin.ai_proposal_images i JOIN twin.ai_proposals p ON p.id=i.proposal_id
 		WHERE p.organization_id=$1 AND p.output_locale='zh-Hant'`, e.a.ID); n != 1 {
@@ -656,6 +696,114 @@ func TestPhotoIdempotency(t *testing.T) {
 	}
 	if n := e.count(`SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND type='model_proposal'`, e.a.ID); n != 1 {
 		t.Errorf("%d jobs", n)
+	}
+}
+
+// Review round 1, M1 (D-011, the OpenAPI promise): the first 202 got lost,
+// and the model moved on before the client retried: the retry with the same
+// key and file is the first answer, not 409, and stores nothing; the key is
+// checked before the base, as createProposal does. A new key on the stale
+// base is still 409 MODEL_VERSION_CONFLICT, and the same key with another
+// file still 409 IDEMPOTENCY_KEY_CONFLICT; neither stores anything.
+func TestPhotoReplayAfterPublish(t *testing.T) {
+	e := setupPhotos(t)
+	editor := e.a.Members[tenant.Editor]
+	mdl, mv := e.bareLine(t, e.a)
+	demo := contracttest.LoadPhotoDemo(t, "electronics-line-demo")
+	first := e.photo(t, editor.Subject, e.a.ID, mdl, "photo-lost-202", photoParts(mv, "", demo.Image))
+	if first.status != 202 {
+		t.Fatalf("first: %d %s", first.status, first.body)
+	}
+	publish(t, e.env, e.a, mdl)
+	again := e.photo(t, editor.Subject, e.a.ID, mdl, "photo-lost-202", photoParts(mv, "", demo.Image))
+	if again.status != 202 || !bytes.Equal(first.body, again.body) {
+		t.Errorf("the retry after a publish: %d %s, want the first %s", again.status, again.body, first.body)
+	}
+	fresh := e.photo(t, editor.Subject, e.a.ID, mdl, "photo-new-key", photoParts(mv, "", demo.Image))
+	if fresh.status != 409 || code(t, fresh) != "MODEL_VERSION_CONFLICT" {
+		t.Errorf("a new key on the stale base: %d %s", fresh.status, fresh.body)
+	}
+	other := e.photo(t, editor.Subject, e.a.ID, mdl, "photo-lost-202", photoParts(mv, "", gray(t, 64, 64)))
+	if other.status != 409 || code(t, other) != "IDEMPOTENCY_KEY_CONFLICT" {
+		t.Errorf("the same key with another file: %d %s", other.status, other.body)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.ai_proposals WHERE organization_id=$1`, e.a.ID); n != 1 {
+		t.Errorf("%d proposals", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.ai_proposal_images i JOIN twin.ai_proposals p ON p.id=i.proposal_id WHERE p.organization_id=$1`, e.a.ID); n != 1 {
+		t.Errorf("%d image records", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND type='model_proposal'`, e.a.ID); n != 1 {
+		t.Errorf("%d jobs", n)
+	}
+	if files := e.files(t); len(files) != 1 {
+		t.Errorf("objects %v", files)
+	}
+}
+
+// Review round 1, L4: requests racing on one key (a double click, a BFF
+// retry) make one proposal and store the photo once: each answers the
+// first's 202, and no object is left without its record.
+func TestPhotoConcurrentSameKey(t *testing.T) {
+	e := setupPhotos(t)
+	editor := e.a.Members[tenant.Editor]
+	mdl, mv := e.bareLine(t, e.a)
+	demo := contracttest.LoadPhotoDemo(t, "electronics-line-demo")
+	const n = 4
+	reqs := make([]*http.Request, n)
+	for i := range reqs {
+		body, ct := multipartBody(t, photoParts(mv, "", demo.Image))
+		req, err := http.NewRequest("POST", e.srv.URL+"/v1/models/"+mdl+"/ai-proposals/image", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("Authorization", "Bearer "+e.token(editor.Subject))
+		req.Header.Set("X-Organization-ID", e.a.ID)
+		req.Header.Set("Content-Type", ct)
+		req.Header.Set("Idempotency-Key", "photo-racing")
+		reqs[i] = req
+	}
+	type answer struct {
+		status int
+		body   []byte
+		err    error
+	}
+	answers := make([]answer, n)
+	ready := make(chan struct{})
+	done := make(chan int, n)
+	for i := range reqs {
+		go func() {
+			<-ready
+			res, err := e.srv.Client().Do(reqs[i])
+			if err == nil {
+				answers[i].body, err = io.ReadAll(res.Body)
+				answers[i].status = res.StatusCode
+				res.Body.Close()
+			}
+			answers[i].err = err
+			done <- i
+		}()
+	}
+	close(ready)
+	for range n {
+		<-done
+	}
+	for i, a := range answers {
+		if a.err != nil || a.status != 202 || !bytes.Equal(a.body, answers[0].body) {
+			t.Errorf("request %d: %v %d %s, want the first's 202 %s", i, a.err, a.status, a.body, answers[0].body)
+		}
+	}
+	if c := e.count(`SELECT count(*) FROM twin.ai_proposals WHERE organization_id=$1`, e.a.ID); c != 1 {
+		t.Errorf("%d proposals", c)
+	}
+	if c := e.count(`SELECT count(*) FROM twin.ai_proposal_images i JOIN twin.ai_proposals p ON p.id=i.proposal_id WHERE p.organization_id=$1`, e.a.ID); c != 1 {
+		t.Errorf("%d image records", c)
+	}
+	if c := e.count(`SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND type='model_proposal'`, e.a.ID); c != 1 {
+		t.Errorf("%d jobs", c)
+	}
+	if files := e.files(t); len(files) != 1 {
+		t.Errorf("%d objects stored for one proposal: %v", len(files), files)
 	}
 }
 

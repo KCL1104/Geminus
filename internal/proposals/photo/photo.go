@@ -7,10 +7,21 @@
 //   - Only PNG and JPEG, told by the file's first bytes: a file name or a
 //     declared Content-Type is never trusted, and SVG, GIF, WebP, HEIC,
 //     PDF, archives and executables are refused.
+//   - Only the kinds of them that decode into at most 4 bytes a pixel
+//     (T-056 review round 1, M2): an 8-bit PNG that is not interlaced, and
+//     a sequential 8-bit JPEG (baseline or extended, Huffman-coded) of one
+//     component or three YCbCr ones, each component in one scan. A
+//     progressive, lossless or arithmetic-coded JPEG, a CMYK, YCCK or RGB
+//     one, a 16-bit or an interlaced PNG are refused from their headers
+//     (ErrEncoding): image/jpeg and image/png decode those into several
+//     times the image (a 310 KB progressive CMYK JPEG of 4096×4096 took
+//     330 MiB).
 //   - At most MaxBytes, and MinSide to MaxSide pixels on each side, read
 //     from the header before any pixel is decoded (a decompression bomb is
-//     refused from its header). At most decodeSlots decodes run at once in
-//     a process, so concurrent uploads cannot take all its memory.
+//     refused from its header). So one Sanitize allocates at most
+//     MaxDecodeBytes, the re-encoding stopping at MaxBytes; and at most
+//     cap(decodeSlots) decodes run at once in a process, so concurrent
+//     uploads take at most cap(decodeSlots) × MaxDecodeBytes.
 //   - The image is decoded and its pixels encoded again in the same format.
 //     Nothing else of the upload survives: no EXIF (GPS, the camera, the
 //     time), XMP, ICC profile, text chunk, comment or byte after the end of
@@ -25,6 +36,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"image"
@@ -42,6 +54,13 @@ const (
 	// MinSide and MaxSide bound the image's width and height in pixels.
 	MinSide = 32
 	MaxSide = 4096
+	// MaxDecodeBytes bounds what one Sanitize allocates in all (an upper
+	// bound of the heap it holds): the decoded image (at most 4 bytes a
+	// pixel: 64 MiB at MaxSide×MaxSide), the decoders' and encoders' state
+	// and the re-encoding (at most MaxBytes). Measured with Go 1.27.3 (T-056
+	// review round 1, checks/T-056_VALIDATION.md): at most 66 MiB for the
+	// worst upload accepted; TestADecodeStaysWithinItsBound keeps it.
+	MaxDecodeBytes = 80 << 20
 	// The media types an image may have.
 	PNG  = "image/png"
 	JPEG = "image/jpeg"
@@ -59,6 +78,14 @@ var (
 	// ErrInvalid: the file starts as a PNG or JPEG but does not decode
 	// (422 at /file, IMAGE_INVALID).
 	ErrInvalid = errors.New("photo: the image does not decode")
+	// ErrEncoding: the file is a PNG or a JPEG of a kind the server does not
+	// decode, because decoding it takes several times the image: a
+	// progressive, lossless or arithmetic-coded JPEG, a CMYK, YCCK or RGB
+	// one, one of another precision than 8 bits or with a component in more
+	// than one scan; a 16-bit or an interlaced PNG (415,
+	// IMAGE_FORMAT_REJECTED). Told from the headers, before any pixel is
+	// decoded.
+	ErrEncoding = errors.New("photo: a PNG or JPEG of a kind the server does not decode")
 	// ErrPixels: the image is narrower or lower than MinSide, or wider or
 	// higher than MaxSide (422 at /file, IMAGE_PIXELS_EXCEEDED).
 	ErrPixels = errors.New("photo: the image's size in pixels is out of range")
@@ -124,9 +151,168 @@ func Read(r io.Reader) ([]byte, error) {
 	return data, nil
 }
 
-// decodeSlots bounds the decodes that run at once in this process: an
-// image of MaxSide² pixels takes about 64 MiB while it is decoded.
+// decodeSlots bounds the decodes that run at once in this process: each
+// allocates at most MaxDecodeBytes, so two take at most 160 MiB.
 var decodeSlots = make(chan struct{}, 2)
+
+// inspect refuses, from its headers, a PNG or JPEG whose decoding takes
+// more than 4 bytes a pixel (ErrEncoding); a file whose structure cannot
+// be read is ErrInvalid. It decodes no pixel.
+func inspect(data []byte, mediaType string) error {
+	if mediaType == PNG {
+		return inspectPNG(data)
+	}
+	return inspectJPEG(data)
+}
+
+// inspectPNG reads the IHDR chunk, which the PNG specification puts first:
+// its bit depth (16 refused: image/png decodes it into 8 bytes a pixel)
+// and interlace method (Adam7 refused: image/png keeps every pass beside
+// the image).
+func inspectPNG(data []byte) error {
+	if len(data) < 33 || binary.BigEndian.Uint32(data[8:]) != 13 || string(data[12:16]) != "IHDR" {
+		return ErrInvalid
+	}
+	if depth, interlace := data[24], data[28]; depth > 8 || interlace != 0 {
+		return ErrEncoding
+	}
+	return nil
+}
+
+// The JPEG markers inspectJPEG reads (ITU T.81 Table B.1).
+const (
+	markerSOF0  = 0xc0 // baseline sequential, Huffman
+	markerSOF1  = 0xc1 // extended sequential, Huffman
+	markerDHT   = 0xc4
+	markerJPG   = 0xc8
+	markerDAC   = 0xcc
+	markerSOF15 = 0xcf
+	markerRST0  = 0xd0
+	markerRST7  = 0xd7
+	markerSOI   = 0xd8
+	markerEOI   = 0xd9
+	markerSOS   = 0xda
+	markerAPP14 = 0xee
+	markerTEM   = 0x01
+)
+
+// inspectJPEG walks the file's markers as image/jpeg does: every marker
+// segment by its length, the bytes that are no marker skipped (libjpeg's
+// rule, which image/jpeg follows), each scan's entropy-coded data up to the
+// next marker; up to the end of the image. It refuses (ErrEncoding):
+//
+//   - a frame that is not sequential and Huffman-coded (SOF2 progressive,
+//     whose decoder keeps every block's coefficients, 4 bytes a sample;
+//     SOF3 lossless; SOF5–SOF15), or not of 8-bit precision;
+//   - a frame of other than 1 or 3 components (CMYK and YCCK are 4: a
+//     fourth plane and a copy);
+//   - three components image/jpeg would decode as RGB into a copy: an
+//     Adobe APP14 marker with the colour transform 0 anywhere in the file
+//     (image/jpeg reads one after the scan too), or the component IDs R, G
+//     and B;
+//   - a component in more than one scan (a sequential JPEG codes each
+//     component in one, ITU T.81 §B.2.3; more would only make the decoder
+//     go over the image again).
+//
+// Everything else image/jpeg decodes into the image itself: 1 byte a pixel
+// for grey, at most 3 for YCbCr.
+func inspectJPEG(data []byte) error {
+	var (
+		frame   bool
+		comps   = map[byte]bool{} // the frame's components, by ID
+		scanned = map[byte]bool{} // the components a scan has coded
+		ids     []byte
+		rgb     bool
+	)
+	i := 2 // after SOI
+	for {
+		// The next marker: 0xFF, any fill bytes, then its code; other bytes
+		// are skipped as image/jpeg skips them.
+		for i < len(data) && data[i] != 0xff {
+			i++
+		}
+		for i < len(data) && data[i] == 0xff {
+			i++
+		}
+		if i >= len(data) {
+			return ErrInvalid // no end of image
+		}
+		m := data[i]
+		i++
+		switch {
+		case m == 0x00:
+			continue // a stuffed 0xFF outside a scan: no marker
+		case m == markerEOI:
+			if !frame || len(scanned) == 0 {
+				return ErrInvalid
+			}
+			if rgb || (len(ids) == 3 && ids[0] == 'R' && ids[1] == 'G' && ids[2] == 'B') {
+				return ErrEncoding
+			}
+			return nil
+		case m >= markerRST0 && m <= markerRST7, m == markerSOI, m == markerTEM:
+			continue // no length (a stray restart marker is ignored, as image/jpeg does)
+		}
+		if i+2 > len(data) {
+			return ErrInvalid
+		}
+		n := int(binary.BigEndian.Uint16(data[i:]))
+		if n < 2 || i+n > len(data) {
+			return ErrInvalid
+		}
+		seg := data[i+2 : i+n]
+		i += n
+		switch {
+		case m == markerSOF0 || m == markerSOF1:
+			if frame || len(seg) < 6 {
+				return ErrInvalid
+			}
+			frame = true
+			nf := int(seg[5])
+			if seg[0] != 8 || (nf != 1 && nf != 3) {
+				return ErrEncoding
+			}
+			if len(seg) < 6+3*nf {
+				return ErrInvalid
+			}
+			for c := range nf {
+				id := seg[6+3*c]
+				comps[id] = true
+				ids = append(ids, id)
+			}
+		case m >= markerSOF0 && m <= markerSOF15 && m != markerDHT && m != markerJPG && m != markerDAC:
+			return ErrEncoding // progressive, lossless, arithmetic-coded or hierarchical
+		case m == markerAPP14:
+			if len(seg) >= 12 && string(seg[:5]) == "Adobe" && seg[11] == 0 {
+				rgb = true
+			}
+		case m == markerSOS:
+			if !frame || len(seg) < 1 || len(seg) < 1+2*int(seg[0]) {
+				return ErrInvalid
+			}
+			for c := range int(seg[0]) {
+				id := seg[1+2*c]
+				if !comps[id] {
+					return ErrInvalid
+				}
+				if scanned[id] {
+					return ErrEncoding
+				}
+				scanned[id] = true
+			}
+			// The entropy-coded data, up to the next marker: 0xFF 0x00 is a
+			// stuffed byte, 0xFF then RST0–RST7 a restart, more 0xFF fill.
+			for i < len(data) {
+				if data[i] == 0xff && i+1 < len(data) {
+					if next := data[i+1]; next != 0x00 && (next < markerRST0 || next > markerRST7) && next != 0xff {
+						break
+					}
+				}
+				i++
+			}
+		}
+	}
+}
 
 func sum(b []byte) string {
 	s := sha256.Sum256(b)
@@ -172,6 +358,9 @@ func Sanitize(ctx context.Context, data []byte) (Image, error) {
 	if mediaType == "" {
 		return Image{}, ErrFormat
 	}
+	if err := inspect(data, mediaType); err != nil {
+		return Image{}, err
+	}
 	cfg, err := config(data, mediaType)
 	if err != nil {
 		return Image{}, err
@@ -194,19 +383,42 @@ func Sanitize(ctx context.Context, data []byte) (Image, error) {
 	if b := pixels.Bounds(); b.Dx() != cfg.Width || b.Dy() != cfg.Height {
 		return Image{}, ErrInvalid
 	}
-	var out bytes.Buffer
+	// The re-encoding, cut at MaxBytes: room for the upload's size and as
+	// much again, then once room for MaxBytes.
+	out := &capped{buf: make([]byte, 0, min(MaxBytes, 2*len(data)+64<<10)), max: MaxBytes}
 	if mediaType == PNG {
-		err = png.Encode(&out, pixels)
+		err = png.Encode(out, pixels)
 	} else {
-		err = jpeg.Encode(&out, pixels, &jpeg.Options{Quality: jpegQuality})
+		err = jpeg.Encode(out, pixels, &jpeg.Options{Quality: jpegQuality})
 	}
-	if err != nil {
+	switch {
+	case errors.Is(err, ErrTooLarge):
+		return Image{}, ErrTooLarge
+	case err != nil:
 		return Image{}, ErrInvalid
 	}
-	if out.Len() > MaxBytes {
-		return Image{}, ErrTooLarge
+	return Image{MediaType: mediaType, Data: out.buf, Width: cfg.Width, Height: cfg.Height, SHA256: sum(out.buf)}, nil
+}
+
+// capped is the re-encoding's buffer: a write past max bytes fails with
+// ErrTooLarge and keeps nothing more, so an encoding larger than MaxBytes
+// stops there instead of growing a buffer for all of it.
+type capped struct {
+	buf []byte
+	max int
+}
+
+func (c *capped) Write(p []byte) (int, error) {
+	if len(p) > c.max-len(c.buf) {
+		return 0, ErrTooLarge
 	}
-	return Image{MediaType: mediaType, Data: out.Bytes(), Width: cfg.Width, Height: cfg.Height, SHA256: sum(out.Bytes())}, nil
+	if len(c.buf)+len(p) > cap(c.buf) {
+		grown := make([]byte, len(c.buf), c.max)
+		copy(grown, c.buf)
+		c.buf = grown
+	}
+	c.buf = append(c.buf, p...)
+	return len(p), nil
 }
 
 // Verify reports whether data, read back from storage, is the image want
