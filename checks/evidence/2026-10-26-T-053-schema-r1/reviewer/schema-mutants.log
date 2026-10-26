@@ -1,0 +1,12 @@
+X1	KILLED	an open member in the needs_input alternative (encoded at a 4th place)	schemas/proposal-output.schema.json	TestTheOpenValuesAreEncoded, TestTheRequestSchemaIsInsideTheLimits
+X2	KILLED	an open alternative inside anyOf (no const tells it apart)	schemas/proposal-output.schema.json	TestACutBodyOnTheLastAttemptCountsOnce, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestBillingCooldown, TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses
+X3	KILLED	the remove alternative becomes an open object	schemas/json-patch.schema.json	TestACutBodyOnTheLastAttemptCountsOnce, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestBillingCooldown, TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses
+X4	KILLED	an open member in analysis-output	schemas/analysis-output.schema.json	TestTheOpenValuesAreEncoded
+X5	KILLED	an assumption may be any JSON value (encoded array items)	schemas/proposal-output.schema.json	TestDecodeOnlyTheEncodedPlaces, TestTheOpenValuesAreEncoded, TestTheRequestSchemaIsInsideTheLimits
+X6	KILLED	the add value is an open object (type object, no additionalProperties)	schemas/json-patch.schema.json	TestACutBodyOnTheLastAttemptCountsOnce, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestBillingCooldown, TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses
+X7	KILLED	the add value has only a dropped constraint	schemas/json-patch.schema.json	TestACutBodyOnTheLastAttemptCountsOnce, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestBillingCooldown, TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses
+X8	BY-DESIGN	the add value is true instead of {} (an open value as before: encoded the same)	schemas/json-patch.schema.json	tests pass: the projection encodes this open value on purpose
+X9	KILLED	the op discriminator is no longer required in remove (alternatives untold)	schemas/json-patch.schema.json	TestACutBodyOnTheLastAttemptCountsOnce, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestBillingCooldown, TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses
+X10	KILLED	additionalProperties is an empty schema in the needs_input alternative	schemas/proposal-output.schema.json	TestACutBodyOnTheLastAttemptCountsOnce, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestBillingCooldown, TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses
+summary	BY-DESIGN=1 KILLED=9
+exit 0

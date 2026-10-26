@@ -1,0 +1,244 @@
+package anthropic
+
+// Reviewer probe (T-053 schema follow-up, review round 1, H-003). Temporary:
+// copied into the package to run, then removed; kept as
+// checks/evidence/2026-10-26-T-053-schema-r1/reviewer/probe_internal_test.go.txt.
+// "%u" in a case stands for a JSON escape's backslash-u (E), so that no
+// editor turns an escape into the character it names.
+
+import (
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"fmt"
+	"runtime"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/model/validate"
+)
+
+// E turns each %u into a JSON escape's backslash-u.
+func E(s string) string { return strings.ReplaceAll(s, "%u", string(rune(92))+"u") }
+
+func rq(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
+func rAnswer(changes string) string {
+	return E(`{"status":"proposed","summary":"s","assumptions":[],"risk_level":"low","confidence":0.9,"changes":` + changes +
+		`,"expected_effects":[],"requires_confirmation":true}`)
+}
+
+// fullSchema reports the canonical check the client runs after Decode.
+func fullSchema(doc []byte) string {
+	issues, err := validate.Document(doc, "proposal-output.schema.json", provider.OutputInvalid)
+	switch {
+	case err != nil:
+		return "error " + err.Error()
+	case len(issues) > 0:
+		return fmt.Sprintf("schema-invalid (%d issues, first %q)", len(issues), issues[0].Path)
+	}
+	return "schema-valid"
+}
+
+func describe(in, out []byte, issues []modelIssue) string {
+	switch {
+	case len(issues) > 0:
+		msgs := []string{}
+		for _, is := range issues {
+			msgs = append(msgs, is.Path+" "+is.Message)
+		}
+		return "INVALID " + strings.Join(msgs, "; ")
+	case string(out) == string(in):
+		return "unchanged"
+	}
+	return "decoded"
+}
+
+type modelIssue = struct {
+	Path, Message string
+}
+
+// P1: the structural matching: strings that look like JSON elsewhere stay
+// strings; places with a wrong, missing or capitalized discriminator are
+// left for the full schema; escapes, numbers, white space.
+func TestReviewerP1Matching(t *testing.T) {
+	p, err := Project("proposal-output.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	one := `[{"op":"replace","path":"/a","value":"6"}]`
+	cases := map[string]string{
+		"summary/assumption/effect/path JSON-like":      E(`{"status":"proposed","summary":"{\"a\":1}","assumptions":["6","null"],"risk_level":"low","confidence":0.9,"changes":[{"op":"replace","path":"\"6\"","value":"6"}],"expected_effects":["[1]"],"requires_confirmation":true}`),
+		"status Proposed (capitalized)":                 strings.Replace(rAnswer(one), `"proposed"`, `"Proposed"`, 1),
+		"status needs_input with changes":               strings.Replace(rAnswer(one), `"proposed"`, `"needs_input"`, 1),
+		"status missing":                                strings.Replace(rAnswer(one), `"status":"proposed",`, ``, 1),
+		"status escaped (%u0070roposed)":                strings.Replace(rAnswer(one), `"proposed"`, E(`"%u0070roposed"`), 1),
+		"op Add (capitalized)":                          rAnswer(`[{"op":"Add","path":"/a","value":"6"}]`),
+		"op escaped (%u0061dd)":                         rAnswer(`[{"op":"%u0061dd","path":"/a","value":"6"}]`),
+		"member name escaped (v%u0061lue)":              rAnswer(`[{"op":"add","path":"/a","v%u0061lue":"6"}]`),
+		"remove with a value":                           rAnswer(`[{"op":"remove","path":"/a","value":"6"}]`),
+		"op missing":                                    rAnswer(`[{"path":"/a","value":"6"}]`),
+		"op a number":                                   rAnswer(`[{"op":1,"path":"/a","value":"6"}]`),
+		"changes nested array":                          rAnswer(`[[{"op":"add","path":"/a","value":"6"}]]`),
+		"changes an object":                             rAnswer(`{"op":"add","path":"/a","value":"6"}`),
+		"mixed ops":                                     rAnswer(`[{"op":"test","path":"/a","value":"\"x\""},{"op":"remove","path":"/b"},{"op":"add","path":"/c","value":"{\"k\":[1,2]}"},{"op":"replace","path":"/d","value":"true"}]`),
+		"double encoding":                               rAnswer(`[{"op":"add","path":"/a","value":` + rq(rq(`{"op":"add","value":"6"}`)) + `}]`),
+		"root duplicate status after unescape":          E(`{"status":"proposed","st%u0061tus":"needs_input","summary":"s","assumptions":[],"risk_level":"low","confidence":0.9,"changes":[{"op":"add","path":"/a","value":"6"}],"expected_effects":[],"requires_confirmation":true}`),
+		"item duplicate op":                             rAnswer(`[{"op":"remove","op":"add","path":"/a","value":"6"}]`),
+		"trailing white space in value (sp,LF,TAB,CR)":  rAnswer(`[{"op":"add","path":"/a","value":"6 \n\t\r"}]`),
+		"leading BOM in value":                          rAnswer(`[{"op":"add","path":"/a","value":"%ufeff6"}]`),
+		"NUL after value":                               rAnswer(`[{"op":"add","path":"/a","value":"6%u0000"}]`),
+		"NBSP after value":                              rAnswer(`[{"op":"add","path":"/a","value":"6%u00a0"}]`),
+		"comment after value":                           rAnswer(`[{"op":"add","path":"/a","value":"6 // c"}]`),
+		"lone low surrogate inside (escaped)":           rAnswer(`[{"op":"add","path":"/a","value":` + rq(E(`"%udc00"`)) + `}]`),
+		"lone high surrogate in the outer string":       rAnswer(`[{"op":"add","path":"/a","value":"\"%ud800\""}]`),
+		"surrogate pair inside (escaped)":               rAnswer(`[{"op":"add","path":"/a","value":` + rq(E(`"%ud83d%ude00"`)) + `}]`),
+		"raw LF inside the inner string":                rAnswer(`[{"op":"add","path":"/a","value":"\"a\nb\""}]`),
+		"escaped NUL inside the inner string":           rAnswer(`[{"op":"add","path":"/a","value":` + rq(E(`"a%u0000b"`)) + `}]`),
+		"huge exponent 1e999999":                        rAnswer(`[{"op":"add","path":"/a","value":"1e999999"}]`),
+		"1000 digits of precision":                      rAnswer(`[{"op":"add","path":"/a","value":"0.` + strings.Repeat("1234567890", 100) + `"}]`),
+		"negative zero, E+":                             rAnswer(`[{"op":"add","path":"/a","value":"-0E+00"}]`),
+		"leading zero number":                           rAnswer(`[{"op":"add","path":"/a","value":"012"}]`),
+		"NaN":                                           rAnswer(`[{"op":"add","path":"/a","value":"NaN"}]`),
+		"single-quoted":                                 rAnswer(`[{"op":"add","path":"/a","value":"'x'"}]`),
+		"duplicate inside value after unescape":         rAnswer(`[{"op":"add","path":"/a","value":` + rq(E(`{"a":1,"%u0061":2}`)) + `}]`),
+		"trailing data after the whole answer":          rAnswer(one) + ` {}`,
+		"trailing white space after the whole answer":   rAnswer(one) + " \n",
+		"value missing for add":                         rAnswer(`[{"op":"add","path":"/a"}]`),
+		"value an object in a replace":                  rAnswer(`[{"op":"replace","path":"/a","value":{"x":1}}]`),
+		"second item bad, first good (issue index)":     rAnswer(`[{"op":"add","path":"/a","value":"1"},{"op":"add","path":"/b","value":"oops"}]`),
+		"needs_input root, value elsewhere":             E(`{"status":"needs_input","summary":"s","assumptions":["{}"],"questions":["\"q\""],"requires_confirmation":true}`),
+	}
+	names := make([]string, 0, len(cases))
+	for n := range cases {
+		names = append(names, n)
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		in := []byte(cases[name])
+		out, issues := p.Decode(in)
+		var mi []modelIssue
+		for _, is := range issues {
+			mi = append(mi, modelIssue{is.Path, is.Message})
+		}
+		state := describe(in, out, mi)
+		final := ""
+		if len(issues) == 0 {
+			final = fullSchema(out)
+		}
+		show := string(out)
+		if len(show) > 240 {
+			show = show[:240] + "..."
+		}
+		t.Logf("%-46s %-9s | full schema: %s | out: %s", name, state, final, show)
+	}
+}
+
+// P2: nesting near the decoder's limit. A JSON text that is valid on its
+// own (depth <= 10000) is deeper than the encoder takes once it is placed
+// at /changes/i/value (3 levels down).
+func TestReviewerP2DepthNearTheLimit(t *testing.T) {
+	p, err := Project("proposal-output.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, depth := range []int{9996, 9997, 9998, 9999, 10000, 10001} {
+		inner := strings.Repeat("[", depth) + strings.Repeat("]", depth)
+		// a second value that does not decode at all ("ci_runner" without
+		// its inner quotes): on its own it is an invalid answer
+		in := []byte(rAnswer(`[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"add","path":"/a","value":` + rq(inner) + `}]`))
+		out, issues := p.Decode(in)
+		state := "decoded"
+		switch {
+		case len(issues) > 0:
+			state = "INVALID " + issues[0].Path + " " + issues[0].Message
+		case string(out) == string(in):
+			state = "UNCHANGED, no issue"
+		}
+		final := ""
+		if len(issues) == 0 {
+			final = fullSchema(out)
+		}
+		t.Logf("depth %5d (inner valid alone: %v, encoded %d bytes): %s | full schema on what the client gets: %s",
+			depth, jsontext.Value(inner).IsValid(), len(rq(inner)), state, final)
+	}
+}
+
+// P3: bounded CPU and memory for many changes and many issues.
+func TestReviewerP3ManyChanges(t *testing.T) {
+	p, err := Project("proposal-output.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range []int{1000, 10000} {
+		for _, kind := range []string{"good", "bad"} {
+			var b strings.Builder
+			b.WriteString("[")
+			for i := range n {
+				if i > 0 {
+					b.WriteString(",")
+				}
+				v := `"{\"k\":` + fmt.Sprint(i) + `}"`
+				if kind == "bad" {
+					v = `"x"`
+				}
+				switch op := []string{"add", "replace", "test", "remove"}[i%4]; op {
+				case "remove":
+					fmt.Fprintf(&b, `{"op":"remove","path":"/r/%d"}`, i)
+				default:
+					fmt.Fprintf(&b, `{"op":"%s","path":"/a/%d","value":%s}`, op, i, v)
+				}
+			}
+			b.WriteString("]")
+			in := []byte(rAnswer(b.String()))
+			var m0, m1 runtime.MemStats
+			runtime.GC()
+			runtime.ReadMemStats(&m0)
+			start := time.Now()
+			out, issues := p.Decode(in)
+			el := time.Since(start)
+			runtime.ReadMemStats(&m1)
+			t.Logf("%5d changes (%s): in %7d bytes, out %7d bytes, %2d issues, %v, allocated %d KiB",
+				n, kind, len(in), len(out), len(issues), el.Round(time.Millisecond), (m1.TotalAlloc-m0.TotalAlloc)>>10)
+		}
+	}
+}
+
+// P4: nested alternatives and an encoded array item.
+func TestReviewerP4NestedAlternatives(t *testing.T) {
+	docs := map[string]any{"s.json": map[string]any{
+		"type": "object", "additionalProperties": false, "required": []any{"k", "inner"},
+		"properties": map[string]any{
+			"k": map[string]any{"type": "string"},
+			"inner": map[string]any{"oneOf": []any{
+				map[string]any{"type": "object", "additionalProperties": false, "required": []any{"t", "v"},
+					"properties": map[string]any{"t": map[string]any{"const": "a"}, "v": map[string]any{"type": "array", "items": map[string]any{}}}},
+				map[string]any{"type": "object", "additionalProperties": false, "required": []any{"t", "w"},
+					"properties": map[string]any{"t": map[string]any{"const": "b"}, "w": map[string]any{"type": "string"}}},
+			}},
+		},
+	}}
+	q, err := project(docs, "s.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range q.Encoded {
+		t.Logf("encoded: %s", l)
+	}
+	for _, in := range []string{
+		`{"k":"x","inner":{"t":"a","v":["1","\"2\"","[3]"]}}`,
+		`{"k":"x","inner":{"t":"b","w":"1"}}`,
+		`{"k":"x","inner":{"t":"a","v":"1"}}`,
+	} {
+		out, issues := q.Decode([]byte(in))
+		t.Logf("%s -> %s %v", in, out, issues)
+	}
+}

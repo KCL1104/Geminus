@@ -1,0 +1,7 @@
+--- FAIL: FuzzReviewerDecode (0.04s)
+    --- FAIL: FuzzReviewerDecode/seed#6 (0.01s)
+        reviewer_fuzz_test.go:87: change 0: the input's string is not a JSON text (jsontext: invalid character 'x' at start of value), yet the answer passes: "x"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.069s
+FAIL
+exit 1

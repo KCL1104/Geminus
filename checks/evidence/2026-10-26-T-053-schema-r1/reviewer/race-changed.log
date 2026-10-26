@@ -1,0 +1,21 @@
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	12.731s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	35.075s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	1.325s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	1.205s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	2.491s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	16.611s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	1.604s
+ok  	github.com/kcl1104/geminus/internal/ai/review	9.594s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	1.100s
+ok  	github.com/kcl1104/geminus/internal/aievals	2.456s
+ok  	github.com/kcl1104/geminus/internal/config	1.068s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	7.254s
+ok  	github.com/kcl1104/geminus/internal/observability	2.329s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry	1.052s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry/export	3.498s
+ok  	github.com/kcl1104/geminus/internal/proposals	1.710s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	4.585s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	4.548s
+?   	github.com/kcl1104/geminus/cmd/ai-eval-live	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/worker	1.272s
+exit 0

@@ -1,0 +1,4 @@
+r1:K11a	KILLED	an error after paid calls prints no summary or cost (K11 on the new main.go)	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestEveryEndClosesTheRecord
+R9	KILLED	the guard does not count optional members	internal/ai/provider/anthropic/guard_test.go	./internal/ai/provider/anthropic/	TestTheSubsetGuard
+summary	KILLED=2
+exit 0

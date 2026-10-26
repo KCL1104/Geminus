@@ -1,0 +1,146 @@
+package anthropic_test
+
+// Reviewer probe (T-053 schema follow-up, review round 1, H-003). Temporary:
+// copied into the package to run, then removed; kept as
+// checks/evidence/2026-10-26-T-053-schema-r1/reviewer/probe_test.go.txt.
+// Everything goes to the local httptest server; no request leaves the
+// machine.
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/aievals"
+	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/packs"
+)
+
+func jq(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
+
+// rRun is liveRun without t.Fatal on the run's error.
+func rRun(t *testing.T, s *server, only ...string) (*aievals.Report, error) {
+	t.Helper()
+	c, _, m := meteredClient(t, s, config(keyA), 10*spendUSD)
+	root := contracttest.Root(t)
+	cases, err := aievals.ReadCases(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg, err := packs.Registry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return aievals.Run(context.Background(), aievals.Config{Client: c, Budget: provider.DefaultBudget(), Packs: reg, Root: root,
+		Cases: cases, Only: only, Locale: "en", Approval: "H-018", Model: model, Kind: "smoke", CapNanoUSD: 10 * spendUSD, Spent: m.Spent,
+		RunID: "01JB0000000000000000000009", Now: func() time.Time { return time.Date(2026, 10, 27, 2, 0, 0, 0, time.UTC) }})
+}
+
+func rProposed(changes string) string {
+	return `{"status":"proposed","summary":"Rename the model.","assumptions":[],"risk_level":"low","confidence":0.9,"changes":` + changes +
+		`,"expected_effects":[],"requires_confirmation":true}`
+}
+
+// Q1: an answer whose values are NOT JSON texts ("code_review" and
+// "Renamed by a raw string", no inner quotes) is invalid_output on its own;
+// with one more value nested 9998 deep (valid alone, too deep once placed
+// at /changes/i/value), Decode returns the answer unchanged and without an
+// issue, the full schema takes the strings, and the server's review makes
+// the proposal ready with the raw strings as values.
+func TestReviewerQ1DepthDisablesDecoding(t *testing.T) {
+	for _, depth := range []int{100, 9998} {
+		deep := strings.Repeat("[", depth) + strings.Repeat("]", depth)
+		changes := `[{"op":"test","path":"/nodes/1/id","value":"code_review"},` +
+			`{"op":"add","path":"/nodes/1/x","value":` + jq(deep) + `},` +
+			`{"op":"remove","path":"/nodes/1/x"},` +
+			`{"op":"replace","path":"/name","value":"Renamed by a raw string"}]`
+		answer := rProposed(changes)
+
+		// the client alone
+		s := newServer(t, map[string][]reply{keyA: {ok(answer)}})
+		c, _ := client(t, s, config(keyA))
+		res, err := ask(t, c)
+		var pe *provider.Error
+		if errors.As(err, &pe) {
+			t.Logf("depth %d: client: %v issues %+v", depth, err, pe.Issues)
+		} else {
+			vals := []string{}
+			for _, op := range res.Output.Changes {
+				v := string(op.Value)
+				if len(v) > 40 {
+					v = v[:40] + "..."
+				}
+				vals = append(vals, string(op.Op)+" "+op.Path+" = "+v)
+			}
+			t.Logf("depth %d: client: ok (err %v), values %q, output hash %q", depth, err, vals, res.Metadata.OutputHash)
+		}
+
+		// the live eval's pipeline: client + server review (MOD-002's base)
+		s = newServer(t, map[string][]reply{keyA: {ok(answer)}})
+		r, err := rRun(t, s, aievals.SmokeCase)
+		if err != nil {
+			t.Logf("depth %d: run error: %v", depth, err)
+			continue
+		}
+		o := r.Outcomes[0]
+		t.Logf("depth %d: review: status %s passed %v code %q issues %v server_risk %q patch_hash %q gates %v",
+			depth, o.Status, o.Passed, o.Code, o.Issues, o.ServerRisk, o.PatchHash, r.Gates)
+	}
+}
+
+// Q2: a value the canonical schema takes but RFC 8785 cannot (1e999999):
+// what the client and the review do with it.
+func TestReviewerQ2HugeExponent(t *testing.T) {
+	changes := `[{"op":"test","path":"/resources/1/id","value":"\"ci_runner\""},{"op":"replace","path":"/resources/1/capacity","value":"1e999999"}]`
+	answer := rProposed(changes)
+	s := newServer(t, map[string][]reply{keyA: {ok(answer)}})
+	c, _ := client(t, s, config(keyA))
+	res, err := ask(t, c)
+	t.Logf("client: err %v, raw %d bytes, output hash %q", err, len(res.Raw), res.Metadata.OutputHash)
+	s = newServer(t, map[string][]reply{keyA: {ok(answer)}})
+	r, err := rRun(t, s, aievals.SmokeCase)
+	if err != nil {
+		t.Logf("run error (the whole eval stops): %v", err)
+		return
+	}
+	t.Logf("review: %+v", r.Outcomes[0])
+}
+
+// Q3: the error type of an error status is from the closed list; what a
+// provider writes as type or message never shows (in the error text, the
+// eval report, or %#v of the error).
+func TestReviewerQ3ErrorTypeIsClosed(t *testing.T) {
+	for _, kind := range []string{"invalid_request_error", "invalid_request_error\nX-LEAK", "sk-ant-api03-LEAKLEAK", "rate_limit_error ", "", "../../etc"} {
+		body, _ := json.Marshal(map[string]any{"type": "error", "error": map[string]any{"type": kind, "message": "MSG-LEAK " + keyA}, "request_id": "req_x"})
+		s := newServer(t, map[string][]reply{keyA: {{status: 400, body: string(body)}}})
+		cl, _ := client(t, s, config(keyA), func(b *provider.Budget) { b.MaxRetries = 0 })
+		_, err := ask(t, cl)
+		var pe *provider.Error
+		errors.As(err, &pe)
+		all := err.Error() + " " + strings.ReplaceAll(strings.ReplaceAll(jq(pe.ErrorType), "\n", ""), "\r", "")
+		leak := strings.Contains(all, "LEAK") || strings.Contains(all, "sk-ant") || strings.Contains(all, "etc")
+		t.Logf("type %q -> ErrorType %q, Error() %q, leak %v", kind, pe.ErrorType, err.Error(), leak)
+		if leak {
+			t.Errorf("leak: %s", all)
+		}
+		s = newServer(t, map[string][]reply{keyA: {{status: 400, body: string(body)}}})
+		r, rerr := rRun(t, s, aievals.SmokeCase)
+		if rerr != nil {
+			t.Fatal(rerr)
+		}
+		data, _ := r.Marshal()
+		if strings.Contains(string(data), "LEAK") || strings.Contains(string(data), "sk-ant") {
+			t.Errorf("the report leaks: %s", data)
+		}
+	}
+}

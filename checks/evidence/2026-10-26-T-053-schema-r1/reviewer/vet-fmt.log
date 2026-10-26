@@ -1,0 +1,2 @@
+gofmt exit 0
+go vet exit 0

@@ -1,0 +1,117 @@
+r1:U1	KILLED	Cost ignores output tokens	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestCost
+r1:U2	KILLED	AttemptBound ignores max_tokens	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestAttemptBound
+r1:U3	KILLED	cache writes at the cheaper 5m rate	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestCost
+r1:U4	KILLED	the reservation ignores retries	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestASettlementAboveTheReservationIsRecorded, TestAnUndecodableAnswerSettlesAtTheReservation, TestSettlement, TestTheAnswerIsPricedAtItsInferenceGeo, TestTheReservationAssumesTheDearestGeo
+r1:U5	KILLED	a quota refusal becomes spend_unavailable	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestARefusedReservationRefusesTheCall, TestSpend
+r1:U6	KILLED	a reservation without an ID is accepted	internal/ai/provider/meter.go	./internal/ai/provider/	TestARefusedReservationRefusesTheCall
+r1:U7	KILLED	attempts without an answer are not charged	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestASettlementAboveTheReservationIsRecorded, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled, TestSettlement
+r1:U9	KILLED	settle runs on the caller's (maybe cancelled) context	internal/ai/provider/meter.go	./internal/ai/provider/	TestSettlement
+r1:U10	KILLED	a call is never settled (reservation never released)	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestAFailedSettlementKeepsTheReservation, TestASettlementAboveTheReservationIsRecorded, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestEncodedValuesThatDoNotDecode
+r1:U11	KILLED	New accepts a billable backend (no meter)	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestBillableNeedsAMeter, TestOnlyAMeteredClientCallsIt
+r1:U12	KILLED	MemoryMeter refuses a charge that exactly fits	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/aievals/	TestMemoryMeter
+r1:U13	KILLED	MemoryMeter settle keeps the whole reservation	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/aievals/	TestMemoryMeter
+r1:U14	KILLED	a metered call without attribution is accepted	internal/ai/provider/provider.go	./internal/ai/provider/	TestNothingIsReservedForARefusedCall
+r1:U15	KILLED	a refused reservation still calls the provider	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestARefusedReservationRefusesTheCall, TestNothingIsReservedForARefusedCall, TestSpend
+r1:U16	KILLED	the quota limit is not passed on	internal/ai/provider/meter.go	./internal/ai/provider/	TestARefusedReservationRefusesTheCall
+r1:U17	KILLED	spend_unavailable is not retryable	internal/ai/provider/errors.go	./internal/ai/provider/	TestARefusedReservationRefusesTheCall
+r1:U18	KILLED	the adapter calls without a reservation	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestOnlyAMeteredClientCallsIt
+r1:U19	KILLED	the adapter serves any prompt role	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestOnlyTheApprovedRoles
+r1:U20	KILLED	a transport failure is not counted	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled, TestTheProviderErrorType
+r1:U21	KILLED	a cut body is not counted	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled
+r1:U22	KILLED	New accepts another model	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	TestTheAdapterTakesOnlyTheApproval
+r1:U23	KILLED	New accepts other credentials	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	TestTheAdapterTakesOnlyTheApproval
+r1:U24	KILLED	New accepts no approval	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	TestNewRefuses, TestTheAdapterTakesOnlyTheApproval
+r1:U25	KILLED	the record needs no retention confirmation	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/config/ ./internal/aievals/	TestAnAlteredRetentionRefuses, TestAnyMismatchKeepsLiveOff, TestGapReasons, TestRecorded, TestTheLiveEvalRunsOnlyWhenLiveIsOn
+r1:U26	KILLED	the record needs no spend-limit confirmation	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/config/	TestAnyMismatchKeepsLiveOff, TestGapReasons
+r1:U27	KILLED	the record may name any role	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestGapReasons
+r1:U28	KILLED	the record may keep raw text in logs	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff, TestGapReasons
+r1:U29	KILLED	Valid does not recheck the record	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestRecorded
+r1:U30	KILLED	AllowsRole ignores the data policy	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/ai/provider/anthropic/	TestRecorded
+r1:U31	KILLED	the switch is not needed	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/ ./internal/aievals/	TestH026TurnsLiveOn, TestMainRefusesWhileLiveIsOff, TestTheSwitchIsRequired, TestThisBuildsRecord
+r1:U32	KILLED	any AI_MODEL is accepted	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff, TestThisBuildsRecord
+r1:U33	KILLED	the price check is skipped	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff
+r1:U34	KILLED	the record's gap is ignored	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/ ./internal/aievals/	TestAnAlteredRetentionRefuses, TestAnyMismatchKeepsLiveOff, TestTheLiveEvalRunsOnlyWhenLiveIsOn
+r1:U35	KILLED	one key is enough	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestBothCredentialsAreRequired
+r1:U36	KILLED	the secondary key may be the primary key	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestBothCredentialsAreRequired
+r1:U37	KILLED	the monthly limit may exceed the budget	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestSpendLimitsAreChecked
+r1:U38	KILLED	the live eval runs while live AI is off	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestMainRefusesWhileLiveIsOff
+r1:U39	KILLED	a live report may take any name	internal/aievals/live.go	./internal/aievals/ ./internal/ai/provider/anthropic/	TestTheLiveEvalOverHTTP, TestTheReportIsApart
+r1:U40	KILLED	a ready safe-failure case breaks no gate	internal/aievals/live.go	./internal/aievals/	TestRunScoresTheAnswers
+r1:U41	KILLED	the run goes on after its cap refuses	internal/aievals/live.go	./internal/aievals/	TestTheCapStopsTheRun
+r1:U43	KILLED	a spend limit is not RATE_LIMITED in the API	internal/proposals/public.go	./internal/proposals/	TestFailureErrors
+r1:U44	KILLED	the generator has no message for a spend limit	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestProviderFailures
+r1:U45	KILLED	the refusal's limit may be any label	internal/audit/audit.go	./internal/audit/	TestRefused
+r1:U46	KILLED	an ID-shaped model name reaches a metric	internal/observability/telemetry/telemetry.go	./internal/observability/telemetry/	TestSpend
+r1:G1	KILLED	the reservation is at the list price (global)	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/ ./internal/aievals/	TestACutBodyOnTheLastAttemptCountsOnce, TestASettlementAboveTheReservationIsRecorded, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled, TestSettlement
+r1:G2	KILLED	the answer is priced at the list price whatever its geo	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestSettlement, TestTheAnswerIsPricedAtItsInferenceGeo
+r1:G3	KILLED	an unknown geo is priced at the list price	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestInferenceGeos, TestSettlement, TestTheAnswerIsPricedAtItsInferenceGeo
+r1:G4	KILLED	spend.Geo passes the provider's text on	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestInferenceGeos, TestSettlement, TestTheMetadataNamesThePricedGeo
+r1:G5	KILLED	the adapter drops usage.inference_geo	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled, TestSpend, TestTheAnswerIsPricedAtItsInferenceGeo, TestTheLiveEvalOverHTTP
+r1:G6	KILLED	the request pins inference_geo to global	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestTheRequestNamesNoInferenceGeo
+r1:G7	KILLED	a geo's price rounds down	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestInferenceGeos
+r1:G8	KILLED	an unknown geo is not warned of (generator)	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestTheSpendLines
+r1:R1	KILLED	failover after an attempt that may have been billed	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled, TestTheProviderErrorType
+r1:R2	KILLED	an undecodable 2xx answer is not counted	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestAnUndecodableAnswerSettlesAtTheReservation
+r1:R3	KILLED	an undecodable answer settles at its attempts, not the reservation	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestAnUndecodableAnswerSettlesAtTheReservation, TestSettlement
+r1:R4	KILLED	a cut body on the last attempt counts twice	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce
+r1:R5	KILLED	the settlement is clamped to the reservation again	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestASettlementAboveTheReservationIsRecorded, TestSettlement
+r1:R6	KILLED	the metadata does not say the call cost more than its reservation	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/ ./internal/aievals/	TestASettlementAboveTheReservationIsRecorded
+r1:R7	KILLED	a call above its reservation is not warned of (generator)	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestTheSpendLines
+r1:K1	KILLED	the run's cap may exceed the daily limit	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheLiveEvalRunsOnlyWhenLiveIsOn
+r1:K2	KILLED	what the day has left is not checked	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordBoundsTheNextRun
+r1:K3	KILLED	what the month has left is not checked	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordBoundsTheNextRun
+r1:K4	KILLED	an open run without its close counts nothing	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordBoundsTheNextRun, TestTheRecordSumsTheDayAndTheMonth
+r1:K5	KILLED	a closed run counts only on the day and month it opened	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordSumsTheDayAndTheMonth
+r1:K6	KILLED	a closed run counts what was settled, not what its meter held	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordSumsTheDayAndTheMonth
+r1:K7	KILLED	a line that does not parse is skipped	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses, TestTheRecordIsLockedWhileARunOpens
+r1:K8	KILLED	a missing record counts as empty	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses, TestTheRecordIsLockedWhileARunOpens
+r1:K9	KILLED	no open line before the calls	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestARunIsRecordedOpenThenClosed, TestEveryEndClosesTheRecord
+r1:K10	KILLED	an error after paid calls leaves the run open	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestEveryEndClosesTheRecord
+r1:K11	ERROR	an error after paid calls prints no summary or cost	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	pattern occurs 0 times
+r1:K12	KILLED	a report replaces an earlier one	internal/aievals/live.go	./internal/aievals/ ./internal/config/aiapproval/	TestAReportIsNeverOverwritten
+r1:K13	KILLED	the record's lock is not exclusive	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordIsLockedWhileARunOpens
+r1:K14	KILLED	a close line may come without its open	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses
+r1:K15	KILLED	a stopped run is recorded as complete	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestEveryEndClosesTheRecord
+r1:W1	KILLED	a key with white space or control characters is taken	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestAKeyWithWhiteSpaceOrControlCharactersIsRefused
+r1:W2	KILLED	only trailing white space is refused	internal/config/ai.go	./internal/config/	TestAKeyWithWhiteSpaceOrControlCharactersIsRefused
+r1:W3	KILLED	a control character inside a key is taken	internal/config/ai.go	./internal/config/	TestAKeyWithWhiteSpaceOrControlCharactersIsRefused
+s:S1	KILLED	skip the decode step (Decode returns every answer as it came)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+s:S1b	KILLED	skip the decode step in the adapter (answer decodes with no projection)	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestTheLiveEvalDecodesTheEncodedValues
+s:S2	KILLED	decode at the wrong position: the alternatives' const members are ignored	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+s:S2b	KILLED	decode at the wrong position: the place recorded is the patch item, not its value	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+s:S2c	KILLED	decode at the wrong position: only the first change of a patch	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+s:S2d	KILLED	decode at the wrong position: the issue names the next item	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+s:S3	KILLED	accept trailing data (read the first JSON value of the text only)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+s:S4	KILLED	drop the guard's empty-schema check	internal/ai/provider/anthropic/guard_test.go	./internal/ai/provider/anthropic/	TestTheSubsetGuard
+s:S5	KILLED	no size limit on a JSON text	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+s:S6	KILLED	a value that is not a string is taken as it is	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+s:S7	KILLED	duplicate member names are accepted	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+s:S8	KILLED	the alternatives' condition is inverted	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+s:S9	KILLED	an open value projects to a plain string, its place not listed (nothing decodes it)	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestProjectionRefuses
+s:S9b	KILLED	an open value projects to {} again, as before the fix	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestBillingCooldown, TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses
+s:S9c	KILLED	an open value projects to {} again and nothing refuses a schema without a type	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestEverySchemaTheAdapterSendsIsInsideTheLimits, TestProjectionRefuses
+s:S10	KILLED	a schema without a concrete type is sent	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestEverySchemaTheAdapterSendsIsInsideTheLimits, TestProjectionRefuses
+s:S11	KILLED	an open allOf member is encoded instead of dropped	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestTheOpenValuesAreEncoded
+s:S12	KILLED	the error type is not checked against the API's list	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestTheLiveEvalNamesTheProviderError, TestTheProviderErrorType
+s:S13	KILLED	the error type is not recorded	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestTheLiveEvalNamesTheProviderError, TestTheProviderErrorType
+s:S14	KILLED	the report does not name the provider status and type	internal/aievals/live.go	./internal/aievals/ ./internal/ai/provider/anthropic/	TestAFailedCaseNamesTheProviderError, TestTheLiveEvalNamesTheProviderError
+s:S15	KILLED	ai-eval-live prints no warning for a provider error	internal/aievals/main.go	./internal/config/aiapproval/	TestTheLiveEvalWarnsOfAProviderError
+s:S16	KILLED	the worker logs no warning for a provider error	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestTheProviderErrorLine
+s:S17	KILLED	the log key provider_error_type is not registered (redacted)	internal/observability/redact.go	./internal/proposals/generator/	TestTheProviderErrorLine
+R1	SURVIVED	the issues of one answer are not capped at 20	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	tests pass
+R2	SURVIVED	the discriminator need not be required in every alternative	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	tests pass
+R3	SURVIVED	a JSON text is not compacted	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	tests pass
+R4	KILLED	a rewritten object's strings are re-escaped (asWritten dropped)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestEncodedValuesDecode
+R5	KILLED	the size bound is off by one (exactly 64 KiB refused)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses
+R6	KILLED	the model is not told how to encode (description)	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestTheOpenValuesAreEncoded, TestTheRequestSchemaIsInsideTheLimits
+R7	KILLED	an open value inside untold alternatives is encoded	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestProjectionRefuses
+R8	SURVIVED	a description-only projection counts as typed	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	tests pass
+R9	INVALID	the guard does not count optional members	internal/ai/provider/anthropic/guard_test.go	./internal/ai/provider/anthropic/	does not build: internal/ai/provider/anthropic/guard_test.go:226:6: declared and not used: name
+R10	SURVIVED	the guard does not count type arrays as unions	internal/ai/provider/anthropic/guard_test.go	./internal/ai/provider/anthropic/	tests pass
+R11	KILLED	the worker warns of every provider error, with or without a status	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestTheCallsLine, TestTheProviderErrorLine, TestTheSpendLines
+R12	KILLED	the usage is not kept when the answer does not decode	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestEncodedValuesThatDoNotDecode, TestTheLiveEvalDecodesTheEncodedValues
+R13	KILLED	an error status's type is recorded only for 4xx (5xx and 429 none)	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestTheProviderErrorType
+R14	EQUIVALENT	M1 as the code is: an encoder error makes the answer pass undecoded (equivalent to HEAD, survives)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	tests pass, as expected
+F1	FIXPASS	candidate fix for M1: an answer the adapter cannot rewrite is invalid_output (expected to pass every test)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	every test passes
+summary	EQUIVALENT=1 ERROR=1 FIXPASS=1 INVALID=1 KILLED=106 SURVIVED=5
+exit 1
