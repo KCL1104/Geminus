@@ -1,0 +1,15 @@
+# github.com/kcl1104/geminus/internal/proposals [github.com/kcl1104/geminus/internal/proposals.test]
+internal/proposals/image_test.go:33:42: p.SourceImage undefined (type Proposal has no field or method SourceImage)
+internal/proposals/image_test.go:33:83: undefined: SourceImage
+internal/proposals/image_test.go:35:29: p.SourceImage undefined (type Proposal has no field or method SourceImage)
+internal/proposals/image_test.go:38:61: p.SourceImage undefined (type Proposal has no field or method SourceImage)
+internal/proposals/image_test.go:39:45: p.SourceImage undefined (type Proposal has no field or method SourceImage)
+internal/proposals/image_test.go:50:57: undefined: CodeImageFormatRejected
+internal/proposals/image_test.go:52:60: undefined: CodeImageInvalid
+internal/proposals/image_test.go:53:60: undefined: CodeImageInvalid
+internal/proposals/image_test.go:54:60: undefined: CodeImagePixels
+internal/proposals/image_test.go:55:3: undefined: ErrStorageUnavailable
+internal/proposals/image_test.go:55:3: too many errors
+FAIL	github.com/kcl1104/geminus/internal/proposals [build failed]
+FAIL
+exit 1

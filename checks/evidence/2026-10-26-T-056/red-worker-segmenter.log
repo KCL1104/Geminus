@@ -1,0 +1,5 @@
+# github.com/kcl1104/geminus/cmd/worker [github.com/kcl1104/geminus/cmd/worker.test]
+cmd/worker/main_test.go:259:14: undefined: segmenter
+FAIL	github.com/kcl1104/geminus/cmd/worker [build failed]
+FAIL
+exit 1

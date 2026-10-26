@@ -1,0 +1,132 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00PH0T0BARE1NE0000",
+  "domain": "electronics_line",
+  "name": "Bare line (synthetic)",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "board",
+      "name": "Board"
+    }
+  ],
+  "resources": [
+    {
+      "id": "smt_line",
+      "type": "machine",
+      "role": "smt_line",
+      "name": "SMT line",
+      "capacity": 1,
+      "queue_discipline": "fifo"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "release",
+      "type": "source",
+      "entity_type": "board",
+      "arrival": {
+        "distribution": {
+          "type": "exponential",
+          "mean": 2
+        }
+      },
+      "name": "Board release"
+    },
+    {
+      "id": "q_smt",
+      "type": "queue",
+      "name": "Buffer before SMT"
+    },
+    {
+      "id": "smt",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.9,
+          "mode": 1,
+          "max": 1.4
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "smt_line",
+          "units": 1
+        }
+      ],
+      "name": "SMT line",
+      "domain_attributes": {
+        "station": "smt",
+        "pass": "first"
+      }
+    },
+    {
+      "id": "shipped",
+      "type": "sink",
+      "outcome": "completed",
+      "name": "Shipped"
+    }
+  ],
+  "flows": [
+    {
+      "id": "release__q_smt",
+      "from": "release",
+      "to": "q_smt",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_smt__smt",
+      "from": "q_smt",
+      "to": "smt",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "smt__shipped",
+      "from": "smt",
+      "to": "shipped",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [],
+  "metrics": [],
+  "views": {
+    "2d": {
+      "positions": {
+        "release": {
+          "x": 0,
+          "y": 0
+        },
+        "q_smt": {
+          "x": 240,
+          "y": 0
+        },
+        "smt": {
+          "x": 480,
+          "y": 0
+        },
+        "shipped": {
+          "x": 720,
+          "y": 0
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "synthetic": true,
+    "source": "synthetic, for demonstration (T-056)",
+    "origin": "A bare electronics line (one SMT step) that a photo proposal builds on; NOT customer data, plant measurements or typical values."
+  }
+}

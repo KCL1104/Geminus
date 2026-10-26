@@ -15,6 +15,9 @@ func TestTemplates(t *testing.T) {
 		"analyst":  {"ALLOWED_METRIC_REFERENCES", "CONTEXT_OMISSIONS", "UNTRUSTED_DATA", "OUTPUT_LOCALE", "阿拉伯數字"},
 		"importer": {"COLUMN_NAMES", "SAMPLE_ROWS", "CONTEXT_OMISSIONS", "UNTRUSTED_DATA", "OUTPUT_LOCALE", "ALLOWED_TRANSFORMS"},
 		"critic":   {"UNTRUSTED_DATA"},
+		// T-056: the photo proposal's template (role modeler).
+		"photo": {"ID_ALLOCATION_POOL", "IMAGE", "SEGMENT_PROMPTS", "SEGMENTS", "CONTEXT_OMISSIONS", "UNTRUSTED_DATA", "OUTPUT_LOCALE",
+			"needs_input", "views", "capacity"},
 	}
 	version := regexp.MustCompile(`^[a-z]+-[0-9]+\.[0-9]+\.[0-9]+$`)
 	for role, words := range want {

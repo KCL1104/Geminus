@@ -1,0 +1,328 @@
+{
+  "$comment": "T-056: the fake vision model's answer for electronics-line-demo.png on testdata/photos/bare-line.json, in proposal-output.schema.json; \"$node:<n>\", \"$flow:<n>\" and \"$resource:<n>\" stand for the proposal's own ID pool (D-046), filled in by the tests. Synthetic: every number is copied from the base model or counts the boxes (two ICT testers).",
+  "answer": {
+    "status": "proposed",
+    "summary": "Add the AOI, ICT, FCT and packing stations the floor plan shows after the SMT line, with a conveyor before each.",
+    "assumptions": [
+      "The floor plan shows, left to right: the SMT line, an AOI machine, two ICT testers side by side, an FCT tester and a packing station, joined by conveyors; boards flow left to right as the arrows show.",
+      "Each new station takes the SMT line's service time, triangular 0.9, 1 and 1.4 minutes: the floor plan shows no times. Set them before you simulate.",
+      "The two ICT testers are one ICT step with two testers, as the conveyor's fork and join show.",
+      "Every board passes each test: the floor plan shows no yields, debug or retest, so no test result is added.",
+      "The conveyors are unlimited buffers: the floor plan shows no buffer sizes."
+    ],
+    "risk_level": "low",
+    "confidence": 0.7,
+    "changes": [
+      {
+        "op": "add",
+        "path": "/resources/-",
+        "value": {
+          "id": "$resource:0",
+          "type": "machine",
+          "role": "aoi",
+          "name": "AOI machine",
+          "capacity": 1,
+          "queue_discipline": "fifo"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/resources/-",
+        "value": {
+          "id": "$resource:1",
+          "type": "machine",
+          "role": "ict_tester",
+          "name": "ICT testers",
+          "capacity": 2,
+          "queue_discipline": "fifo"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/resources/-",
+        "value": {
+          "id": "$resource:2",
+          "type": "machine",
+          "role": "fct_tester",
+          "name": "FCT tester",
+          "capacity": 1,
+          "queue_discipline": "fifo"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/resources/-",
+        "value": {
+          "id": "$resource:3",
+          "type": "human",
+          "role": "pack_station",
+          "name": "Packing station",
+          "capacity": 1,
+          "queue_discipline": "fifo"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/nodes/-",
+        "value": {
+          "id": "$node:0",
+          "type": "queue",
+          "name": "Conveyor before AOI"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/nodes/-",
+        "value": {
+          "id": "$node:1",
+          "type": "process",
+          "name": "AOI",
+          "service_time": {
+            "distribution": {
+              "type": "triangular",
+              "min": 0.9,
+              "mode": 1,
+              "max": 1.4
+            }
+          },
+          "requires": [
+            {
+              "resource_id": "$resource:0",
+              "units": 1
+            }
+          ],
+          "domain_attributes": {
+            "station": "aoi",
+            "pass": "first"
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/nodes/-",
+        "value": {
+          "id": "$node:2",
+          "type": "queue",
+          "name": "Conveyor before ICT"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/nodes/-",
+        "value": {
+          "id": "$node:3",
+          "type": "process",
+          "name": "ICT",
+          "service_time": {
+            "distribution": {
+              "type": "triangular",
+              "min": 0.9,
+              "mode": 1,
+              "max": 1.4
+            }
+          },
+          "requires": [
+            {
+              "resource_id": "$resource:1",
+              "units": 1
+            }
+          ],
+          "domain_attributes": {
+            "station": "ict",
+            "pass": "first"
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/nodes/-",
+        "value": {
+          "id": "$node:4",
+          "type": "queue",
+          "name": "Conveyor before FCT"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/nodes/-",
+        "value": {
+          "id": "$node:5",
+          "type": "process",
+          "name": "FCT",
+          "service_time": {
+            "distribution": {
+              "type": "triangular",
+              "min": 0.9,
+              "mode": 1,
+              "max": 1.4
+            }
+          },
+          "requires": [
+            {
+              "resource_id": "$resource:2",
+              "units": 1
+            }
+          ],
+          "domain_attributes": {
+            "station": "fct",
+            "pass": "first"
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/nodes/-",
+        "value": {
+          "id": "$node:6",
+          "type": "queue",
+          "name": "Conveyor before packing"
+        }
+      },
+      {
+        "op": "add",
+        "path": "/nodes/-",
+        "value": {
+          "id": "$node:7",
+          "type": "process",
+          "name": "Pack and ship",
+          "service_time": {
+            "distribution": {
+              "type": "triangular",
+              "min": 0.9,
+              "mode": 1,
+              "max": 1.4
+            }
+          },
+          "requires": [
+            {
+              "resource_id": "$resource:3",
+              "units": 1
+            }
+          ],
+          "domain_attributes": {
+            "station": "pack",
+            "pass": "first"
+          }
+        }
+      },
+      {
+        "op": "test",
+        "path": "/flows/2/id",
+        "value": "smt__shipped"
+      },
+      {
+        "op": "replace",
+        "path": "/flows/2/to",
+        "value": "$node:0"
+      },
+      {
+        "op": "add",
+        "path": "/flows/-",
+        "value": {
+          "id": "$flow:0",
+          "from": "$node:0",
+          "to": "$node:1",
+          "routing": {
+            "type": "probability",
+            "probability": 1
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/flows/-",
+        "value": {
+          "id": "$flow:1",
+          "from": "$node:1",
+          "to": "$node:2",
+          "routing": {
+            "type": "probability",
+            "probability": 1
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/flows/-",
+        "value": {
+          "id": "$flow:2",
+          "from": "$node:2",
+          "to": "$node:3",
+          "routing": {
+            "type": "probability",
+            "probability": 1
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/flows/-",
+        "value": {
+          "id": "$flow:3",
+          "from": "$node:3",
+          "to": "$node:4",
+          "routing": {
+            "type": "probability",
+            "probability": 1
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/flows/-",
+        "value": {
+          "id": "$flow:4",
+          "from": "$node:4",
+          "to": "$node:5",
+          "routing": {
+            "type": "probability",
+            "probability": 1
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/flows/-",
+        "value": {
+          "id": "$flow:5",
+          "from": "$node:5",
+          "to": "$node:6",
+          "routing": {
+            "type": "probability",
+            "probability": 1
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/flows/-",
+        "value": {
+          "id": "$flow:6",
+          "from": "$node:6",
+          "to": "$node:7",
+          "routing": {
+            "type": "probability",
+            "probability": 1
+          }
+        }
+      },
+      {
+        "op": "add",
+        "path": "/flows/-",
+        "value": {
+          "id": "$flow:7",
+          "from": "$node:7",
+          "to": "shipped",
+          "routing": {
+            "type": "probability",
+            "probability": 1
+          }
+        }
+      }
+    ],
+    "expected_effects": [
+      "Boards are inspected and tested after the SMT line; a simulation will tell how long they wait at each station."
+    ],
+    "requires_confirmation": true
+  }
+}

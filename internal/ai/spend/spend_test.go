@@ -171,3 +171,14 @@ func TestInferenceGeos(t *testing.T) {
 		t.Errorf("a geo this build does not know: %d", got)
 	}
 }
+
+// T-056: no image model is priced in this build (the segmenter's price
+// comes with its adapter, T-055), so no billable segmenter can be
+// reserved for; a token model's name is no image price.
+func TestNoImageModelIsPricedYet(t *testing.T) {
+	for _, model := range []string{"sam-3.1", "claude-opus-5-5", ""} {
+		if p, ok := spend.ImagePriceOf(model); ok || p != 0 {
+			t.Errorf("%q is priced per image: %d", model, p)
+		}
+	}
+}

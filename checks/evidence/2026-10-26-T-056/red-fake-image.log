@@ -1,0 +1,6 @@
+# github.com/kcl1104/geminus/internal/ai/provider/fake_test [github.com/kcl1104/geminus/internal/ai/provider/fake.test]
+internal/ai/provider/fake/image_test.go:29:99: undefined: fake.ImageBlock
+internal/ai/provider/fake/image_test.go:35:32: cannot use fake.New() (value of type *fake.Backend) as provider.ImageBackend value in variable declaration: *fake.Backend does not implement provider.ImageBackend (missing method AcceptsImages)
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/fake [build failed]
+FAIL
+exit 1

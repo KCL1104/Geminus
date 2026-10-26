@@ -1,0 +1,52 @@
+--- FAIL: TestSanitizeKeepsOnlyThePixels (0.00s)
+    photo_test.go:99: png:  0x0
+    photo_test.go:107: png: stored as ""
+    photo_test.go:110: png: hash or size of the stored bytes:  0
+    photo_test.go:114: png: the stored image does not decode: image: unknown format
+--- FAIL: TestFormatIsReadFromTheBytes (0.00s)
+    photo_test.go:153: webp: <nil>, want ErrFormat
+    photo_test.go:153: bmp: <nil>, want ErrFormat
+    photo_test.go:153: pdf: <nil>, want ErrFormat
+    photo_test.go:153: heic: <nil>, want ErrFormat
+    photo_test.go:153: zip: <nil>, want ErrFormat
+    photo_test.go:153: elf: <nil>, want ErrFormat
+    photo_test.go:153: text: <nil>, want ErrFormat
+    photo_test.go:153: png sig: <nil>, want ErrFormat
+    photo_test.go:153: gif: <nil>, want ErrFormat
+    photo_test.go:153: tiff: <nil>, want ErrFormat
+    photo_test.go:153: svg: <nil>, want ErrFormat
+    photo_test.go:157: PNG or JPEG not recognised
+--- FAIL: TestSanitizeRefuses (0.01s)
+    photo_test.go:164: empty: <nil>
+    photo_test.go:168: a cut PNG: <nil>
+    photo_test.go:172: a cut JPEG: <nil>
+    photo_test.go:176: too narrow: <nil>
+    photo_test.go:176: too low: <nil>
+    photo_test.go:176: too wide: <nil>
+    photo_test.go:176: too high: <nil>
+    photo_test.go:187: a 60000x60000 header: <nil>
+    photo_test.go:190: more than MaxBytes: <nil>
+    photo_test.go:196: cancelled: <nil>
+--- FAIL: TestRead (0.00s)
+    photo_test.go:205: "" <nil>
+    photo_test.go:208: MaxBytes+1: <nil>
+    photo_test.go:211: MaxBytes: 0 <nil>
+--- FAIL: TestVerify (0.00s)
+panic: runtime error: index out of range [0] with length 0 [recovered, repanicked]
+
+goroutine 15 [running]:
+testing.tRunner.func1.2({0x7160b0, 0x196edff8c378})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2125 +0x232
+testing.tRunner.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2128 +0x329
+panic({0x7160b0?, 0x196edff8c378?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/runtime/panic.go:859 +0x125
+github.com/kcl1104/geminus/internal/proposals/photo.TestVerify(0x196ee009e488)
+	/home/user/Geminus/.claude/worktrees/agent-ad41a33c4e2426ce4/internal/proposals/photo/photo_test.go:236 +0x94b
+testing.tRunner(0x196ee009e488, 0x7232c8)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2260 +0x4d4
+FAIL	github.com/kcl1104/geminus/internal/proposals/photo	0.020s
+FAIL
+exit 1
