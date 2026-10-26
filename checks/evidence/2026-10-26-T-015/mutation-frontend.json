@@ -1,0 +1,170 @@
+[
+ {
+  "mutant": "M1 rename without the D-020 identity test",
+  "file": "features/model-editor/edits.ts",
+  "tests": [
+   "tests/editor-adapter.test.ts",
+   "tests/editor-vectors.test.ts"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× rename: test then replace or add; an empty name removes it; the same name is no change 12ms",
+   "× are the ops the editor makes today 65ms"
+  ]
+ },
+ {
+  "mutant": "M2 delete leaves the metrics that name the step",
+  "file": "features/model-editor/edits.ts",
+  "tests": [
+   "tests/editor-adapter.test.ts"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× delete: the node, its flows, the constraints and metrics that name them and its position, each removal tested 10ms"
+  ]
+ },
+ {
+  "mutant": "M3 Publish not blocked by the draft's errors",
+  "file": "features/model-editor/model-editor.tsx",
+  "tests": [
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× blocks Publish while the saved draft has errors, says why, and sends nothing 110ms",
+   "× holds for a draft with problems 76ms"
+  ]
+ },
+ {
+  "mutant": "M4 reapply even when the edits no longer apply",
+  "file": "features/model-editor/model-editor.tsx",
+  "tests": [
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× says so when the edits no longer fit the current draft, and offers only to discard them 336ms"
+  ]
+ },
+ {
+  "mutant": "M5 a reload in a conflict rebases the edits by itself",
+  "file": "lib/state/draft.ts",
+  "tests": [
+   "tests/editor-draft.test.ts",
+   "tests/state.test.ts",
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× keeps the edits on the reloaded draft, unsaved, and saves them with its revision 26ms",
+   "× is never what a reload does on its own 2ms",
+   "× never rebases local edits onto a newer remote revision 12ms",
+   "× merges a reloaded draft into the open session 2ms"
+  ]
+ },
+ {
+  "mutant": "M6 Escape left to React Flow (focus lost)",
+  "file": "features/model-editor/canvas.tsx",
+  "tests": [
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× deselects with Escape and keeps the focus on the step 210ms"
+  ]
+ },
+ {
+  "mutant": "M7 an issue does not select its step",
+  "file": "features/model-editor/model-editor.tsx",
+  "tests": [
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× lists the server's issues; activating one selects and focuses its step and shows the error at its field 248ms"
+  ]
+ },
+ {
+  "mutant": "M8 an issue goes to the least specific field",
+  "file": "features/model-editor/issues.ts",
+  "tests": [
+   "tests/editor-adapter.test.ts",
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× locates a draft's issues against the IR they were found in, and gives each field the most specific ones 21ms",
+   "× lists the server's issues; activating one selects and focuses its step and shows the error at its field 273ms"
+  ]
+ },
+ {
+  "mutant": "M9 a refused save's details are not shown at the field",
+  "file": "features/model-editor/properties.tsx",
+  "tests": [
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× shows a refused save's details at the fields of the candidate it built 353ms"
+  ]
+ },
+ {
+  "mutant": "M10 the save sends a stale revision",
+  "file": "features/model-editor/model-editor.tsx",
+  "tests": [
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× saves the edits as one JSON Patch with If-Match and keeps no other model 599ms",
+   "× shows 'Saving…' while the save is out, and an edit made then waits for the next save 448ms",
+   "× on a 409 keeps the edits, and reapplies them on the current draft only when asked 262ms",
+   "× says so when the edits no longer fit the current draft, and offers only to discard them 260ms"
+  ]
+ },
+ {
+  "mutant": "M11 a step's issues are not in its accessible name",
+  "file": "features/model-editor/canvas.tsx",
+  "tests": [
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× lists the server's issues; activating one selects and focuses its step and shows the error at its field 238ms",
+   "× shows a refused save's details at the fields of the candidate it built 311ms"
+  ]
+ },
+ {
+  "mutant": "M12 a blocked button still acts",
+  "file": "ui/button.tsx",
+  "tests": [
+   "tests/editor.test.tsx"
+  ],
+  "exit": 1,
+  "status": "killed",
+  "failing": [
+   "× blocks Publish while the saved draft has errors, says why, and sends nothing 171ms"
+  ]
+ },
+ {
+  "mutant": "M13 the layout rounds like JavaScript, not Go",
+  "file": "features/model-editor/layout.ts",
+  "tests": [
+   "tests/editor-adapter.test.ts"
+  ],
+  "exit": 0,
+  "status": "SURVIVED",
+  "failing": []
+ }
+]

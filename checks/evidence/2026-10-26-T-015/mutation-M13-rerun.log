@@ -1,0 +1,38 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-aedc0fd6b615f0b82/apps/web
+
+ ❯ tests/editor-adapter.test.ts (17 tests | 1 failed) 57ms
+   ❯ layered default layout (the same rule as internal/domainpack.LayeredLayout) (3)
+     × rounds a kept position to its cell half away from zero, as Go's math.Round does 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor-adapter.test.ts > layered default layout (the same rule as internal/domainpack.LayeredLayout) > rounds a kept position to its cell half away from zero, as Go's math.Round does
+AssertionError: expected { x: +0, y: 120 } to deeply equal { x: +0, y: +0 }
+
+- Expected
++ Received
+
+  {
+    "x": 0,
+-   "y": 0,
++   "y": 120,
+  }
+
+ ❯ tests/editor-adapter.test.ts:105:37
+    103|     const ir = minimal();
+    104|     ir.views["2d"].positions = { end: { x: -120, y: 0 } };
+    105|     expect(layeredLayout(ir).start).toEqual({ x: 0, y: 0 });
+       |                                     ^
+    106|     ir.views["2d"].positions = { end: { x: 120, y: 0 } };
+    107|     expect(layeredLayout(ir).work).toEqual({ x: 240, y: 120 });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 passed (17)
+   Start at  13:29:31
+   Duration  297ms (tests 40%, transform 35%, import 20%, worker 6%)
+
+exit 1

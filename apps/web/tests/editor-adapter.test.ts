@@ -97,6 +97,15 @@ describe("layered default layout (the same rule as internal/domainpack.LayeredLa
     expect(Object.keys(got).sort()).toEqual(["check", "end", "orphan", "start", "work"]);
     expect(layeredLayout(ir)).toEqual(got);
   });
+
+  it("rounds a kept position to its cell half away from zero, as Go's math.Round does", () => {
+    // x -120 is layer -0.5: Go takes it to -1, so layer 0 row 0 stays free for start.
+    const ir = minimal();
+    ir.views["2d"].positions = { end: { x: -120, y: 0 } };
+    expect(layeredLayout(ir).start).toEqual({ x: 0, y: 0 });
+    ir.views["2d"].positions = { end: { x: 120, y: 0 } };
+    expect(layeredLayout(ir).work).toEqual({ x: 240, y: 120 });
+  });
 });
 
 describe("IR to React Flow", () => {

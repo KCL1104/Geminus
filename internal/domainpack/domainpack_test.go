@@ -154,6 +154,22 @@ func TestLayoutAvoidsKeptPositions(t *testing.T) {
 	}
 }
 
+// A kept position takes the cell math.Round gives it, half away from zero:
+// x -120 is layer -1, so layer 0 row 0 stays free. The 2D editor places
+// nodes without a position by the same rule (T-015,
+// apps/web/features/model-editor/layout.ts and its test).
+func TestLayoutRoundsHalfAwayFromZero(t *testing.T) {
+	ir := minimal(t)
+	ir.Views.TwoD.Positions = map[string]model.Position{"end": {X: -120, Y: 0}}
+	if got := domainpack.LayeredLayout(ir).Positions["start"]; got != (model.Position{X: 0, Y: 0}) {
+		t.Errorf("start at %v", got)
+	}
+	ir.Views.TwoD.Positions = map[string]model.Position{"end": {X: 120, Y: 0}}
+	if got := domainpack.LayeredLayout(ir).Positions["work"]; got != (model.Position{X: 240, Y: 120}) {
+		t.Errorf("work at %v", got)
+	}
+}
+
 // Flows to unknown nodes are ignored and a duplicated ID (an invalid IR) is
 // placed once, by its first occurrence.
 func TestLayoutTolerance(t *testing.T) {
