@@ -68,7 +68,7 @@ export const HSTS = "max-age=31536000";
 /**
  * Every powerful feature denied: the app uses none (the photo is a file
  * input, not the camera). Only names Chromium knows: an unknown one is a
- * console error on every page (the browser checks fail on it).
+ * console warning on every page (the browser checks fail on it).
  */
 export const PERMISSIONS_POLICY = [
   "camera", "microphone", "geolocation", "display-capture", "screen-wake-lock", "fullscreen", "picture-in-picture",
