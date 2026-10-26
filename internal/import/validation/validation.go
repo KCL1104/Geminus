@@ -29,8 +29,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
+	"slices"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
+	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/import/mapping"
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
 	"github.com/kcl1104/geminus/internal/import/report"
@@ -98,12 +103,15 @@ type Outcome struct {
 	// Rows are the file's data rows, InvalidRows those that do not map to
 	// a valid canonical event.
 	Rows, InvalidRows int
-	// Issues are the first MaxIssues issues (with a dataset issue, if any,
-	// after them); Errors the first MaxRowErrors for the report, and
-	// MoreErrors how many more there are.
+	// Issues are the first MaxIssues issues: the rows' errors, then the
+	// pack's warnings (with a dataset issue, if any, after them); Errors
+	// the first MaxRowErrors for the report, and MoreErrors how many more
+	// there are. Warnings counts the pack's warnings (ValidateWith), which
+	// are never in the report.
 	Issues     []model.ValidationIssue
 	Errors     []report.Entry
 	MoreErrors int
+	Warnings   int
 	// Preview is the canonical preview: one JSON value per row of the
 	// first rows, the row's canonical event or null; never nil.
 	Preview []jsontext.Value
@@ -254,12 +262,52 @@ func (p *preview) add(e *mapping.Event) error {
 	return nil
 }
 
-// Validate reads the file r holds (CSV or JSON events, the import's
-// format) and maps every row with plan. The error is the profile's
-// *importprofile.Failure when the file breaks a rule (it is not the file
-// that was profiled), ErrChanged when its columns are not the plan's,
-// ctx's error, or r's own.
+// EventCheck is a pack's data-quality check of one valid canonical event
+// (domainpack.EventRulesProvider, D-059; T-052).
+type EventCheck func(domainpack.CanonicalEvent) []domainpack.EventIssue
+
+// ErrCheck: the pack's check answered something that is not an issue an
+// import may record (a code, field or message out of bounds): a defect of
+// the server, so the validation fails (fail closed).
+var ErrCheck = errors.New("validation: the pack's event check gave an issue an import cannot record")
+
+var issueCode = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,99}$`)
+
+// warning is the pack's issue e, at /<row>/<column> of the field's column,
+// or at the row for a field the plan does not fill.
+func warning(plan *mapping.Plan, row int, e domainpack.EventIssue) (model.ValidationIssue, error) {
+	n := utf8.RuneCountInString(e.Message)
+	if !issueCode.MatchString(e.Code) || n < 1 || n > 2000 || strings.ContainsRune(e.Message, 0) || !utf8.ValidString(e.Message) {
+		return model.ValidationIssue{}, ErrCheck
+	}
+	column := ""
+	if e.Field != "" {
+		if !slices.Contains(mapping.Fields, mapping.Field(e.Field)) {
+			return model.ValidationIssue{}, ErrCheck
+		}
+		for i := range plan.Len() {
+			if plan.Field(i) == mapping.Field(e.Field) {
+				column = plan.Name(i)
+				break
+			}
+		}
+	}
+	return model.NewIssue(e.Code, pointer(row, column), e.Message, model.SeverityWarning), nil
+}
+
+// Validate is ValidateWith without a pack's check.
 func Validate(ctx context.Context, r io.Reader, f importprofile.Format, plan *mapping.Plan, lim Limits) (Outcome, error) {
+	return ValidateWith(ctx, r, f, plan, lim, nil)
+}
+
+// ValidateWith reads the file r holds (CSV or JSON events, the import's
+// format) and maps every row with plan; check, when set, is the pack's
+// data-quality rules (D-059) for every row that maps: their issues are
+// warnings (D-072 (b)), which leave the row valid. The error is the
+// profile's *importprofile.Failure when the file breaks a rule (it is not
+// the file that was profiled), ErrChanged when its columns are not the
+// plan's, ErrCheck, ctx's error, or r's own.
+func ValidateWith(ctx context.Context, r io.Reader, f importprofile.Format, plan *mapping.Plan, lim Limits, check EventCheck) (Outcome, error) {
 	if !lim.valid() {
 		return Outcome{}, errors.New("validation: a limit is not set")
 	}
@@ -267,6 +315,7 @@ func Validate(ctx context.Context, r io.Reader, f importprofile.Format, plan *ma
 	values := make([]mapping.Value, plan.Len())
 	pv := &preview{lim: lim, size: 2}
 	var out Outcome
+	var warnings []model.ValidationIssue
 	valid := 0
 	keep := func(is model.ValidationIssue, e report.Entry) {
 		if len(out.Issues) < lim.MaxIssues {
@@ -317,11 +366,25 @@ func Validate(ctx context.Context, r io.Reader, f importprofile.Format, plan *ma
 		}
 		out.DatasetBytes += int64(len(data))
 		valid++
+		if check != nil {
+			for _, w := range check(e.CanonicalEvent) {
+				is, err := warning(plan, row.Index, w)
+				if err != nil {
+					return err
+				}
+				if out.Warnings++; len(warnings) < lim.MaxIssues {
+					warnings = append(warnings, is)
+				}
+			}
+		}
 		return pv.add(&e)
 	})
 	if err != nil {
 		return Outcome{}, err
 	}
+	// The rows' errors first (they keep the import from VALIDATED), then
+	// the warnings, MaxIssues in all.
+	out.Issues = append(out.Issues, warnings[:min(len(warnings), lim.MaxIssues-len(out.Issues))]...)
 	out.Rows = res.Profile.Rows
 	if valid > 0 {
 		out.DatasetBytes += int64(valid + 1) // the brackets and the commas

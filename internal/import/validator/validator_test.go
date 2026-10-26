@@ -12,12 +12,15 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 
+	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/import/mapping"
 	"github.com/kcl1104/geminus/internal/import/validation"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/packs"
 	store "github.com/kcl1104/geminus/internal/storage/imports"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -110,6 +113,56 @@ func TestValidationIsTheSchemas(t *testing.T) {
 		}
 		if issues, err := validate.Document(data, "common.schema.json#/$defs/Validation", "VALIDATION"); err != nil || len(issues) > 0 {
 			t.Errorf("%s: %v %v", data, issues, err)
+		}
+	}
+}
+
+// eventCheck finds the data-quality rules (D-059, T-052) of the pack of the
+// model an import is bound to, from that version's IR: none without packs
+// (generic validation only) or for a pack without rules; the electronics
+// line pack's for its template; a domain the worker does not serve, or a
+// version that does not decode, fails the job for good (fail closed).
+func TestEventCheck(t *testing.T) {
+	served, err := packs.Registry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	irOf := func(domain, tmpl string) []byte {
+		t.Helper()
+		p, err := served.Lookup(domain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ir, err := p.(domainpack.TemplateProvider).Template(tmpl, "mdl_01M4YDQK00TA00000000000001", "Line", domainpack.English)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := model.Encode(ir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return data
+	}
+	line := irOf("electronics_line", "electronics_assembly_test_line")
+	if c, err := eventCheck(nil, line); c != nil || err != nil {
+		t.Errorf("no packs: %v", err)
+	}
+	c, err := eventCheck(served, line)
+	if err != nil || c == nil {
+		t.Fatalf("the line: %v", err)
+	}
+	if got := c(domainpack.CanonicalEvent{CaseID: "SN-1", EventType: "operation", Timestamp: "2026-10-05T06:00:00+08:00",
+		EndTimestamp: "2026-10-05T06:01:00+08:00", Stage: "xray", Product: "board_a"}); len(got) != 1 || got[0].Code != "EVENT_STAGE_UNKNOWN" {
+		t.Errorf("the line's rules: %+v", got)
+	}
+	if c, err := eventCheck(served, irOf("software_delivery", "default_delivery_pipeline")); c != nil || err != nil {
+		t.Errorf("a pack without rules: %v", err)
+	}
+	other := strings.Replace(string(line), `"domain":"electronics_line"`, `"domain":"hospital"`, 1)
+	for name, text := range map[string][]byte{"an unserved domain": []byte(other), "not an IR": []byte(`{"nodes":1}`)} {
+		var f *jobs.Failure
+		if _, err := eventCheck(served, text); !errors.As(err, &f) || f.Code != store.InputInvalid || f.Retryable {
+			t.Errorf("%s: %v", name, err)
 		}
 	}
 }

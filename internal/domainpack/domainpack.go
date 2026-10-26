@@ -92,6 +92,28 @@ type ModelMetricsProvider interface {
 	ComputeModelMetrics(ir *model.ModelIR, result *simulation.Result) map[string]simulation.MetricSummary
 }
 
+// EventRulesProvider is implemented by a pack that defines the vocabulary
+// of the event logs imported for its models (D-059: record types, stages,
+// results and products; T-052). EventRules returns the data-quality check
+// of one canonical event against ir, the version the import is bound to,
+// or nil when the pack has no rule for ir. The check reads the event and
+// ir and changes neither; it is deterministic and safe for concurrent
+// use. Its issues are warnings: the event is still canonical (D-072 (b)).
+// It is a separate interface so DomainPack keeps the report's method set.
+type EventRulesProvider interface {
+	EventRules(ir *model.ModelIR) func(CanonicalEvent) []EventIssue
+}
+
+// EventIssue is one data-quality warning about a canonical event: the
+// canonical-event member it is about ("" for the event as a whole), a code
+// (upper case, digits and '_', at most 100) and a fixed message of at most
+// 2000 characters that quotes no value of the event.
+type EventIssue struct {
+	Field   string
+	Code    string
+	Message string
+}
+
 // NodeDefinition is one palette entry: a domain kind built on a generic node type.
 type NodeDefinition struct {
 	Kind        string         // stable catalog key, e.g. "code_review"

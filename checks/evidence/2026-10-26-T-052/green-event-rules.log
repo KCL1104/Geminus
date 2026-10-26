@@ -1,0 +1,13 @@
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.727s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	9.463s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	10.726s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.522s
+ok  	github.com/kcl1104/geminus/internal/import/mapping	0.153s
+ok  	github.com/kcl1104/geminus/internal/import/profile	9.839s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/report	0.003s
+ok  	github.com/kcl1104/geminus/internal/import/upload	0.045s
+ok  	github.com/kcl1104/geminus/internal/import/validation	0.445s
+ok  	github.com/kcl1104/geminus/internal/import/validator	0.717s
+ok  	github.com/kcl1104/geminus/internal/audit	0.341s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.208s

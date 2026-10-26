@@ -195,7 +195,8 @@ var catalogue = map[string]spec{
 		"code": {shape: code}, "rows": {shape: count}, "invalid_rows": {shape: count}, "columns": {shape: count}, "error_report": {shape: flag}}},
 	"import.validate": {Worker, []string{"import"}, map[string]field{"attempt": {shape: count}, "mapping_revision": {shape: count},
 		"outcome": oneOf("stale", "FAILED", "VALIDATED", "AWAITING_MAPPING"), "code": {shape: code}, "rows": {shape: count},
-		"dataset_size_bytes": {shape: count}, "invalid_rows": {shape: count}, "issues": {shape: count}}},
+		"dataset_size_bytes": {shape: count}, "invalid_rows": {shape: count}, "issues": {shape: count},
+		"warnings": {shape: count}}}, // T-052: the pack's data-quality warnings (D-059)
 	"proposal.generate": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
 		"status": oneOf("ready", "needs_input", "invalid"), "issues": {shape: count}, "patch_hash": {shape: hash},
 		"server_risk_level": risks, "provider_risk_claim": oneOf("low", "medium", "high", ""), "risk_level": risks})},

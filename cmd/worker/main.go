@@ -121,7 +121,8 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	validate, err := validator.New(validator.Config{Objects: d.objects, Actor: d.worker.ID, Log: d.log})
+	// The packs' data-quality rules of imported events (D-059, T-052).
+	validate, err := validator.New(validator.Config{Objects: d.objects, Actor: d.worker.ID, Log: d.log, Packs: served})
 	if err != nil {
 		return nil, err
 	}

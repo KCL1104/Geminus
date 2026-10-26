@@ -41,6 +41,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/import/mapping"
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
 	"github.com/kcl1104/geminus/internal/import/report"
@@ -50,6 +51,7 @@ import (
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	store "github.com/kcl1104/geminus/internal/storage/imports"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
+	"github.com/kcl1104/geminus/internal/storage/models"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/internal/worker/handler"
@@ -66,6 +68,42 @@ type Config struct {
 	// Limits bound the validation (validation.DefaultLimits when zero).
 	Limits validation.Limits
 	Log    *slog.Logger
+	// Packs finds the pack of the model an import is bound to, whose
+	// data-quality rules of its events (D-059, T-052) become warnings of
+	// the validation; nil checks no pack rules (the generic validation
+	// only). cmd/worker gives it the packs it serves.
+	Packs PackLookup
+}
+
+// PackLookup finds a model's domain pack; *domainpack.Registry is one.
+type PackLookup interface {
+	Lookup(domain string) (domainpack.DomainPack, error)
+}
+
+// eventCheck is the data-quality check (D-059) of the pack of the model
+// whose base version's IR is text: nil without packs, or when the pack has
+// no rules for the model. A version that does not decode, or a domain the
+// worker does not serve, fails the job for good (fail closed).
+func eventCheck(packs PackLookup, text []byte) (validation.EventCheck, error) {
+	if packs == nil {
+		return nil, nil
+	}
+	var ir model.ModelIR
+	if err := model.Decode(text, &ir); err != nil {
+		return nil, failure(store.InputInvalid, "the import's base version cannot be read", false)
+	}
+	pack, err := packs.Lookup(ir.Domain)
+	if err != nil {
+		return nil, failure(store.InputInvalid, "the import's model is of a domain this worker does not serve", false)
+	}
+	rp, ok := pack.(domainpack.EventRulesProvider)
+	if !ok {
+		return nil, nil
+	}
+	if check := rp.EventRules(&ir); check != nil {
+		return check, nil
+	}
+	return nil, nil
 }
 
 // Handler runs import_validate jobs (handler.Handler).
@@ -121,6 +159,7 @@ type outcome struct {
 	validation         []byte
 	preview            []byte
 	rows, invalid, max int
+	warnings           int // the pack's data-quality warnings (D-059)
 	report, dataset    *store.Report
 }
 
@@ -134,6 +173,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	}
 	org := job.OrganizationID
 	var imp store.Import
+	var base []byte // the IR of the version the import is bound to, for the pack's rules
 	current := false
 	if err := hr.Checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
 		var err error
@@ -142,6 +182,14 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 			return failure(store.InputInvalid, "the job's import is not visible to its organization", false)
 		}
 		current = err == nil && imp.Status == store.Validating && imp.MappingRevision == p.MappingRevision
+		if !current || h.cfg.Packs == nil {
+			return err
+		}
+		v, err := models.GetVersion(ctx, tx, org, imp.BaseVersionID)
+		if errors.Is(err, models.ErrNotFound) {
+			return failure(store.InputInvalid, "the import's base version is not visible to its organization", false)
+		}
+		base = v.IR
 		return err
 	}); err != nil {
 		return err
@@ -163,8 +211,11 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	var out outcome
 	if current {
 		began := time.Now()
-		var err error
-		if out, err = h.validate(ctx, org, job.Attempt, imp, p.MappingRevision, still); err != nil {
+		check, err := eventCheck(h.cfg.Packs, base)
+		if err != nil {
+			return err
+		}
+		if out, err = h.validate(ctx, org, job.Attempt, imp, p.MappingRevision, check, still); err != nil {
 			return err
 		}
 		// The import's operational metric (T-035, D-095): counts and the
@@ -207,11 +258,17 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 				return err
 			}
 			meta["outcome"], meta["rows"], meta["dataset_size_bytes"] = string(store.Validated), out.rows, out.dataset.Size
+			if out.warnings > 0 {
+				meta["warnings"] = out.warnings // the pack's data-quality warnings (D-059), a count only
+			}
 		default:
 			if err := store.NotValid(ctx, tx, org, cur.ID, p.MappingRevision, out.validation, out.preview, out.invalid, *out.report); err != nil {
 				return err
 			}
 			meta["outcome"], meta["rows"], meta["invalid_rows"], meta["issues"] = string(store.AwaitingMapping), out.rows, out.invalid, out.max
+			if out.warnings > 0 {
+				meta["warnings"] = out.warnings
+			}
 		}
 		// Counts and codes only: no column name, value or file name (SECURITY §9).
 		return auditlog.AppendWorker(ctx, tx, org, h.cfg.Actor, auditlog.Event{Action: "import.validate", TargetType: "import",
@@ -299,7 +356,7 @@ func (h *Handler) read(ctx context.Context, imp store.Import, pass func(io.Reade
 // revision rev, outside any transaction, and stores the error report or,
 // once still has found the import still at rev under the lease, the
 // canonical dataset.
-func (h *Handler) validate(ctx context.Context, org string, attempt int, imp store.Import, rev int64,
+func (h *Handler) validate(ctx context.Context, org string, attempt int, imp store.Import, rev int64, check validation.EventCheck,
 	still func(context.Context) (bool, error)) (outcome, error) {
 	if !store.OwnKey(org, imp.ID, imp.UploadKey) {
 		return outcome{failure: &store.Failure{Code: store.UploadCorrupt, Message: "the import names an object outside its own key prefix"}}, nil
@@ -333,7 +390,7 @@ func (h *Handler) validate(ctx context.Context, org string, attempt int, imp sto
 	var res validation.Outcome
 	fail, err := h.read(ctx, imp, func(r io.Reader) error {
 		var err error
-		res, err = validation.Validate(ctx, r, format, plan, lim)
+		res, err = validation.ValidateWith(ctx, r, format, plan, lim, check)
 		return err
 	})
 	if err != nil {
@@ -349,7 +406,7 @@ func (h *Handler) validate(ctx context.Context, org string, attempt int, imp sto
 	if issues == nil {
 		issues = []model.ValidationIssue{}
 	}
-	out := outcome{valid: res.Valid(), rows: res.Rows, invalid: res.InvalidRows, max: len(issues)}
+	out := outcome{valid: res.Valid(), rows: res.Rows, invalid: res.InvalidRows, max: len(issues), warnings: res.Warnings}
 	if out.validation, err = json.Marshal(Validation{Valid: out.valid, Issues: issues}); err != nil {
 		return outcome{}, err
 	}

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"testing/iotest"
 
+	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/import/mapping"
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
 	"github.com/kcl1104/geminus/internal/import/report"
@@ -384,5 +385,95 @@ func TestTheFileIsTheProfiled(t *testing.T) {
 	}
 	if _, err := validation.Validate(context.Background(), strings.NewReader(validLog), importprofile.CSV, p, validation.Limits{}); err == nil {
 		t.Error("unset limits")
+	}
+}
+
+// warnOn is a pack's check (D-059) for the tests: a warning at the stage
+// of a row whose stage is xray, one at the outcome of a row whose outcome
+// is PASS, and one about a product (a field the mapping leaves out) for
+// every row of SN-9; calls counts the events it is given.
+func warnOn(calls *int) validation.EventCheck {
+	return func(e domainpack.CanonicalEvent) []domainpack.EventIssue {
+		*calls++
+		var out []domainpack.EventIssue
+		if e.Stage == "xray" {
+			out = append(out, domainpack.EventIssue{Field: "stage", Code: "EVENT_STAGE_UNKNOWN", Message: "stage: not a station"})
+		}
+		if e.Outcome == "PASS" {
+			out = append(out, domainpack.EventIssue{Field: "outcome", Code: "EVENT_OUTCOME_UNKNOWN", Message: "outcome: not pass or fail"})
+		}
+		if e.CaseID == "SN-9" {
+			out = append(out, domainpack.EventIssue{Field: "product", Code: "EVENT_PRODUCT_MISSING", Message: "product: missing"})
+		}
+		return out
+	}
+}
+
+func srow(serial, stage, result string) string {
+	return fmt.Sprintf("%s,operation,%s,2026-10-13T06:12:00+08:00,2026-10-13T06:15:10+08:00,%s,op-7,,\r\n", serial, stage, result)
+}
+
+// The pack's data-quality rules (D-059) are warnings (D-072 (b)): each at
+// its source cell, or at the row for a field the mapping leaves out; the
+// rows stay valid, the canonical dataset is the same, the error report
+// holds none of them; the import's issues list the rows' errors first and
+// then the warnings, within MaxIssues, and Warnings counts them all. An
+// invalid row is not checked. A check that answers what no issue may be is
+// the server's defect: Validate fails.
+func TestPackWarnings(t *testing.T) {
+	p := plan(t, stationMapping(), stationColumns)
+	data := header + srow("SN-1", "fct", "pass") + srow("SN-2", "xray", "PASS") + srow("SN-9", "ict", "pass") + srow("SN-4", "fct", "fail")
+	calls := 0
+	out, err := validation.ValidateWith(context.Background(), strings.NewReader(data), importprofile.CSV, p, validation.DefaultLimits, warnOn(&calls))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := run(t, data, importprofile.CSV, p, validation.DefaultLimits)
+	type is struct{ code, path, severity string }
+	var got []is
+	for _, i := range out.Issues {
+		got = append(got, is{i.Code, i.Path, string(i.Severity)})
+	}
+	want := []is{{"EVENT_STAGE_UNKNOWN", "/1/站別", "warning"}, {"EVENT_OUTCOME_UNKNOWN", "/1/結果", "warning"}, {"EVENT_PRODUCT_MISSING", "/2", "warning"}}
+	if !out.Valid() || out.InvalidRows != 0 || out.Warnings != 3 || len(out.Errors) != 0 || calls != 4 || fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("valid %v, %d warnings, %d errors, %d calls, issues %v", out.Valid(), out.Warnings, len(out.Errors), calls, got)
+	}
+	if out.DatasetBytes != plain.DatasetBytes || fmt.Sprint(out.Preview) != fmt.Sprint(plain.Preview) || len(plain.Issues) != 0 || plain.Warnings != 0 {
+		t.Errorf("the warnings changed the dataset or the preview, or appear without a check: %+v", plain)
+	}
+
+	// Errors first, then warnings; an invalid row is not checked.
+	bad := header + srow("SN-1", "xray", "pass") +
+		"SN-2,operation,fct,2026-10-13T06:16:00+08:00,2026-10-13T06:15:02+08:00,pass,op-7,,\r\n" + srow("SN-3", "xray", "PASS")
+	calls = 0
+	lim := validation.DefaultLimits
+	lim.MaxIssues = 3
+	out, err = validation.ValidateWith(context.Background(), strings.NewReader(bad), importprofile.CSV, p, lim, warnOn(&calls))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = nil
+	for _, i := range out.Issues {
+		got = append(got, is{i.Code, i.Path, string(i.Severity)})
+	}
+	want = []is{{mapping.CodeEndBeforeStart, "/1/結束", "error"}, {"EVENT_STAGE_UNKNOWN", "/0/站別", "warning"}, {"EVENT_STAGE_UNKNOWN", "/2/站別", "warning"}}
+	if out.Valid() || out.InvalidRows != 1 || out.Warnings != 3 || calls != 2 || len(out.Errors) != 1 || fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("valid %v, %d invalid, %d warnings, %d calls, %d report entries, issues %v", out.Valid(), out.InvalidRows, out.Warnings, calls,
+			len(out.Errors), got)
+	}
+
+	for name, issue := range map[string]domainpack.EventIssue{
+		"no code":            {Field: "stage", Message: "stage: x"},
+		"a lower-case code":  {Field: "stage", Code: "event_stage", Message: "stage: x"},
+		"a code of 101":      {Field: "stage", Code: strings.Repeat("E", 101), Message: "stage: x"},
+		"no message":         {Field: "stage", Code: "EVENT_X"},
+		"a message of 2001":  {Field: "stage", Code: "EVENT_X", Message: strings.Repeat("x", 2001)},
+		"not an event field": {Field: "station", Code: "EVENT_X", Message: "station: x"},
+		"a message with NUL": {Field: "stage", Code: "EVENT_X", Message: "stage: \x00"},
+	} {
+		check := func(domainpack.CanonicalEvent) []domainpack.EventIssue { return []domainpack.EventIssue{issue} }
+		if _, err := validation.ValidateWith(context.Background(), strings.NewReader(data), importprofile.CSV, p, validation.DefaultLimits, check); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
 	}
 }

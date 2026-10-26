@@ -106,7 +106,7 @@ func current(context.Context) (bool, error) { return true, nil }
 func TestAValidImport(t *testing.T) {
 	f := setup(t, log3, logMapping)
 	calls := 0
-	out, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, func(context.Context) (bool, error) { calls++; return true, nil })
+	out, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, nil, func(context.Context) (bool, error) { calls++; return true, nil })
 	if err != nil || out.failure != nil || !out.valid || out.stale || out.dataset == nil || out.rows != 3 || calls != 1 {
 		t.Fatalf("%+v %v (checkpoints %d)", out, err, calls)
 	}
@@ -134,7 +134,7 @@ func TestTheCanonicalPreviewFollowsTheRawPreview(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.imp.Preview, _ = json.Marshal(raw[:1])
-	out, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, current)
+	out, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, nil, current)
 	if err != nil || !out.valid {
 		t.Fatalf("%+v %v", out, err)
 	}
@@ -169,7 +169,7 @@ func TestTheUploadIsTheProfiled(t *testing.T) {
 	} {
 		f := setup(t, log3, logMapping)
 		c.edit(&f.imp, f.root)
-		out, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, current)
+		out, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, nil, current)
 		if err != nil || out.failure == nil || out.failure.Code != c.code || out.valid || out.dataset != nil {
 			t.Errorf("%s: %+v %v", name, out, err)
 		}
@@ -184,7 +184,7 @@ func TestTheUploadIsTheProfiled(t *testing.T) {
 // A checkpoint that fails ends the attempt with its error.
 func TestTheSecondReadIsForTheCurrentRevisionOnly(t *testing.T) {
 	f := setup(t, log3, logMapping)
-	out, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, func(context.Context) (bool, error) { return false, nil })
+	out, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, nil, func(context.Context) (bool, error) { return false, nil })
 	if err != nil || !out.stale || out.dataset != nil || out.failure != nil {
 		t.Errorf("%+v %v", out, err)
 	}
@@ -192,14 +192,14 @@ func TestTheSecondReadIsForTheCurrentRevisionOnly(t *testing.T) {
 		t.Errorf("a stale job stored %v", objs)
 	}
 	stop := errors.New("the lease is lost")
-	if _, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, func(context.Context) (bool, error) { return false, stop }); !errors.Is(err, stop) {
+	if _, err := f.h.validate(context.Background(), testOrg, 1, f.imp, 1, nil, func(context.Context) (bool, error) { return false, stop }); !errors.Is(err, stop) {
 		t.Errorf("a failed checkpoint: %v", err)
 	}
 	// Rows that do not map: the report is stored at once, with no second
 	// read and so no checkpoint.
 	bad := setup(t, strings.Replace(log3, "2026-10-13T06:13:00Z", "yesterday", 1), logMapping)
 	calls := 0
-	out, err = bad.h.validate(context.Background(), testOrg, 1, bad.imp, 1, func(context.Context) (bool, error) { calls++; return true, nil })
+	out, err = bad.h.validate(context.Background(), testOrg, 1, bad.imp, 1, nil, func(context.Context) (bool, error) { calls++; return true, nil })
 	if err != nil || out.valid || out.report == nil || out.invalid != 1 || calls != 0 {
 		t.Errorf("%+v %v (checkpoints %d)", out, err, calls)
 	}
@@ -215,7 +215,7 @@ func TestNoObjectStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = h.validate(context.Background(), testOrg, 1, f.imp, 1, current)
+	_, err = h.validate(context.Background(), testOrg, 1, f.imp, 1, nil, current)
 	var fail *jobs.Failure
 	if !errors.As(err, &fail) || fail.Code != store.ObjectStorageUnavailable || !fail.Retryable {
 		t.Errorf("%v", err)

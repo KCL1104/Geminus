@@ -85,6 +85,9 @@ func valid() []audit.Event {
 		w("import.profile", "import", imp, map[string]any{"attempt": 1, "status": "FAILED", "code": "UPLOAD_CORRUPT"}),
 		w("import.validate", "import", imp, map[string]any{"attempt": 2, "mapping_revision": int64(2), "outcome": "VALIDATED",
 			"rows": int64(100), "dataset_size_bytes": int64(5000)}),
+		// T-052: the pack's data-quality warnings, counted (D-059).
+		w("import.validate", "import", imp, map[string]any{"attempt": 1, "mapping_revision": int64(3), "outcome": "VALIDATED",
+			"rows": int64(40), "dataset_size_bytes": int64(9000), "warnings": int64(2)}),
 		w("import.validate", "import", imp, map[string]any{"attempt": 1, "mapping_revision": int64(1), "outcome": "stale"}),
 		w("import.validate", "import", imp, map[string]any{"attempt": 1, "mapping_revision": int64(1), "outcome": "AWAITING_MAPPING",
 			"rows": int64(9), "invalid_rows": int64(3), "issues": 3}),
