@@ -1,0 +1,30 @@
+$ go test -count=1 -v -run 'TestCompareObserved|TestSampleLabels|TestObserverFailsWhenItsBookingIsNotTheEngines|TestRecordOrderAcrossWeeks' ./internal/results/observed/ ./internal/domainpack/electronicsline/ ./scripts/gen-electronics-line-data/
+=== RUN   TestSampleLabels
+--- PASS: TestSampleLabels (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/results/observed	0.022s
+=== RUN   TestCompareObservedOnTheSyntheticLog
+--- PASS: TestCompareObservedOnTheSyntheticLog (0.29s)
+=== RUN   TestCompareObservedAgainstAnotherRun
+--- PASS: TestCompareObservedAgainstAnotherRun (0.46s)
+=== RUN   TestCompareObservedUnavailable
+--- PASS: TestCompareObservedUnavailable (0.47s)
+=== RUN   TestCompareObservedWindowWithoutData
+--- PASS: TestCompareObservedWindowWithoutData (0.38s)
+=== RUN   TestCompareObservedCountsShipmentsByTheirEnd
+--- PASS: TestCompareObservedCountsShipmentsByTheirEnd (0.06s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	1.669s
+=== RUN   TestRecordOrderAcrossWeeks
+--- PASS: TestRecordOrderAcrossWeeks (0.00s)
+=== RUN   TestObserverFailsWhenItsBookingIsNotTheEngines
+--- PASS: TestObserverFailsWhenItsBookingIsNotTheEngines (0.07s)
+PASS
+ok  	github.com/kcl1104/geminus/scripts/gen-electronics-line-data	0.088s
+exit 0
+$ GOARCH=386 go test -count=1 -v -run 'TestRecordOrderAcrossWeeks' ./scripts/gen-electronics-line-data/
+=== RUN   TestRecordOrderAcrossWeeks
+--- PASS: TestRecordOrderAcrossWeeks (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/scripts/gen-electronics-line-data	0.013s
+exit 0

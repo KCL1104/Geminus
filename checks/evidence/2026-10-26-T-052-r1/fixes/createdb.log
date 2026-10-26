@@ -1,0 +1,3 @@
+$ psql -X postgresql://postgres@/postgres?host=/var/lib/postgresql/geminus-t009-fresh&port=55440 -v ON_ERROR_STOP=1 -c CREATE DATABASE dt_test_t052r1a
+CREATE DATABASE
+exit 0

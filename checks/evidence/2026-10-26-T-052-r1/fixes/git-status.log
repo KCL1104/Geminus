@@ -1,0 +1,9 @@
+$ git status --short
+ M checks/T-052_VALIDATION.md
+ M checks/evidence/2026-10-26-T-052/comparison-values.txt
+ M checks/evidence/2026-10-26-T-052/verification-summary.txt
+ M docs/DECISIONS_AND_TBD.md
+ M docs/domains/ELECTRONICS_LINE.md
+ M planning/decisions.json
+?? checks/evidence/2026-10-26-T-052-r1/
+exit 0

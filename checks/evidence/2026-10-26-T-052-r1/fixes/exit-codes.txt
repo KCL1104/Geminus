@@ -1,0 +1,16 @@
+17:58:11Z gofmt exit 0 (1 s) -> gofmt.log
+17:58:24Z go vet (changed packages) exit 0 (13 s) -> vet.log
+17:58:25Z generator -check exit 0 (1 s) -> generator-check.log
+17:58:26Z generator -check TZ=Asia/Taipei exit 0 (1 s) -> generator-check-taipei.log
+17:58:26Z generator -check TZ=America/New_York GOMAXPROCS=1 exit 0 (0 s) -> generator-check-newyork.log
+17:59:01Z go test -count=1 (changed packages) exit 0 (35 s) -> unit-changed.log
+18:01:18Z go test -race -count=1 -timeout 30m (changed packages) exit 0 (137 s) -> race-changed.log
+18:01:29Z make architecture-check exit 0 (11 s) -> architecture-check.log
+18:09:50Z make backend-test exit 0 (501 s) -> backend-test.log
+18:09:50Z createdb dt_test_t052r1a exit 0 (0 s) -> createdb.log
+18:16:03Z make integration-test (dt_test_t052r1a) exit 0 (373 s) -> integration-test.log
+18:16:44Z go test -race -v synthetic line tests (dt_test_t052r1a) exit 0 (41 s) -> api-synthetic-line.log
+18:18:30Z author's t052-mutants.py with T052_DB=1 (dt_test_t052r1a) exit 0 (106 s) -> t052-mutants-rerun.log
+18:18:30Z dropdb dt_test_t052r1a exit 0 (0 s) -> dropdb.log
+18:18:30Z databases left exit 0 (0 s) -> databases-left.log
+18:18:30Z git status --short exit 0 (0 s) -> git-status.log

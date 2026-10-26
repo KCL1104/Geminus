@@ -1,0 +1,10 @@
+# github.com/kcl1104/geminus/internal/results/observed_test
+# [github.com/kcl1104/geminus/internal/results/observed_test]
+vet: internal/results/observed/observed_test.go:126:76: undefined: observed.ModelGenerated
+# github.com/kcl1104/geminus/internal/domainpack/electronicsline_test
+# [github.com/kcl1104/geminus/internal/domainpack/electronicsline_test]
+vet: internal/domainpack/electronicsline/observed_test.go:45:73: undefined: observed.ModelGenerated
+# github.com/kcl1104/geminus/internal/api_test
+# [github.com/kcl1104/geminus/internal/api_test]
+vet: internal/api/synthetic_line_test.go:237:111: undefined: observed.ModelGenerated
+exit 1

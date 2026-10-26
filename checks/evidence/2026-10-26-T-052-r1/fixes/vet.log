@@ -1,0 +1,2 @@
+$ go vet ./scripts/gen-electronics-line-data/ ./internal/domainpack/... ./internal/results/... ./internal/import/... ./internal/audit/ ./cmd/worker/ ./internal/api/
+exit 0

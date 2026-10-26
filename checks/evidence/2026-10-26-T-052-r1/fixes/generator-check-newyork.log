@@ -1,0 +1,2 @@
+$ env TZ=America/New_York GOMAXPROCS=1 go run ./scripts/gen-electronics-line-data -check
+exit 0

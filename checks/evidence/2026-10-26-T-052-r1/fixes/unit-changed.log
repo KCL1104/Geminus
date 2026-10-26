@@ -1,0 +1,19 @@
+$ go test -count=1 ./scripts/gen-electronics-line-data/ ./internal/domainpack/... ./internal/results/... ./internal/import/... ./internal/audit/ ./cmd/worker/
+ok  	github.com/kcl1104/geminus/scripts/gen-electronics-line-data	6.379s
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.427s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	10.047s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	18.304s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	1.690s
+ok  	github.com/kcl1104/geminus/internal/results/compare	16.837s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	1.242s
+ok  	github.com/kcl1104/geminus/internal/results/observed	0.003s
+ok  	github.com/kcl1104/geminus/internal/import/mapping	0.189s
+ok  	github.com/kcl1104/geminus/internal/import/profile	11.354s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/report	0.005s
+ok  	github.com/kcl1104/geminus/internal/import/upload	0.133s
+ok  	github.com/kcl1104/geminus/internal/import/validation	0.286s
+ok  	github.com/kcl1104/geminus/internal/import/validator	0.464s
+ok  	github.com/kcl1104/geminus/internal/audit	0.687s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.067s
+exit 0

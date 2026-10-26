@@ -389,7 +389,7 @@ UI 的標籤（kind 與指標名稱，en 與 zh-Hant）在 `apps/web/messages` �
 
 **§6 的資料品質規則。** Import 的 validation 以 import 綁定的 base version 為詞彙，對每個合法的列檢查 D-059 的規則，結果為 warning（D-072 (b)），import 仍 VALIDATED：`EVENT_TYPE_UNKNOWN`、`EVENT_STAGE_MISSING`、`EVENT_STAGE_UNKNOWN`、`EVENT_END_MISSING`、`EVENT_OUTCOME_MISSING`（測試站）、`EVENT_OUTCOME_UNKNOWN`、`EVENT_PRODUCT_MISSING`（多產品）、`EVENT_PRODUCT_UNKNOWN`（D-118 (b)）。end 早於 start 仍是 D-072 (b) 的 invalid row。§6 列的跨列檢查（serial 的作業重疊、超過 capacity、站序、停機中仍有作業、資料缺口）尚未實作。
 
-**§7 的比對。** `electronicsline.CompareObserved`（以 `internal/results/observed` 計算）：線的每週與每日產出（輸出比對）、各測試站的 FPY 與各站的平均 cycle time（輸入一致性），D-060 的模擬平均、replication 範圍、絕對與相對誤差、是否在範圍內，資料不足時為 §7 的 reason（D-118 (d)）。對 synthetic 資料（hold-out：範本的參數不是由資料推論；但資料由同一 model 產生，這只檢查 pipeline）：
+**§7 的比對。** `electronicsline.CompareObserved`（以 `internal/results/observed` 計算）：線的每週與每日產出（輸出比對）、各測試站的 FPY 與各站的平均 cycle time（輸入一致性），D-060 的模擬平均、replication 範圍、絕對與相對誤差、是否在範圍內，資料不足時為 §7 的 reason（D-118 (d)）。對 synthetic 資料（標示 `model_generated`：資料由被比對的同一個 model 產生，不是 in-sample 也不是 hold-out，這只檢查 pipeline；見下面的 review r1）：
 
 | 量 | 觀測（log） | 模擬（seed 2026，5 個 replication，horizon 14 天、warmup 7 天） | 說明 |
 |---|---|---|---|
@@ -398,3 +398,9 @@ UI 的標籤（kind 與指標名稱，en 與 zh-Hant）在 `apps/web/messages` �
 | `mean_cycle_minutes.fct` | 3.328 | 模型 tri(2.8, 3.2, 4.0) 的平均 3.333 | 輸入一致性；log 的時間截到整秒 |
 
 這些是 synthetic 模型與它自己產生的資料的數字，不是工廠的數字；不給通過判定，也不調整模型（D-060）。
+
+**Review r1 的修正（2026-10-26；D-118 (d) 仍為 PROPOSED）。**
+
+- **視窗沒有觀測資料（M1）**：原本只有整個 event 清單為空時輸出比對才回 `NO_OBSERVED_DATA`；給一個 log 沒有涵蓋的視窗，觀測端「視窗內 end 的作業數」就成了 0 或一半，結果卻是 available（log 之後的一週：觀測 0、模擬 3,613；兩週而 log 只涵蓋第二週：觀測 1,794、相對誤差 +101.4%），違反 D-060 的「沒有觀測資料時 unavailable」與 AGENTS.md §2。現在 `line_output_per_week`、`line_output_per_day` 要求視窗 [From, To) 的每個 unit（lcm(期, model 循環)；本範本為一週，每日產出也以週為單位）內至少有一個 log 的 event **開始**（任何紀錄類型，作業或停機），否則為 `NO_OBSERVED_DATA`。部分涵蓋也是 `NO_OBSERVED_DATA`，不是 `OBSERVED_WINDOW_TOO_SHORT`：§7 的 TOO_SHORT 指視窗本身短於一期，這裡視窗夠長、缺的是其中某個 unit 的資料。檢查在對齊之後（unit 只對對齊的視窗有定義），在 `NO_COMPLETED_SINK` 與 `OBSERVED_FIELD_MISSING` 之前。輸入一致性（FPY、cycle）是視窗內 event 的比例與平均、不是每期的計數，不套用此規則；視窗內沒有該量的 event 時為 `NO_OBSERVED_DATA`（原本即如此，現在有測試）。限制：一個 event 就算涵蓋該 unit；更完整的做法是由呼叫者傳入 dataset 的觀測期間、要求 [From, To) 在其中，需要 T-018 之後的 dataset metadata（T-052 其餘範圍）。
+- **以 end 計數（L1）**：一個手寫 event 的測試讓包裝作業跨過視窗的起點與終點，證明出貨記在它 end 的那一週，每片只算一次。
+- **標示（coordinator 對問題 4 與 I2 的決定）**：由被比對的同一個 model 產生的資料不得標 hold-out；`observed.Sample` 新增 `model_generated`（`observed.ModelGenerated`），pack 的測試與 API test 都用它（比對還沒有 API 或 UI；之後顯示這份資料的比對時也標它）。`Sample` 是 Go 內部的值，沒有 schema 或 OpenAPI contract；比對的數字不變（上表）。

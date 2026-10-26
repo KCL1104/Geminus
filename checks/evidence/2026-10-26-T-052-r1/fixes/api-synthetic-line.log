@@ -1,0 +1,10 @@
+$ env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 -race -v -run ^(TestSyntheticStationLogImport|TestSyntheticStationLogRules|TestSyntheticStationLogIsTheTemplatesRun)$ ./internal/api/
+=== RUN   TestSyntheticStationLogImport
+--- PASS: TestSyntheticStationLogImport (31.50s)
+=== RUN   TestSyntheticStationLogRules
+--- PASS: TestSyntheticStationLogRules (4.07s)
+=== RUN   TestSyntheticStationLogIsTheTemplatesRun
+--- PASS: TestSyntheticStationLogIsTheTemplatesRun (2.73s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	39.415s
+exit 0

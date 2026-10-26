@@ -1,0 +1,12 @@
+=== RUN   TestCompareObservedWindowWithoutData
+    observed_test.go:360: the week after the log, line_output_per_day: available, output available observed 0 simulated 516.143 absolute 516.143 relative null
+    observed_test.go:360: the week after the log, line_output_per_week: available, output available observed 0 simulated 3613 absolute 3613 relative null
+    observed_test.go:376: two weeks, the log the second, line_output_per_week: available, output available observed 1794 simulated 3613 absolute 1819 relative 1.01394
+    observed_test.go:376: two weeks, the log the second, line_output_per_day: available, output available observed 256.286 simulated 516.143 absolute 259.857 relative 1.01394
+    observed_test.go:376: two weeks, the log the first, line_output_per_week: available, output available observed 1794 simulated 3613 absolute 1819 relative 1.01394
+    observed_test.go:376: two weeks, the log the first, line_output_per_day: available, output available observed 256.286 simulated 516.143 absolute 259.857 relative 1.01394
+--- FAIL: TestCompareObservedWindowWithoutData (0.38s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline	0.399s
+FAIL
+exit 1

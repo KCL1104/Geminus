@@ -1,0 +1,34 @@
+2026-10-26T18:19:19Z
+$ python3 checks/evidence/2026-10-26-T-052-r1/fixes/r1-mutants.py <repo> <scratch>
+gen-highest-idle-unit (reviewer's non-golden tests)	SURVIVED	
+gen-highest-idle-unit (non-golden tests with r1's)	KILLED	TestObserverFailsWhenItsBookingIsNotTheEngines
+gen-highest-idle-unit (all tests)	KILLED	TestCommittedFilesAreTheGeneratorOutput TestGenerateIsDeterministic TestObserverFailsWhenItsBookingIsNotTheEngines
+gen-rounded-seconds (reviewer's non-golden tests)	SURVIVED	
+gen-rounded-seconds (non-golden tests with r1's)	SURVIVED	
+gen-rounded-seconds (all tests)	KILLED	TestCommittedFilesAreTheGeneratorOutput TestGenerateIsDeterministic
+gen-no-self-check	KILLED	TestObserverFailsWhenItsBookingIsNotTheEngines
+observed-output-by-start	KILLED	TestCompareObservedCountsShipmentsByTheirEnd
+observed-fpy-zero-boards	KILLED	TestCompareObservedWindowWithoutData
+gen-batch-member-own-unit	KILLED	TestChangeoversShowAsGaps TestEquipmentIsNeverDoubleBooked TestGroundTruth TestLogShape TestMoreWeeksExtendTheSameLog TestNegativeFixtures TestRoutesFollowTheLine TestTheLogIsTheEngineReplication
+gen-waiting-breakdown-dropped	KILLED	TestChangeoversShowAsGaps TestEquipmentIsNeverDoubleBooked TestGroundTruth TestLogShape TestMoreWeeksExtendTheSameLog TestNegativeFixtures TestRoutesFollowTheLine TestTheLogIsTheEngineReplication
+gen-downtime-shift-empty	KILLED	TestLogShape
+gen-downtime-station-is-resource	KILLED	TestLogShape
+observed-cycle-unknown-mean	KILLED	TestCompareObservedOnTheSyntheticLog
+rules-end-only-for-operations	KILLED	TestEventRules
+validation-check-before-canonical	KILLED	TestPackWarnings
+r1-uncovered-unit-counted (M1)	KILLED	TestCompareObservedWindowWithoutData
+r1-one-covered-unit-enough (M1)	KILLED	TestCompareObservedWindowWithoutData
+r1-coverage-by-operations-only (M1)	KILLED	TestCompareObservedCountsShipmentsByTheirEnd
+r1-label-is-hold-out (label)	KILLED	TestSampleLabels
+r1-record-order-32-bit (I5)	KILLED	TestRecordOrderAcrossWeeks
+18/21 killed
+exit 0
+2026-10-26T18:19:56Z
+$ git status --short
+ M checks/T-052_VALIDATION.md
+ M checks/evidence/2026-10-26-T-052/comparison-values.txt
+ M checks/evidence/2026-10-26-T-052/verification-summary.txt
+ M docs/DECISIONS_AND_TBD.md
+ M docs/domains/ELECTRONICS_LINE.md
+ M planning/decisions.json
+?? checks/evidence/2026-10-26-T-052-r1/

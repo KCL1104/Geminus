@@ -211,3 +211,116 @@ Coordinator 對本切片問題的處理：
 
 下一步：一輪獨立審查（H-029）。
 
+## Review round 1 fixes（2026-10-26）
+
+**範圍：** 獨立審查第 1 輪（`checks/T-052_REVIEW_r1.md`，在 reviewer 的 worktree，不在本 branch；結論 CHANGES REQUESTED：M1，另有 L1、L2 與 Info I1–I10）的修正，以及 coordinator 對作者問題 4／reviewer I2 的決定（由同一個 model 產生的資料不得標 `hold_out`）。Branch `t052-r1`（從 5b66648 開出），只在本機 commit，沒有 push。先寫測試再改程式（紅的 log 在 evidence）；沒有降低任何 assertion，沒有加 skip；提交的資料集與釘住的 SHA-256 沒有變（generator `-check` exit 0）；沒有 migration、schema 或 OpenAPI 的變更；D-118 仍為 **PROPOSED**（`status`、`approved_by`、`approved_at` 沒有改）；沒有 live AI，沒有讀取任何 key 或 secret。Evidence：[`checks/evidence/2026-10-26-T-052-r1/fixes/`](evidence/2026-10-26-T-052-r1/fixes/)。
+
+本節取代前面各節中「對 synthetic 資料標 hold-out」的說法：現在標 `model_generated`（見下面的「標示」）。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 33eada9 | M1、L1 與標示：輸出比對的視窗涵蓋規則（`covered`）、`observed.ModelGenerated`；pack、`internal/results/observed` 與 API test 的測試 |
+| d0ecae6 | L2、I5：generator 自我檢查的 package 測試；`recordOrder` 改用 `cmp.Compare`（資料逐 byte 不變），測試的 interval 排序同 |
+| （本 commit） | D-118 (d)（DECISIONS_AND_TBD、`planning/decisions.json`）、ELECTRONICS_LINE §12、I7 的 evidence 修正、`checks/*.json`（`make spec-check` 重產）、本節與 evidence |
+
+### 逐項：finding → 修改 → 測試 → mutant
+
+| Finding | 修改 | 測試 | Mutant（`go test -overlay`） |
+|---|---|---|---|
+| **M1**（Medium）視窗沒有觀測資料時，輸出比對把「沒有資料」當成「產出 0」 | `electronicsline.CompareObserved`：`line_output_per_week`、`line_output_per_day` 要求視窗 [From, To) 的每個 unit（程式原本就用的 lcm(期, model 循環)；範本為一週）內至少有一個 log 的 event 開始（任何紀錄類型），否則為 `NO_OBSERVED_DATA`（新函式 `covered`）；規則與理由寫進 D-118 (d)、§12 | `TestCompareObservedWindowWithoutData`：log 之後的一週，全部 12 列都是 `NO_OBSERVED_DATA`（含 `first_pass_yield.fct` 與 `mean_cycle_minutes.fct`：有 event、但視窗內沒有）；兩週而 log 只涵蓋第二週（及只涵蓋第一週）時輸出為 `NO_OBSERVED_DATA`，輸入一致性與資料週的值相同 | reviewer 的 `observed-fpy-zero-boards`：**killed**（`TestCompareObservedWindowWithoutData`）；本輪的 `r1-uncovered-unit-counted`、`r1-one-covered-unit-enough`：killed |
+| **L1**（Low）以 end 計數沒有測試能分辨 | 無（行為本來就對） | `TestCompareObservedCountsShipmentsByTheirEnd`：手寫 event，一筆包裝作業跨視窗的起點（start 在前一週、end 在資料週）、一筆跨終點，另有每週四一筆 SMT 停機；前一週出貨 0、資料週 1、後一週 1（每片只算一次，算在 end 的那一週）；後一週只有停機紀錄開始，仍算有觀測資料 | reviewer 的 `observed-output-by-start`：**killed**（同名測試）；本輪的 `r1-coverage-by-operations-only`：killed |
+| **L2**（Low）generator 的記帳自我檢查從未被測試觸發 | 無 | `TestObserverFailsWhenItsBookingIsNotTheEngines`（`scripts/gen-electronics-line-data/observer_test.go`，package 內）：以範本編譯的 program 建 `newObserver`，餵手寫 observation：一片板子在資料週週一 07:00 開始 ICT（2 台 tester），之前 engine 報 in-use 2（observer 沒看到被取走的一台），或 2 之後 1（一個對不上持有者的 release）→ `o.err` 含 "booked"；engine 自己的值（1）→ 沒有錯誤，該步取 `ict_tester_1` | reviewer 的 `gen-no-self-check`：**killed** |
+| **標示**（作者問題 4、reviewer I2；coordinator 的決定） | `observed.Sample` 新增 `ModelGenerated`（`"model_generated"`）；它是 Go 內部的值，`schemas/`、`openapi/` 與 `apps/web` 都沒有它，所以不需要先改 contract；pack 的 `compare()` 與 API test（`TestSyntheticStationLogImport`）改用它並斷言每一列都是它 | `TestSampleLabels`（三個值、字串、算術不設標示）；`compare()` 與 API test 的斷言 | `r1-label-is-hold-out`：killed（`TestSampleLabels`） |
+| **I5** `int(a.start - b.start)` 在 32 位元 int 會溢位 | `generate.go` 的排序抽成 `recordOrder`，改用 `cmp.Compare`；`generate_test.go` 的 interval 排序同 | `TestRecordOrderAcrossWeeks`：相差 4 週（2,419,200,000 ms）的兩筆，以及同一 start 依 seq；`GOARCH=386` 在舊的減法上紅（`red-i5-record-order-386.log`），修正後綠 | `r1-record-order-32-bit`：killed |
+| **I7** evidence 的小誤差 | `verification-summary.txt` 第 2 行改指 `backend-test-run1-timeout.log`；`comparison-values.txt` 以提交的程式重產（`comparison-values.sh` 以 `go test -overlay` 放入 `comparison_values_test.go.txt`；tree 不變）：輸入一致性沒有範圍，`within` 印為 `null`；commit 對照表見下 | `comparison-values.diff`：30 列（10 個輸入一致性的量 × 3 個 run）只有 `within false` → `within null`，其餘逐字相同：比對的數字沒有變 | — |
+| **I3** mutation 的強度 | 報告註明（見「Mutation」） | — | — |
+
+### M1 的規則（D-118 (d)，PROPOSED）
+
+- 輸出比對（`line_output_per_week`、`line_output_per_day`）：視窗 [From, To) 切成 unit（lcm(期, model 循環)；範本的循環為一週，所以每日產出也以週為 unit），每個 unit 內至少要有一個 log 的 event **開始**，任何紀錄類型（作業或停機）都算；否則為 `NO_OBSERVED_DATA`。理由：log 沒有涵蓋的 unit 的產出是未知，不是 0；把它算成 0 就是捏造的數字（AGENTS.md §2；D-060 的「沒有觀測資料時 unavailable」）。以開始時間判斷，與 log 依開始時間取列一致；作業的 end 可以落在 log 的期間之外（例如跨午夜的燒機），用 end 判斷會讓 log 之後的一週被一筆延續的作業「涵蓋」。
+- 只涵蓋一部分的視窗也是 `NO_OBSERVED_DATA`，不是 `OBSERVED_WINDOW_TOO_SHORT`：§7 批准的文字中 TOO_SHORT 是「觀測視窗少於一期」，指 [From, To) 本身；這裡視窗夠長，缺的是其中某個 unit 的資料。§7 沒有為「部分涵蓋」另立 reason。
+- 順序：在對齊（`OBSERVED_WINDOW_TOO_SHORT`、`OBSERVED_WINDOW_NOT_ALIGNED`）之後檢查，因為 unit 只對整數倍、同相位的視窗有定義；在 `NO_COMPLETED_SINK` 與 `OBSERVED_FIELD_MISSING` 之前。沒有 run 時仍是 `SIMULATED_METRIC_UNAVAILABLE`（原本的順序）。
+- 輸入一致性（FPY、cycle time）是視窗內 event 的比例與平均，不是每期的計數，不套用此規則：兩週而 log 只涵蓋一週時，它們就是那一週的值。視窗內沒有該量的 event 時為 `NO_OBSERVED_DATA`（原本即如此；reviewer 的 mutant 證明之前沒有測試，現在有）。
+- 限制：一個 event 就算涵蓋該 unit，所以 log 在 unit 中間斷掉仍看不出來。更完整的做法是由呼叫者傳入 dataset 的觀測期間（dataset 的涵蓋範圍），並要求 [From, To) 在其中；這需要 T-018 之後的 dataset metadata，列為 T-052 其餘的範圍。
+
+### 先紅後綠
+
+| Log | 內容 |
+|---|---|
+| `red-m1-window-without-data.log` | 修正前：log 之後的一週，`line_output_per_week` 為 available、觀測 0、模擬 3,613、絕對誤差 +3,613（`line_output_per_day` 觀測 0、+516.143）；兩週而 log 只涵蓋一週，觀測 1,794、模擬 3,613、相對誤差 +101.4%（與 reviewer 的 probe 相同）；exit 1 |
+| `red-label-model-generated.log` | `observed.ModelGenerated` 尚未定義：三個 test package 無法 build；exit 1 |
+| `red-i5-record-order-386.log` | `GOARCH=386`、舊的 `int(a.start - b.start)`：相差 4 週的兩筆比較結果為 1875767296（正），順序顛倒；exit 1 |
+| `green-new-tests.log` | 修正後：新的與既有的比對測試、`TestSampleLabels`、L2、I5（amd64 與 `GOARCH=386`）全部 PASS；exit 0 |
+
+L1 與 L2 的測試在修正前的程式上就是綠的（行為本來就對，缺的是測試）；它們的「紅」是 reviewer 的 mutant：`r1-mutants.log` 中 `observed-output-by-start` 與 `gen-no-self-check` 都被它們殺死。
+
+### Mutation
+
+`r1-mutants.py`（`r1-mutants.log`）：reviewer 的 12 個 mutant（與 reviewer 的 `mut.py` 同樣的改動、同樣的 package 與 `-run`）在修正後的程式上重跑（survivor 中的兩個各以三種測試集跑），加上本輪的 5 個；每個都以 `go test -overlay`，tree 不變（log 最後的 `git status` 只有本輪尚未 commit 的文件與 evidence）。
+
+| Mutant | 結果 | 殺死它的測試 |
+|---|---|---|
+| `gen-no-self-check` | **killed**（reviewer：survived） | `TestObserverFailsWhenItsBookingIsNotTheEngines` |
+| `observed-output-by-start` | **killed**（reviewer：survived） | `TestCompareObservedCountsShipmentsByTheirEnd` |
+| `observed-fpy-zero-boards` | **killed**（reviewer：survived） | `TestCompareObservedWindowWithoutData` |
+| `gen-highest-idle-unit`：reviewer 的非 golden 測試／加上本輪的非 golden 測試／全部 | survived／**killed**／killed | 本輪的 L2 測試（斷言第一步取 `ict_tester_1`，最小編號的閒置 unit）；全部時另有兩個 golden 測試 |
+| `gen-rounded-seconds`：同上三種 | survived／survived／killed | 只有 golden 測試（`TestGenerateIsDeterministic` 的釘住 hash、`TestCommittedFilesAreTheGeneratorOutput`） |
+| reviewer 其餘 7 個（`gen-batch-member-own-unit`、`gen-waiting-breakdown-dropped`、`gen-downtime-shift-empty`、`gen-downtime-station-is-resource`、`observed-cycle-unknown-mean`、`rules-end-only-for-operations`、`validation-check-before-canonical`） | 7 個都 killed（與 reviewer 相同） | 見 log |
+| 本輪：`r1-uncovered-unit-counted`、`r1-one-covered-unit-enough`、`r1-coverage-by-operations-only`、`r1-label-is-hold-out`、`r1-record-order-32-bit` | 5 個都 killed | 見上表 |
+
+Log 的合計「18/21 killed」中沒有被殺死的 3 列，是同一個 mutant 只跑非 golden 測試的對照列（`gen-highest-idle-unit` 以 reviewer 的測試集；`gen-rounded-seconds` 兩種非 golden 測試集），用來回答 I3；以完整的測試集，reviewer 的 12 個與本輪的 5 個（`gen-highest-idle-unit` 與 `gen-rounded-seconds` 各算一次）全部被殺死。
+
+**I3**：作者的 30/30 中，`gen-highest-idle-unit` 與 `gen-rounded-seconds` 這兩個只被 golden 測試（釘住的 SHA-256 與「提交的檔案就是輸出」）殺死，30/30 不是 30 個獨立的檢查。本輪之後 `gen-highest-idle-unit` 也被一個非 golden 測試（L2）殺死；`gen-rounded-seconds`（截到整秒改為四捨五入）仍然只有 golden 測試抓得到：它是解析度的慣例，golden 作為 regression lock 合理。作者的 harness（`t052-mutants.py`，含需要 PostgreSQL 的 mutant）也在修正後的程式上重跑，結果見下表。
+
+### I7：`t052-hk` 與本 branch 的 commit 對照
+
+前面「Commit」一節的 hash 是作者在 `t052-hk` 上的；coordinator 把它們 cherry-pick 到本 branch。`git range-diff 8eecee4..459989b 3fff485..8e24b93`（`commit-map-range-diff.txt`）：
+
+| `t052-hk` | 本 branch | range-diff |
+|---|---|---|
+| a0a515e | b0a5d2d | `=`（patch 相同） |
+| aeb5c10 | 2c10de5 | `=` |
+| e2aa44f | ab999d6 | `=` |
+| f259819 | 346a2dd | `=` |
+| 75199a2 | 9dcd3b3 | `=` |
+| 459989b | 8e24b93 | `!`：只差 cherry-pick 的衝突處理（`checks/docs-check.json` 的計數，以及 ARCHITECTURE、DECISIONS_AND_TBD、ELECTRONICS_LINE、`planning/decisions.json` 中 T-051 r1 加入的相鄰文字） |
+
+### 指令與結果
+
+環境（`environment.txt`）：go1.27.3 linux/amd64（`GOTOOLCHAIN=local`）、4 CPU（同時有其他 agent 在跑，load average 17–30）、PostgreSQL 16.15（共用的 cluster，socket `/var/lib/postgresql/geminus-t009-fresh`，port 55440；沒有啟動或停止它）。除了最後兩列，都由 `verify.sh` 依序在 HEAD d0ecae6 上執行，時間與 exit code 在 `exit-codes.txt`；DB 為新建的 `dt_test_t052r1a`，跑完刪除（之後查詢為 0 筆）。
+
+| 指令 | exit | 結果 | Log |
+|---|---|---|---|
+| `gofmt -l cmd internal schemas scripts prompts` | 0 | 沒有輸出（全部已格式化） | `gofmt.log` |
+| `go vet`（改動的 package 與 `./internal/api/`） | 0 | | `vet.log` |
+| `go run ./scripts/gen-electronics-line-data -check`（預設；`TZ=Asia/Taipei`；`TZ=America/New_York GOMAXPROCS=1`） | 0／0／0 | 提交的 10 個檔案就是 generator 的輸出：資料集與釘住的 SHA-256 不變 | `generator-check*.log` |
+| `go test -count=1`（`./scripts/gen-electronics-line-data/`、`./internal/domainpack/...`、`./internal/results/...`、`./internal/import/...`、`./internal/audit/`、`./cmd/worker/`） | 0 | 16 個 package ok（`internal/import/profiler` 沒有測試） | `unit-changed.log` |
+| `go test -race -count=1 -timeout 30m`（同上） | 0 | 16 個 package ok，137 秒 | `race-changed.log` |
+| `make architecture-check` | 0 | `PASS architecture: 91 packages, 24 rules, 16 build configurations` | `architecture-check.log` |
+| `make backend-test GOFLAGS=-count=1` | 0 | `go vet` 與 `GEMINUS_FULL_DIFFERENTIAL=1 go test`：79 個 package ok，沒有 FAIL，501 秒 | `backend-test.log` |
+| `make integration-test`（`dt_test_t052r1a`；`DATABASE_URL`＝`GEMINUS_TEST_DATABASE_URL`、`DT_ALLOW_DB_TESTS=yes`） | 0 | SQL tests、migration up／down／up、`-race` 的 Go DB tests：37 個 package ok（`internal/api` 109.3 秒）；log 中的 "skipping" 只是 down migration 的 PostgreSQL NOTICE | `integration-test.log` |
+| `GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 -race -v -run '^(TestSyntheticStationLogImport\|TestSyntheticStationLogRules\|TestSyntheticStationLogIsTheTemplatesRun)$' ./internal/api/`（同一 DB） | 0 | 3 個 PASS（31.5、4.1、2.7 秒）；import 的比對每列為 `model_generated` | `api-synthetic-line.log` |
+| `T052_DB=1 python3 checks/evidence/2026-10-26-T-052/t052-mutants.py`（作者的 harness，同一 DB） | 0 | 30/30 killed（含 DB 的 `validator-drops-the-check`） | `t052-mutants-rerun.log` |
+| `DROP DATABASE dt_test_t052r1a`；之後的查詢 | 0；0 | 0 筆 | `dropdb.log`、`databases-left.log` |
+| `python3 checks/evidence/2026-10-26-T-052-r1/fixes/r1-mutants.py`（HEAD d0ecae6） | 0 | 見「Mutation」：reviewer 的 5 個 survivor 以完整測試集全部 killed；`gen-rounded-seconds` 只被 golden 測試殺死 | `r1-mutants.log` |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（文件寫完之後；重產 `checks/*.json`） | 0 | contract、planning、docs 連結（127 個 markdown、122 個相對連結）、SQL inventory、reference 算術、decisions（D-118 的形狀；仍為 proposed）、TS contract、獨立 hash、DB 測試、deploy 全部 PASS；重產的 `checks/docs-check.json` 只有相對連結 121 → 122（本節的 evidence 連結） | `spec-check.log` |
+
+### NOT RUN
+
+- `make e2e-test`、`make frontend-test`、`npm` 相關（依指示不跑；本輪沒有改 `apps/web`、schema 或 TS 型別）。
+- 完整的 `make backend-race`（只跑了改動的 package，見上表）、`make backend-numeric`（本輪新增的算術只有整數的計數與 `cmp.Compare`，沒有浮點運算）、`make simulation-reference-test`（沒有改 engine）、`make ai-eval`（沒有改 AI）。
+- Live AI（沒有用到；沒有讀取任何 key 或 secret）。
+- 比對的 API、contract 與 UI：仍然沒有（T-052 其餘範圍）；`model_generated` 只是 Go 內部的值。
+
+### 延後的項目（比賽後）
+
+- **M1 的完整做法**：由呼叫者傳入 dataset 的觀測期間（dataset 的涵蓋範圍），要求 [From, To) 在其中；需要 T-018 之後的 dataset metadata。本輪的規則只要求每個 unit 有一個 event 開始。
+- **I1**：offset 與 DST 的對齊只看視窗內的 event；anchor 的 offset 沒有放進比較，log 以 UTC（`Z`）寫出時偵測不到 DST。建議在 D-118 (d) 寫明這個限制，或在 log 帶非零 offset 時要求它等於 anchor 的 offset。
+- **I4**：generator 依 **start** 取列，比對的輸出依 **end** 計數；這份資料一致，是因為週末停線、沒有跨週一 00:00 的作業。換 model 或 anchor 時不一定，建議在 dataset 的 README 註明。
+- **I6**：`internal/results/observed` 的 `quantile7` 與 `internal/results/metrics` 的逐行相同；建議共用，或加一個比較兩者輸出的測試。
+- **I8**：`EVENT_END_MISSING` 為 warning 是 D-118 (b)（PROPOSED）對 D-072 (b) 的延伸，請 owner 決定問題 1 時一併確認。
+- **I9**：validator 的「base version 對該 organization 不可見」沒有測試；依 composite FK（organization_id, model_id, base_version_id）在結構上到不了，維持現狀。
+- **I10**：`checks/docs-check.json` 由本輪的 `make spec-check` 重產（review 檔在 reviewer 的 worktree，不在本 branch，所以它的計數不含 review 檔）。
+

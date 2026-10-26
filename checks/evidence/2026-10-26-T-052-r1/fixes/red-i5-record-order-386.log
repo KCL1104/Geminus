@@ -1,0 +1,7 @@
+=== RUN   TestRecordOrderAcrossWeeks
+    generate_test.go:110: four weeks apart: 1875767296, -1875767296
+--- FAIL: TestRecordOrderAcrossWeeks (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/gen-electronics-line-data	0.010s
+FAIL
+exit 1

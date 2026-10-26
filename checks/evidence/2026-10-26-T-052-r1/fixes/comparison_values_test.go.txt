@@ -1,0 +1,61 @@
+package electronicsline_test
+
+// T-052 review r1 (I7): the program behind checks/evidence/2026-10-26-T-052/
+// comparison-values.txt, committed. It is not in the module's tree (the
+// extension is .txt): comparison-values.sh puts it into the package with
+// go test -overlay, so it never runs with the package's tests. It prints
+// every row CompareObserved gives for the committed log in the data week,
+// against the template's run (horizon 14 days, warm-up 7) for three
+// (seed, replications), in the format of the author's file; a value that
+// is null (no range for input consistency, so no within) prints null.
+
+import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
+	"github.com/kcl1104/geminus/internal/results/observed"
+)
+
+func TestZZComparisonValues(t *testing.T) {
+	out := os.Getenv("COMPARISON_VALUES_OUT")
+	if out == "" {
+		t.Fatal("COMPARISON_VALUES_OUT is not set (run comparison-values.sh)")
+	}
+	num := func(p *float64) string {
+		if p == nil {
+			return "null"
+		}
+		return strconv.FormatFloat(*p, 'g', 6, 64)
+	}
+	evs := events(t, datasetFile(t, "station-log-synthetic.csv"))
+	var b strings.Builder
+	for _, run := range []struct {
+		seed int64
+		reps int
+	}{{52, 1}, {2026, 5}, {2026, 20}} {
+		ir, res := truthRun(t, run.reps, run.seed)
+		rows, err := electronicsline.CompareObserved(ir, res, evs, dataWeek, observed.ModelGenerated)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, r := range rows {
+			if r.Sample != observed.ModelGenerated {
+				t.Fatalf("%s: sample %q", r.Key, r.Sample)
+			}
+			within := "null"
+			if r.WithinRange != nil {
+				within = strconv.FormatBool(*r.WithinRange)
+			}
+			fmt.Fprintf(&b, "seed %d reps %d %-30s %s obs %s sim %s range [%s, %s] %s abs %s rel %s within %s approx %v\n",
+				run.seed, run.reps, r.Key, r.Status, num(r.Observed), num(r.Simulated), num(r.RangeLow), num(r.RangeHigh),
+				r.RangeMethod, num(r.AbsoluteError), num(r.RelativeError), within, r.Approximate)
+		}
+	}
+	if err := os.WriteFile(out, []byte(b.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}

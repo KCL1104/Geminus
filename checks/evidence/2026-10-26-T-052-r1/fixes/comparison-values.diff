@@ -1,0 +1,71 @@
+diff --git a/checks/evidence/2026-10-26-T-052/comparison-values.txt b/checks/evidence/2026-10-26-T-052/comparison-values.txt
+index 8c935b9..b9e086b 100644
+--- a/checks/evidence/2026-10-26-T-052/comparison-values.txt
++++ b/checks/evidence/2026-10-26-T-052/comparison-values.txt
+@@ -1,36 +1,36 @@
+ seed 52 reps 1 line_output_per_week           available obs 3588 sim 3588 range [3588, 3588] replication_min_max abs 0 rel 0 within true approx false
+ seed 52 reps 1 line_output_per_day            available obs 512.571 sim 512.571 range [512.571, 512.571] replication_min_max abs 0 rel 0 within true approx false
+-seed 52 reps 1 mean_cycle_minutes.smt         available obs 1.09738 sim 1.1 range [null, null]  abs 0.00261971 rel 0.00238724 within false approx false
+-seed 52 reps 1 first_pass_yield.aoi           available obs 0.971271 sim 0.97 range [null, null]  abs -0.00127072 rel -0.0013083 within false approx false
+-seed 52 reps 1 mean_cycle_minutes.aoi         available obs 0.934364 sim 0.933333 range [null, null]  abs -0.00103102 rel -0.00110345 within false approx false
+-seed 52 reps 1 first_pass_yield.ict           available obs 0.954144 sim 0.95 range [null, null]  abs -0.00414365 rel -0.00434279 within false approx false
+-seed 52 reps 1 mean_cycle_minutes.ict         available obs 2.12931 sim 2.13333 range [null, null]  abs 0.00401891 rel 0.00188742 within false approx false
+-seed 52 reps 1 first_pass_yield.fct           available obs 0.939939 sim 0.93 range [null, null]  abs -0.00993911 rel -0.0105742 within false approx false
+-seed 52 reps 1 mean_cycle_minutes.fct         available obs 3.32835 sim 3.33333 range [null, null]  abs 0.00498539 rel 0.00149786 within false approx false
+-seed 52 reps 1 first_pass_yield.burn_in       available obs 0.995549 sim 0.995 range [null, null]  abs -0.000549374 rel -0.00055183 within false approx false
+-seed 52 reps 1 mean_cycle_minutes.burn_in     available obs 240 sim 240 range [null, null]  abs 0 rel 0 within false approx false
+-seed 52 reps 1 mean_cycle_minutes.pack_ship   available obs 1.10497 sim 1.1 range [null, null]  abs -0.00496563 rel -0.00449392 within false approx false
++seed 52 reps 1 mean_cycle_minutes.smt         available obs 1.09738 sim 1.1 range [null, null]  abs 0.00261971 rel 0.00238724 within null approx false
++seed 52 reps 1 first_pass_yield.aoi           available obs 0.971271 sim 0.97 range [null, null]  abs -0.00127072 rel -0.0013083 within null approx false
++seed 52 reps 1 mean_cycle_minutes.aoi         available obs 0.934364 sim 0.933333 range [null, null]  abs -0.00103102 rel -0.00110345 within null approx false
++seed 52 reps 1 first_pass_yield.ict           available obs 0.954144 sim 0.95 range [null, null]  abs -0.00414365 rel -0.00434279 within null approx false
++seed 52 reps 1 mean_cycle_minutes.ict         available obs 2.12931 sim 2.13333 range [null, null]  abs 0.00401891 rel 0.00188742 within null approx false
++seed 52 reps 1 first_pass_yield.fct           available obs 0.939939 sim 0.93 range [null, null]  abs -0.00993911 rel -0.0105742 within null approx false
++seed 52 reps 1 mean_cycle_minutes.fct         available obs 3.32835 sim 3.33333 range [null, null]  abs 0.00498539 rel 0.00149786 within null approx false
++seed 52 reps 1 first_pass_yield.burn_in       available obs 0.995549 sim 0.995 range [null, null]  abs -0.000549374 rel -0.00055183 within null approx false
++seed 52 reps 1 mean_cycle_minutes.burn_in     available obs 240 sim 240 range [null, null]  abs 0 rel 0 within null approx false
++seed 52 reps 1 mean_cycle_minutes.pack_ship   available obs 1.10497 sim 1.1 range [null, null]  abs -0.00496563 rel -0.00449392 within null approx false
+ seed 2026 reps 5 line_output_per_week           available obs 3588 sim 3613 range [3555, 3677] replication_min_max abs 25 rel 0.00696767 within true approx false
+ seed 2026 reps 5 line_output_per_day            available obs 512.571 sim 516.143 range [507.857, 525.286] replication_min_max abs 3.57143 rel 0.00696767 within true approx false
+-seed 2026 reps 5 mean_cycle_minutes.smt         available obs 1.09738 sim 1.1 range [null, null]  abs 0.00261971 rel 0.00238724 within false approx false
+-seed 2026 reps 5 first_pass_yield.aoi           available obs 0.971271 sim 0.97 range [null, null]  abs -0.00127072 rel -0.0013083 within false approx false
+-seed 2026 reps 5 mean_cycle_minutes.aoi         available obs 0.934364 sim 0.933333 range [null, null]  abs -0.00103102 rel -0.00110345 within false approx false
+-seed 2026 reps 5 first_pass_yield.ict           available obs 0.954144 sim 0.95 range [null, null]  abs -0.00414365 rel -0.00434279 within false approx false
+-seed 2026 reps 5 mean_cycle_minutes.ict         available obs 2.12931 sim 2.13333 range [null, null]  abs 0.00401891 rel 0.00188742 within false approx false
+-seed 2026 reps 5 first_pass_yield.fct           available obs 0.939939 sim 0.93 range [null, null]  abs -0.00993911 rel -0.0105742 within false approx false
+-seed 2026 reps 5 mean_cycle_minutes.fct         available obs 3.32835 sim 3.33333 range [null, null]  abs 0.00498539 rel 0.00149786 within false approx false
+-seed 2026 reps 5 first_pass_yield.burn_in       available obs 0.995549 sim 0.995 range [null, null]  abs -0.000549374 rel -0.00055183 within false approx false
+-seed 2026 reps 5 mean_cycle_minutes.burn_in     available obs 240 sim 240 range [null, null]  abs 0 rel 0 within false approx false
+-seed 2026 reps 5 mean_cycle_minutes.pack_ship   available obs 1.10497 sim 1.1 range [null, null]  abs -0.00496563 rel -0.00449392 within false approx false
++seed 2026 reps 5 mean_cycle_minutes.smt         available obs 1.09738 sim 1.1 range [null, null]  abs 0.00261971 rel 0.00238724 within null approx false
++seed 2026 reps 5 first_pass_yield.aoi           available obs 0.971271 sim 0.97 range [null, null]  abs -0.00127072 rel -0.0013083 within null approx false
++seed 2026 reps 5 mean_cycle_minutes.aoi         available obs 0.934364 sim 0.933333 range [null, null]  abs -0.00103102 rel -0.00110345 within null approx false
++seed 2026 reps 5 first_pass_yield.ict           available obs 0.954144 sim 0.95 range [null, null]  abs -0.00414365 rel -0.00434279 within null approx false
++seed 2026 reps 5 mean_cycle_minutes.ict         available obs 2.12931 sim 2.13333 range [null, null]  abs 0.00401891 rel 0.00188742 within null approx false
++seed 2026 reps 5 first_pass_yield.fct           available obs 0.939939 sim 0.93 range [null, null]  abs -0.00993911 rel -0.0105742 within null approx false
++seed 2026 reps 5 mean_cycle_minutes.fct         available obs 3.32835 sim 3.33333 range [null, null]  abs 0.00498539 rel 0.00149786 within null approx false
++seed 2026 reps 5 first_pass_yield.burn_in       available obs 0.995549 sim 0.995 range [null, null]  abs -0.000549374 rel -0.00055183 within null approx false
++seed 2026 reps 5 mean_cycle_minutes.burn_in     available obs 240 sim 240 range [null, null]  abs 0 rel 0 within null approx false
++seed 2026 reps 5 mean_cycle_minutes.pack_ship   available obs 1.10497 sim 1.1 range [null, null]  abs -0.00496563 rel -0.00449392 within null approx false
+ seed 2026 reps 20 line_output_per_week           available obs 3588 sim 3578.85 range [3487.97, 3669.4] replication_quantiles_2.5_97.5 abs -9.15 rel -0.00255017 within true approx false
+ seed 2026 reps 20 line_output_per_day            available obs 512.571 sim 511.264 range [498.282, 524.2] replication_quantiles_2.5_97.5 abs -1.30714 rel -0.00255017 within true approx false
+-seed 2026 reps 20 mean_cycle_minutes.smt         available obs 1.09738 sim 1.1 range [null, null]  abs 0.00261971 rel 0.00238724 within false approx false
+-seed 2026 reps 20 first_pass_yield.aoi           available obs 0.971271 sim 0.97 range [null, null]  abs -0.00127072 rel -0.0013083 within false approx false
+-seed 2026 reps 20 mean_cycle_minutes.aoi         available obs 0.934364 sim 0.933333 range [null, null]  abs -0.00103102 rel -0.00110345 within false approx false
+-seed 2026 reps 20 first_pass_yield.ict           available obs 0.954144 sim 0.95 range [null, null]  abs -0.00414365 rel -0.00434279 within false approx false
+-seed 2026 reps 20 mean_cycle_minutes.ict         available obs 2.12931 sim 2.13333 range [null, null]  abs 0.00401891 rel 0.00188742 within false approx false
+-seed 2026 reps 20 first_pass_yield.fct           available obs 0.939939 sim 0.93 range [null, null]  abs -0.00993911 rel -0.0105742 within false approx false
+-seed 2026 reps 20 mean_cycle_minutes.fct         available obs 3.32835 sim 3.33333 range [null, null]  abs 0.00498539 rel 0.00149786 within false approx false
+-seed 2026 reps 20 first_pass_yield.burn_in       available obs 0.995549 sim 0.995 range [null, null]  abs -0.000549374 rel -0.00055183 within false approx false
+-seed 2026 reps 20 mean_cycle_minutes.burn_in     available obs 240 sim 240 range [null, null]  abs 0 rel 0 within false approx false
+-seed 2026 reps 20 mean_cycle_minutes.pack_ship   available obs 1.10497 sim 1.1 range [null, null]  abs -0.00496563 rel -0.00449392 within false approx false
++seed 2026 reps 20 mean_cycle_minutes.smt         available obs 1.09738 sim 1.1 range [null, null]  abs 0.00261971 rel 0.00238724 within null approx false
++seed 2026 reps 20 first_pass_yield.aoi           available obs 0.971271 sim 0.97 range [null, null]  abs -0.00127072 rel -0.0013083 within null approx false
++seed 2026 reps 20 mean_cycle_minutes.aoi         available obs 0.934364 sim 0.933333 range [null, null]  abs -0.00103102 rel -0.00110345 within null approx false
++seed 2026 reps 20 first_pass_yield.ict           available obs 0.954144 sim 0.95 range [null, null]  abs -0.00414365 rel -0.00434279 within null approx false
++seed 2026 reps 20 mean_cycle_minutes.ict         available obs 2.12931 sim 2.13333 range [null, null]  abs 0.00401891 rel 0.00188742 within null approx false
++seed 2026 reps 20 first_pass_yield.fct           available obs 0.939939 sim 0.93 range [null, null]  abs -0.00993911 rel -0.0105742 within null approx false
++seed 2026 reps 20 mean_cycle_minutes.fct         available obs 3.32835 sim 3.33333 range [null, null]  abs 0.00498539 rel 0.00149786 within null approx false
++seed 2026 reps 20 first_pass_yield.burn_in       available obs 0.995549 sim 0.995 range [null, null]  abs -0.000549374 rel -0.00055183 within null approx false
++seed 2026 reps 20 mean_cycle_minutes.burn_in     available obs 240 sim 240 range [null, null]  abs 0 rel 0 within null approx false
++seed 2026 reps 20 mean_cycle_minutes.pack_ship   available obs 1.10497 sim 1.1 range [null, null]  abs -0.00496563 rel -0.00449392 within null approx false
