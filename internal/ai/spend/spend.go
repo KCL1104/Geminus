@@ -42,15 +42,26 @@ type Price struct {
 	CacheRead    NanoUSD // cache hits and refreshes
 }
 
-// prices is every model this build can price, by its exact model ID. Only
-// the model H-018 approves is listed: a model without a price cannot be
-// reserved for, so it cannot be called live.
+// prices is every model this build can price per token, by its exact
+// model ID. Only the models an approval names are listed (H-018's Claude
+// Opus 5.5; H-029's Muse Spark 1.3, T-055): a model without a price cannot
+// be reserved for, so it cannot be called live.
 var prices = map[string]Price{
 	// Claude Opus 5.5: USD 4 / 5 / 8 / 0.20 / 20 per million tokens
 	// (input, 5m write, 1h write, cache hit, output), pricing page
 	// retrieved 2026-10-26; the same as the claude-api reference of
 	// 2026-10-06. No long-context premium on this model.
 	"claude-opus-5-5": {Input: 4000, Output: 20000, CacheWrite5m: 5000, CacheWrite1h: 8000, CacheRead: 200},
+	// Muse Spark 1.3, Standard mode (T-055; PROPOSED D-118): USD 0.15 /
+	// 1.25 / 4.25 per million tokens (cached input, input, output),
+	// MetaPriceSource retrieved 2026-10-26. The page names no cache-write
+	// price: a cache-write token, should the usage report one, is priced as
+	// an input token. Reasoning tokens are output tokens ("billed at the
+	// same rate as visible output tokens", https://dev.meta.ai/docs/reasoning)
+	// and within max_tokens. No long-context premium. Contributor mode
+	// (muse-spark-1.3-contributor, whose content Meta may use for training)
+	// is not priced, so it cannot be called.
+	"muse-spark-1.3": {Input: 1250, Output: 4250, CacheWrite5m: 1250, CacheWrite1h: 1250, CacheRead: 150},
 }
 
 // PriceOf is model's price, if this build has one.
@@ -59,18 +70,48 @@ func PriceOf(model string) (Price, bool) {
 	return p, ok
 }
 
-// imagePrices is every image model this build can price per image read
-// (T-056): a segmenter is billed per image, not by tokens. None is listed
-// yet: a segmenter's price comes with its adapter (T-055), from the
-// provider's pricing page and the date it was read, as a reviewed change
-// to this table. A model without a price cannot be reserved for, so a
-// billable segmenter cannot be called live until then.
-var imagePrices = map[string]NanoUSD{}
+// The source of the Meta Model API's prices and when it was read (T-055,
+// H-029, H-033; PROPOSED D-118).
+const (
+	MetaPriceSource    = "https://dev.meta.ai/docs/pricing-rate-limits"
+	MetaPriceRetrieved = "2026-10-26"
+)
 
-// ImagePriceOf is model's price per image, if this build has one.
+// imagePrices are the segmentation models this build prices per image:
+// SAM 3.1 "Image segmentation | $2.50 per 1,000 images" (MetaPriceSource,
+// retrieved 2026-10-26), USD 0.0025 an image. A model without an image
+// price cannot be reserved for, so it cannot be called.
+var imagePrices = map[string]NanoUSD{"sam-3.1": 2_500_000}
+
+// ImagePriceOf is the price of one image the segmentation model segments,
+// if this build has one.
 func ImagePriceOf(model string) (NanoUSD, bool) {
 	p, ok := imagePrices[model]
-	return p, ok && p > 0
+	return p, ok
+}
+
+// geoPriced are the models whose provider prices inference geos
+// (Anthropic, T-053 review round 1 M2, D-116): a reservation assumes the
+// dearest geo and an answer is priced at the geo it reports. Every other
+// model is reserved and settled at its list price: the Meta Messages API
+// names no geo and refuses inference_geo
+// (https://dev.meta.ai/docs/protocols/messages).
+var geoPriced = map[string]bool{"claude-opus-5-5": true}
+
+// GeoPriced reports whether model's provider prices inference geos.
+func GeoPriced(model string) bool { return geoPriced[model] }
+
+// sources says where each priced model's price was read and when.
+var sources = map[string][2]string{
+	"claude-opus-5-5": {PriceSource, PriceRetrieved},
+	"muse-spark-1.3":  {MetaPriceSource, MetaPriceRetrieved},
+	"sam-3.1":         {MetaPriceSource, MetaPriceRetrieved},
+}
+
+// SourceOf is where model's price was read and when.
+func SourceOf(model string) (source, retrieved string, ok bool) {
+	src, ok := sources[model]
+	return src[0], src[1], ok
 }
 
 // Tokens are the tokens a call was billed for (the provider's usage).

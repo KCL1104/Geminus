@@ -2,140 +2,205 @@ package provider
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
-	"encoding/json/v2"
 	"errors"
+	"fmt"
 )
 
-// Image input (T-056, H-033): an edit proposal may be asked for with a
-// photo or floor plan of the line. The image is the one the server stored
-// (internal/proposals/photo: a PNG or JPEG decoded and encoded again, so no
-// EXIF or other metadata), and it is sealed into the prompt: the IMAGE
-// server_data block names its media type, size in pixels and SHA-256, so
-// the prompt's InputHash covers the image too and the client refuses an
-// image the prompt does not name. Only an ImageBackend is ever given an
-// image, so no backend can silently drop it and answer about a photo it
-// never saw.
-//
-// For the backend that implements it (the T-055 Meta adapter, or the
-// Claude fallback):
-//   - AcceptsImages marks it; Complete sends req.Image with the user message
-//     (for the Messages API, an image content block of the media type, base64
-//     data, before the text block), and nothing else of it.
-//   - A Billable one bounds the image in its Quote: MaxInputTokens includes
-//     the most input tokens the provider can bill for the image as sent
-//     (req.Image.Width, Height and Data), so the reservation stays an upper
-//     bound (D-111).
-//   - The image is data like any untrusted block: text in the picture is
-//     never an instruction (the photo template and the server rules say so).
-// The Anthropic adapter (T-053) does not implement it yet: an image request
-// to it fails with image_unsupported before any reservation or I/O.
-
-// ImageBlock is the server_data block that names a request's image.
-const ImageBlock = "IMAGE"
-
-// MaxImageBytes bounds an image a request may carry (the stored image's
-// limit, internal/proposals/photo.MaxBytes).
-const MaxImageBytes = 10_000_000
-
-// CodeImageUnsupported: the request carries an image and the configured
-// backend does not send images; nothing was sent or reserved. Not
-// retryable: the deployment's provider has to change.
-const CodeImageUnsupported Code = "image_unsupported"
-
-// Image is an image a request sends with its prompt.
+// Image is an image part of a prompt or a segmentation request (T-055,
+// for T-056's photo path, H-033): the bytes the worker read from private
+// storage, checked before any request. Make one with NewImage; the zero
+// Image is no image. Only MediaType, Digest and the size are ever recorded
+// (the prompt's InputHash covers the digest); the bytes go to the provider
+// and nowhere else. H-029 and H-033 allow demo images only: the server
+// never sends a customer's photo.
 type Image struct {
-	MediaType     string // image/png or image/jpeg
-	Data          []byte
-	Width, Height int    // pixels
-	SHA256        string // "sha256:<hex>" of Data
+	// MediaType is one of ImagePNG, ImageJPEG and ImageWebP, and the bytes
+	// are of that type.
+	MediaType string
+	Data      []byte
+	// Width and Height are the pixel size the image's header gives (before
+	// any orientation its metadata names).
+	Width, Height int
+	// Digest is "sha256:<hex>" of Data.
+	Digest string
 }
 
-// ImageRef is the IMAGE block's content: what the prompt says of its image.
-type ImageRef struct {
-	MediaType string `json:"media_type"`
-	Width     int    `json:"width"`
-	Height    int    `json:"height"`
-	SHA256    string `json:"sha256"`
-}
+// The image types a prompt may carry: the ones both Meta's image
+// understanding (https://dev.meta.ai/docs/image-understanding, "Supported
+// MIME types", retrieved 2026-10-26) and the Muse Image output formats
+// (webp, png, jpeg; https://dev.meta.ai/docs/image-generation) name.
+const (
+	ImagePNG  = "image/png"
+	ImageJPEG = "image/jpeg"
+	ImageWebP = "image/webp"
+)
 
-// Ref is what the IMAGE block of im's prompt holds.
-func (im Image) Ref() ImageRef {
-	return ImageRef{MediaType: im.MediaType, Width: im.Width, Height: im.Height, SHA256: im.SHA256}
-}
+// The limits of an image (PROPOSED D-120): engineering bounds well inside
+// the provider's (Meta: 50 MB inline and 50 images a request), so that a
+// request stays small and a photo's pixel size bounds the boxes a
+// segmentation can return.
+const (
+	MaxImageBytes      = 5 << 20
+	MaxImageSide       = 8000
+	MaxImagesPerPrompt = 4
+)
 
-var errImage = errors.New("ai provider: invalid image")
+// ErrInvalidImage: the bytes are not an image this build sends. The error
+// says which rule, never what the bytes hold.
+var ErrInvalidImage = errors.New("ai provider: invalid image")
 
-// Check reports whether im is an image a request may carry: PNG or JPEG, a
-// size in pixels, at most MaxImageBytes, and its own hash.
-func (im Image) Check() error {
-	if (im.MediaType != "image/png" && im.MediaType != "image/jpeg") || im.Width <= 0 || im.Height <= 0 ||
-		len(im.Data) == 0 || len(im.Data) > MaxImageBytes {
-		return errImage
+func invalidImage(reason string) error { return fmt.Errorf("%w: %s", ErrInvalidImage, reason) }
+
+// NewImage checks data as an image of mediaType and returns it with its
+// size and digest; the Image holds a copy of data.
+func NewImage(mediaType string, data []byte) (Image, error) {
+	switch mediaType {
+	case ImagePNG, ImageJPEG, ImageWebP:
+	default:
+		return Image{}, invalidImage("the media type is not image/png, image/jpeg or image/webp")
 	}
-	s := sha256.Sum256(im.Data)
-	if im.SHA256 != "sha256:"+hex.EncodeToString(s[:]) {
-		return errImage
+	switch {
+	case len(data) == 0:
+		return Image{}, invalidImage("no bytes")
+	case len(data) > MaxImageBytes:
+		return Image{}, invalidImage(fmt.Sprintf("larger than %d bytes", MaxImageBytes))
+	}
+	w, h, err := sizeOf(mediaType, data)
+	if err != nil {
+		return Image{}, err
+	}
+	sum := sha256.Sum256(data)
+	return Image{MediaType: mediaType, Data: bytes.Clone(data), Width: w, Height: h, Digest: "sha256:" + hex.EncodeToString(sum[:])}, nil
+}
+
+// Check reports whether im is still what NewImage made: a known type, its
+// bytes of that type and size, and their digest.
+func (im Image) Check() error {
+	again, err := NewImage(im.MediaType, im.Data)
+	if err != nil {
+		return err
+	}
+	if again.Width != im.Width || again.Height != im.Height || again.Digest != im.Digest {
+		return invalidImage("changed after it was checked")
 	}
 	return nil
 }
 
-// names reports whether p's IMAGE block is a server_data block that names
-// im exactly (and nothing else).
-func (p Prompt) names(im Image) bool {
-	want, err := json.Marshal(im.Ref(), json.Deterministic(true))
-	if err != nil {
-		return false
+// sizeOf reads the pixel size from the header of the image type, which
+// the bytes must have.
+func sizeOf(mediaType string, data []byte) (int, int, error) {
+	var w, h int
+	var err error
+	switch mediaType {
+	case ImagePNG:
+		w, h, err = pngSize(data)
+	case ImageJPEG:
+		w, h, err = jpegSize(data)
+	case ImageWebP:
+		w, h, err = webpSize(data)
 	}
-	for _, b := range p.Blocks {
-		if b.Name != ImageBlock {
+	if err != nil {
+		return 0, 0, err
+	}
+	if w < 1 || h < 1 || w > MaxImageSide || h > MaxImageSide {
+		return 0, 0, invalidImage(fmt.Sprintf("the pixel size is not between 1 and %d on each side", MaxImageSide))
+	}
+	return w, h, nil
+}
+
+var pngSignature = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
+
+// pngSize: the signature, then the IHDR chunk (length 13) with the width
+// and height (PNG specification §11.2.2).
+func pngSize(d []byte) (int, int, error) {
+	if len(d) < 33 || !bytes.Equal(d[:8], pngSignature) || binary.BigEndian.Uint32(d[8:12]) != 13 || string(d[12:16]) != "IHDR" {
+		return 0, 0, invalidImage("not a PNG file")
+	}
+	return int(binary.BigEndian.Uint32(d[16:20]) & 0x7fffffff), int(binary.BigEndian.Uint32(d[20:24]) & 0x7fffffff), nil
+}
+
+// jpegSize: SOI, then the segments up to the first start-of-frame marker
+// (SOF0–SOF15 but DHT, JPG and DAC), whose header holds the height and
+// width (ITU-T T.81 B.2.2). A scan before any frame, or the end of the
+// bytes, is no JPEG this build takes.
+func jpegSize(d []byte) (int, int, error) {
+	bad := invalidImage("not a JPEG file with a frame header")
+	if len(d) < 4 || d[0] != 0xff || d[1] != 0xd8 {
+		return 0, 0, bad
+	}
+	i := 2
+	for i < len(d) {
+		if d[i] != 0xff {
+			return 0, 0, bad
+		}
+		for i < len(d) && d[i] == 0xff { // fill bytes
+			i++
+		}
+		if i >= len(d) {
+			return 0, 0, bad
+		}
+		marker := d[i]
+		i++
+		switch {
+		case marker == 0x01 || (marker >= 0xd0 && marker <= 0xd7): // no length
 			continue
+		case marker == 0xd8 || marker == 0xd9 || marker == 0xda: // SOI again, EOI or a scan before a frame
+			return 0, 0, bad
 		}
-		var got ImageRef
-		if b.Kind != ServerData || unmarshalStrict(b.Content, &got) != nil {
-			return false
+		if i+2 > len(d) {
+			return 0, 0, bad
 		}
-		again, err := json.Marshal(got, json.Deterministic(true))
-		return err == nil && bytes.Equal(again, want)
+		length := int(binary.BigEndian.Uint16(d[i : i+2]))
+		if length < 2 || i+length > len(d) {
+			return 0, 0, bad
+		}
+		if marker >= 0xc0 && marker <= 0xcf && marker != 0xc4 && marker != 0xc8 && marker != 0xcc {
+			if length < 7 {
+				return 0, 0, bad
+			}
+			return int(binary.BigEndian.Uint16(d[i+5 : i+7])), int(binary.BigEndian.Uint16(d[i+3 : i+5])), nil
+		}
+		i += length
 	}
-	return false
+	return 0, 0, bad
 }
 
-// ImageBackend is a backend that sends a request's image with its prompt.
-type ImageBackend interface {
-	Backend
-	// AcceptsImages marks the backend; it has no effect.
-	AcceptsImages()
-}
-
-// ImageProposalContext is a sanitized edit proposal request about one
-// image: the prompt (role modeler; its IMAGE block names the image) and
-// the image.
-type ImageProposalContext struct {
-	OrganizationID string
-	Prompt         Prompt
-	Image          Image
-	Attribution    Attribution
-}
-
-// ImageProposer asks for an edit proposal from an image; *Client is one.
-type ImageProposer interface {
-	GenerateImageProposal(context.Context, ImageProposalContext) (ProposalResult, error)
-}
-
-var _ ImageProposer = (*Client)(nil)
-
-// GenerateImageProposal asks for an edit proposal from in.Image, checked as
-// every call is (the answer is one proposal-output document), metered when
-// the backend is billable.
-func (c *Client) GenerateImageProposal(ctx context.Context, in ImageProposalContext) (ProposalResult, error) {
-	var out ProposalOutput
-	image := in.Image
-	raw, meta, err := c.call(ctx, in.OrganizationID, RoleModeler, in.Prompt, in.Attribution, &image, &out)
-	if err != nil {
-		return ProposalResult{Metadata: meta}, err
+// webpSize: the RIFF header and the first chunk, VP8 (lossy), VP8L
+// (lossless) or VP8X (extended), each with the size in its own form
+// (https://developers.google.com/speed/webp/docs/riff_container).
+func webpSize(d []byte) (int, int, error) {
+	bad := invalidImage("not a WebP file")
+	if len(d) < 30 || string(d[:4]) != "RIFF" || string(d[8:12]) != "WEBP" {
+		return 0, 0, bad
 	}
-	return ProposalResult{Output: out, Raw: raw, Metadata: meta}, nil
+	if riff := int64(binary.LittleEndian.Uint32(d[4:8])); riff+8 > int64(len(d)) || riff < 22 {
+		return 0, 0, bad
+	}
+	if chunk := int64(binary.LittleEndian.Uint32(d[16:20])); 20+chunk > int64(len(d)) || chunk < 10 {
+		return 0, 0, bad
+	}
+	p := d[20:]
+	switch string(d[12:16]) {
+	case "VP8 ":
+		// frame tag (3 bytes, a key frame has bit 0 clear), start code,
+		// then 14-bit width and height.
+		if p[0]&1 != 0 || p[3] != 0x9d || p[4] != 0x01 || p[5] != 0x2a {
+			return 0, 0, bad
+		}
+		return int(binary.LittleEndian.Uint16(p[6:8]) & 0x3fff), int(binary.LittleEndian.Uint16(p[8:10]) & 0x3fff), nil
+	case "VP8L":
+		if p[0] != 0x2f {
+			return 0, 0, bad
+		}
+		bits := binary.LittleEndian.Uint32(p[1:5])
+		return int(bits&0x3fff) + 1, int(bits>>14&0x3fff) + 1, nil
+	case "VP8X":
+		w := int(p[4]) | int(p[5])<<8 | int(p[6])<<16
+		h := int(p[7]) | int(p[8])<<8 | int(p[9])<<16
+		return w + 1, h + 1, nil
+	}
+	return 0, 0, bad
 }

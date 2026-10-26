@@ -1,0 +1,12 @@
+T-055: internal/ai/provider/anthropic/{projection,encoded}.go at d9b7f22 against internal/ai/provider/structured/ (only the package clause may differ)
+== projection.go
+1c1
+< package anthropic
+---
+> package structured
+== encoded.go
+1c1
+< package anthropic
+---
+> package structured
+exit 0

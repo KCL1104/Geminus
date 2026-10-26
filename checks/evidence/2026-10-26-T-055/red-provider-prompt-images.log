@@ -1,0 +1,15 @@
+--- FAIL: TestImagesAreSealed (0.01s)
+    prompt_images_test.go:67: the images do not change the hash: [sha256:38f5aeff9b18b9d0c5177da21277b7a503dea246d62221b7ff8fc25a6be8c61e   ]
+    prompt_images_test.go:89: changed bytes: <nil>
+    prompt_images_test.go:89: dropped: <nil>
+    prompt_images_test.go:89: added: <nil>
+    prompt_images_test.go:102: too many: <nil>
+    prompt_images_test.go:102: the zero image: <nil>
+    prompt_images_test.go:102: a changed size: <nil>
+--- FAIL: TestImagesGoOnlyToABackendThatTakesThem (0.01s)
+    prompt_images_test.go:134: a backend without images: <nil> (1 calls)
+    prompt_images_test.go:138: a backend that refuses images: <nil> (1 calls)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider	0.030s
+FAIL
+exit 1

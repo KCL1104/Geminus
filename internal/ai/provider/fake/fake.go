@@ -3,8 +3,7 @@
 // provider, and internal/config accepts it only with APP_ENV development or
 // test. It reads its input exactly as a live provider would, from the
 // rendered user message, and answers from a script keyed by the request's
-// untrusted text (USER_INTENT, QUESTION or the column names) or, for an
-// image request (T-056), the SHA-256 its IMAGE block names; without a
+// untrusted text (USER_INTENT, QUESTION or the column names); without a
 // scripted answer it answers safely: needs_input for a proposal, no target
 // field for a mapping, an analysis without claims. No randomness, no clock,
 // no I/O. Its answers still go through provider.Client, which checks them
@@ -23,13 +22,11 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider"
 )
 
-// Key block names: what a script entry is matched on. An image request
-// (T-056) is matched on the SHA-256 its IMAGE block names.
+// Key block names: what a script entry is matched on.
 const (
 	IntentBlock   = "USER_INTENT"
 	QuestionBlock = "QUESTION"
 	ColumnsBlock  = "COLUMN_NAMES"
-	ImageBlock    = provider.ImageBlock
 )
 
 // Answer is a scripted reply: exact answer text, or an error.
@@ -51,12 +48,6 @@ func New() *Backend {
 }
 
 func (b *Backend) Name() string { return "fake" }
-
-// AcceptsImages: the fake takes images as the live vision backend does
-// (provider.ImageBackend, T-056); it never looks at the pixels.
-func (b *Backend) AcceptsImages() {}
-
-var _ provider.ImageBackend = (*Backend)(nil)
 
 // Script makes role answer text when the request's key block (the intent,
 // the question, or the JSON of the column names) is key.
@@ -109,26 +100,7 @@ func keyOf(p provider.Prompt) (string, map[string]jsontext.Value, error) {
 	if v, ok := byName[ColumnsBlock]; ok {
 		return string(v), byName, nil
 	}
-	if v, ok := byName[ImageBlock]; ok {
-		var ref provider.ImageRef
-		if err := json.Unmarshal(v, &ref); err != nil {
-			return "", nil, err
-		}
-		return ref.SHA256, byName, nil
-	}
 	return "", byName, nil
-}
-
-// imageMatches reports whether req's image is the one its prompt's IMAGE
-// block names, and that a request has an image exactly when it has the
-// block: what a provider would be sent.
-func imageMatches(req provider.Request, blocks map[string]jsontext.Value) bool {
-	v, named := blocks[ImageBlock]
-	if !named || req.Image == nil {
-		return !named && req.Image == nil
-	}
-	var ref provider.ImageRef
-	return json.Unmarshal(v, &ref) == nil && ref == req.Image.Ref()
 }
 
 // Complete answers req.
@@ -140,7 +112,7 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	b.seen = append(b.seen, req)
 	b.mu.Unlock()
 	key, blocks, err := keyOf(req.Prompt)
-	if err != nil || !imageMatches(req, blocks) {
+	if err != nil {
 		return provider.Response{}, provider.NewError(provider.CodeRejected, 400, "")
 	}
 	b.mu.Lock()
