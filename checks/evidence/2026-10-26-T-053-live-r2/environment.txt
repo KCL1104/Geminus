@@ -1,0 +1,19 @@
+T-053 live 重跑（H-018、H-025、H-031、H-033、D-116 option A）
+Session: coordinator 的 child session（coordinator session_01XKrJyh1QERrHTuUjaQ2Qn2）
+Checkout: /home/user/Geminus（主要 checkout，一次一個 run，預設上限，沒有 -dir）
+起始 commit: f60fedf
+Go: go version go1.27.3 linux/amd64
+Python: Python 3.13.17
+環境變數（只列名稱，沒有讀取或記錄任何值）:
+  ^GEMINUS_ANTHROPIC_API_KEY_[AB]$: GEMINUS_ANTHROPIC_API_KEY_A, GEMINUS_ANTHROPIC_API_KEY_B
+  META|MUSE|RAILWAY|AUTH0（不分大小寫）: RAILWAY_TOKEN, GEMINUS_MUSE_API_KEY
+  ANTHROPIC_API_KEY: 沒有讀取
+Key 與 GEMINUS_AI_LIVE=on 只放在各個 live 指令自己的環境。沒有任何 Meta 或其他 provider 的 live 呼叫。
+
+步驟（UTC）:
+1. 投影確認（git archive 複本中的 scratch 測試）: sha256 51933b88… 相同，exit 0
+2. count_tokens: 2026-10-26T16:47:17Z，claude-opus-5-5，HTTP 200，input_tokens 1704（count-tokens.txt）
+3. smoke: 開始 2026-10-26T16:47:34Z，run 01M5WHRF20WZ3NHYKEGRC5G2FN，exit 0，USD 0.04244 committed，沒有 warning（smoke.log）；commit a09b185
+4. eval: 開始 2026-10-26T16:48:08Z，結束 2026-10-26T16:54:38Z，AI_EVAL_LIVE_MAX_USD=9.95（10 − 0.04244，無條件捨去到分），run 01M5WHSF98QSJ41RKWBZ0M3TED，exit 0，USD 2.304284 committed，沒有 warning（eval.log）；commit 48a0458
+5. grep -r 'sk-ant-' checks/ai-evals checks/evidence/2026-10-26-T-053-live-r2: 每次 run 之後都沒有找到（grep exit 1）
+6. make spec-check（venv 中的 requirements-spec.txt）: exit 0，沒有重產任何 checks/*.json 的變更（spec-check.log）
