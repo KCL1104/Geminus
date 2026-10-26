@@ -1,0 +1,25 @@
+# 2026-10-26T09:28:13Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: python3 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/review-mutants.py /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m r-batch-not-in-service r-ready-above-max r-setup-stream-by-process r-setup-from-service-stream r-matching-unit-may-be-down r-matching-unit-greatest-index r-setup-end-applied-late r-setup-ends-not-applied-at-finish r-setup-complete-strict-w r-batch-bundle-released-early r-max-wait-unbounded r-buffer-equal-to-max-refused r-min-equal-max-refused r-duplicate-pair-allowed r-second-setup-resource-allowed r-batch-needing-setups-allowed r-unknown-initial-allowed r-risk-ignores-max-wait r-risk-ignores-transition-distribution r-risk-ignores-default r-max-wait-not-a-value
+r-batch-not-in-service	KILLED --- FAIL: TestBatchGoldens (0.08s)
+r-ready-above-max	KILLED --- FAIL: TestBatchGoldens (0.06s)
+r-setup-stream-by-process	KILLED --- FAIL: TestBatchSetupObservationDigests (0.03s)
+r-setup-from-service-stream	KILLED --- FAIL: TestBatchSetupObservationDigests (0.03s)
+r-matching-unit-may-be-down	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.11s)
+r-matching-unit-greatest-index	KILLED --- FAIL: TestRandomSetupModelsAgainstSpec (0.82s)
+r-setup-end-applied-late	SURVIVED 
+r-setup-ends-not-applied-at-finish	KILLED --- FAIL: TestGoldenDigests050 (0.37s)
+r-setup-complete-strict-w	SURVIVED 
+r-batch-bundle-released-early	KILLED --- FAIL: TestBatchGoldenResults (0.48s)
+r-max-wait-unbounded	KILLED --- FAIL: TestBatchRules (0.10s)
+r-buffer-equal-to-max-refused	KILLED --- FAIL: TestBatchRules (0.14s)
+r-min-equal-max-refused	KILLED --- FAIL: TestBatchRules (0.13s)
+r-duplicate-pair-allowed	KILLED --- FAIL: TestSetupRules (0.01s)
+r-second-setup-resource-allowed	KILLED --- FAIL: TestSetupRules (0.01s)
+r-batch-needing-setups-allowed	KILLED --- FAIL: TestSetupRules (0.02s)
+r-unknown-initial-allowed	KILLED --- FAIL: TestSetupRules (0.00s)
+r-risk-ignores-max-wait	BUILD-FAILED /tmp/tmpuwqelcsu/m23.go:268:2: declared and not used: same
+r-risk-ignores-transition-distribution	KILLED --- FAIL: TestLiftedPrimitivesHaveRiskCases (0.02s)
+r-risk-ignores-default	KILLED --- FAIL: TestLiftedPrimitivesHaveRiskCases (0.01s)
+r-max-wait-not-a-value	KILLED --- FAIL: TestBatchValuesInEffects (0.02s)
+18/21 killed
+# exit=0 elapsed=1380s

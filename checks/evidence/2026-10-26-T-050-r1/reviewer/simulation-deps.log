@@ -1,0 +1,53 @@
+== non-test deps of ./internal/simulation/... that are not the standard library ==
+github.com/gowebpki/jcs
+github.com/kcl1104/geminus/internal/model
+github.com/kcl1104/geminus/internal/model/calendar
+github.com/kcl1104/geminus/internal/model/hashing
+github.com/kcl1104/geminus/internal/model/validate
+github.com/kcl1104/geminus/internal/results/metrics
+github.com/kcl1104/geminus/internal/simulation
+github.com/kcl1104/geminus/internal/simulation/des
+github.com/kcl1104/geminus/internal/simulation/engine
+github.com/kcl1104/geminus/internal/simulation/trace
+github.com/kcl1104/geminus/schemas
+github.com/santhosh-tekuri/jsonschema/v6
+github.com/santhosh-tekuri/jsonschema/v6/kind
+golang.org/x/text/feature/plural
+golang.org/x/text/internal
+golang.org/x/text/internal/catmsg
+golang.org/x/text/internal/format
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/number
+golang.org/x/text/internal/stringset
+golang.org/x/text/internal/tag
+golang.org/x/text/language
+golang.org/x/text/message
+golang.org/x/text/message/catalog
+== test deps (go list -test -deps) of ./internal/simulation/engine/ that are not the standard library ==
+github.com/gowebpki/jcs
+github.com/kcl1104/geminus/internal/contracttest
+github.com/kcl1104/geminus/internal/model
+github.com/kcl1104/geminus/internal/model/calendar
+github.com/kcl1104/geminus/internal/model/hashing
+github.com/kcl1104/geminus/internal/model/validate
+github.com/kcl1104/geminus/internal/simulation
+github.com/kcl1104/geminus/internal/simulation/engine
+github.com/kcl1104/geminus/internal/simulation/engine [github.com/kcl1104/geminus/internal/simulation/engine.test]
+github.com/kcl1104/geminus/internal/simulation/engine.test
+github.com/kcl1104/geminus/internal/simulation/engine_test [github.com/kcl1104/geminus/internal/simulation/engine.test]
+github.com/kcl1104/geminus/schemas
+github.com/santhosh-tekuri/jsonschema/v6
+github.com/santhosh-tekuri/jsonschema/v6/kind
+golang.org/x/text/feature/plural
+golang.org/x/text/internal
+golang.org/x/text/internal/catmsg
+golang.org/x/text/internal/format
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/number
+golang.org/x/text/internal/stringset
+golang.org/x/text/internal/tag
+golang.org/x/text/language
+golang.org/x/text/message
+golang.org/x/text/message/catalog

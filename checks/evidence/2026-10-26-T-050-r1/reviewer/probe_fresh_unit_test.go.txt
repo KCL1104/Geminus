@@ -1,0 +1,48 @@
+package engine
+
+// T-050 review (H-003) probe 3. Not part of the repository; saved as
+// checks/evidence/2026-10-26-T-050-r1/reviewer/probe_fresh_unit_test.go.txt.
+
+import (
+	"context"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/model"
+)
+
+// P3. Two units, no initial. a1 (board_a) at 10 takes unit 0 (service 5,
+// 10-15). b1 (board_b) at 20 finds both units idle: unit 0 set up for
+// board_a, unit 1 never used. D-055's rule (no unit set up for board_b:
+// the least index) gives unit 0 and a changeover of 7 minutes, although
+// unit 1 would take b1 with none. The probe records what the kernel does.
+func TestProbeFreshUnitVersusChangeover(t *testing.T) {
+	var ir model.ModelIR
+	js := `{"schema_version": "0.1", "model_id": "mdl_01M4YDQK00R942EDGA45T538HS", "domain": "synthetic_line", "name": "fresh-unit", "time_unit": "minute",
+ "entity_types": [{"id": "board_a", "name": "a"}, {"id": "board_b", "name": "b"}],
+ "resources": [{"id": "smt", "type": "machine", "name": "smt", "capacity": 2, "queue_discipline": "fifo", "setups": {"default": {"type": "constant", "value": 7}}}],
+ "nodes": [{"id": "src_a", "type": "source", "entity_type": "board_a", "arrival": {"distribution": {"type": "constant", "value": 10}, "max_entities": 1}},
+  {"id": "src_b", "type": "source", "entity_type": "board_b", "arrival": {"distribution": {"type": "constant", "value": 20}, "max_entities": 1}},
+  {"id": "place", "type": "process", "service_time": {"distribution": {"type": "constant", "value": 5}}, "requires": [{"resource_id": "smt", "units": 1}]},
+  {"id": "done", "type": "sink", "outcome": "completed"}],
+ "flows": [{"id": "f1", "from": "src_a", "to": "place", "routing": {"type": "probability", "probability": 1}},
+  {"id": "f2", "from": "src_b", "to": "place", "routing": {"type": "probability", "probability": 1}},
+  {"id": "f3", "from": "place", "to": "done", "routing": {"type": "probability", "probability": 1}}],
+ "constraints": [], "metrics": [], "views": {"2d": {}, "3d": {}}, "metadata": {"synthetic": true}}`
+	if err := model.Decode([]byte(js), &ir); err != nil {
+		t.Fatal(err)
+	}
+	in := input(ir)
+	in.Config = config(60, model.Minute)
+	p := compile(t, in) // through the validator
+	col := &collect{}
+	if _, err := RunReplication(context.Background(), p, 0, NewBudget(1_000_000), col); err != nil {
+		t.Fatal(err)
+	}
+	ms, _ := p.unit.Millis()
+	for _, o := range col.all {
+		if o.Kind == ObsSetup || o.Kind == ObsServiceEnd {
+			t.Logf("%v at %g min: entity %d unit(At) %d value %g min", map[ObservationKind]string{ObsSetup: "Setup", ObsServiceEnd: "ServiceEnd"}[o.Kind],
+				float64(o.Tick)/float64(ms), o.Entity, o.At, float64(o.Value)/float64(ms))
+		}
+	}
+}

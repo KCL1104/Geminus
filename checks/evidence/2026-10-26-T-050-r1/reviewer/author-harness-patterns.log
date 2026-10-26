@@ -1,0 +1,4 @@
+# 2026-10-26T09:35:47Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: python3 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m/checks/evidence/2026-10-26-T-050/t050-mutants.py /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m --patterns
+55 mutants, bad patterns: []
+# exit=0 elapsed=0s

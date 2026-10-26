@@ -1,0 +1,9 @@
+# 2026-10-26T09:34:16Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: go test -count=1 -overlay /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/probes/overlay-p2.json -run ^TestProbeB1WithATimeoutAfterTheHorizon$ -v ./internal/simulation/engine/
+=== RUN   TestProbeB1WithATimeoutAfterTheHorizon
+    zz_review_probe2_test.go:72: G-D2 alone: engine: the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000
+    zz_review_probe2_test.go:74: G-D2 + an unrelated batch process whose wait limit is after the horizon: <nil>
+--- PASS: TestProbeB1WithATimeoutAfterTheHorizon (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.029s
+# exit=0 elapsed=7s

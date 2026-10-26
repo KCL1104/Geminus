@@ -1,0 +1,11 @@
+# 2026-10-26T09:34:34Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: go test -count=1 -overlay /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/probes/overlay-p2-optionB.json -run ^TestProbeB1WithATimeoutAfterTheHorizon$ -v ./internal/simulation/engine/
+=== RUN   TestProbeB1WithATimeoutAfterTheHorizon
+    zz_review_probe2_test.go:72: G-D2 alone: engine: the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000
+    zz_review_probe2_test.go:74: G-D2 + an unrelated batch process whose wait limit is after the horizon: engine: the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000
+    zz_review_probe2_test.go:76: D-096 (g) A (implemented) says no ErrDeadlock for the rest of the run; got engine: the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000 (option B's behavior)
+--- FAIL: TestProbeB1WithATimeoutAfterTheHorizon (0.06s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.071s
+FAIL
+# exit=1 elapsed=5s

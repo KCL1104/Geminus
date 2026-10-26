@@ -1,0 +1,20 @@
+# 2026-10-26T09:56:16Z cmd: go test -count=1 -run ^$ -fuzz ^FuzzBatches$ -fuzztime 20000x -parallel 2 ./internal/simulation/engine/
+fuzz: elapsed: 0s, gathering baseline coverage: 0/807 completed
+fuzz: elapsed: 3s, gathering baseline coverage: 532/807 completed
+fuzz: elapsed: 4s, gathering baseline coverage: 807/807 completed, now fuzzing with 2 workers
+fuzz: elapsed: 6s, execs: 1637 (368/sec), new interesting: 5 (total: 812)
+fuzz: elapsed: 9s, execs: 3254 (539/sec), new interesting: 7 (total: 814)
+fuzz: elapsed: 12s, execs: 5011 (587/sec), new interesting: 11 (total: 818)
+fuzz: elapsed: 15s, execs: 6603 (531/sec), new interesting: 13 (total: 820)
+fuzz: elapsed: 18s, execs: 8366 (588/sec), new interesting: 14 (total: 821)
+fuzz: elapsed: 21s, execs: 9978 (537/sec), new interesting: 14 (total: 821)
+fuzz: elapsed: 24s, execs: 11835 (619/sec), new interesting: 15 (total: 822)
+fuzz: elapsed: 27s, execs: 13460 (542/sec), new interesting: 15 (total: 822)
+fuzz: elapsed: 30s, execs: 15088 (542/sec), new interesting: 15 (total: 822)
+fuzz: elapsed: 33s, execs: 16844 (585/sec), new interesting: 15 (total: 822)
+fuzz: elapsed: 36s, execs: 18450 (536/sec), new interesting: 15 (total: 822)
+fuzz: elapsed: 39s, execs: 19896 (482/sec), new interesting: 15 (total: 822)
+fuzz: elapsed: 39s, execs: 20000 (407/sec), new interesting: 15 (total: 822)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	39.316s
+# exit=0 elapsed=47s

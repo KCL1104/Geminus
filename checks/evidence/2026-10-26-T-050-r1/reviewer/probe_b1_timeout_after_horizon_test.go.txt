@@ -1,0 +1,78 @@
+package engine
+
+// T-050 review (H-003) probe 2. Not part of the repository; saved as
+// checks/evidence/2026-10-26-T-050-r1/reviewer/probe_b1_timeout_after_horizon_test.go.txt.
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/model"
+)
+
+// P2. D-096 (g) option A (implemented): a BATCH_TIMEOUT after the horizon,
+// never scheduled, still counts as pending, so D-050 B1 never reports a
+// deadlock for the rest of the run. G-D2 (blocking-goldens.json; R1 bypassed)
+// deadlocks at 7 min; adding one unrelated batch process (no resource, its
+// only member's wait limit at 101 min, horizon 60) makes the same cycle run
+// silently to the horizon. Under option B (the reviewer's mutant
+// r-b1-ignores-timeouts-after-horizon) the run fails with ErrDeadlock at 7
+// min as G-D2 does. No test of the repository distinguishes A from B (the
+// mutant survives the whole engine package).
+func TestProbeB1WithATimeoutAfterTheHorizon(t *testing.T) {
+	run := func(withBatch bool) error {
+		js := `{"schema_version": "0.1", "model_id": "mdl_01M4YDQK00R942EDGA45T538HS", "domain": "synthetic_line", "name": "G-D2+batch", "time_unit": "minute",
+ "entity_types": [{"id": "board", "name": "Board"}],
+ "resources": [{"id": "r1", "type": "machine", "name": "r1", "capacity": 1, "queue_discipline": "fifo"}, {"id": "r2", "type": "machine", "name": "r2", "capacity": 1, "queue_discipline": "fifo"}],
+ "nodes": [{"id": "src", "type": "source", "entity_type": "board", "arrival": {"distribution": {"type": "constant", "value": 1}}},
+  {"id": "q1", "type": "queue", "capacity": 1},
+  {"id": "s1", "type": "process", "service_time": {"distribution": {"type": "constant", "value": 2}}, "requires": [{"resource_id": "r1", "units": 1}]},
+  {"id": "q2", "type": "queue", "capacity": 1},
+  {"id": "s2", "type": "process", "service_time": {"distribution": {"type": "constant", "value": 3}}, "requires": [{"resource_id": "r2", "units": 1}]},
+  {"id": "z", "type": "source", "entity_type": "board", "arrival": {"distribution": {"type": "constant", "value": 1}}},
+  {"id": "done", "type": "sink", "outcome": "completed"}`
+		flows := `{"id": "src__q1", "from": "src", "to": "q1", "routing": {"type": "probability", "probability": 1}},
+  {"id": "q1__s1", "from": "q1", "to": "s1", "routing": {"type": "probability", "probability": 1}},
+  {"id": "s1__q2", "from": "s1", "to": "q2", "routing": {"type": "probability", "probability": 1}},
+  {"id": "q2__s2", "from": "q2", "to": "s2", "routing": {"type": "probability", "probability": 1}},
+  {"id": "s2__q1", "from": "s2", "to": "q1", "routing": {"type": "probability", "probability": 1}},
+  {"id": "z__done", "from": "z", "to": "done", "routing": {"type": "probability", "probability": 1}}`
+		if withBatch {
+			js += `,
+  {"id": "bsrc", "type": "source", "entity_type": "board", "arrival": {"distribution": {"type": "constant", "value": 1}, "max_entities": 1}},
+  {"id": "bp", "type": "process", "service_time": {"distribution": {"type": "constant", "value": 5}}, "requires": [], "batch": {"min_size": 1, "max_size": 2, "max_wait": 100}}`
+			flows += `,
+  {"id": "bsrc__bp", "from": "bsrc", "to": "bp", "routing": {"type": "probability", "probability": 1}},
+  {"id": "bp__done", "from": "bp", "to": "done", "routing": {"type": "probability", "probability": 1}}`
+		}
+		js += `],
+ "flows": [` + flows + `],
+ "constraints": [], "metrics": [], "views": {"2d": {}, "3d": {}}, "metadata": {"synthetic": true}}`
+		var ir model.ModelIR
+		if err := model.Decode([]byte(js), &ir); err != nil {
+			t.Fatal(err)
+		}
+		in := input(ir)
+		in.Config = config(60, model.Minute)
+		var p *Program
+		var err error
+		withoutValidator(t, func() { p, err = Compile(in) })
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = RunReplication(context.Background(), p, 0, NewBudget(1_000_000), nil)
+		return err
+	}
+	plain := run(false)
+	var de *DeadlockError
+	if !errors.As(plain, &de) {
+		t.Fatalf("G-D2 alone: want ErrDeadlock, got %v", plain)
+	}
+	t.Logf("G-D2 alone: %v", plain)
+	withBatch := run(true)
+	t.Logf("G-D2 + an unrelated batch process whose wait limit is after the horizon: %v", withBatch)
+	if withBatch != nil {
+		t.Errorf("D-096 (g) A (implemented) says no ErrDeadlock for the rest of the run; got %v (option B's behavior)", withBatch)
+	}
+}

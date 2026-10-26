@@ -1,0 +1,45 @@
+package des
+
+// T-050 review (H-003) probe 5. Not part of the repository; saved as
+// checks/evidence/2026-10-26-T-050-r1/reviewer/probe_setup_at_w_test.go.txt.
+
+import (
+	"encoding/json/v2"
+	"path/filepath"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/model"
+)
+
+// P5. D-097 (f): a complete changeover starts at or after W and ends by H.
+// G-SU1 (setup-goldens.json: B1's changeover 20-23, A2's 25-28 at "place")
+// with the warm-up moved to 20 minutes, horizon 55: B1's changeover starts
+// exactly at W, so it is complete; by hand setups_started 4 (20, 25, 40,
+// 45: every changeover at or after 20 within [20, 55]), and the 20-23 one
+// is among the completed ones. The probe prints the Result's members; the
+// reviewer's mutant r-setup-complete-strict-w (start > W) drops the one at W.
+func TestProbeChangeoverStartingAtW(t *testing.T) {
+	var doc struct {
+		Cases []goldenCase `json:"cases"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/setup-goldens.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	var c goldenCase
+	for _, x := range doc.Cases {
+		if x.ID == "G-SU1" {
+			c = x
+		}
+	}
+	in := caseInput(t, c)
+	in.Config.Warmup.Value, in.Config.Warmup.Unit = 20, model.Minute
+	in.Config.Horizon.Value, in.Config.Horizon.Unit = 55, model.Minute
+	res := run(t, &Engine{}, in).Result
+	for id, st := range res.ReplicationSummaries[0].ResourceStates {
+		t.Logf("%s: setup_ticks %d setups_started %d setups_completed %d completed_setup_ticks %d", id, *st.SetupTicks, *st.SetupsStarted, *st.SetupsCompleted, *st.CompletedSetupTicks)
+		if *st.SetupsCompleted != *st.SetupsStarted {
+			t.Errorf("%s: every changeover started in [20, 55] ends by 55, so completed (%d) should equal started (%d)", id, *st.SetupsCompleted, *st.SetupsStarted)
+		}
+	}
+}

@@ -1,0 +1,9 @@
+batch-goldens.json 88f34e3 -> fd8aa08: added [] removed [] changed [] reference_block_changed=False
+batch-goldens.json fd8aa08 -> ce01c55: added [] removed [] changed [] reference_block_changed=True
+batch-goldens.json ce01c55 -> fbb828a: added ['G-BT15', 'G-BT16'] removed [] changed [] reference_block_changed=False
+batch-goldens.json fbb828a -> 4715f49: added ['G-BT17'] removed [] changed [] reference_block_changed=False
+batch-goldens.json 4715f49 -> 79c9423: added [] removed [] changed [] reference_block_changed=False
+setup-goldens.json fd8aa08 -> ce01c55: added [] removed [] changed [] reference_block_changed=True
+setup-goldens.json ce01c55 -> fbb828a: added [] removed [] changed [] reference_block_changed=False
+setup-goldens.json fbb828a -> 4715f49: added [] removed [] changed [] reference_block_changed=False
+setup-goldens.json 4715f49 -> 79c9423: added [] removed [] changed [] reference_block_changed=False

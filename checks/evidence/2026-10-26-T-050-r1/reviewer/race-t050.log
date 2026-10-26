@@ -1,0 +1,6 @@
+# 2026-10-26T09:50:13Z cmd: go test -race -count=1 -timeout 1800s -run Batch|Setup|Neutral|Frozen040|KernelRefuses|PrimitiveGate|CompileChecksSetups|GoldenDigests050|SimPyReferenceExport ./internal/simulation/engine/ ./internal/simulation/des/ ./internal/simulation/trace/ ./internal/results/metrics/
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	356.631s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	37.388s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	1.094s [no tests to run]
+ok  	github.com/kcl1104/geminus/internal/results/metrics	1.096s [no tests to run]
+# exit=0 elapsed=363s

@@ -1,0 +1,10 @@
+# 2026-10-26T09:38:15Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: go test -count=1 -overlay /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/probes/overlay-p3.json -run ^TestProbeFreshUnitVersusChangeover$ -v ./internal/simulation/engine/
+=== RUN   TestProbeFreshUnitVersusChangeover
+    zz_review_probe3_test.go:44: ServiceEnd at 15 min: entity 1 unit(At) 0 value 0 min
+    zz_review_probe3_test.go:44: Setup at 20 min: entity 2 unit(At) 0 value 7 min
+    zz_review_probe3_test.go:44: ServiceEnd at 32 min: entity 2 unit(At) 0 value 0 min
+--- PASS: TestProbeFreshUnitVersusChangeover (0.08s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.093s
+# exit=0 elapsed=7s

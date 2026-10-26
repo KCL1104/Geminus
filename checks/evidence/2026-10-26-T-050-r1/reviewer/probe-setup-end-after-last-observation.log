@@ -1,0 +1,8 @@
+# 2026-10-26T09:51:29Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: go test -count=1 -overlay /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/probes/overlay-p6.json -run ^TestProbeChangeoverEndingAfterTheLastObservation$ -v ./internal/simulation/des/
+=== RUN   TestProbeChangeoverEndingAfterTheLastObservation
+    zz_review_probe6_test.go:41: smt: setup_ticks 720000 setups_started 4 setups_completed 4 completed_setup_ticks 720000 scheduled_processing_ticks 660000 in_use_ticks 1380000
+--- PASS: TestProbeChangeoverEndingAfterTheLastObservation (0.08s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.100s
+# exit=0 elapsed=2s

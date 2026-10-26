@@ -1,0 +1,74 @@
+package engine
+
+// T-050 review (H-003) probes. Not part of the repository; saved as
+// checks/evidence/2026-10-26-T-050-r1/reviewer/probe_test.go.txt.
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/model"
+)
+
+func probeModel(t *testing.T, js string) model.ModelIR {
+	t.Helper()
+	var ir model.ModelIR
+	if err := model.Decode([]byte(js), &ir); err != nil {
+		t.Fatal(err)
+	}
+	return ir
+}
+
+const probeHeader = `"schema_version":"0.1","model_id":"mdl_01M4YDQK00R942EDGA45T538HS","domain":"synthetic_line","time_unit":"minute",
+ "constraints":[],"metrics":[],"views":{"2d":{},"3d":{}},"metadata":{"synthetic":true}`
+
+// P1. D-096 (g) and SIMULATION_SPEC §3 say: "B1、B2 對 batch request 回報它的
+// 最老成員, since 為批次就緒的 tick". Here the batch is ready at t=20 (its
+// only member arrives, min = max = 1) while the machine is in use by
+// another process's entity until t=100; the request enters B2's state
+// (held, none of its bundle in use: the operator is off shift) only at the
+// end of t=100. The validator is bypassed (R4 refuses the bundle, as in
+// G-BT13). D-096 (g)'s text predicts Since = 20 min.
+func TestProbeB2SinceOfABatchRequest(t *testing.T) {
+	ir := probeModel(t, `{`+probeHeader+`,"name":"probe-b2-since",
+ "entity_types":[{"id":"board","name":"board"}],
+ "resources":[
+  {"id":"machine","type":"machine","name":"machine","capacity":1,"queue_discipline":"fifo",
+   "breakdowns":{"time_to_failure":{"distribution":{"type":"constant","value":960}},"time_to_repair":{"distribution":{"type":"constant","value":480}}}},
+  {"id":"operator","type":"human","name":"operator","capacity":1,"queue_discipline":"fifo","calendar_id":"op"}],
+ "calendars":[{"id":"op","period":1440,"shifts":[{"start":960,"end":1440}]}],
+ "nodes":[
+  {"id":"srcp","type":"source","entity_type":"board","arrival":{"distribution":{"type":"constant","value":10},"max_entities":1}},
+  {"id":"srcw","type":"source","entity_type":"board","arrival":{"distribution":{"type":"constant","value":20},"max_entities":1}},
+  {"id":"pre","type":"process","service_time":{"distribution":{"type":"constant","value":90}},"requires":[{"resource_id":"machine","units":1}]},
+  {"id":"work","type":"process","service_time":{"distribution":{"type":"constant","value":30}},
+   "requires":[{"resource_id":"machine","units":1},{"resource_id":"operator","units":1}],"batch":{"min_size":1,"max_size":1}},
+  {"id":"done","type":"sink","outcome":"completed"}],
+ "flows":[
+  {"id":"f1","from":"srcp","to":"pre","routing":{"type":"probability","probability":1}},
+  {"id":"f2","from":"pre","to":"done","routing":{"type":"probability","probability":1}},
+  {"id":"f3","from":"srcw","to":"work","routing":{"type":"probability","probability":1}},
+  {"id":"f4","from":"work","to":"done","routing":{"type":"probability","probability":1}}]}`)
+	in := input(ir)
+	in.Config = config(1500, model.Minute)
+	var p *Program
+	var err error
+	withoutValidator(t, func() { p, err = Compile(in) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	col := &collect{}
+	_, _, err = runKernel(context.Background(), p, 0, NewBudget(1_000_000), col)
+	var se *StalledError
+	if !errors.As(err, &se) {
+		t.Fatalf("want ErrStalled, got %v", err)
+	}
+	ms, _ := p.unit.Millis()
+	readyTick := int64(20) * ms
+	t.Logf("ErrStalled: entity %s node %s since %d (= %g min) deadline %d (= %g min) tick %d; the batch became ready at %d (20 min)",
+		se.Entity, se.Node, se.Since, float64(se.Since)/float64(ms), se.Deadline, float64(se.Deadline)/float64(ms), se.Tick, readyTick)
+	if se.Since != readyTick {
+		t.Errorf("D-096 (g) / SIMULATION_SPEC §3: since should be the tick the batch became ready (%d); the kernel reports %d", readyTick, se.Since)
+	}
+}

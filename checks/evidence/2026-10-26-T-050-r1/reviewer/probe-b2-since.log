@@ -1,0 +1,10 @@
+# 2026-10-26T09:26:02Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: go test -count=1 -run ^TestProbeB2SinceOfABatchRequest$ -v ./internal/simulation/engine/
+=== RUN   TestProbeB2SinceOfABatchRequest
+    zz_review_probe_test.go:69: ErrStalled: entity r0/srcw/1 node work since 6000000 (= 100 min) deadline 57600000 (= 960 min) tick 57600000; the batch became ready at 1200000 (20 min)
+    zz_review_probe_test.go:72: D-096 (g) / SIMULATION_SPEC §3: since should be the tick the batch became ready (1200000); the kernel reports 6000000
+--- FAIL: TestProbeB2SinceOfABatchRequest (0.02s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.030s
+FAIL
+# exit=1 elapsed=6s

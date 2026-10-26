@@ -1,0 +1,10 @@
+# 2026-10-26T09:28:13Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: python3 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/review-mutants.py /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m r-oldest-by-entry-tick r-b1-ignores-timeouts-after-horizon r-b1-since-oldest-entry r-batch-end-dispatch-without-resources r-members-ignore-taken-places r-timeout-never-uncounted
+r-oldest-by-entry-tick	KILLED --- FAIL: TestBatchGoldens (0.12s)
+r-b1-ignores-timeouts-after-horizon	SURVIVED 
+r-b1-since-oldest-entry	SURVIVED 
+r-batch-end-dispatch-without-resources	SURVIVED 
+r-members-ignore-taken-places	KILLED --- FAIL: TestBatchGoldens (0.11s)
+r-timeout-never-uncounted	KILLED --- FAIL: TestRandomBatchFailuresAreReal (0.08s)
+3/6 killed
+# exit=0 elapsed=1284s

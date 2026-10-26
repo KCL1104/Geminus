@@ -1,0 +1,10 @@
+# 2026-10-26T09:45:54Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: go test -count=1 -overlay /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/probes/overlay-p4-mutant.json -run ^TestProbeResourceFreeBatchEnd$ -v ./internal/simulation/engine/
+=== RUN   TestProbeResourceFreeBatchEnd
+    zz_review_probe4_test.go:42: events 10; 22 observations; last {Kind:10 Tick:2700000 Seq:9 Entity:4 Node:0 Resource:0 Value:1 At:0 Batch:0}
+    zz_review_probe4_test.go:44: events 10, hand count 8: 4 arrivals, 2 DISPATCHes (at 20 and 40, when a batch becomes ready), 2 SERVICE_COMPLETEs (25, 45), no DISPATCH after a resource-free end
+--- FAIL: TestProbeResourceFreeBatchEnd (0.17s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.179s
+FAIL
+# exit=1 elapsed=7s

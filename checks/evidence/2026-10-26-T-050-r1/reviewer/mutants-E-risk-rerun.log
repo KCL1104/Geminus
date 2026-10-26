@@ -1,0 +1,5 @@
+# 2026-10-26T09:51:50Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: python3 /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/review-mutants.py /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m r-risk-ignores-max-wait
+r-risk-ignores-max-wait	KILLED --- FAIL: TestBatchRisk (0.10s)
+1/1 killed
+# exit=0 elapsed=6s

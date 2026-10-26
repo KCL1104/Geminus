@@ -1,0 +1,46 @@
+package engine
+
+// T-050 review (H-003) probe 4. Not part of the repository; saved as
+// checks/evidence/2026-10-26-T-050-r1/reviewer/probe_resource_free_batch_test.go.txt.
+
+import (
+	"context"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/model"
+)
+
+// P4. A batch process with no resource (valid: TestBatchRules "a batch
+// process without resources"): its batch's end releases no bundle, so, like
+// serviceComplete, it should ask for no dispatch. The probe prints the
+// replication's event count and the sequence of the last observation;
+// the reviewer's mutant r-batch-end-dispatch-without-resources (always ask)
+// changes both, and no test of the repository has a resource-free batch.
+func TestProbeResourceFreeBatchEnd(t *testing.T) {
+	var ir model.ModelIR
+	js := `{"schema_version": "0.1", "model_id": "mdl_01M4YDQK00R942EDGA45T538HS", "domain": "synthetic_line", "name": "free-batch", "time_unit": "minute",
+ "entity_types": [{"id": "board", "name": "b"}],
+ "resources": [{"id": "m", "type": "machine", "name": "m", "capacity": 1, "queue_discipline": "fifo"}],
+ "nodes": [{"id": "src", "type": "source", "entity_type": "board", "arrival": {"distribution": {"type": "constant", "value": 10}, "max_entities": 4}},
+  {"id": "oven", "type": "process", "service_time": {"distribution": {"type": "constant", "value": 5}}, "requires": [], "batch": {"min_size": 2, "max_size": 2}},
+  {"id": "done", "type": "sink", "outcome": "completed"}],
+ "flows": [{"id": "f1", "from": "src", "to": "oven", "routing": {"type": "probability", "probability": 1}},
+  {"id": "f2", "from": "oven", "to": "done", "routing": {"type": "probability", "probability": 1}}],
+ "constraints": [], "metrics": [], "views": {"2d": {}, "3d": {}}, "metadata": {"synthetic": true}}`
+	if err := model.Decode([]byte(js), &ir); err != nil {
+		t.Fatal(err)
+	}
+	in := input(ir)
+	in.Config = config(100, model.Minute)
+	p := compile(t, in) // through the validator
+	col := &collect{}
+	out, err := RunReplication(context.Background(), p, 0, NewBudget(1_000_000), col)
+	if err != nil {
+		t.Fatal(err)
+	}
+	last := col.all[len(col.all)-1]
+	t.Logf("events %d; %d observations; last %+v", out.Events, len(col.all), last)
+	if out.Events != 8 {
+		t.Errorf("events %d, hand count 8: 4 arrivals, 2 DISPATCHes (at 20 and 40, when a batch becomes ready), 2 SERVICE_COMPLETEs (25, 45), no DISPATCH after a resource-free end", out.Events)
+	}
+}

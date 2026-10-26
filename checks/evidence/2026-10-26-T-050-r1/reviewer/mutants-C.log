@@ -1,0 +1,11 @@
+# 2026-10-26T09:38:54Z cwd=scratch copy of a0fb365 (git archive HEAD) plus the reviewer's probe file
+# cmd: bash /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/batchC.sh
+== with the regression locks ==
+r-setup-purpose-renamed	KILLED --- FAIL: TestBatchSetupObservationDigests (0.06s)
+1/1 killed
+== WITHOUT_LOCKS=1 (go test -skip Digests) ==
+r-setup-purpose-renamed	SURVIVED 
+r-setup-stream-by-process	KILLED --- FAIL: TestSetupStreamsPerUnit (0.00s)
+r-setup-from-service-stream	KILLED --- FAIL: TestSetupStreamsPerUnit (0.00s)
+2/3 killed
+# exit=0 elapsed=1151s
