@@ -75,3 +75,8 @@
   ADR-016 其餘部分不變。
 - Go API 不變：仍只接受 Bearer，也不新增 cookie 寫入路徑。SECURITY §3 要求的 cookie 防護（CSRF、SameSite、Secure、HttpOnly）由 BFF 執行，並由 TEST-032 驗證。
 - 2026-10-26 補記（T-043 後續：登入後的 UI bootstrap）：root layout 在伺服器端讀 session cookie，只為了知道它是否打得開且未到期（BFF 的 `hasSession`：解封、檢查期限，不 refresh、不呼叫 provider 或 API）；交給頁面的只有這個布林值與之前選過的 organization ID，cookie 的值、token 或封裝的內容都不進 HTML。`/me` 與其後的 API 呼叫都經同源 proxy，refresh 仍只在 proxy 中進行（輪替後的 token 只能放在回應的 Set-Cookie）。登入連結為 `/auth/login?return_to=<目前的頁面>`，return path 以與 BFF 相同的規則（`lib/return-to.ts`）檢查；登出按鈕以 `X-Geminus-Request` 呼叫既有的 `POST /auth/logout`。CSRF 規則不變。
+- 2026-10-26 補記（T-057：公開 demo 前的 security header；細節與理由在 SECURITY §3）：BFF 所在的 Next.js 伺服器對每個回應（頁面、`/auth/*`、`/api/v1/*`、靜態檔）由 `apps/web/proxy.ts` 加上 CSP（每個 request 一個 nonce，script 只靠 nonce 與 `'strict-dynamic'`，沒有 `'unsafe-inline'`／`'unsafe-eval'`；唯一放寬的是 style attribute）、`X-Content-Type-Options`、`Referrer-Policy: no-referrer`、`Permissions-Policy`、`X-Frame-Options`，以及 app origin 為 https 時的 HSTS。對本 ADR 的影響：
+  - 登入流程不需要 CSP 的例外：`/auth/login` 是連結與 303，provider 以 GET 302 回 callback，`form-action 'self'` 足夠；`connect-src 'self'` 也足夠，因為 token、revocation、JWKS 都是伺服器端的呼叫，瀏覽器只碰同源的 BFF。換 provider 不需要改 CSP。
+  - CSRF 規則不變：`Referrer-Policy: no-referrer` 不影響 `fetch` 送出的 `Origin`（e2e 的登出與寫入通過，跨站寫入仍是 403）。
+  - HSTS 與 `upgrade-insecure-requests` 由 `BFF_APP_ORIGIN` 的 scheme 決定（部署設定，不是 request），所以本機與 e2e 的 http（loopback）不受影響。
+  - Proxy 不讀、不改 session cookie，也不擋任何 request；它只加 header 與 nonce。

@@ -170,7 +170,7 @@ BFF 的 URL 必須全部是 https（只有全部在 loopback 時才可 http）�
 
 - **TLS**：平台的 edge 終結 TLS（Railway 自動簽發與更新憑證），container 內是 plain HTTP。瀏覽器只連 web 的 https 網址；BFF 以 https 連 API 與 Auth0；API 以 https 抓 Auth0 的 JWKS；API 與 worker 以 https 連 bucket。Database 連線在平台的 private network（WireGuard），Railway 的 PostgreSQL image 有 SSL；從 operator 的機器經 TCP proxy 連線時用 `sslmode=require`（加密，不驗證 server 憑證）。
 - **Cookie**：`__Host-geminus_session`、`__Host-geminus_login` 永遠是 `HttpOnly; Secure; SameSite=Lax; Path=/`、無 Domain（與 `APP_ENV` 無關，`apps/web/lib/session/session.ts`），所以只在 https 下可用；瀏覽器 JS 拿不到 token（ADR-018）。
-- **CSP**：**尚未設定**（app 沒有 Content-Security-Policy、HSTS 或其他 security header；SECURITY §3 的 CSP 仍是後續工作，Next 的 inline script 需要 nonce 設計）。Railway edge 是否加 HSTS 未查證。
+- **CSP 與 security header**（T-057，SECURITY §3）：web 的每個回應都有 Content-Security-Policy（每個 request 一個 nonce）、`X-Content-Type-Options`、`Referrer-Policy: no-referrer`、`Permissions-Policy`、`X-Frame-Options: DENY`，沒有 `X-Powered-By`；`Strict-Transport-Security: max-age=31536000` 只在 `BFF_APP_ORIGIN` 是 https 時送（Railway 上是 `https://${{RAILWAY_PUBLIC_DOMAIN}}`，所以會送；在 runtime 讀，不需要 rebuild）。部署後可用 `curl -sI https://<web 網域>/` 確認。Railway edge 是否另加 header 未查證。
 - **資料**：只放 synthetic 資料與 demo 圖片；bucket 的加密、保存期限與 region 是供應者的預設，未經 owner 決定（ADR-029）。不放客戶資料、不放真實使用者以外的個資。
 
 ## 6. Auth0（owner 的 tenant，最終網域）
@@ -327,5 +327,5 @@ deploy/railway/deploy.sh --apply
 
 ## 10. 未涵蓋與待 owner 回答
 
-- 未涵蓋：container scan、SBOM、image 簽章；CSP 與 security header；備份與還原演練（`make db-restore-test` 仍為 NOT IMPLEMENTED）；log／telemetry 的保存與存取；告警（T-036）；孤兒 object 的清理（D-044）；花費預留的 operator 介面（T-053 I4 (2)）；live eval 的花費紀錄要不要改經 DB ledger（T-053 I4 (4)，owner 選擇）；T-054 I1 的一般做法與 I2（S3 adapter 已不把自己的逾時包成 context 的錯誤，`TestS3OwnTimeoutIsNoContextError`；object storage 逾時時的 503 標記仍未區分）。
+- 未涵蓋：container scan、SBOM、image 簽章；部署後的 security header 實測（T-057 的 header 只在本機 `next start` 與 e2e 驗證過）；備份與還原演練（`make db-restore-test` 仍為 NOT IMPLEMENTED）；log／telemetry 的保存與存取；告警（T-036）；孤兒 object 的清理（D-044）；花費預留的 operator 介面（T-053 I4 (2)）；live eval 的花費紀錄要不要改經 DB ledger（T-053 I4 (4)，owner 選擇）；T-054 I1 的一般做法與 I2（S3 adapter 已不把自己的逾時包成 context 的錯誤，`TestS3OwnTimeoutIsNoContextError`；object storage 逾時時的 503 標記仍未區分）。
 - 問題：(1) 是否接受 ADR-029；(2) web → api 用公開網域還是 private network（需要放寬 BFF 的 http 規則）；(3) bucket 的 region 與資料保存期限；(4) API 的 key-free AI 可用性由 T-055 一併做，或另開任務；(5) Railway 是否展開 reference 到 sealed variable 的值（§7.7；第一次 `--apply` 會知道）；(6) `${{secret()}}` 不用於 service variable、改由腳本產生，是否接受（H-032 的偏好）；(7) PostgreSQL 的 major 版本（Railway 文件沒寫；migration 只在 16 上測過）；(8) owner 的變數沒有 sealed 時，CLI 的變數清單會把值交給腳本（收到即丟棄，§7.3），是否接受，或 owner 一律以 sealed 新增（H-033 的「只看變數名稱、不讀值」）。
