@@ -162,10 +162,13 @@ const words = states.flatMap((s) => {
   const p = sampleFor(s).proposal;
   return [p.summary, ...(p.assumptions ?? []), ...(p.expected_effects ?? []), ...(p.questions ?? []), p.decision_comment];
 });
-// The names the samples' patches write, as shown (shown.ts), and the IDs of what they add (shown beside a new entity's name).
+// The names the samples' patches write, as shown (shown.ts), and the IDs
+// shown beside a name: of what a patch adds, and of the sample line's own
+// entities (an existing one whose name a new one shares).
 const patchNames = Object.values(hostileNames).map((n) => visible(n));
 const addedIds = states.flatMap((s) => (sampleFor(s).proposal.changes ?? []).flatMap((op) => (op.op === "add" && typeof (op.value as { id?: unknown })?.id === "string" ? [(op.value as { id: string }).id] : [])));
-const data = [sampleLine.name, ...sampleLine.nodes.map((n) => n.name ?? n.id), ...sampleLine.resources.map((r) => r.name), "X-ray inspection", "Before X-ray", "X-ray machine", "Raised the AOI buffer to 30 boards.", ...words, ...patchNames, ...addedIds].filter((x): x is string => typeof x === "string");
+const lineIds = [...sampleLine.nodes, ...sampleLine.resources, ...sampleLine.entity_types, ...(sampleLine.calendars ?? []), ...sampleLine.flows].map((e) => e.id);
+const data = [sampleLine.name, ...sampleLine.nodes.map((n) => n.name ?? n.id), ...sampleLine.resources.map((r) => r.name), "X-ray inspection", "Before X-ray", "X-ray machine", "Raised the AOI buffer to 30 boards.", ...words, ...patchNames, ...addedIds, ...lineIds].filter((x): x is string => typeof x === "string");
 
 for (const locale of locales) {
   test(`${locale}: every string on the proposal pages is the catalog's or data`, async ({ page }) => {
