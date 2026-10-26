@@ -105,6 +105,26 @@ func TestTheSpendLines(t *testing.T) {
 	if l := lines(); len(l) != 2 || l[1]["level"] != "WARN" || l[1]["spend_reservation_id"] != meta.SpendReservation || l[1]["spend_unsettled"] != true {
 		t.Errorf("unsettled: %v", l)
 	}
+	// T-053 review round 1: a call above its reservation and an answer
+	// priced at the dearest geo are warned of; a plain call is not.
+	over := meta
+	over.SpendOverReservation = true
+	h.logCall(context.Background(), over, nil)
+	if l := lines(); len(l) != 2 || l[1]["level"] != "WARN" || l[1]["spend_over_reservation"] != true || l[1]["cost_nano_usd"] != float64(84_000_000) {
+		t.Errorf("over the reservation: %v", l)
+	}
+	unknown := meta
+	unknown.InferenceGeo = "unknown"
+	h.logCall(context.Background(), unknown, nil)
+	if l := lines(); len(l) != 2 || l[1]["level"] != "WARN" || l[1]["inference_geo"] != "unknown" || l[1]["spend_reservation_id"] != meta.SpendReservation {
+		t.Errorf("an unknown geo: %v", l)
+	}
+	global := meta
+	global.InferenceGeo = "global"
+	h.logCall(context.Background(), global, nil)
+	if l := lines(); len(l) != 1 {
+		t.Errorf("a priced geo is not a warning: %v", l)
+	}
 	// The audit metadata of a metered call.
 	am := auditMeta(meta)
 	if am["cost_nano_usd"] != int64(84_000_000) || am["spend_reservation_id"] != meta.SpendReservation || am["spend_unsettled"] != false {

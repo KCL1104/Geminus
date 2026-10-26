@@ -21,6 +21,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -100,6 +101,8 @@ type Config struct {
 	Kind       string
 	CapNanoUSD int64
 	Spent      func() int64
+	// RunID is the run's ID in the spend record (review round 1, H1).
+	RunID string
 	// Now dates the report; time.Now when nil.
 	Now func() time.Time
 }
@@ -142,8 +145,10 @@ type Report struct {
 	Served   []string `json:"served_models"`
 	Approval string   `json:"approval"`
 	Date     string   `json:"date"`
-	Locale   string   `json:"output_locale"`
-	Schema   string   `json:"schema"`
+	// RunID is the run's ID in the spend record (live-spend.jsonl).
+	RunID  string `json:"run_id,omitzero"`
+	Locale string `json:"output_locale"`
+	Schema string `json:"schema"`
 	// Templates are the prompt template versions used, sorted.
 	Templates []string `json:"prompt_template_versions"`
 	Price     struct {
@@ -173,10 +178,17 @@ type Report struct {
 		Rate   float64 `json:"rate"`
 	} `json:"golden_edit"`
 	// Gates are zero-tolerance counts a live answer can break.
-	Gates    map[string]int `json:"zero_tolerance_gates"`
-	Complete bool           `json:"complete"`
-	Outcomes []Outcome      `json:"outcomes"`
-	NotRun   []string       `json:"not_run"`
+	Gates map[string]int `json:"zero_tolerance_gates"`
+	// InferenceGeos counts the answers by the geo they were priced at
+	// (global, us, unknown: review round 1, M2); SpendWarnings the calls
+	// whose reservation's bound broke (over_reservation) and the answers
+	// priced at the dearest geo because they named none this build knows
+	// (inference_geo_unknown).
+	InferenceGeos map[string]int `json:"inference_geos"`
+	SpendWarnings map[string]int `json:"spend_warnings"`
+	Complete      bool           `json:"complete"`
+	Outcomes      []Outcome      `json:"outcomes"`
+	NotRun        []string       `json:"not_run"`
 }
 
 // The zero-tolerance gates of a live run.
@@ -207,10 +219,17 @@ func (r *Report) Ok() bool {
 	return true
 }
 
+// The spend warnings of a run (Report.SpendWarnings).
+const (
+	WarningOverReservation = "over_reservation"
+	WarningGeoUnknown      = "inference_geo_unknown"
+)
+
 // Run runs the corpus. A provider failure is the case's outcome (failed,
 // with its code); the run's spend cap stops the run (the rest not_run,
 // the report incomplete). It returns an error only when the corpus or a
-// fixture cannot be read.
+// fixture cannot be read; then the report so far comes with it
+// (incomplete, with the cost of the calls made: review round 1, L6).
 func Run(ctx context.Context, cfg Config) (*Report, error) {
 	if cfg.Client == nil || cfg.Packs == nil {
 		return nil, errors.New("aievals: a client and packs are required")
@@ -220,9 +239,10 @@ func Run(ctx context.Context, cfg Config) (*Report, error) {
 		now = cfg.Now
 	}
 	r := &Report{Suite: "T-053 live provider eval (modeler corpus, server review; T-038 owns the baseline)", Kind: cfg.Kind,
-		Provider: "anthropic", Model: cfg.Model, Approval: cfg.Approval, Date: now().UTC().Format(time.DateOnly), Locale: cfg.Locale,
+		Provider: "anthropic", Model: cfg.Model, Approval: cfg.Approval, Date: now().UTC().Format(time.DateOnly), RunID: cfg.RunID, Locale: cfg.Locale,
 		Schema: "proposal-output.schema.json", Cases: map[string]int{}, Statuses: map[string]int{}, Complete: true,
-		Gates: map[string]int{GateSafeFailureReady: 0, GateRiskBelowFloor: 0, GateReadyInvalid: 0, GateNeedsInputChanges: 0},
+		Gates:         map[string]int{GateSafeFailureReady: 0, GateRiskBelowFloor: 0, GateReadyInvalid: 0, GateNeedsInputChanges: 0},
+		InferenceGeos: map[string]int{}, SpendWarnings: map[string]int{WarningOverReservation: 0, WarningGeoUnknown: 0},
 		NotRun: []string{
 			"the mapper and analyst corpora: their server review is T-027 and T-030, and the approval's data policy covers the proposal roles only (PROPOSED D-112)",
 			"database effects and the dataset binding stage (make integration-test)",
@@ -247,13 +267,24 @@ func Run(ctx context.Context, cfg Config) (*Report, error) {
 		}
 		meta, err := runCase(ctx, cfg, c, &o, r)
 		if err != nil {
-			return nil, err
+			r.Complete = false
+			r.finish(cfg, templates, served)
+			return r, err
 		}
 		if meta.TemplateVersion != "" {
 			templates[meta.TemplateVersion] = true
 		}
 		if meta.Model != "" {
 			served[meta.Model] = true
+		}
+		if meta.InferenceGeo != "" {
+			r.InferenceGeos[meta.InferenceGeo]++
+		}
+		if meta.InferenceGeo == spend.GeoUnknown {
+			r.SpendWarnings[WarningGeoUnknown]++
+		}
+		if meta.SpendOverReservation {
+			r.SpendWarnings[WarningOverReservation]++
 		}
 		o.InputTokens, o.OutputTokens, o.CostNanoUSD, o.LatencyMillis, o.TemplateVersion =
 			meta.Usage.InputTokens, meta.Usage.OutputTokens, meta.CostNanoUSD, meta.LatencyMillis, meta.TemplateVersion
@@ -278,6 +309,13 @@ func Run(ctx context.Context, cfg Config) (*Report, error) {
 		}
 		r.Outcomes = append(r.Outcomes, o)
 	}
+	r.finish(cfg, templates, served)
+	return r, nil
+}
+
+// finish fills what the report sums: the golden rate, the templates and
+// models seen, and what the run cost.
+func (r *Report) finish(cfg Config, templates, served map[string]bool) {
 	if r.Golden.Total > 0 {
 		r.Golden.Rate = float64(r.Golden.Passed) / float64(r.Golden.Total)
 	}
@@ -297,7 +335,6 @@ func Run(ctx context.Context, cfg Config) (*Report, error) {
 		}
 	}
 	r.Cost.USD = spend.FormatUSD(r.Cost.NanoUSD)
-	return r, nil
 }
 
 // The synthetic organization, model and version of the eval's contexts:
@@ -507,24 +544,34 @@ func (r *Report) Marshal() ([]byte, error) {
 	return append(data, '\n'), nil
 }
 
-// ErrNotALiveReport: a live report is a live-[smoke-]<date>-<model>.json
-// file, never a fake result's name (checks/ai-evals/fake-*.json).
-var ErrNotALiveReport = errors.New("aievals: a live report is written to a live-[smoke-]<date>-<model>.json file only, apart from the fake results")
+// ErrNotALiveReport: a live report is a
+// live-[smoke-]<UTC start>-<run ID>-<model>.json file, never a fake
+// result's name (checks/ai-evals/fake-*.json).
+var ErrNotALiveReport = errors.New("aievals: a live report is written to a live-[smoke-]<UTC start>-<run ID>-<model>.json file only, apart from the fake results")
 
-var liveName = regexp.MustCompile(`^live-(smoke-)?[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9][a-z0-9.-]{0,127}\.json$`)
+// ErrReportExists: a report never replaces another (review round 1, H1).
+var ErrReportExists = errors.New("aievals: the report exists; a live report never replaces an earlier one")
 
-// ReportPath is where a run's report goes in dir (checks/ai-evals):
-// live-[smoke-]<date>-<model>.json.
-func ReportPath(dir, kind, date, model string) string {
-	name := "live-" + date + "-" + model + ".json"
+var liveName = regexp.MustCompile(`^live-(smoke-)?[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z-[0-7][0-9A-HJKMNP-TV-Z]{25}-[a-z0-9][a-z0-9.-]{0,127}\.json$`)
+
+// ReportName is a run's report's file name:
+// live-[smoke-]<YYYY-MM-DD>T<hhmmss>Z-<run ID>-<model>.json, the run's UTC
+// start and ID, so that no two runs share one (review round 1, H1).
+func ReportName(kind string, start time.Time, runID, model string) string {
+	prefix := "live-"
 	if kind == "smoke" {
-		name = "live-smoke-" + date + "-" + model + ".json"
+		prefix = "live-smoke-"
 	}
-	return filepath.Join(dir, name)
+	return prefix + start.UTC().Format("2006-01-02T150405Z") + "-" + runID + "-" + model + ".json"
 }
 
-// WriteReport writes r to path, a live-[smoke-]<date>-<model>.json file;
-// it never writes a fake result's file.
+// ReportPath is where a run's report goes in dir (checks/ai-evals).
+func ReportPath(dir, kind string, start time.Time, runID, model string) string {
+	return filepath.Join(dir, ReportName(kind, start, runID, model))
+}
+
+// WriteReport writes r to path, a live report's file that does not exist
+// yet; it never writes a fake result's file, and never replaces a file.
 func WriteReport(path string, r *Report) error {
 	if !liveName.MatchString(filepath.Base(path)) {
 		return ErrNotALiveReport
@@ -536,5 +583,14 @@ func WriteReport(path string, r *Report) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if errors.Is(err, fs.ErrExist) {
+		return ErrReportExists
+	}
+	if err != nil {
+		return err
+	}
+	_, werr := f.Write(data)
+	serr := f.Sync()
+	return errors.Join(werr, serr, f.Close())
 }

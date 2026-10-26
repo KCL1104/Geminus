@@ -138,3 +138,36 @@ func TestPeriods(t *testing.T) {
 		t.Errorf("month %v", got)
 	}
 }
+
+// T-053 review round 1, M2: the data residency page (retrieved 2026-10-26)
+// prices US-only inference at 1.1x every token category on Claude 4.6 and
+// later, global at the list price; those are the only two geos. An answer
+// that names another, or none, is priced at the dearest; amounts round up
+// to the next nano-USD, so a geo's price is never under-counted.
+func TestInferenceGeos(t *testing.T) {
+	for reported, want := range map[string]string{"global": spend.GeoGlobal, "us": spend.GeoUS, "": spend.GeoUnknown, "eu": spend.GeoUnknown,
+		"GLOBAL": spend.GeoUnknown, " us": spend.GeoUnknown, "unknown": spend.GeoUnknown} {
+		if got := spend.Geo(reported); got != want {
+			t.Errorf("Geo(%q) = %q, want %q", reported, got, want)
+		}
+	}
+	for _, c := range []struct {
+		n                        spend.NanoUSD
+		global, us, unknown, any spend.NanoUSD
+	}{
+		{0, 0, 0, 0, 0},
+		{-5, 0, 0, 0, 0},
+		{1, 1, 2, 2, 2}, // 1.1 rounds up
+		{10, 10, 11, 11, 11},
+		{1_080_000, 1_080_000, 1_188_000, 1_188_000, 1_188_000},
+		{187_720_001, 187_720_001, 206_492_002, 206_492_002, 206_492_002},
+		{math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64, math.MaxInt64},
+	} {
+		if g, u, k, a := spend.AtGeo(c.n, spend.GeoGlobal), spend.AtGeo(c.n, spend.GeoUS), spend.AtGeo(c.n, spend.GeoUnknown), spend.AtDearestGeo(c.n); g != c.global || u != c.us || k != c.unknown || a != c.any {
+			t.Errorf("%d: global %d us %d unknown %d dearest %d, want %d %d %d %d", c.n, g, u, k, a, c.global, c.us, c.unknown, c.any)
+		}
+	}
+	if got := spend.AtGeo(1000, "mars"); got != 1100 {
+		t.Errorf("a geo this build does not know: %d", got)
+	}
+}

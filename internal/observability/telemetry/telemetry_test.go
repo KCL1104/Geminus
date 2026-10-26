@@ -103,7 +103,8 @@ func (r recorded) dump(t *testing.T) string {
 var metricKeys = map[string]bool{"http.request.method": true, "http.route": true, "http.response.status_code": true,
 	"geminus.job.type": true, "geminus.outcome": true, "geminus.code": true, "gen_ai.system": true, "gen_ai.request.model": true,
 	"geminus.ai.role": true, "gen_ai.token.type": true, "geminus.import.stage": true,
-	"geminus.ai.limit": true} // T-053: which spend limit refused a call
+	"geminus.ai.limit":   true, // T-053: which spend limit refused a call
+	"geminus.ai.warning": true} // T-053 review round 1: which bound of a settled call broke
 
 func checkMetrics(t *testing.T, ps []point) {
 	t.Helper()
@@ -338,6 +339,30 @@ func TestSpend(t *testing.T) {
 	}
 	if out := r.dump(t); strings.Contains(out, "org_01M4") || strings.Contains(out, "aip_01M4") {
 		t.Errorf("an ID is recorded:\n%s", out)
+	}
+}
+
+// T-053 review round 1 (M2, M3, L1): a settled call whose reservation's
+// bound broke is counted by which bound, model and role; never an ID or
+// free text.
+func TestSpendWarnings(t *testing.T) {
+	r := install(t)
+	tel := telemetry.Current()
+	tel.SpendWarning(context.Background(), "claude-opus-5-5", "modeler", telemetry.SpendOverReservation)
+	tel.SpendWarning(context.Background(), "claude-opus-5-5", "modeler", telemetry.SpendOverReservation)
+	tel.SpendWarning(context.Background(), "claude-opus-5-5", "scenario", telemetry.SpendGeoUnknown)
+	tel.SpendWarning(context.Background(), "claude-opus-5-5", "scenario", "Mars, per the PROMPT")
+	ps := r.points(t)
+	checkMetrics(t, ps)
+	got := map[string]float64{}
+	for _, p := range find(ps, "geminus.ai.spend.warnings") {
+		got[p.attrs["geminus.ai.role"]+"/"+p.attrs["geminus.ai.warning"]] = p.value
+	}
+	if want := map[string]float64{"modeler/over_reservation": 2, "scenario/inference_geo_unknown": 1, "scenario/[redacted]": 1}; !maps.Equal(got, want) {
+		t.Errorf("warnings %v, want %v", got, want)
+	}
+	if out := r.dump(t); strings.Contains(out, "PROMPT") {
+		t.Errorf("free text is recorded:\n%s", out)
 	}
 }
 

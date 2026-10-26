@@ -19,23 +19,33 @@ import (
 //     free slot for the organization) and that it is attributed;
 //  2. prices the most the call can cost, from the backend's Quote and the
 //     model's list price (internal/ai/spend): every attempt (1 + the
-//     budget's retries) at its input bound and max_tokens. A model this
-//     build cannot price is refused;
+//     budget's retries) at its input bound and max_tokens, at the dearest
+//     inference geo (the request names none, so the workspace's default
+//     decides: 1.1x, review round 1 M2). A model this build cannot price is
+//     refused;
 //  3. reserves that amount; a refused reservation is a refused call
 //     (quota_exceeded, or spend_unavailable when the meter cannot answer),
 //     and the backend is never asked;
 //  4. calls the backend with the reservation;
 //  5. settles the reservation with what the call cost, even when the
 //     caller's context has ended: the usage of the answer that came back
-//     (a refused, truncated or invalid answer was billed too), plus every
-//     attempt that ended without an answer after it may have reached the
-//     provider, at its bound (the provider may have billed it), at most the
-//     reservation; nothing when no attempt can have been billed. A
-//     settlement that fails leaves the reservation counted at its bound.
+//     (a refused, truncated or invalid answer was billed too) at the geo it
+//     says it ran in (the dearest when it names none this build knows),
+//     plus every attempt that ended without an answer after it may have
+//     reached the provider, at its bound (the provider may have billed it);
+//     an answer that came back but cannot be read, at the whole
+//     reservation at least; nothing when no attempt can have been billed.
+//     The settlement is what was billed even when it is more than the
+//     reservation (the bound's assumptions broke): it is never clamped,
+//     and Metadata.SpendOverReservation says so (review round 1, M3, L1).
+//     A settlement that fails leaves the reservation counted at its bound.
 //
-// Only 401, 402 and 403 make the adapter fail over (D-018); an attempt
-// answered with an error status is not billed, so a call is billed for at
-// most 1 + MaxRetries attempts.
+// Only 401, 402 and 403 make the adapter fail over (D-018), and only while
+// every attempt on the credential was answered with an error status, which
+// is not billed: after an attempt that may have been billed it fails the
+// call instead (review round 1, M3). So the attempts that may have been
+// billed are all on one credential, at most 1 + MaxRetries of them, which
+// is what the reservation holds.
 
 // Spend codes (T-053).
 const (
@@ -120,6 +130,10 @@ type Settlement struct {
 	Outcome         SpendOutcome
 	Credential      string // label of the credential that answered, if any
 	UnknownAttempts int
+	// InferenceGeo is the geo the answer's usage was priced at
+	// (spend.GeoGlobal, spend.GeoUS, or spend.GeoUnknown when the answer
+	// named none this build knows); empty when no usage was priced.
+	InferenceGeo string
 }
 
 // Meter is the spend ledger (internal/storage/aispend; MemoryMeter for a
@@ -181,7 +195,7 @@ func (c *Client) reserve(ctx context.Context, org string, role Role, attr Attrib
 	if !ok {
 		return nil, invalidRequest()
 	}
-	per := price.AttemptBound(q.MaxInputTokens, req.MaxOutputTokens)
+	per := spend.AtDearestGeo(price.AttemptBound(q.MaxInputTokens, req.MaxOutputTokens))
 	most := mulSat(per, int64(1+max(0, req.MaxRetries)))
 	res, err := c.meter.Reserve(ctx, Charge{OrganizationID: org, Role: role, Model: q.Model, Attribution: attr, NanoUSD: most})
 	if err != nil {
@@ -200,14 +214,21 @@ func (c *Client) reserve(ctx context.Context, org string, role Role, attr Attrib
 // settlement is what the call that answered resp cost (step 5).
 func (m *metering) settlement(resp Response) Settlement {
 	u := resp.Usage
-	cost := m.price.Cost(spend.Tokens{Input: u.InputTokens, Output: u.OutputTokens, CacheWrite: u.CacheCreationInputTokens, CacheRead: u.CacheReadInputTokens})
 	s := Settlement{Usage: u, Credential: resp.Credential, UnknownAttempts: resp.UnknownAttempts}
+	var cost int64
+	if u != (Usage{}) {
+		s.InferenceGeo = spend.Geo(resp.InferenceGeo)
+		cost = spend.AtGeo(m.price.Cost(spend.Tokens{Input: u.InputTokens, Output: u.OutputTokens, CacheWrite: u.CacheCreationInputTokens,
+			CacheRead: u.CacheReadInputTokens}), s.InferenceGeo)
+	}
 	switch {
 	case resp.UnknownAttempts > 0:
 		s.Outcome = SpendUnknown
 		s.NanoUSD = addSat(cost, mulSat(int64(resp.UnknownAttempts), m.perAttempt))
-		if s.NanoUSD > m.res.Charge.NanoUSD {
-			s.NanoUSD = max(m.res.Charge.NanoUSD, cost)
+		if resp.Undecoded {
+			// An answer came back that cannot be read: its usage is unknown,
+			// up to what the whole call was reserved for (review round 1, I1).
+			s.NanoUSD = max(s.NanoUSD, m.res.Charge.NanoUSD)
 		}
 	case u != (Usage{}):
 		s.Outcome, s.NanoUSD = SpendUsage, cost
@@ -218,12 +239,14 @@ func (m *metering) settlement(resp Response) Settlement {
 }
 
 // settle records s for the reservation, whether or not ctx has ended, and
-// notes it in meta.
+// notes it in meta: what it cost, at which geo, and whether that is more
+// than the reservation held.
 func (c *Client) settle(ctx context.Context, m *metering, s Settlement, meta *Metadata) {
 	sctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settleTimeout)
 	defer cancel()
 	err := c.meter.Settle(sctx, m.res, s)
 	meta.CostNanoUSD, meta.SpendReservation, meta.SpendUnsettled = s.NanoUSD, m.res.ID, err != nil
+	meta.InferenceGeo, meta.SpendOverReservation = s.InferenceGeo, s.NanoUSD > m.res.Charge.NanoUSD
 }
 
 // MemoryMeter is an in-process meter with one limit: a live eval or smoke

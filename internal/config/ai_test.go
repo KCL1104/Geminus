@@ -107,6 +107,46 @@ func TestThisBuildsRecord(t *testing.T) {
 	}
 }
 
+// T-053 review round 1, L2: a key with white space around it, or with a
+// control character anywhere, is refused (fail closed) before the two keys
+// are compared: the same key with a trailing newline from a secret file, or
+// a pasted space, is one organization, not two (the reviewer's probe P6).
+// The error names the variable, never the value.
+func TestAKeyWithWhiteSpaceOrControlCharactersIsRefused(t *testing.T) {
+	const k = "sk-ant-test-same-0000000000"
+	for name, c := range map[string]struct{ a, b, bad string }{
+		"B: trailing newline":       {k, k + "\n", "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"B: leading space":          {k, " " + k, "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"B: trailing space":         {k, k + " ", "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"B: carriage return":        {k, k + "\r\n", "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"B: tab":                    {k, "\t" + k, "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"B: no-break space":         {k, k + " ", "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"A: trailing newline":       {k + "\n", keyB, "GEMINUS_ANTHROPIC_API_KEY_A"},
+		"A: a control character":    {"sk-ant-test-\x00primary", keyB, "GEMINUS_ANTHROPIC_API_KEY_A"},
+		"B: an escape inside":       {keyA, "sk-ant-test-\x1bsecondary", "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"B: a DEL inside":           {keyA, "sk-ant-test-\x7fsecondary", "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"B: a C1 control inside":    {keyA, "sk-ant-test-\u0085secondary", "GEMINUS_ANTHROPIC_API_KEY_B"},
+		"different keys, one space": {keyA, keyB + " ", "GEMINUS_ANTHROPIC_API_KEY_B"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			env := map[string]string{"AI_PROVIDER": "anthropic", "AI_POLICY_APPROVAL": "H-018", "AI_MODEL": "claude-opus-5-5",
+				"GEMINUS_ANTHROPIC_API_KEY_A": c.a, "GEMINUS_ANTHROPIC_API_KEY_B": c.b, "GEMINUS_AI_LIVE": "on"}
+			ai, err := LoadAI(func(v string) string { return env[v] })
+			if err == nil || ai.LiveEnabled() {
+				t.Fatalf("accepted: live %v", ai.LiveEnabled())
+			}
+			if got := codes(t, err); !slices.Equal(got, []string{c.bad + ":invalid"}) {
+				t.Errorf("codes %v, want %s:invalid", got, c.bad)
+			}
+			for _, leak := range []string{k, keyA, keyB, "sk-ant"} {
+				if strings.Contains(err.Error(), leak) {
+					t.Errorf("the error leaks a key: %v", err)
+				}
+			}
+		})
+	}
+}
+
 func TestLoadAIRejects(t *testing.T) {
 	live := map[string]string{"AI_PROVIDER": "anthropic", "AI_MODEL": "m", "GEMINUS_ANTHROPIC_API_KEY_A": keyA}
 	with := func(kv map[string]string) map[string]string {

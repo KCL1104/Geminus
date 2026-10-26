@@ -40,15 +40,16 @@ func (b *billedFake) Quote(req provider.Request) (provider.Quote, error) {
 func (b *billedFake) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
 	b.calls.Add(1)
 	resp, err := b.Backend.Complete(ctx, req)
-	resp.Usage, resp.Model, resp.Credential = b.usage, "claude-opus-5-5", "org-a"
+	resp.Usage, resp.Model, resp.Credential, resp.InferenceGeo = b.usage, "claude-opus-5-5", "org-a", "global"
 	return resp, err
 }
 
 // meteredLoop is the job loop with the generator over b, metered by the
-// ledger under limits at the clock at.
-func (e *env) meteredLoop(t *testing.T, b provider.Billable, limits spend.Limits, at time.Time) *worker.Worker {
+// ledger under limits; the ledger books the database's UTC day (T-053
+// review round 1, L3: the meter has no clock of its own).
+func (e *env) meteredLoop(t *testing.T, b provider.Billable, limits spend.Limits) *worker.Worker {
 	t.Helper()
-	m, err := aispend.New(aispend.Config{Actor: "test-worker", Limits: limits, Now: func() time.Time { return at },
+	m, err := aispend.New(aispend.Config{Actor: "test-worker", Limits: limits,
 		Run: func(ctx context.Context, org string, fn func(ctx context.Context, tx tenant.Tx) error) error {
 			return e.scope.Run(ctx, org, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error { return fn(ctx, tx) })
 		}})
@@ -80,18 +81,23 @@ func TestAMeteredProposal(t *testing.T) {
 	f := &billedFake{Backend: fake.New(), usage: provider.Usage{InputTokens: 3000, OutputTokens: 400}}
 	f.Script(provider.RoleModeler, "Raise the CI runners to 6.", answer(t, proposedAnswer(raiseRunners)))
 	id := e.create(t, mdl, mv, "edit", "Raise the CI runners to 6.")
-	at := time.Date(2210, 2, 3, 4, 5, 6, 0, time.UTC)
-	p := e.until(t, e.meteredLoop(t, f, spend.Limits{Month: 1 << 50, Day: 1 << 49, OrganizationDay: 1 << 48}, at), id)
+	var before time.Time // the database's UTC day (review round 1, L3)
+	e.owner(t, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT (now() AT TIME ZONE 'UTC')::date`).Scan(&before)
+	})
+	p := e.until(t, e.meteredLoop(t, f, spend.Limits{Month: 1 << 50, Day: 1 << 49, OrganizationDay: 1 << 48}), id)
 	if p.Status != "ready" || f.calls.Load() != 1 {
 		t.Fatalf("%s after %d calls", p.Status, f.calls.Load())
 	}
 	price, _ := spend.PriceOf("claude-opus-5-5")
 	cost := price.Cost(spend.Tokens{Input: 3000, Output: 400})
 	if n := e.count(t, `SELECT count(*) FROM twin.ai_spend_reservations WHERE ai_proposal_id=$1 AND state='settled' AND outcome='usage'
-		AND settled_nano_usd=$2 AND input_tokens=3000 AND output_tokens=400 AND credential_label='org-a' AND day='2210-02-03'`, id, cost); n != 1 {
-		t.Errorf("%d settled reservations of the proposal", n)
+		AND settled_nano_usd=$2 AND input_tokens=3000 AND output_tokens=400 AND credential_label='org-a'
+		AND day >= $3 AND day <= (now() AT TIME ZONE 'UTC')::date`, id, cost, before); n != 1 {
+		t.Errorf("%d settled reservations of the proposal on the database's day", n)
 	}
-	if n := e.count(t, `SELECT count(*) FROM twin.ai_spend_days WHERE day='2210-02-03' AND committed_nano_usd=$1`, cost); n != 1 {
+	if n := e.count(t, `SELECT count(*) FROM twin.ai_spend_days d JOIN twin.ai_spend_reservations r USING (organization_id, day)
+		WHERE r.ai_proposal_id=$1 AND d.organization_id=$2 AND d.committed_nano_usd=$3`, id, e.org.ID, cost); n != 1 {
 		t.Errorf("the organization's day does not hold the cost")
 	}
 	for _, action := range []string{"ai_spend.reserve", "ai_spend.settle"} {
@@ -113,8 +119,7 @@ func TestASpendLimitRefusesTheProposal(t *testing.T) {
 	mdl, mv := e.model(t)
 	f := &billedFake{Backend: fake.New(), usage: provider.Usage{InputTokens: 1, OutputTokens: 1}}
 	id := e.create(t, mdl, mv, "edit", "Raise the CI runners to 6.")
-	at := time.Date(2211, 2, 3, 4, 5, 6, 0, time.UTC)
-	p := e.until(t, e.meteredLoop(t, f, spend.Limits{Month: 10, Day: 10, OrganizationDay: 10}, at), id)
+	p := e.until(t, e.meteredLoop(t, f, spend.Limits{Month: 10, Day: 10, OrganizationDay: 10}), id)
 	if p.Status != "failed" || p.Error == nil || p.Error.Error.Code != "RATE_LIMITED" || p.Error.Error.Details[0].Code != "AI_QUOTA_EXCEEDED" {
 		t.Fatalf("%+v", p)
 	}

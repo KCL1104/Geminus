@@ -117,19 +117,24 @@ simulation-reference-test:
 	$(PYTHON) scripts/calendar_reference.py --go-results bin/calendar-reference-go.json
 	@echo 'simulation-reference-test: finite buffers and blocking (T-047), breakdowns (T-048), calendars and release schedules (T-049), batch processes and changeovers (T-050, without finite buffers or calendars), on the models each script accepts (see their docstrings); D-050 R2, R3, R4, next_fit, X_end and TTRmax against an independent Python implementation (R1 is not, see checks/T-049_VALIDATION.md).' >&2
 # The live provider eval (T-053; T-038 owns the baseline): the modeler corpus through the live adapter, a client
-# metered by the run's cap (AI_EVAL_LIVE_MAX_USD, default USD 10, within the monthly limit) and the server's review.
-# Refused with exit 2 and no provider call unless the configuration turns live AI on exactly as the worker's does: the
-# owner's complete recorded approval (internal/config/aiapproval; H-018, complete since the retention confirmation H-026),
-# AI_PROVIDER=anthropic, AI_POLICY_APPROVAL, AI_MODEL equal to its model, GEMINUS_ANTHROPIC_API_KEY_A and _B, and
-# GEMINUS_AI_LIVE=on. The report goes to checks/ai-evals/live-<date>-<model>.json, never a fake result's file, and keeps
-# no prompt, answer text or key. The command's own exit code (printed; make itself exits 2 on any failure): 1 a gate
-# failed or the run stopped at its cap, 2 refused before any call, 3 the report could not be written.
+# metered by the run's cap (AI_EVAL_LIVE_MAX_USD, default USD 10) and the server's review. Refused with exit 2 and no
+# provider call unless the configuration turns live AI on exactly as the worker's does: the owner's complete recorded
+# approval (internal/config/aiapproval; H-018, complete since the retention confirmation H-026), AI_PROVIDER=anthropic,
+# AI_POLICY_APPROVAL, AI_MODEL equal to its model, GEMINUS_ANTHROPIC_API_KEY_A and _B, and GEMINUS_AI_LIVE=on; and
+# unless the cap fits the deployment's daily and monthly limits less what the spend record checks/ai-evals/live-spend.jsonl
+# holds for the UTC day and month (review round 1, H1: the record is append-only and committed with the reports; a run
+# opens its line before any call and closes it with what it cost). The report goes to
+# checks/ai-evals/live-<UTC start>-<run ID>-<model>.json, never a fake result's file nor an existing one, and keeps no
+# prompt, answer text or key. The command's own exit code (printed; make itself exits 2 on any failure): 1 a gate
+# failed or the run stopped at its cap, 2 refused before any call, 3 calls were made but the run stopped on an error or
+# the report or the record's close line could not be written (the summary and cost are printed). Commit the record
+# and the report after every run.
 ai-eval-live:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/ai-eval-live ./cmd/ai-eval-live
 	@bin/ai-eval-live -root $(CURDIR); code=$$?; [ $$code = 0 ] || { echo "ai-eval-live: exit $$code" >&2; exit $$code; }
 # The live smoke (T-053): one synthetic case (MOD-002: the default pipeline, a capacity change the user typed), the same
-# gate, a USD 2 cap by default; report checks/ai-evals/live-smoke-<date>-<model>.json.
+# gate and spend record, a USD 2 cap by default; report checks/ai-evals/live-smoke-<UTC start>-<run ID>-<model>.json.
 ai-smoke-live:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/ai-eval-live ./cmd/ai-eval-live

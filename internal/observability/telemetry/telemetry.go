@@ -44,6 +44,7 @@ type Telemetry struct {
 	aiTokens       metric.Int64Counter
 	aiSpend        metric.Int64Counter
 	aiRefusals     metric.Int64Counter
+	aiWarnings     metric.Int64Counter
 	importDuration metric.Float64Histogram
 	importRows     metric.Int64Counter
 }
@@ -77,6 +78,8 @@ func New(tp trace.TracerProvider, mp metric.MeterProvider) (*Telemetry, error) {
 	t.aiTokens = counter("geminus.ai.tokens", "{token}", "Tokens AI provider calls used.")
 	t.aiSpend = counter("geminus.ai.spend", "{nanoUSD}", "What settled live AI calls cost, in nano-USD (T-053).")
 	t.aiRefusals = counter("geminus.ai.spend.refusals", "{call}", "Live AI calls a spend limit refused before they were made (T-053).")
+	t.aiWarnings = counter("geminus.ai.spend.warnings", "{call}",
+		"Settled live AI calls whose reservation's bound did not hold: cost above the reservation, or an answer naming no known inference geo (T-053).")
 	t.importDuration = seconds("geminus.import.duration", "Duration of import profiling and validation.")
 	t.importRows = counter("geminus.import.rows", "{row}", "Rows import profiling and validation read.")
 	if err != nil {
@@ -216,6 +219,25 @@ func (t *Telemetry) Spend(ctx context.Context, model, role, how string, nanoUSD 
 func (t *Telemetry) SpendRefused(ctx context.Context, model, role, limit string) {
 	t.aiRefusals.Add(ctx, 1, metric.WithAttributes(modelName(model),
 		str("geminus.ai.role", observability.KindToken, role), str("geminus.ai.limit", observability.KindToken, limit)))
+}
+
+// The warnings of a settled live AI call (SpendWarning; T-053 review round
+// 1, M2, M3, L1).
+const (
+	// SpendOverReservation: the call cost more than its reservation held;
+	// it was recorded at what it cost.
+	SpendOverReservation = "over_reservation"
+	// SpendGeoUnknown: the answer named no inference geo this build
+	// prices; it was priced at the dearest.
+	SpendGeoUnknown = "inference_geo_unknown"
+)
+
+// SpendWarning records a settled live AI call whose reservation's bound
+// did not hold, by model, role and which warning (SpendOverReservation,
+// SpendGeoUnknown).
+func (t *Telemetry) SpendWarning(ctx context.Context, model, role, warning string) {
+	t.aiWarnings.Add(ctx, 1, metric.WithAttributes(modelName(model),
+		str("geminus.ai.role", observability.KindToken, role), str("geminus.ai.warning", observability.KindToken, warning)))
 }
 
 // Import records an import stage (profile, validate) that started at

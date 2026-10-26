@@ -54,7 +54,7 @@ func ok(text string) reply {
 	})
 	return reply{status: 200, header: map[string]string{"request-id": "req_test_1"},
 		body: `{"id":"msg_1","type":"message","role":"assistant","model":"` + model + `","content":` + string(content) +
-			`,"stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":120,"output_tokens":30,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}`}
+			`,"stop_reason":"end_turn","stop_sequence":null,"usage":{"inference_geo":"global","input_tokens":120,"output_tokens":30,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}`}
 }
 
 func apiError(status int, kind string) reply {
@@ -431,7 +431,7 @@ func TestErrorsAreSanitized(t *testing.T) {
 
 func message(stop string, content string) reply {
 	return reply{status: 200, body: `{"id":"msg_2","type":"message","role":"assistant","model":"` + model + `","content":` + content +
-		`,"stop_reason":"` + stop + `","stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}`}
+		`,"stop_reason":"` + stop + `","stop_sequence":null,"usage":{"inference_geo":"global","input_tokens":1,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}`}
 }
 
 func TestStopReasons(t *testing.T) {

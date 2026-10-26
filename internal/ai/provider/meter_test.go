@@ -43,7 +43,7 @@ func (b *billable) Complete(ctx context.Context, req Request) (Response, error) 
 
 func billed(text string, usage Usage) func(context.Context, Request) (Response, error) {
 	return func(context.Context, Request) (Response, error) {
-		return Response{Text: []byte(text), Model: pricedModel, Credential: "org-a", Usage: usage}, nil
+		return Response{Text: []byte(text), Model: pricedModel, Credential: "org-a", Usage: usage, InferenceGeo: spend.GeoGlobal}, nil
 	}
 }
 
@@ -115,8 +115,9 @@ func TestBillableNeedsAMeter(t *testing.T) {
 }
 
 // The reservation is the most the call can cost: every attempt (1 + the
-// budget's retries) at the quote's input tokens and max_tokens; the
-// charge names the organization, role, model and what it is for.
+// budget's retries) at the quote's input tokens and max_tokens, at the
+// dearest inference geo (1.1x; review round 1, M2); the charge names the
+// organization, role, model and what it is for.
 func TestTheReservationBoundsTheCall(t *testing.T) {
 	b := &billable{quote: Quote{Model: pricedModel, MaxInputTokens: 50_000}, respond: billed(validProposal, Usage{InputTokens: 1200, OutputTokens: 300})}
 	m := &meter{}
@@ -126,7 +127,7 @@ func TestTheReservationBoundsTheCall(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := price(t)
-	want := Charge{OrganizationID: orgA, Role: RoleModeler, Model: pricedModel, Attribution: attribution, NanoUSD: 3 * p.AttemptBound(50_000, 8192)}
+	want := Charge{OrganizationID: orgA, Role: RoleModeler, Model: pricedModel, Attribution: attribution, NanoUSD: 3 * ceilTenth(p.AttemptBound(50_000, 8192))}
 	if len(m.charges) != 1 || m.charges[0] != want {
 		t.Fatalf("charges %+v, want %+v", m.charges, want)
 	}
@@ -134,10 +135,12 @@ func TestTheReservationBoundsTheCall(t *testing.T) {
 		t.Errorf("the request does not carry its reservation: %+v", b.reqs)
 	}
 	cost := p.Cost(spend.Tokens{Input: 1200, Output: 300})
-	if len(m.settled) != 1 || m.settled[0] != (Settlement{NanoUSD: cost, Usage: Usage{InputTokens: 1200, OutputTokens: 300}, Outcome: SpendUsage, Credential: "org-a"}) {
+	if len(m.settled) != 1 || m.settled[0] != (Settlement{NanoUSD: cost, Usage: Usage{InputTokens: 1200, OutputTokens: 300}, Outcome: SpendUsage,
+		Credential: "org-a", InferenceGeo: spend.GeoGlobal}) {
 		t.Errorf("settled %+v, want cost %d", m.settled, cost)
 	}
-	if res.Metadata.CostNanoUSD != cost || res.Metadata.SpendReservation != "r1" || res.Metadata.SpendUnsettled {
+	if res.Metadata.CostNanoUSD != cost || res.Metadata.SpendReservation != "r1" || res.Metadata.SpendUnsettled || res.Metadata.InferenceGeo != spend.GeoGlobal ||
+		res.Metadata.SpendOverReservation {
 		t.Errorf("metadata %+v", res.Metadata)
 	}
 }
@@ -233,14 +236,18 @@ func TestNothingIsReservedForARefusedCall(t *testing.T) {
 }
 
 // What a call costs: its usage when an answer came back (whatever the
-// answer was); nothing when no attempt can have been billed; every attempt
-// that ended without an answer at its bound, since the provider may have
-// billed it (a timeout, a lost connection), up to the reservation.
+// answer was), at the geo it reports; nothing when no attempt can have
+// been billed; every attempt that ended without an answer at its bound (at
+// the dearest geo), since the provider may have billed it (a timeout, a
+// lost connection). Never clamped to the reservation: more lost attempts
+// than reserved for are recorded at what they may have cost (review round
+// 1, M3: the reservation's bound broke, and the ledger never under-records).
 func TestSettlement(t *testing.T) {
 	p := price(t)
-	per := p.AttemptBound(1000, 100)
+	per := ceilTenth(p.AttemptBound(1000, 100))
 	usage := Usage{InputTokens: 900, OutputTokens: 50}
 	cost := p.Cost(spend.Tokens{Input: 900, Output: 50})
+	global := spend.GeoGlobal
 	for name, c := range map[string]struct {
 		resp    Response
 		err     error
@@ -249,24 +256,36 @@ func TestSettlement(t *testing.T) {
 		cancel  bool
 		timeout bool
 	}{
-		"answer": {resp: Response{Text: []byte(validProposal), Usage: usage, Credential: "org-b"},
-			want: Settlement{NanoUSD: cost, Usage: usage, Outcome: SpendUsage, Credential: "org-b"}},
-		"invalid answer is billed": {resp: Response{Text: []byte(`{"status":"approved"}`), Usage: usage, Credential: "org-a"},
-			want: Settlement{NanoUSD: cost, Usage: usage, Outcome: SpendUsage, Credential: "org-a"}, code: CodeInvalidOutput},
-		"truncated is billed": {resp: Response{Usage: usage, Credential: "org-a"}, err: NewError(CodeTruncated, 0, "org-a"),
-			want: Settlement{NanoUSD: cost, Usage: usage, Outcome: SpendUsage, Credential: "org-a"}, code: CodeTruncated},
+		"answer": {resp: Response{Text: []byte(validProposal), Usage: usage, Credential: "org-b", InferenceGeo: global},
+			want: Settlement{NanoUSD: cost, Usage: usage, Outcome: SpendUsage, Credential: "org-b", InferenceGeo: global}},
+		"invalid answer is billed": {resp: Response{Text: []byte(`{"status":"approved"}`), Usage: usage, Credential: "org-a", InferenceGeo: global},
+			want: Settlement{NanoUSD: cost, Usage: usage, Outcome: SpendUsage, Credential: "org-a", InferenceGeo: global}, code: CodeInvalidOutput},
+		"truncated is billed": {resp: Response{Usage: usage, Credential: "org-a", InferenceGeo: global}, err: NewError(CodeTruncated, 0, "org-a"),
+			want: Settlement{NanoUSD: cost, Usage: usage, Outcome: SpendUsage, Credential: "org-a", InferenceGeo: global}, code: CodeTruncated},
 		"rate limited is not billed": {resp: Response{Credential: "org-a"}, err: NewError(CodeRateLimited, 429, "org-a"),
 			want: Settlement{Outcome: SpendNone, Credential: "org-a"}, code: CodeRateLimited},
 		"exhausted credentials are not billed": {err: NewError(CodeCredentialsExhausted, 0, ""),
 			want: Settlement{Outcome: SpendNone}, code: CodeCredentialsExhausted},
 		"a lost connection may be billed": {resp: Response{Credential: "org-a", UnknownAttempts: 1}, err: NewError(CodeUnavailable, 0, "org-a"),
 			want: Settlement{NanoUSD: per, Outcome: SpendUnknown, Credential: "org-a", UnknownAttempts: 1}, code: CodeUnavailable},
-		"an answer after lost attempts": {resp: Response{Text: []byte(validProposal), Usage: usage, Credential: "org-a", UnknownAttempts: 2},
-			want: Settlement{NanoUSD: cost + 2*per, Usage: usage, Outcome: SpendUnknown, Credential: "org-a", UnknownAttempts: 2}},
+		"an answer after lost attempts": {resp: Response{Text: []byte(validProposal), Usage: usage, Credential: "org-a", UnknownAttempts: 2, InferenceGeo: global},
+			want: Settlement{NanoUSD: cost + 2*per, Usage: usage, Outcome: SpendUnknown, Credential: "org-a", UnknownAttempts: 2, InferenceGeo: global}},
 		"more lost attempts than reserved for": {resp: Response{Credential: "org-a", UnknownAttempts: 9}, err: NewError(CodeUnavailable, 0, "org-a"),
-			want: Settlement{NanoUSD: 3 * per, Outcome: SpendUnknown, Credential: "org-a", UnknownAttempts: 9}, code: CodeUnavailable},
+			want: Settlement{NanoUSD: 9 * per, Outcome: SpendUnknown, Credential: "org-a", UnknownAttempts: 9}, code: CodeUnavailable},
 		"cancelled while in flight": {resp: Response{Credential: "org-a", UnknownAttempts: 1}, cancel: true,
 			want: Settlement{NanoUSD: per, Outcome: SpendUnknown, Credential: "org-a", UnknownAttempts: 1}, code: CodeCancelled},
+		// Review round 1, I1: an answer that cannot be read settles at the
+		// whole reservation, whatever else it says.
+		"an undecodable answer": {resp: Response{Credential: "org-a", UnknownAttempts: 1, Undecoded: true}, err: NewError(CodeUnavailable, 0, "org-a"),
+			want: Settlement{NanoUSD: 3 * per, Outcome: SpendUnknown, Credential: "org-a", UnknownAttempts: 1}, code: CodeUnavailable},
+		// Review round 1, M2: the answer's geo prices it; one it does not
+		// name, or this build does not know, at the dearest.
+		"an answer from US-only inference": {resp: Response{Text: []byte(validProposal), Usage: usage, Credential: "org-a", InferenceGeo: "us"},
+			want: Settlement{NanoUSD: ceilTenth(cost), Usage: usage, Outcome: SpendUsage, Credential: "org-a", InferenceGeo: spend.GeoUS}},
+		"an answer naming no geo": {resp: Response{Text: []byte(validProposal), Usage: usage, Credential: "org-a"},
+			want: Settlement{NanoUSD: ceilTenth(cost), Usage: usage, Outcome: SpendUsage, Credential: "org-a", InferenceGeo: spend.GeoUnknown}},
+		"an answer naming an unknown geo": {resp: Response{Text: []byte(validProposal), Usage: usage, Credential: "org-a", InferenceGeo: "eu-west PROMPT"},
+			want: Settlement{NanoUSD: ceilTenth(cost), Usage: usage, Outcome: SpendUsage, Credential: "org-a", InferenceGeo: spend.GeoUnknown}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())

@@ -38,6 +38,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/idpool"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/review"
+	"github.com/kcl1104/geminus/internal/ai/spend"
 	"github.com/kcl1104/geminus/internal/audit"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/model"
@@ -464,6 +465,18 @@ func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
 		// The reservation stays counted at its bound (the safe side).
 		h.cfg.Log.WarnContext(ctx, "settling a live AI spend reservation failed", "spend_reservation_id", m.SpendReservation,
 			"cost_nano_usd", m.CostNanoUSD, "spend_unsettled", true)
+	}
+	// T-053 review round 1 (M2, M3, L1): what was billed is recorded even
+	// above the reservation, and an answer that names no geo this build
+	// knows is priced at the dearest; both mean an assumption of the
+	// reservation's bound broke, so both are warned of.
+	if m.SpendOverReservation {
+		h.cfg.Log.WarnContext(ctx, "a live AI call cost more than its spend reservation; recorded at what it cost",
+			"spend_reservation_id", m.SpendReservation, "cost_nano_usd", m.CostNanoUSD, "spend_over_reservation", true)
+	}
+	if m.InferenceGeo == spend.GeoUnknown {
+		h.cfg.Log.WarnContext(ctx, "a live AI answer named no inference geo this build prices; priced at the dearest",
+			"spend_reservation_id", m.SpendReservation, "inference_geo", m.InferenceGeo)
 	}
 	telemetry.Current().ProviderCall(ctx, time.Now().Add(-time.Duration(m.LatencyMillis)*time.Millisecond), m.Provider, m.Model, string(m.Role),
 		code, m.Usage.InputTokens, m.Usage.OutputTokens)

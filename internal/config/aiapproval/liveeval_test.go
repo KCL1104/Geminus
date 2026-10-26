@@ -36,6 +36,7 @@ func (b *inProcess) Complete(ctx context.Context, req provider.Request) (provide
 	b.calls.Add(1)
 	resp, err := b.Backend.Complete(ctx, req)
 	resp.Usage, resp.Model, resp.Credential = provider.Usage{InputTokens: 1500, OutputTokens: 300}, "claude-opus-5-5", "org-a"
+	resp.InferenceGeo = "global" // as the live API reports it (usage.inference_geo)
 	return resp, err
 }
 
@@ -48,7 +49,7 @@ func TestTheLiveEvalRunsOnlyWhenLiveIsOn(t *testing.T) {
 	env := liveEnv()
 	getenv := func(k string) string { return env[k] }
 	run := func(args ...string) (int, string, string, int, string) {
-		dir := t.TempDir()
+		dir := emptyRecord(t) // the report directory, with its spend record (review round 1, H1)
 		var out, errb bytes.Buffer
 		built := 0
 		b := &inProcess{Backend: fake.New()}
@@ -73,19 +74,27 @@ func TestTheLiveEvalRunsOnlyWhenLiveIsOn(t *testing.T) {
 		if code != aievals.ExitRefused || built != 0 || !strings.Contains(stderr, "GEMINUS_AI_LIVE:retention_unconfirmed") {
 			t.Fatalf("exit %d built %d: %s", code, built, stderr)
 		}
-		if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+		if entries, _ := os.ReadDir(dir); len(entries) != 1 || entries[0].Name() != recordName {
 			t.Fatal("a refused run wrote a file")
+		}
+		if lines := recordLines(t, dir); len(lines) != 0 {
+			t.Fatalf("a refused run wrote the spend record: %v", lines)
 		}
 	})
 
 	// The build's own record (H-026): the run is made, on the test's
-	// backend.
+	// backend. Its report names the run's UTC start and ID (review round 1,
+	// H1).
 	code, stdout, stderr, built, dir := run("-smoke")
 	if code != aievals.ExitOK || built != 1 {
 		t.Fatalf("smoke: exit %d built %d: %s %s", code, built, stdout, stderr)
 	}
 	date := time.Now().UTC().Format(time.DateOnly)
-	path := filepath.Join(dir, "live-smoke-"+date+"-claude-opus-5-5.json")
+	reports, _ := filepath.Glob(filepath.Join(dir, "live-smoke-*-claude-opus-5-5.json"))
+	if len(reports) != 1 {
+		t.Fatalf("reports %v (%s)", reports, stdout)
+	}
+	path := reports[0]
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("the report: %v (%s)", err, stdout)
@@ -101,8 +110,9 @@ func TestTheLiveEvalRunsOnlyWhenLiveIsOn(t *testing.T) {
 		r.Cost.CapNanoUSD != aievals.DefaultSmokeCap || !r.Complete {
 		t.Errorf("report %+v", r)
 	}
-	if entries, _ := os.ReadDir(dir); len(entries) != 1 || !strings.Contains(stdout, path) {
-		t.Errorf("files %v, stdout %q", entries, stdout)
+	if entries, _ := os.ReadDir(dir); len(entries) != 2 || !strings.Contains(stdout, path) || !strings.HasPrefix(filepath.Base(path), "live-smoke-"+date+"T") ||
+		!strings.Contains(filepath.Base(path), r.RunID) || r.RunID == "" {
+		t.Errorf("files %v (the report and the spend record), report %s of run %q, stdout %q", entries, path, r.RunID, stdout)
 	}
 	for _, leak := range []string{keyA, keyB, "CI runner"} {
 		if bytes.Contains(data, []byte(leak)) || strings.Contains(stdout+stderr, leak) {
@@ -111,10 +121,11 @@ func TestTheLiveEvalRunsOnlyWhenLiveIsOn(t *testing.T) {
 	}
 
 	// A run cap above the monthly limit is refused before any backend.
-	env["AI_EVAL_LIVE_MAX_USD"], env["AI_MONTHLY_LIMIT_USD"] = "20", "10"
-	if code, _, stderr, built, _ := run(); code != aievals.ExitRefused || built != 0 || !strings.Contains(stderr, "above the monthly limit") {
+	env["AI_EVAL_LIVE_MAX_USD"], env["AI_MONTHLY_LIMIT_USD"], env["AI_DAILY_LIMIT_USD"] = "20", "10", "10"
+	if code, _, stderr, built, _ := run(); code != aievals.ExitRefused || built != 0 || !strings.Contains(stderr, "above the deployment's daily limit") {
 		t.Errorf("cap above the month: exit %d built %d: %s", code, built, stderr)
 	}
+	delete(env, "AI_DAILY_LIMIT_USD")
 	env["AI_EVAL_LIVE_MAX_USD"] = "not dollars"
 	if code, _, _, built, _ := run(); code != aievals.ExitRefused || built != 0 {
 		t.Errorf("a bad cap: exit %d built %d", code, built)
@@ -131,7 +142,11 @@ func TestTheLiveEvalRunsOnlyWhenLiveIsOn(t *testing.T) {
 	if code != aievals.ExitGates || built != 1 {
 		t.Fatalf("a small cap: exit %d built %d", code, built)
 	}
-	data, _ = os.ReadFile(filepath.Join(dir, "live-"+date+"-claude-opus-5-5.json"))
+	reports, _ = filepath.Glob(filepath.Join(dir, "live-"+date+"T*-claude-opus-5-5.json"))
+	if len(reports) != 1 {
+		t.Fatalf("a small cap: reports %v", reports)
+	}
+	data, _ = os.ReadFile(reports[0])
 	r = aievals.Report{}
 	if err := json.Unmarshal(data, &r); err != nil || r.Complete || r.Outcomes[0].Code != "AI_QUOTA_EXCEEDED" || r.Cost.NanoUSD != 0 {
 		t.Errorf("a small cap: %+v %v (%s)", r, err, stdout)

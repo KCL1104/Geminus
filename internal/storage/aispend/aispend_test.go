@@ -57,13 +57,15 @@ func (e *env) run(ctx context.Context, org string, fn func(ctx context.Context, 
 	return e.worker.Run(ctx, org, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error { return fn(ctx, tx) })
 }
 
+// meter is a worker meter whose reservations go to at's UTC day (a day of
+// the test's own; aispend.PinDay).
 func (e *env) meter(t *testing.T, l spend.Limits, at time.Time) *aispend.Meter {
 	t.Helper()
-	m, err := aispend.New(aispend.Config{Run: e.run, Actor: "worker-t053", Limits: l, Now: func() time.Time { return at }})
+	m, err := aispend.New(aispend.Config{Run: e.run, Actor: "worker-t053", Limits: l})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return m
+	return aispend.PinDay(m, at)
 }
 
 func (e *env) totals(t *testing.T, org string, at time.Time) aispend.Totals {

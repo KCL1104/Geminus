@@ -133,14 +133,16 @@ func TestSpend(t *testing.T) {
 	}
 }
 
-// perAttempt is the bound of one attempt of the test prompt under budget.
+// perAttempt is the bound of one attempt of the test prompt under budget,
+// at the dearest inference geo (the request names none; review round 1,
+// M2).
 func perAttempt(t *testing.T, b *anthropic.Backend, maxOutput int64) int64 {
 	req := request(t, "")
 	q, err := b.Quote(req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return price(t).AttemptBound(q.MaxInputTokens, maxOutput)
+	return spend.AtDearestGeo(price(t).AttemptBound(q.MaxInputTokens, maxOutput))
 }
 
 // An attempt that ended without an answer may have been billed: a lost

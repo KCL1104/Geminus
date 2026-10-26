@@ -32,8 +32,8 @@ const (
 )
 
 // Price is a model's list price per token, first-party Claude API, global
-// inference (the adapter sends no inference_geo; "us" would cost 1.1x),
-// standard speed, no batch discount.
+// inference, standard speed, no batch discount. Another inference geo
+// costs more (AtGeo).
 type Price struct {
 	Input        NanoUSD // base input tokens
 	Output       NanoUSD // output tokens, thinking included
@@ -102,6 +102,66 @@ func (p Price) Cost(t Tokens) NanoUSD {
 // cache write.
 func (p Price) AttemptBound(inputTokens, outputTokens int64) NanoUSD {
 	return add(mul(inputTokens, p.Input), mul(outputTokens, p.Output))
+}
+
+// Inference geos (T-053 review round 1, M2; PROPOSED D-110 (a), D-116):
+// where the provider ran a request. The data residency page
+// (https://platform.claude.com/docs/en/manage-claude/data-residency,
+// retrieved 2026-10-26) lists two, "global" (the default, standard price)
+// and "us" (US-only inference, 1.1x every token category on Claude 4.6 and
+// later). A request that names none runs at its workspace's
+// default_inference_geo, an account setting this build cannot see, and the
+// answer's usage.inference_geo says where it ran.
+const (
+	GeoGlobal = "global"
+	GeoUS     = "us"
+	// GeoUnknown is an answer that names no geo, or one this build does not
+	// know: priced at the dearest.
+	GeoUnknown = "unknown"
+)
+
+// geoTenths is each known geo's price in tenths of the list price.
+var geoTenths = map[string]int64{GeoGlobal: 10, GeoUS: 11}
+
+// dearestTenths is the most any geo costs, in tenths of the list price.
+const dearestTenths = 11
+
+// Geo is the geo an answer reported, as this build prices it: GeoGlobal,
+// GeoUS, or GeoUnknown for anything else (nothing, another spelling, a geo
+// added after this build). The provider's own text never goes further.
+func Geo(reported string) string {
+	if _, ok := geoTenths[reported]; ok {
+		return reported
+	}
+	return GeoUnknown
+}
+
+// AtGeo is n, an amount at the list price, at geo's price, rounded up to
+// the next nano-USD: n for global, n·1.1 for us, n·1.1 for an unknown geo
+// (the dearest). It saturates at MaxInt64.
+func AtGeo(n NanoUSD, geo string) NanoUSD {
+	tenths, ok := geoTenths[geo]
+	if !ok {
+		tenths = dearestTenths
+	}
+	return tenthsOf(n, tenths)
+}
+
+// AtDearestGeo is n at the dearest geo: what a request that names no geo
+// can cost, whatever its workspace's default (the reservation's bound).
+func AtDearestGeo(n NanoUSD) NanoUSD { return tenthsOf(n, dearestTenths) }
+
+// tenthsOf is ⌈n·tenths/10⌉ for n ≥ 0, saturating at MaxInt64.
+func tenthsOf(n, tenths int64) NanoUSD {
+	if n <= 0 {
+		return 0
+	}
+	if tenths == 10 {
+		return n
+	}
+	q, r := n/10, n%10
+	whole := mul(q, tenths)
+	return add(whole, (r*tenths+9)/10)
 }
 
 // maxUSD bounds what ParseUSD accepts: a million dollars.

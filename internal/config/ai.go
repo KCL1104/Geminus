@@ -3,6 +3,9 @@ package config
 import (
 	"errors"
 	"strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/ai/spend"
 	"github.com/kcl1104/geminus/internal/config/aiapproval"
@@ -236,7 +239,11 @@ func LoadAI(getenv func(string) string) (AI, error) {
 }
 
 // loadKeys reads both credentials (T-053: both provider organizations of
-// D-018). Errors name the variable, never a value.
+// D-018). A key with white space around it or a control character in it
+// is refused (fail closed: review round 1, L2) before the two are
+// compared, so the same key with a trailing newline from a secret file, or
+// a pasted space, is never taken for a second organization's. Errors name
+// the variable, never a value.
 func loadKeys(getenv func(string) string) ([]AICredential, []error) {
 	var creds []AICredential
 	var errs []error
@@ -245,6 +252,8 @@ func loadKeys(getenv func(string) string) ([]AICredential, []error) {
 		switch {
 		case v == "":
 			errs = append(errs, &Error{k.name, CodeRequired, "live AI needs both provider organizations' keys (D-018)"})
+		case !cleanKey(v):
+			errs = append(errs, &Error{k.name, CodeInvalid, "has white space around it or a control character in it; set the key exactly"})
 		case len(creds) > 0 && creds[0].Key.Reveal() == v:
 			errs = append(errs, &Error{k.name, CodeInvalid, "the secondary key is the primary key: one organization, not two"})
 		default:
@@ -252,6 +261,15 @@ func loadKeys(getenv func(string) string) ([]AICredential, []error) {
 		}
 	}
 	return creds, errs
+}
+
+// cleanKey reports whether v has no white space at either end and no
+// control character anywhere (C0, DEL, C1) and is valid UTF-8.
+func cleanKey(v string) bool {
+	if !utf8.ValidString(v) || strings.TrimFunc(v, unicode.IsSpace) != v {
+		return false
+	}
+	return !strings.ContainsFunc(v, unicode.IsControl)
 }
 
 // loadLimits reads the spend limits (D-110): the monthly limit at most the

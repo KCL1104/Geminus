@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
+# HISTORICAL RECORD, DO NOT RE-RUN (T-053 review round 1, L4). This script
+# made ai-eval-live-refusals.log on the tree of 5a202cc, when the H-018
+# record lacked the owner's retention confirmation and every step below
+# refused before building a backend. Since H-026 the record is complete:
+# steps 4 and 5 (H-018 + fake keys + GEMINUS_AI_LIVE=on) would now build
+# the live backend and send requests to the production API (answered 401
+# for the fake keys) and write a live report. The guard below stops it; the
+# refusal paths are tested in process instead (internal/aievals
+# TestMainRefusesWhileLiveIsOff, internal/config/aiapproval
+# TestTheLiveEvalRunsOnlyWhenLiveIsOn and the spend record tests).
+echo "refusals.sh is the record of the refusal run of 5a202cc; at this tree it would reach the production API. Not run." >&2
+exit 2
+
+# --- the original script, kept as it ran -----------------------------------
 # Records the refusal paths of make ai-eval-live and make ai-smoke-live
 # (T-053). No live call is possible: this build's H-018 record lacks the
 # owner's retention confirmation, so the command refuses before building

@@ -124,6 +124,11 @@ var fields = map[string]Kind{
 	"spend_reservation_id": KindID,
 	"spend_unsettled":      KindNumber,
 	"limit":                KindToken,
+	// T-053 review round 1: the geo a live answer was priced at (global,
+	// us, unknown: this build's word, never the provider's text) and a
+	// settlement above its reservation (M2, M3, L1)
+	"inference_geo":          KindToken,
+	"spend_over_reservation": KindNumber,
 	// the server's own text
 	"error": KindText,
 	"panic": KindText,

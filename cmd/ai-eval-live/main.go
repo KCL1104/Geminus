@@ -4,10 +4,14 @@
 // refuses, before building any backend, unless the configuration turns
 // live AI on exactly as the worker's does (the owner's complete recorded
 // approval, AI_MODEL equal to its model, both keys, GEMINUS_AI_LIVE=on;
-// T-053), meters the run by its own cap (AI_EVAL_LIVE_MAX_USD, within the
-// monthly limit), and writes the report to checks/ai-evals/live-*.json,
-// apart from the fake results. The report and the summary keep no prompt,
-// answer text or key.
+// T-053) and the run's cap (AI_EVAL_LIVE_MAX_USD) fits the deployment's
+// daily and monthly limits less what the spend record
+// checks/ai-evals/live-spend.jsonl holds (review round 1, H1); it meters
+// the run by that cap, records the run in the spend record before any call
+// and closes it with what it cost, and writes the report to a
+// checks/ai-evals/live-*.json file of its own, apart from the fake
+// results. The report, the record and the summary keep no prompt, answer
+// text or key.
 package main
 
 import (

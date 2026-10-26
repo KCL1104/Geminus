@@ -24,10 +24,13 @@ import (
 
 // No test here makes a live call: the backends are the deterministic fake
 // in this process (and, in internal/ai/provider/anthropic, a local test
-// server). This build cannot turn live AI on (H-018 waits for the owner's
-// retention confirmation), so every Main here is refused; the run itself
-// is tested through Run, and Main's report in internal/config/aiapproval,
-// whose tests alone can record a complete approval.
+// server). This build's H-018 record is complete (H-026), so a
+// configuration with AI_MODEL, both keys and GEMINUS_AI_LIVE=on turns live
+// AI on; the Main tests here never give it one and are all refused. The
+// run itself is tested through Run and the spend record directly, and
+// Main's live path (its report and spend record) in
+// internal/config/aiapproval, with the in-process fake backend and fake
+// keys (T-053 review round 1, L5).
 
 // billed is the fake answering as a billable backend would, with a billed
 // usage per call.
@@ -38,7 +41,7 @@ type billed struct {
 }
 
 // quoted is the test backend's input bound of every request, so that the
-// reservations are known: 3 attempts x (10000 x 4000 + 8192 x 20000).
+// reservations are known: 3 attempts x 1.1 x (10000 x 4000 + 8192 x 20000).
 const quoted = 10_000
 
 func (b *billed) Quote(provider.Request) (provider.Quote, error) {
@@ -48,7 +51,7 @@ func (b *billed) Quote(provider.Request) (provider.Quote, error) {
 func (b *billed) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
 	b.calls.Add(1)
 	resp, err := b.Backend.Complete(ctx, req)
-	resp.Usage, resp.Model = b.usage, "claude-opus-5-5"
+	resp.Usage, resp.Model, resp.InferenceGeo = b.usage, "claude-opus-5-5", "global"
 	if resp.Usage == (provider.Usage{}) {
 		resp.Usage = provider.Usage{InputTokens: 2000, OutputTokens: 500}
 	}
@@ -166,9 +169,10 @@ func TestRunScoresTheAnswers(t *testing.T) {
 // The run's cap stops it: the call the cap cannot hold is never made, the
 // rest is not run, and the report is incomplete (not ok).
 func TestTheCapStopsTheRun(t *testing.T) {
-	// A call reserves 3 x (10000 x 4000 + 8192 x 20000) = 611,520,000 and
-	// costs 2000 x 4000 + 25000 x 20000 = 508,000,000: under a 1 USD cap the
-	// first is made, the second cannot be reserved for.
+	// A call reserves 3 x 1.1 x (10000 x 4000 + 8192 x 20000) = 672,672,000
+	// (the dearest inference geo, review round 1 M2) and costs 2000 x 4000 +
+	// 25000 x 20000 = 508,000,000 (global): under a 1 USD cap the first is
+	// made, the second cannot be reserved for.
 	b := &billed{Backend: fake.New(), usage: provider.Usage{InputTokens: 2000, OutputTokens: 25_000}}
 	one := spend.NanoPerUSD
 	r := run(t, b, one, "MOD-001", "MOD-002", "MOD-003")
@@ -189,20 +193,28 @@ func TestTheCapStopsTheRun(t *testing.T) {
 	}
 }
 
+const runID = "01JB0000000000000000000001"
+
+var started = time.Date(2026, 10, 26, 9, 30, 15, 0, time.UTC)
+
 // A live report goes to a live-*.json file of its own, never a fake
-// result's.
+// result's; its name holds the run's UTC start and ID (review round 1,
+// H1), so no two runs share one.
 func TestTheReportIsApart(t *testing.T) {
 	dir := t.TempDir()
 	r := &aievals.Report{Kind: "eval", Model: "claude-opus-5-5"}
 	for _, bad := range []string{"fake-provider.json", "fake-review.json", "live.json", "live-x.json", "results.json",
-		"live-2026-10-26-claude-opus-5-5.txt", "live-2026-10-26-../../x.json"} {
+		"live-2026-10-26-claude-opus-5-5.json", "live-smoke-2026-10-26-claude-opus-5-5.json", // the names before review round 1
+		"live-2026-10-26T093015Z-" + runID + "-claude-opus-5-5.txt", "live-2026-10-26T093015Z-" + runID + "-../../x.json",
+		"live-2026-10-26T093015Z-run1-claude-opus-5-5.json", "live-2026-10-26T0930Z-" + runID + "-claude-opus-5-5.json"} {
 		if err := aievals.WriteReport(filepath.Join(dir, bad), r); !errors.Is(err, aievals.ErrNotALiveReport) {
 			t.Errorf("%s: %v", bad, err)
 		}
 	}
-	for kind, want := range map[string]string{"eval": "live-2026-10-26-claude-opus-5-5.json", "smoke": "live-smoke-2026-10-26-claude-opus-5-5.json"} {
-		path := aievals.ReportPath(dir, kind, "2026-10-26", "claude-opus-5-5")
-		if filepath.Base(path) != want {
+	for kind, want := range map[string]string{"eval": "live-2026-10-26T093015Z-" + runID + "-claude-opus-5-5.json",
+		"smoke": "live-smoke-2026-10-26T093015Z-" + runID + "-claude-opus-5-5.json"} {
+		path := aievals.ReportPath(dir, kind, started, runID, "claude-opus-5-5")
+		if filepath.Base(path) != want || aievals.ReportName(kind, started.In(time.FixedZone("UTC+9", 9*3600)), runID, "claude-opus-5-5") != want {
 			t.Errorf("%s: %s", kind, path)
 		}
 		if err := aievals.WriteReport(path, r); err != nil {
@@ -212,6 +224,25 @@ func TestTheReportIsApart(t *testing.T) {
 	entries, _ := os.ReadDir(dir)
 	if len(entries) != 2 {
 		t.Errorf("%d files", len(entries))
+	}
+}
+
+// T-053 review round 1, H1: a report never replaces an earlier one (it is
+// the record of what a run found and spent): writing to a path that exists
+// fails and leaves the file as it was.
+func TestAReportIsNeverOverwritten(t *testing.T) {
+	dir := t.TempDir()
+	path := aievals.ReportPath(dir, "eval", started, runID, "claude-opus-5-5")
+	first := &aievals.Report{Kind: "eval", Model: "claude-opus-5-5", Run: 1}
+	if err := aievals.WriteReport(path, first); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := os.ReadFile(path)
+	if err := aievals.WriteReport(path, &aievals.Report{Kind: "eval", Model: "claude-opus-5-5", Run: 2}); !errors.Is(err, aievals.ErrReportExists) {
+		t.Errorf("a second report over the first: %v", err)
+	}
+	if after, _ := os.ReadFile(path); !bytes.Equal(before, after) {
+		t.Error("the first report changed")
 	}
 }
 

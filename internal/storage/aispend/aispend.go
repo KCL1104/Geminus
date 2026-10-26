@@ -2,25 +2,33 @@
 // PROPOSED D-110, D-111; migration 0016): a provider.Meter whose
 // reservations and settlements are rows every worker process shares.
 //
-// Reserve, in one transaction scoped to the call's organization, adds the
-// charge to the deployment's month and day (both provider organizations
-// combined) and to the organization's day, each by a conditional UPDATE
-// that holds only while the total stays within its limit, then opens the
-// reservation and records ai_spend.reserve. The rows are locked in one
-// order (month, day, organization day), so concurrent reservations
-// serialize on them and none takes a limit past its value; a refused
-// limit rolls everything back, and the refusal is recorded
-// (ai_spend.refuse) in a transaction of its own. Settle locks the
-// reservation, moves the same three totals by (settled − reserved), closes
-// the reservation with what the call cost and its billed tokens, and
-// records ai_spend.settle; a reservation is settled once. A settlement
-// that never comes (the worker died) leaves the reservation counted at its
-// bound, the safe side.
+// Reserve, in one transaction scoped to the call's organization, takes the
+// UTC day and month from the database's clock (now() of that transaction,
+// never the worker's clock: review round 1, L3), adds the charge to the
+// deployment's month and day (both provider organizations combined) and to
+// the organization's day, each by a conditional UPDATE that holds only
+// while the total stays within its limit, then opens the reservation and
+// records ai_spend.reserve. The rows are locked in one order (month, day,
+// organization day), so concurrent reservations serialize on them and none
+// takes a limit past its value; a refused limit rolls everything back, and
+// the refusal is recorded (ai_spend.refuse) in a transaction of its own.
+// Settle locks the reservation, moves the same three totals by (settled −
+// reserved), closes the reservation with what the call cost and its billed
+// tokens, and records ai_spend.settle; a reservation is settled once. A
+// settlement above the reservation (the bound's assumptions broke: review
+// round 1, M3, L1) is recorded at what was billed, even past a limit, and
+// flagged: over_reservation in the event, geminus.ai.spend.warnings. A
+// settlement that never comes (the worker died) leaves the reservation
+// counted at its bound, the safe side.
+//
+// Every query names the organization (application filter) besides RLS
+// (AGENTS.md §2); TestOrganizationFilter runs the meter as the superuser,
+// whom RLS does not restrict, to hold the filter to that by itself.
 //
 // Every write is audited in its own transaction (D-091); the events hold
 // amounts, counts and labels, never the prompt, the answer, a key or a
 // deployment-wide total. Metrics (D-095): geminus.ai.spend,
-// geminus.ai.spend.refusals.
+// geminus.ai.spend.refusals, geminus.ai.spend.warnings.
 package aispend
 
 import (
@@ -45,18 +53,23 @@ import (
 // gives the worker scope's Run; the tests a scoped login's).
 type Runner func(ctx context.Context, org string, fn func(ctx context.Context, tx tenant.Tx) error) error
 
-// Config is the meter's setup.
+// Config is the meter's setup. It has no clock: the database's picks the
+// day and month of a reservation (review round 1, L3).
 type Config struct {
 	Run Runner
 	// Actor names the worker in audit events (WORKER_ID).
 	Actor  string
 	Limits spend.Limits
-	// Now is the clock of the periods (UTC); time.Now when nil.
-	Now func() time.Time
 }
 
 // Meter is the ledger's provider.Meter.
-type Meter struct{ cfg Config }
+type Meter struct {
+	cfg Config
+	// day, when set, is the UTC day every reservation is booked to instead
+	// of the database's: the tests' days of their own (export_test.go),
+	// never production code.
+	day time.Time
+}
 
 var _ provider.Meter = (*Meter)(nil)
 
@@ -71,10 +84,20 @@ func New(cfg Config) (*Meter, error) {
 	if err := cfg.Limits.Validate(); err != nil {
 		return nil, err
 	}
-	if cfg.Now == nil {
-		cfg.Now = time.Now
-	}
 	return &Meter{cfg: cfg}, nil
+}
+
+// today is the UTC day of tx's now() (the transaction's start, so every
+// statement of it sees the same day), or the pinned day of a test.
+func (m *Meter) today(ctx context.Context, tx tenant.Tx) (time.Time, error) {
+	if !m.day.IsZero() {
+		return m.day, nil
+	}
+	var d time.Time
+	if err := tx.QueryRow(ctx, `SELECT (now() AT TIME ZONE 'UTC')::date`).Scan(&d); err != nil {
+		return time.Time{}, err
+	}
+	return spend.Day(d), nil
 }
 
 // columns are the reservation's target column of each attribution target.
@@ -102,8 +125,6 @@ func (m *Meter) Reserve(ctx context.Context, c provider.Charge) (provider.Reserv
 	if !ok || c.NanoUSD <= 0 {
 		return provider.Reservation{}, errors.New("aispend: the charge names no target the ledger keeps, or no amount")
 	}
-	now := m.cfg.Now()
-	day, month := spend.Day(now), spend.Month(now)
 	l := m.cfg.Limits
 	refuse := func(limit string) (provider.Reservation, error) {
 		telemetry.Current().SpendRefused(ctx, c.Model, string(c.Role), limit)
@@ -119,6 +140,11 @@ func (m *Meter) Reserve(ctx context.Context, c provider.Charge) (provider.Reserv
 	}
 	id := ids.New("asr")
 	err := m.cfg.Run(ctx, c.OrganizationID, func(ctx context.Context, tx tenant.Tx) error {
+		day, err := m.today(ctx, tx)
+		if err != nil {
+			return err
+		}
+		month := spend.Month(day)
 		if _, err := tx.Exec(ctx, `INSERT INTO twin.ai_spend_periods(period,starts_on) VALUES ('month',$1),('day',$2) ON CONFLICT DO NOTHING`,
 			month, day); err != nil {
 			return err
@@ -190,6 +216,8 @@ func (m *Meter) Settle(ctx context.Context, r provider.Reservation, s provider.S
 		return errors.New("aispend: a settlement says how its amount was found")
 	case s.Credential != "" && !credential.MatchString(s.Credential):
 		return errors.New("aispend: a credential is named by its label")
+	case s.InferenceGeo != "" && spend.Geo(s.InferenceGeo) != s.InferenceGeo:
+		return errors.New("aispend: a settlement's geo is one this build prices, or unknown")
 	}
 	org := r.Charge.OrganizationID
 	var label any
@@ -197,6 +225,7 @@ func (m *Meter) Settle(ctx context.Context, r provider.Reservation, s provider.S
 		label = s.Credential
 	}
 	var role, model string
+	var over bool
 	err := m.cfg.Run(ctx, org, func(ctx context.Context, tx tenant.Tx) error {
 		var day time.Time
 		var reserved int64
@@ -248,15 +277,32 @@ func (m *Meter) Settle(ctx context.Context, r provider.Reservation, s provider.S
 		case imp != nil:
 			target.TargetType, target.TargetID = "import", *imp
 		}
-		return m.event(ctx, tx, org, "ai_spend.settle", target, map[string]any{"reservation_id": r.ID, "role": role,
+		meta := map[string]any{"reservation_id": r.ID, "role": role,
 			"model": audit.Label(model), "reserved_nano_usd": reserved, "settled_nano_usd": s.NanoUSD, "outcome": string(s.Outcome),
 			"input_tokens": u.InputTokens, "output_tokens": u.OutputTokens, "cache_write_tokens": u.CacheCreationInputTokens,
-			"cache_read_tokens": u.CacheReadInputTokens, "unknown_attempts": s.UnknownAttempts, "credential_label": s.Credential})
+			"cache_read_tokens": u.CacheReadInputTokens, "unknown_attempts": s.UnknownAttempts, "credential_label": s.Credential}
+		if s.InferenceGeo != "" {
+			meta["inference_geo"] = s.InferenceGeo
+		}
+		// What was billed is recorded even above the reservation (the
+		// ledger never under-records); the event says so (review round 1,
+		// L1).
+		if over = s.NanoUSD > reserved; over {
+			meta["over_reservation"] = true
+		}
+		return m.event(ctx, tx, org, "ai_spend.settle", target, meta)
 	})
 	if err != nil {
 		return err
 	}
-	telemetry.Current().Spend(ctx, model, role, string(s.Outcome), s.NanoUSD)
+	tel := telemetry.Current()
+	tel.Spend(ctx, model, role, string(s.Outcome), s.NanoUSD)
+	if over {
+		tel.SpendWarning(ctx, model, role, telemetry.SpendOverReservation)
+	}
+	if s.InferenceGeo == spend.GeoUnknown {
+		tel.SpendWarning(ctx, model, role, telemetry.SpendGeoUnknown)
+	}
 	return nil
 }
 

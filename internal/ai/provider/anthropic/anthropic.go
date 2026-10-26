@@ -33,6 +33,16 @@
 //     credential with the SDK's backoff, up to the budget's retries, and
 //     then fail without changing credential. A credential skipped because
 //     it is unavailable is listed in FailedOver, on every call.
+//   - T-053 review round 1 (M3): a call moves to the next credential only
+//     while every attempt on this one was answered with an error status,
+//     which is not billed. After an attempt that may have been billed (no
+//     answer, a cut body, an answer that cannot be read), a 401, 402 or 403
+//     still marks the credential, but the call fails (unavailable,
+//     retryable) instead of billing more attempts than its reservation
+//     holds; the next call goes to the next credential.
+//   - The request names no inference_geo (review round 1, M2; PROPOSED
+//     D-116): the workspace's default decides, the reservation assumes the
+//     dearest geo, and the answer's usage.inference_geo prices it.
 //   - The SDK reads a whole response body before the client's
 //     MaxOutputBytes check applies; the body is bounded by max_tokens and
 //     the attempt timeout, not by that check.
@@ -242,9 +252,22 @@ func (b *Backend) Quote(req provider.Request) (provider.Quote, error) {
 
 // tally counts one call's attempts that ended without an answer after the
 // request may have reached the provider: the transport failed (a lost
-// connection, an attempt's timeout, a cancellation) or the body could not
-// be read to its end. The provider may have billed them (T-053).
-type tally struct{ unknown atomic.Int32 }
+// connection, an attempt's timeout, a cancellation), the body could not
+// be read to its end, or an answer read to its end could not be decoded
+// (complete counts that one). The provider may have billed them (T-053).
+// body is how the last attempt's body ended: bodyNone (not read yet),
+// bodyRead (to its end) or bodyCut. The SDK makes a call's attempts one
+// after another, so the last body is the last attempt's.
+type tally struct {
+	unknown atomic.Int32
+	body    atomic.Int32
+}
+
+const (
+	bodyNone int32 = iota
+	bodyRead
+	bodyCut
+)
 
 type tallyKey struct{}
 
@@ -267,11 +290,13 @@ func (tr tallying) RoundTrip(req *http.Request) (*http.Response, error) {
 		t.unknown.Add(1)
 		return resp, err
 	}
+	t.body.Store(bodyNone)
 	resp.Body = &tallyBody{ReadCloser: resp.Body, tally: t}
 	return resp, nil
 }
 
-// tallyBody counts a body that could not be read to its end, once.
+// tallyBody counts a body that could not be read to its end, once, and
+// notes how the body ended.
 type tallyBody struct {
 	io.ReadCloser
 	tally *tally
@@ -280,8 +305,15 @@ type tallyBody struct {
 
 func (b *tallyBody) Read(p []byte) (int, error) {
 	n, err := b.ReadCloser.Read(p)
-	if err != nil && !errors.Is(err, io.EOF) && !b.cut {
+	switch {
+	case err == nil:
+	case errors.Is(err, io.EOF):
+		if !b.cut {
+			b.tally.body.Store(bodyRead)
+		}
+	case !b.cut:
 		b.cut = true
+		b.tally.body.Store(bodyCut)
 		b.tally.unknown.Add(1)
 	}
 	return n, err
@@ -299,16 +331,20 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 		return provider.Response{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")
 	}
 	t := &tally{}
-	resp, err := b.complete(context.WithValue(ctx, tallyKey{}, t), req)
+	resp, err := b.complete(context.WithValue(ctx, tallyKey{}, t), t, req)
 	resp.UnknownAttempts = int(t.unknown.Load())
 	return resp, err
 }
 
-func (b *Backend) complete(ctx context.Context, req provider.Request) (provider.Response, error) {
+func (b *Backend) complete(ctx context.Context, t *tally, req provider.Request) (provider.Response, error) {
 	proj, err := b.projection(req.OutputSchema)
 	if err != nil {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
+	// The request names no inference_geo: where inference runs is the
+	// owner's data residency choice, the workspace's default_inference_geo
+	// (PROPOSED D-116). The reservation assumes the dearest geo, and the
+	// answer is priced at the geo it reports (review round 1, M2).
 	params := sdk.MessageNewParams{
 		Model:        sdk.Model(b.model),
 		MaxTokens:    req.MaxOutputTokens,
@@ -331,6 +367,7 @@ func (b *Backend) complete(ctx context.Context, req provider.Request) (provider.
 			option.WithMaxRetries(max(0, req.MaxRetries)),
 			option.WithRequestTimeout(req.AttemptTimeout),
 		)
+		unknownBefore := t.unknown.Load()
 		var raw *http.Response
 		msg, err := svc.New(ctx, params, option.WithResponseInto(&raw))
 		resp := provider.Response{Model: b.model, Credential: c.label, FailedOver: failed}
@@ -349,7 +386,13 @@ func (b *Backend) complete(ctx context.Context, req provider.Request) (provider.
 		}
 		var apiErr *sdk.Error
 		if !errors.As(err, &apiErr) {
-			// No response after the retries: a connection problem, not the
+			if raw != nil && raw.StatusCode >= 200 && raw.StatusCode < 300 && t.body.Load() != bodyCut {
+				// An answer came back but could not be read: it may have
+				// been billed, for a usage nobody knows (review round 1, I1).
+				t.unknown.Add(1)
+				resp.Undecoded = true
+			}
+			// No answer after the retries: a connection problem, not the
 			// credential's.
 			return resp, provider.NewError(provider.CodeUnavailable, 0, c.label)
 		}
@@ -359,6 +402,14 @@ func (b *Backend) complete(ctx context.Context, req provider.Request) (provider.
 		switch status := apiErr.StatusCode; {
 		case status == http.StatusUnauthorized, status == http.StatusPaymentRequired, status == http.StatusForbidden:
 			c.refuse(status, b.now())
+			if t.unknown.Load() > unknownBefore {
+				// An attempt on this credential may have been billed: moving
+				// to the next one would bill attempts beyond the
+				// reservation's 1 + MaxRetries (review round 1, M3). The call
+				// fails; the next call, reserved for on its own, skips this
+				// credential.
+				return resp, provider.NewError(provider.CodeUnavailable, status, c.label)
+			}
 			failed = append(failed, c.label)
 			continue
 		case status == http.StatusTooManyRequests:
@@ -380,6 +431,7 @@ func answer(msg *sdk.Message, resp provider.Response) (provider.Response, error)
 	}
 	resp.Usage = provider.Usage{InputTokens: msg.Usage.InputTokens, OutputTokens: msg.Usage.OutputTokens,
 		CacheReadInputTokens: msg.Usage.CacheReadInputTokens, CacheCreationInputTokens: msg.Usage.CacheCreationInputTokens}
+	resp.InferenceGeo = msg.Usage.InferenceGeo // untrusted: priced through spend.Geo only
 	switch msg.StopReason {
 	case sdk.StopReasonEndTurn, sdk.StopReasonStopSequence:
 	case sdk.StopReasonMaxTokens:

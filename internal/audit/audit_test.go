@@ -127,7 +127,12 @@ func valid() []audit.Event {
 		w("ai_spend.settle", "ai_proposal", aip, map[string]any{"reservation_id": ids.New("asr"), "role": "modeler", "model": "claude-opus-5-5",
 			"reserved_nano_usd": int64(1_500_000_000), "settled_nano_usd": int64(84_000_000), "outcome": "usage", "input_tokens": int64(12000),
 			"output_tokens": int64(1800), "cache_write_tokens": int64(0), "cache_read_tokens": int64(0), "unknown_attempts": 0,
-			"credential_label": "org-b"}),
+			"credential_label": "org-b", "inference_geo": "global"}),
+		// T-053 review round 1: above its reservation, at the dearest geo.
+		w("ai_spend.settle", "ai_proposal", aip, map[string]any{"reservation_id": ids.New("asr"), "role": "modeler", "model": "claude-opus-5-5",
+			"reserved_nano_usd": int64(1_000), "settled_nano_usd": int64(5_000), "outcome": "usage", "input_tokens": int64(1),
+			"output_tokens": int64(0), "cache_write_tokens": int64(0), "cache_read_tokens": int64(0), "unknown_attempts": 0,
+			"credential_label": "org-a", "inference_geo": "unknown", "over_reservation": true}),
 		w("ai_spend.settle", "ai_analysis", ids.New("ana"), map[string]any{"reservation_id": ids.New("asr"), "role": "analyst",
 			"model": "claude-opus-5-5", "reserved_nano_usd": int64(9), "settled_nano_usd": int64(0), "outcome": "none", "input_tokens": int64(0),
 			"output_tokens": int64(0), "cache_write_tokens": int64(0), "cache_read_tokens": int64(0), "unknown_attempts": 0, "credential_label": ""}),
@@ -241,6 +246,17 @@ func TestRefused(t *testing.T) {
 			e.Metadata = map[string]any{"reservation_id": job}
 		},
 		"settle with free-text reason": func(e *audit.Event) { e.Action = "ai_spend.settle"; e.Metadata = map[string]any{"outcome": thought} },
+		// T-053 review round 1: the geo is this build's word, never the
+		// provider's text; the overrun flag is a boolean.
+		"settle with the provider's geo text": func(e *audit.Event) {
+			e.Action = "ai_spend.settle"
+			e.Metadata = map[string]any{"inference_geo": "eu-west SENTINEL"}
+		},
+		"settle with an overrun as text": func(e *audit.Event) {
+			e.Action = "ai_spend.settle"
+			e.Metadata = map[string]any{"over_reservation": "yes"}
+		},
+		"a refusal with a geo": meta("inference_geo", "us"),
 	} {
 		e := spendBase
 		e.Metadata = maps.Clone(spendBase.Metadata)

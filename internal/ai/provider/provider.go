@@ -108,6 +108,12 @@ type Metadata struct {
 	CostNanoUSD      int64  `json:"cost_nano_usd,omitzero"`
 	SpendReservation string `json:"spend_reservation_id,omitzero"`
 	SpendUnsettled   bool   `json:"spend_unsettled,omitzero"`
+	// InferenceGeo is the geo the answer was priced at (global, us, or
+	// unknown when it named none this build knows: priced at the dearest);
+	// SpendOverReservation that the call cost more than its reservation
+	// held, which is recorded all the same (T-053 review round 1, M2, M3).
+	InferenceGeo         string `json:"inference_geo,omitzero"`
+	SpendOverReservation bool   `json:"spend_over_reservation,omitzero"`
 }
 
 type ProposalResult struct {
@@ -150,8 +156,17 @@ type Response struct {
 	ProviderRequestID string
 	// UnknownAttempts counts the attempts that ended without an answer
 	// after the request may have reached the provider (a timeout, a lost
-	// connection): the provider may have billed them (T-053).
+	// connection, an answer that could not be read): the provider may have
+	// billed them (T-053).
 	UnknownAttempts int
+	// InferenceGeo is where the provider says the answer's inference ran
+	// (usage.inference_geo), as the provider wrote it: untrusted, priced
+	// through spend.Geo, never logged as it is.
+	InferenceGeo string
+	// Undecoded: an answer came back (a 2xx status) but could not be read,
+	// so its usage is unknown; it is one of the UnknownAttempts, and the
+	// call settles at its whole reservation at least (review round 1, I1).
+	Undecoded bool
 }
 
 // Backend is one provider mode. Complete returns *Error for every failure

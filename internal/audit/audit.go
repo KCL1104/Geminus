@@ -222,7 +222,10 @@ var catalogue = map[string]spec{
 		"model": {shape: label}, "reserved_nano_usd": {shape: count}, "settled_nano_usd": {shape: count},
 		"outcome": oneOf("usage", "none", "unknown"), "input_tokens": {shape: count}, "output_tokens": {shape: count},
 		"cache_write_tokens": {shape: count}, "cache_read_tokens": {shape: count}, "unknown_attempts": {shape: count},
-		"credential_label": {shape: label}}},
+		"credential_label": {shape: label},
+		// T-053 review round 1: the geo the answer was priced at (M2), and a
+		// settlement above its reservation, recorded at what was billed (L1).
+		"inference_geo": oneOf("global", "us", "unknown"), "over_reservation": {shape: flag}}},
 	// A refused reservation writes nothing but this event (best effort:
 	// the call is refused whether or not it is recorded).
 	"ai_spend.refuse": {Worker, spendTargets, map[string]field{"role": aiRoles, "model": {shape: label},

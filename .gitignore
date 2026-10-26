@@ -9,6 +9,10 @@ coverage/
 .env.production
 !/.env.example
 
+# The live eval's spend-record lock (T-053 review round 1, H1): held only
+# while a run starts; the record itself (live-spend.jsonl) is committed.
+/checks/ai-evals/live-spend.jsonl.lock
+
 # Go build output
 /bin/
 

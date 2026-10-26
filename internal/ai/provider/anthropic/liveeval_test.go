@@ -36,9 +36,11 @@ func TestTheLiveEvalOverHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	only := []string{"MOD-002", "MOD-030", "MOD-036"}
+	start := time.Date(2026, 10, 27, 1, 0, 0, 0, time.UTC)
+	const runID = "01JB0000000000000000000001"
 	r, err := aievals.Run(context.Background(), aievals.Config{Client: c, Budget: provider.DefaultBudget(), Packs: reg, Root: root,
 		Cases: cases, Only: only, Locale: "en", Approval: "H-018", Model: model, Kind: "eval", CapNanoUSD: 10 * spendUSD, Spent: m.Spent,
-		Now: func() time.Time { return time.Date(2026, 10, 27, 1, 0, 0, 0, time.UTC) }})
+		RunID: runID, Now: func() time.Time { return start }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,11 +57,15 @@ func TestTheLiveEvalOverHTTP(t *testing.T) {
 	if r.Usage.InputTokens != 360 || r.Usage.OutputTokens != 90 || r.Cost.NanoUSD != 3*cost || r.Cost.USD != spend.FormatUSD(3*cost) {
 		t.Errorf("usage %+v cost %+v", r.Usage, r.Cost)
 	}
-	if r.Model != model || r.Date != "2026-10-27" || len(r.Served) != 1 || r.Served[0] != model {
+	if r.Model != model || r.Date != "2026-10-27" || r.RunID != runID || len(r.Served) != 1 || r.Served[0] != model {
 		t.Errorf("header %+v", r)
 	}
+	// Review round 1, M2: every answer named its geo (global).
+	if r.InferenceGeos["global"] != 3 || r.SpendWarnings["inference_geo_unknown"] != 0 || r.SpendWarnings["over_reservation"] != 0 {
+		t.Errorf("geos %v warnings %v", r.InferenceGeos, r.SpendWarnings)
+	}
 	dir := t.TempDir()
-	path := aievals.ReportPath(dir, r.Kind, r.Date, r.Model)
+	path := aievals.ReportPath(dir, r.Kind, start, runID, r.Model)
 	if err := aievals.WriteReport(path, r); err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +77,8 @@ func TestTheLiveEvalOverHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	var back map[string]any
-	if err := json.Unmarshal(data, &back); err != nil || back["model"] != model || filepath.Base(path) != "live-2026-10-27-claude-opus-5-5.json" {
+	if err := json.Unmarshal(data, &back); err != nil || back["model"] != model || back["run_id"] != runID ||
+		filepath.Base(path) != "live-2026-10-27T010000Z-"+runID+"-claude-opus-5-5.json" {
 		t.Errorf("%s: %v %v", path, back["model"], err)
 	}
 	for _, leak := range []string{keyA, keyB, "PRIVATE-REASONING-SENTINEL", "Which station?", "CI runner", s.srv.URL} {
