@@ -1684,6 +1684,18 @@
         "T-053 提出的 PROPOSED 決策（例如每日上限的數值）",
         "Anthropic 資料保留／ZDR 的確認（視 T-053 查證結果）"
       ]
+    },
+    {
+      "id": "H-026",
+      "subject": "兩個 provider organization 都使用標準資料保留（D-113 的確認）",
+      "decision": "Owner 確認 GEMINUS_ANTHROPIC_API_KEY_A 與 _B 所屬的兩個 Anthropic organization 都使用預設的標準資料保留，沒有 ZDR，兩者相同；寫入 internal/config/aiapproval 的 H-018 紀錄（Retention：standard、KCL1104、2026-10-26、來源 H-026）。",
+      "quote": "兩個都是預設 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：AskUserQuestion，owner 選擇",
+      "still_open": [
+        "D-110–D-115（T-053）待 owner 批准"
+      ]
     }
   ]
 }
