@@ -1,0 +1,8 @@
+=== RUN   TestAReportIsNeverOverwritten
+    live_test.go:230: a second report replaced the first
+    live_test.go:233: the first report changed
+--- FAIL: TestAReportIsNeverOverwritten (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/aievals	0.024s
+FAIL
+exit 1

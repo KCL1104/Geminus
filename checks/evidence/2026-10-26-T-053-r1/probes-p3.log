@@ -1,0 +1,11 @@
+=== RUN   TestProbeP3TheRunCapIsWithinTheDailyLimit
+=== RUN   TestProbeP3TheRunCapIsWithinTheDailyLimit/the_whole_monthly_budget_in_one_run
+=== RUN   TestProbeP3TheRunCapIsWithinTheDailyLimit/five_daily_limits_in_one_run
+=== RUN   TestProbeP3TheRunCapIsWithinTheDailyLimit/just_above_the_daily_limit
+--- PASS: TestProbeP3TheRunCapIsWithinTheDailyLimit (0.00s)
+    --- PASS: TestProbeP3TheRunCapIsWithinTheDailyLimit/the_whole_monthly_budget_in_one_run (0.00s)
+    --- PASS: TestProbeP3TheRunCapIsWithinTheDailyLimit/five_daily_limits_in_one_run (0.00s)
+    --- PASS: TestProbeP3TheRunCapIsWithinTheDailyLimit/just_above_the_daily_limit (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.020s
+exit 0

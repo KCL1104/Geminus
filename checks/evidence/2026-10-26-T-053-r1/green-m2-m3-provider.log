@@ -1,0 +1,47 @@
+=== RUN   TestTheReservationBoundsTheCall
+--- PASS: TestTheReservationBoundsTheCall (0.01s)
+=== RUN   TestSettlement
+=== RUN   TestSettlement/more_lost_attempts_than_reserved_for
+=== RUN   TestSettlement/cancelled_while_in_flight
+=== RUN   TestSettlement/an_undecodable_answer
+=== RUN   TestSettlement/an_answer_naming_no_geo
+=== RUN   TestSettlement/answer
+=== RUN   TestSettlement/a_lost_connection_may_be_billed
+=== RUN   TestSettlement/an_answer_after_lost_attempts
+=== RUN   TestSettlement/an_answer_from_US-only_inference
+=== RUN   TestSettlement/an_answer_naming_an_unknown_geo
+=== RUN   TestSettlement/invalid_answer_is_billed
+=== RUN   TestSettlement/truncated_is_billed
+=== RUN   TestSettlement/rate_limited_is_not_billed
+=== RUN   TestSettlement/exhausted_credentials_are_not_billed
+--- PASS: TestSettlement (0.00s)
+    --- PASS: TestSettlement/more_lost_attempts_than_reserved_for (0.00s)
+    --- PASS: TestSettlement/cancelled_while_in_flight (0.00s)
+    --- PASS: TestSettlement/an_undecodable_answer (0.00s)
+    --- PASS: TestSettlement/an_answer_naming_no_geo (0.00s)
+    --- PASS: TestSettlement/answer (0.00s)
+    --- PASS: TestSettlement/a_lost_connection_may_be_billed (0.00s)
+    --- PASS: TestSettlement/an_answer_after_lost_attempts (0.00s)
+    --- PASS: TestSettlement/an_answer_from_US-only_inference (0.00s)
+    --- PASS: TestSettlement/an_answer_naming_an_unknown_geo (0.00s)
+    --- PASS: TestSettlement/invalid_answer_is_billed (0.00s)
+    --- PASS: TestSettlement/truncated_is_billed (0.00s)
+    --- PASS: TestSettlement/rate_limited_is_not_billed (0.00s)
+    --- PASS: TestSettlement/exhausted_credentials_are_not_billed (0.00s)
+=== RUN   TestTheReservationAssumesTheDearestGeo
+--- PASS: TestTheReservationAssumesTheDearestGeo (0.00s)
+=== RUN   TestASettlementAboveTheReservationIsRecorded
+=== RUN   TestASettlementAboveTheReservationIsRecorded/more_lost_attempts_than_reserved_for
+=== RUN   TestASettlementAboveTheReservationIsRecorded/an_answer_above_the_quote
+=== RUN   TestASettlementAboveTheReservationIsRecorded/exactly_the_reservation
+=== RUN   TestASettlementAboveTheReservationIsRecorded/within_it
+--- PASS: TestASettlementAboveTheReservationIsRecorded (0.00s)
+    --- PASS: TestASettlementAboveTheReservationIsRecorded/more_lost_attempts_than_reserved_for (0.00s)
+    --- PASS: TestASettlementAboveTheReservationIsRecorded/an_answer_above_the_quote (0.00s)
+    --- PASS: TestASettlementAboveTheReservationIsRecorded/exactly_the_reservation (0.00s)
+    --- PASS: TestASettlementAboveTheReservationIsRecorded/within_it (0.00s)
+=== RUN   TestTheMetadataNamesThePricedGeo
+--- PASS: TestTheMetadataNamesThePricedGeo (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.025s
+exit 0

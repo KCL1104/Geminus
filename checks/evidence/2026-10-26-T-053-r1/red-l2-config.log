@@ -1,0 +1,42 @@
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_carriage_return
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_no-break_space
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_a_DEL_inside
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/different_keys,_one_space
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_tab
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/A:_trailing_newline
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/A:_a_control_character
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_an_escape_inside
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_a_C1_control_inside
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_trailing_newline
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_leading_space
+    ai_test.go:136: accepted: live true
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_trailing_space
+    ai_test.go:136: accepted: live true
+--- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_carriage_return (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_no-break_space (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_a_DEL_inside (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/different_keys,_one_space (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_tab (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/A:_trailing_newline (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/A:_a_control_character (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_an_escape_inside (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_a_C1_control_inside (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_trailing_newline (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_leading_space (0.00s)
+    --- FAIL: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_trailing_space (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config	0.008s
+FAIL
+exit 1

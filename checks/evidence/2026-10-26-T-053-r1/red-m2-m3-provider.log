@@ -1,0 +1,12 @@
+=== RUN   TestTheReservationAssumesTheDearestGeo
+    settle_test.go:25: charges [{OrganizationID:org_01M4YDQK00TA00000000000000 Role:modeler Model:claude-opus-5-5 Attribution:{TargetType:ai_proposal TargetID:aip_01M4YDQK00TA00000000000001 RequestID:req_01M4YDQK00TA00000000000001} NanoUSD:1091520000}], want 1200672000
+--- FAIL: TestTheReservationAssumesTheDearestGeo (0.01s)
+=== RUN   TestASettlementAboveTheReservationIsRecorded
+=== RUN   TestASettlementAboveTheReservationIsRecorded/more_lost_attempts_than_reserved_for
+    settle_test.go:48: settled [{NanoUSD:18000000 Usage:{InputTokens:0 OutputTokens:0 CacheReadInputTokens:0 CacheCreationInputTokens:0} Outcome:unknown Credential:org-a UnknownAttempts:9}] metadata 18000000, want 59400000 (reserved 19800000)
+--- FAIL: TestASettlementAboveTheReservationIsRecorded (0.00s)
+    --- FAIL: TestASettlementAboveTheReservationIsRecorded/more_lost_attempts_than_reserved_for (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider	0.028s
+FAIL
+exit 1

@@ -1,0 +1,31 @@
+=== RUN   TestReserveAndSettle
+--- PASS: TestReserveAndSettle (0.15s)
+=== RUN   TestLimitsRefuse
+--- PASS: TestLimitsRefuse (0.15s)
+=== RUN   TestConcurrentReservationsNeverOvershoot
+--- PASS: TestConcurrentReservationsNeverOvershoot (0.43s)
+=== RUN   TestSettleKeepsItsDayAndOrganization
+--- PASS: TestSettleKeepsItsDayAndOrganization (0.17s)
+=== RUN   TestFailClosed
+--- PASS: TestFailClosed (0.11s)
+=== RUN   TestTheDatabaseClockPicksTheDay
+=== RUN   TestTheDatabaseClockPicksTheDay/UTC
+=== RUN   TestTheDatabaseClockPicksTheDay/Pacific/Kiritimati
+=== RUN   TestTheDatabaseClockPicksTheDay/Etc/GMT+12
+--- PASS: TestTheDatabaseClockPicksTheDay (0.17s)
+    --- PASS: TestTheDatabaseClockPicksTheDay/UTC (0.04s)
+    --- PASS: TestTheDatabaseClockPicksTheDay/Pacific/Kiritimati (0.03s)
+    --- PASS: TestTheDatabaseClockPicksTheDay/Etc/GMT+12 (0.02s)
+=== RUN   TestOrganizationFilter
+--- PASS: TestOrganizationFilter (0.13s)
+=== RUN   TestASettlementAboveItsReservationIsRecordedAndFlagged
+--- PASS: TestASettlementAboveItsReservationIsRecordedAndFlagged (0.13s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	2.527s
+=== RUN   TestAMeteredProposal
+--- PASS: TestAMeteredProposal (0.55s)
+=== RUN   TestASpendLimitRefusesTheProposal
+--- PASS: TestASpendLimitRefusesTheProposal (0.29s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	1.916s
+exit 0

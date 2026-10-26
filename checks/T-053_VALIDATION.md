@@ -1,10 +1,10 @@
 # T-053 驗證報告：Live AI 開啟（H-018）
 
-**日期：2026-10-26｜狀態：實作完成，待獨立 review（H-003）；`planning/tasks.json` 的狀態未改（仍為 not_started），由 coordinator／reviewer 決定。｜需求：REQ-008、REQ-016、REQ-019、REQ-020｜Gate：D-018（APPROVED）；本任務提出的 D-110–D-115 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-053 依建議實作並以它們為 gate（tasks.json 的 `decision_gates` 加入 D-110–D-115）。｜驗收測試：TEST-027（audit／telemetry privacy 的 T-053 部分）；TEST-024（analyst grounding）不在本次範圍：analyst 的 live 使用依 D-112 不開，analyst job 是 T-030。｜原本的 T-053 build 中 live AI 無法開啟：H-018 的 record 缺 owner 對資料保留安排的確認（D-113，`retention_unconfirmed`）。Owner 的確認（H-026）已在 `t053-ret` 記入，record 已完整，見下節。Live smoke 與 live eval 都 NOT RUN；DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」）。**
+**日期：2026-10-26｜狀態：獨立 review 第 1 輪（H-003）為 CHANGES REQUESTED，修正在 `t053-r1`（見最後一節「Review 第 1 輪」），待 re-review；live AI 在 re-review 接受之前保持不執行。`planning/tasks.json` 的狀態未改（仍為 not_started），由 coordinator／reviewer 決定。｜需求：REQ-008、REQ-016、REQ-019、REQ-020｜Gate：D-018（APPROVED）；本任務提出的 D-110–D-115 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-053 依建議實作並以它們為 gate（tasks.json 的 `decision_gates` 加入 D-110–D-115）。｜驗收測試：TEST-027（audit／telemetry privacy 的 T-053 部分）；TEST-024（analyst grounding）不在本次範圍：analyst 的 live 使用依 D-112 不開，analyst job 是 T-030。｜原本的 T-053 build 中 live AI 無法開啟：H-018 的 record 缺 owner 對資料保留安排的確認（D-113，`retention_unconfirmed`）。Owner 的確認（H-026）已在 `t053-ret` 記入，record 已完整，見下節。Live smoke 與 live eval 都 NOT RUN；DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」）。**
 
 ## Owner 的確認（H-026）與 reservation ID 的 domain（追加，`t053-ret` branch）
 
-T-053 的 commit 整合到 main（79c9423）之後，在 `t053-ret`（從 79c9423 開出，沒有 push）追加兩項可分開 review 的修改。以下的「實際執行結果」等章節仍是追加之前的紀錄；追加的驗證在本節。
+T-053 的 commit 整合到 main（79c9423）之後，在 `t053-ret`（從 79c9423 開出，沒有 push）追加兩項可分開 review 的修改。以下的「實際執行結果」等章節仍是追加之前的紀錄；追加的驗證在本節。**Review 第 1 輪（L5）的更正**：H-026 之後 live AI 在條件齊全時會開啟，所以下面寫於 H-026 之前、說「`Retention` 空白」「指令會拒絕」的句子已改為現況（稽核表 2a、3 列與「NOT RUN」表）；review 第 1 輪的修正見本報告最後一節。
 
 **(1) H-026：資料保留安排的確認。** Owner 回答 D-113 的問題（2026-10-26，coordinator 記錄為 H-026）：兩個 provider organization（`GEMINUS_ANTHROPIC_API_KEY_A`／`_B` 背後）都是預設的 standard retention，沒有 ZDR，兩者相同。
 - `internal/config/aiapproval`：H-018 record 的 `Retention` 寫入 `Arrangement` `standard`、`By` KCL1104 (repository owner)、`At` 2026-10-26、`Source` H-026。形狀沒有改（一個 arrangement 代表兩個 organization）。`Confirmation.Given` 另要求 `At` 是 YYYY-MM-DD 的日曆日期（`SpendLimits` 也適用）；arrangement 只接受 `standard` 與 `zero_data_retention`，所以「只有一個 organization 開 ZDR」這種記法只能寫成不認得的 arrangement，因此被拒。
@@ -78,10 +78,10 @@ T-053 的 commit 整合到 main（79c9423）之後，在 `t053-ret`（從 79c942
 | 1e. 計數持久化、跨 process 一致 | Migration 0016：`twin.ai_spend_periods`（部署全體的日、月）、`twin.ai_spend_days`（tenant 的日，RLS）、`twin.ai_spend_reservations`（RLS、composite FK、只能結算一次、沒有 DELETE）、deferred trigger 檢查 organization 日＝其預留的總和；`internal/storage/aispend.Meter`：同一 transaction 內以月 → 日 → organization 日的鎖順序做條件 UPDATE | `TestReserveAndSettle`、`TestLimitsRefuse`、`TestConcurrentReservationsNeverOvershoot`（兩個 pool 模擬兩個 process）、`TestSettleKeepsItsDayAndOrganization`、`TestFailClosed`（DB）；`db/tests/ai_spend.sql`（RLS、grants、trigger、shape、結算一次、down／up 再跑） | DB 測試只編譯與 vet，**NOT RUN**；mutant D1–D7、D9 只確認可 build（NOT RUN） |
 | 1f. 計入 audit，不記 prompt 或回應 | Audit `ai_spend.reserve`／`settle`／`refuse`（worker；target 為 proposal／analysis／import；只有金額、token、角色、model label、credential label，沒有部署全體的總數）；`proposal.generate` 的 `cost_nano_usd`、`spend_reservation_id`、`spend_unsettled` | `TestEveryActionFits`、`TestRefused`（使用者記帳、simulation target、未知 limit、部署總數、其他 tenant、負數、文字金額、key 當 model、未知 role、別的 ID、自由文字）、`TestTheCatalogueMatchesTheCode` | TEST-027；mutant U45、D7（NOT RUN） |
 | 1g. 觀測 | Metric `geminus.ai.spend`、`geminus.ai.spend.refusals`（`geminus.ai.limit`）；ID 形狀的 model 名稱 → `[redacted]`；log key 與 WARN 行 | `TestSpend`（telemetry）、`TestAttributesAreFiltered`、`TestTheSpendLines` | mutant U46 |
-| 2a. 記錄 H-018 的批准 | `aiapproval.h018`：ID H-018、provider anthropic、model `claude-opus-5-5`、資料政策（synthetic 與使用者輸入的文字、只服務 modeler／scenario、log 不存原始文字）、每月 USD 100、credential `org-a`／`org-b`、approver「KCL1104 (repository owner)」、2026-10-20、來源（decisions.json 的 human_decisions 與 decision page）；**Console spend limit：KCL1104、2026-10-26、H-025**；`Retention` 空白 | `TestTheH018Record`（逐欄 golden）、`TestNothingElseIsRecorded`、`TestGapReasons`、`TestRecorded` | `red-aiapproval.log`；mutant U25–U30 |
+| 2a. 記錄 H-018 的批准 | `aiapproval.h018`：ID H-018、provider anthropic、model `claude-opus-5-5`、資料政策（synthetic 與使用者輸入的文字、只服務 modeler／scenario、log 不存原始文字）、每月 USD 100、credential `org-a`／`org-b`、approver「KCL1104 (repository owner)」、2026-10-20、來源（decisions.json 的 human_decisions 與 decision page）；**Console spend limit：KCL1104、2026-10-26、H-025**；`Retention`：H-026 之前空白，H-026 起為 standard、KCL1104、2026-10-26、來源 H-026（見本報告開頭一節） | `TestTheH018Record`（逐欄 golden）、`TestNothingElseIsRecorded`、`TestGapReasons`、`TestRecorded` | `red-aiapproval.log`；mutant U25–U30 |
 | 2b. 只有這筆紀錄＋兩把 credential＋明確的開關能開啟 live；不一致保持關閉並給 typed reason；預設 fake | `config.LoadAI`：record 的 `Gap` → `AI_MODEL` 等於 record 的 model → 有價格 → `GEMINUS_AI_LIVE=on`；條件不合而開關 on 時拒絕啟動（`GEMINUS_AI_LIVE:retention_unconfirmed`、`AI_MODEL:model_mismatch`／`required`、`GEMINUS_ANTHROPIC_API_KEY_B:required` 等）；開關不是 on 時 `LiveOff` 為原因且不讀 key；`anthropic.New` 只接受 record 的 model 與 credential label（先檢查 approval：`ErrNotApproved`）；worker 啟動時記 live on／off 與原因 | `TestLiveTurnsOn`、`TestTheSwitchIsRequired`、`TestAnyMismatchKeepsLiveOff`（record 的每一欄、其他 model、沒有價格）、`TestBothCredentialsAreRequired`（少一把、B＝A）、`TestTheAdapterTakesOnlyTheApproval`、`TestThisBuildKeepsLiveOff`、`TestLiveAIStaysOff`、`TestNewRefuses`、`TestTheProviderIsTheConfigured`（worker） | mutant U22–U24、U31–U36；D-115（PROPOSED） |
 | 2c. 只服務 H-018 資料政策內的角色 | `aiapproval.liveRoles`（modeler、scenario）；adapter 對其他 role 在 I/O 前回 `policy_not_approved` | `TestOnlyTheApprovedRoles`、`TestGapReasons`（record 列出其他 role → `policy_unsupported`） | mutant U19、U27、U30；D-112（PROPOSED） |
-| 3. Anthropic 的保留／ZDR 規則：官方來源、日期、原文 | [SECURITY §7](../docs/SECURITY.md#7-ai-data-governance)（見下方「資料保留與 ZDR」）；ZDR 的開啟是 owner 才能確認的帳號設定，record 的 `Retention` 空白，live 保持關閉 | `TestGapReasons`（`retention_unconfirmed`）、`TestThisBuildKeepsLiveOff`、`TestTheLiveEvalRunsOnlyWhenLiveIsOn`（本 build 的 record 被拒） | mutant U25、U34；D-113（PROPOSED） |
+| 3. Anthropic 的保留／ZDR 規則：官方來源、日期、原文 | [SECURITY §7](../docs/SECURITY.md#7-ai-data-governance)（見下方「資料保留與 ZDR」）；ZDR 的開啟是 owner 才能確認的帳號設定；H-026 之前 record 的 `Retention` 空白、live 保持關閉，H-026 起 record 記 standard、完整 | `TestGapReasons`（`retention_unconfirmed`）、`TestThisBuildsRecord`（原 `TestThisBuildKeepsLiveOff`）、`TestH026TurnsLiveOn`、`TestTheLiveEvalRunsOnlyWhenLiveIsOn`（H-026 之前的 record 被拒） | mutant U25、U34；D-113（PROPOSED） |
 | 4a. `make ai-eval-live`：拒絕，除非 approval＋credentials＋開關 | `cmd/ai-eval-live` → `aievals.Main`：`config.LoadAI` 與 worker 相同；live 關閉 → exit 2、不建立 backend、不寫檔 | `TestMainRefusesWhileLiveIsOff`、`TestTheLiveEvalRunsOnlyWhenLiveIsOn` | `ai-eval-live-refusals.log`（五種情形都是 exit 2，`checks/ai-evals` 只有兩個 fake 檔）；mutant U38、U42 |
 | 4b. 寫 `checks/ai-evals/live-*.json`，與 fake 分開；記 model、日期、token、成本 | `aievals.ReportPath`、`WriteReport`（檔名須符合 `live-[smoke-]<date>-<model>.json`，否則 `ErrNotALiveReport`）；report：model、served model、日期、approval、template 版本、token、成本（USD 與 nano-USD）、上限、每個 case 的狀態、code、risk、patch hash；gate；exit 0／1／2／3 | `TestRunScoresTheAnswers`、`TestTheCapStopsTheRun`、`TestTheReportIsApart`、`TestTheLiveEvalOverHTTP`（adapter 對本機 Messages API server 跑完整的 eval、寫 report） | mutant U39–U41；D-114（PROPOSED） |
 | 4c. Live 只在 worker 與 live eval 的 command | Architecture rules `live-ai-only-in-the-worker`、`live-eval-only-in-its-command` | `scripts/check-architecture` 的 probe（api、handler、ledger 連結 adapter；worker、service 連結 live eval） | `architecture-check.log` |
@@ -136,7 +136,7 @@ T-053 的 commit 整合到 main（79c9423）之後，在 `t053-ret`（從 79c942
 - U24（`anthropic.New` 不檢查 approval）survived：後面的 model 與 credential 檢查對無效的 token 一定失敗（`Approval.Model()` 為空），所以行為相同，但理由被遮住。改為 `anthropic.ErrNotApproved`，`TestTheAdapterTakesOnlyTheApproval` 與 `TestNewRefuses` 要求沒有 approval、record 不完整、record 改變後的 token 都是這個 error，其他情形都不是。
 - D8（generator 不把 attribution 交給 client）只被 DB 測試涵蓋：補 unit 測試 `TestAMeteredCallIsChargedToItsTarget`（metered client、記錄 charge 的 meter：charge 的 target、request、organization、role 與 reservation）。
 
-**第 2 次（`mutants-run2.log`，補強的測試尚未 commit，所以最後一行列出那 5 個檔案為 CHANGED）與第 3 次（`mutants-run3.log`，c39624c 的 tree，還原檢查為 clean）**：46 個 unit mutant 全部 killed，D8 也被 unit 測試擋下（47 killed）；其餘 8 個 DB mutant（D1–D7、D9）都 build，是否被擋下 NOT RUN。D9（settle 的 SELECT 不帶 organization 條件）在 RLS 之下是等價的 mutant：tenant scope 本來就只看得到自己的列，沒有測試能分辨；application 的 organization 條件是 RLS 之外的 defense in depth（AGENTS.md §2：application filter＋RLS）。SQL（migration 0016 的 trigger、policy、grant）沒有做 mutation：需要 PostgreSQL。下表為第 3 次的結果：
+**第 2 次（`mutants-run2.log`，補強的測試尚未 commit，所以最後一行列出那 5 個檔案為 CHANGED）與第 3 次（`mutants-run3.log`，c39624c 的 tree，還原檢查為 clean）**：46 個 unit mutant 全部 killed，D8 也被 unit 測試擋下（47 killed）；其餘 8 個 DB mutant（D1–D7、D9）都 build，是否被擋下 NOT RUN。D9（settle 的 SELECT 不帶 organization 條件）在 RLS 之下與原程式行為相同：以 worker 執行的測試看不到其他 tenant 的列，分辨不出。~~沒有測試能分辨~~（review 第 1 輪 M1 的更正：這句是錯的。以不受 RLS 限制的 superuser 執行 meter 的測試，如其他 storage package 的 `TestOrganizationFilter`，就能分辨；本任務當時缺這樣的測試。見最後一節，`TestOrganizationFilter` 擋下 D9 與另外四個 filter mutant）。application 的 organization 條件是 RLS 之外的 defense in depth（AGENTS.md §2：application filter＋RLS）。SQL（migration 0016 的 trigger、policy、grant）沒有做 mutation：需要 PostgreSQL。下表為第 3 次的結果：
 
 | ID | Mutant | 擋下的測試 |
 |---|---|---|
@@ -200,7 +200,7 @@ T-053 的 commit 整合到 main（79c9423）之後，在 `t053-ret`（從 79c942
 
 | 項目 | 原因 |
 |---|---|
-| **Live smoke（`make ai-smoke-live`）** | 依安全規則，本 session 不做任何 live 呼叫；而且這個 build 的 H-018 record 缺 D-113 的確認，指令會拒絕（exit 2）。之後由 coordinator 在有 key 的 session 執行（H-025 的預先授權），前提是 review 通過與 D-113 的確認記入 record |
+| **Live smoke（`make ai-smoke-live`）** | 依安全規則，本 session 不做任何 live 呼叫。寫這列時 H-018 record 缺 D-113 的確認、指令會拒絕（exit 2）；H-026 記入之後，在有兩把 key 與 `GEMINUS_AI_LIVE=on` 的環境中指令**會呼叫 production API**（review 第 1 輪 L5 的更正）。之後由 coordinator 在有 key 的 session 執行（H-025 的預先授權），前提是 review 通過 |
 | **Live eval（`make ai-eval-live`）** | 同上 |
 | DB 測試：`internal/storage/aispend`、`internal/proposals/generator/metered_test.go` 的 DB 測試、`db/tests/ai_spend.sql`（含 0016 的 down／up）、其他既有 DB 測試 | 沒有 PostgreSQL（依指示不安裝）；Go DB 測試已編譯並 vet（在 `backend-test` 中 skip），SQL 已依 template 重產（`PASS_DB_TESTS_FRESH`），未在資料庫上執行 |
 | `make integration-test` | 同上（需要一次性 PostgreSQL＋API＋worker） |
@@ -219,7 +219,7 @@ AI_PROVIDER=anthropic AI_POLICY_APPROVAL=H-018 AI_MODEL=claude-opus-5-5 GEMINUS_
 AI_PROVIDER=anthropic AI_POLICY_APPROVAL=H-018 AI_MODEL=claude-opus-5-5 GEMINUS_AI_LIVE=on make ai-eval-live
 ```
 
-指令印出它自己的 exit code（0 完整且 gate 為 0；1 gate 失敗或達上限停止，report 仍寫；2 拒絕、沒有呼叫；3 report 寫不進去）。`AI_EVAL_LIVE_MAX_USD` 可把上限調低（須 ≤ 月上限）。`ANTHROPIC_API_KEY` 不需要也不會被讀。Eval 的花費不經過 DB ledger（D-114 (b)），與 worker 的花費合計由 Console spend limit 限制。
+指令印出它自己的 exit code（0 完整且 gate 為 0；1 gate 失敗或達上限停止，report 仍寫；2 拒絕、沒有呼叫；3 report 寫不進去）。`AI_EVAL_LIVE_MAX_USD` 可把上限調低（須 ≤ 月上限）。`ANTHROPIC_API_KEY` 不需要也不會被讀。Eval 的花費不經過 DB ledger（D-114 (b)），與 worker 的花費合計由 Console spend limit 限制。**（本段寫於 review 第 1 輪之前；之後的指令、上限、spend record 與 report 名稱見最後一節的「準備好的 live 指令（review 第 1 輪之後）」。）**
 
 ## 資料保留與 ZDR（官方來源，2026-10-26 取得）
 
@@ -275,9 +275,183 @@ Coordinator 把本任務的五個 commit（4bfb8f2–8948b70）cherry-pick 到 `
 | DB mutant D1–D9（`mutants.py --only D1..D9`，在 `git archive HEAD` 的複本上） | 8 killed、D9 survived；exit 1 是因為有存活的 mutant | `coordinator-mutants-db.log` |
 
 - 本報告前面「DB 測試只編譯與 vet，NOT RUN」與「DB mutant 是否被擋下 NOT RUN」兩項，現在由 coordinator 在 PostgreSQL 上執行，結果如上。
-- **D9 存活**：與「Mutation」一節的預測相同：settle 的 SELECT 少了 organization 條件，RLS 仍然只讓 tenant 看到自己的列，沒有測試能分辨；application 的 organization 條件是 RLS 之外的 defense in depth（AGENTS.md §2）。交給 reviewer 判斷是否需要能分辨兩者的測試。
+- **D9 存活**：與「Mutation」一節的預測相同：settle 的 SELECT 少了 organization 條件，RLS 仍然只讓 tenant 看到自己的列，以 worker 執行的測試分辨不出。~~沒有測試能分辨~~（review 第 1 輪 M1 的更正：以 superuser 執行的測試能分辨，見最後一節）。application 的 organization 條件是 RLS 之外的 defense in depth（AGENTS.md §2）。交給 reviewer 判斷是否需要能分辨兩者的測試。
 - `mutants.py` 最後的還原檢查在 archive 複本上印出 `fatal: not a git repository`：複本沒有 `.git`，所以這一行沒有意義；mutant 只改複本，複本用完即刪，working tree 沒有被修改。
 - `frontend-test`、`simulation-reference-test` 與 `backend-numeric` 只在第一次（79c9423）執行：之後的五個 commit 沒有改 `apps/`、`internal/simulation/`、`internal/results/`、`schemas/`、`openapi/` 或 `scripts/`（`git diff --name-only 79c9423 f4db5d6`），所以結果仍適用。
 - 第二次執行開始時 `coordinator-environment.txt` 記錄「6 other changes」：是本任務 evidence 中尚未 commit 的六個 `coordinator-*-first-run*` 檔，不是程式的修改。
 - **NOT RUN**：`make ai-smoke-live` 與 `make ai-eval-live`（依 H-025，本任務通過獨立 review 之後才以 synthetic 資料執行）；`make e2e-test`（本任務沒有改 UI）；CI 在 push 之後確認。
 - 本任務仍待：獨立 review（H-003）；owner 批准 D-110–D-115（PROPOSED）。
+
+## Review 第 1 輪（2026-10-26）：CHANGES REQUESTED（一個 High、三個 Medium、六個 Low、Info）
+
+獨立 reviewer（H-003）在 a0fb365 審查，報告與 evidence 在 `checks/evidence/2026-10-26-T-053-r1/reviewer/`（`REVIEW.md`；probe P1–P7 存為 `*_test.go.txt`）。本輪在 `t053-r1`（從 a0fb365 開出，先 cherry-pick reviewer 的 b786562 → d28eb79；沒有 push）修正，依 coordinator 對 H1、M1–M3 與各 Low 的決定實作。每個修正都先寫測試，在修改前的程式上執行為紅（log 存為 `red-*.log`），修正後為綠（`green-*.log`）；沒有降低任何 assertion，也沒有加 skip。因為 coordinator 的決定改變了規則（M2 的 1.1 倍、M3 的不再 clamp、L3 的 database 時鐘、H1 的 report 名稱），既有測試的期望值隨之改變的地方逐一列在「改變的期望值」。Migration 0016 已 push，沒有修改；本輪不需要 schema 變更，所以沒有 0017（DB 的 shape 不變，`make db-test` 照舊）。D-110–D-115 仍為 PROPOSED，新增的 D-116 也是 PROPOSED，`approved_by`／`approved_at` 都是 null；`planning/tasks.json` 中 T-053 的狀態未改（not_started）。**整輪沒有任何 live 呼叫**：沒有設定 `GEMINUS_AI_LIVE=on` 配真的 key，沒有執行 `make ai-smoke-live`／`make ai-eval-live`；沒有讀取、印出、量測或記錄 `GEMINUS_ANTHROPIC_API_KEY_A`／`_B` 或 `ANTHROPIC_API_KEY` 的值。測試的 key 都是明顯的假字串，backend 都是 process 內的 fake 或本機 httptest server。Evidence 在 `checks/evidence/2026-10-26-T-053-r1/`（`run.sh` 執行指令並把 exit code 寫在 log 的最後一行）。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| d28eb79 | Reviewer 的報告與 evidence（cherry-pick b786562） |
+| 2cf81fe | 程式與測試：H1／L6（spend record、上限、report 名稱、錯誤時的 summary）、M1（superuser 的 organization filter 測試）、M2（inference geo）、M3／L1（不在可能已計費的 attempt 之後 failover、不 clamp、warning 與 counter）、L2、L3、L4（`refusals.sh` 的 guard）、L5（`live_test.go` 的註解）、I1；`checks/ai-evals/live-spend.jsonl`（空檔）、`.gitignore`、Makefile 的說明 |
+| ea9a85a | D-110、D-111、D-114、D-115 的文字、D-116（PROPOSED）、tasks.json（T-053 的 gate 加 D-116；T-039 的後續）、SECURITY、CONTRACT_BLOCKERS、AI_SPEC、API_DATABASE、ARCHITECTURE、testdata/ai-evals/README；`TestOrganizationFilter` 改用每次 run 自己的金額（mutation 第 1 次 F4 存活的原因，見「Mutation」）；重產的 `checks/decisions-check.json`、`checks/planning-check.json` |
+| （最後一個） | 本節、本報告前面的更正（L5、M1 的 D9 句）；evidence（red／green log、probe、mutation、驗證 log、`run.sh`、`mutants.py`）；重產的 `checks/docs-check.json` |
+
+### H1（High）：live eval 與 smoke 不在程式內的日、月上限之內
+
+- **發現**：`make ai-eval-live`／`make ai-smoke-live` 唯一的限制是每次 run 的 in-memory 上限，而那個上限只和月上限比較；沒有任何紀錄跨 run 累計 eval 的花費，DB ledger 也看不到。預設的 smoke（USD 2）加 eval（USD 10）在同一個 UTC 日可以用到 USD 12，超過部署的日上限 USD 10；`AI_EVAL_LIVE_MAX_USD` 可以設到月上限，一次 run 用掉整月（probe P3：100、50、10.01 都建立了 backend、exit 0）；同一天再跑一次會覆寫前一份 report，而 report 是 eval 花費唯一的紀錄。
+- **修正**（`internal/aievals/record.go`、`main.go`、`live.go`；coordinator 的決定）：
+  - Run 的上限須 ≤ 部署的日上限（config 的 `spend.Limits.Validate` 保持日 ≤ 月，所以也 ≤ 月上限；原本另外比較月上限的那一行因此不會成立，已拿掉並寫明理由），否則 exit 2、不建立 backend。
+  - **Spend record** `checks/ai-evals/live-spend.jsonl`（append-only、每行一個 JSON object、與 report 一起 commit，repository 中以空檔開始）。第一次呼叫前寫 open line：`run_id`（ULID）、`kind`（eval／smoke）、`started_at`（UTC，秒）、`day`、`month`、`model`、`approval`、`cap_nano_usd`、`report`（檔名）。Run 結束時不論結果都寫 close line：`settled_nano_usd`（meter 的實際花費）、`committed_nano_usd`（meter 持有的金額，含沒結算的預留，計入的是這個）、`result`（`complete`／`gate_failed`／`stopped`／`error`／`report_unwritten`）。
+  - 已花費：close line 的 committed 計入它開啟與結束的 UTC 日與月（跨午夜的 run 兩天都算），沒有 close 的 open line 以整個上限計（安全側）；其他日、月不算。Run 的上限大於該日或該月剩下的額度（上限 − 已花費）即 exit 2、不建立 backend、不寫檔。
+  - Record 缺少、不是檔案、讀不了或任何一行格式不對（不是一個 JSON object、多或少成員、未知的 event／kind／result、run ID 不是 ULID、時間不是 `2006-01-02T15:04:05Z`、日或月與時間不符、上限不為正、金額為負、committed 小於 settled、report 檔名不是該 run 的、close 在 open 之前、同一個 run 開兩次或關兩次、最後一行沒有換行）即拒絕每個 run（fail closed；錯誤只說第幾行與原因，不引用內容）。
+  - 一次只有一個 run 能讀 record 並寫 open line：旁邊的 `live-spend.jsonl.lock` 以 `O_EXCL` 建立，寫完 open line 就移除（`.gitignore`）；lock 存在時拒絕，訊息請 operator 確認沒有 run 在跑之後移除它。
+  - Report 名稱改為 `live-[smoke-]<YYYY-MM-DD>T<hhmmss>Z-<run ID>-<model>.json`，以 `O_EXCL` 寫入，已存在即 `ErrReportExists`（從不覆寫）；建立 backend 之前也先確認不存在。Report 加 `run_id`、`inference_geos`、`spend_warnings`。
+  - **仍有的缺口**（寫入 D-114 (b) 與本報告）：eval 的花費記在這個檔案，worker 的花費記在 DB ledger，兩者互不計入對方的上限。在沒有任何已部署、開啟 live 的 worker 之前，這個檔案就是 app 內的全部紀錄；兩者都有時，合計只由 Console spend limit 限制（H-025 設定的數值沒有記在 repository）。Record 也是每個 checkout 各自的：另一個 checkout 要等 commit 並合併後才看得到。D-114 (b) 提案（PROPOSED）：部署第一個開啟 live 的 worker 時，由 owner 選擇保持分開或改為選項 B（eval 也經 DB ledger）；T-039 的 scope 也列了這一項。
+- **先紅後綠**：`red-h1-l6-main.log`（exit 1，修改前）：`TestTheRunCapFitsTheDayAndTheMonth` 的 5 個 subtest 失敗（P3 的 100、50、10.01，預設 eval 上限高於設低的日上限 5、預設 smoke 上限高於日上限 1.5；高於月上限的那個在修改前就會拒絕，通過）；`TestARunIsRecordedOpenThenClosed`（第一次呼叫前 record 是空的）、`TestTheRecordBoundsTheNextRun`（6 個中 4 個應拒絕的 case 都跑了；兩個應該跑的 case 通過）、`TestAnUnreadableRecordRefuses`（19 種格式錯誤都跑了，另外 missing 與目錄也跑了）、`TestEveryEndClosesTheRecord` 失敗；`red-h1-report-overwrite.log`（exit 1）：`TestAReportIsNeverOverwritten`，第二份 report 覆寫了第一份。修改後 `green-h1-l6-main.log`、`green-h1-report-overwrite.log` 都是 exit 0（另有 record 本身的 `TestTheRecordSumsTheDayAndTheMonth`：固定時間下 30 日、跨月結束、未關閉、九月、十二月、UTC−10 的同一 UTC 日；`TestTheRecordIsLockedWhileARunOpens`；`TestAnOpenLineIsChecked`）。Probe P3 原樣執行（`probes-p3.log`）：3 個 subtest 都 PASS（日上限的檢查在讀 record 之前）。
+- **擋下的測試**（mutation 第 2 次）：K1（上限可超過日上限）被 `TestTheLiveEvalRunsOnlyWhenLiveIsOn`（訊息）擋下（沒有它時 record 的日額度檢查也會拒絕，因為剩下的額度不會超過日上限）；K2、K3（不查日、月剩下的額度）被 `TestTheRecordBoundsTheNextRun`；K4（沒有 close 的 run 不計）、K5（close 只算開啟的日）、K6（以 settled 代替 committed）被 `TestTheRecordSumsTheDayAndTheMonth`（K4 也被 `TestTheRecordBoundsTheNextRun`）；K7（格式錯誤的行被略過）、K8（缺少的 record 當空的）、K14（close 可以沒有 open）被 `TestAnUnreadableRecordRefuses`；K9（第一次呼叫前沒有 open line）被 `TestARunIsRecordedOpenThenClosed`；K10（錯誤時不寫 close）、K11（錯誤時不印 summary）、K15（停止的 run 記為 complete）被 `TestEveryEndClosesTheRecord`；K12（report 可覆寫）被 `TestAReportIsNeverOverwritten`；K13（lock 不是 exclusive）被 `TestTheRecordIsLockedWhileARunOpens`。
+
+### L6（Low）：付費呼叫之後停止的 run 沒有留下花費
+
+- **發現**：`Run` 回錯誤時 `Main` 只印「the run stopped」、exit 3，沒有 summary 與花費。
+- **修正**：`Run` 回錯誤時也回目前為止的 report（incomplete，花費取自 meter）；`Main` 在 backend 建立之後的每一種結束都印 summary（run ID、case 數、gate、花費、committed、上限、token、spend warning）並寫 close line（`error`）；close line 寫不進去時在 stderr 說 open line 以整個上限計。`ExitReport`（3）的說明改為「已有呼叫而錯誤停止，或 report、close line 寫不進去」。
+- **先紅後綠與擋下**：`TestEveryEndClosesTheRecord` 的第三段（暫時目錄的 corpus：MOD-002 之後的 case 的 fixture 不存在，第一個付費呼叫後 `Run` 停止）：修改前 stdout 是空的、record 沒有 close；修改後 stdout 有 `cost USD 0.012`、close line 的 result 為 `error`、settled 為那次呼叫的成本。Mutant K10、K11。
+
+### M1（Medium）：沒有測試 ledger 自己的 organization filter
+
+- **發現**：AGENTS.md §2 要求 application filter 加 RLS；aispend 的測試都以 worker 在 RLS 之下執行，filter 拿掉也不會失敗。Reviewer 的 mutant D9（settle 的 `SELECT … FOR UPDATE` 不帶 `organization_id`）、F1（reserve 的 organization 日 `UPDATE`）、F2（`TotalsAt`）都存活；本報告「Mutation」與 coordinator 一節說 D9「沒有測試能分辨」是錯的。
+- **修正**：`internal/storage/aispend/filter_test.go` 的 `TestOrganizationFilter`，比照 projects、proposals 的同名測試，以不受 RLS 限制的 provisioning superuser 執行 meter（transaction 照樣設 `app.organization_id`）：A 的預留以 B 的身分結算是 `ErrNotFound`、總數不動、A 的預留仍是 reserved（D9）；以 superuser 為 A 預留只動 A 的日、不動 B 的（F1），而且 `ai_spend.reserve` event 的 `organization_day_committed_nano_usd` 是 A 的日（F4）；`TotalsAt` 讀各自的日（F2）；B 自己的結算只動 B 的日（F5）。金額每次 run 隨機（見「Mutation」）。本報告的兩句（「Mutation」一節與 coordinator 一節）以刪除線標出並更正。
+- **先紅後綠**：這是對既有、正確的 filter 補測試，所以在目前的程式上本來就通過；紅是 mutant：reviewer 的 `filter-mutants-existing-tests.log`（舊的 5 個 DB 測試，D9、F1、F2、F3 都存活）；mutation 第 2 次：D9、F1、F2、F4、F5 都被 `TestOrganizationFilter` 擋下，F3 是等價的（同一 transaction 中有 organization 條件的 `SELECT … FOR UPDATE` 已經找到這個 organization 的預留，ID 唯一；reviewer 的 I3 同意不需要測試）。Probe P1 以只改了建構方式的複本執行（`probes-p1-p2-adapted.log`）：PASS。
+
+### M2（Medium）：價格假設 global inference，但 request 沒有指定
+
+- **查證**：直接取了官方頁面（WebFetch，2026-10-26；reviewer 的 `official-docs-excerpts.md` 與它一致）：https://platform.claude.com/docs/en/manage-claude/data-residency ：`inference_geo` 只有 `"global"`（預設）與 `"us"`（"Inference runs only in US-based infrastructure"）；"`default_inference_geo`: Sets the fallback geo when `inference_geo` is omitted from a request"；"`allowed_inference_geos`: Restricts which geos a workspace can use. If a request specifies an `inference_geo` not in this list, the API returns an error"；舊的 US-only opt-out 已改為 `allowed_inference_geos: ["us"]`、`default_inference_geo: "us"`；"The response `usage` object includes an `inference_geo` field indicating where inference ran"；"Claude 4.6 and later models: US-only inference (`inference_geo: "us"`) is priced at 1.1x the standard rate across all token pricing categories (input tokens, output tokens, cache writes, and cache reads)"；"Global routing (`inference_geo: "global"`): Standard pricing applies."。https://platform.claude.com/docs/en/about-claude/pricing 的 Data residency pricing 同樣是 1.1 倍；Opus 5.5 那一列仍是 $4／$5／$8／$0.20／$20。SDK v1.78.0：request 的 `MessageNewParams.InferenceGeo`（`param.Opt[string]`，`message.go:14081`），回答的 `Usage.InferenceGeo`（`string`，`message.go:12519`）。
+- **修正**（coordinator 的決定：不在 request 中指定，那是 owner 的資料駐留選擇）：request 仍不送 `inference_geo`（`TestTheRequestNamesNoInferenceGeo` 固定這一點並寫明理由）。`internal/ai/spend` 加 `Geo`（只認 `global`、`us`，其他一律 `unknown`；provider 的原文不往下傳）、`AtGeo`（global 1.0、us 1.1、unknown 1.1，以 nano-USD 無條件進位）、`AtDearestGeo`。預留：每個 attempt 的上限 `AtDearestGeo(AttemptBound)`；結算：回答的 usage 以 `AtGeo(cost, Geo(usage.inference_geo))` 計；沒有回答的 attempt 仍以（1.1 倍的）attempt 上限計。沒有或不認得的 geo：metadata `inference_geo: unknown`、worker 的 WARN log（`inference_geo`，log key 登記為 token 形狀）、`ai_spend.settle` 的 `inference_geo`（audit catalogue 只接受 `global`／`us`／`unknown`）、metric `geminus.ai.spend.warnings`（`geminus.ai.warning`=`inference_geo_unknown`）；eval 的 report 有 `inference_geos` 與 `spend_warnings`。新增 **D-116（PROPOSED）**：是否指定、指定哪一個，以及兩個 organization 的 workspace 設定是否相同；D-110 (a) 的文字改為現在的做法。
+- **先紅後綠**：`red-m3-i1-m2-adapter.log`（exit 1）：`TestTheAnswerIsPricedAtItsInferenceGeo` 中 `us`、沒有、空字串、`eu`、`GLOBAL` 都以牌價結算（1,080,000，want 1,188,000），預留 563,160,000（want 619,476,000）；`TestTheRequestNamesNoInferenceGeo` 在修改前就通過（固定現狀）。`red-m2-m3-provider.log`（exit 1）：`TestTheReservationAssumesTheDearestGeo`（1,091,520,000，want 1,200,672,000）。修改後 `green-m3-i1-m2-adapter.log`、`green-m2-m3-provider.log` exit 0；另有 `TestInferenceGeos`（spend）、`TestTheMetadataNamesThePricedGeo`、`TestSettlement` 的 us／沒有 geo／未知 geo 三個 case（provider）。Probe P7 原樣執行（`probes-p4-p5-p7.log`）：**FAIL，依決定**：它要求 request 指定 `global`，coordinator 決定不指定；由 `TestTheRequestNamesNoInferenceGeo` 與 D-116 取代。
+- **擋下的測試**：G1（預留以牌價）、G2（結算不看 geo）、G3（未知 geo 以牌價）、G4（`Geo` 傳出 provider 的原文）、G5（adapter 丟掉 `usage.inference_geo`）、G6（request 指定 global）、G7（進位改為捨去）、G8（generator 不警告未知 geo）都被擋下（`TestTheReservationAssumesTheDearestGeo`、`TestTheAnswerIsPricedAtItsInferenceGeo`、`TestSettlement`、`TestInferenceGeos`、`TestTheMetadataNamesThePricedGeo`、`TestTheRequestNamesNoInferenceGeo`、`TestTheSpendLines`）；ledger 端 O4（未知 geo 不計 counter）被 `TestASettlementAboveItsReservationIsRecordedAndFlagged`。
+
+### M3（Medium）：failover 跟在沒有回答的 attempt 之後時，「至多 1 + MaxRetries 個 attempt」不成立
+
+- **發現**：SDK 在 A 上重試斷線（計為可能已計費），A 最後一個 attempt 回 401／402／403 時 adapter 換到 B，B 再有 1 + MaxRetries 個 attempt。Probe P4：A `hangUp, hangUp, 402`、B `hangUp ×3`：6 次、5 個沒有回答，ledger 結算 USD 0.56316（3 × 0.18772，clamp 到預留）而可能是 USD 0.9386。
+- **修正**（coordinator 的決定）：adapter 在每把 credential 的呼叫之前記下 tally；回 401／402／403 時，若這把 credential 上的 attempt 有任何一個可能已被計費（斷線、逾時、body 讀不完、讀不了的 2xx），照樣標記 credential（401／403 停用、402 休息 15 分鐘），但**不換到下一把**，回 `unavailable`（帶 status 與 label，可重試）；下一次呼叫（自己的預留）就用下一把。每個 attempt 都是明確的錯誤 status（現行分類：429、408、409、5xx 由 SDK 重試，回錯誤 status 視為不計費；401／402／403 換 credential）時仍 failover。所以可能被計費的 attempt 都在同一把 credential 上，至多 1 + MaxRetries 個，與預留相符。**拿掉 clamp**：結算是可能被計費的金額，即使超過預留也照記，不少記；超過預留時 metadata `spend_over_reservation`、`ai_spend.settle` 的 `over_reservation: true`、metric `geminus.ai.spend.warnings`（`over_reservation`）、worker 的 WARN log。D-111 (a)、(b) 的文字改為現在的做法。
+- **先紅後綠**：`red-m3-i1-m2-adapter.log`：`TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled` 的三個 subtest（P4 的序列；斷線後 401；body 截斷後 403）都換到了 B（例如 P4：A=3、B=3，結算 563,160,000）；`red-m2-m3-provider.log`：`TestASettlementAboveTheReservationIsRecorded`（9 個沒有回答的 attempt 被 clamp 到 18,000,000，want 59,400,000）。修改後都通過；P4 序列：A=3、B=0、`unavailable`、結算 2 × 206,492,000，下一次呼叫走 B（B 再斷三次：3 個 attempt，仍在 1 + MaxRetries 之內）；429、529、402 之後仍 failover 到 B。Probe P4 原樣執行：PASS（`probes-p4-p5-p7.log`：A=3、B=0、unanswered 2）。
+- **擋下的測試**：R1（可能已計費之後仍 failover）被 `TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled`；R5（把 clamp 放回去）被 `TestASettlementAboveTheReservationIsRecorded`、`TestSettlement`；R6（metadata 不標示超過預留）被 `TestASettlementAboveTheReservationIsRecorded`；R7（generator 不警告）被 `TestTheSpendLines`。
+
+### L1（Low）：超過預留的結算沒有任何訊號
+
+- **發現**：結算以成本記錄、不 clamp（正確），但沒有 log 或 metric；probe P2：預留 600、organization 日上限 1000，結算 5000，日的總數變成 5000。Migration 0016 開頭「none can take a limit past its value」說得太滿。
+- **修正**：照記（與 M3 一致），並標示：`ai_spend.settle` 的 `over_reservation: true`、`geminus.ai.spend.warnings`、metadata 與 WARN log（見 M3）。0016 已 push、不修改；開頭兩句的更正寫在 API_DATABASE §8 與本報告：「none can take a limit past its value」只對**預留**成立，超過預留的結算可使總數超過上限一次（下一個預留即被拒）；「The day of a reservation is the worker's UTC day」因 L3 不再成立。
+- **先紅後綠**：`red-l1-l3-ledger.log`（exit 1）：`TestASettlementAboveItsReservationIsRecordedAndFlagged`：settle event 0 個有 `over_reservation`。修改後通過（`green-l1-l3-ledger.log`；最後的版本另以安裝的 metric reader 檢查 counter 與 `inference_geo`，在 `t053-db-tests.log` 中 PASS）。Probe P2 以複本執行（`probes-p1-p2-adapted.log`）：仍 FAIL，**依決定**：它要求超過上限的結算被拒，而決定是照記並標示（reviewer 也寫了「P2 FAIL by design」）。
+- **擋下的測試**：O1（event 不標示）、O2（不計 counter）、O3（拒絕超過預留的結算，少記）、D3 都被 `TestASettlementAboveItsReservationIsRecordedAndFlagged` 擋下。O5（ledger 自己對 geo 的檢查拿掉）是等價的：audit catalogue 的 `oneOf("global", "us", "unknown")` 在同一 transaction 中拒絕那筆 `ai_spend.settle` event，transaction rollback，結算照樣失敗、什麼都沒寫（mutation 第 1 次：SURVIVED；第 2 次標為 equivalent）。
+
+### L2（Low）：兩把 key 以原始字串比較
+
+- **修正**：`config.loadKeys` 在比較之前拒絕前後有空白（`unicode.IsSpace`）或任何位置有 control character（C0、DEL、C1，`unicode.IsControl`）或不是 UTF-8 的 key：`GEMINUS_ANTHROPIC_API_KEY_A|B:invalid`，訊息只說變數。D-115 的文字加上這一點。
+- **先紅後綠**：`red-l2-config.log`（exit 1）：`TestAKeyWithWhiteSpaceOrControlCharactersIsRefused` 的 12 個 subtest 都失敗（P6 的三種，加 `\r\n`、tab、no-break space、A 的換行、`\x00`、`\x1b`、DEL、`\u0085`、兩把不同的 key 中一把帶空白）；修改後 `green-l2-config.log` exit 0。Probe P6 原樣執行：PASS（`probes-p6.log`）。
+- **擋下的測試**：W1（不檢查）、W2（只檢查尾端）、W3（不檢查內部的 control character）。
+
+### L3（Low）：worker 的時鐘決定日與月
+
+- **修正**：`aispend.Meter` 沒有時鐘了（`Config.Now` 拿掉）：預留的 transaction 第一個查詢 `SELECT (now() AT TIME ZONE 'UTC')::date`，月由這個日算出；結算本來就用預留自己的日。測試以 `export_test.go` 的 `PinDay`（只編進這個 package 的測試）指定自己的日；production 沒有方法指定。Generator 的 DB 測試（`TestAMeteredProposal`）不再固定日，改為檢查預留在 database 的 UTC 日。
+- **先紅後綠**：`red-l1-l3-ledger.log`：`TestTheDatabaseClockPicksTheDay` 的三個時區 subtest 都失敗（meter 的時鐘設在 2299-12-31，預留就在 2299-12-31）；紅時的測試檔存為 `red-l3-clock_test.go.txt`。修改後 `Config.Now` 已不存在、無法再設一個偏差的時鐘，所以綠的版本改為：不指定日的 meter 在 session 時區 UTC、UTC+14、UTC−12 下預留都在 database 的 UTC 日，該 organization 沒有任何列在別的日（assertion 的意思不變；`green-l1-l3-ledger.log`、`t053-db-tests.log`）。
+- **擋下的測試**：C1（以 session 時區的日）被三個時區的 subtest 擋下；C2（不指定時用零值的日）被 `TestTheDatabaseClockPicksTheDay` 與 `TestAMeteredProposal`。「以 Go 的時鐘取日」的 mutant 在同一台機器上與 database 的時鐘相同，任何測試都分辨不出，而程式中已沒有 Go 時鐘可以改，所以沒有列入。
+
+### L4（Low）：`refusals.sh` 仍說不可能有 live 呼叫
+
+- **修正**：沒有改它的邏輯；開頭加上說明與 `exit 2`：它是 5a202cc 上拒絕路徑那一次執行的紀錄，H-026 之後第 4、5 步會建立 live backend 並送 request 到 production API（假 key 回 401）、寫 live report，所以不得再執行；拒絕路徑改由 process 內的測試涵蓋。執行它只會印出那段說明並 exit 2（已確認）。
+
+### L5（Low）：過時的敘述
+
+- `checks/T-053_VALIDATION.md`：開頭一節加更正說明；稽核表 2a、3 列的「`Retention` 空白」改為 H-026 前後的現況；NOT RUN 表 live smoke 那一列改為「H-026 之後指令會呼叫 production API」。
+- `internal/aievals/live_test.go` 開頭的註解（原「This build cannot turn live AI on」）。
+- `docs/CONTRACT_BLOCKERS.md` CB-36、`docs/SECURITY.md` §7 第一句（原「該清單是空的」）。
+
+### Info
+
+- **I1**：讀不了的 2xx 回答：adapter 記錄最後一個 body 的結束方式（讀完、截斷）；非 API error 而 raw response 是 2xx、body 不是截斷的，就計為一個沒有回答的 attempt 並標 `Undecoded`，結算至少為整個預留（coordinator 的決定）。`TestAnUndecodableAnswerSettlesAtTheReservation`（MaxRetries 0 與 2：結算＝預留；紅：結算 0）、`TestSettlement` 的 case；截斷的 body 不會被算兩次（`TestACutBodyOnTheLastAttemptCountsOnce`）。Probe P5 原樣執行：PASS。Mutant R2、R3、R4。
+- **I2**（未結算的預留沒有 operator 介面）、**I4**（限額是每個 process 的設定）：沒有改程式；寫入 D-111 的已知限制，並列入 T-039（部署）的 scope：每個 worker 以相同的限額部署或把限額移到資料庫、列出未結算預留的介面。
+- **I3**：F3 是等價的 mutant（見 M1）。
+- **I5**：API 在開關 on 時也會讀兩把 key（`config.Load` → `LoadAI`）：寫入 SECURITY §7（部署 API 時不設 key 的變數與開關）與 T-039 的 scope。
+- **I6**：`MemoryMeter.Settle` 只在荒謬的 usage（約 4.6e14 token）下才會溢位；沒有改。
+
+### 改變的期望值（依 coordinator 的決定，沒有降低）
+
+- 每個 attempt 的預留上限是 1.1 倍（M2）：provider 的 `TestTheReservationBoundsTheCall`（3 × ⌈1.1 × bound⌉）、`TestSettlement` 的 `per`、anthropic 測試的 `perAttempt`；aievals `TestTheCapStopsTheRun` 的算式註解（結果不變）。
+- 測試的 backend 回報 `inference_geo: global`，因為真的 API 每個回答都有這個欄位（本機 server 的回答、`billed`／`inProcess`／`billedFake`）；沒有 geo 的回答另有測試（以 1.1 倍計）。
+- `TestSettlement`「more lost attempts than reserved for」：結算 9 個 attempt 的上限，不再是 clamp 後的 3 個（M3）。原本擋下 U8（「結算可超過預留」）的這個 assertion 現在要求相反的行為，U8 因此退役，由 R5（把 clamp 放回去）取代。
+- Generator 的 `TestAMeteredProposal`：預留在 database 的 UTC 日，不再是固定的 2210-02-03（L3）。
+- Live eval 的 report 名稱與 record（H1）：`TestTheReportIsApart`、`TestTheLiveEvalOverHTTP`、`TestTheLiveEvalRunsOnlyWhenLiveIsOn`（report 目錄先放空的 record；檔案數為 report 加 record；高於月上限的上限現在先被日上限拒絕，訊息為「above the deployment's daily limit」）。
+- U42（「上限可超過月上限」）的那一行程式已拿掉（見 H1），U42 退役，由 K1、K3 取代。
+
+### Reviewer 的 probe（暫時複製回 package，執行後刪除；`git status` 沒有留下）
+
+| Probe | 結果 | 說明 |
+|---|---|---|
+| P1（superuser 的 organization filter） | 原樣：不能 build（`Config.Now` 已拿掉，L3）；改用 `PinDay` 的複本（`probe-p1-p2-adapted_test.go.txt`）：PASS | 由 `TestOrganizationFilter` 取代並擴充（F4、F5） |
+| P2（超過預留的結算） | 複本：FAIL（依決定） | 決定是照記並標示；由 `TestASettlementAboveItsReservationIsRecordedAndFlagged` 取代 |
+| P3（run 的上限 ≤ 日上限） | PASS | `probes-p3.log` |
+| P4（failover 之前沒有回答的 attempt） | PASS | A=3、B=0、unanswered 2 |
+| P5（讀不了的 200） | PASS | 結算 0.206492（＝預留，MaxRetries 0） |
+| P6（同一把 key 加空白） | PASS | |
+| P7（request 指定 `inference_geo: global`） | FAIL（依決定） | 不指定；由 `TestTheRequestNamesNoInferenceGeo` 與 D-116 取代 |
+
+### Mutation
+
+`checks/evidence/2026-10-26-T-053-r1/mutants.py`：作者的 harness 加上本輪的 mutant，在 `git archive HEAD` 的複本上執行（拒絕在有 `.git` 的目錄執行），DB mutant 在全新、已 `make db-test` 的 `dt_test_*` 上以 `GEMINUS_REQUIRE_DB_TESTS=1` 執行（沒有 DB 時不跑、記為 ERROR，不會記為 killed），每個檔案還原後比對 hash。作者的 U1–U46、D1–D9 改為修正後的程式的文字（U8、U42 退役，見上；D6 改為以 `time.Now()`），新增 F1–F5（M1）、C1–C2（L3）、O1–O5（L1）、G1–G8（M2）、R1–R7（M3、I1）、K1–K15（H1、L6）、W1–W3（L2）。
+
+- **第 1 次**（2cf81fe，`mutants-run1.log`，exit 1）：98 個中 93 killed、F3 equivalent；G8、R1 INVALID（mutant 的文字讓一個 import 或變數沒有被使用，是 harness 的錯，已改）；F4 SURVIVED：`TestOrganizationFilter` 用固定的金額，而同一個固定的日上累積了之前每次 run 的 organization 的列，不帶 filter 的讀取恰好讀到之前某次 run 的 A，金額相同；改為每次 run 隨機的金額（ea9a85a）。O5 SURVIVED，是等價的（見 L1），改標 equivalent。
+- **第 2 次**（ea9a85a，全新的 `dt_test_t053f3`，`mutants-run2.log`，exit 0）：**98 個中 96 killed、2 個 equivalent（F3、O5），沒有 SURVIVED、INVALID 或 ERROR**。F4 被 `TestOrganizationFilter` 擋下（金額改為每次 run 自己的之後），G8 被 `TestTheSpendLines`、R1 被 `TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled` 擋下（mutant 的文字改正之後）。作者的 44 個 unit mutant（U1–U46 去掉退役的 U8、U42）與 9 個 DB mutant（D1–D9）也都被擋下：D9 現在由 `TestOrganizationFilter` 擋下（上一輪 coordinator 的 DB mutant 執行中 D9 存活）。每個 mutant 擋下的測試列在 log 的第 6 欄。
+
+### 實際執行（本輪；log 在 `checks/evidence/2026-10-26-T-053-r1/`，最後一行是 exit code）
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| 先寫的測試，修改前（`red-m3-i1-m2-adapter.log`、`red-m2-m3-provider.log`、`red-l2-config.log`、`red-h1-report-overwrite.log`、`red-h1-l6-main.log`、`red-l1-l3-ledger.log`） | 1（六個都是） | 見各項 |
+| 同一組測試，修改後（`green-*.log`，六個） | 0（六個都是） | |
+| `make backend-test GOFLAGS=-count=1` | 0 | `backend-test.log`：gofmt、go vet、74 個 package ok，沒有 `(cached)`；DB-backed 測試 skip（它們在下面的 DB 執行中 PASS） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `spec-check.log`（本節寫好之後執行）：`PASS_TS_CONTRACTS_FRESH`、`PASS_INDEPENDENT_HASHES`、`PASS_DB_TESTS_FRESH`；`decisions-check.json`（D-116）、`planning-check.json`、`docs-check.json` 重產 |
+| `make ai-eval` | 0 | `ai-eval.log`；`checks/ai-evals/fake-*.json` 沒有改變 |
+| `make architecture-check` | 0 | `architecture-check.log`：86 packages、23 rules、16 build configurations |
+| govulncheck v1.9.0（go1.27.3） | 0 | `govulncheck.log`：No vulnerabilities found |
+| `go mod verify` | 0 | `go-mod-verify.log`；go.mod／go.sum 沒有改變 |
+| `make db-test`（全新 `dt_test_t053f4`） | 0 | `db-test.log` |
+| T-053 的 DB 測試（舊的 7 個加新的 3 個；`-race -v`，`GEMINUS_REQUIRE_DB_TESTS=1`，`dt_test_t053f4`） | 0 | `t053-db-tests.log`：10 個都 PASS |
+| `go test -race -count=1 -p 1`，改到的 package（`internal/ai/...`、`config/...`、`aievals/...`、`storage/aispend/...`、`proposals/...`、`audit/...`、`observability/...`、`cmd/worker/...`、`cmd/ai-eval-live/...`；DB 測試在 `dt_test_t053f4` 上） | 0 | `race-changed.log`：21 個 package ok |
+| `make integration-test`（全新 `dt_test_t053f5`，PostgreSQL 16.15） | 0 | `integration-test.log`：db-test 之後 db-go-test 的 35 個 package ok，沒有 FAIL |
+| Mutation 第 1 次、第 2 次 | 1、0 | 見「Mutation」（第 2 次：96 killed、2 equivalent） |
+| Reviewer 的 probe | 見上表 | `probes-*.log` |
+| `refusals.sh`（L4 的 guard） | 2 | 只印說明，沒有執行任何步驟 |
+
+### NOT RUN（本輪）
+
+- **`make ai-smoke-live`、`make ai-eval-live` 對真的 API**：依指示不做任何 live 呼叫；也沒有以乾淨環境執行它們的拒絕路徑（拒絕路徑由 process 內的測試涵蓋，避免任何可能讀到 session 環境的執行）。
+- **全套 `make backend-race`**：只對改到的 package 做了 race（上表）。
+- **`make frontend-test`、`make e2e-test`**：沒有改 UI、HTTP contract、schema 或 TS 型別（spec-check 的 `PASS_TS_CONTRACTS_FRESH`）。
+- **SQL mutant**：migration 0016 沒有改；reviewer 的 7 個 SQL mutant 在 a0fb365 都被擋下（`reviewer/sql-mutants.log`）。
+
+### 準備好的 live 指令（review 第 1 輪之後；NOT RUN）
+
+在 review 接受本輪之後、有兩把 key 的 session 中，在同一個 checkout 依序執行，**每次 run 之後 commit `checks/ai-evals/`（record 與 report）**：
+
+```sh
+# 一個 synthetic case（MOD-002），上限 USD 2
+AI_PROVIDER=anthropic AI_POLICY_APPROVAL=H-018 AI_MODEL=claude-opus-5-5 GEMINUS_AI_LIVE=on make ai-smoke-live
+# 50 個 modeler case。同一個 UTC 日在 smoke 之後，預設的 USD 10 上限（＝日上限）放不下：
+# 上限須 ≤ 10 − smoke 的花費，例如 9；或在另一個 UTC 日以預設上限執行。
+AI_EVAL_LIVE_MAX_USD=9 AI_PROVIDER=anthropic AI_POLICY_APPROVAL=H-018 AI_MODEL=claude-opus-5-5 GEMINUS_AI_LIVE=on make ai-eval-live
+```
+
+指令的 exit code：0 完整且 gate 為 0；1 gate 失敗或達上限停止；2 拒絕、沒有呼叫、沒有寫檔（上限超過日上限或 record 留下的額度、record 不能用、lock 存在等）；3 已有呼叫而錯誤停止或 report／close line 寫不進去（summary 與花費在 stdout）。預留以 1.1 倍計，所以同樣的上限能放的呼叫比上一輪少約一成；結算依回答的 geo。
+
+### 需要 owner 決定（本輪的變化）
+
+- **D-116（新，PROPOSED）**：live request 是否指定 `inference_geo`、指定哪一個（A：不指定，已實作；B：`global`；C：`us`），以及兩個 provider organization 的 workspace 的 `default_inference_geo`／`allowed_inference_geos` 是否相同。A 不論設定都不會少記，所以不擋 H-025 的 live run。
+- **D-114 (b)**：部署第一個開啟 live 的 worker 時，eval 的花費保持記在 record（與 worker 的 DB ledger 分開，合計由 Console spend limit 限制），或改為經 DB ledger（選項 B）。
+- 其他不變：D-110–D-116 都待 owner 批准（文字已改為現在的做法）；H-025 的 Console spend limit 的數值不在 repository 中，H1 的缺口以它為合計的上限。
+
+### 殘餘風險（本輪的變化）
+
+- **Eval 與 worker 的花費分開計**：兩者都開啟時，app 內沒有合計的上限，只有 Console spend limit（D-114 (b)）。
+- **Record 是每個 checkout 各自的**：兩個 checkout 同時執行、或執行後沒有 commit，下一個 checkout 看不到前一次的花費；lock 只防止同一個 checkout 中兩個 run 同時開始。Run 在取得 lock 與寫完 open line 之間當掉會留下 lock，之後每個 run 都被拒，直到 operator 移除它（fail closed）。
+- **預留多一成**：在 owner 回答 D-116 之前，上限比 global 早 10% 拒絕。
+- **讀不了的 2xx 以整個預留計**：可能多記（安全側）。
+- **等價的 mutant**：F3、O5（理由見上）；Go 時鐘的 mutant 在同一台機器上無法分辨（程式中已沒有 Go 時鐘）。
+- **DB 不檢查預留的日**：日由 Go 在 transaction 中從 `now()` 取得，DB 本身沒有 CHECK（測試要指定自己的日）；一個被改壞的 worker 仍能寫任何日，這與 worker 本來就能寫任何金額相同。

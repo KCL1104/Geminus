@@ -1,0 +1,29 @@
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_trailing_newline
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_trailing_space
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/A:_trailing_newline
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/A:_a_control_character
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_an_escape_inside
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_a_DEL_inside
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_a_C1_control_inside
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_leading_space
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_carriage_return
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_tab
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_no-break_space
+=== RUN   TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/different_keys,_one_space
+--- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_trailing_newline (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_trailing_space (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/A:_trailing_newline (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/A:_a_control_character (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_an_escape_inside (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_a_DEL_inside (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_a_C1_control_inside (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_leading_space (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_carriage_return (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_tab (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/B:_no-break_space (0.00s)
+    --- PASS: TestAKeyWithWhiteSpaceOrControlCharactersIsRefused/different_keys,_one_space (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config	0.020s
+exit 0

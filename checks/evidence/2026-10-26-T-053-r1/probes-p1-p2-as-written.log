@@ -1,0 +1,6 @@
+# github.com/kcl1104/geminus/internal/storage/aispend_test [github.com/kcl1104/geminus/internal/storage/aispend.test]
+internal/storage/aispend/zz_reviewer_probe_test.go:31:15: method env.superRun already declared at internal/storage/aispend/filter_test.go:22:15
+internal/storage/aispend/zz_reviewer_probe_test.go:45:97: unknown field Now in struct literal of type aispend.Config
+FAIL	github.com/kcl1104/geminus/internal/storage/aispend [build failed]
+FAIL
+exit 1

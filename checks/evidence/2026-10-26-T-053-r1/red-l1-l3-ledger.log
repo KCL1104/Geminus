@@ -1,0 +1,21 @@
+=== RUN   TestTheDatabaseClockPicksTheDay
+=== RUN   TestTheDatabaseClockPicksTheDay/UTC
+    clock_test.go:48: the reservation is in 2299-12-31, the database's UTC day is 2026-10-26
+    clock_test.go:60: the worker's day moved: {Month:40 Day:40 OrganizationDay:40}
+=== RUN   TestTheDatabaseClockPicksTheDay/Pacific/Kiritimati
+    clock_test.go:48: the reservation is in 2299-12-31, the database's UTC day is 2026-10-26
+    clock_test.go:60: the worker's day moved: {Month:80 Day:80 OrganizationDay:80}
+=== RUN   TestTheDatabaseClockPicksTheDay/Etc/GMT+12
+    clock_test.go:48: the reservation is in 2299-12-31, the database's UTC day is 2026-10-26
+    clock_test.go:60: the worker's day moved: {Month:120 Day:120 OrganizationDay:120}
+--- FAIL: TestTheDatabaseClockPicksTheDay (0.12s)
+    --- FAIL: TestTheDatabaseClockPicksTheDay/UTC (0.04s)
+    --- FAIL: TestTheDatabaseClockPicksTheDay/Pacific/Kiritimati (0.02s)
+    --- FAIL: TestTheDatabaseClockPicksTheDay/Etc/GMT+12 (0.01s)
+=== RUN   TestASettlementAboveItsReservationIsRecordedAndFlagged
+    overrun_test.go:43: settle events: 0 flagged over_reservation, 1 not
+--- FAIL: TestASettlementAboveItsReservationIsRecordedAndFlagged (0.10s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/aispend	0.234s
+FAIL
+exit 1

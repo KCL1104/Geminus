@@ -1,0 +1,79 @@
+=== RUN   TestTheLiveEvalRunsOnlyWhenLiveIsOn
+=== RUN   TestTheLiveEvalRunsOnlyWhenLiveIsOn/before_H-026
+--- PASS: TestTheLiveEvalRunsOnlyWhenLiveIsOn (0.05s)
+    --- PASS: TestTheLiveEvalRunsOnlyWhenLiveIsOn/before_H-026 (0.00s)
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/the_whole_monthly_budget_in_one_run
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/five_daily_limits_in_one_run
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/just_above_the_daily_limit
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/the_default_eval_cap_above_a_lower_daily_limit
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/the_default_smoke_cap_above_a_lower_daily_limit
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/above_a_lower_monthly_limit
+--- PASS: TestTheRunCapFitsTheDayAndTheMonth (0.01s)
+    --- PASS: TestTheRunCapFitsTheDayAndTheMonth/the_whole_monthly_budget_in_one_run (0.00s)
+    --- PASS: TestTheRunCapFitsTheDayAndTheMonth/five_daily_limits_in_one_run (0.00s)
+    --- PASS: TestTheRunCapFitsTheDayAndTheMonth/just_above_the_daily_limit (0.00s)
+    --- PASS: TestTheRunCapFitsTheDayAndTheMonth/the_default_eval_cap_above_a_lower_daily_limit (0.00s)
+    --- PASS: TestTheRunCapFitsTheDayAndTheMonth/the_default_smoke_cap_above_a_lower_daily_limit (0.00s)
+    --- PASS: TestTheRunCapFitsTheDayAndTheMonth/above_a_lower_monthly_limit (0.00s)
+=== RUN   TestARunIsRecordedOpenThenClosed
+--- PASS: TestARunIsRecordedOpenThenClosed (0.02s)
+=== RUN   TestTheRecordBoundsTheNextRun
+=== RUN   TestTheRecordBoundsTheNextRun/an_open_run_holds_its_whole_cap_of_the_day
+=== RUN   TestTheRecordBoundsTheNextRun/a_closed_run_holds_what_it_cost
+=== RUN   TestTheRecordBoundsTheNextRun/closed_runs_fill_the_day
+=== RUN   TestTheRecordBoundsTheNextRun/other_days_do_not_count_against_the_day
+=== RUN   TestTheRecordBoundsTheNextRun/the_month:_its_other_days_count
+=== RUN   TestTheRecordBoundsTheNextRun/a_run_closed_on_the_next_day_counts_on_both_days
+--- PASS: TestTheRecordBoundsTheNextRun (0.02s)
+    --- PASS: TestTheRecordBoundsTheNextRun/an_open_run_holds_its_whole_cap_of_the_day (0.00s)
+    --- PASS: TestTheRecordBoundsTheNextRun/a_closed_run_holds_what_it_cost (0.01s)
+    --- PASS: TestTheRecordBoundsTheNextRun/closed_runs_fill_the_day (0.00s)
+    --- PASS: TestTheRecordBoundsTheNextRun/other_days_do_not_count_against_the_day (0.01s)
+    --- PASS: TestTheRecordBoundsTheNextRun/the_month:_its_other_days_count (0.00s)
+    --- PASS: TestTheRecordBoundsTheNextRun/a_run_closed_on_the_next_day_counts_on_both_days (0.00s)
+=== RUN   TestAnUnreadableRecordRefuses
+=== RUN   TestAnUnreadableRecordRefuses/a_line_without_its_newline
+=== RUN   TestAnUnreadableRecordRefuses/an_unknown_event
+=== RUN   TestAnUnreadableRecordRefuses/a_negative_cost
+=== RUN   TestAnUnreadableRecordRefuses/a_zero_cap
+=== RUN   TestAnUnreadableRecordRefuses/a_month_not_the_start's
+=== RUN   TestAnUnreadableRecordRefuses/not_a_run_ID
+=== RUN   TestAnUnreadableRecordRefuses/an_empty_line
+=== RUN   TestAnUnreadableRecordRefuses/an_unknown_member
+=== RUN   TestAnUnreadableRecordRefuses/a_day_not_the_start's
+=== RUN   TestAnUnreadableRecordRefuses/an_unknown_result
+=== RUN   TestAnUnreadableRecordRefuses/a_close_without_its_open
+=== RUN   TestAnUnreadableRecordRefuses/two_closes_of_one_run
+=== RUN   TestAnUnreadableRecordRefuses/two_opens_of_one_run
+=== RUN   TestAnUnreadableRecordRefuses/committed_below_settled
+=== RUN   TestAnUnreadableRecordRefuses/a_string_amount
+=== RUN   TestAnUnreadableRecordRefuses/a_closing_before_the_start
+=== RUN   TestAnUnreadableRecordRefuses/not_JSON
+=== RUN   TestAnUnreadableRecordRefuses/an_unknown_kind
+=== RUN   TestAnUnreadableRecordRefuses/a_report_of_another_run
+--- PASS: TestAnUnreadableRecordRefuses (0.03s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_line_without_its_newline (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/an_unknown_event (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_negative_cost (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_zero_cap (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_month_not_the_start's (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/not_a_run_ID (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/an_empty_line (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/an_unknown_member (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_day_not_the_start's (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/an_unknown_result (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_close_without_its_open (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/two_closes_of_one_run (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/two_opens_of_one_run (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/committed_below_settled (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_string_amount (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_closing_before_the_start (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/not_JSON (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/an_unknown_kind (0.00s)
+    --- PASS: TestAnUnreadableRecordRefuses/a_report_of_another_run (0.00s)
+=== RUN   TestEveryEndClosesTheRecord
+--- PASS: TestEveryEndClosesTheRecord (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.173s
+exit 0

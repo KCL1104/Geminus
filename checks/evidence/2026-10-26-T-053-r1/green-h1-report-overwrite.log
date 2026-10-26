@@ -1,0 +1,13 @@
+=== RUN   TestTheReportIsApart
+--- PASS: TestTheReportIsApart (0.00s)
+=== RUN   TestAReportIsNeverOverwritten
+--- PASS: TestAReportIsNeverOverwritten (0.00s)
+=== RUN   TestTheRecordSumsTheDayAndTheMonth
+--- PASS: TestTheRecordSumsTheDayAndTheMonth (0.00s)
+=== RUN   TestTheRecordIsLockedWhileARunOpens
+--- PASS: TestTheRecordIsLockedWhileARunOpens (0.00s)
+=== RUN   TestAnOpenLineIsChecked
+--- PASS: TestAnOpenLineIsChecked (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/aievals	0.030s
+exit 0

@@ -1,0 +1,5 @@
+=== RUN   TestProbeP6TheSameKeyTwiceWithWhiteSpace
+--- PASS: TestProbeP6TheSameKeyTwiceWithWhiteSpace (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config	0.007s
+exit 0

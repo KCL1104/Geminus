@@ -1,0 +1,117 @@
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/the_whole_monthly_budget_in_one_run
+    liverecord_test.go:124: exit 0, backend built 1: ai-eval-live: smoke run of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.012 (cap 100.00), 1500 input and 300 output tokens; report /tmp/TestTheRunCapFitsTheDayAndTheMonththe_whole_monthly_budget_in_o3359035833/001/live-smoke-2026-10-26-claude-opus-5-5.json
+         
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/five_daily_limits_in_one_run
+    liverecord_test.go:124: exit 0, backend built 1: ai-eval-live: smoke run of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.012 (cap 50.00), 1500 input and 300 output tokens; report /tmp/TestTheRunCapFitsTheDayAndTheMonthfive_daily_limits_in_one_run4156447757/001/live-smoke-2026-10-26-claude-opus-5-5.json
+         
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/just_above_the_daily_limit
+    liverecord_test.go:124: exit 0, backend built 1: ai-eval-live: smoke run of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.012 (cap 10.01), 1500 input and 300 output tokens; report /tmp/TestTheRunCapFitsTheDayAndTheMonthjust_above_the_daily_limit4151421332/001/live-smoke-2026-10-26-claude-opus-5-5.json
+         
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/the_default_eval_cap_above_a_lower_daily_limit
+    liverecord_test.go:124: exit 0, backend built 1: ai-eval-live: eval run of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.012 (cap 10.00), 1500 input and 300 output tokens; report /tmp/TestTheRunCapFitsTheDayAndTheMonththe_default_eval_cap_above_a_553331283/001/live-2026-10-26-claude-opus-5-5.json
+         
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/the_default_smoke_cap_above_a_lower_daily_limit
+    liverecord_test.go:124: exit 0, backend built 1: ai-eval-live: smoke run of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.012 (cap 2.00), 1500 input and 300 output tokens; report /tmp/TestTheRunCapFitsTheDayAndTheMonththe_default_smoke_cap_above_a156496010/001/live-smoke-2026-10-26-claude-opus-5-5.json
+         
+=== RUN   TestTheRunCapFitsTheDayAndTheMonth/above_a_lower_monthly_limit
+--- FAIL: TestTheRunCapFitsTheDayAndTheMonth (0.07s)
+    --- FAIL: TestTheRunCapFitsTheDayAndTheMonth/the_whole_monthly_budget_in_one_run (0.04s)
+    --- FAIL: TestTheRunCapFitsTheDayAndTheMonth/five_daily_limits_in_one_run (0.01s)
+    --- FAIL: TestTheRunCapFitsTheDayAndTheMonth/just_above_the_daily_limit (0.01s)
+    --- FAIL: TestTheRunCapFitsTheDayAndTheMonth/the_default_eval_cap_above_a_lower_daily_limit (0.01s)
+    --- FAIL: TestTheRunCapFitsTheDayAndTheMonth/the_default_smoke_cap_above_a_lower_daily_limit (0.00s)
+    --- PASS: TestTheRunCapFitsTheDayAndTheMonth/above_a_lower_monthly_limit (0.00s)
+=== RUN   TestARunIsRecordedOpenThenClosed
+    liverecord_test.go:153: the record before the first call: []
+--- FAIL: TestARunIsRecordedOpenThenClosed (0.00s)
+=== RUN   TestTheRecordBoundsTheNextRun
+=== RUN   TestTheRecordBoundsTheNextRun/an_open_run_holds_its_whole_cap_of_the_day
+    liverecord_test.go:283: want refused: exit 0 built 1: 
+=== RUN   TestTheRecordBoundsTheNextRun/a_closed_run_holds_what_it_cost
+=== RUN   TestTheRecordBoundsTheNextRun/closed_runs_fill_the_day
+    liverecord_test.go:283: want refused: exit 0 built 1: 
+=== RUN   TestTheRecordBoundsTheNextRun/other_days_do_not_count_against_the_day
+=== RUN   TestTheRecordBoundsTheNextRun/the_month:_its_other_days_count
+    liverecord_test.go:283: want refused: exit 0 built 1: 
+=== RUN   TestTheRecordBoundsTheNextRun/a_run_closed_on_the_next_day_counts_on_both_days
+    liverecord_test.go:283: want refused: exit 0 built 1: 
+--- FAIL: TestTheRecordBoundsTheNextRun (0.04s)
+    --- FAIL: TestTheRecordBoundsTheNextRun/an_open_run_holds_its_whole_cap_of_the_day (0.01s)
+    --- PASS: TestTheRecordBoundsTheNextRun/a_closed_run_holds_what_it_cost (0.01s)
+    --- FAIL: TestTheRecordBoundsTheNextRun/closed_runs_fill_the_day (0.01s)
+    --- PASS: TestTheRecordBoundsTheNextRun/other_days_do_not_count_against_the_day (0.00s)
+    --- FAIL: TestTheRecordBoundsTheNextRun/the_month:_its_other_days_count (0.01s)
+    --- FAIL: TestTheRecordBoundsTheNextRun/a_run_closed_on_the_next_day_counts_on_both_days (0.01s)
+=== RUN   TestAnUnreadableRecordRefuses
+=== RUN   TestAnUnreadableRecordRefuses/a_close_without_its_open
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/two_closes_of_one_run
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/two_opens_of_one_run
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/a_zero_cap
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/a_day_not_the_start's
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/a_month_not_the_start's
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/a_report_of_another_run
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/an_empty_line
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/an_unknown_member
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/an_unknown_event
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/a_negative_cost
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/committed_below_settled
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/an_unknown_result
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/not_JSON
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/a_line_without_its_newline
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/an_unknown_kind
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/a_string_amount
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/a_closing_before_the_start
+    liverecord_test.go:349: exit 0 built 1: 
+=== RUN   TestAnUnreadableRecordRefuses/not_a_run_ID
+    liverecord_test.go:349: exit 0 built 1: 
+=== NAME  TestAnUnreadableRecordRefuses
+    liverecord_test.go:360: missing: exit 0 built 1: 
+    liverecord_test.go:360: a directory: exit 0 built 1: 
+--- FAIL: TestAnUnreadableRecordRefuses (0.12s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_close_without_its_open (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/two_closes_of_one_run (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/two_opens_of_one_run (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_zero_cap (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_day_not_the_start's (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_month_not_the_start's (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_report_of_another_run (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/an_empty_line (0.00s)
+    --- FAIL: TestAnUnreadableRecordRefuses/an_unknown_member (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/an_unknown_event (0.00s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_negative_cost (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/committed_below_settled (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/an_unknown_result (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/not_JSON (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_line_without_its_newline (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/an_unknown_kind (0.00s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_string_amount (0.01s)
+    --- FAIL: TestAnUnreadableRecordRefuses/a_closing_before_the_start (0.00s)
+    --- FAIL: TestAnUnreadableRecordRefuses/not_a_run_ID (0.01s)
+=== RUN   TestEveryEndClosesTheRecord
+    liverecord_test.go:382: a small cap: []
+    liverecord_test.go:404: a gate: []
+    liverecord_test.go:443: no summary with the cost on stdout: "" (stderr "ai-eval-live: the run stopped: aievals: MOD-902: the fixture: open /tmp/TestEveryEndClosesTheRecord2937014967/003/testdata/golden-models/missing.json: no such file or directory\n")
+    liverecord_test.go:446: an error after a paid call: []
+--- FAIL: TestEveryEndClosesTheRecord (0.02s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.272s
+FAIL
+exit 1

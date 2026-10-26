@@ -1,0 +1,31 @@
+=== RUN   TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled
+=== RUN   TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled/P4:_402_after_two_lost_connections
+=== RUN   TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled/401_after_a_lost_connection
+=== RUN   TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled/403_after_a_cut_body
+--- PASS: TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled (3.51s)
+    --- PASS: TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled/P4:_402_after_two_lost_connections (2.58s)
+    --- PASS: TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled/401_after_a_lost_connection (0.50s)
+    --- PASS: TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled/403_after_a_cut_body (0.42s)
+=== RUN   TestAnUndecodableAnswerSettlesAtTheReservation
+--- PASS: TestAnUndecodableAnswerSettlesAtTheReservation (0.01s)
+=== RUN   TestTheRequestNamesNoInferenceGeo
+--- PASS: TestTheRequestNamesNoInferenceGeo (0.00s)
+=== RUN   TestTheAnswerIsPricedAtItsInferenceGeo
+=== RUN   TestTheAnswerIsPricedAtItsInferenceGeo/global
+=== RUN   TestTheAnswerIsPricedAtItsInferenceGeo/us
+=== RUN   TestTheAnswerIsPricedAtItsInferenceGeo/-
+=== RUN   TestTheAnswerIsPricedAtItsInferenceGeo/#00
+=== RUN   TestTheAnswerIsPricedAtItsInferenceGeo/eu
+=== RUN   TestTheAnswerIsPricedAtItsInferenceGeo/GLOBAL
+--- PASS: TestTheAnswerIsPricedAtItsInferenceGeo (0.03s)
+    --- PASS: TestTheAnswerIsPricedAtItsInferenceGeo/global (0.00s)
+    --- PASS: TestTheAnswerIsPricedAtItsInferenceGeo/us (0.00s)
+    --- PASS: TestTheAnswerIsPricedAtItsInferenceGeo/- (0.00s)
+    --- PASS: TestTheAnswerIsPricedAtItsInferenceGeo/#00 (0.00s)
+    --- PASS: TestTheAnswerIsPricedAtItsInferenceGeo/eu (0.00s)
+    --- PASS: TestTheAnswerIsPricedAtItsInferenceGeo/GLOBAL (0.00s)
+=== RUN   TestTheLiveEvalOverHTTP
+--- PASS: TestTheLiveEvalOverHTTP (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	3.629s
+exit 0
