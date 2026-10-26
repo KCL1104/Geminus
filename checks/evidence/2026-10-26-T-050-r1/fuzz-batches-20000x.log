@@ -1,0 +1,23 @@
+# 2026-10-26T11:10:32Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: /home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f/checks/evidence/2026-10-26-T-050-r1/scripts/gotest.sh -run ^$ -fuzz ^FuzzBatches$ -fuzztime 20000x -parallel 2 ./internal/simulation/engine/
+fuzz: elapsed: 0s, gathering baseline coverage: 0/822 completed
+fuzz: elapsed: 3s, gathering baseline coverage: 394/822 completed
+fuzz: elapsed: 6s, gathering baseline coverage: 797/822 completed
+fuzz: elapsed: 6s, gathering baseline coverage: 822/822 completed, now fuzzing with 2 workers
+fuzz: elapsed: 9s, execs: 2307 (503/sec), new interesting: 4 (total: 826)
+fuzz: elapsed: 12s, execs: 3529 (408/sec), new interesting: 5 (total: 827)
+fuzz: elapsed: 15s, execs: 5186 (552/sec), new interesting: 7 (total: 829)
+fuzz: elapsed: 18s, execs: 6455 (423/sec), new interesting: 8 (total: 830)
+fuzz: elapsed: 21s, execs: 8130 (558/sec), new interesting: 9 (total: 831)
+fuzz: elapsed: 24s, execs: 9466 (445/sec), new interesting: 9 (total: 831)
+fuzz: elapsed: 27s, execs: 10866 (467/sec), new interesting: 11 (total: 833)
+fuzz: elapsed: 30s, execs: 12420 (518/sec), new interesting: 11 (total: 833)
+fuzz: elapsed: 33s, execs: 13672 (417/sec), new interesting: 11 (total: 833)
+fuzz: elapsed: 36s, execs: 14916 (415/sec), new interesting: 11 (total: 833)
+fuzz: elapsed: 39s, execs: 16207 (430/sec), new interesting: 11 (total: 833)
+fuzz: elapsed: 42s, execs: 17725 (506/sec), new interesting: 11 (total: 833)
+fuzz: elapsed: 45s, execs: 19283 (519/sec), new interesting: 11 (total: 833)
+fuzz: elapsed: 46s, execs: 20000 (491/sec), new interesting: 11 (total: 833)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	46.498s
+# exit=0 elapsed=54s

@@ -1,0 +1,14 @@
+backend-test.log: exit 0
+architecture-check.log: exit 0
+backend-numeric.log: exit 0
+ai-eval.log: exit 0
+simulation-reference-test.log: exit 0
+race-simulation-results.log: exit 0
+fuzz-batches-20000x.log: exit 0
+fuzz-setups-20000x.log: exit 0
+integration-test.log: exit 0
+verify done
+race-ai-prompts.log: exit 0
+mutants-run4.log: exit 0 (59/59 killed, 4 equivalent)
+mutants-run4-without-locks.log: exit 0 (59/59 killed, 4 equivalent)
+spec-check.log: exit 0

@@ -1,0 +1,30 @@
+# 2026-10-26T11:11:26Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: /home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f/checks/evidence/2026-10-26-T-050-r1/scripts/gotest.sh -run ^$ -fuzz ^FuzzSetups$ -fuzztime 20000x -parallel 2 ./internal/simulation/engine/
+fuzz: elapsed: 0s, gathering baseline coverage: 0/848 completed
+fuzz: elapsed: 3s, gathering baseline coverage: 404/848 completed
+fuzz: elapsed: 6s, gathering baseline coverage: 838/848 completed
+fuzz: elapsed: 6s, gathering baseline coverage: 848/848 completed, now fuzzing with 2 workers
+fuzz: elapsed: 9s, execs: 1995 (386/sec), new interesting: 4 (total: 852)
+fuzz: elapsed: 12s, execs: 3198 (401/sec), new interesting: 4 (total: 852)
+fuzz: elapsed: 15s, execs: 4325 (375/sec), new interesting: 4 (total: 852)
+fuzz: elapsed: 18s, execs: 5386 (355/sec), new interesting: 5 (total: 853)
+fuzz: elapsed: 21s, execs: 6402 (339/sec), new interesting: 6 (total: 854)
+fuzz: elapsed: 24s, execs: 7323 (307/sec), new interesting: 7 (total: 855)
+fuzz: elapsed: 27s, execs: 8253 (310/sec), new interesting: 7 (total: 855)
+fuzz: elapsed: 30s, execs: 9492 (413/sec), new interesting: 8 (total: 856)
+fuzz: elapsed: 33s, execs: 10490 (332/sec), new interesting: 8 (total: 856)
+fuzz: elapsed: 36s, execs: 11447 (319/sec), new interesting: 8 (total: 856)
+fuzz: elapsed: 39s, execs: 12609 (387/sec), new interesting: 8 (total: 856)
+fuzz: elapsed: 42s, execs: 13842 (411/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 45s, execs: 15079 (412/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 48s, execs: 15945 (289/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 51s, execs: 16652 (236/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 54s, execs: 17164 (170/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 57s, execs: 17862 (233/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 1m0s, execs: 18448 (195/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 1m3s, execs: 19014 (189/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 1m6s, execs: 19594 (193/sec), new interesting: 9 (total: 857)
+fuzz: elapsed: 1m8s, execs: 20000 (215/sec), new interesting: 9 (total: 857)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	67.951s
+# exit=0 elapsed=69s

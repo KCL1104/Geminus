@@ -1,0 +1,13 @@
+# 2026-10-26T11:20:03Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: checks/evidence/2026-10-26-T-050-r1/scripts/gotest.sh -race ./internal/ai/... ./prompts/
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	11.095s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	29.607s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	2.101s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	1.467s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	2.014s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	8.159s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	1.517s
+ok  	github.com/kcl1104/geminus/internal/ai/review	7.492s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	1.378s
+ok  	github.com/kcl1104/geminus/prompts	1.048s
+# exit=0 elapsed=36s

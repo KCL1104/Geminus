@@ -1,0 +1,17 @@
+# 2026-10-26T10:52:31Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: /home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f/checks/evidence/2026-10-26-T-050-r1/scripts/make.sh backend-numeric
+bash scripts/check_no_fma.sh
+PASS no fused multiply-add or platform math call: amd64 v3
+PASS no fused multiply-add or platform math call: arm64
+PASS no fused multiply-add or platform math call: ppc64le
+PASS no fused multiply-add or platform math call: s390x
+PASS no fused multiply-add or platform math call: riscv64
+PASS no fused multiply-add or platform math call: loong64
+ok  	github.com/kcl1104/geminus/internal/simulation	0.698s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	26.821s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	290.612s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.311s
+ok  	github.com/kcl1104/geminus/internal/results/compare	10.666s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.511s
+PASS numeric tests as a GOAMD64=v3 build
+# exit=0 elapsed=328s

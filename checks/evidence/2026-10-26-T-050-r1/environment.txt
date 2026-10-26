@@ -1,0 +1,8 @@
+# T-050 review round 1 (author's fixes): environment of the verification
+date: 2026-10-26
+branch: t050-r1; the verification ran on 927c071's code and test data (later commits add only the report, D-097 (e)(f) references and evidence)
+go: go1.27.3 linux/amd64 (GOTOOLCHAIN=local, /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64)
+python: Python 3.13.16 (/home/user/Geminus/.venv), SimPy 4.1.2
+postgresql: psql 16.15; shared cluster on /var/lib/postgresql/geminus-t009-fresh, port 55440 (not started or stopped here); fresh database dt_test_t050f1 for make integration-test
+cpus: 4; shared with another session's integration tests and with this round's mutation harness (load average 8-23), so the times include contention
+mutants: on a scratch copy outside the worktree (git archive of e99e91b, the harness commit; code and data equal to 927c071's), applied with go test -overlay

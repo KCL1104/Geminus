@@ -1,0 +1,9 @@
+# 2026-10-26T10:58:30Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: /home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f/checks/evidence/2026-10-26-T-050-r1/scripts/gotest.sh -race -timeout 60m ./internal/simulation/... ./internal/results/...
+ok  	github.com/kcl1104/geminus/internal/simulation	1.507s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	141.539s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	711.666s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	1.792s
+ok  	github.com/kcl1104/geminus/internal/results/compare	35.421s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	5.297s
+# exit=0 elapsed=722s

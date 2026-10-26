@@ -1,0 +1,6 @@
+# 2026-10-26T10:52:12Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: /home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f/checks/evidence/2026-10-26-T-050-r1/scripts/make.sh architecture-check
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 86 packages, 23 rules, 16 build configurations
+# exit=0 elapsed=19s

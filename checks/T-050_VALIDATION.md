@@ -1,6 +1,6 @@
 # T-050 驗證報告：DES 批次 process 與換線（H-016）
 
-**日期：2026-10-26｜狀態：實作完成，待 coordinator 整合與獨立 review（H-003）；`planning/tasks.json` 的狀態未改（仍為 not_started），由 coordinator／reviewer 決定。｜需求：REQ-011、REQ-013、REQ-024｜Gate：D-047、D-048、D-049、D-050、D-054、D-055、D-057 已 APPROVED（H-018），D-063 已 APPROVED（H-019），D-074 已 APPROVED（H-022）；本任務提出的 D-096、D-097 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-050 依建議實作並以它們為 gate（tasks.json 的 `decision_gates` 加入 D-074、D-096、D-097）。｜驗收測試：TEST-015、TEST-019、TEST-034（第四部分）｜DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」）。**
+**日期：2026-10-26｜狀態：實作完成，待 coordinator 整合與獨立 review（H-003）；`planning/tasks.json` 的狀態未改（仍為 not_started），由 coordinator／reviewer 決定（review 第 1 輪起為 in_progress，見文末「Review 第 1 輪」）。｜需求：REQ-011、REQ-013、REQ-024｜Gate：D-047、D-048、D-049、D-050、D-054、D-055、D-057 已 APPROVED（H-018），D-063 已 APPROVED（H-019），D-074 已 APPROVED（H-022）；本任務提出的 D-096、D-097 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-050 依建議實作並以它們為 gate（tasks.json 的 `decision_gates` 加入 D-074、D-096、D-097）。｜驗收測試：TEST-015、TEST-019、TEST-034（第四部分）｜DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」）。**
 
 範圍依 tasks.json 與 coordinator 的指示（每一條都要做）：
 
@@ -53,7 +53,7 @@
 | 2d. Result 的換線組 | 已完成（D-097 (f)） | 有 setups 的 resource 都列在 `resource_states`：`setup_ticks`（∫Z）、`setups_started`、`setups_completed`、`completed_setup_ticks`、`scheduled_processing_ticks`＝∫min(U − K − Z, S)（換線的結束沒有 observation，collector 以 min-heap 處理）。`TestSetupGoldenResults`（G-SU8 量測視窗、G-SU9 班表、G-SU10 阻塞）、`TestBatchAndSetupIdentities`；mutant `setup-complete-ignores-end`、`setup-end-not-applied`、`processing-ignores-changeover*` 等被擋下 |
 | 2e. Trace `setup_start` | 已完成 | `setup_start` 帶 entity、process 與 `resource_id`，在授予的事件中、該 entity 的 `service_start` 之前；其他事件沒有 `resource_id`。`TestSetupTrace`；mutant `trace-no-resource-id` 被擋下 |
 | 3a. `BATCH_INVALID` | 已完成（D-096 (i)） | `batchRules`：min ≤ max、min < max 時要 max_wait（`/nodes/<i>/batch`）、max_wait 量化後 ≤ 365 天（`/nodes/<i>/batch/max_wait`）、有限 buffer ≥ max_size（`/nodes/<i>/batch/max_size`）；min＝max 的 max_wait 允許。`TestBatchRules`、`TestBatchRulesStage`、`semantic-batch-sizes`（`/nodes/1/batch`）；mutant `batch-capacity-unchecked`、`batch-wait-required-at-equal-sizes` 被擋下 |
-| 3b. 與 D-050 的交互 | 已完成（D-096 (g)） | R1–R4 對批次 process 的 bundle 照常（bundle 以批計；批次 process 被擋時是 holder）。B1：還有待處理的 BATCH_TIMEOUT 時不判定 deadlock（湊批中不是循環等待：G-BT12 中 max_entities 使最後兩件永遠湊不成批，B1 照常執行、不報；mutant `deadlock-ignores-timeouts` 被擋下）；湊批中的 entity 沒有 request，不是 B2 的 held candidate；就緒的 batch request 才可能進入 B2，回報最老成員、since 為就緒的 tick（G-BT13，`TestBatchStall`，mutant `failure-names-no-member`）。換線只延長授予後的服務（unit 在換線＋service 期間都在使用中），不新增等待的狀態。Validator 被繞過時每個 ErrDeadlock、ErrStalled 都是真的（`TestRandomBatchFailuresAreReal`：1,667 個 run 中 70 個 ErrDeadlock、55 個 ErrStalled，都是真的） |
+| 3b. 與 D-050 的交互 | 已完成（D-096 (g)） | R1–R4 對批次 process 的 bundle 照常（bundle 以批計；批次 process 被擋時是 holder）。B1：還有待處理的 BATCH_TIMEOUT 時不判定 deadlock（湊批中不是循環等待：G-BT12 中 max_entities 使最後兩件永遠湊不成批，B1 照常執行、不報；mutant `deadlock-ignores-timeouts` 被擋下）；湊批中的 entity 沒有 request，不是 B2 的 held candidate；就緒的 batch request 才可能進入 B2，回報最老成員、since 為第一次在 tick 結束時處於 B2 狀態的 tick（D-074 (c)；G-BT13 中即就緒的 tick，`TestBatchStall`，mutant `failure-names-no-member`；review 第 1 輪 M1 更正：原文寫「since 為就緒的 tick」，與 kernel 不符，G-BT18 分得出兩者）。換線只延長授予後的服務（unit 在換線＋service 期間都在使用中），不新增等待的狀態。Validator 被繞過時每個 ErrDeadlock、ErrStalled 都是真的（`TestRandomBatchFailuresAreReal`：1,667 個 run 中 70 個 ErrDeadlock、55 個 ErrStalled，都是真的） |
 | 4a. 只解除兩個 primitive | 已完成 | `validate.checked` 與 `engine.kernelExecutes` 加 `Batch`、`Setups`；`TestPrimitiveCatalog`、`TestPrimitiveGate`（valid-line-flow-ir.json 剩 5 個 PRIMITIVE_NOT_SUPPORTED：宣告的 metrics，T-051）、`TestPrimitiveGateStopsTheStages`、`TestKernelRefusesWhatItDoesNotExecute`（5 個）、`TestCompileRefusesLineFlowPrimitives`；cases.json 的 primitives 在 T-046 phase 2 已寫好（不改），兩個 semantic fixture 回手推的 code 與 path（`TestAgreesWithSharedFixtures`） |
 | 4b. engine_version | 已完成 | `des.Version = "des-go-0.5.0"`；`valid-run-failed-deadlock.json`、`valid-run-failed-stalled.json` 的 engine_version 隨之更新；0.1.0–0.4.0 的 Result 鎖把 engine_version 換回後相等 |
 | 4c. D-057 server risk | 已完成 | `internal/ai/review/risk.go`：批次新增、刪除或 min_size、max_size、max_wait 不同；setups 新增、刪除或 initial、default、transition 不同；任一方向至少 medium；`values()` 加入批量與等待上限（換線分布經 `Distributions()`）。`TestBatchRisk`、`TestSetupRisk`、`TestBatchValuesInEffects`、`TestSetupValuesInEffects`、`TestLiftedPrimitivesHaveRiskCases`；mutant `batch-risk-ignored`、`setup-risk-ignored`、`setup-risk-ignores-initial` 被擋下 |
@@ -146,7 +146,7 @@
 | 批次中故障 | G-BT10（故障等整批做完，拿走它釋放的 chamber） |
 | warm-up／量測視窗的邊界 | G-BT11（G-BT1 的 [80, 120]：W 與 H 恰為開始時刻的批次算，W 之前的不算）、G-SU8（[22, 41]：W 之前開始的換線只算 W 之後的部分，H 時還在進行的算開始、不算完成） |
 | max_entities 在批中 | G-BT12（最後兩件永遠湊不成批、censored；湊批不是 deadlock：有限 buffer 使 B1 執行；成員空出的位置解除多個被擋的 entity） |
-| D-050 B2 對 batch request | G-BT13（R4 被繞過：ErrStalled 回報最老成員，since 為就緒的 tick） |
+| D-050 B2 對 batch request | G-BT13（R4 被繞過：ErrStalled 回報最老成員，since 為進入 B2 狀態的 tick，此例即就緒的 tick；review 第 1 輪 M1 更正，原文「since 為就緒的 tick」）、G-BT18（review 第 1 輪：就緒時 bundle 還在使用中，since 晚於就緒的 tick） |
 | 過時的逾時 | G-BT14、G-BT16（mutation 第 1 次之後） |
 | max_wait 0 | G-BT15（mutation 第 1 次之後） |
 | 同一批的兩個成員同時被擋 | G-BT17（mutation 第 2 次之後：bundle 在 blocked_ticks 只算一次，7 分；每個成員各算會是 10 分） |
@@ -263,7 +263,7 @@ Exec 數包括很快就 decode 或 compile 失敗的輸入（`FuzzKernel`、`Fuz
 
 兩項都是 **PROPOSED**（docs/DECISIONS_AND_TBD.md 的「T-050 的提案」與 planning/decisions.json；`approved_by`／`approved_at` 為 null）。建議都已實作，可以回退；不採用時要改的地方寫在各項最後。T-050 以它們為 gate，所以 `make spec-decisions` 不再把 T-050 列為 ready。
 
-- **D-096 — 批次的 kernel 解讀**（D-048、D-049、D-050、D-054、D-058 沒有寫到的細節）。建議：(a) 成員在授予時決定：取授予時刻的 min(等待數, max_size)，就緒後才進入的也算（A；B：就緒時凍結）；(b) BATCH_TIMEOUT 只在 min < max 時排程，min＝max 時允許但不使用 max_wait（A；B：每次都排，多出不起作用的事件與 sequence）；(c) 最老成員以進入序號識別、世代號判定過時、已到期時當場檢查，等於上限的 tick 即就緒；(d) 授予的 observation 順序、一次 service draw、空出 k 個位置解除至多 k 個被擋的 entity、授予後再檢查；(e) 只有就緒的批次排 dispatch；(f) 完成時的 visit 上限依 FIFO、前面的成員已提交；(g) B1 在還有待處理的逾時（含過時的與晚於 horizon 的）時不判定 deadlock，B1／B2 回報最老成員、since 為就緒的 tick（A；B：不計晚於 horizon 的逾時，更早報 deadlock）；(h) ObsBatchStart kind 17、`Observation.Batch`、批號從 1 起；(i) max_wait 量化後超過 365 天為 `BATCH_INVALID`；(j) 每個批次 process 都有 `batches[<process>]`，批次的 bundle 在 K 中只算一次。
+- **D-096 — 批次的 kernel 解讀**（D-048、D-049、D-050、D-054、D-058 沒有寫到的細節）。建議：(a) 成員在授予時決定：取授予時刻的 min(等待數, max_size)，就緒後才進入的也算（A；B：就緒時凍結）；(b) BATCH_TIMEOUT 只在 min < max 時排程，min＝max 時允許但不使用 max_wait（A；B：每次都排，多出不起作用的事件與 sequence）；(c) 最老成員以進入序號識別、世代號判定過時、已到期時當場檢查，等於上限的 tick 即就緒；(d) 授予的 observation 順序、一次 service draw、空出 k 個位置解除至多 k 個被擋的 entity、授予後再檢查；(e) 只有就緒的批次排 dispatch；(f) 完成時的 visit 上限依 FIFO、前面的成員已提交；(g) B1 在還有待處理的逾時（含過時的與晚於 horizon 的）時不判定 deadlock，B1／B2 回報最老成員、since 為就緒的 tick（A；B：不計晚於 horizon 的逾時，更早報 deadlock）（review 第 1 輪改寫：B2 的 since 依 D-074 (c)、晚於 horizon 的逾時是 ADR-026 D-050 B1 已批准的文字、建議改為 B 但未實作，見文末「Review 第 1 輪」）；(h) ObsBatchStart kind 17、`Observation.Batch`、批號從 1 起；(i) max_wait 量化後超過 365 天為 `BATCH_INVALID`；(j) 每個批次 process 都有 `batches[<process>]`，批次的 bundle 在 K 中只算一次。
 - **D-097 — 換線的 kernel 解讀**（D-047、D-051、D-055、D-058、D-074 沒有寫到的細節）。建議：(a) 0 tick 的換線也是換線（記 ObsSetup、計數，A；B：不記也不計）；(b) 可用的 unit＝既不在使用中也未停機，下班的 unit 不另外識別；(c) 故障落在確定的 unit：立即停機取閒置 unit 中 index 最小者，等待中的故障由被釋放或修復好的 unit 承擔，停機不改變設定（A；B：時鐘 u 固定對應 unit u，會出現有閒置 unit 卻要等待的情形）；(d) ObsSetup kind 18 的欄位與位置、trace 的 `setup_start` 不帶 unit；(e) 只有換線有分布時才從 (resource ID, `setup/<u>`) 抽，先於 service，完成在換線＋service 之後；(f) Result 的換線組與 ∫min(U − K − Z, S)；(g) validator 的 path；(h) 只有一種 entity type 而 `initial` 就是那一種也是中性設定。
 
 Owner 也許想特別看的取捨：D-096 (a)（授予時決定成員：燒機室實際上是「開門時把排隊的放進去」，選 B 則就緒後才到的要等下一批）、D-096 (g)（保守地不在有待處理逾時時報 deadlock）、D-097 (a)（0 分鐘的換線在換線次數中算一次）與 D-097 (c)（故障的 unit identity）。
@@ -310,3 +310,182 @@ Coordinator 把本任務的十一個 commit（14b7000–79c9423）接在 T-053 �
 - 「殘餘風險」中「DB／API 層沒有在本 worktree 執行」：整合後的 tree 上 `make integration-test` 通過，表示既有的 run、scenario 與 comparison 路徑沒有被 0.5.0 弄壞；但整合測試沒有含批次或換線的模型，有批次或換線的模型經 publish → scenario → run → result 的 closed loop 仍未在 DB／API 層測過（列入 T-037 的後續）。
 - **NOT RUN**：`make e2e-test`（本任務沒有改 UI）；`make benchmark-test`（placeholder，T-037）；CI 在 push 之後確認。
 - 本任務仍待：獨立 review（H-003）；owner 決定 D-096、D-097（PROPOSED）。
+
+## Review 第 1 輪（2026-10-26）：CHANGES REQUESTED（四個 Medium、三個 Low、Info）
+
+獨立 reviewer（H-003）的報告在 `checks/evidence/2026-10-26-T-050-r1/reviewer/REVIEW.md`（沒有 High；M1–M4、L1–L3、I1–I6）。本輪在 `t050-r1`（從 `claude/lucid-meitner-vq1awo` 的 180c86f 開出；先 cherry-pick reviewer 的 584cc53 為 207eaba，衝突只在產生的 `checks/docs-check.json`，取本 branch 的版本、由 spec-check 重產；不 push）修正。每個修正都先寫測試或手推 golden（推導逐 tick 寫在 fixture 的 `derivation`，engine 執行前寫好），確認它在 reviewer 的 mutant（或照舊文字讀法的 mutant）下失敗（red），再確認在現在的程式上通過；沒有降低任何 assertion、沒有加 skip、沒有改任何既有 golden 的期望值（兩個 builder 重產後舊的 case 逐值相同，只多新 case）。**Kernel（`internal/simulation/engine`）與 collector（`internal/results/metrics`）的程式沒有改**；改的只有測試、fixture、獨立的 Python 向量、AI 的 scenario 規則與 prompt（L3）、決策與規格文字。Reviewer 的報告、probe 與工具只讀取使用。Evidence 在 `checks/evidence/2026-10-26-T-050-r1/`（每個 log 開頭是時間、cwd 與指令，結尾是 `# exit=… elapsed=…`；`scripts/` 是本輪的工具）。D-096、D-097 仍是 **PROPOSED**（`approved_by`／`approved_at` 為 null）；T-050 在 `planning/tasks.json` 改為 `in_progress`（I6）。
+
+**與 coordinator 指示不同之處（M2）**：coordinator 決定把 D-096 (g) 改為 B（晚於 horizon 的 BATCH_TIMEOUT 不使 D-050 B1 停止判定）並實作。查 ADR-026 D-050（ACCEPTED，H-018，D-050 採 A）的 B1 定義時發現，它的文字就是 A：「有 blocked entity 或 held candidate；heap 中沒有 SERVICE_COMPLETE、DELAY_COMPLETE、BATCH_TIMEOUT，**也沒有這些事件因晚於 horizon 被丟棄**；且每個 held candidate 都是 release-bound」。B 因此不是批准文字沒寫到的細節，而是修訂已批准的規則；依 AGENTS.md §1（來源與衍生文件矛盾時停止受影響的部分、記錄差異；不得自行把 proposed 轉為 approved），本輪**沒有改 kernel**：以手推 golden 固定已批准的行為（A），D-096 (g) 依 coordinator 的決定把建議改為 B，寫明 B 修訂已批准的文字、owner 批准後才實作，並寫出 A 的取捨、B 與晚於 horizon 的服務（D-064 (g)）不一致之處和一致的 C。B 需要改的程式與它對鎖的影響（沒有）都已確認（見 M2）。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 207eaba | Reviewer 的報告與 evidence（584cc53 的 cherry-pick） |
+| 59ce20b | 手推 golden G-BT18–G-BT22（`batch-goldens.json`）、G-SU11、G-SU12（`setup-goldens.json`；builder `batch_goldens_gen.py`、`setup_goldens_gen.py` 只加 case）；`scripts/engine_reference.py` 的 `setup_streams` 與 `engine-vectors.json`（只加這一項）；`TestBatchStall` 跑每個 stall golden、新的 `TestBatchDeadlocks`、`calendarCase` 的 optional `deadlock` 期望、`TestSetupStreamVectors`、測試中的數量；兩個 0.5.0 鎖加入 G-BT21、G-SU11、G-SU12（`add_lock_entries.py`：既有的每一筆都與 engine 現在的輸出相同才寫入）；第一次執行、鎖更新前後與 SimPy 的 log |
+| 5d7d8c9 | L3：`aicontext.modeRules` 與 prompts/scenario 寫明 max_wait 的 365 天上限，scenario-0.6.0 → scenario-0.7.0；`TestScenarioMode`；red／green log |
+| e99e91b | Mutation harness `t050-mutants.py` 加入 reviewer 存活或只被鎖擋下的 6 個 mutant、照 D-096 (g) 舊文字讀法的 M1 mutant、reviewer 的 equivalent mutant（I2）：63 個 |
+| 927c071 | D-096 (g)(i)、D-097 (i)（DECISIONS_AND_TBD 與 decisions.json，仍為 proposed）、SIMULATION_SPEC §3、§5、§10、TEST_PLAN、TWIN_IR_SPEC（scenario-0.7.0）、tasks.json 的 T-050 狀態；每個新測試在其 mutant 下的 red log、B 的 mutant 下的鎖、reviewer 的 probe P1–P6 重跑 |
+| （最後一個） | 本節、本報告前面 M1 指出的三處與 D-096 (g) 摘要的更正、D-097 (e)(f) 引用新 golden；驗證 log、`mutants-run4*.log`、`exit-codes.txt`；`make spec-check` 重產的 `checks/*.json` |
+
+### Commit 對照（I6）
+
+本報告前面「Commit」表引用的是 `t050` branch 的 hash；coordinator 依序 cherry-pick 到 `claude/lucid-meitner-vq1awo`（`git log --oneline 8948b70..79c9423`），標題相同。Reviewer 確認 `git diff b5467c0 4715f49` 在 T-050 的程式上只差 H-024 的 APPROVED 字樣的註解。
+
+| `t050` | `claude/lucid-meitner-vq1awo` | 標題（`T-050: …`） |
+|---|---|---|
+| 7509c04 | 14b7000 | freeze the des-go-0.4.0 kernel for the D-047 differential |
+| 7c25863 | f49d104 | validator rules of batch processes (BATCH_INVALID), gate lifted in the validator |
+| 2fc93c7 | 88f34e3 | des-go-0.5.0 batch processes (D-054): kernel, Result, trace, D-057 risk |
+| 7e8df45 | 0461dce | observation-only checker of batch processes, property tests, fuzz seeds |
+| 57927ef | fd8aa08 | changeovers (D-055) in des-go-0.5.0: validator, kernel, Result, trace, D-057 risk |
+| 30e4200 | ce01c55 | SimPy reference of batch processes and changeovers |
+| 86a933f | 3317c7a | des-go-0.5.0 regression locks of its own |
+| 457f43c | 7e43691 | D-096, D-097 (PROPOSED); specs, ADR, test plan, planning |
+| f1c57e0 | fbb828a | G-BT15, G-BT16 and tests after mutation runs 1 and 2; mutation harness |
+| b5467c0 | 4715f49 | G-BT17 and Result identities after mutation run 2 |
+| 4c7c7be | 79c9423 | validation report and the verification on the final tree |
+
+### M1（Medium）：D-096 (g) 與 SIMULATION_SPEC §3 寫錯 B2 對 batch request 的 since
+
+- **發現**：文字寫「B1、B2 對 batch request 回報它的最老成員，since 為批次就緒的 tick（G-BT13）」，本報告 scope 3b 與「手推 golden」表的 G-BT13 列也這樣寫；kernel 的 `stall()` 與只看 observation 的檢查器（`kernel_check_batch_test.go` 在新的 batch request 時 `delete(c.cal.since, batchKey(p))`，之後由 B2 的更新記錄）對任何 request（含 batch request）都照 D-074 (c)：since 是第一次在 tick 結束時處於 B2 狀態的 tick。G-BT13 中兩者都是 20 分，分不出。Reviewer 的 P1：批次在 20 分就緒，machine 被另一個 process 用到 100 分，kernel 報 since 100 分。
+- **修正**（依 coordinator 的決定：已批准的是 D-074 (c)，改文字不改程式）：D-096 (g)（DECISIONS_AND_TBD、decisions.json）、SIMULATION_SPEC §3、TEST_PLAN、本報告 scope 3b 與 G-BT13 列改為 D-074 (c) 的讀法（標「review 第 1 輪 M1 更正」）；B1 沒有被擋的 entity 時（`Queued`）的 since 才是 batch request 建立、即批次就緒的 tick（見 L2）。手推 golden **G-BT18**（P1 的模型，R4 被繞過）：t=20 就緒時 machine 在使用中，不是 B2 的狀態；t=100 P1 做完、machine 釋放，operator 下班，從這個 tick 結束起處於 B2 狀態：since 100 分（6,000,000 tick），deadline next_fit(100＋480)＝960；t=960 上班、machine 立即停機，仍在狀態中：ErrStalled 於 960 分，回報 `r0/srcw/1`、node work。`TestBatchStall` 改為跑每個有 `stalled` 期望的 golden（G-BT13、G-BT18）。
+- **先紅後綠**：`first-run-new-goldens.log`：G-BT18 第一次執行就與手推一致；`red-m1-gbt18-under-m1-b2-since-ready-tick.log`：照舊文字讀法的 mutant `m1-b2-since-ready-tick`（batch request 的 B2 since 取就緒的 tick）下 G-BT13 通過、G-BT18 失敗（since 1,200,000，手推 6,000,000）。
+- **擋下的測試**：`m1-b2-since-ready-tick` 被 `TestBatchStall`／G-BT18 擋下（harness 第 4 次）。Reviewer 的 P1 斷言舊文字的讀法，所以重跑仍是 exit 1（`probe-rerun-P1-b2-since.log`，依設計），由 G-BT18 取代。
+
+### M2（Medium）：晚於 horizon 的 BATCH_TIMEOUT 與 B1 沒有測試；B 是已批准文字的修訂
+
+- **發現**：Reviewer 的 mutant `r-b1-ignores-timeouts-after-horizon`（D-096 (g) 的 B：只計 ≤ horizon 的逾時）通過整個 engine package；P2：G-D2 單獨在 7 分 ErrDeadlock，加上一個不相關、等待上限在 101 分的批次（horizon 60）後跑到 horizon、沒有錯誤。Reviewer 建議改為 B（晚於 horizon 的逾時永遠不會處理，計入只會關掉 B1，連不相關的循環等待也藏起來），或給出 A 避免誤報的例子；coordinator 決定實作 B。
+- **與已批准文字的衝突**：見本節開頭。ADR-026 D-050 B1 的同一句對 SERVICE_COMPLETE、DELAY_COMPLETE 也成立：kernel 的 `inService`、`inDelay` 不論完成是否晚於 horizon 都計（SIMULATION_SPEC §3 的 B1；D-064 (g)，APPROVED：循環旁一個一直在服務的不相關 process 使 B1 不判定，這是批准文字的**全域**定義）。所以 A 不只是字面，也與已批准的服務、delay 一致；B 只對逾時改這條規則，「做到 horizon 之後的服務」仍關掉 B1、「horizon 之後的等待上限」不再關掉。三個選項都只影響 validator 被繞過的模型（valid 的模型因 R1 不會走到 B1）。本輪沒有實作 B，交 owner 決定。
+- **修正**：(1) 手推 golden **G-BT19**（P2 的模型：G-D2＋`bsrc` 在 1 分投入一件到沒有 resource 的批次 process `bp`（min 1、max 2、max_wait 100、service 5）→ done；horizon 60，R1 被繞過）：推導先逐 tick 重推 G-D2 的循環（7 分形成）；A 下逾時（101 分）晚於 horizon、不排程但算待處理，B1 不判定，run 跑到 horizon、沒有錯誤：src 的 entity 從 7 分起每分鐘被擋在 src、z 的每分鐘完成，129 個事件（121 個 arrival、4 個 SERVICE_COMPLETE、4 個 DISPATCH）；B 下在 7 分 ErrDeadlock（同 G-D2）。**G-BT20**（同一模型、max_wait 30）：逾時（31 分）在 horizon 內，A、B 都使 B1 等待；31 分逾時使批次就緒、開始，36 分批次結束（不排 dispatch）後 ErrDeadlock（2,160,000 tick，回報 `r0/src/5` 在 src、since 5 分）：固定「horizon 內的逾時照樣使 B1 等待、處理之後不再計」。新的 `TestBatchDeadlocks` 跑有 `deadlock` 期望的 golden（G-BT20、G-BT22），G-BT19 在 `TestBatchGoldens` 中（RunReplication 不得有錯誤，事件數、service 開始、完成與阻塞逐筆比對）。兩者都繞過 validator（R1），不在鎖中。(2) 文字：D-096 (g) 依 coordinator 的決定**建議 B**，寫明 B 修訂已批准的 ADR-026 D-050 B1 文字（對 BATCH_TIMEOUT 刪去「也沒有…因晚於 horizon 被丟棄」）、owner 批准前 kernel 照 A；A 列為已批准、已實作的選項並附取捨；另列 C（三種事件晚於 horizon 的都不計：一致，但改變 T-047–T-049 已批准的 B1）。採 B 時要改：`kernel.batchCheck`（只計 進入＋max_wait ≤ horizon 的逾時；即 mutant `r-b1-ignores-timeouts-after-horizon`）、檢查器的 `pendingTimeouts`（同樣只計 ≤ horizon）、G-BT19 的期望（ErrDeadlock 於 7 分）、ADR-026 D-050 B1 與 SIMULATION_SPEC §3 的文字。
+- **鎖**：B 的 mutant 下只跑鎖（`optionB-locks-engine.log`、`optionB-locks-des.log`）：0.1.0–0.5.0 的 observation 鎖與 Result 鎖都通過，所以 B 不會改變任何鎖定的 digest（鎖定的 case 都經過 validator，不會走到 B1）。本輪沒有改 kernel，鎖中既有的 digest 都沒有改變（見「鎖定的 digest」）。
+- **先紅後綠**：G-BT19、G-BT20 第一次執行就與手推一致（`first-run-new-goldens.log`）；`red-m2-gbt19-under-optionB.log`：B 的 mutant 下 G-BT19 失敗（`the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000`），其他批次 golden 通過；`red-m2-gbt20-under-deadlock-ignores-timeouts.log`：B1 不看逾時的 mutant 下 G-BT20 在 7 分 ErrDeadlock（手推 36 分）。
+- **擋下的測試**：`r-b1-ignores-timeouts-after-horizon` 被 `TestBatchGoldens`／G-BT19 擋下（harness 第 4 次）；`deadlock-ignores-timeouts` 原本被 `TestRandomBatchFailuresAreReal` 擋下，現在也被 G-BT20 擋下。Reviewer 的 P2 斷言 A，重跑通過（`probe-rerun-P2-b1-timeout-after-horizon.log`）。
+
+### M3（Medium）：兩條已批准的規則只有鎖在固定
+
+**(a) 換線的 stream 名稱 (resource ID, `setup/<u>`)**（D-055、ADR-026 D-055）
+
+- **發現**：`r-setup-purpose-renamed`（`"setup/"` → `"setups/"`）只被 0.5.0 的鎖擋下；`TestSetupStreamsPerUnit` 從同一個 Go 常數算期望，SimPy 用 Python 自己的 `random`；`engine-vectors.json` 沒有 `setup/` 的向量。
+- **修正**：比照 T-048 的 `ttf/<u>`、`ttr/<u>`（`scripts/engine_reference.py` 的 `breakdown_streams`；Go 端 `TestBreakdownStreamVectors` 與 `TestBreakdownStreams` 都以字面寫 stream 名稱）：`engine_reference.py` 新增 `setup_streams`：G-SU5 的 resource（smt）、default（exponential，mean 3 分）與 seed（4242，replication 0），capacity 3，每個 unit 以 Python 的 SplitMix64、stream seed 與 exponential sampler（同一支腳本已逐 bit 對過 Go 的部分）抽 20 個換線時間與之後的 stream state，寫入 `engine-vectors.json`（`--write` 前 `engine_reference.py` 回 FAIL，之後 PASS；diff 只加 92 行；`PASS_ENGINE_REFERENCE_VECTORS` 多 `setup_stream_units: 3`）。`TestSetupStreamVectors`：(1) Go 的 `Stream(rep, "smt", "setup/"+u)`（名稱以字面寫在測試中）經 default 的 sampler 逐 bit 等於向量，stream state 也相同；(2) kernel 在 G-SU5 的模型上（capacity 2 與 3）每個 unit 的前 20 次換線時間等於向量中該 unit 的 draw；並檢查向量確實是 G-SU5 的 resource、default 與 seed。
+- **先紅後綠**：第一次執行通過（`first-run-new-goldens.log`）；`red-m3-vector-under-setup-purpose-renamed.log`：改名的 mutant 下（略過鎖）`TestSetupStreamsPerUnit` 通過、`TestSetupStreamVectors` 失敗（每個 unit 的換線都不是向量中的 draw）。
+- **擋下的測試**：`r-setup-purpose-renamed` 被 `TestSetupStreamVectors` 擋下，略過鎖時也是（harness 第 4 次的兩段）。
+
+**(b) 換線在 run 的最後一個 observation 之後結束**（D-097 (f)、SIMULATION_SPEC §5）
+
+- **發現**：`r-setup-ends-not-applied-at-finish`（拿掉 `Collector.Finish` 的 `c.endSetups(c.h)`）只被 `TestGoldenDigests050` 擋下；沒有任何手推 golden 有在最後一個 observation 之後、H 之前結束的換線（G-SU8、G-SU9 之後都還有 observation）。
+- **修正**：手推 golden **G-SU12**（P6：G-SU1 的模型、horizon 49）：到 32 分與 G-SU1 相同；40 分 src_a 的下一件（50）晚於 H、不排程、不取 sequence，所以之後的 sequence 比 G-SU1 少一；A4 在 45 分換線（到 48），service 要到 50（晚於 H，不排程），45 分之後沒有任何 observation，A4 的換線只能由 `Finish` 結束。`setup_ticks` 12 分（720,000）、4 次開始、4 次完整（12 分）、`in_use_ticks` 23 分、`scheduled_processing_ticks` 23 − 12＝11 分（660,000）；19 個事件，換線的 DISPATCH sequence 8、11、17、19；5 件完成、A4 censored。**與 coordinator 的數字不同**：指示寫「`scheduled_processing_ticks` 600000 by hand」；手推是 660,000，600,000 是 mutant 下的值（Z 在 [48, 49] 仍為 1：Z 13 分、processing 23 − 13＝10 分）；reviewer 的報告也寫「660000 vs 600000」（kernel 對 mutant）。SimPy reference 也逐值比對 G-SU12，與手推相同。
+- **先紅後綠**：第一次執行通過；`red-m3-gsu12-under-setup-ends-not-applied-at-finish.log`：mutant 下 G-SU12 的 `setup_ticks` 780,000、`scheduled_processing_ticks` 600,000（手推 720,000、660,000），其他換線 golden 通過。
+- **擋下的測試**：`r-setup-ends-not-applied-at-finish` 被 `TestSetupGoldenResults`／G-SU12 擋下，略過鎖時也是。
+
+### M4（Medium）：完整換線的 W 邊界
+
+- **發現**：`r-setup-complete-strict-w`（`o.Tick >= c.w` → `>`）通過所有測試（含鎖）；G-SU8 的 W（22）沒有恰在 W 開始的換線。H 的一側與批次的 W／H 已有測試。
+- **修正**：手推 golden **G-SU11**（P5：G-SU1 的模型、warm-up 20、horizon 55）：B1 的換線恰在 W＝20 開始、23 結束：算開始，也算完整（開始 ≥ W）；4 次開始、4 次完整（12 分）、`setup_ticks` 12 分、`in_use_ticks` 24 分（utilization 24/35）、processing 12 分；6 件完成（A1 在 W 之前）、lead time 5、10、2、5、10、2、queue wait 0、5、0、0、5、0；50 分之後 A5 的 service 到 52，在 H 內；24 個事件，換線的 DISPATCH sequence 8、11、17、20。SimPy 也逐值比對，相同。
+- **先紅後綠**：第一次執行通過；`red-m4-gsu11-under-setup-complete-strict-w.log`：mutant 下 G-SU11 的 `setups_completed` 3、`completed_setup_ticks` 540,000（手推 4、720,000）。
+- **擋下的測試**：`r-setup-complete-strict-w` 被 `TestSetupGoldenResults`／G-SU11 擋下，略過鎖時也是。
+
+### L1（Low）：沒有 resource 的批次 process
+
+- **發現**：validator 接受沒有 resource 的批次 process（`TestBatchRules`），但沒有 golden、鎖或檢查器跑過它；`r-batch-end-dispatch-without-resources`（批次結束一律排 dispatch）通過所有測試，它改變事件數與 sequence。
+- **修正**：手推 golden **G-BT21**（P4：4 件、min＝max＝2、service 5、沒有 resource）：批次結束沒有 bundle 可釋放，不排 dispatch，與一般 service 結束相同；8 個事件（4 arrival、20 與 40 分的 DISPATCH、25 與 45 分的 SERVICE_COMPLETE），BatchStart 在 DISPATCH sequence 4 與 7；Result：4 件完成、lead time 15、5、15、5、queue wait 10、0、10、0、batches[oven] 2 批 4 件、沒有 resource_states。SimPy 逐值比對，相同。手推通過後加入兩個 0.5.0 鎖。
+- **先紅後綠**：第一次執行通過；`red-l1-gbt21-under-batch-end-dispatch-without-resources.log`：mutant 下 10 個事件、b2 在 DISPATCH sequence 8（手推 8、7）。
+- **擋下的測試**：`r-batch-end-dispatch-without-resources` 被 `TestBatchGoldens`／G-BT21 擋下。
+
+### L2（Low）：B1 對 batch request 的 `Queued` since
+
+- **可達性（證明）**：B1 的 `Queued` 分支要求沒有被擋的 entity（nBlocked＝0）、沒有服務中或 delay 中的 entity、每個 held candidate 都 release-bound（bundle 中某個 r 有 inUse_r＋units > C_r）。Unit 只由服務中的 entity（含服務中的批次）與被擋的 entity（持有 bundle 的 process，或成員被擋、bundle 還沒釋放的批次）持有；delay 與 source 的 backlog 不持有 resource。所以 inService＝0 且 nBlocked＝0 時每個 r 的 inUse_r＝0，release-bound 就是 units > C_r：validator 以 `RESOURCE_REQUIREMENT_INVALID` 拒絕（`validate/ir.go`），Compile 不再檢查。分支因此在 validator 被繞過時到得了，一般 request 也一樣；它不是 kernel 內部不變量被破壞（是模型本身 invalid），所以**沒有改成 `ErrInternal`**，保留現在的 typed `ErrDeadlock`（與一般 request 相同），D-096 (g) 寫明是防禦。
+- **修正**：手推 golden **G-BT22**：src 兩件（1、2 分）→ q（capacity 2）→ bp（min＝max＝2，需要 capacity 1 的 r 的 2 個 unit，validator 被繞過）：2 分就緒、held；之後 B1：ErrDeadlock 於 2 分（120,000），沒有被擋的 entity，回報最早的 held request：batch request 的最老成員 `r0/src/1`、node bp、since 2 分（request 建立的 tick）、`Queued`（"waits for"）；最老成員在 1 分進入。
+- **先紅後綠**：第一次執行通過；`red-l2-gbt22-under-b1-since-oldest-entry.log`：`r-b1-since-oldest-entry`（since 取最老成員的進入）下 since 60,000（手推 120,000）。
+- **擋下的測試**：`r-b1-since-oldest-entry` 被 `TestBatchDeadlocks`／G-BT22 擋下。
+
+### L3（Low）：AI 的 scenario 規則少一個 BATCH_INVALID 條件
+
+- **修正**：`aicontext.modeRules` 的 SCENARIO_PATCH_ALLOWLIST 加「max_wait is at most 365 days once quantized to 1 ms ticks」，prompts/scenario 加「max_wait 量化為 1 ms tick 後至多 365 天」（D-096 (i)、`validate/batches.go`）。Prompt 的文字改了，所以照 repo 的做法升版本：scenario-0.6.0 → **scenario-0.7.0**（`prompts/embed.go` 由第一行讀出版本，每次 provider 呼叫都記錄；其他 fixture 或 golden 沒有帶 scenario 的版本或 prompt hash：`internal/proposals/generator` 的測試用自己的 metadata，`checks/ai-evals/*.json` 在 `make ai-eval` 重跑後沒有改變）。TWIN_IR_SPEC、TEST_PLAN、D-096 (i) 的版本與文字一併更新。
+- **先紅後綠**：`red-l3-scenario-rules.log`：`TestScenarioMode` 要求 scenario-0.7.0 與兩段文字中的上限，對舊的規則與 template 失敗（3 個 error）；`green-l3-scenario-rules.log`：通過（`TestTemplates` 也通過）。Live model 沒有看過 scenario-0.7.0（NOT RUN，T-038）。
+
+### Info
+
+- **I1**：D-097 新增 (i)：沒有 `initial` 時從未使用過的 unit 不算與任何產品相符，不比需要換線的 unit 優先（D-055 的字面規則；建議 A，已實作），以 reviewer 的 P3 為例，列出 B（視為不必換線，排在需要換線的 unit 之前）與其後果，請 owner 確認；沒有改程式（P3 重跑：b1 取 unit 0、換線 7 分，`probe-rerun-P3-fresh-unit.log`）。
+- **I2**：`r-setup-end-applied-late` 加入 harness，標為 equivalent（reviewer 的理由寫在 harness 中：`integral.set` 加 level ×（t − since）並移動 since，晚套用的結束仍在任何較晚 tick 的 observation 之前、以它自己的 tick 套用，只重排同一 tick 的長度 0 的步驟；run 結束時恰在 H 的結束沒套用只涵蓋 [H, H]）；第 4 次的兩段都必須存活（EQUIVALENT）。
+- **I3**：檢查器與 SimPy 腳本與 kernel 由同一個 session 寫成、讀法相同，是殘餘風險（見原報告「殘餘風險」）；本輪的 7 個新 golden 都是手推，SimPy 另外逐值比對了其中可比的三個（G-BT21、G-SU11、G-SU12）。
+- **I4**：本輪的 7 個 golden 的推導與期望值都在 engine 執行它們之前寫在 builder 中；`first-run-new-goldens.log` 是 engine 第一次執行它們，全部一致，沒有任何期望值在執行後改過。
+- **I5**：沒有需要修正的地方。
+- **I6**：T-050 在 tasks.json 改為 `in_progress`；commit 對照見上。
+
+### 鎖定的 digest
+
+本輪沒有改 kernel 或 collector，**0.1.0–0.5.0 的鎖中沒有任何既有的 digest 改變**：`locks-before-update.log`（新 case 加入 fixture 之後、鎖更新之前）只有兩個 0.5.0 鎖因新 case 失敗，0.1.0–0.4.0 的鎖都通過；`add_lock_entries.py` 先確認每一筆既有的 entry 與 engine 現在的輸出相同、新的 ID 恰為指定的三個，才加入新的 entry（只加不改）。兩個 0.5.0 鎖加入 G-BT21、G-SU11、G-SU12：`kernel-observation-digests-0.5.0.json` 33 → 36 個 case、`engine-golden-digests-0.5.0.json` 31 → 34 個 digest（繞過 validator 的 G-BT18、G-BT19、G-BT20、G-BT22 不鎖），都在它們的手推期望通過之後（`first-run-new-goldens.log`），SimPy 也比對過這三個（`simulation-reference-test-first.log`）；`locks-after-update.log` 全部通過。兩個鎖的 `status` 文字記錄了這三筆的來由。D-096 (g) 的 B 也不改變任何鎖（M2）。
+
+### Reviewer 的 probe P1–P6（重跑）
+
+`scripts/probes.sh` 以 `go test -overlay` 把每個 probe 加進它的 package（沒有在 tree 中加檔案），各自一個 log：
+
+| Probe | Exit | 結果 |
+|---|---:|---|
+| P1 B2 since（`probe-rerun-P1-b2-since.log`） | 1 | 依設計失敗：它斷言舊文字的讀法（since＝就緒的 tick）；kernel 報 since 100 分，與手推的 G-BT18 相同（M1） |
+| P2 B1 與晚於 horizon 的逾時（`probe-rerun-P2-b1-timeout-after-horizon.log`） | 0 | 斷言 A：沒有錯誤；G-BT19、G-BT20 取代（M2） |
+| P3 從未使用的 unit（`probe-rerun-P3-fresh-unit.log`） | 0 | 只記錄：b1 取 unit 0、換線 7 分；D-097 (i)（I1） |
+| P4 沒有 resource 的批次（`probe-rerun-P4-resource-free-batch.log`） | 0 | 8 個事件；G-BT21 取代（L1） |
+| P5 恰在 W 開始的換線（`probe-rerun-P5-setup-at-w.log`） | 0 | 4 次完整；G-SU11 取代（M4） |
+| P6 最後一個 observation 之後結束的換線（`probe-rerun-P6-setup-end-after-last-observation.log`） | 0 | setup_ticks 720,000、processing 660,000；G-SU12 取代（M3） |
+
+### Mutation（第 4 次）
+
+`t050-mutants.py`（e99e91b，63 個 mutant）在 tree 外的 scratch copy（`git archive` 的 e99e91b；程式與測試資料與 927c071 相同）上完整執行兩次，mutant 都以 `go test -overlay` 套用（`scripts/mutants.sh`；Python mutant 用同一個 tree 的 `bin/simpy-reference-go.json`）：
+
+| 段 | 結果 | 時間 | Log |
+|---|---|---:|---|
+| 有鎖 | **59 個被擋下、4 個 equivalent**，沒有 SURVIVED、BAD-MUTANT 或 BUILD-FAILED，exit 0 | 4,059 s | `mutants-run4.log` |
+| `WITHOUT_LOCKS=1`（`go test -skip Digests`） | **59 個被擋下、4 個 equivalent**，exit 0 | 2,853 s | `mutants-run4-without-locks.log` |
+
+本輪加入的 8 個：`m1-b2-since-ready-tick`（`TestBatchStall`／G-BT18）、`r-b1-ignores-timeouts-after-horizon`（`TestBatchGoldens`／G-BT19）、`r-setup-purpose-renamed`（有鎖時第一個失敗的是 `TestBatchSetupObservationDigests`，略過鎖時 `TestSetupStreamVectors`）、`r-setup-ends-not-applied-at-finish`（有鎖時 `TestGoldenDigests050`，略過鎖時 `TestSetupGoldenResults`／G-SU12）、`r-setup-complete-strict-w`（有鎖時 `TestGoldenDigests050`，略過鎖時 `TestSetupGoldenResults`／G-SU11）、`r-batch-end-dispatch-without-resources`（`TestBatchGoldens`／G-BT21）、`r-b1-since-oldest-entry`（`TestBatchDeadlocks`／G-BT22）都被擋下；`r-setup-end-applied-late` 兩段都存活（EQUIVALENT，I2）。第一個失敗的測試是鎖的共 9 個（第 3 次的 6 個與本輪的上述 3 個，des 的 `lock050_test.go` 在 `setup_test.go` 之前執行、engine 的鎖在 `setup_test.go` 之前執行）；略過鎖時 9 個都被其他測試擋下：`one-stream-for-all-units`（`TestSetupStreamsPerUnit`）、`setups-started-outside-window`、`setup-complete-ignores-end`、`processing-ignores-changeover-on-shift`、`processing-ignores-changeover`（`TestSetupGoldenResults`）、`setup-end-not-applied`（`TestSimPyReferenceExport`）與本輪的三個。其他已有的 mutant 結果與第 3 次相同，只有 `deadlock-ignores-timeouts` 的第一個失敗改為 `TestBatchGoldens`（G-BT19：不看逾時就在 7 分 ErrDeadlock），第 3 次是 `TestRandomBatchFailuresAreReal`。4 個 equivalent 是 `ready-untimed-on-limit`、`release-hands-over-least-idle`、`repair-hands-over-least-idle`（理由在原「Mutation」）與 `r-setup-end-applied-late`。
+
+### 實際執行（本輪）
+
+在 `t050-r1` 上（`environment.txt`：Go 1.27.3、Python 3.13.16、SimPy 4.1.2、PostgreSQL 16.15、4 CPU；機器同時有另一個 session 的整合測試與本輪的 mutation harness，load average 8–23，所以時間含競爭）。下表的指令都在 927c071 的程式與測試資料上執行（之後的 commit 只加本報告、D-097 (e)(f) 的引用與 evidence）；Go 測試都以 `-count=1` 執行。Exit code 收在 `exit-codes.txt`。
+
+| 指令 | Exit | 時間 | 說明 |
+|---|---:|---:|---|
+| 新 golden 與向量的第一次執行（`scripts/first-run.sh`） | 0 | 2 s | `first-run-new-goldens.log`：`TestBatchGoldens`（17）、`TestBatchStall`（2）、`TestBatchDeadlocks`（2）、`TestSetupGoldens`（10）、`TestSetupStreamVectors`、`TestSetupStreamsPerUnit`、`TestBatchGoldenResults`（16）、`TestSetupGoldenResults`（10），7 個新 golden 第一次就與手推一致 |
+| 鎖（更新前／後，`scripts/locks.sh`） | 1／0 | 2 s／5 s | `locks-before-update.log`：只有兩個 0.5.0 的鎖因新 case 失敗；`locks-after-update.log`：全部通過 |
+| 每個新測試在其 mutant 下（`scripts/red-runs.sh`，scratch copy，略過鎖） | 各 1 | 2–6 s | 8 個 `red-*.log`（見各 finding） |
+| L3 的 red／green（`scripts/ai-scenario.sh`） | 1／0 | 1 s | `red-l3-scenario-rules.log`、`green-l3-scenario-rules.log` |
+| B 的 mutant 下只跑鎖 | 0／0 | 2 s／5 s | `optionB-locks-engine.log`、`optionB-locks-des.log`：0.1.0–0.5.0 的鎖都通過 |
+| Reviewer 的 probe P1–P6（`scripts/probes.sh`，overlay） | 1、0×5 | 1–3 s | 見上表；P1 依設計失敗 |
+| `make backend-test GOFLAGS=-count=1` | 0 | 584 s | `backend-test.log`：gofmt、go vet、74 個 package ok，沒有 `(cached)`；`GEMINUS_FULL_DIFFERENTIAL=1`；engine 505 s、des 21 s、check-architecture 514 s；DB-backed 測試 skip（由 integration-test 執行） |
+| `make architecture-check` | 0 | 19 s | `architecture-check.log`：86 packages、23 rules、16 build configurations |
+| `make backend-numeric` | 0 | 328 s | `backend-numeric.log`：六個 target 沒有 FMA 與平台 math call，GOAMD64=v3 的數值測試通過 |
+| `make ai-eval` | 0 | 2 s | `ai-eval.log`：`TestFakeProviderEval`、`TestReviewEval` PASS；`checks/ai-evals/*.json` 沒有改變；live provider NOT RUN |
+| `make simulation-reference-test PYTHON=…`（第一次，鎖更新前） | 0 | 28 s | `simulation-reference-test-first.log`：batch／changeover 的確定性 case 19 個（多 G-BT21、G-SU11、G-SU12），0 個 failure |
+| `make simulation-reference-test PYTHON=…`（最後） | 0 | 29 s | `simulation-reference-test.log`：T-047–T-049 的 140 個隨機比對、T-050 的 19 個確定性 case 與 47 個隨機比對都通過；`calendar_reference.py` 0 個差異 |
+| `go test -race ./internal/simulation/... ./internal/results/...` | 0 | 722 s | `race-simulation-results.log`：6 個 package ok（engine 712 s，differential 在 race 下跑前 5,000 個） |
+| `go test -race ./internal/ai/... ./prompts/` | 0 | 36 s | `race-ai-prompts.log`：10 個 package ok（L3 的改動所在） |
+| `FuzzBatches`、`FuzzSetups`（各 `-fuzztime 20000x -parallel 2`） | 0／0 | 54 s／69 s | `fuzz-batches-20000x.log`、`fuzz-setups-20000x.log`：PASS；seed 含本輪的新 golden 模型 |
+| `make integration-test`（全新的 `dt_test_t050f1`） | 0 | 401 s | `integration-test.log`：db-test（SQL），之後 db-go-test（`-race`、`-p 1`）35 個 package ok，0 個 FAIL；本輪改了 `internal/ai/aicontext` 與 prompt（kernel 之外），所以執行 |
+| `make spec-check PYTHON=…`（本節寫好之後） | 0 | 10 s | `spec-check.log`：`PASS_ENGINE_REFERENCE_VECTORS`（多 `setup_stream_units: 3`）、`PASS_TS_CONTRACTS_FRESH`（15 檔、109 types：沒有 contract 變更）、`PASS_INDEPENDENT_HASHES`、`PASS_DB_TESTS_FRESH`（14）；重產的 `checks/decisions-check.json`：proposed 8（D-096、D-097 仍在），T-050 為 in_progress 後不再列在 `next_after_review`；`checks/docs-check.json`：Markdown 107 → 108（reviewer 的 REVIEW.md）；`planning-check.json` 沒有改變 |
+| Mutation harness 第 4 次（63 個，有鎖／`WITHOUT_LOCKS=1`） | 0／0 | 4,059 s／2,853 s | `mutants-run4.log`、`mutants-run4-without-locks.log`（見「Mutation」） |
+
+### NOT RUN（本輪）
+
+- `make backend-race`（完整的 race）：機器與另一個 session 的整合測試共用 4 個 CPU，本輪改跑本輪改動所在 package 的 race（見上表）；`make integration-test` 的 db-go-test 也以 `-race` 執行。原報告與 coordinator 的完整 `make backend-race` 是 exit 0，本輪沒有改 kernel 或 collector 的程式。
+- `make frontend-test`、`make e2e-test`：沒有 `apps/`、schema、OpenAPI 或產生的 TS 型別的變更（`PASS_TS_CONTRACTS_FRESH`）。`make benchmark-test`：仍是 placeholder（T-037）。
+- Live AI（`make ai-eval-live`、`make ai-smoke-live`）：scenario-0.7.0 沒有 live model 的評分（T-038），沒有讀取任何 API key。
+- 較長的 fuzz：`FuzzBatches`、`FuzzSetups` 各只跑 20,000 次；`FuzzKernel`、`FuzzRun`（seed 多了本輪的 7 個模型）NOT RUN。
+- 有批次或換線的模型經 API／DB 的 closed loop：仍未測（列入 T-037 的後續，同原報告）。
+- CI：只在本機。
+- D-096 (g) 的 B：沒有實作（M2，等 owner）。
+
+### 需要 owner 決定（本輪的變化）
+
+- **D-096 (g)**：(1) B2 對 batch request 的 since 改寫為 D-074 (c)（已批准的規則，文字更正；kernel 一直如此）；(2) **晚於 horizon 的 BATCH_TIMEOUT**：A＝ADR-026 D-050 B1 已批准的文字（現在的實作）、B＝建議（review 第 1 輪 coordinator 的決定；只對逾時修訂已批准的文字，與晚於 horizon 的服務不一致）、C＝三種事件晚於 horizon 的都不計（一致，改變 T-047–T-049 已批准的 B1）；選 B 或 C 時同時修訂 ADR-026 D-050 B1，kernel 與 G-BT19 依 D-096 (g) 的「採 B 時」修改，鎖不變；(3) `Queued` 分支為防禦（只在 validator 被繞過時到得了）。
+- **D-096 (i)**：AI 的 scenario 規則寫明上限（scenario-0.7.0）。
+- **D-097 (i)**（新）：沒有 `initial` 時從未使用過的 unit 是否優先於需要換線的 unit；建議 A（D-055 的字面，已實作）。
+- 其他不變；兩項仍是 PROPOSED，T-050 仍以它們為 gate。
+
+### 殘餘風險（本輪的變化）
+
+- **M2 沒有照 coordinator 的指示實作 B**：原因是 B 修訂已批准的 ADR-026 D-050 B1 文字（見本節開頭）。在 owner 決定之前，validator 被繞過的模型中，一個最老成員的等待上限晚於 horizon 的批次仍會使 B1 在 run 剩下的時間都不判定（與做到 horizon 之後的服務相同）；valid 的模型不受影響（R1）。
+- **檢查器、SimPy 腳本與 kernel 的讀法相同**（I3）：本輪新增的都是手推 golden 與獨立的 Python 向量，但 SimPy 仍不接受有限 buffer、班表與共用 resource，B1／B2 的 golden（G-BT18–G-BT20、G-BT22）只有手推與檢查器。
+- **Mutation 仍是抽樣**：reviewer 的 28 個 mutant 中存活或只被鎖擋下的 6 個都補了不依賴鎖的測試，另一個為 equivalent；harness 沒有涵蓋的規則仍可能只有鎖在保護。
+- **ADR-026 的實作進度文字**（「T-050 …待獨立 review」）沒有改，由 coordinator 在整合與 review 結束後更新。

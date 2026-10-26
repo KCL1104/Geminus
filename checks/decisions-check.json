@@ -1,7 +1,7 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 91,
+    "approved": 90,
     "proposed": 8,
     "rejected": 0,
     "superseded": 0
@@ -33,31 +33,19 @@
     "H-024",
     "H-025",
     "H-026",
-    "H-027",
-    "H-028",
-    "H-029",
-    "H-030",
-    "H-031"
+    "H-027"
   ],
   "tasks_by_status": {
     "blocked": 0,
     "done": 34,
-    "in_progress": 2,
-    "not_started": 21,
+    "in_progress": 3,
+    "not_started": 17,
     "review": 0
   },
   "ready_tasks": [
     "T-030"
   ],
   "next_after_review": [
-    {
-      "id": "T-050",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-096",
-        "D-097"
-      ]
-    },
     {
       "id": "T-053",
       "awaiting_task_review": [],
@@ -861,13 +849,6 @@
     "D-115": {
       "status": "proposed",
       "gate": "T-053 驗收前",
-      "gates_tasks": [
-        "T-053"
-      ]
-    },
-    "D-116": {
-      "status": "approved",
-      "gate": "T-053 驗收前（A 在回答前也不少記，不擋 H-025 的 live run）",
       "gates_tasks": [
         "T-053"
       ]
