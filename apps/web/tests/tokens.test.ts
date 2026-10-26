@@ -243,6 +243,19 @@ describe("fonts", () => {
       for (const u of urls) expect(u, spec).toMatch(/^\.\/files\/[\w-]+\.woff2$/);
       expect(text, spec).toMatch(/font-display: swap/);
     }
-    for (const f of ownCss) expect(readFileSync(f, "utf8"), f).not.toMatch(/@font-face|@import|url\(|fonts\.googleapis|fonts\.gstatic/);
+    // Our CSS imports only these package stylesheets (bundled from node_modules), and they load nothing either.
+    const packageImports: Record<string, string[]> = {
+      [join(root, "features/model-editor/vendor.css")]: ['@import "@xyflow/react/dist/base.css" layer(vendor);'],
+    };
+    for (const f of ownCss) {
+      let text = readFileSync(f, "utf8");
+      for (const line of packageImports[f] ?? []) {
+        expect(text, f).toContain(line);
+        text = text.replace(line, "");
+        const spec = /^@import "([^"]+)"/.exec(line)![1]!;
+        expect(readFileSync(join(root, "node_modules", spec), "utf8"), spec).not.toMatch(/@font-face|@import|url\(/);
+      }
+      expect(text, f).not.toMatch(/@font-face|@import|url\(|fonts\.googleapis|fonts\.gstatic/);
+    }
   });
 });
