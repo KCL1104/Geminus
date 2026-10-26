@@ -40,8 +40,11 @@
   letter-spacing: -0.01em;
 }
 
+/* It takes the row's free space (an empty box: nothing moves), so a control
+   that wraps to a row of its own can end at the right edge (.account). */
 .nav {
   display: flex;
+  flex-grow: 1;
   flex-wrap: wrap;
   gap: var(--gm-space-gutter);
 }
@@ -67,6 +70,21 @@
   margin-inline-start: auto;
 }
 
+/* The account (T-043 follow-up): the organization switcher (with several
+   organizations) and Sign out, after the language and theme, once there is
+   a session; signed out it is empty and takes no room. */
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-md) var(--gm-space-gutter);
+  margin-inline-start: auto;
+}
+
+.account:empty {
+  display: none;
+}
+
 /* Left-aligned with the strip's product name: one edge for the whole frame. */
 .main {
   max-width: var(--gm-content-width);
@@ -87,5 +105,18 @@
 
   .tools {
     column-gap: var(--gm-space-md);
+  }
+
+  /* The strip's row has no room left on a phone: signed in, the account
+     takes a row of its own under it, ending at the same edge, and the first
+     row keeps the place it has signed out. */
+  .account {
+    flex-basis: 100%;
+    justify-content: flex-end;
+    column-gap: var(--gm-space-md);
+  }
+
+  .header:has(> .account:not(:empty)) {
+    padding-block: var(--gm-space-md);
   }
 }

@@ -68,6 +68,16 @@
   color: var(--gm-color-ink-2);
 }
 
+/* A long value (an organization's name, up to 200 characters) ends in an ellipsis. */
+.clip {
+  display: inline-block;
+  max-width: 16em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
 .popover {
   min-width: var(--trigger-width);
   border: 1px solid var(--gm-color-rule);

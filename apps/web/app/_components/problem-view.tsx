@@ -33,9 +33,10 @@ export function validationKey(code: string | undefined): MessageKey | null {
   return code !== undefined && Object.hasOwn(en, key) ? (key as MessageKey) : null;
 }
 
-export function ProblemView({ problem, headingLevel = 2 }: { problem: Problem; headingLevel?: 2 | 3 }) {
+/** guidance replaces what the problem's code or kind would advise, where the view knows better (e.g. no membership at all). */
+export function ProblemView({ problem, headingLevel = 2, guidance: advised }: { problem: Problem; headingLevel?: 2 | 3; guidance?: MessageKey }) {
   const { t, gap } = useI18n();
-  const advice = guidanceFor(problem);
+  const advice = advised ?? guidanceFor(problem);
   const shown = problem.kind !== "not_found";
   const technical = Boolean(problem.message) && shown;
   // What a person needs to act stays in view; what only support or a

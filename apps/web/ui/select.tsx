@@ -26,15 +26,17 @@ export type SelectProps = Omit<AriaSelectProps<SelectItem>, "className" | "child
    * label, which a phone hides visually; it stays the control's name.
    */
   variant?: "field" | "strip";
+  /** The value can be long (a name a person gave): cut it short with an ellipsis; the list and the control's name keep it whole. */
+  clipValue?: boolean;
 };
 
 /** A single choice from a short list: a labelled button that opens a listbox. */
-export function Select({ label, items, value, onChange, variant = "field", ...props }: SelectProps) {
+export function Select({ label, items, value, onChange, variant = "field", clipValue = false, ...props }: SelectProps) {
   const select = (
     <AriaSelect {...props} value={value} onChange={(key) => key !== null && onChange?.(String(key))} className={cx(styles.select, variant === "strip" && styles.strip)}>
       <Label className={styles.label}>{label}</Label>
       <AriaButton className={styles.trigger}>
-        <SelectValue className={styles.value} />
+        <SelectValue className={cx(styles.value, clipValue && styles.clip)} />
         <ChevronDownIcon />
       </AriaButton>
       <Popover className={styles.popover}>

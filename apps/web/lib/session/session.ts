@@ -2,7 +2,11 @@
 // short-lived login transaction between the redirect to the provider and its
 // callback. Both are sealed (seal.ts); this module fixes their names, shapes
 // and lifetimes and builds their Set-Cookie headers. Server-side only.
+import { safeReturnTo } from "../return-to";
 import { type SealKeys, seal, unseal } from "./seal";
+
+// The return-path rule is shared with the page's sign-in link (lib/return-to.ts).
+export { safeReturnTo };
 
 export const SESSION_COOKIE = "__Host-geminus_session";
 export const LOGIN_COOKIE = "__Host-geminus_login";
@@ -69,19 +73,6 @@ function isLogin(v: unknown): v is Login {
     safeReturnTo(l.returnTo) === l.returnTo &&
     time(l.createdAt)
   );
-}
-
-/**
- * A same-origin path to return to after login, or "/" for anything else: it
- * must start with one "/", and must not be "//host", "/\\host" or carry a
- * scheme, a backslash a browser would read as "/", or anything but visible
- * ASCII (a path the browser sends is percent-encoded; a raw character
- * outside Latin-1 could not even be put in the Location header).
- */
-export function safeReturnTo(path: string | null): string {
-  if (path === null || path.length > 512 || !path.startsWith("/") || path.startsWith("//")) return "/";
-  if (/[^\x21-\x7e]|\\/.test(path)) return "/";
-  return path;
 }
 
 /** The session in the cookie value, or null if none, invalid or expired at now. */

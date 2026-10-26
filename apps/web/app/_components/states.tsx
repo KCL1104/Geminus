@@ -1,16 +1,21 @@
 "use client";
-import { type ReactNode, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { type ReactNode, useId, useState } from "react";
 import type { Problem, ProblemKind } from "../../lib/api/problem";
+import type { Bootstrap, Organization } from "../../lib/auth/bootstrap";
 import { canEdit, type Role, useAuth } from "../../lib/auth/session";
+import { signInHref } from "../../lib/return-to";
 import { canPublish, type DraftSession, pendingOps } from "../../lib/state/draft";
 import type { Remote } from "../../lib/state/remote";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
 import { Callout } from "../../ui/callout";
+import list from "../../ui/list.module.css";
+import { useOrganizationLabels } from "./account";
 import { ProblemView } from "./problem-view";
 
 /** What a page loads; each has its own sentence in the catalog. */
-export type Loadable = "projects" | "models" | "model" | "scenario" | "runs" | "results";
+export type Loadable = "projects" | "models" | "model" | "scenario" | "runs" | "results" | "account";
 
 export function Loading({ what }: { what: Loadable }) {
   const { t } = useI18n();
@@ -21,17 +26,74 @@ export function Loading({ what }: { what: Loadable }) {
   );
 }
 
-/** Renders children only with a session; otherwise the sign-in notice, without calling the API. */
+const problemOf = (kind: ProblemKind): Problem => ({ kind, code: null, status: null, message: "", requestId: null, details: [], retryAfterSeconds: null });
+const signedOut: Bootstrap = { state: "signed_out" };
+
+/**
+ * The sign-in (T-043 follow-up): one plain link to the BFF's login route
+ * (a route handler, not a page), returning to this page; the BFF checks the
+ * return path again (lib/return-to.ts).
+ */
+export function SignInLink() {
+  const { t } = useI18n();
+  const pathname = usePathname();
+  const query = useSearchParams()?.toString() ?? "";
+  return (
+    <p>
+      <a href={signInHref(pathname === null ? null : `${pathname}${query === "" ? "" : `?${query}`}`)}>{t("auth.signIn")}</a>
+    </p>
+  );
+}
+
+/** Several organizations and none chosen: one button each, its role beside it. */
+function OrganizationChoice({ organizations, truncated, onChoose }: { organizations: Organization[]; truncated: boolean; onChoose: (id: string) => void }) {
+  const { t } = useI18n();
+  const label = useOrganizationLabels(organizations);
+  const heading = useId();
+  return (
+    <section aria-labelledby={heading}>
+      <h2 id={heading}>{t("organization.choose.title")}</h2>
+      <p>{t("organization.choose.body")}</p>
+      <ul className={list.list}>
+        {organizations.map((o) => (
+          <li key={o.id}>
+            <Button onPress={() => onChoose(o.id)}>{label(o)}</Button>
+            <span className={list.meta}>{t(o.role === null ? "role.unknown" : `role.${o.role}`)}</span>
+          </li>
+        ))}
+      </ul>
+      {truncated && <Callout tone="info">{t("organization.more", { count: organizations.length })}</Callout>}
+    </section>
+  );
+}
+
+/**
+ * Renders children only with a session (an organization chosen); otherwise
+ * what the sign-in bootstrap stands at, without calling a tenant API:
+ * signed out (the sign-in), loading, a failed /me (retry), no access (403
+ * or no membership, D-008), or the choice of organization.
+ */
 export function RequireSession({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
-  if (session === null) {
-    return (
-      <ProblemView
-        problem={{ kind: "unauthenticated", code: null, status: null, message: "", requestId: null, details: [], retryAfterSeconds: null }}
-      />
-    );
+  const { session, account } = useAuth();
+  if (session !== null) return <>{children}</>;
+  const b = account?.bootstrap ?? signedOut;
+  switch (b.state) {
+    case "loading":
+      return <Loading what="account" />;
+    case "failed":
+      return <RemoteView remote={{ state: "failed", problem: b.problem }} what="account" onRetry={account?.retry}>{() => null}</RemoteView>;
+    case "no_access":
+      return <ProblemView problem={b.problem ?? problemOf("forbidden")} guidance="access.none" />;
+    case "choose":
+      return <OrganizationChoice organizations={b.organizations} truncated={b.truncated} onChoose={(id) => account?.choose(id)} />;
+    default:
+      return (
+        <>
+          <ProblemView problem={problemOf("unauthenticated")} />
+          <SignInLink />
+        </>
+      );
   }
-  return <>{children}</>;
 }
 
 /** Failures that can go away on their own; the others need a different request or role. */
@@ -50,6 +112,7 @@ export function RemoteView<T>({ remote, what, onRetry, headingLevel, children }:
     return (
       <>
         <ProblemView problem={remote.problem} headingLevel={headingLevel} />
+        {remote.problem.kind === "unauthenticated" && <SignInLink />}
         {onRetry && retryable.has(remote.problem.kind) && (
           <Button onPress={onRetry}>{t("retry")}</Button>
         )}

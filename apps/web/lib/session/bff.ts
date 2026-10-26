@@ -217,6 +217,15 @@ export function bff(deps: BffDeps) {
       });
     },
 
+    /**
+     * Whether a session cookie's value holds a session that has not ended
+     * (the root layout's hint for the signed-in bootstrap). It only reads:
+     * no refresh, no provider or API call, nothing of the session returned.
+     */
+    async hasSession(value: string | undefined): Promise<boolean> {
+      return (await readSession(keys, value, deps.now())) !== null;
+    },
+
     /** Any method on /api/v1/<path>: forwarded to the Go API with the session's token. */
     async proxy(request: Request, path: string[]): Promise<Response> {
       return proxy(deps, refreshes, request, path);
