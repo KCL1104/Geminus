@@ -6,6 +6,8 @@
 // getMe (D-045), which selects no organization: it is how the UI learns the
 // organizations to choose from, and the BFF and API authenticate it.
 import type {
+  Approval,
+  Approve,
   Comparison,
   CreateModel,
   CreateScenario,
@@ -17,7 +19,11 @@ import type {
   ModelVersion,
   OrganizationID,
   Projects,
+  Proposal,
+  ProposalAccepted,
+  ProposalRequest,
   Publish,
+  Reject,
   ResetDraft,
   Run,
   RunAccepted,
@@ -276,6 +282,61 @@ export function createApiClient(cfg: ClientConfig) {
     async getScenario(scenarioId: string, opts: { signal?: AbortSignal } = {}) {
       if (!isID("scn", scenarioId)) return notFound("The scenario");
       return call<Scenario>({ method: "GET", path: `/scenarios/${scenarioId}`, signal: opts.signal });
+    },
+    /**
+     * Asks the AI for a proposal on the model's latest version (T-025): the
+     * server stores it as generating with its job and answers 202; the AI
+     * only proposes. Reuse `key` to retry the same request (D-011).
+     */
+    async createProposal(modelId: string, body: ProposalRequest, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<ProposalAccepted>> {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      if (!isID("mv", body.base_version_id)) return notFound("The version");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<ProposalAccepted>({
+        method: "POST",
+        path: `/models/${modelId}/ai-proposals`,
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    /** A proposal as the server holds it: its state, and the server's validation and risk beside the AI's claim (T-025, D-027). */
+    async getProposal(proposalId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Proposal>> {
+      if (!isID("aip", proposalId)) return notFound("The proposal");
+      return call<Proposal>({ method: "GET", path: `/ai-proposals/${proposalId}`, signal: opts.signal });
+    },
+    /**
+     * A person approves a ready proposal on the base they reviewed (T-026):
+     * an edit makes one new version, a scenario one scenario; the Approval's
+     * mode says which. A base that moved is a 409 and the proposal is then
+     * conflicted; nothing is rebased. Reuse `key` to retry.
+     */
+    async approveProposal(proposalId: string, body: Approve, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Approval>> {
+      if (!isID("aip", proposalId)) return notFound("The proposal");
+      if (!isID("mv", body.expected_base_version_id)) return notFound("The version");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<Approval>({
+        method: "POST",
+        path: `/ai-proposals/${proposalId}/approve`,
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    /** A person rejects a ready or needs_input proposal, with an optional comment; nothing else changes. Reuse `key` to retry. */
+    async rejectProposal(proposalId: string, body: Reject, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Proposal>> {
+      if (!isID("aip", proposalId)) return notFound("The proposal");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<Proposal>({
+        method: "POST",
+        path: `/ai-proposals/${proposalId}/reject`,
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
     },
     /**
      * The server's comparison of two completed runs (T-029, D-088): the

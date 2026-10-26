@@ -1,0 +1,208 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web
+
+ ❯ tests/proposal-simplicity.test.tsx (0 test)
+ ❯ tests/proposal-ask.test.tsx (0 test)
+ ❯ tests/proposal-view.test.tsx (0 test)
+ ❯ tests/proposal-changes.test.ts (0 test)
+ ❯ tests/proposals-api.test.ts (7 tests | 7 failed) 38ms
+   ❯ AI proposals (T-025, T-026) through the client (7)
+     × asks for a proposal with its Idempotency-Key and the request as given, and reads the 202 30ms
+     × reads a proposal as the server sent it 1ms
+     × approves with the base the person reviewed and its key; the mode tells the effect apart 1ms
+     × rejects with an optional comment and its key, and reads the proposal it answers with 1ms
+     × calls each operation at the contract's method and path, with the tenant selector 1ms
+     × maps the refusals the review UI handles to the contract's problems 1ms
+     × refuses bad IDs and keys before sending anything 1ms
+ ❯ tests/proposal-preview.test.tsx (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/proposal-ask.test.tsx [ tests/proposal-ask.test.tsx ]
+Error: Failed to resolve import "../app/ui-gallery/proposal/stand-in" from "tests/proposal-ask.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web/tests/proposal-ask.test.tsx:12:89
+  10 |  import { describe, expect, it, vi } from "vitest";
+  11 |  import { sampleLine, SAMPLE_MODEL_ID } from "../app/ui-gallery/editor/sample-line";
+  12 |  import { createProposalStandIn } from "../app/ui-gallery/proposal/stand-in";
+     |                                         ^
+  13 |  import { ProposalRoute } from "../features/ai-proposals/proposal-view";
+  14 |  import { ModelView } from "../features/model-editor/model-view";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26632:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26702:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26668:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:20184:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  tests/proposal-changes.test.ts [ tests/proposal-changes.test.ts ]
+Error: Cannot find module '../features/ai-proposals/changes' imported from /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web/tests/proposal-changes.test.ts
+ ❯ tests/proposal-changes.test.ts:10:1
+      8| import { describe, expect, it } from "vitest";
+      9| import { sampleLine } from "../app/ui-gallery/editor/sample-line";
+     10| import { describeChanges } from "../features/ai-proposals/changes";
+       | ^
+     11| import type { JsonPatch } from "../lib/contracts";
+     12|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  tests/proposal-preview.test.tsx [ tests/proposal-preview.test.tsx ]
+Error: Failed to resolve import "../app/ui-gallery/proposal/samples" from "tests/proposal-preview.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web/tests/proposal-preview.test.tsx:12:0
+  8  |  }));
+  9  |  const __vi_import_0__ = await import("../app/ui-gallery/editor/sample-line");
+  10 |  const __vi_import_1__ = await import("../app/ui-gallery/proposal/samples");
+     |                                       ^
+  11 |  const __vi_import_2__ = await import("../features/model-editor/patch");
+  12 |  const __vi_import_3__ = await import("../lib/i18n/translate");
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26632:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26702:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26668:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:20184:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  tests/proposal-simplicity.test.tsx [ tests/proposal-simplicity.test.tsx ]
+Error: Failed to resolve import "../app/ui-gallery/proposal/samples" from "tests/proposal-simplicity.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web/tests/proposal-simplicity.test.tsx:14:0
+  7  |  const __vi_import_1__ = await import("react-dom/server");
+  8  |  const __vi_import_2__ = await import("../app/ui-gallery/editor/sample-line");
+  9  |  const __vi_import_3__ = await import("../app/ui-gallery/proposal/samples");
+     |                                       ^
+  10 |  const __vi_import_4__ = await import("../app/ui-gallery/proposal/stand-in");
+  11 |  const __vi_import_5__ = await import("../features/ai-proposals/proposal-view");
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26632:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26702:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26668:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:20184:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  tests/proposal-view.test.tsx [ tests/proposal-view.test.tsx ]
+Error: Failed to resolve import "../app/ui-gallery/proposal/samples" from "tests/proposal-view.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web/tests/proposal-view.test.tsx:14:64
+  12 |  import { act } from "react";
+  13 |  import { describe, expect, it, vi } from "vitest";
+  14 |  import { sampleFor, SAMPLE_PROPOSAL_ID } from "../app/ui-gallery/proposal/samples";
+     |                                                 ^
+  15 |  import { createProposalStandIn } from "../app/ui-gallery/proposal/stand-in";
+  16 |  import { ProposalRoute } from "../features/ai-proposals/proposal-view";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26632:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26702:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26668:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:20184:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/proposals-api.test.ts > AI proposals (T-025, T-026) through the client > asks for a proposal with its Idempotency-Key and the request as given, and reads the 202
+TypeError: api(...).createProposal is not a function
+ ❯ tests/proposals-api.test.ts:44:28
+     42|     const accepted = fixture("valid-proposal-accepted.json");
+     43|     const f = fakeFetch(json(202, accepted, { "X-Request-ID": REQ }));
+     44|     const r = await api(f).createProposal(MODEL, request, "key-ask-000…
+       |                            ^
+     45|     expect(r.ok && [r.data, r.requestId]).toEqual([accepted, REQ]);
+     46|     const c = f.calls[0]!;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  tests/proposals-api.test.ts > AI proposals (T-025, T-026) through the client > reads a proposal as the server sent it
+TypeError: api(...).getProposal is not a function
+ ❯ tests/proposals-api.test.ts:55:28
+     53|     const ready = fixture("valid-ready-proposal.json") as Proposal;
+     54|     const f = fakeFetch(json(200, ready));
+     55|     const r = await api(f).getProposal(PROPOSAL);
+       |                            ^
+     56|     expect(r.ok && r.data).toEqual(ready);
+     57|     expect([f.calls[0]!.init.method, f.calls[0]!.url.pathname]).toEqua…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+ FAIL  tests/proposals-api.test.ts > AI proposals (T-025, T-026) through the client > approves with the base the person reviewed and its key; the mode tells the effect apart
+TypeError: client.approveProposal is not a function
+ ❯ tests/proposals-api.test.ts:65:28
+     63|     const f = fakeFetch(json(201, edit), json(201, scenario));
+     64|     const client = api(f);
+     65|     const a = await client.approveProposal(PROPOSAL, { expected_base_v…
+       |                            ^
+     66|     const b = await client.approveProposal("aip_01M4YDQK00Q10EM95Z6H4X…
+     67|     expect(a.ok && a.data).toEqual(edit);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯
+
+ FAIL  tests/proposals-api.test.ts > AI proposals (T-025, T-026) through the client > rejects with an optional comment and its key, and reads the proposal it answers with
+TypeError: client.rejectProposal is not a function
+ ❯ tests/proposals-api.test.ts:79:28
+     77|     const f = fakeFetch(json(200, rejected), json(200, rejected));
+     78|     const client = api(f);
+     79|     const r = await client.rejectProposal(PROPOSAL, { comment: "Asked …
+       |                            ^
+     80|     await client.rejectProposal(PROPOSAL, {}, "key-reject-02");
+     81|     expect(r.ok && r.data).toEqual(rejected);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯
+
+ FAIL  tests/proposals-api.test.ts > AI proposals (T-025, T-026) through the client > calls each operation at the contract's method and path, with the tenant selector
+TypeError: client.createProposal is not a function
+ ❯ tests/proposals-api.test.ts:91:18
+     89|     const f = fakeFetch(json(202, {}), json(200, {}), json(201, {}), j…
+     90|     const client = api(f);
+     91|     await client.createProposal(MODEL, request, "key-ask-00002");
+       |                  ^
+     92|     await client.getProposal(PROPOSAL);
+     93|     await client.approveProposal(PROPOSAL, { expected_base_version_id:…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯
+
+ FAIL  tests/proposals-api.test.ts > AI proposals (T-025, T-026) through the client > maps the refusals the review UI handles to the contract's problems
+TypeError: client.approveProposal is not a function
+ ❯ tests/proposals-api.test.ts:113:32
+    111|     );
+    112|     const client = api(f);
+    113|     const stale = await client.approveProposal(PROPOSAL, { expected_ba…
+       |                                ^
+    114|     const decided = await client.rejectProposal(PROPOSAL, {}, "key-rej…
+    115|     const invalid = await client.approveProposal(PROPOSAL, { expected_…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/12]⎯
+
+ FAIL  tests/proposals-api.test.ts > AI proposals (T-025, T-026) through the client > refuses bad IDs and keys before sending anything
+TypeError: client.createProposal is not a function
+ ❯ tests/proposals-api.test.ts:130:20
+    128|     const client = api(f);
+    129|     const refused = [
+    130|       await client.createProposal(VERSION, request, "key-ask-00004"),
+       |                    ^
+    131|       await client.createProposal(`${MODEL}/../x`, request, "key-ask-0…
+    132|       await client.createProposal(MODEL, request, "short"),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/12]⎯
+
+
+ Test Files  6 failed (6)
+      Tests  7 failed (7)
+   Start at  14:59:13
+   Duration  1.96s (environment 91%, transform 5%, worker 2%, tests 1%, import 1%)
+
+    Isolate  6 workers spawned · ~649ms startup each (spawn + environment, per file)
+             at least ~649ms faster with isolate: false — reuses workers across files instead of one per file
+
