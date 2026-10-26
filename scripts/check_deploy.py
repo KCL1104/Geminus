@@ -27,6 +27,10 @@ without Docker (make spec-deploy, part of make spec-check):
   four, T-053 I5, and the photo path's three, D-124), and no other, keeps
   the database off the web, and never selects the fake provider or the
   filesystem adapter;
+- the Auth0 CLI of the deployer's Auth0 step (T-057, H-034) is pinned alike
+  in deploy.sh and railway_deploy.py (version, the binary's SHA-256) and
+  --install-auth0-cli checks the archive's and the binary's SHA-256 before it
+  installs; only the web's BFF_OIDC_CLIENT_SECRET comes from that step;
 - docs/runbooks/deploy.md names every variable the code reads.
 
 It checks the files, not a running deployment (NOT a container scan).
@@ -244,8 +248,11 @@ def railway(known: set) -> dict:
                 fail(f"variables.json: {svc}: {name} has both a value and a source")
             if e.get("secret") and value is not None:
                 fail(f"variables.json: {svc}: {name} is secret and has a value")
-            if source is not None and not (source in ("generated", "owner") or re.fullmatch(r"bucket:(accessKeyId|secretAccessKey)", source)):
+            if source is not None and not (source in ("generated", "owner", "auth0") or re.fullmatch(r"bucket:(accessKeyId|secretAccessKey)", source)):
                 fail(f"variables.json: {svc}: {name}: unknown source {source!r}")
+            # T-057, H-034: the Auth0 step writes one variable, the web's client secret.
+            if source == "auth0" and (svc, name) != ("web", "BFF_OIDC_CLIENT_SECRET"):
+                fail(f"variables.json: {svc}: {name}: only the web's BFF_OIDC_CLIENT_SECRET comes from the Auth0 step")
             if source is not None and source != "owner" and not e.get("secret"):
                 fail(f"variables.json: {svc}: {name}: a generated or copied credential must be secret")
             if value is not None:
@@ -321,6 +328,37 @@ def api_key_variables() -> set:
     return names
 
 
+def auth0_pin() -> dict:
+    """T-057, H-034: the Auth0 CLI is pinned to one release in deploy.sh (the
+    archive's SHA-256, from the release's checksums file, and the binary's) and
+    in railway_deploy.py (the binary's, checked before the CLI is ever run),
+    alike; the archive comes from that release's exact URL; the install checks
+    both hashes before it installs."""
+    sh = (ROOT / "deploy/railway/deploy.sh").read_text(encoding="utf-8")
+    py = (ROOT / "deploy/railway/railway_deploy.py").read_text(encoding="utf-8")
+
+    def one(text, pattern, what):
+        found = re.findall(pattern, text, re.M)
+        if len(found) != 1:
+            fail(f"{what}: {len(found)} definitions")
+        return found[0]
+    version = one(sh, r"^AUTH0_CLI_VERSION=(\d+\.\d+\.\d+)$", "deploy.sh AUTH0_CLI_VERSION")
+    archive = one(sh, r"^AUTH0_CLI_ARCHIVE_SHA256=([0-9a-f]{64})$", "deploy.sh AUTH0_CLI_ARCHIVE_SHA256")
+    binary = one(sh, r"^AUTH0_CLI_SHA256=([0-9a-f]{64})$", "deploy.sh AUTH0_CLI_SHA256")
+    if one(py, r'^AUTH0_CLI_VERSION = "(\d+\.\d+\.\d+)"$', "railway_deploy.py AUTH0_CLI_VERSION") != version or \
+            one(py, r'^AUTH0_CLI_SHA256 = "([0-9a-f]{64})"$', "railway_deploy.py AUTH0_CLI_SHA256") != binary:
+        fail("deploy.sh and railway_deploy.py pin different Auth0 CLI builds")
+    url = one(sh, r'^AUTH0_CLI_URL="([^"]+)"$', "deploy.sh AUTH0_CLI_URL")
+    if url != "https://github.com/auth0/auth0-cli/releases/download/v${AUTH0_CLI_VERSION}/auth0-cli_${AUTH0_CLI_VERSION}_Linux_x86_64.tar.gz":
+        fail(f"deploy.sh: AUTH0_CLI_URL {url} is not the pinned release's Linux x86_64 archive")
+    if 'echo "$AUTH0_CLI_ARCHIVE_SHA256  $tmp/auth0.tar.gz" | sha256sum -c --quiet -' not in sh or \
+            'echo "$AUTH0_CLI_SHA256  $tmp/auth0" | sha256sum -c --quiet -' not in sh:
+        fail("deploy.sh --install-auth0-cli does not check the archive's and the binary's SHA-256")
+    if sh.index("sha256sum -c --quiet - || {", sh.index("--install-auth0-cli)")) > sh.index('install -m 0755 "$tmp/auth0"'):
+        fail("deploy.sh --install-auth0-cli installs before it checks")
+    return {"version": version, "archive_sha256": archive, "binary_sha256": binary}
+
+
 def runbook(known: set) -> dict:
     text = (ROOT / "docs/runbooks/deploy.md").read_text(encoding="utf-8")
     missing = sorted(n for n in known | PENDING if not re.search(r"(?<![A-Z0-9_])" + re.escape(n) + r"(?![A-Z0-9_])", text))
@@ -332,7 +370,7 @@ def runbook(known: set) -> dict:
 def main() -> dict:
     known = code_variables()
     report = {"status": "PASS_STATIC_DEPLOY_CHECKS", "dockerfiles": dockerfiles(), "compose": compose(),
-              "railway": railway(known), "runbook": runbook(known), "code_variables": sorted(known),
+              "railway": railway(known), "auth0_cli": auth0_pin(), "runbook": runbook(known), "code_variables": sorted(known),
               "container_build": "NOT_RUN_HERE (make build-containers)", "container_scan": "NOT_RUN (no scanner chosen)"}
     (ROOT / "checks/deploy-check.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))

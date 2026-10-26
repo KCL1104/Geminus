@@ -95,6 +95,11 @@
       ]
     }
   },
+  "auth0_cli": {
+    "version": "1.37.0",
+    "archive_sha256": "277e8fa32b9e4f4feb8e30717892139251821c0c66cd3ad5f326ba759ec6ac4f",
+    "binary_sha256": "2bc2ef7c1ab3c340a50bebb2c6bfd9692ea23dfee539bf7a2e1aac3debb3491c"
+  },
   "runbook": {
     "variables_named": 68
   },
