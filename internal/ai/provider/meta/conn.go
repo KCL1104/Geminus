@@ -132,7 +132,7 @@ func (c *conn) wait(ctx context.Context, attempt int, h http.Header) bool {
 // tally counts a call's attempts that ended without an answer this build
 // read after the request may have reached the provider: a lost connection,
 // an attempt's timeout, a body cut short, a 5xx (the docs do not say an
-// error status is never billed: PROPOSED D-118), an answer that could not
+// error status is never billed: PROPOSED D-121), an answer that could not
 // be read (undecoded). The provider may have billed each of them (T-053).
 type tally struct {
 	unknown   int

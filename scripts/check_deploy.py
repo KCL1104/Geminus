@@ -144,7 +144,7 @@ def code_variables() -> set:
 PLATFORM = {"PORT", "HOSTNAME", "NODE_ENV", "NEXT_TELEMETRY_DISABLED"}
 # The inputs of deploy/railway/deploy.sh that variables.json may name as {{INPUT}}.
 INPUTS = {"GEMINUS_AUTH0_ISSUER", "GEMINUS_AUTH0_AUDIENCE", "GEMINUS_AUTH0_CLIENT_ID"}
-PENDING = {"GEMINUS_META_API_KEY"}  # T-055 adds it (worker only)
+PENDING: set = set()  # none: T-055 added GEMINUS_MUSE_API_KEY (worker only), which internal/config reads
 REQUIRED = {
     "migrate": {"GEMINUS_MIGRATE_DATABASE_URL"},
     "api": {"APP_ENV", "DATABASE_URL", "AUTH_OIDC_ISSUER", "AUTH_OIDC_AUDIENCE", "AUTH_OIDC_JWKS_URL", "AUTH_OIDC_REQUIRE_AT_JWT",
@@ -213,7 +213,7 @@ def railway(known: set) -> dict:
         if settings.get("AI_PROVIDER") == "fake" or settings.get("OBJECT_STORAGE_PROVIDER") == "filesystem":
             fail(f"variables.json: {svc}: the fake provider and the filesystem adapter are for development and tests only")
         summary[svc] = {"variables": len(names), "secrets": sorted(n for n, e in spec["variables"].items() if e.get("secret"))}
-    ai_keys = {"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_META_API_KEY", "GEMINUS_AI_LIVE"}
+    ai_keys = {"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE"}
     if ai_keys - set(v["services"]["api"]["forbidden"]):
         fail("variables.json: the API must forbid every AI key and the live switch (T-053 I5)")
     return {"configs": [p.name for p in configs], "services": summary}

@@ -102,7 +102,7 @@ func TestRequestShape(t *testing.T) {
 // Base64 Source Param ... media_type ... data"), the text after them. The
 // quote assumes the whole context window, since Meta documents no upper
 // bound on an image's tokens (image cost "scales with resolution"; the
-// model may resize): PROPOSED D-118.
+// model may resize): PROPOSED D-121.
 func TestImageParts(t *testing.T) {
 	s := newServer(t, map[string][]reply{messagesPath: {ok(answerJ)}})
 	b, _ := backend(t, s)
@@ -312,7 +312,7 @@ func TestEncodedValues(t *testing.T) {
 // it for the billing cooldown (credentials_exhausted: one key, nothing to
 // fail over to); 429 is retried on the same key with backoff and then
 // rate_limited; 500 and 503 are retried and then unavailable, and each one
-// may have been billed (the docs do not say they are not: PROPOSED D-118);
+// may have been billed (the docs do not say they are not: PROPOSED D-121);
 // 504 is not retried ("Do not simply retry") and may have been billed.
 // The error names the status and a type from the documented list (any
 // other "other"), never the provider's message.

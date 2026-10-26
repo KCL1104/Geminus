@@ -85,7 +85,7 @@ func h029(t *testing.T) aiapproval.Record {
 // Designation Policy): a Contributor model, or any model this build does
 // not know as a Standard one, is model_not_standard. The Console spend
 // limit of H-018 has no counterpart: H-029 keeps T-053's in-code caps
-// (PROPOSED D-119), so a Meta record needs no spend-limit confirmation.
+// (PROPOSED D-122), so a Meta record needs no spend-limit confirmation.
 func TestMetaGapReasons(t *testing.T) {
 	for name, c := range map[string]struct {
 		mutate func(*aiapproval.Record)

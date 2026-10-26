@@ -46,7 +46,7 @@ import (
 // least the whole reservation for an answer that came back but could not
 // be read; nothing when every attempt was answered with an error status.
 
-// The limits of a segmentation (PROPOSED D-120).
+// The limits of a segmentation (PROPOSED D-123).
 const (
 	MaxSegmentConcepts     = 8
 	MaxSegmentConceptBytes = 64

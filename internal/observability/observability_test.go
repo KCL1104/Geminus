@@ -17,12 +17,16 @@ import (
 // TEST-027 sentinels: customer content, secrets and AI text that must never
 // reach a log line, whichever way a caller hands them over.
 var (
-	csvRow   = "case_id,event_type,timestamp\nCASE-SENTINEL-7731,FCT_FAIL,2026-10-01T00:00:00Z"
-	csvCell  = "CASE-SENTINEL-7731"
-	header   = "Lötstelle_SENTINEL" // a customer column name
-	bearer   = "Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJTRU5USU5FTCJ9.U0VOVElORUwtc2lnbmF0dXJl"
-	jwt      = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJTRU5USU5FTCJ9.U0VOVElORUwtc2lnbmF0dXJl"
-	apiKey   = "sk-ant-api03-SENTINELsentinel0123456789abcdef"
+	csvRow  = "case_id,event_type,timestamp\nCASE-SENTINEL-7731,FCT_FAIL,2026-10-01T00:00:00Z"
+	csvCell = "CASE-SENTINEL-7731"
+	header  = "Lötstelle_SENTINEL" // a customer column name
+	bearer  = "Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJTRU5USU5FTCJ9.U0VOVElORUwtc2lnbmF0dXJl"
+	jwt     = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJTRU5USU5FTCJ9.U0VOVElORUwtc2lnbmF0dXJl"
+	apiKey  = "sk-ant-api03-SENTINELsentinel0123456789abcdef"
+	// T-055: a Meta Model API key, in the documented shape LLM_<numeric
+	// ID>_<secret> (https://dev.meta.ai/docs/authentication).
+	museKey  = "LLM_1607358788850350_nx9SENTINELsecretLJY"
+	museKey2 = "LLM_1607358788850350_nx9.SENTINEL.LJY"
 	awsKey   = "AKIASENTINEL0000ABCD"
 	pem      = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwSENTINEL\n-----END PRIVATE KEY-----"
 	dbURL    = "postgres://twin_api:dbpassSENTINEL@db.internal:5432/twin"
@@ -243,6 +247,7 @@ func TestTextIsSanitized(t *testing.T) {
 	log := logger(&s)
 	for _, text := range []string{
 		bearer, "auth failed: " + jwt, "key " + apiKey + " refused", "aws " + awsKey, pem, "connect " + dbURL,
+		"key " + museKey + " refused", "meta key (" + museKey2 + ") refused",
 		"request headers: " + cookie, "env " + password, "mail " + email, "token=" + "abcdefSENTINEL01",
 		fmt.Sprintf("row %q is invalid", csvRow), fmt.Sprintf("cell %q is invalid", csvCell), fmt.Sprintf("column %q unknown", header),
 		`ERROR: invalid input syntax for type integer: "CASE-SENTINEL-7731" (SQLSTATE 22P02)`,

@@ -15,6 +15,10 @@ func TestSanitizerRedacts(t *testing.T) {
 		// catches it.
 		{"key sk-ant-a1b2c3d4", RedactCredential, "a1b2c3d4"},
 		{"openai sk-proj-abcdefghijklmnopqrstuvwx", RedactCredential, "sk-proj"},
+		// T-055: a Meta Model API key (LLM_<numeric ID>_<secret>,
+		// https://dev.meta.ai/docs/authentication).
+		{"meta LLM_1607358788850350_nx9abcdefLJY here", RedactCredential, "nx9abcdef"},
+		{"meta key: LLM_1607358788850350_nx9.abc.LJY", RedactCredential, "nx9.abc"},
 		{"aws AKIAIOSFODNN7EXAMPLE id", RedactCredential, "AKIA"},
 		{"gh github_pat_11ABCDEFG0123456789_abcdefghijklmnop", RedactCredential, "github_pat"},
 		{"slack xoxb-1234567890-abcdefghij", RedactCredential, "xoxb"},

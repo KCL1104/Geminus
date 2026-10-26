@@ -3715,7 +3715,11 @@
         "REQ-016",
         "REQ-019"
       ],
-      "decision_gates": [],
+      "decision_gates": [
+        "D-121",
+        "D-122",
+        "D-123"
+      ],
       "scope": [
         "在既有的 provider 介面下新增 Meta Model API adapter（https://api.meta.ai/v1，Bearer key；優先使用與 Anthropic 相容的 Messages 介面以沿用既有的 structured output 與 tool 處理，先以官方文件確認相容範圍），模型 muse-spark-1.3（Standard mode，不用 contributor 版本）。",
         "價格表（官方 pricing 頁，取得日期與原文記在報告）與 T-053 的花費 ledger、上限、開關共用；開關條件：批准紀錄（H-029）＋AI_PROVIDER=meta＋GEMINUS_AI_LIVE=on＋GEMINUS_META_API_KEY；缺任一項即拒絕，fake provider 仍是預設。",
@@ -3747,7 +3751,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-26",
+          "branch": "t055-meta",
+          "report": "checks/T-055_VALIDATION.md",
+          "summary": "Meta Model API adapter（internal/ai/provider/meta：Muse Spark 經 Anthropic 相容的 Messages、SAM 3.1 經 Responses，標準函式庫）、共用的投影（internal/ai/provider/structured）、圖片與 provider.Segmenter（給 T-056）、Meta 價格、H-029 的 approval record、AI_PROVIDER=meta 與照片路徑的設定（AI_VISION_*）、worker 與 ai-eval-live 的組裝，ADR-030 與 D-121–D-123 PROPOSED。Key 的變數名稱依 coordinator 轉達的 owner 名稱為 GEMINUS_MUSE_API_KEY：程式、部署設定、腳本與文件都改用它，沒有保留 GEMINUS_META_API_KEY；planning 中本任務 scope 與 H-029 still_open 的舊名稱未改，留給 coordinator。只對本機 test server 與 fake 測過；所有 live 呼叫（count_tokens、smoke、eval、model listing）NOT RUN。狀態維持 not_started：T-053 仍是 in_progress，checker 不允許依賴未完成時開始。",
+          "reviewer": null,
+          "accepted_at": null
+        }
+      ]
     },
     {
       "id": "T-056",

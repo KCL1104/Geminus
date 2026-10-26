@@ -1,0 +1,5 @@
+=== RUN   TestSyntheticGraph
+--- PASS: TestSyntheticGraph (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	0.004s
+exit 0

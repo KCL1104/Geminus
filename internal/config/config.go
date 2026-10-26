@@ -30,7 +30,16 @@ const (
 	// data policy is recorded (LoadAI): until then every AI call fails with
 	// AI_POLICY_NOT_APPROVED.
 	AIProviderAnthropic AIProvider = "anthropic"
+	// AIProviderMeta is the Meta Model API (Muse Spark, SAM 3.1), chosen by
+	// the repository owner in H-029 and H-033. The adapter is T-055; like
+	// Anthropic it is called only once LoadAI finds its recorded approval,
+	// the model, the switch and the key.
+	AIProviderMeta AIProvider = "meta"
 )
+
+// live reports whether p is a provider that calls a network model, as
+// opposed to disabled and the fake.
+func (p AIProvider) live() bool { return p == AIProviderAnthropic || p == AIProviderMeta }
 
 // Config is the validated configuration shared by the API and the worker.
 type Config struct {

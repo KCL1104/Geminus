@@ -1,0 +1,17 @@
+# red: internal/config/meta_test.go on an archive copy of commit 303974b, before the config change (written before the change; run after it, against the old code)
+$ go test -count=1 ./internal/config/
+# github.com/kcl1104/geminus/internal/config [github.com/kcl1104/geminus/internal/config.test]
+internal/config/meta_test.go:44:41: undefined: AIProviderMeta
+internal/config/meta_test.go:53:10: ai.Vision undefined (type AI has no field or method Vision)
+internal/config/meta_test.go:54:39: undefined: AIProviderMeta
+internal/config/meta_test.go:62:37: undefined: AIProviderMeta
+internal/config/meta_test.go:78:88: ai.Vision undefined (type AI has no field or method Vision)
+internal/config/meta_test.go:79:11: ai.Vision undefined (type AI has no field or method Vision)
+internal/config/meta_test.go:102:132: undefined: LiveOffProviderMismatch
+internal/config/meta_test.go:162:43: ai.Vision undefined (type AI has no field or method Vision)
+internal/config/meta_test.go:163:6: ai.Vision undefined (type AI has no field or method Vision)
+internal/config/meta_test.go:163:24: undefined: LiveOffImagesNotApproved
+internal/config/meta_test.go:163:24: too many errors
+FAIL	github.com/kcl1104/geminus/internal/config [build failed]
+FAIL
+exit 1

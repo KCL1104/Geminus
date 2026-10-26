@@ -1402,6 +1402,45 @@
       "proposal": "(a) generator scripts/gen-electronics-line-data 以 engine Observer 記錄範本的 replication 0（seed 52、15 天、第 2 週為 log，以開始時間選列），不另寫模擬；anchor 2026-09-28T00:00+08:00，時間截到整秒；SMT 換線後的第一片在換線後開始；unit 以最小編號的閒置 unit 命名並與 engine 的 in-use／down 數對帳；人的步驟以 op-NN 記 operator（不匯入）；除錯 pass＝修好、fail＝報廢，停機原因碼 breakdown；shift 為線班表在 start 的 label；serial SYN-<A|B>-<n>；每列 synthetic=true；提交一週，負向 fixture 為前 40 列改一格。(b) 規則（warning，path 為 cell 或列）：EVENT_TYPE_UNKNOWN、EVENT_STAGE_MISSING／UNKNOWN、EVENT_END_MISSING、EVENT_OUTCOME_MISSING（測試站）／UNKNOWN（作業的 result 不是 pass、fail）、EVENT_PRODUCT_MISSING（兩個以上 entity type 的作業）／UNKNOWN；詞彙取自 import 綁定的 base version（站名與 process ID、測試站、entity types）；§6 的跨列檢查未做。(c) optional 的 domainpack.EventRulesProvider；validation.ValidateWith（warning 在 error 之後、合計至多 MaxIssues、計數、不進 error report，無法記錄的 issue 為 fail closed）；validator 以 Config.Packs 讀 base version 的 pack（cmd/worker 傳入，讀不到或 domain 不服務為不重試的 INPUT_INVALID）；import.validate audit 加 warnings 計數。(d) internal/results/observed：模擬平均、replication 範圍（<20 min–max，≥20 Type 7 2.5%／97.5%）、絕對誤差＝模擬−觀測、相對誤差（觀測 0 時 null，OBSERVED_ZERO）、是否在範圍內，輸入一致性無範圍，OBSERVED_VALUE_NOT_FINITE；electronicsline.CompareObserved：line_output_per_week／per_day（output）、first_pass_yield.<站>、mean_cycle_minutes.<站>（輸入一致性；Weibull、empirical 為 SIMULATED_METRIC_UNAVAILABLE；重測分布不同標近似），視窗為 lcm(期, model 循環) 的整數倍且同相位、單一 UTC offset，否則 D-060 的 reason；輸出比對另要求視窗的每個 unit（lcm(期, 循環)）內至少一個 event 開始（任何紀錄類型），否則 NO_OBSERVED_DATA：log 沒有涵蓋的 unit 不是產出 0，部分涵蓋亦同（review r1 M1；對齊之後檢查；輸入一致性不套用；完整做法待 T-018 之後的 dataset 觀測期間）；in-sample／hold-out／model_generated 由呼叫者標示，由被比對的同一 model 產生的 synthetic 資料標 model_generated、不標 hold-out（review r1）。建議照列，已實作。",
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-121",
+      "title": "Meta Model API adapter 的計費、重試與錯誤規則（T-055）",
+      "status": "proposed",
+      "owner_role": "AI / Security",
+      "gate": "T-055 驗收前",
+      "resolves": [],
+      "source_gap": "H-029 (1) 只寫「沿用 T-053 的花費上限與開關」；Meta 的 pricing 頁沒有 cache 寫入價、沒有每張圖片的 token 上限、沒有說錯誤 status 是否計費；D-018 的 failover 是 Anthropic 兩個 organization 的，Meta 只有一把 key。",
+      "source_pages": "N/A（T-055 實作；https://dev.meta.ai/docs/pricing-rate-limits、/docs/error-handling、/docs/image-understanding、/docs/structured-output，2026-10-26 取得；ADR-030）",
+      "proposal": "(a) muse-spark-1.3 每百萬 token input 1.25、cached 0.15、output 4.25 美元，cache 寫入以 input 價；SAM 3.1 每張 0.0025 美元；沒有 geo 加價（spend.GeoPriced 只有 claude-opus-5-5）；(b) quote 同 D-111，有圖片時為 context window 1,048,576 tokens；(c) 連線中斷、逾時、body 讀不完、每個 5xx（含 504）、讀不了的 2xx 算可能計費；(d) 一把 key 不 failover：429 與 504 以外的 5xx 以 backoff 與 Retry-After 重試，504 不重試，401／403 停用到重啟、402 休息 15 分鐘；(e) 錯誤只記 status 與文件列出的 8 種 error type，其他為 other；(f) 不送 thinking、sampling、stop_sequences、top_k、container、inference_geo、cache_control；(g) 投影後的 schema 以文件的上限檢查，超出不送。建議照列，已實作。",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-122",
+      "title": "H-029 的 approval record 與 Meta 的 Gap 規則（T-055）",
+      "status": "proposed",
+      "owner_role": "Owner / Security",
+      "gate": "T-055 驗收前；Meta 的任何 live 呼叫前",
+      "resolves": [],
+      "source_gap": "H-029 沒有寫月預算的數字（只寫沿用 T-053 的上限）、Meta 的資料保留條款是否被接受、Meta dashboard 是否有 spend limit；Anthropic 的 record 要求的 Console spend limit 確認（H-025）在 Meta 沒有對應。",
+      "source_pages": "N/A（T-055 實作；H-029、H-033；https://dev.meta.ai/legal/commitments、/legal/terms-of-service（Last updated October 9, 2026）、/docs/models，2026-10-26 取得）",
+      "proposal": "(a) record：provider meta、model muse-spark-1.3、segmentation sam-3.1、資料政策 synthetic 資料＋demo 圖片＋使用者輸入的文字、角色 modeler／scenario、每月 USD 100（沿用 H-018 的上限；兩個 provider 共用一個 ledger，取較小的預算）、credential meta、KCL1104、2026-10-26；(b) Retention 記為 meta_standard_services（Standard mode 的選擇；Meta 仍為提供服務、法律、被標記與安全審查保留內容），需要 owner 確認接受這些條款；(c) 不要求 Meta dashboard 的 spend limit 確認，程式內的 ledger 是上限；(d) 只接受 Standard 的 Muse Spark 1.1／1.2／1.3 與 SAM 3.1，-contributor 為 model_not_standard。建議照列，已實作。",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-123",
+      "title": "圖片與 segmentation 的界限，以及照片路徑的設定（T-055，給 T-056）",
+      "status": "proposed",
+      "owner_role": "AI / Security",
+      "gate": "T-055 驗收前（T-056 的輸入）",
+      "resolves": [],
+      "source_gap": "H-029 (1) 只寫「只送 demo 圖片」，H-033 (2)(3) 寫照片辨識用 SAM 3.1＋Muse Spark、Claude 為可切換的備援；沒有寫圖片的型別、大小、張數，segmentation 的 concept 與結果的上限，照片路徑如何選 provider，H-018 沒有圖片時 Claude 備援怎麼辦。",
+      "source_pages": "N/A（T-055 實作；https://dev.meta.ai/docs/image-understanding、/docs/sam/segmenting、/docs/sam/reading-segmentation，2026-10-26 取得）",
+      "proposal": "(a) 圖片只接受 PNG、JPEG、WebP（signature 相符），至多 5 MiB、每邊 8000 px、每個 prompt 4 張，送出前檢查，hash 含 media type、sha256、尺寸；(b) segmentation 一張圖至多 8 個 concept（64 bytes 內的小寫名詞片語，每個一個 SAM request），每個 concept 至多 100 個結果，box 在圖片內、confidence 0..1，mask 不解碼不存；(c) AI_VISION_PROVIDER（不設＝AI_PROVIDER）、AI_VISION_POLICY_APPROVAL、AI_VISION_MODEL；批准的資料政策沒有圖片（H-018）時照片路徑關閉（images_not_approved），Claude 作為照片備援需要 owner 擴充 H-018；(d) SAM 的呼叫以 proposal 的角色計費與 audit。建議照列，已實作。",
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

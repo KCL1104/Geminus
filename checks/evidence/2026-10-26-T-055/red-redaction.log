@@ -1,0 +1,47 @@
+--- FAIL: TestSanitizerRedacts (0.00s)
+    sanitize_test.go:60: "meta LLM_1607358788850350_nx9abcdefLJY here" -> "meta LLM_1607358788850350_nx9abcdefLJY here" (counts map[]), want credential redacted
+    sanitize_test.go:60: "meta key: LLM_1607358788850350_nx9.abc.LJY" -> "meta key: LLM_1607358788850350_nx9.abc.LJY" (counts map[]), want credential redacted
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/aicontext	0.009s
+--- FAIL: TestTextIsSanitized (0.00s)
+    observability_test.go:279: the log holds "SENTINEL":
+        {"time":"2026-10-26T17:26:04.672738183Z","level":"ERROR","msg":"failed","component":"test","error":"Bearer [redacted]"}
+        {"time":"2026-10-26T17:26:04.672948404Z","level":"ERROR","msg":"failed","component":"test","error":"auth failed: [redacted]"}
+        {"time":"2026-10-26T17:26:04.672999423Z","level":"ERROR","msg":"failed","component":"test","error":"key [redacted] refused"}
+        {"time":"2026-10-26T17:26:04.673033326Z","level":"ERROR","msg":"failed","component":"test","error":"aws [redacted]"}
+        {"time":"2026-10-26T17:26:04.67305479Z","level":"ERROR","msg":"failed","component":"test","error":"[redacted]"}
+        {"time":"2026-10-26T17:26:04.673072766Z","level":"ERROR","msg":"failed","component":"test","error":"connect postgres://[redacted]@db.internal:5432/twin"}
+        {"time":"2026-10-26T17:26:04.673152889Z","level":"ERROR","msg":"failed","component":"test","error":"key LLM_1607358788850350_nx9SENTINELsecretLJY refused"}
+        {"time":"2026-10-26T17:26:04.673209282Z","level":"ERROR","msg":"failed","component":"test","error":"meta key (LLM_1607358788850350_nx9.SENTINEL.LJY) refused"}
+        {"time":"2026-10-26T17:26:04.673303039Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Cookie: [redacted]"}
+        {"time":"2026-10-26T17:26:04.673371458Z","level":"ERROR","msg":"failed","component":"test","error":"env DB_PASSWORD=[redacted]"}
+        {"time":"2026-10-26T17:26:04.67340197Z","level":"ERROR","msg":"failed","component":"test","error":"mail [redacted]"}
+        {"time":"2026-10-26T17:26:04.673441741Z","level":"ERROR","msg":"failed","component":"test","error":"token=[redacted]"}
+        {"time":"2026-10-26T17:26:04.673462222Z","level":"ERROR","msg":"failed","component":"test","error":"row \"[redacted]\" is invalid"}
+        {"time":"2026-10-26T17:26:04.673572284Z","level":"ERROR","msg":"failed","component":"test","error":"cell \"[redacted]\" is invalid"}
+        {"time":"2026-10-26T17:26:04.673619808Z","level":"ERROR","msg":"failed","component":"test","error":"column \"[redacted]\" unknown"}
+        {"time":"2026-10-26T17:26:04.67365854Z","level":"ERROR","msg":"failed","component":"test","error":"ERROR: invalid input syntax for type integer: \"[redacted]\" (SQLSTATE 22P02)"}
+        {"time":"2026-10-26T17:26:04.673767388Z","level":"ERROR","msg":"failed","component":"test","error":"bidi evil text  next line tab"}
+        {"time":"2026-10-26T17:26:04.673806938Z","level":"ERROR","msg":"failed","component":"test","error":"line separator paragraph"}
+        {"time":"2026-10-26T17:26:04.673836253Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Authorization: [redacted]"}
+        {"time":"2026-10-26T17:26:04.673890502Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Cookie: [redacted]"}
+        {"time":"2026-10-26T17:26:04.673951158Z","level":"ERROR","msg":"failed","component":"test","error":"signature [redacted] rejected"}
+        {"time":"2026-10-26T17:26:04.674011956Z","level":"ERROR","msg":"failed","component":"test","error":"cell \"[redacted]\""}
+        {"time":"2026-10-26T17:26:04.67405859Z","level":"ERROR","msg":"failed","component":"test","error":"value \"[redacted]\""}
+        {"time":"2026-10-26T17:26:04.674096901Z","level":"ERROR","msg":"failed","component":"test","error":"value '[redacted]' is invalid"}
+        {"time":"2026-10-26T17:26:04.674131224Z","level":"ERROR","msg":"failed","component":"test","error":"value `[redacted]` is invalid"}
+        {"time":"2026-10-26T17:26:04.674164467Z","level":"ERROR","msg":"failed","component":"test","error":"value “[redacted]” is invalid"}
+        {"time":"2026-10-26T17:26:04.674202672Z","level":"ERROR","msg":"failed","component":"test","error":"value ‘[redacted]’ is invalid"}
+        {"time":"2026-10-26T17:26:04.674243602Z","level":"ERROR","msg":"failed","component":"test","error":"invalid character '[redacted]' then '[redacted]'"}
+        {"time":"2026-10-26T17:26:04.67437418Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed '[redacted]'"}
+        {"time":"2026-10-26T17:26:04.674411826Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed `[redacted]`"}
+        {"time":"2026-10-26T17:26:04.674445011Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed “[redacted]”"}
+        {"time":"2026-10-26T17:26:04.674480208Z","level":"ERROR","msg":"failed","component":"test","error":"it's '[redacted]' inside"}
+        {"time":"2026-10-26T17:26:04.674524184Z","level":"ERROR","msg":"failed","component":"test","error":"key [redacted]"}
+        {"time":"2026-10-26T17:26:04.674542271Z","level":"ERROR","msg":"failed","component":"test","error":"JSESSIONID=[redacted]"}
+        {"time":"2026-10-26T17:26:04.674577722Z","level":"ERROR","msg":"failed","component":"test","error":"GET https://b.s3.amazonaws.com/k?X-Amz-Signature=[redacted]"}
+        {"time":"2026-10-26T17:26:04.67465388Z","level":"ERROR","msg":"failed","component":"test","error":"https://a.blob.core.windows.net/c?sv=2024&sig=[redacted]"}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/observability	0.008s
+FAIL
+exit 1

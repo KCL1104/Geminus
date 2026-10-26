@@ -145,14 +145,16 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 // deterministic fake (development and tests only, config refuses it
 // elsewhere) or an approved live provider; otherwise they are refused with
 // the code AI_SPEC §2 names, before anything is stored. The API never
-// calls a provider itself, and reads no key.
+// calls a provider itself, and reads no key. Both live providers, Anthropic
+// and Meta (T-055), are treated alike.
 func aiAvailability(cfg config.Config) proposals.Availability {
+	live := cfg.AIProvider == config.AIProviderAnthropic || cfg.AIProvider == config.AIProviderMeta
 	switch {
 	case cfg.AIProvider == config.AIProviderFake:
 		return proposals.Available
-	case cfg.AIProvider == config.AIProviderAnthropic && cfg.AILive:
+	case live && cfg.AILive:
 		return proposals.Available
-	case cfg.AIProvider == config.AIProviderAnthropic:
+	case live:
 		return proposals.PolicyNotApproved
 	}
 	return proposals.NotConfigured

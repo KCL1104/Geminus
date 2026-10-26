@@ -1,0 +1,33 @@
+=== RUN   TestTheProviderIsTheConfigured
+=== RUN   TestTheProviderIsTheConfigured/default
+=== RUN   TestTheProviderIsTheConfigured/disabled
+=== RUN   TestTheProviderIsTheConfigured/live_without_approval
+=== RUN   TestTheProviderIsTheConfigured/fake
+--- PASS: TestTheProviderIsTheConfigured (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/default (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/disabled (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/live_without_approval (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/fake (0.00s)
+=== RUN   TestTheMetaProviderIsTheConfigured
+--- PASS: TestTheMetaProviderIsTheConfigured (0.00s)
+=== RUN   TestThePhotoPath
+=== RUN   TestThePhotoPath/default
+=== RUN   TestThePhotoPath/turned_off_beside_the_fake
+=== RUN   TestThePhotoPath/the_fake
+=== RUN   TestThePhotoPath/meta_without_the_switch
+=== RUN   TestThePhotoPath/claude:_no_image_approved
+=== RUN   TestThePhotoPath/meta_with_the_switch
+=== RUN   TestThePhotoPath/claude_for_proposals,_meta_for_photos
+--- PASS: TestThePhotoPath (0.00s)
+    --- PASS: TestThePhotoPath/default (0.00s)
+    --- PASS: TestThePhotoPath/turned_off_beside_the_fake (0.00s)
+    --- PASS: TestThePhotoPath/the_fake (0.00s)
+    --- PASS: TestThePhotoPath/meta_without_the_switch (0.00s)
+    --- PASS: TestThePhotoPath/claude:_no_image_approved (0.00s)
+    --- PASS: TestThePhotoPath/meta_with_the_switch (0.00s)
+    --- PASS: TestThePhotoPath/claude_for_proposals,_meta_for_photos (0.00s)
+=== RUN   TestRunNamesTheLiveMetaProvider
+--- PASS: TestRunNamesTheLiveMetaProvider (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	0.028s
+exit 0

@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 91,
-    "proposed": 10,
+    "proposed": 12,
     "rejected": 0,
     "superseded": 0
   },
@@ -39,9 +39,7 @@
     "H-030",
     "H-031",
     "H-032",
-    "H-033",
-    "H-034",
-    "H-035"
+    "H-033"
   ],
   "tasks_by_status": {
     "blocked": 0,
@@ -876,11 +874,25 @@
         "T-051"
       ]
     },
-    "D-118": {
+    "D-121": {
       "status": "proposed",
-      "gate": "T-052 驗收前（(b)(c) 另為 T-031 的匯入畫面與 T-027 的 inference 前）",
+      "gate": "T-055 驗收前",
       "gates_tasks": [
-        "T-052"
+        "T-055"
+      ]
+    },
+    "D-122": {
+      "status": "proposed",
+      "gate": "T-055 驗收前；Meta 的任何 live 呼叫前",
+      "gates_tasks": [
+        "T-055"
+      ]
+    },
+    "D-123": {
+      "status": "proposed",
+      "gate": "T-055 驗收前（T-056 的輸入）",
+      "gates_tasks": [
+        "T-055"
       ]
     }
   },

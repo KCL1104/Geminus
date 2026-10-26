@@ -1,0 +1,6 @@
+--- FAIL: TestTheBackendIsTheProvidersAdapter (0.00s)
+    main_test.go:39: meta: *anthropic.Backend anthropic: live AI is not approved (H-001, H-017, H-018)
+FAIL
+FAIL	github.com/kcl1104/geminus/cmd/ai-eval-live	0.019s
+FAIL
+exit 1

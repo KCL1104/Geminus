@@ -23,7 +23,7 @@
 // refuse a call without a spend reservation, and a role (or an image) the
 // approval's data policy does not name, before any I/O.
 //
-// As implemented (PROPOSED D-118):
+// As implemented (PROPOSED D-121):
 //   - The base URL is the constant https://api.meta.ai/; only the tests
 //     change it (export_test.go). The key goes as a bearer token only, and
 //     never with a redirect (none is followed).

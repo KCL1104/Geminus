@@ -1,0 +1,5 @@
+=== RUN   TestTheBackendIsTheProvidersAdapter
+--- PASS: TestTheBackendIsTheProvidersAdapter (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/ai-eval-live	0.020s
+exit 0
