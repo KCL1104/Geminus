@@ -80,6 +80,21 @@ func (l lockedWriter) Write(p []byte) (int, error) {
 	return l.w.Write(p)
 }
 
+// lines is every JSON log line so far whose msg is msg, decoded.
+func (e *env) lines(msg string) []map[string]any {
+	e.logsMu.Lock()
+	logs := e.logs.String()
+	e.logsMu.Unlock()
+	var out []map[string]any
+	for _, l := range strings.Split(logs, "\n") {
+		var m map[string]any
+		if json.Unmarshal([]byte(l), &m) == nil && m["msg"] == msg {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
 func (e *env) token(subject string) string {
 	return e.p.Token(e.t, e.p.RSA, nil, e.p.Claims(subject, time.Now()))
 }

@@ -346,6 +346,12 @@ func TestRunClosedLoop(t *testing.T) {
 	if run.Status != "completed" || run.Progress.CompletedReplications != 2 || run.Progress.EventsProcessed == 0 || run.Error != nil {
 		t.Fatalf("completed run %+v", run)
 	}
+	// T-035 (D-095 (a)): the attempt's engine is one operational line of
+	// counts and its outcome.
+	if ls := e.lines("simulation engine ran"); len(ls) != 1 || ls[0]["outcome"] != "completed" || ls[0]["replications"] != float64(2) ||
+		ls[0]["events"] == nil || ls[0]["events"].(float64) <= 0 || ls[0]["duration_ms"] == nil {
+		t.Errorf("engine lines %v", ls)
+	}
 	res := e.results(t, viewer.Subject, e.a.ID, accepted.ID)
 	if res.RunID != accepted.ID || res.Metrics.Throughput.Mean == nil || *res.Metrics.Throughput.Mean != 100 || res.Reproducibility.ConfigHash != run.ConfigHash ||
 		!res.Trace.Available || res.Trace.ArtifactID == nil {

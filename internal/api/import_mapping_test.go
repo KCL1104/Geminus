@@ -415,6 +415,25 @@ func TestImportMappingClosedLoop(t *testing.T) {
 	if after := e.twin(t, m.ID); after != before {
 		t.Errorf("the Twin changed: %s, then %s", before, after)
 	}
+	// T-035 (D-095 (a)): one operational line per profile and validation,
+	// with counts and outcomes, never a column name, cell or filename.
+	prof, vals := e.lines("import profiled"), e.lines("import validated")
+	if len(prof) != 1 || prof[0]["outcome"] != "profiled" || prof[0]["rows"] != float64(3) || prof[0]["columns"] != float64(9) ||
+		prof[0]["size_bytes"] != float64(len(stationCSV)) {
+		t.Errorf("profile lines %v", prof)
+	}
+	if len(vals) != 2 || vals[0]["outcome"] != "invalid" || vals[0]["rows"] != float64(3) || vals[0]["invalid_rows"] != float64(1) ||
+		vals[1]["outcome"] != "valid" || vals[1]["rows"] != float64(3) || vals[1]["invalid_rows"] != float64(0) {
+		t.Errorf("validation lines %v", vals)
+	}
+	for _, l := range append(prof, vals...) {
+		text := fmt.Sprint(l)
+		for _, leak := range []string{"SN-", "開始", "批號", "站別紀錄", "op-7"} {
+			if strings.Contains(text, leak) {
+				t.Errorf("an operational line %s names %q", text, leak)
+			}
+		}
+	}
 }
 
 const simpleCSV = "case,type,at\nC-1,step,2026-10-13T06:12:00Z\n"
