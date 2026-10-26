@@ -1,0 +1,8 @@
+--- FAIL: TestTheFakeSegmenter (0.00s)
+    segment_test.go:49: ai provider: unavailable
+--- FAIL: TestTheFakeTakesImages (0.00s)
+    segment_test.go:85: {Status: Summary: Assumptions:[] RiskLevel: Confidence:<nil> Changes:[] ExpectedEffects:[] Questions:[] RequiresConfirmation:false} ai provider: invalid_request
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/fake	0.027s
+FAIL
+exit 1

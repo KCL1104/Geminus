@@ -176,6 +176,15 @@ type Backend interface {
 	Complete(ctx context.Context, req Request) (Response, error)
 }
 
+// ImageInput is a backend that sends a prompt's images (T-055): the
+// client hands a prompt with images to no other backend, nor to one whose
+// AcceptsImages is false (its approval's data policy names no images), and
+// refuses the call before it (invalid_request).
+type ImageInput interface {
+	Backend
+	AcceptsImages() bool
+}
+
 // Client checks every call the same way, whatever the backend: the
 // prompt is sealed and fits the budget, the organization has a free slot,
 // the call ends within the timeout, and the answer is one JSON document
@@ -259,6 +268,13 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	}
 	if c.meter != nil && !attr.complete() {
 		return nil, Metadata{}, invalidRequest()
+	}
+	if len(p.Images) > 0 {
+		// Images go only to a backend that sends them under its approval's
+		// data policy (T-055); no other backend ever sees the call.
+		if ii, ok := c.backend.(ImageInput); !ok || !ii.AcceptsImages() {
+			return nil, Metadata{}, invalidRequest()
+		}
 	}
 	if len(p.System)+len(p.User()) > c.budget.MaxPromptBytes {
 		return nil, Metadata{}, NewError(CodeContextTooLarge, 0, "")
