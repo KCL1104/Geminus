@@ -2721,7 +2721,8 @@
         "`__Host-` HttpOnly／Secure／SameSite=Lax 加密 session cookie（AES-256-GCM、key 輪替、>3.5 KB 視為錯誤）；瀏覽器 JS 拿不到任何 token；callback 後丟棄 ID token。",
         "同源 `/api/v1/...` proxy：非 GET 檢查 Origin 與 `X-Geminus-Request`、不開 CORS、伺服器端 refresh、Bearer 轉給 Go API、不轉 cookie；SSE 與 upload 串流；`lib/api/client.ts` 改呼叫 BFF（ADR-016 補記）。",
         "Logout：清 cookie、撤銷 refresh token、RP-initiated logout；未知 identity 顯示 403（不自動建立 user，D-008）。",
-        "Test-only deterministic OIDC provider（authorize／token／JWKS）供 E2E 使用，絕不連 Auth0；Auth0 tenant 設定步驟寫入 runbook，由 owner 建立帳號。"
+        "Test-only deterministic OIDC provider（authorize／token／JWKS）供 E2E 使用，絕不連 Auth0；Auth0 tenant 設定步驟寫入 runbook，由 owner 建立帳號。",
+        "後續（T-045 re-skin 發現，2026-10-26）：未登入時頁面只寫「需要登入」，沒有登入動作（impeccable audit 2026-10-19 的 P0）；在該頁加上通往既有 `/auth/login` 的登入動作，並以 e2e 測試涵蓋（H-027：這是必要的控制項）。"
       ],
       "planned_outputs": [
         "apps/web/app/auth/",

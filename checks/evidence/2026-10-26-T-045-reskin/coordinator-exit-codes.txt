@@ -1,0 +1,7 @@
+npm-ci-web exit 0
+npm-ci-e2e exit 0
+spec-check exit 0
+frontend-test exit 0
+frontend-build exit 0
+npm-audit exit 0
+e2e-test exit 0

@@ -222,3 +222,26 @@ re-skin 改變了每個畫面，因此提交前的 16 張 baseline 全部會不�
 - **主題 cookie**：與語言 cookie 相同的模式（非 HttpOnly、不含身分）；部署的 CDN 快取需依 cookie 區分 HTML（ADR-020 已記錄的同一要求）。
 - **React Aria Select 的按鍵**：strip 版本攔下關閉狀態的 ArrowLeft／ArrowRight／type-ahead（以 `onKeyDownCapture` 在 React Aria 之前停止事件）。若 React Aria 日後改變這些鍵的處理方式，`ui-components.test.tsx` 與 `keyboard.spec.ts` 會失敗。
 - **DESIGN.md 與 app 的差異**：記在 DESIGN.md「Simplifications in the app」；之後的 UI 任務（T-015、T-031、T-032）若需要 segmented control、overlay 動畫或圖示，應依 DESIGN.md 加入並保留 H-027 的檢查。
+
+## Coordinator 的執行（re-skin，420e36f）
+
+Coordinator 把 `t045-reskin` 的三個 commit cherry-pick 到 `claude/lucid-meitner-vq1awo`（a0fb365 之後，成為 f522328、9f52384、420e36f）。衝突只在 `DESIGN.md` 的狀態段落：coordinator 在 a0fb365 記錄 H-027 時也改了同一段；取 re-skin 的版本（它描述了 app 已對應 tokens），再補上「換裝後的截圖 baseline 仍待 owner 確認（TEST-033）」。
+
+在整合後的 tree 上執行（Node 22.22.0、npm 10.9.4；`checks/evidence/2026-10-26-T-045-reskin/coordinator-*.log`、`coordinator-exit-codes.txt`）：
+
+| 指令 | 結果 |
+|---|---|
+| `npm ci --prefix apps/web`、`npm ci --prefix apps/web-e2e`（`--engine-strict=false`，本機沒有 Node 24） | exit 0、exit 0 |
+| `make spec-check` | exit 0 |
+| `make frontend-test` | exit 0：21 個檔案、547 個 test |
+| `make frontend-build` | exit 0 |
+| `npm audit --prefix apps/web --omit=dev` | exit 0，0 vulnerabilities |
+| `make e2e-test`（本機 Chromium） | exit 0：116 passed、32 skipped（截圖，只在 CI 的固定容器執行：NOT RUN） |
+
+- e2e log 中的 `[WebServer] Error: failed to pipe response`（`UND_ERR_SOCKET`）來自 `session.spec.ts`「a refresh is kept when the API's answer is cut after its headers」：該測試刻意在 header 之後切斷 API 的回應；T-043 第 3 輪的 log（`checks/evidence/2026-10-19-T-043/round3/e2e-test.log`）也有同一行。不是失敗。
+- Agent 列給 owner 的三個問題，coordinator 的處理：
+  1. 首頁的「Go to projects」與 app strip 的「Projects」重複（T-044 的測試要求它）：交給 owner，與截圖 baseline 一起確認。
+  2. 未登入的頁面沒有登入動作：屬 T-043（登入流程），列為 T-043 的後續（`planning/tasks.json`），不在 T-045 新增。
+  3. Noto Sans TC web font 的成本：維持現狀。H-011 允許 OFL web font；中文 UI 與英文 UI 中的中文使用者資料（IR 名稱）用同一套字型；瀏覽器只下載用到的分檔。若 T-037 的效能預算不過，再改為只在 zh-Hant 載入或改用系統字型（可回退）。
+- **下一步**：push 後 CI 的截圖比對**預期失敗**（16 張外觀改變、16 張 `-dark` 是新的），直到以 `update_screenshots` 在 CI 的固定容器重新產生 baseline、由 owner 逐張確認（TEST-033：baseline 由人確認，不自動覆寫）並提交。其他 job（axe、鍵盤、字串、主題、後端）須為綠。之後交給獨立 reviewer（H-003）。
+- **NOT RUN**：CI 固定容器中的截圖比對與 baseline 產生（push 後執行）；Node 24；owner 的視覺確認；螢幕報讀器、Firefox、Safari；已登入且有資料的頁面（只有元件層的 unit test）；CSP 實測。
