@@ -1,0 +1,28 @@
+# 2026-10-26T08:14:05Z go test -count=1 -v -run TestReserveAndSettle|TestLimitsRefuse|TestConcurrentReservationsNeverOvershoot|TestSettleKeepsItsDayAndOrganization|TestFailClosed|TestAMeteredProposal|TestASpendLimitRefusesTheProposal ./internal/storage/aispend/ ./internal/proposals/generator/
+# go: go version go1.27.3 linux/amd64
+=== RUN   TestReserveAndSettle
+    aispend_test.go:105: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestReserveAndSettle (0.00s)
+=== RUN   TestLimitsRefuse
+    aispend_test.go:163: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestLimitsRefuse (0.00s)
+=== RUN   TestConcurrentReservationsNeverOvershoot
+    aispend_test.go:211: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestConcurrentReservationsNeverOvershoot (0.00s)
+=== RUN   TestSettleKeepsItsDayAndOrganization
+    aispend_test.go:258: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestSettleKeepsItsDayAndOrganization (0.00s)
+=== RUN   TestFailClosed
+    aispend_test.go:298: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestFailClosed (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	0.016s
+=== RUN   TestAMeteredProposal
+    metered_test.go:78: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestAMeteredProposal (0.00s)
+=== RUN   TestASpendLimitRefusesTheProposal
+    metered_test.go:112: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestASpendLimitRefusesTheProposal (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.023s
+exit=0

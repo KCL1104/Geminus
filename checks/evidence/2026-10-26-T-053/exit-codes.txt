@@ -1,0 +1,6 @@
+backend-test.log: exit 0 (make backend-test GOFLAGS=-count=1)
+backend-race.log: exit 0 (make backend-race GOFLAGS=-count=1)
+architecture-check.log: exit 0 (make architecture-check)
+ai-eval.log: exit 0 (make ai-eval)
+go-mod-verify.log: exit 0 (go mod verify)
+govulncheck.log: exit 0 (env GOTOOLCHAIN=go1.27.3 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/... ./scripts/...)

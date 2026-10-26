@@ -1,0 +1,4 @@
+# 2026-10-26T08:13:45Z env GOTOOLCHAIN=go1.27.3 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/... ./scripts/...
+# go: go version go1.27.3 linux/amd64
+No vulnerabilities found.
+exit=0
