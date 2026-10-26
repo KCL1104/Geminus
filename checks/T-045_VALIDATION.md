@@ -2,6 +2,8 @@
 
 **日期：2026-10-19｜狀態：`in_progress`（實作與自我驗證完成；截圖 baseline 已產生並提交，CI 開始比對；prototype 與 baseline 待 owner 確認；之後送獨立 review，依 H-003 驗收）｜需求：REQ-022、REQ-023｜驗收測試：TEST-033｜決策：ADR-021 ACCEPTED（H-009）、H-007、H-008**
 
+**2026-10-26 更新**：依 H-027 套用 Marey design system 並保持簡潔，見文末「Re-skin：套用 Marey design system，保持簡潔」一節；在新 baseline 由 CI 產生並經人確認之前，下方「截圖 baseline」一節描述的是 re-skin 之前的 baseline。
+
 範圍依 tasks.json：比較多個 UI 函式庫並以 spike 決定（ADR-021）；design tokens、app shell 與基本元件，套用到 T-014／T-044 的畫面；每個 UI 任務先交 prototype 經 owner review，本任務以 T-015 與 T-031 的 low-fi prototype 驗證流程；自動檢查（axe、純鍵盤 E2E、en／zh-Hant × 390／1280 截圖比對，baseline 變更需人工確認）納入 make 與 CI。
 
 ## 交付內容
@@ -90,3 +92,133 @@
 | React Flow 的包裝（Escape 失焦等 spike 發現） | T-015 實作畫布時處理 |
 | 超過 50 列且可多選的 `DataTable` | 尚無呼叫者，未驗證：虛擬化時選取欄的寬度未設定。第一個這樣用的任務需補上並加入 gallery |
 | 窄螢幕上寬表格的橫向捲動提示 | 只有被切掉的右緣；是否需要更明顯的提示列為 owner 審閱項目 |
+
+## Re-skin：套用 Marey design system，保持簡潔（2026-10-26，H-027）
+
+**狀態：實作與自我驗證完成（分支 `t045-reskin`，自 f4db5d6）；截圖 baseline 尚未重新產生（必須在 CI 的固定容器產生，見下），在那之前 CI 的截圖比對會失敗；待 coordinator 整合、CI 與獨立 review（H-003）。T-045 的 status 不變。**
+
+### 依據
+
+- H-013：Marey 圖表時刻表方向、scenario 深綠／baseline 石墨虛線、Archivo、深色灰黑、預設跟隨系統且可切換並記住；H-011：可用 OFL web font 與深色主題（放寬 H-008 (2)(3)）；H-012：桌機為主、手機只看結果與審核、深色不用藍；H-009／ADR-021：React Aria Components 1.21.1＋CSS Modules＋custom-property tokens 不變。
+- H-027（owner，2026-10-26，coordinator 記錄中，依指示視為已批准）：「UI 都照建議，但我希望介面要是簡潔的」；Q1 以 Marey workspace 為設計基礎；Q2 舊 prototype 的模型編輯器與匯入／AI 審閱流程仍是 T-015／T-031 的基礎。同一決定的補充（coordinator 轉達）：「只保留所有應該要包含的按鈕功能等」。
+
+### 「簡潔」的解讀與檢查（寫入 DESIGN.md 的 Simplicity 一節）
+
+| 原則 | 本次怎麼做 | 檢查 |
+|---|---|---|
+| 1. 每個畫面一個主要動作 | Primary 只用 Graphite Ink；gallery 的停用「Publish」與「Save draft」改為預設樣式，gallery 也只有一個 primary | `tests/simplicity.test.tsx`（每種草稿狀態、gallery、失敗頁）、`apps/web-e2e/tests/simplicity.spec.ts`（每個 route × en／zh-Hant × 390／1280） |
+| 2. 只保留需要的控制項（H-027 補充） | 每個控制項對應已實作且有測試的功能（下表）；移除專案頁重複的「All projects」；app strip 不放 Find、帳號、模式切換 | 產品 route 沒有停用的控制項、沒有兩個連到同一處的連結、沒有同名按鈕（唯一例外為待 owner 決定的一組） |
+| 3. 漸進揭露 | Problem 的技術訊息與 request ID 收進「Details／詳細資料」；驗證細節與重試時間仍直接顯示 | `i18n-dom`／`ui` 測試仍讀得到全文；review |
+| 4. 不裝飾 | 1 px hairline（去掉 callout 與 status 的 4 px 側邊條）；陰影只給 popover、dialog 與 invalid 內環；只有 180 ms 的狀態顏色轉換，沒有 overlay 進場動畫；顏色只有中性色、scenario 綠與 warning／error | `tests/design-rules.test.ts`、`tests/tokens.test.ts` |
+| 5. 版面安靜、文字簡短 | 一個 main、沒有側欄；內容與 app strip 左緣對齊；間距只用 DESIGN.md 的 scale；文案去掉 task ID | `layout.test.tsx`、`simplicity.spec.ts`、`design-rules.test.ts` |
+
+DESIGN.md 中比上述原則繁複的元件，app 採較簡單的做法並記錄理由（DESIGN.md「Simplifications in the app」）：語言與主題都用本系統的 `Select`（不是語言 segmented control 加循環的主題按鈕）；overlay 沒有進場動畫；note 先不加圖示；表格列沒有 hover 底色；頁面標題用 Headline／Title／Body；動作結果是 Outcome 框。
+
+### 變更內容
+
+| 位置 | 內容 |
+|---|---|
+| `apps/web/ui/tokens.css` | DESIGN.md 的所有顏色（`--gm-color-<key>`，淺色與灰黑深色，深色在 `prefers-color-scheme: dark` 與 `[data-theme="dark"]` 兩處，值相同）、五個字級、間距與圓角 scale、overlay 陰影、motion、focus ring（2 px Graphite Ink）；移除舊的 palette 層與藍色 accent |
+| `apps/web/ui/base.css`、`ui/global-styles.ts` | 元素預設（白色 sheet、tabular figures、連結為墨色底線、`code` 不用等寬字、`summary`）；字型由 `@fontsource-variable/archivo` 5.3.0（standard：字重＋字寬軸）與 `@fontsource-variable/noto-sans-tc` 5.3.0（字重，依 unicode-range 分檔）自架 |
+| `apps/web/ui/*.module.css`、`ui/select.tsx` | 依 DESIGN.md 重做 button、field、select、checkbox、dialog、callout、status、table、list、shell；`Select` 加 `variant="strip"`（12 px 小標籤，≤720 px 只隱藏視覺；關閉時 ArrowLeft／ArrowRight／type-ahead 不會直接改值） |
+| `apps/web/lib/theme/`、`app/_components/theme-switcher.tsx`、`app/layout.tsx`、`app/global-error.tsx` | 主題：cookie `geminus_theme`（`light`／`dark`；無 cookie 即跟隨系統），server 輸出 `<html data-theme>`，第一次繪製即正確，不用 inline script；選擇時直接改 `data-theme`；global-error 也讀記住的主題並載入全域樣式 |
+| `app/_components/locale-switcher.tsx` | 語言選擇改用 `Select`：方向鍵只開清單、選定才換；元件不再以 `key` 重建，焦點留在控制項上（impeccable audit 2026-10-19 的 P1） |
+| `app/_components/problem-view.tsx`、`crash.tsx` | 技術細節收進 `<details>`；`CrashNotice` 用 `Button` |
+| `app/projects/[projectId]/page.tsx`、`app/ui-gallery/gallery.tsx` | 移除重複的「All projects」；gallery 只留一個 primary |
+| `apps/web/messages/*.ts` | 新增 `theme.*`、`problem.details`；刪除 `models.allProjects`；`model.notInBuild` 去掉 task ID（en：「The 2D editor and 3D view are not part of this build.」／zh：「此版本不含 2D 編輯器與 3D 檢視。」）；`gallery.intro` 縮短 |
+| `apps/web/package.json`、`package-lock.json` | 兩個字型套件（OFL-1.1，2026-07-19 發布，各一個 lock entry，無依賴、無 install script） |
+| `apps/web/tests/` | `tokens.test.ts` 改寫（逐值比對 DESIGN.md、兩個主題的對比、深色零彩度、色相只限三族、字級／間距／圓角 scale、字型自架與授權）；新增 `design-rules.test.ts`、`simplicity.test.tsx`、`theme.test.tsx`；更新 `layout.test.tsx`、`i18n-dom.test.tsx`、`ui-components.test.tsx` |
+| `apps/web-e2e/tests/` | `a11y.spec.ts` 加深色（系統偏好）；`keyboard.spec.ts` 更新 shell 順序並加主題；`screenshots.spec.ts` 加深色（`-dark`）；新增 `theme.spec.ts`、`simplicity.spec.ts`；`helpers.ts` 等字型載入 |
+| `DESIGN.md`、`.impeccable/design.json` | 狀態改為 owner 採用（H-027）；Simplicity、Simplifications in the app、Tokens in the app 三節 |
+| `docs/adr/ADR-021`、`ADR-020`、`ADR-011`、`docs/THIRD_PARTY_NOTICES.md` | re-skin 的實作紀錄；語言切換器的描述；字型套件的版本與授權；字型的 copyright 與 OFL 全文 |
+| `checks/evidence/2026-10-26-T-045-reskin/local-shots/` | 本機預覽截圖 32 張（**不是 baseline**，見下） |
+
+### 被更新的既有測試（理由）
+
+- `tokens.test.ts`：原本要求「只有淺色、只用系統字型、語意 token 指向 palette」，這些是 H-008 (2)(3) 的限制，H-011／H-013 已放寬；改為檢查 DESIGN.md 的值與兩個主題。對比檢查保留且擴大（每個主題文字 28 組、非文字 11 組；原本只有淺色 17＋6 組）。
+- `layout.test.tsx`、`i18n-dom.test.tsx`、`keyboard.spec.ts`：語言選擇由原生 `<select>` 改為 design system 的 `Select`，斷言改為新的結構（名稱為「值＋標籤」，例如「English Language」）；鍵盤測試的 Tab 順序多了主題，並新增「關閉時方向鍵與輸入字母不換語言、選定後焦點留在控制項」的檢查。沒有刪除或放寬任何斷言。
+
+### 每個畫面的控制項（H-027 補充要求）
+
+所有畫面共用的 app strip：
+
+| 控制項 | 用途 | 依據 |
+|---|---|---|
+| Skip to main content（連結，Tab 時才出現） | 跳到 main | REQ-023、TEST-033；`keyboard.spec.ts` |
+| Projects（導覽連結） | 開專案列表 | T-014 shell；`layout.test.tsx` |
+| Language（Select） | en／zh-Hant，記在 cookie | REQ-022、ADR-020、TEST-031；`layout.test.tsx`、`i18n-dom.test.tsx`、`keyboard.spec.ts` |
+| Theme（Select） | 跟隨系統／淺色／深色，記在 cookie | H-013；`theme.test.tsx`、`theme.spec.ts`、`keyboard.spec.ts` |
+
+| 畫面 | 控制項 → 用途 | 依據 |
+|---|---|---|
+| `/` | Go to projects → 專案列表（**與 strip 的 Projects 重複，保留，請 owner 決定**） | T-044；`layout.test.tsx`、`keyboard.spec.ts` |
+| `/projects` | 每個專案名稱（連結）→ 開專案；Try again（可重試的失敗時）→ 重新載入 | T-014；`dom.test.tsx`；未登入時只顯示「需要登入」，沒有控制項 |
+| `/projects/[id]` | 每個模型名稱（連結）→ 開模型；Try again | T-014；`ui.test.tsx`、`dom.test.tsx` |
+| `/models/[id]` | Back to project → 回到該專案（strip 沒有這個目的地）；衝突時 Reload the current draft（primary）與 Discard my changes（danger）；Try again | T-014、AGENTS §2（409 不 silent overwrite，不自動 rebase）；衝突的兩個動作由 `ui.test.tsx`、`dom.test.tsx` 檢查；Back to project 沒有專門的測試 |
+| Problem（各頁的錯誤） | Details／詳細資料（展開）→ 技術訊息與 request ID | TEST-009（request ID 仍在頁中）；`ui.test.tsx`、`i18n-dom.test.tsx` |
+| 找不到頁面 | Go to the start page | T-044 review M2（任何沒有頁面的網址的出路）；頁面由 `layout.test.tsx`、`simplicity.test.tsx` 檢查，連結本身沒有專門的測試 |
+| `/auth/error` | Sign in again → `/auth/login` | T-043、ADR-018（登入失敗後唯一的出路）；頁面由 `a11y.spec.ts`、`simplicity.spec.ts` 檢查，連結本身沒有專門的測試 |
+| route 失敗（error／global-error） | Try again | T-044 review M2；`i18n-dom.test.tsx` |
+| `/ui-gallery`（審閱工具，只在 `GEMINUS_UI_GALLERY=1` 時存在，否則 404） | 每個元件的樣本（Save、Cancel、Delete、More options、停用的 Publish、欄位、Time unit、Include archived、Save draft、Discard changes、三個表格、頁面狀態） | T-045 scope；`gallery.test.tsx`、`a11y.spec.ts`、`keyboard.spec.ts`、`strings.spec.ts` |
+
+移除：專案頁的「All projects／所有專案」連結（與 strip 的 Projects 同一目的地；沒有測試或規格要求它）。沒有移除其他控制項。沒有加入：Find、帳號、模式切換、provenance row 的動作（尚無功能；DESIGN.md 的 app strip 中這些等到該功能實作時再加）。
+
+給 owner 的問題：
+
+1. 首頁的「Go to projects／前往專案」與 strip 的「Projects／專案」功能相同。T-044 的測試要求它，所以保留；要移除嗎？（移除時一併更新 `layout.test.tsx`、`keyboard.spec.ts` 與 `simplicity` 測試中的例外。）
+2. 未登入時，專案與模型頁只說「需要登入」，沒有登入的動作（impeccable audit 2026-10-19 的 P0；屬 T-043 的 UI）。依「不加功能」沒有加入；是否列為 T-043 的後續？
+
+### 指令與結果（Node 22.22.0；`npm ci --engine-strict=false`，package.json 要求 Node 24）
+
+| 指令 | 結果 |
+|---|---|
+| `make frontend-test`（lint、typecheck、vitest） | exit 0；vitest 21 個檔案、547 個 test 全過（re-skin 前 18 個檔案、445 個） |
+| `make frontend-build` | exit 0 |
+| `make e2e-test`（本機 Chromium build 1194，對應 Playwright 1.56.1） | 見下方「最後一次執行」 |
+| `make spec-check` | exit 0（`checks/docs-check.json` 的連結數 86 → 87） |
+| `npm audit --prefix apps/web --omit=dev` | 0 vulnerability（dev 依賴的 happy-dom high 為既有，未變） |
+| 移除 strip `Select` 的按鍵防護（mutation） | `ui-components.test.tsx` 的 4 個 case 失敗，還原後通過 |
+| 第一次 `npm --prefix apps/web-e2e test` | exit 1：114 passed、2 failed、32 skipped；兩個失敗都是新測試本身的錯（`getByRole("link", { name: "Projects" })` 未設 exact；把 Next.js 的 RSC 資料 script 誤當成決定主題的 script），修正測試後通過 |
+| 第二次 `make e2e-test` | exit 0：116 passed、32 skipped（截圖 NOT RUN） |
+| 最後一次 `make e2e-test`（含 strip `Select` 的按鍵防護與其鍵盤檢查） | exit 0：116 passed、32 skipped（截圖 NOT RUN）。a11y 64（7 個 route＋gallery 狀態 × 2 語言 × 2 寬度 × 淺色／深色，全部 0 violation、390 px 無橫向捲動）、keyboard 8、simplicity 28、theme 5、strings 2、session 9。WebServer 的 `failed to pipe response` 來自 session 測試刻意切斷的回應，非失敗 |
+| 本機預覽截圖（暫存的 Playwright config，snapshot 路徑改到 evidence 目錄） | exit 0：32 張寫入 `checks/evidence/2026-10-26-T-045-reskin/local-shots/`；`apps/web-e2e/tests/__screenshots__/` 沒有被改動（`git status` 確認） |
+| First-load 資源（`next start` 後取 HTML 中的 script 與 stylesheet，gzip 加總；re-skin 前為 f4db5d6 的 `git archive` 另外 build） | `/`：JS 183.9 → 247.7 KiB、CSS 1.4 → 38.7 KiB；`/projects`：JS 203.3 → 253.0 KiB、CSS 3.0 → 38.7 KiB；`/ui-gallery`：JS 282.9 → 293.4 KiB、CSS 3.0 → 38.7 KiB。JS 增加來自 shell 改用 React Aria `Select`（Select／ListBox／Popover）；CSS 增加的 32.9 KiB 是 Noto Sans TC 的 105 個 unicode-range `@font-face`（套件 CSS 原始 106 KB），Archivo 只有 0.4 KiB |
+
+### 本機預覽截圖（不是 baseline）
+
+`checks/evidence/2026-10-26-T-045-reskin/local-shots/`：與 CI 相同的 4 個畫面 × en／zh-Hant × 390／1280 × 淺色／深色，共 32 張，檔名同 baseline（深色加 `-dark`）。這是本機 Chromium 與本機字型（沒有 CJK 系統字型，中文由自架的 Noto Sans TC 顯示）的結果，只供 owner 先看外觀；CI 容器的 Chromium 與系統字型不同，像素不會相同，**不可當 baseline 提交**。
+
+### 截圖 baseline：coordinator 需要做的事
+
+re-skin 改變了每個畫面，因此提交前的 16 張 baseline 全部會不符，另有 16 張深色是新的（缺 baseline 即失敗）。在重新產生之前，CI 的 `browser checks` job 會在截圖比對失敗；同一個 job 也跑 axe、鍵盤、字串與主題檢查，所以失敗時要看 job log 確認只有截圖失敗。
+
+1. 把 `t045-reskin` 推到要整合的分支（以下稱 `<ref>`）。
+2. 以 workflow_dispatch 手動執行 workflow `ci`，ref 為 `<ref>`，input `update_screenshots` 為 `true`：`gh workflow run ci.yml --ref <ref> -f update_screenshots=true`。這個 run 的 e2e job 只執行 `npm --prefix apps/web-e2e test -- tests/screenshots.spec.ts --update-snapshots`（固定的 `mcr.microsoft.com/playwright:v1.56.1-noble@sha256:f1e7e010…b837a` 容器），不會提交任何東西。
+3. 下載 artifact `screenshots`：`gh run download <run-id> -n screenshots -D <dir>`。內容是 `screenshots.spec.ts/` 下 32 張 PNG：16 張與現有檔名相同（淺色）、16 張以 `-dark.png` 結尾。
+4. 由人逐張檢視（TEST-033 要求 baseline 變更由人確認；可先對照本機預覽截圖），把 32 張放到 `apps/web-e2e/tests/__screenshots__/screenshots.spec.ts/`（覆蓋 16 張、新增 16 張）並提交到 `<ref>`。
+5. 對 `<ref>` 的一般 CI run：`browser checks` 應全過，截圖比對有執行（0 skipped）。
+
+**建議的落地方式（最不打擾）**：re-skin 與新 baseline 在同一個分支完成後一起合併，main 上的 CI 永遠不會有紅色的截圖比對。順序：推分支 → 一般 CI（預期只有截圖失敗，確認其他檢查全過）→ 同分支手動 `update_screenshots` → owner 看 artifact（或先看本機預覽）並確認 → 提交 baseline 到同分支 → CI 全綠 → 合併。若 owner 的確認需要時間，分支可以先完成獨立 review，baseline 的提交與合併等確認後再做；不建議先合併再補 baseline（main 的 e2e job 會紅，也會遮住其他檢查的結果），也不建議為此暫時跳過截圖比對。
+
+### NOT RUN／限制
+
+| 項目 | 原因 |
+|---|---|
+| CI 固定容器中的截圖比對與新 baseline 產生 | 只能在 CI 的 workflow_dispatch 執行（見上）；本機只有預覽截圖 |
+| Node 24 | 本機只有 Node 22.22.0；以 `--engine-strict=false` 安裝與執行。CI 依 `.nvmrc` 使用 24.21.0 |
+| CI run | 依指示不推送、不觸發 CI |
+| Owner 對新外觀的視覺審閱 | 待 owner；本報告的預覽截圖與 CI 的 baseline artifact 供審閱 |
+| 螢幕報讀器、Firefox、Safari | 同前（需要人執行；P0 只跑 Chromium） |
+| 已登入且有資料的畫面 | 沒有掛 AuthProvider，fake API 不回資料（同 impeccable audit 的限制）；這些狀態由 unit test 以元件檢查 |
+| CSP 實測 | app 目前沒有 CSP；只依設計推論：字型同源（`font-src 'self'` 即可）、主題不需要我們的 inline script（Next.js 自己的 inline script 另需 nonce，與本次無關） |
+| `impeccable` 的 critique／audit 重跑 | 本次沒有執行 impeccable；以上述自動檢查與截圖目視代替 |
+
+### 風險
+
+- **CI 在 baseline 重新產生前會紅**（截圖比對）。處理見上。
+- **字型下載**：自架的 woff2 共約 4.5 MB 進入 `/_next/static/media`（105 個 Noto Sans TC 分檔與 3 個 Archivo 檔），每頁只下載用到的分檔（`theme.spec.ts` 檢查 zh-Hant 首頁少於 40 個中文分檔）。`font-display: swap`：第一次造訪可能先以 fallback 字型顯示再換字（沒有做 size-adjust fallback）。
+- **First-load JS 與 CSS 變大**（數字見上表）：每頁多約 50–64 KiB gzip 的 JS（shell 的 `Select`；之後 T-015 等頁面本來就會用到它，屬提前付出）與約 37 KiB gzip 的 render-blocking CSS（Noto Sans TC 的 `@font-face` 表，英文頁也載入）。替代方案供 owner 決定：(a) 不載入 Noto Sans TC web font，中文改用各系統的字型（PingFang TC、Microsoft JhengHei、Linux 的 Noto Sans CJK），省下約 33 KiB CSS 與 4.3 MB 靜態檔，但中文字形依作業系統而異、CI 截圖依賴容器字型；(b) 語言與主題改回原生 `<select>`（幾乎不增加 JS，但與 design system 的 Select 外觀不同，且原生 select 在 Windows／Linux 按方向鍵就會換語言）。
+- **OFL**：授權與 copyright 記在 `docs/THIRD_PARTY_NOTICES.md`；下載的分檔本身不一定帶授權文字。產品對外提供時是否需要使用者看得到的授權頁，請 owner（或法律意見）決定。
+- **主題 cookie**：與語言 cookie 相同的模式（非 HttpOnly、不含身分）；部署的 CDN 快取需依 cookie 區分 HTML（ADR-020 已記錄的同一要求）。
+- **React Aria Select 的按鍵**：strip 版本攔下關閉狀態的 ArrowLeft／ArrowRight／type-ahead（以 `onKeyDownCapture` 在 React Aria 之前停止事件）。若 React Aria 日後改變這些鍵的處理方式，`ui-components.test.tsx` 與 `keyboard.spec.ts` 會失敗。
+- **DESIGN.md 與 app 的差異**：記在 DESIGN.md「Simplifications in the app」；之後的 UI 任務（T-015、T-031、T-032）若需要 segmented control、overlay 動畫或圖示，應依 DESIGN.md 加入並保留 H-027 的檢查。

@@ -70,3 +70,14 @@ Design tokens（顏色、系統字型與繁中 fallback、間距、density、foc
 - 瀏覽器 E2E（`@playwright/test` 1.56.1，與機器上的 Chromium 相同版本；`@axe-core/playwright` 4.13.0）放在獨立的 npm 專案，不放進 `apps/web`。原因有二：Next.js 16.4.1 對 `@playwright/test` 宣告了 optional peer dependency，lockfile 因此把它標為非 dev，`npm ci --omit=dev` 會把它裝進 production；`@axe-core/playwright` 也會帶入未滿兩週的 playwright-core 1.64.1。
 - `next.config.ts` 設 `agentRules: false`。
 - Tokens 在 `apps/web/ui/tokens.css`，元素預設在 `ui/base.css`（`@layer base`）。`tests/tokens.test.ts` 檢查 17 組文字與 6 組非文字的對比、只用語意 token、只用系統字型、compact density 仍為 24 px。`UiProvider`（`ui/provider.tsx`）把 `zh-Hant` 對應為 React Aria 的 `zh-TW`（`tests/ui-provider.test.tsx`）。
+
+## 套用 Marey design system（T-045 re-skin，H-013、H-027，2026-10-26）
+
+Owner 於 H-027 採用 DESIGN.md（Marey 圖表時刻表）為設計基礎，條件是介面簡潔、只保留每個畫面需要的控制項。本 ADR 的選擇（React Aria Components＋CSS Modules＋custom-property tokens）不變；變更的是 tokens 與元件外觀：
+
+- **Tokens**：`ui/tokens.css` 改為 DESIGN.md 的值，一個 key 一個 `--gm-color-<key>`（淺色與灰黑深色）；字級只有五個（`--gm-font-size-label|body|title|headline|display`）、間距與圓角照 DESIGN.md 的 scale。原本的 palette 層（`--gm-palette-*`）與藍色 accent 移除：DESIGN.md 的 key 本身就是語意名稱，再包一層沒有好處。`tests/tokens.test.ts` 逐值比對 DESIGN.md，`tests/design-rules.test.ts` 擋任何 token 以外的顏色、字級、間距、圓角、陰影與 transition。
+- **主題**（H-011 允許深色，H-013 預設跟隨系統、可切換並記住）：選擇存在 cookie `geminus_theme`（只有 `light` 或 `dark`；沒有 cookie 即跟隨系統；`Path=/; Max-Age=31536000; SameSite=Lax`，https 加 `Secure`，不設 HttpOnly，不含身分、不參與授權，與 ADR-020 的語言 cookie 同一模式）。Root layout 在 server 端讀 cookie，輸出 `<html data-theme>`，所以第一次繪製就是正確的主題，不需要在 paint 前執行的 inline script（日後嚴格 CSP 不必為它開 nonce 或 hash）。選擇時 client 直接改 `data-theme`，不需重新渲染。選 localStorage 會需要 paint 前的 inline script，才不會閃，因此不用。
+- **字型**（H-011 允許 OFL web font，取代 H-008 (3)）：`@fontsource-variable/archivo` 5.3.0 與 `@fontsource-variable/noto-sans-tc` 5.3.0（版本與授權見 ADR-011、THIRD_PARTY_NOTICES）。`ui/global-styles.ts` import 套件內的 CSS，字型檔由 build 放進 `/_next/static/media`，從 app 自己的 origin 載入；Noto Sans TC 依 unicode-range 分檔，頁面只下載用到的字。沒有改用 `next/font/google`：它在 build 時連 Google Fonts。
+- **語言與主題的選擇**改用本系統的 `Select`（原本語言是原生 `<select>`）：與表單的單選同一個元件；方向鍵打開清單、只有選定才換語言（WCAG 3.2.2；impeccable audit 2026-10-19 的 P1：原生 select 在方向鍵就換語言，且 `key={locale}` 重建元件讓焦點掉到 body，現在焦點留在控制項上）。
+- **元件**：button（primary 為 Graphite Ink；danger 為預設外框加紅字；disabled 為 Inset Well）、field（34 px、15 px 字、invalid 為紅框加內環）、select、checkbox（焦點環只畫一圈）、dialog（560 px、8 px 圓角、hairline 分隔、12vh）、callout（edge＋wash、墨色文字，去掉 4 px 側邊條）、status（Outcome 框）、table（12 px 600 表頭、Control Edge 表頭線、無列 hover）、shell（48 px app strip）。Problem 的技術訊息與 request ID 收進「Details」展開（H-027 漸進揭露）。`CrashNotice` 改用 `Button`；`global-error` 自己載入全域樣式與記住的主題。
+- **已知的簡化與不做**：overlay 不做進場動畫；note 先不加圖示；app strip 沒有 Find、帳號與模式切換（尚無功能）。理由與檢查見 DESIGN.md 的 Simplicity 一節。

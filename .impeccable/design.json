@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "generatedAt": "2026-10-19T19:17:39Z",
   "title": "Design System: Geminus",
-  "status": "Awaiting the owner's review (H-013); not approved.",
+  "status": "Adopted by the owner as the design basis, kept simple (H-027, 2026-10-26); see DESIGN.md, Simplicity.",
   "source": "checks/evidence/2026-10-19-T-045/prototypes/workspace.html",
   "extensions": {
     "colorMeta": {

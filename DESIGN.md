@@ -415,7 +415,7 @@ Dark is the same timetable on a gray-black slate with chalk ink. Its neutrals ha
 
 The system is domain-neutral. The prototype's example data is the Software Delivery example pack (steps such as Code review, CI, QA test and Deploy; time in eight-hour working days; lead time and throughput). The P0 domain is now the electronics assembly/test line (H-016, ADR-025), and its screens are not designed yet. Examples quoted below come from the prototype and are marked as such. Step and resource names, the time unit, metric names and domain icons come from the DomainPack; no component may assume one domain.
 
-This record is taken from the shipped workspace prototype (`checks/evidence/2026-10-19-T-045/prototypes/workspace.html`, finish review disposition ship, 2026-10-19). **Status: the owner confirmed this system as the design basis for the app (H-027, 2026-10-26), with the added requirement that the interface stay simple and each view keep only the controls it needs; the re-skinned screenshot baselines still need the owner's confirmation (TEST-033).** Token keys are the system's own names. Each color has a `-dark` sibling; components reference the light key, which resolves to its sibling in dark. The app's current tokens (`apps/web/ui/tokens.css`) predate this direction and do not follow it yet; mapping these keys onto ADR-021's `--gm-*` custom properties is left to the app task.
+This record is taken from the shipped workspace prototype (`checks/evidence/2026-10-19-T-045/prototypes/workspace.html`, finish review disposition ship, 2026-10-19). **Status: the owner adopted this system as the design basis, on the condition that the interface stays simple (H-027, 2026-10-26: "UI 都照建議，但我希望介面要是簡潔的"; "只保留所有應該要包含的按鈕功能等"). The re-skinned screenshot baselines still need the owner's confirmation (TEST-033).** The Simplicity section below says how that is applied and checked; where this record and simplicity disagreed, the app takes the simpler choice, listed under Simplifications in the app. Token keys are the system's own names. Each color has a `-dark` sibling; components reference the light key, which resolves to its sibling in dark. The app's tokens (`apps/web/ui/tokens.css`) follow this record value for value under ADR-021's `--gm-*` custom properties (see Tokens in the app); `apps/web/tests/tokens.test.ts` fails when the two drift apart.
 
 **Key Characteristics:**
 - Two data inks with a fixed grammar: baseline dashed graphite, scenario solid deep green. The dash carries the difference; the hue confirms it.
@@ -425,6 +425,44 @@ This record is taken from the shipped workspace prototype (`checks/evidence/2026
 - A gray-black dark theme with zero-chroma neutrals; the default follows the system.
 - One palette and one line grammar across every projection of the model: the 2D canvas, the Marey strip, Compare, and the read-only 3D view when it lands.
 - Domain-neutral furniture: vocabulary, time unit, metrics and domain icons come from the DomainPack.
+
+## Simplicity (H-027)
+
+The owner adopted this system on one condition: the interface is simple and clean (簡潔), and it keeps only the buttons and controls each view needs. Five working principles make that checkable; the tests that enforce them are named after each.
+
+1. **One primary action per view.** At most one Graphite Ink button on any screen; every other action is a default, quiet or danger button, or sits in a menu. A what-if run and a version action never share a slot (The Action Beside Its Object Rule). Checked: `apps/web/tests/simplicity.test.tsx` (every draft state, the gallery, failures) and `apps/web-e2e/tests/simplicity.spec.ts` (every route, both languages, 390 and 1280 px).
+2. **Only the controls a view needs.** Every visible button, link or field does something that is built and tested today, or is a step of a flow that has shipped. No placeholder, "coming soon" or disabled-forever control; no two controls for the same action on one view. A control a spec or a test requires (skip link, language, theme, retry, sign-in recovery) stays; one that looks redundant but is required is kept and asked about, not removed. Checked: no disabled control on a product route, no two visible links to the same place and no two buttons with the same name (`simplicity.spec.ts`, `simplicity.test.tsx`; the one pair kept for the owner's decision is listed there).
+3. **Progressive disclosure.** What the current step does not need is collapsed or one click away: technical details and request IDs, legends, keyboard hints, provenance details. The app strip holds the product, the navigation, the language and the theme, and nothing else until a view has the function (no Find, account or mode switch yet). Checked by review; the problem view's technical details sit behind a "Details" disclosure (`app/_components/problem-view.tsx`).
+4. **No decoration.** No gradient, ornamental icon, extra border, heavy shadow or animation beyond this system's: borders are 1 px hairlines (no side stripes), shadows only on what floats (popover, dialog) plus the invalid-field ring, motion only as 180 ms state-colour transitions. The palette is the graphite and paper neutrals, the scenario green (also a passed check) and the warning and error signals; nothing else. Checked: `apps/web/tests/design-rules.test.ts` (no colour, size, spacing, corner, shadow or transition outside the tokens; no gradient or keyframes; no border over 1 px) and `tokens.test.ts` (no hue outside the three families; dark neutrals have no chroma).
+5. **Calm layout, plain words.** At most one secondary panel beside the main content; generous whitespace on one spacing scale; short, plain copy in English and Traditional Chinese, with no marketing language and no task IDs. Checked: the shell has one main region and no side panel (`layout.test.tsx`, `simplicity.spec.ts`); spacing only from the scale (`design-rules.test.ts`); copy by review (catalog changes are listed in `checks/T-045_VALIDATION.md`).
+
+### Simplifications in the app
+
+Where a component of this record was busier than the principles allow, the app is simpler, and the record keeps its original wording above for the screens still to be built:
+
+- **Language and theme are one form.** The strip uses the design system's Select for both, each labelled (12 px Label Graphite, hidden visually on a phone and still the control's name), instead of a language segment and a cycling theme button. One form for both choices; every option is named; the arrow keys open the list and only a choice changes the page (WCAG 3.2.2); the strip stays one 48 px row on a 390 px phone in both languages. Segmented controls remain the form for the mode switch and 2D / 3D when T-015 builds them.
+- **No entrance motion.** Overlays appear without the 4 px rise and fade; motion is only the 180 ms colour change of a control's state. The motion token is kept for the screens that need it (the playhead).
+- **No icons in notes yet.** A note's tone is its edge and wash, with Graphite Ink text and a heading; icons come with the authored icon set.
+- **No row hover in tables.** Rows show selection (Selected Row Tint) and focus (the ring), not the pointer; in dark, Control Edge on the Hover fill would fall below 3:1 for a checkbox in the row.
+- **Page headings are Headline, Title and Body.** A page's h1 is 18 px, h2 15 px, h3 13.5 px at 600; Display stays for full-screen Compare.
+- **An action's outcome is a framed status.** The in-page status message (ADR-021: no toast) is the Outcome frame: 1 px Graphite Ink, ink text, no colour.
+
+### Tokens in the app
+
+ADR-021 names every token `--gm-*` in `apps/web/ui/tokens.css`:
+
+| DESIGN.md | App token |
+|---|---|
+| `colors.<key>` and `<key>-dark` | `--gm-color-<key>`; dark values under `prefers-color-scheme: dark` (unless `data-theme="light"`) and under `:root[data-theme="dark"]` |
+| typography sizes 12, 13.5, 15, 18, 22 | `--gm-font-size-label`, `-body`, `-title`, `-headline`, `-display`, with `--gm-line-height-*` |
+| the family and figures | `--gm-font-sans` (`"Archivo Variable"`, `"Noto Sans TC Variable"`, then PingFang TC, Microsoft JhengHei, system-ui), `--gm-font-features` |
+| `spacing.<key>` | `--gm-space-<key>` |
+| `rounded.<key>` | `--gm-radius-<key>` |
+| Overlay shadow (light, dark) | `--gm-shadow-overlay` |
+| focus | `--gm-focus-ring` (2 px Graphite Ink) |
+| 180 ms `cubic-bezier(.2,.8,.2,1)` | `--gm-motion` |
+
+The theme follows the system unless the reader chose one; the choice is the cookie `geminus_theme` (`light` or `dark`; none means the system's), which the root layout renders as `<html data-theme>` so the first paint is already right, with no script and nothing for a CSP to allow. The fonts are self-hosted from `@fontsource-variable/archivo` and `@fontsource-variable/noto-sans-tc` (OFL-1.1, `docs/THIRD_PARTY_NOTICES.md`).
 
 ## Colors
 

@@ -41,7 +41,7 @@
   - 代價：所有 route 變成 dynamic rendering（`next build` 標 ƒ）。ADR-018 的 BFF session 本來就需要每個 request 渲染。
 - 切換：`LocaleSwitcher` 寫 cookie，再 `router.refresh()`，server components 以新語言重新渲染，不換 URL。
   - 依 Next.js 文件，`router.refresh()` 保留 client state，未存的 draft 編輯應保留。T-044 尚無可編輯 draft 的頁面，所以這點**未驗證**，留給 T-015 的 E2E。
-  - 每個語言名稱以其本身的語言顯示（`English`、`繁體中文`，`<option lang>`）。
+  - 每個語言名稱以其本身的語言顯示（`English`、`繁體中文`，各帶 `lang`）。T-045 re-skin 起切換器是 design system 的 `Select`（ADR-021），方向鍵只打開清單，選定才切換。
 
 ### API 錯誤與資料
 
