@@ -27,6 +27,8 @@ const jar = vi.hoisted(() => ({ locale: undefined as string | undefined }));
 vi.mock("next/navigation", async (orig) => ({ ...(await orig<typeof import("next/navigation")>()), useRouter: () => ({ push: () => {}, refresh: () => {} }) }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name === "geminus_locale" && jar.locale !== undefined ? { name, value: jar.locale } : undefined) }),
+  // The root layout reads the request's nonce (T-057); none here.
+  headers: async () => new Headers(),
 }));
 vi.setConfig({ testTimeout: 180_000 });
 beforeEach(() => {

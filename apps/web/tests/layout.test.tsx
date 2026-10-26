@@ -7,7 +7,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const jar = vi.hoisted(() => ({ locale: undefined as string | undefined, theme: undefined as string | undefined }));
+const jar = vi.hoisted(() => ({ locale: undefined as string | undefined, theme: undefined as string | undefined, nonce: undefined as string | undefined }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) => {
@@ -15,6 +15,8 @@ vi.mock("next/headers", () => ({
       return value === undefined ? undefined : { name, value };
     },
   }),
+  // The request header proxy.ts sets (T-057): the request's nonce.
+  headers: async () => new Headers(jar.nonce === undefined ? {} : { "x-nonce": jar.nonce }),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
 
@@ -32,6 +34,7 @@ async function shell(): Promise<string> {
 beforeEach(() => {
   jar.locale = undefined;
   jar.theme = undefined;
+  jar.nonce = undefined;
 });
 
 /** The text of the strip's Select for label: the visible value (the design system's Select, T-045). */
@@ -98,6 +101,26 @@ describe("server shell", () => {
     const out = await shell();
     expect(out.match(/<main\b/g)).toHaveLength(1);
     expect(out).not.toMatch(/<aside\b/);
+  });
+});
+
+// T-057: React Aria adds style elements of its own in the browser, which
+// the policy's style-src-elem allows only with the request's nonce; it reads
+// the nonce from this meta. Only a value in the nonce's shape is rendered.
+describe("the request's nonce", () => {
+  it("is handed to React Aria in a csp-nonce meta in the head", async () => {
+    jar.nonce = "AAECAwQFBgcICQoLDA0ODw==";
+    expect(await shell()).toMatch(/^<html lang="en"><head><meta name="csp-nonce" nonce="AAECAwQFBgcICQoLDA0ODw=="\/><\/head><body>/);
+    jar.theme = "dark";
+    jar.locale = "zh-Hant";
+    expect(await shell()).toMatch(/^<html lang="zh-Hant" data-theme="dark"><head><meta name="csp-nonce" nonce="AAECAwQFBgcICQoLDA0ODw=="\/><\/head>/);
+  });
+
+  it.each([undefined, "", "AAECAwQFBgcICQoLDA0ODw", 'AAECAwQFBgcICQoLDA0OD"==', 'x" onload="alert(1)', "AAECAwQFBgcICQoLDA0ODw==x"])("renders no meta for %j", async (value) => {
+    jar.nonce = value;
+    const out = await shell();
+    expect(out).not.toContain("csp-nonce");
+    expect(out).not.toContain("nonce=");
   });
 });
 

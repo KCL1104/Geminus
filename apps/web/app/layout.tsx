@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
 import { organizationCookie, parseOrganization } from "../lib/auth/organization";
 import { I18nProvider } from "../lib/i18n/provider";
 import { requestLocale } from "../lib/i18n/server";
 import { createTranslator } from "../lib/i18n/translate";
+import { isNonce, NONCE_HEADER } from "../lib/security/headers";
 import { hasSession } from "../lib/session/server";
 import { SESSION_COOKIE } from "../lib/session/session";
 import { requestTheme } from "../lib/theme/server";
@@ -29,6 +30,9 @@ export async function generateMetadata(): Promise<Metadata> {
 // session every route renders signed out. The locale comes from the
 // reader's remembered choice, else English (REQ-022); the theme from theirs,
 // else the system's (H-013), rendered on <html> so the first paint has it.
+// The request's CSP nonce (proxy.ts, T-057) goes in the csp-nonce meta,
+// where React Aria reads it for the style elements it adds in the browser;
+// Next.js puts it on its scripts itself.
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = await requestLocale();
   const theme = await requestTheme();
@@ -36,9 +40,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const sealed = jar.get(SESSION_COOKIE)?.value;
   const signedIn = sealed !== undefined && (await hasSession(sealed));
   const organization = parseOrganization(jar.get(organizationCookie)?.value);
+  const nonce = (await headers()).get(NONCE_HEADER);
   const t = createTranslator(locale);
   return (
     <html lang={locale} data-theme={themeAttribute(theme)}>
+      <head>{isNonce(nonce) && <meta name="csp-nonce" nonce={nonce} />}</head>
       <body>
         <I18nProvider locale={locale}>
           <UiProvider>

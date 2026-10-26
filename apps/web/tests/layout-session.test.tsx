@@ -15,6 +15,8 @@ const handed = vi.hoisted(() => ({ props: [] as Record<string, unknown>[] }));
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name in jar.cookies ? { name, value: jar.cookies[name] } : undefined) }),
+  // The request headers (T-057: the nonce proxy.ts sets; none here).
+  headers: async () => new Headers(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => {} }) }));
 vi.mock("../lib/session/server", () => ({

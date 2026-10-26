@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // next dev would otherwise write its own AGENTS.md into apps/web, next to
   // the repository's (ADR-021).
   agentRules: false,
+  // No X-Powered-By (T-057); the other security headers are proxy.ts's.
+  poweredByHeader: false,
   // The container image (apps/web/Dockerfile, T-039) runs Next's standalone
   // server: .next/standalone holds only the files the server needs, so the
   // image has no npm and no dev dependencies. Only the image's build sets
