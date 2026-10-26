@@ -1,0 +1,1088 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a758cdd6d77dba352/apps/web
+
+ ❯ tests/proposal-changes.test.ts (16 tests | 14 failed) 171ms
+   ❯ a proposal's changes in human terms (10)
+     × reads the burn-in batch change as two values of one step, without its tests 35ms
+     × reads a resource's capacity, a probability as a percentage and a waiting limit in the model's time unit 21ms
+     × reads one number of a step's time, and a whole distribution, in the time unit (a shape has none) 8ms
+     × reads a queue's capacity removed as no limit, and a name as text 19ms
+     × reads new steps with their canvas positions (a T-056 proposal), what each holds, and their connections by name, each new one with its ID 16ms
+     × names what a removal took by what it was right before, and reads later indices after the shift 19ms
+     × keeps a path it has no words for as the path and its JSON values 2ms
+     × shows a name as the text it is, markup and all 7ms
+   ❯ which entities a change names with their ID (6)
+     × a new resource with the existing one's name, and the ICT step moved onto it: both with their IDs (the review's case) 14ms
+     × a name that differs only by a trailing zero-width space reads the same: both with their IDs, the name as it is 3ms
+     × two existing resources with one name: a step moved from one to the other names both with their IDs, other entities without 10ms
+     × a rename that makes a name shared marks both entities, wherever they are named in the patch 1ms
+     × names steps the same way, and a step without a name by its ID 1ms
+     × a second connection between the same two steps carries its ID, and so does the one already there 13ms
+ ❯ tests/proposal-view.test.tsx (0 test)
+ ❯ tests/proposal-names.test.tsx (11 tests | 11 failed) 459ms
+   ❯ the diff never makes a real change read as no change (M1) (9)
+     × a new resource with the existing one's name and the ICT step moved onto it: each named with its ID 100ms
+     × says the same in Traditional Chinese, by the catalog's own {name} ({id}) 19ms
+     × a trailing zero-width space is shown, the IDs tell the two apart, and no raw U+200B reaches the DOM 8ms
+     × a rename with a right-to-left override: the control is shown, the name isolated, nothing raw in the DOM 19ms
+     × two resources with one name in the base: moving a step from one to the other names both by their IDs 8ms
+     × isolates every name and value in its own <bdi>, so none can reorder the words around it 9ms
+     × a value set again to what it was says so, instead of reading X → X 15ms
+     × values that differ but read the same when shown (a rounded percentage) are shown exactly 15ms
+     × text that differs only in how it is encoded (é or e and a combining accent) is shown as escaped JSON 24ms
+   ❯ on the page, the AI's names, assumptions and questions are text (L1) (2)
+     × a ready proposal: names in the diff, the summary, assumptions and expectations stay text; no link or markup appears 161ms
+     × a proposal that needs input: its questions stay text, controls in them shown 66ms
+ ❯ tests/proposal-shown.test.ts (0 test)
+ ❯ tests/lint-guards.test.ts (71 tests | 1 failed) 7726ms
+   ❯ markup from strings (1)
+     × rejects dangerouslySetInnerHTML in a component 35ms
+ ❯ tests/proposal-simplicity.test.tsx (33 tests | 2 failed) 25593ms
+   ❯ en: the proposal review keeps only the controls it needs (H-027) (16)
+     × the approve confirmation, the reject confirmation and each outcome 10881ms
+   ❯ zh-Hant: the proposal review keeps only the controls it needs (H-027) (16)
+     × the approve confirmation, the reject confirmation and each outcome 10488ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/proposal-shown.test.ts [ tests/proposal-shown.test.ts ]
+Error: Cannot find module '../features/ai-proposals/shown' imported from /home/user/Geminus/.claude/worktrees/agent-a758cdd6d77dba352/apps/web/tests/proposal-shown.test.ts
+ ❯ tests/proposal-shown.test.ts:11:1
+      9| // reads alike; the exact JSON Patch keeps its value and escapes them.
+     10| import { describe, expect, it } from "vitest";
+     11| import { asciiJson, nameKey, patchJson, readsAlike, visible } from "..…
+       | ^
+     12|
+     13| // Everything the DOM must never receive raw from data: controls (but …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/30]⎯
+
+ FAIL  tests/proposal-view.test.tsx [ tests/proposal-view.test.tsx ]
+Error: Failed to resolve import "../features/ai-proposals/shown" from "tests/proposal-view.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/user/Geminus/.claude/worktrees/agent-a758cdd6d77dba352/apps/web/tests/proposal-view.test.tsx:19:24
+  17 |  import { ChangeList } from "../features/ai-proposals/change-list";
+  18 |  import { ProposalRoute } from "../features/ai-proposals/proposal-view";
+  19 |  import { visible } from "../features/ai-proposals/shown";
+     |                           ^
+  20 |  import { createApiClient } from "../lib/api/client";
+  21 |  import { ApiProvider } from "../lib/api/provider";
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26632:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26702:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26668:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:20184:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/30]⎯
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 28 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lint-guards.test.ts > markup from strings > rejects dangerouslySetInnerHTML in a component
+AssertionError: expected [] to include 'react/no-danger'
+ ❯ tests/lint-guards.test.ts:56:123
+     54| describe("markup from strings", () => {
+     55|   it("rejects dangerouslySetInnerHTML in a component", async () => {
+     56|     expect(await ruleIds("export const D = ({ s }: { s: string }) => <…
+       |                                                                                                                           ^
+     57|     expect(await ruleIds("export const D = ({ s }: { s: string }) => <…
+     58|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > reads the burn-in batch change as two values of one step, without its tests
+AssertionError: expected [ { kind: 'changed', …(4) }, …(1) ] to deeply equal [ { kind: 'changed', …(4) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -14,16 +14,13 @@
+        "key": "batch",
+        "which": "min_size",
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "burn_in",
+        "kind": "step",
+-       "ref": {
+-         "id": "burn_in",
+        "name": "Burn-in",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+    {
+      "after": {
+@@ -40,15 +37,12 @@
+        "key": "batch",
+        "which": "max_size",
+      },
+      "kind": "changed",
+      "subject": {
+-       "kind": "step",
+-       "ref": {
+        "id": "burn_in",
++       "kind": "step",
+        "name": "Burn-in",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+  ]
+
+ ❯ tests/proposal-changes.test.ts:35:9
+     33|       { op: "replace", path: `/nodes/${i}/batch/min_size`, value: 48 },
+     34|       { op: "replace", path: `/nodes/${i}/batch/max_size`, value: 48 },
+     35|     ])).toEqual([
+       |         ^
+     36|       { kind: "changed", subject: step("burn_in", "Burn-in", "process"…
+     37|       { kind: "changed", subject: step("burn_in", "Burn-in", "process"…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > reads a resource's capacity, a probability as a percentage and a waiting limit in the model's time unit
+AssertionError: expected [ { kind: 'changed', …(4) }, …(2) ] to deeply equal [ { kind: 'changed', …(4) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -13,16 +13,13 @@
+      "field": {
+        "key": "capacity",
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "ict_tester",
+        "kind": "resource",
+-       "ref": {
+-         "id": "ict_tester",
+        "name": "ICT tester",
+-         "showId": false,
+-       },
+      },
+    },
+    {
+      "after": {
+        "format": "percent",
+@@ -37,25 +34,16 @@
+      "field": {
+        "key": "probability",
+      },
+      "kind": "changed",
+      "subject": {
+-       "from": {
+-         "id": "ict_result",
+-         "name": "ICT result",
+-         "showId": false,
+-       },
++       "from": "ICT result",
+        "id": "ict_result_q_burn_in",
+        "kind": "connection",
+-       "showId": false,
+-       "to": {
+-         "id": "q_burn_in",
+-         "name": "Before burn-in",
+-         "showId": false,
++       "to": "Before burn-in",
+      },
+    },
+-   },
+    {
+      "after": {
+        "kind": "absent",
+      },
+      "before": {
+@@ -67,15 +55,12 @@
+        "key": "batch",
+        "which": "max_wait",
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "burn_in",
+        "kind": "step",
+-       "ref": {
+-         "id": "burn_in",
+        "name": "Burn-in",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+  ]
+
+ ❯ tests/proposal-changes.test.ts:52:9
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > reads one number of a step's time, and a whole distribution, in the time unit (a shape has none)
+AssertionError: expected [ { kind: 'changed', …(4) }, …(2) ] to deeply equal [ { kind: 'changed', …(4) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -15,16 +15,13 @@
+        "of": "process",
+        "param": "mode",
+      },
+      "kind": "changed",
+      "subject": {
+-       "kind": "step",
+-       "ref": {
+        "id": "ict",
++       "kind": "step",
+        "name": "ICT",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+    {
+      "after": {
+@@ -51,16 +48,13 @@
+        "of": "process",
+        "param": null,
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "smt",
+        "kind": "step",
+-       "ref": {
+-         "id": "smt",
+        "name": "SMT",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+    {
+      "after": {
+@@ -78,15 +72,12 @@
+        "of": "process",
+        "param": "shape",
+      },
+      "kind": "changed",
+      "subject": {
+-       "kind": "step",
+-       "ref": {
+        "id": "smt",
++       "kind": "step",
+        "name": "SMT",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+  ]
+
+ ❯ tests/proposal-changes.test.ts:68:9
+     66|       { op: "replace", path: `/nodes/${smt}/service_time/distribution`…
+     67|       { op: "replace", path: `/nodes/${smt}/service_time/distribution/…
+     68|     ])).toEqual([
+       |         ^
+     69|       { kind: "changed", subject: step("ict", "ICT", "process"), field…
+     70|       {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > reads a queue's capacity removed as no limit, and a name as text
+AssertionError: expected [ { kind: 'changed', …(4) }, …(2) ] to deeply equal [ { kind: 'changed', …(4) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -11,16 +11,13 @@
+      "field": {
+        "key": "capacity",
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "q_aoi",
+        "kind": "step",
+-       "ref": {
+-         "id": "q_aoi",
+        "name": "Before AOI",
+-         "showId": false,
+-       },
+        "type": "queue",
+      },
+    },
+    {
+      "after": {
+@@ -34,16 +31,13 @@
+      "field": {
+        "key": "name",
+      },
+      "kind": "changed",
+      "subject": {
+-       "kind": "step",
+-       "ref": {
+        "id": "q_aoi",
++       "kind": "step",
+        "name": "Before AOI",
+-         "showId": false,
+-       },
+        "type": "queue",
+      },
+    },
+    {
+      "after": {
+
+ ❯ tests/proposal-changes.test.ts:86:9
+     84|       { op: "replace", path: `/nodes/${q}/name`, value: "AOI buffer" },
+     85|       { op: "replace", path: "/name", value: "Line 2" },
+     86|     ])).toEqual([
+       |         ^
+     87|       { kind: "changed", subject: step("q_aoi", "Before AOI", "queue")…
+     88|       { kind: "changed", subject: step("q_aoi", "Before AOI", "queue")…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > reads new steps with their canvas positions (a T-056 proposal), what each holds, and their connections by name, each new one with its ID
+AssertionError: expected [ { kind: 'added', …(3) }, …(5) ] to deeply equal [ { kind: 'added', …(3) }, …(5) ]
+
+- Expected
++ Received
+
+@@ -17,15 +17,11 @@
+          },
+        },
+        {
+          "field": {
+            "key": "uses",
+-           "resource": {
+-             "id": "res_01xray",
+-             "name": "X-ray machine",
+-             "showId": true,
+-           },
++           "resource": "X-ray machine",
+          },
+          "value": {
+            "format": "plain",
+            "kind": "number",
+            "value": 1,
+@@ -55,39 +51,27 @@
+        },
+      ],
+      "kind": "added",
+      "placed": true,
+      "subject": {
+-       "kind": "step",
+-       "ref": {
+        "id": "node_01xray",
++       "kind": "step",
+        "name": "X-ray",
+-         "showId": true,
+-       },
+        "type": "process",
+      },
+    },
+    {
+      "holds": [],
+      "kind": "added",
+      "placed": false,
+      "subject": {
+-       "from": {
+-         "id": "aoi",
+-         "name": "AOI",
+-         "showId": false,
+-       },
++       "from": "AOI",
+        "id": "flow_01a",
+        "kind": "connection",
+-       "showId": false,
+-       "to": {
+-         "id": "node_01xray",
+-         "name": "X-ray",
+-         "showId": true,
++       "to": "X-ray",
+      },
+    },
+-   },
+    {
+      "holds": [
+        {
+          "field": {
+            "key": "capacity",
+@@ -100,18 +84,15 @@
+        },
+      ],
+      "kind": "added",
+      "placed": false,
+      "subject": {
++       "id": "res_01xray",
+        "kind": "resource",
+-       "ref": {
+-         "id": "res_01xray",
+        "name": "X-ray machine",
+-         "showId": true,
+      },
+    },
+-   },
+    {
+      "holds": [
+        {
+          "field": {
+            "key": "capacity",
+@@ -122,16 +103,13 @@
+        },
+      ],
+      "kind": "added",
+      "placed": false,
+      "subject": {
++       "id": "node_01q",
+        "kind": "step",
+-       "ref": {
+-         "id": "node_01q",
+        "name": "Before X-ray",
+-         "showId": true,
+-       },
+        "type": "queue",
+      },
+    },
+    {
+      "holds": [
+@@ -147,31 +125,18 @@
+        },
+      ],
+      "kind": "added",
+      "placed": false,
+      "subject": {
+-       "from": {
+-         "id": "aoi_result",
+-         "name": "AOI result",
+-         "showId": false,
+-       },
++       "from": "AOI result",
+        "id": "flow_01b",
+        "kind": "connection",
+-       "showId": false,
+-       "to": {
+-         "id": "node_01q",
+-         "name": "Before X-ray",
+-         "showId": true,
+-       },
++       "to": "Before X-ray",
+      },
+    },
+    {
+      "kind": "layout",
+      "steps": [
+-       {
+-         "id": "smt",
+-         "name": "SMT",
+-         "showId": false,
+-       },
++       "SMT",
+      ],
+    },
+  ]
+
+ ❯ tests/proposal-changes.test.ts:103:32
+    101|       { op: "add", path: "/views/2d/positions/smt", value: { x: 10, y:…
+    102|     ];
+    103|     expect(described(changes)).toEqual([
+       |                                ^
+    104|       {
+    105|         kind: "added", subject: step("node_01xray", "X-ray", "process"…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > names what a removal took by what it was right before, and reads later indices after the shift
+AssertionError: expected [ { kind: 'removed', …(1) }, …(2) ] to deeply equal [ { kind: 'removed', …(1) }, …(2) ]
+
+- Expected
++ Received
+
+@@ -1,15 +1,12 @@
+  [
+    {
+      "kind": "removed",
+      "subject": {
++       "id": "aoi_defect",
+        "kind": "step",
+-       "ref": {
+-         "id": "aoi_defect",
+        "name": "AOI defect",
+-         "showId": false,
+-       },
+        "type": "failure",
+      },
+    },
+    {
+      "after": {
+@@ -23,33 +20,21 @@
+      "field": {
+        "key": "name",
+      },
+      "kind": "changed",
+      "subject": {
+-       "kind": "step",
+-       "ref": {
+        "id": "q_touchup",
++       "kind": "step",
+        "name": "Before touch-up",
+-         "showId": false,
+-       },
+        "type": "queue",
+      },
+    },
+    {
+      "kind": "removed",
+      "subject": {
+-       "from": {
+-         "id": "aoi_result",
+-         "name": "AOI result",
+-         "showId": false,
+-       },
++       "from": "AOI result",
+        "id": "aoi_result_aoi_defect",
+        "kind": "connection",
+-       "showId": false,
+-       "to": {
+-         "id": "aoi_defect",
+-         "name": "AOI defect",
+-         "showId": false,
+-       },
++       "to": "AOI defect",
+      },
+    },
+  ]
+
+ ❯ tests/proposal-changes.test.ts:133:17
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > keeps a path it has no words for as the path and its JSON values
+AssertionError: expected [ { kind: 'changed', …(4) } ] to deeply equal [ { kind: 'changed', …(4) } ]
+
+- Expected
++ Received
+
+@@ -13,15 +13,12 @@
+        "key": "path",
+        "path": "/domain_attributes",
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "smt",
+        "kind": "step",
+-       "ref": {
+-         "id": "smt",
+        "name": "SMT",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+  ]
+
+ ❯ tests/proposal-changes.test.ts:147:108
+    145|     const smt = at("smt");
+    146|     // (SMT has no domain attributes yet: the member is added, as JSON…
+    147|     expect(described([{ op: "add", path: `/nodes/${smt}/domain_attribu…
+       |                                                                                                            ^
+    148|       { kind: "changed", subject: step("smt", "SMT", "process"), field…
+    149|     ]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > shows a name as the text it is, markup and all
+AssertionError: expected { kind: 'added', …(3) } to deeply equal { kind: 'added', …(3) }
+
+- Expected
++ Received
+
+@@ -17,14 +17,11 @@
+      },
+    ],
+    "kind": "added",
+    "placed": false,
+    "subject": {
++     "id": "node_01h",
+      "kind": "step",
+-     "ref": {
+-       "id": "node_01h",
+      "name": "<img src=x onerror=\"alert(1)\"> [approve](https://evil.example)",
+-       "showId": true,
+-     },
+      "type": "delay",
+    },
+  }
+
+ ❯ tests/proposal-changes.test.ts:155:15
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > which entities a change names with their ID > a new resource with the existing one's name, and the ICT step moved onto it: both with their IDs (the review's case)
+AssertionError: expected [ { kind: 'added', …(3) }, …(1) ] to deeply equal [ { kind: 'added', …(3) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -13,45 +13,31 @@
+        },
+      ],
+      "kind": "added",
+      "placed": false,
+      "subject": {
+-       "kind": "resource",
+-       "ref": {
+        "id": "resource_01m4ydqk00e1ectr0n1c5x0009",
++       "kind": "resource",
+        "name": "ICT tester",
+-         "showId": true,
+      },
+    },
+-   },
+    {
+      "after": {
+-       "kind": "ref",
+-       "ref": {
+-         "id": "resource_01m4ydqk00e1ectr0n1c5x0009",
+-         "name": "ICT tester",
+-         "showId": true,
+-       },
++       "kind": "text",
++       "value": "ICT tester",
+      },
+      "before": {
+-       "kind": "ref",
+-       "ref": {
+-         "id": "ict_tester",
+-         "name": "ICT tester",
+-         "showId": true,
+-       },
++       "kind": "text",
++       "value": "ICT tester",
+      },
+      "field": {
+        "key": "usesResource",
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "ict",
+        "kind": "step",
+-       "ref": {
+-         "id": "ict",
+        "name": "ICT",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+  ]
+
+ ❯ tests/proposal-changes.test.ts:188:46
+    186|
+    187|   it("a new resource with the existing one's name, and the ICT step mo…
+    188|     expect(described(moveIct("ICT tester"))).toEqual([
+       |                                              ^
+    189|       { kind: "added", subject: { kind: "resource", ref: ref(NEW, "ICT…
+    190|       {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > which entities a change names with their ID > a name that differs only by a trailing zero-width space reads the same: both with their IDs, the name as it is
+AssertionError: expected { kind: 'changed', …(4) } to match object { before: { kind: 'ref', …(1) }, …(1) }
+(10 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "after": {
+-     "kind": "ref",
+-     "ref": {
+-       "id": "resource_01m4ydqk00e1ectr0n1c5x0009",
+-       "name": "ICT tester​",
+-       "showId": true,
+-     },
++     "kind": "text",
+    },
+    "before": {
+-     "kind": "ref",
+-     "ref": {
+-       "id": "ict_tester",
+-       "name": "ICT tester",
+-       "showId": true,
+-     },
++     "kind": "text",
+    },
+  }
+
+ ❯ tests/proposal-changes.test.ts:199:19
+    197|   it("a name that differs only by a trailing zero-width space reads th…
+    198|     const [, moved] = described(moveIct("ICT tester​"));
+    199|     expect(moved).toMatchObject({ before: { kind: "ref", ref: ref("ict…
+       |                   ^
+    200|   });
+    201|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > which entities a change names with their ID > two existing resources with one name: a step moved from one to the other names both with their IDs, other entities without
+AssertionError: expected [ { kind: 'changed', …(4) }, …(1) ] to deeply equal [ { kind: 'changed', …(4) }, …(1) ]
+
+- Expected
++ Received
+
+@@ -1,34 +1,23 @@
+  [
+    {
+      "after": {
+-       "kind": "ref",
+-       "ref": {
+-         "id": "debug_operator",
+-         "name": "Operator",
+-         "showId": true,
+-       },
++       "kind": "text",
++       "value": "Operator",
+      },
+      "before": {
+-       "kind": "ref",
+-       "ref": {
+-         "id": "pack_operator",
+-         "name": "Operator",
+-         "showId": true,
++       "kind": "text",
++       "value": "Operator",
+      },
+-     },
+      "field": {
+        "key": "usesResource",
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "pack",
+        "kind": "step",
+-       "ref": {
+-         "id": "pack",
+        "name": "Pack and ship",
+-         "showId": false,
+-       },
+        "type": "process",
+      },
+    },
+    {
+      "after": {
+@@ -44,14 +33,11 @@
+      "field": {
+        "key": "capacity",
+      },
+      "kind": "changed",
+      "subject": {
++       "id": "ict_tester",
+        "kind": "resource",
+-       "ref": {
+-         "id": "ict_tester",
+        "name": "ICT tester",
+-         "showId": false,
+-       },
+      },
+    },
+  ]
+
+ ❯ tests/proposal-changes.test.ts:211:31
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > which entities a change names with their ID > a rename that makes a name shared marks both entities, wherever they are named in the patch
+AssertionError: expected { kind: 'changed', …(4) } to match object { subject: { …(2) }, …(2) }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+@@ -7,12 +7,7 @@
+      "kind": "text",
+      "value": "AOI machine",
+    },
+    "subject": {
+      "kind": "resource",
+-     "ref": {
+-       "id": "aoi_machine",
+-       "name": "AOI machine",
+-       "showId": true,
+-     },
+    },
+  }
+
+ ❯ tests/proposal-changes.test.ts:222:20
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > which entities a change names with their ID > names steps the same way, and a step without a name by its ID
+AssertionError: expected { kind: 'added', …(3) } to match object { kind: 'added', subject: { …(3) } }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "kind": "added",
+    "subject": {
+      "kind": "step",
+-     "ref": {
+-       "id": "node_01dup",
+-       "name": "ICT",
+-       "showId": true,
+-     },
+      "type": "delay",
+    },
+  }
+
+ ❯ tests/proposal-changes.test.ts:232:20
+    230|       { op: "add", path: "/nodes/-", value: { id: "node_01anon", type:…
+    231|     ]);
+    232|     expect(out[0]).toMatchObject({ kind: "added", subject: step("node_…
+       |                    ^
+    233|     expect(out[1]).toMatchObject({ kind: "added", subject: connection(…
+    234|     expect(out[2]).toMatchObject({ kind: "added", subject: step("node_…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/30]⎯
+
+ FAIL  tests/proposal-changes.test.ts > which entities a change names with their ID > a second connection between the same two steps carries its ID, and so does the one already there
+AssertionError: expected { kind: 'added', …(3) } to match object { subject: { …(5) } }
+(3 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "subject": {
+-     "from": {
+-       "id": "ict_result",
+-       "name": "ICT result",
+-       "showId": false,
+-     },
++     "from": "ICT result",
+      "id": "flow_01twin",
+      "kind": "connection",
+-     "showId": true,
+-     "to": {
+-       "id": "q_burn_in",
+-       "name": "Before burn-in",
+-       "showId": false,
+-     },
++     "to": "Before burn-in",
+    },
+  }
+
+ ❯ tests/proposal-changes.test.ts:243:20
+    241|       { op: "replace", path: `/flows/${f}/routing/probability`, value:…
+    242|     ]);
+    243|     expect(out[0]).toMatchObject({ subject: connection("flow_01twin", …
+       |                    ^
+    244|     expect(out[1]).toMatchObject({ subject: connection("ict_result_q_b…
+    245|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > a new resource with the existing one's name and the ICT step moved onto it: each named with its ID
+Error: message proposal.named needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-names.test.tsx:74:80
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > says the same in Traditional Chinese, by the catalog's own {name} ({id})
+Error: message proposal.named needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ quoted tests/proposal-names.test.tsx:68:124
+ ❯ tests/proposal-names.test.tsx:84:118
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > a trailing zero-width space is shown, the IDs tell the two apart, and no raw U+200B reaches the DOM
+Error: message proposal.named needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-names.test.tsx:90:80
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > a rename with a right-to-left override: the control is shown, the name isolated, nothing raw in the DOM
+AssertionError: expected [ Array(1) ] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+  [
+-   "Burn-in Name: “Burn-in” → “Burn-in⟨U+202E⟩84 → 02”",
++   "Burn-in Name: “Burn-in” → “Burn-in‮84 → 02”",
+  ]
+
+ ❯ tests/proposal-names.test.tsx:101:23
+     99|   it("a rename with a right-to-left override: the control is shown, th…
+    100|     const el = await list([{ op: "replace", path: `/nodes/${at("burn_i…
+    101|     expect(lines(el)).toEqual([`Burn-in ${en("proposal.change.value", …
+       |                       ^
+    102|     expect(isolated(el)).toContain("Burn-in⟨U+202E⟩84 → 02");
+    103|     expect(rawCharacters(el)).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > two resources with one name in the base: moving a step from one to the other names both by their IDs
+Error: message proposal.named needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ quoted tests/proposal-names.test.tsx:68:124
+ ❯ tests/proposal-names.test.tsx:112:129
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > isolates every name and value in its own <bdi>, so none can reorder the words around it
+AssertionError: expected [] to deeply equal [ 'Burn-in', 'Burn-in', 'צריבה', …(4) ]
+
+- Expected
++ Received
+
+- [
+-   "Burn-in",
+-   "Burn-in",
+-   "צריבה",
+-   "ICT result",
+-   "Before burn-in",
+-   "/metadata/owner",
+-   "\"שורה 2\"",
+- ]
++ []
+
+ ❯ tests/proposal-names.test.tsx:122:26
+    120|     ]);
+    121|     // The step, its old and new name; the connection's two ends; the …
+    122|     expect(isolated(el)).toEqual(["Burn-in", "Burn-in", "צריבה", "ICT …
+       |                          ^
+    123|   });
+    124|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > a value set again to what it was says so, instead of reading X → X
+Error: message proposal.change.same needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-names.test.tsx:127:46
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > values that differ but read the same when shown (a rounded percentage) are shown exactly
+Error: message proposal.change.exact needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-names.test.tsx:132:117
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > the diff never makes a real change read as no change (M1) > text that differs only in how it is encoded (é or e and a combining accent) is shown as escaped JSON
+Error: message proposal.change.exact needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-names.test.tsx:139:40
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > on the page, the AI's names, assumptions and questions are text (L1) > a ready proposal: names in the diff, the summary, assumptions and expectations stay text; no link or markup appears
+Error: message proposal.named needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-names.test.tsx:188:80
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/30]⎯
+
+ FAIL  tests/proposal-names.test.tsx > on the page, the AI's names, assumptions and questions are text (L1) > a proposal that needs input: its questions stay text, controls in them shown
+AssertionError: expected [ …(2) ] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+  [
+-   "<img src=x onerror=\"alert(1)\"><a href=\"javascript:alert(1)\">Approve</a> <script>alert(2)</script> [ok](javascript:alert(3)) https://evil.example/x",
+-   "Which batch⟨U+202E⟩?84 ro 02",
++   "Is burn-in the step whose batches should change?",
++   "Should every batch hold the same number of boards, or anything between a smallest and a largest size?",
+  ]
+
+ ❯ tests/proposal-names.test.tsx:202:117
+    200|     const { el } = await page("needs_input", { proposal: { questions: …
+    201|     const article = el.querySelector("article")!;
+    202|     expect([...el.querySelector('[data-section="questions"]')!.querySe…
+       |                                                                                                                     ^
+    203|     expect(article.querySelectorAll(hostileElements)).toHaveLength(0);
+    204|     expect(article.querySelectorAll("a")).toHaveLength(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/30]⎯
+
+ FAIL  tests/proposal-simplicity.test.tsx > en: the proposal review keeps only the controls it needs (H-027) > the approve confirmation, the reject confirmation and each outcome
+ FAIL  tests/proposal-simplicity.test.tsx > zh-Hant: the proposal review keeps only the controls it needs (H-027) > the approve confirmation, the reject confirmation and each outcome
+Error: timed out waiting for the refusal (422)
+ ❯ waitFor tests/proposal-simplicity.test.tsx:80:35
+     78|   const until = Date.now() + ms;
+     79|   while (!check()) {
+     80|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     81|     await act(async () => {
+     82|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/proposal-simplicity.test.tsx:188:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/30]⎯
+
+
+ Test Files  6 failed (6)
+      Tests  28 failed | 103 passed (131)
+   Start at  18:06:11
+   Duration  31.59s (tests 75%, import 10%, environment 8%, transform 7%)
+
+exit 1

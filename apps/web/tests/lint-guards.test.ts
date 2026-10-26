@@ -48,6 +48,16 @@ describe("eslint-config-next plugins run under the pinned ESLint", () => {
   });
 });
 
+// Data is shown as text, never parsed as markup (T-031 review round 1 L1:
+// the AI's names and words reach the page; no component may hand any
+// string to the HTML parser).
+describe("markup from strings", () => {
+  it("rejects dangerouslySetInnerHTML in a component", async () => {
+    expect(await ruleIds("export const D = ({ s }: { s: string }) => <span dangerouslySetInnerHTML={{ __html: s }} />;")).toContain("react/no-danger");
+    expect(await ruleIds("export const D = ({ s }: { s: string }) => <span>{s}</span>;")).not.toContain("react/no-danger");
+  });
+});
+
 // REQ-022: user-visible text comes from the message catalog.
 // The rules that keep user-visible text in the catalog.
 const textRules = ["react/jsx-no-literals", "no-restricted-syntax", "no-restricted-globals", "no-restricted-properties"];

@@ -10,35 +10,48 @@
 // safely (an op that does not apply to the base, a prototype member) is
 // not guessed at: the caller falls back to the exact JSON Patch.
 //
+// A name in the patch is the AI's (review round 1, M1), so a name alone
+// tells an entity apart only when no other entity of its kind reads the
+// same (shown.ts nameKey). Each entity a change names is a Ref: its ID, its
+// name, and whether its ID goes beside the name, because another entity of
+// its kind reads the same in the base, as the patch leaves the model or in
+// between, or because the patch adds it. A connection has no name: it is
+// told by its two ends, and by its ID when another connection has the same
+// two ends.
+//
 // A step added with a canvas position (as a photo proposal, T-056, adds
 // them) is one "added" line that says it is placed; positions of steps
 // that were there before are one "layout" line.
 import type { Distribution, JsonPatch, ModelIR } from "../../lib/contracts";
 import type { NodeType } from "../model-editor/edits";
 import { applyPatch, parsePointer } from "../model-editor/patch";
+import { nameKey } from "./shown";
 
 type Op = JsonPatch[number];
-type IRNode = ModelIR["nodes"][number];
 
 export type Param = "value" | "mean" | "min" | "mode" | "max" | "cv" | "shape" | "scale";
 
-/** How a value reads: a number (plain, a percentage, or in the model's time unit), text, a distribution, or JSON. */
+/** An entity as a change names it: its ID, its name (else its ID), and whether its ID goes beside the name. */
+export type Ref = { id: string; name: string; showId: boolean };
+
+/** How a value reads: a number (plain, a percentage, or in the model's time unit), text, a distribution, another entity, or JSON. */
 export type Value =
   | { kind: "absent" }
   | { kind: "number"; value: number; format: "plain" | "percent" | "time" }
   | { kind: "text"; value: string }
   | { kind: "distribution"; value: Distribution; time: boolean }
+  | { kind: "ref"; ref: Ref }
   | { kind: "json"; value: unknown };
 
 /** What a change is about, by the name the model gives it. */
 export type Subject =
-  | { kind: "step"; id: string; name: string; type: NodeType }
-  | { kind: "connection"; id: string; from: string; to: string }
-  | { kind: "resource"; id: string; name: string }
-  | { kind: "calendar"; id: string; name: string }
-  | { kind: "item"; id: string; name: string }
+  | { kind: "step"; ref: Ref; type: NodeType }
+  | { kind: "connection"; id: string; from: Ref; to: Ref; showId: boolean }
+  | { kind: "resource"; ref: Ref }
+  | { kind: "calendar"; ref: Ref }
+  | { kind: "item"; ref: Ref }
   | { kind: "metric"; id: string }
-  | { kind: "check"; step: string }
+  | { kind: "check"; step: Ref }
   | { kind: "model" };
 
 export type TimeOf = "process" | "delay" | "source" | "time_to_failure" | "time_to_repair" | "changeover" | "changeoverDefault";
@@ -46,9 +59,9 @@ export type TimeOf = "process" | "delay" | "source" | "time_to_failure" | "time_
 /** Which value of the subject changes. */
 export type Field =
   | { key: "name" | "capacity" | "probability" | "from" | "to" | "requires" | "usesResource" | "outcome" | "reason" | "entity" | "calendar" | "shifts" | "exceptions" | "breakdowns" | "whole" }
-  | { key: "time"; of: TimeOf; param: Param | null; from?: string; to?: string }
+  | { key: "time"; of: TimeOf; param: Param | null; from?: Ref; to?: Ref }
   | { key: "batch"; which: "min_size" | "max_size" | "max_wait" | null }
-  | { key: "uses"; resource: string }
+  | { key: "uses"; resource: Ref }
   | { key: "shiftCapacity"; label: string }
   | { key: "releaseRate" | "releaseQuantity"; n: number }
   | { key: "path"; path: string };
@@ -61,7 +74,7 @@ export type Change =
   | { kind: "added"; subject: Subject; placed: boolean; holds: Holds[] }
   | { kind: "removed"; subject: Subject }
   | { kind: "changed"; subject: Subject; field: Field; before: Value; after: Value }
-  | { kind: "layout"; steps: string[] }
+  | { kind: "layout"; steps: Ref[] }
   | { kind: "other"; path: string; before: Value; after: Value };
 
 export type Described = { ok: true; changes: Change[] } | { ok: false };
@@ -86,6 +99,18 @@ function valueAt(doc: unknown, tokens: readonly string[]): unknown {
 
 const isDistribution = (v: unknown): v is Distribution => isRecord(v) && typeof v.type === "string" && DISTRIBUTIONS.has(v.type);
 
+/** The JSON value a Value reads (an entity's is its ID). */
+export function rawOf(v: Value): unknown {
+  switch (v.kind) {
+    case "absent":
+      return undefined;
+    case "ref":
+      return v.ref.id;
+    default:
+      return v.value;
+  }
+}
+
 /** A value as it reads, given how its field reads numbers. */
 function read(v: unknown, format: "plain" | "percent" | "time" = "plain"): Value {
   if (v === undefined) return { kind: "absent" };
@@ -95,29 +120,82 @@ function read(v: unknown, format: "plain" | "percent" | "time" = "plain"): Value
   return { kind: "json", value: v };
 }
 
-const stepName = (n: IRNode) => n.name ?? n.id;
+/** The catalogs whose entities have names. */
+type Named = "nodes" | "resources" | "calendars" | "entity_types";
+const NAMED: readonly Named[] = ["nodes", "resources", "calendars", "entity_types"];
 
-/** Names by ID, looked up first in the model as it is now, then as the patch leaves it, then as the base had it. */
-function namer(...docs: ModelIR[]) {
-  const find = <T extends { id: string }>(pick: (d: ModelIR) => readonly T[] | undefined, id: string) => {
+const idOf = (e: unknown): string | null => (isRecord(e) && typeof e.id === "string" ? e.id : null);
+/** An entity's name as the model gives it, else its ID. */
+const nameOf = (e: Record<string, unknown>, id: string) => (typeof e.name === "string" ? e.name : id);
+const entities = (d: ModelIR, catalog: string): unknown[] => {
+  const list = (d as unknown as Record<string, unknown>)[catalog];
+  return Array.isArray(list) ? list : [];
+};
+const add = (m: Map<string, Set<string>>, key: string, id: string) => m.set(key, (m.get(key) ?? new Set()).add(id));
+
+/**
+ * Which IDs a change shows beside a name, over every state of the model the
+ * patch passes through (the base, then after each op): an entity whose name
+ * reads the same as another one's of its kind, one the patch adds, and a
+ * connection whose two ends another connection has too.
+ */
+function shownIds(docs: readonly ModelIR[]) {
+  const shown = new Set<string>();
+  const shared = (catalog: string, groups: Map<string, Set<string>>) => {
+    for (const ids of groups.values()) if (ids.size > 1) for (const id of ids) shown.add(`${catalog} ${id}`);
+  };
+  for (const catalog of NAMED) {
+    const before = new Set(entities(docs[0]!, catalog).map(idOf));
+    const byName = new Map<string, Set<string>>();
     for (const d of docs) {
-      const x = (pick(d) ?? []).find((e) => isRecord(e) && e.id === id);
-      if (x !== undefined) return x;
+      for (const e of entities(d, catalog)) {
+        const id = idOf(e);
+        if (id === null) continue;
+        if (!before.has(id)) shown.add(`${catalog} ${id}`);
+        add(byName, nameKey(nameOf(e as Record<string, unknown>, id)), id);
+      }
     }
-    return undefined;
+    shared(catalog, byName);
+  }
+  const byEnds = new Map<string, Set<string>>();
+  for (const d of docs) {
+    for (const f of entities(d, "flows")) {
+      const id = idOf(f);
+      if (id !== null) add(byEnds, JSON.stringify([(f as Record<string, unknown>).from, (f as Record<string, unknown>).to]), id);
+    }
+  }
+  shared("flows", byEnds);
+  return (catalog: Named | "flows", id: string) => shown.has(`${catalog} ${id}`);
+}
+type ShownIds = ReturnType<typeof shownIds>;
+
+/** Entities by ID, looked up first in the model as it is now, then as the patch leaves it, then as the base had it. */
+function namer(shown: ShownIds, ...docs: ModelIR[]) {
+  const ref = (catalog: Named, id: string): Ref => {
+    for (const d of docs) {
+      const e = entities(d, catalog).find((x) => idOf(x) === id);
+      if (e !== undefined) return { id, name: nameOf(e as Record<string, unknown>, id), showId: shown(catalog, id) };
+    }
+    return { id, name: id, showId: shown(catalog, id) };
   };
   return {
-    step: (id: string) => {
-      const n = find((d) => d.nodes, id);
-      return n ? stepName(n) : id;
+    shown,
+    /** An element as the op's model or value has it. */
+    of: (catalog: Named, element: Record<string, unknown>): Ref => {
+      const id = typeof element.id === "string" ? element.id : "";
+      return { id, name: nameOf(element, id), showId: shown(catalog, id) };
     },
-    type: (id: string): string | undefined => find((d) => d.nodes, id)?.type,
-    resource: (id: string) => find((d) => d.resources, id)?.name ?? id,
-    entity: (id: string) => find((d) => d.entity_types, id)?.name ?? id,
-    calendar: (id: string) => {
-      const c = find((d) => d.calendars, id);
-      return c?.name ?? id;
+    step: (id: string) => ref("nodes", id),
+    type: (id: string): string | undefined => {
+      for (const d of docs) {
+        const n = d.nodes.find((x) => idOf(x) === id);
+        if (n !== undefined) return n.type;
+      }
+      return undefined;
     },
+    resource: (id: string) => ref("resources", id),
+    entity: (id: string) => ref("entity_types", id),
+    calendar: (id: string) => ref("calendars", id),
   };
 }
 type Namer = ReturnType<typeof namer>;
@@ -127,15 +205,15 @@ function subjectOf(catalog: string, element: unknown, names: Namer): Subject | n
   const id = typeof element.id === "string" ? element.id : "";
   switch (catalog) {
     case "nodes":
-      return { kind: "step", id, name: typeof element.name === "string" ? element.name : id, type: element.type as NodeType };
+      return { kind: "step", ref: names.of("nodes", element), type: element.type as NodeType };
     case "flows":
-      return { kind: "connection", id, from: names.step(String(element.from)), to: names.step(String(element.to)) };
+      return { kind: "connection", id, from: names.step(String(element.from)), to: names.step(String(element.to)), showId: names.shown("flows", id) };
     case "resources":
-      return { kind: "resource", id, name: typeof element.name === "string" ? element.name : id };
+      return { kind: "resource", ref: names.of("resources", element) };
     case "calendars":
-      return { kind: "calendar", id, name: typeof element.name === "string" ? element.name : id };
+      return { kind: "calendar", ref: names.of("calendars", element) };
     case "entity_types":
-      return { kind: "item", id, name: typeof element.name === "string" ? element.name : id };
+      return { kind: "item", ref: names.of("entity_types", element) };
     case "metrics":
       return { kind: "metric", id };
     case "constraints":
@@ -152,7 +230,7 @@ function fieldOf(catalog: string, rest: readonly string[], element: unknown, nam
   const [a, b, c, d, e] = rest;
   const el = isRecord(element) ? element : {};
   const param = (p: string | undefined): Param | null | undefined => (p === undefined ? null : PARAMS.has(p) ? (p as Param) : undefined);
-  const timeField = (of: TimeOf, p: string | undefined, extra: { from?: string; to?: string } = {}) => {
+  const timeField = (of: TimeOf, p: string | undefined, extra: { from?: Ref; to?: Ref } = {}) => {
     const pr = param(p);
     if (pr === undefined) return null;
     return { field: { key: "time" as const, of, param: pr, ...extra }, format: pr !== null && UNITLESS.has(pr) ? ("plain" as const) : ("time" as const) };
@@ -171,7 +249,7 @@ function fieldOf(catalog: string, rest: readonly string[], element: unknown, nam
     if (a === "requires" && rest.length === 1) return { field: { key: "requires" }, format: "plain" };
     if (a === "requires" && b !== undefined && INDEX.test(b) && rest.length === 3 && (c === "units" || c === "resource_id")) {
       const req = (Array.isArray(el.requires) ? el.requires : [])[Number(b)];
-      const resource = isRecord(req) && typeof req.resource_id === "string" ? names.resource(req.resource_id) : "";
+      const resource = names.resource(isRecord(req) && typeof req.resource_id === "string" ? req.resource_id : "");
       return c === "units" ? { field: { key: "uses", resource }, format: "plain" } : { field: { key: "usesResource" }, format: "plain" };
     }
   }
@@ -197,22 +275,22 @@ function fieldOf(catalog: string, rest: readonly string[], element: unknown, nam
   return null;
 }
 
-/** A value of a field that names another entity, by that entity's name. */
-function named(field: Field, v: unknown, names: Namer): unknown {
-  if (typeof v !== "string") return v;
-  switch (field.key) {
-    case "from":
-    case "to":
-      return names.step(v);
-    case "usesResource":
-      return names.resource(v);
-    case "calendar":
-      return names.calendar(v);
-    case "entity":
-      return names.entity(v);
-    default:
-      return v;
+/** A value of a field, read: one that names another entity is that entity. */
+function readField(field: Field, v: unknown, format: "plain" | "percent" | "time", names: Namer): Value {
+  if (typeof v === "string") {
+    switch (field.key) {
+      case "from":
+      case "to":
+        return { kind: "ref", ref: names.step(v) };
+      case "usesResource":
+        return { kind: "ref", ref: names.resource(v) };
+      case "calendar":
+        return { kind: "ref", ref: names.calendar(v) };
+      case "entity":
+        return { kind: "ref", ref: names.entity(v) };
+    }
   }
+  return read(v, format);
 }
 
 const CATALOGS = new Set(["nodes", "flows", "resources", "calendars", "entity_types", "metrics", "constraints"]);
@@ -255,26 +333,28 @@ export function describeChanges(base: ModelIR, changes: JsonPatch): Described {
     if (tokens === null || tokens.length === 0 || tokens.some((t) => UNSAFE.has(t))) return { ok: false };
     parsed.push(tokens);
   }
-  const final = applyPatch(base, changes);
-  if (!final.ok) return { ok: false };
+  // The model before each op, and as the patch leaves it (the last).
+  const docs: ModelIR[] = [base];
+  for (const op of changes) {
+    const next = applyPatch(docs[docs.length - 1]!, [op]);
+    if (!next.ok) return { ok: false };
+    docs.push(next.doc);
+  }
+  const final = docs[docs.length - 1]!;
+  const shown = shownIds(docs);
 
   const out: Change[] = [];
   const added = new Map<string, Extract<Change, { kind: "added" }>>();
   const moved: string[] = [];
   let layoutAt = -1;
-  let doc = base;
   for (const [i, op] of changes.entries()) {
-    const tokens = parsed[i]!;
-    const names = namer(doc, final.doc, base);
-    const next = applyPatch(doc, [op]);
-    if (!next.ok) return { ok: false };
-    if (op.op !== "test") describeOp(op, tokens, doc, names, out, added, moved, () => {
+    const doc = docs[i]!;
+    if (op.op !== "test") describeOp(op, parsed[i]!, doc, namer(shown, doc, final, base), out, added, moved, () => {
       if (layoutAt < 0) layoutAt = out.length;
     });
-    doc = next.doc;
   }
   if (moved.length > 0) {
-    const finalNames = namer(final.doc, base);
+    const finalNames = namer(shown, final, base);
     out.splice(layoutAt, 0, { kind: "layout", steps: [...new Set(moved)].map((id) => finalNames.step(id)) });
   }
   return { ok: true, changes: out };
@@ -316,7 +396,7 @@ function describeOp(
         const subject = subjectOf(catalog, after, names);
         if (subject === null) return void out.push({ kind: "other", path: op.path, before: read(before), after: read(after) });
         const change = { kind: "added" as const, subject, placed: false, holds: holdsOf(catalog, after, names) };
-        if (subject.kind === "step") added.set(subject.id, change);
+        if (subject.kind === "step") added.set(subject.ref.id, change);
         out.push(change);
         return;
       }
@@ -335,7 +415,7 @@ function describeOp(
         out.push({ kind: "changed", subject, field: { key: "path", path: "/" + rest.map((t) => t.replace(/~/g, "~0").replace(/\//g, "~1")).join("/") }, before: read(before), after: read(after) });
         return;
       }
-      out.push({ kind: "changed", subject, field: f.field, before: read(named(f.field, before, names), f.format), after: read(named(f.field, after, names), f.format) });
+      out.push({ kind: "changed", subject, field: f.field, before: readField(f.field, before, f.format, names), after: readField(f.field, after, f.format, names) });
       return;
     }
   }

@@ -41,6 +41,8 @@ export type ProposalStandInOptions = {
   holdDecisions?: boolean;
   /** The proposal does not exist (or is another organization's: 404 either way). */
   missing?: boolean;
+  /** Fields of the sample proposal replaced (tests: other names, words or changes on the same sample). */
+  proposal?: Partial<Proposal>;
 };
 
 export type Call = { method: string; path: string; key: string | undefined; body: unknown; contentType: string | null };
@@ -94,7 +96,8 @@ type Stored = { proposal: Proposal; answer?: Proposal; polls: number };
 
 export function createProposalStandIn(opts: ProposalStandInOptions) {
   const calls: Call[] = [];
-  const sample = opts.sample === null ? null : sampleFor(opts.sample);
+  const given = opts.sample === null ? null : sampleFor(opts.sample);
+  const sample = given === null || opts.proposal === undefined ? given : { ...given, proposal: { ...given.proposal, ...opts.proposal } };
   const versions: ModelVersion[] = [];
   const scenarios: Scenario[] = [];
   const proposals = new Map<string, Stored>();

@@ -12,10 +12,17 @@
 // rejecting takes an optional reason; each is confirmed in place. A base
 // that moved (409) keeps the page and says what changed; nothing is
 // rebased or asked again by itself. After a decision the page reads the
-// proposal and the model again, so what it says is the server's.
+// proposal and the model again, so what it says is the server's. An
+// approval the server refuses on its own recheck (422: the checks fail
+// again; 409 at /risk_level or /server_risk_level: the risk is not the one
+// reviewed) leaves the proposal ready, but it can never be approved as it
+// is (D-069 (b), B1): Approve is not offered again, a note says why and that
+// the way on is to reject it and ask again (review round 1, L4).
 //
 // The AI's words (summary, assumptions, expectations, questions, names in
-// the patch) are data: always text, never markup or links.
+// the patch) are data: always text, never markup or links, with what would
+// hide or reorder text shown (shown.ts; names and values isolated in a
+// <bdi>, words.tsx).
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ProblemView, validationKey } from "../../app/_components/problem-view";
@@ -33,6 +40,8 @@ import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
 import { ChangeList } from "./change-list";
 import { loadProposalPage, type ProposalPage } from "./load";
+import { visible } from "./shown";
+import { data, useRich, Words } from "./words";
 import styles from "./proposal.module.css";
 
 /** Where the page's links go: the product's routes, or the review page's own. */
@@ -52,19 +61,29 @@ export function ProposalRoute({ proposalId, pollMs = 1500, hrefs = productHrefs 
 
 type Decision = "idle" | "confirmApprove" | "confirmReject" | "approving" | "rejecting";
 type Outcome = { kind: "approved"; approval: Approval } | { kind: "rejected" } | { kind: "conflict" } | null;
-type Focus = "approve" | "reject" | "confirm" | "outcome" | null;
+type Focus = "approve" | "reject" | "confirm" | "outcome" | "refused" | null;
+/** Why the server refused the approval on its own recheck: its checks fail, or its risk is not the reviewed one. */
+type Refused = "checks" | "risk" | null;
 
 /** A failed proposal's error envelope as the Problem the UI shows for any API failure. */
 function failureProblem(p: Proposal): Problem {
   const code = p.error?.error.code;
-  if (code === undefined || !(code in errorCodeStatus)) return protocolProblem(null, "The proposal failed without an API error.");
+  if (code === undefined || !Object.hasOwn(errorCodeStatus, code)) return protocolProblem(null, "The proposal failed without an API error.");
   return problemFromResponse(errorCodeStatus[code as ErrorCode], new Headers(), p.error);
+}
+
+/** An approval the server refused on its own recheck (D-069 (b)): the proposal stays ready, but this approval can never succeed. */
+function refusedBy(problem: Problem): Refused {
+  if (problem.code === "MODEL_VALIDATION_FAILED") return "checks";
+  if (problem.code === "LIFECYCLE_CONFLICT" && problem.details.some((d) => d.path === "/risk_level" || d.path === "/server_risk_level")) return "risk";
+  return null;
 }
 
 function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollMs: number; hrefs: ProposalHrefs }) {
   const api = useApi();
   const { role } = useAuth();
   const { t, dateTime, number, gap } = useI18n();
+  const rich = useRich();
   const [page, setPage] = useState(initial);
   const [pollProblem, setPollProblem] = useState<Problem | null>(null);
   const [pollAttempt, setPollAttempt] = useState(0);
@@ -72,6 +91,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
   const [outcome, setOutcome] = useState<Outcome>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [reason, setReason] = useState("");
+  const [refused, setRefused] = useState<Refused>(null);
   const [focus, setFocus] = useState<Focus>(null);
   const busy = useRef(false);
   const approveKey = useRef<string | null>(null);
@@ -80,6 +100,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
   const rejectRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const outcomeRef = useRef<HTMLElement>(null);
+  const refusedRef = useRef<HTMLDivElement>(null);
   const ids = { question: useId(), status: useId() };
 
   const p = page.proposal;
@@ -107,8 +128,8 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
   // Focus follows the person's step: the confirmation, back to what opened it, or the outcome.
   useEffect(() => {
     if (focus === null) return;
-    ({ approve: approveRef, reject: rejectRef, confirm: confirmRef, outcome: outcomeRef })[focus].current?.focus();
-  }, [focus, decision, outcome]);
+    ({ approve: approveRef, reject: rejectRef, confirm: confirmRef, outcome: outcomeRef, refused: refusedRef })[focus].current?.focus();
+  }, [focus, decision, outcome, refused]);
 
   /** Reads the proposal and the model again: after a decision the page says what the server holds. */
   const reread = useCallback(async () => {
@@ -135,7 +156,10 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
       setFocus("outcome");
     } else {
       setProblem(r.problem);
-      setFocus("approve");
+      // Refused on the server's recheck: never approvable as it is, so no Approve again; otherwise (503 …) a retry may succeed.
+      const why = refusedBy(r.problem);
+      setRefused(why);
+      setFocus(why === null ? "approve" : "refused");
       // Decided or no longer ready elsewhere: show what the server holds now.
       if (r.problem.code !== "PROPOSAL_ALREADY_DECIDED" && r.problem.code !== "LIFECYCLE_CONFLICT") return;
     }
@@ -166,8 +190,10 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
   const baseVersion = page.base.version;
   const latestVersion = page.model.latest_version;
   const stale = latestVersion.id !== p.base_version_id;
+  // A ready proposal that can be approved: its base is the latest, and the server has not refused it on a recheck.
+  const approvable = p.status === "ready" && !stale && refused === null;
   const conflicted = p.status === "conflicted" || outcome?.kind === "conflict";
-  const title = t(p.mode === "edit" ? "proposal.title.edit" : "proposal.title.scenario", { model: page.model.name });
+  const title = rich(p.mode === "edit" ? "proposal.title.edit" : "proposal.title.scenario", { model: data(page.model.name) });
   const approveLabel = p.mode === "edit" ? t("proposal.approve.edit", { version: String(baseVersion + 1) }) : t("proposal.approve.scenario");
   const decidable = canEdit(role) && outcome === null && (p.status === "ready" || p.status === "needs_input");
   const statusText =
@@ -178,7 +204,9 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
 
   return (
     <article className={styles.page}>
-      <h1>{title}</h1>
+      <h1>
+        <Words parts={title} />
+      </h1>
       <p className={styles.meta}>
         {t("proposal.asked", { date: dateTime(p.created_at), version: String(baseVersion) })}
         {gap}
@@ -201,7 +229,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
         {statusText}
       </p>
       {p.status === "generating" && <p>{t("proposal.generatingHint")}</p>}
-      {p.status === "ready" && !stale && (
+      {approvable && (
         <p>{t(p.mode === "edit" ? "proposal.effect.edit" : "proposal.effect.scenario", { version: String(p.mode === "edit" ? baseVersion + 1 : baseVersion) })}</p>
       )}
       {pollProblem && (
@@ -228,7 +256,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
       {p.summary !== undefined && (
         <section className={styles.section} data-section="summary" aria-labelledby={`${id}-summary`}>
           <h2 id={`${id}-summary`}>{t("proposal.summary")}</h2>
-          <p className={styles.words}>{p.summary}</p>
+          <p className={styles.words}>{visible(p.summary, "prose")}</p>
         </section>
       )}
 
@@ -237,7 +265,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           <h2 id={`${id}-questions`}>{t("proposal.questions")}</h2>
           <ol className={styles.words}>
             {(p.questions ?? []).map((q, i) => (
-              <li key={i}>{q}</li>
+              <li key={i}>{visible(q, "prose")}</li>
             ))}
           </ol>
           <p>{t("proposal.questionsHint")}</p>
@@ -282,7 +310,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           ) : (
             <ol className={styles.words}>
               {p.assumptions.map((a, i) => (
-                <li key={i}>{a}</li>
+                <li key={i}>{visible(a, "prose")}</li>
               ))}
             </ol>
           )}
@@ -295,7 +323,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           <p className={styles.hint}>{t("proposal.effectsHint")}</p>
           <ul className={styles.words}>
             {p.expected_effects.map((e, i) => (
-              <li key={i}>{e}</li>
+              <li key={i}>{visible(e, "prose")}</li>
             ))}
           </ul>
         </section>
@@ -368,7 +396,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
       {decidable && (
         <section className={styles.decision} data-section="decision" aria-labelledby={`${id}-decision`}>
           <h2 id={`${id}-decision`}>{t("proposal.decision")}</h2>
-          {p.mode === "edit" && p.status === "ready" && !stale && <p className={styles.hint}>{t("proposal.draftNote")}</p>}
+          {p.mode === "edit" && approvable && <p className={styles.hint}>{t("proposal.draftNote")}</p>}
           {decision === "confirmApprove" || decision === "approving" ? (
             <div role="group" aria-labelledby={ids.question} className={styles.confirm}>
               <p id={ids.question} className={styles.question}>
@@ -414,8 +442,14 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
             <>
               {/* A ready proposal whose base is no longer the latest can never be approved: say so, offer no Approve. */}
               {stale && p.status === "ready" && <Callout tone="warning">{t("proposal.stale", { base: String(baseVersion), latest: String(latestVersion.version) })}</Callout>}
+              {/* Refused on the server's recheck (D-069 (b) B1): it stays ready but cannot be approved as it is; reject and ask again. */}
+              {!stale && p.status === "ready" && refused !== null && (
+                <div ref={refusedRef} tabIndex={-1} className={styles.refused} data-refused={refused}>
+                  <Callout tone="warning">{t(refused === "checks" ? "proposal.refused.checks" : "proposal.refused.risk")}</Callout>
+                </div>
+              )}
               <div className={styles.actions}>
-                {p.status === "ready" && !stale && (
+                {approvable && (
                   <Button
                     ref={approveRef}
                     variant="primary"
@@ -478,7 +512,7 @@ function Comment({ text }: { text: string | undefined }) {
     <p>
       {t("proposal.decided.comment")}
       {gap}
-      <span className={styles.words}>{text}</span>
+      <span className={styles.words}>{visible(text, "prose")}</span>
     </p>
   );
 }

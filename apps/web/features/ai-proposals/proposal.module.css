@@ -170,6 +170,11 @@ ul.words {
   margin-bottom: 0;
 }
 
+/* Refused on the server's recheck (D-069 (b) B1): its warning note where Approve was, focused. */
+.refused {
+  margin: 0 0 var(--gm-space-md);
+}
+
 .decision {
   margin: 0 0 var(--gm-space-xl);
   padding-top: var(--gm-space-gutter);

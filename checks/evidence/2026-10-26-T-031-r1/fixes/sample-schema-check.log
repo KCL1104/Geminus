@@ -1,0 +1,33 @@
+proposal ready: OK
+proposal scenario: OK
+proposal new-steps: OK
+proposal generating: OK
+proposal generating (answer): OK
+proposal needs_input: OK
+proposal invalid: OK
+proposal failed: OK
+proposal conflict: OK
+proposal stale: OK
+proposal approved: OK
+proposal rejected: OK
+proposal conflicted: OK
+proposal hostile: OK
+proposal viewer: OK
+proposal ready (after approval): OK
+proposal scenario (after approval): OK
+proposal hostile (after approval): OK
+approval ready: OK
+approval scenario: OK
+approval hostile: OK
+base IR (the sample line): OK
+candidate IR ready: OK
+candidate IR scenario: OK
+candidate IR new-steps: OK
+candidate IR conflict: same as ready
+candidate IR stale: same as ready
+candidate IR approved: same as ready
+candidate IR rejected: same as ready
+candidate IR conflicted: same as ready
+candidate IR hostile: OK
+candidate IR viewer: same as ready
+exit 0

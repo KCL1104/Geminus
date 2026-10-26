@@ -66,6 +66,8 @@ export default defineConfig([
     files: ["**/*.tsx"],
     ignores: ["tests/**"],
     rules: {
+      // Data (names, the AI's words) is shown as text, never parsed as markup (T-031 review round 1 L1).
+      "react/no-danger": "error",
       "react/jsx-no-literals": ["error", { noStrings: true, ignoreProps: true, allowedStrings: [" ", "/", "…", "—", "·", ":", ",", ".", "(", ")"] }],
       "no-restricted-syntax": [
         "error",

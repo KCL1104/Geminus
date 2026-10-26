@@ -11,11 +11,12 @@
 // says what changed, never rebasing; the AI's words always as text; axe.
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { type SampleState, sampleFor, SAMPLE_PROPOSAL_ID } from "../app/ui-gallery/proposal/samples";
+import { HOSTILE_TESTER, hostileNames, type SampleState, sampleFor, SAMPLE_PROPOSAL_ID } from "../app/ui-gallery/proposal/samples";
 import { createProposalStandIn, type ProposalStandIn, type ProposalStandInOptions } from "../app/ui-gallery/proposal/stand-in";
 import { sampleLine } from "../app/ui-gallery/editor/sample-line";
 import { ChangeList } from "../features/ai-proposals/change-list";
 import { ProposalRoute } from "../features/ai-proposals/proposal-view";
+import { visible } from "../features/ai-proposals/shown";
 import { createApiClient } from "../lib/api/client";
 import type { JsonPatch } from "../lib/contracts";
 import { ApiProvider } from "../lib/api/provider";
@@ -206,7 +207,11 @@ describe("a ready edit proposal", () => {
     expect(keys[0]).toBe(keys[1]);
   });
 
-  it("shows a failed revalidation (422) with its details and approves nothing", async () => {
+  // D-069 (b) B1: an approval the server refuses on its own recheck leaves
+  // the proposal ready, but it can never be approved as it is (T-031 review
+  // round 1 L4): Approve is not offered again; a note says why and what to
+  // do (reject, ask again), and Reject stays.
+  it("after a failed revalidation (422) shows why, approves nothing, and offers Reject, not Approve again", async () => {
     const { el, api } = await open("ready", { refuseNext: { status: 422, code: "MODEL_VALIDATION_FAILED", message: "the proposal does not pass the server's review again; nothing was changed", details: [{ path: "/dataset_bindings/0/content_hash", reason: "x", code: "DATASET_BINDING_INVALID", severity: "error" }] } });
     const approve = en("proposal.approve.edit", { version: "2" });
     await press(button(el, approve));
@@ -214,8 +219,48 @@ describe("a ready edit proposal", () => {
     await waitFor(() => el.querySelector("[role=alert]") !== null, "the problem");
     expect(text(el.querySelector("[role=alert]"))).toContain(en("validation.DATASET_BINDING_INVALID"));
     expect(api.versions()).toHaveLength(1);
-    expect(names(el)).toContain(approve);
+    expect(names(el)).not.toContain(approve);
+    expect(names(el)).toContain(en("proposal.reject"));
+    const note = section(el, "decision")?.querySelector("[data-refused]");
+    expect(note?.getAttribute("data-refused")).toBe("checks");
+    expect(text(note?.querySelector("[role=note]"))).toBe(en("proposal.refused.checks"));
+    expect(document.activeElement?.closest("[data-refused]")).not.toBeNull();
+    expect(text(el)).not.toContain(en("proposal.effect.edit", { version: "2" }));
+    expect(el.querySelectorAll("[aria-disabled=true], [disabled]")).toHaveLength(0);
+    expect(await violations()).toEqual([]);
+    // Reject and ask again: the one way on.
+    await press(button(el, en("proposal.reject")));
+    await press(button(el, en("proposal.reject.confirm")));
+    await waitFor(() => text(el).includes(en("proposal.outcome.rejected")), "the outcome");
+    expect(decisions(api).map((c) => c.path)).toEqual([`/api/v1/ai-proposals/${api.proposalId}/approve`, `/api/v1/ai-proposals/${api.proposalId}/reject`]);
   });
+
+  for (const path of ["/server_risk_level", "/risk_level"]) {
+    it(`after a 409 because the server's risk changed (${path}) shows why, keeps the reviewed page and offers Reject, not Approve again`, async () => {
+      const { el, api } = await open("ready", {
+        refuseNext: { status: 409, code: "LIFECYCLE_CONFLICT", message: "the server's risk of this proposal is not the one it was reviewed with; nothing was changed (ask for a new proposal)", details: [{ path, reason: "the server now computes high, not medium" }] },
+      });
+      const approve = en("proposal.approve.edit", { version: "2" });
+      await press(button(el, approve));
+      await press(button(el, approve));
+      await waitFor(() => el.querySelector("[data-refused]") !== null, "the refusal note");
+      const note = section(el, "decision")!.querySelector("[data-refused]")!;
+      expect(note.getAttribute("data-refused")).toBe("risk");
+      expect(text(note.querySelector("[role=note]"))).toBe(en("proposal.refused.risk"));
+      // Why, as the server said it; the page re-read what the server holds (still ready, nothing applied).
+      expect(text(el.querySelector("[role=alert]"))).toContain("the server now computes high, not medium");
+      expect(text(status(el))).toBe(en("proposal.status.ready"));
+      const post = api.calls.findIndex((c) => c.method === "POST");
+      expect(api.calls.slice(post + 1).map((c) => c.path)).toContain(`/api/v1/ai-proposals/${api.proposalId}`);
+      expect(names(el)).not.toContain(approve);
+      expect(names(el)).toContain(en("proposal.reject"));
+      expect(section(el, "changes")?.querySelectorAll("[data-change]").length).toBe(2);
+      expect(decisions(api)).toHaveLength(1);
+      expect(api.versions()).toHaveLength(1);
+      expect(document.activeElement?.closest("[data-refused]")).not.toBeNull();
+      expect(await violations()).toEqual([]);
+    });
+  }
 });
 
 describe("approve scenario: a separate action with a separate effect", () => {
@@ -261,6 +306,38 @@ describe("reject, with an optional reason", () => {
     await waitFor(() => text(el).includes(en("proposal.outcome.rejected")), "the outcome");
     expect(decisions(api)[0]!.body).toEqual({});
   });
+
+  // D-011 (review round 1 L3): a retry of the same rejection is the same
+  // request, with the same key; another reason is another request.
+  const unavailable = { status: 503, code: "SERVICE_UNAVAILABLE", message: "the API is busy; nothing was changed" };
+  const rejectWith = async (el: HTMLElement, reason: string) => {
+    await press(button(el, en("proposal.reject")));
+    await type(field(el, en("proposal.reject.reason")), reason);
+    await press(button(el, en("proposal.reject.confirm")));
+  };
+
+  it("retries a refused rejection with the same key", async () => {
+    const { el, api } = await open("ready", { refuseNext: unavailable });
+    await rejectWith(el, "Not now.");
+    await waitFor(() => el.querySelector('[role=alert][data-problem="unavailable"]') !== null, "the problem");
+    await rejectWith(el, "Not now.");
+    await waitFor(() => text(el).includes(en("proposal.outcome.rejected")), "the outcome");
+    const calls = decisions(api);
+    expect(calls.map((c) => c.body)).toEqual([{ comment: "Not now." }, { comment: "Not now." }]);
+    expect(calls[0]!.key).toMatch(/^[\x21-\x7e]{8,128}$/);
+    expect(calls[1]!.key).toBe(calls[0]!.key);
+  });
+
+  it("sends a changed reason as a new request, with a new key", async () => {
+    const { el, api } = await open("ready", { refuseNext: unavailable });
+    await rejectWith(el, "Not now.");
+    await waitFor(() => el.querySelector('[role=alert][data-problem="unavailable"]') !== null, "the problem");
+    await rejectWith(el, "Not until the racks arrive.");
+    await waitFor(() => text(el).includes(en("proposal.outcome.rejected")), "the outcome");
+    const calls = decisions(api);
+    expect(calls.map((c) => c.body)).toEqual([{ comment: "Not now." }, { comment: "Not until the racks arrive." }]);
+    expect(calls[1]!.key).not.toBe(calls[0]!.key);
+  });
 });
 
 describe("a stale base", () => {
@@ -280,9 +357,15 @@ describe("a stale base", () => {
     expect(section(el, "changes")?.querySelectorAll("[data-change]").length).toBe(2);
     expect(text(status(el))).toBe(en("proposal.status.conflicted"));
     expect(document.activeElement?.closest("[data-conflict]")).not.toBeNull();
-    // Nothing applied, nothing asked again on the new version by itself.
+    // Nothing applied, nothing asked again on the new version by itself:
+    // one approval, on the reviewed base, and no other (review round 1 L2).
     expect(api.versions().map((v) => v.version)).toEqual([1, 2]);
     expect(api.calls.filter((c) => c.path.endsWith("/ai-proposals"))).toEqual([]);
+    expect(decisions(api).map((c) => [c.path, c.body])).toEqual([[`/api/v1/ai-proposals/${api.proposalId}/approve`, { expected_base_version_id: api.baseVersionId }]]);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100));
+    });
+    expect(decisions(api)).toHaveLength(1);
     expect(names(el)).not.toContain(approve);
     expect(await violations()).toEqual([]);
   });
@@ -384,13 +467,15 @@ describe("the other states", () => {
       copy.querySelector("ul")?.remove();
       return text(copy);
     };
-    expect(line(items[0]!)).toBe(`${en("proposal.change.added")} ${en("proposal.change.step", { name: "X-ray inspection", type: en("editor.type.process") })} ${en("proposal.change.placed")}`);
+    // A new entity is named with its ID (review round 1 M1): its name is the AI's.
+    const named = (name: string, id: string) => en("proposal.named", { name, id });
+    expect(line(items[0]!)).toBe(`${en("proposal.change.added")} ${en("proposal.change.step", { name: named("X-ray inspection", "node_01m4ydqk00e1ectr0n1c5x0001"), type: en("editor.type.process") })} ${en("proposal.change.placed")}`);
     // What the new step holds: its time (in the model's unit) and the resource it uses, by name.
     expect([...items[0]!.querySelectorAll("ul li")].map(text)).toEqual([
       en("proposal.change.hold", { field: en("editor.timing.process"), value: en("proposal.value.distribution", { distribution: en("editor.dist.summary", { type: en("editor.dist.triangular"), values: "1.2, 1.5, 2.4" }), unit: en("editor.unit.minute") }) }),
-      en("proposal.change.hold", { field: en("proposal.field.uses", { resource: "X-ray machine" }), value: "1" }),
+      en("proposal.change.hold", { field: en("proposal.field.uses", { resource: named("X-ray machine", "resource_01m4ydqk00e1ectr0n1c5x0001") }), value: "1" }),
     ]);
-    expect(items.map(line)).toContain(`${en("proposal.change.added")} ${en("proposal.change.connection", { from: "AOI", to: "Before X-ray" })}`);
+    expect(items.map(line)).toContain(`${en("proposal.change.added")} ${en("proposal.change.connection", { from: "AOI", to: named("Before X-ray", "node_01m4ydqk00e1ectr0n1c5x0002") })}`);
     expect(await violations()).toEqual([]);
   });
 
@@ -424,6 +509,28 @@ describe("the AI's words are data, never markup or links", () => {
     expect(text(el.querySelector('[data-cell="server"]'))).toContain(en("proposal.risk.level.high"));
     expect(text(section(el, "risk"))).toContain(en("proposal.risk.counted.high"));
     expect(await violations()).toEqual([]);
+  });
+
+  it("renders the hostile names in its patch as text, each isolated, hidden characters shown, the look-alike tester by its ID (review round 1)", async () => {
+    const { el } = await open("hostile");
+    const changes = section(el, "changes")!;
+    const lines = [...changes.querySelectorAll("[data-change]")].map((li) => {
+      const copy = li.cloneNode(true) as Element;
+      copy.querySelector("ul")?.remove();
+      return text(copy);
+    });
+    const quoted = (name: string, id?: string) => (id === undefined ? en("proposal.value.text", { text: name }) : en("proposal.named", { name: en("proposal.value.text", { text: name }), id }));
+    expect(lines).toEqual(expect.arrayContaining([
+      `${en("proposal.change.added")} ${en("proposal.change.resource", { name: en("proposal.named", { name: hostileNames.lookalike, id: HOSTILE_TESTER }) })}`,
+      `ICT ${en("proposal.change.value", { field: en("proposal.field.usesResource"), before: quoted("ICT tester", "ict_tester"), after: quoted(hostileNames.lookalike, HOSTILE_TESTER) })}`,
+      `Burn-in ${en("proposal.change.value", { field: en("proposal.field.name"), before: quoted("Burn-in"), after: quoted(visible(hostileNames.reversed)) })}`,
+      `AOI machine ${en("proposal.change.value", { field: en("proposal.field.name"), before: quoted("AOI machine"), after: quoted(visible(hostileNames.hidden)) })}`,
+      `Pack and ship ${en("proposal.change.value", { field: en("proposal.field.name"), before: quoted("Pack and ship"), after: quoted(hostileNames.markup) })}`,
+    ]));
+    expect([...changes.querySelectorAll("bdi")].map((b) => b.textContent)).toEqual(expect.arrayContaining([hostileNames.markup, visible(hostileNames.reversed), visible(hostileNames.hidden)]));
+    expect(el.querySelectorAll("img, script, iframe, object, embed, [onerror]")).toHaveLength(0);
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) expect(n.textContent, "no raw format or control character").not.toMatch(/[\p{Cf}\p{Cs}\p{Zl}\p{Zp}\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u);
   });
 });
 

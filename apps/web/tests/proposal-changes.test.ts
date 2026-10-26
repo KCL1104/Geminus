@@ -10,7 +10,10 @@ import { sampleLine } from "../app/ui-gallery/editor/sample-line";
 import { describeChanges } from "../features/ai-proposals/changes";
 import type { JsonPatch } from "../lib/contracts";
 
-const step = (id: string, name: string, type: string) => ({ kind: "step", id, name, type });
+/** An entity as a change names it; showId: its ID goes beside its name (shared name, or new in the patch). */
+const ref = (id: string, name: string, showId = false) => ({ id, name, showId });
+const step = (id: string, name: string, type: string, showId = false) => ({ kind: "step", ref: ref(id, name, showId), type });
+const connection = (id: string, from: ReturnType<typeof ref>, to: ReturnType<typeof ref>, showId = false) => ({ kind: "connection", id, from, to, showId });
 const at = (id: string) => sampleLine.nodes.findIndex((n) => n.id === id);
 const res = (id: string) => sampleLine.resources.findIndex((r) => r.id === id);
 const flow = (id: string) => sampleLine.flows.findIndex((f) => f.id === id);
@@ -47,8 +50,8 @@ describe("a proposal's changes in human terms", () => {
       { op: "test", path: `/nodes/${b}/id`, value: "burn_in" },
       { op: "remove", path: `/nodes/${b}/batch/max_wait` },
     ])).toEqual([
-      { kind: "changed", subject: { kind: "resource", id: "ict_tester", name: "ICT tester" }, field: { key: "capacity" }, before: num(2), after: num(3) },
-      { kind: "changed", subject: { kind: "connection", id: "ict_result_q_burn_in", from: "ICT result", to: "Before burn-in" }, field: { key: "probability" }, before: num(0.95, "percent"), after: num(0.9, "percent") },
+      { kind: "changed", subject: { kind: "resource", ref: ref("ict_tester", "ICT tester") }, field: { key: "capacity" }, before: num(2), after: num(3) },
+      { kind: "changed", subject: connection("ict_result_q_burn_in", ref("ict_result", "ICT result"), ref("q_burn_in", "Before burn-in")), field: { key: "probability" }, before: num(0.95, "percent"), after: num(0.9, "percent") },
       { kind: "changed", subject: step("burn_in", "Burn-in", "process"), field: { key: "batch", which: "max_wait" }, before: num(120, "time"), after: { kind: "absent" } },
     ]);
   });
@@ -87,7 +90,7 @@ describe("a proposal's changes in human terms", () => {
     ]);
   });
 
-  it("reads new steps with their canvas positions (a T-056 proposal), what each holds, and their connections by name", () => {
+  it("reads new steps with their canvas positions (a T-056 proposal), what each holds, and their connections by name, each new one with its ID", () => {
     const changes: JsonPatch = [
       { op: "add", path: "/nodes/-", value: { id: "node_01xray", type: "process", name: "X-ray", service_time: { distribution: { type: "constant", value: 2 } }, requires: [{ resource_id: "res_01xray", units: 1 }], batch: { min_size: 2, max_size: 4 } } },
       { op: "add", path: "/views/2d/positions/node_01xray", value: { x: 640, y: 240 } },
@@ -99,21 +102,21 @@ describe("a proposal's changes in human terms", () => {
     ];
     expect(described(changes)).toEqual([
       {
-        kind: "added", subject: step("node_01xray", "X-ray", "process"), placed: true,
+        kind: "added", subject: step("node_01xray", "X-ray", "process", true), placed: true,
         holds: [
           { field: { key: "time", of: "process", param: null }, value: { kind: "distribution", value: { type: "constant", value: 2 }, time: true } },
           // Named as the patch leaves the model: the resource is added after the step.
-          { field: { key: "uses", resource: "X-ray machine" }, value: num(1) },
+          { field: { key: "uses", resource: ref("res_01xray", "X-ray machine", true) }, value: num(1) },
           { field: { key: "batch", which: "min_size" }, value: num(2) },
           { field: { key: "batch", which: "max_size" }, value: num(4) },
         ],
       },
-      { kind: "added", subject: { kind: "connection", id: "flow_01a", from: "AOI", to: "X-ray" }, placed: false, holds: [] },
-      { kind: "added", subject: { kind: "resource", id: "res_01xray", name: "X-ray machine" }, placed: false, holds: [{ field: { key: "capacity" }, value: num(1) }] },
+      { kind: "added", subject: connection("flow_01a", ref("aoi", "AOI"), ref("node_01xray", "X-ray", true)), placed: false, holds: [] },
+      { kind: "added", subject: { kind: "resource", ref: ref("res_01xray", "X-ray machine", true) }, placed: false, holds: [{ field: { key: "capacity" }, value: num(1) }] },
       // A queue without a capacity holds no limit; a decision's way out says its probability.
-      { kind: "added", subject: step("node_01q", "Before X-ray", "queue"), placed: false, holds: [{ field: { key: "capacity" }, value: { kind: "absent" } }] },
-      { kind: "added", subject: { kind: "connection", id: "flow_01b", from: "AOI result", to: "Before X-ray" }, placed: false, holds: [{ field: { key: "probability" }, value: num(0, "percent") }] },
-      { kind: "layout", steps: ["SMT"] },
+      { kind: "added", subject: step("node_01q", "Before X-ray", "queue", true), placed: false, holds: [{ field: { key: "capacity" }, value: { kind: "absent" } }] },
+      { kind: "added", subject: connection("flow_01b", ref("aoi_result", "AOI result"), ref("node_01q", "Before X-ray", true)), placed: false, holds: [{ field: { key: "probability" }, value: num(0, "percent") }] },
+      { kind: "layout", steps: [ref("smt", "SMT")] },
     ]);
   });
 
@@ -131,7 +134,7 @@ describe("a proposal's changes in human terms", () => {
       { kind: "removed", subject: step("aoi_defect", "AOI defect", "failure") },
       { kind: "changed", subject: step("q_touchup", "Before touch-up", "queue"), field: { key: "name" }, before: { kind: "text", value: "Before touch-up" }, after: { kind: "text", value: "Touch-up queue" } },
       // A step the patch removed earlier keeps the name the base gave it.
-      { kind: "removed", subject: { kind: "connection", id: "aoi_result_aoi_defect", from: "AOI result", to: "AOI defect" } },
+      { kind: "removed", subject: connection("aoi_result_aoi_defect", ref("aoi_result", "AOI result"), ref("aoi_defect", "AOI defect")) },
     ]);
   });
 
@@ -149,7 +152,7 @@ describe("a proposal's changes in human terms", () => {
   it("shows a name as the text it is, markup and all", () => {
     const hostile = '<img src=x onerror="alert(1)"> [approve](https://evil.example)';
     const [c] = described([{ op: "add", path: "/nodes/-", value: { id: "node_01h", type: "delay", name: hostile, delay_time: { distribution: { type: "constant", value: 1 } } } }]);
-    expect(c).toEqual({ kind: "added", subject: step("node_01h", hostile, "delay"), placed: false, holds: [{ field: { key: "time", of: "delay", param: null }, value: { kind: "distribution", value: { type: "constant", value: 1 }, time: true } }] });
+    expect(c).toEqual({ kind: "added", subject: step("node_01h", hostile, "delay", true), placed: false, holds: [{ field: { key: "time", of: "delay", param: null }, value: { kind: "distribution", value: { type: "constant", value: 1 }, time: true } }] });
   });
 
   it("does not guess when the patch does not apply to the base, or names a prototype member", () => {
@@ -164,5 +167,80 @@ describe("a proposal's changes in human terms", () => {
     const before = JSON.stringify(sampleLine);
     described([{ op: "replace", path: `/resources/${res("ict_tester")}/capacity`, value: 3 }, { op: "remove", path: `/nodes/${at("scrap")}` }]);
     expect(JSON.stringify(sampleLine)).toBe(before);
+  });
+});
+
+// T-031 review round 1 (M1): a name comes from the model or the patch, and
+// the patch is the AI's, so a name tells an entity apart only when no other
+// entity of its kind reads the same. Where another one does (in the base,
+// as the patch leaves the model, or anywhere between), or the patch adds the
+// entity, the change carries its ID to show beside the name.
+describe("which entities a change names with their ID", () => {
+  const NEW = "resource_01m4ydqk00e1ectr0n1c5x0009";
+  const ict = at("ict");
+  const moveIct = (name: string): JsonPatch => [
+    { op: "add", path: "/resources/-", value: { id: NEW, type: "machine", name, capacity: 9, queue_discipline: "fifo", calendar_id: "two_shift" } },
+    { op: "test", path: `/nodes/${ict}/requires/0/resource_id`, value: "ict_tester" },
+    { op: "replace", path: `/nodes/${ict}/requires/0/resource_id`, value: NEW },
+  ];
+
+  it("a new resource with the existing one's name, and the ICT step moved onto it: both with their IDs (the review's case)", () => {
+    expect(described(moveIct("ICT tester"))).toEqual([
+      { kind: "added", subject: { kind: "resource", ref: ref(NEW, "ICT tester", true) }, placed: false, holds: [{ field: { key: "capacity" }, value: num(9) }] },
+      {
+        kind: "changed", subject: step("ict", "ICT", "process"), field: { key: "usesResource" },
+        before: { kind: "ref", ref: ref("ict_tester", "ICT tester", true) }, after: { kind: "ref", ref: ref(NEW, "ICT tester", true) },
+      },
+    ]);
+  });
+
+  it("a name that differs only by a trailing zero-width space reads the same: both with their IDs, the name as it is", () => {
+    const [, moved] = described(moveIct("ICT tester​"));
+    expect(moved).toMatchObject({ before: { kind: "ref", ref: ref("ict_tester", "ICT tester", true) }, after: { kind: "ref", ref: ref(NEW, "ICT tester​", true) } });
+  });
+
+  it("two existing resources with one name: a step moved from one to the other names both with their IDs, other entities without", () => {
+    const base = structuredClone(sampleLine);
+    base.resources[res("debug_operator")]!.name = "Operator";
+    base.resources[res("pack_operator")]!.name = "Operator";
+    const pack = at("pack");
+    const r = describeChanges(base, [
+      { op: "replace", path: `/nodes/${pack}/requires/0/resource_id`, value: "debug_operator" },
+      { op: "replace", path: `/resources/${res("ict_tester")}/capacity`, value: 3 },
+    ]);
+    expect(r.ok && r.changes).toEqual([
+      { kind: "changed", subject: step("pack", "Pack and ship", "process"), field: { key: "usesResource" }, before: { kind: "ref", ref: ref("pack_operator", "Operator", true) }, after: { kind: "ref", ref: ref("debug_operator", "Operator", true) } },
+      { kind: "changed", subject: { kind: "resource", ref: ref("ict_tester", "ICT tester") }, field: { key: "capacity" }, before: num(2), after: num(3) },
+    ]);
+  });
+
+  it("a rename that makes a name shared marks both entities, wherever they are named in the patch", () => {
+    const out = described([
+      { op: "replace", path: `/resources/${res("aoi_machine")}/name`, value: "SMT line" },
+      { op: "replace", path: `/resources/${res("smt_line")}/capacity`, value: 2 },
+    ]);
+    expect(out[0]).toMatchObject({ subject: { kind: "resource", ref: ref("aoi_machine", "AOI machine", true) }, before: { kind: "text", value: "AOI machine" }, after: { kind: "text", value: "SMT line" } });
+    expect(out[1]).toMatchObject({ subject: { kind: "resource", ref: ref("smt_line", "SMT line", true) } });
+  });
+
+  it("names steps the same way, and a step without a name by its ID", () => {
+    const out = described([
+      { op: "add", path: "/nodes/-", value: { id: "node_01dup", type: "delay", name: "ICT", delay_time: { distribution: { type: "constant", value: 1 } } } },
+      { op: "add", path: "/flows/-", value: { id: "flow_01dup", from: "ict", to: "node_01dup", routing: { type: "probability", probability: 1 } } },
+      { op: "add", path: "/nodes/-", value: { id: "node_01anon", type: "delay", delay_time: { distribution: { type: "constant", value: 1 } } } },
+    ]);
+    expect(out[0]).toMatchObject({ kind: "added", subject: step("node_01dup", "ICT", "delay", true) });
+    expect(out[1]).toMatchObject({ kind: "added", subject: connection("flow_01dup", ref("ict", "ICT", true), ref("node_01dup", "ICT", true)) });
+    expect(out[2]).toMatchObject({ kind: "added", subject: step("node_01anon", "node_01anon", "delay", true) });
+  });
+
+  it("a second connection between the same two steps carries its ID, and so does the one already there", () => {
+    const f = flow("ict_result_q_burn_in");
+    const out = described([
+      { op: "add", path: "/flows/-", value: { id: "flow_01twin", from: "ict_result", to: "q_burn_in", routing: { type: "probability", probability: 0 } } },
+      { op: "replace", path: `/flows/${f}/routing/probability`, value: 0.95 },
+    ]);
+    expect(out[0]).toMatchObject({ subject: connection("flow_01twin", ref("ict_result", "ICT result"), ref("q_burn_in", "Before burn-in"), true) });
+    expect(out[1]).toMatchObject({ subject: connection("ict_result_q_burn_in", ref("ict_result", "ICT result"), ref("q_burn_in", "Before burn-in"), true) });
   });
 });

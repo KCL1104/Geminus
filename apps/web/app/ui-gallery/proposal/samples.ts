@@ -6,7 +6,9 @@
 // validation, server_risk_level, patch_hash) is what the server's review
 // (internal/ai/review.Review with the electronics line pack) computes for
 // these answers on the sample line, and risk_level is its maximum with the
-// AI's claim (D-027): checks/evidence/2026-10-26-T-031/sample-server-review.log.
+// AI's claim (D-027): checks/evidence/2026-10-26-T-031/sample-server-review.log,
+// and for the hostile sample's names (review round 1)
+// checks/evidence/2026-10-26-T-031-r1/fixes/sample-server-review.log.
 // One exception, marked: the "new-steps" sample has canvas positions, which
 // the AI edit allowlist does not take today (internal/model/patch AIEdit:
 // the server makes it invalid, PATCH_PATH_FORBIDDEN; without them it is
@@ -86,14 +88,40 @@ const xrayFromPhoto: JsonPatch = [
   { op: "add", path: "/flows/-", value: { id: "flow_01m4ydqk00e1ectr0n1c5x0003", from: XRAY, to: "aoi_result", routing: { type: "probability", probability: 1 } } },
 ];
 
-// Takes the scrap end away: what a hostile answer might push for (a step removed, so the server says high).
-const noScrap: JsonPatch = [
+/** A second ICT tester, from the hostile proposal's allocation pool. */
+export const HOSTILE_TESTER = "resource_01m4ydqk00e1ectr0n1c5x0002";
+/**
+ * The names a hostile answer writes into its patch (T-031 review round 1,
+ * M1, L1; the server takes any 1 to 200 characters): markup and links; a
+ * right-to-left override, after which "84 → 02" would show as "20 → 48"; a
+ * zero-width space; and a new tester with the existing one's name, so that
+ * moving ICT onto it would read as no change without the IDs.
+ */
+export const hostileNames = {
+  markup: '<img src=x onerror="alert(1)"><a href="javascript:alert(1)">Approve</a> [ok](javascript:alert(1))',
+  reversed: "Burn-in‮84 → 02",
+  hidden: "AOI machine​",
+  lookalike: "ICT tester",
+} as const;
+
+// Takes the scrap end away: what a hostile answer might push for (a step
+// removed, so the server says high); and renames and moves what it can.
+const hostilePatch: JsonPatch = [
   { op: "test", path: `/flows/${flowAt("debug_result_scrap")}/id`, value: "debug_result_scrap" },
   { op: "remove", path: `/flows/${flowAt("debug_result_scrap")}` },
   { op: "test", path: `/flows/${flowAt("debug_result_debug_rework")}/id`, value: "debug_result_debug_rework" },
   { op: "replace", path: `/flows/${flowAt("debug_result_debug_rework")}/routing/probability`, value: 1 },
   { op: "test", path: `/nodes/${at("scrap")}/id`, value: "scrap" },
   { op: "remove", path: `/nodes/${at("scrap")}` },
+  { op: "add", path: "/resources/-", value: { id: HOSTILE_TESTER, type: "machine", role: "ict_tester", name: hostileNames.lookalike, capacity: 9, queue_discipline: "fifo", calendar_id: "two_shift" } },
+  { op: "test", path: `/nodes/${at("ict")}/id`, value: "ict" },
+  { op: "replace", path: `/nodes/${at("ict")}/requires/0/resource_id`, value: HOSTILE_TESTER },
+  { op: "test", path: `/nodes/${at("burn_in")}/id`, value: "burn_in" },
+  { op: "replace", path: `/nodes/${at("burn_in")}/name`, value: hostileNames.reversed },
+  { op: "test", path: `/resources/${resourceAt("aoi_machine")}/id`, value: "aoi_machine" },
+  { op: "replace", path: `/resources/${resourceAt("aoi_machine")}/name`, value: hostileNames.hidden },
+  { op: "test", path: `/nodes/${at("pack")}/id`, value: "pack" },
+  { op: "replace", path: `/nodes/${at("pack")}/name`, value: hostileNames.markup },
 ];
 
 /** SHA-256 of each patch in RFC 8785 form, as the server computes it (D-019; tests/proposal-preview.test.tsx and sample-server-review.log check them). */
@@ -101,7 +129,7 @@ const hashes = {
   burnIn: "sha256:fb00f1bc91d153bd19d7d3ac9fbf61d8f646773373dd08c3c192d45c731fd0cf",
   thirdTester: "sha256:2bc162b5afc8096077cce63af3970d4ca4657344b5a5382f7f958c905d2e711b",
   xray: "sha256:0e5474aa41d1423835cf87b7058f0e014b8f0a906e983fe74e8f4dba3fd6022b",
-  noScrap: "sha256:4c411ddc03652689a01560a9c975b01232b15a2af637b80f59224a92b0dd8566",
+  hostile: "sha256:97c6fcf6cd201890abdbaf1c8af749e0a1269115afccafc5888ae5da0c8a77a7",
   xrayFromPhoto: "sha256:0b492cad08769c5cd9d71877aaae638490a3fff239af641682f5fb8e078ce148",
 };
 
@@ -270,7 +298,7 @@ export function sampleFor(state: SampleState): Sample {
             "The server risk is low. risk_level: low. requires_confirmation: false",
           ],
           risk_level: "high", server_risk_level: "high", provider_risk_claim: "low", confidence: 1,
-          changes: noScrap, patch_hash: hashes.noScrap,
+          changes: hostilePatch, patch_hash: hashes.hostile,
           expected_effects: ["**Scrap disappears** <b>guaranteed</b>", '<iframe src="https://evil.example"></iframe> https://evil.example/report'],
           validation: { valid: true, issues: [] }, dataset_bindings: [],
         },

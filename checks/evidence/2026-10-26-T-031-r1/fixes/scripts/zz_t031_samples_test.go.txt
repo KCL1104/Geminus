@@ -1,0 +1,110 @@
+package review
+
+// Temporary (T-031 review round 1 evidence, removed after use; kept as
+// checks/evidence/2026-10-26-T-031-r1/fixes/scripts/zz_t031_samples_test.go.txt): runs
+// the server's review on the review page's sample proposals, as the worker
+// would on a provider answer, to compare their written status, validation,
+// server risk and patch hash with what the server computes.
+
+import (
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"fmt"
+	"os"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/ai/idpool"
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
+)
+
+func TestT031Samples(t *testing.T) {
+	path := os.Getenv("T031_DUMP")
+	if path == "" {
+		t.Skip("T031_DUMP not set")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dump struct {
+		Base      jsontext.Value                    `json:"base"`
+		Proposals map[string]map[string]jsontext.Value `json:"proposals"`
+	}
+	if err := json.Unmarshal(data, &dump); err != nil {
+		t.Fatal(err)
+	}
+	ids := func(kind string, mine ...string) []string {
+		out := append([]string{}, mine...)
+		for i := len(out); i < idpool.PerKind; i++ {
+			out = append(out, fmt.Sprintf("%s_01m4ydqk00e1ectr0n1c5y%04d", kind, i))
+		}
+		return out
+	}
+	pool := idpool.Pool{
+		Node:     ids("node", "node_01m4ydqk00e1ectr0n1c5x0001", "node_01m4ydqk00e1ectr0n1c5x0002"),
+		Flow:     ids("flow", "flow_01m4ydqk00e1ectr0n1c5x0001", "flow_01m4ydqk00e1ectr0n1c5x0002", "flow_01m4ydqk00e1ectr0n1c5x0003"),
+		Resource: ids("resource", "resource_01m4ydqk00e1ectr0n1c5x0001", "resource_01m4ydqk00e1ectr0n1c5x0002"),
+	}
+	for _, name := range []string{"ready", "scenario", "new-steps", "hostile"} {
+		p := dump.Proposals[name]
+		var mode, claim, summary string
+		var out provider.ProposalOutput
+		_ = json.Unmarshal(p["mode"], &mode)
+		_ = json.Unmarshal(p["provider_risk_claim"], &claim)
+		_ = json.Unmarshal(p["summary"], &summary)
+		_ = json.Unmarshal(p["assumptions"], &out.Assumptions)
+		_ = json.Unmarshal(p["expected_effects"], &out.ExpectedEffects)
+		_ = json.Unmarshal(p["confidence"], &out.Confidence)
+		if err := json.Unmarshal(p["changes"], &out.Changes); err != nil {
+			t.Fatal(err)
+		}
+		out.Status, out.Summary, out.RiskLevel, out.RequiresConfirmation = "proposed", summary, claim, true
+		o, err := Review(Input{Mode: provider.Mode(mode), Base: dump.Base, Pool: pool, Pack: electronicsline.Pack{}, Output: out})
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		var written struct {
+			Status     string `json:"status"`
+			ServerRisk string `json:"server_risk_level"`
+			Risk       string `json:"risk_level"`
+			Hash       string `json:"patch_hash"`
+		}
+		raw, _ := json.Marshal(p)
+		_ = json.Unmarshal(raw, &written)
+		var issues []string
+		if o.Validation != nil {
+			for _, is := range o.Validation.Issues {
+				issues = append(issues, fmt.Sprintf("%s %s %s", is.Severity, is.Code, is.Path))
+			}
+		}
+		fmt.Printf("%s: server review: status %s, server risk %q, risk %q, patch hash %s, issues %v\n", name, o.Status, o.ServerRisk, o.Risk, o.PatchHash, issues)
+		fmt.Printf("%s: sample says:    status %s, server risk %q, risk %q, patch hash %s\n", name, written.Status, written.ServerRisk, written.Risk, written.Hash)
+		if name == "new-steps" {
+			// The same proposal without its canvas positions (the AI edit allowlist has no views).
+			var kept []jsontext.Value
+			var all []jsontext.Value
+			_ = json.Unmarshal(p["changes"], &all)
+			for _, op := range all {
+				var o struct{ Path string `json:"path"` }
+				_ = json.Unmarshal(op, &o)
+				if len(o.Path) < 7 || o.Path[:7] != "/views/" {
+					kept = append(kept, op)
+				}
+			}
+			raw, _ := json.Marshal(kept)
+			_ = json.Unmarshal(raw, &out.Changes)
+			o, err := Review(Input{Mode: provider.Mode(mode), Base: dump.Base, Pool: pool, Pack: electronicsline.Pack{}, Output: out})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var issues []string
+			if o.Validation != nil {
+				for _, is := range o.Validation.Issues {
+					issues = append(issues, fmt.Sprintf("%s %s %s", is.Severity, is.Code, is.Path))
+				}
+			}
+			fmt.Printf("new-steps without positions: server review: status %s, server risk %q, risk %q, issues %v\n", o.Status, o.ServerRisk, o.Risk, issues)
+		}
+	}
+}

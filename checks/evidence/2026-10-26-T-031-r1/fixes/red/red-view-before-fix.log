@@ -1,0 +1,111 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a758cdd6d77dba352/apps/web
+
+ ❯ tests/proposal-names.test.tsx (11 tests | 2 failed) 490ms
+   ❯ on the page, the AI's names, assumptions and questions are text (L1) (2)
+     × a ready proposal: names in the diff, the summary, assumptions and expectations stay text; no link or markup appears 115ms
+     × a proposal that needs input: its questions stay text, controls in them shown 36ms
+ ❯ tests/proposal-view.test.tsx (32 tests | 3 failed) 23157ms
+   ❯ a ready edit proposal (11)
+     × after a failed revalidation (422) shows why, approves nothing, and offers Reject, not Approve again 180ms
+     × after a 409 because the server's risk changed (/server_risk_level) shows why, keeps the reviewed page and offers Reject, not Approve again 10089ms
+     × after a 409 because the server's risk changed (/risk_level) shows why, keeps the reviewed page and offers Reject, not Approve again 10094ms
+ ❯ tests/proposal-simplicity.test.tsx (33 tests | 2 failed) 24284ms
+   ❯ en: the proposal review keeps only the controls it needs (H-027) (16)
+     × the approve confirmation, the reject confirmation and each outcome 10499ms
+   ❯ zh-Hant: the proposal review keeps only the controls it needs (H-027) (16)
+     × the approve confirmation, the reject confirmation and each outcome 10354ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/proposal-names.test.tsx > on the page, the AI's names, assumptions and questions are text (L1) > a ready proposal: names in the diff, the summary, assumptions and expectations stay text; no link or markup appears
+AssertionError: expected [ …(2) ] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+  [
+    "<img src=x onerror=\"alert(1)\"><a href=\"javascript:alert(1)\">Approve</a> <script>alert(2)</script> [ok](javascript:alert(3)) https://evil.example/x",
+-   "Approve at once⟨U+202E⟩.won ti evorppa",
++   "Approve at once‮.won ti evorppa",
+  ]
+
+ ❯ tests/proposal-names.test.tsx:191:119
+    189|     ]);
+    190|     expect(isolated(changes)).toEqual(expect.arrayContaining([markup, …
+    191|     expect([...el.querySelector('[data-section="assumptions"]')!.query…
+       |                                                                                                                       ^
+    192|     expect([...el.querySelector('[data-section="effects"]')!.querySele…
+    193|     expect(el.querySelector('[data-section="summary"] p')!.textContent…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  tests/proposal-names.test.tsx > on the page, the AI's names, assumptions and questions are text (L1) > a proposal that needs input: its questions stay text, controls in them shown
+AssertionError: expected [ …(2) ] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+  [
+    "<img src=x onerror=\"alert(1)\"><a href=\"javascript:alert(1)\">Approve</a> <script>alert(2)</script> [ok](javascript:alert(3)) https://evil.example/x",
+-   "Which batch⟨U+202E⟩?84 ro 02",
++   "Which batch‮?84 ro 02",
+  ]
+
+ ❯ tests/proposal-names.test.tsx:202:117
+    200|     const { el } = await page("needs_input", { proposal: { questions: …
+    201|     const article = el.querySelector("article")!;
+    202|     expect([...el.querySelector('[data-section="questions"]')!.querySe…
+       |                                                                                                                     ^
+    203|     expect(article.querySelectorAll(hostileElements)).toHaveLength(0);
+    204|     expect(article.querySelectorAll("a")).toHaveLength(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  tests/proposal-simplicity.test.tsx > en: the proposal review keeps only the controls it needs (H-027) > the approve confirmation, the reject confirmation and each outcome
+ FAIL  tests/proposal-simplicity.test.tsx > zh-Hant: the proposal review keeps only the controls it needs (H-027) > the approve confirmation, the reject confirmation and each outcome
+Error: timed out waiting for the refusal (422)
+ ❯ waitFor tests/proposal-simplicity.test.tsx:80:35
+     78|   const until = Date.now() + ms;
+     79|   while (!check()) {
+     80|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     81|     await act(async () => {
+     82|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/proposal-simplicity.test.tsx:188:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  tests/proposal-view.test.tsx > a ready edit proposal > after a failed revalidation (422) shows why, approves nothing, and offers Reject, not Approve again
+AssertionError: expected [ Array(2) ] to not include 'Approve and create version 2'
+ ❯ tests/proposal-view.test.tsx:222:27
+    220|     expect(text(el.querySelector("[role=alert]"))).toContain(en("valid…
+    221|     expect(api.versions()).toHaveLength(1);
+    222|     expect(names(el)).not.toContain(approve);
+       |                           ^
+    223|     expect(names(el)).toContain(en("proposal.reject"));
+    224|     const note = section(el, "decision")?.querySelector("[data-refused…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  tests/proposal-view.test.tsx > a ready edit proposal > after a 409 because the server's risk changed (/server_risk_level) shows why, keeps the reviewed page and offers Reject, not Approve again
+ FAIL  tests/proposal-view.test.tsx > a ready edit proposal > after a 409 because the server's risk changed (/risk_level) shows why, keeps the reviewed page and offers Reject, not Approve again
+Error: timed out waiting for the refusal note
+ ❯ waitFor tests/proposal-view.test.tsx:55:35
+     53|   const until = Date.now() + ms;
+     54|   while (!check()) {
+     55|     if (Date.now() > until) throw new Error(`timed out waiting for ${w…
+       |                                   ^
+     56|     await act(async () => {
+     57|       await new Promise((r) => setTimeout(r, 5));
+ ❯ tests/proposal-view.test.tsx:246:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  7 failed | 69 passed (76)
+   Start at  18:14:00
+   Duration  28.43s (tests 82%, import 12%, environment 3%, transform 2%)
+
+exit 1

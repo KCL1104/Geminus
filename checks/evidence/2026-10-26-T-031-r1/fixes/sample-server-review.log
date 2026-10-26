@@ -1,0 +1,14 @@
+=== RUN   TestT031Samples
+ready: server review: status ready, server risk "medium", risk "medium", patch hash sha256:fb00f1bc91d153bd19d7d3ac9fbf61d8f646773373dd08c3c192d45c731fd0cf, issues []
+ready: sample says:    status ready, server risk "medium", risk "medium", patch hash sha256:fb00f1bc91d153bd19d7d3ac9fbf61d8f646773373dd08c3c192d45c731fd0cf
+scenario: server review: status ready, server risk "low", risk "medium", patch hash sha256:2bc162b5afc8096077cce63af3970d4ca4657344b5a5382f7f958c905d2e711b, issues []
+scenario: sample says:    status ready, server risk "low", risk "medium", patch hash sha256:2bc162b5afc8096077cce63af3970d4ca4657344b5a5382f7f958c905d2e711b
+new-steps: server review: status invalid, server risk "", risk "", patch hash , issues [error PATCH_PATH_FORBIDDEN /changes/1/path error PATCH_PATH_FORBIDDEN /changes/3/path]
+new-steps: sample says:    status ready, server risk "medium", risk "medium", patch hash sha256:0e5474aa41d1423835cf87b7058f0e014b8f0a906e983fe74e8f4dba3fd6022b
+new-steps without positions: server review: status ready, server risk "medium", risk "medium", issues []
+hostile: server review: status ready, server risk "high", risk "high", patch hash sha256:97c6fcf6cd201890abdbaf1c8af749e0a1269115afccafc5888ae5da0c8a77a7, issues []
+hostile: sample says:    status ready, server risk "high", risk "high", patch hash sha256:97c6fcf6cd201890abdbaf1c8af749e0a1269115afccafc5888ae5da0c8a77a7
+--- PASS: TestT031Samples (0.08s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.099s
+exit 0

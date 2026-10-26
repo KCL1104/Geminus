@@ -1,0 +1,37 @@
+// Scratch vitest (T-031 review round 1, run once, then deleted; kept as
+// checks/evidence/2026-10-26-T-031-r1/fixes/scripts/zz-dump-samples.test.ts.txt):
+// dumps the review page's sample proposals, the candidate IRs their patches
+// make, and the stand-in's answers to approve, as the T-031 evidence's dump
+// did, into the session's scratch directory (T031_DUMP), the input of
+// validate_samples.py and of the temporary Go test.
+import { writeFileSync } from "node:fs";
+import { it } from "vitest";
+import { sampleLine } from "../app/ui-gallery/editor/sample-line";
+import { sampleFor, states } from "../app/ui-gallery/proposal/samples";
+import { createProposalStandIn } from "../app/ui-gallery/proposal/stand-in";
+import { applyPatch } from "../features/model-editor/patch";
+
+it("dumps", async () => {
+  const out = process.env.T031_DUMP;
+  if (!out) throw new Error("T031_DUMP not set");
+  const proposals: Record<string, unknown> = {};
+  const candidates: Record<string, unknown> = {};
+  for (const s of states) {
+    const { proposal, answer } = sampleFor(s);
+    proposals[s] = proposal;
+    if (answer) proposals[`${s} (answer)`] = answer;
+    if (proposal.changes) {
+      const r = applyPatch(sampleLine, proposal.changes);
+      candidates[s] = r.ok ? r.doc : null;
+    }
+  }
+  const approvals: Record<string, unknown> = {};
+  for (const s of ["ready", "scenario", "hostile"] as const) {
+    const api = createProposalStandIn({ sample: s });
+    const res = await api.fetch(`/api/v1/ai-proposals/${api.proposalId}/approve`, { method: "POST", headers: { "Idempotency-Key": "key-dump-0001", "Content-Type": "application/json" }, body: JSON.stringify({ expected_base_version_id: api.baseVersionId }) });
+    approvals[s] = await res.json();
+    const p = await api.fetch(`/api/v1/ai-proposals/${api.proposalId}`);
+    proposals[`${s} (after approval)`] = await p.json();
+  }
+  writeFileSync(out, JSON.stringify({ proposals, candidates, approvals, base: sampleLine }, null, 2) + "\n");
+});

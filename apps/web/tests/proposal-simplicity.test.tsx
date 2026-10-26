@@ -5,8 +5,9 @@
 // by the rules of tests/simplicity.test.tsx: at most one primary action,
 // no disabled control without a stated reason (a blocked Approve names
 // its visible reason), no two buttons (or links) with one name and no two
-// links to one place, each view together with the app shell. The app
-// mounts no session yet, so these signed-in views are checked here.
+// links to one place, each view together with the app shell. Every state
+// is checked here with a fake API and session (the browser checks the
+// signed-in page through the BFF on the e2e fake API in proposal.spec.ts).
 import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -177,6 +178,20 @@ for (const locale of locales) {
       await press(button(el, approve));
       await waitFor(() => el.querySelector("[role=alert]") !== null, "the problem");
       await check(el, locale, [approve, t("proposal.reject")]);
+
+      // Refused on the server's recheck (D-069 B1, review round 1 L4): Reject only, nothing disabled.
+      for (const refuseNext of [
+        { status: 422, code: "MODEL_VALIDATION_FAILED", message: "the proposal does not pass the server's review again; nothing was changed" },
+        { status: 409, code: "LIFECYCLE_CONFLICT", message: "the server's risk changed", details: [{ path: "/server_risk_level", reason: "the server now computes high, not medium" }] },
+      ]) {
+        el = await proposal("ready", locale, { refuseNext });
+        await press(button(el, approve));
+        await press(button(el, approve));
+        await waitFor(() => el.querySelector("[data-refused]") !== null, `the refusal (${refuseNext.status})`);
+        await check(el, locale, [t("proposal.reject"), back]);
+        expect(controls(el).map((c) => c.name), "Approve is not offered again").not.toContain(approve);
+        expect(el.querySelectorAll("[disabled], [aria-disabled=true], [data-disabled]"), "disabled controls").toHaveLength(0);
+      }
     });
 
     it("the model page with the entry point: clean, with unsaved edits, refused and on a 409", async () => {

@@ -1,10 +1,13 @@
 "use client";
 // The AI proposal review on sample proposals, for review and the browser
-// checks (T-031): the app mounts no session yet, so the signed-in page
-// cannot render in a browser; this page renders the real ProposalRoute,
-// API client and decisions, signed in as an editor (a viewer in "viewer"),
-// against the in-page stand-in (stand-in.ts) instead of the Go API. No AI
-// is called. Its links go to the other review pages. Not part of the product.
+// checks (T-031): every state of a proposal, and cases a live API rarely
+// gives (a hostile answer, a base that moves just before the approval).
+// This page renders the real ProposalRoute, API client and decisions,
+// signed in as an editor (a viewer in "viewer"), against the in-page
+// stand-in (stand-in.ts) instead of the Go API. The signed-in page itself
+// (/proposals/<id>, through the BFF) is checked in the browser against the
+// e2e fake API (apps/web-e2e/tests/proposal.spec.ts). No AI is called. Its
+// links go to the other review pages. Not part of the product.
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { createApiClient } from "../../../lib/api/client";
