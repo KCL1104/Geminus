@@ -48,16 +48,14 @@ const catalogs = { en, "zh-Hant": zhHant } as const;
 const locales = Object.keys(catalogs) as Locale[];
 const primaries = (el: ParentNode) => el.querySelectorAll('[data-variant="primary"]').length;
 const disabled = (el: ParentNode) => el.querySelectorAll("[disabled], [aria-disabled=true], [data-disabled]").length;
-// A control blocked for now must say why: each one names, by
-// aria-describedby, visible text that is not empty (H-027 bars placeholder
-// and disabled-forever controls, not an action waiting on its condition,
-// e.g. the editor's Save draft and Publish).
+/** Blocked controls whose reason is not text on the page that aria-describedby names (DESIGN.md Buttons, Disabled). */
 const unexplained = (el: ParentNode) =>
-  [...el.querySelectorAll("[disabled], [aria-disabled=true], [data-disabled]")].filter((c) => {
-    const ids = (c.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
-    const doc = c.ownerDocument;
-    return !ids.some((id) => (doc.getElementById(id)?.textContent ?? "").trim() !== "");
-  }).length;
+  [...el.querySelectorAll("[aria-disabled=true]")]
+    .filter((b) => {
+      const ids = (b.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+      return !(b instanceof HTMLButtonElement) || ids.length === 0 || ids.some((id) => !(document.getElementById(id)?.textContent ?? "").trim());
+    })
+    .map((b) => b.textContent ?? "");
 
 /** Each draft state an editor can see. */
 function draftStates() {
@@ -304,7 +302,17 @@ describe("the signed-in pages keep only the controls they need (H-027)", () => {
         }
         expect(duplicates(c), `${route} as ${auth.role}`).toEqual([]);
         expect(primaries(el), "primary actions").toBeLessThanOrEqual(1);
-        expect(unexplained(el), "disabled controls without a stated reason").toBe(0);
+        if (route.startsWith("/models/")) {
+          // The 2D editor (T-015) blocks Save draft while nothing is unsaved
+          // and Publish while the draft cannot be published: each stays
+          // focusable as aria-disabled with its reason on screen beside it
+          // (DESIGN.md Buttons, Disabled; the editor's own rule in
+          // editor.test.tsx and the browser's in simplicity.spec.ts). Nothing
+          // is disabled outright, and nothing is blocked without saying why.
+          expect(el.querySelectorAll("[disabled], [data-disabled]").length, "disabled controls").toBe(0);
+          if (auth === editor) expect(el.querySelectorAll("[aria-disabled=true]").length, "the editor's blocked actions are there to check").toBeGreaterThan(0);
+          expect(unexplained(el), "blocked controls without their reason on screen").toEqual([]);
+        } else expect(disabled(el), "disabled controls").toBe(0);
       }
     });
 
