@@ -397,31 +397,35 @@ func TestOrganizationWithMember(t *testing.T) {
 		t.Errorf("a viewer member: %v", err)
 	}
 
+	// Every subject is new for this run (the database may hold earlier runs), the owner's too: a
+	// refused member leaves neither the organization nor its owner or member as a user.
+	same := "owner-" + ids.New("x")
 	for name, m := range map[string]provisioning.Member{
 		"a second owner":           {Issuer: issuer, Subject: "judge-" + ids.New("x"), Role: "owner"},
 		"no role":                  {Issuer: issuer, Subject: "judge-" + ids.New("x"), Role: ""},
 		"an unknown role":          {Issuer: issuer, Subject: "judge-" + ids.New("x"), Role: "admin"},
-		"the owner again":          {Issuer: issuer, Subject: "owner-refused", Role: "editor"},
+		"the owner again":          {Issuer: issuer, Subject: same, Role: "editor"},
 		"an http issuer":           {Issuer: "http://test.invalid", Subject: "judge-" + ids.New("x"), Role: "editor"},
 		"no subject":               {Issuer: issuer, Subject: "", Role: "editor"},
-		"a subject with a newline": {Issuer: issuer, Subject: "judge\nx", Role: "editor"},
+		"a subject with a newline": {Issuer: issuer, Subject: "judge\n" + ids.New("x"), Role: "editor"},
 	} {
-		orgName := "Refused " + ids.New("x")
-		_, _, _, err := provisioning.OrganizationWithMember(ctx, db, orgName, issuer, "owner-refused", m)
+		orgName, owner := "Refused "+ids.New("x"), "owner-"+ids.New("x")
+		if m.Subject == same {
+			owner = same
+		}
+		_, _, _, err := provisioning.OrganizationWithMember(ctx, db, orgName, issuer, owner, m)
 		if !errors.Is(err, provisioning.ErrInvalidInput) {
 			t.Errorf("%s: %v, want ErrInvalidInput", name, err)
 		}
-		var orgs, users int
+		var orgs, owners, members int
 		if err := admin.QueryRow(ctx, `SELECT (SELECT count(*) FROM twin.organizations WHERE name = $1),
-			(SELECT count(*) FROM twin.users WHERE oidc_issuer = $2 AND oidc_subject = $3)`, orgName, m.Issuer, m.Subject).Scan(&orgs, &users); err != nil {
+			(SELECT count(*) FROM twin.users WHERE oidc_issuer = $2 AND oidc_subject = $3),
+			(SELECT count(*) FROM twin.users WHERE oidc_issuer = $4 AND oidc_subject = $5 AND $5 <> '')`,
+			orgName, issuer, owner, m.Issuer, m.Subject).Scan(&orgs, &owners, &members); err != nil {
 			t.Fatal(err)
 		}
-		if orgs != 0 || users != 0 {
-			t.Errorf("%s wrote %d organizations and %d users", name, orgs, users)
+		if orgs != 0 || owners != 0 || members != 0 {
+			t.Errorf("%s wrote %d organizations, %d owners and %d members as users", name, orgs, owners, members)
 		}
-	}
-	var owners int
-	if err := admin.QueryRow(ctx, `SELECT count(*) FROM twin.users WHERE oidc_issuer = $1 AND oidc_subject = 'owner-refused'`, issuer).Scan(&owners); err != nil || owners != 0 {
-		t.Errorf("a refused member left its owner as a user: %d %v", owners, err)
 	}
 }
