@@ -6,8 +6,9 @@
 // Edits are never dropped and never rebased automatically: a stale-revision
 // 409 (MODEL_VERSION_CONFLICT) or a newer remote revision while edits are
 // pending puts the session in "conflict", keeping every edit until the user
-// explicitly discards them. Edits live in page state only: leaving or
-// reloading the page loses unsaved ones.
+// explicitly discards them, or, after reloading the current draft, chooses
+// to keep them on it (reapplyLocal, T-015). Edits live in page state only:
+// leaving or reloading the page loses unsaved ones.
 import { type Problem, protocolProblem } from "../api/problem";
 import type { Draft, JsonPatch } from "../contracts";
 
@@ -31,6 +32,12 @@ export type DraftEvent =
   | { type: "saveSucceeded"; draft: Draft }
   | { type: "saveFailed"; problem: Problem }
   | { type: "remoteLoaded"; draft: Draft }
+  /**
+   * The person chose to keep their edits on the draft they reloaded after a
+   * conflict (T-015): the edits become unsaved on that revision. Only their
+   * choice does this; a reload alone never does.
+   */
+  | { type: "reapplyLocal" }
   | { type: "discardLocal" };
 
 export function openDraft(remote: Draft): DraftSession {
@@ -125,6 +132,11 @@ export function reduceDraft(s: DraftSession, e: DraftEvent): DraftSession {
       if (e.draft.revision === s.remote.revision) return { ...s, remote: e.draft };
       // Someone else saved while we have edits: never rebase them silently.
       return { ...s, remote: e.draft, unsaved: pendingOps(s), inFlight: null, status: "conflict", problem: null };
+    case "reapplyLocal":
+      // The next save carries the reloaded revision's If-Match; if the
+      // draft moved again, the server answers 409 again.
+      if (s.status !== "conflict" || s.inFlight !== null || s.unsaved.length === 0) return s;
+      return settle({ remote: s.remote, inFlight: null, unsaved: s.unsaved });
     case "discardLocal":
       // A save in flight may still be applied by the server; wait for its answer.
       return s.inFlight !== null ? s : openDraft(s.remote);

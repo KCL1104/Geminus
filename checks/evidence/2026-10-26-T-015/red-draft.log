@@ -1,0 +1,372 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-aedc0fd6b615f0b82/apps/web
+
+ ❯ tests/editor-draft.test.ts (3 tests | 2 failed) 14ms
+   ❯ reapplying edits after a conflict (only when the person asks) (3)
+     × keeps the edits on the reloaded draft, unsaved, and saves them with its revision 5ms
+     × does nothing outside a conflict, or with a save in flight 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor-draft.test.ts > reapplying edits after a conflict (only when the person asks) > keeps the edits on the reloaded draft, unsaved, and saves them with its revision
+TypeError: Cannot read properties of undefined (reading 'status')
+ ❯ tests/editor-draft.test.ts:29:15
+     27|     expect([reloaded.status, nextSave(reloaded)]).toEqual(["conflict",…
+     28|     const s = reduceDraft(reloaded, { type: "reapplyLocal" });
+     29|     expect([s.status, s.remote.revision, pendingOps(s), s.problem]).to…
+       |               ^
+     30|     expect(nextSave(s)).toEqual({ revision: 5, ops: [op(1), op(2)] });
+     31|     expect(canPublish(s)).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/editor-draft.test.ts > reapplying edits after a conflict (only when the person asks) > does nothing outside a conflict, or with a save in flight
+AssertionError: expected undefined to be { remote: { …(7) }, …(4) } // Object.is equality
+
+- Expected:
+{
+  "inFlight": null,
+  "problem": null,
+  "remote": {
+    "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+    "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "ir": {
+      "constraints": [
+        {
+          "equals": 1,
+          "node_id": "ci_result",
+          "type": "outgoing_probability_sum",
+        },
+      ],
+      "domain": "software_delivery",
+      "entity_types": [
+        {
+          "id": "change",
+          "name": "Software Change",
+        },
+      ],
+      "flows": [
+        {
+          "from": "change_arrival",
+          "id": "f1",
+          "routing": {
+            "probability": 1,
+            "type": "probability",
+          },
+          "to": "code_review",
+        },
+        {
+          "from": "code_review",
+          "id": "f2",
+          "routing": {
+            "probability": 1,
+            "type": "probability",
+          },
+          "to": "ci",
+        },
+        {
+          "from": "ci",
+          "id": "f3",
+          "routing": {
+            "probability": 1,
+            "type": "probability",
+          },
+          "to": "ci_result",
+        },
+        {
+          "from": "ci_result",
+          "id": "f_pass",
+          "routing": {
+            "probability": 0.8,
+            "type": "probability",
+          },
+          "to": "test",
+        },
+        {
+          "from": "ci_result",
+          "id": "f_retry",
+          "routing": {
+            "probability": 0.2,
+            "type": "probability",
+          },
+          "to": "ci_failure",
+        },
+        {
+          "from": "ci_failure",
+          "id": "f_fail_rework",
+          "routing": {
+            "probability": 1,
+            "type": "probability",
+          },
+          "to": "ci_rework",
+        },
+        {
+          "from": "ci_rework",
+          "id": "f_rework_ci",
+          "routing": {
+            "probability": 1,
+            "type": "probability",
+          },
+          "to": "ci",
+        },
+        {
+          "from": "test",
+          "id": "f_test_deploy",
+          "routing": {
+            "probability": 1,
+            "type": "probability",
+          },
+          "to": "deploy",
+        },
+        {
+          "from": "deploy",
+          "id": "f_deploy_sink",
+          "routing": {
+            "probability": 1,
+            "type": "probability",
+          },
+          "to": "deployed",
+        },
+      ],
+      "metadata": {
+        "assumptions": [
+          "Continuous 24-hour day, no calendar; mean=48min implies 30 expected arrivals/day.",
+          "Review constant 240min, Test 10min, Deploy 5min are synthetic test assumptions.",
+          "CI rework is explicitly instrumented; DORA mapping unavailable.",
+        ],
+        "fixture": true,
+        "origin": "PROPOSED D-017; NOT customer data or measured performance",
+      },
+      "metrics": [
+        {
+          "id": "lead_time",
+          "type": "entity_cycle_time",
+        },
+        {
+          "id": "throughput",
+          "type": "sink_throughput",
+        },
+        {
+          "id": "ci_utilization",
+          "resource_id": "ci_runner",
+          "type": "resource_utilization",
+        },
+        {
+          "id": "failures",
+          "type": "failure_count",
+        },
+        {
+          "id": "reworks",
+          "type": "rework_count",
+        },
+      ],
+      "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+      "name": "Synthetic Software Delivery Pipeline",
+      "nodes": [
+        {
+          "arrival": {
+            "distribution": {
+              "mean": 48,
+              "type": "exponential",
+            },
+          },
+          "entity_type": "change",
+          "id": "change_arrival",
+          "type": "source",
+        },
+        {
+          "id": "code_review",
+          "requires": [
+            {
+              "resource_id": "reviewer",
+              "units": 1,
+            },
+          ],
+          "service_time": {
+            "distribution": {
+              "type": "constant",
+              "value": 240,
+            },
+          },
+          "type": "process",
+        },
+        {
+          "id": "ci",
+          "requires": [
+            {
+              "resource_id": "ci_runner",
+              "units": 1,
+            },
+          ],
+          "service_time": {
+            "distribution": {
+              "type": "constant",
+              "value": 18,
+            },
+          },
+          "type": "process",
+        },
+        {
+          "id": "ci_result",
+          "type": "decision",
+        },
+        {
+          "id": "ci_failure",
+          "reason": "Synthetic CI failure; not a production deployment failure",
+          "type": "failure",
+        },
+        {
+          "id": "ci_rework",
+          "type": "rework",
+        },
+        {
+          "id": "test",
+          "requires": [
+            {
+              "resource_id": "test_environment",
+              "units": 1,
+            },
+          ],
+          "service_time": {
+            "distribution": {
+              "type": "constant",
+              "value": 10,
+            },
+          },
+          "type": "process",
+        },
+        {
+          "id": "deploy",
+          "requires": [
+            {
+              "resource_id": "deployment_slot",
+              "units": 1,
+            },
+          ],
+          "service_time": {
+            "distribution": {
+              "type": "constant",
+              "value": 5,
+            },
+          },
+          "type": "process",
+        },
+        {
+          "id": "deployed",
+          "outcome": "completed",
+          "type": "sink",
+        },
+      ],
+      "resources": [
+        {
+          "capacity": 2,
+          "id": "reviewer",
+          "name": "Reviewer",
+          "queue_discipline": "fifo",
+          "type": "human",
+        },
+        {
+          "capacity": 3,
+          "id": "ci_runner",
+          "name": "Ci Runner",
+          "queue_discipline": "fifo",
+          "type": "machine",
+        },
+        {
+          "capacity": 1,
+          "id": "test_environment",
+          "name": "Test Environment",
+          "queue_discipline": "fifo",
+          "type": "machine",
+        },
+        {
+          "capacity": 1,
+          "id": "deployment_slot",
+          "name": "Deployment Slot",
+          "queue_discipline": "fifo",
+          "type": "machine",
+        },
+      ],
+      "schema_version": "0.1",
+      "time_unit": "minute",
+      "views": {
+        "2d": {
+          "positions": {
+            "change_arrival": {
+              "x": 0,
+              "y": 100,
+            },
+            "ci": {
+              "x": 400,
+              "y": 100,
+            },
+            "ci_failure": {
+              "x": 800,
+              "y": 100,
+            },
+            "ci_result": {
+              "x": 600,
+              "y": 100,
+            },
+            "ci_rework": {
+              "x": 1000,
+              "y": 100,
+            },
+            "code_review": {
+              "x": 200,
+              "y": 100,
+            },
+            "deploy": {
+              "x": 1400,
+              "y": 100,
+            },
+            "deployed": {
+              "x": 1600,
+              "y": 100,
+            },
+            "test": {
+              "x": 1200,
+              "y": 100,
+            },
+          },
+        },
+        "3d": {
+          "layout_mode": "derived_from_2d",
+        },
+      },
+    },
+    "issues": [],
+    "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+    "out_of_date": false,
+    "revision": 3,
+  },
+  "status": "dirty",
+  "unsaved": [
+    {
+      "op": "replace",
+      "path": "/name",
+      "value": "edit 1",
+    },
+  ],
+}
+
++ Received:
+undefined
+
+ ❯ tests/editor-draft.test.ts:36:58
+     34|   it("does nothing outside a conflict, or with a save in flight", () =…
+     35|     const dirty = reduceDraft(openDraft(at(3)), { type: "edit", ops: […
+     36|     expect(reduceDraft(dirty, { type: "reapplyLocal" })).toBe(dirty);
+       |                                                          ^
+     37|     const clean = openDraft(at(3));
+     38|     expect(reduceDraft(clean, { type: "reapplyLocal" })).toBe(clean);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 1 passed (3)
+   Start at  12:38:08
+   Duration  325ms (transform 80%, import 9%, tests 8%, worker 2%)
+
+exit 1

@@ -1,0 +1,26 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-aedc0fd6b615f0b82/apps/web
+
+ ❯ tests/editor-adapter.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/editor-adapter.test.ts [ tests/editor-adapter.test.ts ]
+Error: Cannot find module '../features/model-editor/edits' imported from /home/user/Geminus/.claude/worktrees/agent-aedc0fd6b615f0b82/apps/web/tests/editor-adapter.test.ts
+ ❯ tests/editor-adapter.test.ts:14:1
+     12| import { sampleLine } from "../app/ui-gallery/editor/sample-line";
+     13| import type { ModelIR } from "../lib/contracts";
+     14| import {
+       | ^
+     15|   addStep,
+     16|   connectSteps,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:32:22
+   Duration  213ms (worker 97%, environment 3%)
+
+exit 1

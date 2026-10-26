@@ -1,0 +1,7 @@
+--- FAIL: TestEditorVectors (0.16s)
+    --- FAIL: TestEditorVectors/delete_a_buffer_with_its_flows_and_its_queue_metric (0.00s)
+        editor_vectors_test.go:57: the server refuses the editor's patch: [{PATCH_TEST_REQUIRED /0/path test /flows/21/id before changing that element (D-020) error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/patch	0.177s
+FAIL
+exit 1
