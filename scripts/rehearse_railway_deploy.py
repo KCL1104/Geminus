@@ -355,7 +355,8 @@ if key == "login":
 if key == "logout":
     if not session or rest[0] not in session["tenants"]:
         fail("failed to find tenant: " + rest[0], "usage")
-    del session["tenants"][rest[0]]
+    if not E.get("REHEARSAL_A0_LOGOUT_KEEPS"):
+        del session["tenants"][rest[0]]
     json.dump(session, open(cfg_path, "w"))
     # As the real CLI without a keyring (internal/cli/logout.go): the tenant is gone from the config,
     # then deleting its keyring entries fails.
@@ -1016,6 +1017,8 @@ def main() -> int:
         if not strong(pwA):
             failures.append("A1: the judge's password is not a strong generated one (20+ visible characters of four kinds, no three alike in a row)")
         secretA = next((c["client_secret"] for c in tA["apps"] if c["client_id"] == A0_CLIENT), None)
+        if pwA not in runA.hidden or secretA not in runA.hidden:
+            failures.append("A1: the judge's password or the client secret is not registered for redaction")
         web, api_vars = sA["vars"].get("web", {}), sA["vars"].get("api", {})
         set_on_stdin = [c for c in sA["calls"] if c["argv"][:3] == ["variable", "set", "BFF_OIDC_CLIENT_SECRET"]]
         if not secretA or web.get("BFF_OIDC_CLIENT_SECRET") != secretA or len(set_on_stdin) != 1 or not set_on_stdin[0]["stdin"]:
@@ -1139,6 +1142,13 @@ def main() -> int:
             failures.append(f"A7 (another tenant) must change nothing and sign that tenant out: {res[:300]}")
         logged_out("A7", f, out)
 
+        # A14: the sign-out leaves the session in the CLI's config: the run says so and fails (the home is removed).
+        f = a0_files("keeps")
+        _, out, err, res = cli(f, REHEARSAL_A0_LOGOUT_KEEPS="1")
+        a0_shown.append(("A14 a sign-out that keeps the session", res))
+        if not res.startswith("FAIL: Auth0: the Auth0 CLI may still be signed in") or a0_home.exists():
+            failures.append(f"A14 (the sign-out keeps the session) must fail and still remove the home: {res[:300]}")
+
         # A8: Auth0 does not keep sign-up off.
         f = a0_files("signup")
         _, out, err, res = cli(f, REHEARSAL_A0_IGNORE_SIGNUP="1")
@@ -1153,6 +1163,8 @@ def main() -> int:
         a0_shown.append(("A9 the CLI quotes the password in its error", res + "\n" + "\n".join(l for l in out.splitlines() if "failed" in l)))
         if not res.startswith("FAIL: `auth0 users create` failed") or not a0_state(f).get("echoed"):
             failures.append(f"A9 must fail at the judge's account: {res[:300]}")
+        if "the CLI's message is not shown (the call carried a secret)" not in out or "API request failed" in out:
+            failures.append("A9: the error of a call that carried a secret is shown (it is redacted, but must not be shown at all)")
         no_leaks("A9", runE, out, err, res, f)
         logged_out("A9", f, out)
 
@@ -1250,7 +1262,8 @@ def main() -> int:
         p = subprocess.run([shutil.which("bash"), str(ROOT / "deploy/railway/deploy.sh"), "--install-auth0-cli", str(dest)],
                            capture_output=True, text=True, env=env, timeout=120)
         a0_shown.append((f"I1 --install-auth0-cli with an archive that is not the pinned one (exit {p.returncode})", p.stderr.strip()[-300:]))
-        if p.returncode != 1 or "not the pinned one; nothing installed" not in p.stderr or dest.exists() or (tmp / "bogus-ran").exists():
+        if p.returncode != 1 or "the Auth0 CLI archive's SHA-256 is not the pinned one; nothing installed" not in p.stderr or dest.exists() \
+                or (tmp / "bogus-ran").exists():
             failures.append(f"I1 (--install-auth0-cli, a wrong archive) must install and run nothing: exit {p.returncode} {p.stderr[-300:]}")
 
         print(textwrap.indent(out1[-1500:], "run 1 | "))
