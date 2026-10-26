@@ -2287,6 +2287,60 @@
       "expected_error_paths": [
         ""
       ]
+    },
+    {
+      "id": "valid-proposal-generating-from-image",
+      "instance": "testdata/contracts/valid-proposal-generating-from-image.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-ready-proposal-from-image",
+      "instance": "testdata/contracts/valid-ready-proposal-from-image.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-scenario-from-image",
+      "instance": "testdata/contracts/invalid-proposal-scenario-from-image.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/mode"
+      ]
+    },
+    {
+      "id": "invalid-proposal-image-media-type",
+      "instance": "testdata/contracts/invalid-proposal-image-media-type.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/source_image/media_type"
+      ]
+    },
+    {
+      "id": "invalid-proposal-image-too-wide",
+      "instance": "testdata/contracts/invalid-proposal-image-too-wide.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/source_image/width"
+      ]
+    },
+    {
+      "id": "invalid-proposal-image-filename",
+      "instance": "testdata/contracts/invalid-proposal-image-filename.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/source_image"
+      ]
     }
   ]
 }

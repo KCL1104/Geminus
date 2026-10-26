@@ -149,6 +149,16 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/v1/models/{id}/ai-proposals/image",
+      "operation_id": "createImageProposal",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
       "method": "GET",
       "path": "/v1/ai-proposals/{id}",
       "operation_id": "getProposal",
