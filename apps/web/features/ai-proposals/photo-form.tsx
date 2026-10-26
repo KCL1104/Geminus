@@ -1,7 +1,9 @@
 "use client";
 // The model page's one way to ask for a change from a photo (T-056, H-033):
-// one button that opens the file chooser for a PNG or JPEG photo or floor
-// plan of the line. The file goes to createImageProposal on the model's
+// one button, beside the ask form's send button, that opens the file
+// chooser for a PNG or JPEG photo or floor plan of the line (AskForm
+// renders it in its actions, so the model page keeps one AI section and the
+// editor stays where it was). The file goes to createImageProposal on the model's
 // latest version, with the reader's language for the AI's prose; the
 // server keeps only the image's pixels, answers with the proposal it stored
 // (generating), and the page moves on to it. A segmenter finds the line's
@@ -53,18 +55,18 @@ function advice(p: Problem): MessageKey | undefined {
   return undefined;
 }
 
-export function PhotoForm({ model, blockedReason, onCreated }: {
+export function PhotoForm({ model, blockedReason, reasonId, onCreated }: {
   model: Model;
   /** Why sending must wait (unsaved edits the page would lose), or null. */
   blockedReason: string | null;
+  /** The element that shows blockedReason on screen (the ask form's). */
+  reasonId: string;
   /** The server stored the proposal: follow it. */
   onCreated: (proposalId: string) => void;
 }) {
   const api = useApi();
   const { t, locale } = useI18n();
-  const headingId = useId();
   const hintId = useId();
-  const reasonId = useId();
   // The refusal, and what the form advises for it.
   const [problem, setProblem] = useState<{ problem: Problem; guidance: MessageKey | undefined } | null>(null);
   const [sending, setSending] = useState(false);
@@ -92,35 +94,33 @@ export function PhotoForm({ model, blockedReason, onCreated }: {
     else setProblem({ problem: r.problem, guidance: advice(r.problem) });
   };
 
-  const describedBy = blockedReason !== null ? `${hintId} ${reasonId}` : hintId;
+  const describedBy = blockedReason !== null ? `${reasonId} ${hintId}` : hintId;
   const choose = (
     <Button blocked={blockedReason !== null} aria-describedby={describedBy}>
       {t("photo.choose")}
     </Button>
   );
+  // In the ask form's actions row: the button beside Send, the hint and
+  // any refusal on their own lines below.
   return (
-    <section className={styles.ask} data-photo aria-labelledby={headingId}>
-      <h2 id={headingId}>{t("photo.title")}</h2>
-      <p id={hintId} className={styles.hint}>
-        {t("photo.hint", { version: String(latest.version) })}
+    <div className={styles.photo} data-photo>
+      {/* Blocked, the button opens nothing: no file chooser behind it. */}
+      {blockedReason !== null ? (
+        choose
+      ) : (
+        <FileTrigger acceptedFileTypes={PHOTO_TYPES} onSelect={(files) => void send(files)}>
+          {choose}
+        </FileTrigger>
+      )}
+      <p id={hintId} className={styles.reason}>
+        {t("photo.hint")}
       </p>
-      <div className={styles.actions}>
-        {/* Blocked, the button opens nothing: no file chooser behind it. */}
-        {blockedReason !== null ? (
-          choose
-        ) : (
-          <FileTrigger acceptedFileTypes={PHOTO_TYPES} onSelect={(files) => void send(files)}>
-            {choose}
-          </FileTrigger>
-        )}
-        {blockedReason !== null && (
-          <p id={reasonId} className={styles.reason}>
-            {blockedReason}
-          </p>
-        )}
-      </div>
-      {problem && <ProblemView problem={problem.problem} headingLevel={3} guidance={problem.guidance} />}
+      {problem && (
+        <div className={styles.line}>
+          <ProblemView problem={problem.problem} headingLevel={3} guidance={problem.guidance} />
+        </div>
+      )}
       <StatusRegion message={sending ? t("photo.sending") : null} />
-    </section>
+    </div>
   );
 }

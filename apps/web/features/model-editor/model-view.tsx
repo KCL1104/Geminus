@@ -18,7 +18,7 @@ import { useI18n } from "../../lib/i18n/provider";
 import { loadModelPage, type ModelPage } from "../../lib/pages";
 import { type DraftEvent, type DraftSession, loadedDraft, pendingOps, reduceDraft } from "../../lib/state/draft";
 import { AskForm } from "../ai-proposals/ask-form";
-import { PHOTO_DOMAINS, PhotoForm } from "../ai-proposals/photo-form";
+import { PHOTO_DOMAINS } from "../ai-proposals/photo-form";
 import { ModelEditor } from "./model-editor";
 
 type Page = { model: Model; session: DraftSession } | null;
@@ -62,10 +62,8 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
                 blockedReason={pendingOps(page.session).length > 0 ? t("ask.saveFirst") : null}
                 onCreated={onProposal}
                 onReload={reloadPage}
+                photo={PHOTO_DOMAINS.includes(page.model.domain)}
               />
-            )}
-            {onProposal && canEdit(role) && PHOTO_DOMAINS.includes(page.model.domain) && (
-              <PhotoForm model={page.model} blockedReason={pendingOps(page.session).length > 0 ? t("ask.saveFirst") : null} onCreated={onProposal} />
             )}
             <ModelEditor model={page.model} session={page.session} dispatch={dispatch} reloadPage={reloadPage} />
           </>

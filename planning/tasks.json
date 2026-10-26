@@ -3786,7 +3786,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-26",
+          "branch": "t056-photo",
+          "report": "checks/T-056_VALIDATION.md",
+          "summary": "Hackathon 切片（H-029、H-033），fake 為止、沒有任何 live 呼叫：模型頁（電子產線，editor／owner）一個按鈕選 PNG／JPEG 照片 → createImageProposal（multipart，5 MiB、32–4096 px，解碼後重新編碼只留像素，不存檔名；migration 0017 的影像 record，RLS、tenant FK、insert-only、有影像恰好等於 intent 為空）→ worker：讀回影像並比對 record → T-055 的 SegmentClient（pack 的 8 個概念，框在影像內、confidence 有限、至多 64 個物件）→ T-055 的 judge（影像為 prompt 的影像部分，template photo-0.1.0）→ 一般 edit 審查＋照片規則（新步驟不多於物件數、數字只能沿用 base）→ ready／invalid／needs_input／failed，沒有物件時 server 回 needs_input；/proposals/<id> 標明以照片提出；/ui-gallery/proposal?state=photo 範例。建在 t055-meta（19fb02a、339fea5）的名稱上，已合併進本分支；D-130–D-132 PROPOSED（沒有批准）。SAM 3.1 與 Muse Spark 的 live 呼叫、Claude 影像備援的 adapter 為 NOT RUN／未接，見報告。",
+          "reviewer": null,
+          "accepted_at": null
+        }
+      ]
     },
     {
       "id": "T-057",

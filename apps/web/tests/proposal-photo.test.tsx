@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // T-056 (H-033): on the model page of an electronics line, one way to ask
-// for a change from a photo: one button that opens the file chooser for a
-// PNG or JPEG; the chosen file goes to createImageProposal on the model's
+// for a change from a photo: one button, beside the ask form's send button,
+// that opens the file chooser for a PNG or JPEG; the chosen file goes to createImageProposal on the model's
 // latest version with the reader's language, and the API's answer is
 // followed to the proposal page, which says the proposal was asked for with
 // a photo. A viewer, a domain whose pack reads no photos, and an editor
@@ -98,15 +98,17 @@ async function unsavedEdit(el: Element) {
 }
 
 describe("asking for a change from a photo on the model page", () => {
-  it("offers one button that opens the chooser for a PNG or JPEG, says what it does, and keeps Publish the one primary action", async () => {
+  it("offers one button beside Send that opens the chooser for a PNG or JPEG, says what it does, and keeps Publish the one primary action", async () => {
     const { el } = await modelPage();
     const form = photo(el)!;
-    expect(text(form.querySelector("h2"))).toBe(en("photo.title"));
-    expect(text(form)).toContain(en("photo.hint", { version: "1" }));
+    // In the ask form: one AI section on the page, the editor where it was.
+    expect(form.closest("section")?.hasAttribute("data-ask"), "inside the ask form's section").toBe(true);
+    expect(form.querySelector("h2, section"), "no heading or section of its own").toBeNull();
+    expect(text(form)).toContain(en("photo.hint"));
     const choose = button(form, en("photo.choose"));
     expect(choose.getAttribute("data-variant")).toBe("secondary");
     expect(form.querySelectorAll("button")).toHaveLength(1);
-    expect(text(document.getElementById(choose.getAttribute("aria-describedby") ?? ""))).toBe(en("photo.hint", { version: "1" }));
+    expect(text(document.getElementById(choose.getAttribute("aria-describedby") ?? ""))).toBe(en("photo.hint"));
     // The chooser: one file, PNG or JPEG, hidden behind the button.
     const input = chooser(el)!;
     expect([input.accept, input.multiple, input.style.display]).toEqual(["image/png,image/jpeg", false, "none"]);
@@ -134,8 +136,7 @@ describe("asking for a change from a photo on the model page", () => {
 
   it("asks in the reader's language, and says so in zh-Hant", async () => {
     const { el, api, created } = await modelPage({ locale: "zh-Hant" });
-    expect(text(photo(el)!.querySelector("h2"))).toBe(zh("photo.title"));
-    expect(text(photo(el))).toContain(zh("photo.hint", { version: "1" }));
+    expect(text(photo(el))).toContain(zh("photo.hint"));
     button(photo(el)!, zh("photo.choose"));
     await pick(chooser(el)!, file("line.jpg", [0xff, 0xd8, 0xff, 0xe0, 0, 1], "image/jpeg"));
     await waitFor(() => created.length === 1, "the proposal");
@@ -183,7 +184,7 @@ describe("asking for a change from a photo on the model page", () => {
     const choose = button(photo(el)!, en("photo.choose"));
     expect(choose.getAttribute("aria-disabled")).toBe("true");
     const reasons = (choose.getAttribute("aria-describedby") ?? "").split(" ").map((id) => text(document.getElementById(id)));
-    expect(reasons).toEqual([en("photo.hint", { version: "1" }), en("ask.saveFirst")]);
+    expect(reasons).toEqual([en("ask.saveFirst"), en("photo.hint")]);
     expect(chooser(el)).toBeNull();
     await press(choose);
     expect(uploads(api)).toEqual([]);
@@ -203,7 +204,7 @@ describe("asking for a change from a photo on the model page", () => {
     const client = createApiClient({ session: () => ({ organizationId: api.organizationId }), fetch: api.fetch });
     const el = await mount(
       <ApiProvider client={client}>
-        <PhotoForm model={model} blockedReason={null} onCreated={() => {}} />
+        <PhotoForm model={model} blockedReason={null} reasonId="reason" onCreated={() => {}} />
       </ApiProvider>,
     );
     await pick(el.querySelector<HTMLInputElement>("input[type=file]")!);

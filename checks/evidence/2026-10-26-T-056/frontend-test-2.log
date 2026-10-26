@@ -1,0 +1,48 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-ad41a33c4e2426ce4/apps/web
+
+ ❯ tests/theme.test.tsx (8 tests | 1 failed) 6559ms
+   ❯ ThemeSwitcher (3)
+     × is a labelled Select that applies and remembers each choice 5653ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/theme.test.tsx > ThemeSwitcher > is a labelled Select that applies and remembers each choice
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ tests/theme.test.tsx:79:3
+     77|
+     78| describe("ThemeSwitcher", () => {
+     79|   it("is a labelled Select that applies and remembers each choice", as…
+       |   ^
+     80|     const el = await mount(<ThemeSwitcher initial="system" />);
+     81|     const trigger = el.querySelector("button")!;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 44 passed (45)
+      Tests  1 failed | 989 passed (990)
+   Start at  18:58:29
+   Duration  130.23s (tests 66%, import 24%, environment 9%, transform 1%)
+
+    Isolate  45 workers spawned · ~1.43s startup each (spawn + environment, per file)
+             at least ~20.02s faster with isolate: false — reuses workers across files instead of one per file
+
+make: *** [Makefile:64: frontend-test] Error 1
+exit 2
