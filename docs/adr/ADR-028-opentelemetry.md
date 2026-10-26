@@ -48,7 +48,7 @@
 - 沒有任何預設 endpoint（也不連 localhost）：沒有設定時不建立 exporter，process 不送出任何 telemetry。
 - `OTEL_EXPORTER_OTLP_ENDPOINT`（base，各 signal 加上 `v1/traces`、`v1/metrics`）、`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`、`OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`（完整 URL，優先於 base）；endpoint 必須是絕對的 http／https URL，有 host，沒有 user information、query、fragment（collector 的 credential 放 `OTEL_EXPORTER_OTLP_HEADERS`，由 exporter 自己讀，不進 log）。
 - `OTEL_SDK_DISABLED=true` 全部關閉；`OTEL_TRACES_EXPORTER`／`OTEL_METRICS_EXPORTER` 只接受 `otlp`（或未設）與 `none`；`OTEL_EXPORTER_OTLP_PROTOCOL` 只接受 `http/protobuf`。錯誤只寫變數名稱，不寫值。
-- Resource 只有 `service.name`（`geminus-api`／`geminus-worker`），加上 operator 以 `OTEL_SERVICE_NAME`／`OTEL_RESOURCE_ATTRIBUTES` 設定的（SDK 的行為）；不加 host 或 process detector。取樣用 SDK 的預設（ParentBased(AlwaysOn)，operator 可用 `OTEL_TRACES_SAMPLER` 改）；exporter 的 timeout、壓縮、header 照 SDK 讀 `OTEL_EXPORTER_OTLP_*`。
+- Resource 只有 `service.name`（`geminus-api`／`geminus-worker`），加上 operator 以 `OTEL_RESOURCE_ATTRIBUTES` 設定的其他 attribute（SDK 合併；`service.name` 一律是上述名稱，`OTEL_SERVICE_NAME` 不覆蓋它，`TestExportWhenConfigured`）；不加 host 或 process detector。取樣用 SDK 的預設（ParentBased(AlwaysOn)，operator 可用 `OTEL_TRACES_SAMPLER` 改）；exporter 的 timeout、壓縮、header 照 SDK 讀 `OTEL_EXPORTER_OTLP_*`。
 - `cmd/api`、`cmd/worker` 結束時以 5 秒為限 flush 並停止 SDK。
 
 ### 記錄的內容（D-095 (c)）

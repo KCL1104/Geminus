@@ -2,8 +2,10 @@
 // D-095 (b), ADR-028) when, and only when, the configuration names an
 // OTLP/HTTP endpoint (config.LoadTelemetry): spans through a batch
 // processor and metrics through a periodic reader, each to its own
-// endpoint, under a resource that names only the service (plus what the
-// operator sets in OTEL_SERVICE_NAME or OTEL_RESOURCE_ATTRIBUTES). Without
+// endpoint, under a resource that names only the service (plus the other
+// attributes the operator sets in OTEL_RESOURCE_ATTRIBUTES: the SDK merges
+// them in, and service.name stays the service's, whatever OTEL_SERVICE_NAME
+// or OTEL_RESOURCE_ATTRIBUTES say). Without
 // an endpoint it does nothing: no exporter exists and no data leaves the
 // process. The SDK's own errors and log lines go through the process's
 // filtered logger. Only cmd/api and cmd/worker link it (architecture rule

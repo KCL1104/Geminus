@@ -103,8 +103,10 @@ func TestOffByDefault(t *testing.T) {
 }
 
 // With an endpoint, spans and metrics reach it (and only it) when the
-// process stops, under the service's name, with the filtered attributes.
+// process stops, under the service's name (an operator's OTEL_SERVICE_NAME
+// does not replace it), with the filtered attributes.
 func TestExportWhenConfigured(t *testing.T) {
+	t.Setenv("OTEL_SERVICE_NAME", "OPERATOR-SENTINEL")
 	c := newCollector(t)
 	cfg, err := config.LoadTelemetry(func(k string) string {
 		return map[string]string{"OTEL_EXPORTER_OTLP_ENDPOINT": c.srv.URL}[k]
