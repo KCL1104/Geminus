@@ -98,6 +98,8 @@ async function waitFor(check: () => boolean, what: string, ms = 10_000): Promise
 }
 
 const text = (el: Element) => (el.textContent ?? "").replace(/\s+/g, " ");
+/** The page's outcome region (WCAG 4.1.3): there from the start, so a screen reader announces what arrives in it. */
+const outcome = (el: Element) => [...el.querySelectorAll('p[role="status"]:not([aria-busy])')].map((p) => p.textContent);
 const button = (el: Element, name: string) => [...el.querySelectorAll("button")].find((b) => text(b).trim() === name);
 
 async function scenarioPage(api: ReturnType<typeof fakeApi>, auth: Auth = editor, locale: Locale = "en") {
@@ -235,10 +237,13 @@ describe("the runs, from queued to the results", () => {
       [en["runs.progress.baseline"], "2 of 5 replications"],
       [en["runs.progress.scenario"], "1 of 5 replications"],
     ]);
+    // Progress is not announced every second; the region waits, empty, for the outcome.
+    expect(outcome(el)).toEqual([""]);
     expect(await violations()).toEqual([]);
     now.b = boardBaselineRun();
     now.s = boardScenarioRun();
     await waitFor(() => el.querySelector("table") !== null, "the results");
+    expect(outcome(el)).toEqual([en["runs.done"]]);
     expect(button(el, en["runs.cancel"])).toBeUndefined();
     // The server's values, exactly, beside their locale text.
     const lead = boardComparison.metrics.find((m) => m.metric_path === "/metrics/lead_time_minutes/p50")!;
@@ -293,6 +298,7 @@ describe("the runs, from queued to the results", () => {
     const cancels = api.calls.filter((c) => c.method === "POST");
     expect(cancels.map((c) => [c.path, c.body])).toEqual([[`${v1}/simulations/${BASELINE_RUN}/cancel`, {}], [`${v1}/simulations/${SCENARIO_RUN}/cancel`, {}]]);
     expect(cancels[0]?.key).not.toBe(cancels[1]?.key);
+    expect(outcome(el)).toEqual([en["runs.noComparison"]]);
     expect(text(el).match(new RegExp(en["runs.status.cancelled"], "g"))).toHaveLength(2);
     expect(button(el, en["runs.cancel"])).toBeUndefined();
     expect(api.calls.some((c) => c.path.includes("comparisons") || c.path.endsWith("/results"))).toBe(false);

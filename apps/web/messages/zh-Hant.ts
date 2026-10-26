@@ -379,6 +379,7 @@ export const zhHant: Catalog = {
   "runs.cancelFailed": "無法取消執行。",
   "runs.failed.baseline": "基準的執行失敗。",
   "runs.failed.scenario": "情境的執行失敗。",
+  "runs.done": "兩個執行都已完成。",
   "runs.noComparison": "沒有可比較的結果：有一個執行未完成。請返回情境重新執行。",
   "runs.back": "返回情境",
 

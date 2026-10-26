@@ -12,7 +12,7 @@ import { type BoardLineData, boardBaselineRunOf, boardScenarioRunOf, boardVersio
 import type { ResultsData } from "../../../features/results/load";
 import { ResultsView } from "../../../features/results/results-view";
 import { RunPairStatus } from "../../../features/simulations/run-status";
-import { Callout } from "../../../ui/callout";
+import { StatusRegion } from "../../../ui/status";
 import styles from "../gallery.module.css";
 
 export type PreviewState = "results" | "incomparable" | "running" | "failed";
@@ -57,7 +57,7 @@ export function ResultsPreview({ state, data }: { state: PreviewState; data: Boa
       <h1>{t("galleryResults.title")}</h1>
       <p className={styles.intro}>{t("galleryResults.intro")}</p>
       <RunPairStatus baseline={b} scenario={s} canCancel cancelling={false} cancelProblem={null} onCancel={() => setCancelled(true)} />
-      {(state === "failed" || cancelled) && <Callout tone="info">{t("runs.noComparison")}</Callout>}
+      <StatusRegion message={state === "failed" || cancelled ? t("runs.noComparison") : state === "running" ? null : t("runs.done")} />
       {(state === "results" || state === "incomparable") && (
         <ResultsView data={results(data, state === "incomparable" ? incomparable(data.comparison) : data.comparison, b)} />
       )}

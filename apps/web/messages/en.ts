@@ -392,6 +392,7 @@ export const en = {
   "runs.cancelFailed": "The runs could not be cancelled.",
   "runs.failed.baseline": "The baseline run failed.",
   "runs.failed.scenario": "The scenario run failed.",
+  "runs.done": "Both runs completed.",
   "runs.noComparison": "There is nothing to compare: a run did not complete. Go back to the scenario to run it again.",
   "runs.back": "Back to the scenario",
 

@@ -1,7 +1,8 @@
 "use client";
 // A scenario's run and its baseline's, from queued to the results (T-032):
 // the runs' state while they go, with one cancel; then, when both have
-// completed, the results; when one has not, nothing to compare. The runs
+// completed, the results; when one has not, nothing to compare. The
+// outcome is a status message (ADR-021: in the page, no toast). The runs
 // must be this scenario's and a baseline (patch []), or nothing of them is
 // shown (run-pair.ts checkPair).
 import Link from "next/link";
@@ -13,7 +14,7 @@ import { useI18n } from "../../lib/i18n/provider";
 import { ProblemView } from "../../app/_components/problem-view";
 import { Loading, RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
-import { Callout } from "../../ui/callout";
+import { StatusRegion } from "../../ui/status";
 import { checkPair, pairPhase } from "../simulations/run-pair";
 import { RunPairStatus } from "../simulations/run-status";
 import { useRunPair } from "../simulations/use-run-pair";
@@ -67,7 +68,10 @@ export function RunResults({ scenarioId, baselineId, scenarioRunId, pollMs }: { 
                   onCancel={() => void pair.cancel()}
                 />
               )}
-              {phase === "stopped" && <Callout tone="info">{t("runs.noComparison")}</Callout>}
+              {/* The runs' outcome, announced when it arrives (WCAG 4.1.3); progress itself is not. */}
+              {pair.baseline && pair.scenario && (
+                <StatusRegion message={phase === "completed" ? t("runs.done") : phase === "stopped" ? t("runs.noComparison") : null} />
+              )}
               {phase === "completed" && pair.baseline && pair.scenario && <Completed baseline={pair.baseline} scenario={pair.scenario} />}
             </>
           )}
