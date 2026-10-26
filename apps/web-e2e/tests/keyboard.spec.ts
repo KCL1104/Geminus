@@ -1,6 +1,7 @@
 // TEST-033: the main flows with the keyboard only, with a visible focus at
 // every stop and a sensible order.
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { focusIsVisible, open } from "./helpers";
 
 async function tab(page: Page, times = 1, back = false): Promise<void> {

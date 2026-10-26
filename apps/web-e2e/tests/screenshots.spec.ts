@@ -5,7 +5,7 @@
 // E2E_SCREENSHOTS=1 and reports NOT RUN otherwise (README.md).
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { locales, open, schemes } from "./helpers";
 
 const enabled = process.env.E2E_SCREENSHOTS === "1";

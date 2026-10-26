@@ -6,7 +6,8 @@
 // the model in the 2D editor, viewer and editor, sign-out, an ended session
 // and no access. Accessibility, simplicity and strings of the signed-in
 // views are in a11y.spec.ts, simplicity.spec.ts and strings.spec.ts.
-import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { APP, focusIsVisible, open, PROVIDER, settled, signInAs, tenant } from "./helpers";
 
 type ApiCall = { method: string; path: string; org: string | null; cookie: string | null; hasAuth: boolean };

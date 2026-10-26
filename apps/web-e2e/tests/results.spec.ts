@@ -8,7 +8,7 @@
 // the phone width and the simplicity rules run on these pages with every
 // route (a11y.spec.ts, simplicity.spec.ts).
 import { readFileSync } from "node:fs";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { en } from "../../web/messages/en";
 import { zhHant } from "../../web/messages/zh-Hant";
 import { focusIsVisible, locales, open, violations } from "./helpers";

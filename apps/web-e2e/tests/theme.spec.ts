@@ -3,7 +3,7 @@
 // it on <html data-theme>, so the first paint is already in that theme: no
 // script runs before paint and there is no flash of the other one. The
 // fonts load from the app's own origin.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { open, sheet } from "./helpers";
 
 const origin = "http://127.0.0.1:3100";

@@ -4,7 +4,7 @@
 // at 390 px; no table text painted over the next cell or cut off. Also the
 // reader's own choice of theme over the opposite system theme (T-045 review
 // 1 I5), on every route.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { cellOverflow, locales, open, routes, schemes, sheet, signedInViews, signInAs, violations } from "./helpers";
 
 for (const scheme of schemes) for (const locale of locales) {

@@ -6,7 +6,8 @@
 // unsaved edits (left to T-015 by ADR-020), and axe in each state, both
 // languages, light and dark (contrast included). Not in the screenshot
 // spec: the editor's look is reviewed from local preview shots first.
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { focusIsVisible, type Locale, locales, open, schemes, violations } from "./helpers";
 
 const preview = (state = "problems") => `/ui-gallery/editor?state=${state}`;

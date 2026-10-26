@@ -3,7 +3,7 @@
 // in its own translation. The test lists every other string it finds.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { sampleLine } from "../../web/app/ui-gallery/editor/sample-line";
 import { en } from "../../web/messages/en";
 import { zhHant } from "../../web/messages/zh-Hant";

@@ -2,7 +2,8 @@
 // test provider (fake/servers.mjs), the session cookie's attributes, no token
 // the page can read, the API proxy, CSRF refusals, refresh, logout and an
 // unknown identity. Never a real provider.
-import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 const APP = "http://127.0.0.1:3100";
 const PROVIDER = "http://127.0.0.1:3101";

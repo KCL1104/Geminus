@@ -14,7 +14,8 @@
 // every route (a11y.spec.ts, simplicity.spec.ts).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { type APIRequestContext, expect, type Locator, type Page, test } from "@playwright/test";
+import type { APIRequestContext, Locator, Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { sampleLine } from "../../web/app/ui-gallery/editor/sample-line";
 import { HOSTILE_TESTER, hostileNames, sampleFor, states } from "../../web/app/ui-gallery/proposal/samples";
 import { visible } from "../../web/features/ai-proposals/shown";

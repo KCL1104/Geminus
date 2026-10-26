@@ -4,7 +4,8 @@
 // the disabled state on purpose); no two visible links to the same place
 // and no two visible buttons with the same name, except the pair the owner
 // is asked about; no side panel; and the app strip stays one 48 px row.
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { locales, open, routes, signedInViews, signInAs } from "./helpers";
 
 // Kept until the owner decides (T-045 re-skin report): the start page's
