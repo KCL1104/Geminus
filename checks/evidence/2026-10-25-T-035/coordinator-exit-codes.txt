@@ -1,0 +1,4 @@
+spec-check exit 0
+backend-test exit 0
+integration exit 0
+govulncheck@v1.9.0 (go1.27.3) exit 0

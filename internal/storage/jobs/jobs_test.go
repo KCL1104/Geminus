@@ -228,7 +228,7 @@ func TestEnqueueWithTheResource(t *testing.T) {
 				Resource: jobs.Resource{ImportID: imp}, Payload: map[string]any{"import_id": imp}}, fast); err != nil {
 				return err
 			}
-			if err := auditlog.AppendUser(ctx, tx, e.org.ID, owner.UserID, auditlog.Event{Action: "import.create", TargetType: "import", TargetID: imp, RequestID: ids.New("req")}); err != nil {
+			if err := auditlog.AppendUser(ctx, tx, e.org.ID, owner.UserID, auditlog.Event{Action: "import.upload", TargetType: "import", TargetID: imp, RequestID: ids.New("req")}); err != nil {
 				return err
 			}
 			if fail {

@@ -1,0 +1,32 @@
+=== RUN   TestAnUnwritableAuditEventCommitsNothing
+--- PASS: TestAnUnwritableAuditEventCommitsNothing (1.02s)
+=== RUN   TestImportMappingClosedLoop
+--- PASS: TestImportMappingClosedLoop (0.64s)
+=== RUN   TestRunClosedLoop
+--- PASS: TestRunClosedLoop (0.36s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	2.042s
+=== RUN   TestFailedAttemptsAreAudited
+--- PASS: TestFailedAttemptsAreAudited (0.16s)
+=== RUN   TestTheReaperAudits
+--- PASS: TestTheReaperAudits (0.11s)
+=== RUN   TestAnAuditFailureCommitsNothing
+--- PASS: TestAnAuditFailureCommitsNothing (0.11s)
+=== RUN   TestTheHandlersLinesCarryTheJob
+--- PASS: TestTheHandlersLinesCarryTheJob (0.10s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/worker	0.496s
+=== RUN   TestReapJobsReturnsWhatItTook
+--- PASS: TestReapJobsReturnsWhatItTook (0.12s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	0.142s
+=== RUN   TestRunServesAndStops
+--- PASS: TestRunServesAndStops (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/api	0.083s
+testing: warning: no tests to run
+PASS
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.017s [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	0.023s [no tests to run]

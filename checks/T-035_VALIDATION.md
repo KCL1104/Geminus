@@ -184,3 +184,39 @@ T-035 的 `decision_gates` 為 D-091–D-095；D-091、D-094 另加進 T-036（s
 - **Export 只測了 loopback 的測試 collector**，沒有對任何廠商或真的 collector；`proto/otlp` 帶進 gRPC 與 protobuf（只有 `cmd` 的 binary 連結，binary 變大）。
 - **效能**：每個自由文字的 attribute 經約 15 個 regexp（只在 error、panic、stack 等行）；沒有 benchmark（T-037）。
 - **D-091–D-095、ADR-028 待 owner 決定**；選其他選項時依各項「不採用時」修改。
+
+## Coordinator 的執行（f9365b8＋測試修正）
+
+`t035` 從 38f0b7b 開出，所以 coordinator 以 fast-forward 把 13 個 commit 接到 `claude/lucid-meitner-vq1awo`，hash 不變（ed9f796 … f9365b8）。
+
+### 第一次執行（f9365b8，`coordinator-*-first-run.*`）
+
+下列指令 exit 0：
+- `spec-check`、`backend-test`、`architecture-check`、`ai-eval`、`frontend-test`、`simulation-reference-test`、`backend-numeric`、`backend-race`；
+- 另一個新的 `dt_test_t035m` 上：
+  - 新與改過的 DB 測試（`GEMINUS_REQUIRE_DB_TESTS=1`，`-v`）全部 PASS：`TestAnUnwritableAuditEventCommitsNothing`、`TestFailedAttemptsAreAudited`、`TestTheReaperAudits`、`TestAnAuditFailureCommitsNothing`、`TestTheHandlersLinesCarryTheJob`、`TestReapJobsReturnsWhatItTook`、`TestRunClosedLoop`、`TestImportMappingClosedLoop`、`TestRunServesAndStops`（`coordinator-new-db-tests.log`）；
+  - 12 個 DB mutant 全部被測試擋下（`coordinator-mutants-db.log`）。
+
+兩項失敗：
+1. **`integration-test`（`dt_test_t035`）exit 2**：只有 `internal/storage/jobs` 的 `TestEnqueueWithTheResource` 失敗，訊息為 `audit: import.create: action: not in the catalogue`。
+   - 這個 T-019 的既有測試以一個實際程式不存在的 action（`import.create`；upload 寫的是 `import.upload`）作為與入列同一 transaction 的 audit。T-035 的 catalogue 依 D-091 fail closed，所以擋下它。這正是實作者在「風險」中預告的情形，是測試資料的錯，不是產品行為。
+   - Coordinator 把它改為 catalogue 中的 `import.upload`（metadata 都是選填）。測試的意圖不變：失敗的 request 不留下 import、job 與 audit，成功時三者都在。沒有降低任何 assertion。
+   - 另以腳本比對所有 `_test.go` 的 `Action:` 字面值與 catalogue：另一個不在 catalogue 中的 `project.delete`（`auditlog_test.go`）是刻意的反例（「an unknown action」必須被拒絕），保留。
+2. **govulncheck exit 1**：coordinator 腳本的錯誤，不是弱點。`GOTOOLCHAIN=local` 讓 PATH 上的 go1.24.7 執行，`golang.org/x/vuln@v1.9.0` 要求 go ≥ 1.26，所以沒有掃描。
+
+### 重跑（f9365b8＋上述一行測試修正）
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `make spec-check` | 0 | |
+| `make backend-test` | 0 | |
+| `make integration-test`（新的 `dt_test_t035b`） | 0 | 34 個 package ok，沒有 FAIL |
+| `govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/... ./scripts/...`（module cache 中的 go1.27.3，`GOTOOLCHAIN=local`，與 CI 相同的指令） | 0 | No vulnerabilities found，包括新加入的 OpenTelemetry、gRPC、protobuf 與 x/net v0.60.0 |
+
+測試修正只改一個 DB 測試的 action 字面值。第一次執行中 exit 0 的 unit、race、numeric 結果不受影響：該測試在沒有 database 時 SKIP。
+
+Log 與 exit code 在 `checks/evidence/2026-10-25-T-035/coordinator-*`。
+
+仍為 NOT RUN：`make e2e-test`、live AI、送到真的 OTLP collector、OpenAPI 官方 validator、Node 24 上的 `frontend-test`（CI 執行）。
+
+D-091–D-095 與 ADR-028 仍是 PROPOSED。D-092 與已 ACCEPTED 的 ADR-024 的不一致，留給 owner 決定。T-035 在 tasks.json 仍為 `not_started`。
