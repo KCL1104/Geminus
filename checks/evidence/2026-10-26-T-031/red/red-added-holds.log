@@ -1,0 +1,201 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web
+
+ ❯ tests/proposal-changes.test.ts (10 tests | 2 failed) 45ms
+   ❯ a proposal's changes in human terms (10)
+     × reads new steps with their canvas positions (a T-056 proposal), what each holds, and their connections by name 19ms
+     × shows a name as the text it is, markup and all 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > reads new steps with their canvas positions (a T-056 proposal), what each holds, and their connections by name
+AssertionError: expected [ { kind: 'added', …(2) }, …(5) ] to deeply equal [ { kind: 'added', …(3) }, …(5) ]
+
+- Expected
++ Received
+
+@@ -1,131 +1,46 @@
+  [
+    {
+-     "holds": [
+-       {
+-         "field": {
+-           "key": "time",
+-           "of": "process",
+-           "param": null,
+-         },
+-         "value": {
+-           "kind": "distribution",
+-           "time": true,
+-           "value": {
+-             "type": "constant",
+-             "value": 2,
+-           },
+-         },
+-       },
+-       {
+-         "field": {
+-           "key": "uses",
+-           "resource": "X-ray machine",
+-         },
+-         "value": {
+-           "format": "plain",
+-           "kind": "number",
+-           "value": 1,
+-         },
+-       },
+-       {
+-         "field": {
+-           "key": "batch",
+-           "which": "min_size",
+-         },
+-         "value": {
+-           "format": "plain",
+-           "kind": "number",
+-           "value": 2,
+-         },
+-       },
+-       {
+-         "field": {
+-           "key": "batch",
+-           "which": "max_size",
+-         },
+-         "value": {
+-           "format": "plain",
+-           "kind": "number",
+-           "value": 4,
+-         },
+-       },
+-     ],
+      "kind": "added",
+      "placed": true,
+      "subject": {
+        "id": "node_01xray",
+        "kind": "step",
+        "name": "X-ray",
+        "type": "process",
+      },
+    },
+    {
+-     "holds": [],
+      "kind": "added",
+      "placed": false,
+      "subject": {
+        "from": "AOI",
+        "id": "flow_01a",
+        "kind": "connection",
+        "to": "X-ray",
+      },
+    },
+-   {
+-     "holds": [
+    {
+-         "field": {
+-           "key": "capacity",
+-         },
+-         "value": {
+-           "format": "plain",
+-           "kind": "number",
+-           "value": 1,
+-         },
+-       },
+-     ],
+      "kind": "added",
+      "placed": false,
+      "subject": {
+        "id": "res_01xray",
+        "kind": "resource",
+        "name": "X-ray machine",
+      },
+    },
+-   {
+-     "holds": [
+    {
+-         "field": {
+-           "key": "capacity",
+-         },
+-         "value": {
+-           "kind": "absent",
+-         },
+-       },
+-     ],
+      "kind": "added",
+      "placed": false,
+      "subject": {
+        "id": "node_01q",
+        "kind": "step",
+        "name": "Before X-ray",
+        "type": "queue",
+      },
+    },
+-   {
+-     "holds": [
+    {
+-         "field": {
+-           "key": "probability",
+-         },
+-         "value": {
+-           "format": "percent",
+-           "kind": "number",
+-           "value": 0,
+-         },
+-       },
+-     ],
+      "kind": "added",
+      "placed": false,
+      "subject": {
+        "from": "AOI result",
+        "id": "flow_01b",
+
+ ❯ tests/proposal-changes.test.ts:100:32
+     98|       { op: "add", path: "/views/2d/positions/smt", value: { x: 10, y:…
+     99|     ];
+    100|     expect(described(changes)).toEqual([
+       |                                ^
+    101|       {
+    102|         kind: "added", subject: step("node_01xray", "X-ray", "process"…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/proposal-changes.test.ts > a proposal's changes in human terms > shows a name as the text it is, markup and all
+AssertionError: expected { kind: 'added', …(2) } to deeply equal { kind: 'added', …(3) }
+
+- Expected
++ Received
+
+@@ -1,23 +1,6 @@
+  {
+-   "holds": [
+-     {
+-       "field": {
+-         "key": "time",
+-         "of": "delay",
+-         "param": null,
+-       },
+-       "value": {
+-         "kind": "distribution",
+-         "time": true,
+-         "value": {
+-           "type": "constant",
+-           "value": 1,
+-         },
+-       },
+-     },
+-   ],
+    "kind": "added",
+    "placed": false,
+    "subject": {
+      "id": "node_01h",
+      "kind": "step",
+
+ ❯ tests/proposal-changes.test.ts:152:15
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 8 passed (10)
+   Start at  15:26:39
+   Duration  723ms (transform 66%, import 22%, tests 11%, worker 1%)
+

@@ -2053,7 +2053,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-26",
+          "branch": "t031-hk",
+          "report": "checks/T-031_VALIDATION.md",
+          "summary": "Hackathon 切片（H-029、H-031），不是 T-031 全部：模型頁以自然語言提出修改（createProposal，mode 以 Select 選 edit／scenario，output_locale 依介面語言，重試沿用 key，未存編輯時 blocked 並說明，409 只在要求時重新載入）；提案頁 /proposals/<id>（generating 輪詢、needs_input 問題、invalid issue、failed problem；差異以人話逐 op 對 base 讀出、JSON Patch 與 hash 在 disclosure；AI 的假設與預期；伺服器的 validation 與 risk 與 AI 的 claim、信心並列標明；edit 與 scenario 批准分開、原處確認、拒絕可附原因；409 保留頁面並說明變了什麼、不 rebase；決定後重新讀取，scenario 連到 /scenarios/<scenario_id>；過時的 ready 提案不顯示 Approve；AI 文字一律為文字）；/ui-gallery/proposal 審閱頁（14 個範例、替身 API，不呼叫 AI）。沒有改 contract、Go 或 migration；匯入與欄位對應、proposal 列表、畫布上的 Review 模式未做，見報告。",
+          "reviewer": null,
+          "accepted_at": null
+        }
+      ]
     },
     {
       "id": "T-032",

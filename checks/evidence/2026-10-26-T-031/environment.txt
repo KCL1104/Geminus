@@ -1,0 +1,8 @@
+date: 2026-10-26 (UTC)
+branch: t031-hk (from 8eecee4); code at 0a27426
+node: v22.22.0 (package.json asks for >=24.21.0 <25; npm ci --engine-strict=false, lockfiles unchanged)
+npm: 10.9.4
+chromium: the preinstalled Playwright build of apps/web-e2e's lock (not reinstalled)
+go: go1.27.3 from /root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64, GOTOOLCHAIN=local (one temporary test only)
+machine: 4 CPUs shared with other agents; load average 11-20 during the runs
+e2e ports 3100-3102 are shared: every e2e run waited until they were free and no other playwright run was going

@@ -1,0 +1,28 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web
+
+ ❯ tests/proposal-view.test.tsx (26 tests | 1 failed | 25 skipped) 114ms
+   ❯ the other states (10)
+     × renders new steps with their connections (a photo proposal, T-056) with the same components 112ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/proposal-view.test.tsx > the other states > renders new steps with their connections (a photo proposal, T-056) with the same components
+Error: message proposal.change.hold needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-view.test.tsx:380:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 25 skipped (26)
+   Start at  15:27:35
+   Duration  2.76s (import 38%, transform 38%, environment 19%, tests 4%)
+

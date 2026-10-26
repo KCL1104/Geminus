@@ -1,0 +1,58 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-aafac6b1241347301/apps/web
+
+ ❯ tests/i18n.test.ts (18 tests | 1 failed) 257ms
+   ❯ catalogs (7)
+     × translate everything except names that are the same in both 24ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/i18n.test.ts > catalogs > translate everything except names that are the same in both
+AssertionError: expected [ 'app.name', 'home.title', …(3) ] to deeply equal [ 'app.name', 'home.title', …(2) ]
+
+- Expected
++ Received
+
+  [
+    "app.name",
+    "home.title",
+    "locale.en",
+    "locale.zh-Hant",
++   "proposal.value.time",
+  ]
+
+ ❯ tests/i18n.test.ts:47:25
+     45|   it("translate everything except names that are the same in both", ()…
+     46|     const same = keys.filter((k) => JSON.stringify(zhHant[k]) === JSON…
+     47|     expect(same.sort()).toEqual(["app.name", "home.title", "locale.en"…
+       |                         ^
+     48|   });
+     49|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 39 passed (40)
+      Tests  1 failed | 873 passed (874)
+   Start at  15:19:17
+   Duration  78.96s (tests 72%, import 17%, environment 6%, transform 4%)
+
+    Isolate  40 workers spawned · ~736ms startup each (spawn + environment, per file)
+             at least ~9.07s faster with isolate: false — reuses workers across files instead of one per file
+
+make: *** [Makefile:60: frontend-test] Error 1

@@ -1,0 +1,2 @@
+M6 a 409 on approval is shown as a plain problem, not the kept page with what changed: killed (tests/proposal-view.test.tsx exit 1)
+total 21: 1 killed, 0 survived

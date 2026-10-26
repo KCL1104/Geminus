@@ -1,0 +1,39 @@
+// Scratch vitest (run once from apps/web/tests/, then deleted): dumps the
+// review page's sample proposals, the candidate IRs their patches make, and
+// the stand-in's answers to approve into
+// checks/evidence/2026-10-26-T-031/sample-proposals.json, the input of
+// validate_samples.py (sample-schema-check.log) and of the temporary Go test
+// zz_t031_samples_test.go.txt (sample-server-review.log). The dump itself
+// (210 KB, regenerable) was not kept.
+import { writeFileSync } from "node:fs";
+import { it } from "vitest";
+import { sampleLine } from "../app/ui-gallery/editor/sample-line";
+import { sampleFor, states } from "../app/ui-gallery/proposal/samples";
+import { createProposalStandIn } from "../app/ui-gallery/proposal/stand-in";
+import { applyPatch } from "../features/model-editor/patch";
+
+it("dumps", async () => {
+  const proposals: Record<string, unknown> = {};
+  const candidates: Record<string, unknown> = {};
+  for (const s of states) {
+    const { proposal, answer } = sampleFor(s);
+    proposals[s] = proposal;
+    if (answer) proposals[`${s} (answer)`] = answer;
+    if (proposal.changes) {
+      const r = applyPatch(sampleLine, proposal.changes);
+      candidates[s] = r.ok ? r.doc : null;
+    }
+  }
+  const approvals: Record<string, unknown> = {};
+  for (const s of ["ready", "scenario"] as const) {
+    const api = createProposalStandIn({ sample: s });
+    const res = await api.fetch(`/api/v1/ai-proposals/${api.proposalId}/approve`, { method: "POST", headers: { "Idempotency-Key": "key-dump-0001", "Content-Type": "application/json" }, body: JSON.stringify({ expected_base_version_id: api.baseVersionId }) });
+    approvals[s] = await res.json();
+    const p = await api.fetch(`/api/v1/ai-proposals/${api.proposalId}`);
+    proposals[`${s} (after approval)`] = await p.json();
+    const conflict = createProposalStandIn({ sample: "conflict" });
+    await conflict.fetch(`/api/v1/ai-proposals/${conflict.proposalId}/approve`, { method: "POST", headers: { "Idempotency-Key": "key-dump-0002" }, body: JSON.stringify({ expected_base_version_id: conflict.baseVersionId }) });
+    proposals["conflict (after the 409)"] = await (await conflict.fetch(`/api/v1/ai-proposals/${conflict.proposalId}`)).json();
+  }
+  writeFileSync("../../checks/evidence/2026-10-26-T-031/sample-proposals.json", JSON.stringify({ proposals, candidates, approvals, base: sampleLine }, null, 2) + "\n");
+});
