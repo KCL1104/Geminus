@@ -28,7 +28,7 @@ def res(rid, capacity=1, **extra):
 
 
 def source(sid, every, max_entities=None, et="board"):
-    a = {"distribution": const(every)}
+    a = {"distribution": every if isinstance(every, dict) else const(every)}
     if max_entities is not None:
         a["max_entities"] = max_entities
     return {"id": sid, "type": "source", "entity_type": et, "arrival": a}
@@ -41,7 +41,7 @@ def table_source(sid, period, rows, et="board"):
 
 
 def process(pid, service, requires=(), batch=None):
-    n = {"id": pid, "type": "process", "service_time": {"distribution": const(service)},
+    n = {"id": pid, "type": "process", "service_time": {"distribution": service if isinstance(service, dict) else const(service)},
          "requires": [{"resource_id": r, "units": u} for r, u in requires]}
     if batch is not None:
         b = {"min_size": batch[0], "max_size": batch[1]}
@@ -89,6 +89,9 @@ def e(source_id, n):
 def ticks(minutes):
     return int(round(minutes * MIN))
 
+
+TOLERANCE = {"rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+             "z": 4.0, "rel": 0.005, "abs": 1e-09}
 
 cases = []
 
@@ -241,7 +244,7 @@ cases.append({
                    "buffers": {"q_pack": {"full_ticks": ticks(8)}},
                    "batches": {"oven": {"batches_started": 1, "members_started": 3}}},
     },
-    "simpy": "compare",
+    "simpy": "refused: a finite buffer (the batch and changeover reference has no blocking; T-047's reference has no batches)",
 })
 
 # ---------------------------------------------------------------- G-BT5
@@ -289,7 +292,7 @@ cases.append({
                    "resource_states": None, "blocking": None, "buffers": None,
                    "batches": {"work": {"batches_started": 1, "members_started": 2}}},
     },
-    "simpy": "not compared: the arrival and the wait limit fall on the same tick (D-048's order, which SimPy's scheduling order does not reproduce)",
+    "simpy": "compare",
 })
 
 # ---------------------------------------------------------------- G-BT7
@@ -391,7 +394,7 @@ cases.append({
                    "blocking": None, "buffers": None,
                    "batches": {"work": {"batches_started": 2, "members_started": 4}}},
     },
-    "simpy": "compare",
+    "simpy": "refused: a calendar (the batch and changeover reference has none; T-049's reference has no batches)",
 })
 
 # ---------------------------------------------------------------- G-BT10
@@ -491,7 +494,7 @@ cases.append({
                    "buffers": {"q_oven": {"full_ticks": 0}},
                    "batches": {"oven": {"batches_started": 1, "members_started": 4}}},
     },
-    "simpy": "compare",
+    "simpy": "refused: a finite buffer (the batch and changeover reference has no blocking)",
 })
 
 # ---------------------------------------------------------------- G-BT13
@@ -552,6 +555,53 @@ cases.append({
     "simpy": "compare",
 })
 
+
+# ---------------------------------------------------------------- the SimPy reference (stochastic)
+# Fixed before either side ran (T-050): 30 replications of 3000 minutes,
+# warmup 300, the tolerance of blocking-goldens.json (T-047). Compared by
+# scripts/simpy_batch_reference.py against TestSimPyReferenceExport.
+def ref_config(seed):
+    return config(3000, warmup=300, replications=30, seed=seed)
+
+
+def dist(kind, **kw):
+    d = {"type": kind}
+    d.update(kw)
+    return d
+
+
+reference = {
+    "tolerance": TOLERANCE,
+    "metrics": ["completed_count", "mean_lead_time_minutes", "utilization/<resource>", "batches_started/<batch process>",
+                "members_started/<batch process>", "down_fraction/<resource with breakdowns>"],
+    "cases": [
+        {"id": "BT-S1", "title": "one chamber, min 2, max 4, max_wait 20; exponential arrivals (mean 15), triangular service (20, 25, 35)",
+         "model": model("BT-S1", [res("chamber")], [source("src", dist("exponential", mean=15)),
+                                                    process("work", dist("triangular", min=20, mode=25, max=35), [("chamber", 1)], (2, 4, 20)), sink("done")],
+                        src_work_done),
+         "config": ref_config(101)},
+        {"id": "BT-S2", "title": "two chambers, full batches of 3 (no wait limit); exponential arrivals (mean 8) and service (mean 30)",
+         "model": model("BT-S2", [res("chamber", 2)], [source("src", dist("exponential", mean=8)),
+                                                       process("work", dist("exponential", mean=30), [("chamber", 1)], (3, 3)), sink("done")],
+                        src_work_done),
+         "config": ref_config(102)},
+        {"id": "BT-S3", "title": "a line: prep (exponential 6), an oven batch (min 1, max 5, max_wait 15, service 20), test (triangular 3, 5, 8), 10% scrapped",
+         "model": model("BT-S3", [res("prep_r"), res("oven_r"), res("tester")],
+                        [source("src", dist("exponential", mean=10)), process("prep", dist("exponential", mean=6), [("prep_r", 1)]),
+                         process("oven", 20, [("oven_r", 1)], (1, 5, 15)), process("test", dist("triangular", min=3, mode=5, max=8), [("tester", 1)]),
+                         {"id": "d", "type": "decision"}, sink("done"), sink("scrap", "abandoned")],
+                        [flow("src", "prep"), flow("prep", "oven"), flow("oven", "test"), flow("test", "d"), flow("d", "done", 0.9), flow("d", "scrap", 0.1)]),
+         "config": ref_config(103)},
+        {"id": "BT-S4", "title": "a chamber that breaks down (TTF exponential 300, TTR triangular 10, 20, 40), min 3, max 6, max_wait 30",
+         "model": model("BT-S4", [res("chamber", breakdowns={"time_to_failure": {"distribution": dist("exponential", mean=300)},
+                                                             "time_to_repair": {"distribution": dist("triangular", min=10, mode=20, max=40)}})],
+                        [source("src", dist("exponential", mean=12)),
+                         process("work", dist("triangular", min=30, mode=35, max=45), [("chamber", 1)], (3, 6, 30)), sink("done")],
+                        src_work_done),
+         "config": ref_config(104)},
+    ],
+}
+
 doc = {
     "status": "HAND_DERIVED_EXPECTATION_NOT_ENGINE_RUN",
     "semantics_decisions": ["D-047", "D-048", "D-049", "D-050", "D-051", "D-052", "D-054", "D-064", "D-074", "D-081", "D-096"],
@@ -562,6 +612,7 @@ doc = {
               "hand derivation of its expected values (assembled by checks/evidence/2026-10-26-T-050/batch_goldens_gen.py, which only builds the JSON). "
               "G-BT1-G-BT5 are ADR-026 D-054's G-T1-G-T5, renamed because G-T1, G-T2, G-T4 and G-T5 name D-048's same-tick goldens of T-048 and T-049."),
     "cases": cases,
+    "reference": reference,
 }
 json.dump(doc, sys.stdout, indent=1, ensure_ascii=False)
 sys.stdout.write("\n")

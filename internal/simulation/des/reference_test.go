@@ -55,12 +55,15 @@ func (a *arrivalCounter) Observe(o engine.Observation) {
 // The Go side of the SimPy reference (TEST-034; scripts/simpy_reference.py,
 // `make simulation-reference-test`): the stochastic reference cases of
 // testdata/simulation/blocking-goldens.json (finite buffers, T-047), of
-// testdata/simulation/breakdown-goldens.json (breakdowns, T-048) and of
+// testdata/simulation/breakdown-goldens.json (breakdowns, T-048), of
 // testdata/simulation/calendar-goldens.json (calendars and release
-// schedules, T-049), run by this engine, as per-replication values. With
-// GEMINUS_SIMPY_REFERENCE_OUT set it writes them there for the script,
-// which compares them with its own SimPy runs within the fixtures'
-// tolerance. The engine never calls the script or SimPy (AGENTS.md §7).
+// schedules, T-049) and of testdata/simulation/batch-goldens.json and
+// setup-goldens.json (batch processes and changeovers, T-050;
+// scripts/simpy_batch_reference.py), run by this engine, as
+// per-replication values. With GEMINUS_SIMPY_REFERENCE_OUT set it writes
+// them there for the scripts, which compare them with their own SimPy runs
+// within the fixtures' tolerance. The engine never calls the scripts or
+// SimPy (AGENTS.md §7).
 func TestSimPyReferenceExport(t *testing.T) {
 	type replication struct {
 		CompletedCount     int64              `json:"completed_count"`
@@ -83,13 +86,20 @@ func TestSimPyReferenceExport(t *testing.T) {
 		ScheduledInUseTicks map[string]int64 `json:"scheduled_in_use_ticks"`
 		OvertimeTicks       map[string]int64 `json:"overtime_ticks"`
 		Arrivals            map[string]int64 `json:"arrivals"`
+		// Batch processes (per batch process) and changeovers (per
+		// resource with setups; ticks), T-050.
+		BatchesStarted map[string]int64 `json:"batches_started"`
+		MembersStarted map[string]int64 `json:"members_started"`
+		SetupTicks     map[string]int64 `json:"setup_ticks"`
+		SetupsStarted  map[string]int64 `json:"setups_started"`
 	}
 	out := map[string][]replication{}
 	for _, fixture := range []struct {
-		file                  string
-		breakdowns, calendars bool
-	}{{"testdata/simulation/blocking-goldens.json", false, false}, {"testdata/simulation/breakdown-goldens.json", true, false},
-		{"testdata/simulation/calendar-goldens.json", false, true}} {
+		file                                   string
+		breakdowns, calendars, batches, setups bool
+	}{{"testdata/simulation/blocking-goldens.json", false, false, false, false}, {"testdata/simulation/breakdown-goldens.json", true, false, false, false},
+		{"testdata/simulation/calendar-goldens.json", false, true, false, false},
+		{"testdata/simulation/batch-goldens.json", false, false, true, false}, {"testdata/simulation/setup-goldens.json", false, false, false, true}} {
 		var doc struct {
 			Reference struct {
 				Cases []struct {
@@ -114,9 +124,13 @@ func TestSimPyReferenceExport(t *testing.T) {
 				t.Fatal(err)
 			}
 			finite, breaks, calendared, scheduled := false, map[string]bool{}, map[string]bool{}, false
+			batched, changes := map[string]bool{}, map[string]bool{}
 			for _, n := range ir.Nodes {
 				finite = finite || n.Capacity > 0
 				scheduled = scheduled || (n.Arrival != nil && n.Arrival.Schedule != nil)
+				if n.Batch != nil {
+					batched[n.ID] = true
+				}
 			}
 			for _, r := range ir.Resources {
 				if r.Breakdowns != nil {
@@ -125,8 +139,19 @@ func TestSimPyReferenceExport(t *testing.T) {
 				if r.CalendarID != "" {
 					calendared[r.ID] = true
 				}
+				if r.Setups != nil {
+					changes[r.ID] = true
+				}
 			}
 			switch {
+			case fixture.batches || fixture.setups:
+				// T-050: the batch and changeover reference has no finite
+				// buffers, calendars or rate schedules.
+				if fixture.batches != (len(batched) > 0) || fixture.setups != (len(changes) > 0) || finite || len(calendared) > 0 || scheduled {
+					t.Fatalf("%s: %s is not a case of its fixture", fixture.file, c.ID)
+				}
+			case len(batched) > 0 || len(changes) > 0:
+				t.Fatalf("%s: %s has batches or changeovers", fixture.file, c.ID)
 			case fixture.calendars && len(calendared) > 0:
 			case fixture.calendars || len(calendared) > 0 || scheduled:
 				t.Fatalf("%s: %s is not a case of its fixture", fixture.file, c.ID)
@@ -146,7 +171,8 @@ func TestSimPyReferenceExport(t *testing.T) {
 					Utilization: s.ResourceUtilization, BlockedTicks: map[string]int64{}, FullTicks: map[string]int64{},
 					BlocksStarted: map[string]int64{}, BlockedEntityTicks: map[string]int64{},
 					DownTicks: map[string]int64{}, AvailableTicks: map[string]int64{}, IdleTicks: map[string]int64{}, BreakdownsStarted: map[string]int64{},
-					ScheduledTicks: map[string]int64{}, ScheduledInUseTicks: map[string]int64{}, OvertimeTicks: map[string]int64{}, Arrivals: map[string]int64{}}
+					ScheduledTicks: map[string]int64{}, ScheduledInUseTicks: map[string]int64{}, OvertimeTicks: map[string]int64{}, Arrivals: map[string]int64{},
+					BatchesStarted: map[string]int64{}, MembersStarted: map[string]int64{}, SetupTicks: map[string]int64{}, SetupsStarted: map[string]int64{}}
 				if scheduled {
 					counter := &arrivalCounter{p: p, ir: &ir, w: res.MeasurementWindow.WarmupTicks, h: res.MeasurementWindow.HorizonTicks, counts: r.Arrivals}
 					if _, err := engine.RunReplication(context.Background(), p, uint32(s.ReplicationIndex), engine.NewBudget(in.Limits.MaxEvents), counter); err != nil {
@@ -173,6 +199,18 @@ func TestSimPyReferenceExport(t *testing.T) {
 						r.ScheduledTicks[id], r.ScheduledInUseTicks[id], r.OvertimeTicks[id] = *st.ScheduledTicks, *st.ScheduledInUseTicks, *st.OvertimeTicks
 						r.AvailableTicks[id], r.IdleTicks[id] = *st.AvailableTicks, *st.IdleTicks
 					}
+					if changes[id] != (st.SetupTicks != nil) {
+						t.Fatalf("%s: resource %s, setups %v, setup_ticks %v", c.ID, id, changes[id], st.SetupTicks)
+					}
+					if st.SetupTicks != nil {
+						r.SetupTicks[id], r.SetupsStarted[id] = *st.SetupTicks, *st.SetupsStarted
+					}
+				}
+				for id, b := range s.Batches {
+					r.BatchesStarted[id], r.MembersStarted[id] = b.BatchesStarted, b.MembersStarted
+				}
+				if len(r.SetupTicks) != len(changes) || len(r.BatchesStarted) != len(batched) {
+					t.Fatalf("%s: setup_ticks of %v, setups on %v; batches of %v, batch processes %v", c.ID, r.SetupTicks, changes, r.BatchesStarted, batched)
 				}
 				if len(r.DownTicks) != len(breaks) || len(r.ScheduledTicks) != len(calendared) {
 					t.Fatalf("%s: down_ticks of %v, breakdowns on %v; scheduled_ticks of %v, calendars on %v", c.ID, r.DownTicks, breaks, r.ScheduledTicks, calendared)

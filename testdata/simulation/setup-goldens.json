@@ -2373,7 +2373,7 @@
      "batches": null
     }
    },
-   "simpy": "not compared: the SimPy reference has no calendars"
+   "simpy": "refused: a calendar (the batch and changeover reference has none; T-049's reference has no changeovers)"
   },
   {
    "id": "G-SU10",
@@ -2728,7 +2728,720 @@
      "batches": null
     }
    },
-   "simpy": "not compared: the SimPy reference has no finite buffers with setups"
+   "simpy": "refused: a finite buffer (the batch and changeover reference has no blocking; T-047's reference has no changeovers)"
   }
- ]
+ ],
+ "reference": {
+  "tolerance": {
+   "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+   "z": 4.0,
+   "rel": 0.005,
+   "abs": 1e-09
+  },
+  "metrics": [
+   "completed_count",
+   "mean_lead_time_minutes",
+   "utilization/<resource>",
+   "setup_fraction/<resource with setups>",
+   "setups_started/<resource with setups>",
+   "down_fraction/<resource with breakdowns>"
+  ],
+  "cases": [
+   {
+    "id": "SU-S1",
+    "title": "one unit, two products (exponential 15 and 25), changeovers triangular both ways, service triangular (3, 5, 7)",
+    "model": {
+     "schema_version": "0.1",
+     "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+     "domain": "synthetic_line",
+     "name": "SU-S1",
+     "time_unit": "minute",
+     "entity_types": [
+      {
+       "id": "board_a",
+       "name": "board_a"
+      },
+      {
+       "id": "board_b",
+       "name": "board_b"
+      }
+     ],
+     "resources": [
+      {
+       "id": "smt",
+       "type": "machine",
+       "name": "smt",
+       "capacity": 1,
+       "queue_discipline": "fifo",
+       "setups": {
+        "transitions": [
+         {
+          "from": "board_a",
+          "to": "board_b",
+          "distribution": {
+           "type": "triangular",
+           "min": 2,
+           "mode": 3,
+           "max": 5
+          }
+         },
+         {
+          "from": "board_b",
+          "to": "board_a",
+          "distribution": {
+           "type": "triangular",
+           "min": 2,
+           "mode": 4,
+           "max": 6
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "nodes": [
+      {
+       "id": "src_a",
+       "type": "source",
+       "entity_type": "board_a",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 15
+        }
+       }
+      },
+      {
+       "id": "src_b",
+       "type": "source",
+       "entity_type": "board_b",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 25
+        }
+       }
+      },
+      {
+       "id": "place",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "triangular",
+         "min": 3,
+         "mode": 5,
+         "max": 7
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "smt",
+         "units": 1
+        }
+       ]
+      },
+      {
+       "id": "done",
+       "type": "sink",
+       "outcome": "completed"
+      }
+     ],
+     "flows": [
+      {
+       "id": "src_a__place",
+       "from": "src_a",
+       "to": "place",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "src_b__place",
+       "from": "src_b",
+       "to": "place",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "place__done",
+       "from": "place",
+       "to": "done",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      }
+     ],
+     "constraints": [],
+     "metrics": [],
+     "views": {
+      "2d": {},
+      "3d": {}
+     },
+     "metadata": {
+      "synthetic": true
+     }
+    },
+    "config": {
+     "horizon": {
+      "value": 3000,
+      "unit": "minute"
+     },
+     "warmup": {
+      "value": 300,
+      "unit": "minute"
+     },
+     "replications": 30,
+     "seed": 201,
+     "trace_level": "none"
+    }
+   },
+   {
+    "id": "SU-S2",
+    "title": "three units, three products, initial board_a, an exponential default (mean 3) and two transitions",
+    "model": {
+     "schema_version": "0.1",
+     "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+     "domain": "synthetic_line",
+     "name": "SU-S2",
+     "time_unit": "minute",
+     "entity_types": [
+      {
+       "id": "board_a",
+       "name": "board_a"
+      },
+      {
+       "id": "board_b",
+       "name": "board_b"
+      },
+      {
+       "id": "board_c",
+       "name": "board_c"
+      }
+     ],
+     "resources": [
+      {
+       "id": "smt",
+       "type": "machine",
+       "name": "smt",
+       "capacity": 3,
+       "queue_discipline": "fifo",
+       "setups": {
+        "initial": "board_a",
+        "default": {
+         "type": "exponential",
+         "mean": 3
+        },
+        "transitions": [
+         {
+          "from": "board_a",
+          "to": "board_b",
+          "distribution": {
+           "type": "constant",
+           "value": 2
+          }
+         },
+         {
+          "from": "board_c",
+          "to": "board_a",
+          "distribution": {
+           "type": "triangular",
+           "min": 1,
+           "mode": 2,
+           "max": 4
+          }
+         }
+        ]
+       }
+      }
+     ],
+     "nodes": [
+      {
+       "id": "src_a",
+       "type": "source",
+       "entity_type": "board_a",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 10
+        }
+       }
+      },
+      {
+       "id": "src_b",
+       "type": "source",
+       "entity_type": "board_b",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 15
+        }
+       }
+      },
+      {
+       "id": "src_c",
+       "type": "source",
+       "entity_type": "board_c",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 20
+        }
+       }
+      },
+      {
+       "id": "place",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 9
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "smt",
+         "units": 1
+        }
+       ]
+      },
+      {
+       "id": "done",
+       "type": "sink",
+       "outcome": "completed"
+      }
+     ],
+     "flows": [
+      {
+       "id": "src_a__place",
+       "from": "src_a",
+       "to": "place",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "src_b__place",
+       "from": "src_b",
+       "to": "place",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "src_c__place",
+       "from": "src_c",
+       "to": "place",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "place__done",
+       "from": "place",
+       "to": "done",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      }
+     ],
+     "constraints": [],
+     "metrics": [],
+     "views": {
+      "2d": {},
+      "3d": {}
+     },
+     "metadata": {
+      "synthetic": true
+     }
+    },
+    "config": {
+     "horizon": {
+      "value": 3000,
+      "unit": "minute"
+     },
+     "warmup": {
+      "value": 300,
+      "unit": "minute"
+     },
+     "replications": 30,
+     "seed": 202,
+     "trace_level": "none"
+    }
+   },
+   {
+    "id": "SU-S3",
+    "title": "two units that change over and break down (TTF exponential 200, TTR exponential 15)",
+    "model": {
+     "schema_version": "0.1",
+     "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+     "domain": "synthetic_line",
+     "name": "SU-S3",
+     "time_unit": "minute",
+     "entity_types": [
+      {
+       "id": "board_a",
+       "name": "board_a"
+      },
+      {
+       "id": "board_b",
+       "name": "board_b"
+      }
+     ],
+     "resources": [
+      {
+       "id": "smt",
+       "type": "machine",
+       "name": "smt",
+       "capacity": 2,
+       "queue_discipline": "fifo",
+       "setups": {
+        "transitions": [
+         {
+          "from": "board_a",
+          "to": "board_b",
+          "distribution": {
+           "type": "constant",
+           "value": 3
+          }
+         },
+         {
+          "from": "board_b",
+          "to": "board_a",
+          "distribution": {
+           "type": "constant",
+           "value": 4
+          }
+         }
+        ]
+       },
+       "breakdowns": {
+        "time_to_failure": {
+         "distribution": {
+          "type": "exponential",
+          "mean": 200
+         }
+        },
+        "time_to_repair": {
+         "distribution": {
+          "type": "exponential",
+          "mean": 15
+         }
+        }
+       }
+      }
+     ],
+     "nodes": [
+      {
+       "id": "src_a",
+       "type": "source",
+       "entity_type": "board_a",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 10
+        }
+       }
+      },
+      {
+       "id": "src_b",
+       "type": "source",
+       "entity_type": "board_b",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 15
+        }
+       }
+      },
+      {
+       "id": "place",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "triangular",
+         "min": 4,
+         "mode": 7,
+         "max": 10
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "smt",
+         "units": 1
+        }
+       ]
+      },
+      {
+       "id": "done",
+       "type": "sink",
+       "outcome": "completed"
+      }
+     ],
+     "flows": [
+      {
+       "id": "src_a__place",
+       "from": "src_a",
+       "to": "place",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "src_b__place",
+       "from": "src_b",
+       "to": "place",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "place__done",
+       "from": "place",
+       "to": "done",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      }
+     ],
+     "constraints": [],
+     "metrics": [],
+     "views": {
+      "2d": {},
+      "3d": {}
+     },
+     "metadata": {
+      "synthetic": true
+     }
+    },
+    "config": {
+     "horizon": {
+      "value": 3000,
+      "unit": "minute"
+     },
+     "warmup": {
+      "value": 300,
+      "unit": "minute"
+     },
+     "replications": 30,
+     "seed": 203,
+     "trace_level": "none"
+    }
+   },
+   {
+    "id": "SU-S4",
+    "title": "a line of two stations with changeovers: m1 (initial board_a, triangular transitions), m2 (2 units, default 3)",
+    "model": {
+     "schema_version": "0.1",
+     "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+     "domain": "synthetic_line",
+     "name": "SU-S4",
+     "time_unit": "minute",
+     "entity_types": [
+      {
+       "id": "board_a",
+       "name": "board_a"
+      },
+      {
+       "id": "board_b",
+       "name": "board_b"
+      }
+     ],
+     "resources": [
+      {
+       "id": "m1",
+       "type": "machine",
+       "name": "m1",
+       "capacity": 1,
+       "queue_discipline": "fifo",
+       "setups": {
+        "initial": "board_a",
+        "transitions": [
+         {
+          "from": "board_a",
+          "to": "board_b",
+          "distribution": {
+           "type": "triangular",
+           "min": 1,
+           "mode": 2,
+           "max": 3
+          }
+         },
+         {
+          "from": "board_b",
+          "to": "board_a",
+          "distribution": {
+           "type": "triangular",
+           "min": 1,
+           "mode": 2,
+           "max": 3
+          }
+         }
+        ]
+       }
+      },
+      {
+       "id": "m2",
+       "type": "machine",
+       "name": "m2",
+       "capacity": 2,
+       "queue_discipline": "fifo",
+       "setups": {
+        "default": {
+         "type": "constant",
+         "value": 3
+        }
+       }
+      }
+     ],
+     "nodes": [
+      {
+       "id": "src_a",
+       "type": "source",
+       "entity_type": "board_a",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 12
+        }
+       }
+      },
+      {
+       "id": "src_b",
+       "type": "source",
+       "entity_type": "board_b",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 18
+        }
+       }
+      },
+      {
+       "id": "p1",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 4
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "m1",
+         "units": 1
+        }
+       ]
+      },
+      {
+       "id": "q2",
+       "type": "queue"
+      },
+      {
+       "id": "p2",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "triangular",
+         "min": 6,
+         "mode": 9,
+         "max": 14
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "m2",
+         "units": 1
+        }
+       ]
+      },
+      {
+       "id": "done",
+       "type": "sink",
+       "outcome": "completed"
+      }
+     ],
+     "flows": [
+      {
+       "id": "src_a__p1",
+       "from": "src_a",
+       "to": "p1",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "src_b__p1",
+       "from": "src_b",
+       "to": "p1",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "p1__q2",
+       "from": "p1",
+       "to": "q2",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "q2__p2",
+       "from": "q2",
+       "to": "p2",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "p2__done",
+       "from": "p2",
+       "to": "done",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      }
+     ],
+     "constraints": [],
+     "metrics": [],
+     "views": {
+      "2d": {},
+      "3d": {}
+     },
+     "metadata": {
+      "synthetic": true
+     }
+    },
+    "config": {
+     "horizon": {
+      "value": 3000,
+      "unit": "minute"
+     },
+     "warmup": {
+      "value": 300,
+      "unit": "minute"
+     },
+     "replications": 30,
+     "seed": 204,
+     "trace_level": "none"
+    }
+   }
+  ]
+ }
 }

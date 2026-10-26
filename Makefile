@@ -112,9 +112,10 @@ simulation-reference-test:
 	@mkdir -p bin
 	GEMINUS_SIMPY_REFERENCE_OUT=$(CURDIR)/bin/simpy-reference-go.json go test -count=1 -run '^TestSimPyReferenceExport$$' ./internal/simulation/des/
 	$(PYTHON) scripts/simpy_reference.py --go-results bin/simpy-reference-go.json --report bin/simpy-reference-report.json
+	$(PYTHON) scripts/simpy_batch_reference.py --go-results bin/simpy-reference-go.json --report bin/simpy-batch-reference-report.json
 	GEMINUS_CALENDAR_REFERENCE_OUT=$(CURDIR)/bin/calendar-reference-go.json go test -count=1 -run '^TestCalendarRulesExport$$' ./internal/simulation/engine/
 	$(PYTHON) scripts/calendar_reference.py --go-results bin/calendar-reference-go.json
-	@echo 'simulation-reference-test: finite buffers and blocking (T-047), breakdowns (T-048), calendars and release schedules (T-049) only, on the models the script accepts (see its docstring); D-050 R2, R3, R4, next_fit, X_end and TTRmax against an independent Python implementation (R1 is not, see checks/T-049_VALIDATION.md); batches and changeovers come with T-050.' >&2
+	@echo 'simulation-reference-test: finite buffers and blocking (T-047), breakdowns (T-048), calendars and release schedules (T-049), batch processes and changeovers (T-050, without finite buffers or calendars), on the models each script accepts (see their docstrings); D-050 R2, R3, R4, next_fit, X_end and TTRmax against an independent Python implementation (R1 is not, see checks/T-049_VALIDATION.md).' >&2
 # The live provider eval (T-053; T-038 owns the baseline): the modeler corpus through the live adapter, a client
 # metered by the run's cap (AI_EVAL_LIVE_MAX_USD, default USD 10, within the monthly limit) and the server's review.
 # Refused with exit 2 and no provider call unless the configuration turns live AI on exactly as the worker's does: the

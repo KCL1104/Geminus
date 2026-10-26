@@ -184,6 +184,15 @@ class Step:
 class Model:
     def __init__(self, ir):
         self.ir = ir
+        # Batch processes and changeovers (T-050) are the reference of
+        # scripts/simpy_batch_reference.py; this interpretation has neither,
+        # so it refuses them rather than run the model as if they were absent.
+        for n in ir["nodes"]:
+            if n.get("batch"):
+                raise SystemExit(f"unsupported here: {n['id']} is a batch process (scripts/simpy_batch_reference.py)")
+        for r in ir["resources"]:
+            if r.get("setups"):
+                raise SystemExit(f"unsupported here: {r['id']} changes over (scripts/simpy_batch_reference.py)")
         self.nodes = {n["id"]: n for n in ir["nodes"]}
         self.capacity = {r["id"]: r["capacity"] for r in ir["resources"]}
         self.out = {}

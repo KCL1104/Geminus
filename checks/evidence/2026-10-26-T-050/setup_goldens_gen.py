@@ -105,6 +105,9 @@ def setup_state(in_use, setup, started, done, done_ticks, processing, **more):
     return st
 
 
+TOLERANCE = {"rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+             "z": 4.0, "rel": 0.005, "abs": 1e-09}
+
 cases = []
 both = [flow("src_a", "place"), flow("src_b", "place"), flow("place", "done")]
 
@@ -392,7 +395,7 @@ cases.append({
                                                           overtime_ticks=ticks(8), available_ticks=ticks(100), idle_ticks=ticks(66))},
                    "blocking": None, "buffers": None, "batches": None},
     },
-    "simpy": "not compared: the SimPy reference has no calendars",
+    "simpy": "refused: a calendar (the batch and changeover reference has none; T-049's reference has no changeovers)",
 })
 
 # ---------------------------------------------------------------- G-SU10
@@ -430,8 +433,60 @@ cases.append({
                    "blocking": {"place": {"blocks_started": 1, "blocks_completed": 1, "completed_block_ticks": 0, "blocked_entity_ticks": 0}},
                    "buffers": {"q_test": {"full_ticks": ticks(15)}}, "batches": None},
     },
-    "simpy": "not compared: the SimPy reference has no finite buffers with setups",
+    "simpy": "refused: a finite buffer (the batch and changeover reference has no blocking; T-047's reference has no changeovers)",
 })
+
+
+# ---------------------------------------------------------------- the SimPy reference (stochastic)
+# Fixed before either side ran (T-050): 30 replications of 3000 minutes,
+# warmup 300, the tolerance of blocking-goldens.json (T-047). Compared by
+# scripts/simpy_batch_reference.py against TestSimPyReferenceExport.
+def ref_config(seed):
+    return config(3000, warmup=300, replications=30, seed=seed)
+
+
+def dist(kind, **kw):
+    d = {"type": kind}
+    d.update(kw)
+    return d
+
+
+reference = {
+    "tolerance": TOLERANCE,
+    "metrics": ["completed_count", "mean_lead_time_minutes", "utilization/<resource>", "setup_fraction/<resource with setups>",
+                "setups_started/<resource with setups>", "down_fraction/<resource with breakdowns>"],
+    "cases": [
+        {"id": "SU-S1", "title": "one unit, two products (exponential 15 and 25), changeovers triangular both ways, service triangular (3, 5, 7)",
+         "model": model("SU-S1", [res("smt", setups=setups(transitions=[(A, B, dist("triangular", min=2, mode=3, max=5)),
+                                                                        (B, A, dist("triangular", min=2, mode=4, max=6))]))],
+                        [source("src_a", dist("exponential", mean=15), A), source("src_b", dist("exponential", mean=25), B),
+                         process("place", dist("triangular", min=3, mode=5, max=7), [("smt", 1)]), sink("done")], both),
+         "config": ref_config(201)},
+        {"id": "SU-S2", "title": "three units, three products, initial board_a, an exponential default (mean 3) and two transitions",
+         "model": model("SU-S2", [res("smt", 3, setups=setups(initial=A, default=dist("exponential", mean=3),
+                                                              transitions=[(A, B, const(2)), (C, A, dist("triangular", min=1, mode=2, max=4))]))],
+                        [source("src_a", dist("exponential", mean=10), A), source("src_b", dist("exponential", mean=15), B),
+                         source("src_c", dist("exponential", mean=20), C), process("place", dist("exponential", mean=9), [("smt", 1)]), sink("done")],
+                        [flow("src_a", "place"), flow("src_b", "place"), flow("src_c", "place"), flow("place", "done")], entity_types=(A, B, C)),
+         "config": ref_config(202)},
+        {"id": "SU-S3", "title": "two units that change over and break down (TTF exponential 200, TTR exponential 15)",
+         "model": model("SU-S3", [res("smt", 2, setups=setups(transitions=[(A, B, const(3)), (B, A, const(4))]),
+                                      breakdowns={"time_to_failure": {"distribution": dist("exponential", mean=200)},
+                                                  "time_to_repair": {"distribution": dist("exponential", mean=15)}})],
+                        [source("src_a", dist("exponential", mean=10), A), source("src_b", dist("exponential", mean=15), B),
+                         process("place", dist("triangular", min=4, mode=7, max=10), [("smt", 1)]), sink("done")], both),
+         "config": ref_config(203)},
+        {"id": "SU-S4", "title": "a line of two stations with changeovers: m1 (initial board_a, triangular transitions), m2 (2 units, default 3)",
+         "model": model("SU-S4", [res("m1", setups=setups(initial=A, transitions=[(A, B, dist("triangular", min=1, mode=2, max=3)),
+                                                                                  (B, A, dist("triangular", min=1, mode=2, max=3))])),
+                                  res("m2", 2, setups=setups(default=const(3)))],
+                        [source("src_a", dist("exponential", mean=12), A), source("src_b", dist("exponential", mean=18), B),
+                         process("p1", dist("exponential", mean=4), [("m1", 1)]), queue("q2"),
+                         process("p2", dist("triangular", min=6, mode=9, max=14), [("m2", 1)]), sink("done")],
+                        [flow("src_a", "p1"), flow("src_b", "p1"), flow("p1", "q2"), flow("q2", "p2"), flow("p2", "done")]),
+         "config": ref_config(204)},
+    ],
+}
 
 doc = {
     "status": "HAND_DERIVED_EXPECTATION_NOT_ENGINE_RUN",
@@ -444,6 +499,7 @@ doc = {
               "checks/evidence/2026-10-26-T-050/setup_goldens_gen.py, which only builds the JSON). G-SU1-G-SU6 are ADR-026 D-055's "
               "G-S1-G-S6; G-S4 (neutral setups) is the D-047 differential's neutral variant (differential040_test.go, neutral_setups_test.go)."),
     "cases": cases,
+    "reference": reference,
 }
 json.dump(doc, sys.stdout, indent=1, ensure_ascii=False)
 sys.stdout.write("\n")

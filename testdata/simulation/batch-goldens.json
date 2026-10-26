@@ -1152,7 +1152,7 @@
      }
     }
    },
-   "simpy": "compare"
+   "simpy": "refused: a finite buffer (the batch and changeover reference has no blocking; T-047's reference has no batches)"
   },
   {
    "id": "G-BT5",
@@ -1494,7 +1494,7 @@
      }
     }
    },
-   "simpy": "not compared: the arrival and the wait limit fall on the same tick (D-048's order, which SimPy's scheduling order does not reproduce)"
+   "simpy": "compare"
   },
   {
    "id": "G-BT7",
@@ -2248,7 +2248,7 @@
      }
     }
    },
-   "simpy": "compare"
+   "simpy": "refused: a calendar (the batch and changeover reference has none; T-049's reference has no batches)"
   },
   {
    "id": "G-BT10",
@@ -3037,7 +3037,7 @@
      }
     }
    },
-   "simpy": "compare"
+   "simpy": "refused: a finite buffer (the batch and changeover reference has no blocking)"
   },
   {
    "id": "G-BT13",
@@ -3446,5 +3446,563 @@
    },
    "simpy": "compare"
   }
- ]
+ ],
+ "reference": {
+  "tolerance": {
+   "rule": "|mean_go - mean_simpy| <= z * sqrt(var_go/n + var_simpy/n) + rel * max(|mean_go|, |mean_simpy|) + abs",
+   "z": 4.0,
+   "rel": 0.005,
+   "abs": 1e-09
+  },
+  "metrics": [
+   "completed_count",
+   "mean_lead_time_minutes",
+   "utilization/<resource>",
+   "batches_started/<batch process>",
+   "members_started/<batch process>",
+   "down_fraction/<resource with breakdowns>"
+  ],
+  "cases": [
+   {
+    "id": "BT-S1",
+    "title": "one chamber, min 2, max 4, max_wait 20; exponential arrivals (mean 15), triangular service (20, 25, 35)",
+    "model": {
+     "schema_version": "0.1",
+     "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+     "domain": "synthetic_line",
+     "name": "BT-S1",
+     "time_unit": "minute",
+     "entity_types": [
+      {
+       "id": "board",
+       "name": "board"
+      }
+     ],
+     "resources": [
+      {
+       "id": "chamber",
+       "type": "machine",
+       "name": "chamber",
+       "capacity": 1,
+       "queue_discipline": "fifo"
+      }
+     ],
+     "nodes": [
+      {
+       "id": "src",
+       "type": "source",
+       "entity_type": "board",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 15
+        }
+       }
+      },
+      {
+       "id": "work",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "triangular",
+         "min": 20,
+         "mode": 25,
+         "max": 35
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "chamber",
+         "units": 1
+        }
+       ],
+       "batch": {
+        "min_size": 2,
+        "max_size": 4,
+        "max_wait": 20
+       }
+      },
+      {
+       "id": "done",
+       "type": "sink",
+       "outcome": "completed"
+      }
+     ],
+     "flows": [
+      {
+       "id": "src__work",
+       "from": "src",
+       "to": "work",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "work__done",
+       "from": "work",
+       "to": "done",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      }
+     ],
+     "constraints": [],
+     "metrics": [],
+     "views": {
+      "2d": {},
+      "3d": {}
+     },
+     "metadata": {
+      "synthetic": true
+     }
+    },
+    "config": {
+     "horizon": {
+      "value": 3000,
+      "unit": "minute"
+     },
+     "warmup": {
+      "value": 300,
+      "unit": "minute"
+     },
+     "replications": 30,
+     "seed": 101,
+     "trace_level": "none"
+    }
+   },
+   {
+    "id": "BT-S2",
+    "title": "two chambers, full batches of 3 (no wait limit); exponential arrivals (mean 8) and service (mean 30)",
+    "model": {
+     "schema_version": "0.1",
+     "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+     "domain": "synthetic_line",
+     "name": "BT-S2",
+     "time_unit": "minute",
+     "entity_types": [
+      {
+       "id": "board",
+       "name": "board"
+      }
+     ],
+     "resources": [
+      {
+       "id": "chamber",
+       "type": "machine",
+       "name": "chamber",
+       "capacity": 2,
+       "queue_discipline": "fifo"
+      }
+     ],
+     "nodes": [
+      {
+       "id": "src",
+       "type": "source",
+       "entity_type": "board",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 8
+        }
+       }
+      },
+      {
+       "id": "work",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 30
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "chamber",
+         "units": 1
+        }
+       ],
+       "batch": {
+        "min_size": 3,
+        "max_size": 3
+       }
+      },
+      {
+       "id": "done",
+       "type": "sink",
+       "outcome": "completed"
+      }
+     ],
+     "flows": [
+      {
+       "id": "src__work",
+       "from": "src",
+       "to": "work",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "work__done",
+       "from": "work",
+       "to": "done",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      }
+     ],
+     "constraints": [],
+     "metrics": [],
+     "views": {
+      "2d": {},
+      "3d": {}
+     },
+     "metadata": {
+      "synthetic": true
+     }
+    },
+    "config": {
+     "horizon": {
+      "value": 3000,
+      "unit": "minute"
+     },
+     "warmup": {
+      "value": 300,
+      "unit": "minute"
+     },
+     "replications": 30,
+     "seed": 102,
+     "trace_level": "none"
+    }
+   },
+   {
+    "id": "BT-S3",
+    "title": "a line: prep (exponential 6), an oven batch (min 1, max 5, max_wait 15, service 20), test (triangular 3, 5, 8), 10% scrapped",
+    "model": {
+     "schema_version": "0.1",
+     "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+     "domain": "synthetic_line",
+     "name": "BT-S3",
+     "time_unit": "minute",
+     "entity_types": [
+      {
+       "id": "board",
+       "name": "board"
+      }
+     ],
+     "resources": [
+      {
+       "id": "prep_r",
+       "type": "machine",
+       "name": "prep_r",
+       "capacity": 1,
+       "queue_discipline": "fifo"
+      },
+      {
+       "id": "oven_r",
+       "type": "machine",
+       "name": "oven_r",
+       "capacity": 1,
+       "queue_discipline": "fifo"
+      },
+      {
+       "id": "tester",
+       "type": "machine",
+       "name": "tester",
+       "capacity": 1,
+       "queue_discipline": "fifo"
+      }
+     ],
+     "nodes": [
+      {
+       "id": "src",
+       "type": "source",
+       "entity_type": "board",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 10
+        }
+       }
+      },
+      {
+       "id": "prep",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 6
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "prep_r",
+         "units": 1
+        }
+       ]
+      },
+      {
+       "id": "oven",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "constant",
+         "value": 20
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "oven_r",
+         "units": 1
+        }
+       ],
+       "batch": {
+        "min_size": 1,
+        "max_size": 5,
+        "max_wait": 15
+       }
+      },
+      {
+       "id": "test",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "triangular",
+         "min": 3,
+         "mode": 5,
+         "max": 8
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "tester",
+         "units": 1
+        }
+       ]
+      },
+      {
+       "id": "d",
+       "type": "decision"
+      },
+      {
+       "id": "done",
+       "type": "sink",
+       "outcome": "completed"
+      },
+      {
+       "id": "scrap",
+       "type": "sink",
+       "outcome": "abandoned"
+      }
+     ],
+     "flows": [
+      {
+       "id": "src__prep",
+       "from": "src",
+       "to": "prep",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "prep__oven",
+       "from": "prep",
+       "to": "oven",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "oven__test",
+       "from": "oven",
+       "to": "test",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "test__d",
+       "from": "test",
+       "to": "d",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "d__done",
+       "from": "d",
+       "to": "done",
+       "routing": {
+        "type": "probability",
+        "probability": 0.9
+       }
+      },
+      {
+       "id": "d__scrap",
+       "from": "d",
+       "to": "scrap",
+       "routing": {
+        "type": "probability",
+        "probability": 0.1
+       }
+      }
+     ],
+     "constraints": [],
+     "metrics": [],
+     "views": {
+      "2d": {},
+      "3d": {}
+     },
+     "metadata": {
+      "synthetic": true
+     }
+    },
+    "config": {
+     "horizon": {
+      "value": 3000,
+      "unit": "minute"
+     },
+     "warmup": {
+      "value": 300,
+      "unit": "minute"
+     },
+     "replications": 30,
+     "seed": 103,
+     "trace_level": "none"
+    }
+   },
+   {
+    "id": "BT-S4",
+    "title": "a chamber that breaks down (TTF exponential 300, TTR triangular 10, 20, 40), min 3, max 6, max_wait 30",
+    "model": {
+     "schema_version": "0.1",
+     "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+     "domain": "synthetic_line",
+     "name": "BT-S4",
+     "time_unit": "minute",
+     "entity_types": [
+      {
+       "id": "board",
+       "name": "board"
+      }
+     ],
+     "resources": [
+      {
+       "id": "chamber",
+       "type": "machine",
+       "name": "chamber",
+       "capacity": 1,
+       "queue_discipline": "fifo",
+       "breakdowns": {
+        "time_to_failure": {
+         "distribution": {
+          "type": "exponential",
+          "mean": 300
+         }
+        },
+        "time_to_repair": {
+         "distribution": {
+          "type": "triangular",
+          "min": 10,
+          "mode": 20,
+          "max": 40
+         }
+        }
+       }
+      }
+     ],
+     "nodes": [
+      {
+       "id": "src",
+       "type": "source",
+       "entity_type": "board",
+       "arrival": {
+        "distribution": {
+         "type": "exponential",
+         "mean": 12
+        }
+       }
+      },
+      {
+       "id": "work",
+       "type": "process",
+       "service_time": {
+        "distribution": {
+         "type": "triangular",
+         "min": 30,
+         "mode": 35,
+         "max": 45
+        }
+       },
+       "requires": [
+        {
+         "resource_id": "chamber",
+         "units": 1
+        }
+       ],
+       "batch": {
+        "min_size": 3,
+        "max_size": 6,
+        "max_wait": 30
+       }
+      },
+      {
+       "id": "done",
+       "type": "sink",
+       "outcome": "completed"
+      }
+     ],
+     "flows": [
+      {
+       "id": "src__work",
+       "from": "src",
+       "to": "work",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      },
+      {
+       "id": "work__done",
+       "from": "work",
+       "to": "done",
+       "routing": {
+        "type": "probability",
+        "probability": 1
+       }
+      }
+     ],
+     "constraints": [],
+     "metrics": [],
+     "views": {
+      "2d": {},
+      "3d": {}
+     },
+     "metadata": {
+      "synthetic": true
+     }
+    },
+    "config": {
+     "horizon": {
+      "value": 3000,
+      "unit": "minute"
+     },
+     "warmup": {
+      "value": 300,
+      "unit": "minute"
+     },
+     "replications": 30,
+     "seed": 104,
+     "trace_level": "none"
+    }
+   }
+  ]
+ }
 }
