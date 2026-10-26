@@ -62,7 +62,7 @@ Meta 沒有 Go SDK。
 - 照片路徑的 provider 是設定，不是 API 的一部分；T-056 只依賴 `provider.Segmenter`、`provider.Client` 與 `provider.Image`。
 - 有圖片的呼叫預留很大（context window 為上限），每日上限 10 美元下約 7 次照片 proposal 的預留（以 3 個 attempt 計）；結算依實際 usage。
 - 可能被高估：5xx 一律當作可能計費。可能被低估的情形：文件之外的計費項目（例如 Meta 注入的 steering context 寫明不計費）。
-- API 仍不能在不讀 key 的情況下得知 live AI 是否開啟（T-053 I5 沒有在本 ADR 處理），部署的 API 維持 `AI_PROVIDER=disabled`。
+- API 仍不能在不讀 key 的情況下得知 live AI 是否開啟（T-053 I5 沒有在本 ADR 處理），部署的 API 維持 `AI_PROVIDER=disabled`。（之後的 follow-up 已處理：API 以四個非 secret 的設定判斷、不讀 key，部署的 API 與 worker 設相同的設定；見 ADR-027 addendum 最後一項，coordinator 的決定。）
 
 ## Alternatives
 

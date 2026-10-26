@@ -87,3 +87,4 @@ tasks.json 原規劃的 `internal/ai/context/` 改名為 `internal/ai/aicontext`
 - `provider.Prompt` 可以帶圖片（`Images`，算進 prompt hash）；`Client` 只交給實作 `provider.ImageInput` 且接受圖片的 backend，Claude adapter 沒有實作，所以有圖片的 prompt 在它之前就是 `invalid_request`。
 - `provider.Segmenter`／`SegmentClient` 是照片路徑的第二種 client（SAM 3.1）；計量、預算與錯誤碼與 `Client` 相同。
 - Spend：只有 `spend.GeoPriced` 的 model（`claude-opus-5-5`）預留時乘 1.1、結算依 geo；其他 model（Muse Spark）以牌價。
+- API 的可用性不讀 key（T-053 I5；T-055 的 follow-up，2026-10-26，**coordinator 的決定**，PROPOSED 至獨立審查）：API 不再經 `LoadAI`，改以 `config.LoadAPI`／`LoadAPIAI` 由 `AI_PROVIDER`、`AI_POLICY_APPROVAL`、`AI_MODEL`、`GEMINUS_AI_LIVE` 判斷是否接受 proposal，檢查是 worker 的 live gate（`liveGate`，同一段程式）但不讀、不要求 key；不合時開關 on 拒絕啟動、off 回 `policy_not_approved`；API 的環境中有任何 AI key 的變數即拒絕啟動（`key_forbidden`）。Worker 與 live adapter 不變。見 SECURITY §7「API 的 key-free 可用性」、runbook §4.4。

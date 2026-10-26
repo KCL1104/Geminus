@@ -109,14 +109,14 @@ go run ./cmd/provision-tenant organization -name 'Demo line (synthetic)' \
 | `WORKER_ID` | 是 | 否 | lease 與 audit 中的名稱（字母開頭，至多 128）；每個 worker 不同，所以只開一個 replica |
 | `WORKER_ORGANIZATION_IDS` | 是 | 否 | worker 服務的 organization（逗號分隔，D-008）：§3.3 的 `organization_id` |
 
-### 4.4 AI（`internal/config/ai.go`；live 只在 worker）
+### 4.4 AI（`internal/config/ai.go`、`apiai.go`；live 呼叫只在 worker，API 不持有 key）
 
 | 變數 | 服務 | 必填 | Secret | 說明 |
 |---|---|---|---|---|
-| `AI_PROVIDER` | api、worker | 否 | 否 | `disabled`（預設）、`fake`（只給 development／test，production 拒絕）、`anthropic`、`meta`（T-055：Meta Model API 的 Muse Spark，批准 H-029） |
-| `AI_POLICY_APPROVAL` | api、worker | live 時 | 否 | `internal/config/aiapproval` 登記、且屬於 `AI_PROVIDER` 的批准（`anthropic`：H-018；`meta`：H-029），否則 `provider_mismatch` |
-| `AI_MODEL` | api、worker | live 時 | 否 | 必須等於批准的 model（H-029：`muse-spark-1.3`），沒有預設 |
-| `GEMINUS_AI_LIVE` | **只 worker** | 否 | 否 | owner 的開關：`on`／`off`／不設（預設關） |
+| `AI_PROVIDER` | api、worker（**兩者相同**） | 否 | 否 | `disabled`（預設）、`fake`（只給 development／test，production 拒絕）、`anthropic`、`meta`（T-055：Meta Model API 的 Muse Spark，批准 H-029） |
+| `AI_POLICY_APPROVAL` | api、worker（**兩者相同**） | live 時 | 否 | `internal/config/aiapproval` 登記、且屬於 `AI_PROVIDER` 的批准（`anthropic`：H-018；`meta`：H-029），否則 `provider_mismatch` |
+| `AI_MODEL` | api、worker（**兩者相同**） | live 時 | 否 | 必須等於批准的 model（H-029：`muse-spark-1.3`；H-018：`claude-opus-5-5`），且該 model 有價格（`internal/ai/spend`），沒有預設 |
+| `GEMINUS_AI_LIVE` | api、worker（**兩者相同**） | 否 | 否 | owner 的開關：`on`／`off`／不設（預設關）。API：on 且上面三個設定都相符時接受 proposal，不讀 key；worker：另需 key 才呼叫 provider |
 | `GEMINUS_ANTHROPIC_API_KEY_A`、`GEMINUS_ANTHROPIC_API_KEY_B` | **只 worker** | Anthropic live 時 | 是 | D-018 的兩把 key；hackathon 不用 |
 | `GEMINUS_MUSE_API_KEY` | **只 worker** | Meta live 時 | 是 | Meta Model API 的 key（一把，label `meta`；格式 `LLM_<數字 ID>_<secret>`，格式不符拒絕啟動）；`MODEL_API_KEY` 不讀 |
 | `AI_VISION_PROVIDER` | worker | 否 | 否 | 照片路徑（T-055 給 T-056）：不設＝跟 `AI_PROVIDER`；`disabled` 關閉；`anthropic`／`meta` 為另一個 live provider 時需下面兩個變數、自己的 key 與同一個開關；批准沒列圖片（H-018）時照片路徑維持關閉（`images_not_approved`），proposal 不受影響 |
@@ -124,8 +124,9 @@ go run ./cmd/provision-tenant organization -name 'Demo line (synthetic)' \
 | `AI_MONTHLY_LIMIT_USD`、`AI_DAILY_LIMIT_USD`、`AI_ORGANIZATION_DAILY_LIMIT_USD` | 每個 worker 相同 | 否 | 否 | 花費上限（D-110）；限額是每個 process 的設定，不同的 worker 必須相同（T-053 I2） |
 | `AI_MAX_PROMPT_BYTES`、`AI_MAX_OUTPUT_TOKENS`、`AI_TIMEOUT_SECONDS`、`AI_ATTEMPT_TIMEOUT_SECONDS`、`AI_MAX_RETRIES`、`AI_MAX_CONCURRENT_PER_ORGANIZATION` | worker | 否 | 否 | 覆蓋 provider 的預設 budget |
 | `AI_API_KEY` | — | — | — | 一律拒絕（D-018） |
+| `GEMINUS_META_API_KEY`（Meta key 的舊名稱）、`ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`、`MODEL_API_KEY` | — | — | — | 從不讀取（D-018）；**API 的環境中有其中任何一個，或 `AI_API_KEY`、上面任何一把 key，API 即拒絕啟動**（`key_forbidden`，錯誤只寫變數名稱；T-053 I5） |
 
-**API 不得拿到任何 AI key（T-053 I5）。** 目前 API 與 worker 共用 `config.Load`：開關 `on` 時 API 也會要求並讀取 key，否則拒絕啟動；開關不 on 時 API 對新的 AI proposal 回 503 `AI_POLICY_NOT_APPROVED`。所以在「API 只檢查批准、model 與開關而不讀 key」的修改合併之前（T-055 沒有做：API 是否改讀開關、`variables.json` 的 API `forbidden` 是否放寬，是待 coordinator／owner 決定的安全設計，見 `checks/T-055_VALIDATION.md`）：API 的 `AI_PROVIDER` 維持 `disabled`、API 不設 `GEMINUS_AI_LIVE` 與任何 key；demo 的自然語言與照片 proposal 在這之前無法經由部署的 API 使用。Live 開關預設關，只有 owner 開。
+**API 不持有任何 AI key（T-053 I5；T-055 的 follow-up，coordinator 的決定）。** API 只以四個非 secret 的設定決定是否接受 AI proposal：`AI_PROVIDER`、`AI_POLICY_APPROVAL`、`AI_MODEL`、`GEMINUS_AI_LIVE`（`config.LoadAPIAI`）。檢查與 worker 的 live gate 相同（同一段程式 `liveGate`：build 記錄的批准、屬於 `AI_PROVIDER`、record 不缺任何項目；`AI_MODEL` 等於 record 的 model 且有價格；開關 on），只是不讀、也不要求任何 key。四個都相符時 API 接受 proposal（worker 以自己的 key 呼叫 provider），啟動 log 為 `AI proposals are accepted; the worker calls the provider`（`provider`、`model`、`code` `LIVE_AI_ON`）。任何不合：開關不是 on 時 API 照常啟動、對新的 proposal 回 503（`AI_POLICY_NOT_APPROVED`；`disabled` 為 `AI_PROVIDER_NOT_CONFIGURED`），啟動 log `AI proposals are refused` 記 typed reason（`code`，例如 `SWITCH_OFF`、`MODEL_MISMATCH`）；開關 on 時 API 拒絕啟動（exit 1，錯誤碼即該條件），與 worker 相同。API 的環境中有任何 AI key 的變數（上表的 key 與從不讀取的名稱）即拒絕啟動（`key_forbidden`），所以 key 只設在 worker。API 與 worker 的四個設定必須相同：`scripts/check_deploy.py` 檢查 `variables.json` 中兩者的宣告相同、API 沒有其他 AI 設定、API 的 `forbidden` 包含 API 拒絕的每個 key 變數（清單取自 `internal/config/apiai.go`）；值由 owner 在 Railway 的 UI 設定，靜態檢查看不到。API 接受、但 worker 不能呼叫 provider 時：worker 的開關 on 而沒有 key，worker 拒絕啟動（不建 handler、不連線），proposal 停在 generating，直到有 worker 啟動；worker 的開關不是 on，每個 proposal 失敗為 `AI_POLICY_NOT_APPROVED`；key 被 provider 拒絕，失敗為 `AI_CREDENTIALS_EXHAUSTED`（HTTP 層 `SERVICE_UNAVAILABLE`）。失敗的 proposal 不重試，除了它的 error、job 與 audit 之外不寫入任何東西（`internal/proposals/generator` 的 `TestAProposalTheWorkerCannotAskFailsSafely`）。Live 開關預設關，只有 owner 開，且 API 與 worker 一起開。
 
 ### 4.5 Telemetry（`internal/config/telemetry.go`，api、worker）
 
@@ -230,11 +231,12 @@ BFF 的 URL 必須全部是 https（只有全部在 loopback 時才可 http）�
 | `BFF_OIDC_CLIENT_SECRET` | web | **owner**（必填） | Auth0 Application 的 Client Secret |
 | `GEMINUS_ANTHROPIC_API_KEY_A`、`GEMINUS_ANTHROPIC_API_KEY_B` | **只 worker** | **owner**（選填；只在開 live AI 時） | D-018 的兩把 key |
 | `GEMINUS_MUSE_API_KEY` | **只 worker** | **owner**（選填；只在開 Meta live AI 時） | Meta Model API（Standard mode，H-029） |
-| `GEMINUS_AI_LIVE`（不是 secret，但是 owner 的開關） | **只 worker** | **owner**（選填，預設關） | §4.4 |
+| `GEMINUS_AI_LIVE`（不是 secret，但是 owner 的開關） | api、worker（**兩者相同**） | **owner**（選填，預設關） | §4.4 |
+| `AI_POLICY_APPROVAL`、`AI_MODEL`（不是 secret，owner 的設定） | api、worker（**兩者相同**） | **owner**（選填；只在開 live AI 時） | §4.4（`AI_PROVIDER` 由 `deploy.sh` 只在沒有時設為 `disabled`，owner 改為 `anthropic` 或 `meta` 時兩個 service 一起改） |
 
 Owner 的變數：`deploy.sh` 不設、不讀（只看名稱是否存在），只在最後檢查必填的 `BFF_OIDC_CLIENT_SECRET` 已存在；沒有時 verification 失敗並寫出要在哪個 service 填（§7.7）。Live AI 預設關（`AI_PROVIDER=disabled`、沒有 `GEMINUS_AI_LIVE`）。
 
-API 與 web 各自的 `forbidden` 清單（`variables.json`）中的變數不得設在該 service：API 沒有任何 AI key 與 live 開關（§4.4），web 沒有 database 與 bucket。
+API 與 web 各自的 `forbidden` 清單（`variables.json`）中的變數不得設在該 service：API 沒有任何 AI key（§4.4：API 拒絕啟動的每個 key 變數；live 開關與其他三個 AI 設定則與 worker 相同），web 沒有 database、bucket 與 AI key。
 
 ### 7.4 Bucket（Railway Storage Buckets）
 
