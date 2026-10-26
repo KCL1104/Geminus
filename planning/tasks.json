@@ -2023,7 +2023,8 @@
         "所有字串經 T-044 catalog；數字、日期、百分比依語言格式化（T-032 的 delta／CI 不因格式化改變值）。",
         "流程依 H-027 Q2：10-19 prototype 的匯入與 AI 建議審閱流程（上傳、無效列與下載、逐一確認的欄位對應、差異、假設、伺服器 risk 與 AI 判斷並列、edit 與 scenario 批准分開、needs_input）；外觀用 Marey，細節依之後批准的規則（D-067–D-072）；介面簡潔，只放需要的控制項（H-027）。",
         "Hackathon 切片（H-029）：以自然語言提出修改 → 非同步 proposal（Meta provider）→ 差異、AI 的假設、伺服器算的風險與 AI 的判斷並列 → edit 批准與 scenario 批准分開；含照片辨識（T-056）產生的 proposal。匯入與欄位對應的畫面不在切片內。",
-        "H-031：proposal 的 provider 改為 Claude（T-053 的 adapter；測試用 fake provider），不接 Meta；切片相依 T-053 與 T-015 切片。"
+        "H-031：proposal 的 provider 改為 Claude（T-053 的 adapter；測試用 fake provider），不接 Meta；切片相依 T-053 與 T-015 切片。",
+        "H-033（2026-10-26）：proposal 的 provider 改為 Meta（Muse Spark，T-055），Claude（T-053）為可切換的備援；UI 不依 provider 而變。"
       ],
       "planned_outputs": [
         "apps/web/features/import/",
@@ -3694,7 +3695,8 @@
         "價格表（官方 pricing 頁，取得日期與原文記在報告）與 T-053 的花費 ledger、上限、開關共用；開關條件：批准紀錄（H-029）＋AI_PROVIDER=meta＋GEMINUS_AI_LIVE=on＋GEMINUS_META_API_KEY；缺任一項即拒絕，fake provider 仍是預設。",
         "Key 不進 log、錯誤、報告、audit 或測試輸出；只送 synthetic 資料、demo 圖片與使用者輸入的文字；log 不存原始 prompt 與回應。",
         "Fake 與錄製的 Meta 回應做 contract 測試；live smoke 由有 key 的 session 執行（owner 授權 H-029），結果另外記錄。",
-        "H-031（2026-10-26）：暫停，先用 Claude API 驗證；owner 決定接上 Meta 後再進行。"
+        "H-031（2026-10-26）：暫停，先用 Claude API 驗證；owner 決定接上 Meta 後再進行。",
+        "H-033（2026-10-26）：恢復。Owner 已加 Meta（Muse）的 key（變數名稱在有 key 的新 session 中只看名稱確認），選「兩者都用 Meta」：自然語言修改的 proposal 用 Muse Spark；Claude adapter 保留為可由設定切換的備援。Live 呼叫只在獨立審查過的 T-055 程式上、由有 key 的新 session 執行（比照 H-025），先做不收費或最小的確認，再 smoke、eval。"
       ],
       "planned_outputs": [
         "internal/ai/provider/meta/",
@@ -3744,7 +3746,8 @@
         "使用者上傳產線照片或平面圖（私有 storage，T-016 的上傳路徑與大小／型別限制）→ worker 呼叫 SAM 3.1（文字提示如 machine、conveyor、workstation）取得框與遮罩 → Muse Spark 依影像與框辨識工作站與流向 → 產生 ModelChangeProposal（步驟、連線、2D 位置），經伺服器驗證、算風險，由人批准才生效（AI 不直接改模型）。",
         "只用 demo 圖片（例如以 Muse Image 產生的 synthetic 產線圖或 owner 提供、可使用的圖片），不送客戶資料；資料不足時回 needs_input。",
         "Fake SAM／Muse 回應的測試、惡意或無效回應（框超出圖片、步驟過多、prompt injection 文字）的反向測試。",
-        "H-031：先以支援影像輸入的 provider（Claude）實作照片 → 工作站與流向的辨識（同樣只產生 proposal，由伺服器驗證、人工批准）；SAM 3.1 待接上 Meta 後再加。"
+        "H-031：先以支援影像輸入的 provider（Claude）實作照片 → 工作站與流向的辨識（同樣只產生 proposal，由伺服器驗證、人工批准）；SAM 3.1 待接上 Meta 後再加。",
+        "H-033（2026-10-26）：照片辨識用 SAM 3.1（文字提示找機台、輸送帶、工作站的框與遮罩）＋ Muse Spark（依影像與框判斷工作站與流向），Claude 的影像輸入保留為可切換的備援。AI 編輯的 allowlist 沒有 `views`，所以 proposal 不帶 2D 位置（T-031 問題 6）：新步驟由編輯器的 layered 版面自動排列。"
       ],
       "planned_outputs": [
         "internal/ai/",

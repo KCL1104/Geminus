@@ -1801,6 +1801,19 @@
         "Auth0 tenant",
         "Owner 在 Railway 填入 Anthropic key 與 Auth0 secret"
       ]
+    },
+    {
+      "id": "H-033",
+      "subject": "Meta（Muse）API key 已加入環境變數；demo 的自然語言修改與照片辨識都用 Meta",
+      "decision": "修改 H-031 (2)，恢復 T-055：自然語言修改的 proposal 用 Muse Spark（Standard mode）；照片辨識（T-056）用 SAM 3.1＋Muse Spark；Claude adapter 保留為可切換的備援。AI 只產生 proposal（伺服器驗證、算風險、人批准）；只送 synthetic 資料、demo 圖片與使用者文字；沿用 T-053 的花費上限與開關；Meta 的 live 呼叫只在獨立審查過的 T-055 程式上執行（比照 H-025）；key 只看名稱。",
+      "quote": "我加上 MUSE 的 API KEY 了；兩者都用 Meta (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆與 AskUserQuestion 選擇",
+      "still_open": [
+        "T-055 的獨立審查",
+        "Meta key 的變數名稱（新 session 中確認，只看名稱）"
+      ]
     }
   ]
 }

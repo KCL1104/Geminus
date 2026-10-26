@@ -617,7 +617,7 @@ Coordinator 把 `t053-schema` 的三個 commit（3784d95、6c0e38d、20bb758）c
 | Endpoint | `POST /v1/messages/count_tokens`：免費，不建立 message、不產生 output、不收費 |
 | Schema | 修正後 proposal-output 的投影（`output_config.format`），f930f50 起的投影 |
 | 結果 | HTTP 200，`input_tokens` 1682 |
-| Model | coordinator 的說明沒有寫明（H-018 只批准 `claude-opus-5-5`）；待 coordinator 補記 |
+| Model | coordinator 當時沒有把這次請求的 model 寫進紀錄，事後也找不到可核對的紀錄，因此不補推測的值（H-018 只批准 `claude-opus-5-5`）。重跑 live smoke 的 session 第一步會再做一次不收費的 `count_tokens`，並記錄 model 與結果。 |
 
 - **是哪一個投影**：review 第 1 輪的修正沒有改變投影。在 0aa7a85 的 `git archive` 複本中以同樣格式印出 proposal-output 的投影，與 `checks/evidence/2026-10-26-T-053-schema/projected-proposal-output.txt` byte for byte 相同（sha256 `51933b889295ff946efd920c7fbecb76e061a70ed4c3ba3f8de2fbcb77d6191b`；`checks/evidence/2026-10-26-T-053-schema-r1/fixes/projection-unchanged.log`）。以 encoding/json 寫成 compact 時為 2623 bytes、sha256 `71bb98bf763fa35fed501eabd697909e997bc9f1e079ed2fd7ece485f70ff254`（SDK 送出的 bytes 可能不同；coordinator 送出的 bytes 本身的 hash 沒有記錄）。
 - **它證明的**：API 接受修正後的 schema。同一個 endpoint 對修正前、帶空 schema 的投影回 400。
