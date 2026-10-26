@@ -136,7 +136,13 @@ var (
 		"input_hash": {shape: hash}, "input_tokens": {shape: count}, "output_tokens": {shape: count}, "latency_ms": {shape: count},
 		"model": {shape: label}, "credential_label": {shape: label}, "output_hash": {shape: hash},
 		"failed_over_from": {shape: labels}, "provider_request_id": {shape: label},
+		// T-053: what a metered call cost and the reservation it was
+		// charged to.
+		"cost_nano_usd": {shape: count}, "spend_reservation_id": idOf("asr"), "spend_unsettled": {shape: flag},
 	}
+	aiRoles = oneOf("modeler", "scenario", "analyst", "importer")
+	// spendTargets are what a live AI call is for (provider.Attribution).
+	spendTargets = []string{"ai_proposal", "ai_analysis", "import"}
 )
 
 // targets are the target types and the ID kind each names.
@@ -205,6 +211,22 @@ var catalogue = map[string]spec{
 		"job_type": oneOf("simulation", "model_proposal", "import_profile", "import_validate", "import_mapping", "analysis"),
 		"attempt":  {shape: count}, "max_attempts": {shape: count}, "code": {shape: code}, "retryable": {shape: flag},
 		"outcome": oneOf("requeued", "failed"), "uncorrelated": {shape: flag}}},
+	// The spend ledger of live AI (T-053, internal/storage/aispend): the
+	// worker, in the transaction that reserves or settles, on what the call
+	// is for, under the request that queued it. Amounts in nano-USD;
+	// never the prompt, the answer or a key; no deployment-wide total (that
+	// would tell one tenant of the others' use).
+	"ai_spend.reserve": {Worker, spendTargets, map[string]field{"reservation_id": idOf("asr"), "role": aiRoles,
+		"model": {shape: label}, "reserved_nano_usd": {shape: count}, "organization_day_committed_nano_usd": {shape: count}}},
+	"ai_spend.settle": {Worker, spendTargets, map[string]field{"reservation_id": idOf("asr"), "role": aiRoles,
+		"model": {shape: label}, "reserved_nano_usd": {shape: count}, "settled_nano_usd": {shape: count},
+		"outcome": oneOf("usage", "none", "unknown"), "input_tokens": {shape: count}, "output_tokens": {shape: count},
+		"cache_write_tokens": {shape: count}, "cache_read_tokens": {shape: count}, "unknown_attempts": {shape: count},
+		"credential_label": {shape: label}}},
+	// A refused reservation writes nothing but this event (best effort:
+	// the call is refused whether or not it is recorded).
+	"ai_spend.refuse": {Worker, spendTargets, map[string]field{"role": aiRoles, "model": {shape: label},
+		"charge_nano_usd": {shape: count}, "limit": oneOf("organization_day", "day", "month")}},
 	// Provisioning (cmd/provision-tenant, D-042).
 	"organization.provision": {System, []string{"organization"}, map[string]field{"owner_user_id": idOf("usr")}},
 }

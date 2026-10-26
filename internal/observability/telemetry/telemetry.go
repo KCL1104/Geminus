@@ -42,6 +42,8 @@ type Telemetry struct {
 	engineEvents   metric.Int64Counter
 	aiDuration     metric.Float64Histogram
 	aiTokens       metric.Int64Counter
+	aiSpend        metric.Int64Counter
+	aiRefusals     metric.Int64Counter
 	importDuration metric.Float64Histogram
 	importRows     metric.Int64Counter
 }
@@ -73,6 +75,8 @@ func New(tp trace.TracerProvider, mp metric.MeterProvider) (*Telemetry, error) {
 	t.engineEvents = counter("geminus.simulation.engine.events", "{event}", "Events the simulation engine processed.")
 	t.aiDuration = seconds("gen_ai.client.operation.duration", "Duration of AI provider calls.")
 	t.aiTokens = counter("geminus.ai.tokens", "{token}", "Tokens AI provider calls used.")
+	t.aiSpend = counter("geminus.ai.spend", "{nanoUSD}", "What settled live AI calls cost, in nano-USD (T-053).")
+	t.aiRefusals = counter("geminus.ai.spend.refusals", "{call}", "Live AI calls a spend limit refused before they were made (T-053).")
 	t.importDuration = seconds("geminus.import.duration", "Duration of import profiling and validation.")
 	t.importRows = counter("geminus.import.rows", "{row}", "Rows import profiling and validation read.")
 	if err != nil {
@@ -189,6 +193,29 @@ func (t *Telemetry) ProviderCall(ctx context.Context, start time.Time, provider,
 	for kind, n := range map[string]int64{"input": input, "output": output} {
 		t.aiTokens.Add(ctx, n, metric.WithAttributes(append(attrs[:3:3], attribute.String("gen_ai.token.type", kind))...))
 	}
+}
+
+// modelName is the model as a metric attribute: a name, never something
+// shaped like an ID (a metric carries none).
+func modelName(m string) attribute.KeyValue {
+	if observability.Fits(observability.KindID, m) {
+		m = observability.Redacted
+	}
+	return name("gen_ai.request.model", m)
+}
+
+// Spend records what a settled live AI call cost, by model, role and how
+// the amount was found (usage, none, unknown); never an ID.
+func (t *Telemetry) Spend(ctx context.Context, model, role, how string, nanoUSD int64) {
+	t.aiSpend.Add(ctx, max(nanoUSD, 0), metric.WithAttributes(modelName(model),
+		str("geminus.ai.role", observability.KindToken, role), outcome(how)))
+}
+
+// SpendRefused records a live AI call a spend limit refused, by model,
+// role and the limit (organization_day, day, month).
+func (t *Telemetry) SpendRefused(ctx context.Context, model, role, limit string) {
+	t.aiRefusals.Add(ctx, 1, metric.WithAttributes(modelName(model),
+		str("geminus.ai.role", observability.KindToken, role), str("geminus.ai.limit", observability.KindToken, limit)))
 }
 
 // Import records an import stage (profile, validate) that started at

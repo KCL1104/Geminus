@@ -155,6 +155,9 @@ var providerMessages = map[provider.Code]string{
 	provider.CodeRejected:             "the AI provider rejected the request",
 	provider.CodeRefused:              "the AI model declined to answer",
 	provider.CodeTruncated:            "the AI answer did not fit the output budget",
+	// T-053: refused before any provider call.
+	provider.CodeQuotaExceeded:    "a live AI spend limit was reached; no provider call was made",
+	provider.CodeSpendUnavailable: "the live AI spend ledger could not reserve for the call; no provider call was made",
 }
 
 // providerFailure is the job failure of a provider error.
@@ -221,7 +224,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		return err
 	}
-	gen, err := h.generate(ctx, org, st)
+	gen, err := h.generate(ctx, org, st, provider.Attribution{TargetType: "ai_proposal", TargetID: p.ProposalID, RequestID: p.RequestID})
 	if err != nil {
 		return failed(err, gen.meta)
 	}
@@ -306,7 +309,7 @@ type generation struct {
 // are read before the provider is asked, so a storage failure never comes
 // after a paid call (D-061 (c)); the binding stage after the call reads
 // the copies, never storage.
-func (h *Handler) generate(ctx context.Context, org string, st started) (generation, error) {
+func (h *Handler) generate(ctx context.Context, org string, st started, attr provider.Attribution) (generation, error) {
 	pr, v := st.proposal, st.version
 	var ir model.ModelIR
 	if err := model.Decode(v.IR, &ir); err != nil {
@@ -348,6 +351,7 @@ func (h *Handler) generate(ctx context.Context, org string, st started) (generat
 		return generation{}, err
 	}
 
+	pc.Attribution = attr // what the spend ledger charges the call to (T-053)
 	res, err := h.cfg.Provider.GenerateModelProposal(ctx, pc)
 	meta := res.Metadata
 	h.logCall(ctx, meta, err)
@@ -451,7 +455,16 @@ func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
 	}
 	h.cfg.Log.InfoContext(ctx, "ai provider call ended", "provider", m.Provider, "model", m.Model, "credential_label", m.Credential,
 		"role", string(m.Role), "latency_ms", m.LatencyMillis, "input_tokens", m.Usage.InputTokens, "output_tokens", m.Usage.OutputTokens,
-		"provider_request_id", m.ProviderRequestID, "code", code)
+		"provider_request_id", m.ProviderRequestID, "code", code, "cost_nano_usd", m.CostNanoUSD, "spend_reservation_id", m.SpendReservation)
+	var pe *provider.Error
+	if errors.As(err, &pe) && pe.Code == provider.CodeQuotaExceeded {
+		h.cfg.Log.WarnContext(ctx, "a live AI spend limit refused a call", "role", string(m.Role), "limit", pe.Limit)
+	}
+	if m.SpendUnsettled {
+		// The reservation stays counted at its bound (the safe side).
+		h.cfg.Log.WarnContext(ctx, "settling a live AI spend reservation failed", "spend_reservation_id", m.SpendReservation,
+			"cost_nano_usd", m.CostNanoUSD, "spend_unsettled", true)
+	}
 	telemetry.Current().ProviderCall(ctx, time.Now().Add(-time.Duration(m.LatencyMillis)*time.Millisecond), m.Provider, m.Model, string(m.Role),
 		code, m.Usage.InputTokens, m.Usage.OutputTokens)
 }
@@ -474,6 +487,10 @@ func auditMeta(m provider.Metadata) map[string]any {
 	}
 	if len(m.FailedOver) > 0 {
 		out["failed_over_from"] = m.FailedOver
+	}
+	// T-053: what a metered call cost and the reservation it was charged to.
+	if m.SpendReservation != "" {
+		out["cost_nano_usd"], out["spend_reservation_id"], out["spend_unsettled"] = m.CostNanoUSD, m.SpendReservation, m.SpendUnsettled
 	}
 	return out
 }

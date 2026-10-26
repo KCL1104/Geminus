@@ -1,0 +1,13 @@
+--- FAIL: TestFailureErrors (0.01s)
+    proposals_test.go:270: AI_QUOTA_EXCEEDED: {Code:INTERNAL_ERROR Message:m Details:[{Path: Reason:m Code:AI_QUOTA_EXCEEDED}] RequestID:req_01M4YDQK00V6H8S0ST4F7510KR}, want RATE_LIMITED
+    proposals_test.go:270: AI_SPEND_UNAVAILABLE: {Code:INTERNAL_ERROR Message:m Details:[{Path: Reason:m Code:AI_SPEND_UNAVAILABLE}] RequestID:req_01M4YDQK00V6H8S0ST4F7510KR}, want SERVICE_UNAVAILABLE
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals	0.171s
+--- FAIL: TestProviderFailures (0.00s)
+    generator_test.go:90: quota_exceeded: AI_QUOTA_EXCEEDED: the AI provider failed
+    generator_test.go:90: spend_unavailable: AI_SPEND_UNAVAILABLE: the AI provider failed
+    generator_test.go:106: 12 messages for 14 codes
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator	0.250s
+FAIL
+exit=1

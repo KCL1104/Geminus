@@ -33,7 +33,7 @@ func TestUnstorableAnswers(t *testing.T) {
 				t.Fatal(err)
 			}
 			st := stored(t, "edit", "Six runners.")
-			o, meta, err := outcomeOf(h.generate(context.Background(), st.proposal.OrganizationID, st))
+			o, meta, err := outcomeOf(h.generate(context.Background(), st.proposal.OrganizationID, st, testAttribution))
 			if err != nil || o.Status != review.Invalid || meta == nil {
 				t.Fatalf("%+v %v", o, err)
 			}

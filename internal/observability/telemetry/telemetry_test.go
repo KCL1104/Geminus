@@ -3,6 +3,7 @@ package telemetry_test
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
 	"testing"
 	"time"
@@ -101,7 +102,8 @@ func (r recorded) dump(t *testing.T) string {
 // cardinality, never an ID.
 var metricKeys = map[string]bool{"http.request.method": true, "http.route": true, "http.response.status_code": true,
 	"geminus.job.type": true, "geminus.outcome": true, "geminus.code": true, "gen_ai.system": true, "gen_ai.request.model": true,
-	"geminus.ai.role": true, "gen_ai.token.type": true, "geminus.import.stage": true}
+	"geminus.ai.role": true, "gen_ai.token.type": true, "geminus.import.stage": true,
+	"geminus.ai.limit": true} // T-053: which spend limit refused a call
 
 func checkMetrics(t *testing.T, ps []point) {
 	t.Helper()
@@ -302,6 +304,40 @@ func TestProviderCallsAndImports(t *testing.T) {
 	}
 	if names := r.dump(t); !strings.Contains(names, `span "ai provider call"`) || !strings.Contains(names, `span "import profile"`) {
 		t.Errorf("%s", names)
+	}
+}
+
+// T-053: what settled live AI calls cost, and the calls a spend limit
+// refused, by model, role, outcome and limit; never an ID.
+func TestSpend(t *testing.T) {
+	r := install(t)
+	tel := telemetry.Current()
+	tel.Spend(context.Background(), "claude-opus-5-5", "modeler", "usage", 84_000_000)
+	tel.Spend(context.Background(), "claude-opus-5-5", "modeler", "usage", 16_000_000)
+	tel.Spend(context.Background(), "claude-opus-5-5", "scenario", "unknown", 5)
+	tel.Spend(context.Background(), "claude-opus-5-5", "scenario", "none", -3) // never negative
+	tel.SpendRefused(context.Background(), "claude-opus-5-5", "modeler", "organization_day")
+	tel.SpendRefused(context.Background(), "aip_01M4YDQK00TA00000000000001", "modeler", "org_01M4YDQK00TA00000000000000")
+	ps := r.points(t)
+	checkMetrics(t, ps)
+	got := map[string]float64{}
+	for _, p := range find(ps, "geminus.ai.spend") {
+		got[p.attrs["geminus.ai.role"]+"/"+p.attrs["geminus.outcome"]] = p.value
+	}
+	if want := map[string]float64{"modeler/usage": 100_000_000, "scenario/unknown": 5, "scenario/none": 0}; !maps.Equal(got, want) {
+		t.Errorf("spend %v, want %v", got, want)
+	}
+	refused := find(ps, "geminus.ai.spend.refusals")
+	if len(refused) != 2 {
+		t.Fatalf("%v", refused)
+	}
+	for _, p := range refused {
+		if p.attrs["geminus.ai.limit"] == "organization_day" && p.value != 1 {
+			t.Errorf("%v", p)
+		}
+	}
+	if out := r.dump(t); strings.Contains(out, "org_01M4") || strings.Contains(out, "aip_01M4") {
+		t.Errorf("an ID is recorded:\n%s", out)
 	}
 }
 

@@ -76,8 +76,10 @@ func TestNew(t *testing.T) {
 func TestProviderFailures(t *testing.T) {
 	codes := []provider.Code{provider.CodeNotConfigured, provider.CodePolicyNotApproved, provider.CodeInvalidRequest,
 		provider.CodeContextTooLarge, provider.CodeConcurrencyLimited, provider.CodeTimeout, provider.CodeRateLimited,
-		provider.CodeUnavailable, provider.CodeCredentialsExhausted, provider.CodeRejected, provider.CodeRefused, provider.CodeTruncated}
-	retryable := map[provider.Code]bool{provider.CodeConcurrencyLimited: true, provider.CodeTimeout: true, provider.CodeRateLimited: true, provider.CodeUnavailable: true}
+		provider.CodeUnavailable, provider.CodeCredentialsExhausted, provider.CodeRejected, provider.CodeRefused, provider.CodeTruncated,
+		provider.CodeQuotaExceeded, provider.CodeSpendUnavailable} // T-053: refused before any call
+	retryable := map[provider.Code]bool{provider.CodeConcurrencyLimited: true, provider.CodeTimeout: true, provider.CodeRateLimited: true,
+		provider.CodeUnavailable: true, provider.CodeSpendUnavailable: true}
 	for _, c := range codes {
 		err := providerFailure(provider.NewError(c, 429, "org-a"))
 		var f *jobs.Failure
@@ -262,7 +264,7 @@ func TestGenerateOutsideTheDatabase(t *testing.T) {
 		return h
 	}
 	run := func(b provider.Backend, st started) (review.Outcome, *provider.Metadata, error) {
-		return outcomeOf(handler(b).generate(ctx, st.proposal.OrganizationID, st))
+		return outcomeOf(handler(b).generate(ctx, st.proposal.OrganizationID, st, testAttribution))
 	}
 	raise := `[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}]`
 	o, meta, err := run(scripted(t, "Six runners.", reference(raise)), stored(t, "edit", "Six runners."))
@@ -310,7 +312,7 @@ func TestGenerateOutsideTheDatabase(t *testing.T) {
 	cancel()
 	st := stored(t, "edit", "Six runners.")
 	jf = nil
-	if _, _, err = outcomeOf(handler(fake.New()).generate(cctx, st.proposal.OrganizationID, st)); !errors.Is(err, context.Canceled) || errors.As(err, &jf) {
+	if _, _, err = outcomeOf(handler(fake.New()).generate(cctx, st.proposal.OrganizationID, st, testAttribution)); !errors.Is(err, context.Canceled) || errors.As(err, &jf) {
 		t.Fatalf("cancelled: %v", err)
 	}
 }

@@ -62,3 +62,52 @@ func TestTheCallsLine(t *testing.T) {
 		}
 	}
 }
+
+// testAttribution is what the tests' calls are charged to (T-053; the fake
+// is not metered, so nothing is charged).
+var testAttribution = provider.Attribution{TargetType: "ai_proposal", TargetID: "aip_01M4YDQK00TA00000000000001",
+	RequestID: "req_01M4YDQK00TA00000000000001"}
+
+// T-053: a metered call's line carries its cost and reservation; a spend
+// limit's refusal and a settlement that failed are warnings of their own,
+// with the limit or the reservation, and nothing else of the call.
+func TestTheSpendLines(t *testing.T) {
+	var buf bytes.Buffer
+	h := &Handler{cfg: Config{Log: observability.NewLogger(&buf, "worker")}}
+	meta := provider.Metadata{Provider: "anthropic", Model: "claude-opus-5-5", Role: provider.RoleModeler,
+		CostNanoUSD: 84_000_000, SpendReservation: "asr_01M4YDQK00TA00000000000001"}
+	lines := func() []map[string]any {
+		var out []map[string]any
+		for _, l := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
+			var m map[string]any
+			if err := json.Unmarshal(l, &m); err != nil {
+				t.Fatalf("%q: %v", l, err)
+			}
+			out = append(out, m)
+		}
+		buf.Reset()
+		return out
+	}
+	h.logCall(context.Background(), meta, nil)
+	if l := lines(); len(l) != 1 || l[0]["cost_nano_usd"] != float64(84_000_000) || l[0]["spend_reservation_id"] != meta.SpendReservation {
+		t.Errorf("the call: %v", l)
+	}
+	h.logCall(context.Background(), provider.Metadata{Role: provider.RoleModeler}, &provider.Error{Code: provider.CodeQuotaExceeded, Limit: "month"})
+	if l := lines(); len(l) != 2 || l[0]["code"] != "AI_QUOTA_EXCEEDED" || l[1]["level"] != "WARN" || l[1]["limit"] != "month" {
+		t.Errorf("a refusal: %v", l)
+	}
+	unsettled := meta
+	unsettled.SpendUnsettled = true
+	h.logCall(context.Background(), unsettled, nil)
+	if l := lines(); len(l) != 2 || l[1]["level"] != "WARN" || l[1]["spend_reservation_id"] != meta.SpendReservation || l[1]["spend_unsettled"] != true {
+		t.Errorf("unsettled: %v", l)
+	}
+	// The audit metadata of a metered call.
+	am := auditMeta(meta)
+	if am["cost_nano_usd"] != int64(84_000_000) || am["spend_reservation_id"] != meta.SpendReservation || am["spend_unsettled"] != false {
+		t.Errorf("audit %v", am)
+	}
+	if _, ok := auditMeta(provider.Metadata{Provider: "fake"})["cost_nano_usd"]; ok {
+		t.Error("an unmetered call's event names a cost")
+	}
+}

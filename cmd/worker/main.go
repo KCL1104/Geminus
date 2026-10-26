@@ -11,8 +11,11 @@
 // configured mode: disabled (the default; every proposal fails
 // AI_PROVIDER_NOT_CONFIGURED), the deterministic fake (development and
 // tests) or the live adapter, which config enables only with the owner's
-// recorded approval (none is recorded: H-001, H-017). Analyses (T-030) are
-// not built yet; their jobs stay queued.
+// complete recorded approval, both keys and GEMINUS_AI_LIVE=on (T-053;
+// H-018 is recorded and waits for the owner's retention confirmation). The
+// live adapter is metered: every call is reserved for in the spend ledger
+// before it is made and settled after (internal/storage/aispend). Analyses
+// (T-030) are not built yet; their jobs stay queued.
 package main
 
 import (
@@ -22,9 +25,11 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
@@ -38,6 +43,7 @@ import (
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/runs/runner"
+	"github.com/kcl1104/geminus/internal/storage/aispend"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -86,12 +92,14 @@ func listen() (context.Context, context.CancelFunc) {
 	return ctx, func() { signal.Stop(signals); cancel() }
 }
 
-// deps is what the handlers are built from: the validated configuration.
+// deps is what the handlers are built from: the validated configuration
+// and the worker's scope, which the live AI meter runs its transactions in.
 type deps struct {
 	worker  config.Worker
 	ai      config.AI
 	objects objects.Store // nil when object storage is disabled
 	log     *slog.Logger
+	spend   aispend.Runner
 }
 
 // builder makes the handlers a build runs.
@@ -116,7 +124,7 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, budget, err := aiClient(d.ai)
+	client, budget, err := aiClient(d.ai, d.spend, d.worker.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -131,11 +139,13 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 
 // aiClient is the checked provider client of the configured mode (T-024,
 // ADR-027): every mode goes through provider.Client. Disabled, and a live
-// provider without the owner's recorded approval, answer every call with
-// their code and read no key; the fake is for development and tests
-// (config refuses it elsewhere); the live adapter takes the approval token
-// and the keys config read, by label (D-018).
-func aiClient(ai config.AI) (*provider.Client, provider.Budget, error) {
+// provider that is not on, answer every call with their code and read no
+// key; the fake is for development and tests (config refuses it
+// elsewhere); the live adapter takes the approval token and the keys
+// config read, by label (D-018), and is metered by the spend ledger under
+// the configured limits, its transactions run by spendRun as the worker
+// (T-053).
+func aiClient(ai config.AI, spendRun aispend.Runner, actor string) (*provider.Client, provider.Budget, error) {
 	budget := provider.DefaultBudget()
 	b := ai.Budget
 	if b.MaxPromptBytes > 0 {
@@ -169,7 +179,18 @@ func aiClient(ai config.AI) (*provider.Client, provider.Budget, error) {
 		if err != nil {
 			return nil, provider.Budget{}, err
 		}
-		backend = live
+		if spendRun == nil {
+			return nil, provider.Budget{}, errors.New("live AI needs the spend ledger")
+		}
+		meter, err := aispend.New(aispend.Config{Run: spendRun, Actor: actor, Limits: ai.Limits})
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		client, err := provider.NewMetered(live, budget, meter)
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		return client, budget, nil
 	case ai.Provider == config.AIProviderAnthropic:
 		backend = provider.Disabled{Code: provider.CodePolicyNotApproved}
 	default:
@@ -228,15 +249,8 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 		log.Error("invalid configuration", "error", "OBJECT_STORAGE_ROOT cannot be used: "+err.Error())
 		return exitConfig
 	}
-	handlers, err := build(deps{worker: wcfg, ai: ai, objects: store, log: log})
-	if err != nil {
-		log.Error("invalid configuration", "error", err.Error())
-		return exitConfig
-	}
-	if len(handlers) == 0 {
-		log.Error("NOT IMPLEMENTED: this build has no job handler; refusing to start", "ai_provider", string(cfg.AIProvider))
-		return exitNotImplemented
-	}
+	// The pool connects lazily: nothing is dialled before the handlers are
+	// built and the runtime role is checked.
 	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		log.Error("database unavailable", "error", "the connection pool could not be created")
@@ -247,6 +261,27 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 	if err != nil {
 		log.Error("invalid configuration", "error", "WORKER_ORGANIZATION_IDS must list organization IDs, each once")
 		return exitConfig
+	}
+	spendRun := func(ctx context.Context, org string, fn func(ctx context.Context, tx tenant.Tx) error) error {
+		return scope.Run(ctx, org, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error { return fn(ctx, tx) })
+	}
+	handlers, err := build(deps{worker: wcfg, ai: ai, objects: store, log: log, spend: spendRun})
+	if err != nil {
+		log.Error("invalid configuration", "error", err.Error())
+		return exitConfig
+	}
+	if len(handlers) == 0 {
+		log.Error("NOT IMPLEMENTED: this build has no job handler; refusing to start", "ai_provider", string(cfg.AIProvider))
+		return exitNotImplemented
+	}
+	if ai.Provider == config.AIProviderAnthropic {
+		// Whether live AI is on, and the typed reason when it is off (T-053);
+		// never a key.
+		if ai.LiveEnabled() {
+			log.Info("live AI is on", "model", ai.Model, "code", "LIVE_AI_ON")
+		} else {
+			log.Info("live AI is off", "code", strings.ToUpper(ai.LiveOff))
+		}
 	}
 	w, err := worker.New(scope, worker.Config{ID: wcfg.ID, Policy: jobs.DefaultPolicy, Heartbeat: heartbeat,
 		Idle: idle, ReapLimit: reapLimit, Handlers: handlers, Log: log})

@@ -308,6 +308,18 @@ func TestProbesAreCaught(t *testing.T) {
 			"./internal/ai/aicontext", "./internal/observability/telemetry", false},
 		{"the-provider-uses-the-otel-api", "internal/ai/provider/zz_probe.go", "go.opentelemetry.io/otel/trace", "ai-is-pure-but-the-adapter",
 			"./internal/ai/provider", "go.opentelemetry.io/otel/trace", false},
+		// T-053: the live adapter only in the metered binaries; the eval
+		// runner only in its command.
+		{"api-links-the-live-adapter", "cmd/api/zz_probe.go", module + "/internal/ai/provider/anthropic", "live-ai-only-in-the-worker",
+			"./cmd/api", "./internal/ai/provider/anthropic", false},
+		{"a-handler-links-the-live-adapter", "internal/proposals/generator/zz_probe.go", module + "/internal/ai/provider/anthropic",
+			"live-ai-only-in-the-worker", "./internal/proposals/generator", "./internal/ai/provider/anthropic", false},
+		{"the-ledger-links-the-live-adapter", "internal/storage/aispend/zz_probe.go", module + "/internal/ai/provider/anthropic",
+			"live-ai-only-in-the-worker", "./internal/storage/aispend", "./internal/ai/provider/anthropic", false},
+		{"the-worker-links-the-live-eval", "cmd/worker/zz_probe.go", module + "/internal/aievals", "live-eval-only-in-its-command",
+			"./cmd/worker", "./internal/aievals", false},
+		{"a-service-links-the-live-eval", "internal/models/zz_probe.go", module + "/internal/aievals", "live-eval-only-in-its-command",
+			"./internal/models", "./internal/aievals", false},
 	}
 	for _, p := range probes {
 		t.Run(p.name, func(t *testing.T) {

@@ -5,7 +5,7 @@ GO_PKGS := ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
 WEB := apps/web
 WEB_E2E := apps/web-e2e
 export NEXT_TELEMETRY_DISABLED := 1
-.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test ai-eval ai-eval-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
+.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test ai-eval ai-eval-live ai-smoke-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
 spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests
 spec-contracts:
 	$(PYTHON) scripts/check_contracts.py
@@ -115,6 +115,24 @@ simulation-reference-test:
 	GEMINUS_CALENDAR_REFERENCE_OUT=$(CURDIR)/bin/calendar-reference-go.json go test -count=1 -run '^TestCalendarRulesExport$$' ./internal/simulation/engine/
 	$(PYTHON) scripts/calendar_reference.py --go-results bin/calendar-reference-go.json
 	@echo 'simulation-reference-test: finite buffers and blocking (T-047), breakdowns (T-048), calendars and release schedules (T-049) only, on the models the script accepts (see its docstring); D-050 R2, R3, R4, next_fit, X_end and TTRmax against an independent Python implementation (R1 is not, see checks/T-049_VALIDATION.md); batches and changeovers come with T-050.' >&2
-ai-eval-live security-scan benchmark-test build-containers staging-smoke db-restore-test:
+# The live provider eval (T-053; T-038 owns the baseline): the modeler corpus through the live adapter, a client
+# metered by the run's cap (AI_EVAL_LIVE_MAX_USD, default USD 10, within the monthly limit) and the server's review.
+# Refused with exit 2 and no provider call unless the configuration turns live AI on exactly as the worker's does: the
+# owner's complete recorded approval (internal/config/aiapproval; H-018 waits for the owner's retention confirmation),
+# AI_PROVIDER=anthropic, AI_POLICY_APPROVAL, AI_MODEL equal to its model, GEMINUS_ANTHROPIC_API_KEY_A and _B, and
+# GEMINUS_AI_LIVE=on. The report goes to checks/ai-evals/live-<date>-<model>.json, never a fake result's file, and keeps
+# no prompt, answer text or key. The command's own exit code (printed; make itself exits 2 on any failure): 1 a gate
+# failed or the run stopped at its cap, 2 refused before any call, 3 the report could not be written.
+ai-eval-live:
+	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
+	go build -o bin/ai-eval-live ./cmd/ai-eval-live
+	@bin/ai-eval-live -root $(CURDIR); code=$$?; [ $$code = 0 ] || { echo "ai-eval-live: exit $$code" >&2; exit $$code; }
+# The live smoke (T-053): one synthetic case (MOD-002: the default pipeline, a capacity change the user typed), the same
+# gate, a USD 2 cap by default; report checks/ai-evals/live-smoke-<date>-<model>.json.
+ai-smoke-live:
+	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
+	go build -o bin/ai-eval-live ./cmd/ai-eval-live
+	@bin/ai-eval-live -smoke -root $(CURDIR); code=$$?; [ $$code = 0 ] || { echo "ai-eval-live: exit $$code" >&2; exit $$code; }
+security-scan benchmark-test build-containers staging-smoke db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

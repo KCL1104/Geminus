@@ -248,6 +248,8 @@ func TestFailureErrors(t *testing.T) {
 		"WORKER_STOPPED":             "SERVICE_UNAVAILABLE",
 		"DATASET_STORAGE_FAILED":     "SERVICE_UNAVAILABLE",
 		"AI_CONTEXT_TOO_LARGE":       "PAYLOAD_TOO_LARGE",
+		"AI_QUOTA_EXCEEDED":          "RATE_LIMITED",        // T-053, D-111: a spend limit; try again later
+		"AI_SPEND_UNAVAILABLE":       "SERVICE_UNAVAILABLE", // T-053: the ledger could not reserve
 		"AI_REFUSED":                 "INTERNAL_ERROR",
 		"AI_OUTPUT_TRUNCATED":        "INTERNAL_ERROR",
 		"AI_REQUEST_REJECTED":        "INTERNAL_ERROR",

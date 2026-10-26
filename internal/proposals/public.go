@@ -189,6 +189,11 @@ var errorCodes = map[string]string{
 	jobs.LeaseExpired:            "SERVICE_UNAVAILABLE",
 	"WORKER_STOPPED":             "SERVICE_UNAVAILABLE",
 	"AI_CONTEXT_TOO_LARGE":       "PAYLOAD_TOO_LARGE",
+	// T-053 (D-111, PROPOSED): a spend limit refused the call before it was
+	// made (try again when the day or month ends); the ledger could not
+	// reserve for it.
+	"AI_QUOTA_EXCEEDED":    "RATE_LIMITED",
+	"AI_SPEND_UNAVAILABLE": "SERVICE_UNAVAILABLE",
 }
 
 // failureError shows a stored job failure as the contract's error. A code

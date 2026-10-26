@@ -178,7 +178,7 @@ func TestTheProviderIsTheConfigured(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			client, budget, err := aiClient(ai)
+			client, budget, err := aiClient(ai, nil, "test-worker")
 			if err != nil || budget.Validate() != nil {
 				t.Fatalf("%v %v", err, budget.Validate())
 			}
@@ -191,12 +191,32 @@ func TestTheProviderIsTheConfigured(t *testing.T) {
 	if _, err := config.LoadAI(with("AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "owner-approved-2026")); err == nil {
 		t.Fatal("an approval this build does not record was accepted")
 	}
-	// The budget a deployment sets reaches the client and the context.
-	ai, err := config.LoadAI(with("AI_PROVIDER", "fake", "APP_ENV", "test", "AI_MAX_PROMPT_BYTES", "65536", "AI_MAX_RETRIES", "0"))
+	// T-053: H-018 is recorded but waits for the owner's retention
+	// confirmation: everything live AI needs, without the switch, still
+	// answers policy_not_approved; with the switch, the worker refuses to
+	// start.
+	h018 := []string{"AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "H-018", "AI_MODEL", "claude-opus-5-5",
+		"GEMINUS_ANTHROPIC_API_KEY_A", "sk-ant-test-fake-aaaaaaaaaaaa", "GEMINUS_ANTHROPIC_API_KEY_B", "sk-ant-test-fake-bbbbbbbbbbbb"}
+	ai, err := config.LoadAI(with(h018...))
+	if err != nil || ai.LiveEnabled() || ai.LiveOff != "retention_unconfirmed" {
+		t.Fatalf("H-018 without the switch: %+v %v", ai, err)
+	}
+	client, _, err := aiClient(ai, nil, "test-worker")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, budget, err := aiClient(ai); err != nil || budget.MaxPromptBytes != 65536 || budget.MaxRetries != 0 {
+	if _, err := client.GenerateModelProposal(ctx, provider.ProposalContext{OrganizationID: ids.New("org"), Mode: provider.ModeEdit}); provider.CodeOf(err) != provider.CodePolicyNotApproved {
+		t.Errorf("H-018 without the switch: %v", err)
+	}
+	if _, err := config.LoadAI(with(append(h018, "GEMINUS_AI_LIVE", "on")...)); err == nil {
+		t.Error("the worker would start live AI before the retention confirmation")
+	}
+	// The budget a deployment sets reaches the client and the context.
+	ai, err = config.LoadAI(with("AI_PROVIDER", "fake", "APP_ENV", "test", "AI_MAX_PROMPT_BYTES", "65536", "AI_MAX_RETRIES", "0"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, budget, err := aiClient(ai, nil, "test-worker"); err != nil || budget.MaxPromptBytes != 65536 || budget.MaxRetries != 0 {
 		t.Fatalf("%+v %v", budget, err)
 	}
 }

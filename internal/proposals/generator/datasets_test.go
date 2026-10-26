@@ -121,7 +121,7 @@ func TestSnapshotsAreReadBeforeTheProvider(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			h, f, st := setup(c.store)
-			_, meta, err := outcomeOf(h.generate(ctx, st.proposal.OrganizationID, st))
+			_, meta, err := outcomeOf(h.generate(ctx, st.proposal.OrganizationID, st, testAttribution))
 			var jf *jobs.Failure
 			if !errors.As(err, &jf) || jf.Code != DatasetStorageFailed || jf.Retryable != c.retryable || meta != nil {
 				t.Errorf("%v %v", err, meta)
@@ -134,7 +134,7 @@ func TestSnapshotsAreReadBeforeTheProvider(t *testing.T) {
 	// Storage that works: read once per binding, all before the call.
 	var mem *memObjects
 	h, f, st := setup(func(f *fake.Backend) objects.Store { mem = &memObjects{objects: objs, f: f}; return mem })
-	o, _, err := outcomeOf(h.generate(ctx, st.proposal.OrganizationID, st))
+	o, _, err := outcomeOf(h.generate(ctx, st.proposal.OrganizationID, st, testAttribution))
 	if err != nil || o.Status != review.Ready {
 		t.Fatalf("%+v %v", o.Validation, err)
 	}
@@ -158,7 +158,7 @@ func TestAReadyProposalBindsTheBasesManifest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gen, err := h.generate(ctx, st.proposal.OrganizationID, st)
+	gen, err := h.generate(ctx, st.proposal.OrganizationID, st, testAttribution)
 	if err != nil || gen.outcome.Status != review.Ready {
 		t.Fatalf("%+v %v", gen.outcome.Validation, err)
 	}
@@ -177,7 +177,7 @@ func TestAReadyProposalBindsTheBasesManifest(t *testing.T) {
 	}
 	// In D-034 order, whatever order a manifest came in.
 	st.version.DatasetBindings = []model.DatasetBinding{st.version.DatasetBindings[1], st.version.DatasetBindings[0]}
-	if gen, err = h.generate(ctx, st.proposal.OrganizationID, st); err != nil || gen.outcome.Status != review.Ready ||
+	if gen, err = h.generate(ctx, st.proposal.OrganizationID, st, testAttribution); err != nil || gen.outcome.Status != review.Ready ||
 		gen.manifest[0].LogicalRef != "dataset:review_duration" || len(gen.manifest) != 2 {
 		t.Errorf("%v %v", gen.manifest, err)
 	}

@@ -118,6 +118,12 @@ var fields = map[string]Kind{
 	"input_tokens":        KindNumber,
 	"output_tokens":       KindNumber,
 	"provider_request_id": KindName,
+	// the spend of a live AI call (T-053): amounts, the reservation, the
+	// limit that refused it
+	"cost_nano_usd":        KindNumber,
+	"spend_reservation_id": KindID,
+	"spend_unsettled":      KindNumber,
+	"limit":                KindToken,
 	// the server's own text
 	"error": KindText,
 	"panic": KindText,

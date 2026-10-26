@@ -86,6 +86,8 @@ IDS = {
     # T-028 (scenarios.sql): scenarios people save, in both tenants.
     "SCN_A4": ("scn", "A", 4), "SCN_A5": ("scn", "A", 5), "SCN_A6": ("scn", "A", 6), "SCN_A7": ("scn", "A", 7),
     "SCN_A8": ("scn", "A", 8), "SCN_A9": ("scn", "A", 9), "SCN_B1": ("scn", "B", 1),
+    # T-053 (ai_spend.sql): spend reservations of live AI.
+    "ASR_A1": ("asr", "A", 1), "ASR_A2": ("asr", "A", 2),
 }
 
 

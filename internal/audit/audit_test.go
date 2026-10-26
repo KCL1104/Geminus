@@ -120,6 +120,21 @@ func valid() []audit.Event {
 			"code": "AI_TIMEOUT", "retryable": true, "outcome": "failed"}),
 		w("job.attempt_failed", "ai_analysis", ids.New("ana"), map[string]any{"job_id": job, "job_type": "analysis", "attempt": 1,
 			"max_attempts": 3, "code": "INTERNAL", "retryable": true, "outcome": "requeued"}),
+		// T-053: the spend ledger, and a metered call's cost in the
+		// generator's events.
+		w("ai_spend.reserve", "ai_proposal", aip, map[string]any{"reservation_id": ids.New("asr"), "role": "modeler",
+			"model": "claude-opus-5-5", "reserved_nano_usd": int64(1_500_000_000), "organization_day_committed_nano_usd": int64(2_000_000_000)}),
+		w("ai_spend.settle", "ai_proposal", aip, map[string]any{"reservation_id": ids.New("asr"), "role": "modeler", "model": "claude-opus-5-5",
+			"reserved_nano_usd": int64(1_500_000_000), "settled_nano_usd": int64(84_000_000), "outcome": "usage", "input_tokens": int64(12000),
+			"output_tokens": int64(1800), "cache_write_tokens": int64(0), "cache_read_tokens": int64(0), "unknown_attempts": 0,
+			"credential_label": "org-b"}),
+		w("ai_spend.settle", "ai_analysis", ids.New("ana"), map[string]any{"reservation_id": ids.New("asr"), "role": "analyst",
+			"model": "claude-opus-5-5", "reserved_nano_usd": int64(9), "settled_nano_usd": int64(0), "outcome": "none", "input_tokens": int64(0),
+			"output_tokens": int64(0), "cache_write_tokens": int64(0), "cache_read_tokens": int64(0), "unknown_attempts": 0, "credential_label": ""}),
+		w("ai_spend.refuse", "import", imp, map[string]any{"role": "importer", "model": "claude-opus-5-5", "charge_nano_usd": int64(9),
+			"limit": "month"}),
+		w("proposal.generate", "ai_proposal", aip, with(provider(), "attempt", 1, "status", "needs_input", "cost_nano_usd", int64(84_000_000),
+			"spend_reservation_id", ids.New("asr"), "spend_unsettled", false)),
 	}
 }
 
@@ -202,6 +217,41 @@ func TestRefused(t *testing.T) {
 			t.Errorf("%s: the error repeats the value: %v", name, err)
 		}
 	}
+	// T-053: the spend ledger's events hold amounts, counts and labels of
+	// what they are for, nothing else: not another tenant's or the
+	// deployment's totals, not the key, not a target the ledger has no
+	// column for.
+	spendBase := audit.Event{ActorType: audit.Worker, ActorID: worker, Action: "ai_spend.refuse", TargetType: "ai_proposal", TargetID: aip,
+		RequestID: req, Metadata: map[string]any{"role": "modeler", "model": "claude-opus-5-5", "charge_nano_usd": int64(5), "limit": "day"}}
+	if err := audit.Check(spendBase); err != nil {
+		t.Fatal(err)
+	}
+	for name, edit := range map[string]func(*audit.Event){
+		"a user records spend":   func(e *audit.Event) { e.ActorType = audit.User; e.ActorID = user },
+		"a simulation target":    func(e *audit.Event) { e.TargetType, e.TargetID = "simulation", sim },
+		"an unknown limit":       meta("limit", "week"),
+		"the deployment's total": meta("month_committed_nano_usd", int64(5)),
+		"another tenant's total": meta("organization_id", org),
+		"a negative amount":      meta("charge_nano_usd", int64(-5)),
+		"an amount as text":      meta("charge_nano_usd", "5"),
+		"the key as the model":   meta("model", apiKey),
+		"an unknown role":        meta("role", "critic"),
+		"a reservation of another ID": func(e *audit.Event) {
+			e.Action = "ai_spend.reserve"
+			e.Metadata = map[string]any{"reservation_id": job}
+		},
+		"settle with free-text reason": func(e *audit.Event) { e.Action = "ai_spend.settle"; e.Metadata = map[string]any{"outcome": thought} },
+	} {
+		e := spendBase
+		e.Metadata = maps.Clone(spendBase.Metadata)
+		edit(&e)
+		err := audit.Check(e)
+		if !errors.Is(err, audit.ErrInvalid) {
+			t.Errorf("%s: %v", name, err)
+		} else if strings.Contains(err.Error(), "SENTINEL") || strings.Contains(err.Error(), "sk-ant") {
+			t.Errorf("%s: the error repeats the value: %v", name, err)
+		}
+	}
 	// A worker or system actor is an actor reference (D-092): what
 	// twin.actor_ref allows, never free text.
 	for _, e := range []audit.Event{
@@ -278,7 +328,7 @@ func TestActors(t *testing.T) {
 	}
 }
 
-var actionLiteral = regexp.MustCompile(`^(project|membership|model|import|proposal|scenario|simulation|organization|job|analysis)\.[a-z_]+(\.[a-z_]+)?$`)
+var actionLiteral = regexp.MustCompile(`^(project|membership|model|import|proposal|scenario|simulation|organization|job|analysis|ai_spend)\.[a-z_]+(\.[a-z_]+)?$`)
 
 // The catalogue is the code's: every action name a production file writes
 // is listed, and every listed action is written somewhere. (What each one

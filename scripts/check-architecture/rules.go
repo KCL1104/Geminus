@@ -37,6 +37,7 @@ var appLayers = []string{
 	"./internal/storage/...",
 	"./internal/import/...",
 	"./internal/ai/...",
+	"./internal/aievals/...",       // the live provider eval's runner (T-053)
 	"./internal/audit/...",         // the audit catalogue (T-035)
 	"./internal/observability/...", // structured logs and the privacy filter (T-035)
 	"./internal/config/...",
@@ -223,6 +224,27 @@ var rules = []rule{
 		applies: []string{"./..."},
 		except:  []string{"./internal/ai/provider/anthropic/...", "./cmd/..."},
 		forbid:  llmSDKs,
+	},
+	{
+		// T-053: the live adapter costs money, and only the worker meters it
+		// (the spend ledger, internal/storage/aispend) and the live eval its
+		// run (its own cap). The API and every service it shares never link
+		// it, so no request can make a live call outside the ledger, and the
+		// ledger's grants are the worker's only (0016).
+		name:    "live-ai-only-in-the-worker",
+		why:     "only the worker (metered by the spend ledger) and the live eval command (metered by its cap) link the live provider adapter, never the API or a service (T-053)",
+		applies: []string{"./..."},
+		except:  []string{"./internal/ai/provider/anthropic/...", "./cmd/worker/...", "./cmd/ai-eval-live/..."},
+		forbid:  []string{"./internal/ai/provider/anthropic/..."},
+	},
+	{
+		// T-053: the live eval's runner reads the repository's corpus and
+		// fixtures and writes a report; only its command links it.
+		name:    "live-eval-only-in-its-command",
+		why:     "internal/aievals runs the eval corpus against a client it is given; only cmd/ai-eval-live links it (T-053)",
+		applies: []string{"./..."},
+		except:  []string{"./internal/aievals/...", "./cmd/ai-eval-live/..."},
+		forbid:  []string{"./internal/aievals/..."},
 	},
 	{
 		name:    "db-only-in-storage",
