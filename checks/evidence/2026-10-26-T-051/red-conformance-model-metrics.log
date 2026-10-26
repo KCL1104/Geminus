@@ -1,0 +1,4 @@
+# github.com/kcl1104/geminus/internal/domainpack/conformance [github.com/kcl1104/geminus/internal/domainpack/conformance.test]
+internal/domainpack/conformance/modelmetrics_test.go:20:18: undefined: domainpack.ModelMetricsProvider
+FAIL	github.com/kcl1104/geminus/internal/domainpack/conformance [build failed]
+FAIL

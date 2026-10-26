@@ -1,13 +1,14 @@
 {
   "status": "PASS_LIMITED_SPEC_CHECKS",
   "schema_metaschemas": 14,
-  "schema_positive_fixtures": 72,
-  "schema_negative_fixtures": 143,
-  "negative_fixtures_with_exact_error_path": 138,
+  "schema_positive_fixtures": 74,
+  "schema_negative_fixtures": 144,
+  "negative_fixtures_with_exact_error_path": 139,
   "limited_semantic_negative_fixtures": 7,
   "schema_valid_semantic_fixtures_for_go": 16,
-  "resolved_local_ref_occurrences": 849,
+  "resolved_local_ref_occurrences": 850,
   "openapi_operations": 42,
+  "openapi_request_examples": 3,
   "optional_fastapi_openapi_model": "NOT_RUN_NOT_INSTALLED",
   "independent_complete_openapi_validator": "NOT_RUN_UNAVAILABLE",
   "ai_corpus_records": {

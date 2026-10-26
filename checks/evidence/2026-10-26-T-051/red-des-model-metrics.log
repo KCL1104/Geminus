@@ -1,0 +1,8 @@
+# github.com/kcl1104/geminus/internal/simulation/des [github.com/kcl1104/geminus/internal/simulation/des.test]
+internal/simulation/des/modelmetrics_test.go:36:36: unknown field ModelMetrics in struct literal of type Engine
+internal/simulation/des/modelmetrics_test.go:59:47: unknown field ModelMetrics in struct literal of type Engine
+internal/simulation/des/modelmetrics_test.go:69:46: unknown field ModelMetrics in struct literal of type Engine
+internal/simulation/des/modelmetrics_test.go:76:17: unknown field ModelMetrics in struct literal of type Engine
+FAIL	github.com/kcl1104/geminus/internal/simulation/des [build failed]
+FAIL
+exit 0

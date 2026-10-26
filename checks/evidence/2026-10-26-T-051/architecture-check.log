@@ -1,0 +1,8 @@
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 87 packages, 23 rules, 16 build configurations
+
+real	0m16.946s
+user	0m13.242s
+sys	0m5.026s
+exit 0

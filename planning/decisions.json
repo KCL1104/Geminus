@@ -1376,6 +1376,19 @@
       "proposal": "(a) 0 tick 的換線也記 ObsSetup 與 setup_start 並計數，設定改變；(b) 可用的 unit：既不在使用中也未停機，下班的 unit 不另外識別；(c) 故障落在確定的 unit：立即停機取閒置 unit 中 index 最小者，等待中的故障由被釋放或修復好的 unit 承擔，時鐘與 unit 不必相同，停機不改變設定；(d) ObsSetup 為 kind 18（At＝unit、Value＝換線 tick），在授予的 ObsResource 之後、ServiceStart 之前，unit 不放在 ServiceStart 上；(e) 只有換線有分布時才從 (resource ID, setup/<u>) 抽，先於 service，完成在換線＋service 之後；(f) 有 setups 的 resource 都列在 resource_states，setup 組依 [W, H] 計，scheduled_processing＝∫min(U − K − Z, S)；(g) validator 的 path 如登記所列；(h) initial 等於唯一產品也是中性設定；(i) 沒有 initial 時從未使用過的 unit 不算與任何產品相符，不比需要換線的 unit 優先（D-055 字面；review 第 1 輪 I1，reviewer 的 P3：b1 取 unit 0 並換線 7 分，不必換線的 unit 1 不被選），B：視為不必換線、排在需要換線的 unit 之前。建議照列（(i) 為 A），已實作。",
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-117",
+      "title": "電子產線 pack 的規則、指標與範本的細節（T-051 hackathon 切片）",
+      "status": "proposed",
+      "owner_role": "Domain / Simulation",
+      "gate": "T-051 驗收前（指標 key 另為 T-032 的輸入）",
+      "resolves": [],
+      "source_gap": "ELECTRONICS_LINE §3.4 只寫了規則 2 為 warning，沒有寫規則 1、3 的 code 與嚴重度、不能用的屬性怎麼處理；§5 沒有寫指標在 metrics.domain 的 key、單位與跨 replication 的彙整、站的範圍（首測與重測）、批次指標、Result 缺成員時的 reason；D-058 的 ModelMetricsProvider 沒有寫 engine 何時、以什麼呼叫；§4.4 的變體與 §4.2 的組合、班表的 label 與 SMT 線的表示沒有寫。",
+      "source_pages": "N/A（T-051 hackathon 切片實作；ELECTRONICS_LINE §3.3、§3.4、§4、§5；D-058；H-029）",
+      "proposal": "(a) domain electronics_line、範本 electronics_assembly_test_line、CreateModel 改為每個 pack 一個 oneOf 分支；(b) 規則 1 STATION_RESOURCE_INVALID 與規則 3 RETEST_RESOURCE_MISMATCH 為 error（/nodes/<i>/requires，規則 3 不連鎖），規則 2 TEST_RESULT_NOT_IDENTIFIED 與 DOMAIN_ATTRIBUTES_INVALID 為 warning；(c) 站＝首測加上共用 primary resource 的重測，key 為首測的 node ID，FPY 為首測 test result 非 fail flow 的機率和（fpy_input、rolled_throughput_yield_input）；(d) key <名稱> 或 <名稱>.<站>，單位 entity_per_hour／ratio／minute／count／entity，每個 replication 一個值以 metrics.Summarize 彙整，任一 replication 沒有值即 unavailable；另列 work_ratio、processing_ratio 與批次三項；沒有 calendar 的站不列 scheduled_utilization、overtime_minutes；pack 的 reason NO_BATCH_MODEL、NO_BATCH_IN_WINDOW、RESULT_MEMBER_MISSING；(e) line_wip、scrap_rate、simulated_first_pass_ratio、retest_ratio 在宣告式 metrics 的 gate 解除前 unavailable；(f) des.Engine.ModelMetrics 在 DomainMetrics 之後、digest 之前呼叫，傳 effective IR 的副本，空的答案不寫 metrics.domain，panic 為 ErrInternal，conformance 與 FMA 檢查涵蓋；(g) 範本為 §4.1＋§4.2＋§4.4（兩個產品族 table 投入、SMT 換線），lognormal TTR 未採用，班表拆成 early／late 兩個 label 並列出中性的 shift_capacity，SMT 線為一個 server，2D 位置依 x 再依 y 即 Marey 的列順序；(h) UI 標籤在 apps/web/messages 的 domain.electronics_line.*。建議照列，已實作。",
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

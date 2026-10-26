@@ -1,0 +1,5 @@
+=== RUN   TestElectronicsLineTemplateClosedLoop
+--- PASS: TestElectronicsLineTemplateClosedLoop (0.90s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	0.933s
+exit 0

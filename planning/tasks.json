@@ -3403,7 +3403,8 @@
         "D-055",
         "D-056",
         "D-058",
-        "D-063"
+        "D-063",
+        "D-117"
       ],
       "scope": [
         "依 T-046 的 spec 建立電子產線 pack：catalog、validation rules、full template（en 與 zh-Hant 名稱）、layered default views，並註冊到 Registry；通過 T-042 的 conformance suite 與 architecture guard。",
@@ -3415,12 +3416,22 @@
       "planned_outputs": [
         "internal/domainpack/electronicsline/",
         "internal/results/metrics/",
-        "internal/simulation/engine/"
+        "internal/simulation/engine/",
+        "internal/domainpack/conformance/",
+        "internal/simulation/des/",
+        "internal/runs/runner/",
+        "internal/packs/",
+        "schemas/http.schema.json",
+        "schemas/common.schema.json",
+        "apps/web/messages/",
+        "checks/T-051_VALIDATION.md"
       ],
       "spec_refs": [
         "docs/PRD.md",
         "docs/ARCHITECTURE.md",
-        "docs/TWIN_IR_SPEC.md"
+        "docs/TWIN_IR_SPEC.md",
+        "docs/domains/ELECTRONICS_LINE.md",
+        "docs/SIMULATION_SPEC.md"
       ],
       "acceptance_tests": [
         "TEST-001",
@@ -3429,7 +3440,14 @@
       ],
       "verification_commands": [
         "go test ./internal/domainpack/...",
-        "make architecture-check"
+        "make architecture-check",
+        "make spec-check",
+        "make backend-test",
+        "make backend-numeric",
+        "make simulation-reference-test",
+        "make ai-eval",
+        "make frontend-test",
+        "make integration-test"
       ],
       "definition_of_done": [
         "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
@@ -3437,7 +3455,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-26",
+          "branch": "t051-hk",
+          "report": "checks/T-051_VALIDATION.md",
+          "summary": "Hackathon 切片（H-029），不是 T-051 全部：電子產線 pack（catalog、§3.4 規則、範本、§5 指標，D-117 PROPOSED）、ModelMetricsProvider 與 des.Engine.ModelMetrics（metrics.domain）、CreateModel 的電子產線分支；宣告式 metrics（D-058 的 system_wip、flow_count、sink_count、period_throughput）與其餘範圍未做，見報告。",
+          "reviewer": null,
+          "accepted_at": null
+        }
+      ]
     },
     {
       "id": "T-052",

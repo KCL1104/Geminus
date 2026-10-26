@@ -1,0 +1,7 @@
+--- FAIL: TestRegistry (0.00s)
+    packs_test.go:26: domains [software_delivery], then [software_delivery]
+--- FAIL: TestCreateModelContractNamesTheTemplates (0.00s)
+    packs_test.go:79: the contract offers [electronics_line/electronics_assembly_test_line software_delivery/default_delivery_pipeline], the served packs build [software_delivery/default_delivery_pipeline]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/packs	0.014s
+FAIL

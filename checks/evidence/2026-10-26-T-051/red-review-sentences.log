@@ -1,0 +1,9 @@
+--- FAIL: TestEveryCodeHasASentence (0.00s)
+    clean_test.go:175: STATION_RESOURCE_INVALID has no sentence
+    clean_test.go:175: RETEST_RESOURCE_MISMATCH has no sentence
+    clean_test.go:175: TEST_RESULT_NOT_IDENTIFIED has no sentence
+    clean_test.go:175: DOMAIN_ATTRIBUTES_INVALID has no sentence
+    clean_test.go:179: 30 sentences for 34 codes
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.011s
+FAIL

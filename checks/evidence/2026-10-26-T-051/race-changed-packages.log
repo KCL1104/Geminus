@@ -1,0 +1,16 @@
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.210s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	52.400s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	94.387s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	2.566s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	177.893s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	2.637s
+ok  	github.com/kcl1104/geminus/internal/packs	1.144s
+ok  	github.com/kcl1104/geminus/internal/ai/review	10.184s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	12.660s
+ok  	github.com/kcl1104/geminus/internal/runs	1.280s
+ok  	github.com/kcl1104/geminus/internal/runs/runner	1.281s
+
+real	3m4.749s
+user	3m54.683s
+sys	0m10.698s
+exit 0

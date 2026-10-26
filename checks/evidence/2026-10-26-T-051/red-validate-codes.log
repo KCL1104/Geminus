@@ -1,0 +1,5 @@
+--- FAIL: TestCodesMatchContract (0.00s)
+    codes_test.go:28: no pack declares codes in codes.go: <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.009s
+FAIL

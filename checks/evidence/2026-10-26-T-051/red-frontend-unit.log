@@ -1,0 +1,28 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a33edc0b449d8696a/apps/web
+
+ ❯ tests/i18n.test.ts (17 tests | 1 failed) 39ms
+   ❯ catalogs (7)
+     × cover every error code, validation code and problem kind 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/i18n.test.ts > catalogs > cover every error code, validation code and problem kind
+AssertionError: STATION_RESOURCE_INVALID: expected [ 'app.name', 'nav.label', …(169) ] to include 'validation.STATION_RESOURCE_INVALID'
+ ❯ tests/i18n.test.ts:51:78
+     49|   it("cover every error code, validation code and problem kind", () =>…
+     50|     for (const c of common.$defs.ErrorCode?.enum ?? []) expect(keys, c…
+     51|     for (const c of common.$defs.ValidationCode?.enum ?? []) expect(ke…
+       |                                                                              ^
+     52|     expect(common.$defs.ErrorCode?.enum.length).toBe(20);
+     53|     expect(common.$defs.ValidationCode?.enum.length).toBe(34);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 47 passed (48)
+   Start at  12:46:58
+   Duration  467ms (transform 74%, import 13%, tests 11%, worker 2%)
+
+vitest exit 1

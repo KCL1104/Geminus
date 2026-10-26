@@ -1,0 +1,10 @@
+date: 2026-10-26T13:20:26Z
+go: go version go1.27.3 linux/amd64
+python: Python 3.13.16
+simpy: 4.1.2
+node: v22.22.0
+npm: 10.9.4
+cpus: 4
+postgres: PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+base commit: 6041d39 (main at the start of the branch t051-hk)
+apps/web/node_modules: a symlink to the main checkout's (same package-lock.json, sha256 f30ec1e7...), removed before each commit

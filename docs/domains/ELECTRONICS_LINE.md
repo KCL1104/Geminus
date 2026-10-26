@@ -337,3 +337,44 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 - C：統計檢定（t-test、KS 等）給通過／不通過。後果：給人「已驗證」的錯覺；一週的觀測只是一個樣本，檢定沒有意義。
 
 **建議：A。**
+
+## 11. T-051 的實作（hackathon 切片，2026-10-26，H-029）
+
+本節記錄 T-051 hackathon 切片已實作的部分；批准文字沒有寫到的細節為 D-117（**PROPOSED**），驗證見 [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md)。T-051 的其餘範圍（宣告式 metrics 等）尚未實作，見該報告。
+
+**Pack。** `internal/domainpack/electronicsline`，domain `electronics_line`，由 `internal/packs` 與 software delivery 範例 pack 一起註冊。Catalog 為 §3.1、§3.2（測試對照本文件的兩個表）；規則為 §3.4：規則 1 `STATION_RESOURCE_INVALID`（error）、規則 3 `RETEST_RESOURCE_MISMATCH`（error）、規則 2 `TEST_RESULT_NOT_IDENTIFIED`（warning），不能用的 `station`／`pass`／`result_of` 為 `DOMAIN_ATTRIBUTES_INVALID`（warning）；規則 4 由範本的測試確認（`metadata.synthetic: true`、`source: "synthetic, for demonstration"`）；規則 5：generic validator 的規則不重複。`InferFromEvents` 在 T-027 前回 `ErrUnavailable`。
+
+**範本 `electronics_assembly_test_line`。** §4.1 的拓樸（41 個 node、47 條 flow）、§4.2 的參數，加上 §4.4 的兩個產品族與 SMT 換線，全部是 synthetic 示意值（不是任何工廠的實測值）：
+
+| 項目 | 範本中的值 | 來源 |
+|---|---|---|
+| 投入 | `release_a`（`board_a`）平日 06:00、`release_b`（`board_b`）平日 14:00 各 360 片，table、period 10080 | §4.4 |
+| 班表 `two_shift_weekdays` | 週一至週五 06:00–14:00 `early`、14:00–22:00 `late`（§4.2 的 [360, 1320)＋d·1440 拆成兩個有 label 的班，S(t) 不變） | §4.2；label 為 D-117 (g) |
+| SMT 線 `smt_line` | 1 台、班表、TTF exp(600)、TTR tri(10, 20, 90)；換線 A↔B tri(15, 25, 45)，initial `board_a`；service tri(0.9, 1.0, 1.4)；印刷、SPI、置件、迴焊視為一個 server（§2） | §4.2、§4.4 |
+| AOI `aoi_machine`（role `aoi`） | 1 台、TTF exp(1200)、TTR tri(5, 10, 30)、service tri(0.8, 0.9, 1.1)；良率 0.97，不良經修補（`debug_operator`，tri(3, 5, 10)）進 ICT | §4.1、§4.2 |
+| ICT `ict_tester` | 2 台、TTF exp(900)、TTR tri(10, 20, 60)；首測與重測 tri(1.8, 2.0, 2.6)；良率 0.95、重測 0.90；除錯 tri(5, 10, 30)，修好 0.97、其餘報廢 | 同上 |
+| FCT `fct_tester` | 3 台、TTF exp(900)、TTR tri(10, 30, 90)；首測與重測 tri(2.8, 3.2, 4.0)；良率 0.93、重測 0.90；除錯 tri(10, 20, 60)，修好 0.95 | 同上 |
+| 燒機 `burn_in_chamber` | 6 個 chamber、24/7、TTF exp(10080)、TTR tri(60, 120, 480)；批次 min 20、max 40、max_wait 120，每批 constant 240；良率 0.995，不良回 FCT 除錯 | 同上 |
+| 除錯 `debug_operator`、包裝 `pack_station` | 4 人、2 站，班表；`shift_capacity` 兩班皆等於 capacity（數字不變，供 D-057 的每班人數 scenario） | §4.2；D-117 (g) |
+| 緩衝 | `q_aoi` 20、`q_ict` 10、`q_fct` 10、`q_burnin` 120、`q_pack` 400；SMT 前、修補、除錯與重測前為無限 | §4.1 |
+| 2D 位置 | 主線在第一列（x 由左往右），各站的修補、除錯與重測迴圈在下方；process 依 x、再依 y 排序即 Marey 圖的列順序（SMT、AOI、修補、ICT、ICT 除錯、ICT 重測、FCT、FCT 除錯、FCT 重測、燒機、包裝） | D-117 (g) |
+
+名稱有 en 與 zh-Hant 兩語（`templates/*.zh-Hant.names.json`），ID 與其他內容在兩個語言中相同。
+
+**以引擎確認 §4.2 的粗估。** 範本以 des-go-0.5.0 執行（horizon 28 天、warmup 7 天、5 個 replication、seed 2026；結果的 digest 鎖在 `internal/domainpack/electronicsline/testdata/template-run-lock.json`，是 engine 輸出的 regression lock，不是獨立 oracle）：量測的 21 天內平均出貨 10,756 片（每週約 3,585 片，投入 3,600 片，WIP 未持續累積）；上班時間的工作比例（§5 的 w_s）FCT 0.898 最高，其次 ICT 0.843、SMT 0.825、AOI 0.701、包裝 0.411、燒機 0.365（24/7），與 §4.2「FCT 為預期瓶頸」一致；SMT 換線每天約 2 次（21 天 30 次）；燒機平均批量 39.2 片。這些是 synthetic 模型的模擬輸出，不是工廠的數字；參數沒有因此調整。
+
+**指標（`metrics.domain`）。** 線的 key 為名稱，站的 key 為 `<名稱>.<首測的 node ID>`；每個 replication 一個值，跨 replication 以 Result 其他統計相同的方式彙整（population replication、mean、Type 7、Student-t CI）。本 build：
+
+| 指標 | 範圍 | 單位 | 本 build |
+|---|---|---|---|
+| `uph`、`uph_scheduled` | 線 | entity_per_hour | 可用（沒有 completed sink、沒有共用的線班表或視窗內沒有上班時間時 unavailable） |
+| `rolled_throughput_yield_input`、`fpy_input` | 線、測試站 | ratio | 可用（模型輸入；找不到測試結果時 `TEST_RESULT_NOT_IDENTIFIED`） |
+| `line_balance`、`work_ratio` | 線、站 | ratio | 可用 |
+| `processing_ratio`、`setup_ratio`、`blocking_ratio`、`down_ratio`、`idle_ratio`、`off_shift_ratio` | 站 | ratio | 可用；模型沒有換線、有限緩衝、故障時分別為 `NO_SETUP_MODEL`、`NO_FINITE_BUFFERS`、`NO_BREAKDOWN_MODEL` |
+| `starved_ratio` | 站 | ratio | 專用、單一 resource、units 1、非批次的站可用，否則為 §5 的 `STARVATION_UNDEFINED_*`（以 `idle_ratio` 顯示同一公式） |
+| `availability`、`setups_started`、`mean_blocking_minutes` | 站 | ratio、count、minute | 可用（同上的條件；沒有完整阻塞時 `NO_COMPLETED_BLOCK_IN_WINDOW`） |
+| `scheduled_utilization`、`overtime_minutes` | 有 calendar 的站 | ratio、minute | 可用；沒有 calendar 的站不列（§5） |
+| `batches_started`、`mean_batch_size`、`batch_fill_ratio` | 站 | count、entity、ratio | 批次站可用；其他站 `NO_BATCH_MODEL` |
+| `line_wip`、`scrap_rate`、`simulated_first_pass_ratio`、`retest_ratio` | 線、測試站 | entity、ratio | **unavailable**（`WIP_NOT_DECLARED`、`SINK_COUNT_NOT_DECLARED`、`FLOW_COUNT_NOT_DECLARED`）：需要 D-058 的宣告式 metrics，本 build 仍以 `PRIMITIVE_NOT_SUPPORTED` 拒絕宣告 |
+
+UI 的標籤（kind 與指標名稱，en 與 zh-Hant）在 `apps/web/messages` 的 `domain.electronics_line.*`。P0 不計算 OEE，任何指標都不稱 OEE。

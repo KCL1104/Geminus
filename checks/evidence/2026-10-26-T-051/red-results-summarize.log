@@ -1,0 +1,5 @@
+internal/results/metrics/summarize_test.go:28:9: undefined: Summarize
+internal/results/metrics/summarize_test.go:32:13: undefined: Summarize
+internal/results/metrics/summarize_test.go:38:2: undefined: Summarize
+FAIL	github.com/kcl1104/geminus/internal/results/metrics [build failed]
+FAIL

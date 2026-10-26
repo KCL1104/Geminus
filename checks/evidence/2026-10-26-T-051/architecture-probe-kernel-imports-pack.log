@@ -1,0 +1,26 @@
+[generic-kernel] ./internal/simulation/des depends on ./internal/domainpack/electronicsline
+    via ./internal/simulation/des -> ./internal/domainpack/electronicsline
+    rule: the generic kernel imports no domain pack, application layer, I/O, database or LLM SDK (AGENTS.md §2, REQ-003)
+[conformance-is-generic] ./internal/domainpack/conformance depends on ./internal/domainpack/electronicsline
+    via ./internal/domainpack/conformance -> ./internal/simulation/des -> ./internal/domainpack/electronicsline
+    rule: the DomainPack conformance suite runs any pack through the generic engine, so it names no concrete pack (T-042)
+[packs-named-in-one-place] ./cmd/api depends on ./internal/domainpack/electronicsline
+    via ./cmd/api -> ./internal/api -> ./internal/runs -> ./internal/simulation/des -> ./internal/domainpack/electronicsline
+    rule: internal/packs is the one place that names the packs a deployment serves, so the API and the worker always serve the same domains
+[packs-named-in-one-place] ./cmd/worker depends on ./internal/domainpack/electronicsline
+    via ./cmd/worker -> ./internal/runs/runner -> ./internal/simulation/des -> ./internal/domainpack/electronicsline
+    rule: internal/packs is the one place that names the packs a deployment serves, so the API and the worker always serve the same domains
+[packs-named-in-one-place] ./internal/api depends on ./internal/domainpack/electronicsline
+    via ./internal/api -> ./internal/runs -> ./internal/simulation/des -> ./internal/domainpack/electronicsline
+    rule: internal/packs is the one place that names the packs a deployment serves, so the API and the worker always serve the same domains
+[packs-named-in-one-place] ./internal/runs depends on ./internal/domainpack/electronicsline
+    via ./internal/runs -> ./internal/simulation/des -> ./internal/domainpack/electronicsline
+    rule: internal/packs is the one place that names the packs a deployment serves, so the API and the worker always serve the same domains
+[packs-named-in-one-place] ./internal/runs/runner depends on ./internal/domainpack/electronicsline
+    via ./internal/runs/runner -> ./internal/simulation/des -> ./internal/domainpack/electronicsline
+    rule: internal/packs is the one place that names the packs a deployment serves, so the API and the worker always serve the same domains
+[packs-named-in-one-place] ./internal/simulation/des depends on ./internal/domainpack/electronicsline
+    via ./internal/simulation/des -> ./internal/domainpack/electronicsline
+    rule: internal/packs is the one place that names the packs a deployment serves, so the API and the worker always serve the same domains
+FAIL architecture: 8 violation(s)
+exit 1

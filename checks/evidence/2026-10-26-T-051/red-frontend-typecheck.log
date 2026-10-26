@@ -1,0 +1,6 @@
+tests/api.test.ts(280,49): error TS2345: Argument of type '{ readonly name: "電子產線"; readonly domain: "electronics_line"; readonly template: "electronics_assembly_test_line"; readonly locale: "zh-Hant"; }' is not assignable to parameter of type 'CreateModel'.
+  Types of property 'domain' are incompatible.
+    Type '"electronics_line"' is not assignable to type '"software_delivery"'.
+tests/contracts.test.ts(270,75): error TS2322: Type '"electronics_line"' is not assignable to type '"software_delivery"'.
+tests/contracts.test.ts(270,103): error TS2322: Type '"electronics_assembly_test_line"' is not assignable to type '"default_delivery_pipeline"'.
+tsc exit 2

@@ -1,0 +1,10 @@
+internal/domainpack/electronicsline/registry_test.go:24:39: undefined: Pack
+internal/domainpack/electronicsline/registry_test.go:27:38: undefined: Pack
+internal/domainpack/electronicsline/registry_test.go:30:36: undefined: Pack
+internal/domainpack/electronicsline/registry_test.go:30:56: undefined: domainpack.ModelMetricsProvider
+internal/domainpack/electronicsline/registry_test.go:33:36: undefined: Pack
+internal/domainpack/electronicsline/export_test.go:4:18: undefined: applyNames
+internal/domainpack/electronicsline/export_test.go:7:20: undefined: templateFrom
+internal/domainpack/electronicsline/registry_test.go:33:36: too many errors
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline [build failed]
+FAIL

@@ -1,0 +1,4 @@
+    assert all(s in ('review', 'done') for s in deps), f"{t['id']}: started before its dependencies"
+           ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: T-051: started before its dependencies
+exit: check_decisions with T-051 in_progress and T-050 not_started

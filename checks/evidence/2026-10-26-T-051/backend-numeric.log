@@ -1,0 +1,19 @@
+bash scripts/check_no_fma.sh
+PASS no fused multiply-add or platform math call: amd64 v3
+PASS no fused multiply-add or platform math call: arm64
+PASS no fused multiply-add or platform math call: ppc64le
+PASS no fused multiply-add or platform math call: s390x
+PASS no fused multiply-add or platform math call: riscv64
+PASS no fused multiply-add or platform math call: loong64
+ok  	github.com/kcl1104/geminus/internal/simulation	0.369s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	23.281s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	234.303s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.187s
+ok  	github.com/kcl1104/geminus/internal/results/compare	13.383s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.336s
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.613s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	6.135s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	7.725s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.663s
+PASS numeric tests as a GOAMD64=v3 build
+exit 0 (259 s)

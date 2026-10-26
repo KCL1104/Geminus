@@ -1,0 +1,6 @@
+--- FAIL: TestTemplateThroughTheEngine (1.70s)
+    engine_test.go:210: the run's digest is sha256:f5fee84c5a62ecf9eb43222a6511a4b579c0f67ba83ad5bf379076883157f904 (des-go-0.5.0); testdata/template-run-lock.json locks sha256:0000000000000000000000000000000000000000000000000000000000000000 (des-go-0.5.0). A change to the engine, the template or the pack's metrics must be reviewed before the lock is updated
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline	3.197s
+FAIL
+exit 1

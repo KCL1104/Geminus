@@ -1,0 +1,8 @@
+[domain-packs] ./internal/domainpack/electronicsline depends on net/http
+    via ./internal/domainpack/electronicsline -> net/http
+    rule: a DomainPack builds on the generic kernel only: no other pack, application layer, I/O, database or LLM SDK (docs/ARCHITECTURE.md §2–§3)
+[domain-packs] ./internal/domainpack/electronicsline depends on net/http
+    via ./internal/domainpack/electronicsline -> net/http
+    rule: a DomainPack builds on the generic kernel only: no other pack, application layer, I/O, database or LLM SDK (docs/ARCHITECTURE.md §2–§3)
+FAIL architecture: 2 violation(s)
+exit 1
