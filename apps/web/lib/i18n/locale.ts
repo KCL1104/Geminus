@@ -1,5 +1,7 @@
 // UI languages (REQ-022, ADR-020): en is the default, zh-Hant the other.
 // Kept equal to schemas/common.schema.json#/$defs/Locale by tests/i18n.test.ts.
+import { cookieValue } from "../cookie";
+
 export const locales = ["en", "zh-Hant"] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "en";
@@ -16,18 +18,14 @@ export function parseLocale(value: string | null | undefined): Locale {
 }
 
 /**
- * The locale a Cookie header (or document.cookie) names. Of two cookies with
- * the name (another path or domain; the app sets one), the last wins, as in
- * Next.js cookies().get on the server, so a page and its global-error
- * fallback agree (T-044 review 2 N5).
+ * The locale a Cookie header (or document.cookie) names, read as Next.js
+ * cookies().get reads it on the server (lib/cookie.ts: the value
+ * percent-decoded, and of two cookies with the name, from another path or
+ * domain, the last), so a page and its global-error fallback agree (T-044
+ * review 2 N5, T-045 review 1 I3).
  */
 export function cookieLocale(header: string): Locale {
-  let value: string | undefined;
-  for (const pair of header.split(";")) {
-    const at = pair.indexOf("=");
-    if (at >= 0 && pair.slice(0, at).trim() === localeCookie) value = pair.slice(at + 1);
-  }
-  return value === undefined ? defaultLocale : parseLocale(value);
+  return parseLocale(cookieValue(header, localeCookie));
 }
 
 /** The Set-Cookie value for remembering locale for a year. */

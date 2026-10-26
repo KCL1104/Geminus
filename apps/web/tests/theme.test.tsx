@@ -4,6 +4,7 @@
 // theme cookie, which holds "light" or "dark" and nothing else. The server
 // side (the layout renders the remembered theme on <html>) is in
 // tests/layout.test.tsx; the browser checks are apps/web-e2e/tests/theme.spec.ts.
+import { RequestCookies } from "next/dist/compiled/@edge-runtime/cookies";
 import { afterEach, describe, expect, it } from "vitest";
 import { applyTheme, ThemeSwitcher, useRememberedTheme } from "../app/_components/theme-switcher";
 import { cookieTheme, parseTheme, themeAttribute, themeCookie, themeCookieValue, themes } from "../lib/theme/theme";
@@ -35,6 +36,25 @@ describe("theme values", () => {
     expect(cookieTheme("geminus_locale=zh-Hant; geminus_theme=dark")).toBe("dark");
     expect(cookieTheme("geminus_theme=dark; geminus_theme=light")).toBe("light");
     expect(cookieTheme("xgeminus_theme=dark")).toBe("system");
+  });
+
+  // T-045 review 1 I3: the server reads the cookie with Next.js
+  // cookies().get, which percent-decodes the value and skips a pair that
+  // does not decode; the browser (global-error) must read it the same way.
+  it("read the cookie as the server does: percent-decoded, a value that does not decode skipped", () => {
+    expect(cookieTheme("geminus_theme=%64ark")).toBe("dark");
+    expect(cookieTheme("geminus_theme=light; geminus_theme=dark%")).toBe("light");
+    const headers = [
+      "", "geminus_theme=dark", "geminus_theme=%64ark", "geminus_theme=%6C%69%67%68%74", "geminus_theme=dark; geminus_theme=light",
+      "geminus_theme=dark;geminus_theme=light", "geminus_theme=light; geminus_theme=dark%", "geminus_theme=dark%; geminus_theme=light",
+      "geminus_theme=%E0%A4%A", "geminus_theme", "geminus_theme=dark; geminus_theme", "geminus_theme = dark", "geminus_theme=dark=1",
+      'geminus_theme="dark"', "geminus_theme=%20dark", "a=%; geminus_theme=dark", "xgeminus_theme=dark", "geminus_theme=DARK",
+      "geminus_theme=dark;; geminus_theme=light", "geminus_theme=%2564ark",
+    ];
+    for (const header of headers) {
+      const server = parseTheme(new RequestCookies(new Headers({ cookie: header })).get(themeCookie)?.value);
+      expect(cookieTheme(header), header).toBe(server);
+    }
   });
 
   it("are remembered for a year, or forgotten when the reader goes back to the system's", () => {

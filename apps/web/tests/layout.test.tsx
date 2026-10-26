@@ -22,6 +22,8 @@ const { default: RootLayout, generateMetadata } = await import("../app/layout");
 const { default: Home } = await import("../app/page");
 const { default: NotFound, generateMetadata: notFoundMetadata } = await import("../app/not-found");
 const { default: GlobalError } = await import("../app/global-error");
+const { default: AuthError } = await import("../app/auth/error/page");
+const { en } = await import("../messages/en");
 
 async function shell(): Promise<string> {
   return renderToStaticMarkup(await RootLayout({ children: await Home() }));
@@ -109,6 +111,22 @@ describe("pages for what failed (T-044 review M2)", () => {
     expect(await notFoundMetadata()).toEqual({ title: "找不到此頁面" });
     jar.locale = undefined;
     expect(renderToStaticMarkup(await NotFound())).toContain("<h1>Page not found</h1>");
+  });
+
+  // T-045 review 1 I2 (T-043 code): the reason is looked up as the page's
+  // own key only; a name Object.prototype has (toString, constructor, …)
+  // made the page throw, which the server answered with a 500.
+  it("says a sign-in failed for a reason it does not know, even one named like an object's own property", async () => {
+    const page = async (reason?: string | string[]) =>
+      renderToStaticMarkup(await AuthError({ searchParams: Promise.resolve(reason === undefined ? {} : { reason }) }));
+    const text = (key: "authError.expired" | "authError.refused" | "authError.failed") => en[key].replace(/'/g, "&#x27;");
+    expect(await page("expired")).toContain(text("authError.expired"));
+    expect(await page("refused")).toContain(text("authError.refused"));
+    for (const reason of ["failed", "toString", "constructor", "__proto__", "hasOwnProperty", "valueOf", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "nonsense", "", undefined, ["expired", "refused"]]) {
+      const out = await page(reason);
+      expect(out, String(reason)).toContain(text("authError.failed"));
+      expect(out).toContain('<a href="/auth/login">Sign in again</a>');
+    }
   });
 
   it("replaces the whole document when the layout itself fails, in English and the system's theme until the browser reads the choices", () => {

@@ -3,6 +3,8 @@
 // cookie, like the language (ADR-020), so the root layout renders it as
 // <html data-theme> and the first paint already has the right colours: no
 // script runs before paint and there is no flash of the other theme.
+import { cookieValue } from "../cookie";
+
 export const themes = ["system", "light", "dark"] as const;
 export type Theme = (typeof themes)[number];
 export const defaultTheme: Theme = "system";
@@ -18,14 +20,9 @@ export function parseTheme(value: string | null | undefined): Theme {
   return value === "light" || value === "dark" ? value : defaultTheme;
 }
 
-/** The theme a Cookie header (or document.cookie) names; of two, the last wins, as for the locale. */
+/** The theme a Cookie header (or document.cookie) names, read as the server reads it (lib/cookie.ts), as for the locale. */
 export function cookieTheme(header: string): Theme {
-  let value: string | undefined;
-  for (const pair of header.split(";")) {
-    const at = pair.indexOf("=");
-    if (at >= 0 && pair.slice(0, at).trim() === themeCookie) value = pair.slice(at + 1);
-  }
-  return parseTheme(value);
+  return parseTheme(cookieValue(header, themeCookie));
 }
 
 /** The Set-Cookie value that remembers a choice for a year, or forgets it (back to the system's). */

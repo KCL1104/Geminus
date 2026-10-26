@@ -46,7 +46,10 @@ export default defineConfig({
     ...devices["Desktop Chrome"],
     locale: "en-US",
     timezoneId: "UTC",
-    reducedMotion: "reduce",
+    // Motion stays on, as the screenshot baselines were made. (A
+    // `reducedMotion` here was never applied: Playwright Test takes it only
+    // in contextOptions, T-045 review 1 L1.) simplicity.spec.ts emulates
+    // reduced motion itself to check the rule.
   },
   projects: [{ name: "chromium" }],
   webServer: [

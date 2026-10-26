@@ -1,7 +1,9 @@
 // TEST-033: no axe violation (WCAG 2.0–2.2 A/AA, contrast included) on any
 // route or state, in either language, at phone and desktop width, in the
 // light and the dark theme (the system's, H-013); no horizontal page scroll
-// at 390 px; no table text painted over the next cell or cut off.
+// at 390 px; no table text painted over the next cell or cut off. Also the
+// reader's own choice of theme over the opposite system theme (T-045 review
+// 1 I5), on every route.
 import { expect, test } from "@playwright/test";
 import { cellOverflow, locales, open, routes, schemes, sheet, violations } from "./helpers";
 
@@ -37,4 +39,19 @@ for (const scheme of schemes) for (const locale of locales) {
       });
     });
   }
+}
+
+for (const [chosen, system] of [["dark", "light"], ["light", "dark"]] as const) {
+  test.describe(`${chosen} chosen on a ${system} system, en at 1280px`, () => {
+    test.use({ viewport: { width: 1280, height: 900 }, colorScheme: system });
+
+    for (const route of routes) {
+      test(`${route} has no violation`, async ({ page }) => {
+        await open(page, route, "en", chosen);
+        await expect(page.locator("html")).toHaveAttribute("data-theme", chosen);
+        await expect(page.locator("body")).toHaveCSS("background-color", sheet[chosen]);
+        expect(await violations(page)).toEqual([]);
+      });
+    }
+  });
 }

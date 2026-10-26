@@ -67,6 +67,17 @@ test("the proxy adds the token, sends no cookie to the API and returns no token"
   expect((await appCookies(page)).map((c) => c.name).sort()).toEqual(["__Host-geminus_session"]);
 });
 
+// T-045 review 1 I2 (T-043's page): a reason the page does not know, even
+// a name every object inherits, is the generic failure, not a server error.
+test("a sign-in error page with an unknown reason says the sign-in failed, never a 500", async ({ request }) => {
+  for (const reason of ["toString", "constructor", "__proto__", "hasOwnProperty", "valueOf", "nonsense"]) {
+    const r = await request.get(`/auth/error?reason=${reason}`);
+    expect(r.status(), reason).toBe(200);
+    expect(await r.text(), reason).toContain("The identity provider&#x27;s answer could not be verified.");
+  }
+  expect(await (await request.get("/auth/error?reason=expired")).text()).toContain("The sign-in took too long or was started in another browser.");
+});
+
 test("without a session the proxy answers 401 in the API's envelope", async ({ page }) => {
   await page.goto("/");
   const r = await inPage(page, "/api/v1/projects");

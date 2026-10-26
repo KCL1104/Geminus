@@ -1,6 +1,7 @@
 // REQ-022 / TEST-031: the catalogs, the translator and the locale choice.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { RequestCookies } from "next/dist/compiled/@edge-runtime/cookies";
 import { describe, expect, it } from "vitest";
 import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
@@ -106,6 +107,24 @@ describe("locale choice", () => {
     expect(cookieLocale("geminus_locale=zh-Hant; geminus_locale=en")).toBe("en");
     expect(cookieLocale("geminus_locale=en; geminus_locale=zh-Hant")).toBe("zh-Hant");
     for (const v of ["", "geminus_locale=zh-hant", "xgeminus_locale=zh-Hant", "geminus_locale = zh-Hant", "geminus_locale"]) expect(cookieLocale(v), v).toBe("en");
+  });
+
+  // T-045 review 1 I3: Next.js cookies().get percent-decodes the value and
+  // skips a pair that does not decode, so the browser reads it that way too.
+  it("reads the cookie as the server does: percent-decoded, a value that does not decode skipped", () => {
+    expect(cookieLocale("geminus_locale=zh%2DHant")).toBe("zh-Hant");
+    expect(cookieLocale("geminus_locale=zh-Hant; geminus_locale=en%")).toBe("zh-Hant");
+    const headers = [
+      "", "geminus_locale=zh-Hant", "geminus_locale=zh%2DHant", "geminus_locale=%7A%68-Hant", "geminus_locale=zh-Hant; geminus_locale=en",
+      "geminus_locale=en;geminus_locale=zh-Hant", "geminus_locale=zh-Hant; geminus_locale=en%", "geminus_locale=en%; geminus_locale=zh-Hant",
+      "geminus_locale=%E0%A4%A", "geminus_locale", "geminus_locale=zh-Hant; geminus_locale", "geminus_locale = zh-Hant", "geminus_locale=zh-Hant=1",
+      'geminus_locale="zh-Hant"', "geminus_locale=%20zh-Hant", "a=%; geminus_locale=zh-Hant", "xgeminus_locale=zh-Hant", "geminus_locale=zh-hant",
+      "geminus_locale=zh-Hant;; geminus_locale=en", "geminus_locale=zh%252DHant",
+    ];
+    for (const header of headers) {
+      const server = parseLocale(new RequestCookies(new Headers({ cookie: header })).get(localeCookie)?.value);
+      expect(cookieLocale(header), header).toBe(server);
+    }
   });
 });
 

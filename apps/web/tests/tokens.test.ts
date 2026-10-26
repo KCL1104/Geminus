@@ -112,8 +112,10 @@ const textPairs: [string, string][] = [
 // Control boundaries against the surfaces controls sit on, the focus ring
 // and the checked box (WCAG 1.4.11, 3:1). A hovered control's own fill is
 // not a surface it sits on, and rows have no hover fill (ui/table.module.css).
+// A selected row's checkbox sits on Selected Row Tint (T-045 review 1 L4:
+// 3.31:1 light, 3.06:1 dark, so a small tint change could break it).
 const nonTextPairs: [string, string][] = [
-  ...["sheet", "ground", "raised", "panel"].map((bg): [string, string] => ["--gm-color-edge", `--gm-color-${bg}`]),
+  ...["sheet", "ground", "raised", "panel", "selection-tint"].map((bg): [string, string] => ["--gm-color-edge", `--gm-color-${bg}`]),
   ...["sheet", "ground", "raised", "hover", "selection-tint", "well"].map((bg): [string, string] => ["--gm-color-ink", `--gm-color-${bg}`]),
   ["--gm-color-error", "--gm-color-raised"],
 ];

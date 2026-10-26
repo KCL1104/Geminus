@@ -29,6 +29,25 @@ async function controls(page: Page) {
 
 const repeated = (xs: string[]) => [...new Set(xs.filter((x, i) => xs.indexOf(x) !== i))];
 
+/** The transition and animation durations in use on the page, and whether the page sees reduced motion. */
+async function motion(page: Page) {
+  return page.evaluate(() => {
+    const durations = new Set<string>();
+    const easings = new Set<string>();
+    let moving = 0;
+    for (const el of document.querySelectorAll("*")) {
+      const s = getComputedStyle(el);
+      const ds = [...s.transitionDuration.split(","), ...s.animationDuration.split(",")].map((d) => d.trim()).filter((d) => parseFloat(d) > 0);
+      if (ds.length === 0) continue;
+      moving++;
+      for (const d of ds) durations.add(d);
+      // One easing per transitioned property, comma-separated (commas inside cubic-bezier() are not separators).
+      if (s.transitionProperty !== "all") for (const e of s.transitionTimingFunction.split(/,(?![^(]*\))/)) easings.add(e.trim());
+    }
+    return { moving, durations: [...durations].sort(), easings: [...easings].sort(), reduce: matchMedia("(prefers-reduced-motion: reduce)").matches };
+  });
+}
+
 for (const locale of locales) {
   for (const width of [390, 1280]) {
     test.describe(`${locale} at ${width}px`, () => {
@@ -48,3 +67,31 @@ for (const locale of locales) {
     });
   }
 }
+
+// H-027 rule 4 and DESIGN.md's Do's: the only motion is a control's 180 ms
+// state-colour change, and a reader who asks for reduced motion gets none.
+// The browser checks run with motion on, as the screenshot baselines were
+// made; the reduced case asks for it itself (T-045 review 1 L1: the config's
+// `use: { reducedMotion }` never reached the page).
+test.describe("motion", () => {
+  test("is only the 180 ms state-colour change of a control", async ({ page }) => {
+    await open(page, "/ui-gallery", "en");
+    const m = await motion(page);
+    expect(m.reduce, "these checks run with motion on").toBe(false);
+    expect(m.moving, "controls with a transition").toBeGreaterThan(5);
+    expect(m.durations).toEqual(["0.18s"]);
+    expect(m.easings).toEqual(["cubic-bezier(0.2, 0.8, 0.2, 1)"]);
+  });
+
+  test("stops for a reader who asks for reduced motion", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await open(page, "/ui-gallery", "en");
+    const m = await motion(page);
+    expect(m.reduce).toBe(true);
+    expect(m.moving).toBeGreaterThan(5);
+    // base.css: 0.01 ms, which Chromium reports as 1e-05s.
+    for (const d of m.durations) expect(parseFloat(d), d).toBeLessThanOrEqual(0.00001);
+    // The rule sets one duration for every property of every element.
+    await expect(page.getByRole("button", { name: "Save", exact: true })).toHaveCSS("transition-duration", "1e-05s");
+  });
+});
