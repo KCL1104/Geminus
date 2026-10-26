@@ -114,6 +114,20 @@ func mean(d model.Distribution, unit model.TimeUnit) (float64, bool) {
 	return float64(v*float64(ms)) / 60000, true
 }
 
+// covered says whether an event starts in each unit of [from, to), a whole
+// number of units: a unit in which none does is not observed, so the
+// line's output there is unknown, not zero (T-052 review r1; D-118 (d)).
+// The set counts units, so its order never matters.
+func covered(starts []int64, from, to, unit int64) bool {
+	seen := map[int64]bool{}
+	for _, s := range starts {
+		if s >= from && s < to {
+			seen[(s-from)/unit] = true
+		}
+	}
+	return int64(len(seen)) == (to-from)/unit
+}
+
 func sameDistribution(a, b *model.TimedDistribution) bool {
 	if a == nil || b == nil {
 		return a == b
@@ -139,12 +153,15 @@ func sameDistribution(a, b *model.TimedDistribution) bool {
 // in the window (output: that end in it). Keys are D-117 (d)'s form.
 //
 // Both windows of an output are whole periods of the model's cycle (its
-// calendars' and release schedules' periods) at the same phase, and the
-// log has one UTC offset in the window; otherwise, and without events, a
-// field or a simulated value a quantity needs, it is unavailable with
-// D-060's reason (no number is ever made up). sample labels every row
-// (D-060: in-sample or hold-out is the caller's, who knows the model's
-// provenance). It reads ir, result and events and changes none; an event
+// calendars' and release schedules' periods) at the same phase, the log
+// has one UTC offset in the window, and an event of the log (of any record
+// type) starts in each of the window's units (lcm(period, cycle)): a unit
+// the log does not cover is no observed data, never zero output (T-052
+// review r1). Otherwise, and without events, a field or a simulated value
+// a quantity needs, it is unavailable with D-060's reason (no number is
+// ever made up). sample labels every row (D-060: in-sample, hold-out or
+// model-generated is the caller's, who knows the model's provenance and
+// the data's). It reads ir, result and events and changes none; an event
 // whose time does not parse is not canonical and is an error.
 func CompareObserved(ir *model.ModelIR, result *simulation.Result, events []domainpack.CanonicalEvent, w ObservedWindow,
 	sample observed.Sample) ([]ObservedComparison, error) {
@@ -153,6 +170,7 @@ func CompareObserved(ir *model.ModelIR, result *simulation.Result, events []doma
 	}
 	from, to := w.From.Sub(w.Anchor).Milliseconds(), w.To.Sub(w.Anchor).Milliseconds()
 	var ops []logEvent
+	starts := make([]int64, 0, len(events)) // every event's, any record type
 	offsets := map[int]bool{}
 	for i := range events {
 		e := &events[i]
@@ -161,6 +179,7 @@ func CompareObserved(ir *model.ModelIR, result *simulation.Result, events []doma
 			return nil, errors.New("electronicsline: an event's timestamp is not RFC 3339")
 		}
 		ev := logEvent{e: e, start: start.Sub(w.Anchor).Milliseconds(), end: -1}
+		starts = append(starts, ev.start)
 		in := ev.start >= from && ev.start < to
 		if in {
 			_, off := start.Zone()
@@ -242,6 +261,9 @@ func CompareObserved(ir *model.ModelIR, result *simulation.Result, events []doma
 			continue
 		case (to-from)%unit != 0 || mod(from, unit) != mod(w0, unit) || (h0-w0)%unit != 0 || h0-w0 < unit || len(offsets) > 1:
 			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, observed.ReasonWindowNotAligned))
+			continue
+		case !covered(starts, from, to, unit):
+			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, observed.ReasonNoObservedData))
 			continue
 		case last == nil:
 			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, reasonNoCompletedSink))
