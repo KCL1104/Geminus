@@ -1,0 +1,157 @@
+{
+  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.5.0, T-050) on the cases of batch-goldens.json and setup-goldens.json the validator accepts (all but G-BT13) and on their eight stochastic reference cases BT-S1-BT-S4 and SU-S1-SU-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestBatchGoldens, TestBatchStall, TestBatchRoutingDrawsInMemberOrder, TestSetupGoldens, TestSetupStreamsPerUnit) and after the SimPy reference agreed (scripts/simpy_batch_reference.py: 15 of the goldens and the eight reference cases), and is checked besides by the observation-only checker (kernel_check_batch_test.go, kernel_check_setup_test.go); these digests make any later change to batches, changeovers, their observations or the sequence numbers visible. The locks of des-go-0.1.0 to des-go-0.4.0 (kernel-observation-digests.json, -0.2.0.json, -0.3.0.json, -0.4.0.json) are kept as they were and still hold (ADR-026 D-047).",
+  "engine_version": "des-go-0.5.0",
+  "encoding": "SHA-256 over each observation's kind, tick, seq, entity, node, resource, value, at and batch as little-endian 64-bit words, in observation order (kernel-observation-digests-0.4.0.json's encoding with Observation.Batch as a ninth word; ObsBatchStart is kind 17, its value the members; ObsSetup is kind 18, its at the unit and its value the changeover ticks)",
+  "cases": [
+    {
+      "id": "G-BT1",
+      "observations": 69,
+      "sha256": "f3760e2f2b6771b3a1f7bc862a2293aa49f032f99d9c762fcaa1da1bd01091ee"
+    },
+    {
+      "id": "G-BT2",
+      "observations": 26,
+      "sha256": "cd52587699a6eee522b0e56a7beedbe3d4a0b71fdec9cba576f5cb3ec1fb84a8"
+    },
+    {
+      "id": "G-BT3",
+      "observations": 48,
+      "sha256": "1c65639701d2f64e3fc5ab3c01e41bca3d0430a211fcaadad349bccf90e740bf"
+    },
+    {
+      "id": "G-BT4",
+      "observations": 37,
+      "sha256": "7eb617d34b48dcc81196b971f3adae29d2ae2dde8b350010f157e21478113f2c"
+    },
+    {
+      "id": "G-BT5",
+      "observations": 23,
+      "sha256": "0a77ae60d40e9836325a39add74089705076b64a41085ae34322cc8afac7e75a"
+    },
+    {
+      "id": "G-BT6",
+      "observations": 13,
+      "sha256": "e6ec8cacec3b97039401a08365b5b267fb3785f44d5a9c8f211a6149c95bd090"
+    },
+    {
+      "id": "G-BT7",
+      "observations": 13,
+      "sha256": "7602075c4eca00c13ad4c0484722ebe764c339b8da44be5ec62841675a370a8c"
+    },
+    {
+      "id": "G-BT8",
+      "observations": 54,
+      "sha256": "e95b9ac52b63602705b31486cfb9b4747ef849bccca4bd0952eaaff50d43d390"
+    },
+    {
+      "id": "G-BT9",
+      "observations": 29,
+      "sha256": "8723c153ef62c4316f2022b0483f6d38bb26749f9d73ddb3f2b96ee0d46ee05c"
+    },
+    {
+      "id": "G-BT10",
+      "observations": 32,
+      "sha256": "31d7457ead6ed7aaa54d0f1065a64c02b03d2a38970d9d914f7144963bff1933"
+    },
+    {
+      "id": "G-BT11",
+      "observations": 60,
+      "sha256": "cb5986e276a1deb9ed06f3eab1480d96b815cd6356611bcfb4c12746fd19f316"
+    },
+    {
+      "id": "G-BT12",
+      "observations": 27,
+      "sha256": "dab6b684d0fa54e65c51b1688b4a9989db1e2c7c04712831f96eef26eddc929a"
+    },
+    {
+      "id": "G-BT14",
+      "observations": 21,
+      "sha256": "9112dea4a537cc1b72af65709d1f457181f28042878daa3d367e1f163eb097df"
+    },
+    {
+      "id": "BT-S1",
+      "observations": 1144,
+      "sha256": "9fa4e0dbf29489434c6bdc7d52d77d67b2e63d6efab7ed19444150e7c41ecfa3"
+    },
+    {
+      "id": "BT-S2",
+      "observations": 2369,
+      "sha256": "5ef3d4340c96b642609d532b1e70fd86eb3bf0656b729f47fe9fb4405281f0fb"
+    },
+    {
+      "id": "BT-S3",
+      "observations": 4816,
+      "sha256": "b21b29a42e73bc364d9ff8b3f0fa4decb75c960f8ca6be747d17f9aa75ddc231"
+    },
+    {
+      "id": "BT-S4",
+      "observations": 1466,
+      "sha256": "4b1b3d14a9aa229757719c743d137d890edb6b766c9cfa357a3edf06c7a49856"
+    },
+    {
+      "id": "G-SU1",
+      "observations": 50,
+      "sha256": "c03b03828ee98ac757f3aa42599a693524bde93b1724ba4cef80d28b28ec1a0f"
+    },
+    {
+      "id": "G-SU2",
+      "observations": 43,
+      "sha256": "185a3a3272db3506c0cbfd35333d1c047a561fdd21bc5f4ebb652e85cae36dc9"
+    },
+    {
+      "id": "G-SU3",
+      "observations": 55,
+      "sha256": "0bd27049ec14376397c48d8247b21c948d65e059b641a58b462ffcf6c9984ba3"
+    },
+    {
+      "id": "G-SU5",
+      "observations": 1225,
+      "sha256": "c6c5989a55e75312850ae052f8a2dae19aeca78ed77e67ebb6787bbf2dacbc40"
+    },
+    {
+      "id": "G-SU6",
+      "observations": 26,
+      "sha256": "825f381a217c0b132809fc7d9cab399fdb5adc415ff9b82bd7be046a95234bcc"
+    },
+    {
+      "id": "G-SU7",
+      "observations": 45,
+      "sha256": "336aae8233cdf6fd1cbe4ce34959c9ae8265ed871f8b8b252aa16a21e76057df"
+    },
+    {
+      "id": "G-SU8",
+      "observations": 37,
+      "sha256": "39ccda4ba762da19685996debc7ddb489d22a63f9671a96141c69340862451cb"
+    },
+    {
+      "id": "G-SU9",
+      "observations": 27,
+      "sha256": "9b5eaa32c5222c9ff0dc1dbc61b3a66221cbf192cfe9f2c75550917ea8c26cd1"
+    },
+    {
+      "id": "G-SU10",
+      "observations": 40,
+      "sha256": "0436f4940f6f922e6f4634a204fd9a71e0052d2c10101c42934a48c599369836"
+    },
+    {
+      "id": "SU-S1",
+      "observations": 2353,
+      "sha256": "1b8f524d405610ee6dc256cb3044594169ae066ceea7d4f4ccac3f7805fcd654"
+    },
+    {
+      "id": "SU-S2",
+      "observations": 4917,
+      "sha256": "9057ab1d0637832fe43a86d9daa1a65f70fc1f2f637b949bc85bdda0519d72a1"
+    },
+    {
+      "id": "SU-S3",
+      "observations": 3919,
+      "sha256": "846b97e2463c68fbb641c7965b755a00d58f8e1e33d57405da0483350b197e5e"
+    },
+    {
+      "id": "SU-S4",
+      "observations": 6092,
+      "sha256": "ab3bf54594525f2da3f6e11fe1b92f5ccd9c035e9dbcf0d9f59bf5cd769b4d31"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.5.0, T-050) on the cases of batch-goldens.json (12) and setup-goldens.json (8) that have an expected result and on their eight stochastic reference cases BT-S1-BT-S4 and SU-S1-SU-S4; NOT an independent oracle. It was taken only after the hand-derived expectations of those cases passed (internal/simulation/des TestBatchGoldenResults and TestSetupGoldenResults; internal/simulation/engine TestBatchGoldens and TestSetupGoldens) and after the SimPy reference agreed on the eight reference cases; these digests only make any later numerical change visible. The locks of des-go-0.1.0 to des-go-0.4.0 are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back.",
+  "engine_version": "des-go-0.5.0",
+  "inputs": {
+    "cases": "batch-goldens.json and setup-goldens.json (model and config as given, no domain metrics)",
+    "model_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "effective_model_hash": "hashing.Model(model.Encode(model))",
+    "limits": {
+      "wall_timeout_seconds": 300,
+      "max_events": 10000000,
+      "max_active_entities": 100000,
+      "max_entity_visits": 10000,
+      "max_trace_events": 100000
+    },
+    "dataset_manifest": []
+  },
+  "digests": {
+    "BT-S1": "sha256:ef20f5abc477d1f24097420766fa551b316e33c47a7d382c8e905dca5eabee71",
+    "BT-S2": "sha256:ac2d9cc737278651c2cf0e56d9073906837aa33f7632325e8741760390ea39e5",
+    "BT-S3": "sha256:d11ca3369281397510dbe56d030d8330da7ab6a39a5e621f1f3f1ef478d013dc",
+    "BT-S4": "sha256:37a7a7b37ddd3bb8072bf64d45874c913e7cb7b9313e8dba7633c1d2c43a6a07",
+    "G-BT1": "sha256:1c17b325d10a726a4cc73a6945d5cce7e1010276b4653256d389752d7230390d",
+    "G-BT10": "sha256:f59403deac49a340b5880034909857f9c14afac1c0e7ce89f68656050152c72c",
+    "G-BT11": "sha256:e2aed2205743849086192b738ad8657abafd29ae7065f930dadf212c900fdb57",
+    "G-BT12": "sha256:0cd02d56aa93b2b5d5cc2893c962810a9c1f738c4da2a5daf713160b49476bed",
+    "G-BT14": "sha256:bbe5ca3fb42651aef74dfa8e02acc3542f1b674e93d337c61cb5d89e49a536b8",
+    "G-BT2": "sha256:c97bd11a6f43b37e1a09d58b447f18b702a852d4eaf4318107655a2383aebe84",
+    "G-BT3": "sha256:0870f4ea5d70b12577c2d8c65ac0e73626049994fe8f22ff57e0f4be52eb0c03",
+    "G-BT4": "sha256:b4a947f4628fe19556068c3bf05c141c31185a54336d2638c6a4629059121a7f",
+    "G-BT6": "sha256:f3828e068f24461268775e1baa85dcf08dfcda8371dd2fed787a5580a66d831f",
+    "G-BT7": "sha256:f11ee65bd7e849c22e108c757e1fc51a2e6854c149b4130299af5b6cb203fbbd",
+    "G-BT8": "sha256:d5a92844e79fcfc2f8a328138abe5ee760a11f038a0974929b9e232ad752eed5",
+    "G-BT9": "sha256:8ff7d46433b9a6feef6bce93b9bdb394ec805865a39c7a1fddc2338b6eff5e47",
+    "G-SU1": "sha256:d566db3014a996ff28a693c5d7b947ae9f4c16ca7825ca6cfb9bf979500f6719",
+    "G-SU10": "sha256:2ee1664a21720bd94b4dc62a199add8d841830f1a865c1df7d54e07bba6290b7",
+    "G-SU2": "sha256:3ab51cdbb3c8e6bb5dfde354e82e617da082189f94ab3d86a63e893a37b1723c",
+    "G-SU3": "sha256:c1df81233d1286ceebf1a5c10d3b273ebf52d78370b3942736121f3e6df60bb9",
+    "G-SU6": "sha256:534d9a42a1199286a3e3140236dbad5c76209b8051c3a4bb54003cc89a4760a4",
+    "G-SU7": "sha256:a81b830169e6b282ac291fc4e32acc3170833559d67c166bbf0e6cb524d0e986",
+    "G-SU8": "sha256:d1fa483f0d9d21b7e8d9e22a6322b2ab0470d1d38346524e461e275b64bbab40",
+    "G-SU9": "sha256:ca0318a11cbba79a7d4f07d3a4886e7f7fa4d35e38cc381423fbc597f5b0eef0",
+    "SU-S1": "sha256:bcab16b6b5c0dd3ef045f0ce9549113fed937e700dcd8e835392c283143e4ce8",
+    "SU-S2": "sha256:9343edb5937c2866fd46a9c271caa1848f7ce2983e536c69e5e3a046b195d338",
+    "SU-S3": "sha256:318143a66e01b3953513feef23b2f5913a57829ce029bf13a78a5f2ed004a76b",
+    "SU-S4": "sha256:e50a8aefd9bea5ac91142c2673f3499ec11ff4f244e028c1f4b28857ddb7e6c3"
+  }
+}
