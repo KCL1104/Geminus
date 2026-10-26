@@ -24,6 +24,7 @@ without Docker (make spec-deploy, part of make spec-check):
 It checks the files, not a running deployment (NOT a container scan).
 """
 import json
+import posixpath
 import re
 import sys
 from pathlib import Path
@@ -112,6 +113,13 @@ def compose() -> dict:
             fail(f"compose: {name}: replaces its image's command without a healthcheck of its own")
     if "oidc-test" not in doc["services"]:
         fail("compose: the test provider service is expected only here")
+    # Every file the test provider reads next to itself must be mounted where
+    # it resolves in the container (servers.mjs runs as /fake/servers.mjs).
+    mounts = [str(v).split(":")[1] for v in doc["services"]["oidc-test"].get("volumes") or []]
+    for rel in re.findall(r'new URL\("([^"]+)",\s*import\.meta\.url\)', fake):
+        target = posixpath.normpath(posixpath.join("/fake", rel))
+        if not any(target == m or target.startswith(m.rstrip("/") + "/") for m in mounts):
+            fail(f"compose: oidc-test: servers.mjs reads {target}, which no volume mounts")
     return {"services": sorted(doc["services"])}
 
 

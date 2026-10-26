@@ -110,6 +110,8 @@ services:
       start_period: 5s
     volumes:
       - ../../apps/web-e2e/fake:/fake:ro
+      # servers.mjs serves this contract fixture as the draft (T-043 follow-up).
+      - ../../testdata/contracts/valid-draft-with-issues.json:/testdata/contracts/valid-draft-with-issues.json:ro
 
   api:
     <<: *db
