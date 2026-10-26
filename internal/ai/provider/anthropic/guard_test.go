@@ -252,9 +252,11 @@ func closedObject(props map[string]any) map[string]any {
 // a schema inside them.
 func TestTheSubsetGuard(t *testing.T) {
 	str := map[string]any{"type": "string"}
-	unions, optional := map[string]any{}, map[string]any{}
+	unions, typeArrays, optional := map[string]any{}, map[string]any{}, map[string]any{}
 	for i := range maxUnions + 1 {
 		unions[fmt.Sprintf("u%02d", i)] = map[string]any{"anyOf": []any{str, map[string]any{"type": "null"}}}
+		// a type array is a union parameter too (review round 1, L1, R10)
+		typeArrays[fmt.Sprintf("t%02d", i)] = map[string]any{"type": []any{"string", "null"}}
 	}
 	for i := range maxOptional + 1 {
 		optional[fmt.Sprintf("o%02d", i)] = str
@@ -295,6 +297,7 @@ func TestTheSubsetGuard(t *testing.T) {
 		"an unsupported format":            {closedObject(map[string]any{"v": map[string]any{"type": "string", "format": "regex"}}), "unsupported format regex"},
 		"an unknown type":                  {closedObject(map[string]any{"v": map[string]any{"type": "text"}}), "unknown type text"},
 		"too many unions":                  {closedObject(unions), "17 parameters with union types"},
+		"too many type-array unions":       {closedObject(typeArrays), "17 parameters with union types"},
 		"too many optional members":        {map[string]any{"type": "object", "properties": optional, "additionalProperties": false}, "25 optional parameters"},
 	} {
 		got := SubsetViolations(c.schema)

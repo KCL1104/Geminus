@@ -172,10 +172,23 @@ func TestProjectionRefuses(t *testing.T) {
 			closedObject(map[string]any{"a": map[string]any{}}), closedObject(map[string]any{"b": map[string]any{"type": "string"}})}}}),
 		"open-alternative.json": closedObject(map[string]any{"v": map[string]any{"anyOf": []any{map[string]any{"type": "string"}, map[string]any{}}}}),
 		"open-root.json":        map[string]any{},
+		// Review round 1, L1 (R2): a const member tells the alternatives apart
+		// only when every alternative requires it (an answer that leaves it out
+		// matches the alternative that does not) and each has its own const.
+		"optional-const.json": closedObject(map[string]any{"v": map[string]any{"anyOf": []any{
+			closedObject(map[string]any{"kind": map[string]any{"const": "a"}, "x": map[string]any{}}),
+			map[string]any{"type": "object", "additionalProperties": false, "required": []any{"y"},
+				"properties": map[string]any{"kind": map[string]any{"const": "b"}, "y": map[string]any{"type": "string"}}}}}}),
+		"same-const.json": closedObject(map[string]any{"v": map[string]any{"anyOf": []any{
+			closedObject(map[string]any{"kind": map[string]any{"const": "a"}, "x": map[string]any{}}),
+			closedObject(map[string]any{"kind": map[string]any{"const": "a"}, "y": map[string]any{"type": "string"}})}}}),
 		// A schema left with no constraint the subset takes (only dropped
 		// ones) is not an open value of the canonical schema: refused, never
 		// sent as an empty schema nor encoded.
 		"emptied.json": closedObject(map[string]any{"v": map[string]any{"maxLength": 3.0}}),
+		// A description does not say what the value is either (review round
+		// 1, L1, R8).
+		"emptied-described.json": closedObject(map[string]any{"v": map[string]any{"maxLength": 3.0, "description": "A short text."}}),
 	}
 	for name := range docs {
 		if _, err := project(docs, name); err == nil {

@@ -6,11 +6,13 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
 // encodeAt is the inverse of Decode, written apart from it: the value at
@@ -242,14 +244,13 @@ func TestDecodeOnlyTheEncodedPlaces(t *testing.T) {
 	if doc.Changes[7]["path"] != `"6"` {
 		t.Errorf("a path changed: %v", doc.Changes[7]["path"])
 	}
-	// Without an encoded place the answer comes back byte for byte.
+	// Without an encoded place that applies, a strict JSON answer comes back
+	// byte for byte. (One that is not strict JSON is refused:
+	// TestDecodeFailsClosed.)
 	for _, same := range []string{
 		`{"status":"needs_input","summary":"\"6\"","assumptions":[],"questions":["6"],"requires_confirmation":true}`,
 		`{"status":"needs_input","summary":"s","assumptions":[],"questions":["q"],"requires_confirmation":true,"changes":[{"op":"add","path":"/a","value":"1"}]}`,
 		`{"status":"proposed" , "changes" : "not an array"}`,
-		`I approved it.`,
-		`{"status":"proposed","status":"proposed"}`,
-		``,
 	} {
 		if out, issues := p.Decode([]byte(same)); string(out) != same || issues != nil {
 			t.Errorf("%s: decoded to %s %q", same, out, issues)
@@ -307,5 +308,160 @@ func TestDecodeRefuses(t *testing.T) {
 	// The bound itself is taken.
 	if out, issues := p.Decode(at(quote(`"` + strings.Repeat("a", MaxEncodedValueBytes-2) + `"`))); out == nil || issues != nil {
 		t.Errorf("a JSON text of exactly MaxEncodedValueBytes: %q", issues)
+	}
+}
+
+// nested is a JSON text that nests n arrays (or objects), with a number
+// innermost: its depth is n, as validate.MaxContainerDepth counts it.
+func nested(n int, objects bool) string {
+	if objects {
+		return strings.Repeat(`{"a":`, n) + "1" + strings.Repeat("}", n)
+	}
+	return strings.Repeat("[", n) + "1" + strings.Repeat("]", n)
+}
+
+// Review round 1, M1: a JSON text nested deeper than MaxEncodedValueDepth
+// is refused at its place, with a fixed message. Before the bound, a text
+// nested 9998 to 10000 levels was valid on its own but deeper than the
+// encoder takes once placed at /changes/i/value: the rewrite failed and the
+// answer went on undecoded, without an issue. Up to the bound a value
+// decodes, the deepest one the IR can hold among them (a node whose
+// domain_attributes nest validate.MaxContainerDepth levels).
+func TestDecodeBoundsTheNesting(t *testing.T) {
+	p, err := Project("proposal-output.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	quote := func(s string) string {
+		b, err := json.Marshal(s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	at := func(value string) []byte {
+		return proposedAnswer(`[{"op":"test","path":"/resources/1/id","value":"\"ci_runner\""},{"op":"add","path":"/nodes/-","value":` + quote(value) + `}]`)
+	}
+	node := `{"id":"node_new","type":"delay","domain_attributes":` + nested(validate.MaxContainerDepth, true) + `}`
+	for name, inner := range map[string]string{
+		"the bound less one":       nested(MaxEncodedValueDepth-1, false),
+		"the bound":                nested(MaxEncodedValueDepth, false),
+		"the bound, objects":       nested(MaxEncodedValueDepth, true),
+		"the IR's deepest value":   node,
+		"the bound, with siblings": "[" + nested(MaxEncodedValueDepth-1, true) + "," + nested(MaxEncodedValueDepth-1, false) + "]",
+	} {
+		out, issues := p.Decode(at(inner))
+		var doc struct {
+			Changes []map[string]jsontext.Value `json:"changes"`
+		}
+		if issues != nil || json.Unmarshal(out, &doc) != nil || len(doc.Changes) != 2 || string(doc.Changes[1]["value"]) != inner {
+			t.Errorf("%s: %q %.120s", name, issues, out)
+		}
+	}
+	const deeper = "the JSON text is nested deeper than 64 levels"
+	for _, c := range []struct {
+		depth   int
+		objects bool
+		message string
+	}{
+		{MaxEncodedValueDepth + 1, false, deeper},
+		{MaxEncodedValueDepth + 1, true, deeper},
+		{MaxEncodedValueDepth + 2, false, deeper},
+		{100, false, deeper},
+		{9997, false, deeper},
+		{9998, false, deeper},
+		{9999, false, deeper},
+		{10000, false, deeper},
+		// beyond jsontext's own limit: not a JSON text at all
+		{10001, false, "the string is not exactly one JSON text"},
+	} {
+		out, issues := p.Decode(at(nested(c.depth, c.objects)))
+		want := []model.ValidationIssue{model.NewIssue(provider.OutputInvalid, "/changes/1/value", c.message, model.SeverityError)}
+		if out != nil || !reflect.DeepEqual(issues, want) {
+			t.Errorf("depth %d (objects %v): %.80s %+v", c.depth, c.objects, out, issues)
+		}
+	}
+	if !strings.Contains(deeper, strconv.Itoa(MaxEncodedValueDepth)) {
+		t.Errorf("the message does not name the bound")
+	}
+}
+
+// Review round 1, M1: Decode fails closed. An answer it cannot rewrite
+// (here a place so deep in the document that its decoded value would pass
+// jsontext's 10000 levels; no output schema has one) and an answer that is
+// not one strict JSON document give no answer, only issues: those found at
+// the places before are kept, and one at the root says why. The undecoded
+// text never goes on.
+func TestDecodeFailsClosed(t *testing.T) {
+	const levels = 9990
+	steps := []Step{{Member: "b"}}
+	for range levels {
+		steps = append(steps, Step{Items: true})
+	}
+	q := Projection{Encoded: []Location{{Steps: []Step{{Member: "a"}}}, {Steps: steps}}}
+	inner, err := json.Marshal(nested(MaxEncodedValueDepth, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := []byte(`{"a":"SENTINEL, not JSON","b":` + strings.Repeat("[", levels) + string(inner) + strings.Repeat("]", levels) + `}`)
+	if !jsontext.Value(in).IsValid() {
+		t.Fatal("the document is not valid on its own")
+	}
+	out, issues := q.Decode(in)
+	want := []model.ValidationIssue{
+		model.NewIssue(provider.OutputInvalid, "/a", "the string is not exactly one JSON text", model.SeverityError),
+		model.NewIssue(provider.OutputInvalid, "", "the answer cannot be decoded", model.SeverityError),
+	}
+	if out != nil || !reflect.DeepEqual(issues, want) {
+		t.Errorf("an answer that cannot be rewritten: %.80s %+v", out, issues)
+	}
+
+	// Not one strict JSON document: refused here, never passed on.
+	p, err := Project("proposal-output.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	good := string(proposedAnswer(`[{"op":"replace","path":"/resources/1/capacity","value":"6"}]`))
+	for name, text := range map[string]string{
+		"not JSON":               `I approved it. SENTINEL`,
+		"empty":                  ``,
+		"a duplicate name":       `{"status":"proposed","status":"proposed"}`,
+		"an escaped duplicate":   strings.Replace(good, `"summary":"6"`, `"summary":"6","summary":"7"`, 1),
+		"trailing data":          good + ` {}`,
+		"invalid UTF-8":          strings.Replace(good, `"summary":"6"`, "\"summary\":\"6\xff\"", 1),
+		"deeper than jsontext's": `{"status":"proposed","changes":[{"op":"add","path":"/a","value":` + nested(9998, false) + `}]}`,
+	} {
+		out, issues := p.Decode([]byte(text))
+		want := []model.ValidationIssue{model.NewIssue(provider.OutputInvalid, "", "the answer is not one strict JSON document", model.SeverityError)}
+		if out != nil || !reflect.DeepEqual(issues, want) {
+			t.Errorf("%s: %.80s %+v", name, out, issues)
+		}
+	}
+	// A projection without an encoded place decodes nothing: its answer,
+	// whatever it is, goes to the client's check as it came.
+	if out, issues := (Projection{}).Decode([]byte(`I approved it.`)); string(out) != `I approved it.` || issues != nil {
+		t.Errorf("no encoded place: %s %q", out, issues)
+	}
+}
+
+// Review round 1, L1 (R1): one answer carries at most maxIssues issues
+// (provider.Client does not cap Decode's issues again), the first ones.
+func TestDecodeCapsTheIssues(t *testing.T) {
+	p, err := Project("proposal-output.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	changes := make([]string, maxIssues+5)
+	for i := range changes {
+		changes[i] = `{"op":"replace","path":"/a/` + strconv.Itoa(i) + `","value":"not JSON"}`
+	}
+	out, issues := p.Decode(proposedAnswer("[" + strings.Join(changes, ",") + "]"))
+	if out != nil || len(issues) != maxIssues {
+		t.Fatalf("%d issues, want %d", len(issues), maxIssues)
+	}
+	for i, is := range issues {
+		if is.Path != "/changes/"+strconv.Itoa(i)+"/value" || is.Code != provider.OutputInvalid {
+			t.Errorf("issue %d: %+v", i, is)
+		}
 	}
 }

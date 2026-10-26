@@ -6,12 +6,14 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/locale"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/anthropic"
+	"github.com/kcl1104/geminus/internal/aievals"
 	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
@@ -148,6 +150,62 @@ func TestEncodedValuesThatDoNotDecode(t *testing.T) {
 			}
 			if res.Raw != nil || res.Metadata.Usage.InputTokens != 120 || m.Spent() == 0 {
 				t.Errorf("raw %s usage %+v spent %d", res.Raw, res.Metadata.Usage, m.Spent())
+			}
+		})
+	}
+}
+
+// Review round 1, M1, end to end over HTTP: the reviewer's answer (Q1) on
+// MOD-002's base, a test and a replace whose values are not JSON texts
+// (no inner quotes) and an add, then a remove, of a value nested deeper
+// than MaxEncodedValueDepth. Before the fix, at 9998 to 10000 levels the
+// rewrite failed, the answer went on undecoded with no issue, and the
+// server's review made it ready with the raw strings as values. Now each
+// of the three places is an issue (none is lost), the call is
+// invalid_output with no answer, and the live eval's case ends invalid,
+// never ready.
+func TestADeepValueMakesTheAnswerInvalid(t *testing.T) {
+	for _, depth := range []int{anthropic.MaxEncodedValueDepth + 1, 9997, 9998, 9999, 10000} {
+		t.Run(fmt.Sprint(depth), func(t *testing.T) {
+			deep, err := json.Marshal(strings.Repeat("[", depth) + strings.Repeat("]", depth))
+			if err != nil {
+				t.Fatal(err)
+			}
+			answer := `{"status":"proposed","summary":"Rename the model.","assumptions":[],"risk_level":"low","confidence":0.9,"changes":[` +
+				`{"op":"test","path":"/nodes/1/id","value":"code_review"},` +
+				`{"op":"add","path":"/nodes/1/x","value":` + string(deep) + `},` +
+				`{"op":"remove","path":"/nodes/1/x"},` +
+				`{"op":"replace","path":"/name","value":"Renamed by a raw string"}],"expected_effects":[],"requires_confirmation":true}`
+
+			s := newServer(t, map[string][]reply{keyA: {ok(answer)}})
+			c, _ := client(t, s, config(keyA))
+			res, err := ask(t, c)
+			var pe *provider.Error
+			if !errors.As(err, &pe) || pe.Code != provider.CodeInvalidOutput || res.Raw != nil || res.Output.Changes != nil {
+				t.Fatalf("the client: %v, %d changes", err, len(res.Output.Changes))
+			}
+			var paths []string
+			for _, is := range pe.Issues {
+				paths = append(paths, is.Path)
+				if is.Code != provider.OutputInvalid || strings.Contains(is.Message, "code_review") || strings.Contains(is.Message, "Renamed") {
+					t.Errorf("issue %+v", is)
+				}
+			}
+			slices.Sort(paths)
+			if want := []string{"/changes/0/value", "/changes/1/value", "/changes/3/value"}; !slices.Equal(paths, want) {
+				t.Errorf("issues at %q, want %q", paths, want)
+			}
+
+			s = newServer(t, map[string][]reply{keyA: {ok(answer)}})
+			r := liveRun(t, s, aievals.SmokeCase)
+			o := r.Outcomes[0]
+			if o.Status != "invalid" || o.Passed || !slices.Contains(o.Issues, provider.OutputInvalid) || o.PatchHash != "" || o.ServerRisk != "" || o.Risk != "" {
+				t.Errorf("the live eval's case: %+v", o)
+			}
+			for gate, n := range r.Gates {
+				if n != 0 {
+					t.Errorf("gate %s: %d", gate, n)
+				}
 			}
 		})
 	}

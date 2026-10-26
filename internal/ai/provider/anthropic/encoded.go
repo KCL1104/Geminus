@@ -16,6 +16,10 @@ import (
 // budget's MaxOutputBytes after the decoding.
 const MaxEncodedValueBytes = 64 << 10
 
+// MaxEncodedValueDepth bounds how deeply the JSON text in one encoded
+// string nests arrays and objects (review round 1, M1).
+const MaxEncodedValueDepth = 64
+
 // maxIssues bounds the issues of one answer, as provider.Client does.
 const maxIssues = 20
 
