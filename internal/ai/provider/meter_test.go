@@ -154,6 +154,9 @@ func TestARefusedReservationRefusesTheCall(t *testing.T) {
 		"monthly quota":   {&Error{Code: CodeQuotaExceeded, Limit: "month"}, CodeQuotaExceeded, false, "month"},
 		"meter failed":    {errors.New("database unavailable"), CodeSpendUnavailable, true, ""},
 		"meter cancelled": {context.Canceled, CodeSpendUnavailable, true, ""},
+		// A meter that grants nothing it can settle (no reservation ID) is
+		// a meter that failed (mutation run 1: U6 survived without this).
+		"no reservation ID": {nil, CodeSpendUnavailable, true, ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			b := &billable{quote: Quote{Model: pricedModel, MaxInputTokens: 10}, respond: billed(validProposal, Usage{})}

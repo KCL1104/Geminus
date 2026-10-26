@@ -130,6 +130,11 @@ type Backend struct {
 	allows      func(role string) bool
 }
 
+// ErrNotApproved: New was given no recorded, complete approval (or the
+// record changed after the token was made). It is checked first, so it is
+// the reason whatever else the configuration holds.
+var ErrNotApproved = errors.New("anthropic: live AI is not approved (H-001, H-017, H-018)")
+
 // New returns the live backend for an approved configuration: cfg.Approval
 // must be a recorded, complete approval (internal/config/aiapproval),
 // cfg.Model exactly its model, and the credentials exactly the ones it
@@ -137,7 +142,7 @@ type Backend struct {
 // the approval's data policy names.
 func New(cfg Config) (*Backend, error) {
 	if !cfg.Approval.Valid() {
-		return nil, errors.New("anthropic: live AI is not approved (H-001, H-017, H-018)")
+		return nil, ErrNotApproved
 	}
 	if cfg.Model != cfg.Approval.Model() {
 		return nil, errors.New("anthropic: the model is not the approval's model")

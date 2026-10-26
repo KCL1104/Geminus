@@ -204,18 +204,25 @@ func TestTheAdapterTakesOnlyTheApproval(t *testing.T) {
 		"no approval":       {Model: "claude-opus-5-5", Credentials: creds},
 		"incomplete record": {Approval: aiapproval.Approval{}, Model: "claude-opus-5-5", Credentials: creds},
 	} {
-		if _, err := anthropic.New(cfg); err == nil {
+		_, err := anthropic.New(cfg)
+		switch {
+		case err == nil:
 			t.Errorf("%s: accepted", name)
-		} else if strings.Contains(err.Error(), keyA) || strings.Contains(err.Error(), keyB) {
+		case strings.Contains(err.Error(), keyA) || strings.Contains(err.Error(), keyB):
 			t.Errorf("%s: the error leaks a key", name)
+		case errors.Is(err, anthropic.ErrNotApproved) != (cfg.Approval == aiapproval.Approval{}):
+			// The approval is checked first, for itself: a missing one is
+			// ErrNotApproved even with the right model and credentials
+			// (mutation run 1: U24 survived on the model check alone).
+			t.Errorf("%s: %v", name, err)
 		}
 	}
 	// The record changes after the token was made: the adapter refuses it.
 	changed := complete(t)
 	changed.Retention = aiapproval.Retention{}
 	aiapproval.RecordForTest(t, changed)
-	if _, err := anthropic.New(anthropic.Config{Approval: a, Model: "claude-opus-5-5", Credentials: creds}); err == nil {
-		t.Error("a token of a record that is no longer complete was accepted")
+	if _, err := anthropic.New(anthropic.Config{Approval: a, Model: "claude-opus-5-5", Credentials: creds}); !errors.Is(err, anthropic.ErrNotApproved) {
+		t.Errorf("a token of a record that is no longer complete: %v", err)
 	}
 }
 

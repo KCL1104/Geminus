@@ -518,8 +518,8 @@ func TestNewRefuses(t *testing.T) {
 		"not approved":        config(keyA, keyB),
 		"unrecorded approval": {Approval: unrecorded, Model: model, Credentials: config(keyA).Credentials},
 	} {
-		if _, err := anthropic.New(cfg); err == nil {
-			t.Errorf("%s: accepted", name)
+		if _, err := anthropic.New(cfg); !errors.Is(err, anthropic.ErrNotApproved) {
+			t.Errorf("%s: %v", name, err)
 		}
 	}
 	for name, cfg := range map[string]anthropic.Config{

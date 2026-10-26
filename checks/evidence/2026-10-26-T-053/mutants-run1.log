@@ -1,0 +1,60 @@
+# 2026-10-26T07:46:03Z /home/user/Geminus/.venv/bin/python checks/evidence/2026-10-26-T-053/mutants.py
+# go: go version go1.27.3 linux/amd64
+U1	KILLED	Cost ignores output tokens	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestCost
+U2	KILLED	AttemptBound ignores max_tokens	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestAttemptBound, TestSettlement
+U3	KILLED	cache writes at the cheaper 5m rate	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestCost
+U4	KILLED	the reservation ignores retries	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestAttemptsWithoutAnAnswerCount, TestSettlement, TestTheReservationBoundsTheCall
+U5	KILLED	a quota refusal becomes spend_unavailable	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestARefusedReservationRefusesTheCall, TestSpend
+U6	SURVIVED	a reservation without an ID is accepted	internal/ai/provider/meter.go	./internal/ai/provider/	tests pass
+U7	KILLED	attempts without an answer are not charged	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestAttemptsWithoutAnAnswerCount, TestSettlement
+U8	KILLED	the settlement may exceed the reservation	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestSettlement
+U9	KILLED	settle runs on the caller's (maybe cancelled) context	internal/ai/provider/meter.go	./internal/ai/provider/	TestSettlement
+U10	KILLED	a call is never settled (reservation never released)	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestAFailedSettlementKeepsTheReservation, TestAttemptsWithoutAnAnswerCount, TestOnlyTheApprovedRoles, TestSettlement, TestSpend, TestTheLiveEvalOverHTTP
+U11	KILLED	New accepts a billable backend (no meter)	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestBillableNeedsAMeter, TestOnlyAMeteredClientCallsIt
+U12	KILLED	MemoryMeter refuses a charge that exactly fits	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/aievals/	TestMemoryMeter
+U13	KILLED	MemoryMeter settle keeps the whole reservation	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/aievals/	TestMemoryMeter
+U14	KILLED	a metered call without attribution is accepted	internal/ai/provider/provider.go	./internal/ai/provider/	TestNothingIsReservedForARefusedCall
+U15	KILLED	a refused reservation still calls the provider	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestARefusedReservationRefusesTheCall, TestNothingIsReservedForARefusedCall, TestSpend
+U16	KILLED	the quota limit is not passed on	internal/ai/provider/meter.go	./internal/ai/provider/	TestARefusedReservationRefusesTheCall
+U17	KILLED	spend_unavailable is not retryable	internal/ai/provider/errors.go	./internal/ai/provider/	TestARefusedReservationRefusesTheCall
+U18	KILLED	the adapter calls without a reservation	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestOnlyAMeteredClientCallsIt
+U19	KILLED	the adapter serves any prompt role	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestOnlyTheApprovedRoles
+U20	KILLED	a transport failure is not counted	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestAttemptsWithoutAnAnswerCount
+U21	KILLED	a cut body is not counted	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestAttemptsWithoutAnAnswerCount
+U22	KILLED	New accepts another model	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	TestTheAdapterTakesOnlyTheApproval
+U23	KILLED	New accepts other credentials	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	TestTheAdapterTakesOnlyTheApproval
+U24	SURVIVED	New accepts no approval	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	tests pass
+U25	KILLED	the record needs no retention confirmation	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/config/ ./internal/aievals/	TestAnyMismatchKeepsLiveOff, TestGapReasons, TestMainRefusesWhileLiveIsOff, TestRecorded, TestTheH018Record, TestTheLiveEvalRunsOnlyWhenLiveIsOn
+U26	KILLED	the record needs no spend-limit confirmation	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/config/	TestAnyMismatchKeepsLiveOff, TestGapReasons
+U27	KILLED	the record may name any role	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestGapReasons
+U28	KILLED	the record may keep raw text in logs	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff, TestGapReasons
+U29	KILLED	Valid does not recheck the record	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestRecorded
+U30	KILLED	AllowsRole ignores the data policy	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/ai/provider/anthropic/	TestRecorded
+U31	KILLED	the switch is not needed	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/ ./internal/aievals/	TestTheSwitchIsRequired
+U32	KILLED	any AI_MODEL is accepted	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff
+U33	KILLED	the price check is skipped	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff
+U34	KILLED	the record's gap is ignored	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/ ./internal/aievals/	TestAnyMismatchKeepsLiveOff, TestMainRefusesWhileLiveIsOff, TestTheLiveEvalRunsOnlyWhenLiveIsOn, TestThisBuildKeepsLiveOff
+U35	KILLED	one key is enough	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestBothCredentialsAreRequired
+U36	KILLED	the secondary key may be the primary key	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestBothCredentialsAreRequired
+U37	KILLED	the monthly limit may exceed the budget	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestSpendLimitsAreChecked
+U38	KILLED	the live eval runs while live AI is off	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestMainRefusesWhileLiveIsOff
+U39	KILLED	a live report may take any name	internal/aievals/live.go	./internal/aievals/ ./internal/ai/provider/anthropic/	TestTheLiveEvalOverHTTP, TestTheReportIsApart
+U40	KILLED	a ready safe-failure case breaks no gate	internal/aievals/live.go	./internal/aievals/	TestRunScoresTheAnswers
+U41	KILLED	the run goes on after its cap refuses	internal/aievals/live.go	./internal/aievals/	TestTheCapStopsTheRun
+U42	KILLED	the run's cap may exceed the monthly limit	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheLiveEvalRunsOnlyWhenLiveIsOn
+U43	KILLED	a spend limit is not RATE_LIMITED in the API	internal/proposals/public.go	./internal/proposals/	TestFailureErrors
+U44	KILLED	the generator has no message for a spend limit	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestProviderFailures
+U45	KILLED	the refusal's limit may be any label	internal/audit/audit.go	./internal/audit/	TestRefused
+U46	KILLED	an ID-shaped model name reaches a metric	internal/observability/telemetry/telemetry.go	./internal/observability/telemetry/	TestSpend
+D1	BUILDS	the month limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+D2	BUILDS	the deployment day limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+D3	BUILDS	the organization day limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+D4	BUILDS	settle moves the totals the wrong way	internal/storage/aispend/aispend.go	./internal/storage/aispend/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+D5	BUILDS	settle does not check the state	internal/storage/aispend/aispend.go	./internal/storage/aispend/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+D6	BUILDS	settle charges today instead of the reservation's day	internal/storage/aispend/aispend.go	./internal/storage/aispend/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+D7	BUILDS	a reservation is not audited	internal/storage/aispend/aispend.go	./internal/storage/aispend/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+D8	BUILDS	the generator charges no target	internal/proposals/generator/generator.go	./internal/proposals/generator/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+D9	BUILDS	settle reads without the organization filter (RLS still filters)	internal/storage/aispend/aispend.go	./internal/storage/aispend/	NOT RUN: its tests need PostgreSQL (GEMINUS_TEST_DATABASE_URL unset)
+summary	BUILDS=9 KILLED=44 SURVIVED=2
+sources restored (git status of internal/ and cmd/ against the last commit): clean
+exit=1

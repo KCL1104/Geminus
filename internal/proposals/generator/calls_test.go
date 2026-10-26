@@ -7,10 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/provider/fake"
 	"github.com/kcl1104/geminus/internal/observability"
 )
 
@@ -109,5 +112,48 @@ func TestTheSpendLines(t *testing.T) {
 	}
 	if _, ok := auditMeta(provider.Metadata{Provider: "fake"})["cost_nano_usd"]; ok {
 		t.Error("an unmetered call's event names a cost")
+	}
+}
+
+// chargeLog is a meter that grants every charge and keeps it.
+type chargeLog struct {
+	mu      sync.Mutex
+	charges []provider.Charge
+}
+
+func (m *chargeLog) Reserve(_ context.Context, c provider.Charge) (provider.Reservation, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.charges = append(m.charges, c)
+	return provider.Reservation{ID: "r" + strconv.Itoa(len(m.charges)), Charge: c}, nil
+}
+
+func (m *chargeLog) Settle(context.Context, provider.Reservation, provider.Settlement) error {
+	return nil
+}
+
+// T-053: generate charges a metered call to the target and request it was
+// given, in the proposal's organization, as the modeler; a metered client
+// refuses a call charged to nothing (mutation run 1: D8 was left to the
+// DB-backed TestAMeteredProposal).
+func TestAMeteredCallIsChargedToItsTarget(t *testing.T) {
+	m := &chargeLog{}
+	b := &billedFake{Backend: fake.New(), usage: provider.Usage{InputTokens: 100, OutputTokens: 10}}
+	c, err := provider.NewMetered(b, provider.DefaultBudget(), m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := New(Config{Provider: c, Packs: packs(t), Actor: "worker-1", Log: discard()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := stored(t, "edit", "Improve it.")
+	_, meta, err := outcomeOf(h.generate(context.Background(), st.proposal.OrganizationID, st, testAttribution))
+	if err != nil || meta == nil || meta.SpendReservation != "r1" || b.calls.Load() != 1 {
+		t.Fatalf("%v %+v, %d call(s)", err, meta, b.calls.Load())
+	}
+	if len(m.charges) != 1 || m.charges[0].Attribution != testAttribution || m.charges[0].OrganizationID != st.proposal.OrganizationID ||
+		m.charges[0].Role != provider.RoleModeler || m.charges[0].NanoUSD <= 0 {
+		t.Errorf("charges %+v", m.charges)
 	}
 }
