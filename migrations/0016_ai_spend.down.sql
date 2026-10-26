@@ -12,4 +12,5 @@ DROP FUNCTION twin.protect_ai_spend_reservation();
 DROP TABLE twin.ai_spend_reservations;
 DROP TABLE twin.ai_spend_days;
 DROP TABLE twin.ai_spend_periods;
+DROP DOMAIN twin.asr_id;
 COMMIT;

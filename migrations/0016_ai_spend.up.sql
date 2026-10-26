@@ -33,6 +33,11 @@
 BEGIN;
 SET LOCAL ROLE twin_owner;
 
+-- D-001: a reservation's ID is "asr_" + ULID, with a domain of its own as
+-- 0001's kinds have; USAGE as 0002 and 0004 grant every domain.
+CREATE DOMAIN twin.asr_id AS text CHECK (VALUE ~ '^asr_[0-7][0-9A-HJKMNP-TV-Z]{25}$');
+GRANT USAGE ON TYPE twin.asr_id TO twin_api,twin_worker,twin_provisioner;
+
 CREATE TABLE twin.ai_spend_periods (
   period text NOT NULL CHECK (period IN ('day','month')),
   starts_on date NOT NULL,
@@ -49,7 +54,7 @@ CREATE TABLE twin.ai_spend_days (
 );
 
 CREATE TABLE twin.ai_spend_reservations (
-  id text NOT NULL CHECK (id ~ '^asr_[0-7][0-9A-HJKMNP-TV-Z]{25}$'),
+  id twin.asr_id NOT NULL,
   organization_id twin.org_id NOT NULL REFERENCES twin.organizations(id),
   day date NOT NULL,
   role text NOT NULL CHECK (role IN ('modeler','scenario','analyst','importer')),

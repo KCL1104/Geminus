@@ -353,7 +353,8 @@ WITH cols AS (
   LEFT JOIN (VALUES
     ('users','usr_id'),('organizations','org_id'),('projects','prj_id'),('models','mdl_id'),('model_versions','mv_id'),
     ('datasets','ds_id'),('dataset_versions','dsv_id'),('imports','imp_id'),('ai_proposals','aip_id'),('scenarios','scn_id'),
-    ('simulation_runs','sim_id'),('ai_analyses','ana_id'),('jobs','job_id'),('audit_events','aud_id')
+    ('simulation_runs','sim_id'),('ai_analyses','ana_id'),('jobs','job_id'),('audit_events','aud_id'),
+    ('ai_spend_reservations','asr_id')
   ) AS p(table_name, domain) ON p.table_name=c.table_name
 )
 SELECT pg_temp.check(count(*)=0, 'ID columns without their D-001 domain: ' ||
