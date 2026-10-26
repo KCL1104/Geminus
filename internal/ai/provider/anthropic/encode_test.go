@@ -390,28 +390,31 @@ func TestDecodeBoundsTheNesting(t *testing.T) {
 // (here a place so deep in the document that its decoded value would pass
 // jsontext's 10000 levels; no output schema has one) and an answer that is
 // not one strict JSON document give no answer, only issues: those found at
-// the places before are kept, and one at the root says why. The undecoded
-// text never goes on.
+// the places before are kept (up to maxIssues), and one at the root, last,
+// says why. The undecoded text never goes on. (The deep document costs
+// about 2 s, 23 s under -race: Decode re-reads each of its levels.)
 func TestDecodeFailsClosed(t *testing.T) {
 	const levels = 9990
 	steps := []Step{{Member: "b"}}
 	for range levels {
 		steps = append(steps, Step{Items: true})
 	}
-	q := Projection{Encoded: []Location{{Steps: []Step{{Member: "a"}}}, {Steps: steps}}}
+	q := Projection{Encoded: []Location{{Steps: []Step{{Member: "a"}, {Items: true}}}, {Steps: steps}}}
 	inner, err := json.Marshal(nested(MaxEncodedValueDepth, false))
 	if err != nil {
 		t.Fatal(err)
 	}
-	in := []byte(`{"a":"SENTINEL, not JSON","b":` + strings.Repeat("[", levels) + string(inner) + strings.Repeat("]", levels) + `}`)
+	bad := strings.Repeat(`"SENTINEL, not JSON",`, maxIssues+4) + `"SENTINEL, not JSON"`
+	in := []byte(`{"a":[` + bad + `],"b":` + strings.Repeat("[", levels) + string(inner) + strings.Repeat("]", levels) + `}`)
 	if !jsontext.Value(in).IsValid() {
 		t.Fatal("the document is not valid on its own")
 	}
 	out, issues := q.Decode(in)
-	want := []model.ValidationIssue{
-		model.NewIssue(provider.OutputInvalid, "/a", "the string is not exactly one JSON text", model.SeverityError),
-		model.NewIssue(provider.OutputInvalid, "", "the answer cannot be decoded", model.SeverityError),
+	var want []model.ValidationIssue
+	for i := range maxIssues - 1 {
+		want = append(want, model.NewIssue(provider.OutputInvalid, "/a/"+strconv.Itoa(i), "the string is not exactly one JSON text", model.SeverityError))
 	}
+	want = append(want, model.NewIssue(provider.OutputInvalid, "", "the answer cannot be decoded", model.SeverityError))
 	if out != nil || !reflect.DeepEqual(issues, want) {
 		t.Errorf("an answer that cannot be rewritten: %.80s %+v", out, issues)
 	}
