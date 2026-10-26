@@ -5,7 +5,7 @@
 // reader's own choice of theme over the opposite system theme (T-045 review
 // 1 I5), on every route.
 import { expect, test } from "@playwright/test";
-import { cellOverflow, locales, open, routes, schemes, sheet, violations } from "./helpers";
+import { cellOverflow, locales, open, routes, schemes, sheet, signedInViews, signInAs, violations } from "./helpers";
 
 for (const scheme of schemes) for (const locale of locales) {
   for (const width of [390, 1280]) {
@@ -37,6 +37,29 @@ for (const scheme of schemes) for (const locale of locales) {
         await expect(page.getByRole("alertdialog")).toBeVisible();
         expect(await violations(page), "dialog open").toEqual([]);
       });
+    });
+  }
+}
+
+// The signed-in views (T-043 follow-up): every page with the API stand-in's
+// data and the bootstrap's own views (the choice of organization, no
+// access), signed in through the BFF and the test provider.
+for (const scheme of schemes) for (const locale of locales) {
+  for (const width of [390, 1280]) {
+    test.describe(`signed in, ${scheme}, ${locale} at ${width}px`, () => {
+      test.use({ viewport: { width, height: 900 }, colorScheme: scheme });
+
+      for (const v of signedInViews) {
+        test(`${v.name} has no violation`, async ({ page }) => {
+          await signInAs(page, v.subject, v.path, locale, { organization: v.organization });
+          await expect(page.getByRole("button", { name: locale === "en" ? "Sign out" : "登出" }), "signed in").toBeVisible();
+          await expect(page.locator("body")).toHaveCSS("background-color", sheet[scheme]);
+          expect(await violations(page)).toEqual([]);
+          const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
+          expect(scroll, "page-level horizontal scroll").toBeLessThanOrEqual(width);
+          expect(await cellOverflow(page), "table cells narrower than their text").toEqual({ overlaps: [], clipped: [] });
+        });
+      }
     });
   }
 }

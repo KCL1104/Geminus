@@ -1,11 +1,13 @@
 // H-008 / ADR-021: every string a person sees or hears is the catalog's,
 // data the page shows, or one of the React Aria strings the owner accepted
 // in its own translation. The test lists every other string it finds.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { sampleLine } from "../../web/app/ui-gallery/editor/sample-line";
 import { en } from "../../web/messages/en";
 import { zhHant } from "../../web/messages/zh-Hant";
-import { open } from "./helpers";
+import { open, signedInViews, signInAs } from "./helpers";
 
 type Catalog = Record<string, string | { one?: string; other: string }>;
 const pattern = (text: string) => new RegExp("^" + text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\{\w+\\\}/g, ".+") + "$", "s");
@@ -55,7 +57,33 @@ async function strings(page: import("@playwright/test").Page): Promise<string[]>
 const sampleData = [sampleLine.name, ...sampleLine.nodes.map((n) => n.name ?? n.id), ...sampleLine.resources.map((r) => r.name), ...sampleLine.entity_types.map((e) => e.name), ...(sampleLine.calendars ?? []).map((c) => c.name ?? c.id), "X-ray inspection"];
 const reactFlow = [/^React Flow$/, /^React Flow attribution$/];
 
+// The signed-in views (T-043 follow-up): the API stand-in's data is the
+// organizations', projects' and the model's names (fake/servers.mjs; the
+// model is the contract fixture valid-draft-with-issues.json), shown as they
+// are in either language.
+const fixture = JSON.parse(readFileSync(join(import.meta.dirname, "../../../testdata/contracts/valid-draft-with-issues.json"), "utf8")) as {
+  ir: { name: string; nodes: { id: string; name?: string }[]; resources: { name: string }[]; entity_types: { name: string }[]; calendars?: { id: string; name?: string }[] };
+};
+const tenantData = ["Line Works", "Test Bay", "SMT line 1", "Burn-in bay", fixture.ir.name, ...fixture.ir.nodes.map((n) => n.name ?? n.id), ...fixture.ir.resources.map((r) => r.name), ...fixture.ir.entity_types.map((e) => e.name), ...(fixture.ir.calendars ?? []).map((c) => c.name ?? c.id)];
+
 for (const [locale, catalog] of [["en", en], ["zh-Hant", zhHant]] as const) {
+  test(`${locale}: the signed-in views' strings are the catalog's, the tenant's data or an accepted library string`, async ({ page }) => {
+    const known = [...catalogPatterns(catalog as Catalog), ...reactFlow];
+    const data = new Set(tenantData);
+    const seen = new Set<string>();
+    for (const v of signedInViews) {
+      await signInAs(page, v.subject, v.path, locale, { organization: v.organization });
+      for (const s of await strings(page)) seen.add(s);
+      await page.context().clearCookies();
+    }
+    const other = [...seen].filter((s) => !data.has(s) && !known.some((p) => p.test(s)));
+    const sentences = other.flatMap((s) => s.split(/(?<=[。.])\s+/));
+    const unexpected = sentences.filter((s) => !reactAria[locale].some((p) => p.test(s)));
+    console.log(`${locale} signed in: strings not from the catalog or the data: ${JSON.stringify(other)}`);
+    expect(unexpected).toEqual([]);
+    for (const s of ["Line Works", "SMT line 1", fixture.ir.name]) expect(seen.has(s), `the views showed ${s}`).toBe(true);
+  });
+
   test(`${locale}: the editor's strings are the catalog's, the model's data or React Flow's attribution`, async ({ page }) => {
     await open(page, "/ui-gallery/editor", locale);
     const known = [...catalogPatterns(catalog as Catalog), ...reactFlow];

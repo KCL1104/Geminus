@@ -1,0 +1,228 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a6f5fb9309ba14b23/apps/web
+
+ ❯ tests/auth-bootstrap.test.tsx (0 test)
+ ❯ tests/simplicity.test.tsx (0 test)
+ ❯ tests/bootstrap.test.ts (0 test)
+ ❯ tests/layout-session.test.tsx (4 tests | 4 failed) 733ms
+   ❯ the root layout's session hint (4)
+     × is signed out without a session cookie, and does not ask the BFF 504ms
+     × asks the BFF whether the cookie holds a session, and hands over only the answer 32ms
+     × is signed out when the BFF cannot open the cookie or the session has ended 14ms
+     × hands over a remembered organization only as an organization ID 181ms
+ ❯ tests/ui.test.tsx (14 tests | 2 failed) 194ms
+   ❯ auth boundary (5)
+     × offers one sign-in, to the BFF's /auth/login 17ms
+     × offers the sign-in when a load finds the session ended (401), and only then 18ms
+ ❯ tests/bff.test.ts (141 tests | 2 failed) 22473ms
+   ❯ hasSession (2)
+     × is true for a session cookie that opens and has not ended, also with an access token that needs a refresh 77ms
+     × is false for no cookie, a tampered one, the login cookie's value and an ended session 112ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/auth-bootstrap.test.tsx [ tests/auth-bootstrap.test.tsx ]
+Error: Failed to resolve import "../app/_components/account" from "tests/auth-bootstrap.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/user/Geminus/.claude/worktrees/agent-a6f5fb9309ba14b23/apps/web/tests/auth-bootstrap.test.tsx:11:0
+  13 |  }));
+  14 |  const __vi_import_0__ = await import("react");
+  15 |  const __vi_import_1__ = await import("../app/_components/account");
+     |                                       ^
+  16 |  const __vi_import_2__ = await import("../app/_components/auth-bootstrap");
+  17 |  const __vi_import_3__ = await import("../app/projects/page");
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26632:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26702:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26668:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:20184:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  tests/bootstrap.test.ts [ tests/bootstrap.test.ts ]
+Error: Cannot find module '../lib/auth/bootstrap' imported from /home/user/Geminus/.claude/worktrees/agent-a6f5fb9309ba14b23/apps/web/tests/bootstrap.test.ts
+ ❯ tests/bootstrap.test.ts:6:1
+      4| // Pure functions; the components are tested in auth-bootstrap.test.ts…
+      5| import { describe, expect, it } from "vitest";
+      6| import { type Bootstrap, bootstrapFrom, sharedNames } from "../lib/aut…
+       | ^
+      7| import { organizationCookie, organizationCookieValue, parseOrganizatio…
+      8| import { signOut } from "../lib/auth/sign-out";
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  tests/simplicity.test.tsx [ tests/simplicity.test.tsx ]
+Error: Failed to resolve import "../app/_components/account" from "tests/simplicity.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: /home/user/Geminus/.claude/worktrees/agent-a6f5fb9309ba14b23/apps/web/tests/simplicity.test.tsx:16:0
+  11 |  const __vi_import_1__ = await import("react-dom/server");
+  12 |  const __vi_import_2__ = await import("../app/_components/crash");
+  13 |  const __vi_import_3__ = await import("../app/_components/account");
+     |                                       ^
+  14 |  const __vi_import_4__ = await import("../app/_components/states");
+  15 |  const __vi_import_5__ = await import("../lib/api/client");
+ ❯ TransformPluginContext._formatLog node_modules/vite/dist/node/chunks/node.js:8766:39
+ ❯ TransformPluginContext.error node_modules/vite/dist/node/chunks/node.js:8763:14
+ ❯ normalizeUrl node_modules/vite/dist/node/chunks/node.js:26632:18
+ ❯ node_modules/vite/dist/node/chunks/node.js:26702:30
+ ❯ TransformPluginContext.transform node_modules/vite/dist/node/chunks/node.js:26668:4
+ ❯ EnvironmentPluginContainer.transform node_modules/vite/dist/node/chunks/node.js:8545:14
+ ❯ loadAndTransform node_modules/vite/dist/node/chunks/node.js:20184:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/bff.test.ts > hasSession > is true for a session cookie that opens and has not ended, also with an access token that needs a refresh
+TypeError: e.h.hasSession is not a function
+ ❯ tests/bff.test.ts:366:22
+    364|     const value = await signIn();
+    365|     const calls = e.provider.calls.length;
+    366|     expect(await e.h.hasSession(value)).toBe(true);
+       |                      ^
+    367|     e.clock.now += 11 * 60_000; // past the access token's 10 minutes
+    368|     expect(await e.h.hasSession(value)).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  tests/bff.test.ts > hasSession > is false for no cookie, a tampered one, the login cookie's value and an ended session
+TypeError: e.h.hasSession is not a function
+ ❯ tests/bff.test.ts:377:84
+    375|     const { login } = await startLogin();
+    376|     const flipped = value.slice(0, -2) + (value.at(-2) === "A" ? "B" :…
+    377|     for (const v of [undefined, "", "v1.k1.x.y", flipped, login]) expe…
+       |                                                                                    ^
+    378|     e.clock.now += 12 * 60 * 60_000; // idle limit
+    379|     expect(await e.h.hasSession(value)).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  tests/layout-session.test.tsx > the root layout's session hint > is signed out without a session cookie, and does not ask the BFF
+AssertionError: expected [] to deeply equal [ { signedIn: false, …(1) } ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "organization": null,
+-     "signedIn": false,
+-   },
+- ]
++ []
+
+ ❯ tests/layout-session.test.tsx:49:26
+     47|     await render();
+     48|     expect(asked.values).toEqual([]);
+     49|     expect(handed.props).toEqual([{ signedIn: false, organization: nul…
+       |                          ^
+     50|   });
+     51|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  tests/layout-session.test.tsx > the root layout's session hint > asks the BFF whether the cookie holds a session, and hands over only the answer
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "v1.k1.c2VhbGVk.c2VjcmV0LXRva2VuLWluc2lkZQ",
+- ]
++ []
+
+ ❯ tests/layout-session.test.tsx:55:26
+     53|     jar.cookies["__Host-geminus_session"] = SEALED;
+     54|     const out = await render();
+     55|     expect(asked.values).toEqual([SEALED]);
+       |                          ^
+     56|     expect(handed.props).toEqual([{ signedIn: true, organization: null…
+     57|     expect(out).not.toContain(SEALED);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  tests/layout-session.test.tsx > the root layout's session hint > is signed out when the BFF cannot open the cookie or the session has ended
+AssertionError: expected [] to deeply equal [ { signedIn: false, …(1) } ]
+
+- Expected
++ Received
+
+- [
+-   {
+-     "organization": null,
+-     "signedIn": false,
+-   },
+- ]
++ []
+
+ ❯ tests/layout-session.test.tsx:65:26
+     63|     asked.open = false;
+     64|     await render();
+     65|     expect(handed.props).toEqual([{ signedIn: false, organization: nul…
+       |                          ^
+     66|   });
+     67|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  tests/layout-session.test.tsx > the root layout's session hint > hands over a remembered organization only as an organization ID
+AssertionError: expected undefined to deeply equal { signedIn: false, …(1) }
+
+- Expected:
+{
+  "organization": "org_01M4YDQK004J6EG1BW3SRYPDGD",
+  "signedIn": false,
+}
+
++ Received:
+undefined
+
+ ❯ tests/layout-session.test.tsx:71:33
+     69|     jar.cookies.geminus_organization = ORG;
+     70|     await render();
+     71|     expect(handed.props.at(-1)).toEqual({ signedIn: false, organizatio…
+       |                                 ^
+     72|     for (const value of ["org_x", `${ORG}; Path=/`, "<script>", ""]) {
+     73|       jar.cookies.geminus_organization = value;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  tests/ui.test.tsx > auth boundary > offers one sign-in, to the BFF's /auth/login
+AssertionError: Target cannot be null or undefined.
+ ❯ tests/ui.test.tsx:51:31
+     49|   it("offers one sign-in, to the BFF's /auth/login", () => {
+     50|     const out = html(<RequireSession><p>tenant data</p></RequireSessio…
+     51|     expect(out.match(/<a /g)).toHaveLength(1);
+       |                               ^
+     52|     expect(out).toContain(`<a href="/auth/login?return_to=%2F">${en["a…
+     53|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  tests/ui.test.tsx > auth boundary > offers the sign-in when a load finds the session ended (401), and only then
+AssertionError: expected '<section data-problem="unauthenticate…' to contain '>undefined</a>'
+
+Expected: ">undefined</a>"
+Received: "<section data-problem="unauthenticated" role="alert" data-tone="danger" class="_callout_167a24"><h2 class="_heading_167a24">Sign in required</h2><p>Your session is missing or has expired.</p></section>"
+
+ ❯ tests/ui.test.tsx:57:160
+     55|   it("offers the sign-in when a load finds the session ended (401), an…
+     56|     const signIn = `>${en["auth.signIn"]}</a>`;
+     57|     expect(html(<RemoteView remote={{ state: "failed", problem: proble…
+       |                                                                                                                                                                ^
+     58|     for (const kind of Object.keys(kinds).filter((k) => k !== "unauthe…
+     59|       expect(html(<RemoteView remote={{ state: "failed", problem: prob…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+ Test Files  6 failed (6)
+      Tests  8 failed | 151 passed (159)
+   Start at  14:07:30
+   Duration  24.46s (tests 76%, import 9%, environment 8%, transform 7%)
+
+exit 1

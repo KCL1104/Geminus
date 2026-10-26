@@ -9,6 +9,7 @@
 // send their headers and then drop the connection; empty: normal), GET
 // /__state (counts and what the API saw).
 import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 
 const APP = "http://127.0.0.1:3100";
@@ -124,6 +125,55 @@ createServer(async (req, res) => {
   json(res, 404, { error: "not_found" });
 }).listen(3101, "127.0.0.1");
 
+// The tenant data the API stand-in serves (T-043 follow-up, the signed-in
+// bootstrap): who each subject is (GET /v1/me, D-045), and per organization
+// its projects, a project's models and a model with its draft and version.
+// The draft is the contract fixture testdata/contracts/valid-draft-with-issues.json.
+// An organization the subject is not a member of, and anything of another
+// organization, is 404 (as the Go API answers, D-008, TEST-009).
+const fixture = JSON.parse(readFileSync(new URL("../../../testdata/contracts/valid-draft-with-issues.json", import.meta.url), "utf8"));
+const ORG = "org_01M4YDQK00TA00000000000000";
+const LINE = "org_01M4YDQK00TA00000000000010";
+const BAY = "org_01M4YDQK00TA00000000000020";
+const PRJ_LINE = "prj_01M4YDQK00TA00000000000011";
+const PRJ_BAY = "prj_01M4YDQK00TA00000000000021";
+const USER = "usr_01M4YDQK00TA00000000000001";
+const users = {
+  "auth0|e2e-user": [{ organization_id: ORG, organization_name: "E2E Org", role: "editor" }],
+  "auth0|e2e-editor": [{ organization_id: LINE, organization_name: "Line Works", role: "editor" }],
+  "auth0|e2e-viewer": [{ organization_id: LINE, organization_name: "Line Works", role: "viewer" }],
+  "auth0|e2e-multi": [
+    { organization_id: LINE, organization_name: "Line Works", role: "owner" },
+    { organization_id: BAY, organization_name: "Test Bay", role: "viewer" },
+  ],
+  "auth0|e2e-nomember": [],
+};
+const created = "2026-10-26T00:00:00Z";
+const projects = {
+  [ORG]: [],
+  [LINE]: [{ id: PRJ_LINE, organization_id: LINE, name: "SMT line 1", created_at: created, created_by: USER }],
+  [BAY]: [{ id: PRJ_BAY, organization_id: BAY, name: "Burn-in bay", created_at: created, created_by: USER }],
+};
+const model = {
+  id: fixture.model_id, organization_id: LINE, project_id: PRJ_LINE, domain: fixture.ir.domain, name: fixture.ir.name,
+  draft: { revision: fixture.revision, base_version_id: fixture.base_version_id, out_of_date: false },
+  latest_version: { id: fixture.base_version_id, version: 1 }, created_at: created,
+};
+const version = {
+  id: fixture.base_version_id, organization_id: LINE, model_id: fixture.model_id, version: 1, schema_version: fixture.ir.schema_version,
+  parent_version_id: null, ir: fixture.ir, hash: fixture.hash, dataset_bindings: [], comment: null, created_by: USER, created_at: created,
+};
+/** What a member of org may GET: path → [body, extra headers]. */
+function tenantGet(org, path) {
+  if (path === "/v1/projects") return [{ items: projects[org] ?? [], next_cursor: null }, org === ORG ? { "set-cookie": "api_cookie=1" } : {}];
+  if (org !== LINE) return null;
+  if (path === `/v1/projects/${PRJ_LINE}/models`) return [{ items: [model], next_cursor: null }, {}];
+  if (path === `/v1/models/${model.id}`) return [model, {}];
+  if (path === `/v1/models/${model.id}/draft`) return [fixture, { etag: `"draft-revision-${fixture.revision}"` }];
+  if (path === `/v1/model-versions/${version.id}`) return [version, {}];
+  return null;
+}
+
 // The API stand-in: tokens from the provider only; an unknown subject is 403
 // (as the Go API answers an identity provisioning does not know, D-008).
 createServer(async (req, res) => {
@@ -131,13 +181,17 @@ createServer(async (req, res) => {
   const auth = req.headers.authorization ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   const known = access.get(token);
-  state.apiCalls.push({ method: req.method, path: url.pathname, query: url.search, cookie: req.headers.cookie ?? null, org: req.headers["x-organization-id"] ?? null, hasAuth: auth !== "" });
+  const org = req.headers["x-organization-id"] ?? null;
+  state.apiCalls.push({ method: req.method, path: url.pathname, query: url.search, cookie: req.headers.cookie ?? null, org, hasAuth: auth !== "" });
   const rid = "req_01M4YDQK00V6H8S0ST4F7510KR";
-  if (!known || known.exp <= Math.floor(Date.now() / 1000)) {
-    return json(res, 401, { error: { code: "UNAUTHENTICATED", message: "invalid token", request_id: rid } }, { "x-request-id": rid });
-  }
-  if (known.sub === "auth0|unknown") {
-    return json(res, 403, { error: { code: "FORBIDDEN", message: "unknown identity", request_id: rid } }, { "x-request-id": rid });
+  const fail = (status, code, message) => json(res, status, { error: { code, message, request_id: rid } }, { "x-request-id": rid });
+  if (!known || known.exp <= Math.floor(Date.now() / 1000)) return fail(401, "UNAUTHENTICATED", "invalid token");
+  const memberships = users[known.sub];
+  if (memberships === undefined) return fail(403, "FORBIDDEN", "unknown identity");
+  if (req.method === "GET" && url.pathname === "/v1/me") {
+    // GET /me selects no organization: the header is refused, never ignored (openapi NoOrganizationContext).
+    if (org !== null) return fail(400, "INVALID_REQUEST", "this operation selects no organization: send no X-Organization-ID header");
+    return json(res, 200, { user_id: USER, memberships, truncated: false }, { "x-request-id": rid });
   }
   if (req.method === "GET" && url.pathname === "/v1/projects" && state.apiCut === "headers") {
     // Headers, then the connection drops before any body byte.
@@ -146,11 +200,11 @@ createServer(async (req, res) => {
     setTimeout(() => res.destroy(), 50);
     return;
   }
-  if (req.method === "GET" && url.pathname === "/v1/projects") {
-    return json(res, 200, { items: [], next_cursor: null }, { "x-request-id": rid, "set-cookie": "api_cookie=1" });
-  }
+  const member = typeof org === "string" && memberships.some((m) => m.organization_id === org);
+  const found = req.method === "GET" && member ? tenantGet(org, url.pathname) : null;
+  if (found !== null) return json(res, 200, found[0], { "x-request-id": rid, ...found[1] });
   await body(req);
-  json(res, 404, { error: { code: "NOT_FOUND", message: "not found", request_id: rid } }, { "x-request-id": rid });
+  fail(404, "NOT_FOUND", "not found");
 }).listen(3102, "127.0.0.1");
 
 process.stdout.write("fake provider on :3101, fake API on :3102\n");

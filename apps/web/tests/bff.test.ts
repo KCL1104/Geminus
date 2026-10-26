@@ -355,6 +355,31 @@ describe("logout", () => {
   });
 });
 
+// The root layout's hint for the signed-in bootstrap (T-043 follow-up): only
+// whether the cookie holds a session that has not ended. Nothing in it
+// reaches the page, and it neither refreshes nor calls anyone: the browser's
+// /me through the proxy does that, where a rotated token can be stored.
+describe("hasSession", () => {
+  it("is true for a session cookie that opens and has not ended, also with an access token that needs a refresh", async () => {
+    const value = await signIn();
+    const calls = e.provider.calls.length;
+    expect(await e.h.hasSession(value)).toBe(true);
+    e.clock.now += 11 * 60_000; // past the access token's 10 minutes
+    expect(await e.h.hasSession(value)).toBe(true);
+    expect(e.provider.calls.length, "no refresh, no provider call").toBe(calls);
+    expect(e.api.requests, "no API call").toEqual([]);
+  });
+
+  it("is false for no cookie, a tampered one, the login cookie's value and an ended session", async () => {
+    const value = await signIn();
+    const { login } = await startLogin();
+    const flipped = value.slice(0, -2) + (value.at(-2) === "A" ? "B" : "A") + value.at(-1);
+    for (const v of [undefined, "", "v1.k1.x.y", flipped, login]) expect(await e.h.hasSession(v), String(v)).toBe(false);
+    e.clock.now += 12 * 60 * 60_000; // idle limit
+    expect(await e.h.hasSession(value)).toBe(false);
+  });
+});
+
 describe("proxy", () => {
   const get = (path: string, value: string | null, headers: Record<string, string> = {}) =>
     new Request(`${APP}/api/v1/${path}`, { headers: { ...headers, ...(value === null ? {} : { cookie: `${SESSION_COOKIE}=${value}` }) } });

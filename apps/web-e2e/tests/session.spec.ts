@@ -33,6 +33,10 @@ test.beforeEach(async ({ request }) => {
 async function signIn(page: Page) {
   await page.goto("/auth/login?return_to=/projects");
   await page.waitForURL(`${APP}/projects`);
+  // The page's own calls (the bootstrap's /me, then the project list) are
+  // done before a test counts or inspects what the API saw.
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
 }
 
 /** fetch from the page, as the app's client would. */

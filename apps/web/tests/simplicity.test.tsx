@@ -13,12 +13,14 @@ import { act, type ReactNode, Suspense } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CrashNotice } from "../app/_components/crash";
-import { DraftStatus, type Loadable, RemoteView } from "../app/_components/states";
+import { OrganizationSwitcher, SignOutButton } from "../app/_components/account";
+import { DraftStatus, type Loadable, RemoteView, RequireSession } from "../app/_components/states";
 import { createApiClient } from "../lib/api/client";
 import { draftETag } from "../lib/api/etag";
 import { networkProblem } from "../lib/api/problem";
 import { ApiProvider } from "../lib/api/provider";
-import { type Auth, AuthProvider } from "../lib/auth/session";
+import type { Bootstrap, Organization } from "../lib/auth/bootstrap";
+import { type Account, type Auth, AuthProvider } from "../lib/auth/session";
 import type { Draft, Model } from "../lib/contracts";
 import type { Locale } from "../lib/i18n/locale";
 import { openDraft, reduceDraft } from "../lib/state/draft";
@@ -323,6 +325,107 @@ describe("the signed-in pages keep only the controls they need (H-027)", () => {
       expect(c.filter((x) => x.name === t.retry)).toHaveLength(1);
       expect(duplicates(c)).toEqual([]);
       expect(primaries(el)).toBe(0);
+      expect(disabled(el)).toBe(0);
+    });
+  }
+});
+
+// The signed-in bootstrap (T-043 follow-up, H-029): the strip's account
+// controls (Sign out; the organization switcher with several organizations)
+// with a signed-in page, and the bootstrap's own views (the choice of
+// organization, no access, a failed /me, loading, signed out), each with the
+// app shell's controls.
+describe("the signed-in strip and the bootstrap's views keep only the controls they need (H-027)", () => {
+  const OTHER = "org_01M4YDQK004J6EG1BW3SRYPDGD";
+  const orgs: Organization[] = [
+    { id: OTHER, name: "Acme", role: "viewer" },
+    { id: ORG, name: "Plant 2", role: "editor" },
+  ];
+  const account = (bootstrap: Bootstrap): Account => ({ bootstrap, choose: () => {}, retry: () => {}, signOut: async () => null });
+  const ready = (n: number): Auth => ({ ...editor, account: account({ state: "ready", organizations: orgs.slice(-n), organization: orgs[1] as Organization, truncated: false }) });
+  const strip = () => (
+    <header>
+      <OrganizationSwitcher />
+      <SignOutButton />
+    </header>
+  );
+
+  for (const locale of locales) {
+    const t = catalogs[locale];
+    it.each([1, 2])(`${locale}: the strip with %i organization(s), on the project list`, async (n) => {
+      const { default: ProjectsPage } = await import("../app/projects/page");
+      const auth = ready(n);
+      const api = createApiClient({
+        session: () => auth.session,
+        fetch: (async () =>
+          new Response(JSON.stringify({ items: [{ id: PRJ, organization_id: ORG, name: "Plant", created_at: "2026-10-15T00:00:00Z", created_by: USR }], next_cursor: null }))) as typeof fetch,
+      });
+      const el = await mount(
+        <AuthProvider value={auth}>
+          <ApiProvider client={api}>
+            {strip()}
+            <ProjectsPage />
+          </ApiProvider>
+        </AuthProvider>,
+        locale,
+      );
+      await settle();
+      const c = await view(locale, el);
+      expect(el.textContent, "the page loaded").toContain("Plant");
+      expect(c.filter((x) => x.name === t["auth.signOut"]), "one sign-out").toHaveLength(1);
+      expect(el.querySelectorAll("header [aria-haspopup=listbox]"), "a switcher only with several").toHaveLength(n === 1 ? 0 : 1);
+      expect(c.some((x) => x.name === t["auth.signIn"]), "no sign-in while signed in").toBe(false);
+      expect(duplicates(c)).toEqual([]);
+      expect(primaries(el)).toBeLessThanOrEqual(1);
+      expect(disabled(el)).toBe(0);
+    });
+
+    it(`${locale}: the choice of organization: one button each, told apart when names repeat`, async () => {
+      for (const list of [orgs, [orgs[0], { ...orgs[1], name: "Acme" }] as Organization[]]) {
+        const el = await mount(
+          <AuthProvider value={{ session: null, role: null, account: account({ state: "choose", organizations: list, truncated: false }) }}>
+            {strip()}
+            <RequireSession>
+              <p>tenant data</p>
+            </RequireSession>
+          </AuthProvider>,
+          locale,
+        );
+        const c = await view(locale, el);
+        expect(el.textContent).not.toContain("tenant data");
+        expect(el.querySelectorAll("li button"), "a button per organization").toHaveLength(2);
+        expect(el.querySelectorAll("header [aria-haspopup=listbox]"), "not two ways to choose at once").toHaveLength(0);
+        expect(c.filter((x) => x.name === t["auth.signOut"])).toHaveLength(1);
+        expect(duplicates(c)).toEqual([]);
+        expect(primaries(el)).toBeLessThanOrEqual(1);
+        expect(disabled(el)).toBe(0);
+      }
+    });
+
+    it.each([
+      ["no access (403)", { state: "no_access", problem: { ...networkProblem(""), kind: "forbidden", status: 403, requestId: "req_01M4YDQK00V6H8S0ST4F7510KR" } }],
+      ["no access (no membership)", { state: "no_access", problem: null }],
+      ["a failed /me", { state: "failed", problem: { ...networkProblem(""), kind: "unavailable", status: 503 } }],
+      ["signed out", { state: "signed_out" }],
+      ["loading", { state: "loading" }],
+    ] as [string, Bootstrap][])(`${locale}: %s`, async (name, bootstrap) => {
+      const el = await mount(
+        <AuthProvider value={{ session: null, role: null, account: account(bootstrap) }}>
+          {strip()}
+          <RequireSession>
+            <p>tenant data</p>
+          </RequireSession>
+        </AuthProvider>,
+        locale,
+      );
+      const c = await view(locale, el);
+      expect(el.textContent).not.toContain("tenant data");
+      const signedOut = bootstrap.state === "signed_out";
+      expect(c.filter((x) => x.name === t["auth.signIn"]), "the sign-in only when signed out").toHaveLength(signedOut ? 1 : 0);
+      expect(c.filter((x) => x.name === t["auth.signOut"]), "the sign-out once there is a session to end").toHaveLength(signedOut || bootstrap.state === "loading" ? 0 : 1);
+      if (bootstrap.state === "failed") expect(c.filter((x) => x.name === t.retry), name).toHaveLength(1);
+      expect(duplicates(c)).toEqual([]);
+      expect(primaries(el)).toBeLessThanOrEqual(1);
       expect(disabled(el)).toBe(0);
     });
   }

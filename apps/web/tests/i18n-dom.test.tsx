@@ -25,7 +25,8 @@ import { press } from "./ui-harness";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const router = vi.hoisted(() => ({ refreshed: 0 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: () => { router.refreshed++; } }) }));
+// The rest of next/navigation as it is (the sign-in link reads the path; outside the app router it has none).
+vi.mock("next/navigation", async (orig) => ({ ...(await orig<typeof import("next/navigation")>()), useRouter: () => ({ refresh: () => { router.refreshed++; } }) }));
 
 const ORG = "org_01M4YDQK00Y5H2929M9WWZWTVH";
 const signedIn: Auth = { session: { organizationId: ORG }, role: "editor" };
@@ -71,6 +72,7 @@ describe("zh-Hant", () => {
     const out = await mount(<AuthProvider value={{ session: null, role: null }}><ProjectsPage /></AuthProvider>);
     expect(out.querySelector("h1")?.textContent).toBe("專案");
     expect(out.textContent).toContain(zhHant["problem.heading.unauthenticated"]);
+    expect(out.querySelector('a[href^="/auth/login?"]')?.textContent).toBe(zhHant["auth.signIn"]);
     const el = await mount(<AuthProvider value={signedIn}><ApiProvider client={api}><ProjectsPage /></ApiProvider></AuthProvider>);
     await settle();
     expect(el.textContent).toContain("Pipeline"); // user data, as entered

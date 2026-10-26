@@ -5,7 +5,7 @@
 // and no two visible buttons with the same name, except the pair the owner
 // is asked about; no side panel; and the app strip stays one 48 px row.
 import { expect, type Page, test } from "@playwright/test";
-import { locales, open, routes } from "./helpers";
+import { locales, open, routes, signedInViews, signInAs } from "./helpers";
 
 // Kept until the owner decides (T-045 re-skin report): the start page's
 // "Go to projects" goes where the strip's "Projects" goes; T-044's tests
@@ -36,7 +36,17 @@ async function controls(page: Page) {
         return !(el instanceof HTMLButtonElement && !el.disabled && reason && visible(reason) && (reason.textContent ?? "").trim() !== "");
       })
       .map((el) => (el.textContent ?? "").trim());
-    return { links, buttons, primary, disabled: off.length, unexplained, asides: document.querySelectorAll("aside").length, strip: document.querySelector("header")!.getBoundingClientRect().height };
+    // The strip's rows: its parts (product, navigation, tools, account) that lie below every part before them.
+    const header = document.querySelector("header")!;
+    const parts = [...header.children].filter(visible).map((el) => el.getBoundingClientRect()).sort((a, b) => a.top - b.top);
+    let rows = 0;
+    let bottom = -Infinity;
+    for (const r of parts) {
+      if (r.top >= bottom) rows++;
+      bottom = Math.max(bottom, r.bottom);
+    }
+    const tops = parts.map((r) => Math.round(r.top));
+    return { links, buttons, primary, disabled: off.length, unexplained, asides: document.querySelectorAll("aside").length, strip: header.getBoundingClientRect().height, rows, firstTop: Math.min(...tops), lastTop: Math.max(...tops) };
   });
 }
 
@@ -76,6 +86,44 @@ for (const locale of locales) {
           expect(repeated(c.buttons), "buttons with the same name").toEqual([]);
           expect(c.asides, "side panels").toBe(0);
           expect(c.strip, "the app strip is one row").toBe(48);
+          expect(c.rows, "the app strip is one row").toBe(1);
+        });
+      }
+    });
+  }
+}
+
+// The signed-in views (T-043 follow-up): the same rules with the strip's
+// account controls (Sign out; the switcher with several organizations), on
+// every page with data and the bootstrap's own views. The model page holds
+// the editor, whose blocked actions say why (as on its preview above).
+for (const locale of locales) {
+  for (const width of [390, 1280]) {
+    test.describe(`signed in, ${locale} at ${width}px`, () => {
+      test.use({ viewport: { width, height: 900 } });
+      for (const v of signedInViews) {
+        test(`${v.name} keeps only the controls it needs`, async ({ page }) => {
+          await signInAs(page, v.subject, v.path, locale, { organization: v.organization });
+          const c = await controls(page);
+          expect(c.buttons, "signed in").toContain(locale === "en" ? "Sign out" : "登出");
+          expect(c.links.filter((h) => h.startsWith("/auth/login")), "no sign-in while signed in").toEqual([]);
+          expect(c.primary, "primary actions").toBeLessThanOrEqual(1);
+          if (v.path.startsWith("/models/")) expect(c.unexplained, "blocked controls without their reason on screen").toEqual([]);
+          else expect(c.disabled, "disabled controls").toBe(0);
+          expect(repeated(c.links), "links to the same place").toEqual([]);
+          expect(repeated(c.buttons), "buttons with the same name").toEqual([]);
+          expect(c.asides, "side panels").toBe(0);
+          if (width === 390) {
+            // A phone has no room left in the strip's row (8 to 14 px): the
+            // account takes one row of its own under it, and the first row
+            // stays as it is signed out (its parts from 8 px, the next row
+            // from 48 px).
+            expect(c.rows, "the strip's row and the account's").toBe(2);
+            expect([c.firstTop, c.lastTop, c.strip], "the first row as signed out, the account's under it").toEqual([8, 48, 89]);
+          } else {
+            expect(c.rows, "the app strip is one row").toBe(1);
+            expect(c.strip, "the app strip is one row").toBe(48);
+          }
         });
       }
     });

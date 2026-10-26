@@ -33,6 +33,62 @@ export async function open(page: Page, path: string, locale: Locale, theme?: Sch
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
 }
 
+export const APP = "http://127.0.0.1:3100";
+export const PROVIDER = "http://127.0.0.1:3101";
+
+/**
+ * The fake API's tenant data (fake/servers.mjs): a subject per kind of
+ * user, their organizations, a project each, and in Line Works a model (the
+ * contract fixture valid-draft-with-issues.json).
+ */
+export const tenant = {
+  editor: "auth0|e2e-editor",
+  viewer: "auth0|e2e-viewer",
+  multi: "auth0|e2e-multi",
+  noMember: "auth0|e2e-nomember",
+  unknown: "auth0|unknown",
+  LINE: "org_01M4YDQK00TA00000000000010",
+  BAY: "org_01M4YDQK00TA00000000000020",
+  PRJ_LINE: "prj_01M4YDQK00TA00000000000011",
+  PRJ_BAY: "prj_01M4YDQK00TA00000000000021",
+  MODEL: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  modelName: "Synthetic Software Delivery Pipeline",
+} as const;
+
+/** The signed-in views the browser checks run on (subject, path): every page with data, and the bootstrap's own. */
+export const signedInViews: { name: string; subject: string; path: string; organization?: string }[] = [
+  { name: "projects", subject: tenant.editor, path: "/projects" },
+  { name: "project", subject: tenant.editor, path: `/projects/${tenant.PRJ_LINE}` },
+  { name: "model (editor)", subject: tenant.editor, path: `/models/${tenant.MODEL}` },
+  { name: "model (viewer)", subject: tenant.viewer, path: `/models/${tenant.MODEL}` },
+  { name: "choose an organization", subject: tenant.multi, path: "/projects" },
+  { name: "projects with the switcher", subject: tenant.multi, path: "/projects", organization: tenant.LINE },
+  { name: "no access", subject: tenant.noMember, path: "/projects" },
+];
+
+/**
+ * Signs in as subject through the BFF and the test provider (never a real
+ * one), in a language (and a remembered theme or organization if given),
+ * and lands on path once the bootstrap has loaded /me and the page its data.
+ */
+export async function signInAs(page: Page, subject: string, path: string, locale: Locale = "en", opts: { theme?: Scheme; organization?: string } = {}): Promise<void> {
+  await page.request.post(`${PROVIDER}/__subject`, { data: subject });
+  await page.context().addCookies([{ name: "geminus_locale", value: locale, url: APP }]);
+  if (opts.theme) await page.context().addCookies([{ name: "geminus_theme", value: opts.theme, url: APP }]);
+  if (opts.organization) await page.context().addCookies([{ name: "geminus_organization", value: opts.organization, url: APP }]);
+  await page.goto(`/auth/login?return_to=${encodeURIComponent(path)}`);
+  await page.waitForURL(APP + path);
+  await settled(page, locale);
+}
+
+/** The page in its language, its loads done (nothing busy) and its fonts in. */
+export async function settled(page: Page, locale: Locale): Promise<void> {
+  await expect(page.locator("html")).toHaveAttribute("lang", locale);
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+}
+
 /** axe-core's WCAG 2.0–2.2 A/AA violations, contrast and target size included. */
 export async function violations(page: Page): Promise<string[]> {
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();

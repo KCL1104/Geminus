@@ -43,6 +43,23 @@ describe("auth boundary", () => {
     expect(out).not.toContain("tenant data");
   });
 
+  // T-043 follow-up (impeccable audit 2026-10-19 P0): the notice has its
+  // action, one plain link to the BFF's sign-in (a route handler, not a
+  // page), returning to the start page when there is no page to return to.
+  it("offers one sign-in, to the BFF's /auth/login", () => {
+    const out = html(<RequireSession><p>tenant data</p></RequireSession>);
+    expect(out.match(/<a /g)).toHaveLength(1);
+    expect(out).toContain(`<a href="/auth/login?return_to=%2F">${en["auth.signIn"]}</a>`);
+  });
+
+  it("offers the sign-in when a load finds the session ended (401), and only then", () => {
+    const signIn = `>${en["auth.signIn"]}</a>`;
+    expect(html(<RemoteView remote={{ state: "failed", problem: problemOf("unauthenticated") }} what="projects" onRetry={() => {}}>{() => null}</RemoteView>)).toContain(signIn);
+    for (const kind of Object.keys(kinds).filter((k) => k !== "unauthenticated") as ProblemKind[]) {
+      expect(html(<RemoteView remote={{ state: "failed", problem: problemOf(kind) }} what="projects" onRetry={() => {}}>{() => null}</RemoteView>), kind).not.toContain(signIn);
+    }
+  });
+
   // Whether a signed-out page calls the API needs effects to run; that is
   // tested in a DOM in dom.test.tsx (static rendering never runs effects).
 

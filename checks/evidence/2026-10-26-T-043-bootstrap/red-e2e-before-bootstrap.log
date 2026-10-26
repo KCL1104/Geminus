@@ -1,0 +1,284 @@
+[2m[WebServer] [22m[33m[1m⚠[22m[39m Warning: Next.js inferred your workspace root, but it may not be correct.
+[2m[WebServer] [22m We detected multiple lockfiles and selected the directory of /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/package-lock.json as the root directory.
+[2m[WebServer] [22m To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[2m[WebServer] [22m   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+[2m[WebServer] [22m Detected additional lockfiles: 
+[2m[WebServer] [22m   * /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web/package-lock.json
+[2m[WebServer] [22m
+[2m[WebServer] [22m[33m[1m⚠[22m[39m Warning: Next.js inferred your workspace root, but it may not be correct.
+[2m[WebServer] [22m We detected multiple lockfiles and selected the directory of /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/package-lock.json as the root directory.
+[2m[WebServer] [22m To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[2m[WebServer] [22m   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+[2m[WebServer] [22m Detected additional lockfiles: 
+[2m[WebServer] [22m   * /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web/package-lock.json
+[2m[WebServer] [22m
+
+Running 20 tests using 1 worker
+
+  ✘   1 [chromium] › tests/bootstrap.spec.ts:26:3 › at 1280px › sign in from the signed-out page, the only organization by itself, then projects, a project and the model in the editor (15.9s)
+  ✘   2 [chromium] › tests/bootstrap.spec.ts:70:3 › at 1280px › a viewer gets the model read-only (16.2s)
+  ✘   3 [chromium] › tests/bootstrap.spec.ts:80:3 › at 1280px › the sign-in returns to the page it was offered on (2.0m)
+  ✓   4 [chromium] › tests/bootstrap.spec.ts:89:3 › at 1280px › a return path to another site is the start page (1.1s)
+  ✘   5 [chromium] › tests/bootstrap.spec.ts:98:3 › at 1280px › several organizations: a choice first, sent and remembered for the session, then switched from the strip (16.1s)
+  ✘   6 [chromium] › tests/bootstrap.spec.ts:129:3 › at 1280px › sign-out ends the session at the BFF and the provider, and the page offers the sign-in again (15.9s)
+  ✘   7 [chromium] › tests/bootstrap.spec.ts:148:3 › at 1280px › an ended session (the refresh is refused) shows the sign-in, and signing in again brings the data back (15.8s)
+  ✘   8 [chromium] › tests/bootstrap.spec.ts:170:5 › at 1280px › a user without memberships sees the permission state, can sign out, and nothing of a tenant is asked (15.9s)
+  ✘   9 [chromium] › tests/bootstrap.spec.ts:170:5 › at 1280px › an identity Geminus does not know (403) sees the permission state, can sign out, and nothing of a tenant is asked (15.8s)
+  ✘  10 [chromium] › tests/bootstrap.spec.ts:196:3 › with the keyboard only › sign in, choose an organization and sign out (814ms)
+  ✓  11 [chromium] › tests/session.spec.ts:53:1 › sign-in leaves one HttpOnly __Host- cookie and nothing a script can read (851ms)
+  ✓  12 [chromium] › tests/session.spec.ts:64:1 › the proxy adds the token, sends no cookie to the API and returns no token (796ms)
+  ✓  13 [chromium] › tests/session.spec.ts:76:1 › a sign-in error page with an unknown reason says the sign-in failed, never a 500 (141ms)
+  ✓  14 [chromium] › tests/session.spec.ts:85:1 › without a session the proxy answers 401 in the API's envelope (301ms)
+  ✓  15 [chromium] › tests/session.spec.ts:92:1 › a write without the app's header, from another origin or from a cross-site form is refused (1.3s)
+  ✓  16 [chromium] › tests/session.spec.ts:127:1 › a tampered state or a replayed callback lands on the sign-in error page (412ms)
+  ✓  17 [chromium] › tests/session.spec.ts:142:1 › a token close to expiry is refreshed on the server, and the old refresh token is spent (761ms)
+[2m[WebServer] [22m[31m[1m⨯[22m[39m Error: failed to pipe response
+[2m[WebServer] [22m    at td (.next/server/chunks/[root-of-the-server]__0yhe7dwp10tik._.js:1:34717)
+[2m[WebServer] [22m    at async tI (.next/server/chunks/[root-of-the-server]__0yhe7dwp10tik._.js:3:2280)
+[2m[WebServer] [22m    at async z (.next/server/chunks/red_apps_web_1r58dwj6qrm93._.js:1:3306)
+[2m[WebServer] [22m    at async X (.next/server/chunks/red_apps_web_1r58dwj6qrm93._.js:1:4092)
+[2m[WebServer] [22m    at async Module.C [as handler] (.next/server/chunks/red_apps_web_1r58dwj6qrm93._.js:1:6199) {
+[2m[WebServer] [22m  [cause]: TypeError: terminated
+[2m[WebServer] [22m      at [3mignore-listed frames[23m {
+[2m[WebServer] [22m    [cause]: Error [SocketError]: other side closed
+[2m[WebServer] [22m        at [3mignore-listed frames[23m {
+[2m[WebServer] [22m      code: [32m'UND_ERR_SOCKET'[39m,
+[2m[WebServer] [22m      socket: [36m[Object][39m
+[2m[WebServer] [22m    }
+[2m[WebServer] [22m  }
+[2m[WebServer] [22m}
+  ✓  18 [chromium] › tests/session.spec.ts:155:1 › a refresh is kept when the API's answer is cut after its headers (844ms)
+  ✓  19 [chromium] › tests/session.spec.ts:185:1 › logout revokes the refresh token, clears the cookie and signs out at the provider (867ms)
+  ✓  20 [chromium] › tests/session.spec.ts:203:1 › an identity provisioning does not know gets the API's 403 (752ms)
+
+
+  1) [chromium] › tests/bootstrap.spec.ts:26:3 › at 1280px › sign in from the signed-out page, the only organization by itself, then projects, a project and the model in the editor 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  getByRole('link', { name: 'Sign in', exact: true })
+    Expected: [32m1[39m
+    Received: [31m0[39m
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('link', { name: 'Sign in', exact: true })[22m
+    [2m    19 × locator resolved to 0 elements[22m
+    [2m       - unexpected value "0"[22m
+
+
+      29 |     await expect(page.getByRole("heading", { name: "Sign in required" })).toBeVisible();
+      30 |     const signIn = page.getByRole("link", { name: "Sign in", exact: true });
+    > 31 |     await expect(signIn).toHaveCount(1);
+         |                          ^
+      32 |     await expect(signIn).toHaveAttribute("href", "/auth/login?return_to=%2Fprojects");
+      33 |     const before = (await providerState(request)).apiCalls.length;
+      34 |     await signIn.click();
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:31:26
+
+    Error Context: test-results/bootstrap-at-1280px-sign-i-93ed9-and-the-model-in-the-editor-chromium/error-context.md
+
+  2) [chromium] › tests/bootstrap.spec.ts:70:3 › at 1280px › a viewer gets the model read-only ─────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: getByRole('heading', { level: 1 })
+    Expected: [32m"Synthetic Software Delivery Pipeline"[39m
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toHaveText" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('heading', { level: 1 })[22m
+
+
+      70 |   test("a viewer gets the model read-only", async ({ page }) => {
+      71 |     await signInAs(page, tenant.viewer, `/models/${tenant.MODEL}`);
+    > 72 |     await expect(page.getByRole("heading", { level: 1 })).toHaveText(tenant.modelName);
+         |                                                           ^
+      73 |     await expect(page.locator(".react-flow__node")).not.toHaveCount(0);
+      74 |     await expect(page.getByText("You can view this model but not change it.")).toBeVisible();
+      75 |     await expect(page.getByRole("button", { name: "Add step" })).toHaveCount(0);
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:72:59
+
+    Error Context: test-results/bootstrap-at-1280px-a-viewer-gets-the-model-read-only-chromium/error-context.md
+
+  3) [chromium] › tests/bootstrap.spec.ts:80:3 › at 1280px › the sign-in returns to the page it was offered on 
+
+    [31mTest timeout of 120000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 120000ms exceeded.
+    Call log:
+    [2m  - waiting for getByRole('link', { name: 'Sign in', exact: true })[22m
+
+
+      81 |     await request.post(`${PROVIDER}/__subject`, { data: tenant.editor });
+      82 |     await open(page, `/projects/${tenant.PRJ_LINE}`, "en");
+    > 83 |     await page.getByRole("link", { name: "Sign in", exact: true }).click();
+         |                                                                    ^
+      84 |     await page.waitForURL(`${APP}/projects/${tenant.PRJ_LINE}`);
+      85 |     await settled(page, "en");
+      86 |     await expect(page.getByRole("link", { name: tenant.modelName })).toBeVisible();
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:83:68
+
+    Error Context: test-results/bootstrap-at-1280px-the-si-43f8b--the-page-it-was-offered-on-chromium/error-context.md
+
+  4) [chromium] › tests/bootstrap.spec.ts:98:3 › at 1280px › several organizations: a choice first, sent and remembered for the session, then switched from the strip 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: 'Choose an organization' })
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('heading', { name: 'Choose an organization' })[22m
+
+
+       98 |   test("several organizations: a choice first, sent and remembered for the session, then switched from the strip", async ({ page, request }) => {
+       99 |     await signInAs(page, tenant.multi, "/projects");
+    > 100 |     await expect(page.getByRole("heading", { name: "Choose an organization" })).toBeVisible();
+          |                                                                                 ^
+      101 |     const before = (await providerState(request)).apiCalls;
+      102 |     expect(before.at(-1)?.path, "nothing of a tenant before the choice").toBe("/v1/me");
+      103 |     await expect(page.locator("header [aria-haspopup=listbox]")).toHaveCount(2);
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:100:81
+
+    Error Context: test-results/bootstrap-at-1280px-severa-3b2c8-hen-switched-from-the-strip-chromium/error-context.md
+
+  5) [chromium] › tests/bootstrap.spec.ts:129:3 › at 1280px › sign-out ends the session at the BFF and the provider, and the page offers the sign-in again 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('link', { name: 'SMT line 1' })
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('link', { name: 'SMT line 1' })[22m
+
+
+      129 |   test("sign-out ends the session at the BFF and the provider, and the page offers the sign-in again", async ({ page, request }) => {
+      130 |     await signInAs(page, tenant.multi, "/projects", "en", { organization: tenant.LINE });
+    > 131 |     await expect(page.getByRole("link", { name: "SMT line 1" })).toBeVisible();
+          |                                                                  ^
+      132 |     const before = await providerState(request);
+      133 |     await page.getByRole("button", { name: "Sign out" }).click();
+      134 |     await page.waitForURL(`${APP}/`);
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:131:66
+
+    Error Context: test-results/bootstrap-at-1280px-sign-o-47c48-ge-offers-the-sign-in-again-chromium/error-context.md
+
+  6) [chromium] › tests/bootstrap.spec.ts:148:3 › at 1280px › an ended session (the refresh is refused) shows the sign-in, and signing in again brings the data back 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('link', { name: 'SMT line 1' })
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 15000ms[22m
+    [2m  - waiting for getByRole('link', { name: 'SMT line 1' })[22m
+
+
+      150 |     await request.post(`${PROVIDER}/__access-seconds`, { data: "30" });
+      151 |     await signInAs(page, tenant.editor, "/projects");
+    > 152 |     await expect(page.getByRole("link", { name: "SMT line 1" })).toBeVisible();
+          |                                                                  ^
+      153 |     // The provider ends the session: every live refresh token is revoked.
+      154 |     for (const [token, s] of Object.entries((await providerState(request)).refreshStates)) {
+      155 |       if (s === "live") await request.post(`${PROVIDER}/oauth/revoke`, { form: { token } });
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:152:66
+
+    Error Context: test-results/bootstrap-at-1280px-an-end-fdab2--again-brings-the-data-back-chromium/error-context.md
+
+  7) [chromium] › tests/bootstrap.spec.ts:170:5 › at 1280px › a user without memberships sees the permission state, can sign out, and nothing of a tenant is asked 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-problem="forbidden"]')
+    Expected substring: [32m"You do not have permission to do this"[39m
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 15000ms[22m
+    [2m  - waiting for locator('[data-problem="forbidden"]')[22m
+
+
+      172 |       await signInAs(page, subject, "/projects");
+      173 |       const alert = page.locator('[data-problem="forbidden"]');
+    > 174 |       await expect(alert).toContainText("You do not have permission to do this");
+          |                           ^
+      175 |       await expect(alert).toContainText("This sign-in has no access to any organization in Geminus.");
+      176 |       await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
+      177 |       await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:174:27
+
+    Error Context: test-results/bootstrap-at-1280px-a-user-daf40-othing-of-a-tenant-is-asked-chromium/error-context.md
+
+  8) [chromium] › tests/bootstrap.spec.ts:170:5 › at 1280px › an identity Geminus does not know (403) sees the permission state, can sign out, and nothing of a tenant is asked 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoContainText[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator: locator('[data-problem="forbidden"]')
+    Expected substring: [32m"You do not have permission to do this"[39m
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toContainText" with timeout 15000ms[22m
+    [2m  - waiting for locator('[data-problem="forbidden"]')[22m
+
+
+      172 |       await signInAs(page, subject, "/projects");
+      173 |       const alert = page.locator('[data-problem="forbidden"]');
+    > 174 |       await expect(alert).toContainText("You do not have permission to do this");
+          |                           ^
+      175 |       await expect(alert).toContainText("This sign-in has no access to any organization in Geminus.");
+      176 |       await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
+      177 |       await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:174:27
+
+    Error Context: test-results/bootstrap-at-1280px-an-ide-f46b5-othing-of-a-tenant-is-asked-chromium/error-context.md
+
+  9) [chromium] › tests/bootstrap.spec.ts:196:3 › with the keyboard only › sign in, choose an organization and sign out 
+
+    Error: focus is visible
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mfalse[39m
+
+      187 |     for (let i = 0; i < 30; i++) {
+      188 |       await page.keyboard.press("Tab");
+    > 189 |       expect(await focusIsVisible(page), "focus is visible").toBe(true);
+          |                                                              ^
+      190 |       const label = await page.evaluate(() => (document.activeElement as HTMLElement | null)?.innerText?.trim() ?? "");
+      191 |       if (label === name) return;
+      192 |     }
+        at tabTo (/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:189:62)
+        at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/red/apps/web-e2e/tests/bootstrap.spec.ts:200:5
+
+    Error Context: test-results/bootstrap-with-the-keyboar-2e3ad-n-organization-and-sign-out-chromium/error-context.md
+
+  9 failed
+    [chromium] › tests/bootstrap.spec.ts:26:3 › at 1280px › sign in from the signed-out page, the only organization by itself, then projects, a project and the model in the editor 
+    [chromium] › tests/bootstrap.spec.ts:70:3 › at 1280px › a viewer gets the model read-only ──────
+    [chromium] › tests/bootstrap.spec.ts:80:3 › at 1280px › the sign-in returns to the page it was offered on 
+    [chromium] › tests/bootstrap.spec.ts:98:3 › at 1280px › several organizations: a choice first, sent and remembered for the session, then switched from the strip 
+    [chromium] › tests/bootstrap.spec.ts:129:3 › at 1280px › sign-out ends the session at the BFF and the provider, and the page offers the sign-in again 
+    [chromium] › tests/bootstrap.spec.ts:148:3 › at 1280px › an ended session (the refresh is refused) shows the sign-in, and signing in again brings the data back 
+    [chromium] › tests/bootstrap.spec.ts:170:5 › at 1280px › a user without memberships sees the permission state, can sign out, and nothing of a tenant is asked 
+    [chromium] › tests/bootstrap.spec.ts:170:5 › at 1280px › an identity Geminus does not know (403) sees the permission state, can sign out, and nothing of a tenant is asked 
+    [chromium] › tests/bootstrap.spec.ts:196:3 › with the keyboard only › sign in, choose an organization and sign out 
+  11 passed (4.5m)
+exit 1
