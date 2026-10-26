@@ -247,18 +247,19 @@ func TestTextIsSanitized(t *testing.T) {
 		fmt.Sprintf("row %q is invalid", csvRow), fmt.Sprintf("cell %q is invalid", csvCell), fmt.Sprintf("column %q unknown", header),
 		`ERROR: invalid input syntax for type integer: "CASE-SENTINEL-7731" (SQLSTATE 22P02)`,
 		"bidi \u202eevil\u202c text\r\nnext line\ttab",
+		"line\u2028separator\u2029paragraph",
 		"request headers: " + negotiate, "request headers: " + prefs, "signature " + blob + " rejected",
 		// A quote that is never closed (a value with a quote in it, text
 		// cut short) hides everything after it.
 		`cell "CASE-SENTINEL-7731 is invalid`, `value "a\"b CASE-SENTINEL\`,
 		// Review L2: single quotes that open and close a span, backticks
 		// and typographic quotes mark a value as well, closed or not.
-		"value 'QUOTE-SENTINEL' is invalid", "value `QUOTE-SENTINEL` is invalid", "value “QUOTE-SENTINEL” is invalid",
-		"value ‘QUOTE-SENTINEL’ is invalid", "invalid character 'Q' then 'QUOTE-SENTINEL'", "unclosed 'QUOTE-SENTINEL and more",
-		"unclosed `QUOTE-SENTINEL", "unclosed “QUOTE-SENTINEL", "it's 'don't QUOTE-SENTINEL' inside",
+		"value 'QUOTE-SENTINEL' is invalid", "value `QUOTE-SENTINEL` is invalid", "value \u201cQUOTE-SENTINEL\u201d is invalid",
+		"value \u2018QUOTE-SENTINEL\u2019 is invalid", "invalid character 'Q' then 'QUOTE-SENTINEL'", "unclosed 'QUOTE-SENTINEL and more",
+		"unclosed `QUOTE-SENTINEL", "unclosed \u201cQUOTE-SENTINEL", "it's 'don't QUOTE-SENTINEL' inside",
 		// A zero-width character does not split a credential; session
 		// cookies and URL signatures are credentials (review probes).
-		"key sk-ant-​api03-ZW-SENTINEL-abcdefgh", "JSESSIONID=ABCDEF0123456789SENTINEL",
+		"key sk-ant-\u200bapi03-ZW-SENTINEL-abcdefgh", "JSESSIONID=ABCDEF0123456789SENTINEL",
 		"GET https://b.s3.amazonaws.com/k?X-Amz-Signature=0123456789abcdefSENTINEL", "https://a.blob.core.windows.net/c?sv=2024&sig=SIGSENTINEL0123",
 	} {
 		log.Error("failed", "error", text)
@@ -266,7 +267,7 @@ func TestTextIsSanitized(t *testing.T) {
 	out := s.String()
 	for _, l := range s.lines(t) {
 		e, _ := l["error"].(string)
-		if strings.ContainsAny(e, "\n\r\t\u202e\u202c") {
+		if strings.ContainsAny(e, "\n\r\t\u202e\u202c\u2028\u2029\u200b") {
 			t.Errorf("a control or format character survived: %q", e)
 		}
 	}
@@ -274,7 +275,7 @@ func TestTextIsSanitized(t *testing.T) {
 	if !strings.Contains(out, `cell \"[redacted]\" is invalid`) || !strings.Contains(out, "(SQLSTATE 22P02)") ||
 		!strings.Contains(out, "postgres://[redacted]@db.internal:5432/twin") || !strings.Contains(out, "request headers: Authorization: [redacted]") ||
 		!strings.Contains(out, "signature [redacted] rejected") || !strings.Contains(out, "value '[redacted]' is invalid") ||
-		!strings.Contains(out, "value `[redacted]` is invalid") || !strings.Contains(out, "value “[redacted]” is invalid") {
+		!strings.Contains(out, "value `[redacted]` is invalid") || !strings.Contains(out, "value \u201c[redacted]\u201d is invalid") {
 		t.Errorf("the context around a redaction is lost: %s", out)
 	}
 }
