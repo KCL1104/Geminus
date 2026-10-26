@@ -130,3 +130,44 @@ Auth0：Allowed Callback URL `https://<web 網域>/auth/callback`、Allowed Logo
 ## T-039 剩下的工作
 
 Container 中的實際執行與 CI 的 `containers` job 結果；`deploy.sh --apply` 與 staging 的檢查；`TestLiveBucket`；T-053 I4 (2) 的 operator 介面、I5 的程式修改、D-114 (b)；T-054 I1 的一般做法與 I2；container scan、SBOM、image 簽章；CSP 與 security header；備份與還原演練（`make db-restore-test`）；log／telemetry 的保存；孤兒 object 的清理；OTLP backend；正式（非 hackathon）環境的 region、retention 與 production approval。
+
+## Coordinator 驗證（2026-10-26）
+
+`t039-hk` 的三個 commit（f4c199e、b024bea、5327129）cherry-pick 到 492fae6（T-015、T-051、T-032 已整合）之後；衝突只在 `docs/THIRD_PARTY_NOTICES.md`（開頭一句合併為兩邊都列，T-015 的 React Flow 一節與 T-039 的 SigV4、base image 兩節都保留）與生成的 `checks/docs-check.json`（重產）。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-039/coordinator/`，`exit-codes.txt` 依執行順序；HEAD d229225；Node 22.22.0，go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check`（含 `scripts/check_deploy.py`） | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 0 | 77 個 package ok |
+| `make architecture-check` | 0 | |
+| `go test -race -count=1`（storage/objects、storage/migrations、config、cmd、check-architecture） | 0 | 9 個 package ok |
+| `python scripts/rehearse_railway_deploy.py` | 0 | `rehearsal: PASS`（替身；Railway 本身 NOT RUN） |
+| `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN deploy/railway/deploy.sh --dry-run` | 0 | 環境中沒有任何 Railway token；log 只有變數名稱與 `${{…}}` 參照，沒有值 |
+| `bash -n`（deploy.sh、staging-smoke.sh） | 0 | |
+| `make integration-test`（新的 dt_test_hk039c，跑完刪除） | 0 | |
+| `npm ci`（web、web-e2e） | 0／0 | |
+| `make frontend-test` | 0 | 770／770 |
+| `make frontend-build` | 0 | `next.config.ts` 的改動之後 |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| key scan（T-039 的檔案：deploy、三個 Dockerfile、`.env.example`、runbook、報告與 evidence；`sk-ant-` 與 key／secret／token 指派的形狀） | 0 | 沒有符合；以已知的 fake key 做正向對照，pattern 有效 |
+| `make e2e-test`（等 3100／3101 空出後單獨執行） | 0 | 257 passed、32 skipped（全部是只在 CI 比對的截圖） |
+
+NOT RUN：image build、compose smoke、CI 的 `containers` job（本機沒有 Docker daemon；push 後 CI 第一次執行）；`deploy.sh --apply` 與任何 Railway、Auth0 的呼叫；`TestLiveBucket`；hadolint、actionlint、shellcheck；Node 24。
+
+Coordinator 對 T-039 問題的處理（例行事項；需要 owner 的另列）：
+1. ADR-029 維持 PROPOSED，比賽後放進決策頁；切片依它實作。
+2. web → api 走 API 的公開 HTTPS domain（Railway 的 private network 是 plain HTTP，web server 只在 loopback 允許）：維持。
+3. Railway PostgreSQL 用 16（migration 只在 16 測過）；bucket 的資料只有 synthetic，保留到評審結束（11-09）後再由 owner 決定。
+4. API 的 AI 可用性（T-053 I5）：T-055 暫停，API 維持 `AI_PROVIDER=disabled`。
+5. D-114：比賽後的決策頁。
+6. H-030、H-032 已記錄；T-039 維持 `not_started`（T-043 仍為 `in_progress`）；ADR-029 的編號沒有衝突。
+7. 沒有 CSP、HSTS 等瀏覽器安全 header：公開 demo 前在 T-057 處理；Next server 關閉時不等 in-flight request：Low，比賽後。
+
+需要 owner 決定（部署前，約 10-31，一起問）：
+- **Secret 的產生方式**：H-032 寫「session secret 由 Railway 產生」；腳本改為在部署的 session 中以 Python `secrets` 產生、經 stdin 寫入並 sealed（不印出），因為 `${{secret()}}` 只在 template 部署有文件，且可能重新產生。這與 H-032 的字面不同，由 owner 決定。若 sealed 變數不能被其他變數參照，`--apply` 會停在 migrate，屆時選 `GEMINUS_RAILWAY_SEAL=off` 或存整個 sealed 的 database URL。
+- **Bucket 的區域**：sjc、iad、ams 或 sin（建立後不能改）。
+
+下一步：一輪獨立審查（H-029）。
+

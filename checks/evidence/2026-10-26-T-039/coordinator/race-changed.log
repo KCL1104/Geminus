@@ -1,0 +1,10 @@
+ok  	github.com/kcl1104/geminus/internal/storage/objects	1.592s
+ok  	github.com/kcl1104/geminus/internal/storage/migrations	1.259s
+ok  	github.com/kcl1104/geminus/internal/config	1.126s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	4.668s
+?   	github.com/kcl1104/geminus/cmd/ai-eval-live	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/api	3.296s
+ok  	github.com/kcl1104/geminus/cmd/migrate	1.277s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.075s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.402s
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	540.203s

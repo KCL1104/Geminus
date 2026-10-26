@@ -1,0 +1,48 @@
+run 1 |  production --detach --json --message 'T-039 deploy.sh d229225'
+run 1 |    migrate: SUCCESS
+run 1 |    16 migrations recorded
+run 1 | 6. seed (one synthetic organization)
+run 1 |   $ go run ./cmd/provision-tenant organization -name 'Demo line (synthetic)' -owner-issuer https://geminus-demo.us.auth0.com/ -owner-subject 'auth0|rehearsal-owner'
+run 1 |    organization org_01M5W4RHAFH8Q7Y8PNQT1RAF4T
+run 1 |   $ railway variable set WORKER_ORGANIZATION_IDS=org_01M5W4RHAFH8Q7Y8PNQT1RAF4T --service worker --environment production --skip-deploys --json
+run 1 |    removing this run's TCP proxy
+run 1 |   $ railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production --json
+run 1 | 7. deploy api, worker, web
+run 1 |   $ railway up --service api --environment production --detach --json --message 'T-039 deploy.sh d229225'
+run 1 |    api: SUCCESS
+run 1 |   $ railway up --service worker --environment production --detach --json --message 'T-039 deploy.sh d229225'
+run 1 |    worker: SUCCESS
+run 1 |   $ railway up --service web --environment production --detach --json --message 'T-039 deploy.sh d229225'
+run 1 |    web: SUCCESS
+run 1 | 8. verify
+run 1 |    https://api-production-1a2b.up.railway.app/healthz -> 200
+run 1 |    https://api-production-1a2b.up.railway.app/readyz -> 200
+run 1 |    https://api-production-1a2b.up.railway.app/v1/me -> 401
+run 1 |    https://web-production-1a2b.up.railway.app/ -> 200
+run 1 |    https://web-production-1a2b.up.railway.app/auth/login -> 503 
+run 1 |    Auth0 Application: Allowed Callback URL https://web-production-1a2b.up.railway.app/auth/callback, Allowed Logout URL https://web-production-1a2b.up.railway.app/
+
+run 2 | ent production --detach --json --message 'T-039 deploy.sh d229225'
+run 2 |    worker: SUCCESS
+run 2 |   $ railway up --service web --environment production --detach --json --message 'T-039 deploy.sh d229225'
+run 2 |    web: SUCCESS
+run 2 | 8. verify
+run 2 |    https://api-production-1a2b.up.railway.app/healthz -> 200
+run 2 |    https://api-production-1a2b.up.railway.app/readyz -> 200
+run 2 |    https://api-production-1a2b.up.railway.app/v1/me -> 401
+run 2 |    https://web-production-1a2b.up.railway.app/ -> 200
+run 2 |    https://web-production-1a2b.up.railway.app/auth/login -> 303 https://geminus-demo.us.auth0.com/authorize
+run 2 |    Auth0 Application: Allowed Callback URL https://web-production-1a2b.up.railway.app/auth/callback, Allowed Logout URL https://web-production-1a2b.up.railway.app/
+run 2 | deploy: done. Variables that are the owner's: docs/runbooks/deploy.md §7.3.
+
+run 4 | n list --service web --environment production --json
+run 4 |   $ railway domain --service web --port 3000 --environment production --json
+run 4 | 3. variables (secrets on stdin, never printed)
+run 4 |   $ railway variable set GEMINUS_MIGRATOR_DB_PASSWORD --stdin --service migrate --environment production --skip-deploys --json   (value on stdin)
+run 4 |     failed (exit 1): error: GEMINUS_MIGRATOR_DB_PASSWORD=[redacted] rejected
+
+run 1: 91 CLI calls, 7 psql calls, result FAIL: verification:
+run 2: 70 CLI calls, result done
+run 3: ['FAIL: verification:', 'FAIL: verification:']
+run 4: FAIL: `railway variable set` failed
+rehearsal: PASS (the deployer against stand-ins; Railway itself NOT RUN)
