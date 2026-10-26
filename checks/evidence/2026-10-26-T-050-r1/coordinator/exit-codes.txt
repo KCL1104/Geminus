@@ -1,0 +1,8 @@
+spec-check exit 0
+backend-test exit 0
+architecture-check exit 0
+backend-numeric exit 0
+simulation-reference-test exit 0
+ai-eval exit 0
+race-sim-ai exit 0
+integration exit 0

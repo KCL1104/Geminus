@@ -1,0 +1,4 @@
+HEAD aa8ed169239d0ea18c5184aa747e315209e5ed65
+uncommitted besides evidence: 0
+go version go1.27.3 linux/amd64
+2026-10-26T12:35:34Z

@@ -1,0 +1,16 @@
+ok  	github.com/kcl1104/geminus/internal/simulation	1.276s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	97.434s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	552.504s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	1.289s
+ok  	github.com/kcl1104/geminus/internal/results/compare	21.869s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	2.524s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	8.765s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	20.687s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	1.191s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	1.052s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	1.355s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	9.313s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	1.164s
+ok  	github.com/kcl1104/geminus/internal/ai/review	5.467s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	1.040s
+ok  	github.com/kcl1104/geminus/prompts	1.036s

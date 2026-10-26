@@ -489,3 +489,10 @@ Coordinator 把本任務的十一個 commit（14b7000–79c9423）接在 T-053 �
 - **檢查器、SimPy 腳本與 kernel 的讀法相同**（I3）：本輪新增的都是手推 golden 與獨立的 Python 向量，但 SimPy 仍不接受有限 buffer、班表與共用 resource，B1／B2 的 golden（G-BT18–G-BT20、G-BT22）只有手推與檢查器。
 - **Mutation 仍是抽樣**：reviewer 的 28 個 mutant 中存活或只被鎖擋下的 6 個都補了不依賴鎖的測試，另一個為 equivalent；harness 沒有涵蓋的規則仍可能只有鎖在保護。
 - **ADR-026 的實作進度文字**（「T-050 …待獨立 review」）沒有改，由 coordinator 在整合與 review 結束後更新。
+
+### Coordinator 的執行（第 1 輪修正，aa8ed16）
+
+Coordinator 把 `t050-r1` 的六個 commit（207eaba、59ce20b、5d7d8c9、e99e91b、927c071、28e556f）cherry-pick 到 `claude/lucid-meitner-vq1awo`（c7cf86c 之後，成為 1d6ec82、67bee72、27f362f、e84b17b、ae56977、aa8ed16）；衝突只在重產的 `checks/*.json`。在整合後的 tree 上（`checks/evidence/2026-10-26-T-050-r1/coordinator/`）：`make spec-check`、`make backend-test GOFLAGS=-count=1`、`make architecture-check`、`make backend-numeric`、`make simulation-reference-test`、`make ai-eval`（scenario-0.7.0）、`go test -race -count=1` 於 `internal/simulation/...`、`internal/results/...`、`internal/ai/...`、`prompts/...`，以及全新 `dt_test_t050r1c` 上的 `make integration-test`，全部 exit 0。Mutation harness（63 個 mutant，含與不含鎖）由修正者在其 tree 上執行（59 killed、4 equivalent，兩種模式相同），coordinator 沒有重跑（NOT RUN）。
+
+- **Coordinator 的錯誤更正**：本輪的指示要求實作 D-096 (g) 選項 B；修正者正確地沒有照做：已 ACCEPTED 的 ADR-026 D-050 B1 原文就是選項 A，改為 B 是修改已批准的規則，須由 owner 決定（AGENTS.md §1）。程式維持 A，G-BT19、G-BT20 固定其行為；D-096 (g) 的文字列出 A、B、C 與各自的取捨。Coordinator 指示中 G-SU12 的 `scheduled_processing_ticks` 600000 也是錯的（手推為 660000，600000 是 mutant 的值），修正者已更正。
+- **狀態**：依 H-029 的 hackathon 模式，本輪的 Medium 已修正並經 coordinator 驗證，程式可供 T-051 等切片使用；T-050 標為 done 之前仍需 owner 決定 D-096、D-097（PROPOSED，延到比賽後的決策頁），包括 D-096 (g) 的 A／B／C 與 D-097 (i)。
