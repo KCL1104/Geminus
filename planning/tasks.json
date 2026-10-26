@@ -923,7 +923,8 @@
         "client validation、save/publish/error positioning、dirty navigation guard。",
         "selection store 使用 canonical IDs，為3D保留adapter。",
         "所有 editor 字串經 T-044 catalog（en／zh-Hant）；IR 中的名稱與 label 是使用者資料，不翻譯。",
-        "流程依 H-027 Q2：10-19 prototype 的模型編輯器流程（步驟面板、鍵盤可操作的畫布、含伺服器欄位錯誤的屬性面板、可跳到步驟的驗證問題清單、儲存草稿、有錯誤時不能發布、409 時保留本地變更）；外觀用 Marey（DESIGN.md），內容用產線範本；介面簡潔，只放需要的控制項（H-027）。"
+        "流程依 H-027 Q2：10-19 prototype 的模型編輯器流程（步驟面板、鍵盤可操作的畫布、含伺服器欄位錯誤的屬性面板、可跳到步驟的驗證問題清單、儲存草稿、有錯誤時不能發布、409 時保留本地變更）；外觀用 Marey（DESIGN.md），內容用產線範本；介面簡潔，只放需要的控制項（H-027）。",
+        "Hackathon 切片（H-029，2026-10-26 至 11-03）：電子產線範本可在 2D 編輯器中檢視與修改（新增／刪除／連接／移動步驟、屬性面板、伺服器的欄位錯誤、驗證問題清單、儲存草稿、有錯誤時不能發布、409 保留本地變更），依 H-027 的簡潔原則；切片之外的項目比賽後補齊。"
       ],
       "planned_outputs": [
         "apps/web/features/model-editor/"
@@ -2011,7 +2012,8 @@
         "diff/assumptions/risk/base/needs_input/conflict review。",
         "edit批准與scenario批准清楚分離；409保留local edits。",
         "所有字串經 T-044 catalog；數字、日期、百分比依語言格式化（T-032 的 delta／CI 不因格式化改變值）。",
-        "流程依 H-027 Q2：10-19 prototype 的匯入與 AI 建議審閱流程（上傳、無效列與下載、逐一確認的欄位對應、差異、假設、伺服器 risk 與 AI 判斷並列、edit 與 scenario 批准分開、needs_input）；外觀用 Marey，細節依之後批准的規則（D-067–D-072）；介面簡潔，只放需要的控制項（H-027）。"
+        "流程依 H-027 Q2：10-19 prototype 的匯入與 AI 建議審閱流程（上傳、無效列與下載、逐一確認的欄位對應、差異、假設、伺服器 risk 與 AI 判斷並列、edit 與 scenario 批准分開、needs_input）；外觀用 Marey，細節依之後批准的規則（D-067–D-072）；介面簡潔，只放需要的控制項（H-027）。",
+        "Hackathon 切片（H-029）：以自然語言提出修改 → 非同步 proposal（Meta provider）→ 差異、AI 的假設、伺服器算的風險與 AI 的判斷並列 → edit 批准與 scenario 批准分開；含照片辨識（T-056）產生的 proposal。匯入與欄位對應的畫面不在切片內。"
       ],
       "planned_outputs": [
         "apps/web/features/import/",
@@ -2072,7 +2074,8 @@
         "explicit run config、queued/running/cancelled/progress。",
         "metrics population/uncertainty/absolute & percent deltas。",
         "server-grounded analysis、next-experiment human action。",
-        "所有字串經 T-044 catalog；數字、日期、百分比依語言格式化（T-032 的 delta／CI 不因格式化改變值）。"
+        "所有字串經 T-044 catalog；數字、日期、百分比依語言格式化（T-032 的 delta／CI 不因格式化改變值）。",
+        "Hackathon 切片（H-029）：從 scenario 執行模擬、顯示進度與結果，Marey 圖（時間由左往右、步驟由上往下，scenario 深綠實線、baseline 石墨虛線）與主要指標比較；analyst（T-030）不在切片內。"
       ],
       "planned_outputs": [
         "apps/web/features/simulations/",
@@ -2483,7 +2486,8 @@
         "cloud/provider不進domaincode，production人工gate。",
         "web container 為 Node server（BFF，ADR-018），session key 與 OIDC client secret 由 secret store 注入。",
         "T-054 review 第 2 輪（I1、I2）：正式的 object storage adapter 若有自己的單次操作 timeout（store 自己逾時而 request 仍在），datasets.Failure 要標記「request 已結束」而 StorageFailure 只排除這個標記，使 store 自己的逾時成為 503 DATASET_STORAGE_FAILED 並記 WARN（目前會是沒有 details、沒有 log 的 503）；若 worker（generator、runner）也改用 StorageFailure，要先排除 generator copies.Open 的 errNotCopied（server bug，型別上也是 ReadError）。先寫測試。",
-        "T-053 review 第 1 輪（I2、I4、I5、D-114 (b)）：部署開啟 live AI 的 worker 時，(1) 每個 worker 以相同的 AI_MONTHLY_LIMIT_USD、AI_DAILY_LIMIT_USD、AI_ORGANIZATION_DAILY_LIMIT_USD 部署（限額是每個 process 的設定、不在資料庫，設定不同的 worker 對同一個總數執行不同的上限），或把限額移到資料庫；(2) 提供列出未結算的花費預留（twin.ai_spend_reservations state=reserved，worker 中途結束時留下、佔著上限到該日或該月結束）的 operator 介面；(3) API 的部署不設 GEMINUS_ANTHROPIC_API_KEY_A／_B（開關 on 時 config 會讀它們，API 從不使用）；(4) 由 owner 選擇 live eval 的花費保持記在 checks/ai-evals/live-spend.jsonl（與 worker 的 DB ledger 分開，合計由 Console spend limit 限制）或改為經 DB ledger（D-114 選項 B）。"
+        "T-053 review 第 1 輪（I2、I4、I5、D-114 (b)）：部署開啟 live AI 的 worker 時，(1) 每個 worker 以相同的 AI_MONTHLY_LIMIT_USD、AI_DAILY_LIMIT_USD、AI_ORGANIZATION_DAILY_LIMIT_USD 部署（限額是每個 process 的設定、不在資料庫，設定不同的 worker 對同一個總數執行不同的上限），或把限額移到資料庫；(2) 提供列出未結算的花費預留（twin.ai_spend_reservations state=reserved，worker 中途結束時留下、佔著上限到該日或該月結束）的 operator 介面；(3) API 的部署不設 GEMINUS_ANTHROPIC_API_KEY_A／_B（開關 on 時 config 會讀它們，API 從不使用）；(4) 由 owner 選擇 live eval 的花費保持記在 checks/ai-evals/live-spend.jsonl（與 worker 的 DB ledger 分開，合計由 Console spend limit 限制）或改為經 DB ledger（D-114 選項 B）。",
+        "Hackathon 切片（H-029）：web、api、worker 三個 container 與 migration 的部署步驟，部署到 owner 指定的雲端服務（建議 Render：Docker＋managed Postgres），只放 synthetic 資料；登入用 owner 建立的 Auth0 tenant；key 與 secret 由 owner 在平台的 secret 設定中填入，不進 repo。"
       ],
       "planned_outputs": [
         "deploy/",
@@ -3385,7 +3389,8 @@
         "依 T-046 的 spec 建立電子產線 pack：catalog、validation rules、full template（en 與 zh-Hant 名稱）、layered default views，並註冊到 Registry；通過 T-042 的 conformance suite 與 architecture guard。",
         "domain 指標（UPH、FPY、站別 availability 等）在資料不足時回 unavailable（REQ-015）；InferFromEvents 在 T-027 前回 ErrUnavailable，不假裝推論。",
         "SoftwareDeliveryDomainPack 保留為範例，兩個 pack 的測試都通過；template 的示範參數標為 synthetic。",
-        "T-046 phase 2 的分工：本任務實作 D-058 的宣告式 generic metrics（`system_wip`、`flow_count`、`sink_count`、`period_throughput`）：`DUPLICATE_ID`（宣告的 ID 等於內建 additional_metrics key）、`UNKNOWN_REFERENCE`（flow_id、sink_id）、period 數超過 1000 或視窗不是整數期的處理；kernel 只對宣告的 flow 回報通過（沒有宣告時 observation 不變，D-047）；`internal/results/metrics` 產生 `additional_metrics[<id>]` 與 `replication_summaries[i].declared[<id>]`；pack 的 `metrics.domain`（ModelMetricsProvider）。Conformance suite 的 gate variant（declared system_wip）隨之改用其他仍未解除的 primitive 或移除。解除 gate 時，把 primitive 加進 `validate.checked`（internal/model/validate/primitives.go）與 `engine.kernelExecutes`（internal/simulation/engine/compile.go）、升 engine_version、更新 `TestPrimitiveCatalog`、`TestPrimitiveGate`、`TestKernelRefusesWhatItDoesNotExecute` 與 cases.json 的 primitives；在 `internal/ai/review` 加入 D-057 的 server risk，並更新 AI context（`aicontext.modeRules`、prompts/scenario）的 scenario allowlist 說明。只解除自己的 primitive。"
+        "T-046 phase 2 的分工：本任務實作 D-058 的宣告式 generic metrics（`system_wip`、`flow_count`、`sink_count`、`period_throughput`）：`DUPLICATE_ID`（宣告的 ID 等於內建 additional_metrics key）、`UNKNOWN_REFERENCE`（flow_id、sink_id）、period 數超過 1000 或視窗不是整數期的處理；kernel 只對宣告的 flow 回報通過（沒有宣告時 observation 不變，D-047）；`internal/results/metrics` 產生 `additional_metrics[<id>]` 與 `replication_summaries[i].declared[<id>]`；pack 的 `metrics.domain`（ModelMetricsProvider）。Conformance suite 的 gate variant（declared system_wip）隨之改用其他仍未解除的 primitive 或移除。解除 gate 時，把 primitive 加進 `validate.checked`（internal/model/validate/primitives.go）與 `engine.kernelExecutes`（internal/simulation/engine/compile.go）、升 engine_version、更新 `TestPrimitiveCatalog`、`TestPrimitiveGate`、`TestKernelRefusesWhatItDoesNotExecute` 與 cases.json 的 primitives；在 `internal/ai/review` 加入 D-057 的 server risk，並更新 AI context（`aicontext.modeRules`、prompts/scenario）的 scenario allowlist 說明。只解除自己的 primitive。",
+        "Hackathon 切片（H-029）：電子組裝／測試線的 DomainPack 與完整範本（SMT、AOI、ICT、燒機批次、包裝等），產線指標，供 demo 使用。"
       ],
       "planned_outputs": [
         "internal/domainpack/electronicsline/",
@@ -3441,7 +3446,8 @@
         "走一次 import→mapping→dataset，baseline run 並列模擬與觀測（例如每週產出、站別 cycle time）與誤差（REQ-025）；沒有觀測資料時回 unavailable。",
         "資料集與 ground truth 進 testdata，作為 T-027 inference、T-038 AI eval 與 T-040 E2E 的 fixture。",
         "D-059 的 `end_timestamp`、`shift`、`product` 已在 canonical-event schema（T-046 phase 2）；station log 的 mapping 要把它們加入 mapping 的 target field（`ai-mapping.schema.json` 的 enum、`internal/ai/aicontext.TargetFields`）並實作 D-059 的 data-quality 規則。",
-        "H-021（決策頁 Q4）：常數與單位換算的 transform（CB-28）另立 D-073（2026-10-26 依建議 APPROVED，H-024，選項 A：constant 只用於 event_type、outcome、stage、shift、product 且值須在 pack 詞彙中；seconds_to_ms、minutes_to_ms；沒有 offset 的時間建議仍拒絕）。本任務依批准的選項改 import-mapping／ai-mapping schema、mapping.Check／Compile、AI suggestion 的 prompt 與 eval；先寫測試。"
+        "H-021（決策頁 Q4）：常數與單位換算的 transform（CB-28）另立 D-073（2026-10-26 依建議 APPROVED，H-024，選項 A：constant 只用於 event_type、outcome、stage、shift、product 且值須在 pack 詞彙中；seconds_to_ms、minutes_to_ms；沒有 offset 的時間建議仍拒絕）。本任務依批准的選項改 import-mapping／ai-mapping schema、mapping.Check／Compile、AI suggestion 的 prompt 與 eval；先寫測試。",
+        "Hackathon 切片（H-029）：demo 用的 synthetic 產線資料（可重現的 seed），用於範本的 dataset 綁定與模擬。"
       ],
       "planned_outputs": [
         "testdata/datasets/electronics-line/",
@@ -3500,7 +3506,8 @@
         "程式內的 token 上限：每個 organization 每日上限與兩個 provider organization 合計的每月上限（H-018：開發期每月 100 美元），超過即拒絕並回 typed error；計數持久化、跨 process 一致、計入 audit，不記 prompt 或回應內容。",
         "依 H-018 在 internal/config/aiapproval 記錄 owner 的批准（model Claude Opus 5.5、資料政策：只送 synthetic 與使用者輸入的文字、log 不存原始 prompt 與回應），並以測試證明只有這筆紀錄能開啟 live。",
         "查證並記錄 Anthropic 官方文件中 API 的資料保留／ZDR 規則（來源與日期寫入 docs），確認兩個 organization 的設定一致；不一致或無法確認時 live 保持關閉。",
-        "Owner 的動作（agent 不代做）：以雲端環境 secret 提供 GEMINUS_ANTHROPIC_API_KEY_A／_B，並在 Console 設 spend limit；之後以 synthetic 資料跑一次 live smoke 與 make ai-eval-live，結果與 fake 分開記錄。"
+        "Owner 的動作（agent 不代做）：以雲端環境 secret 提供 GEMINUS_ANTHROPIC_API_KEY_A／_B，並在 Console 設 spend limit；之後以 synthetic 資料跑一次 live smoke 與 make ai-eval-live，結果與 fake 分開記錄。",
+        "Review 第 2 輪（2026-10-26）ACCEPT 後的後續（Low，hackathon 期間延後，H-029）：L-new-1 沒有結束紀錄的 run 要計入從開始到現在的每一天；L-new-2 花費紀錄被清空、未合併或分支衝突時無法察覺（例如 report 沒有對應的 run 時拒絕、.gitattributes merge=union）；L-new-3 504 timeout_error 應視為可能已收費；L-new-4 Anthropic live 執行前先請 owner 回答 D-116（inference_geo 與兩個 workspace 的預設）；I-new-1 每日上限可設到月上限（D-110 批准時一併決定）；I-new-4 D-110 文字中 Console spend limit 回 400 而非 402；I-new-6 補 N3、N7、N8 三個 mutant 的測試。"
       ],
       "planned_outputs": [
         "internal/config/aiapproval/",
@@ -3589,6 +3596,152 @@
           "decisions": "D-061、D-069、D-087 已批准（H-019、H-021、H-022、H-023）"
         }
       ]
+    },
+    {
+      "id": "T-055",
+      "title": "Meta Model API provider（Muse Spark，H-029）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Platform",
+      "planning_window": "Hackathon 2026-10-26 至 11-04（H-029）",
+      "depends_on": [
+        "T-024",
+        "T-025",
+        "T-053"
+      ],
+      "requirement_ids": [
+        "REQ-008",
+        "REQ-016",
+        "REQ-019"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "在既有的 provider 介面下新增 Meta Model API adapter（https://api.meta.ai/v1，Bearer key；優先使用與 Anthropic 相容的 Messages 介面以沿用既有的 structured output 與 tool 處理，先以官方文件確認相容範圍），模型 muse-spark-1.3（Standard mode，不用 contributor 版本）。",
+        "價格表（官方 pricing 頁，取得日期與原文記在報告）與 T-053 的花費 ledger、上限、開關共用；開關條件：批准紀錄（H-029）＋AI_PROVIDER=meta＋GEMINUS_AI_LIVE=on＋GEMINUS_META_API_KEY；缺任一項即拒絕，fake provider 仍是預設。",
+        "Key 不進 log、錯誤、報告、audit 或測試輸出；只送 synthetic 資料、demo 圖片與使用者輸入的文字；log 不存原始 prompt 與回應。",
+        "Fake 與錄製的 Meta 回應做 contract 測試；live smoke 由有 key 的 session 執行（owner 授權 H-029），結果另外記錄。"
+      ],
+      "planned_outputs": [
+        "internal/ai/provider/meta/",
+        "internal/config/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "docs/SECURITY.md"
+      ],
+      "acceptance_tests": [
+        "TEST-006",
+        "TEST-024",
+        "TEST-027"
+      ],
+      "verification_commands": [
+        "make backend-test",
+        "make ai-eval"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-056",
+      "title": "照片或平面圖 → 產線佈局的模型 proposal（SAM 3.1＋Muse Spark，H-029）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "AI / Backend",
+      "planning_window": "Hackathon 2026-10-26 至 11-04（H-029）",
+      "depends_on": [
+        "T-055",
+        "T-016",
+        "T-025",
+        "T-051"
+      ],
+      "requirement_ids": [
+        "REQ-008",
+        "REQ-009",
+        "REQ-019"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "使用者上傳產線照片或平面圖（私有 storage，T-016 的上傳路徑與大小／型別限制）→ worker 呼叫 SAM 3.1（文字提示如 machine、conveyor、workstation）取得框與遮罩 → Muse Spark 依影像與框辨識工作站與流向 → 產生 ModelChangeProposal（步驟、連線、2D 位置），經伺服器驗證、算風險，由人批准才生效（AI 不直接改模型）。",
+        "只用 demo 圖片（例如以 Muse Image 產生的 synthetic 產線圖或 owner 提供、可使用的圖片），不送客戶資料；資料不足時回 needs_input。",
+        "Fake SAM／Muse 回應的測試、惡意或無效回應（框超出圖片、步驟過多、prompt injection 文字）的反向測試。"
+      ],
+      "planned_outputs": [
+        "internal/ai/",
+        "internal/proposals/",
+        "internal/worker/"
+      ],
+      "spec_refs": [
+        "docs/AI_SPEC.md",
+        "docs/SECURITY.md"
+      ],
+      "acceptance_tests": [
+        "TEST-006",
+        "TEST-007"
+      ],
+      "verification_commands": [
+        "make backend-test",
+        "make integration-test",
+        "make ai-eval"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "id": "T-057",
+      "title": "Hackathon demo：部署、demo 腳本、影片與提交（H-029）",
+      "priority": "P0",
+      "status": "not_started",
+      "owner_role": "Coordinator / Owner",
+      "planning_window": "Hackathon 2026-10-26 至 11-04（H-029）",
+      "depends_on": [
+        "T-015",
+        "T-031",
+        "T-032",
+        "T-039",
+        "T-055",
+        "T-056"
+      ],
+      "requirement_ids": [
+        "REQ-020",
+        "REQ-022"
+      ],
+      "decision_gates": [],
+      "scope": [
+        "部署到 owner 指定的雲端服務並以 synthetic 資料完成 demo 流程的 staging smoke；demo 腳本（中英文）；以真實畫面錄製 demo 影片（不放假的結果）；提交文字（說明比賽期間做了什麼、哪些是既有的程式）。",
+        "Owner 負責：Meta API key、雲端帳號、Auth0 tenant、影片旁白（若需要）與在 Cerebral Valley 提交（Indie 組的 Representative）。"
+      ],
+      "planned_outputs": [
+        "planning/HACKATHON_PLAN.md",
+        "deploy/"
+      ],
+      "spec_refs": [
+        "planning/HACKATHON_PLAN.md"
+      ],
+      "acceptance_tests": [
+        "TEST-030",
+        "TEST-031"
+      ],
+      "verification_commands": [
+        "make e2e-test",
+        "make staging-smoke"
+      ],
+      "definition_of_done": [
+        "本任務 scope 中的實際功能或文件已交付，沒有把 mock/TODO 當 production implementation。",
+        "列出的正向、反向及適用的 concurrency/security tests 已實際執行，保留輸出；未跑項目標 NOT RUN。",
+        "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
+        "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
+      ],
+      "completion_evidence": []
     }
   ]
 }

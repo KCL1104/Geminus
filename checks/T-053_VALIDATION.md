@@ -476,3 +476,12 @@ Coordinator 把 `t053-r1` 的四個 commit（d28eb79、2cf81fe、ea9a85a、e9a8a
 - 證據中沒有 key（以 `sk-ant-` 樣式搜尋，只有既有的 `refusals.sh` 中的假 key）。
 - **NOT RUN**：`make ai-smoke-live`、`make ai-eval-live`（依 H-025，第 2 輪獨立 review 接受之後才以 synthetic 資料執行）；`make frontend-test`、`make e2e-test`（本輪沒有改 UI 或 contract；同一 tree 的 UI 在 245a375 的 CI 全過）。
 - 本任務仍待：第 2 輪獨立 review（H-003）；owner 批准 D-110–D-116（PROPOSED）。
+
+## Review 第 2 輪（d150918）：ACCEPT
+
+獨立 reviewer（H-003）審查 `git diff 245a375 d150918`：**ACCEPT**，沒有 High 或 Medium；第 1 輪的每一項都已依決定修正（P1、P3–P6 通過；P2、P7 依決定改變後的預期失敗；reviewer 自己的 probe Q1、Q2 與 11 個 mutant）。報告與證據：`checks/evidence/2026-10-26-T-053-r2/reviewer/`（1fba2cd）。Reviewer 重新查了 Anthropic 的 data residency、pricing 與 errors 頁：1.1 倍與價格表相符。
+
+- **新的 Low（記為後續，H-029 的 hackathon 模式下延到比賽後，見 `planning/tasks.json` T-053）**：L-new-1 沒有結束紀錄的 run 只計入開始的那一天；L-new-2 花費紀錄被清空、未合併或分支衝突時無法察覺（每次 run 仍在自己的上限內）；L-new-3 504 `timeout_error` 被當作未收費；L-new-4 D-116（inference_geo）是需要 owner 回答的問題，依 H-025「需要 owner 確認的事項出現時 live 保持關閉並先詢問」，Anthropic live 執行前先請 owner 回答。
+- **Info**：每日上限可設到月上限（D-110 批准時決定）；`-dir` 可指向任何位置；usage 全為 0 的回答結算為 0；D-110 文字中 Console spend limit 回 400 而非 402（adapter 的處理在安全的一邊，只有文字錯）；coordinator 的 backend-test／backend-race log 中 29 個套件是 cached 結果（reviewer 以 `-count=1` 重跑，74 個套件全過）；N3、N7、N8 三個 mutant 存活（目前正確的程式缺測試）；送不出去的 transport 失敗每次嘗試仍以上限計入 in-code ledger（沒有實際花費）。
+- **Live 執行的前提**（reviewer 列出，執行時照做）：先回答 D-116；在主要的 checkout 中一次只跑一個 run，每次 run 後先 commit `checks/ai-evals/`；只用預設上限、不用 `-dir`；先跑 smoke（預設 2 美元），沒有任何 warning 才跑 eval；eval 的上限設為 10 減去 smoke 印出的 committed 金額（無條件捨去到分），或隔一個 UTC 日再跑；key 與開關只放在 live 指令自己的環境；跑完以 `grep -r 'sk-ant-' checks/ai-evals` 確認沒有外洩；出現 `over_reservation` 或 `inference_geo_unknown` warning 就停止並回報。
+- **狀態**：程式已被 review 接受；T-053 標為 done 之前仍需 owner 批准 D-110–D-116（PROPOSED，第七張決策頁）。依 H-029，第七張決策頁與 Anthropic live 執行延到比賽後；比賽期間的 live AI 走 Meta provider（T-055），沿用本任務的上限與開關。

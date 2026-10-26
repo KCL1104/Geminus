@@ -1735,6 +1735,21 @@
         "T-045 獨立 review",
         "首頁的「Go to projects」：owner 若改選轉址（A）或拿掉連結（B）再處理"
       ]
+    },
+    {
+      "id": "H-029",
+      "subject": "參加 Meta Global AI Developer Hackathon（Indie 組）：Meta provider、demo 範圍、部署方式與 hackathon 模式",
+      "decision": "(1) 新增 Meta Model API provider（Muse Spark，Standard mode），demo 用它，Claude adapter 保留，沿用 T-053 的花費上限與開關，只送 synthetic 資料與 demo 圖片；(2) demo 範圍：核心流程＋SAM 3.1 照片辨識產生模型 proposal＋T-015 2D 編輯器；(3) 影片＋公開網址，部署到簡單的雲端服務，登入用 owner 的 Auth0 tenant；(4) Hackathon 模式：安全規則與測試照舊，每個 demo 切片一輪獨立審查、High／Medium 修完由 coordinator 驗證即可，其餘 P0 任務、第七張決策頁與 T-053 的 Anthropic live 執行延到比賽後。",
+      "quote": "我已經被錄取了 indir 組；加上 Meta Model API (Recommended)；核心+照片辨識+2d編輯器；影片＋公開網址 (Recommended)；Hackathon 模式 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆與 AskUserQuestion 選擇；計畫見 planning/HACKATHON_PLAN.md",
+      "still_open": [
+        "雲端廠商（建議 Render）",
+        "Meta API key 的環境變數（GEMINUS_META_API_KEY）",
+        "Auth0 tenant",
+        "比賽後恢復 H-003 的審查流程與延後的任務"
+      ]
     }
   ]
 }

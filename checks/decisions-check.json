@@ -34,13 +34,14 @@
     "H-025",
     "H-026",
     "H-027",
-    "H-028"
+    "H-028",
+    "H-029"
   ],
   "tasks_by_status": {
     "blocked": 0,
     "done": 34,
     "in_progress": 2,
-    "not_started": 18,
+    "not_started": 21,
     "review": 0
   },
   "ready_tasks": [
