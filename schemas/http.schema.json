@@ -291,30 +291,63 @@
       "additionalProperties": false
     },
     "CreateModel": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200
+      "$comment": "T-051 (H-029): one alternative per domain pack that offers templates, each naming its pack's template; a template of another domain is refused at the discriminator.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "domain": {
+              "const": "software_delivery"
+            },
+            "template": {
+              "const": "default_delivery_pipeline",
+              "description": "The D-017 synthetic software delivery pipeline (the example pack)."
+            },
+            "locale": {
+              "$ref": "common.schema.json#/$defs/Locale",
+              "description": "Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created."
+            }
+          },
+          "required": [
+            "name",
+            "domain",
+            "template"
+          ],
+          "additionalProperties": false
         },
-        "domain": {
-          "const": "software_delivery"
-        },
-        "template": {
-          "const": "default_delivery_pipeline"
-        },
-        "locale": {
-          "$ref": "common.schema.json#/$defs/Locale",
-          "description": "Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created."
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "domain": {
+              "const": "electronics_line"
+            },
+            "template": {
+              "const": "electronics_assembly_test_line",
+              "description": "The synthetic electronics assembly and test line of ELECTRONICS_LINE §4 (T-051): SMT, AOI, ICT, FCT, burn-in batches and packing, two board families with changeovers, breakdowns, shifts and finite buffers; synthetic, for demonstration."
+            },
+            "locale": {
+              "$ref": "common.schema.json#/$defs/Locale",
+              "description": "Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created."
+            }
+          },
+          "required": [
+            "name",
+            "domain",
+            "template"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "name",
-        "domain",
-        "template"
-      ],
-      "additionalProperties": false
+      ]
     },
     "Publish": {
       "type": "object",

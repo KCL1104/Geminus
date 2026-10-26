@@ -207,10 +207,20 @@ def main() -> dict[str, Any]:
     for status,resp in error_responses.items():
         listed=re.search(r'Codes: (.*)\.$',resp['description']).group(1).split(', ')
         assert sorted(listed)==sorted(c for c,s in status_of.items() if s==status),status
+    request_examples=0
     for path,item in oas['paths'].items():
         for method,operation in item.items():
             if 'requestBody' in operation:
                 assert '413' in operation['responses'] and '415' in operation['responses'],(method,path)
+                # Request examples match the request body's schema too (T-051:
+                # the create-model templates), not only response examples.
+                for media in operation['requestBody'].get('content',{}).values():
+                    for name,example in media.get('examples',{}).items():
+                        ref=media['schema']['$ref']
+                        assert ref.startswith('../schemas/'),(method,path,ref)
+                        errors=list(validator(ref[len('../'):]).iter_errors(example['value']))
+                        assert not errors,(method,path,'requestBody',name,[e.message for e in errors])
+                        request_examples+=1
             for code,resp in operation['responses'].items():
                 if code[0] in '45':
                     assert int(code) in error_responses,(method,path,code)
@@ -258,7 +268,7 @@ def main() -> dict[str, Any]:
             'schema_positive_fixtures':positive,'schema_negative_fixtures':negative,
             'negative_fixtures_with_exact_error_path':exact_paths,
             'limited_semantic_negative_fixtures':semantic,'schema_valid_semantic_fixtures_for_go':go_semantic,'resolved_local_ref_occurrences':ref_count,
-            'openapi_operations':len(operations),'optional_fastapi_openapi_model':fastapi_status,
+            'openapi_operations':len(operations),'openapi_request_examples':request_examples,'optional_fastapi_openapi_model':fastapi_status,
             'independent_complete_openapi_validator':'NOT_RUN_UNAVAILABLE',
             'ai_corpus_records':corpus,'live_ai_eval':'NOT_RUN','go_engine_tests':'NOT_RUN'}
     (ROOT/'checks/contracts-check.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

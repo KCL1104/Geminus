@@ -219,6 +219,20 @@ paths:
           application/json:
             schema:
               $ref: ../schemas/http.schema.json#/$defs/CreateModel
+            examples:
+              electronics_line:
+                summary: The synthetic electronics assembly and test line (T-051), default names in Traditional Chinese
+                value:
+                  name: 我的電子產線
+                  domain: electronics_line
+                  template: electronics_assembly_test_line
+                  locale: zh-Hant
+              software_delivery:
+                summary: The synthetic software delivery pipeline of the example pack (T-011)
+                value:
+                  name: My pipeline
+                  domain: software_delivery
+                  template: default_delivery_pipeline
     get:
       operationId: listModels
       summary: List project models

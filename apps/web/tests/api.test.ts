@@ -274,6 +274,14 @@ describe("model writes and versions (T-013)", () => {
     expect(JSON.parse(String(call.init.body))).toEqual({ name: "Pipeline", domain: "software_delivery", template: "default_delivery_pipeline" });
   });
 
+  it("creates a model from the electronics line template with its locale (T-051)", async () => {
+    const f = fakeFetch(json(201, { id: MODEL }));
+    const body = { name: "電子產線", domain: "electronics_line", template: "electronics_assembly_test_line", locale: "zh-Hant" } as const;
+    const r = await api(f).createModel(PROJECT, body, "key-create-2");
+    expect(r.ok).toBe(true);
+    expect(JSON.parse(String(f.calls[0]!.init.body))).toEqual(body);
+  });
+
   it("publishes with If-Match and the key, and reads the version back", async () => {
     const f = fakeFetch(json(201, version), json(200, version));
     const client = api(f);

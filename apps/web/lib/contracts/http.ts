@@ -76,7 +76,15 @@ export type CreateProject = {
 export type CreateModel = {
   name: string;
   domain: "software_delivery";
+  /** The D-017 synthetic software delivery pipeline (the example pack). */
   template: "default_delivery_pipeline";
+  /** Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created. */
+  locale?: Locale;
+} | {
+  name: string;
+  domain: "electronics_line";
+  /** The synthetic electronics assembly and test line of ELECTRONICS_LINE §4 (T-051): SMT, AOI, ICT, FCT, burn-in batches and packing, two board families with changeovers, breakdowns, shifts and finite buffers; synthetic, for demonstration. */
+  template: "electronics_assembly_test_line";
   /** Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created. */
   locale?: Locale;
 };

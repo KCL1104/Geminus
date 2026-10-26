@@ -13,6 +13,7 @@ import type {
   Calendar,
   CancelSimulation,
   CanonicalEvent,
+  CreateModel,
   ColumnMapping,
   Comparison,
   ComparisonMetric,
@@ -265,6 +266,10 @@ const manualScenario: Scenario = {
   created_at: "2026-10-25T09:00:00Z",
 };
 const createScenarioBody: CreateScenario = { name: "Eight CI runners", patch: eightRunners };
+// Each domain pack's create-model template, named with its own domain (T-051).
+const createElectronicsLine: CreateModel = { name: "My electronics line", domain: "electronics_line", template: "electronics_assembly_test_line" };
+const createElectronicsLineZh: CreateModel = { ...createElectronicsLine, name: "我的電子產線", locale: "zh-Hant" };
+const createDeliveryPipeline: CreateModel = { name: "My pipeline", domain: "software_delivery", template: "default_delivery_pipeline" };
 const baselineScenarioBody: CreateScenario = { name: "Baseline", patch: [] };
 const scenariosPage: Scenarios = { items: [aiScenario, manualScenario], next_cursor: null };
 // T-029 (D-088, D-089): compareSimulations answers codes, never prose, so
@@ -468,6 +473,9 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-manual-scenario.json", manualScenario],
     ["valid-create-scenario.json", createScenarioBody],
     ["valid-create-baseline-scenario.json", baselineScenarioBody],
+    ["valid-create-model-electronics-line.json", createElectronicsLine],
+    ["valid-create-model-electronics-line-zh-hant.json", createElectronicsLineZh],
+    ["valid-create-model-default-locale.json", createDeliveryPipeline],
     ["valid-scenarios-page.json", scenariosPage],
     ["valid-comparison-incomparable.json", incomparableComparison],
   ])("%s", (name, typed) => {
@@ -558,6 +566,10 @@ export const rejected = {
   importStatus: { ...validatedImport, status: "MAPPING" } satisfies Import,
   // @ts-expect-error a scenario's base is the version of the URL, never a member of the body (T-028)
   scenarioBase: { ...createScenarioBody, base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZS" } satisfies CreateScenario,
+  // @ts-expect-error a template belongs to its pack's domain: no software delivery template for an electronics line (T-051)
+  templateOfAnotherDomain: { name: "x", domain: "electronics_line", template: "default_delivery_pipeline" } satisfies CreateModel,
+  // @ts-expect-error a domain without a create-model template is not one (T-051)
+  unknownDomain: { name: "x", domain: "warehouse", template: "electronics_assembly_test_line" } satisfies CreateModel,
   // @ts-expect-error a person's scenario has no source proposal; only an approval creates one (T-026, T-028)
   scenarioSource: { ...createScenarioBody, source_proposal_id: "aip_01M4YDQK00Q10EM95Z6H4XK0Y8" } satisfies CreateScenario,
   // @ts-expect-error a scenario patch is the P0 profile too: no move (D-014)
