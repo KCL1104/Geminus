@@ -19,8 +19,13 @@ import type {
   Projects,
   Publish,
   ResetDraft,
+  Run,
+  RunAccepted,
+  RunRequest,
   Scenario,
   Scenarios,
+  Result as SimulationResult,
+  TraceArtifact,
   Versions,
 } from "../contracts";
 import { draftETag, parseDraftETag } from "./etag";
@@ -288,6 +293,57 @@ export function createApiClient(cfg: ClientConfig) {
         query: { baseline_run_id: baselineRunId, scenario_run_id: scenarioRunId },
         signal: opts.signal,
       });
+    },
+    /**
+     * Queues a run of an immutable version with an explicit config (T-023):
+     * scenario_patch [] for a baseline, or a saved scenario's ID. The server
+     * freezes the version, patch, datasets, engine and limits and answers
+     * 202 once the run is durably queued; reuse `key` to retry.
+     */
+    async createSimulation(body: RunRequest, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<RunAccepted>> {
+      if (!isID("mv", body.model_version_id)) return notFound("The version");
+      if (body.scenario_id !== undefined && !isID("scn", body.scenario_id)) return notFound("The scenario");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<RunAccepted>({
+        method: "POST",
+        path: "/simulations",
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    /** A run's status, progress and frozen input. */
+    async getSimulation(runId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Run>> {
+      if (!isID("sim", runId)) return notFound("The run");
+      return call<Run>({ method: "GET", path: `/simulations/${runId}`, signal: opts.signal });
+    },
+    /**
+     * Asks to stop a run: a queued run is cancelled at once, a running one
+     * at its next checkpoint (cancellation_requested). A completed or failed
+     * run is a conflict; its result stays. Reuse `key` to retry.
+     */
+    async cancelSimulation(runId: string, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Run>> {
+      if (!isID("sim", runId)) return notFound("The run");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<Run>({
+        method: "POST",
+        path: `/simulations/${runId}/cancel`,
+        body: "{}",
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    /** A completed run's Result; any other run is a conflict (RESULT_NOT_READY), never a partial result. */
+    async getSimulationResults(runId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<SimulationResult>> {
+      if (!isID("sim", runId)) return notFound("The run");
+      return call<SimulationResult>({ method: "GET", path: `/simulations/${runId}/results`, signal: opts.signal });
+    },
+    /** A completed run's sampled trace (D-044: served by the API after it authorizes the run); 404 when the run has none. */
+    async downloadSimulationTrace(runId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<TraceArtifact>> {
+      if (!isID("sim", runId)) return notFound("The run");
+      return call<TraceArtifact>({ method: "GET", path: `/simulations/${runId}/trace`, signal: opts.signal });
     },
   };
 }
