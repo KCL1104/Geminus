@@ -409,6 +409,7 @@ def main() -> int:
         if res2 != "done":
             failures.append(f"run 2: {res2[:300]}")
         sentinels = set(OWNER_VALUES.values())
+        scanned = len(returned)
         for where, obj in (("its state", vars(run2)), ("its output", out2), ("its result", res2),
                            ("what its methods returned or raised", returned)):
             leaked = holds(obj, sentinels)
@@ -583,7 +584,7 @@ def main() -> int:
         print(textwrap.indent(out4[-400:], "run 4 | "))
         print(f"run 1: {len(calls)} CLI calls, {len(psql)} psql calls, result {res1.splitlines()[0]}")
         print(f"run 2: {len(calls2)} CLI calls, result {res2}; the owner's values looked for in its state, output, result "
-              f"and {len(returned)} returned or raised values")
+              f"and the {scanned} values its methods returned or raised")
         print(f"run 3: {res3}")
         print(f"run 4: {res4.splitlines()[0]}")
         for label, text in shown:
