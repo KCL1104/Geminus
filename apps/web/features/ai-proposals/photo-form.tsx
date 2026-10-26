@@ -55,12 +55,14 @@ function advice(p: Problem): MessageKey | undefined {
   return undefined;
 }
 
-export function PhotoForm({ model, blockedReason, reasonId, onCreated }: {
+export function PhotoForm({ model, blockedReason, reasonId, noticeId, onCreated }: {
   model: Model;
   /** Why sending must wait (unsaved edits the page would lose), or null. */
   blockedReason: string | null;
   /** The element that shows blockedReason on screen (the ask form's). */
   reasonId: string;
+  /** The ask form's line saying that what is sent goes to an AI service (T-057, H-035). */
+  noticeId: string;
   /** The server stored the proposal: follow it. */
   onCreated: (proposalId: string) => void;
 }) {
@@ -94,7 +96,7 @@ export function PhotoForm({ model, blockedReason, reasonId, onCreated }: {
     else setProblem({ problem: r.problem, guidance: advice(r.problem) });
   };
 
-  const describedBy = blockedReason !== null ? `${reasonId} ${hintId}` : hintId;
+  const describedBy = [blockedReason !== null ? reasonId : null, hintId, noticeId].filter(Boolean).join(" ");
   const choose = (
     <Button blocked={blockedReason !== null} aria-describedby={describedBy}>
       {t("photo.choose")}

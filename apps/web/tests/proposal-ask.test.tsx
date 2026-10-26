@@ -102,6 +102,38 @@ describe("asking the AI for a change on the model page", () => {
     expect(await violations()).toEqual([]);
   });
 
+  // T-057 (H-035 (1)): the public demo's request field says, in one line
+  // under it, that what is typed or uploaded goes to an AI service, so only
+  // synthetic data belongs there; the field and the photo button both name
+  // that line as their description, so a screen reader says it too.
+  it.each(["en", "zh-Hant"] as const)("says under the request field, in %s, that what is typed or uploaded goes to an AI service", async (locale) => {
+    const t = createTranslator(locale);
+    const { el } = await modelPage({ locale });
+    const form = ask(el);
+    const lines = [...form.querySelectorAll<HTMLElement>("*")].filter((x) => x.children.length === 0 && text(x) === t("ask.dataNotice"));
+    expect(lines, "one line").toHaveLength(1);
+    const line = lines[0]!;
+    expect(line.id).not.toBe("");
+    const field = fieldOf(form, t("ask.intent"));
+    const described = (x: Element) => (x.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
+    expect(described(field)).toContain(line.id);
+    expect(described(field).map((id) => text(document.getElementById(id)))).toEqual([t("ask.intentHint", { version: "1" }), t("ask.dataNotice")]);
+    // Under the field: after the text area and its hint, before what to make and Send.
+    const hint = document.getElementById(described(field)[0]!)!;
+    const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    expect([follows(field, line), follows(hint, line), follows(line, button(form, t("ask.send")))]).toEqual([true, true, true]);
+    expect(line.closest("label")).toBeNull();
+    // The photo is sent to the AI as well (this model's pack reads photos).
+    const photo = button(form, t("photo.choose"));
+    expect(described(photo)).toEqual([expect.any(String), line.id]);
+    expect(await violations()).toEqual([]);
+  });
+
+  it("uses the owner's words for the notice (H-035)", () => {
+    expect(en("ask.dataNotice")).toBe("What you type or upload is sent to an AI service. Use synthetic data only.");
+    expect(zh("ask.dataNotice")).toBe("內容會送到 AI，只放 synthetic 資料。");
+  });
+
   it("says what is missing and sends nothing when the request is empty", async () => {
     const { el, api, created } = await modelPage();
     await type(fieldOf(ask(el), en("ask.intent")), "   ");

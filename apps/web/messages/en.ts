@@ -505,6 +505,7 @@ export const en = {
   "ask.intent": "Describe the change",
   "ask.intentHint": "The AI drafts a proposal from your words and version {version}. Nothing changes until you approve it.",
   "ask.intentRequired": "Describe the change first.",
+  "ask.dataNotice": "What you type or upload is sent to an AI service. Use synthetic data only.",
   "ask.mode": "The AI proposes",
   "ask.mode.edit": "A change to the model",
   "ask.mode.scenario": "A scenario to simulate",

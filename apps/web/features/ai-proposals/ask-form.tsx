@@ -10,7 +10,9 @@
 // the page loaded (409) keeps the words, and the model is read again only
 // when the person asks. For a domain whose pack reads photos the actions
 // also offer a photo of the line (T-056, PhotoForm), blocked for the same
-// reason.
+// reason. One line under the field says that what is typed or uploaded goes
+// to an AI service, so only synthetic data belongs there (T-057, H-035 (1));
+// the field and the photo button name it as their description.
 import { useId, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
@@ -42,6 +44,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   const { t, locale } = useI18n();
   const headingId = useId();
   const reasonId = useId();
+  const noticeId = useId();
   const [intent, setIntent] = useState("");
   const [mode, setMode] = useState<Mode>("edit");
   const [missing, setMissing] = useState(false);
@@ -85,6 +88,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         multiline
         label={t("ask.intent")}
         description={t("ask.intentHint", { version: String(latest.version) })}
+        notice={{ id: noticeId, text: t("ask.dataNotice") }}
         value={intent}
         onChange={(v) => {
           setIntent(v);
@@ -110,7 +114,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         <Button blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
           {t("ask.send")}
         </Button>
-        {photo && <PhotoForm model={model} blockedReason={blockedReason} reasonId={reasonId} onCreated={onCreated} />}
+        {photo && <PhotoForm model={model} blockedReason={blockedReason} reasonId={reasonId} noticeId={noticeId} onCreated={onCreated} />}
         {blockedReason !== null && (
           <p id={reasonId} className={styles.reason}>
             {blockedReason}

@@ -491,6 +491,7 @@ export const zhHant: Catalog = {
   "ask.intent": "描述要做的修改",
   "ask.intentHint": "AI 依你的描述與版本 {version} 擬出提案。在你批准之前，什麼都不會改變。",
   "ask.intentRequired": "請先描述要做的修改。",
+  "ask.dataNotice": "內容會送到 AI，只放 synthetic 資料。",
   "ask.mode": "AI 提出的是",
   "ask.mode.edit": "對模型的修改",
   "ask.mode.scenario": "要模擬的情境",

@@ -108,7 +108,8 @@ describe("asking for a change from a photo on the model page", () => {
     const choose = button(form, en("photo.choose"));
     expect(choose.getAttribute("data-variant")).toBe("secondary");
     expect(form.querySelectorAll("button")).toHaveLength(1);
-    expect(text(document.getElementById(choose.getAttribute("aria-describedby") ?? ""))).toBe(en("photo.hint"));
+    // Its hint, then the ask form's notice that what is sent goes to an AI service (T-057, H-035).
+    expect((choose.getAttribute("aria-describedby") ?? "").split(" ").map((id) => text(document.getElementById(id)))).toEqual([en("photo.hint"), en("ask.dataNotice")]);
     // The chooser: one file, PNG or JPEG, hidden behind the button.
     const input = chooser(el)!;
     expect([input.accept, input.multiple, input.style.display]).toEqual(["image/png,image/jpeg", false, "none"]);
@@ -184,7 +185,7 @@ describe("asking for a change from a photo on the model page", () => {
     const choose = button(photo(el)!, en("photo.choose"));
     expect(choose.getAttribute("aria-disabled")).toBe("true");
     const reasons = (choose.getAttribute("aria-describedby") ?? "").split(" ").map((id) => text(document.getElementById(id)));
-    expect(reasons).toEqual([en("ask.saveFirst"), en("photo.hint")]);
+    expect(reasons).toEqual([en("ask.saveFirst"), en("photo.hint"), en("ask.dataNotice")]);
     expect(chooser(el)).toBeNull();
     await press(choose);
     expect(uploads(api)).toEqual([]);
@@ -204,7 +205,7 @@ describe("asking for a change from a photo on the model page", () => {
     const client = createApiClient({ session: () => ({ organizationId: api.organizationId }), fetch: api.fetch });
     const el = await mount(
       <ApiProvider client={client}>
-        <PhotoForm model={model} blockedReason={null} reasonId="reason" onCreated={() => {}} />
+        <PhotoForm model={model} blockedReason={null} reasonId="reason" noticeId="notice" onCreated={() => {}} />
       </ApiProvider>,
     );
     await pick(el.querySelector<HTMLInputElement>("input[type=file]")!);
