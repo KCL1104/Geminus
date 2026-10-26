@@ -11,11 +11,11 @@ checks what the deployer controls, not what Railway does:
   never appears in its output; the Railway token is redacted when the CLI
   quotes it, and no other program (psql, go) gets it in its environment;
 - it never sets the owner's variables (BFF_OIDC_CLIENT_SECRET, the AI keys,
-  GEMINUS_AI_LIVE), and when the CLI returns their values (the owner did
+  GEMINUS_AI_LIVE, AI_POLICY_APPROVAL, AI_MODEL), and when the CLI returns their values (the owner did
   not seal them) the values appear nowhere in the deployer: not in its
   state, its output, its errors or anything its methods return; it names
-  the unsealed ones and tells the owner to seal them; the API never gets an
-  AI key or the switch;
+  the unsealed ones and tells the owner to seal them; it never gives the API
+  an AI key or the switch (the owner may set the switch there: T-053 I5);
 - the order: logins before the migrate deployment, the migrate deployment
   before the seed, the seed before the API, worker and web, the TCP proxy
   removed at the end; public domains only for api and web;
@@ -183,7 +183,7 @@ elif "-Atc" in a:
     if "pg_roles" in q:
         print("\n".join(json.load(open(os.environ["REHEARSAL_ROLES"]))) if os.path.exists(os.environ["REHEARSAL_ROLES"]) else "")
     elif "geminus_migrations" in q:
-        print("16")
+        print(os.environ["REHEARSAL_MIGRATIONS"])  # every migration of the checkout is recorded
     else:
         print("1")
 elif "deploy/sql/create_logins.sql" in a:
@@ -268,6 +268,7 @@ def main() -> int:
         os.environ.update(PATH=f"{bindir}:{os.environ['PATH']}", REHEARSAL_STATE=str(tmp / "state.json"),
                           REHEARSAL_PSQL_LOG=str(tmp / "psql.log"), REHEARSAL_GO_LOG=str(tmp / "go.log"),
                           REHEARSAL_ROLES=str(tmp / "roles.json"), GEMINUS_ALLOW_DIRTY="1",
+                          REHEARSAL_MIGRATIONS=str(len(list((ROOT / "migrations").glob("*.up.sql")))),
                           RAILWAY_API_TOKEN=TOKEN,
                           GEMINUS_AUTH0_ISSUER="https://geminus-demo.us.auth0.com/", GEMINUS_AUTH0_AUDIENCE="https://api.geminus-demo.invalid",
                           GEMINUS_AUTH0_CLIENT_ID="rehearsalclientid", GEMINUS_SEED_OWNER_SUBJECT="auth0|rehearsal-owner",
@@ -362,12 +363,13 @@ def main() -> int:
             failures.append(f"secrets on stdin: {sorted(stdin_sets ^ want_stdin)} differ")
         if {tuple(x) for x in st.get("sealed", [])} != want_stdin:
             failures.append(f"sealed: {sorted({tuple(x) for x in st.get('sealed', [])} ^ want_stdin)} differ")
-        owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE"}
+        owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE",
+                 "AI_POLICY_APPROVAL", "AI_MODEL"}
         for svc, vs in st["vars"].items():
             if owner & set(vs):
                 failures.append(f"the deployer set the owner's {sorted(owner & set(vs))} on {svc}")
         if {"GEMINUS_AI_LIVE", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_MUSE_API_KEY"} & set(st["vars"].get("api", {})):
-            failures.append("the API got an AI key or the live switch")
+            failures.append("the deployer gave the API an AI key or the live switch")
         if st["vars"]["api"].get("AI_PROVIDER") != "disabled" or st["vars"]["worker"].get("WORKER_ORGANIZATION_IDS") != "org_01M5W4RHAFH8Q7Y8PNQT1RAF4T":
             failures.append("AI_PROVIDER or WORKER_ORGANIZATION_IDS not as expected")
         if st["vars"]["web"]["BFF_OIDC_AUTHORIZATION_URL"] != "https://geminus-demo.us.auth0.com/authorize" or \
