@@ -537,6 +537,9 @@ func walk(g *graph, r rule, root string, start []string) []violation {
 			continue // a gateway's own dependencies are its business
 		}
 		for _, imp := range p.Imports {
+			if cur != root && slices.Contains(r.bring[cur], imp) {
+				continue // what this gateway may bring, and only through it
+			}
 			if _, seen := parent[imp]; !seen {
 				parent[imp] = cur
 				queue = append(queue, imp)

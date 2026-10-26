@@ -141,6 +141,10 @@ type rule struct {
 	// through: gateway packages the rule sends other packages through; their
 	// own dependencies are not checked for the packages that use them.
 	through []string
+	// bring: a narrower gateway: the package (the key) may import exactly
+	// these forbidden packages, which are not checked further; every other
+	// dependency of it is checked as usual (T-035 review I8).
+	bring map[string][]string
 	// goOnly: the package has Go files only; assembly, C, C++, Fortran,
 	// SWIG and .syso objects can make system calls no import shows (T-042
 	// review N3).
@@ -226,10 +230,12 @@ var rules = []rule{
 		applies: []string{"./..."},
 		except:  []string{"./internal/storage/...", "./internal/tenant/...", "./cmd/..."},
 		forbid:  cat(dbDrivers, []string{"database/sql/..."}),
+		through: []string{"./internal/storage/...", "./internal/tenant/..."},
 		// github.com/google/uuid (linked by the OpenTelemetry SDK's
 		// resource package, T-035) imports database/sql/driver only to make
 		// its UUID type a driver.Valuer and sql.Scanner; it opens nothing.
-		through: []string{"./internal/storage/...", "./internal/tenant/...", "github.com/google/uuid"},
+		// That one import is exempt, nothing else of its closure (review I8).
+		bring: map[string][]string{"github.com/google/uuid": {"database/sql/driver"}},
 	},
 	{
 		// The gateways above include the raw foundation, whose Open takes
@@ -337,8 +343,10 @@ var rules = []rule{
 		forbid:     cat(ioStd, dbDrivers, llmSDKs, []string{"testing"}),
 		thirdParty: kernelThirdParty,
 		moduleOnly: []string{"./internal/observability"},
-		stdOnly:    []string{"context", "fmt", "io", "log/slog", "regexp", "slices", "strings", "sync", "unicode", "unicode/utf8"},
-		goOnly:     true,
+		// reflect: RuntimeError tells the Go runtime's errors by their
+		// package (T-035 review L3).
+		stdOnly: []string{"context", "fmt", "io", "log/slog", "reflect", "regexp", "slices", "strings", "sync", "unicode", "unicode/utf8"},
+		goOnly:  true,
 	},
 	{
 		// T-035 (ADR-028): the OpenTelemetry SDK and its exporters are what
