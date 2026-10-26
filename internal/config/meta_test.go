@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/spend"
+	"github.com/kcl1104/geminus/internal/config/aiapproval"
 )
 
 // T-055: AI_PROVIDER=meta turns live AI on with exactly this build's H-029
@@ -145,6 +146,24 @@ func TestMetaMismatchesKeepLiveOff(t *testing.T) {
 		if _, err := LoadAI(env(kv)); !slices.Equal(codes(t, err), []string{"GEMINUS_AI_LIVE:invalid"}) {
 			t.Errorf("%s with the switch: %v", p, err)
 		}
+		// With an approval named too, the switch is still refused (and the
+		// approval without a live provider).
+		kv["AI_POLICY_APPROVAL"] = "H-029"
+		if _, err := LoadAI(env(kv)); !slices.Equal(codes(t, err), []string{"GEMINUS_AI_LIVE:invalid", "AI_POLICY_APPROVAL:invalid"}) {
+			t.Errorf("%s with the switch and an approval: %v", p, err)
+		}
+	}
+	// LiveEnabled holds only for an approval of the provider itself, however
+	// the AI value was made.
+	h018, ok := aiapproval.Recorded("H-018")
+	if !ok {
+		t.Fatal("H-018 is not recorded")
+	}
+	if (AI{Provider: AIProviderMeta, Approval: h018}).LiveEnabled() || (AIVision{Provider: AIProviderMeta, Approval: h018}).LiveEnabled() {
+		t.Error("the Anthropic approval turned Meta live")
+	}
+	if !(AI{Provider: AIProviderAnthropic, Approval: h018}).LiveEnabled() {
+		t.Error("the Anthropic approval did not turn Anthropic live")
 	}
 }
 
@@ -203,6 +222,8 @@ func TestTheVisionPath(t *testing.T) {
 		"another provider, no model": {map[string]string{"AI_VISION_PROVIDER": "anthropic", "AI_VISION_POLICY_APPROVAL": "H-018"}, []string{"AI_VISION_MODEL:required"}, "", ""},
 		"another provider, no approval": {map[string]string{"AI_VISION_PROVIDER": "anthropic", "AI_VISION_MODEL": "claude-opus-5-5"},
 			[]string{"AI_VISION_POLICY_APPROVAL:required"}, "", ""},
+		"another provider, no approval, the switch off": {map[string]string{"AI_VISION_PROVIDER": "anthropic", "GEMINUS_AI_LIVE": ""},
+			nil, LiveOffNoApproval, AIProviderAnthropic},
 		"another provider, its approval wrong": {map[string]string{"AI_VISION_PROVIDER": "anthropic", "AI_VISION_POLICY_APPROVAL": "H-029", "AI_VISION_MODEL": "muse-spark-1.3"},
 			[]string{"AI_VISION_POLICY_APPROVAL:provider_mismatch"}, "", ""},
 	} {

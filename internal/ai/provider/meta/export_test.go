@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/provider/structured"
 )
 
 // NewForTest points the Muse Spark backend at a local test server.
@@ -82,3 +83,9 @@ const (
 )
 
 var ProductionURL = productionURL
+
+// SetProject replaces the backend's projection (structured.Project), to
+// hand it a schema the projection never makes.
+func SetProject(b *Backend, project func(file string) (structured.Projection, error)) {
+	b.project = project
+}

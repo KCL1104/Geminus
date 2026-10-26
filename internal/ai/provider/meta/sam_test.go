@@ -221,11 +221,38 @@ func TestSAMRefusesOtherOutput(t *testing.T) {
 		"failed":          responseOf(samModel, "failed", "", `{"images_processed":1}`),
 		"another model":   responseOf("sam-3.1-contributor", "completed", "", `{"images_processed":1}`),
 		"a function call": {status: 200, body: `{"id":"r","object":"response","status":"completed","model":"sam-3.1","output":[{"type":"function_call","name":"sql","arguments":"{}"}],"usage":{"images_processed":1}}`},
+		"a user message":  {status: 200, body: strings.Replace(response("").body, `"role":"assistant"`, `"role":"user"`, 1)},
 	} {
 		s := newServer(t, map[string][]reply{responsesPath: {r}})
 		c, _, _ := samClient(t, s, 10*spendUSD)
 		if _, err := c.Segment(context.Background(), segRequest(t, 10, 8, "machine")); provider.CodeOf(err) != provider.CodeInvalidOutput {
 			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+// The grammar refuses by itself what the segmentation client also refuses
+// (more records than the bound, a confidence above 1, a repeated object):
+// the parser is not trusted to be called only through the client.
+func TestTheGrammarRefusesOnItsOwn(t *testing.T) {
+	rec := func(id int, c string) string {
+		return fmt.Sprintf("%d<|box;x1=1;y1=1;x2=5;y2=5;w=10;h=8;c=%s|><|mask;x=0;y=0;c=%s;data=5,5,!AAA|>", id, c, c)
+	}
+	var atBound, over []string
+	for i := range provider.MaxSegmentsPerConcept + 1 {
+		over = append(over, rec(i, "0.5"))
+	}
+	atBound = over[:provider.MaxSegmentsPerConcept]
+	if _, _, segs, err := meta.ParseSegmentation("<0f>"+strings.Join(atBound, ","), "machine"); err != nil || len(segs) != provider.MaxSegmentsPerConcept {
+		t.Errorf("%d records: %d %v", provider.MaxSegmentsPerConcept, len(segs), err)
+	}
+	for name, text := range map[string]string{
+		"one record over the bound": "<0f>" + strings.Join(over, ","),
+		"a confidence above 1":      "<0f>" + rec(0, "1.5"),
+		"a repeated object":         "<0f>" + rec(3, "0.5") + "," + rec(3, "0.5"),
+	} {
+		if _, _, segs, err := meta.ParseSegmentation(text, "machine"); err == nil {
+			t.Errorf("%s: %d segments", name, len(segs))
 		}
 	}
 }

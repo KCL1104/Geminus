@@ -134,6 +134,9 @@ type Backend struct {
 	// images: the approval's data policy names images (demo images).
 	images bool
 
+	// project is structured.Project; only the tests change it
+	// (export_test.go), to send a schema the projection never makes.
+	project     func(file string) (structured.Projection, error)
 	projections sync.Map // output schema -> projected
 }
 
@@ -165,7 +168,7 @@ func newBackend(cfg Config, baseURL string, client *http.Client, allows func(str
 	if err != nil {
 		return nil, err
 	}
-	return &Backend{model: cfg.Model, c: c, allows: allows, images: images}, nil
+	return &Backend{model: cfg.Model, c: c, allows: allows, images: images, project: structured.Project}, nil
 }
 
 func (b *Backend) Name() string { return "meta" }
@@ -187,7 +190,7 @@ func (b *Backend) projection(schema string) (projected, error) {
 	if p, ok := b.projections.Load(schema); ok {
 		return p.(projected), nil
 	}
-	p, err := structured.Project(schema)
+	p, err := b.project(schema)
 	if err != nil {
 		return projected{}, err
 	}

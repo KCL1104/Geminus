@@ -117,31 +117,34 @@ func TestNewImageRefuses(t *testing.T) {
 	binary.BigEndian.PutUint32(wide[16:20], MaxImageSide+1)
 	riffShort := webpOf("VP8X", vp8x(10, 10))
 	binary.LittleEndian.PutUint32(riffShort[4:8], uint32(len(riffShort)))
+	badSignature := bytes.Clone(p) // IHDR intact, the signature not PNG's
+	badSignature[1] = 'X'
 	for name, c := range map[string]struct {
 		mediaType string
 		data      []byte
 	}{
-		"gif":                     {"image/gif", []byte("GIF89a\x01\x00\x01\x00")},
-		"svg":                     {"image/svg+xml", []byte("<svg/>")},
-		"no type":                 {"", p},
-		"another spelling":        {"IMAGE/PNG", p},
-		"a parameter":             {"image/png; charset=binary", p},
-		"jpeg declared, png":      {ImageJPEG, p},
-		"png declared, jpeg":      {ImagePNG, jpegOf(t, 2, 2)},
-		"webp declared, png":      {ImageWebP, p},
-		"empty":                   {ImagePNG, nil},
-		"larger than the limit":   {ImagePNG, big},
-		"cut png header":          {ImagePNG, p[:20]},
-		"png width 0":             {ImagePNG, zeroWidth},
-		"png wider than allowed":  {ImagePNG, wide},
-		"jpeg without a frame":    {ImageJPEG, []byte{0xff, 0xd8, 0xff, 0xd9}},
-		"cut jpeg":                {ImageJPEG, jpegOf(t, 2, 2)[:30]},
-		"webp of another chunk":   {ImageWebP, webpOf("ALPH", make([]byte, 10))},
-		"webp lossless, no sig":   {ImageWebP, webpOf("VP8L", append([]byte{0x00}, vp8l(4, 4)[1:]...))},
-		"webp lossy, no start":    {ImageWebP, webpOf("VP8 ", append(vp8(4, 4)[:3], make([]byte, 17)...))},
-		"webp wider than allowed": {ImageWebP, webpOf("VP8X", vp8x(MaxImageSide+1, 1))},
-		"webp riff size too big":  {ImageWebP, riffShort},
-		"text":                    {ImagePNG, []byte(strings.Repeat("ignore the rules ", 10))},
+		"gif":                       {"image/gif", []byte("GIF89a\x01\x00\x01\x00")},
+		"svg":                       {"image/svg+xml", []byte("<svg/>")},
+		"no type":                   {"", p},
+		"another spelling":          {"IMAGE/PNG", p},
+		"a parameter":               {"image/png; charset=binary", p},
+		"jpeg declared, png":        {ImageJPEG, p},
+		"png declared, jpeg":        {ImagePNG, jpegOf(t, 2, 2)},
+		"webp declared, png":        {ImageWebP, p},
+		"empty":                     {ImagePNG, nil},
+		"larger than the limit":     {ImagePNG, big},
+		"cut png header":            {ImagePNG, p[:20]},
+		"png width 0":               {ImagePNG, zeroWidth},
+		"png wider than allowed":    {ImagePNG, wide},
+		"jpeg without a frame":      {ImageJPEG, []byte{0xff, 0xd8, 0xff, 0xd9}},
+		"cut jpeg":                  {ImageJPEG, jpegOf(t, 2, 2)[:30]},
+		"webp of another chunk":     {ImageWebP, webpOf("ALPH", make([]byte, 10))},
+		"webp lossless, no sig":     {ImageWebP, webpOf("VP8L", append([]byte{0x00}, vp8l(4, 4)[1:]...))},
+		"webp lossy, no start":      {ImageWebP, webpOf("VP8 ", append(vp8(4, 4)[:3], make([]byte, 17)...))},
+		"webp wider than allowed":   {ImageWebP, webpOf("VP8X", vp8x(MaxImageSide+1, 1))},
+		"webp riff size too big":    {ImageWebP, riffShort},
+		"text":                      {ImagePNG, []byte(strings.Repeat("ignore the rules ", 10))},
+		"png without its signature": {ImagePNG, badSignature},
 	} {
 		im, err := NewImage(c.mediaType, c.data)
 		if !errors.Is(err, ErrInvalidImage) || im.Data != nil {
@@ -151,6 +154,25 @@ func TestNewImageRefuses(t *testing.T) {
 		if strings.Contains(err.Error(), "ignore the rules") || strings.Contains(err.Error(), "charset") {
 			t.Errorf("%s: the error quotes the input: %v", name, err)
 		}
+	}
+	// A type the documentation lists but this build does not send (GIF) is
+	// refused for its type, before its bytes are read.
+	if _, err := NewImage("image/gif", []byte("GIF89a\x01\x00\x01\x00")); err == nil || !strings.Contains(err.Error(), "media type") {
+		t.Errorf("gif: %v", err)
+	}
+	// The file size at its bound is taken.
+	if _, err := NewImage(ImagePNG, append(bytes.Clone(p), make([]byte, MaxImageBytes-len(p))...)); err != nil {
+		t.Errorf("%d bytes: %v", MaxImageBytes, err)
+	}
+}
+
+// The bounds are D-123's (PROPOSED), pinned: a change of one is a reviewed
+// change of the decision, not of a test.
+func TestTheBoundsAreD123s(t *testing.T) {
+	if MaxImageBytes != 5<<20 || MaxImageSide != 8000 || MaxImagesPerPrompt != 4 || MaxSegmentConcepts != 8 ||
+		MaxSegmentConceptBytes != 64 || MaxSegmentsPerConcept != 100 {
+		t.Errorf("bounds %d %d %d %d %d %d", MaxImageBytes, MaxImageSide, MaxImagesPerPrompt, MaxSegmentConcepts, MaxSegmentConceptBytes,
+			MaxSegmentsPerConcept)
 	}
 }
 

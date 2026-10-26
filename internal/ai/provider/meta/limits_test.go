@@ -104,6 +104,15 @@ func TestTheGuard(t *testing.T) {
 		"the true schema":               {closed(map[string]any{"v": true}), "not a schema object"},
 		"an open object":                {map[string]any{"type": "object", "properties": map[string]any{"a": str}}, "not closed"},
 		"too many nodes, $refs inlined": {expanded, "nodes once $refs are inlined"},
+		// Mutation testing (checks/T-055_VALIDATION.md §5): each bound at
+		// its edge, a keyword the guard does not know, recursion named as a
+		// $ref's, and the depth of a $ref's target counted at the $ref.
+		"a string enum one character over":   {closed(map[string]any{"e": map[string]any{"enum": append(enumOf(250, 60), "x")}}), "15001 characters, more than 15000"},
+		"120,001 characters of names":        {closed(withName(names(120, 1000), "x")), "120001 characters of names"},
+		"an unknown keyword":                 {closed(map[string]any{"v": map[string]any{"type": "string", "pattern": "^a$"}}), "/v/pattern: a keyword the guard does not know"},
+		"a recursive $ref, named":            {defs, "a recursive schema ($ref #/$defs/n)"},
+		"11 levels through a $ref":           {throughRef(), "nested 11 levels"},
+		"5,001 properties across the schema": {closed(map[string]any{"a": closed(names(2500, 4)), "b": closed(names(2499, 4))}), "5001 properties"},
 	} {
 		got := meta.SchemaViolations(c.schema)
 		if !slices.ContainsFunc(got, func(v string) bool { return strings.Contains(v, c.want) }) {
@@ -115,6 +124,52 @@ func TestTheGuard(t *testing.T) {
 	if v := meta.SchemaViolations(map[string]any{"anyOf": []any{inside, closed(map[string]any{"k": map[string]any{"const": "y"}})}}); len(v) != 0 {
 		t.Errorf("a schema inside the limits: %q", v)
 	}
+	// Each bound at its edge is inside.
+	for name, s := range map[string]any{
+		"5,000 properties":                   closed(map[string]any{"a": closed(names(2500, 4)), "b": closed(names(2498, 4))}),
+		"1,000 enum values":                  closed(map[string]any{"e": map[string]any{"enum": enumOf(1000, 1)}}),
+		"a string enum of 15,000 characters": closed(map[string]any{"e": map[string]any{"enum": append(enumOf(250, 60), "")}}),
+		"120,000 characters of names":        closed(names(120, 1000)),
+	} {
+		if v := meta.SchemaViolations(s); len(v) != 0 {
+			t.Errorf("%s: %q", name, v)
+		}
+	}
+}
+
+// names is n string properties whose names are size characters each.
+func names(n, size int) map[string]any {
+	out := map[string]any{}
+	for i := range n {
+		out[fmt.Sprintf("%0*d", size, i)] = map[string]any{"type": "string"}
+	}
+	return out
+}
+
+func withName(props map[string]any, name string) map[string]any {
+	props[name] = map[string]any{"type": "string"}
+	return props
+}
+
+// enumOf is n distinct values of size characters each.
+func enumOf(n, size int) []any {
+	var vals []any
+	for i := range n {
+		vals = append(vals, fmt.Sprintf("%0*d", size, i))
+	}
+	return vals
+}
+
+// throughRef is five levels whose innermost member is a $ref to a
+// definition six levels deep: eleven levels once the $ref is followed.
+func throughRef() map[string]any {
+	var s any = map[string]any{"$ref": "#/$defs/d"}
+	for range 5 {
+		s = closed(map[string]any{"x": s})
+	}
+	root := s.(map[string]any)
+	root["$defs"] = map[string]any{"d": nested(6)}
+	return root
 }
 
 // Every schema the adapter can send is inside the limits: the projection

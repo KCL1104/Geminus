@@ -175,6 +175,57 @@ func TestQuote(t *testing.T) {
 	if _, err := b.Quote(req); err == nil {
 		t.Error("an unknown schema was quoted")
 	}
+	// A text prompt larger than the context window is quoted at the window:
+	// no request is billed for more input.
+	base := sealed(t)
+	huge, err := provider.Seal(provider.Prompt{OrganizationID: org, Role: provider.RoleModeler, TemplateVersion: "modeler-test",
+		Locale: base.Locale, System: strings.Repeat("r", meta.ContextWindowTokens+1), Blocks: base.Blocks})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q, err := b.Quote(provider.Request{Prompt: huge, OutputSchema: "proposal-output.schema.json"}); err != nil || q.MaxInputTokens != meta.ContextWindowTokens {
+		t.Errorf("a prompt over the window: %+v %v", q, err)
+	}
+}
+
+// A projected schema outside Meta's documented limits is never sent: the
+// quote refuses it, so the metered client reserves nothing and makes no
+// request (the projection never makes one: TestEverySchemaTheAdapterSends
+// IsInsideTheLimits; this is the guard's own path).
+func TestASchemaOutsideTheLimitsIsNeverSent(t *testing.T) {
+	s := newServer(t, map[string][]reply{messagesPath: {ok(answerJ)}})
+	c, b, m, _ := meteredClient(t, s, 10*spendUSD)
+	meta.SetProject(b, func(string) (structured.Projection, error) { return structured.Projection{Schema: nested(11)}, nil })
+	if _, err := ask(t, c); provider.CodeOf(err) != provider.CodeInvalidRequest || s.count(messagesPath) != 0 || m.Committed() != 0 {
+		t.Errorf("%v: %d requests, %d reserved", err, s.count(messagesPath), m.Committed())
+	}
+	if _, err := b.Complete(context.Background(), provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json", Reservation: "r1",
+		AttemptTimeout: time.Second}); provider.CodeOf(err) != provider.CodeInvalidRequest || s.count(messagesPath) != 0 {
+		t.Errorf("Complete: %v", err)
+	}
+}
+
+// The response bound (8 MiB): an answer of exactly the bound is read; one
+// byte more is not read, and may have been billed (at least the whole
+// reservation).
+func TestTheResponseBound(t *testing.T) {
+	pad := func(n int) reply {
+		r := ok(answerJ)
+		r.body = r.body[:1] + strings.Repeat(" ", n-len(r.body)) + r.body[1:]
+		return r
+	}
+	s := newServer(t, map[string][]reply{messagesPath: {pad(meta.MaxResponseBytes)}})
+	c, _ := client(t, s)
+	if _, err := ask(t, c); err != nil {
+		t.Errorf("an answer of %d bytes: %v", meta.MaxResponseBytes, err)
+	}
+	s = newServer(t, map[string][]reply{messagesPath: {pad(meta.MaxResponseBytes + 1)}})
+	c, b, m, _ := meteredClient(t, s, 10*spendUSD, func(bu *provider.Budget) { bu.MaxRetries = 0 })
+	q, _ := b.Quote(provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"})
+	p, _ := spend.PriceOf(model)
+	if _, err := ask(t, c); provider.CodeOf(err) != provider.CodeUnavailable || m.Spent() < p.AttemptBound(q.MaxInputTokens, provider.DefaultBudget().MaxOutputTokens) {
+		t.Errorf("one byte over: %v, spent %d", err, m.Spent())
+	}
 }
 
 // A message's stop reason and blocks: end_turn with text is an answer;
@@ -194,6 +245,8 @@ func TestStopReasons(t *testing.T) {
 		"stop sequence":       {message("stop_sequence", text, usageJ), provider.CodeInvalidOutput},
 		"an unknown reason":   {message("approved", text, usageJ), provider.CodeInvalidOutput},
 		"a tool block":        {message("end_turn", `[{"type":"tool_use","id":"t1","name":"sql","input":{}}]`, usageJ), provider.CodeInvalidOutput},
+		"text and a tool block": {message("end_turn", text[:len(text)-1]+`,{"type":"tool_use","id":"t1","name":"sql","input":{}}]`, usageJ),
+			provider.CodeInvalidOutput},
 		"a server tool block": {message("end_turn", `[{"type":"server_tool_use","id":"s1","name":"web_search","input":{}}]`, usageJ), provider.CodeInvalidOutput},
 		"no text":             {message("end_turn", `[]`, usageJ), provider.CodeInvalidOutput},
 		"prose":               {message("end_turn", `[{"type":"text","text":"I approved it."}]`, usageJ), provider.CodeInvalidOutput},
@@ -288,6 +341,11 @@ func TestEncodedValues(t *testing.T) {
 			continue
 		}
 		leaks(t, name, fmt.Sprintf("%v %+v", err, pe.Issues), "three", "SENTINEL")
+		// A value that does not decode is named by its place.
+		if value := map[string]bool{"not JSON": true, "trailing data": true, "duplicate members": true, "too deep": true}[name]; value &&
+			(len(pe.Issues) != 1 || pe.Issues[0].Path != "/changes/1/value" || pe.Issues[0].Code != provider.OutputInvalid) {
+			t.Errorf("%s: issues %+v, want the place /changes/1/value", name, pe.Issues)
+		}
 	}
 	// Prompt-injection text inside a string is data: the answer is a
 	// schema-valid needs_input, never an approval; the server reviews it.
@@ -499,6 +557,7 @@ func TestSpend(t *testing.T) {
 	for name, r := range map[string]reply{
 		"not a message":     {status: 200, body: `{"id":"msg_1","type":"message","usage":`},
 		"another envelope":  {status: 200, body: `{"id":"resp_1","object":"response","output":[]}`},
+		"another type":      {status: 200, body: strings.Replace(ok(answerJ).body, `"type":"message"`, `"type":"completion"`, 1)},
 		"negative usage":    message("end_turn", `[{"type":"text","text":"{}"}]`, `{"input_tokens":-5,"output_tokens":1}`),
 		"a 201":             {status: 201, body: ok(answerJ).body},
 		"too large":         {status: 200, body: ok(answerJ).body[:20] + strings.Repeat(" ", meta.MaxResponseBytes) + ok(answerJ).body[20:]},

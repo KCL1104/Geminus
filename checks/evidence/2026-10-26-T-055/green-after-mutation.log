@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.367s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/meta	1.227s
+ok  	github.com/kcl1104/geminus/internal/config	0.015s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.374s
+exit 0
