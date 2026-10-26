@@ -100,7 +100,7 @@ describe("layered default layout (the same rule as internal/domainpack.LayeredLa
 });
 
 describe("IR to React Flow", () => {
-  const describe_ = { step: (id: string) => id, edge: (from: string, to: string) => `${from}>${to}`, roleStep: "step", probability: (p: number) => String(p) };
+  const describe_ = { step: (id: string) => id, edge: (from: string, to: string) => `${from}>${to}`, roleStep: "step", roleEdge: "connection", probability: (p: number) => String(p) };
 
   it("has one node per IR node and one edge per flow, with the IR's IDs and endpoints only", () => {
     for (const ir of [minimal(), lineFlow(), sample()]) {
@@ -134,6 +134,9 @@ describe("IR to React Flow", () => {
     expect(edges.every((e) => e.selectable === false && e.focusable === false && e.deletable === false)).toBe(true);
     expect(edges.find((e) => e.id === "aoi_result_aoi_defect")!.label).toBe("0.03");
     expect(edges.find((e) => e.id === "smt_q_aoi")!.label).toBeUndefined();
+    // React Flow's own words ("node", "edge", "Edge from a to b") are replaced by the caller's.
+    expect(edges.find((e) => e.id === "smt_q_aoi")).toMatchObject({ ariaLabel: "SMT>Before AOI", domAttributes: { "aria-roledescription": "connection" } });
+    expect(smt).toMatchObject({ ariaLabel: "smt", domAttributes: { "aria-roledescription": "step" } });
   });
 });
 
@@ -281,7 +284,7 @@ describe("edits are JSON Patch ops on the IR", () => {
     const moved = after(ir, moveStep(ir, "aoi", { x: 1, y: 2 }));
     const back = ir.views["2d"].positions!.aoi!;
     expect(after(moved, moveStep(moved, "aoi", back))).toEqual(ir);
-    const d = { step: (id: string) => id, edge: () => "", roleStep: "", probability: String };
+    const d = { step: (id: string) => id, edge: () => "", roleStep: "", roleEdge: "", probability: String };
     expect(toFlow(moved, { selected: null, severity: () => null, editable: true, describe: d }).nodes.find((n) => n.id === "aoi")!.position).toEqual({ x: 1, y: 2 });
     expect(toFlow(withFlow, { selected: null, severity: () => null, editable: true, describe: d }).edges.at(-1)).toMatchObject({ id: "q_pack_scrap", source: "q_pack", target: "scrap" });
   });

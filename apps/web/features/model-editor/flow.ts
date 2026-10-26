@@ -24,6 +24,8 @@ export type Describe = {
   edge: (fromLabel: string, toLabel: string) => string;
   /** What a node is called, instead of React Flow's English "node". */
   roleStep: string;
+  /** What an edge is called, instead of React Flow's English "edge". */
+  roleEdge: string;
   /** A decision branch's probability as text. */
   probability: (p: number) => string;
 };
@@ -70,6 +72,7 @@ export function toFlow(ir: ModelIR, opts: FlowOptions): { nodes: StepNode[]; edg
       focusable: false,
       deletable: false,
       ariaLabel: opts.describe.edge(label(f.from), label(f.to)),
+      domAttributes: { "aria-roledescription": opts.describe.roleEdge },
       ...(decision ? { label: opts.describe.probability(f.routing.probability) } : {}),
     };
   });

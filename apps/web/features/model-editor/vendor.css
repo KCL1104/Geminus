@@ -1,0 +1,5 @@
+/* React Flow's structural styles (positions, layers, pointer events), in the
+   vendor layer so the editor's CSS Modules win whatever order the chunks
+   load in (ui/tokens.css declares the layers). React Flow's own look
+   (style.css) is not used: canvas.module.css draws it from the tokens. */
+@import "@xyflow/react/dist/base.css" layer(vendor);

@@ -22,8 +22,10 @@ function files(dir: string, ext: RegExp): string[] {
 }
 
 const tokensFile = join(root, "ui/tokens.css");
-const sheets = [...files(join(root, "ui"), /\.css$/), ...files(join(root, "app"), /\.css$/)].filter((f) => f !== tokensFile);
-const sources = [...files(join(root, "ui"), /\.tsx?$/), ...files(join(root, "app"), /\.tsx?$/)];
+// features/ holds views built on ui/ (the 2D editor, T-015); the same rules apply there.
+const roots = ["ui", "app", "features"].map((d) => join(root, d));
+const sheets = roots.flatMap((d) => files(d, /\.css$/)).filter((f) => f !== tokensFile);
+const sources = roots.flatMap((d) => files(d, /\.tsx?$/));
 const defined = new Set([...readFileSync(tokensFile, "utf8").matchAll(/(--gm-[\w-]+)\s*:/g)].map((m) => m[1]!));
 
 type Decl = { file: string; prop: string; value: string };

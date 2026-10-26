@@ -11,7 +11,7 @@ export type Scheme = (typeof schemes)[number];
 export const sheet = { light: "rgb(255, 255, 255)", dark: "rgb(23, 23, 23)" } as const;
 
 /** The routes there are; pages that need a session show their signed-out state. */
-export const routes = ["/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/auth/error?reason=expired"];
+export const routes = ["/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/ui-gallery/editor", "/auth/error?reason=expired"];
 
 /** Opens a route in a language, and in a remembered theme if one is given (else the system's). */
 export async function open(page: Page, path: string, locale: Locale, theme?: Scheme): Promise<void> {

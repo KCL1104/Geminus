@@ -1,0 +1,17 @@
+/* The preview's sample-state links: one row, the current one in weight. */
+.states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-xs) var(--gm-space-gutter);
+  margin: 0 0 var(--gm-space-xl);
+}
+
+.states a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--gm-control-height);
+}
+
+.states a[aria-current="page"] {
+  font-weight: var(--gm-font-weight-strong);
+}

@@ -56,11 +56,19 @@
   background: var(--gm-color-hover);
 }
 
-.button[data-disabled] {
+.button[data-disabled],
+.button[data-blocked] {
   border-color: var(--gm-color-rule);
   background: var(--gm-color-well);
   color: var(--gm-color-ink-4);
   cursor: not-allowed;
+}
+
+/* A blocked action stays focusable, so it still gets hover and press; it does not show them. */
+.button[data-blocked][data-hovered],
+.button[data-blocked][data-pressed] {
+  border-color: var(--gm-color-rule);
+  background: var(--gm-color-well);
 }
 
 .button[data-focus-visible] {

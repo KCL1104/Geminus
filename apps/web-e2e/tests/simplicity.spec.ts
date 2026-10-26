@@ -11,6 +11,12 @@ import { locales, open, routes } from "./helpers";
 // "Go to projects" goes where the strip's "Projects" goes; T-044's tests
 // assert it (keyboard.spec.ts, apps/web/tests/layout.test.tsx).
 const askedAbout: Record<string, string[]> = { "/": ["/projects"] };
+// The 2D editor (T-015) blocks Save draft while nothing is unsaved and
+// Publish while the draft has errors or unsaved edits: each stays focusable
+// as aria-disabled with its reason on screen beside it (DESIGN.md Buttons,
+// Disabled). That is a step of a shipped flow, not a disabled-forever
+// placeholder; the rule there is that every blocked control says why.
+const blockedWithReason = new Set(["/ui-gallery/editor"]);
 
 /** The visible controls of the page: links by where they go, buttons by name. */
 async function controls(page: Page) {
@@ -22,8 +28,15 @@ async function controls(page: Page) {
     const links = [...document.querySelectorAll<HTMLAnchorElement>("a[href]")].filter(visible).map((a) => a.getAttribute("href")!).filter((h) => !h.startsWith("#"));
     const buttons = [...document.querySelectorAll("button, [role=button]")].filter(visible).map((b) => b.getAttribute("aria-label") ?? (b.textContent ?? "").trim());
     const primary = [...document.querySelectorAll('[data-variant="primary"]')].filter(visible).length;
-    const disabled = [...document.querySelectorAll("button:disabled, [aria-disabled=true], [data-disabled]")].filter(visible).length;
-    return { links, buttons, primary, disabled, asides: document.querySelectorAll("aside").length, strip: document.querySelector("header")!.getBoundingClientRect().height };
+    const off = [...document.querySelectorAll("button:disabled, [aria-disabled=true], [data-disabled]")].filter(visible);
+    // A blocked action whose reason is not on screen beside it (DESIGN.md Buttons: aria-disabled, its reason linked as its description).
+    const unexplained = off
+      .filter((el) => {
+        const reason = document.getElementById(el.getAttribute("aria-describedby") ?? "");
+        return !(el instanceof HTMLButtonElement && !el.disabled && reason && visible(reason) && (reason.textContent ?? "").trim() !== "");
+      })
+      .map((el) => (el.textContent ?? "").trim());
+    return { links, buttons, primary, disabled: off.length, unexplained, asides: document.querySelectorAll("aside").length, strip: document.querySelector("header")!.getBoundingClientRect().height };
   });
 }
 
@@ -57,7 +70,8 @@ for (const locale of locales) {
           await open(page, route, locale);
           const c = await controls(page);
           expect(c.primary, "primary actions").toBeLessThanOrEqual(1);
-          if (route !== "/ui-gallery") expect(c.disabled, "disabled controls").toBe(0);
+          if (blockedWithReason.has(route)) expect(c.unexplained, "blocked controls without their reason on screen").toEqual([]);
+          else if (route !== "/ui-gallery") expect(c.disabled, "disabled controls").toBe(0);
           expect(repeated(c.links), "links to the same place").toEqual(askedAbout[route] ?? []);
           expect(repeated(c.buttons), "buttons with the same name").toEqual([]);
           expect(c.asides, "side panels").toBe(0);

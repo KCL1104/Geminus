@@ -2,6 +2,7 @@
 // data the page shows, or one of the React Aria strings the owner accepted
 // in its own translation. The test lists every other string it finds.
 import { expect, test } from "@playwright/test";
+import { sampleLine } from "../../web/app/ui-gallery/editor/sample-line";
 import { en } from "../../web/messages/en";
 import { zhHant } from "../../web/messages/zh-Hant";
 import { open } from "./helpers";
@@ -47,7 +48,40 @@ async function strings(page: import("@playwright/test").Page): Promise<string[]>
   });
 }
 
+// The 2D editor (T-015): the model's names are data the page shows as they
+// are, in either language; React Flow's attribution link ("React Flow",
+// labelled "React Flow attribution") stays as the owner decided (ADR-021,
+// H-009 (4)), the one string of the canvas no catalog can reach.
+const sampleData = [sampleLine.name, ...sampleLine.nodes.map((n) => n.name ?? n.id), ...sampleLine.resources.map((r) => r.name), ...sampleLine.entity_types.map((e) => e.name), ...(sampleLine.calendars ?? []).map((c) => c.name ?? c.id), "X-ray inspection"];
+const reactFlow = [/^React Flow$/, /^React Flow attribution$/];
+
 for (const [locale, catalog] of [["en", en], ["zh-Hant", zhHant]] as const) {
+  test(`${locale}: the editor's strings are the catalog's, the model's data or React Flow's attribution`, async ({ page }) => {
+    await open(page, "/ui-gallery/editor", locale);
+    const known = [...catalogPatterns(catalog as Catalog), ...reactFlow];
+    const data = new Set(sampleData);
+    const seen = new Set(await strings(page));
+    // A step selected (its properties, resources and changeovers), the step menu and a dialog.
+    await page.locator('li button:has-text("Burn-in")').click();
+    for (const s of await strings(page)) seen.add(s);
+    // (SMT is off the canvas's view once it shows Burn-in: select it from the keyboard.)
+    await page.locator(".react-flow__node[data-id=smt]").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("[data-panel=properties] h2")).toHaveText("SMT");
+    for (const s of await strings(page)) seen.add(s);
+    await page.getByRole("button", { name: locale === "en" ? "Add step" : "新增步驟" }).click();
+    for (const s of await strings(page)) seen.add(s);
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: locale === "en" ? "Delete step" : "刪除步驟" }).click();
+    for (const s of await strings(page)) seen.add(s);
+    const other = [...seen].filter((s) => !data.has(s) && !known.some((p) => p.test(s)));
+    const sentences = other.flatMap((s) => s.split(/(?<=[。.])\s+/));
+    const unexpected = sentences.filter((s) => !reactAria[locale].some((p) => p.test(s)));
+    console.log(`${locale} editor: strings not from the catalog or the model: ${JSON.stringify(other)}`);
+    expect(unexpected).toEqual([]);
+    expect([...seen].filter((s) => /^React Flow/.test(s)).sort(), "the attribution is there").toEqual(["React Flow", "React Flow attribution"]);
+  });
+
   test(`${locale}: every string is the catalog's or an accepted React Aria string`, async ({ page }) => {
     await open(page, "/ui-gallery", locale);
     const known = catalogPatterns(catalog as Catalog);

@@ -1,0 +1,245 @@
+/* The editor (DESIGN.md Layout, kept simple: H-027): a provenance row that
+   ends in the mode's actions, then the stage, the canvas column beside one
+   side panel divided by Control Edge. */
+.editor {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A production line runs wide: the page with the editor takes the window's
+   width instead of the reading width of text pages (ui/shell.module.css). */
+:global(main):has(.editor) {
+  max-width: none;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-md) var(--gm-space-gutter);
+  margin: 0 0 var(--gm-space-gutter);
+  padding: 0 0 var(--gm-space-md);
+  border-bottom: 1px solid var(--gm-color-edge);
+}
+
+.status {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-md);
+  margin-inline-start: auto;
+}
+
+/* A blocked action's 12 px reason sits to its left. */
+.reason {
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.conflict {
+  margin: 0 0 var(--gm-space-gutter);
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  border: 1px solid var(--gm-color-edge);
+  border-radius: var(--gm-radius-md);
+  overflow: hidden;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  gap: var(--gm-space-md);
+  padding: var(--gm-space-md);
+  border-bottom: 1px solid var(--gm-color-rule);
+  background: var(--gm-color-sheet);
+}
+
+.panel {
+  min-width: 0;
+  padding: var(--gm-space-section);
+  border-inline-start: 1px solid var(--gm-color-edge);
+  background: var(--gm-color-panel);
+}
+
+.hint {
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--gm-space-xs) var(--gm-space-lg);
+  margin: 0 0 var(--gm-space-gutter);
+}
+
+.facts dt {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-body);
+}
+
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.group {
+  margin: 0 0 var(--gm-space-section);
+  padding: 0;
+  border: 0;
+}
+
+.group legend {
+  margin: 0 0 var(--gm-space-sm);
+  padding: 0;
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.error {
+  color: var(--gm-color-error);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.stepProblems {
+  margin: 0 0 var(--gm-space-gutter);
+  padding: var(--gm-space-cell) var(--gm-space-lg);
+  border: 1px solid var(--gm-color-error-edge);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-error-wash);
+}
+
+.stepProblems h3 {
+  margin: 0 0 var(--gm-space-xs);
+}
+
+.stepProblems .error {
+  margin: 0;
+  color: var(--gm-color-ink);
+}
+
+.rows {
+  margin: 0 0 var(--gm-space-md);
+  padding: 0;
+  list-style: none;
+}
+
+.rows > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  padding: var(--gm-space-sm) 0;
+  border-bottom: 1px solid var(--gm-color-rule);
+}
+
+.connection > :first-child {
+  flex: 1 1 160px;
+  margin: 0;
+}
+
+.target {
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.tag {
+  padding: 0 var(--gm-space-sm);
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-sm);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.sub {
+  flex-basis: 100%;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.sub ul {
+  margin: var(--gm-space-xs) 0 0;
+  padding-inline-start: var(--gm-space-gutter);
+}
+
+.danger {
+  padding: var(--gm-space-gutter) 0 0;
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.issues {
+  padding: var(--gm-space-gutter);
+  border-top: 1px solid var(--gm-color-edge);
+}
+
+.issueRows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issueRows > li + li {
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+/* Each issue is one row: severity, what is wrong and on which step, where. */
+.issueRows .issueButton,
+.issueRows .issueText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  width: 100%;
+  padding: var(--gm-space-sm) var(--gm-space-md);
+  text-align: start;
+  white-space: normal;
+}
+
+.issueRows .issueText {
+  min-height: var(--gm-control-height);
+}
+
+.chip {
+  padding: 0 var(--gm-space-sm);
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-sm);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-label);
+}
+
+.chip[data-severity="error"] {
+  border-color: var(--gm-color-error-edge);
+  background: var(--gm-color-error-wash);
+  color: var(--gm-color-error);
+}
+
+.chip[data-severity="warning"] {
+  border-color: var(--gm-color-warning-edge);
+  background: var(--gm-color-warning-wash);
+  color: var(--gm-color-warning);
+}
+
+.path {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  overflow-wrap: anywhere;
+}

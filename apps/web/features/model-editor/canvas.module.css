@@ -1,0 +1,99 @@
+/* The model canvas (DESIGN.md Canvas, Step node): a white sheet with no
+   grid, square steps with a hairline header, flow arrows in Secondary
+   Graphite with open chevrons. React Flow's variables take the tokens. */
+.canvas {
+  position: relative;
+  height: 480px;
+  background: var(--gm-color-sheet);
+}
+
+.canvas :global(.react-flow) {
+  --xy-edge-stroke: var(--gm-color-ink-2);
+  --xy-edge-stroke-width: 1.5;
+  --xy-edge-stroke-selected: var(--gm-color-ink);
+  --xy-connectionline-stroke: var(--gm-color-ink);
+  --xy-connectionline-stroke-width: 1.5;
+  --xy-handle-background-color: var(--gm-color-edge);
+  --xy-attribution-background-color: var(--gm-color-sheet);
+  --xy-background-color: var(--gm-color-sheet);
+  color: var(--gm-color-ink);
+}
+
+/* Steps are 4 px rectangles on Raised, flat: no shadow (DESIGN.md Elevation). */
+.node {
+  width: 152px;
+  border: 1px solid var(--gm-color-edge);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink);
+  transition: border-color var(--gm-motion), background-color var(--gm-motion);
+}
+
+.name {
+  overflow: hidden;
+  padding: var(--gm-space-cell) var(--gm-space-lg);
+  border-bottom: 1px solid var(--gm-color-rule);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kind {
+  padding: var(--gm-space-sm) var(--gm-space-lg);
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* Selected: a Graphite Ink border on Selected Row Tint (no ring shadow: DESIGN.md Simplicity 4). */
+.node[data-selected] {
+  border-color: var(--gm-color-ink);
+  background: var(--gm-color-selection-tint);
+}
+
+/* An issue's colour stays on the border when the step is selected too. */
+.node[data-severity="warning"] {
+  /* Amber Mark, not Amber Edge: a step's boundary keeps 3:1 (WCAG 1.4.11). */
+  border-color: var(--gm-color-warning-mark);
+}
+
+/* An error turns the border Error Red. */
+.node[data-severity="error"] {
+  border-color: var(--gm-color-error);
+}
+
+.canvas :global(.react-flow__node:focus-visible) {
+  outline: var(--gm-focus-ring);
+  outline-offset: var(--gm-space-xs);
+}
+
+.handle {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--gm-color-raised);
+  border-radius: var(--gm-radius-sm);
+}
+
+.canvas :global(.react-flow__edge-text) {
+  fill: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+}
+
+.canvas :global(.react-flow__edge-textbg) {
+  fill: var(--gm-color-sheet);
+}
+
+/* React Flow's attribution stays (ADR-021, H-009 (4)), legible in both themes. */
+.canvas :global(.react-flow__attribution) {
+  padding: 0 var(--gm-space-sm);
+  background: var(--gm-color-sheet);
+  font-size: var(--gm-font-size-label);
+}
+
+.canvas :global(.react-flow__attribution a) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  color: var(--gm-color-ink-2);
+}
