@@ -1,0 +1,165 @@
+// Package observed compares a simulated quantity with the same quantity
+// observed in a dataset (REQ-025; D-060 option A, APPROVED H-018;
+// ELECTRONICS_LINE §7; T-052): the simulated mean over the replications,
+// the replications' range, the absolute error (mean − observed), the
+// relative error (absolute / observed; null when the observed value is 0)
+// and whether the observed value lies in the range. For an input
+// consistency check (§7: the model's parameter against the data) the
+// simulated value is the model's input and there is no range.
+//
+// It never says pass or fail and never adjusts a model (D-060: no
+// verdict, no calibration); a value without the data it needs is
+// unavailable with a reason, never a number (REQ-015). What is observed,
+// and over which window, is the caller's (a DomainPack reads the log; D-060
+// labels each quantity output or input consistency, approximate when the
+// definitions differ, and in-sample or hold-out); this package only does
+// the arithmetic, in binary64, in a fixed order, without fused
+// multiply-adds (make backend-numeric).
+package observed
+
+import (
+	"math"
+	"slices"
+
+	"github.com/kcl1104/geminus/internal/simulation"
+)
+
+// Kind is what a comparison shows (§7): the model's behaviour against the
+// data (an output), or the model's parameter against the data (input
+// consistency, which is no validation of the model).
+type Kind string
+
+const (
+	Output           Kind = "output"
+	InputConsistency Kind = "input_consistency"
+)
+
+// Sample says whether the model's parameters were taken from data that
+// covers the observed window (in-sample: not a validation) or not
+// (hold-out). The caller knows the model's provenance; "" is not stated.
+type Sample string
+
+const (
+	InSample Sample = "in_sample"
+	HoldOut  Sample = "hold_out"
+)
+
+// The range of the replications (§7): Type 7 2.5% and 97.5% quantiles from
+// QuantileReplications replications on, otherwise the minimum and maximum.
+const (
+	RangeQuantiles       = "replication_quantiles_2.5_97.5"
+	RangeMinMax          = "replication_min_max"
+	QuantileReplications = 20
+)
+
+// The reasons of D-060 (§7, provisional names) and of this package.
+const (
+	ReasonNoObservedData       = "NO_OBSERVED_DATA"
+	ReasonWindowTooShort       = "OBSERVED_WINDOW_TOO_SHORT"
+	ReasonFieldMissing         = "OBSERVED_FIELD_MISSING"
+	ReasonWindowNotAligned     = "OBSERVED_WINDOW_NOT_ALIGNED"
+	ReasonSimulatedUnavailable = "SIMULATED_METRIC_UNAVAILABLE"
+	// ReasonObservedZero: the relative error of an observed 0 (only the
+	// relative error is null).
+	ReasonObservedZero = "OBSERVED_ZERO"
+	// ReasonObservedNotFinite: the observed value is NaN or infinite
+	// (T-052, D-118 PROPOSED; a caller's defect, never shown as a number).
+	ReasonObservedNotFinite = "OBSERVED_VALUE_NOT_FINITE"
+)
+
+// Comparison is one quantity compared. Pointers are null when the value is
+// unavailable or does not apply; Status says which.
+type Comparison struct {
+	Kind        Kind
+	Sample      Sample
+	Approximate bool   // §7: the observed and simulated definitions are not quite the same
+	Unit        string // the caller's
+	Status      simulation.MetricStatus
+	Reason      *string // why it is unavailable
+	Observed    *float64
+	// Simulated is the replications' mean (an output) or the model's
+	// input (input consistency).
+	Simulated *float64
+	// Replications counted for an output; 0 for input consistency.
+	Replications        int
+	RangeMethod         string
+	RangeLow, RangeHigh *float64
+	AbsoluteError       *float64 // simulated − observed
+	RelativeError       *float64 // AbsoluteError / observed
+	RelativeReason      *string  // OBSERVED_ZERO
+	WithinRange         *bool    // an output's observed value in [RangeLow, RangeHigh]
+}
+
+// Unavailable is a comparison of kind that cannot be made, for reason.
+func Unavailable(kind Kind, reason string) Comparison {
+	return Comparison{Kind: kind, Status: simulation.Unavailable, Reason: &reason}
+}
+
+func finite(v float64) bool { return !math.IsNaN(v) && !math.IsInf(v, 0) }
+
+// setErrors sets the absolute and relative errors of simulated against o.
+func (c *Comparison) setErrors(o, simulated float64) {
+	c.Status = simulation.Available
+	c.Observed, c.Simulated = &o, &simulated
+	abs := simulated - o
+	c.AbsoluteError = &abs
+	if o == 0 {
+		r := ReasonObservedZero
+		c.RelativeReason = &r
+		return
+	}
+	rel := abs / o
+	c.RelativeError = &rel
+}
+
+// CompareOutput compares observed o with the replications' values xs (in
+// replication order; not changed).
+func CompareOutput(o float64, xs []float64) Comparison {
+	if !finite(o) {
+		return Unavailable(Output, ReasonObservedNotFinite)
+	}
+	if len(xs) == 0 || slices.ContainsFunc(xs, func(v float64) bool { return !finite(v) }) {
+		return Unavailable(Output, ReasonSimulatedUnavailable)
+	}
+	c := Comparison{Kind: Output, Replications: len(xs)}
+	sum := 0.0
+	for _, v := range xs {
+		sum += v
+	}
+	c.setErrors(o, sum/float64(len(xs)))
+	var lo, hi float64
+	if len(xs) >= QuantileReplications {
+		c.RangeMethod = RangeQuantiles
+		lo, hi = quantile7(xs, 0.025), quantile7(xs, 0.975)
+	} else {
+		c.RangeMethod = RangeMinMax
+		lo, hi = slices.Min(xs), slices.Max(xs)
+	}
+	within := lo <= o && o <= hi
+	c.RangeLow, c.RangeHigh, c.WithinRange = &lo, &hi, &within
+	return c
+}
+
+// CompareInput compares observed o with the model's input value.
+func CompareInput(o, input float64) Comparison {
+	if !finite(o) {
+		return Unavailable(InputConsistency, ReasonObservedNotFinite)
+	}
+	if !finite(input) {
+		return Unavailable(InputConsistency, ReasonSimulatedUnavailable)
+	}
+	c := Comparison{Kind: InputConsistency}
+	c.setErrors(o, input)
+	return c
+}
+
+// quantile7 is the Type 7 sample quantile of x at p (as the Result's,
+// internal/results/metrics): sort a copy, h = (n−1)p, interpolate between
+// floor(h) and ceil(h), each product rounded on its own (no FMA).
+func quantile7(x []float64, p float64) float64 {
+	s := slices.Clone(x)
+	slices.Sort(s)
+	h := float64(float64(len(s)-1) * p)
+	lo, hi := math.Floor(h), math.Ceil(h)
+	return s[int(lo)] + float64((h-lo)*(s[int(hi)]-s[int(lo)]))
+}

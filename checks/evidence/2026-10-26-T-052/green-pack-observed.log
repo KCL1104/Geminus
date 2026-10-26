@@ -1,0 +1,8 @@
+=== RUN   TestCompareObservedOnTheSyntheticLog
+--- PASS: TestCompareObservedOnTheSyntheticLog (0.34s)
+=== RUN   TestCompareObservedAgainstAnotherRun
+--- PASS: TestCompareObservedAgainstAnotherRun (0.45s)
+=== RUN   TestCompareObservedUnavailable
+--- PASS: TestCompareObservedUnavailable (0.63s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	1.443s

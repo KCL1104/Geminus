@@ -1,0 +1,9 @@
+# github.com/kcl1104/geminus/internal/domainpack/electronicsline_test [github.com/kcl1104/geminus/internal/domainpack/electronicsline.test]
+internal/domainpack/electronicsline/observed_test.go:23:29: undefined: electronicsline.ObservedWindow
+internal/domainpack/electronicsline/observed_test.go:38:122: undefined: electronicsline.ObservedWindow
+internal/domainpack/electronicsline/observed_test.go:40:31: undefined: electronicsline.CompareObserved
+internal/domainpack/electronicsline/observed_test.go:154:31: undefined: electronicsline.CompareObserved
+internal/domainpack/electronicsline/observed_test.go:294:31: undefined: electronicsline.CompareObserved
+internal/domainpack/electronicsline/observed_test.go:299:31: undefined: electronicsline.CompareObserved
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline [build failed]
+FAIL

@@ -26,6 +26,8 @@ import (
 	"time"
 
 	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/domainpack"
+	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
 	"github.com/kcl1104/geminus/internal/import/mapping"
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
 	"github.com/kcl1104/geminus/internal/import/profiler"
@@ -35,7 +37,9 @@ import (
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/packs"
+	"github.com/kcl1104/geminus/internal/results/observed"
 	"github.com/kcl1104/geminus/internal/runs/runner"
+	"github.com/kcl1104/geminus/internal/simulation"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
@@ -205,7 +209,57 @@ func TestSyntheticStationLogImport(t *testing.T) {
 	if after := e.twin(t, m.ID); after != before {
 		t.Errorf("the import changed the model: %s -> %s", before, after)
 	}
+
+	// D-060 (stretch of the slice): the validated dataset against a run of
+	// the version (5 replications, another seed than the log's), as the
+	// pack compares them (ELECTRONICS_LINE §7): the week's output observed
+	// is the log's shipments, the simulated side the run's replications.
+	var canonicalEvents []domainpack.CanonicalEvent
+	if err := json.Unmarshal(stored, &canonicalEvents); err != nil {
+		t.Fatal(err)
+	}
+	runID, _ := e.lineRun(t, m.LatestVersion.ID, "run-key-line-compare", 5, 2026)
+	served := e.do("GET", "/v1/simulations/"+runID+"/results", viewer(e), e.a.ID, nil, "")
+	var result simulation.Result
+	if err := json.Unmarshal(served.body, &result); err != nil {
+		t.Fatal(err)
+	}
+	var version struct {
+		IR model.ModelIR `json:"ir"`
+	}
+	if err := json.Unmarshal(e.do("GET", "/v1/model-versions/"+m.LatestVersion.ID, viewer(e), e.a.ID, nil, "").body, &version); err != nil {
+		t.Fatal(err)
+	}
+	anchor := time.Date(2026, 9, 28, 0, 0, 0, 0, time.FixedZone("", 8*3600))
+	window := electronicsline.ObservedWindow{Anchor: anchor, From: anchor.AddDate(0, 0, 7), To: anchor.AddDate(0, 0, 14)}
+	rowsCompared, err := electronicsline.CompareObserved(&version.IR, &result, canonicalEvents, window, observed.HoldOut)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shipped := 0
+	for _, r := range rows {
+		if r[1] == "operation" && r[2] == "pack" {
+			shipped++
+		}
+	}
+	xs := make([]float64, len(result.ReplicationSummaries))
+	for i, r := range result.ReplicationSummaries {
+		xs[i] = float64(r.CompletedCount)
+	}
+	wantWeek := observed.CompareOutput(float64(shipped), xs)
+	week := rowsCompared[0]
+	if week.Key != "line_output_per_week" || week.Status != simulation.Available || *week.Observed != float64(shipped) || week.Replications != 5 ||
+		*week.Simulated != *wantWeek.Simulated || *week.AbsoluteError != *wantWeek.AbsoluteError || *week.RangeLow != *wantWeek.RangeLow {
+		t.Errorf("the week's output: %+v, want %+v", week, wantWeek)
+	}
+	for _, r := range rowsCompared {
+		if r.Status != simulation.Available || r.Sample != observed.HoldOut {
+			t.Errorf("%s: %+v", r.Key, r.Comparison)
+		}
+	}
 }
+
+func viewer(e *runEnv) string { return e.a.Members[tenant.Viewer].Subject }
 
 // The derived fixtures (TEST-013 negative, D-059, D-072 (b)): an end before
 // its start is an invalid row, so the import awaits a new mapping with the
