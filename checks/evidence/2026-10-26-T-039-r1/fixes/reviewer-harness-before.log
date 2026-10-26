@@ -1,0 +1,8 @@
+1. result: done
+   owner values the deployer received: [('web', 'BFF_OIDC_CLIENT_SECRET'), ('worker', 'GEMINUS_ANTHROPIC_API_KEY_A')]
+   counted as secrets to redact: []
+2. result: done | proxies still open: ['tcp_1']
+   lines about the proxy: ['4. database logins (a TCP proxy on PostgreSQL for this run only)', '$ railway tcp-proxy list --service Postgres --environment production --json']
+3.1 result: done | proxies still open: ['tcp_left_by_killed_run'] | warned: False
+3.2 result: done | proxies still open: ['tcp_left_by_killed_run'] | warned: False
+exit 0

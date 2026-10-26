@@ -2,6 +2,8 @@
 # apps/web/Dockerfile, all built from the repository root). Nothing secret,
 # local or generated goes in: no .env files, no git history, no installed
 # packages or build output, no reports or sources the images do not use.
+# Env files in any directory (a local apps/web/.env would reach the web
+# image: review round 1, L3); only the committed example comes back.
 .git
 .github
 .claude
@@ -11,6 +13,9 @@
 **/*.pyc
 .env
 .env.*
+**/.env
+**/.env.*
+!**/.env.example
 **/node_modules
 **/.next
 **/test-results

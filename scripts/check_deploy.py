@@ -7,14 +7,18 @@ without Docker (make spec-deploy, part of make spec-check):
   no ARG (a platform could pass a secret into the build) and no ENV or LABEL
   naming a credential, a STOPSIGNAL, a HEALTHCHECK where the image serves
   HTTP;
-- .dockerignore keeps git, env files, installed packages and build output
-  out of the build context;
+- .dockerignore keeps git, env files (in any directory: `**/.env`,
+  `**/.env.*`, with `!**/.env.example` the only exception; checked against
+  sample paths with Docker's matching rules), installed packages and build
+  output out of the build context;
 - deploy/local/compose.yaml is fenced as local-only, its images are pinned
   or the local build tags, and every credential in it is a ${...} variable
   of the smoke run, except the test provider's published test client;
 - deploy/railway/*.railway.json are Railway config-as-code files for a
   Dockerfile that exists, and nothing under deploy/railway/ mentions the
-  test provider, loopback or development settings;
+  test provider, loopback or development settings; only api and web have a
+  public domain (on their PORT), api's healthcheck is /readyz, web's /, and
+  worker and migrate have none;
 - deploy/railway/variables.json names only variables the services read,
   gives every variable each service requires, holds no secret value, keeps
   every AI key variable the API refuses to start with off the API (the list
@@ -26,6 +30,7 @@ without Docker (make spec-deploy, part of make spec-check):
 
 It checks the files, not a running deployment (NOT a container scan).
 """
+import fnmatch
 import json
 import posixpath
 import re
@@ -82,11 +87,49 @@ def dockerfiles() -> dict:
         if http and "HEALTHCHECK" not in kinds:
             fail(f"{rel}: no HEALTHCHECK")
         out[rel] = {"stages": len(froms), "user": users[-1], "healthcheck": "HEALTHCHECK" in kinds}
-    ignore = set((ROOT / ".dockerignore").read_text(encoding="utf-8").split())
-    for must in (".git", ".env", ".env.*", "**/node_modules", "**/.next", "checks", "sources", "bin"):
-        if must not in ignore:
-            fail(f".dockerignore: {must} is not excluded")
+    lines = [l.strip() for l in (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()]
+    patterns = [l for l in lines if l and not l.startswith("#")]
+    for must in (".git", ".env", ".env.*", "**/.env", "**/.env.*", "!**/.env.example", "**/node_modules", "**/.next",
+                 "checks", "sources", "bin"):
+        if must not in patterns:
+            fail(f".dockerignore: {must} is missing" if must.startswith("!") else f".dockerignore: {must} is not excluded")
+    for p in patterns:
+        if p.startswith("!") and ".env" in p and p != "!**/.env.example":
+            fail(f".dockerignore: {p} brings an env file back into the build context")
+    # Docker matches each path against every pattern and the last match decides
+    # (review round 1, L3: an env file in apps/web/ reached the web image).
+    for path, excluded in ((".env", True), (".env.local", True), ("apps/web/.env", True), ("apps/web/.env.local", True),
+                           ("apps/web/.env.production", True), ("cmd/api/.env", True), ("apps/web/.env.example", False),
+                           (".env.example", False), ("apps/web/app/page.tsx", False), ("cmd/api/main.go", False)):
+        if dockerignored(patterns, path) != excluded:
+            fail(f".dockerignore: {path} would be {'in' if excluded else 'out of'} the build context")
     return out
+
+
+def docker_match(pattern: str, path: str) -> bool:
+    """A .dockerignore pattern against a path relative to the context, as
+    Docker matches them: segments as Go's filepath.Match, `**` any number of
+    directories (none too), and a match of a parent directory excludes
+    everything under it."""
+    pat = [s for s in posixpath.normpath(pattern.lstrip("/")).split("/") if s]
+    parts = path.split("/")
+
+    def m(i: int, j: int) -> bool:
+        if i == len(pat):
+            return 0 < j <= len(parts)
+        if pat[i] == "**":
+            return any(m(i + 1, k) for k in range(j, len(parts) + 1))
+        return j < len(parts) and fnmatch.fnmatchcase(parts[j], pat[i]) and m(i + 1, j + 1)
+    return m(0, 0)
+
+
+def dockerignored(patterns: list, path: str) -> bool:
+    excluded = False
+    for p in patterns:
+        negated = p.startswith("!")
+        if docker_match(p[1:] if negated else p, path):
+            excluded = not negated
+    return excluded
 
 
 def compose() -> dict:
@@ -162,12 +205,14 @@ REQUIRED = {
 def railway(known: set) -> dict:
     d = ROOT / "deploy/railway"
     configs = sorted(d.glob("*.railway.json"))
+    loaded = {}
     for p in configs:
         c = json.loads(p.read_text(encoding="utf-8"))
         if c.get("$schema") != "https://railway.com/railway.schema.json" or c.get("build", {}).get("builder") != "DOCKERFILE":
             fail(f"{p.name}: not a Dockerfile config-as-code file")
         if not (ROOT / c["build"]["dockerfilePath"]).is_file():
             fail(f"{p.name}: {c['build']['dockerfilePath']} does not exist")
+        loaded[f"deploy/railway/{p.name}"] = c
     for p in sorted(x for x in d.iterdir() if x.is_file()):
         t = p.read_text(encoding="utf-8")
         for bad in ("web-e2e", "servers.mjs", "127.0.0.1", "localhost", "development", "fake", "filesystem", "e2e-client"):
@@ -236,7 +281,22 @@ def railway(known: set) -> dict:
     other = sorted(n for n in api["variables"] if re.match(r"(GEMINUS_)?AI_", n) and n not in API_AI_SETTINGS)
     if other:
         fail(f"variables.json: the API reads no other AI setting (T-053 I5): {other}")
-    return {"configs": [p.name for p in configs], "services": summary,
+    # Exposure (review round 1, L5): a public domain only where a server answers on
+    # PORT, Railway's healthcheck where the image serves HTTP, none elsewhere.
+    public = sorted(s for s, spec in v["services"].items() if "public_domain" in spec)
+    if public != ["api", "web"]:
+        fail(f"variables.json: public domains on {public}: only api and web have one (worker and migrate never)")
+    health = {"api": "/readyz", "web": "/", "worker": None, "migrate": None}
+    if set(v["services"]) != set(health):
+        fail(f"variables.json: the services are {sorted(v['services'])}, want {sorted(health)}")
+    for svc, want in health.items():
+        spec = v["services"][svc]
+        got = loaded.get(spec["config"], {}).get("deploy", {}).get("healthcheckPath")
+        if got != want:
+            fail(f"{spec['config']}: healthcheckPath {got!r}, want {want!r}")
+        if "public_domain" in spec and str(spec["public_domain"].get("port")) != spec["variables"].get("PORT", {}).get("value"):
+            fail(f"variables.json: {svc}: the public domain's port is not its PORT")
+    return {"configs": [p.name for p in configs], "services": summary, "public_domains": public,
             "api_ai": {"settings": list(API_AI_SETTINGS), "refused_keys": sorted(keys)}}
 
 

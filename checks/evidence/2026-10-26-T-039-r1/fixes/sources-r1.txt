@@ -1,0 +1,41 @@
+Sources read for T-039 review round 1 (2026-10-26; public pages, read only,
+no token; re-read before relying on them).
+
+Railway CLI source at tag v5.64.2 (https://raw.githubusercontent.com/railwayapp/cli/v5.64.2/src/...):
+
+- src/commands/variable.rs
+  after_help: "JSON and KV output include raw variable values. Avoid sharing
+  command output from secret-bearing variable commands." and "Sealed variables
+  are listed by name with no value (null in JSON, <sealed> in the table)."
+  `--json` help: "Output in JSON format. Variable list JSON includes raw values."
+  list_variables(): `serde_json::to_string_pretty(&variables)` where variables
+  is a BTreeMap<String, Option<String>> (get_service_variables_including_sealed):
+  a flat {name: value-or-null} map. No option lists names only (the table and
+  --kv print values too). Hence M2: the deployer cannot avoid receiving the
+  values of unsealed variables; it drops them while the JSON is parsed.
+
+- src/commands/tcp_proxy.rs
+  after_help: "Only one TCP proxy is allowed per service instance."
+  list --json: ListOutput { proxies: Vec<TcpProxy> } -> {"proxies": [{"id",
+  "domain", "proxyPort", "applicationPort", "endpoint", "syncStatus", ...}]}
+  (test proxy_output_omits_internal_context_fields: no serviceId/environmentId).
+  create --json: CreateOutput { applicationPort, staged, committed,
+  proxy: Option<TcpProxy> } -- "proxy" is null when the proxy is not available
+  (test create_output_keeps_proxy_key_when_proxy_is_unavailable). Hence the
+  deployer finds the id by listing when create prints none (rehearsal P4).
+  delete: errors (anyhow) give a non-zero exit; --yes is required without a
+  terminal; --json prints {deleted, id, endpoint, applicationPort, staged, committed}.
+
+Railway documentation:
+
+- https://docs.railway.com/guides/variables (Sealed variables): "When a variable
+  is sealed, its value is provided to builds and deployments but is never
+  visible in the UI nor can it be retrieved via the API." "To seal an existing
+  variable, click the 3-dot menu on the right-side of the variable and choose
+  the "Seal" option." "Sealed variables can be updated by clicking the edit
+  option in the 3-dot menu just like normal variables but they cannot be
+  updated via the Raw Editor." "Sealed variables cannot be un-sealed."
+  Railway-provided variables include RAILWAY_PUBLIC_DOMAIN,
+  RAILWAY_PRIVATE_DOMAIN, RAILWAY_TCP_PROXY_PORT (values such as the service
+  name or "production" appear in every listing: the reason the deployer does
+  not register every received value as a secret).

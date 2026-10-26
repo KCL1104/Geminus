@@ -43,7 +43,7 @@
         ]
       },
       "api": {
-        "variables": 20,
+        "variables": 17,
         "secrets": [
           "GEMINUS_API_DB_PASSWORD",
           "OBJECT_STORAGE_S3_ACCESS_KEY_ID",
@@ -51,7 +51,7 @@
         ]
       },
       "worker": {
-        "variables": 19,
+        "variables": 17,
         "secrets": [
           "GEMINUS_ANTHROPIC_API_KEY_A",
           "GEMINUS_ANTHROPIC_API_KEY_B",
@@ -69,27 +69,13 @@
         ]
       }
     },
-    "api_ai": {
-      "settings": [
-        "AI_PROVIDER",
-        "AI_POLICY_APPROVAL",
-        "AI_MODEL",
-        "GEMINUS_AI_LIVE"
-      ],
-      "refused_keys": [
-        "AI_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "ANTHROPIC_AUTH_TOKEN",
-        "GEMINUS_ANTHROPIC_API_KEY_A",
-        "GEMINUS_ANTHROPIC_API_KEY_B",
-        "GEMINUS_META_API_KEY",
-        "GEMINUS_MUSE_API_KEY",
-        "MODEL_API_KEY"
-      ]
-    }
+    "public_domains": [
+      "api",
+      "web"
+    ]
   },
   "runbook": {
-    "variables_named": 68
+    "variables_named": 61
   },
   "code_variables": [
     "AI_API_KEY",
@@ -105,11 +91,6 @@
     "AI_POLICY_APPROVAL",
     "AI_PROVIDER",
     "AI_TIMEOUT_SECONDS",
-    "AI_VISION_MODEL",
-    "AI_VISION_POLICY_APPROVAL",
-    "AI_VISION_PROVIDER",
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
     "API_LISTEN_ADDR",
     "APP_ENV",
     "AUTH_OIDC_ALGORITHMS",
@@ -133,12 +114,9 @@
     "GEMINUS_AI_LIVE",
     "GEMINUS_ANTHROPIC_API_KEY_A",
     "GEMINUS_ANTHROPIC_API_KEY_B",
-    "GEMINUS_META_API_KEY",
     "GEMINUS_MIGRATE_DATABASE_URL",
-    "GEMINUS_MUSE_API_KEY",
     "GEMINUS_PROVISION_DATABASE_URL",
     "GEMINUS_UI_GALLERY",
-    "MODEL_API_KEY",
     "OBJECT_STORAGE_PROVIDER",
     "OBJECT_STORAGE_ROOT",
     "OBJECT_STORAGE_S3_ACCESS_KEY_ID",

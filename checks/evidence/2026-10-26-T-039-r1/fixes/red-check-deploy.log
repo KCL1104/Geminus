@@ -1,0 +1,2 @@
+DEPLOY CHECK FAILED: .dockerignore: **/.env is not excluded
+exit 1

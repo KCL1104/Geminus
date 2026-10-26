@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The hackathon deployment on Railway (T-039; H-030 Railway only; H-032 the
+"""The hackathon deployment on Railway (T-039; H-031 Railway only; H-032 the
 coordinator applies it). Run through deploy/railway/deploy.sh, which checks
 the shell and installs the pinned CLI on request; see docs/runbooks/deploy.md
 §7.
@@ -24,9 +24,9 @@ its source at v5.64.2 defines them):
      passwords, SESSION_KEYS) made here with Python's secrets module only when
      absent and sent on stdin (`railway variable set KEY --stdin`); the
      bucket's credentials copied the same way when absent; variables the
-     owner fills (Auth0 client secret, AI keys, the live switch) are never set
-     or read: only their names are checked at the end;
-  4. the database logins: a TCP proxy on PostgreSQL for this run only, then
+     owner fills (Auth0 client secret, AI keys, the live switch) are never
+     set;
+  4. the database logins: a TCP proxy on PostgreSQL for this run, then
      db/bootstrap_roles.sql and deploy/sql/create_logins.sql with psql as the
      database's administrator (the passwords only in psql's environment); the
      generated and copied secrets are then sealed (GEMINUS_RAILWAY_SEAL=off
@@ -44,8 +44,31 @@ its source at v5.64.2 defines them):
   7. `railway up` of this checkout for api, worker and web, waiting for each
      (Railway's healthcheck for api and web);
   8. verify: /healthz, /readyz, /v1/me without a token, the web's / and its
-     sign-in redirect to Auth0, the worker still running, and the owner's
-     required variables.
+     sign-in redirect to Auth0, the worker still running, the owner's
+     required variables (by name; the owner's secrets that are not sealed are
+     named, with how to seal them), and no TCP proxy open on PostgreSQL.
+
+The TCP proxy (review round 1, M1): this run's proxy is removed when steps
+4-6 end, also when they fail and on SIGTERM or SIGHUP (turned into an exit
+that runs the cleanup; SIGKILL cannot be caught). Every --apply then lists
+PostgreSQL's TCP proxies before it ends, whatever happened before: any proxy
+still open (this run's, if its removal failed, or one that was open before
+the run, which the script uses but never removes, since it cannot tell
+whose it is or whether an interrupted run left it) is named with the command
+that removes it, and the run exits 1, unless GEMINUS_KEEP_DB_PROXY=1
+accepts open proxies (they are still named). A removal the CLI reports as
+failed, or a listing that fails, is an exit 1 too.
+
+Variable listings (review round 1, M2): `railway variable list --json` is
+the only way to see which variables exist, and the CLI returns every value
+that is not sealed. The listing is parsed as it arrives: only the values
+this script needs (its own generated passwords, Postgres's
+DATABASE_PUBLIC_URL) are kept, and each is registered as a secret (redacted
+from the output, refused as an argument); every other value, the owner's
+among them, is replaced by a marker (set, or sealed) while the JSON is
+parsed, so it is in no dict, no output, no error and no exception. The
+Railway token is registered the same way, and only the `railway` CLI gets
+it in its environment.
 
 It never prints a token, a password or a key, nor the output of a command
 that holds one (variable lists, bucket credentials); commands are shown by
@@ -55,12 +78,14 @@ repository's deployment files and prints the steps and commands.
 """
 import argparse
 import base64
+import enum
 import json
 import os
 import re
 import secrets
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -72,6 +97,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CLI_VERSION = "5.64.2"
 SERVICES = ("migrate", "api", "worker", "web")
+TOKENS = ("RAILWAY_TOKEN", "RAILWAY_API_TOKEN")
 LOGINS = (("geminus_migrator", "GEMINUS_MIGRATOR_DB_PASSWORD"), ("geminus_api", "GEMINUS_API_DB_PASSWORD"),
           ("geminus_worker", "GEMINUS_WORKER_DB_PASSWORD"))
 INPUTS = {
@@ -93,16 +119,42 @@ class Failed(Exception):
     """A step failed; the message says which and what to do."""
 
 
+class Seen(enum.Enum):
+    """What a variable listing keeps of a value the deployer does not need."""
+    SET = "set (value not kept)"
+    SEALED = "sealed"
+
+    def __repr__(self) -> str:
+        return f"<{self.value}>"
+
+
+def exit_on_signal(signum, frame):
+    """SIGTERM and SIGHUP end the run as an exit, so its cleanup runs (M1);
+    a second signal is ignored while the cleanup removes the TCP proxy."""
+    for s in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(s, signal.SIG_IGN)
+    print(f"deploy: interrupted ({signal.Signals(signum).name}): cleaning up, then exiting", flush=True)
+    raise SystemExit(128 + signum)
+
+
 class Run:
     def __init__(self, dry: bool):
         self.dry = dry
         self.hidden: list[str] = []  # secret values: never printed, never in argv
+        for k in TOKENS:  # the CLI reads the token itself; an error that quotes it is redacted
+            if os.environ.get(k):
+                self.secret(os.environ[k])
         self.cfg = {k: os.environ.get(k, "") for k in list(INPUTS) + list(DEFAULTS)}
         for k, v in DEFAULTS.items():
             self.cfg[k] = self.cfg[k] or v
         self.project_token = bool(os.environ.get("RAILWAY_TOKEN"))
         self.spec = json.loads((ROOT / "deploy/railway/variables.json").read_text(encoding="utf-8"))
+        self.owner = frozenset(n for s in self.spec["services"].values() for n, e in s["variables"].items() if e.get("source") == "owner")
+        self.database_seen = False  # Postgres exists: its TCP proxies can be listed
+        self.proxies_before: list[str] = []
         self.proxy_created = None
+        self.proxies_listed = False
+        self.proxy_problems: list[str] = []
         self.code = 0
 
     # -- output and commands -------------------------------------------------
@@ -117,8 +169,20 @@ class Run:
         self.hidden.append(value)
         return value
 
-    def run(self, argv, *, stdin=None, env=None, check=True, quiet=False, local=False) -> str:
-        """Runs argv (local: a read-only local command, run in a dry run too)."""
+    @staticmethod
+    def child_env(argv0: str, extra=None) -> dict:
+        """A command's environment: the Railway token only for the CLI (L2)."""
+        env = dict(os.environ, CI="true", RAILWAY_NO_AUTO_UPDATE="1")
+        if argv0 != "railway":
+            for k in TOKENS:
+                env.pop(k, None)
+        env.update(extra or {})
+        return env
+
+    def run(self, argv, *, stdin=None, env=None, check=True, quiet=False, local=False, parse=None):
+        """Runs argv (local: a read-only local command, run in a dry run too).
+        With parse (a json object_pairs_hook), returns the output parsed with
+        it (None if it is not JSON), never the output itself."""
         for a in argv:
             if any(s and s in a for s in self.hidden):
                 raise Failed("refusing to pass a secret as a command-line argument")
@@ -126,16 +190,19 @@ class Run:
             self.say("  $ " + " ".join(shlex.quote(a) for a in argv) + ("   (value on stdin)" if stdin is not None and argv[0] == "railway" else ""))
         if self.dry and not local:
             self.code = 0
-            return ""
-        full_env = dict(os.environ, CI="true", RAILWAY_NO_AUTO_UPDATE="1")
-        full_env.update(env or {})
-        p = subprocess.run(argv, input=stdin, capture_output=True, text=True, env=full_env, cwd=ROOT)
+            return None if parse else ""
+        p = subprocess.run(argv, input=stdin, capture_output=True, text=True, env=self.child_env(argv[0], env), cwd=ROOT)
         self.code = p.returncode
         if check and p.returncode != 0:
             err = (p.stderr or "").strip().splitlines()[-5:]
             self.say("    failed (exit %d): %s" % (p.returncode, " | ".join(err)))
             raise Failed(f"`{argv[0]} {' '.join(argv[1:3])}` failed")
-        return p.stdout
+        if parse is None:
+            return p.stdout
+        try:
+            return json.loads(p.stdout, object_pairs_hook=parse)
+        except ValueError:
+            return None  # the error would hold the output: not kept
 
     def rw(self, *args, stdin=None, check=True, quiet=False):
         """A Railway CLI call; its JSON output is parsed, never printed."""
@@ -169,23 +236,32 @@ class Run:
                 return d["id"]
         return None
 
-    @staticmethod
-    def as_variables(listing) -> dict:
-        """name -> value (None when sealed) of `railway variable list --json`."""
-        if isinstance(listing, dict):
-            if all(isinstance(v, (str, type(None))) for v in listing.values()):
-                return dict(listing)
-            for key in ("variables", "data"):
-                if key in listing:
-                    return Run.as_variables(listing[key])
-        if isinstance(listing, list):
-            return {e.get("name") or e.get("key"): e.get("value") for e in listing if isinstance(e, dict) and (e.get("name") or e.get("key"))}
-        return {}
-
-    def variables_of(self, service: str) -> dict:
+    def variables_of(self, service: str, keep=frozenset()) -> dict:
+        """`railway variable list --json` of a service (src/commands/variable.rs
+        at v5.64.2: a flat {name: value} map, null when sealed) as name -> the
+        value for the names in keep (registered as a secret; None when sealed),
+        and Seen.SET or Seen.SEALED for every other name ("" stays ""). The
+        values not kept, the owner's among them, are dropped while the JSON is
+        parsed (M2)."""
+        if keep & self.owner:
+            raise Failed("internal: the owner's variables are never kept")
         if self.dry:
             return {}
-        return self.as_variables(self.rw("variable", "list", "--service", service, *self.env(), "--json", quiet=True))
+
+        def receive(pairs):
+            out = {}
+            for k, v in pairs:
+                if k in keep and k not in self.owner and (v is None or isinstance(v, str)):
+                    out[k] = self.secret(v) if v else v
+                elif v is None:
+                    out[k] = Seen.SEALED
+                else:
+                    out[k] = "" if v == "" else Seen.SET
+            return out
+        got = self.run(["railway", "variable", "list", "--service", service, *self.env(), "--json"], quiet=True, parse=receive)
+        if not isinstance(got, dict):
+            raise Failed(f"`railway variable list --service {service} --json` did not print the expected map")
+        return got
 
     @staticmethod
     def domain_of(listing):
@@ -223,7 +299,7 @@ class Run:
             if not shutil.which(tool):
                 problems.append(f"{tool} is not installed (psql 15 or later: deploy/sql/create_logins.sql uses \\getenv)")
         if shutil.which("psql"):
-            v = re.search(r"(\d+)\.", subprocess.run(["psql", "--version"], capture_output=True, text=True).stdout or "")
+            v = re.search(r"(\d+)\.", self.run(["psql", "--version"], check=False, quiet=True, local=True) or "")
             if not v or int(v.group(1)) < 15:
                 problems.append("psql 15 or later is needed")
         if not self.dry:
@@ -236,9 +312,10 @@ class Run:
                 problems.append("the checkout has uncommitted changes, and `railway up` uploads the working tree (GEMINUS_ALLOW_DIRTY=1 accepts it)")
         if os.environ.get("RAILWAY_TOKEN") and os.environ.get("RAILWAY_API_TOKEN"):
             self.say("note: both tokens are set; the CLI takes the project and environment of RAILWAY_TOKEN")
-        p = subprocess.run([sys.executable, "-I", "scripts/check_deploy.py"], cwd=ROOT, capture_output=True, text=True)
-        if p.returncode != 0:
-            problems.append("scripts/check_deploy.py failed: " + p.stderr.strip()[-300:])
+        try:
+            self.run([sys.executable, "-I", "scripts/check_deploy.py"], quiet=True, local=True)
+        except Failed:
+            problems.append("scripts/check_deploy.py failed (its message is above)")
         if problems:
             raise Failed("preflight:\n  - " + "\n  - ".join(problems))
         self.say("preflight: inputs, tools and deployment files are in order")
@@ -269,6 +346,7 @@ class Run:
         services = self.rw("service", "list", *self.env(), "--json")
         if self.find_id(services, self.spec["database"]) is None:
             self.rw("add", "--database", "postgres", "--json")
+        self.database_seen = True
         if self.find_id(self.rw("bucket", "list", *self.env(), "--json"), self.spec["bucket"]) is None:
             self.rw("bucket", "create", self.spec["bucket"], "--region", self.cfg["GEMINUS_RAILWAY_BUCKET_REGION"], *self.env(), "--json")
         for s in SERVICES:
@@ -317,14 +395,15 @@ class Run:
         self.say("3. variables (secrets on stdin, never printed)")
         passwords = {}
         for s in SERVICES:
-            have = self.variables_of(s)
-            for name, e in self.spec["services"][s]["variables"].items():
+            spec = self.spec["services"][s]["variables"]
+            have = self.variables_of(s, keep=frozenset(n for n, e in spec.items() if e.get("source") == "generated"))
+            for name, e in spec.items():
                 src = e.get("source")
                 if src == "owner":
-                    continue  # the owner's: never set or read
+                    continue  # the owner's: never set; its value was dropped on receipt
                 if src == "generated":
                     if name in have:
-                        value = self.secret(have[name]) if have[name] else None  # None: sealed, in use
+                        value = have[name] or None  # None: sealed, in use
                     else:
                         value = self.generate(e)
                         self.set_from_stdin(s, name, value)
@@ -341,17 +420,79 @@ class Run:
 
     # -- 4. database logins ------------------------------------------------------
 
+    @staticmethod
+    def proxy_ids(listing):
+        """The ids in `railway tcp-proxy list --json` (src/commands/tcp_proxy.rs
+        at v5.64.2: {"proxies": [{"id": ...}, ...]}); None if it is not that."""
+        if not isinstance(listing, dict) or not isinstance(listing.get("proxies"), list):
+            return None
+        return [str(p["id"]) for p in listing["proxies"] if isinstance(p, dict) and p.get("id")]
+
+    def proxy_delete_cmd(self, pid: str) -> str:
+        return " ".join(shlex.quote(a) for a in ["railway", "tcp-proxy", "delete", pid, "--yes", "--service", self.spec["database"], *self.env()])
+
     def proxy_open(self) -> None:
-        self.say("4. database logins (a TCP proxy on PostgreSQL for this run only)")
+        self.say("4. database logins (a TCP proxy on PostgreSQL for this run)")
         listing = self.rw("tcp-proxy", "list", "--service", self.spec["database"], *self.env(), "--json")
-        if not any(d.get("id") for d in self.walk(listing)):
-            made = self.rw("tcp-proxy", "create", "--port", "5432", "--service", self.spec["database"], *self.env(), "--json")
-            self.proxy_created = next((d["id"] for d in self.walk(made) if d.get("id")), None) if not self.dry else "<proxy id>"
+        before = [] if self.dry else self.proxy_ids(listing)
+        if before is None:
+            raise Failed("`railway tcp-proxy list` did not print the expected {\"proxies\": [...]}")
+        if before:
+            # One proxy per service (the CLI's own note). Used, never removed: it may be someone's,
+            # or one an interrupted run left; the end of the run names it and exits 1 (M1).
+            self.proxies_before = before
+            self.say(f"   a TCP proxy was open before this run ({', '.join(before)}): used, not removed; reported at the end")
+            return
+        made = self.rw("tcp-proxy", "create", "--port", "5432", "--service", self.spec["database"], *self.env(), "--json")
+        if self.dry:
+            self.proxy_created = "<proxy id>"
+            return
+        proxy = made.get("proxy") if isinstance(made, dict) else None
+        self.proxy_created = str(proxy["id"]) if isinstance(proxy, dict) and proxy.get("id") else None
+        if self.proxy_created is None:
+            # The CLI prints "proxy": null when the proxy is not available yet: find it by listing.
+            now = self.proxy_ids(self.rw("tcp-proxy", "list", "--service", self.spec["database"], *self.env(), "--json")) or []
+            self.proxy_created = next((p for p in now if p not in before), None)
 
     def proxy_close(self) -> None:
-        if self.proxy_created:
-            self.say("   removing this run's TCP proxy")
-            self.rw("tcp-proxy", "delete", self.proxy_created, "--yes", "--service", self.spec["database"], *self.env(), "--json", check=False)
+        if not self.proxy_created:
+            return
+        self.say("   removing this run's TCP proxy")
+        self.rw("tcp-proxy", "delete", self.proxy_created, "--yes", "--service", self.spec["database"], *self.env(), "--json", check=False)
+        if self.code != 0:
+            self.proxy_problems.append(f"could not remove this run's TCP proxy {self.proxy_created} (railway exit {self.code}): "
+                                       f"remove it with `{self.proxy_delete_cmd(self.proxy_created)}`")
+
+    def check_proxies(self) -> list:
+        """Lists PostgreSQL's TCP proxies (M1); returns the proxy problems so far:
+        a failed removal, a listing that failed, any proxy still open (unless
+        GEMINUS_KEEP_DB_PROXY=1, which names it in a warning instead)."""
+        if self.proxies_listed or not self.database_seen:
+            return self.proxy_problems
+        self.proxies_listed = True
+        if self.dry:
+            self.say("   would list Postgres's TCP proxies: any still open (also one from before this run) "
+                     "fails the run unless GEMINUS_KEEP_DB_PROXY=1")
+            return []
+        listing = self.rw("tcp-proxy", "list", "--service", self.spec["database"], *self.env(), "--json", check=False, quiet=True)
+        ids = self.proxy_ids(listing) if self.code == 0 else None
+        if ids is None:
+            self.proxy_problems.append("could not list the TCP proxies of Postgres (`railway tcp-proxy list`): check Railway → "
+                                       "Postgres → Settings → Networking and remove any TCP proxy")
+            return self.proxy_problems
+        keep = os.environ.get("GEMINUS_KEEP_DB_PROXY") == "1"
+        for pid in ids:
+            whose = ("this run's" if pid == self.proxy_created else
+                     "open before this run (used, not removed: it may be someone's, or left by an interrupted run)"
+                     if pid in self.proxies_before else "not this run's")
+            msg = f"TCP proxy {pid} on Postgres is still open, {whose}: remove it with `{self.proxy_delete_cmd(pid)}`"
+            if keep:
+                self.say(f"   warning: {msg} (GEMINUS_KEEP_DB_PROXY=1: kept)")
+            else:
+                self.proxy_problems.append(msg + " (or set GEMINUS_KEEP_DB_PROXY=1 to keep it)")
+        if not ids:
+            self.say("   TCP proxies of Postgres: none open")
+        return self.proxy_problems
 
     def admin(self) -> dict:
         """psql's environment for the database's administrator, through the proxy."""
@@ -360,20 +501,20 @@ class Run:
             return {}
         deadline = time.time() + 300
         while True:
-            url = self.as_variables(self.rw("variable", "list", "--service", self.spec["database"], *self.env(), "--json", quiet=True)).get("DATABASE_PUBLIC_URL")
-            if url:
+            url = self.variables_of(self.spec["database"], keep=frozenset({"DATABASE_PUBLIC_URL"})).get("DATABASE_PUBLIC_URL")
+            if isinstance(url, str) and url:
                 break
             if time.time() > deadline:
                 raise Failed("Postgres has no DATABASE_PUBLIC_URL: the TCP proxy did not become active (redeploy Postgres, then run again)")
             time.sleep(10)
-        self.secret(url)
         u = urllib.parse.urlparse(url)
         password = urllib.parse.unquote(u.password or "")
         self.secret(password)
         env = {"PGHOST": u.hostname or "", "PGPORT": str(u.port or 5432), "PGUSER": urllib.parse.unquote(u.username or ""),
                "PGPASSWORD": password, "PGDATABASE": u.path.lstrip("/"), "PGSSLMODE": "require", "PGCONNECT_TIMEOUT": "10"}
         for _ in range(18):  # the proxy may need a moment after the variable appears
-            if subprocess.run(["psql", "-X", "-Atc", "SELECT 1"], env=dict(os.environ, **env), capture_output=True, text=True).returncode == 0:
+            self.run(["psql", "-X", "-Atc", "SELECT 1"], env=env, check=False, quiet=True)
+            if self.code == 0:
                 return env
             time.sleep(10)
         raise Failed("the database does not answer through the TCP proxy")
@@ -490,44 +631,58 @@ class Run:
         if self.dry:
             for line in ("GET https://<api>/healthz 200", "GET https://<api>/readyz 200", "GET https://<api>/v1/me 401",
                          "GET https://<web>/ 200", "GET https://<web>/auth/login 302/303 to <issuer>authorize",
-                         "the worker's deployment still SUCCESS", "the owner's required variables exist (names only)"):
+                         "the worker's deployment still SUCCESS",
+                         "the owner's required variables exist and its secrets are sealed (names only; values dropped on receipt)"):
                 self.say("   would check " + line)
+            self.check_proxies()
             return
-        problems = []
+        problems, unsealed = [], []
         for s in SERVICES:
-            names = set(self.variables_of(s))
+            have = self.variables_of(s)
             for name, e in self.spec["services"][s]["variables"].items():
-                if e.get("source") == "owner" and e.get("required") and name not in names:
+                if e.get("source") != "owner":
+                    continue
+                if e.get("required") and name not in have:
                     problems.append(f"the owner has not set {name} on {s} (Railway → {s} → Variables)")
+                elif e.get("secret") and have.get(name) is Seen.SET:
+                    unsealed.append(f"{name} on {s}")
+        if unsealed:
+            self.say("   note: the owner's secrets not sealed: " + ", ".join(unsealed) + ". `railway variable list` returns an unsealed "
+                     "value to whoever lists the variables (this script drops it on receipt: kept, printed and stored nowhere); "
+                     "seal each in Railway (the service → Variables → the variable's 3-dot menu → Seal; it cannot be unsealed, "
+                     "the value can still be replaced)")
         api = self.domain_of(self.rw("domain", "list", "--service", "api", *self.env(), "--json", quiet=True))
         web = self.domain_of(self.rw("domain", "list", "--service", "web", *self.env(), "--json", quiet=True))
         if not api or not web:
-            raise Failed("the public domains of api and web were not found")
-        for path, want in (("/healthz", 200), ("/readyz", 200), ("/v1/me", 401)):
-            code, _ = self.get(f"https://{api}{path}")
-            self.say(f"   https://{api}{path} -> {code}")
-            if code != want:
-                problems.append(f"https://{api}{path} answered {code}, want {want}")
-        code, _ = self.get(f"https://{web}/")
-        self.say(f"   https://{web}/ -> {code}")
-        if code != 200:
-            problems.append(f"https://{web}/ answered {code}, want 200")
-        code, headers = self.get(f"https://{web}/auth/login")
-        loc = headers.get("Location", "") if headers else ""
-        self.say(f"   https://{web}/auth/login -> {code} {loc.split('?')[0]}")
-        if code not in (302, 303) or not loc.startswith(self.cfg["GEMINUS_AUTH0_ISSUER"] + "authorize"):
-            problems.append("the sign-in does not redirect to Auth0 (503 means the BFF configuration is incomplete; "
-                            "most likely the owner's BFF_OIDC_CLIENT_SECRET is missing)")
+            problems.append("the public domains of api and web were not found")
+        else:
+            for path, want in (("/healthz", 200), ("/readyz", 200), ("/v1/me", 401)):
+                code, _ = self.get(f"https://{api}{path}")
+                self.say(f"   https://{api}{path} -> {code}")
+                if code != want:
+                    problems.append(f"https://{api}{path} answered {code}, want {want}")
+            code, _ = self.get(f"https://{web}/")
+            self.say(f"   https://{web}/ -> {code}")
+            if code != 200:
+                problems.append(f"https://{web}/ answered {code}, want 200")
+            code, headers = self.get(f"https://{web}/auth/login")
+            loc = headers.get("Location", "") if headers else ""
+            self.say(f"   https://{web}/auth/login -> {code} {loc.split('?')[0]}")
+            if code not in (302, 303) or not loc.startswith(self.cfg["GEMINUS_AUTH0_ISSUER"] + "authorize"):
+                problems.append("the sign-in does not redirect to Auth0 (503 means the BFF configuration is incomplete; "
+                                "most likely the owner's BFF_OIDC_CLIENT_SECRET is missing)")
         time.sleep(30)
         if (st := self.status("worker")) != "SUCCESS":
             problems.append(f"the worker's deployment is {st or 'unknown'} (`railway logs --service worker`)")
-        self.say(f"   Auth0 Application: Allowed Callback URL https://{web}/auth/callback, Allowed Logout URL https://{web}/")
+        problems += self.check_proxies()
+        if web:
+            self.say(f"   Auth0 Application: Allowed Callback URL https://{web}/auth/callback, Allowed Logout URL https://{web}/")
         if problems:
             raise Failed("verification:\n  - " + "\n  - ".join(problems))
 
     # -- the whole run -------------------------------------------------------------
 
-    def main(self) -> None:
+    def steps(self) -> None:
         self.preflight()
         sha = self.run(["git", "rev-parse", "--short", "HEAD"], quiet=True, local=True).strip() or "<commit>"
         if self.dry:
@@ -535,8 +690,8 @@ class Run:
         self.project()
         self.resources()
         passwords = self.variables(self.bucket_credentials())
-        self.proxy_open()
         try:
+            self.proxy_open()
             admin = self.admin()
             provisioner = self.logins(admin, passwords)
             self.seal()
@@ -548,6 +703,24 @@ class Run:
         for s in ("api", "worker", "web"):
             self.deploy(s, sha)
         self.verify()
+
+    def main(self) -> None:
+        """The run; whatever ends it (done, a failed step, SIGTERM or SIGHUP as an
+        exit), it ends by listing Postgres's TCP proxies (M1), unless verify did."""
+        try:
+            self.steps()
+        except Failed as e:
+            extra = [p for p in self.check_proxies() if p not in str(e)]  # verify's message has its own
+            if extra:
+                raise Failed(f"{e}\n  - TCP proxy: " + "\n  - TCP proxy: ".join(extra)) from None
+            raise
+        except BaseException:
+            for p in self.check_proxies():
+                self.say(f"deploy: TCP proxy: {p}")
+            raise
+        left = self.check_proxies()
+        if left:
+            raise Failed("the deployment's steps ran, but:\n  - TCP proxy: " + "\n  - TCP proxy: ".join(left))
         self.say(("dry run: done, nothing was called" if self.dry else "deploy: done") +
                  ". Variables that are the owner's: docs/runbooks/deploy.md §7.3.")
 
@@ -559,11 +732,19 @@ def main() -> int:
     mode.add_argument("--apply", action="store_true", help="create or update the deployment (needs a Railway token)")
     args = ap.parse_args()
     run = Run(dry=args.dry_run)
+    for s in (signal.SIGTERM, signal.SIGHUP):
+        signal.signal(s, exit_on_signal)
     try:
         run.main()
     except Failed as e:
         run.say(f"deploy: FAIL: {e}")
         return 1
+    except SystemExit as e:  # exit_on_signal: the cleanup ran
+        run.say(f"deploy: INTERRUPTED (exit {e.code}): rerun deploy/railway/deploy.sh --apply")
+        return int(e.code) if isinstance(e.code, int) else 1
+    except KeyboardInterrupt:  # SIGINT: the cleanup ran too
+        run.say("deploy: INTERRUPTED (SIGINT): rerun deploy/railway/deploy.sh --apply")
+        return 130
     return 0
 
 

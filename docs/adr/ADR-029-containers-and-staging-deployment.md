@@ -1,6 +1,6 @@
 # ADR-029 — Containers、migration step 與 S3 相容 object storage（T-039 hackathon 切片）
 
-狀態：**PROPOSED**（2026-10-26，T-039 agent 提出並實作；待 owner 與獨立審查）。依據：T-039 的 scope、H-029 (3)（影片＋公開網址：Docker＋managed Postgres、只放 synthetic 資料、owner 建立的 Auth0 tenant）、owner 的雲端選擇（coordinator 轉達，H-030：先為「railway + cloudflare」，同日改為「純用 railway」）、H-032（owner 提供 Railway token 給之後的 session；coordinator 以非互動的腳本部署）、D-044（object storage 的介面；正式 adapter 待 owner 選雲端後另立 ADR）、D-042（provisioning login）、ADR-017、ADR-018、ADR-024、ADR-028、AGENTS.md §2–§7。本 ADR 不批准任何 PROPOSED 決策，也不部署任何東西。
+狀態：**PROPOSED**（2026-10-26，T-039 agent 提出並實作；待 owner 與獨立審查）。依據：T-039 的 scope、H-029 (3)（影片＋公開網址：Docker＋managed Postgres、只放 synthetic 資料、owner 建立的 Auth0 tenant）、owner 的雲端選擇（H-030 先為「railway + cloudflare」，H-031 改為「純用 railway」：Railway only 的依據是 H-031）、H-032（owner 提供 Railway token 給之後的 session；coordinator 以非互動的腳本部署）、D-044（object storage 的介面；正式 adapter 待 owner 選雲端後另立 ADR）、D-042（provisioning login）、ADR-017、ADR-018、ADR-024、ADR-028、AGENTS.md §2–§7。本 ADR 不批准任何 PROPOSED 決策，也不部署任何東西。
 
 ## Context
 
@@ -13,7 +13,7 @@
 
 ### Images（`Dockerfile.api`、`Dockerfile.worker`、`apps/web/Dockerfile`）
 
-- 一律從 repository root 建置；multi-stage；base image 以 digest pin（ADR-011 的表）；runtime 為非 root（Go：distroless static `nonroot`，uid 65532；web：Node 的 `node`，uid 1000）；不宣告任何 `ARG`（Railway 只把宣告為 `ARG` 的變數傳進 build，見 runbook §7）；沒有 credential 進 image；`.dockerignore` 排除 git、env 檔、node_modules、build output、checks、sources。
+- 一律從 repository root 建置；multi-stage；base image 以 digest pin（ADR-011 的表）；runtime 為非 root（Go：distroless static `nonroot`，uid 65532；web：Node 的 `node`，uid 1000）；不宣告任何 `ARG`（Railway 只把宣告為 `ARG` 的變數傳進 build，見 runbook §7）；沒有 credential 進 image；`.dockerignore` 排除 git、任何目錄的 env 檔（`**/.env`、`**/.env.*`，只放回 `!**/.env.example`；review 第 1 輪 L3）、node_modules、build output、checks、sources。
 - API image 另含兩個 operator 命令：`geminus-migrate` 與 `geminus-provision-tenant`（各自的 login，API service 永遠拿不到），與 `/migrations/*.up.sql`。
 - Web：Next 的 standalone server（只有 image 的 build 設 `GEMINUS_NEXT_STANDALONE=1`；`make frontend-build` 與瀏覽器檢查不變），runtime 移除 npm、corepack、yarn。
 - 健康檢查：API 在 `/v1` 之外提供 `GET /healthz`（process 活著）與 `GET /readyz`（2 秒內 database 回應），不需 token、只回 `ok`／`ready`／`unavailable`、不進 access log；`geminus-api -probe` 是 image 的 `HEALTHCHECK`（image 沒有 shell 或 HTTP client）。它們不是 contract 的 operation（`/v1` 的 operation 都在一個 organization 中執行，`scripts/check_contracts.py`），所以不在 `openapi/openapi.yaml`。Worker 沒有 HTTP listener，平台看 process。Web 以 `/` 檢查。
@@ -22,7 +22,7 @@
 ### Migration step（`cmd/migrate`、`internal/storage/migrations`）
 
 - `geminus-migrate up|status`，只讀 `GEMINUS_MIGRATE_DATABASE_URL`（從不讀 runtime 的 `DATABASE_URL`）。Login 必須能以 twin_owner 行事、不屬於 twin_api／twin_worker／twin_provisioner、沒有 SUPERUSER、BYPASSRLS、CREATEROLE、CREATEDB、REPLICATION（superuser 是每個 role 的成員，因此也被拒絕）。
-- 每個 migration 與它的紀錄（`geminus_migrations.applied`：version、檔名、檔案的 SHA-256、時間、login；owner twin_owner，PUBLIC 無權限）在同一個 transaction；檔案本身有 `BEGIN;…COMMIT;` 時紀錄插在它的 `COMMIT;` 之前，沒有時（0003）整個檔案包在一個 transaction 中；檔案中其他位置的 transaction 指令一律拒絕。Advisory lock 使並行的兩次執行輪流進行。紀錄與本 build 的檔案不符（已套用的檔案被改過、資料庫比 build 新、有 twin schema 卻沒有紀錄）時拒絕、不修補。
+- 每個 migration 與它的紀錄（`geminus_migrations.applied`：version、檔名、檔案的 SHA-256、時間、login；owner twin_owner，PUBLIC 無權限）在同一個 transaction；檔案本身有 `BEGIN;…COMMIT;` 時紀錄插在它的 `COMMIT;` 之前，沒有時（0003）整個檔案包在一個 transaction 中；檔案中其他位置的 transaction 指令一律拒絕。Advisory lock 使並行的兩次執行輪流進行。紀錄與本 build 的檔案不符（已套用的檔案被改過、資料庫比 build 新、有 twin schema 卻沒有紀錄）時拒絕、不修補。**已知缺口（review 第 1 輪 L4，未修）**：transaction 指令的偵測以整行比對，`END;`、`COMMIT WORK;`、`COMMIT AND CHAIN;`、`PREPARE TRANSACTION`、與其他 statement 同一行的 `COMMIT;` 不會被拒絕；修正之前，新的 migration 不得使用這些寫法（現有 16 個都沒有）。
 - 規則 `migrations-only-in-their-command`：只有 `cmd/migrate` 能連結 runner（API、worker、storage 的 probe）。
 - Login 的建立：`deploy/sql/create_logins.sql`（psql 15+，密碼只從環境變數 `\getenv`），在 `db/bootstrap_roles.sql` 之後由 administrator 執行一次：`geminus_migrator`（twin_owner）、`geminus_api`、`geminus_worker`、`geminus_provisioner`（NOINHERIT，D-042），並給 twin_owner 該 database 的 CREATE。
 
@@ -36,10 +36,11 @@
 ### Railway 的自動化（`deploy/railway/deploy.sh`，H-032）
 
 - `deploy.sh --apply` 以 pin 住的 Railway CLI 5.64.2（`--install-cli` 核對 release archive 的 SHA-256；`CI=true`、`RAILWAY_NO_AUTO_UPDATE=1` 使它不自行更新）完成 runbook §7.1–§7.6：project 與 environment、PostgreSQL、bucket、四個 service 與各自的 config-as-code 檔、公開網域、`variables.json` 的變數、login、migrate、seed、api／worker／web、verification；每一步先查、只在缺少時建立，可重跑。`--dry-run` 不連網，檢查輸入、工具與部署檔並印出每個命令。
-- Token 只由 CLI 從環境讀（`RAILWAY_TOKEN`：project token；`RAILWAY_API_TOKEN`：account／workspace token）；腳本在 xtrace 開著時拒絕執行，每次呼叫前檢查引數中沒有 secret，輸出中已知的 secret 一律替換為 `[redacted]`，CLI 中含 secret 的輸出（variable list、bucket credentials）只解析不印出。
-- 產生的 secret（三個 login 的密碼、`SESSION_KEYS`）在本機以 Python 的 `secrets` 產生，經 `railway variable set KEY --stdin` 設定後 sealed；不用 Railway 的 `${{secret()}}`：Railway 文件只把它寫成 template 部署時的函式，沒有寫一般 service variable 可用（runbook §7.7）。Provisioning login 的密碼每次執行新產生、只在該次 seed 的環境中。Owner 的變數（`BFF_OIDC_CLIENT_SECRET`、AI key、`GEMINUS_AI_LIVE`）腳本不設也不讀，只在 verification 檢查必填者的名稱存在。
-- Database 的 bootstrap 經本次執行暫開、結束時移除的 TCP proxy（`sslmode=require`）。Migration 不用 pre-deploy command（會把 migration login 交給 API service），而是部署獨立的 `migrate` service，等 `geminus_migrations.applied` 的筆數等於 checkout 的 migration 數之後才部署 api 與 worker。
-- `scripts/rehearse_railway_deploy.py` 以 `railway`、`psql`、`go` 的替身離線執行完整的 `--apply`（12 個 mutant 全部被擋下）；它不證明 Railway 接受每個呼叫。未查證：reference 到 sealed variable 時是否展開（runbook §7.7 的復原：`GEMINUS_RAILWAY_SEAL=off`）。
+- Token 只由 CLI 從環境讀（`RAILWAY_TOKEN`：project token；`RAILWAY_API_TOKEN`：account／workspace token），腳本把它登記為要遮蔽的 secret，並從 CLI 以外每個程式（psql、`go run`、git）的環境中移除；`deploy.sh` 在 xtrace 開著時於執行任何命令之前拒絕（exit 2）；每次呼叫前檢查引數中沒有 secret，輸出中已知的 secret 一律替換為 `[redacted]`，CLI 中含 secret 的輸出（variable list、bucket credentials）只解析不印出。
+- 產生的 secret（三個 login 的密碼、`SESSION_KEYS`）在本機以 Python 的 `secrets` 產生，經 `railway variable set KEY --stdin` 設定後 sealed；不用 Railway 的 `${{secret()}}`：Railway 文件只把它寫成 template 部署時的函式，沒有寫一般 service variable 可用（runbook §7.7）。Provisioning login 的密碼每次執行新產生、只在該次 seed 的環境中。Owner 的變數（`BFF_OIDC_CLIENT_SECRET`、AI key、`GEMINUS_AI_LIVE`）腳本不設，只在 verification 檢查必填者的名稱存在。
+- 變數清單（review 第 1 輪 M2）：知道變數是否存在的唯一方法 `railway variable list --json` 會回傳每個沒有 sealed 的值（sealed 的為 `null`）。腳本在解析 JSON 的當下只保留自己需要的值（自己產生的密碼、Postgres 的 `DATABASE_PUBLIC_URL`），每個都登記為 secret；其他值（包括 owner 的全部）換成「已設／sealed」的標記，不進任何狀態、輸出、錯誤或 exception。Owner 應在新增變數後立刻 sealed；verification 以名稱列出還沒有 sealed 的 owner secret。沒有 sealed 時值仍會短暫經過腳本的 process：與 H-033「只看名稱、不讀值」的字面差距由 owner 決定（runbook §7.3）。不把所有收到的值登記為 secret，因為 Railway 自己的變數有 `railway`、`production`、`5432` 這類值，登記之後引數檢查會拒絕 CLI 本身的呼叫；所以不需要的值一律丟棄，比遮蔽更保守。
+- Database 的 bootstrap 經 Postgres 的公開 TCP proxy（`sslmode=require`）。本次開的 proxy 在步驟 4–6 結束時移除，失敗、SIGTERM、SIGHUP 時也移除（訊號轉成 exit）；`tcp-proxy delete` 失敗時寫出 id 與移除命令並以 exit 1 結束；每次 `--apply` 結束前都列出 Postgres 的 TCP proxy，還有任何 proxy 開著（包括執行前就存在、被沿用而不移除的：腳本分不出是別人開的還是被中斷的執行留下的）或列不出來時，以 id 與移除命令回報並以 exit 1 結束，只有明確設 `GEMINUS_KEEP_DB_PROXY=1` 時開著的 proxy 只警告（review 第 1 輪 M1）。SIGKILL 無法攔截，由下一次執行回報。Migration 不用 pre-deploy command（會把 migration login 交給 API service），而是部署獨立的 `migrate` service，等 `geminus_migrations.applied` 的筆數等於 checkout 的 migration 數之後才部署 api 與 worker。
+- `scripts/rehearse_railway_deploy.py` 以 `railway`、`psql`、`go` 的替身離線執行完整的 `--apply`（作者的 12 個 mutant 與 review 第 1 輪的 mutant 見 `checks/T-039_VALIDATION.md`）；它不證明 Railway 接受每個呼叫。未查證：reference 到 sealed variable 時是否展開（runbook §7.7 的復原：`GEMINUS_RAILWAY_SEAL=off`）。
 
 ## Consequences
 
@@ -56,3 +57,4 @@
 2. BFF 經 API 的公開網域（https）呼叫 API；Railway 的 private network 是 plain http（WireGuard 加密），BFF 目前只在全部 URL 都是 loopback 時才接受 http。是否允許 BFF 以 http 連 private network 的 API（需要改 BFF 的檢查並另行審查），或維持公開網域。
 3. Bucket 的 region（建立後不能改）與資料保存的期限。
 4. Secret 由 `deploy.sh` 在本機產生並 sealed（不用 `${{secret()}}`），是否接受；若第一次 `--apply` 發現 Railway 不展開 reference 到 sealed variable 的值，是否接受 `GEMINUS_RAILWAY_SEAL=off`（密碼可在 Railway 的 UI 看到）或改為把整個 database URL 存成 sealed variable（需要修改腳本與檢查）。
+5. Owner 的變數沒有 sealed 時，CLI 的變數清單會把值交給腳本（收到即丟棄）：是否接受，或 owner 一律以 sealed 新增（H-033）。
