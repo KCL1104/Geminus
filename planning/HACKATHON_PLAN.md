@@ -47,8 +47,8 @@
 |---|---|
 | 已完成 | Meta（Muse）的 key 加到環境變數（H-033） |
 | 已完成 | Railway token 加到環境變數（H-032） |
-| 10-29 前 | 建立 Auth0 的 dev tenant |
-| 10-31 前 | 在 Railway 的 variables 填入 Meta key、Anthropic key（備援）與 Auth0 的 secret（agent 提供名稱清單；session secret 由 Railway 產生；secret 不進 repo，agent 不讀值） |
+| 10-29 前 | 註冊 Auth0、建立 tenant（region 建議 US）與自己的登入使用者，告知 `user_id`；其餘由 agent 在部署時以裝置登入設定（H-034，部署當天在瀏覽器按核准） |
+| 10-31 前 | 在 Railway 的 variables 填入 Meta key 與 Anthropic key（備援）；Auth0 的 Client Secret 由部署腳本直接寫入（H-034）（agent 提供名稱清單；session secret 由 Railway 產生；secret 不進 repo，agent 不讀值） |
 | 11-04 | 看過 demo 影片（需要的話錄旁白），以 Indie 組 Representative 身分在 Cerebral Valley 提交 |
 
 ## 資料與花費

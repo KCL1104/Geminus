@@ -1814,6 +1814,19 @@
         "T-055 的獨立審查",
         "Meta key 的變數名稱（新 session 中確認，只看名稱）"
       ]
+    },
+    {
+      "id": "H-034",
+      "subject": "Auth0 由 agent 以裝置登入設定；Client Secret 直接寫入 Railway",
+      "decision": "修改 H-032 的 Auth0 secret 部分：owner 註冊、建立 tenant 與自己的使用者並告知 user_id；agent 在部署 session 以 Auth0 CLI 裝置登入（owner 在瀏覽器核准）建立並設定 API、Regular Web Application 與關閉 sign-up；Client Secret 經 stdin 直接寫入 Railway（sealed），不印出、不寫檔；完成後登出。CLI 版本固定、核對 checksum 與授權；先寫 rehearsal 測試；不可行時改 owner 手動。AI 的 key 仍由 owner 在 Railway 填入。",
+      "quote": "有辦法給你東西讓你幫我設定嗎；裝置登入，由你設定 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆與 AskUserQuestion 選擇",
+      "still_open": [
+        "Owner 建立 Auth0 tenant 與自己的使用者",
+        "評審用的 demo 帳號（要不要）"
+      ]
     }
   ]
 }
