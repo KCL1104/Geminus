@@ -74,3 +74,4 @@
 
   ADR-016 其餘部分不變。
 - Go API 不變：仍只接受 Bearer，也不新增 cookie 寫入路徑。SECURITY §3 要求的 cookie 防護（CSRF、SameSite、Secure、HttpOnly）由 BFF 執行，並由 TEST-032 驗證。
+- 2026-10-26 補記（T-043 後續：登入後的 UI bootstrap）：root layout 在伺服器端讀 session cookie，只為了知道它是否打得開且未到期（BFF 的 `hasSession`：解封、檢查期限，不 refresh、不呼叫 provider 或 API）；交給頁面的只有這個布林值與之前選過的 organization ID，cookie 的值、token 或封裝的內容都不進 HTML。`/me` 與其後的 API 呼叫都經同源 proxy，refresh 仍只在 proxy 中進行（輪替後的 token 只能放在回應的 Set-Cookie）。登入連結為 `/auth/login?return_to=<目前的頁面>`，return path 以與 BFF 相同的規則（`lib/return-to.ts`）檢查；登出按鈕以 `X-Geminus-Request` 呼叫既有的 `POST /auth/logout`。CSRF 規則不變。

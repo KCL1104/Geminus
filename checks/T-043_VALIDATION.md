@@ -1,6 +1,6 @@
 # T-043 驗證報告：瀏覽器登入 session（BFF，ADR-018）
 
-**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；D-045 的 API 與 client 部分（`GET /v1/me`）已實作（161f62e），獨立 review ACCEPT 並有 3 個 low finding，已修正，見「D-045 slice」；登入後的 UI bootstrap 等 design system）｜需求：REQ-019｜Gate：D-045（APPROVED，H-010）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
+**日期：2026-10-19｜狀態：`in_progress`（BFF 部分：review round 1、2 為 CHANGES REQUESTED，round 3 為 ACCEPT 並有 5 個 low finding，已修正，修正由 T-043 結案前的 final review 審查；D-045 的 API 與 client 部分（`GET /v1/me`）已實作（161f62e），獨立 review ACCEPT 並有 3 個 low finding，已修正，見「D-045 slice」；登入後的 UI bootstrap 於 2026-10-26 實作（branch `t043-bootstrap`），待獨立 review，見最後一節）｜需求：REQ-019｜Gate：D-045（APPROVED，H-010）｜驗收測試：TEST-009（BFF 部分）、TEST-032**
 
 範圍依 tasks.json：
 
@@ -211,7 +211,7 @@ D-045（APPROVED，H-010；解決 CB-17）的 API、DB 與 client 部分，是 T
 ## 決策與 owner 知悉
 
 - **D-045（APPROVED，H-010）**：登入之後的 UI bootstrap（登入／登出按鈕、organization 選擇、從 API 取得 role、未知 identity 在 UI 顯示 403）需要 `GET /v1/me`。API、DB 與 client（`getMe()`）已在「D-045 slice」實作、待獨立 review；在 UI 實作前，BFF 已能登入、轉送與登出，但 UI 仍一律顯示未登入（沒有元件知道 session 存在）。T-043 的 decision gate 因此包含 D-045；BFF 部分先送審。
-- 加入登入／登出按鈕會改變每個頁面的 header，所有截圖 baseline 需要重做；依 T-045 的規則只能由 owner 以 CI 的 `update_screenshots` 產生並確認後提交。
+- 加入登入／登出按鈕會改變每個頁面的 header，所有截圖 baseline 需要重做；依 T-045 的規則只能由 owner 以 CI 的 `update_screenshots` 產生並確認後提交。（2026-10-26 的 bootstrap 沒有改變未登入的 header：登入只在「需要登入」的頁面上，登出只在有 session 時出現；改變的只有未登入的專案頁的 8 個 baseline，見最後一節。）
 - Auth0 tenant 與 credential 由 owner 依 `docs/runbooks/auth0.md` 建立；agent 沒有建立帳號、沒有任何 credential，也沒有連過 Auth0。
 - **Auth0 的 rotation reuse interval（owner 已決定，H-010：30 秒）**：runbook 一律設 30 秒（round 2 I-3）。代價是：refresh token 被 rotation 後 30 秒內，被竊的舊 token 仍能換到新 token 而不觸發 reuse detection；好處是被取消的 request 或遺失的回應不會讓使用者被登出。設 0 也能運作，只是上述情況會結束 session。
 - 新依賴：openid-client 6.8.8（MIT），帶入 oauth4webapi 3.8.8 與 jose 6.2.12（MIT），三者皆於 2026-09-05 發布；`npm audit --omit=dev` 為 0。
@@ -227,7 +227,7 @@ D-045（APPROVED，H-010；解決 CB-17）的 API、DB 與 client 部分，是 T
 | 項目 | 原因／歸屬 |
 |---|---|
 | 連 Auth0 的檢查 | 沒有 tenant 與 credential；`docs/runbooks/auth0.md` §5 在 staging 由人執行 |
-| 登入 UI、organization 選擇、UI 中的 403 | `GET /v1/me` 與 `getMe()` 已實作（D-045 slice）；UI 等 design system，隨新截圖 baseline 一起做 |
+| 登入 UI、organization 選擇、UI 中的 403 | 2026-10-26 已實作（「後續：登入後的 UI bootstrap」，待獨立 review）；未登入的專案頁的 8 個截圖 baseline 由 owner 在 CI 產生並確認 |
 | `make e2e-test`（D-045 slice） | NOT RUN：這一片沒有改 UI；E2E 的 API 替身尚無 `/v1/me` |
 | 瀏覽器→BFF→Go API→DB 的閉環 | T-040 |
 | 多個 web instance 之間的 refresh 協調 | P0 單一 instance；多 instance 時以 Auth0 的 reuse interval 30 秒涵蓋（runbook） |
@@ -244,3 +244,99 @@ T-045 的獨立 review（H-003，`checks/evidence/2026-10-26-T-045-r1/reviewer/R
 - **修正**：改為 `Object.hasOwn(reasons, reason)`（只查自己的 key）。
 - **先紅後綠**：`apps/web/tests/layout.test.tsx`「says a sign-in failed for a reason it does not know, even one named like an object's own property」：`toString`、`constructor`、`__proto__`、`hasOwnProperty`、`valueOf`、`isPrototypeOf`、`propertyIsEnumerable`、`toLocaleString`、不認得的字、空字串、沒有 reason、兩個 reason，都必須顯示一般的失敗文字與「Sign in again」連結；修正前失敗（`checks/evidence/2026-10-26-T-045-r1/red-i2-i3.log`），修正後通過。瀏覽器：`apps/web-e2e/tests/session.spec.ts`「a sign-in error page with an unknown reason says the sign-in failed, never a 500」，修正前 `toString` 得到 500（`red-e2e-run1.log`），修正後 200（`e2e-test.log`）。
 - BFF 只以 `expired`、`refused`、`failed` 三個 reason 轉址到這一頁（`lib/session/bff.ts`；`tests/bff.test.ts` 檢查），所以這只在有人自己輸入或傳遞網址時發生。
+
+## 後續：登入後的 UI bootstrap（hackathon，H-029）
+
+2026-10-26，agent 實作，branch `t043-bootstrap`（parent 74cb9ae，T-015 切片整合後）。Commits：0ae7952（既有失敗的修正，見下）、512eb32（先寫的測試，紅）、f76631c（實作）、之後一個 commit 為文件、本節與 evidence。待獨立 review（H-029：比賽期間每個切片一輪）。
+
+這一片補上 T-043 一直缺的部分：BFF 能登入、轉送與登出，`GET /v1/me`（D-045）也已實作，但沒有元件知道 session 存在，所以真實部署中每個資料頁一律顯示「需要登入」，而且那個狀態沒有登入的動作（tasks.json T-043 scope 的後續、impeccable audit 2026-10-19 的 P0）。Demo 的流程（H-029）需要：登入 → 選組織（只有一個時自動）→ 專案 → 模型編輯器 → proposal → 執行與結果。
+
+### 做了什麼
+
+| 位置 | 內容 |
+|---|---|
+| `apps/web/app/layout.tsx` | root layout 以 `AuthBootstrap` 包住 strip 與頁面。伺服器只做兩件事：session cookie 存在時問 BFF 它是否打得開且未到期（`hasSession`），以及把 `geminus_organization` cookie 讀成 organization ID（不是 ID 就是 null）。交給 client component 的只有這個布林值與 ID：cookie 的值、token、封裝的內容都不進 HTML（`tests/layout-session.test.tsx`） |
+| `apps/web/lib/session/bff.ts`、`server.ts` 的 `hasSession` | 解封並檢查閒置／絕對期限與時鐘容差（沿用 `readSession`）；**不** refresh、不呼叫 provider 或 API。refresh 後輪替的 token 只能放進回應的 Set-Cookie，而 server component 不能設 cookie，所以 refresh 仍只在 proxy 中進行。BFF 設定不完整時為 false |
+| `apps/web/app/_components/auth-bootstrap.tsx` | 有 session 時經 BFF 呼叫 `getMe()`（不帶 `X-Organization-ID`，D-045）；沒有 session 時什麼都不問，第一個 paint 就是未登入。結果經既有的 `lib/auth/session.tsx` context 提供：`session`（選定的 organization）、`role`，加上 `account`（bootstrap 的狀態與 `choose`／`retry`／`signOut`）。沒有第二個 state model（ADR-016）：頁面、`useApi()` 與編輯器的唯讀行為照舊讀 `session` 與 `role`。每個 organization 一個 session 物件，切換時頁面以新的 client 重新載入 |
+| `apps/web/lib/auth/bootstrap.ts` | 純函式 `bootstrapFrom`：`/me` 載入中 → loading；401（沒有 session，或 refresh 被拒而 session 結束）→ signed_out；403（Geminus 沒有這個 identity 的 user，D-008：不在此建立）→ no_access，保留 API 的 problem 與 request ID；其他失敗（provider 或 API 不可用、網路、429、500）→ failed，可重試；不符 contract 的回答（memberships 不是陣列、organization ID 不合 D-001、名稱不是字串、同一 organization 出現兩次、缺 `truncated`）→ protocol 失敗，不猜；0 個 membership → no_access；1 個 → 自動選；多個 → 記住的那個仍在清單中才用，否則請使用者選。Role：owner／editor／viewer 照 API；不認得的 role 為 null（唯讀，`canEdit` 為 false） |
+| `apps/web/lib/auth/organization.ts` | `geminus_organization`：只接受 organization ID；browser session 的 cookie（沒有 Max-Age）、`Path=/; SameSite=Lax`、https 時加 `Secure`；登出時清除。它只是 selector（D-008）：API 每次以 token 的 membership 授權 |
+| `apps/web/lib/return-to.ts` | `safeReturnTo` 從 `lib/session/session.ts` 移到這裡（session.ts re-export 同一個函式，BFF 與頁面的規則因此相同；`bootstrap.test.ts` 檢查是同一個函式）；`signInHref(目前的 path 與 query)` → `/auth/login?return_to=…`，BFF 不會回去的路徑一律為 `/` |
+| `apps/web/lib/auth/sign-out.ts` | `POST /auth/logout`（`X-Geminus-Request: 1`、`credentials: same-origin`、`redirect: error`、`no-store`）；成功時清掉 organization cookie，前往 BFF 回答的 provider logout URL（只接受 http／https，其他一律回首頁）；失敗時回 problem，不吞錯 |
+| `apps/web/app/_components/states.tsx` | `RequireSession` 依 bootstrap 顯示：未登入 →「需要登入」加上**一個**「登入」連結（`SignInLink`，return_to 為目前的頁面）；載入中；`/me` 失敗 → problem 與重試；無權限 → 既有的權限狀態（`ProblemView` forbidden），說明改為「這個登入帳號沒有任何 Geminus 組織的存取權…」；多個組織 → 選擇（每個組織一個按鈕、旁邊寫 role、同名時加上 ID、超過 100 個時說明只列前 100）。`RemoteView` 遇到 401（頁面載入時 session 已結束）也提供登入連結 |
+| `apps/web/app/_components/account.tsx` | strip 的 `OrganizationSwitcher`（已選組織且有兩個以上時；strip 的 Select，長名稱以省略號截斷，清單與 accessible name 保留全名）與 `SignOutButton`（quiet button，有 session 時才出現：已選組織、選擇中、無權限、`/me` 失敗；失敗時旁邊顯示 `role="alert"` 的「登出未完成，請再試一次。」） |
+| `apps/web/app/_components/problem-view.tsx` | `guidance` prop：view 比 problem 的 code 更清楚時（無權限）取代預設的說明 |
+| `apps/web/ui/shell.module.css`、`select.tsx`、`select.module.css` | strip 的 `.account`：沒有 session 時是空的、不佔空間；手機（≤720 px）時自成一列，第一列與未登入時完全相同。`.nav` 佔去列中的空白（空的 box，沒有東西移動），讓換到下一列的 account 仍靠右。Select 的 `clipValue` |
+| `apps/web/messages/en.ts`、`zh-Hant.ts` | 新字串：`auth.signIn`（登入）、`auth.signOut`（登出）、`auth.signOutFailed`、`access.none`、`organization.*`（label、選擇的標題與說明、同名時的「{name}（{id}）」、超過 100 個）、`role.*`、`loading.account` |
+| 文件 | DESIGN.md（Simplicity 2、3 與「The account」）、ADR-016 與 ADR-018 補記、SECURITY §3、`apps/web-e2e/README.md` |
+
+**Organization 怎麼選、怎麼送：** API 以 header `X-Organization-ID` 選 organization（openapi `components.parameters.OrganizationContext`、`internal/httpapi.Scoped`；`GET /me` 不得帶，`NoOrganizationContext`、`httpapi.Self`）。`lib/api/client.ts` 本來就從 `session.organizationId` 送這個 header，`getMe()` 本來就不送，BFF 原樣轉送。這一片只決定 `session.organizationId` 是哪一個：只有一個 membership 時就是它；多個時，是使用者選的、或之前選過且 `/me` 仍列出的那個（cookie `geminus_organization`，browser session）。沒有新的機制，也沒有改 API、contract、schema 或 BFF 的 CSRF 規則。
+
+**T-032 的結果頁：** 尚未存在。它會放在 `RequireSession` 之下並經 `useApi()` 呼叫（`compareSimulations` 等），organization 與 role 自動跟著 bootstrap，不需要再接。
+
+### 控制項（H-027）
+
+| 控制項 | 何時出現 | 做什麼 | 依據 |
+|---|---|---|---|
+| 「登入」連結 | 未登入或 session 已結束（401）的「需要登入」狀態；每個 view 一個 | `/auth/login?return_to=目前的頁面` | T-043 scope 的後續（impeccable audit P0；H-027 的必要控制項）；ADR-018 |
+| 「登出」（quiet button，strip） | 有 session：已選組織、選擇組織中、無權限、`/me` 失敗；未登入與載入中不出現 | `POST /auth/logout` → provider 的 logout → 首頁 | ADR-018 Logout |
+| 組織選擇（每個組織一個按鈕） | 兩個以上的組織且還沒選（或記住的已不在清單中）；此時 strip 沒有切換器 | 選定組織，記到 browser session 結束 | D-045 |
+| 組織切換（strip 的 Select） | 已選組織且有兩個以上 | 換組織；頁面在同一個 route 以新組織重新載入（不轉頁，WCAG 3.2.2） | D-045 |
+| 重試 | `/me` 以可重試的原因失敗（503、網路、429、500、protocol） | 再呼叫一次 `/me` | 既有的 `RemoteView` |
+
+沒有加入的：strip 上的登入按鈕（登入只在需要它的頁面，未登入的 strip 不變）、帳號名稱或頭像（`/me` 沒有名稱）、組織選擇的「略過」或「記住我」、只有一個組織時的切換器。
+
+### 與指定設計的差異與自行做的選擇
+
+- **手機的 strip 在登入後是兩列。** 390 px 時 strip 的一列只剩 8–14 px（實測），任何 account 控制項都放不下；DESIGN.md「the strip stays one 48 px row on a 390 px phone」是對語言與主題而言。做法：登入後 account 自成第二列，第一列與未登入時完全相同（元素從 8 px 開始，第二列從 48 px 開始，共 89 px）；1280 px 仍是一列 48 px。英文在 721 到約 800 px 之間 account 也會換到第二列（仍靠右），此時第一列比未登入時高 4 px。DESIGN.md 已補記；**是否接受、或改成一個帳號選單，由 owner 決定**（見下）。
+- **組織的選擇只記到 browser session 結束**（語言與主題記一年）。任務說「remembered per session/cookie」；這樣共用的瀏覽器下次開啟時不會預設另一個人的組織（就算預設了，`/me` 沒列出也不會用）。
+- **切換組織不轉頁**：留在同一個 route，所以在另一個組織的模型頁上切換會看到「找不到」，要從「專案」再進入。轉到 `/projects` 會是 select 的值改變造成的 context change（WCAG 3.2.2）。模型頁上未儲存的編輯在切換時會消失（沒有確認）。
+- **無權限的說明**：403 與 0 個 membership 都是既有的權限狀態（heading「你沒有權限執行此操作」），但說明改為 `access.none`，因為預設的「你在此組織中的角色不允許此操作。」對沒有組織的人不正確；403 的 request ID 仍在「詳細資料」中。
+- **既有失敗的修正（0ae7952）**：74cb9ae 上 `make frontend-test` 已有 2 個失敗（`simplicity.test.tsx` 的模型頁，en 與 zh-Hant；`baseline-frontend-test-74cb9ae.log`）。T-015 把編輯器放上模型頁後，Save draft 與 Publish 在不能用時是 `aria-disabled` 並在旁邊寫原因（DESIGN.md Buttons，Disabled），這個 unit test 卻仍要求頁面上沒有任何 `aria-disabled`。改為 `simplicity.spec.ts` 對同一個 view 已在用的規則：沒有 `disabled`、editor 至少有一個 blocked 的控制項被檢查、每個 blocked 的控制項以 `aria-describedby` 指向畫面上的文字。拿掉 Save 的 `aria-describedby` 的 probe 會失敗。**改的是別的切片的測試，請 coordinator 確認。**
+- `session.spec.ts` 的 `signIn` 改為等到頁面自己的呼叫（`/me` 與專案清單）結束後才回傳：現在登入後頁面會呼叫 API，計算 API 呼叫數的測試否則會不穩。Assertion 沒有改。
+
+### 測試
+
+先寫的測試在實作前執行為紅。Unit：`red-unit.log`，6 個檔案失敗（新模組不存在、沒有登入連結）。瀏覽器：`red-e2e-before-bootstrap.log`，新的 `bootstrap.spec.ts` 在**改動前的 app**（0ae7952 的 `apps/web`，另外 build）上 10 個中 9 個失敗；「return path 指向其他網站時回首頁」本來就成立（BFF 既有的檢查）。`session.spec.ts` 在改動前的 app 與新的 API 替身上 10 個全過，表示替身的擴充與既有測試相容。
+
+- **Unit（vitest）**：`tests/bootstrap.test.ts`（`bootstrapFrom` 的每個狀態、role 對應、contract 不符、同名、cookie 的格式與屬性、return path 的 10 個例子且與 BFF 用同一個函式、sign-out 的 request、目的地與失敗）；`tests/auth-bootstrap.test.tsx`（happy-dom，瀏覽器的 fetch 換成假的 BFF：未登入不發任何 request 且只有一個登入連結；return path 含 query；zh-Hant；伺服器的第一個 paint 未登入時就是未登入、有 session 時是載入中；載入中不呼叫 tenant API；`/me` 不帶 organization 與 token；401；503 與重試；403；0 個 membership；一個組織自動並以 `X-Organization-ID` 送出；四種 role；多個組織的選擇與 cookie、記住的、不在清單中的、從 strip 切換、同名、超過 100；登出與登出失敗）；`tests/layout-session.test.tsx`（layout 只在有 cookie 時問 BFF；交出的 props 只有 `signedIn` 與 organization ID；HTML 不含 cookie 的值）；`tests/bff.test.ts` 的 `hasSession`（access token 過期仍為 true，且不 refresh、不呼叫 provider 或 API；沒有、竄改、login cookie 的值、閒置到期為 false）；`tests/ui.test.tsx`（`RequireSession` 一個登入連結；只有 401 的 `RemoteView` 有登入連結）；`tests/simplicity.test.tsx`（登入後的 strip 加上專案清單；組織選擇，含同名；無權限（403、0 個）；`/me` 失敗；未登入；載入中：沒有重複、最多一個 primary、沒有 disabled，登入只在未登入時、登出只在有 session 時）；`tests/i18n-dom.test.tsx`（zh-Hant 的登入連結）。
+- **瀏覽器（Playwright；測試用 provider 與 API 替身，絕不連 Auth0）**：`tests/bootstrap.spec.ts` 10 個：從未登入的專案頁登入 → 只有一個組織自動 → 專案 → 專案的模型 → 模型在 2D 編輯器中（步驟、草稿狀態、Add step 與 Save draft），API 替身看到的 `/v1/me` 沒有 organization、其他每個呼叫都是該組織且帶 BFF 的 token、沒有 cookie，HTML、`document.cookie`、localStorage、sessionStorage 都沒有 token；viewer 的模型唯讀；登入後回到原本的頁面；`//evil.test/x`、`https://evil.test/`、`/\evil.test`、`javascript:` 都回本站首頁；多個組織（先選、cookie 是 session cookie、reload 後記得、strip 切換後呼叫帶新的組織）；登出（provider 的 logout、refresh token 撤銷、兩個 cookie 都沒了、再看專案頁是登入）；provider 結束 session（refresh token 全部撤銷、access token 30 秒）後 reload → BFF refresh 被拒 → 登入、cookie 已清 → 再登入後資料回來；沒有 membership、未知 identity（403）：權限狀態、可登出、只呼叫了 `/v1/me`；鍵盤：登入、選組織、登出，每一站焦點可見。`a11y.spec.ts`：7 個登入後的 view（專案、專案的模型、模型（editor、viewer）、選組織、有切換器的專案、無權限）× 淺／深 × en／zh-Hant × 390／1280，共 56 個：axe 無 violation、無橫向捲動。`simplicity.spec.ts`：同樣 7 個 view × 2 種語言 × 2 種寬度，共 28 個（最多一個 primary、沒有重複、模型頁的 blocked 都有原因、其他沒有 disabled、沒有側欄；strip 在 1280 px 為一列 48 px，在 390 px 為兩列且第一列與未登入時相同）；未登入的 route 另外檢查 strip 只有一列。`strings.spec.ts`：登入後的 view 在兩種語言中的字串都是 catalog、資料或已接受的 library 字串。
+- **Mutation（`ts-mutants.py`：每個 mutant 只改一個檔案，執行相關的 vitest 檔案後還原）**：27 個全部 killed（`ts-mutation.log`）。第一次執行有 1 個存活：「未登入也等 `/me`」（effect 執行後結果相同，只有第一個 paint 不同）；補上伺服器第一個 paint 的測試後 killed。
+
+### 實際執行結果
+
+在這個 worktree 執行（Node 22.22.0，repo 要求 24，所以 `npm ci --engine-strict=false`；Chromium 為預先安裝的）。`e2e-test` 在 f76631c 執行；`frontend-test`、`frontend-build` 與 `spec-check` 在 f76631c 加上文件的變更（即下一個 commit 的內容，沒有程式變更）上執行。Log 在 `checks/evidence/2026-10-26-T-043-bootstrap/`。
+
+| 指令 | Exit | 說明 |
+|---|---|---|
+| `make frontend-test`（74cb9ae，改動前） | 2 | 2 個既有失敗（見上），`baseline-frontend-test-74cb9ae.log` |
+| `make frontend-test` | 0 | lint（0 warning）、typecheck、unit：29 個檔案 737 個 test（74cb9ae 為 26 個檔案 642 個，其中 2 個失敗）；`frontend-test.log` |
+| `make frontend-build`（全新的 `.next`） | 0 | `frontend-build.log` |
+| `make e2e-test`（全新的 `.next`） | 0 | 290 個 test：258 passed、32 skipped（截圖，NOT RUN，見下）；新增 bootstrap 10、登入後的 a11y 56、simplicity 28、strings 2；`e2e-test.log`（log 中的「failed to pipe response」是 `session.spec.ts` 刻意在 header 之後切斷 API 回答的測試） |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities（`npm-audit.log`） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | 所有子檢查 PASS（`spec-check.log`；含 tasks.json 的新條目與文件連結） |
+| `ts-mutants.py` | 0 | 27／27 killed（`ts-mutation.log`） |
+
+### NOT RUN
+
+| 項目 | 原因 |
+|---|---|
+| 截圖比對（`screenshots.spec.ts`，32 個） | 只在 CI 的 pinned container 以 `E2E_SCREENSHOTS=1` 執行。**未登入的 `/projects` 多了「登入」連結，8 個已接受的 baseline 會改變**：`projects-en-390`、`projects-en-390-dark`、`projects-en-1280`、`projects-en-1280-dark`、`projects-zh-Hant-390`、`projects-zh-Hant-390-dark`、`projects-zh-Hant-1280`、`projects-zh-Hant-1280-dark`（H-028）。首頁、not found、gallery 的畫面不變：未登入的 strip 不變，`.nav` 的 `flex-grow` 沒有移動任何東西（未登入時 strip 各部分的位置在 390、721、1280 px 以暫時的量測腳本比較，加上 `flex-grow` 前後相同；`simplicity.spec.ts` 與 `keyboard.spec.ts` 通過）。Agent 沒有動 `apps/web-e2e/tests/__screenshots__/`；由 coordinator 以 CI 的 `update_screenshots` 產生，owner 確認 |
+| Go 測試（`backend-test`、`backend-race`、`integration-test`） | 這一片沒有改 Go、contract、schema 或 migration |
+| 真的 Auth0 | 沒有 tenant 與 credential；`docs/runbooks/auth0.md` §5 在 staging 由人執行 |
+| 瀏覽器 → BFF → Go API → DB 的閉環 | T-040；這裡的 API 是替身（`fake/servers.mjs`），`/v1/me` 的真實行為由 D-045 slice 的 Go 與 SQL 測試涵蓋 |
+| proposal、執行與結果的畫面 | T-031、T-032 的切片 |
+
+### 風險與後續
+
+- 切換組織時，模型頁上未儲存的編輯會消失，沒有確認（低；demo 通常只有一個組織）。
+- 頁面停留期間 session 結束：頁面的下一次載入顯示「需要登入」與登入連結，但 strip 的「登出」要到 reload 才消失；草稿儲存時的 401 只顯示 problem，沒有登入連結（離開頁面本來就會失去未存的編輯）。
+- 手機上登入後，strip 在 `/me` 回來時才多出第二列（版面位移一次）。
+- 超過 100 個組織時只能選前 100 個（D-045 的上限；畫面有說明）。
+- `geminus_organization` 是 JS 讀得到的 cookie：只有 organization ID，不是 credential。
+
+### Owner 的問題
+
+1. 8 個 `projects-*` 截圖 baseline 會因「登入」連結改變：請在 CI 產生並確認（H-028）。
+2. 手機登入後 strip 為兩列（account 在第二列）：接受，或改成一個帳號選單（語言、主題、組織、登出放在一起）？
+3. 組織的選擇只記到瀏覽器關閉：可以嗎，還是像語言一樣記一年？
+4. 切換組織時留在同一頁（可能顯示「找不到」）：可以嗎，還是改為回到「專案」（並先告知）？

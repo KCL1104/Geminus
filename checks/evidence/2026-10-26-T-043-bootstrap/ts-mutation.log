@@ -1,0 +1,29 @@
+M1 one organization is not chosen by itself: killed
+M2 the remembered organization is used without /me listing it: killed
+M3 a 403 from /me reads as signed out: killed
+M4 no memberships reads as ready-less choose: killed
+M5 an unknown role reads as viewer: killed
+M6 a broken /me answer is accepted: killed
+M7 the return path is not checked: killed
+M8 any value is an organization: killed
+M9 the organization cookie lasts a year: killed
+M10 sign-out without the CSRF header: killed
+M11 sign-out goes wherever the answer says: killed
+M12 sign-out forgets nothing: killed
+M13 a refused sign-out is a success: killed
+M14 /me is asked without a session: killed
+M15 signed out waits for /me: killed
+M16 a choice is not remembered: killed
+M17 the signed-out page has no sign-in: killed
+M18 a 401 load has no sign-in: killed
+M19 the choice shows tenant data: killed
+M20 sign-out shown while signed out: killed
+M21 the switcher shown with one organization: killed
+M22 a failed sign-out says nothing: killed
+M23 the layout trusts any session cookie: killed
+M24 the layout hands over the raw organization cookie: killed
+M25 hasSession says yes to anything: killed
+M26 shared names are not told apart: killed
+M27 no-access shows the role guidance: killed
+
+27/27 killed
