@@ -101,11 +101,14 @@ describe("the Content-Security-Policy", () => {
     expect([...p.keys()].at(-1)).toBe("upgrade-insecure-requests");
   });
 
-  it("adds eval for next dev only (React's debugging aids)", () => {
+  it("adds eval and inline style elements for next dev only (React's debugging aids, the dev overlay's styles)", () => {
     const dev = directives(contentSecurityPolicy({ nonce: NONCE, https: false, development: true }));
     expect(dev.get("script-src")).toEqual(["'self'", `'nonce-${NONCE}'`, "'strict-dynamic'", "'unsafe-eval'"]);
+    // A nonce would turn 'unsafe-inline' off; the overlay's style elements carry none.
+    expect(dev.get("style-src-elem")).toEqual(["'self'", "'unsafe-inline'"]);
     const prod = production();
-    for (const [name, sources] of dev) if (name !== "script-src") expect(sources, name).toEqual(prod.get(name));
+    expect([...dev.keys()]).toEqual([...prod.keys()]);
+    for (const [name, sources] of dev) if (name !== "script-src" && name !== "style-src-elem") expect(sources, name).toEqual(prod.get(name));
   });
 
   it("carries the nonce it is given, and Next.js finds it there", () => {

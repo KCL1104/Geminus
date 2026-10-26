@@ -23,7 +23,7 @@ export type PolicyOptions = {
   nonce: string;
   /** The app is served over https (servedOverHttps): HSTS and upgrade-insecure-requests. */
   https: boolean;
-  /** next dev: React's debugging aids need eval there, never in a build. */
+  /** next dev: React's debugging aids need eval there and the dev overlay inline style elements; never in a build. */
   development: boolean;
 };
 
@@ -45,7 +45,9 @@ export function contentSecurityPolicy({ nonce, https, development }: PolicyOptio
     // Only browsers without style-src-elem and style-src-attr read this one;
     // a nonce here would turn 'unsafe-inline' off for the attributes as well.
     ["style-src", "'self'", "'unsafe-inline'"],
-    ["style-src-elem", "'self'", n],
+    // next dev's overlay adds style elements without the nonce (a nonce
+    // would turn 'unsafe-inline' off); a build never has them.
+    ["style-src-elem", "'self'", ...(development ? ["'unsafe-inline'"] : [n])],
     ["style-src-attr", "'unsafe-inline'"],
     ["img-src", "'self'"],
     ["font-src", "'self'"],
