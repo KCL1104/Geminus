@@ -118,6 +118,16 @@ type Collector struct {
 	available  []integral
 	idle       []integral
 	processing []integral
+
+	// Batch processes (D-054, D-058; T-050; only when the program has
+	// one): per batch process the batches started in [W, H] and their
+	// members; with a finite buffer, per (process, batch number) the
+	// members still blocked, so that a batch's bundle counts once in K
+	// however many of its members are blocked (only indexed).
+	batched        bool
+	batchesStarted []int64
+	membersStarted []int64
+	batchBlocked   map[[2]uint64]int64
 }
 
 // NewCollector starts the collector of one replication of p.
@@ -145,6 +155,11 @@ func NewCollector(p *engine.Program) *Collector {
 				c.downSince[i] = make([]int64, p.ResourceCapacity(i))
 			}
 		}
+	}
+	if p.HasBatches() {
+		c.batched = true
+		c.batchesStarted, c.membersStarted = make([]int64, n), make([]int64, n)
+		c.batchBlocked = map[[2]uint64]int64{}
 	}
 	if p.HasCalendars() {
 		c.calendars = true
@@ -190,7 +205,9 @@ func (c *Collector) inWindow(t int64) bool { return c.w <= t && t <= c.h }
 // replications does not keep every replication's entity maps until Build
 // (T-022 review). Build accepts only finished collectors; a collector
 // observes nothing after Finish.
-func (c *Collector) Finish() { c.arrived, c.entered, c.since, c.finished = nil, nil, nil, true }
+func (c *Collector) Finish() {
+	c.arrived, c.entered, c.since, c.batchBlocked, c.finished = nil, nil, nil, nil, true
+}
 
 // Observe implements engine.Observer.
 func (c *Collector) Observe(o engine.Observation) {
@@ -233,7 +250,7 @@ func (c *Collector) Observe(o engine.Observation) {
 		if c.inWindow(o.Tick) {
 			c.blocksStarted[o.Node]++
 		}
-		c.block(o.Node, o.Tick, +1)
+		c.block(o.Node, o.Tick, +1, o.Batch)
 	case engine.ObsUnblocked:
 		// A complete block: started at or after W, ended by H (the kernel
 		// processes nothing after H).
@@ -242,7 +259,13 @@ func (c *Collector) Observe(o engine.Observation) {
 			c.blockTicks[o.Node] += o.Tick - since
 		}
 		delete(c.since, o.Entity)
-		c.block(o.Node, o.Tick, -1)
+		c.block(o.Node, o.Tick, -1, o.Batch)
+	case engine.ObsBatchStart:
+		// D-054, D-058: a batch started in [W, H] and its members.
+		if c.inWindow(o.Tick) {
+			c.batchesStarted[o.Node]++
+			c.membersStarted[o.Node] += o.Value
+		}
 	case engine.ObsResourceDown:
 		// Value is the resource's units down (D); At the failure clock.
 		c.down[o.Resource].set(o.Value, o.Tick, c.w, c.h)
@@ -286,12 +309,25 @@ func (c *Collector) setFull(i int, t int64) {
 }
 
 // block counts an entity blocked at (sign +1) or leaving (-1) node n; a
-// process's blocked entity holds its whole bundle (D-049).
-func (c *Collector) block(n int, t int64, sign int64) {
+// process's blocked entity holds its whole bundle (D-049). The members of
+// batch number batch (D-054; 0 for none) hold their batch's one bundle
+// together: it counts from the first one blocked to the last one leaving.
+func (c *Collector) block(n int, t int64, sign int64, batch uint64) {
 	c.nodeBlocked[n] += sign
 	c.blockedAt[n].set(c.nodeBlocked[n], t, c.w, c.h)
 	if c.p.NodeType(n) != model.NodeProcess {
 		return
+	}
+	if batch != 0 {
+		key := [2]uint64{uint64(n), batch}
+		c.batchBlocked[key] += sign
+		left := c.batchBlocked[key]
+		if left == 0 {
+			delete(c.batchBlocked, key)
+		}
+		if (sign > 0 && left != 1) || (sign < 0 && left != 0) {
+			return // the bundle is already held, or still is
+		}
 	}
 	for _, q := range c.p.Requires(n) {
 		c.heldUnits[q.Resource] += sign * int64(q.Units)
@@ -311,12 +347,24 @@ func (c *Collector) block(n int, t int64, sign int64) {
 // ∫(A − U) (U + D <= C at every tick, so A − U >= 0). With calendars,
 // every resource on one (listed even without a finite buffer, T-049) adds
 // ∫S, ∫min(U, S), ∫max(U − S, 0) (overtime), and its ∫A, ∫max(0, A − U)
-// and ∫min(P, S) are integrated as such, A = min(S, C − D).
+// and ∫min(P, S) are integrated as such, A = min(S, C − D). With batch
+// processes (T-050), every one has batches[<process>]: the batches started
+// in [W, H] and their members (a batch is a process feature: its chamber
+// gets no resource_states entry for it; K counts a batch's bundle once).
 func (c *Collector) lineFlow(s *simulation.ReplicationSummary) {
+	p, w, h := c.p, c.w, c.h
+	if c.batched {
+		// D-054, D-058 (T-050): every batch process, zeros included.
+		s.Batches = map[string]simulation.BatchCounts{}
+		for i := range p.NodeCount() {
+			if p.IsBatch(i) {
+				s.Batches[p.NodeID(i)] = simulation.BatchCounts{BatchesStarted: c.batchesStarted[i], MembersStarted: c.membersStarted[i]}
+			}
+		}
+	}
 	if !c.finite && !c.breakdowns && !c.calendars {
 		return
 	}
-	p, w, h := c.p, c.w, c.h
 	s.ResourceStates = make(map[string]simulation.ResourceState, p.ResourceCount())
 	for i := range p.ResourceCount() {
 		breaks := c.breakdowns && p.ResourceHasBreakdowns(i)

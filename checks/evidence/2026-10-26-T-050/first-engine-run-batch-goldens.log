@@ -1,0 +1,33 @@
+=== RUN   TestBatchGoldens
+=== RUN   TestBatchGoldens/G-BT1
+=== RUN   TestBatchGoldens/G-BT2
+=== RUN   TestBatchGoldens/G-BT3
+=== RUN   TestBatchGoldens/G-BT4
+=== RUN   TestBatchGoldens/G-BT6
+=== RUN   TestBatchGoldens/G-BT7
+=== RUN   TestBatchGoldens/G-BT8
+=== RUN   TestBatchGoldens/G-BT9
+=== RUN   TestBatchGoldens/G-BT10
+=== RUN   TestBatchGoldens/G-BT11
+=== RUN   TestBatchGoldens/G-BT12
+=== RUN   TestBatchGoldens/G-BT14
+--- PASS: TestBatchGoldens (0.04s)
+    --- PASS: TestBatchGoldens/G-BT1 (0.04s)
+    --- PASS: TestBatchGoldens/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT14 (0.00s)
+=== RUN   TestBatchStall
+--- PASS: TestBatchStall (0.00s)
+=== RUN   TestBatchRoutingDrawsInMemberOrder
+--- PASS: TestBatchRoutingDrawsInMemberOrder (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.051s
+exit 0 elapsed 2s

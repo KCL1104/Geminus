@@ -526,7 +526,7 @@ func TestScenarioMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ctx.Prompt.Role != provider.RoleScenario || ctx.Prompt.TemplateVersion != "scenario-0.5.0" || ctx.Mode != provider.ModeScenario {
+	if ctx.Prompt.Role != provider.RoleScenario || ctx.Prompt.TemplateVersion != "scenario-0.6.0" || ctx.Mode != provider.ModeScenario {
 		t.Errorf("%+v", ctx)
 	}
 	if _, ok := blocks(t, ctx.Prompt)["ID_ALLOCATION_POOL"]; ok {
@@ -542,26 +542,29 @@ func TestScenarioMode(t *testing.T) {
 	// can be lognormal or Weibull, in their ranges; (T-049) so are a
 	// calendar's shifts and exceptions, a resource's calendar and units on
 	// shift, and a schedule's rates and a table's quantities, replace only,
-	// at least medium, with R2's and R4's refusals. The other line-flow
-	// parameters are not (their gates are still on).
+	// at least medium, with R2's and R4's refusals; (T-050) so are a
+	// batch's sizes and wait limit, replace only, at least medium, with
+	// BATCH_INVALID's refusal. The other line-flow parameters are not
+	// (their gates are still on).
 	for _, w := range []string{"queue's buffer capacity", "D-057", "BLOCKING_CYCLE", "at least medium",
 		"/resources/<i>/breakdowns/time_to_failure/distribution", "/resources/<i>/breakdowns/time_to_repair/distribution",
 		"never adds or removes breakdowns", "lognormal (mean, cv", "weibull (shape", "cv <= 10", "0.1 <= shape <= 20",
 		"/resources/<i>/calendar_id", "/resources/<i>/shift_capacity/<label>", "/calendars/<i>/shifts", "/calendars/<i>/exceptions",
 		"/nodes/<i>/arrival/schedule/segments/<j>/rate", "/nodes/<i>/arrival/schedule/releases/<j>/quantity",
-		"never adds or removes a calendar", "never changes a period, a segment start or a release time", "CALENDAR_INVALID", "STALL_RISK"} {
+		"never adds or removes a calendar", "never changes a period, a segment start or a release time", "CALENDAR_INVALID", "STALL_RISK",
+		"/nodes/<i>/batch/min_size", "/nodes/<i>/batch/max_size", "/nodes/<i>/batch/max_wait", "never adds or removes a batch", "BATCH_INVALID"} {
 		if !strings.Contains(ctx.Prompt.System, w) {
 			t.Errorf("the scenario rules do not say %q", w)
 		}
 	}
-	for _, w := range []string{"setups", "batch", "changeover"} {
+	for _, w := range []string{"setups", "changeover"} {
 		if strings.Contains(modeRules(provider.ModeScenario), w) {
 			t.Errorf("the scenario rules offer %q, whose gate is still on", w)
 		}
 	}
-	// The scenario template says the same (prompts/scenario, scenario-0.5.0).
+	// The scenario template says the same (prompts/scenario, scenario-0.6.0).
 	for _, w := range []string{"breakdowns", "time_to_failure", "time_to_repair", "lognormal", "Weibull", "calendar_id", "shift_capacity",
-		"shifts", "exceptions", "segment rate", "quantity"} {
+		"shifts", "exceptions", "segment rate", "quantity", "batch", "min_size", "max_size", "max_wait"} {
 		if !strings.Contains(ctx.Prompt.System, w) {
 			t.Errorf("the scenario template does not say %q", w)
 		}

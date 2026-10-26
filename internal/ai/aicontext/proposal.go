@@ -63,7 +63,11 @@ func modeRules(mode provider.Mode) string {
 			"release, and never changes a period, a segment start or a release time. Any change to a calendar, its shifts or exceptions, a " +
 			"resource's calendar or units on shift, a release rate or a quantity, either way, is at least medium risk; one after which a bundle's " +
 			"resources are never on shift together is refused (CALENDAR_INVALID), and so is one that puts a resource that breaks down on shift " +
-			"while a partner in its bundle is not (STALL_RISK). Every distribution a scenario may replace can be " +
+			"while a partner in its bundle is not (STALL_RISK). For a batch process it may replace /nodes/<i>/batch/min_size, " +
+			"/nodes/<i>/batch/max_size and /nodes/<i>/batch/max_wait (replace only: a scenario never adds or removes a batch or a max_wait); " +
+			"1 <= min_size <= max_size <= 10000, a batch that may start below max_size needs max_wait (in model time units), and a finite " +
+			"buffer in front of it must hold max_size, or the candidate is refused (BATCH_INVALID); any change to a batch, either way, is at " +
+			"least medium risk. Every distribution a scenario may replace can be " +
 			"constant, exponential, triangular, empirical (an existing samples_ref), lognormal (mean, cv with 0 < cv <= 10) or weibull (shape, scale " +
 			"with 0.1 <= shape <= 20). It never adds or removes entities and never changes IDs, names, views or metadata.\n"
 	}

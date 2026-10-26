@@ -1,0 +1,40 @@
+=== RUN   TestBatchGoldenResults
+=== RUN   TestBatchGoldenResults/G-BT1
+=== RUN   TestBatchGoldenResults/G-BT2
+=== RUN   TestBatchGoldenResults/G-BT3
+=== RUN   TestBatchGoldenResults/G-BT4
+=== RUN   TestBatchGoldenResults/G-BT6
+=== RUN   TestBatchGoldenResults/G-BT7
+=== RUN   TestBatchGoldenResults/G-BT8
+=== RUN   TestBatchGoldenResults/G-BT9
+=== RUN   TestBatchGoldenResults/G-BT10
+=== RUN   TestBatchGoldenResults/G-BT11
+=== RUN   TestBatchGoldenResults/G-BT12
+=== RUN   TestBatchGoldenResults/G-BT14
+--- PASS: TestBatchGoldenResults (0.06s)
+    --- PASS: TestBatchGoldenResults/G-BT1 (0.04s)
+    --- PASS: TestBatchGoldenResults/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT14 (0.00s)
+=== RUN   TestBatchTrace
+    batch_test.go:150: 1 sampled members
+--- PASS: TestBatchTrace (0.00s)
+=== RUN   TestGoldenDigests030
+--- PASS: TestGoldenDigests030 (0.21s)
+=== RUN   TestGoldenDigests040
+--- PASS: TestGoldenDigests040 (0.17s)
+=== RUN   TestGoldenDigests
+--- PASS: TestGoldenDigests (0.00s)
+=== RUN   TestGoldenDigests020
+--- PASS: TestGoldenDigests020 (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.468s
+exit 0 elapsed 2s

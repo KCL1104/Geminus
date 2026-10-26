@@ -34,6 +34,7 @@ type goldenResult struct {
 	Blocking            map[string]simulation.NodeBlocking  `json:"blocking"`
 	Buffers             map[string]simulation.BufferState   `json:"buffers"`
 	ResourceStates      map[string]simulation.ResourceState `json:"resource_states"`
+	Batches             map[string]simulation.BatchCounts   `json:"batches"` // T-050, batch-goldens.json
 }
 
 type goldenCase struct {

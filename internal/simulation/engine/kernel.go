@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/kcl1104/geminus/internal/model"
@@ -109,6 +110,10 @@ const (
 	// ADR-026 D-052 (T-049): only ever observed in a model with a calendar,
 	// and only for a resource whose units on shift change (never at t=0).
 	ObsCapacity // Resource's units on shift S changed to Value
+	// ADR-026 D-054 (T-050): only ever observed in a model with a batch
+	// process, right after the grant's ObsResource and before the members'
+	// ObsServiceStart (D-054's order).
+	ObsBatchStart // batch Batch of Value members started at batch process Node
 )
 
 // Observation is one fact the kernel reports, in processing order: by tick,
@@ -131,6 +136,12 @@ type Observation struct {
 	// process). For ObsResourceDown, ObsResourceUp and ObsBreakdownPending
 	// it is the failure clock. Unused otherwise.
 	At int
+	// Batch is the batch number n (from 1 at each batch process; the batch
+	// ID is r<rep>/<process>/b<n>, D-054) of ObsBatchStart and of a batch
+	// member's ObsServiceStart, ObsServiceEnd, ObsBlocked and ObsUnblocked
+	// (T-050); 0 otherwise, so a model without batches observes exactly
+	// what des-go-0.4.0 did (D-047).
+	Batch uint64
 }
 
 // Observer receives every observation of one replication. It must not
@@ -150,17 +161,67 @@ type ReplicationOutcome struct {
 // request is an entity waiting in a process's buffer for the process's
 // bundle. Requests are numbered as they queue, so seq order is the
 // (queue_enter_tick, request_sequence) FIFO order of SIMULATION_SPEC §3.
+// A batch process's request is its batch's (D-054, T-050): one for the
+// batch, numbered when the batch becomes ready, with no entity; its
+// members are taken from the process's buffer when it is granted.
 type request struct {
 	entity  uint64
 	process int
 	seq     uint64
-	entered int64 // tick it queued at
+	entered int64 // tick it queued at (a batch request: became ready at)
 	heads   int   // how many of its resources' queues it is at the front of
 	held    bool  // a candidate whose bundle did not fit; waits for a release (or a repair, or a shift)
+	batch   bool  // a batch process's request (entity 0)
 	// stalled is the first tick at whose end the request was in D-050 B2's
 	// state (held, none of its bundle in use), -1 when it is not; deadline
 	// its B2 deadline then, -1 for none.
 	stalled, deadline int64
+}
+
+// batchWaiter is an entity in a batch process's buffer (D-054): it waits
+// for a batch, not with a request of its own. serial numbers the entries
+// into batch buffers, so the oldest member's identity survives an entity
+// that comes back to the same buffer at the same tick.
+type batchWaiter struct {
+	entity uint64
+	enter  int64
+	serial uint64
+}
+
+// batchBuffer is a batch process's buffer, in the order its entities
+// entered (D-054's FIFO).
+type batchBuffer struct {
+	items []batchWaiter
+	head  int
+}
+
+func (q *batchBuffer) len() int { return len(q.items) - q.head }
+
+func (q *batchBuffer) front() (batchWaiter, bool) {
+	if q.head == len(q.items) {
+		return batchWaiter{}, false
+	}
+	return q.items[q.head], true
+}
+
+func (q *batchBuffer) pop() batchWaiter {
+	w := q.items[q.head]
+	q.head++
+	if q.head == len(q.items) {
+		q.items, q.head = q.items[:0], 0
+	} else if q.head >= 64 && q.head*2 >= len(q.items) {
+		q.items = append(q.items[:0], q.items[q.head:]...)
+		q.head = 0
+	}
+	return w
+}
+
+// batchRun is a batch in service, or done with some members still blocked
+// (D-054): the bundle is released when the last of them leaves.
+type batchRun struct {
+	number  uint64   // n of r<rep>/<process>/b<n>
+	members []uint64 // in FIFO order
+	blocked int      // members still blocked at the process
 }
 
 // resourceQueue holds, in FIFO order, the waiting requests that need one
@@ -227,6 +288,7 @@ type blockedEntity struct {
 	at     int    // the node its route reached: the buffer's queue or its process
 	order  uint64 // blocking order, over all buffers
 	since  int64  // tick
+	batch  uint64 // the handle of the batch it is a member of (D-054), 0 for none
 }
 
 // blockedQueue is one buffer's blocked entities, in the order they were
@@ -294,6 +356,24 @@ type kernel struct {
 	// Calendars (D-052, T-049): each resource's units on shift S, its
 	// capacity without a calendar.
 	capS []int
+
+	// Batch processes (D-054, T-050), allocated only when the program has
+	// one, per node: the buffer of a batch process, its ungranted batch
+	// request (at most one), the number of its last batch, the generation
+	// of its BATCH_TIMEOUT and the entry serial of the oldest member it
+	// was scheduled for (0: none). batches holds the batches in service or
+	// with members still blocked, by handle; it is looked up, never
+	// iterated. timeouts counts the BATCH_TIMEOUT events scheduled and not
+	// yet processed, those after the horizon included (D-050 B1).
+	bbuf        []batchBuffer
+	pend        []*request
+	batchNo     []uint64
+	tgen        []uint64
+	oldest      []uint64
+	serial      uint64
+	batches     map[uint64]*batchRun
+	batchHandle uint64
+	timeouts    int64
 }
 
 // clockStreams are one failure clock's streams.
@@ -323,6 +403,11 @@ func runKernel(ctx context.Context, p *Program, index uint32, b *Budget, obs Obs
 	}
 	if p.breakdowns {
 		k.pending, k.clocks = make([][]int, len(p.resources)), make([][]clockStreams, len(p.resources))
+	}
+	if p.batches {
+		n := len(p.nodes)
+		k.bbuf, k.pend, k.batchNo, k.tgen, k.oldest = make([]batchBuffer, n), make([]*request, n), make([]uint64, n), make([]uint64, n), make([]uint64, n)
+		k.batches = map[uint64]*batchRun{}
 	}
 	if p.breakdowns || p.calendared {
 		r.onStart = k.start
@@ -388,7 +473,12 @@ func (k *kernel) arrived(r *replication, e uint64) error {
 func (k *kernel) handle(r *replication, ev event) error {
 	switch ev.Kind {
 	case EventServiceComplete:
+		if r.p.nodes[ev.Node].batch != nil {
+			return k.batchComplete(ev.Entity, ev.Node)
+		}
 		return k.serviceComplete(ev.Entity, ev.Node)
+	case EventBatchTimeout:
+		return k.batchTimeout(ev.Node, ev.Entity)
 	case EventDelayComplete:
 		k.inDelay--
 		k.observe(Observation{Kind: ObsDelayEnd, Entity: ev.Entity, Node: ev.Node})
@@ -783,12 +873,15 @@ func (k *kernel) enter(e uint64, to int) error {
 // block leaves entity e at node from: its route ended at the full buffer
 // of `to` (D-049). It joins that buffer's blocked FIFO; nothing is released
 // or scheduled.
-func (k *kernel) block(e uint64, from, to int) {
+func (k *kernel) block(e uint64, from, to int) { k.blockAs(e, from, to, 0, 0) }
+
+// blockAs is block for a member of batch h, number n (D-054); h 0 is no batch.
+func (k *kernel) blockAs(e uint64, from, to int, h, number uint64) {
 	b := k.r.p.nodes[to].buffer
 	k.blockOrder++
-	k.blocked[b].items = append(k.blocked[b].items, blockedEntity{entity: e, from: from, at: to, order: k.blockOrder, since: k.r.now})
+	k.blocked[b].items = append(k.blocked[b].items, blockedEntity{entity: e, from: from, at: to, order: k.blockOrder, since: k.r.now, batch: h})
 	k.nBlocked++
-	k.observe(Observation{Kind: ObsBlocked, Entity: e, Node: from, At: to})
+	k.observe(Observation{Kind: ObsBlocked, Entity: e, Node: from, At: to, Batch: number})
 }
 
 func (k *kernel) enqueue(e uint64, process, at int) error {
@@ -797,6 +890,16 @@ func (k *kernel) enqueue(e uint64, process, at int) error {
 	}
 	if c := k.r.p.nodes[process].capacity; c > 0 && k.waiting[process] >= c {
 		return fmt.Errorf("%w: %s entered the full buffer of %s", ErrInternal, k.r.EntityID(e), k.r.p.nodes[process].id)
+	}
+	if k.r.p.nodes[process].batch != nil {
+		// D-054 (T-050): the entity waits for a batch, without a request
+		// of its own and without a request sequence; every entry checks
+		// whether the batch is ready.
+		k.waiting[process]++
+		k.serial++
+		k.bbuf[process].items = append(k.bbuf[process].items, batchWaiter{e, k.r.now, k.serial})
+		k.observe(Observation{Kind: ObsQueueEnter, Entity: e, Node: process, At: at})
+		return k.batchCheck(process)
 	}
 	k.reqSeq++
 	req := &request{entity: e, process: process, seq: k.reqSeq, entered: k.r.now, stalled: -1, deadline: -1}
@@ -888,6 +991,12 @@ func (k *kernel) dispatch() error {
 				}
 			}
 		}
+		if req.batch {
+			if err := k.grantBatch(req); err != nil {
+				return err
+			}
+			continue
+		}
 		k.waiting[req.process]--
 		k.inService++
 		k.observe(Observation{Kind: ObsServiceStart, Entity: req.entity, Node: req.process})
@@ -904,17 +1013,223 @@ func (k *kernel) dispatch() error {
 	return nil
 }
 
-// unblock moves the first entity blocked by process's buffer into it.
+// unblock moves the first entity blocked by process's buffer into it. A
+// member of a batch releases the batch's bundle only when it is the last
+// of its batch still blocked (D-054).
 func (k *kernel) unblock(process int) error {
 	b := k.blocked[process].pop()
 	k.nBlocked--
-	if from := &k.r.p.nodes[b.from]; from.typ == model.NodeProcess {
+	var number uint64
+	if b.batch != 0 {
+		run := k.batches[b.batch]
+		number = run.number
+		if run.blocked--; run.blocked == 0 {
+			delete(k.batches, b.batch)
+			if err := k.release(k.r.p.nodes[b.from].requires); err != nil {
+				return err
+			}
+		}
+	} else if from := &k.r.p.nodes[b.from]; from.typ == model.NodeProcess {
 		if err := k.release(from.requires); err != nil {
 			return err
 		}
 	}
-	k.observe(Observation{Kind: ObsUnblocked, Entity: b.entity, Node: b.from, At: b.at})
+	k.observe(Observation{Kind: ObsUnblocked, Entity: b.entity, Node: b.from, At: b.at, Batch: number})
 	return k.enqueue(b.entity, process, b.at)
+}
+
+// batchCheck runs after every change to batch process n's buffer: an
+// entry, or a grant with the entries it unblocked (D-054). When its oldest
+// member changed it schedules that member's wait limit, BATCH_TIMEOUT at
+// priority 15 at enter + max_wait, unless the limit is already reached
+// (then the check below is that limit's check; D-096 (c)); a new
+// generation makes any earlier timeout stale. Then it checks whether the
+// batch is ready.
+func (k *kernel) batchCheck(n int) error {
+	b := k.r.p.nodes[n].batch
+	front, ok := k.bbuf[n].front()
+	if front.serial != k.oldest[n] {
+		k.oldest[n] = front.serial // 0 when the buffer is empty
+		k.tgen[n]++
+		if ok && b.timed && front.enter+b.wait > k.r.now {
+			// D-050 B1: a timeout counts as pending until it is processed,
+			// one after the horizon (never scheduled) included.
+			k.timeouts++
+			if err := k.r.schedule(front.enter+b.wait-k.r.now, PriorityResourceState, EventBatchTimeout, n, k.tgen[n]); err != nil {
+				return err
+			}
+		}
+	}
+	return k.ready(n)
+}
+
+// ready makes batch process n's batch request when the batch is ready and
+// it has none (D-054: at most one ungranted batch request): max_size
+// members wait, or at least min_size do and the oldest has waited
+// max_wait. The request takes its FIFO place now (a request sequence) and
+// a dispatch runs later in this tick (D-096 (e): only a ready batch asks
+// for one).
+func (k *kernel) ready(n int) error {
+	if k.pend[n] != nil {
+		return nil
+	}
+	b := k.r.p.nodes[n].batch
+	count := k.bbuf[n].len()
+	front, ok := k.bbuf[n].front()
+	if !ok || !(count >= b.max || (b.timed && count >= b.min && k.r.now-front.enter >= b.wait)) {
+		return nil
+	}
+	k.reqSeq++
+	req := &request{process: n, seq: k.reqSeq, entered: k.r.now, stalled: -1, deadline: -1, batch: true}
+	reqs := k.r.p.nodes[n].requires
+	for _, q := range reqs {
+		if k.queues[q.resource].push(req) {
+			req.heads++
+		}
+	}
+	if req.heads == len(reqs) {
+		heap.Push(&k.cands, req)
+	}
+	k.pend[n] = req
+	return k.needDispatch()
+}
+
+// batchTimeout is a BATCH_TIMEOUT of batch process n (priority 15): a
+// stale one (an earlier oldest member's) does nothing; otherwise the
+// oldest member has waited max_wait and the batch may be ready.
+func (k *kernel) batchTimeout(n int, gen uint64) error {
+	k.timeouts--
+	if gen != k.tgen[n] {
+		return nil
+	}
+	return k.ready(n)
+}
+
+// grantBatch starts the batch of a granted batch request (its bundle's
+// levels are observed already): min(waiting, max_size) members in FIFO
+// order, BatchStart and then each member's ServiceStart, one draw from
+// the process's service stream and one SERVICE_COMPLETE for the batch
+// (D-054). The places the members leave let as many blocked entities in
+// (D-049, D-096 (d)); then the buffer is checked again, so that another
+// unit can start the next batch in this dispatch.
+func (k *kernel) grantBatch(req *request) error {
+	n := req.process
+	p := k.r.p
+	q := &k.bbuf[n]
+	size := min(q.len(), p.nodes[n].batch.max)
+	if size == 0 {
+		return fmt.Errorf("%w: an empty batch at %s", ErrInternal, p.nodes[n].id)
+	}
+	k.pend[n] = nil
+	k.batchNo[n]++
+	k.batchHandle++
+	run := &batchRun{number: k.batchNo[n], members: make([]uint64, size)}
+	k.batches[k.batchHandle] = run
+	k.waiting[n] -= size
+	k.inService++
+	k.observe(Observation{Kind: ObsBatchStart, Node: n, Value: int64(size), Batch: run.number})
+	for i := range size {
+		m := q.pop()
+		run.members[i] = m.entity
+		k.observe(Observation{Kind: ObsServiceStart, Entity: m.entity, Node: n, Batch: run.number})
+	}
+	d := p.nodes[n].service.draw(k.r.stream(n, PurposeService))
+	if err := k.r.schedule(d, PriorityServiceComplete, EventServiceComplete, n, k.batchHandle); err != nil {
+		return err
+	}
+	if k.blocked != nil {
+		for range size {
+			if k.blocked[n].len() == 0 {
+				break
+			}
+			if err := k.unblock(n); err != nil {
+				return err
+			}
+		}
+	}
+	return k.batchCheck(n)
+}
+
+// memberRoute is one batch member's resolved route at its batch's end.
+type memberRoute struct {
+	to      int
+	path    []int // the failure and rework nodes it passes
+	blocked bool
+	err     error
+}
+
+// batchComplete ends batch h of process n (one SERVICE_COMPLETE, D-054).
+// Every member's route is resolved first, in FIFO order (their routing
+// draws in that order); members bound for the same finite buffer take its
+// places in that order, so a later one sees the places the earlier ones
+// took. With no member blocked: the bundle's release (ObsResource, once),
+// the dispatch, then per member its ServiceEnd, its route's observations
+// and its new place. With some blocked: no release (and no dispatch but
+// what an entry asks for); per member its ServiceEnd, its route's
+// observations, then its new place or Blocked; the bundle is released
+// when the last blocked member moves in (unblock). A visit limit at member
+// j: the members before it commit as above (the release only if none of
+// them is blocked), then member j's ServiceEnd and the route's
+// observations before the failing node, then the error (D-096 (f)).
+func (k *kernel) batchComplete(h uint64, n int) error {
+	k.inService--
+	run := k.batches[h]
+	if run == nil {
+		return fmt.Errorf("%w: no batch %d at %s", ErrInternal, h, k.r.p.nodes[n].id)
+	}
+	routes := make([]memberRoute, 0, len(run.members))
+	var taken map[int]int // tentative places in finite buffers, by process
+	blocked := false
+	for _, e := range run.members {
+		to, err := k.resolve(e, n)
+		mr := memberRoute{to: to, path: slices.Clone(k.path), err: err}
+		if err == nil {
+			if b := k.r.p.nodes[to].buffer; b >= 0 && k.r.p.nodes[b].capacity > 0 && k.blocked != nil {
+				if taken == nil {
+					taken = map[int]int{}
+				}
+				if k.waiting[b]+taken[b] >= k.r.p.nodes[b].capacity {
+					mr.blocked, blocked = true, true
+				} else {
+					taken[b]++
+				}
+			}
+		}
+		routes = append(routes, mr)
+		if err != nil {
+			break
+		}
+	}
+	reqs := k.r.p.nodes[n].requires
+	if !blocked {
+		delete(k.batches, h)
+		if err := k.release(reqs); err != nil {
+			return err
+		}
+		if len(reqs) > 0 {
+			if err := k.needDispatch(); err != nil {
+				return err
+			}
+		}
+	}
+	for i, mr := range routes {
+		e := run.members[i]
+		k.observe(Observation{Kind: ObsServiceEnd, Entity: e, Node: n, Batch: run.number})
+		k.path = mr.path
+		k.passed(e)
+		switch {
+		case mr.err != nil:
+			return mr.err
+		case mr.blocked:
+			k.blockAs(e, n, mr.to, h, run.number)
+			run.blocked++
+		default:
+			if err := k.enter(e, mr.to); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // deadlock is the D-050 B1 backstop, run when no dispatch is due in this
@@ -927,7 +1242,9 @@ func (k *kernel) unblock(process int) error {
 // is no circular wait (T-048, G-K1). A valid model never reaches it (D-050
 // R1).
 func (k *kernel) deadlock() error {
-	if k.inService > 0 || k.inDelay > 0 || (k.nBlocked == 0 && k.held == 0) {
+	// D-050 B1: a pending BATCH_TIMEOUT (T-050), one after the horizon
+	// included, may still start a batch.
+	if k.inService > 0 || k.inDelay > 0 || k.timeouts > 0 || (k.nBlocked == 0 && k.held == 0) {
 		return nil
 	}
 	p := k.r.p
@@ -968,9 +1285,20 @@ func (k *kernel) deadlock() error {
 		if first == nil {
 			return fmt.Errorf("%w: %d held candidates, none at a front", ErrInternal, k.held)
 		}
-		de.Entity, de.Node, de.Since, de.Queued = k.r.EntityID(first.entity), p.nodes[first.process].id, first.entered, true
+		de.Entity, de.Node, de.Since, de.Queued = k.r.EntityID(k.entityOf(first)), p.nodes[first.process].id, first.entered, true
 	}
 	return de
+}
+
+// entityOf is the entity a request stands for in a failure's message: its
+// own, or for a batch request the oldest member of its batch to be, with
+// the request's tick the tick the batch became ready (D-096 (g)).
+func (k *kernel) entityOf(req *request) uint64 {
+	if req.batch {
+		w, _ := k.bbuf[req.process].front()
+		return w.entity
+	}
+	return req.entity
 }
 
 // stall is the D-050 B2 backstop, run at the end of a tick with a held
@@ -1016,7 +1344,7 @@ func (k *kernel) stall() error {
 	if due == nil {
 		return nil
 	}
-	return &StalledError{Tick: k.r.now, Entity: k.r.EntityID(due.entity), Node: p.nodes[due.process].id,
+	return &StalledError{Tick: k.r.now, Entity: k.r.EntityID(k.entityOf(due)), Node: p.nodes[due.process].id,
 		Since: due.stalled, Deadline: due.deadline}
 }
 

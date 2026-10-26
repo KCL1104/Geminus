@@ -222,6 +222,12 @@ func FormatEntityID(replication uint32, source string, n uint64) string {
 	return "r" + strconv.FormatUint(uint64(replication), 10) + "/" + source + "/" + strconv.FormatUint(n, 10)
 }
 
+// FormatBatchID builds the batch ID r<replication>/<process>/b<n> of batch
+// n (from 1) of a batch process (D-054, D-063 (b)).
+func FormatBatchID(replication uint32, process string, n uint64) string {
+	return "r" + strconv.FormatUint(uint64(replication), 10) + "/" + process + "/b" + strconv.FormatUint(n, 10)
+}
+
 // release forgets an entity that left the system.
 func (r *replication) release(e uint64) { delete(r.entities, e) }
 

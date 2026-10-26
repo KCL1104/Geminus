@@ -427,8 +427,9 @@ func nameNumbers(ir *model.ModelIR) []float64 {
 // ones included, T-048), arrival bounds, routing probabilities, constraint
 // values, and the calendars' periods, shift and exception times, the units
 // on shift and the release schedules' periods, segment starts, rates,
-// release times and quantities (T-049) (views are presentation, not
-// values; names are nameNumbers').
+// release times and quantities (T-049), and the batches' sizes and wait
+// limits (T-050) (views are presentation, not values; names are
+// nameNumbers').
 func values(ir *model.ModelIR) []float64 {
 	var out []float64
 	add := func(p *float64) {
@@ -473,6 +474,10 @@ func values(ir *model.ModelIR) []float64 {
 			for _, r := range s.Releases {
 				out = append(out, r.At, float64(r.Quantity))
 			}
+		}
+		if b := n.Batch; b != nil {
+			out = append(out, float64(b.MinSize), float64(b.MaxSize))
+			add(b.MaxWait)
 		}
 		for _, d := range n.Distributions() {
 			params(d.Distribution)

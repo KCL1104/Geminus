@@ -54,6 +54,17 @@ type Program struct {
 	// ID order, and whether there is one.
 	calendars  []ccalendar
 	calendared bool
+	batches    bool // some process serves batches (D-054, T-050)
+}
+
+// cbatch is a batch process's batch (D-054): its sizes and its wait limit
+// in ticks. timed is min < max: only then can the wait limit start a batch
+// (with min = max a batch starts at max members either way), so only then
+// are BATCH_TIMEOUT events scheduled (D-096 (b)).
+type cbatch struct {
+	min, max int
+	wait     int64
+	timed    bool
 }
 
 // ccalendar is a calendar some resource refers to: its resources, in ID
@@ -88,6 +99,8 @@ type cnode struct {
 	// calendars (D-050's X_end); nil and 0 without one.
 	need []calendar.Need
 	xEnd int64
+	// batch is a batch process's batch (D-054, T-050), nil otherwise.
+	batch *cbatch
 }
 
 type requirement struct {
@@ -168,14 +181,14 @@ var validateIR = validate.IR
 // validate.Primitives) this kernel executes: finite buffers since
 // des-go-0.2.0 (T-047, D-049); breakdowns, lognormal and Weibull since
 // des-go-0.3.0 (T-048, D-051, D-056); calendars and release schedules
-// since des-go-0.4.0 (T-049, D-052, D-053). Each of T-050–T-051 adds its
-// own together with the kernel change and a new engine_version. It is kept
-// apart from the validator's list so that a primitive whose rules are
-// checked but whose kernel is not there yet is still refused. Only read,
-// never iterated.
+// since des-go-0.4.0 (T-049, D-052, D-053); batch processes since
+// des-go-0.5.0 (T-050, D-054). Changeovers and T-051's primitives are
+// added together with their kernel change. It is kept apart from the
+// validator's list so that a primitive whose rules are checked but whose
+// kernel is not there yet is still refused. Only read, never iterated.
 var kernelExecutes = map[validate.Primitive]bool{validate.FiniteBuffer: true,
 	validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true,
-	validate.Calendars: true, validate.ReleaseSchedule: true}
+	validate.Calendars: true, validate.ReleaseSchedule: true, validate.Batch: true}
 
 // unsupported refuses every use of a primitive the kernel does not execute,
 // so no model is ever run as if such a member were absent (D-063).
@@ -467,6 +480,23 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 		case model.NodeProcess:
 			c.service = sample(&n.ServiceTime.Distribution)
 			c.buffer = i
+			if b := n.Batch; b != nil {
+				// D-054 (T-050); the validator has checked the sizes and
+				// max_wait (BATCH_INVALID), checked again here.
+				cb := &cbatch{min: b.MinSize, max: b.MaxSize, timed: b.MinSize < b.MaxSize}
+				if b.MaxWait != nil {
+					w, werr := model.Ticks(*b.MaxWait, model.TimeUnit(ir.TimeUnit))
+					if werr != nil {
+						return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.BatchInvalid, "/model/nodes", n.ID+": "+werr.Error(), model.SeverityError)}}
+					}
+					cb.wait = w
+				}
+				if cb.min < 1 || cb.min > cb.max || (cb.timed && b.MaxWait == nil) {
+					return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.BatchInvalid, "/model/nodes", n.ID+": batch sizes", model.SeverityError)}}
+				}
+				c.batch = cb
+				p.batches = true
+			}
 			for _, r := range n.Requires {
 				c.requires = append(c.requires, requirement{resource: resIndex[r.ResourceID], units: r.Units})
 			}
@@ -626,6 +656,13 @@ func (p *Program) InitialCapacity(i int) int {
 	}
 	return p.resources[i].capacity
 }
+
+// HasBatches reports whether some process serves batches (D-054): only
+// then do batch observations occur and a Result have batch members.
+func (p *Program) HasBatches() bool { return p.batches }
+
+// IsBatch reports whether node i is a batch process.
+func (p *Program) IsBatch(i int) bool { return p.nodes[i].batch != nil }
 
 // BufferCapacity is process i's buffer capacity, 0 when unlimited.
 func (p *Program) BufferCapacity(i int) int { return p.nodes[i].capacity }

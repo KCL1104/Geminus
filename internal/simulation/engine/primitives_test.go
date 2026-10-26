@@ -21,34 +21,34 @@ func lineFlowModel(t *testing.T) model.ModelIR {
 }
 
 // The validator checks finite buffers (T-047), breakdowns, lognormal and
-// Weibull (T-048), calendars and release schedules (T-049) and no other
-// line-flow primitive (ADR-026; T-050–T-051 add them). A model using
-// another never compiles, so it is never simulated as if the member were
-// absent: the validator's primitive gate refuses it first, with paths
-// under /model (D-063). valid-line-flow-ir.json has 19 uses: two finite
-// buffers, the breakdowns, a lognormal (their repair time), a Weibull (a
-// changeover time), the calendars (the root member, two calendar_id and a
-// shift_capacity) and three release schedules are checked; the other 7
-// (a batch, setups and five declared metrics) are refused.
+// Weibull (T-048), calendars and release schedules (T-049), batch
+// processes (T-050) and no other line-flow primitive (ADR-026; changeovers
+// and T-051's follow). A model using another never compiles, so it is
+// never simulated as if the member were absent: the validator's primitive
+// gate refuses it first, with paths under /model (D-063).
+// valid-line-flow-ir.json has 19 uses: two finite buffers, the breakdowns,
+// a lognormal (their repair time), a Weibull (a changeover time), the
+// calendars (the root member, two calendar_id and a shift_capacity),
+// three release schedules and the batch are checked; the other 6 (setups
+// and five declared metrics) are refused.
 func TestCompileRefusesLineFlowPrimitives(t *testing.T) {
 	_, err := Compile(input(lineFlowModel(t)))
 	var ie *InputError
-	if !errors.As(err, &ie) || !errors.Is(err, ErrInvalidInput) || len(ie.Issues) != 7 {
-		t.Fatalf("want 7 PRIMITIVE_NOT_SUPPORTED issues, got %v", err)
+	if !errors.As(err, &ie) || !errors.Is(err, ErrInvalidInput) || len(ie.Issues) != 6 {
+		t.Fatalf("want 6 PRIMITIVE_NOT_SUPPORTED issues, got %v", err)
 	}
 	for _, is := range ie.Issues {
 		if is.Code != validate.PrimitiveNotSupported || is.Severity != model.SeverityError || is.Path[:7] != "/model/" {
 			t.Errorf("issue %+v", is)
 		}
 	}
-	issueExactly(t, err, "/model/nodes/1/batch", validate.PrimitiveNotSupported)
 	issueExactly(t, err, "/model/resources/1/setups", validate.PrimitiveNotSupported)
 	for _, is := range ie.Issues {
 		switch is.Path {
 		case "/model/nodes/3/capacity", "/model/nodes/4/capacity", "/model/resources/1/breakdowns",
 			"/model/resources/1/breakdowns/time_to_repair/distribution", "/model/resources/1/setups/transitions/0/distribution",
 			"/model/calendars", "/model/resources/1/calendar_id", "/model/resources/1/shift_capacity", "/model/resources/2/calendar_id",
-			"/model/nodes/5/arrival/schedule", "/model/nodes/6/arrival/schedule", "/model/nodes/7/arrival/schedule":
+			"/model/nodes/5/arrival/schedule", "/model/nodes/6/arrival/schedule", "/model/nodes/7/arrival/schedule", "/model/nodes/1/batch":
 			t.Errorf("a checked primitive is refused: %+v", is)
 		}
 	}
@@ -173,9 +173,9 @@ func TestCompileRefusesWhatTheKernelDoesNotRun(t *testing.T) {
 // still refuses the model. Checked on a decoded model, past the validator.
 func TestKernelRefusesWhatItDoesNotExecute(t *testing.T) {
 	// Each kernel task adds its own primitive, with this list: so far
-	// T-047's, T-048's and T-049's.
+	// T-047's, T-048's, T-049's and T-050's batch processes.
 	executed := map[validate.Primitive]bool{validate.FiniteBuffer: true, validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true,
-		validate.Calendars: true, validate.ReleaseSchedule: true}
+		validate.Calendars: true, validate.ReleaseSchedule: true, validate.Batch: true}
 	for _, p := range validate.Primitives {
 		if kernelExecutes[p] != executed[p] {
 			t.Errorf("%s: executed %v, want %v; update this test with the kernel task that implements it", p, kernelExecutes[p], executed[p])
@@ -189,7 +189,7 @@ func TestKernelRefusesWhatItDoesNotExecute(t *testing.T) {
 			want = append(want, u)
 		}
 	}
-	if len(issues) != len(want) || len(want) != 7 {
+	if len(issues) != len(want) || len(want) != 6 {
 		t.Fatalf("%d issues for %d uses", len(issues), len(want))
 	}
 	for i, u := range want {

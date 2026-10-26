@@ -79,6 +79,9 @@ func TestDifferentialAgainstFrozen040(t *testing.T) {
 		a, b := runBoth040(p, uint32(seed%5), 200_000)
 		blocks, downs, capacities := 0, 0, 0
 		for _, o := range a.obs {
+			if o.Kind == ObsBatchStart || o.Batch != 0 {
+				return result{compiled: true, diff: "a model without batches has a batch observation"}
+			}
 			switch o.Kind {
 			case ObsBlocked:
 				blocks++

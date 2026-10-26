@@ -11,9 +11,10 @@ const (
 	// state transitions, each routing its entity in the same event.
 	PriorityImmediate uint8 = 10
 	// PriorityResourceState: a resource's failures and repairs (ADR-026
-	// D-048, T-048), a calendar's capacity changes (D-052, T-049; batch
-	// timeouts later), after the arrivals of the tick and before its
-	// dispatch, so the dispatch sees the tick's last capacity.
+	// D-048, T-048), a calendar's capacity changes (D-052, T-049) and a
+	// batch process's wait limits (D-054, T-050), after the arrivals of the
+	// tick and before its dispatch, so the dispatch sees the tick's last
+	// capacity and the batches its wait limits made ready.
 	PriorityResourceState uint8 = 15
 	// PriorityDispatch: the resource dispatcher, the last step of a tick.
 	PriorityDispatch uint8 = 20
@@ -33,6 +34,11 @@ const (
 	// D-052 (T-049): the units on shift of the resources on calendar
 	// Resource (a calendar index) change.
 	EventCapacity
+	// D-054 (T-050): batch process Node's wait limit for the member that
+	// was its oldest when the event was scheduled; Entity is the timeout's
+	// generation, so one scheduled for an earlier oldest member is stale
+	// and ignored (D-096 (c)).
+	EventBatchTimeout
 )
 
 // event is one scheduled occurrence. Seq is unique and strictly increasing
@@ -43,7 +49,7 @@ type event struct {
 	Tick     int64
 	Seq      uint64
 	Node     int    // compiled node index
-	Entity   uint64 // index into the replication's entity table; 0 when none
+	Entity   uint64 // index into the replication's entity table; 0 when none (a batch's SERVICE_COMPLETE: its handle; a BATCH_TIMEOUT: its generation)
 	Resource int32  // EventFailure, EventRepair: the resource index; EventCapacity: the calendar index
 	Unit     int32  // EventFailure, EventRepair: the failure clock (unit index)
 	Priority uint8

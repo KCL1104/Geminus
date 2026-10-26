@@ -1,0 +1,26 @@
+--- FAIL: TestBatchRisk (0.06s)
+    --- FAIL: TestBatchRisk/a_larger_batch (0.00s)
+        batch_risk_test.go:57: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestBatchRisk/a_smaller_minimum (0.00s)
+        batch_risk_test.go:57: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestBatchRisk/a_shorter_wait_limit (0.00s)
+        batch_risk_test.go:57: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestBatchRisk/a_longer_wait_limit (0.01s)
+        batch_risk_test.go:57: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestBatchRisk/the_batch_removed (0.00s)
+        batch_risk_test.go:57: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestBatchRisk/a_batch_added (0.00s)
+        batch_risk_test.go:57: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+--- FAIL: TestBatchValuesInEffects (0.01s)
+    batch_risk_test.go:96: the batch's own numbers: "invalid" (map[/expected_effects/0:[AI_OUTPUT_INVALID]])
+--- FAIL: TestLiftedPrimitivesHaveRiskCases (0.01s)
+    lineflow_risk_test.go:154: batch, a larger batch: server risk low, want at least medium
+    lineflow_risk_test.go:154: batch, a smaller minimum: server risk low, want at least medium
+    lineflow_risk_test.go:154: batch, a longer wait limit: server risk low, want at least medium
+    lineflow_risk_test.go:154: batch, a shorter wait limit: server risk low, want at least medium
+    lineflow_risk_test.go:154: batch, no batch any more: server risk low, want at least medium
+    lineflow_risk_test.go:154: batch, a batch added: server risk low, want at least medium
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.455s
+FAIL
+exit 1 elapsed 1s

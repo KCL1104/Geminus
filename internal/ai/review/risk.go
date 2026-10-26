@@ -53,7 +53,8 @@ func Max(a, b Risk) Risk {
 //     its units on shift (shift_capacity) changed; a source's release
 //     schedule was added or removed, or anything of it changed (a rate, a
 //     quantity, its period, a segment or a release), either way (D-057,
-//     T-049);
+//     T-049); a process's batch was added or removed, or its min_size,
+//     max_size or max_wait changed, either way (D-057, T-050);
 //   - low: anything else (a name, an arrival, service or delay
 //     distribution, lognormal and Weibull included, a higher capacity, a
 //     larger or an unlimited buffer, less failure routing).
@@ -66,7 +67,9 @@ func Max(a, b Risk) Risk {
 // or a bundle R3 refuses, never gets here: the candidate is invalid (D-050
 // R1, R3); the calendars and schedules D-057 lists, from T-049, which
 // lifted their gates: a candidate whose bundle never fits (R2) or whose
-// breakdown resource is on shift without its partners (R4) is invalid.
+// breakdown resource is on shift without its partners (R4) is invalid;
+// the batches D-057 lists, from T-050, which lifted their gate: a
+// candidate whose batch cannot form (BATCH_INVALID) is invalid.
 // Confidence plays no part.
 func ServerRisk(base, candidate *model.ModelIR) Risk {
 	level := Low
@@ -91,6 +94,11 @@ func ServerRisk(base, candidate *model.ModelIR) Risk {
 		// D-057 (T-049): any change to a release schedule, either way (a
 		// higher rate is as much an assumption as a lower one).
 		if ok && c.Type == n.Type && !sameSchedule(arrivalSchedule(n), arrivalSchedule(c)) {
+			raise(Medium)
+		}
+		// D-057 (T-050): a batch added or removed, or another min_size,
+		// max_size or max_wait, either way.
+		if ok && c.Type == n.Type && !sameBatch(n.Batch, c.Batch) {
 			raise(Medium)
 		}
 	}
@@ -239,6 +247,16 @@ func sameSchedule(a, b *model.ReleaseSchedule) bool {
 		return a == b
 	}
 	return a.Process == b.Process && a.Period == b.Period && slices.Equal(a.Segments, b.Segments) && slices.Equal(a.Releases, b.Releases)
+}
+
+// sameBatch reports whether a process is a batch process in both or in
+// neither, with the same sizes and wait limit.
+func sameBatch(a, b *model.Batch) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	same := func(x, y *float64) bool { return (x == nil) == (y == nil) && (x == nil || *x == *y) }
+	return a.MinSize == b.MinSize && a.MaxSize == b.MaxSize && same(a.MaxWait, b.MaxWait)
 }
 
 // sameShiftCapacity compares two shift_capacity maps (nil and empty alike).

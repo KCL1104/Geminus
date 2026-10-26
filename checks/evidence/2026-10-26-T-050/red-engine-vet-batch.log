@@ -1,0 +1,13 @@
+# github.com/kcl1104/geminus/internal/simulation/engine [github.com/kcl1104/geminus/internal/simulation/engine.test]
+internal/simulation/engine/batch_test.go:95:8: undefined: ObsBatchStart
+internal/simulation/engine/batch_test.go:96:10: p.IsBatch undefined (type *Program has no field or method IsBatch)
+internal/simulation/engine/batch_test.go:96:31: o.Batch undefined (type Observation has no field or method Batch)
+internal/simulation/engine/batch_test.go:105:59: m.Batch undefined (type Observation has no field or method Batch)
+internal/simulation/engine/batch_test.go:105:70: o.Batch undefined (type Observation has no field or method Batch)
+internal/simulation/engine/batch_test.go:109:26: o.Batch undefined (type Observation has no field or method Batch)
+internal/simulation/engine/batch_test.go:111:79: o.Batch undefined (type Observation has no field or method Batch)
+internal/simulation/engine/batch_test.go:112:70: o.Batch undefined (type Observation has no field or method Batch)
+internal/simulation/engine/batch_test.go:115:9: p.IsBatch undefined (type *Program has no field or method IsBatch)
+internal/simulation/engine/batch_test.go:115:30: o.Batch undefined (type Observation has no field or method Batch)
+internal/simulation/engine/batch_test.go:115:30: too many errors
+exit 1

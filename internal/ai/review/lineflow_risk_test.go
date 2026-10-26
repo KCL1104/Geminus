@@ -106,6 +106,25 @@ var lineFlowRiskCases = map[validate.Primitive][]lineFlowRiskCase{
 			c.Nodes[7].Arrival = &a
 		}, Medium},
 	},
+	// T-050 (D-057): any batch parameter, either way. Node 1 (burn_in) is a
+	// batch process: min_size 4, max_size 8, max_wait 60.
+	validate.Batch: {
+		{"a larger batch", func(c *model.ModelIR) { b := *c.Nodes[1].Batch; b.MaxSize = 10; c.Nodes[1].Batch = &b }, Medium},
+		{"a smaller minimum", func(c *model.ModelIR) { b := *c.Nodes[1].Batch; b.MinSize = 2; c.Nodes[1].Batch = &b }, Medium},
+		{"a longer wait limit", func(c *model.ModelIR) {
+			b, w := *c.Nodes[1].Batch, 90.0
+			b.MaxWait = &w
+			c.Nodes[1].Batch = &b
+		}, Medium},
+		{"a shorter wait limit", func(c *model.ModelIR) {
+			b, w := *c.Nodes[1].Batch, 30.0
+			b.MaxWait = &w
+			c.Nodes[1].Batch = &b
+		}, Medium},
+		{"no batch any more", func(c *model.ModelIR) { c.Nodes[1].Batch = nil }, Medium},
+		{"a batch added", func(c *model.ModelIR) { c.Nodes[0].Batch = &model.Batch{MinSize: 2, MaxSize: 2} }, Medium},
+		{"the same batch", func(c *model.ModelIR) { b := *c.Nodes[1].Batch; c.Nodes[1].Batch = &b }, Low},
+	},
 }
 
 // A primitive the validator checks (its gate lifted) must have server-risk

@@ -59,8 +59,8 @@ var kinds = map[engine.ObservationKind]simulation.TraceEventType{
 // Observe implements engine.Observer.
 func (r *Recorder) Observe(o engine.Observation) {
 	switch o.Kind {
-	case engine.ObsResource, engine.ObsResourceDown, engine.ObsResourceUp, engine.ObsBreakdownPending, engine.ObsCapacity:
-		return // not an entity event (breakdowns: D-051, T-048; shifts: D-052, T-049)
+	case engine.ObsResource, engine.ObsResourceDown, engine.ObsResourceUp, engine.ObsBreakdownPending, engine.ObsCapacity, engine.ObsBatchStart:
+		return // not an entity event (breakdowns: D-051, T-048; shifts: D-052, T-049; a batch's start: D-054, T-050, its members' service starts are)
 	}
 	if o.Kind == engine.ObsArrival {
 		id := engine.FormatEntityID(r.index, r.p.NodeID(o.Node), uint64(o.Value))
@@ -94,7 +94,13 @@ func (r *Recorder) Observe(o engine.Observation) {
 		r.truncated = true
 		return
 	}
-	r.events = append(r.events, simulation.TraceEvent{TimeTick: o.Tick, Sequence: o.Seq, Type: typ, EntityID: id, NodeID: node})
+	ev := simulation.TraceEvent{TimeTick: o.Tick, Sequence: o.Seq, Type: typ, EntityID: id, NodeID: node}
+	if o.Batch != 0 && (o.Kind == engine.ObsServiceStart || o.Kind == engine.ObsServiceEnd) {
+		// A batch member's service start and end name its batch (D-054;
+		// the schema allows batch_id on these two only).
+		ev.BatchID = engine.FormatBatchID(r.index, node, o.Batch)
+	}
+	r.events = append(r.events, ev)
 }
 
 // Artifact returns the recorded trace.

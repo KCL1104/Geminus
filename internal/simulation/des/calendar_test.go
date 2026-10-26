@@ -322,7 +322,10 @@ func TestCalendarDeterminism(t *testing.T) {
 // ones' (TestCalendarGoldenResults) and the SimPy reference's; the lock
 // only makes a later numerical change visible. The cases of the older
 // locks are checked against them with engine_version set back
-// (TestGoldenDigests, TestGoldenDigests020, TestGoldenDigests030).
+// (TestGoldenDigests, TestGoldenDigests020, TestGoldenDigests030). Since
+// des-go-0.5.0 (T-050) it is not regenerated either: none of these models
+// has a batch process or changeovers, so each Result with its
+// engine_version set back to des-go-0.4.0 has the locked digest (D-047).
 func TestGoldenDigests040(t *testing.T) {
 	var lock struct {
 		EngineVersion string            `json:"engine_version"`
@@ -331,14 +334,23 @@ func TestGoldenDigests040(t *testing.T) {
 	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/engine-golden-digests-0.4.0.json")), &lock); err != nil {
 		t.Fatal(err)
 	}
-	if lock.EngineVersion != Version {
-		t.Fatalf("lock for %s, engine %s", lock.EngineVersion, Version)
+	if lock.EngineVersion != "des-go-0.4.0" {
+		t.Fatalf("lock for %s", lock.EngineVersion)
 	}
 	cases, reference := calendarDoc(t)
 	got := map[string]string{}
 	for _, c := range append(cases, reference...) {
 		if c.Expected.Result != nil || strings.HasPrefix(c.ID, "C-S") {
-			got[c.ID] = run(t, &Engine{}, caseInput(t, c)).Result.Reproducibility.ResultDigest
+			res := *run(t, &Engine{}, caseInput(t, c)).Result
+			if res.EngineVersion != Version {
+				t.Errorf("engine_version %s", res.EngineVersion)
+			}
+			res.EngineVersion, res.Reproducibility.ResultDigest = lock.EngineVersion, ""
+			d, err := hashing.Result(res)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got[c.ID] = d
 		}
 	}
 	if len(got) != 27 || !reflect.DeepEqual(got, lock.Digests) {
