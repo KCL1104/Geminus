@@ -11,8 +11,10 @@
 // records H-018, complete since the owner confirmed both provider
 // organizations' data retention arrangement (H-026; T-053, D-113), so a
 // deployment that sets AI_MODEL, both keys and GEMINUS_AI_LIVE=on gets a
-// valid Approval. It has been exercised against a local test server
-// only; no request has been sent to the real API.
+// valid Approval. The first live smoke (2026-10-26) was refused with 400
+// invalid_request_error for the projected schema's empty schemas (no
+// tokens billed); the fix (projection.go's encoded values) has been
+// exercised against a local test server only.
 //
 // T-053: the backend costs money, so it is provider.Billable: only a
 // metered client (provider.NewMetered) calls it, it refuses a request
@@ -47,12 +49,16 @@
 //     MaxOutputBytes check applies; the body is bounded by max_tokens and
 //     the attempt timeout, not by that check.
 //   - A credential is named by its label only: in the response, the
-//     metadata and every error. Errors never carry the provider's body.
+//     metadata and every error. Errors never carry the provider's body;
+//     an error status names its HTTP status and its error type from the
+//     API's list (errorTypes), any other type as "other".
 //
 // The request has no tools and no tool choice: the model can only answer
 // with one JSON document, constrained by the projected output schema
-// (projection.go) and checked by provider.Client against the full one.
-// Thinking blocks in the answer are ignored, never stored.
+// (projection.go), whose encoded values (a JSON text in a string where the
+// canonical schema takes any JSON value) the adapter decodes before
+// provider.Client checks the answer against the full schema. Thinking
+// blocks in the answer are ignored, never stored.
 package anthropic
 
 import (
@@ -375,7 +381,7 @@ func (b *Backend) complete(ctx context.Context, t *tally, req provider.Request) 
 			resp.ProviderRequestID = raw.Header.Get("request-id")
 		}
 		if err == nil {
-			return answer(msg, resp)
+			return answer(msg, resp, proj.Projection)
 		}
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			code := provider.CodeCancelled
@@ -399,6 +405,14 @@ func (b *Backend) complete(ctx context.Context, t *tally, req provider.Request) 
 		if apiErr.RequestID != "" {
 			resp.ProviderRequestID = apiErr.RequestID
 		}
+		// The error names the status and the error type (from the API's
+		// list, never its message), so a refused call can be told apart
+		// (T-053 schema follow-up: the live smoke could not).
+		statusErr := func(code provider.Code) error {
+			e := provider.NewError(code, apiErr.StatusCode, c.label)
+			e.ErrorType = errorType(apiErr)
+			return e
+		}
 		switch status := apiErr.StatusCode; {
 		case status == http.StatusUnauthorized, status == http.StatusPaymentRequired, status == http.StatusForbidden:
 			c.refuse(status, b.now())
@@ -408,24 +422,44 @@ func (b *Backend) complete(ctx context.Context, t *tally, req provider.Request) 
 				// reservation's 1 + MaxRetries (review round 1, M3). The call
 				// fails; the next call, reserved for on its own, skips this
 				// credential.
-				return resp, provider.NewError(provider.CodeUnavailable, status, c.label)
+				return resp, statusErr(provider.CodeUnavailable)
 			}
 			failed = append(failed, c.label)
 			continue
 		case status == http.StatusTooManyRequests:
-			return resp, provider.NewError(provider.CodeRateLimited, status, c.label)
+			return resp, statusErr(provider.CodeRateLimited)
 		case status >= 500, status == http.StatusRequestTimeout, status == http.StatusConflict:
-			return resp, provider.NewError(provider.CodeUnavailable, status, c.label)
+			return resp, statusErr(provider.CodeUnavailable)
 		default:
-			return resp, provider.NewError(provider.CodeRejected, status, c.label)
+			return resp, statusErr(provider.CodeRejected)
 		}
 	}
 	return provider.Response{Model: b.model, FailedOver: failed}, provider.NewError(provider.CodeCredentialsExhausted, 0, "")
 }
 
+// errorTypes are the error types of the Messages API's error statuses, as
+// https://platform.claude.com/docs/en/api/errors lists them (retrieved
+// 2026-10-26). An error records one of them; any other type, or none, is
+// ErrorTypeOther, so that nothing the provider wrote is recorded as it is.
+var errorTypes = []string{"invalid_request_error", "authentication_error", "billing_error", "permission_error", "not_found_error",
+	"conflict_error", "request_too_large", "rate_limit_error", "api_error", "timeout_error", "overloaded_error"}
+
+// ErrorTypeOther is the error type of an error status whose type is not
+// one of errorTypes.
+const ErrorTypeOther = "other"
+
+func errorType(e *sdk.Error) string {
+	if t := string(e.Type()); slices.Contains(errorTypes, t) {
+		return t
+	}
+	return ErrorTypeOther
+}
+
 // answer takes the text of a complete message; thinking blocks are
-// dropped unread.
-func answer(msg *sdk.Message, resp provider.Response) (provider.Response, error) {
+// dropped unread. The text's encoded places (the projection's JSON texts)
+// are decoded; one that does not decode makes the answer invalid_output,
+// with the place and a fixed message.
+func answer(msg *sdk.Message, resp provider.Response, proj Projection) (provider.Response, error) {
 	if msg.Model != "" {
 		resp.Model = string(msg.Model)
 	}
@@ -451,6 +485,12 @@ func answer(msg *sdk.Message, resp provider.Response) (provider.Response, error)
 			return resp, provider.NewError(provider.CodeInvalidOutput, 0, resp.Credential)
 		}
 	}
-	resp.Text = []byte(text.String())
+	decoded, issues := proj.Decode([]byte(text.String()))
+	if len(issues) > 0 {
+		e := provider.NewError(provider.CodeInvalidOutput, 0, resp.Credential)
+		e.Issues = issues
+		return resp, e
+	}
+	resp.Text = decoded
 	return resp, nil
 }

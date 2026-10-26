@@ -213,6 +213,16 @@ func Main(ctx context.Context, args []string, getenv func(string) string, stdout
 			spend.FormatUSD(meter.Spent()), spend.FormatUSD(meter.Committed()), report.Cost.CapUSD, report.Usage.InputTokens,
 			report.Usage.OutputTokens, report.SpendWarnings)
 	}
+	// Each case the provider answered with an error status, after the
+	// summary: its code, status and error type, never the provider's
+	// message (T-053 schema follow-up).
+	providerErrors := func() {
+		for _, o := range report.Outcomes {
+			if o.ProviderStatus != 0 {
+				fmt.Fprintf(stderr, "ai-eval-live: WARNING: %s failed with %s: the provider answered %d %s\n", o.ID, o.Code, o.ProviderStatus, o.ProviderErrorType)
+			}
+		}
+	}
 	unclosed := func(err error) {
 		fmt.Fprintf(stderr, "ai-eval-live: the spend record could not be closed (%v): its open line counts at the run's whole cap until it is\n", err)
 	}
@@ -221,6 +231,7 @@ func Main(ctx context.Context, args []string, getenv func(string) string, stdout
 		// what they were (review round 1, L6).
 		if report != nil {
 			fmt.Fprintln(stdout, summary())
+			providerErrors()
 		} else {
 			fmt.Fprintf(stdout, "ai-eval-live: %s run %s of %s stopped: cost USD %s (committed %s)\n", kind, runID, ai.Model,
 				spend.FormatUSD(meter.Spent()), spend.FormatUSD(meter.Committed()))
@@ -233,6 +244,7 @@ func Main(ctx context.Context, args []string, getenv func(string) string, stdout
 	}
 	if err := WriteReport(path, report); err != nil {
 		fmt.Fprintln(stdout, summary())
+		providerErrors()
 		fmt.Fprintf(stderr, "ai-eval-live: the report could not be written: %v\n", err)
 		if err := closeRun(ResultReportUnwritten); err != nil {
 			unclosed(err)
@@ -248,10 +260,12 @@ func Main(ctx context.Context, args []string, getenv func(string) string, stdout
 	}
 	if err := closeRun(result); err != nil {
 		fmt.Fprintln(stdout, summary()+"; report "+path)
+		providerErrors()
 		unclosed(err)
 		return ExitReport
 	}
 	fmt.Fprintln(stdout, summary()+"; report "+path)
+	providerErrors()
 	if n := report.SpendWarnings[WarningOverReservation] + report.SpendWarnings[WarningGeoUnknown]; n > 0 {
 		fmt.Fprintf(stderr, "ai-eval-live: WARNING: %d call(s) broke an assumption of the reservation's bound (%v); what they cost is recorded\n",
 			n, report.SpendWarnings)

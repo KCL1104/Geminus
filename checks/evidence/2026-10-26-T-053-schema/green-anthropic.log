@@ -1,0 +1,33 @@
+Mon Oct 26 13:01:21 UTC 2026
+commit: 3784d95 (working tree: the fix on top of the red commit, not committed yet)
+go test -count=1 -v -run '^(TestTheSubsetGuard|TestEverySchemaTheAdapterSendsIsInsideTheLimits|TestTheOpenValuesAreEncoded|TestDecodeOnlyTheEncodedPlaces|TestDecodeRefuses|TestProjectionRefuses|TestProjection|TestTheRequestSchemaIsInsideTheLimits|TestEncodedValuesDecode|TestEncodedValuesThatDoNotDecode|TestDecodedAnswersMeetTheFullSchema|TestTheProviderErrorType|TestTheLiveEvalDecodesTheEncodedValues|TestTheLiveEvalNamesTheProviderError)$' ./internal/ai/provider/anthropic/
+--- PASS: TestTheOpenValuesAreEncoded (0.01s)
+--- PASS: TestDecodeOnlyTheEncodedPlaces (0.00s)
+--- PASS: TestDecodeRefuses (0.01s)
+--- PASS: TestTheSubsetGuard (0.00s)
+--- PASS: TestEverySchemaTheAdapterSendsIsInsideTheLimits (0.03s)
+--- PASS: TestProjection (0.02s)
+--- PASS: TestProjectionRefuses (0.00s)
+--- PASS: TestTheRequestSchemaIsInsideTheLimits (0.02s)
+    --- PASS: TestTheRequestSchemaIsInsideTheLimits/modeler (0.01s)
+    --- PASS: TestTheRequestSchemaIsInsideTheLimits/scenario (0.00s)
+    --- PASS: TestTheRequestSchemaIsInsideTheLimits/analyst (0.00s)
+    --- PASS: TestTheRequestSchemaIsInsideTheLimits/importer (0.00s)
+--- PASS: TestEncodedValuesDecode (0.00s)
+--- PASS: TestEncodedValuesThatDoNotDecode (0.03s)
+    --- PASS: TestEncodedValuesThatDoNotDecode/not_JSON (0.00s)
+    --- PASS: TestEncodedValuesThatDoNotDecode/trailing_data (0.00s)
+    --- PASS: TestEncodedValuesThatDoNotDecode/garbage_after (0.00s)
+    --- PASS: TestEncodedValuesThatDoNotDecode/a_duplicate (0.00s)
+    --- PASS: TestEncodedValuesThatDoNotDecode/not_a_string (0.00s)
+    --- PASS: TestEncodedValuesThatDoNotDecode/too_large (0.01s)
+--- PASS: TestDecodedAnswersMeetTheFullSchema (0.02s)
+--- PASS: TestTheProviderErrorType (0.46s)
+--- PASS: TestTheLiveEvalDecodesTheEncodedValues (0.05s)
+    --- PASS: TestTheLiveEvalDecodesTheEncodedValues/decodes_to_a_string_capacity (0.03s)
+    --- PASS: TestTheLiveEvalDecodesTheEncodedValues/decodes (0.01s)
+    --- PASS: TestTheLiveEvalDecodesTheEncodedValues/does_not_decode (0.01s)
+--- PASS: TestTheLiveEvalNamesTheProviderError (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.697s
+exit 0

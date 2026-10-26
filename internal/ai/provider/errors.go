@@ -64,7 +64,10 @@ type Error struct {
 	Code Code
 	// Status is the provider's HTTP status, 0 when there was none.
 	Status int
-	// ErrorType is the provider's error type of an error status.
+	// ErrorType is the provider's error type of an error status (Status is
+	// not 0), one of the backend's fixed list of its API's types or
+	// "other": never the provider's text, so a refused call can be told
+	// apart in the eval report and the log (T-053 schema follow-up).
 	ErrorType string
 	// Credential is the label (e.g. "org-a") of the credential that
 	// answered, if any.
@@ -84,7 +87,11 @@ func (e *Error) Retryable() bool { return retryable[e.Code] }
 func (e *Error) Error() string {
 	s := "ai provider: " + string(e.Code)
 	if e.Status != 0 {
-		s += " (status " + strconv.Itoa(e.Status) + ")"
+		s += " (status " + strconv.Itoa(e.Status)
+		if e.ErrorType != "" {
+			s += " " + e.ErrorType
+		}
+		s += ")"
 	}
 	if e.Credential != "" {
 		s += " [credential " + e.Credential + "]"
@@ -103,7 +110,7 @@ func (e *Error) Unwrap() error { return e.cause }
 // ErrNotConfigured).
 func (e *Error) Is(target error) bool {
 	t, ok := target.(*Error)
-	return ok && t.Code == e.Code && t.Status == 0 && t.Credential == "" && t.Issues == nil && t.cause == nil
+	return ok && t.Code == e.Code && t.Status == 0 && t.ErrorType == "" && t.Credential == "" && t.Issues == nil && t.cause == nil
 }
 
 // NewError returns an *Error with the code; backends use it.

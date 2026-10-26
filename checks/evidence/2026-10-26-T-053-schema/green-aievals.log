@@ -1,0 +1,7 @@
+Mon Oct 26 13:01:23 UTC 2026
+commit: 3784d95 (working tree: the fix on top of the red commit, not committed yet)
+go test -count=1 -v -run '^TestAFailedCaseNamesTheProviderError$' ./internal/aievals/
+--- PASS: TestAFailedCaseNamesTheProviderError (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/aievals	0.029s
+exit 0

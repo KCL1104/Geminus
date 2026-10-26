@@ -1,0 +1,7 @@
+Mon Oct 26 13:01:24 UTC 2026
+commit: 3784d95 (working tree: the fix on top of the red commit, not committed yet)
+go test -count=1 -v -run '^TestTheLiveEvalWarnsOfAProviderError$' ./internal/config/aiapproval/
+--- PASS: TestTheLiveEvalWarnsOfAProviderError (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.078s
+exit 0

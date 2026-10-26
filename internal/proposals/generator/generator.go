@@ -461,6 +461,14 @@ func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
 	if errors.As(err, &pe) && pe.Code == provider.CodeQuotaExceeded {
 		h.cfg.Log.WarnContext(ctx, "a live AI spend limit refused a call", "role", string(m.Role), "limit", pe.Limit)
 	}
+	// T-053 schema follow-up: a call the provider answered with an error
+	// status says which, by its HTTP status and error type (the adapter's
+	// list of the API's types, or other), never the provider's message.
+	if pe != nil && pe.Status != 0 {
+		h.cfg.Log.WarnContext(ctx, "the ai provider answered the call with an error status", "role", string(m.Role),
+			"credential_label", m.Credential, "provider_request_id", m.ProviderRequestID, "code", code,
+			"provider_status", pe.Status, "provider_error_type", pe.ErrorType)
+	}
 	if m.SpendUnsettled {
 		// The reservation stays counted at its bound (the safe side).
 		h.cfg.Log.WarnContext(ctx, "settling a live AI spend reservation failed", "spend_reservation_id", m.SpendReservation,

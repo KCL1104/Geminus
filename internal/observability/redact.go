@@ -129,6 +129,11 @@ var fields = map[string]Kind{
 	// settlement above its reservation (M2, M3, L1)
 	"inference_geo":          KindToken,
 	"spend_over_reservation": KindNumber,
+	// T-053 schema follow-up: the HTTP status and the error type (the
+	// adapter's list of the API's types, or other) of a call the provider
+	// answered with an error status; never its message
+	"provider_status":     KindNumber,
+	"provider_error_type": KindToken,
 	// the server's own text
 	"error": KindText,
 	"panic": KindText,

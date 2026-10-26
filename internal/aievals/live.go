@@ -118,8 +118,11 @@ type Outcome struct {
 	Status string `json:"status"`
 	// Code is the provider error code of a failed case.
 	Code string `json:"code,omitzero"`
-	// ProviderStatus and ProviderErrorType: a failed case's provider HTTP
-	// status and error type.
+	// ProviderStatus and ProviderErrorType are the HTTP status and the
+	// error type of a case the provider answered with an error status: the
+	// type from the adapter's fixed list of the API's types, or "other";
+	// never the provider's message (T-053 schema follow-up: the live smoke
+	// could not tell why its case was rejected). Absent otherwise.
 	ProviderStatus    int    `json:"provider_status,omitzero"`
 	ProviderErrorType string `json:"provider_error_type,omitzero"`
 	// Issues are the codes of an invalid outcome's issues, sorted.
@@ -401,6 +404,9 @@ func runCase(ctx context.Context, cfg Config, c Case, o *Outcome, r *Report) (pr
 		o.Status, o.Code = "failed", "AI_"+strings.ToUpper(string(provider.CodeOf(err)))
 		if provider.CodeOf(err) == "" {
 			o.Code = "ERROR"
+		}
+		if errors.As(err, &pe) && pe.Status != 0 {
+			o.ProviderStatus, o.ProviderErrorType = pe.Status, pe.ErrorType
 		}
 		judge(o, c, review.Outcome{}, r)
 		return meta, nil
