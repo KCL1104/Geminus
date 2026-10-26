@@ -1,0 +1,438 @@
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test tests/security-headers.spec.ts tests/theme.spec.ts
+
+
+Running 12 tests using 1 worker
+
+  ✘   1 [chromium] › tests/security-headers.spec.ts:33:3 › en: every route carries the headers and its own nonce, and reports nothing (940ms)
+  ✘   2 [chromium] › tests/security-headers.spec.ts:51:3 › en: the signed-in views carry the headers, through the sign-in's redirects (1.0s)
+  ✘   3 [chromium] › tests/security-headers.spec.ts:33:3 › zh-Hant: every route carries the headers and its own nonce, and reports nothing (911ms)
+  ✘   4 [chromium] › tests/security-headers.spec.ts:51:3 › zh-Hant: the signed-in views carry the headers, through the sign-in's redirects (1.0s)
+  ✘   5 [chromium] › tests/security-headers.spec.ts:68:1 › the sign-in link works with no Referer sent, to the app or to the provider (1.5s)
+  ✘   6 [chromium] › tests/security-headers.spec.ts:84:1 › the BFF's route handlers, error pages and static files carry the same headers (409ms)
+  ✘   7 [chromium] › tests/security-headers.spec.ts:118:1 › the policy refuses inline code without the nonce, eval, other origins, forms elsewhere, <base> and framing (1.3s)
+  ✘   8 [chromium] › tests/theme.spec.ts:12:1 › follows the system's light or dark when the reader chose none (927ms)
+  ✘   9 [chromium] › tests/theme.spec.ts:21:1 › a choice overrides the system, applies at once and is remembered (1.4s)
+  ✘  10 [chromium] › tests/theme.spec.ts:38:1 › going back to the system's forgets the choice (1.1s)
+  ✓  11 [chromium] › tests/theme.spec.ts:48:1 › the first paint has the remembered theme: it is in the server's HTML, with the stylesheets in <head> (161ms)
+  ✘  12 [chromium] › tests/theme.spec.ts:59:1 › the fonts come from the app's own origin, and the Chinese face only for what a page shows (908ms)
+
+
+  1) [chromium] › tests/security-headers.spec.ts:33:3 › en: every route carries the headers and its own nonce, and reports nothing 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-UBwf5HNSXuoO/oJPghzXFg==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-UBwf5HNSXuoO/oJPghzXFg=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+      18 |   expect(response, where).not.toBeNull();
+      19 |   const headers = await response!.allHeaders();
+    > 20 |   expect(headerProblems(headers, where)).toEqual([]);
+         |                                          ^
+      21 |   const nonce = nonceOf(headers["content-security-policy"]);
+      22 |   expect(nonce, where).toBeDefined();
+      23 |   const html = await response!.text();
+        at checkDocument (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:20:42)
+        at /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:42:18
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-UBwf5HNSXuoO/oJPghzXFg==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-UBwf5HNSXuoO/oJPghzXFg=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/security-headers-en-every--1f8da-n-nonce-and-reports-nothing-chromium/error-context.md
+
+  2) [chromium] › tests/security-headers.spec.ts:51:3 › en: the signed-in views carry the headers, through the sign-in's redirects 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "projects: http://127.0.0.1:3100/auth/login?return_to=%2Fprojects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-o9ZNOBdiIkatzkb6uJHeUQ==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-o9ZNOBdiIkatzkb6uJHeUQ=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+      59 |       // The login's and the callback's 303s, then the page.
+      60 |       expect(documents.map((d) => [d.status(), new URL(d.url()).pathname]), v.name).toEqual([[303, "/auth/login"], [303, "/auth/callback"], [200, v.path]]);
+    > 61 |       for (const d of documents) expect(headerProblems(await d.allHeaders(), `${v.name}: ${d.url()}`)).toEqual([]);
+         |                                                                                                        ^
+      62 |       await checkDocument(page, documents.at(-1)!, v.name);
+      63 |       await page.context().clearCookies();
+      64 |     }
+        at /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:61:104
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 5[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "303 http://127.0.0.1:3100/auth/login?return_to=%2Fprojects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-o9ZNOBdiIkatzkb6uJHeUQ==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-o9ZNOBdiIkatzkb6uJHeUQ=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "303 http://127.0.0.1:3100/auth/callback?code=tOTyb9-3MwDtjNhCQqOmGQ&state=HXt9m_cV37x_4AYzEBDMKZTgdctxxPG7PLJHmW_cAUo: content-security-policy is default-src 'none'; script-src 'self' 'nonce-GHBjFs0yvb3/6s8G5pZsIg==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-GHBjFs0yvb3/6s8G5pZsIg=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "200 http://127.0.0.1:3100/projects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-Lj4KRAl7yaZqT+XojHi/7g==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-Lj4KRAl7yaZqT+XojHi/7g=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/security-headers-en-the-si-d2806-ugh-the-sign-in-s-redirects-chromium/error-context.md
+
+  3) [chromium] › tests/security-headers.spec.ts:33:3 › zh-Hant: every route carries the headers and its own nonce, and reports nothing 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-BIGwsLiMYvckKbqaVC5Pfg==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-BIGwsLiMYvckKbqaVC5Pfg=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+      18 |   expect(response, where).not.toBeNull();
+      19 |   const headers = await response!.allHeaders();
+    > 20 |   expect(headerProblems(headers, where)).toEqual([]);
+         |                                          ^
+      21 |   const nonce = nonceOf(headers["content-security-policy"]);
+      22 |   expect(nonce, where).toBeDefined();
+      23 |   const html = await response!.text();
+        at checkDocument (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:20:42)
+        at /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:42:18
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-BIGwsLiMYvckKbqaVC5Pfg==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-BIGwsLiMYvckKbqaVC5Pfg=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/security-headers-zh-Hant-e-bec1f-n-nonce-and-reports-nothing-chromium/error-context.md
+
+  4) [chromium] › tests/security-headers.spec.ts:51:3 › zh-Hant: the signed-in views carry the headers, through the sign-in's redirects 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "projects: http://127.0.0.1:3100/auth/login?return_to=%2Fprojects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-T3+ky4S+vX/I7CY0Yh30kQ==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-T3+ky4S+vX/I7CY0Yh30kQ=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+      59 |       // The login's and the callback's 303s, then the page.
+      60 |       expect(documents.map((d) => [d.status(), new URL(d.url()).pathname]), v.name).toEqual([[303, "/auth/login"], [303, "/auth/callback"], [200, v.path]]);
+    > 61 |       for (const d of documents) expect(headerProblems(await d.allHeaders(), `${v.name}: ${d.url()}`)).toEqual([]);
+         |                                                                                                        ^
+      62 |       await checkDocument(page, documents.at(-1)!, v.name);
+      63 |       await page.context().clearCookies();
+      64 |     }
+        at /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:61:104
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 5[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "303 http://127.0.0.1:3100/auth/login?return_to=%2Fprojects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-T3+ky4S+vX/I7CY0Yh30kQ==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-T3+ky4S+vX/I7CY0Yh30kQ=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "303 http://127.0.0.1:3100/auth/callback?code=QBSzQhTluIYzCRiqM2EzZg&state=uAh3kqQnExgrH4avV1m6TFFRaFvtM6Tr2Iu-JLQIsnA: content-security-policy is default-src 'none'; script-src 'self' 'nonce-DXt9yoHUdaRCQeSI0lcNug==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-DXt9yoHUdaRCQeSI0lcNug=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "200 http://127.0.0.1:3100/projects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-5zow0aDo46DPgd8fQyywEg==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-5zow0aDo46DPgd8fQyywEg=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/security-headers-zh-Hant-t-ecde8-ugh-the-sign-in-s-redirects-chromium/error-context.md
+
+  5) [chromium] › tests/security-headers.spec.ts:68:1 › the sign-in link works with no Referer sent, to the app or to the provider 
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 6[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/projects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-wsbsnvhdIRdfyYq2RI6SrA==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-wsbsnvhdIRdfyYq2RI6SrA=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "303 http://127.0.0.1:3100/auth/login?return_to=%2Fprojects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-Zo88LB4Ur4hvq0nf/IzO7g==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-Zo88LB4Ur4hvq0nf/IzO7g=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "303 http://127.0.0.1:3100/auth/callback?code=wYzzOrVWxhoNzABqhnSy_A&state=NbnAg9ukLsHsCrTBZ8MG2L_ifoXMuys75GRkg7ft2Wo: content-security-policy is default-src 'none'; script-src 'self' 'nonce-TB8IWkp+t0LWlTX2XgStKw==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-TB8IWkp+t0LWlTX2XgStKw=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "200 http://127.0.0.1:3100/projects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-bLg8RioO4GkDXSUe1jr2dg==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-bLg8RioO4GkDXSUe1jr2dg=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/security-headers-the-sign--ce85c--the-app-or-to-the-provider-chromium/error-context.md
+
+  6) [chromium] › tests/security-headers.spec.ts:84:1 › the BFF's route handlers, error pages and static files carry the same headers 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "GET /auth/login: content-security-policy is default-src 'none'; script-src 'self' 'nonce-HTH0M5nOV+VH8cPd3d9LQg==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-HTH0M5nOV+VH8cPd3d9LQg=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+      100 |     const r = await send();
+      101 |     expect(r.status(), name).toBe(status);
+    > 102 |     expect(headerProblems(r.headers(), name)).toEqual([]);
+          |                                               ^
+      103 |   }
+      104 |   // A client's own nonce and policy are replaced, never used.
+      105 |   const forged = await request.get("/", { headers: { "x-nonce": "AAECAwQFBgcICQoLDA0ODw==", "content-security-policy": "script-src 'nonce-AAECAwQFBgcICQoLDA0ODw=='" } });
+        at /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:102:47
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-D7aaTLQd8w6PL89BlQvG+Q==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-D7aaTLQd8w6PL89BlQvG+Q=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/security-headers-the-BFF-s-d9876-iles-carry-the-same-headers-chromium/error-context.md
+
+  7) [chromium] › tests/security-headers.spec.ts:118:1 › the policy refuses inline code without the nonce, eval, other origins, forms elsewhere, <base> and framing 
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 4[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-k/QWVzRzIfPNZGEyLJo9EQ==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-k/QWVzRzIfPNZGEyLJo9EQ=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-f+HnySrpeYHRybLqHwxtkw==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-f+HnySrpeYHRybLqHwxtkw=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/security-headers-the-polic-2927c--elsewhere-base-and-framing-chromium/error-context.md
+
+  8) [chromium] › tests/theme.spec.ts:12:1 › follows the system's light or dark when the reader chose none 
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-Xo82PLs7zwl9l8M1h129sA==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-Xo82PLs7zwl9l8M1h129sA=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/theme-follows-the-system-s-701d0--when-the-reader-chose-none-chromium/error-context.md
+
+  9) [chromium] › tests/theme.spec.ts:21:1 › a choice overrides the system, applies at once and is remembered 
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 4[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-HjZQJMe23TpQmz1Pjy2PTA==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-HjZQJMe23TpQmz1Pjy2PTA=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+   "200 http://127.0.0.1:3100/projects: content-security-policy is default-src 'none'; script-src 'self' 'nonce-n2CyumjfVx8Fpuac7kaZbw==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-n2CyumjfVx8Fpuac7kaZbw=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/theme-a-choice-overrides-t-c68c9-s-at-once-and-is-remembered-chromium/error-context.md
+
+  10) [chromium] › tests/theme.spec.ts:38:1 › going back to the system's forgets the choice ────────
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-WS9MXlqMsxWSTcSRi+sh/Q==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-WS9MXlqMsxWSTcSRi+sh/Q=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/theme-going-back-to-the-system-s-forgets-the-choice-chromium/error-context.md
+
+  11) [chromium] › tests/theme.spec.ts:59:1 › the fonts come from the app's own origin, and the Chinese face only for what a page shows 
+
+    Error: every document the app served has its security headers
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 1[39m
+    [31m+ Received  + 3[39m
+
+    [32m- Array [][39m
+    [31m+ Array [[39m
+    [31m+   "200 http://127.0.0.1:3100/: content-security-policy is default-src 'none'; script-src 'self' 'nonce-Fzr1psYBlB9MTnG0e1YJOQ==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-Fzr1psYBlB9MTnG0e1YJOQ=='; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",[39m
+    [31m+ ][39m
+
+       at fixtures.ts:82
+
+      80 |       for (const p of context.pages()) await p.evaluate(() => 0).catch(() => undefined);
+      81 |       expect(reports.filter((r) => !allowed.some((p) => p.test(r))), "no Content-Security-Policy or Permissions-Policy report").toEqual([]);
+    > 82 |       expect((await Promise.all(checks)).flat(), "every document the app served has its security headers").toEqual([]);
+         |                                                                                                            ^
+      83 |     },
+      84 |     { auto: true },
+      85 |   ],
+        at Object.base.extend.csp.auto (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/fixtures.ts:82:108)
+
+    Error Context: test-results/theme-the-fonts-come-from--0ea47--only-for-what-a-page-shows-chromium/error-context.md
+
+  11 failed
+    [chromium] › tests/security-headers.spec.ts:33:3 › en: every route carries the headers and its own nonce, and reports nothing 
+    [chromium] › tests/security-headers.spec.ts:51:3 › en: the signed-in views carry the headers, through the sign-in's redirects 
+    [chromium] › tests/security-headers.spec.ts:33:3 › zh-Hant: every route carries the headers and its own nonce, and reports nothing 
+    [chromium] › tests/security-headers.spec.ts:51:3 › zh-Hant: the signed-in views carry the headers, through the sign-in's redirects 
+    [chromium] › tests/security-headers.spec.ts:68:1 › the sign-in link works with no Referer sent, to the app or to the provider 
+    [chromium] › tests/security-headers.spec.ts:84:1 › the BFF's route handlers, error pages and static files carry the same headers 
+    [chromium] › tests/security-headers.spec.ts:118:1 › the policy refuses inline code without the nonce, eval, other origins, forms elsewhere, <base> and framing 
+    [chromium] › tests/theme.spec.ts:12:1 › follows the system's light or dark when the reader chose none 
+    [chromium] › tests/theme.spec.ts:21:1 › a choice overrides the system, applies at once and is remembered 
+    [chromium] › tests/theme.spec.ts:38:1 › going back to the system's forgets the choice ──────────
+    [chromium] › tests/theme.spec.ts:59:1 › the fonts come from the app's own origin, and the Chinese face only for what a page shows 
+  1 passed (30.8s)
+exit 1

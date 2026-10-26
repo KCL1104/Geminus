@@ -1,0 +1,15 @@
+# next dev on :3330 (NODE_ENV=development); probe.mjs prints CSP events, console errors and warnings per page
+content-security-policy: default-src 'none'; script-src 'self' 'nonce-Z0vD3hMEuRlZl0VbnGe2Gg==' 'strict-dynamic' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline'; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+== /
+{"meta":"zfGL8TJigfGf4WuRzr1cBA==","metaAttr":"","styles":["react-aria-pressable-style:nonce",":none"],"fonts":["Archivo Variable","Noto Sans TC Variable","Noto Sans TC Variable","Noto Sans TC Variable"]}
+== /projects
+{"meta":"tZ/jVlomf97ONFusfcaeQw==","metaAttr":"","styles":["react-aria-pressable-style:nonce",":none"],"fonts":["Archivo Variable","Noto Sans TC Variable","Noto Sans TC Variable","Noto Sans TC Variable"]}
+== /ui-gallery
+{"meta":"L6k6jDwlzX3fhypT9WDHmg==","metaAttr":"","styles":["react-aria-pressable-style:nonce",":none"],"fonts":["Archivo Variable","Noto Sans TC Variable","Noto Sans TC Variable","Noto Sans TC Variable"]}
+== /ui-gallery/editor
+{"meta":"8eCbj60O2INK7t/FOlZDyg==","metaAttr":"","styles":["react-aria-pressable-style:nonce",":none"],"fonts":["Archivo Variable","Noto Sans TC Variable","Noto Sans TC Variable","Noto Sans TC Variable"]}
+== /ui-gallery/proposal
+{"meta":"Eh6PJD9Sh7WZpcwvPwDC5A==","metaAttr":"","styles":["react-aria-pressable-style:nonce",":none"],"fonts":["Archivo Variable","Noto Sans TC Variable","Noto Sans TC Variable","Noto Sans TC Variable"]}
+== /ui-gallery/results
+{"meta":"5raJRdc/zqEkoJN+ZVIKTw==","metaAttr":"","styles":["react-aria-pressable-style:nonce",":none"],"fonts":["Archivo Variable","Noto Sans TC Variable","Noto Sans TC Variable","Noto Sans TC Variable"]}
+probe exit 0

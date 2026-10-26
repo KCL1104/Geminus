@@ -1,0 +1,45 @@
+H1 script-src without 'strict-dynamic'	killed
+H2 script-src with 'unsafe-inline'	killed
+H3 'unsafe-eval' outside development	killed
+H4 style-src-elem without the nonce	killed
+H4b dev style allowance in a build	killed
+H4c style-src-elem nonce in development too	killed
+H5 no style-src-attr	killed
+H6 style-src fallback with the nonce	killed
+H7 frame-ancestors 'self'	killed
+H8 no object-src	killed
+H9 base-uri 'self'	killed
+H10 form-action allows https:	killed
+H11 connect-src allows https:	killed
+H12 img-src allows data:	killed
+H13 default-src 'self'	killed
+H14 upgrade-insecure-requests always	killed
+H15 HSTS always	killed
+H16 HSTS never	killed
+H17 HSTS max-age one day	killed
+H18 X-Content-Type-Options missing	killed
+H19 Referrer-Policy strict-origin-when-cross-origin	killed
+H20 no X-Frame-Options	killed
+H21 camera allowed	killed
+H22 geolocation allowed for self	killed
+H23 nonce shape not anchored at the end	killed
+H24 policy takes any nonce	killed
+H25 8-byte nonce	killed
+H26 fixed nonce	killed
+H27 https unless http	killed
+H28 https without an origin	killed
+P1 no policy on the request (Next.js gets no nonce)	killed
+P2 no nonce header for the layout	killed
+P3 the client's nonce reused	killed
+P4 https from the request	killed
+P5 development outside next dev	killed
+P6 no response headers	killed
+P7 a matcher that skips the BFF	killed
+L1 meta for any value	killed
+L2 no csp-nonce meta	killed
+F1 field does not name the notice	killed
+F2 notice not rendered	killed
+A1 ask form without the notice	killed
+A2 notice in the hint's place (another key)	killed
+A3 photo button names the reason, not the notice	killed
+PH1 photo button without the notice	killed

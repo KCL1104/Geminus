@@ -1,0 +1,38 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web
+
+ ❯ tests/security-headers.test.ts (15 tests | 1 failed) 118ms
+   ❯ the Content-Security-Policy (5)
+     × adds eval and inline style elements for next dev only (React's debugging aids, the dev overlay's styles) 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/security-headers.test.ts > the Content-Security-Policy > adds eval and inline style elements for next dev only (React's debugging aids, the dev overlay's styles)
+AssertionError: expected [ '\'self\'', …(1) ] to deeply equal [ '\'self\'', '\'unsafe-inline\'' ]
+
+- Expected
++ Received
+
+  [
+    "'self'",
+-   "'unsafe-inline'",
++   "'nonce-AAECAwQFBgcICQoLDA0ODw=='",
+  ]
+
+ ❯ tests/security-headers.test.ts:150:63
+    148|     expect(h.get("strict-transport-security")).toBe(HSTS);
+    149|     expect(HSTS).toBe("max-age=31536000");
+    150|     expect(h.get("content-security-policy")).toContain("upgrade-insecu…
+       |                                                               ^
+    151|   });
+    152| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 14 passed (15)
+   Start at  21:29:48
+   Duration  638ms (import 54%, tests 23%, transform 22%, worker 1%)
+
+exit 1

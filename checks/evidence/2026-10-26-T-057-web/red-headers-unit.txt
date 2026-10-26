@@ -1,0 +1,26 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web
+
+ ❯ tests/security-headers.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/security-headers.test.ts [ tests/security-headers.test.ts ]
+Error: Cannot find module '../lib/security/headers' imported from /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web/tests/security-headers.test.ts
+ ❯ tests/security-headers.test.ts:4:31
+      2| // builds them; proxy.ts puts them on every response (pages, the BFF's…
+      3| // handlers, static files) with a fresh nonce per request, and hands t…
+      4| // nonce to Next.js (which puts it on its scripts) and to the root lay…
+       |                               ^
+      5| // (the csp-nonce meta React Aria reads for the style elements it adds…
+      6| // The browser side (every page the e2e suite visits, no violation) is
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  20:50:07
+   Duration  379ms (worker 97%, environment 3%)
+
+exit 1

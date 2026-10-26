@@ -1,0 +1,76 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web
+
+ ❯ tests/proposal-photo.test.tsx (9 tests | 2 failed) 2724ms
+   ❯ asking for a change from a photo on the model page (8)
+     × offers one button beside Send that opens the chooser for a PNG or JPEG, says what it does, and keeps Publish the one primary action 277ms
+     × blocks the photo while the editor has unsaved edits, says why beside it, and opens nothing 328ms
+ ❯ tests/proposal-ask.test.tsx (12 tests | 3 failed) 4157ms
+   ❯ asking the AI for a change on the model page (11)
+     × says under the request field, in en, that what is typed or uploaded goes to an AI service 305ms
+     × says under the request field, in zh-Hant, that what is typed or uploaded goes to an AI service 197ms
+     × uses the owner's words for the notice (H-035) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/proposal-ask.test.tsx > asking the AI for a change on the model page > says under the request field, in en, that what is typed or uploaded goes to an AI service
+ FAIL  tests/proposal-ask.test.tsx > asking the AI for a change on the model page > says under the request field, in zh-Hant, that what is typed or uploaded goes to an AI service
+Error: message ask.dataNotice needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-ask.test.tsx:113:117
+ ❯ tests/proposal-ask.test.tsx:113:64
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/proposal-ask.test.tsx > asking the AI for a change on the model page > uses the owner's words for the notice (H-035)
+Error: message ask.dataNotice needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-ask.test.tsx:133:12
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/proposal-photo.test.tsx > asking for a change from a photo on the model page > offers one button beside Send that opens the chooser for a PNG or JPEG, says what it does, and keeps Publish the one primary action
+Error: message ask.dataNotice needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-photo.test.tsx:112:146
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/proposal-photo.test.tsx > asking for a change from a photo on the model page > blocks the photo while the editor has unsaved edits, says why beside it, and opens nothing
+Error: message ask.dataNotice needs a numeric count
+ ❯ lib/i18n/translate.ts:42:44
+     40|     } else {
+     41|       const count = params.count;
+     42|       if (typeof count !== "number") throw new Error(`message ${key} n…
+       |                                            ^
+     43|       text = (plural.select(count) === "one" ? m.one : undefined) ?? m…
+     44|     }
+ ❯ tests/proposal-photo.test.tsx:188:69
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  5 failed | 16 passed (21)
+   Start at  20:58:05
+   Duration  6.98s (tests 57%, import 24%, transform 11%, environment 9%)
+
+exit 1

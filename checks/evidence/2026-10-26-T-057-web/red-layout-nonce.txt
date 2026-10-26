@@ -1,0 +1,35 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web
+
+ ❯ tests/layout.test.tsx (28 tests | 1 failed) 206ms
+   ❯ the request's nonce (7)
+     × is handed to React Aria in a csp-nonce meta in the head 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/layout.test.tsx > the request's nonce > is handed to React Aria in a csp-nonce meta in the head
+AssertionError: expected '<html lang="en"><head></head><body><a…' to match /^<html lang="en"><head><meta name=…/><\
+
+- Expected:
+/^<html lang="en"><head><meta name="csp-nonce" nonce="AAECAwQFBgcICQoLDA0ODw=="\/><\/head><body>/
+
++ Received:
+"<html lang=\"en\"><head></head><body><a href=\"#main\" class=\"_skip_034f8a\">Skip to main content</a><header class=\"_header_034f8a\"><span class=\"_brand_034f8a\">Geminus</span><nav aria-label=\"Main\" class=\"_nav_034f8a\"><a href=\"/projects\">Projects</a></nav><div class=\"_tools_034f8a\"><div><template></template><div class=\"_select_587012 _strip_587012\" data-rac=\"\"><span class=\"_label_587012\" id=\"react-aria-_R_9eH3_\">Language</span><button id=\"react-aria-_R_9eH2_\" class=\"_trigger_587012\" data-rac=\"\" type=\"button\" tabindex=\"0\" data-react-aria-pressable=\"true\" aria-labelledby=\"react-aria-_R_9eH7_ react-aria-_R_9eH3_\" aria-describedby=\"react-aria-_R_9eH5_ react-aria-_R_9eH6_\" aria-haspopup=\"listbox\" aria-expanded=\"false\"><span id=\"react-aria-_R_9eH7_\" class=\"_value_587012\" data-rac=\"\"><span lang=\"en\">English</span></span><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M4 6l4 4 4-4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></button><div style=\"border:0;clip:rect(0 0 0 0);clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:fixed;width:1px;white-space:nowrap;top:0;left:0\" aria-hidden=\"true\" data-react-aria-prevent-focus=\"true\" data-a11y-ignore=\"aria-hidden-focus\" data-testid=\"hidden-select-container\"><label><select tabindex=\"-1\"><option value=\"\" label=\" \"> </option><option value=\"en\" selected=\"\">English</option><option value=\"zh-Hant\">繁體中文</option></select></label></div></div></div><div><template></template><div class=\"_select_587012 _strip_587012\" data-rac=\"\"><span class=\"_label_587012\" id=\"react-aria-_R_aeH3_\">Theme</span><button id=\"react-aria-_R_aeH2_\" class=\"_trigger_587012\" data-rac=\"\" type=\"button\" tabindex=\"0\" data-react-aria-pressable=\"true\" aria-labelledby=\"react-aria-_R_aeH7_ react-aria-_R_aeH3_\" aria-describedby=\"react-aria-_R_aeH5_ react-aria-_R_aeH6_\" aria-haspopup=\"listbox\" aria-expanded=\"false\"><span id=\"react-aria-_R_aeH7_\" class=\"_value_587012\" data-rac=\"\"><span>System</span></span><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M4 6l4 4 4-4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></svg></button><div style=\"border:0;clip:rect(0 0 0 0);clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:fixed;width:1px;white-space:nowrap;top:0;left:0\" aria-hidden=\"true\" data-react-aria-prevent-focus=\"true\" data-a11y-ignore=\"aria-hidden-focus\" data-testid=\"hidden-select-container\"><label><select tabindex=\"-1\"><option value=\"\" label=\" \"> </option><option value=\"system\" selected=\"\">System</option><option value=\"light\">Light</option><option value=\"dark\">Dark</option></select></label></div></div></div></div><div class=\"_account_034f8a\"></div></header><main id=\"main\" tabindex=\"-1\" class=\"_main_034f8a\"><h1>Geminus</h1><p><a href=\"/projects\">Go to projects</a></p></main></body></html>"
+
+ ❯ tests/layout.test.tsx:113:27
+    111|   it("is handed to React Aria in a csp-nonce meta in the head", async …
+    112|     jar.nonce = "AAECAwQFBgcICQoLDA0ODw==";
+    113|     expect(await shell()).toMatch(/^<html lang="en"><head><meta name="…
+       |                           ^
+    114|     jar.theme = "dark";
+    115|     jar.locale = "zh-Hant";
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 31 passed (32)
+   Start at  20:51:29
+   Duration  1.24s (import 64%, transform 21%, tests 15%)
+
+exit 1

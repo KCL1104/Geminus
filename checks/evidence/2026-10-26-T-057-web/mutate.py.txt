@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Mutation run for T-057 (ad-hoc harness, not part of the repo).
+
+Each mutant replaces one exact string in one file of apps/web, runs the
+named vitest files, records killed (tests fail) or survived (tests pass),
+and restores the file. Usage: mutate.py <group> <out.tsv>
+"""
+import subprocess
+import sys
+from pathlib import Path
+
+WEB = Path("/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web")
+H = "lib/security/headers.ts"
+P = "proxy.ts"
+L = "app/layout.tsx"
+F = "ui/field.tsx"
+A = "features/ai-proposals/ask-form.tsx"
+PH = "features/ai-proposals/photo-form.tsx"
+EN = "messages/en.ts"
+ZH = "messages/zh-Hant.ts"
+HT = ["tests/security-headers.test.ts"]
+LT = ["tests/layout.test.tsx"]
+NT = ["tests/proposal-ask.test.tsx", "tests/proposal-photo.test.tsx"]
+
+MUTANTS = {
+    "code": [
+        ("H1 script-src without 'strict-dynamic'", H, "n, \"'strict-dynamic'\",", "n,", HT),
+        ("H2 script-src with 'unsafe-inline'", H, "[\"script-src\", \"'self'\", n,", "[\"script-src\", \"'self'\", \"'unsafe-inline'\", n,", HT),
+        ("H3 'unsafe-eval' outside development", H, "...(development ? [\"'unsafe-eval'\"] : [])", "...(!development ? [\"'unsafe-eval'\"] : [])", HT),
+        ("H4 style-src-elem without the nonce", H, "...(development ? [\"'unsafe-inline'\"] : [n])],", "...([\"'unsafe-inline'\"])],", HT),
+        ("H4b dev style allowance in a build", H, "...(development ? [\"'unsafe-inline'\"] : [n])],", "...(!development ? [\"'unsafe-inline'\"] : [n])],", HT),
+        ("H4c style-src-elem nonce in development too", H, "...(development ? [\"'unsafe-inline'\"] : [n])],", "...(development ? [\"'unsafe-inline'\", n] : [n])],", HT),
+        ("H5 no style-src-attr", H, "    [\"style-src-attr\", \"'unsafe-inline'\"],\n", "", HT),
+        ("H6 style-src fallback with the nonce", H, "[\"style-src\", \"'self'\", \"'unsafe-inline'\"],", "[\"style-src\", \"'self'\", n],", HT),
+        ("H7 frame-ancestors 'self'", H, "[\"frame-ancestors\", \"'none'\"],", "[\"frame-ancestors\", \"'self'\"],", HT),
+        ("H8 no object-src", H, "    [\"object-src\", \"'none'\"],\n", "", HT),
+        ("H9 base-uri 'self'", H, "[\"base-uri\", \"'none'\"],", "[\"base-uri\", \"'self'\"],", HT),
+        ("H10 form-action allows https:", H, "[\"form-action\", \"'self'\"],", "[\"form-action\", \"'self'\", \"https:\"],", HT),
+        ("H11 connect-src allows https:", H, "[\"connect-src\", \"'self'\"],", "[\"connect-src\", \"'self'\", \"https:\"],", HT),
+        ("H12 img-src allows data:", H, "[\"img-src\", \"'self'\"],", "[\"img-src\", \"'self'\", \"data:\"],", HT),
+        ("H13 default-src 'self'", H, "[\"default-src\", \"'none'\"],", "[\"default-src\", \"'self'\"],", HT),
+        ("H14 upgrade-insecure-requests always", H, "...(https ? [[\"upgrade-insecure-requests\"]] : []),", "...([[\"upgrade-insecure-requests\"]]),", HT),
+        ("H15 HSTS always", H, "...(options.https ? [[\"Strict-Transport-Security\", HSTS]", "...(true ? [[\"Strict-Transport-Security\", HSTS]", HT),
+        ("H16 HSTS never", H, "...(options.https ? [[\"Strict-Transport-Security\", HSTS]", "...(false ? [[\"Strict-Transport-Security\", HSTS]", HT),
+        ("H17 HSTS max-age one day", H, "\"max-age=31536000\"", "\"max-age=86400\"", HT),
+        ("H18 X-Content-Type-Options missing", H, "    [\"X-Content-Type-Options\", \"nosniff\"],\n", "", HT),
+        ("H19 Referrer-Policy strict-origin-when-cross-origin", H, "[\"Referrer-Policy\", \"no-referrer\"],", "[\"Referrer-Policy\", \"strict-origin-when-cross-origin\"],", HT),
+        ("H20 no X-Frame-Options", H, "    [\"X-Frame-Options\", \"DENY\"],\n", "", HT),
+        ("H21 camera allowed", H, "  \"camera\", \"microphone\",", "  \"microphone\",", HT),
+        ("H22 geolocation allowed for self", H, ".map((f) => `${f}=()`)", ".map((f) => (f === \"geolocation\" ? `${f}=(self)` : `${f}=()`))", HT),
+        ("H23 nonce shape not anchored at the end", H, "/^[A-Za-z0-9+/]{22}==$/", "/^[A-Za-z0-9+/]{22}==/", HT + LT),
+        ("H24 policy takes any nonce", H, "  if (!isNonce(nonce)) throw new Error", "  if (false) throw new Error", HT),
+        ("H25 8-byte nonce", H, "new Uint8Array(16)", "new Uint8Array(8)", HT),
+        ("H26 fixed nonce", H, "return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));", "return \"AAECAwQFBgcICQoLDA0ODw==\";", HT),
+        ("H27 https unless http", H, "return new URL(appOrigin.trim()).protocol === \"https:\";", "return new URL(appOrigin.trim()).protocol !== \"http:\";", HT),
+        ("H28 https without an origin", H, "if (appOrigin === undefined) return false;", "if (appOrigin === undefined) return true;", HT),
+        ("P1 no policy on the request (Next.js gets no nonce)", P, "  forward.set(\"content-security-policy\", contentSecurityPolicy(options));\n", "", HT),
+        ("P2 no nonce header for the layout", P, "  forward.set(NONCE_HEADER, options.nonce);\n", "", HT),
+        ("P3 the client's nonce reused", P, "nonce: newNonce(),", "nonce: request.headers.get(\"x-nonce\") ?? newNonce(),", HT),
+        ("P4 https from the request", P, "https: servedOverHttps(process.env.BFF_APP_ORIGIN),", "https: servedOverHttps(request.headers.get(\"x-forwarded-proto\") === \"https\" ? \"https://x\" : request.nextUrl.origin),", HT),
+        ("P5 development outside next dev", P, "development: process.env.NODE_ENV === \"development\",", "development: process.env.NODE_ENV !== \"production\",", HT),
+        ("P6 no response headers", P, "  for (const [name, value] of securityHeaders(options)) response.headers.set(name, value);\n", "", HT),
+        ("P7 a matcher that skips the BFF", P, "export function proxy(", "export const config = { matcher: \"/((?!api|auth|_next/static).*)\" };\n\nexport function proxy(", HT),
+        ("L1 meta for any value", L, "{isNonce(nonce) && <meta", "{nonce && <meta", LT),
+        ("L2 no csp-nonce meta", L, "<head>{isNonce(nonce) && <meta name=\"csp-nonce\" nonce={nonce} />}</head>", "<head></head>", LT),
+        ("F1 field does not name the notice", F, "[props[\"aria-describedby\"], notice?.id]", "[props[\"aria-describedby\"]]", NT),
+        ("F2 notice not rendered", F, "      {notice && (\n        <span id={notice.id} className={styles.description}>\n          {notice.text}\n        </span>\n      )}\n", "", NT),
+        ("A1 ask form without the notice", A, "        notice={{ id: noticeId, text: t(\"ask.dataNotice\") }}\n", "", NT),
+        ("A2 notice in the hint's place (another key)", A, "text: t(\"ask.dataNotice\")", "text: t(\"photo.hint\")", NT),
+        ("A3 photo button names the reason, not the notice", A, "noticeId={noticeId}", "noticeId={reasonId}", NT),
+        ("PH1 photo button without the notice", PH, "[blockedReason !== null ? reasonId : null, hintId, noticeId]", "[blockedReason !== null ? reasonId : null, hintId]", NT),
+    ],
+    "catalog": [
+        ("C1 English notice reworded", EN, "\"What you type or upload is sent to an AI service. Use synthetic data only.\"", "\"What you type is sent to an AI service.\"", NT),
+        ("C2 Chinese notice reworded", ZH, "\"內容會送到 AI，只放 synthetic 資料。\"", "\"內容會送到 AI。\"", NT),
+        ("C3 Chinese notice in English", ZH, "\"內容會送到 AI，只放 synthetic 資料。\"", "\"What you type or upload is sent to an AI service. Use synthetic data only.\"", NT),
+    ],
+}
+
+
+def main() -> int:
+    group, out = sys.argv[1], Path(sys.argv[2])
+    rows = []
+    for name, rel, old, new, tests in MUTANTS[group]:
+        path = WEB / rel
+        original = path.read_text(encoding="utf-8")
+        if original.count(old) != 1:
+            rows.append((name, "INVALID (pattern not found once)"))
+            continue
+        try:
+            path.write_text(original.replace(old, new), encoding="utf-8")
+            r = subprocess.run(["npx", "vitest", "run", *tests], cwd=WEB, capture_output=True, text=True, timeout=900)
+            rows.append((name, "killed" if r.returncode != 0 else "SURVIVED"))
+        finally:
+            path.write_text(original, encoding="utf-8")
+        print(rows[-1], flush=True)
+    out.write_text("".join(f"{n}\t{s}\n" for n, s in rows), encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

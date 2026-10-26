@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Browser-level mutants for T-057 (ad-hoc harness, not part of the repo).
+
+Each mutant changes one string in apps/web, runs e2e-run.sh (shared lock,
+rebuild, the named spec files only), records killed (exit != 0) or
+survived, and restores the file. Usage: mutate-e2e.py <out.tsv>
+"""
+import subprocess
+import sys
+from pathlib import Path
+
+WEB = Path("/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web")
+S = Path("/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/t057")
+H = "lib/security/headers.ts"
+L = "app/layout.tsx"
+
+MUTANTS = [
+    # React Aria's <style> has no nonce to read: blocked on every page.
+    ("E1 no csp-nonce meta", L, '<head>{isNonce(nonce) && <meta name="csp-nonce" nonce={nonce} />}</head>', "<head></head>",
+     ["tests/security-headers.spec.ts", "tests/theme.spec.ts"]),
+    # The server-rendered style attributes are blocked: hidden helpers show.
+    ("E2 no style-src-attr", H, '    ["style-src-attr", "\'unsafe-inline\'"],\n', "",
+     ["tests/security-headers.spec.ts", "tests/theme.spec.ts"]),
+    # Style attributes blocked (the fallback style-src would allow them): the server-rendered ones are refused.
+    ("E2b style-src-attr 'none'", H, '["style-src-attr", "\'unsafe-inline\'"],', '["style-src-attr", "\'none\'"],',
+     ["tests/security-headers.spec.ts", "tests/theme.spec.ts"]),
+    # An unknown Permissions-Policy feature: a console error on every page.
+    ("E3 unknown permissions feature", H, '"camera", "microphone",', '"camera", "bluetooth", "microphone",',
+     ["tests/theme.spec.ts"]),
+]
+
+
+def main() -> int:
+    out = Path(sys.argv[1])
+    rows = []
+    only = sys.argv[2:]
+    for name, rel, old, new, specs in MUTANTS:
+        if only and name.split()[0] not in only:
+            continue
+        path = WEB / rel
+        original = path.read_text(encoding="utf-8")
+        if original.count(old) != 1:
+            rows.append((name, "INVALID (pattern not found once)", ""))
+            continue
+        log = S / f"e2e-mutant-{name.split()[0]}.log"
+        try:
+            path.write_text(original.replace(old, new), encoding="utf-8")
+            r = subprocess.run(["bash", str(S / "e2e-run.sh"), str(log), "spec", *specs], timeout=3600)
+            rows.append((name, "killed" if r.returncode not in (0, 90, 91) else ("SURVIVED" if r.returncode == 0 else f"NOT RUN ({r.returncode})"), log.name))
+        finally:
+            path.write_text(original, encoding="utf-8")
+        print(rows[-1], flush=True)
+    out.write_text("".join(f"{n}\t{s}\t{l}\n" for n, s, l in rows), encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

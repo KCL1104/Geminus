@@ -1,0 +1,23 @@
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test tests/editor.spec.ts
+
+
+Running 13 tests using 1 worker
+
+  ✓   1 [chromium] › tests/editor.spec.ts:39:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse (3.8s)
+  ✓   2 [chromium] › tests/editor.spec.ts:117:3 › the editor with a mouse › dragging a step moves it, dragging between handles connects two steps (1.9s)
+  ✓   3 [chromium] › tests/editor.spec.ts:151:3 › saving against the server's revision › a 409 keeps the edits; they go onto the current draft only when the person asks (1.6s)
+  ✓   4 [chromium] › tests/editor.spec.ts:168:3 › saving against the server's revision › publish asks first, then names the new version; Publish then waits for a change (1.3s)
+  ✓   5 [chromium] › tests/editor.spec.ts:180:3 › saving against the server's revision › switching the language keeps the unsaved edits (ADR-020) (1.7s)
+  ✓   6 [chromium] › tests/editor.spec.ts:206:5 › editor states, light, en › problems, a step selected, its menus and dialog have no violation (4.6s)
+  ✓   7 [chromium] › tests/editor.spec.ts:224:5 › editor states, light, en › ready to publish, the publish dialog, a viewer and a conflict have no violation (5.9s)
+  ✓   8 [chromium] › tests/editor.spec.ts:206:5 › editor states, light, zh-Hant › problems, a step selected, its menus and dialog have no violation (4.3s)
+  ✓   9 [chromium] › tests/editor.spec.ts:224:5 › editor states, light, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation (6.3s)
+  ✓  10 [chromium] › tests/editor.spec.ts:206:5 › editor states, dark, en › problems, a step selected, its menus and dialog have no violation (4.1s)
+  ✓  11 [chromium] › tests/editor.spec.ts:224:5 › editor states, dark, en › ready to publish, the publish dialog, a viewer and a conflict have no violation (6.2s)
+  ✓  12 [chromium] › tests/editor.spec.ts:206:5 › editor states, dark, zh-Hant › problems, a step selected, its menus and dialog have no violation (4.2s)
+  ✓  13 [chromium] › tests/editor.spec.ts:224:5 › editor states, dark, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation (6.1s)
+
+  13 passed (1.0m)
+exit 0

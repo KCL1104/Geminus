@@ -1,0 +1,113 @@
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test tests/security-headers.spec.ts
+
+
+Running 7 tests using 1 worker
+
+  ✘  1 [chromium] › tests/security-headers.spec.ts:32:3 › en: every route carries the headers and its own nonce, and reports nothing (19.9s)
+  ✓  2 [chromium] › tests/security-headers.spec.ts:47:3 › en: the signed-in views carry the headers, through the sign-in's redirects (6.2s)
+  ✘  3 [chromium] › tests/security-headers.spec.ts:32:3 › zh-Hant: every route carries the headers and its own nonce, and reports nothing (20.0s)
+  ✓  4 [chromium] › tests/security-headers.spec.ts:47:3 › zh-Hant: the signed-in views carry the headers, through the sign-in's redirects (6.0s)
+  ✓  5 [chromium] › tests/security-headers.spec.ts:64:1 › the sign-in link works with no Referer sent, to the app or to the provider (1.7s)
+  ✓  6 [chromium] › tests/security-headers.spec.ts:80:1 › the BFF's route handlers, error pages and static files carry the same headers (628ms)
+  ✘  7 [chromium] › tests/security-headers.spec.ts:114:1 › the policy refuses inline code without the nonce, eval, other origins, forms elsewhere, <base> and framing (981ms)
+
+
+  1) [chromium] › tests/security-headers.spec.ts:32:3 › en: every route carries the headers and its own nonce, and reports nothing 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('[aria-busy="true"]')
+    Expected: [32m0[39m
+    Received: [31m1[39m
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 15000ms[22m
+    [2m  - waiting for locator('[aria-busy="true"]')[22m
+    [2m    19 × locator resolved to 1 element[22m
+    [2m       - unexpected value "1"[22m
+
+
+       at helpers.ts:96
+
+      94 |   await expect(page.locator("html")).toHaveAttribute("lang", locale);
+      95 |   await page.waitForLoadState("networkidle");
+    > 96 |   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+         |                                                    ^
+      97 |   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      98 | }
+      99 |
+        at settled (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/helpers.ts:96:52)
+        at /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:37:7
+
+    Error Context: test-results/security-headers-en-every--1f8da-n-nonce-and-reports-nothing-chromium/error-context.md
+
+  2) [chromium] › tests/security-headers.spec.ts:32:3 › zh-Hant: every route carries the headers and its own nonce, and reports nothing 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('[aria-busy="true"]')
+    Expected: [32m0[39m
+    Received: [31m1[39m
+    Timeout:  15000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 15000ms[22m
+    [2m  - waiting for locator('[aria-busy="true"]')[22m
+    [2m    19 × locator resolved to 1 element[22m
+    [2m       - unexpected value "1"[22m
+
+
+       at helpers.ts:96
+
+      94 |   await expect(page.locator("html")).toHaveAttribute("lang", locale);
+      95 |   await page.waitForLoadState("networkidle");
+    > 96 |   await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+         |                                                    ^
+      97 |   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      98 | }
+      99 |
+        at settled (/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/helpers.ts:96:52)
+        at /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:37:7
+
+    Error Context: test-results/security-headers-zh-Hant-e-bec1f-n-nonce-and-reports-nothing-chromium/error-context.md
+
+  3) [chromium] › tests/security-headers.spec.ts:114:1 › the policy refuses inline code without the nonce, eval, other origins, forms elsewhere, <base> and framing 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoEqual[2m([22m[32mexpected[39m[2m) // deep equality[22m
+
+    [32m- Expected  - 2[39m
+    [31m+ Received  + 2[39m
+
+    [2m  Object {[22m
+    [2m    "baseURI": "http://127.0.0.1:3100/",[22m
+    [32m-   "eval": "EvalError",[39m
+    [31m+   "eval": 2,[39m
+    [2m    "fetched": "TypeError",[22m
+    [2m    "img": "refused",[22m
+    [32m-   "inline": null,[39m
+    [31m+   "inline": "ran",[39m
+    [2m    "nonced": "ran",[22m
+    [2m    "styled": "7px",[22m
+    [2m    "unstyled": "0px",[22m
+    [2m  }[22m
+
+      148 |     return { inline: w.__inline ?? null, nonced: w.__nonced ?? null, eval: w.__eval, unstyled, styled, img, fetched, baseURI: document.baseURI };
+      149 |   }, nonce);
+    > 150 |   expect(outcome).toEqual({ inline: null, nonced: "ran", eval: "EvalError", unstyled: "0px", styled: "7px", img: "refused", fetched: "TypeError", baseURI: `${APP}/` });
+          |                   ^
+      151 |   // A form to another origin is not sent (the sign-in is a link and a 303, not a form).
+      152 |   let posted = false;
+      153 |   page.on("request", (r) => {
+        at /home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/tests/security-headers.spec.ts:150:19
+
+    Error Context: test-results/security-headers-the-polic-2927c--elsewhere-base-and-framing-chromium/error-context.md
+
+  3 failed
+    [chromium] › tests/security-headers.spec.ts:32:3 › en: every route carries the headers and its own nonce, and reports nothing 
+    [chromium] › tests/security-headers.spec.ts:32:3 › zh-Hant: every route carries the headers and its own nonce, and reports nothing 
+    [chromium] › tests/security-headers.spec.ts:114:1 › the policy refuses inline code without the nonce, eval, other origins, forms elsewhere, <base> and framing 
+  4 passed (1.1m)
+exit 1

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Runs the browser checks of the worktree under the shared e2e lock, after
+# the coordinator's run is done and with ports 3100-3102 free.
+#   e2e-run.sh <log> make            -> make e2e-test
+#   e2e-run.sh <log> spec <files...> -> playwright on those spec files only
+set -uo pipefail
+W=/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d
+S=/tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad
+DONE=/home/user/Geminus/checks/evidence/2026-10-26-T-039r1-T-031r1-apiavail-coordinator/exit-codes.txt
+log="$1"; shift
+mode="$1"; shift
+grep -q '^e2e-test exit' "$DONE" || { echo "coordinator e2e not finished" >&2; exit 90; }
+exec 9>"$S/e2e.lock"
+flock 9
+for p in 3100 3101 3102; do
+  if (exec 3<>"/dev/tcp/127.0.0.1/$p") 2>/dev/null; then echo "port $p busy" >&2; exit 91; fi
+done
+cd "$W"
+if [ "$mode" = make ]; then
+  make e2e-test > "$log" 2>&1
+else
+  npm --prefix apps/web-e2e test -- "$@" > "$log" 2>&1
+fi
+code=$?
+echo "exit $code" >> "$log"
+exit "$code"

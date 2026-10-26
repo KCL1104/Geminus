@@ -1,0 +1,41 @@
+$ curl -s -D - -o /dev/null http://127.0.0.1:3320/    # next start, NODE_ENV=production, BFF_APP_ORIGIN=https://geminus.example
+HTTP/1.1 200 OK
+content-security-policy: default-src 'none'; script-src 'self' 'nonce-5JgGkVqrPBuPPjvlEuus4A==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-5JgGkVqrPBuPPjvlEuus4A=='; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+permissions-policy: camera=(), microphone=(), geolocation=(), display-capture=(), screen-wake-lock=(), fullscreen=(), picture-in-picture=(), autoplay=(), encrypted-media=(), midi=(), usb=(), serial=(), hid=(), payment=(), publickey-credentials-get=(), accelerometer=(), gyroscope=(), magnetometer=(), idle-detection=(), local-fonts=(), browsing-topics=(), xr-spatial-tracking=()
+referrer-policy: no-referrer
+strict-transport-security: max-age=31536000
+x-content-type-options: nosniff
+x-frame-options: DENY
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+Link: </>; rel=preconnect; crossorigin=""
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Content-Type: text/html; charset=utf-8
+Transfer-Encoding: chunked
+
+$ curl -s -D - -o /dev/null http://127.0.0.1:3320/api/v1/me
+HTTP/1.1 503 Service Unavailable
+content-security-policy: default-src 'none'; script-src 'self' 'nonce-YzKkIHm0jCcOexnk3Bt7nw==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-YzKkIHm0jCcOexnk3Bt7nw=='; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+permissions-policy: camera=(), microphone=(), geolocation=(), display-capture=(), screen-wake-lock=(), fullscreen=(), picture-in-picture=(), autoplay=(), encrypted-media=(), midi=(), usb=(), serial=(), hid=(), payment=(), publickey-credentials-get=(), accelerometer=(), gyroscope=(), magnetometer=(), idle-detection=(), local-fonts=(), browsing-topics=(), xr-spatial-tracking=()
+referrer-policy: no-referrer
+strict-transport-security: max-age=31536000
+x-content-type-options: nosniff
+x-frame-options: DENY
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: no-store
+content-type: application/json
+x-request-id: req_01M5X09GFD75XJH5SASTTQGSCT
+Transfer-Encoding: chunked
+
+$ curl -s -D - -o /dev/null -H "X-Forwarded-Proto: https" http://127.0.0.1:3310/    # BFF_APP_ORIGIN=http://127.0.0.1:3310
+HTTP/1.1 200 OK
+content-security-policy: default-src 'none'; script-src 'self' 'nonce-Qnz/Myy6mgql+7mFqSYLig==' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; style-src-elem 'self' 'nonce-Qnz/Myy6mgql+7mFqSYLig=='; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+permissions-policy: camera=(), microphone=(), geolocation=(), display-capture=(), screen-wake-lock=(), fullscreen=(), picture-in-picture=(), autoplay=(), encrypted-media=(), midi=(), usb=(), serial=(), hid=(), payment=(), publickey-credentials-get=(), accelerometer=(), gyroscope=(), magnetometer=(), idle-detection=(), local-fonts=(), browsing-topics=(), xr-spatial-tracking=()
+referrer-policy: no-referrer
+x-content-type-options: nosniff
+x-frame-options: DENY
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+Link: </>; rel=preconnect; crossorigin=""
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Content-Type: text/html; charset=utf-8
+Transfer-Encoding: chunked
+

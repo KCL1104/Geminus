@@ -1,0 +1,33 @@
+// Ad-hoc probe (not part of the repo): open pages on the inspection server
+// and print CSP violations and console errors.
+import { createRequire } from "node:module";
+const require = createRequire("/home/user/Geminus/.claude/worktrees/agent-a8aea6354eb1f605d/apps/web-e2e/package.json");
+const { chromium } = require("playwright-core");
+
+const base = process.argv[2] ?? "http://127.0.0.1:3310";
+const paths = process.argv.slice(3);
+const browser = await chromium.launch();
+const context = await browser.newContext();
+await context.addInitScript(() => {
+  document.addEventListener("securitypolicyviolation", (e) => {
+    console.error(`CSP-EVENT ${e.effectiveDirective} ${e.blockedURI} ${e.sample} ${e.sourceFile}:${e.lineNumber}`);
+  });
+});
+const page = await context.newPage();
+page.on("console", (m) => {
+  if (m.type() === "error" || m.type() === "warning") console.log(`[${m.type()}] ${m.text().slice(0, 300)}`);
+});
+for (const p of paths) {
+  console.log(`== ${p}`);
+  await page.goto(base + p);
+  await page.waitForLoadState("networkidle");
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  const info = await page.evaluate(() => ({
+    meta: document.querySelector('meta[name="csp-nonce"]')?.nonce ?? null,
+    metaAttr: document.querySelector('meta[name="csp-nonce"]')?.getAttribute("nonce") ?? null,
+    styles: [...document.querySelectorAll("style")].map((s) => `${s.id}:${s.nonce ? "nonce" : "none"}`),
+    fonts: [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family).slice(0, 4),
+  }));
+  console.log(JSON.stringify(info));
+}
+await browser.close();

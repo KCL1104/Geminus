@@ -1,0 +1,4 @@
+E1 no csp-nonce meta	killed	e2e-mutant-E1.log
+E2 no style-src-attr	killed	e2e-mutant-E2.log
+E3 unknown permissions feature	killed	e2e-mutant-E3.log
+E2b style-src-attr 'none'	killed	e2e-mutant-E2b.log
