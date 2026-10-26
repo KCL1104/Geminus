@@ -21,9 +21,9 @@ import (
 // so what they spend is kept in an append-only file committed with their
 // reports, checks/ai-evals/live-spend.jsonl, one JSON object per line:
 //
-//   - before a run's first call, an "open" line: the run's ID, kind (eval or
-//     smoke), UTC start, UTC day and month, model, approval, cap in
-//     nano-USD and report file name;
+//   - before a run's first call, an "open" line: the run's ID, kind (eval,
+//     smoke or, T-056 review round 1, smoke-photo), UTC start, UTC day and
+//     month, model, approval, cap in nano-USD and report file name;
 //   - after the run, whatever its end (complete, a gate failed, its cap or
 //     a cancellation stopped it, an error after paid calls, the report
 //     could not be written), a "close" line: what it cost (settled) and
@@ -244,7 +244,7 @@ func (o openLine) check() error {
 	switch {
 	case !runIDShape.MatchString(o.RunID):
 		return errors.New("a run ID is not a ULID")
-	case o.Kind != "eval" && o.Kind != "smoke":
+	case o.Kind != "eval" && o.Kind != "smoke" && o.Kind != PhotoSmokeKind:
 		return errors.New("an unknown kind")
 	case err != nil:
 		return err

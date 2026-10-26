@@ -1,19 +1,24 @@
 // Command ai-eval-live runs the AI eval corpus against the live provider
 // (make ai-eval-live; with -smoke, the one synthetic case of make
-// ai-smoke-live). It is a composition root only: internal/aievals.Main
-// refuses, before building any backend, unless the configuration turns
-// live AI on exactly as the worker's does (the owner's complete recorded
-// approval, AI_MODEL equal to its model, the provider's keys,
-// GEMINUS_AI_LIVE=on; T-053, T-055) and the run's cap (AI_EVAL_LIVE_MAX_USD)
+// ai-smoke-live; with -smoke-photo, the photo pipeline once on the demo
+// image, make ai-smoke-photo-live). It is a composition root only:
+// internal/aievals.MainWith refuses, before building any backend, unless
+// the configuration turns live AI on exactly as the worker's does (the
+// owner's complete recorded approval, AI_MODEL equal to its model, the
+// provider's keys, GEMINUS_AI_LIVE=on; T-053, T-055; for -smoke-photo the
+// worker's photo-path gate: an approval naming images and a segmentation
+// model, T-056 review round 1) and the run's cap (AI_EVAL_LIVE_MAX_USD)
 // fits the deployment's daily and monthly limits less what the spend
 // record checks/ai-evals/live-spend.jsonl holds (review round 1, H1); it
 // meters the run by that cap, records the run in the spend record before
 // any call and closes it with what it cost, and writes the report to a
 // checks/ai-evals/live-*.json file of its own, apart from the fake
 // results. The report, the record and the summary keep no prompt, answer
-// text or key. AI_PROVIDER picks the adapter: Claude's (anthropic, H-018)
-// or the Meta Model API's Muse Spark (meta, H-029 amended by H-033, with
-// GEMINUS_MUSE_API_KEY).
+// text, image or key. AI_PROVIDER picks the adapter: Claude's (anthropic,
+// H-018) or the Meta Model API's Muse Spark (meta, H-029 amended by H-033,
+// with GEMINUS_MUSE_API_KEY); the photo smoke's are the photo path's, as
+// the worker builds them: Muse Spark as the judge and the approval's
+// segmentation model (SAM 3.1) as the segmenter.
 package main
 
 import (
@@ -33,7 +38,7 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	code := aievals.Main(ctx, os.Args[1:], os.Getenv, os.Stdout, os.Stderr, liveBackend)
+	code := aievals.MainWith(ctx, os.Args[1:], os.Getenv, os.Stdout, os.Stderr, aievals.Backends{Text: liveBackend, Photo: livePhoto})
 	stop()
 	os.Exit(code)
 }
@@ -65,4 +70,28 @@ func liveBackend(ai config.AI) (provider.Billable, error) {
 		return b, nil
 	}
 	return nil, errors.New("no live adapter for this provider")
+}
+
+// livePhoto is the photo path's live backends for a configuration whose
+// photo path is on, as cmd/worker's photoBackends builds them: the judge
+// (meta.New: the approval's model, which reads images) and the segmenter
+// (meta.NewSegmenter: the approval's segmentation model), over the one
+// key config read. Only Meta's adapter reads images in this build.
+func livePhoto(v config.AIVision) (provider.Billable, provider.BillableSegmenter, error) {
+	if !v.LiveEnabled() || v.Provider != config.AIProviderMeta {
+		return nil, nil, errors.New("the photo path's provider has no adapter that reads images in this build")
+	}
+	if len(v.Credentials) != 1 || v.SegmentationModel == "" {
+		return nil, nil, errors.New("the photo path on the Meta Model API takes one key and a segmentation model")
+	}
+	c := meta.Credential{Label: v.Credentials[0].Label, Key: v.Credentials[0].Key}
+	judge, err := meta.New(meta.Config{Approval: v.Approval, Model: v.Model, Credential: c})
+	if err != nil {
+		return nil, nil, err
+	}
+	seg, err := meta.NewSegmenter(meta.Config{Approval: v.Approval, Model: v.SegmentationModel, Credential: c})
+	if err != nil {
+		return nil, nil, err
+	}
+	return judge, seg, nil
 }

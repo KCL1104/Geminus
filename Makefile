@@ -5,7 +5,7 @@ GO_PKGS := ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
 WEB := apps/web
 WEB_E2E := apps/web-e2e
 export NEXT_TELEMETRY_DISABLED := 1
-.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests spec-deploy db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test ai-eval ai-eval-live ai-smoke-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
+.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests spec-deploy db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test ai-eval ai-eval-live ai-smoke-live ai-smoke-photo-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
 spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests spec-deploy
 spec-contracts:
 	$(PYTHON) scripts/check_contracts.py
@@ -143,6 +143,14 @@ ai-smoke-live:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/ai-eval-live ./cmd/ai-eval-live
 	@bin/ai-eval-live -smoke -root $(CURDIR); code=$$?; [ $$code = 0 ] || { echo "ai-eval-live: exit $$code" >&2; exit $$code; }
+# The live photo smoke (T-056 review round 1, I1: the first live SAM 3.1 call): the worker's photo pipeline once
+# (internal/ai/photopipeline: SAM 3.1 per concept, count_tokens, Muse Spark, the server's review) on
+# testdata/photos/electronics-line-demo.png with testdata/photos/bare-line.json, behind the worker's photo-path gate, the
+# same spend record, a USD 1 cap by default; report checks/ai-evals/live-smoke-photo-<UTC start>-<run ID>-<model>.json.
+ai-smoke-photo-live:
+	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
+	go build -o bin/ai-eval-live ./cmd/ai-eval-live
+	@bin/ai-eval-live -smoke-photo -root $(CURDIR); code=$$?; [ $$code = 0 ] || { echo "ai-eval-live: exit $$code" >&2; exit $$code; }
 # T-039: the three images, from the repository root (Dockerfile.api, Dockerfile.worker, apps/web/Dockerfile), tagged
 # geminus-{api,worker,web}:$(CONTAINER_TAG); not pushed, not scanned (no container scanner is chosen yet). Without a
 # Docker daemon it fails with NOT RUN (exit 2), never a fake PASS.

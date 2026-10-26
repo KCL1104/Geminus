@@ -553,7 +553,10 @@ func distributionHolds(ir *model.ModelIR, id string, want any) bool {
 }
 
 // Marshal is the report as written: indented JSON with a final newline.
-func (r *Report) Marshal() ([]byte, error) {
+func (r *Report) Marshal() ([]byte, error) { return marshalReport(r) }
+
+// marshalReport is a report as written: indented JSON with a final newline.
+func marshalReport(r any) ([]byte, error) {
 	data, err := json.Marshal(r, json.Deterministic(true))
 	if err != nil {
 		return nil, err
@@ -563,22 +566,26 @@ func (r *Report) Marshal() ([]byte, error) {
 }
 
 // ErrNotALiveReport: a live report is a
-// live-[smoke-]<UTC start>-<run ID>-<model>.json file, never a fake
+// live-[smoke-[photo-]]<UTC start>-<run ID>-<model>.json file, never a fake
 // result's name (checks/ai-evals/fake-*.json).
-var ErrNotALiveReport = errors.New("aievals: a live report is written to a live-[smoke-]<UTC start>-<run ID>-<model>.json file only, apart from the fake results")
+var ErrNotALiveReport = errors.New("aievals: a live report is written to a live-[smoke-[photo-]]<UTC start>-<run ID>-<model>.json file only, apart from the fake results")
 
 // ErrReportExists: a report never replaces another (review round 1, H1).
 var ErrReportExists = errors.New("aievals: the report exists; a live report never replaces an earlier one")
 
-var liveName = regexp.MustCompile(`^live-(smoke-)?[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z-[0-7][0-9A-HJKMNP-TV-Z]{25}-[a-z0-9][a-z0-9.-]{0,127}\.json$`)
+var liveName = regexp.MustCompile(`^live-(smoke-(photo-)?)?[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z-[0-7][0-9A-HJKMNP-TV-Z]{25}-[a-z0-9][a-z0-9.-]{0,127}\.json$`)
 
 // ReportName is a run's report's file name:
 // live-[smoke-]<YYYY-MM-DD>T<hhmmss>Z-<run ID>-<model>.json, the run's UTC
-// start and ID, so that no two runs share one (review round 1, H1).
+// start and ID, so that no two runs share one (review round 1, H1); a
+// photo smoke's is live-smoke-photo-... (T-056 review round 1).
 func ReportName(kind string, start time.Time, runID, model string) string {
 	prefix := "live-"
-	if kind == "smoke" {
+	switch kind {
+	case "smoke":
 		prefix = "live-smoke-"
+	case PhotoSmokeKind:
+		prefix = "live-smoke-photo-"
 	}
 	return prefix + start.UTC().Format("2006-01-02T150405Z") + "-" + runID + "-" + model + ".json"
 }
@@ -590,7 +597,12 @@ func ReportPath(dir, kind string, start time.Time, runID, model string) string {
 
 // WriteReport writes r to path, a live report's file that does not exist
 // yet; it never writes a fake result's file, and never replaces a file.
-func WriteReport(path string, r *Report) error {
+func WriteReport(path string, r *Report) error { return writeLive(path, r) }
+
+// WritePhotoReport writes a photo smoke's report as WriteReport does.
+func WritePhotoReport(path string, r *PhotoReport) error { return writeLive(path, r) }
+
+func writeLive(path string, r interface{ Marshal() ([]byte, error) }) error {
 	if !liveName.MatchString(filepath.Base(path)) {
 		return ErrNotALiveReport
 	}

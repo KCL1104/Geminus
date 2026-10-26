@@ -103,6 +103,17 @@ func TestTheCountsMargin(t *testing.T) {
 		if err != nil || q.Model != model || q.MaxInputTokens != want || s.count(countPath) != 1 {
 			t.Errorf("a count of %s: %+v %v (%d counts), want %d", n, q, err, s.count(countPath), want)
 		}
+		// T-056 review round 1: the quote says the count itself too (the
+		// photo smoke reports it against the tokens billed).
+		if fmt.Sprint(q.Counted) != n {
+			t.Errorf("a count of %s: Counted %d", n, q.Counted)
+		}
+	}
+	// A text request is not counted: its quote is the adapter's bound.
+	ts := newServer(t, map[string][]reply{})
+	tb, _ := backend(t, ts)
+	if q, err := tb.Quote(context.Background(), provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"}); err != nil || q.Counted != 0 {
+		t.Errorf("a text request: %+v %v", q, err)
 	}
 	s := newServer(t, map[string][]reply{countPath: {{status: 200, body: `{"object":"BODY-SENTINEL","input_tokens":3000,"extra":[1,2]}`}}})
 	b, _ := backend(t, s)

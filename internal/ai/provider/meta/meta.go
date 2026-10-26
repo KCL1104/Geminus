@@ -240,7 +240,7 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 	if err != nil {
 		return provider.Quote{}, err
 	}
-	return provider.Quote{Model: b.model, MaxInputTokens: min(n+(n+countMarginDivisor-1)/countMarginDivisor, contextWindowTokens)}, nil
+	return provider.Quote{Model: b.model, MaxInputTokens: min(n+(n+countMarginDivisor-1)/countMarginDivisor, contextWindowTokens), Counted: n}, nil
 }
 
 // countPath is the Messages endpoint's token count ("Endpoints | POST

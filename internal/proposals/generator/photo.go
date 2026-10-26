@@ -10,11 +10,10 @@ import (
 
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
 	"github.com/kcl1104/geminus/internal/ai/idpool"
-	"github.com/kcl1104/geminus/internal/ai/locale"
+	"github.com/kcl1104/geminus/internal/ai/photopipeline"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/review"
 	"github.com/kcl1104/geminus/internal/audit"
-	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/proposals/photo"
 	"github.com/kcl1104/geminus/internal/storage/datasets"
@@ -38,6 +37,9 @@ import (
 //     its record (photo.Verify: digest, size, type, pixels) and made a
 //     provider.Image before it goes anywhere: PHOTO_STORAGE_FAILED when it
 //     cannot be read (retried), PHOTO_CORRUPT when it is not the record's.
+// Steps 3 to 5 are internal/ai/photopipeline (Propose), which the live
+// photo smoke (cmd/ai-eval-live -smoke-photo) runs too:
+//
 //  3. The segmenter (Config.Segmenter: T-055's provider.SegmentClient over
 //     SAM 3.1, metered; the fake in tests) finds the pack's concepts; the
 //     client checks every answer, and the pipeline takes at most
@@ -74,10 +76,6 @@ const (
 	ImageUnsupported = "AI_IMAGE_UNSUPPORTED"
 )
 
-// imageTaker is what a provider client says of its backend's images
-// (provider.Client.AcceptsImages).
-type imageTaker interface{ AcceptsImages() bool }
-
 // photoCall is what an attempt of a photo proposal knows of its image and
 // its segmentation, for the stored metadata and the audit.
 type photoCall struct {
@@ -86,18 +84,6 @@ type photoCall struct {
 	// many objects its checked answer has.
 	segmenter *provider.SegmentMetadata
 	segments  int
-}
-
-// noBoxes is the server's request for input when the segmenter found
-// nothing: the photo shows no station to propose.
-func noBoxes(outputLocale string) review.Outcome {
-	summary := "The segmenter found no machine, conveyor or workstation in the photo, so no station can be proposed from it."
-	question := "Which stations does the line have, in which order? Upload a clearer photo or floor plan of the line, or describe it in words."
-	if outputLocale == string(locale.TraditionalChinese) {
-		summary = "影像辨識在這張照片中找不到機台、輸送帶或工作站，無法從照片提出工作站。"
-		question = "這條產線有哪些工作站、順序為何？請上傳更清楚的產線照片或平面圖，或以文字描述產線。"
-	}
-	return review.Outcome{Status: review.NeedsInput, Summary: summary, Assumptions: []string{}, Questions: []string{question}}
 }
 
 // readImage reads the proposal's stored image, checks it against its
@@ -154,15 +140,14 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 	if err != nil {
 		return generation{photo: pc}, failure(InputInvalid, "the model's domain is not served by this worker", false)
 	}
-	vocab, ok := pack.(domainpack.PhotoVocabulary)
-	if !ok || len(vocab.PhotoConcepts()) == 0 {
+	concepts := photopipeline.Concepts(pack)
+	if concepts == nil {
 		return generation{photo: pc}, failure(PhotoNotSupported, "the model's domain takes no photos: describe the change in words", false)
 	}
-	concepts := vocab.PhotoConcepts()
 	if h.cfg.Segmenter == nil || h.cfg.Vision == nil {
 		return generation{photo: pc}, failure("AI_"+strings.ToUpper(string(provider.CodeNotConfigured)), providerMessages[provider.CodeNotConfigured], false)
 	}
-	if it, ok := h.cfg.Vision.(imageTaker); !ok || !it.AcceptsImages() {
+	if !photopipeline.TakesImages(h.cfg.Vision) {
 		return generation{photo: pc}, failure(ImageUnsupported, "the photo path's AI provider is off or does not take images; no provider call was made", false)
 	}
 	var pool idpool.Pool
@@ -182,70 +167,45 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		return generation{photo: pc}, err
 	}
 
-	seg, err := h.cfg.Segmenter.Segment(ctx, provider.SegmentRequest{OrganizationID: org, Role: provider.ModeEdit.Role(), Attribution: attr,
-		Image: img, Concepts: concepts})
-	pc.segmenter, pc.segments = &seg.Metadata, len(seg.Segments)
-	h.logSegment(ctx, seg.Metadata, len(seg.Segments), err)
+	// The AI part (segmenter, checks, vision model, review, photo rules) is
+	// internal/ai/photopipeline's, which the live photo smoke runs too.
+	res, err := photopipeline.Propose(ctx, photopipeline.Clients{Segmenter: h.cfg.Segmenter, Vision: h.cfg.Vision}, photopipeline.Request{
+		OrganizationID: org,
+		Base:           aicontext.Version{OrganizationID: org, ModelID: v.ModelID, VersionID: v.ID, IR: &ir},
+		BaseIR:         v.IR,
+		Pack:           pack,
+		Concepts:       concepts,
+		Pool:           aicontext.Pool{OrganizationID: org, ProposalID: pr.ID, IDs: pool},
+		Image:          img,
+		OutputLocale:   pr.OutputLocale,
+		Budget:         h.cfg.Budget,
+		Attribution:    attr,
+	}, photopipeline.Observer{
+		Segmented: func(m provider.SegmentMetadata, n int, err error) { h.logSegment(ctx, m, n, err) },
+		Answered:  func(m provider.Metadata, err error) { h.logCall(ctx, m, err) },
+	})
+	pc.segmenter, pc.segments = res.Segmenter, res.Segments
 	if err != nil {
 		if ctx.Err() != nil {
 			return generation{}, err
 		}
-		var pe *provider.Error
-		if errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput {
-			return generation{outcome: review.InvalidOutput(review.Segmentation(pe.Issues)), photo: pc, manifest: manifest}, nil
-		}
-		return generation{photo: pc}, providerFailure(err)
-	}
-	switch {
-	case len(seg.Segments) == 0:
-		return generation{outcome: noBoxes(pr.OutputLocale), photo: pc, manifest: manifest}, nil
-	case len(seg.Segments) > review.MaxPhotoSegments:
-		return generation{outcome: review.InvalidOutput(review.TooManySegments()), photo: pc, manifest: manifest}, nil
-	case seg.Width != img.Width || seg.Height != img.Height:
-		return generation{outcome: review.InvalidOutput(review.FrameMismatch()), photo: pc, manifest: manifest}, nil
-	}
-
-	in := aicontext.ImageProposalInput{
-		Scope:        aicontext.Scope{OrganizationID: org, ModelID: pr.ModelID},
-		Base:         aicontext.Version{OrganizationID: org, ModelID: v.ModelID, VersionID: v.ID, IR: &ir},
-		Domain:       pack.PromptContext(),
-		Pool:         aicontext.Pool{OrganizationID: org, ProposalID: pr.ID, IDs: pool},
-		Photo:        aicontext.Photo{OrganizationID: org, Image: img, Concepts: concepts, Segments: seg.Segments},
-		OutputLocale: pr.OutputLocale,
-		Budget:       h.cfg.Budget,
-	}
-	pctx, err := aicontext.ImageProposal(in)
-	if err != nil {
-		if aicontext.CodeOf(err) == aicontext.TooLarge {
+		var ce *photopipeline.ContextError
+		var re *photopipeline.ReviewError
+		switch {
+		case errors.As(err, &ce) && ce.Code == aicontext.TooLarge:
 			return generation{photo: pc}, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
+		case errors.As(err, &ce):
+			h.cfg.Log.WarnContext(ctx, "building a photo proposal context failed", "organization_id", org, "proposal_id", pr.ID, "code", string(ce.Code))
+			return generation{photo: pc}, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
+		case errors.As(err, &re):
+			h.cfg.Log.ErrorContext(ctx, "reviewing a photo proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", re.Err.Error())
+			return generation{meta: res.Vision, photo: pc}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
 		}
-		h.cfg.Log.WarnContext(ctx, "building a photo proposal context failed", "organization_id", org, "proposal_id", pr.ID, "code", string(aicontext.CodeOf(err)))
-		return generation{photo: pc}, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
+		return generation{meta: res.Vision, photo: pc}, providerFailure(err)
 	}
-	pctx.Attribution = attr
-	res, err := h.cfg.Vision.GenerateModelProposal(ctx, pctx)
-	meta := res.Metadata
-	h.logCall(ctx, meta, err)
-	if err != nil {
-		if ctx.Err() != nil {
-			return generation{}, err
-		}
-		var pe *provider.Error
-		if errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput {
-			return generation{outcome: review.InvalidOutput(pe.Issues), meta: &meta, photo: pc, manifest: manifest}, nil
-		}
-		return generation{meta: &meta, photo: pc}, providerFailure(err)
-	}
-	outcome, err := review.Review(review.Input{Mode: provider.ModeEdit, Base: v.IR, Pool: pool, Pack: pack, Output: res.Output})
-	if err != nil {
-		h.cfg.Log.ErrorContext(ctx, "reviewing a photo proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-		return generation{meta: &meta, photo: pc}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
-	}
-	if outcome.Status == review.Ready {
-		outcome = outcome.Refuse(review.Photo(&ir, outcome.Candidate, len(seg.Segments)))
-	}
+	outcome := res.Outcome
 	if outcome.Status != review.Ready {
-		return generation{outcome: outcome, meta: &meta, photo: pc, manifest: manifest}, nil
+		return generation{outcome: outcome, meta: res.Vision, photo: pc, manifest: manifest}, nil
 	}
 	resolution, err := datasets.Resolve(ctx, snaps, org, outcome.Candidate, v.DatasetBindings)
 	if err != nil {
@@ -253,9 +213,9 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 			return generation{}, err
 		}
 		h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-		return generation{meta: &meta, photo: pc}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
+		return generation{meta: res.Vision, photo: pc}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
 	}
-	return generation{outcome: outcome.Refuse(withoutIR(resolution.Issues)), meta: &meta, photo: pc, manifest: manifest}, nil
+	return generation{outcome: outcome.Refuse(withoutIR(resolution.Issues)), meta: res.Vision, photo: pc, manifest: manifest}, nil
 }
 
 // logSegment is the segmentation's operational line: labels, counts,

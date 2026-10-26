@@ -92,6 +92,13 @@ func (a Attribution) complete() bool {
 type Quote struct {
 	Model          string
 	MaxInputTokens int64
+	// Counted is the provider's own count of the request's input tokens
+	// when the backend asked for one (H-037: a request with images, the
+	// Meta adapter's count_tokens), 0 when the quote is the backend's own
+	// bound. Only what the run records reads it (the live photo smoke's
+	// report: the count against the tokens billed); the reservation is
+	// MaxInputTokens.
+	Counted int64
 }
 
 // Billable is a backend that costs money. Quote is called before the
