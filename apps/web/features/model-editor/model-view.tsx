@@ -3,8 +3,10 @@
 // draft session), and the 2D editor on them (T-015). A reload of the page
 // data (retry, token refresh, after a publish) merges into the open
 // session, so pending edits survive it. An editor or owner can ask the AI
-// for a change here (T-031); the proposal opens on its own page, so the
-// request waits while the editor has edits the page would lose.
+// for a change here (T-031), in words or, for a domain whose pack reads
+// photos, from a photo of the line (T-056); the proposal opens on its own
+// page, so either request waits while the editor has edits the page would
+// lose.
 import Link from "next/link";
 import { useEffect, useReducer } from "react";
 import { RemoteView } from "../../app/_components/states";
@@ -16,6 +18,7 @@ import { useI18n } from "../../lib/i18n/provider";
 import { loadModelPage, type ModelPage } from "../../lib/pages";
 import { type DraftEvent, type DraftSession, loadedDraft, pendingOps, reduceDraft } from "../../lib/state/draft";
 import { AskForm } from "../ai-proposals/ask-form";
+import { PHOTO_DOMAINS } from "../ai-proposals/photo-form";
 import { ModelEditor } from "./model-editor";
 
 type Page = { model: Model; session: DraftSession } | null;
@@ -59,6 +62,7 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
                 blockedReason={pendingOps(page.session).length > 0 ? t("ask.saveFirst") : null}
                 onCreated={onProposal}
                 onReload={reloadPage}
+                photo={PHOTO_DOMAINS.includes(page.model.domain)}
               />
             )}
             <ModelEditor model={page.model} session={page.session} dispatch={dispatch} reloadPage={reloadPage} />

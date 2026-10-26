@@ -226,6 +226,32 @@ func TestTheProviderIsTheConfigured(t *testing.T) {
 	}
 }
 
+// T-056: the proposal handler is built with T-055's photo path (deps.photo:
+// the judge and the segmenter of AI_VISION_PROVIDER), whatever its mode,
+// and without one (a photo proposal then fails AI_PROVIDER_NOT_CONFIGURED;
+// internal/proposals/generator TestPhotoFailures).
+func TestTheProposalHandlerTakesThePhotoPath(t *testing.T) {
+	for name, env := range map[string][]string{
+		"fake":     {"AI_PROVIDER", "fake", "APP_ENV", "test"},
+		"disabled": {"AI_PROVIDER", "disabled"},
+	} {
+		ai, err := config.LoadAI(with(env...))
+		if err != nil {
+			t.Fatal(err)
+		}
+		p, err := photoPath(ai, provider.DefaultBudget(), nil, "test-worker")
+		if err != nil || p.Judge == nil || p.Segmenter == nil {
+			t.Fatalf("%s: %+v %v", name, p, err)
+		}
+		for _, pic := range []photo{p, {}} {
+			hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, ai: ai, log: slog.New(slog.DiscardHandler), photo: pic})
+			if err != nil || hs[jobs.ModelProposal] == nil {
+				t.Errorf("%s: %v", name, err)
+			}
+		}
+	}
+}
+
 // T-023 review L2: the worker runs the domains the API accepts runs of,
 // no more and no fewer: both build their packs with internal/packs, and
 // the simulation handler this build registers serves exactly the API's

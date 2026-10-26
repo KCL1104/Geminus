@@ -1,0 +1,8 @@
+# github.com/kcl1104/geminus/internal/ai/provider [github.com/kcl1104/geminus/internal/ai/provider.test]
+internal/ai/provider/image_test.go:79:38: b.seen[0].Image undefined (type Request has no field or method Image)
+internal/ai/provider/image_test.go:94:61: b.seen[0].Image undefined (type Request has no field or method Image)
+internal/ai/provider/image_test.go:184:34: req.Image undefined (type Request has no field or method Image)
+internal/ai/provider/image_test.go:202:68: b.reqs[0].Image undefined (type Request has no field or method Image)
+FAIL	github.com/kcl1104/geminus/internal/ai/provider [build failed]
+FAIL
+exit 1

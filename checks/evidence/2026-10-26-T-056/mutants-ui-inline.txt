@@ -1,0 +1,7 @@
+M15 the client sends the person's file name: KILLED (exit [1]) [apps/web/lib/api/client.ts; npx vitest run tests/photo-api.test.ts tests/proposal-photo.test.tsx]
+M16 a blocked photo still opens the chooser: KILLED (exit [1]) [apps/web/features/ai-proposals/photo-form.tsx; npx vitest run tests/proposal-photo.test.tsx tests/proposal-simplicity.test.tsx]
+M17 a retried photo takes a new key: KILLED (exit [1]) [apps/web/features/ai-proposals/photo-form.tsx; npx vitest run tests/proposal-photo.test.tsx]
+M18 the AI's prose is always asked in English: KILLED (exit [1]) [apps/web/features/ai-proposals/photo-form.tsx; npx vitest run tests/proposal-photo.test.tsx]
+M19 the proposal page does not say it came from a photo: KILLED (exit [1]) [apps/web/features/ai-proposals/proposal-view.tsx; npx vitest run tests/proposal-photo.test.tsx]
+killed 5, survived 0, not run 0
+exit 0

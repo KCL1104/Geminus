@@ -1,0 +1,15 @@
+// Scratch vitest (run once, then deleted; kept as
+// checks/evidence/2026-10-26-T-056/scripts/zz-photo-dump.test.ts.txt):
+// dumps the "photo" sample proposal and the sample line into the scratchpad
+// for the temporary Go test zz_t056_sample_test.go.txt
+// (sample-server-review.log).
+import { writeFileSync } from "node:fs";
+import { it } from "vitest";
+import { sampleLine } from "../app/ui-gallery/editor/sample-line";
+import { sampleFor } from "../app/ui-gallery/proposal/samples";
+
+it("dumps", () => {
+  const out = process.env.T056_DUMP;
+  if (!out) throw new Error("T056_DUMP not set");
+  writeFileSync(out, JSON.stringify({ base: sampleLine, proposal: sampleFor("photo").proposal }, null, 2) + "\n");
+});

@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/domainpack	0.270s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	3.781s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	3.842s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.350s
+exit 0

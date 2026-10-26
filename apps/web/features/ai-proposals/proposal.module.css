@@ -204,6 +204,15 @@ ul.words {
   line-height: var(--gm-line-height-label);
 }
 
+/* T-056: the photo button sits in the actions row beside Send; its hint and refusal take whole lines below. */
+.photo {
+  display: contents;
+}
+
+.line {
+  flex-basis: 100%;
+}
+
 /* The model page's entry point: one form, its field, what to make and the send button. */
 .ask {
   margin: 0 0 var(--gm-space-xl);

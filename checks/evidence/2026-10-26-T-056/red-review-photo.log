@@ -1,0 +1,16 @@
+--- FAIL: TestPhotoRefusesMoreStepsThanBoxes (0.00s)
+    photo_test.go:84: two stations, one box: []
+--- FAIL: TestPhotoRefusesNumbersOfItsOwn (0.00s)
+    photo_test.go:122: an existing step's service time: [], want [/nodes/2]
+    photo_test.go:122: more units than the base requires: [], want [/nodes/5]
+    photo_test.go:122: an invented service time: [], want [/nodes/5]
+    photo_test.go:122: a buffer size: [], want [/nodes/4]
+    photo_test.go:122: a yield: [], want [/flows/4/routing/probability]
+    photo_test.go:122: a capacity beyond the boxes: [], want [/resources/2/capacity]
+    photo_test.go:122: a breakdown: [], want [/resources/1]
+--- FAIL: TestPhotoIssuesAreClean (0.00s)
+    photo_test.go:147: []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.012s
+FAIL
+exit 1

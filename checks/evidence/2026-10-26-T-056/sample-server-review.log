@@ -1,0 +1,8 @@
+=== RUN   TestT056Sample
+photo (10 segments): server review and photo rules: status ready, server risk "medium", risk "medium", patch hash sha256:0b492cad08769c5cd9d71877aaae638490a3fff239af641682f5fb8e078ce148, issues []
+photo (1 segments): server review and photo rules: status ready, server risk "medium", risk "medium", patch hash sha256:0b492cad08769c5cd9d71877aaae638490a3fff239af641682f5fb8e078ce148, issues []
+photo: sample says: status ready, server risk "medium", risk "medium", patch hash sha256:0b492cad08769c5cd9d71877aaae638490a3fff239af641682f5fb8e078ce148
+--- PASS: TestT056Sample (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.063s
+exit 0

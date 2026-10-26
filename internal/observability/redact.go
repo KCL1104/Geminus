@@ -134,6 +134,9 @@ var fields = map[string]Kind{
 	// answered with an error status; never its message
 	"provider_status":     KindNumber,
 	"provider_error_type": KindToken,
+	// T-056: how many boxes a segmenter found in a photo (never the boxes,
+	// their labels or the image)
+	"boxes": KindNumber,
 	// the server's own text
 	"error": KindText,
 	"panic": KindText,

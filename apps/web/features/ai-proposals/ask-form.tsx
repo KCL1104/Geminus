@@ -8,7 +8,9 @@
 // moves on to it. Nothing here proposes, decides or changes the model.
 // Retrying the same request reuses its key (D-011); a newer version since
 // the page loaded (409) keeps the words, and the model is read again only
-// when the person asks.
+// when the person asks. For a domain whose pack reads photos the actions
+// also offer a photo of the line (T-056, PhotoForm), blocked for the same
+// reason.
 import { useId, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
@@ -20,12 +22,15 @@ import { Button } from "../../ui/button";
 import { TextField } from "../../ui/field";
 import { Select } from "../../ui/select";
 import { StatusRegion } from "../../ui/status";
+import { PhotoForm } from "./photo-form";
 import styles from "./proposal.module.css";
 
 type Mode = ProposalRequest["mode"];
 
-export function AskForm({ model, blockedReason, onCreated, onReload }: {
+export function AskForm({ model, blockedReason, onCreated, onReload, photo = false }: {
   model: Model;
+  /** Also offer a photo of the line (T-056: the model's pack reads photos). */
+  photo?: boolean;
   /** Why sending must wait (unsaved edits the page would lose), or null. */
   blockedReason: string | null;
   /** The server stored the proposal: follow it. */
@@ -105,6 +110,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload }: {
         <Button blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
           {t("ask.send")}
         </Button>
+        {photo && <PhotoForm model={model} blockedReason={blockedReason} reasonId={reasonId} onCreated={onCreated} />}
         {blockedReason !== null && (
           <p id={reasonId} className={styles.reason}>
             {blockedReason}

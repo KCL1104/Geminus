@@ -5,7 +5,10 @@
 // exercised as against the Go API. It keeps what the server keeps for these
 // flows: versions, the model's draft, proposals and scenarios. It answers
 // createProposal with 202 generating and the sample's answer a few reads
-// later; approveProposal as T-026 does (decided: PROPOSAL_ALREADY_DECIDED;
+// later; createImageProposal (T-056) likewise, with the photo sample's
+// answer, after the checks a client can meet (a multipart form whose last
+// part is the file, a PNG or JPEG by its first bytes, at most 5 MiB);
+// approveProposal as T-026 does (decided: PROPOSAL_ALREADY_DECIDED;
 // not ready: LIFECYCLE_CONFLICT; a base that is no longer the latest makes
 // the proposal conflicted and answers 409 MODEL_VERSION_CONFLICT; an edit
 // makes one version and moves a clean draft or keeps a changed one out of
@@ -18,7 +21,7 @@ import { draftETag, parseDraftETag } from "../../../lib/api/etag";
 import type { Approval, Draft, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
 import { applyPatch } from "../../../features/model-editor/patch";
 import { SAMPLE_MODEL_ID, sampleLine } from "../editor/sample-line";
-import { ORG, otherChange, proposalId, readyEdit, readyScenario, REQUEST, type SampleState, sampleFor, scenarioId, USER, versionId } from "./samples";
+import { ORG, otherChange, proposalId, readyEdit, readyFromPhoto, readyScenario, REQUEST, type SampleState, samplePhoto, sampleFor, scenarioId, USER, versionId } from "./samples";
 
 const PROJECT = "prj_01M4YDQK00E1ECTR0N1C500000";
 const CLOCK = "2026-10-26T09:30:00Z";
@@ -40,7 +43,26 @@ export type ProposalStandInOptions = {
   missing?: boolean;
 };
 
-export type Call = { method: string; path: string; key: string | undefined; body: unknown };
+export type Call = { method: string; path: string; key: string | undefined; body: unknown; contentType: string | null };
+
+/** What a multipart request carried, as a call records it: its parts in order, the fields, and the file's name, type and size. */
+export type FormCall = { parts: string[]; base_version_id: string | null; output_locale: string | null; file: { name: string; type: string; size: number } | null };
+
+function formCall(form: FormData): FormCall {
+  const file = form.get("file");
+  const field = (name: string) => {
+    const v = form.get(name);
+    return typeof v === "string" ? v : null;
+  };
+  return {
+    parts: [...form.keys()],
+    base_version_id: field("base_version_id"),
+    output_locale: field("output_locale"),
+    file: file instanceof Blob ? { name: file instanceof File ? file.name : "", type: file.type, size: file.size } : null,
+  };
+}
+
+const MAX_PHOTO_BYTES = 5_242_880;
 
 // A stable stand-in for sha256(JCS(ir)), as the editor preview's.
 function fakeHash(v: unknown): string {
@@ -142,7 +164,7 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
     s.proposal = { ...s.proposal, ...change, decided_by: USER, decided_at: CLOCK };
   };
 
-  async function respond(method: string, path: string, key: string | undefined, ifMatch: string | null, body: unknown): Promise<Response> {
+  async function respond(method: string, path: string, key: string | undefined, ifMatch: string | null, body: unknown, form?: FormData): Promise<Response> {
     const m = `/api/v1/models/${SAMPLE_MODEL_ID}`;
     if (method === "GET" && path === m) return json(200, model());
     if (method === "GET" && path === `${m}/draft`) return json(200, draftBody(), draftETag(draft.revision));
@@ -168,6 +190,35 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
         const answer = req.mode === "scenario" ? readyScenario(id) : readyEdit(id);
         const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: req.base_version_id, mode: req.mode, status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true };
         proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id }, polls: opts.generatingPolls ?? 2 });
+        return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
+      });
+    }
+    if (method === "POST" && path === `${m}/ai-proposals/image`) {
+      const no = refused();
+      if (no) return no;
+      if (form === undefined) return error(415, "UNSUPPORTED_MEDIA_TYPE", "the request body must be multipart/form-data");
+      const parts = [...form.keys()];
+      const file = form.get("file");
+      if (!(file instanceof Blob) || parts[parts.length - 1] !== "file" || parts.filter((n) => n === "file").length !== 1) {
+        return error(422, "REQUEST_VALIDATION_FAILED", "the request is not acceptable", [{ path: "/file", reason: "one file, the last part, is required" }]);
+      }
+      if (file.size > MAX_PHOTO_BYTES) return error(413, "PAYLOAD_TOO_LARGE", "the photo is larger than a proposal may take");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const png = bytes.length >= 8 && [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((b, i) => bytes[i] === b);
+      const jpeg = bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+      if (!png && !jpeg) {
+        return error(415, "UNSUPPORTED_MEDIA_TYPE", "the photo is not a PNG or JPEG image", [{ path: "/file", reason: "only PNG and JPEG images are accepted", code: "IMAGE_FORMAT_REJECTED" }]);
+      }
+      const base = String(form.get("base_version_id") ?? "");
+      const locale = form.get("output_locale");
+      const digest = fakeHash(Array.from(bytes));
+      return once(key, `image:${base}:${String(locale)}:${digest}`, () => {
+        if (base !== latest().id) return { status: 409, body: { error: { code: "MODEL_VERSION_CONFLICT", message: "base_version_id is not the model's latest version", details: [{ path: "/base_version_id", reason: "not the model's latest version" }], request_id: REQUEST } }, keep: false };
+        const id = proposalId(proposals.size + 1);
+        // The stand-in reads no pixels: the size in pixels is the sample photo's.
+        const photo = { ...samplePhoto, media_type: png ? ("image/png" as const) : ("image/jpeg" as const), size_bytes: file.size, content_hash: digest };
+        const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: base, mode: "edit", status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true, source_image: photo };
+        proposals.set(id, { proposal: generating, answer: { ...readyFromPhoto(id, photo), base_version_id: base }, polls: opts.generatingPolls ?? 2 });
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
       });
     }
@@ -236,10 +287,11 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
     const url = new URL(String(input), "http://stand-in.invalid");
     const method = init?.method ?? "GET";
     const headers = new Headers(init?.headers);
-    const body = typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : undefined;
+    const form = init?.body instanceof FormData ? init.body : undefined;
+    const body = typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : form !== undefined ? formCall(form) : undefined;
     const key = headers.get("Idempotency-Key") ?? undefined;
-    calls.push({ method, path: url.pathname, key, body });
-    return respond(method, url.pathname, key, headers.get("If-Match"), body);
+    calls.push({ method, path: url.pathname, key, body, contentType: headers.get("Content-Type") });
+    return respond(method, url.pathname, key, headers.get("If-Match"), body, form);
   }) as typeof globalThis.fetch;
 
   return {

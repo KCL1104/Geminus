@@ -143,6 +143,27 @@ func valid() []audit.Event {
 			"limit": "month"}),
 		w("proposal.generate", "ai_proposal", aip, with(provider(), "attempt", 1, "status", "needs_input", "cost_nano_usd", int64(84_000_000),
 			"spend_reservation_id", ids.New("asr"), "spend_unsettled", false)),
+		// T-056: a proposal asked for with a photo, by the stored image's
+		// hash and size (never its name or content), and the segmenter's
+		// call beside the vision model's.
+		u("proposal.create", "ai_proposal", aip, map[string]any{"model_id": mdl, "base_version_id": mv, "mode": "edit", "output_locale": "zh-Hant",
+			"selected_entities": 0, "source": "image", "image_content_hash": hash("7"), "image_size_bytes": int64(21843)}),
+		u("proposal.create", "ai_proposal", aip, map[string]any{"model_id": mdl, "base_version_id": mv, "mode": "scenario", "output_locale": "en",
+			"selected_entities": 1, "source": "intent"}),
+		w("proposal.generate", "ai_proposal", aip, with(provider(), "attempt", 1, "status", "ready", "issues", 0, "patch_hash", hash("d"),
+			"server_risk_level", "medium", "provider_risk_claim", "low", "risk_level", "medium", "prompt_template_version", "photo-0.1.0",
+			"image_content_hash", hash("7"), "segmenter", "fake", "segmenter_model", "sam-3.1", "segmenter_concepts", 8, "segmenter_boxes", 10,
+			"segmenter_images", 8, "segmenter_latency_ms", int64(800), "segmenter_cost_nano_usd", int64(20_000_000),
+			"segmenter_spend_reservations", 8, "segmenter_spend_unsettled", false)),
+		// No box: the server asks for input without calling the vision model.
+		w("proposal.generate", "ai_proposal", aip, map[string]any{"provider": "", "role": "", "prompt_template_version": "", "schema": "",
+			"output_locale": "", "input_hash": "", "input_tokens": int64(0), "output_tokens": int64(0), "latency_ms": int64(0), "attempt": 1,
+			"status": "needs_input", "image_content_hash": hash("7"), "segmenter": "fake", "segmenter_model": "fake", "segmenter_concepts": 8,
+			"segmenter_boxes": 0, "segmenter_images": 0, "segmenter_latency_ms": int64(1)}),
+		w("proposal.attempt_failed", "ai_proposal", aip, map[string]any{"provider": "", "role": "", "prompt_template_version": "",
+			"schema": "", "output_locale": "", "input_hash": "", "input_tokens": int64(0), "output_tokens": int64(0), "latency_ms": int64(0),
+			"attempt": 1, "code": "AI_RATE_LIMITED", "retryable": true, "image_content_hash": hash("7"), "segmenter": "fake",
+			"segmenter_concepts": 8, "segmenter_boxes": 0, "segmenter_latency_ms": int64(3)}),
 	}
 }
 

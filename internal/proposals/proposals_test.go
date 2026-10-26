@@ -57,7 +57,7 @@ func TestRoutesMatchContract(t *testing.T) {
 			t.Errorf("%s: route %s %s %v, contract %s %s %v", r.OperationID, r.Method, r.Path, roles, o.Method, o.Path, o.Roles)
 		}
 	}
-	if want := []string{"createProposal", "listProposals", "getProposal"}; !slices.Equal(got, want) {
+	if want := []string{"createProposal", "listProposals", "getProposal", "createImageProposal"}; !slices.Equal(got, want) {
 		t.Errorf("routes %v, want %v", got, want)
 	}
 }
@@ -250,14 +250,19 @@ func TestFailureErrors(t *testing.T) {
 		"AI_CONTEXT_TOO_LARGE":       "PAYLOAD_TOO_LARGE",
 		"AI_QUOTA_EXCEEDED":          "RATE_LIMITED",        // T-053, D-111: a spend limit; try again later
 		"AI_SPEND_UNAVAILABLE":       "SERVICE_UNAVAILABLE", // T-053: the ledger could not reserve
-		"AI_REFUSED":                 "INTERNAL_ERROR",
-		"AI_OUTPUT_TRUNCATED":        "INTERNAL_ERROR",
-		"AI_REQUEST_REJECTED":        "INTERNAL_ERROR",
-		"AI_INVALID_REQUEST":         "INTERNAL_ERROR",
-		"PROPOSAL_INPUT_INVALID":     "INTERNAL_ERROR",
-		"JOB_CANCELLED":              "INTERNAL_ERROR",
-		"INTERNAL":                   "INTERNAL_ERROR",
-		"NO_RESULT":                  "INTERNAL_ERROR",
+		// T-056: the photo pipeline's failures.
+		"PHOTO_STORAGE_FAILED":   "SERVICE_UNAVAILABLE",        // the stored image could not be read (retried)
+		"PHOTO_NOT_SUPPORTED":    "REQUEST_VALIDATION_FAILED",  // the model's domain takes no photos
+		"AI_IMAGE_UNSUPPORTED":   "AI_PROVIDER_NOT_CONFIGURED", // the configured provider sends no images
+		"PHOTO_CORRUPT":          "INTERNAL_ERROR",             // the stored bytes are not the record's
+		"AI_REFUSED":             "INTERNAL_ERROR",
+		"AI_OUTPUT_TRUNCATED":    "INTERNAL_ERROR",
+		"AI_REQUEST_REJECTED":    "INTERNAL_ERROR",
+		"AI_INVALID_REQUEST":     "INTERNAL_ERROR",
+		"PROPOSAL_INPUT_INVALID": "INTERNAL_ERROR",
+		"JOB_CANCELLED":          "INTERNAL_ERROR",
+		"INTERNAL":               "INTERNAL_ERROR",
+		"NO_RESULT":              "INTERNAL_ERROR",
 	} {
 		r := row(store.Failed)
 		r.Failure = []byte(`{"code":"` + code + `","message":"m","retryable":false}`)

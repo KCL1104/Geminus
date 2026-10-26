@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/proposals	0.051s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.223s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.253s
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	0.067s
+exit 0

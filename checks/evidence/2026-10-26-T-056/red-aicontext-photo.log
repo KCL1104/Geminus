@@ -1,0 +1,21 @@
+--- FAIL: TestImageProposalContext (0.00s)
+    photo_test.go:67:   
+--- FAIL: TestBoxLabelsAreUntrustedData (0.00s)
+    photo_test.go:146: ai provider: no blocks
+--- FAIL: TestImageProposalRefuses (0.00s)
+    photo_test.go:179: another organization's base: <nil>, want cross_tenant_input
+    photo_test.go:179: another domain: <nil>, want domain_mismatch
+    photo_test.go:179: a bad locale: <nil>, want invalid_locale
+    photo_test.go:179: a box of no prompt: <nil>, want invalid_input
+    photo_test.go:179: no image hash: <nil>, want invalid_input
+    photo_test.go:179: a budget too small: <nil>, want context_too_large
+    photo_test.go:179: another organization's pool: <nil>, want cross_tenant_input
+    photo_test.go:179: another organization's photo: <nil>, want cross_tenant_input
+    photo_test.go:179: no prompts: <nil>, want invalid_input
+    photo_test.go:179: too many boxes: <nil>, want invalid_input
+--- FAIL: TestImageProposalFitsTheBudget (0.00s)
+    photo_test.go:197: ai provider: no blocks
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/aicontext	0.021s
+FAIL
+exit 1

@@ -1,0 +1,98 @@
+package review
+
+// Temporary (T-056 evidence, removed after use; kept as
+// checks/evidence/2026-10-26-T-056/scripts/zz_t056_sample_test.go.txt):
+// runs the server's review and the photo rules on the review page's "photo"
+// sample proposal, as the worker would on a vision model's answer, to
+// compare its written status, validation, server risk and patch hash with
+// what the server computes.
+
+import (
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"fmt"
+	"os"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/ai/idpool"
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
+	"github.com/kcl1104/geminus/internal/model"
+)
+
+func TestT056Sample(t *testing.T) {
+	path := os.Getenv("T056_DUMP")
+	if path == "" {
+		t.Skip("T056_DUMP not set")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dump struct {
+		Base     jsontext.Value            `json:"base"`
+		Proposal map[string]jsontext.Value `json:"proposal"`
+	}
+	if err := json.Unmarshal(data, &dump); err != nil {
+		t.Fatal(err)
+	}
+	ids := func(kind string, mine ...string) []string {
+		out := append([]string{}, mine...)
+		for i := len(out); i < idpool.PerKind; i++ {
+			out = append(out, fmt.Sprintf("%s_01m4ydqk00e1ectr0n1c5y%04d", kind, i))
+		}
+		return out
+	}
+	pool := idpool.Pool{
+		Node:     ids("node", "node_01m4ydqk00e1ectr0n1c5x0001", "node_01m4ydqk00e1ectr0n1c5x0002"),
+		Flow:     ids("flow", "flow_01m4ydqk00e1ectr0n1c5x0001", "flow_01m4ydqk00e1ectr0n1c5x0002", "flow_01m4ydqk00e1ectr0n1c5x0003"),
+		Resource: ids("resource", "resource_01m4ydqk00e1ectr0n1c5x0001"),
+	}
+	p := dump.Proposal
+	var mode, claim, summary string
+	var out provider.ProposalOutput
+	_ = json.Unmarshal(p["mode"], &mode)
+	_ = json.Unmarshal(p["provider_risk_claim"], &claim)
+	_ = json.Unmarshal(p["summary"], &summary)
+	_ = json.Unmarshal(p["assumptions"], &out.Assumptions)
+	_ = json.Unmarshal(p["expected_effects"], &out.ExpectedEffects)
+	_ = json.Unmarshal(p["confidence"], &out.Confidence)
+	if err := json.Unmarshal(p["changes"], &out.Changes); err != nil {
+		t.Fatal(err)
+	}
+	out.Status, out.Summary, out.RiskLevel, out.RequiresConfirmation = "proposed", summary, claim, true
+	o, err := Review(Input{Mode: provider.Mode(mode), Base: dump.Base, Pool: pool, Pack: electronicsline.Pack{}, Output: out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var base model.ModelIR
+	if err := model.Decode(dump.Base, &base); err != nil {
+		t.Fatal(err)
+	}
+	// The demo floor plan's segmentation has ten objects (testdata/photos);
+	// the photo rules are also run with one, the fewest that allow one new
+	// station.
+	for _, boxes := range []int{10, 1} {
+		r := o
+		if r.Status == Ready {
+			r = r.Refuse(Photo(&base, r.Candidate, boxes))
+		}
+		var issues []string
+		if r.Validation != nil {
+			for _, is := range r.Validation.Issues {
+				issues = append(issues, fmt.Sprintf("%s %s %s", is.Severity, is.Code, is.Path))
+			}
+		}
+		fmt.Printf("photo (%d segments): server review and photo rules: status %s, server risk %q, risk %q, patch hash %s, issues %v\n",
+			boxes, r.Status, r.ServerRisk, r.Risk, r.PatchHash, issues)
+	}
+	var written struct {
+		Status     string `json:"status"`
+		ServerRisk string `json:"server_risk_level"`
+		Risk       string `json:"risk_level"`
+		Hash       string `json:"patch_hash"`
+	}
+	raw, _ := json.Marshal(p)
+	_ = json.Unmarshal(raw, &written)
+	fmt.Printf("photo: sample says: status %s, server risk %q, risk %q, patch hash %s\n", written.Status, written.ServerRisk, written.Risk, written.Hash)
+}

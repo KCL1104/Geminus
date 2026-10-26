@@ -1,0 +1,10 @@
+--- FAIL: TestEveryActionFits (0.00s)
+    audit_test.go:170: proposal.create: audit: proposal.create: source: not a field of this action
+    audit_test.go:170: proposal.create: audit: proposal.create: source: not a field of this action
+    audit_test.go:170: proposal.generate: audit: proposal.generate: segmenter_model: not a field of this action
+    audit_test.go:170: proposal.generate: audit: proposal.generate: image_content_hash: not a field of this action
+    audit_test.go:170: proposal.attempt_failed: audit: proposal.attempt_failed: segmenter_boxes: not a field of this action
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/audit	0.144s
+FAIL
+exit 1

@@ -184,6 +184,16 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
         {gap}
         {stale ? t("proposal.latest.newer", { version: String(latestVersion.version) }) : t("proposal.latest.same", { version: String(baseVersion) })}
       </p>
+      {p.source_image && (
+        // T-056: asked for with a photo; the server keeps its pixels only and names it by type and size.
+        <p className={styles.meta} data-source="image">
+          {t("proposal.fromPhoto", {
+            type: p.source_image.media_type === "image/png" ? "PNG" : "JPEG",
+            width: String(p.source_image.width),
+            height: String(p.source_image.height),
+          })}
+        </p>
+      )}
       <p>
         <Link href={hrefs.model(p.model_id)}>{t("proposal.back")}</Link>
       </p>

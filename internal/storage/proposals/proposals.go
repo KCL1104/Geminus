@@ -81,6 +81,29 @@ type Proposal struct {
 	// RequestID is the request that created the proposal (its job's
 	// payload).
 	RequestID string
+	// Image is the photo the proposal was asked for with (T-056, 0017);
+	// nil for a proposal asked for in words.
+	Image *Image
+}
+
+// Image is what the server records of a photo proposal's image (T-056,
+// twin.ai_proposal_images): the private object it stored (the upload's
+// pixels encoded again, no metadata) and its SHA-256, size, media type and
+// size in pixels. It is the proposal's request and never changes.
+type Image struct {
+	ObjectKey     string
+	SHA256        string
+	Size          int64
+	MediaType     string
+	Width, Height int
+}
+
+// InsertImage records im for the photo proposal id of org, which the same
+// transaction created (0017 refuses any other).
+func InsertImage(ctx context.Context, tx pgx.Tx, org, id string, im Image) error {
+	_, err := tx.Exec(ctx, `INSERT INTO twin.ai_proposal_images(organization_id,proposal_id,object_key,content_hash,size_bytes,media_type,width,height)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, org, id, im.ObjectKey, im.SHA256, im.Size, im.MediaType, im.Width, im.Height)
+	return err
 }
 
 // ErrNotFound: no such proposal in the organization.
@@ -135,22 +158,29 @@ const columns = `p.id, p.model_id, p.base_version_id, p.source_import_id, p.mode
 	p.selected_entity_ids, p.id_pool, p.summary, p.assumptions, p.expected_effects, p.questions, p.patch, p.patch_hash,
 	p.candidate_dataset_bindings, p.server_risk_level, p.provider_risk_claim, p.risk_level, p.confidence, p.validation,
 	p.provider_metadata, p.error, p.new_version_id, p.scenario_id, p.decided_by, p.decided_at, p.decision_comment,
-	p.created_by, p.created_at, coalesce(j.payload->>'request_id', '')`
+	p.created_by, p.created_at, coalesce(j.payload->>'request_id', ''),
+	i.object_key, i.content_hash, i.size_bytes, i.media_type, i.width, i.height`
 
 // from joins each proposal with its job (one at most, 0001), whose payload
-// holds the request that created it.
+// holds the request that created it, and with its image (one at most,
+// 0017), in the same organization.
 const from = ` FROM twin.ai_proposals p LEFT JOIN twin.jobs j
-	  ON j.organization_id=p.organization_id AND j.ai_proposal_id=p.id`
+	  ON j.organization_id=p.organization_id AND j.ai_proposal_id=p.id
+	LEFT JOIN twin.ai_proposal_images i ON i.organization_id=p.organization_id AND i.proposal_id=p.id`
 
 func scan(row pgx.Row, org string) (Proposal, error) {
 	p := Proposal{OrganizationID: org}
 	var status string
 	var selected, assumptions, effects, questions, bindings []byte
+	var imageKey, imageHash, imageType *string
+	var imageSize *int64
+	var imageWidth, imageHeight *int
 	err := row.Scan(&p.ID, &p.ModelID, &p.BaseVersionID, &p.SourceImportID, &p.Mode, &status, &p.Intent, &p.OutputLocale,
 		&selected, &p.IDPool, &p.Summary, &assumptions, &effects, &questions, &p.Patch, &p.PatchHash,
 		&bindings, &p.ServerRisk, &p.ProviderRisk, &p.Risk, &p.Confidence, &p.Validation,
 		&p.ProviderMetadata, &p.Failure, &p.NewVersionID, &p.ScenarioID, &p.DecidedBy, &p.DecidedAt, &p.DecisionComment,
-		&p.CreatedBy, &p.CreatedAt, &p.RequestID)
+		&p.CreatedBy, &p.CreatedAt, &p.RequestID,
+		&imageKey, &imageHash, &imageSize, &imageType, &imageWidth, &imageHeight)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Proposal{}, ErrNotFound
 	}
@@ -158,6 +188,13 @@ func scan(row pgx.Row, org string) (Proposal, error) {
 		return Proposal{}, err
 	}
 	p.Status = Status(status)
+	if imageKey != nil {
+		// 0017's columns are all NOT NULL: a joined row has every one.
+		if imageHash == nil || imageSize == nil || imageType == nil || imageWidth == nil || imageHeight == nil {
+			return Proposal{}, fmt.Errorf("proposal %s: its image row is incomplete", p.ID)
+		}
+		p.Image = &Image{ObjectKey: *imageKey, SHA256: *imageHash, Size: *imageSize, MediaType: *imageType, Width: *imageWidth, Height: *imageHeight}
+	}
 	for _, c := range []struct {
 		name string
 		data []byte

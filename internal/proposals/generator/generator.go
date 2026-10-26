@@ -65,6 +65,16 @@ type Config struct {
 	// Provider is the checked provider client (provider.Client) of the
 	// deployment's mode: disabled, fake or an approved live adapter.
 	Provider provider.LLMProvider
+	// Vision is the photo path's vision model (T-056 on T-055's judge, the
+	// checked client of AI_VISION_PROVIDER): a photo proposal is sent to it
+	// with the image as the prompt's image part, only when it takes images
+	// (provider.Client.AcceptsImages). Nil fails every photo proposal with
+	// AI_PROVIDER_NOT_CONFIGURED.
+	Vision provider.LLMProvider
+	// Segmenter finds the pack's concepts in a photo proposal's image
+	// (T-056; T-055's provider.SegmentClient of the deployment's mode); nil
+	// fails every photo proposal with AI_PROVIDER_NOT_CONFIGURED.
+	Segmenter provider.Segmenter
 	// Budget bounds the context the handler builds; it is the client's.
 	Budget provider.Budget
 	Packs  PackLookup
@@ -209,14 +219,20 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	}); err != nil {
 		return err
 	}
-	// failed ends an attempt that asked the provider and generated nothing:
-	// what the call cost is audited all the same (best effort; the worker
-	// records the failure either way).
-	failed := func(err error, meta *provider.Metadata) error {
+	// failed ends an attempt that asked the provider (or, for a photo,
+	// the segmenter) and generated nothing: what the calls cost is audited
+	// all the same (best effort; the worker records the failure either
+	// way).
+	failed := func(err error, gen generation) error {
 		var f *jobs.Failure
-		if errors.As(err, &f) && ctx.Err() == nil && meta != nil {
+		asked := gen.meta != nil || (gen.photo != nil && gen.photo.segmenter != nil)
+		if errors.As(err, &f) && ctx.Err() == nil && asked {
+			var call provider.Metadata
+			if gen.meta != nil {
+				call = *gen.meta
+			}
 			if aerr := hr.Checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
-				m := auditMeta(*meta)
+				m := photoAuditMeta(call, gen.photo)
 				m["code"], m["retryable"] = f.Code, f.Retryable
 				return audit(ctx, tx, "proposal.attempt_failed", m)
 			}); aerr != nil {
@@ -225,9 +241,16 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		return err
 	}
-	gen, err := h.generate(ctx, org, st, provider.Attribution{TargetType: "ai_proposal", TargetID: p.ProposalID, RequestID: p.RequestID})
+	attr := provider.Attribution{TargetType: "ai_proposal", TargetID: p.ProposalID, RequestID: p.RequestID}
+	var gen generation
+	var err error
+	if st.proposal.Image != nil {
+		gen, err = h.generatePhoto(ctx, org, st, attr) // T-056: asked for with a photo
+	} else {
+		gen, err = h.generate(ctx, org, st, attr)
+	}
 	if err != nil {
-		return failed(err, gen.meta)
+		return failed(err, gen)
 	}
 	outcome, meta := gen.outcome, gen.meta
 	var call provider.Metadata
@@ -246,10 +269,15 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		if err != nil {
 			return err
 		}
+		// T-056: a photo proposal's metadata names its image and the
+		// segmenter's call too.
+		if g.ProviderMetadata, err = photoMetadata(g.ProviderMetadata, gen); err != nil {
+			return err
+		}
 		if err := store.Generate(ctx, tx, org, p.ProposalID, g); err != nil {
 			return finishFailure(err)
 		}
-		m := auditMeta(call)
+		m := photoAuditMeta(call, gen.photo)
 		m["status"] = string(outcome.Status)
 		if outcome.Validation != nil {
 			m["issues"] = len(outcome.Validation.Issues)
@@ -261,7 +289,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		return audit(ctx, tx, "proposal.generate", m)
 	})
 	if err != nil {
-		return failed(err, meta)
+		return failed(err, gen)
 	}
 	return nil
 }
@@ -302,6 +330,9 @@ type generation struct {
 	// or not, as a version published from a draft does (TWIN_IR_SPEC §5.2,
 	// D-062 (g)).
 	manifest []model.DatasetBinding
+	// photo is a photo proposal's image and segmenter call (T-056); nil
+	// for a proposal asked for in words.
+	photo *photoCall
 }
 
 // generate builds the context, reads and verifies the base's dataset

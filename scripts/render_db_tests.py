@@ -88,6 +88,8 @@ IDS = {
     "SCN_A8": ("scn", "A", 8), "SCN_A9": ("scn", "A", 9), "SCN_B1": ("scn", "B", 1),
     # T-053 (ai_spend.sql): spend reservations of live AI.
     "ASR_A1": ("asr", "A", 1), "ASR_A2": ("asr", "A", 2),
+    # T-056 (proposal_images.sql): proposals asked for with a photo.
+    "AIP_A31": ("aip", "A", 31), "AIP_A32": ("aip", "A", 32), "AIP_A33": ("aip", "A", 33), "AIP_A34": ("aip", "A", 34),
 }
 
 

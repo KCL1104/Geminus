@@ -1,0 +1,66 @@
+--- FAIL: TestAMeteredSegmentation (0.00s)
+    metered_test.go:87: charges [], want {OrganizationID:org_01M4YDQK00TA00000000000000 Role:modeler Model:test-sam Attribution:{TargetType:ai_proposal TargetID:aip_01M4YDQK00TA00000000000001 RequestID:req_01M4YDQK00TA00000000000001} NanoUSD:2500000}
+--- FAIL: TestSegmentationSettlement (0.00s)
+    metered_test.go:121: answered late: settled [], want {NanoUSD:2000 Usage:{InputTokens:0 OutputTokens:0 CacheReadInputTokens:0 CacheCreationInputTokens:0} Outcome:unknown Credential:meta-a UnknownAttempts:1 InferenceGeo:}
+    metered_test.go:121: refused: settled [], want {NanoUSD:0 Usage:{InputTokens:0 OutputTokens:0 CacheReadInputTokens:0 CacheCreationInputTokens:0} Outcome:none Credential: UnknownAttempts:0 InferenceGeo:}
+    metered_test.go:121: lost: settled [], want {NanoUSD:2000 Usage:{InputTokens:0 OutputTokens:0 CacheReadInputTokens:0 CacheCreationInputTokens:0} Outcome:unknown Credential:meta-a UnknownAttempts:2 InferenceGeo:}
+    metered_test.go:131: cancelled: <nil>
+    metered_test.go:134: a cancelled call was not settled on its own context: [] []
+--- FAIL: TestARefusedReservationRefusesTheSegmentation (0.00s)
+    metered_test.go:145: unpriced: <nil>, 0 charges, 0 calls
+    metered_test.go:161: no ledger: <nil> after 0 calls
+    metered_test.go:161: an empty reserve : <nil> after 0 calls
+    metered_test.go:161: a limit: <nil> after 0 calls
+    metered_test.go:165: a limit: the limit is not named: <nil>
+--- FAIL: TestCheckBoxes (0.00s)
+    vision_test.go:126: a negative score: [], want "a box of the segmenter's answer is not a finite number, or its score is not from 0 to 1"
+    vision_test.go:126: a huge height: [], want "a box of the segmenter's answer lies outside the image or has no area"
+    vision_test.go:126: a NaN score: [], want "a box of the segmenter's answer is not a finite number, or its score is not from 0 to 1"
+    vision_test.go:126: a label too long: [], want "a box's label is not text"
+    vision_test.go:126: NaN x: [], want "a box of the segmenter's answer is not a finite number, or its score is not from 0 to 1"
+    vision_test.go:126: -infinite y: [], want "a box of the segmenter's answer is not a finite number, or its score is not from 0 to 1"
+    vision_test.go:126: a negative prompt: [], want "a box of the segmenter's answer names no text prompt of the request"
+    vision_test.go:126: a score above 1: [], want "a box of the segmenter's answer is not a finite number, or its score is not from 0 to 1"
+    vision_test.go:126: a label not UTF-8: [], want "a box's label is not text"
+    vision_test.go:126: a label with NUL: [], want "a box's label is not text"
+    vision_test.go:126: infinite width: [], want "a box of the segmenter's answer is not a finite number, or its score is not from 0 to 1"
+    vision_test.go:126: left of 0: [], want "a box of the segmenter's answer lies outside the image or has no area"
+    vision_test.go:126: above 0: [], want "a box of the segmenter's answer lies outside the image or has no area"
+    vision_test.go:126: past the right: [], want "a box of the segmenter's answer lies outside the image or has no area"
+    vision_test.go:126: past the bottom: [], want "a box of the segmenter's answer lies outside the image or has no area"
+    vision_test.go:126: no width: [], want "a box of the segmenter's answer lies outside the image or has no area"
+    vision_test.go:126: negative height: [], want "a box of the segmenter's answer lies outside the image or has no area"
+    vision_test.go:126: no such prompt: [], want "a box of the segmenter's answer names no text prompt of the request"
+    vision_test.go:134: 65 boxes: []
+    vision_test.go:139: repeated sentences: []
+--- FAIL: TestNew (0.00s)
+    vision_test.go:154: no segmenter
+    vision_test.go:157: a billable segmenter without a meter
+    vision_test.go:160: no meter
+    vision_test.go:173: negative retries: accepted
+    vision_test.go:173: no boxes: accepted
+    vision_test.go:173: too many boxes: accepted
+    vision_test.go:173: no concurrent calls: accepted
+    vision_test.go:173: no timeout: accepted
+    vision_test.go:173: attempt > timeout: accepted
+--- FAIL: TestSegment (0.00s)
+    vision_test.go:188: boxes []
+    vision_test.go:192: metadata {Provider: Model: Credential: Boxes:0 LatencyMillis:0 ProviderRequestID: CostNanoUSD:0 SpendReservation: SpendUnsettled:false}
+panic: runtime error: index out of range [0] with length 0 [recovered, repanicked]
+
+goroutine 14 [running]:
+testing.tRunner.func1.2({0x8a4e88, 0x7ce0024ef78})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2125 +0x232
+testing.tRunner.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2128 +0x329
+panic({0x8a4e88?, 0x7ce0024ef78?})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/runtime/panic.go:859 +0x125
+github.com/kcl1104/geminus/internal/ai/vision.TestSegment(0x7ce002ab208)
+	/home/user/Geminus/.claude/worktrees/agent-ad41a33c4e2426ce4/internal/ai/vision/vision_test.go:194 +0x687
+testing.tRunner(0x7ce002ab208, 0x8b5440)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2260 +0x4d4
+FAIL	github.com/kcl1104/geminus/internal/ai/vision	0.022s
+FAIL
+exit 1

@@ -139,8 +139,17 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	proposals, err := generator.New(generator.Config{Provider: client, Budget: budget, Packs: served, Objects: d.objects,
-		Actor: d.worker.ID, Log: d.log})
+	cfg := generator.Config{Provider: client, Budget: budget, Packs: served, Objects: d.objects, Actor: d.worker.ID, Log: d.log}
+	// T-056: the photo path's judge and segmenter (T-055's deps.photo);
+	// without them a photo proposal fails with AI_PROVIDER_NOT_CONFIGURED.
+	// Never a typed nil in the interfaces.
+	if d.photo.Judge != nil {
+		cfg.Vision = d.photo.Judge
+	}
+	if d.photo.Segmenter != nil {
+		cfg.Segmenter = d.photo.Segmenter
+	}
+	proposals, err := generator.New(cfg)
 	if err != nil {
 		return nil, err
 	}

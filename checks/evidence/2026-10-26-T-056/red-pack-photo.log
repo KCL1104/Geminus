@@ -1,0 +1,5 @@
+# github.com/kcl1104/geminus/internal/domainpack/electronicsline_test [github.com/kcl1104/geminus/internal/domainpack/electronicsline.test]
+internal/domainpack/electronicsline/photo_test.go:17:37: cannot use electronicsline.Pack{} (value of struct type electronicsline.Pack) as domainpack.PhotoVocabulary value in variable declaration: electronicsline.Pack does not implement domainpack.PhotoVocabulary (missing method PhotoPrompts)
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline [build failed]
+FAIL
+exit 1

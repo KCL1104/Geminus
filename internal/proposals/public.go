@@ -44,6 +44,19 @@ type Proposal struct {
 	DecidedBy       *string `json:"decided_by,omitzero"`
 	DecidedAt       *string `json:"decided_at,omitzero"`
 	DecisionComment *string `json:"decision_comment,omitzero"`
+	// SourceImage is the photo the proposal was asked for with (T-056), in
+	// every state; nil for a proposal asked for in words.
+	SourceImage *SourceImage `json:"source_image,omitzero"`
+}
+
+// SourceImage is proposal.schema.json's source_image: what the server
+// stored of the photo, never its key or the upload's name.
+type SourceImage struct {
+	MediaType   string `json:"media_type"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
+	SizeBytes   int64  `json:"size_bytes"`
+	ContentHash string `json:"content_hash"`
 }
 
 func nonNil[T any](s []T) []T {
@@ -60,6 +73,9 @@ func nonNil[T any](s []T) []T {
 func Public(p store.Proposal, requestID string) (Proposal, error) {
 	out := Proposal{ProposalID: p.ID, OrganizationID: p.OrganizationID, ModelID: p.ModelID, BaseVersionID: p.BaseVersionID,
 		Mode: p.Mode, Status: string(p.Status), CreatedBy: p.CreatedBy, CreatedAt: timestamp(p.CreatedAt), RequiresConfirmation: true}
+	if im := p.Image; im != nil {
+		out.SourceImage = &SourceImage{MediaType: im.MediaType, Width: im.Width, Height: im.Height, SizeBytes: im.Size, ContentHash: im.SHA256}
+	}
 	needsInput := func() {
 		out.Summary, out.Assumptions, out.Questions = p.Summary, nonNil(p.Assumptions), p.Questions
 	}
@@ -194,6 +210,14 @@ var errorCodes = map[string]string{
 	// reserve for it.
 	"AI_QUOTA_EXCEEDED":    "RATE_LIMITED",
 	"AI_SPEND_UNAVAILABLE": "SERVICE_UNAVAILABLE",
+	// T-056: the photo pipeline. The stored image could not be read
+	// (retried); the model's domain takes no photos (the request is not
+	// acceptable for it); the configured provider sends no images (image
+	// input is not configured). PHOTO_CORRUPT (the stored bytes are not
+	// the record's) is the server's: INTERNAL_ERROR.
+	"PHOTO_STORAGE_FAILED": "SERVICE_UNAVAILABLE",
+	"PHOTO_NOT_SUPPORTED":  "REQUEST_VALIDATION_FAILED",
+	"AI_IMAGE_UNSUPPORTED": "AI_PROVIDER_NOT_CONFIGURED",
 }
 
 // failureError shows a stored job failure as the contract's error. A code

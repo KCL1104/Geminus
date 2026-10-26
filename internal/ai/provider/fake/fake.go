@@ -3,7 +3,9 @@
 // provider, and internal/config accepts it only with APP_ENV development or
 // test. It reads its input exactly as a live provider would, from the
 // rendered user message, and answers from a script keyed by the request's
-// untrusted text (USER_INTENT, QUESTION or the column names); without a
+// untrusted text (USER_INTENT, QUESTION or the column names) or, for a
+// prompt with images and none of those (T-056's photo proposal), its first
+// image's digest; without a
 // scripted answer it answers safely: needs_input for a proposal, no target
 // field for a mapping, an analysis without claims. No randomness, no clock,
 // no I/O. Its answers still go through provider.Client, which checks them
@@ -99,6 +101,11 @@ func keyOf(p provider.Prompt) (string, map[string]jsontext.Value, error) {
 	}
 	if v, ok := byName[ColumnsBlock]; ok {
 		return string(v), byName, nil
+	}
+	// T-056: a photo proposal has no intent; it is matched on its first
+	// image's digest.
+	if len(p.Images) > 0 {
+		return p.Images[0].Digest, byName, nil
 	}
 	return "", byName, nil
 }

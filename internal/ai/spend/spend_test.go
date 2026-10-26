@@ -171,3 +171,18 @@ func TestInferenceGeos(t *testing.T) {
 		t.Errorf("a geo this build does not know: %d", got)
 	}
 }
+
+// T-056 on T-055: the photo pipeline's segmenter is priced per image
+// (sam-3.1; T-055's meta_test.go holds the price), and a token model's
+// name is no image price, so a vision model cannot be reserved for as a
+// segmenter.
+func TestOnlyASegmenterIsPricedPerImage(t *testing.T) {
+	if p, ok := spend.ImagePriceOf("sam-3.1"); !ok || p <= 0 {
+		t.Errorf("sam-3.1 is not priced per image: %d", p)
+	}
+	for _, model := range []string{"claude-opus-5-5", "muse-spark-1.3", ""} {
+		if p, ok := spend.ImagePriceOf(model); ok || p != 0 {
+			t.Errorf("%q is priced per image: %d", model, p)
+		}
+	}
+}
