@@ -1,0 +1,9 @@
+=== RUN   TestRandomBatchModelsAgainstSpec
+    kernel_check_batch_test.go:504: 1629 of 3000 random models compiled: 418 with finite buffers, 294 with breakdowns, 258 with calendars; 58733 batches of 126309 members (37517 ready at an entry or a grant, 12091 at a wait limit), 28560 BATCH_TIMEOUTs, 13855 silent ticks, 1016 members blocked, 5270 unblocks
+--- PASS: TestRandomBatchModelsAgainstSpec (3.72s)
+=== RUN   TestRandomBatchFailuresAreReal
+    kernel_check_batch_test.go:588: 1667 runs with the validator bypassed, 70 ended in ErrDeadlock, 55 in ErrStalled
+--- PASS: TestRandomBatchFailuresAreReal (3.16s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	6.887s
+exit 0 elapsed 8s

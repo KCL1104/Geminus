@@ -35,6 +35,7 @@ import (
 type bentry struct {
 	entity   uint64
 	from, at int
+	batch    uint64 // a member blocked from a batch process: its batch number (T-050)
 }
 
 type bchecker struct {
@@ -69,8 +70,12 @@ type bchecker struct {
 	due       [][]int64
 
 	// Calendars and release schedules (D-052, D-053, T-049;
-	// kernel_check_calendar_test.go): nil when the model has neither.
+	// kernel_check_calendar_test.go).
 	cal *calCheck
+
+	// Batch processes (D-054, T-050; kernel_check_batch_test.go): nil
+	// without one.
+	bat *batCheck
 }
 
 func newBChecker(p *Program, ir *model.ModelIR, rep uint32) *bchecker {
@@ -94,6 +99,7 @@ func newBChecker(p *Program, ir *model.ModelIR, rep uint32) *bchecker {
 		return t
 	}
 	c.cal = newCalCheck(p, ir)
+	c.bat = newBatCheck(p, ir)
 	for i, r := range p.resources {
 		c.ttf[i], c.ttr[i] = -1, -1
 		for _, x := range ir.Resources {
@@ -132,6 +138,9 @@ func (c *bchecker) Observe(o Observation) {
 		c.finishGroup()
 		if o.Tick > c.lastTick {
 			c.tickBoundary()
+			// Ticks with events but no observation in between: a batch's
+			// wait limit (T-050, kernel_check_batch_test.go).
+			c.silentTicks(o.Tick, false)
 		}
 	}
 	if c.started && o.Tick < c.lastTick {
@@ -205,6 +214,8 @@ func (c *bchecker) grantableWith(full bool) int {
 }
 
 func (c *bchecker) tickBoundary() {
+	c.sweep(c.lastTick) // a BATCH_TIMEOUT after the tick's last observation
+	c.batchBoundary()
 	if i := c.grantable(); i >= 0 {
 		c.fail("tick %d ended with a grantable request of %d at %d", c.lastTick, c.waiting[i].entity, c.waiting[i].process)
 	}
@@ -215,7 +226,7 @@ func (c *bchecker) tickBoundary() {
 			c.fail("tick %d: %d entities blocked at a buffer of %d holding %d of %d", c.lastTick, len(list), p, c.occupied[p], c.capacity[p])
 		}
 	}
-	if nblocked > 0 && c.nService == 0 && c.nDelay == 0 && c.grantableWith(true) < 0 {
+	if nblocked > 0 && c.nService == 0 && c.nDelay == 0 && c.pendingTimeouts() == 0 && c.grantableWith(true) < 0 {
 		c.fail("tick %d ended in a circular wait (%d blocked) without ErrDeadlock", c.lastTick, nblocked)
 	}
 	// A failure clock with a constant TTF fires when it is due.
@@ -231,11 +242,12 @@ func (c *bchecker) tickBoundary() {
 
 // deadlocked reports whether the reconstruction is a circular wait.
 func (c *bchecker) deadlocked() bool {
+	c.sweep(c.lastTick)
 	nblocked := 0
 	for _, l := range c.blocked {
 		nblocked += len(l)
 	}
-	return nblocked > 0 && c.nService == 0 && c.nDelay == 0 && c.grantableWith(true) < 0
+	return nblocked > 0 && c.nService == 0 && c.nDelay == 0 && c.pendingTimeouts() == 0 && c.grantableWith(true) < 0
 }
 
 // stalled reports whether the request of entity e is in D-050 B2's state:
@@ -397,6 +409,7 @@ func (c *bchecker) finishGroup() {
 			c.route(u, a.Entity, a.Node)
 		}
 	case first.Kind == ObsCapacity:
+		c.sweep(c.lastTick) // priority 15: a BATCH_TIMEOUT now comes no later
 		c.capacityChange(g)
 		u.at = len(g)
 	case first.Kind == ObsDelayEnd:
@@ -409,6 +422,13 @@ func (c *bchecker) finishGroup() {
 		c.route(u, first.Entity, first.Node)
 	case first.Kind == ObsServiceEnd || (first.Kind == ObsResource && slices.ContainsFunc(g, func(o Observation) bool { return o.Kind == ObsServiceEnd })):
 		end := g[slices.IndexFunc(g, func(o Observation) bool { return o.Kind == ObsServiceEnd })]
+		if c.isBatch(end.Node) {
+			c.batchEnd(u, end)
+			break
+		}
+		if end.Batch != 0 {
+			c.fail("tick %d: %+v outside a batch process", end.Tick, end)
+		}
 		if c.state[end.Entity] != "service" || c.where[end.Entity] != end.Node {
 			c.fail("service end of %d at %d from %q", end.Entity, end.Node, c.state[end.Entity])
 		}
@@ -422,6 +442,7 @@ func (c *bchecker) finishGroup() {
 		c.route(u, end.Entity, end.Node)
 	case first.Kind == ObsResourceDown || first.Kind == ObsBreakdownPending:
 		// A FAILURE event (priority 15): exactly one observation.
+		c.sweep(c.lastTick)
 		u.at++
 		c.failure(first)
 	case first.Kind == ObsResourceUp:
@@ -429,6 +450,7 @@ func (c *bchecker) finishGroup() {
 		// first waiting failure, if one waits (D-074 (a) option B, review
 		// round 1, M1), and nothing else (the dispatch it may ask for is
 		// an event of its own).
+		c.sweep(c.lastTick)
 		u.at++
 		c.repair(first)
 		if r := first.Resource; len(c.pending[r]) > 0 {
@@ -441,6 +463,7 @@ func (c *bchecker) finishGroup() {
 			}
 		}
 	default:
+		c.sweep(c.lastTick) // a DISPATCH, priority 20
 		c.dispatch(u)
 	}
 	if u.at != len(g) {
@@ -488,7 +511,19 @@ func (c *bchecker) route(u *cursor, e uint64, from int) {
 				c.fail("tick %d: %d blocked at %d (from %d) for buffer %d holding %d of %d", o.Tick, e, o.Node, from, p, c.occupied[max(p, 0)], c.capacity[max(p, 0)])
 				return
 			}
-			c.blocked[p] = append(c.blocked[p], bentry{e, from, o.At})
+			b := bentry{entity: e, from: from, at: o.At}
+			if c.isBatch(from) {
+				// A batch member keeps its batch's bundle (D-054).
+				b.batch = c.bat.memberOf[e]
+				if run := c.bat.runs[[2]uint64{uint64(from), b.batch}]; run != nil {
+					run.blocked++
+				}
+				c.bat.stats.blockedMembers++
+			}
+			if o.Batch != b.batch {
+				c.fail("tick %d: %+v, want batch %d", o.Tick, o, b.batch)
+			}
+			c.blocked[p] = append(c.blocked[p], b)
 			c.state[e], c.where[e] = "blocked", from
 			c.stats.blocks++
 		default:
@@ -500,6 +535,10 @@ func (c *bchecker) route(u *cursor, e uint64, from int) {
 }
 
 func (c *bchecker) enter(e uint64, p int) {
+	if c.isBatch(p) {
+		c.batchEnter(e, p)
+		return
+	}
 	delete(c.cal.since, e) // a new request: B2's since is the request's (T-049)
 	c.waiting = append(c.waiting, wreq{e, p})
 	c.occupied[p]++
@@ -516,28 +555,22 @@ func (c *bchecker) dispatch(u *cursor) {
 		}
 		w := c.waiting[i]
 		c.waiting = slices.Delete(c.waiting, i, i+1)
-		c.occupied[w.process]--
 		c.release(u, w.process, +1)
+		c.stats.grants++
+		if isBatchKey(w.entity) {
+			before := c.stats.unblocks
+			c.batchGrant(u, w.process)
+			chain += c.stats.unblocks - before
+			continue
+		}
+		c.occupied[w.process]--
 		u.next(fmt.Sprintf("service start of %d at %d", w.entity, w.process), func(o Observation) bool {
-			return o.Kind == ObsServiceStart && o.Entity == w.entity && o.Node == w.process
+			return o.Kind == ObsServiceStart && o.Entity == w.entity && o.Node == w.process && o.Batch == 0
 		})
 		c.state[w.entity], c.where[w.entity] = "service", w.process
 		c.nService++
-		c.stats.grants++
 		if len(c.blocked[w.process]) > 0 {
-			b := c.blocked[w.process][0]
-			c.blocked[w.process] = c.blocked[w.process][1:]
-			if c.p.nodes[b.from].typ == model.NodeProcess {
-				c.release(u, b.from, -1)
-			}
-			u.next(fmt.Sprintf("unblocked %d at %d", b.entity, b.from), func(o Observation) bool {
-				return o.Kind == ObsUnblocked && o.Entity == b.entity && o.Node == b.from
-			})
-			u.next(fmt.Sprintf("queue enter of %d at %d via %d", b.entity, w.process, b.at), func(o Observation) bool {
-				return o.Kind == ObsQueueEnter && o.Entity == b.entity && o.Node == w.process && o.At == b.at
-			})
-			c.enter(b.entity, w.process)
-			c.stats.unblocks++
+			c.unblockOne(u, w.process)
 			chain++
 		}
 	}

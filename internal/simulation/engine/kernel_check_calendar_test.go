@@ -531,8 +531,17 @@ func (c *bchecker) calendarFinish() {
 // last group was finished): the request is in B2's state at the end of
 // the tick, since the tick it says, its deadline is the one computed
 // here (unless TTRmax is unknown) and passed, and it is the first such
-// request in queue order.
+// request in queue order. An ErrStalled at a tick with no observation (a
+// BATCH_TIMEOUT's, T-050) runs the silent ticks up to it first, and one
+// that names a batch's oldest member is about the batch request (D-096
+// (g)).
 func (c *bchecker) stallProblem(se *StalledError, e uint64) string {
+	if se.Tick > c.lastTick {
+		c.tickBoundary()
+		c.silentTicks(se.Tick, true)
+	}
+	c.sweep(c.lastTick)
+	e = c.batchStalled(e)
 	c.b2Update()
 	if se.Tick != c.lastTick || !c.stalled(e) {
 		return fmt.Sprintf("not in B2's state at the end of tick %d (last %d)", se.Tick, c.lastTick)

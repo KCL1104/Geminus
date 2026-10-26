@@ -440,6 +440,10 @@ func FuzzKernel(f *testing.F) {
 	for _, m := range calendarSeeds(f) {
 		f.Add([]byte(m), uint32(0))
 	}
+	// T-050: models with batch processes (batch-goldens.json).
+	for _, m := range batchSeeds(f) {
+		f.Add([]byte(m), uint32(0))
+	}
 	f.Fuzz(func(t *testing.T, data []byte, index uint32) {
 		var ir model.ModelIR
 		if model.Decode(data, &ir) != nil {
