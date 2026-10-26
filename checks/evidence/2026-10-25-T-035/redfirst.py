@@ -111,7 +111,14 @@ cases = [
       'the-instruments-link-the-sdk|the-instruments-go-online|the-instruments-read-storage)$', './scripts/check-architecture/']),
 ]
 
-if git('status', '--porcelain', '--untracked-files=no'):
+def changed():
+    """Tracked files that differ from HEAD, outside the output directory
+    (its logs are this script's own output)."""
+    out = os.path.relpath(os.path.abspath(outdir), os.path.abspath(root)) + '/'
+    return [l for l in git('status', '--porcelain', '--untracked-files=no').splitlines() if not l[3:].startswith(out)]
+
+
+if changed():
     sys.exit('the tree is not clean: commit first')
 summary = []
 for name, ops, cmd in cases:
@@ -152,7 +159,7 @@ for name, ops, cmd in cases:
         f.write('# $ %s\n# exit %d\n' % (' '.join(cmd), r.returncode))
         f.write('\n'.join(lines) + '\n')
     summary.append('%-24s %-8s exit=%d  %s' % (name, verdict, r.returncode, ' '.join(cmd)))
-left = git('status', '--porcelain', '--untracked-files=no')
-summary.append('tree after the runs: ' + ('clean' if not left else 'NOT CLEAN\n' + left))
+left = changed()
+summary.append('tree after the runs (outside the logs): ' + ('clean' if not left else 'NOT CLEAN\n' + '\n'.join(left)))
 open(os.path.join(outdir, 'summary.txt'), 'w').write('\n'.join(summary) + '\n')
 print('\n'.join(summary))
