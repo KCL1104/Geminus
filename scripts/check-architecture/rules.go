@@ -314,12 +314,13 @@ var rules = []rule{
 		// T-035: every log line of the API and the worker passes this
 		// package's privacy filter, so it depends on nothing that could
 		// write around it: the standard library's computation, slog and the
-		// writer it is given; no other module package, no third party.
+		// writer it is given; no other module package, no third party beyond
+		// the kernel's own computation libraries.
 		name:       "observability-is-a-leaf",
-		why:        "internal/observability is the privacy filter every log line passes: standard library only (slog, regexp, strings...), no module package, no I/O of its own beyond the writer it is given (T-035, D-094)",
+		why:        "internal/observability is the privacy filter every log line passes: the standard library's slog, regexp and strings (and at most the kernel's computation libraries), no other module package, no I/O of its own beyond the writer it is given (T-035, D-094)",
 		applies:    []string{"./internal/observability"},
 		forbid:     cat(ioStd, dbDrivers, llmSDKs, []string{"testing"}),
-		thirdParty: []string{},
+		thirdParty: kernelThirdParty,
 		moduleOnly: []string{"./internal/observability"},
 		stdOnly:    []string{"context", "fmt", "io", "log/slog", "regexp", "slices", "strings", "sync", "unicode", "unicode/utf8"},
 		goOnly:     true,
@@ -332,7 +333,7 @@ var rules = []rule{
 		why:        "internal/audit is the catalogue every audit event is checked against: computation on the event only, no storage, tenant, HTTP, file or process access (T-035, D-091)",
 		applies:    []string{"./internal/audit"},
 		forbid:     cat(ioStd, dbDrivers, llmSDKs, []string{"testing"}),
-		thirdParty: []string{},
+		thirdParty: kernelThirdParty,
 		moduleOnly: []string{"./internal/audit", "./internal/observability"},
 		stdOnly:    []string{"errors", "fmt", "reflect", "regexp", "slices", "unicode/utf8"},
 		goOnly:     true,

@@ -436,6 +436,10 @@ func TestSyntheticGraph(t *testing.T) {
 	add(m("internal/import/report"), false, "encoding/csv")
 	add("encoding/csv", true)
 	add(m("internal/import/profile"), false, m("internal/model"), m("internal/import/report"), m("internal/storage/postgres"))
+	// T-035: the log filter and the audit catalogue, each guarded by its
+	// own rule.
+	add(m("internal/observability"), false)
+	add(m("internal/audit"), false, m("internal/observability"))
 	violations, errs := check(g, rules)
 	if len(errs) > 0 {
 		t.Fatal(errs)
