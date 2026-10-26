@@ -19,9 +19,9 @@ import (
 
 // The HTTP adapter of createImageProposal (T-056): a multipart/form-data
 // body whose parts base_version_id and, optionally, output_locale come
-// first, each once, and file last. The caller's role, AI and object
-// storage are checked before any of the body is read; the file is read
-// once, at most photo.MaxBytes.
+// first, each once, and file last. The caller's role, the photo path and
+// object storage are checked before any of the body is read; the file is
+// read once, at most photo.MaxBytes.
 
 // imageOverhead is the room the fields and part headers may take beside
 // the file in one request body.
@@ -152,13 +152,24 @@ func (h handlers) createImage(w http.ResponseWriter, r *http.Request, sc tenant.
 	return nil
 }
 
-// refusedImage maps the photo's own errors (photo, storage) to what the
-// client sees; nil for any other error.
+// refusedImage maps the photo's own errors (photo, storage, the photo path
+// off) to what the client sees; nil for any other error.
 func refusedImage(err error) error {
 	file := func(code httpapi.Code, message, reason, detail string) error {
 		return &httpapi.Error{Code: code, Message: message, Details: []httpapi.Detail{{Path: "/file", Reason: reason, Code: detail}}}
 	}
+	var ue *UnavailableError
 	switch {
+	case errors.As(err, &ue) && ue.Photo:
+		// The photo path is off (the T-056 follow-up): the proposals' code
+		// for its availability, and the code the worker would fail the
+		// photo with.
+		code, message := httpapi.AIProviderNotConfigured, "photos are not taken in this deployment; its photo path is not configured"
+		if ue.Availability == PolicyNotApproved {
+			code, message = httpapi.AIPolicyNotApproved, "photos are not taken until the owner turns on a photo path whose approval names images"
+		}
+		return &httpapi.Error{Code: code, Message: message, Details: []httpapi.Detail{{Path: "",
+			Reason: "the photo path is off, so the worker would not take the photo", Code: CodeImageUnsupported}}}
 	case errors.Is(err, photo.ErrFormat):
 		return file(httpapi.UnsupportedMediaType, "a photo or floor plan is a PNG or a JPEG", "the file is not a PNG or a JPEG", CodeImageFormatRejected)
 	case errors.Is(err, photo.ErrTooLarge):

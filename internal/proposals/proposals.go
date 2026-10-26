@@ -84,10 +84,21 @@ const (
 
 // UnavailableError is a request refused because AI is off (503 with Code);
 // nothing was stored.
-type UnavailableError struct{ Availability Availability }
+type UnavailableError struct {
+	Availability Availability
+	// Photo: the request is a photo, refused because the photo path is off
+	// (Service.Photo; the T-056 follow-up), details[0].code
+	// CodeImageUnsupported.
+	Photo bool
+}
 
 func (e *UnavailableError) Error() string {
-	if e.Availability == PolicyNotApproved {
+	switch {
+	case e.Photo && e.Availability == PolicyNotApproved:
+		return "proposals: the photo path is not approved (AI_POLICY_NOT_APPROVED, AI_IMAGE_UNSUPPORTED)"
+	case e.Photo:
+		return "proposals: the photo path is not configured (AI_PROVIDER_NOT_CONFIGURED, AI_IMAGE_UNSUPPORTED)"
+	case e.Availability == PolicyNotApproved:
 		return "proposals: live AI is not approved (AI_POLICY_NOT_APPROVED)"
 	}
 	return "proposals: AI is not configured (AI_PROVIDER_NOT_CONFIGURED)"
@@ -99,6 +110,11 @@ type Service struct {
 	// AI is this deployment's provider availability (cmd/api derives it
 	// from the configuration); the zero value refuses every new proposal.
 	AI Availability
+	// Photo is this deployment's photo path's availability (cmd/api derives
+	// it from the photo path's settings as the worker decides them, the
+	// T-056 follow-up, D-124); the zero value refuses every photo, whatever
+	// AI says of proposals in words.
+	Photo Availability
 	// Policy is the queue's (jobs.DefaultPolicy when zero).
 	Policy jobs.Policy
 	// Objects stores the photos proposals are asked for with (T-056,

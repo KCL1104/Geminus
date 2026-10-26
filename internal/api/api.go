@@ -37,6 +37,7 @@ type options struct {
 	maxUpload int64
 	upload    upload.Options
 	ai        proposals.Availability
+	photo     proposals.Availability
 }
 
 // WithObjects gives the API private object storage (D-044): dataset
@@ -67,6 +68,13 @@ func WithUploadTimeout(d time.Duration) Option {
 // derives it from the configuration, T-025). Without it every new proposal
 // is refused with 503 AI_PROVIDER_NOT_CONFIGURED and nothing is stored.
 func WithAI(a proposals.Availability) Option { return func(o *options) { o.ai = a } }
+
+// WithPhotoAI says whether this deployment's photo path takes photos
+// (cmd/api derives it from the photo path's settings as the worker decides
+// them, the T-056 follow-up). Without it every photo is refused with 503
+// AI_PROVIDER_NOT_CONFIGURED (details[0].code AI_IMAGE_UNSUPPORTED) and
+// nothing is stored, whatever WithAI says of proposals in words.
+func WithPhotoAI(a proposals.Availability) Option { return func(o *options) { o.photo = a } }
 
 // Domains lists the domains Handler serves (internal/packs, the registry
 // the worker builds as well).
@@ -104,7 +112,7 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	models.Register(mux, log, v, db, &models.Service{DB: db, Packs: served})
 	runs.Register(mux, log, v, db, &runs.Service{DB: db, Packs: served, Objects: o.objects, Limits: o.limits}, o.stream)
 	upload.Register(mux, log, v, db, &upload.Service{DB: db, Objects: o.objects, MaxBytes: o.maxUpload}, o.upload)
-	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai, Objects: o.objects})
+	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai, Photo: o.photo, Objects: o.objects})
 	// A person's decision (T-026): it calls no provider, so it does not
 	// depend on whether AI is available; it reads dataset snapshots again
 	// from the object storage given.

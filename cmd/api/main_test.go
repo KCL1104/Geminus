@@ -97,30 +97,109 @@ func TestAPIAvailability(t *testing.T) {
 
 // apiMeta and apiClaude are the API's settings with live AI on (T-053 I5):
 // the provider, its recorded approval, its model and the switch; no key.
+// apiClaudeMetaPhotos is Claude for the proposals and Meta for the photo
+// path (the T-056 follow-up).
 var (
-	apiMeta   = []string{"AI_PROVIDER", "meta", "AI_POLICY_APPROVAL", "H-029", "AI_MODEL", "muse-spark-1.3", "GEMINUS_AI_LIVE", "on"}
-	apiClaude = []string{"AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "H-018", "AI_MODEL", "claude-opus-5-5", "GEMINUS_AI_LIVE", "on"}
+	apiMeta             = []string{"AI_PROVIDER", "meta", "AI_POLICY_APPROVAL", "H-029", "AI_MODEL", "muse-spark-1.3", "GEMINUS_AI_LIVE", "on"}
+	apiClaude           = []string{"AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "H-018", "AI_MODEL", "claude-opus-5-5", "GEMINUS_AI_LIVE", "on"}
+	apiClaudeMetaPhotos = append(slices.Clone(apiClaude), "AI_VISION_PROVIDER", "meta", "AI_VISION_POLICY_APPROVAL", "H-029", "AI_VISION_MODEL", "muse-spark-1.3")
 )
+
+// The T-056 follow-up (D-124): the API takes a photo exactly when the
+// worker's photo path is on, decided from the photo path's settings without
+// any key (config.LoadAPIAI): the fake (development and tests), or a live
+// provider whose approval names images, its model and the switch; a live
+// provider that is not on is PolicyNotApproved (as for the proposals),
+// anything else NotConfigured. The proposals in words are decided on their
+// own: Claude's approval, which names no image, takes proposals and no
+// photo; the fake photo path in tests takes photos beside a disabled
+// provider.
+func TestAPIPhotoAvailability(t *testing.T) {
+	for _, c := range []struct {
+		name        string
+		env         []string
+		text, photo proposals.Availability
+	}{
+		{"default", nil, proposals.NotConfigured, proposals.NotConfigured},
+		{"disabled", []string{"AI_PROVIDER", "disabled"}, proposals.NotConfigured, proposals.NotConfigured},
+		{"meta live", apiMeta, proposals.Available, proposals.Available},
+		{"meta live, the photo path disabled", append(slices.Clone(apiMeta), "AI_VISION_PROVIDER", "disabled"), proposals.Available, proposals.NotConfigured},
+		{"meta, the switch off", apiMeta[:6], proposals.PolicyNotApproved, proposals.PolicyNotApproved},
+		{"meta without approval", []string{"AI_PROVIDER", "meta"}, proposals.PolicyNotApproved, proposals.PolicyNotApproved},
+		{"anthropic live: no image approved", apiClaude, proposals.Available, proposals.PolicyNotApproved},
+		{"anthropic, the switch off", apiClaude[:6], proposals.PolicyNotApproved, proposals.PolicyNotApproved},
+		{"anthropic live, meta for photos", apiClaudeMetaPhotos, proposals.Available, proposals.Available},
+		{"anthropic, meta for photos, the switch off", append(slices.Clone(apiClaudeMetaPhotos), "GEMINUS_AI_LIVE", "off"), proposals.PolicyNotApproved,
+			proposals.PolicyNotApproved},
+		{"anthropic live, meta for photos, no photo approval: off", append(slices.Clone(apiClaude[:6]), "AI_VISION_PROVIDER", "meta"),
+			proposals.PolicyNotApproved, proposals.PolicyNotApproved},
+		{"meta live, claude for photos", append(slices.Clone(apiMeta), "AI_VISION_PROVIDER", "anthropic", "AI_VISION_POLICY_APPROVAL", "H-018",
+			"AI_VISION_MODEL", "claude-opus-5-5"), proposals.Available, proposals.PolicyNotApproved},
+		{"the fake", []string{"AI_PROVIDER", "fake", "APP_ENV", "test"}, proposals.Available, proposals.Available},
+		{"the fake, photos disabled", []string{"AI_PROVIDER", "fake", "APP_ENV", "test", "AI_VISION_PROVIDER", "disabled"}, proposals.Available,
+			proposals.NotConfigured},
+		{"disabled, the fake photo path", []string{"APP_ENV", "development", "AI_VISION_PROVIDER", "fake"}, proposals.NotConfigured, proposals.Available},
+	} {
+		ai, err := config.LoadAPIAI(with(c.env...))
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		if text, photo := aiAvailability(ai), photoAvailability(ai); text != c.text || photo != c.photo {
+			t.Errorf("%s: proposals %v, photos %v; want %v, %v", c.name, text, photo, c.text, c.photo)
+		}
+	}
+	// Only a valid approval of the photo path's provider itself that names
+	// images makes photos available, however the value was made.
+	claude, err := config.LoadAPIAI(with(apiClaude...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta, err := config.LoadAPIAI(with(apiMeta...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, v := range map[string]config.APIAI{
+		"the zero value":                {},
+		"meta, no photo approval":       {Provider: config.AIProviderMeta, Approval: meta.Approval, Vision: config.APIVision{Provider: config.AIProviderMeta}},
+		"anthropic photos, H-018":       {Vision: config.APIVision{Provider: config.AIProviderAnthropic, Approval: claude.Approval, Model: claude.Model}},
+		"anthropic photos, H-029":       {Vision: config.APIVision{Provider: config.AIProviderAnthropic, Approval: meta.Vision.Approval}},
+		"disabled photos, an approval":  {Vision: config.APIVision{Provider: config.AIProviderDisabled, Approval: meta.Vision.Approval}},
+		"the proposals live, no photos": {Provider: config.AIProviderMeta, Approval: meta.Approval, Model: meta.Model},
+	} {
+		if got := photoAvailability(v); got == proposals.Available {
+			t.Errorf("%s: photos available", name)
+		}
+	}
+	if photoAvailability(meta) != proposals.Available {
+		t.Error("H-029 with the switch takes no photo")
+	}
+}
 
 // T-053 I5: the deployed API holds no AI key, so with the switch on, the
 // record's model and no key it starts and accepts proposals (here it gets
 // as far as the database, which is not there); its log says so, with the
 // provider, the model and a typed code, never a key. With the switch off it
-// starts and refuses them, the log naming the typed reason.
+// starts and refuses them, the log naming the typed reason. The T-056
+// follow-up: it says the same of photos, as the worker says whether its
+// photo path is on.
 func TestAPIAvailabilityNeedsNoKey(t *testing.T) {
+	photosOn := `"msg":"photo proposals are accepted; the worker calls the provider"`
+	photosOff := `"msg":"photo proposals are refused"`
 	for name, c := range map[string]struct {
 		env  []string
 		want []string
 	}{
 		"meta live": {apiMeta, []string{`"msg":"AI proposals are accepted; the worker calls the provider"`, `"provider":"meta"`,
-			`"model":"muse-spark-1.3"`, `"code":"LIVE_AI_ON"`}},
+			`"model":"muse-spark-1.3"`, `"code":"LIVE_AI_ON"`, photosOn, `"code":"PHOTO_PATH_ON"`}},
 		"anthropic live": {apiClaude, []string{`"msg":"AI proposals are accepted; the worker calls the provider"`, `"provider":"anthropic"`,
-			`"model":"claude-opus-5-5"`, `"code":"LIVE_AI_ON"`}},
+			`"model":"claude-opus-5-5"`, `"code":"LIVE_AI_ON"`, photosOff, `"code":"IMAGES_NOT_APPROVED"`}},
+		"anthropic live, meta for photos": {apiClaudeMetaPhotos, []string{`"msg":"AI proposals are accepted; the worker calls the provider"`,
+			`"code":"LIVE_AI_ON"`, photosOn, `"provider":"meta"`, `"model":"muse-spark-1.3"`, `"code":"PHOTO_PATH_ON"`}},
 		"meta, the switch off": {append(slices.Clone(apiMeta), "GEMINUS_AI_LIVE", "off"), []string{`"msg":"AI proposals are refused"`,
-			`"provider":"meta"`, `"code":"SWITCH_OFF"`}},
+			`"provider":"meta"`, `"code":"SWITCH_OFF"`, photosOff}},
 		"meta, another model, the switch off": {append(slices.Clone(apiMeta), "GEMINUS_AI_LIVE", "", "AI_MODEL", "muse-spark-1.2"),
-			[]string{`"msg":"AI proposals are refused"`, `"code":"MODEL_MISMATCH"`}},
-		"anthropic, no approval": {[]string{"AI_PROVIDER", "anthropic"}, []string{`"msg":"AI proposals are refused"`, `"code":"NO_APPROVAL_NAMED"`}},
+			[]string{`"msg":"AI proposals are refused"`, `"code":"MODEL_MISMATCH"`, photosOff}},
+		"anthropic, no approval": {[]string{"AI_PROVIDER", "anthropic"}, []string{`"msg":"AI proposals are refused"`, `"code":"NO_APPROVAL_NAMED"`, photosOff}},
 	} {
 		var stderr syncBuffer
 		if code := refused(t, with(c.env...), &stderr); code != exitDatabase {
@@ -134,11 +213,18 @@ func TestAPIAvailabilityNeedsNoKey(t *testing.T) {
 		}
 	}
 	// Disabled and the fake say nothing of a live provider.
-	for _, env := range [][]string{nil, {"AI_PROVIDER", "fake", "APP_ENV", "test"}} {
+	for _, env := range [][]string{nil, {"AI_PROVIDER", "fake", "APP_ENV", "test"}, {"APP_ENV", "test", "AI_VISION_PROVIDER", "fake"}} {
 		var stderr syncBuffer
-		if code := refused(t, with(env...), &stderr); code != exitDatabase || strings.Contains(stderr.String(), "AI proposals") {
+		if code := refused(t, with(env...), &stderr); code != exitDatabase || strings.Contains(stderr.String(), "AI proposals") ||
+			strings.Contains(stderr.String(), "photo proposals") {
 			t.Errorf("%v: exit %d: %s", env, code, stderr.String())
 		}
+	}
+	// The fake with its photo path disabled: neither is a live provider.
+	var stderr syncBuffer
+	if code := refused(t, with("AI_PROVIDER", "fake", "APP_ENV", "test", "AI_VISION_PROVIDER", "disabled"), &stderr); code != exitDatabase ||
+		strings.Contains(stderr.String(), "proposals are") {
+		t.Errorf("the fake, photos disabled: exit %d: %s", code, stderr.String())
 	}
 }
 
@@ -157,6 +243,14 @@ func TestAPIAvailabilityRefusesAMismatch(t *testing.T) {
 		"no approval":            {[]string{"AI_POLICY_APPROVAL", ""}, "GEMINUS_AI_LIVE (invalid)"},
 		"the switch, disabled":   {[]string{"AI_PROVIDER", "disabled", "AI_POLICY_APPROVAL", "", "AI_MODEL", ""}, "GEMINUS_AI_LIVE (invalid)"},
 		"another provider":       {[]string{"AI_PROVIDER", "openai"}, "AI_PROVIDER (invalid)"},
+		// The T-056 follow-up: the photo path's settings, as the worker reads them.
+		"another photo provider":     {[]string{"AI_VISION_PROVIDER", "openai"}, "AI_VISION_PROVIDER (invalid)"},
+		"fake photos in production":  {[]string{"AI_VISION_PROVIDER", "fake", "APP_ENV", "production"}, "AI_VISION_PROVIDER (invalid)"},
+		"a photo approval to follow": {[]string{"AI_VISION_POLICY_APPROVAL", "H-029"}, "AI_VISION_POLICY_APPROVAL (invalid)"},
+		"claude photos, no approval": {[]string{"AI_VISION_PROVIDER", "anthropic", "AI_VISION_MODEL", "claude-opus-5-5"}, "AI_VISION_POLICY_APPROVAL (required)"},
+		"claude photos, H-029":       {[]string{"AI_VISION_PROVIDER", "anthropic", "AI_VISION_POLICY_APPROVAL", "H-029", "AI_VISION_MODEL", "muse-spark-1.3"}, "AI_VISION_POLICY_APPROVAL (provider_mismatch)"},
+		"claude photos, no model":    {[]string{"AI_VISION_PROVIDER", "anthropic", "AI_VISION_POLICY_APPROVAL", "H-018"}, "AI_VISION_MODEL (required)"},
+		"claude photos, unrecorded":  {[]string{"AI_VISION_PROVIDER", "anthropic", "AI_VISION_POLICY_APPROVAL", "H-033", "AI_VISION_MODEL", "x"}, "AI_VISION_POLICY_APPROVAL (not_approved)"},
 	} {
 		var stderr syncBuffer
 		if code := refused(t, with(append(slices.Clone(apiMeta), c.env...)...), &stderr); code != exitConfig {
@@ -164,7 +258,7 @@ func TestAPIAvailabilityRefusesAMismatch(t *testing.T) {
 			continue
 		}
 		if out := stderr.String(); !strings.Contains(out, `"msg":"invalid configuration"`) || !strings.Contains(out, c.want) ||
-			strings.Contains(out, "database") || strings.Contains(out, "AI proposals are") {
+			strings.Contains(out, "database") || strings.Contains(out, "proposals are") {
 			t.Errorf("%s: %s", name, out)
 		}
 	}
@@ -177,7 +271,8 @@ func TestAPIRefusesToStartWithAKey(t *testing.T) {
 	const value = "SENTINEL-key-value-0123456789abcdef"
 	for _, k := range []string{"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_API_KEY",
 		"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY"} {
-		for name, env := range map[string][]string{"default": nil, "meta live": apiMeta, "anthropic, the switch off": apiClaude[:6]} {
+		for name, env := range map[string][]string{"default": nil, "meta live": apiMeta, "anthropic, the switch off": apiClaude[:6],
+			"anthropic live, meta for photos": apiClaudeMetaPhotos, "the fake photo path": {"APP_ENV", "test", "AI_VISION_PROVIDER", "fake"}} {
 			var stderr syncBuffer
 			if code := refused(t, with(append(slices.Clone(env), k, value)...), &stderr); code != exitConfig {
 				t.Errorf("%s, %s: exit %d: %s", k, name, code, stderr.String())

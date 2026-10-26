@@ -31,7 +31,9 @@ import (
 // ask and the file is read once:
 //
 //   - BeginImage checks, before the body is read, the caller's role (owner
-//     or editor), that AI is on and that photos can be stored.
+//     or editor), that the photo path is on (Service.Photo, decided as the
+//     worker decides it: the T-056 follow-up) and that photos can be
+//     stored.
 //   - CreateFromImage checks the fields and the base (404, 422, 409) before
 //     anything is stored, then the image (internal/proposals/photo: PNG or
 //     JPEG, its size, its pixels; its pixels encoded again, no metadata),
@@ -61,6 +63,10 @@ const (
 	CodeImageFormatRejected = "IMAGE_FORMAT_REJECTED"
 	CodeImageInvalid        = "IMAGE_INVALID"
 	CodeImagePixels         = "IMAGE_PIXELS_EXCEEDED"
+	// CodeImageUnsupported: the photo path is off (Service.Photo), so the
+	// worker would not take the photo; the code it would fail the proposal
+	// with (internal/proposals/generator's ImageUnsupported).
+	CodeImageUnsupported = "AI_IMAGE_UNSUPPORTED"
 )
 
 // ImageFields are a photo request's form fields.
@@ -88,16 +94,16 @@ func (f ImageFields) check() (locale.Locale, error) {
 }
 
 // BeginImage checks, before the body is read, that the caller may ask for a
-// proposal in the scope's organization, that AI is on and that photos can
-// be stored. Nothing is stored.
+// proposal in the scope's organization, that the photo path is on and that
+// photos can be stored. Nothing is stored.
 func (s *Service) BeginImage(ctx context.Context, sc tenant.Scope) error {
 	if err := s.DB.Run(ctx, sc, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
 		return m.Require(writeRoles...)
 	}); err != nil {
 		return err
 	}
-	if s.AI != Available {
-		return &UnavailableError{Availability: s.AI}
+	if s.Photo != Available {
+		return &UnavailableError{Availability: s.Photo, Photo: true}
 	}
 	if s.Objects == nil {
 		return ErrStorageUnavailable
@@ -225,8 +231,8 @@ func (s *Service) CreateFromImage(ctx context.Context, sc tenant.Scope, requestI
 		if stored == nil {
 			return ErrRetry // only hashed, and the key is free after all
 		}
-		if s.AI != Available {
-			return &UnavailableError{Availability: s.AI}
+		if s.Photo != Available {
+			return &UnavailableError{Availability: s.Photo, Photo: true}
 		}
 		// The model's row first, as every write about its versions takes
 		// it (ADR-022).

@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -55,9 +56,10 @@ type photoEnv struct {
 	w      *worker.Worker
 }
 
-// setupPhotos is setup with AI available, object storage, and the worker
-// side: the generator over the fake vision model and T-055's segmenter
-// client over the fake segmenter, with the electronics line pack.
+// setupPhotos is setup with AI and its photo path available, object
+// storage, and the worker side: the generator over the fake vision model and
+// T-055's segmenter client over the fake segmenter, with the electronics
+// line pack.
 func setupPhotos(t *testing.T, opts ...api.Option) *photoEnv {
 	t.Helper()
 	root := t.TempDir()
@@ -65,7 +67,7 @@ func setupPhotos(t *testing.T, opts ...api.Option) *photoEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e := setup(t, append([]api.Option{api.WithAI(proposals.Available), api.WithObjects(fs)}, opts...)...)
+	e := setup(t, append([]api.Option{api.WithAI(proposals.Available), api.WithPhotoAI(proposals.Available), api.WithObjects(fs)}, opts...)...)
 	pool := dbtest.Pool(t, dbtest.LoginURL(t, dbtest.WorkerLogin), 8, true)
 	scope, err := workerscope.New(pool, []string{e.a.ID, e.b.ID})
 	if err != nil {
@@ -563,25 +565,70 @@ func TestPhotoStaleBaseAndAvailability(t *testing.T) {
 	if r.status != 409 || code(t, r) != "MODEL_VERSION_CONFLICT" {
 		t.Errorf("stale: %d %s", r.status, r.body)
 	}
-	for name, opts := range map[string][]api.Option{
-		"AI off":              {api.WithAI(proposals.NotConfigured)},
-		"policy not approved": {api.WithAI(proposals.PolicyNotApproved)},
-		"no object storage":   {api.WithAI(proposals.Available)},
+	// The T-056 follow-up (D-124): the photo path is decided on its own
+	// (cmd/api: from AI_VISION_*, as the worker decides it); off, a photo is
+	// refused before anything is stored, with details[0].code
+	// AI_IMAGE_UNSUPPORTED, and proposals in words are not affected.
+	for name, c := range map[string]struct {
+		opts    []api.Option
+		storage bool
+		photo   string // the photo's code ("" for 202)
+		detail  string // its details[0].code
+		words   string // a proposal in words' code ("" for 202)
+	}{
+		"AI off": {[]api.Option{api.WithAI(proposals.NotConfigured), api.WithPhotoAI(proposals.NotConfigured)}, true,
+			"AI_PROVIDER_NOT_CONFIGURED", "AI_IMAGE_UNSUPPORTED", "AI_PROVIDER_NOT_CONFIGURED"},
+		"policy not approved": {[]api.Option{api.WithAI(proposals.PolicyNotApproved), api.WithPhotoAI(proposals.PolicyNotApproved)}, true,
+			"AI_POLICY_NOT_APPROVED", "AI_IMAGE_UNSUPPORTED", "AI_POLICY_NOT_APPROVED"},
+		"words on, the photo path off": {[]api.Option{api.WithAI(proposals.Available), api.WithPhotoAI(proposals.NotConfigured)}, true,
+			"AI_PROVIDER_NOT_CONFIGURED", "AI_IMAGE_UNSUPPORTED", ""},
+		"words on, the photo path not approved": {[]api.Option{api.WithAI(proposals.Available), api.WithPhotoAI(proposals.PolicyNotApproved)}, true,
+			"AI_POLICY_NOT_APPROVED", "AI_IMAGE_UNSUPPORTED", ""},
+		"words on, the photo path not said": {[]api.Option{api.WithAI(proposals.Available)}, true, "AI_PROVIDER_NOT_CONFIGURED", "AI_IMAGE_UNSUPPORTED", ""},
+		"words off, the photo path on":      {[]api.Option{api.WithAI(proposals.NotConfigured), api.WithPhotoAI(proposals.Available)}, true, "", "", "AI_PROVIDER_NOT_CONFIGURED"},
+		"no object storage":                 {[]api.Option{api.WithAI(proposals.Available), api.WithPhotoAI(proposals.Available)}, false, "SERVICE_UNAVAILABLE", "", ""},
 	} {
-		var o *env
-		if name == "no object storage" {
-			o = setup(t, opts...)
-		} else {
-			o = setupPhotos(t, opts...).env
+		opts := c.opts
+		if c.storage {
+			fs, err := objects.NewFS(t.TempDir(), "test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			opts = append(slices.Clone(opts), api.WithObjects(fs))
 		}
+		o := setup(t, opts...)
+		editor := o.a.Members[tenant.Editor]
 		m, v := o.bareLine(t, o.a)
-		r := o.photo(t, o.a.Members[tenant.Editor].Subject, o.a.ID, m, "off-"+strings.ReplaceAll(name, " ", "-"), photoParts(v, "", demo.Image))
-		want := map[string]string{"AI off": "AI_PROVIDER_NOT_CONFIGURED", "policy not approved": "AI_POLICY_NOT_APPROVED", "no object storage": "SERVICE_UNAVAILABLE"}[name]
-		if r.status != 503 || code(t, r) != want {
+		r := o.photo(t, editor.Subject, o.a.ID, m, "off-"+strings.ReplaceAll(name, " ", "-"), photoParts(v, "", demo.Image))
+		stored := 0
+		switch {
+		case c.photo == "" && r.status == 202:
+			stored = 1
+		case c.photo == "" || r.status != 503 || code(t, r) != c.photo:
 			t.Errorf("%s: %d %s", name, r.status, r.body)
+		default:
+			got := decode[struct {
+				Error struct {
+					Details []struct {
+						Path string `json:"path"`
+						Code string `json:"code"`
+					} `json:"details"`
+				} `json:"error"`
+			}](t, r).Error.Details
+			if c.detail != "" && (len(got) != 1 || got[0].Path != "" || got[0].Code != c.detail) || c.detail == "" && len(got) != 0 {
+				t.Errorf("%s: details %+v, want %q", name, got, c.detail)
+			}
 		}
-		if n := o.count(`SELECT count(*) FROM twin.ai_proposals WHERE organization_id=$1`, o.a.ID); n != 0 {
-			t.Errorf("%s: %d proposals stored", name, n)
+		if n := o.count(`SELECT count(*) FROM twin.ai_proposals WHERE organization_id=$1`, o.a.ID); n != stored {
+			t.Errorf("%s: %d proposals stored, want %d", name, n, stored)
+		}
+		if n := o.count(`SELECT count(*) FROM twin.ai_proposal_images i JOIN twin.ai_proposals p ON p.id=i.proposal_id WHERE p.organization_id=$1`, o.a.ID); n != stored {
+			t.Errorf("%s: %d photos stored, want %d", name, n, stored)
+		}
+		// A proposal in words, in the same deployment.
+		w := o.propose(editor.Subject, o.a.ID, m, "words-"+strings.ReplaceAll(name, " ", "-"), proposalBody(v, "edit", "raise the SMT capacity"))
+		if c.words == "" && w.status != 202 || c.words != "" && (w.status != 503 || code(t, w) != c.words) {
+			t.Errorf("%s, in words: %d %s", name, w.status, w.body)
 		}
 	}
 }

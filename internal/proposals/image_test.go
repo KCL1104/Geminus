@@ -2,6 +2,8 @@ package proposals
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -68,5 +70,47 @@ func TestRefusedPhoto(t *testing.T) {
 		return r.OperationID == "createImageProposal" && r.Method == "POST" && r.Path == "/v1/models/{id}/ai-proposals/image"
 	}) {
 		t.Error("no createImageProposal route")
+	}
+}
+
+// The T-056 follow-up (D-124): a photo refused because this deployment's
+// photo path is off is 503 with the code the proposals' availability would
+// have (AI_PROVIDER_NOT_CONFIGURED, or AI_POLICY_NOT_APPROVED for a live
+// provider that is not on), and details[0].code AI_IMAGE_UNSUPPORTED, the
+// code the worker would fail the photo with; a proposal in words refused
+// for AI is as before, without details. The bodies are openapi.yaml's
+// createImageProposal 503 examples.
+func TestRefusedPhotoPathOff(t *testing.T) {
+	spec, err := os.ReadFile(filepath.Join("..", "..", "openapi", "openapi.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for a, want := range map[Availability]httpapi.Code{NotConfigured: httpapi.AIProviderNotConfigured, PolicyNotApproved: httpapi.AIPolicyNotApproved} {
+		var he *httpapi.Error
+		if !errors.As(Refused(&UnavailableError{Availability: a, Photo: true}), &he) || he.Code != want {
+			t.Errorf("photos, %v: %v, want %s", a, Refused(&UnavailableError{Availability: a, Photo: true}), want)
+			continue
+		}
+		if len(he.Details) != 1 || he.Details[0].Path != "" || he.Details[0].Code != CodeImageUnsupported || he.Details[0].Reason == "" {
+			t.Errorf("photos, %v: details %+v", a, he.Details)
+			continue
+		}
+		for _, line := range []string{"code: " + string(he.Code), "message: " + he.Message, "reason: " + he.Details[0].Reason, "code: " + CodeImageUnsupported} {
+			if !strings.Contains(string(spec), "\n                      "+line+"\n") && !strings.Contains(string(spec), "\n                        "+line+"\n") {
+				t.Errorf("photos, %v: openapi.yaml's createImageProposal examples have no %q", a, line)
+			}
+		}
+		// The proposals in words are refused as they were.
+		if !errors.As(Refused(&UnavailableError{Availability: a}), &he) || he.Code != want || len(he.Details) != 0 {
+			t.Errorf("words, %v: %+v", a, he)
+		}
+	}
+	if CodeImageUnsupported != "AI_IMAGE_UNSUPPORTED" {
+		t.Errorf("CodeImageUnsupported is %q", CodeImageUnsupported)
+	}
+	// A service that was not told otherwise takes no photo (fail closed),
+	// whatever it says of proposals in words.
+	if (Service{AI: Available}).Photo != NotConfigured {
+		t.Error("the zero photo path takes photos")
 	}
 }

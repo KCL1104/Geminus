@@ -4,9 +4,10 @@
 // (refusing an unsafe one), builds the token verifier and serves
 // internal/api's handler, behind the access log (httpapi.AccessLog), until
 // SIGINT or SIGTERM. Its log is observability's (T-035). It never holds an
-// AI key and never calls a provider: whether it accepts AI proposals is
-// decided from the non-secret AI settings (config.LoadAPIAI, T-053 I5), and
-// any AI key variable in its environment stops it.
+// AI key and never calls a provider: whether it accepts AI proposals, and
+// photo proposals, is decided from the non-secret AI settings
+// (config.LoadAPIAI, T-053 I5 and the T-056 follow-up), and any AI key
+// variable in its environment stops it.
 package main
 
 import (
@@ -84,7 +85,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
-	opts := []api.Option{api.WithAI(aiAvailability(ai))}
+	opts := []api.Option{api.WithAI(aiAvailability(ai)), api.WithPhotoAI(photoAvailability(ai))}
 	store, err := objectStore(cfg)
 	if err != nil {
 		log.Error("invalid configuration", "error", "the object storage cannot be used: "+err.Error())
@@ -161,12 +162,29 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 // worker does) and holds no key. Both live providers, Anthropic and Meta
 // (T-055), are treated alike.
 func aiAvailability(ai config.APIAI) proposals.Availability {
+	return availability(ai.Provider, ai.LiveEnabled())
+}
+
+// photoAvailability is whether new photo proposals are accepted (the T-056
+// follow-up, D-124): as aiAvailability, for the photo path the worker would
+// run with the same settings (config.APIVision: AI_VISION_PROVIDER, unset
+// the proposals' provider; a live one on only with an approval that names
+// images, its model and the switch). Off, a photo is refused before any of
+// it is read, with the code the worker would fail it with.
+func photoAvailability(ai config.APIAI) proposals.Availability {
+	return availability(ai.Vision.Provider, ai.Vision.LiveEnabled())
+}
+
+// availability is a path's: available with the fake or a live provider that
+// is on (live), PolicyNotApproved for a live provider that is not, and
+// NotConfigured otherwise.
+func availability(p config.AIProvider, live bool) proposals.Availability {
 	switch {
-	case ai.Provider == config.AIProviderFake:
+	case p == config.AIProviderFake:
 		return proposals.Available
-	case ai.LiveEnabled():
+	case live:
 		return proposals.Available
-	case ai.Provider == config.AIProviderAnthropic || ai.Provider == config.AIProviderMeta:
+	case p == config.AIProviderAnthropic || p == config.AIProviderMeta:
 		return proposals.PolicyNotApproved
 	}
 	return proposals.NotConfigured
@@ -174,8 +192,10 @@ func aiAvailability(ai config.APIAI) proposals.Availability {
 
 // logAI says, for a live provider, whether the API accepts AI proposals
 // (T-053 I5): the provider, the model and LIVE_AI_ON, or the typed reason
-// it refuses them, as the worker's log says whether live AI is on; never a
-// key (the API holds none).
+// it refuses them, as the worker's log says whether live AI is on; and the
+// same of photos for a live photo path (PHOTO_PATH_ON, or the reason, as
+// the worker says whether its photo path is on); never a key (the API holds
+// none).
 func logAI(log *slog.Logger, ai config.APIAI) {
 	switch {
 	case ai.Provider != config.AIProviderAnthropic && ai.Provider != config.AIProviderMeta:
@@ -183,6 +203,13 @@ func logAI(log *slog.Logger, ai config.APIAI) {
 		log.Info("AI proposals are accepted; the worker calls the provider", "provider", string(ai.Provider), "model", ai.Model, "code", "LIVE_AI_ON")
 	default:
 		log.Info("AI proposals are refused", "provider", string(ai.Provider), "code", strings.ToUpper(ai.LiveOff))
+	}
+	switch v := ai.Vision; {
+	case v.Provider != config.AIProviderAnthropic && v.Provider != config.AIProviderMeta:
+	case v.LiveEnabled():
+		log.Info("photo proposals are accepted; the worker calls the provider", "provider", string(v.Provider), "model", v.Model, "code", "PHOTO_PATH_ON")
+	default:
+		log.Info("photo proposals are refused", "provider", string(v.Provider), "code", strings.ToUpper(v.LiveOff))
 	}
 }
 

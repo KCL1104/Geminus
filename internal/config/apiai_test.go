@@ -12,7 +12,10 @@ import (
 // AI_PROVIDER, AI_POLICY_APPROVAL, AI_MODEL and GEMINUS_AI_LIVE, with the
 // worker's live gate but for the keys: it never reads or requires one, and
 // any AI key variable in its environment stops it, the error naming the
-// variable, never its value.
+// variable, never its value. The T-056 follow-up (D-124): it decides
+// whether it takes photos the same way, from the photo path's
+// AI_VISION_PROVIDER, AI_VISION_POLICY_APPROVAL and AI_VISION_MODEL
+// (apivision_test.go).
 
 // apiKeyNames are the AI key variables the API refuses (hard-coded here, so
 // a name dropped from the code's list fails).
@@ -20,8 +23,10 @@ var apiKeyNames = []string{"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API
 	"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY"}
 
 // apiSettings are all the API's AI loader may read besides the key
-// variables, whose presence it checks.
-var apiSettings = []string{"AI_PROVIDER", "AI_POLICY_APPROVAL", "AI_MODEL", "GEMINUS_AI_LIVE", "APP_ENV"}
+// variables, whose presence it checks: the proposals' settings and the
+// photo path's (the T-056 follow-up).
+var apiSettings = []string{"AI_PROVIDER", "AI_POLICY_APPROVAL", "AI_MODEL", "GEMINUS_AI_LIVE", "APP_ENV",
+	"AI_VISION_PROVIDER", "AI_VISION_POLICY_APPROVAL", "AI_VISION_MODEL"}
 
 // apiMeta and apiClaude are the API's settings of a live provider with the
 // switch on: the record, its model, the switch; no key.
@@ -48,22 +53,25 @@ func readOnly(t *testing.T, name string, r *recorder) {
 
 // With the switch on and the record's model, the API accepts proposals for
 // both live providers without any key; the worker's LoadAI, with the same
-// settings, still needs the keys (the worker side is unchanged). The worker's
-// other settings (the photo path, the limits, the budget) are not the API's:
-// it does not read them, even when they would not do for the worker.
+// settings, still needs the keys (the worker side is unchanged). The photo
+// path follows: on with Meta's H-029, which names images, off with Claude's
+// H-018, which names none (images_not_approved). The worker's other
+// settings (the limits, the budget) are not the API's: it does not read
+// them, even when they would not do for the worker. (The photo path's
+// settings are the API's since the T-056 follow-up: apivision_test.go.)
 func TestAPIAIIsKeyFree(t *testing.T) {
 	for name, c := range map[string]struct {
 		env             map[string]string
 		provider        AIProvider
 		approval, model string
+		photoOff        string // the photo path's LiveOff ("" for on)
 		workerNeeds     []string
 	}{
-		"meta":      {apiMeta(), AIProviderMeta, "H-029", "muse-spark-1.3", []string{"GEMINUS_MUSE_API_KEY:required"}},
-		"anthropic": {apiClaude(), AIProviderAnthropic, "H-018", "claude-opus-5-5", []string{"GEMINUS_ANTHROPIC_API_KEY_A:required", "GEMINUS_ANTHROPIC_API_KEY_B:required"}},
+		"meta":      {apiMeta(), AIProviderMeta, "H-029", "muse-spark-1.3", "", []string{"GEMINUS_MUSE_API_KEY:required"}},
+		"anthropic": {apiClaude(), AIProviderAnthropic, "H-018", "claude-opus-5-5", LiveOffImagesNotApproved, []string{"GEMINUS_ANTHROPIC_API_KEY_A:required", "GEMINUS_ANTHROPIC_API_KEY_B:required"}},
 	} {
 		kv := maps.Clone(c.env)
-		maps.Copy(kv, map[string]string{"AI_VISION_PROVIDER": "openai", "AI_VISION_MODEL": "x", "AI_MONTHLY_LIMIT_USD": "1000000",
-			"AI_MAX_RETRIES": "-1"})
+		maps.Copy(kv, map[string]string{"AI_MONTHLY_LIMIT_USD": "1000000", "AI_DAILY_LIMIT_USD": "x", "AI_MAX_RETRIES": "-1", "AI_TIMEOUT_SECONDS": "0"})
 		r := &recorder{kv: kv}
 		a, err := LoadAPIAI(r.get)
 		if err != nil {
@@ -73,7 +81,10 @@ func TestAPIAIIsKeyFree(t *testing.T) {
 			a.Model != c.model {
 			t.Errorf("%s: %+v", name, a)
 		}
-		readOnly(t, name, r)
+		if v := a.Vision; v.Provider != c.provider || v.LiveOff != c.photoOff || v.LiveEnabled() != (c.photoOff == "") {
+			t.Errorf("%s: the photo path %+v", name, v)
+		}
+		readOnly(t, name, r) // the limits and the budget among the worker's
 		if _, err := LoadAI(env(c.env)); !slices.Equal(codes(t, err), c.workerNeeds) {
 			t.Errorf("%s: the worker's gate: %v, want %v", name, err, c.workerNeeds)
 		}
@@ -216,6 +227,12 @@ func TestAPIAIRefusesAnyKey(t *testing.T) {
 		"meta, off":      func() map[string]string { kv := apiMeta(); delete(kv, "GEMINUS_AI_LIVE"); return kv }(),
 		"anthropic, on":  apiClaude(),
 		"anthropic, off": func() map[string]string { kv := apiClaude(); kv["GEMINUS_AI_LIVE"] = "off"; return kv }(),
+		// The T-056 follow-up: the photo path's own provider changes nothing.
+		"anthropic, meta for photos, on":  apiClaudeMetaPhotos(),
+		"meta, the photo path disabled":   func() map[string]string { kv := apiMeta(); kv["AI_VISION_PROVIDER"] = "disabled"; return kv }(),
+		"the fake, the fake photo path":   {"AI_PROVIDER": "fake", "APP_ENV": "test", "AI_VISION_PROVIDER": "fake"},
+		"disabled, the fake photo path":   {"APP_ENV": "development", "AI_VISION_PROVIDER": "fake"},
+		"anthropic, meta for photos, off": func() map[string]string { kv := apiClaudeMetaPhotos(); delete(kv, "GEMINUS_AI_LIVE"); return kv }(),
 	}
 	for base, kv := range bases {
 		for _, k := range apiKeyNames {

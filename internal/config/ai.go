@@ -64,8 +64,9 @@ import (
 // names it by label.
 //
 // LoadAI is the worker's (and the live eval's). The API never holds a key:
-// it decides whether it accepts proposals with LoadAPIAI, the same gate
-// without the keys (apiai.go; T-053 I5).
+// it decides whether it accepts proposals, and photos, with LoadAPIAI, the
+// same decision without the keys (decide with keyFree, apiai.go; T-053 I5,
+// and for photos the T-056 follow-up).
 type AI struct {
 	Provider AIProvider
 	// Approval is the recorded approval AI_POLICY_APPROVAL names; the zero
@@ -112,8 +113,14 @@ const (
 
 // LiveEnabled reports whether the live provider may be called: a live
 // provider with a valid approval of its own.
-func (a AI) LiveEnabled() bool {
-	return a.Provider.live() && a.Approval.Valid() && a.Approval.Provider() == string(a.Provider)
+func (a AI) LiveEnabled() bool { return liveFor(a.Provider, a.Approval, false) }
+
+// liveFor reports whether provider p may be called with approval a: a live
+// provider with a valid approval of its own and, for the photo path
+// (images), one whose data policy names images. It is every LiveEnabled's,
+// the worker's (AI, AIVision) and the API's (APIAI, APIVision).
+func liveFor(p AIProvider, a aiapproval.Approval, images bool) bool {
+	return p.live() && a.Valid() && a.Provider() == string(p) && (!images || a.AllowsImages())
 }
 
 // AIVision is the photo path's configuration (T-055, for T-056; H-033):
@@ -138,9 +145,7 @@ type AIVision struct {
 
 // LiveEnabled reports whether the photo path's live provider may be
 // called: a live provider whose valid approval names images.
-func (v AIVision) LiveEnabled() bool {
-	return v.Provider.live() && v.Approval.Valid() && v.Approval.Provider() == string(v.Provider) && v.Approval.AllowsImages()
-}
+func (v AIVision) LiveEnabled() bool { return liveFor(v.Provider, v.Approval, true) }
 
 // AICredential is one API key and the label that proposals, analyses and
 // audit name it by ("org-a", "org-b", "meta").
@@ -193,16 +198,78 @@ const (
 func LoadAI(getenv func(string) string) (AI, error) {
 	var errs []error
 	env := getenv("APP_ENV")
-	approval := getenv("AI_POLICY_APPROVAL")
 	fakeOK := env == "development" || env == "test"
 
 	p, perrs := aiProvider(getenv, fakeOK)
 	errs = append(errs, perrs...)
-	ai := AI{Provider: p}
 	if getenv("AI_API_KEY") != "" {
 		errs = append(errs, &Error{"AI_API_KEY", CodeInvalid,
 			"not read: the live adapters take GEMINUS_ANTHROPIC_API_KEY_A and _B, or GEMINUS_MUSE_API_KEY, and only once live AI is on (D-018)"})
 	}
+	// The proposals and the photo path: each live provider's keys are read
+	// once its gate passes.
+	ai, budgets, derrs := decide(getenv, p, fakeOK, loadLive)
+	errs = append(errs, derrs...)
+
+	// One ledger for every live provider (T-053's limits, H-029): the
+	// month at most the smallest budget of the live approvals.
+	if len(budgets) > 0 {
+		limits, lerrs := loadLimits(getenv, slices.Min(budgets)*spend.NanoPerUSD)
+		if errs = append(errs, lerrs...); len(lerrs) == 0 {
+			ai.Limits = limits
+		} else {
+			ai.Approval, ai.Credentials, ai.Vision.Approval, ai.Vision.Credentials = aiapproval.Approval{}, nil, aiapproval.Approval{}, nil
+		}
+	}
+
+	ints := []struct {
+		name string
+		set  func(int64)
+	}{
+		{"AI_MAX_PROMPT_BYTES", func(v int64) { ai.Budget.MaxPromptBytes = int(v) }},
+		{"AI_MAX_OUTPUT_TOKENS", func(v int64) { ai.Budget.MaxOutputTokens = v }},
+		{"AI_TIMEOUT_SECONDS", func(v int64) { ai.Budget.TimeoutSeconds = int(v) }},
+		{"AI_ATTEMPT_TIMEOUT_SECONDS", func(v int64) { ai.Budget.AttemptTimeoutSeconds = int(v) }},
+		{"AI_MAX_RETRIES", func(v int64) { n := int(v); ai.Budget.MaxRetries = &n }},
+		{"AI_MAX_CONCURRENT_PER_ORGANIZATION", func(v int64) { ai.Budget.MaxConcurrentPerOrganization = int(v) }},
+	}
+	for _, c := range ints {
+		raw := getenv(c.name)
+		if raw == "" {
+			continue
+		}
+		v, err := strconv.ParseInt(raw, 10, 32)
+		if err != nil || v < 0 || (v == 0 && c.name != "AI_MAX_RETRIES") {
+			errs = append(errs, &Error{c.name, CodeInvalid, "must be a positive integer (AI_MAX_RETRIES may be 0)"})
+			continue
+		}
+		c.set(v)
+	}
+
+	if len(errs) > 0 {
+		return AI{}, errors.Join(errs...)
+	}
+	return ai, nil
+}
+
+// gate is a live provider's configuration behind its gate (liveGate):
+// loadLive, the worker's, reads the provider's keys once the gate passes;
+// keyFree, the API's, never reads a key (T-053 I5).
+type gate func(getenv func(string) string, p AIProvider, approval, approvalVar, modelVar, switchVar string, on, images bool) (live, string, []error)
+
+// decide is the one decision of the proposals' AI and of the photo path
+// (T-053, T-055), the worker's (LoadAI, with loadLive) and the API's
+// (LoadAPIAI, with keyFree: T-053 I5, and for the photo path the T-056
+// follow-up, D-124): the switch, AI_POLICY_APPROVAL and AI_MODEL for the
+// proposals' provider p, then AI_VISION_PROVIDER (unset: p's),
+// AI_VISION_POLICY_APPROVAL and AI_VISION_MODEL for the photo path. It
+// returns the configuration but for the spend limits and the budget (the
+// worker's), the monthly budgets of the live approvals, and the errors in
+// the order LoadAI reports them.
+func decide(getenv func(string) string, p AIProvider, fakeOK bool, g gate) (AI, []int64, []error) {
+	var errs []error
+	approval := getenv("AI_POLICY_APPROVAL")
+	ai := AI{Provider: p}
 	on, serrs := switchOn(getenv, ai.Provider, approval)
 	errs = append(errs, serrs...)
 
@@ -214,7 +281,7 @@ func LoadAI(getenv func(string) string) (AI, error) {
 	case !ai.Provider.live():
 		errs = append(errs, &Error{"AI_POLICY_APPROVAL", CodeInvalid, "must be empty unless AI_PROVIDER is anthropic or meta"})
 	default:
-		l, why, lerrs := loadLive(getenv, ai.Provider, approval, "AI_POLICY_APPROVAL", "AI_MODEL", liveSwitch, on, false)
+		l, why, lerrs := g(getenv, ai.Provider, approval, "AI_POLICY_APPROVAL", "AI_MODEL", liveSwitch, on, false)
 		errs = append(errs, lerrs...)
 		ai.LiveOff = why
 		if why == "" && len(lerrs) == 0 && l.approval.Valid() {
@@ -267,7 +334,7 @@ func LoadAI(getenv func(string) string) (AI, error) {
 			errs = append(errs, &Error{visionApprovalVar, CodeRequired, "the photo path's provider needs the owner's approval of it"})
 		}
 	default:
-		l, why, lerrs := loadLive(getenv, vp, vApproval, visionApprovalVar, visionModelVar, visionApprovalVar, on, true)
+		l, why, lerrs := g(getenv, vp, vApproval, visionApprovalVar, visionModelVar, visionApprovalVar, on, true)
 		errs = append(errs, lerrs...)
 		ai.Vision.LiveOff = why
 		if why == "" && len(lerrs) == 0 && l.approval.Valid() {
@@ -276,46 +343,7 @@ func LoadAI(getenv func(string) string) (AI, error) {
 			budgets = append(budgets, l.approval.MonthlyBudgetUSD())
 		}
 	}
-
-	// One ledger for every live provider (T-053's limits, H-029): the
-	// month at most the smallest budget of the live approvals.
-	if len(budgets) > 0 {
-		limits, lerrs := loadLimits(getenv, slices.Min(budgets)*spend.NanoPerUSD)
-		if errs = append(errs, lerrs...); len(lerrs) == 0 {
-			ai.Limits = limits
-		} else {
-			ai.Approval, ai.Credentials, ai.Vision.Approval, ai.Vision.Credentials = aiapproval.Approval{}, nil, aiapproval.Approval{}, nil
-		}
-	}
-
-	ints := []struct {
-		name string
-		set  func(int64)
-	}{
-		{"AI_MAX_PROMPT_BYTES", func(v int64) { ai.Budget.MaxPromptBytes = int(v) }},
-		{"AI_MAX_OUTPUT_TOKENS", func(v int64) { ai.Budget.MaxOutputTokens = v }},
-		{"AI_TIMEOUT_SECONDS", func(v int64) { ai.Budget.TimeoutSeconds = int(v) }},
-		{"AI_ATTEMPT_TIMEOUT_SECONDS", func(v int64) { ai.Budget.AttemptTimeoutSeconds = int(v) }},
-		{"AI_MAX_RETRIES", func(v int64) { n := int(v); ai.Budget.MaxRetries = &n }},
-		{"AI_MAX_CONCURRENT_PER_ORGANIZATION", func(v int64) { ai.Budget.MaxConcurrentPerOrganization = int(v) }},
-	}
-	for _, c := range ints {
-		raw := getenv(c.name)
-		if raw == "" {
-			continue
-		}
-		v, err := strconv.ParseInt(raw, 10, 32)
-		if err != nil || v < 0 || (v == 0 && c.name != "AI_MAX_RETRIES") {
-			errs = append(errs, &Error{c.name, CodeInvalid, "must be a positive integer (AI_MAX_RETRIES may be 0)"})
-			continue
-		}
-		c.set(v)
-	}
-
-	if len(errs) > 0 {
-		return AI{}, errors.Join(errs...)
-	}
-	return ai, nil
+	return ai, budgets, errs
 }
 
 // aiProvider reads AI_PROVIDER (LoadAI, and the API's LoadAPIAI): unset is
@@ -361,19 +389,16 @@ type live struct {
 	creds    []AICredential
 }
 
-// loadLive checks the live configuration of provider p: liveGate (the
-// approval approvalVar names, the model modelVar names, the price, the
-// images, the switch) and, once it passes, p's keys. why is the typed
-// reason live AI is off for p (empty when on); errors are liveGate's or
-// the keys'. No key is read unless the gate passes.
+// loadLive checks the live configuration of provider p: keyFree (liveGate:
+// the approval approvalVar names, the model modelVar names, the price, the
+// images, the switch; then the approval as recorded) and, once it passes,
+// p's keys. why is the typed reason live AI is off for p (empty when on);
+// errors are liveGate's or the keys'. No key is read unless the gate
+// passes.
 func loadLive(getenv func(string) string, p AIProvider, approval, approvalVar, modelVar, switchVar string, on, images bool) (live, string, []error) {
-	model, why, errs := liveGate(getenv, p, approval, approvalVar, modelVar, switchVar, on, images)
+	l, why, errs := keyFree(getenv, p, approval, approvalVar, modelVar, switchVar, on, images)
 	if why != "" || len(errs) > 0 {
 		return live{}, why, errs
-	}
-	a, ok := aiapproval.Recorded(approval)
-	if !ok { // Gap was "": Recorded agrees, unless the record changed meanwhile
-		return live{}, "", []error{&Error{approvalVar, CodeNotApproved, "the recorded approval cannot be used"}}
 	}
 	var creds []AICredential
 	var cerrs []error
@@ -386,7 +411,23 @@ func loadLive(getenv func(string) string, p AIProvider, approval, approvalVar, m
 	if len(cerrs) > 0 {
 		return live{}, "", cerrs
 	}
-	return live{approval: a, model: model, creds: creds}, "", nil
+	l.creds = creds
+	return l, "", nil
+}
+
+// keyFree is loadLive without the keys, the API's gate (LoadAPIAI; T-053
+// I5): liveGate and, once it passes, the approval as this build records it.
+// It never reads a key: its live has no credentials.
+func keyFree(getenv func(string) string, p AIProvider, approval, approvalVar, modelVar, switchVar string, on, images bool) (live, string, []error) {
+	model, why, errs := liveGate(getenv, p, approval, approvalVar, modelVar, switchVar, on, images)
+	if why != "" || len(errs) > 0 {
+		return live{}, why, errs
+	}
+	a, ok := aiapproval.Recorded(approval)
+	if !ok { // Gap was "": Recorded agrees, unless the record changed meanwhile
+		return live{}, "", []error{&Error{approvalVar, CodeNotApproved, "the recorded approval cannot be used"}}
+	}
+	return live{approval: a, model: model}, "", nil
 }
 
 // liveGate is the live gate of provider p but for the keys, the same for
