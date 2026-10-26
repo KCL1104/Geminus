@@ -285,6 +285,12 @@ describe("the editor on the model page", () => {
     expect(panelHeading(el).textContent).toBe("process_1");
     expect(document.activeElement).toBe(field(el, en["editor.field.name"]));
     expect(outcome(el)).toBe("Step process_1 added.");
+    // Only the add moves the focus to the name: selecting the step again later leaves it on the step.
+    await selectStep(el, "smt");
+    await selectStep(el, "process_1");
+    await act(async () => new Promise((r) => setTimeout(r, 30)));
+    expect(panelHeading(el).textContent).toBe("process_1");
+    expect(document.activeElement).toBe(stepNode(el, "process_1"));
   });
 
   it("connects and disconnects from the properties, and edits a decision's probabilities", async () => {

@@ -122,6 +122,7 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
   const errors = remote.issues.filter((i) => i.severity === "error").length;
 
   const focusStep = useCallback((id: string) => {
+    setNameFocus(null);
     store.select(id);
     const n = flow.getNode(id);
     if (n) flow.setCenter(n.position.x + (n.measured?.width ?? 0) / 2, n.position.y + (n.measured?.height ?? 0) / 2, { zoom: Math.max(flow.getZoom(), READABLE_ZOOM) });
@@ -326,7 +327,11 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
               selected={selected}
               severity={severity}
               editable={editable}
-              onSelect={(id) => store.select(id)}
+              onSelect={(id) => {
+                // The name takes the focus only right after its step was added.
+                if (id !== nameFocus) setNameFocus(null);
+                store.select(id);
+              }}
               onMove={(id, to) => edit(moveStep(working, id, to))}
               onConnect={connect}
               onDelete={(id) => setDialog({ kind: "delete", id })}
