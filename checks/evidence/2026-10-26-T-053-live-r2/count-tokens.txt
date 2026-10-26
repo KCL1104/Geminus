@@ -1,0 +1,16 @@
+count_tokens（不收費；不建立 message、不產生 output）
+日期時間（UTC）: 2026-10-26T16:47:17Z
+Endpoint: POST https://api.anthropic.com/v1/messages/count_tokens
+anthropic-version: 2023-06-01
+Key: GEMINUS_ANTHROPIC_API_KEY_A（只在 curl 指令的 header 中展開；值沒有印出或記錄）
+Model: claude-opus-5-5
+Schema: output_config.format = {"type":"json_schema","schema": proposal-output 的投影}
+  投影由本 tree（HEAD f60fedf）的 git archive 複本以 package 自己的 Project("proposal-output.schema.json") 產生
+  （scratch 測試同 checks/evidence/2026-10-26-T-053-schema-r1/fixes/print_projection_test.go.txt；沒有改 tree）
+  MarshalIndent 格式 sha256 51933b889295ff946efd920c7fbecb76e061a70ed4c3ba3f8de2fbcb77d6191b
+    = checks/evidence/2026-10-26-T-053-schema/projected-proposal-output.txt（byte for byte 相同）
+  compact（encoding/json）2623 bytes，sha256 71bb98bf763fa35fed501eabd697909e997bc9f1e079ed2fd7ece485f70ff254
+Message: 一則 synthetic user message（"Synthetic test: line L1 has one station S1. Propose no changes."）
+Request body sha256: 18b8fa0084ef27f8f2ac6537e2951d13311099aabf130b49ae61e720f5df6269
+HTTP status: 200
+Response: {"input_tokens":1704}

@@ -1,0 +1,3 @@
+go build -o bin/ai-eval-live ./cmd/ai-eval-live
+ai-eval-live: smoke run 01M5WHRF20WZ3NHYKEGRC5G2FN of claude-opus-5-5: 1 case(s) run, 1 passed, golden 1/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.04244 (committed 0.04244, cap 2.00), 8250 input and 472 output tokens, spend warnings map[inference_geo_unknown:0 over_reservation:0]; report /home/user/Geminus/checks/ai-evals/live-smoke-2026-10-26T164736Z-01M5WHRF20WZ3NHYKEGRC5G2FN-claude-opus-5-5.json
+exit 0
