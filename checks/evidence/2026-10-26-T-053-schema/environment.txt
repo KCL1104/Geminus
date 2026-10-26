@@ -1,0 +1,9 @@
+T-053 schema follow-up (branch t053-schema), 2026-10-26 UTC
+start: 2026-10-26 12:45 UTC (approx.); logs and checks: 12:54-13:26 UTC
+base: c7cf86c; tests first: 3784d95; fix: 6c0e38d; report and docs: the commit that adds this file
+go: go version go1.27.3 linux/amd64 (GOTOOLCHAIN=local)
+PostgreSQL: 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1), the shared cluster (socket /var/lib/postgresql/geminus-t009-fresh, port 55440), not started or stopped here
+disposable database: dt_test_t053s1 (created empty for make integration-test, dropped afterwards)
+provider: no API call of any kind was made; GEMINUS_ANTHROPIC_API_KEY_A, GEMINUS_ANTHROPIC_API_KEY_B and ANTHROPIC_API_KEY were neither read nor printed; every test uses a local httptest server or the in-process fake
+official sources read (2026-10-26): https://platform.claude.com/docs/en/build-with-claude/structured-outputs ("JSON Schema limitations"); https://platform.claude.com/docs/en/api/errors ("HTTP errors", "Error shapes")
+key scan: grep -rlE 'sk-ant-[a-z0-9]' over this directory finds nothing

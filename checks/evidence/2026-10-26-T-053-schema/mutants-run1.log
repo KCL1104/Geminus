@@ -1,0 +1,24 @@
+S1	KILLED	skip the decode step (Decode returns every answer as it came)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+S1b	KILLED	skip the decode step in the adapter (answer decodes with no projection)	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestTheLiveEvalDecodesTheEncodedValues
+S2	KILLED	decode at the wrong position: the alternatives' const members are ignored	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+S2b	KILLED	decode at the wrong position: the place recorded is the patch item, not its value	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+S2c	KILLED	decode at the wrong position: only the first change of a patch	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+S2d	KILLED	decode at the wrong position: the issue names the next item	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+S3	KILLED	accept trailing data (read the first JSON value of the text only)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+S4	KILLED	drop the guard's empty-schema check	internal/ai/provider/anthropic/guard_test.go	./internal/ai/provider/anthropic/	TestTheSubsetGuard
+S5	KILLED	no size limit on a JSON text	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+S6	KILLED	a value that is not a string is taken as it is	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+S7	KILLED	duplicate member names are accepted	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeRefuses, TestEncodedValuesThatDoNotDecode
+S8	KILLED	the alternatives' condition is inverted	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestTheLiveEvalDecodesTheEncodedValues
+S9	KILLED	an open value projects to {} again (no encoding)	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestDecodeOnlyTheEncodedPlaces, TestDecodeRefuses, TestEncodedValuesDecode, TestEncodedValuesThatDoNotDecode, TestProjection, TestProjectionRefuses
+S10	KILLED	a schema without a concrete type is sent	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestEverySchemaTheAdapterSendsIsInsideTheLimits, TestProjectionRefuses
+S11	KILLED	an open allOf member is encoded instead of dropped	internal/ai/provider/anthropic/projection.go	./internal/ai/provider/anthropic/	TestTheOpenValuesAreEncoded
+S12	KILLED	the error type is not checked against the API's list	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestTheLiveEvalNamesTheProviderError, TestTheProviderErrorType
+S13	KILLED	the error type is not recorded	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestTheLiveEvalNamesTheProviderError, TestTheProviderErrorType
+S14	KILLED	the report does not name the provider status and type	internal/aievals/live.go	./internal/aievals/ ./internal/ai/provider/anthropic/	TestAFailedCaseNamesTheProviderError, TestTheLiveEvalNamesTheProviderError
+S15	KILLED	ai-eval-live prints no warning for a provider error	internal/aievals/main.go	./internal/config/aiapproval/	TestTheLiveEvalWarnsOfAProviderError
+S16	KILLED	the worker logs no warning for a provider error	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestTheProviderErrorLine
+S17	KILLED	the log key provider_error_type is not registered (redacted)	internal/observability/redact.go	./internal/proposals/generator/	TestTheProviderErrorLine
+summary	KILLED=21
+sources restored (git status of internal/ and cmd/ against the last commit): clean
+exit 0

@@ -485,3 +485,119 @@ Coordinator 把 `t053-r1` 的四個 commit（d28eb79、2cf81fe、ea9a85a、e9a8a
 - **Info**：每日上限可設到月上限（D-110 批准時決定）；`-dir` 可指向任何位置；usage 全為 0 的回答結算為 0；D-110 文字中 Console spend limit 回 400 而非 402（adapter 的處理在安全的一邊，只有文字錯）；coordinator 的 backend-test／backend-race log 中 29 個套件是 cached 結果（reviewer 以 `-count=1` 重跑，74 個套件全過）；N3、N7、N8 三個 mutant 存活（目前正確的程式缺測試）；送不出去的 transport 失敗每次嘗試仍以上限計入 in-code ledger（沒有實際花費）。
 - **Live 執行的前提**（reviewer 列出，執行時照做）：先回答 D-116；在主要的 checkout 中一次只跑一個 run，每次 run 後先 commit `checks/ai-evals/`；只用預設上限、不用 `-dir`；先跑 smoke（預設 2 美元），沒有任何 warning 才跑 eval；eval 的上限設為 10 減去 smoke 印出的 committed 金額（無條件捨去到分），或隔一個 UTC 日再跑；key 與開關只放在 live 指令自己的環境；跑完以 `grep -r 'sk-ant-' checks/ai-evals` 確認沒有外洩；出現 `over_reservation` 或 `inference_geo_unknown` warning 就停止並回報。
 - **狀態**：程式已被 review 接受；T-053 標為 done 之前仍需 owner 批准 D-110–D-116（PROPOSED，第七張決策頁）。依 H-029，第七張決策頁與 Anthropic live 執行延到比賽後；比賽期間的 live AI 走 Meta provider（T-055），沿用本任務的上限與開關。
+
+## Live smoke 的發現：structured output 不接受空的 schema（2026-10-26）
+
+Branch `t053-schema`（從 c7cf86c 開始，沒有 push）。Commit：3784d95（測試先行與沒有行為的 stub，紅）、6c0e38d（修正，綠）、本節所在的 commit（文件、本報告與證據）。證據在 `checks/evidence/2026-10-26-T-053-schema/`，每個 log 的最後一行是 exit code；`environment.txt` 記錄環境。本輪**沒有任何 API 呼叫**，key（`GEMINUS_ANTHROPIC_API_KEY_A`／`_B`、`ANTHROPIC_API_KEY`）沒有被讀取或印出；所有測試都對本機 httptest server 或 process 內的 fake。
+
+### 證據
+
+- **第一次 live smoke**（`make ai-smoke-live`，H-025、H-031）：`checks/ai-evals/live-smoke-2026-10-26T122613Z-01M5W2SVM81J3AEM475YXPH3VX-claude-opus-5-5.json`：MOD-002 為 `failed`、`AI_REQUEST_REJECTED`，0 input／0 output token，USD 0.00（`checks/evidence/2026-10-26-T-053-live/`）。Report 只有 code，看不出被拒的原因。
+- **Coordinator 的診斷**（免費的 `POST /v1/messages/count_tokens`，同一個 model、同一個 `output_config.format` schema；本輪沒有重做）：`400 invalid_request_error: output_config.format.schema: Empty schema ({}) that accepts any JSON value is not supported. Please specify a concrete type.` 把 `{}` 換成有型別的 schema 之後，count_tokens 回 200（root 保持 anyOf，或包在 object 裡，兩種都可以）。兩把 key 對 `GET /v1/models/claude-opus-5-5` 都回 200：key 與 model 的權限沒有問題。
+- **官方限制**（https://platform.claude.com/docs/en/build-with-claude/structured-outputs ，「JSON Schema limitations」，2026-10-26 取得）：支援所有 basic type、`enum`（只限 string、number、boolean、null）、`const`、`anyOf`、`allOf`（`allOf` 配 `$ref` 不支援）、本地的 `$ref`／`$defs`／`definitions`、`default`、`required`、`additionalProperties`（object 必須為 `false`）、10 種 string format、`minItems` 0 或 1；不支援遞迴、enum 中的複合型別、外部 `$ref`、數值 constraint、字串長度 constraint、其他 array constraint、`additionalProperties` 不為 `false`；複雜度上限：optional 參數共 24 個、union（`anyOf` 或 type array）參數共 16 個；不支援的功能回 400。頁面本身**沒有**提到空 schema，這一條來自 API 的回答（上面的診斷）。
+- **Error type**（https://platform.claude.com/docs/en/api/errors ，2026-10-26 取得）：400 `invalid_request_error`、401 `authentication_error`、402 `billing_error`、403 `permission_error`、404 `not_found_error`、409 `conflict_error`、413 `request_too_large`、429 `rate_limit_error`、500 `api_error`、504 `timeout_error`、529 `overloaded_error`；頁面說 `type` 的值可能增加。
+
+### 根本原因
+
+`schemas/json-patch.schema.json` 中 `add`、`replace`、`test` 的 `value` 是 `{}`（RFC 6902 的值可以是任何 JSON）。`internal/ai/provider/anthropic/projection.go` 把 `{}`（與 `true`）原樣投影為 `{}`，所以 proposal-output 的投影（modeler 與 scenario 兩個 role 都用它）帶著三個空 schema 進入 `output_config.format.schema`，API 在產生任何 token 之前以 400 拒絕。既有的 `TestProjection` 只檢查出現的 keyword 都在 subset 中、object 都是封閉的；空的 object 沒有任何 keyword，所以沒有被抓到。ADR-027 也記載「投影後的 schema 是否被 API 接受」為 NOT RUN。另外，eval report 只記 `AI_REQUEST_REJECTED`，沒有 HTTP status 或 error type，smoke 無法分辨原因。紅的測試重現了這兩點：`red-anthropic.log` 中 guard 對 proposal-output 列出恰好這三個位置；`red-aievals.log` 的 report 與那次 smoke 的 report 相同（`AI_REQUEST_REJECTED`，沒有 status）。
+
+### 修正（coordinator 的決定，只在 Anthropic 的投影）
+
+1. **開放值的編碼**（`projection.go`）：canonical schema 中接受任何 JSON 值的位置（`{}`、`true`，或只有 description）投影為 `{"type":"string","description":EncodedDescription}`。Description 告訴模型寫出該值的 JSON text：字串連同引號（`"\"ICT tester\""`）、數字（`"6"`）、`true`／`false`／`null`、array 或 object 的 JSON（`"{\"id\":\"node_1\"}"`），一個值，之後沒有別的。位置記在 `Projection.Encoded`（與 `Dropped` 並列，依 `String()` 排序）。Proposal-output 恰好三個：
+   - `/changes/*/value when /status="proposed", /changes/*/op="add"`
+   - `/changes/*/value when /status="proposed", /changes/*/op="replace"`
+   - `/changes/*/value when /status="proposed", /changes/*/op="test"`
+
+   位置以 member 與 array item 的路徑表示，路徑上每個 `oneOf`／`anyOf` 的分支以「每個分支都 required、各有不同 const 的 member」區分（root 為 `status`，patch item 為 `op`）；沒有這種 member 的分支中的開放值、本身是分支的開放值、root 的開放值，投影一律拒絕。投影後沒有具體型別（type、enum、const、anyOf、allOf）的 schema（例如只剩被移除的 constraint）也拒絕，不再送出空 schema。`allOf` 中的開放 member 沒有約束，照舊略過。投影後的 proposal-output 見 `projected-proposal-output.txt`（6.8 KB，guard 沒有違規）。
+2. **解碼**（`encoded.go`，`Projection.Decode`；`anthropic.go` 的 `answer` 在把回答交給 `provider.Client` 之前呼叫）：只在 `Encoded` 的位置，依路徑與 const 條件結構化地比對，不依字串的內容猜測（summary、assumption、path 即使看起來像 JSON 也不動；`remove`、`move` 或 `needs_input` 中的 value 也不動，交給完整 schema 拒絕）。該位置的字串必須恰好是一個嚴格的 JSON text：單一值、合法 UTF-8、escape 是合法的 code point、沒有重複 member、之後只有空白、至多 `MaxEncodedValueBytes`（64 KiB）、nesting 在 jsontext 的 10000 層之內；以解碼後的值取代（數字與字串的 escape 照模型寫的保留；被改寫的 object 的 member 依名稱排序，output hash 是 JCS，不受影響）。該位置不是這樣的字串（包括不是字串），回答即 `invalid_output`（pipeline 原本對不合 schema 的回答使用的 code），issue 只有該位置的 JSON Pointer（例如 `/changes/1/value`）、`AI_OUTPUT_INVALID` 與固定訊息，沒有回答的內容；generator 依原本的路徑把它記為 `invalid`，不會有 ready 的 proposal。回答本身不是嚴格的單一 JSON document 時原樣交給 client（client 的完整 schema 檢查拒絕它），沒有適用的位置時回答 byte for byte 不變。解碼後的回答照樣經過完整 2020-12 schema、strict decode 與 server review。
+3. **文件**：`projection.go` 的開頭註解寫明這一條是「只移除 constraint」的唯一例外與理由；`docs/AI_SPEC.md` §2 新增「投影的唯一編碼規則」一段，T-053 段落新增「Live smoke 的發現」；ADR-027 的 Schema projection 加一句追記（指向 AI_SPEC §2）；`docs/SECURITY.md` 記新的 log key。
+4. **Guard**（`guard_test.go`，`SubsetViolations`，與投影的程式分開寫）：依官方限制檢查一個 schema：空 schema（沒有 type／enum／const／anyOf／allOf／$ref）、`true`／`false` schema、沒有 `additionalProperties: false` 的 object、不在清單中的 keyword（比官方更嚴：`pattern`、`title` 也算）、未知的 type 與 format、enum 中的複合型別、`minItems` 不是 0 或 1、`allOf` 配 `$ref`、外部或解不開的 `$ref`、經 `$ref` 或物件本身的遞迴、optional 參數超過 24、union 參數超過 16。`TestEverySchemaTheAdapterSendsIsInsideTheLimits` 檢查 `provider.Roles` 每個 role 的 output schema 的投影（三個 schema；approval 只服務 modeler 與 scenario），以及 `schemas/` 中其他能投影的 schema；`TestTheRequestSchemaIsInsideTheLimits` 檢查四個 role 實際送出的 request body。修正前它們列出 proposal-output 的那三個位置（`red-anthropic.log`）：這個 guard 能在離線時發現這次的錯誤（mutant S9c）。
+5. **可診斷**：provider 以錯誤 status 回答時，`provider.Error` 除了原有的 `Status` 之外另有 `ErrorType`：只取上面官方清單中的 11 個 type，其他（不認得的、大小寫不同、帶了其他文字、沒有 type、body 不是 JSON）一律為 `other`，從不記 message；`Error()` 的文字為 `(status 400 invalid_request_error)`。沒有錯誤 status 的失敗（全部 credential 被拒、連線中斷、逾時）兩者皆空。Eval report 每個 case 的 outcome 有 `provider_status`、`provider_error_type`（沒有時不出現）；`ai-eval-live` 在 summary 之後為每個這樣的 case 印 `ai-eval-live: WARNING: MOD-002 failed with AI_REQUEST_REJECTED: the provider answered 400 invalid_request_error`；worker 在 `ai provider call ended` 之後另寫一行 WARN `the ai provider answered the call with an error status`（`provider_status`、`provider_error_type`、`code`、`role`、`credential_label`、`provider_request_id`）。兩個 log key 登記在 `internal/observability/redact.go`（數字、token 形狀；不合形狀的值記為 `[redacted]`）。
+
+### 測試（先寫，紅 → 綠）
+
+| 測試 | 檢查 | 修正前（stub） |
+|---|---|---|
+| `TestTheSubsetGuard` | guard 對 28 種官方不接受的 schema 各給出對的理由（`{}`、只有 description、array item 與 anyOf member 的 `{}`、`true`、開放 object、`additionalProperties` true／schema、minLength、maxLength、maximum、multipleOf、pattern、maxItems、minItems 2、oneOf、未知 keyword、`$ref` 遞迴、物件包含自己、外部與解不開的 `$ref`、allOf 配 `$ref`、複合 enum、format、type、17 個 union、25 個 optional），並接受一個在限制內的 schema | PASS（guard 本身是測試程式） |
+| `TestEverySchemaTheAdapterSendsIsInsideTheLimits` | 每個 role 的投影沒有違規、沒有 `{}`；其他能投影的 schema 亦然 | FAIL：proposal-output 的三個 `value`（另有 scenario、simulation 的投影） |
+| `TestTheOpenValuesAreEncoded` | `Encoded` 恰好是上面三個位置；那三個位置是加了 description 的 string，remove 沒有 value，整個 schema 只有三個 encoded string；其他 output schema 沒有；一般規則（member、array item、以 const 區分的分支、description 的保留、allOf 的開放 member 略過）與它們的解碼 | FAIL |
+| `TestDecodeOnlyTheEncodedPlaces` | 只解碼那些位置（字串、數字、有空白與 escape 的 object、超出 float64 精度的數字、null、`[]`）；summary、assumption、effect、path、remove／move 的 value 不動；沒有適用位置、不是 JSON、重複 member、空字串的回答 byte for byte 不變 | FAIL |
+| `TestDecodeRefuses` | 不是 JSON、空字串、只有空白、兩個值、尾隨資料、尾隨的 `]` 與 `,`、重複 member、lone surrogate、超過 64 KiB、超過 nesting 上限、數字／object／null／array（不是字串）：都是一個 `/changes/1/value` 的 `AI_OUTPUT_INVALID` issue，訊息沒有回答的文字；恰好 64 KiB 可以 | FAIL |
+| `TestProjectionRefuses`（新增 4 個） | 沒有 const 區分的分支中的開放值、本身是分支的開放值、root 的開放值、只剩被移除 constraint 的 schema 都被拒 | FAIL（3 個被投影；root 原本就拒絕） |
+| `TestProjection`（改變的期望值，見下） | 合法 fixture 依 `Encoded` 編碼之後通過投影，且解碼回原本的 fixture；不合法的仍不通過 | PASS |
+| `TestTheRequestSchemaIsInsideTheLimits` | 四個 role 送出的 request 的 schema 沒有違規、沒有 `{}`；modeler 恰好三個 encoded string（回歸測試） | FAIL：modeler、scenario |
+| `TestEncodedValuesDecode` | 經 HTTP 的回答（字串、數字、object、null、false、array 與大整數、unicode 與 escape、remove）解碼成 canonical patch，`res.Raw` 通過完整 schema，hash 是解碼後的 | FAIL |
+| `TestEncodedValuesThatDoNotDecode` | 經 HTTP：不是 JSON、尾隨資料、多出的 `]`、重複 member、太大、不是字串：`invalid_output`、不可重試、issue 在 `/changes/1/value`、error 中沒有回答的文字；usage 照樣結算 | FAIL |
+| `TestDecodedAnswersMeetTheFullSchema` | 值能解碼、但違反投影移除的 constraint（path 的 pattern、confidence 上限、至少一個 change、summary 長度）或用 move op：都是 `invalid_output`（patch value 在 canonical schema 中是任何值，單一個解碼後的值本身不會違反它） | PASS（完整 schema 本來就檢查） |
+| `TestTheProviderErrorType` | 13 種錯誤回答的 code、status 與 type（其中 5 種為 `other`：不認得的 type、帶了其他文字、大小寫不同、沒有 type、body 不是 JSON）；error 中沒有 body；可能已計費的 attempt 之後的 401 帶 `authentication_error`；全部被拒與連線中斷沒有 status 與 type；`errors.Is` 照舊 | FAIL |
+| `TestTheLiveEvalDecodesTheEncodedValues` | 經 HTTP 的 live eval：MOD-002 以編碼的值回答 → ready、passed、risk low、有 patch hash；不能解碼 → `invalid`（`AI_OUTPUT_INVALID`）；解碼成字串的 capacity → server review 判 `invalid`；兩者都沒有 patch 或 risk | FAIL |
+| `TestTheLiveEvalNamesTheProviderError` | 400 的 case 在 report 中有 `provider_status: 400` 與 `provider_error_type`（不認得的 type 為 `other`），沒有 message；有回答的 case 沒有這兩個欄位 | FAIL |
+| `TestAFailedCaseNamesTheProviderError`（aievals） | 同上，以 process 內的 billable fake | FAIL：重現 smoke 的 report |
+| `TestTheProviderErrorLine`（generator） | WARN 行的欄位；不合 token 形狀的 type 被 redact；沒有 status 的失敗不寫 WARN | FAIL |
+| `TestTheLiveEvalWarnsOfAProviderError`（aiapproval，`aievals.Main` 的 live 路徑） | smoke 的 stderr 有 WARNING 行；有回答的 run 沒有 | FAIL |
+
+Log：`red-anthropic.log`、`red-aievals.log`、`red-generator.log`、`red-aiapproval.log`（exit 1，四個都是；`red.sh`），`green-*.log`（exit 0，四個都是；`green.sh`）。
+
+### 改變的期望值（依 coordinator 的決定，沒有降低）
+
+- `TestProjection` 原本要求「每個 canonical 合法的 fixture 也通過投影」。編碼之後，合法 fixture 中的 `"value": 6` 在投影中必須是 `"value": "6"`，所以這個 assertion 改為對**依 `Encoded` 編碼之後的** fixture 檢查（編碼的 helper `encodeAt` 與 `Decode` 分開寫），並新增「解碼回原本的 fixture」；不合法 fixture 的 assertion 不變。沒有拿掉任何 assertion，沒有加 skip。
+- 既有的測試（`TestRequestShape` 比對 request 的 schema 與 `Project` 的結果、`TestQuote` 以投影後 schema 的 bytes 計算上限）不需要改：它們以投影的結果計算，投影多了三段 description（quote 隨之變大）。
+
+### Mutation
+
+`mutants.py`：每個 mutant 在一個檔案中替換恰好出現一次的文字（全部 edit 都要套上），先 `go vet` 它列出的 package（不能 build 記為 INVALID，不算 killed），再以 `-count=1` 跑那些 package 的測試；finally 還原檔案，最後確認 `internal/`、`cmd/` 相對最後的 commit 沒有改變。第 1 次（`mutants-run1.log`）21 個、第 2 次（`mutants-run2.log`，加 S9b、S9c）23 個都 killed；第 3 次（`mutants-run3.log`，列出每個擋下的測試，不截斷）為下表：**23 個全部 KILLED，沒有 SURVIVED、INVALID 或 ERROR，還原檢查 clean，exit 0**。
+
+| ID | Mutant | 擋下的測試（節錄） |
+|---|---|---|
+| S1 | 跳過解碼（`Decode` 原樣回傳每個回答） | `TestDecodeOnlyTheEncodedPlaces`、`TestDecodeRefuses`、`TestEncodedValuesDecode`、`TestEncodedValuesThatDoNotDecode`、`TestProjection`、`TestTheLiveEvalDecodesTheEncodedValues`… |
+| S1b | adapter 跳過解碼（`answer` 以空的投影解碼） | `TestEncodedValuesDecode`、`TestEncodedValuesThatDoNotDecode`、`TestTheLiveEvalDecodesTheEncodedValues` |
+| S2 | 錯的位置：忽略分支的 const 條件 | `TestDecodeOnlyTheEncodedPlaces`、`TestProjection`… |
+| S2b | 錯的位置：記錄的位置是 patch item，不是它的 value | `TestTheOpenValuesAreEncoded`、`TestEncodedValuesDecode`… |
+| S2c | 錯的位置：只解碼 patch 的第一個 change | `TestDecodeOnlyTheEncodedPlaces`、`TestEncodedValuesDecode`… |
+| S2d | 錯的位置：issue 指向下一個 item | `TestDecodeRefuses`、`TestEncodedValuesThatDoNotDecode` |
+| S3 | 接受尾隨資料（只讀第一個 JSON 值） | `TestDecodeRefuses`、`TestEncodedValuesThatDoNotDecode` |
+| S4 | guard 不檢查空 schema | `TestTheSubsetGuard` |
+| S5 | JSON text 沒有大小上限 | `TestDecodeRefuses`、`TestEncodedValuesThatDoNotDecode` |
+| S6 | 不是字串的值照收 | `TestDecodeRefuses`、`TestEncodedValuesThatDoNotDecode` |
+| S7 | 接受重複的 member | `TestDecodeRefuses`、`TestEncodedValuesThatDoNotDecode` |
+| S8 | 分支的條件顛倒 | `TestDecodeOnlyTheEncodedPlaces`、`TestTheOpenValuesAreEncoded`… |
+| S9 | 開放值投影為普通 string，位置不列出（沒有解碼） | `TestTheOpenValuesAreEncoded`、`TestEncodedValuesDecode`、`TestTheRequestSchemaIsInsideTheLimits`… |
+| S9b | 開放值投影回 `{}`（修正前的投影） | 投影被拒，29 個測試失敗（含 `TestEverySchemaTheAdapterSendsIsInsideTheLimits`、`TestRequestShape`） |
+| S9c | 開放值投影回 `{}`，且不拒絕沒有型別的 schema（即這次的 bug） | `TestEverySchemaTheAdapterSendsIsInsideTheLimits`、`TestTheRequestSchemaIsInsideTheLimits`（guard）、`TestTheOpenValuesAreEncoded`… |
+| S10 | 送出沒有具體型別的 schema | `TestEverySchemaTheAdapterSendsIsInsideTheLimits`、`TestProjectionRefuses` |
+| S11 | `allOf` 的開放 member 被編碼而不是略過 | `TestTheOpenValuesAreEncoded` |
+| S12 | error type 不對照官方清單 | `TestTheProviderErrorType`、`TestTheLiveEvalNamesTheProviderError` |
+| S13 | 不記錄 error type | `TestTheProviderErrorType`、`TestTheLiveEvalNamesTheProviderError` |
+| S14 | report 不記 provider status 與 type | `TestAFailedCaseNamesTheProviderError`、`TestTheLiveEvalNamesTheProviderError` |
+| S15 | `ai-eval-live` 不印 WARNING | `TestTheLiveEvalWarnsOfAProviderError` |
+| S16 | worker 不寫 WARN | `TestTheProviderErrorLine` |
+| S17 | `provider_error_type` 沒有登記（被 redact） | `TestTheProviderErrorLine` |
+
+### 實際執行（log 在 `checks/evidence/2026-10-26-T-053-schema/`，最後一行是 exit code）
+
+| 指令 | Exit | 說明 |
+|---|---:|---|
+| `red.sh`：新測試對 stub（`red-*.log`，四個） | 1（四個都是） | 見上表 |
+| `green.sh`：同一組測試，修正後（`green-*.log`，四個） | 0（四個都是） | |
+| `make backend-test` | 0 | `backend-test.log`：gofmt、go vet、`GEMINUS_FULL_DIFFERENTIAL=1 go test`，74 個 package ok，沒有 `(cached)`；DB-backed 測試 skip（在 integration-test 中執行） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `spec-check.log`（文件修改之後）；本節寫好之後重跑：`spec-check-final.log` |
+| `make ai-eval` | 0 | `ai-eval.log`；`checks/ai-evals/fake-*.json` 沒有改變 |
+| `make architecture-check` | 0 | `architecture-check.log`：86 packages、23 rules、16 build configurations |
+| `go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/... ./scripts/...` | 0 | `govulncheck.log`：No vulnerabilities found |
+| `go test -race -count=1`，改到的 package（`internal/ai/provider/...`、`internal/aievals/...`、`internal/proposals/generator/...`、`internal/observability/...`、`internal/config/...`、`cmd/ai-eval-live/...`、`cmd/worker/...`） | 0 | `race-changed.log`：11 個 package ok（generator 與 cmd/worker 的 DB 測試在這裡 skip，在 integration-test 中以 `-race` 執行） |
+| `make integration-test`（全新 `dt_test_t053s1`，PostgreSQL 16.15，`run.sh -db`） | 0 | `integration-test.log`：db-test 之後 db-go-test（`-race -p 1`，`GEMINUS_REQUIRE_DB_TESTS=1`）35 個 package ok，沒有 FAIL 或 SKIP；資料庫用完即刪 |
+| `mutants.py` 第 1、2、3 次 | 0、0、0 | 見「Mutation」 |
+| `grep -rlE 'sk-ant-[a-z0-9]' checks/evidence/2026-10-26-T-053-schema/` | 1（沒有找到） | 證據中沒有 key（本報告中唯一的符合是前面一節引用的測試用假 key `sk-ant-test-primary-…`） |
+
+### NOT RUN
+
+- **修正後的 live 重跑**（`make ai-smoke-live`，之後 `make ai-eval-live`）：依指示不做任何 API 呼叫，由 coordinator 執行。修正後的 schema 是否被 API 接受、模型是否照 description 寫出 JSON text（例如字串帶引號），只有 live 能驗證；免費的 `count_tokens` 可先確認 schema 被接受（同樣 NOT RUN）。
+- **全套 `make backend-race`**：只對改到的 package 做了 race（上表）。
+- **`make frontend-test`、`make e2e-test`**：沒有改 UI、HTTP contract、`schemas/` 或 TS 型別（spec-check 的 `PASS_TS_CONTRACTS_FRESH`）。
+
+### 殘餘風險
+
+- **模型必須寫出 JSON text**：例如 `test` 一個 ID 時寫 `"value": "\"ci_runner\""`。寫成 `"ci_runner"`（沒有內層引號）的回答會是 `invalid_output`（安全的一邊：不會 ready，只是浪費一次呼叫）。Description 有例子；prompt template（`modeler-0.2.0`）沒有改，因為它對 fake 與 canonical schema 也適用。Live eval 會顯示這類失敗的比例（issue `AI_OUTPUT_INVALID`，path 為 `/changes/<i>/value`）。
+- **API 可能拒絕官方頁面沒有列出的其他東西**（這次的空 schema 就沒有列在頁面上）：guard 比官方更嚴，但只能檢查已知的限制；live 或 count_tokens 是唯一的確認。
+- **Error type 的清單可能增加**：新的 type 在更新清單之前記為 `other`（仍有 HTTP status）。
+- **被改寫的 object 的 member 依名稱排序**：值不變，hash 以 JCS 計算，不受影響。
