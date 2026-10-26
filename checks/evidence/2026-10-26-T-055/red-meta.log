@@ -1,0 +1,260 @@
+--- FAIL: TestTheGuard (0.01s)
+    limits_test.go:110: a long string enum: [], want one with "a string enum of 251 values"
+    limits_test.go:110: an open object: [], want one with "not closed"
+    limits_test.go:110: too many nodes, $refs inlined: [], want one with "nodes once $refs are inlined"
+    limits_test.go:110: 5001 properties: [], want one with "5001 properties"
+    limits_test.go:110: a recursive object: [], want one with "recursive"
+    limits_test.go:110: a recursive $ref: [], want one with "recursive"
+    limits_test.go:110: an external $ref: [], want one with "not a local reference"
+    limits_test.go:110: an empty schema: [], want one with "says nothing of its value"
+    limits_test.go:110: the true schema: [], want one with "not a schema object"
+    limits_test.go:110: 11 levels: [], want one with "nested 11 levels"
+    limits_test.go:110: 130,000 characters of names: [], want one with "characters of names, enum and const values"
+    limits_test.go:110: 1001 enum values: [], want one with "1001 enum values"
+--- FAIL: TestRequestShape (0.00s)
+    messages_test.go:50: ai provider: invalid_request
+--- FAIL: TestImageParts (0.00s)
+    messages_test.go:116: ai provider: invalid_request
+--- FAIL: TestQuote (0.00s)
+    messages_test.go:166: not implemented
+--- FAIL: TestStopReasons (0.00s)
+    messages_test.go:207: no text: ai provider: invalid_request, want "invalid_output"
+    messages_test.go:207: prose: ai provider: invalid_request, want "invalid_output"
+    messages_test.go:207: redacted reasoning: ai provider: invalid_request, want ""
+    messages_test.go:207: refusal: ai provider: invalid_request, want "refused"
+    messages_test.go:207: tool use, text only: ai provider: invalid_request, want "invalid_output"
+    messages_test.go:207: stop sequence: ai provider: invalid_request, want "invalid_output"
+    messages_test.go:207: a server tool block: ai provider: invalid_request, want "invalid_output"
+    messages_test.go:207: two text blocks: ai provider: invalid_request, want ""
+    messages_test.go:207: max tokens: ai provider: invalid_request, want "output_truncated"
+    messages_test.go:207: tool use: ai provider: invalid_request, want "invalid_output"
+    messages_test.go:207: pause turn: ai provider: invalid_request, want "invalid_output"
+    messages_test.go:207: an unknown reason: ai provider: invalid_request, want "invalid_output"
+    messages_test.go:207: a tool block: ai provider: invalid_request, want "invalid_output"
+--- FAIL: TestAnAnswerFromAnotherModelIsRefused (0.00s)
+    messages_test.go:236: "muse-spark-1.3-contributor": ai provider: invalid_request
+    messages_test.go:236: "muse-spark-1.2": ai provider: invalid_request
+    messages_test.go:236: "": ai provider: invalid_request
+    messages_test.go:236: "MUSE-SPARK-1.3": ai provider: invalid_request
+    messages_test.go:236: "muse-spark-1.3 ": ai provider: invalid_request
+--- FAIL: TestEncodedValues (0.00s)
+    messages_test.go:265: ai provider: invalid_request
+--- FAIL: TestErrorStatuses (0.00s)
+    messages_test.go:351: 413: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 403: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 504: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: another spelling: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 404 without a body: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: an OpenAI-style 500: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: a body that is no JSON: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 400: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 401: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 402: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 500: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: an unknown type: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 429: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 404 not found: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 422: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: 503: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+    messages_test.go:351: a redirect: &provider.Error{Code:"invalid_request", Status:0, ErrorType:"", Credential:"", Issues:[]model.ValidationIssue(nil), Limit:"", cause:error(nil)}
+--- FAIL: TestARefusedKey (0.00s)
+    messages_test.go:382: ai provider: invalid_request
+--- FAIL: TestRetriesBackOff (0.00s)
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 0: 0s, want 500ms to 1s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 1: 0s, want 1s to 1.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 2: 0s, want 2s to 2.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 3: 0s, want 4s to 4.5s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 4: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:417: attempt 5: 0s, want 8s to 8s
+    messages_test.go:440: an HTTP date: ai provider: invalid_request
+    messages_test.go:440: not a number: ai provider: invalid_request
+    messages_test.go:440: below the backoff: ai provider: invalid_request
+    messages_test.go:440: seconds: ai provider: invalid_request
+    messages_test.go:440: above the bound: ai provider: invalid_request
+    messages_test.go:451: past the deadline: ai provider: invalid_request (0 requests, waits [])
+    messages_test.go:457: no retries: ai provider: invalid_request (0 requests)
+--- FAIL: TestSpend (0.00s)
+    messages_test.go:481: an answer: ai provider: invalid_request spent 0, want 277500 ({Provider:meta Model: Credential: FailedOver:[] Role:modeler TemplateVersion:modeler-test OutputSchema:proposal-output.schema.json Locale:en InputHash:sha256:7e0850f1b2c797c96e143aea519feef1ffd6f0b037104c5db891323e58ebc715 OutputHash: Usage:{InputTokens:0 OutputTokens:0 CacheReadInputTokens:0 CacheCreationInputTokens:0} LatencyMillis:0 ProviderRequestID: Context:{Omitted:map[] Redacted:map[]} CostNanoUSD:0 SpendReservation: SpendUnsettled:false InferenceGeo: SpendOverReservation:false})
+    messages_test.go:489: cached: ai provider: invalid_request spent 0
+    messages_test.go:474: not implemented
+--- FAIL: TestOnlyAMeteredClientCallsIt (0.00s)
+    messages_test.go:548: unreserved: not implemented
+    messages_test.go:553: a role the approval does not serve: ai provider: invalid_request
+    messages_test.go:557: reserved: not implemented
+--- FAIL: TestTimeoutsAndCancellation (0.00s)
+    messages_test.go:569: slow: ai provider: invalid_request
+    messages_test.go:576: total timeout: ai provider: invalid_request
+    messages_test.go:582: cancelled: ai provider: invalid_request
+--- FAIL: TestNewRefuses (0.00s)
+    messages_test.go:596: the approved configuration: meta: live AI is not approved (H-029, H-033)
+--- FAIL: TestSAMRequestShape (0.00s)
+    sam_test.go:92: ai provider: invalid_request
+--- FAIL: TestSAMReadsTheGrammar (0.00s)
+    sam_test.go:122: ai provider: invalid_request
+--- FAIL: TestSAMRefusesOtherOutput (0.04s)
+    sam_test.go:201: a space in a payload: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: JSON: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a mask of no rows: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a box without a mask: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: trailing text: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a repeated object: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a bad separator: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a box outside: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: another image's frame: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: two lines (a video): ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a box without h: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: an unknown field: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a confidence above 1: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a mask origin: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: too many objects: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: an instruction: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: another frame: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a negative corner: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a huge number: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: confidences differ: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: two frames' sizes: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a point token: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: no frame: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: fields out of order: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: no confidence: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: an exponent: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: a mask taller: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:201: an unknown encoding: ai provider: invalid_request (spent 0, 0 requests)
+    sam_test.go:216: a function call: ai provider: invalid_request
+    sam_test.go:216: incomplete: ai provider: invalid_request
+    sam_test.go:216: failed: ai provider: invalid_request
+    sam_test.go:216: another model: ai provider: invalid_request
+--- FAIL: TestSAMSpend (0.01s)
+    sam_test.go:249: no images_processed: ai provider: invalid_request, spent 0 (metadata 0), want 2500000; 0 requests, want 1
+    sam_test.go:249: a lost connection: ai provider: invalid_request, spent 0 (metadata 0), want 5000000; 0 requests, want 2
+    sam_test.go:249: a 504: ai provider: invalid_request, spent 0 (metadata 0), want 2500000; 0 requests, want 1
+    sam_test.go:249: 400: ai provider: invalid_request, spent 0 (metadata 0), want 0; 0 requests, want 1
+    sam_test.go:249: negative images: ai provider: invalid_request, spent 0 (metadata 0), want 7500000; 0 requests, want 1
+    sam_test.go:249: a 500 then an answer: ai provider: invalid_request, spent 0 (metadata 0), want 5000000; 0 requests, want 2
+    sam_test.go:249: 429s only: ai provider: invalid_request, spent 0 (metadata 0), want 0; 0 requests, want 3
+    sam_test.go:249: an unreadable answer: ai provider: invalid_request, spent 0 (metadata 0), want 7500000; 0 requests, want 1
+    sam_test.go:249: not a response: ai provider: invalid_request, spent 0 (metadata 0), want 7500000; 0 requests, want 1
+    sam_test.go:249: an answer, three images: ai provider: invalid_request, spent 0 (metadata 0), want 7500000; 0 requests, want 1
+    sam_test.go:260: over the limit: ai provider: invalid_request
+--- FAIL: TestSAMRefusesBeforeAnyRequest (0.00s)
+    sam_test.go:273: the call: not implemented
+--- FAIL: TestNewSegmenterRefuses (0.00s)
+    sam_test.go:312: the approved configuration: meta: live AI is not approved (H-029, H-033)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/meta	0.094s
+FAIL
+exit 1

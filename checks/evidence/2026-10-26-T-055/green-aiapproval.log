@@ -1,0 +1,7 @@
+ok  	github.com/kcl1104/geminus/internal/config	0.047s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.415s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.383s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	8.992s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.077s
+?   	github.com/kcl1104/geminus/internal/ai/provider/structured	[no test files]
+exit 0

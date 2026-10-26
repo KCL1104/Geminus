@@ -230,11 +230,21 @@ var rules = []rule{
 		// (the spend ledger, internal/storage/aispend) and the live eval its
 		// run (its own cap). The API and every service it shares never link
 		// it, so no request can make a live call outside the ledger, and the
-		// ledger's grants are the worker's only (0016).
+		// ledger's grants are the worker's only (0016). T-055: the Meta
+		// adapter (Muse Spark and SAM 3.1) is a live adapter too.
 		name:    "live-ai-only-in-the-worker",
-		why:     "only the worker (metered by the spend ledger) and the live eval command (metered by its cap) link the live provider adapter, never the API or a service (T-053)",
+		why:     "only the worker (metered by the spend ledger) and the live eval command (metered by its cap) link a live provider adapter, never the API or a service (T-053, T-055)",
 		applies: []string{"./..."},
-		except:  []string{"./internal/ai/provider/anthropic/...", "./cmd/worker/...", "./cmd/ai-eval-live/..."},
+		except:  []string{"./internal/ai/provider/anthropic/...", "./internal/ai/provider/meta/...", "./cmd/worker/...", "./cmd/ai-eval-live/..."},
+		forbid:  []string{"./internal/ai/provider/anthropic/...", "./internal/ai/provider/meta/..."},
+	},
+	{
+		// T-055: the two live adapters are separate: neither links the
+		// other, so a Meta call never goes through Anthropic's SDK or
+		// credentials and an Anthropic call never through Meta's.
+		name:    "live-adapters-apart",
+		why:     "a live provider adapter links no other live adapter (T-055)",
+		applies: []string{"./internal/ai/provider/meta/..."},
 		forbid:  []string{"./internal/ai/provider/anthropic/..."},
 	},
 	{
@@ -432,14 +442,15 @@ var rules = []rule{
 		allow: []string{"./internal/ai/...", "./internal/config/aiapproval"},
 	},
 	{
-		// The provider adapter is the only AI package that talks to the
-		// network; the context builder, the interface, the fake, the ID pool
-		// and the locale checks are computation on what the server read, so
+		// The provider adapters (Anthropic's; T-055: Meta's) are the only AI
+		// packages that talk to the network; the context builder, the
+		// interface, the fake, the ID pool, the locale checks and the shared
+		// projection (structured) are computation on what the server read, so
 		// they import computation, encoding and embed packages only.
 		name:       "ai-is-pure-but-the-adapter",
-		why:        "outside the provider adapter, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)",
+		why:        "outside the provider adapters, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)",
 		applies:    []string{"./internal/ai/..."},
-		except:     []string{"./internal/ai/provider/anthropic/..."},
+		except:     []string{"./internal/ai/provider/anthropic/...", "./internal/ai/provider/meta/..."}, // T-055: the Meta adapter's own HTTP client
 		forbid:     cat(ioStd, llmSDKs),
 		thirdParty: kernelThirdParty,
 		stdOnly:    kernelStd,
