@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json/v2"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -72,10 +73,12 @@ func compile(t *testing.T, schema map[string]any) *jsonschema.Schema {
 }
 
 // Each output schema projects into the subset: self-contained, closed
-// objects, no dropped keyword left. The projection only loosens: every
-// fixture valid under the canonical schema is valid under it, and a
-// structurally invalid answer (extra member, wrong status, missing member)
-// is invalid under both.
+// objects, no dropped keyword left. The projection only loosens, but for
+// its one encoding (AI_SPEC §2: an open value is asked for as a JSON text
+// in a string): every fixture valid under the canonical schema, with its
+// open values so encoded, is valid under it and decodes back to itself,
+// and a structurally invalid answer (extra member, wrong status, missing
+// member) is invalid under both.
 func TestProjection(t *testing.T) {
 	root := contracttest.Root(t)
 	for _, file := range outputSchemas {
@@ -112,13 +115,28 @@ func TestProjection(t *testing.T) {
 				continue
 			}
 			data := contracttest.ReadFile(t, filepath.Join(root, c.Instance))
-			inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+			var doc any
+			if err := json.Unmarshal(data, &doc); err != nil {
+				t.Fatal(err)
+			}
+			encoded, err := json.Marshal(encodeAt(p, doc))
+			if err != nil {
+				t.Fatal(err)
+			}
+			inst, err := jsonschema.UnmarshalJSON(bytes.NewReader(encoded))
 			if err != nil {
 				t.Fatal(err)
 			}
 			err = s.Validate(inst)
 			if c.Valid && err != nil {
 				t.Errorf("%s: valid fixture %s fails the projection: %v", file, c.ID, err)
+			}
+			if c.Valid {
+				decoded, issues := p.Decode(encoded)
+				var back any
+				if len(issues) > 0 || json.Unmarshal(decoded, &back) != nil || !reflect.DeepEqual(back, doc) {
+					t.Errorf("%s: valid fixture %s does not decode back to itself: %q %s", file, c.ID, issues, decoded)
+				}
 			}
 			if !c.Valid && err == nil && !strings.Contains(c.ID, "confirmation") && !strings.Contains(c.ID, "low-confidence") {
 				// The projection keeps closed objects, consts and enums, so
@@ -147,6 +165,17 @@ func TestProjectionRefuses(t *testing.T) {
 		"false.json":     map[string]any{"type": "object", "properties": map[string]any{"a": false}, "additionalProperties": false},
 		"unknown.json":   map[string]any{"type": "object", "properties": map[string]any{}, "additionalProperties": false, "x-custom": 1},
 		"array.json":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		// An open value is encoded only where its place can be told apart:
+		// not inside alternatives without a const member that does it, not
+		// as an alternative of its own, not at the root.
+		"untold.json": closedObject(map[string]any{"v": map[string]any{"anyOf": []any{
+			closedObject(map[string]any{"a": map[string]any{}}), closedObject(map[string]any{"b": map[string]any{"type": "string"}})}}}),
+		"open-alternative.json": closedObject(map[string]any{"v": map[string]any{"anyOf": []any{map[string]any{"type": "string"}, map[string]any{}}}}),
+		"open-root.json":        map[string]any{},
+		// A schema left with no constraint the subset takes (only dropped
+		// ones) is not an open value of the canonical schema: refused, never
+		// sent as an empty schema nor encoded.
+		"emptied.json": closedObject(map[string]any{"v": map[string]any{"maxLength": 3.0}}),
 	}
 	for name := range docs {
 		if _, err := project(docs, name); err == nil {

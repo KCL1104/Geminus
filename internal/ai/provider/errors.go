@@ -64,6 +64,8 @@ type Error struct {
 	Code Code
 	// Status is the provider's HTTP status, 0 when there was none.
 	Status int
+	// ErrorType is the provider's error type of an error status.
+	ErrorType string
 	// Credential is the label (e.g. "org-a") of the credential that
 	// answered, if any.
 	Credential string

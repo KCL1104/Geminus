@@ -26,6 +26,9 @@ import (
 type inProcess struct {
 	*fake.Backend
 	calls atomic.Int32
+	// fail, when set, is every call's error (an error status: nothing
+	// billed).
+	fail *provider.Error
 }
 
 func (b *inProcess) Quote(provider.Request) (provider.Quote, error) {
@@ -34,6 +37,9 @@ func (b *inProcess) Quote(provider.Request) (provider.Quote, error) {
 
 func (b *inProcess) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
 	b.calls.Add(1)
+	if b.fail != nil {
+		return provider.Response{Model: "claude-opus-5-5", Credential: "org-a"}, b.fail
+	}
 	resp, err := b.Backend.Complete(ctx, req)
 	resp.Usage, resp.Model, resp.Credential = provider.Usage{InputTokens: 1500, OutputTokens: 300}, "claude-opus-5-5", "org-a"
 	resp.InferenceGeo = "global" // as the live API reports it (usage.inference_geo)
@@ -150,5 +156,33 @@ func TestTheLiveEvalRunsOnlyWhenLiveIsOn(t *testing.T) {
 	r = aievals.Report{}
 	if err := json.Unmarshal(data, &r); err != nil || r.Complete || r.Outcomes[0].Code != "AI_QUOTA_EXCEEDED" || r.Cost.NanoUSD != 0 {
 		t.Errorf("a small cap: %+v %v (%s)", r, err, stdout)
+	}
+}
+
+// T-053 schema follow-up: the live smoke could not tell why its case was
+// rejected. A case the provider answered with an error status is now a
+// WARNING line of the command's own after the summary: the case, the code,
+// the HTTP status and the error type (the report's provider_status and
+// provider_error_type); never the provider's message. An answered run has
+// no such line.
+func TestTheLiveEvalWarnsOfAProviderError(t *testing.T) {
+	root := contracttest.Root(t)
+	env := liveEnv()
+	run := func(b *inProcess) (int, string, string) {
+		dir := emptyRecord(t)
+		var out, errb bytes.Buffer
+		factory := func(config.AI) (provider.Billable, error) { return b, nil }
+		code := aievals.Main(context.Background(), []string{"-root", root, "-dir", dir, "-smoke"}, func(k string) string { return env[k] }, &out, &errb, factory)
+		return code, out.String(), errb.String()
+	}
+	b := &inProcess{Backend: fake.New(), fail: &provider.Error{Code: provider.CodeRejected, Status: 400, ErrorType: "invalid_request_error", Credential: "org-a"}}
+	code, stdout, stderr := run(b)
+	want := "ai-eval-live: WARNING: " + aievals.SmokeCase + " failed with AI_REQUEST_REJECTED: the provider answered 400 invalid_request_error"
+	if code != aievals.ExitOK || b.calls.Load() != 1 || !strings.Contains(stderr, want) {
+		t.Errorf("exit %d calls %d: stdout %q stderr %q, want %q", code, b.calls.Load(), stdout, stderr, want)
+	}
+	code, _, stderr = run(&inProcess{Backend: fake.New()})
+	if code != aievals.ExitOK || strings.Contains(stderr, "the provider answered") {
+		t.Errorf("an answered run: exit %d stderr %q", code, stderr)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/schemas"
 )
 
@@ -26,7 +27,46 @@ type Projection struct {
 	Schema map[string]any
 	// Dropped lists the removed keywords as "file#/pointer", sorted.
 	Dropped []string
+	// Encoded lists the places in an answer where the projection asks for
+	// a JSON text in a string, sorted by String.
+	Encoded []Location
 }
+
+// Location is a place in an answer: a path of members and array items,
+// and at each object on the way the const members that pick the
+// alternative the place is in.
+type Location struct {
+	Steps []Step
+}
+
+// Step goes from a value into its member Member, or into every item of an
+// array (Items). When names the const members the value it leaves must
+// have.
+type Step struct {
+	When   []Cond
+	Member string
+	Items  bool
+}
+
+// Cond: the object's member Member is Const.
+type Cond struct {
+	Member string
+	Const  any
+}
+
+// String is the place as a JSON Pointer in which "*" stands for every item
+// of an array, and its conditions.
+func (l Location) String() string { return "" }
+
+// MaxEncodedValueBytes bounds the JSON text in one encoded string.
+const MaxEncodedValueBytes = 64 << 10
+
+// EncodedDescription is the description of an encoded string.
+const EncodedDescription = ""
+
+// Decode returns the answer with the JSON text at each encoded place
+// decoded in its place.
+func (p Projection) Decode(text []byte) ([]byte, []model.ValidationIssue) { return text, nil }
 
 // dropped are constraints the subset does not take; the canonical
 // validator enforces them.

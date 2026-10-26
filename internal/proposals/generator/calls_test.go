@@ -66,6 +66,50 @@ func TestTheCallsLine(t *testing.T) {
 	}
 }
 
+// T-053 schema follow-up: a call the provider answered with an error
+// status is a WARN line of its own, after the call's line: the status, the
+// error type (the adapter's list of the API's types, or other), the code,
+// the role, the credential and the provider's request ID; never the
+// provider's message. A type outside the log's token shape is redacted by
+// the filter (the adapter never sets one). A failure without a status (a
+// timeout, a lost connection) is no such warning.
+func TestTheProviderErrorLine(t *testing.T) {
+	var buf bytes.Buffer
+	h := &Handler{cfg: Config{Log: observability.NewLogger(&buf, "worker")}}
+	meta := provider.Metadata{Provider: "anthropic", Model: "claude-opus-5-5", Credential: "org-a", Role: provider.RoleModeler,
+		ProviderRequestID: "req_011CUcvD2y5nA6z5tYt7aCb1"}
+	lines := func() []map[string]any {
+		var out []map[string]any
+		for _, l := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
+			var m map[string]any
+			if err := json.Unmarshal(l, &m); err != nil {
+				t.Fatalf("%q: %v", l, err)
+			}
+			out = append(out, m)
+		}
+		buf.Reset()
+		return out
+	}
+	h.logCall(context.Background(), meta, &provider.Error{Code: provider.CodeRejected, Status: 400, ErrorType: "invalid_request_error", Credential: "org-a"})
+	l := lines()
+	if len(l) != 2 || l[0]["code"] != "AI_REQUEST_REJECTED" || l[1]["level"] != "WARN" || l[1]["msg"] != "the ai provider answered the call with an error status" ||
+		l[1]["provider_status"] != float64(400) || l[1]["provider_error_type"] != "invalid_request_error" || l[1]["code"] != "AI_REQUEST_REJECTED" ||
+		l[1]["role"] != "modeler" || l[1]["credential_label"] != "org-a" || l[1]["provider_request_id"] != "req_011CUcvD2y5nA6z5tYt7aCb1" {
+		t.Errorf("an error status: %v", l)
+	}
+	h.logCall(context.Background(), meta, &provider.Error{Code: provider.CodeUnavailable, Status: 529, ErrorType: "Bearer SENTINEL.token", Credential: "org-a"})
+	if raw := buf.String(); strings.Contains(raw, "SENTINEL") {
+		t.Error(raw)
+	}
+	if l := lines(); len(l) != 2 || l[1]["provider_status"] != float64(529) || l[1]["provider_error_type"] != observability.Redacted {
+		t.Errorf("an odd type: %v", l)
+	}
+	h.logCall(context.Background(), meta, provider.NewError(provider.CodeTimeout, 0, "org-a").WithCause(context.DeadlineExceeded))
+	if l := lines(); len(l) != 1 {
+		t.Errorf("a failure without a status warned: %v", l)
+	}
+}
+
 // testAttribution is what the tests' calls are charged to (T-053; the fake
 // is not metered, so nothing is charged).
 var testAttribution = provider.Attribution{TargetType: "ai_proposal", TargetID: "aip_01M4YDQK00TA00000000000001",

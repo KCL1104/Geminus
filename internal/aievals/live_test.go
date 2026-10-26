@@ -38,6 +38,9 @@ type billed struct {
 	*fake.Backend
 	calls atomic.Int32
 	usage provider.Usage // {2000, 500} when zero
+	// fail, when set, is every call's error: an error status, nothing
+	// billed.
+	fail *provider.Error
 }
 
 // quoted is the test backend's input bound of every request, so that the
@@ -50,6 +53,9 @@ func (b *billed) Quote(provider.Request) (provider.Quote, error) {
 
 func (b *billed) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
 	b.calls.Add(1)
+	if b.fail != nil {
+		return provider.Response{Model: "claude-opus-5-5", Credential: "org-a"}, b.fail
+	}
 	resp, err := b.Backend.Complete(ctx, req)
 	resp.Usage, resp.Model, resp.InferenceGeo = b.usage, "claude-opus-5-5", "global"
 	if resp.Usage == (provider.Usage{}) {
@@ -163,6 +169,33 @@ func TestRunScoresTheAnswers(t *testing.T) {
 		if bytes.Contains(data, []byte(leak)) {
 			t.Errorf("the report holds %q", leak)
 		}
+	}
+}
+
+// T-053 schema follow-up: a case the provider refused with an error status
+// names the status and the error type in its outcome and in the report; a
+// failure without a status names neither.
+func TestAFailedCaseNamesTheProviderError(t *testing.T) {
+	b := &billed{Backend: fake.New(), fail: &provider.Error{Code: provider.CodeRejected, Status: 400, ErrorType: "invalid_request_error", Credential: "org-a"}}
+	r := run(t, b, 10*spend.NanoPerUSD, "MOD-002")
+	o := outcome(r, "MOD-002")
+	if o.Status != "failed" || o.Code != "AI_REQUEST_REJECTED" || o.ProviderStatus != 400 || o.ProviderErrorType != "invalid_request_error" || o.Passed {
+		t.Errorf("%+v", o)
+	}
+	data, err := r.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(data, []byte(`"provider_status": 400`)) || !bytes.Contains(data, []byte(`"provider_error_type": "invalid_request_error"`)) {
+		t.Errorf("the report: %s", data)
+	}
+	b = &billed{Backend: fake.New(), fail: provider.NewError(provider.CodeUnavailable, 0, "org-a")}
+	r = run(t, b, 10*spend.NanoPerUSD, "MOD-002")
+	if o := outcome(r, "MOD-002"); o.Code != "AI_UNAVAILABLE" || o.ProviderStatus != 0 || o.ProviderErrorType != "" {
+		t.Errorf("without a status: %+v", o)
+	}
+	if data, _ := r.Marshal(); bytes.Contains(data, []byte("provider_status")) || bytes.Contains(data, []byte("provider_error_type")) {
+		t.Errorf("without a status, the report: %s", data)
 	}
 }
 

@@ -1,0 +1,269 @@
+Mon Oct 26 12:54:45 UTC 2026
+commit: c7cf86c (working tree: the stubs and the new tests, not committed yet)
+go test -count=1 -v -run '^(TestTheSubsetGuard|TestEverySchemaTheAdapterSendsIsInsideTheLimits|TestTheOpenValuesAreEncoded|TestDecodeOnlyTheEncodedPlaces|TestDecodeRefuses|TestProjectionRefuses|TestProjection|TestTheRequestSchemaIsInsideTheLimits|TestEncodedValuesDecode|TestEncodedValuesThatDoNotDecode|TestDecodedAnswersMeetTheFullSchema|TestTheProviderErrorType|TestTheLiveEvalDecodesTheEncodedValues|TestTheLiveEvalNamesTheProviderError)$' ./internal/ai/provider/anthropic/
+    encode_test.go:107: encoded [], want ["/changes/*/value when /status=\"proposed\", /changes/*/op=\"add\"" "/changes/*/value when /status=\"proposed\", /changes/*/op=\"replace\"" "/changes/*/value when /status=\"proposed\", /changes/*/op=\"test\""]
+    encode_test.go:110: the description does not say how to encode: ""
+    encode_test.go:128: add: value map[]
+    encode_test.go:128: replace: value map[]
+    encode_test.go:128: test: value map[]
+    encode_test.go:137: 0 encoded strings in the schema, want 3
+    encode_test.go:168: encoded [], want ["/any" "/described" "/list/*" "/tagged/x when /tagged/kind=\"a\""]
+    encode_test.go:171: described: Anything.
+    encode_test.go:177: outside the limits: ["/properties/any: an empty schema accepts any JSON value" "/properties/described: an empty schema accepts any JSON value" "/properties/list/items: an empty schema accepts any JSON value" "/properties/tagged/anyOf/0/properties/x: an empty schema accepts any JSON value"]
+    encode_test.go:181: decoded {"any":"[1]","described":"\"x\"","list":["1","{}"],"noop":"6","tagged":{"kind":"a","x":"null"}} []
+    encode_test.go:185: decoded {"any":"1","described":"2","list":[],"noop":"6","tagged":{"kind":"b","y":"3"}} []
+--- FAIL: TestTheOpenValuesAreEncoded (0.01s)
+    encode_test.go:239: change 0: value "\"ci_runner\"", want "ci_runner"
+    encode_test.go:239: change 1: value "6", want 6
+    encode_test.go:239: change 2: value " {\"id\": \"n1\", \"tags\": [1, 2.5e3, -0, null, true, false, \"\\u00e9\"]} ", want {"id":"n1","tags":[1,2.5e3,-0,null,true,false,"\u00e9"]}
+    encode_test.go:239: change 3: value "12345678901234567890.000000000000000001", want 12345678901234567890.000000000000000001
+    encode_test.go:239: change 4: value "null", want null
+    encode_test.go:239: change 7: value "[]", want []
+--- FAIL: TestDecodeOnlyTheEncodedPlaces (0.00s)
+    encode_test.go:300: a lone surrogate: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: a number: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: null: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: an array: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: trailing data: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: a trailing bracket: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: a duplicate name: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: whitespace: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: a trailing comma: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: empty: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: too large: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: too deep: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: an object: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: not JSON: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:300: two values: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+--- FAIL: TestDecodeRefuses (0.01s)
+--- PASS: TestTheSubsetGuard (0.00s)
+    guard_test.go:336: proposal-output.schema.json (role modeler): 3 violation(s): ["/anyOf/0/properties/changes/allOf/0/items/anyOf/0/properties/value: an empty schema accepts any JSON value" "/anyOf/0/properties/changes/allOf/0/items/anyOf/1/properties/value: an empty schema accepts any JSON value" "/anyOf/0/properties/changes/allOf/0/items/anyOf/2/properties/value: an empty schema accepts any JSON value"]
+    guard_test.go:340: proposal-output.schema.json (role modeler): an empty schema in {"anyOf":[{"additionalProperties":false,"properties":{"assumptions":{"items":{"type":"string"},"type":"array"},"changes":{"allOf":[{"items":{"anyOf":[{"additionalProperties":false,"properties":{"op":{"const":"add"},"path":{"type":"string"},"value":{}},"required":["op","path","value"],"type":"object"},{"additionalProperties":false,"properties":{"op":{"const":"replace"},"path":{"type":"string"},"value":{}},"required":["op","path","value"],"type":"object"},{"additionalProperties":false,"properties":{"op":{"const
+    guard_test.go:336: proposal-output.schema.json (role scenario): 3 violation(s): ["/anyOf/0/properties/changes/allOf/0/items/anyOf/0/properties/value: an empty schema accepts any JSON value" "/anyOf/0/properties/changes/allOf/0/items/anyOf/1/properties/value: an empty schema accepts any JSON value" "/anyOf/0/properties/changes/allOf/0/items/anyOf/2/properties/value: an empty schema accepts any JSON value"]
+    guard_test.go:340: proposal-output.schema.json (role scenario): an empty schema in {"anyOf":[{"additionalProperties":false,"properties":{"assumptions":{"items":{"type":"string"},"type":"array"},"changes":{"allOf":[{"items":{"anyOf":[{"additionalProperties":false,"properties":{"op":{"const":"add"},"path":{"type":"string"},"value":{}},"required":["op","path","value"],"type":"object"},{"additionalProperties":false,"properties":{"op":{"const":"replace"},"path":{"type":"string"},"value":{}},"required":["op","path","value"],"type":"object"},{"additionalProperties":false,"properties":{"op":{"cons
+    guard_test.go:359: scenario.schema.json projects outside the limits: ["/properties/patch/items/anyOf/0/properties/value: an empty schema accepts any JSON value" "/properties/patch/items/anyOf/1/properties/value: an empty schema accepts any JSON value" "/properties/patch/items/anyOf/2/properties/value: an empty schema accepts any JSON value"]
+    guard_test.go:359: simulation.schema.json projects outside the limits: ["/anyOf/0: an empty schema accepts any JSON value" "/anyOf/1: an empty schema accepts any JSON value" "/properties/scenario_patch/items/anyOf/0/properties/value: an empty schema accepts any JSON value" "/properties/scenario_patch/items/anyOf/1/properties/value: an empty schema accepts any JSON value" "/properties/scenario_patch/items/anyOf/2/properties/value: an empty schema accepts any JSON value"]
+--- FAIL: TestEverySchemaTheAdapterSendsIsInsideTheLimits (0.07s)
+--- PASS: TestProjection (0.04s)
+    projection_test.go:182: emptied.json: projected
+    projection_test.go:182: untold.json: projected
+    projection_test.go:182: open-alternative.json: projected
+--- FAIL: TestProjectionRefuses (0.00s)
+    encoded_test.go:69: the modeler request's schema: ["/anyOf/0/properties/changes/allOf/0/items/anyOf/0/properties/value: an empty schema accepts any JSON value" "/anyOf/0/properties/changes/allOf/0/items/anyOf/1/properties/value: an empty schema accepts any JSON value" "/anyOf/0/properties/changes/allOf/0/items/anyOf/2/properties/value: an empty schema accepts any JSON value"]
+    encoded_test.go:72: the modeler's schema has 0 encoded values, want 3
+    encoded_test.go:69: the scenario request's schema: ["/anyOf/0/properties/changes/allOf/0/items/anyOf/0/properties/value: an empty schema accepts any JSON value" "/anyOf/0/properties/changes/allOf/0/items/anyOf/1/properties/value: an empty schema accepts any JSON value" "/anyOf/0/properties/changes/allOf/0/items/anyOf/2/properties/value: an empty schema accepts any JSON value"]
+--- FAIL: TestTheRequestSchemaIsInsideTheLimits (0.05s)
+    --- FAIL: TestTheRequestSchemaIsInsideTheLimits/modeler (0.02s)
+    --- FAIL: TestTheRequestSchemaIsInsideTheLimits/scenario (0.01s)
+    --- PASS: TestTheRequestSchemaIsInsideTheLimits/analyst (0.01s)
+    --- PASS: TestTheRequestSchemaIsInsideTheLimits/importer (0.01s)
+    encoded_test.go:112: change 0 (test /resources/1/id): value "\"ci_runner\"", want "ci_runner"
+    encoded_test.go:112: change 1 (replace /resources/1/capacity): value "6", want 6
+    encoded_test.go:112: change 2 (add /nodes/-): value "{\"id\":\"node_new\",\"type\":\"delay\",\"tags\":[1,-0.5e3,null]}", want {"id":"node_new","type":"delay","tags":[1,-0.5e3,null]}
+    encoded_test.go:112: change 3 (replace /metadata/note): value "null", want null
+    encoded_test.go:112: change 4 (replace /flag): value " false ", want false
+    encoded_test.go:112: change 5 (add /list/-): value "[\"a\",{\"b\":12345678901234567890}]", want ["a",{"b":12345678901234567890}]
+    encoded_test.go:112: change 6 (test /name): value "\"Ünïcödé \\\"quoted\\\" \\u00e9\"", want "Ünïcödé \"quoted\" \u00e9"
+    encoded_test.go:119: the raw answer is not the decoded one: {"status":"proposed","summary":"Raise the CI runner capacity from 3 to 6.","assumptions":[],"risk_level":"low","confidence":0.9,"changes":[{"op":"test","path":"/resources/1/id","value":"\"ci_runner\""},{"op":"replace","path":"/resources/1/capacity","value":"6"},{"op":"add","path":"/nodes/-","value":"{\"id\":\"node_new\",\"type\":\"delay\",\"tags\":[1,-0.5e3,null]}"},{"op":"replace","path":"/metadata/note","value":"null"},{"op":"replace","path":"/flag","value":" false "},{"op":"add","path":"/list/-","value":"[\"a\",{\"b\":123456789
+--- FAIL: TestEncodedValuesDecode (0.01s)
+    encoded_test.go:144: <nil> <nil>
+    encoded_test.go:144: <nil> <nil>
+    encoded_test.go:144: <nil> <nil>
+    encoded_test.go:144: <nil> <nil>
+    encoded_test.go:144: <nil> <nil>
+    encoded_test.go:144: <nil> <nil>
+--- FAIL: TestEncodedValuesThatDoNotDecode (0.28s)
+    --- FAIL: TestEncodedValuesThatDoNotDecode/not_JSON (0.01s)
+    --- FAIL: TestEncodedValuesThatDoNotDecode/trailing_data (0.22s)
+    --- FAIL: TestEncodedValuesThatDoNotDecode/garbage_after (0.02s)
+    --- FAIL: TestEncodedValuesThatDoNotDecode/a_duplicate (0.02s)
+    --- FAIL: TestEncodedValuesThatDoNotDecode/not_a_string (0.01s)
+    --- FAIL: TestEncodedValuesThatDoNotDecode/too_large (0.01s)
+--- PASS: TestDecodedAnswersMeetTheFullSchema (0.04s)
+    encoded_test.go:211: 400 invalid_request_error: ai provider: request_rejected (status 400) [credential org-a] ai provider: request_rejected (status 400) [credential org-a]
+    encoded_test.go:211: 404 not_found_error: ai provider: request_rejected (status 404) [credential org-a] ai provider: request_rejected (status 404) [credential org-a]
+    encoded_test.go:211: 413 request_too_large: ai provider: request_rejected (status 413) [credential org-a] ai provider: request_rejected (status 413) [credential org-a]
+    encoded_test.go:211: 409 conflict_error: ai provider: unavailable (status 409) [credential org-a] ai provider: unavailable (status 409) [credential org-a]
+    encoded_test.go:211: 429 rate_limit_error: ai provider: rate_limited (status 429) [credential org-a] ai provider: rate_limited (status 429) [credential org-a]
+    encoded_test.go:211: 500 api_error: ai provider: unavailable (status 500) [credential org-a] ai provider: unavailable (status 500) [credential org-a]
+    encoded_test.go:211: 504 timeout_error: ai provider: unavailable (status 504) [credential org-a] ai provider: unavailable (status 504) [credential org-a]
+    encoded_test.go:211: 529 overloaded_error: ai provider: unavailable (status 529) [credential org-a] ai provider: unavailable (status 529) [credential org-a]
+    encoded_test.go:211: 400 other: ai provider: request_rejected (status 400) [credential org-a] ai provider: request_rejected (status 400) [credential org-a]
+    encoded_test.go:211: 400 other: ai provider: request_rejected (status 400) [credential org-a] ai provider: request_rejected (status 400) [credential org-a]
+    encoded_test.go:211: 422 other: ai provider: request_rejected (status 422) [credential org-a] ai provider: request_rejected (status 422) [credential org-a]
+    encoded_test.go:211: 400 other: ai provider: request_rejected (status 400) [credential org-a] ai provider: request_rejected (status 400) [credential org-a]
+    encoded_test.go:211: 400 other: ai provider: request_rejected (status 400) [credential org-a] ai provider: request_rejected (status 400) [credential org-a]
+    encoded_test.go:223: 401 after a lost connection: ai provider: unavailable (status 401) [credential org-a]
+--- FAIL: TestTheProviderErrorType (0.61s)
+    liveeval_test.go:140: {ID:MOD-002 Category:golden_edit Mode:edit ExpectedOutcome:proposal Status:invalid Code: ProviderStatus:0 ProviderErrorType: Issues:[PATCH_TEST_FAILED] MinimumRisk:low ServerRisk: ProviderRisk: Risk: PatchHash: EffectHeld:<nil> Passed:false InputTokens:120 OutputTokens:30 CostNanoUSD:1080000 LatencyMillis:1 TemplateVersion:modeler-0.2.0}
+    liveeval_test.go:143: ready without its patch, effect or risk: {ID:MOD-002 Category:golden_edit Mode:edit ExpectedOutcome:proposal Status:invalid Code: ProviderStatus:0 ProviderErrorType: Issues:[PATCH_TEST_FAILED] MinimumRisk:low ServerRisk: ProviderRisk: Risk: PatchHash: EffectHeld:<nil> Passed:false InputTokens:120 OutputTokens:30 CostNanoUSD:1080000 LatencyMillis:1 TemplateVersion:modeler-0.2.0}
+    liveeval_test.go:140: {ID:MOD-002 Category:golden_edit Mode:edit ExpectedOutcome:proposal Status:invalid Code: ProviderStatus:0 ProviderErrorType: Issues:[PATCH_TEST_FAILED] MinimumRisk:low ServerRisk: ProviderRisk: Risk: PatchHash: EffectHeld:<nil> Passed:false InputTokens:120 OutputTokens:30 CostNanoUSD:1080000 LatencyMillis:1 TemplateVersion:modeler-0.2.0}
+--- FAIL: TestTheLiveEvalDecodesTheEncodedValues (0.15s)
+    --- FAIL: TestTheLiveEvalDecodesTheEncodedValues/decodes (0.12s)
+    --- FAIL: TestTheLiveEvalDecodesTheEncodedValues/does_not_decode (0.01s)
+    --- PASS: TestTheLiveEvalDecodesTheEncodedValues/decodes_to_a_string_capacity (0.02s)
+    liveeval_test.go:164: invalid_request_error: {ID:MOD-002 Category:golden_edit Mode:edit ExpectedOutcome:proposal Status:failed Code:AI_REQUEST_REJECTED ProviderStatus:0 ProviderErrorType: Issues:[] MinimumRisk:low ServerRisk: ProviderRisk: Risk: PatchHash: EffectHeld:<nil> Passed:false InputTokens:0 OutputTokens:0 CostNanoUSD:0 LatencyMillis:1 TemplateVersion:modeler-0.2.0}
+    liveeval_test.go:172: invalid_request_error: the report {
+        	"suite": "T-053 live provider eval (modeler corpus, server review; T-038 owns the baseline)",
+        	"kind": "smoke",
+        	"provider": "anthropic",
+        	"model": "claude-opus-5-5",
+        	"served_models": [
+        		"claude-opus-5-5"
+        	],
+        	"approval": "H-018",
+        	"date": "2026-10-27",
+        	"run_id": "01JB0000000000000000000002",
+        	"output_locale": "en",
+        	"schema": "proposal-output.schema.json",
+        	"prompt_template_versions": [
+        		"modeler-0.2.0"
+        	],
+        	"price": {
+        		"source": "https://platform.claude.com/docs/en/about-claude/pricing",
+        		"retrieved": "2026-10-26"
+        	},
+        	"usage": {
+        		"input_tokens": 0,
+        		"output_tokens": 0
+        	},
+        	"cost": {
+        		"nano_usd": 0,
+        		"usd": "0.00",
+        		"cap_usd": "10.00",
+        		"cap_nano_usd": 10000000000
+        	},
+        	"cases": {
+        		"golden_edit": 1
+        	},
+        	"statuses": {
+        		"failed": 1
+        	},
+        	"passed": 0,
+        	"run": 1,
+        	"golden_edit": {
+        		"passed": 0,
+        		"total": 1,
+        		"rate": 0
+        	},
+        	"zero_tolerance_gates": {
+        		"needs_input_kept_changes": 0,
+        		"ready_below_risk_floor": 0,
+        		"ready_without_server_validation": 0,
+        		"safe_failure_reached_ready": 0
+        	},
+        	"inference_geos": {},
+        	"spend_warnings": {
+        		"inference_geo_unknown": 0,
+        		"over_reservation": 0
+        	},
+        	"complete": true,
+        	"outcomes": [
+        		{
+        			"id": "MOD-002",
+        			"category": "golden_edit",
+        			"mode": "edit",
+        			"expected_outcome": "proposal",
+        			"status": "failed",
+        			"code": "AI_REQUEST_REJECTED",
+        			"minimum_risk": "low",
+        			"passed": false,
+        			"input_tokens": 0,
+        			"output_tokens": 0,
+        			"cost_nano_usd": 0,
+        			"latency_ms": 1,
+        			"prompt_template_version": "modeler-0.2.0"
+        		}
+        	],
+        	"not_run": [
+        		"the mapper and analyst corpora: their server review is T-027 and T-030, and the approval's data policy covers the proposal roles only (PROPOSED D-112)",
+        		"database effects and the dataset binding stage (make integration-test)",
+        		"zh-Hant output: every case runs in one output locale",
+        		"the >=90% golden target as a gate: a person calibrates it against a baseline (T-038)"
+        	]
+        }
+    liveeval_test.go:164: a_new_error: {ID:MOD-002 Category:golden_edit Mode:edit ExpectedOutcome:proposal Status:failed Code:AI_REQUEST_REJECTED ProviderStatus:0 ProviderErrorType: Issues:[] MinimumRisk:low ServerRisk: ProviderRisk: Risk: PatchHash: EffectHeld:<nil> Passed:false InputTokens:0 OutputTokens:0 CostNanoUSD:0 LatencyMillis:1 TemplateVersion:modeler-0.2.0}
+    liveeval_test.go:172: a_new_error: the report {
+        	"suite": "T-053 live provider eval (modeler corpus, server review; T-038 owns the baseline)",
+        	"kind": "smoke",
+        	"provider": "anthropic",
+        	"model": "claude-opus-5-5",
+        	"served_models": [
+        		"claude-opus-5-5"
+        	],
+        	"approval": "H-018",
+        	"date": "2026-10-27",
+        	"run_id": "01JB0000000000000000000002",
+        	"output_locale": "en",
+        	"schema": "proposal-output.schema.json",
+        	"prompt_template_versions": [
+        		"modeler-0.2.0"
+        	],
+        	"price": {
+        		"source": "https://platform.claude.com/docs/en/about-claude/pricing",
+        		"retrieved": "2026-10-26"
+        	},
+        	"usage": {
+        		"input_tokens": 0,
+        		"output_tokens": 0
+        	},
+        	"cost": {
+        		"nano_usd": 0,
+        		"usd": "0.00",
+        		"cap_usd": "10.00",
+        		"cap_nano_usd": 10000000000
+        	},
+        	"cases": {
+        		"golden_edit": 1
+        	},
+        	"statuses": {
+        		"failed": 1
+        	},
+        	"passed": 0,
+        	"run": 1,
+        	"golden_edit": {
+        		"passed": 0,
+        		"total": 1,
+        		"rate": 0
+        	},
+        	"zero_tolerance_gates": {
+        		"needs_input_kept_changes": 0,
+        		"ready_below_risk_floor": 0,
+        		"ready_without_server_validation": 0,
+        		"safe_failure_reached_ready": 0
+        	},
+        	"inference_geos": {},
+        	"spend_warnings": {
+        		"inference_geo_unknown": 0,
+        		"over_reservation": 0
+        	},
+        	"complete": true,
+        	"outcomes": [
+        		{
+        			"id": "MOD-002",
+        			"category": "golden_edit",
+        			"mode": "edit",
+        			"expected_outcome": "proposal",
+        			"status": "failed",
+        			"code": "AI_REQUEST_REJECTED",
+        			"minimum_risk": "low",
+        			"passed": false,
+        			"input_tokens": 0,
+        			"output_tokens": 0,
+        			"cost_nano_usd": 0,
+        			"latency_ms": 1,
+        			"prompt_template_version": "modeler-0.2.0"
+        		}
+        	],
+        	"not_run": [
+        		"the mapper and analyst corpora: their server review is T-027 and T-030, and the approval's data policy covers the proposal roles only (PROPOSED D-112)",
+        		"database effects and the dataset binding stage (make integration-test)",
+        		"zh-Hant output: every case runs in one output locale",
+        		"the >=90% golden target as a gate: a person calibrates it against a baseline (T-038)"
+        	]
+        }
+--- FAIL: TestTheLiveEvalNamesTheProviderError (0.03s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/anthropic	1.367s
+FAIL
+exit 1

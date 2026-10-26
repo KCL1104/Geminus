@@ -118,6 +118,10 @@ type Outcome struct {
 	Status string `json:"status"`
 	// Code is the provider error code of a failed case.
 	Code string `json:"code,omitzero"`
+	// ProviderStatus and ProviderErrorType: a failed case's provider HTTP
+	// status and error type.
+	ProviderStatus    int    `json:"provider_status,omitzero"`
+	ProviderErrorType string `json:"provider_error_type,omitzero"`
 	// Issues are the codes of an invalid outcome's issues, sorted.
 	Issues          []string `json:"issues,omitzero"`
 	MinimumRisk     string   `json:"minimum_risk"`
