@@ -3,7 +3,10 @@
 // validates configuration, connects to PostgreSQL as the API runtime login
 // (refusing an unsafe one), builds the token verifier and serves
 // internal/api's handler, behind the access log (httpapi.AccessLog), until
-// SIGINT or SIGTERM. Its log is observability's (T-035).
+// SIGINT or SIGTERM. Its log is observability's (T-035). It never holds an
+// AI key and never calls a provider: whether it accepts AI proposals is
+// decided from the non-secret AI settings (config.LoadAPIAI, T-053 I5), and
+// any AI key variable in its environment stops it.
 package main
 
 import (
@@ -15,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -52,7 +56,13 @@ func main() {
 // address once the server accepts connections (for tests).
 func run(ctx context.Context, getenv func(string) string, stderr io.Writer, ready chan<- string) int {
 	log := newLogger(stderr)
-	cfg, err := config.Load(getenv)
+	// The API's configuration: the AI settings without any key (T-053 I5).
+	// LoadAPI checks them with the rest; ai is their value.
+	cfg, err := config.LoadAPI(getenv)
+	ai, aerr := config.LoadAPIAI(getenv)
+	if err == nil {
+		err = aerr
+	}
 	authCfg, authErr := config.LoadAuth(getenv)
 	srvCfg, srvErr := config.LoadServer(getenv)
 	telCfg, telErr := config.LoadTelemetry(getenv)
@@ -60,6 +70,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
+	logAI(log, ai)
 	// Traces and metrics leave the process only to an OTLP endpoint the
 	// operator named (D-095 (b), ADR-028); otherwise this installs nothing.
 	stopTelemetry, err := export.Setup(ctx, telCfg, "geminus-api", log)
@@ -73,7 +84,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
-	opts := []api.Option{api.WithAI(aiAvailability(cfg))}
+	opts := []api.Option{api.WithAI(aiAvailability(ai))}
 	store, err := objectStore(cfg)
 	if err != nil {
 		log.Error("invalid configuration", "error", "the object storage cannot be used: "+err.Error())
@@ -143,21 +154,36 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 
 // aiAvailability is whether new AI proposals are accepted (T-025): with the
 // deterministic fake (development and tests only, config refuses it
-// elsewhere) or an approved live provider; otherwise they are refused with
-// the code AI_SPEC §2 names, before anything is stored. The API never
-// calls a provider itself, and reads no key. Both live providers, Anthropic
-// and Meta (T-055), are treated alike.
-func aiAvailability(cfg config.Config) proposals.Availability {
-	live := cfg.AIProvider == config.AIProviderAnthropic || cfg.AIProvider == config.AIProviderMeta
+// elsewhere) or a live provider whose recorded approval, model and switch
+// the worker's live gate accepts (config.LoadAPIAI: the settings alone,
+// T-053 I5); otherwise they are refused with the code AI_SPEC §2 names,
+// before anything is stored. The API never calls a provider itself (the
+// worker does) and holds no key. Both live providers, Anthropic and Meta
+// (T-055), are treated alike.
+func aiAvailability(ai config.APIAI) proposals.Availability {
 	switch {
-	case cfg.AIProvider == config.AIProviderFake:
+	case ai.Provider == config.AIProviderFake:
 		return proposals.Available
-	case live && cfg.AILive:
+	case ai.LiveEnabled():
 		return proposals.Available
-	case live:
+	case ai.Provider == config.AIProviderAnthropic || ai.Provider == config.AIProviderMeta:
 		return proposals.PolicyNotApproved
 	}
 	return proposals.NotConfigured
+}
+
+// logAI says, for a live provider, whether the API accepts AI proposals
+// (T-053 I5): the provider, the model and LIVE_AI_ON, or the typed reason
+// it refuses them, as the worker's log says whether live AI is on; never a
+// key (the API holds none).
+func logAI(log *slog.Logger, ai config.APIAI) {
+	switch {
+	case ai.Provider != config.AIProviderAnthropic && ai.Provider != config.AIProviderMeta:
+	case ai.LiveEnabled():
+		log.Info("AI proposals are accepted; the worker calls the provider", "provider", string(ai.Provider), "model", ai.Model, "code", "LIVE_AI_ON")
+	default:
+		log.Info("AI proposals are refused", "provider", string(ai.Provider), "code", strings.ToUpper(ai.LiveOff))
+	}
 }
 
 // objectStore opens the configured object storage (D-044): nil when it is

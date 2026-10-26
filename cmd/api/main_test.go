@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -44,10 +45,10 @@ func with(kv ...string) func(string) string {
 }
 
 // T-025: the API accepts new AI proposals only with the fake (development
-// and tests) or an approved live provider; otherwise it refuses them with
-// the code AI_SPEC §2 names, and no configuration makes it available
-// without the owner's recorded approval (none is recorded).
-func TestAIAvailability(t *testing.T) {
+// and tests) or a live provider whose recorded approval, model and switch
+// the worker's gate accepts (T-053 I5: without any key); otherwise it
+// refuses them with the code AI_SPEC §2 names.
+func TestAPIAvailability(t *testing.T) {
 	for _, c := range []struct {
 		name string
 		env  []string
@@ -55,24 +56,139 @@ func TestAIAvailability(t *testing.T) {
 	}{
 		{"default", nil, proposals.NotConfigured},
 		{"disabled", []string{"AI_PROVIDER", "disabled"}, proposals.NotConfigured},
+		{"disabled, the switch off", []string{"AI_PROVIDER", "disabled", "GEMINUS_AI_LIVE", "off"}, proposals.NotConfigured},
 		{"live without approval", []string{"AI_PROVIDER", "anthropic"}, proposals.PolicyNotApproved},
 		{"meta without approval", []string{"AI_PROVIDER", "meta"}, proposals.PolicyNotApproved},
 		{"meta, the switch off", []string{"AI_PROVIDER", "meta", "AI_POLICY_APPROVAL", "H-029", "AI_MODEL", "muse-spark-1.3"}, proposals.PolicyNotApproved},
+		{"meta, the switch off explicitly", []string{"AI_PROVIDER", "meta", "AI_POLICY_APPROVAL", "H-029", "AI_MODEL", "muse-spark-1.3",
+			"GEMINUS_AI_LIVE", "off"}, proposals.PolicyNotApproved},
+		{"anthropic, the switch off", []string{"AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "H-018", "AI_MODEL", "claude-opus-5-5"}, proposals.PolicyNotApproved},
+		{"meta, another model, the switch off", []string{"AI_PROVIDER", "meta", "AI_POLICY_APPROVAL", "H-029", "AI_MODEL", "muse-spark-1.2"}, proposals.PolicyNotApproved},
+		{"meta, Claude's approval, the switch off", []string{"AI_PROVIDER", "meta", "AI_POLICY_APPROVAL", "H-018", "AI_MODEL", "muse-spark-1.3"}, proposals.PolicyNotApproved},
+		{"meta live", apiMeta, proposals.Available},
+		{"anthropic live", apiClaude, proposals.Available},
 		{"fake", []string{"AI_PROVIDER", "fake", "APP_ENV", "test"}, proposals.Available},
 	} {
-		cfg, err := config.Load(with(c.env...))
+		ai, err := config.LoadAPIAI(with(c.env...))
 		if err != nil {
 			t.Fatalf("%s: %v", c.name, err)
 		}
-		if got := aiAvailability(cfg); got != c.want {
+		if got := aiAvailability(ai); got != c.want {
 			t.Errorf("%s: %v, want %v", c.name, got, c.want)
 		}
 	}
-	if got := aiAvailability(config.Config{AIProvider: config.AIProviderAnthropic, AILive: true}); got != proposals.Available {
-		t.Errorf("an approved live provider: %v", got)
+	// Only a valid approval of the provider itself makes it available,
+	// however the value was made.
+	ai, err := config.LoadAPIAI(with(apiMeta...))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := aiAvailability(config.Config{AIProvider: config.AIProviderMeta, AILive: true}); got != proposals.Available {
-		t.Errorf("the approved Meta provider: %v", got)
+	for name, v := range map[string]config.APIAI{
+		"the zero value":        {},
+		"meta, no approval":     {Provider: config.AIProviderMeta, Model: "muse-spark-1.3"},
+		"anthropic, H-029":      {Provider: config.AIProviderAnthropic, Approval: ai.Approval, Model: ai.Model},
+		"disabled, an approval": {Provider: config.AIProviderDisabled, Approval: ai.Approval},
+	} {
+		if got := aiAvailability(v); got == proposals.Available {
+			t.Errorf("%s: available", name)
+		}
+	}
+}
+
+// apiMeta and apiClaude are the API's settings with live AI on (T-053 I5):
+// the provider, its recorded approval, its model and the switch; no key.
+var (
+	apiMeta   = []string{"AI_PROVIDER", "meta", "AI_POLICY_APPROVAL", "H-029", "AI_MODEL", "muse-spark-1.3", "GEMINUS_AI_LIVE", "on"}
+	apiClaude = []string{"AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "H-018", "AI_MODEL", "claude-opus-5-5", "GEMINUS_AI_LIVE", "on"}
+)
+
+// T-053 I5: the deployed API holds no AI key, so with the switch on, the
+// record's model and no key it starts and accepts proposals (here it gets
+// as far as the database, which is not there); its log says so, with the
+// provider, the model and a typed code, never a key. With the switch off it
+// starts and refuses them, the log naming the typed reason.
+func TestAPIAvailabilityNeedsNoKey(t *testing.T) {
+	for name, c := range map[string]struct {
+		env  []string
+		want []string
+	}{
+		"meta live": {apiMeta, []string{`"msg":"AI proposals are accepted; the worker calls the provider"`, `"provider":"meta"`,
+			`"model":"muse-spark-1.3"`, `"code":"LIVE_AI_ON"`}},
+		"anthropic live": {apiClaude, []string{`"msg":"AI proposals are accepted; the worker calls the provider"`, `"provider":"anthropic"`,
+			`"model":"claude-opus-5-5"`, `"code":"LIVE_AI_ON"`}},
+		"meta, the switch off": {append(slices.Clone(apiMeta), "GEMINUS_AI_LIVE", "off"), []string{`"msg":"AI proposals are refused"`,
+			`"provider":"meta"`, `"code":"SWITCH_OFF"`}},
+		"meta, another model, the switch off": {append(slices.Clone(apiMeta), "GEMINUS_AI_LIVE", "", "AI_MODEL", "muse-spark-1.2"),
+			[]string{`"msg":"AI proposals are refused"`, `"code":"MODEL_MISMATCH"`}},
+		"anthropic, no approval": {[]string{"AI_PROVIDER", "anthropic"}, []string{`"msg":"AI proposals are refused"`, `"code":"NO_APPROVAL_NAMED"`}},
+	} {
+		var stderr syncBuffer
+		if code := refused(t, with(c.env...), &stderr); code != exitDatabase {
+			t.Errorf("%s: exit %d: %s", name, code, stderr.String())
+			continue
+		}
+		for _, w := range c.want {
+			if !strings.Contains(stderr.String(), w) {
+				t.Errorf("%s: no %s in %s", name, w, stderr.String())
+			}
+		}
+	}
+	// Disabled and the fake say nothing of a live provider.
+	for _, env := range [][]string{nil, {"AI_PROVIDER", "fake", "APP_ENV", "test"}} {
+		var stderr syncBuffer
+		if code := refused(t, with(env...), &stderr); code != exitDatabase || strings.Contains(stderr.String(), "AI proposals") {
+			t.Errorf("%v: exit %d: %s", env, code, stderr.String())
+		}
+	}
+}
+
+// T-053 I5: with the switch on, a setting the worker's gate refuses stops
+// the API before it connects anywhere, with the typed code, as it stops the
+// worker.
+func TestAPIAvailabilityRefusesAMismatch(t *testing.T) {
+	for name, c := range map[string]struct {
+		env  []string
+		want string
+	}{
+		"another model":          {[]string{"AI_MODEL", "muse-spark-1.3-contributor"}, "AI_MODEL (model_mismatch)"},
+		"no model":               {[]string{"AI_MODEL", ""}, "AI_MODEL (required)"},
+		"Claude's approval":      {[]string{"AI_POLICY_APPROVAL", "H-018"}, "AI_POLICY_APPROVAL (provider_mismatch)"},
+		"an unrecorded approval": {[]string{"AI_POLICY_APPROVAL", "H-033"}, "AI_POLICY_APPROVAL (not_approved)"},
+		"no approval":            {[]string{"AI_POLICY_APPROVAL", ""}, "GEMINUS_AI_LIVE (invalid)"},
+		"the switch, disabled":   {[]string{"AI_PROVIDER", "disabled", "AI_POLICY_APPROVAL", "", "AI_MODEL", ""}, "GEMINUS_AI_LIVE (invalid)"},
+		"another provider":       {[]string{"AI_PROVIDER", "openai"}, "AI_PROVIDER (invalid)"},
+	} {
+		var stderr syncBuffer
+		if code := refused(t, with(append(slices.Clone(apiMeta), c.env...)...), &stderr); code != exitConfig {
+			t.Errorf("%s: exit %d: %s", name, code, stderr.String())
+			continue
+		}
+		if out := stderr.String(); !strings.Contains(out, `"msg":"invalid configuration"`) || !strings.Contains(out, c.want) ||
+			strings.Contains(out, "database") || strings.Contains(out, "AI proposals are") {
+			t.Errorf("%s: %s", name, out)
+		}
+	}
+}
+
+// T-053 I5, defense in depth: any AI key variable in the API's environment
+// stops it before it connects anywhere, with the typed code, the log naming
+// the variable and never its value; whatever the AI settings are.
+func TestAPIRefusesToStartWithAKey(t *testing.T) {
+	const value = "SENTINEL-key-value-0123456789abcdef"
+	for _, k := range []string{"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_API_KEY",
+		"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY"} {
+		for name, env := range map[string][]string{"default": nil, "meta live": apiMeta, "anthropic, the switch off": apiClaude[:6]} {
+			var stderr syncBuffer
+			if code := refused(t, with(append(slices.Clone(env), k, value)...), &stderr); code != exitConfig {
+				t.Errorf("%s, %s: exit %d: %s", k, name, code, stderr.String())
+				continue
+			}
+			out := stderr.String()
+			if !strings.Contains(out, k+" ("+config.CodeKeyForbidden+")") || strings.Contains(out, "SENTINEL") || strings.Contains(out, value[9:]) ||
+				strings.Contains(out, "database") {
+				t.Errorf("%s, %s: %s", k, name, out)
+			}
+		}
 	}
 }
 
@@ -251,14 +367,14 @@ func TestProbeCommand(t *testing.T) {
 // the S3-compatible bucket of a deployment, the filesystem only outside
 // production (config refuses it there).
 func TestObjectStore(t *testing.T) {
-	cfg, err := config.Load(with())
+	cfg, err := config.LoadAPI(with())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if s, err := objectStore(cfg); s != nil || err != nil {
 		t.Errorf("disabled: %v %v", s, err)
 	}
-	cfg, err = config.Load(with("APP_ENV", "production", "OBJECT_STORAGE_PROVIDER", "s3", "OBJECT_STORAGE_S3_ENDPOINT", "https://storage.example",
+	cfg, err = config.LoadAPI(with("APP_ENV", "production", "OBJECT_STORAGE_PROVIDER", "s3", "OBJECT_STORAGE_S3_ENDPOINT", "https://storage.example",
 		"OBJECT_STORAGE_S3_BUCKET", "geminus-demo-1a2b", "OBJECT_STORAGE_S3_REGION", "auto", "OBJECT_STORAGE_S3_ACCESS_KEY_ID", "AKID",
 		"OBJECT_STORAGE_S3_SECRET_ACCESS_KEY", "SECRET-SENTINEL"))
 	if err != nil {
@@ -268,7 +384,7 @@ func TestObjectStore(t *testing.T) {
 	if _, ok := s.(*objects.S3); !ok || err != nil {
 		t.Errorf("s3: %T %v", s, err)
 	}
-	cfg, err = config.Load(with("APP_ENV", "test", "OBJECT_STORAGE_PROVIDER", "filesystem", "OBJECT_STORAGE_ROOT", t.TempDir()))
+	cfg, err = config.LoadAPI(with("APP_ENV", "test", "OBJECT_STORAGE_PROVIDER", "filesystem", "OBJECT_STORAGE_ROOT", t.TempDir()))
 	if err != nil {
 		t.Fatal(err)
 	}

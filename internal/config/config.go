@@ -45,9 +45,11 @@ func (p AIProvider) live() bool { return p == AIProviderAnthropic || p == AIProv
 type Config struct {
 	DatabaseURL string
 	AIProvider  AIProvider
-	// AILive reports whether the live provider is selected and approved
-	// (AI.LiveEnabled): only then may an AI request reach it. The API
-	// refuses new AI requests otherwise (T-025), without reading any key.
+	// AILive reports whether the live provider is selected and approved:
+	// Load, the worker's, AI.LiveEnabled (its keys read); LoadAPI, the
+	// API's, APIAI.LiveEnabled (the same gate, no key; T-053 I5). Only then
+	// may an AI request reach the provider; the API refuses new AI requests
+	// otherwise (T-025).
 	AILive bool
 	// Env is APP_ENV: "development", "test", "production", or "" (unset).
 	Env           string
@@ -110,9 +112,27 @@ type Error struct {
 
 func (e *Error) Error() string { return e.Var + " (" + e.Code + "): " + e.Msg }
 
-// Load reads and validates the configuration. All problems are reported
+// Load reads and validates the configuration of the worker: its AI part is
+// LoadAI's (the keys read once live AI is on). All problems are reported
 // together, joined with errors.Join, each as an *Error.
 func Load(getenv func(string) string) (Config, error) {
+	return load(getenv, func() (AIProvider, bool, error) {
+		ai, err := LoadAI(getenv)
+		return ai.Provider, ai.LiveEnabled(), err
+	})
+}
+
+// LoadAPI is Load for the API (T-053 I5): its AI part is LoadAPIAI's, which
+// never reads a key and refuses one.
+func LoadAPI(getenv func(string) string) (Config, error) {
+	return load(getenv, func() (AIProvider, bool, error) {
+		ai, err := LoadAPIAI(getenv)
+		return ai.Provider, ai.LiveEnabled(), err
+	})
+}
+
+// load is Load with the AI part loadAI reads.
+func load(getenv func(string) string, loadAI func() (AIProvider, bool, error)) (Config, error) {
 	var errs []error
 	cfg := Config{DatabaseURL: getenv("DATABASE_URL")}
 
@@ -120,8 +140,9 @@ func Load(getenv func(string) string) (Config, error) {
 		errs = append(errs, err)
 	}
 
-	// The AI configuration (ai.go); its problems are reported with the rest.
-	if ai, err := LoadAI(getenv); err != nil {
+	// The AI configuration (ai.go, apiai.go); its problems are reported with
+	// the rest.
+	if p, live, err := loadAI(); err != nil {
 		var joined interface{ Unwrap() []error }
 		if errors.As(err, &joined) {
 			errs = append(errs, joined.Unwrap()...)
@@ -129,7 +150,7 @@ func Load(getenv func(string) string) (Config, error) {
 			errs = append(errs, err)
 		}
 	} else {
-		cfg.AIProvider, cfg.AILive = ai.Provider, ai.LiveEnabled()
+		cfg.AIProvider, cfg.AILive = p, live
 	}
 
 	switch cfg.Env = getenv("APP_ENV"); cfg.Env {

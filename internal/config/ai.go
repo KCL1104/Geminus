@@ -62,6 +62,10 @@ import (
 // explicitly; nothing reads ANTHROPIC_API_KEY or MODEL_API_KEY (D-018). A
 // key is a secret.Secret: it prints as [redacted], and everything else
 // names it by label.
+//
+// LoadAI is the worker's (and the live eval's). The API never holds a key:
+// it decides whether it accepts proposals with LoadAPIAI, the same gate
+// without the keys (apiai.go; T-053 I5).
 type AI struct {
 	Provider AIProvider
 	// Approval is the recorded approval AI_POLICY_APPROVAL names; the zero
@@ -188,41 +192,19 @@ const (
 // allowed. All problems are reported together, as in Load.
 func LoadAI(getenv func(string) string) (AI, error) {
 	var errs []error
-	ai := AI{Provider: AIProviderDisabled}
 	env := getenv("APP_ENV")
 	approval := getenv("AI_POLICY_APPROVAL")
 	fakeOK := env == "development" || env == "test"
 
-	switch p := AIProvider(getenv("AI_PROVIDER")); p {
-	case "", AIProviderDisabled:
-	case AIProviderFake:
-		ai.Provider = p
-		if !fakeOK {
-			errs = append(errs, &Error{"AI_PROVIDER", CodeInvalid,
-				"the fake provider is for development and tests only: APP_ENV must be development or test"})
-		}
-	case AIProviderAnthropic, AIProviderMeta:
-		ai.Provider = p
-	default:
-		errs = append(errs, &Error{"AI_PROVIDER", CodeInvalid, `unknown provider; allowed: "disabled", "fake", "anthropic", "meta"`})
-	}
+	p, perrs := aiProvider(getenv, fakeOK)
+	errs = append(errs, perrs...)
+	ai := AI{Provider: p}
 	if getenv("AI_API_KEY") != "" {
 		errs = append(errs, &Error{"AI_API_KEY", CodeInvalid,
 			"not read: the live adapters take GEMINUS_ANTHROPIC_API_KEY_A and _B, or GEMINUS_MUSE_API_KEY, and only once live AI is on (D-018)"})
 	}
-
-	on := false
-	switch getenv(liveSwitch) {
-	case "", "off":
-	case "on":
-		on = true
-		if !ai.Provider.live() || approval == "" {
-			errs = append(errs, &Error{liveSwitch, CodeInvalid, "live AI needs AI_PROVIDER=anthropic or meta and AI_POLICY_APPROVAL naming the owner's approval"})
-			on = false
-		}
-	default:
-		errs = append(errs, &Error{liveSwitch, CodeInvalid, `allowed: "on", "off" or unset`})
-	}
+	on, serrs := switchOn(getenv, ai.Provider, approval)
+	errs = append(errs, serrs...)
 
 	var budgets []int64
 	switch {
@@ -336,6 +318,41 @@ func LoadAI(getenv func(string) string) (AI, error) {
 	return ai, nil
 }
 
+// aiProvider reads AI_PROVIDER (LoadAI, and the API's LoadAPIAI): unset is
+// disabled; the fake only where fakeOK (APP_ENV development or test), and
+// otherwise an error; an unknown provider is an error, and disabled.
+func aiProvider(getenv func(string) string, fakeOK bool) (AIProvider, []error) {
+	switch p := AIProvider(getenv("AI_PROVIDER")); p {
+	case "", AIProviderDisabled:
+		return AIProviderDisabled, nil
+	case AIProviderFake:
+		if !fakeOK {
+			return p, []error{&Error{"AI_PROVIDER", CodeInvalid,
+				"the fake provider is for development and tests only: APP_ENV must be development or test"}}
+		}
+		return p, nil
+	case AIProviderAnthropic, AIProviderMeta:
+		return p, nil
+	}
+	return AIProviderDisabled, []error{&Error{"AI_PROVIDER", CodeInvalid, `unknown provider; allowed: "disabled", "fake", "anthropic", "meta"`}}
+}
+
+// switchOn reads the operator's switch GEMINUS_AI_LIVE (T-053; LoadAI, and
+// the API's LoadAPIAI): on only with a live provider p and an approval
+// named, and an error otherwise; anything but on, off or unset is an error.
+func switchOn(getenv func(string) string, p AIProvider, approval string) (bool, []error) {
+	switch getenv(liveSwitch) {
+	case "", "off":
+		return false, nil
+	case "on":
+		if !p.live() || approval == "" {
+			return false, []error{&Error{liveSwitch, CodeInvalid, "live AI needs AI_PROVIDER=anthropic or meta and AI_POLICY_APPROVAL naming the owner's approval"}}
+		}
+		return true, nil
+	}
+	return false, []error{&Error{liveSwitch, CodeInvalid, `allowed: "on", "off" or unset`}}
+}
+
 // live is a provider's live configuration: the approval token, the model,
 // the keys.
 type live struct {
@@ -344,19 +361,51 @@ type live struct {
 	creds    []AICredential
 }
 
-// loadLive checks the live configuration of provider p: the approval
-// approvalVar names (approval), the model modelVar names, and, once every
-// condition holds and the switch is on, p's keys. why is the typed reason
-// live AI is off for p (empty when on); a condition that fails while the
-// switch is on is an error, named after the variable (the record's gaps
-// and the price after switchVar). With images, an approval whose data
-// policy names no image is off (LiveOffImagesNotApproved), never an error,
-// and no key is read.
+// loadLive checks the live configuration of provider p: liveGate (the
+// approval approvalVar names, the model modelVar names, the price, the
+// images, the switch) and, once it passes, p's keys. why is the typed
+// reason live AI is off for p (empty when on); errors are liveGate's or
+// the keys'. No key is read unless the gate passes.
 func loadLive(getenv func(string) string, p AIProvider, approval, approvalVar, modelVar, switchVar string, on, images bool) (live, string, []error) {
+	model, why, errs := liveGate(getenv, p, approval, approvalVar, modelVar, switchVar, on, images)
+	if why != "" || len(errs) > 0 {
+		return live{}, why, errs
+	}
+	a, ok := aiapproval.Recorded(approval)
+	if !ok { // Gap was "": Recorded agrees, unless the record changed meanwhile
+		return live{}, "", []error{&Error{approvalVar, CodeNotApproved, "the recorded approval cannot be used"}}
+	}
+	var creds []AICredential
+	var cerrs []error
+	switch p {
+	case AIProviderAnthropic:
+		creds, cerrs = loadKeys(getenv)
+	case AIProviderMeta:
+		creds, cerrs = loadMuseKey(getenv)
+	}
+	if len(cerrs) > 0 {
+		return live{}, "", cerrs
+	}
+	return live{approval: a, model: model, creds: creds}, "", nil
+}
+
+// liveGate is the live gate of provider p but for the keys, the same for
+// the worker (loadLive, which reads p's keys once it passes) and the API
+// (LoadAPIAI, which never reads one; T-053 I5): the approval approvalVar
+// names (approval) is one this build records, of p, lacking nothing;
+// modelVar names its model exactly; this build prices its model (and its
+// segmentation model); with images, its data policy names images; and the
+// switch is on. It returns the model modelVar names and why, the typed
+// reason live AI is off for p ("" when every condition holds). A condition
+// that fails while the switch is on is an error, named after the variable
+// (the record's gaps and the price after switchVar); an approval this build
+// does not record is an error whatever the switch; an approval whose data
+// policy names no image, with images, is off, never an error.
+func liveGate(getenv func(string) string, p AIProvider, approval, approvalVar, modelVar, switchVar string, on, images bool) (string, string, []error) {
 	var errs []error
 	rec, ok := aiapproval.Lookup(approval)
 	if !ok {
-		return live{}, "", []error{&Error{approvalVar, CodeNotApproved,
+		return "", "", []error{&Error{approvalVar, CodeNotApproved,
 			"this build records no such approval of live AI; the owner records one (model, budget, data policy) before any live call (H-001, H-017, H-018)"}}
 	}
 	model := getenv(modelVar)
@@ -394,25 +443,7 @@ func loadLive(getenv func(string) string, p AIProvider, approval, approvalVar, m
 	case !on:
 		why = LiveOffSwitch
 	}
-	if why != "" {
-		return live{}, why, errs
-	}
-	a, ok := aiapproval.Recorded(approval)
-	if !ok { // Gap was "": Recorded agrees, unless the record changed meanwhile
-		return live{}, "", []error{&Error{approvalVar, CodeNotApproved, "the recorded approval cannot be used"}}
-	}
-	var creds []AICredential
-	var cerrs []error
-	switch p {
-	case AIProviderAnthropic:
-		creds, cerrs = loadKeys(getenv)
-	case AIProviderMeta:
-		creds, cerrs = loadMuseKey(getenv)
-	}
-	if len(cerrs) > 0 {
-		return live{}, "", cerrs
-	}
-	return live{approval: a, model: model, creds: creds}, "", nil
+	return model, why, errs
 }
 
 // loadMuseKey reads the Meta Model API key (T-055): present, clean (as
