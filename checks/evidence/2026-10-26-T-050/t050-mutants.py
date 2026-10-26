@@ -31,6 +31,7 @@ REPO = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 and not sys.argv[1].starts
 ONLY = [a for a in sys.argv[1:] if not pathlib.Path(a).is_dir()]
 PY = os.environ.get("PYTHON", "python3")
 K = "internal/simulation/engine/kernel.go"
+RNG = "internal/simulation/engine/rng.go"
 C = "internal/simulation/engine/compile.go"
 M = "internal/results/metrics/aggregate.go"
 T = "internal/simulation/trace/trace.go"
@@ -149,6 +150,47 @@ MUT = [
     ("batch-risk-ignored", RK, "\t\tif ok && c.Type == n.Type && !sameBatch(n.Batch, c.Batch) {\n", "\t\tif false && ok && c.Type == n.Type && !sameBatch(n.Batch, c.Batch) {\n", AI),
     ("setup-risk-ignored", RK, "\t\tif ok && !sameSetups(r.Setups, c.Setups) {\n", "\t\tif false && ok && !sameSetups(r.Setups, c.Setups) {\n", AI),
     ("setup-risk-ignores-initial", RK, "\tif a.Initial != b.Initial || (a.Default == nil)", "\tif (a.Default == nil)", AI),
+    # --- Review round 1 (H-003, checks/evidence/2026-10-26-T-050-r1/): the
+    # reviewer's mutants that no test, or only a 0.5.0 lock, killed
+    # (reviewer/review-mutants.py), the reading of D-096 (g)'s old text
+    # (M1), and the reviewer's equivalent one (I2). Each is killed now by a
+    # hand golden or vector added in round 1, not by a lock.
+    # M1: B2's since of a batch request taken as the ready tick (the old
+    # D-096 (g) text) instead of the first tick in B2's state (D-074 (c));
+    # G-BT13 cannot tell (both 20), G-BT18 can (20 vs 100).
+    ("m1-b2-since-ready-tick", K, "\t\tif f.stalled < 0 {\n\t\t\tf.stalled, f.deadline = k.r.now, k.deadlineOf(f.process)\n\t\t}\n",
+     "\t\tif f.stalled < 0 {\n\t\t\tf.stalled, f.deadline = k.r.now, k.deadlineOf(f.process)\n\t\t\tif f.batch {\n\t\t\t\tf.stalled = f.entered\n\t\t\t}\n\t\t}\n", ENG),
+    # M2: D-096 (g) B, a BATCH_TIMEOUT after the horizon not counted for
+    # B1. ADR-026 D-050 B1 (ACCEPTED) counts it, as the kernel does (A);
+    # G-BT19 runs to the horizon under A and is ErrDeadlock at 7 under B.
+    ("r-b1-ignores-timeouts-after-horizon", K, "\t\t\tk.timeouts++\n\t\t\tif err := k.r.schedule(front.enter+b.wait-k.r.now",
+     "\t\t\tif front.enter+b.wait <= k.r.p.horizon {\n\t\t\t\tk.timeouts++\n\t\t\t}\n\t\t\tif err := k.r.schedule(front.enter+b.wait-k.r.now", ENG),
+    # M3: D-055's stream name renamed (TestSetupStreamsPerUnit derives its
+    # expectation from the constant; TestSetupStreamVectors, against the
+    # Python port, does not).
+    ("r-setup-purpose-renamed", RNG, 'const PurposeSetupPrefix = "setup/"', 'const PurposeSetupPrefix = "setups/"', ENG),
+    # M3: the changeover ends after the last observation never applied at
+    # the run's end (G-SU12: setup_ticks 13 instead of 12 minutes).
+    ("r-setup-ends-not-applied-at-finish", M, "\t\tc.endSetups(c.h) // a later end is cut at H by the integrals\n", "", SIM),
+    # M4: a complete changeover must start strictly after W (G-SU11: B1's at
+    # W = 20 is complete).
+    ("r-setup-complete-strict-w", M, "if o.Tick >= c.w && o.Tick+o.Value <= c.h {", "if o.Tick > c.w && o.Tick+o.Value <= c.h {", SIM),
+    # L1: a batch's end asks for a dispatch with no bundle released
+    # (G-BT21: 10 events instead of 8, b2 in DISPATCH seq 8 instead of 7).
+    ("r-batch-end-dispatch-without-resources", K, "\t\tif err := k.release(reqs, 0); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif len(reqs) > 0 {\n",
+     "\t\tif err := k.release(reqs, 0); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tif true {\n", ENG),
+    # L2: B1's since of a batch request (Queued) taken as its oldest
+    # member's entry instead of the tick the request was made (G-BT22: 1
+    # minute instead of 2).
+    ("r-b1-since-oldest-entry", K, "req := &request{process: n, seq: k.reqSeq, entered: k.r.now, stalled: -1, deadline: -1, batch: true}",
+     "req := &request{process: n, seq: k.reqSeq, entered: front.enter, stalled: -1, deadline: -1, batch: true}", ENG),
+    # Equivalent (the reviewer's I2): a changeover's end applied only after
+    # an observation of a later tick. integral.set adds level x (t - since)
+    # and moves since, and the late end is applied at its own tick before
+    # any observation of a later tick, so the only reordering is between
+    # zero-length steps at that tick; at the run's end an end exactly at H
+    # left unapplied covers [H, H], zero length.
+    ("r-setup-end-applied-late", M, "for len(c.setupEnds) > 0 && c.setupEnds[0].tick <= t {", "for len(c.setupEnds) > 0 && c.setupEnds[0].tick < t {", SIM, "equivalent"),
     # The SimPy reference's interpretation
     ("py-unit-choice-ignores-state", SP, "        return match[0] if match else free[0]\n", "        return free[0]\n", "py"),
     ("py-ready-strictly-after-limit", SP, "env.now - bbuf[p][0][1] >= wait):", "env.now - bbuf[p][0][1] > wait):", "py"),
