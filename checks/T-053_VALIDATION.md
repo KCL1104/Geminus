@@ -1,6 +1,53 @@
 # T-053 驗證報告：Live AI 開啟（H-018）
 
-**日期：2026-10-26｜狀態：實作完成，待獨立 review（H-003）；`planning/tasks.json` 的狀態未改（仍為 not_started），由 coordinator／reviewer 決定。｜需求：REQ-008、REQ-016、REQ-019、REQ-020｜Gate：D-018（APPROVED）；本任務提出的 D-110–D-115 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-053 依建議實作並以它們為 gate（tasks.json 的 `decision_gates` 加入 D-110–D-115）。｜驗收測試：TEST-027（audit／telemetry privacy 的 T-053 部分）；TEST-024（analyst grounding）不在本次範圍：analyst 的 live 使用依 D-112 不開，analyst job 是 T-030。｜Live AI 在這個 build 無法開啟：H-018 的 record 缺 owner 對資料保留安排的確認（D-113，`retention_unconfirmed`）。Live smoke 與 live eval 都 NOT RUN；DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」）。**
+**日期：2026-10-26｜狀態：實作完成，待獨立 review（H-003）；`planning/tasks.json` 的狀態未改（仍為 not_started），由 coordinator／reviewer 決定。｜需求：REQ-008、REQ-016、REQ-019、REQ-020｜Gate：D-018（APPROVED）；本任務提出的 D-110–D-115 是 **PROPOSED**，`approved_by`／`approved_at` 為 null，T-053 依建議實作並以它們為 gate（tasks.json 的 `decision_gates` 加入 D-110–D-115）。｜驗收測試：TEST-027（audit／telemetry privacy 的 T-053 部分）；TEST-024（analyst grounding）不在本次範圍：analyst 的 live 使用依 D-112 不開，analyst job 是 T-030。｜原本的 T-053 build 中 live AI 無法開啟：H-018 的 record 缺 owner 對資料保留安排的確認（D-113，`retention_unconfirmed`）。Owner 的確認（H-026）已在 `t053-ret` 記入，record 已完整，見下節。Live smoke 與 live eval 都 NOT RUN；DB 測試與 `make integration-test` 為 NOT RUN（見「NOT RUN」）。**
+
+## Owner 的確認（H-026）與 reservation ID 的 domain（追加，`t053-ret` branch）
+
+T-053 的 commit 整合到 main（79c9423）之後，在 `t053-ret`（從 79c9423 開出，沒有 push）追加兩項可分開 review 的修改。以下的「實際執行結果」等章節仍是追加之前的紀錄；追加的驗證在本節。
+
+**(1) H-026：資料保留安排的確認。** Owner 回答 D-113 的問題（2026-10-26，coordinator 記錄為 H-026）：兩個 provider organization（`GEMINUS_ANTHROPIC_API_KEY_A`／`_B` 背後）都是預設的 standard retention，沒有 ZDR，兩者相同。
+- `internal/config/aiapproval`：H-018 record 的 `Retention` 寫入 `Arrangement` `standard`、`By` KCL1104 (repository owner)、`At` 2026-10-26、`Source` H-026。形狀沒有改（一個 arrangement 代表兩個 organization）。`Confirmation.Given` 另要求 `At` 是 YYYY-MM-DD 的日曆日期（`SpendLimits` 也適用）；arrangement 只接受 `standard` 與 `zero_data_retention`，所以「只有一個 organization 開 ZDR」這種記法只能寫成不認得的 arrangement，因此被拒。
+- 先寫的測試（`h026-red.log`，exit 1）：修改前，既有的 `TestTheH018Record` 與 `TestThisBuildKeepsLiveOff` 通過，證明 H-018 以 `retention_unconfirmed` 拒絕 live（要求 (1)）。新的 `TestH026TurnsLiveOn` 失敗（record 的 retention 是空的）。新的 `TestAnAlteredRetentionRefuses` 中，6 個日期格式的 subtest 失敗（`26/10/2026`、`2026/10/26`、帶時間、文字、`2026-02-30`、前面有空格），其餘 8 個通過。修改後（`h026-green.log`，exit 0）全部通過：
+  - `TestH026TurnsLiveOn`（要求 (2)）：以 `t.Setenv` 設假 key、`AI_MODEL` 等於 record 的 model、`GEMINUS_AI_LIVE=on`，經 `os.Getenv` 讀設定時 live 開啟，adapter 接受這個設定，但沒有送出任何 request。沒有開關時 `switch_off`，也不讀 key。從頭到尾沒有向 `ANTHROPIC_API_KEY` 要值，而且這個 getenv 對 `ANTHROPIC_*` 一律不讀。
+  - `TestAnAlteredRetentionRefuses`（要求 (3)）的 14 種改動：一個 organization 開 ZDR、兩種 arrangement 分開寫、`zdr` 縮寫、`Standard` 大寫、沒有 arrangement、沒有 source、沒有確認者、沒有日期，以及上面 6 種日期格式。每一種都是 `retention_unconfirmed`、不產生 token：開關 on 時拒絕啟動，開關 off 時不讀 key。
+- 以前依賴「H-018 不完整」的測試改為新的狀態：
+  - `TestTheH018Record`（golden 改為 H-026 的 retention、`Gap` 為空、會產生 token）
+  - `TestRecorded`（改用本測試自己的 record）
+  - `TestAnyMismatchKeepsLiveOff`（case 改名為 H-026 之前的 record）
+  - `TestTheLiveEvalRunsOnlyWhenLiveIsOn`（H-026 之前的 record 被拒；build 的 record 在測試的 in-process backend 上跑）
+  - `internal/config` 的 `TestThisBuildsRecord`（原 `TestThisBuildKeepsLiveOff`）
+  - `internal/aievals` 的 `TestMainRefusesWhileLiveIsOff`（H-018 沒有開關時為 `switch_off`；加上其他 model、少一把 key、同一把 key 兩次）
+  - `cmd/worker` 的 `TestTheProviderIsTheConfigured`（開關 on 時 live 開啟，但 worker 沒有 spend ledger 就拒絕建立 live client）
+
+  這些測試都不呼叫 live client：沒有任何測試對 production URL 送出 request。
+- 文件：D-113 記下 owner 的回答（docs/DECISIONS_AND_TBD.md、planning/decisions.json），D-113 本身仍為 PROPOSED。改了的還有 SECURITY §7、AI_SPEC（開頭、§2、§10）、ARCHITECTURE、Makefile 的說明，以及 config、worker、adapter 的註解：原本寫著「H-018 缺 retention 確認、live 無法開啟」的句子改為現況。human decisions 表的 H-026 列沒有加，由 coordinator 在 main 加入。
+- **之後的行為改變**：這個 build 在部署設定 `AI_PROVIDER=anthropic`、`AI_POLICY_APPROVAL=H-018`、`AI_MODEL=claude-opus-5-5`、兩把 key 與 `GEMINUS_AI_LIVE=on` 時會開啟 live AI。worker 經 spend ledger 計量；`make ai-eval-live` 以每次 run 自己的上限計量。
+
+**(2) Migration 0016 的 reservation ID 改用 D-001 domain。** Coordinator 的 `make integration-test` 中，`db/tests/constraints.sql:361` 失敗：「ID columns without their D-001 domain: ai_spend_reservations.id=text want ?」。0016 沒有 push 也沒有部署過，所以可以改。
+- `migrations/0016_ai_spend.up.sql`：新增 `CREATE DOMAIN twin.asr_id AS text CHECK (VALUE ~ '^asr_[0-7][0-9A-HJKMNP-TV-Z]{25}$')`，寫法同 0001。另外比照 0002、0004 對每個 domain 的做法 `GRANT USAGE ON TYPE` 給 `twin_api`、`twin_worker`、`twin_provisioner`。`ai_spend_reservations.id` 改為 `twin.asr_id NOT NULL`。`0016_ai_spend.down.sql` 在 drop table 之後 `DROP DOMAIN twin.asr_id`。
+- `db/tests/templates/constraints.sql.tmpl` 加入 `('ai_spend_reservations','asr_id')`，以 `scripts/render_db_tests.py` 重產，只有 `db/tests/constraints.sql` 改變。0016 中其他會被這個測試檢查的欄位已經用了對應的 domain：`organization_id`（org_id）、`ai_proposal_id`（aip_id）、`ai_analysis_id`（ana_id）、`import_id`（imp_id）、`request_id`（req_id）。`ai_spend_periods` 沒有 ID 欄位。沒有其他欄位存 reservation ID（`reservation_id` 只出現在 audit 的 JSON metadata，`internal/audit` 已以 `idOf("asr")` 檢查）。
+- D-001 prefix 登記處的檢查：
+  - `internal/ids` 沒有 prefix 清單（`New(prefix)`），不需要改。
+  - `schemas/common.schema.json` 只列出 HTTP payload 中出現的 ID（`ResourceID` 是 audit 的 `target_id`），而 reservation 不是任何 API 的 payload，也不是 audit target（AuditEvent 的 `metadata` 是自由的 object），所以沒有加。加了會改 contract，還要重產 TS。
+  - 0001 的 `twin.public_id` 已部署，而且 reservation 不是 audit target，所以沒有改。
+  - `internal/ai/aicontext/sanitize.go` 的 server ID redaction 清單沒有加 `asr`：reservation ID 不會進入 AI context，也不能經任何 API 指定。
+  - D-001 的文字不列舉 prefix。D-111（PROPOSED）加了一句「ID 為 D-001 的 `asr_` + ULID，domain `twin.asr_id`」（docs/DECISIONS_AND_TBD.md、planning/decisions.json），API_DATABASE §8 也同步。
+- 沒有 PostgreSQL，所以 SQL 都沒有執行：這次的修改、`constraints.sql` 與 `ai_spend.sql`（含 0016 的 down／up）都 NOT RUN，由 coordinator 重跑 db-test 與 integration-test。`ai_spend.sql` 中不合格 ID 的 case（`asr_not-an-id`）預期仍是 23514，因為 domain 的 CHECK 也回 23514。
+
+**這次的驗證**（log 在 `checks/evidence/2026-10-26-T-053/h026-*.log`）：
+
+| 指令 | Exit |
+|---|---:|
+| 先寫的測試，修改前（`h026-red.log`） | 1 |
+| 同一組測試，修改後（`h026-green.log`） | 0 |
+| `go test -count=1 ./internal/config/... ./internal/ai/... ./internal/aievals/... ./cmd/ai-eval-live/... ./cmd/worker/... ./internal/storage/aispend/...`（`h026-go-test.log`） | 0 |
+| `go vet ./internal/config/... ./internal/ai/... ./internal/aievals/... ./cmd/... ./internal/storage/... ./internal/proposals/...`（`h026-go-vet.log`） | 0 |
+| `make spec-check`（`h026-spec-check.log`；含 `PASS_DB_TESTS_FRESH`） | 0 |
+| `make architecture-check`（`h026-architecture-check.log`） | 0（86 packages、23 rules） |
+| `make ai-smoke-live`，本 session 的環境：沒有 `AI_PROVIDER`，也沒有 key 的變數（只查了變數名稱）（`h026-ai-smoke-live.log`） | 2（`AI_PROVIDER is not anthropic`，沒有呼叫；`checks/ai-evals` 只有兩個 fake 檔） |
+
+這次沒有執行 `refusals.sh` 中「H-018＋假 key＋開關 on」的 case：H-026 之後那組設定會開啟 live，`ai-eval-live` 會以假 key 向 Anthropic 的 production API 送出 request，違反「不做 live 呼叫」的規則。同樣的拒絕條件已由 in-process 的 factory 測試（`TestMainRefusesWhileLiveIsOff`：沒有建立 backend）涵蓋。Live smoke 與 live eval 仍是 NOT RUN。
 
 ## 安全規則的遵守
 
@@ -186,7 +233,7 @@ AI_PROVIDER=anthropic AI_POLICY_APPROVAL=H-018 AI_MODEL=claude-opus-5-5 GEMINUS_
 
 ## 需要 owner 確認的事項
 
-1. **D-113：兩個 provider organization（`GEMINUS_ANTHROPIC_API_KEY_A`／`_B` 背後）的資料保留安排**是 standard 還是 ZDR，且兩者相同；並接受 standard 下的保留（30 天內刪除；被標記時至多 2 年）與 structured outputs 的 schema cache（至多 24 小時）。確認後由 reviewed change 寫入 H-018 record 的 `Retention`；在此之前 live AI 無法開啟（`retention_unconfirmed`）。**這是 live smoke／eval 之前唯一缺少的 owner 確認。**
+1. **（已確認：H-026，2026-10-26，standard、沒有 ZDR、兩者相同；見上方「Owner 的確認（H-026）」。以下是原本的請求。）D-113：兩個 provider organization（`GEMINUS_ANTHROPIC_API_KEY_A`／`_B` 背後）的資料保留安排**是 standard 還是 ZDR，且兩者相同；並接受 standard 下的保留（30 天內刪除；被標記時至多 2 年）與 structured outputs 的 schema cache（至多 24 小時）。確認後由 reviewed change 寫入 H-018 record 的 `Retention`；在此之前 live AI 無法開啟（`retention_unconfirmed`）。**這是 live smoke／eval 之前唯一缺少的 owner 確認。**
 2. D-110–D-115 的批准（或改選其他選項）：上限的單位與數值（月 USD 100、部署日 USD 10、organization 日 USD 5）、預留與結算的規則、只開 modeler／scenario、live eval 的範圍與上限（eval USD 10、smoke USD 2）、開關與兩把 key。
 3. 已確認（H-025，2026-10-26，coordinator 轉達）：兩個 provider organization 的 Console spend limit 已設定；H-018 record 的 `SpendLimits` 已記錄（KCL1104、2026-10-26、H-025）。H-025 本身記在 main branch，不在本 branch。
 4. 已確認（H-025）：coordinator 可在 T-053 通過獨立 review 後，以 synthetic 資料執行 live smoke 與 `make ai-eval-live`；但仍以第 1 項為前提。

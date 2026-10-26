@@ -1,0 +1,7 @@
+# 2026-10-26T08:53:15Z make ai-smoke-live
+# go: go version go1.27.3 linux/amd64
+go build -o bin/ai-eval-live ./cmd/ai-eval-live
+ai-eval-live: REFUSED (no provider call was made): live AI is off (AI_PROVIDER is not anthropic); it needs the owner's complete recorded approval (internal/config/aiapproval), AI_MODEL, both keys and GEMINUS_AI_LIVE=on
+ai-eval-live: exit 2
+make: *** [Makefile:136: ai-smoke-live] Error 2
+exit=2

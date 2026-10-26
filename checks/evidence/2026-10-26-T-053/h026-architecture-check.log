@@ -1,0 +1,6 @@
+# 2026-10-26T08:54:09Z make architecture-check
+# go: go version go1.27.3 linux/amd64
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 86 packages, 23 rules, 16 build configurations
+exit=0

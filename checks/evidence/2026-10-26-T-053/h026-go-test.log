@@ -1,0 +1,18 @@
+# 2026-10-26T08:52:51Z go test -count=1 ./internal/config/... ./internal/ai/... ./internal/aievals/... ./cmd/ai-eval-live/... ./cmd/worker/... ./internal/storage/aispend/...
+# go: go version go1.27.3 linux/amd64
+ok  	github.com/kcl1104/geminus/internal/config	0.009s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.125s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.518s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	2.250s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	0.033s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.007s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.151s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	1.982s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.047s
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.768s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	0.006s
+ok  	github.com/kcl1104/geminus/internal/aievals	0.144s
+?   	github.com/kcl1104/geminus/cmd/ai-eval-live	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/worker	0.064s
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	0.014s
+exit=0
