@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -174,12 +175,7 @@ func Generate(ctx context.Context, cfg Config) (*Output, error) {
 		}
 		recs = append(recs, r)
 	}
-	slices.SortStableFunc(recs, func(a, b *record) int {
-		if a.start != b.start {
-			return int(a.start - b.start) // ticks within weeks: no overflow
-		}
-		return a.seq - b.seq
-	})
+	slices.SortStableFunc(recs, recordOrder)
 	csv, err := render(recs)
 	if err != nil {
 		return nil, err
@@ -206,6 +202,15 @@ func Generate(ctx context.Context, cfg Config) (*Output, error) {
 		return nil, err
 	}
 	return &Output{CSV: csv, Model: modelJSON, GroundTruth: gt, Negative: negative}, nil
+}
+
+// recordOrder is the log's order: by start, then in the order the engine
+// began the records.
+func recordOrder(a, b *record) int {
+	if a.start != b.start {
+		return cmp.Compare(a.start, b.start) // no subtraction: a 32-bit int overflows past 2^31 ms
+	}
+	return cmp.Compare(a.seq, b.seq)
 }
 
 func stamp(tick int64) string {

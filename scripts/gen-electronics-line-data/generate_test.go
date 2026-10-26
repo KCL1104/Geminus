@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -95,6 +96,22 @@ func TestMoreWeeksExtendTheSameLog(t *testing.T) {
 	}
 	if !slices.Equal(first, short[1:len(short)-1]) || len(long) <= len(short) {
 		t.Errorf("the first of two weeks has %d rows, the one-week log %d", len(first), len(short)-2)
+	}
+}
+
+// Review r1 I5: the log's order compares starts without a subtraction
+// that overflows a 32-bit int (starts more than 2^31 ms, about 24.8 days,
+// apart: a log of four weeks or more); equal starts keep the engine's
+// order.
+func TestRecordOrderAcrossWeeks(t *testing.T) {
+	a := &record{start: weekTicks, seq: 9}
+	b := &record{start: 5 * weekTicks, seq: 1} // 2,419,200,000 ms later
+	c := &record{start: weekTicks, seq: 10}
+	if recordOrder(a, b) >= 0 || recordOrder(b, a) <= 0 {
+		t.Errorf("four weeks apart: %d, %d", recordOrder(a, b), recordOrder(b, a))
+	}
+	if recordOrder(a, c) >= 0 || recordOrder(c, a) <= 0 || recordOrder(a, a) != 0 {
+		t.Errorf("the same start: %d, %d, %d", recordOrder(a, c), recordOrder(c, a), recordOrder(a, a))
 	}
 }
 
@@ -368,7 +385,7 @@ func TestEquipmentIsNeverDoubleBooked(t *testing.T) {
 	})
 	for _, k := range keys {
 		iv := by[k]
-		slices.SortStableFunc(iv, func(a, b interval) int { return int(a.start - b.start) })
+		slices.SortStableFunc(iv, func(a, b interval) int { return cmp.Compare(a.start, b.start) })
 		for i := 1; i < len(iv); i++ {
 			a, b := iv[i-1], iv[i]
 			sameBatch := a.row.station == "burn_in" && b.row.station == "burn_in" && a.row.recordType == "operation" &&
