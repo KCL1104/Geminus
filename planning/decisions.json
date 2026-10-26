@@ -1412,7 +1412,7 @@
       "resolves": [],
       "source_gap": "H-029 (1) 只寫「沿用 T-053 的花費上限與開關」；Meta 的 pricing 頁沒有 cache 寫入價、沒有每張圖片的 token 上限、沒有說錯誤 status 是否計費；D-018 的 failover 是 Anthropic 兩個 organization 的，Meta 只有一把 key。",
       "source_pages": "N/A（T-055 實作；https://dev.meta.ai/docs/pricing-rate-limits、/docs/error-handling、/docs/image-understanding、/docs/structured-output，2026-10-26 取得；ADR-030）",
-      "proposal": "(a) muse-spark-1.3 每百萬 token input 1.25、cached 0.15、output 4.25 美元，cache 寫入以 input 價；SAM 3.1 每張 0.0025 美元；沒有 geo 加價（spend.GeoPriced 只有 claude-opus-5-5）；(b) quote 同 D-111，有圖片時為 context window 1,048,576 tokens；(c) 連線中斷、逾時、body 讀不完、每個 5xx（含 504）、讀不了的 2xx 算可能計費；(d) 一把 key 不 failover：429 與 504 以外的 5xx 以 backoff 與 Retry-After 重試，504 不重試，401／403 停用到重啟、402 休息 15 分鐘；(e) 錯誤只記 status 與文件列出的 8 種 error type，其他為 other；(f) 不送 thinking、sampling、stop_sequences、top_k、container、inference_geo、cache_control；(g) 投影後的 schema 以文件的上限檢查，超出不送。建議照列，已實作。",
+      "proposal": "(a) muse-spark-1.3 每百萬 token input 1.25、cached 0.15、output 4.25 美元，cache 寫入以 input 價；SAM 3.1 每張 0.0025 美元；沒有 geo 加價（spend.GeoPriced 只有 claude-opus-5-5）；(b) quote 同 D-111，有圖片時為 context window 1,048,576 tokens；(c) 連線中斷、逾時、body 讀不完、每個 5xx（含 504）、讀不了的 2xx 算可能計費；(d) 一把 key 不 failover：429 與 504 以外的 5xx 以 backoff 與 Retry-After 重試，504 不重試，401／403 停用到重啟、402 休息 15 分鐘；(e) 錯誤只記 status 與文件列出的 8 種 error type，其他為 other；(f) 不送 thinking、sampling、stop_sequences、top_k、container、inference_geo、cache_control；(g) 投影後的 schema 以文件的上限檢查，超出不送。建議照列，已實作。 H-037：(b) 帶圖片時改採選項 C（count_tokens 的 input 加 10%）。",
       "approved_by": null,
       "approved_at": null
     },
@@ -1890,6 +1890,28 @@
       "source": "Claude Code session：AskUserQuestion 選擇",
       "still_open": [
         "Meta dashboard 的花費上限"
+      ]
+    },
+    {
+      "id": "H-036",
+      "subject": "Owner 在 Railway 填完自己的變數就立刻 sealed",
+      "decision": "T-039 review 第 1 輪 M2 選項 A：owner 新增 GEMINUS_MUSE_API_KEY、GEMINUS_ANTHROPIC_API_KEY_A／_B 與開 live 時的 GEMINUS_AI_LIVE 後立刻 sealed，值不再到達部署腳本；腳本仍保留收到即丟棄與只以名稱提醒；BFF_OIDC_CLIENT_SECRET 依 H-034 由 agent 經 stdin 寫入並 sealed。",
+      "quote": "我填完就 sealed (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：AskUserQuestion 選擇",
+      "still_open": []
+    },
+    {
+      "id": "H-037",
+      "subject": "帶圖片的 Meta 呼叫先以 count_tokens 算 input 再預留",
+      "decision": "T-055 review 第 1 輪 M1：採 D-121 (b) 選項 C。帶圖片的 request 送出前以 POST /v1/messages/count_tokens 取得 input token 數，加 10% 預留（output 上限與 attempt 數照 D-121）；D-110 (b) 上限不變；文字 proposal 照 D-111 (a)；count_tokens 失敗或回答不合理時不得以較小的數預留；count_tokens 不接受圖片或實際計費超過預留時回報 owner。",
+      "quote": "先用 count_tokens 算 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：AskUserQuestion 選擇",
+      "still_open": [
+        "live：count_tokens 對圖片的行為與實際計費"
       ]
     }
   ]

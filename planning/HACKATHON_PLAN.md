@@ -48,7 +48,7 @@
 | 已完成 | Meta（Muse）的 key 加到環境變數（H-033） |
 | 已完成 | Railway token 加到環境變數（H-032） |
 | 10-29 前 | 註冊 Auth0、建立 tenant（region 建議 US）與自己的登入使用者，告知 `user_id`；其餘由 agent 在部署時以裝置登入設定（H-034，部署當天在瀏覽器按核准） |
-| 10-31 前 | 在 Railway 的 variables 填入 Meta key 與 Anthropic key（備援）；Auth0 的 Client Secret 由部署腳本直接寫入（H-034）（agent 提供名稱清單；session secret 由 Railway 產生；secret 不進 repo，agent 不讀值） |
+| 10-31 前 | 在 Railway 的 variables 填入 Meta key 與 Anthropic key（備援），填完立刻 sealed（H-036）；Auth0 的 Client Secret 由部署腳本直接寫入（H-034）（agent 提供名稱清單；session secret 由 Railway 產生；secret 不進 repo，agent 不讀值） |
 | 11-04 | 看過 demo 影片（需要的話錄旁白），以 Indie 組 Representative 身分在 Cerebral Valley 提交 |
 
 ## 資料與花費
@@ -56,3 +56,4 @@
 - Claude API（H-031）：只送 synthetic 資料、demo 圖片與使用者輸入的文字；request 不指定 inference_geo（D-116 選項 A）；log 不存原始 prompt 與回應。
 - 花費沿用 T-053 的程式內上限與開關（live 只在獨立審查過的程式上執行，H-025）。
 - Meta（H-033）：Standard mode（官方 pricing 頁：Standard mode 的內容不拿去訓練）；錄取者有 150 美元的 Meta API 額度（10 天）；官方價格（2026-10-26）`muse-spark-1.3` 每百萬 token 輸入 1.25、輸出 4.25 美元，`sam-3.1` 每千張圖 2.50 美元。評分的「Use of Meta AI Tooling」占 25%；Meta 的 live 呼叫只在獨立審查過的 T-055 程式上執行（比照 H-025）。
+- 照片 proposal 的預留（H-037）：帶圖片的 request 先以 count_tokens 取得 input token 數，加 10% 預留；以 context window 預留時每次約 USD 4.04，organization 日上限 USD 5 下一天只能做一次。
