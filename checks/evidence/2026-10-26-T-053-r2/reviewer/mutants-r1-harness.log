@@ -1,0 +1,100 @@
+U1	KILLED	Cost ignores output tokens	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestCost
+U2	KILLED	AttemptBound ignores max_tokens	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestAttemptBound
+U3	KILLED	cache writes at the cheaper 5m rate	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestCost
+U4	KILLED	the reservation ignores retries	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestASettlementAboveTheReservationIsRecorded, TestAnUndecodableAnswerSettlesAtTheReservation, TestSettlement, TestTheAnswerIsPricedAtItsInferenceGeo, TestTheReservationAssumesTheDearestGeo
+U5	KILLED	a quota refusal becomes spend_unavailable	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestARefusedReservationRefusesTheCall, TestSpend
+U6	KILLED	a reservation without an ID is accepted	internal/ai/provider/meter.go	./internal/ai/provider/	TestARefusedReservationRefusesTheCall
+U7	KILLED	attempts without an answer are not charged	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestASettlementAboveTheReservationIsRecorded, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled, TestSettlement
+U9	KILLED	settle runs on the caller's (maybe cancelled) context	internal/ai/provider/meter.go	./internal/ai/provider/	TestSettlement
+U10	KILLED	a call is never settled (reservation never released)	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestAFailedSettlementKeepsTheReservation, TestASettlementAboveTheReservationIsRecorded, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled
+U11	KILLED	New accepts a billable backend (no meter)	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestBillableNeedsAMeter, TestOnlyAMeteredClientCallsIt
+U12	KILLED	MemoryMeter refuses a charge that exactly fits	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/aievals/	TestMemoryMeter
+U13	KILLED	MemoryMeter settle keeps the whole reservation	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/aievals/	TestMemoryMeter
+U14	KILLED	a metered call without attribution is accepted	internal/ai/provider/provider.go	./internal/ai/provider/	TestNothingIsReservedForARefusedCall
+U15	KILLED	a refused reservation still calls the provider	internal/ai/provider/provider.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestARefusedReservationRefusesTheCall, TestNothingIsReservedForARefusedCall, TestSpend
+U16	KILLED	the quota limit is not passed on	internal/ai/provider/meter.go	./internal/ai/provider/	TestARefusedReservationRefusesTheCall
+U17	KILLED	spend_unavailable is not retryable	internal/ai/provider/errors.go	./internal/ai/provider/	TestARefusedReservationRefusesTheCall
+U18	KILLED	the adapter calls without a reservation	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestOnlyAMeteredClientCallsIt
+U19	KILLED	the adapter serves any prompt role	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestOnlyTheApprovedRoles
+U20	KILLED	a transport failure is not counted	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled
+U21	KILLED	a cut body is not counted	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled
+U22	KILLED	New accepts another model	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	TestTheAdapterTakesOnlyTheApproval
+U23	KILLED	New accepts other credentials	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	TestTheAdapterTakesOnlyTheApproval
+U24	KILLED	New accepts no approval	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/ ./internal/config/aiapproval/	TestNewRefuses, TestTheAdapterTakesOnlyTheApproval
+U25	KILLED	the record needs no retention confirmation	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/config/ ./internal/aievals/	TestAnAlteredRetentionRefuses, TestAnyMismatchKeepsLiveOff, TestGapReasons, TestRecorded, TestTheLiveEvalRunsOnlyWhenLiveIsOn
+U26	KILLED	the record needs no spend-limit confirmation	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/config/	TestAnyMismatchKeepsLiveOff, TestGapReasons
+U27	KILLED	the record may name any role	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestGapReasons
+U28	KILLED	the record may keep raw text in logs	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff, TestGapReasons
+U29	KILLED	Valid does not recheck the record	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/	TestRecorded
+U30	KILLED	AllowsRole ignores the data policy	internal/config/aiapproval/aiapproval.go	./internal/config/aiapproval/ ./internal/ai/provider/anthropic/	TestRecorded
+U31	KILLED	the switch is not needed	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/ ./internal/aievals/	TestH026TurnsLiveOn, TestMainRefusesWhileLiveIsOff, TestTheSwitchIsRequired, TestThisBuildsRecord
+U32	KILLED	any AI_MODEL is accepted	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff, TestThisBuildsRecord
+U33	KILLED	the price check is skipped	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestAnyMismatchKeepsLiveOff
+U34	KILLED	the record's gap is ignored	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/ ./internal/aievals/	TestAnAlteredRetentionRefuses, TestAnyMismatchKeepsLiveOff, TestTheLiveEvalRunsOnlyWhenLiveIsOn
+U35	KILLED	one key is enough	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestBothCredentialsAreRequired
+U36	KILLED	the secondary key may be the primary key	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestBothCredentialsAreRequired
+U37	KILLED	the monthly limit may exceed the budget	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestSpendLimitsAreChecked
+U38	KILLED	the live eval runs while live AI is off	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestMainRefusesWhileLiveIsOff
+U39	KILLED	a live report may take any name	internal/aievals/live.go	./internal/aievals/ ./internal/ai/provider/anthropic/	TestTheLiveEvalOverHTTP, TestTheReportIsApart
+U40	KILLED	a ready safe-failure case breaks no gate	internal/aievals/live.go	./internal/aievals/	TestRunScoresTheAnswers
+U41	KILLED	the run goes on after its cap refuses	internal/aievals/live.go	./internal/aievals/	TestTheCapStopsTheRun
+U43	KILLED	a spend limit is not RATE_LIMITED in the API	internal/proposals/public.go	./internal/proposals/	TestFailureErrors
+U44	KILLED	the generator has no message for a spend limit	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestProviderFailures
+U45	KILLED	the refusal's limit may be any label	internal/audit/audit.go	./internal/audit/	TestRefused
+U46	KILLED	an ID-shaped model name reaches a metric	internal/observability/telemetry/telemetry.go	./internal/observability/telemetry/	TestSpend
+D1	KILLED	the month limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestLimitsRefuse
+D2	KILLED	the deployment day limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestConcurrentReservationsNeverOvershoot, TestLimitsRefuse
+D3	KILLED	the organization day limit is not checked	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestASettlementAboveItsReservationIsRecordedAndFlagged, TestLimitsRefuse
+D4	KILLED	settle moves the totals the wrong way	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestASettlementAboveItsReservationIsRecordedAndFlagged, TestOrganizationFilter, TestReserveAndSettle, TestSettleKeepsItsDayAndOrganization, TestTheDatabaseClockPicksTheDay
+D5	KILLED	settle does not check the state	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestReserveAndSettle
+D6	KILLED	settle charges today instead of the reservation's day	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestASettlementAboveItsReservationIsRecordedAndFlagged, TestReserveAndSettle
+D7	KILLED	a reservation is not audited	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestFailClosed, TestOrganizationFilter, TestReserveAndSettle
+D8	KILLED	the generator charges no target	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestAMeteredCallIsChargedToItsTarget, TestAMeteredProposal, TestASpendLimitRefusesTheProposal
+D9	KILLED	settle reads without the organization filter (RLS still filters)	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestOrganizationFilter
+F1	KILLED	reserve's organization-day UPDATE without the organization filter	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestOrganizationFilter
+F2	KILLED	TotalsAt reads the day without the organization filter	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestOrganizationFilter
+F3	EQUIVALENT	settle's reservation UPDATE without the organization filter (equivalent: the filtered SELECT ... FOR UPDATE of the same transaction has found the reservation in this organization, and IDs are unique)	internal/storage/aispend/aispend.go	./internal/storage/aispend/	tests pass, as expected
+F4	KILLED	reserve's audit reads the organization day without the organization filter	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestOrganizationFilter
+F5	KILLED	settle's organization-day UPDATE without the organization filter	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestOrganizationFilter
+C1	KILLED	the day is the session time zone's date, not the UTC date	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestTheDatabaseClockPicksTheDay
+C2	KILLED	an unpinned meter takes the zero day	internal/storage/aispend/aispend.go	./internal/storage/aispend/ ./internal/proposals/generator/	TestAMeteredProposal, TestTheDatabaseClockPicksTheDay
+O1	KILLED	a settlement above its reservation is not flagged in the event	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestASettlementAboveItsReservationIsRecordedAndFlagged
+O2	KILLED	a settlement above its reservation is not counted	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestASettlementAboveItsReservationIsRecordedAndFlagged
+O3	KILLED	a settlement above its reservation is refused (under-records what was billed)	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestASettlementAboveItsReservationIsRecordedAndFlagged
+O4	KILLED	an unknown geo is not counted	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestASettlementAboveItsReservationIsRecordedAndFlagged
+O5	EQUIVALENT	the ledger's own check of the geo is skipped (equivalent: the audit catalogue's oneOf(global, us, unknown) refuses the same settlement's ai_spend.settle event inside the transaction, which rolls back; the settlement fails and nothing is written either way, mutation run 1)	internal/storage/aispend/aispend.go	./internal/storage/aispend/	tests pass, as expected
+G1	KILLED	the reservation is at the list price (global)	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/ ./internal/aievals/	TestACutBodyOnTheLastAttemptCountsOnce, TestASettlementAboveTheReservationIsRecorded, TestAnUndecodableAnswerSettlesAtTheReservation, TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled, TestSettlement
+G2	KILLED	the answer is priced at the list price whatever its geo	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestSettlement, TestTheAnswerIsPricedAtItsInferenceGeo
+G3	KILLED	an unknown geo is priced at the list price	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestInferenceGeos, TestSettlement, TestTheAnswerIsPricedAtItsInferenceGeo
+G4	KILLED	spend.Geo passes the provider's text on	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestInferenceGeos, TestSettlement, TestTheMetadataNamesThePricedGeo
+G5	KILLED	the adapter drops usage.inference_geo	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestAttemptsWithoutAnAnswerCount, TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled, TestSpend, TestTheAnswerIsPricedAtItsInferenceGeo, TestTheLiveEvalOverHTTP
+G6	KILLED	the request pins inference_geo to global	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestTheRequestNamesNoInferenceGeo
+G7	KILLED	a geo's price rounds down	internal/ai/spend/spend.go	./internal/ai/spend/ ./internal/ai/provider/	TestInferenceGeos
+G8	KILLED	an unknown geo is not warned of (generator)	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestTheSpendLines
+R1	KILLED	failover after an attempt that may have been billed	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled
+R2	KILLED	an undecodable 2xx answer is not counted	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestAnUndecodableAnswerSettlesAtTheReservation
+R3	KILLED	an undecodable answer settles at its attempts, not the reservation	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestAnUndecodableAnswerSettlesAtTheReservation, TestSettlement
+R4	KILLED	a cut body on the last attempt counts twice	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce
+R5	KILLED	the settlement is clamped to the reservation again	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestASettlementAboveTheReservationIsRecorded, TestSettlement
+R6	KILLED	the metadata does not say the call cost more than its reservation	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/ ./internal/aievals/	TestASettlementAboveTheReservationIsRecorded
+R7	KILLED	a call above its reservation is not warned of (generator)	internal/proposals/generator/generator.go	./internal/proposals/generator/	TestTheSpendLines
+K1	KILLED	the run's cap may exceed the daily limit	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheLiveEvalRunsOnlyWhenLiveIsOn
+K2	KILLED	what the day has left is not checked	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordBoundsTheNextRun
+K3	KILLED	what the month has left is not checked	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordBoundsTheNextRun
+K4	KILLED	an open run without its close counts nothing	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordBoundsTheNextRun, TestTheRecordSumsTheDayAndTheMonth
+K5	KILLED	a closed run counts only on the day and month it opened	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordSumsTheDayAndTheMonth
+K6	KILLED	a closed run counts what was settled, not what its meter held	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordSumsTheDayAndTheMonth
+K7	KILLED	a line that does not parse is skipped	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses, TestTheRecordIsLockedWhileARunOpens
+K8	KILLED	a missing record counts as empty	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses, TestTheRecordIsLockedWhileARunOpens
+K9	KILLED	no open line before the calls	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestARunIsRecordedOpenThenClosed, TestEveryEndClosesTheRecord
+K10	KILLED	an error after paid calls leaves the run open	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestEveryEndClosesTheRecord
+K11	KILLED	an error after paid calls prints no summary or cost	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestEveryEndClosesTheRecord
+K12	KILLED	a report replaces an earlier one	internal/aievals/live.go	./internal/aievals/ ./internal/config/aiapproval/	TestAReportIsNeverOverwritten
+K13	KILLED	the record's lock is not exclusive	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestTheRecordIsLockedWhileARunOpens
+K14	KILLED	a close line may come without its open	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses
+K15	KILLED	a stopped run is recorded as complete	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	TestEveryEndClosesTheRecord
+W1	KILLED	a key with white space or control characters is taken	internal/config/ai.go	./internal/config/ ./internal/config/aiapproval/	TestAKeyWithWhiteSpaceOrControlCharactersIsRefused
+W2	KILLED	only trailing white space is refused	internal/config/ai.go	./internal/config/	TestAKeyWithWhiteSpaceOrControlCharactersIsRefused
+W3	KILLED	a control character inside a key is taken	internal/config/ai.go	./internal/config/	TestAKeyWithWhiteSpaceOrControlCharactersIsRefused
+summary	EQUIVALENT=2 KILLED=96
+exit 0

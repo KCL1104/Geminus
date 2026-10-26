@@ -1,0 +1,13 @@
+N1	INVALID	a close line may be dated before its open	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	does not build: internal/aievals/record.go:267:2: declared and not used: start
+N2	KILLED	a negative settled amount is taken	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses
+N3	SURVIVED	the day's sum is not saturating (wraps on huge lines)	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	tests pass
+N4	KILLED	a run may open twice	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses
+N5	KILLED	a zero cap is taken	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnOpenLineIsChecked, TestAnUnreadableRecordRefuses
+N6	KILLED	a last line without its newline is taken	internal/aievals/record.go	./internal/aievals/ ./internal/config/aiapproval/	TestAnUnreadableRecordRefuses
+N7	SURVIVED	Main sums the record for tomorrow, not the run's day	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	tests pass
+N8	SURVIVED	the report's existence is not checked before the backend is built	internal/aievals/main.go	./internal/aievals/ ./internal/config/aiapproval/	tests pass
+N9	KILLED	a call at exactly its reservation is flagged as over it	internal/ai/provider/meter.go	./internal/ai/provider/ ./internal/ai/provider/anthropic/	TestACutBodyOnTheLastAttemptCountsOnce, TestASettlementAboveTheReservationIsRecorded
+N10	KILLED	the ledger flags a settlement at exactly its reservation	internal/storage/aispend/aispend.go	./internal/storage/aispend/	TestASettlementAboveItsReservationIsRecordedAndFlagged
+N11	KILLED	a refusal after a possibly billed attempt does not mark the credential	internal/ai/provider/anthropic/anthropic.go	./internal/ai/provider/anthropic/	TestNoFailoverAfterAnAttemptThatMayHaveBeenBilled
+summary	INVALID=1 KILLED=7 SURVIVED=3
+exit 1

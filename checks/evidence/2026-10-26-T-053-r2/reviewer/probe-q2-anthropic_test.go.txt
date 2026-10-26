@@ -1,0 +1,121 @@
+package anthropic_test
+
+// Reviewer probe Q2 (T-053 r2, H-003). Not part of the change under review.
+// Which attempts the adapter counts as "may have been billed", and whether a
+// reservation's 1 + MaxRetries attempt bound holds. Local httptest server
+// only (newServer), fake keys (keyA, keyB). Copied into
+// internal/ai/provider/anthropic of a `git archive` copy while it ran, then
+// removed.
+//
+// Q2c, Q2d, Q2e state what the change claims and should PASS.
+// Q2a states a stricter expectation (504 timeout_error may have been billed)
+// and is expected to FAIL (finding L-new-3); Q2b logs only (Info).
+
+import (
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/spend"
+)
+
+// Q2a: 504 timeout_error is "The request timed out while processing" (the
+// errors page): the request reached the API and was being processed. The
+// adapter treats it like any error status: not billed, retried by the SDK,
+// and a 401 after it still fails over. Stricter expectation: a 504 is an
+// attempt that may have been billed (settled at its bound, no failover).
+func TestProbeQ2a504TimeoutThenRefusal(t *testing.T) {
+	s := newServer(t, map[string][]reply{
+		keyA: {apiError(504, "timeout_error"), apiError(504, "timeout_error"), apiError(401, "authentication_error")},
+		keyB: {ok(answerJ)}})
+	cl, b, m := meteredClient(t, s, config(keyA, keyB), 10*spendUSD, func(bu *provider.Budget) { bu.MaxRetries = 2 })
+	res, err := ask(t, cl)
+	per := perAttempt(t, b, provider.DefaultBudget().MaxOutputTokens)
+	cost := price(t).Cost(spend.Tokens{Input: 120, Output: 30})
+	t.Logf("err %v; hits A=%d B=%d; settled %d nano-USD (B's answer alone %d; one attempt bound %d); credential %q",
+		err, s.count(keyA), s.count(keyB), m.Spent(), cost, per, res.Metadata.Credential)
+	if s.count(keyB) != 0 || m.Spent() < 2*per {
+		t.Errorf("two 504 timeout_error attempts settled as unbilled (settled %d) and the call failed over to B", m.Spent())
+	}
+}
+
+// Q2b: a 200 answer that decodes but carries no usage (all zero): it
+// settles at nothing (outcome none). Logged only; the real API always
+// reports usage.
+func TestProbeQ2bA200WithoutUsage(t *testing.T) {
+	r := ok(answerJ)
+	r.body = `{"id":"msg_1","type":"message","role":"assistant","model":"` + model + `","content":[{"type":"text","text":` +
+		`"{\"status\":\"needs_input\",\"summary\":\"Which station?\",\"assumptions\":[],\"questions\":[\"Which station?\"],\"requires_confirmation\":true}"` +
+		`}],"stop_reason":"end_turn","stop_sequence":null,"usage":{}}`
+	s := newServer(t, map[string][]reply{keyA: {r}})
+	cl, _, m := meteredClient(t, s, config(keyA), 10*spendUSD)
+	res, err := ask(t, cl)
+	t.Logf("err %v; settled %d; metadata geo %q cost %d", err, m.Spent(), res.Metadata.InferenceGeo, res.Metadata.CostNanoUSD)
+}
+
+// Q2c: whatever the failures, one credential is tried at most 1 + MaxRetries
+// times per call, so the attempts that may have been billed never pass the
+// reservation's count.
+func TestProbeQ2cAttemptsPerCallAreBounded(t *testing.T) {
+	lost := reply{hangUp: true}
+	cut := reply{status: 200, body: ok(answerJ).body, cutBody: true}
+	slow := reply{status: 200, body: ok(answerJ).body, delay: 2e9}
+	for name, script := range map[string][]reply{
+		"lost x4":   {lost, lost, lost, lost},
+		"cut x4":    {cut, cut, cut, cut},
+		"529 x4":    {apiError(529, "overloaded_error")},
+		"mixed":     {lost, cut, apiError(500, "api_error"), lost},
+		"slow x4":   {slow},
+		"408 x4":    {apiError(408, "timeout_error")},
+		"409 x4":    {apiError(409, "conflict_error")},
+		"429 x4":    {apiError(429, "rate_limit_error")},
+		"lost, 402": {lost, apiError(402, "billing_error")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := newServer(t, map[string][]reply{keyA: script, keyB: {lost}})
+			cl, b, m := meteredClient(t, s, config(keyA, keyB), 10*spendUSD, func(bu *provider.Budget) {
+				bu.MaxRetries = 2
+				if name == "slow x4" {
+					bu.AttemptTimeout = 100e6
+					bu.Timeout = 2e9
+				}
+			})
+			_, err := ask(t, cl)
+			per := perAttempt(t, b, provider.DefaultBudget().MaxOutputTokens)
+			reserved := 3 * per
+			t.Logf("%s: err %v; hits A=%d B=%d; settled %d (reserved %d)", name, err, s.count(keyA), s.count(keyB), m.Spent(), reserved)
+			if s.count(keyA)+s.count(keyB) > 3 {
+				t.Errorf("%d attempts for a reservation of 3", s.count(keyA)+s.count(keyB))
+			}
+			if m.Spent() > reserved {
+				t.Errorf("settled %d above the reservation %d", m.Spent(), reserved)
+			}
+		})
+	}
+}
+
+// Q2d: a definite refusal on A's only attempt fails over; B's lost attempts
+// are the only ones that may have been billed (at most 1 + MaxRetries).
+func TestProbeQ2dRefusalThenLostAttempts(t *testing.T) {
+	lost := reply{hangUp: true}
+	s := newServer(t, map[string][]reply{keyA: {apiError(402, "billing_error")}, keyB: {lost}})
+	cl, b, m := meteredClient(t, s, config(keyA, keyB), 10*spendUSD, func(bu *provider.Budget) { bu.MaxRetries = 2 })
+	_, err := ask(t, cl)
+	per := perAttempt(t, b, provider.DefaultBudget().MaxOutputTokens)
+	t.Logf("err %v; hits A=%d B=%d; settled %d (3 bounds %d)", err, s.count(keyA), s.count(keyB), m.Spent(), 3*per)
+	if s.count(keyA) != 1 || s.count(keyB) != 3 || m.Spent() != 3*per {
+		t.Errorf("A=%d B=%d settled %d", s.count(keyA), s.count(keyB), m.Spent())
+	}
+}
+
+// Q2e: a lost attempt between two definite statuses on A, then 403: the
+// call does not fail over (one attempt may have been billed).
+func TestProbeQ2eLostBetweenStatusesThenRefusal(t *testing.T) {
+	s := newServer(t, map[string][]reply{keyA: {apiError(529, "overloaded_error"), {hangUp: true}, apiError(403, "permission_error")}, keyB: {ok(answerJ)}})
+	cl, b, m := meteredClient(t, s, config(keyA, keyB), 10*spendUSD, func(bu *provider.Budget) { bu.MaxRetries = 2 })
+	_, err := ask(t, cl)
+	per := perAttempt(t, b, provider.DefaultBudget().MaxOutputTokens)
+	t.Logf("err %v; hits A=%d B=%d; settled %d (one bound %d)", err, s.count(keyA), s.count(keyB), m.Spent(), per)
+	if provider.CodeOf(err) != provider.CodeUnavailable || s.count(keyB) != 0 || m.Spent() != per {
+		t.Errorf("A=%d B=%d settled %d", s.count(keyA), s.count(keyB), m.Spent())
+	}
+}

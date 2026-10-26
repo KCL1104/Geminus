@@ -1,0 +1,10 @@
+=== RUN   TestProbeP1OrganizationFilterWithoutRLS
+--- PASS: TestProbeP1OrganizationFilterWithoutRLS (0.26s)
+=== RUN   TestProbeP2SettleAboveTheReservation
+    probe_p1p2_test.go:103: settle above the reservation: err=<nil> organization day 5000 (limit 1000)
+    probe_p1p2_test.go:105: a settlement took the organization day to 5000, past its limit 1000, without any refusal
+--- FAIL: TestProbeP2SettleAboveTheReservation (0.15s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/aispend	0.432s
+FAIL
+exit 1

@@ -1,0 +1,210 @@
+package aiapproval_test
+
+// Reviewer probe Q1 (T-053 r2, H-003). Not part of the change under review.
+// The spend record of the live eval and smoke (checks/ai-evals/live-spend.jsonl)
+// against crafted, truncated and concurrent use. No network: the backend is
+// this package's in-process fake (inProcess, liveeval_test.go), the keys are
+// this package's fake strings (liveEnv). Copied into internal/config/aiapproval
+// of a `git archive` copy while it ran, then removed.
+//
+// Q1a, Q1d, Q1e state what the change claims and should PASS.
+// Q1b and Q1c state a stricter expectation than the change implements and are
+// expected to FAIL (findings L-new-1 and L-new-2 of the round-2 review).
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/provider/fake"
+	"github.com/kcl1104/geminus/internal/aievals"
+	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/contracttest"
+)
+
+// Q1a: two runs in one checkout at the same time. The first holds its open
+// line (cap USD 6, no close yet) while its first call is in flight; the
+// second (cap USD 6) must see that open line at its whole cap and be refused
+// (10 - 6 < 6). After the first ends, it is closed at what it cost.
+func TestProbeQ1aTwoConcurrentRunsInOneCheckout(t *testing.T) {
+	root := contracttest.Root(t)
+	dir := emptyRecord(t)
+	env := liveEnv()
+	env["AI_EVAL_LIVE_MAX_USD"] = "6"
+	started, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	done := make(chan mainRun, 1)
+	go func() {
+		done <- runMainWith(t, env, root, dir, func(context.Context, provider.Request) {
+			once.Do(func() { close(started) })
+			<-release
+		}, "-smoke")
+	}()
+	select {
+	case <-started:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the first run never called")
+	}
+	second := runMain(t, env, root, dir, "-smoke")
+	close(release)
+	first := <-done
+	t.Logf("first: exit %d built %d; second: exit %d built %d: %s", first.code, first.built, second.code, second.built, strings.TrimSpace(second.stderr))
+	if second.code != aievals.ExitRefused || second.built != 0 {
+		t.Errorf("a second run started while the first's open line held USD 6 of the USD 10 day")
+	}
+	if first.code != aievals.ExitOK {
+		t.Errorf("first run: exit %d: %s", first.code, first.stderr)
+	}
+	if lines := recordLines(t, dir); len(lines) != 2 || lines[1]["event"] != "close" {
+		t.Errorf("record after both: %v", lines)
+	}
+}
+
+// Q1b: a run opened yesterday (UTC) whose close line is not written yet: it
+// may still be running across midnight (or it stopped without closing). The
+// change counts an unclosed run only in the day it opened in, so today a new
+// run may take the whole daily limit while the first can still be spending.
+// Stricter expectation: an unclosed run also counts in the current day (at
+// least until the longest a run can last has passed).
+func TestProbeQ1bAnUnclosedRunFromYesterdayDoesNotCountToday(t *testing.T) {
+	root := contracttest.Root(t)
+	now := time.Now().UTC()
+	opened := now.Add(-time.Duration(now.Hour()+1) * time.Hour) // yesterday, one hour before midnight
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, recordName), []byte(openLine(runA, "eval", opened, 9_500_000_000)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	env := liveEnv()
+	env["AI_EVAL_LIVE_MAX_USD"] = "10"
+	r := runMain(t, env, root, dir, "-smoke")
+	t.Logf("open line %s (no close), new run today with cap USD 10: exit %d built %d", opened.Format(time.RFC3339), r.code, r.built)
+	if r.code != aievals.ExitRefused {
+		t.Errorf("a run took the whole day while yesterday's run (USD 9.5 cap) has no close line")
+	}
+}
+
+// Q1c: a record emptied (git checkout of the committed empty file, a
+// truncation) while the directory still holds a live report of a run the
+// record no longer names. The change accepts an empty record as "no runs",
+// so the day and month start again. Stricter expectation: every live report
+// in the directory names a run of the record, or the run is refused.
+func TestProbeQ1cAnEmptiedRecordNextToAnEarlierReport(t *testing.T) {
+	root := contracttest.Root(t)
+	dir := emptyRecord(t)
+	env := liveEnv()
+	env["AI_EVAL_LIVE_MAX_USD"] = "10"
+	if r := runMain(t, env, root, dir, "-smoke"); r.code != aievals.ExitOK {
+		t.Fatalf("first run: exit %d: %s", r.code, r.stderr)
+	}
+	reports, _ := filepath.Glob(filepath.Join(dir, "live-smoke-*.json"))
+	if err := os.WriteFile(filepath.Join(dir, recordName), nil, 0o644); err != nil { // the record "restored" to the committed empty file
+		t.Fatal(err)
+	}
+	r := runMain(t, env, root, dir, "-smoke")
+	t.Logf("reports in the directory %d; record emptied; second run with cap USD 10: exit %d built %d", len(reports), r.code, r.built)
+	if r.code != aievals.ExitRefused {
+		t.Errorf("an emptied record was taken as no runs although a report of an earlier run is next to it")
+	}
+}
+
+// Q1d: crafted lines. A huge cap saturates the sum (refuse), a duplicated
+// member is not taken (refuse), a non-integer amount is not taken (refuse),
+// a byte-order mark is not taken (refuse); a line dated in another day (a
+// skewed clock) is not counted today (by design; logged only).
+func TestProbeQ1dCraftedLines(t *testing.T) {
+	root := contracttest.Root(t)
+	now := time.Now().UTC()
+	open := openLine(runA, "eval", now, 1_000_000_000)
+	for name, record := range map[string]string{
+		"a cap of MaxInt64, open":  openLine(runA, "eval", now, 9223372036854775807),
+		"two huge closed runs":     openLine(runA, "eval", now, 9e18) + closeLine(runA, now, 9e18, "complete") + openLine(runB, "eval", now, 9e18) + closeLine(runB, now, 9e18, "complete"),
+		"a duplicated cap member":  strings.Replace(open, `"cap_nano_usd":1000000000`, `"cap_nano_usd":9000000000,"cap_nano_usd":1`, 1),
+		"an exponent amount":       strings.Replace(open, `"cap_nano_usd":1000000000`, `"cap_nano_usd":1e9`, 1),
+		"a fractional amount":      strings.Replace(open, `"cap_nano_usd":1000000000`, `"cap_nano_usd":1000000000.5`, 1),
+		"a byte-order mark":        "\xef\xbb\xbf" + open,
+		"an amount above int64":    strings.Replace(open, `"cap_nano_usd":1000000000`, `"cap_nano_usd":99999999999999999999`, 1),
+		"a close line amount null": open + strings.Replace(closeLine(runA, now, 1, "complete"), `"committed_nano_usd":1`, `"committed_nano_usd":null`, 1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, recordName), []byte(record), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			r := runMain(t, liveEnv(), root, dir, "-smoke")
+			if r.code != aievals.ExitRefused || r.built != 0 {
+				t.Errorf("exit %d built %d: %s", r.code, r.built, r.stderr)
+			}
+		})
+	}
+	// Another day's open line (a clock that was ahead when it was written):
+	// not counted today, by design.
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, recordName), []byte(openLine(runA, "eval", now.AddDate(0, 0, 3), 9_900_000_000)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	env := liveEnv()
+	env["AI_EVAL_LIVE_MAX_USD"] = "10"
+	r := runMain(t, env, root, dir, "-smoke")
+	t.Logf("an open line dated three days ahead (cap USD 9.9): today's run with cap USD 10: exit %d (counted only on its own day)", r.code)
+}
+
+// Q1e: a call that costs more than its reservation in the eval's own meter
+// (the quote under-estimated): what it cost is recorded in full (no clamp),
+// the report and stderr flag it, the close line's committed amount exceeds
+// the run's cap, and the next run counts that committed amount.
+func TestProbeQ1eAnOverrunIsRecordedInFull(t *testing.T) {
+	root := contracttest.Root(t)
+	dir := emptyRecord(t)
+	b := &overrun{inProcess: &inProcess{Backend: fake.New()}}
+	var out, errb strings.Builder
+	code := aievals.Main(context.Background(), []string{"-root", root, "-dir", dir, "-smoke"}, func(k string) string { return liveEnv()[k] },
+		&out, &errb, func(config.AI) (provider.Billable, error) { return b, nil })
+	lines := recordLines(t, dir)
+	t.Logf("exit %d; stdout %s; stderr %s; record %v", code, strings.TrimSpace(out.String()), strings.TrimSpace(errb.String()), lines)
+	if len(lines) != 2 {
+		t.Fatalf("record %v", lines)
+	}
+	committed, _ := lines[1]["committed_nano_usd"].(float64)
+	if committed <= float64(aievals.DefaultSmokeCap) || !strings.Contains(errb.String(), "WARNING") {
+		t.Errorf("committed %v (cap %d), stderr %q: the overrun is not recorded in full and flagged", committed, aievals.DefaultSmokeCap, errb.String())
+	}
+	reports, _ := filepath.Glob(filepath.Join(dir, "live-smoke-*.json"))
+	if len(reports) == 1 {
+		data, _ := os.ReadFile(reports[0])
+		if !strings.Contains(string(data), `"over_reservation": 1`) && !strings.Contains(string(data), `"over_reservation":1`) {
+			t.Errorf("the report does not count the overrun: %s", data)
+		}
+	}
+	env := liveEnv()
+	env["AI_EVAL_LIVE_MAX_USD"] = "6"
+	if r := runMain(t, env, root, dir, "-smoke"); r.code != aievals.ExitRefused {
+		t.Errorf("the next run (cap 6) after USD %.2f committed: exit %d", committed/1e9, r.code)
+	}
+}
+
+// Q1f: the daily limit the run's cap must fit is configuration
+// (AI_DAILY_LIMIT_USD, up to the monthly limit, D-110 (b)). With it set to
+// the month, one run may take the whole month's USD 100 in one UTC day.
+// Logged only (by design of PROPOSED D-110; finding I-new-1).
+func TestProbeQ1fTheDailyLimitIsConfiguration(t *testing.T) {
+	root := contracttest.Root(t)
+	env := liveEnv()
+	env["AI_DAILY_LIMIT_USD"], env["AI_EVAL_LIVE_MAX_USD"] = "100", "100"
+	r := runMain(t, env, root, emptyRecord(t), "-smoke")
+	t.Logf("AI_DAILY_LIMIT_USD=100 AI_EVAL_LIVE_MAX_USD=100: exit %d built %d", r.code, r.built)
+}
+
+// overrun reports a usage far above what the quote allows (1M input tokens
+// against a 10k quote): USD 4 at the list price, above the smoke's USD 2 cap.
+type overrun struct{ *inProcess }
+
+func (o *overrun) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
+	resp, err := o.inProcess.Complete(ctx, req)
+	resp.Usage = provider.Usage{InputTokens: 1_000_000, OutputTokens: 300}
+	return resp, err
+}

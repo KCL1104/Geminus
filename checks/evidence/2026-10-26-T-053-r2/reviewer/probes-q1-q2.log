@@ -1,0 +1,85 @@
+=== RUN   TestProbeQ1aTwoConcurrentRunsInOneCheckout
+    probe_q1_test.go:56: first: exit 0 built 1; second: exit 2 built 0: ai-eval-live: REFUSED (no provider call was made): the run's cap (USD 6.00) is more than the UTC day has left (the spend record holds USD 6.00 of the daily limit USD 10.00)
+--- PASS: TestProbeQ1aTwoConcurrentRunsInOneCheckout (0.12s)
+=== RUN   TestProbeQ1bAnUnclosedRunFromYesterdayDoesNotCountToday
+    probe_q1_test.go:85: open line 2026-10-25T23:47:09Z (no close), new run today with cap USD 10: exit 0 built 1
+    probe_q1_test.go:87: a run took the whole day while yesterday's run (USD 9.5 cap) has no close line
+--- FAIL: TestProbeQ1bAnUnclosedRunFromYesterdayDoesNotCountToday (0.02s)
+=== RUN   TestProbeQ1cAnEmptiedRecordNextToAnEarlierReport
+    probe_q1_test.go:109: reports in the directory 1; record emptied; second run with cap USD 10: exit 0 built 1
+    probe_q1_test.go:111: an emptied record was taken as no runs although a report of an earlier run is next to it
+--- FAIL: TestProbeQ1cAnEmptiedRecordNextToAnEarlierReport (0.03s)
+=== RUN   TestProbeQ1dCraftedLines
+=== RUN   TestProbeQ1dCraftedLines/two_huge_closed_runs
+=== RUN   TestProbeQ1dCraftedLines/a_duplicated_cap_member
+=== RUN   TestProbeQ1dCraftedLines/an_exponent_amount
+=== RUN   TestProbeQ1dCraftedLines/a_fractional_amount
+=== RUN   TestProbeQ1dCraftedLines/a_byte-order_mark
+=== RUN   TestProbeQ1dCraftedLines/an_amount_above_int64
+=== RUN   TestProbeQ1dCraftedLines/a_close_line_amount_null
+=== RUN   TestProbeQ1dCraftedLines/a_cap_of_MaxInt64,_open
+=== NAME  TestProbeQ1dCraftedLines
+    probe_q1_test.go:153: an open line dated three days ahead (cap USD 9.9): today's run with cap USD 10: exit 0 (counted only on its own day)
+--- PASS: TestProbeQ1dCraftedLines (0.05s)
+    --- PASS: TestProbeQ1dCraftedLines/two_huge_closed_runs (0.01s)
+    --- PASS: TestProbeQ1dCraftedLines/a_duplicated_cap_member (0.00s)
+    --- PASS: TestProbeQ1dCraftedLines/an_exponent_amount (0.00s)
+    --- PASS: TestProbeQ1dCraftedLines/a_fractional_amount (0.00s)
+    --- PASS: TestProbeQ1dCraftedLines/a_byte-order_mark (0.00s)
+    --- PASS: TestProbeQ1dCraftedLines/an_amount_above_int64 (0.00s)
+    --- PASS: TestProbeQ1dCraftedLines/a_close_line_amount_null (0.00s)
+    --- PASS: TestProbeQ1dCraftedLines/a_cap_of_MaxInt64,_open (0.00s)
+=== RUN   TestProbeQ1eAnOverrunIsRecordedInFull
+    probe_q1_test.go:168: exit 0; stdout ai-eval-live: smoke run 01M5W0JAJ8851GM4A98TKYPJ3P of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 4.006 (committed 4.006, cap 2.00), 1000000 input and 300 output tokens, spend warnings map[inference_geo_unknown:0 over_reservation:1]; report /tmp/TestProbeQ1eAnOverrunIsRecordedInFull4179743512/001/live-smoke-2026-10-26T114709Z-01M5W0JAJ8851GM4A98TKYPJ3P-claude-opus-5-5.json; stderr ai-eval-live: WARNING: 1 call(s) broke an assumption of the reservation's bound (map[inference_geo_unknown:0 over_reservation:1]); what they cost is recorded; record [map[approval:H-018 cap_nano_usd:2e+09 day:2026-10-26 event:open kind:smoke model:claude-opus-5-5 month:2026-10 report:live-smoke-2026-10-26T114709Z-01M5W0JAJ8851GM4A98TKYPJ3P-claude-opus-5-5.json run_id:01M5W0JAJ8851GM4A98TKYPJ3P started_at:2026-10-26T11:47:09Z] map[closed_at:2026-10-26T11:47:09Z committed_nano_usd:4.006e+09 day:2026-10-26 event:close month:2026-10 result:complete run_id:01M5W0JAJ8851GM4A98TKYPJ3P settled_nano_usd:4.006e+09]]
+--- PASS: TestProbeQ1eAnOverrunIsRecordedInFull (0.01s)
+=== RUN   TestProbeQ1fTheDailyLimitIsConfiguration
+    probe_q1_test.go:199: AI_DAILY_LIMIT_USD=100 AI_EVAL_LIVE_MAX_USD=100: exit 0 built 1
+--- PASS: TestProbeQ1fTheDailyLimitIsConfiguration (0.01s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.282s
+=== RUN   TestProbeQ2a504TimeoutThenRefusal
+    probe_q2_test.go:34: err <nil>; hits A=3 B=1; settled 1080000 nano-USD (B's answer alone 1080000; one attempt bound 206492000); credential "org-b"
+    probe_q2_test.go:37: two 504 timeout_error attempts settled as unbilled (settled 1080000) and the call failed over to B
+--- FAIL: TestProbeQ2a504TimeoutThenRefusal (0.03s)
+=== RUN   TestProbeQ2bA200WithoutUsage
+    probe_q2_test.go:52: err <nil>; settled 0; metadata geo "" cost 0
+--- PASS: TestProbeQ2bA200WithoutUsage (0.00s)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/lost_x4
+    probe_q2_test.go:85: lost x4: err ai provider: unavailable [credential org-a]; hits A=3 B=0; settled 619476000 (reserved 619476000)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/mixed
+    probe_q2_test.go:85: mixed: err ai provider: unavailable (status 500) [credential org-a]; hits A=3 B=0; settled 412984000 (reserved 619476000)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/slow_x4
+    probe_q2_test.go:85: slow x4: err ai provider: unavailable [credential org-a]; hits A=3 B=0; settled 619476000 (reserved 619476000)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/408_x4
+    probe_q2_test.go:85: 408 x4: err ai provider: unavailable (status 408) [credential org-a]; hits A=3 B=0; settled 0 (reserved 619476000)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/429_x4
+    probe_q2_test.go:85: 429 x4: err ai provider: rate_limited (status 429) [credential org-a]; hits A=3 B=0; settled 0 (reserved 619476000)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/lost,_402
+    probe_q2_test.go:85: lost, 402: err ai provider: unavailable (status 402) [credential org-a]; hits A=2 B=0; settled 206492000 (reserved 619476000)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/cut_x4
+    probe_q2_test.go:85: cut x4: err ai provider: unavailable [credential org-a]; hits A=3 B=0; settled 619476000 (reserved 619476000)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/529_x4
+    probe_q2_test.go:85: 529 x4: err ai provider: unavailable (status 529) [credential org-a]; hits A=3 B=0; settled 0 (reserved 619476000)
+=== RUN   TestProbeQ2cAttemptsPerCallAreBounded/409_x4
+    probe_q2_test.go:85: 409 x4: err ai provider: unavailable (status 409) [credential org-a]; hits A=3 B=0; settled 0 (reserved 619476000)
+--- PASS: TestProbeQ2cAttemptsPerCallAreBounded (5.92s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/lost_x4 (1.43s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/mixed (1.27s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/slow_x4 (1.53s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/408_x4 (0.02s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/429_x4 (0.01s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/lost,_402 (0.43s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/cut_x4 (1.20s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/529_x4 (0.01s)
+    --- PASS: TestProbeQ2cAttemptsPerCallAreBounded/409_x4 (0.01s)
+=== RUN   TestProbeQ2dRefusalThenLostAttempts
+    probe_q2_test.go:104: err ai provider: unavailable [credential org-b]; hits A=1 B=3; settled 619476000 (3 bounds 619476000)
+--- PASS: TestProbeQ2dRefusalThenLostAttempts (1.28s)
+=== RUN   TestProbeQ2eLostBetweenStatusesThenRefusal
+    probe_q2_test.go:117: err ai provider: unavailable (status 403) [credential org-a]; hits A=3 B=0; settled 206492000 (one bound 206492000)
+--- PASS: TestProbeQ2eLostBetweenStatusesThenRefusal (0.81s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/anthropic	8.077s
+FAIL
+exit 1
