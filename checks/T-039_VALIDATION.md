@@ -171,3 +171,7 @@ Coordinator 對 T-039 問題的處理（例行事項；需要 owner 的另列）
 
 下一步：一輪獨立審查（H-029）。
 
+### CI 的第一次 containers job（run 203）與修正
+
+CI run 203（ca2c6b1）：除了新的 `containers` job 以外都通過（backend 含 race 與數值、frontend、browser 含截圖、spec-check、PostgreSQL 16 integration）。`containers` 中 `make build-containers` 通過；`make staging-smoke` 的 migrate、seed、登入檢查與 api、worker、web 的 health 都通過，只有 `oidc-test` 一直 unhealthy：它用 web 的 image 執行測試 provider，繼承了 image 的 `HEALTHCHECK`（`127.0.0.1:$PORT`，image 中為 3000），而 provider 在 3101。修正（3bcd860）：先在 `scripts/check_deploy.py` 加規則（長時間執行、取代 image command 的 service 必須有自己的 healthcheck；修正前 exit 1、修正後 0），再給 `oidc-test` 檢查 `127.0.0.1:3101/.well-known/jwks.json` 的 healthcheck。本機重現（沒有 Docker）：image 的 healthcheck exit 1、新的 exit 0、provider 停止後新的 exit 1（`checks/evidence/2026-10-26-T-039/coordinator/ci-203-containers-fix.txt`）。containers job 本身只能由下一次 CI 驗證。
+

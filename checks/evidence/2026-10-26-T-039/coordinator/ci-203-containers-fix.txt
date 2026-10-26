@@ -1,0 +1,11 @@
+CI run 203 (ca2c6b1), job "containers (build, local staging smoke)": make build-containers passed;
+make staging-smoke failed at `up -d --wait web oidc-test api worker`: "container ...-oidc-test-1 is unhealthy".
+Cause: oidc-test runs `node /fake/servers.mjs` from the geminus-web:local image and inherits its HEALTHCHECK,
+which fetches 127.0.0.1:$PORT/ (PORT=3000 in the image; only web sets 3100). The test provider listens on 3101.
+
+Reproduction on this machine (no Docker daemon), 2026-10-26, Node 22.22.0, with apps/web-e2e/fake/servers.mjs running:
+  image healthcheck, PORT=3000                         exit 1   (the CI failure)
+  new oidc-test healthcheck (3101/.well-known/jwks.json) exit 0
+  new healthcheck with the provider stopped            exit 1   (it still detects a dead provider)
+scripts/check_deploy.py rule added first: exit 1 on the old compose ("oidc-test: replaces its image's command without a healthcheck of its own"), exit 0 after.
+The containers job itself is NOT RUN locally; the next CI run is its check.

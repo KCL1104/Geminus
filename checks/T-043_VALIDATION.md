@@ -340,3 +340,35 @@ T-045 的獨立 review（H-003，`checks/evidence/2026-10-26-T-045-r1/reviewer/R
 2. 手機登入後 strip 為兩列（account 在第二列）：接受，或改成一個帳號選單（語言、主題、組織、登出放在一起）？
 3. 組織的選擇只記到瀏覽器關閉：可以嗎，還是像語言一樣記一年？
 4. 切換組織時留在同一頁（可能顯示「找不到」）：可以嗎，還是改為回到「專案」（並先告知）？
+
+### Coordinator 驗證（登入後的 UI bootstrap，2026-10-26）
+
+`t043-bootstrap` 的四個 commit（0ae7952、512eb32、f76631c、9d0ed9e）cherry-pick 到 ca2c6b1 之後（e0a9901、986b451、e7aec84、96b6e42）。衝突：
+- `apps/web/tests/simplicity.test.tsx`：coordinator 在 55d0703 已把規則改為「沒有原因的 disabled 控制項為 0」；本切片的 0ae7952 更嚴格（任何頁面不得有原生 `disabled`；模型頁的每個 `aria-disabled` 必須以 `aria-describedby` 指向看得見的非空文字、編輯者必須至少有一個 blocked 動作可檢查；其他已登入頁面不得有 blocked 控制項），採用本切片的版本。
+- `apps/web/app/_components/states.tsx`：`Loadable` 合併兩邊（T-032 的 scenario、runs、results 與本切片的 account）；catalog 兩邊的 key 都在。
+- `DESIGN.md` Simplicity 第 2 條：採用本切片的文字，並把 unit 測試的描述改為上面的實際規則；第 3 條採用本切片的文字。
+- 生成的 `checks/*.json`：重產。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-043-bootstrap/coordinator/`；HEAD 96b6e42；Node 22.22.0）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `npm ci`（web、web-e2e） | 0／0 | |
+| `make frontend-test` | 0 | 865／865 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（等 3100／3101 空出後單獨執行） | 0 | 353 passed、32 skipped（全部是只在 CI 比對的截圖） |
+
+沒有改 Go、contract 或 migration，所以沒有跑 Go 測試。
+
+截圖：未登入的 `/projects` 多了「Sign in」連結，8 張已接受的 baseline（`projects-{en,zh-Hant}-{390,1280}` 與 `-dark`）會改變。push 後 CI 的截圖比對在這 8 張會失敗，直到 owner 接受新的 baseline（H-028：以 `update_screenshots` 在 CI 產生、owner 確認後 commit）。
+
+Coordinator 對本切片問題的處理：
+1. 8 張 baseline：交給 owner 確認（見上）。
+2. 手機上的第二列（Sign out 與組織切換）：比賽期間維持。
+3. 組織的選擇只記到瀏覽器關閉：維持（較安全的預設）。
+4. 切換組織時留在原頁、未存的編輯不詢問就消失：demo 只有一個組織，比賽期間維持；比賽後改為回到 Projects，有未存的編輯時先詢問。
+
+下一步：一輪獨立審查（H-029）。
+
