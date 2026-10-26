@@ -628,6 +628,54 @@ cases.append({
     "simpy": "refused: a resource needed by two processes (the batch and changeover reference grants each process's own resource)",
 })
 
+# ---------------------------------------------------------------- G-BT17
+# Added after mutation run 2: batch-bundle-per-member (each blocked member
+# counting the bundle in K) survived, since G-BT4's second blocked member
+# moves on in the tick it is blocked, so no golden had two members of one
+# batch blocked together for a positive time.
+cases.append({
+    "id": "G-BT17",
+    "title": "two members of one batch blocked together: the batch's bundle counts once in blocked_ticks (D-096 (j))",
+    "model": model("G-BT17", [res("chamber"), res("packer")],
+                   [source("src", 1, 3), source("src_b", 12, 1), process("oven", 10, [("chamber", 1)], (3, 3)), queue("q_pack", 1),
+                    process("pack", 4, [("packer", 1)]), sink("done")],
+                   [flow("src", "oven"), flow("src_b", "q_pack"), flow("oven", "q_pack"), flow("q_pack", "pack"), flow("pack", "done")]),
+    "config": config(30),
+    "derivation": [
+        "src every minute, 3 entities (e1, e2, e3 at 1, 2, 3) -> oven (batch min = max = 3, chamber, 10 min) -> q_pack (capacity 1) -> pack (packer, 4 min) -> done; src_b one entity f1 at 12 -> q_pack. G-BT4 with the packer busy when the batch ends.",
+        "t=0: the first arrivals in source order: src at 1 (seq 1), src_b at 12 (seq 2). t=1: e1 enters oven's buffer (next src arrival at 2, seq 3); 1 of 3, min = max: no BATCH_TIMEOUT, not ready, no dispatch (D-096 (b), (e)). t=2: e2 (next at 3, seq 4). t=3: e3 (the last): 3 wait = max_size: ready, the batch request, DISPATCH (seq 5): BatchStart b1 (e1, e2, e3) at 3, SERVICE_COMPLETE at 13 (seq 6).",
+        "t=12: ARRIVAL f1 (seq 2, src_b's only one): q_pack holds 0 of 1: f1 enters (QueueEnter at pack), its request asks for a dispatch (seq 7). DISPATCH (seq 7): the packer is free: f1 12-16 (SERVICE_COMPLETE seq 8); the grant leaves q_pack empty.",
+        "t=13: SERVICE_COMPLETE at oven (seq 6). The members' routes in FIFO order (D-054): e1 -> q_pack (0 of 1): takes the place; e2 -> q_pack (1 of 1, e1's): full, blocked; e3: blocked. A member is blocked: nothing released. ServiceEnd e1, e1 queues at pack (DISPATCH seq 9); ServiceEnd e2, Blocked e2; ServiceEnd e3, Blocked e3. DISPATCH (seq 9): the packer is busy with f1: e1 is held; no grant, so no place frees: e2 and e3 stay blocked together, the chamber held by the batch.",
+        "t=16: SERVICE_COMPLETE f1 at pack (seq 8): release (wakes e1), ServiceEnd, DISPATCH (seq 10), Complete f1. DISPATCH (seq 10): e1 granted (16-20, SERVICE_COMPLETE seq 11); its place lets e2, the first blocked, move in: not the batch's last blocked member, so the chamber stays held: Unblocked e2, QueueEnter e2; e2 held (packer busy).",
+        "t=20: SERVICE_COMPLETE e1 (seq 11): release (wakes e2), ServiceEnd, DISPATCH (seq 12), Complete e1. DISPATCH (seq 12): e2 granted (20-24, seq 13); e3, the batch's last blocked member, moves in: first the chamber's release (ObsResource 0), then Unblocked e3, QueueEnter e3; e3 held.",
+        "t=24: SERVICE_COMPLETE e2 (seq 13): release, DISPATCH (seq 14), Complete e2; DISPATCH: e3 24-28 (seq 15). t=28: SERVICE_COMPLETE e3 (seq 15): release, DISPATCH (seq 16), Complete e3; DISPATCH: nothing.",
+        "16 events: 4 arrivals (1, 2, 3, 12), 7 DISPATCHes (3, 12, 13, 16, 20, 24, 28), 1 SERVICE_COMPLETE at oven, 4 at pack.",
+        "Result over [0,30]: 4 completed (f1, e1, e2, e3); lead times f1 16 - 12 = 4, e1 20 - 1 = 19, e2 24 - 2 = 22, e3 28 - 3 = 25; queue waits at oven (key oven) 2, 1, 0; at q_pack f1 0, e1 16 - 13 = 3, e2 20 - 16 = 4 (from its entry after the unblock, D-064 (f)), e3 24 - 20 = 4.",
+        "chamber in use [3, 20): 17 min (utilization 17/30); held by blocked members [13, 20): blocked_ticks 7 min, the bundle once although e2 and e3 are both blocked in [13, 16) (counting it per member would give 2 x 3 + 4 = 10); scheduled processing 17 - 7 = 10 min. packer in use [12, 28): 16 min (16/30), never blocked.",
+        "blocking[oven]: 2 blocks started (e2, e3 at 13), both complete (13-16, 13-20): 3 + 7 = 10 min; blocked entities over time: 2 in [13, 16), 1 in [16, 20): 6 + 4 = 10 min. blocking[src_b] (its route reaches q_pack): nothing. buffers[q_pack]: f1's entry at 12 is granted in that tick; full from e1's entry at 13 to e3's grant at 24 (each grant followed by an entry in its tick): 11 min. batches[oven]: 1, 3 members.",
+    ],
+    "expected": {
+        "starts": {"oven": [[e("src", 1), 3], [e("src", 2), 3], [e("src", 3), 3]],
+                   "pack": [[e("src_b", 1), 12], [e("src", 1), 16], [e("src", 2), 20], [e("src", 3), 24]]},
+        "completions": [[e("src_b", 1), 16], [e("src", 1), 20], [e("src", 2), 24], [e("src", 3), 28]],
+        "batches": [["oven", 1, 3, [e("src", 1), e("src", 2), e("src", 3)]]],
+        "batch_start_seqs": [["oven", 1, 5]],
+        "blocks": [[e("src", 2), "oven", 13, 16], [e("src", 3), "oven", 13, 20]],
+        "downs": [], "pending": [], "capacities": [],
+        "events": 16,
+        "result": {"completed_count": 4, "censored_entities": 0, "lead_times_minutes": [4, 19, 22, 25],
+                   "queue_waits_minutes": {"oven": [2, 1, 0], "q_pack": [0, 3, 4, 4]},
+                   "resource_utilization": {"chamber": 17 / 30, "packer": 16 / 30},
+                   "resource_states": {"chamber": {"in_use_ticks": ticks(17), "blocked_ticks": ticks(7), "scheduled_processing_ticks": ticks(10)},
+                                       "packer": {"in_use_ticks": ticks(16), "blocked_ticks": 0, "scheduled_processing_ticks": ticks(16)}},
+                   "blocking": {"oven": {"blocks_started": 2, "blocks_completed": 2, "completed_block_ticks": ticks(10), "blocked_entity_ticks": ticks(10)},
+                                "src_b": {"blocks_started": 0, "blocks_completed": 0, "completed_block_ticks": 0, "blocked_entity_ticks": 0}},
+                   "buffers": {"q_pack": {"full_ticks": ticks(11)}},
+                   "batches": {"oven": {"batches_started": 1, "members_started": 3}}},
+    },
+    "simpy": "refused: a finite buffer (the batch and changeover reference has no blocking; T-047's reference has no batches)",
+})
+
 # ---------------------------------------------------------------- the SimPy reference (stochastic)
 # Fixed before either side ran (T-050): 30 replications of 3000 minutes,
 # warmup 300, the tolerance of blocking-goldens.json (T-047). Compared by

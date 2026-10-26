@@ -180,3 +180,95 @@ func TestNeutralSetupsKeepTheResult(t *testing.T) {
 		}
 	}
 }
+
+// D-058's identities for batches and changeovers on stochastic runs (the
+// eight reference cases of batch-goldens.json and setup-goldens.json, 30
+// replications each): a batch has min_size to max_size members, so
+// min_size·batches <= members <= max_size·batches, and every batch
+// process is listed; a complete changeover started in [W, H], so
+// setups_completed <= setups_started and completed_setup_ticks <=
+// setup_ticks; a unit changing over is in use and not blocked (Z + K <=
+// U), and without a calendar scheduled processing = in use - blocked -
+// changing over (P = U - K - Z), with one at most that.
+func TestBatchAndSetupIdentities(t *testing.T) {
+	var cases []goldenCase
+	for _, file := range []string{"batch-goldens.json", "setup-goldens.json"} {
+		var doc struct {
+			Reference struct {
+				Cases []goldenCase `json:"cases"`
+			} `json:"reference"`
+		}
+		if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation", file)), &doc); err != nil {
+			t.Fatal(err)
+		}
+		cases = append(cases, doc.Reference.Cases...)
+	}
+	if len(cases) != 8 {
+		t.Fatalf("%d reference cases, want 8", len(cases))
+	}
+	var batches, partial, setupTicks, completed int64
+	for _, c := range cases {
+		in := caseInput(t, c)
+		res := run(t, &Engine{}, in).Result
+		validResult(t, res)
+		sizes := map[string][2]int64{}
+		for _, n := range in.Model.Nodes {
+			if n.Batch != nil {
+				sizes[n.ID] = [2]int64{int64(n.Batch.MinSize), int64(n.Batch.MaxSize)}
+			}
+		}
+		setups, calendared := map[string]bool{}, map[string]bool{}
+		for _, r := range in.Model.Resources {
+			setups[r.ID], calendared[r.ID] = r.Setups != nil, r.CalendarID != ""
+		}
+		for _, s := range res.ReplicationSummaries {
+			if len(s.Batches) != len(sizes) {
+				t.Errorf("%s r%d: batches %+v for the batch processes %v", c.ID, s.ReplicationIndex, s.Batches, sizes)
+			}
+			for id, b := range s.Batches {
+				size, ok := sizes[id]
+				if !ok || b.MembersStarted < size[0]*b.BatchesStarted || b.MembersStarted > size[1]*b.BatchesStarted {
+					t.Errorf("%s r%d %s: %+v, sizes %v", c.ID, s.ReplicationIndex, id, b, size)
+				}
+				batches += b.BatchesStarted
+				if b.MembersStarted < size[1]*b.BatchesStarted {
+					partial++
+				}
+			}
+			for id, st := range s.ResourceStates {
+				if !setups[id] {
+					if st.SetupTicks != nil || st.SetupsStarted != nil || st.SetupsCompleted != nil || st.CompletedSetupTicks != nil {
+						t.Errorf("%s r%d %s: setup members without setups: %+v", c.ID, s.ReplicationIndex, id, st)
+					}
+					continue
+				}
+				if st.SetupTicks == nil || st.SetupsStarted == nil || st.SetupsCompleted == nil || st.CompletedSetupTicks == nil {
+					t.Fatalf("%s r%d %s: %+v", c.ID, s.ReplicationIndex, id, st)
+				}
+				z, k := *st.SetupTicks, int64(0)
+				if st.BlockedTicks != nil {
+					k = *st.BlockedTicks
+				}
+				ok := *st.SetupsCompleted <= *st.SetupsStarted && *st.CompletedSetupTicks <= z && z+k <= st.InUseTicks &&
+					st.ScheduledProcessingTicks <= st.InUseTicks-k-z
+				if !calendared[id] {
+					ok = ok && st.ScheduledProcessingTicks == st.InUseTicks-k-z
+				}
+				if !ok {
+					t.Errorf("%s r%d %s: %+v", c.ID, s.ReplicationIndex, id, st)
+				}
+				setupTicks += z
+				completed += *st.SetupsCompleted
+			}
+			for id := range setups {
+				if _, ok := s.ResourceStates[id]; setups[id] && !ok {
+					t.Errorf("%s r%d: %s has setups but no resource_states", c.ID, s.ReplicationIndex, id)
+				}
+			}
+		}
+	}
+	if batches == 0 || partial == 0 || setupTicks == 0 || completed == 0 {
+		t.Fatalf("the reference cases have %d batches (%d replications with one below max_size), %d ticks changing over, %d complete changeovers",
+			batches, partial, setupTicks, completed)
+	}
+}

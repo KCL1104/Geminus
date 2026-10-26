@@ -55,7 +55,7 @@ func TestGoldenDigests050(t *testing.T) {
 			got[c.ID] = d
 		}
 	}
-	if len(got) != 30 || !reflect.DeepEqual(got, lock.Digests) {
+	if len(got) != 31 || !reflect.DeepEqual(got, lock.Digests) {
 		data, _ := json.Marshal(got, json.Deterministic(true))
 		t.Errorf("digests %s\n locked %v", data, lock.Digests)
 	}

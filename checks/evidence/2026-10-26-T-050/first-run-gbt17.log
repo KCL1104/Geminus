@@ -1,0 +1,69 @@
+=== RUN   TestBatchGoldens
+=== RUN   TestBatchGoldens/G-BT1
+=== RUN   TestBatchGoldens/G-BT2
+=== RUN   TestBatchGoldens/G-BT3
+=== RUN   TestBatchGoldens/G-BT4
+=== RUN   TestBatchGoldens/G-BT6
+=== RUN   TestBatchGoldens/G-BT7
+=== RUN   TestBatchGoldens/G-BT8
+=== RUN   TestBatchGoldens/G-BT9
+=== RUN   TestBatchGoldens/G-BT10
+=== RUN   TestBatchGoldens/G-BT11
+=== RUN   TestBatchGoldens/G-BT12
+=== RUN   TestBatchGoldens/G-BT14
+=== RUN   TestBatchGoldens/G-BT15
+=== RUN   TestBatchGoldens/G-BT16
+=== RUN   TestBatchGoldens/G-BT17
+--- PASS: TestBatchGoldens (0.05s)
+    --- PASS: TestBatchGoldens/G-BT1 (0.04s)
+    --- PASS: TestBatchGoldens/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT14 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT15 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT16 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT17 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.058s
+=== RUN   TestBatchGoldenResults
+=== RUN   TestBatchGoldenResults/G-BT1
+=== RUN   TestBatchGoldenResults/G-BT2
+=== RUN   TestBatchGoldenResults/G-BT3
+=== RUN   TestBatchGoldenResults/G-BT4
+=== RUN   TestBatchGoldenResults/G-BT6
+=== RUN   TestBatchGoldenResults/G-BT7
+=== RUN   TestBatchGoldenResults/G-BT8
+=== RUN   TestBatchGoldenResults/G-BT9
+=== RUN   TestBatchGoldenResults/G-BT10
+=== RUN   TestBatchGoldenResults/G-BT11
+=== RUN   TestBatchGoldenResults/G-BT12
+=== RUN   TestBatchGoldenResults/G-BT14
+=== RUN   TestBatchGoldenResults/G-BT15
+=== RUN   TestBatchGoldenResults/G-BT16
+=== RUN   TestBatchGoldenResults/G-BT17
+--- PASS: TestBatchGoldenResults (0.07s)
+    --- PASS: TestBatchGoldenResults/G-BT1 (0.05s)
+    --- PASS: TestBatchGoldenResults/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT14 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT15 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT16 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT17 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.081s
+exit 0 elapsed 2s

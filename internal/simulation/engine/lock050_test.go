@@ -87,7 +87,7 @@ func TestBatchSetupObservationDigests(t *testing.T) {
 	for _, c := range lock.Cases {
 		want[c.ID] = fmt.Sprintf("%d %s", c.Observations, c.Digest)
 	}
-	if lock.EngineVersion != "des-go-0.5.0" || len(got) != 32 || !maps.Equal(got, want) {
+	if lock.EngineVersion != "des-go-0.5.0" || len(got) != 33 || !maps.Equal(got, want) {
 		var rows []string
 		for _, id := range order {
 			rows = append(rows, fmt.Sprintf("%s=%s", id, got[id]))

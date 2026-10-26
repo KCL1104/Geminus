@@ -102,8 +102,8 @@ func TestBatchGoldenResults(t *testing.T) {
 			checkGoldenResult(t, run(t, &Engine{}, caseInput(t, c)).Result, *c.Expected.Result)
 		})
 	}
-	if checked != 14 {
-		t.Fatalf("%d cases with an expected result, want 14", checked)
+	if checked != 15 {
+		t.Fatalf("%d cases with an expected result, want 15", checked)
 	}
 }
 

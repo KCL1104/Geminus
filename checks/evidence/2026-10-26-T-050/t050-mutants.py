@@ -125,6 +125,9 @@ MUT = [
     ("compile-skips-setup-limits", C, "\t\t\t\tif q.units != 1 || c.setupRes >= 0 || c.batch != nil {\n", "\t\t\t\tif false && (q.units != 1 || c.setupRes >= 0 || c.batch != nil) {\n", ENG),
     # Result members (D-058, D-096 (j), D-097 (f))
     ("batches-outside-window", M, "\t\tif c.inWindow(o.Tick) {\n\t\t\tc.batchesStarted[o.Node]++\n", "\t\tif true {\n\t\t\tc.batchesStarted[o.Node]++\n", SIM),
+    # (run 2: SURVIVED: G-BT4's second blocked member moves on in the tick
+    # it is blocked; G-BT17, two members blocked together for 3 minutes,
+    # kills it now)
     ("batch-bundle-per-member", M, "\t\tif (sign > 0 && left != 1) || (sign < 0 && left != 0) {\n", "\t\tif false {\n", SIM),
     ("setups-started-outside-window", M, "\t\tif c.inWindow(o.Tick) {\n\t\t\tc.setupsStarted[r]++\n", "\t\tif true {\n\t\t\tc.setupsStarted[r]++\n", SIM),
     ("setup-complete-ignores-end", M, "\t\tif o.Tick >= c.w && o.Tick+o.Value <= c.h {\n", "\t\tif o.Tick >= c.w {\n", SIM),

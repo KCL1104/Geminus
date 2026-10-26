@@ -215,8 +215,8 @@ func TestBatchGoldens(t *testing.T) {
 			}
 		})
 	}
-	if ran != 14 {
-		t.Errorf("%d batch goldens ran, want 14", ran)
+	if ran != 15 {
+		t.Errorf("%d batch goldens ran, want 15", ran)
 	}
 }
 

@@ -1,0 +1,40 @@
+mutant batch-bundle-per-member, go test -run '^TestBatchGoldenResults$' ./internal/simulation/des/
+=== RUN   TestBatchGoldenResults
+=== RUN   TestBatchGoldenResults/G-BT1
+=== RUN   TestBatchGoldenResults/G-BT2
+=== RUN   TestBatchGoldenResults/G-BT3
+=== RUN   TestBatchGoldenResults/G-BT4
+=== RUN   TestBatchGoldenResults/G-BT6
+=== RUN   TestBatchGoldenResults/G-BT7
+=== RUN   TestBatchGoldenResults/G-BT8
+=== RUN   TestBatchGoldenResults/G-BT9
+=== RUN   TestBatchGoldenResults/G-BT10
+=== RUN   TestBatchGoldenResults/G-BT11
+=== RUN   TestBatchGoldenResults/G-BT12
+=== RUN   TestBatchGoldenResults/G-BT14
+=== RUN   TestBatchGoldenResults/G-BT15
+=== RUN   TestBatchGoldenResults/G-BT16
+=== RUN   TestBatchGoldenResults/G-BT17
+    batch_test.go:102: resource states {"chamber":{"in_use_ticks":1020000,"blocked_ticks":600000,"scheduled_processing_ticks":420000},"packer":{"in_use_ticks":960000,"blocked_ticks":0,"scheduled_processing_ticks":960000}}
+         hand-derived {"chamber":{"in_use_ticks":1020000,"blocked_ticks":420000,"scheduled_processing_ticks":600000},"packer":{"in_use_ticks":960000,"blocked_ticks":0,"scheduled_processing_ticks":960000}}
+--- FAIL: TestBatchGoldenResults (0.06s)
+    --- PASS: TestBatchGoldenResults/G-BT1 (0.04s)
+    --- PASS: TestBatchGoldenResults/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT7 (0.01s)
+    --- PASS: TestBatchGoldenResults/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT14 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT15 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT16 (0.00s)
+    --- FAIL: TestBatchGoldenResults/G-BT17 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.070s
+FAIL
+
+exit 1

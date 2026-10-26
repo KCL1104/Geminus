@@ -1,5 +1,5 @@
 {
-  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.5.0, T-050) on the cases of batch-goldens.json (14) and setup-goldens.json (8) that have an expected result and on their eight stochastic reference cases BT-S1-BT-S4 and SU-S1-SU-S4; NOT an independent oracle. It was taken only after the hand-derived expectations of those cases passed (internal/simulation/des TestBatchGoldenResults and TestSetupGoldenResults; internal/simulation/engine TestBatchGoldens and TestSetupGoldens) and after the SimPy reference agreed on the eight reference cases; these digests only make any later numerical change visible. The locks of des-go-0.1.0 to des-go-0.4.0 are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back. G-BT15 and G-BT16 were added when mutation run 1 found two batch mutants no test killed; each digest was taken after the case's hand-derived expectations passed, the other digests are unchanged.",
+  "status": "ENGINE_OUTPUT_REGRESSION_LOCK: produced by running the Go engine (des-go-0.5.0, T-050) on the cases of batch-goldens.json (15) and setup-goldens.json (8) that have an expected result and on their eight stochastic reference cases BT-S1-BT-S4 and SU-S1-SU-S4; NOT an independent oracle. It was taken only after the hand-derived expectations of those cases passed (internal/simulation/des TestBatchGoldenResults and TestSetupGoldenResults; internal/simulation/engine TestBatchGoldens and TestSetupGoldens) and after the SimPy reference agreed on the eight reference cases; these digests only make any later numerical change visible. The locks of des-go-0.1.0 to des-go-0.4.0 are kept as they were (ADR-026 D-047): their cases still match them with engine_version set back. G-BT15 and G-BT16 were added when mutation run 1 found two batch mutants no test killed; each digest was taken after the case's hand-derived expectations passed, the other digests are unchanged. G-BT17 was added when mutation run 2 found a Result mutant no test killed (batch-bundle-per-member); its digest was taken after the case's hand-derived expectations passed, the other digests are unchanged.",
   "engine_version": "des-go-0.5.0",
   "inputs": {
     "cases": "batch-goldens.json and setup-goldens.json (model and config as given, no domain metrics)",
@@ -26,6 +26,7 @@
     "G-BT14": "sha256:bbe5ca3fb42651aef74dfa8e02acc3542f1b674e93d337c61cb5d89e49a536b8",
     "G-BT15": "sha256:d43cdad70ba98dda640aeeb6d33a4b4ee1a366c3d18bd4658714e01d2fe6b090",
     "G-BT16": "sha256:8d5b985c1d3351bca353d3f7edf79efa6ec3884698285cca5731dad6cfba5ba6",
+    "G-BT17": "sha256:1d9a6a04de4450698cbfad3d59be90bf749162b4a3560a8296e9cf726b442804",
     "G-BT2": "sha256:c97bd11a6f43b37e1a09d58b447f18b702a852d4eaf4318107655a2383aebe84",
     "G-BT3": "sha256:0870f4ea5d70b12577c2d8c65ac0e73626049994fe8f22ff57e0f4be52eb0c03",
     "G-BT4": "sha256:b4a947f4628fe19556068c3bf05c141c31185a54336d2638c6a4629059121a7f",

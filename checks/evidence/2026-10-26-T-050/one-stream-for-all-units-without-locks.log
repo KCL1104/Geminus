@@ -1,0 +1,9 @@
+mutant one-stream-for-all-units, go test -run '^TestSetupStreamsPerUnit$' ./internal/simulation/engine/
+=== RUN   TestSetupStreamsPerUnit
+    setup_test.go:220: capacity 2, unit 1, changeover 0: 9642 ticks, the stream's draw is 158116
+--- FAIL: TestSetupStreamsPerUnit (0.06s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.067s
+FAIL
+
+exit 1
