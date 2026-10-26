@@ -59,12 +59,13 @@ const (
 const SmokeCase = "MOD-002"
 
 // Factory builds the live backend of a configuration that turns live AI
-// on (cmd/ai-eval-live: the Anthropic adapter, anthropic.New).
+// on (cmd/ai-eval-live: the adapter of AI_PROVIDER, anthropic.New or, T-055,
+// meta.New).
 type Factory func(config.AI) (provider.Billable, error)
 
 // Main is the live eval's command line: it refuses unless config turns
-// live AI on (the complete recorded approval, AI_MODEL, both keys and
-// GEMINUS_AI_LIVE=on: the same gate as the worker's), the run's cap is
+// live AI on (the complete recorded approval, AI_MODEL, the provider's keys
+// and GEMINUS_AI_LIVE=on: the same gate as the worker's), the run's cap is
 // within the deployment's daily and monthly limits, and the spend record
 // (RecordName, next to the reports) can be read and leaves room for the
 // cap in the UTC day and month; only then does it build the backend. It
@@ -111,9 +112,9 @@ func Main(ctx context.Context, args []string, getenv func(string) string, stdout
 	if !ai.LiveEnabled() {
 		why := ai.LiveOff
 		if why == "" {
-			why = "AI_PROVIDER is not anthropic"
+			why = "AI_PROVIDER is not a live provider"
 		}
-		return refuse("live AI is off (%s); it needs the owner's complete recorded approval (internal/config/aiapproval), AI_MODEL, both keys and GEMINUS_AI_LIVE=on", why)
+		return refuse("live AI is off (%s); it needs AI_PROVIDER anthropic or meta, the owner's complete recorded approval of it (internal/config/aiapproval), AI_MODEL, its keys and GEMINUS_AI_LIVE=on", why)
 	}
 	kind, capNano := "eval", DefaultEvalCap
 	if *smoke {
@@ -205,7 +206,7 @@ func Main(ctx context.Context, args []string, getenv func(string) string, stdout
 		return CloseRun(recordPath, runID, end, meter.Spent(), meter.Committed(), result)
 	}
 	report, runErr := Run(ctx, Config{Client: client, Budget: budget, Packs: reg, Root: *root, Cases: cases, Only: caseIDs, Locale: *locale,
-		Approval: ai.Approval.ID(), Model: ai.Model, Kind: kind, CapNanoUSD: capNano, Spent: meter.Spent, RunID: runID,
+		Provider: string(ai.Provider), Approval: ai.Approval.ID(), Model: ai.Model, Kind: kind, CapNanoUSD: capNano, Spent: meter.Spent, RunID: runID,
 		Now: func() time.Time { return start }})
 	summary := func() string {
 		return fmt.Sprintf("ai-eval-live: %s run %s of %s: %d case(s) run, %d passed, golden %d/%d, gates %v, complete %v, cost USD %s (committed %s, cap %s), %d input and %d output tokens, spend warnings %v",

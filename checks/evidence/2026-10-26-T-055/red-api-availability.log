@@ -1,0 +1,8 @@
+--- FAIL: TestAIAvailability (0.00s)
+    main_test.go:68: meta without approval: 0, want 1
+    main_test.go:68: meta, the switch off: 0, want 1
+    main_test.go:75: the approved Meta provider: 0
+FAIL
+FAIL	github.com/kcl1104/geminus/cmd/api	0.023s
+FAIL
+exit 1

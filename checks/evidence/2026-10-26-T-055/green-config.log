@@ -1,0 +1,11 @@
+=== RUN   TestMetaLiveTurnsOn
+--- PASS: TestMetaLiveTurnsOn (0.00s)
+=== RUN   TestMetaWithoutTheSwitch
+--- PASS: TestMetaWithoutTheSwitch (0.00s)
+=== RUN   TestMetaMismatchesKeepLiveOff
+--- PASS: TestMetaMismatchesKeepLiveOff (0.00s)
+=== RUN   TestTheVisionPath
+--- PASS: TestTheVisionPath (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config	0.007s
+exit 0

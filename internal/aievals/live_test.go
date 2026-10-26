@@ -109,7 +109,7 @@ func run(t *testing.T, b *billed, limit int64, only ...string) *aievals.Report {
 		t.Fatal(err)
 	}
 	r, err := aievals.Run(context.Background(), aievals.Config{Client: c, Budget: provider.DefaultBudget(), Packs: reg, Root: root, Cases: cases,
-		Only: only, Locale: "en", Approval: "H-018", Model: "claude-opus-5-5", Kind: "eval", CapNanoUSD: limit, Spent: m.Spent,
+		Only: only, Locale: "en", Provider: "anthropic", Approval: "H-018", Model: "claude-opus-5-5", Kind: "eval", CapNanoUSD: limit, Spent: m.Spent,
 		Now: func() time.Time { return time.Date(2026, 10, 26, 23, 0, 0, 0, time.UTC) }})
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +302,7 @@ func TestMainRefusesWhileLiveIsOff(t *testing.T) {
 		args []string
 		want string
 	}{
-		"nothing set": {map[string]string{}, nil, "live AI is off (AI_PROVIDER is not anthropic)"},
+		"nothing set": {map[string]string{}, nil, "live AI is off (AI_PROVIDER is not a live provider)"},
 		"the fake":    {map[string]string{"AI_PROVIDER": "fake", "APP_ENV": "test"}, nil, "live AI is off"},
 		// The build's H-018 record is complete (H-026): without the switch
 		// live AI is off; with it, any other mismatch still refuses. (With

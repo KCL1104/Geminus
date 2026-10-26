@@ -1,0 +1,9 @@
+# github.com/kcl1104/geminus/internal/aievals_test [github.com/kcl1104/geminus/internal/aievals.test]
+internal/aievals/meta_test.go:44:59: unknown field Provider in struct literal of type aievals.Config
+FAIL	github.com/kcl1104/geminus/internal/aievals [build failed]
+--- FAIL: TestTheLiveEvalTargetsMeta (0.02s)
+    metaeval_test.go:85: report {Suite:T-053 live provider eval (modeler corpus, server review; T-038 owns the baseline) Kind:smoke Provider:anthropic Model:muse-spark-1.3 Served:[muse-spark-1.3] Approval:H-029 Date:2026-10-26 RunID:01M5WKSB7G6EG3WZBFTFDCHC9C Locale:en Schema:proposal-output.schema.json Templates:[modeler-0.2.0] Price:{Source:https://platform.claude.com/docs/en/about-claude/pricing Retrieved:2026-10-26} Usage:{InputTokens:1500 OutputTokens:300} Cost:{NanoUSD:3150000 USD:0.00315 CapUSD:2.00 CapNanoUSD:2000000000} Cases:map[golden_edit:1] Statuses:map[needs_input:1] Passed:0 Run:1 Golden:{Passed:0 Total:1 Rate:0} Gates:map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0] InferenceGeos:map[] SpendWarnings:map[inference_geo_unknown:0 over_reservation:0] Complete:true Outcomes:[{ID:MOD-002 Category:golden_edit Mode:edit ExpectedOutcome:proposal Status:needs_input Code: ProviderStatus:0 ProviderErrorType: Issues:[] MinimumRisk:low ServerRisk: ProviderRisk: Risk: PatchHash: EffectHeld:<nil> Passed:false InputTokens:1500 OutputTokens:300 CostNanoUSD:3150000 LatencyMillis:0 TemplateVersion:modeler-0.2.0}] NotRun:[the mapper and analyst corpora: their server review is T-027 and T-030, and the approval's data policy covers the proposal roles only (PROPOSED D-112) database effects and the dataset binding stage (make integration-test) zh-Hant output: every case runs in one output locale the >=90% golden target as a gate: a person calibrates it against a baseline (T-038)]}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.380s
+FAIL
+exit 1

@@ -40,7 +40,7 @@ var keywords = map[string]bool{"type": true, "properties": true, "required": tru
 
 // saying are the keywords that say what a value is; a schema with none of
 // them accepts any JSON value (the empty schema the Anthropic API refused;
-// Meta's page does not say: refused here, PROPOSED D-118).
+// Meta's page does not say: refused here, PROPOSED D-121).
 var saying = []string{"type", "enum", "const", "anyOf", "allOf", "oneOf", "$ref"}
 
 type limitsGuard struct {

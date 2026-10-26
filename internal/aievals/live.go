@@ -93,9 +93,11 @@ type Config struct {
 	Only []string
 	// Locale is the output locale of every case ("en").
 	Locale string
-	// Approval, Model, Kind, CapNanoUSD and Spent describe the run in
-	// the report: the recorded approval and model, "eval" or "smoke", the
+	// Provider, Approval, Model, Kind, CapNanoUSD and Spent describe the
+	// run in the report: the live provider ("anthropic" or "meta", T-055;
+	// required), the recorded approval and model, "eval" or "smoke", the
 	// run's spend cap, and what the run spent (the run's meter).
+	Provider   string
 	Approval   string
 	Model      string
 	Kind       string
@@ -238,15 +240,15 @@ const (
 // fixture cannot be read; then the report so far comes with it
 // (incomplete, with the cost of the calls made: review round 1, L6).
 func Run(ctx context.Context, cfg Config) (*Report, error) {
-	if cfg.Client == nil || cfg.Packs == nil {
-		return nil, errors.New("aievals: a client and packs are required")
+	if cfg.Client == nil || cfg.Packs == nil || cfg.Provider == "" {
+		return nil, errors.New("aievals: a client, packs and the provider are required")
 	}
 	now := time.Now
 	if cfg.Now != nil {
 		now = cfg.Now
 	}
 	r := &Report{Suite: "T-053 live provider eval (modeler corpus, server review; T-038 owns the baseline)", Kind: cfg.Kind,
-		Provider: "anthropic", Model: cfg.Model, Approval: cfg.Approval, Date: now().UTC().Format(time.DateOnly), RunID: cfg.RunID, Locale: cfg.Locale,
+		Provider: cfg.Provider, Model: cfg.Model, Approval: cfg.Approval, Date: now().UTC().Format(time.DateOnly), RunID: cfg.RunID, Locale: cfg.Locale,
 		Schema: "proposal-output.schema.json", Cases: map[string]int{}, Statuses: map[string]int{}, Complete: true,
 		Gates:         map[string]int{GateSafeFailureReady: 0, GateRiskBelowFloor: 0, GateReadyInvalid: 0, GateNeedsInputChanges: 0},
 		InferenceGeos: map[string]int{}, SpendWarnings: map[string]int{WarningOverReservation: 0, WarningGeoUnknown: 0},
@@ -256,7 +258,13 @@ func Run(ctx context.Context, cfg Config) (*Report, error) {
 			"zh-Hant output: every case runs in one output locale",
 			"the >=90% golden target as a gate: a person calibrates it against a baseline (T-038)",
 		}}
+	// The price page of the run's model (T-055: Meta's for Muse Spark),
+	// Anthropic's for a model this build does not price (no call of it
+	// could be reserved for).
 	r.Price.Source, r.Price.Retrieved = spend.PriceSource, spend.PriceRetrieved
+	if source, retrieved, ok := spend.SourceOf(cfg.Model); ok {
+		r.Price.Source, r.Price.Retrieved = source, retrieved
+	}
 	r.Cost.CapNanoUSD, r.Cost.CapUSD = cfg.CapNanoUSD, spend.FormatUSD(cfg.CapNanoUSD)
 	templates, served := map[string]bool{}, map[string]bool{}
 	stopped := false

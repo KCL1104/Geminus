@@ -1,0 +1,13 @@
+# github.com/kcl1104/geminus/cmd/worker [github.com/kcl1104/geminus/cmd/worker.test]
+cmd/worker/meta_test.go:86:12: undefined: liveBackend
+cmd/worker/meta_test.go:97:15: undefined: liveBackend
+cmd/worker/meta_test.go:101:15: undefined: liveBackend
+cmd/worker/meta_test.go:104:15: undefined: liveBackend
+cmd/worker/meta_test.go:159:29: undefined: photoBackends
+cmd/worker/meta_test.go:167:18: undefined: photoPath
+cmd/worker/meta_test.go:170:15: undefined: photoPath
+cmd/worker/meta_test.go:176:14: undefined: photoPath
+cmd/worker/meta_test.go:200:15: undefined: liveBackend
+FAIL	github.com/kcl1104/geminus/cmd/worker [build failed]
+FAIL
+exit 1

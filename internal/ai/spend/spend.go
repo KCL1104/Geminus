@@ -52,7 +52,7 @@ var prices = map[string]Price{
 	// retrieved 2026-10-26; the same as the claude-api reference of
 	// 2026-10-06. No long-context premium on this model.
 	"claude-opus-5-5": {Input: 4000, Output: 20000, CacheWrite5m: 5000, CacheWrite1h: 8000, CacheRead: 200},
-	// Muse Spark 1.3, Standard mode (T-055; PROPOSED D-118): USD 0.15 /
+	// Muse Spark 1.3, Standard mode (T-055; PROPOSED D-121): USD 0.15 /
 	// 1.25 / 4.25 per million tokens (cached input, input, output),
 	// MetaPriceSource retrieved 2026-10-26. The page names no cache-write
 	// price: a cache-write token, should the usage report one, is priced as
@@ -71,7 +71,7 @@ func PriceOf(model string) (Price, bool) {
 }
 
 // The source of the Meta Model API's prices and when it was read (T-055,
-// H-029, H-033; PROPOSED D-118).
+// H-029, H-033; PROPOSED D-121).
 const (
 	MetaPriceSource    = "https://dev.meta.ai/docs/pricing-rate-limits"
 	MetaPriceRetrieved = "2026-10-26"

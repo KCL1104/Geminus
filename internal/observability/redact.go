@@ -264,6 +264,7 @@ func Text(s string) string { return sanitize(s, KindText) }
 var credentials = []*regexp.Regexp{
 	regexp.MustCompile(`-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?s:.*?)(?:-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|$)`),
 	regexp.MustCompile(`\bsk-ant-[A-Za-z0-9_-]{8,}`),
+	regexp.MustCompile(`\bLLM_[0-9]+_[^\s"'<>,;]{6,}`), // a Meta Model API key (T-055)
 	regexp.MustCompile(`\b(?:sk|pk|rk)-[A-Za-z0-9_-]{16,}`),
 	regexp.MustCompile(`\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{8,}`),
 	regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`),

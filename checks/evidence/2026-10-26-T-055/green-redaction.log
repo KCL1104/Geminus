@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.690s
+ok  	github.com/kcl1104/geminus/internal/observability	0.119s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry	0.010s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry/export	0.044s
+exit 0

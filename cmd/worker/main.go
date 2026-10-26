@@ -10,13 +10,16 @@
 // (T-025, internal/proposals/generator), which ask the provider of the
 // configured mode: disabled (the default; every proposal fails
 // AI_PROVIDER_NOT_CONFIGURED), the deterministic fake (development and
-// tests) or the live adapter, which config enables only with the owner's
-// complete recorded approval, both keys and GEMINUS_AI_LIVE=on (T-053;
-// H-018 is recorded, complete since the owner's retention confirmation,
-// H-026). The
-// live adapter is metered: every call is reserved for in the spend ledger
-// before it is made and settled after (internal/storage/aispend). Analyses
-// (T-030) are not built yet; their jobs stay queued.
+// tests) or a live adapter, which config enables only with the owner's
+// complete recorded approval, the provider's keys and GEMINUS_AI_LIVE=on:
+// Claude's (T-053; H-018 is recorded, complete since the owner's retention
+// confirmation, H-026) or the Meta Model API's (T-055; H-029, amended by
+// H-033, with GEMINUS_MUSE_API_KEY). A live adapter is metered: every call
+// is reserved for in the spend ledger before it is made and settled after
+// (internal/storage/aispend). The photo path's clients (T-055: the judge
+// and the SAM 3.1 segmenter, of AI_VISION_PROVIDER) are built and checked
+// at start, for T-056's handler. Analyses (T-030) are not built yet; their
+// jobs stay queued.
 package main
 
 import (
@@ -36,7 +39,10 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/anthropic"
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
+	"github.com/kcl1104/geminus/internal/ai/provider/meta"
+	"github.com/kcl1104/geminus/internal/ai/spend"
 	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/config/aiapproval"
 	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/import/validator"
 	"github.com/kcl1104/geminus/internal/observability"
@@ -101,6 +107,9 @@ type deps struct {
 	objects objects.Store // nil when object storage is disabled
 	log     *slog.Logger
 	spend   aispend.Runner
+	// photo is the photo path's clients (T-055), built and checked at
+	// start; T-056's handler takes them.
+	photo photo
 }
 
 // builder makes the handlers a build runs.
@@ -142,13 +151,45 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 // ADR-027): every mode goes through provider.Client. Disabled, and a live
 // provider that is not on, answer every call with their code and read no
 // key; the fake is for development and tests (config refuses it
-// elsewhere); the live adapter takes the approval token and the keys
-// config read, by label (D-018), and is metered by the spend ledger under
-// the configured limits, its transactions run by spendRun as the worker
-// (T-053).
+// elsewhere); the live adapter (Claude's, T-053, or Meta's, T-055) takes
+// the approval token and the keys config read, by label (D-018), and is
+// metered by the spend ledger under the configured limits, its
+// transactions run by spendRun as the worker (T-053).
 func aiClient(ai config.AI, spendRun aispend.Runner, actor string) (*provider.Client, provider.Budget, error) {
+	budget := aiBudget(ai.Budget)
+	var backend provider.Backend
+	switch {
+	case ai.Provider == config.AIProviderFake:
+		backend = fake.New()
+	case ai.LiveEnabled():
+		live, err := liveBackend(ai.Provider, ai.Approval, ai.Model, ai.Credentials)
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		meter, err := ledger(spendRun, actor, ai.Limits)
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		client, err := provider.NewMetered(live, budget, meter)
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		return client, budget, nil
+	case ai.Provider == config.AIProviderAnthropic || ai.Provider == config.AIProviderMeta:
+		backend = provider.Disabled{Code: provider.CodePolicyNotApproved}
+	default:
+		backend = provider.Disabled{Code: provider.CodeNotConfigured}
+	}
+	client, err := provider.New(backend, budget)
+	if err != nil {
+		return nil, provider.Budget{}, err
+	}
+	return client, budget, nil
+}
+
+// aiBudget is the provider's default budget with what the deployment set.
+func aiBudget(b config.AIBudget) provider.Budget {
 	budget := provider.DefaultBudget()
-	b := ai.Budget
 	if b.MaxPromptBytes > 0 {
 		budget.MaxPromptBytes = b.MaxPromptBytes
 	}
@@ -167,41 +208,125 @@ func aiClient(ai config.AI, spendRun aispend.Runner, actor string) (*provider.Cl
 	if b.MaxConcurrentPerOrganization > 0 {
 		budget.MaxConcurrentPerOrganization = b.MaxConcurrentPerOrganization
 	}
-	var backend provider.Backend
+	return budget
+}
+
+// liveBackend is provider p's live adapter over the approval, model and
+// keys config read. Each adapter takes only its own provider's approval
+// (anthropic.New and meta.New check it too).
+func liveBackend(p config.AIProvider, a aiapproval.Approval, model string, creds []config.AICredential) (provider.Billable, error) {
+	switch p {
+	case config.AIProviderAnthropic:
+		cs := make([]anthropic.Credential, len(creds))
+		for i, c := range creds {
+			cs[i] = anthropic.Credential{Label: c.Label, Key: c.Key}
+		}
+		b, err := anthropic.New(anthropic.Config{Approval: a, Model: model, Credentials: cs})
+		if err != nil {
+			return nil, err // never a typed nil in the interface
+		}
+		return b, nil
+	case config.AIProviderMeta:
+		if len(creds) != 1 {
+			return nil, errors.New("live AI on the Meta Model API takes one key")
+		}
+		b, err := meta.New(meta.Config{Approval: a, Model: model, Credential: meta.Credential{Label: creds[0].Label, Key: creds[0].Key}})
+		if err != nil {
+			return nil, err
+		}
+		return b, nil
+	}
+	return nil, errors.New("no live adapter for this provider")
+}
+
+// ledger is the spend ledger's meter of the live clients (T-053): one
+// ledger, whichever path and provider a call is of.
+func ledger(spendRun aispend.Runner, actor string, limits spend.Limits) (*aispend.Meter, error) {
+	if spendRun == nil {
+		return nil, errors.New("live AI needs the spend ledger")
+	}
+	return aispend.New(aispend.Config{Run: spendRun, Actor: actor, Limits: limits})
+}
+
+// photo is the photo path (T-055, for T-056's handler; H-033): the judge,
+// a checked client whose backend reads a prompt's images, and the
+// segmenter (SAM 3.1), both of the provider config.AIVision names. Off,
+// they answer every call with the code a proposal would.
+type photo struct {
+	Judge     *provider.Client
+	Segmenter *provider.SegmentClient
+}
+
+// photoBackends are the photo path's backends: the fakes (development and
+// tests), the live Meta adapters once the photo path is on (the judge
+// Muse Spark, the segmenter the approval's segmentation model), Disabled
+// otherwise. This build's Claude adapter reads no image, and no approval
+// of it names one (H-018), so config never turns the photo path on for
+// it; were it on, the worker would refuse to start.
+func photoBackends(v config.AIVision) (provider.Backend, provider.SegmentBackend, error) {
 	switch {
-	case ai.Provider == config.AIProviderFake:
-		backend = fake.New()
-	case ai.LiveEnabled():
-		creds := make([]anthropic.Credential, len(ai.Credentials))
-		for i, c := range ai.Credentials {
-			creds[i] = anthropic.Credential{Label: c.Label, Key: c.Key}
-		}
-		live, err := anthropic.New(anthropic.Config{Approval: ai.Approval, Model: ai.Model, Credentials: creds})
+	case v.Provider == config.AIProviderFake:
+		return fake.New(), fake.NewSegmenter(), nil
+	case v.LiveEnabled() && v.Provider == config.AIProviderMeta:
+		judge, err := liveBackend(v.Provider, v.Approval, v.Model, v.Credentials)
 		if err != nil {
-			return nil, provider.Budget{}, err
+			return nil, nil, err
 		}
-		if spendRun == nil {
-			return nil, provider.Budget{}, errors.New("live AI needs the spend ledger")
+		var seg provider.SegmentBackend = provider.Disabled{Code: provider.CodeNotConfigured}
+		if v.SegmentationModel != "" {
+			c := v.Credentials[0]
+			s, err := meta.NewSegmenter(meta.Config{Approval: v.Approval, Model: v.SegmentationModel,
+				Credential: meta.Credential{Label: c.Label, Key: c.Key}})
+			if err != nil {
+				return nil, nil, err
+			}
+			seg = s
 		}
-		meter, err := aispend.New(aispend.Config{Run: spendRun, Actor: actor, Limits: ai.Limits})
-		if err != nil {
-			return nil, provider.Budget{}, err
-		}
-		client, err := provider.NewMetered(live, budget, meter)
-		if err != nil {
-			return nil, provider.Budget{}, err
-		}
-		return client, budget, nil
-	case ai.Provider == config.AIProviderAnthropic:
-		backend = provider.Disabled{Code: provider.CodePolicyNotApproved}
-	default:
-		backend = provider.Disabled{Code: provider.CodeNotConfigured}
+		return judge, seg, nil
+	case v.LiveEnabled():
+		return nil, nil, errors.New("the photo path's provider has no adapter that reads images in this build")
+	case v.Provider == config.AIProviderAnthropic || v.Provider == config.AIProviderMeta:
+		off := provider.Disabled{Code: provider.CodePolicyNotApproved}
+		return off, off, nil
 	}
-	client, err := provider.New(backend, budget)
+	off := provider.Disabled{Code: provider.CodeNotConfigured}
+	return off, off, nil
+}
+
+// photoPath builds the photo path's clients over photoBackends: a
+// billable backend only through the ledger, under the proposals' budget.
+func photoPath(ai config.AI, budget provider.Budget, spendRun aispend.Runner, actor string) (photo, error) {
+	judge, seg, err := photoBackends(ai.Vision)
 	if err != nil {
-		return nil, provider.Budget{}, err
+		return photo{}, err
 	}
-	return client, budget, nil
+	var p photo
+	var meter *aispend.Meter
+	if b, ok := judge.(provider.Billable); ok {
+		if meter, err = ledger(spendRun, actor, ai.Limits); err != nil {
+			return photo{}, err
+		}
+		p.Judge, err = provider.NewMetered(b, budget, meter)
+	} else {
+		p.Judge, err = provider.New(judge, budget)
+	}
+	if err != nil {
+		return photo{}, err
+	}
+	if s, ok := seg.(provider.BillableSegmenter); ok {
+		if meter == nil {
+			if meter, err = ledger(spendRun, actor, ai.Limits); err != nil {
+				return photo{}, err
+			}
+		}
+		p.Segmenter, err = provider.NewMeteredSegmentClient(s, budget, meter)
+	} else {
+		p.Segmenter, err = provider.NewSegmentClient(seg, budget)
+	}
+	if err != nil {
+		return photo{}, err
+	}
+	return p, nil
 }
 
 // objectStore opens the configured object storage (D-044): nil when it is
@@ -275,7 +400,12 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 	spendRun := func(ctx context.Context, org string, fn func(ctx context.Context, tx tenant.Tx) error) error {
 		return scope.Run(ctx, org, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error { return fn(ctx, tx) })
 	}
-	handlers, err := build(deps{worker: wcfg, ai: ai, objects: store, log: log, spend: spendRun})
+	pic, err := photoPath(ai, aiBudget(ai.Budget), spendRun, wcfg.ID)
+	if err != nil {
+		log.Error("invalid configuration", "error", err.Error())
+		return exitConfig
+	}
+	handlers, err := build(deps{worker: wcfg, ai: ai, objects: store, log: log, spend: spendRun, photo: pic})
 	if err != nil {
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
@@ -284,13 +414,18 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 		log.Error("NOT IMPLEMENTED: this build has no job handler; refusing to start", "ai_provider", string(cfg.AIProvider))
 		return exitNotImplemented
 	}
-	if ai.Provider == config.AIProviderAnthropic {
-		// Whether live AI is on, and the typed reason when it is off (T-053);
-		// never a key.
-		if ai.LiveEnabled() {
-			log.Info("live AI is on", "model", ai.Model, "code", "LIVE_AI_ON")
+	// Whether live AI is on, and the typed reason when it is off (T-053),
+	// for the proposals and the photo path (T-055); never a key.
+	if live := ai.Provider == config.AIProviderAnthropic || ai.Provider == config.AIProviderMeta; live && ai.LiveEnabled() {
+		log.Info("live AI is on", "provider", string(ai.Provider), "model", ai.Model, "code", "LIVE_AI_ON")
+	} else if live {
+		log.Info("live AI is off", "provider", string(ai.Provider), "code", strings.ToUpper(ai.LiveOff))
+	}
+	if v := ai.Vision; v.Provider == config.AIProviderAnthropic || v.Provider == config.AIProviderMeta {
+		if v.LiveEnabled() {
+			log.Info("the photo path is on", "provider", string(v.Provider), "model", v.Model, "code", "PHOTO_PATH_ON")
 		} else {
-			log.Info("live AI is off", "code", strings.ToUpper(ai.LiveOff))
+			log.Info("the photo path is off", "provider", string(v.Provider), "code", strings.ToUpper(v.LiveOff))
 		}
 	}
 	w, err := worker.New(scope, worker.Config{ID: wcfg.ID, Policy: jobs.DefaultPolicy, Heartbeat: heartbeat,

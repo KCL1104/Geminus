@@ -464,6 +464,8 @@ func TestSyntheticGraph(t *testing.T) {
 	// T-024: only the adapter links the SDK; the context builder may not.
 	add(m("internal/ai/provider/anthropic"), false, "github.com/anthropics/anthropic-sdk-go")
 	add(m("internal/ai/aicontext"), false, "github.com/anthropics/anthropic-sdk-go")
+	// T-055: a live adapter links no other live adapter.
+	add(m("internal/ai/provider/meta"), false, m("internal/ai/provider/anthropic"))
 	add(m("internal/storage/postgres"), false, "database/sql")
 	add("database/sql", true)
 	add(m("internal/results/metrics"), false, m("internal/model"))
@@ -530,6 +532,7 @@ func TestSyntheticGraph(t *testing.T) {
 		"import-parsing-is-pure ./internal/import/profile ./internal/import/profile>./internal/storage/postgres",
 		"llm-sdks-only-in-ai ./internal/ai/aicontext ./internal/ai/aicontext>github.com/anthropics/anthropic-sdk-go",
 		"ai-is-pure-but-the-adapter ./internal/ai/aicontext ./internal/ai/aicontext>github.com/anthropics/anthropic-sdk-go",
+		"live-adapters-apart ./internal/ai/provider/meta ./internal/ai/provider/meta>./internal/ai/provider/anthropic",
 	} {
 		if !got[want] {
 			t.Errorf("missing violation %q", want)

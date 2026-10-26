@@ -218,7 +218,7 @@ func (r Record) anthropicGap() Reason {
 // takes nothing else) and user-typed text; the Standard Services
 // confirmed. H-029 keeps T-053's in-code spend caps and asks for no
 // dashboard spend limit, so the record needs no SpendLimits (PROPOSED
-// D-119).
+// D-122).
 func (r Record) metaGap() Reason {
 	p := r.DataPolicy
 	switch {
@@ -303,7 +303,7 @@ var h018 = Record{
 //
 // The owner has confirmed no dashboard spend limit for the Meta team (H-033
 // mentions the hackathon's USD 150 credit for 10 days); none is recorded,
-// and the Meta rules do not ask for one (PROPOSED D-119). Roles: the
+// and the Meta rules do not ask for one (PROPOSED D-122). Roles: the
 // proposal roles; T-056 adds the photo path's role, if it is another one,
 // in a reviewed change of this record.
 var h029 = Record{

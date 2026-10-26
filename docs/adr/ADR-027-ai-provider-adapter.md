@@ -77,3 +77,13 @@ tasks.json 原規劃的 `internal/ai/context/` 改名為 `internal/ai/aicontext`
 - 手寫 HTTP client：任務指示只允許官方 SDK 或 NOT IMPLEMENTED 的 stub。
 - 以 forced tool 取得結構化輸出：新 model 拒絕 forced `tool_choice`，且「沒有 mutation tool」較易稽核；選 `output_config.format`。
 - 429 也 failover：實質合併兩個 organization 的 rate limit，D-018 不採。
+
+## Addendum（T-055，2026-10-26，PROPOSED）
+
+第二個 live adapter（Meta Model API）見 [ADR-030](ADR-030-meta-model-api-adapter.md)（PROPOSED）。本 ADR 因此改變的地方（ACCEPTED 的部分不變，以下等獨立審查）：
+
+- Schema projection 與開放值的解碼從 `internal/ai/provider/anthropic` 搬到共用的 `internal/ai/provider/structured`（只改 package 名稱；`anthropic.Project` 與常數成為它的別名，anthropic 的測試未改）。
+- `anthropic.New` 另外拒絕不是 `anthropic` provider 的批准（`Approval.Provider()`），`meta.New` 拒絕不是 `meta` 的；architecture rule `live-adapters-apart` 禁止兩個 adapter 互相連結。
+- `provider.Prompt` 可以帶圖片（`Images`，算進 prompt hash）；`Client` 只交給實作 `provider.ImageInput` 且接受圖片的 backend，Claude adapter 沒有實作，所以有圖片的 prompt 在它之前就是 `invalid_request`。
+- `provider.Segmenter`／`SegmentClient` 是照片路徑的第二種 client（SAM 3.1）；計量、預算與錯誤碼與 `Client` 相同。
+- Spend：只有 `spend.GeoPriced` 的 model（`claude-opus-5-5`）預留時乘 1.1、結算依 geo；其他 model（Muse Spark）以牌價。

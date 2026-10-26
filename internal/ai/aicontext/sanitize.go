@@ -58,6 +58,10 @@ var patterns = []pattern{
 	// line is missing.
 	{RedactCredential, regexp.MustCompile(`-----BEGIN [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----(?s:.*?)(?:-----END [A-Z0-9 ]*PRIVATE KEY(?: BLOCK)?-----|$)`), false, nil},
 	{RedactCredential, regexp.MustCompile(`\bsk-ant-[A-Za-z0-9_-]{8,}`), false, nil},
+	// T-055: a Meta Model API key, LLM_<numeric ID>_<secret>
+	// (https://dev.meta.ai/docs/authentication); the secret's alphabet is not
+	// documented, so the match runs to the next space, quote or separator.
+	{RedactCredential, regexp.MustCompile(`\bLLM_[0-9]+_[^\s"'<>,;]{6,}`), false, nil},
 	{RedactCredential, regexp.MustCompile(`\b(?:sk|pk|rk)-[A-Za-z0-9_-]{16,}`), false, nil},
 	{RedactCredential, regexp.MustCompile(`\b(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{8,}`), false, nil}, // Stripe
 	{RedactCredential, regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b`), false, nil},

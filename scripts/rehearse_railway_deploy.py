@@ -226,11 +226,11 @@ def main() -> int:
             failures.append(f"secrets on stdin: {sorted(stdin_sets ^ want_stdin)} differ")
         if {tuple(x) for x in st.get("sealed", [])} != want_stdin:
             failures.append(f"sealed: {sorted({tuple(x) for x in st.get('sealed', [])} ^ want_stdin)} differ")
-        owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_META_API_KEY", "GEMINUS_AI_LIVE"}
+        owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE"}
         for svc, vs in st["vars"].items():
             if owner & set(vs):
                 failures.append(f"the deployer set the owner's {sorted(owner & set(vs))} on {svc}")
-        if {"GEMINUS_AI_LIVE", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_META_API_KEY"} & set(st["vars"].get("api", {})):
+        if {"GEMINUS_AI_LIVE", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_MUSE_API_KEY"} & set(st["vars"].get("api", {})):
             failures.append("the API got an AI key or the live switch")
         if st["vars"]["api"].get("AI_PROVIDER") != "disabled" or st["vars"]["worker"].get("WORKER_ORGANIZATION_IDS") != "org_01M5W4RHAFH8Q7Y8PNQT1RAF4T":
             failures.append("AI_PROVIDER or WORKER_ORGANIZATION_IDS not as expected")

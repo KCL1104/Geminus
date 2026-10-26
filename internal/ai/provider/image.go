@@ -38,7 +38,7 @@ const (
 	ImageWebP = "image/webp"
 )
 
-// The limits of an image (PROPOSED D-120): engineering bounds well inside
+// The limits of an image (PROPOSED D-123): engineering bounds well inside
 // the provider's (Meta: 50 MB inline and 50 images a request), so that a
 // request stays small and a photo's pixel size bounds the boxes a
 // segmentation can return.

@@ -25,7 +25,7 @@ import (
 // items, anyOf, allOf and oneOf alternative and followed $ref), stricter
 // than counting objects only. Stricter than the page where it costs
 // nothing (an empty schema, which the Anthropic API refused, PROPOSED
-// D-118), the guard refuses schemas that say nothing of their value and
+// D-121), the guard refuses schemas that say nothing of their value and
 // objects that are not closed, which the projection never sends. The
 // strict subset (root a plain object, no anyOf at the root) applies only
 // to strict: true, which the Messages output_config.format has no field
