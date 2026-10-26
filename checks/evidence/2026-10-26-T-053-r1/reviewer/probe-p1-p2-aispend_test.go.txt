@@ -1,0 +1,107 @@
+package aispend_test
+
+// Reviewer probes (T-053 r1). Not part of the change under review.
+//
+// P1: the application organization filter holds by itself, as the other
+// storage packages test it (TestOrganizationFilter in projects, proposals,
+// models...): as the provisioning superuser, whom RLS does not restrict.
+// A test written this way distinguishes mutant D9 (settle's SELECT without
+// organization_id) and two more mutants of the same rule.
+//
+// P2: a settlement above its reservation moves the totals past the limit
+// (no bound in Settle; provider.metering does not clamp a usage answer).
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/spend"
+	"github.com/kcl1104/geminus/internal/storage/aispend"
+	"github.com/kcl1104/geminus/internal/storage/postgres"
+	"github.com/kcl1104/geminus/internal/tenant"
+)
+
+// superRun runs fn as the superuser, scoped as the worker scope would be
+// (the setting is there; RLS does not apply to a superuser).
+func (e *env) superRun(ctx context.Context, org string, fn func(ctx context.Context, tx tenant.Tx) error) error {
+	return postgres.OpenPool(e.admin).Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.organization_id',$1,true)`, org); err != nil {
+			return err
+		}
+		return fn(ctx, tx)
+	})
+}
+
+func TestProbeP1OrganizationFilterWithoutRLS(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	at := time.Date(2207, 7, 7, 7, 0, 0, 0, time.UTC)
+	worker := e.meter(t, roomy, at)
+	super, err := aispend.New(aispend.Config{Run: e.superRun, Actor: "worker-t053", Limits: roomy, Now: func() time.Time { return at }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Both organizations hold a day row on the day.
+	rA, err := worker.Reserve(ctx, charge(e.a.ID, e.impA, 1000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := worker.Reserve(ctx, charge(e.b.ID, e.impB, 10)); err != nil {
+		t.Fatal(err)
+	}
+	beforeA, beforeB := e.totals(t, e.a.ID, at), e.totals(t, e.b.ID, at)
+
+	// D9: A's reservation presented as B's is not found, and nothing moves.
+	stolen := rA
+	stolen.Charge.OrganizationID = e.b.ID
+	if err := super.Settle(ctx, stolen, provider.Settlement{Outcome: provider.SpendNone}); !errors.Is(err, aispend.ErrNotFound) {
+		t.Errorf("D9: without RLS, another organization's settlement of A's reservation: %v, want ErrNotFound", err)
+	}
+	if a, b := e.totals(t, e.a.ID, at), e.totals(t, e.b.ID, at); a != beforeA || b != beforeB {
+		t.Errorf("D9: totals moved: A %+v (was %+v) B %+v (was %+v)", a, beforeA, b, beforeB)
+	}
+
+	// The reserve's organization-day UPDATE holds A's row only: a charge
+	// for A moves A's day by the charge and B's not at all.
+	if _, err := super.Reserve(ctx, charge(e.a.ID, e.impA, 7)); err != nil {
+		t.Errorf("reserve without RLS: %v", err)
+	}
+	if a, b := e.totals(t, e.a.ID, at), e.totals(t, e.b.ID, at); a.OrganizationDay != beforeA.OrganizationDay+7 || b.OrganizationDay != beforeB.OrganizationDay {
+		t.Errorf("reserve without RLS: A %+v (was %+v) B %+v (was %+v)", a, beforeA, b, beforeB)
+	}
+
+	// TotalsAt reads the organization's own day.
+	var got aispend.Totals
+	if err := e.superRun(ctx, e.b.ID, func(ctx context.Context, tx tenant.Tx) error {
+		var err error
+		got, err = aispend.TotalsAt(ctx, tx, e.b.ID, at)
+		return err
+	}); err != nil || got.OrganizationDay != beforeB.OrganizationDay {
+		t.Errorf("TotalsAt without RLS: %+v %v, want B's day %d", got, err, beforeB.OrganizationDay)
+	}
+}
+
+func TestProbeP2SettleAboveTheReservation(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	at := time.Date(2208, 8, 8, 8, 0, 0, 0, time.UTC)
+	base := e.totals(t, e.a.ID, at)
+	l := spend.Limits{Month: base.Month + 1_000_000, Day: base.Day + 1_000_000, OrganizationDay: 1000}
+	m := e.meter(t, l, at)
+	r, err := m.Reserve(ctx, charge(e.a.ID, e.impA, 600))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The call came back with a usage that costs more than the reservation.
+	err = m.Settle(ctx, r, provider.Settlement{NanoUSD: 5000, Outcome: provider.SpendUsage, Usage: provider.Usage{InputTokens: 1}})
+	got := e.totals(t, e.a.ID, at)
+	t.Logf("settle above the reservation: err=%v organization day %d (limit %d)", err, got.OrganizationDay, l.OrganizationDay)
+	if err == nil && got.OrganizationDay > l.OrganizationDay {
+		t.Errorf("a settlement took the organization day to %d, past its limit %d, without any refusal", got.OrganizationDay, l.OrganizationDay)
+	}
+}

@@ -1,0 +1,23 @@
+package config
+
+// Reviewer probe P6 (T-053 r1). Not part of the change under review. Fake
+// key strings only; nothing is sent anywhere.
+//
+// D-115 asks for two different keys (two provider organizations). The
+// check compares the raw strings, so the same key with surrounding white
+// space (a trailing newline from a secret file, a pasted space) passes as
+// "two keys".
+
+import "testing"
+
+func TestProbeP6TheSameKeyTwiceWithWhiteSpace(t *testing.T) {
+	const k = "sk-ant-test-same-0000000000"
+	for name, b := range map[string]string{"trailing newline": k + "\n", "leading space": " " + k, "trailing space": k + " "} {
+		env := map[string]string{"AI_PROVIDER": "anthropic", "AI_POLICY_APPROVAL": "H-018", "AI_MODEL": "claude-opus-5-5",
+			"GEMINUS_ANTHROPIC_API_KEY_A": k, "GEMINUS_ANTHROPIC_API_KEY_B": b, "GEMINUS_AI_LIVE": "on"}
+		ai, err := LoadAI(func(v string) string { return env[v] })
+		if err == nil && ai.LiveEnabled() {
+			t.Errorf("%s: the same key twice turns live AI on as two organizations", name)
+		}
+	}
+}

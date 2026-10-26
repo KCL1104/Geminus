@@ -1,0 +1,19 @@
+=== RUN   TestReserveAndSettle
+--- PASS: TestReserveAndSettle (0.41s)
+=== RUN   TestLimitsRefuse
+--- PASS: TestLimitsRefuse (0.62s)
+=== RUN   TestConcurrentReservationsNeverOvershoot
+--- PASS: TestConcurrentReservationsNeverOvershoot (1.71s)
+=== RUN   TestSettleKeepsItsDayAndOrganization
+--- PASS: TestSettleKeepsItsDayAndOrganization (0.42s)
+=== RUN   TestFailClosed
+--- PASS: TestFailClosed (0.15s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	4.768s
+=== RUN   TestAMeteredProposal
+--- PASS: TestAMeteredProposal (1.39s)
+=== RUN   TestASpendLimitRefusesTheProposal
+--- PASS: TestASpendLimitRefusesTheProposal (0.42s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	3.076s
+exit 0

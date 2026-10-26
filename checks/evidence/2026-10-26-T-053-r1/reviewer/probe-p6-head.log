@@ -1,0 +1,9 @@
+=== RUN   TestProbeP6TheSameKeyTwiceWithWhiteSpace
+    zz_reviewer_probe_test.go:20: trailing newline: the same key twice turns live AI on as two organizations
+    zz_reviewer_probe_test.go:20: leading space: the same key twice turns live AI on as two organizations
+    zz_reviewer_probe_test.go:20: trailing space: the same key twice turns live AI on as two organizations
+--- FAIL: TestProbeP6TheSameKeyTwiceWithWhiteSpace (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config	0.011s
+FAIL
+exit 1

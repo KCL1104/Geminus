@@ -1,0 +1,9 @@
+D9 KILLED by TestProbeP1OrganizationFilterWithoutRLS: settle's SELECT without the organization filter
+    zz_reviewer_probe_test.go:63: D9: without RLS, another organization's settlement of A's reservation: postgres: check constraint violated (SQLSTATE 23514): constraint ai_spend_days_committed_nano_usd_check: new row for relation "ai_spend_days" violates check constraint "ai_spend_days_committed_nano_usd_check", want ErrNotFound
+F1 KILLED by TestProbeP1OrganizationFilterWithoutRLS: reserve's organization-day UPDATE without the organization filter
+    zz_reviewer_probe_test.go:72: reserve without RLS: ai provider: quota_exceeded
+    zz_reviewer_probe_test.go:75: reserve without RLS: A {Month:3044 Day:3044 OrganizationDay:1000} (was {Month:3044 Day:3044 OrganizationDay:1000}) B {Month:3044 Day:3044 OrganizationDay:10} (was {Month:3044 Day:3044 OrganizationDay:10})
+F2 KILLED by TestProbeP1OrganizationFilterWithoutRLS: TotalsAt reads the day without the organization filter
+    zz_reviewer_probe_test.go:85: TotalsAt without RLS: {Month:0 Day:0 OrganizationDay:0} postgres: database error (SQLSTATE 21000), want B's day 10
+F3 SURVIVED: settle's reservation UPDATE without the organization filter
+exit 1

@@ -1,0 +1,15 @@
+S1 KILLED: reservations without FORCE RLS
+    psql:db/tests/roles.sql:239: ERROR:  FAILED: tables without FORCE RLS or a policy: ai_spend_reservations
+S2 KILLED: a settled reservation may be settled again
+    psql:db/tests/ai_spend.sql:203: ERROR:  FAILED: expected SQLSTATE 55000 but the statement succeeded: UPDATE twin.ai_spend_reservations SET settled_nano_usd = 0, outcome = 'none', settled_at = now() WHERE id='asr_01M4YDQK00TA00000000000001'
+S3 KILLED: the worker may delete reservations
+    psql:db/tests/ai_spend.sql:166: ERROR:  FAILED: expected SQLSTATE 42501 but the statement succeeded: DELETE FROM twin.ai_spend_reservations
+S4 KILLED: the day check counts a settled reservation at its reserved amount
+    psql:db/tests/ai_spend.sql:193: ERROR:  an organization day holds what its reservations hold
+S5 KILLED: the deployment totals open to an unscoped transaction
+    psql:db/tests/ai_spend.sql:214: ERROR:  FAILED: no scope: no total
+S6 KILLED: the day check is not deferred (immediate)
+    psql:db/tests/ai_spend.sql:245: ERROR:  FAILED: check_ai_spend_day is a deferred constraint trigger on both tables
+S8 KILLED: a reservation may be inserted with any created_at
+    psql:db/tests/ai_spend.sql:148: ERROR:  FAILED: expected SQLSTATE 55000 but the statement succeeded: INSERT INTO twin.ai_spend_reservations(id,organization_id,day,role,model,ai_proposal_id,request_id,reserved_nano_usd,created_at)
+exit 0

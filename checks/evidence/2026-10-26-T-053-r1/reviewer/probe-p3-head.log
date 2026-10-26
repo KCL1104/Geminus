@@ -1,0 +1,21 @@
+=== RUN   TestProbeP3TheRunCapIsWithinTheDailyLimit
+=== RUN   TestProbeP3TheRunCapIsWithinTheDailyLimit/the_whole_monthly_budget_in_one_run
+    zz_reviewer_probe_test.go:41: backend built; deployment daily limit 10000000000 nano-USD, monthly 100000000000
+    zz_reviewer_probe_test.go:48: AI_EVAL_LIVE_MAX_USD=100 (above the USD 10 daily limit): exit 0, backend built 1 time(s): ai-eval-live: smoke run of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.012 (cap 100.00), 1500 input and 300 output tokens; report /tmp/TestProbeP3TheRunCapIsWithinTheDailyLimitthe_whole_monthly_budg2669404809/001/live-smoke-2026-10-26-claude-opus-5-5.json
+         
+=== RUN   TestProbeP3TheRunCapIsWithinTheDailyLimit/five_daily_limits_in_one_run
+    zz_reviewer_probe_test.go:41: backend built; deployment daily limit 10000000000 nano-USD, monthly 100000000000
+    zz_reviewer_probe_test.go:48: AI_EVAL_LIVE_MAX_USD=50 (above the USD 10 daily limit): exit 0, backend built 1 time(s): ai-eval-live: smoke run of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.012 (cap 50.00), 1500 input and 300 output tokens; report /tmp/TestProbeP3TheRunCapIsWithinTheDailyLimitfive_daily_limits_in_o1443156651/001/live-smoke-2026-10-26-claude-opus-5-5.json
+         
+=== RUN   TestProbeP3TheRunCapIsWithinTheDailyLimit/just_above_the_daily_limit
+    zz_reviewer_probe_test.go:41: backend built; deployment daily limit 10000000000 nano-USD, monthly 100000000000
+    zz_reviewer_probe_test.go:48: AI_EVAL_LIVE_MAX_USD=10.01 (above the USD 10 daily limit): exit 0, backend built 1 time(s): ai-eval-live: smoke run of claude-opus-5-5: 1 case(s) run, 0 passed, golden 0/1, gates map[needs_input_kept_changes:0 ready_below_risk_floor:0 ready_without_server_validation:0 safe_failure_reached_ready:0], complete true, cost USD 0.012 (cap 10.01), 1500 input and 300 output tokens; report /tmp/TestProbeP3TheRunCapIsWithinTheDailyLimitjust_above_the_daily_l1274047130/001/live-smoke-2026-10-26-claude-opus-5-5.json
+         
+--- FAIL: TestProbeP3TheRunCapIsWithinTheDailyLimit (0.10s)
+    --- FAIL: TestProbeP3TheRunCapIsWithinTheDailyLimit/the_whole_monthly_budget_in_one_run (0.06s)
+    --- FAIL: TestProbeP3TheRunCapIsWithinTheDailyLimit/five_daily_limits_in_one_run (0.01s)
+    --- FAIL: TestProbeP3TheRunCapIsWithinTheDailyLimit/just_above_the_daily_limit (0.03s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.185s
+FAIL
+exit 1

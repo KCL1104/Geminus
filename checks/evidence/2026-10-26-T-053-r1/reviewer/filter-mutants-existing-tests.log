@@ -1,0 +1,5 @@
+D9 SURVIVED: settle's SELECT without the organization filter
+F1 SURVIVED: reserve's organization-day UPDATE without the organization filter
+F2 SURVIVED: TotalsAt reads the day without the organization filter
+F3 SURVIVED: settle's reservation UPDATE without the organization filter
+exit 1

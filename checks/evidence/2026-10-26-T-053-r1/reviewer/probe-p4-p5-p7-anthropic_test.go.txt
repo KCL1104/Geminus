@@ -1,0 +1,76 @@
+package anthropic_test
+
+// Reviewer probe P4 (T-053 r1). Not part of the change under review. Local
+// httptest server only (the helpers of anthropic_test.go).
+//
+// D-111 (a) and meter.go say: only 401/402/403 fail over, an attempt
+// answered with an error status is not billed, "so a call is billed for at
+// most 1 + MaxRetries attempts", and the reservation is (1 + MaxRetries)
+// attempt bounds. That holds only when the failover comes on the first
+// attempt. Here credential A loses two connections (the provider may have
+// billed them, so they count as unknown attempts) and then answers 402;
+// credential B then loses three. Five attempts may have been billed, the
+// reservation holds three, and the settlement is clamped to it.
+
+import (
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/spend"
+)
+
+func TestProbeP4FailoverAfterUnansweredAttempts(t *testing.T) {
+	lost := reply{hangUp: true}
+	s := newServer(t, map[string][]reply{
+		keyA: {lost, lost, apiError(402, "billing_error")},
+		keyB: {lost, lost, lost},
+	})
+	c, b, m := meteredClient(t, s, config(keyA, keyB), 10*spendUSD, func(bu *provider.Budget) { bu.MaxRetries = 2 })
+	res, err := ask(t, c)
+	per := perAttempt(t, b, provider.DefaultBudget().MaxOutputTokens)
+	reserved := 3 * per
+	hits := s.count(keyA) + s.count(keyB)
+	unanswered := hits - 1 // the 402 is the only answer
+	t.Logf("error %v; attempts A=%d B=%d (unanswered %d); per-attempt bound %s USD; reserved %s USD; settled %s USD (metadata %d)",
+		provider.CodeOf(err), s.count(keyA), s.count(keyB), unanswered, spend.FormatUSD(per), spend.FormatUSD(reserved),
+		spend.FormatUSD(m.Spent()), res.Metadata.CostNanoUSD)
+	if unanswered > 1+2 {
+		t.Errorf("%d attempts the provider may have billed, more than 1 + MaxRetries = 3; the ledger holds %s USD of a possible %s USD",
+			unanswered, spend.FormatUSD(m.Spent()), spend.FormatUSD(int64(unanswered)*per))
+	}
+}
+
+// Reviewer probe P5: a 200 answer whose body was read to its end but that
+// the SDK cannot decode. The provider answered 200, so it may have billed
+// the attempt; the adapter sees no usage and no unknown attempt, and the
+// settlement is "none" (0).
+func TestProbeP5AnUndecodable200(t *testing.T) {
+	garbled := reply{status: 200, header: map[string]string{"request-id": "req_test_1"}, body: `{"id":"msg_1","type":"message","usage":`}
+	s := newServer(t, map[string][]reply{keyA: {garbled}})
+	c, b, m := meteredClient(t, s, config(keyA), 10*spendUSD, func(bu *provider.Budget) { bu.MaxRetries = 0 })
+	_, err := ask(t, c)
+	per := perAttempt(t, b, provider.DefaultBudget().MaxOutputTokens)
+	t.Logf("error %v; hits %d; settled %s USD; per-attempt bound %s USD", provider.CodeOf(err), s.count(keyA), spend.FormatUSD(m.Spent()), spend.FormatUSD(per))
+	if s.count(keyA) == 1 && m.Spent() == 0 {
+		t.Errorf("a 200 answer that may have been billed settled at 0")
+	}
+}
+
+// Reviewer probe P7: the price table is the global-inference price, and
+// spend.go says "the adapter sends no inference_geo". Per the data
+// residency page, an omitted inference_geo takes the workspace's
+// default_inference_geo (legacy US-only workspaces were migrated to "us",
+// billed at 1.1x). The request would have to say "global" for the price to
+// hold whatever the workspace default is; it says nothing.
+func TestProbeP7TheRequestNamesItsInferenceGeo(t *testing.T) {
+	s := newServer(t, map[string][]reply{keyA: {ok(answerJ)}})
+	c, _ := client(t, s, config(keyA))
+	if _, err := ask(t, c); err != nil {
+		t.Fatal(err)
+	}
+	geo, present := s.bodies[0]["inference_geo"]
+	t.Logf("inference_geo in the request body: %v (present %v)", geo, present)
+	if geo != "global" {
+		t.Errorf("the request does not pin inference_geo to global (the price table's assumption): %v", geo)
+	}
+}

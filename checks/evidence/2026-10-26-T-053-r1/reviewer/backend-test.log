@@ -1,0 +1,89 @@
+go vet ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
+GEMINUS_FULL_DIFFERENTIAL=1 go test ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
+?   	github.com/kcl1104/geminus/cmd/ai-eval-live	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/api	0.241s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.009s
+ok  	github.com/kcl1104/geminus/cmd/worker	2.599s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	2.028s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	2.946s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	0.171s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.040s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.128s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	2.415s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.174s
+ok  	github.com/kcl1104/geminus/internal/ai/review	2.331s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	0.014s
+ok  	github.com/kcl1104/geminus/internal/aievals	0.212s
+ok  	github.com/kcl1104/geminus/internal/api	0.644s
+ok  	github.com/kcl1104/geminus/internal/audit	0.526s
+ok  	github.com/kcl1104/geminus/internal/auth	17.459s
+?   	github.com/kcl1104/geminus/internal/auth/authtest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/comparisons	0.017s
+ok  	github.com/kcl1104/geminus/internal/config	0.010s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.433s
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.545s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	4.032s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.658s
+ok  	github.com/kcl1104/geminus/internal/httpapi	0.229s
+ok  	github.com/kcl1104/geminus/internal/ids	0.033s
+ok  	github.com/kcl1104/geminus/internal/import/mapping	0.041s
+ok  	github.com/kcl1104/geminus/internal/import/profile	6.136s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/report	0.012s
+ok  	github.com/kcl1104/geminus/internal/import/upload	0.078s
+ok  	github.com/kcl1104/geminus/internal/import/validation	0.055s
+ok  	github.com/kcl1104/geminus/internal/import/validator	0.101s
+ok  	github.com/kcl1104/geminus/internal/model	0.482s
+ok  	github.com/kcl1104/geminus/internal/model/calendar	23.637s
+ok  	github.com/kcl1104/geminus/internal/model/hashing	0.783s
+ok  	github.com/kcl1104/geminus/internal/model/patch	0.454s
+ok  	github.com/kcl1104/geminus/internal/model/validate	1.456s
+ok  	github.com/kcl1104/geminus/internal/model/validate/coldstart	0.503s
+ok  	github.com/kcl1104/geminus/internal/models	0.206s
+ok  	github.com/kcl1104/geminus/internal/observability	0.170s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry	0.053s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry/export	0.042s
+ok  	github.com/kcl1104/geminus/internal/packs	0.020s
+ok  	github.com/kcl1104/geminus/internal/project	0.022s
+ok  	github.com/kcl1104/geminus/internal/proposals	0.167s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.860s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.359s
+ok  	github.com/kcl1104/geminus/internal/results/compare	12.494s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	0.413s
+ok  	github.com/kcl1104/geminus/internal/runs	0.384s
+ok  	github.com/kcl1104/geminus/internal/runs/runner	0.219s
+ok  	github.com/kcl1104/geminus/internal/scenarios	0.400s
+ok  	github.com/kcl1104/geminus/internal/secret	0.011s
+ok  	github.com/kcl1104/geminus/internal/simulation	0.991s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	26.204s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	333.861s
+ok  	github.com/kcl1104/geminus/internal/simulation/trace	0.634s
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	0.394s
+ok  	github.com/kcl1104/geminus/internal/storage/auditlog	0.017s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	0.806s
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/imports	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	0.013s
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	0.013s
+ok  	github.com/kcl1104/geminus/internal/storage/models	0.004s
+ok  	github.com/kcl1104/geminus/internal/storage/objects	0.054s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	0.011s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	0.186s
+ok  	github.com/kcl1104/geminus/internal/storage/proposals	0.178s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	0.096s
+?   	github.com/kcl1104/geminus/internal/storage/runs	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/scenarios	0.023s
+?   	github.com/kcl1104/geminus/internal/storage/snapshots	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant	0.020s
+?   	github.com/kcl1104/geminus/internal/tenant/internal/scope	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant/me	0.446s
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	0.049s
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	0.008s
+ok  	github.com/kcl1104/geminus/internal/worker	0.027s
+?   	github.com/kcl1104/geminus/internal/worker/handler	[no test files]
+?   	github.com/kcl1104/geminus/schemas	[no test files]
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	320.193s
+ok  	github.com/kcl1104/geminus/prompts	0.003s
+exit 0

@@ -1,0 +1,53 @@
+package aiapproval_test
+
+// Reviewer probe P3 (T-053 r1). Not part of the change under review. No
+// network: the backend is the in-process fake of liveeval_test.go, the keys
+// are this package's fake strings.
+//
+// H-018 asks for a daily limit in code next to the monthly budget, and
+// T-053's scope asks for an in-code monthly limit of both provider
+// organizations combined. The live eval and smoke spend through the same
+// two provider organizations but outside the DB ledger (D-114 (b),
+// PROPOSED); their only bound is a per-run in-memory cap, which Main
+// checks against the monthly limit only. This probe states the behaviour a
+// reviewer would expect (a run cap above the deployment's daily limit is
+// refused before any backend is built) and fails on HEAD.
+
+import (
+	"bytes"
+	"context"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/provider/fake"
+	"github.com/kcl1104/geminus/internal/aievals"
+	"github.com/kcl1104/geminus/internal/config"
+	"github.com/kcl1104/geminus/internal/contracttest"
+)
+
+func TestProbeP3TheRunCapIsWithinTheDailyLimit(t *testing.T) {
+	root := contracttest.Root(t)
+	for _, c := range []struct{ name, cap string }{
+		{"the whole monthly budget in one run", "100"},
+		{"five daily limits in one run", "50"},
+		{"just above the daily limit", "10.01"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			env := liveEnv()
+			env["AI_EVAL_LIVE_MAX_USD"] = c.cap
+			built := 0
+			factory := func(ai config.AI) (provider.Billable, error) {
+				built++
+				t.Logf("backend built; deployment daily limit %d nano-USD, monthly %d", ai.Limits.Day, ai.Limits.Month)
+				return &inProcess{Backend: fake.New()}, nil
+			}
+			var out, errb bytes.Buffer
+			code := aievals.Main(context.Background(), []string{"-root", root, "-dir", t.TempDir(), "-smoke"},
+				func(k string) string { return env[k] }, &out, &errb, factory)
+			if code != aievals.ExitRefused || built != 0 {
+				t.Errorf("AI_EVAL_LIVE_MAX_USD=%s (above the USD 10 daily limit): exit %d, backend built %d time(s): %s %s",
+					c.cap, code, built, out.String(), errb.String())
+			}
+		})
+	}
+}

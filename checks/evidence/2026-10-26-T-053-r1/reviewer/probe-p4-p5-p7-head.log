@@ -1,0 +1,16 @@
+=== RUN   TestProbeP4FailoverAfterUnansweredAttempts
+    zz_reviewer_probe_test.go:34: error unavailable; attempts A=3 B=3 (unanswered 5); per-attempt bound 0.18772 USD; reserved 0.56316 USD; settled 0.56316 USD (metadata 563160000)
+    zz_reviewer_probe_test.go:38: 5 attempts the provider may have billed, more than 1 + MaxRetries = 3; the ledger holds 0.56316 USD of a possible 0.9386 USD
+--- FAIL: TestProbeP4FailoverAfterUnansweredAttempts (2.46s)
+=== RUN   TestProbeP5AnUndecodable200
+    zz_reviewer_probe_test.go:53: error unavailable; hits 1; settled 0.00 USD; per-attempt bound 0.18772 USD
+    zz_reviewer_probe_test.go:55: a 200 answer that may have been billed settled at 0
+--- FAIL: TestProbeP5AnUndecodable200 (0.01s)
+=== RUN   TestProbeP7TheRequestNamesItsInferenceGeo
+    zz_reviewer_probe_test.go:72: inference_geo in the request body: <nil> (present false)
+    zz_reviewer_probe_test.go:74: the request does not pin inference_geo to global (the price table's assumption): <nil>
+--- FAIL: TestProbeP7TheRequestNamesItsInferenceGeo (0.02s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/anthropic	2.560s
+FAIL
+exit 1
