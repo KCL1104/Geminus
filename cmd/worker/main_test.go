@@ -226,44 +226,29 @@ func TestTheProviderIsTheConfigured(t *testing.T) {
 	}
 }
 
-// T-056: the segmenter of the photo pipeline (T-055's SegmentClient) is
-// the configured mode's: disabled answers provider_not_configured
-// (policy_not_approved for a live provider that is off); the fake answers
-// where config allows it; this build wires no live segmenter (SAM 3.1's
-// backend is T-055's), so live AI on still answers provider_not_configured
-// for photos and never reads a key for it.
-func TestTheSegmenterIsTheConfigured(t *testing.T) {
-	ctx := context.Background()
-	h018 := []string{"AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "H-018", "AI_MODEL", "claude-opus-5-5",
-		"GEMINUS_ANTHROPIC_API_KEY_A", "sk-ant-test-fake-aaaaaaaaaaaa", "GEMINUS_ANTHROPIC_API_KEY_B", "sk-ant-test-fake-bbbbbbbbbbbb"}
-	for _, c := range []struct {
-		name string
-		env  []string
-		want provider.Code
-	}{
-		{"default", nil, provider.CodeNotConfigured},
-		{"disabled", []string{"AI_PROVIDER", "disabled"}, provider.CodeNotConfigured},
-		{"live without approval", []string{"AI_PROVIDER", "anthropic"}, provider.CodePolicyNotApproved},
-		{"live, switch off", h018, provider.CodePolicyNotApproved},
-		{"live, switch on", append(slices.Clone(h018), "GEMINUS_AI_LIVE", "on"), provider.CodeNotConfigured},
-		// The fake is reached: it refuses this request (no image) as any
-		// segmenter's client would.
-		{"fake", []string{"AI_PROVIDER", "fake", "APP_ENV", "test"}, provider.CodeInvalidRequest},
+// T-056: the proposal handler is built with T-055's photo path (deps.photo:
+// the judge and the segmenter of AI_VISION_PROVIDER), whatever its mode,
+// and without one (a photo proposal then fails AI_PROVIDER_NOT_CONFIGURED;
+// internal/proposals/generator TestPhotoFailures).
+func TestTheProposalHandlerTakesThePhotoPath(t *testing.T) {
+	for name, env := range map[string][]string{
+		"fake":     {"AI_PROVIDER", "fake", "APP_ENV", "test"},
+		"disabled": {"AI_PROVIDER", "disabled"},
 	} {
-		t.Run(c.name, func(t *testing.T) {
-			ai, err := config.LoadAI(with(c.env...))
-			if err != nil {
-				t.Fatal(err)
+		ai, err := config.LoadAI(with(env...))
+		if err != nil {
+			t.Fatal(err)
+		}
+		p, err := photoPath(ai, provider.DefaultBudget(), nil, "test-worker")
+		if err != nil || p.Judge == nil || p.Segmenter == nil {
+			t.Fatalf("%s: %+v %v", name, p, err)
+		}
+		for _, pic := range []photo{p, {}} {
+			hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, ai: ai, log: slog.New(slog.DiscardHandler), photo: pic})
+			if err != nil || hs[jobs.ModelProposal] == nil {
+				t.Errorf("%s: %v", name, err)
 			}
-			s, err := segmenter(ai, provider.DefaultBudget())
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, err = s.Segment(ctx, provider.SegmentRequest{OrganizationID: ids.New("org"), Role: provider.RoleModeler, Concepts: []string{"machine"}})
-			if got := provider.CodeOf(err); got != c.want {
-				t.Fatalf("code %q, want %q", got, c.want)
-			}
-		})
+		}
 	}
 }
 

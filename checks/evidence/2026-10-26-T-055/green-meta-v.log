@@ -1,0 +1,61 @@
+=== RUN   TestTheGuard
+--- PASS: TestTheGuard (0.08s)
+=== RUN   TestEverySchemaTheAdapterSendsIsInsideTheLimits
+    limits_test.go:136: proposal-output.schema.json: 2623 bytes, nesting 7
+    limits_test.go:136: proposal-output.schema.json: 2623 bytes, nesting 7
+    limits_test.go:136: analysis-output.schema.json: 1661 bytes, nesting 6
+    limits_test.go:136: ai-mapping.schema.json: 1600 bytes, nesting 5
+--- PASS: TestEverySchemaTheAdapterSendsIsInsideTheLimits (0.01s)
+=== RUN   TestRequestShape
+--- PASS: TestRequestShape (0.02s)
+=== RUN   TestImageParts
+--- PASS: TestImageParts (0.01s)
+=== RUN   TestQuote
+--- PASS: TestQuote (0.01s)
+=== RUN   TestStopReasons
+--- PASS: TestStopReasons (0.05s)
+=== RUN   TestAnAnswerFromAnotherModelIsRefused
+--- PASS: TestAnAnswerFromAnotherModelIsRefused (0.02s)
+=== RUN   TestEncodedValues
+--- PASS: TestEncodedValues (0.05s)
+=== RUN   TestErrorStatuses
+--- PASS: TestErrorStatuses (0.12s)
+=== RUN   TestARefusedKey
+--- PASS: TestARefusedKey (0.01s)
+=== RUN   TestRetriesBackOff
+--- PASS: TestRetriesBackOff (0.03s)
+=== RUN   TestSpend
+--- PASS: TestSpend (0.20s)
+=== RUN   TestOnlyAMeteredClientCallsIt
+--- PASS: TestOnlyAMeteredClientCallsIt (0.01s)
+=== RUN   TestTimeoutsAndCancellation
+--- PASS: TestTimeoutsAndCancellation (0.36s)
+=== RUN   TestNewRefuses
+--- PASS: TestNewRefuses (0.00s)
+=== RUN   TestNoRedirects
+--- PASS: TestNoRedirects (0.01s)
+=== RUN   TestSAMRequestShape
+--- PASS: TestSAMRequestShape (0.00s)
+=== RUN   TestSAMReadsTheGrammar
+--- PASS: TestSAMReadsTheGrammar (0.01s)
+=== RUN   TestSAMRefusesOtherOutput
+--- PASS: TestSAMRefusesOtherOutput (0.08s)
+=== RUN   TestSAMSpend
+--- PASS: TestSAMSpend (0.01s)
+=== RUN   TestSAMRefusesBeforeAnyRequest
+--- PASS: TestSAMRefusesBeforeAnyRequest (0.00s)
+=== RUN   TestNewSegmenterRefuses
+--- PASS: TestNewSegmenterRefuses (0.00s)
+=== RUN   FuzzParseSegmentation
+=== RUN   FuzzParseSegmentation/seed#0
+=== RUN   FuzzParseSegmentation/seed#1
+=== RUN   FuzzParseSegmentation/seed#2
+=== RUN   FuzzParseSegmentation/seed#3
+--- PASS: FuzzParseSegmentation (0.00s)
+    --- PASS: FuzzParseSegmentation/seed#0 (0.00s)
+    --- PASS: FuzzParseSegmentation/seed#1 (0.00s)
+    --- PASS: FuzzParseSegmentation/seed#2 (0.00s)
+    --- PASS: FuzzParseSegmentation/seed#3 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider/meta	1.122s
+exit 0

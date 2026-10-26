@@ -30,9 +30,9 @@
         "OBJECT_STORAGE_S3_URL_STYLE": {"value": "{{bucket:urlStyle}}"},
         "OBJECT_STORAGE_S3_ACCESS_KEY_ID": {"secret": true, "source": "bucket:accessKeyId"},
         "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY": {"secret": true, "source": "bucket:secretAccessKey"},
-        "AI_PROVIDER": {"value": "disabled", "when": "absent", "later": "T-055 and the key-free availability of T-053 I5 (docs/runbooks/deploy.md §4.4): until both, proposals are refused with 503 and the API has no AI key"}
+        "AI_PROVIDER": {"value": "disabled", "when": "absent", "later": "the key-free availability of T-053 I5 (docs/runbooks/deploy.md §4.4): until then, proposals are refused with 503 and the API has no AI key"}
       },
-      "forbidden": ["GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_META_API_KEY", "GEMINUS_AI_LIVE", "AI_API_KEY",
+      "forbidden": ["GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE", "AI_API_KEY",
         "GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_MIGRATOR_DB_PASSWORD", "GEMINUS_PROVISION_DATABASE_URL", "GEMINUS_WORKER_DB_PASSWORD",
         "BFF_OIDC_CLIENT_SECRET", "SESSION_KEYS", "GEMINUS_UI_GALLERY"]
     },
@@ -51,11 +51,11 @@
         "OBJECT_STORAGE_S3_URL_STYLE": {"value": "{{bucket:urlStyle}}"},
         "OBJECT_STORAGE_S3_ACCESS_KEY_ID": {"secret": true, "source": "bucket:accessKeyId"},
         "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY": {"secret": true, "source": "bucket:secretAccessKey"},
-        "AI_PROVIDER": {"value": "disabled", "when": "absent", "later": "the owner may set anthropic (or T-055's meta) with AI_POLICY_APPROVAL and AI_MODEL; live stays off unless the owner also sets GEMINUS_AI_LIVE=on and the keys"},
+        "AI_PROVIDER": {"value": "disabled", "when": "absent", "later": "the owner may set anthropic or meta (T-055) with AI_POLICY_APPROVAL and AI_MODEL, and AI_VISION_PROVIDER for the photo path; live stays off unless the owner also sets GEMINUS_AI_LIVE=on and the keys"},
         "GEMINUS_AI_LIVE": {"secret": false, "source": "owner", "required": false},
         "GEMINUS_ANTHROPIC_API_KEY_A": {"secret": true, "source": "owner", "required": false},
         "GEMINUS_ANTHROPIC_API_KEY_B": {"secret": true, "source": "owner", "required": false},
-        "GEMINUS_META_API_KEY": {"secret": true, "source": "owner", "required": false, "later": "T-055 adds it; worker only (T-053 I5)"}
+        "GEMINUS_MUSE_API_KEY": {"secret": true, "source": "owner", "required": false}
       },
       "forbidden": ["GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_MIGRATOR_DB_PASSWORD", "GEMINUS_PROVISION_DATABASE_URL", "GEMINUS_API_DB_PASSWORD",
         "BFF_OIDC_CLIENT_SECRET", "SESSION_KEYS", "AI_API_KEY", "GEMINUS_UI_GALLERY"]
@@ -81,7 +81,7 @@
       },
       "forbidden": ["DATABASE_URL", "GEMINUS_API_DB_PASSWORD", "GEMINUS_WORKER_DB_PASSWORD", "GEMINUS_MIGRATOR_DB_PASSWORD",
         "GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_PROVISION_DATABASE_URL", "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY",
-        "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_META_API_KEY", "GEMINUS_AI_LIVE", "AI_API_KEY", "GEMINUS_UI_GALLERY"]
+        "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE", "AI_API_KEY", "GEMINUS_UI_GALLERY"]
     }
   }
 }

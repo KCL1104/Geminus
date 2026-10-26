@@ -1389,6 +1389,45 @@
       "proposal": "(a) domain electronics_line、範本 electronics_assembly_test_line、CreateModel 改為每個 pack 一個 oneOf 分支；(b) 規則 1 STATION_RESOURCE_INVALID 與規則 3 RETEST_RESOURCE_MISMATCH 為 error（/nodes/<i>/requires，規則 3 不連鎖），規則 2 TEST_RESULT_NOT_IDENTIFIED 與 DOMAIN_ATTRIBUTES_INVALID 為 warning；(c) 站＝首測加上共用 primary resource 的重測，key 為首測的 node ID，FPY 為首測 test result 非 fail flow 的機率和（fpy_input、rolled_throughput_yield_input）；(d) key <名稱> 或 <名稱>.<站>，單位 entity_per_hour／ratio／minute／count／entity，每個 replication 一個值以 metrics.Summarize 彙整，任一 replication 沒有值即 unavailable；另列 work_ratio、processing_ratio 與批次三項；沒有 calendar 的站不列 scheduled_utilization、overtime_minutes；pack 的 reason NO_BATCH_MODEL、NO_BATCH_IN_WINDOW、RESULT_MEMBER_MISSING；(e) line_wip、scrap_rate、simulated_first_pass_ratio、retest_ratio 在宣告式 metrics 的 gate 解除前 unavailable；(f) des.Engine.ModelMetrics 在 DomainMetrics 之後、digest 之前呼叫，傳 effective IR 的副本，空的答案不寫 metrics.domain，panic 為 ErrInternal，conformance 與 FMA 檢查涵蓋；(g) 範本為 §4.1＋§4.2＋§4.4（兩個產品族 table 投入、SMT 換線），lognormal TTR 未採用，班表拆成 early／late 兩個 label 並列出中性的 shift_capacity，SMT 線為一個 server，2D 位置依 x 再依 y 即 Marey 的列順序；(h) UI 標籤在 apps/web/messages 的 domain.electronics_line.*。建議照列，已實作。",
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-121",
+      "title": "Meta Model API adapter 的計費、重試與錯誤規則（T-055）",
+      "status": "proposed",
+      "owner_role": "AI / Security",
+      "gate": "T-055 驗收前",
+      "resolves": [],
+      "source_gap": "H-029 (1) 只寫「沿用 T-053 的花費上限與開關」；Meta 的 pricing 頁沒有 cache 寫入價、沒有每張圖片的 token 上限、沒有說錯誤 status 是否計費；D-018 的 failover 是 Anthropic 兩個 organization 的，Meta 只有一把 key。",
+      "source_pages": "N/A（T-055 實作；https://dev.meta.ai/docs/pricing-rate-limits、/docs/error-handling、/docs/image-understanding、/docs/structured-output，2026-10-26 取得；ADR-030）",
+      "proposal": "(a) muse-spark-1.3 每百萬 token input 1.25、cached 0.15、output 4.25 美元，cache 寫入以 input 價；SAM 3.1 每張 0.0025 美元；沒有 geo 加價（spend.GeoPriced 只有 claude-opus-5-5）；(b) quote 同 D-111，有圖片時為 context window 1,048,576 tokens；(c) 連線中斷、逾時、body 讀不完、每個 5xx（含 504）、讀不了的 2xx 算可能計費；(d) 一把 key 不 failover：429 與 504 以外的 5xx 以 backoff 與 Retry-After 重試，504 不重試，401／403 停用到重啟、402 休息 15 分鐘；(e) 錯誤只記 status 與文件列出的 8 種 error type，其他為 other；(f) 不送 thinking、sampling、stop_sequences、top_k、container、inference_geo、cache_control；(g) 投影後的 schema 以文件的上限檢查，超出不送。建議照列，已實作。",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-122",
+      "title": "H-029 的 approval record 與 Meta 的 Gap 規則（T-055）",
+      "status": "proposed",
+      "owner_role": "Owner / Security",
+      "gate": "T-055 驗收前；Meta 的任何 live 呼叫前",
+      "resolves": [],
+      "source_gap": "H-029 沒有寫月預算的數字（只寫沿用 T-053 的上限）、Meta 的資料保留條款是否被接受、Meta dashboard 是否有 spend limit；Anthropic 的 record 要求的 Console spend limit 確認（H-025）在 Meta 沒有對應。",
+      "source_pages": "N/A（T-055 實作；H-029、H-033；https://dev.meta.ai/legal/commitments、/legal/terms-of-service（Last updated October 9, 2026）、/docs/models，2026-10-26 取得）",
+      "proposal": "(a) record：provider meta、model muse-spark-1.3、segmentation sam-3.1、資料政策 synthetic 資料＋demo 圖片＋使用者輸入的文字、角色 modeler／scenario、每月 USD 100（沿用 H-018 的上限；兩個 provider 共用一個 ledger，取較小的預算）、credential meta、KCL1104、2026-10-26；(b) Retention 記為 meta_standard_services（Standard mode 的選擇；Meta 仍為提供服務、法律、被標記與安全審查保留內容），需要 owner 確認接受這些條款；(c) 不要求 Meta dashboard 的 spend limit 確認，程式內的 ledger 是上限；(d) 只接受 Standard 的 Muse Spark 1.1／1.2／1.3 與 SAM 3.1，-contributor 為 model_not_standard。建議照列，已實作。",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-123",
+      "title": "圖片與 segmentation 的界限，以及照片路徑的設定（T-055，給 T-056）",
+      "status": "proposed",
+      "owner_role": "AI / Security",
+      "gate": "T-055 驗收前（T-056 的輸入）",
+      "resolves": [],
+      "source_gap": "H-029 (1) 只寫「只送 demo 圖片」，H-033 (2)(3) 寫照片辨識用 SAM 3.1＋Muse Spark、Claude 為可切換的備援；沒有寫圖片的型別、大小、張數，segmentation 的 concept 與結果的上限，照片路徑如何選 provider，H-018 沒有圖片時 Claude 備援怎麼辦。",
+      "source_pages": "N/A（T-055 實作；https://dev.meta.ai/docs/image-understanding、/docs/sam/segmenting、/docs/sam/reading-segmentation，2026-10-26 取得）",
+      "proposal": "(a) 圖片只接受 PNG、JPEG、WebP（signature 相符），至多 5 MiB、每邊 8000 px、每個 prompt 4 張，送出前檢查，hash 含 media type、sha256、尺寸；(b) segmentation 一張圖至多 8 個 concept（64 bytes 內的小寫名詞片語，每個一個 SAM request），每個 concept 至多 100 個結果，box 在圖片內、confidence 0..1，mask 不解碼不存；(c) AI_VISION_PROVIDER（不設＝AI_PROVIDER）、AI_VISION_POLICY_APPROVAL、AI_VISION_MODEL；批准的資料政策沒有圖片（H-018）時照片路徑關閉（images_not_approved），Claude 作為照片備援需要 owner 擴充 H-018；(d) SAM 的呼叫以 proposal 的角色計費與 audit。建議照列，已實作。",
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

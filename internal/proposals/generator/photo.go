@@ -45,9 +45,9 @@ import (
 //     server refuses makes the proposal invalid; no segment makes it
 //     needs_input with the server's own question, and the vision model is
 //     never asked.
-//  4. The vision model (Config.Provider: Muse Spark behind T-055's adapter,
-//     or Claude's image input as the fallback once its adapter takes images;
-//     the fake in tests) proposes the stations and flow from the image and
+//  4. The vision model (Config.Vision, T-055's judge: Muse Spark behind its
+//     adapter, or Claude's image input as the fallback once its adapter
+//     takes images; the fake in tests) proposes the stations and flow from the image and
 //     the segments (aicontext.ImageProposal: the image is the prompt's
 //     image part).
 //  5. The server reviews the answer as any edit (review.Review), then the
@@ -68,8 +68,9 @@ const (
 	// nothing is forwarded).
 	PhotoCorrupt = "PHOTO_CORRUPT"
 	// ImageUnsupported: the configured vision client does not take images
-	// (the Anthropic adapter until the fallback is wired); refused before
-	// the segmenter is asked (never retried).
+	// (the Anthropic adapter until the fallback is wired), or it is off
+	// (T-055's photo path off: a Disabled backend); refused before the
+	// segmenter is asked (never retried).
 	ImageUnsupported = "AI_IMAGE_UNSUPPORTED"
 )
 
@@ -158,11 +159,11 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		return generation{photo: pc}, failure(PhotoNotSupported, "the model's domain takes no photos: describe the change in words", false)
 	}
 	concepts := vocab.PhotoConcepts()
-	if h.cfg.Segmenter == nil {
+	if h.cfg.Segmenter == nil || h.cfg.Vision == nil {
 		return generation{photo: pc}, failure("AI_"+strings.ToUpper(string(provider.CodeNotConfigured)), providerMessages[provider.CodeNotConfigured], false)
 	}
-	if it, ok := h.cfg.Provider.(imageTaker); !ok || !it.AcceptsImages() {
-		return generation{photo: pc}, failure(ImageUnsupported, "the configured AI provider does not take images; no provider call was made", false)
+	if it, ok := h.cfg.Vision.(imageTaker); !ok || !it.AcceptsImages() {
+		return generation{photo: pc}, failure(ImageUnsupported, "the photo path's AI provider is off or does not take images; no provider call was made", false)
 	}
 	var pool idpool.Pool
 	if err := json.Unmarshal(pr.IDPool, &pool); err != nil {
@@ -222,7 +223,7 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		return generation{photo: pc}, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
 	}
 	pctx.Attribution = attr
-	res, err := h.cfg.Provider.GenerateModelProposal(ctx, pctx)
+	res, err := h.cfg.Vision.GenerateModelProposal(ctx, pctx)
 	meta := res.Metadata
 	h.logCall(ctx, meta, err)
 	if err != nil {

@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 91,
-    "proposed": 9,
+    "proposed": 12,
     "rejected": 0,
     "superseded": 0
   },
@@ -872,6 +872,27 @@
       "gate": "T-051 驗收前（指標 key 另為 T-032 的輸入）",
       "gates_tasks": [
         "T-051"
+      ]
+    },
+    "D-121": {
+      "status": "proposed",
+      "gate": "T-055 驗收前",
+      "gates_tasks": [
+        "T-055"
+      ]
+    },
+    "D-122": {
+      "status": "proposed",
+      "gate": "T-055 驗收前；Meta 的任何 live 呼叫前",
+      "gates_tasks": [
+        "T-055"
+      ]
+    },
+    "D-123": {
+      "status": "proposed",
+      "gate": "T-055 驗收前（T-056 的輸入）",
+      "gates_tasks": [
+        "T-055"
       ]
     }
   },

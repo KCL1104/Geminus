@@ -63,10 +63,14 @@ type PackLookup interface {
 // Config is the handler's setup.
 type Config struct {
 	// Provider is the checked provider client (provider.Client) of the
-	// deployment's mode: disabled, fake or an approved live adapter. A
-	// photo proposal (T-056) is sent to it with the image as the prompt's
-	// image part, only when it takes images (provider.Client.AcceptsImages).
+	// deployment's mode: disabled, fake or an approved live adapter.
 	Provider provider.LLMProvider
+	// Vision is the photo path's vision model (T-056 on T-055's judge, the
+	// checked client of AI_VISION_PROVIDER): a photo proposal is sent to it
+	// with the image as the prompt's image part, only when it takes images
+	// (provider.Client.AcceptsImages). Nil fails every photo proposal with
+	// AI_PROVIDER_NOT_CONFIGURED.
+	Vision provider.LLMProvider
 	// Segmenter finds the pack's concepts in a photo proposal's image
 	// (T-056; T-055's provider.SegmentClient of the deployment's mode); nil
 	// fails every photo proposal with AI_PROVIDER_NOT_CONFIGURED.

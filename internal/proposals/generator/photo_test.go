@@ -142,7 +142,9 @@ func newPhotoRig(t *testing.T, name string, edit ...func(*Config)) *photoRig {
 	seg := fake.NewSegmenter()
 	st := storedPhoto(t, demo, "en")
 	objs := &memObjects{objects: map[string][]byte{st.proposal.Image.ObjectKey: demo.Image}, f: f}
-	cfg := Config{Provider: client(t, f), Segmenter: segmentClient(t, seg), Packs: photoPacks(t), Objects: objs, Actor: "worker-1", Log: discard()}
+	// The vision model is the judge (T-055); the text proposals' client is another, never asked here.
+	cfg := Config{Provider: client(t, fake.New()), Vision: client(t, f), Segmenter: segmentClient(t, seg), Packs: photoPacks(t), Objects: objs,
+		Actor: "worker-1", Log: discard()}
 	for _, e := range edit {
 		e(&cfg)
 	}
@@ -468,11 +470,14 @@ func TestPhotoFailures(t *testing.T) {
 		}, code: PhotoCorrupt},
 		"no object storage": {edit: func(c *Config) { c.Objects = nil }, code: PhotoStorageFailed},
 		"no segmenter":      {edit: func(c *Config) { c.Segmenter = nil }, code: "AI_PROVIDER_NOT_CONFIGURED"},
+		"no vision model":   {edit: func(c *Config) { c.Vision = nil }, code: "AI_PROVIDER_NOT_CONFIGURED"},
+		"a disabled vision model": {setup: func(r *photoRig) { r.script(-1) },
+			edit: func(c *Config) { c.Vision = client(t, provider.Disabled{Code: provider.CodePolicyNotApproved}) }, code: ImageUnsupported},
 		"a disabled segmenter": {edit: func(c *Config) {
 			c.Segmenter = segmentClient(t, provider.Disabled{Code: provider.CodePolicyNotApproved})
 		}, code: "AI_POLICY_NOT_APPROVED"},
 		"a provider without images": {setup: func(r *photoRig) { r.script(-1) },
-			edit: func(c *Config) { c.Provider = client(t, textOnly{fake.New()}) }, code: ImageUnsupported},
+			edit: func(c *Config) { c.Vision = client(t, textOnly{fake.New()}) }, code: ImageUnsupported},
 		"a domain without photos": {setup: func(r *photoRig) {
 			st := stored(t, "edit", "")
 			st.proposal.Image = r.st.proposal.Image
@@ -589,7 +594,7 @@ func TestAMeteredPhotoCall(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r := newPhotoRig(t, "electronics-line-demo", func(cfg *Config) { cfg.Provider, cfg.Segmenter = vc, sc })
+		r := newPhotoRig(t, "electronics-line-demo", func(cfg *Config) { cfg.Vision, cfg.Segmenter = vc, sc })
 		r.seg = bs.Segmenter
 		r.script(-1)
 		f.Script(provider.RoleModeler, r.demo.Segments.StoredDigest, contracttest.PhotoAnswer(t, "electronics-line-demo", poolIDs(t, r.st)))

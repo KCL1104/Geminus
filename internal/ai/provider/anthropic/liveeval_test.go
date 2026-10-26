@@ -40,7 +40,7 @@ func TestTheLiveEvalOverHTTP(t *testing.T) {
 	start := time.Date(2026, 10, 27, 1, 0, 0, 0, time.UTC)
 	const runID = "01JB0000000000000000000001"
 	r, err := aievals.Run(context.Background(), aievals.Config{Client: c, Budget: provider.DefaultBudget(), Packs: reg, Root: root,
-		Cases: cases, Only: only, Locale: "en", Approval: "H-018", Model: model, Kind: "eval", CapNanoUSD: 10 * spendUSD, Spent: m.Spent,
+		Cases: cases, Only: only, Locale: "en", Provider: "anthropic", Approval: "H-018", Model: model, Kind: "eval", CapNanoUSD: 10 * spendUSD, Spent: m.Spent,
 		RunID: runID, Now: func() time.Time { return start }})
 	if err != nil {
 		t.Fatal(err)
@@ -104,7 +104,7 @@ func liveRun(t *testing.T, s *server, only ...string) *aievals.Report {
 		t.Fatal(err)
 	}
 	r, err := aievals.Run(context.Background(), aievals.Config{Client: c, Budget: provider.DefaultBudget(), Packs: reg, Root: root,
-		Cases: cases, Only: only, Locale: "en", Approval: "H-018", Model: model, Kind: "smoke", CapNanoUSD: 10 * spendUSD, Spent: m.Spent,
+		Cases: cases, Only: only, Locale: "en", Provider: "anthropic", Approval: "H-018", Model: model, Kind: "smoke", CapNanoUSD: 10 * spendUSD, Spent: m.Spent,
 		RunID: "01JB0000000000000000000002", Now: func() time.Time { return time.Date(2026, 10, 27, 2, 0, 0, 0, time.UTC) }})
 	if err != nil {
 		t.Fatal(err)

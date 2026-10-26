@@ -1,0 +1,28 @@
+ok  	github.com/kcl1104/geminus/internal/config	0.038s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.336s
+ok  	github.com/kcl1104/geminus/internal/aievals	0.176s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.462s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	1.872s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	0.035s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.020s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.370s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	10.034s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.035s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/meta	1.222s
+?   	github.com/kcl1104/geminus/internal/ai/provider/structured	[no test files]
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.757s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	0.008s
+ok  	github.com/kcl1104/geminus/internal/observability	0.060s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry	0.010s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry/export	0.086s
+ok  	github.com/kcl1104/geminus/cmd/ai-eval-live	0.041s
+ok  	github.com/kcl1104/geminus/cmd/api	2.061s
+ok  	github.com/kcl1104/geminus/cmd/migrate	0.025s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.012s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.096s
+--- FAIL: TestSyntheticGraph (0.00s)
+    check_test.go:508: [rule live-adapters-apart applies to no package: fix its patterns or mark it future]
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	271.180s
+FAIL
+exit 1

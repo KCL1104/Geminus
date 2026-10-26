@@ -25,7 +25,7 @@
 #
 # The owner fills in Railway's UI, never this script: BFF_OIDC_CLIENT_SECRET
 # (web), and only to turn live AI on, the worker's GEMINUS_AI_LIVE and its keys
-# (GEMINUS_ANTHROPIC_API_KEY_A and _B, or T-055's GEMINUS_META_API_KEY). Live AI
+# (GEMINUS_ANTHROPIC_API_KEY_A and _B, or the Meta key GEMINUS_MUSE_API_KEY). Live AI
 # stays off until then (AI_PROVIDER=disabled).
 #
 # Needs: python3, git, psql 15 or later, go (cmd/provision-tenant), the pinned

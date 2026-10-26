@@ -67,7 +67,7 @@ flowchart LR
 | cmd/migrate | 部署的 migration step（T-039）：`up`／`status`，只讀 `GEMINUS_MIGRATE_DATABASE_URL` | 讀 runtime 的 `DATABASE_URL`；在 API 或 worker 的 process 中執行 |
 | apps/web/features | editor、import、proposals、simulations、results、3D | 第二套 topology、server authorization |
 
-T-056 的照片路徑（H-033；D-130–D-132 PROPOSED）建在 T-055 的名稱上：`provider.Image`（`NewImage`、digest）、`Prompt.Images`、`provider.Segmenter`／`SegmentClient`／`SegmentBackend`（fake、Disabled，live 的 SAM 3.1 由 T-055 接上）；T-056 只加 `provider.Client.AcceptsImages`（讓 generator 在 segmenter 花錢之前就知道 vision client 收不收影像）與 fake 以第一張影像的 digest 對照 script。`domainpack.PhotoVocabulary`（pack 的概念，電子產線實作）、`aicontext.ImageProposal`、`review.Photo`／`Segmentation` 都是純粹的；HTTP 與 storage 在 `internal/proposals`（`image.go`、`image_http.go`）與 `internal/storage/proposals`（`InsertImage`，讀取時 LEFT JOIN 影像）；generator 的 `generatePhoto` 只在 worker 中。
+T-056 的照片路徑（H-033；D-130–D-132 PROPOSED）建在 T-055 的名稱上：`provider.Image`（`NewImage`、digest）、`Prompt.Images`、`provider.Segmenter`／`SegmentClient`／`SegmentBackend`（fake、Disabled，live 的 SAM 3.1 由 T-055 接上）；T-056 只加 `provider.Client.AcceptsImages`（讓 generator 在 segmenter 花錢之前就知道 vision client 收不收影像）與 fake 以第一張影像的 digest 對照 script。`domainpack.PhotoVocabulary`（pack 的概念，電子產線實作）、`aicontext.ImageProposal`、`review.Photo`／`Segmentation` 都是純粹的；HTTP 與 storage 在 `internal/proposals`（`image.go`、`image_http.go`）與 `internal/storage/proposals`（`InsertImage`，讀取時 LEFT JOIN 影像）；generator 的 `generatePhoto` 只在 worker 中，`Config.Vision` 與 `Config.Segmenter` 是 T-055 的 `deps.photo`（judge 與 segmenter，`AI_VISION_PROVIDER`），沒有時照片的 proposal 以 `AI_PROVIDER_NOT_CONFIGURED` 失敗。
 
 ## 3. 四個穩定 contracts
 

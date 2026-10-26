@@ -86,7 +86,7 @@ func setupPhotos(t *testing.T, opts ...api.Option) *photoEnv {
 		t.Fatal(err)
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	h, err := generator.New(generator.Config{Provider: client, Segmenter: segmenter, Packs: packs, Objects: fs, Actor: "test-worker", Log: log})
+	h, err := generator.New(generator.Config{Provider: client, Vision: client, Segmenter: segmenter, Packs: packs, Objects: fs, Actor: "test-worker", Log: log})
 	if err != nil {
 		t.Fatal(err)
 	}
