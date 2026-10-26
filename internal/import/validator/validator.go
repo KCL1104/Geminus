@@ -75,9 +75,20 @@ type Config struct {
 	Packs PackLookup
 }
 
-// PackLookup finds a model's domain pack; *domainpack.Registry is one.
+// PackLookup finds a model's domain pack and lists the domains it serves;
+// *domainpack.Registry is one.
 type PackLookup interface {
 	Lookup(domain string) (domainpack.DomainPack, error)
+	Domains() []string
+}
+
+// Domains lists the domains whose packs' data-quality rules the handler
+// checks (none without Packs), in sorted order.
+func (h *Handler) Domains() []string {
+	if h.cfg.Packs == nil {
+		return []string{}
+	}
+	return h.cfg.Packs.Domains()
 }
 
 // eventCheck is the data-quality check (D-059) of the pack of the model

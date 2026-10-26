@@ -249,6 +249,28 @@ func TestTheWorkerServesTheAPIsPacks(t *testing.T) {
 	}
 }
 
+// T-052 (D-059, D-118 PROPOSED): the import validation handler this build
+// registers checks the data-quality rules of the packs the API serves, so
+// a station log imported for an electronics line model gets the pack's
+// warnings in the deployment, not only in tests.
+func TestTheValidationChecksThePacksRules(t *testing.T) {
+	hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := hs[jobs.ImportValidate].(*validator.Handler)
+	if !ok {
+		t.Fatalf("the validation handler is a %T", hs[jobs.ImportValidate])
+	}
+	apiDomains, err := api.Domains()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := v.Domains(); len(got) == 0 || !slices.Equal(got, apiDomains) {
+		t.Errorf("the validation checks the packs of %v, the API serves %v", got, apiDomains)
+	}
+}
+
 // The simulation handler names the worker in audit events, so a WORKER_ID
 // that cannot be an audit actor is a configuration error, as is an object
 // storage root the adapter cannot use; both before any connection.

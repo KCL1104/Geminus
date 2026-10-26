@@ -12,6 +12,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"testing"
 
@@ -142,6 +143,12 @@ func TestEventCheck(t *testing.T) {
 			t.Fatal(err)
 		}
 		return data
+	}
+	if h, err := New(Config{Actor: "worker-1", Log: quiet}); err != nil || len(h.Domains()) != 0 {
+		t.Errorf("without packs the handler checks the rules of %v (%v)", h.Domains(), err)
+	}
+	if h, err := New(Config{Actor: "worker-1", Log: quiet, Packs: served}); err != nil || !slices.Equal(h.Domains(), served.Domains()) {
+		t.Errorf("the handler checks the rules of %v, given %v (%v)", h.Domains(), served.Domains(), err)
 	}
 	line := irOf("electronics_line", "electronics_assembly_test_line")
 	if c, err := eventCheck(nil, line); c != nil || err != nil {

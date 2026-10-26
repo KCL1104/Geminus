@@ -1,0 +1,8 @@
+# github.com/kcl1104/geminus/internal/import/validator [github.com/kcl1104/geminus/internal/import/validator.test]
+internal/import/validator/validator_test.go:147:79: h.Domains undefined (type *Handler has no field or method Domains)
+internal/import/validator/validator_test.go:148:71: h.Domains undefined (type *Handler has no field or method Domains)
+internal/import/validator/validator_test.go:150:104: h.Domains undefined (type *Handler has no field or method Domains)
+internal/import/validator/validator_test.go:151:67: h.Domains undefined (type *Handler has no field or method Domains)
+FAIL	github.com/kcl1104/geminus/internal/import/validator [build failed]
+# github.com/kcl1104/geminus/cmd/worker [github.com/kcl1104/geminus/cmd/worker.test]
+cmd/worker/main_test.go:269:14: v.Domains undefined (type *validator.Handler has no field or method Domains)
