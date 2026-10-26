@@ -437,6 +437,81 @@ cases.append({
 })
 
 
+# ================================================================ review round 1 (H-003, 2026-10-26)
+# Added for the findings of T-050 review round 1 (checks/evidence/2026-10-26-T-050-r1/reviewer/REVIEW.md).
+# Each case was derived by hand below before the kernel ran it; the cases
+# above are unchanged.
+
+# ---------------------------------------------------------------- G-SU11
+# Review round 1 M4 (the reviewer's probe P5): a changeover that starts
+# exactly at W is complete when it ends by H (D-097 (f): start >= W, end <= H).
+cases.append({
+    "id": "G-SU11",
+    "title": "a changeover that starts exactly at W is a complete one (D-097 (f): start >= W, end <= H): G-SU1 over [20, 55]",
+    "model": model("G-SU11", [res("smt", setups=setups(transitions=[(A, B, const(3)), (B, A, const(3))]))],
+                   [source("src_a", 10, A), source("src_b", 20, B), process("place", 2, [("smt", 1)]), sink("done")], both),
+    "config": config(55, warmup=20),
+    "derivation": [
+        "G-SU1's model with warmup 20 and horizon 55. Up to t=45 the run is G-SU1's, with the same sequence numbers (every event G-SU1 schedules up to there falls by 50 <= 55, and src_b's next at 60 is after both horizons): B1 changes over [20,23) and serves [23,25); A2 changes over [25,28), serves [28,30); A3 serves [30,32) without one; at 40 B2 changes over [40,43), serves [43,45) (DISPATCH seq 17, SERVICE_COMPLETE seq 19), A4 (src_a's next at 50, seq 18) held; at 45 SERVICE_COMPLETE (seq 19), DISPATCH (seq 20): A4 changes over [45,48), serves [48,50) (seq 21).",
+        "t=50: SERVICE_COMPLETE (seq 21) first: release, DISPATCH (seq 22), A4 completes at 50; src_a's ARRIVAL (seq 18): A5 (next at 60 > 55: not scheduled) enters. DISPATCH (seq 22): the unit is set up for board_a (A4's): A5 needs no changeover, service 50-52 (SERVICE_COMPLETE at 52 <= 55, seq 23).",
+        "t=52: SERVICE_COMPLETE (seq 23): release, DISPATCH (seq 24), A5 completes; the DISPATCH finds nothing.",
+        "24 events: 7 arrivals (10, 20, 20, 30, 40, 40, 50), 7 SERVICE_COMPLETEs (12, 25, 30, 32, 45, 50, 52), 10 DISPATCHes (10, 12, 20, 25, 30, 32, 40, 45, 50, 52). Changeovers: B1 at 20 (seq 8), A2 at 25 (11), B2 at 40 (17), A4 at 45 (20), 3 minutes each, unit 0.",
+        "The window [20,55], T = 35 minutes. B1's changeover starts at 20 = W and ends at 23 <= H: it counts as started (W <= 20 <= H) and as complete (start >= W); so do A2's (25-28), B2's (40-43) and A4's (45-48): setups_started 4, setups_completed 4 of 12 minutes; setup_ticks 12 minutes (all four inside the window). A strict start > W would leave B1's out of the complete ones (3, 9 minutes).",
+        "In use in the window: [20,25) 5, [25,30) 5, [30,32) 2, [40,45) 5, [45,50) 5, [50,52) 2: 24 minutes, utilization 24/35; scheduled processing (no calendar, no finite buffer: U - Z) 24 - 12 = 12 minutes.",
+        "Completions in the window: B1 25, A2 30, A3 32, B2 45, A4 50, A5 52: 6 (A1's at 12 is before W); none censored. The lead-time cohort (arrived at or after W, completed by H), in completion order: B1 5, A2 10, A3 2, B2 5, A4 10, A5 2 (A1 arrived at 10). Queue waits (joined at or after W, started by H), in service-start order: B1 0, A2 5, A3 0, B2 0, A4 5, A5 0.",
+    ],
+    "expected": {
+        "starts": {"place": [[e("src_a", 1), 10], [e("src_b", 1), 20], [e("src_a", 2), 25], [e("src_a", 3), 30], [e("src_b", 2), 40],
+                             [e("src_a", 4), 45], [e("src_a", 5), 50]]},
+        "completions": [[e("src_a", 1), 12], [e("src_b", 1), 25], [e("src_a", 2), 30], [e("src_a", 3), 32], [e("src_b", 2), 45],
+                        [e("src_a", 4), 50], [e("src_a", 5), 52]],
+        "setups": [[e("src_b", 1), "place", "smt", 0, 20, 3], [e("src_a", 2), "place", "smt", 0, 25, 3],
+                   [e("src_b", 2), "place", "smt", 0, 40, 3], [e("src_a", 4), "place", "smt", 0, 45, 3]],
+        "setup_seqs": [8, 11, 17, 20],
+        "blocks": [], "downs": [], "pending": [], "capacities": [],
+        "events": 24,
+        "result": {"completed_count": 6, "censored_entities": 0, "lead_times_minutes": [5, 10, 2, 5, 10, 2],
+                   "queue_waits_minutes": {"place": [0, 5, 0, 0, 5, 0]}, "resource_utilization": {"smt": 24 / 35},
+                   "resource_states": {"smt": setup_state(24, 12, 4, 4, 12, 12)}, "blocking": None, "buffers": None, "batches": None},
+    },
+    "simpy": "compare",
+})
+
+# ---------------------------------------------------------------- G-SU12
+# Review round 1 M3 (the reviewer's probe P6): a changeover that ends after
+# the run's last observation, before H: only the collector's Finish ends it
+# (a changeover's end has no observation; D-097 (f), SIMULATION_SPEC §5).
+cases.append({
+    "id": "G-SU12",
+    "title": "a changeover that ends after the run's last observation, before H, is ended by the collector at the end (D-097 (f)): G-SU1 over [0, 49]",
+    "model": model("G-SU12", [res("smt", setups=setups(transitions=[(A, B, const(3)), (B, A, const(3))]))],
+                   [source("src_a", 10, A), source("src_b", 20, B), process("place", 2, [("smt", 1)]), sink("done")], both),
+    "config": config(49),
+    "derivation": [
+        "G-SU1's model with horizon 49. Up to t=32 the run is G-SU1's, with the same sequence numbers (every event G-SU1 schedules up to there falls by 40 <= 49): A1 serves [10,12) without a changeover; B1 changes over [20,23) and serves [23,25) (DISPATCH seq 8); A2 changes over [25,28), serves [28,30) (seq 11); A3 serves [30,32) without one (DISPATCH seq 16 at 32 finds nothing).",
+        "t=40: src_b's ARRIVAL (seq 7): B2 (next at 60 > 49: not scheduled), DISPATCH (seq 17); src_a's (seq 14): A4 (next at 50 > 49: not scheduled, no sequence; in G-SU1 it was seq 18). DISPATCH (seq 17): B2 changes over board_a -> board_b at 40 (3 minutes), SERVICE_COMPLETE at 45 (seq 18); A4 held.",
+        "t=45: SERVICE_COMPLETE (seq 18): release, DISPATCH (seq 19), B2 completes. DISPATCH (seq 19): A4: the unit is set up for board_b: changeover board_b -> board_a at 45 (3 minutes, until 48), service 48-50: its SERVICE_COMPLETE at 50 > 49 is never scheduled. This is the run's last event and the last observation (at 45): A4's changeover ends at 48 with no observation of its own and no later one.",
+        "19 events: 6 arrivals (10, 20, 20, 30, 40, 40), 5 SERVICE_COMPLETEs (12, 25, 30, 32, 45), 8 DISPATCHes (10, 12, 20, 25, 30, 32, 40, 45). Changeovers: B1 at 20 (seq 8), A2 at 25 (11), B2 at 40 (17), A4 at 45 (19), 3 minutes each, unit 0.",
+        "The window [0,49], T = 49 minutes. Changing over [20,23), [25,28), [40,43), [45,48): setup_ticks 12 minutes (A4's ends at 48, before H: Z is 0 over [48,49], which only the collector's end of the run can apply); 4 started, 4 complete (each ends by 49) of 12 minutes. Were A4's end never applied, Z would stay 1 over [48,49]: 13 minutes, and scheduled processing 1 minute less.",
+        "In use: [10,12) 2, [20,25) 5, [25,30) 5, [30,32) 2, [40,45) 5, [45,49] 4 (A4 holds the unit to the horizon): 23 minutes, utilization 23/49; scheduled processing (no calendar, no finite buffer: U - Z) 23 - 12 = 11 minutes.",
+        "Completions: A1 12, B1 25, A2 30, A3 32, B2 45: 5; A4 censored (in service). Lead times (completion order): A1 2, B1 5, A2 10, A3 2, B2 5. Queue waits (service-start order, up to the grant, D-055): A1 0, B1 0, A2 5, A3 0, B2 0, A4 5.",
+    ],
+    "expected": {
+        "starts": {"place": [[e("src_a", 1), 10], [e("src_b", 1), 20], [e("src_a", 2), 25], [e("src_a", 3), 30], [e("src_b", 2), 40],
+                             [e("src_a", 4), 45]]},
+        "completions": [[e("src_a", 1), 12], [e("src_b", 1), 25], [e("src_a", 2), 30], [e("src_a", 3), 32], [e("src_b", 2), 45]],
+        "setups": [[e("src_b", 1), "place", "smt", 0, 20, 3], [e("src_a", 2), "place", "smt", 0, 25, 3],
+                   [e("src_b", 2), "place", "smt", 0, 40, 3], [e("src_a", 4), "place", "smt", 0, 45, 3]],
+        "setup_seqs": [8, 11, 17, 19],
+        "blocks": [], "downs": [], "pending": [], "capacities": [],
+        "events": 19,
+        "result": {"completed_count": 5, "censored_entities": 1, "lead_times_minutes": [2, 5, 10, 2, 5],
+                   "queue_waits_minutes": {"place": [0, 0, 5, 0, 0, 5]}, "resource_utilization": {"smt": 23 / 49},
+                   "resource_states": {"smt": setup_state(23, 12, 4, 4, 12, 11)}, "blocking": None, "buffers": None, "batches": None},
+    },
+    "simpy": "compare",
+})
+
 # ---------------------------------------------------------------- the SimPy reference (stochastic)
 # Fixed before either side ran (T-050): 30 replications of 3000 minutes,
 # warmup 300, the tolerance of blocking-goldens.json (T-047). Compared by

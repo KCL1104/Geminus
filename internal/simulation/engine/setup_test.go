@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"testing"
@@ -170,8 +171,11 @@ func TestSetupGoldens(t *testing.T) {
 			}
 		})
 	}
-	if ran != 8 {
-		t.Errorf("%d setup goldens ran, want 8", ran)
+	// Review round 1 added G-SU11 (a changeover starting exactly at W,
+	// M4) and G-SU12 (one ending after the last observation, M3); their
+	// Result members are checked in internal/simulation/des.
+	if ran != 10 {
+		t.Errorf("%d setup goldens ran, want 10", ran)
 	}
 }
 
@@ -219,6 +223,96 @@ func TestSetupStreamsPerUnit(t *testing.T) {
 				if want := p.resources[res].setup.def.draw(stream); v != want {
 					t.Fatalf("capacity %d, unit %d, changeover %d: %d ticks, the stream's draw is %d", capacity, u, k, v, want)
 				}
+			}
+		}
+	}
+}
+
+// D-055 (ADR-026 D-055: "stream 為 (resource ID, setup/<u>)"; review round
+// 1 M3): the changeover draws against the independent Python port
+// (scripts/engine_reference.py setup_streams, testdata/simulation/
+// engine-vectors.json), bit for bit, as T-048's ttf/<u> and ttr/<u>
+// (TestBreakdownStreamVectors). First the stream named here literally,
+// (resource ID, "setup/<u>"), through the default's sampler; then the
+// kernel's own changeovers on G-SU5's model (the vector's resource,
+// default and seed), capacity 2 and 3: unit u's k-th Setup has the
+// vector's k-th draw for unit u. TestSetupStreamsPerUnit derives its
+// expectation from PurposeSetupPrefix itself, so only this test sees the
+// stream renamed.
+func TestSetupStreamVectors(t *testing.T) {
+	var doc struct {
+		Setups struct {
+			ResourceID  string             `json:"resource_id"`
+			Capacity    int                `json:"capacity"`
+			Unit        model.TimeUnit     `json:"unit"`
+			BaseSeed    uint64             `json:"base_seed"`
+			Replication uint32             `json:"replication"`
+			Default     model.Distribution `json:"default"`
+			Draws       int                `json:"draws"`
+			Units       []struct {
+				Unit  int     `json:"unit"`
+				Setup []int64 `json:"setup"`
+				State string  `json:"setup_state_after"`
+			} `json:"units"`
+		} `json:"setup_streams"`
+	}
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata/simulation/engine-vectors.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	v := doc.Setups
+	if len(v.Units) != v.Capacity || v.Capacity < 3 || v.Draws < 20 {
+		t.Fatalf("setup_streams: %d units of capacity %d, %d draws", len(v.Units), v.Capacity, v.Draws)
+	}
+	s, err := newSampler(v.Default, v.Unit, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := ReplicationSeed(v.BaseSeed, v.Replication)
+	for _, u := range v.Units {
+		r := Stream(rep, v.ResourceID, "setup/"+strconv.Itoa(u.Unit))
+		var got []int64
+		for range u.Setup {
+			got = append(got, s.draw(r))
+		}
+		if !slices.Equal(got, u.Setup) || fmt.Sprintf("%016x", r.state) != u.State {
+			t.Errorf("unit %d: %v (state %016x), reference %v (%s)", u.Unit, got, r.state, u.Setup, u.State)
+		}
+	}
+
+	cases, extras := setupGoldens(t)
+	i := slices.IndexFunc(cases, func(c calendarCase) bool { return c.ID == "G-SU5" })
+	c, w := cases[i], extras["G-SU5"].Expected.Streams
+	var base model.ModelIR
+	if err := model.Decode(c.Model, &base); err != nil {
+		t.Fatal(err)
+	}
+	r := slices.IndexFunc(base.Resources, func(x model.Resource) bool { return x.ID == v.ResourceID })
+	if r < 0 || w.Resource != v.ResourceID || uint64(c.Config.Seed) != v.BaseSeed || v.Replication != 0 || string(base.TimeUnit) != string(v.Unit) ||
+		base.Resources[r].Setups == nil || base.Resources[r].Setups.Default == nil || !reflect.DeepEqual(*base.Resources[r].Setups.Default, v.Default) {
+		t.Fatalf("the vector is not G-SU5's resource, default and seed: %+v", v)
+	}
+	for _, capacity := range []int{2, 3} {
+		ir := base
+		ir.Resources = slices.Clone(base.Resources)
+		ir.Resources[r].Capacity = capacity
+		in := input(ir)
+		in.Config = c.Config
+		col := &collect{}
+		if _, err := RunReplication(context.Background(), compile(t, in), 0, NewBudget(1_000_000), col); err != nil {
+			t.Fatal(err)
+		}
+		got := make([][]int64, capacity)
+		for _, o := range col.all {
+			if o.Kind == ObsSetup {
+				got[o.At] = append(got[o.At], o.Value)
+			}
+		}
+		for u := range capacity {
+			if len(got[u]) < v.Draws {
+				t.Fatalf("capacity %d: unit %d changed over %d times, the vector has %d draws", capacity, u, len(got[u]), v.Draws)
+			}
+			if want := v.Units[u].Setup; !slices.Equal(got[u][:v.Draws], want) {
+				t.Errorf("capacity %d, unit %d: changeovers %v, the reference's (smt, setup/%d) draws %v", capacity, u, got[u][:v.Draws], u, want)
 			}
 		}
 	}

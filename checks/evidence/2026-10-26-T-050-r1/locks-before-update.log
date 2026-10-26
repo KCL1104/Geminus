@@ -1,0 +1,77 @@
+# 2026-10-26T10:27:02Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: checks/evidence/2026-10-26-T-050-r1/scripts/locks.sh
+=== RUN   TestBlockingObservationDigests
+--- PASS: TestBlockingObservationDigests (0.14s)
+=== RUN   TestBreakdownObservationDigests
+--- PASS: TestBreakdownObservationDigests (0.04s)
+=== RUN   TestCalendarObservationDigests
+--- PASS: TestCalendarObservationDigests (0.03s)
+=== RUN   TestKernelObservationDigests
+--- PASS: TestKernelObservationDigests (0.01s)
+=== RUN   TestBatchSetupObservationDigests
+    lock050_test.go:95: observation digests
+         got  [G-BT1=69 f3760e2f2b6771b3a1f7bc862a2293aa49f032f99d9c762fcaa1da1bd01091ee G-BT2=26 cd52587699a6eee522b0e56a7beedbe3d4a0b71fdec9cba576f5cb3ec1fb84a8 G-BT3=48 1c65639701d2f64e3fc5ab3c01e41bca3d0430a211fcaadad349bccf90e740bf G-BT4=37 7eb617d34b48dcc81196b971f3adae29d2ae2dde8b350010f157e21478113f2c G-BT5=23 0a77ae60d40e9836325a39add74089705076b64a41085ae34322cc8afac7e75a G-BT6=13 e6ec8cacec3b97039401a08365b5b267fb3785f44d5a9c8f211a6149c95bd090 G-BT7=13 7602075c4eca00c13ad4c0484722ebe764c339b8da44be5ec62841675a370a8c G-BT8=54 e95b9ac52b63602705b31486cfb9b4747ef849bccca4bd0952eaaff50d43d390 G-BT9=29 8723c153ef62c4316f2022b0483f6d38bb26749f9d73ddb3f2b96ee0d46ee05c G-BT10=32 31d7457ead6ed7aaa54d0f1065a64c02b03d2a38970d9d914f7144963bff1933 G-BT11=60 cb5986e276a1deb9ed06f3eab1480d96b815cd6356611bcfb4c12746fd19f316 G-BT12=27 dab6b684d0fa54e65c51b1688b4a9989db1e2c7c04712831f96eef26eddc929a G-BT14=21 9112dea4a537cc1b72af65709d1f457181f28042878daa3d367e1f163eb097df G-BT15=29 80de35cd5f1bdf02f8349c609f5de9acce93093319d535f71f0566e23f741917 G-BT16=29 f5e94af6e31e7742c52137fcec620266709138a45a8d9c87a0918521986d2295 G-BT17=44 968165578f7d0c6d3a3cc0f1b9cf2b2b9cabf1ffde050b54d4329d290f1beeb9 G-BT21=22 2aa36148c004d824cc2d54569d305040224fc1eef5f7a27e7000a77000c34ca2 BT-S1=1144 9fa4e0dbf29489434c6bdc7d52d77d67b2e63d6efab7ed19444150e7c41ecfa3 BT-S2=2369 5ef3d4340c96b642609d532b1e70fd86eb3bf0656b729f47fe9fb4405281f0fb BT-S3=4816 b21b29a42e73bc364d9ff8b3f0fa4decb75c960f8ca6be747d17f9aa75ddc231 BT-S4=1466 4b1b3d14a9aa229757719c743d137d890edb6b766c9cfa357a3edf06c7a49856 G-SU1=50 c03b03828ee98ac757f3aa42599a693524bde93b1724ba4cef80d28b28ec1a0f G-SU2=43 185a3a3272db3506c0cbfd35333d1c047a561fdd21bc5f4ebb652e85cae36dc9 G-SU3=55 0bd27049ec14376397c48d8247b21c948d65e059b641a58b462ffcf6c9984ba3 G-SU5=1225 c6c5989a55e75312850ae052f8a2dae19aeca78ed77e67ebb6787bbf2dacbc40 G-SU6=26 825f381a217c0b132809fc7d9cab399fdb5adc415ff9b82bd7be046a95234bcc G-SU7=45 336aae8233cdf6fd1cbe4ce34959c9ae8265ed871f8b8b252aa16a21e76057df G-SU8=37 39ccda4ba762da19685996debc7ddb489d22a63f9671a96141c69340862451cb G-SU9=27 9b5eaa32c5222c9ff0dc1dbc61b3a66221cbf192cfe9f2c75550917ea8c26cd1 G-SU10=40 0436f4940f6f922e6f4634a204fd9a71e0052d2c10101c42934a48c599369836 G-SU11=53 b48fa214872c8a0f5f2f1d4d1130f49437e83898ffd5e1c7b8e1138403037d1f G-SU12=43 c87862506f4193423f02040aa6d210c305fc7ddc49990e9e6fc3e32e2ec45c34 SU-S1=2353 1b8f524d405610ee6dc256cb3044594169ae066ceea7d4f4ccac3f7805fcd654 SU-S2=4917 9057ab1d0637832fe43a86d9daa1a65f70fc1f2f637b949bc85bdda0519d72a1 SU-S3=3919 846b97e2463c68fbb641c7965b755a00d58f8e1e33d57405da0483350b197e5e SU-S4=6092 ab3bf54594525f2da3f6e11fe1b92f5ccd9c035e9dbcf0d9f59bf5cd769b4d31]
+         want map[BT-S1:1144 9fa4e0dbf29489434c6bdc7d52d77d67b2e63d6efab7ed19444150e7c41ecfa3 BT-S2:2369 5ef3d4340c96b642609d532b1e70fd86eb3bf0656b729f47fe9fb4405281f0fb BT-S3:4816 b21b29a42e73bc364d9ff8b3f0fa4decb75c960f8ca6be747d17f9aa75ddc231 BT-S4:1466 4b1b3d14a9aa229757719c743d137d890edb6b766c9cfa357a3edf06c7a49856 G-BT1:69 f3760e2f2b6771b3a1f7bc862a2293aa49f032f99d9c762fcaa1da1bd01091ee G-BT10:32 31d7457ead6ed7aaa54d0f1065a64c02b03d2a38970d9d914f7144963bff1933 G-BT11:60 cb5986e276a1deb9ed06f3eab1480d96b815cd6356611bcfb4c12746fd19f316 G-BT12:27 dab6b684d0fa54e65c51b1688b4a9989db1e2c7c04712831f96eef26eddc929a G-BT14:21 9112dea4a537cc1b72af65709d1f457181f28042878daa3d367e1f163eb097df G-BT15:29 80de35cd5f1bdf02f8349c609f5de9acce93093319d535f71f0566e23f741917 G-BT16:29 f5e94af6e31e7742c52137fcec620266709138a45a8d9c87a0918521986d2295 G-BT17:44 968165578f7d0c6d3a3cc0f1b9cf2b2b9cabf1ffde050b54d4329d290f1beeb9 G-BT2:26 cd52587699a6eee522b0e56a7beedbe3d4a0b71fdec9cba576f5cb3ec1fb84a8 G-BT3:48 1c65639701d2f64e3fc5ab3c01e41bca3d0430a211fcaadad349bccf90e740bf G-BT4:37 7eb617d34b48dcc81196b971f3adae29d2ae2dde8b350010f157e21478113f2c G-BT5:23 0a77ae60d40e9836325a39add74089705076b64a41085ae34322cc8afac7e75a G-BT6:13 e6ec8cacec3b97039401a08365b5b267fb3785f44d5a9c8f211a6149c95bd090 G-BT7:13 7602075c4eca00c13ad4c0484722ebe764c339b8da44be5ec62841675a370a8c G-BT8:54 e95b9ac52b63602705b31486cfb9b4747ef849bccca4bd0952eaaff50d43d390 G-BT9:29 8723c153ef62c4316f2022b0483f6d38bb26749f9d73ddb3f2b96ee0d46ee05c G-SU1:50 c03b03828ee98ac757f3aa42599a693524bde93b1724ba4cef80d28b28ec1a0f G-SU10:40 0436f4940f6f922e6f4634a204fd9a71e0052d2c10101c42934a48c599369836 G-SU2:43 185a3a3272db3506c0cbfd35333d1c047a561fdd21bc5f4ebb652e85cae36dc9 G-SU3:55 0bd27049ec14376397c48d8247b21c948d65e059b641a58b462ffcf6c9984ba3 G-SU5:1225 c6c5989a55e75312850ae052f8a2dae19aeca78ed77e67ebb6787bbf2dacbc40 G-SU6:26 825f381a217c0b132809fc7d9cab399fdb5adc415ff9b82bd7be046a95234bcc G-SU7:45 336aae8233cdf6fd1cbe4ce34959c9ae8265ed871f8b8b252aa16a21e76057df G-SU8:37 39ccda4ba762da19685996debc7ddb489d22a63f9671a96141c69340862451cb G-SU9:27 9b5eaa32c5222c9ff0dc1dbc61b3a66221cbf192cfe9f2c75550917ea8c26cd1 SU-S1:2353 1b8f524d405610ee6dc256cb3044594169ae066ceea7d4f4ccac3f7805fcd654 SU-S2:4917 9057ab1d0637832fe43a86d9daa1a65f70fc1f2f637b949bc85bdda0519d72a1 SU-S3:3919 846b97e2463c68fbb641c7965b755a00d58f8e1e33d57405da0483350b197e5e SU-S4:6092 ab3bf54594525f2da3f6e11fe1b92f5ccd9c035e9dbcf0d9f59bf5cd769b4d31]
+--- FAIL: TestBatchSetupObservationDigests (0.03s)
+=== RUN   TestSamplerDigests
+=== RUN   TestSamplerDigests/constant_draws_nothing
+=== RUN   TestSamplerDigests/exponential_template_interarrival
+=== RUN   TestSamplerDigests/exponential_sub-tick_mean_clamps_to_1
+=== RUN   TestSamplerDigests/exponential_underflow_is_still_1_tick
+=== RUN   TestSamplerDigests/exponential_tail_beyond_the_cap
+=== RUN   TestSamplerDigests/triangular
+=== RUN   TestSamplerDigests/triangular_min=mode=0
+=== RUN   TestSamplerDigests/triangular_mode=max
+=== RUN   TestSamplerDigests/triangular_degenerate_draws_nothing
+=== RUN   TestSamplerDigests/empirical
+=== RUN   TestSamplerDigests/lognormal_repair_time
+=== RUN   TestSamplerDigests/lognormal_cv_10
+=== RUN   TestSamplerDigests/lognormal_tiny_mean_is_still_1_tick
+=== RUN   TestSamplerDigests/lognormal_tail_beyond_the_cap
+=== RUN   TestSamplerDigests/lognormal_tiny_cv
+=== RUN   TestSamplerDigests/weibull_failure_clock
+=== RUN   TestSamplerDigests/weibull_shape_0.1
+=== RUN   TestSamplerDigests/weibull_shape_20
+=== RUN   TestSamplerDigests/weibull_shape_1
+=== RUN   TestSamplerDigests/weibull_tiny_scale_is_still_1_tick
+--- PASS: TestSamplerDigests (0.14s)
+    --- PASS: TestSamplerDigests/constant_draws_nothing (0.00s)
+    --- PASS: TestSamplerDigests/exponential_template_interarrival (0.00s)
+    --- PASS: TestSamplerDigests/exponential_sub-tick_mean_clamps_to_1 (0.00s)
+    --- PASS: TestSamplerDigests/exponential_underflow_is_still_1_tick (0.01s)
+    --- PASS: TestSamplerDigests/exponential_tail_beyond_the_cap (0.00s)
+    --- PASS: TestSamplerDigests/triangular (0.00s)
+    --- PASS: TestSamplerDigests/triangular_min=mode=0 (0.00s)
+    --- PASS: TestSamplerDigests/triangular_mode=max (0.00s)
+    --- PASS: TestSamplerDigests/triangular_degenerate_draws_nothing (0.00s)
+    --- PASS: TestSamplerDigests/empirical (0.00s)
+    --- PASS: TestSamplerDigests/lognormal_repair_time (0.01s)
+    --- PASS: TestSamplerDigests/lognormal_cv_10 (0.01s)
+    --- PASS: TestSamplerDigests/lognormal_tiny_mean_is_still_1_tick (0.01s)
+    --- PASS: TestSamplerDigests/lognormal_tail_beyond_the_cap (0.01s)
+    --- PASS: TestSamplerDigests/lognormal_tiny_cv (0.01s)
+    --- PASS: TestSamplerDigests/weibull_failure_clock (0.01s)
+    --- PASS: TestSamplerDigests/weibull_shape_0.1 (0.01s)
+    --- PASS: TestSamplerDigests/weibull_shape_20 (0.01s)
+    --- PASS: TestSamplerDigests/weibull_shape_1 (0.01s)
+    --- PASS: TestSamplerDigests/weibull_tiny_scale_is_still_1_tick (0.01s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.395s
+FAIL
+=== RUN   TestGoldenDigests030
+--- PASS: TestGoldenDigests030 (0.44s)
+=== RUN   TestGoldenDigests040
+--- PASS: TestGoldenDigests040 (0.26s)
+=== RUN   TestGoldenDigests
+--- PASS: TestGoldenDigests (0.00s)
+=== RUN   TestGoldenDigests020
+--- PASS: TestGoldenDigests020 (0.02s)
+=== RUN   TestGoldenDigests050
+    lock050_test.go:60: digests {"BT-S1":"sha256:ef20f5abc477d1f24097420766fa551b316e33c47a7d382c8e905dca5eabee71","BT-S2":"sha256:ac2d9cc737278651c2cf0e56d9073906837aa33f7632325e8741760390ea39e5","BT-S3":"sha256:d11ca3369281397510dbe56d030d8330da7ab6a39a5e621f1f3f1ef478d013dc","BT-S4":"sha256:37a7a7b37ddd3bb8072bf64d45874c913e7cb7b9313e8dba7633c1d2c43a6a07","G-BT1":"sha256:1c17b325d10a726a4cc73a6945d5cce7e1010276b4653256d389752d7230390d","G-BT10":"sha256:f59403deac49a340b5880034909857f9c14afac1c0e7ce89f68656050152c72c","G-BT11":"sha256:e2aed2205743849086192b738ad8657abafd29ae7065f930dadf212c900fdb57","G-BT12":"sha256:0cd02d56aa93b2b5d5cc2893c962810a9c1f738c4da2a5daf713160b49476bed","G-BT14":"sha256:bbe5ca3fb42651aef74dfa8e02acc3542f1b674e93d337c61cb5d89e49a536b8","G-BT15":"sha256:d43cdad70ba98dda640aeeb6d33a4b4ee1a366c3d18bd4658714e01d2fe6b090","G-BT16":"sha256:8d5b985c1d3351bca353d3f7edf79efa6ec3884698285cca5731dad6cfba5ba6","G-BT17":"sha256:1d9a6a04de4450698cbfad3d59be90bf749162b4a3560a8296e9cf726b442804","G-BT2":"sha256:c97bd11a6f43b37e1a09d58b447f18b702a852d4eaf4318107655a2383aebe84","G-BT21":"sha256:a78545bf4cc2a98b365c8964d5e4541eba38134c75aa4fbfe4ce460e2b414985","G-BT3":"sha256:0870f4ea5d70b12577c2d8c65ac0e73626049994fe8f22ff57e0f4be52eb0c03","G-BT4":"sha256:b4a947f4628fe19556068c3bf05c141c31185a54336d2638c6a4629059121a7f","G-BT6":"sha256:f3828e068f24461268775e1baa85dcf08dfcda8371dd2fed787a5580a66d831f","G-BT7":"sha256:f11ee65bd7e849c22e108c757e1fc51a2e6854c149b4130299af5b6cb203fbbd","G-BT8":"sha256:d5a92844e79fcfc2f8a328138abe5ee760a11f038a0974929b9e232ad752eed5","G-BT9":"sha256:8ff7d46433b9a6feef6bce93b9bdb394ec805865a39c7a1fddc2338b6eff5e47","G-SU1":"sha256:d566db3014a996ff28a693c5d7b947ae9f4c16ca7825ca6cfb9bf979500f6719","G-SU10":"sha256:2ee1664a21720bd94b4dc62a199add8d841830f1a865c1df7d54e07bba6290b7","G-SU11":"sha256:ea7dd4b9a6dcbdd62d1e4a0a8190c2d553fe0c5f264649ac981780f4c41d4fd1","G-SU12":"sha256:757a6baeee02e0d4375686f5fd2b7525fdd204a99a83d8b9f72964689c06948a","G-SU2":"sha256:3ab51cdbb3c8e6bb5dfde354e82e617da082189f94ab3d86a63e893a37b1723c","G-SU3":"sha256:c1df81233d1286ceebf1a5c10d3b273ebf52d78370b3942736121f3e6df60bb9","G-SU6":"sha256:534d9a42a1199286a3e3140236dbad5c76209b8051c3a4bb54003cc89a4760a4","G-SU7":"sha256:a81b830169e6b282ac291fc4e32acc3170833559d67c166bbf0e6cb524d0e986","G-SU8":"sha256:d1fa483f0d9d21b7e8d9e22a6322b2ab0470d1d38346524e461e275b64bbab40","G-SU9":"sha256:ca0318a11cbba79a7d4f07d3a4886e7f7fa4d35e38cc381423fbc597f5b0eef0","SU-S1":"sha256:bcab16b6b5c0dd3ef045f0ce9549113fed937e700dcd8e835392c283143e4ce8","SU-S2":"sha256:9343edb5937c2866fd46a9c271caa1848f7ce2983e536c69e5e3a046b195d338","SU-S3":"sha256:318143a66e01b3953513feef23b2f5913a57829ce029bf13a78a5f2ed004a76b","SU-S4":"sha256:e50a8aefd9bea5ac91142c2673f3499ec11ff4f244e028c1f4b28857ddb7e6c3"}
+         locked map[BT-S1:sha256:ef20f5abc477d1f24097420766fa551b316e33c47a7d382c8e905dca5eabee71 BT-S2:sha256:ac2d9cc737278651c2cf0e56d9073906837aa33f7632325e8741760390ea39e5 BT-S3:sha256:d11ca3369281397510dbe56d030d8330da7ab6a39a5e621f1f3f1ef478d013dc BT-S4:sha256:37a7a7b37ddd3bb8072bf64d45874c913e7cb7b9313e8dba7633c1d2c43a6a07 G-BT1:sha256:1c17b325d10a726a4cc73a6945d5cce7e1010276b4653256d389752d7230390d G-BT10:sha256:f59403deac49a340b5880034909857f9c14afac1c0e7ce89f68656050152c72c G-BT11:sha256:e2aed2205743849086192b738ad8657abafd29ae7065f930dadf212c900fdb57 G-BT12:sha256:0cd02d56aa93b2b5d5cc2893c962810a9c1f738c4da2a5daf713160b49476bed G-BT14:sha256:bbe5ca3fb42651aef74dfa8e02acc3542f1b674e93d337c61cb5d89e49a536b8 G-BT15:sha256:d43cdad70ba98dda640aeeb6d33a4b4ee1a366c3d18bd4658714e01d2fe6b090 G-BT16:sha256:8d5b985c1d3351bca353d3f7edf79efa6ec3884698285cca5731dad6cfba5ba6 G-BT17:sha256:1d9a6a04de4450698cbfad3d59be90bf749162b4a3560a8296e9cf726b442804 G-BT2:sha256:c97bd11a6f43b37e1a09d58b447f18b702a852d4eaf4318107655a2383aebe84 G-BT3:sha256:0870f4ea5d70b12577c2d8c65ac0e73626049994fe8f22ff57e0f4be52eb0c03 G-BT4:sha256:b4a947f4628fe19556068c3bf05c141c31185a54336d2638c6a4629059121a7f G-BT6:sha256:f3828e068f24461268775e1baa85dcf08dfcda8371dd2fed787a5580a66d831f G-BT7:sha256:f11ee65bd7e849c22e108c757e1fc51a2e6854c149b4130299af5b6cb203fbbd G-BT8:sha256:d5a92844e79fcfc2f8a328138abe5ee760a11f038a0974929b9e232ad752eed5 G-BT9:sha256:8ff7d46433b9a6feef6bce93b9bdb394ec805865a39c7a1fddc2338b6eff5e47 G-SU1:sha256:d566db3014a996ff28a693c5d7b947ae9f4c16ca7825ca6cfb9bf979500f6719 G-SU10:sha256:2ee1664a21720bd94b4dc62a199add8d841830f1a865c1df7d54e07bba6290b7 G-SU2:sha256:3ab51cdbb3c8e6bb5dfde354e82e617da082189f94ab3d86a63e893a37b1723c G-SU3:sha256:c1df81233d1286ceebf1a5c10d3b273ebf52d78370b3942736121f3e6df60bb9 G-SU6:sha256:534d9a42a1199286a3e3140236dbad5c76209b8051c3a4bb54003cc89a4760a4 G-SU7:sha256:a81b830169e6b282ac291fc4e32acc3170833559d67c166bbf0e6cb524d0e986 G-SU8:sha256:d1fa483f0d9d21b7e8d9e22a6322b2ab0470d1d38346524e461e275b64bbab40 G-SU9:sha256:ca0318a11cbba79a7d4f07d3a4886e7f7fa4d35e38cc381423fbc597f5b0eef0 SU-S1:sha256:bcab16b6b5c0dd3ef045f0ce9549113fed937e700dcd8e835392c283143e4ce8 SU-S2:sha256:9343edb5937c2866fd46a9c271caa1848f7ce2983e536c69e5e3a046b195d338 SU-S3:sha256:318143a66e01b3953513feef23b2f5913a57829ce029bf13a78a5f2ed004a76b SU-S4:sha256:e50a8aefd9bea5ac91142c2673f3499ec11ff4f244e028c1f4b28857ddb7e6c3]
+--- FAIL: TestGoldenDigests050 (0.24s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.976s
+FAIL
+# engine exit=1 des exit=1
+# exit=1 elapsed=2s

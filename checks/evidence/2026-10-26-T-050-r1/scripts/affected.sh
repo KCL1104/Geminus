@@ -1,0 +1,3 @@
+#!/bin/bash
+# The packages this round touches, every test (no -run filter).
+exec "$(dirname "$0")/gotest.sh" ./internal/simulation/... ./internal/results/... ./internal/ai/... ./prompts/ ./internal/model/...

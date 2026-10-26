@@ -1,0 +1,70 @@
+# 2026-10-26T10:27:52Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: checks/evidence/2026-10-26-T-050-r1/scripts/locks.sh
+=== RUN   TestBlockingObservationDigests
+--- PASS: TestBlockingObservationDigests (0.14s)
+=== RUN   TestBreakdownObservationDigests
+--- PASS: TestBreakdownObservationDigests (0.04s)
+=== RUN   TestCalendarObservationDigests
+--- PASS: TestCalendarObservationDigests (0.04s)
+=== RUN   TestKernelObservationDigests
+--- PASS: TestKernelObservationDigests (0.01s)
+=== RUN   TestBatchSetupObservationDigests
+--- PASS: TestBatchSetupObservationDigests (0.04s)
+=== RUN   TestSamplerDigests
+=== RUN   TestSamplerDigests/constant_draws_nothing
+=== RUN   TestSamplerDigests/exponential_template_interarrival
+=== RUN   TestSamplerDigests/exponential_sub-tick_mean_clamps_to_1
+=== RUN   TestSamplerDigests/exponential_underflow_is_still_1_tick
+=== RUN   TestSamplerDigests/exponential_tail_beyond_the_cap
+=== RUN   TestSamplerDigests/triangular
+=== RUN   TestSamplerDigests/triangular_min=mode=0
+=== RUN   TestSamplerDigests/triangular_mode=max
+=== RUN   TestSamplerDigests/triangular_degenerate_draws_nothing
+=== RUN   TestSamplerDigests/empirical
+=== RUN   TestSamplerDigests/lognormal_repair_time
+=== RUN   TestSamplerDigests/lognormal_cv_10
+=== RUN   TestSamplerDigests/lognormal_tiny_mean_is_still_1_tick
+=== RUN   TestSamplerDigests/lognormal_tail_beyond_the_cap
+=== RUN   TestSamplerDigests/lognormal_tiny_cv
+=== RUN   TestSamplerDigests/weibull_failure_clock
+=== RUN   TestSamplerDigests/weibull_shape_0.1
+=== RUN   TestSamplerDigests/weibull_shape_20
+=== RUN   TestSamplerDigests/weibull_shape_1
+=== RUN   TestSamplerDigests/weibull_tiny_scale_is_still_1_tick
+--- PASS: TestSamplerDigests (0.16s)
+    --- PASS: TestSamplerDigests/constant_draws_nothing (0.00s)
+    --- PASS: TestSamplerDigests/exponential_template_interarrival (0.01s)
+    --- PASS: TestSamplerDigests/exponential_sub-tick_mean_clamps_to_1 (0.00s)
+    --- PASS: TestSamplerDigests/exponential_underflow_is_still_1_tick (0.01s)
+    --- PASS: TestSamplerDigests/exponential_tail_beyond_the_cap (0.01s)
+    --- PASS: TestSamplerDigests/triangular (0.00s)
+    --- PASS: TestSamplerDigests/triangular_min=mode=0 (0.00s)
+    --- PASS: TestSamplerDigests/triangular_mode=max (0.00s)
+    --- PASS: TestSamplerDigests/triangular_degenerate_draws_nothing (0.00s)
+    --- PASS: TestSamplerDigests/empirical (0.00s)
+    --- PASS: TestSamplerDigests/lognormal_repair_time (0.01s)
+    --- PASS: TestSamplerDigests/lognormal_cv_10 (0.01s)
+    --- PASS: TestSamplerDigests/lognormal_tiny_mean_is_still_1_tick (0.01s)
+    --- PASS: TestSamplerDigests/lognormal_tail_beyond_the_cap (0.01s)
+    --- PASS: TestSamplerDigests/lognormal_tiny_cv (0.01s)
+    --- PASS: TestSamplerDigests/weibull_failure_clock (0.01s)
+    --- PASS: TestSamplerDigests/weibull_shape_0.1 (0.02s)
+    --- PASS: TestSamplerDigests/weibull_shape_20 (0.01s)
+    --- PASS: TestSamplerDigests/weibull_shape_1 (0.01s)
+    --- PASS: TestSamplerDigests/weibull_tiny_scale_is_still_1_tick (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.439s
+=== RUN   TestGoldenDigests030
+--- PASS: TestGoldenDigests030 (0.40s)
+=== RUN   TestGoldenDigests040
+--- PASS: TestGoldenDigests040 (0.34s)
+=== RUN   TestGoldenDigests
+--- PASS: TestGoldenDigests (0.00s)
+=== RUN   TestGoldenDigests020
+--- PASS: TestGoldenDigests020 (0.04s)
+=== RUN   TestGoldenDigests050
+--- PASS: TestGoldenDigests050 (0.21s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.996s
+# engine exit=0 des exit=0
+# exit=0 elapsed=5s

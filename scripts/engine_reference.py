@@ -456,6 +456,28 @@ def breakdown_streams() -> dict:
     return {**b, "draws": DRAWS, "units": units}
 
 
+# D-055 (T-050; review round 1 M3): unit u of a resource that changes over
+# draws its changeover times from its own stream (resource ID, "setup/<u>").
+# G-SU5's resource, default and seed (testdata/simulation/setup-goldens.json),
+# replication 0: TestSetupStreamVectors checks these draws against the
+# stream itself and against the changeovers the kernel makes on G-SU5's
+# model, so the stream's name is pinned outside the Go constant.
+SETUP_STREAMS = {"resource_id": "smt", "capacity": 3, "unit": "minute", "base_seed": 4242, "replication": 0,
+                 "default": {"type": "exponential", "mean": 3}}
+SETUP_DRAWS = 20
+
+
+def setup_streams() -> dict:
+    s = SETUP_STREAMS
+    rep = replication_seed(s["base_seed"], s["replication"])
+    draw = sampler(s["default"], s["unit"])
+    units = []
+    for u in range(s["capacity"]):
+        rng = stream(rep, s["resource_id"], f"setup/{u}")
+        units.append({"unit": u, "setup": [draw(rng) for _ in range(SETUP_DRAWS)], "setup_state_after": f"{rng.state:016x}"})
+    return {**s, "draws": SETUP_DRAWS, "units": units}
+
+
 EVENT_PUSHES = [
     (5, "immediate"), (5, "dispatch"), (3, "immediate"), (5, "service_complete"), (5, "immediate"),
     (3, "dispatch"), (0, "immediate"), (5, "service_complete"), (3, "service_complete"), (5, "dispatch"),
@@ -675,6 +697,8 @@ def build() -> dict:
                                        "pop_sequence": event_order_15()},
         # T-049 (D-053), after the vectors above, which are unchanged.
         "release_schedules": release_vectors(),
+        # T-050 (D-055; review round 1 M3), after the vectors above, which are unchanged.
+        "setup_streams": setup_streams(),
     }
 
 
@@ -693,6 +717,7 @@ def main() -> int:
                       "log_inputs": LOG_INPUTS, "digest_draws_per_sampler": DIGEST_DRAWS,
                       "exp_inputs": EXP_INPUTS, "ndtri_inputs": NDTRI_INPUTS,
                       "breakdown_stream_units": len(data["breakdown_streams"]["units"]),
+                      "setup_stream_units": len(data["setup_streams"]["units"]),
                       "release_steps": sum(len(data["release_schedules"][k]["steps"]) for k in ("correction", "profile", "boundary", "clamp")),
                       "release_arrivals": sum(len(r["arrival_ticks"]) for r in data["release_schedules"]["runs"])}))
     return 0

@@ -34,7 +34,10 @@ func setupDoc(t *testing.T) []goldenCase {
 // ticks) and scheduled_processing_ticks = ∫min(U − K − Z, S), the other
 // groups where their features apply, blocking and buffers exactly, and the
 // existing members: lead time, queue wait up to the grant (D-055),
-// utilization ∫U/(C·T) with the changeover inside U.
+// utilization ∫U/(C·T) with the changeover inside U. Review round 1 added
+// G-SU11 (M4: a changeover starting exactly at W is complete, D-097 (f)
+// start >= W) and G-SU12 (M3: a changeover ending after the run's last
+// observation, before H, ended by Collector.Finish).
 func TestSetupGoldenResults(t *testing.T) {
 	checked := 0
 	for _, c := range setupDoc(t) {
@@ -46,8 +49,8 @@ func TestSetupGoldenResults(t *testing.T) {
 			checkGoldenResult(t, run(t, &Engine{}, caseInput(t, c)).Result, *c.Expected.Result)
 		})
 	}
-	if checked != 8 {
-		t.Fatalf("%d cases with an expected result, want 8", checked)
+	if checked != 10 {
+		t.Fatalf("%d cases with an expected result, want 10", checked)
 	}
 }
 

@@ -87,7 +87,9 @@ func TestBatchSetupObservationDigests(t *testing.T) {
 	for _, c := range lock.Cases {
 		want[c.ID] = fmt.Sprintf("%d %s", c.Observations, c.Digest)
 	}
-	if lock.EngineVersion != "des-go-0.5.0" || len(got) != 33 || !maps.Equal(got, want) {
+	// 36: review round 1 added G-BT21, G-SU11 and G-SU12 (the cases past
+	// the validator, G-BT18, G-BT19, G-BT20 and G-BT22, are not locked).
+	if lock.EngineVersion != "des-go-0.5.0" || len(got) != 36 || !maps.Equal(got, want) {
 		var rows []string
 		for _, id := range order {
 			rows = append(rows, fmt.Sprintf("%s=%s", id, got[id]))

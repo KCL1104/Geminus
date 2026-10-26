@@ -1,5 +1,5 @@
 {
-  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.5.0, T-050) on the cases of batch-goldens.json and setup-goldens.json the validator accepts (all but G-BT13) and on their eight stochastic reference cases BT-S1-BT-S4 and SU-S1-SU-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestBatchGoldens, TestBatchStall, TestBatchRoutingDrawsInMemberOrder, TestSetupGoldens, TestSetupStreamsPerUnit) and after the SimPy reference agreed (scripts/simpy_batch_reference.py: 15 of the goldens and the eight reference cases), and is checked besides by the observation-only checker (kernel_check_batch_test.go, kernel_check_setup_test.go); these digests make any later change to batches, changeovers, their observations or the sequence numbers visible. The locks of des-go-0.1.0 to des-go-0.4.0 (kernel-observation-digests.json, -0.2.0.json, -0.3.0.json, -0.4.0.json) are kept as they were and still hold (ADR-026 D-047). G-BT15 and G-BT16 were added when mutation run 1 found two batch mutants no test killed (expired-limit-scheduled, stale-timeout-not-ignored); each entry was taken after the case's hand-derived expectation passed, the other entries are unchanged. G-BT17 was added when mutation run 2 found a Result mutant no test killed (batch-bundle-per-member); its entry was taken after the case's hand-derived expectations passed, the other entries are unchanged.",
+  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.5.0, T-050) on the cases of batch-goldens.json and setup-goldens.json the validator accepts (all but G-BT13, and G-BT18, G-BT19, G-BT20 and G-BT22 of review round 1, which run past the validator) and on their eight stochastic reference cases BT-S1-BT-S4 and SU-S1-SU-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestBatchGoldens, TestBatchStall, TestBatchRoutingDrawsInMemberOrder, TestSetupGoldens, TestSetupStreamsPerUnit) and after the SimPy reference agreed (scripts/simpy_batch_reference.py: 15 of the goldens and the eight reference cases), and is checked besides by the observation-only checker (kernel_check_batch_test.go, kernel_check_setup_test.go); these digests make any later change to batches, changeovers, their observations or the sequence numbers visible. The locks of des-go-0.1.0 to des-go-0.4.0 (kernel-observation-digests.json, -0.2.0.json, -0.3.0.json, -0.4.0.json) are kept as they were and still hold (ADR-026 D-047). G-BT15 and G-BT16 were added when mutation run 1 found two batch mutants no test killed (expired-limit-scheduled, stale-timeout-not-ignored); each entry was taken after the case's hand-derived expectation passed, the other entries are unchanged. G-BT17 was added when mutation run 2 found a Result mutant no test killed (batch-bundle-per-member); its entry was taken after the case's hand-derived expectations passed, the other entries are unchanged. G-BT21, G-SU11 and G-SU12 were added in T-050 review round 1 (findings L1, M4 and M3: a batch process without resources, a changeover starting exactly at W, a changeover ending after the run's last observation); each entry was taken after the case's hand-derived expectations passed (checks/evidence/2026-10-26-T-050-r1/first-run-new-goldens.log), the other entries are unchanged (checks/evidence/2026-10-26-T-050-r1/scripts/add_lock_entries.py refuses otherwise).",
   "engine_version": "des-go-0.5.0",
   "encoding": "SHA-256 over each observation's kind, tick, seq, entity, node, resource, value, at and batch as little-endian 64-bit words, in observation order (kernel-observation-digests-0.4.0.json's encoding with Observation.Batch as a ninth word; ObsBatchStart is kind 17, its value the members; ObsSetup is kind 18, its at the unit and its value the changeover ticks)",
   "cases": [
@@ -84,6 +84,11 @@
       "sha256": "968165578f7d0c6d3a3cc0f1b9cf2b2b9cabf1ffde050b54d4329d290f1beeb9"
     },
     {
+      "id": "G-BT21",
+      "observations": 22,
+      "sha256": "2aa36148c004d824cc2d54569d305040224fc1eef5f7a27e7000a77000c34ca2"
+    },
+    {
       "id": "BT-S1",
       "observations": 1144,
       "sha256": "9fa4e0dbf29489434c6bdc7d52d77d67b2e63d6efab7ed19444150e7c41ecfa3"
@@ -147,6 +152,16 @@
       "id": "G-SU10",
       "observations": 40,
       "sha256": "0436f4940f6f922e6f4634a204fd9a71e0052d2c10101c42934a48c599369836"
+    },
+    {
+      "id": "G-SU11",
+      "observations": 53,
+      "sha256": "b48fa214872c8a0f5f2f1d4d1130f49437e83898ffd5e1c7b8e1138403037d1f"
+    },
+    {
+      "id": "G-SU12",
+      "observations": 43,
+      "sha256": "c87862506f4193423f02040aa6d210c305fc7ddc49990e9e6fc3e32e2ec45c34"
     },
     {
       "id": "SU-S1",

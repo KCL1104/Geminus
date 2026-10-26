@@ -1,0 +1,138 @@
+# 2026-10-26T10:26:44Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: checks/evidence/2026-10-26-T-050-r1/scripts/first-run.sh
+=== RUN   TestBatchGoldens
+=== RUN   TestBatchGoldens/G-BT1
+=== RUN   TestBatchGoldens/G-BT2
+=== RUN   TestBatchGoldens/G-BT3
+=== RUN   TestBatchGoldens/G-BT4
+=== RUN   TestBatchGoldens/G-BT6
+=== RUN   TestBatchGoldens/G-BT7
+=== RUN   TestBatchGoldens/G-BT8
+=== RUN   TestBatchGoldens/G-BT9
+=== RUN   TestBatchGoldens/G-BT10
+=== RUN   TestBatchGoldens/G-BT11
+=== RUN   TestBatchGoldens/G-BT12
+=== RUN   TestBatchGoldens/G-BT14
+=== RUN   TestBatchGoldens/G-BT15
+=== RUN   TestBatchGoldens/G-BT16
+=== RUN   TestBatchGoldens/G-BT17
+=== RUN   TestBatchGoldens/G-BT19
+=== RUN   TestBatchGoldens/G-BT21
+--- PASS: TestBatchGoldens (0.06s)
+    --- PASS: TestBatchGoldens/G-BT1 (0.04s)
+    --- PASS: TestBatchGoldens/G-BT2 (0.01s)
+    --- PASS: TestBatchGoldens/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT14 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT15 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT16 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT17 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT19 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT21 (0.00s)
+=== RUN   TestBatchStall
+=== RUN   TestBatchStall/G-BT13
+=== RUN   TestBatchStall/G-BT18
+--- PASS: TestBatchStall (0.00s)
+    --- PASS: TestBatchStall/G-BT13 (0.00s)
+    --- PASS: TestBatchStall/G-BT18 (0.00s)
+=== RUN   TestBatchDeadlocks
+=== RUN   TestBatchDeadlocks/G-BT20
+=== RUN   TestBatchDeadlocks/G-BT22
+--- PASS: TestBatchDeadlocks (0.01s)
+    --- PASS: TestBatchDeadlocks/G-BT20 (0.00s)
+    --- PASS: TestBatchDeadlocks/G-BT22 (0.00s)
+=== RUN   TestSetupGoldens
+=== RUN   TestSetupGoldens/G-SU1
+=== RUN   TestSetupGoldens/G-SU2
+=== RUN   TestSetupGoldens/G-SU3
+=== RUN   TestSetupGoldens/G-SU6
+=== RUN   TestSetupGoldens/G-SU7
+=== RUN   TestSetupGoldens/G-SU8
+=== RUN   TestSetupGoldens/G-SU9
+=== RUN   TestSetupGoldens/G-SU10
+=== RUN   TestSetupGoldens/G-SU11
+=== RUN   TestSetupGoldens/G-SU12
+--- PASS: TestSetupGoldens (0.01s)
+    --- PASS: TestSetupGoldens/G-SU1 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU2 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU3 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU6 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU7 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU8 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU9 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU10 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU11 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU12 (0.00s)
+=== RUN   TestSetupStreamsPerUnit
+--- PASS: TestSetupStreamsPerUnit (0.01s)
+=== RUN   TestSetupStreamVectors
+--- PASS: TestSetupStreamVectors (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.108s
+=== RUN   TestBatchGoldenResults
+=== RUN   TestBatchGoldenResults/G-BT1
+=== RUN   TestBatchGoldenResults/G-BT2
+=== RUN   TestBatchGoldenResults/G-BT3
+=== RUN   TestBatchGoldenResults/G-BT4
+=== RUN   TestBatchGoldenResults/G-BT6
+=== RUN   TestBatchGoldenResults/G-BT7
+=== RUN   TestBatchGoldenResults/G-BT8
+=== RUN   TestBatchGoldenResults/G-BT9
+=== RUN   TestBatchGoldenResults/G-BT10
+=== RUN   TestBatchGoldenResults/G-BT11
+=== RUN   TestBatchGoldenResults/G-BT12
+=== RUN   TestBatchGoldenResults/G-BT14
+=== RUN   TestBatchGoldenResults/G-BT15
+=== RUN   TestBatchGoldenResults/G-BT16
+=== RUN   TestBatchGoldenResults/G-BT17
+=== RUN   TestBatchGoldenResults/G-BT21
+--- PASS: TestBatchGoldenResults (0.08s)
+    --- PASS: TestBatchGoldenResults/G-BT1 (0.05s)
+    --- PASS: TestBatchGoldenResults/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT9 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT14 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT15 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT16 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT17 (0.00s)
+    --- PASS: TestBatchGoldenResults/G-BT21 (0.00s)
+=== RUN   TestSetupGoldenResults
+=== RUN   TestSetupGoldenResults/G-SU1
+=== RUN   TestSetupGoldenResults/G-SU2
+=== RUN   TestSetupGoldenResults/G-SU3
+=== RUN   TestSetupGoldenResults/G-SU6
+=== RUN   TestSetupGoldenResults/G-SU7
+=== RUN   TestSetupGoldenResults/G-SU8
+=== RUN   TestSetupGoldenResults/G-SU9
+=== RUN   TestSetupGoldenResults/G-SU10
+=== RUN   TestSetupGoldenResults/G-SU11
+=== RUN   TestSetupGoldenResults/G-SU12
+--- PASS: TestSetupGoldenResults (0.02s)
+    --- PASS: TestSetupGoldenResults/G-SU1 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU2 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU3 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU6 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU7 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU8 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU9 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU10 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU11 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU12 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.116s
+# engine exit=0 des exit=0
+# exit=0 elapsed=2s

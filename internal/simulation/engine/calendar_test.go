@@ -50,6 +50,16 @@ type calendarCase struct {
 			Deadline int64  `json:"deadline"`
 			Reason   string `json:"reason"`
 		} `json:"stalled"`
+		// D-050 B1 on a batch golden past the validator (T-050 review
+		// round 1: G-BT20, G-BT22); calendar-goldens.json has none.
+		Deadlock *struct {
+			Tick   int64  `json:"tick"`
+			Entity string `json:"entity"`
+			Node   string `json:"node"`
+			Since  int64  `json:"since"`
+			Queued bool   `json:"queued"`
+			Reason string `json:"reason"`
+		} `json:"deadlock"`
 	} `json:"expected"`
 }
 

@@ -676,6 +676,183 @@ cases.append({
     "simpy": "refused: a finite buffer (the batch and changeover reference has no blocking; T-047's reference has no batches)",
 })
 
+# ================================================================ review round 1 (H-003, 2026-10-26)
+# Added for the findings of T-050 review round 1 (checks/evidence/2026-10-26-T-050-r1/reviewer/REVIEW.md).
+# Each case was derived by hand below before the kernel ran it; the cases
+# above are unchanged.
+
+# ---------------------------------------------------------------- G-BT18
+# Review round 1 M1 (the reviewer's probe P1): B2's since of a batch
+# request is, as for any request, the first tick at whose end it is in
+# B2's state (D-074 (c)), not the tick the batch became ready; in G-BT13
+# the two are the same tick (20), here they differ (20 and 100).
+cases.append({
+    "id": "G-BT18",
+    "title": "D-050 B2 on a batch request that became ready while its bundle was in use: since is the end of the first tick in B2's state (D-074 (c)), not the ready tick",
+    "model": model("G-BT18", gd1_resources,
+                   [source("srcp", 10, 1), source("srcw", 20, 1), process("pre", 90, [("machine", 1)]),
+                    process("work", 30, [("machine", 1), ("operator", 1)], (1, 1)), sink("done")],
+                   [flow("srcp", "pre"), flow("pre", "done"), flow("srcw", "work"), flow("work", "done")],
+                   calendars=[{"id": "op", "period": 1440, "shifts": [{"start": 960, "end": 1440}]}]),
+    "config": config(1500),
+    "validator": {"codes_at": [["STALL_RISK", "/nodes/3/requires"]]},
+    "derivation": [
+        "G-BT13's resources (G-D1's bundle): the machine breaks down (TTF 960, TTR 480, constant, calendar time) and has no calendar; the operator (human) is on shift [960,1440) of each day. work is a batch process (min = max = 1) needing both; the validator refuses its bundle (D-050 R4, STALL_RISK at /nodes/3/requires: nodes in document order srcp, srcw, pre, work, done) and the test runs it past the validator. pre needs the machine alone (no partner: R4 does not apply). srcp makes one board at 10 into pre (service 90); srcw one board at 20 into work.",
+        "t=0 (sources in ID order, then the calendar, then the failure clock; D-048): srcp's arrival at 10 (seq 1), srcw's at 20 (seq 2), the operator's calendar: first change at 960 (seq 3), the machine's clock: FAILURE at 960 (seq 4).",
+        "t=10: P1 (r0/srcp/1, seq 1; max_entities 1: no next arrival) enters pre, DISPATCH (seq 5): the machine fits (0 + 1 <= min(S = C = 1, C - D = 1)): P1 at pre 10-100 (SERVICE_COMPLETE seq 6).",
+        "t=20: W1 (r0/srcw/1, seq 2; no next) enters work's buffer: 1 = max_size: ready (min = max: no BATCH_TIMEOUT): the batch request (made now, at 20) is at the front of the machine's and the operator's FIFOs (P1's request left the machine's at its grant), DISPATCH (seq 7): the machine is in use (1 + 1 > 1) and the operator off shift (0 + 1 > min(0, 1)): held. At the tick's end the request is held but the machine is in use (by P1): not B2's state (D-050 B2: none of its bundle in use).",
+        "t=100: SERVICE_COMPLETE (seq 6): the machine's release (in use 0) wakes the front held request, DISPATCH (seq 8), P1 completes at 100. DISPATCH (seq 8): the machine fits now, the operator does not (S = 0): held again. At the tick's end it is held and neither the machine nor the operator is in use: B2's state from the end of this tick, since = 100 (D-074 (c): the first tick at whose end it is in the state); TTRmax 480 (the machine's constant TTR), X_end 0 (no exceptions): deadline next_fit(max(100, 0) + 480) = next_fit(580): the first tick from 580 at which the machine (always on shift) and the operator are on shift together: 960.",
+        "t=960: CAPACITY_CHANGE (seq 3): the next change at 1440 (seq 9); the operator 0 -> 1 wakes the request, DISPATCH (seq 10). FAILURE (seq 4): the machine is idle: down at once (REPAIR at 1440, seq 11). DISPATCH (seq 10): the machine has 0 + 1 > C - D = 0: held. At the tick's end it is still in B2's state (woken and held again within a tick does not reset since, D-074 (c)) and 960 >= 960: ErrStalled.",
+        "The batch request has no entity of its own: the error names the batch's oldest member, W1 (D-096 (g)), at work, since 100 (6,000,000 ticks), deadline 960 (57,600,000), at tick 960. The batch became ready at 20 (1,200,000): a reading of since as the ready tick would report 20.",
+    ],
+    "expected": {"starts": {"pre": [[e("srcp", 1), 10]]}, "completions": [[e("srcp", 1), 100]], "batches": [], "blocks": [],
+                 "downs": [["machine", 0, 960, None]], "pending": [], "capacities": [["operator", 960, 1]],
+                 "stalled": {"tick": ticks(960), "entity": e("srcw", 1), "node": "work", "since": ticks(100), "deadline": ticks(960),
+                             "reason": f"the replication stalled at tick {ticks(960)}: {e('srcw', 1)} waits for node work since tick {ticks(100)} with none of its bundle in use; it was due by tick {ticks(960)}"}},
+    "simpy": "not compared: SimPy does not detect stalls",
+})
+
+# ---------------------------------------------------------------- G-BT19, G-BT20
+# Review round 1 M2 (the reviewer's probe P2): G-D2 (blocking-goldens.json,
+# R1 bypassed) plus an unrelated resource-free batch process. ADR-026 D-050
+# B1 (ACCEPTED, H-018) reports a circular wait only when no SERVICE_COMPLETE,
+# DELAY_COMPLETE or BATCH_TIMEOUT is in the heap nor was discarded for being
+# after the horizon (option A of D-096 (g), implemented). G-BT19: the batch's
+# wait limit is after the horizon, so B1 stays off for the rest of the run;
+# under D-096 (g) B (not counting a limit after the horizon) the same run is
+# ErrDeadlock at 7, G-D2's. G-BT20: the limit is within the horizon, so B1
+# waits for it under A and B alike and reports once the batch has ended.
+gd2_resources = [res("r1"), res("r2")]
+gd2_nodes = [source("src", 1), queue("q1", 1), process("s1", 2, [("r1", 1)]), queue("q2", 1), process("s2", 3, [("r2", 1)]),
+             source("z", 1), sink("done")]
+gd2_flows = [flow("src", "q1"), flow("q1", "s1"), flow("s1", "q2"), flow("q2", "s2"), flow("s2", "q1"), flow("z", "done")]
+gd2_codes = [["BLOCKING_CYCLE", "/nodes/1/capacity"], ["BLOCKING_CYCLE", "/nodes/3/capacity"]] + \
+            [["NO_REACHABLE_SINK", f"/nodes/{i}"] for i in range(5)]
+
+
+def gd2_with_batch(name, max_wait):
+    return model(name, gd2_resources,
+                 gd2_nodes + [source("bsrc", 1, 1), process("bp", 5, (), (1, 2, max_wait))],
+                 gd2_flows + [flow("bsrc", "bp"), flow("bp", "done")])
+
+
+gd2_derivation = [
+    "G-D2's model (blocking-goldens.json): src makes a board every minute into q1 (capacity 1) -> s1 (r1, 2 min) -> q2 (capacity 1) -> s2 (r2, 3 min) -> back to q1; z makes a board every minute into done. The validator refuses it (D-050 R1: BLOCKING_CYCLE at q1 and q2; the cycle's nodes reach no sink); the test runs it past the validator. Added: bsrc makes one board b1 at 1 into bp, a batch process with no resource (min 1, max 2, service 5) -> done; bsrc and bp are valid and reach done, so the validator's issues are G-D2's.",
+    "t=0: the first arrivals in source ID order (the Program's nodes are in ID order): bsrc at 1, src at 1, z at 1. Every minute src's arrival comes before z's (each schedules its next one in that order).",
+    "G-D2's run, by hand: t=1: e1 (r0/src/1) enters q1, DISPATCH: e1 at s1 1-3; z/1 completes. t=2: e2 enters q1, DISPATCH: r1 busy, e2 held. t=3: e1's s1 end: q2 holds 0 of 1, e1 enters it, r1 released (wakes e2); e3 arrives: q1 is full (e2): blocked at src; DISPATCH: e2 granted r1 (3-5), the place it frees in q1 lets e3 in (blocked 3-3, a 0-minute block), e3 held; e1 granted r2 (3-6). t=4: e4 blocked at src. t=5: e2's s1 end: q2 holds 0 (e1 left it at its grant), e2 enters it, r1 released; e5 blocked at src behind e4; DISPATCH: e3 granted r1 (5-7), e4 moves into q1 (blocked 4-5), held; e2 held at s2 (r2 busy). t=6: e1's s2 end: q1 is full (e4): e1 blocked at s2, holding r2; e6 blocked at src. t=7: e3's s1 end (priority 0, before the tick's arrivals): q2 is full (e2): e3 blocked at s1, holding r1. Now nothing is in service or in a delay, e2 (q2, needs r2) and e4 (q1, needs r1) are held and release-bound: the circular wait; G-D2 reports ErrDeadlock at 7 naming the earliest blocked entity still blocked, r0/src/5 at src since 5.",
+]
+
+cases.append({
+    "id": "G-BT19",
+    "title": "a BATCH_TIMEOUT due after the horizon keeps D-050 B1 off for the rest of the run (ADR-026 D-050 B1; D-096 (g) A): G-D2's circular wait runs to the horizon with no error",
+    "model": gd2_with_batch("G-BT19", 100),
+    "config": config(60),
+    "validator": {"codes_at": gd2_codes},
+    "derivation": gd2_derivation + [
+        "t=1 (bp): b1 enters bp's empty buffer: the oldest; min 1 < max 2, so its wait limit 1 + 100 = 101 is due, after the horizon (60): the BATCH_TIMEOUT is not scheduled (no sequence) but counts as pending for B1 for the rest of the run (ADR-026 D-050 B1: no BATCH_TIMEOUT in the heap nor discarded for being after the horizon; D-096 (g) A). 1 >= min_size, but it has waited 0 < 100: not ready, no dispatch.",
+        "t=7: after e3's SERVICE_COMPLETE nothing is in service or in a delay and the held requests are release-bound, but a BATCH_TIMEOUT is pending (b1's, after the horizon): B1 does not report. Under D-096 (g) B (a limit after the horizon is not counted) B1 would report here as in G-D2: ErrDeadlock at 7 (420,000), r0/src/5 at src since 5 (300,000).",
+        "t=7..60: every minute src's arrival is blocked at src (release backlog, src/7 ... src/60; none moves on: q1 stays full) and z's completes; nothing else happens: no dispatch, no BATCH_TIMEOUT, B1 stays off. At 60 the next arrivals (61) are after the horizon. b1 never starts.",
+        "129 events: 121 arrivals (src 60, z 60, bsrc 1), 4 SERVICE_COMPLETEs (s1 at 3, 5, 7; s2 at 6), 4 DISPATCHes (1, 2, 3, 5). The run ends at the horizon with no error: 121 created, 60 exited (z/1 ... z/60), 61 censored (the 60 of src and b1).",
+    ],
+    "expected": {
+        "starts": {"s1": [[e("src", 1), 1], [e("src", 2), 3], [e("src", 3), 5]], "s2": [[e("src", 1), 3]]},
+        "completions": [[e("z", n), n] for n in range(1, 61)],
+        "batches": [],
+        "blocks": [[e("src", 3), "src", 3, 3], [e("src", 4), "src", 4, 5], [e("src", 5), "src", 5, None], [e("src", 1), "s2", 6, None],
+                   [e("src", 6), "src", 6, None], [e("src", 3), "s1", 7, None]] + [[e("src", n), "src", n, None] for n in range(7, 61)],
+        "downs": [], "pending": [], "capacities": [],
+        "events": 129,
+    },
+    "simpy": "not compared: SimPy does not detect deadlocks",
+})
+
+cases.append({
+    "id": "G-BT20",
+    "title": "a BATCH_TIMEOUT due within the horizon holds D-050 B1 back until it fires; once the batch it starts has ended, B1 reports the circular wait (D-096 (g), A and B alike)",
+    "model": gd2_with_batch("G-BT20", 30),
+    "config": config(60),
+    "validator": {"codes_at": gd2_codes},
+    "derivation": gd2_derivation + [
+        "t=1 (bp): b1 enters bp's empty buffer: the oldest; its wait limit 1 + 30 = 31 is within the horizon: BATCH_TIMEOUT at 31 (priority 15), pending for B1. Not ready (waited 0 < 30), no dispatch.",
+        "t=7: after e3's SERVICE_COMPLETE the circular wait has formed, but b1's BATCH_TIMEOUT (31) is pending: B1 does not report (under D-096 (g) A and B alike: it is within the horizon).",
+        "t=7..30: every minute src's arrival is blocked at src (src/7 ... src/30) and z's completes; B1 stays off (the timeout is pending).",
+        "t=31: src/31 blocked, z/31 completes (priority 10); then the BATCH_TIMEOUT (priority 15), live (b1 is still the oldest): 1 >= min_size and 31 - 1 = 30 >= 30: ready: the batch request (no resource: a candidate at once), DISPATCH: bp's batch 1 = (b1) at 31, SERVICE_COMPLETE at 36. The buffer is empty: no new timeout. B1: the batch is in service.",
+        "t=32..35: src/32 ... src/35 blocked, z/32 ... z/35 complete; the batch is in service.",
+        "t=36: bp's SERVICE_COMPLETE (priority 0, before the tick's arrivals): no bundle to release and no dispatch (a batch process without resources, G-BT21); b1 completes at done. After the event no dispatch is due: nothing in service or in a delay, no BATCH_TIMEOUT pending, entities blocked, e2 and e4 held and release-bound: ErrDeadlock at 36 (2,160,000 ticks) naming the earliest entity still blocked, r0/src/5 at src since 5 (300,000), as G-D2. src's and z's arrivals at 36 are not processed.",
+    ],
+    "expected": {
+        "starts": {"s1": [[e("src", 1), 1], [e("src", 2), 3], [e("src", 3), 5]], "s2": [[e("src", 1), 3]], "bp": [[e("bsrc", 1), 31]]},
+        "completions": [[e("z", n), n] for n in range(1, 36)] + [[e("bsrc", 1), 36]],
+        "batches": [["bp", 1, 31, [e("bsrc", 1)]]],
+        "blocks": [[e("src", 3), "src", 3, 3], [e("src", 4), "src", 4, 5], [e("src", 5), "src", 5, None], [e("src", 1), "s2", 6, None],
+                   [e("src", 6), "src", 6, None], [e("src", 3), "s1", 7, None]] + [[e("src", n), "src", n, None] for n in range(7, 36)],
+        "downs": [], "pending": [], "capacities": [],
+        "deadlock": {"tick": ticks(36), "entity": e("src", 5), "node": "src", "since": ticks(5), "queued": False,
+                     "reason": f"the replication deadlocked at tick {ticks(36)}: {e('src', 5)} is blocked at node src since tick {ticks(5)}"},
+    },
+    "simpy": "not compared: SimPy does not detect deadlocks",
+})
+
+# ---------------------------------------------------------------- G-BT21
+# Review round 1 L1 (the reviewer's probe P4): a batch process with no
+# resource (valid) releases no bundle at its end, so, like any service end
+# that releases nothing, it asks for no dispatch.
+cases.append({
+    "id": "G-BT21",
+    "title": "a batch process with no resource: its batch's end releases no bundle and asks for no dispatch (the event count and the sequence numbers)",
+    "model": model("G-BT21", [res("m")], [source("src", 10, 4), process("oven", 5, (), (2, 2)), sink("done")],
+                   [flow("src", "oven"), flow("oven", "done")]),
+    "config": config(100),
+    "derivation": [
+        "src every 10 minutes, 4 entities (10, 20, 30, 40) -> oven, a batch process with no resource (min = max = 2, service 5) -> done. The resource m is needed by no process (valid; it is only in use 0).",
+        "With min = max no BATCH_TIMEOUT is scheduled (D-096 (b)); an entry that does not make the batch ready asks for no dispatch (D-096 (e)).",
+        "t=0: the first arrival at 10 (seq 1). t=10: e1 (seq 1; next at 20, seq 2) enters oven's buffer: 1 of 2: not ready, no dispatch.",
+        "t=20: e2 (seq 2; next at 30, seq 3) enters: 2 = max_size: ready: the batch request needs no resource (a candidate at once), DISPATCH (seq 4): no bundle (no ObsResource), BatchStart b1 (e1, e2), ServiceStart e1, e2 at 20; SERVICE_COMPLETE at 25 (seq 5). The buffer is empty again.",
+        "t=25: SERVICE_COMPLETE (seq 5): no member is blocked and there is no bundle to release, so no dispatch is asked (as a service end that releases nothing); ServiceEnd and Complete e1, then e2, at 25.",
+        "t=30: e3 (seq 3; next at 40, seq 6): 1 waits. t=40: e4 (seq 6, the 4th: no next arrival, no sequence): 2 wait: ready, DISPATCH (seq 7): b2 (e3, e4) at 40, SERVICE_COMPLETE at 45 (seq 8). t=45: SERVICE_COMPLETE (seq 8): no dispatch; e3, e4 complete.",
+        "8 events: 4 arrivals, 2 DISPATCHes (20, 40), 2 SERVICE_COMPLETEs (25, 45); the BatchStarts in the DISPATCHes seq 4 and 7. A dispatch asked at each batch's end would make 10 events and put b2 in DISPATCH seq 8.",
+        "Result over [0,100]: 4 completed, none censored; lead times e1 15, e2 5, e3 15, e4 5; queue waits at oven (no explicit queue: key oven) 10, 0, 10, 0 (from the entry to the batch's start); m in use 0 of 100 minutes (utilization 0); no resource feature applies: no resource_states, no blocking, no buffers; batches[oven]: 2 started, 4 members.",
+    ],
+    "expected": {
+        "starts": {"oven": [[e("src", 1), 20], [e("src", 2), 20], [e("src", 3), 40], [e("src", 4), 40]]},
+        "completions": [[e("src", 1), 25], [e("src", 2), 25], [e("src", 3), 45], [e("src", 4), 45]],
+        "batches": [["oven", 1, 20, [e("src", 1), e("src", 2)]], ["oven", 2, 40, [e("src", 3), e("src", 4)]]],
+        "batch_start_seqs": [["oven", 1, 4], ["oven", 2, 7]],
+        "blocks": [], "downs": [], "pending": [], "capacities": [],
+        "events": 8,
+        "result": {"completed_count": 4, "censored_entities": 0, "lead_times_minutes": [15, 5, 15, 5],
+                   "queue_waits_minutes": {"oven": [10, 0, 10, 0]}, "resource_utilization": {"m": 0},
+                   "resource_states": None, "blocking": None, "buffers": None,
+                   "batches": {"oven": {"batches_started": 2, "members_started": 4}}},
+    },
+    "simpy": "compare",
+})
+
+# ---------------------------------------------------------------- G-BT22
+# Review round 1 L2: D-050 B1's report without a blocked entity (Queued)
+# for a batch request names its oldest member and the tick the request was
+# made (the batch became ready), not the member's entry. Reachable only past
+# the validator: with no entity blocked and none in service no unit is in
+# use, so a release-bound held request needs more units than the capacity.
+cases.append({
+    "id": "G-BT22",
+    "title": "D-050 B1 with no blocked entity on a batch request (validator bypassed: 2 units of a capacity-1 resource): ErrDeadlock names its oldest member, since the tick the batch became ready",
+    "model": model("G-BT22", [res("r")], [source("src", 1, 2), queue("q", 2), process("bp", 5, [("r", 2)], (2, 2)), sink("done")],
+                   [flow("src", "q"), flow("q", "bp"), flow("bp", "done")]),
+    "config": config(60),
+    "validator": {"codes_at": [["RESOURCE_REQUIREMENT_INVALID", "/nodes/2/requires/0/units"]]},
+    "derivation": [
+        "src makes 2 boards (at 1 and 2) into q (capacity 2 = max_size: valid for BATCH_INVALID) -> bp, a batch process (min = max = 2, service 5) needing 2 units of r, whose capacity is 1 -> done. The validator refuses the requirement (RESOURCE_REQUIREMENT_INVALID at /nodes/2/requires/0/units); the test runs it past the validator. The model has a finite buffer, so B1 runs after every event with no dispatch due (D-064 (a)).",
+        "t=0: the first arrival at 1 (seq 1). t=1: e1 (seq 1; next at 2, seq 2) enters q (bp's buffer, 1 of 2): min = max: no BATCH_TIMEOUT, not ready, no dispatch. B1: no entity blocked, no held candidate: nothing.",
+        "t=2: e2 (seq 2, the last) enters: 2 = max_size: ready: the batch request is made now (2 minutes), at the front of r's FIFO, DISPATCH (seq 3). DISPATCH: r has 0 + 2 > min(S = 1, C - D = 1): held (it can never fit).",
+        "After the DISPATCH no dispatch is due: B1: nothing in service or in a delay, no BATCH_TIMEOUT, no entity blocked, one held candidate, release-bound (0 + 2 > C = 1): ErrDeadlock at 2 (120,000 ticks). With no entity blocked the report names the earliest held request (Queued: 'waits for'): the batch request, by its oldest member e1 (r0/src/1), at bp, since the tick the request was made, 2 (120,000; D-096 (g)). e1 entered the buffer at 1 (60,000): since is not the member's entry.",
+    ],
+    "expected": {"starts": {}, "completions": [], "batches": [], "blocks": [], "downs": [], "pending": [], "capacities": [],
+                 "deadlock": {"tick": ticks(2), "entity": e("src", 1), "node": "bp", "since": ticks(2), "queued": True,
+                              "reason": f"the replication deadlocked at tick {ticks(2)}: {e('src', 1)} waits for node bp since tick {ticks(2)}"}},
+    "simpy": "not compared: SimPy does not detect deadlocks",
+})
+
 # ---------------------------------------------------------------- the SimPy reference (stochastic)
 # Fixed before either side ran (T-050): 30 replications of 3000 minutes,
 # warmup 300, the tolerance of blocking-goldens.json (T-047). Compared by

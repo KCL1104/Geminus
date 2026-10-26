@@ -167,24 +167,28 @@ func (x batchExtras) want(t *testing.T) (batches, seqs []string) {
 	return batches, seqs
 }
 
-// Every batch golden but the stall (G-BT13, below) and the routing draws
-// (G-BT5, below): service starts, completions, blocks, downtimes, waiting
-// failures, units on shift, every batch with its members and, where the
-// case gives them, the sequence numbers of the BatchStarts and the event
-// count, against the hand derivation. These fix D-054 (a batch is ready
-// at max_size, or at min_size once its oldest has waited max_wait; one
-// request, one draw, members start and end together; a member blocked at
-// the end keeps the bundle until the last moves on), D-048 (BATCH_TIMEOUT
-// at priority 15, after the tick's arrivals), D-096 (no timeout with min =
-// max, stale ones ignored, an expired limit checked at once, as many
-// unblocks as places a grant frees) and the interactions with breakdowns
-// and calendars (finish-first).
+// Every batch golden but the stalls (G-BT13, G-BT18), the deadlocks
+// (G-BT20, G-BT22) and the routing draws (G-BT5), below: service starts,
+// completions, blocks, downtimes, waiting failures, units on shift, every
+// batch with its members and, where the case gives them, the sequence
+// numbers of the BatchStarts and the event count, against the hand
+// derivation. These fix D-054 (a batch is ready at max_size, or at
+// min_size once its oldest has waited max_wait; one request, one draw,
+// members start and end together; a member blocked at the end keeps the
+// bundle until the last moves on), D-048 (BATCH_TIMEOUT at priority 15,
+// after the tick's arrivals), D-096 (no timeout with min = max, stale ones
+// ignored, an expired limit checked at once, as many unblocks as places a
+// grant frees) and the interactions with breakdowns and calendars
+// (finish-first). Review round 1 added G-BT19 (a BATCH_TIMEOUT after the
+// horizon keeps D-050 B1 off: ADR-026 D-050 B1, D-096 (g) A; the run ends
+// at the horizon without an error) and G-BT21 (a batch process without
+// resources asks for no dispatch at a batch's end).
 func TestBatchGoldens(t *testing.T) {
 	cases, extras := batchGoldens(t)
 	ran := 0
 	for _, c := range cases {
 		x := extras[c.ID]
-		if c.Expected.Stalled != nil || x.Expected.Routing != nil {
+		if c.Expected.Stalled != nil || c.Expected.Deadlock != nil || x.Expected.Routing != nil {
 			continue
 		}
 		ran++
@@ -215,30 +219,83 @@ func TestBatchGoldens(t *testing.T) {
 			}
 		})
 	}
-	if ran != 15 {
-		t.Errorf("%d batch goldens ran, want 15", ran)
+	if ran != 17 {
+		t.Errorf("%d batch goldens ran, want 17", ran)
 	}
 }
 
-// G-BT13 (D-050 B2 on a batch request, R4 bypassed): ErrStalled at 960,
-// naming the batch's oldest member and the end of the tick its request
-// entered the state (D-096 (g)).
+// D-050 B2 on a batch request (R4 bypassed): ErrStalled names the batch's
+// oldest member (D-096 (g)) and, as for any request, since the end of the
+// first tick it is in B2's state (D-074 (c)). G-BT13: ErrStalled at 960,
+// the request in the state from the tick it was made (20). G-BT18 (review
+// round 1 M1): the batch is ready at 20 while its machine is in use by
+// another process until 100, so since is 100, not the ready tick.
 func TestBatchStall(t *testing.T) {
 	cases, _ := batchGoldens(t)
-	i := slices.IndexFunc(cases, func(c calendarCase) bool { return c.ID == "G-BT13" })
-	c := cases[i]
-	p := c.compile(t)
-	col := &collect{}
-	_, _, err := runKernel(context.Background(), p, 0, NewBudget(1_000_000), col)
-	var se *StalledError
-	if !errors.As(err, &se) || !errors.Is(err, ErrStalled) {
-		t.Fatalf("want ErrStalled, got %v", err)
+	ran := 0
+	for _, c := range cases {
+		if c.Expected.Stalled == nil {
+			continue
+		}
+		ran++
+		t.Run(c.ID, func(t *testing.T) {
+			p := c.compile(t)
+			col := &collect{}
+			_, _, err := runKernel(context.Background(), p, 0, NewBudget(1_000_000), col)
+			var se *StalledError
+			if !errors.As(err, &se) || !errors.Is(err, ErrStalled) {
+				t.Fatalf("want ErrStalled, got %v", err)
+			}
+			w := c.Expected.Stalled
+			if se.Tick != w.Tick || se.Entity != w.Entity || se.Node != w.Node || se.Since != w.Since || se.Deadline != w.Deadline || se.Reason() != w.Reason {
+				t.Errorf("stall %+v, hand-derived %+v", *se, *w)
+			}
+			compareCalendarFacts(t, observedCalendarFacts(t, p, col.all), c.wantFacts(t), false)
+		})
 	}
-	w := c.Expected.Stalled
-	if se.Tick != w.Tick || se.Entity != w.Entity || se.Node != w.Node || se.Since != w.Since || se.Deadline != w.Deadline || se.Reason() != w.Reason {
-		t.Errorf("stall %+v, hand-derived %+v", *se, *w)
+	if ran != 2 {
+		t.Errorf("%d batch stall goldens ran, want 2 (G-BT13, G-BT18)", ran)
 	}
-	compareCalendarFacts(t, observedCalendarFacts(t, p, col.all), c.wantFacts(t), false)
+}
+
+// D-050 B1 with batch processes, past the validator (T-050 review round 1).
+// G-BT20 (M2): G-D2's circular wait beside an unrelated batch whose
+// BATCH_TIMEOUT is within the horizon: B1 waits for the timeout (D-096 (g),
+// A and B alike) and for the batch it starts, then reports at 36 the
+// earliest entity still blocked. G-BT22 (L2): no entity blocked, a held
+// batch request needing more units than its resource has: ErrDeadlock
+// names its oldest member and, as Since, the tick the request was made
+// (the batch became ready), not the member's entry (Queued).
+func TestBatchDeadlocks(t *testing.T) {
+	cases, extras := batchGoldens(t)
+	ran := 0
+	for _, c := range cases {
+		if c.Expected.Deadlock == nil {
+			continue
+		}
+		ran++
+		t.Run(c.ID, func(t *testing.T) {
+			p := c.compile(t)
+			col := &collect{}
+			_, _, err := runKernel(context.Background(), p, 0, NewBudget(1_000_000), col)
+			var de *DeadlockError
+			if !errors.As(err, &de) || !errors.Is(err, ErrDeadlock) {
+				t.Fatalf("want ErrDeadlock, got %v", err)
+			}
+			w := c.Expected.Deadlock
+			if de.Tick != w.Tick || de.Entity != w.Entity || de.Node != w.Node || de.Since != w.Since || de.Queued != w.Queued || de.Reason() != w.Reason {
+				t.Errorf("deadlock %+v (%q), hand-derived %+v", *de, de.Reason(), *w)
+			}
+			compareCalendarFacts(t, observedCalendarFacts(t, p, col.all), c.wantFacts(t), false)
+			gotB, _ := observedBatches(t, p, col.all)
+			if wantB, _ := extras[c.ID].want(t); !slices.Equal(gotB, wantB) {
+				t.Errorf("batches %v\n hand-derived %v", gotB, wantB)
+			}
+		})
+	}
+	if ran != 2 {
+		t.Errorf("%d batch deadlock goldens ran, want 2 (G-BT20, G-BT22)", ran)
+	}
 }
 
 // G-BT5 (ADR-026 D-054 G-T5): at a batch's end the members' routes are
