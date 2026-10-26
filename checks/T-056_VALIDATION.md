@@ -333,3 +333,30 @@ DB 測試都在 coordinator 建立的**一次性 cluster**（PostgreSQL 16.15，
 | 4a77901 | `variables.json`、`check_deploy.py`、rehearsal、`deploy.sh` 註解、`deploy-check.json`、runbook §4.4／§7.3 |
 | 5247cc4 | `cmd/api` 的 `handlerOptions` 與經 handler 的 DB 測試（為了殺掉 wiring 的 mutant） |
 | （本節的 commit） | 本節、D-124、`planning/decisions.json`、SECURITY §7、ADR-027 addendum、證據 |
+
+## Coordinator 驗證：API 端的照片可用性（2026-10-26）
+
+`t056-apivision` 的五個 commit（9647e5a..1b9d125）cherry-pick 到已整合 T-055 review 修正的主線，沒有衝突。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-056apivision-coordinator/`，`exit-codes.txt` 依執行順序；HEAD e744429；go1.27.3、Node 22；Railway 的指令以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN` 執行；DB 測試在暫時的 cluster（`/var/lib/postgresql/geminus-throwaway-hkb6`，port 55450），共用的 cluster 在 container 重啟後沒有在跑，依規則不啟動）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | 含 OpenAPI 的新 503 範例 |
+| `scripts/check_deploy.py`、rehearsal、`deploy.sh --dry-run` | 0、0、0 | API 與 worker 宣告相同的七個 AI 設定 |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 83 個 package ok |
+| `make architecture-check` | 0 | 95 packages、26 rules |
+| `go test -race -count=1 -timeout 30m`（config、cmd、proposals、internal/api） | 0 | 12 個 package ok |
+| `make integration-test`（新的 dt_test_hkb8c，跑完刪除） | 0 | 38 個 package ok，沒有 FAIL 或 SKIP |
+| `make frontend-test` | 0 | 47 個檔案、1037 個測試（generated client 不變） |
+
+NOT RUN：e2e（UI 沒有改）；live 呼叫；完整的 `make backend-race`。
+
+Coordinator 對本節問題的處理：
+1. 沿用既有的錯誤碼加上 `details[0].code = AI_IMAGE_UNSUPPORTED`，不新增 D-025 的錯誤碼：接受。
+2. UI 在照片路徑關閉時仍顯示照片按鈕、原因只有英文：demo 時照片路徑是開的，比賽後再處理（先知道照片路徑狀態或翻譯該原因）。
+3. 讓 config 知道哪些 adapter 接受圖片：比賽後；在那之前 H-035 (3) 不讓 Claude 收圖片，批准紀錄也沒有。
+4. `aiapproval` 的批准紀錄變化與照片設定的交叉測試：比賽後補。
+5. T-055 舊 evidence 中的 negative case 訊息不同：歷史紀錄保留原樣。
+
+下一步：T-056 的一輪獨立審查（H-029），範圍包含照片路徑、H-037 的 count_tokens 預留與 D-124 的 API 可用性（含照片）。
