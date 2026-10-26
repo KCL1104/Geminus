@@ -1,0 +1,12 @@
+// Reviewer probe (T-045 r1): does `use: { reducedMotion: "reduce" }` in the
+// Playwright config (as apps/web-e2e/playwright.config.ts sets it) reach the page?
+import { test } from "@playwright/test";
+
+test("P9c matchMedia under the config's reducedMotion option only", async ({ page }) => {
+  await page.goto("/ui-gallery");
+  const info = await page.getByRole("button", { name: "Save", exact: true }).evaluate((el) => ({
+    reduce: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    duration: getComputedStyle(el).transitionDuration,
+  }));
+  console.log("P9c", JSON.stringify(info));
+});

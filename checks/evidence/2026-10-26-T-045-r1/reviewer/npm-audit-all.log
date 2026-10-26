@@ -1,0 +1,13 @@
+# npm audit report
+
+happy-dom  17.0.0 - 21.0.3
+Severity: high
+Happy DOM: Incomplete fix for CVE-2026-33943: unsanitized import alias leads to host code execution - https://github.com/advisories/GHSA-834v-8h66-3h79
+fix available via `npm audit fix --force`
+Will install happy-dom@21.0.4, which is a breaking change
+node_modules/happy-dom
+
+1 high severity vulnerability
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force

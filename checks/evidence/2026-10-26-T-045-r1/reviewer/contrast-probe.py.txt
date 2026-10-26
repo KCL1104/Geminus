@@ -1,0 +1,39 @@
+# Reviewer probe (T-045 r1): WCAG contrast of token pairs that apps/web/ui CSS
+# produces but tests/tokens.test.ts does not list. Run: python3 -I <this file>
+def lin(c):
+    c /= 255
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def L(h):
+    h = h.lstrip("#")
+    r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+
+def cr(a, b):
+    x, y = sorted([L(a), L(b)], reverse=True)
+    return (x + 0.05) / (y + 0.05)
+
+
+# Values copied from DESIGN.md front matter (light, -dark).
+light = dict(error="#B3261E", press="#E5E5E1", edge="#808387", selection="#EFEFEC", ink2="#4D5155",
+             warnwash="#FDF3DD", ink3="#62666A", ground="#EDEDEA", raised="#FFFFFF", hover="#F0F0ED",
+             ink="#1B1D1F", well="#F3F3F1", errwash="#FCEEEC", scenwash="#E8F2ED", sheet="#FFFFFF")
+dark = dict(error="#F07A70", press="#323232", edge="#707070", selection="#262626", ink2="#B5B5B5",
+            warnwash="#242424", ink3="#949494", ground="#111111", raised="#232323", hover="#2A2A2A",
+            ink="#EBEBEB", well="#0D0D0D", errwash="#242424", scenwash="#242424", sheet="#171717")
+pairs = [
+    ("error", "press", 4.5, "danger button label while pressed (button.module.css [data-pressed] + danger)"),
+    ("edge", "selection", 3.0, "checkbox box edge in a selected table row (table.module.css .row[data-selected], checkbox.module.css .box)"),
+    ("edge", "hover", 3.0, "control edge on a hover fill (DESIGN.md: 'would fall below 3:1')"),
+    ("edge", "well", 3.0, "a control inside a neutral (info) callout"),
+    ("edge", "errwash", 3.0, "a control inside a danger callout"),
+    ("ink2", "press", 4.5, "select chevron / secondary text on a pressed trigger"),
+    ("ink2", "warnwash", 4.5, "ink-2 text (summary) inside a warning callout"),
+    ("ink", "errwash", 3.0, "focus ring of the Details summary inside the danger callout"),
+]
+for a, b, need, why in pairs:
+    lc, dc = cr(light[a], light[b]), cr(dark[a], dark[b])
+    flag = "OK " if min(lc, dc) >= need else "LOW"
+    print(f"{flag} {a:>5} on {b:<9} need {need}: light {lc:5.2f}  dark {dc:5.2f}  -- {why}")

@@ -1,0 +1,33 @@
+# Reviewer probe (T-045 r1): which <html> start tag the server renders for a
+# Cookie header, and the status of /auth/error for a few reasons.
+# Run against `next start` of HEAD on :3200: python3 -I <this file>
+import re
+import urllib.error
+import urllib.request
+
+base = "http://127.0.0.1:3200"
+cookies = [
+    "geminus_theme=dark",
+    "geminus_theme=light",
+    "geminus_theme=DARK",
+    'geminus_theme=dark%22%20onload%3D%22alert(1)',
+    'geminus_theme="><script>alert(1)</script>',
+    "geminus_theme=light; geminus_theme=dark",
+    "geminus_theme=dark; geminus_theme=light",
+    "geminus_theme=%64ark",
+    "geminus_theme= dark",
+    'geminus_locale=zh-Hant"><x',
+    "geminus_locale=zh-Hant; geminus_theme=dark",
+]
+print("# Cookie header -> <html> start tag")
+for c in cookies:
+    html = urllib.request.urlopen(urllib.request.Request(base + "/", headers={"Cookie": c})).read().decode()
+    print(f"{c:<50} -> {re.match(r'<!DOCTYPE html>(<html[^>]*>)', html).group(1)}")
+
+print("\n# /auth/error?reason=<x> status (T-043 page, used by T-045's a11y/simplicity checks)")
+for r in ["expired", "refused", "failed", "nonsense", "toString", "constructor", "__proto__", "hasOwnProperty", "valueOf"]:
+    try:
+        status = urllib.request.urlopen(f"{base}/auth/error?reason={r}").status
+    except urllib.error.HTTPError as e:
+        status = e.code
+    print(f"{r:<16} {status}")

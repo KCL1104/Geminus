@@ -1,0 +1,9 @@
+
+Running 2 tests using 1 worker
+
+en @320: /: scrollWidth 320, strip 81px | /projects: scrollWidth 320, strip 81px | /projects/prj_01M4YDQK00TA00000000000001: scrollWidth 320, strip 81px | /models/mdl_01M4YDQK00TA00000000000001: scrollWidth 320, strip 81px | /no-such-page: scrollWidth 320, strip 81px | /ui-gallery: scrollWidth 320, strip 81px | /auth/error?reason=expired: scrollWidth 320, strip 81px
+  ✓  1 reviewer-probe/reflow.probe.ts:9:3 › P12 en at 320 px: no page-level horizontal scroll; strip height reported (5.3s)
+zh-Hant @320: /: scrollWidth 320, strip 81px | /projects: scrollWidth 320, strip 81px | /projects/prj_01M4YDQK00TA00000000000001: scrollWidth 320, strip 81px | /models/mdl_01M4YDQK00TA00000000000001: scrollWidth 320, strip 81px | /no-such-page: scrollWidth 320, strip 81px | /ui-gallery: scrollWidth 320, strip 81px | /auth/error?reason=expired: scrollWidth 320, strip 81px
+  ✓  2 reviewer-probe/reflow.probe.ts:9:3 › P12 zh-Hant at 320 px: no page-level horizontal scroll; strip height reported (5.3s)
+
+  2 passed (11.9s)

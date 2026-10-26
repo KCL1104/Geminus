@@ -1,0 +1,179 @@
+// Reviewer probes (T-045 r1), run against `next start` on :3200 with the
+// gallery on. Each probe checks a claim the shipped tests do not cover.
+import AxeBuilder from "@axe-core/playwright";
+import { expect, type Page, test } from "@playwright/test";
+
+const origin = "http://127.0.0.1:3200";
+const focused = (page: Page) => page.locator(":focus");
+
+async function open(page: Page, path: string, locale: "en" | "zh-Hant", theme?: "light" | "dark") {
+  await page.context().addCookies([{ name: "geminus_locale", value: locale, url: origin }]);
+  if (theme) await page.context().addCookies([{ name: "geminus_theme", value: theme, url: origin }]);
+  await page.goto(path);
+  await page.waitForLoadState("networkidle");
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+}
+
+async function violations(page: Page): Promise<string[]> {
+  const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+  return r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+}
+
+async function focusOutline(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const s = getComputedStyle(document.activeElement!);
+    return `${s.outlineStyle} ${s.outlineWidth}`;
+  });
+}
+
+test("P1 type-ahead still works inside the open strip listbox (the guard only stops keys on the closed trigger)", async ({ page }) => {
+  // (Playwright cannot press a CJK key, so type-ahead is probed with "e" from zh-Hant.)
+  await open(page, "/", "zh-Hant");
+  const lang = page.getByRole("button", { name: "繁體中文 語言" });
+  await lang.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await page.keyboard.press("e");
+  await expect(focused(page)).toHaveText("English");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
+  await open(page, "/", "en");
+  const theme = page.getByRole("button", { name: "System Theme" });
+  await theme.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await page.keyboard.press("d");
+  await expect(focused(page)).toHaveText("Dark");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+});
+
+test("P2 the closed strip trigger: Home/End/PageUp/PageDown change nothing; Space opens", async ({ page }) => {
+  await open(page, "/", "en");
+  const lang = page.getByRole("button", { name: "English Language" });
+  await lang.focus();
+  for (const k of ["Home", "End", "PageDown", "PageUp"]) {
+    await page.keyboard.press(k);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  }
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await page.keyboard.press(" ");
+  await expect(page.getByRole("listbox")).toBeVisible();
+});
+
+test("P3 a printable key on the closed trigger neither selects nor opens the list (APG select-only combobox would open it)", async ({ page }) => {
+  await open(page, "/", "en");
+  await page.getByRole("button", { name: "System Theme" }).focus();
+  await page.keyboard.press("d");
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+});
+
+for (const [system, chosen] of [["light", "dark"], ["dark", "light"]] as const) {
+  test(`P4 axe on the reader's explicit ${chosen} theme over a ${system} system, home and gallery`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: system });
+    for (const path of ["/", "/ui-gallery"]) {
+      await open(page, path, "en", chosen);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", chosen);
+      expect(await violations(page), `${path} ${chosen} on ${system}`).toEqual([]);
+    }
+  });
+}
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`P5 ${scheme}: the Problem "Details" disclosure is keyboard-operable, focus is visible, and open it has no axe violation`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await open(page, "/ui-gallery", "zh-Hant");
+    const summaries = page.locator("summary");
+    expect(await summaries.count()).toBeGreaterThan(0);
+    const first = summaries.first();
+    await first.focus();
+    // Keyboard focus: press Tab back and forth to get :focus-visible.
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect(first).toBeFocused();
+    expect(await focusOutline(page)).toBe("solid 2px");
+    await page.keyboard.press("Enter");
+    await expect(page.locator("details").first()).toHaveAttribute("open", "");
+    expect(await violations(page)).toEqual([]);
+    for (const s of await summaries.all()) await s.evaluate((el) => (el.parentElement as HTMLDetailsElement).open = true);
+    expect(await violations(page)).toEqual([]);
+  });
+}
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`P6 ${scheme}: the strip's own listbox (theme, language) open at 390 and 1280 px has no axe violation`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    for (const width of [390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await open(page, "/", "zh-Hant");
+      await page.getByRole("button", { name: "跟隨系統 主題" }).click();
+      await expect(page.getByRole("listbox")).toBeVisible();
+      expect(await violations(page), `theme list ${width}`).toEqual([]);
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "繁體中文 語言" }).click();
+      await expect(page.getByRole("listbox")).toBeVisible();
+      expect(await violations(page), `language list ${width}`).toEqual([]);
+      await page.keyboard.press("Escape");
+    }
+  });
+}
+
+test("P7 a theme chosen in the browser survives a language change (React re-renders <html> from the cookie)", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await open(page, "/", "en");
+  await page.getByRole("button", { name: "System Theme" }).click();
+  await page.getByRole("option", { name: "Dark" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "English Language" }).click();
+  await page.getByRole("option", { name: "繁體中文" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByRole("button", { name: "深色 主題" })).toBeVisible();
+  // And back to the system's, then another language change: no attribute comes back.
+  await page.getByRole("button", { name: "深色 主題" }).click();
+  await page.getByRole("option", { name: "跟隨系統" }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  await page.getByRole("button", { name: "繁體中文 語言" }).click();
+  await page.getByRole("option", { name: "English" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+});
+
+test("P8 a server-rendered dark theme, switched to System in the browser, then a language change: the attribute stays gone", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await open(page, "/", "en", "dark");
+  await page.getByRole("button", { name: "Dark Theme" }).click();
+  await page.getByRole("option", { name: "System" }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  await page.getByRole("button", { name: "English Language" }).click();
+  await page.getByRole("option", { name: "繁體中文" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+});
+
+// The suite's own playwright.config.ts sets `use: { reducedMotion: "reduce" }`,
+// which Playwright Test ignores (it belongs in contextOptions; motion2.probe.ts
+// shows matchMedia is false under it). Here reduced motion is emulated explicitly.
+test("P9 reduced motion turns the 180 ms transitions off", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await open(page, "/ui-gallery", "en");
+  const d = await page.getByRole("button", { name: "Save", exact: true }).evaluate((el) => getComputedStyle(el).transitionDuration);
+  console.log("P9 transitionDuration:", d);
+  expect(d.split(",").every((x) => parseFloat(x) <= 0.0001)).toBe(true);
+});
+
+test("P10 at 390 px the strip labels are hidden from sight but stay in the name (WCAG 2.5.3 label in name)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await open(page, "/", "en");
+  const label = page.locator("header").getByText("Language", { exact: true });
+  const box = await label.boundingBox();
+  expect(box && box.width <= 1 && box.height <= 1).toBe(true);
+  await expect(page.getByRole("button", { name: "English Language" })).toBeVisible();
+});
+
+test("P11 /auth/error with a reason that is an Object.prototype key (T-043 page used by T-045's checks)", async ({ page }) => {
+  const r = await page.request.get("/auth/error?reason=toString");
+  expect.soft(r.status(), "reason=toString").toBe(200);
+});

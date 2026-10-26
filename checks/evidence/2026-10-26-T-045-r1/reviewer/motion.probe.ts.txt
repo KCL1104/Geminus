@@ -1,0 +1,24 @@
+// Reviewer probe (T-045 r1): what reduced motion does to the 180 ms transitions.
+import { expect, test } from "@playwright/test";
+
+for (const reduced of ["reduce", "no-preference"] as const) {
+  test(`P9b transition-duration with prefers-reduced-motion: ${reduced}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: reduced });
+    await page.goto("/ui-gallery");
+    const info = await page.getByRole("button", { name: "Save", exact: true }).evaluate((el) => ({
+      matches: matchMedia("(prefers-reduced-motion: reduce)").matches,
+      duration: getComputedStyle(el).transitionDuration,
+      property: getComputedStyle(el).transitionProperty,
+      // Is the reduced-motion rule in the served CSS at all, and where?
+      rules: [...document.styleSheets].flatMap((s) => {
+        try {
+          return [...s.cssRules].map((r) => r.cssText).filter((t) => /reduced-motion/.test(t)).map((t) => t.slice(0, 300));
+        } catch {
+          return [];
+        }
+      }),
+    }));
+    console.log(JSON.stringify(info));
+    expect(info.matches).toBe(reduced === "reduce");
+  });
+}

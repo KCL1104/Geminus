@@ -1,0 +1,23 @@
+# Cookie header -> <html> start tag
+geminus_theme=dark                                 -> <html lang="en" data-theme="dark">
+geminus_theme=light                                -> <html lang="en" data-theme="light">
+geminus_theme=DARK                                 -> <html lang="en">
+geminus_theme=dark%22%20onload%3D%22alert(1)       -> <html lang="en">
+geminus_theme="><script>alert(1)</script>          -> <html lang="en">
+geminus_theme=light; geminus_theme=dark            -> <html lang="en" data-theme="dark">
+geminus_theme=dark; geminus_theme=light            -> <html lang="en" data-theme="light">
+geminus_theme=%64ark                               -> <html lang="en" data-theme="dark">
+geminus_theme= dark                                -> <html lang="en">
+geminus_locale=zh-Hant"><x                         -> <html lang="en">
+geminus_locale=zh-Hant; geminus_theme=dark         -> <html lang="zh-Hant" data-theme="dark">
+
+# /auth/error?reason=<x> status (T-043 page, used by T-045's a11y/simplicity checks)
+expired          200
+refused          200
+failed           200
+nonsense         200
+toString         500
+constructor      500
+__proto__        500
+hasOwnProperty   500
+valueOf          500

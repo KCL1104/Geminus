@@ -1,0 +1,8 @@
+OK  error on press     need 4.5: light  5.18  dark  4.72  -- danger button label while pressed (button.module.css [data-pressed] + danger)
+OK   edge on selection need 3.0: light  3.31  dark  3.06  -- checkbox box edge in a selected table row (table.module.css .row[data-selected], checkbox.module.css .box)
+LOW  edge on hover     need 3.0: light  3.34  dark  2.90  -- control edge on a hover fill (DESIGN.md: 'would fall below 3:1')
+OK   edge on well      need 3.0: light  3.43  dark  3.92  -- a control inside a neutral (info) callout
+OK   edge on errwash   need 3.0: light  3.37  dark  3.13  -- a control inside a danger callout
+OK   ink2 on press     need 4.5: light  6.34  dark  6.25  -- select chevron / secondary text on a pressed trigger
+OK   ink2 on warnwash  need 4.5: light  7.26  dark  7.57  -- ink-2 text (summary) inside a warning callout
+OK    ink on errwash   need 3.0: light 14.96  dark 13.02  -- focus ring of the Details summary inside the danger callout

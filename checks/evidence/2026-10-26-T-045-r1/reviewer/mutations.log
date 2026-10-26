@@ -1,0 +1,46 @@
+# Reviewer mutations (T-045 r1). Each was applied to the HEAD tree (df7c091),
+# the command run, and the file restored with `git checkout -- <file>`
+# (git status clean afterwards). Node 22.22.0, npm 10.9.4.
+
+M1 ui/select.tsx: `<div onKeyDownCapture={onlyByChoice}>{select}</div>` -> `<div>{select}</div>`
+   (cd apps/web && npx vitest run)
+   -> Test Files 1 failed | 20 passed; Tests 4 failed | 543 passed
+      FAIL ui-components.test.tsx > Select in the app strip > ignores ArrowRight / ArrowLeft / 繁 / e ...
+   KILLED (confirms the report's "4 個 case 失敗").
+
+M2 app/_components/states.tsx: DraftStatus renders the "Discard my changes" danger button twice
+   (conflict / error state of the model page; the only product view with buttons besides Retry)
+   (cd apps/web && npx vitest run)
+   -> Test Files 21 passed (21); Tests 547 passed (547)
+   SURVIVED. simplicity.test.tsx checks primaries <= 1 and no disabled control for every draft
+   state, but not "no two buttons with the same name"; simplicity.spec.ts only sees the model
+   route signed out (no DraftStatus), so it cannot catch it either.
+
+M3 app/projects/[projectId]/page.tsx: re-add a link to /projects under the h1 (the removed
+   "All projects" duplicate, outside RequireSession)
+   (cd apps/web && npx vitest run)                    -> 547 passed: SURVIVED in unit tests
+   (npm --prefix apps/web-e2e test -- tests/simplicity.spec.ts -g "projects/prj")
+   -> 4 failed ("links to the same place"), log: mutation-3-e2e-simplicity.log
+   KILLED by the browser check (signed-out part of the page).
+
+M4 app/projects/[projectId]/page.tsx: each model row gets a second link to the same model
+   (the version meta becomes <Link href={`/models/${m.id}`}>), i.e. inside RequireSession
+   (cd apps/web && npx vitest run)
+   -> Test Files 21 passed (21); Tests 547 passed (547)
+   SURVIVED. Signed-in route content is never rendered by simplicity.spec.ts (no AuthProvider)
+   and simplicity.test.tsx checks shared hrefs only for "/", not-found and the sign-in error page.
+
+M5 app/_components/problem-view.tsx: <details><summary>Details</summary>...</details> -> <div>...</div>
+   (cd apps/web && npx vitest run)
+   -> Test Files 21 passed (21); Tests 547 passed (547)
+   SURVIVED. The disclosure (H-027 rule 3) has no test; DESIGN.md says "Checked by review".
+
+M6 DESIGN.md front matter: ink-3 "#62666A" -> "#62666B"
+   (cd apps/web && npx vitest run tests/tokens.test.ts)
+   -> FAIL design tokens > has every colour of DESIGN.md, value for value, and no other
+   KILLED: the token test reads DESIGN.md itself, not a copy of the constants.
+
+M7 ui/tokens.css: first --gm-color-edge: #707070 (the prefers-color-scheme dark block) -> #707071
+   (cd apps/web && npx vitest run tests/tokens.test.ts)
+   -> FAIL design tokens > is dark the same way whether the system or the reader chose it
+   KILLED.

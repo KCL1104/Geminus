@@ -1,0 +1,13 @@
+frontend-test exit=0
+frontend-build exit=0
+npm-audit-omit-dev exit=0
+e2e-test exit=0
+spec-check exit=0
+npm-ci-web (--engine-strict=false) exit=0
+npm-ci-e2e (--engine-strict=false) exit=0
+npm-audit-all exit=1 (1 high: happy-dom, dev, pre-existing)
+reviewer-probes run2 exit=1 (16 passed, 1 failed: P11 = finding I2)
+reviewer-probe reflow exit=0
+mutation-3 e2e simplicity exit=1 (expected: mutation killed)
+make spec-docs (with REVIEW.md) exit=0
+env: node v22.22.0, npm 10.9.4, HEAD df7c09144eb5cb390199f3fa33d4e4b570bb3bdd

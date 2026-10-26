@@ -1,0 +1,23 @@
+# Reviewer probe (T-045 r1): first-load JS and CSS of a route, as the report
+# measured it: the <script src> and <link rel=stylesheet> of the HTML that
+# `next start` serves, each fetched and gzip'd (level 9), summed in KiB.
+# Run: python3 -I <this file> http://127.0.0.1:3200 / /projects /ui-gallery
+import gzip
+import re
+import sys
+import urllib.request
+
+base = sys.argv[1]
+for route in sys.argv[2:]:
+    req = urllib.request.Request(base + route, headers={"Cookie": "geminus_locale=en"})
+    html = urllib.request.urlopen(req).read().decode()
+    scripts = sorted(set(re.findall(r'<script[^>]*\bsrc="([^"]+)"', html)))
+    sheets = sorted(set(re.findall(r'<link rel="stylesheet" href="([^"]+)"', html)))
+    out = {}
+    for kind, urls in (("js", scripts), ("css", sheets)):
+        total = 0
+        for u in urls:
+            body = urllib.request.urlopen(base + u).read()
+            total += len(gzip.compress(body, 9))
+        out[kind] = (len(urls), total / 1024)
+    print(f"{route:<12} JS {out['js'][1]:7.1f} KiB gzip ({out['js'][0]} files)   CSS {out['css'][1]:6.1f} KiB gzip ({out['css'][0]} files)")

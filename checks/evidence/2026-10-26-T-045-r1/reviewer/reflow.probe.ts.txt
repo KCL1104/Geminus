@@ -1,0 +1,23 @@
+// Reviewer probe (T-045 r1): WCAG 1.4.10 reflow is defined at 320 CSS px;
+// the suite checks 390 px only. Does any route scroll sideways at 320 px, and
+// does the strip still work (both Selects reachable) there?
+import { expect, test } from "@playwright/test";
+
+const routes = ["/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/auth/error?reason=expired"];
+
+for (const locale of ["en", "zh-Hant"] as const) {
+  test(`P12 ${locale} at 320 px: no page-level horizontal scroll; strip height reported`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.context().addCookies([{ name: "geminus_locale", value: locale, url: "http://127.0.0.1:3200" }]);
+    const out: string[] = [];
+    for (const r of routes) {
+      await page.goto(r);
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      const m = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, strip: document.querySelector("header")!.getBoundingClientRect().height }));
+      out.push(`${r}: scrollWidth ${m.scroll}, strip ${m.strip}px`);
+      expect.soft(m.scroll, `${r} scrolls sideways at 320 px`).toBeLessThanOrEqual(320);
+    }
+    console.log(`${locale} @320: ${out.join(" | ")}`);
+  });
+}

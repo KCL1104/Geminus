@@ -1,0 +1,46 @@
+
+Running 17 tests using 1 worker
+
+{"matches":true,"duration":"1e-05s","property":"background-color, border-color, color","rules":["@layer base {\n  *, ::before, ::after { box-sizing: border-box; }\n  html { text-size-adjust: 100%; scrollbar-color: var(--gm-color-edge) transparent; }\n  body { background: var(--gm-color-sheet); color: var(--gm-color-ink); caret-color: var(--gm-color-ink); accent-color: var(--gm-color-ink); font-fam"]}
+  ✓   1 reviewer-probe/motion.probe.ts:5:3 › P9b transition-duration with prefers-reduced-motion: reduce (912ms)
+{"matches":false,"duration":"0.18s, 0.18s, 0.18s","property":"background-color, border-color, color","rules":["@layer base {\n  *, ::before, ::after { box-sizing: border-box; }\n  html { text-size-adjust: 100%; scrollbar-color: var(--gm-color-edge) transparent; }\n  body { background: var(--gm-color-sheet); color: var(--gm-color-ink); caret-color: var(--gm-color-ink); accent-color: var(--gm-color-ink); font-fam"]}
+  ✓   2 reviewer-probe/motion.probe.ts:5:3 › P9b transition-duration with prefers-reduced-motion: no-preference (776ms)
+P9c {"reduce":false,"duration":"0.18s, 0.18s, 0.18s"}
+  ✓   3 reviewer-probe/motion2.probe.ts:5:1 › P9c matchMedia under the config's reducedMotion option only (951ms)
+  ✓   4 reviewer-probe/reskin.probe.ts:29:1 › P1 type-ahead still works inside the open strip listbox (the guard only stops keys on the closed trigger) (2.2s)
+  ✓   5 reviewer-probe/reskin.probe.ts:51:1 › P2 the closed strip trigger: Home/End/PageUp/PageDown change nothing; Space opens (1.2s)
+  ✓   6 reviewer-probe/reskin.probe.ts:64:1 › P3 a printable key on the closed trigger neither selects nor opens the list (APG select-only combobox would open it) (1.0s)
+  ✓   7 reviewer-probe/reskin.probe.ts:73:3 › P4 axe on the reader's explicit dark theme over a light system, home and gallery (6.1s)
+  ✓   8 reviewer-probe/reskin.probe.ts:73:3 › P4 axe on the reader's explicit light theme over a dark system, home and gallery (5.1s)
+  ✓   9 reviewer-probe/reskin.probe.ts:84:3 › P5 light: the Problem "Details" disclosure is keyboard-operable, focus is visible, and open it has no axe violation (5.1s)
+  ✓  10 reviewer-probe/reskin.probe.ts:84:3 › P5 dark: the Problem "Details" disclosure is keyboard-operable, focus is visible, and open it has no axe violation (5.2s)
+  ✓  11 reviewer-probe/reskin.probe.ts:105:3 › P6 light: the strip's own listbox (theme, language) open at 390 and 1280 px has no axe violation (4.7s)
+  ✓  12 reviewer-probe/reskin.probe.ts:105:3 › P6 dark: the strip's own listbox (theme, language) open at 390 and 1280 px has no axe violation (4.4s)
+  ✓  13 reviewer-probe/reskin.probe.ts:122:1 › P7 a theme chosen in the browser survives a language change (React re-renders <html> from the cookie) (2.1s)
+  ✓  14 reviewer-probe/reskin.probe.ts:143:1 › P8 a server-rendered dark theme, switched to System in the browser, then a language change: the attribute stays gone (1.8s)
+P9 transitionDuration: 1e-05s
+  ✓  15 reviewer-probe/reskin.probe.ts:159:1 › P9 reduced motion turns the 180 ms transitions off (1.5s)
+  ✓  16 reviewer-probe/reskin.probe.ts:167:1 › P10 at 390 px the strip labels are hidden from sight but stay in the name (WCAG 2.5.3 label in name) (984ms)
+  ✘  17 reviewer-probe/reskin.probe.ts:176:1 › P11 /auth/error with a reason that is an Object.prototype key (T-043 page used by T-045's checks) (176ms)
+
+
+  1) reviewer-probe/reskin.probe.ts:176:1 › P11 /auth/error with a reason that is an Object.prototype key (T-043 page used by T-045's checks) 
+
+    Error: reason=toString
+
+    [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32m200[39m
+    Received: [31m500[39m
+
+      176 | test("P11 /auth/error with a reason that is an Object.prototype key (T-043 page used by T-045's checks)", async ({ page }) => {
+      177 |   const r = await page.request.get("/auth/error?reason=toString");
+    > 178 |   expect.soft(r.status(), "reason=toString").toBe(200);
+          |                                              ^
+      179 | });
+      180 |
+        at /home/user/Geminus/.claude/worktrees/agent-a63f7744ad69d5376/apps/web-e2e/reviewer-probe/reskin.probe.ts:178:46
+
+  1 failed
+    reviewer-probe/reskin.probe.ts:176:1 › P11 /auth/error with a reason that is an Object.prototype key (T-043 page used by T-045's checks) 
+  16 passed (46.7s)
