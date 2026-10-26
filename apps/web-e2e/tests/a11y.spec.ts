@@ -1,18 +1,20 @@
 // TEST-033: no axe violation (WCAG 2.0–2.2 A/AA, contrast included) on any
-// route or state, in either language, at phone and desktop width; no
-// horizontal page scroll at 390 px; no table text painted over the next
-// cell or cut off.
+// route or state, in either language, at phone and desktop width, in the
+// light and the dark theme (the system's, H-013); no horizontal page scroll
+// at 390 px; no table text painted over the next cell or cut off.
 import { expect, test } from "@playwright/test";
-import { cellOverflow, locales, open, routes, violations } from "./helpers";
+import { cellOverflow, locales, open, routes, schemes, sheet, violations } from "./helpers";
 
-for (const locale of locales) {
+for (const scheme of schemes) for (const locale of locales) {
   for (const width of [390, 1280]) {
-    test.describe(`${locale} at ${width}px`, () => {
-      test.use({ viewport: { width, height: 900 } });
+    test.describe(`${scheme}, ${locale} at ${width}px`, () => {
+      test.use({ viewport: { width, height: 900 }, colorScheme: scheme });
 
       for (const route of routes) {
         test(`${route} has no violation`, async ({ page }) => {
           await open(page, route, locale);
+          // The theme really is the one under test, not a fallback.
+          await expect(page.locator("body")).toHaveCSS("background-color", sheet[scheme]);
           expect(await violations(page)).toEqual([]);
           const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
           expect(scroll, "page-level horizontal scroll").toBeLessThanOrEqual(width);

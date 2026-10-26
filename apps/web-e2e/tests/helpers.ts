@@ -4,15 +4,24 @@ import { expect, type Page } from "@playwright/test";
 export type Locale = "en" | "zh-Hant";
 export const locales: Locale[] = ["en", "zh-Hant"];
 
+/** The system colour schemes the app follows when the reader chose no theme (H-013). */
+export const schemes = ["light", "dark"] as const;
+export type Scheme = (typeof schemes)[number];
+/** What DESIGN.md's Timetable White (the sheet) computes to in each theme. */
+export const sheet = { light: "rgb(255, 255, 255)", dark: "rgb(23, 23, 23)" } as const;
+
 /** The routes there are; pages that need a session show their signed-out state. */
 export const routes = ["/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/auth/error?reason=expired"];
 
-export async function open(page: Page, path: string, locale: Locale): Promise<void> {
+/** Opens a route in a language, and in a remembered theme if one is given (else the system's). */
+export async function open(page: Page, path: string, locale: Locale, theme?: Scheme): Promise<void> {
   await page.context().addCookies([{ name: "geminus_locale", value: locale, url: "http://127.0.0.1:3100" }]);
+  if (theme) await page.context().addCookies([{ name: "geminus_theme", value: theme, url: "http://127.0.0.1:3100" }]);
   await page.goto(path);
   await expect(page.locator("html")).toHaveAttribute("lang", locale);
-  // Long tables render after hydration (ADR-021).
+  // Long tables render after hydration (ADR-021); the web fonts load as text needs them.
   await page.waitForLoadState("networkidle");
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
 }
 
 /** axe-core's WCAG 2.0–2.2 A/AA violations, contrast and target size included. */
