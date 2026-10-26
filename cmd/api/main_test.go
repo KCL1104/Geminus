@@ -222,13 +222,22 @@ func TestRunServesAndStops(t *testing.T) {
 // URL without credentials stops the API before it connects anywhere, and
 // the log names the variable, never its value.
 func TestRunRefusesABadTelemetryEndpoint(t *testing.T) {
-	var stderr syncBuffer
-	if code := refused(t, with("OTEL_EXPORTER_OTLP_ENDPOINT", "https://u:otel-pw-SENTINEL@collector"), &stderr); code != exitConfig {
-		t.Fatalf("exit = %d: %s", code, stderr.String())
-	}
-	if !strings.Contains(stderr.String(), "OTEL_EXPORTER_OTLP_ENDPOINT") || strings.Contains(stderr.String(), "SENTINEL") ||
-		strings.Contains(stderr.String(), "database") {
-		t.Errorf("%s", stderr.String())
+	for _, c := range [][2]string{
+		{"OTEL_EXPORTER_OTLP_ENDPOINT", "https://u:otel-pw-SENTINEL@collector"},
+		// Review L6: plain http to another host.
+		{"OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector-SENTINEL:4318"},
+		// Review M1: headers the exporter cannot parse (it would print them).
+		{"OTEL_EXPORTER_OTLP_HEADERS", "Authorization: Bearer hdr-SENTINEL"},
+		{"OTEL_EXPORTER_OTLP_METRICS_HEADERS", "x-api-key=hdr-SENTINEL%ZZ"},
+	} {
+		var stderr syncBuffer
+		if code := refused(t, with(c[0], c[1]), &stderr); code != exitConfig {
+			t.Fatalf("%s: exit = %d: %s", c[0], code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), c[0]) || strings.Contains(stderr.String(), "SENTINEL") ||
+			strings.Contains(stderr.String(), "database") {
+			t.Errorf("%s", stderr.String())
+		}
 	}
 }
 

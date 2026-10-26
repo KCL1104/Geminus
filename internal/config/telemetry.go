@@ -2,8 +2,10 @@ package config
 
 import (
 	"errors"
+	"net"
 	"net/url"
 	"strings"
+	"unicode"
 )
 
 // Telemetry is where the process sends traces and metrics (T-035, D-095
@@ -29,13 +31,19 @@ func (t Telemetry) Enabled() bool { return t.TracesEndpoint != "" || t.MetricsEn
 //   - OTEL_TRACES_EXPORTER and OTEL_METRICS_EXPORTER, "otlp" (or unset) or
 //     "none";
 //   - OTEL_EXPORTER_OTLP_PROTOCOL, which may only be http/protobuf (no gRPC
-//     exporter is built in).
+//     exporter is built in);
+//   - OTEL_EXPORTER_OTLP_HEADERS, _TRACES_HEADERS and _METRICS_HEADERS,
+//     which the exporters read themselves: they are only checked here
+//     (validHeaders), so that a value the exporters could not parse, and
+//     would complain about with the value, stops the process instead.
 //
-// An endpoint is an absolute http or https URL with a host and without
-// user information, query or fragment: credentials for the collector go
-// in OTEL_EXPORTER_OTLP_HEADERS, which the exporter reads itself and no
-// log line shows. All problems are reported together, never with their
-// values.
+// An endpoint is an absolute https URL with a host, or an http URL whose
+// host is this machine (localhost, 127.0.0.0/8, ::1), without user
+// information, query or fragment: credentials for the collector go in the
+// headers, never in clear text across a network, and the headers' values
+// reach no log line (the SDK's diagnostics go through the filtered log,
+// internal/observability/telemetry/export). All problems are reported
+// together, never with their values.
 func LoadTelemetry(getenv func(string) string) (Telemetry, error) {
 	var errs []error
 	disabled := false
@@ -76,6 +84,11 @@ func LoadTelemetry(getenv func(string) string) (Telemetry, error) {
 	}
 	base := endpoint("OTEL_EXPORTER_OTLP_ENDPOINT")
 	traces, metrics := endpoint("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"), endpoint("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")
+	for _, name := range []string{"OTEL_EXPORTER_OTLP_HEADERS", "OTEL_EXPORTER_OTLP_TRACES_HEADERS", "OTEL_EXPORTER_OTLP_METRICS_HEADERS"} {
+		if !validHeaders(getenv(name)) {
+			errs = append(errs, &Error{name, CodeInvalid, "must be comma-separated name=value pairs: names of HTTP token characters, values URL-encoded"})
+		}
+	}
 	if len(errs) > 0 {
 		return Telemetry{}, errors.Join(errs...)
 	}
@@ -109,6 +122,56 @@ func validEndpoint(raw string) bool {
 		return false
 	}
 	u, err := url.Parse(raw)
-	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" && u.User == nil && u.RawQuery == "" &&
-		!u.ForceQuery && u.Fragment == "" && !strings.Contains(raw, "#") && u.Opaque == ""
+	return err == nil && (u.Scheme == "https" || u.Scheme == "http" && loopback(u.Hostname())) && u.Host != "" && u.User == nil &&
+		u.RawQuery == "" && !u.ForceQuery && u.Fragment == "" && !strings.Contains(raw, "#") && u.Opaque == ""
+}
+
+// loopback reports whether host is this machine: localhost, 127.0.0.0/8 or
+// ::1. Only there may a collector be plain http (review L6): anywhere else
+// the headers (the collector's credentials) would cross a network in clear
+// text.
+func loopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// validHeaders reports whether v is what the OTLP exporters parse
+// OTEL_EXPORTER_OTLP_*HEADERS as without complaint (go.opentelemetry.io/
+// otel's envconfig, v1.47.0): after trimming, empty, or comma-separated
+// name=value pairs whose trimmed name is one or more HTTP token characters
+// and whose value URL-decodes (review M1). The exporters would log a pair
+// they cannot parse, with its value: such a value stops the process here
+// instead, and the error does not repeat it.
+func validHeaders(v string) bool {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return true
+	}
+	for _, pair := range strings.Split(v, ",") {
+		name, value, ok := strings.Cut(pair, "=")
+		if !ok || !token(strings.TrimSpace(name)) {
+			return false
+		}
+		if _, err := url.PathUnescape(value); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// token reports whether s is an HTTP token (RFC 9110 §5.6.2), as the
+// exporters check a header name.
+func token(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, c := range s {
+		if c > unicode.MaxASCII || !(unicode.IsLetter(c) || unicode.IsDigit(c) || strings.ContainsRune("!#$%&'*+-.^_`|~", c)) {
+			return false
+		}
+	}
+	return true
 }

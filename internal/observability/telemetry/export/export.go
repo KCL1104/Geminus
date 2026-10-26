@@ -42,6 +42,16 @@ func Setup(ctx context.Context, cfg config.Telemetry, service string, log *slog.
 	if !cfg.Enabled() {
 		return func(context.Context) error { return nil }, nil
 	}
+	// The SDK reports export failures and its own diagnostics through
+	// OpenTelemetry's global handler and logger, from the moment the
+	// exporters are built (they parse OTEL_EXPORTER_OTLP_* then and complain
+	// about a value they cannot parse, with the value): both are installed
+	// first, so everything goes through the filtered log (D-094), never to
+	// stderr through OpenTelemetry's default logger (review M1).
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		log.Warn("telemetry export failed", "error", err.Error())
+	}))
+	otel.SetLogger(logr.FromSlogHandler(diagnostics{log.Handler()}))
 	res := resource.NewSchemaless(attribute.String("service.name", service))
 	var tp trace.TracerProvider = tracenoop.NewTracerProvider()
 	var mp metric.MeterProvider = metricnoop.NewMeterProvider()
@@ -69,13 +79,6 @@ func Setup(ctx context.Context, cfg config.Telemetry, service string, log *slog.
 		sdk := sdkmetric.NewMeterProvider(sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp)), sdkmetric.WithResource(res))
 		mp, stops = sdk, append(stops, sdk.Shutdown)
 	}
-	// The SDK reports export failures and its own diagnostics through
-	// OpenTelemetry's global handler and logger: both go through the
-	// filtered log (D-094), never straight to stderr.
-	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		log.Warn("telemetry export failed", "error", err.Error())
-	}))
-	otel.SetLogger(logr.FromSlogHandler(log.Handler()))
 	tel, err := telemetry.New(tp, mp)
 	if err != nil {
 		return nil, errors.Join(err, stop(ctx))
@@ -85,4 +88,62 @@ func Setup(ctx context.Context, cfg config.Telemetry, service string, log *slog.
 		telemetry.Install(prev)
 		return stop(ctx)
 	}, nil
+}
+
+// diagnostics is the slog handler OpenTelemetry's own logger writes to,
+// through logr (review L7): the SDK's Error lines keep their error, which
+// logr names "err", as "error", the free-text key the filter sanitizes, so
+// an operator sees what went wrong; its Warn (logr V(1), slog level -1) is
+// a WARN line; its Info and Debug (V(4), V(8)) are not logged. Messages
+// start with "telemetry: ". Every other key the SDK adds (input, value,
+// key: the raw values it could not parse) is unregistered, so the filter
+// redacts it.
+type diagnostics struct{ inner slog.Handler }
+
+// level is the slog level a logr level of the SDK is logged at, and false
+// for the levels that are not logged.
+func level(l slog.Level) (slog.Level, bool) {
+	switch {
+	case l >= slog.LevelInfo:
+		return l, true
+	case l == -1:
+		return slog.LevelWarn, true
+	}
+	return l, false
+}
+
+func (d diagnostics) Enabled(ctx context.Context, l slog.Level) bool {
+	l, ok := level(l)
+	return ok && d.inner.Enabled(ctx, l)
+}
+
+func (d diagnostics) Handle(ctx context.Context, r slog.Record) error {
+	l, ok := level(r.Level)
+	if !ok {
+		return nil
+	}
+	out := slog.NewRecord(r.Time, l, "telemetry: "+r.Message, r.PC)
+	r.Attrs(func(a slog.Attr) bool {
+		out.AddAttrs(renamed(a))
+		return true
+	})
+	return d.inner.Handle(ctx, out)
+}
+
+func (d diagnostics) WithAttrs(attrs []slog.Attr) slog.Handler {
+	out := make([]slog.Attr, len(attrs))
+	for i, a := range attrs {
+		out[i] = renamed(a)
+	}
+	return diagnostics{d.inner.WithAttrs(out)}
+}
+
+func (d diagnostics) WithGroup(name string) slog.Handler { return diagnostics{d.inner.WithGroup(name)} }
+
+// renamed is a, with logr's "err" as "error".
+func renamed(a slog.Attr) slog.Attr {
+	if a.Key == "err" {
+		a.Key = "error"
+	}
+	return a
 }

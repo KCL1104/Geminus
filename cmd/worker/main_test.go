@@ -92,13 +92,18 @@ func TestTheWorkersLoggerIsFiltered(t *testing.T) {
 // T-035 (D-095 (b)): a telemetry setting that is not one stops the worker
 // with the variable's name, never its value.
 func TestRunRefusesABadTelemetrySetting(t *testing.T) {
-	var stderr bytes.Buffer
-	if code := run(context.Background(), with("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://c/v1/traces?token=otel-SENTINEL"), &stderr,
-		someHandler); code != exitConfig {
-		t.Fatalf("exit = %d: %s", code, stderr.String())
-	}
-	if !strings.Contains(stderr.String(), "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") || strings.Contains(stderr.String(), "SENTINEL") {
-		t.Errorf("%s", stderr.String())
+	for _, c := range [][2]string{
+		{"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "https://c/v1/traces?token=otel-SENTINEL"},
+		{"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://c-SENTINEL/v1/traces"}, // review L6
+		{"OTEL_EXPORTER_OTLP_TRACES_HEADERS", "authorization:otel-SENTINEL"},  // review M1
+	} {
+		var stderr bytes.Buffer
+		if code := run(context.Background(), with(c[0], c[1]), &stderr, someHandler); code != exitConfig {
+			t.Fatalf("%s: exit = %d: %s", c[0], code, stderr.String())
+		}
+		if !strings.Contains(stderr.String(), c[0]) || strings.Contains(stderr.String(), "SENTINEL") {
+			t.Errorf("%s", stderr.String())
+		}
 	}
 }
 
