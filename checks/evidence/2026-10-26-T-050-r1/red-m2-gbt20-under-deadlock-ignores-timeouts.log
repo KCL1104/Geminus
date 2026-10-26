@@ -1,0 +1,19 @@
+# 2026-10-26T10:35:23Z cwd=scratch copy (git archive of HEAD) at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m
+# mutant deadlock-ignores-timeouts (internal/simulation/engine/kernel.go): '\tif k.inService > 0 || k.inDelay > 0 || k.timeouts > 0 || (k.nBlocked == 0 && k.held == 0) {\n' -> '\tif k.inService > 0 || k.inDelay > 0 || (k.nBlocked == 0 && k.held == 0) {\n'
+# cmd: go test -count=1 -v -skip Digests -overlay <overlay> -run ^TestBatchDeadlocks$ ./internal/simulation/engine/
+=== RUN   TestBatchDeadlocks
+=== RUN   TestBatchDeadlocks/G-BT20
+    batch_test.go:287: deadlock {Tick:420000 Entity:r0/src/5 Node:src Since:300000 Queued:false} ("the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000"), hand-derived {Tick:2160000 Entity:r0/src/5 Node:src Since:300000 Queued:false Reason:the replication deadlocked at tick 2160000: r0/src/5 is blocked at node src since tick 300000}
+    calendar_test.go:257: starts at bp [], hand-derived [r0/bsrc/1@31]
+    calendar_test.go:257: completions [r0/z/1@1 r0/z/2@2 r0/z/3@3 r0/z/4@4 r0/z/5@5 r0/z/6@6], hand-derived [r0/z/1@1 r0/z/2@2 r0/z/3@3 r0/z/4@4 r0/z/5@5 r0/z/6@6 r0/z/7@7 r0/z/8@8 r0/z/9@9 r0/z/10@10 r0/z/11@11 r0/z/12@12 r0/z/13@13 r0/z/14@14 r0/z/15@15 r0/z/16@16 r0/z/17@17 r0/z/18@18 r0/z/19@19 r0/z/20@20 r0/z/21@21 r0/z/22@22 r0/z/23@23 r0/z/24@24 r0/z/25@25 r0/z/26@26 r0/z/27@27 r0/z/28@28 r0/z/29@29 r0/z/30@30 r0/z/31@31 r0/z/32@32 r0/z/33@33 r0/z/34@34 r0/z/35@35 r0/bsrc/1@36]
+    calendar_test.go:257: blocks [r0/src/3@src:3-3 r0/src/4@src:4-5 r0/src/5@src:5-- r0/src/1@s2:6-- r0/src/6@src:6-- r0/src/3@s1:7--], hand-derived [r0/src/3@src:3-3 r0/src/4@src:4-5 r0/src/5@src:5-- r0/src/1@s2:6-- r0/src/6@src:6-- r0/src/3@s1:7-- r0/src/7@src:7-- r0/src/8@src:8-- r0/src/9@src:9-- r0/src/10@src:10-- r0/src/11@src:11-- r0/src/12@src:12-- r0/src/13@src:13-- r0/src/14@src:14-- r0/src/15@src:15-- r0/src/16@src:16-- r0/src/17@src:17-- r0/src/18@src:18-- r0/src/19@src:19-- r0/src/20@src:20-- r0/src/21@src:21-- r0/src/22@src:22-- r0/src/23@src:23-- r0/src/24@src:24-- r0/src/25@src:25-- r0/src/26@src:26-- r0/src/27@src:27-- r0/src/28@src:28-- r0/src/29@src:29-- r0/src/30@src:30-- r0/src/31@src:31-- r0/src/32@src:32-- r0/src/33@src:33-- r0/src/34@src:34-- r0/src/35@src:35--]
+    batch_test.go:292: batches []
+         hand-derived [bp#1@31:r0/bsrc/1]
+=== RUN   TestBatchDeadlocks/G-BT22
+--- FAIL: TestBatchDeadlocks (0.12s)
+    --- FAIL: TestBatchDeadlocks/G-BT20 (0.11s)
+    --- PASS: TestBatchDeadlocks/G-BT22 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.131s
+FAIL
+# exit=1 elapsed=6s

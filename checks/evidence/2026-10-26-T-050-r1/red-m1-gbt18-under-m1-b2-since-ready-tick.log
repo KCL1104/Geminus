@@ -1,0 +1,14 @@
+# 2026-10-26T10:35:12Z cwd=scratch copy (git archive of HEAD) at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m
+# mutant m1-b2-since-ready-tick (internal/simulation/engine/kernel.go): '\t\tif f.stalled < 0 {\n\t\t\tf.stalled, f.deadline = k.r.now, k.deadlineOf(f.process)\n\t\t}\n' -> '\t\tif f.stalled < 0 {\n\t\t\tf.stalled, f.deadline = k.r.now, k.deadlineOf(f.process)\n\t\t\tif f.batch {\n\t\t\t\tf.stalled = f.entered\n\t\t\t}\n\t\t}\n'
+# cmd: go test -count=1 -v -skip Digests -overlay <overlay> -run ^TestBatchStall$ ./internal/simulation/engine/
+=== RUN   TestBatchStall
+=== RUN   TestBatchStall/G-BT13
+=== RUN   TestBatchStall/G-BT18
+    batch_test.go:251: stall {Tick:57600000 Entity:r0/srcw/1 Node:work Since:1200000 Deadline:57600000}, hand-derived {Tick:57600000 Entity:r0/srcw/1 Node:work Since:6000000 Deadline:57600000 Reason:the replication stalled at tick 57600000: r0/srcw/1 waits for node work since tick 6000000 with none of its bundle in use; it was due by tick 57600000}
+--- FAIL: TestBatchStall (0.05s)
+    --- PASS: TestBatchStall/G-BT13 (0.05s)
+    --- FAIL: TestBatchStall/G-BT18 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.081s
+FAIL
+# exit=1 elapsed=5s

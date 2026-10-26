@@ -1,0 +1,31 @@
+# 2026-10-26T10:35:34Z cwd=scratch copy (git archive of HEAD) at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m
+# mutant r-setup-ends-not-applied-at-finish (internal/results/metrics/aggregate.go): '\t\tc.endSetups(c.h) // a later end is cut at H by the integrals\n' -> ''
+# cmd: go test -count=1 -v -skip Digests -overlay <overlay> -run ^TestSetupGoldenResults$ ./internal/simulation/des/
+=== RUN   TestSetupGoldenResults
+=== RUN   TestSetupGoldenResults/G-SU1
+=== RUN   TestSetupGoldenResults/G-SU2
+=== RUN   TestSetupGoldenResults/G-SU3
+=== RUN   TestSetupGoldenResults/G-SU6
+=== RUN   TestSetupGoldenResults/G-SU7
+=== RUN   TestSetupGoldenResults/G-SU8
+=== RUN   TestSetupGoldenResults/G-SU9
+=== RUN   TestSetupGoldenResults/G-SU10
+=== RUN   TestSetupGoldenResults/G-SU11
+=== RUN   TestSetupGoldenResults/G-SU12
+    setup_test.go:49: resource states {"smt":{"in_use_ticks":1380000,"setup_ticks":780000,"setups_started":4,"setups_completed":4,"completed_setup_ticks":720000,"scheduled_processing_ticks":600000}}
+         hand-derived {"smt":{"in_use_ticks":1380000,"setup_ticks":720000,"setups_started":4,"setups_completed":4,"completed_setup_ticks":720000,"scheduled_processing_ticks":660000}}
+--- FAIL: TestSetupGoldenResults (0.12s)
+    --- PASS: TestSetupGoldenResults/G-SU1 (0.10s)
+    --- PASS: TestSetupGoldenResults/G-SU2 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU3 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU6 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU7 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU8 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU9 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU10 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU11 (0.00s)
+    --- FAIL: TestSetupGoldenResults/G-SU12 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.151s
+FAIL
+# exit=1 elapsed=2s

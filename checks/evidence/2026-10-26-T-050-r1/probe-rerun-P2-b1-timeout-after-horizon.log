@@ -1,0 +1,9 @@
+# 2026-10-26T10:40:40Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: /home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f/checks/evidence/2026-10-26-T-050-r1/scripts/gotest.sh -v -overlay /tmp/tmp.ax3gPPM2lX/ov.json -run ^TestProbeB1WithATimeoutAfterTheHorizon$ ./internal/simulation/engine/
+=== RUN   TestProbeB1WithATimeoutAfterTheHorizon
+    zz_review_probe_test.go:72: G-D2 alone: engine: the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000
+    zz_review_probe_test.go:74: G-D2 + an unrelated batch process whose wait limit is after the horizon: <nil>
+--- PASS: TestProbeB1WithATimeoutAfterTheHorizon (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.028s
+# exit=0 elapsed=3s

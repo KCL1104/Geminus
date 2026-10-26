@@ -1,0 +1,10 @@
+# 2026-10-26T10:40:43Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: /home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f/checks/evidence/2026-10-26-T-050-r1/scripts/gotest.sh -v -overlay /tmp/tmp.ax3gPPM2lX/ov.json -run ^TestProbeFreshUnitVersusChangeover$ ./internal/simulation/engine/
+=== RUN   TestProbeFreshUnitVersusChangeover
+    zz_review_probe_test.go:44: ServiceEnd at 15 min: entity 1 unit(At) 0 value 0 min
+    zz_review_probe_test.go:44: Setup at 20 min: entity 2 unit(At) 0 value 7 min
+    zz_review_probe_test.go:44: ServiceEnd at 32 min: entity 2 unit(At) 0 value 0 min
+--- PASS: TestProbeFreshUnitVersusChangeover (0.05s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	0.068s
+# exit=0 elapsed=3s

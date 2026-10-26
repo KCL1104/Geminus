@@ -1,0 +1,8 @@
+# 2026-10-26T10:40:50Z cwd=/home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f
+# cmd: /home/user/Geminus/.claude/worktrees/agent-ac5b2f66c637f607f/checks/evidence/2026-10-26-T-050-r1/scripts/gotest.sh -v -overlay /tmp/tmp.ax3gPPM2lX/ov.json -run ^TestProbeChangeoverEndingAfterTheLastObservation$ ./internal/simulation/des/
+=== RUN   TestProbeChangeoverEndingAfterTheLastObservation
+    zz_review_probe_test.go:41: smt: setup_ticks 720000 setups_started 4 setups_completed 4 completed_setup_ticks 720000 scheduled_processing_ticks 660000 in_use_ticks 1380000
+--- PASS: TestProbeChangeoverEndingAfterTheLastObservation (0.07s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.076s
+# exit=0 elapsed=1s

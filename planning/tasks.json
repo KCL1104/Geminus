@@ -3283,7 +3283,7 @@
       "id": "T-050",
       "title": "DES 批次 process（燒機，H-016）",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "Simulation",
       "planning_window": "H-016 re-plan（未重估週數）",
       "depends_on": [

@@ -1,0 +1,14 @@
+# 2026-10-26T10:35:44Z cwd=scratch copy (git archive of HEAD) at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m
+# mutant r-b1-since-oldest-entry (internal/simulation/engine/kernel.go): 'req := &request{process: n, seq: k.reqSeq, entered: k.r.now, stalled: -1, deadline: -1, batch: true}' -> 'req := &request{process: n, seq: k.reqSeq, entered: front.enter, stalled: -1, deadline: -1, batch: true}'
+# cmd: go test -count=1 -v -skip Digests -overlay <overlay> -run ^TestBatchDeadlocks$ ./internal/simulation/engine/
+=== RUN   TestBatchDeadlocks
+=== RUN   TestBatchDeadlocks/G-BT20
+=== RUN   TestBatchDeadlocks/G-BT22
+    batch_test.go:287: deadlock {Tick:120000 Entity:r0/src/1 Node:bp Since:60000 Queued:true} ("the replication deadlocked at tick 120000: r0/src/1 waits for node bp since tick 60000"), hand-derived {Tick:120000 Entity:r0/src/1 Node:bp Since:120000 Queued:true Reason:the replication deadlocked at tick 120000: r0/src/1 waits for node bp since tick 120000}
+--- FAIL: TestBatchDeadlocks (0.09s)
+    --- PASS: TestBatchDeadlocks/G-BT20 (0.09s)
+    --- FAIL: TestBatchDeadlocks/G-BT22 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.107s
+FAIL
+# exit=1 elapsed=5s

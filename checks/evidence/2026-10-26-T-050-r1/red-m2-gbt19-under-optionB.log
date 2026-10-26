@@ -1,0 +1,44 @@
+# 2026-10-26T10:35:17Z cwd=scratch copy (git archive of HEAD) at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m
+# mutant r-b1-ignores-timeouts-after-horizon (internal/simulation/engine/kernel.go): '\t\t\tk.timeouts++\n\t\t\tif err := k.r.schedule(front.enter+b.wait-k.r.now' -> '\t\t\tif front.enter+b.wait <= k.r.p.horizon {\n\t\t\t\tk.timeouts++\n\t\t\t}\n\t\t\tif err := k.r.schedule(front.enter+b.wait-k.r.now'
+# cmd: go test -count=1 -v -skip Digests -overlay <overlay> -run ^TestBatchGoldens$ ./internal/simulation/engine/
+=== RUN   TestBatchGoldens
+=== RUN   TestBatchGoldens/G-BT1
+=== RUN   TestBatchGoldens/G-BT2
+=== RUN   TestBatchGoldens/G-BT3
+=== RUN   TestBatchGoldens/G-BT4
+=== RUN   TestBatchGoldens/G-BT6
+=== RUN   TestBatchGoldens/G-BT7
+=== RUN   TestBatchGoldens/G-BT8
+=== RUN   TestBatchGoldens/G-BT9
+=== RUN   TestBatchGoldens/G-BT10
+=== RUN   TestBatchGoldens/G-BT11
+=== RUN   TestBatchGoldens/G-BT12
+=== RUN   TestBatchGoldens/G-BT14
+=== RUN   TestBatchGoldens/G-BT15
+=== RUN   TestBatchGoldens/G-BT16
+=== RUN   TestBatchGoldens/G-BT17
+=== RUN   TestBatchGoldens/G-BT19
+    batch_test.go:203: engine: the replication deadlocked at tick 420000: r0/src/5 is blocked at node src since tick 300000
+=== RUN   TestBatchGoldens/G-BT21
+--- FAIL: TestBatchGoldens (0.10s)
+    --- PASS: TestBatchGoldens/G-BT1 (0.07s)
+    --- PASS: TestBatchGoldens/G-BT2 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT3 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT4 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT6 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT7 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT8 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT9 (0.01s)
+    --- PASS: TestBatchGoldens/G-BT10 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT11 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT12 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT14 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT15 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT16 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT17 (0.00s)
+    --- FAIL: TestBatchGoldens/G-BT19 (0.00s)
+    --- PASS: TestBatchGoldens/G-BT21 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/engine	0.114s
+FAIL
+# exit=1 elapsed=6s

@@ -1,0 +1,16 @@
+# 2026-10-26T10:36:16Z cwd=scratch copy (git archive of HEAD) at /tmp/claude-0/-home-user-Geminus/b4164204-ed28-580b-a7b5-c02b59026d38/scratchpad/m
+# mutant r-b1-ignores-timeouts-after-horizon (internal/simulation/engine/kernel.go): '\t\t\tk.timeouts++\n\t\t\tif err := k.r.schedule(front.enter+b.wait-k.r.now' -> '\t\t\tif front.enter+b.wait <= k.r.p.horizon {\n\t\t\t\tk.timeouts++\n\t\t\t}\n\t\t\tif err := k.r.schedule(front.enter+b.wait-k.r.now'
+# cmd: go test -count=1 -v -overlay <overlay> -run Digests ./internal/simulation/des/
+=== RUN   TestGoldenDigests030
+--- PASS: TestGoldenDigests030 (0.65s)
+=== RUN   TestGoldenDigests040
+--- PASS: TestGoldenDigests040 (0.48s)
+=== RUN   TestGoldenDigests
+--- PASS: TestGoldenDigests (0.00s)
+=== RUN   TestGoldenDigests020
+--- PASS: TestGoldenDigests020 (0.03s)
+=== RUN   TestGoldenDigests050
+--- PASS: TestGoldenDigests050 (0.40s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	1.558s
+# exit=0 elapsed=5s
