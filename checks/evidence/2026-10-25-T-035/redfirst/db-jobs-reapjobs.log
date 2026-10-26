@@ -1,0 +1,7 @@
+# case db-jobs-reapjobs: RED
+# base internal/storage/jobs/jobs.go
+# $ go vet ./internal/storage/jobs/
+# exit 1
+# github.com/kcl1104/geminus/internal/storage/jobs_test
+# [github.com/kcl1104/geminus/internal/storage/jobs_test]
+vet: internal/storage/jobs/jobs_test.go:923:20: undefined: jobs.Reaped

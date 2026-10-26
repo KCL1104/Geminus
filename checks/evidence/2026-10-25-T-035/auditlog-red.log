@@ -1,0 +1,5 @@
+# github.com/kcl1104/geminus/internal/storage/auditlog_test [github.com/kcl1104/geminus/internal/storage/auditlog.test]
+internal/storage/auditlog/auditlog_test.go:59:50: undefined: auditlog.AppendSystem
+internal/storage/auditlog/auditlog_test.go:74:21: undefined: auditlog.AppendSystem
+FAIL	github.com/kcl1104/geminus/internal/storage/auditlog [build failed]
+FAIL

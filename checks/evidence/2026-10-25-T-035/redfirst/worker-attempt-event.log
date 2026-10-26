@@ -1,0 +1,11 @@
+# case worker-attempt-event: RED
+# base internal/worker/worker.go
+# $ go test -count=1 -run ^(TestTheAttemptsEvent)$ ./internal/worker/
+# exit 1
+FAIL	github.com/kcl1104/geminus/internal/worker [build failed]
+FAIL
+# github.com/kcl1104/geminus/internal/worker [github.com/kcl1104/geminus/internal/worker.test]
+internal/worker/audit_internal_test.go:63:15: w.audit undefined (type *Worker has no field or method audit)
+internal/worker/audit_internal_test.go:93:9: undefined: correlation
+internal/worker/audit_internal_test.go:110:14: w.audit undefined (type *Worker has no field or method audit)
+internal/worker/audit_internal_test.go:116:16: bad.audit undefined (type *Worker has no field or method audit)

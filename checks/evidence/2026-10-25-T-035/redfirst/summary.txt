@@ -1,0 +1,17 @@
+observability            RED      exit=1  go test -count=1 -run ^(Test.*)$ ./internal/observability/
+telemetry                RED      exit=1  go test -count=1 -run ^(Test.*)$ ./internal/observability/telemetry/
+export                   RED      exit=1  go test -count=1 -run ^(Test.*)$ ./internal/observability/telemetry/export/
+config-telemetry         RED      exit=1  go test -count=1 -run ^(TestLoadTelemetry)$ ./internal/config/
+httpapi-request-layer    RED      exit=1  go test -count=1 -run ^(TestRecover|TestAccessLog|TestAccessLogTelemetry|TestAccessLogKeepsTheWriter|TestAccessLogAndAbort)$ ./internal/httpapi/
+worker-id                RED      exit=1  go test -count=1 -run ^(TestNewChecksTheConfig)$ ./internal/worker/
+worker-attempt-event     RED      exit=1  go test -count=1 -run ^(TestTheAttemptsEvent)$ ./internal/worker/
+generator-call-line      RED      exit=1  go test -count=1 -run ^(TestTheCallsLine)$ ./internal/proposals/generator/
+runner-engine-outcome    RED      exit=1  go test -count=1 -run ^(TestEngineOutcome)$ ./internal/runs/runner/
+cmd-api                  RED      exit=1  go test -count=1 -run ^(TestTheLogIsFiltered|TestRunRefusesABadTelemetryEndpoint)$ ./cmd/api/
+cmd-worker               RED      exit=1  go test -count=1 -run ^(TestTheWorkersLoggerIsFiltered|TestRunRefusesABadTelemetrySetting)$ ./cmd/worker/
+cmd-worker-json-lines    NOT RED  exit=0  go test -count=1 -run ^(TestTheWorkersLinesAreJSON)$ ./cmd/worker/
+db-jobs-reapjobs         RED      exit=1  go vet ./internal/storage/jobs/
+db-refuse-audit          RED      exit=1  go vet ./internal/api/ ./internal/worker/
+audit-provisioning       RED      exit=1  go test -count=1 -run ^(TestTheCatalogueMatchesTheCode)$ ./internal/audit/
+architecture-new-rules   RED      exit=1  go test -count=1 -run TestProbesAreCaught/(the-filter-reads-storage|the-filter-goes-online|the-filter-opens-files|the-filter-links-a-module|the-catalogue-reads-the-tenant|the-catalogue-imports-pgx|the-catalogue-opens-files|the-api-layer-exports|a-handler-links-the-sdk|the-instruments-link-the-sdk|the-instruments-go-online|the-instruments-read-storage)$ ./scripts/check-architecture/
+tree after the runs: clean

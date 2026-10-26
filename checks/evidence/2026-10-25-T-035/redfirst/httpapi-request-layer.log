@@ -1,0 +1,28 @@
+# case httpapi-request-layer: RED
+# base internal/httpapi/request.go
+# base internal/httpapi/errors.go
+# base internal/httpapi/scope.go
+# $ go test -count=1 -run ^(TestRecover|TestAccessLog|TestAccessLogTelemetry|TestAccessLogKeepsTheWriter|TestAccessLogAndAbort)$ ./internal/httpapi/
+# exit 1
+--- FAIL: TestAccessLog (0.01s)
+    access_test.go:112: request 0: 201 map[component:api duration_ms:0 http_status:201 level:INFO method:POST msg:request request_id:req_01M5TTGTVRZFQBRGNG9G8E907W response_bytes:12 route:POST /v1/things/{id} time:2026-10-26T00:42:14.265089274Z]
+    access_test.go:126: request 0: scope map[component:api duration_ms:0 http_status:201 level:INFO method:POST msg:request request_id:req_01M5TTGTVRZFQBRGNG9G8E907W response_bytes:12 route:POST /v1/things/{id} time:2026-10-26T00:42:14.265089274Z]
+    access_test.go:112: request 1: 409 map[component:api duration_ms:0 http_status:409 level:INFO method:POST msg:request request_id:req_01M5TTGTVSS8TZ75Y7WWZ5Y8BX response_bytes:105 route:POST /v1/things/{id} time:2026-10-26T00:42:14.265243532Z]
+    access_test.go:118: request 1: error code <nil>
+    access_test.go:126: request 1: scope map[component:api duration_ms:0 http_status:409 level:INFO method:POST msg:request request_id:req_01M5TTGTVSS8TZ75Y7WWZ5Y8BX response_bytes:105 route:POST /v1/things/{id} time:2026-10-26T00:42:14.265243532Z]
+    access_test.go:112: request 2: 401 map[component:api duration_ms:0 http_status:401 level:INFO method:POST msg:request request_id:req_01M5TTGTVSGET8Q4NMPV3FZ77E response_bytes:127 route:POST /v1/things/{id} time:2026-10-26T00:42:14.26527374Z]
+    access_test.go:118: request 2: error code <nil>
+    access_test.go:112: request 3: 404 map[component:api duration_ms:0 http_status:404 level:INFO method:DELETE msg:request request_id:req_01M5TTGTVS9CHG0T851CBN5ZCH response_bytes:106 route:unmatched time:2026-10-26T00:42:14.265306789Z]
+    access_test.go:118: request 3: error code <nil>
+    access_test.go:112: request 4: 404 map[component:api duration_ms:0 http_status:404 level:INFO method:OTHER msg:request request_id:req_01M5TTGTVSTHCC16RHKSVH3B7H response_bytes:106 route:unmatched time:2026-10-26T00:42:14.265327092Z]
+    access_test.go:118: request 4: error code <nil>
+    access_test.go:131: route line 0: map[component:api error:the row "[redacted]" is odd level:WARN msg:inside the route request_id:req_01M5TTGTVRZFQBRGNG9G8E907W time:2026-10-26T00:42:14.264876991Z]
+    access_test.go:131: route line 1: map[component:api error:the row "[redacted]" is odd level:WARN msg:inside the route request_id:req_01M5TTGTVSS8TZ75Y7WWZ5Y8BX time:2026-10-26T00:42:14.265143321Z]
+--- FAIL: TestRecover (0.00s)
+    httpapi_test.go:216: panic: 500 {"error":{"code":"INTERNAL_ERROR","message":"internal error","request_id":"req_01M5TTGTW7BX3HFYBRPA9F8M49"}} time=2026-10-26T00:42:14.279Z level=ERROR msg="handler panicked" request_id=req_01M5TTGTW7BX3HFYBRPA9F8M49 panic="boom: row CASE-SENTINEL"
+        time=2026-10-26T00:42:14.279Z level=ERROR msg="request failed" request_id=req_01M5TTGTW7BX3HFYBRPA9F8M49 error=panic
+    httpapi_test.go:219: the panic's value is logged: time=2026-10-26T00:42:14.279Z level=ERROR msg="handler panicked" request_id=req_01M5TTGTW7BX3HFYBRPA9F8M49 panic="boom: row CASE-SENTINEL"
+        time=2026-10-26T00:42:14.279Z level=ERROR msg="request failed" request_id=req_01M5TTGTW7BX3HFYBRPA9F8M49 error=panic
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/httpapi	0.027s
+FAIL

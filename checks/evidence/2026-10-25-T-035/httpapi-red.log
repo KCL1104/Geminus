@@ -1,0 +1,7 @@
+# github.com/kcl1104/geminus/internal/httpapi [github.com/kcl1104/geminus/internal/httpapi.test]
+internal/httpapi/access_test.go:52:7: undefined: AccessLog
+internal/httpapi/access_test.go:128:13: undefined: AccessLog
+internal/httpapi/access_test.go:143:7: undefined: AccessLog
+internal/httpapi/access_test.go:165:7: undefined: AccessLog
+FAIL	github.com/kcl1104/geminus/internal/httpapi [build failed]
+FAIL

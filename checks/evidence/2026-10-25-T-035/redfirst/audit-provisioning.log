@@ -1,0 +1,10 @@
+# case audit-provisioning: RED
+# base internal/storage/provisioning/provisioning.go
+# $ go test -count=1 -run ^(TestTheCatalogueMatchesTheCode)$ ./internal/audit/
+# exit 1
+--- FAIL: TestTheCatalogueMatchesTheCode (0.05s)
+    audit_test.go:307: ../../internal/storage/provisioning/provisioning.go writes twin.audit_events itself, around auditlog's catalogue check
+    audit_test.go:324: organization.provision is in the catalogue but no production file writes it
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/audit	0.055s
+FAIL

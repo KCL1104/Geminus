@@ -1,0 +1,10 @@
+    --- PASS: TestProbesAreCaught/the-api-layer-exports (0.62s)
+    --- PASS: TestProbesAreCaught/a-handler-links-the-sdk (0.63s)
+    --- PASS: TestProbesAreCaught/the-instruments-link-the-sdk (0.67s)
+    --- PASS: TestProbesAreCaught/the-instruments-go-online (0.62s)
+    --- PASS: TestProbesAreCaught/the-instruments-read-storage (0.63s)
+    --- PASS: TestProbesAreCaught/the-kernel-records-telemetry (0.60s)
+    --- PASS: TestProbesAreCaught/the-kernel-uses-the-otel-api (0.63s)
+    --- PASS: TestProbesAreCaught/the-context-records-telemetry (0.64s)
+    --- PASS: TestProbesAreCaught/the-provider-uses-the-otel-api (0.61s)
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	5.667s

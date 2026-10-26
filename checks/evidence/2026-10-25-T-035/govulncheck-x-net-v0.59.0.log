@@ -1,0 +1,145 @@
+=== Symbol Results ===
+
+Vulnerability #1: GO-2026-6617
+    HTTP/2 server crash due to HPACK encoder race in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6617
+  Module: golang.org/x/net
+    Found in: golang.org/x/net@v0.59.0
+    Fixed in: golang.org/x/net@v0.60.0
+    Example traces found:
+      #1: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.ConnectionError.Error
+      #2: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.ErrCode.String
+      #3: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.FrameHeader.String
+      #4: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.FrameType.String
+      #5: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrame
+      #6: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrameForHeader
+      #7: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrameHeader
+      #8: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteContinuation
+      #9: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteGoAway
+      #10: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteHeaders
+      #11: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WritePing
+      #12: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteRSTStream
+      #13: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteSettings
+      #14: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteSettingsAck
+      #15: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteWindowUpdate
+      #16: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.SettingID.String
+      #17: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.SettingsFrame.ForeachSetting
+      #18: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.StreamError.Error
+      #19: internal/ai/provider/anthropic/anthropic.go:201:22: anthropic.Backend.Complete calls anthropic.MessageService.New, which eventually calls http2.Transport.RoundTrip
+      #20: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.connError.Error
+      #21: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.duplicatePseudoHeaderError.Error
+      #22: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.headerFieldNameError.Error
+      #23: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.headerFieldValueError.Error
+      #24: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.pseudoHeaderError.Error
+
+Vulnerability #2: GO-2026-6612
+    Double flow control refund on HTTP/2 server streams in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6612
+  Module: golang.org/x/net
+    Found in: golang.org/x/net@v0.59.0
+    Fixed in: golang.org/x/net@v0.60.0
+    Example traces found:
+      #1: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.ConnectionError.Error
+      #2: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.ErrCode.String
+      #3: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.FrameHeader.String
+      #4: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.FrameType.String
+      #5: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrame
+      #6: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrameForHeader
+      #7: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrameHeader
+      #8: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteContinuation
+      #9: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteGoAway
+      #10: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteHeaders
+      #11: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WritePing
+      #12: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteRSTStream
+      #13: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteSettings
+      #14: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteSettingsAck
+      #15: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteWindowUpdate
+      #16: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.SettingID.String
+      #17: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.SettingsFrame.ForeachSetting
+      #18: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.StreamError.Error
+      #19: internal/ai/provider/anthropic/anthropic.go:201:22: anthropic.Backend.Complete calls anthropic.MessageService.New, which eventually calls http2.Transport.RoundTrip
+      #20: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.connError.Error
+      #21: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.duplicatePseudoHeaderError.Error
+      #22: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.headerFieldNameError.Error
+      #23: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.headerFieldValueError.Error
+      #24: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.pseudoHeaderError.Error
+
+Vulnerability #3: GO-2026-6611
+    Excessive CPU consumption from repeated initial window changes in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6611
+  Module: golang.org/x/net
+    Found in: golang.org/x/net@v0.59.0
+    Fixed in: golang.org/x/net@v0.60.0
+    Example traces found:
+      #1: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.ConnectionError.Error
+      #2: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.ErrCode.String
+      #3: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.FrameHeader.String
+      #4: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.FrameType.String
+      #5: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrame
+      #6: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrameForHeader
+      #7: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrameHeader
+      #8: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteContinuation
+      #9: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteGoAway
+      #10: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteHeaders
+      #11: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WritePing
+      #12: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteRSTStream
+      #13: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteSettings
+      #14: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteSettingsAck
+      #15: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteWindowUpdate
+      #16: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.SettingID.String
+      #17: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.SettingsFrame.ForeachSetting
+      #18: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.StreamError.Error
+      #19: internal/ai/provider/anthropic/anthropic.go:201:22: anthropic.Backend.Complete calls anthropic.MessageService.New, which eventually calls http2.Transport.RoundTrip
+      #20: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.connError.Error
+      #21: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.duplicatePseudoHeaderError.Error
+      #22: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.headerFieldNameError.Error
+      #23: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.headerFieldValueError.Error
+      #24: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.pseudoHeaderError.Error
+
+Vulnerability #4: GO-2026-6610
+    HTTP/2 transport accepts malformed framing-related headers in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6610
+  Module: golang.org/x/net
+    Found in: golang.org/x/net@v0.59.0
+    Fixed in: golang.org/x/net@v0.60.0
+    Example traces found:
+      #1: internal/ai/provider/anthropic/anthropic.go:201:22: anthropic.Backend.Complete calls anthropic.MessageService.New, which eventually calls http2.Transport.RoundTrip
+
+Vulnerability #5: GO-2026-6603
+    HTTP/2 server memory exhaustion due to Trailer headers in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6603
+  Module: golang.org/x/net
+    Found in: golang.org/x/net@v0.59.0
+    Fixed in: golang.org/x/net@v0.60.0
+    Example traces found:
+      #1: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.ConnectionError.Error
+      #2: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.ErrCode.String
+      #3: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.FrameHeader.String
+      #4: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.FrameType.String
+      #5: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrame
+      #6: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrameForHeader
+      #7: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.ReadFrameHeader
+      #8: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteContinuation
+      #9: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteGoAway
+      #10: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteHeaders
+      #11: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WritePing
+      #12: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteRSTStream
+      #13: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteSettings
+      #14: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteSettingsAck
+      #15: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.Framer.WriteWindowUpdate
+      #16: internal/worker/worker.go:622:20: worker.panicked.Error calls fmt.Sprintf, which eventually calls http2.SettingID.String
+      #17: internal/auth/authtest/authtest.go:121:121: authtest.Provider.Config calls httptest.Server.Client, which eventually calls http2.SettingsFrame.ForeachSetting
+      #18: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.StreamError.Error
+      #19: internal/ai/provider/anthropic/anthropic.go:201:22: anthropic.Backend.Complete calls anthropic.MessageService.New, which eventually calls http2.Transport.RoundTrip
+      #20: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.connError.Error
+      #21: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.duplicatePseudoHeaderError.Error
+      #22: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.headerFieldNameError.Error
+      #23: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.headerFieldValueError.Error
+      #24: internal/import/validator/validator.go:240:56: validator.storeError.Error calls http2.pseudoHeaderError.Error
+
+Your code is affected by 5 vulnerabilities from 1 module.
+This scan found no other vulnerabilities in packages you import or modules you
+require.
+Use '-show verbose' for more details.
+exit status 3
+exit=1

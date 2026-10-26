@@ -1,0 +1,11 @@
+clean-testcache      exit=0      0s  go clean -testcache
+spec-check           exit=0     10s  make spec-check PYTHON=/home/user/Geminus/.venv/bin/python
+backend-test         exit=0    222s  make backend-test
+architecture-check   exit=0      8s  make architecture-check
+race-touched         exit=0     29s  go test -race -count=1 ./internal/observability/... ./internal/audit/ ./internal/httpapi/ ./internal/worker/ ./internal/storage/auditlog/ ./internal/storage/jobs/ ./internal/storage/provisioning/ ./internal/storage/dbtest/ ./internal/config/ ./cmd/... ./internal/runs/runner/ ./internal/proposals/generator/ ./internal/import/profiler/ ./internal/import/validator/ ./internal/api/
+backend-race         exit=0    502s  make backend-race
+ai-eval              exit=0      1s  make ai-eval
+mod-verify           exit=0      1s  go mod verify
+govulncheck          exit=0      3s  env GOTOOLCHAIN=go1.27.3 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/... ./scripts/...
+mutants-db-build     exit=0      5s  python3 /home/user/Geminus/.claude/worktrees/agent-a664cf25a63882c60/checks/evidence/2026-10-25-T-035/mutate.py /home/user/Geminus/.claude/worktrees/agent-a664cf25a63882c60 /home/user/Geminus/.claude/worktrees/agent-a664cf25a63882c60/checks/evidence/2026-10-25-T-035/mutants-db-build.log dbbuild
+mutants-db-build     exit=0      7s  (rerun after two db mutants were rewritten to build: mutants-db-build.log, 12 BUILDS)

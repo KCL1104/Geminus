@@ -1,0 +1,9 @@
+github.com/kcl1104/geminus/internal/audit: no non-test Go files in /home/user/Geminus/.claude/worktrees/agent-a664cf25a63882c60/internal/audit
+FAIL	github.com/kcl1104/geminus/internal/audit [build failed]
+FAIL
+--- FAIL: TestTheCatalogueMatchesTheCode (0.06s)
+    audit_test.go:318: job.attempt_failed is in the catalogue but no production file writes it
+    audit_test.go:318: organization.provision is in the catalogue but no production file writes it
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/audit	0.066s
+FAIL

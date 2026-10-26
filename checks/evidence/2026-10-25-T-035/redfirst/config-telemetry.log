@@ -1,0 +1,9 @@
+# case config-telemetry: RED
+# hide internal/config/telemetry.go
+# $ go test -count=1 -run ^(TestLoadTelemetry)$ ./internal/config/
+# exit 1
+FAIL	github.com/kcl1104/geminus/internal/config [build failed]
+FAIL
+# github.com/kcl1104/geminus/internal/config [github.com/kcl1104/geminus/internal/config.test]
+internal/config/telemetry_test.go:36:15: undefined: LoadTelemetry
+internal/config/telemetry_test.go:56:13: undefined: LoadTelemetry

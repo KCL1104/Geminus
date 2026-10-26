@@ -1,0 +1,46 @@
+# D-092 (b), PROPOSED and NOT APPLIED: ADR-024 (ACCEPTED, H-010) says WORKER_ID is 1-200 visible ASCII.
+# If the owner amends ADR-024, this is the change; with it, TestLoadWorker failed on the old code
+# ("1worker", "-worker", "worker/1", "worker@pod", "w~1" accepted) and passed on the new one.
+--- a/internal/config/worker.go
++++ b/internal/config/worker.go
+@@ -3,6 +3,8 @@
+ import (
+ 	"errors"
+ 	"strings"
++
++	"github.com/kcl1104/geminus/internal/audit"
+ )
+ 
+ // Worker is the job worker's identity and assignment (T-019).
+@@ -26,8 +28,9 @@
+ 	switch {
+ 	case w.ID == "":
+ 		errs = append(errs, &Error{"WORKER_ID", CodeRequired, "a name for this worker's leases is required"})
+-	case len(w.ID) > 200 || strings.ContainsFunc(w.ID, func(r rune) bool { return r < 0x21 || r > 0x7e }):
+-		errs = append(errs, &Error{"WORKER_ID", CodeInvalid, "must be 1-200 visible ASCII characters"})
++	case !audit.ValidActor(w.ID):
++		errs = append(errs, &Error{"WORKER_ID", CodeInvalid,
++			"must start with a letter and use only letters, digits, '_', '.', ':' and '-' (at most 128): it names the worker in audit events (D-092)"})
+ 	}
+ 	switch raw := getenv("WORKER_ORGANIZATION_IDS"); {
+ 	case strings.TrimSpace(raw) == "":
+--- a/internal/config/config_test.go
++++ b/internal/config/config_test.go
+@@ -166,12 +166,15 @@
+ 	if _, err := LoadWorker(env(nil)); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ID:required", "WORKER_ORGANIZATION_IDS:required"}) {
+ 		t.Errorf("nothing set: %v", err)
+ 	}
+-	for _, id := range []string{"has space", "tab\t", "naïve", strings.Repeat("w", 201), "\x7f"} {
++	// D-092: WORKER_ID names the worker in audit events, so it is an actor
++	// reference (twin.actor_ref), not 1-200 visible ASCII (ADR-024's text).
++	for _, id := range []string{"has space", "tab\t", "naïve", strings.Repeat("w", 201), "\x7f", strings.Repeat("w", 129), "1worker",
++		"-worker", "worker/1", "worker@pod", "w~1"} {
+ 		if _, err := LoadWorker(env(map[string]string{"WORKER_ID": id, "WORKER_ORGANIZATION_IDS": " , "})); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ID:invalid"}) {
+ 			t.Errorf("%q: %v", id, err)
+ 		}
+ 	}
+-	if _, err := LoadWorker(env(map[string]string{"WORKER_ID": strings.Repeat("w", 200), "WORKER_ORGANIZATION_IDS": " \t"})); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ORGANIZATION_IDS:required"}) {
++	if _, err := LoadWorker(env(map[string]string{"WORKER_ID": strings.Repeat("w", 128), "WORKER_ORGANIZATION_IDS": " \t"})); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ORGANIZATION_IDS:required"}) {
+ 		t.Errorf("a blank allowlist: %v", err)
+ 	}
+ }

@@ -1,0 +1,7 @@
+# case telemetry: RED
+# hide internal/observability/telemetry/telemetry.go
+# $ go test -count=1 -run ^(Test.*)$ ./internal/observability/telemetry/
+# exit 1
+FAIL	github.com/kcl1104/geminus/internal/observability/telemetry [build failed]
+FAIL
+github.com/kcl1104/geminus/internal/observability/telemetry: no non-test Go files in /home/user/Geminus/.claude/worktrees/agent-a664cf25a63882c60/internal/observability/telemetry

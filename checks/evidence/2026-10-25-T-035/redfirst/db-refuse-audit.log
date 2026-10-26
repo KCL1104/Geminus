@@ -1,0 +1,10 @@
+# case db-refuse-audit: RED
+# base internal/storage/dbtest/dbtest.go
+# $ go vet ./internal/api/ ./internal/worker/
+# exit 1
+# github.com/kcl1104/geminus/internal/worker_test
+# [github.com/kcl1104/geminus/internal/worker_test]
+vet: internal/worker/audit_test.go:201:17: undefined: dbtest.RefuseAudit
+# github.com/kcl1104/geminus/internal/api_test
+# [github.com/kcl1104/geminus/internal/api_test]
+vet: internal/api/audit_test.go:58:18: undefined: dbtest.RefuseAudit

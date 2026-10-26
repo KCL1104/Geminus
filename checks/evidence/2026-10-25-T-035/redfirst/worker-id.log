@@ -1,0 +1,13 @@
+# case worker-id: RED
+# base internal/worker/worker.go
+# hide internal/worker/audit_internal_test.go
+# $ go test -count=1 -run ^(TestNewChecksTheConfig)$ ./internal/worker/
+# exit 1
+--- FAIL: TestNewChecksTheConfig (0.00s)
+    worker_test.go:89: an ID with a slash: accepted
+    worker_test.go:89: an ID with a non-ASCII letter: accepted
+    worker_test.go:89: an ID that starts with a digit: accepted
+    worker_test.go:89: an ID over 128 characters: accepted
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/worker	0.007s
+FAIL

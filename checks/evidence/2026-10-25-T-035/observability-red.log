@@ -1,0 +1,3 @@
+github.com/kcl1104/geminus/internal/observability: no non-test Go files in /home/user/Geminus/.claude/worktrees/agent-a664cf25a63882c60/internal/observability
+FAIL	github.com/kcl1104/geminus/internal/observability [build failed]
+FAIL

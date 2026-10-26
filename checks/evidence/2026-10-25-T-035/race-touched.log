@@ -1,0 +1,22 @@
+$ go test -race -count=1 ./internal/observability/... ./internal/audit/ ./internal/httpapi/ ./internal/worker/ ./internal/storage/auditlog/ ./internal/storage/jobs/ ./internal/storage/provisioning/ ./internal/storage/dbtest/ ./internal/config/ ./cmd/... ./internal/runs/runner/ ./internal/proposals/generator/ ./internal/import/profiler/ ./internal/import/validator/ ./internal/api/
+ok  	github.com/kcl1104/geminus/internal/observability	1.413s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry	1.041s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry/export	1.042s
+ok  	github.com/kcl1104/geminus/internal/audit	1.437s
+ok  	github.com/kcl1104/geminus/internal/httpapi	1.217s
+ok  	github.com/kcl1104/geminus/internal/worker	1.028s
+ok  	github.com/kcl1104/geminus/internal/storage/auditlog	1.025s
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	1.037s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.032s
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/config	1.021s
+ok  	github.com/kcl1104/geminus/cmd/api	1.103s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.025s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.201s
+ok  	github.com/kcl1104/geminus/internal/runs/runner	1.073s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	2.047s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/validator	1.173s
+ok  	github.com/kcl1104/geminus/internal/api	1.453s
+
+exit=0 (29s)

@@ -1,0 +1,9 @@
+# case observability: RED
+# hide internal/observability/redact.go
+# hide internal/observability/handler.go
+# hide internal/observability/context.go
+# $ go test -count=1 -run ^(Test.*)$ ./internal/observability/
+# exit 1
+FAIL	github.com/kcl1104/geminus/internal/observability [build failed]
+FAIL
+github.com/kcl1104/geminus/internal/observability: no non-test Go files in /home/user/Geminus/.claude/worktrees/agent-a664cf25a63882c60/internal/observability

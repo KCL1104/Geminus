@@ -1,0 +1,8 @@
+# case runner-engine-outcome: RED
+# base internal/runs/runner/runner.go
+# $ go test -count=1 -run ^(TestEngineOutcome)$ ./internal/runs/runner/
+# exit 1
+FAIL	github.com/kcl1104/geminus/internal/runs/runner [build failed]
+FAIL
+# github.com/kcl1104/geminus/internal/runs/runner [github.com/kcl1104/geminus/internal/runs/runner.test]
+internal/runs/runner/outcome_test.go:30:13: undefined: engineOutcome

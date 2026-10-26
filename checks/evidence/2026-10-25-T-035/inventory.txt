@@ -1,0 +1,74 @@
+T-035 inventory before any change (tree 38f0b7b), written before the first edit.
+
+1. Writes and their audit events (grep of auditlog.Append*, INSERT/UPDATE/DELETE in internal/storage)
+
+User writes (API, one tenant transaction each; audit appended in that transaction through internal/storage/auditlog):
+  project.create                  internal/project/project.go
+  membership.create/update/delete internal/tenant/memberships/memberships.go
+  model.create                    internal/models/models.go
+  model.draft.update              internal/models/models.go
+  model.draft.reset               internal/models/models.go
+  model.publish                   internal/models/models.go
+  import.upload                   internal/import/upload/upload.go   (with the import_profile job)
+  import.map                      internal/import/upload/mapping.go  (with the import_validate job; cancels a queued/running validation)
+  proposal.create                 internal/proposals/proposals.go    (with the model_proposal job)
+  proposal.approve / .reject / .conflict  internal/proposals/approval/approval.go (version or scenario, draft sync, decision)
+  scenario.create                 internal/scenarios/scenarios.go
+  simulation.create               internal/runs/runs.go              (with the simulation job)
+  simulation.cancel               internal/runs/runs.go              (jobs.CancelQueued or the cancellation flag)
+System write:
+  organization.provision          internal/storage/provisioning/provisioning.go: its own INSERT INTO twin.audit_events
+                                  (SQL-built metadata), not through auditlog.
+Worker writes appended by the handler in its Finish (or Checkpoint) transaction:
+  import.profile                  internal/import/profiler (Finish)
+  import.validate                 internal/import/validator (Finish)
+  proposal.generate               internal/proposals/generator (Finish)
+  proposal.attempt_failed         internal/proposals/generator (a separate best-effort Checkpoint, not the
+                                  transaction that records the failure)
+  simulation.complete             internal/runs/runner (Finish)
+  simulation.cancelled            internal/runs/runner (Finish)
+
+GAPS (business writes without an audit event in their transaction):
+  G1  internal/worker run(): jobs.Fail records an attempt's failure. A final failure fails the job, and the
+      run / proposal / import follows it (0009 follow_simulation_job, 0012 follow_proposal_job, 0010
+      follow_import_profile_job); a retried one puts the job (and run) back to queued. No audit event.
+      The job row keeps only the last failure (jobs.error is overwritten), so earlier attempts leave no trace.
+  G2  internal/worker Pass(): jobs.Reap takes back expired leases (LEASE_EXPIRED): requeue or final failure,
+      resources follow as in G1. No audit event; only a WARN line with counts.
+  G3  provisioning writes its audit row with hand-written SQL, outside the one audited append path.
+  G4  Nothing checks what an audit event holds: action names, target types and metadata are free-form
+      map[string]any; "IDs and counts only" (SECURITY section 9) is a comment, not a check.
+  G5  proposal.generate / attempt_failed metadata drop provider.Metadata.ProviderRequestID: no provider
+      correlation in the audit trail (REQ-018 "request / run / provider correlation").
+  G6  WORKER_ID: config accepts 1-200 visible ASCII characters, worker.New 1-200 characters; the database
+      requires every worker/system audit actor to be a twin.actor_ref (^[A-Za-z][A-Za-z0-9_.:-]{0,127}$,
+      0001). Today each of the four handler constructors (runner, profiler, validator, generator) repeats
+      that regex and refuses another name, so cmd/worker already stops at startup; the loop itself (which
+      will audit job failures, G1/G2) does not check it. The actor format was left "open until T-035"
+      (0001 comment, TWIN_IR_SPEC section 1, T-003, T-006): it is written down nowhere as a decision.
+Not business writes (operational; no audit event, by D-091): jobs.Claim, jobs.Heartbeat, jobs.Lock,
+  run start / event budget reservation / progress (internal/storage/runs Start, Reserve, Progress),
+  imports StartProfiling, idempotency rows (part of the audited operation's transaction).
+
+2. Logs today
+  cmd/api, cmd/worker: slog.New(slog.NewJSONHandler(stderr, nil)).With("component", ...): JSON lines, no filter.
+  L1  No line per request (no access log); a request is visible only when it fails unexpectedly
+      (httpapi.WriteError ERROR "request failed") or a route logs a WARN itself.
+  L2  request_id is added by hand at 9 call sites; handler lines in the worker (profiler, validator) carry
+      neither organization, job nor import; runner lines use Warn without the context.
+  L3  No central privacy filter. Values reach logs as err.Error() text at ~42 call sites; a handler error,
+      a pgx error ("invalid input syntax ...: \"<value>\""), a %q-quoted value or a key=value secret in
+      an error is logged as it is (the worker bounds it to 500 characters, the API not at all).
+  L4  httpapi.Handler logs a panic's value (fmt.Sprint(v)) in full; the worker keeps only a runtime
+      error's text (worker.panicked), so the API and the worker disagree.
+  L5  The worker's own lines carry organization_id, job_id, type, attempt; a job's lines carry no
+      request_id of the request that queued it (it is in the job payload and in the worker audit events).
+
+3. Correlation IDs today
+  request: req_ ULID, server-issued per request (httpapi.Handler, X-Request-ID, error.request_id, audit
+           request_id); jobs carry the creating request's ID in their payload; worker audit events reuse it.
+  run/proposal/import: resource IDs in job payload and audit target; log lines only where hand-written.
+  provider: provider.Metadata.ProviderRequestID exists, never audited or logged.
+
+4. Traces / metrics today
+  None: no OpenTelemetry, no metrics; ADR-019 and ARCHITECTURE section 8 hand OTel tracing to T-035.

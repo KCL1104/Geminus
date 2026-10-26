@@ -1,0 +1,31 @@
+T-035: DB-backed checks NOT RUN in the agent worktree (no PostgreSQL server; GEMINUS_TEST_DATABASE_URL unset,
+so every DB-backed Go test SKIPs; the coordinator rule forbids installing or starting PostgreSQL). Each compiles
+and passes `go vet` (make backend-test).
+
+New DB-backed tests
+  internal/api           TestAnUnwritableAuditEventCommitsNothing   (15 audited routes; dbtest.RefuseAudit)
+  internal/worker        TestFailedAttemptsAreAudited
+                         TestTheReaperAudits
+                         TestAnAuditFailureCommitsNothing          (dbtest.RefuseAudit)
+                         TestTheHandlersLinesCarryTheJob           (also the job span, tracetest)
+  internal/storage/jobs  TestReapJobsReturnsWhatItTook
+
+Existing DB-backed tests with new T-035 assertions
+  internal/api           TestRunClosedLoop             ("simulation engine ran" line)
+                         TestImportMappingClosedLoop   ("import profiled" / "import validated" lines)
+  cmd/api                TestRunServesAndStops         (access lines of the real server)
+
+Existing DB-backed tests whose code path T-035 changed (re-run needed)
+  every test that writes an audit event: each event is now checked against internal/audit's catalogue
+  before the INSERT, and a mismatch fails the write (internal/api, internal/runs/runner, internal/proposals/...,
+  internal/scenarios, internal/models, internal/project, internal/tenant/memberships, internal/import/...,
+  internal/worker); internal/storage/provisioning (TestProvision etc.: the audit row now through
+  auditlog.AppendSystem); internal/storage/jobs (Reap now wraps ReapJobs, RETURNING the qualified columns);
+  cmd/worker's DB tests (the filtered logger, telemetry configuration).
+
+Targets
+  make integration-test, make db-test, make db-go-test
+
+Mutants
+  the 12 "db" mutants of mutate.py (their packages build: mutants-db-build.log); their tests need
+  `mutate.py <root> <log> db` with GEMINUS_TEST_DATABASE_URL set.

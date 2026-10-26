@@ -1,0 +1,85 @@
+# case architecture-new-rules: RED
+# base scripts/check-architecture/rules.go
+# $ go test -count=1 -run TestProbesAreCaught/(the-filter-reads-storage|the-filter-goes-online|the-filter-opens-files|the-filter-links-a-module|the-catalogue-reads-the-tenant|the-catalogue-imports-pgx|the-catalogue-opens-files|the-api-layer-exports|a-handler-links-the-sdk|the-instruments-link-the-sdk|the-instruments-go-online|the-instruments-read-storage)$ ./scripts/check-architecture/
+# exit 1
+--- FAIL: TestProbesAreCaught (7.22s)
+    --- FAIL: TestProbesAreCaught/the-filter-reads-storage (0.58s)
+        check_test.go:338: no observability-is-a-leaf violation of ./internal/observability on ./internal/storage/jobs; got [[db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-filter-goes-online (0.61s)
+        check_test.go:338: no observability-is-a-leaf violation of ./internal/observability on net/http; got [[db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-filter-opens-files (0.59s)
+        check_test.go:338: no observability-is-a-leaf violation of ./internal/observability on os; got [[db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-filter-links-a-module (0.62s)
+        check_test.go:338: no observability-is-a-leaf violation of ./internal/observability on golang.org/x/sync/errgroup; got [[db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-catalogue-reads-the-tenant (0.60s)
+        check_test.go:338: no audit-catalogue-is-pure violation of ./internal/audit on ./internal/tenant; got [[db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-catalogue-imports-pgx (0.62s)
+        check_test.go:338: no audit-catalogue-is-pure violation of ./internal/audit on github.com/jackc/pgx/v5; got [[db-only-in-storage] ./internal/audit depends on github.com/jackc/pgx/v5
+                via ./internal/audit -> github.com/jackc/pgx/v5
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/proposals/generator depends on github.com/jackc/pgx/v5
+                via ./internal/proposals/generator -> ./internal/audit -> github.com/jackc/pgx/v5
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/worker depends on github.com/jackc/pgx/v5
+                via ./internal/worker -> ./internal/audit -> github.com/jackc/pgx/v5
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-catalogue-opens-files (0.58s)
+        check_test.go:338: no audit-catalogue-is-pure violation of ./internal/audit on os; got [[db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-api-layer-exports (0.60s)
+        check_test.go:338: no otel-sdk-only-in-export violation of ./internal/httpapi on go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp; got [[db-only-in-storage] ./internal/api depends on database/sql/driver
+                via ./internal/api -> ./internal/httpapi -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp -> go.opentelemetry.io/otel/exporters/otlp/otlptrace -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal/tracetransform -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/comparisons depends on database/sql/driver
+                via ./internal/comparisons -> ./internal/httpapi -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp -> go.opentelemetry.io/otel/exporters/otlp/otlptrace -> go.opentelemetry.io/otel/exporters/otlp/otlptrace/internal/tracetransform -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+... (32 lines cut) ...
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/import/profiler depends on database/sql/driver
+                via ./internal/import/profiler -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/import/upload depends on database/sql/driver
+                via ./internal/import/upload -> ./internal/httpapi -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/import/validator depends on database/sql/driver
+                via ./internal/import/validator -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/models depends on database/sql/driver
+                via ./internal/models -> ./internal/httpapi -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/observability/telemetry depends on database/sql/driver
+                via ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/project depends on database/sql/driver
+                via ./internal/project -> ./internal/httpapi -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/proposals depends on database/sql/driver
+                via ./internal/proposals -> ./internal/httpapi -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/proposals/approval depends on database/sql/driver
+                via ./internal/proposals/approval -> ./internal/httpapi -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/proposals/generator depends on database/sql/driver
+                via ./internal/proposals/generator -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/runs depends on database/sql/driver
+                via ./internal/runs -> ./internal/httpapi -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/runs/runner depends on database/sql/driver
+                via ./internal/runs/runner -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/scenarios depends on database/sql/driver
+                via ./internal/scenarios -> ./internal/httpapi -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them [db-only-in-storage] ./internal/worker depends on database/sql/driver
+                via ./internal/worker -> ./internal/observability/telemetry -> go.opentelemetry.io/otel/sdk/metric -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-instruments-go-online (0.61s)
+        check_test.go:338: no telemetry-uses-the-api-only violation of ./internal/observability/telemetry on net/http; got [[db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+    --- FAIL: TestProbesAreCaught/the-instruments-read-storage (0.60s)
+        check_test.go:338: no telemetry-uses-the-api-only violation of ./internal/observability/telemetry on ./internal/storage/jobs; got [[db-only-in-storage] ./internal/observability/telemetry/export depends on database/sql/driver
+                via ./internal/observability/telemetry/export -> go.opentelemetry.io/otel/sdk/resource -> github.com/google/uuid -> database/sql/driver
+                rule: SQL handles live in storage and the tenant transaction scope; other packages go through them]
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	7.227s
+FAIL

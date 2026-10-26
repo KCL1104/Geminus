@@ -1,0 +1,13 @@
+# case cmd-api: RED
+# base cmd/api/main.go
+# add cmd/api/zz_redfirst_shim.go
+# $ go test -count=1 -run ^(TestTheLogIsFiltered|TestRunRefusesABadTelemetryEndpoint)$ ./cmd/api/
+# exit 1
+--- FAIL: TestRunRefusesABadTelemetryEndpoint (0.00s)
+    main_test.go:227: exit = 3: {"time":"2026-10-26T00:42:16.334594949Z","level":"ERROR","msg":"database unavailable","component":"api","error":"tenant: reading the runtime role: failed to connect to `user=twin_api database=twin`: /nonexistent-geminus-socket/.s.PGSQL.5432 (/nonexistent-geminus-socket): dial error: dial unix /nonexistent-geminus-socket/.s.PGSQL.5432: connect: no such file or directory"}
+--- FAIL: TestTheLogIsFiltered (0.00s)
+    main_test.go:243: <nil> {"time":"2026-10-26T00:42:16.334813087Z","level":"ERROR","msg":"database unavailable","component":"api","error":"connect postgres://twin_api:pw-SENTINEL@db/twin: row \"CASE-SENTINEL\"","prompt":"SENTINEL"}
+    main_test.go:246: the log holds what it must not: {"time":"2026-10-26T00:42:16.334813087Z","level":"ERROR","msg":"database unavailable","component":"api","error":"connect postgres://twin_api:pw-SENTINEL@db/twin: row \"CASE-SENTINEL\"","prompt":"SENTINEL"}
+FAIL
+FAIL	github.com/kcl1104/geminus/cmd/api	0.025s
+FAIL

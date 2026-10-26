@@ -1,0 +1,6 @@
+# case cmd-worker-json-lines: NOT RED
+# base cmd/worker/main.go
+# add cmd/worker/zz_redfirst_shim.go
+# $ go test -count=1 -run ^(TestTheWorkersLinesAreJSON)$ ./cmd/worker/
+# exit 0
+ok  	github.com/kcl1104/geminus/cmd/worker	0.022s

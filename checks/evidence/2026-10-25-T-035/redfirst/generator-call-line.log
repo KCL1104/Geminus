@@ -1,0 +1,8 @@
+# case generator-call-line: RED
+# base internal/proposals/generator/generator.go
+# $ go test -count=1 -run ^(TestTheCallsLine)$ ./internal/proposals/generator/
+# exit 1
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator [build failed]
+FAIL
+# github.com/kcl1104/geminus/internal/proposals/generator [github.com/kcl1104/geminus/internal/proposals/generator.test]
+internal/proposals/generator/calls_test.go:43:5: h.logCall undefined (type *Handler has no field or method logCall)

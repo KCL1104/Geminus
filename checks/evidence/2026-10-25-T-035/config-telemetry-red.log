@@ -1,0 +1,3 @@
+internal/config/telemetry_test.go:56:13: undefined: LoadTelemetry
+FAIL	github.com/kcl1104/geminus/internal/config [build failed]
+FAIL

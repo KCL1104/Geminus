@@ -1,0 +1,8 @@
+    generator_test.go:164: keys [credential_label failed_over_from input_hash input_tokens latency_ms model output_hash output_locale output_tokens prompt_template_version provider role schema], want [credential_label failed_over_from input_hash input_tokens latency_ms model output_hash output_locale output_tokens prompt_template_version provider provider_request_id role schema]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator	0.015s
+FAIL
+    generator_test.go:185: audit: proposal.attempt_failed: provider_request_id: not a label (letters, digits and ._:/+-, at most 128, no credential)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator	0.016s
+FAIL

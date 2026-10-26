@@ -1,0 +1,8 @@
+    config_test.go:175: "1worker": <nil>
+    config_test.go:175: "-worker": <nil>
+    config_test.go:175: "worker/1": <nil>
+    config_test.go:175: "worker@pod": <nil>
+    config_test.go:175: "w~1": <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config	0.004s
+FAIL
