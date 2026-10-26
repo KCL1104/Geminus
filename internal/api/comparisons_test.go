@@ -4,7 +4,7 @@ package api_test
 // runs created through the API and run by the job loop as the plain worker
 // login, compared through the handler cmd/api serves as the plain API login
 // (TEST-022 and TEST-023 through the API, TEST-009 for comparisons; D-088,
-// D-089 PROPOSED).
+// D-089 APPROVED, H-024).
 
 import (
 	"encoding/json/v2"

@@ -229,7 +229,7 @@ func unsafeAnswers(t *testing.T, id string, ir *model.ModelIR, pool idpool.Pool)
 		// (D-052), so a calendar is no longer an unsupported P1 request; but
 		// the intent gives no times ("自行補時間": invent them), so the case
 		// is missing_data, needs_input. And an AI edit never adds a
-		// calendar (D-083, PROPOSED): the pool allocates no calendar IDs,
+		// calendar (D-083, APPROVED, H-024): the pool allocates no calendar IDs,
 		// so a mixed calendar with invented times is refused whatever its
 		// ID, an invented one or one of the pool's resource IDs.
 		ciRunner := at(t, c.resources, "ci_runner")

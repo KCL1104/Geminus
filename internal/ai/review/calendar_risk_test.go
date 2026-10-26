@@ -14,7 +14,7 @@ import (
 // quantities; any change to them, either way, is at least medium, and a
 // candidate whose bundle is never on shift (R2) is invalid. An edit may
 // change calendars but never add one: the pool allocates no calendar IDs
-// (D-083, PROPOSED; T-046 review I3).
+// (D-083, APPROVED, H-024; T-046 review I3).
 //
 // The base is default-delivery.json after a person's edit (a draft
 // publish): calendar two_shift (period 1440: day [360, 840), evening

@@ -1001,9 +1001,9 @@
       ],
       "source_pages": "N/A（H-021 Q4；D-009、D-059、D-070 (b)、D-072、CB-28、CB-43 (e)）",
       "owner_role": "Import / Product",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-074",
@@ -1084,9 +1084,9 @@
       "resolves": [],
       "source_pages": "N/A（T-049 實作；ADR-026 D-048、D-050、D-051、D-052，D-074）",
       "owner_role": "Simulation",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-082",
@@ -1097,9 +1097,9 @@
       "resolves": [],
       "source_pages": "N/A（T-049 實作；ADR-026 D-053、D-038）",
       "owner_role": "Simulation",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-083",
@@ -1110,9 +1110,9 @@
       "resolves": [],
       "source_pages": "N/A（T-046 review 第 1 輪 I3；D-016、D-046、D-057）",
       "owner_role": "AI / Product",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-084",
@@ -1123,9 +1123,9 @@
       "resolves": [],
       "source_pages": "N/A（T-049；ADR-026 D-052 (i)、D-058、ELECTRONICS_LINE §5）",
       "owner_role": "Simulation / Product",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-085",
@@ -1136,9 +1136,9 @@
       "resolves": [],
       "source_pages": "N/A（T-049 實作；ADR-026 D-050、D-052、D-053、D-063；testdata/contracts/semantic-*.json）",
       "owner_role": "Simulation",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-087",
@@ -1163,9 +1163,9 @@
       "resolves": [],
       "source_pages": "N/A（SIMULATION_SPEC §5、§7、§9；D-010、D-045、D-047、D-078 (b)；REQ-014；TEST-022、TEST-023）",
       "owner_role": "Simulation / Product",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-089",
@@ -1176,9 +1176,9 @@
       "resolves": [],
       "source_pages": "N/A（D-008、D-011、D-012、D-025；API_DATABASE §3、§6；openapi compareSimulations）",
       "owner_role": "Platform / Contracts",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-090",
@@ -1191,9 +1191,9 @@
       ],
       "source_pages": "N/A（CB-22、CB-23；D-010、D-026、D-058；AI_SPEC §9；analysis-output.schema.json）",
       "owner_role": "Simulation / AI / Contracts",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-091",
@@ -1204,9 +1204,9 @@
       "resolves": [],
       "source_pages": "N/A（REQ-018；SECURITY §9；AI_SPEC §10；ADR-019、ADR-024、ADR-027；TEST-027）",
       "owner_role": "Platform / Security",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-092",
@@ -1217,9 +1217,9 @@
       "resolves": [],
       "source_pages": "N/A（migrations/0001 twin.actor_ref；http.schema.json AuditEvent.actor_id；TWIN_IR_SPEC §1；ADR-024；T-003、T-006 報告）",
       "owner_role": "Platform",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-093",
@@ -1230,9 +1230,9 @@
       "resolves": [],
       "source_pages": "N/A（REQ-020；ARCHITECTURE §8；ADR-019 的 request ID；D-045 的「log 不含 organization 名稱」）",
       "owner_role": "Platform",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-094",
@@ -1243,9 +1243,9 @@
       "resolves": [],
       "source_pages": "N/A（SECURITY §7、§9；AI_SPEC §10；ADR-024 的 log 規則；TEST-027）",
       "owner_role": "Security / Platform",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-095",
@@ -1256,9 +1256,9 @@
       "resolves": [],
       "source_pages": "N/A（REQ-020；ARCHITECTURE §1、§8；原報告的 OpenTelemetry；ADR-011 兩週規則）",
       "owner_role": "Platform / Security",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-024)",
+      "approved_at": "2026-10-26"
     }
   ],
   "human_decisions": [
@@ -1556,6 +1556,16 @@
       "decided_by": "repository owner (GitHub: KCL1104)",
       "decided_at": "2026-10-25",
       "source": "Claude Code session：AskUserQuestion，owner 選擇",
+      "still_open": []
+    },
+    {
+      "id": "H-024",
+      "subject": "批准第五、六張決策頁：D-073、D-081–D-085、D-088–D-095 與 ADR-028",
+      "decision": "Owner 對第五張決策頁（https://claude.ai/artifact/VohVqHYNNQSTNR9PRMMzt8）與第六張決策頁（https://claude.ai/artifact/MsMai9v9qSb8XLdzW8DkPR）回覆照建議：D-073（選項 A：常數與秒／分鐘換算的 transform，沒有 offset 的時間仍拒絕，由 T-052 實作）、D-081–D-085（T-049；D-083 A、D-084 A）、D-088–D-090（T-029；D-088 (a) A）、D-091–D-095（T-035；D-092 (b) 修改 ADR-024 的 WORKER_ID、D-093 記錄 user_id、D-095 (b) 加入 OpenTelemetry）依建議 APPROVED；ADR-028 ACCEPTED。T-049、T-029、T-035 因此完成。",
+      "quote": "第五、六頁都照建議",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆",
       "still_open": []
     }
   ]

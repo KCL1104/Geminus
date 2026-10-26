@@ -18,7 +18,7 @@ import (
 
 // The hand-derived goldens of resource calendars and source release
 // schedules (ADR-026 D-047, D-048, D-050, D-051, D-052, D-053; T-049
-// interpretations D-081, D-082, PROPOSED; testdata/simulation/
+// interpretations D-081, D-082, APPROVED, H-024; testdata/simulation/
 // calendar-goldens.json, HAND_DERIVED_EXPECTATION_NOT_ENGINE_RUN, each case
 // with its derivation). The Result members of the same cases are checked
 // in internal/simulation/des.

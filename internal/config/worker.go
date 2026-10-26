@@ -3,6 +3,8 @@ package config
 import (
 	"errors"
 	"strings"
+
+	"github.com/kcl1104/geminus/internal/audit"
 )
 
 // Worker is the job worker's identity and assignment (T-019).
@@ -26,8 +28,9 @@ func LoadWorker(getenv func(string) string) (Worker, error) {
 	switch {
 	case w.ID == "":
 		errs = append(errs, &Error{"WORKER_ID", CodeRequired, "a name for this worker's leases is required"})
-	case len(w.ID) > 200 || strings.ContainsFunc(w.ID, func(r rune) bool { return r < 0x21 || r > 0x7e }):
-		errs = append(errs, &Error{"WORKER_ID", CodeInvalid, "must be 1-200 visible ASCII characters"})
+	case !audit.ValidActor(w.ID):
+		errs = append(errs, &Error{"WORKER_ID", CodeInvalid,
+			"must start with a letter and use only letters, digits, '_', '.', ':' and '-' (at most 128): it names the worker in audit events (D-092)"})
 	}
 	switch raw := getenv("WORKER_ORGANIZATION_IDS"); {
 	case strings.TrimSpace(raw) == "":

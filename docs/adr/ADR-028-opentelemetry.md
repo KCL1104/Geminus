@@ -1,6 +1,6 @@
 # ADR-028 — OpenTelemetry traces 與 metrics（T-035）
 
-狀態：**PROPOSED**（2026-10-26，T-035 agent 提出並實作；待獨立 review 與 owner 決定，agent 不批准）。依據：REQ-020（structured logs + traces/metrics；no customer content in product telemetry）、ARCHITECTURE §1 的 topology（Traces／Metrics、OTLP backend）與 §8、D-093–D-095（PROPOSED）、ADR-011 的兩週規則與授權欄、AGENTS.md §3（不使用 floating `latest`）、§7（停止線）。本 ADR 不選任何雲端、廠商或 backend，也不決定 telemetry 的保存期限（retention／residency 仍為 TBD）。
+狀態：**ACCEPTED**（2026-10-26，owner H-024：「第五、六頁都照建議」，D-095 (b) 採 A）。2026-10-26 由 T-035 agent 提出並實作，獨立 review 第 2 輪 ACCEPT。依據：REQ-020（structured logs + traces/metrics；no customer content in product telemetry）、ARCHITECTURE §1 的 topology（Traces／Metrics、OTLP backend）與 §8、D-093–D-095（APPROVED，H-024）、ADR-011 的兩週規則與授權欄、AGENTS.md §3（不使用 floating `latest`）、§7（停止線）。本 ADR 不選任何雲端、廠商或 backend，也不決定 telemetry 的保存期限（retention／residency 仍為 TBD）。
 
 ## Context
 

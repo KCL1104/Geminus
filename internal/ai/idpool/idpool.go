@@ -11,7 +11,7 @@
 // resource ID (uppercase, D-001), so the context builder's server-ID
 // redaction leaves them alone.
 //
-// The pool holds no calendar IDs (T-049, D-083 PROPOSED; T-046 review I3):
+// The pool holds no calendar IDs (T-049, D-083 APPROVED, H-024; T-046 review I3):
 // a proposal may change the base's calendars (an edit, or a scenario's
 // shifts and exceptions) and point resources at them, but a calendar the
 // base does not have is refused, like a new entity without a pool ID; a

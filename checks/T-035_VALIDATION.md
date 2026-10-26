@@ -364,3 +364,16 @@ Log 與 exit code 在 `checks/evidence/2026-10-26-T-035-r1/coordinator-*`。
 Reviewer 同意 D-091–D-095 與 ADR-028 的建議。D-092 方面，`worker.New` 的檢查合理：handler 的 constructor 與 DB 的 `twin.actor_ref` 自 T-023 起就要求同樣的格式；ADR-024 的文字應由 owner 修改，並採用 `d092-config-proposal.diff`。
 
 D-091–D-095 與 ADR-028 仍是 PROPOSED，它們的 gate 是 T-035 驗收前，所以 T-035 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。
+
+## Owner 批准（H-024，2026-10-26）
+
+Owner 對第六張決策頁（https://claude.ai/artifact/MsMai9v9qSb8XLdzW8DkPR）回覆「第五、六頁都照建議」：D-091–D-095 依建議 APPROVED，ADR-028 ACCEPTED。
+- D-095 (b)：P0 加入 OpenTelemetry，預設不 export。
+- D-093 (b)：log 記錄 `user_id`。
+- D-092 (b)：修改 ADR-024 的 `WORKER_ID`。
+
+依 D-092 (b)，coordinator 在 H-024 的 commit 中做了兩件事：
+- 把 ADR-024 的 `WORKER_ID` 改為 actor reference。
+- 套用本報告 evidence 中準備好的 `d092-config-proposal.diff`。先只套用測試：`TestLoadWorker` 在舊程式上失敗，「wwww…（129 字）」、`1worker`、`-worker`、`worker/1`、`worker@pod`、`w~1` 都被接受，exit 1（`checks/evidence/2026-10-26-H-024/d092-red.log`）。再套用 `config.LoadWorker` 的檢查後，`go test ./internal/config/ ./cmd/...` exit 0（`d092-green.log`）。
+
+之後的完整驗證見 H-024 commit 的 evidence。T-035 標為 done。

@@ -3082,7 +3082,7 @@ paths:
       operationId: compareSimulations
       summary: Compare baseline and scenario aggregates
       description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table. T-029 (SIMULATION_SPEC §7, D-010 APPROVED; D-088–D-090 PROPOSED): any member compares two completed runs
+        table. T-029 (SIMULATION_SPEC §7, D-010 APPROVED; D-088–D-090 APPROVED, H-024): any member compares two completed runs
         of the organization, a baseline (its frozen scenario_patch must be []) and a scenario. Each parameter must be
         given once as a simulation run ID, and the two must differ; otherwise 400 (details[0].reason names the
         parameter). Then, in one snapshot after the caller''s role: a run of another organization, or none, is 404, and a
@@ -3185,7 +3185,7 @@ paths:
                     warnings: []
         '400':
           description: 'A parameter is missing, repeated or not a simulation run ID, or both name the same run
-            (details[0].reason names the parameter; D-089 (a) PROPOSED). Codes: INVALID_REQUEST.'
+            (details[0].reason names the parameter; D-089 (a) APPROVED, H-024). Codes: INVALID_REQUEST.'
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'

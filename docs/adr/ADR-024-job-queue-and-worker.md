@@ -1,6 +1,6 @@
 # ADR-024 — PostgreSQL job queue 與 worker 迴圈（T-019）
 
-狀態：ACCEPTED（2026-10-19，owner H-010：參數照提案，`WORKER_STOPPED` 計入 attempt）。T-019 agent 提出並先實作，review round 1–3 後修訂。日期：2026-10-19。依據：D-007、D-008、D-011（皆 APPROVED）、ARCHITECTURE §6、API_DATABASE §6–§7、TEST-020、TEST-021、ADR-019（T-009 re-review R3b）。
+狀態：ACCEPTED（2026-10-19，owner H-010：參數照提案，`WORKER_STOPPED` 計入 attempt；2026-10-26 owner H-024 修訂 `WORKER_ID` 的格式，D-092 (b)）。T-019 agent 提出並先實作，review round 1–3 後修訂。日期：2026-10-19。依據：D-007、D-008、D-011（皆 APPROVED）、ARCHITECTURE §6、API_DATABASE §6–§7、TEST-020、TEST-021、ADR-019（T-009 re-review R3b）。
 
 ## Decision
 
@@ -34,7 +34,7 @@
 
 ### Worker 迴圈（`internal/worker`、`cmd/worker`）
 
-- 設定：`WORKER_ID`（必填，1–200 個可見 ASCII 字元，寫入 `locked_by`；fence 靠 token，名稱只用來辨識）與 `WORKER_ORGANIZATION_IDS`（必填，逗號分隔，D-008 的 allowlist，`workerscope` 檢查每個都是 organization ID 且不重複）。連線的 login 必須是 `twin_worker` 的成員，不是 superuser、不能 BYPASSRLS、不是 owner（`tenant.CheckRuntimeRole`），pool 歸還時檢查沒有殘留 tenant scope（`tenant.Guard`）。
+- 設定：`WORKER_ID`（必填，actor reference：字母開頭，之後是字母、數字、`_`、`.`、`:`、`-`，至多 128 字元，與 DB 的 `twin.actor_ref` 相同（D-092，H-024 修訂；原文為「1–200 個可見 ASCII 字元」，但自 T-023 起 handler 已拒絕不是 actor reference 的名稱）；寫入 `locked_by` 並作為 audit event 的 worker actor；fence 靠 token，名稱只用來辨識；唯一性不由系統強制，由部署負責）與 `WORKER_ORGANIZATION_IDS`（必填，逗號分隔，D-008 的 allowlist，`workerscope` 檢查每個都是 organization ID 且不重複）。連線的 login 必須是 `twin_worker` 的成員，不是 superuser、不能 BYPASSRLS、不是 owner（`tenant.CheckRuntimeRole`），pool 歸還時檢查沒有殘留 tenant scope（`tenant.Guard`）。
 - 一次 pass 依 deployment 的順序走過每個 organization：先 reap，再 claim 至多一個 job 並執行。每個 organization 每次 pass 至多一個 job，所以一個 organization 的大量 job 不會餓死其他 organization。一個 process 一次只執行一個 job；要更多並行就多開 process（每個 job 只會被一個 worker 取得，`TestWorkersShareTheQueue`）。
 - 執行時另有 heartbeat，handler 一定在 DB 的 lease 結束之前被停止（review M1）：
   - DB 的 lease 從 transaction 的 `now()` 起算，不早於 worker 開始該 transaction 的時間。Worker 從那個時間（claim 的，之後每次成功續期的）算起，在 lease 減半個 heartbeat 時取消 handler 的 context；這由獨立的 timer 執行，不等進行中的續期。Lease 為三個 heartbeat 時，一次續期失敗、下一次成功仍能保住 job。

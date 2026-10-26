@@ -1,7 +1,7 @@
 package compare_test
 
 // Unit tests of the baseline/scenario comparison (T-029; SIMULATION_SPEC
-// §7, D-010; D-088, D-090 PROPOSED): TEST-022 (deltas, baseline zero),
+// §7, D-010; D-088, D-090 APPROVED, H-024): TEST-022 (deltas, baseline zero),
 // TEST-023 (DORA unavailable stays unavailable, generic failures are not
 // DORA), and the metric paths an analysis may cite (TEST-024's basis).
 

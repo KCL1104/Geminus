@@ -129,7 +129,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## Go modules linked by OpenTelemetry (T-035)
 
-T-035 adds the OpenTelemetry Go API, SDK and OTLP/HTTP exporters for traces and metrics ([ADR-028](adr/ADR-028-opentelemetry.md), **PROPOSED**; export is off unless an operator configures an OTLP endpoint, D-095). Only `internal/observability/telemetry/export` and `cmd/...` link the SDK, the exporters, gRPC and protobuf (architecture rule `otel-sdk-only-in-export`); `internal/observability/telemetry` uses the API only. Versions are pinned in `go.mod` and `go.sum`, each published at least two weeks before 2026-10-25 (ADR-028 lists the dates); each module's own license file (and gRPC's `NOTICE.txt`) ships in its module and applies to it. No module is copyleft.
+T-035 adds the OpenTelemetry Go API, SDK and OTLP/HTTP exporters for traces and metrics ([ADR-028](adr/ADR-028-opentelemetry.md), **ACCEPTED**, H-024; export is off unless an operator configures an OTLP endpoint, D-095). Only `internal/observability/telemetry/export` and `cmd/...` link the SDK, the exporters, gRPC and protobuf (architecture rule `otel-sdk-only-in-export`); `internal/observability/telemetry` uses the API only. Versions are pinned in `go.mod` and `go.sum`, each published at least two weeks before 2026-10-25 (ADR-028 lists the dates); each module's own license file (and gRPC's `NOTICE.txt`) ships in its module and applies to it. No module is copyleft.
 
 | Module | Version | License | Linked because |
 |---|---|---|---|

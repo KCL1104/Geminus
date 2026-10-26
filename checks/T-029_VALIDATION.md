@@ -336,3 +336,12 @@ Log 與 exit code 在 `checks/evidence/2026-10-25-T-029-r2/coordinator-*`。
 獨立 reviewer（H-003）第 2 輪在 4b12950 的判定為 ACCEPT，本輪修正的是它提出的 R2-L1 與一個 Info。依 T-048 的前例，這類修正由 coordinator 驗證後接受，不再另開審查輪次。
 
 D-088、D-089、D-090 仍是 PROPOSED，它們的 gate 是 T-029 驗收前，所以 T-029 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。決策頁：https://claude.ai/artifact/VohVqHYNNQSTNR9PRMMzt8
+
+## Owner 批准（H-024，2026-10-26）
+
+Owner 對第五張決策頁（https://claude.ai/artifact/VohVqHYNNQSTNR9PRMMzt8）回覆「第五、六頁都照建議」：D-088–D-090 依建議 APPROVED。
+- D-088 (a)：engine_version 相同才可比。
+- D-089：同一個 run 為 400。
+- D-090：RFC 6901 的統計值路徑。
+
+T-029 的實作與這些選項一致，不需要修改，所以 T-029 標為 done。T-030 引用統計值路徑時，要依 D-090 (a) 對齊 T-024 的 summary 層級清單（見殘餘風險）。

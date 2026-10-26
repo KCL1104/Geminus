@@ -1867,7 +1867,7 @@
       "id": "T-029",
       "title": "Results / baseline comparison API",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "Simulation + Platform",
       "planning_window": "Week 9–11",
       "depends_on": [
@@ -1890,7 +1890,7 @@
         "result/read readiness、same-context comparison。",
         "absolute/relative delta、baseline-zero、missing/incomparable handling。",
         "metric evidence paths可供analyst安全引用。",
-        "package 名稱由本任務決定（T-029，2026-10-25）：原規劃的 internal/results/http/ 會落在 generic kernel（./internal/results/...，architecture 規則 generic-kernel 禁止 HTTP、tenant scope 與 storage），所以純粹的比較在 internal/results/compare（kernel，T-030 的 analysis job 可直接呼叫同一個函式），service 與 HTTP adapter 在 internal/comparisons（application layer，與 internal/runs、internal/scenarios 相同；列入 scripts/check-architecture 的 appLayers）；沒有新 SQL（internal/storage/runs 的 Get、GetResult）也沒有 migration。可比性、metric 範圍、delta、warning、HTTP binding 與 metric path 為 D-088–D-090（PROPOSED）。"
+        "package 名稱由本任務決定（T-029，2026-10-25）：原規劃的 internal/results/http/ 會落在 generic kernel（./internal/results/...，architecture 規則 generic-kernel 禁止 HTTP、tenant scope 與 storage），所以純粹的比較在 internal/results/compare（kernel，T-030 的 analysis job 可直接呼叫同一個函式），service 與 HTTP adapter 在 internal/comparisons（application layer，與 internal/runs、internal/scenarios 相同；列入 scripts/check-architecture 的 appLayers）；沒有新 SQL（internal/storage/runs 的 Get、GetResult）也沒有 migration。可比性、metric 範圍、delta、warning、HTTP binding 與 metric path 為 D-088–D-090（APPROVED，H-024）。"
       ],
       "planned_outputs": [
         "internal/results/compare/",
@@ -1922,7 +1922,7 @@
           "report": "checks/T-029_VALIDATION.md",
           "summary": "compareSimulations（GET /v1/simulation-comparisons）：純粹的比較在 internal/results/compare（kernel：SIMULATION_SPEC §7 的可比條件逐項比對，不可比時 200、comparable=false、列出原因、值並排、沒有 delta；absolute／relative delta、baseline 為 0 時 relative 為 null、unavailable 與缺值不當 0、±1e15 的範圍；固定順序；Statistics／Resolve 的 RFC 6901 metric path；存下的 Result 與 run 不符或 metrics 違反 contract 時 fail closed），service 與 HTTP adapter 在 internal/comparisons（query 400 → role → 404 → 409、唯讀 REPEATABLE READ 的 tenant transaction、organization 過濾＋RLS、其他 organization 的 run 與不存在的相同、RFC 8785 回應）；Comparison contract（封閉的 reason／warning code、incomparable_reasons、metric_path pattern、if/then）、OpenAPI、fixtures、TS 型別與 client。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（72e370d、5bb7e95、f8738db 的 tree）、比較的 DB 測試（GEMINUS_REQUIRE_DB_TESTS=1）與 DB mutant（全部擋下），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test、simulation-reference-test 都 exit 0（checks/evidence/2026-10-25-T-029*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 on 5d96749 ACCEPT with L1–L6 (fixed in 7de9d67..5bb7e95); round 2 on 4b12950 ACCEPT with R2-L1 (fixed in b655f42..f8738db, verified by the coordinator per the T-048 precedent)",
-          "decisions_pending": "D-088、D-089、D-090 待 owner 批准；批准後 T-029 才標為 done"
+          "decisions": "D-088、D-089、D-090 於 2026-10-26 由 owner 依建議批准（H-024）"
         }
       ]
     },
@@ -2192,7 +2192,7 @@
       "id": "T-035",
       "title": "Audit / OpenTelemetry / structured logs",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "Platform",
       "planning_window": "Baseline in each write task; integration Week 6–8; harden Week 12–14",
       "depends_on": [
@@ -2246,7 +2246,7 @@
           "report": "checks/T-035_VALIDATION.md",
           "summary": "Audit：internal/audit 的封閉 catalogue（25 個 action、固定形狀的 metadata，fail closed），所有 business write 在同一 transaction 寫 audit（16 條 API route、worker 的 runner／profiler／validator／generator，以及 loop 與 reaper 的 job.attempt_failed），provisioning 經 AppendSystem；structured JSON log（internal/observability：default-deny 的 key 登記與值的形狀、自由文字的 credential／header／URL／e-mail／引號值過濾、長度上限、panic 只記 runtime 自己的訊息）；request 與 job 的 correlation；只記 route pattern 的 access log；OpenTelemetry（ADR-028：API 在 telemetry、SDK 只在 telemetry/export，預設不 export，OTLP endpoint 只接受 https 或本機 http，header 變數在啟動時檢查，SDK 的診斷經過濾後的 log）；job、simulation、AI provider、import 的營運指標。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（f9365b8＋一行測試修正、d26767d 的 tree）、新的與改過的 DB 測試（GEMINUS_REQUIRE_DB_TESTS=1）與 12 個 DB mutant（全部擋下），spec-check、backend-test、backend-race、backend-numeric、architecture-check、ai-eval、frontend-test、simulation-reference-test 與 govulncheck（go1.27.3）都 exit 0（checks/evidence/2026-10-2*-T-035*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 on 7cbde1e CHANGES REQUESTED (M1 OTLP header values written raw to stderr before the filtered logger; L1–L7); round 2 on b5f3a7e ACCEPT (N1 fixed by the coordinator; N2–N5 Info)",
-          "decisions_pending": "D-091、D-092、D-093、D-094、D-095 與 ADR-028 待 owner 批准（D-092 另需 owner 修改 ADR-024 的 WORKER_ID 文字）；批准後 T-035 才標為 done"
+          "decisions": "D-091、D-092、D-093、D-094、D-095 於 2026-10-26 由 owner 依建議批准，ADR-028 ACCEPTED（H-024）；D-092 (b) 的 ADR-024 修訂與 config.LoadWorker 的檢查由 coordinator 於 H-024 的 commit 套用"
         }
       ]
     },
@@ -3177,7 +3177,7 @@
       "id": "T-049",
       "title": "DES 班表與隨時間變化的投入（H-016）",
       "priority": "P0",
-      "status": "in_progress",
+      "status": "done",
       "owner_role": "Simulation",
       "planning_window": "H-016 re-plan（未重估週數）",
       "depends_on": [
@@ -3263,7 +3263,7 @@
           "report": "checks/T-049_VALIDATION.md",
           "summary": "Resource 班表與隨時間變化的投入：calendars、calendar_id、shift_capacity 與 release_schedule 的 gate 解除（validator：形狀規則、UNKNOWN_REFERENCE、DUPLICATE_ID、RELEASE_SCHEDULE_INVALID、D-050 R2／R4 與 365 天的 LCM 上限（D-085）；engine des-go-0.4.0：每個 calendar 一個 CAPACITY_CHANGE、上班喚醒 held front、finish-first 與 overtime、授予條件 in_use＋units ≤ min(S, C−D)、故障時鐘只在上班時前進、B2 的 next_fit 與 X_end、分段 rate 與投入表（D-053、D-082）；Result 的 resource_states 班表與 available 組（D-058，分母的標示 D-084）；D-057 的 calendar 與投入排程 risk、D-083 禁止 AI 新增 calendar、D-063 (b) B 的 shift label、MOD-039 重新判定）；手推 golden 24 個（含 G-R8 非整數 tick 的投入表、G-R9 rate 上限）；對凍結的 des-go-0.3.0 的 differential（50,000 個模型）、中性班表與中性排程；只看 observation 的班表檢查器；SimPy reference（34 個確定性 case、140 個隨機比對）；Python 獨立實作的 R2、R3、R4、next_fit、X_end、TTRmax 對 5,000 個隨機模型與 Go 比對（0 個差異）。Coordinator 在一次性 dt_test_* database 上執行 make integration-test（3e56705、96f96de 的 tree），spec-check、backend-test、backend-race、architecture-check、ai-eval、frontend-test、simulation-reference-test、backend-numeric 都 exit 0（checks/evidence/2026-10-25-T-049*/coordinator-*）。",
           "reviewer": "independent reviewer agent (H-003): round 1 on 3e56705 CHANGES REQUESTED (M1 D-082 (b) table quantization untested, M2 R4 past the larger period, L1 365-day LCM, L2 ADR-026's Python cross-check); round 2 on c1c027c ACCEPT (all fixed in dacc73a..96f96de; I-a–I-c Info)",
-          "decisions_pending": "D-081、D-082、D-083、D-084、D-085 待 owner 批准；批准後 T-049 才標為 done"
+          "decisions": "D-081、D-082、D-083、D-084、D-085 於 2026-10-26 由 owner 依建議批准（H-024）"
         }
       ]
     },
@@ -3413,7 +3413,7 @@
         "走一次 import→mapping→dataset，baseline run 並列模擬與觀測（例如每週產出、站別 cycle time）與誤差（REQ-025）；沒有觀測資料時回 unavailable。",
         "資料集與 ground truth 進 testdata，作為 T-027 inference、T-038 AI eval 與 T-040 E2E 的 fixture。",
         "D-059 的 `end_timestamp`、`shift`、`product` 已在 canonical-event schema（T-046 phase 2）；station log 的 mapping 要把它們加入 mapping 的 target field（`ai-mapping.schema.json` 的 enum、`internal/ai/aicontext.TargetFields`）並實作 D-059 的 data-quality 規則。",
-        "H-021（決策頁 Q4）：常數與單位換算的 transform（CB-28）另立 D-073（PROPOSED 草案：constant 只用於 event_type、outcome、stage、shift、product 且值須在 pack 詞彙中；seconds_to_ms、minutes_to_ms；沒有 offset 的時間建議仍拒絕）。本任務定案前由 owner 批准 D-073，再依批准的選項改 import-mapping／ai-mapping schema、mapping.Check／Compile、AI suggestion 的 prompt 與 eval；先寫測試。"
+        "H-021（決策頁 Q4）：常數與單位換算的 transform（CB-28）另立 D-073（2026-10-26 依建議 APPROVED，H-024，選項 A：constant 只用於 event_type、outcome、stage、shift、product 且值須在 pack 詞彙中；seconds_to_ms、minutes_to_ms；沒有 offset 的時間建議仍拒絕）。本任務依批准的選項改 import-mapping／ai-mapping schema、mapping.Check／Compile、AI suggestion 的 prompt 與 eval；先寫測試。"
       ],
       "planned_outputs": [
         "testdata/datasets/electronics-line/",

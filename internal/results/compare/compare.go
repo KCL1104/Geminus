@@ -1,6 +1,6 @@
 // Package compare is the baseline/scenario comparison of two completed
 // runs (T-029; SIMULATION_SPEC §7, D-010 APPROVED; the details are D-088
-// and D-090, PROPOSED) and the metric paths an analysis may cite (AI_SPEC
+// and D-090, APPROVED, H-024) and the metric paths an analysis may cite (AI_SPEC
 // §9; the analyst service is T-030's). It is pure: it reads what the caller
 // read in its tenant scope (each run's frozen input and its Result) and
 // returns http.schema.json#/$defs/Comparison; it does no I/O and keeps no

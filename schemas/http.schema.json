@@ -933,7 +933,7 @@
         "MISSING_IN_SCENARIO",
         "RUNS_NOT_COMPARABLE"
       ],
-      "$comment": "T-029 (SIMULATION_SPEC §7; D-088 PROPOSED): why a comparison metric has no delta, or no relative delta. BASELINE_ZERO: the baseline is 0, so relative_delta is null and absolute_delta stays (§7). DELTA_OUT_OF_RANGE / RELATIVE_DELTA_OUT_OF_RANGE: the delta is outside ±1e15 (never clipped). BASELINE_UNAVAILABLE / SCENARIO_UNAVAILABLE / BOTH_UNAVAILABLE: the statistic is unavailable in that run; the run's own reason is the reason member of the summary the metric path's parent names. MISSING_IN_BASELINE / MISSING_IN_SCENARIO: the metric is not in that run's result. RUNS_NOT_COMPARABLE: the comparison is not comparable (incomparable_reasons)."
+      "$comment": "T-029 (SIMULATION_SPEC §7; D-088 APPROVED, H-024): why a comparison metric has no delta, or no relative delta. BASELINE_ZERO: the baseline is 0, so relative_delta is null and absolute_delta stays (§7). DELTA_OUT_OF_RANGE / RELATIVE_DELTA_OUT_OF_RANGE: the delta is outside ±1e15 (never clipped). BASELINE_UNAVAILABLE / SCENARIO_UNAVAILABLE / BOTH_UNAVAILABLE: the statistic is unavailable in that run; the run's own reason is the reason member of the summary the metric path's parent names. MISSING_IN_BASELINE / MISSING_IN_SCENARIO: the metric is not in that run's result. RUNS_NOT_COMPARABLE: the comparison is not comparable (incomparable_reasons)."
     },
     "IncomparableReason": {
       "type": "string",
@@ -947,7 +947,7 @@
         "SEED_MISMATCH",
         "BASELINE_PATCH_NOT_EMPTY"
       ],
-      "$comment": "T-029 (SIMULATION_SPEC §7; D-088 (a) PROPOSED): a condition the two runs do not share. They must have the same model version, engine_version, dataset manifest hash, horizon and warmup (in ticks), replications and seed, and the baseline's frozen patch must be [] (REQ-010, D-078 (b)). Listed in this order. The organization is the tenant scope: another organization's run is 404, never a reason."
+      "$comment": "T-029 (SIMULATION_SPEC §7; D-088 (a) APPROVED, H-024): a condition the two runs do not share. They must have the same model version, engine_version, dataset manifest hash, horizon and warmup (in ticks), replications and seed, and the baseline's frozen patch must be [] (REQ-010, D-078 (b)). Listed in this order. The organization is the tenant scope: another organization's run is 404, never a reason."
     },
     "ComparisonWarning": {
       "type": "string",
@@ -957,11 +957,11 @@
         "CENSORED_ENTITIES",
         "METRICS_TRUNCATED"
       ],
-      "$comment": "T-029 (D-088 (d) PROPOSED), in this order. SCENARIO_PATCH_EMPTY: the scenario run's patch is [] too, so nothing was varied. SINGLE_REPLICATION: a run has one replication, so neither run has a confidence interval and a difference cannot be told from replication noise. CENSORED_ENTITIES: some replication of a run ended with active entities, so lead times and queue waits describe the completed cohort only (SIMULATION_SPEC §5). METRICS_TRUNCATED: the comparison has more statistics than metrics' maxItems; the first ones in its order are listed."
+      "$comment": "T-029 (D-088 (d) APPROVED, H-024), in this order. SCENARIO_PATCH_EMPTY: the scenario run's patch is [] too, so nothing was varied. SINGLE_REPLICATION: a run has one replication, so neither run has a confidence interval and a difference cannot be told from replication noise. CENSORED_ENTITIES: some replication of a run ended with active entities, so lead times and queue waits describe the completed cohort only (SIMULATION_SPEC §5). METRICS_TRUNCATED: the comparison has more statistics than metrics' maxItems; the first ones in its order are listed."
     },
     "ComparisonMetric": {
       "type": "object",
-      "$comment": "T-029 (SIMULATION_SPEC §7, D-010; D-088 (b)(c) PROPOSED): one statistic of both runs. metric_path is an RFC 6901 JSON Pointer from a Result's root to one statistic (/metrics/throughput/mean, /metrics/queues/<queue>/wait_p95_minutes, ...), the form analysis-output cites. absolute_delta = scenario − baseline; relative_delta = absolute_delta / baseline; both only when both values are available; no -0.",
+      "$comment": "T-029 (SIMULATION_SPEC §7, D-010; D-088 (b)(c) APPROVED, H-024): one statistic of both runs. metric_path is an RFC 6901 JSON Pointer from a Result's root to one statistic (/metrics/throughput/mean, /metrics/queues/<queue>/wait_p95_minutes, ...), the form analysis-output cites. absolute_delta = scenario − baseline; relative_delta = absolute_delta / baseline; both only when both values are available; no -0.",
       "properties": {
         "metric_path": {
           "type": "string",
@@ -1299,7 +1299,7 @@
     },
     "Comparison": {
       "type": "object",
-      "$comment": "T-029 (SIMULATION_SPEC §7, D-010; D-088, D-089 PROPOSED): a baseline run and a scenario run of the caller's organization, both completed. comparable=false lists every incomparable_reasons code, keeps both values of every metric side by side (status incomparable) and gives no delta. metrics are every statistic of both results in a fixed order (run-level metrics, additional_metrics, dora, domain, resources, queues; keys in byte order), never Go map order.",
+      "$comment": "T-029 (SIMULATION_SPEC §7, D-010; D-088, D-089 APPROVED, H-024): a baseline run and a scenario run of the caller's organization, both completed. comparable=false lists every incomparable_reasons code, keeps both values of every metric side by side (status incomparable) and gives no delta. metrics are every statistic of both results in a fixed order (run-level metrics, additional_metrics, dora, domain, resources, queues; keys in byte order), never Go map order.",
       "properties": {
         "baseline_run_id": {
           "$ref": "common.schema.json#/$defs/RunID"

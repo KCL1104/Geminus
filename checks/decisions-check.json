@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 76,
-    "proposed": 14,
+    "approved": 90,
+    "proposed": 0,
     "rejected": 0,
     "superseded": 0
   },
@@ -29,16 +29,18 @@
     "H-020",
     "H-021",
     "H-022",
-    "H-023"
+    "H-023",
+    "H-024"
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 31,
-    "in_progress": 5,
+    "done": 34,
+    "in_progress": 2,
     "not_started": 18,
     "review": 0
   },
   "ready_tasks": [
+    "T-030",
     "T-050",
     "T-053"
   ],
@@ -648,7 +650,7 @@
       ]
     },
     "D-073": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-052 前（或第一次以真實 station log 展示匯入前，以先到者為準）",
       "gates_tasks": [
         "T-052"
@@ -691,35 +693,35 @@
       ]
     },
     "D-081": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-049 驗收前",
       "gates_tasks": [
         "T-049"
       ]
     },
     "D-082": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-049 驗收前",
       "gates_tasks": [
         "T-049"
       ]
     },
     "D-083": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-049 驗收前",
       "gates_tasks": [
         "T-049"
       ]
     },
     "D-084": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-049 驗收前",
       "gates_tasks": [
         "T-049"
       ]
     },
     "D-085": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-049 驗收前",
       "gates_tasks": [
         "T-049"
@@ -733,21 +735,21 @@
       ]
     },
     "D-088": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-029 驗收前",
       "gates_tasks": [
         "T-029"
       ]
     },
     "D-089": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-029 驗收前",
       "gates_tasks": [
         "T-029"
       ]
     },
     "D-090": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-029 驗收前；T-030、T-032 實作前",
       "gates_tasks": [
         "T-029",
@@ -756,7 +758,7 @@
       ]
     },
     "D-091": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-035 驗收前；T-036 前",
       "gates_tasks": [
         "T-035",
@@ -764,14 +766,14 @@
       ]
     },
     "D-092": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-035 驗收前；ADR-024 的 WORKER_ID 文字修改前",
       "gates_tasks": [
         "T-035"
       ]
     },
     "D-093": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-035 驗收前；T-039 前",
       "gates_tasks": [
         "T-035",
@@ -779,7 +781,7 @@
       ]
     },
     "D-094": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-035 驗收前；T-036 前",
       "gates_tasks": [
         "T-035",
@@ -787,7 +789,7 @@
       ]
     },
     "D-095": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-035 驗收前；T-039 前",
       "gates_tasks": [
         "T-035",

@@ -78,7 +78,7 @@ does not reproduce: the deterministic cases with such ties are marked "not
 compared"; in the stochastic ones, in continuous time, they have probability
 0 in SimPy and are rare on the engine's 1 ms ticks, within the tolerance.
 
-Calendars (T-049; ADR-026 D-051 (ii), D-052, D-081 PROPOSED) with SimPy's
+Calendars (T-049; ADR-026 D-051 (ii), D-052, D-081 APPROVED, H-024) with SimPy's
 own primitives: a resource on a calendar is a simpy.PriorityResource whose
 units off shift are held by "blocker" requests at priority -0.5 (behind a
 failure at -1, ahead of every job at 0). The script computes S(t) itself

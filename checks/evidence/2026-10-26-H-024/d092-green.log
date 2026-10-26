@@ -1,0 +1,4 @@
+ok  	github.com/kcl1104/geminus/internal/config	0.007s
+ok  	github.com/kcl1104/geminus/cmd/api	0.024s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	0.009s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.062s

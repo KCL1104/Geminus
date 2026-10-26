@@ -365,3 +365,11 @@ Coordinator 把 `t049-r1` 的五個 commit cherry-pick 到 `claude/lucid-meitner
 - I-c：`r4_past_larger_period` 的實際值 20 接近下限 15；seed 固定，結果穩定。
 
 Reviewer 同意 D-081–D-085 的建議，D-084 也同意依 D-058 細化後的 A，只剩 B（Result 實例中的分母標示）要 owner 決定。D-081–D-085 仍是 PROPOSED，它們的 gate 是 T-049 驗收前，所以 T-049 記為 in_progress（`planning/tasks.json` 的 completion_evidence），owner 批准後才標為 done。
+
+## Owner 批准（H-024，2026-10-26）
+
+Owner 對第五張決策頁（https://claude.ai/artifact/VohVqHYNNQSTNR9PRMMzt8）回覆「第五、六頁都照建議」：D-081–D-085 依建議 APPROVED。
+- D-083：AI proposal 不能新增 calendar。
+- D-084：選項 A，Result 不另加分母標示；scheduled utilization 依 D-058 由 pack 提供。
+
+T-049 的實作與這些選項一致，不需要修改，所以 T-049 標為 done。

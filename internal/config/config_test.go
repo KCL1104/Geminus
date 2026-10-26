@@ -166,12 +166,15 @@ func TestLoadWorker(t *testing.T) {
 	if _, err := LoadWorker(env(nil)); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ID:required", "WORKER_ORGANIZATION_IDS:required"}) {
 		t.Errorf("nothing set: %v", err)
 	}
-	for _, id := range []string{"has space", "tab\t", "naïve", strings.Repeat("w", 201), "\x7f"} {
+	// D-092: WORKER_ID names the worker in audit events, so it is an actor
+	// reference (twin.actor_ref), not 1-200 visible ASCII (ADR-024's text).
+	for _, id := range []string{"has space", "tab\t", "naïve", strings.Repeat("w", 201), "\x7f", strings.Repeat("w", 129), "1worker",
+		"-worker", "worker/1", "worker@pod", "w~1"} {
 		if _, err := LoadWorker(env(map[string]string{"WORKER_ID": id, "WORKER_ORGANIZATION_IDS": " , "})); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ID:invalid"}) {
 			t.Errorf("%q: %v", id, err)
 		}
 	}
-	if _, err := LoadWorker(env(map[string]string{"WORKER_ID": strings.Repeat("w", 200), "WORKER_ORGANIZATION_IDS": " \t"})); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ORGANIZATION_IDS:required"}) {
+	if _, err := LoadWorker(env(map[string]string{"WORKER_ID": strings.Repeat("w", 128), "WORKER_ORGANIZATION_IDS": " \t"})); err == nil || !slices.Equal(codes(t, err), []string{"WORKER_ORGANIZATION_IDS:required"}) {
 		t.Errorf("a blank allowlist: %v", err)
 	}
 }

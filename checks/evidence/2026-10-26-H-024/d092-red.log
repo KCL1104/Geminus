@@ -1,0 +1,10 @@
+--- FAIL: TestLoadWorker (0.00s)
+    config_test.go:174: "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww": <nil>
+    config_test.go:174: "1worker": <nil>
+    config_test.go:174: "-worker": <nil>
+    config_test.go:174: "worker/1": <nil>
+    config_test.go:174: "worker@pod": <nil>
+    config_test.go:174: "w~1": <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config	0.004s
+FAIL

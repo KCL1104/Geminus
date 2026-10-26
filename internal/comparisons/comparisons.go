@@ -1,6 +1,6 @@
 // Package comparisons is the baseline/scenario comparison service and its
 // HTTP adapter (T-029; compareSimulations, SIMULATION_SPEC §7, D-010; the
-// binding is D-089, PROPOSED): any member of an organization compares two
+// binding is D-089, APPROVED, H-024): any member of an organization compares two
 // of its completed runs. The comparison itself is internal/results/compare
 // (pure, in the generic kernel), so the API and a later analysis job give
 // the same answer for the same runs; this package only reads the runs and
