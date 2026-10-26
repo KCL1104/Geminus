@@ -1,7 +1,9 @@
 package electronicsline_test
 
 import (
+	"context"
 	"encoding/json/v2"
+	"fmt"
 	"maps"
 	"math"
 	"path/filepath"
@@ -305,11 +307,14 @@ func TestModelMetricsUnavailable(t *testing.T) {
 		{"two units a request", func(ir *model.ModelIR, _ *simulation.ReplicationSummary, _ *simulation.Result) {
 			byID(ir, "fct").Requires[0].Units = 2
 		}, expectation{reasons: map[string]string{"starved_ratio.fct": "STARVATION_UNDEFINED_MULTI_UNIT"}}},
+		// No test station either: no factor of the rolled throughput yield,
+		// which is unavailable, not 1 (rolledYield counts the test station
+		// types it multiplies, review r1 M1).
 		{"one station", func(ir *model.ModelIR, _ *simulation.ReplicationSummary, _ *simulation.Result) {
 			for _, id := range []string{"fct", "burn", "pack"} {
 				byID(ir, id).DomainAttributes = nil
 			}
-		}, expectation{reasons: map[string]string{"line_balance": "TOO_FEW_STATIONS"}}},
+		}, expectation{reasons: map[string]string{"line_balance": "TOO_FEW_STATIONS", "rolled_throughput_yield_input": "TEST_RESULT_NOT_IDENTIFIED"}}},
 		{"no processing", func(_ *model.ModelIR, rep *simulation.ReplicationSummary, _ *simulation.Result) {
 			for id, s := range rep.ResourceStates {
 				s.ScheduledProcessingTicks = 0
@@ -356,6 +361,255 @@ func TestModelMetricsUnavailable(t *testing.T) {
 		c.edit(ir, &rep, r)
 		r.ReplicationSummaries = []simulation.ReplicationSummary{rep}
 		expect(t, c.name, pack.ComputeModelMetrics(ir, r), c.e, false)
+	}
+}
+
+// flowTo is one flow of a test result: its target and probability.
+type flowTo struct {
+	to string
+	p  float64
+}
+
+// probability is a probability-routed flow.
+func probability(id, from, to string, p float64) model.Flow {
+	return model.Flow{ID: id, From: from, To: to, Routing: model.Routing{Type: model.RoutingProbability, Probability: p}}
+}
+
+// parallelFCT is the template with a second FCT cell in parallel (review
+// r1 M1): the flows into q_fct (ICT's passes from its first test and its
+// retest) go to a decision fct_split, which sends half the boards to
+// q_fct → fct and half to a new q_fct_b → fct_b. fct_b is a first FCT
+// test on the same FCT testers with its own test result fct_b_result,
+// whose flows are result; fct_fail is the FCT debug loop the template's
+// fct uses.
+func parallelFCT(t *testing.T, result ...flowTo) *model.ModelIR {
+	t.Helper()
+	ir := tmpl(t)
+	fct, res, q := ir.Nodes[nodeIndex(t, ir, "fct")], ir.Nodes[nodeIndex(t, ir, "fct_result")], ir.Nodes[nodeIndex(t, ir, "q_fct")]
+	q.ID, fct.ID, res.ID = "q_fct_b", "fct_b", "fct_b_result"
+	res.DomainAttributes = []byte(`{"result_of":"fct_b"}`)
+	ir.Nodes = append(ir.Nodes, model.Node{ID: "fct_split", Type: model.NodeDecision}, q, fct, res)
+	for i, f := range ir.Flows {
+		if f.To == "q_fct" {
+			ir.Flows[i].To = "fct_split"
+		}
+	}
+	ir.Flows = append(ir.Flows, probability("fct_split__q_fct", "fct_split", "q_fct", 0.5), probability("fct_split__q_fct_b", "fct_split", "q_fct_b", 0.5),
+		probability("q_fct_b__fct_b", "q_fct_b", "fct_b", 1), probability("fct_b__fct_b_result", "fct_b", "fct_b_result", 1))
+	for i, f := range result {
+		ir.Flows = append(ir.Flows, probability(fmt.Sprintf("fct_b_result__%d", i), "fct_b_result", f.to, f.p))
+	}
+	ir.Constraints = append(ir.Constraints, model.Constraint{Type: model.ConstraintOutgoingProbabilitySum, NodeID: "fct_split", Equals: 1},
+		model.Constraint{Type: model.ConstraintOutgoingProbabilitySum, NodeID: "fct_b_result", Equals: 1})
+	return ir
+}
+
+// revalidated is ir through the generic validator (valid, or the test
+// fails) with the pack's issue codes, sorted.
+func revalidated(t *testing.T, ir *model.ModelIR) (*model.ModelIR, []string) {
+	t.Helper()
+	data, err := model.Encode(ir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := validate.IR(data)
+	if err != nil || !v.Valid() {
+		t.Fatalf("not a valid model: %v %v", err, v.Issues)
+	}
+	var codes []string
+	for _, issue := range pack.Validate(v.IR) {
+		codes = append(codes, issue.Code)
+	}
+	slices.Sort(codes)
+	return v.IR, codes
+}
+
+// ELECTRONICS_LINE §5: the rolled throughput yield is the product of the
+// main-line test stations' first-pass yields in series, each test station
+// type once (review r1 M1). Two FCT cells in parallel are one FCT step of
+// the series: with FPY 0.93 in both, the template's line has
+// 0.97 · 0.95 · 0.93 · 0.995 (AOI, ICT, FCT, burn-in) = 0.9215 · 0.93 ·
+// 0.995 = 0.856995 · 0.995 = 0.852710025, not 0.97 · 0.95 · 0.93 · 0.93 ·
+// 0.995 = 0.79302032325 (FCT once a cell). FPYs within the IR's routing
+// tolerance (1e-9) are the same, and the type's is its first cell's in
+// node order. Cells of one type whose FPYs differ by more have no one FPY
+// for the type without their routing shares: the metric is unavailable
+// with PARALLEL_TEST_YIELDS_DIFFER. A cell without a usable test result
+// leaves the type without an FPY: TEST_RESULT_NOT_IDENTIFIED, as for one
+// cell. Each cell's fpy_input is its own throughout.
+func TestRolledYieldTakesEachTestTypeOnce(t *testing.T) {
+	const serial = 0.852710025 // 0.97 · 0.95 · 0.93 · 0.995, by hand above
+	others := map[string]float64{"fpy_input.aoi": 0.97, "fpy_input.ict": 0.95, "fpy_input.fct": 0.93, "fpy_input.burn_in": 0.995}
+	with := func(m map[string]float64) map[string]float64 {
+		out := maps.Clone(others)
+		maps.Copy(out, m)
+		return out
+	}
+	for _, c := range []struct {
+		name   string
+		result []flowTo
+		issues []string // the pack's rules on the model
+		e      expectation
+	}{
+		{"the same FPY", []flowTo{{"q_burnin", 0.93}, {"fct_fail", 0.07}}, nil,
+			expectation{values: with(map[string]float64{"fpy_input.fct_b": 0.93, "rolled_throughput_yield_input": serial})}},
+		// 0.6 + 0.33 is 0.9299999999999999 in float64: the same FPY within
+		// the routing tolerance; the type's FPY is its first cell's (fct).
+		{"the same FPY in two pass flows", []flowTo{{"q_burnin", 0.6}, {"q_burnin", 0.33}, {"fct_fail", 0.07}}, nil,
+			expectation{values: with(map[string]float64{"fpy_input.fct_b": 0.93, "rolled_throughput_yield_input": serial})}},
+		// 5e-10 away, inside the tolerance: still fct's 0.93, not fct_b's
+		// (which would make the product 0.852710025 · (1 + 5.4e-10)).
+		{"an FPY within the routing tolerance", []flowTo{{"q_burnin", 0.9300000005}, {"fct_fail", 0.0699999995}}, nil,
+			expectation{values: with(map[string]float64{"fpy_input.fct_b": 0.9300000005, "rolled_throughput_yield_input": serial})}},
+		{"another FPY", []flowTo{{"q_burnin", 0.92}, {"fct_fail", 0.08}}, nil,
+			expectation{values: with(map[string]float64{"fpy_input.fct_b": 0.92}),
+				reasons: map[string]string{"rolled_throughput_yield_input": "PARALLEL_TEST_YIELDS_DIFFER"}}},
+		{"an FPY 1e-6 away", []flowTo{{"q_burnin", 0.930001}, {"fct_fail", 0.069999}}, nil,
+			expectation{values: with(map[string]float64{"fpy_input.fct_b": 0.930001}),
+				reasons: map[string]string{"rolled_throughput_yield_input": "PARALLEL_TEST_YIELDS_DIFFER"}}},
+		// The fail branch bypasses the failure node (rule 2's warning): the
+		// cell has no FPY, so neither has the type; its yields are not
+		// compared.
+		{"a cell without a usable test result", []flowTo{{"q_burnin", 0.92}, {"q_fct_debug", 0.08}}, []string{"TEST_RESULT_NOT_IDENTIFIED"},
+			expectation{values: others,
+				reasons: map[string]string{"fpy_input.fct_b": "TEST_RESULT_NOT_IDENTIFIED", "rolled_throughput_yield_input": "TEST_RESULT_NOT_IDENTIFIED"}}},
+	} {
+		ir, issues := revalidated(t, parallelFCT(t, c.result...))
+		if !slices.Equal(issues, c.issues) {
+			t.Errorf("%s: the pack's rules give %v, want %v", c.name, issues, c.issues)
+		}
+		res, err := engine().Run(context.Background(), runInput(t, ir, 7, 1, 1, 3), nil)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		d := res.Metrics.Domain
+		expect(t, c.name, d, c.e, false)
+		if c.name != "the same FPY" {
+			continue
+		}
+		// Line balance counts each primary resource once (review r1 L4):
+		// fct and fct_b share the FCT testers, one term of six (one
+		// replication, so the metric is that replication's value).
+		var w []float64
+		for _, s := range []string{"smt", "aoi", "ict", "fct", "burn_in", "pack_ship"} {
+			w = append(w, *d["work_ratio."+s].Mean)
+		}
+		if a, b := d["work_ratio.fct"], d["work_ratio.fct_b"]; a.Mean == nil || b.Mean == nil || *a.Mean != *b.Mean {
+			t.Errorf("the two FCT cells' work ratios %+v %+v are not the FCT testers'", a, b)
+		}
+		sum := 0.0
+		for _, v := range w {
+			sum += v
+		}
+		expect(t, c.name+": line balance", d, expectation{values: map[string]float64{"line_balance": sum / 6 / slices.Max(w)}}, false)
+		// The retest (on the FCT testers) goes with the first FCT test on
+		// them in node order: fct, not fct_b.
+		if _, listed := d["retest_ratio.fct_b"]; listed || d["retest_ratio.fct"].Reason == nil {
+			t.Errorf("%s: retest_ratio.fct %+v, retest_ratio.fct_b listed %v", c.name, d["retest_ratio.fct"], listed)
+		}
+	}
+}
+
+// handParallel is the hand line with a second FCT cell (review r1 L4): the
+// SMT line feeds a decision fct_split, half the boards to q1 → fct and
+// half to q1b (also 5 places) → fct_b, a first FCT test whose result
+// fct_b_result passes 0.9 to burn and fails 0.1 to fct_b_fail →
+// fct_b_retest → burn. With own, fct_b and its retest use a tester of
+// their own, tester_b (role fct_tester, one unit, the line calendar);
+// otherwise the FCT testers fct uses.
+func handParallel(t *testing.T, own bool) *model.ModelIR {
+	t.Helper()
+	ir := handIR(t)
+	tester := "tester"
+	if own {
+		tester = "tester_b"
+		r := ir.Resources[slices.IndexFunc(ir.Resources, func(r model.Resource) bool { return r.ID == "tester" })]
+		r.ID, r.Name, r.Capacity = "tester_b", "Tester B", 1
+		ir.Resources = append(ir.Resources, r)
+	}
+	node := func(id string) model.Node {
+		return ir.Nodes[slices.IndexFunc(ir.Nodes, func(n model.Node) bool { return n.ID == id })]
+	}
+	q, first, retest := node("q1"), node("fct"), node("fct")
+	q.ID = "q1b"
+	first.ID, first.Requires = "fct_b", []model.ResourceRequirement{{ResourceID: tester, Units: 1}}
+	retest.ID, retest.Requires = "fct_b_retest", []model.ResourceRequirement{{ResourceID: tester, Units: 1}}
+	retest.DomainAttributes = []byte(`{"station":"fct","pass":"retest"}`)
+	ir.Nodes = append(ir.Nodes, model.Node{ID: "fct_split", Type: model.NodeDecision}, q, first,
+		model.Node{ID: "fct_b_result", Type: model.NodeDecision, DomainAttributes: []byte(`{"result_of":"fct_b"}`)},
+		model.Node{ID: "fct_b_fail", Type: model.NodeFailure}, retest)
+	for i, f := range ir.Flows {
+		if f.To == "q1" {
+			ir.Flows[i].To = "fct_split"
+		}
+	}
+	ir.Flows = append(ir.Flows, probability("s1", "fct_split", "q1", 0.5), probability("s2", "fct_split", "q1b", 0.5), probability("s3", "q1b", "fct_b", 1),
+		probability("b1", "fct_b", "fct_b_result", 1), probability("b2", "fct_b_result", "burn", 0.9), probability("b3", "fct_b_result", "fct_b_fail", 0.1),
+		probability("b4", "fct_b_fail", "fct_b_retest", 1), probability("b5", "fct_b_retest", "burn", 1))
+	ir.Constraints = append(ir.Constraints, model.Constraint{Type: model.ConstraintOutgoingProbabilitySum, NodeID: "fct_split", Equals: 1},
+		model.Constraint{Type: model.ConstraintOutgoingProbabilitySum, NodeID: "fct_b_result", Equals: 1})
+	ir, issues := revalidated(t, ir)
+	if len(issues) > 0 {
+		t.Fatalf("the pack's rules: %v", issues)
+	}
+	return ir
+}
+
+// Several first tests of one station type, by hand (review r1 L4): line
+// balance counts each primary resource once, and a retest goes with the
+// first test whose primary resource it shares (the first such in node
+// order), whatever other first tests of its type come before it.
+func TestParallelFirstTestsHandDerived(t *testing.T) {
+	// Blocks of fct_b (one of 120,000 ticks) and of fct_b_retest (one of
+	// 240,000): the station of the retest adds them.
+	blocks := func(rep *simulation.ReplicationSummary) {
+		rep.Blocking["fct_b"] = simulation.NodeBlocking{BlocksStarted: 1, BlocksCompleted: 1, CompletedBlockTicks: 120_000, BlockedEntityTicks: 120_000}
+		rep.Blocking["fct_b_retest"] = simulation.NodeBlocking{BlocksStarted: 1, BlocksCompleted: 1, CompletedBlockTicks: 240_000, BlockedEntityTicks: 240_000}
+	}
+
+	// On the FCT testers: the testers once in line balance, w = 4/6, 5/12,
+	// 6/24, 3/12 as on the hand line, 57/96 (counting them twice would give
+	// mean(4/6, 5/12, 5/12, 6/24, 3/12) / (4/6) = (2/5) / (2/3) = 3/5). The
+	// retest goes with fct, the first FCT test on the testers: its block
+	// (4 minutes) is fct's, fct_b has its own (2 minutes). The testers serve
+	// two stations, so idle is not starvation at either.
+	rep := handRep(0)
+	blocks(&rep)
+	shared := pack.ComputeModelMetrics(handParallel(t, false), handResult(rep))
+	expect(t, "a second cell on the same testers", shared, expectation{
+		values: map[string]float64{"line_balance": 57.0 / 96, "fpy_input.fct": 0.9, "fpy_input.fct_b": 0.9,
+			"mean_blocking_minutes.fct": 4, "mean_blocking_minutes.fct_b": 2, "work_ratio.fct_b": 5e6 / 12e6, "idle_ratio.fct_b": 5e6 / 24e6},
+		reasons: map[string]string{"retest_ratio.fct": "FLOW_COUNT_NOT_DECLARED",
+			"starved_ratio.fct": "STARVATION_UNDEFINED_SHARED_RESOURCE", "starved_ratio.fct_b": "STARVATION_UNDEFINED_SHARED_RESOURCE"},
+	}, false)
+	if _, listed := shared["retest_ratio.fct_b"]; listed {
+		t.Error("a second cell on the same testers: fct_b has the retest")
+	}
+
+	// On a tester of its own (C 1, C·T 12e6): U 3.5e6, K 0.5e6, S 6e6,
+	// min(U,S) 3.2e6, overtime 0.3e6, A 6e6, idle 2.8e6, min(P,S) 3e6.
+	// Line balance has five resources, w = 4/6, 5/12, 3/6, 6/24, 3/12:
+	// mean 25/60 over max 2/3 = 5/8. The retest goes with fct_b, whose
+	// tester it shares, although fct is the first FCT test in node order:
+	// fct_b adds its block, (120,000 + 240,000) / 2 ticks = 3 minutes, and
+	// fct has none; tester_b serves fct_b's station only, so its idle is
+	// starvation.
+	rep = handRep(0)
+	blocks(&rep)
+	rep.ResourceUtilization["tester_b"] = 3.5e6 / 12e6
+	rep.ResourceStates["tester_b"] = simulation.ResourceState{InUseTicks: 3_500_000, BlockedTicks: p(500_000), ScheduledTicks: p(6_000_000),
+		ScheduledInUseTicks: p(3_200_000), OvertimeTicks: p(300_000), AvailableTicks: p(6_000_000), IdleTicks: p(2_800_000), ScheduledProcessingTicks: 3_000_000}
+	own := pack.ComputeModelMetrics(handParallel(t, true), handResult(rep))
+	expect(t, "a second cell with a tester of its own", own, expectation{
+		values: map[string]float64{"line_balance": 5.0 / 8, "fpy_input.fct": 0.9, "fpy_input.fct_b": 0.9,
+			"mean_blocking_minutes.fct_b": 3, "work_ratio.fct_b": 0.5, "work_ratio.fct": 5e6 / 12e6,
+			"processing_ratio.fct_b": 3e6 / 12e6, "blocking_ratio.fct_b": 0.5e6 / 12e6, "idle_ratio.fct_b": 2.8e6 / 12e6,
+			"off_shift_ratio.fct_b": (12e6 - 3.5e6 - 2.8e6) / 12e6, "starved_ratio.fct_b": 2.8e6 / 12e6, "starved_ratio.fct": 5e6 / 24e6,
+			"scheduled_utilization.fct_b": 3.2e6 / 6e6, "overtime_minutes.fct_b": 5},
+		reasons: map[string]string{"retest_ratio.fct_b": "FLOW_COUNT_NOT_DECLARED", "mean_blocking_minutes.fct": "NO_COMPLETED_BLOCK_IN_WINDOW"},
+	}, false)
+	if _, listed := own["retest_ratio.fct"]; listed {
+		t.Error("a second cell with a tester of its own: fct has fct_b's retest")
 	}
 }
 

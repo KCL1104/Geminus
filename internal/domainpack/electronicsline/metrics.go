@@ -3,6 +3,7 @@ package electronicsline
 import (
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/calendar"
+	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/results/metrics"
 	"github.com/kcl1104/geminus/internal/simulation"
 )
@@ -71,10 +72,12 @@ func unitOf(name string) string {
 }
 
 // The reasons a metric is unavailable (ELECTRONICS_LINE §5, provisional
-// like the generic ones, CB-23). The first eleven are §5's; the last
-// three are the pack's: a batch metric of a station that is not a batch
-// process, a batch metric of a window without a batch, and an engine
-// Result without the member the model's features imply.
+// like the generic ones, CB-23). The first seventeen are §5's; the last
+// four are the pack's: a batch metric of a station that is not a batch
+// process, a batch metric of a window without a batch, an engine Result
+// without the member the model's features imply, and a rolled throughput
+// yield whose parallel first tests of one test station type have
+// different first-pass yields (review r1 M1).
 const (
 	reasonNoCompletedSink         = "NO_COMPLETED_SINK"
 	reasonNoCommonLineCalendar    = "NO_COMMON_LINE_CALENDAR"
@@ -96,6 +99,7 @@ const (
 	reasonNoBatchModel            = "NO_BATCH_MODEL"
 	reasonNoBatchInWindow         = "NO_BATCH_IN_WINDOW"
 	reasonResultMemberMissing     = "RESULT_MEMBER_MISSING"
+	reasonParallelYieldsDiffer    = "PARALLEL_TEST_YIELDS_DIFFER"
 )
 
 // ticksPerHour and ticksPerMinute convert the engine's 1 ms ticks.
@@ -245,20 +249,47 @@ func (c *computer) fpy(s *station) value {
 	return ok(s.result.pass)
 }
 
-// rolledYield is the product of the test stations' first-pass yields, in
-// node order.
+// rolledYield is the product of the main-line test stations' first-pass
+// yields in series (§5): each test station type once, in line order
+// (stationKinds), not each first test (review r1 M1). First tests of one
+// type are parallel cells of that station, one step of the series: when
+// their yields agree within the IR's routing tolerance, the type's yield
+// is the first cell's in node order; when they differ, the type's yield
+// would weight them by routing shares the pack does not derive, so the
+// metric is unavailable. A cell without a yield leaves its type without
+// one; the first type in line order without one gives the reason. A type
+// with no first test in the model is not in the series.
 func (c *computer) rolledYield() value {
 	product, tests := 1.0, 0
-	for _, s := range c.l.stations {
-		if !s.first.kind.test {
+	for i := range stationKinds {
+		kind := &stationKinds[i]
+		if !kind.test {
 			continue
 		}
-		tests++
-		y := c.fpy(s)
-		if y.reason != "" {
-			return y
+		var first, lo, hi float64
+		cells := 0
+		for _, s := range c.l.stations {
+			if s.first.kind != kind {
+				continue
+			}
+			y := c.fpy(s)
+			if y.reason != "" {
+				return y
+			}
+			if cells == 0 {
+				first, lo, hi = y.v, y.v, y.v
+			}
+			lo, hi = min(lo, y.v), max(hi, y.v)
+			cells++
 		}
-		product *= y.v
+		switch {
+		case cells == 0:
+			continue
+		case hi-lo > validate.ProbabilityEpsilon:
+			return missing(reasonParallelYieldsDiffer)
+		}
+		tests++
+		product *= first
 	}
 	if tests == 0 {
 		return missing(reasonTestResultNotIdentified)
