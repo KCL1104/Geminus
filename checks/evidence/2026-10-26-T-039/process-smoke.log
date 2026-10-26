@@ -1,0 +1,44 @@
+NOTICE:  database "dt_test_t039b" does not exist, skipping
+ok   create_logins without the passwords is refused (3)
+ok   it names the variable
+ok   a short password is refused (3)
+ok   a repeated password is refused (3)
+ok   no login was created by a refused run (0)
+ok   create_logins (0)
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+GRANT
+       rolname       | rolsuper | rolbypassrls | rolcreaterole | rolcreatedb | rolinherit |     member_of      
+---------------------+----------+--------------+---------------+-------------+------------+--------------------
+ geminus_api         | f        | f            | f             | f           | t          | {twin_api}
+ geminus_migrator    | f        | f            | f             | f           | t          | {twin_owner}
+ geminus_provisioner | f        | f            | f             | f           | f          | {twin_provisioner}
+ geminus_worker      | f        | f            | f             | f           | t          | {twin_worker}
+(4 rows)
+
+ok   create_logins again leaves the logins as they are (0)
+ok   the API login cannot migrate (4)
+ok   the superuser cannot migrate (4)
+{"applied":[],"current":0,"pending":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]}
+ok   status before: pending (6)
+{"applied":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"current":16,"pending":[]}
+ok   migrate up (0)
+{"applied":[],"current":16,"pending":[]}
+ok   migrate up again (nothing to apply) (0)
+ok   provision-tenant organization (0)
+{"organization_id":"org_01M5W4RHAFH8Q7Y8PNQT1RAF4T","owner_user_id":"usr_01M5W4RHAGH9JGFGMTQ8H6SK6H"}
+ok   the API refuses the migration login (3)
+ok   GET /healthz (200)
+ok   GET /readyz ({"status":"ready"})
+ok   GET /v1/me without a token (401)
+ok   geminus-api -probe (the image's health check) (0)
+ok   the worker is running (0)
+ok   the worker logged running (0)
+ok   the API stops on SIGTERM (0)
+ok   the probe fails once the API is gone (1)
+ok   the worker stops on SIGTERM (0)
+access lines: 1
+ok   probes are not in the access log
+process smoke failures: 0

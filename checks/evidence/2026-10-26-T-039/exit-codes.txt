@@ -1,0 +1,26 @@
+backend-test exit=0
+spec-check exit=2
+architecture-check exit=0
+check-deploy exit=0
+rehearsal exit=0
+deploy-dry-run exit=0
+build-containers exit=2
+staging-smoke exit=2
+bash-n exit=0
+db-create exit=0
+integration-test exit=2
+db-drop exit=0
+frontend-test exit=0
+frontend-build exit=0
+done
+== second pass
+db-create exit=0
+integration-test exit=0
+db-drop exit=0
+spec-check exit=0
+deploy-mutants exit=0
+done2
+changed-packages-uncached (go test -count=1 objects, migrations, config, cmd, check-architecture) exit=0
+bash-n (rerun: each script alone, Python scripts parsed) exit=0
+rehearsal-mutants (final files) 12/12 killed
+spec-check (final, after the report and evidence) exit=0

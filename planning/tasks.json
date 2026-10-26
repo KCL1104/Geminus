@@ -2524,7 +2524,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-26",
+          "branch": "t039-hk",
+          "report": "checks/T-039_VALIDATION.md",
+          "summary": "Hackathon 切片（H-029 (3)；雲端為 owner 選的 Railway，H-030）：Dockerfile.api、Dockerfile.worker、apps/web/Dockerfile（digest pin、非 root、無 ARG 與 credential、HEALTHCHECK、SIGTERM）；migration step（cmd/migrate、internal/storage/migrations：只用 migration login，紀錄與 migration 同一 transaction，規則 migrations-only-in-their-command）與 deploy/sql/create_logins.sql；API 的 /healthz、/readyz 與 geminus-api -probe；S3 相容的 object storage adapter（SigV4 自行實作並以 AWS test suite 驗證、條件式 PUT、private；bucket 自己的 timeout 不是 context error，T-054 I1）；本機 staging composition（deploy/local，含測試 OIDC provider，只給本機）與 make build-containers、make staging-smoke（無 Docker 時 NOT RUN、exit 2）；CI 的 containers job；deploy/railway（config-as-code、variables.json）與 deploy/railway/deploy.sh（H-032：以 pin 住的 Railway CLI 5.64.2 非互動套用，--dry-run 不連網；產生的 secret 經 stdin 並 sealed，owner 的 secret 不設不讀；scripts/rehearse_railway_deploy.py 以替身離線演練）；docs/runbooks/deploy.md；ADR-029 PROPOSED。本機沒有 Docker daemon，image build 與 compose smoke 為 NOT RUN；以 Docker build context 建置的 binaries 在一次性 database 上跑 process-level smoke（全部通過）。未部署（deploy.sh --apply NOT RUN，由 coordinator 執行）。Status 保持 not_started：依賴的 T-043 仍為 in_progress，scripts/check_decisions.py 規定 in_progress 的任務其 dependencies 必須是 review 或 done，所以未依指示改為 in_progress（由 coordinator 決定）；T-039 其餘 scope（T-053 I4 (2)(4)、I5 的程式修改、T-054 I1 的一般做法與 I2、container scan）未完成。",
+          "reviewer": "NOT YET (hackathon: one independent review round, H-029 (4))",
+          "decisions": "ADR-029 PROPOSED；H-030、H-032 待 coordinator 記錄"
+        }
+      ]
     },
     {
       "id": "T-040",

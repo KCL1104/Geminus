@@ -1,0 +1,17 @@
+all modules verified
+total 71164
+drwxr-xr-x 2 root root     4096 Oct 26 12:55 .
+drwxr-xr-x 7 root root     4096 Oct 26 12:54 ..
+-rwxr-xr-x 1 root root 23220348 Oct 26 12:54 geminus-api
+-rwxr-xr-x 1 root root  9920636 Oct 26 12:54 geminus-migrate
+-rwxr-xr-x 1 root root 10412156 Oct 26 12:54 geminus-provision-tenant
+-rwxr-xr-x 1 root root 29294716 Oct 26 12:55 geminus-worker
+out/geminus-api:              ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+out/geminus-migrate:          ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+out/geminus-provision-tenant: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+out/geminus-worker:           ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+probe with nothing listening: exit 1
+usage: migrate [-dir DIR] up|status
+migrate without arguments: exit 2
+GEMINUS_MIGRATE_DATABASE_URL is not set (the migration login; never the runtime DATABASE_URL)
+migrate status without a URL: exit 2

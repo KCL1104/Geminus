@@ -16,6 +16,8 @@ DT_ALLOW_DB_TESTS=yes GEMINUS_TEST_DATABASE_URL="$DATABASE_URL" make integration
 
 The runner refuses a non-`dt_test_*` database or an existing `twin` schema and creates no login passwords. Never point it at shared or production infrastructure; the down migrations are destructive.
 
+A deployment's database is migrated by `cmd/migrate` instead (T-039, [deploy runbook](../docs/runbooks/deploy.md) §3): up only, as a migration login in `twin_owner` and nothing else (superusers and runtime or provisioning logins are refused), each migration with its record in `geminus_migrations.applied` in one transaction, never twice, and refused when the record does not match the files. The logins come from `deploy/sql/create_logins.sql` (passwords from the environment).
+
 ### Provisioning a tenant (T-010, ADR-023)
 
 Users and organizations are created by an operator, never through the API (D-008). Give provisioning a login of its own that may act as `twin_provisioner` and is nothing else (D-042). `twin_provisioner` can only read users and insert users, organizations, memberships and system audit events; RLS applies to it, and since RLS reads a scope the role sets itself, a trigger lets it add members and audit events only to the organization its own transaction created (`migrations/0004_provisioner.up.sql`). `cmd/provision-tenant` refuses a login that cannot `SET ROLE twin_provisioner`, one that is a member of `twin_owner`, `twin_api` or `twin_worker` (a superuser is a member of every role), and one with SUPERUSER, BYPASSRLS, CREATEROLE, CREATEDB or REPLICATION:

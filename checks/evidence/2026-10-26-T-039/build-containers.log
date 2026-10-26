@@ -1,0 +1,4 @@
+== build-containers: make build-containers (2026-10-26T14:05:46Z)
+build-containers: NOT RUN: no Docker daemon is reachable (docker info failed); no image was built.
+make: *** [Makefile:152: build-containers] Error 2
+== exit 2 (2026-10-26T14:05:46Z)

@@ -1,0 +1,17 @@
+S1 no If-None-Match KILLED :: FAIL
+S2 412 not ErrExists KILLED :: FAIL
+S3 follows redirects KILLED :: FAIL
+S4 no size limit KILLED :: FAIL
+S5 any key KILLED :: FAIL
+S6 prints the secret KILLED :: FAIL
+S7 spool file kept KILLED :: FAIL
+S8 no HEAD first KILLED :: FAIL
+S9 404 not ErrNotFound KILLED :: FAIL
+S10 unsigned payload hash KILLED :: FAIL
+S11 http to any host KILLED :: FAIL
+S12 error code echoed KILLED :: FAIL
+V1 no white-space collapse KILLED :: FAIL
+V2 query not sorted KILLED :: FAIL
+V3 Content-Type unsigned KILLED :: FAIL
+S13 the bucket's timeout wraps its cause KILLED :: FAIL
+S14 the caller's deadline is not its error KILLED :: FAIL

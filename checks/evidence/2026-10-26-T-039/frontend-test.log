@@ -1,0 +1,29 @@
+== frontend-test: make frontend-test (2026-10-26T14:13:37Z)
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a0fbf25f5aa4a571e/apps/web
+
+
+ Test Files  21 passed (21)
+      Tests  547 passed (547)
+   Start at  14:14:42
+   Duration  62.28s (tests 66%, import 22%, transform 6%, environment 5%)
+
+    Isolate  21 workers spawned · ~1.03s startup each (spawn + environment, per file)
+             at least ~6.20s faster with isolate: false — reuses workers across files instead of one per file
+
+== exit 0 (2026-10-26T14:15:45Z)

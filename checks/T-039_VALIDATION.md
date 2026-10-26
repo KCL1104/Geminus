@@ -1,0 +1,132 @@
+# T-039 驗證報告：containers 與 staging 參考部署（hackathon 切片，H-029 (3)）
+
+**日期：2026-10-26｜Branch：`t039-hk`（從 6041d39 開出，沒有 push）｜狀態：hackathon 切片已交付；T-039 在 tasks.json **保持 `not_started`**（只加了 completion_evidence）：brief 要求設為 `in_progress`，但依賴的 T-043 仍為 `in_progress`，而 `scripts/check_decisions.py` 規定 `in_progress` 的任務其 dependencies 必須是 `review` 或 `done`（設了之後 `make spec-check` exit 2，`spec-check-in-progress.log`），不放寬檢查，由 coordinator 決定；沒有部署任何東西、沒有建立任何帳號｜需求：REQ-020｜Gate：D-093、D-095（APPROVED，H-024，本任務只沿用）；新的 ADR-029 為 PROPOSED｜驗收測試：TEST-030（本機 staging smoke：NOT RUN，沒有 Docker daemon；process-level smoke 通過）**
+
+雲端：owner 的選擇由 coordinator 轉達（H-030，待 coordinator 記錄）：先為「railway + cloudflare」，同日改為「先不要接 cloudflare 好了，純用 railway 就好」。所以本切片是 Railway（web、api、worker、managed PostgreSQL、Storage Bucket），使用 Railway 的網域與 TLS；Cloudflare／R2 的部分沒有做。之後（H-032，coordinator 轉達）：owner 提供了 Railway token（只在新的 session 中），coordinator 之後會部署；本切片因此加上以 Railway CLI 非互動套用的 `deploy/railway/deploy.sh`。**本 session 沒有執行 `--apply`、沒有呼叫 Railway 的 API、沒有建立任何東西**（auto mode 也拒絕了一次不帶 token 的 `--apply` 嘗試，那個嘗試本來只會在 preflight 失敗；之後只執行 `--dry-run` 與離線 rehearsal）。
+
+**沒有 Docker daemon**（本機只有 docker CLI 29.8.2 與 compose v5.6.0）：`make build-containers` 與 `make staging-smoke` 依設計以 exit 2 回報 NOT RUN（`checks/evidence/2026-10-26-T-039/build-containers.log`、`staging-smoke.log`），沒有嘗試任何 privileged workaround。替代的驗證：以 Dockerfile 的 build context（只有 `go.mod`、`go.sum`、`cmd`、`internal`、`schemas`、`prompts`）與相同的 flags 建置四個 static binary，在一次性 database 上執行與 compose smoke 相同的步驟（process smoke，全部通過）；web 以 `GEMINUS_NEXT_STANDALONE=1` 建置 standalone server 並如 image 一樣啟動與停止；`docker compose config` 驗證 compose 檔；Railway 的 config 檔以 Railway 公布的 JSON schema 驗證。CI 的新 job `containers` 會在 GitHub runner 上真正建置三個 image 並執行 `make staging-smoke`：**尚未觀察到它的結果**（沒有 push）。
+
+逐條輸出在 `checks/evidence/2026-10-26-T-039/`。
+
+## 交付
+
+| 項目 | 檔案 | 內容 |
+|---|---|---|
+| Images | `Dockerfile.api`、`Dockerfile.worker`、`apps/web/Dockerfile`、`.dockerignore` | Multi-stage；base 以 digest pin（`image-digests.txt`、ADR-011 的表）；runtime 非 root（distroless static uid 65532；Node 的 `node` uid 1000）、沒有 shell（Go）或 npm（web）；沒有 `ARG`、沒有 credential 的 `ENV`；`HEALTHCHECK`（`geminus-api -probe`；web 以 node 的 fetch）；`STOPSIGNAL SIGTERM`。API image 另含 `geminus-migrate`、`geminus-provision-tenant` 與 `/migrations/*.up.sql`。Web 為 Next 的 standalone server（`apps/web/next.config.ts`：只有 `GEMINUS_NEXT_STANDALONE=1` 時） |
+| Health probes | `cmd/api/main.go` | `GET /healthz`（200 `{"status":"ok"}`）、`GET /readyz`（2 秒內 `pool.Ping` 成功 200 `{"status":"ready"}`，否則 503 `{"status":"unavailable"}`，不說原因）；不需 token、`Cache-Control: no-store`、不進 access log；其他 method 與 path 照舊交給 `/v1` handler；`geminus-api -probe`（image 的 health check） |
+| Migration step | `cmd/migrate`、`internal/storage/migrations`、`deploy/sql/create_logins.sql` | 見 ADR-029：只用 migration login（拒絕 superuser、runtime 與 provisioning login），每個 migration 與 `geminus_migrations.applied` 的紀錄同一 transaction，advisory lock，紀錄與檔案不符時拒絕；`up`／`status`（exit 0、2、3、4、5、6）；新的 architecture 規則 `migrations-only-in-their-command`（3 個 probe）。`create_logins.sql`：四個 login，密碼只從環境變數（`\getenv`），至少 32 字元、四個不同、bootstrap 過的 role 才建立 |
+| Object storage | `internal/storage/objects/s3.go`、`sigv4.go`、`internal/config`（`OBJECT_STORAGE_PROVIDER=s3`、`OBJECT_STORAGE_S3_*`）、`cmd/api`、`cmd/worker` | S3 相容 adapter（Railway 的 bucket）：SigV4 以標準函式庫實作（沒有新的 module），payload 以 SHA-256 簽章、`If-None-Match: *`（既有 object 不被取代）、先 HEAD、暫存在 `/tmp`、private（不 presign、不跟隨 redirect）、錯誤不含 credential、`[redacted]`；bucket 自己的 timeout 不是 context error（T-054 review 第 2 輪 I1）。設定為整組，provider 不是 s3 時設了任何 `OBJECT_STORAGE_S3_*` 即拒絕啟動 |
+| 本機 staging | `deploy/local/compose.yaml`、`deploy/local/staging-smoke.sh`、`Makefile`（`build-containers`、`staging-smoke`、`spec-deploy`；`db-go-test` 加 `./cmd/migrate/...`） | **只給本機**（檔案第一行即標示；含 repository 的測試 OIDC provider）；每次執行產生一次性密碼與 session key；7 組檢查（見 `deploy/local/staging-smoke.sh` 的開頭）；沒有 Docker 時 exit 2 |
+| CI | `.github/workflows/ci.yml` | 新 job `containers`：`make build-containers`、`make staging-smoke`；只用既有、以 SHA pin 的 `actions/checkout`；不 push image、不用 registry credential |
+| Railway | `deploy/railway/{api,worker,web,migrate}.railway.json`、`deploy/railway/variables.json` | Config-as-code（Dockerfile builder、watch paths、healthcheck、restart policy、`drainingSeconds`、1 replica；`migrate` 的 start command 與 `NEVER`）；每個 service 的變數清單（secret 沒有值而有 `source`：`generated`、`bucket:…`、`owner`；reference 組成 URL；`forbidden` 清單） |
+| Railway 的自動化（H-032） | `deploy/railway/deploy.sh`、`deploy/railway/railway_deploy.py`、`scripts/rehearse_railway_deploy.py` | `--dry-run`（不連網）、`--apply`、`--install-cli DIR`（Railway CLI 5.64.2，核對 release archive 的 SHA-256）；支援 `RAILWAY_TOKEN` 與 `RAILWAY_API_TOKEN`；xtrace 時拒絕執行、token 只由 CLI 從環境讀、引數中不放 secret（每次檢查）、輸出中的 secret 替換為 `[redacted]`；每步先查再建立（可重跑）；產生的 secret 以 Python `secrets` 產生、經 stdin、sealed；owner 的變數不設不讀，verification 檢查必填者存在；8 個步驟見 runbook §7.7。Rehearsal：`railway`、`psql`、`go` 的替身，離線執行 `--apply` 五次（空的 project、重跑、登入導向錯誤兩種、`GEMINUS_RAILWAY_SEAL=off`、CLI 錯誤訊息引用 secret） |
+| 靜態檢查 | `scripts/check_deploy.py`（`make spec-deploy`，`make spec-check` 的一部分）、`checks/deploy-check.json` | Dockerfile、`.dockerignore`、compose、Railway 檔與 `variables.json`、runbook 是否列出程式讀的每個變數 |
+| 文件 | `docs/runbooks/deploy.md`（§7.7 為 `deploy.sh`）、`docs/adr/ADR-029-containers-and-staging-deployment.md`、ADR-011（base image 表）、THIRD_PARTY_NOTICES（SigV4 test vectors、base images）、ARCHITECTURE §2、§6、§8、SECURITY §6、§9、API_DATABASE §9、`db/README.md`、`.env.example` | 每個變數的來源、必填、secret；migration 順序；Auth0 的 callback／logout URL；Railway 的步驟（官方文件 URL 與取得日期）；owner 的 secret 清單 |
+| Test data | `testdata/sigv4/`（15 個向量與 `SOURCE.txt`） | AWS SigV4 test suite（botocore 的鏡像，Apache-2.0，未修改，SHA-256 記錄） |
+
+## 測試先行與 mutation
+
+測試在實作之前寫好（同一個 session；紅的狀態沒有另存 log，以 mutation 證明測試會在缺少各行為時失敗；每個 mutant 套用後執行測試，再還原檔案）：
+
+- **S3／SigV4**（`internal/storage/objects`：`TestSigV4Suite`、`TestSignedHeadersOfARequest`、`TestCanonicalURI`、`TestS3PutGet`（兩種 URL style）、`TestS3ConditionalPut`、`TestS3Errors`、`TestS3ContextAndDelete`、`TestS3OwnTimeoutIsNoContextError`、`TestNewS3`；假 S3 server 以同一套簽章驗證每個 request、核對 payload hash、要求 `If-None-Match: *`）：**17/17 mutant 被擋下**（`mutants-s3.log`：不帶 `If-None-Match`、412 不是 `ErrExists`、跟隨 redirect、沒有大小上限、任何 key、印出 secret、暫存檔留下、沒有先 HEAD、404 不是 `ErrNotFound`、未簽 payload、任何 host 的 http、回顯 error code、不合併空白、query 不排序、不簽 Content-Type、timeout 包住原因、caller 的 deadline 不回 context error）。S13 證實 Go 的 transport timeout 包起來時會符合 `context.DeadlineExceeded`：T-054 I1 指出的問題對這個 adapter 是真的，所以它從不包住原因。最初的兩個 mutant（跟隨 redirect、回顯 error code）存活，因此加強了測試（redirect 的 request 數、含空白的 error code）後重跑。
+- **Config**（`TestLoadS3`）、**cmd**（`TestProbes`、`TestProbeCommand`、`TestObjectStore`、`TestTheObjectStoreIsTheConfigured`、`TestRunServesAndStops` 加 probes 與 access log）、**migrations**（`TestLoadTheRepositorysMigrations`、`TestLoadRefuses`；DB：`TestApplyOnAFreshDatabase`、`TestApplyRefusesUnsafeLogins`、`TestApplyRefusesAForeignState`、`TestAFailedMigrationKeepsNothing`、`TestConcurrentRunsTakeTurns`；`cmd/migrate`：`TestRunRefusesBeforeConnecting`、`TestRunMigrates`）：**18/18 DB mutant 被擋下**（`mutants-db.log`，在 `dt_test_t039a` 上；runtime role 的成員、superuser、紀錄在 COMMIT 之後、被改過的 migration、沒有紀錄的 twin schema、資料庫比 build 新、沒有 lock、migrate 讀 `DATABASE_URL`、`status` 恆為 0、probe 進 access log、database 停止時仍 ready、disabled 時忽略 bucket 變數、bucket 旁的 `OBJECT_STORAGE_ROOT`、不乾淨的 secret、BYPASSRLS、CREATEROLE、CREATEDB、REPLICATION）。第一輪 M2（superuser）與 M10（probe 進 access log）存活：superuser 同時是每個 role 的成員，所以仍被拒絕但理由不同；access log 只記 route 的 pattern，不會出現 `healthz` 字樣。因此 `TestApplyRefusesUnsafeLogins` 改為逐一檢查每個 login 被拒絕的理由，並加入一個帶 BYPASSRLS、CREATEROLE、CREATEDB、REPLICATION 的 twin_owner 成員；`TestRunServesAndStops` 改為要求 access log 只有兩行（兩個 `/v1` request），重跑 M2、M10 與新的 M15–M18（`mutants-db.log` 的第二段）。DB 測試在寫好後第一次執行就抓到一個 bug：record 的 table 先建立後，有 twin schema 而沒有紀錄的 database 會被當成空的而再跑 0001（失敗於 `schema "twin" already exists`）；已修正（沒有紀錄且有 twin schema 一律拒絕）。
+- **Railway 的部署腳本**（`scripts/rehearse_railway_deploy.py`）：**12/12 mutant 被擋下**（`rehearsal-mutants.log`：secret 當作引數、設定 owner 的變數、第二個 organization、TCP proxy 沒有移除、API 在 migration 之前、每次重新產生 secret、不檢查登入導向、不檢查 owner 的變數、輸出不遮蔽、什麼都不 sealed、忽略 `GEMINUS_RAILWAY_SEAL`、bucket 的 key 不 sealed）。第一輪 R7、R8、R9 存活（第二次執行只看結果、第一次執行的失敗訊息也因登入導向而提到 client secret、替身從不把 secret 印出），因此 rehearsal 加上：owner 檢查的訊息本身、owner 已填但登入導向錯誤（503 與導向別的 host）時必須失敗、CLI 在錯誤訊息中引用 stdin 的值時輸出必須是 `[redacted]`；之後加入 R10–R12 與 sealed 的檢查。
+- **部署檔的靜態檢查**：**17/17 mutant 被擋下**（`deploy-mutants.log`：未 pin 的 base、root、`ARG`、`ENV` 中的 credential、沒有 HEALTHCHECK、API 有 AI key、secret 有值、web 有 database、Railway 檔提到 loopback、compose 的明文密碼、拿掉 local-only 標示、runbook 少一個變數、worker 少 `WORKER_ID`、production 用 fake provider、`.env.*` 進 build context、URL 中的明文密碼、沒有程式讀的變數）。
+
+## 實際執行結果
+
+（Exit code 也在 `exit-codes.txt`。Go 1.27.3、Node 22.22.0（`.nvmrc` 為 24.21.0：以 `npm ci --engine-strict=false` 安裝，與 T-045、T-054 相同；image 用 24.21.0）、4 CPU 與其他 agent 共用。DB：共用的一次性 cluster（PostgreSQL 16.15，trust 認證），本任務只建立並刪除 `dt_test_t039*`、`dt_test_mig_*` database。）
+
+從 `make backend-test` 到 `make frontend-build` 的命令在最後的程式上依序執行，沒有同時進行的 mutation（`exit-codes.txt` 依執行順序列出，包括第一次失敗的兩項）；部署檔的 mutation 在那之後、同樣在最後的檔案上。S3 與 DB 的 mutation、rehearsal 的 mutation、process smoke 與 web standalone 是本 session 較早的執行（DB 第二輪與 rehearsal 的 mutation 在最後的程式上；process smoke 與 web standalone 之後沒有在最後的程式上重跑）。
+
+| 命令 | Exit | 結果（evidence） |
+|---|---|---|
+| `make backend-test` | 0 | gofmt、`go vet`、`go test`（`GEMINUS_FULL_DIFFERENTIAL=1`）：76 個 package ok，其中 71 個由 go test 的 cache 回答（相同的輸入）；`backend-test.log`。本 task 改過的 package 另以 `go test -count=1` 重跑：objects、migrations、config、cmd/...、check-architecture 全部 ok（`changed-packages-uncached.log`） |
+| `make spec-check`（第一次） | 2 | `check_decisions.py`：`T-039: started before its dependencies`（T-039 設為 `in_progress` 而 T-043 仍為 `in_progress`）；`spec-check-in-progress.log`。T-039 因此保持 `not_started`（見開頭） |
+| `make spec-check`（最後） | 0 | 包括 `spec-deploy`（`PASS_STATIC_DEPLOY_CHECKS`）；重新產生的 `checks/docs-check.json`、`checks/deploy-check.json` 已 commit；`spec-check.log` |
+| `make architecture-check` | 0 | `PASS architecture: 88 packages, 24 rules, 16 build configurations`（含新的 `migrations-only-in-their-command`）；`architecture-check.log` |
+| `python -I scripts/check_deploy.py` | 0 | `check-deploy.log` |
+| `python scripts/rehearse_railway_deploy.py` | 0 | `rehearsal: PASS (the deployer against stand-ins; Railway itself NOT RUN)`；run 1：91 個 CLI 呼叫、7 個 psql、停在 verification（owner 未填 client secret）；run 2：done、沒有建立任何東西；run 3：兩種登入導向錯誤都失敗；run 4：CLI 錯誤訊息中的 secret 為 `[redacted]`；run 5：`GEMINUS_RAILWAY_SEAL=off` 不 sealed；`rehearsal.log` |
+| `deploy/railway/deploy.sh --dry-run` | 0 | 不連網；列出 `--apply` 需要的輸入與 token、8 個步驟的每個命令；`deploy-dry-run.log` |
+| `deploy/railway/deploy.sh`（沒有引數） | 2 | 用法 |
+| `bash -n`（每個 script 單獨）、Python 的 `ast.parse` | 0 | `bash-n.log`（第一次把兩個檔案交給同一個 `bash -n`，只檢查了第一個，因此逐一重跑） |
+| `make build-containers` | 2 | **NOT RUN**：`no Docker daemon is reachable (docker info failed); no image was built.`；`build-containers.log` |
+| `make staging-smoke` | 2 | **NOT RUN**：同上；`staging-smoke.log` |
+| `make integration-test`（第一次，`dt_test_t039c`） | 2 | 只有 `internal/worker` 的 `TestAnIdleWorkerPauses` 失敗（`2 transactions in a second of idling with a 200 ms pause, want about 10`：`-race` 下、與其他 agent 共用 4 CPU 時的計時測試；本 task 沒有改 `internal/worker`）；其餘 package 全部 ok；`integration-test-pass1.log` |
+| `make integration-test`（第二次，新的 `dt_test_t039d`） | 0 | `make db-test`（SQL 測試與 migration）與 `make db-go-test`（`-race -count=1 -p 1`，含 `./cmd/migrate/...`、`./internal/storage/...` 的 migrations、cmd/api 的 probes）全部 ok；`integration-test.log`。兩個 database 都已刪除 |
+| `make frontend-test` | 0 | lint、typecheck、unit：21 個檔案、547 個測試通過；`frontend-test.log` |
+| `make frontend-build` | 0 | `next build`（沒有 `GEMINUS_NEXT_STANDALONE`：一般的輸出）；`frontend-build.log` |
+| Mutation：S3／SigV4 | 17/17 | `mutants-s3.log` |
+| Mutation：DB（migrations、cmd/migrate、cmd/api、config） | 18/18 | `mutants-db.log`（第一輪 14 個中 M2、M10 存活，加強測試後第二輪擋下，並加入 M15–M18） |
+| Mutation：部署檔的靜態檢查 | 17/17 | `deploy-mutants.log`（最後的檔案上重跑；之後 `restored files: PASS`） |
+| Mutation：Railway 部署腳本 | 12/12 | `rehearsal-mutants.log` |
+| Process smoke（Docker build context 的 binaries，`dt_test_t039b`） | 0 failures | `process-smoke.log`：create_logins 的拒絕與建立、migration login 以外不能 migrate、`up` 兩次、seed、API 拒絕 migration login、`/healthz`、`/readyz`、401、`-probe`、worker、SIGTERM；`gobuild-context.log`：static、stripped |
+| Web standalone（如 image 啟動） | — | `web-standalone.log`：`/` 200、`/auth/login` 303（PKCE）、`/api/v1/me` 401、SIGTERM 143（不 drain） |
+
+Database：本任務建立的 `dt_test_t039a`、`dt_test_t039b`、`dt_test_t039c`、`dt_test_t039d` 與測試中的 `dt_test_mig_*` 都已刪除；`geminus_*` 與 `dt_test_migrator_api_login`、`dt_test_migrator_attributes_login` 不存在；`dt_test_migrator_login` 與其他 dbtest login 一樣保留。
+
+## NOT RUN
+
+| 項目 | 原因 |
+|---|---|
+| `make build-containers`（exit 2）、`make staging-smoke`（exit 2） | 沒有 Docker daemon；替代驗證見上方。CI 的 `containers` job 尚未在 GitHub 上執行過 |
+| 在 container 中執行（image 的 HEALTHCHECK、`docker compose` 的 `network_mode: service:web`、volume 掛載、`--wait`、image 中的檔案權限） | 同上；distroless 的內容（`/tmp` 1777、uid 65532、CA bundle）以 registry 的 layer 確認（`distroless-contents.txt`） |
+| Node 24.21.0 的 web build | 本機只有 Node 22；image 用 24.21.0 |
+| `TestLiveBucket`（真實 bucket 的條件式 PUT） | 沒有 credential；由 owner 執行（runbook §7.4），通過前不得使用 bucket |
+| `deploy/railway/deploy.sh --apply`、任何 Railway API 呼叫、Railway 上的資源 | H-032：由 coordinator 之後在有 token 的 session 執行；本 session 只跑 `--dry-run`（不連網）與 rehearsal（替身）。Rehearsal 證明腳本自身一致，不證明 Railway 接受每個 CLI 呼叫 |
+| Railway、Auth0 的 staging 檢查（runbook §8、Auth0 runbook §5） | 需要 owner 的帳號與部署；agent 不部署 |
+| `deploy.sh --install-cli` | 會下載 CLI；SHA-256 是先前以下載的 archive 計算的（`sources.txt`），安裝本身沒有執行 |
+| hadolint、actionlint、shellcheck | 沒有安裝（依指示不安裝新工具）；`bash -n`、`docker compose config`、Railway schema、`scripts/check_deploy.py` 代替一部分 |
+| Container scan、SBOM、image 簽章 | 沒有選定工具（SECURITY §9） |
+| `make e2e-test` | 只有 `next.config.ts` 的條件式 standalone 改動；`make frontend-test`、`make frontend-build` 已跑 |
+
+## T-039 的 scope 逐條
+
+| Scope | 判定 |
+|---|---|
+| web／api／worker 分開的 container，managed DB／object／OTLP adapter | Containers：已完成（container 中的執行 NOT RUN）。Object：S3 相容 adapter 已完成（真實 bucket NOT RUN）。OTLP：既有的 adapter（ADR-028），backend 未選，部署不設 |
+| 非 root／runtime roles、secret injection、readiness、graceful shutdown | 已完成：image 非 root；四個 login 與 migration login 的分離（process smoke：API 拒絕 migration login、runtime login 不能 migrate）；secret 只在平台；`/readyz`；SIGTERM（process smoke：API、worker exit 0；Next exit 143，不 drain） |
+| cloud／provider 不進 domain code，production 人工 gate | 已完成：Railway 只在 `deploy/railway/` 與 runbook；公開與開 live AI 由 owner 決定 |
+| web container 為 Node server（BFF），session key 與 client secret 由 secret store 注入 | 已完成（Railway 的 sealed variable） |
+| T-054 review 第 2 輪 I1、I2 | I1：對 S3 adapter 以構造解決（自己的 timeout 從不是 context error，測試與 mutant S13、S14）；`datasets.Failure` 標記「request 已結束」的一般做法**未做**（目前沒有其他會自己逾時的 store）。I2：worker 沒有改用 `StorageFailure`，**未做**（不適用） |
+| T-053 review 第 1 輪 I2、I4、I5、D-114 (b) | (1) 每個 worker 相同的限額：runbook §4.4（1 個 replica、同一組變數）；(2) 未結算預留的 operator 介面：**未做**；(3) API 不設 AI key：`variables.json` 的 `forbidden` 與檢查，但 **API 在開關 on 時仍要求 key**，key-free 的可用性判斷需要改 `LoadAI`（**未做**，建議由正在改 `LoadAI` 的 T-055 一併完成，否則部署的 API 無法接受 live AI 的 proposal）；(4) D-114：owner 的選擇，未決 |
+| Hackathon 切片：部署步驟、synthetic 資料、Auth0、secret 由 owner 填入 | 步驟已完成（runbook、`variables.json`、`deploy.sh`）；部署本身由 coordinator 以 `deploy.sh --apply` 或 owner 手動執行（NOT RUN）；owner 的 secret 只由 owner 填 |
+
+## 發現
+
+1. API 原本沒有不需 token 的 health endpoint，而 Railway 的 healthcheck 要求 2xx：新增 `/healthz`、`/readyz`（不在 `/v1` 的 contract：`check_contracts.py` 要求每個 operation 都有 organization selector 與 role；ADR-029 請 owner 確認）。
+2. 沒有正式的 migration 工具（`run_db_tests.sh` 只給 `dt_test_*`）：新增 `cmd/migrate`。Railway 的 pre-deploy command 會把 migration login 交給 API service，所以改為獨立的 `migrate` service。
+3. FS adapter 在 production 拒絕啟動，Railway 的 volume 屬於單一 service：需要 bucket，Railway 有 S3 相容的 Buckets（Tigris），所以實作 S3 adapter；Railway 文件沒有寫條件式 PUT（Tigris 文件有），所以在用之前要以 `TestLiveBucket` 確認。
+4. T-053 I5 的現況與部署矛盾：API 不拿 key 就無法在 live 開啟時接受 AI proposal（見上表）。
+5. BFF 只在全部 URL 都在 loopback 時接受 http，Railway 的 private network 是 plain http：web → api 經 API 的公開 https 網域（runbook §7.6，owner 問題 2）。
+6. CSP 與其他 security header 尚未設定；Next 的 server 在 SIGTERM 時不 drain 進行中的 request。
+7. 本機 composition 無法完成真正的登入：測試 provider 的 access token 不是 API 驗證的 JWT，API 也只接受 https 的 issuer；登入的 closed loop 只能在 staging 由人檢查。
+8. H-032 希望產生的 secret 用 Railway 的 `${{secret(...)}}`：Railway 文件只把它寫成 template 部署時的函式，沒有寫一般 service variable 可用，社群回答說在 service 層級可能每次重新產生（runbook §7.7、`sources.txt`）。所以 `deploy.sh` 在本機以 Python 的 `secrets` 產生、經 stdin 設定、再 sealed。
+9. Railway 文件沒有寫 reference（`${{GEMINUS_API_DB_PASSWORD}}`）到 sealed variable 時是否展開；若不展開，第一次 `--apply` 會停在 migrate 並指向 runbook §7.7 的復原（刪除密碼變數、`GEMINUS_RAILWAY_SEAL=off` 重跑）。
+10. Railway CLI 會自行更新：`deploy.sh` 以 `CI=true`、`RAILWAY_NO_AUTO_UPDATE=1` 執行並檢查版本為 5.64.2；CLI 的 release 沒有 checksum 檔，pin 的 SHA-256 是本 session 計算的。
+
+## Owner 的清單
+
+帳號（owner 建立，agent 不代做）：Railway 帳號與 token（H-032 已提供；`RAILWAY_API_TOKEN` 可建立 project，`RAILWAY_TOKEN` 需要 project 已存在）；Auth0 tenant（API 與 Regular Web Application，[Auth0 runbook](../docs/runbooks/auth0.md)）；（T-055 合併後）Meta Model API key。Project、PostgreSQL、Bucket、四個 service、網域由 `deploy.sh --apply` 建立（或照 runbook §7.1–§7.6 手動）。
+
+`deploy.sh` 的輸入（不是 secret）：`GEMINUS_AUTH0_ISSUER`、`GEMINUS_AUTH0_AUDIENCE`、`GEMINUS_AUTH0_CLIENT_ID`、`GEMINUS_SEED_OWNER_SUBJECT`（owner 的 Auth0 user_id）、`GEMINUS_RAILWAY_BUCKET_REGION`（sjc、iad、ams、sin，建立後不能改）。
+
+Secret：`deploy.sh` 產生並 sealed 的：`GEMINUS_MIGRATOR_DB_PASSWORD`（migrate）、`GEMINUS_API_DB_PASSWORD`（api）、`GEMINUS_WORKER_DB_PASSWORD`（worker）、`SESSION_KEYS`（web）；從 bucket 複製並 sealed 的：`OBJECT_STORAGE_S3_ACCESS_KEY_ID`、`OBJECT_STORAGE_S3_SECRET_ACCESS_KEY`（api、worker）；`GEMINUS_PROVISIONER_DB_PASSWORD` 每次執行新產生、不存任何地方。**Owner 在 Railway 的 UI 填（腳本不設不讀）**：`BFF_OIDC_CLIENT_SECRET`（web，必填：沒有時 verification 失敗並寫出要填在哪裡，填好後重跑）；只在開 live AI 時：worker 的 `GEMINUS_AI_LIVE`、`GEMINUS_ANTHROPIC_API_KEY_A`／`_B`（或 T-055 之後的 `GEMINUS_META_API_KEY`），live AI 預設關，API 永遠不設。
+
+Auth0：Allowed Callback URL `https://<web 網域>/auth/callback`、Allowed Logout URL `https://<web 網域>/`、API Identifier（同時填 `AUTH_OIDC_AUDIENCE` 與 `BFF_OIDC_AUDIENCE`）、RFC 9068 access token、只有 Authorization Code 與 Refresh Token、關閉 sign-up。
+
+順序：`deploy.sh --dry-run` → `--apply`（停在 verification：owner 填 `BFF_OIDC_CLIENT_SECRET`）→ 再 `--apply` → Auth0 Application 填它印出的 callback 與 logout URL → `TestLiveBucket`（runbook §7.4）→ runbook §8 的檢查。手動時照 runbook §7.5 的 bootstrap（暫開 TCP proxy → `bootstrap_roles.sql`、`create_logins.sql` → 部署 migrate → seed → 關 proxy）→ api、worker → web。
+
+## 只有 owner 能回答的問題
+
+1. 是否接受 ADR-029（S3 adapter 與自行實作的 SigV4、`geminus_migrations` 紀錄、health probes 不進 OpenAPI）。
+2. Web → API 用 API 的公開網域（目前的做法），或放寬 BFF 讓它以 http 連 Railway 的 private network（需要改程式並審查）。
+3. Bucket 的 region（建立後不能改）與 synthetic 資料的保存期限；Railway PostgreSQL 的 major 版本（migration 只在 16 上測過）。
+4. API 的 key-free AI 可用性（T-053 I5）由 T-055 一併做，或另開任務；在那之前部署的 API 拒絕新的 AI proposal。
+5. T-053 I4 (4)／D-114：live eval 的花費保持記在 `checks/ai-evals/live-spend.jsonl`，或改經 DB ledger。
+6. 產生的 secret 由 `deploy.sh` 在本機產生並 sealed（不用 `${{secret()}}`），是否接受；若 Railway 不展開 reference 到 sealed variable 的值，選 `GEMINUS_RAILWAY_SEAL=off`（密碼在 UI 可見）或改為把整個 database URL 存成 sealed（需要改腳本與檢查）。
+7. H-030（純 Railway）與 H-032（token 與由 coordinator 部署）由 coordinator 記錄；ADR-029 的編號若與 T-055 的新 ADR 衝突，由 coordinator 重新編號。
+
+## T-039 剩下的工作
+
+Container 中的實際執行與 CI 的 `containers` job 結果；`deploy.sh --apply` 與 staging 的檢查；`TestLiveBucket`；T-053 I4 (2) 的 operator 介面、I5 的程式修改、D-114 (b)；T-054 I1 的一般做法與 I2；container scan、SBOM、image 簽章；CSP 與 security header；備份與還原演練（`make db-restore-test`）；log／telemetry 的保存；孤兒 object 的清理；OTLP backend；正式（非 hackathon）環境的 region、retention 與 production approval。

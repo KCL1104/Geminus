@@ -1,0 +1,108 @@
+== deploy-dry-run: deploy/railway/deploy.sh --dry-run (2026-10-26T14:05:46Z)
+dry run: --apply will also need:
+  - input GEMINUS_AUTH0_ISSUER: the Auth0 issuer, https://<tenant>.<region>.auth0.com/ (with the final /)
+  - input GEMINUS_AUTH0_AUDIENCE: the Auth0 API Identifier
+  - input GEMINUS_AUTH0_CLIENT_ID: the Auth0 Application's Client ID
+  - input GEMINUS_SEED_OWNER_SUBJECT: the owner's Auth0 user_id (auth0|...), the demo organization's first owner
+  - input GEMINUS_RAILWAY_BUCKET_REGION: the bucket's region: sjc, iad, ams or sin (fixed once created)
+  - RAILWAY_TOKEN (a project token) or RAILWAY_API_TOKEN (an account or workspace token)
+preflight: inputs, tools and deployment files are in order
+dry run: nothing remote is called; the steps and commands of --apply follow
+1. project and environment
+  $ railway list --json
+  $ railway init --name geminus-demo --json
+  $ railway list --json
+  $ railway link --project '<project id>' --environment production --json
+  $ railway environment list --json
+  $ railway environment new production --json
+  $ railway environment link production --json
+2. PostgreSQL, the bucket, the services, their config files, domains
+  $ railway service list --environment production --json
+  $ railway add --database postgres --json
+  $ railway bucket list --environment production --json
+  $ railway bucket create geminus-objects --region '<GEMINUS_RAILWAY_BUCKET_REGION>' --environment production --json
+  $ railway add --service migrate --json
+  $ railway add --service api --json
+  $ railway add --service worker --json
+  $ railway add --service web --json
+  $ railway environment edit --environment production --service-config migrate configFile /deploy/railway/migrate.railway.json --service-config api configFile /deploy/railway/api.railway.json --service-config worker configFile /deploy/railway/worker.railway.json --service-config web configFile /deploy/railway/web.railway.json --message 'T-039 deploy.sh: config-as-code files' --json
+  $ railway domain list --service api --environment production --json
+  $ railway domain --service api --port 8080 --environment production --json
+  $ railway domain list --service web --environment production --json
+  $ railway domain --service web --port 3000 --environment production --json
+3. variables (secrets on stdin, never printed)
+  $ railway variable set GEMINUS_MIGRATOR_DB_PASSWORD --stdin --service migrate --environment production --skip-deploys --json   (value on stdin)
+  $ railway variable set 'GEMINUS_MIGRATE_DATABASE_URL=postgresql://geminus_migrator:${{GEMINUS_MIGRATOR_DB_PASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}' --service migrate --environment production --skip-deploys --json
+  $ railway variable set APP_ENV=production --service api --environment production --skip-deploys --json
+  $ railway variable set PORT=8080 --service api --environment production --skip-deploys --json
+  $ railway variable set API_LISTEN_ADDR=:8080 --service api --environment production --skip-deploys --json
+  $ railway variable set GEMINUS_API_DB_PASSWORD --stdin --service api --environment production --skip-deploys --json   (value on stdin)
+  $ railway variable set 'DATABASE_URL=postgresql://geminus_api:${{GEMINUS_API_DB_PASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}' --service api --environment production --skip-deploys --json
+  $ railway variable set 'AUTH_OIDC_ISSUER=<GEMINUS_AUTH0_ISSUER>' --service api --environment production --skip-deploys --json
+  $ railway variable set 'AUTH_OIDC_AUDIENCE=<GEMINUS_AUTH0_AUDIENCE>' --service api --environment production --skip-deploys --json
+  $ railway variable set 'AUTH_OIDC_JWKS_URL=<GEMINUS_AUTH0_ISSUER>.well-known/jwks.json' --service api --environment production --skip-deploys --json
+  $ railway variable set AUTH_OIDC_REQUIRE_AT_JWT=true --service api --environment production --skip-deploys --json
+  $ railway variable set OBJECT_STORAGE_PROVIDER=s3 --service api --environment production --skip-deploys --json
+  $ railway variable set 'OBJECT_STORAGE_S3_ENDPOINT=<bucket endpoint>' --service api --environment production --skip-deploys --json
+  $ railway variable set 'OBJECT_STORAGE_S3_BUCKET=<bucket bucketName>' --service api --environment production --skip-deploys --json
+  $ railway variable set 'OBJECT_STORAGE_S3_REGION=<bucket region>' --service api --environment production --skip-deploys --json
+  $ railway variable set 'OBJECT_STORAGE_S3_URL_STYLE=<bucket urlStyle>' --service api --environment production --skip-deploys --json
+  $ railway variable set OBJECT_STORAGE_S3_ACCESS_KEY_ID --stdin --service api --environment production --skip-deploys --json   (value on stdin)
+  $ railway variable set OBJECT_STORAGE_S3_SECRET_ACCESS_KEY --stdin --service api --environment production --skip-deploys --json   (value on stdin)
+  $ railway variable set AI_PROVIDER=disabled --service api --environment production --skip-deploys --json
+  $ railway variable set APP_ENV=production --service worker --environment production --skip-deploys --json
+  $ railway variable set GEMINUS_WORKER_DB_PASSWORD --stdin --service worker --environment production --skip-deploys --json   (value on stdin)
+  $ railway variable set 'DATABASE_URL=postgresql://geminus_worker:${{GEMINUS_WORKER_DB_PASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}' --service worker --environment production --skip-deploys --json
+  $ railway variable set WORKER_ID=railway-worker-1 --service worker --environment production --skip-deploys --json
+  $ railway variable set OBJECT_STORAGE_PROVIDER=s3 --service worker --environment production --skip-deploys --json
+  $ railway variable set 'OBJECT_STORAGE_S3_ENDPOINT=<bucket endpoint>' --service worker --environment production --skip-deploys --json
+  $ railway variable set 'OBJECT_STORAGE_S3_BUCKET=<bucket bucketName>' --service worker --environment production --skip-deploys --json
+  $ railway variable set 'OBJECT_STORAGE_S3_REGION=<bucket region>' --service worker --environment production --skip-deploys --json
+  $ railway variable set 'OBJECT_STORAGE_S3_URL_STYLE=<bucket urlStyle>' --service worker --environment production --skip-deploys --json
+  $ railway variable set OBJECT_STORAGE_S3_ACCESS_KEY_ID --stdin --service worker --environment production --skip-deploys --json   (value on stdin)
+  $ railway variable set OBJECT_STORAGE_S3_SECRET_ACCESS_KEY --stdin --service worker --environment production --skip-deploys --json   (value on stdin)
+  $ railway variable set AI_PROVIDER=disabled --service worker --environment production --skip-deploys --json
+  $ railway variable set PORT=3000 --service web --environment production --skip-deploys --json
+  $ railway variable set HOSTNAME=0.0.0.0 --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_APP_ORIGIN=https://${{RAILWAY_PUBLIC_DOMAIN}}' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_API_URL=https://${{api.RAILWAY_PUBLIC_DOMAIN}}' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_OIDC_ISSUER=<GEMINUS_AUTH0_ISSUER>' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_OIDC_AUTHORIZATION_URL=<GEMINUS_AUTH0_ISSUER>authorize' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_OIDC_TOKEN_URL=<GEMINUS_AUTH0_ISSUER>oauth/token' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_OIDC_REVOCATION_URL=<GEMINUS_AUTH0_ISSUER>oauth/revoke' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_OIDC_END_SESSION_URL=<GEMINUS_AUTH0_ISSUER>oidc/logout' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_OIDC_JWKS_URL=<GEMINUS_AUTH0_ISSUER>.well-known/jwks.json' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_OIDC_CLIENT_ID=<GEMINUS_AUTH0_CLIENT_ID>' --service web --environment production --skip-deploys --json
+  $ railway variable set 'BFF_OIDC_AUDIENCE=<GEMINUS_AUTH0_AUDIENCE>' --service web --environment production --skip-deploys --json
+  $ railway variable set SESSION_KEYS --stdin --service web --environment production --skip-deploys --json   (value on stdin)
+4. database logins (a TCP proxy on PostgreSQL for this run only)
+  $ railway tcp-proxy list --service Postgres --environment production --json
+  $ railway tcp-proxy create --port 5432 --service Postgres --environment production --json
+  (reads Postgres's DATABASE_PUBLIC_URL from `railway variable list --service Postgres --json`; never printed)
+  $ psql -X -v ON_ERROR_STOP=1 -q -f db/bootstrap_roles.sql
+  $ psql -X -v ON_ERROR_STOP=1 -q -f deploy/sql/create_logins.sql
+  $ psql -X -v ON_ERROR_STOP=1 -q -f -
+  $ railway environment edit --environment production --service-config migrate variables.GEMINUS_MIGRATOR_DB_PASSWORD.isSealed true --service-config api variables.GEMINUS_API_DB_PASSWORD.isSealed true --service-config api variables.OBJECT_STORAGE_S3_ACCESS_KEY_ID.isSealed true --service-config api variables.OBJECT_STORAGE_S3_SECRET_ACCESS_KEY.isSealed true --service-config worker variables.GEMINUS_WORKER_DB_PASSWORD.isSealed true --service-config worker variables.OBJECT_STORAGE_S3_ACCESS_KEY_ID.isSealed true --service-config worker variables.OBJECT_STORAGE_S3_SECRET_ACCESS_KEY.isSealed true --service-config web variables.SESSION_KEYS.isSealed true --message 'T-039 deploy.sh: seal' --json
+5. migrations (the migrate service, as the migration login)
+  $ railway up --service migrate --environment production --detach --json --message 'T-039 deploy.sh 6041d39'
+   would wait until 16 migrations are recorded
+6. seed (one synthetic organization)
+  $ go run ./cmd/provision-tenant organization -name 'Demo line (synthetic)' -owner-issuer '<GEMINUS_AUTH0_ISSUER>' -owner-subject '<GEMINUS_SEED_OWNER_SUBJECT>'
+   organization <organization_id>
+  $ railway variable set 'WORKER_ORGANIZATION_IDS=<organization_id>' --service worker --environment production --skip-deploys --json
+   removing this run's TCP proxy
+  $ railway tcp-proxy delete '<proxy id>' --yes --service Postgres --environment production --json
+7. deploy api, worker, web
+  $ railway up --service api --environment production --detach --json --message 'T-039 deploy.sh 6041d39'
+  $ railway up --service worker --environment production --detach --json --message 'T-039 deploy.sh 6041d39'
+  $ railway up --service web --environment production --detach --json --message 'T-039 deploy.sh 6041d39'
+8. verify
+   would check GET https://<api>/healthz 200
+   would check GET https://<api>/readyz 200
+   would check GET https://<api>/v1/me 401
+   would check GET https://<web>/ 200
+   would check GET https://<web>/auth/login 302/303 to <issuer>authorize
+   would check the worker's deployment still SUCCESS
+   would check the owner's required variables exist (names only)
+dry run: done, nothing was called. Variables that are the owner's: docs/runbooks/deploy.md §7.3.
+== exit 0 (2026-10-26T14:05:46Z)

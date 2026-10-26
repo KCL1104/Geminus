@@ -1,0 +1,22 @@
+== round 1 (mutants-db.json: M1-M14)
+M1 a runtime role's member migrates KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M2 a superuser migrates SURVIVED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=0
+M3 the record after the COMMIT KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M4 an edited migration accepted KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M5 a twin schema without a record accepted KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M6 a database ahead of the build accepted KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M7 no lock between runs KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M8 migrate reads DATABASE_URL KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M9 status always 0 KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M10 probes in the access log SURVIVED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=0
+M11 ready while the database is down KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M12 bucket variables ignored while disabled KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M13 a root beside the bucket KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+M14 an unclean secret accepted KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/ ./internal/config/] exit=1
+== round 2 (mutants-db2.json: M2, M10 after the tests were strengthened; M15-M18 new)
+M2 a superuser migrates KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/] exit=1
+M10 probes in the access log KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/] exit=1
+M15 BYPASSRLS accepted KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/] exit=1
+M16 CREATEROLE accepted KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/] exit=1
+M17 CREATEDB accepted KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/] exit=1
+M18 REPLICATION accepted KILLED :: [env GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 ./internal/storage/migrations/ ./cmd/migrate/ ./cmd/api/] exit=1

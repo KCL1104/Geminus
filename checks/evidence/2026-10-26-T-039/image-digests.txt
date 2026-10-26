@@ -1,0 +1,17 @@
+# Base images of the T-039 Dockerfiles, as the registries served them on
+# 2026-10-26 (index digests, OCI image index; "created" is the linux/amd64
+# image config's creation time). Queried with the registries' v2 API
+# (Docker Hub with an anonymous pull token, gcr.io anonymously).
+#
+# image | index digest | created (linux/amd64) | platforms
+golang:1.27.3-trixie | sha256:fbb7ae40b62ff8afe31662df570d39b4f5052ac32b90dae8e60d7657a20a74f4 | 2026-10-21T02:16:48Z (first query; the second hit Docker Hub's rate limit, HTTP 429) | linux/386,amd64,arm,arm64,ppc64le,riscv64,s390x
+gcr.io/distroless/static-debian13:nonroot | sha256:18f4cc26c9ffa7f20a359298be7deadac5c607c8e03a02b8119f1a5fc2f82c99 | 1970-01-01T00:00:00Z (reproducible build: no date) | linux/amd64,arm,arm64,ppc64le,riscv64,s390x
+node:24.21.0-trixie-slim | sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66 | 2026-10-06T01:45:39Z | linux/amd64,arm64,ppc64le,s390x
+postgres:16.15 | sha256:9e2cf6287f25c3151f4c9421ccce2b17f3e60061c111a29165e0d2cdd9ff0a97 | 2026-10-21T00:38:09Z | linux/386,amd64,arm,arm64,ppc64le,riscv64,s390x
+#
+# Also seen (not used): golang:1.27.3 = the trixie build (same created time,
+# sha256:f20d83a8…ba4efc); golang:1.27.3-bookworm sha256:972b4110…6e80a5;
+# node:24.21.0-bookworm-slim sha256:d6aa754f…7f87b20 (2026-10-06);
+# gcr.io/distroless/static-debian12:nonroot sha256:afa5c872…7f7ab;
+# gcr.io/distroless/nodejs24-debian12:nonroot sha256:14d42e25…32d0a (its Node
+# is not pinned to .nvmrc's 24.21.0, so the web image uses node:24.21.0-trixie-slim).

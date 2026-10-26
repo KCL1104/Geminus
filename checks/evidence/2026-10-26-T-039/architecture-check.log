@@ -1,0 +1,5 @@
+== architecture-check: make architecture-check (2026-10-26T14:05:21Z)
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 88 packages, 24 rules, 16 build configurations
+== exit 0 (2026-10-26T14:05:30Z)

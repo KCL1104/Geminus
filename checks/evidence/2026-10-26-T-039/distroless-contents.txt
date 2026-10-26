@@ -1,0 +1,10 @@
+User: 65532 Env: ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt'] WorkingDir: /home/nonroot
+tmp: mode 0o1777 uid 0 type dir
+usr/share/zoneinfo/UTC: mode 0o777 uid 0 type link
+etc/passwd: mode 0o644 uid 0 type file
+  root:x:0:0:root:/root:/sbin/nologin
+  nobody:x:65534:65534:nobody:/nonexistent:/sbin/nologin
+  nonroot:x:65532:65532:nonroot:/home/nonroot:/sbin/nologin
+home/nonroot: mode 0o700 uid 65532 type dir
+tmp: mode 0o1777 uid 0 type dir
+etc/ssl/certs/ca-certificates.crt: mode 0o555 uid 0 type file

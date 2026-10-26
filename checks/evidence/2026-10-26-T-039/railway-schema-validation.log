@@ -1,0 +1,9 @@
+schema https://railway.com/railway.schema.json (redirects to https://backboard.railway.app/railway.schema.json), fetched 2026-10-26, sha256 0302fd53109298d9c277dbaedae772630506d8da43636e69875268a8782dd68f 13044 bytes
+api.railway.json valid
+migrate.railway.json valid
+web.railway.json valid
+worker.railway.json valid
+errors: 0
+{'build': {'builder': 'FOO'}} -> ["'FOO' is not valid under any of the given schemas"]
+{'deploy': {'restartPolicyType': 'SOMETIMES'}} -> ["'SOMETIMES' is not valid under any of the given schemas"]
+{'deploy': {'healthcheckTimeout': 'x'}} -> ["'x' is not valid under any of the given schemas"]

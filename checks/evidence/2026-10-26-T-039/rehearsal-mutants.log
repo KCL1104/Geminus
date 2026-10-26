@@ -1,0 +1,13 @@
+KILLED R1 a secret as an argument :: REHEARSAL FAILED: run 1 stopped before verification: FAIL: refusing to pass a secret as a command-line argument
+KILLED R2 the owner's variables set :: REHEARSAL FAILED:
+KILLED R3 a second organization :: REHEARSAL FAILED:
+KILLED R4 the TCP proxy left open :: REHEARSAL FAILED:
+KILLED R5 the API before the migrations :: REHEARSAL FAILED:
+KILLED R6 secrets made again each run :: REHEARSAL FAILED:
+KILLED R7 the sign-in not checked :: REHEARSAL FAILED:
+KILLED R8 the owner's variable not checked :: REHEARSAL FAILED:
+KILLED R9 output not redacted :: REHEARSAL FAILED:
+KILLED R10 nothing sealed :: REHEARSAL FAILED:
+KILLED R11 the seal switch ignored :: REHEARSAL FAILED:
+KILLED R12 the copied bucket keys not sealed :: REHEARSAL FAILED:
+12/12 killed

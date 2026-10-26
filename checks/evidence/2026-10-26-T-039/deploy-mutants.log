@@ -1,0 +1,19 @@
+KILLED D1 an unpinned base image :: DEPLOY CHECK FAILED: Dockerfile.worker: base image gcr.io/distroless/static-debian13:nonroot is not pinned by digest
+KILLED D2 the web image as root :: DEPLOY CHECK FAILED: apps/web/Dockerfile: the final stage must run as a non-root USER
+KILLED D3 a build argument :: DEPLOY CHECK FAILED: Dockerfile.api: ARG OBJECT_STORAGE_S3_SECRET_ACCESS_KEY: no build argument (a platform could pass a secret into the build)
+KILLED D4 a credential in an ENV :: DEPLOY CHECK FAILED: Dockerfile.worker: ENV DATABASE_URL=postgresql://x CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-trimpath names a credential
+KILLED D5 no HEALTHCHECK on the API :: DEPLOY CHECK FAILED: Dockerfile.api: no HEALTHCHECK
+KILLED D6 the AI key on the API :: DEPLOY CHECK FAILED: variables.json: api: ['GEMINUS_META_API_KEY'] must not be set on this service
+KILLED D7 a secret with a value :: DEPLOY CHECK FAILED: variables.json: web: SESSION_KEYS has both a value and a source
+KILLED D8 the database on the web :: DEPLOY CHECK FAILED: variables.json: web: ['DATABASE_URL'] must not be set on this service
+KILLED D9 a railway file names loopback :: DEPLOY CHECK FAILED: deploy/railway/web.railway.json mentions '127.0.0.1': the test setup never reaches the public deployment
+KILLED D10 a literal password in compose :: DEPLOY CHECK FAILED: compose: postgres: POSTGRES_PASSWORD has a literal value
+KILLED D11 the local fence removed :: DEPLOY CHECK FAILED: deploy/local/compose.yaml: the local-only fence is not its first line
+KILLED D12 a variable the runbook does not name :: DEPLOY CHECK FAILED: docs/runbooks/deploy.md does not name ['AUTH_OIDC_ALGORITHMS']
+KILLED D13 the worker without WORKER_ID :: DEPLOY CHECK FAILED: variables.json: worker: ['WORKER_ID'] are required
+KILLED D14 the test-only provider in production :: DEPLOY CHECK FAILED: deploy/railway/variables.json mentions 'fake': the test setup never reaches the public deployment
+KILLED D15 env files in the build context :: DEPLOY CHECK FAILED: .dockerignore: .env.* is not excluded
+KILLED D16 a password in a URL :: DEPLOY CHECK FAILED: variables.json: api: DATABASE_URL has a literal password in a URL
+KILLED D17 a variable no service reads :: DEPLOY CHECK FAILED: variables.json: worker: ['WORKER_CONCURRENCY'] are read by no service
+17/17 killed
+restored files: PASS

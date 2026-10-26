@@ -1,0 +1,14 @@
+# docker compose config (no daemon needed)
+Docker Compose version v5.6.0
+config with the variables: exit=0
+postgres
+worker
+web
+api
+migrate
+oidc-test
+seed
+error while interpolating services.api.environment.DATABASE_URL: required variable GEMINUS_API_DB_PASSWORD is missing a value
+error while interpolating services.migrate.environment.GEMINUS_MIGRATE_DATABASE_URL: required variable GEMINUS_MIGRATOR_DB_PASSWORD is missing a value
+error while interpolating services.postgres.environment.GEMINUS_API_DB_PASSWORD: required variable GEMINUS_API_DB_PASSWORD is missing a value
+config without them (must fail): exit=1

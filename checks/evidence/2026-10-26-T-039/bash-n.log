@@ -1,0 +1,5 @@
+bash -n deploy/railway/deploy.sh: exit 0
+bash -n deploy/local/staging-smoke.sh: exit 0
+python ast.parse deploy/railway/railway_deploy.py: exit 0
+python ast.parse scripts/rehearse_railway_deploy.py: exit 0
+python ast.parse scripts/check_deploy.py: exit 0

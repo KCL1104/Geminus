@@ -1,6 +1,6 @@
 # Third-party notices
 
-Source code adapted from third parties, with the notices their licenses require. Dependencies pulled in as modules or packages are listed with their licenses in [ADR-011](adr/ADR-011-toolchain-bootstrap.md) and their lockfiles; this file covers code copied into this repository, the Go modules the live AI adapter links (T-024), the Go modules OpenTelemetry links (T-035), the fonts the web app serves (T-045) and the browser packages of the 2D editor's canvas (last section, T-015).
+Source code adapted from third parties, with the notices their licenses require. Dependencies pulled in as modules or packages are listed with their licenses in [ADR-011](adr/ADR-011-toolchain-bootstrap.md) and their lockfiles; this file covers code copied into this repository, the Go modules the live AI adapter links (T-024), the Go modules OpenTelemetry links (T-035), the fonts the web app serves (T-045), the browser packages of the 2D editor's canvas (T-015), the SigV4 test vectors and the container base images (last two sections, T-039).
 
 ## Go `math.log` (pinned logarithm)
 
@@ -343,3 +343,23 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## AWS Signature Version 4 test suite (test data, T-039)
+
+`testdata/sigv4/` holds 15 request vectors of the AWS Signature Version 4 test suite (`aws4_testsuite`), unmodified, as botocore mirrors it (`tests/unit/auth/aws4_testsuite`, branch `develop`, fetched 2026-10-26; each file's SHA-256 is in `testdata/sigv4/SOURCE.txt`). Only `internal/storage/objects/sigv4_test.go` reads them, to check the S3 adapter's own signer (no SDK is linked); they are not part of any binary or image. License: Apache License 2.0 (<https://www.apache.org/licenses/LICENSE-2.0>). botocore's NOTICE:
+
+```text
+Botocore
+Copyright 2012-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+```
+
+## Container base images (T-039)
+
+The images of `Dockerfile.api`, `Dockerfile.worker` and `apps/web/Dockerfile` are built on these, pinned by digest (versions and dates in [ADR-011](adr/ADR-011-toolchain-bootstrap.md)); nothing of them is copied into this repository. Each image carries its packages' own license files (Debian keeps them under `/usr/share/doc/*/copyright`).
+
+| Image | Used as | License |
+|---|---|---|
+| `golang:1.27.3-trixie` (Docker Official Image) | build stage of the Go images only | Go: BSD-3-Clause; Debian packages: their own licenses |
+| `gcr.io/distroless/static-debian13:nonroot` | runtime of the API and worker images | distroless: Apache-2.0; its Debian packages (ca-certificates, tzdata, base-files, netbase): their own licenses (MPL-2.0 for the CA bundle, public domain for tzdata, GPL-2.0+ for base-files and netbase files) |
+| `node:24.21.0-trixie-slim` (Docker Official Image) | build and runtime of the web image (npm, corepack and yarn removed at run time) | Node.js: MIT (with the third-party licenses in Node's `LICENSE`); Debian packages: their own licenses |
+| `postgres:16.15` (Docker Official Image) | local staging smoke only (`deploy/local/compose.yaml`), never deployed | PostgreSQL License; Debian packages: their own licenses |

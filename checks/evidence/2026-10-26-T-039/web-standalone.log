@@ -1,0 +1,47 @@
+
+> @geminus/web@0.0.0 build
+> next build
+
+▲ Next.js 16.4.1 (Turbopack)
+✓ Running next.config.ts took 35ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 10.3s
+  Running TypeScript ...
+  Finished TypeScript in 10.8s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/6) ...
+  Generating static pages using 3 workers (1/6) 
+  Generating static pages using 3 workers (2/6) 
+  Generating static pages using 3 workers (4/6) 
+✓ Generating static pages using 3 workers (6/6) in 292ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /api/v1/[...path]
+├ ƒ /auth/callback
+├ ƒ /auth/error
+├ ƒ /auth/login
+├ ƒ /auth/logout
+├ ○ /icon.svg
+├ ƒ /models/[modelId]
+├ ƒ /projects
+├ ƒ /projects/[projectId]
+└ ƒ /ui-gallery
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+== the standalone server, run as the image runs it
+GET / -> 200
+GET /auth/login -> 303 http://127.0.0.1:3191/authorize?redirect_uri=http%3A%2F%2F127.0.0.1%3A3190%2Fauth%2Fcallback&scope=openid+offline_ac
+GET /api/v1/me -> {"error":{"code":"UNAUTHENTICATED","message":"not signed in","request_id":"req_01M5W4C8M75QD9C8TSF9GDERH6"}} 401
+server exit after SIGTERM: 143
+▲ Next.js 16.4.1
+- Local:         http://127.0.0.1:3190
+- Network:       http://127.0.0.1:3190
+✓ Ready in 0ms
+✓ Running next.config took 1.1ms

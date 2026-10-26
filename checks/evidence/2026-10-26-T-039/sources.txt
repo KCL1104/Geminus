@@ -1,0 +1,106 @@
+Sources read for T-039's hackathon slice (2026-10-26, with the session's web
+fetch tool; the text the runbook relies on is quoted or paraphrased in
+docs/runbooks/deploy.md §7 and ADR-029). Re-read before relying on them:
+vendors change these pages.
+
+Railway (the owner's choice, H-030 as relayed by the coordinator: "純用 railway"):
+- https://docs.railway.com/reference/config-as-code
+  railway.json / railway.toml; schema https://railway.com/railway.schema.json;
+  "Configuration defined in code will always override values from the dashboard";
+  build.builder (RAILPACK default, DOCKERFILE), build.dockerfilePath, build.watchPatterns,
+  deploy.startCommand, preDeployCommand, healthcheckPath, healthcheckTimeout,
+  restartPolicyType (ON_FAILURE, ALWAYS, NEVER), restartPolicyMaxRetries,
+  overlapSeconds, drainingSeconds ("the time between SIGTERM and SIGKILL").
+- https://docs.railway.com/guides/monorepo
+  "The Railway Config File does not follow the Root Directory path"; give the
+  absolute path, e.g. /backend/railway.toml.
+- https://docs.railway.com/guides/dockerfiles
+  RAILWAY_DOCKERFILE_PATH or config as code; variables reach the build only if the
+  Dockerfile declares them with ARG; cache mounts need the id=s/<service id>-<path> form.
+- https://docs.railway.com/guides/start-command
+  "the start command overrides the image's ENTRYPOINT in exec form"; no shell expansion.
+- https://docs.railway.com/guides/healthchecks
+  any 2xx; uses PORT; default 300 s (RAILWAY_HEALTHCHECK_TIMEOUT_SEC); only at the
+  start of a deployment ("Railway does not monitor the healthcheck endpoint after the
+  deployment has gone live"); requests come from healthcheck.railway.app.
+- https://docs.railway.com/guides/pre-deploy-command
+  separate container, "have access to your application's environment variables",
+  no volumes, not retried on failure.
+- https://docs.railway.com/guides/variables
+  ${{SERVICE_NAME.VAR}}, ${{ shared.VARIABLE_KEY }}, ${{ VARIABLE_NAME }}; sealed
+  variables: "provided to builds and deployments but is never visible in the UI nor can
+  it be retrieved via the API", not given to `railway variables`/`railway run`, cannot be
+  unsealed, not copied to PR environments or duplicated environments;
+  example API_URL=https://${{ backend.RAILWAY_PUBLIC_DOMAIN }}.
+- https://docs.railway.com/guides/private-networking
+  SERVICE_NAME.railway.internal, e.g. http://api.railway.internal:PORT; "All
+  inter-service communication uses Wireguard encryption."
+- https://docs.railway.com/guides/public-networking
+  generated domains; "Free SSL certificates automatically provisioned and renewed."
+- https://docs.railway.com/guides/postgresql
+  PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE, DATABASE_URL; private by default;
+  Public Access creates a TCP proxy and DATABASE_PUBLIC_URL (egress billed);
+  "SSL-enabled Postgres image" based on the official image; version not stated;
+  whether the default user is a superuser is not stated.
+- https://docs.railway.com/storage-buckets and https://docs.railway.com/guides/storage-buckets
+  private S3-compatible buckets on Tigris; Put/Get/Head/Delete, list, copy, presigned URLs,
+  tagging, multipart; not yet SSE, versioning, object lock, lifecycle; variables BUCKET,
+  ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION (e.g. auto), ENDPOINT (e.g.
+  https://t3.storageapi.dev); virtual-hosted URLs, older buckets may need path-style (the
+  Credentials tab says which); region fixed at creation; "only accessible via public
+  networking"; uploads from services are service egress. Conditional writes are not mentioned.
+- https://docs.railway.com/deployments/restart-policy (search result summary)
+  default On Failure with 10 retries; Never never restarts; a deployment whose app exits 0
+  is "Completed" (deployment reference).
+
+Tigris (behind Railway's buckets):
+- https://www.tigrisdata.com/docs/objects/conditionals/
+  If-None-Match: "*" writes only if the object does not exist; 412 Precondition Failed
+  otherwise (no page date).
+- https://www.tigrisdata.com/docs/api/s3/
+  PutObject SHA-256 checksum supported; If-None-Match listed for GetObject.
+
+Cloudflare R2 was read first (the owner's first answer, superseded the same day):
+- https://developers.cloudflare.com/r2/api/s3/api/ — not used.
+
+SigV4 test vectors:
+- https://raw.githubusercontent.com/boto/botocore/develop/tests/unit/auth/aws4_testsuite/
+  15 cases copied unmodified into testdata/sigv4 (SOURCE.txt has their SHA-256);
+  botocore NOTICE and LICENSE (Apache-2.0) read for docs/THIRD_PARTY_NOTICES.md.
+  The AWS S3 documentation page with the S3-specific examples
+  (https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html)
+  redirected to an index page and was not used.
+
+Next.js 16.4.1 (apps/web/node_modules/next/dist/server/lib/start-server.js):
+SIGTERM/SIGINT run a cleanup and exit 143/130; requests in progress are not drained.
+
+Railway CLI and the non-interactive deployment (H-032, deploy/railway/deploy.sh; read 2026-10-26):
+- https://docs.railway.com/guides/cli and https://docs.railway.com/guides/cli#tokens
+  "Project Token: Set `RAILWAY_TOKEN` for project-level actions"; "Account/Workspace Token:
+  Set `RAILWAY_API_TOKEN` for account-level actions"; example `RAILWAY_TOKEN=xxx railway up`.
+  No version pinning, no precedence between the two tokens stated.
+- The CLI's source at tag v5.64.2 (https://raw.githubusercontent.com/railwayapp/cli/v5.64.2/src/...):
+  src/config.rs (RAILWAY_TOKEN is the project token and decides the project when both are set;
+  RAILWAY_API_TOKEN), src/commands/{variable,bucket,tcp_proxy,environment/edit,domain,up,
+  deployment,add,init,link,list,service,status}.rs (the flags and JSON output the deployer uses),
+  src/util/check_update.rs and self_update.rs (CI=true and RAILWAY_NO_AUTO_UPDATE stop the
+  self-update). src/commands/variable.rs: "Sealed variables are listed by name with no value
+  (null in JSON, <sealed> in the table) ... do not recreate them"; a sealed variable is deletable.
+- https://github.com/railwayapp/cli/releases/download/v5.64.2/railway-v5.64.2-x86_64-unknown-linux-musl.tar.gz
+  SHA-256 a154c3ff5ac3e2ece99bdca9d8d5505fc7f85a949689346bd934fb425246e229 (computed here;
+  the release has no checksum file; npm @railway/cli@5.64.2's postinstall downloads the same
+  archive without checking it).
+- https://docs.railway.com/templates/create (template variable functions)
+  secret(length?, alphabet?) "Generates a random secret (32 chars by default)"; "When a template
+  is deployed, all template variable functions are executed". Nothing says they work in ordinary
+  service variables. https://docs.railway.com/variables/reference: "Template variable functions
+  allow you to dynamically generate variables ... when the template is deployed".
+  https://railway.com/changelog/2023-07-28-template-variable-functions (search result summary).
+  https://station.railway.com/questions/secret-generates-a-new-string-on-8523cc4d (community, search
+  result summary): at service level ${{secret()}} may show a new value on each reload; fixed only
+  once a template is deployed. Hence deploy.sh generates secrets locally (Python secrets).
+- https://docs.railway.com/guides/variables, https://docs.railway.com/variables/reference,
+  https://docs.railway.com/guides/managing-secrets-on-railway: none says whether a reference to a
+  sealed variable is expanded. https://station.railway.com/questions/sealing-variables-that-are-references-to-aa86a0ac
+  (community, search result summary): a sealed variable holding a reference kept working. Not
+  documentation: runbook §7.7 keeps it as unverified, with the GEMINUS_RAILWAY_SEAL=off recovery.
