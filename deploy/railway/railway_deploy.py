@@ -712,15 +712,15 @@ class Run:
         except Failed as e:
             extra = [p for p in self.check_proxies() if p not in str(e)]  # verify's message has its own
             if extra:
-                raise Failed(f"{e}\n  - TCP proxy: " + "\n  - TCP proxy: ".join(extra)) from None
+                raise Failed(f"{e}\n  - " + "\n  - ".join(extra)) from None
             raise
         except BaseException:
             for p in self.check_proxies():
-                self.say(f"deploy: TCP proxy: {p}")
+                self.say(f"deploy: {p}")
             raise
         left = self.check_proxies()
         if left:
-            raise Failed("the deployment's steps ran, but:\n  - TCP proxy: " + "\n  - TCP proxy: ".join(left))
+            raise Failed("the deployment's steps ran, but:\n  - " + "\n  - ".join(left))
         self.say(("dry run: done, nothing was called" if self.dry else "deploy: done") +
                  ". Variables that are the owner's: docs/runbooks/deploy.md §7.3.")
 

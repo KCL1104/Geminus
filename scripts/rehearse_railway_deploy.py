@@ -157,8 +157,8 @@ elif cmd == "tcp-proxy" and a[1] == "delete":
         st["vars"]["Postgres"].pop("DATABASE_PUBLIC_URL", None)
     out = {"deleted": True, "id": a[2], "endpoint": "shuttle.proxy.rlwy.net:41234", "applicationPort": 5432, "staged": False, "committed": True}
 elif cmd == "up":
-    if os.environ.get("REHEARSAL_SIGNAL_AT_LOGINS"):
-        fail("error: the signal scenario never deploys")
+    if os.environ.get("REHEARSAL_SIGNAL_AT_LOGINS") or os.environ.get("REHEARSAL_UP_FAILS"):
+        fail("error: the deployment could not start")
     st["deploys"].append(opt("--service"))
 elif cmd == "deployment":
     out = [{"id": "dep_1", "status": "SUCCESS"}]
@@ -348,6 +348,8 @@ def main() -> int:
             failures.append(f"only {len(hidden)} secrets were tracked")
         if TOKEN not in run1.hidden:
             failures.append("the Railway token is not among the values to redact")
+        if "postgresql://postgres:REHEARSALADMINPW@shuttle.proxy.rlwy.net:41234/railway" not in run1.hidden:
+            failures.append("Postgres's DATABASE_PUBLIC_URL, kept for the logins, is not among the values to redact")
         flat = json.dumps(calls) + out1 + read(tmp / "psql.log") + read(tmp / "go.log")
         for s in hidden + [TOKEN, "tsec_REHEARSALSECRETACCESSKEY0123456789", "REHEARSALADMINPW"]:
             if s in flat:
@@ -459,7 +461,7 @@ def main() -> int:
         name = scenario("p1", base)
         _, out, res = apply(REHEARSAL_DELETE_FAILS="1")
         shown.append(("P1 the removal fails", res))
-        if not res.startswith("FAIL") or "could not remove this run's TCP proxy tcp_1" not in res or delete_cmd.format("tcp_1") not in res:
+        if not res.startswith("FAIL: verification:") or "could not remove this run's TCP proxy tcp_1" not in res or delete_cmd.format("tcp_1") not in res:
             failures.append(f"P1 (the removal fails) must fail naming tcp_1 and its removal: {res[:400]}")
         if "deploy: done" in out or state(name)["proxies"] != ["tcp_1"]:
             failures.append("P1: said done, or the stand-in's proxy is not the one reported")
@@ -488,7 +490,7 @@ def main() -> int:
         name = scenario("p3", base)
         _, out, res = apply(REHEARSAL_DELETE_SILENT="1")
         shown.append(("P3 a removal that did not remove", res))
-        if not res.startswith("FAIL") or "tcp_1" not in res or delete_cmd.format("tcp_1") not in res or "deploy: done" in out:
+        if not res.startswith("FAIL: verification:") or "tcp_1" not in res or delete_cmd.format("tcp_1") not in res or "deploy: done" in out:
             failures.append(f"P3 (a removal that did not remove) must fail naming tcp_1: {res[:400]}")
         # P4: `tcp-proxy create` prints no id (proxy: null): found by listing, removed.
         name = scenario("p4", base)
@@ -502,25 +504,34 @@ def main() -> int:
         shown.append(("P5 the final listing fails", res))
         if not res.startswith("FAIL") or "could not list the TCP proxies" not in res:
             failures.append(f"P5 (the final listing fails) must fail: {res[:300]}")
+        # P7: a step fails before verification while a proxy is open: the failure names the proxy too.
+        name = scenario("p7", left)
+        _, out, res = apply(REHEARSAL_UP_FAILS="1")
+        shown.append(("P7 a failed step with a proxy open", res))
+        if not res.startswith("FAIL: `railway up") or delete_cmd.format("tcp_left_by_killed_run") not in res:
+            failures.append(f"P7 (a step fails, a proxy is open) must name the proxy in the failure: {res[:400]}")
         # P6: SIGTERM and SIGHUP in the middle of the run (the deployer as deploy.sh runs it,
         # in its own process): the proxy is removed, the run ends non-zero. No network: the
         # stand-in refuses `railway up`, and HTTPS goes to a closed local port.
         res6 = []
-        for sig in ("TERM", "HUP"):
-            name = scenario("p6" + sig, base)
-            env = dict(os.environ, REHEARSAL_SIGNAL_AT_LOGINS=sig, HTTPS_PROXY="http://127.0.0.1:9", https_proxy="http://127.0.0.1:9")
+        for sig, extra in (("TERM", {}), ("HUP", {}), ("TERM", {"REHEARSAL_DELETE_FAILS": "1"})):
+            label = sig + (" with the removal failing" if extra else "")
+            name = scenario("p6" + sig + str(len(extra)), base)
+            env = dict(os.environ, REHEARSAL_SIGNAL_AT_LOGINS=sig, HTTPS_PROXY="http://127.0.0.1:9", https_proxy="http://127.0.0.1:9", **extra)
             p = subprocess.run([sys.executable, "-I", str(ROOT / "deploy/railway/railway_deploy.py"), "--apply"],
                                capture_output=True, text=True, env=env, cwd=ROOT, timeout=300)
             signum = getattr(signal, "SIG" + sig)
-            res6.append((sig, p.returncode))
-            shown.append((f"P6 SIG{sig} at the logins (exit {p.returncode}, proxies left: {state(name)['proxies']})",
+            res6.append((label, p.returncode))
+            shown.append((f"P6 SIG{label} at the logins (exit {p.returncode}, proxies left: {state(name)['proxies']})",
                            "\n".join(p.stdout.splitlines()[-7:])))
             if p.returncode != 128 + signum or "interrupted" not in p.stdout or "removing this run's TCP proxy" not in p.stdout \
-                    or "deploy: done" in p.stdout or state(name)["proxies"]:
-                failures.append(f"P6 SIG{sig}: exit {p.returncode} (want {128 + signum}), proxies {state(name)['proxies']}: "
+                    or "deploy: done" in p.stdout or (state(name)["proxies"] != (["tcp_1"] if extra else [])):
+                failures.append(f"P6 SIG{label}: exit {p.returncode} (want {128 + signum}), proxies {state(name)['proxies']}: "
                                 f"{(p.stdout + p.stderr)[-400:]}")
+            if extra and delete_cmd.format("tcp_1") not in p.stdout:
+                failures.append(f"P6 SIG{label}: the proxy left open is not named with its removal: {p.stdout[-400:]}")
             if TOKEN in p.stdout + p.stderr:
-                failures.append(f"P6 SIG{sig}: the token was printed")
+                failures.append(f"P6 SIG{label}: the token was printed")
 
         # E1: the CLI quotes the token in an error (L2): redacted.
         scenario("e1", base)
@@ -536,6 +547,12 @@ def main() -> int:
         st5 = state("state5.json")
         if st5.get("sealed") or "GEMINUS_RAILWAY_SEAL=off" not in out5 or res5.startswith("FAIL: `"):
             failures.append(f"run 5 (GEMINUS_RAILWAY_SEAL=off) sealed {st5.get('sealed')}: {res5[:200]}")
+        # Run 5b: the same project again: the unsealed generated passwords it reads back are redacted.
+        run5b, out5b, _ = apply(GEMINUS_RAILWAY_SEAL="off")
+        for svc, var in (("migrate", "GEMINUS_MIGRATOR_DB_PASSWORD"), ("api", "GEMINUS_API_DB_PASSWORD"), ("worker", "GEMINUS_WORKER_DB_PASSWORD")):
+            value = st5["vars"][svc][var]
+            if value not in run5b.hidden or value in out5b:
+                failures.append(f"run 5b: {svc} {var}, read back unsealed, is not registered for redaction (M2)")
 
         # Run 4: a fresh project whose CLI quotes the stdin value back in an error.
         os.environ.update(REHEARSAL_STATE=str(tmp / "state4.json"))
