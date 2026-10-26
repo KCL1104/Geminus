@@ -1,6 +1,6 @@
 # Hackathon 計畫：Meta Global AI Developer Hackathon（H-029）
 
-依據：H-029（2026-10-26，owner 已錄取 Indie 組並選定以下範圍與流程）。本檔是比賽期間的工作計畫，不改變 P0 的範圍與已批准的決策；比賽後恢復 H-003 的審查流程，延後的任務照 `planning/tasks.json` 進行。
+依據：H-029（2026-10-26，owner 已錄取 Indie 組並選定以下範圍與流程），H-030、H-031 修改：**只用 Railway；先不接 Meta，先用 Claude API 驗證與 demo；照片辨識先用 Claude 的影像輸入**。本檔是比賽期間的工作計畫，不改變 P0 的範圍與已批准的決策；比賽後恢復 H-003 的審查流程，延後的任務照 `planning/tasks.json` 進行。
 
 ## 比賽
 

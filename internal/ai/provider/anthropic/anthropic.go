@@ -343,7 +343,7 @@ func (b *Backend) complete(ctx context.Context, t *tally, req provider.Request) 
 	}
 	// The request names no inference_geo: where inference runs is the
 	// owner's data residency choice, the workspace's default_inference_geo
-	// (PROPOSED D-116). The reservation assumes the dearest geo, and the
+	// (D-116, approved option A, H-031). The reservation assumes the dearest geo, and the
 	// answer is priced at the geo it reports (review round 1, M2).
 	params := sdk.MessageNewParams{
 		Model:        sdk.Model(b.model),

@@ -15,7 +15,7 @@ import (
 func ceilTenth(n int64) int64 { return (n*11 + 9) / 10 }
 
 // M2: the request names no inference geo (the workspace's default decides,
-// PROPOSED D-116), so the reservation holds every attempt at the dearest
+// D-116, approved option A, H-031), so the reservation holds every attempt at the dearest
 // geo the default can apply: 1.1x the list price.
 func TestTheReservationAssumesTheDearestGeo(t *testing.T) {
 	b := &billable{quote: Quote{Model: pricedModel, MaxInputTokens: 50_000}, respond: billed(validProposal, Usage{InputTokens: 1, OutputTokens: 1})}

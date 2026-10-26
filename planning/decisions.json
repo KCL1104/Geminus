@@ -1347,9 +1347,9 @@
       "resolves": [],
       "source_pages": "N/A（T-053 review 第 1 輪 M2；D-110 (a)；platform.claude.com/docs/en/manage-claude/data-residency 與 about-claude/pricing，2026-10-26）",
       "owner_role": "Owner / AI / Security",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-031: option A)",
+      "approved_at": "2026-10-26"
     },
     {
       "id": "D-096",
@@ -1760,7 +1760,20 @@
       "decided_at": "2026-10-26",
       "source": "Claude Code session：AskUserQuestion，owner 以自訂答案回覆；用途分配為 coordinator 的解讀",
       "still_open": [
-        "Owner 建立 Railway 與 Cloudflare 帳號、R2 bucket 與 scoped token、網域"
+        "~~Owner 建立 Railway 與 Cloudflare 帳號、R2 bucket 與 scoped token、網域~~ H-031：只用 Railway"
+      ]
+    },
+    {
+      "id": "H-031",
+      "subject": "只用 Railway；先不接 Meta，先用 Claude API 驗證；D-116 選項 A",
+      "decision": "(1) 公開 demo 只用 Railway（不用 Cloudflare／R2）；object storage 依 Railway 自己的方案，沒有的話問 owner。(2) T-055（Meta）暫停；依 H-025 在有 key 的 session 以 synthetic 資料執行 T-053 的 live smoke 與 ai-eval-live；demo 在 owner 另行決定前用 Claude；T-056 先以 Claude 的影像輸入實作。(3) D-116 APPROVED：選項 A，不指定 inference_geo，由 workspace 預設決定。",
+      "quote": "算了先不要接 cloudflare 好了，純用 railway 就好，然後也先不用接上 meta，先用 claude api 做驗證；照帳號預設 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆與 AskUserQuestion 選擇",
+      "still_open": [
+        "Railway 的 object storage 方案",
+        "何時接上 Meta Model API"
       ]
     }
   ]

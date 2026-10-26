@@ -136,7 +136,7 @@ func ceilTenth(n int64) int64 { return (n*11 + 9) / 10 }
 // M2: the request names no inference geo. Where inference runs (global or
 // US only) is a data residency choice the owner makes for the provider
 // organizations' workspaces (default_inference_geo, allowed_inference_geos;
-// PROPOSED D-116), not something the adapter decides: pinning "global"
+// D-116, approved option A, H-031), not something the adapter decides: pinning "global"
 // would fail in a workspace that allows "us" only, pinning "us" would cost
 // 1.1x everywhere. So the reservation assumes the dearest geo the
 // workspace's default can apply, and each answer is priced at the geo its
