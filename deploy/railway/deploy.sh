@@ -24,9 +24,10 @@
 # GEMINUS_RAILWAY_SEAL=off only for the recovery of the runbook's §7.7.
 #
 # The owner fills in Railway's UI, never this script: BFF_OIDC_CLIENT_SECRET
-# (web), and only to turn live AI on, the worker's GEMINUS_AI_LIVE and its keys
-# (GEMINUS_ANTHROPIC_API_KEY_A and _B, or the Meta key GEMINUS_MUSE_API_KEY). Live AI
-# stays off until then (AI_PROVIDER=disabled).
+# (web), and only to turn live AI on, the same AI_PROVIDER, AI_POLICY_APPROVAL,
+# AI_MODEL and GEMINUS_AI_LIVE on the API and the worker (the API holds no key:
+# T-053 I5) and the worker's keys (GEMINUS_ANTHROPIC_API_KEY_A and _B, or the
+# Meta key GEMINUS_MUSE_API_KEY). Live AI stays off until then (AI_PROVIDER=disabled).
 #
 # Needs: python3, git, psql 15 or later, go (cmd/provision-tenant), the pinned
 # Railway CLI. Exit codes: 0 done, 1 a step failed (the message says which),

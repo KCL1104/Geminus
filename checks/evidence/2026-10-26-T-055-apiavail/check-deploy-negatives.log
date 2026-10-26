@@ -1,0 +1,18 @@
+PASS the file as committed
+PASS the API does not forbid MODEL_API_KEY: variables.json: the API must forbid every AI key variable it refuses to start with (T-053 I5): ['MODEL_API_KEY']
+PASS the API does not forbid ANTHROPIC_AUTH_TOKEN: variables.json: the API must forbid every AI key variable it refuses to start with (T-053 I5): ['ANTHROPIC_AUTH_TOKEN']
+PASS the API holds the Meta key: variables.json: the API must forbid every AI key variable it refuses to start with (T-053 I5): ['GEMINUS_MUSE_API_KEY']
+PASS the web does not forbid the Meta key: variables.json: the web must forbid the live adapters' keys: ['GEMINUS_MUSE_API_KEY']
+PASS the API has no AI_MODEL: variables.json: AI_MODEL must be declared on the API and on the worker (T-053 I5)
+PASS the worker has no AI_POLICY_APPROVAL: variables.json: AI_POLICY_APPROVAL must be declared on the API and on the worker (T-053 I5)
+PASS the API's switch set by the deployer: variables.json: the API's GEMINUS_AI_LIVE must be declared as the worker's (T-053 I5)
+PASS the API's provider another value: variables.json: the API's AI_PROVIDER must be declared as the worker's (T-053 I5)
+PASS the API's provider set always: variables.json: the API's AI_PROVIDER must be declared as the worker's (T-053 I5)
+PASS an AI setting made a secret on both: variables.json: AI_MODEL is a setting, not a secret (T-053 I5)
+PASS the photo path's provider on the API: variables.json: the API reads no other AI setting (T-053 I5): ['AI_VISION_PROVIDER']
+PASS a spend limit on the API: variables.json: the API reads no other AI setting (T-053 I5): ['AI_DAILY_LIMIT_USD']
+PASS the Go list is gone: internal/config/apiai.go: apiKeyVars (the AI key variables the API refuses) was not found, or lacks a live adapter's key
+PASS the Go list lacks the Meta key: internal/config/apiai.go: apiKeyVars (the AI key variables the API refuses) was not found, or lacks a live adapter's key
+PASS the notes differ
+16/16 cases as expected
+exit 0

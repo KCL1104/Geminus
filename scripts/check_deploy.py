@@ -17,8 +17,11 @@ without Docker (make spec-deploy, part of make spec-check):
   test provider, loopback or development settings;
 - deploy/railway/variables.json names only variables the services read,
   gives every variable each service requires, holds no secret value, keeps
-  the AI keys off the API (T-053 I5) and the database off the web, and never
-  selects the fake provider or the filesystem adapter;
+  every AI key variable the API refuses to start with off the API (the list
+  in internal/config/apiai.go) and the live adapters' keys off the web, gives
+  the API the worker's four AI settings and no other (T-053 I5), keeps the
+  database off the web, and never selects the fake provider or the
+  filesystem adapter;
 - docs/runbooks/deploy.md names every variable the code reads.
 
 It checks the files, not a running deployment (NOT a container scan).
@@ -213,10 +216,45 @@ def railway(known: set) -> dict:
         if settings.get("AI_PROVIDER") == "fake" or settings.get("OBJECT_STORAGE_PROVIDER") == "filesystem":
             fail(f"variables.json: {svc}: the fake provider and the filesystem adapter are for development and tests only")
         summary[svc] = {"variables": len(names), "secrets": sorted(n for n, e in spec["variables"].items() if e.get("secret"))}
-    ai_keys = {"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE"}
-    if ai_keys - set(v["services"]["api"]["forbidden"]):
-        fail("variables.json: the API must forbid every AI key and the live switch (T-053 I5)")
-    return {"configs": [p.name for p in configs], "services": summary}
+    # T-053 I5: the API never holds an AI key (it refuses to start with one)
+    # and decides whether it accepts proposals from the worker's four AI
+    # settings, declared alike on both (the owner sets the same values).
+    api, worker = v["services"]["api"], v["services"]["worker"]
+    keys = api_key_variables()
+    if keys - set(api["forbidden"]):
+        fail(f"variables.json: the API must forbid every AI key variable it refuses to start with (T-053 I5): {sorted(keys - set(api['forbidden']))}")
+    if LIVE_KEYS - set(v["services"]["web"]["forbidden"]):
+        fail(f"variables.json: the web must forbid the live adapters' keys: {sorted(LIVE_KEYS - set(v['services']['web']['forbidden']))}")
+    for name in API_AI_SETTINGS:
+        a, w = api["variables"].get(name), worker["variables"].get(name)
+        if a is None or w is None:
+            fail(f"variables.json: {name} must be declared on the API and on the worker (T-053 I5)")
+        if a.get("secret") or w.get("secret"):
+            fail(f"variables.json: {name} is a setting, not a secret (T-053 I5)")
+        if {k: x for k, x in a.items() if k != "later"} != {k: x for k, x in w.items() if k != "later"}:
+            fail(f"variables.json: the API's {name} must be declared as the worker's (T-053 I5)")
+    other = sorted(n for n in api["variables"] if re.match(r"(GEMINUS_)?AI_", n) and n not in API_AI_SETTINGS)
+    if other:
+        fail(f"variables.json: the API reads no other AI setting (T-053 I5): {other}")
+    return {"configs": [p.name for p in configs], "services": summary,
+            "api_ai": {"settings": list(API_AI_SETTINGS), "refused_keys": sorted(keys)}}
+
+
+# The API's AI settings (internal/config.LoadAPIAI), the worker's too (T-053 I5).
+API_AI_SETTINGS = ("AI_PROVIDER", "AI_POLICY_APPROVAL", "AI_MODEL", "GEMINUS_AI_LIVE")
+# The live adapters' keys (internal/config/ai.go), which only the worker holds.
+LIVE_KEYS = {"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY"}
+
+
+def api_key_variables() -> set:
+    """The AI key variables the API refuses to start with: apiKeyVars in
+    internal/config/apiai.go (T-053 I5), the live adapters' keys among them."""
+    text = (ROOT / "internal/config/apiai.go").read_text(encoding="utf-8")
+    m = re.search(r"^var apiKeyVars = \[\]string\{(.*?)^\}", text, re.S | re.M)
+    names = set(re.findall(r'"([A-Z][A-Z0-9_]+)"', m.group(1))) if m else set()
+    if not names or LIVE_KEYS - names:
+        fail("internal/config/apiai.go: apiKeyVars (the AI key variables the API refuses) was not found, or lacks a live adapter's key")
+    return names
 
 
 def runbook(known: set) -> dict:
