@@ -312,7 +312,11 @@ func TestAtMostTwoDecodesAtOnce(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
 	defer cancel()
 	_, err := Sanitize(ctx, data)
-	_, refused := Sanitize(context.Background(), withIHDR(data, 16, 0))
+	// With every slot taken, a header check still answers at once (a
+	// check that waited would end with this context's error instead).
+	hctx, hcancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer hcancel()
+	_, refused := Sanitize(hctx, withIHDR(data, 16, 0))
 	for range cap(decodeSlots) {
 		<-decodeSlots
 	}

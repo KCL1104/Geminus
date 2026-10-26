@@ -182,19 +182,34 @@ func TestPhotoRefusesNumbersOutsideTheTypedMembers(t *testing.T) {
 		}
 	}
 	// What the base states may be copied: a metric's period, a calendar,
-	// a number in the attributes (here 1, the base's capacity and units);
-	// strings, booleans and nulls are not numbers.
+	// a number in the attributes; strings, booleans and nulls are not
+	// numbers. Each value here is in one place of the base only: 300 only
+	// in its metric's period, 5 only in its attributes, 480 only in its
+	// calendar, 1 in its typed members.
 	b := bareLine(t)
-	b.Metrics = []model.Metric{{ID: "metric_shift_output", Type: model.MetricPeriodThroughput, SinkID: "shipped", Period: f(480)}}
+	b.Metrics = []model.Metric{{ID: "metric_shift_output", Type: model.MetricPeriodThroughput, SinkID: "shipped", Period: f(300)}}
 	b.Calendars = []model.Calendar{{ID: "calendar_day", Period: 480, Shifts: []model.Shift{{Start: 0, End: 1}}}}
-	b.Nodes[2].DomainAttributes = []byte(`{"station":"smt","pass":"first","lanes":2}`)
+	b.Nodes[2].DomainAttributes = []byte(`{"station":"smt","pass":"first","lanes":5}`)
+	for _, v := range []float64{300, 5} {
+		if slices.Contains(numbers(b), v) {
+			t.Fatalf("%v is in the base's typed members", v)
+		}
+	}
 	cand := withStations(t)
 	cand.Metrics = slices.Clone(b.Metrics)
 	cand.Calendars = slices.Clone(b.Calendars)
 	cand.Nodes[2].DomainAttributes = b.Nodes[2].DomainAttributes
-	cand.Nodes[5].DomainAttributes = []byte(`{"station":"aoi","pass":"first","lanes":2,"line":1,"label":"yield 97.3%","manual":false,"note":null}`)
+	cand.Nodes[5].DomainAttributes = []byte(`{"station":"aoi","pass":"first","lanes":5,"line":1,"label":"yield 97.3%","manual":false,"note":null}`)
+	cand.Metrics = append(cand.Metrics, model.Metric{ID: "metric_aoi_lanes", Type: model.MetricPeriodThroughput, SinkID: "shipped", Period: f(5)})
 	if issues := Photo(b, cand, 6); len(issues) != 0 {
 		t.Errorf("the base's own numbers: %v", issues)
+	}
+	// A number that does not fit a float64 is no base value, even copied
+	// from the base's own attributes.
+	b.Nodes[2].DomainAttributes = []byte(`{"station":"smt","pass":"first","serial":1e400}`)
+	cand.Nodes[2].DomainAttributes = b.Nodes[2].DomainAttributes
+	if issues := Photo(b, cand, 6); !slices.Equal(at(issues), []string{"/nodes/2/domain_attributes"}) {
+		t.Errorf("1e400 copied from the base: %v", at(issues))
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/photopipeline"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
+	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
 	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
 )
@@ -45,5 +46,37 @@ func TestThePipelinesChecks(t *testing.T) {
 		if provider.CodeOf(err) != provider.CodeNotConfigured || r.Segmenter != nil || r.Vision != nil || len(seg.Calls()) != 0 {
 			t.Errorf("%s: %+v %v", name, r, err)
 		}
+	}
+}
+
+// A segmenter that fails is the call's error, and the result still has the
+// segmentation's metadata (what it spent: the worker audits it with the
+// attempt's failure, the smoke reports it); the vision model is not asked.
+func TestASegmenterFailureKeepsItsMetadata(t *testing.T) {
+	seg := fake.NewSegmenter()
+	pack := electronicsline.Pack{}
+	for _, c := range pack.PhotoConcepts() {
+		seg.Fail(c, provider.NewError(provider.CodeRateLimited, 429, "meta"))
+	}
+	segClient, err := provider.NewSegmentClient(seg, provider.DefaultBudget())
+	if err != nil {
+		t.Fatal(err)
+	}
+	vision := fake.New()
+	visionClient, err := provider.New(vision, provider.DefaultBudget())
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, err := provider.NewImage(provider.ImagePNG, contracttest.LoadPhotoDemo(t, "electronics-line-demo").Image)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var segmented int
+	r, err := photopipeline.Propose(context.Background(), photopipeline.Clients{Segmenter: segClient, Vision: visionClient}, photopipeline.Request{
+		OrganizationID: "org_01M4YDQK00TA00000000000000", Pack: pack, Concepts: pack.PhotoConcepts(), Image: img,
+	}, photopipeline.Observer{Segmented: func(provider.SegmentMetadata, int, error) { segmented++ }})
+	if provider.CodeOf(err) != provider.CodeRateLimited || r.Segmenter == nil || r.Segmenter.Concepts != 8 || r.Segmentation != nil || r.Vision != nil ||
+		segmented != 1 || len(vision.Requests()) != 0 {
+		t.Errorf("%+v %v (segmented %d)", r, err, segmented)
 	}
 }

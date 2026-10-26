@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json/jsontext"
 	"io"
-	"math"
 	"strconv"
 	"strings"
 
@@ -131,8 +130,9 @@ func numbers(ir *model.ModelIR) []float64 {
 }
 
 // attributeNumbers is every JSON number in a node's domain_attributes (an
-// untrusted container, any depth), and false when one of them is not a
-// finite float64 (no base value is) or the container does not read.
+// untrusted container, any depth), and false when one of them does not fit
+// a float64 (strconv.ParseFloat's range error: no base value is that) or
+// the container does not read. A JSON number is never NaN or infinite.
 func attributeNumbers(raw jsontext.Value) ([]float64, bool) {
 	if len(raw) == 0 {
 		return nil, true
@@ -151,7 +151,7 @@ func attributeNumbers(raw jsontext.Value) ([]float64, bool) {
 			continue
 		}
 		v, err := strconv.ParseFloat(tok.String(), 64)
-		if err != nil || math.IsInf(v, 0) || math.IsNaN(v) {
+		if err != nil {
 			return nil, false
 		}
 		out = append(out, v)

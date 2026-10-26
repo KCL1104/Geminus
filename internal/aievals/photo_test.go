@@ -99,7 +99,7 @@ func demoSAM(t *testing.T) photoSAM {
 	return photoSAM{seg}
 }
 
-func photoSmoke(t *testing.T, j *photoJudge, s photoSAM, capNano int64) (*aievals.PhotoReport, *aievals.PhotoRun) {
+func photoSmoke(t *testing.T, j *photoJudge, s provider.BillableSegmenter, capNano int64) (*aievals.PhotoReport, *aievals.PhotoRun) {
 	t.Helper()
 	answerText = func(pool map[string][]string) []byte {
 		return contracttest.PhotoAnswer(t, "electronics-line-demo", pool)
@@ -259,6 +259,25 @@ func TestThePhotoSmokeObserves(t *testing.T) {
 	if r.Status != "invalid" || r.Warnings[aievals.WarningFrame] != 1 || !slices.Equal(r.Segmenter.Frames, []string{"520x1200"}) {
 		t.Errorf("a turned frame: %+v", r)
 	}
+	// SAM says it processed two images for a concept: observed, and settled
+	// as billed (two images).
+	samPrice, _ := spend.ImagePriceOf("sam-3.1")
+	r, _ = photoSmoke(t, &photoJudge{images: true}, twoImages{demoSAM(t)}, spend.NanoPerUSD)
+	if r.Status != "ready" || r.Warnings[aievals.WarningImagesProcessed] != 1 || r.Segmenter.ImagesProcessed[0] != 2 || r.Segmenter.CostNanoUSD != 9*samPrice {
+		t.Errorf("two images: %+v", r.Segmenter)
+	}
+}
+
+// twoImages is photoSAM saying, for its first concept, that it billed two
+// images.
+type twoImages struct{ photoSAM }
+
+func (s twoImages) SegmentOne(ctx context.Context, call provider.SegmentCall) (provider.SegmentAnswer, error) {
+	a, err := s.photoSAM.SegmentOne(ctx, call)
+	if call.Concept == "smt line" {
+		a.ImagesProcessed = 2
+	}
+	return a, err
 }
 
 // Main refuses the photo smoke, before building any backend and writing
