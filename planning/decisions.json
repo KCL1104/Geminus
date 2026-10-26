@@ -1567,6 +1567,19 @@
       "decided_at": "2026-10-26",
       "source": "Claude Code session：owner 在對話中回覆",
       "still_open": []
+    },
+    {
+      "id": "H-025",
+      "subject": "Console spend limit 已設定；T-053 通過 review 後預先授權 live smoke 與 ai-eval-live",
+      "decision": "Owner 已在 Anthropic Console 為兩個 provider organization 設定 spend limit，並授權 T-053 通過獨立 review 後由 agent 直接以 synthetic 資料執行 live smoke 與 make ai-eval-live，不需再次詢問；範圍以 H-018 為準；T-053 的程式內上限與批准紀錄須先通過 review；需要 owner 另外確認的事項（如 ZDR）出現時 live 保持關閉並先詢問。",
+      "quote": "好了，等等你可以直接開始跑",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆",
+      "still_open": [
+        "T-053 提出的 PROPOSED 決策（例如每日上限的數值）",
+        "Anthropic 資料保留／ZDR 的確認（視 T-053 查證結果）"
+      ]
     }
   ]
 }
