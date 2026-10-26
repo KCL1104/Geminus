@@ -10,49 +10,64 @@ import (
 )
 
 // The photo pipeline's demo fixtures (T-056, testdata/photos): a synthetic
-// floor plan drawn by scripts/gen-photo-demo, the boxes the fake segmenter
-// answers for it, the base model a photo proposal builds on, and the fake
-// vision model's answer with placeholders for the proposal's ID pool.
+// floor plan drawn by scripts/gen-photo-demo, the segments the fake
+// segmenter answers for it (T-055's provider.Segment, as JSON), the base
+// model a photo proposal builds on, and the fake vision model's answer
+// with placeholders for the proposal's ID pool.
 
-// PhotoBox is one box of a boxes file, in the image's pixels.
+// PhotoBox is a box in the image's pixels, its corners inclusive.
 type PhotoBox struct {
-	Prompt int     `json:"prompt"`
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Width  float64 `json:"width"`
-	Height float64 `json:"height"`
-	Score  float64 `json:"score"`
-	Label  string  `json:"label,omitzero"`
+	X1 int `json:"x1"`
+	Y1 int `json:"y1"`
+	X2 int `json:"x2"`
+	Y2 int `json:"y2"`
 }
 
-// PhotoBoxes is a boxes file (<name>.boxes.json).
-type PhotoBoxes struct {
-	Comment      string     `json:"$comment"`
-	Image        string     `json:"image"`
-	MediaType    string     `json:"media_type"`
-	Width        int        `json:"width"`
-	Height       int        `json:"height"`
-	UploadSHA256 string     `json:"upload_sha256"`
-	StoredSHA256 string     `json:"stored_sha256"`
-	Prompts      []string   `json:"prompts"`
-	Boxes        []PhotoBox `json:"boxes"`
+// PhotoSegment is one object of a segments file.
+type PhotoSegment struct {
+	Concept    string   `json:"concept"`
+	ObjectID   int      `json:"object_id"`
+	Box        PhotoBox `json:"box"`
+	Confidence float64  `json:"confidence"`
 }
 
-// PhotoDemo is one demo image: the PNG as uploaded and its boxes file.
+// PhotoSegments is a segments file (<name>.segments.json).
+type PhotoSegments struct {
+	Comment      string         `json:"$comment"`
+	Image        string         `json:"image"`
+	MediaType    string         `json:"media_type"`
+	Width        int            `json:"width"`
+	Height       int            `json:"height"`
+	UploadDigest string         `json:"upload_digest"`
+	StoredDigest string         `json:"stored_digest"`
+	Concepts     []string       `json:"concepts"`
+	Segments     []PhotoSegment `json:"segments"`
+}
+
+// ByConcept is the file's segments of each concept, in order.
+func (s PhotoSegments) ByConcept() map[string][]PhotoSegment {
+	out := map[string][]PhotoSegment{}
+	for _, x := range s.Segments {
+		out[x.Concept] = append(out[x.Concept], x)
+	}
+	return out
+}
+
+// PhotoDemo is one demo image: the PNG as uploaded and its segments file.
 type PhotoDemo struct {
-	Image []byte
-	Boxes PhotoBoxes
+	Image    []byte
+	Segments PhotoSegments
 }
 
 func photos(t testing.TB) string { return filepath.Join(Root(t), "testdata", "photos") }
 
 // LoadPhotoDemo reads the demo image name ("electronics-line-demo",
-// "electronics-line-injection") and its boxes.
+// "electronics-line-injection") and its segments.
 func LoadPhotoDemo(t testing.TB, name string) PhotoDemo {
 	t.Helper()
 	var d PhotoDemo
 	d.Image = ReadFile(t, filepath.Join(photos(t), name+".png"))
-	if err := json.Unmarshal(ReadFile(t, filepath.Join(photos(t), name+".boxes.json")), &d.Boxes, json.RejectUnknownMembers(true)); err != nil {
+	if err := json.Unmarshal(ReadFile(t, filepath.Join(photos(t), name+".segments.json")), &d.Segments, json.RejectUnknownMembers(true)); err != nil {
 		t.Fatal(err)
 	}
 	return d

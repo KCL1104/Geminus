@@ -905,7 +905,7 @@ paths:
         parts base_version_id and, optionally, output_locale (en or zh-Hant; en when absent) come first, each once, and file is
         the last part; another or a repeated part, or a part after file, is refused. The file is a PNG or a JPEG, told by its
         first bytes (its name and the part''s Content-Type are not trusted); anything else (GIF, WebP, HEIC, SVG, PDF, an archive
-        or an executable...) is 415 UNSUPPORTED_MEDIA_TYPE with details[0].code IMAGE_FORMAT_REJECTED. At most 10,000,000 bytes
+        or an executable...) is 415 UNSUPPORTED_MEDIA_TYPE with details[0].code IMAGE_FORMAT_REJECTED. At most 5,242,880 bytes (5 MiB)
         are read whether or not Content-Length is sent (413 PAYLOAD_TOO_LARGE, nothing kept); an empty file, one that does not
         decode, or one less than 32 or more than 4096 pixels wide or high is 422 at /file (details[0].code IMAGE_INVALID or
         IMAGE_PIXELS_EXCEEDED). The server decodes the image and encodes the pixels again in the same format, so none of the
@@ -989,7 +989,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: A PNG or JPEG photo or floor plan, at most 10,000,000 bytes and 32 to 4096 pixels on each side.
+                  description: A PNG or JPEG photo or floor plan, at most 5,242,880 bytes (5 MiB) and 32 to 4096 pixels on each side.
               required:
               - base_version_id
               - file

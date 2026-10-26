@@ -14,7 +14,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
-	"github.com/kcl1104/geminus/internal/ai/vision"
 	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/ids"
@@ -227,12 +226,12 @@ func TestTheProviderIsTheConfigured(t *testing.T) {
 	}
 }
 
-// T-056: the segmenter of the photo pipeline is the configured mode's:
-// disabled answers provider_not_configured (policy_not_approved for a live
-// provider that is off); the fake answers where config allows it; this
-// build has no live segmenter (T-055 brings SAM 3.1's), so live AI on
-// still answers provider_not_configured for photos and never reads a key
-// for it.
+// T-056: the segmenter of the photo pipeline (T-055's SegmentClient) is
+// the configured mode's: disabled answers provider_not_configured
+// (policy_not_approved for a live provider that is off); the fake answers
+// where config allows it; this build wires no live segmenter (SAM 3.1's
+// backend is T-055's), so live AI on still answers provider_not_configured
+// for photos and never reads a key for it.
 func TestTheSegmenterIsTheConfigured(t *testing.T) {
 	ctx := context.Background()
 	h018 := []string{"AI_PROVIDER", "anthropic", "AI_POLICY_APPROVAL", "H-018", "AI_MODEL", "claude-opus-5-5",
@@ -256,11 +255,11 @@ func TestTheSegmenterIsTheConfigured(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			s, err := segmenter(ai)
+			s, err := segmenter(ai, provider.DefaultBudget())
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = s.Segment(ctx, vision.Input{OrganizationID: ids.New("org"), Prompts: []string{"machine"}})
+			_, err = s.Segment(ctx, provider.SegmentRequest{OrganizationID: ids.New("org"), Role: provider.RoleModeler, Concepts: []string{"machine"}})
 			if got := provider.CodeOf(err); got != c.want {
 				t.Fatalf("code %q, want %q", got, c.want)
 			}

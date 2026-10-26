@@ -141,13 +141,17 @@ var (
 		"cost_nano_usd": {shape: count}, "spend_reservation_id": idOf("asr"), "spend_unsettled": {shape: flag},
 	}
 	// photoCall is what the generator records of a photo proposal's image
-	// and segmenter call (T-056): the stored image's hash, the segmenter's
-	// labels, the number of boxes it found, its latency and cost; never
-	// the image, a box or a label.
+	// and segmentation (T-056, on T-055's provider.SegmentMetadata): the
+	// stored image's hash, the segmenter's labels, the concepts it was
+	// asked for and the objects it found, the images it billed, its
+	// latency, and what it cost on how many spend reservations (one per
+	// concept; the ledger names them, attributed to the proposal); never
+	// the image or a box.
 	photoCall = map[string]field{
 		"image_content_hash": {shape: hash}, "segmenter": {shape: label}, "segmenter_model": {shape: label},
-		"segmenter_boxes": {shape: count}, "segmenter_latency_ms": {shape: count}, "segmenter_cost_nano_usd": {shape: count},
-		"segmenter_spend_reservation_id": idOf("asr"),
+		"segmenter_concepts": {shape: count}, "segmenter_boxes": {shape: count}, "segmenter_images": {shape: count},
+		"segmenter_latency_ms": {shape: count}, "segmenter_cost_nano_usd": {shape: count}, "segmenter_spend_reservations": {shape: count},
+		"segmenter_spend_unsettled": {shape: flag},
 	}
 	aiRoles = oneOf("modeler", "scenario", "analyst", "importer")
 	// spendTargets are what a live AI call is for (provider.Attribution).

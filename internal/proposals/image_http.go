@@ -28,7 +28,7 @@ import (
 const imageOverhead = 64 << 10
 
 // imageTimeout bounds reading one photo's body and writing the response,
-// in place of the server's shorter read timeout (10 MB at about 0.7
+// in place of the server's shorter read timeout (5 MiB at about 0.35
 // Mbit/s).
 const imageTimeout = 2 * time.Minute
 
@@ -162,7 +162,7 @@ func refusedImage(err error) error {
 	case errors.Is(err, photo.ErrFormat):
 		return file(httpapi.UnsupportedMediaType, "a photo or floor plan is a PNG or a JPEG", "the file is not a PNG or a JPEG", CodeImageFormatRejected)
 	case errors.Is(err, photo.ErrTooLarge):
-		return file(httpapi.PayloadTooLarge, "the photo is larger than a proposal may take", "the file is more than 10,000,000 bytes", "")
+		return file(httpapi.PayloadTooLarge, "the photo is larger than a proposal may take", "the file is more than 5,242,880 bytes (5 MiB)", "")
 	case errors.Is(err, photo.ErrEmpty), errors.Is(err, photo.ErrInvalid):
 		return file(httpapi.RequestValidationFailed, "the photo is not acceptable", "the file is empty or does not decode as its format", CodeImageInvalid)
 	case errors.Is(err, photo.ErrPixels):

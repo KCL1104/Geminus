@@ -227,9 +227,10 @@ func (o *omissions) sorted() []Omission {
 }
 
 // assemble seals a prompt: system rules and blocks, with the omissions and
-// redactions as the last server block and in the disclosure.
+// redactions as the last server block and in the disclosure, and the
+// prompt's images (T-056's photo; T-055 seals them into the InputHash).
 func assemble(org string, role provider.Role, loc locale.Locale, system string, version string, blocks []provider.Block,
-	om *omissions, z *sanitizer) (provider.Prompt, error) {
+	om *omissions, z *sanitizer, images ...provider.Image) (provider.Prompt, error) {
 	om.add("strings", z.counts[RedactTruncated], ReasonTruncated)
 	om.add("members", z.counts[collided], ReasonCollision)
 	list := om.sorted()
@@ -246,7 +247,7 @@ func assemble(org string, role provider.Role, loc locale.Locale, system string, 
 		disclosure.Omitted[o.What+":"+string(o.Reason)] += o.Count
 	}
 	return provider.Seal(provider.Prompt{OrganizationID: org, Role: role, TemplateVersion: version, Locale: loc, System: system,
-		Blocks: append(slices.Clone(blocks), omBlock), Disclosure: disclosure})
+		Blocks: append(slices.Clone(blocks), omBlock), Images: images, Disclosure: disclosure})
 }
 
 func fits(p provider.Prompt, budget provider.Budget) bool {

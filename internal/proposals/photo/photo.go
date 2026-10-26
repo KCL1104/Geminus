@@ -35,8 +35,10 @@ import (
 
 const (
 	// MaxBytes bounds an upload and the image the server stores from it
-	// (the database's size_bytes CHECK, migration 0017).
-	MaxBytes = 10_000_000
+	// (the database's size_bytes CHECK, migration 0017): 5 MiB, the most
+	// T-055's provider client sends (provider.MaxImageBytes); MaxSide is
+	// within its pixel bound too (a test keeps both).
+	MaxBytes = 5 << 20
 	// MinSide and MaxSide bound the image's width and height in pixels.
 	MinSide = 32
 	MaxSide = 4096

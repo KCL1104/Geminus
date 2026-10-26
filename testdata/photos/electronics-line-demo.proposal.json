@@ -1,5 +1,5 @@
 {
-  "$comment": "T-056: the fake vision model's answer for electronics-line-demo.png on testdata/photos/bare-line.json, in proposal-output.schema.json; \"$node:<n>\", \"$flow:<n>\" and \"$resource:<n>\" stand for the proposal's own ID pool (D-046), filled in by the tests. Synthetic: every number is copied from the base model or counts the boxes (two ICT testers).",
+  "$comment": "T-056: the fake vision model's answer for electronics-line-demo.png on testdata/photos/bare-line.json, in proposal-output.schema.json; \"$node:<n>\", \"$flow:<n>\" and \"$resource:<n>\" stand for the proposal's own ID pool (D-046), filled in by the tests. Synthetic: every number is copied from the base model or counts the segments (two ICT testers).",
   "answer": {
     "status": "proposed",
     "summary": "Add the AOI, ICT, FCT and packing stations the floor plan shows after the SMT line, with a conveyor before each.",

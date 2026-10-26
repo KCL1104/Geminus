@@ -1,11 +1,7 @@
 package fake_test
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json/v2"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/locale"
@@ -13,56 +9,52 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
 )
 
-// T-056: the fake takes images, as the live vision backend does; an image
-// request is keyed by the SHA-256 its IMAGE block names, and the fake
-// refuses an image its prompt does not name, as a live provider would see
-// it.
+// T-056: a photo proposal's prompt has no intent, so the fake matches it on
+// its first image's digest (T-055's provider.Image); a prompt's intent,
+// question or columns still come first; an unscripted photo gets the safe
+// answer in the request's locale.
 
-func image(data string) provider.Image {
-	s := sha256.Sum256([]byte(data))
-	return provider.Image{MediaType: "image/png", Data: []byte(data), Width: 64, Height: 32, SHA256: "sha256:" + hex.EncodeToString(s[:])}
-}
-
-func imagePrompt(t *testing.T, im provider.Image, loc locale.Locale) provider.Prompt {
+func photoPrompt(t *testing.T, loc locale.Locale, blocks []provider.Block, images ...provider.Image) provider.Prompt {
 	t.Helper()
-	ref, _ := json.Marshal(im.Ref())
-	return prompt(t, provider.RoleModeler, loc, provider.Block{Kind: provider.ServerData, Name: fake.ImageBlock, Content: ref},
-		provider.Block{Kind: provider.UntrustedData, Name: "SEGMENTS", Content: []byte(`[]`)})
+	p, err := provider.Seal(provider.Prompt{OrganizationID: org, Role: provider.RoleModeler, TemplateVersion: "photo-t", Locale: loc, System: "rules",
+		Blocks: blocks, Images: images})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
 }
 
-func TestImageRequests(t *testing.T) {
+func TestAPhotoIsMatchedOnItsImage(t *testing.T) {
 	ctx := context.Background()
-	var _ provider.ImageBackend = fake.New()
-	im := image("\x89PNG\r\n\x1a\nline")
-	b := fake.New()
+	line, other := testImage(t, 64, 32), testImage(t, 32, 64)
+	segments := []provider.Block{{Kind: provider.UntrustedData, Name: "SEGMENTS", Content: []byte(`[]`)}}
 	answer := []byte(`{"status":"needs_input","summary":"Which station is first?","assumptions":[],"questions":["Which one?"],"requires_confirmation":true}`)
-	b.Script(provider.RoleModeler, im.SHA256, answer)
+	b := fake.New()
+	b.Script(provider.RoleModeler, line.Digest, answer)
 	c := client(t, b)
-	res, err := c.GenerateImageProposal(ctx, provider.ImageProposalContext{OrganizationID: org, Prompt: imagePrompt(t, im, locale.English), Image: im})
-	if err != nil || res.Output.Summary != "Which station is first?" {
+	ask := func(p provider.Prompt) (provider.ProposalResult, error) {
+		return c.GenerateModelProposal(ctx, provider.ProposalContext{OrganizationID: org, Mode: provider.ModeEdit, Prompt: p})
+	}
+	if res, err := ask(photoPrompt(t, locale.English, segments, line)); err != nil || res.Output.Summary != "Which station is first?" {
 		t.Fatalf("scripted: %+v %v", res.Output, err)
 	}
-	seen := b.Requests()
-	if len(seen) != 1 || seen[0].Image == nil || !bytes.Equal(seen[0].Image.Data, im.Data) {
-		t.Fatalf("requests %+v", seen)
+	// The first image is the key.
+	if res, err := ask(photoPrompt(t, locale.English, segments, line, other)); err != nil || res.Output.Summary != "Which station is first?" {
+		t.Errorf("two images: %+v %v", res.Output, err)
 	}
 	// Unscripted: the safe answer, in the request's locale.
-	other := image("\x89PNG\r\n\x1a\nanother line")
 	for _, loc := range locale.All {
-		res, err = c.GenerateImageProposal(ctx, provider.ImageProposalContext{OrganizationID: org, Prompt: imagePrompt(t, other, loc), Image: other})
+		res, err := ask(photoPrompt(t, loc, segments, other))
 		if err != nil || res.Output.Status != "needs_input" || len(res.Output.Changes) != 0 {
 			t.Errorf("%s unscripted: %+v %v", loc, res.Output, err)
 		}
 	}
-	// A request whose image is not the one its IMAGE block names (the
-	// client checks it first; the fake checks it again, as the bytes a
-	// provider gets).
-	req := provider.Request{Prompt: imagePrompt(t, im, locale.English), OutputSchema: "proposal-output.schema.json", Image: &other}
-	if _, err := b.Complete(ctx, req); provider.CodeOf(err) != provider.CodeRejected {
-		t.Errorf("a mismatched image: %v", err)
+	// An intent is still the key of a prompt that has one.
+	intent := []provider.Block{{Kind: provider.UntrustedData, Name: fake.IntentBlock, Content: quote("add a tester")}}
+	if res, err := ask(photoPrompt(t, locale.English, intent, line)); err != nil || res.Output.Summary == "Which station is first?" {
+		t.Errorf("an intent with an image: %+v %v", res.Output, err)
 	}
-	req.Image = nil
-	if _, err := b.Complete(ctx, req); provider.CodeOf(err) != provider.CodeRejected {
-		t.Errorf("an IMAGE block without its image: %v", err)
+	if seen := b.Requests(); len(seen) != 3+len(locale.All) || len(seen[0].Prompt.Images) != 1 || seen[0].Prompt.Images[0].Digest != line.Digest {
+		t.Errorf("requests %d", len(seen))
 	}
 }

@@ -2,6 +2,7 @@ package review
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/kcl1104/geminus/internal/model"
 )
@@ -25,17 +26,30 @@ import (
 //     the photo). Anything else is the AI's own number, and the proposal is
 //     invalid.
 //
-// The boxes themselves are checked before the proposal is asked for
-// (internal/ai/vision.CheckBoxes), with the sentences below, so that every
-// issue keeps a fixed sentence of the server's through Clean.
+// The segments themselves are checked before the proposal is asked for:
+// T-055's provider.SegmentClient checks every answer (the frame, each box
+// inside it, distinct object IDs, a confidence from 0 to 1, at most
+// provider.MaxSegmentsPerConcept a concept) and Segmentation turns what it
+// refuses into the sentences below; the photo pipeline then takes at most
+// MaxPhotoSegments in all (TooManySegments) and a frame of the image's own
+// size (FrameMismatch). Every issue keeps a fixed sentence of the
+// server's through Clean, at the path "" (a segment is no member of the
+// proposal's documents).
 
-// The segmenter's answer (T-056): the sentences of an unacceptable box.
+// MaxPhotoSegments bounds the segments one photo proposal takes: a
+// photo's line has some stations and conveyors, not hundreds, and every
+// segment is a line of the vision model's prompt.
+const MaxPhotoSegments = 64
+
+// The segmenter's answer (T-056): the sentences of an unacceptable one.
 const (
-	SentTooManyBoxes = "the segmenter found more boxes than a photo proposal takes"
-	SentBoxOutside   = "a box of the segmenter's answer lies outside the image or has no area"
-	SentBoxNumber    = "a box of the segmenter's answer is not a finite number, or its score is not from 0 to 1"
-	SentBoxPrompt    = "a box of the segmenter's answer names no text prompt of the request"
-	SentBoxLabel     = "a box's label is not text"
+	SentTooManyBoxes = "the segmenter found more objects than a photo proposal takes"
+	SentBoxOutside   = "a box of the segmenter's answer is not inside the image"
+	SentBoxNumber    = "a confidence of the segmenter's answer is not a number from 0 to 1"
+	SentBoxConcept   = "an object of the segmenter's answer is not of a concept the request named"
+	SentBoxObject    = "the segmenter's answer names an object twice"
+	SentBoxFrame     = "the segmenter's answer is not in the image's frame"
+	SentSegmenter    = "the segmenter's answer does not pass the server's checks"
 )
 
 // The photo rules' own sentences.
@@ -45,7 +59,58 @@ const (
 )
 
 // photoSentences are added to OutputInvalid's sentences (clean.go).
-var photoSentences = []string{SentTooManyBoxes, SentBoxOutside, SentBoxNumber, SentBoxPrompt, SentBoxLabel, sentPhotoSteps, sentPhotoNumber}
+var photoSentences = []string{SentTooManyBoxes, SentBoxOutside, SentBoxNumber, SentBoxConcept, SentBoxObject, SentBoxFrame, SentSegmenter,
+	sentPhotoSteps, sentPhotoNumber}
+
+// segmentSentences are the sentences of what provider.SegmentClient
+// refuses, by the last token of its issue's path
+// (/concepts/<i>/segments/<j>/<member>, /concepts/<i>/frame,
+// /concepts/<i>/segments).
+var segmentSentences = map[string]string{
+	"box": SentBoxOutside, "confidence": SentBoxNumber, "concept": SentBoxConcept, "object_id": SentBoxObject, "frame": SentBoxFrame,
+	"segments": SentTooManyBoxes,
+}
+
+// Segmentation is the issues of a segmentation the segmenter client
+// refused (provider.CodeInvalidOutput's issues), in the review's own
+// sentences: one issue per distinct sentence, at the path "", in the order
+// first seen; an issue the table does not know is SentSegmenter. Never
+// empty.
+func Segmentation(refused []model.ValidationIssue) []model.ValidationIssue {
+	var out []model.ValidationIssue
+	seen := map[string]bool{}
+	add := func(s string) {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, errorIssue(OutputInvalid, "", s))
+		}
+	}
+	for _, is := range refused {
+		last := is.Path[strings.LastIndexByte(is.Path, '/')+1:]
+		if s, ok := segmentSentences[last]; ok {
+			add(s)
+		} else {
+			add(SentSegmenter)
+		}
+	}
+	if len(out) == 0 {
+		add(SentSegmenter)
+	}
+	return out
+}
+
+// TooManySegments is the issue of a segmentation with more than
+// MaxPhotoSegments segments.
+func TooManySegments() []model.ValidationIssue {
+	return []model.ValidationIssue{errorIssue(OutputInvalid, "", SentTooManyBoxes)}
+}
+
+// FrameMismatch is the issue of a segmentation whose frame is not the
+// image's size (a turned frame: the stored image has no metadata to turn
+// it, so the boxes would not be the image's).
+func FrameMismatch() []model.ValidationIssue {
+	return []model.ValidationIssue{errorIssue(OutputInvalid, "", SentBoxFrame)}
+}
 
 // numbers is every number values reads of an IR, with the queues' finite
 // capacities, which values leaves out.

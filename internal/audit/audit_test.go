@@ -149,17 +149,18 @@ func valid() []audit.Event {
 			"selected_entities": 1, "source": "intent"}),
 		w("proposal.generate", "ai_proposal", aip, with(provider(), "attempt", 1, "status", "ready", "issues", 0, "patch_hash", hash("d"),
 			"server_risk_level", "medium", "provider_risk_claim", "low", "risk_level", "medium", "prompt_template_version", "photo-0.1.0",
-			"image_content_hash", hash("7"), "segmenter", "fake", "segmenter_model", "sam-3.1", "segmenter_boxes", 10,
-			"segmenter_latency_ms", int64(800), "segmenter_cost_nano_usd", int64(2_500_000), "segmenter_spend_reservation_id", ids.New("asr"))),
+			"image_content_hash", hash("7"), "segmenter", "fake", "segmenter_model", "sam-3.1", "segmenter_concepts", 8, "segmenter_boxes", 10,
+			"segmenter_images", 8, "segmenter_latency_ms", int64(800), "segmenter_cost_nano_usd", int64(20_000_000),
+			"segmenter_spend_reservations", 8, "segmenter_spend_unsettled", false)),
 		// No box: the server asks for input without calling the vision model.
 		w("proposal.generate", "ai_proposal", aip, map[string]any{"provider": "", "role": "", "prompt_template_version": "", "schema": "",
 			"output_locale": "", "input_hash": "", "input_tokens": int64(0), "output_tokens": int64(0), "latency_ms": int64(0), "attempt": 1,
-			"status": "needs_input", "image_content_hash": hash("7"), "segmenter": "fake", "segmenter_model": "fake", "segmenter_boxes": 0,
-			"segmenter_latency_ms": int64(1)}),
+			"status": "needs_input", "image_content_hash": hash("7"), "segmenter": "fake", "segmenter_model": "fake", "segmenter_concepts": 8,
+			"segmenter_boxes": 0, "segmenter_images": 0, "segmenter_latency_ms": int64(1)}),
 		w("proposal.attempt_failed", "ai_proposal", aip, map[string]any{"provider": "", "role": "", "prompt_template_version": "",
 			"schema": "", "output_locale": "", "input_hash": "", "input_tokens": int64(0), "output_tokens": int64(0), "latency_ms": int64(0),
 			"attempt": 1, "code": "AI_RATE_LIMITED", "retryable": true, "image_content_hash": hash("7"), "segmenter": "fake",
-			"segmenter_boxes": 0, "segmenter_latency_ms": int64(3)}),
+			"segmenter_concepts": 8, "segmenter_boxes": 0, "segmenter_latency_ms": int64(3)}),
 	}
 }
 

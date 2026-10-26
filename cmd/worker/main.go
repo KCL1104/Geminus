@@ -36,8 +36,6 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/anthropic"
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
-	"github.com/kcl1104/geminus/internal/ai/vision"
-	visionfake "github.com/kcl1104/geminus/internal/ai/vision/fake"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/import/validator"
@@ -131,7 +129,7 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	seg, err := segmenter(d.ai)
+	seg, err := segmenter(d.ai, budget)
 	if err != nil {
 		return nil, err
 	}
@@ -210,25 +208,27 @@ func aiClient(ai config.AI, spendRun aispend.Runner, actor string) (*provider.Cl
 	return client, budget, nil
 }
 
-// segmenter is the photo pipeline's checked segmentation client of the
-// configured mode (T-056): the deterministic fake for development and
-// tests (it finds nothing it has no script for, so a photo asks for
-// input); otherwise disabled, answering policy_not_approved for a live
-// provider whose switch is off and provider_not_configured for the rest.
-// This build has no live segmenter: SAM 3.1's adapter arrives with T-055,
-// metered by the spend ledger as the live provider client is, so with
-// live AI on a photo proposal fails with AI_PROVIDER_NOT_CONFIGURED.
-func segmenter(ai config.AI) (*vision.Client, error) {
-	var s vision.Segmenter
+// segmenter is the photo pipeline's checked segmentation client (T-055's
+// provider.SegmentClient) of the configured mode, under the AI client's
+// budget (T-056): the deterministic fake for development and tests (it
+// finds nothing it has no script for, so a photo asks for input);
+// otherwise disabled, answering policy_not_approved for a live provider
+// whose switch is off and provider_not_configured for the rest. This build
+// wires no live segmenter: SAM 3.1's backend is T-055's (Meta adapter,
+// metered with provider.NewMeteredSegmentClient by the spend ledger as the
+// live provider client is), so with live AI on a photo proposal fails with
+// AI_PROVIDER_NOT_CONFIGURED and no key is read for it.
+func segmenter(ai config.AI, budget provider.Budget) (*provider.SegmentClient, error) {
+	var b provider.SegmentBackend
 	switch {
 	case ai.Provider == config.AIProviderFake:
-		s = visionfake.New()
+		b = fake.NewSegmenter()
 	case ai.Provider == config.AIProviderAnthropic && !ai.LiveEnabled():
-		s = vision.Disabled{Code: provider.CodePolicyNotApproved}
+		b = provider.Disabled{Code: provider.CodePolicyNotApproved}
 	default:
-		s = vision.Disabled{Code: provider.CodeNotConfigured}
+		b = provider.Disabled{Code: provider.CodeNotConfigured}
 	}
-	return vision.New(s, vision.DefaultBudget())
+	return provider.NewSegmentClient(b, budget)
 }
 
 // objectStore opens the configured object storage (D-044): nil when it is

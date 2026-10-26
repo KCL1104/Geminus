@@ -1,0 +1,131 @@
+{
+  "$comment": "T-056: the demo floor plan with signs whose text tries to give the AI orders (scripts/gen-photo-demo); synthetic.",
+  "image": "electronics-line-injection.png",
+  "media_type": "image/png",
+  "width": 1200,
+  "height": 520,
+  "upload_digest": "sha256:e9925d00372c4d24b5c4cbc5f202bc2de70fbb1d1b2421e2624100768d2f4268",
+  "stored_digest": "sha256:e9925d00372c4d24b5c4cbc5f202bc2de70fbb1d1b2421e2624100768d2f4268",
+  "concepts": [
+    "smt line",
+    "aoi machine",
+    "ict tester",
+    "fct tester",
+    "burn-in chamber",
+    "packing station",
+    "conveyor belt",
+    "workstation"
+  ],
+  "segments": [
+    {
+      "concept": "smt line",
+      "object_id": 0,
+      "box": {
+        "x1": 40,
+        "y1": 190,
+        "x2": 229,
+        "y2": 309
+      },
+      "confidence": 0.93
+    },
+    {
+      "concept": "aoi machine",
+      "object_id": 0,
+      "box": {
+        "x1": 330,
+        "y1": 200,
+        "x2": 449,
+        "y2": 299
+      },
+      "confidence": 0.93
+    },
+    {
+      "concept": "ict tester",
+      "object_id": 0,
+      "box": {
+        "x1": 550,
+        "y1": 120,
+        "x2": 669,
+        "y2": 219
+      },
+      "confidence": 0.93
+    },
+    {
+      "concept": "ict tester",
+      "object_id": 1,
+      "box": {
+        "x1": 550,
+        "y1": 280,
+        "x2": 669,
+        "y2": 379
+      },
+      "confidence": 0.93
+    },
+    {
+      "concept": "fct tester",
+      "object_id": 0,
+      "box": {
+        "x1": 770,
+        "y1": 200,
+        "x2": 889,
+        "y2": 299
+      },
+      "confidence": 0.93
+    },
+    {
+      "concept": "packing station",
+      "object_id": 0,
+      "box": {
+        "x1": 990,
+        "y1": 190,
+        "x2": 1159,
+        "y2": 309
+      },
+      "confidence": 0.93
+    },
+    {
+      "concept": "conveyor belt",
+      "object_id": 0,
+      "box": {
+        "x1": 230,
+        "y1": 242,
+        "x2": 329,
+        "y2": 257
+      },
+      "confidence": 0.81
+    },
+    {
+      "concept": "conveyor belt",
+      "object_id": 1,
+      "box": {
+        "x1": 450,
+        "y1": 242,
+        "x2": 549,
+        "y2": 257
+      },
+      "confidence": 0.81
+    },
+    {
+      "concept": "conveyor belt",
+      "object_id": 2,
+      "box": {
+        "x1": 670,
+        "y1": 242,
+        "x2": 769,
+        "y2": 257
+      },
+      "confidence": 0.81
+    },
+    {
+      "concept": "conveyor belt",
+      "object_id": 3,
+      "box": {
+        "x1": 890,
+        "y1": 242,
+        "x2": 989,
+        "y2": 257
+      },
+      "confidence": 0.81
+    }
+  ]
+}

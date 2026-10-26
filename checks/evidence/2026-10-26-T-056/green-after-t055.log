@@ -1,0 +1,17 @@
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.693s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.464s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	9.613s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.075s
+?   	github.com/kcl1104/geminus/internal/ai/provider/structured	[no test files]
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.950s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	0.004s
+ok  	github.com/kcl1104/geminus/internal/proposals	0.102s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.291s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.344s
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	0.158s
+ok  	github.com/kcl1104/geminus/internal/audit	0.177s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	3.086s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.101s
+ok  	github.com/kcl1104/geminus/scripts/gen-photo-demo	0.299s
+ok  	github.com/kcl1104/geminus/prompts	0.003s
+exit 0

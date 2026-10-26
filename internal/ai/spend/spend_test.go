@@ -172,11 +172,15 @@ func TestInferenceGeos(t *testing.T) {
 	}
 }
 
-// T-056: no image model is priced in this build (the segmenter's price
-// comes with its adapter, T-055), so no billable segmenter can be
-// reserved for; a token model's name is no image price.
-func TestNoImageModelIsPricedYet(t *testing.T) {
-	for _, model := range []string{"sam-3.1", "claude-opus-5-5", ""} {
+// T-056 on T-055: the photo pipeline's segmenter is priced per image
+// (sam-3.1; T-055's meta_test.go holds the price), and a token model's
+// name is no image price, so a vision model cannot be reserved for as a
+// segmenter.
+func TestOnlyASegmenterIsPricedPerImage(t *testing.T) {
+	if p, ok := spend.ImagePriceOf("sam-3.1"); !ok || p <= 0 {
+		t.Errorf("sam-3.1 is not priced per image: %d", p)
+	}
+	for _, model := range []string{"claude-opus-5-5", "muse-spark-1.3", ""} {
 		if p, ok := spend.ImagePriceOf(model); ok || p != 0 {
 			t.Errorf("%q is priced per image: %d", model, p)
 		}

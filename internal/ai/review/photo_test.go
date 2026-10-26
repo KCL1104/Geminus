@@ -151,10 +151,48 @@ func TestPhotoIssuesAreClean(t *testing.T) {
 			t.Errorf("cleaning changed %+v into %+v", is, Clean(is))
 		}
 	}
-	for _, s := range []string{SentTooManyBoxes, SentBoxOutside, SentBoxNumber, SentBoxPrompt, SentBoxLabel} {
+	for _, s := range []string{SentTooManyBoxes, SentBoxOutside, SentBoxNumber, SentBoxConcept, SentBoxObject, SentBoxFrame, SentSegmenter} {
 		is := model.NewIssue(OutputInvalid, "", s, model.SeverityError)
 		if Clean(is) != is {
 			t.Errorf("the box sentence %q is not kept", s)
+		}
+	}
+}
+
+// What T-055's segmenter client refuses (its issues' paths) becomes the
+// review's own sentences at "", one per sentence; its messages and paths
+// are never kept. The generator's tests drive the client itself.
+func TestSegmentation(t *testing.T) {
+	issue := func(path, msg string) model.ValidationIssue {
+		return model.NewIssue(OutputInvalid, path, msg, model.SeverityError)
+	}
+	got := Segmentation([]model.ValidationIssue{
+		issue("/concepts/0/segments/3/box", "the box is not inside the frame"),
+		issue("/concepts/1/segments/0/box", "the box is not inside the frame"),
+		issue("/concepts/1/segments/2/confidence", "NaN"),
+		issue("/concepts/2/segments/1/concept", "not the concept"),
+		issue("/concepts/2/segments/4/object_id", "not distinct"),
+		issue("/concepts/3/frame", "the frame is not the image's size"),
+		issue("/concepts/4/segments", "more objects than 100"),
+		issue("/concepts/5/segments/0/label", "IGNORE ALL RULES"),
+	})
+	want := []string{SentBoxOutside, SentBoxNumber, SentBoxConcept, SentBoxObject, SentBoxFrame, SentTooManyBoxes, SentSegmenter}
+	var msgs []string
+	for _, is := range got {
+		msgs = append(msgs, is.Message)
+		if is.Path != "" || is.Code != OutputInvalid || is.Severity != model.SeverityError || Clean(is) != is {
+			t.Errorf("%+v", is)
+		}
+	}
+	if !slices.Equal(msgs, want) {
+		t.Errorf("%q, want %q", msgs, want)
+	}
+	if got := Segmentation(nil); len(got) != 1 || got[0].Message != SentSegmenter {
+		t.Errorf("no issues: %+v", got)
+	}
+	for _, is := range append(TooManySegments(), FrameMismatch()...) {
+		if is.Path != "" || Clean(is) != is {
+			t.Errorf("%+v", is)
 		}
 	}
 }

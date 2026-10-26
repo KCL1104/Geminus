@@ -64,12 +64,13 @@ type PackLookup interface {
 type Config struct {
 	// Provider is the checked provider client (provider.Client) of the
 	// deployment's mode: disabled, fake or an approved live adapter. A
-	// photo proposal (T-056) asks it as a provider.ImageProposer.
+	// photo proposal (T-056) is sent to it with the image as the prompt's
+	// image part, only when it takes images (provider.Client.AcceptsImages).
 	Provider provider.LLMProvider
-	// Segmenter finds the boxes in a photo proposal's image (T-056; a
-	// vision.Client of the deployment's mode); nil fails every photo
-	// proposal with AI_PROVIDER_NOT_CONFIGURED.
-	Segmenter Segmenter
+	// Segmenter finds the pack's concepts in a photo proposal's image
+	// (T-056; T-055's provider.SegmentClient of the deployment's mode); nil
+	// fails every photo proposal with AI_PROVIDER_NOT_CONFIGURED.
+	Segmenter provider.Segmenter
 	// Budget bounds the context the handler builds; it is the client's.
 	Budget provider.Budget
 	Packs  PackLookup
@@ -164,8 +165,6 @@ var providerMessages = map[provider.Code]string{
 	// T-053: refused before any provider call.
 	provider.CodeQuotaExceeded:    "a live AI spend limit was reached; no provider call was made",
 	provider.CodeSpendUnavailable: "the live AI spend ledger could not reserve for the call; no provider call was made",
-	// T-056: refused before any call.
-	provider.CodeImageUnsupported: "the configured AI provider does not take images; no provider call was made",
 }
 
 // providerFailure is the job failure of a provider error.

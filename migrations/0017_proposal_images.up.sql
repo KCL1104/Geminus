@@ -6,7 +6,7 @@
 --
 --   * the object key (tenant/<organization>/assets/proposal-images/
 --     <proposal>/image, made by the server; twin.object_key_ok as 0001),
---     the SHA-256 and size of the stored bytes (at most 10,000,000), the
+--     the SHA-256 and size of the stored bytes (at most 5,242,880: 5 MiB), the
 --     media type (image/png or image/jpeg) and the size in pixels (32 to
 --     4096 on each side), and when it was recorded;
 --   * the composite foreign key to the proposal of the same organization,
@@ -34,7 +34,7 @@ CREATE TABLE twin.ai_proposal_images (
   proposal_id twin.aip_id NOT NULL,
   object_key text NOT NULL,
   content_hash twin.sha256 NOT NULL,
-  size_bytes integer NOT NULL CONSTRAINT ai_proposal_images_size CHECK (size_bytes BETWEEN 1 AND 10000000),
+  size_bytes integer NOT NULL CONSTRAINT ai_proposal_images_size CHECK (size_bytes BETWEEN 1 AND 5242880),
   media_type text NOT NULL CONSTRAINT ai_proposal_images_media_type CHECK (media_type IN ('image/png', 'image/jpeg')),
   width integer NOT NULL CONSTRAINT ai_proposal_images_width CHECK (width BETWEEN 32 AND 4096),
   height integer NOT NULL CONSTRAINT ai_proposal_images_height CHECK (height BETWEEN 32 AND 4096),
