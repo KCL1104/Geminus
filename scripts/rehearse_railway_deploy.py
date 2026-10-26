@@ -528,8 +528,11 @@ def main() -> int:
                     or "deploy: done" in p.stdout or (state(name)["proxies"] != (["tcp_1"] if extra else [])):
                 failures.append(f"P6 SIG{label}: exit {p.returncode} (want {128 + signum}), proxies {state(name)['proxies']}: "
                                 f"{(p.stdout + p.stderr)[-400:]}")
-            if extra and delete_cmd.format("tcp_1") not in p.stdout:
-                failures.append(f"P6 SIG{label}: the proxy left open is not named with its removal: {p.stdout[-400:]}")
+            # The report itself, not the echo of the delete command (`$ railway tcp-proxy delete ...`).
+            reported = [line for line in p.stdout.splitlines() if not line.lstrip().startswith("$")]
+            if extra and not (any("could not remove this run's TCP proxy tcp_1" in line and delete_cmd.format("tcp_1") in line for line in reported)
+                              and any("TCP proxy tcp_1 on Postgres is still open" in line for line in reported)):
+                failures.append(f"P6 SIG{label}: the proxy left open is not reported with its removal: {p.stdout[-400:]}")
             if TOKEN in p.stdout + p.stderr:
                 failures.append(f"P6 SIG{label}: the token was printed")
 
