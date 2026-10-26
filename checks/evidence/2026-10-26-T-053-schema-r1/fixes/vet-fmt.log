@@ -1,0 +1,4 @@
+2026-10-26T15:16:47Z commit 39feebb: bash /home/user/Geminus/.claude/worktrees/agent-a0a11ec7ab4ef5df4/checks/evidence/2026-10-26-T-053-schema-r1/fixes/verify.sh vet-fmt
+gofmt -l cmd internal schemas scripts prompts: (nothing)
+go vet ./internal/ai/... ./internal/aievals/... ./cmd/...
+exit 0

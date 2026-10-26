@@ -33,8 +33,10 @@ const MaxEncodedValueBytes = 64 << 10
 // own limit of 10000. That limit is the point: Decode puts the value back
 // into the answer (at /changes/i/value, three levels down) and re-encodes
 // it, and before the bound a JSON text valid on its own at 9998 levels was
-// deeper than the encoder takes once placed there. With the bound the
-// rewritten proposal answer is at most 3 + 64 levels deep.
+// deeper than the encoder takes once placed there. With the bound a
+// decoded value ends at most 3 + 64 levels down in a proposal answer, and
+// the rest of the answer keeps the depth it had, which the strict read of
+// the whole answer already bounds.
 const MaxEncodedValueDepth = 64
 
 // maxIssues bounds the issues of one answer, as provider.Client does.

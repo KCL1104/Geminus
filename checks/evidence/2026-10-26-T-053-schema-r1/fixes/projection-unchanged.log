@@ -1,0 +1,9 @@
+projection of 0aa7a85 (git archive copy; a scratch test prints it with encoding/json MarshalIndent, tab)
+    zz_print_test.go:34: compact (encoding/json, as the backend sizes it): 2623 bytes, sha256 71bb98bf763fa35fed501eabd697909e997bc9f1e079ed2fd7ece485f70ff254
+--- PASS: TestZZPrintProjection (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.136s
+sha256 now:                                                  51933b889295ff946efd920c7fbecb76e061a70ed4c3ba3f8de2fbcb77d6191b
+sha256 checks/evidence/2026-10-26-T-053-schema/projected-proposal-output.txt: 51933b889295ff946efd920c7fbecb76e061a70ed4c3ba3f8de2fbcb77d6191b
+identical
+exit 0

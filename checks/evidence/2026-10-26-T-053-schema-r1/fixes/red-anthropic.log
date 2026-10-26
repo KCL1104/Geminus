@@ -1,0 +1,54 @@
+Mon Oct 26 14:41:41 UTC 2026
+commit: b861277 (red; working tree: 0 changed file(s) under internal/)
+go test -count=1 -v -run '^(TestDecodeBoundsTheNesting|TestDecodeFailsClosed|TestADeepValueMakesTheAnswerInvalid|FuzzDecode|TestDecodeOnlyTheEncodedPlaces|TestDecodeRefuses|TestDecodeCapsTheIssues|TestProjectionRefuses|TestTheSubsetGuard)$' ./internal/ai/provider/anthropic/
+--- PASS: TestDecodeOnlyTheEncodedPlaces (0.01s)
+--- PASS: TestDecodeRefuses (0.01s)
+    encode_test.go:381: depth 65 (objects false): {"assumptions":["\"x\""],"changes":[{"op":"test","path":"/resources/1/id","value []
+    encode_test.go:381: depth 65 (objects true): {"assumptions":["\"x\""],"changes":[{"op":"test","path":"/resources/1/id","value []
+    encode_test.go:381: depth 66 (objects false): {"assumptions":["\"x\""],"changes":[{"op":"test","path":"/resources/1/id","value []
+    encode_test.go:381: depth 100 (objects false): {"assumptions":["\"x\""],"changes":[{"op":"test","path":"/resources/1/id","value []
+    encode_test.go:381: depth 9997 (objects false): {"assumptions":["\"x\""],"changes":[{"op":"test","path":"/resources/1/id","value []
+    encode_test.go:381: depth 9998 (objects false): {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:381: depth 9999 (objects false): {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:381: depth 10000 (objects false): {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+--- FAIL: TestDecodeBoundsTheNesting (0.06s)
+    encode_test.go:416: an answer that cannot be rewritten: {"a":"SENTINEL, not JSON","b":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ []
+    encode_test.go:437: deeper than jsontext's: {"status":"proposed","changes":[{"op":"add","path":"/a","value":[[[[[[[[[[[[[[[[ []
+    encode_test.go:437: not JSON: I approved it. SENTINEL []
+    encode_test.go:437: empty:  []
+    encode_test.go:437: a duplicate name: {"status":"proposed","status":"proposed"} []
+    encode_test.go:437: an escaped duplicate: {"status":"proposed","summary":"6","summary":"7","assumptions":["\"x\""],"risk_l []
+    encode_test.go:437: trailing data: {"status":"proposed","summary":"6","assumptions":["\"x\""],"risk_level":"low","c []
+    encode_test.go:437: invalid UTF-8: {"status":"proposed","summary":"6ÿ","assumptions":["\"x\""],"risk_level":"low"," []
+--- FAIL: TestDecodeFailsClosed (2.82s)
+--- PASS: TestDecodeCapsTheIssues (0.00s)
+--- PASS: TestTheSubsetGuard (0.00s)
+--- PASS: TestProjectionRefuses (0.00s)
+    encoded_test.go:196: issues at ["/changes/0/value" "/changes/3/value"], want ["/changes/0/value" "/changes/1/value" "/changes/3/value"]
+    encoded_test.go:196: issues at ["/changes/0/value" "/changes/3/value"], want ["/changes/0/value" "/changes/1/value" "/changes/3/value"]
+    encoded_test.go:185: the client: <nil>, 4 changes
+    encoded_test.go:185: the client: <nil>, 4 changes
+    encoded_test.go:185: the client: <nil>, 4 changes
+--- FAIL: TestADeepValueMakesTheAnswerInvalid (0.09s)
+    --- FAIL: TestADeepValueMakesTheAnswerInvalid/65 (0.02s)
+    --- FAIL: TestADeepValueMakesTheAnswerInvalid/9997 (0.03s)
+    --- FAIL: TestADeepValueMakesTheAnswerInvalid/9998 (0.02s)
+    --- FAIL: TestADeepValueMakesTheAnswerInvalid/9999 (0.02s)
+    --- FAIL: TestADeepValueMakesTheAnswerInvalid/10000 (0.01s)
+    fuzz_test.go:108: change 0: the input's string is not a JSON text (jsontext: invalid character 'x' at start of value), yet the answer passes: "x"
+    fuzz_test.go:111: change 0: decoded "\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[", want "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[["
+--- FAIL: FuzzDecode (0.01s)
+    --- PASS: FuzzDecode/seed#0 (0.00s)
+    --- PASS: FuzzDecode/seed#1 (0.00s)
+    --- PASS: FuzzDecode/seed#2 (0.00s)
+    --- PASS: FuzzDecode/seed#3 (0.00s)
+    --- PASS: FuzzDecode/seed#4 (0.00s)
+    --- PASS: FuzzDecode/seed#5 (0.00s)
+    --- FAIL: FuzzDecode/seed#6 (0.01s)
+    --- FAIL: FuzzDecode/seed#7 (0.00s)
+    --- PASS: FuzzDecode/seed#8 (0.00s)
+    --- PASS: FuzzDecode/seed#9 (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/anthropic	3.092s
+FAIL
+exit 1

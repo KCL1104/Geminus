@@ -1,0 +1,10 @@
+T-053 schema follow-up, review round 1 fixes (branch t053-m1), 2026-10-26 UTC
+base: 50770c1 (the review); tests first: b861277; fix: 73866b9; tests: 0aa7a85, 39feebb; report, docs and this directory: the commit that adds this file
+logs and checks: 14:41-15:35 UTC (approx.); every log's last line is its exit code
+go: go version go1.27.3 linux/amd64 (GOTOOLCHAIN=local)
+PostgreSQL: 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1), the shared cluster (socket /var/lib/postgresql/geminus-t009-fresh, port 55440), neither started nor stopped here
+disposable database: dt_test_t053m1it (created empty for make integration-test, dropped afterwards)
+provider: no API call of any kind was made (no smoke, eval or count_tokens); GEMINUS_ANTHROPIC_API_KEY_A, GEMINUS_ANTHROPIC_API_KEY_B and ANTHROPIC_API_KEY were neither read nor printed; every HTTP test uses the package's local httptest server
+count_tokens 200 / input_tokens 1682 (2026-10-26) is the coordinator's run, recorded from the coordinator's account, not run here
+mutants, fuzz and the projection print ran only in git archive copies in the session's scratch directory, removed afterwards; nothing of them was written in the tree
+key scan: grep -rlE 'sk-ant-[a-z0-9]' over this directory finds nothing (exit 1); no added line of the diff from 50770c1 under internal/ or docs/ matches it

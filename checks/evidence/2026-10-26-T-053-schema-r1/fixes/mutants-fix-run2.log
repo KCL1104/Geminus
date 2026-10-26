@@ -1,0 +1,12 @@
+copy of 39feebb, go: go version go1.27.3 linux/amd64
+M1a	KILLED	M1 put back: an answer Decode cannot rewrite goes on undecoded (R14 on the new code)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	TestDecodeFailsClosed
+M1b	KILLED	a rewrite error drops the issues found before (F1 as the reviewer wrote it)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeFailsClosed
+M1c	KILLED	a rewrite error's root issue may be cut by the cap	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeFailsClosed
+M1d	KILLED	an answer that is not one strict JSON document goes on undecoded again	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	TestDecodeFailsClosed
+M1e	KILLED	no nesting bound	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	TestADeepValueMakesTheAnswerInvalid, TestDecodeBoundsTheNesting
+M1f	KILLED	the nesting bound is off by one (exactly 64 levels refused)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeBoundsTheNesting, TestDecodeFailsClosed
+M1g	KILLED	the nesting bound is the decoder's own (10000)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	TestADeepValueMakesTheAnswerInvalid, TestDecodeBoundsTheNesting
+M1h	INVALID	deeper fails open on a read error other than the end (cannot happen for a valid text)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	does not build: internal/ai/provider/anthropic/encoded.go:8:2: "io" imported and not used
+S1a	KILLED	skip the decode step (S1 on the new code: Decode returns every answer as it came)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	FuzzDecode, TestADeepValueMakesTheAnswerInvalid, TestDecodeBoundsTheNesting, TestDecodeCapsTheIssues, TestDecodeFailsClosed, TestDecodeOnlyTheEncodedPlaces
+summary	INVALID=1 KILLED=8
+exit 1

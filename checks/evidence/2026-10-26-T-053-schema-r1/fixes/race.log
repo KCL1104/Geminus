@@ -1,0 +1,16 @@
+2026-10-26T15:17:34Z commit 39feebb: go test -race -count=1 ./internal/ai/... ./internal/aievals/... ./cmd/...
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	21.309s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	49.813s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	1.569s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	1.631s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	1.978s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	74.032s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	2.390s
+ok  	github.com/kcl1104/geminus/internal/ai/review	18.703s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	1.059s
+ok  	github.com/kcl1104/geminus/internal/aievals	3.659s
+?   	github.com/kcl1104/geminus/cmd/ai-eval-live	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/api	1.280s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.129s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.476s
+exit 0

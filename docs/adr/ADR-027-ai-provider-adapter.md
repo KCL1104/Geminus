@@ -64,7 +64,7 @@ tasks.json 原規劃的 `internal/ai/context/` 改名為 `internal/ai/aicontext`
 ## Consequences
 
 - 所有 mode 走同一個 `Client`，fake 的回答也要通過完整 schema；E2E（T-040）以 fake 的 script 驅動。
-- Live adapter 只對本機 httptest server 測過。對真實 API 的任何呼叫、投影後的 schema 是否被 API 接受、`output_config` 在 owner 選定的 model 上的行為：**NOT RUN**。
+- Live adapter 只對本機 httptest server 測過。對真實 API 的任何呼叫、投影後的 schema 是否被 API 接受、`output_config` 在 owner 選定的 model 上的行為：**NOT RUN**。（2026-10-26 追記，T-053：第一次 live smoke 因投影的空 schema 被 400 拒絕；修正後的投影由 coordinator 以免費的 `count_tokens` 確認被接受（HTTP 200、input_tokens 1682）；模型在 `output_config` 下的實際回答仍 NOT RUN。見 AI_SPEC §2、checks/T-053_VALIDATION.md。）
 - 被 401／403 標為不可用的 credential 在 process 重啟前不再使用（換 key 即重啟）；402 的 credential 15 分鐘後再試一次，仍是 402 就再休息 15 分鐘。冷卻時間是每個 process 的，多個 worker 各自探測。
 - SDK 先讀完整個 response body，client 的 `MaxOutputBytes` 才檢查；body 的大小由 `max_tokens` 與 attempt timeout 限制，不由該檢查限制。
 - `locale.CheckProse` 比對數字時忽略正負號（「減少 3.5」對應 -3.5）；delta 的方向是否正確由 T-030 的 analyst 檢查負責。

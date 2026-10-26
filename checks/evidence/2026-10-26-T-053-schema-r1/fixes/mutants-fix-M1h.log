@@ -1,0 +1,4 @@
+copy of 39feebb, go: go version go1.27.3 linux/amd64 (M1h again, in a form that builds)
+M1h	EQUIVALENT	deeper fails open on a read error other than the end (cannot happen for a valid text)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	tests pass, as expected
+summary	EQUIVALENT=1
+exit 0

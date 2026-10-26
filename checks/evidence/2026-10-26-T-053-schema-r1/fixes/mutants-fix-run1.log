@@ -1,0 +1,29 @@
+copy of 0aa7a85, go: go version go1.27.3 linux/amd64
+M1a	KILLED	M1 put back: an answer Decode cannot rewrite goes on undecoded (R14 on the new code)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/ ./internal/aievals/	TestDecodeFailsClosed
+M1b	KILLED	a rewrite error drops the issues found before (F1 as the reviewer wrote it)	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeFailsClosed
+M1c	KILLED	a rewrite error's root issue may be cut by the cap	internal/ai/provider/anthropic/encoded.go	./internal/ai/provider/anthropic/	TestDecodeFailsClosed
+Traceback (most recent call last):
+  File "/home/user/Geminus/.claude/worktrees/agent-a0a11ec7ab4ef5df4/checks/evidence/2026-10-26-T-053-schema-r1/fixes/fix_mutants.py", line 68, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/user/Geminus/.claude/worktrees/agent-a0a11ec7ab4ef5df4/checks/evidence/2026-10-26-T-053-schema-r1/fixes/fix_mutants.py", line 60, in main
+    r = rm.one(root, env, mid, what, rel, edits, pkgs, expect)
+  File "/home/user/Geminus/.claude/worktrees/agent-a0a11ec7ab4ef5df4/checks/evidence/2026-10-26-T-053-schema-r1/reviewer/reviewer_mutants.py", line 128, in one
+    code, out = run(["go", "test", "-count=1", "-p", "1", *pkgs], root, env)
+                ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/Geminus/.claude/worktrees/agent-a0a11ec7ab4ef5df4/checks/evidence/2026-10-26-T-053-schema-r1/reviewer/reviewer_mutants.py", line 93, in run
+    p = subprocess.run(args, capture_output=True, text=True, cwd=cwd, env=env)
+  File "/usr/lib/python3.13/subprocess.py", line 557, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 1223, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/subprocess.py", line 2196, in _communicate
+    stdout = self._translate_newlines(stdout,
+                                      self.stdout.encoding,
+                                      self.stdout.errors)
+  File "/usr/lib/python3.13/subprocess.py", line 1100, in _translate_newlines
+    data = data.decode(encoding, errors)
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 487: invalid start byte
+exit 1

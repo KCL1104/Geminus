@@ -509,7 +509,7 @@ Branch `t053-schema`（從 c7cf86c 開始，沒有 push）。Commit：3784d95（
    - `/changes/*/value when /status="proposed", /changes/*/op="test"`
 
    位置以 member 與 array item 的路徑表示，路徑上每個 `oneOf`／`anyOf` 的分支以「每個分支都 required、各有不同 const 的 member」區分（root 為 `status`，patch item 為 `op`）；沒有這種 member 的分支中的開放值、本身是分支的開放值、root 的開放值，投影一律拒絕。投影後沒有具體型別（type、enum、const、anyOf、allOf）的 schema（例如只剩被移除的 constraint）也拒絕，不再送出空 schema。`allOf` 中的開放 member 沒有約束，照舊略過。投影後的 proposal-output 見 `projected-proposal-output.txt`（6.8 KB，guard 沒有違規）。
-2. **解碼**（`encoded.go`，`Projection.Decode`；`anthropic.go` 的 `answer` 在把回答交給 `provider.Client` 之前呼叫）：只在 `Encoded` 的位置，依路徑與 const 條件結構化地比對，不依字串的內容猜測（summary、assumption、path 即使看起來像 JSON 也不動；`remove`、`move` 或 `needs_input` 中的 value 也不動，交給完整 schema 拒絕）。該位置的字串必須恰好是一個嚴格的 JSON text：單一值、合法 UTF-8、escape 是合法的 code point、沒有重複 member、之後只有空白、至多 `MaxEncodedValueBytes`（64 KiB）、nesting 在 jsontext 的 10000 層之內；以解碼後的值取代（數字與字串的 escape 照模型寫的保留；被改寫的 object 的 member 依名稱排序，output hash 是 JCS，不受影響）。該位置不是這樣的字串（包括不是字串），回答即 `invalid_output`（pipeline 原本對不合 schema 的回答使用的 code），issue 只有該位置的 JSON Pointer（例如 `/changes/1/value`）、`AI_OUTPUT_INVALID` 與固定訊息，沒有回答的內容；generator 依原本的路徑把它記為 `invalid`，不會有 ready 的 proposal。回答本身不是嚴格的單一 JSON document 時原樣交給 client（client 的完整 schema 檢查拒絕它），沒有適用的位置時回答 byte for byte 不變。解碼後的回答照樣經過完整 2020-12 schema、strict decode 與 server review。
+2. **解碼**（`encoded.go`，`Projection.Decode`；`anthropic.go` 的 `answer` 在把回答交給 `provider.Client` 之前呼叫）：只在 `Encoded` 的位置，依路徑與 const 條件結構化地比對，不依字串的內容猜測（summary、assumption、path 即使看起來像 JSON 也不動；`remove`、`move` 或 `needs_input` 中的 value 也不動，交給完整 schema 拒絕）。該位置的字串必須恰好是一個嚴格的 JSON text：單一值、合法 UTF-8、escape 是合法的 code point、沒有重複 member、之後只有空白、至多 `MaxEncodedValueBytes`（64 KiB）、nesting 在 jsontext 的 10000 層之內（review 第 1 輪 M1 更正：這不夠，9998–10000 層的值放回 `/changes/i/value` 後改寫失敗；現在上限為 `MaxEncodedValueDepth` 64 層，見「Schema follow-up 的 review 第 1 輪：修正」）；以解碼後的值取代（數字與字串的 escape 照模型寫的保留；被改寫的 object 的 member 依名稱排序，output hash 是 JCS，不受影響）。該位置不是這樣的字串（包括不是字串），回答即 `invalid_output`（pipeline 原本對不合 schema 的回答使用的 code），issue 只有該位置的 JSON Pointer（例如 `/changes/1/value`）、`AI_OUTPUT_INVALID` 與固定訊息，沒有回答的內容；generator 依原本的路徑把它記為 `invalid`，不會有 ready 的 proposal（review 第 1 輪 M1 更正：修正前這句不成立，改寫失敗時 Decode 交出未解碼的回答、沒有 issue，server review 可以使它 ready；已修正）。回答本身不是嚴格的單一 JSON document 時原樣交給 client（client 的完整 schema 檢查拒絕它；review 第 1 輪之後改為 Decode 自己以 root 的 issue 拒絕，不再交出），沒有適用的位置時回答 byte for byte 不變。解碼後的回答照樣經過完整 2020-12 schema、strict decode 與 server review。
 3. **文件**：`projection.go` 的開頭註解寫明這一條是「只移除 constraint」的唯一例外與理由；`docs/AI_SPEC.md` §2 新增「投影的唯一編碼規則」一段，T-053 段落新增「Live smoke 的發現」；ADR-027 的 Schema projection 加一句追記（指向 AI_SPEC §2）；`docs/SECURITY.md` 記新的 log key。
 4. **Guard**（`guard_test.go`，`SubsetViolations`，與投影的程式分開寫）：依官方限制檢查一個 schema：空 schema（沒有 type／enum／const／anyOf／allOf／$ref）、`true`／`false` schema、沒有 `additionalProperties: false` 的 object、不在清單中的 keyword（比官方更嚴：`pattern`、`title` 也算）、未知的 type 與 format、enum 中的複合型別、`minItems` 不是 0 或 1、`allOf` 配 `$ref`、外部或解不開的 `$ref`、經 `$ref` 或物件本身的遞迴、optional 參數超過 24、union 參數超過 16。`TestEverySchemaTheAdapterSendsIsInsideTheLimits` 檢查 `provider.Roles` 每個 role 的 output schema 的投影（三個 schema；approval 只服務 modeler 與 scenario），以及 `schemas/` 中其他能投影的 schema；`TestTheRequestSchemaIsInsideTheLimits` 檢查四個 role 實際送出的 request body。修正前它們列出 proposal-output 的那三個位置（`red-anthropic.log`）：這個 guard 能在離線時發現這次的錯誤（mutant S9c）。
 5. **可診斷**：provider 以錯誤 status 回答時，`provider.Error` 除了原有的 `Status` 之外另有 `ErrorType`：只取上面官方清單中的 11 個 type，其他（不認得的、大小寫不同、帶了其他文字、沒有 type、body 不是 JSON）一律為 `other`，從不記 message；`Error()` 的文字為 `(status 400 invalid_request_error)`。沒有錯誤 status 的失敗（全部 credential 被拒、連線中斷、逾時）兩者皆空。Eval report 每個 case 的 outcome 有 `provider_status`、`provider_error_type`（沒有時不出現）；`ai-eval-live` 在 summary 之後為每個這樣的 case 印 `ai-eval-live: WARNING: MOD-002 failed with AI_REQUEST_REJECTED: the provider answered 400 invalid_request_error`；worker 在 `ai provider call ended` 之後另寫一行 WARN `the ai provider answered the call with an error status`（`provider_status`、`provider_error_type`、`code`、`role`、`credential_label`、`provider_request_id`）。兩個 log key 登記在 `internal/observability/redact.go`（數字、token 形狀；不合形狀的值記為 `[redacted]`）。
@@ -521,8 +521,8 @@ Branch `t053-schema`（從 c7cf86c 開始，沒有 push）。Commit：3784d95（
 | `TestTheSubsetGuard` | guard 對 28 種官方不接受的 schema 各給出對的理由（`{}`、只有 description、array item 與 anyOf member 的 `{}`、`true`、開放 object、`additionalProperties` true／schema、minLength、maxLength、maximum、multipleOf、pattern、maxItems、minItems 2、oneOf、未知 keyword、`$ref` 遞迴、物件包含自己、外部與解不開的 `$ref`、allOf 配 `$ref`、複合 enum、format、type、17 個 union、25 個 optional），並接受一個在限制內的 schema | PASS（guard 本身是測試程式） |
 | `TestEverySchemaTheAdapterSendsIsInsideTheLimits` | 每個 role 的投影沒有違規、沒有 `{}`；其他能投影的 schema 亦然 | FAIL：proposal-output 的三個 `value`（另有 scenario、simulation 的投影） |
 | `TestTheOpenValuesAreEncoded` | `Encoded` 恰好是上面三個位置；那三個位置是加了 description 的 string，remove 沒有 value，整個 schema 只有三個 encoded string；其他 output schema 沒有；一般規則（member、array item、以 const 區分的分支、description 的保留、allOf 的開放 member 略過）與它們的解碼 | FAIL |
-| `TestDecodeOnlyTheEncodedPlaces` | 只解碼那些位置（字串、數字、有空白與 escape 的 object、超出 float64 精度的數字、null、`[]`）；summary、assumption、effect、path、remove／move 的 value 不動；沒有適用位置、不是 JSON、重複 member、空字串的回答 byte for byte 不變 | FAIL |
-| `TestDecodeRefuses` | 不是 JSON、空字串、只有空白、兩個值、尾隨資料、尾隨的 `]` 與 `,`、重複 member、lone surrogate、超過 64 KiB、超過 nesting 上限、數字／object／null／array（不是字串）：都是一個 `/changes/1/value` 的 `AI_OUTPUT_INVALID` issue，訊息沒有回答的文字；恰好 64 KiB 可以 | FAIL |
+| `TestDecodeOnlyTheEncodedPlaces` | 只解碼那些位置（字串、數字、有空白與 escape 的 object、超出 float64 精度的數字、null、`[]`）；summary、assumption、effect、path、remove／move 的 value 不動；沒有適用位置、不是 JSON、重複 member、空字串的回答 byte for byte 不變（review 第 1 輪之後只有沒有適用位置的嚴格 JSON 回答不變；不是 JSON、重複 member、空字串改為拒絕） | FAIL |
+| `TestDecodeRefuses` | 不是 JSON、空字串、只有空白、兩個值、尾隨資料、尾隨的 `]` 與 `,`、重複 member、lone surrogate、超過 64 KiB、超過 nesting 上限（指 jsontext 的 10001 層；9998–10000 層沒有測，review 第 1 輪 M1）、數字／object／null／array（不是字串）：都是一個 `/changes/1/value` 的 `AI_OUTPUT_INVALID` issue，訊息沒有回答的文字；恰好 64 KiB 可以 | FAIL |
 | `TestProjectionRefuses`（新增 4 個） | 沒有 const 區分的分支中的開放值、本身是分支的開放值、root 的開放值、只剩被移除 constraint 的 schema 都被拒 | FAIL（3 個被投影；root 原本就拒絕） |
 | `TestProjection`（改變的期望值，見下） | 合法 fixture 依 `Encoded` 編碼之後通過投影，且解碼回原本的 fixture；不合法的仍不通過 | PASS |
 | `TestTheRequestSchemaIsInsideTheLimits` | 四個 role 送出的 request 的 schema 沒有違規、沒有 `{}`；modeler 恰好三個 encoded string（回歸測試） | FAIL：modeler、scenario |
@@ -591,7 +591,7 @@ Log：`red-anthropic.log`、`red-aievals.log`、`red-generator.log`、`red-aiapp
 
 ### NOT RUN
 
-- **修正後的 live 重跑**（`make ai-smoke-live`，之後 `make ai-eval-live`）：依指示不做任何 API 呼叫，由 coordinator 執行。修正後的 schema 是否被 API 接受、模型是否照 description 寫出 JSON text（例如字串帶引號），只有 live 能驗證；免費的 `count_tokens` 可先確認 schema 被接受（同樣 NOT RUN）。
+- **修正後的 live 重跑**（`make ai-smoke-live`，之後 `make ai-eval-live`）：依指示不做任何 API 呼叫，由 coordinator 執行。修正後的 schema 是否被 API 接受、模型是否照 description 寫出 JSON text（例如字串帶引號），只有 live 能驗證；免費的 `count_tokens` 可先確認 schema 被接受（同樣 NOT RUN；之後由 coordinator 執行，HTTP 200，見「Coordinator 的 count_tokens」）。
 - **全套 `make backend-race`**：只對改到的 package 做了 race（上表）。
 - **`make frontend-test`、`make e2e-test`**：沒有改 UI、HTTP contract、`schemas/` 或 TS 型別（spec-check 的 `PASS_TS_CONTRACTS_FRESH`）。
 
@@ -605,3 +605,165 @@ Log：`red-anthropic.log`、`red-aievals.log`、`red-generator.log`、`red-aiapp
 ### Coordinator 的執行（schema 修正，f930f50）
 
 Coordinator 把 `t053-schema` 的三個 commit（3784d95、6c0e38d、20bb758）cherry-pick 到 9cf8e9a 之後（成為 51dbdb2、b188c51、f930f50），沒有衝突以外的修改。在整合後的 tree 上（`checks/evidence/2026-10-26-T-053-schema/coordinator/`）：`make spec-check`、`make backend-test GOFLAGS=-count=1`、`make architecture-check`、`make ai-eval`、govulncheck v1.9.0、`go test -race -count=1` 於 `internal/ai/...`、`internal/aievals/...`、`internal/proposals/...`、`cmd/ai-eval-live/...`，以及全新 `dt_test_t053sc` 上的 `make integration-test`，全部 exit 0。Mutation（23 個）由修正者執行，coordinator 沒有重跑。下一步：在有 key 的 session 先以不收費的 `count_tokens` 確認新的投影被接受，再重跑 live smoke（上一次被拒、花費 0）與 eval。
+
+### Coordinator 的 count_tokens（修正後的投影，2026-10-26）
+
+這是 coordinator 的執行，不是 review 第 1 輪修正者的（修正者沒有做任何 API 呼叫）。以下依 coordinator 的說明記錄；結果原本沒有寫進 repository（review 第 1 輪 L2）。
+
+| 項目 | 內容 |
+|---|---|
+| 日期 | 2026-10-26 |
+| 執行者 | coordinator，在有 key 的 session |
+| Endpoint | `POST /v1/messages/count_tokens`：免費，不建立 message、不產生 output、不收費 |
+| Schema | 修正後 proposal-output 的投影（`output_config.format`），f930f50 起的投影 |
+| 結果 | HTTP 200，`input_tokens` 1682 |
+| Model | coordinator 的說明沒有寫明（H-018 只批准 `claude-opus-5-5`）；待 coordinator 補記 |
+
+- **是哪一個投影**：review 第 1 輪的修正沒有改變投影。在 0aa7a85 的 `git archive` 複本中以同樣格式印出 proposal-output 的投影，與 `checks/evidence/2026-10-26-T-053-schema/projected-proposal-output.txt` byte for byte 相同（sha256 `51933b889295ff946efd920c7fbecb76e061a70ed4c3ba3f8de2fbcb77d6191b`；`checks/evidence/2026-10-26-T-053-schema-r1/fixes/projection-unchanged.log`）。以 encoding/json 寫成 compact 時為 2623 bytes、sha256 `71bb98bf763fa35fed501eabd697909e997bc9f1e079ed2fd7ece485f70ff254`（SDK 送出的 bytes 可能不同；coordinator 送出的 bytes 本身的 hash 沒有記錄）。
+- **它證明的**：API 接受修正後的 schema。同一個 endpoint 對修正前、帶空 schema 的投影回 400。
+- **它沒有證明的**：模型是否照 description 寫出 JSON text、回答能否解碼並通過 server review。這些只有修正後的 live smoke 與 eval 能證明（NOT RUN）。
+
+## Schema follow-up 的 review 第 1 輪：修正（branch `t053-m1`）
+
+獨立 reviewer（H-003）審查 `git diff 9cf8e9a 09ed10e`，結論 **CHANGES REQUESTED**：一個 Medium（M1）、兩個 Low（L1、L2）與 Info（`checks/evidence/2026-10-26-T-053-schema-r1/reviewer/REVIEW.md`，50770c1）。Branch `t053-m1` 從 50770c1 開始，沒有 push。Commit 如下：
+
+- b861277：測試先行與沒有行為的 stub（紅）；
+- 73866b9：修正（綠）；
+- 0aa7a85：fail-closed 測試再加上 cap 的 assertion；
+- 39feebb：該測試失敗時以 `%q` 印出回答，mutant harness 才讀得了它的 output（見「Mutation」）；
+- 本節所在的 commit：文件、本報告、證據與 `encoded.go` 一處註解的更正；
+- 下一個 commit：在本節所在的 commit 上做的最後檢查（`final-anthropic.log`、`spec-check-final.log`）。
+
+證據在 `checks/evidence/2026-10-26-T-053-schema-r1/fixes/`，每個 log 的最後一行是 exit code。本輪**沒有任何 API 呼叫**（沒有 smoke、eval 或 count_tokens），key 沒有被讀取或印出，所有 HTTP 測試都對 package 的本機 httptest server。Spend、meter、ledger、config 與 migrations 沒有改。
+
+### M1（Medium）：無法改寫的回答未解碼地交出 → 修正
+
+- **原因**：`Decode` 在 `rewrite` 出錯時回傳原本的回答，沒有 issue（註解說「cannot happen」）。JSON text 只受 jsontext 自己的 10000 層限制。9998–10000 層的值單獨合法，但放回 `/changes/i/value`（下三層）之後超過 encoder 的上限，`json.Marshal` 失敗。結果：
+  - 回答的每個編碼值都保持模型寫的字串；
+  - 其他位置已找到的 issue 也一起丟掉；
+  - 完整 schema 接受這個回答（canonical 的 `value` 是 `{}`），server review 可以使它 ready（reviewer 的 Q1）。
+- **修正 1：fail closed**（`encoded.go` 的 `Decode`）：
+  - `rewrite` 的任何錯誤都不產生回答。之前各位置找到的 issue 保留（至多 19 個），最後加一個 root（`""`）的 `AI_OUTPUT_INVALID`，訊息為「the answer cannot be decoded」。這是 reviewer 的 F1，另外保留之前的 issue。
+  - 回答本身不是一個嚴格的 JSON document 時，也不再原樣交給 client，而是 root 的「the answer is not one strict JSON document」：這也是無法產生解碼後回答的一步。適用的情況：不是 JSON、空字串、重複 member（含 escape 後）、尾隨資料、invalid UTF-8、超過 jsontext 的 10000 層。
+  - Client 的 parse（`validate.Document`，encoding/json/v2 的預設）原本就以同樣的嚴格程度拒絕這些回答，所以結果同樣是 `invalid_output`。改變的是 `Decode` 不再依賴另一個元件。
+  - 沒有 `Encoded` 位置的投影（analyst、importer）照舊原樣交給 client。
+- **修正 2：nesting 上限**（`MaxEncodedValueDepth` = 64）：
+  - JSON text 通過 strict 檢查並 compact 之後，以 `jsontext.Decoder.StackDepth()` 量 nesting：`[]`、`{}` 各一層，與 `validate.MaxContainerDepth` 的算法相同。
+  - 超過 64 層，該位置就得到一個 issue「the JSON text is nested deeper than 64 levels」。這是固定訊息，格式與其他拒絕相同。
+  - 讀取時除了結尾以外的任何錯誤也算超過（fail closed）；合法的 text 不會有這種錯誤。
+  - 超過 10000 層的 text 照舊由 strict 檢查以「the string is not exactly one JSON text」拒絕。
+- **為什麼是 64**：
+  - Patch 的 value 是 model IR 的一部分。合法的 IR 至多 11 層：本身的結構 7 層；node 的 `domain_attributes` 是第 4 層的 object，本身至多 `MaxContainerDepth` = 8 層。這是 `fixes/ir-depth.py` 從 `schemas/model-ir.schema.json` 量出的（`ir-depth.log`）；9 個合法的 fixture 與 golden model 最深 7 層。
+  - Value 在 root 之下，所以至多 10 層。
+  - 64 給 IR 成長留了空間，又遠低於 10000：解碼後的值在 proposal 回答中至多到第 3 + 64 = 67 層，回答的其他部分維持原本的深度（整個回答的 strict 讀取已限制在 10000 層之內），所以 encoder 的錯誤不再可能發生（fail closed 仍保留，以防萬一）。修正 73866b9 的註解原本寫「改寫後的回答至多 67 層」，不精確，已在本節所在的 commit 中更正（只改註解）。
+  - Reviewer 的建議是 ≤ 64。
+- **測試**：先寫，紅 → 綠（`tests.sh`；`red-anthropic.log` exit 1，`green-anthropic.log` exit 0）。
+
+| 測試 | 檢查 | 修正前（stub） |
+|---|---|---|
+| `TestDecodeBoundsTheNesting` | 63、64 層（array、object、同層有兄弟）與 IR 最深的值（`domain_attributes` 8 層的 node）都能解碼。65 層（array 與 object）、66、100、9997、9998、9999、10000 層各是 `/changes/1/value` 的一個 issue「nested deeper than 64 levels」，沒有回答；10001 層是「not exactly one JSON text」 | FAIL：65–9997 層被解碼；9998–10000 層原樣交出，沒有 issue |
+| `TestDecodeFailsClosed` | 一個在文件中 9990 層深的位置（沒有 output schema 有這種位置），解碼後超過 10000 層，改寫失敗：沒有回答，之前 25 個 issue 中保留前 19 個，最後是 root 的「cannot be decoded」，共 20 個。不是嚴格 JSON 的 7 種回答都是 root 的「not one strict JSON document」。沒有 `Encoded` 的投影照舊原樣交出 | FAIL：全部原樣交出，沒有 issue |
+| `TestADeepValueMakesTheAnswerInvalid` | 經 HTTP 與 live eval（MOD-002 的 base），用 reviewer Q1 的回答：test（`code_review`，不是 JSON text）、add 65／9997／9998／9999／10000 層的值、remove、replace（`Renamed by a raw string`）。Client 為 `invalid_output`、沒有回答；issue 恰好在 `/changes/0/value`、`/changes/1/value`、`/changes/3/value`（沒有遺失），訊息不含回答的文字。Live eval 的 case 為 `invalid`，沒有 patch hash 或 risk，每個 gate 都是 0 | FAIL：65 與 9997 層只有兩個 issue；9998–10000 層 client 回答 ok（4 個 change，值是 raw 字串） |
+| `FuzzDecode`（新的 `fuzz_test.go`，seed 的寫法與 repository 其他 fuzz 測試相同） | Reviewer 的 fuzz invariant：有 issue 就沒有回答；通過完整 schema 的回答中，每個 add／replace／test 的 value 都來自恰好一個 JSON text 的字串。另外檢查 issue 至多 20 個，都是 `AI_OUTPUT_INVALID` 與固定訊息。Seed 含 M1 的 9998 層（不再需要環境變數開啟）、10000、64、65 層 | FAIL：seed 6（9998 層）、seed 7（10000 層） |
+| `TestDecodeOnlyTheEncodedPlaces`（改變的期望值，見下） | 沒有適用位置的嚴格 JSON 回答 byte for byte 不變 | PASS |
+
+- **改變的期望值（沒有降低）**：`TestDecodeOnlyTheEncodedPlaces` 原本要求 `I approved it.`、`{"status":"proposed","status":"proposed"}` 與空字串都 byte for byte 原樣交出。修正 1 之後它們被拒絕，所以從該清單移到 `TestDecodeFailsClosed`，期望值更嚴：沒有回答、root 的 issue。其他 assertion 不變，沒有加 skip。紅的 log 是 b861277 的版本；0aa7a85 把 `TestDecodeFailsClosed` 之前的 issue 從 1 個改為 25 個，以同時檢查 cap。0aa7a85 的版本對修正前的行為也是紅的：mutant M1a 把那個行為放回去，被這個測試擋下（見「Mutation」）。
+- **成本**：`TestDecodeFailsClosed` 的深文件約 2–3 s，在 `-race` 下約 23 s，因為 `rewrite` 對每一層都重讀一次，成本是深度的平方。只有沒有任何 output schema 會有的深位置才這麼慢；proposal-output 的位置只有 3 層。我沒有為了測試在 production code 加 hook。
+
+### L1（Low）：沒有測試擋下的安全性質 → 只加測試
+
+| Reviewer 的 mutant | 新的 assertion | 結果（reviewer 的 harness 重跑） |
+|---|---|---|
+| R1：Decode 的 20 個 issue 上限 | `TestDecodeCapsTheIssues`：25 個不能解碼的 value → 沒有回答，恰好 20 個 issue，依序在 `/changes/0/value`…`/changes/19/value` | KILLED（`TestDecodeCapsTheIssues`） |
+| R2：discriminator 不必在每個分支都 required | `TestProjectionRefuses` 的 `optional-const.json`（const member 在一個分支是 optional）與 `same-const.json`（兩個分支是同一個 const）：開放值被拒 | KILLED（`TestProjectionRefuses`） |
+| R8：只有 description 的投影算作 typed | `TestProjectionRefuses` 的 `emptied-described.json`（只剩被移除的 constraint 與 description）：被拒 | KILLED（`TestProjectionRefuses`） |
+| R10：guard 不把 type array 算作 union | `TestTheSubsetGuard` 的「too many type-array unions」：17 個 `"type": ["string","null"]` → 「17 parameters with union types」 | KILLED（`TestTheSubsetGuard`） |
+
+目前的程式是對的，我沒有為了 mutant 改程式。這些新的 assertion（三個測試函式中的四組）在修正前後都 PASS（`red-anthropic.log`、`green-anthropic.log`）。R3（拿掉 `inner.Compact()`）照 reviewer 的判斷實質上是 equivalent：改寫時重新 marshal 就已經 compact。它仍 SURVIVED，記為 Info。
+
+### L2（Low）：過時的文件 → 更正
+
+- **docs/SECURITY.md §7**：
+  - 新增「Output 的解碼」一項：adapter 在 schema 檢查之前，把 `Encoded` 位置的字串重新以 JSON 嚴格解析；列出 bounds（64 KiB、64 層）與 fail closed。
+  - 「未涵蓋」改為：第一次 smoke 被拒；修正後的投影由 coordinator 的 count_tokens 確認被接受；修正後的 smoke 與 eval 仍 NOT RUN。
+  - T-053 段落的「live smoke 與 live eval 本身（NOT RUN）」改為：第一次被拒，修正後 NOT RUN。
+- **docs/AI_SPEC.md §2**：
+  - 投影的編碼規則加上 64 層與 fail closed，並記下 M1 修正前「不會有 ready 的 proposal」並不成立。
+  - T-053 的「Live smoke 的發現」記下 coordinator 的 count_tokens 結果。
+- **ADR-027 Consequences**：在「投影後的 schema 是否被 API 接受：NOT RUN」加上 2026-10-26 的追記。
+- **程式註解**：
+  - `anthropic.go` 的 package 註解：原本說「只對本機 test server 測過」，改為 count_tokens 回 200、模型的回答仍未驗證；
+  - `projection.go` 的 `Projection` 註解；
+  - `encoded.go` 的 `Decode` 註解。
+- **本報告**：
+  - 以括號加註更正以下各處，原文保留，以免改寫紀錄：schema follow-up 的修正 2（「nesting 在 jsontext 的 10000 層之內」「不會有 ready 的 proposal」「原樣交給 client」）、`TestDecodeRefuses` 與 `TestDecodeOnlyTheEncodedPlaces` 的列、NOT RUN 中的 count_tokens。
+  - count_tokens 的結果記在上方的「Coordinator 的 count_tokens」。
+
+### Mutation
+
+Mutant 只在 scratch 中的 `git archive` 複本執行，tree 中沒有執行；每個 mutant 恰好替換一處文字，之後還原並比對 hash。
+
+**Reviewer 的 harness**（`reviewer/reviewer_mutants.py`，原樣使用）：
+
+- **第 1 次**（0aa7a85，`fixes/mutants-reviewer-run1.log`，sets `r1 s R K`）：
+  - `r1`：77 個不需 DB 的 mutant 中，76 個 KILLED。K11 為 ERROR：它的 pattern 已不存在，reviewer 的執行也是如此，由 set K 的 K11a 取代。
+  - `s`：跑到 S8。S1 為 ERROR，因為修正 1 把它的條件拆成兩個；S1b–S8 KILLED。
+  - 在 S9 時 harness 本身中止（exit 1）：S9 使 `TestDecodeFailsClosed` 失敗，該測試以 `%.80s` 印出一個不是 UTF-8 的回答，harness 以 UTF-8 讀 output 時丟出 UnicodeDecodeError。檔案在 `finally` 中照樣還原。
+  - 接著 `fix_mutants.py` 在 M1d 時因同一原因中止（M1a–M1c KILLED，`fixes/mutants-fix-run1.log`）。
+- **修正**：39feebb 讓該測試以 `%q` 印出回答；assertion 沒有改變。
+- **第 2 次**（39feebb 的新複本，`fixes/mutants-reviewer-run2.log`，sets `s R K`）：summary 為 KILLED=35、ERROR=3、SURVIVED=1。
+  - `s`：23 個中 22 個 KILLED；S1 為 ERROR（見上，由 S1a 取代）。
+  - `R`：15 個中 12 個 KILLED，包括 L1 的 **R1、R2、R8、R10**，以及 R9 的可 build 形式。R3 SURVIVED（Info，實質 equivalent）。R14 與 F1 為 ERROR：它們替換的正是 M1 修正拿掉的那一行，由 M1a、M1b 取代。
+  - `K`：K11a KILLED。
+- **`r1` 沒有在 39feebb 上重跑**：39feebb 只改了 anthropic package 中一個測試的輸出格式，所以第 1 次的 `r1` 結果仍然有效。
+
+**修正者的 harness**（`fixes/fix_mutants.py`，透過 reviewer 的 `one()`，第 2 次為 39feebb，`fixes/mutants-fix-run2.log`）：
+
+| ID | Mutant | 結果，擋下的測試 |
+|---|---|---|
+| M1a | M1 放回：無法改寫的回答未解碼地交出（新程式上的 R14） | KILLED：`TestDecodeFailsClosed` |
+| M1b | rewrite 出錯時丟掉之前的 issue（reviewer 原本寫法的 F1） | KILLED：`TestDecodeFailsClosed` |
+| M1c | rewrite 出錯時 root 的 issue 可能被 cap 切掉 | KILLED：`TestDecodeFailsClosed` |
+| M1d | 不是嚴格 JSON 的回答再度原樣交出 | KILLED：`TestDecodeFailsClosed` |
+| M1e | 沒有 nesting 上限 | KILLED：`TestADeepValueMakesTheAnswerInvalid`、`TestDecodeBoundsTheNesting` |
+| M1f | 上限差一（恰好 64 層被拒） | KILLED：`TestDecodeBoundsTheNesting`、`TestDecodeFailsClosed` |
+| M1g | 上限設成 decoder 自己的 10000 | KILLED：`TestADeepValueMakesTheAnswerInvalid`、`TestDecodeBoundsTheNesting` |
+| M1h | `deeper` 在結尾以外的讀取錯誤時 fail open | EQUIVALENT：合法的 text 不會有這種錯誤。第 2 次的寫法不能 build（INVALID，`io` 沒有使用），改為可 build 的寫法後單獨重跑（`fixes/mutants-fix-M1h.log`，exit 0） |
+| S1a | 跳過解碼（新程式上的 S1） | KILLED：`FuzzDecode`、`TestADeepValueMakesTheAnswerInvalid`、`TestDecodeBoundsTheNesting`、`TestDecodeCapsTheIssues`、`TestDecodeFailsClosed`、`TestDecodeOnlyTheEncodedPlaces`… |
+
+`fix_mutants.py` 第 2 次的 exit 為 1，只是因為 M1h 的 INVALID；重跑後沒有 SURVIVED、INVALID 或 ERROR。
+
+**Fuzz**：`FuzzDecode` 在 39feebb 的 `git archive` 複本中跑 120 s（`fixes/fuzz-120s.log`）：301 554 次執行，沒有失敗的輸入，exit 0。執行次數少於 reviewer 的 1.7 M，因為 seed 含 10000 層的值，每次執行較慢。
+
+### 實際執行（log 在 `checks/evidence/2026-10-26-T-053-schema-r1/fixes/`，最後一行是 exit code）
+
+| 指令 | Exit | Log／說明 |
+|---|---:|---|
+| `tests.sh red`：新的與改變的測試，對 stub（b861277） | 1 | `red-anthropic.log`：M1 的四個測試 FAIL；L1 的測試與 `TestDecodeOnlyTheEncodedPlaces`、`TestDecodeRefuses` PASS |
+| `tests.sh green`：同一組測試，修正後（73866b9） | 0 | `green-anthropic.log` |
+| `gofmt -l cmd internal schemas scripts prompts`、`go vet ./internal/ai/... ./internal/aievals/... ./cmd/...` | 0 | `vet-fmt.log`：gofmt 沒有列出任何檔案 |
+| `go test -count=1 ./internal/ai/... ./internal/aievals/... ./cmd/...` | 0 | `test.log`：13 個 package ok |
+| `go test -race -count=1`，同上 | 0 | `race.log`：13 個 package ok。anthropic 為 74 s，其中 `TestDecodeFailsClosed` 約 23 s；cmd/worker 等的 DB 測試在這裡 skip，在 integration-test 中執行 |
+| `make backend-test GOFLAGS=-count=1` | 0 | `backend-test.log`：gofmt、go vet、`GEMINUS_FULL_DIFFERENTIAL=1 go test`，75 個 package ok，沒有 `(cached)` |
+| `make architecture-check` | 0 | `architecture-check.log`：87 packages、23 rules、16 build configurations |
+| `make ai-eval` | 0 | `ai-eval.log`：`checks/ai-evals/fake-*.json` 沒有改變 |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `spec-check.log`：重產 `checks/docs-check.json`（已 commit）；本節寫好之後重跑：`spec-check-final.log` |
+| `make integration-test`（全新的 `dt_test_t053m1it`，`verify.sh integration`） | 0 | `integration-test.log`：db-test 之後的 db-go-test（`-race -p 1`、`GEMINUS_REQUIRE_DB_TESTS=1`）35 個 package ok，沒有 FAIL 或 SKIP；資料庫用完即刪 |
+| 本節所在的 commit（`encoded.go` 只改註解）：gofmt、`go vet` 與 `go test -count=1 ./internal/ai/provider/anthropic/` | 0 | `final-anthropic.log` |
+| `ir-depth.py`（IR 的最大深度） | 0 | `ir-depth.log` |
+| `projection-check.sh`（投影沒有改變） | 0 | `projection-unchanged.log` |
+| `reviewer_mutants.py`：第 1 次 `r1 s R K`，第 2 次 `s R K` | 1、1 | 見「Mutation」：第 1 次是 harness 中止，第 2 次的 exit 1 來自預期的 ERROR（S1、R14、F1）與 R3 |
+| `fix_mutants.py`：第 1 次，第 2 次，M1h 重跑 | 1、1、0 | 見「Mutation」 |
+| `go test -fuzz '^FuzzDecode$' -fuzztime 120s`（scratch 複本） | 0 | `fuzz-120s.log` |
+| `grep -rlE 'sk-ant-[a-z0-9]' checks/evidence/2026-10-26-T-053-schema-r1/fixes/` | 1（沒有找到） | 證據中沒有 key；50770c1 之後在 `internal/`、`docs/` 新增的每一行也都沒有符合的字串 |
+
+腳本：`tests.sh`、`run.sh`、`verify.sh`（`go`、`make`、`integration`）、`ir-depth.py`、`projection-check.sh`（以 `print_projection_test.go.txt` 印出投影）、`fix_mutants.py`。環境：`environment.txt`。
+
+### NOT RUN（本輪）
+
+- **任何 live 呼叫**：smoke、eval 與 count_tokens 都不是修正者能做的。count_tokens 的 200 是 coordinator 的結果（見上）。模型是否寫出 JSON text，只有修正後的 `make ai-smoke-live` 與 `make ai-eval-live` 能驗證。依 reviewer 的結論，coordinator 驗證 M1 的修正之後，可以依 H-025 先跑 smoke、再跑 eval，不需要另一輪 review；前提照 REVIEW.md 所列。
+- **全套 `make backend-race`**：只對改到的 package 做了 race（上表）；`make integration-test` 中的 DB 測試本身有 `-race`。
+- **`make frontend-test`、`make e2e-test`**：沒有改 UI、HTTP contract、`schemas/` 或 TS 型別；而且 port 是共用的。
+- **govulncheck**：沒有新增或改變任何 dependency。
+- **Round 1 harness 的 21 個 DB mutant**：DB 的程式沒有改。
+- **Coordinator 送出的 count_tokens request 的 bytes 與 model**：本輪無法查證；只能確認本 tree 的投影與 schema follow-up 記錄的投影相同。

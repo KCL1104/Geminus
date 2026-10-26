@@ -1,0 +1,35 @@
+package anthropic
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	jsonv1 "encoding/json"
+	"os"
+	"strings"
+	"testing"
+)
+
+// Scratch only: prints proposal-output's projection in the format of
+// checks/evidence/2026-10-26-T-053-schema/projected-proposal-output.txt.
+func TestZZPrintProjection(t *testing.T) {
+	p, err := Project("proposal-output.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := jsonv1.MarshalIndent(p.Schema, "", "\t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var enc []string
+	for _, l := range p.Encoded {
+		enc = append(enc, l.String())
+	}
+	out := string(raw) + "\n\nEncoded:\n" + strings.Join(enc, "\n") + "\n\nDropped:\n" + strings.Join(p.Dropped, "\n") +
+		"\n\nSubsetViolations: " + strings.Join(SubsetViolations(p.Schema), "; ") + "\n"
+	if err := os.WriteFile(os.Getenv("PROJ_OUT"), []byte(out), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	sent, _ := jsonv1.Marshal(p.Schema)
+	sum := sha256.Sum256(sent)
+	t.Logf("compact (encoding/json, as the backend sizes it): %d bytes, sha256 %s", len(sent), hex.EncodeToString(sum[:]))
+}

@@ -1,0 +1,30 @@
+Mon Oct 26 14:47:31 UTC 2026
+commit: 73866b9 (green; working tree: 0 changed file(s) under internal/)
+go test -count=1 -v -run '^(TestDecodeBoundsTheNesting|TestDecodeFailsClosed|TestADeepValueMakesTheAnswerInvalid|FuzzDecode|TestDecodeOnlyTheEncodedPlaces|TestDecodeRefuses|TestDecodeCapsTheIssues|TestProjectionRefuses|TestTheSubsetGuard)$' ./internal/ai/provider/anthropic/
+--- PASS: TestDecodeOnlyTheEncodedPlaces (0.01s)
+--- PASS: TestDecodeRefuses (0.01s)
+--- PASS: TestDecodeBoundsTheNesting (0.03s)
+--- PASS: TestDecodeFailsClosed (2.29s)
+--- PASS: TestDecodeCapsTheIssues (0.00s)
+--- PASS: TestTheSubsetGuard (0.00s)
+--- PASS: TestProjectionRefuses (0.00s)
+--- PASS: TestADeepValueMakesTheAnswerInvalid (0.11s)
+    --- PASS: TestADeepValueMakesTheAnswerInvalid/65 (0.02s)
+    --- PASS: TestADeepValueMakesTheAnswerInvalid/9997 (0.02s)
+    --- PASS: TestADeepValueMakesTheAnswerInvalid/9998 (0.03s)
+    --- PASS: TestADeepValueMakesTheAnswerInvalid/9999 (0.02s)
+    --- PASS: TestADeepValueMakesTheAnswerInvalid/10000 (0.02s)
+--- PASS: FuzzDecode (0.03s)
+    --- PASS: FuzzDecode/seed#0 (0.01s)
+    --- PASS: FuzzDecode/seed#1 (0.00s)
+    --- PASS: FuzzDecode/seed#2 (0.00s)
+    --- PASS: FuzzDecode/seed#3 (0.00s)
+    --- PASS: FuzzDecode/seed#4 (0.00s)
+    --- PASS: FuzzDecode/seed#5 (0.00s)
+    --- PASS: FuzzDecode/seed#6 (0.01s)
+    --- PASS: FuzzDecode/seed#7 (0.00s)
+    --- PASS: FuzzDecode/seed#8 (0.00s)
+    --- PASS: FuzzDecode/seed#9 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	2.550s
+exit 0
