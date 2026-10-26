@@ -1,0 +1,173 @@
+{
+  "status": "PASS_STATIC_DEPLOY_CHECKS",
+  "dockerfiles": {
+    "Dockerfile.api": {
+      "stages": 2,
+      "user": "65532:65532",
+      "healthcheck": true
+    },
+    "Dockerfile.worker": {
+      "stages": 2,
+      "user": "65532:65532",
+      "healthcheck": false
+    },
+    "apps/web/Dockerfile": {
+      "stages": 2,
+      "user": "node",
+      "healthcheck": true
+    }
+  },
+  "compose": {
+    "services": [
+      "api",
+      "migrate",
+      "oidc-test",
+      "postgres",
+      "seed",
+      "web",
+      "worker"
+    ]
+  },
+  "railway": {
+    "configs": [
+      "api.railway.json",
+      "migrate.railway.json",
+      "web.railway.json",
+      "worker.railway.json"
+    ],
+    "services": {
+      "migrate": {
+        "variables": 2,
+        "secrets": [
+          "GEMINUS_MIGRATOR_DB_PASSWORD"
+        ]
+      },
+      "api": {
+        "variables": 23,
+        "secrets": [
+          "GEMINUS_API_DB_PASSWORD",
+          "OBJECT_STORAGE_S3_ACCESS_KEY_ID",
+          "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY"
+        ]
+      },
+      "worker": {
+        "variables": 22,
+        "secrets": [
+          "GEMINUS_ANTHROPIC_API_KEY_A",
+          "GEMINUS_ANTHROPIC_API_KEY_B",
+          "GEMINUS_MUSE_API_KEY",
+          "GEMINUS_WORKER_DB_PASSWORD",
+          "OBJECT_STORAGE_S3_ACCESS_KEY_ID",
+          "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY"
+        ]
+      },
+      "web": {
+        "variables": 14,
+        "secrets": [
+          "BFF_OIDC_CLIENT_SECRET",
+          "SESSION_KEYS"
+        ]
+      }
+    },
+    "public_domains": [
+      "api",
+      "web"
+    ],
+    "api_ai": {
+      "settings": [
+        "AI_PROVIDER",
+        "AI_POLICY_APPROVAL",
+        "AI_MODEL",
+        "GEMINUS_AI_LIVE",
+        "AI_VISION_PROVIDER",
+        "AI_VISION_POLICY_APPROVAL",
+        "AI_VISION_MODEL"
+      ],
+      "refused_keys": [
+        "AI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "GEMINUS_ANTHROPIC_API_KEY_A",
+        "GEMINUS_ANTHROPIC_API_KEY_B",
+        "GEMINUS_META_API_KEY",
+        "GEMINUS_MUSE_API_KEY",
+        "MODEL_API_KEY"
+      ]
+    }
+  },
+  "runbook": {
+    "variables_named": 68
+  },
+  "code_variables": [
+    "AI_API_KEY",
+    "AI_ATTEMPT_TIMEOUT_SECONDS",
+    "AI_DAILY_LIMIT_USD",
+    "AI_MAX_CONCURRENT_PER_ORGANIZATION",
+    "AI_MAX_OUTPUT_TOKENS",
+    "AI_MAX_PROMPT_BYTES",
+    "AI_MAX_RETRIES",
+    "AI_MODEL",
+    "AI_MONTHLY_LIMIT_USD",
+    "AI_ORGANIZATION_DAILY_LIMIT_USD",
+    "AI_POLICY_APPROVAL",
+    "AI_PROVIDER",
+    "AI_TIMEOUT_SECONDS",
+    "AI_VISION_MODEL",
+    "AI_VISION_POLICY_APPROVAL",
+    "AI_VISION_PROVIDER",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+    "API_LISTEN_ADDR",
+    "APP_ENV",
+    "AUTH_OIDC_ALGORITHMS",
+    "AUTH_OIDC_AUDIENCE",
+    "AUTH_OIDC_ISSUER",
+    "AUTH_OIDC_JWKS_URL",
+    "AUTH_OIDC_REQUIRE_AT_JWT",
+    "BFF_API_URL",
+    "BFF_APP_ORIGIN",
+    "BFF_OIDC_AUDIENCE",
+    "BFF_OIDC_AUTHORIZATION_URL",
+    "BFF_OIDC_CLIENT_ID",
+    "BFF_OIDC_CLIENT_SECRET",
+    "BFF_OIDC_END_SESSION_URL",
+    "BFF_OIDC_ISSUER",
+    "BFF_OIDC_JWKS_URL",
+    "BFF_OIDC_REVOCATION_URL",
+    "BFF_OIDC_SCOPES",
+    "BFF_OIDC_TOKEN_URL",
+    "DATABASE_URL",
+    "GEMINUS_AI_LIVE",
+    "GEMINUS_ANTHROPIC_API_KEY_A",
+    "GEMINUS_ANTHROPIC_API_KEY_B",
+    "GEMINUS_META_API_KEY",
+    "GEMINUS_MIGRATE_DATABASE_URL",
+    "GEMINUS_MUSE_API_KEY",
+    "GEMINUS_PROVISION_DATABASE_URL",
+    "GEMINUS_UI_GALLERY",
+    "MODEL_API_KEY",
+    "OBJECT_STORAGE_PROVIDER",
+    "OBJECT_STORAGE_ROOT",
+    "OBJECT_STORAGE_S3_ACCESS_KEY_ID",
+    "OBJECT_STORAGE_S3_BUCKET",
+    "OBJECT_STORAGE_S3_ENDPOINT",
+    "OBJECT_STORAGE_S3_REGION",
+    "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY",
+    "OBJECT_STORAGE_S3_URL_STYLE",
+    "OTEL_EXPORTER_OTLP_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_HEADERS",
+    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_METRICS_HEADERS",
+    "OTEL_EXPORTER_OTLP_PROTOCOL",
+    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
+    "OTEL_EXPORTER_OTLP_TRACES_HEADERS",
+    "OTEL_METRICS_EXPORTER",
+    "OTEL_SDK_DISABLED",
+    "OTEL_TRACES_EXPORTER",
+    "SESSION_KEYS",
+    "WORKER_ID",
+    "WORKER_ORGANIZATION_IDS"
+  ],
+  "container_build": "NOT_RUN_HERE (make build-containers)",
+  "container_scan": "NOT_RUN (no scanner chosen)"
+}

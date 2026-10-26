@@ -167,3 +167,31 @@ Production、https（部署）：CSP 最後再加 `; upgrade-insecure-requests`�
 4. **`style-src-attr 'unsafe-inline'`** 是唯一放寬（§2.3）。接受，或要求把 React Aria 的 VisuallyHidden 等改成 CSS class（需要包裝或 patch library）？
 5. **CSP report**：要不要之後加 `report-to` 與收集端點（目前沒有，violation 只在瀏覽器中看得到）？
 6. **Editor 的滑鼠 test**：改為先把畫布捲進視窗（§3.2）。可以接受，或希望 model 頁的版面讓畫布在 900 px 高的視窗中不用捲動就完整可見（那需要重新安排 ask form，例如收合）？
+
+## Coordinator 驗證（2026-10-26）
+
+`t057-web` 的八個 commit（539a952..eb77936）cherry-pick 到已整合 T-055 review 修正、API 照片可用性的主線，沒有衝突。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-057web-coordinator/`，`exit-codes.txt` 依執行順序；HEAD 095a234；Node 22，`--engine-strict=false`）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `scripts/check_deploy.py`（`env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN`） | 0 | runbook §5 的改動 |
+| `npm ci`（apps/web、apps/web-e2e） | 0、0 | |
+| `make frontend-test` | 0 | 48 個檔案、1062 個測試 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（3100–3102 沒有其他執行時、以 flock 開始） | 0 | 514 passed、32 skipped（只在 CI 比對的 screenshot）；每個測試在任何 CSP 違規時失敗 |
+
+NOT RUN：部署後的 Railway 網站與真實的 Auth0 登入（含 `no-referrer`）；standalone 的 Docker image；Chromium 以外的瀏覽器；CI 的 screenshot 比對（push 後由 CI 執行）。
+
+Coordinator 對問題的處理：
+1. 中文提醒保留 H-035 (1) 的原文「內容會送到 AI，只放 synthetic 資料。」（owner 選的文字）；要改成「合成」由 owner 決定。
+2. HSTS 不加 `includeSubDomains`／`preload`：demo 使用 Railway 的共用網域（`*.up.railway.app`），不能 preload。
+3. `Referrer-Policy: no-referrer`：接受；部署時以真實的 Auth0 登入確認，有問題改回 `strict-origin-when-cross-origin`。
+4. `style-src-attr 'unsafe-inline'` 作為唯一的放寬：接受（React Aria 在 server render 的 style attribute 無法以 nonce 涵蓋），記錄於 SECURITY §3。
+5. CSP 的回報端點：比賽後。
+6. Editor 的滑鼠測試先捲動畫布：接受（沒有改 assertion）。
+
+依 H-029，本切片（T-057 的網頁準備：資料提醒與 security header）完成；部署後以真實網站再確認一次 header 與登入。
