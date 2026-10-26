@@ -3824,7 +3824,8 @@
       "scope": [
         "部署到 owner 指定的雲端服務並以 synthetic 資料完成 demo 流程的 staging smoke；demo 腳本（中英文）；以真實畫面錄製 demo 影片（不放假的結果）；提交文字（說明比賽期間做了什麼、哪些是既有的程式）。",
         "Owner 負責：Meta API key、雲端帳號、Auth0 tenant、影片旁白（若需要）與在 Cerebral Valley 提交（Indie 組的 Representative）。",
-        "H-034（2026-10-26）：部署前在 `deploy/railway/` 加上 Auth0 的步驟（Auth0 CLI 裝置登入；建立並設定 API、Regular Web Application、關閉 sign-up；Client Secret 經 stdin 直接寫入 Railway 並 sealed，不印出、不寫檔；完成後登出），先寫 rehearsal 測試（secret 不出現在引數或輸出、設定值正確、重跑不重複建立）；CLI 版本固定並核對 checksum 與授權。"
+        "H-034（2026-10-26）：部署前在 `deploy/railway/` 加上 Auth0 的步驟（Auth0 CLI 裝置登入；建立並設定 API、Regular Web Application、關閉 sign-up；Client Secret 經 stdin 直接寫入 Railway 並 sealed，不印出、不寫檔；完成後登出），先寫 rehearsal 測試（secret 不出現在引數或輸出、設定值正確、重跑不重複建立）；CLI 版本固定並核對 checksum 與授權。",
+        "H-035（2026-10-26）：建立評審用的 demo 帳號（Auth0 使用者＋只有 demo 組織的 membership，帳密寫在提交說明）；請求欄位加一句「內容會送到 AI，只放 synthetic 資料」；照片辨識只走 Meta。"
       ],
       "planned_outputs": [
         "planning/HACKATHON_PLAN.md",

@@ -1840,6 +1840,18 @@
         "Owner 建立 Auth0 tenant 與自己的使用者",
         "評審用的 demo 帳號（要不要）"
       ]
+    },
+    {
+      "id": "H-035",
+      "subject": "接受 Meta Model API 條款；demo 只有 owner 與一個評審帳號；照片辨識不用 Claude 備援",
+      "decision": "(1) 接受 Meta 條款（Standard 不訓練；為安全與濫用審查保留內容；可能被導向 Contributor model）：只送 synthetic 資料、demo 圖片與使用者文字，adapter 拒收其他 model 的回答，請求欄位加資料提醒；(2) 公開 demo 關閉自行註冊，只有 owner 與一個評審用 demo 帳號（只有 demo 組織的權限）；(3) 照片辨識只走 Meta，不擴大 H-018。",
+      "quote": "接受 (Recommended)；你＋一個評審用帳號 (Recommended)；先不要 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：AskUserQuestion 選擇",
+      "still_open": [
+        "Meta dashboard 的花費上限"
+      ]
     }
   ]
 }
