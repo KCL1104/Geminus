@@ -1238,7 +1238,7 @@
       "id": "D-094",
       "title": "Log 的隱私規則：集中的 default-deny filter（T-035、TEST-027）",
       "source_gap": "SECURITY §7 要求 production logs 不留 raw CSV/model/prompt/provider output，§9 要求避免 secrets、signed URLs、raw customer data，ADR-024 要求 handler 的 error 不含客戶資料；沒有集中的 filter，error 文字原樣寫入，API 的 panic 會記 panic 值。",
-      "proposal": "建議 A：(a) default deny：登記清單沒有的 key 記為 [redacted]，不是小寫名稱的 key 記為 invalid_key；(b) 每個 key 有形狀（ID、code、小寫字、非 credential 的名稱、Go 型別、HTTP method、route、hash、數字），不合的值記為 [redacted]，空字串照記，context 的值同樣過濾；(c) 自由文字（error、panic、addr、stack、path）移除 credential（T-024 的清單）、URL 的 user information、credential header、e-mail、長 base64 與每個雙引號括起來的值，控制與格式字元換成空白，長度上限 1000／8000／256；error 要提到值時以 %q 引用；(d) panic 只記 runtime error 的訊息或值的型別與 stack（ADR-024 對 worker 的規則延伸到 API）；(e) struct、map、slice 為 [redacted]，LogValuer 先解析，會 panic 的 error 不會讓 logger 當掉；(f) trace 與 metric 的 attribute 用同一套形狀。B：key 黑名單；C：不集中過濾。",
+      "proposal": "建議 A：(a) default deny：登記清單沒有的 key 記為 [redacted]，不是小寫名稱的 key 記為 invalid_key；(b) 每個 key 有形狀（ID、code、小寫字、非 credential 的名稱、Go 型別、HTTP method、route、hash、數字），不合的值記為 [redacted]，空字串照記，context 的值同樣過濾；(c) 自由文字（error、panic、addr、stack、path）移除 credential（T-024 的清單）、URL 的 user information、credential header、e-mail、長 base64 與每個雙引號括起來的值（沒有閉合的引號：其後全部），控制與格式字元換成空白，長度上限 1000／8000／256；error 要提到值時以 %q 引用；(d) panic 只記 runtime error 的訊息或值的型別與 stack（ADR-024 對 worker 的規則延伸到 API）；(e) struct、map、slice 為 [redacted]，LogValuer 先解析（LogValue panic 時 slog 解析為 error 值），會 panic 的 error 不會讓 logger 當掉；(f) trace 與 metric 的 attribute 用同一套形狀。B：key 黑名單；C：不集中過濾。",
       "gate": "T-035 驗收前；T-036 前",
       "resolves": [],
       "source_pages": "N/A（SECURITY §7、§9；AI_SPEC §10；ADR-024 的 log 規則；TEST-027）",
