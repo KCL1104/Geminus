@@ -1,0 +1,10 @@
+--- FAIL: TestTheH029Record (0.00s)
+    meta_test.go:25: H-029 is not recorded
+--- FAIL: TestMetaGapReasons (0.00s)
+    meta_test.go:121: H-029 is not recorded
+--- FAIL: TestTheAnthropicAdapterTakesNoMetaApproval (0.00s)
+    meta_test.go:158: no H-029 approval
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.314s
+FAIL
+exit 1

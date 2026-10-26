@@ -161,7 +161,9 @@ var ErrNotApproved = errors.New("anthropic: live AI is not approved (H-001, H-01
 // covers, in its order (T-053). The backend serves only the prompt roles
 // the approval's data policy names.
 func New(cfg Config) (*Backend, error) {
-	if !cfg.Approval.Valid() {
+	if !cfg.Approval.Valid() || cfg.Approval.Provider() != "anthropic" {
+		// Another provider's approval (H-029's Meta, T-055) is no approval
+		// here.
 		return nil, ErrNotApproved
 	}
 	if cfg.Model != cfg.Approval.Model() {

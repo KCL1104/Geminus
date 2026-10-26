@@ -316,6 +316,28 @@ func TestProbesAreCaught(t *testing.T) {
 			"live-ai-only-in-the-worker", "./internal/proposals/generator", "./internal/ai/provider/anthropic", false},
 		{"the-ledger-links-the-live-adapter", "internal/storage/aispend/zz_probe.go", module + "/internal/ai/provider/anthropic",
 			"live-ai-only-in-the-worker", "./internal/storage/aispend", "./internal/ai/provider/anthropic", false},
+		// T-055: the Meta adapter is a live adapter like Anthropic's: only in
+		// the metered binaries, no SDK, no DB, no config beyond the approval
+		// token, and apart from the other adapter; the shared projection
+		// package is computation only.
+		{"api-links-the-meta-adapter", "cmd/api/zz_probe.go", module + "/internal/ai/provider/meta", "live-ai-only-in-the-worker",
+			"./cmd/api", "./internal/ai/provider/meta", false},
+		{"a-handler-links-the-meta-adapter", "internal/proposals/generator/zz_probe.go", module + "/internal/ai/provider/meta",
+			"live-ai-only-in-the-worker", "./internal/proposals/generator", "./internal/ai/provider/meta", false},
+		{"the-ledger-links-the-meta-adapter", "internal/storage/aispend/zz_probe.go", module + "/internal/ai/provider/meta",
+			"live-ai-only-in-the-worker", "./internal/storage/aispend", "./internal/ai/provider/meta", false},
+		{"the-meta-adapter-links-anthropic", "internal/ai/provider/meta/zz_probe.go", module + "/internal/ai/provider/anthropic",
+			"live-adapters-apart", "./internal/ai/provider/meta", "./internal/ai/provider/anthropic", false},
+		{"the-meta-adapter-imports-an-sdk", "internal/ai/provider/meta/zz_probe.go", "github.com/anthropics/anthropic-sdk-go",
+			"llm-sdks-only-in-ai", "./internal/ai/provider/meta", "github.com/anthropics/anthropic-sdk-go", false},
+		{"the-meta-adapter-imports-pgx", "internal/ai/provider/meta/zz_probe.go", "github.com/jackc/pgx/v5", "ai-suggests-only",
+			"./internal/ai/provider/meta", "github.com/jackc/pgx/v5", false},
+		{"the-meta-adapter-imports-config", "internal/ai/provider/meta/zz_probe.go", module + "/internal/config", "ai-suggests-only",
+			"./internal/ai/provider/meta", "./internal/config", false},
+		{"the-projection-goes-online", "internal/ai/provider/structured/zz_probe.go", "net/http", "ai-is-pure-but-the-adapter",
+			"./internal/ai/provider/structured", "net/http", false},
+		{"the-projection-reads-files", "internal/ai/provider/structured/zz_probe.go", "os", "ai-is-pure-but-the-adapter",
+			"./internal/ai/provider/structured", "os", false},
 		{"the-worker-links-the-live-eval", "cmd/worker/zz_probe.go", module + "/internal/aievals", "live-eval-only-in-its-command",
 			"./cmd/worker", "./internal/aievals", false},
 		{"a-service-links-the-live-eval", "internal/models/zz_probe.go", module + "/internal/aievals", "live-eval-only-in-its-command",
@@ -958,6 +980,15 @@ func TestPolicy(t *testing.T) {
 		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider/fake"), direct, true, false},
 		want{"llm-sdks-only-in-ai", m("internal/ai/aicontext"), llm, false, false},
 		want{"llm-sdks-only-in-ai", m("internal/ai/provider"), llm, false, false},
+		// T-055: the Meta adapter is held to the Anthropic adapter's rules
+		// but uses no SDK at all; the shared projection is pure.
+		want{"ai-suggests-only", m("internal/ai/provider/meta"), slices.Concat([]string{m("internal/storage/models"), m("internal/models"), m("internal/runs"),
+			m("internal/runs/runner"), m("internal/worker"), m("internal/httpapi"), m("internal/api"), m("internal/auth"), m("internal/config"),
+			m("internal/packs"), m("internal/project"), m("internal/tenant/workerscope"), m("cmd/worker"), "os/exec", "database/sql"}, db), false, false},
+		want{"llm-sdks-only-in-ai", m("internal/ai/provider/meta"), llm, false, false},
+		want{"live-adapters-apart", m("internal/ai/provider/meta"), []string{m("internal/ai/provider/anthropic")}, false, false},
+		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider/structured"), slices.Concat(io, llm), false, false},
+		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider/structured"), direct, true, false},
 	)
 	byName := map[string]rule{}
 	for _, r := range rules {

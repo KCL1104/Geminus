@@ -1,0 +1,17 @@
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+[ai-is-pure-but-the-adapter] ./internal/ai/provider/meta depends on encoding/base64
+    via ./internal/ai/provider/meta -> encoding/base64
+    rule: outside the provider adapter, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)
+[ai-is-pure-but-the-adapter] ./internal/ai/provider/meta depends on math/rand/v2
+    via ./internal/ai/provider/meta -> math/rand/v2
+    rule: outside the provider adapter, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)
+[ai-is-pure-but-the-adapter] ./internal/ai/provider/meta depends on net/http
+    via ./internal/ai/provider/meta -> net/http
+    rule: outside the provider adapter, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)
+[ai-is-pure-but-the-adapter] ./internal/ai/provider/meta depends on net/http
+    via ./internal/ai/provider/meta -> net/http
+    rule: outside the provider adapter, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)
+FAIL architecture: 4 violation(s)
+make: *** [Makefile:88: architecture-check] Error 1
+exit 2

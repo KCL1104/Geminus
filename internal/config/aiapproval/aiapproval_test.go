@@ -65,7 +65,8 @@ func TestTheH018Record(t *testing.T) {
 	}
 }
 
-// Nothing but H-018 is recorded, and the zero Approval is none.
+// Nothing but H-018 (and, since T-055, H-029: TestTheH029Record) is
+// recorded, and the zero Approval is none.
 func TestNothingElseIsRecorded(t *testing.T) {
 	for _, id := range []string{"", "H-001", "H-017", "H-019", "H-025", "D-018", "h-018", "H-018 ", "approved", " "} {
 		if _, ok := aiapproval.Lookup(id); ok {
