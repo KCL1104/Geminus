@@ -188,6 +188,27 @@ const invalidProposal: Proposal = {
     ],
   },
 };
+// T-056: a proposal asked for with a photo, as createImageProposal stores
+// it: an edit with the server's record of the image (its type, pixels,
+// size and digest), never its file name or metadata.
+const photoProposal: Proposal = {
+  proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZB",
+  organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  mode: "edit",
+  status: "generating",
+  created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+  created_at: "2026-10-26T08:30:00Z",
+  requires_confirmation: true,
+  source_image: {
+    media_type: "image/png",
+    width: 1200,
+    height: 520,
+    size_bytes: 21843,
+    content_hash: "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  },
+};
 // T-026: what approveProposal answers for an edit proposal (the one new
 // version, discriminated by mode), its request, a rejection's request, and
 // an approved proposal with its decision record (D-068 APPROVED).
@@ -461,6 +482,7 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-id-allocation-pool.json", idPool],
     ["valid-proposal-accepted.json", proposalAccepted],
     ["valid-proposal-invalid.json", invalidProposal],
+    ["valid-proposal-generating-from-image.json", photoProposal],
     ["valid-canonical-event-station.json", stationEvent],
     ["valid-approval-edit.json", approvalEdit],
     ["valid-approve.json", approveBody],
@@ -536,6 +558,12 @@ export const rejected = {
   poolExtraKind: { ...idPool, entity_type: [] } satisfies IdAllocationPool,
   // @ts-expect-error createProposal answers generating, never a later state (T-025)
   acceptedReady: { ...proposalAccepted, status: "ready" } satisfies ProposalAccepted,
+  // @ts-expect-error a photo is a PNG or a JPEG (T-056)
+  photoType: { ...photoProposal.source_image!, media_type: "image/gif" } satisfies NonNullable<Proposal["source_image"]>,
+  // @ts-expect-error the server records no file name of a photo (T-056)
+  photoName: { ...photoProposal.source_image!, filename: "line-2.png" } satisfies NonNullable<Proposal["source_image"]>,
+  // @ts-expect-error a photo's record names its digest (T-056)
+  photoNoHash: { media_type: "image/png", width: 1200, height: 520, size_bytes: 21843 } satisfies NonNullable<Proposal["source_image"]>,
   // @ts-expect-error a proposal's status is one of the contract's (T-025)
   proposalStatus: { ...invalidProposal, status: "publishing" } satisfies Proposal,
   // @ts-expect-error an issue code outside the ValidationCode catalogue is not one (T-025)

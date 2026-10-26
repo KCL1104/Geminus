@@ -124,6 +124,7 @@ for (const locale of locales) {
       ready: [t("proposal.approve.edit", { version: "2" }), t("proposal.reject"), back],
       scenario: [t("proposal.approve.scenario"), t("proposal.reject"), back],
       "new-steps": [t("proposal.approve.edit", { version: "2" }), t("proposal.reject"), back],
+      photo: [t("proposal.approve.edit", { version: "2" }), t("proposal.reject"), back],
       generating: [back],
       needs_input: [t("proposal.reject"), back],
       invalid: [back],
@@ -235,6 +236,58 @@ for (const locale of locales) {
       await settle();
       expect(button(el, send).getAttribute("aria-disabled")).toBe("true");
       await check(el, locale, [send, t("draft.discard")]);
+    });
+
+    // T-056: the electronics line's model page with the photo entry point
+    // too: one button for it, which is not primary; blocked with its reason
+    // while edits are unsaved; and after a refused photo, still one of each.
+    it("the electronics line's model page with the photo entry point: clean, refused and with unsaved edits", async () => {
+      const page = async (opts: Omit<ProposalStandInOptions, "sample"> = {}) => {
+        const api = createProposalStandIn({ sample: null, ...opts });
+        const client = createApiClient({ session: () => ({ organizationId: api.organizationId }), fetch: api.fetch });
+        const el = await mount(
+          <AuthProvider value={{ session: { organizationId: api.organizationId }, role: "editor" }}>
+            <ApiProvider client={client}>
+              <ModelView modelId={SAMPLE_MODEL_ID} onProposal={() => {}} />
+            </ApiProvider>
+          </AuthProvider>,
+          locale,
+        );
+        await waitFor(() => el.querySelector("[data-photo]") !== null, "the model page");
+        await settle();
+        return { el, api };
+      };
+      const choose = t("photo.choose");
+      let { el } = await page();
+      await check(el, locale, [choose, t("ask.send"), t("editor.publish"), t("editor.save")]);
+      expect(button(el, choose).getAttribute("data-variant")).toBe("secondary");
+      expect(el.querySelectorAll("[data-photo] button"), "one control for the photo").toHaveLength(1);
+
+      ({ el } = await page());
+      const input = el.querySelector<HTMLInputElement>("[data-photo] input[type=file]")!;
+      await act(async () => {
+        Object.defineProperty(input, "files", { configurable: true, value: [new File([new Uint8Array([0x47, 0x49, 0x46, 0x38])], "x.gif", { type: "image/gif" })] });
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await waitFor(() => el.querySelector("[data-photo] [role=alert]") !== null, "the refusal");
+      await check(el, locale, [choose, t("ask.send")]);
+
+      ({ el } = await page());
+      const n = el.querySelector<HTMLElement>('.react-flow__node[data-id="smt"]')!;
+      await act(async () => n.focus());
+      await key(n, "Enter");
+      await settle();
+      const nameLabel = [...el.querySelectorAll("[data-panel=properties] label")].find((l) => text(l) === t("editor.field.name"))!;
+      const name = document.getElementById((nameLabel as HTMLLabelElement).htmlFor) as HTMLInputElement;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(name, "SMT line 1");
+        name.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await key(name, "Enter");
+      await settle();
+      expect(button(el, choose).getAttribute("aria-disabled")).toBe("true");
+      expect(el.querySelector("[data-photo] input[type=file]"), "a blocked photo opens no chooser").toBeNull();
+      await check(el, locale, [choose, t("draft.discard")]);
     });
   });
 }

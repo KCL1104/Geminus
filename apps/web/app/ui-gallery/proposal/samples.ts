@@ -10,12 +10,16 @@
 // One exception, marked: the "new-steps" sample has canvas positions, which
 // the AI edit allowlist does not take today (internal/model/patch AIEdit:
 // the server makes it invalid, PATCH_PATH_FORBIDDEN; without them it is
-// ready and medium); it shows how a photo proposal (T-056) would read.
+// ready and medium). The "photo" sample (T-056) is a proposal asked for
+// with a photo: the same X-ray step with no positions and only numbers the
+// sample line already has, as the photo rules require (review.Photo); its
+// server part is what Review and Photo compute for it:
+// checks/evidence/2026-10-26-T-056/sample-server-review.log.
 import type { JsonPatch, Proposal } from "../../../lib/contracts";
 import type { Role } from "../../../lib/auth/session";
 import { SAMPLE_MODEL_ID, sampleLine } from "../editor/sample-line";
 
-export const states = ["ready", "scenario", "new-steps", "generating", "needs_input", "invalid", "failed", "conflict", "stale", "approved", "rejected", "conflicted", "hostile", "viewer"] as const;
+export const states = ["ready", "scenario", "new-steps", "photo", "generating", "needs_input", "invalid", "failed", "conflict", "stale", "approved", "rejected", "conflicted", "hostile", "viewer"] as const;
 export type SampleState = (typeof states)[number];
 
 export function parseState(v: string | undefined): SampleState {
@@ -66,6 +70,22 @@ const xray: JsonPatch = [
   { op: "add", path: "/flows/-", value: { id: "flow_01m4ydqk00e1ectr0n1c5x0003", from: XRAY, to: "aoi_result", routing: { type: "probability", probability: 1 } } },
 ];
 
+// T-056: what a photo of the line shows that the model does not have, an
+// X-ray machine after AOI, as the photo rules let the AI propose it: no
+// canvas positions (the AI edit allowlist has no views), and every number
+// one the sample line already has (AOI's service time, the AOI buffer's
+// size, one machine, probability 1).
+const xrayFromPhoto: JsonPatch = [
+  { op: "add", path: "/nodes/-", value: { id: XRAY, type: "process", name: "X-ray inspection", service_time: { distribution: { type: "triangular", min: 0.8, mode: 0.9, max: 1.1 } }, requires: [{ resource_id: XRAY_MACHINE, units: 1 }] } },
+  { op: "add", path: "/nodes/-", value: { id: XRAY_BUFFER, type: "queue", name: "Before X-ray", capacity: 20 } },
+  { op: "add", path: "/resources/-", value: { id: XRAY_MACHINE, type: "machine", name: "X-ray machine", capacity: 1, queue_discipline: "fifo", calendar_id: "two_shift" } },
+  { op: "test", path: `/flows/${flowAt("aoi_aoi_result")}/id`, value: "aoi_aoi_result" },
+  { op: "remove", path: `/flows/${flowAt("aoi_aoi_result")}` },
+  { op: "add", path: "/flows/-", value: { id: "flow_01m4ydqk00e1ectr0n1c5x0001", from: "aoi", to: XRAY_BUFFER, routing: { type: "probability", probability: 1 } } },
+  { op: "add", path: "/flows/-", value: { id: "flow_01m4ydqk00e1ectr0n1c5x0002", from: XRAY_BUFFER, to: XRAY, routing: { type: "probability", probability: 1 } } },
+  { op: "add", path: "/flows/-", value: { id: "flow_01m4ydqk00e1ectr0n1c5x0003", from: XRAY, to: "aoi_result", routing: { type: "probability", probability: 1 } } },
+];
+
 // Takes the scrap end away: what a hostile answer might push for (a step removed, so the server says high).
 const noScrap: JsonPatch = [
   { op: "test", path: `/flows/${flowAt("debug_result_scrap")}/id`, value: "debug_result_scrap" },
@@ -82,6 +102,7 @@ const hashes = {
   thirdTester: "sha256:2bc162b5afc8096077cce63af3970d4ca4657344b5a5382f7f958c905d2e711b",
   xray: "sha256:0e5474aa41d1423835cf87b7058f0e014b8f0a906e983fe74e8f4dba3fd6022b",
   noScrap: "sha256:4c411ddc03652689a01560a9c975b01232b15a2af637b80f59224a92b0dd8566",
+  xrayFromPhoto: "sha256:0b492cad08769c5cd9d71877aaae638490a3fff239af641682f5fb8e078ce148",
 };
 
 const server = (id: string, mode: Proposal["mode"]) => ({
@@ -120,6 +141,30 @@ export function readyScenario(id: string): Proposal {
     risk_level: "medium", server_risk_level: "low", provider_risk_claim: "medium", confidence: 0.85,
     changes: thirdTester, patch_hash: hashes.thirdTester,
     expected_effects: ["Boards may wait less before ICT.", "Debug and burn-in may see boards arrive sooner; a simulation will tell."],
+    validation: { valid: true, issues: [] }, dataset_bindings: [],
+  };
+}
+
+/** The photo the "photo" sample was asked for with, as the server records it (T-056): its type, size and digest, never its name or metadata (the synthetic demo floor plan, testdata/photos/electronics-line-demo.png). */
+export const samplePhoto = {
+  media_type: "image/png" as const, width: 1200, height: 520, size_bytes: 14197,
+  content_hash: "sha256:6b284ed7efc0b15140808f1cf8922e91f7d9ef0276f6d0f16640f3725cbba605",
+};
+
+/** The X-ray step proposed from a photo (T-056), for the review page and for a photo sent from the model page. */
+export function readyFromPhoto(id: string, photo: Proposal["source_image"] = samplePhoto): Proposal {
+  return {
+    ...server(id, "edit"), status: "ready", source_image: photo,
+    summary: "Add the X-ray inspection the floor plan shows after AOI, with a buffer before it and one X-ray machine.",
+    assumptions: [
+      "The floor plan shows an X-ray machine on the conveyor after AOI, before the AOI result.",
+      "X-ray takes AOI's service time, triangular 0.8, 0.9 and 1.1 minutes: the floor plan shows no times. Set it before you simulate.",
+      "The buffer before X-ray holds 20 boards, as the buffer before AOI: the floor plan shows no buffer sizes.",
+      "One X-ray machine, on the two shifts, as the floor plan shows one.",
+    ],
+    risk_level: "medium", server_risk_level: "medium", provider_risk_claim: "medium", confidence: 0.6,
+    changes: xrayFromPhoto, patch_hash: hashes.xrayFromPhoto,
+    expected_effects: ["Each board spends longer in the line.", "The X-ray machine could become a new bottleneck; a simulation will tell."],
     validation: { valid: true, issues: [] }, dataset_bindings: [],
   };
 }
@@ -170,6 +215,8 @@ export function sampleFor(state: SampleState): Sample {
           validation: { valid: true, issues: [] }, dataset_bindings: [],
         },
       };
+    case "photo":
+      return { proposal: readyFromPhoto(id) };
     case "generating":
       return { proposal: { ...server(id, "edit"), status: "generating" }, answer: readyEdit(id) };
     case "needs_input":

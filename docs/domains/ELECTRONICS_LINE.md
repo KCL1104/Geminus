@@ -378,3 +378,7 @@ TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 6
 | `line_wip`、`scrap_rate`、`simulated_first_pass_ratio`、`retest_ratio` | 線、測試站 | entity、ratio | **unavailable**（`WIP_NOT_DECLARED`、`SINK_COUNT_NOT_DECLARED`、`FLOW_COUNT_NOT_DECLARED`）：需要 D-058 的宣告式 metrics，本 build 仍以 `PRIMITIVE_NOT_SUPPORTED` 拒絕宣告 |
 
 UI 的標籤（kind 與指標名稱，en 與 zh-Hant）在 `apps/web/messages` 的 `domain.electronics_line.*`。P0 不計算 OEE，任何指標都不稱 OEE。
+
+## 12. T-056：照片的概念（2026-10-26，H-033；D-131 PROPOSED）
+
+Pack 實作 `domainpack.PhotoVocabulary`：segmenter 在產線照片或平面圖中依序尋找 8 個概念（T-055 的 `provider.SegmentRequest`：至多 8 個、小寫英文名詞片語、每個概念一次呼叫）：`smt line`、`aoi machine`、`ict tester`、`fct tester`、`burn-in chamber`、`packing station`（§2 的各站，依產線順序）、`conveyor belt`（站與站之間的輸送帶，即 §3.1 的 line buffer）、`workstation`（除錯、重工等人工站）。這是 pack 的靜態資料，不是 tenant 的；vision model 依影像與這些物件提出工作站與流向，新步驟的數字只能沿用 base 已有的值（`review.Photo`），2D 位置由編輯器排列。Demo 影像為 `scripts/gen-photo-demo` 畫的 synthetic 平面圖（`testdata/photos/`），不是任何工廠的照片。

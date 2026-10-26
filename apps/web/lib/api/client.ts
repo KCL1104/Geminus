@@ -68,7 +68,8 @@ type Request = {
   method: "GET" | "PATCH" | "POST";
   path: string;
   query?: Record<string, string | undefined>;
-  body?: string;
+  /** JSON text, or a multipart form (createImageProposal), whose boundary the browser writes into Content-Type. */
+  body?: string | FormData;
   contentType?: string;
   ifMatch?: string;
   idempotencyKey?: string;
@@ -93,6 +94,9 @@ export function newIdempotencyKey(): string {
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>;
+
+/** createImageProposal's form fields besides the file (openapi createImageProposal, T-056). */
+export type ImageProposalFields = { base_version_id: string; output_locale?: ProposalRequest["output_locale"] };
 
 const badKey = (): Failed => ({ ok: false, problem: invalidRequestProblem("An Idempotency-Key is 8 to 128 visible ASCII characters.") });
 
@@ -300,6 +304,26 @@ export function createApiClient(cfg: ClientConfig) {
         idempotencyKey: key,
         signal: opts.signal,
       });
+    },
+    /**
+     * Asks the AI for an edit proposal from a photo or floor plan of the line
+     * on the model's latest version (T-056, H-033): a multipart form of
+     * base_version_id, output_locale and the file, in that order (the
+     * server reads the file last). The browser writes the boundary into
+     * Content-Type, so none is set here; the file goes under a fixed name,
+     * never the person's file name. The server keeps only the image's
+     * pixels (no EXIF) and answers 202 generating; the AI only proposes.
+     * Reuse `key` to retry the same file (D-011).
+     */
+    async createImageProposal(modelId: string, fields: ImageProposalFields, file: Blob, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<ProposalAccepted>> {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      if (!isID("mv", fields.base_version_id)) return notFound("The version");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      const form = new FormData();
+      form.append("base_version_id", fields.base_version_id);
+      if (fields.output_locale !== undefined) form.append("output_locale", fields.output_locale);
+      form.append("file", file, "photo");
+      return call<ProposalAccepted>({ method: "POST", path: `/models/${modelId}/ai-proposals/image`, body: form, idempotencyKey: key, signal: opts.signal });
     },
     /** A proposal as the server holds it: its state, and the server's validation and risk beside the AI's claim (T-025, D-027). */
     async getProposal(proposalId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Proposal>> {

@@ -7,7 +7,7 @@ export type Locale = "en" | "zh-Hant";
 export const resultsPreviews = ["/ui-gallery/results", "/ui-gallery/results?state=incomparable", "/ui-gallery/results?state=running", "/ui-gallery/results?state=failed"];
 /** The AI proposal review's review page (T-031, gallery only): the samples whose look differs (the others are in proposal.spec.ts). */
 export const proposalPreviews = [
-  "/ui-gallery/proposal", "/ui-gallery/proposal?state=scenario", "/ui-gallery/proposal?state=new-steps", "/ui-gallery/proposal?state=needs_input",
+  "/ui-gallery/proposal", "/ui-gallery/proposal?state=scenario", "/ui-gallery/proposal?state=new-steps", "/ui-gallery/proposal?state=photo", "/ui-gallery/proposal?state=needs_input",
   "/ui-gallery/proposal?state=invalid", "/ui-gallery/proposal?state=failed", "/ui-gallery/proposal?state=stale", "/ui-gallery/proposal?state=conflicted",
 ];
 export const locales: Locale[] = ["en", "zh-Hant"];
