@@ -97,6 +97,8 @@ test.describe("the editor with the keyboard only", () => {
     await page.keyboard.press("Enter");
     await expect(node(page, "queue_1")).toHaveCount(0);
     await expect(page.getByRole("status").filter({ hasText: "Rework rack deleted." })).toBeVisible();
+    // The focus goes to Add step on the next animation frame, after the status.
+    await expect(page.getByRole("button", { name: "Add step" })).toBeFocused();
     expect(await focusIsVisible(page)).toBe(true);
 
     // Save: one If-Match save of all of it; the issues are the server's again.

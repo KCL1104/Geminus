@@ -1,0 +1,44 @@
+
+Running 39 tests using 1 worker
+
+[1/39] [chromium] › tests/editor.spec.ts:38:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse
+[2/39] [chromium] › tests/editor.spec.ts:116:3 › the editor with a mouse › dragging a step moves it, dragging between handles connects two steps
+[3/39] [chromium] › tests/editor.spec.ts:145:3 › saving against the server's revision › a 409 keeps the edits; they go onto the current draft only when the person asks
+[4/39] [chromium] › tests/editor.spec.ts:162:3 › saving against the server's revision › publish asks first, then names the new version; Publish then waits for a change
+[5/39] [chromium] › tests/editor.spec.ts:174:3 › saving against the server's revision › switching the language keeps the unsaved edits (ADR-020)
+[6/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, light, en › problems, a step selected, its menus and dialog have no violation
+[7/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, light, en › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[8/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, light, zh-Hant › problems, a step selected, its menus and dialog have no violation
+[9/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, light, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[10/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, dark, en › problems, a step selected, its menus and dialog have no violation
+[11/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, dark, en › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[12/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, dark, zh-Hant › problems, a step selected, its menus and dialog have no violation
+[13/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, dark, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[14/39] [chromium] › tests/editor.spec.ts:38:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse
+[15/39] [chromium] › tests/editor.spec.ts:116:3 › the editor with a mouse › dragging a step moves it, dragging between handles connects two steps
+[16/39] [chromium] › tests/editor.spec.ts:145:3 › saving against the server's revision › a 409 keeps the edits; they go onto the current draft only when the person asks
+[17/39] [chromium] › tests/editor.spec.ts:162:3 › saving against the server's revision › publish asks first, then names the new version; Publish then waits for a change
+[18/39] [chromium] › tests/editor.spec.ts:174:3 › saving against the server's revision › switching the language keeps the unsaved edits (ADR-020)
+[19/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, light, en › problems, a step selected, its menus and dialog have no violation
+[20/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, light, en › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[21/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, light, zh-Hant › problems, a step selected, its menus and dialog have no violation
+[22/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, light, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[23/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, dark, en › problems, a step selected, its menus and dialog have no violation
+[24/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, dark, en › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[25/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, dark, zh-Hant › problems, a step selected, its menus and dialog have no violation
+[26/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, dark, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[27/39] [chromium] › tests/editor.spec.ts:38:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse
+[28/39] [chromium] › tests/editor.spec.ts:116:3 › the editor with a mouse › dragging a step moves it, dragging between handles connects two steps
+[29/39] [chromium] › tests/editor.spec.ts:145:3 › saving against the server's revision › a 409 keeps the edits; they go onto the current draft only when the person asks
+[30/39] [chromium] › tests/editor.spec.ts:162:3 › saving against the server's revision › publish asks first, then names the new version; Publish then waits for a change
+[31/39] [chromium] › tests/editor.spec.ts:174:3 › saving against the server's revision › switching the language keeps the unsaved edits (ADR-020)
+[32/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, light, en › problems, a step selected, its menus and dialog have no violation
+[33/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, light, en › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[34/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, light, zh-Hant › problems, a step selected, its menus and dialog have no violation
+[35/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, light, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[36/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, dark, en › problems, a step selected, its menus and dialog have no violation
+[37/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, dark, en › ready to publish, the publish dialog, a viewer and a conflict have no violation
+[38/39] [chromium] › tests/editor.spec.ts:200:5 › editor states, dark, zh-Hant › problems, a step selected, its menus and dialog have no violation
+[39/39] [chromium] › tests/editor.spec.ts:218:5 › editor states, dark, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation
+  39 passed (2.5m)
+exit 0

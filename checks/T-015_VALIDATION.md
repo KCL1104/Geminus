@@ -262,3 +262,13 @@ NOT RUN：截圖比對（只在 CI）；完整的 `make backend-race`；live AI�
 
 M1 修正並經 coordinator 驗證，依 H-029 的比賽模式，**T-015 的 hackathon 切片完成**；Low（L1–L5）與 Info 為比賽後的後續。風險（後續）：每個欄位編輯多一個 `test` op，大量編輯的儲存較接近 JSON Patch 的 1000 op 上限，沒有測試上限附近的行為。
 
+
+## CI run 209 的 e2e 失敗（2026-10-26，coordinator）
+
+CI run 209（85a7750）的 browser checks 在 `apps/web-e2e/tests/editor.spec.ts:100` 失敗：刪除步驟後的 `expect(await focusIsVisible(page)).toBe(true)` 得到 false（其餘 521 個通過）。這段 editor 的程式在 run 208（通過）之後沒有改。
+
+原因：`confirmDelete` 在下一個 animation frame 才把焦點移到 Add step（`model-editor.tsx` 的 `requestAnimationFrame`）。狀態文字在同一次 render 就出現，測試看到狀態文字後立刻讀一次焦點，沒有重試；如果那個 frame 還沒執行，焦點在 body 上。
+
+重現：用暫時的 spec 複本，在按下 Delete 前把 `requestAnimationFrame` 延後 300 ms。commit 中的寫法在同一個 assertion 失敗，新寫法通過（`checks/evidence/2026-10-26-T-015-e2e-race/repro-delayed-focus.log`、兩個複本的 `.txt`；複本已刪除，沒有 commit）。
+
+修正：先以會重試的 `toBeFocused()` 等焦點到 Add step，再檢查焦點看得見。檢查變得更嚴格（指定焦點的位置），沒有放寬。修正後的 `editor.spec.ts` 以 `--repeat-each=3` 執行：39 passed，exit 0（`editor-spec-fixed.log`）。完整的 e2e 由 CI 執行。

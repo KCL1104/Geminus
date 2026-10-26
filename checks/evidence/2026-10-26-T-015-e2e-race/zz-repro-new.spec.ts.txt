@@ -1,0 +1,113 @@
+// T-015 (hackathon slice): the 2D editor in a browser, on the review
+// preview (/ui-gallery/editor: the real model page, API client and draft
+// session against an in-page stand-in for the model API; no session or Go
+// API is needed). The main flow with the keyboard only (TEST-033), the
+// mouse on the canvas, the 409 path, publish, the language switch keeping
+// unsaved edits (left to T-015 by ADR-020), and axe in each state, both
+// languages, light and dark (contrast included). Not in the screenshot
+// spec: the editor's look is reviewed from local preview shots first.
+import { expect, type Page, test } from "@playwright/test";
+import { focusIsVisible, type Locale, locales, open, schemes, violations } from "./helpers";
+
+const preview = (state = "problems") => `/ui-gallery/editor?state=${state}`;
+const focused = (page: Page) => page.locator(":focus");
+const status = (page: Page) => page.locator("[data-draft-status]");
+const node = (page: Page, id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+const panelHeading = (page: Page) => page.locator("[data-panel=properties] h2");
+
+/** Presses Tab (or Shift+Tab) until the focused element's name or text matches; every stop shows its focus. */
+async function tabTo(page: Page, name: RegExp | string, back = false): Promise<void> {
+  const stops: string[] = [];
+  for (let i = 0; i < 120; i++) {
+    await page.keyboard.press(back ? "Shift+Tab" : "Tab");
+    const where = await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 160) ?? "");
+    stops.push(where.slice(0, 60));
+    expect(await focusIsVisible(page), `focus is visible on ${where} after ${stops.slice(-4).join(" | ")}`).toBe(true);
+    const label = await page.evaluate(() => {
+      const el = document.activeElement as HTMLInputElement | null;
+      return el?.getAttribute("aria-label") ?? el?.labels?.[0]?.textContent ?? el?.innerText ?? "";
+    });
+    if (typeof name === "string" ? label.trim() === name : name.test(label)) return;
+  }
+  throw new Error(`never reached ${name}`);
+}
+
+test.describe("the editor with the keyboard only", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test("an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse", async ({ page }) => {
+    await open(page, preview(), "en");
+    await page.locator("main").focus();
+
+    // The issue list goes to the step and its field.
+    await tabTo(page, /The batch sizes or the waiting limit are not valid/);
+    await page.keyboard.press("Enter");
+    await expect(focused(page)).toHaveAttribute("data-id", "burn_in");
+    expect(await focusIsVisible(page)).toBe(true);
+    await expect(panelHeading(page)).toHaveText("Burn-in");
+    await expect(page.getByLabel("Largest batch")).toHaveAttribute("aria-invalid", "true");
+
+    // Arrow keys move the selected step; Escape deselects and keeps the focus; Enter selects.
+    const before = await node(page, "burn_in").evaluate((el) => getComputedStyle(el).transform);
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Shift+ArrowDown");
+    await expect(status(page)).toHaveText("Unsaved changes. Draft revision 3.");
+    expect(await node(page, "burn_in").evaluate((el) => getComputedStyle(el).transform)).not.toBe(before);
+    await expect(page.locator("[id^=react-flow__aria-live]")).toHaveText(/^Moved down\. Position x -?\d+, y -?\d+\.$/);
+    await page.keyboard.press("Escape");
+    await expect(panelHeading(page)).toHaveText("Properties");
+    await expect(focused(page)).toHaveAttribute("data-id", "burn_in");
+    await page.keyboard.press("Enter");
+    await expect(panelHeading(page)).toHaveText("Burn-in");
+
+    // A field in the properties: the server's error stays until a save says otherwise.
+    await tabTo(page, "Largest batch");
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.type("100");
+    await page.keyboard.press("Enter");
+    await expect(page.getByLabel("Largest batch")).toHaveValue("100");
+
+    // Connect from the properties' menu.
+    await tabTo(page, "Connect to");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("menu")).toBeVisible();
+    await page.keyboard.type("Scrap");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: "Connected to Scrap." })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remove the connection to Scrap" })).toBeVisible();
+
+    // Add a step: the menu over the canvas, then its name.
+    await tabTo(page, "Add step", true);
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Queue");
+    await page.keyboard.press("Enter");
+    await expect(page.getByLabel("Name")).toBeFocused();
+    await page.keyboard.type("Rework rack");
+    await page.keyboard.press("Enter");
+    await expect(node(page, "queue_1")).toContainText("Rework rack");
+
+    // Delete it from the canvas: Delete asks first; Cancel is where the focus starts.
+    await node(page, "queue_1").focus();
+    await page.keyboard.press("Delete");
+    const dialog = page.getByRole("alertdialog", { name: "Delete Rework rack?" });
+    await expect(dialog).toBeVisible();
+    await expect(focused(page)).toHaveText("Cancel");
+    await page.keyboard.press("Tab");
+    await expect(focused(page)).toHaveText("Delete");
+    await page.evaluate(() => { const raf = window.requestAnimationFrame.bind(window); window.requestAnimationFrame = (cb) => raf((t) => void setTimeout(() => cb(t), 300)); });
+    await page.keyboard.press("Enter");
+    await expect(node(page, "queue_1")).toHaveCount(0);
+    await expect(page.getByRole("status").filter({ hasText: "Rework rack deleted." })).toBeVisible();
+    // The focus goes to Add step on the next animation frame, after the status.
+    await expect(page.getByRole("button", { name: "Add step" })).toBeFocused();
+    expect(await focusIsVisible(page)).toBe(true);
+
+    // Save: one If-Match save of all of it; the issues are the server's again.
+    await tabTo(page, "Save draft", true);
+    await page.keyboard.press("Enter");
+    await expect(status(page)).toHaveText("All changes saved. Draft revision 4.");
+    await expect(focused(page)).toHaveText("Save draft");
+    await expect(page.getByRole("button", { name: "Save draft" })).toHaveAttribute("aria-disabled", "true");
+  });
+});
+

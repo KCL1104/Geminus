@@ -1,0 +1,28 @@
+
+Running 2 tests using 1 worker
+
+[1/2] [chromium] › tests/zz-repro-new.spec.ts:38:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse
+[2/2] [chromium] › tests/zz-repro-old.spec.ts:38:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse
+  1) [chromium] › tests/zz-repro-old.spec.ts:38:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+       99 |     await expect(node(page, "queue_1")).toHaveCount(0);
+      100 |     await expect(page.getByRole("status").filter({ hasText: "Rework rack deleted." })).toBeVisible();
+    > 101 |     expect(await focusIsVisible(page)).toBe(true);
+          |                                        ^
+      102 |
+      103 |     // Save: one If-Match save of all of it; the issues are the server's again.
+      104 |     await tabTo(page, "Save draft", true);
+        at /home/user/Geminus/apps/web-e2e/tests/zz-repro-old.spec.ts:101:40
+
+    Error Context: test-results/zz-repro-old-the-editor-wi-ade8f-te-and-save-without-a-mouse-chromium/error-context.md
+
+
+  1 failed
+    [chromium] › tests/zz-repro-old.spec.ts:38:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse 
+  1 passed (1.2m)
+exit 1
