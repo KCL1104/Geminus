@@ -91,8 +91,8 @@
 /home/user/Geminus/.venv/bin/python scripts/check_docs.py
 {
   "status": "PASS",
-  "markdown_files": 126,
-  "relative_links_checked": 116
+  "markdown_files": 127,
+  "relative_links_checked": 118
 }
 /home/user/Geminus/.venv/bin/python scripts/check_sql_inventory.py
 {

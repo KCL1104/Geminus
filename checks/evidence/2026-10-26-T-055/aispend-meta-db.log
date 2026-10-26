@@ -1,0 +1,5 @@
+=== RUN   TestMetaChargesAreLedgered
+--- PASS: TestMetaChargesAreLedgered (0.13s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	0.149s
+exit 0
