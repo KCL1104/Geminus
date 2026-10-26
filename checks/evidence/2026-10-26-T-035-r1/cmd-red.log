@@ -1,0 +1,11 @@
+--- FAIL: TestRunRefusesABadTelemetryEndpoint (0.01s)
+    main_test.go:235: OTEL_EXPORTER_OTLP_ENDPOINT: exit = 3: {"time":"2026-10-26T02:20:54.492180308Z","level":"ERROR","msg":"database unavailable","component":"api","error":"tenant: reading the runtime role: failed to connect to `user=twin_api database=twin`: /nonexistent-geminus-socket/.s.PGSQL.5432 (/nonexistent-geminus-socket): dial error: dial unix /nonexistent-geminus-socket/.s.PGSQL.5432: connect: no such file or directory"}
+        {"time":"2026-10-26T02:20:54.496085728Z","level":"WARN","msg":"flushing the telemetry failed","component":"api","error":"failed to upload metrics: Post \"[redacted]\": dial tcp: lookup collector-SENTINEL on 8.8.8.8:53: no such host"}
+FAIL
+FAIL	github.com/kcl1104/geminus/cmd/api	0.026s
+--- FAIL: TestRunRefusesABadTelemetrySetting (0.00s)
+    main_test.go:102: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: exit = 3: {"time":"2026-10-26T02:20:55.562748523Z","level":"ERROR","msg":"database unavailable","component":"worker","error":"tenant: reading the runtime role: failed to connect to `user=twin_worker database=twin`: /nonexistent-geminus-socket/.s.PGSQL.5432 (/nonexistent-geminus-socket): dial error: dial unix /nonexistent-geminus-socket/.s.PGSQL.5432: connect: no such file or directory"}
+FAIL
+FAIL	github.com/kcl1104/geminus/cmd/worker	0.029s
+FAIL
+exit=1

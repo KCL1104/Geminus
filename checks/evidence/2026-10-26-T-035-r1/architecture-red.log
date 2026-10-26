@@ -1,0 +1,7 @@
+--- FAIL: TestTheUUIDGatewayBringsOnlyTheDriver (0.00s)
+    gateway_test.go:49: database/sql through uuid: violations on [], want "database/sql"
+    gateway_test.go:49: a driver through uuid: violations on [], want "github.com/jackc/pgx/v5"
+FAIL
+FAIL	github.com/kcl1104/geminus/scripts/check-architecture	0.003s
+FAIL
+exit=1

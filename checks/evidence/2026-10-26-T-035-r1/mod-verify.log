@@ -1,0 +1,4 @@
+$ go mod verify
+all modules verified
+
+exit=0 (1s)

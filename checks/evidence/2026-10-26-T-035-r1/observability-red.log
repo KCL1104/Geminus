@@ -1,0 +1,83 @@
+--- FAIL: TestTextIsSanitized (0.00s)
+    observability_test.go:273: the log holds "SENTINEL":
+        {"time":"2026-10-26T02:17:51.827592137Z","level":"ERROR","msg":"failed","component":"test","error":"Bearer [redacted]"}
+        {"time":"2026-10-26T02:17:51.827628222Z","level":"ERROR","msg":"failed","component":"test","error":"auth failed: [redacted]"}
+        {"time":"2026-10-26T02:17:51.827670173Z","level":"ERROR","msg":"failed","component":"test","error":"key [redacted] refused"}
+        {"time":"2026-10-26T02:17:51.827693224Z","level":"ERROR","msg":"failed","component":"test","error":"aws [redacted]"}
+        {"time":"2026-10-26T02:17:51.827710016Z","level":"ERROR","msg":"failed","component":"test","error":"[redacted]"}
+        {"time":"2026-10-26T02:17:51.827726836Z","level":"ERROR","msg":"failed","component":"test","error":"connect postgres://[redacted]@db.internal:5432/twin"}
+        {"time":"2026-10-26T02:17:51.827821907Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Cookie: [redacted]"}
+        {"time":"2026-10-26T02:17:51.827882349Z","level":"ERROR","msg":"failed","component":"test","error":"env DB_PASSWORD=[redacted]"}
+        {"time":"2026-10-26T02:17:51.82790875Z","level":"ERROR","msg":"failed","component":"test","error":"mail [redacted]"}
+        {"time":"2026-10-26T02:17:51.827954914Z","level":"ERROR","msg":"failed","component":"test","error":"token=[redacted]"}
+        {"time":"2026-10-26T02:17:51.827972596Z","level":"ERROR","msg":"failed","component":"test","error":"row \"[redacted]\" is invalid"}
+        {"time":"2026-10-26T02:17:51.828048309Z","level":"ERROR","msg":"failed","component":"test","error":"cell \"[redacted]\" is invalid"}
+        {"time":"2026-10-26T02:17:51.828078392Z","level":"ERROR","msg":"failed","component":"test","error":"column \"[redacted]\" unknown"}
+        {"time":"2026-10-26T02:17:51.82811167Z","level":"ERROR","msg":"failed","component":"test","error":"ERROR: invalid input syntax for type integer: \"[redacted]\" (SQLSTATE 22P02)"}
+        {"time":"2026-10-26T02:17:51.82818375Z","level":"ERROR","msg":"failed","component":"test","error":"bidi  evil  text  next line tab"}
+        {"time":"2026-10-26T02:17:51.82821273Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Authorization: [redacted]"}
+        {"time":"2026-10-26T02:17:51.828254058Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Cookie: [redacted]"}
+        {"time":"2026-10-26T02:17:51.828293175Z","level":"ERROR","msg":"failed","component":"test","error":"signature [redacted] rejected"}
+        {"time":"2026-10-26T02:17:51.828336075Z","level":"ERROR","msg":"failed","component":"test","error":"cell \"[redacted]\""}
+        {"time":"2026-10-26T02:17:51.828364904Z","level":"ERROR","msg":"failed","component":"test","error":"value \"[redacted]\""}
+        {"time":"2026-10-26T02:17:51.828388913Z","level":"ERROR","msg":"failed","component":"test","error":"value 'QUOTE-SENTINEL' is invalid"}
+        {"time":"2026-10-26T02:17:51.82841313Z","level":"ERROR","msg":"failed","component":"test","error":"value `QUOTE-SENTINEL` is invalid"}
+        {"time":"2026-10-26T02:17:51.828443599Z","level":"ERROR","msg":"failed","component":"test","error":"value “QUOTE-SENTINEL” is invalid"}
+        {"time":"2026-10-26T02:17:51.828469563Z","level":"ERROR","msg":"failed","component":"test","error":"value ‘QUOTE-SENTINEL’ is invalid"}
+        {"time":"2026-10-26T02:17:51.828493819Z","level":"ERROR","msg":"failed","component":"test","error":"invalid character 'Q' then 'QUOTE-SENTINEL'"}
+        {"time":"2026-10-26T02:17:51.828525854Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed 'QUOTE-SENTINEL and more"}
+        {"time":"2026-10-26T02:17:51.828553376Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed `QUOTE-SENTINEL"}
+        {"time":"2026-10-26T02:17:51.828571093Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed “QUOTE-SENTINEL"}
+        {"time":"2026-10-26T02:17:51.82858929Z","level":"ERROR","msg":"failed","component":"test","error":"it's 'don't QUOTE-SENTINEL' inside"}
+        {"time":"2026-10-26T02:17:51.828621428Z","level":"ERROR","msg":"failed","component":"test","error":"key sk-ant- api03-ZW-SENTINEL-abcdefgh"}
+        {"time":"2026-10-26T02:17:51.828657932Z","level":"ERROR","msg":"failed","component":"test","error":"JSESSIONID=ABCDEF0123456789SENTINEL"}
+        {"time":"2026-10-26T02:17:51.828683325Z","level":"ERROR","msg":"failed","component":"test","error":"GET https://b.s3.amazonaws.com/k?X-Amz-Signature=0123456789abcdefSENTINEL"}
+        {"time":"2026-10-26T02:17:51.828782425Z","level":"ERROR","msg":"failed","component":"test","error":"https://a.blob.core.windows.net/c?sv=2024&sig=SIGSENTINEL0123"}
+    observability_test.go:278: the context around a redaction is lost: {"time":"2026-10-26T02:17:51.827592137Z","level":"ERROR","msg":"failed","component":"test","error":"Bearer [redacted]"}
+        {"time":"2026-10-26T02:17:51.827628222Z","level":"ERROR","msg":"failed","component":"test","error":"auth failed: [redacted]"}
+        {"time":"2026-10-26T02:17:51.827670173Z","level":"ERROR","msg":"failed","component":"test","error":"key [redacted] refused"}
+        {"time":"2026-10-26T02:17:51.827693224Z","level":"ERROR","msg":"failed","component":"test","error":"aws [redacted]"}
+        {"time":"2026-10-26T02:17:51.827710016Z","level":"ERROR","msg":"failed","component":"test","error":"[redacted]"}
+        {"time":"2026-10-26T02:17:51.827726836Z","level":"ERROR","msg":"failed","component":"test","error":"connect postgres://[redacted]@db.internal:5432/twin"}
+        {"time":"2026-10-26T02:17:51.827821907Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Cookie: [redacted]"}
+        {"time":"2026-10-26T02:17:51.827882349Z","level":"ERROR","msg":"failed","component":"test","error":"env DB_PASSWORD=[redacted]"}
+        {"time":"2026-10-26T02:17:51.82790875Z","level":"ERROR","msg":"failed","component":"test","error":"mail [redacted]"}
+        {"time":"2026-10-26T02:17:51.827954914Z","level":"ERROR","msg":"failed","component":"test","error":"token=[redacted]"}
+        {"time":"2026-10-26T02:17:51.827972596Z","level":"ERROR","msg":"failed","component":"test","error":"row \"[redacted]\" is invalid"}
+        {"time":"2026-10-26T02:17:51.828048309Z","level":"ERROR","msg":"failed","component":"test","error":"cell \"[redacted]\" is invalid"}
+        {"time":"2026-10-26T02:17:51.828078392Z","level":"ERROR","msg":"failed","component":"test","error":"column \"[redacted]\" unknown"}
+        {"time":"2026-10-26T02:17:51.82811167Z","level":"ERROR","msg":"failed","component":"test","error":"ERROR: invalid input syntax for type integer: \"[redacted]\" (SQLSTATE 22P02)"}
+        {"time":"2026-10-26T02:17:51.82818375Z","level":"ERROR","msg":"failed","component":"test","error":"bidi  evil  text  next line tab"}
+        {"time":"2026-10-26T02:17:51.82821273Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Authorization: [redacted]"}
+        {"time":"2026-10-26T02:17:51.828254058Z","level":"ERROR","msg":"failed","component":"test","error":"request headers: Cookie: [redacted]"}
+        {"time":"2026-10-26T02:17:51.828293175Z","level":"ERROR","msg":"failed","component":"test","error":"signature [redacted] rejected"}
+        {"time":"2026-10-26T02:17:51.828336075Z","level":"ERROR","msg":"failed","component":"test","error":"cell \"[redacted]\""}
+        {"time":"2026-10-26T02:17:51.828364904Z","level":"ERROR","msg":"failed","component":"test","error":"value \"[redacted]\""}
+        {"time":"2026-10-26T02:17:51.828388913Z","level":"ERROR","msg":"failed","component":"test","error":"value 'QUOTE-SENTINEL' is invalid"}
+        {"time":"2026-10-26T02:17:51.82841313Z","level":"ERROR","msg":"failed","component":"test","error":"value `QUOTE-SENTINEL` is invalid"}
+        {"time":"2026-10-26T02:17:51.828443599Z","level":"ERROR","msg":"failed","component":"test","error":"value “QUOTE-SENTINEL” is invalid"}
+        {"time":"2026-10-26T02:17:51.828469563Z","level":"ERROR","msg":"failed","component":"test","error":"value ‘QUOTE-SENTINEL’ is invalid"}
+        {"time":"2026-10-26T02:17:51.828493819Z","level":"ERROR","msg":"failed","component":"test","error":"invalid character 'Q' then 'QUOTE-SENTINEL'"}
+        {"time":"2026-10-26T02:17:51.828525854Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed 'QUOTE-SENTINEL and more"}
+        {"time":"2026-10-26T02:17:51.828553376Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed `QUOTE-SENTINEL"}
+        {"time":"2026-10-26T02:17:51.828571093Z","level":"ERROR","msg":"failed","component":"test","error":"unclosed “QUOTE-SENTINEL"}
+        {"time":"2026-10-26T02:17:51.82858929Z","level":"ERROR","msg":"failed","component":"test","error":"it's 'don't QUOTE-SENTINEL' inside"}
+        {"time":"2026-10-26T02:17:51.828621428Z","level":"ERROR","msg":"failed","component":"test","error":"key sk-ant- api03-ZW-SENTINEL-abcdefgh"}
+        {"time":"2026-10-26T02:17:51.828657932Z","level":"ERROR","msg":"failed","component":"test","error":"JSESSIONID=ABCDEF0123456789SENTINEL"}
+        {"time":"2026-10-26T02:17:51.828683325Z","level":"ERROR","msg":"failed","component":"test","error":"GET https://b.s3.amazonaws.com/k?X-Amz-Signature=0123456789abcdefSENTINEL"}
+        {"time":"2026-10-26T02:17:51.828782425Z","level":"ERROR","msg":"failed","component":"test","error":"https://a.blob.core.windows.net/c?sv=2024&sig=SIGSENTINEL0123"}
+--- FAIL: TestQuotesKeepWords (0.00s)
+    observability_test.go:297: Text("invalid character 'x' looking for beginning of value") = "invalid character 'x' looking for beginning of value", want "invalid character '[redacted]' looking for beginning of value"
+    observability_test.go:297: Text("failed to connect to `user=twin_worker database=twin`: dial error") = "failed to connect to `user=twin_worker database=twin`: dial error", want "failed to connect to `[redacted]`: dial error"
+    observability_test.go:297: Text("jobs: the lease of 'job_01M4YDQK00ADN261CME3WV5HZ6' was lost, so it's over") = "jobs: the lease of 'job_01M4YDQK00ADN261CME3WV5HZ6' was lost, so it's over", want "jobs: the lease of '[redacted]' was lost, so it's over"
+--- FAIL: TestPanicText (0.00s)
+    observability_test.go:410: "panic: runtime error: index out of range [3] with length 0"
+    observability_test.go:418: "panic: index CASE-SENTINEL-7731 out of range; key [redacted]"
+    observability_test.go:421: "panic: x"
+--- FAIL: TestCorrelationStaysAtTheTop (0.00s)
+    observability_test.go:474: {"time":"2026-10-26T02:17:51.853980108Z","level":"INFO","msg":"grouped","component":"test","organization_id":"org_01M5TZZXZDRVHAQZC6KQ3QHXJW","g":{"code":"WITH_CODE","h":{"request_id":"req_01M5TZZXZDV9M8BJSDAMPYEC6D","job_id":"job_01M5TZZXZDMQ3P4H0Z5ZYWPSXD","organization_id":"org_01M5TZZXZD58F573VQVMJ79R1P","status":"ok","prompt":"[redacted]"}}}
+    observability_test.go:478: "organization_id" 2 times: {"time":"2026-10-26T02:17:51.853980108Z","level":"INFO","msg":"grouped","component":"test","organization_id":"org_01M5TZZXZDRVHAQZC6KQ3QHXJW","g":{"code":"WITH_CODE","h":{"request_id":"req_01M5TZZXZDV9M8BJSDAMPYEC6D","job_id":"job_01M5TZZXZDMQ3P4H0Z5ZYWPSXD","organization_id":"org_01M5TZZXZD58F573VQVMJ79R1P","status":"ok","prompt":"[redacted]"}}}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/observability	0.034s
+FAIL
+exit=1

@@ -1,0 +1,5 @@
+# github.com/kcl1104/geminus/internal/worker [github.com/kcl1104/geminus/internal/worker.test]
+internal/worker/outcome_internal_test.go:29:13: undefined: failureOutcome
+FAIL	github.com/kcl1104/geminus/internal/worker [build failed]
+FAIL
+exit=1

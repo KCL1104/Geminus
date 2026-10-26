@@ -1,0 +1,26 @@
+access-status-last-write: SURVIVED
+access-route-before-serve: KILLED --- FAIL: TestAccessLog (0.01s) | --- FAIL: TestAccessLogTelemetry (0.00s) | FAIL	github.com/kcl1104/geminus/internal/httpapi	0.052s
+with-keys-not-tracked: KILLED --- FAIL: TestWithAttributesAreFiltered (0.00s) | FAIL	github.com/kcl1104/geminus/internal/observability	0.064s
+group-under-text-kept: SURVIVED
+gotype-may-be-a-credential: SURVIVED
+invalid-utf8-kept: SURVIVED
+pointer-bound-is-text: SURVIVED
+system-actor-unchecked: KILLED --- FAIL: TestRefused (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.096s | --- FAIL: TestAnEventIsCheckedBeforeItIsWritten (0.00s) | FAIL	github.com/kcl1104/geminus/internal/storage/auditlog	0.009s
+field-name-from-data-in-error: KILLED --- FAIL: TestRefused (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.146s
+action-name-from-data-in-error: KILLED --- FAIL: TestRefused (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.133s
+empty-label-in-list: SURVIVED
+count-accepts-float: KILLED --- FAIL: TestShapes (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.098s
+endpoint-with-fragment: KILLED --- FAIL: TestLoadTelemetry (0.00s) | FAIL	github.com/kcl1104/geminus/internal/config	0.005s
+endpoint-force-query: SURVIVED
+endpoint-opaque: SURVIVED
+sdk-disabled-case-sensitive: KILLED --- FAIL: TestLoadTelemetry (0.00s) | FAIL	github.com/kcl1104/geminus/internal/config	0.022s
+protocol-grpc-silently-http: KILLED --- FAIL: TestLoadTelemetry (0.00s) | FAIL	github.com/kcl1104/geminus/internal/config	0.015s
+retryable-always-true: SURVIVED
+max-attempts-is-attempt: KILLED --- FAIL: TestTheAttemptsEvent (0.00s) | FAIL	github.com/kcl1104/geminus/internal/worker	0.008s
+lease-lost-outcome-dropped: SURVIVED
+loop-audit-error-ignored: SURVIVED
+job-span-error-only-failed: SURVIVED
+metric-route-raw: KILLED --- FAIL: TestAttributesAreFiltered (0.00s) | FAIL	github.com/kcl1104/geminus/internal/observability/telemetry	0.008s
+scoped-user-is-subject: KILLED --- FAIL: TestAccessLog (0.01s) | FAIL	github.com/kcl1104/geminus/internal/httpapi	0.069s
+provider-call-tokens-unfiltered-model: KILLED --- FAIL: TestAttributesAreFiltered (0.00s) | FAIL	github.com/kcl1104/geminus/internal/observability/telemetry	0.006s
+TOTAL 25: 13 killed, 12 survived, 0 build

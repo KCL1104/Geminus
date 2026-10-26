@@ -1,0 +1,19 @@
+$ go test -race -count=1 ./internal/observability/... ./internal/audit/ ./internal/httpapi/ ./internal/worker/ ./internal/config/ ./cmd/... ./scripts/check-architecture/ ./internal/storage/auditlog/ ./internal/runs/runner/ ./internal/proposals/generator/ ./internal/import/validator/ ./internal/api/
+ok  	github.com/kcl1104/geminus/internal/observability	1.498s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry	1.055s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry/export	3.145s
+ok  	github.com/kcl1104/geminus/internal/audit	1.588s
+ok  	github.com/kcl1104/geminus/internal/httpapi	1.312s
+ok  	github.com/kcl1104/geminus/internal/worker	1.037s
+ok  	github.com/kcl1104/geminus/internal/config	1.024s
+ok  	github.com/kcl1104/geminus/cmd/api	1.159s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.027s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.246s
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	210.396s
+ok  	github.com/kcl1104/geminus/internal/storage/auditlog	1.032s
+ok  	github.com/kcl1104/geminus/internal/runs/runner	1.073s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	2.532s
+ok  	github.com/kcl1104/geminus/internal/import/validator	1.272s
+ok  	github.com/kcl1104/geminus/internal/api	1.552s
+
+exit=0 (224s)

@@ -1,0 +1,21 @@
+--- FAIL: TestTheSDKWritesNothingRawToStderr (0.02s)
+    stderr_test.go:73: a pair without =: the process printed the header:
+        2026/10/26 02:20:29 internal_logging.go:50: "msg"="parse headers" "error"="missing '=" "input"="Authorization: Bearer HDR-SENTINEL-0123456789"
+        2026/10/26 02:20:29 internal_logging.go:50: "msg"="parse headers" "error"="missing '=" "input"="Authorization: Bearer HDR-SENTINEL-0123456789"
+    stderr_test.go:82: a pair without =: a line outside the filtered log: "2026/10/26 02:20:29 internal_logging.go:50: \"msg\"=\"parse headers\" \"error\"=\"missing '=\" \"input\"=\"Authorization: Bearer HDR-SENTINEL-0123456789\""
+    stderr_test.go:82: a pair without =: a line outside the filtered log: "2026/10/26 02:20:29 internal_logging.go:50: \"msg\"=\"parse headers\" \"error\"=\"missing '=\" \"input\"=\"Authorization: Bearer HDR-SENTINEL-0123456789\""
+    stderr_test.go:90: a pair without =: no filtered line says what the SDK could not parse:
+        2026/10/26 02:20:29 internal_logging.go:50: "msg"="parse headers" "error"="missing '=" "input"="Authorization: Bearer HDR-SENTINEL-0123456789"
+        2026/10/26 02:20:29 internal_logging.go:50: "msg"="parse headers" "error"="missing '=" "input"="Authorization: Bearer HDR-SENTINEL-0123456789"
+    stderr_test.go:73: a value not escaped: the process printed the header:
+        2026/10/26 02:20:29 internal_logging.go:50: "msg"="escape header value" "error"="invalid URL escape \"%ZZ\"" "value"="HDR-SENTINEL-0123%ZZ"
+        2026/10/26 02:20:29 internal_logging.go:50: "msg"="escape header value" "error"="invalid URL escape \"%ZZ\"" "value"="HDR-SENTINEL-0123%ZZ"
+    stderr_test.go:82: a value not escaped: a line outside the filtered log: "2026/10/26 02:20:29 internal_logging.go:50: \"msg\"=\"escape header value\" \"error\"=\"invalid URL escape \\\"%ZZ\\\"\" \"value\"=\"HDR-SENTINEL-0123%ZZ\""
+    stderr_test.go:82: a value not escaped: a line outside the filtered log: "2026/10/26 02:20:29 internal_logging.go:50: \"msg\"=\"escape header value\" \"error\"=\"invalid URL escape \\\"%ZZ\\\"\" \"value\"=\"HDR-SENTINEL-0123%ZZ\""
+    stderr_test.go:90: a value not escaped: no filtered line says what the SDK could not parse:
+        2026/10/26 02:20:29 internal_logging.go:50: "msg"="escape header value" "error"="invalid URL escape \"%ZZ\"" "value"="HDR-SENTINEL-0123%ZZ"
+        2026/10/26 02:20:29 internal_logging.go:50: "msg"="escape header value" "error"="invalid URL escape \"%ZZ\"" "value"="HDR-SENTINEL-0123%ZZ"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/observability/telemetry/export	0.027s
+FAIL
+exit=1

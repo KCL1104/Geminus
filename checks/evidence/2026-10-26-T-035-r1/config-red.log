@@ -1,0 +1,14 @@
+--- FAIL: TestLoadTelemetry (0.00s)
+    telemetry_test.go:88: http to a name like loopback: <nil>
+    telemetry_test.go:88: an empty header name: <nil>
+    telemetry_test.go:88: a non-ASCII header name: <nil>
+    telemetry_test.go:88: one bad pair of two: <nil>
+    telemetry_test.go:88: http to another host: <nil>
+    telemetry_test.go:88: http to a private address: <nil>
+    telemetry_test.go:88: a header name with a space: <nil>
+    telemetry_test.go:88: a header without =: <nil>
+    telemetry_test.go:88: a bad escape: <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config	0.005s
+FAIL
+exit=1

@@ -1,0 +1,7 @@
+format-chars-kept: KILLED (Test.*) --- FAIL: TestTextIsSanitized (0.00s)
+line-separators-kept: KILLED (Test.*) --- FAIL: TestTextIsSanitized (0.00s)
+r1-invalid-utf8-kept: SURVIVED (Test.*) 
+r1-curly-kept: KILLED (Test.*) --- FAIL: TestTextIsSanitized (0.00s)
+r1-curly-single-kept: KILLED (Test.*) --- FAIL: TestTextIsSanitized (0.00s)
+r1-unclosed-backtick-kept: KILLED (Test.*) --- FAIL: TestTextIsSanitized (0.00s)
+TOTAL 6 (unit): 5 killed, 1 survived, 0 did not build

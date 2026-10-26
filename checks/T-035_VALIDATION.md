@@ -220,3 +220,104 @@ Log 與 exit code 在 `checks/evidence/2026-10-25-T-035/coordinator-*`。
 仍為 NOT RUN：`make e2e-test`、live AI、送到真的 OTLP collector、OpenAPI 官方 validator、Node 24 上的 `frontend-test`（CI 執行）。
 
 D-091–D-095 與 ADR-028 仍是 PROPOSED。D-092 與已 ACCEPTED 的 ADR-024 的不一致，留給 owner 決定。T-035 在 tasks.json 仍為 `not_started`。
+
+## Review 第 1 輪（7cbde1e：CHANGES REQUESTED，1 Medium、7 Low、Info）
+
+Reviewer 獨立確認了 audit 的完整性：16 個會寫入的 route 與每個 worker 路徑都在同一 transaction 寫 audit，catalogue 沒有拒絕任何合法的 production event。修正在新 branch `t035-r1`（從 7cbde1e 開出，沒有 push）。Log 在 `checks/evidence/2026-10-26-T-035-r1/`。
+
+### Commit
+
+| Commit | 內容 |
+|---|---|
+| 4ceb306 | M1、L6、L7：export 先接 OTel 的 error handler 與 logger 才建 exporter；`config.LoadTelemetry` 檢查三個 `*_HEADERS`；endpoint 只接受 https 或本機的 http；SDK 的 diagnostics 以可讀、過濾後的形式寫入 log |
+| 2349682 | L1–L5、I7：其他引號、只信任 Go runtime 的 error、group 外的 correlation、`failureOutcome`，以及 mutant 找到的沒有測試的界限；reviewer probe 的額外修正（格式字元、session 與簽章參數） |
+| 586efbb | I8：architecture 規則的 `bring` 欄位，uuid 只能帶進 `database/sql/driver`；`observability-is-a-leaf` 允許 `reflect` |
+| 047622f | 文件：D-091、D-092、D-094、D-095、ADR-028、SECURITY §9、T-036 的 scope（都仍是 PROPOSED） |
+| 143941d | Mutation 找到的缺口：行與段落分隔字元（U+2028、U+2029）的測試；測試中的不可見與 typographic 字元改寫為 Go escape |
+| （本 commit） | 本節與 `checks/evidence/2026-10-26-T-035-r1/` |
+
+### 發現 → 修正 → 測試 → 證據
+
+| 發現 | 修正 | 擋下它的測試（先紅） | 證據 |
+|---|---|---|---|
+| **M1**（Medium）：exporter 在 `otel.SetErrorHandler`／`SetLogger` 之前建立；`OTEL_EXPORTER_OTLP_HEADERS` 解析不了時，OTel 預設的 stdr 把原始值（含 credential）以非 JSON 寫到 stderr，每個 exporter 一次 | (1) `export.Setup` 在建立任何 exporter（以及 resource、provider）之前就安裝 error handler 與 logger；(2) `config.LoadTelemetry` 以 exporter 的同一套規則（逗號分隔、`=`、trim 後的 name 是 HTTP token、value 可 `url.PathUnescape`）檢查 `OTEL_EXPORTER_OTLP_HEADERS`、`_TRACES_HEADERS`、`_METRICS_HEADERS`，不合時拒絕啟動，錯誤只寫變數名稱。文字：`internal/config/telemetry.go` 的說明、ADR-028 的 export 列與設定段、D-095 (b)（DECISIONS_AND_TBD、decisions.json） | `TestTheSDKWritesNothingRawToStderr`：把 test binary 當成新的 process 執行（`TestMain` 的 helper，OTel 的 logger 仍是預設），讀它**真的 stderr**，兩種格式錯誤（沒有 `=` 的 `Authorization: Bearer …`、沒有 URL-encode 的 `%ZZ`）：沒有 sentinel、每一行都是過濾後的 JSON、有一行說明 SDK 解析不了什麼。紅：`export-stderr-red.log`（stdr 的原始行帶 `HDR-SENTINEL`）。`TestLoadTelemetry` 的 6 種 header 拒絕與 1 種接受、`TestRunRefusesABadTelemetryEndpoint`／`Setting`（cmd）：紅在 `config-red.log`、`cmd-red.log` | mutant `r1-sdk-logger-not-installed`、`r1-headers-unchecked`、`r1-header-escape-unchecked`、`r1-header-name-any`、`r1-header-name-non-ascii` |
+| **L1**：free-text key 下的 group 沒有測試（`group-under-text-kept` 存活；程式本身正確） | 不改程式 | `TestOtherValues`：`slog.Group("error", …)`，以及解析成 group 的 LogValuer 放在 `stack`、`panic` 下，都是 `[redacted]`（測試在現行程式上通過，由 mutant 證明它擋得下） | `r1-group-under-text-kept` |
+| **L2**：只有雙引號算值的邊界；單引號、backtick、“ ” 會漏 | 加上 backtick、“ ”、‘ ’（閉合，或沒有閉合時到結尾），以及在字的開頭開啟、字的結尾關閉的單引號（字中的 apostrophe 不算：don't、job's、workers'）。沒有引號的值仍是殘餘風險：記在 D-094 (c)，並在 T-036 的 scope 加上後續：對 handler package 中以 `%s`／`%v` 格式化非 ID 值的 error 做 lint | `TestTextIsSanitized`（9 種新的引號情形）、`TestQuotesKeepWords`（縮寫與所有格不被隱藏；代價也寫進測試：pgx 放在 backtick 中的 user 與 database 會被隱藏）。紅：`observability-red.log` | `r1-single-quotes-kept`、`r1-apostrophes-as-quotes`、`r1-quote-closes-inside-words`、`r1-backticks-kept`、`r1-curly-kept`、`r1-curly-single-kept`、`r1-unclosed-backtick-kept` |
+| **L3**：`PanicText` 信任任何有 `RuntimeError()` method 的型別 | `observability.RuntimeError`：只有型別宣告在 package `runtime` 本身的 error（`reflect` 的 PkgPath；pointer 先 unwrap）；其他型別一律只記型別。Worker 的 `panicked.Error` 用同一個規則。原本刻意接受舊行為的測試已改 | `TestPanicText`（假的 runtime error、它的 pointer、nil、真的 index out of range、nil map、`*runtime.TypeAssertionError`）、`TestPanickedTrustsOnlyTheRuntime`（worker）。紅：`observability-red.log`、`worker-panicked-red.log` | `r1-runtime-error-by-method`、`r1-runtime-pointer-not-unwrapped`、`r1-worker-trusts-the-method` |
+| **L4**：沒有測試的界限（`pointer-bound-is-text`、`access-status-last-write`、`empty-label-in-list`、`endpoint-force-query`） | 不改程式：程式本來就是對的，例如 label 清單本來就拒絕空字串 | `TestTextIsBounded`（JSON Pointer 截在 256）、`TestAccessLogKeepsTheWriter`（WriteHeader 兩次，記第一個）、`TestShapes`（清單中的空 label）、`TestLoadTelemetry`（只以 `?` 結尾的 endpoint） | `r1-pointer-bound-is-text`、`r1-access-status-last-write`、`r1-empty-label-in-list`、`r1-endpoint-force-query` |
+| **L5**：outcome 與 status 沒有測試（`lease-lost-outcome-dropped`、`job-span-error-only-failed`） | 把記錄 failure 之後的 outcome 抽成 `failureOutcome`（lease_lost、not_recorded、requeued、failed） | `TestFailureOutcome`（紅：`worker-red.log`，函式還不存在）、`TestJobOutcomes`（6 種 outcome 的 span status 與 metric） | `r1-lease-lost-outcome-dropped`、`r1-not-recorded-as-failed`、`r1-job-span-error-only-failed` |
+| **L6**：接受 http 的 OTLP endpoint，credential 會以明文送出 | 只接受 https，或 host 為 `localhost`、127.0.0.0/8、`::1` 的 http。D-095 (b) 與 ADR-028 已改（仍 PROPOSED） | `TestLoadTelemetry`：4 種本機的 http 接受；另一台 host、`localhost.example.com`、私有位址都拒絕。`TestRunRefusesABadTelemetryEndpoint`／`Setting`。紅：`config-red.log`、`cmd-red.log` | `r1-http-anywhere`、`r1-loopback-any-ip`、`r1-loopback-by-prefix` |
+| **L7**：SDK 的 diagnostics 用 `err` 這個 key（沒有登記，一律 redacted），Warn（V(1)）在 INFO 被丟掉 | `diagnostics` handler（logr 與過濾後的 log 之間）：`err` 改為 `error`（自由文字，經過濾）；V(1) 為 WARN；V(4)／V(8) 不記；訊息以 `telemetry: ` 開頭；其他 key（`input`、`value` 等原始值）仍是 redacted | `TestDiagnostics`（internal，紅＝`diagnostics` 還不存在）；`TestTheSDKWritesNothingRawToStderr` 要求 SDK 的那一行帶有可讀的 `error` | `r1-diagnostics-err-unrenamed`、`r1-diagnostics-warn-dropped`、`r1-diagnostics-debug-logged`、`r1-diagnostics-unprefixed`、`r1-diagnostics-with-values-unrenamed` |
+| **I2／I3** | D-091 的文字：一次失敗的 proposal attempt 有兩筆 event（generator 盡力寫的 `proposal.attempt_failed`，以及 loop 的 `job.attempt_failed`）；reaper fail closed（audit 寫不進去時，該 organization 過期的 lease 不收回）。T-036 的 scope 加上對 `reaping failed` 告警 | 文件 | DECISIONS_AND_TBD、decisions.json、tasks.json |
+| **I6** | SECURITY §9 改為引用 coordinator 的 DB 執行（7cbde1e） | 文件 | `docs/SECURITY.md` |
+| **I7**：`WithGroup` 讓 correlation 跑進 group 裡 | Handler 記住 group 與 group 中的 `WithAttrs`，Handle 時在 correlation 之後才開 group，所以 correlation 一律在最外層；沒有 group 時行為不變 | `TestCorrelationStaysAtTheTop`：兩層 group 與 group 中的 `With`；request_id、job_id、organization_id 各在最外層出現一次；group 中與 context 同名的 key 屬於 group。紅：`observability-red.log` | `r1-grouped-correlation-dropped`、`r1-correlation-inside-groups`、`r1-record-keys-suppress-grouped-correlation` |
+| **I8**：對 `github.com/google/uuid` 的豁免涵蓋它整個 closure | 規則引擎加上 `bring`：一個 package 只能帶進列出的 forbidden package，其他依賴照常檢查；`db-only-in-storage` 改用 `bring: {uuid: [database/sql/driver]}`（原本的 `through` 是精確到 package 的 gateway，但會跳過它全部的依賴） | `TestTheUUIDGatewayBringsOnlyTheDriver`：經由 uuid 連到 `database/sql`、pgx 都是 violation；直接 import driver 也是；只帶 driver 時不是。紅：`architecture-red.log` | `r1-uuid-brings-anything`；`make architecture-check` PASS |
+| **D-092** | 加一句給 owner：`WORKER_ID` 的唯一性沒有任何地方強制 | 文件 | DECISIONS_AND_TBD、decisions.json |
+| Reviewer 的 probe（`obs_probe_test.go`）另外顯示的洩漏 | 格式字元（zero-width、bidi）在 credential pattern 之前先移除；`JSESSIONID`、`PHPSESSID`、`X-Amz-Signature`、`sig` 參數視為 credential | `TestTextIsSanitized` | probe 修正前後：`reviewer-obs-probe-before.txt`、`reviewer-obs-probe-after.txt`（單引號、typographic、backtick、JSESSIONID、AWS 簽章、zero-width、假的 runtime error 由 leak 變為不 leak）。仍會 leak 的都是設計上的殘餘：沒有引號的值、符合形狀的名稱或 token、由資料組成的小寫 group 名稱、`?code=`、stack／pointer／addr 的自由文字 |
+
+### Mutation
+
+`checks/evidence/2026-10-26-T-035-r1/mutate.py`：以 2026-10-25 的 harness 為基礎，更新修正移動過的 snippet，加入 reviewer 存活的 mutant（套在修正後的程式上），以及新程式的 mutant（名稱以 `r1-` 開頭）。
+
+- **主要一輪**（`mutants-unit.log`，在 143941d 之前的程式上）：136 個 unit mutant 中 132 KILLED、4 SURVIVED、0 BUILD。
+  - 包括 reviewer 存活的 8 個（`r1-group-under-text-kept`、`r1-pointer-bound-is-text`、`r1-access-status-last-write`、`r1-empty-label-in-list`、`r1-gotype-may-be-a-credential`、`r1-endpoint-force-query`、`r1-lease-lost-outcome-dropped`、`r1-job-span-error-only-failed`），**全部 KILLED**。
+  - 名稱以 `r1-` 開頭的 39 個中 38 KILLED（`r1-invalid-utf8-kept` 是 equivalent，見下）。
+- **存活的 4 個**：
+  - `line-separators-kept`：沒有測試，加上 U+2028／U+2029 的測試（143941d）；重跑 KILLED（`mutants-unit-rerun.log`，同時重跑了 5 個相關的 mutant，都 KILLED）。
+  - `no-pre-cut`：equivalent，理由同上一輪。
+  - `runtime-error-unsanitized`：equivalent。L3 之後只有 package `runtime` 自己的 error 會到這裡，它們的訊息由 runtime 寫成，只有型別名稱與數字。sanitize 是縱深防禦，沒有可測的差異：沒有 runtime error 會帶 credential。
+  - `r1-invalid-utf8-kept`：equivalent。接下來的格式字元那一輪是 `strings.Map`，它本來就把每個 invalid byte 寫成 U+FFFD（`TestTextHelper` 的 invalid UTF-8 在兩種程式上都通過）。
+- **Reviewer 的 `with-keys-not-tracked`** 因 snippet 移動而沒有套上，移植為 `r1-with-keys-not-tracked`：KILLED（`mutants-unit-rerun2.log`）。
+- **最終**：137 個 unit mutant 中 134 KILLED，3 個 equivalent，0 BUILD。
+- **Reviewer 的 harness**（`reviewer/run.py`，以 `go test -overlay` 不改 worktree）在 143941d 上重跑（`reviewer-mutants-after.log`；修正前為 `reviewer-mutants-before.log`）：25 個中 19 KILLED、3 SURVIVED、3 NOT APPLIED。
+  - NOT APPLIED 的是 snippet 被修正移動的 `with-keys-not-tracked`、`endpoint-force-query`、`lease-lost-outcome-dropped`；移植版都 KILLED。
+  - SURVIVED 的 3 個見下。
+- **DB mutant**：12 個都套得上且能 build（`mutants-db-build.log`），測試 NOT RUN。
+
+Reviewer harness（`reviewer/run.py`）中，不在要求的 8 個之內、修正前也存活的 mutant：
+- `retryable-always-true`：由新的 `TestTheAttemptsEventOfEveryType` 擋下（reviewer 的 harness 與 `r1-retryable-always-true` 都是 KILLED）。
+- `invalid-utf8-kept`：equivalent，理由同 `r1-invalid-utf8-kept`。
+- `endpoint-opaque`：equivalent。`url.Parse` 只在 scheme 之後沒有 `//` 時設定 `Opaque`，這時沒有 authority，`Host` 為空，`validEndpoint` 本來就拒絕。
+- `loop-audit-error-ignored`：沒有 unit 測試擋下它。
+  - DB 的錯誤在 DB 層是 equivalent：失敗的 INSERT 讓 PostgreSQL 的 transaction 進入 aborted，COMMIT 一定 rollback。
+  - catalogue 的拒絕（沒有送出 SQL）只會出現在 loop 自己的 event 不合 catalogue 時。`TestTheAttemptsEventOfEveryType` 顯示 6 種 job type 的 event 都合，worker ID 由 `worker.New` 檢查。
+  - coordinator 的 DB mutant `db-failure-not-audited` 已擋下「不寫 audit」。
+
+### 指令與 exit code（`checks/evidence/2026-10-26-T-035-r1/exit-codes.txt`）
+
+在 143941d 上執行（`verify.py`；先 `go clean -testcache`；Go 1.27.3）：
+
+| 指令 | Exit | 結果 |
+|---|---|---|
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0 | `PASS_LIMITED_SPEC_CHECKS`；proposed 14；重產的 `checks/*.json` 沒有差異（`spec-check.log`） |
+| `make backend-test` | 0 | gofmt、`go vet`（含 DB 測試的編譯）、`go test`：71 個 package `ok`，沒有 FAIL；DB-backed 測試 SKIP（`backend-test.log`） |
+| `make architecture-check` | 0 | `PASS architecture: 82 packages, 21 rules, 16 build configurations`（`architecture-check.log`） |
+| `go test -race -count=1` 碰到的 12 個 package 路徑（含 `./scripts/check-architecture/`、`./internal/api/`） | 0 | 16 個 package `ok`，沒有 data race 報告（`race-touched.log`） |
+| `make backend-race` | 0 | 71 個 package `ok`，沒有 data race 報告（`backend-race.log`） |
+| `make ai-eval` | 0 | fake provider 的兩個 suite PASS；本輪沒有改 AI 的程式（`ai-eval.log`） |
+| `go mod verify` | 0 | all modules verified；本輪沒有新依賴，`go.mod`／`go.sum` 沒有改 |
+| `GOTOOLCHAIN=go1.27.3 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./cmd/... ./internal/... ./schemas/... ./scripts/...` | 0 | No vulnerabilities found（`govulncheck.log`） |
+| `python mutate.py <root> mutants-unit.log unit`（及兩次指定 mutant 的重跑） | 0 | 見「Mutation」 |
+| `python mutate.py <root> mutants-db-build.log dbbuild` | 0 | 12 個 DB mutant 都能 build（這個模式一律 exit 0，結果在 log） |
+| `reviewer/run.py`（overlay） | 0 | 見「Mutation」 |
+| 先紅的 log：`export-stderr-red.log`、`config-red.log`、`cmd-red.log`、`observability-red.log`、`worker-red.log`、`worker-panicked-red.log`、`architecture-red.log` | 1 | 每個都在修正之前失敗（log 結尾的 `exit=1`） |
+| `make integration-test`、`make db-test`、`make db-go-test` | — | NOT RUN（沒有 PostgreSQL） |
+
+### NOT RUN
+
+- DB-backed 測試（本 worktree 沒有 PostgreSQL）：只做了 compile 與 `go vet`（`make backend-test` 的 vet 涵蓋 test 檔）。本輪沒有新的 DB 測試；程式路徑被本輪改到的既有 DB 測試要重跑：
+  - `internal/worker` 的 4 個 T-035 DB 測試：`failureOutcome`、`panicked`。
+  - `cmd/api`、`cmd/worker` 的 DB 測試：telemetry 設定。
+  - 每個寫 log 的 DB 測試：handler 與 filter 的改動。
+- `make integration-test`、`make db-test`、`make db-go-test`。
+- 12 個 DB mutant 的測試（`mutants-db-build.log`：都能 build）。
+- `make frontend-test`：沒有改 contract 或 TS。
+- `make e2e-test`、live AI、送到真的 OTLP collector、OpenAPI 官方 validator。
+
+### 殘餘風險（本輪新增或改變）
+
+- **單引號的規則是啟發式的**：在字的開頭開啟、字的結尾關閉才算，所以 `'90s` 這種以 apostrophe 開頭的字會把其後全部隱藏（過度隱藏）；反過來，字中的引號不算邊界。
+- **Backtick 的代價**：pgx 把連線的 user 與 database 放在 backtick 中，log 中看不到它們（不是 secret）。
+- **Header 的檢查**沿用 OTel v1.47.0 envconfig 的規則；升級 OTel 時，若 SDK 的解析變了，兩者可能不一致。不過 M1 的修正 (1) 保證 SDK 的抱怨仍只經過過濾後的 log。
+- **其他 `OTEL_EXPORTER_OTLP_*` 變數**（TIMEOUT、COMPRESSION、CERTIFICATE…）沒有在 config 檢查；它們解析不了時的訊息現在也只經過濾後的 log（原始值所在的 key 是 redacted）。
+- **Group 名稱**：由資料組成的小寫 group 名稱仍會出現在 log 中（符合 key 的形狀）；production 程式沒有使用 `WithGroup`。

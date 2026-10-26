@@ -1,0 +1,6 @@
+--- FAIL: TestPanickedTrustsOnlyTheRuntime (0.00s)
+    outcome_internal_test.go:45: "handler panicked: cell CASE-SENTINEL"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/worker	0.009s
+FAIL
+exit=1

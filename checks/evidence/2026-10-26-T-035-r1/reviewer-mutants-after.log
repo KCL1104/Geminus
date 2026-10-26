@@ -1,0 +1,26 @@
+access-status-last-write: KILLED --- FAIL: TestAccessLogKeepsTheWriter (0.00s) | FAIL	github.com/kcl1104/geminus/internal/httpapi	0.069s
+access-route-before-serve: KILLED --- FAIL: TestAccessLog (0.01s) | --- FAIL: TestAccessLogTelemetry (0.00s) | FAIL	github.com/kcl1104/geminus/internal/httpapi	0.066s
+with-keys-not-tracked: NOT APPLIED (0 matches of '\t\tkeys[a.Key] = true\n\t\tfiltered[i] = filter(a)')
+group-under-text-kept: KILLED --- FAIL: TestOtherValues (0.00s) | FAIL	github.com/kcl1104/geminus/internal/observability	0.033s
+gotype-may-be-a-credential: KILLED --- FAIL: TestValuesOfTheWrongShapeAreRedacted (0.00s) | FAIL	github.com/kcl1104/geminus/internal/observability	0.051s
+invalid-utf8-kept: SURVIVED
+pointer-bound-is-text: KILLED --- FAIL: TestTextIsBounded (0.07s) | FAIL	github.com/kcl1104/geminus/internal/observability	0.087s
+system-actor-unchecked: KILLED --- FAIL: TestRefused (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.126s | --- FAIL: TestAnEventIsCheckedBeforeItIsWritten (0.00s) | FAIL	github.com/kcl1104/geminus/internal/storage/auditlog	0.008s
+field-name-from-data-in-error: KILLED --- FAIL: TestRefused (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.244s
+action-name-from-data-in-error: KILLED --- FAIL: TestRefused (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.216s
+empty-label-in-list: KILLED --- FAIL: TestShapes (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.209s
+count-accepts-float: KILLED --- FAIL: TestShapes (0.00s) | FAIL	github.com/kcl1104/geminus/internal/audit	0.157s
+endpoint-with-fragment: KILLED --- FAIL: TestLoadTelemetry (0.00s) | FAIL	github.com/kcl1104/geminus/internal/config	0.006s
+endpoint-force-query: NOT APPLIED (0 matches of '\t\t!u.ForceQuery && ')
+endpoint-opaque: SURVIVED
+sdk-disabled-case-sensitive: KILLED --- FAIL: TestLoadTelemetry (0.00s) | FAIL	github.com/kcl1104/geminus/internal/config	0.009s
+protocol-grpc-silently-http: KILLED --- FAIL: TestLoadTelemetry (0.00s) | FAIL	github.com/kcl1104/geminus/internal/config	0.011s
+retryable-always-true: KILLED --- FAIL: TestTheAttemptsEventOfEveryType (0.00s) | FAIL	github.com/kcl1104/geminus/internal/worker	0.010s
+max-attempts-is-attempt: KILLED --- FAIL: TestTheAttemptsEvent (0.00s) | FAIL	github.com/kcl1104/geminus/internal/worker	0.011s
+lease-lost-outcome-dropped: NOT APPLIED (0 matches of '\t\thow = "lease_lost"\n\t\tlog.Warn("the job is no longer this a')
+loop-audit-error-ignored: SURVIVED
+job-span-error-only-failed: KILLED --- FAIL: TestJobOutcomes (0.00s) | FAIL	github.com/kcl1104/geminus/internal/observability/telemetry	0.017s
+metric-route-raw: KILLED --- FAIL: TestAttributesAreFiltered (0.00s) | FAIL	github.com/kcl1104/geminus/internal/observability/telemetry	0.153s
+scoped-user-is-subject: KILLED --- FAIL: TestAccessLog (0.01s) | FAIL	github.com/kcl1104/geminus/internal/httpapi	0.070s
+provider-call-tokens-unfiltered-model: KILLED --- FAIL: TestAttributesAreFiltered (0.00s) | FAIL	github.com/kcl1104/geminus/internal/observability/telemetry	0.018s
+TOTAL 25: 19 killed, 3 survived, 0 build
