@@ -83,7 +83,8 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 // each consecutive rate-limit response, and add random jitter ... If the
 // response includes a Retry-After header, wait at least that long";
 // /docs/error-handling: service_overloaded and backend_unavailable send
-// Retry-After 60).
+// Retry-After 60). maxRetryAfter is the longest Retry-After a call waits
+// for; an answer asking for more ends the call (it is not retried sooner).
 const (
 	backoffBase   = 500 * time.Millisecond
 	backoffJitter = 500 * time.Millisecond
@@ -117,12 +118,19 @@ func retryAfter(h http.Header, now time.Time) time.Duration {
 	return 0
 }
 
-// wait waits before the retry after attempt, at least what the answer's
-// Retry-After asks for and at most maxRetryAfter. A wait the call's
-// deadline cannot hold is not waited: false, and the call ends with its
-// status's code.
+// wait waits before the retry after attempt: the backoff, and at least what
+// the answer's Retry-After asks for ("wait at least that long",
+// /docs/pricing-rate-limits; 503: "honor it before retrying",
+// /docs/error-handling). An answer that asks for more than maxRetryAfter is
+// not retried (T-055 review round 1, L2: retrying sooner disobeys it), and
+// a wait the call's deadline cannot hold is not waited: false, and the call
+// ends with its status's code.
 func (c *conn) wait(ctx context.Context, attempt int, h http.Header) bool {
-	d := min(max(c.backoff(attempt), retryAfter(h, c.now())), maxRetryAfter)
+	ra := retryAfter(h, c.now())
+	if ra > maxRetryAfter {
+		return false
+	}
+	d := max(c.backoff(attempt), ra)
 	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) <= d {
 		return false
 	}
@@ -192,7 +200,9 @@ func (c *conn) statusErr(code provider.Code, ex exchange) *provider.Error {
 // on the key, retried as the rules below say. It returns the answer of a
 // 200 status, read to its end, for the caller to decode, or a
 // *provider.Error; failedOver names the key when it was refused (now or
-// before). t counts the attempts that may have been billed.
+// before). t counts the attempts that may have been billed (the count's
+// caller, which is never billed, ignores it). Retries wait as wait says: a
+// Retry-After over maxRetryAfter ends the call with the status's code.
 //
 //   - A transport failure (a lost connection, an attempt's timeout) and a
 //     body cut short are retried, and may have been billed.

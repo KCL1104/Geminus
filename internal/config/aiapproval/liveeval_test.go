@@ -31,7 +31,7 @@ type inProcess struct {
 	fail *provider.Error
 }
 
-func (b *inProcess) Quote(provider.Request) (provider.Quote, error) {
+func (b *inProcess) Quote(context.Context, provider.Request) (provider.Quote, error) {
 	return provider.Quote{Model: "claude-opus-5-5", MaxInputTokens: 10_000}, nil
 }
 

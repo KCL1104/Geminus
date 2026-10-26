@@ -300,6 +300,12 @@ var h018 = Record{
 // (GEMINUS_MUSE_API_KEY, the name the owner gave it). Standard mode is
 // confirmed by H-029 itself: the owner chose it; which mode a call uses is
 // its model ID, and the adapter refuses an answer from any other model.
+// The retention terms are confirmed by H-035 (1), 2026-10-26, 「接受
+// (Recommended)」: the owner accepted the Meta Model API Terms of Service
+// (the 2026-10-09 version, checked by the coordinator), its retention for
+// safety, abuse and policy review (§4.1, §4.4) included. H-029 (1) is the
+// Standard-mode choice, not that acceptance (D-122 (b); T-055 review round
+// 1, L4).
 //
 // The owner has confirmed no dashboard spend limit for the Meta team (H-033
 // mentions the hackathon's USD 150 credit for 10 days); none is recorded,
@@ -321,7 +327,9 @@ var h029 = Record{
 	ApprovedAt:       "2026-10-26",
 	Source:           "H-029 (1), amended by H-033 (planning/decisions.json human_decisions; planning/HACKATHON_PLAN.md)",
 	Retention: Retention{Arrangement: RetentionMetaStandard, Confirmation: Confirmation{By: "KCL1104 (repository owner)", At: "2026-10-26",
-		Source: "H-029 (1): Standard mode, never the Contributor variant that trains on the content; H-033 keeps it"}},
+		Source: "H-035 (1): the owner accepted the Meta Model API Terms of Service (2026-10-09 version, checked by the coordinator), " +
+			"its retention for safety, abuse and policy review (§4.1, §4.4) included; Standard Services are not trained on (§5.1); " +
+			"Standard mode per H-029 (1)"}},
 }
 
 // recorded lists the owner's recorded approvals of live AI, by the ID of

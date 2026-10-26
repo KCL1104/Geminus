@@ -241,11 +241,19 @@ var rules = []rule{
 	{
 		// T-055: the two live adapters are separate: neither links the
 		// other, so a Meta call never goes through Anthropic's SDK or
-		// credentials and an Anthropic call never through Meta's.
+		// credentials and an Anthropic call never through Meta's. Two rules,
+		// one each way (review round 1, L5: the first alone let the
+		// Anthropic adapter link Meta's).
 		name:    "live-adapters-apart",
 		why:     "a live provider adapter links no other live adapter (T-055)",
 		applies: []string{"./internal/ai/provider/meta/..."},
 		forbid:  []string{"./internal/ai/provider/anthropic/..."},
+	},
+	{
+		name:    "live-adapters-apart-anthropic",
+		why:     "a live provider adapter links no other live adapter: the Anthropic adapter never links the Meta adapter (T-055 review round 1, L5)",
+		applies: []string{"./internal/ai/provider/anthropic/..."},
+		forbid:  []string{"./internal/ai/provider/meta/..."},
 	},
 	{
 		// T-053: the live eval's runner reads the repository's corpus and

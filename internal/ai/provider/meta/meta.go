@@ -36,6 +36,10 @@
 //     a lost connection, an attempt's timeout, a body cut short, every 5xx
 //     (the docs do not say an error status is free), and an answer that
 //     cannot be read (Undecoded: at least the whole reservation).
+//   - A request with images is counted first (POST /v1/messages/count_tokens,
+//     not billed) and reserved at the count and 10% (H-037); a count that
+//     fails or cannot be trusted fails the call before anything is
+//     reserved or sent. A text request is quoted from its bytes (D-111).
 //   - Standard mode is the model ID (Model Designation Policy), and the
 //     Terms of Service say "the system may route you to a Contributor
 //     Model": an answer that names another model than the one asked for is
@@ -48,11 +52,13 @@ package meta
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -81,9 +87,11 @@ const (
 	// contextWindowTokens is Muse Spark's context window ("have a
 	// 1,048,576-token context window", /docs/models): no request is billed
 	// for more input ("input_tokens + max_output_tokens must fit within
-	// it", /docs/error-handling), so it bounds what an image costs, which
-	// Meta documents no other bound for (image cost "scales with
-	// resolution", the model "may resize images").
+	// it", /docs/error-handling), so no quote is larger, and no count of a
+	// request is either (a larger one is not a count this build trusts).
+	// Meta documents no other bound on an image's tokens (image cost
+	// "scales with resolution", the model "may resize images"): a request
+	// with images is counted (H-037).
 	contextWindowTokens = 1_048_576
 	// maxResponseBytes bounds a response body the adapter reads; a larger
 	// answer is not read (it may have been billed: Undecoded).
@@ -207,20 +215,97 @@ func (b *Backend) projection(schema string) (projected, error) {
 }
 
 // Quote is the model and the most input tokens one attempt of req can be
-// billed for: the prompt's and the projected schema's bytes (every token
-// covers at least one byte) and quoteOverheadTokens; with an image, the
-// whole context window (no documented bound on an image's tokens); never
-// more than the context window.
-func (b *Backend) Quote(req provider.Request) (provider.Quote, error) {
+// billed for, never more than the context window:
+//
+//   - a text request: the prompt's and the projected schema's bytes (every
+//     token covers at least one byte) and quoteOverheadTokens (D-111 (a));
+//     nothing is asked of the provider;
+//   - a request with images (Meta documents no bound on an image's tokens):
+//     the provider's count of it (count) and 10%, rounded up (H-037, the
+//     owner's answer to T-055 review round 1, M1). A count that fails, or
+//     whose answer is not a sane count, fails the quote, so the call is
+//     never reserved for less, and nothing is sent.
+//
+// ctx is the call's (its deadline and the caller's cancellation).
+func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quote, error) {
 	proj, err := b.projection(req.OutputSchema)
 	if err != nil {
 		return provider.Quote{}, err
 	}
-	n := int64(len(req.Prompt.System)+len(req.Prompt.User())+proj.size) + quoteOverheadTokens
-	if len(req.Prompt.Images) > 0 {
-		n = contextWindowTokens
+	if len(req.Prompt.Images) == 0 {
+		n := int64(len(req.Prompt.System)+len(req.Prompt.User())+proj.size) + quoteOverheadTokens
+		return provider.Quote{Model: b.model, MaxInputTokens: min(n, contextWindowTokens)}, nil
 	}
-	return provider.Quote{Model: b.model, MaxInputTokens: min(n, contextWindowTokens)}, nil
+	n, err := b.count(ctx, req, proj)
+	if err != nil {
+		return provider.Quote{}, err
+	}
+	return provider.Quote{Model: b.model, MaxInputTokens: min(n+(n+countMarginDivisor-1)/countMarginDivisor, contextWindowTokens)}, nil
+}
+
+// countPath is the Messages endpoint's token count ("Endpoints | POST
+// /v1/messages, POST /v1/messages/count_tokens", /docs/protocols/messages).
+const countPath = "v1/messages/count_tokens"
+
+// countMarginDivisor: a request with images is reserved at its count and
+// a tenth of it, rounded up (H-037: "以該數加 10% 預留").
+const countMarginDivisor = 10
+
+// count asks the provider how many input tokens req is (H-037): POST
+// /v1/messages/count_tokens with the body Complete sends but max_tokens
+// ("Send the same body as POST /v1/messages minus the max_tokens
+// requirement", /docs/protocols/messages; the count's schema has no
+// max_tokens field). It goes through the call's connection and rules
+// (conn.post): the key as a bearer token only, no redirect followed, the
+// response bound, the call's deadline, the call's attempts and retries, the
+// documented error types only, never the provider's text. It refuses
+// first, before any I/O, what Complete refuses: a role or images the
+// approval's data policy does not name.
+//
+// The count is not billed: the docs list no price for it, and the count
+// endpoints tokenize only ("It does not generate output, execute hosted
+// tools, create or store a response, or record generation usage",
+// /docs/token-counting) while billing is by usage ("Model API bills text
+// models per token", /docs/pricing-rate-limits). So none of its attempts
+// is counted as one that may have been billed (PROPOSED D-121 (b); live:
+// H-037's still open item).
+func (b *Backend) count(ctx context.Context, req provider.Request, proj projected) (int64, error) {
+	if b.allows == nil || !b.allows(string(req.Prompt.Role)) || !b.images {
+		return 0, provider.NewError(provider.CodePolicyNotApproved, 0, "")
+	}
+	body, err := countBody(b.model, req, proj.Schema)
+	if err != nil {
+		return 0, provider.NewError(provider.CodeInvalidRequest, 0, "")
+	}
+	ex, _, err := b.c.post(ctx, &tally{}, countPath, body, req.AttemptTimeout, req.MaxRetries)
+	if err != nil {
+		return 0, err
+	}
+	n, ok := decodeCount(ex.body)
+	if !ok {
+		return 0, provider.NewError(provider.CodeUnavailable, 0, b.c.label)
+	}
+	return n, nil
+}
+
+// decodeCount reads a count answer ("AnthropicCountTokensResponse":
+// input_tokens, an integer, required; /docs/api-reference/messages/schemas):
+// one strict JSON document (valid UTF-8, no duplicate member) that is an
+// object whose input_tokens is written as an integer from 1 to the context
+// window (no fraction, no exponent, not a string). Other members are not
+// read. Anything else is not a count this build trusts.
+func decodeCount(body []byte) (int64, bool) {
+	var c struct {
+		InputTokens jsontext.Value `json:"input_tokens"`
+	}
+	if json.Unmarshal(body, &c) != nil {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(string(c.InputTokens), 10, 64)
+	if err != nil || n < 1 || n > contextWindowTokens {
+		return 0, false
+	}
+	return n, true
 }
 
 // Complete sends req as one Messages call. It refuses, before any I/O, a
@@ -309,19 +394,46 @@ type jsonFormat struct {
 	Schema map[string]any `json:"schema"`
 }
 
-func messagesBody(modelID string, req provider.Request, schema map[string]any) ([]byte, error) {
+// countRequest is the count's body: the Messages request's fields but
+// max_tokens ("AnthropicCountTokensRequest", /docs/api-reference/messages/
+// schemas, has no max_tokens field).
+type countRequest struct {
+	Model        string        `json:"model"`
+	System       []textBlock   `json:"system"`
+	Messages     []userMessage `json:"messages"`
+	OutputConfig outputConfig  `json:"output_config"`
+}
+
+func messagesOf(modelID string, req provider.Request, schema map[string]any) (messagesRequest, error) {
 	var content []any
 	for _, im := range req.Prompt.Images {
 		if im.Check() != nil {
-			return nil, provider.ErrInvalidImage
+			return messagesRequest{}, provider.ErrInvalidImage
 		}
 		content = append(content, imageBlock{Type: "image", Source: imageSource{Type: "base64", MediaType: im.MediaType,
 			Data: base64.StdEncoding.EncodeToString(im.Data)}})
 	}
 	content = append(content, textBlock{Type: "text", Text: req.Prompt.User()})
-	return json.Marshal(messagesRequest{Model: modelID, MaxTokens: req.MaxOutputTokens, System: []textBlock{{Type: "text", Text: req.Prompt.System}},
-		Messages: []userMessage{{Role: "user", Content: content}}, OutputConfig: outputConfig{Format: jsonFormat{Type: "json_schema", Schema: schema}}},
-		json.Deterministic(true))
+	return messagesRequest{Model: modelID, MaxTokens: req.MaxOutputTokens, System: []textBlock{{Type: "text", Text: req.Prompt.System}},
+		Messages: []userMessage{{Role: "user", Content: content}}, OutputConfig: outputConfig{Format: jsonFormat{Type: "json_schema", Schema: schema}}}, nil
+}
+
+func messagesBody(modelID string, req provider.Request, schema map[string]any) ([]byte, error) {
+	m, err := messagesOf(modelID, req, schema)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(m, json.Deterministic(true))
+}
+
+// countBody is the body of the count of req: exactly what messagesBody
+// sends, but max_tokens.
+func countBody(modelID string, req provider.Request, schema map[string]any) ([]byte, error) {
+	m, err := messagesOf(modelID, req, schema)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(countRequest{Model: m.Model, System: m.System, Messages: m.Messages, OutputConfig: m.OutputConfig}, json.Deterministic(true))
 }
 
 // message is a Messages answer as this build reads it ("Anthropic

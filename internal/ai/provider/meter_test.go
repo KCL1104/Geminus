@@ -30,7 +30,7 @@ type billable struct {
 }
 
 func (b *billable) Name() string { return "test-billable" }
-func (b *billable) Quote(Request) (Quote, error) {
+func (b *billable) Quote(context.Context, Request) (Quote, error) {
 	return b.quote, b.quoteErr
 }
 func (b *billable) Complete(ctx context.Context, req Request) (Response, error) {

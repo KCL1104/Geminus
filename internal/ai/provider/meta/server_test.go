@@ -84,7 +84,9 @@ type server struct {
 	bodies  []map[string]any
 	raw     [][]byte
 	headers []http.Header
-	srv     *httptest.Server
+	// paths are the requests' method and path, in the order they came.
+	paths []string
+	srv   *httptest.Server
 }
 
 func newServer(t *testing.T, scripts map[string][]reply) *server {
@@ -100,6 +102,7 @@ func newServer(t *testing.T, scripts map[string][]reply) *server {
 		s.raw = append(s.raw, data)
 		s.headers = append(s.headers, r.Header.Clone())
 		path := r.Method + " " + r.URL.Path
+		s.paths = append(s.paths, path)
 		n := s.hits[path]
 		s.hits[path]++
 		script := s.scripts[path]
@@ -150,7 +153,24 @@ func (s *server) count(path string) int {
 	return s.hits[path]
 }
 
+func (s *server) order() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.paths...)
+}
+
 const messagesPath, responsesPath = "POST /v1/messages", "POST /v1/responses"
+
+// countPath is the Messages endpoint's token count (H-037; "Endpoints |
+// POST /v1/messages, POST /v1/messages/count_tokens", /docs/protocols/messages).
+const countPath = "POST /v1/messages/count_tokens"
+
+// counted is a count answer ("AnthropicCountTokensResponse": input_tokens,
+// an integer, /docs/api-reference/messages/schemas) whose input_tokens is
+// written as n.
+func counted(n string) reply {
+	return reply{status: 200, header: map[string]string{"Content-Type": "application/json"}, body: `{"input_tokens":` + n + `}`}
+}
 
 func config() meta.Config {
 	return meta.Config{Model: model, Credential: meta.Credential{Label: "meta", Key: secret.Secret(key)}}

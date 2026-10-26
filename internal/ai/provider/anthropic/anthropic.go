@@ -252,7 +252,7 @@ const quoteOverheadTokens = 4096
 // billed for: the prompt's and the projected schema's bytes (every token
 // of the tokenizer covers at least one byte) and quoteOverheadTokens. The
 // adapter sends no cache_control, so no input token is a cache write.
-func (b *Backend) Quote(req provider.Request) (provider.Quote, error) {
+func (b *Backend) Quote(_ context.Context, req provider.Request) (provider.Quote, error) {
 	proj, err := b.projection(req.OutputSchema)
 	if err != nil {
 		return provider.Quote{}, err

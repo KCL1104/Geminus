@@ -328,6 +328,8 @@ func TestProbesAreCaught(t *testing.T) {
 			"live-ai-only-in-the-worker", "./internal/storage/aispend", "./internal/ai/provider/meta", false},
 		{"the-meta-adapter-links-anthropic", "internal/ai/provider/meta/zz_probe.go", module + "/internal/ai/provider/anthropic",
 			"live-adapters-apart", "./internal/ai/provider/meta", "./internal/ai/provider/anthropic", false},
+		{"the-anthropic-adapter-links-meta", "internal/ai/provider/anthropic/zz_probe.go", module + "/internal/ai/provider/meta",
+			"live-adapters-apart-anthropic", "./internal/ai/provider/anthropic", "./internal/ai/provider/meta", false},
 		{"the-meta-adapter-imports-an-sdk", "internal/ai/provider/meta/zz_probe.go", "github.com/anthropics/anthropic-sdk-go",
 			"llm-sdks-only-in-ai", "./internal/ai/provider/meta", "github.com/anthropics/anthropic-sdk-go", false},
 		{"the-meta-adapter-imports-pgx", "internal/ai/provider/meta/zz_probe.go", "github.com/jackc/pgx/v5", "ai-suggests-only",
@@ -462,9 +464,10 @@ func TestSyntheticGraph(t *testing.T) {
 	add(m("internal/domainpack/conformance"), false, m("internal/domainpack"))
 	add(m("internal/ai"), false, m("internal/storage/postgres"))
 	// T-024: only the adapter links the SDK; the context builder may not.
-	add(m("internal/ai/provider/anthropic"), false, "github.com/anthropics/anthropic-sdk-go")
+	// T-055: a live adapter links no other live adapter, either way (review
+	// round 1, L5: the Anthropic adapter linking Meta's broke no rule).
+	add(m("internal/ai/provider/anthropic"), false, "github.com/anthropics/anthropic-sdk-go", m("internal/ai/provider/meta"))
 	add(m("internal/ai/aicontext"), false, "github.com/anthropics/anthropic-sdk-go")
-	// T-055: a live adapter links no other live adapter.
 	add(m("internal/ai/provider/meta"), false, m("internal/ai/provider/anthropic"))
 	add(m("internal/storage/postgres"), false, "database/sql")
 	add("database/sql", true)
@@ -533,6 +536,7 @@ func TestSyntheticGraph(t *testing.T) {
 		"llm-sdks-only-in-ai ./internal/ai/aicontext ./internal/ai/aicontext>github.com/anthropics/anthropic-sdk-go",
 		"ai-is-pure-but-the-adapter ./internal/ai/aicontext ./internal/ai/aicontext>github.com/anthropics/anthropic-sdk-go",
 		"live-adapters-apart ./internal/ai/provider/meta ./internal/ai/provider/meta>./internal/ai/provider/anthropic",
+		"live-adapters-apart-anthropic ./internal/ai/provider/anthropic ./internal/ai/provider/anthropic>./internal/ai/provider/meta",
 	} {
 		if !got[want] {
 			t.Errorf("missing violation %q", want)
@@ -990,6 +994,7 @@ func TestPolicy(t *testing.T) {
 			m("internal/packs"), m("internal/project"), m("internal/tenant/workerscope"), m("cmd/worker"), "os/exec", "database/sql"}, db), false, false},
 		want{"llm-sdks-only-in-ai", m("internal/ai/provider/meta"), llm, false, false},
 		want{"live-adapters-apart", m("internal/ai/provider/meta"), []string{m("internal/ai/provider/anthropic")}, false, false},
+		want{"live-adapters-apart-anthropic", m("internal/ai/provider/anthropic"), []string{m("internal/ai/provider/meta")}, false, false},
 		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider/structured"), slices.Concat(io, llm), false, false},
 		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider/structured"), direct, true, false},
 	)

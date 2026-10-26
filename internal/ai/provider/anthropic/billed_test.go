@@ -177,7 +177,7 @@ func TestTheAnswerIsPricedAtItsInferenceGeo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	q, err := b.Quote(request(t, ""))
+	q, err := b.Quote(context.Background(), request(t, ""))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -57,7 +57,7 @@ func TestQuote(t *testing.T) {
 	s := newServer(t, nil)
 	_, b := client(t, s, config(keyA))
 	req := request(t, "")
-	q, err := b.Quote(req)
+	q, err := b.Quote(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestQuote(t *testing.T) {
 		t.Errorf("quote %+v, want %d", q, want)
 	}
 	req.OutputSchema = "no-such.schema.json"
-	if _, err := b.Quote(req); err == nil {
+	if _, err := b.Quote(context.Background(), req); err == nil {
 		t.Error("an unknown schema was quoted")
 	}
 }
@@ -138,7 +138,7 @@ func TestSpend(t *testing.T) {
 // M2).
 func perAttempt(t *testing.T, b *anthropic.Backend, maxOutput int64) int64 {
 	req := request(t, "")
-	q, err := b.Quote(req)
+	q, err := b.Quote(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
 	}

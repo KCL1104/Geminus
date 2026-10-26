@@ -33,7 +33,7 @@ type billedFake struct {
 	calls atomic.Int32
 }
 
-func (b *billedFake) Quote(req provider.Request) (provider.Quote, error) {
+func (b *billedFake) Quote(_ context.Context, req provider.Request) (provider.Quote, error) {
 	return provider.Quote{Model: "claude-opus-5-5", MaxInputTokens: int64(len(req.Prompt.System) + len(req.Prompt.User()))}, nil
 }
 

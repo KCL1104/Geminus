@@ -18,7 +18,8 @@ import (
 // synthetic data and demo images; the key in an environment variable. H-033
 // (2026-10-26) resumed it after H-031's pause and added SAM 3.1 for the
 // photo path, with only synthetic data, demo images and text the user typed
-// sent. One key, labelled meta.
+// sent. One key, labelled meta. H-035 (1) (2026-10-26) is the owner's
+// acceptance of Meta's Terms of Service, the retention terms included.
 func TestTheH029Record(t *testing.T) {
 	r, ok := aiapproval.Lookup("H-029")
 	if !ok {
@@ -38,9 +39,14 @@ func TestTheH029Record(t *testing.T) {
 		ApprovedBy:       "KCL1104 (repository owner)",
 		ApprovedAt:       "2026-10-26",
 		Source:           "H-029 (1), amended by H-033 (planning/decisions.json human_decisions; planning/HACKATHON_PLAN.md)",
+		// The owner accepted Meta's retention terms in H-035 (1); H-029 (1)
+		// is the Standard-mode choice, not that acceptance (D-122 (b); T-055
+		// review round 1, L4).
 		Retention: aiapproval.Retention{Arrangement: aiapproval.RetentionMetaStandard, Confirmation: aiapproval.Confirmation{
 			By: "KCL1104 (repository owner)", At: "2026-10-26",
-			Source: "H-029 (1): Standard mode, never the Contributor variant that trains on the content; H-033 keeps it"}},
+			Source: "H-035 (1): the owner accepted the Meta Model API Terms of Service (2026-10-09 version, checked by the coordinator), " +
+				"its retention for safety, abuse and policy review (§4.1, §4.4) included; Standard Services are not trained on (§5.1); " +
+				"Standard mode per H-029 (1)"}},
 	}
 	if !reflect.DeepEqual(r, want) {
 		t.Fatalf("the H-029 record is\n%+v\nwant\n%+v", r, want)

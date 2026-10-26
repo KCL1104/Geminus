@@ -99,12 +99,13 @@ func TestRequestShape(t *testing.T) {
 
 // T-056's photo path: a prompt's images go first in the user message, as
 // base64 image blocks with their media type (Messages schemas: "Anthropic
-// Base64 Source Param ... media_type ... data"), the text after them. The
-// quote assumes the whole context window, since Meta documents no upper
-// bound on an image's tokens (image cost "scales with resolution"; the
-// model may resize): PROPOSED D-121.
+// Base64 Source Param ... media_type ... data"), the text after them. Meta
+// documents no upper bound on an image's tokens (image cost "scales with
+// resolution"; the model may resize), so the request is counted first and
+// quoted at the count plus 10% (H-037; count_test.go), not at the whole
+// context window (T-055 review round 1, M1).
 func TestImageParts(t *testing.T) {
-	s := newServer(t, map[string][]reply{messagesPath: {ok(answerJ)}})
+	s := newServer(t, map[string][]reply{countPath: {counted("3000")}, messagesPath: {ok(answerJ)}})
 	b, _ := backend(t, s)
 	charges := &chargeLog{}
 	c, err := provider.NewMetered(b, provider.DefaultBudget(), charges)
@@ -115,7 +116,7 @@ func TestImageParts(t *testing.T) {
 	if _, err := ask(t, c, a, bb); err != nil {
 		t.Fatal(err)
 	}
-	msgs, _ := s.bodies[0]["messages"].([]any)
+	msgs, _ := s.bodies[len(s.bodies)-1]["messages"].([]any)
 	content, _ := msgs[0].(map[string]any)["content"].([]any)
 	if len(content) != 3 {
 		t.Fatalf("content %v", content)
@@ -130,21 +131,22 @@ func TestImageParts(t *testing.T) {
 	if content[2].(map[string]any)["type"] != "text" {
 		t.Errorf("the text is not last: %v", content[2])
 	}
-	q, err := b.Quote(provider.Request{Prompt: sealed(t, a), OutputSchema: "proposal-output.schema.json", MaxOutputTokens: 8192})
-	if err != nil || q.Model != model || q.MaxInputTokens != meta.ContextWindowTokens {
-		t.Errorf("quote %+v %v, want the context window", q, err)
+	q, err := b.Quote(context.Background(), provider.Request{Prompt: sealed(t, a), OutputSchema: "proposal-output.schema.json", MaxOutputTokens: 8192,
+		AttemptTimeout: time.Second})
+	if err != nil || q.Model != model || q.MaxInputTokens != 3300 {
+		t.Errorf("quote %+v %v, want the count (3,000) and 10%%", q, err)
 	}
-	// The reservation: every attempt at the context window and max_tokens,
+	// The reservation: every attempt at the count and 10% and max_tokens,
 	// at the list price (no geo).
 	p, _ := spend.PriceOf(model)
-	per := p.AttemptBound(meta.ContextWindowTokens, provider.DefaultBudget().MaxOutputTokens)
+	per := p.AttemptBound(3300, provider.DefaultBudget().MaxOutputTokens)
 	if want := int64(1+provider.DefaultBudget().MaxRetries) * per; len(charges.charges) != 1 || charges.charges[0] != want {
 		t.Errorf("reserved %v, want %d", charges.charges, want)
 	}
 	// An approval whose data policy names no image: the client never calls.
 	meta.SetImages(b, false)
-	if _, err := ask(t, c, a); provider.CodeOf(err) != provider.CodeInvalidRequest || s.count(messagesPath) != 1 {
-		t.Errorf("no images allowed: %v (%d requests)", err, s.count(messagesPath))
+	if _, err := ask(t, c, a); provider.CodeOf(err) != provider.CodeInvalidRequest || s.count(messagesPath) != 1 || s.count(countPath) != 2 {
+		t.Errorf("no images allowed: %v (%d requests, %d counts)", err, s.count(messagesPath), s.count(countPath))
 	}
 	// Nor does the backend send one if a request reaches it without the
 	// client's check.
@@ -161,7 +163,7 @@ func TestQuote(t *testing.T) {
 	s := newServer(t, nil)
 	b, _ := backend(t, s)
 	req := provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json", MaxOutputTokens: 1000}
-	q, err := b.Quote(req)
+	q, err := b.Quote(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +174,7 @@ func TestQuote(t *testing.T) {
 		t.Errorf("quote %+v, want %d", q, want)
 	}
 	req.OutputSchema = "no-such.schema.json"
-	if _, err := b.Quote(req); err == nil {
+	if _, err := b.Quote(context.Background(), req); err == nil {
 		t.Error("an unknown schema was quoted")
 	}
 	// A text prompt larger than the context window is quoted at the window:
@@ -183,7 +185,7 @@ func TestQuote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if q, err := b.Quote(provider.Request{Prompt: huge, OutputSchema: "proposal-output.schema.json"}); err != nil || q.MaxInputTokens != meta.ContextWindowTokens {
+	if q, err := b.Quote(context.Background(), provider.Request{Prompt: huge, OutputSchema: "proposal-output.schema.json"}); err != nil || q.MaxInputTokens != meta.ContextWindowTokens {
 		t.Errorf("a prompt over the window: %+v %v", q, err)
 	}
 }
@@ -221,7 +223,7 @@ func TestTheResponseBound(t *testing.T) {
 	}
 	s = newServer(t, map[string][]reply{messagesPath: {pad(meta.MaxResponseBytes + 1)}})
 	c, b, m, _ := meteredClient(t, s, 10*spendUSD, func(bu *provider.Budget) { bu.MaxRetries = 0 })
-	q, _ := b.Quote(provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"})
+	q, _ := b.Quote(context.Background(), provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"})
 	p, _ := spend.PriceOf(model)
 	if _, err := ask(t, c); provider.CodeOf(err) != provider.CodeUnavailable || m.Spent() < p.AttemptBound(q.MaxInputTokens, provider.DefaultBudget().MaxOutputTokens) {
 		t.Errorf("one byte over: %v, spent %d", err, m.Spent())
@@ -414,7 +416,7 @@ func TestErrorStatuses(t *testing.T) {
 		}
 		q, _ := (func() (provider.Quote, error) {
 			b, _ := backend(t, s)
-			return b.Quote(provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"})
+			return b.Quote(context.Background(), provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"})
 		})()
 		per := p.AttemptBound(q.MaxInputTokens, provider.DefaultBudget().MaxOutputTokens)
 		if want := int64(c.unknown) * per; m.Spent() != want || res.Metadata.CostNanoUSD != want {
@@ -464,9 +466,12 @@ func TestARefusedKey(t *testing.T) {
 // Retries back off (https://dev.meta.ai/docs/pricing-rate-limits: "Start
 // with a short delay such as 500 ms, double it after each consecutive
 // rate-limit response, and add random jitter ... If the response includes
-// a Retry-After header, wait at least that long"), at most 60 s (the
-// longest Retry-After the docs name), and never past the call's deadline:
-// a wait the deadline cannot hold ends the call now with its code.
+// a Retry-After header, wait at least that long"), waiting what
+// Retry-After asks for up to 60 s (the longest Retry-After the docs name);
+// an answer that asks for more is not retried (review round 1, L2), and no
+// wait goes past the call's deadline: a wait the deadline cannot hold ends
+// the call now with its code. The backend's clock is fixed, so an HTTP date
+// is an exact wait (review round 1, L1: the wall clock made it flaky).
 func TestRetriesBackOff(t *testing.T) {
 	for attempt, want := range [][2]time.Duration{{500 * time.Millisecond, time.Second}, {time.Second, 1500 * time.Millisecond},
 		{2 * time.Second, 2500 * time.Millisecond}, {4 * time.Second, 4500 * time.Millisecond}, {8 * time.Second, 8 * time.Second}, {8 * time.Second, 8 * time.Second}} {
@@ -481,25 +486,60 @@ func TestRetriesBackOff(t *testing.T) {
 		r.header["Retry-After"] = v
 		return r
 	}
+	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 	for name, c := range map[string]struct {
 		r    reply
 		want time.Duration
 	}{
 		"seconds":           {retryAfter("2"), 2 * time.Second},
-		"above the bound":   {retryAfter("600"), 60 * time.Second},
-		"an HTTP date":      {retryAfter(time.Now().Add(3 * time.Second).UTC().Format(http.TimeFormat)), 2 * time.Second},
+		"at the bound":      {retryAfter("60"), 60 * time.Second},
+		"an HTTP date":      {retryAfter(now.Add(3 * time.Second).Format(http.TimeFormat)), 3 * time.Second},
+		"a date at 60 s":    {retryAfter(now.Add(60 * time.Second).Format(http.TimeFormat)), 60 * time.Second},
+		"a past date":       {retryAfter(now.Add(-time.Hour).Format(http.TimeFormat)), 0},
 		"not a number":      {retryAfter("soon"), 0},
 		"below the backoff": {retryAfter("0"), 0},
 	} {
 		s := newServer(t, map[string][]reply{messagesPath: {c.r, ok(answerJ)}})
 		c2, b, _, w := meteredClient(t, s, 10*spendUSD)
 		meta.SetBackoff(b, func(int) time.Duration { return 0 })
+		meta.SetClock(b, func() time.Time { return now })
 		if _, err := ask(t, c2); err != nil {
 			t.Errorf("%s: %v", name, err)
 			continue
 		}
-		if got := w.all(); len(got) != 1 || got[0] < c.want || got[0] > c.want+time.Second {
-			t.Errorf("%s: waited %v, want %v", name, got, c.want)
+		if got := w.all(); len(got) != 1 || got[0] != c.want {
+			t.Errorf("%s: waited %v, want exactly %v", name, got, c.want)
+		}
+	}
+	// More than 60 s is not waited for, and not retried sooner either: the
+	// call ends with its status's code (the docs: "wait at least that
+	// long"; 503: "honor it before retrying", /docs/error-handling).
+	p, _ := spend.PriceOf(model)
+	for name, c := range map[string]struct {
+		r       reply
+		code    provider.Code
+		unknown int64
+	}{
+		"429, 61 s":           {retryAfter("61"), provider.CodeRateLimited, 0},
+		"429, 600 s":          {retryAfter("600"), provider.CodeRateLimited, 0},
+		"429, a date at 61 s": {retryAfter(now.Add(61 * time.Second).Format(http.TimeFormat)), provider.CodeRateLimited, 0},
+		"503, 120 s": {func() reply {
+			r := apiError(503, "overloaded_error")
+			r.header["Retry-After"] = "120"
+			return r
+		}(), provider.CodeUnavailable, 1},
+	} {
+		s := newServer(t, map[string][]reply{messagesPath: {c.r, ok(answerJ)}})
+		c2, b, m, w := meteredClient(t, s, 10*spendUSD)
+		meta.SetBackoff(b, func(int) time.Duration { return 0 })
+		meta.SetClock(b, func() time.Time { return now })
+		q, _ := b.Quote(context.Background(), provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"})
+		_, err := ask(t, c2)
+		if provider.CodeOf(err) != c.code || s.count(messagesPath) != 1 || len(w.all()) != 0 {
+			t.Errorf("%s: %v (%d requests, waits %v), want %s and no retry", name, err, s.count(messagesPath), w.all(), c.code)
+		}
+		if want := c.unknown * p.AttemptBound(q.MaxInputTokens, provider.DefaultBudget().MaxOutputTokens); m.Spent() != want {
+			t.Errorf("%s: spent %d, want %d", name, m.Spent(), want)
 		}
 	}
 	// A wait longer than the call has left ends it at once.
@@ -527,7 +567,7 @@ func TestSpend(t *testing.T) {
 	p, _ := spend.PriceOf(model)
 	cost := p.Cost(spend.Tokens{Input: 120, Output: 30})
 	per := func(t *testing.T, b *meta.Backend) int64 {
-		q, err := b.Quote(provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"})
+		q, err := b.Quote(context.Background(), provider.Request{Prompt: sealed(t), OutputSchema: "proposal-output.schema.json"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -563,6 +603,9 @@ func TestSpend(t *testing.T) {
 		"too large":         {status: 200, body: ok(answerJ).body[:20] + strings.Repeat(" ", meta.MaxResponseBytes) + ok(answerJ).body[20:]},
 		"invalid UTF-8":     {status: 200, body: strings.Replace(ok(answerJ).body, "Which", "Wh\xffich", 1)},
 		"duplicate members": {status: 200, body: strings.Replace(ok(answerJ).body, `"type":"message"`, `"type":"message","type":"message"`, 1)},
+		// A message without usage (review round 1, L3): nobody knows what
+		// it was billed for.
+		"no usage": {status: 200, body: withoutUsage(t, ok(answerJ).body)},
 	} {
 		for _, retries := range []int{0, 2} {
 			s := newServer(t, map[string][]reply{messagesPath: {r, ok(answerJ)}})
@@ -592,6 +635,15 @@ func TestSpend(t *testing.T) {
 	if _, err := ask(t, c); provider.CodeOf(err) != provider.CodeRefused || m.Spent() != cost {
 		t.Errorf("refusal: %v spent %d", err, m.Spent())
 	}
+}
+
+// withoutUsage is a message's body without its usage member.
+func withoutUsage(t *testing.T, body string) string {
+	t.Helper()
+	if strings.Count(body, `,"usage":`+usageJ) != 1 {
+		t.Fatal("the message has no usage to take out")
+	}
+	return strings.Replace(body, `,"usage":`+usageJ, "", 1)
 }
 
 // Only a metered client calls the backend; it refuses, before any I/O, a

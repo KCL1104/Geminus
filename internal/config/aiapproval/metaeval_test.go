@@ -29,7 +29,7 @@ type inProcessMeta struct {
 	calls atomic.Int32
 }
 
-func (b *inProcessMeta) Quote(provider.Request) (provider.Quote, error) {
+func (b *inProcessMeta) Quote(context.Context, provider.Request) (provider.Quote, error) {
 	return provider.Quote{Model: "muse-spark-1.3", MaxInputTokens: 10_000}, nil
 }
 

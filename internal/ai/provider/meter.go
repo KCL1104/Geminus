@@ -24,7 +24,11 @@ import (
 //     decides: 1.1x, review round 1 M2) when the model's provider prices
 //     geos (spend.GeoPriced: Anthropic), at the list price otherwise (the
 //     Meta Model API names no geo, T-055). A model this build cannot price
-//     is refused;
+//     is refused. The quote runs within the call's deadline (the budget's
+//     Timeout, which starts before it) and the caller's cancellation: it
+//     may ask the provider (the Meta adapter counts a request with images,
+//     H-037). A quote that fails with a *Error fails the call with it (its
+//     code kept); any other failure is invalid_request; neither reserves;
 //  3. reserves that amount; a refused reservation is a refused call
 //     (quota_exceeded, or spend_unavailable when the meter cannot answer),
 //     and the backend is never asked;
@@ -90,10 +94,14 @@ type Quote struct {
 	MaxInputTokens int64
 }
 
-// Billable is a backend that costs money.
+// Billable is a backend that costs money. Quote is called before the
+// reservation, with the call's context (its deadline and the caller's
+// cancellation): a backend may ask its provider how large req is (H-037).
+// A failure it can classify is a *Error, the call's error; any other error
+// is a request it cannot quote (invalid_request).
 type Billable interface {
 	Backend
-	Quote(Request) (Quote, error)
+	Quote(ctx context.Context, req Request) (Quote, error)
 }
 
 // Charge is what a reservation is asked for.
@@ -192,10 +200,15 @@ type metering struct {
 	res        Reservation
 }
 
-// reserve prices req and reserves for it (steps 2 and 3).
-func (c *Client) reserve(ctx context.Context, org string, role Role, attr Attribution, req Request) (*metering, error) {
-	q, err := c.billable.Quote(req)
+// reserve prices req, quoting it within callCtx (the call's deadline), and
+// reserves for it under ctx (steps 2 and 3).
+func (c *Client) reserve(ctx, callCtx context.Context, org string, role Role, attr Attribution, req Request) (*metering, error) {
+	q, err := c.billable.Quote(callCtx, req)
 	if err != nil {
+		var pe *Error
+		if errors.As(err, &pe) {
+			return nil, pe
+		}
 		return nil, invalidRequest()
 	}
 	price, ok := spend.PriceOf(q.Model)

@@ -47,7 +47,7 @@ type billed struct {
 // reservations are known: 3 attempts x 1.1 x (10000 x 4000 + 8192 x 20000).
 const quoted = 10_000
 
-func (b *billed) Quote(provider.Request) (provider.Quote, error) {
+func (b *billed) Quote(context.Context, provider.Request) (provider.Quote, error) {
 	return provider.Quote{Model: "claude-opus-5-5", MaxInputTokens: quoted}, nil
 }
 

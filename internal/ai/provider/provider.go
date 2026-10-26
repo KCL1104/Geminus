@@ -288,16 +288,18 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		Locale: string(p.Locale), InputHash: p.InputHash, Context: p.Disclosure}
 	req := Request{Prompt: p, OutputSchema: role.OutputSchema(),
 		MaxOutputTokens: c.budget.MaxOutputTokens, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries}
+	// One deadline for the whole call: a billable backend's quote (which may
+	// ask the provider, H-037) and the call itself.
+	callCtx, cancel := context.WithTimeout(ctx, c.budget.Timeout)
+	defer cancel()
 	var m *metering
 	if c.meter != nil {
 		var err error
-		if m, err = c.reserve(ctx, org, role, attr, req); err != nil {
+		if m, err = c.reserve(ctx, callCtx, org, role, attr, req); err != nil {
 			return nil, meta, err
 		}
 		req.Reservation = m.res.ID
 	}
-	callCtx, cancel := context.WithTimeout(ctx, c.budget.Timeout)
-	defer cancel()
 	start := time.Now()
 	resp, err := c.backend.Complete(callCtx, req)
 	meta.LatencyMillis = time.Since(start).Milliseconds()
