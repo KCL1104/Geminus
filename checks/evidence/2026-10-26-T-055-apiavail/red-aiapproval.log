@@ -1,0 +1,18 @@
+--- FAIL: TestTheAPIsGateIsTheWorkers (0.00s)
+    --- FAIL: TestTheAPIsGateIsTheWorkers/anthropic/as_recorded (0.00s)
+        apiai_test.go:129: the switch on: the API [GEMINUS_ANTHROPIC_API_KEY_A:required GEMINUS_ANTHROPIC_API_KEY_B:required], the worker []
+        apiai_test.go:155: switch on: {Provider: Approval:{rec:<nil>} Model: LiveOff:} GEMINUS_ANTHROPIC_API_KEY_A (required): live AI needs both provider organizations' keys (D-018)
+            GEMINUS_ANTHROPIC_API_KEY_B (required): live AI needs both provider organizations' keys (D-018), want on
+    --- FAIL: TestTheAPIsGateIsTheWorkers/meta/spend_limits_unconfirmed (0.00s)
+        apiai_test.go:129: the switch on: the API [GEMINUS_MUSE_API_KEY:required], the worker []
+        apiai_test.go:155: switch on: {Provider: Approval:{rec:<nil>} Model: LiveOff:} GEMINUS_MUSE_API_KEY (required): live AI on the Meta Model API needs the owner's key, want on
+    --- FAIL: TestTheAPIsGateIsTheWorkers/meta/text_only,_no_segmentation (0.00s)
+        apiai_test.go:129: the switch on: the API [GEMINUS_MUSE_API_KEY:required], the worker []
+        apiai_test.go:155: switch on: {Provider: Approval:{rec:<nil>} Model: LiveOff:} GEMINUS_MUSE_API_KEY (required): live AI on the Meta Model API needs the owner's key, want on
+    --- FAIL: TestTheAPIsGateIsTheWorkers/meta/as_recorded (0.00s)
+        apiai_test.go:129: the switch on: the API [GEMINUS_MUSE_API_KEY:required], the worker []
+        apiai_test.go:155: switch on: {Provider: Approval:{rec:<nil>} Model: LiveOff:} GEMINUS_MUSE_API_KEY (required): live AI on the Meta Model API needs the owner's key, want on
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.038s
+FAIL
+exit 1

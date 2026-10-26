@@ -1,0 +1,273 @@
+baseline (no change): SURVIVED (6 s)
+
+K1 no key check | internal/config/apiai.go | KILLED (7 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.018s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.08s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.257s
+K2 MODEL_API_KEY not refused | internal/config/apiai.go | KILLED (7 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.152s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.02s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.272s
+K3 ANTHROPIC_AUTH_TOKEN not refused | internal/config/apiai.go | KILLED (10 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.029s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.069s
+K4 GEMINUS_META_API_KEY not refused | internal/config/apiai.go | KILLED (9 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.024s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.065s
+K5 AI_API_KEY not refused | internal/config/apiai.go | KILLED (9 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.017s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.152s
+K6 GEMINUS_ANTHROPIC_API_KEY_B not refused | internal/config/apiai.go | KILLED (11 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.034s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.214s
+K7 GEMINUS_MUSE_API_KEY not refused | internal/config/apiai.go | KILLED (10 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.024s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.308s
+K8 ANTHROPIC_API_KEY not refused | internal/config/apiai.go | KILLED (8 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.086s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.155s
+K9 the key's code invalid | internal/config/apiai.go | KILLED (9 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.237s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.103s
+K10 a key refused only with a live provider | internal/config/apiai.go | KILLED (9 s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.012s
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.07s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.211s
+S1 the fake everywhere | internal/config/apiai.go | KILLED (17 s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.011s
+S2 the gate always on | internal/config/apiai.go | KILLED (16 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.169s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.307s
+    --- FAIL: TestAPIAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.02s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.327s
+S3 the gate never on | internal/config/apiai.go | KILLED (18 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.217s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	2.090s
+    --- FAIL: TestAPIAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.00s)
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.344s
+    --- FAIL: TestAProposalTheAPIAcceptsWithoutTheWorkersKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/worker	0.264s
+S4 the gate's reason ignored | internal/config/apiai.go | KILLED (7 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.225s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.02s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.434s
+    --- FAIL: TestAPIAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.611s
+S5 the gate's errors ignored | internal/config/apiai.go | KILLED (10 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.104s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.505s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.168s
+S6 LiveOff not set | internal/config/apiai.go | KILLED (16 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.023s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (1.26s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	2.895s
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.321s
+S7 no reason without an approval | internal/config/apiai.go | KILLED (12 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.056s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.230s
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.142s
+S8 an approval without a live provider | internal/config/apiai.go | KILLED (13 s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.013s
+S9 the errors not returned | internal/config/apiai.go | KILLED (14 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.485s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.989s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.01s)
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.21s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.686s
+S10 the model not kept | internal/config/apiai.go | KILLED (11 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.097s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.754s
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.319s
+S11 the switch's errors ignored | internal/config/apiai.go | KILLED (12 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.024s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.113s
+S12 the provider's errors ignored | internal/config/apiai.go | KILLED (14 s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.029s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.086s
+S13 the photo path read | internal/config/apiai.go | KILLED (23 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.662s
+S14 the switch read as on | internal/config/apiai.go | KILLED (21 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.021s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.02s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.997s
+    --- FAIL: TestAPIAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.148s
+L1 any provider's approval | internal/config/apiai.go | KILLED (21 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.010s
+    --- FAIL: TestAPIAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.108s
+L2 no provider check | internal/config/apiai.go | KILLED (13 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.261s
+    --- FAIL: TestAPIAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.781s
+L3 no validity check | internal/config/apiai.go | SURVIVED (17 s)
+L4 the model instead of the approval | internal/config/apiai.go | KILLED (11 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.025s
+    --- FAIL: TestAPIAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.149s
+G1 no provider mismatch | internal/config/ai.go | KILLED (11 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestMetaMismatchesKeepLiveOff (0.00s)
+    --- FAIL: TestTheVisionPath (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.832s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.06s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.911s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.151s
+G2 no record gap | internal/config/ai.go | KILLED (11 s)
+    --- FAIL: TestAnAlteredRetentionRefuses (0.00s)
+    --- FAIL: TestAnyMismatchKeepsLiveOff (0.00s)
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.00s)
+    --- FAIL: TestTheLiveEvalRunsOnlyWhenLiveIsOn (0.17s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.199s
+G3 no model check | internal/config/ai.go | KILLED (10 s)
+    --- FAIL: TestThisBuildsRecord (0.00s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestMetaMismatchesKeepLiveOff (0.00s)
+    --- FAIL: TestTheVisionPath (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.040s
+    --- FAIL: TestAnyMismatchKeepsLiveOff (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.993s
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.087s
+G4 no price check | internal/config/ai.go | KILLED (10 s)
+    --- FAIL: TestAnyMismatchKeepsLiveOff (0.00s)
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.51s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.871s
+G5 the switch without an approval | internal/config/ai.go | KILLED (8 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.109s
+    --- FAIL: TestSpendLimitsAreChecked (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.628s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.078s
+G6 an unknown provider disabled silently | internal/config/ai.go | KILLED (9 s)
+    --- FAIL: TestLoadAIRejects (0.00s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    --- FAIL: TestLoadRejects (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.358s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.206s
+G7 the switch's bad value accepted | internal/config/ai.go | KILLED (8 s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.255s
+    --- FAIL: TestTheSwitchIsRequired (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.107s
+G8 the unrecorded approval off, not an error | internal/config/ai.go | KILLED (12 s)
+    --- FAIL: TestLoadAIRejects (0.00s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestLoadRejects (0.00s)
+    --- FAIL: TestMetaMismatchesKeepLiveOff (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.017s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.615s
+    --- FAIL: TestTheProviderIsTheConfigured (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/worker	0.361s
+G9 the worker reads the keys whatever the gate | internal/config/ai.go | KILLED (16 s)
+    --- FAIL: TestThisBuildsRecord (0.00s)
+    --- FAIL: TestMetaWithoutTheSwitch (0.00s)
+    --- FAIL: TestMetaMismatchesKeepLiveOff (0.00s)
+    --- FAIL: TestTheVisionPath (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.213s
+    --- FAIL: TestH026TurnsLiveOn (0.00s)
+    --- FAIL: TestAnAlteredRetentionRefuses (0.00s)
+    --- FAIL: TestTheSwitchIsRequired (0.00s)
+    --- FAIL: TestAnyMismatchKeepsLiveOff (0.00s)
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	3.117s
+    --- FAIL: TestAProposalTheAPIAcceptsWithoutTheWorkersKey (0.00s)
+A1 available without the gate | cmd/api/main.go | KILLED (7 s)
+    --- FAIL: TestAPIAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.084s
+A2 no fake | cmd/api/main.go | KILLED (6 s)
+    --- FAIL: TestAPIAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.465s
+A3 live off is not configured | cmd/api/main.go | KILLED (6 s)
+    --- FAIL: TestAPIAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.084s
+A4 LoadAPIAI's errors dropped | cmd/api/main.go | SURVIVED (6 s)
+A5 the worker's Load | cmd/api/main.go | KILLED (6 s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    --- FAIL: TestAPIRefusesToStartWithAKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.073s
+A6 the reason not typed | cmd/api/main.go | INVALID (does not build)
+    FAIL	github.com/kcl1104/geminus/cmd/api [build failed]
+    # github.com/kcl1104/geminus/cmd/api [github.com/kcl1104/geminus/cmd/api.test]
+A7 no log of the AI | cmd/api/main.go | KILLED (6 s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.154s
+A8 accepted logged without the model | cmd/api/main.go | KILLED (6 s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.107s
+A9 always available | cmd/api/main.go | KILLED (5 s)
+    --- FAIL: TestAPIAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.148s
+
+46 mutants: 43 killed, 2 survived, 1 invalid (do not build), 0 not applied

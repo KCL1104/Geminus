@@ -1,0 +1,7 @@
+baseline (no change): SURVIVED (7 s)
+
+A6 the reason not typed | cmd/api/main.go | KILLED (5 s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.044s
+
+46 mutants: 1 killed, 0 survived, 0 invalid (do not build), 0 not applied

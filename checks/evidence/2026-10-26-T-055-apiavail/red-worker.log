@@ -1,0 +1,6 @@
+--- FAIL: TestAProposalTheAPIAcceptsWithoutTheWorkersKey (0.00s)
+    keyless_test.go:43: meta: the API does not accept proposals: {Provider: Approval:{rec:<nil>} Model: LiveOff:} GEMINUS_MUSE_API_KEY (required): live AI on the Meta Model API needs the owner's key
+FAIL
+FAIL	github.com/kcl1104/geminus/cmd/worker	0.101s
+FAIL
+exit 1

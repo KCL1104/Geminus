@@ -1,0 +1,14 @@
+--- FAIL: TestAPIAIIsKeyFree (0.00s)
+    apiai_test.go:70: meta: GEMINUS_MUSE_API_KEY (required): live AI on the Meta Model API needs the owner's key
+        AI_VISION_PROVIDER (invalid): unknown provider; allowed: "disabled", "fake", "anthropic", "meta", or unset (AI_PROVIDER's)
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_MAX_RETRIES (invalid): must be a positive integer (AI_MAX_RETRIES may be 0)
+--- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    apiai_test.go:225: want joined error, got <nil>: <nil>
+--- FAIL: TestLoadAPI (0.00s)
+    apiai_test.go:256: LoadAPI: {DatabaseURL: AIProvider: AILive:false Env: ObjectStorage:{Provider: Root: S3:{Endpoint: Bucket: Region: AccessKeyID: SecretAccessKey:[redacted] PathStyle:false}}} GEMINUS_MUSE_API_KEY (required): live AI on the Meta Model API needs the owner's key
+    apiai_test.go:268: a key and a bad database URL: DATABASE_URL (invalid): scheme must be postgres or postgresql
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config	0.008s
+FAIL
+exit 1

@@ -1,0 +1,11 @@
+=== RUN   TestAProposalTheWorkerCannotAskFailsSafely
+=== RUN   TestAProposalTheWorkerCannotAskFailsSafely/live_AI_off_in_the_worker
+=== RUN   TestAProposalTheWorkerCannotAskFailsSafely/AI_disabled_in_the_worker
+=== RUN   TestAProposalTheWorkerCannotAskFailsSafely/the_worker's_key_refused
+--- PASS: TestAProposalTheWorkerCannotAskFailsSafely (0.44s)
+    --- PASS: TestAProposalTheWorkerCannotAskFailsSafely/live_AI_off_in_the_worker (0.14s)
+    --- PASS: TestAProposalTheWorkerCannotAskFailsSafely/AI_disabled_in_the_worker (0.12s)
+    --- PASS: TestAProposalTheWorkerCannotAskFailsSafely/the_worker's_key_refused (0.10s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	1.515s
+exit 0

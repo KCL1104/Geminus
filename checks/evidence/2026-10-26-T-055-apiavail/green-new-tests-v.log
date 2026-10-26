@@ -1,0 +1,104 @@
+=== RUN   TestAPIAIIsKeyFree
+--- PASS: TestAPIAIIsKeyFree (0.00s)
+=== RUN   TestAPIAIMismatches
+--- PASS: TestAPIAIMismatches (0.00s)
+=== RUN   TestAPIAISelection
+--- PASS: TestAPIAISelection (0.00s)
+=== RUN   TestAPIAIRefusesAnyKey
+--- PASS: TestAPIAIRefusesAnyKey (0.00s)
+=== RUN   TestLoadAPI
+--- PASS: TestLoadAPI (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config	0.020s
+=== RUN   TestTheAPIsGateIsTheWorkers
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/raw_text_in_logs
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/spend_limits_unconfirmed
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/the_importer's_role
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/no_budget
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/retention_unconfirmed
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/an_unpriced_model
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/a_segmentation_model
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/as_recorded
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/no_approver
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/no_date
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/no_credential
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/customer_data
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/images
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/no_source
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/retention_undated
+=== RUN   TestTheAPIsGateIsTheWorkers/anthropic/another_provider's_record
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/no_source
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/retention_undated
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/another_provider's_record
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/the_Contributor_model
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/another_segmenter
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/text_only,_no_segmentation
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/raw_text_in_logs
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/spend_limits_unconfirmed
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/the_importer's_role
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/no_budget
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/retention_unconfirmed
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/an_unpriced_Standard_model
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/as_recorded
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/no_approver
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/no_date
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/no_credential
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/customer_data
+=== RUN   TestTheAPIsGateIsTheWorkers/meta/Anthropic's_arrangement
+--- PASS: TestTheAPIsGateIsTheWorkers (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/raw_text_in_logs (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/spend_limits_unconfirmed (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/the_importer's_role (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/no_budget (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/retention_unconfirmed (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/an_unpriced_model (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/a_segmentation_model (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/as_recorded (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/no_approver (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/no_date (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/no_credential (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/customer_data (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/images (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/no_source (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/retention_undated (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/anthropic/another_provider's_record (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/no_source (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/retention_undated (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/another_provider's_record (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/the_Contributor_model (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/another_segmenter (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/text_only,_no_segmentation (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/raw_text_in_logs (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/spend_limits_unconfirmed (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/the_importer's_role (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/no_budget (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/retention_unconfirmed (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/an_unpriced_Standard_model (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/as_recorded (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/no_approver (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/no_date (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/no_credential (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/customer_data (0.00s)
+    --- PASS: TestTheAPIsGateIsTheWorkers/meta/Anthropic's_arrangement (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.076s
+=== RUN   TestAPIAvailability
+--- PASS: TestAPIAvailability (0.00s)
+=== RUN   TestAPIAvailabilityNeedsNoKey
+--- PASS: TestAPIAvailabilityNeedsNoKey (0.01s)
+=== RUN   TestAPIAvailabilityRefusesAMismatch
+--- PASS: TestAPIAvailabilityRefusesAMismatch (0.00s)
+=== RUN   TestAPIRefusesToStartWithAKey
+--- PASS: TestAPIRefusesToStartWithAKey (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/api	0.051s
+=== RUN   TestAProposalTheAPIAcceptsWithoutTheWorkersKey
+--- PASS: TestAProposalTheAPIAcceptsWithoutTheWorkersKey (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	0.059s
+=== RUN   TestAProposalTheWorkerCannotAskFailsSafely
+    keyless_test.go:22: NOT RUN: set GEMINUS_TEST_DATABASE_URL to a disposable dt_test_* database prepared by `make db-test`
+--- SKIP: TestAProposalTheWorkerCannotAskFailsSafely (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.043s
+exit 0

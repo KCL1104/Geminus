@@ -155,7 +155,7 @@ Go 1.27.3（`/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/b
 - `make backend-race`（整個 repository 的 `-race`）：沒有執行；只執行了指定範圍的 `-race`（§6）。
 - govulncheck：沒有執行，因為 `go.mod`、`go.sum` 沒有改變（`git diff d9b7f22 HEAD -- go.mod go.sum` 為空），沒有新的 dependency。
 - 部署：Railway 上的任何操作（只執行了 `check_deploy.py` 與以 stand-in 進行的 rehearsal）。
-- API 的 key-free 可用性（T-053 I5）：沒有實作（§9 問題 6）。
+- API 的 key-free 可用性（T-053 I5）：T-055 時沒有實作（§9 問題 6）；之後由 follow-up 實作（§10）。
 - 照片路徑的 handler、prompt 與 UI：T-056 的範圍；本 task 只提供介面與 worker 中建好的 client。Claude adapter 的圖片：沒有實作。
 - 獨立審查（H-029 (4) 的 hackathon 模式要求每個 demo 切片一輪）：尚未進行。
 - 已知限制：照片路徑的 client 與 proposal 的 client 各自計算每個 organization 的並行數（同一個 process 內最多兩倍）；Meta 的兩個 backend（Muse Spark、SAM）各有自己的 key 狀態（一個被 401 停用時，另一個在自己的下一次 401 才停用）。
@@ -181,7 +181,7 @@ Branch `t055-meta`（自 d9b7f22，沒有 push）：
 3. **Meta dashboard 的 spend limit**（D-122 (c)）：是否有、是否設定？目前只靠程式內的 ledger（月 100、日 10、organization 日 5 美元）。H-033 提到的 150 美元額度（10 天）不是上限。
 4. **Claude 作為照片路徑的備援**（D-123 (c)）：H-018 的資料政策只有 synthetic 資料與使用者文字，沒有圖片；照片路徑選 Claude 時維持關閉（`images_not_approved`）。是否擴充 H-018 到 demo 圖片？（Claude adapter 也還沒有實作圖片，屬 T-056 或之後。）
 5. **照片路徑的 role**：H-029 record 只服務 `modeler`、`scenario`；T-056 若要新的 role（例如 photo modeler），需要 reviewed change 擴充 record 的角色（與 migration 0016 的 role CHECK）。
-6. **API 的 key-free 可用性**（T-053 I5）：沒有在 T-055 處理。部署的 API 仍維持 `AI_PROVIDER=disabled`，所以 demo 的 proposal（文字與照片）無法經由部署的 API 使用；要做的話需要決定 API 是否讀開關（`variables.json` 目前禁止 API 有 `GEMINUS_AI_LIVE`，`check_deploy.py` 檢查）。這是安全設計的選擇，留給 coordinator／owner。
+6. **API 的 key-free 可用性**（T-053 I5）：沒有在 T-055 處理。部署的 API 仍維持 `AI_PROVIDER=disabled`，所以 demo 的 proposal（文字與照片）無法經由部署的 API 使用；要做的話需要決定 API 是否讀開關（`variables.json` 目前禁止 API 有 `GEMINUS_AI_LIVE`，`check_deploy.py` 檢查）。這是安全設計的選擇，留給 coordinator／owner。（之後：coordinator 決定 API 讀這四個設定、不讀 key，見 §10。）
 7. **Geographic Use Policy**：Restricted Territories 包含中華人民共和國（含香港、澳門）等；「you may not … knowingly permit access by End Users located in」這些地區。公開 demo 以 owner 的 Auth0 登入保護，是否需要其他限制由 owner 決定。
 8. **決策編號**：D-118 已由 T-052 使用；本 task 用 D-121–D-123，D-119、D-120 留給同時進行的 T-056。合併時若衝突請 coordinator 重新編號（程式註解中的編號一起改）。
 9. **Planning 的舊變數名稱**：`planning/tasks.json` T-055 scope 與 `planning/decisions.json` H-029 still_open 仍寫 `GEMINUS_META_API_KEY`（coordinator 的紀錄，本 task 沒有改）。
@@ -222,3 +222,105 @@ Coordinator 對本任務問題的處理：
 
 下一步：一輪獨立審查（H-029），進行中。
 
+## 10. Follow-up：API 的 key-free 可用性（T-053 I5）
+
+2026-10-26，branch `t055-apiavail`（自 bce77a3，沒有 push）。只用 fake、本機測試與一次性 database；**沒有任何 live AI 呼叫**，沒有讀取、印出或 grep 任何 key 的值，沒有確認任何 key 變數是否存在於任何環境。證據在 `checks/evidence/2026-10-26-T-055-apiavail/`。
+
+### 10.1 決定（**coordinator 的決定**，不是 owner 的）
+
+API 只以非 secret 的設定判斷是否接受 AI proposal：`AI_PROVIDER`（`anthropic` 或 `meta`）、`AI_POLICY_APPROVAL`（批准紀錄的 ID）、`AI_MODEL`（必須等於 record 的 model 且有固定價格）、`GEMINUS_AI_LIVE=on`。檢查與 worker 的 live gate 相同，只是 API 從不讀、也不要求任何 key。Defense in depth：API 的環境中有任何 AI key 的變數即拒絕啟動，typed code，訊息只寫名稱。任何不合時維持既有的 typed 可用性（`PolicyNotApproved`／`NotConfigured`）；開關 on 而不合時 API 拒絕啟動，與 worker 相同。Worker 不變。API 接受而 worker 不能呼叫（沒有 key）時，proposal 在 worker 以 typed status 安全地失敗。
+
+### 10.2 行為
+
+- **同一個 gate**：`internal/config` 的 `liveGate` 由原本的 `loadLive` 拆出、內容不變：build 記錄的批准、屬於該 provider（否則 `provider_mismatch`）、record 不缺任何項目（`Gap`）、`AI_MODEL` 等於 record 的 model（`model_mismatch`；沒有時 `required`）、model 與 segmentation model 有價格（`model_unpriced`）、開關（`switch_off`）。Worker 的 `loadLive` 在 gate 通過後才讀 key（行為不變）；API 的 `config.LoadAPIAI` 只用 gate，不讀 key。`AI_PROVIDER` 與開關的解析抽成共用的 `aiProvider`、`switchOn`（`LoadAI` 的錯誤與順序不變）。
+- **`config.APIAI`**：`Provider`、`Approval`（只有 `aiapproval.Recorded` 能產生的 token）、`Model`、`LiveOff`（與 `AI.LiveOff` 相同的 typed reason）；沒有 credential 欄位。`LiveEnabled` 只對屬於該 provider 的有效 token 成立。`config.LoadAPI` 是以 `LoadAPIAI` 取代 `LoadAI` 的 `Load`；worker 仍用 `Load`／`LoadAI`。
+- **Key 變數**（`internal/config/apiai.go` 的 `apiKeyVars`）：`GEMINUS_ANTHROPIC_API_KEY_A`、`GEMINUS_ANTHROPIC_API_KEY_B`、`GEMINUS_MUSE_API_KEY`、`GEMINUS_META_API_KEY`、`ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`、`AI_API_KEY`、`MODEL_API_KEY`。不論其他設定，有值即 `key_forbidden`（exit 1），一個變數一個錯誤、排在其他錯誤之前；值只與空字串比較後即丟棄。`GEMINUS_META_API_KEY`（Meta key 的舊名稱）與 `ANTHROPIC_AUTH_TOKEN`（Anthropic SDK 預設讀取的 credential）是依 coordinator 清單的「…」補上的。`AI_API_KEY` 在 API 上由 `invalid` 改為 `key_forbidden`（worker 仍為 `invalid`）。
+- **`cmd/api`**：`run` 用 `LoadAPI` 與 `LoadAPIAI`；`aiAvailability(APIAI)`：fake → `Available`；`LiveEnabled` → `Available`；其他 live provider → `PolicyNotApproved`；其餘 → `NotConfigured`。啟動 log（live provider 時）：`AI proposals are accepted; the worker calls the provider`（`provider`、`model`、`code` `LIVE_AI_ON`），或 `AI proposals are refused`（`code` 為大寫的 typed reason，例如 `SWITCH_OFF`、`MODEL_MISMATCH`、`NO_APPROVAL_NAMED`）。API 不讀 `AI_VISION_*`、花費上限與 budget（worker 的設定）。
+- **API 接受、worker 不能呼叫**：worker 開關 on 而沒有 key → worker 拒絕啟動（`GEMINUS_MUSE_API_KEY (required)`，或 Anthropic 的兩把），不建 handler、不連線，所以不 claim job、不寫入；proposal 停在 `generating`，直到有 worker 啟動（沒有逾時，見 10.9）。worker 開關不是 on → `AI_POLICY_NOT_APPROVED`；`AI_PROVIDER` disabled → `AI_PROVIDER_NOT_CONFIGURED`；key 被 provider 拒絕 → `AI_CREDENTIALS_EXHAUSTED`（HTTP 層 `SERVICE_UNAVAILABLE`）。都在第一個 attempt 失敗、不重試；只寫 proposal 的 error、job 的狀態與三個 audit event（`proposal.create`、`proposal.attempt_failed`、`job.attempt_failed`），沒有內容、patch、risk、validation、provider metadata、version、draft、scenario 或花費預留。
+
+### 10.3 改了什麼
+
+| 檔案 | 內容 |
+|---|---|
+| `internal/config/apiai.go`（新） | `APIAI`、`LoadAPIAI`、`CodeKeyForbidden`、`apiKeyVars` |
+| `internal/config/ai.go` | 抽出 `aiProvider`、`switchOn`、`liveGate`（行為不變）；註解 |
+| `internal/config/config.go` | `Load`／`LoadAPI` 共用 `load`；`AILive` 的註解 |
+| `cmd/api/main.go` | `LoadAPI`、`LoadAPIAI`、`aiAvailability(APIAI)`、`logAI` |
+| `deploy/railway/variables.json`、`scripts/check_deploy.py` | 見下 |
+| `deploy/railway/deploy.sh` | 只改開頭的註解（owner 在 API 與 worker 設相同的四個設定） |
+| `checks/deploy-check.json` | 重新產生（多了 `api_ai`） |
+| runbook §4.4、§7.3；SECURITY §7；ADR-027 addendum 一項；ADR-030 Consequences 一句 | 文件 |
+
+**給 coordinator 合併用**（T-039 review 第 1 輪同時在改 `railway_deploy.py` 與 rehearsal；這兩個檔案我沒有改）：
+
+- `variables.json`：`about` 的「(no AI key or live switch on the API,」改為「(no AI key on the API, whose AI settings are the worker's (T-053 I5),」；api 的 `AI_PROVIDER` 只改 `later` 的文字（值仍為 `disabled`、`when: absent`）；api 新增 `AI_POLICY_APPROVAL`、`AI_MODEL`、`GEMINUS_AI_LIVE`，三者皆 `{"secret": false, "source": "owner", "required": false}`；api 的 `forbidden` 移除 `GEMINUS_AI_LIVE`，新增 `GEMINUS_META_API_KEY`、`ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`、`MODEL_API_KEY`；worker 的 `AI_PROVIDER` 的 `later` 句尾加「; the API's four AI settings are these (T-053 I5)」；worker 新增 `AI_POLICY_APPROVAL`、`AI_MODEL`（同上的宣告；worker 本來就讀它們）；web 不變。
+- `check_deploy.py`：docstring 的 variables.json 項；`railway()` 最後原本的 `ai_keys` 檢查（要求 API 禁止 `GEMINUS_AI_LIVE`）換成：API 的 `forbidden` 包含 `apiKeyVars` 的每一個（由 Go 原始碼讀取）、web 的 `forbidden` 包含三把 live key、四個 AI 設定在 API 與 worker 都有宣告且除 `later` 外完全相同、不是 secret、API 沒有其他 `AI_`／`GEMINUS_AI_` 設定；新增常數 `API_AI_SETTINGS`、`LIVE_KEYS` 與函式 `api_key_variables()`；`railway()` 的回傳多 `api_ai`。
+- Rehearsal（沒有改，仍 PASS）：第 233 行把 `GEMINUS_AI_LIVE` 算成「the API got an AI key or the live switch」，docstring 也寫 API 不會拿到開關。現在 owner 可以在 API 設開關；deployer 仍從不設定 owner 的變數（第 229–231 行的檢查涵蓋），所以檢查照樣通過。建議改 rehearsal 的 agent 拿掉第 233 行的 `GEMINUS_AI_LIVE` 與 docstring 的「or the switch」，並可加上 deployer 不設 `AI_POLICY_APPROVAL`、`AI_MODEL` 的檢查。
+
+### 10.4 測試（先紅後綠）
+
+| 範圍 | 測試 | 紅（以舊行為的暫時 stub：API 的 AI 即 `LoadAI`；stub 沒有 commit）→ 綠 |
+|---|---|---|
+| `internal/config` | `TestAPIAIIsKeyFree`（Meta 與 Anthropic 開關 on、沒有 key → 接受；只讀四個設定與 `APP_ENV`；worker 的 `LoadAI` 以同樣設定仍要求 key；`LiveEnabled` 的五種手造值）、`TestAPIAIMismatches`（14 種不合 × 開關 on／不設／off）、`TestAPIAISelection`（16 種 provider 與開關；7 種不合法的開關值）、`TestAPIAIRefusesAnyKey`（8 個變數 × 6 種設定，錯誤中沒有值；全部同時：每個一個錯誤、排在前面）、`TestLoadAPI` | `red-config.log`：IsKeyFree、RefusesAnyKey、LoadAPI 失敗 → `tests.log` |
+| `internal/config/aiapproval` | `TestTheAPIsGateIsTheWorkers`：H-018 的 16 種、H-029 的 18 種 record 變動 × 8 種設定（272 次比較），API（沒有 key）與 worker（有 key）的錯誤碼、live、typed reason、批准與 model 相同；開關 on 時每種變動的預期 reason | `red-aiapproval.log`：完整的 record 在 API 要求 key → 綠 |
+| `cmd/api` | `TestAPIAvailability`（13 種設定；手造的 `APIAI` 不會 available）、`TestAPIAvailabilityNeedsNoKey`（`run` 開關 on、沒有 key → 走到 database；log 的 provider、model、code）、`TestAPIAvailabilityRefusesAMismatch`（7 種，exit 1、typed code、不碰 database）、`TestAPIRefusesToStartWithAKey`（8 個變數 × 3 種設定，exit 1、`key_forbidden`、沒有值） | `red-api.log`：前兩個與 key 的測試失敗（RefusesAMismatch 在舊行為也成立，作為 regression） |
+| `cmd/worker` | `TestAProposalTheAPIAcceptsWithoutTheWorkersKey`：API 接受的設定，worker 沒有 key、開關 on → exit 1、沒有建 handler、不連線；開關不設 → client 回 `policy_not_approved`（不可重試），不碰 ledger | `red-worker.log` → 綠 |
+| `internal/proposals/generator`（DB） | `TestAProposalTheWorkerCannotAskFailsSafely`：三種 worker（live off、disabled、key 被拒）→ failed、typed code、第一個 attempt、row 只有 error、恰好三個 audit event、model 的 version／draft／scenario 與花費預留不變 | 針對既有程式的安全性質（沒有紅）；第一次在 `dt_test_t055fa` 失敗，是我的 assertion 漏了 worker loop 自己的 `job.attempt_failed`（D-091 (b)）；改為精確檢查該 event（code、outcome、attempt、retryable）與總數 3，沒有放寬 → `generator-db-keyless.log` PASS |
+
+紅的 log 是以 stub 執行的行為紅；更早一次只是 build 失敗的紅（函式還不存在），其 log 被同名覆蓋，沒有保留。
+
+### 10.5 Mutation（65a61c3 的 `git archive` 複本，在 scratch；`mutate.py`、`mutation.log`、`mutation-a6.log`）
+
+46 個 mutant（`LoadAPIAI` 的 key 檢查 10、選擇與 gate 14、`LiveEnabled` 4、共用的 gate 9、`cmd/api` 9），每個跑 `./internal/config/... ./cmd/api/ ./cmd/worker/` 的測試：**44 killed、2 survived（等價）**。
+
+- 第一次執行時 S1–S3 因未使用的變數而 build 失敗，被誤算為 killed；我停掉那次執行，修正 S1–S3 與 S10 使其能編譯，讓 runner 把 build 失敗另列為 INVALID，然後整批重跑（`mutation.log`）。重跑中 A6 為 INVALID（`strings` 未使用），改為 `ToLower` 後單獨重跑：killed（`mutation-a6.log`；該 log 末行的「46 mutants」是清單長度，實際只跑 A6）。
+- 存活的兩個是等價的：**L3**（`APIAI.LiveEnabled` 拿掉 `Approval.Valid()`）：`Approval.Provider()` 對無效的 token 回空字串，而 live provider 的名稱不是空字串，結果相同（`AI.LiveEnabled` 是同樣的寫法）。**A4**（`run` 拿掉 `LoadAPIAI` 錯誤的合併）：`LoadAPI` 以同一個 getenv 呼叫同一個 `LoadAPIAI`，錯誤已經包含在內。
+- `check_deploy.py` 的新規則：16 個 negative case（`check_deploy_negatives.py`，只在記憶體中改 `variables.json` 或 Go 的清單），全部如預期失敗，原檔通過（`check-deploy-negatives.log`）。
+
+### 10.6 指令與結果（Go 1.27.3、`GOTOOLCHAIN=local`；Python `.venv/bin/python -I`；deploy 腳本以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN` 執行）
+
+| 指令 | 結果 | Log |
+|---|---|---|
+| `gofmt -l cmd internal schemas scripts prompts` | 空，exit 0 | `gofmt.log` |
+| `go vet ./internal/config/... ./cmd/... ./internal/proposals/...` | exit 0 | `vet.log` |
+| `go test -count=1 ./internal/config/... ./cmd/... ./internal/proposals/...` | exit 0（10 個 package ok；DB 測試在這裡 skip） | `tests.log`、`green-new-tests-v.log` |
+| `go test -race -count=1`（同上） | exit 0 | `race.log` |
+| `make backend-test` | exit 0（gofmt、vet、81 個 package ok、0 FAIL、沒有 cached） | `backend-test.log` |
+| `make architecture-check` | exit 0（93 packages、25 rules、16 build configurations） | `architecture-check.log` |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | exit 0（只有 `checks/deploy-check.json` 改變） | `spec-check.log` |
+| `scripts/check_deploy.py` | exit 0 | `check-deploy.log` |
+| `check_deploy_negatives.py` | exit 0（16/16） | `check-deploy-negatives.log` |
+| `scripts/rehearse_railway_deploy.py` | exit 0、`rehearsal: PASS`（Railway 本身 NOT RUN） | `rehearsal.log` |
+| `make integration-test`（新建的 `dt_test_t055fa`，commit 之前） | exit 2：只有 `TestAProposalTheWorkerCannotAskFailsSafely` 失敗（10.4 的 assertion），其他全部 ok | `integration-test-a.log` |
+| `go test -race -run TestAProposalTheWorkerCannotAskFailsSafely ./internal/proposals/generator/`（同一個 database，修正後） | exit 0（3 個 subtest PASS） | `generator-db-keyless.log` |
+| `make integration-test`（新建的 `dt_test_t055fb`，在 0ef69ed） | **exit 0**（db-test 與 db-go-test，37 個 package ok，`GEMINUS_REQUIRE_DB_TESTS=1`，沒有 FAIL 或 SKIP；含 `TestAProposalTheWorkerCannotAskFailsSafely`） | `integration-test.log` |
+| Mutation（10.5） | 44 killed、2 等價 | `mutation.log`、`mutation-a6.log` |
+
+PostgreSQL 是共用的 cluster（socket `/var/lib/postgresql/geminus-t009-fresh`，port 55440），沒有啟動或停止它；兩個 `dt_test_t055f*` database 在最後都已 drop。
+
+### 10.7 NOT RUN
+
+- 任何 live AI 呼叫（Anthropic、Meta）；`make ai-smoke-live`、`make ai-eval-live`。
+- Railway 上的任何操作；部署後 API 與 worker 的四個設定值是否相同（owner 在 UI 設定，靜態檢查與 rehearsal 都看不到值；deployer 也不讀 owner 的變數）。
+- `make e2e-test`、frontend 的測試：依指示不執行。
+- `make backend-race`（整個 repository 的 `-race`）：沒有執行；只執行了指定範圍的 `-race`。
+- govulncheck：`go.mod`、`go.sum` 沒有改變，沒有新的 dependency。
+- 獨立審查：尚未進行。
+
+### 10.8 Commit（branch `t055-apiavail`，自 bce77a3，沒有 push）
+
+| Commit | 內容 |
+|---|---|
+| 65a61c3 | `LoadAPIAI`、共用的 gate、`LoadAPI`、`cmd/api` 的組裝與 log；全部測試（先寫測試） |
+| bdc9b15 | `variables.json`、`check_deploy.py`、`deploy.sh` 的註解、`deploy-check.json`、negative cases |
+| 0ef69ed | runbook §4.4／§7.3、SECURITY §7、ADR-027 addendum、ADR-030 |
+| （本節的 commit） | 本節與驗證 log |
+
+### 10.9 給 coordinator 的說明與問題
+
+1. **決策的紀錄**：這是 coordinator 的決定；我沒有在 `docs/DECISIONS_AND_TBD.md` 新增 D 編號（避免與同時進行的 task 衝突），ADR-027 addendum 標為 PROPOSED 至獨立審查。要不要登記為 D-xxx 由 coordinator 決定。
+2. **Key 清單**：`GEMINUS_META_API_KEY`、`ANTHROPIC_AUTH_TOKEN` 是補上的（10.2），請確認。
+3. **等待的 proposal**：worker 開關 on 而沒有 key 時 worker 不啟動，API 接受的 proposal 停在 `generating`，沒有逾時（依指示 worker 側不變）。部署的 verification 會看到 worker 不是 SUCCESS；是否給 generating 的 proposal 一個期限，另行決定。
+4. **空字串**：key 變數以「有值」判斷（`getenv` 無法分辨未設與設為空字串）；設為空字串的變數不視為 key。
+5. **照片路徑**：API 不讀 `AI_VISION_*`；T-056 若需要 API 知道照片路徑是否可用，另行決定（同樣的方法可以延伸）。
+6. **Planning 與舊報告**：`planning/tasks.json` T-039 scope (3)（「API 的部署不設 key，開關 on 時 config 會讀它們」）與 `checks/T-053_VALIDATION.md` 的 I5 是當時的描述，我沒有改（coordinator 的紀錄）。
