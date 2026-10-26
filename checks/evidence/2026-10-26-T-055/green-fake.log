@@ -1,0 +1,5 @@
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.495s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	8.777s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.048s
+?   	github.com/kcl1104/geminus/internal/ai/provider/structured	[no test files]
+exit 0

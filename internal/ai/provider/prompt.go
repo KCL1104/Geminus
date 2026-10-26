@@ -82,7 +82,12 @@ type Prompt struct {
 	Locale          locale.Locale
 	System          string
 	Blocks          []Block
-	Disclosure      Disclosure
+	// Images are the prompt's image parts (T-055, for T-056's photo path):
+	// at most MaxImagesPerPrompt, each made by NewImage. Seal checks them
+	// and seals their type, digest and size into InputHash; the client
+	// hands them only to a backend that takes images (ImageInput).
+	Images     []Image
+	Disclosure Disclosure
 	// InputHash is "sha256:<hex>" of the JCS form of the organization,
 	// role, template version, locale, system text and rendered user
 	// message: the sanitized input hash of the audit record (AI_SPEC §10).
@@ -141,7 +146,18 @@ func Seal(p Prompt) (Prompt, error) {
 	if len(p.Blocks) == 0 {
 		return fail("no blocks")
 	}
+	if len(p.Images) > MaxImagesPerPrompt {
+		return fail("more than %d images", MaxImagesPerPrompt)
+	}
 	out := p
+	out.Images = nil
+	for i, im := range p.Images {
+		if err := im.Check(); err != nil {
+			return fail("image %d: %v", i, err)
+		}
+		im.Data = bytes.Clone(im.Data)
+		out.Images = append(out.Images, im)
+	}
 	out.Blocks = make([]Block, len(p.Blocks))
 	names := map[string]bool{}
 	for i, b := range p.Blocks {
@@ -177,7 +193,21 @@ func (p Prompt) User() string {
 	return b.String()
 }
 
+// imageRef is what the hash says of an image: its type, digest and size
+// (T-055). A prompt without images has none, so its hash is what it was
+// before images existed.
+type imageRef struct {
+	MediaType string `json:"media_type"`
+	Digest    string `json:"digest"`
+	Width     int    `json:"width"`
+	Height    int    `json:"height"`
+}
+
 func (p Prompt) hash() (string, error) {
+	var images []imageRef
+	for _, im := range p.Images {
+		images = append(images, imageRef{im.MediaType, im.Digest, im.Width, im.Height})
+	}
 	doc, err := json.Marshal(struct {
 		OrganizationID  string        `json:"organization_id"`
 		Role            Role          `json:"role"`
@@ -185,7 +215,8 @@ func (p Prompt) hash() (string, error) {
 		Locale          locale.Locale `json:"locale"`
 		System          string        `json:"system"`
 		User            string        `json:"user"`
-	}{p.OrganizationID, p.Role, p.TemplateVersion, p.Locale, p.System, p.User()})
+		Images          []imageRef    `json:"images,omitzero"`
+	}{p.OrganizationID, p.Role, p.TemplateVersion, p.Locale, p.System, p.User(), images})
 	if err != nil {
 		return "", err
 	}
@@ -198,7 +229,7 @@ func (p Prompt) Verify() error {
 		return fmt.Errorf("%w: not sealed", ErrInvalidPrompt)
 	}
 	again, err := Seal(Prompt{OrganizationID: p.OrganizationID, Role: p.Role, TemplateVersion: p.TemplateVersion, Locale: p.Locale,
-		System: p.System, Blocks: p.Blocks})
+		System: p.System, Blocks: p.Blocks, Images: p.Images})
 	if err != nil {
 		return err
 	}

@@ -1,0 +1,12 @@
+--- FAIL: TestTheMetaPrices (0.00s)
+    meta_test.go:19: no price for muse-spark-1.3
+--- FAIL: TestOnlyAnthropicPricesInferenceGeos (0.00s)
+    meta_test.go:57: "claude-opus-5-5": geo priced false, want true
+--- FAIL: TestEveryPriceHasItsSource (0.00s)
+    meta_test.go:71: claude-opus-5-5: "" "" false
+    meta_test.go:71: muse-spark-1.3: "" "" false
+    meta_test.go:71: sam-3.1: "" "" false
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/spend	0.004s
+FAIL
+exit 1

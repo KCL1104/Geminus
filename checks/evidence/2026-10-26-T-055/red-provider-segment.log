@@ -1,0 +1,81 @@
+--- FAIL: TestSegmentation (0.00s)
+    segment_test.go:90: not implemented
+--- FAIL: TestASegmentationRequestIsChecked (0.00s)
+    segment_test.go:164: no role: not implemented
+    segment_test.go:164: no image: not implemented
+    segment_test.go:164: a list: not implemented
+    segment_test.go:164: an instruction: not implemented
+    segment_test.go:164: no organization: not implemented
+    segment_test.go:164: a bad organization: not implemented
+    segment_test.go:164: a changed image: not implemented
+    segment_test.go:164: no concept: not implemented
+    segment_test.go:164: a newline: not implemented
+    segment_test.go:164: a space at the start: not implemented
+    segment_test.go:164: an unknown role: not implemented
+    segment_test.go:164: an empty concept: not implemented
+    segment_test.go:164: a prompt token: not implemented
+    segment_test.go:164: two spaces: not implemented
+    segment_test.go:164: too many concepts: not implemented
+    segment_test.go:164: a repeated concept: not implemented
+    segment_test.go:164: a long concept: not implemented
+    segment_test.go:164: capitals: not implemented
+    segment_test.go:164: non-ascii: not implemented
+    segment_test.go:174: cancelled: not implemented
+    segment_test.go:179: disabled provider_not_configured: not implemented
+    segment_test.go:179: disabled policy_not_approved: not implemented
+--- FAIL: TestASegmentationAnswerIsChecked (0.02s)
+    segment_test.go:214: a negative corner: not implemented
+    segment_test.go:214: corners swapped: not implemented
+    segment_test.go:214: another frame: not implemented
+    segment_test.go:214: a negative object: not implemented
+    segment_test.go:214: a confidence above 1: not implemented
+    segment_test.go:214: a negative confidence: not implemented
+    segment_test.go:214: a frame without its height: not implemented
+    segment_test.go:214: too many objects: not implemented
+    segment_test.go:214: a repeated object: not implemented
+    segment_test.go:214: a NaN confidence: not implemented
+    segment_test.go:214: an infinite confidence: not implemented
+    segment_test.go:214: another concept: not implemented
+    segment_test.go:214: a box past the right edge: not implemented
+    segment_test.go:214: a box past the bottom: not implemented
+    segment_test.go:233: two frames: not implemented
+    segment_test.go:240: unavailable: not implemented
+    segment_test.go:240: rate_limited: not implemented
+--- FAIL: TestASegmentationTimesOut (0.00s)
+    segment_test.go:255: not implemented after 614.545µs, 0 calls
+--- FAIL: TestASegmentationIsMetered (0.00s)
+    segment_test.go:275: an unmetered client took a billable segmenter
+panic: test timed out after 1m0s
+	running tests:
+		TestSegmentationConcurrency (1m0s)
+
+goroutine 37 [running]:
+testing.(*M).startAlarm.func1()
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2961 +0x34a
+created by time.goFunc
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/time/sleep.go:182 +0x2d
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0x3c50acd0efc8, {0x6da8e8?, 0x3c50acd9faa0?}, 0x9e76e0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2268 +0x4f2
+testing.runTests.func1(0x3c50acd0efc8)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2744 +0x37
+testing.tRunner(0x3c50acd0efc8, 0x3c50acd9fbc8)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0xea
+testing.runTests({0x6da1b1, 0x1a}, {0x6e4553, 0x2f}, 0x3c50aca3d248, {0xa14d70, 0x26, 0x26}, {0xc2affed0838b9599, 0xdf8b1df2c, ...})
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2742 +0x510
+testing.(*M).Run(0x3c50acab52c0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2602 +0x6af
+main.main()
+	_testmain.go:122 +0x9b
+
+goroutine 35 [chan receive]:
+github.com/kcl1104/geminus/internal/ai/provider.TestSegmentationConcurrency(0x3c50acb926c8)
+	/home/user/Geminus/.claude/worktrees/agent-a46e9b0708b8555f1/internal/ai/provider/segment_test.go:378 +0x151
+testing.tRunner(0x3c50acb926c8, 0x9e76e0)
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 1
+	/root/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/src/testing/testing.go:2260 +0x4d4
+FAIL	github.com/kcl1104/geminus/internal/ai/provider	60.014s
+FAIL
+exit 1

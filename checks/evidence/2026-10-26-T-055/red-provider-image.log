@@ -1,0 +1,13 @@
+--- FAIL: TestNewImageReadsTheSize (0.00s)
+    image_test.go:96: largest side: ai provider: invalid image
+    image_test.go:96: png: ai provider: invalid image
+    image_test.go:96: jpeg: ai provider: invalid image
+    image_test.go:96: webp lossy: ai provider: invalid image
+    image_test.go:96: webp lossless: ai provider: invalid image
+    image_test.go:96: webp extended: ai provider: invalid image
+--- FAIL: TestImageCheck (0.00s)
+    image_test.go:162: ai provider: invalid image
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider	0.022s
+FAIL
+exit 1

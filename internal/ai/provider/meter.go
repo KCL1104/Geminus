@@ -21,8 +21,10 @@ import (
 //     model's list price (internal/ai/spend): every attempt (1 + the
 //     budget's retries) at its input bound and max_tokens, at the dearest
 //     inference geo (the request names none, so the workspace's default
-//     decides: 1.1x, review round 1 M2). A model this build cannot price is
-//     refused;
+//     decides: 1.1x, review round 1 M2) when the model's provider prices
+//     geos (spend.GeoPriced: Anthropic), at the list price otherwise (the
+//     Meta Model API names no geo, T-055). A model this build cannot price
+//     is refused;
 //  3. reserves that amount; a refused reservation is a refused call
 //     (quota_exceeded, or spend_unavailable when the meter cannot answer),
 //     and the backend is never asked;
@@ -30,7 +32,8 @@ import (
 //  5. settles the reservation with what the call cost, even when the
 //     caller's context has ended: the usage of the answer that came back
 //     (a refused, truncated or invalid answer was billed too) at the geo it
-//     says it ran in (the dearest when it names none this build knows),
+//     says it ran in (the dearest when it names none this build knows; the
+//     list price for a provider without geo prices),
 //     plus every attempt that ended without an answer after it may have
 //     reached the provider, at its bound (the provider may have billed it);
 //     an answer that came back but cannot be read, at the whole
@@ -178,9 +181,13 @@ func addSat(a, b int64) int64 {
 	return a + b
 }
 
-// metering is one call's reservation.
+// metering is one call's reservation. geo: the model's provider prices
+// inference geos (spend.GeoPriced: Anthropic's), so the attempt's bound is
+// at the dearest geo and an answer is priced at the geo it reports;
+// otherwise both are the list price (the Meta Model API, T-055).
 type metering struct {
 	price      spend.Price
+	geo        bool
 	perAttempt int64
 	res        Reservation
 }
@@ -195,7 +202,11 @@ func (c *Client) reserve(ctx context.Context, org string, role Role, attr Attrib
 	if !ok {
 		return nil, invalidRequest()
 	}
-	per := spend.AtDearestGeo(price.AttemptBound(q.MaxInputTokens, req.MaxOutputTokens))
+	geo := spend.GeoPriced(q.Model)
+	per := price.AttemptBound(q.MaxInputTokens, req.MaxOutputTokens)
+	if geo {
+		per = spend.AtDearestGeo(per)
+	}
 	most := mulSat(per, int64(1+max(0, req.MaxRetries)))
 	res, err := c.meter.Reserve(ctx, Charge{OrganizationID: org, Role: role, Model: q.Model, Attribution: attr, NanoUSD: most})
 	if err != nil {
@@ -208,7 +219,7 @@ func (c *Client) reserve(ctx context.Context, org string, role Role, attr Attrib
 	if res.ID == "" {
 		return nil, NewError(CodeSpendUnavailable, 0, "")
 	}
-	return &metering{price: price, perAttempt: per, res: res}, nil
+	return &metering{price: price, geo: geo, perAttempt: per, res: res}, nil
 }
 
 // settlement is what the call that answered resp cost (step 5).
@@ -217,9 +228,12 @@ func (m *metering) settlement(resp Response) Settlement {
 	s := Settlement{Usage: u, Credential: resp.Credential, UnknownAttempts: resp.UnknownAttempts}
 	var cost int64
 	if u != (Usage{}) {
-		s.InferenceGeo = spend.Geo(resp.InferenceGeo)
-		cost = spend.AtGeo(m.price.Cost(spend.Tokens{Input: u.InputTokens, Output: u.OutputTokens, CacheWrite: u.CacheCreationInputTokens,
-			CacheRead: u.CacheReadInputTokens}), s.InferenceGeo)
+		cost = m.price.Cost(spend.Tokens{Input: u.InputTokens, Output: u.OutputTokens, CacheWrite: u.CacheCreationInputTokens,
+			CacheRead: u.CacheReadInputTokens})
+		if m.geo {
+			s.InferenceGeo = spend.Geo(resp.InferenceGeo)
+			cost = spend.AtGeo(cost, s.InferenceGeo)
+		}
 	}
 	switch {
 	case resp.UnknownAttempts > 0:
