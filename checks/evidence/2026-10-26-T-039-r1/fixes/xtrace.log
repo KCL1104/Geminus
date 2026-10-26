@@ -1,0 +1,8 @@
++ case "$-" in
++ set +x
+deploy.sh: refusing to run with xtrace on (bash -x, set -x or SHELLOPTS)
+bash -x deploy.sh --dry-run: exit 2
++ case "$-" in
++ set +x
+deploy.sh: refusing to run with xtrace on (bash -x, set -x or SHELLOPTS)
+SHELLOPTS=xtrace deploy.sh --dry-run: exit 2

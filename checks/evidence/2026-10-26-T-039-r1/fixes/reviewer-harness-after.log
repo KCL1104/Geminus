@@ -1,0 +1,17 @@
+# The reviewer's harness (scratchpad/rv039/rvharness/harness.py), copied; one adaptation:
+# recording() passes the new keep= argument through to Run.variables_of. Run on a git archive
+# of f1855bb with the reviewer's git stand-in first on PATH, env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN.
+# 34,35c34,35
+# < def recording(self, service):
+# <     v = orig_variables_of(self, service)
+# ---
+# > def recording(self, service, *args, **kwargs):  # adapted: variables_of now takes keep=
+# >     v = orig_variables_of(self, service, *args, **kwargs)
+1. result: done
+   owner values the deployer received: []
+   counted as secrets to redact: []
+2. result: FAIL: verification: | proxies still open: ['tcp_1']
+   lines about the proxy: ['4. database logins (a TCP proxy on PostgreSQL for this run)', '$ railway tcp-proxy list --service Postgres --environment production --json', 'a TCP proxy was open before this run (tcp_1): used, not removed; reported at the end']
+3.1 result: FAIL: verification: | proxies still open: ['tcp_left_by_killed_run'] | warned: True
+3.2 result: FAIL: verification: | proxies still open: ['tcp_left_by_killed_run'] | warned: True
+exit 0

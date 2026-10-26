@@ -1,0 +1,4 @@
+bash -n deploy/railway/deploy.sh: exit 0
+bash -n deploy/local/staging-smoke.sh: exit 0
+ast.parse: ok
+ast.parse: exit 0

@@ -2,7 +2,7 @@
 
 **日期：2026-10-26｜Branch：`t039-hk`（從 6041d39 開出，沒有 push）｜狀態：hackathon 切片已交付；T-039 在 tasks.json **保持 `not_started`**（只加了 completion_evidence）：brief 要求設為 `in_progress`，但依賴的 T-043 仍為 `in_progress`，而 `scripts/check_decisions.py` 規定 `in_progress` 的任務其 dependencies 必須是 `review` 或 `done`（設了之後 `make spec-check` exit 2，`spec-check-in-progress.log`），不放寬檢查，由 coordinator 決定；沒有部署任何東西、沒有建立任何帳號｜需求：REQ-020｜Gate：D-093、D-095（APPROVED，H-024，本任務只沿用）；新的 ADR-029 為 PROPOSED｜驗收測試：TEST-030（本機 staging smoke：NOT RUN，沒有 Docker daemon；process-level smoke 通過）**
 
-雲端：owner 的選擇由 coordinator 轉達（H-030，待 coordinator 記錄）：先為「railway + cloudflare」，同日改為「先不要接 cloudflare 好了，純用 railway 就好」。所以本切片是 Railway（web、api、worker、managed PostgreSQL、Storage Bucket），使用 Railway 的網域與 TLS；Cloudflare／R2 的部分沒有做。之後（H-032，coordinator 轉達）：owner 提供了 Railway token（只在新的 session 中），coordinator 之後會部署；本切片因此加上以 Railway CLI 非互動套用的 `deploy/railway/deploy.sh`。**本 session 沒有執行 `--apply`、沒有呼叫 Railway 的 API、沒有建立任何東西**（auto mode 也拒絕了一次不帶 token 的 `--apply` 嘗試，那個嘗試本來只會在 preflight 失敗；之後只執行 `--dry-run` 與離線 rehearsal）。
+雲端：owner 的選擇由 coordinator 轉達：先為「railway + cloudflare」（H-030），同日改為「先不要接 cloudflare 好了，純用 railway 就好」（H-031；review 第 1 輪 I4 更正：「純 Railway」的出處是 H-031，不是 H-030）。所以本切片是 Railway（web、api、worker、managed PostgreSQL、Storage Bucket），使用 Railway 的網域與 TLS；Cloudflare／R2 的部分沒有做。之後（H-032，coordinator 轉達）：owner 提供了 Railway token（只在新的 session 中），coordinator 之後會部署；本切片因此加上以 Railway CLI 非互動套用的 `deploy/railway/deploy.sh`。**本 session 沒有執行 `--apply`、沒有呼叫 Railway 的 API、沒有建立任何東西**（auto mode 也拒絕了一次不帶 token 的 `--apply` 嘗試，那個嘗試本來只會在 preflight 失敗；之後只執行 `--dry-run` 與離線 rehearsal）。
 
 **沒有 Docker daemon**（本機只有 docker CLI 29.8.2 與 compose v5.6.0）：`make build-containers` 與 `make staging-smoke` 依設計以 exit 2 回報 NOT RUN（`checks/evidence/2026-10-26-T-039/build-containers.log`、`staging-smoke.log`），沒有嘗試任何 privileged workaround。替代的驗證：以 Dockerfile 的 build context（只有 `go.mod`、`go.sum`、`cmd`、`internal`、`schemas`、`prompts`）與相同的 flags 建置四個 static binary，在一次性 database 上執行與 compose smoke 相同的步驟（process smoke，全部通過）；web 以 `GEMINUS_NEXT_STANDALONE=1` 建置 standalone server 並如 image 一樣啟動與停止；`docker compose config` 驗證 compose 檔；Railway 的 config 檔以 Railway 公布的 JSON schema 驗證。CI 的新 job `containers` 會在 GitHub runner 上真正建置三個 image 並執行 `make staging-smoke`：**尚未觀察到它的結果**（沒有 push）。
 
@@ -19,7 +19,7 @@
 | 本機 staging | `deploy/local/compose.yaml`、`deploy/local/staging-smoke.sh`、`Makefile`（`build-containers`、`staging-smoke`、`spec-deploy`；`db-go-test` 加 `./cmd/migrate/...`） | **只給本機**（檔案第一行即標示；含 repository 的測試 OIDC provider）；每次執行產生一次性密碼與 session key；7 組檢查（見 `deploy/local/staging-smoke.sh` 的開頭）；沒有 Docker 時 exit 2 |
 | CI | `.github/workflows/ci.yml` | 新 job `containers`：`make build-containers`、`make staging-smoke`；只用既有、以 SHA pin 的 `actions/checkout`；不 push image、不用 registry credential |
 | Railway | `deploy/railway/{api,worker,web,migrate}.railway.json`、`deploy/railway/variables.json` | Config-as-code（Dockerfile builder、watch paths、healthcheck、restart policy、`drainingSeconds`、1 replica；`migrate` 的 start command 與 `NEVER`）；每個 service 的變數清單（secret 沒有值而有 `source`：`generated`、`bucket:…`、`owner`；reference 組成 URL；`forbidden` 清單） |
-| Railway 的自動化（H-032） | `deploy/railway/deploy.sh`、`deploy/railway/railway_deploy.py`、`scripts/rehearse_railway_deploy.py` | `--dry-run`（不連網）、`--apply`、`--install-cli DIR`（Railway CLI 5.64.2，核對 release archive 的 SHA-256）；支援 `RAILWAY_TOKEN` 與 `RAILWAY_API_TOKEN`；xtrace 時拒絕執行、token 只由 CLI 從環境讀、引數中不放 secret（每次檢查）、輸出中的 secret 替換為 `[redacted]`；每步先查再建立（可重跑）；產生的 secret 以 Python `secrets` 產生、經 stdin、sealed；owner 的變數不設不讀，verification 檢查必填者存在；8 個步驟見 runbook §7.7。Rehearsal：`railway`、`psql`、`go` 的替身，離線執行 `--apply` 五次（空的 project、重跑、登入導向錯誤兩種、`GEMINUS_RAILWAY_SEAL=off`、CLI 錯誤訊息引用 secret） |
+| Railway 的自動化（H-032） | `deploy/railway/deploy.sh`、`deploy/railway/railway_deploy.py`、`scripts/rehearse_railway_deploy.py` | `--dry-run`（不連網）、`--apply`、`--install-cli DIR`（Railway CLI 5.64.2，核對 release archive 的 SHA-256）；支援 `RAILWAY_TOKEN` 與 `RAILWAY_API_TOKEN`；xtrace 時拒絕執行（review 第 1 輪 L1 更正：原本的檢查在 `set +x` 之後，永遠不成立；現已移到最前面）、token 只由 CLI 從環境讀、引數中不放 secret（每次檢查）、輸出中的 secret 替換為 `[redacted]`；每步先查再建立（可重跑）；產生的 secret 以 Python `secrets` 產生、經 stdin、sealed；owner 的變數不設，verification 檢查必填者存在（review 第 1 輪 M2 更正：原本寫「不讀」並不正確，CLI 的變數清單會回傳沒有 sealed 的值；現在腳本收到即丟棄，見文末「Review round 1 fixes」）；8 個步驟見 runbook §7.7。Rehearsal：`railway`、`psql`、`go` 的替身，離線執行 `--apply` 五次（空的 project、重跑、登入導向錯誤兩種、`GEMINUS_RAILWAY_SEAL=off`、CLI 錯誤訊息引用 secret） |
 | 靜態檢查 | `scripts/check_deploy.py`（`make spec-deploy`，`make spec-check` 的一部分）、`checks/deploy-check.json` | Dockerfile、`.dockerignore`、compose、Railway 檔與 `variables.json`、runbook 是否列出程式讀的每個變數 |
 | 文件 | `docs/runbooks/deploy.md`（§7.7 為 `deploy.sh`）、`docs/adr/ADR-029-containers-and-staging-deployment.md`、ADR-011（base image 表）、THIRD_PARTY_NOTICES（SigV4 test vectors、base images）、ARCHITECTURE §2、§6、§8、SECURITY §6、§9、API_DATABASE §9、`db/README.md`、`.env.example` | 每個變數的來源、必填、secret；migration 順序；Auth0 的 callback／logout URL；Railway 的步驟（官方文件 URL 與取得日期）；owner 的 secret 清單 |
 | Test data | `testdata/sigv4/`（15 個向量與 `SOURCE.txt`） | AWS SigV4 test suite（botocore 的鏡像，Apache-2.0，未修改，SHA-256 記錄） |
@@ -111,7 +111,7 @@ Database：本任務建立的 `dt_test_t039a`、`dt_test_t039b`、`dt_test_t039c
 
 `deploy.sh` 的輸入（不是 secret）：`GEMINUS_AUTH0_ISSUER`、`GEMINUS_AUTH0_AUDIENCE`、`GEMINUS_AUTH0_CLIENT_ID`、`GEMINUS_SEED_OWNER_SUBJECT`（owner 的 Auth0 user_id）、`GEMINUS_RAILWAY_BUCKET_REGION`（sjc、iad、ams、sin，建立後不能改）。
 
-Secret：`deploy.sh` 產生並 sealed 的：`GEMINUS_MIGRATOR_DB_PASSWORD`（migrate）、`GEMINUS_API_DB_PASSWORD`（api）、`GEMINUS_WORKER_DB_PASSWORD`（worker）、`SESSION_KEYS`（web）；從 bucket 複製並 sealed 的：`OBJECT_STORAGE_S3_ACCESS_KEY_ID`、`OBJECT_STORAGE_S3_SECRET_ACCESS_KEY`（api、worker）；`GEMINUS_PROVISIONER_DB_PASSWORD` 每次執行新產生、不存任何地方。**Owner 在 Railway 的 UI 填（腳本不設不讀）**：`BFF_OIDC_CLIENT_SECRET`（web，必填：沒有時 verification 失敗並寫出要填在哪裡，填好後重跑）；只在開 live AI 時：worker 的 `GEMINUS_AI_LIVE`、`GEMINUS_ANTHROPIC_API_KEY_A`／`_B`（或 T-055 之後的 `GEMINUS_META_API_KEY`），live AI 預設關，API 永遠不設。
+Secret：`deploy.sh` 產生並 sealed 的：`GEMINUS_MIGRATOR_DB_PASSWORD`（migrate）、`GEMINUS_API_DB_PASSWORD`（api）、`GEMINUS_WORKER_DB_PASSWORD`（worker）、`SESSION_KEYS`（web）；從 bucket 複製並 sealed 的：`OBJECT_STORAGE_S3_ACCESS_KEY_ID`、`OBJECT_STORAGE_S3_SECRET_ACCESS_KEY`（api、worker）；`GEMINUS_PROVISIONER_DB_PASSWORD` 每次執行新產生、不存任何地方。**Owner 在 Railway 的 UI 填並立刻 sealed（腳本不設；CLI 的變數清單會回傳沒有 sealed 的值，腳本收到即丟棄：review 第 1 輪 M2）**：`BFF_OIDC_CLIENT_SECRET`（web，必填：沒有時 verification 失敗並寫出要填在哪裡，填好後重跑）；只在開 live AI 時：worker 的 `GEMINUS_AI_LIVE`、`GEMINUS_ANTHROPIC_API_KEY_A`／`_B`（或 T-055 之後的 `GEMINUS_MUSE_API_KEY`，H-033 的名稱），live AI 預設關，API 永遠不設。
 
 Auth0：Allowed Callback URL `https://<web 網域>/auth/callback`、Allowed Logout URL `https://<web 網域>/`、API Identifier（同時填 `AUTH_OIDC_AUDIENCE` 與 `BFF_OIDC_AUDIENCE`）、RFC 9068 access token、只有 Authorization Code 與 Refresh Token、關閉 sign-up。
 
@@ -125,7 +125,7 @@ Auth0：Allowed Callback URL `https://<web 網域>/auth/callback`、Allowed Logo
 4. API 的 key-free AI 可用性（T-053 I5）由 T-055 一併做，或另開任務；在那之前部署的 API 拒絕新的 AI proposal。
 5. T-053 I4 (4)／D-114：live eval 的花費保持記在 `checks/ai-evals/live-spend.jsonl`，或改經 DB ledger。
 6. 產生的 secret 由 `deploy.sh` 在本機產生並 sealed（不用 `${{secret()}}`），是否接受；若 Railway 不展開 reference 到 sealed variable 的值，選 `GEMINUS_RAILWAY_SEAL=off`（密碼在 UI 可見）或改為把整個 database URL 存成 sealed（需要改腳本與檢查）。
-7. H-030（純 Railway）與 H-032（token 與由 coordinator 部署）由 coordinator 記錄；ADR-029 的編號若與 T-055 的新 ADR 衝突，由 coordinator 重新編號。
+7. H-031（純 Railway；review 第 1 輪 I4 更正，原寫 H-030）與 H-032（token 與由 coordinator 部署）由 coordinator 記錄；ADR-029 的編號若與 T-055 的新 ADR 衝突，由 coordinator 重新編號。
 
 ## T-039 剩下的工作
 
@@ -176,4 +176,80 @@ Coordinator 對 T-039 問題的處理（例行事項；需要 owner 的另列）
 CI run 203（ca2c6b1）：除了新的 `containers` job 以外都通過（backend 含 race 與數值、frontend、browser 含截圖、spec-check、PostgreSQL 16 integration）。`containers` 中 `make build-containers` 通過；`make staging-smoke` 的 migrate、seed、登入檢查與 api、worker、web 的 health 都通過，只有 `oidc-test` 一直 unhealthy：它用 web 的 image 執行測試 provider，繼承了 image 的 `HEALTHCHECK`（`127.0.0.1:$PORT`，image 中為 3000），而 provider 在 3101。修正（3bcd860）：先在 `scripts/check_deploy.py` 加規則（長時間執行、取代 image command 的 service 必須有自己的 healthcheck；修正前 exit 1、修正後 0），再給 `oidc-test` 檢查 `127.0.0.1:3101/.well-known/jwks.json` 的 healthcheck。本機重現（沒有 Docker）：image 的 healthcheck exit 1、新的 exit 0、provider 停止後新的 exit 1（`checks/evidence/2026-10-26-T-039/coordinator/ci-203-containers-fix.txt`）。containers job 本身只能由下一次 CI 驗證。
 
 CI run 204（f276494）：healthcheck 的修正生效（api、web、worker healthy），但 `oidc-test` 啟動即 exit 1：T-043 的後續讓 `apps/web-e2e/fake/servers.mjs` 讀 `testdata/contracts/valid-draft-with-issues.json`（以 `new URL("../../../testdata/…", import.meta.url)`，在 container 中解析為 `/testdata/contracts/valid-draft-with-issues.json`），而 compose 只 mount `/fake`（兩個切片之間的語意衝突，各自的測試都看不到）。修正：先在 `scripts/check_deploy.py` 加規則（`servers.mjs` 以 `import.meta.url` 讀的每個檔案都必須被 `oidc-test` 的 volume mount 到它在 container 中解析的位置；修正前 exit 1，訊息即 CI 的路徑），再以唯讀 volume mount 這個 fixture。同一次 run 的 browser checks（含截圖比對）、backend、frontend、spec-check、integration 全部通過：T-043 讓未登入的 `/projects` 多了 Sign in 連結，但已接受的 baseline 比對仍通過，所以不需要新的 baseline。staging smoke 在 `up --wait` 之後的步驟（登入導向、401、SIGTERM 等）CI 尚未執行過，下一次 run 才是第一次。
+
+## Review round 1 fixes（2026-10-26）
+
+**Branch：`t039-r1`（從 5b66648 開出，沒有 push）｜Commits：f1855bb（修正、測試、文件）、2c721a0（rehearsal 再加三個情境與 mutant 定義）、600e601（P6 的 assertion，mutant R10）、973b484（rehearsal 的摘要只印 run 2 掃描的數量，assertion 沒有改）、加上本節與 evidence 的 commit｜審查：`checks/T-039_REVIEW_r1.md`（獨立 reviewer，CHANGES REQUESTED：M1、M2，沒有 High）｜沒有部署、沒有呼叫 Railway 或 Auth0，沒有讀取、印出或移動任何 token 或 secret：每個命令都以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN` 執行，rehearsal 只用假的 `REHEARSAL-TOKEN-NOT-REAL`｜沒有改 Go、migration 或 DB 的程式，沒有建立任何 `dt_test_*` database 或 role｜Evidence：`checks/evidence/2026-10-26-T-039-r1/fixes/`**
+
+**測試先行。** Rehearsal 的新情境與 `scripts/check_deploy.py` 的新規則先在未修正的檔案上執行，兩者都失敗：`red-check-deploy.log`（exit 1：`.dockerignore: **/.env is not excluded`）；`.dockerignore` 與變數名稱修好、這個 check 通過之後，`red-rehearsal.log`（exit 1：未修正的 deployer 上 21 項失敗，包括 reviewer 的三個情境、xtrace、token、psql／go 的環境、網域以外的全部新情境）。Reviewer 的 harness（複製到本輪的 scratch；reviewer 的檔案沒有修改）修正前 `reviewer-harness-before.log`：三個情境都是沒有警告的 `done`，owner 的兩個值進入 deployer；修正後 `reviewer-harness-after.log`（只讓 `recording()` 轉交新的 `keep=` 參數）：收到的 owner 值為 `[]`，delete 失敗與被中斷的執行留下的 proxy 都以 `FAIL: verification:` 結束並寫出 id。為了 mutant 再加的 assertion（P6 的移除失敗、P7、run 5b、`DATABASE_PUBLIC_URL` 的登記、P1／P3 必須在 verification 中回報）是修正後才寫的，它們的「紅」由對應的 mutant 證明（下方）。
+
+### 逐項
+
+| Finding | 修改 | 測試 | Mutant |
+|---|---|---|---|
+| **M1** TCP proxy | `proxy_close` 檢查 CLI 的 exit code：失敗時記下 proxy 的 id 與手動移除命令（`railway tcp-proxy delete <id> --yes --service Postgres --environment <environment>`），整次執行 exit 1（不受 `GEMINUS_KEEP_DB_PROXY` 豁免）。新的 `check_proxies()`：在 verify 中，以及每次 `--apply` 結束前（成功、步驟失敗、被訊號中斷；verify 已列過時不重列）列出 Postgres 的 TCP proxy（`{"proxies": [...]}`，依 CLI v5.64.2 原始碼），還開著的任何 proxy（本次的，或執行前就存在、被沿用的）以 id 與移除命令回報並 exit 1；`GEMINUS_KEEP_DB_PROXY=1` 時只以警告列出（仍寫 id）；列不出來也 exit 1。SIGTERM、SIGHUP 轉為 `SystemExit(128+N)`（清理期間第二個訊號被忽略），清理後 exit 143／129；`proxy_open` 移進 `try`；`tcp-proxy create` 印出 `"proxy": null` 時以 listing 找出新 proxy 的 id | run 1（移除之後再列一次）；P1 移除失敗；P2 執行前就存在的 proxy（連續兩次都失敗、不建立第二個、不移除；`GEMINUS_KEEP_DB_PROXY=1` 時成功但仍列出 id）；P3 CLI 說移除了卻還在；P4 create 沒有 id；P5 最後列不出來；P6 SIGTERM、SIGHUP、SIGTERM 加移除失敗（以獨立的 process 執行 `railway_deploy.py --apply`，如 `deploy.sh` 所做）；P7 步驟失敗時 proxy 還開著 | R1–R12 killed；R13、R14 equivalent |
+| **M2** owner 的值 | `variables_of(service, keep)` 以 `json.loads` 的 `object_pairs_hook` 在解析當下處理：只有 `keep` 中的名稱（自己產生的密碼、Postgres 的 `DATABASE_PUBLIC_URL`）保留值並 `self.secret()`；其他值（owner 的全部、Railway 自己的、清單以外的）換成 `Seen.SET`／`Seen.SEALED`（空字串維持空字串），owner 的名稱不能放進 `keep`。`Run.run(parse=...)` 只回傳解析後的結果，不回傳 CLI 的原始輸出；不是 JSON 時不保留帶著整份輸出的 `JSONDecodeError`。`verify` 以名稱列出沒有 sealed 的 owner secret（`secret: true` 的四個；`GEMINUS_AI_LIVE` 不是 secret，不提醒，值同樣丟棄），寫出 sealed 的方法（Railway 文件：變數的 3-dot 選單 → Seal），不算失敗 | run 2：owner 的 5 個值與一個清單以外的值都沒有 sealed，在 `vars(run)`、輸出、結果、每個 `Run` method 的回傳值與 raise 的 exception（含 `__cause__`、`__context__`）中都找不到（run 2 期間的 473 個回傳值）；四個 secret 以名稱提醒，`GEMINUS_AI_LIVE` 與清單以外的不提醒。run 2b：owner sealed 後不提醒。run 5b：`GEMINUS_RAILWAY_SEAL=off` 時讀回的密碼被登記遮蔽。run 1：`DATABASE_PUBLIC_URL` 被登記。替身的 `variable list` 另回傳 Railway 自己的變數（`RAILWAY_SERVICE_NAME` 等）與 Postgres template 的 administrator 密碼 | R15–R20 killed |
+| **L1** xtrace | `deploy.sh` 的 `case "$-" in *x*)` 移到第一個命令（`set -euo pipefail` 之前），在其中 `set +x` 後 exit 2；`usage` 改為讀開頭的註解直到第一個非註解行（不再依固定行號） | `bash -x deploy.sh --help`、`SHELLOPTS=xtrace bash deploy.sh --help` 為 2，一般為 0；`xtrace.log`（`--dry-run`：2／2） | R21 killed |
+| **L2** token | `Run.__init__` 以 `self.secret()` 登記 `RAILWAY_TOKEN`、`RAILWAY_API_TOKEN`（不印出）；所有子程序都經 `Run.run` 與 `child_env()`：只有 `railway` 拿到 token，psql、`go run`、git、`check_deploy.py` 的環境中移除（原本 preflight 與 `admin()` 另外直接呼叫 `subprocess.run`，現在只剩一個呼叫點） | psql 與 go 的替身記錄環境中的 token 名稱，必須都沒有；railway 的每次呼叫都有；E1：CLI 在錯誤訊息中引用 token 時印成 `[redacted]` | R22、R23 killed |
+| **L3** `.dockerignore` | 加 `**/.env`、`**/.env.*`、`!**/.env.example`；`check_deploy.py` 要求這三個 pattern、拒絕其他把 env 檔放回來的 `!` 例外，並以 Docker 的比對規則（最後一個符合的 pattern 決定、`**` 為任意層目錄、符合上層目錄即排除）檢查 `apps/web/.env`、`apps/web/.env.local`、`apps/web/.env.production`、`cmd/api/.env`、`.env`、`.env.local` 被排除，`.env.example`、`apps/web/.env.example` 與原始碼在 context 中 | `red-check-deploy.log`（修正前 exit 1） | D1–D5 killed |
+| **L5(b)** 網域與 healthcheck | `check_deploy.py` 要求只有 api 與 web 有 `public_domain`（port 等於該 service 的 `PORT`），api 的 healthcheck 為 `/readyz`、web 為 `/`、worker 與 migrate 沒有 | rehearsal 斷言只對 api 與 web 建立網域 | R24、D6–D12 killed |
+| **I4** 出處 | 「純 Railway」改引 H-031：ADR-029、本報告（開頭、owner 問題 7）、`variables.json` 的 `about`、`deploy.sh` 與 `railway_deploy.py` 的開頭；另外 runbook 的開頭與 §7 標題、ARCHITECTURE §8、SECURITY §6 的 bucket 一句 | — | — |
+| H-033 的名稱 | `GEMINUS_META_API_KEY` 改為 `GEMINUS_MUSE_API_KEY`：`variables.json`（worker 的 owner 變數、api 與 web 的 `forbidden`）、`check_deploy.py`（`PENDING`、API 必須禁止的 key）、rehearsal、`deploy.sh` 開頭、runbook §4.4 與 §7.3 的表、本報告的 owner 清單 | `check_deploy.py` | D13、D14 killed |
+
+文件改成實際行為：runbook §7.3（「腳本實際收到什麼」一段）、§7.7（token、步驟 3、4、6、8、新的「TCP proxy」一條、結果的 exit code、rehearsal）、§10 問題 (8)；SECURITY §6；ADR-029（token、變數清單的處理與不登記全部值的理由、TCP proxy、L4 的已知缺口、待 owner 決定 5）；本報告開頭與交付表中「不讀」與「xtrace 時拒絕」的聲明已就地更正。
+
+**與 brief 字面不同的一點（請 coordinator 判斷）。** Brief 寫「其他收到的非 null 值一律 `self.secret()`」。這做不到：Railway 自己的變數與 Postgres template 的變數有 `railway`、`production`、`api`、`5432`、`postgres` 這類值，登記為 secret 之後，每次呼叫前的引數檢查會拒絕 CLI 本身（argv[0] 就是 `railway`）、`--environment production`、`--service api`、`--port 5432`，部署完全無法進行。所以改為：腳本不需要的值一律在解析時丟棄（不保留就沒有可外洩的值），保留的值一律登記遮蔽。效果比「保留並遮蔽」更保守。
+
+**決定：執行前就存在的 TCP proxy。** 腳本沿用它（CLI 原始碼的說明：每個 service 只允許一個 TCP proxy），**不移除**，因為無法分辨它是 owner 依 runbook §7.5 手動開的，還是被 SIGKILL 的執行留下的；但每次 `--apply` 結束時都寫出它的 id 與移除命令並 exit 1，直到有人移除它，或明確設 `GEMINUS_KEEP_DB_PROXY=1`（只警告）。Reviewer 的情境 3 現在每次執行都失敗並寫出 `tcp_left_by_killed_run`。SIGKILL 本身無法攔截，所以「被殺掉的執行」的保證是「下一次執行一定回報」，不是「立即移除」。
+
+### Mutation
+
+`checks/evidence/2026-10-26-T-039-r1/fixes/mutants.py`（本輪的 mutant 定義，L7）在 `git archive` 的複本中執行（reviewer 的 git 替身在 PATH 最前面）：每個 mutant 只替換一處文字並跑一個 check（rehearsal 或 `check_deploy.py`），之後還原並比對 SHA-256；兩個 check 先在未改動的複本上通過。
+
+- 第一輪（2c721a0，`mutants-pass1.log`，exit 1）：35/36 killed、2 equivalent、0 invalid；**R10 存活**（被中斷的執行不回報 proxy）：P6 的移除失敗情境在整個輸出中找移除命令，而 `$ railway tcp-proxy delete tcp_1 …` 這行命令的回顯本身就含有它。P6 改為只看回報的行（600e601），assertion 沒有放寬。
+- 第二輪（973b484，最後的 rehearsal；`mutants.log`，exit 0）：**36/36 killed**（R1–R12、R15–R24、D1–D14）、2 equivalent（R13、R14）、0 invalid、`restored files: PASS`。（600e601 上開始的一次在 973b484 改了摘要的列印之後停止並丟棄，沒有結果。）
+
+Equivalent 的兩個：R13（成功的執行在 verify 之後再列一次 proxy：那時一定是空的，否則 verify 已失敗；保留它，讓「結束前一定列出」不依賴 verify 的寫法）；R14（`proxy_open` 移回 `try` 之外：沒有替身在 create 與 `try` 之間失敗或送訊號，所以 rehearsal 分不出來；移進 `try` 是為了 create 之後立即失敗的情況）。
+
+### 實際執行結果（全部以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN`；`exit-codes.txt`）
+
+| 命令 | Exit | 結果（evidence） |
+|---|---|---|
+| `python -I scripts/check_deploy.py`（新規則、修正前的 `.dockerignore`） | 1 | `red-check-deploy.log` |
+| `python -I scripts/rehearse_railway_deploy.py`（新情境、未修正的 deployer） | 1 | `red-rehearsal.log`：21 項 |
+| Reviewer 的 harness（5b66648 的複本） | 0 | `reviewer-harness-before.log`：三個情境都 `done`（harness 只印結果，不判定） |
+| Reviewer 的 harness（f1855bb 的複本，`keep=` 的轉交） | 0 | `reviewer-harness-after.log` |
+| `bash -n deploy/railway/deploy.sh`、`bash -n deploy/local/staging-smoke.sh`、三個 Python 檔的 `ast.parse` | 0 | `bash-n.log` |
+| `bash -x deploy/railway/deploy.sh --dry-run`；`SHELLOPTS=xtrace bash deploy/railway/deploy.sh --dry-run` | 2／2 | `xtrace.log`：`refusing to run with xtrace on` |
+| `bash deploy/railway/deploy.sh --help` | 0 | `deploy-help.log` |
+| `python -I scripts/check_deploy.py` | 0 | `check-deploy.log`：`PASS_STATIC_DEPLOY_CHECKS`，`public_domains: [api, web]` |
+| `python -I scripts/rehearse_railway_deploy.py` | 0 | `rehearsal.log`：`rehearsal: PASS`；run 1 92 個 CLI 呼叫、7 個 psql；P1–P7、E1 的訊息；signals `[143, 129, 143]`；xtrace `[2, 2, 0]` |
+| `./deploy/railway/deploy.sh --dry-run` | 0 | `deploy-dry-run.log`：不連網；新的「would list Postgres's TCP proxies」一行 |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加入本節之後） | 0 | `spec-check.log`；重新產生的 `checks/deploy-check.json` 已在 f1855bb commit（變數名稱與 `public_domains`），`checks/docs-check.json` 沒有改變 |
+| Mutation 第一輪（2c721a0）／第二輪（973b484） | 1／0 | `mutants-pass1.log`：35/36（R10 存活）；`mutants.log`：36/36、2 equivalent |
+
+### NOT RUN
+
+- `deploy.sh --apply`、`--install-cli`、任何 Railway 或 Auth0 的呼叫（依指示）。Sealed 的 owner 變數在真正的 `variable list` 中是否為 `null`、`tcp-proxy delete` 實際的錯誤與 exit code，只依 CLI v5.64.2 的原始碼（`sources-r1.txt`）與替身。
+- `make backend-test`、`make backend-race`、`make integration-test`：沒有改 Go、migration 或 DB 的程式（依指示只在改了時執行）。
+- `make e2e-test`、frontend 測試（依指示）。
+- `make build-containers`、`make staging-smoke`：沒有 Docker daemon。新的 `.dockerignore` 只以 `check_deploy.py` 對 Docker 比對規則的模擬檢查，**沒有以真正的 `docker build` 驗證**（push 後 CI 的 containers job 會建置）。
+- shellcheck、hadolint、actionlint（沒有安裝）。
+- 真正的 SIGKILL（無法攔截；以 P2「執行前就存在的 proxy」代表下一次執行的回報）。
+
+### 延後（本輪不修）
+
+- **L4**：migration 的 transaction 指令偵測（`END;`、`COMMIT WORK;`、`COMMIT AND CHAIN;`、`PREPARE TRANSACTION`、與其他 statement 同一行的 `COMMIT;`）未修；ADR-029 加了一句：修正之前新的 migration 不得使用這些寫法。
+- **L5(a)**：`CheckLogin` 的 runtime role 清單拿掉 `twin_provisioner` 的 mutant 仍會存活（沒有同時屬於 twin_owner 與 twin_provisioner 的測試 login）。
+- **L6**：經公開 TCP proxy 的 bootstrap 沒有 channel binding（`PGCHANNELBINDING=require`）、login 密碼以明文 literal 送到 server。
+- **L7**：本輪的 mutant 定義已 commit（`mutants.py`）；原作者的 S3 17、DB 18、部署檢查 17、rehearsal 12 個 mutant 的定義沒有重建。
+- **I1**（`/readyz` 每次 ping）、**I2**（bucket 的 key 改用 reference variable）、**I3**（CLI 其他命令的 JSON 形狀、`status()` 取第一個 deployment）、**I7**（`log_statement` 下的明文密碼）未處理。本輪以 CLI 原始碼核對了 `variable list` 與 `tcp-proxy` 的 JSON 形狀，其他仍未查證。
+- **I5** 是 coordinator 的（報告最後一段已過時，CI run 206 已執行 staging smoke）；**I6** 屬於 T-057。
+- `planning/tasks.json` 中 T-039 的 completion_evidence 仍寫「owner 的 secret 腳本不設不讀」與 H-030，`planning/decisions.json` 仍寫 `GEMINUS_META_API_KEY`：planning 檔沒有改，由 coordinator 處理。
+
+### 給 owner 的問題（由 coordinator 轉達；本輪不決定）
+
+> H-033 寫 key「只看變數名稱、不讀值、不印出」，H-032 寫 Anthropic key 與 Auth0 的 secret「agent 不讀取也不搬移」。部署腳本要知道 Railway 上已經有哪些變數，只能用 Railway CLI 的 `railway variable list --json`，而它會把每個**沒有 sealed** 的變數連同值一起回傳（sealed 的只有名稱；CLI 沒有只列名稱的選項）。現在的腳本在解析的當下就把你的變數（`BFF_OIDC_CLIENT_SECRET`、`GEMINUS_ANTHROPIC_API_KEY_A`／`_B`、`GEMINUS_MUSE_API_KEY`、`GEMINUS_AI_LIVE`）的值換成「已設／sealed」的標記：不保留、不印出、不寫檔、不傳給其他程式，verification 只以名稱提醒哪些還沒有 sealed。但沒有 sealed 時，值仍會短暫經過部署 session 的記憶體。請選一個：(A，建議) 你在 Railway 新增這些變數後立刻 sealed（變數右側的 3-dot 選單 → Seal；sealed 後不能解除，但仍可以改值），之後值不會再到達腳本；(B) 接受現在的做法：沒有 sealed 也可以，腳本收到即丟棄；(C) 其他做法（例如部署時完全不列出 web 與 worker 的變數：那樣腳本無法判斷產生的 secret 與 bucket 的 key 是否已存在，也無法檢查 `BFF_OIDC_CLIENT_SECRET` 是否已填，需要改設計並重新審查）。
+
+（H-034 之後由 agent 經 stdin 寫入並 sealed 的 Auth0 client secret 不受影響：sealed 的值 CLI 只回傳 `null`。）
 

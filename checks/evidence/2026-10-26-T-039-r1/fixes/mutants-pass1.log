@@ -1,0 +1,43 @@
+BASELINE rehearsal: exit 0 rehearsal: PASS (the deployer against stand-ins; Railway itself NOT RUN)
+BASELINE deploy: exit 0 }
+KILLED R1 M1: a failed `tcp-proxy delete` is ignored :: REHEARSAL FAILED: - P1 (the removal fails) must fail naming tcp_1 and its removal: FAIL: verification: - TCP proxy tcp_1 on Postgres is still open, this run's: remove it with `railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production` (or set GEMINUS_KEEP_DB_PROXY=1 to keep it)
+KILLED R2 M1: the TCP proxies are never listed at the end :: REHEARSAL FAILED: - the TCP proxies were not listed after the removal (M1) - P2.1 (a proxy from before the run) must fail naming it and its removal: done
+KILLED R3 M1: a proxy open before the run is accepted silently :: REHEARSAL FAILED: - P2.1 (a proxy from before the run) must fail naming it and its removal: done - P2.2 (a proxy from before the run) must fail naming it and its removal: done
+KILLED R4 M1: an open proxy is always kept (as if GEMINUS_KEEP_DB_PROXY=1) :: REHEARSAL FAILED: - P2.1 (a proxy from before the run) must fail naming it and its removal: done - P2.2 (a proxy from before the run) must fail naming it and its removal: done
+KILLED R5 M1: GEMINUS_KEEP_DB_PROXY=1 is ignored :: REHEARSAL FAILED: - P2 with GEMINUS_KEEP_DB_PROXY=1 must succeed and still name the open proxy: FAIL: verification: - TCP proxy tcp_left_by_killed_run on Postgres is still open, open before this run (used, not removed: it may be someone's, or left by an interrupted run): remove it with `railway tcp-proxy delete tcp_left_by_killed_run --yes --service Postgres --environment production` (or set
+KILLED R6 M1: a listing that fails counts as no proxy :: REHEARSAL FAILED: - P5 (the final listing fails) must fail: done
+KILLED R7 M1: SIGTERM and SIGHUP keep their default (no cleanup) :: REHEARSAL FAILED: - P6 SIGTERM: exit -15 (want 143), proxies ['tcp_1']:  railway tcp-proxy list --service Postgres --environment production --json $ railway tcp-proxy create --port 5432 --service Postgres --environment production --json
+KILLED R8 M1: a create without an id is not resolved by listing :: REHEARSAL FAILED: - P4 (no id from create) must find and remove the proxy: FAIL: verification: - TCP proxy tcp_1 on Postgres is still open, not this run's: remove it with `railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production` (or set GEMINUS_KEEP_DB_PROXY=1 to keep it) ['tcp_1']
+KILLED R9 M1: a failed step does not list the proxies :: REHEARSAL FAILED: - P7 (a step fails, a proxy is open) must name the proxy in the failure: FAIL: `railway up --service` failed; if its log says the password authentication failed, Railway did not expand the sealed password in GEMINUS_MIGRATE_DATABASE_URL: docs/runbooks/deploy.md §7.7 (recovery)
+SURVIVED R10 M1: an interrupted run does not report the proxies
+KILLED R11 M1: the proxy from before the run is removed (the documented decision is to keep and report it) :: REHEARSAL FAILED: - P2.1 (a proxy from before the run) must fail naming it and its removal: done - P2.2 (a proxy from before the run) must fail naming it and its removal: done
+KILLED R12 M1: verify does not list the proxies :: REHEARSAL FAILED: - P1 (the removal fails) must fail naming tcp_1 and its removal: FAIL: the deployment's steps ran, but: - could not remove this run's TCP proxy tcp_1 (railway exit 1): remove it with `railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production`
+EQUIVALENT R13 M1: the end of a successful run does not list them again (equivalent: verify listed them and would have failed on any problem, so the list is always empty there; kept so the guarantee does not depend on verify)
+EQUIVALENT R14 M1: the proxy is opened outside the cleanup again (equivalent here: no stand-in fails or signals between the create and the try)
+KILLED R15 M2: every listed value is kept as received :: REHEARSAL FAILED: - run 2: the owner's values are in what its methods returned or raised: ['OWNER-ANTHRO', 'OWNER-ANTHRO', 'OWNER-CLIENT', 'OWNER-LIVE-S', 'OWNER-MUSE-K', 'UNLISTED-VAL'] (M2) - run 2: the unsealed BFF_OIDC_CLIENT_SECRET is not named (M2)
+KILLED R16 M2: the owner's values are kept (and registered as secrets) :: REHEARSAL FAILED: - run 2: the owner's values are in its state: ['OWNER-ANTHRO', 'OWNER-ANTHRO', 'OWNER-CLIENT', 'OWNER-LIVE-S', 'OWNER-MUSE-K'] (M2) - run 2: the owner's values are in what its methods returned or raised: ['OWNER-ANTHRO', 'OWNER-ANTHRO', 'OWNER-CLIENT', 'OWNER-LIVE-S', 'OWNER-MUSE-K'] (M2)
+KILLED R17 M2: the listing's raw output is returned by a method and parsed after :: REHEARSAL FAILED: - run 2: the owner's values are in what its methods returned or raised: ['OWNER-ANTHRO', 'OWNER-ANTHRO', 'OWNER-CLIENT', 'OWNER-LIVE-S', 'OWNER-MUSE-K', 'UNLISTED-VAL'] (M2)
+KILLED R18 M2: an unsealed owner secret is not named :: REHEARSAL FAILED: - run 2: the unsealed BFF_OIDC_CLIENT_SECRET is not named (M2) - run 2: the unsealed GEMINUS_ANTHROPIC_API_KEY_A is not named (M2)
+KILLED R19 M2: an owner variable that is no secret is named as unsealed :: REHEARSAL FAILED: - run 2: a variable that is no secret of the owner's is reported unsealed - run 2b (the owner's secrets sealed): done ["   note: the owner's secrets not sealed: GEMINUS_AI_LIVE on worker. `railway variable list` returns an unsealed value to whoever lists the variables (this script drops it on receipt: kept, printed and stored nowhere); seal each in Railway (the service → Variable
+KILLED R20 M2: a kept value is not registered for redaction :: REHEARSAL FAILED: - Postgres's DATABASE_PUBLIC_URL, kept for the logins, is not among the values to redact - run 5b: migrate GEMINUS_MIGRATOR_DB_PASSWORD, read back unsealed, is not registered for redaction (M2)
+KILLED R21 L1: the xtrace check after `set +x` again (never refuses) :: REHEARSAL FAILED: - deploy.sh -x {} --help: exit 0, want 2 (L1): + set +x
+KILLED R22 L2: the Railway token is not registered for redaction :: REHEARSAL FAILED: - the Railway token is not among the values to redact - E1 (the CLI quotes the token): FAIL: `railway service list` failed redacted=False
+KILLED R23 L2: every program gets the Railway token :: REHEARSAL FAILED: - psql or go got the Railway token in its environment (L2)
+KILLED R24 L5: a public domain for every service :: REHEARSAL FAILED: - public domains were created for ['api', 'migrate', 'web', 'worker'], want api and web only (L5)
+KILLED D1 L3: env files below the root back in the build context :: DEPLOY CHECK FAILED: .dockerignore: **/.env is not excluded
+KILLED D2 L3: no exception for the example (the required pattern missing) :: DEPLOY CHECK FAILED: .dockerignore: !**/.env.example is missing
+KILLED D3 L3: a local env file brought back :: DEPLOY CHECK FAILED: .dockerignore: !apps/web/.env brings an env file back into the build context
+KILLED D4 L3: the exception before the exclusions (the example excluded) :: DEPLOY CHECK FAILED: .dockerignore: apps/web/.env.example would be out of the build context
+KILLED D5 L3: only the root's env files excluded (the round's starting point) :: DEPLOY CHECK FAILED: .dockerignore: **/.env is not excluded
+KILLED D6 L5: a public domain on the worker :: DEPLOY CHECK FAILED: variables.json: public domains on ['api', 'web', 'worker']: only api and web have one (worker and migrate never)
+KILLED D7 L5: a public domain on migrate :: DEPLOY CHECK FAILED: variables.json: public domains on ['api', 'migrate', 'web']: only api and web have one (worker and migrate never)
+KILLED D8 L5: no public domain on the web :: DEPLOY CHECK FAILED: variables.json: public domains on ['api']: only api and web have one (worker and migrate never)
+KILLED D9 L5: the API's domain on another port than its PORT :: DEPLOY CHECK FAILED: variables.json: api: the public domain's port is not its PORT
+KILLED D10 L5: no healthcheck on the API :: DEPLOY CHECK FAILED: deploy/railway/api.railway.json: healthcheckPath None, want '/readyz'
+KILLED D11 L5: the web's healthcheck elsewhere :: DEPLOY CHECK FAILED: deploy/railway/web.railway.json: healthcheckPath '/healthz', want '/'
+KILLED D12 L5: a healthcheck on the worker (it has no HTTP listener) :: DEPLOY CHECK FAILED: deploy/railway/worker.railway.json: healthcheckPath '/', want None
+KILLED D13 H-033: the worker's Meta key under the old name :: DEPLOY CHECK FAILED: variables.json: worker: ['GEMINUS_META_API_KEY'] are read by no service
+KILLED D14 H-033: the API does not forbid the Muse key :: DEPLOY CHECK FAILED: variables.json: the API must forbid every AI key and the live switch (T-053 I5)
+35/36 killed, 2 equivalent (expected to survive), 0 invalid
+restored files: PASS
+exit 1

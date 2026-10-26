@@ -1,0 +1,29 @@
+T-039 review round 1, in the order run (every command with env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN;
+Python /home/user/Geminus/.venv/bin/python -I; no Docker daemon; no database used).
+
+red, before the fixes:
+  python -I scripts/check_deploy.py (new rules, old .dockerignore and variable name)   exit 1   red-check-deploy.log
+  python -I scripts/rehearse_railway_deploy.py (new scenarios, old deployer)           exit 1   red-rehearsal.log (21 failures)
+  reviewer harness on an archive of 5b66648                                             exit 0   reviewer-harness-before.log (prints only; 3 x done)
+
+after the fixes:
+  reviewer harness (keep= passed through) on an archive of f1855bb                      exit 0   reviewer-harness-after.log
+  mutants.py on an archive of 2c721a0 (first pass)                                      exit 1   mutants-pass1.log (35/36, R10 survived)
+  mutants.py on an archive of 973b484 (final)                                           exit 0   mutants.log (36/36, 2 equivalent, restored PASS)
+
+final tree (the last run of each, report section included):
+  bash -n deploy/railway/deploy.sh                                                      exit 0   bash-n.log
+  bash -n deploy/local/staging-smoke.sh                                                 exit 0   bash-n.log
+  ast.parse of railway_deploy.py, rehearse_railway_deploy.py, check_deploy.py           exit 0   bash-n.log
+  bash deploy/railway/deploy.sh --help                                                  exit 0   deploy-help.log
+  bash -x deploy/railway/deploy.sh --dry-run                                            exit 2   xtrace.log (refused)
+  SHELLOPTS=xtrace bash deploy/railway/deploy.sh --dry-run                              exit 2   xtrace.log (refused)
+  python -I scripts/check_deploy.py                                                     exit 0   check-deploy.log
+  python -I scripts/rehearse_railway_deploy.py                                          exit 0   rehearsal.log
+  ./deploy/railway/deploy.sh --dry-run                                                  exit 0   deploy-dry-run.log
+  make spec-check PYTHON=/home/user/Geminus/.venv/bin/python                            exit 0   spec-check.log
+
+NOT RUN: deploy.sh --apply and --install-cli, any Railway or Auth0 call; make backend-test,
+backend-race, integration-test (no Go, migration or DB code changed); make e2e-test and the
+frontend tests (as instructed); make build-containers and staging-smoke (no Docker daemon);
+shellcheck, hadolint, actionlint (not installed).
