@@ -238,18 +238,21 @@ func TestMainRefusesWhileLiveIsOff(t *testing.T) {
 		args []string
 		want string
 	}{
-		"nothing set":            {map[string]string{}, nil, "live AI is off (AI_PROVIDER is not anthropic)"},
-		"the fake":               {map[string]string{"AI_PROVIDER": "fake", "APP_ENV": "test"}, nil, "live AI is off"},
-		"H-018 without a switch": {h018, nil, "live AI is off (retention_unconfirmed)"},
-		"H-018 with the switch":  {with("GEMINUS_AI_LIVE", "on"), nil, "GEMINUS_AI_LIVE:retention_unconfirmed"},
+		"nothing set": {map[string]string{}, nil, "live AI is off (AI_PROVIDER is not anthropic)"},
+		"the fake":    {map[string]string{"AI_PROVIDER": "fake", "APP_ENV": "test"}, nil, "live AI is off"},
+		// The build's H-018 record is complete (H-026): without the switch
+		// live AI is off; with it, any other mismatch still refuses. (With
+		// everything set the run is made: internal/config/aiapproval; the
+		// record before H-026 refused there too.)
+		"H-018 without a switch": {h018, nil, "live AI is off (switch_off)"},
 		"no approval named":      {with("AI_POLICY_APPROVAL", ""), nil, "live AI is off (no_approval_named)"},
 		"an unrecorded approval": {with("AI_POLICY_APPROVAL", "H-025"), nil, "AI_POLICY_APPROVAL:not_approved"},
-		// What the record lacks is said first; a model mismatch with a
-		// complete record: internal/config/aiapproval.
-		"another model":     {with("AI_MODEL", "claude-sonnet-5-5"), nil, "live AI is off (retention_unconfirmed)"},
-		"one key":           {with("GEMINUS_ANTHROPIC_API_KEY_B", "", "GEMINUS_AI_LIVE", "on"), nil, "GEMINUS_AI_LIVE:retention_unconfirmed"},
-		"a stray argument":  {h018, []string{"now"}, "unexpected arguments"},
-		"an unknown locale": {h018, []string{"-locale", "fr"}, "unexpected arguments or locale"},
+		"another model":          {with("AI_MODEL", "claude-sonnet-5-5"), nil, "live AI is off (model_mismatch)"},
+		"another model, on":      {with("AI_MODEL", "claude-sonnet-5-5", "GEMINUS_AI_LIVE", "on"), nil, "AI_MODEL:model_mismatch"},
+		"one key":                {with("GEMINUS_ANTHROPIC_API_KEY_B", "", "GEMINUS_AI_LIVE", "on"), nil, "GEMINUS_ANTHROPIC_API_KEY_B:required"},
+		"the same key twice":     {with("GEMINUS_ANTHROPIC_API_KEY_B", "sk-ant-test-fake-aaaaaaaaaaaa", "GEMINUS_AI_LIVE", "on"), nil, "GEMINUS_ANTHROPIC_API_KEY_B:invalid"},
+		"a stray argument":       {h018, []string{"now"}, "unexpected arguments"},
+		"an unknown locale":      {h018, []string{"-locale", "fr"}, "unexpected arguments or locale"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()

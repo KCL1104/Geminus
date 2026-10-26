@@ -119,7 +119,7 @@ simulation-reference-test:
 # The live provider eval (T-053; T-038 owns the baseline): the modeler corpus through the live adapter, a client
 # metered by the run's cap (AI_EVAL_LIVE_MAX_USD, default USD 10, within the monthly limit) and the server's review.
 # Refused with exit 2 and no provider call unless the configuration turns live AI on exactly as the worker's does: the
-# owner's complete recorded approval (internal/config/aiapproval; H-018 waits for the owner's retention confirmation),
+# owner's complete recorded approval (internal/config/aiapproval; H-018, complete since the retention confirmation H-026),
 # AI_PROVIDER=anthropic, AI_POLICY_APPROVAL, AI_MODEL equal to its model, GEMINUS_ANTHROPIC_API_KEY_A and _B, and
 # GEMINUS_AI_LIVE=on. The report goes to checks/ai-evals/live-<date>-<model>.json, never a fake result's file, and keeps
 # no prompt, answer text or key. The command's own exit code (printed; make itself exits 2 on any failure): 1 a gate

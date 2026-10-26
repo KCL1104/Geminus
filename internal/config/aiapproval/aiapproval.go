@@ -26,6 +26,7 @@ package aiapproval
 import (
 	"reflect"
 	"slices"
+	"time"
 )
 
 // Reason says what a record lacks before it can turn live AI on.
@@ -86,14 +87,18 @@ type DataPolicy struct {
 	LogsKeepRawText bool
 }
 
-// Confirmation is an owner's statement as recorded: who, when, and the
-// decision that records it.
+// Confirmation is an owner's statement as recorded: who, when (a calendar
+// date, YYYY-MM-DD), and the decision that records it.
 type Confirmation struct {
 	By, At, Source string
 }
 
-// Given reports whether the confirmation names who, when and where.
-func (c Confirmation) Given() bool { return c.By != "" && c.At != "" && c.Source != "" }
+// Given reports whether the confirmation names who, a calendar date in
+// the form YYYY-MM-DD, and where it is recorded.
+func (c Confirmation) Given() bool {
+	at, err := time.Parse(time.DateOnly, c.At)
+	return c.By != "" && err == nil && at.Format(time.DateOnly) == c.At && c.Source != ""
+}
 
 // Retention is the owner's confirmation of the data retention arrangement
 // both provider organizations have.
@@ -163,13 +168,16 @@ func (r Record) clone() Record {
 // confirmed the Console spend limits of both organizations on 2026-10-26
 // (H-025, recorded on the main branch by the coordinator).
 //
-// Retention is not confirmed: H-018 says Anthropic's retention rules are
-// checked in the official documentation before going live and that both
-// organizations are set alike, and which arrangement each organization
-// has is an account setting only the owner sees (docs/SECURITY.md §7).
-// Until the owner confirms it and a reviewed change records it here
-// (Arrangement, By, At, Source), this record cannot turn live AI on. An
-// agent never fills it in on the owner's behalf.
+// Retention: H-018 says Anthropic's retention rules are checked in the
+// official documentation before going live and that both organizations
+// are set alike; which arrangement each organization has is an account
+// setting only the owner sees (docs/SECURITY.md §7, PROPOSED D-113). The
+// owner answered on 2026-10-26 (H-026, recorded by the coordinator): both
+// provider organizations keep Anthropic's default standard retention, no
+// zero data retention, the same for both. With it the record lacks
+// nothing; live AI still needs AI_MODEL, both keys and GEMINUS_AI_LIVE=on
+// (internal/config). An agent never fills in a confirmation the owner has
+// not given.
 var h018 = Record{
 	ID:       "H-018",
 	Provider: "anthropic",
@@ -185,6 +193,8 @@ var h018 = Record{
 	Source:           "H-018 (planning/decisions.json human_decisions; decision page https://claude.ai/artifact/T5R9YeWWw4q2q8kKkGvU2P)",
 	SpendLimits: Confirmation{By: "KCL1104 (repository owner)", At: "2026-10-26",
 		Source: "H-025 (Console spend limits set for both provider organizations; relayed by the coordinator)"},
+	Retention: Retention{Arrangement: RetentionStandard, Confirmation: Confirmation{By: "KCL1104 (repository owner)", At: "2026-10-26",
+		Source: "H-026 (both provider organizations keep the default standard retention, no zero data retention; the owner's answer in the session, recorded by the coordinator)"}},
 }
 
 // recorded lists the owner's recorded approvals of live AI, by the ID of

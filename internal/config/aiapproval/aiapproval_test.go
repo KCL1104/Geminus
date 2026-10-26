@@ -2,6 +2,7 @@ package aiapproval_test
 
 import (
 	"errors"
+	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -22,9 +23,9 @@ const keyA, keyB = "sk-ant-test-primary-0000000000", "sk-ant-test-secondary-1111
 // typed, no raw prompt or response in logs, USD 100 a month for both
 // provider organizations combined, by the owner on 2026-10-20; the Console
 // spend limits of both organizations confirmed by the owner (H-025,
-// 2026-10-26). Whether both organizations have the same data retention
-// arrangement is the owner's to confirm (an account setting the agent
-// cannot see): until it is recorded, the record cannot turn live AI on.
+// 2026-10-26); both organizations keep the default standard retention, no
+// zero data retention, as the owner confirmed (H-026, 2026-10-26). The
+// record lacks nothing, so it yields an approval.
 func TestTheH018Record(t *testing.T) {
 	r, ok := aiapproval.Lookup("H-018")
 	if !ok {
@@ -46,17 +47,16 @@ func TestTheH018Record(t *testing.T) {
 		Source:           "H-018 (planning/decisions.json human_decisions; decision page https://claude.ai/artifact/T5R9YeWWw4q2q8kKkGvU2P)",
 		SpendLimits: aiapproval.Confirmation{By: "KCL1104 (repository owner)", At: "2026-10-26",
 			Source: "H-025 (Console spend limits set for both provider organizations; relayed by the coordinator)"},
-		Retention: aiapproval.Retention{},
+		Retention: h026,
 	}
 	if !reflect.DeepEqual(r, want) {
 		t.Fatalf("the H-018 record is\n%+v\nwant\n%+v", r, want)
 	}
-	if got := r.Gap(); got != aiapproval.ReasonRetentionUnconfirmed {
-		t.Errorf("gap %q, want %q", got, aiapproval.ReasonRetentionUnconfirmed)
+	if got := r.Gap(); got != "" {
+		t.Errorf("gap %q", got)
 	}
-	// So this build has no approval that turns live AI on.
-	if a, ok := aiapproval.Recorded("H-018"); ok || a.Valid() {
-		t.Errorf("H-018 yields an approval before the retention confirmation: %+v", a)
+	if a, ok := aiapproval.Recorded("H-018"); !ok || !a.Valid() || a.ID() != "H-018" || a.Model() != "claude-opus-5-5" {
+		t.Errorf("H-018 yields no approval: %+v %v", a, ok)
 	}
 	// The record is a copy: changing it changes nothing recorded.
 	r.Model, r.DataPolicy.Roles[0] = "other", "importer"
@@ -80,18 +80,141 @@ func TestNothingElseIsRecorded(t *testing.T) {
 	}
 }
 
-// complete is H-018 with the one confirmation it waits for (test-only):
-// the owner's statement that both organizations have the same retention
-// arrangement.
+// h026 is the owner's retention confirmation as H-026 records it: both
+// provider organizations keep Anthropic's default standard retention, no
+// zero data retention, the same for both (the owner's answer to D-113's
+// question, 2026-10-26).
+var h026 = aiapproval.Retention{Arrangement: aiapproval.RetentionStandard,
+	Confirmation: aiapproval.Confirmation{By: "KCL1104 (repository owner)", At: "2026-10-26",
+		Source: "H-026 (both provider organizations keep the default standard retention, no zero data retention; the owner's answer in the session, recorded by the coordinator)"}}
+
+// complete is H-018 with the owner's retention confirmation of H-026.
 func complete(t *testing.T) aiapproval.Record {
 	t.Helper()
 	r, ok := aiapproval.Lookup("H-018")
 	if !ok {
 		t.Fatal("H-018 is not recorded")
 	}
-	r.Retention = aiapproval.Retention{Arrangement: aiapproval.RetentionStandard,
-		Confirmation: aiapproval.Confirmation{By: "owner (test)", At: "2026-10-27", Source: "H-TEST"}}
+	r.Retention = h026
 	return r
+}
+
+// H-026: with the owner's retention confirmation, the build's own H-018
+// record is complete. With every other condition met, in the process
+// environment as the worker reads it (fake keys set with t.Setenv, AI_MODEL
+// its model, the switch on), live AI turns on; without the switch it stays
+// off and no key is read. ANTHROPIC_API_KEY is never asked for (the getenv
+// below would not read it even if it were).
+func TestH026TurnsLiveOn(t *testing.T) {
+	r, ok := aiapproval.Lookup("H-018")
+	if !ok || !reflect.DeepEqual(r.Retention, h026) || r.Gap() != "" {
+		t.Fatalf("the build's H-018 record: retention %+v, gap %q", r.Retention, r.Gap())
+	}
+	if a, ok := aiapproval.Recorded("H-018"); !ok || !a.Valid() || a.ID() != "H-018" {
+		t.Fatalf("no approval from the build's record: %+v %v", a, ok)
+	}
+	for k, v := range liveEnv() {
+		if k != "ANTHROPIC_API_KEY" {
+			t.Setenv(k, v)
+		}
+	}
+	// The optional settings are unset, whatever the test process holds.
+	for _, k := range []string{"AI_MONTHLY_LIMIT_USD", "AI_DAILY_LIMIT_USD", "AI_ORGANIZATION_DAILY_LIMIT_USD", "AI_MAX_PROMPT_BYTES",
+		"AI_MAX_OUTPUT_TOKENS", "AI_TIMEOUT_SECONDS", "AI_ATTEMPT_TIMEOUT_SECONDS", "AI_MAX_RETRIES", "AI_MAX_CONCURRENT_PER_ORGANIZATION", "APP_ENV"} {
+		t.Setenv(k, "")
+	}
+	var read []string
+	getenv := func(k string) string {
+		read = append(read, k)
+		if strings.HasPrefix(k, "ANTHROPIC_") {
+			return ""
+		}
+		return os.Getenv(k)
+	}
+	ai, err := config.LoadAI(getenv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ai.LiveEnabled() || ai.LiveOff != "" || ai.Approval.ID() != "H-018" || ai.Model != "claude-opus-5-5" || len(ai.Credentials) != 2 ||
+		ai.Credentials[0].Label != "org-a" || ai.Credentials[0].Key.Reveal() != keyA ||
+		ai.Credentials[1].Label != "org-b" || ai.Credentials[1].Key.Reveal() != keyB {
+		t.Fatalf("live AI is not on: %+v", ai)
+	}
+	if want := spend.DefaultLimits(100 * spend.NanoPerUSD); ai.Limits != want {
+		t.Errorf("limits %+v, want %+v", ai.Limits, want)
+	}
+	// The adapter takes the configuration (no request is sent).
+	creds := []anthropic.Credential{{Label: "org-a", Key: ai.Credentials[0].Key}, {Label: "org-b", Key: ai.Credentials[1].Key}}
+	if _, err := anthropic.New(anthropic.Config{Approval: ai.Approval, Model: ai.Model, Credentials: creds}); err != nil {
+		t.Errorf("the adapter refuses the configuration: %v", err)
+	}
+	// Without the switch: off, for that reason, and no key is read.
+	t.Setenv("GEMINUS_AI_LIVE", "")
+	read = nil
+	if ai, err := config.LoadAI(getenv); err != nil || ai.LiveEnabled() || ai.LiveOff != config.LiveOffSwitch || len(ai.Credentials) != 0 {
+		t.Errorf("without the switch: %+v %v", ai, err)
+	}
+	if slices.ContainsFunc(read, func(k string) bool { return strings.HasPrefix(k, "GEMINUS_ANTHROPIC_API_KEY") }) {
+		t.Errorf("a key was read without the switch: %v", read)
+	}
+	for _, k := range read {
+		if strings.HasPrefix(k, "ANTHROPIC_") {
+			t.Errorf("%s was asked for", k)
+		}
+	}
+}
+
+// An altered retention confirmation keeps live AI off with
+// retention_unconfirmed: one arrangement for both organizations, named as
+// this build knows it (so a record that tells the organizations apart,
+// zero data retention on one of them, is not one), who confirmed it, a
+// calendar date (YYYY-MM-DD) and the decision that records it. With the
+// switch on the process refuses to start; with it off no key is read.
+func TestAnAlteredRetentionRefuses(t *testing.T) {
+	for name, alter := range map[string]func(*aiapproval.Retention){
+		"zero data retention on one organization": func(r *aiapproval.Retention) {
+			r.Arrangement = "org-a: standard; org-b: zero_data_retention"
+		},
+		"the arrangements of both, apart": func(r *aiapproval.Retention) { r.Arrangement = "standard,zero_data_retention" },
+		"zdr as a shorthand":              func(r *aiapproval.Retention) { r.Arrangement = "zdr" },
+		"standard capitalized":            func(r *aiapproval.Retention) { r.Arrangement = "Standard" },
+		"no arrangement":                  func(r *aiapproval.Retention) { r.Arrangement = "" },
+		"no source":                       func(r *aiapproval.Retention) { r.Source = "" },
+		"no confirmer":                    func(r *aiapproval.Retention) { r.By = "" },
+		"no date":                         func(r *aiapproval.Retention) { r.At = "" },
+		"day first":                       func(r *aiapproval.Retention) { r.At = "26/10/2026" },
+		"slashes":                         func(r *aiapproval.Retention) { r.At = "2026/10/26" },
+		"with a time":                     func(r *aiapproval.Retention) { r.At = "2026-10-26T00:00:00Z" },
+		"in words":                        func(r *aiapproval.Retention) { r.At = "26 October 2026" },
+		"no such day":                     func(r *aiapproval.Retention) { r.At = "2026-02-30" },
+		"a space before":                  func(r *aiapproval.Retention) { r.At = " 2026-10-26" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := complete(t)
+			alter(&r.Retention)
+			if got := r.Gap(); got != aiapproval.ReasonRetentionUnconfirmed {
+				t.Fatalf("gap %q, want %q", got, aiapproval.ReasonRetentionUnconfirmed)
+			}
+			aiapproval.RecordForTest(t, r)
+			if a, ok := aiapproval.Recorded("H-018"); ok || a.Valid() {
+				t.Error("the altered record yields an approval")
+			}
+			if _, err := config.LoadAI(func(k string) string { return liveEnv()[k] }); !slices.Equal(codesOf(err), []string{"GEMINUS_AI_LIVE:retention_unconfirmed"}) {
+				t.Errorf("switch on: %v", err)
+			}
+			rec := &recorder{kv: liveEnv()}
+			delete(rec.kv, "GEMINUS_AI_LIVE")
+			ai, err := config.LoadAI(rec.get)
+			if err != nil || ai.LiveEnabled() || ai.LiveOff != string(aiapproval.ReasonRetentionUnconfirmed) || len(ai.Credentials) != 0 {
+				t.Errorf("switch off: %+v %v", ai, err)
+			}
+			for _, k := range rec.read {
+				if strings.HasPrefix(k, "GEMINUS_ANTHROPIC_API_KEY") || strings.HasPrefix(k, "ANTHROPIC_") {
+					t.Errorf("read %s", k)
+				}
+			}
+		})
+	}
 }
 
 // Every gap of a record has its reason, and only a complete record has
@@ -119,6 +242,7 @@ func TestGapReasons(t *testing.T) {
 		"negative budget":          {func(r *aiapproval.Record) { r.MonthlyBudgetUSD = -100 }, aiapproval.ReasonBudgetMissing},
 		"spend limits unconfirmed": {func(r *aiapproval.Record) { r.SpendLimits = aiapproval.Confirmation{} }, aiapproval.ReasonSpendLimitsUnconfirmed},
 		"spend limits half said":   {func(r *aiapproval.Record) { r.SpendLimits.Source = "" }, aiapproval.ReasonSpendLimitsUnconfirmed},
+		"spend limits other date":  {func(r *aiapproval.Record) { r.SpendLimits.At = "26.10.2026" }, aiapproval.ReasonSpendLimitsUnconfirmed},
 		"retention unconfirmed":    {func(r *aiapproval.Record) { r.Retention = aiapproval.Retention{} }, aiapproval.ReasonRetentionUnconfirmed},
 		"retention not said":       {func(r *aiapproval.Record) { r.Retention.Arrangement = "" }, aiapproval.ReasonRetentionUnconfirmed},
 		"retention unknown":        {func(r *aiapproval.Record) { r.Retention.Arrangement = "mixed" }, aiapproval.ReasonRetentionUnconfirmed},
@@ -143,7 +267,11 @@ func TestGapReasons(t *testing.T) {
 func TestRecorded(t *testing.T) {
 	var kept aiapproval.Approval
 	t.Run("recorded", func(t *testing.T) {
-		aiapproval.RecordForTest(t, complete(t))
+		// A complete record of this test only (the build's own is complete
+		// too since H-026; a token must not outlive the one it came from).
+		own := complete(t)
+		own.Retention.Source = "H-TEST (this test's record only)"
+		aiapproval.RecordForTest(t, own)
 		a, ok := aiapproval.Recorded("H-018")
 		if !ok || !a.Valid() || a.ID() != "H-018" || a.Model() != "claude-opus-5-5" || a.MonthlyBudgetUSD() != 100 {
 			t.Fatalf("%+v %v", a, ok)
@@ -176,8 +304,9 @@ func TestRecorded(t *testing.T) {
 	if kept.Valid() {
 		t.Error("an Approval outlives its record")
 	}
-	// After the test, the build's own record is back, still incomplete.
-	if r, ok := aiapproval.Lookup("H-018"); !ok || r.Gap() != aiapproval.ReasonRetentionUnconfirmed {
+	// After the test, the build's own record is back (complete since
+	// H-026).
+	if r, ok := aiapproval.Lookup("H-018"); !ok || r.Gap() != "" || !reflect.DeepEqual(r.Retention, h026) || r.Model != "claude-opus-5-5" {
 		t.Errorf("the H-018 record after the test: %+v %v", r, ok)
 	}
 }
@@ -335,7 +464,7 @@ func TestAnyMismatchKeepsLiveOff(t *testing.T) {
 		on     []string
 	}
 	cases := map[string]mismatch{
-		"the build's own record (retention unconfirmed)": {record: func(r *aiapproval.Record) { r.Retention = aiapproval.Retention{} },
+		"the record before H-026 (retention unconfirmed)": {record: func(r *aiapproval.Record) { r.Retention = aiapproval.Retention{} },
 			want: "retention_unconfirmed", on: []string{"GEMINUS_AI_LIVE:retention_unconfirmed"}},
 		"spend limits unconfirmed": {record: func(r *aiapproval.Record) { r.SpendLimits = aiapproval.Confirmation{} },
 			want: "spend_limits_unconfirmed", on: []string{"GEMINUS_AI_LIVE:spend_limits_unconfirmed"}},

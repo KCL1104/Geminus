@@ -1,0 +1,109 @@
+# 2026-10-26T08:49:12Z go test -count=1 -v -run TestTheH018Record|TestH026TurnsLiveOn|TestAnAlteredRetentionRefuses|TestThisBuildsRecord|TestGapReasons|TestRecorded|TestAnyMismatchKeepsLiveOff|TestTheLiveEvalRunsOnlyWhenLiveIsOn|TestMainRefusesWhileLiveIsOff|TestTheProviderIsTheConfigured ./internal/config/aiapproval/ ./internal/config/ ./internal/aievals/ ./cmd/worker/
+# go: go version go1.27.3 linux/amd64
+=== RUN   TestTheH018Record
+--- PASS: TestTheH018Record (0.00s)
+=== RUN   TestH026TurnsLiveOn
+--- PASS: TestH026TurnsLiveOn (0.00s)
+=== RUN   TestAnAlteredRetentionRefuses
+=== RUN   TestAnAlteredRetentionRefuses/no_arrangement
+=== RUN   TestAnAlteredRetentionRefuses/no_source
+=== RUN   TestAnAlteredRetentionRefuses/day_first
+=== RUN   TestAnAlteredRetentionRefuses/slashes
+=== RUN   TestAnAlteredRetentionRefuses/in_words
+=== RUN   TestAnAlteredRetentionRefuses/no_such_day
+=== RUN   TestAnAlteredRetentionRefuses/a_space_before
+=== RUN   TestAnAlteredRetentionRefuses/zero_data_retention_on_one_organization
+=== RUN   TestAnAlteredRetentionRefuses/the_arrangements_of_both,_apart
+=== RUN   TestAnAlteredRetentionRefuses/zdr_as_a_shorthand
+=== RUN   TestAnAlteredRetentionRefuses/no_confirmer
+=== RUN   TestAnAlteredRetentionRefuses/no_date
+=== RUN   TestAnAlteredRetentionRefuses/with_a_time
+=== RUN   TestAnAlteredRetentionRefuses/standard_capitalized
+--- PASS: TestAnAlteredRetentionRefuses (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/no_arrangement (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/no_source (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/day_first (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/slashes (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/in_words (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/no_such_day (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/a_space_before (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/zero_data_retention_on_one_organization (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/the_arrangements_of_both,_apart (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/zdr_as_a_shorthand (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/no_confirmer (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/no_date (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/with_a_time (0.00s)
+    --- PASS: TestAnAlteredRetentionRefuses/standard_capitalized (0.00s)
+=== RUN   TestGapReasons
+--- PASS: TestGapReasons (0.00s)
+=== RUN   TestRecorded
+=== RUN   TestRecorded/recorded
+--- PASS: TestRecorded (0.00s)
+    --- PASS: TestRecorded/recorded (0.00s)
+=== RUN   TestAnyMismatchKeepsLiveOff
+=== RUN   TestAnyMismatchKeepsLiveOff/changed_policy
+=== RUN   TestAnyMismatchKeepsLiveOff/raw_text_in_logs
+=== RUN   TestAnyMismatchKeepsLiveOff/recorded_model_without_a_price
+=== RUN   TestAnyMismatchKeepsLiveOff/other_model_configured
+=== RUN   TestAnyMismatchKeepsLiveOff/model_with_a_date_suffix
+=== RUN   TestAnyMismatchKeepsLiveOff/no_model_configured
+=== RUN   TestAnyMismatchKeepsLiveOff/the_record_before_H-026_(retention_unconfirmed)
+=== RUN   TestAnyMismatchKeepsLiveOff/spend_limits_unconfirmed
+--- PASS: TestAnyMismatchKeepsLiveOff (0.00s)
+    --- PASS: TestAnyMismatchKeepsLiveOff/changed_policy (0.00s)
+    --- PASS: TestAnyMismatchKeepsLiveOff/raw_text_in_logs (0.00s)
+    --- PASS: TestAnyMismatchKeepsLiveOff/recorded_model_without_a_price (0.00s)
+    --- PASS: TestAnyMismatchKeepsLiveOff/other_model_configured (0.00s)
+    --- PASS: TestAnyMismatchKeepsLiveOff/model_with_a_date_suffix (0.00s)
+    --- PASS: TestAnyMismatchKeepsLiveOff/no_model_configured (0.00s)
+    --- PASS: TestAnyMismatchKeepsLiveOff/the_record_before_H-026_(retention_unconfirmed) (0.00s)
+    --- PASS: TestAnyMismatchKeepsLiveOff/spend_limits_unconfirmed (0.00s)
+=== RUN   TestTheLiveEvalRunsOnlyWhenLiveIsOn
+=== RUN   TestTheLiveEvalRunsOnlyWhenLiveIsOn/before_H-026
+--- PASS: TestTheLiveEvalRunsOnlyWhenLiveIsOn (0.05s)
+    --- PASS: TestTheLiveEvalRunsOnlyWhenLiveIsOn/before_H-026 (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.088s
+=== RUN   TestThisBuildsRecord
+--- PASS: TestThisBuildsRecord (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config	0.012s
+=== RUN   TestMainRefusesWhileLiveIsOff
+=== RUN   TestMainRefusesWhileLiveIsOff/another_model,_on
+=== RUN   TestMainRefusesWhileLiveIsOff/the_same_key_twice
+=== RUN   TestMainRefusesWhileLiveIsOff/the_fake
+=== RUN   TestMainRefusesWhileLiveIsOff/no_approval_named
+=== RUN   TestMainRefusesWhileLiveIsOff/an_unrecorded_approval
+=== RUN   TestMainRefusesWhileLiveIsOff/another_model
+=== RUN   TestMainRefusesWhileLiveIsOff/one_key
+=== RUN   TestMainRefusesWhileLiveIsOff/a_stray_argument
+=== RUN   TestMainRefusesWhileLiveIsOff/an_unknown_locale
+=== RUN   TestMainRefusesWhileLiveIsOff/nothing_set
+=== RUN   TestMainRefusesWhileLiveIsOff/H-018_without_a_switch
+--- PASS: TestMainRefusesWhileLiveIsOff (0.01s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/another_model,_on (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/the_same_key_twice (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/the_fake (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/no_approval_named (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/an_unrecorded_approval (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/another_model (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/one_key (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/a_stray_argument (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/an_unknown_locale (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/nothing_set (0.00s)
+    --- PASS: TestMainRefusesWhileLiveIsOff/H-018_without_a_switch (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/aievals	0.034s
+=== RUN   TestTheProviderIsTheConfigured
+=== RUN   TestTheProviderIsTheConfigured/default
+=== RUN   TestTheProviderIsTheConfigured/disabled
+=== RUN   TestTheProviderIsTheConfigured/live_without_approval
+=== RUN   TestTheProviderIsTheConfigured/fake
+--- PASS: TestTheProviderIsTheConfigured (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/default (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/disabled (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/live_without_approval (0.00s)
+    --- PASS: TestTheProviderIsTheConfigured/fake (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	0.029s
+exit=0

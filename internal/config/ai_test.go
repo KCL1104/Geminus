@@ -58,28 +58,47 @@ func TestLiveAIStaysOff(t *testing.T) {
 	}
 }
 
-// T-053: this build records H-018, which waits for the owner's retention
-// confirmation, so even with every variable live AI needs set it stays off:
-// with the switch on the process refuses to start, without it LiveOff says
-// why; no key is read either way.
-func TestThisBuildKeepsLiveOff(t *testing.T) {
+// T-053: this build records H-018, complete since the owner's retention
+// confirmation (H-026): with every variable live AI needs set it turns on
+// (both keys read, never ANTHROPIC_API_KEY); without the switch it stays
+// off, LiveOff says why, and no key is read. (The record before H-026,
+// which refused with retention_unconfirmed, is tested in
+// internal/config/aiapproval, the only place a record can be replaced.)
+func TestThisBuildsRecord(t *testing.T) {
 	all := map[string]string{"AI_PROVIDER": "anthropic", "AI_POLICY_APPROVAL": "H-018", "AI_MODEL": "claude-opus-5-5",
 		"GEMINUS_ANTHROPIC_API_KEY_A": keyA, "GEMINUS_ANTHROPIC_API_KEY_B": keyB, "GEMINUS_AI_LIVE": "on"}
 	r := &recorder{kv: all}
-	_, err := LoadAI(r.get)
-	if got := codes(t, err); !slices.Equal(got, []string{"GEMINUS_AI_LIVE:retention_unconfirmed"}) {
-		t.Errorf("switch on: %v", got)
+	ai, err := LoadAI(r.get)
+	if err != nil || !ai.LiveEnabled() || ai.LiveOff != "" || ai.Model != "claude-opus-5-5" || len(ai.Credentials) != 2 {
+		t.Errorf("switch on: %+v %v", ai, err)
+	}
+	for _, k := range r.read {
+		if strings.HasPrefix(k, "ANTHROPIC_") {
+			t.Errorf("read %s", k)
+		}
 	}
 	off := maps.Clone(all)
 	delete(off, "GEMINUS_AI_LIVE")
 	r2 := &recorder{kv: off}
-	ai, err := LoadAI(r2.get)
-	if err != nil || ai.LiveEnabled() || ai.LiveOff != "retention_unconfirmed" || len(ai.Credentials) != 0 || ai.Model != "" {
+	ai, err = LoadAI(r2.get)
+	if err != nil || ai.LiveEnabled() || ai.LiveOff != LiveOffSwitch || len(ai.Credentials) != 0 || ai.Model != "" {
 		t.Errorf("switch off: %+v %v", ai, err)
 	}
-	for _, k := range append(r.read, r2.read...) {
+	for _, k := range r2.read {
 		if strings.HasPrefix(k, "GEMINUS_ANTHROPIC_API_KEY") || strings.HasPrefix(k, "ANTHROPIC_") {
 			t.Errorf("read %s", k)
+		}
+	}
+	// Another model keeps it off, with the switch on too, before any key.
+	other := maps.Clone(all)
+	other["AI_MODEL"] = "claude-sonnet-5-5"
+	r3 := &recorder{kv: other}
+	if _, err := LoadAI(r3.get); !slices.Equal(codes(t, err), []string{"AI_MODEL:model_mismatch"}) {
+		t.Errorf("another model: %v", err)
+	}
+	for _, k := range r3.read {
+		if strings.HasPrefix(k, "GEMINUS_ANTHROPIC_API_KEY") || strings.HasPrefix(k, "ANTHROPIC_") {
+			t.Errorf("another model: read %s", k)
 		}
 	}
 	// Naming no approval is a reason of its own.

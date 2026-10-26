@@ -17,8 +17,8 @@ import (
 //   - AI_PROVIDER=anthropic;
 //   - AI_POLICY_APPROVAL names an approval this build records
 //     (internal/config/aiapproval), and the record lacks nothing: H-018 is
-//     recorded, and waits for the owner's confirmation of the provider
-//     organizations' data retention arrangement;
+//     recorded, complete since the owner confirmed the provider
+//     organizations' data retention arrangement (H-026);
 //   - AI_MODEL is exactly the record's model, and this build prices it
 //     (internal/ai/spend);
 //   - the operator's switch GEMINUS_AI_LIVE=on;

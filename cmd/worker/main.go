@@ -12,7 +12,8 @@
 // AI_PROVIDER_NOT_CONFIGURED), the deterministic fake (development and
 // tests) or the live adapter, which config enables only with the owner's
 // complete recorded approval, both keys and GEMINUS_AI_LIVE=on (T-053;
-// H-018 is recorded and waits for the owner's retention confirmation). The
+// H-018 is recorded, complete since the owner's retention confirmation,
+// H-026). The
 // live adapter is metered: every call is reserved for in the spend ledger
 // before it is made and settled after (internal/storage/aispend). Analyses
 // (T-030) are not built yet; their jobs stay queued.

@@ -63,16 +63,23 @@ func TestTheLiveEvalRunsOnlyWhenLiveIsOn(t *testing.T) {
 		return code, out.String(), errb.String(), built, dir
 	}
 
-	// The build's own record: refused before any backend is built.
-	code, _, stderr, built, dir := run("-smoke")
-	if code != aievals.ExitRefused || built != 0 || !strings.Contains(stderr, "GEMINUS_AI_LIVE:retention_unconfirmed") {
-		t.Fatalf("the build's record: exit %d built %d: %s", code, built, stderr)
-	}
-	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
-		t.Fatal("a refused run wrote a file")
-	}
+	// The record before H-026 (no retention confirmation): refused before
+	// any backend is built.
+	t.Run("before H-026", func(t *testing.T) {
+		before := complete(t)
+		before.Retention = aiapproval.Retention{}
+		aiapproval.RecordForTest(t, before)
+		code, _, stderr, built, dir := run("-smoke")
+		if code != aievals.ExitRefused || built != 0 || !strings.Contains(stderr, "GEMINUS_AI_LIVE:retention_unconfirmed") {
+			t.Fatalf("exit %d built %d: %s", code, built, stderr)
+		}
+		if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+			t.Fatal("a refused run wrote a file")
+		}
+	})
 
-	aiapproval.RecordForTest(t, complete(t))
+	// The build's own record (H-026): the run is made, on the test's
+	// backend.
 	code, stdout, stderr, built, dir := run("-smoke")
 	if code != aievals.ExitOK || built != 1 {
 		t.Fatalf("smoke: exit %d built %d: %s %s", code, built, stdout, stderr)

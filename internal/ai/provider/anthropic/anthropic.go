@@ -8,9 +8,10 @@
 // yields (internal/config/aiapproval; the composition root copies
 // Approval, Model and the credentials from internal/config's AI into
 // Config), for the approval's own model and credentials. This build
-// records H-018, which waits for the owner's confirmation of both provider
-// organizations' data retention arrangement (T-053, D-113), so no valid
-// Approval exists yet. It has been exercised against a local test server
+// records H-018, complete since the owner confirmed both provider
+// organizations' data retention arrangement (H-026; T-053, D-113), so a
+// deployment that sets AI_MODEL, both keys and GEMINUS_AI_LIVE=on gets a
+// valid Approval. It has been exercised against a local test server
 // only; no request has been sent to the real API.
 //
 // T-053: the backend costs money, so it is provider.Billable: only a

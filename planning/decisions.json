@@ -1303,7 +1303,7 @@
       "id": "D-113",
       "title": "Anthropic 的資料保留與 ZDR：兩個 provider organization 的安排由 owner 確認（T-053）",
       "source_gap": "H-018 要求上線前查證 Anthropic 官方的保留規則並確認兩個 organization 設定一致；ZDR 是否開啟是只有 owner 看得到的帳號設定。",
-      "proposal": "A（建議，已實作）：查證的規則（來源、日期、原文）見 SECURITY §7；H-018 的範圍不要求 ZDR，但 owner 須確認兩個 organization 的安排（standard：30 天內刪除，被 trust and safety 標記時至多 2 年；或 ZDR，每個 organization 分別開啟）相同，並接受 standard 的保留期與 structured outputs 的 JSON schema cache（至多 24 小時）；確認前 H-018 record 的 Retention 為空、Gap 為 retention_unconfirmed，live 無法開啟；確認後以 reviewed change 寫入。B：synthetic only 即不需確認；C：要求兩個 organization 都開 ZDR。",
+      "proposal": "A（建議，已實作）：查證的規則（來源、日期、原文）見 SECURITY §7；H-018 的範圍不要求 ZDR，但 owner 須確認兩個 organization 的安排（standard：30 天內刪除，被 trust and safety 標記時至多 2 年；或 ZDR，每個 organization 分別開啟）相同，並接受 standard 的保留期與 structured outputs 的 JSON schema cache（至多 24 小時）；確認前 H-018 record 的 Retention 為空、Gap 為 retention_unconfirmed，live 無法開啟；確認後以 reviewed change 寫入。B：synthetic only 即不需確認；C：要求兩個 organization 都開 ZDR。Owner 的回答（2026-10-26，H-026，coordinator 記錄）：兩個 provider organization 都是預設的 standard retention，沒有 ZDR，兩者相同；已寫入 H-018 record 的 Retention（standard、KCL1104、2026-10-26、來源 H-026），record 不再缺項。D-113 本身仍為 PROPOSED，待 owner 與 D-110–D-115 一併批准。",
       "gate": "任何 live AI 呼叫前；T-053 驗收前",
       "resolves": [],
       "source_pages": "N/A（H-018；D-018；SECURITY §7；platform.claude.com/docs/en/manage-claude/api-and-data-retention、privacy.claude.com 7996866、support.claude.com 15425695，2026-10-26）",
