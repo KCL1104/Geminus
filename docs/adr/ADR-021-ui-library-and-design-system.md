@@ -81,3 +81,13 @@ Owner 於 H-027 採用 DESIGN.md（Marey 圖表時刻表）為設計基礎，條
 - **語言與主題的選擇**改用本系統的 `Select`（原本語言是原生 `<select>`）：與表單的單選同一個元件；方向鍵打開清單、只有選定才換語言（WCAG 3.2.2；impeccable audit 2026-10-19 的 P1：原生 select 在方向鍵就換語言，且 `key={locale}` 重建元件讓焦點掉到 body，現在焦點留在控制項上）。
 - **元件**：button（primary 為 Graphite Ink；danger 為預設外框加紅字；disabled 為 Inset Well）、field（34 px、15 px 字、invalid 為紅框加內環）、select、checkbox（焦點環只畫一圈）、dialog（560 px、8 px 圓角、hairline 分隔、12vh）、callout（edge＋wash、墨色文字，去掉 4 px 側邊條）、status（Outcome 框）、table（12 px 600 表頭、Control Edge 表頭線、無列 hover）、shell（48 px app strip）。Problem 的技術訊息與 request ID 收進「Details」展開（H-027 漸進揭露）。`CrashNotice` 改用 `Button`；`global-error` 自己載入全域樣式與記住的主題。
 - **已知的簡化與不做**：overlay 不做進場動畫；note 先不加圖示；app strip 沒有 Find、帳號與模式切換（尚無功能）。理由與檢查見 DESIGN.md 的 Simplicity 一節。
+
+## React Flow 的包裝（T-015 hackathon 切片，2026-10-26）
+
+ADR-007 指定 React Flow 為 2D authoring adapter；本 ADR 的 spike 用的 `@xyflow/react` 12.12.0 即正式版本（版本、日期與授權見 ADR-011、THIRD_PARTY_NOTICES）。Spike 的共同發現在 `apps/web/features/model-editor/` 這樣處理：
+
+- **樣式**：只用 `base.css`（結構），以 `@import … layer(vendor)` 放進 vendor layer（build 後的 CSS 確認在 `@layer vendor` 內）；外觀由 `canvas.module.css` 以 tokens 設定 React Flow 的 CSS 變數與 node／edge／attribution。不用 `<Controls>`、`<MiniMap>`、`<Background>`（無點狀格線，DESIGN.md）。
+- **字串**：`ariaLabelConfig` 全部取自 catalog（node 與 edge 的說明、移動時的 aria-live、handle）；React Flow 寫死的英文 `aria-roledescription`「node」「edge」與 edge 的預設名稱以 `domAttributes`、`ariaLabel` 換成 catalog 文字（由 `strings.spec.ts` 的編輯器測試抓到「edge」後修正）。**署名保留**（H-009 (4)）：連結文字「React Flow」與它的 `aria-label`「React Flow attribution」是畫布上唯二無法翻譯的字串，`strings.spec.ts` 只接受這兩個並列出它們。
+- **鍵盤**：Escape 原本會取消選取並讓 node 失焦 → editor 在 capture 階段攔下，只取消選取、焦點留在 node；Delete 由 editor 處理並先確認（React Flow 的 `deleteKeyCode` 關閉：它聽整個 document，焦點在屬性面板時也會刪掉選取的 node）；edge 不可聚焦也不可選取，Tab 不先停在 edge 上，連接改在步驟的屬性中（選單）或拖曳 handle 完成；node 依閱讀順序（左到右、上到下）排列，Tab 順序因此合理。
+- **受控模式**：nodes／edges 每次由 IR 產生（`flow.ts`），React Flow 只回報變更；node 量到的大小存在 canvas 元件內再交回，否則每次 render 都會重新量測。拖曳中的位置只在畫面，放開或方向鍵才成為 JSON Patch。
+- **已知限制**：每個步驟是一個 Tab stop（範例產線約 25 個），鍵盤使用者從畫布到屬性面板要經過其餘步驟；之後可考慮 roving tabindex 或「跳到屬性」的連結（T-015 完整範圍）。

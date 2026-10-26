@@ -1,0 +1,6 @@
+make frontend-test exit 0
+make frontend-build exit 0
+npm audit --prefix apps/web --omit=dev exit 0
+gofmt -l + go vet + go test ./internal/model/patch/ ./internal/domainpack/... exit 0
+make e2e-test exit 0
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python exit 0

@@ -950,7 +950,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-26",
+          "branch": "t015-hk",
+          "report": "checks/T-015_VALIDATION.md",
+          "summary": "Hackathon 切片（H-029）進度紀錄，非完成：@xyflow/react 12.12.0（MIT，2026-09-24，19 個 lock entry，無 install script）；features/model-editor 的 IR↔React Flow adapter（canonical ID、layered 預設版面與 domainpack.LayeredLayout 同規則）、編輯→JSON Patch（D-020 的 test）、畫布（鍵盤選取／方向鍵移動／Delete 確認／Escape 保留焦點）、新增步驟選單、屬性面板（伺服器欄位錯誤依 JSON Pointer）、問題清單（跳到步驟）、If-Match 儲存、409 保留編輯且只在使用者要求時重新套用、有錯誤或未存時發布 blocked 並說明原因；/ui-gallery/editor 審閱預覽（替身 API，不驗證模型）。testdata/editor/patch-vectors.json 由 internal/model/patch TestEditorVectors 以伺服器 policy 套用（22 組、model hash 相同）。frontend-test 600 tests、frontend-build、e2e-test 143 passed／32 skipped（截圖 NOT RUN）、npm audit --omit=dev 0、spec-check 皆 exit 0；frontend mutation 13（12＋補測試後 1 killed）。status 保持 not_started：check_decisions 要求依賴的 T-045 先到 review 或 done。",
+          "reviewer": "not yet reviewed (H-029 (4): one independent review per slice)",
+          "decisions_pending": "登入後的 UI bootstrap（/me、AuthProvider，D-045／T-043 後續）未完成前，部署環境的 /models/[id] 只顯示需要登入；T-015 改為 in_progress 待 T-045 送審"
+        }
+      ]
     },
     {
       "id": "T-016",

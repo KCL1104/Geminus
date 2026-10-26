@@ -1,0 +1,207 @@
+npm --prefix apps/web-e2e test
+
+> @geminus/web-e2e@0.0.0 test
+> playwright test
+
+
+Running 175 tests using 1 worker
+
+  ✓    1 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 390px › / has no violation (1.9s)
+  ✓    2 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 390px › /projects has no violation (1.9s)
+  ✓    3 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 390px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓    4 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 390px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.8s)
+  ✓    5 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 390px › /no-such-page has no violation (1.8s)
+  ✓    6 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 390px › /ui-gallery has no violation (4.8s)
+  ✓    7 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 390px › /ui-gallery/editor has no violation (2.0s)
+  ✓    8 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 390px › /auth/error?reason=expired has no violation (1.8s)
+  ✓    9 [chromium] › tests/a11y.spec.ts:25:7 › light, en at 390px › gallery states that need an action have no violation (6.3s)
+  ✓   10 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 1280px › / has no violation (1.6s)
+  ✓   11 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 1280px › /projects has no violation (1.8s)
+  ✓   12 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 1280px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.5s)
+  ✓   13 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 1280px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓   14 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 1280px › /no-such-page has no violation (1.7s)
+  ✓   15 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 1280px › /ui-gallery has no violation (4.0s)
+  ✓   16 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 1280px › /ui-gallery/editor has no violation (2.9s)
+  ✓   17 [chromium] › tests/a11y.spec.ts:14:9 › light, en at 1280px › /auth/error?reason=expired has no violation (2.2s)
+  ✓   18 [chromium] › tests/a11y.spec.ts:25:7 › light, en at 1280px › gallery states that need an action have no violation (6.0s)
+  ✓   19 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 390px › / has no violation (2.1s)
+  ✓   20 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 390px › /projects has no violation (1.8s)
+  ✓   21 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 390px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.9s)
+  ✓   22 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 390px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (2.1s)
+  ✓   23 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 390px › /no-such-page has no violation (1.9s)
+  ✓   24 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 390px › /ui-gallery has no violation (4.0s)
+  ✓   25 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 390px › /ui-gallery/editor has no violation (3.0s)
+  ✓   26 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 390px › /auth/error?reason=expired has no violation (2.4s)
+  ✓   27 [chromium] › tests/a11y.spec.ts:25:7 › light, zh-Hant at 390px › gallery states that need an action have no violation (7.7s)
+  ✓   28 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 1280px › / has no violation (2.3s)
+  ✓   29 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 1280px › /projects has no violation (2.0s)
+  ✓   30 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 1280px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓   31 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 1280px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (2.9s)
+  ✓   32 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 1280px › /no-such-page has no violation (2.1s)
+  ✓   33 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 1280px › /ui-gallery has no violation (4.0s)
+  ✓   34 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 1280px › /ui-gallery/editor has no violation (4.1s)
+  ✓   35 [chromium] › tests/a11y.spec.ts:14:9 › light, zh-Hant at 1280px › /auth/error?reason=expired has no violation (1.9s)
+  ✓   36 [chromium] › tests/a11y.spec.ts:25:7 › light, zh-Hant at 1280px › gallery states that need an action have no violation (7.4s)
+  ✓   37 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 390px › / has no violation (2.6s)
+  ✓   38 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 390px › /projects has no violation (2.3s)
+  ✓   39 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 390px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (2.3s)
+  ✓   40 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 390px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.9s)
+  ✓   41 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 390px › /no-such-page has no violation (2.0s)
+  ✓   42 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 390px › /ui-gallery has no violation (5.2s)
+  ✓   43 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 390px › /ui-gallery/editor has no violation (1.9s)
+  ✓   44 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 390px › /auth/error?reason=expired has no violation (1.6s)
+  ✓   45 [chromium] › tests/a11y.spec.ts:25:7 › dark, en at 390px › gallery states that need an action have no violation (5.3s)
+  ✓   46 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 1280px › / has no violation (1.8s)
+  ✓   47 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 1280px › /projects has no violation (1.6s)
+  ✓   48 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 1280px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓   49 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 1280px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.6s)
+  ✓   50 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 1280px › /no-such-page has no violation (1.7s)
+  ✓   51 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 1280px › /ui-gallery has no violation (3.7s)
+  ✓   52 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 1280px › /ui-gallery/editor has no violation (2.3s)
+  ✓   53 [chromium] › tests/a11y.spec.ts:14:9 › dark, en at 1280px › /auth/error?reason=expired has no violation (1.7s)
+  ✓   54 [chromium] › tests/a11y.spec.ts:25:7 › dark, en at 1280px › gallery states that need an action have no violation (5.0s)
+  ✓   55 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 390px › / has no violation (1.7s)
+  ✓   56 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 390px › /projects has no violation (1.5s)
+  ✓   57 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 390px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓   58 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 390px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓   59 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 390px › /no-such-page has no violation (2.1s)
+  ✓   60 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 390px › /ui-gallery has no violation (4.3s)
+  ✓   61 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 390px › /ui-gallery/editor has no violation (2.0s)
+  ✓   62 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 390px › /auth/error?reason=expired has no violation (1.7s)
+  ✓   63 [chromium] › tests/a11y.spec.ts:25:7 › dark, zh-Hant at 390px › gallery states that need an action have no violation (5.7s)
+  ✓   64 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 1280px › / has no violation (1.8s)
+  ✓   65 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 1280px › /projects has no violation (1.6s)
+  ✓   66 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 1280px › /projects/prj_01M4YDQK00TA00000000000001 has no violation (1.7s)
+  ✓   67 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 1280px › /models/mdl_01M4YDQK00TA00000000000001 has no violation (1.6s)
+  ✓   68 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 1280px › /no-such-page has no violation (1.7s)
+  ✓   69 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 1280px › /ui-gallery has no violation (4.6s)
+  ✓   70 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 1280px › /ui-gallery/editor has no violation (2.5s)
+  ✓   71 [chromium] › tests/a11y.spec.ts:14:9 › dark, zh-Hant at 1280px › /auth/error?reason=expired has no violation (1.4s)
+  ✓   72 [chromium] › tests/a11y.spec.ts:25:7 › dark, zh-Hant at 1280px › gallery states that need an action have no violation (4.4s)
+  ✓   73 [chromium] › tests/editor.spec.ts:38:3 › the editor with the keyboard only › an issue goes to its step; select, move, edit, connect, add, delete and save without a mouse (3.6s)
+  ✓   74 [chromium] › tests/editor.spec.ts:114:3 › the editor with a mouse › dragging a step moves it, dragging between handles connects two steps (2.1s)
+  ✓   75 [chromium] › tests/editor.spec.ts:143:3 › saving against the server's revision › a 409 keeps the edits; they go onto the current draft only when the person asks (1.8s)
+  ✓   76 [chromium] › tests/editor.spec.ts:160:3 › saving against the server's revision › publish asks first, then names the new version; Publish then waits for a change (1.5s)
+  ✓   77 [chromium] › tests/editor.spec.ts:172:3 › saving against the server's revision › switching the language keeps the unsaved edits (ADR-020) (1.8s)
+  ✓   78 [chromium] › tests/editor.spec.ts:198:5 › editor states, light, en › problems, a step selected, its menus and dialog have no violation (5.4s)
+  ✓   79 [chromium] › tests/editor.spec.ts:216:5 › editor states, light, en › ready to publish, the publish dialog, a viewer and a conflict have no violation (6.9s)
+  ✓   80 [chromium] › tests/editor.spec.ts:198:5 › editor states, light, zh-Hant › problems, a step selected, its menus and dialog have no violation (4.1s)
+  ✓   81 [chromium] › tests/editor.spec.ts:216:5 › editor states, light, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation (6.4s)
+  ✓   82 [chromium] › tests/editor.spec.ts:198:5 › editor states, dark, en › problems, a step selected, its menus and dialog have no violation (4.0s)
+  ✓   83 [chromium] › tests/editor.spec.ts:216:5 › editor states, dark, en › ready to publish, the publish dialog, a viewer and a conflict have no violation (5.9s)
+  ✓   84 [chromium] › tests/editor.spec.ts:198:5 › editor states, dark, zh-Hant › problems, a step selected, its menus and dialog have no violation (3.9s)
+  ✓   85 [chromium] › tests/editor.spec.ts:216:5 › editor states, dark, zh-Hant › ready to publish, the publish dialog, a viewer and a conflict have no violation (6.0s)
+  ✓   86 [chromium] › tests/keyboard.spec.ts:16:1 › the shell: skip link first, then navigation, language and theme; the skip link moves focus to main (997ms)
+  ✓   87 [chromium] › tests/keyboard.spec.ts:35:1 › the language changes from the keyboard, only on a choice, and focus stays on the control (1.1s)
+  ✓   88 [chromium] › tests/keyboard.spec.ts:61:1 › the theme changes from the keyboard and is remembered (1.0s)
+  ✓   89 [chromium] › tests/keyboard.spec.ts:89:3 › component gallery › a status message after an action (1.3s)
+  ✓   90 [chromium] › tests/keyboard.spec.ts:96:3 › component gallery › a confirmation dialog: focus on Cancel, trapped, Escape returns focus, confirm acts (1.8s)
+  ✓   91 [chromium] › tests/keyboard.spec.ts:117:3 › component gallery › a select: open, move, choose (1.4s)
+  ✓   92 [chromium] › tests/keyboard.spec.ts:127:3 › component gallery › a table: one tab stop, arrows move, Enter sorts, Space selects (1.7s)
+  ✓   93 [chromium] › tests/keyboard.spec.ts:147:3 › component gallery › a long table is virtualized and reachable to its last row (1.4s)
+  -   94 [chromium] › tests/screenshots.spec.ts:23:9 › light, en at 390px › / looks as accepted
+  -   95 [chromium] › tests/screenshots.spec.ts:23:9 › light, en at 390px › /projects looks as accepted
+  -   96 [chromium] › tests/screenshots.spec.ts:23:9 › light, en at 390px › /no-such-page looks as accepted
+  -   97 [chromium] › tests/screenshots.spec.ts:23:9 › light, en at 390px › /ui-gallery looks as accepted
+  -   98 [chromium] › tests/screenshots.spec.ts:23:9 › light, en at 1280px › / looks as accepted
+  -   99 [chromium] › tests/screenshots.spec.ts:23:9 › light, en at 1280px › /projects looks as accepted
+  -  100 [chromium] › tests/screenshots.spec.ts:23:9 › light, en at 1280px › /no-such-page looks as accepted
+  -  101 [chromium] › tests/screenshots.spec.ts:23:9 › light, en at 1280px › /ui-gallery looks as accepted
+  -  102 [chromium] › tests/screenshots.spec.ts:23:9 › light, zh-Hant at 390px › / looks as accepted
+  -  103 [chromium] › tests/screenshots.spec.ts:23:9 › light, zh-Hant at 390px › /projects looks as accepted
+  -  104 [chromium] › tests/screenshots.spec.ts:23:9 › light, zh-Hant at 390px › /no-such-page looks as accepted
+  -  105 [chromium] › tests/screenshots.spec.ts:23:9 › light, zh-Hant at 390px › /ui-gallery looks as accepted
+  -  106 [chromium] › tests/screenshots.spec.ts:23:9 › light, zh-Hant at 1280px › / looks as accepted
+  -  107 [chromium] › tests/screenshots.spec.ts:23:9 › light, zh-Hant at 1280px › /projects looks as accepted
+  -  108 [chromium] › tests/screenshots.spec.ts:23:9 › light, zh-Hant at 1280px › /no-such-page looks as accepted
+  -  109 [chromium] › tests/screenshots.spec.ts:23:9 › light, zh-Hant at 1280px › /ui-gallery looks as accepted
+  -  110 [chromium] › tests/screenshots.spec.ts:23:9 › dark, en at 390px › / looks as accepted
+  -  111 [chromium] › tests/screenshots.spec.ts:23:9 › dark, en at 390px › /projects looks as accepted
+  -  112 [chromium] › tests/screenshots.spec.ts:23:9 › dark, en at 390px › /no-such-page looks as accepted
+  -  113 [chromium] › tests/screenshots.spec.ts:23:9 › dark, en at 390px › /ui-gallery looks as accepted
+  -  114 [chromium] › tests/screenshots.spec.ts:23:9 › dark, en at 1280px › / looks as accepted
+  -  115 [chromium] › tests/screenshots.spec.ts:23:9 › dark, en at 1280px › /projects looks as accepted
+  -  116 [chromium] › tests/screenshots.spec.ts:23:9 › dark, en at 1280px › /no-such-page looks as accepted
+  -  117 [chromium] › tests/screenshots.spec.ts:23:9 › dark, en at 1280px › /ui-gallery looks as accepted
+  -  118 [chromium] › tests/screenshots.spec.ts:23:9 › dark, zh-Hant at 390px › / looks as accepted
+  -  119 [chromium] › tests/screenshots.spec.ts:23:9 › dark, zh-Hant at 390px › /projects looks as accepted
+  -  120 [chromium] › tests/screenshots.spec.ts:23:9 › dark, zh-Hant at 390px › /no-such-page looks as accepted
+  -  121 [chromium] › tests/screenshots.spec.ts:23:9 › dark, zh-Hant at 390px › /ui-gallery looks as accepted
+  -  122 [chromium] › tests/screenshots.spec.ts:23:9 › dark, zh-Hant at 1280px › / looks as accepted
+  -  123 [chromium] › tests/screenshots.spec.ts:23:9 › dark, zh-Hant at 1280px › /projects looks as accepted
+  -  124 [chromium] › tests/screenshots.spec.ts:23:9 › dark, zh-Hant at 1280px › /no-such-page looks as accepted
+  -  125 [chromium] › tests/screenshots.spec.ts:23:9 › dark, zh-Hant at 1280px › /ui-gallery looks as accepted
+  ✓  126 [chromium] › tests/session.spec.ts:43:1 › sign-in leaves one HttpOnly __Host- cookie and nothing a script can read (383ms)
+  ✓  127 [chromium] › tests/session.spec.ts:69:1 › the proxy adds the token, sends no cookie to the API and returns no token (360ms)
+  ✓  128 [chromium] › tests/session.spec.ts:94:1 › without a session the proxy answers 401 in the API's envelope (337ms)
+  ✓  129 [chromium] › tests/session.spec.ts:102:1 › a write without the app's header, from another origin or from a cross-site form is refused (907ms)
+  ✓  130 [chromium] › tests/session.spec.ts:151:1 › a tampered state or a replayed callback lands on the sign-in error page (495ms)
+  ✓  131 [chromium] › tests/session.spec.ts:174:1 › a token close to expiry is refreshed on the server, and the old refresh token is spent (406ms)
+[2m[WebServer] [22m[31m[1m⨯[22m[39m Error: failed to pipe response
+[2m[WebServer] [22m    at td (.next/server/chunks/[root-of-the-server]__15bjnu5yieigz._.js:1:34716)
+[2m[WebServer] [22m    at async tI (.next/server/chunks/[root-of-the-server]__15bjnu5yieigz._.js:3:2280)
+[2m[WebServer] [22m    at async z (.next/server/chunks/_129113jw69zec._.js:1:3290)
+[2m[WebServer] [22m    at async X (.next/server/chunks/_129113jw69zec._.js:1:4076)
+[2m[WebServer] [22m    at async Module.C [as handler] (.next/server/chunks/_129113jw69zec._.js:1:6183) {
+[2m[WebServer] [22m  [cause]: TypeError: terminated
+[2m[WebServer] [22m      at [3mignore-listed frames[23m {
+[2m[WebServer] [22m    [cause]: Error [SocketError]: other side closed
+[2m[WebServer] [22m        at [3mignore-listed frames[23m {
+[2m[WebServer] [22m      code: [32m'UND_ERR_SOCKET'[39m,
+[2m[WebServer] [22m      socket: [36m[Object][39m
+[2m[WebServer] [22m    }
+[2m[WebServer] [22m  }
+[2m[WebServer] [22m}
+  ✓  132 [chromium] › tests/session.spec.ts:196:1 › a refresh is kept when the API's answer is cut after its headers (463ms)
+  ✓  133 [chromium] › tests/session.spec.ts:250:1 › logout revokes the refresh token, clears the cookie and signs out at the provider (447ms)
+  ✓  134 [chromium] › tests/session.spec.ts:278:1 › an identity provisioning does not know gets the API's 403 (397ms)
+  ✓  135 [chromium] › tests/simplicity.spec.ts:50:9 › en at 390px › / keeps only the controls it needs (860ms)
+  ✓  136 [chromium] › tests/simplicity.spec.ts:50:9 › en at 390px › /projects keeps only the controls it needs (713ms)
+  ✓  137 [chromium] › tests/simplicity.spec.ts:50:9 › en at 390px › /projects/prj_01M4YDQK00TA00000000000001 keeps only the controls it needs (840ms)
+  ✓  138 [chromium] › tests/simplicity.spec.ts:50:9 › en at 390px › /models/mdl_01M4YDQK00TA00000000000001 keeps only the controls it needs (951ms)
+  ✓  139 [chromium] › tests/simplicity.spec.ts:50:9 › en at 390px › /no-such-page keeps only the controls it needs (845ms)
+  ✓  140 [chromium] › tests/simplicity.spec.ts:50:9 › en at 390px › /ui-gallery keeps only the controls it needs (1.2s)
+  ✓  141 [chromium] › tests/simplicity.spec.ts:50:9 › en at 390px › /ui-gallery/editor keeps only the controls it needs (1.0s)
+  ✓  142 [chromium] › tests/simplicity.spec.ts:50:9 › en at 390px › /auth/error?reason=expired keeps only the controls it needs (909ms)
+  ✓  143 [chromium] › tests/simplicity.spec.ts:50:9 › en at 1280px › / keeps only the controls it needs (867ms)
+  ✓  144 [chromium] › tests/simplicity.spec.ts:50:9 › en at 1280px › /projects keeps only the controls it needs (811ms)
+  ✓  145 [chromium] › tests/simplicity.spec.ts:50:9 › en at 1280px › /projects/prj_01M4YDQK00TA00000000000001 keeps only the controls it needs (855ms)
+  ✓  146 [chromium] › tests/simplicity.spec.ts:50:9 › en at 1280px › /models/mdl_01M4YDQK00TA00000000000001 keeps only the controls it needs (892ms)
+  ✓  147 [chromium] › tests/simplicity.spec.ts:50:9 › en at 1280px › /no-such-page keeps only the controls it needs (870ms)
+  ✓  148 [chromium] › tests/simplicity.spec.ts:50:9 › en at 1280px › /ui-gallery keeps only the controls it needs (1.0s)
+  ✓  149 [chromium] › tests/simplicity.spec.ts:50:9 › en at 1280px › /ui-gallery/editor keeps only the controls it needs (1.0s)
+  ✓  150 [chromium] › tests/simplicity.spec.ts:50:9 › en at 1280px › /auth/error?reason=expired keeps only the controls it needs (796ms)
+  ✓  151 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 390px › / keeps only the controls it needs (1.5s)
+  ✓  152 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 390px › /projects keeps only the controls it needs (734ms)
+  ✓  153 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 390px › /projects/prj_01M4YDQK00TA00000000000001 keeps only the controls it needs (887ms)
+  ✓  154 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 390px › /models/mdl_01M4YDQK00TA00000000000001 keeps only the controls it needs (857ms)
+  ✓  155 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 390px › /no-such-page keeps only the controls it needs (904ms)
+  ✓  156 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 390px › /ui-gallery keeps only the controls it needs (1.1s)
+  ✓  157 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 390px › /ui-gallery/editor keeps only the controls it needs (900ms)
+  ✓  158 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 390px › /auth/error?reason=expired keeps only the controls it needs (821ms)
+  ✓  159 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 1280px › / keeps only the controls it needs (835ms)
+  ✓  160 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 1280px › /projects keeps only the controls it needs (715ms)
+  ✓  161 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 1280px › /projects/prj_01M4YDQK00TA00000000000001 keeps only the controls it needs (843ms)
+  ✓  162 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 1280px › /models/mdl_01M4YDQK00TA00000000000001 keeps only the controls it needs (891ms)
+  ✓  163 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 1280px › /no-such-page keeps only the controls it needs (917ms)
+  ✓  164 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 1280px › /ui-gallery keeps only the controls it needs (1.1s)
+  ✓  165 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 1280px › /ui-gallery/editor keeps only the controls it needs (1.0s)
+  ✓  166 [chromium] › tests/simplicity.spec.ts:50:9 › zh-Hant at 1280px › /auth/error?reason=expired keeps only the controls it needs (878ms)
+en editor: strings not from the catalog or the model: ["Dismiss"]
+  ✓  167 [chromium] › tests/strings.spec.ts:59:3 › en: the editor's strings are the catalog's, the model's data or React Flow's attribution (1.4s)
+en: strings not from the catalog: ["sortable column","sorted by column Path in ascending order","/resources/reviewers selected.","sorted by column Path in descending order","All items selected.","4 items selected.","/nodes/review/capacity not selected. 3 items selected.","Dismiss"]
+  ✓  168 [chromium] › tests/strings.spec.ts:85:3 › en: every string is the catalog's or an accepted React Aria string (2.0s)
+zh-Hant editor: strings not from the catalog or the model: ["關閉"]
+  ✓  169 [chromium] › tests/strings.spec.ts:59:3 › zh-Hant: the editor's strings are the catalog's, the model's data or React Flow's attribution (1.5s)
+zh-Hant: strings not from the catalog: ["可排序的欄","已依據「路徑」欄遞增排序","已選取「/resources/reviewers」。","已依據「路徑」欄遞減排序","已選取所有項目。","已選取 4 個項目。","未選取「/nodes/review/capacity」。 已選取 3 個項目。","關閉"]
+  ✓  170 [chromium] › tests/strings.spec.ts:85:3 › zh-Hant: every string is the catalog's or an accepted React Aria string (2.1s)
+  ✓  171 [chromium] › tests/theme.spec.ts:12:1 › follows the system's light or dark when the reader chose none (982ms)
+  ✓  172 [chromium] › tests/theme.spec.ts:21:1 › a choice overrides the system, applies at once and is remembered (1.2s)
+  ✓  173 [chromium] › tests/theme.spec.ts:38:1 › going back to the system's forgets the choice (973ms)
+  ✓  174 [chromium] › tests/theme.spec.ts:48:1 › the first paint has the remembered theme: it is in the server's HTML, with the stylesheets in <head> (69ms)
+  ✓  175 [chromium] › tests/theme.spec.ts:59:1 › the fonts come from the app's own origin, and the Chinese face only for what a page shows (877ms)
+
+  32 skipped
+  143 passed (5.4m)
+e2e-test: screenshots NOT RUN (only with E2E_SCREENSHOTS=1, in CI's pinned Playwright container).
+e2e-test: UI checks covered; the product closed loop with the fake provider is NOT RUN until T-040.

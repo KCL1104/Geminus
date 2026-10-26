@@ -1,0 +1,4 @@
+ok  	github.com/kcl1104/geminus/internal/model/patch	2.517s
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.087s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	3.767s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	0.647s
