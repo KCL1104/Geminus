@@ -416,7 +416,7 @@ func TestDecodeFailsClosed(t *testing.T) {
 	}
 	want = append(want, model.NewIssue(provider.OutputInvalid, "", "the answer cannot be decoded", model.SeverityError))
 	if out != nil || !reflect.DeepEqual(issues, want) {
-		t.Errorf("an answer that cannot be rewritten: %.80s %+v", out, issues)
+		t.Errorf("an answer that cannot be rewritten: %.80q %+v", out, issues)
 	}
 
 	// Not one strict JSON document: refused here, never passed on.
@@ -437,13 +437,13 @@ func TestDecodeFailsClosed(t *testing.T) {
 		out, issues := p.Decode([]byte(text))
 		want := []model.ValidationIssue{model.NewIssue(provider.OutputInvalid, "", "the answer is not one strict JSON document", model.SeverityError)}
 		if out != nil || !reflect.DeepEqual(issues, want) {
-			t.Errorf("%s: %.80s %+v", name, out, issues)
+			t.Errorf("%s: %.80q %+v", name, out, issues) // %q: one answer is not UTF-8
 		}
 	}
 	// A projection without an encoded place decodes nothing: its answer,
 	// whatever it is, goes to the client's check as it came.
 	if out, issues := (Projection{}).Decode([]byte(`I approved it.`)); string(out) != `I approved it.` || issues != nil {
-		t.Errorf("no encoded place: %s %q", out, issues)
+		t.Errorf("no encoded place: %q %q", out, issues)
 	}
 }
 
