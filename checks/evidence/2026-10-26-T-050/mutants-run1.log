@@ -1,0 +1,17 @@
+ready-below-max	KILLED --- FAIL: TestBatchGoldens (0.04s)
+ready-ignores-min	KILLED --- FAIL: TestBatchGoldens (0.04s)
+ready-strictly-after-limit	KILLED --- FAIL: TestBatchGoldens (0.04s)
+3/3 killed, 0 equivalent
+chunk exit 0 elapsed 6s
+ready-untimed-on-limit	SURVIVED 
+two-ungranted-requests	KILLED --- FAIL: TestBatchGoldens (0.03s)
+timeouts-for-min-equals-max	KILLED --- FAIL: TestRandomBatchFailuresAreReal (0.39s)
+expired-limit-scheduled	SURVIVED 
+stale-timeout-not-ignored	SURVIVED 
+dispatch-on-every-batch-entry	KILLED --- FAIL: TestBatchGoldens (0.04s)
+batch-one-short	KILLED --- FAIL: TestBatchGoldens (0.05s)
+member-start-no-number	KILLED --- FAIL: TestBatchGoldens (0.04s)
+grant-unblocks-one	KILLED --- FAIL: TestRandomBatchModelsAgainstSpec (0.01s)
+grant-no-recheck	KILLED --- FAIL: TestBatchGoldens (0.04s)
+7/10 killed, 0 equivalent
+chunk exit 1 elapsed 516s

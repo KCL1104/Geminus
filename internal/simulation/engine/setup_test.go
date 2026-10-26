@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
 // The hand-derived goldens of changeovers (ADR-026 D-047, D-048, D-049,
@@ -219,5 +221,53 @@ func TestSetupStreamsPerUnit(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// D-055's P0 limits and the setups' own rules are the validator's
+// (SETUP_INVALID, UNKNOWN_REFERENCE); Compile checks them again, so a
+// model past the validator never runs a bundle the kernel's unit identity
+// does not handle (one unit of at most one resource with setups, none in a
+// batch process) or a transition it cannot look up. On
+// deterministic-queue.json (arrival -> service -> done, resource server),
+// validator bypassed.
+func TestCompileChecksSetups(t *testing.T) {
+	one := constant(1)
+	for name, edit := range map[string]func(ir *model.ModelIR){
+		"two units": func(ir *model.ModelIR) {
+			ir.Resources[0].Capacity = 2
+			ir.Resources[0].Setups = &model.Setups{Default: &one}
+			ir.Nodes[1].Requires[0].Units = 2
+		},
+		"two resources with setups": func(ir *model.ModelIR) {
+			ir.Resources = append(ir.Resources, model.Resource{ID: "server_b", Type: ir.Resources[0].Type, Name: "B", Capacity: 1,
+				QueueDiscipline: ir.Resources[0].QueueDiscipline, Setups: &model.Setups{Default: &one}})
+			ir.Resources[0].Setups = &model.Setups{Default: &one}
+			ir.Nodes[1].Requires = append(ir.Nodes[1].Requires, model.ResourceRequirement{ResourceID: "server_b", Units: 1})
+		},
+		"a batch process": func(ir *model.ModelIR) {
+			ir.Resources[0].Setups = &model.Setups{Default: &one}
+			ir.Nodes[1].Batch = &model.Batch{MinSize: 2, MaxSize: 2}
+		},
+		"a transition to itself": func(ir *model.ModelIR) {
+			ir.Resources[0].Setups = &model.Setups{Transitions: []model.SetupTransition{{From: "change", To: "change", Distribution: one}}}
+		},
+		"an unknown initial": func(ir *model.ModelIR) {
+			ir.Resources[0].Setups = &model.Setups{Initial: "nope", Default: &one}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ir := golden(t, "deterministic-queue.json")
+			ir.Resources = slices.Clone(ir.Resources)
+			ir.Nodes = slices.Clone(ir.Nodes)
+			ir.Nodes[1].Requires = slices.Clone(ir.Nodes[1].Requires)
+			edit(&ir)
+			var err error
+			withoutValidator(t, func() { _, err = Compile(input(ir)) })
+			var ie *InputError
+			if !errors.As(err, &ie) || len(ie.Issues) != 1 || ie.Issues[0].Code != validate.SetupInvalid {
+				t.Fatalf("want one SETUP_INVALID, got %v", err)
+			}
+		})
 	}
 }

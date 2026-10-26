@@ -1,5 +1,5 @@
 GEMINUS_SIMPY_REFERENCE_OUT=/home/user/Geminus/.claude/worktrees/agent-afef414bfac403871/bin/simpy-reference-go.json go test -count=1 -run '^TestSimPyReferenceExport$' ./internal/simulation/des/
-ok  	github.com/kcl1104/geminus/internal/simulation/des	1.168s
+ok  	github.com/kcl1104/geminus/internal/simulation/des	1.162s
 /home/user/Geminus/.venv/bin/python scripts/simpy_reference.py --go-results bin/simpy-reference-go.json --report bin/simpy-reference-report.json
 {
   "simpy": "4.1.2",
@@ -246,6 +246,7 @@ PASS simulation reference
     "G-BT10",
     "G-BT11",
     "G-BT14",
+    "G-BT15",
     "G-SU1",
     "G-SU2",
     "G-SU3",
@@ -259,6 +260,7 @@ PASS simulation reference
     "G-BT9: refused by the script: unsupported: a calendar",
     "G-BT12: refused by the script: unsupported: q_oven is a finite buffer",
     "G-BT13: not compared: SimPy does not detect stalls",
+    "G-BT16: refused by the script: unsupported: r is needed by ['pa', 'pb']",
     "G-SU5: not compared: a stream identity test",
     "G-SU9: refused by the script: unsupported: a calendar",
     "G-SU10: refused by the script: unsupported: q_test is a finite buffer"
@@ -330,7 +332,7 @@ PASS simulation reference
  SU-S4 setups_started/m2                  go 167.8        simpy 170.167      bound 17.7       ok
 PASS batch and changeover reference
 GEMINUS_CALENDAR_REFERENCE_OUT=/home/user/Geminus/.claude/worktrees/agent-afef414bfac403871/bin/calendar-reference-go.json go test -count=1 -run '^TestCalendarRulesExport$' ./internal/simulation/engine/
-ok  	github.com/kcl1104/geminus/internal/simulation/engine	3.274s
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	3.291s
 /home/user/Geminus/.venv/bin/python scripts/calendar_reference.py --go-results bin/calendar-reference-go.json
 {
  "stats": {
@@ -354,4 +356,4 @@ ok  	github.com/kcl1104/geminus/internal/simulation/engine	3.274s
 }
 PASS calendar rules reference (R2, R3, R4, next_fit, X_end, TTRmax)
 simulation-reference-test: finite buffers and blocking (T-047), breakdowns (T-048), calendars and release schedules (T-049), batch processes and changeovers (T-050, without finite buffers or calendars), on the models each script accepts (see their docstrings); D-050 R2, R3, R4, next_fit, X_end and TTRmax against an independent Python implementation (R1 is not, see checks/T-049_VALIDATION.md).
-exit 0 elapsed 29s
+exit 0 elapsed 28s

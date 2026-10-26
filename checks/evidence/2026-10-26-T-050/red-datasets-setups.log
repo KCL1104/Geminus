@@ -1,0 +1,7 @@
+=== RUN   TestSetupDatasets
+    setups_test.go:52: issues [{DATASET_BINDING_INVALID /ir/resources/0/setups/default/distribution/samples_ref dataset:review_duration has no dataset binding error}], want exactly DATASET_BINDING_INVALID at /ir/resources/0/setups/default/samples_ref
+--- FAIL: TestSetupDatasets (0.05s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/storage/datasets	0.062s
+FAIL
+exit 1 elapsed 1s

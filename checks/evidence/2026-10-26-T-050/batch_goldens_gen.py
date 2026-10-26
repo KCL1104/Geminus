@@ -556,6 +556,78 @@ cases.append({
 })
 
 
+# ---------------------------------------------------------------- G-BT15
+# Added after mutation run 1 (mutant expired-limit-scheduled survived): an
+# oldest member whose wait limit is already reached when it becomes the
+# oldest gets no BATCH_TIMEOUT, the batch is checked at once (D-096 (c)).
+cases.append({
+    "id": "G-BT15",
+    "title": "max_wait 0 (min 1, max 2): every entry into an empty buffer readies a batch at once, with no BATCH_TIMEOUT (D-096 (b), (c))",
+    "model": model("G-BT15", [res("chamber")], [source("src", 10, 4), process("work", 25, [("chamber", 1)], (1, 2, 0)), sink("done")],
+                   src_work_done),
+    "config": config(100),
+    "derivation": [
+        "src every 10 minutes, 4 entities (10, 20, 30, 40); work: min 1, max 2, max_wait 0, service 25, one chamber.",
+        "With max_wait 0 an entity's limit is reached when it enters: when it becomes the oldest at its entry, enter + max_wait = now is not after now, so no BATCH_TIMEOUT is scheduled and the batch is checked at once (D-096 (c)): 1 >= min_size and it has waited 0 >= 0: ready.",
+        "t=0: the first arrival at 10 (seq 1).",
+        "t=10: e1 (seq 1; next at 20, seq 2) enters the empty buffer: ready at once, the batch request, DISPATCH (seq 3): b1 = (e1) 10-35 (SERVICE_COMPLETE seq 4); the buffer is empty again.",
+        "t=20: e2 (seq 2; next at 30, seq 5): ready at once, DISPATCH (seq 6): the chamber is busy: held. t=30: e3 (seq 5; next at 40, seq 7) enters behind e2: a request is waiting already (at most one ungranted), no dispatch.",
+        "t=35: SERVICE_COMPLETE (seq 4): release, DISPATCH (seq 8), e1 completes; the held batch request wakes: b2 = (e2, e3), min(2 waiting, max_size 2), 35-60 (seq 9).",
+        "t=40: e4 (seq 7, the last): ready at once, DISPATCH (seq 10): held. t=60: SERVICE_COMPLETE (seq 9): release, DISPATCH (seq 11), e2, e3 complete; b3 = (e4) 60-85 (seq 12). t=85: release, DISPATCH (seq 13), e4 completes; nothing.",
+        "13 events: 4 arrivals, 3 SERVICE_COMPLETEs, 6 DISPATCHes, no BATCH_TIMEOUT.",
+        "Result over [0,100]: 4 completed; lead times e1 25, e2 40, e3 30, e4 45; queue waits 0, 15, 5, 20; the chamber in use 75 of 100 minutes (0.75); batches[work]: 3 started, 4 members.",
+    ],
+    "expected": {
+        "starts": {"work": [[e("src", 1), 10], [e("src", 2), 35], [e("src", 3), 35], [e("src", 4), 60]]},
+        "completions": [[e("src", 1), 35], [e("src", 2), 60], [e("src", 3), 60], [e("src", 4), 85]],
+        "batches": [["work", 1, 10, [e("src", 1)]], ["work", 2, 35, [e("src", 2), e("src", 3)]], ["work", 3, 60, [e("src", 4)]]],
+        "batch_start_seqs": [["work", 1, 3], ["work", 2, 8], ["work", 3, 11]],
+        "blocks": [], "downs": [], "pending": [], "capacities": [],
+        "events": 13,
+        "result": {"completed_count": 4, "censored_entities": 0, "lead_times_minutes": [25, 40, 30, 45],
+                   "queue_waits_minutes": {"work": [0, 15, 5, 20]}, "resource_utilization": {"chamber": 0.75},
+                   "resource_states": None, "blocking": None, "buffers": None,
+                   "batches": {"work": {"batches_started": 3, "members_started": 4}}},
+    },
+    "simpy": "compare",
+})
+
+# ---------------------------------------------------------------- G-BT16
+# Added after mutation run 1 (mutant stale-timeout-not-ignored survived):
+# a stale BATCH_TIMEOUT due at the same tick as the live ones of its own and
+# of another batch process must not make its batch's request earlier.
+cases.append({
+    "id": "G-BT16",
+    "title": "a stale BATCH_TIMEOUT at the tick of two live ones: the requests take their FIFO places in the live timeouts' order (D-096 (c))",
+    "model": model("G-BT16", [res("r")], [table_source("src_a", 1000, [(10, 3)]), table_source("src_b", 1000, [(10, 1)]),
+                                          process("pa", 15, [("r", 1)], (1, 2, 10)), process("pb", 5, [("r", 1)], (1, 2, 10)), sink("done")],
+                   [flow("src_a", "pa"), flow("src_b", "pb"), flow("pa", "done"), flow("pb", "done")]),
+    "config": config(60),
+    "derivation": [
+        "One resource r (1 unit) needed by two batch processes: pa (min 1, max 2, max_wait 10, service 15) and pb (min 1, max 2, max_wait 10, service 5). src_a releases 3 at 10, src_b 1 at 10 (tables, period 1000).",
+        "t=0: the first rows in source ID order: src_a at 10 (seq 1), src_b at 10 (seq 2).",
+        "t=10: ARRIVAL (seq 1; the next row is after the horizon): a1 enters pa's empty buffer: the oldest (generation 1), BATCH_TIMEOUT at 20 (seq 3); 1 waits, waited 0: not ready. a2: 2 = max_size: ready, the batch request (request sequence 1), DISPATCH (seq 4). a3 enters (a request waits already). ARRIVAL (seq 2): b1 enters pb: the oldest, BATCH_TIMEOUT at 20 (seq 5); not ready.",
+        "DISPATCH (seq 4): r is free: pa's batch b1 = (a1, a2) 10-25 (SERVICE_COMPLETE seq 6); pa's oldest is now a3 (generation 2): BATCH_TIMEOUT at 10 + 10 = 20 (seq 7), seq 3 is stale; 1 waits, waited 0: not ready.",
+        "t=20, the three timeouts in sequence order: seq 3 (pa, generation 1): stale, ignored. seq 5 (pb): b1 has waited 10 >= 10: ready, pb's request (request sequence 2), DISPATCH (seq 8). seq 7 (pa, generation 2): a3 has waited 10: ready, pa's request (request sequence 3), behind pb's in r's FIFO. Had the stale one been taken for a check, pa's request would have come first. DISPATCH (seq 8): r is in use: pb's request is held at the front.",
+        "t=25: SERVICE_COMPLETE (seq 6): release, DISPATCH (seq 9), a1, a2 complete; pb's request wakes: pb's b1 = (b1) 25-30 (seq 10); pa's request is now the front: held. t=30: SERVICE_COMPLETE (seq 10): release, DISPATCH (seq 11), b1 completes; pa's b2 = (a3) 30-45 (seq 12). t=45: release, DISPATCH (seq 13), a3 completes.",
+        "13 events: 2 arrival events, 3 BATCH_TIMEOUTs, 3 SERVICE_COMPLETEs, 5 DISPATCHes.",
+        "Result over [0,60]: 4 completed; lead times a1 15, a2 15, b1 20, a3 35; queue waits pa: 0, 0, 20, pb: 15; r in use 15 + 5 + 15 = 35 of 60 minutes; batches[pa]: 2 started, 3 members; batches[pb]: 1, 1.",
+    ],
+    "expected": {
+        "starts": {"pa": [[e("src_a", 1), 10], [e("src_a", 2), 10], [e("src_a", 3), 30]], "pb": [[e("src_b", 1), 25]]},
+        "completions": [[e("src_a", 1), 25], [e("src_a", 2), 25], [e("src_b", 1), 30], [e("src_a", 3), 45]],
+        "batches": [["pa", 1, 10, [e("src_a", 1), e("src_a", 2)]], ["pb", 1, 25, [e("src_b", 1)]], ["pa", 2, 30, [e("src_a", 3)]]],
+        "batch_start_seqs": [["pa", 1, 4], ["pb", 1, 9], ["pa", 2, 11]],
+        "blocks": [], "downs": [], "pending": [], "capacities": [],
+        "events": 13,
+        "result": {"completed_count": 4, "censored_entities": 0, "lead_times_minutes": [15, 15, 20, 35],
+                   "queue_waits_minutes": {"pa": [0, 0, 20], "pb": [15]}, "resource_utilization": {"r": 35 / 60},
+                   "resource_states": None, "blocking": None, "buffers": None,
+                   "batches": {"pa": {"batches_started": 2, "members_started": 3}, "pb": {"batches_started": 1, "members_started": 1}}},
+    },
+    "simpy": "refused: a resource needed by two processes (the batch and changeover reference grants each process's own resource)",
+})
+
 # ---------------------------------------------------------------- the SimPy reference (stochastic)
 # Fixed before either side ran (T-050): 30 replications of 3000 minutes,
 # warmup 300, the tolerance of blocking-goldens.json (T-047). Compared by

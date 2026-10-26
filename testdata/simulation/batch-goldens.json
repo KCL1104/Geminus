@@ -3445,6 +3445,552 @@
     }
    },
    "simpy": "compare"
+  },
+  {
+   "id": "G-BT15",
+   "title": "max_wait 0 (min 1, max 2): every entry into an empty buffer readies a batch at once, with no BATCH_TIMEOUT (D-096 (b), (c))",
+   "model": {
+    "schema_version": "0.1",
+    "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+    "domain": "synthetic_line",
+    "name": "G-BT15",
+    "time_unit": "minute",
+    "entity_types": [
+     {
+      "id": "board",
+      "name": "board"
+     }
+    ],
+    "resources": [
+     {
+      "id": "chamber",
+      "type": "machine",
+      "name": "chamber",
+      "capacity": 1,
+      "queue_discipline": "fifo"
+     }
+    ],
+    "nodes": [
+     {
+      "id": "src",
+      "type": "source",
+      "entity_type": "board",
+      "arrival": {
+       "distribution": {
+        "type": "constant",
+        "value": 10
+       },
+       "max_entities": 4
+      }
+     },
+     {
+      "id": "work",
+      "type": "process",
+      "service_time": {
+       "distribution": {
+        "type": "constant",
+        "value": 25
+       }
+      },
+      "requires": [
+       {
+        "resource_id": "chamber",
+        "units": 1
+       }
+      ],
+      "batch": {
+       "min_size": 1,
+       "max_size": 2,
+       "max_wait": 0
+      }
+     },
+     {
+      "id": "done",
+      "type": "sink",
+      "outcome": "completed"
+     }
+    ],
+    "flows": [
+     {
+      "id": "src__work",
+      "from": "src",
+      "to": "work",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     },
+     {
+      "id": "work__done",
+      "from": "work",
+      "to": "done",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     }
+    ],
+    "constraints": [],
+    "metrics": [],
+    "views": {
+     "2d": {},
+     "3d": {}
+    },
+    "metadata": {
+     "synthetic": true
+    }
+   },
+   "config": {
+    "horizon": {
+     "value": 100,
+     "unit": "minute"
+    },
+    "warmup": {
+     "value": 0,
+     "unit": "minute"
+    },
+    "replications": 1,
+    "seed": 7,
+    "trace_level": "none"
+   },
+   "derivation": [
+    "src every 10 minutes, 4 entities (10, 20, 30, 40); work: min 1, max 2, max_wait 0, service 25, one chamber.",
+    "With max_wait 0 an entity's limit is reached when it enters: when it becomes the oldest at its entry, enter + max_wait = now is not after now, so no BATCH_TIMEOUT is scheduled and the batch is checked at once (D-096 (c)): 1 >= min_size and it has waited 0 >= 0: ready.",
+    "t=0: the first arrival at 10 (seq 1).",
+    "t=10: e1 (seq 1; next at 20, seq 2) enters the empty buffer: ready at once, the batch request, DISPATCH (seq 3): b1 = (e1) 10-35 (SERVICE_COMPLETE seq 4); the buffer is empty again.",
+    "t=20: e2 (seq 2; next at 30, seq 5): ready at once, DISPATCH (seq 6): the chamber is busy: held. t=30: e3 (seq 5; next at 40, seq 7) enters behind e2: a request is waiting already (at most one ungranted), no dispatch.",
+    "t=35: SERVICE_COMPLETE (seq 4): release, DISPATCH (seq 8), e1 completes; the held batch request wakes: b2 = (e2, e3), min(2 waiting, max_size 2), 35-60 (seq 9).",
+    "t=40: e4 (seq 7, the last): ready at once, DISPATCH (seq 10): held. t=60: SERVICE_COMPLETE (seq 9): release, DISPATCH (seq 11), e2, e3 complete; b3 = (e4) 60-85 (seq 12). t=85: release, DISPATCH (seq 13), e4 completes; nothing.",
+    "13 events: 4 arrivals, 3 SERVICE_COMPLETEs, 6 DISPATCHes, no BATCH_TIMEOUT.",
+    "Result over [0,100]: 4 completed; lead times e1 25, e2 40, e3 30, e4 45; queue waits 0, 15, 5, 20; the chamber in use 75 of 100 minutes (0.75); batches[work]: 3 started, 4 members."
+   ],
+   "expected": {
+    "starts": {
+     "work": [
+      [
+       "r0/src/1",
+       10
+      ],
+      [
+       "r0/src/2",
+       35
+      ],
+      [
+       "r0/src/3",
+       35
+      ],
+      [
+       "r0/src/4",
+       60
+      ]
+     ]
+    },
+    "completions": [
+     [
+      "r0/src/1",
+      35
+     ],
+     [
+      "r0/src/2",
+      60
+     ],
+     [
+      "r0/src/3",
+      60
+     ],
+     [
+      "r0/src/4",
+      85
+     ]
+    ],
+    "batches": [
+     [
+      "work",
+      1,
+      10,
+      [
+       "r0/src/1"
+      ]
+     ],
+     [
+      "work",
+      2,
+      35,
+      [
+       "r0/src/2",
+       "r0/src/3"
+      ]
+     ],
+     [
+      "work",
+      3,
+      60,
+      [
+       "r0/src/4"
+      ]
+     ]
+    ],
+    "batch_start_seqs": [
+     [
+      "work",
+      1,
+      3
+     ],
+     [
+      "work",
+      2,
+      8
+     ],
+     [
+      "work",
+      3,
+      11
+     ]
+    ],
+    "blocks": [],
+    "downs": [],
+    "pending": [],
+    "capacities": [],
+    "events": 13,
+    "result": {
+     "completed_count": 4,
+     "censored_entities": 0,
+     "lead_times_minutes": [
+      25,
+      40,
+      30,
+      45
+     ],
+     "queue_waits_minutes": {
+      "work": [
+       0,
+       15,
+       5,
+       20
+      ]
+     },
+     "resource_utilization": {
+      "chamber": 0.75
+     },
+     "resource_states": null,
+     "blocking": null,
+     "buffers": null,
+     "batches": {
+      "work": {
+       "batches_started": 3,
+       "members_started": 4
+      }
+     }
+    }
+   },
+   "simpy": "compare"
+  },
+  {
+   "id": "G-BT16",
+   "title": "a stale BATCH_TIMEOUT at the tick of two live ones: the requests take their FIFO places in the live timeouts' order (D-096 (c))",
+   "model": {
+    "schema_version": "0.1",
+    "model_id": "mdl_01M4YDQK00R942EDGA45T538HS",
+    "domain": "synthetic_line",
+    "name": "G-BT16",
+    "time_unit": "minute",
+    "entity_types": [
+     {
+      "id": "board",
+      "name": "board"
+     }
+    ],
+    "resources": [
+     {
+      "id": "r",
+      "type": "machine",
+      "name": "r",
+      "capacity": 1,
+      "queue_discipline": "fifo"
+     }
+    ],
+    "nodes": [
+     {
+      "id": "src_a",
+      "type": "source",
+      "entity_type": "board",
+      "arrival": {
+       "schedule": {
+        "process": "table",
+        "period": 1000,
+        "releases": [
+         {
+          "at": 10,
+          "quantity": 3
+         }
+        ]
+       }
+      }
+     },
+     {
+      "id": "src_b",
+      "type": "source",
+      "entity_type": "board",
+      "arrival": {
+       "schedule": {
+        "process": "table",
+        "period": 1000,
+        "releases": [
+         {
+          "at": 10,
+          "quantity": 1
+         }
+        ]
+       }
+      }
+     },
+     {
+      "id": "pa",
+      "type": "process",
+      "service_time": {
+       "distribution": {
+        "type": "constant",
+        "value": 15
+       }
+      },
+      "requires": [
+       {
+        "resource_id": "r",
+        "units": 1
+       }
+      ],
+      "batch": {
+       "min_size": 1,
+       "max_size": 2,
+       "max_wait": 10
+      }
+     },
+     {
+      "id": "pb",
+      "type": "process",
+      "service_time": {
+       "distribution": {
+        "type": "constant",
+        "value": 5
+       }
+      },
+      "requires": [
+       {
+        "resource_id": "r",
+        "units": 1
+       }
+      ],
+      "batch": {
+       "min_size": 1,
+       "max_size": 2,
+       "max_wait": 10
+      }
+     },
+     {
+      "id": "done",
+      "type": "sink",
+      "outcome": "completed"
+     }
+    ],
+    "flows": [
+     {
+      "id": "src_a__pa",
+      "from": "src_a",
+      "to": "pa",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     },
+     {
+      "id": "src_b__pb",
+      "from": "src_b",
+      "to": "pb",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     },
+     {
+      "id": "pa__done",
+      "from": "pa",
+      "to": "done",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     },
+     {
+      "id": "pb__done",
+      "from": "pb",
+      "to": "done",
+      "routing": {
+       "type": "probability",
+       "probability": 1
+      }
+     }
+    ],
+    "constraints": [],
+    "metrics": [],
+    "views": {
+     "2d": {},
+     "3d": {}
+    },
+    "metadata": {
+     "synthetic": true
+    }
+   },
+   "config": {
+    "horizon": {
+     "value": 60,
+     "unit": "minute"
+    },
+    "warmup": {
+     "value": 0,
+     "unit": "minute"
+    },
+    "replications": 1,
+    "seed": 7,
+    "trace_level": "none"
+   },
+   "derivation": [
+    "One resource r (1 unit) needed by two batch processes: pa (min 1, max 2, max_wait 10, service 15) and pb (min 1, max 2, max_wait 10, service 5). src_a releases 3 at 10, src_b 1 at 10 (tables, period 1000).",
+    "t=0: the first rows in source ID order: src_a at 10 (seq 1), src_b at 10 (seq 2).",
+    "t=10: ARRIVAL (seq 1; the next row is after the horizon): a1 enters pa's empty buffer: the oldest (generation 1), BATCH_TIMEOUT at 20 (seq 3); 1 waits, waited 0: not ready. a2: 2 = max_size: ready, the batch request (request sequence 1), DISPATCH (seq 4). a3 enters (a request waits already). ARRIVAL (seq 2): b1 enters pb: the oldest, BATCH_TIMEOUT at 20 (seq 5); not ready.",
+    "DISPATCH (seq 4): r is free: pa's batch b1 = (a1, a2) 10-25 (SERVICE_COMPLETE seq 6); pa's oldest is now a3 (generation 2): BATCH_TIMEOUT at 10 + 10 = 20 (seq 7), seq 3 is stale; 1 waits, waited 0: not ready.",
+    "t=20, the three timeouts in sequence order: seq 3 (pa, generation 1): stale, ignored. seq 5 (pb): b1 has waited 10 >= 10: ready, pb's request (request sequence 2), DISPATCH (seq 8). seq 7 (pa, generation 2): a3 has waited 10: ready, pa's request (request sequence 3), behind pb's in r's FIFO. Had the stale one been taken for a check, pa's request would have come first. DISPATCH (seq 8): r is in use: pb's request is held at the front.",
+    "t=25: SERVICE_COMPLETE (seq 6): release, DISPATCH (seq 9), a1, a2 complete; pb's request wakes: pb's b1 = (b1) 25-30 (seq 10); pa's request is now the front: held. t=30: SERVICE_COMPLETE (seq 10): release, DISPATCH (seq 11), b1 completes; pa's b2 = (a3) 30-45 (seq 12). t=45: release, DISPATCH (seq 13), a3 completes.",
+    "13 events: 2 arrival events, 3 BATCH_TIMEOUTs, 3 SERVICE_COMPLETEs, 5 DISPATCHes.",
+    "Result over [0,60]: 4 completed; lead times a1 15, a2 15, b1 20, a3 35; queue waits pa: 0, 0, 20, pb: 15; r in use 15 + 5 + 15 = 35 of 60 minutes; batches[pa]: 2 started, 3 members; batches[pb]: 1, 1."
+   ],
+   "expected": {
+    "starts": {
+     "pa": [
+      [
+       "r0/src_a/1",
+       10
+      ],
+      [
+       "r0/src_a/2",
+       10
+      ],
+      [
+       "r0/src_a/3",
+       30
+      ]
+     ],
+     "pb": [
+      [
+       "r0/src_b/1",
+       25
+      ]
+     ]
+    },
+    "completions": [
+     [
+      "r0/src_a/1",
+      25
+     ],
+     [
+      "r0/src_a/2",
+      25
+     ],
+     [
+      "r0/src_b/1",
+      30
+     ],
+     [
+      "r0/src_a/3",
+      45
+     ]
+    ],
+    "batches": [
+     [
+      "pa",
+      1,
+      10,
+      [
+       "r0/src_a/1",
+       "r0/src_a/2"
+      ]
+     ],
+     [
+      "pb",
+      1,
+      25,
+      [
+       "r0/src_b/1"
+      ]
+     ],
+     [
+      "pa",
+      2,
+      30,
+      [
+       "r0/src_a/3"
+      ]
+     ]
+    ],
+    "batch_start_seqs": [
+     [
+      "pa",
+      1,
+      4
+     ],
+     [
+      "pb",
+      1,
+      9
+     ],
+     [
+      "pa",
+      2,
+      11
+     ]
+    ],
+    "blocks": [],
+    "downs": [],
+    "pending": [],
+    "capacities": [],
+    "events": 13,
+    "result": {
+     "completed_count": 4,
+     "censored_entities": 0,
+     "lead_times_minutes": [
+      15,
+      15,
+      20,
+      35
+     ],
+     "queue_waits_minutes": {
+      "pa": [
+       0,
+       0,
+       20
+      ],
+      "pb": [
+       15
+      ]
+     },
+     "resource_utilization": {
+      "r": 0.5833333333333334
+     },
+     "resource_states": null,
+     "blocking": null,
+     "buffers": null,
+     "batches": {
+      "pa": {
+       "batches_started": 2,
+       "members_started": 3
+      },
+      "pb": {
+       "batches_started": 1,
+       "members_started": 1
+      }
+     }
+    }
+   },
+   "simpy": "refused: a resource needed by two processes (the batch and changeover reference grants each process's own resource)"
   }
  ],
  "reference": {

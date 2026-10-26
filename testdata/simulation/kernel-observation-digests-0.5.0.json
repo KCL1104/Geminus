@@ -1,5 +1,5 @@
 {
-  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.5.0, T-050) on the cases of batch-goldens.json and setup-goldens.json the validator accepts (all but G-BT13) and on their eight stochastic reference cases BT-S1-BT-S4 and SU-S1-SU-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestBatchGoldens, TestBatchStall, TestBatchRoutingDrawsInMemberOrder, TestSetupGoldens, TestSetupStreamsPerUnit) and after the SimPy reference agreed (scripts/simpy_batch_reference.py: 15 of the goldens and the eight reference cases), and is checked besides by the observation-only checker (kernel_check_batch_test.go, kernel_check_setup_test.go); these digests make any later change to batches, changeovers, their observations or the sequence numbers visible. The locks of des-go-0.1.0 to des-go-0.4.0 (kernel-observation-digests.json, -0.2.0.json, -0.3.0.json, -0.4.0.json) are kept as they were and still hold (ADR-026 D-047).",
+  "status": "KERNEL_OUTPUT_REGRESSION_LOCK: produced by running the Go kernel (des-go-0.5.0, T-050) on the cases of batch-goldens.json and setup-goldens.json the validator accepts (all but G-BT13) and on their eight stochastic reference cases BT-S1-BT-S4 and SU-S1-SU-S4 (replication 0, their own config); NOT an independent oracle. It was taken only after the hand-derived goldens passed (TestBatchGoldens, TestBatchStall, TestBatchRoutingDrawsInMemberOrder, TestSetupGoldens, TestSetupStreamsPerUnit) and after the SimPy reference agreed (scripts/simpy_batch_reference.py: 15 of the goldens and the eight reference cases), and is checked besides by the observation-only checker (kernel_check_batch_test.go, kernel_check_setup_test.go); these digests make any later change to batches, changeovers, their observations or the sequence numbers visible. The locks of des-go-0.1.0 to des-go-0.4.0 (kernel-observation-digests.json, -0.2.0.json, -0.3.0.json, -0.4.0.json) are kept as they were and still hold (ADR-026 D-047). G-BT15 and G-BT16 were added when mutation run 1 found two batch mutants no test killed (expired-limit-scheduled, stale-timeout-not-ignored); each entry was taken after the case's hand-derived expectation passed, the other entries are unchanged.",
   "engine_version": "des-go-0.5.0",
   "encoding": "SHA-256 over each observation's kind, tick, seq, entity, node, resource, value, at and batch as little-endian 64-bit words, in observation order (kernel-observation-digests-0.4.0.json's encoding with Observation.Batch as a ninth word; ObsBatchStart is kind 17, its value the members; ObsSetup is kind 18, its at the unit and its value the changeover ticks)",
   "cases": [
@@ -67,6 +67,16 @@
       "id": "G-BT14",
       "observations": 21,
       "sha256": "9112dea4a537cc1b72af65709d1f457181f28042878daa3d367e1f163eb097df"
+    },
+    {
+      "id": "G-BT15",
+      "observations": 29,
+      "sha256": "80de35cd5f1bdf02f8349c609f5de9acce93093319d535f71f0566e23f741917"
+    },
+    {
+      "id": "G-BT16",
+      "observations": 29,
+      "sha256": "f5e94af6e31e7742c52137fcec620266709138a45a8d9c87a0918521986d2295"
     },
     {
       "id": "BT-S1",

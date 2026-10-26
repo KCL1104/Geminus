@@ -215,8 +215,8 @@ func TestBatchGoldens(t *testing.T) {
 			}
 		})
 	}
-	if ran != 12 {
-		t.Errorf("%d batch goldens ran, want 12", ran)
+	if ran != 14 {
+		t.Errorf("%d batch goldens ran, want 14", ran)
 	}
 }
 
@@ -295,5 +295,89 @@ func TestBatchRoutingDrawsInMemberOrder(t *testing.T) {
 	slices.Reverse(reversed)
 	if slices.Equal(pattern, reversed) {
 		t.Fatalf("seed %d gives the outcomes %v: a palindrome cannot tell the order", p.seed, pattern)
+	}
+}
+
+// D-096 (f): at a batch's end each member's route is resolved for that
+// member, its visits charged to it, in FIFO order; a visit limit stops the
+// end at the first member that passes it. Four members end together and
+// go to done (2 visits) or through a rework node to done2 (3 visits) by
+// the decision's draws in member order; with max_entity_visits 4 (a source
+// visit and the batch process's before), the first member drawn for the
+// rework fails entering done2. The draws are computed here from the
+// stream itself. (Added after mutation run 2: resolving the routes in
+// reverse order but committing them in FIFO order was invisible, since
+// the destinations follow the draws; only the visits went to the wrong
+// member.)
+func TestBatchVisitsChargedToTheirMember(t *testing.T) {
+	nodes := []model.Node{source("src", 1, 4), process("work", 5, "R"), {ID: "d", Type: model.NodeDecision},
+		{ID: "done", Type: model.NodeSink}, {ID: "rw", Type: model.NodeRework}, {ID: "done2", Type: model.NodeSink}}
+	nodes[1].Batch = &model.Batch{MinSize: 4, MaxSize: 4}
+	ir := build(t, nodes, []model.Flow{flow("f1", "src", "work", 1), flow("f2", "work", "d", 1), flow("f3", "d", "done", 0.5),
+		flow("f4", "d", "rw", 0.5), flow("f5", "rw", "done2", 1)}, "R")
+	in := input(ir)
+	in.Limits.MaxEntityVisits = 4
+	p := compile(t, in)
+	stream := Stream(ReplicationSeed(p.seed, 0), "d", PurposeRouting)
+	first := -1
+	for i := range 4 {
+		if stream.Uniform() >= 0.5 && first < 0 { // flows by ID: f3 (done) below 0.5, f4 (rw) above
+			first = i
+		}
+	}
+	if first < 0 {
+		t.Fatalf("seed %d sends every member to done: the case cannot tell", p.seed)
+	}
+	_, err := RunReplication(context.Background(), p, 0, NewBudget(1_000_000), nil)
+	want := FormatEntityID(0, "src", uint64(first+1)) + " entering done2 at tick 540000"
+	if !errors.Is(err, ErrEntityVisits) || !strings.Contains(err.Error(), want) {
+		t.Fatalf("got %v, want the visit limit for %s", err, want)
+	}
+}
+
+// D-054: one service draw per batch, from the batch process's (process,
+// service) stream, in grant order: batch k's service is the stream's k-th
+// draw, the same for all its members. Full batches of 2 (min = max, no
+// wait limit) every 20 minutes, an exponential service of mean 4. The
+// draws are computed here from the stream itself. (Added after mutation
+// run 2: a second draw per batch was caught only by des-go-0.5.0's
+// observation lock, since every hand-derived golden has a constant
+// service and the SimPy reference compares only statistically.)
+func TestBatchServiceDrawsOncePerBatch(t *testing.T) {
+	mean := 4.0
+	nodes := []model.Node{source("src", 10, 40), process("work", 0, "R"), {ID: "done", Type: model.NodeSink}}
+	nodes[1].ServiceTime.Distribution = model.Distribution{Type: model.DistExponential, Mean: &mean}
+	nodes[1].Batch = &model.Batch{MinSize: 2, MaxSize: 2}
+	p := compile(t, input(build(t, nodes, []model.Flow{flow("f1", "src", "work", 1), flow("f2", "work", "done", 1)}, "R")))
+	n := slices.IndexFunc(p.nodes, func(x cnode) bool { return x.id == "work" })
+	col := &collect{}
+	if _, err := RunReplication(context.Background(), p, 0, NewBudget(1_000_000), col); err != nil {
+		t.Fatal(err)
+	}
+	start, end := map[uint64]int64{}, map[uint64][]int64{}
+	var order []uint64
+	for _, o := range col.all {
+		switch {
+		case o.Kind == ObsBatchStart:
+			start[o.Batch] = o.Tick
+			order = append(order, o.Batch)
+		case o.Kind == ObsServiceEnd && o.Node == n:
+			end[o.Batch] = append(end[o.Batch], o.Tick)
+		}
+	}
+	if len(order) != 20 {
+		t.Fatalf("%d batches, want 20 (40 entities in batches of 2)", len(order))
+	}
+	stream := Stream(ReplicationSeed(p.seed, 0), "work", PurposeService)
+	distinct := map[int64]bool{}
+	for k, b := range order {
+		want := p.nodes[n].service.draw(stream)
+		distinct[want] = true
+		if b != uint64(k+1) || len(end[b]) != 2 || end[b][0]-start[b] != want || end[b][1]-start[b] != want {
+			t.Errorf("batch %d (number %d) started at %d, its members ended at %v; the stream's draw %d is %d ticks", k+1, b, start[b], end[b], k+1, want)
+		}
+	}
+	if len(distinct) < 15 {
+		t.Fatalf("seed %d gives %d distinct services of 20: the case cannot tell the draws apart", p.seed, len(distinct))
 	}
 }
