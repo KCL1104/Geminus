@@ -801,6 +801,67 @@ func (c *checker) metrics(ctx context.Context) {
 		if err != nil {
 			c.fail("metrics/renamed-run", "model %d: the same IR under another domain does not run: %v", i, err)
 		}
+		c.modelMetrics(ctx, i, in, plain)
+	}
+}
+
+// modelMetrics: a pack's model metrics (D-058's ModelMetricsProvider,
+// metrics.domain) read the effective IR and the generic Result without
+// changing either, are schema-valid summaries with keys, ride on the
+// engine's Result without changing its generic part, are the ones the pack
+// gives when asked directly, and are reproducible.
+func (c *checker) modelMetrics(ctx context.Context, i int, in simulation.RunInput, plain *simulation.Result) {
+	mp, ok := c.s.Pack.(domainpack.ModelMetricsProvider)
+	if !ok {
+		return
+	}
+	ir, res := clone(&c.s.Models[i]), clonedResult(plain)
+	irBefore, resBefore := encoded(&ir), encoded(res)
+	var direct map[string]simulation.MetricSummary
+	if !c.call("model-metrics/compute", func() { direct = mp.ComputeModelMetrics(&ir, res) }) {
+		return
+	}
+	if encoded(&ir) != irBefore {
+		c.fail("model-metrics/read-only", "model %d: ComputeModelMetrics changed the model", i)
+	}
+	if encoded(res) != resBefore {
+		c.fail("model-metrics/read-only", "model %d: ComputeModelMetrics changed the engine result", i)
+	}
+	for k := range direct {
+		if k == "" {
+			c.fail("model-metrics/keys", "model %d: a metric has an empty key", i)
+		}
+	}
+	e := &des.Engine{DomainMetrics: c.s.Pack.ComputeMetrics, ModelMetrics: mp.ComputeModelMetrics}
+	var got *simulation.Result
+	var err error
+	if !c.call("model-metrics/compute", func() { got, err = e.Run(ctx, in, nil) }) {
+		return
+	}
+	if err != nil {
+		c.fail("model-metrics/run", "model %d: %v", i, err)
+		return
+	}
+	withRun := *got
+	withRun.RunID = "sim_01M4YDQK00FGZZWH0PP15XPNFA"
+	doc, _ := json.Marshal(withRun)
+	if issues, err := validate.Document(doc, "simulation.schema.json#/$defs/Result", validate.IRSchemaInvalid); err != nil || len(issues) > 0 {
+		c.fail("model-metrics/schema", "model %d: the Result with the pack's model metrics is not schema-valid: %v %v", i, err, issues)
+	}
+	if engineOwned(got) != engineOwned(plain) {
+		c.fail("model-metrics/generic-unchanged", "model %d: the pack changed the engine's generic metrics", i)
+	}
+	// The engine gives the pack the Result before its digest; the pack's
+	// answer does not depend on the digest, the DORA entries or run identity.
+	if len(direct) == 0 {
+		direct = nil
+	}
+	if encoded(got.Metrics.Domain) != encoded(direct) {
+		c.fail("model-metrics/engine-agrees", "model %d: the engine's metrics.domain differs from the pack's answer for the same model and Result", i)
+	}
+	again, err := e.Run(ctx, in, nil)
+	if err != nil || again.Reproducibility.ResultDigest != got.Reproducibility.ResultDigest {
+		c.fail("model-metrics/deterministic", "model %d: a second run has another digest (%v)", i, err)
 	}
 }
 
@@ -821,7 +882,7 @@ func clonedResult(r *simulation.Result) *simulation.Result {
 // metrics stay in, so a pack cannot rewrite them (T-042 review B6).
 func engineOwned(r *simulation.Result) string {
 	cp := *r
-	cp.Metrics.DORA = nil
+	cp.Metrics.DORA, cp.Metrics.Domain = nil, nil
 	cp.Reproducibility.ResultDigest = ""
 	return encoded(cp)
 }
@@ -830,7 +891,7 @@ func engineOwned(r *simulation.Result) string {
 // the domain is renamed.
 func domainFree(r *simulation.Result) string {
 	cp := *r
-	cp.Metrics.DORA = nil
+	cp.Metrics.DORA, cp.Metrics.Domain = nil, nil
 	cp.Reproducibility.ResultDigest, cp.Reproducibility.ModelHash, cp.Reproducibility.EffectiveModelHash = "", "", ""
 	return encoded(cp)
 }
@@ -918,6 +979,7 @@ func (c *checker) static(ctx context.Context) {
 	// What the pack answers for every model before and after it sees the
 	// sentinel model: a pack that remembers an earlier call (another
 	// tenant's model) answers differently (T-042 review N7).
+	mp, modelMetrics := c.s.Pack.(domainpack.ModelMetricsProvider)
 	answers := func() string {
 		var out []any
 		for i := range c.s.Models {
@@ -926,6 +988,10 @@ func (c *checker) static(ctx context.Context) {
 		}
 		if c.result != nil {
 			out = append(out, c.s.Pack.ComputeMetrics(clonedResult(c.result)))
+			if modelMetrics {
+				m := clone(&c.s.Models[0])
+				out = append(out, mp.ComputeModelMetrics(&m, clonedResult(c.result)))
+			}
 		}
 		return encoded(out)
 	}
@@ -943,6 +1009,11 @@ func (c *checker) static(ctx context.Context) {
 		c.s.Pack.Validate(&ir)
 		c.s.Pack.DefaultViews(&ir)
 		_, _ = c.s.Pack.InferFromEvents(ctx, seen)
+		if modelMetrics && c.result != nil {
+			// Model metrics read the IR, so the sentinel model reaches
+			// them too (D-058).
+			mp.ComputeModelMetrics(&ir, clonedResult(c.result))
+		}
 	})
 	var final string
 	if !c.call("prompt/static", func() { final = c.staticData() }) {
@@ -958,9 +1029,9 @@ func (c *checker) static(ctx context.Context) {
 		return
 	}
 	if strings.Contains(after, sentinel) || strings.Contains(after, sentinelID) {
-		c.fail("stateless", "Validate, DefaultViews or ComputeMetrics returns text from a model or dataset of an earlier call")
+		c.fail("stateless", "Validate, DefaultViews, ComputeMetrics or ComputeModelMetrics returns text from a model or dataset of an earlier call")
 	} else if after != before {
-		c.fail("stateless", "Validate, DefaultViews or ComputeMetrics answers differently after the pack saw another model")
+		c.fail("stateless", "Validate, DefaultViews, ComputeMetrics or ComputeModelMetrics answers differently after the pack saw another model")
 	}
 }
 
@@ -971,7 +1042,7 @@ func (c *checker) static(ctx context.Context) {
 // under -race (make backend-race).
 func (c *checker) concurrent(ctx context.Context) {
 	ir := clone(&c.s.Models[0])
-	methods := []string{"NodeCatalog", "ResourceCatalog", "Validate", "DefaultViews", "PromptContext", "ComputeMetrics", "InferFromEvents", "Template"}
+	methods := []string{"NodeCatalog", "ResourceCatalog", "Validate", "DefaultViews", "PromptContext", "ComputeMetrics", "InferFromEvents", "Template", "ComputeModelMetrics"}
 	// A template provider's first template, in the last locale (T-044 review M1).
 	template := func() string { return "" }
 	if tp, ok := c.s.Pack.(domainpack.TemplateProvider); ok {
@@ -985,13 +1056,17 @@ func (c *checker) concurrent(ctx context.Context) {
 		}
 	}
 	calls := func(ir *model.ModelIR) []string {
-		var metrics map[string]simulation.MetricSummary
+		var metrics, modelMetrics map[string]simulation.MetricSummary
 		if c.result != nil {
 			metrics = c.s.Pack.ComputeMetrics(clonedResult(c.result))
+			if mp, ok := c.s.Pack.(domainpack.ModelMetricsProvider); ok {
+				m := clone(ir)
+				modelMetrics = mp.ComputeModelMetrics(&m, clonedResult(c.result))
+			}
 		}
 		inferred, err := c.s.Pack.InferFromEvents(ctx, events)
 		return []string{encoded(c.s.Pack.NodeCatalog()), encoded(c.s.Pack.ResourceCatalog()), encoded(c.s.Pack.Validate(ir)), encoded(c.s.Pack.DefaultViews(ir)),
-			encoded(c.s.Pack.PromptContext()), encoded(metrics), encoded(inferred) + fmt.Sprint(err), template()}
+			encoded(c.s.Pack.PromptContext()), encoded(metrics), encoded(inferred) + fmt.Sprint(err), template(), encoded(modelMetrics)}
 	}
 	var want []string
 	if !c.call("concurrent", func() { want = calls(&ir) }) {

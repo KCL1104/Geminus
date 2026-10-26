@@ -6,8 +6,9 @@
 // and the sampled trace (T-022).
 //
 // Like the engine it is pure: no DB, network, object storage, LLM or HTTP.
-// Domain metrics (DORA) come from a function the process injects, so the
-// generic engine never imports a domain pack.
+// Domain metrics (DORA, and a pack's model metrics, D-058) come from
+// functions the process injects, so the generic engine never imports a
+// domain pack.
 package des
 
 import (
@@ -55,6 +56,12 @@ type Engine struct {
 	// DomainMetrics, if set, fills Result.metrics.dora from the generic
 	// result before the digest is taken (DomainPack.ComputeMetrics).
 	DomainMetrics func(*simulation.Result) map[string]simulation.MetricSummary
+	// ModelMetrics, if set, fills Result.metrics.domain from a copy of the
+	// effective IR the engine ran and the generic result, after
+	// DomainMetrics and before the digest (D-058; a pack's
+	// ComputeModelMetrics). An empty answer leaves metrics.domain absent,
+	// so the Result and its digest are those of a run without it (D-047).
+	ModelMetrics func(*model.ModelIR, *simulation.Result) map[string]simulation.MetricSummary
 
 	timeout       func(simulation.ExecutionLimits) time.Duration // tests only
 	afterPool     func()                                         // tests only: runs once every worker has stopped
@@ -255,6 +262,15 @@ func (e *Engine) RunWith(ctx context.Context, in simulation.RunInput, opts Optio
 			res.Metrics.DORA = dm
 		}
 	}
+	if e.ModelMetrics != nil {
+		mm, err := modelMetrics(e.ModelMetrics, in.Model, res)
+		if err != nil {
+			return nil, err
+		}
+		if len(mm) > 0 {
+			res.Metrics.Domain = mm
+		}
+	}
 	digest, err := hashing.Result(*res)
 	if err != nil {
 		return nil, fmt.Errorf("%w: result digest: %v", engine.ErrInternal, err)
@@ -272,6 +288,26 @@ func domainMetrics(f func(*simulation.Result) map[string]simulation.MetricSummar
 		}
 	}()
 	return f(res), nil
+}
+
+// modelMetrics runs the injected pack function on a copy of the effective
+// IR, so a pack bug cannot change the caller's input; a panic fails the
+// run with ErrInternal, as in domainMetrics.
+func modelMetrics(f func(*model.ModelIR, *simulation.Result) map[string]simulation.MetricSummary, ir model.ModelIR, res *simulation.Result) (mm map[string]simulation.MetricSummary, err error) {
+	data, err := model.Encode(&ir)
+	if err != nil {
+		return nil, fmt.Errorf("%w: encoding the model for its metrics: %v", engine.ErrInternal, err)
+	}
+	var cp model.ModelIR
+	if err := model.Decode(data, &cp); err != nil {
+		return nil, fmt.Errorf("%w: decoding the model for its metrics: %v", engine.ErrInternal, err)
+	}
+	defer func() {
+		if v := recover(); v != nil {
+			mm, err = nil, fmt.Errorf("%w: panic in ModelMetrics: %v", engine.ErrInternal, v)
+		}
+	}()
+	return f(&cp, res), nil
 }
 
 // deliver returns a report function that never blocks and a stop function.

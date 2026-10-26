@@ -77,6 +77,21 @@ type TemplateProvider interface {
 	Template(templateName, modelID, name string, locale Locale) (*model.ModelIR, error)
 }
 
+// ModelMetricsProvider is implemented by a pack whose metrics need the model
+// as well as the engine's Result (D-058, ELECTRONICS_LINE §5): which
+// processes are stations, their resources' roles, calendars and routing
+// probabilities are in the IR, not in the Result. The engine calls it with
+// the effective IR it ran (the version with the scenario patch applied) and
+// the generic Result before the digest, and stores the answer in
+// metrics.domain (absent when empty, so results of packs without it keep
+// their digest, D-047). Like ComputeMetrics it reads both and changes
+// neither; a metric without the data it needs is unavailable with a
+// reason. It is a separate interface so DomainPack keeps the report's
+// method set.
+type ModelMetricsProvider interface {
+	ComputeModelMetrics(ir *model.ModelIR, result *simulation.Result) map[string]simulation.MetricSummary
+}
+
 // NodeDefinition is one palette entry: a domain kind built on a generic node type.
 type NodeDefinition struct {
 	Kind        string         // stable catalog key, e.g. "code_review"

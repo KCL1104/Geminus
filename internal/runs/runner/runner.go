@@ -292,6 +292,9 @@ func (h *Handler) execute(ctx context.Context, hr handler.Run, org string, st st
 	polls.Go(func() { h.poll(run, hr, org, r.ID, sink, stop) })
 	credit := &credit{hr: hr, org: org, run: r.ID, base: st.attempt.Base, limit: in.Limits.MaxEvents, batch: h.cfg.Batch(r.Limits.MaxEvents)}
 	e := &des.Engine{Version: h.cfg.EngineVersion, Workers: h.cfg.Workers, DomainMetrics: pack.ComputeMetrics}
+	if mp, ok := pack.(domainpack.ModelMetricsProvider); ok {
+		e.ModelMetrics = mp.ComputeModelMetrics // metrics.domain (D-058)
+	}
 	ran := time.Now()
 	out, err := e.RunWith(run, in, des.Options{Progress: sink, Credit: credit, Granted: st.attempt.Granted})
 	cause := context.Cause(run)

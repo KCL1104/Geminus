@@ -11,7 +11,7 @@
 # NOT RUN when the CPU cannot run such a build.
 set -euo pipefail
 PKGS=()
-for d in internal/simulation internal/results; do
+for d in internal/simulation internal/results internal/domainpack; do
   [ -d "$d" ] && PKGS+=("./$d/...")
 done
 TARGETS=("amd64 v3" "arm64" "ppc64le" "s390x" "riscv64" "loong64")

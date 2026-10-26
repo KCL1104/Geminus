@@ -55,6 +55,14 @@ func ci95(x []float64) *simulation.ConfidenceInterval {
 
 func ptr[T any](v T) *T { return &v }
 
+// Summarize is summary for a domain pack's model metrics (D-058, T-051):
+// the same mean, Type 7 quantiles and replication-mean interval as every
+// statistic of the Result, in the same numerical profile. values are in a
+// deterministic order (replications by index) and are not modified.
+func Summarize(values []float64, pop simulation.Population, unit, reasonIfEmpty string) simulation.MetricSummary {
+	return summary(values, pop, unit, reasonIfEmpty)
+}
+
 // summary describes values of one population: available with mean, p50,
 // p95 and (for the replication population) a 95% CI, or unavailable with a
 // reason when there are no values. A missing metric is never 0.
