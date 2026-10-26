@@ -126,6 +126,24 @@ jobs:
           path: apps/web-e2e/test-results/
           if-no-files-found: ignore
 
+  containers:
+    # T-039: the three images (Dockerfile.api, Dockerfile.worker,
+    # apps/web/Dockerfile; base images pinned by digest) and the local
+    # staging composition on them (deploy/local/compose.yaml, LOCAL ONLY:
+    # PostgreSQL, migrations as the migration login, seed, API, worker, web
+    # and the repository's test OIDC provider; nothing leaves the runner).
+    # Images are built, never pushed; no registry credential is used.
+    name: containers (build, local staging smoke)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker version && docker compose version
+      - run: make build-containers
+      - run: make staging-smoke
+
   db-smoke:
     # Disposable service container only (default libc en_US.utf8 collation, so
     # the D-034 byte-order manifest test runs under a non-C collation).

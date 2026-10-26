@@ -5,8 +5,8 @@ GO_PKGS := ./cmd/... ./internal/... ./schemas/... ./scripts/... ./prompts/...
 WEB := apps/web
 WEB_E2E := apps/web-e2e
 export NEXT_TELEMETRY_DISABLED := 1
-.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test ai-eval ai-eval-live ai-smoke-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
-spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests
+.PHONY: spec-check spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests spec-deploy db-tests-render ts-contracts backend-test backend-race backend-build backend-numeric frontend-test frontend-build db-test db-go-test integration-test ai-eval ai-eval-live ai-smoke-live security-scan simulation-reference-test benchmark-test build-containers staging-smoke db-restore-test architecture-check
+spec-check: spec-contracts spec-planning spec-docs spec-sql-inventory spec-reference-math spec-decisions spec-ts-contracts spec-hashes spec-db-tests spec-deploy
 spec-contracts:
 	$(PYTHON) scripts/check_contracts.py
 spec-planning:
@@ -33,6 +33,10 @@ spec-db-tests:
 	$(PYTHON) scripts/render_db_tests.py --check
 db-tests-render:
 	$(PYTHON) scripts/render_db_tests.py
+# T-039: the Dockerfiles, the local composition and the Railway files, statically (no Docker needed):
+# pinned bases, non-root users, no build arguments or credentials, the variables the code reads.
+spec-deploy:
+	$(PYTHON) scripts/check_deploy.py
 backend-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included in this spec pack.' >&2; exit 2; }
 	@unformatted=$$(gofmt -l cmd internal schemas scripts prompts); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
@@ -76,7 +80,7 @@ db-test:
 # schema public in tenant.TestRuntimeLoginCannotCreate), so they run one package at a time (-p 1).
 db-go-test:
 	@test -n "$$GEMINUS_TEST_DATABASE_URL" || { echo 'Set GEMINUS_TEST_DATABASE_URL to the disposable dt_test_* database used by make db-test.' >&2; exit 2; }
-	GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/runs/... ./internal/import/... ./internal/proposals/... ./internal/scenarios/... ./internal/comparisons/... ./internal/api/... ./internal/worker/... ./cmd/api/... ./cmd/worker/... ./cmd/provision-tenant/...
+	GEMINUS_REQUIRE_DB_TESTS=1 go test -p 1 -count=1 -race ./internal/storage/... ./internal/tenant/... ./internal/models/... ./internal/runs/... ./internal/import/... ./internal/proposals/... ./internal/scenarios/... ./internal/comparisons/... ./internal/api/... ./internal/worker/... ./cmd/api/... ./cmd/worker/... ./cmd/provision-tenant/... ./cmd/migrate/...
 # Package dependency rules of docs/ARCHITECTURE.md §2 (T-042), read from the build graph.
 architecture-check:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
@@ -139,6 +143,22 @@ ai-smoke-live:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/ai-eval-live ./cmd/ai-eval-live
 	@bin/ai-eval-live -smoke -root $(CURDIR); code=$$?; [ $$code = 0 ] || { echo "ai-eval-live: exit $$code" >&2; exit $$code; }
-security-scan benchmark-test build-containers staging-smoke db-restore-test:
+# T-039: the three images, from the repository root (Dockerfile.api, Dockerfile.worker, apps/web/Dockerfile), tagged
+# geminus-{api,worker,web}:$(CONTAINER_TAG); not pushed, not scanned (no container scanner is chosen yet). Without a
+# Docker daemon it fails with NOT RUN (exit 2), never a fake PASS.
+CONTAINER_TAG ?= local
+build-containers:
+	@command -v docker >/dev/null 2>&1 || { echo 'build-containers: NOT RUN: docker is not installed; no image was built.' >&2; exit 2; }
+	@docker info >/dev/null 2>&1 || { echo 'build-containers: NOT RUN: no Docker daemon is reachable (docker info failed); no image was built.' >&2; exit 2; }
+	docker build -f Dockerfile.api -t geminus-api:$(CONTAINER_TAG) .
+	docker build -f Dockerfile.worker -t geminus-worker:$(CONTAINER_TAG) .
+	docker build -f apps/web/Dockerfile -t geminus-web:$(CONTAINER_TAG) .
+	@echo 'build-containers: geminus-api, geminus-worker, geminus-web:$(CONTAINER_TAG) built (not pushed; the container scan is NOT RUN).' >&2
+# T-039 (TEST-030): the local staging composition on those images (deploy/local/compose.yaml, LOCAL ONLY, with the
+# repository's test OIDC provider): migrations as the migration login, seed, API, worker and web, refusals, stop.
+# NOT RUN (exit 2) without Docker. The public deployment's checks are a person's (docs/runbooks/deploy.md).
+staging-smoke:
+	bash deploy/local/staging-smoke.sh
+security-scan benchmark-test db-restore-test:
 	@echo 'NOT IMPLEMENTED: $@ must be replaced by real product checks in the assigned task; no fake PASS.' >&2
 	@exit 2

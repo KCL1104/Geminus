@@ -1,0 +1,128 @@
+# LOCAL STAGING SMOKE ONLY (T-039). NEVER A PUBLIC DEPLOYMENT.
+#
+# The three images (make build-containers: geminus-{api,worker,web}:local),
+# PostgreSQL, the migration and seed steps, and the repository's TEST-ONLY
+# OIDC provider (apps/web-e2e/fake/servers.mjs, ADR-018 §3: deterministic,
+# fixed test credentials, anyone can sign in as anyone). That provider is why
+# this file must never be deployed: a public deployment signs in through the
+# owner's Auth0 tenant (docs/runbooks/deploy.md; the Railway files in
+# deploy/railway/ have no such service).
+#
+# It is driven by deploy/local/staging-smoke.sh (make staging-smoke), which
+# makes throwaway passwords and a session key for each run (nothing secret
+# is in this file), builds nothing, and removes everything at the end.
+#
+# What runs as what (the deployment's split, docs/runbooks/deploy.md §3):
+#   postgres   creates the twin roles and the four logins at first start
+#              (db/bootstrap_roles.sql, deploy/sql/create_logins.sql)
+#   migrate    geminus-migrate as geminus_migrator (twin_owner)
+#   seed       geminus-provision-tenant as geminus_provisioner (D-042)
+#   api        as geminus_api; worker as geminus_worker (runtime logins)
+#   web        the BFF; it shares its network namespace with the API and the
+#              test provider, so every URL the BFF holds is plain http on
+#              loopback, the only case it accepts http (apps/web/lib/session)
+#
+# Not covered here: signing in through the real API (the test provider's
+# access tokens are not JWTs the API verifies, and the API only accepts an
+# https issuer, so AUTH_OIDC_* name an unreachable placeholder that no token
+# ever reaches), object storage (disabled) and AI (disabled).
+name: geminus-local-smoke
+
+x-db: &db
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16.15@sha256:9e2cf6287f25c3151f4c9421ccce2b17f3e60061c111a29165e0d2cdd9ff0a97
+    environment:
+      POSTGRES_USER: geminus_admin
+      POSTGRES_PASSWORD: ${GEMINUS_LOCAL_ADMIN_PASSWORD:?run make staging-smoke (deploy/local/staging-smoke.sh), which makes the local passwords}
+      POSTGRES_DB: geminus
+      # Read by create_logins.sql at the first start only.
+      GEMINUS_MIGRATOR_DB_PASSWORD: ${GEMINUS_MIGRATOR_DB_PASSWORD:?}
+      GEMINUS_API_DB_PASSWORD: ${GEMINUS_API_DB_PASSWORD:?}
+      GEMINUS_WORKER_DB_PASSWORD: ${GEMINUS_WORKER_DB_PASSWORD:?}
+      GEMINUS_PROVISIONER_DB_PASSWORD: ${GEMINUS_PROVISIONER_DB_PASSWORD:?}
+    volumes:
+      - ../../db/bootstrap_roles.sql:/docker-entrypoint-initdb.d/10-bootstrap_roles.sql:ro
+      - ../sql/create_logins.sql:/docker-entrypoint-initdb.d/20-create_logins.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "geminus_admin", "-d", "geminus"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *db
+    image: geminus-api:local
+    profiles: ["steps"]
+    entrypoint: ["/usr/local/bin/geminus-migrate", "-dir", "/migrations"]
+    command: ["up"]
+    environment:
+      GEMINUS_MIGRATE_DATABASE_URL: postgresql://geminus_migrator:${GEMINUS_MIGRATOR_DB_PASSWORD:?}@postgres:5432/geminus?sslmode=disable
+
+  seed:
+    <<: *db
+    image: geminus-api:local
+    profiles: ["steps"]
+    entrypoint: ["/usr/local/bin/geminus-provision-tenant"]
+    command: ["organization", "-name", "Demo line (synthetic)", "-owner-issuer", "https://oidc.local.invalid/", "-owner-subject", "local|synthetic-owner"]
+    environment:
+      GEMINUS_PROVISION_DATABASE_URL: postgresql://geminus_provisioner:${GEMINUS_PROVISIONER_DB_PASSWORD:?}@postgres:5432/geminus?sslmode=disable
+
+  web:
+    image: geminus-web:local
+    environment:
+      PORT: "3100"
+      HOSTNAME: 0.0.0.0
+      BFF_APP_ORIGIN: http://127.0.0.1:3100
+      BFF_API_URL: http://127.0.0.1:8080
+      BFF_OIDC_ISSUER: http://127.0.0.1:3101/
+      BFF_OIDC_AUTHORIZATION_URL: http://127.0.0.1:3101/authorize
+      BFF_OIDC_TOKEN_URL: http://127.0.0.1:3101/oauth/token
+      BFF_OIDC_REVOCATION_URL: http://127.0.0.1:3101/oauth/revoke
+      BFF_OIDC_END_SESSION_URL: http://127.0.0.1:3101/v2/logout
+      BFF_OIDC_JWKS_URL: http://127.0.0.1:3101/.well-known/jwks.json
+      # The test provider's fixed client (apps/web-e2e/fake/servers.mjs): test-only values.
+      BFF_OIDC_CLIENT_ID: e2e-client
+      BFF_OIDC_CLIENT_SECRET: e2e-client-secret
+      BFF_OIDC_AUDIENCE: https://api.e2e.invalid
+      SESSION_KEYS: ${GEMINUS_LOCAL_SESSION_KEYS:?}
+    ports:
+      - "127.0.0.1:${GEMINUS_SMOKE_WEB_PORT:-3100}:3100"
+      - "127.0.0.1:${GEMINUS_SMOKE_API_PORT:-18080}:8080"
+
+  oidc-test:
+    # TEST-ONLY OIDC provider, local smoke only.
+    image: geminus-web:local
+    network_mode: service:web
+    depends_on: [web]
+    command: ["node", "/fake/servers.mjs"]
+    volumes:
+      - ../../apps/web-e2e/fake:/fake:ro
+
+  api:
+    <<: *db
+    image: geminus-api:local
+    network_mode: service:web
+    environment:
+      APP_ENV: production
+      API_LISTEN_ADDR: ":8080"
+      DATABASE_URL: postgresql://geminus_api:${GEMINUS_API_DB_PASSWORD:?}@postgres:5432/geminus?sslmode=disable
+      # A placeholder: no token reaches the API in the local smoke.
+      AUTH_OIDC_ISSUER: https://oidc.local.invalid/
+      AUTH_OIDC_AUDIENCE: https://api.e2e.invalid
+      AUTH_OIDC_JWKS_URL: https://oidc.local.invalid/.well-known/jwks.json
+      AUTH_OIDC_REQUIRE_AT_JWT: "true"
+
+  worker:
+    <<: *db
+    image: geminus-worker:local
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql://geminus_worker:${GEMINUS_WORKER_DB_PASSWORD:?}@postgres:5432/geminus?sslmode=disable
+      WORKER_ID: local-smoke-worker-1
+      # The seeded organization (staging-smoke.sh sets it after the seed step).
+      WORKER_ORGANIZATION_IDS: ${GEMINUS_LOCAL_ORG:-}

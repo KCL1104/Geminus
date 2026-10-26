@@ -1,0 +1,39 @@
+# The Go API image (T-039; docs/runbooks/deploy.md). Built from the
+# repository root: docker build -f Dockerfile.api -t geminus-api .
+#
+# It also carries the two operator commands, which run as their own steps
+# with their own logins (never the API's): geminus-migrate (migrations/,
+# as the migration login; internal/storage/migrations) and
+# geminus-provision-tenant (D-042, as the provisioning login).
+#
+# Base images are pinned by digest (ADR-011): the builder is the Go
+# toolchain of go.mod (1.27.3, H-020); the runtime is distroless static,
+# non-root (uid 65532), with CA certificates and tzdata and no shell, no
+# package manager. Nothing secret is built in: every credential comes from
+# the platform's environment at run time.
+
+FROM golang:1.27.3-trixie@sha256:fbb7ae40b62ff8afe31662df570d39b4f5052ac32b90dae8e60d7657a20a74f4 AS build
+WORKDIR /src
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-trimpath
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+COPY cmd ./cmd
+COPY internal ./internal
+COPY schemas ./schemas
+COPY prompts ./prompts
+RUN go build -ldflags='-s -w -buildid=' -o /out/geminus-api ./cmd/api \
+ && go build -ldflags='-s -w -buildid=' -o /out/geminus-migrate ./cmd/migrate \
+ && go build -ldflags='-s -w -buildid=' -o /out/geminus-provision-tenant ./cmd/provision-tenant
+
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:18f4cc26c9ffa7f20a359298be7deadac5c607c8e03a02b8119f1a5fc2f82c99
+COPY --from=build /out/geminus-api /out/geminus-migrate /out/geminus-provision-tenant /usr/local/bin/
+COPY migrations/*.up.sql /migrations/
+# distroless's nonroot user, by number (no name lookup needed).
+USER 65532:65532
+# API_LISTEN_ADDR defaults to :8080 (internal/config).
+EXPOSE 8080
+# SIGTERM: the API stops accepting, finishes requests in progress (20 s)
+# and flushes telemetry (cmd/api).
+STOPSIGNAL SIGTERM
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 CMD ["/usr/local/bin/geminus-api", "-probe"]
+ENTRYPOINT ["/usr/local/bin/geminus-api"]

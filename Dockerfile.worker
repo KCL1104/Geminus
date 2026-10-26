@@ -1,0 +1,29 @@
+# The Go worker image (T-039; docs/runbooks/deploy.md). Built from the
+# repository root: docker build -f Dockerfile.worker -t geminus-worker .
+#
+# Base images are pinned by digest (ADR-011), as Dockerfile.api's. The
+# runtime is distroless static, non-root (uid 65532), without a shell.
+# Nothing secret is built in: the database login, the bucket's credentials
+# and (only with live AI on) the provider key come from the platform's
+# environment at run time, and only this service gets the AI key (T-053 I5).
+
+FROM golang:1.27.3-trixie@sha256:fbb7ae40b62ff8afe31662df570d39b4f5052ac32b90dae8e60d7657a20a74f4 AS build
+WORKDIR /src
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-trimpath
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+COPY cmd ./cmd
+COPY internal ./internal
+COPY schemas ./schemas
+COPY prompts ./prompts
+RUN go build -ldflags='-s -w -buildid=' -o /out/geminus-worker ./cmd/worker
+
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:18f4cc26c9ffa7f20a359298be7deadac5c607c8e03a02b8119f1a5fc2f82c99
+COPY --from=build /out/geminus-worker /usr/local/bin/
+# distroless's nonroot user, by number (no name lookup needed).
+USER 65532:65532
+# SIGTERM stops the running handler and records its attempt
+# (WORKER_STOPPED, retried; ADR-024); a second signal ends the process.
+# The worker has no HTTP listener: the platform watches the process.
+STOPSIGNAL SIGTERM
+ENTRYPOINT ["/usr/local/bin/geminus-worker"]

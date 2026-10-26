@@ -1,0 +1,87 @@
+{
+  "about": "Railway service variables of the hackathon deployment (T-039; H-030: Railway only; H-032: the coordinator applies them with deploy/railway/deploy.sh). 'value' is set as written after the script fills {{INPUT}} (an environment variable of the run, see deploy.sh --help), {{bucket:field}} (the bucket's S3 credentials) and {{seed:organization_id}} (cmd/provision-tenant's output); ${{...}} are Railway reference variables, kept as written. 'secret': true has no value here: 'source' says where it comes from: 'generated' (made by the script with Python's secrets module, piped to the CLI on stdin, never printed, then sealed), 'bucket:<field>' (copied from the bucket's credentials on stdin, then sealed) or 'owner' (the owner enters it in Railway's UI; the script never sets or reads it, and only checks that the name exists where 'required' is true). 'when': 'absent' is set only if the service does not have it yet (the owner may change it). scripts/check_deploy.py checks this file against the code and the rules of docs/runbooks/deploy.md (no AI key or live switch on the API, no database on the web, no test-only AI provider or local file storage, secrets without values).",
+  "bucket": "geminus-objects",
+  "database": "Postgres",
+  "services": {
+    "migrate": {
+      "config": "deploy/railway/migrate.railway.json",
+      "variables": {
+        "GEMINUS_MIGRATOR_DB_PASSWORD": {"secret": true, "source": "generated", "login": "geminus_migrator"},
+        "GEMINUS_MIGRATE_DATABASE_URL": {"value": "postgresql://geminus_migrator:${{GEMINUS_MIGRATOR_DB_PASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}"}
+      }
+    },
+    "api": {
+      "config": "deploy/railway/api.railway.json",
+      "public_domain": {"port": 8080},
+      "variables": {
+        "APP_ENV": {"value": "production"},
+        "PORT": {"value": "8080"},
+        "API_LISTEN_ADDR": {"value": ":8080"},
+        "GEMINUS_API_DB_PASSWORD": {"secret": true, "source": "generated", "login": "geminus_api"},
+        "DATABASE_URL": {"value": "postgresql://geminus_api:${{GEMINUS_API_DB_PASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}"},
+        "AUTH_OIDC_ISSUER": {"value": "{{GEMINUS_AUTH0_ISSUER}}"},
+        "AUTH_OIDC_AUDIENCE": {"value": "{{GEMINUS_AUTH0_AUDIENCE}}"},
+        "AUTH_OIDC_JWKS_URL": {"value": "{{GEMINUS_AUTH0_ISSUER}}.well-known/jwks.json"},
+        "AUTH_OIDC_REQUIRE_AT_JWT": {"value": "true"},
+        "OBJECT_STORAGE_PROVIDER": {"value": "s3"},
+        "OBJECT_STORAGE_S3_ENDPOINT": {"value": "{{bucket:endpoint}}"},
+        "OBJECT_STORAGE_S3_BUCKET": {"value": "{{bucket:bucketName}}"},
+        "OBJECT_STORAGE_S3_REGION": {"value": "{{bucket:region}}"},
+        "OBJECT_STORAGE_S3_URL_STYLE": {"value": "{{bucket:urlStyle}}"},
+        "OBJECT_STORAGE_S3_ACCESS_KEY_ID": {"secret": true, "source": "bucket:accessKeyId"},
+        "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY": {"secret": true, "source": "bucket:secretAccessKey"},
+        "AI_PROVIDER": {"value": "disabled", "when": "absent", "later": "T-055 and the key-free availability of T-053 I5 (docs/runbooks/deploy.md §4.4): until both, proposals are refused with 503 and the API has no AI key"}
+      },
+      "forbidden": ["GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_META_API_KEY", "GEMINUS_AI_LIVE", "AI_API_KEY",
+        "GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_MIGRATOR_DB_PASSWORD", "GEMINUS_PROVISION_DATABASE_URL", "GEMINUS_WORKER_DB_PASSWORD",
+        "BFF_OIDC_CLIENT_SECRET", "SESSION_KEYS", "GEMINUS_UI_GALLERY"]
+    },
+    "worker": {
+      "config": "deploy/railway/worker.railway.json",
+      "variables": {
+        "APP_ENV": {"value": "production"},
+        "GEMINUS_WORKER_DB_PASSWORD": {"secret": true, "source": "generated", "login": "geminus_worker"},
+        "DATABASE_URL": {"value": "postgresql://geminus_worker:${{GEMINUS_WORKER_DB_PASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}"},
+        "WORKER_ID": {"value": "railway-worker-1"},
+        "WORKER_ORGANIZATION_IDS": {"value": "{{seed:organization_id}}", "when": "absent"},
+        "OBJECT_STORAGE_PROVIDER": {"value": "s3"},
+        "OBJECT_STORAGE_S3_ENDPOINT": {"value": "{{bucket:endpoint}}"},
+        "OBJECT_STORAGE_S3_BUCKET": {"value": "{{bucket:bucketName}}"},
+        "OBJECT_STORAGE_S3_REGION": {"value": "{{bucket:region}}"},
+        "OBJECT_STORAGE_S3_URL_STYLE": {"value": "{{bucket:urlStyle}}"},
+        "OBJECT_STORAGE_S3_ACCESS_KEY_ID": {"secret": true, "source": "bucket:accessKeyId"},
+        "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY": {"secret": true, "source": "bucket:secretAccessKey"},
+        "AI_PROVIDER": {"value": "disabled", "when": "absent", "later": "the owner may set anthropic (or T-055's meta) with AI_POLICY_APPROVAL and AI_MODEL; live stays off unless the owner also sets GEMINUS_AI_LIVE=on and the keys"},
+        "GEMINUS_AI_LIVE": {"secret": false, "source": "owner", "required": false},
+        "GEMINUS_ANTHROPIC_API_KEY_A": {"secret": true, "source": "owner", "required": false},
+        "GEMINUS_ANTHROPIC_API_KEY_B": {"secret": true, "source": "owner", "required": false},
+        "GEMINUS_META_API_KEY": {"secret": true, "source": "owner", "required": false, "later": "T-055 adds it; worker only (T-053 I5)"}
+      },
+      "forbidden": ["GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_MIGRATOR_DB_PASSWORD", "GEMINUS_PROVISION_DATABASE_URL", "GEMINUS_API_DB_PASSWORD",
+        "BFF_OIDC_CLIENT_SECRET", "SESSION_KEYS", "AI_API_KEY", "GEMINUS_UI_GALLERY"]
+    },
+    "web": {
+      "config": "deploy/railway/web.railway.json",
+      "public_domain": {"port": 3000},
+      "variables": {
+        "PORT": {"value": "3000"},
+        "HOSTNAME": {"value": "0.0.0.0"},
+        "BFF_APP_ORIGIN": {"value": "https://${{RAILWAY_PUBLIC_DOMAIN}}"},
+        "BFF_API_URL": {"value": "https://${{api.RAILWAY_PUBLIC_DOMAIN}}"},
+        "BFF_OIDC_ISSUER": {"value": "{{GEMINUS_AUTH0_ISSUER}}"},
+        "BFF_OIDC_AUTHORIZATION_URL": {"value": "{{GEMINUS_AUTH0_ISSUER}}authorize"},
+        "BFF_OIDC_TOKEN_URL": {"value": "{{GEMINUS_AUTH0_ISSUER}}oauth/token"},
+        "BFF_OIDC_REVOCATION_URL": {"value": "{{GEMINUS_AUTH0_ISSUER}}oauth/revoke"},
+        "BFF_OIDC_END_SESSION_URL": {"value": "{{GEMINUS_AUTH0_ISSUER}}oidc/logout"},
+        "BFF_OIDC_JWKS_URL": {"value": "{{GEMINUS_AUTH0_ISSUER}}.well-known/jwks.json"},
+        "BFF_OIDC_CLIENT_ID": {"value": "{{GEMINUS_AUTH0_CLIENT_ID}}"},
+        "BFF_OIDC_AUDIENCE": {"value": "{{GEMINUS_AUTH0_AUDIENCE}}"},
+        "BFF_OIDC_CLIENT_SECRET": {"secret": true, "source": "owner", "required": true},
+        "SESSION_KEYS": {"secret": true, "source": "generated", "format": "session-key"}
+      },
+      "forbidden": ["DATABASE_URL", "GEMINUS_API_DB_PASSWORD", "GEMINUS_WORKER_DB_PASSWORD", "GEMINUS_MIGRATOR_DB_PASSWORD",
+        "GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_PROVISION_DATABASE_URL", "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY",
+        "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_META_API_KEY", "GEMINUS_AI_LIVE", "AI_API_KEY", "GEMINUS_UI_GALLERY"]
+    }
+  }
+}

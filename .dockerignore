@@ -1,0 +1,27 @@
+# Build context of the three images (T-039; Dockerfile.api, Dockerfile.worker,
+# apps/web/Dockerfile, all built from the repository root). Nothing secret,
+# local or generated goes in: no .env files, no git history, no installed
+# packages or build output, no reports or sources the images do not use.
+.git
+.github
+.claude
+.impeccable
+.venv
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+**/node_modules
+**/.next
+**/test-results
+**/playwright-report
+bin
+checks
+sources
+docs
+planning
+openapi
+testdata
+db/tests
+apps/web-e2e
+deploy
