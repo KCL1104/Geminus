@@ -235,3 +235,12 @@ D-045（APPROVED，H-010；解決 CB-17）的 API、DB 與 client 部分，是 T
 | SSE 經過 proxy 的長時間連線 | proxy 沒有自己的 timeout，undici 預設 300 秒；T-023 的 run events 需要比這更頻繁的 heartbeat |
 | Auth0 登出是否要求確認（BFF 不帶 `id_token_hint`） | staging，`docs/runbooks/auth0.md` §5 第 6 點 |
 | Auth0 對錯誤 client secret 與失敗的 Action 實際回的 status 與錯誤碼 | staging，`docs/runbooks/auth0.md` §5 第 5 點（round 3 I-6）；未確認前，`invalid_client` 保留 session 是依 RFC 6749 的推論 |
+
+## 後續：T-045 review 第 1 輪 I2（2026-10-26）
+
+T-045 的獨立 review（H-003，`checks/evidence/2026-10-26-T-045-r1/reviewer/REVIEW.md` I2）在 T-043 的登入錯誤頁找到一個缺陷，在 T-045 的修正分支 `t045-r1` 修正；細節與 log 見 `checks/T-045_VALIDATION.md`「Review 第 1 輪」。
+
+- **發現**：`apps/web/app/auth/error/page.tsx`（74e327a）以 `reason in reasons` 查表；`in` 也找得到 `Object.prototype` 的名稱，所以 `/auth/error?reason=toString`（以及 `constructor`、`__proto__`、`hasOwnProperty`、`valueOf`）把函式交給 `t()`，丟出 "needs a numeric count"，伺服器回 500（reviewer 的 `cookie-probe.log` 與 probe P11）。只顯示固定的文字，沒有資料外洩；但任何人都能讓這一頁回 500，也不符「其他理由一律為 failed」的設計。
+- **修正**：改為 `Object.hasOwn(reasons, reason)`（只查自己的 key）。
+- **先紅後綠**：`apps/web/tests/layout.test.tsx`「says a sign-in failed for a reason it does not know, even one named like an object's own property」：`toString`、`constructor`、`__proto__`、`hasOwnProperty`、`valueOf`、`isPrototypeOf`、`propertyIsEnumerable`、`toLocaleString`、不認得的字、空字串、沒有 reason、兩個 reason，都必須顯示一般的失敗文字與「Sign in again」連結；修正前失敗（`checks/evidence/2026-10-26-T-045-r1/red-i2-i3.log`），修正後通過。瀏覽器：`apps/web-e2e/tests/session.spec.ts`「a sign-in error page with an unknown reason says the sign-in failed, never a 500」，修正前 `toString` 得到 500（`red-e2e-run1.log`），修正後 200（`e2e-test.log`）。
+- BFF 只以 `expired`、`refused`、`failed` 三個 reason 轉址到這一頁（`lib/session/bff.ts`；`tests/bff.test.ts` 檢查），所以這只在有人自己輸入或傳遞網址時發生。

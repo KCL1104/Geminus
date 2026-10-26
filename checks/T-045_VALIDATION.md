@@ -1,8 +1,8 @@
 # T-045 驗證報告：Design system、UI 函式庫評估與 UX gate
 
-**日期：2026-10-19｜狀態：`in_progress`（實作與自我驗證完成；截圖 baseline 已產生並提交，CI 開始比對；prototype 與 baseline 待 owner 確認；之後送獨立 review，依 H-003 驗收）｜需求：REQ-022、REQ-023｜驗收測試：TEST-033｜決策：ADR-021 ACCEPTED（H-009）、H-007、H-008**
+**日期：2026-10-19｜狀態：`in_progress`（實作與自我驗證完成；re-skin（H-027）後的 32 張截圖 baseline 由 CI 固定容器產生、owner 確認（H-028）並提交，CI 比對通過；10-19 prototype 的兩個流程由 H-027 Q2 定為 T-015／T-031 的依據；獨立 review（H-003）第 1 輪 CHANGES REQUESTED，修正見文末；依 H-003 驗收）｜需求：REQ-022、REQ-023｜驗收測試：TEST-033｜決策：ADR-021 ACCEPTED（H-009）、H-007、H-008**
 
-**2026-10-26 更新**：依 H-027 套用 Marey design system 並保持簡潔，見文末「Re-skin：套用 Marey design system，保持簡潔」一節；在新 baseline 由 CI 產生並經人確認之前，下方「截圖 baseline」一節描述的是 re-skin 之前的 baseline。
+**2026-10-26 更新**：依 H-027 套用 Marey design system 並保持簡潔，見文末「Re-skin：套用 Marey design system，保持簡潔」一節；新的 32 張 baseline 已由 CI 產生、經 owner 確認（H-028）並提交（見文末「新的截圖 baseline（H-028）」）；下方「交付內容」「截圖 baseline」與 Prototype 一節中的 16 張是 re-skin 之前的 baseline，已被取代（review 第 1 輪 L2 更正）。
 
 範圍依 tasks.json：比較多個 UI 函式庫並以 spike 決定（ADR-021）；design tokens、app shell 與基本元件，套用到 T-014／T-044 的畫面；每個 UI 任務先交 prototype 經 owner review，本任務以 T-015 與 T-031 的 low-fi prototype 驗證流程；自動檢查（axe、純鍵盤 E2E、en／zh-Hant × 390／1280 截圖比對，baseline 變更需人工確認）納入 make 與 CI。
 
@@ -20,7 +20,7 @@
 | `apps/web/messages/*.ts` | skip link、表格選取、gallery 的 catalog 字串（en／zh-Hant） |
 | `apps/web/tests/` | `tokens.test.ts`、`ui-provider.test.tsx`、`ui-components.test.tsx`、`gallery.test.tsx`、`ui-harness.tsx` |
 | `apps/web-e2e/` | 獨立的 npm 專案（`@playwright/test` 1.56.1、`@axe-core/playwright` 4.13.0）：`a11y`、`keyboard`、`strings`、`screenshots` 四組瀏覽器檢查；README 說明 baseline 流程 |
-| `apps/web-e2e/tests/__screenshots__/` | 16 張截圖 baseline（4 個畫面 × en／zh-Hant × 390／1280），由 CI 固定容器產生（見「截圖 baseline」） |
+| `apps/web-e2e/tests/__screenshots__/` | 32 張截圖 baseline（4 個畫面 × en／zh-Hant × 390／1280 × 淺色／深色），由 CI 固定容器產生、owner 確認（H-028，見文末）；re-skin 之前是 16 張淺色（見「截圖 baseline」） |
 | `Makefile` | `make e2e-test` 執行瀏覽器檢查，並說明沒涵蓋的部分（本機的截圖、T-040 的產品閉環） |
 | `.github/workflows/ci.yml` | e2e job 在以 digest 固定的 `mcr.microsoft.com/playwright:v1.56.1-noble` 中執行；`workflow_dispatch` 的 `update_screenshots` 只產生 baseline 並上傳為 artifact，不會自動提交 |
 | `docs/adr/ADR-011-toolchain-bootstrap.md` | 瀏覽器檢查工具、容器 image 與 `actions/upload-artifact` v7.0.1（SHA pin）的紀錄 |
@@ -95,7 +95,9 @@
 
 ## Re-skin：套用 Marey design system，保持簡潔（2026-10-26，H-027）
 
-**狀態：實作與自我驗證完成（分支 `t045-reskin`，自 f4db5d6）；截圖 baseline 尚未重新產生（必須在 CI 的固定容器產生，見下），在那之前 CI 的截圖比對會失敗；待 coordinator 整合、CI 與獨立 review（H-003）。T-045 的 status 不變。**
+**狀態（撰寫時）：實作與自我驗證完成（分支 `t045-reskin`，自 f4db5d6）；截圖 baseline 尚未重新產生（必須在 CI 的固定容器產生，見下），在那之前 CI 的截圖比對會失敗；待 coordinator 整合、CI 與獨立 review（H-003）。T-045 的 status 不變。**
+
+**更新（review 第 1 輪，L2）**：coordinator 已整合（見「Coordinator 的執行」）；32 張 baseline 由 CI 產生、owner 確認（H-028）並提交，之後的 CI 截圖比對通過（run 40309207437）。本節的「CI 會紅」「待 owner 視覺審閱」是撰寫時的狀態。
 
 ### 依據
 
@@ -106,10 +108,10 @@
 
 | 原則 | 本次怎麼做 | 檢查 |
 |---|---|---|
-| 1. 每個畫面一個主要動作 | Primary 只用 Graphite Ink；gallery 的停用「Publish」與「Save draft」改為預設樣式，gallery 也只有一個 primary | `tests/simplicity.test.tsx`（每種草稿狀態、gallery、失敗頁）、`apps/web-e2e/tests/simplicity.spec.ts`（每個 route × en／zh-Hant × 390／1280） |
-| 2. 只保留需要的控制項（H-027 補充） | 每個控制項對應已實作且有測試的功能（下表）；移除專案頁重複的「All projects」；app strip 不放 Find、帳號、模式切換 | 產品 route 沒有停用的控制項、沒有兩個連到同一處的連結、沒有同名按鈕（唯一例外為待 owner 決定的一組） |
+| 1. 每個畫面一個主要動作 | Primary 只用 Graphite Ink；gallery 的停用「Publish」與「Save draft」改為預設樣式，gallery 也只有一個 primary | `tests/simplicity.test.tsx`（每種草稿狀態、gallery、失敗頁；review 第 1 輪起也含已登入的專案列表、專案頁、模型頁）、`apps/web-e2e/tests/simplicity.spec.ts`（每個 route 未登入時的樣子 × en／zh-Hant × 390／1280） |
+| 2. 只保留需要的控制項（H-027 補充） | 每個控制項對應已實作且有測試的功能（下表）；移除專案頁重複的「All projects」；app strip 不放 Find、帳號、模式切換 | 瀏覽器（`simplicity.spec.ts`，每個 route 未登入時的樣子 × 兩種語言 × 390／1280）：gallery 以外沒有停用的控制項、沒有同名的可見按鈕、沒有兩個連到同一處的可見連結。Unit（`simplicity.test.tsx`，兩種語言，每個畫面連同 app shell 的控制項，review 第 1 輪 M1 起）：首頁、找不到頁面、登入錯誤頁、每種草稿狀態（含重新載入失敗的衝突）、載入失敗，以及以 fake API 與 session render 的已登入專案列表、專案頁、模型頁（載入成功與失敗）：沒有同名（同 role）的按鈕或連結、沒有兩個連到同一處的連結；已登入的頁面也沒有停用的控制項、至多一個 primary。已登入的頁面在瀏覽器中沒有檢查（app 尚未掛 session，T-043）。唯一例外是 owner 以 H-028 保留的一組 |
 | 3. 漸進揭露 | Problem 的技術訊息與 request ID 收進「Details／詳細資料」；驗證細節與重試時間仍直接顯示 | `i18n-dom`／`ui` 測試仍讀得到全文；review |
-| 4. 不裝飾 | 1 px hairline（去掉 callout 與 status 的 4 px 側邊條）；陰影只給 popover、dialog 與 invalid 內環；只有 180 ms 的狀態顏色轉換，沒有 overlay 進場動畫；顏色只有中性色、scenario 綠與 warning／error | `tests/design-rules.test.ts`、`tests/tokens.test.ts` |
+| 4. 不裝飾 | 1 px hairline（去掉 callout 與 status 的 4 px 側邊條）；陰影只給 popover、dialog 與 invalid 內環；只有 180 ms 的狀態顏色轉換，沒有 overlay 進場動畫；顏色只有中性色、scenario 綠與 warning／error | `tests/design-rules.test.ts`、`tests/tokens.test.ts`；review 第 1 輪 L1 起，`simplicity.spec.ts` 在瀏覽器檢查每個轉換都是 180 ms 與該曲線，reduced motion 時都不超過 0.01 ms |
 | 5. 版面安靜、文字簡短 | 一個 main、沒有側欄；內容與 app strip 左緣對齊；間距只用 DESIGN.md 的 scale；文案去掉 task ID | `layout.test.tsx`、`simplicity.spec.ts`、`design-rules.test.ts` |
 
 DESIGN.md 中比上述原則繁複的元件，app 採較簡單的做法並記錄理由（DESIGN.md「Simplifications in the app」）：語言與主題都用本系統的 `Select`（不是語言 segmented control 加循環的主題按鈕）；overlay 沒有進場動畫；note 先不加圖示；表格列沒有 hover 底色；頁面標題用 Headline／Title／Body；動作結果是 Outcome 框。
@@ -154,7 +156,7 @@ DESIGN.md 中比上述原則繁複的元件，app 採較簡單的做法並記錄
 | `/` | Go to projects → 專案列表（**與 strip 的 Projects 重複，保留，請 owner 決定**） | T-044；`layout.test.tsx`、`keyboard.spec.ts` |
 | `/projects` | 每個專案名稱（連結）→ 開專案；Try again（可重試的失敗時）→ 重新載入 | T-014；`dom.test.tsx`；未登入時只顯示「需要登入」，沒有控制項 |
 | `/projects/[id]` | 每個模型名稱（連結）→ 開模型；Try again | T-014；`ui.test.tsx`、`dom.test.tsx` |
-| `/models/[id]` | Back to project → 回到該專案（strip 沒有這個目的地）；衝突時 Reload the current draft（primary）與 Discard my changes（danger）；Try again | T-014、AGENTS §2（409 不 silent overwrite，不自動 rebase）；衝突的兩個動作由 `ui.test.tsx`、`dom.test.tsx` 檢查；Back to project 沒有專門的測試 |
+| `/models/[id]` | Back to project → 回到該專案（strip 沒有這個目的地）；衝突時 Reload the current draft（primary）與 Discard my changes（danger）；Try again | T-014、AGENTS §2（409 不 silent overwrite，不自動 rebase）；衝突的兩個動作由 `ui.test.tsx`、`dom.test.tsx` 檢查；Back to project 在已登入的模型頁出現且只有一個（`simplicity.test.tsx`，review 第 1 輪起） |
 | Problem（各頁的錯誤） | Details／詳細資料（展開）→ 技術訊息與 request ID | TEST-009（request ID 仍在頁中）；`ui.test.tsx`、`i18n-dom.test.tsx` |
 | 找不到頁面 | Go to the start page | T-044 review M2（任何沒有頁面的網址的出路）；頁面由 `layout.test.tsx`、`simplicity.test.tsx` 檢查，連結本身沒有專門的測試 |
 | `/auth/error` | Sign in again → `/auth/login` | T-043、ADR-018（登入失敗後唯一的出路）；頁面由 `a11y.spec.ts`、`simplicity.spec.ts` 檢查，連結本身沒有專門的測試 |
@@ -207,7 +209,7 @@ re-skin 改變了每個畫面，因此提交前的 16 張 baseline 全部會不�
 | CI 固定容器中的截圖比對與新 baseline 產生 | 只能在 CI 的 workflow_dispatch 執行（見上）；本機只有預覽截圖 |
 | Node 24 | 本機只有 Node 22.22.0；以 `--engine-strict=false` 安裝與執行。CI 依 `.nvmrc` 使用 24.21.0 |
 | CI run | 依指示不推送、不觸發 CI |
-| Owner 對新外觀的視覺審閱 | 待 owner；本報告的預覽截圖與 CI 的 baseline artifact 供審閱 |
+| Owner 對新外觀的視覺審閱 | 撰寫時待 owner；之後由 H-028 確認（32 張 baseline） |
 | 螢幕報讀器、Firefox、Safari | 同前（需要人執行；P0 只跑 Chromium） |
 | 已登入且有資料的畫面 | 沒有掛 AuthProvider，fake API 不回資料（同 impeccable audit 的限制）；這些狀態由 unit test 以元件檢查 |
 | CSP 實測 | app 目前沒有 CSP；只依設計推論：字型同源（`font-src 'self'` 即可）、主題不需要我們的 inline script（Next.js 自己的 inline script 另需 nonce，與本次無關） |
@@ -215,7 +217,7 @@ re-skin 改變了每個畫面，因此提交前的 16 張 baseline 全部會不�
 
 ### 風險
 
-- **CI 在 baseline 重新產生前會紅**（截圖比對）。處理見上。
+- **CI 在 baseline 重新產生前會紅**（截圖比對）。處理見上；已由 H-028 的 baseline 解決（run 40309207437 全綠）。
 - **字型下載**：自架的 woff2 共約 4.5 MB 進入 `/_next/static/media`（105 個 Noto Sans TC 分檔與 3 個 Archivo 檔），每頁只下載用到的分檔（`theme.spec.ts` 檢查 zh-Hant 首頁少於 40 個中文分檔）。`font-display: swap`：第一次造訪可能先以 fallback 字型顯示再換字（沒有做 size-adjust fallback）。
 - **First-load JS 與 CSS 變大**（數字見上表）：每頁多約 50–64 KiB gzip 的 JS（shell 的 `Select`；之後 T-015 等頁面本來就會用到它，屬提前付出）與約 37 KiB gzip 的 render-blocking CSS（Noto Sans TC 的 `@font-face` 表，英文頁也載入）。替代方案供 owner 決定：(a) 不載入 Noto Sans TC web font，中文改用各系統的字型（PingFang TC、Microsoft JhengHei、Linux 的 Noto Sans CJK），省下約 33 KiB CSS 與 4.3 MB 靜態檔，但中文字形依作業系統而異、CI 截圖依賴容器字型；(b) 語言與主題改回原生 `<select>`（幾乎不增加 JS，但與 design system 的 Select 外觀不同，且原生 select 在 Windows／Linux 按方向鍵就會換語言）。
 - **OFL**：授權與 copyright 記在 `docs/THIRD_PARTY_NOTICES.md`；下載的分檔本身不一定帶授權文字。產品對外提供時是否需要使用者看得到的授權頁，請 owner（或法律意見）決定。
@@ -251,5 +253,5 @@ Coordinator 把 `t045-reskin` 的三個 commit cherry-pick 到 `claude/lucid-mei
 - 180c86f 的一般 CI（run 40304006677）：spec-check、backend、frontend、db + integration 四個 job 全過；browser checks 116 passed、32 failed，失敗的全是 `screenshots.spec.ts`（16 張外觀改變、16 張 `-dark` 沒有 baseline），與預期相同。
 - 手動 CI run 40307255504（180c86f，`update_screenshots`，固定的 `playwright:v1.56.1-noble@sha256:f1e7e010…` 容器）產生 32 張，artifact `screenshots`（sha256:e4829e4cb845fc56c985ce064e09071bd800f40c85a3d95e9357a2ecc4d8502f，與下載的 zip 相同）。
 - Coordinator 把 32 張做成審閱頁（https://claude.ai/artifact/BMscCLGDCXh9HHbjZZsFpB），owner 回覆「可以，就先這樣吧」（H-028）：32 張確認為 baseline；首頁的「Go to projects」維持現狀（coordinator 的解讀，選項 C）。
-- 提交到 `apps/web-e2e/tests/__screenshots__/screenshots.spec.ts/` 的 32 個檔案與 artifact 逐 byte 相同（`cmp`）；覆蓋 16 張、新增 16 張 `-dark`。提交後的 CI 結果記在下一次更新。
+- 提交到 `apps/web-e2e/tests/__screenshots__/screenshots.spec.ts/` 的 32 個檔案與 artifact 逐 byte 相同（`cmp`）；覆蓋 16 張、新增 16 張 `-dark`。提交後的 CI 結果見下一點。
 - 提交 baseline 後的 CI run 40309207437（245a375）：spec-check、backend、frontend、db + integration、browser checks 五個 job 全過；browser checks **148 passed、0 skipped**（截圖比對實際執行，32 張都與 baseline 相同）。之後 T-045 交給獨立 reviewer（H-003）。
