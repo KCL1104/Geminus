@@ -207,18 +207,20 @@ func CompareObserved(ir *model.ModelIR, result *simulation.Result, events []doma
 	at := func(ev logEvent, st []string) bool { return slices.Contains(st, ev.e.Stage) }
 	inWindow := func(ev logEvent) bool { return ev.start >= from && ev.start < to }
 
-	// The line's output.
+	// The line's output: its last station is the first (in node order)
+	// whose step routes to a completed sink.
 	var last *station
-	for _, s := range l.stations {
+	completes := func(p *stationNode) bool {
 		for _, f := range ir.Flows {
-			for _, p := range append([]*stationNode{s.first}, s.retests...) {
-				if f.From != ir.Nodes[p.index].ID {
-					continue
-				}
-				if to, ok := l.nodes[f.To]; ok && ir.Nodes[to].Type == model.NodeSink && ir.Nodes[to].Outcome == model.SinkCompleted && last == nil {
-					last = s
-				}
+			if n, ok := l.nodes[f.To]; ok && f.From == ir.Nodes[p.index].ID && ir.Nodes[n].Type == model.NodeSink && ir.Nodes[n].Outcome == model.SinkCompleted {
+				return true
 			}
+		}
+		return false
+	}
+	for _, s := range l.stations {
+		if last == nil && (completes(s.first) || slices.ContainsFunc(s.retests, completes)) {
+			last = s
 		}
 	}
 	c := cycle(ir)
@@ -232,14 +234,14 @@ func CompareObserved(ir *model.ModelIR, result *simulation.Result, events []doma
 		case len(events) == 0:
 			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, observed.ReasonNoObservedData))
 			continue
+		case result == nil || len(result.ReplicationSummaries) == 0:
+			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, observed.ReasonSimulatedUnavailable))
+			continue
 		case to-from < unit:
 			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, observed.ReasonWindowTooShort))
 			continue
 		case (to-from)%unit != 0 || mod(from, unit) != mod(w0, unit) || (h0-w0)%unit != 0 || h0-w0 < unit || len(offsets) > 1:
 			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, observed.ReasonWindowNotAligned))
-			continue
-		case result == nil || len(result.ReplicationSummaries) == 0:
-			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, observed.ReasonSimulatedUnavailable))
 			continue
 		case last == nil:
 			put(period.key, unitEntity, false, observed.Unavailable(observed.Output, reasonNoCompletedSink))

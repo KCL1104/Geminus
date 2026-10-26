@@ -1,0 +1,5 @@
+--- FAIL: TestCompareObservedUnavailable (0.61s)
+    observed_test.go:251: no run: {Kind:output Sample:hold_out Approximate:false Unit:entity Status:unavailable Reason:0x10ed27e18980 Observed:<nil> Simulated:<nil> Replications:0 RangeMethod: RangeLow:<nil> RangeHigh:<nil> AbsoluteError:<nil> RelativeError:<nil> RelativeReason:<nil> WithinRange:<nil>} {Kind:input_consistency Sample:hold_out Approximate:false Unit:ratio Status:available Reason:<nil> Observed:0x10ed267de5b0 Simulated:0x10ed267de5b8 Replications:0 RangeMethod: RangeLow:<nil> RangeHigh:<nil> AbsoluteError:0x10ed267de5f0 RelativeError:0x10ed267de5f8 RelativeReason:<nil> WithinRange:<nil>}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline	0.647s
+FAIL

@@ -244,6 +244,12 @@ func TestCompareObservedUnavailable(t *testing.T) {
 	if c := compare(t, ir, &none, evs, dataWeek)["line_output_per_week"]; reason(c) != observed.ReasonSimulatedUnavailable {
 		t.Errorf("no replications: %+v", c)
 	}
+	// No run at all: the outputs have no simulated side (not a window that
+	// does not align); the inputs need none.
+	got = compare(t, ir, nil, evs, dataWeek)
+	if reason(got["line_output_per_week"]) != observed.ReasonSimulatedUnavailable || got["first_pass_yield.fct"].Status != simulation.Available {
+		t.Errorf("no run: %+v %+v", got["line_output_per_week"], got["first_pass_yield.fct"])
+	}
 	noResults := slices.Clone(evs)
 	noEnd := slices.Clone(evs)
 	for i := range noResults {
