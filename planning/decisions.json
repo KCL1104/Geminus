@@ -1775,6 +1775,19 @@
         "Railway 的 object storage 方案",
         "何時接上 Meta Model API"
       ]
+    },
+    {
+      "id": "H-032",
+      "subject": "Railway token 已加入環境變數；授權 agent 建立並部署 demo",
+      "decision": "切片完成後（預計 10-31），agent 在有該變數的新 session 以 token 建立並部署 demo（web、api、worker、Railway PostgreSQL），只放 synthetic 資料；session secret 由 Railway 產生；Anthropic key 與 Auth0 secret 由 owner 在 Railway 介面填入，agent 不讀取不搬移；token 只看名稱。Railway 依用量向 owner 收費。公開 demo，不是 production。",
+      "quote": "我在環境變數中加上 RAILWAY TOKEN 了；可以，由你部署 (Recommended)",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆與 AskUserQuestion 選擇",
+      "still_open": [
+        "Auth0 tenant",
+        "Owner 在 Railway 填入 Anthropic key 與 Auth0 secret"
+      ]
     }
   ]
 }
