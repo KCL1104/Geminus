@@ -245,3 +245,10 @@ Coordinator 把 `t045-reskin` 的三個 commit cherry-pick 到 `claude/lucid-mei
   3. Noto Sans TC web font 的成本：維持現狀。H-011 允許 OFL web font；中文 UI 與英文 UI 中的中文使用者資料（IR 名稱）用同一套字型；瀏覽器只下載用到的分檔。若 T-037 的效能預算不過，再改為只在 zh-Hant 載入或改用系統字型（可回退）。
 - **下一步**：push 後 CI 的截圖比對**預期失敗**（16 張外觀改變、16 張 `-dark` 是新的），直到以 `update_screenshots` 在 CI 的固定容器重新產生 baseline、由 owner 逐張確認（TEST-033：baseline 由人確認，不自動覆寫）並提交。其他 job（axe、鍵盤、字串、主題、後端）須為綠。之後交給獨立 reviewer（H-003）。
 - **NOT RUN**：CI 固定容器中的截圖比對與 baseline 產生（push 後執行）；Node 24；owner 的視覺確認；螢幕報讀器、Firefox、Safari；已登入且有資料的頁面（只有元件層的 unit test）；CSP 實測。
+
+### 新的截圖 baseline（H-028，2026-10-26）
+
+- 180c86f 的一般 CI（run 40304006677）：spec-check、backend、frontend、db + integration 四個 job 全過；browser checks 116 passed、32 failed，失敗的全是 `screenshots.spec.ts`（16 張外觀改變、16 張 `-dark` 沒有 baseline），與預期相同。
+- 手動 CI run 40307255504（180c86f，`update_screenshots`，固定的 `playwright:v1.56.1-noble@sha256:f1e7e010…` 容器）產生 32 張，artifact `screenshots`（sha256:e4829e4cb845fc56c985ce064e09071bd800f40c85a3d95e9357a2ecc4d8502f，與下載的 zip 相同）。
+- Coordinator 把 32 張做成審閱頁（https://claude.ai/artifact/BMscCLGDCXh9HHbjZZsFpB），owner 回覆「可以，就先這樣吧」（H-028）：32 張確認為 baseline；首頁的「Go to projects」維持現狀（coordinator 的解讀，選項 C）。
+- 提交到 `apps/web-e2e/tests/__screenshots__/screenshots.spec.ts/` 的 32 個檔案與 artifact 逐 byte 相同（`cmp`）；覆蓋 16 張、新增 16 張 `-dark`。提交後的 CI 結果記在下一次更新。

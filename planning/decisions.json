@@ -1709,6 +1709,19 @@
         "換裝後的 16 張截圖 baseline 待 owner 確認（TEST-033）",
         "T-045 獨立 review"
       ]
+    },
+    {
+      "id": "H-028",
+      "subject": "T-045 re-skin 的 32 張截圖 baseline 確認；首頁維持現狀",
+      "decision": "Owner 確認 CI run 40307255504（commit 180c86f，固定 Playwright 容器，update_screenshots）產生的 32 張截圖為 baseline（TEST-033）。截圖審閱頁的 Q1（首頁的「Go to projects」與 app strip 的「Projects」重複）由 coordinator 解讀為選項 C：維持現狀。",
+      "quote": "可以，就先這樣吧",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：owner 在對話中回覆截圖審閱頁（https://claude.ai/artifact/BMscCLGDCXh9HHbjZZsFpB）；Q1 為 coordinator 的解讀",
+      "still_open": [
+        "T-045 獨立 review",
+        "首頁的「Go to projects」：owner 若改選轉址（A）或拿掉連結（B）再處理"
+      ]
     }
   ]
 }
