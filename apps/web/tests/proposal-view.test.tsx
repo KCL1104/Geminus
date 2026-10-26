@@ -436,6 +436,16 @@ describe("the other states", () => {
     expect(await violations()).toEqual([]);
   });
 
+  it("treats a failure whose code is not the API's own (an Object member such as toString) as a protocol problem (review round 1 I3)", async () => {
+    for (const code of ["toString", "constructor", "__proto__"]) {
+      const { el } = await open("failed", { proposal: { error: { error: { code: code as never, message: "x", request_id: "req_01M4YDQK00V6H8S0ST4F7510KR" } } } });
+      const alert = el.querySelector("[role=alert]")!;
+      expect(alert.getAttribute("data-problem"), code).toBe("protocol");
+      expect(text(alert.querySelector("details")), code).toContain("The proposal failed without an API error.");
+      unmountAll();
+    }
+  });
+
   it("shows an approved edit with the version it created, and an approved scenario with its link", async () => {
     const { el } = await open("approved");
     expect(text(status(el))).toMatch(new RegExp(`^${en("proposal.status.approved", { date: "XX" }).replace("XX", ".+")}$`));
