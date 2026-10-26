@@ -234,3 +234,31 @@ Coordinator 把 `t015-hk` 的五個 commit（9f5ef0c、2fb5838、11691c1、766d4
 **NOT RUN**：截圖比對（只在 CI）；登入後以真 API 在瀏覽器操作編輯器（app 尚未掛 AuthProvider）；`make backend-test`、`backend-race`、`integration-test`（本輪沒有改 Go 程式，只重產 testdata，跑了 `go test ./internal/model/...`）；Node 24、Firefox／Safari、螢幕報讀器；沒有 live AI 呼叫，沒有讀任何 key 或 secret；沒有 push。
 
 **延到比賽之後（未修）**：L1（畫布上 error／warning 只用邊框顏色）、L2（存活的 mutant F1 whole 欄位 2.5、F2 發布 Idempotency-Key 沿用、F7 發布失敗的 problem；報告對測試範圍的描述）、L3（簡潔規則的 unit 檢查不驗「看得見」）、L4（422 的欄位錯誤在改正後仍顯示）、L5（`planning/tasks.json` 的 T-015 進度紀錄，由 coordinator 更新）；Info I1–I6（I6 的 `checks/docs-check.json` 由 coordinator 在收錄 review 檔後重產）。
+
+### Coordinator 驗證（review 第 1 輪修正，2026-10-26）
+
+`t015-t032-m1` 的三個 commit（036f60b、702607e、17662fb）cherry-pick 到 T-051 的修正之後，沒有衝突以外的修改（只有生成的 `checks/*.json`）。Coordinator 先前代 owner 決定的「同一欄位以使用者自己的值為準」已撤回（違反 AGENTS.md §2 的 no silent overwrite；H-027 只委託介面的簡潔），改為每個欄位編輯先 `test` 舊值、重新套用失敗時只能捨棄。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-051-T-052-T-015-T-032-coordinator/`，`exit-codes.txt` 依執行順序；HEAD 312ea90；Node 22.22.0，go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 0 | 79 個 package ok |
+| `make architecture-check` | 0 | |
+| `make backend-numeric` | 0 | |
+| `make simulation-reference-test` | 0 | |
+| `make ai-eval` | 0 | fake provider |
+| `go run ./scripts/gen-electronics-line-data -check` | 0 | 檔案與 generator 的輸出相同 |
+| `go test -race -count=1 -timeout 30m`（domainpack、results、import、audit、cmd/worker、generator） | 0 | 16 個 package ok |
+| `make integration-test`（新的 dt_test_hkb3c，跑完刪除） | 0 | |
+| `npm ci`（web、web-e2e） | 0／0 | |
+| `make frontend-test` | 0 | 985／985 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（單獨執行） | 0 | 490 passed、32 skipped（全部是只在 CI 比對的截圖） |
+
+NOT RUN：截圖比對（只在 CI）；完整的 `make backend-race`；live AI；Node 24。
+
+M1 修正並經 coordinator 驗證，依 H-029 的比賽模式，**T-015 的 hackathon 切片完成**；Low（L1–L5）與 Info 為比賽後的後續。風險（後續）：每個欄位編輯多一個 `test` op，大量編輯的儲存較接近 JSON Patch 的 1000 op 上限，沒有測試上限附近的行為。
+

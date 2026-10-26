@@ -1,0 +1,9 @@
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: '@geminus/web-e2e@0.0.0',
+npm warn EBADENGINE   required: { node: '>=24.21.0 <25' },
+npm warn EBADENGINE   current: { node: 'v22.22.0', npm: '10.9.4' }
+npm warn EBADENGINE }
+
+added 5 packages, and audited 6 packages in 671ms
+
+found 0 vulnerabilities

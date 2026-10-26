@@ -1,0 +1,7 @@
+HEAD 312ea902d6976e9f764b4c4a7141099e92a7c5ca
+uncommitted besides evidence: checks/docs-check.json 
+v22.22.0
+go version go1.27.3 linux/amd64
+2026-10-26T16:47:06Z
+ 16:47:06 up 12:54,  0 user,  load average: 0.80, 2.70, 5.67
+ports free: 17:03:13

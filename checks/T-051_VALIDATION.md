@@ -271,3 +271,31 @@ Coordinator 對 T-051 問題的處理（例行事項；需要 owner 的另列）
 - **L6**：首測站沒有 test result decision 時沒有 warning（並聯 cell 的 FPY 不同時沒有 validation warning 屬同一類）。
 - **L7**：報告與 §11 的範本數字沒有 evidence log。
 - Info I1–I6 沒有處理。
+
+### Coordinator 驗證（review 第 1 輪修正，2026-10-26）
+
+`t051-m1` 的兩個 commit（6547935、4443410）cherry-pick 到 f60fedf 之後，與 T-015／T-032 的修正與 T-052 切片一起驗證；只有生成的 `checks/docs-check.json` 衝突（重產）。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-051-T-052-T-015-T-032-coordinator/`，`exit-codes.txt` 依執行順序；HEAD 312ea90；Node 22.22.0，go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 0 | 79 個 package ok |
+| `make architecture-check` | 0 | |
+| `make backend-numeric` | 0 | |
+| `make simulation-reference-test` | 0 | |
+| `make ai-eval` | 0 | fake provider |
+| `go run ./scripts/gen-electronics-line-data -check` | 0 | 檔案與 generator 的輸出相同 |
+| `go test -race -count=1 -timeout 30m`（domainpack、results、import、audit、cmd/worker、generator） | 0 | 16 個 package ok |
+| `make integration-test`（新的 dt_test_hkb3c，跑完刪除） | 0 | |
+| `npm ci`（web、web-e2e） | 0／0 | |
+| `make frontend-test` | 0 | 985／985 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（單獨執行） | 0 | 490 passed、32 skipped（全部是只在 CI 比對的截圖） |
+
+NOT RUN：截圖比對（只在 CI）；完整的 `make backend-race`；live AI；Node 24。
+
+M1 修正並經 coordinator 驗證，依 H-029 的比賽模式，**T-051 的 hackathon 切片完成**；Low（L1–L3、L5–L7）與 Info 為比賽後的後續。D-117 仍為 PROPOSED。已知限制（D-117 (c)）：pack 不讀 routing，同一站別串聯的兩個首測會被當作並聯 cell。
+

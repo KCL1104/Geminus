@@ -1,0 +1,3 @@
+go build -o bin/check-architecture ./scripts/check-architecture
+bin/check-architecture
+PASS architecture: 91 packages, 24 rules, 16 build configurations

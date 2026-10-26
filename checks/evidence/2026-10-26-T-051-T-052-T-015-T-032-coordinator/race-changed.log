@@ -1,0 +1,17 @@
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.254s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	27.122s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	51.254s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	2.789s
+ok  	github.com/kcl1104/geminus/internal/results/compare	22.757s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	2.599s
+ok  	github.com/kcl1104/geminus/internal/results/observed	1.020s
+ok  	github.com/kcl1104/geminus/internal/import/mapping	1.204s
+ok  	github.com/kcl1104/geminus/internal/import/profile	43.841s
+?   	github.com/kcl1104/geminus/internal/import/profiler	[no test files]
+ok  	github.com/kcl1104/geminus/internal/import/report	1.028s
+ok  	github.com/kcl1104/geminus/internal/import/upload	1.273s
+ok  	github.com/kcl1104/geminus/internal/import/validation	1.270s
+ok  	github.com/kcl1104/geminus/internal/import/validator	1.442s
+ok  	github.com/kcl1104/geminus/internal/audit	2.037s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.292s
+ok  	github.com/kcl1104/geminus/scripts/gen-electronics-line-data	9.250s

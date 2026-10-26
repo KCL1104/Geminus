@@ -175,3 +175,39 @@ T-052 保留 `not_started`：`scripts/check_decisions.py` 拒絕在依賴（T-05
 4. 對它自己的 synthetic 資料，比對標 hold-out 是否恰當（參數不是由資料推論，但資料由同一 model 產生）；或另立一個標示（例如「ground truth」）。
 5. 若 T-050 的審查使 `engine_version` 由 des-go-0.5.0 升級並改變範本的軌跡，資料集要重產、hash 要重釘（README 有步驟；它是 regression lock，不是 oracle）。
 6. D-118 的編號：其他並行的 agent 也可能提出 D-118，合併時若衝突需重新編號（`planning/decisions.json`、DECISIONS_AND_TBD、ELECTRONICS_LINE §12、TWIN_IR_SPEC §7、API_DATABASE §5、ARCHITECTURE、`planning/tasks.json`、README 與本報告都引用它）。
+
+## Coordinator 驗證（2026-10-26）
+
+`t052-hk` 的六個 commit（a0a515e..459989b）cherry-pick 到 T-015／T-032 的修正之後；衝突只在 `docs/domains/ELECTRONICS_LINE.md`（T-051 修正在 §11 末加的一段與本切片的 §12 都保留）與生成的 `checks/docs-check.json`（重產）。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-051-T-052-T-015-T-032-coordinator/`，`exit-codes.txt` 依執行順序；HEAD 312ea90；Node 22.22.0，go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 0 | 79 個 package ok |
+| `make architecture-check` | 0 | |
+| `make backend-numeric` | 0 | |
+| `make simulation-reference-test` | 0 | |
+| `make ai-eval` | 0 | fake provider |
+| `go run ./scripts/gen-electronics-line-data -check` | 0 | 檔案與 generator 的輸出相同 |
+| `go test -race -count=1 -timeout 30m`（domainpack、results、import、audit、cmd/worker、generator） | 0 | 16 個 package ok |
+| `make integration-test`（新的 dt_test_hkb3c，跑完刪除） | 0 | |
+| `npm ci`（web、web-e2e） | 0／0 | |
+| `make frontend-test` | 0 | 985／985 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（單獨執行） | 0 | 490 passed、32 skipped（全部是只在 CI 比對的截圖） |
+
+NOT RUN：截圖比對（只在 CI）；完整的 `make backend-race`；live AI；Node 24。
+
+Coordinator 對本切片問題的處理：
+1. D-118 維持 PROPOSED，比賽後放進決策頁；切片依建議選項實作。
+2. T-018（import commit）尚未實作，demo 不宣稱 dataset 已綁定到 run；demo 顯示的是「同一 seed 重現 log」與觀測對模擬的比對（每週產出 +0.70%）。
+3. D-073 的 transform 比賽期間不做（demo 的資料不需要）。
+4. 標示：資料是**由同一個 model 產生的 synthetic ground truth**，比對只檢查 pipeline，不是對真實資料的驗證；demo 與提交文字不得暗示 model 已依真實資料校準。
+5. T-050 若升級 engine version、改變範本的 run，要重產資料並重新釘 hash。
+6. D-118 的編號沒有衝突（`make spec-check` 的 decisions 檢查通過）。
+
+下一步：一輪獨立審查（H-029）。
+
