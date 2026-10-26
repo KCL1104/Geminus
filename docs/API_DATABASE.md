@@ -18,7 +18,7 @@ APPROVED D-008：org/initial owner/user provisioning 是受控 bootstrap，不�
 
 ## 3. HTTP 規則與錯誤
 
-response 使用 application/json，error 保留原報告格式：error.code/message/details[{path,reason}]/request_id；details 另可帶選填 code/severity（D-024）。`error.code` 是封閉清單 `common.schema.json#/$defs/ErrorCode`，`x-http-status` 指定每個 code 唯一對應的 status（D-025）。伺服器產生的資源 ID 為 `<prefix>_<ULID>`（D-001，見 TWIN_IR_SPEC §1）。所有錯誤避免 stack trace、SQL、其他 tenant 名稱、provider credentials；JSON Pointer 顯示 exact field。正常 request 帶 X-Request-ID correlation。
+response 使用 application/json，error 保留原報告格式：error.code/message/details[{path,reason}]/request_id；details 另可帶選填 code/severity（D-024）。`error.code` 是封閉清單 `common.schema.json#/$defs/ErrorCode`，`x-http-status` 指定每個 code 唯一對應的 status（D-025）。伺服器產生的資源 ID 為 `<prefix>_<ULID>`（D-001，見 TWIN_IR_SPEC §1）。所有錯誤避免 stack trace、SQL、其他 tenant 名稱、provider credentials；JSON Pointer 顯示 exact field。正常 request 帶 X-Request-ID correlation。T-035（D-093、D-094 PROPOSED）：request ID 由 server 的最外層（`httpapi.AccessLog`）發出、`httpapi.Handler` 以 X-Request-ID 回傳（client 的值不讀），同一個 ID 出現在回應、error envelope、audit row 與該 request 的每一行 log；每個 request 一行 access log（route pattern、status、duration、error code，不記 path、query、header 或 body）。
 
 | HTTP | 語義 |
 |---|---|
@@ -99,7 +99,7 @@ T-023 實作（`internal/runs`、`internal/runs/runner`、`internal/storage/runs
 
 Scope = organization_id + actor_id + operation/resource + key。request_hash 包含 normalized parsed body、URL resource、concurrency headers；multipart 用 file content hash+metadata。不可僅 hash body 而忽略 If-Match/expected base。相同 key+相同 fingerprint 回原 response；不同 fingerprint 回409。權限檢查在 replay 前仍必須執行；舊成功 response 不是撤權後的存取通行證。
 
-reserve key 與 operation effect、audit、response 同一短 transaction；在處理 duplicate reservation 時鎖同一 key。LLM/DES 在 transaction 外。TTL 初始24h 是 D-007 提案；versions/source_proposal unique 與 result.run_id unique 仍保證 TTL 過後不重複 canonical effect。expired key cleanup 是受控 maintenance，不給一般 runtime arbitrary DELETE。
+T-035（D-091 PROPOSED）：worker loop 記錄 attempt 的 failure（`jobs.Fail`）與 reaper 收回 lease（`jobs.ReapJobs`）時，在同一 transaction 寫 `job.attempt_failed`（job 的資源為 target、payload 的 `request_id`、code、是否重排）；event 寫不進去時 failure 也不記。每個 audit event 先經 `internal/audit` 的 catalogue 檢查。reserve key 與 operation effect、audit、response 同一短 transaction；在處理 duplicate reservation 時鎖同一 key。LLM/DES 在 transaction 外。TTL 初始24h 是 D-007 提案；versions/source_proposal unique 與 result.run_id unique 仍保證 TTL 過後不重複 canonical effect。expired key cleanup 是受控 maintenance，不給一般 runtime arbitrary DELETE。
 
 claim 用 organization filter + SKIP LOCKED + priority DESC/created_at/id。attempt 增加、lease_token 增加、lease_expires_at 保存；初始30s lease /10s heartbeat /max_attempts3 是候選。heartbeat/finalize 都核對 organization、job_id、worker_id、lease_token、running、not expired；更新零 rows 表示失去 ownership，不可重试 unscoped write。
 

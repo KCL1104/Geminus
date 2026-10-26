@@ -2203,7 +2203,13 @@
         "REQ-018",
         "REQ-020"
       ],
-      "decision_gates": [],
+      "decision_gates": [
+        "D-091",
+        "D-092",
+        "D-093",
+        "D-094",
+        "D-095"
+      ],
       "scope": [
         "所有business writes同transaction audit；request/run/provider correlation。",
         "traces/metrics與structured JSON logging。",
@@ -2211,7 +2217,10 @@
       ],
       "planned_outputs": [
         "internal/audit/",
-        "internal/observability/"
+        "internal/observability/",
+        "internal/observability/telemetry/",
+        "internal/observability/telemetry/export/",
+        "internal/httpapi/access.go"
       ],
       "spec_refs": [
         "docs/SECURITY.md",
@@ -2258,7 +2267,9 @@
       "decision_gates": [
         "D-008",
         "D-013",
-        "D-016"
+        "D-016",
+        "D-091",
+        "D-094"
       ],
       "scope": [
         "完整route×role×tenant matrix，pool/worker/artifact/SSE leaks。",
@@ -2449,7 +2460,10 @@
       "requirement_ids": [
         "REQ-020"
       ],
-      "decision_gates": [],
+      "decision_gates": [
+        "D-093",
+        "D-095"
+      ],
       "scope": [
         "web/api/worker分開containers，managed DB/object/OTLP adapters。",
         "non-root/runtime roles、secret injection、readiness、graceful shutdown。",

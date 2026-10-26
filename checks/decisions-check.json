@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 76,
-    "proposed": 9,
+    "proposed": 14,
     "rejected": 0,
     "superseded": 0
   },
@@ -39,11 +39,22 @@
     "review": 0
   },
   "ready_tasks": [
-    "T-035",
     "T-050",
     "T-053"
   ],
-  "next_after_review": [],
+  "next_after_review": [
+    {
+      "id": "T-035",
+      "awaiting_task_review": [],
+      "awaiting_decisions": [
+        "D-091",
+        "D-092",
+        "D-093",
+        "D-094",
+        "D-095"
+      ]
+    }
+  ],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -754,6 +765,45 @@
         "T-029",
         "T-030",
         "T-032"
+      ]
+    },
+    "D-091": {
+      "status": "proposed",
+      "gate": "T-035 驗收前；T-036 前",
+      "gates_tasks": [
+        "T-035",
+        "T-036"
+      ]
+    },
+    "D-092": {
+      "status": "proposed",
+      "gate": "T-035 驗收前；ADR-024 的 WORKER_ID 文字修改前",
+      "gates_tasks": [
+        "T-035"
+      ]
+    },
+    "D-093": {
+      "status": "proposed",
+      "gate": "T-035 驗收前；T-039 前",
+      "gates_tasks": [
+        "T-035",
+        "T-039"
+      ]
+    },
+    "D-094": {
+      "status": "proposed",
+      "gate": "T-035 驗收前；T-036 前",
+      "gates_tasks": [
+        "T-035",
+        "T-036"
+      ]
+    },
+    "D-095": {
+      "status": "proposed",
+      "gate": "T-035 驗收前；T-039 前",
+      "gates_tasks": [
+        "T-035",
+        "T-039"
       ]
     }
   },

@@ -45,7 +45,7 @@ schema / docs / task DAG checks 是第零層 specification hygiene，不等於�
 | TEST-024 | analyst grounding | wrong run/path/null metric/錯delta/虛構 prose 數字不completed | 016 |
 | TEST-025 | 2D/3D adapters / selection | 不生成第二topology；同ID互選；3D不能寫IR | 004、017 |
 | TEST-026 | playback / SSE reconnect | play/pause/scrub；sampling標示；auth header；reconnect latest snapshot；撤權close | 012、017 |
-| TEST-027 | audit / telemetry privacy | 所有重要action有audit；無rawcustomerdata/secret/chain-of-thought | 018、020 |
+| TEST-027 | audit / telemetry privacy | 所有重要action有audit；無rawcustomerdata/secret/chain-of-thought。T-035：每個 business write 的 event 與寫入同一 transaction（event 寫不進去時什麼都不 commit，DB 測試）；audit catalogue 拒絕自由文字與 secret；log、span、metric 以 sentinel（CSV 列、欄名、token、key、cookie、e-mail、prompt、chain-of-thought）經 attribute、error、panic、context 各路徑檢查 | 018、020 |
 | TEST-028 | E2E source closed-loop | CSV→proposal→approve→scenario→run→compare→analyst；reject與stale也覆蓋 | 007–018 |
 | TEST-029 | artifact authorization / CSV formula | arbitrary key/other tenant拒絕；signedURL過期；error export formula safe | 007、019 |
 | TEST-030 | deploy / migration / restore | up/down/up、runtime grants、staging smoke、backup restore、人工production gate | 019–020 |

@@ -28,7 +28,7 @@ APPROVED D-001（2026-10-15）：伺服器產生的資源 ID 為 `<prefix>_<ULID
 | request（X-Request-ID、error.request_id） | `req` | RequestID |
 | trace artifact | `art` | ArtifactID |
 
-`target_id` 可為任一上列資源（ResourceID）。`actor_id` 暫維持通用格式，因 actor_type 可為 worker／system，留待 T-035 定義。
+`target_id` 可為任一上列資源（ResourceID）。`actor_id` 暫維持通用格式，因 actor_type 可為 worker／system，留待 T-035 定義。T-035 的提案（D-092，PROPOSED）：user actor 為 `usr_` ID；worker 與 system actor 為 actor reference（字母開頭，之後是字母、數字、`_`、`.`、`:`、`-`，至多 128，即 `twin.actor_ref` 與 `AuditEvent.actor_id` 的 pattern），worker 為 `WORKER_ID`，system 為 `provision-tenant`。
 
 ## 2. Node、flow、resource catalog
 

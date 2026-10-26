@@ -1194,6 +1194,71 @@
       "status": "proposed",
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-091",
+      "title": "哪些寫入要 audit、audit catalogue、job 失敗的 audit、fail closed、provider 的 correlation（T-035）",
+      "source_gap": "REQ-018 要求 create/edit/publish/proposal/approve/reject/import/run 有 tenant-scoped audit、可追 request_id／run_id，T-035 要求「所有 business writes 同 transaction audit；request/run/provider correlation」，但沒有定義什麼是 business write、audit metadata 可以放什麼（SECURITY §9 只說避免 secrets、raw customer data）；worker loop 與 reaper 記錄 job 失敗（run、proposal、import 跟著變 failed 或回到 queued）沒有 audit event；provisioning 自己寫 audit SQL；provider 的 request ID 在 provider.Metadata 中但沒有記。",
+      "proposal": "(a) business write = 建立、改內容、決定或結束（含一次 attempt 的失敗與重試）tenant 資源的寫入，同 transaction 恰好一筆 event；catalogue 列出全部 action（project.create、membership.*、model.*、import.upload/map/profile/validate、proposal.create/generate/attempt_failed/approve/reject/conflict、scenario.create、simulation.create/cancel/complete/cancelled、organization.provision、job.attempt_failed）；claim、heartbeat、lock、run 的開始、progress、event budget、import 的 PROFILING、idempotency row 是營運寫入，不 audit；B：營運寫入也 audit；C：只 audit 使用者的寫入。(b) worker loop 在 jobs.Fail 的 transaction、reaper 在 reap 的 transaction 寫 job.attempt_failed：actor 為該 worker，target 為 job 的資源，request_id 為 payload 的 request_id（沒有時另發並標 uncorrelated），metadata 只有 job_id、job_type、attempt、max_attempts、code、retryable、outcome（requeued／failed），不含 failure message；event 寫不進去時 failure 也不記，reaper 之後收回；B：每種資源各自的 action；C：target 為 job。(c) internal/audit 的封閉 catalogue：每個 action 的 actor 種類、target 種類、可用的 metadata key 與值的形狀（ID、hash、非負整數、布林、code、封閉列舉、非 credential 的短 label；沒有自由文字）；internal/storage/auditlog 寫入前檢查，不符則 fail closed（寫入連同 event rollback），錯誤不含值；auditlog 是唯一寫 twin.audit_events 的程式，provisioning 改經 AppendSystem；B：只在測試檢查；C：丟掉不認得的欄位。(d) proposal.generate／attempt_failed 加 provider_request_id；provider 決定的 model 與 request ID 不是 label 時不記（不讓寫入失敗）；這是 ADR-027／AI_SPEC §10 的 audit metadata 的延伸。建議 A，已實作。",
+      "gate": "T-035 驗收前；T-036 前",
+      "resolves": [],
+      "source_pages": "N/A（REQ-018；SECURITY §9；AI_SPEC §10；ADR-019、ADR-024、ADR-027；TEST-027）",
+      "owner_role": "Platform / Security",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-092",
+      "title": "Worker／system audit actor 的格式（0001 留給 T-035）與 ADR-024 的 WORKER_ID 文字",
+      "source_gap": "migrations/0001 的 twin.actor_ref 註解寫「worker/system identity format is open until T-035」，TWIN_IR_SPEC §1、T-003、T-006 也留給 T-035；DB 與 http.schema.json AuditEvent.actor_id 已要求 ^[A-Za-z][A-Za-z0-9_.:-]{0,127}$，四個 job handler 的 constructor 各自重複這個 regex，但 ADR-024（ACCEPTED，H-010）寫 WORKER_ID 為 1–200 個可見 ASCII，config.LoadWorker 照此檢查。",
+      "proposal": "(a) 建議 A：worker 與 system actor 是 actor reference（twin.actor_ref 與 AuditEvent.actor_id 的 pattern，字母開頭，字母、數字、_ . : -，至多 128）；worker 的 actor 為 WORKER_ID，system 只有 provision-tenant；audit.ValidActor 為唯一規則，worker.New 改為要求它（loop 現在自己寫 audit），cmd/worker 對其他名稱本來就在 handler 建立時拒絕；沒有 migration；B：有結構的名稱；C：worker 登記表（P1）。(b) 與 ADR-024 的文字不一致：本任務不改 config（批准的文字照原樣），建議 owner 把 ADR-024 的 WORKER_ID 改為 actor reference，並讓 config.LoadWorker 以 WORKER_ID 的錯誤更早拒絕（修改與測試見 checks/T-035_VALIDATION.md）。",
+      "gate": "T-035 驗收前；ADR-024 的 WORKER_ID 文字修改前",
+      "resolves": [],
+      "source_pages": "N/A（migrations/0001 twin.actor_ref；http.schema.json AuditEvent.actor_id；TWIN_IR_SPEC §1；ADR-024；T-003、T-006 報告）",
+      "owner_role": "Platform",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-093",
+      "title": "結構化 log 的格式、欄位名稱、correlation 與 access log（T-035）",
+      "source_gap": "REQ-020 與 ARCHITECTURE §8 要求 structured JSON logs + trace correlation，沒有定義欄位、哪些 ID 可以記、request 與 job 的 correlation；之前沒有 access log，request ID 只在少數呼叫處手動加入，worker 的 handler 行沒有 job 或 organization。",
+      "proposal": "(a) stderr 的 JSON lines（slog），INFO 以上，time、level、msg、component；key 為 internal/observability 的登記清單；P0 沒有可設定的 log level。(b) request 的每一行帶 server 發的 request_id；token 驗過、user 解析後帶 organization_id（選的 organization，不代表是成員）與 user_id（只有不透明 ID，不記 issuer、subject、e-mail、名稱）；job 的每一行帶 organization_id、job_id、job_type、attempt、資源 ID（run_id／proposal_id／import_id／analysis_id）與建立它的 request 的 request_id；B：不記 user_id。(c) 每個 request 結束後一行 access log：method（標準或 OTHER）、route（ServeMux pattern 或 unmatched，從不記 path 或 query）、http_status、duration_ms、response_bytes、error_code；5xx 為 WARN；由 cmd/api 包在 api.Handler 外。(d) log 的保存期限與存放不在本項（retention／residency TBD、T-039）。建議 A，已實作。",
+      "gate": "T-035 驗收前；T-039 前",
+      "resolves": [],
+      "source_pages": "N/A（REQ-020；ARCHITECTURE §8；ADR-019 的 request ID；D-045 的「log 不含 organization 名稱」）",
+      "owner_role": "Platform",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-094",
+      "title": "Log 的隱私規則：集中的 default-deny filter（T-035、TEST-027）",
+      "source_gap": "SECURITY §7 要求 production logs 不留 raw CSV/model/prompt/provider output，§9 要求避免 secrets、signed URLs、raw customer data，ADR-024 要求 handler 的 error 不含客戶資料；沒有集中的 filter，error 文字原樣寫入，API 的 panic 會記 panic 值。",
+      "proposal": "建議 A：(a) default deny：登記清單沒有的 key 記為 [redacted]，不是小寫名稱的 key 記為 invalid_key；(b) 每個 key 有形狀（ID、code、小寫字、非 credential 的名稱、Go 型別、HTTP method、route、hash、數字），不合的值記為 [redacted]，空字串照記，context 的值同樣過濾；(c) 自由文字（error、panic、addr、stack、path）移除 credential（T-024 的清單）、URL 的 user information、credential header、e-mail、長 base64 與每個雙引號括起來的值，控制與格式字元換成空白，長度上限 1000／8000／256；error 要提到值時以 %q 引用；(d) panic 只記 runtime error 的訊息或值的型別與 stack（ADR-024 對 worker 的規則延伸到 API）；(e) struct、map、slice 為 [redacted]，LogValuer 先解析，會 panic 的 error 不會讓 logger 當掉；(f) trace 與 metric 的 attribute 用同一套形狀。B：key 黑名單；C：不集中過濾。",
+      "gate": "T-035 驗收前；T-036 前",
+      "resolves": [],
+      "source_pages": "N/A（SECURITY §7、§9；AI_SPEC §10；ADR-024 的 log 規則；TEST-027）",
+      "owner_role": "Security / Platform",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
+    },
+    {
+      "id": "D-095",
+      "title": "營運指標與 trace：log 記錄的指標，與預設關閉的 OpenTelemetry export（T-035、ADR-028）",
+      "source_gap": "REQ-020 要求 traces/metrics 且 product telemetry 不含客戶內容，ARCHITECTURE §1／§8 有 OTLP backend，原報告選 OpenTelemetry；沒有定義指標、attribute、export 的開關與 backend（cloud／provider／retention 為 TBD）。",
+      "proposal": "(a) 以 log 記錄的營運指標：job（job ended／job attempt ended）、simulation（simulation engine ran）、LLM（ai provider call ended）、import（import profiled／import validated）、HTTP（D-093 (c)），只有計數、代碼與標籤。(b) OpenTelemetry Go SDK 與 OTLP／HTTP exporter（ADR-028）；預設關閉：只有 operator 設定 OTEL_EXPORTER_OTLP_ENDPOINT（或 signal 各自的 endpoint）時才建立 exporter，沒有預設 endpoint；OTEL_SDK_DISABLED、*_EXPORTER=none 關閉；endpoint 不得帶 credential、query、fragment；只有 http/protobuf；SDK 的錯誤與 log 經過濾後的 slog；不選廠商或 backend。(c) metric 的 attribute 低基數（method、route、status、geminus.job.type、geminus.outcome、geminus.code、gen_ai.system、gen_ai.request.model、geminus.ai.role、gen_ai.token.type、geminus.import.stage），從不帶 ID；span 另可帶 geminus.request_id、geminus.job_id、attempt；值經 observability.Fits；不接受 client 的 trace context；子 span 事後記錄，不進 generic kernel。(d) 取樣為 SDK 預設；resource 只有 service.name。B：P0 只用 (a)；C：Prometheus pull endpoint。建議 A，已實作。",
+      "gate": "T-035 驗收前；T-039 前",
+      "resolves": [],
+      "source_pages": "N/A（REQ-020；ARCHITECTURE §1、§8；原報告的 OpenTelemetry；ADR-011 兩週規則）",
+      "owner_role": "Platform / Security",
+      "status": "proposed",
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [
