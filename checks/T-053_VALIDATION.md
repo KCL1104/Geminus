@@ -455,3 +455,24 @@ AI_EVAL_LIVE_MAX_USD=9 AI_PROVIDER=anthropic AI_POLICY_APPROVAL=H-018 AI_MODEL=c
 - **讀不了的 2xx 以整個預留計**：可能多記（安全側）。
 - **等價的 mutant**：F3、O5（理由見上）；Go 時鐘的 mutant 在同一台機器上無法分辨（程式中已沒有 Go 時鐘）。
 - **DB 不檢查預留的日**：日由 Go 在 transaction 中從 `now()` 取得，DB 本身沒有 CHECK（測試要指定自己的日）；一個被改壞的 worker 仍能寫任何日，這與 worker 本來就能寫任何金額相同。
+
+### Coordinator 的執行（第 1 輪修正，df7c091）
+
+Coordinator 把 `t053-r1` 的四個 commit（d28eb79、2cf81fe、ea9a85a、e9a8a85）cherry-pick 到 `claude/lucid-meitner-vq1awo`（245a375 之後，成為 1ad02c4、a30004c、d9e3af3、df7c091）。衝突只在重產的 `checks/docs-check.json`（取一邊後由 `make spec-check` 重產）；`planning/decisions.json` 與決策登記檔自動合併（H-028 與 D-116 都保留）。
+
+在整合後的 tree 上（全新的一次性資料庫；共用的 PostgreSQL 16.15 cluster 沒有重啟；`checks/evidence/2026-10-26-T-053-r1/coordinator/`）：
+
+| 項目 | 結果 |
+|---|---|
+| `make spec-check`、`backend-test`、`architecture-check`、`ai-eval` | 全部 exit 0 |
+| govulncheck v1.9.0（go1.27.3） | exit 0，No vulnerabilities found |
+| `make integration-test`（全新 `dt_test_t053r1c1`） | exit 0 |
+| `make db-test`（全新 `dt_test_t053r1c2`） | exit 0 |
+| T-053 的 10 個 DB 測試（`-race -v`，`GEMINUS_REQUIRE_DB_TESTS=1`，含新的 `TestOrganizationFilter`、`TestASettlementAboveItsReservationIsRecordedAndFlagged`、`TestTheDatabaseClockPicksTheDay`） | 全部 PASS |
+| `mutants.py`（本輪的 harness，`git archive HEAD` 複本，全新 `dt_test_t053r1c3`） | exit 0：98 個中 96 killed、2 個 equivalent（F3、O5），沒有 SURVIVED、INVALID 或 ERROR |
+| `make backend-race`（全部套件） | exit 0 |
+
+- 執行開始時唯一未 commit 的檔案是重產的 `checks/docs-check.json`（`environment.txt`）。三個一次性資料庫用完即刪。
+- 證據中沒有 key（以 `sk-ant-` 樣式搜尋，只有既有的 `refusals.sh` 中的假 key）。
+- **NOT RUN**：`make ai-smoke-live`、`make ai-eval-live`（依 H-025，第 2 輪獨立 review 接受之後才以 synthetic 資料執行）；`make frontend-test`、`make e2e-test`（本輪沒有改 UI 或 contract；同一 tree 的 UI 在 245a375 的 CI 全過）。
+- 本任務仍待：第 2 輪獨立 review（H-003）；owner 批准 D-110–D-116（PROPOSED）。

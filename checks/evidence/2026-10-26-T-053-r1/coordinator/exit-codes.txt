@@ -1,0 +1,11 @@
+spec-check exit 0
+backend-test exit 0
+architecture-check exit 0
+ai-eval exit 0
+govulncheck exit 0
+integration exit 0
+db-test exit 0
+t053-db-tests-race exit 0
+mutants-db-prepare exit 0
+mutants exit 0
+backend-race exit 0

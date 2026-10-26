@@ -252,3 +252,4 @@ Coordinator 把 `t045-reskin` 的三個 commit cherry-pick 到 `claude/lucid-mei
 - 手動 CI run 40307255504（180c86f，`update_screenshots`，固定的 `playwright:v1.56.1-noble@sha256:f1e7e010…` 容器）產生 32 張，artifact `screenshots`（sha256:e4829e4cb845fc56c985ce064e09071bd800f40c85a3d95e9357a2ecc4d8502f，與下載的 zip 相同）。
 - Coordinator 把 32 張做成審閱頁（https://claude.ai/artifact/BMscCLGDCXh9HHbjZZsFpB），owner 回覆「可以，就先這樣吧」（H-028）：32 張確認為 baseline；首頁的「Go to projects」維持現狀（coordinator 的解讀，選項 C）。
 - 提交到 `apps/web-e2e/tests/__screenshots__/screenshots.spec.ts/` 的 32 個檔案與 artifact 逐 byte 相同（`cmp`）；覆蓋 16 張、新增 16 張 `-dark`。提交後的 CI 結果記在下一次更新。
+- 提交 baseline 後的 CI run 40309207437（245a375）：spec-check、backend、frontend、db + integration、browser checks 五個 job 全過；browser checks **148 passed、0 skipped**（截圖比對實際執行，32 張都與 baseline 相同）。之後 T-045 交給獨立 reviewer（H-003）。

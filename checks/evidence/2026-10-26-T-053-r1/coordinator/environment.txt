@@ -1,0 +1,5 @@
+HEAD df7c09144eb5cb390199f3fa33d4e4b570bb3bdd
+uncommitted besides evidence: 1 (checks/docs-check.json )
+go version go1.27.3 linux/amd64
+2026-10-26T10:45:12Z
+PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
