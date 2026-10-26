@@ -1,6 +1,6 @@
 # Third-party notices
 
-Source code adapted from third parties, with the notices their licenses require. Dependencies pulled in as modules or packages are listed with their licenses in [ADR-011](adr/ADR-011-toolchain-bootstrap.md) and their lockfiles; this file covers code copied into this repository, and the Go modules the live AI adapter links (last section, T-024).
+Source code adapted from third parties, with the notices their licenses require. Dependencies pulled in as modules or packages are listed with their licenses in [ADR-011](adr/ADR-011-toolchain-bootstrap.md) and their lockfiles; this file covers code copied into this repository, the Go modules the live AI adapter links (T-024) and the Go modules OpenTelemetry links (last section, T-035).
 
 ## Go `math.log` (pinned logarithm)
 
@@ -126,3 +126,24 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
+
+## Go modules linked by OpenTelemetry (T-035)
+
+T-035 adds the OpenTelemetry Go API, SDK and OTLP/HTTP exporters for traces and metrics ([ADR-028](adr/ADR-028-opentelemetry.md), **PROPOSED**; export is off unless an operator configures an OTLP endpoint, D-095). Only `internal/observability/telemetry/export` and `cmd/...` link the SDK, the exporters, gRPC and protobuf (architecture rule `otel-sdk-only-in-export`); `internal/observability/telemetry` uses the API only. Versions are pinned in `go.mod` and `go.sum`, each published at least two weeks before 2026-10-25 (ADR-028 lists the dates); each module's own license file (and gRPC's `NOTICE.txt`) ships in its module and applies to it. No module is copyleft.
+
+| Module | Version | License | Linked because |
+|---|---|---|---|
+| `go.opentelemetry.io/otel`, `/trace`, `/metric`, `/log`, `/sdk`, `/sdk/metric`, `/exporters/otlp/otlptrace`, `/exporters/otlp/otlptrace/otlptracehttp`, `/exporters/otlp/otlpmetric/otlpmetrichttp` | v1.47.0 | Apache-2.0; the same LICENSE file adds BSD-3-Clause (Copyright 2009 The Go Authors) for code derived from Go | the API, the SDK and the OTLP/HTTP exporters |
+| `go.opentelemetry.io/auto/sdk` | v1.2.1 | Apache-2.0 | the trace API |
+| `go.opentelemetry.io/proto/otlp` | v1.11.0 | Apache-2.0 | the OTLP protobuf messages |
+| `google.golang.org/protobuf` | v1.36.12 | BSD-3-Clause, Copyright (c) 2018 The Go Authors | protobuf encoding |
+| `google.golang.org/grpc` | v1.83.2 | Apache-2.0 (with `NOTICE.txt`), Copyright 2014 gRPC authors | `proto/otlp`'s collector packages carry the gRPC stubs; status types |
+| `google.golang.org/genproto/googleapis/api`, `/rpc` | v0.0.0-20260928230214-8a89bd6388cc | Apache-2.0 | gRPC and grpc-gateway |
+| `github.com/grpc-ecosystem/grpc-gateway/v2` | v2.30.0 | BSD-3-Clause, Copyright (c) 2015, Gengo, Inc. | `proto/otlp` |
+| `github.com/cenkalti/backoff/v5` | v5.0.3 | MIT, Copyright (c) 2014 Cenk Altı | the exporters' retries |
+| `github.com/cespare/xxhash/v2` | v2.3.0 | MIT, Copyright (c) 2016 Caleb Spare | attribute set hashing |
+| `github.com/go-logr/logr` | v1.4.4 | Apache-2.0 | OpenTelemetry's internal logger, routed to the filtered log |
+| `github.com/go-logr/stdr` | v1.2.2 | Apache-2.0 | OpenTelemetry's default logger |
+| `github.com/google/uuid` | v1.6.0 | BSD-3-Clause, Copyright (c) 2009,2014 Google Inc. | the SDK's resource |
+| `golang.org/x/net` | v0.60.0 | BSD-3-Clause, Copyright 2009 The Go Authors | gRPC (v0.60.0, not the v0.59.0 OpenTelemetry asks for, which `govulncheck` flags) |
+| `golang.org/x/sys` | v0.48.0 | BSD-3-Clause, Copyright 2009 The Go Authors | x/net and gRPC |

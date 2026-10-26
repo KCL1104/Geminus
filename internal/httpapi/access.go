@@ -8,6 +8,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/observability"
+	"github.com/kcl1104/geminus/internal/observability/telemetry"
 )
 
 // AccessLog is the API's outermost layer (cmd/api, T-035, D-093 (c)): it
@@ -17,11 +18,15 @@ import (
 // them, the error code WriteError wrote), and after the request ends logs
 // one line: the route's pattern (never the path or query the client sent),
 // the method, the status, the duration, the response's size and those
-// annotations. Requests that fail with 5xx are WARN, others INFO.
+// annotations. Requests that fail with 5xx are WARN, others INFO. The
+// request is also a server span and a point of http.server.request.duration
+// (telemetry, D-095; the no-op unless an OTLP endpoint is configured).
 func AccessLog(log *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		ctx := observability.Track(observability.WithRequestID(r.Context(), ids.New("req")))
+		id := ids.New("req")
+		tel := telemetry.Current()
+		ctx, span := tel.StartRequest(observability.Track(observability.WithRequestID(r.Context(), id)), method(r.Method))
 		r = r.WithContext(ctx)
 		rec := &recorder{ResponseWriter: w}
 		defer func() {
@@ -35,9 +40,11 @@ func AccessLog(log *slog.Logger, next http.Handler) http.Handler {
 			if status >= 500 {
 				level = slog.LevelWarn
 			}
+			took := time.Since(start)
 			log.LogAttrs(ctx, level, "request", slog.String("method", method(r.Method)), slog.String("route", route(r.Pattern)),
-				slog.Int("http_status", status), slog.Int64("duration_ms", time.Since(start).Milliseconds()),
+				slog.Int("http_status", status), slog.Int64("duration_ms", took.Milliseconds()),
 				slog.Int64("response_bytes", rec.bytes))
+			tel.EndRequest(ctx, span, method(r.Method), route(r.Pattern), status, took, id)
 		}()
 		next.ServeHTTP(rec, r)
 	})

@@ -25,6 +25,7 @@ import (
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/observability"
+	"github.com/kcl1104/geminus/internal/observability/telemetry/export"
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -49,10 +50,19 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 	cfg, err := config.Load(getenv)
 	authCfg, authErr := config.LoadAuth(getenv)
 	srvCfg, srvErr := config.LoadServer(getenv)
-	if err = errors.Join(err, authErr, srvErr); err != nil {
+	telCfg, telErr := config.LoadTelemetry(getenv)
+	if err = errors.Join(err, authErr, srvErr, telErr); err != nil {
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
+	// Traces and metrics leave the process only to an OTLP endpoint the
+	// operator named (D-095 (b), ADR-028); otherwise this installs nothing.
+	stopTelemetry, err := export.Setup(ctx, telCfg, "geminus-api", log)
+	if err != nil {
+		log.Error("invalid configuration", "error", "the telemetry exporter cannot be created: "+err.Error())
+		return exitConfig
+	}
+	defer flush(stopTelemetry, log)
 	verifier, err := auth.NewOIDCVerifier(authCfg)
 	if err != nil {
 		log.Error("invalid configuration", "error", err.Error())
@@ -140,6 +150,19 @@ func aiAvailability(cfg config.Config) proposals.Availability {
 	}
 	return proposals.NotConfigured
 }
+
+// flush flushes and stops the telemetry, within telemetryGrace.
+func flush(stop func(context.Context) error, log *slog.Logger) {
+	ctx, cancel := context.WithTimeout(context.Background(), telemetryGrace)
+	defer cancel()
+	if err := stop(ctx); err != nil {
+		log.Warn("flushing the telemetry failed", "error", err.Error())
+	}
+}
+
+// telemetryGrace is how long a stopping process waits for its last spans
+// and metrics to be sent.
+const telemetryGrace = 5 * time.Second
 
 // newLogger is the API's log (T-035, D-093, D-094): JSON lines on stderr,
 // every attribute through the privacy filter, every line of a request with

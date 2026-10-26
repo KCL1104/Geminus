@@ -2,14 +2,22 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json/v2"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/observability"
+	"github.com/kcl1104/geminus/internal/observability/telemetry"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
@@ -131,6 +139,68 @@ func TestAccessLog(t *testing.T) {
 		if l["msg"] == "request" && l["level"] != "WARN" {
 			t.Errorf("%v", l)
 		}
+	}
+}
+
+// T-035 (D-095): with telemetry installed, each request is a server span
+// named by its route and a point of http.server.request.duration; neither
+// holds the path, the query, the body or a header the client sent.
+func TestAccessLogTelemetry(t *testing.T) {
+	spans, reader := tracetest.NewSpanRecorder(), sdkmetric.NewManualReader()
+	tel, err := telemetry.New(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spans)), sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer telemetry.Install(telemetry.Install(tel))
+	log := observability.NewLogger(io.Discard, "api")
+	mux := http.NewServeMux()
+	mux.Handle("GET /v1/things/{id}", Handler(log, func(w http.ResponseWriter, r *http.Request) error {
+		WriteJSON(w, 200, map[string]string{"id": r.PathValue("id")})
+		return nil
+	}))
+	mux.Handle("/", Handler(log, func(http.ResponseWriter, *http.Request) error { return Errorf(InternalError, "x") }))
+	h := AccessLog(log, mux)
+	for _, target := range []string{"/v1/things/CASE-SENTINEL?q=SENTINEL", "/v1/SENTINEL"} {
+		r := httptest.NewRequest("GET", target, nil)
+		r.Header.Set("Authorization", "Bearer SENTINEL-token-0123456789")
+		r.Header.Set("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01") // never read
+		h.ServeHTTP(httptest.NewRecorder(), r)
+	}
+	ended := spans.Ended()
+	if len(ended) != 2 || ended[0].Name() != "GET /v1/things/{id}" || ended[1].Name() != "unmatched" ||
+		ended[1].Status().Code.String() != "Error" || ended[0].Parent().IsValid() ||
+		ended[0].SpanContext().TraceID().String() == "4bf92f3577b34da6a3ce929d0e0e4736" {
+		t.Fatalf("%v", ended)
+	}
+	var dump strings.Builder
+	for _, s := range ended {
+		dump.WriteString(s.Name())
+		for _, kv := range s.Attributes() {
+			dump.WriteString(" " + string(kv.Key) + "=" + kv.Value.Emit())
+		}
+	}
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatal(err)
+	}
+	points := 0
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if h, ok := m.Data.(metricdata.Histogram[float64]); ok && m.Name == "http.server.request.duration" {
+				for _, p := range h.DataPoints {
+					points++
+					for _, kv := range p.Attributes.ToSlice() {
+						dump.WriteString(" " + string(kv.Key) + "=" + kv.Value.Emit())
+						if strings.HasSuffix(string(kv.Key), "request_id") {
+							t.Errorf("a metric carries %s", kv.Key)
+						}
+					}
+				}
+			}
+		}
+	}
+	if points != 2 || strings.Contains(dump.String(), "SENTINEL") || !strings.Contains(dump.String(), "geminus.request_id=req_") {
+		t.Errorf("%d points: %s", points, dump.String())
 	}
 }
 

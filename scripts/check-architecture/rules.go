@@ -102,6 +102,18 @@ var kernelThirdParty = []string{
 	"golang.org/x/text/message/...",
 }
 
+// otelAPI is the OpenTelemetry API (T-035, ADR-028): attributes, codes,
+// the metric and trace interfaces and their no-op implementations, and
+// what they link. Not the SDK or an exporter (otel-sdk-only-in-export).
+var otelAPI = []string{
+	"go.opentelemetry.io/otel/attribute/...",
+	"go.opentelemetry.io/otel/codes",
+	"go.opentelemetry.io/otel/metric/...",
+	"go.opentelemetry.io/otel/trace/...",
+	"go.opentelemetry.io/otel/semconv/...",
+	"github.com/cespare/xxhash/v2", // attribute set hashing
+}
+
 // Test infrastructure: imported from _test.go files only.
 var testInfra = []string{
 	"./internal/contracttest/...",
@@ -214,7 +226,10 @@ var rules = []rule{
 		applies: []string{"./..."},
 		except:  []string{"./internal/storage/...", "./internal/tenant/...", "./cmd/..."},
 		forbid:  cat(dbDrivers, []string{"database/sql/..."}),
-		through: []string{"./internal/storage/...", "./internal/tenant/..."},
+		// github.com/google/uuid (linked by the OpenTelemetry SDK's
+		// resource package, T-035) imports database/sql/driver only to make
+		// its UUID type a driver.Valuer and sql.Scanner; it opens nothing.
+		through: []string{"./internal/storage/...", "./internal/tenant/...", "github.com/google/uuid"},
 	},
 	{
 		// The gateways above include the raw foundation, whose Open takes
@@ -323,6 +338,31 @@ var rules = []rule{
 		thirdParty: kernelThirdParty,
 		moduleOnly: []string{"./internal/observability"},
 		stdOnly:    []string{"context", "fmt", "io", "log/slog", "regexp", "slices", "strings", "sync", "unicode", "unicode/utf8"},
+		goOnly:     true,
+	},
+	{
+		// T-035 (ADR-028): the OpenTelemetry SDK and its exporters are what
+		// can send data out of the process. Only the setup package that
+		// installs them when an operator named an endpoint, and the binaries
+		// that call it, link them; everything else records through the API
+		// (internal/observability/telemetry), which is a no-op without them.
+		name:    "otel-sdk-only-in-export",
+		why:     "only internal/observability/telemetry/export and cmd link the OpenTelemetry SDK, its exporters, gRPC or protobuf: export is off unless configured (D-095 (b), ADR-028)",
+		applies: []string{"./..."},
+		except:  []string{"./internal/observability/telemetry/export/...", "./cmd/..."},
+		forbid: []string{"go.opentelemetry.io/otel/sdk/...", "go.opentelemetry.io/otel/exporters/...", "go.opentelemetry.io/proto/...",
+			"google.golang.org/grpc/...", "google.golang.org/protobuf/...", "github.com/grpc-ecosystem/..."},
+	},
+	{
+		// T-035: the instruments every component records through use the
+		// OpenTelemetry API only, and the log filter's shapes.
+		name:       "telemetry-uses-the-api-only",
+		why:        "internal/observability/telemetry records through the OpenTelemetry API only (no SDK, exporter, network or file access), with observability's attribute shapes (D-094 (f), D-095)",
+		applies:    []string{"./internal/observability/telemetry"},
+		forbid:     cat(ioStd, dbDrivers, llmSDKs, []string{"testing"}),
+		thirdParty: cat(otelAPI, kernelThirdParty),
+		moduleOnly: []string{"./internal/observability", "./internal/observability/telemetry"},
+		stdOnly:    []string{"context", "sync/atomic", "time"},
 		goOnly:     true,
 	},
 	{

@@ -218,6 +218,20 @@ func TestRunServesAndStops(t *testing.T) {
 	}
 }
 
+// T-035 (D-095 (b)): a telemetry endpoint that is not an absolute http(s)
+// URL without credentials stops the API before it connects anywhere, and
+// the log names the variable, never its value.
+func TestRunRefusesABadTelemetryEndpoint(t *testing.T) {
+	var stderr syncBuffer
+	if code := refused(t, with("OTEL_EXPORTER_OTLP_ENDPOINT", "https://u:otel-pw-SENTINEL@collector"), &stderr); code != exitConfig {
+		t.Fatalf("exit = %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "OTEL_EXPORTER_OTLP_ENDPOINT") || strings.Contains(stderr.String(), "SENTINEL") ||
+		strings.Contains(stderr.String(), "database") {
+		t.Errorf("%s", stderr.String())
+	}
+}
+
 // T-035: the API's log is observability's (D-093, D-094): JSON lines whose
 // attributes pass the privacy filter.
 func TestTheLogIsFiltered(t *testing.T) {

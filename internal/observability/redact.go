@@ -193,6 +193,12 @@ func value(kind Kind, v slog.Value) slog.Value {
 	return v
 }
 
+// Fits reports whether s may be recorded as a value of kind: it has the
+// kind's shape (an empty string says nothing and always fits). The free-
+// text and number kinds are not shapes: Fits is false for them. Trace and
+// metric attributes use the same shapes (D-094 (f)).
+func Fits(kind Kind, s string) bool { return s == "" || fits(kind, s) }
+
 // fits reports whether s has kind's shape.
 func fits(kind Kind, s string) bool {
 	switch kind {

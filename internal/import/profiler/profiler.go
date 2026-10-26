@@ -35,6 +35,7 @@ import (
 
 	importprofile "github.com/kcl1104/geminus/internal/import/profile"
 	"github.com/kcl1104/geminus/internal/import/report"
+	"github.com/kcl1104/geminus/internal/observability/telemetry"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	store "github.com/kcl1104/geminus/internal/storage/imports"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
@@ -143,6 +144,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	}
 	h.cfg.Log.InfoContext(ctx, "import profiled", "outcome", result, "rows", out.rows, "invalid_rows", out.invalid, "columns", out.columns,
 		"size_bytes", imp.Size, "duration_ms", time.Since(began).Milliseconds())
+	telemetry.Current().Import(ctx, began, "profile", result, out.rows)
 	return hr.Finish(ctx, jobs.Completed, func(ctx context.Context, tx tenant.Tx) error {
 		if _, err := store.Lock(ctx, tx, org, imp.ID); err != nil {
 			return err

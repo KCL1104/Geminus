@@ -34,6 +34,7 @@ import (
 	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/import/validator"
 	"github.com/kcl1104/geminus/internal/observability"
+	"github.com/kcl1104/geminus/internal/observability/telemetry/export"
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/proposals/generator"
 	"github.com/kcl1104/geminus/internal/runs/runner"
@@ -207,7 +208,8 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 	if err == nil {
 		err = aerr
 	}
-	if err = errors.Join(err, werr); err != nil {
+	tel, terr := config.LoadTelemetry(getenv)
+	if err = errors.Join(err, werr, terr); err != nil {
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
@@ -272,6 +274,20 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 		log.Error("database unavailable", "error", err.Error())
 		return exitDatabase
 	}
+	// Traces and metrics leave the process only to an OTLP endpoint the
+	// operator named (D-095 (b), ADR-028); otherwise this installs nothing.
+	stopTelemetry, err := export.Setup(ctx, tel, "geminus-worker", log)
+	if err != nil {
+		log.Error("invalid configuration", "error", "the telemetry exporter cannot be created: "+err.Error())
+		return exitConfig
+	}
+	defer func() {
+		fctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := stopTelemetry(fctx); err != nil {
+			log.Warn("flushing the telemetry failed", "error", err.Error())
+		}
+	}()
 	log.Info("running", "worker_id", wcfg.ID, "organizations", len(wcfg.Organizations))
 	w.Run(ctx)
 	log.Info("stopped")

@@ -287,6 +287,27 @@ func TestProbesAreCaught(t *testing.T) {
 		{"the-catalogue-reads-the-tenant", "internal/audit/zz_probe.go", module + "/internal/tenant", "audit-catalogue-is-pure", "./internal/audit", "./internal/tenant", false},
 		{"the-catalogue-imports-pgx", "internal/audit/zz_probe.go", "github.com/jackc/pgx/v5", "audit-catalogue-is-pure", "./internal/audit", "github.com/jackc/pgx/v5", false},
 		{"the-catalogue-opens-files", "internal/audit/zz_probe.go", "os", "audit-catalogue-is-pure", "./internal/audit", "os", false},
+		// ADR-028: only the export setup (and cmd) links the SDK or an
+		// exporter; the instruments use the API; the kernel and the AI use
+		// neither.
+		{"the-api-layer-exports", "internal/httpapi/zz_probe.go", "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp", "otel-sdk-only-in-export",
+			"./internal/httpapi", "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp", false},
+		{"a-handler-links-the-sdk", "internal/runs/runner/zz_probe.go", "go.opentelemetry.io/otel/sdk/trace", "otel-sdk-only-in-export",
+			"./internal/runs/runner", "go.opentelemetry.io/otel/sdk/trace", false},
+		{"the-instruments-link-the-sdk", "internal/observability/telemetry/zz_probe.go", "go.opentelemetry.io/otel/sdk/metric", "telemetry-uses-the-api-only",
+			"./internal/observability/telemetry", "go.opentelemetry.io/otel/sdk/metric", false},
+		{"the-instruments-go-online", "internal/observability/telemetry/zz_probe.go", "net/http", "telemetry-uses-the-api-only",
+			"./internal/observability/telemetry", "net/http", false},
+		{"the-instruments-read-storage", "internal/observability/telemetry/zz_probe.go", module + "/internal/storage/jobs", "telemetry-uses-the-api-only",
+			"./internal/observability/telemetry", "./internal/storage/jobs", false},
+		{"the-kernel-records-telemetry", "internal/simulation/engine/zz_probe.go", module + "/internal/observability/telemetry", "generic-kernel",
+			"./internal/simulation/engine", "./internal/observability/telemetry", false},
+		{"the-kernel-uses-the-otel-api", "internal/results/metrics/zz_probe.go", "go.opentelemetry.io/otel/trace", "generic-kernel",
+			"./internal/results/metrics", "go.opentelemetry.io/otel/trace", false},
+		{"the-context-records-telemetry", "internal/ai/aicontext/zz_probe.go", module + "/internal/observability/telemetry", "ai-suggests-only",
+			"./internal/ai/aicontext", "./internal/observability/telemetry", false},
+		{"the-provider-uses-the-otel-api", "internal/ai/provider/zz_probe.go", "go.opentelemetry.io/otel/trace", "ai-is-pure-but-the-adapter",
+			"./internal/ai/provider", "go.opentelemetry.io/otel/trace", false},
 	}
 	for _, p := range probes {
 		t.Run(p.name, func(t *testing.T) {
@@ -436,10 +457,11 @@ func TestSyntheticGraph(t *testing.T) {
 	add(m("internal/import/report"), false, "encoding/csv")
 	add("encoding/csv", true)
 	add(m("internal/import/profile"), false, m("internal/model"), m("internal/import/report"), m("internal/storage/postgres"))
-	// T-035: the log filter and the audit catalogue, each guarded by its
-	// own rule.
+	// T-035: the log filter, the audit catalogue and the instruments, each
+	// guarded by its own rule.
 	add(m("internal/observability"), false)
 	add(m("internal/audit"), false, m("internal/observability"))
+	add(m("internal/observability/telemetry"), false, m("internal/observability"))
 	violations, errs := check(g, rules)
 	if len(errs) > 0 {
 		t.Fatal(errs)

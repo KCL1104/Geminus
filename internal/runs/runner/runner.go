@@ -41,6 +41,7 @@ import (
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/patch"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/observability/telemetry"
 	"github.com/kcl1104/geminus/internal/simulation"
 	"github.com/kcl1104/geminus/internal/simulation/des"
 	"github.com/kcl1104/geminus/internal/simulation/engine"
@@ -303,8 +304,10 @@ func (h *Handler) execute(ctx context.Context, hr handler.Run, org string, st st
 	if out != nil {
 		events = out.Events
 	}
+	how := engineOutcome(err, cause, ctx)
 	h.cfg.Log.InfoContext(ctx, "simulation engine ran", "events", events, "replications", in.Config.Replications,
-		"duration_ms", time.Since(ran).Milliseconds(), "outcome", engineOutcome(err, cause, ctx))
+		"duration_ms", time.Since(ran).Milliseconds(), "outcome", how)
+	telemetry.Current().Engine(ctx, ran, how, events)
 
 	switch {
 	case err == nil:

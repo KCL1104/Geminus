@@ -8,9 +8,13 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/observability"
+	"github.com/kcl1104/geminus/internal/observability/telemetry"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
@@ -264,6 +268,12 @@ func TestTheHandlersLinesCarryTheJob(t *testing.T) {
 	req := ids.New("req")
 	j := e.enqueueWith(t, o, 0, req)
 	log := observability.NewLogger(e.log, "worker")
+	spans := tracetest.NewSpanRecorder()
+	tel, err := telemetry.New(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spans)), metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer telemetry.Install(telemetry.Install(tel))
 	h := handler.Func(func(ctx context.Context, run handler.Run) error {
 		log.WarnContext(ctx, "inside the handler", "error", `cell "CASE-SENTINEL" is not a number`)
 		return run.Finish(ctx, jobs.Completed, profile(run.Job()))
@@ -294,5 +304,18 @@ func TestTheHandlersLinesCarryTheJob(t *testing.T) {
 	}
 	if strings.Contains(e.log.String(), "SENTINEL") {
 		t.Errorf("a quoted value reached the log: %s", e.log.String())
+	}
+	// D-095: the attempt is a span with its type, job, attempt, request and
+	// outcome.
+	jobSpans := spans.Ended()
+	if len(jobSpans) != 1 || jobSpans[0].Name() != "job import_profile" {
+		t.Fatalf("%v", jobSpans)
+	}
+	attrs := map[string]string{}
+	for _, kv := range jobSpans[0].Attributes() {
+		attrs[string(kv.Key)] = kv.Value.Emit()
+	}
+	if attrs["geminus.job_id"] != j.ID || attrs["geminus.request_id"] != req || attrs["geminus.outcome"] != "completed" || attrs["geminus.job.attempt"] != "1" {
+		t.Errorf("%v", attrs)
 	}
 }

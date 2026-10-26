@@ -72,6 +72,19 @@ func TestTheWorkersLogIsFiltered(t *testing.T) {
 	}
 }
 
+// T-035 (D-095 (b)): a telemetry setting that is not one stops the worker
+// with the variable's name, never its value.
+func TestRunRefusesABadTelemetrySetting(t *testing.T) {
+	var stderr bytes.Buffer
+	if code := run(context.Background(), with("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://c/v1/traces?token=otel-SENTINEL"), &stderr,
+		someHandler); code != exitConfig {
+		t.Fatalf("exit = %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") || strings.Contains(stderr.String(), "SENTINEL") {
+		t.Errorf("%s", stderr.String())
+	}
+}
+
 func TestRunRejectsInvalidConfiguration(t *testing.T) {
 	var stderr bytes.Buffer
 	if code := run(context.Background(), func(string) string { return "" }, &stderr, someHandler); code != exitConfig {

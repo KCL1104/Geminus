@@ -32,6 +32,7 @@ import (
 	"log/slog"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
 	"github.com/kcl1104/geminus/internal/ai/idpool"
@@ -41,6 +42,7 @@ import (
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/observability/telemetry"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
@@ -450,6 +452,8 @@ func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
 	h.cfg.Log.InfoContext(ctx, "ai provider call ended", "provider", m.Provider, "model", m.Model, "credential_label", m.Credential,
 		"role", string(m.Role), "latency_ms", m.LatencyMillis, "input_tokens", m.Usage.InputTokens, "output_tokens", m.Usage.OutputTokens,
 		"provider_request_id", m.ProviderRequestID, "code", code)
+	telemetry.Current().ProviderCall(ctx, time.Now().Add(-time.Duration(m.LatencyMillis)*time.Millisecond), m.Provider, m.Model, string(m.Role),
+		code, m.Usage.InputTokens, m.Usage.OutputTokens)
 }
 
 // auditMeta is what an audit event says of a provider call: the provider,

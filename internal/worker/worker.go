@@ -28,6 +28,7 @@ import (
 	"github.com/kcl1104/geminus/internal/audit"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/observability"
+	"github.com/kcl1104/geminus/internal/observability/telemetry"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	"github.com/kcl1104/geminus/internal/tenant"
@@ -279,7 +280,14 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 	// The handler's lines carry the job's correlation as the loop's do
 	// (D-093 (b)): observability adds them to every line logged with hctx,
 	// and the organization, which the loop's logger has from Pass.
-	hctx, stop := context.WithCancel(observability.With(ctx,
+	// The attempt is a span and a point of geminus.job.attempt.duration
+	// (telemetry, D-095), ended with how the attempt ended.
+	tel := telemetry.Current()
+	req, _ := requestID(job)
+	sctx, span := tel.StartJob(ctx, string(job.Type), job.ID, job.Attempt, req)
+	how, code := "not_recorded", ""
+	defer func() { tel.EndJob(span, string(job.Type), how, code, time.Since(claimed)) }()
+	hctx, stop := context.WithCancel(observability.With(sctx,
 		attrs(append([]any{"organization_id", job.OrganizationID}, correlation(job)...))...))
 	defer stop()
 	var mu sync.Mutex
@@ -301,9 +309,11 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 	took := time.Since(claimed).Milliseconds()
 	switch {
 	case isFinished:
+		how = string(end)
 		log.Info("job ended", "status", string(end), "duration_ms", took)
 		return
 	case isLost():
+		how = "lease_lost"
 		log.Warn("lease lost; the attempt ends without writing")
 		return
 	}
@@ -348,16 +358,22 @@ func (w *Worker) run(ctx context.Context, job jobs.Job, lease jobs.Lease, claime
 		}
 		return w.audit(ctx, tx, job, failure, retried)
 	})
+	code = failure.Code
 	switch {
 	case errors.Is(ferr, jobs.ErrLeaseLost):
 		// The job is no longer this attempt's: reaped, or ended by a COMMIT
 		// whose answer was lost (tenant.ErrOutcomeUnknown).
+		how = "lease_lost"
 		log.Warn("the job is no longer this attempt's; its end is not recorded", "code", failure.Code)
 		return
 	case ferr != nil:
 		// The lease ends on its own; the reaper takes the job back.
 		log.Error("recording the failure failed", "code", failure.Code, "error", ferr.Error())
 		return
+	}
+	how = "failed"
+	if retried {
+		how = "requeued"
 	}
 	log.Info("job attempt ended", "code", failure.Code, "retried", retried, "duration_ms", took)
 }
