@@ -1,6 +1,10 @@
 package review
 
 import (
+	"bytes"
+	"encoding/json/jsontext"
+	"io"
+	"math"
 	"strconv"
 	"strings"
 
@@ -19,12 +23,14 @@ import (
 //     or shift. Every number of the candidate (a new step's, a changed
 //     step's, a new flow's or resource's; review's values: capacities,
 //     units, distribution parameters, probabilities, calendars, schedules,
-//     batches, constraints) must be a value the base model already has, so
-//     the AI can only copy what the model states, and say so in its
+//     batches, constraints; the metrics' periods; and, review round 1 L1,
+//     every JSON number inside a node's domain_attributes, at any depth)
+//     must be a value the base model already has (in any of those places),
+//     so the AI can only copy what the model states, and say so in its
 //     assumptions; the one exception is a resource's capacity, which may
 //     also be a count of the boxes (1 to their number: two ICT testers in
 //     the photo). Anything else is the AI's own number, and the proposal is
-//     invalid.
+//     invalid. Text is not read: a name such as "Line 2" is text.
 //
 // The segments themselves are checked before the proposal is asked for:
 // T-055's provider.SegmentClient checks every answer (the frame, each box
@@ -124,16 +130,62 @@ func numbers(ir *model.ModelIR) []float64 {
 	return out
 }
 
+// attributeNumbers is every JSON number in a node's domain_attributes (an
+// untrusted container, any depth), and false when one of them is not a
+// finite float64 (no base value is) or the container does not read.
+func attributeNumbers(raw jsontext.Value) ([]float64, bool) {
+	if len(raw) == 0 {
+		return nil, true
+	}
+	var out []float64
+	dec := jsontext.NewDecoder(bytes.NewReader(raw))
+	for {
+		tok, err := dec.ReadToken()
+		if err == io.EOF {
+			return out, true
+		}
+		if err != nil {
+			return nil, false
+		}
+		if tok.Kind() != '0' {
+			continue
+		}
+		v, err := strconv.ParseFloat(tok.String(), 64)
+		if err != nil || math.IsInf(v, 0) || math.IsNaN(v) {
+			return nil, false
+		}
+		out = append(out, v)
+	}
+}
+
+// photoKnown is every number of the base: what numbers reads, the
+// metrics' periods and the numbers of the nodes' domain_attributes.
+func photoKnown(base *model.ModelIR) map[float64]bool {
+	known := map[float64]bool{}
+	for _, v := range numbers(base) {
+		known[v] = true
+	}
+	for _, m := range base.Metrics {
+		if m.Period != nil {
+			known[*m.Period] = true
+		}
+	}
+	for _, n := range base.Nodes {
+		vs, _ := attributeNumbers(n.DomainAttributes)
+		for _, v := range vs {
+			known[v] = true
+		}
+	}
+	return known
+}
+
 // Photo is the photo rules on a candidate the review found ready: base is
 // the base version's IR, boxes the number of boxes the segmenter found and
 // the server checked. Every issue is an error.
 func Photo(base, candidate *model.ModelIR, boxes int) []model.ValidationIssue {
 	var out []model.ValidationIssue
 	bad := func(path, message string) { out = append(out, errorIssue(OutputInvalid, path, message)) }
-	known := map[float64]bool{}
-	for _, v := range numbers(base) {
-		known[v] = true
-	}
+	known := photoKnown(base)
 	inBase := map[string]bool{}
 	for _, n := range base.Nodes {
 		inBase[n.ID] = true
@@ -158,6 +210,15 @@ func Photo(base, candidate *model.ModelIR, boxes int) []model.ValidationIssue {
 	for i := range candidate.Nodes {
 		if unknown(numbers(&model.ModelIR{Nodes: candidate.Nodes[i : i+1]})) {
 			bad("/nodes/"+strconv.Itoa(i), sentPhotoNumber)
+		}
+		// Review round 1, L1: the numbers in its domain_attributes too.
+		if vs, ok := attributeNumbers(candidate.Nodes[i].DomainAttributes); !ok || unknown(vs) {
+			bad("/nodes/"+strconv.Itoa(i)+"/domain_attributes", sentPhotoNumber)
+		}
+	}
+	for i, m := range candidate.Metrics {
+		if m.Period != nil && !known[*m.Period] {
+			bad("/metrics/"+strconv.Itoa(i)+"/period", sentPhotoNumber)
 		}
 	}
 	for i, fl := range candidate.Flows {

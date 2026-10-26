@@ -135,6 +135,69 @@ func TestPhotoRefusesNumbersOfItsOwn(t *testing.T) {
 	}
 }
 
+// Review round 1, L1 (D-132: every number from the base model): a number
+// the AI put in a metric's period, in a calendar, or inside a step's
+// domain_attributes (an untrusted container the pack does not read, where
+// a photo's label could put a "yield of 97.3%") is the AI's own too. A
+// value the base has is allowed there as anywhere; text is not read.
+func TestPhotoRefusesNumbersOutsideTheTypedMembers(t *testing.T) {
+	base := bareLine(t)
+	for name, c := range map[string]struct {
+		edit func(*model.ModelIR)
+		want []string
+	}{
+		"a metric's period": {func(c *model.ModelIR) {
+			c.Metrics = append(c.Metrics, model.Metric{ID: "metric_shift_output", Type: model.MetricPeriodThroughput, SinkID: "shipped", Period: f(437)})
+		}, []string{"/metrics/0/period"}},
+		"a calendar's period": {func(c *model.ModelIR) {
+			c.Calendars = []model.Calendar{{ID: "calendar_day", Period: 437, Shifts: []model.Shift{{Start: 0, End: 1}}}}
+		}, []string{"/calendars"}},
+		"a calendar's shift": {func(c *model.ModelIR) {
+			c.Calendars = []model.Calendar{{ID: "calendar_day", Period: 1, Shifts: []model.Shift{{Start: 0, End: 0.9}}}}
+		}, []string{"/calendars"}},
+		"numbers in a new step's attributes": {func(c *model.ModelIR) {
+			c.Nodes[5].DomainAttributes = []byte(`{"station":"aoi","pass":"first","takt_seconds":437,"first_pass_yield":0.973}`)
+		}, []string{"/nodes/5/domain_attributes"}},
+		"a number in an existing step's attributes": {func(c *model.ModelIR) {
+			c.Nodes[2].DomainAttributes = []byte(`{"station":"smt","pass":"first","yield":0.95}`)
+		}, []string{"/nodes/2/domain_attributes"}},
+		"a number deep in the attributes": {func(c *model.ModelIR) {
+			c.Nodes[7].DomainAttributes = []byte(`{"station":"ict","pass":"first","limits":{"probes":[1,1,{"pitch_mm":1.27}]}}`)
+		}, []string{"/nodes/7/domain_attributes"}},
+		"a number too large to read": {func(c *model.ModelIR) {
+			c.Nodes[5].DomainAttributes = []byte(`{"station":"aoi","pass":"first","serial":1e400}`)
+		}, []string{"/nodes/5/domain_attributes"}},
+	} {
+		cand := withStations(t)
+		c.edit(cand)
+		issues := Photo(base, cand, 6)
+		if !slices.Equal(at(issues), c.want) {
+			t.Errorf("%s: %v, want %v", name, at(issues), c.want)
+			continue
+		}
+		for _, is := range issues {
+			if is.Code != OutputInvalid || is.Message != sentPhotoNumber || is.Severity != model.SeverityError || Clean(is) != is {
+				t.Errorf("%s: %+v", name, is)
+			}
+		}
+	}
+	// What the base states may be copied: a metric's period, a calendar,
+	// a number in the attributes (here 1, the base's capacity and units);
+	// strings, booleans and nulls are not numbers.
+	b := bareLine(t)
+	b.Metrics = []model.Metric{{ID: "metric_shift_output", Type: model.MetricPeriodThroughput, SinkID: "shipped", Period: f(480)}}
+	b.Calendars = []model.Calendar{{ID: "calendar_day", Period: 480, Shifts: []model.Shift{{Start: 0, End: 1}}}}
+	b.Nodes[2].DomainAttributes = []byte(`{"station":"smt","pass":"first","lanes":2}`)
+	cand := withStations(t)
+	cand.Metrics = slices.Clone(b.Metrics)
+	cand.Calendars = slices.Clone(b.Calendars)
+	cand.Nodes[2].DomainAttributes = b.Nodes[2].DomainAttributes
+	cand.Nodes[5].DomainAttributes = []byte(`{"station":"aoi","pass":"first","lanes":2,"line":1,"label":"yield 97.3%","manual":false,"note":null}`)
+	if issues := Photo(b, cand, 6); len(issues) != 0 {
+		t.Errorf("the base's own numbers: %v", issues)
+	}
+}
+
 // What the photo rule says survives the server's cleaning unchanged: its
 // sentences are the review's own, its paths known members.
 func TestPhotoIssuesAreClean(t *testing.T) {
