@@ -1,0 +1,10 @@
+spec-check exit 0
+backend-test exit 0
+architecture-check exit 0
+ai-eval exit 0
+generator-check exit 0
+race-changed exit 0
+rehearsal exit 0
+deploy-dry-run exit 0
+integration exit 0
+key-name-scan exit 0

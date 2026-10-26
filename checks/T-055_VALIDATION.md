@@ -186,3 +186,39 @@ Branch `t055-meta`（自 d9b7f22，沒有 push）：
 8. **決策編號**：D-118 已由 T-052 使用；本 task 用 D-121–D-123，D-119、D-120 留給同時進行的 T-056。合併時若衝突請 coordinator 重新編號（程式註解中的編號一起改）。
 9. **Planning 的舊變數名稱**：`planning/tasks.json` T-055 scope 與 `planning/decisions.json` H-029 still_open 仍寫 `GEMINUS_META_API_KEY`（coordinator 的紀錄，本 task 沒有改）。
 10. **Live 的第一步**（H-033：只在獨立審查過的 T-055 程式上、由有 key 的新 session）：建議順序為免費的 `count_tokens`（確認 key、投影的 schema 被接受）→ `make ai-smoke-live`（`AI_PROVIDER=meta`）→ `make ai-eval-live`；SAM 的第一次呼叫在 T-056 的 handler 之前以一張 demo 圖片確認 grammar 與 `images_processed`。
+
+## Coordinator 驗證（2026-10-26）
+
+`t055-meta` 的七個 commit（e8ee746..c3307cf）cherry-pick 到 T-052 的修正之後，沒有衝突；之後 bce77a3 把 T-055 scope 中舊的 key 名稱改為 `GEMINUS_MUSE_API_KEY`。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-055-T-052r1-coordinator/`，`exit-codes.txt` 依執行順序；go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 0 | 81 個 package ok |
+| `make architecture-check` | 0 | 93 packages、25 rules、16 build configurations |
+| `make ai-eval` | 0 | fake provider |
+| `go run ./scripts/gen-electronics-line-data -check` | 0 | 資料與釘住的 hash 不變 |
+| `go test -race -count=1 -timeout 30m`（ai、aievals、config、domainpack、results、cmd、generator） | 0 | 26 個 package ok |
+| `scripts/rehearse_railway_deploy.py`（沒有 Railway token 的環境） | 0 | |
+| `deploy/railway/deploy.sh --dry-run`（同上） | 0 | |
+| `make integration-test`（新的 dt_test_hkb4c，跑完刪除） | 0 | |
+| 舊的 key 名稱掃描（`GEMINUS_META_API_KEY`，排除測試、報告與決策紀錄） | 0 | 只剩刻意的負向測試與歷史紀錄 |
+
+NOT RUN：任何 live 呼叫；前端與 e2e（這兩批沒有改 UI）；完整的 `make backend-race`。
+
+Coordinator 對本任務問題的處理：
+1. ADR-030、D-121–D-123 維持 PROPOSED，比賽後放進決策頁；保守的選擇（5xx 一律算可能收費、帶圖的呼叫預留整個 context）照用。
+2. Meta 的保留條款：owner 已接受（H-035，coordinator 核對過 2026-10-09 版的原文）。
+3. Meta dashboard 的花費上限：請 owner 確認（H-035 的未決事項）；在那之前只有程式內的上限。
+4. 照片的 Claude 備援：owner 決定先不要（H-035）。
+5. 照片路徑的角色：T-056 合併時確認。
+6. API 不讀 key 也能判斷 AI 是否可用（T-053 I5）：coordinator 決定實作（API 只讀非 secret 的設定：provider、approval、model、`GEMINUS_AI_LIVE`；環境中出現任何 key 就拒絕啟動），由後續的切片實作並驗證；這不讓 API 拿到任何 secret。
+7. Restricted Territories：owner 決定公開 demo 關閉註冊、只有 owner 與一個評審帳號（H-035）。
+8. 決策編號沒有衝突（T-052 為 D-118，T-055 為 D-121–D-123，T-056 為 D-130–D-132）。
+9. Planning 中舊的變數名稱：T-055 scope 已改；H-029 的紀錄保留原文。
+10. 第一批 live 步驟（count_tokens → `AI_PROVIDER=meta` 的 smoke → eval → 一次 SAM）在獨立審查通過之後、由有 key 的新 session 執行。
+
+下一步：一輪獨立審查（H-029），進行中。
+

@@ -1,0 +1,5 @@
+HEAD bce77a3dc46e9fda53a6f85703ed3196feb59050
+uncommitted besides evidence: 
+go version go1.27.3 linux/amd64
+2026-10-26T18:53:08Z
+ 18:53:08 up 15:00,  0 user,  load average: 2.10, 2.21, 3.50

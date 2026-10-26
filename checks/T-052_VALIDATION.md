@@ -324,3 +324,26 @@ Log 的合計「18/21 killed」中沒有被殺死的 3 列，是同一個 mutant
 - **I9**：validator 的「base version 對該 organization 不可見」沒有測試；依 composite FK（organization_id, model_id, base_version_id）在結構上到不了，維持現狀。
 - **I10**：`checks/docs-check.json` 由本輪的 `make spec-check` 重產（review 檔在 reviewer 的 worktree，不在本 branch，所以它的計數不含 review 檔）。
 
+### Coordinator 驗證（review 第 1 輪修正，2026-10-26）
+
+`t052-r1` 的三個 commit（33eada9、d0ecae6、aee92a3）cherry-pick 到 a01f423 之後，與 T-055 一起驗證，沒有衝突。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-055-T-052r1-coordinator/`，`exit-codes.txt` 依執行順序；go1.27.3）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 0 | 81 個 package ok |
+| `make architecture-check` | 0 | 93 packages、25 rules、16 build configurations |
+| `make ai-eval` | 0 | fake provider |
+| `go run ./scripts/gen-electronics-line-data -check` | 0 | 資料與釘住的 hash 不變 |
+| `go test -race -count=1 -timeout 30m`（ai、aievals、config、domainpack、results、cmd、generator） | 0 | 26 個 package ok |
+| `scripts/rehearse_railway_deploy.py`（沒有 Railway token 的環境） | 0 | |
+| `deploy/railway/deploy.sh --dry-run`（同上） | 0 | |
+| `make integration-test`（新的 dt_test_hkb4c，跑完刪除） | 0 | |
+| 舊的 key 名稱掃描（`GEMINUS_META_API_KEY`，排除測試、報告與決策紀錄） | 0 | 只剩刻意的負向測試與歷史紀錄 |
+
+NOT RUN：任何 live 呼叫；前端與 e2e（這兩批沒有改 UI）；完整的 `make backend-race`。
+
+M1 修正並經 coordinator 驗證，依 H-029 的比賽模式，**T-052 的 hackathon 切片完成**；延後的項目見上一節。
+
